@@ -109,6 +109,7 @@ export function buildPlanViewModel(source: PlanViewModelSource | null): PlanView
             selection: source.activeHouseSelection ?? { kind: 'house', targetId: null },
             moduleLengthM: source.moduleLengthM,
             moduleProjectionM: source.moduleProjectionM,
+            geometryHouseContext: planModel.houseContext ?? null,
           })
         : null,
     planModel,

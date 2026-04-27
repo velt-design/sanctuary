@@ -1336,12 +1336,7 @@ describe("Geometry3DViewport", () => {
       (object): object is Extract<ViewerSceneObject, { type: "house_linear_solid" }> =>
         object.type === "house_linear_solid" && object.kind === "gutter",
     );
-    expect(
-      wallSolid?.metadata?.hostEdgeSide === "rear" ||
-        wallSolid?.metadata?.hostEdgeSide === "front" ||
-        wallSolid?.metadata?.hostEdgeSide === "left" ||
-        wallSolid?.metadata?.hostEdgeSide === "right",
-    ).toBe(true);
+    expect(wallSolid).toBeDefined();
 
     const rendered = renderIntoDocument(
       <Geometry3DViewport geometryPreview={geometryPreview} />,
@@ -1413,68 +1408,6 @@ describe("Geometry3DViewport", () => {
     expect(rendered.container.textContent).toContain(
       `${Math.round(sceneCenter.x)}, ${Math.round(sceneCenter.y)}, ${Math.round(sceneCenter.z)} mm`,
     );
-
-    rendered.unmount();
-  });
-
-  it("picks an attached deck host side from a house wall without selecting non-wall objects", async () => {
-    const fixture = requireFixture("mono-standard");
-    const geometryPreview = buildWorkbenchGeometryPreview({
-      projectId: "proj_preview",
-      estimateId: fixture.estimate.id,
-      designRequestId: fixture.request.id,
-      snapshot: fixture.snapshot,
-      moduleIndex: 0,
-    });
-    if (geometryPreview.kind !== "ready") {
-      throw new Error("Expected ready geometry preview");
-    }
-
-    const pickSpy = vi.fn();
-    const wallSolid = geometryPreview.scene.layers
-      .flatMap((layer) => layer.objects)
-      .find(
-        (object): object is Extract<ViewerSceneObject, { type: "house_surface_solid" }> =>
-          object.type === "house_surface_solid" &&
-          object.kind === "wall" &&
-          (object.metadata?.hostEdgeSide === "rear" ||
-            object.metadata?.hostEdgeSide === "front" ||
-            object.metadata?.hostEdgeSide === "left" ||
-            object.metadata?.hostEdgeSide === "right"),
-      );
-    const roofSolid = geometryPreview.scene.layers
-      .flatMap((layer) => layer.objects)
-      .find(
-        (object): object is Extract<ViewerSceneObject, { type: "house_surface_solid" }> =>
-          object.type === "house_surface_solid" && object.kind === "roof",
-      );
-    if (!wallSolid) {
-      throw new Error("Expected wall solid with host edge metadata.");
-    }
-
-    const rendered = renderIntoDocument(
-      <Geometry3DViewport
-        geometryPreview={geometryPreview}
-        pendingAttachedDeckHostEdgePick
-        onPickAttachedDeckHostEdge={pickSpy}
-      />,
-    );
-
-    await act(async () => {
-      await Promise.resolve();
-    });
-
-    expect(rendered.container.textContent).toContain("Pick house side for new deck");
-
-    if (roofSolid) {
-      clickSceneObject(rendered.container, roofSolid.id);
-      expect(pickSpy).not.toHaveBeenCalled();
-      expect(viewportDiagnostics(rendered.container).selectedObjectId).toBe("");
-    }
-
-    clickSceneObject(rendered.container, wallSolid.id);
-    expect(pickSpy).toHaveBeenCalledWith(wallSolid.metadata?.hostEdgeSide);
-    expect(viewportDiagnostics(rendered.container).selectedObjectId).toBe("");
 
     rendered.unmount();
   });

@@ -45,7 +45,7 @@ type HouseFirstWorkbenchRailProps = {
   onSelectDeck?: (deckId: string | null) => void;
   onSelectOpening?: (openingId: string | null) => void;
   onAddDeck?: (
-    mode: 'attached_preset' | 'detached_preset' | 'custom_outline',
+    mode: 'preset' | 'custom_outline',
   ) => Promise<CommitResult> | CommitResult;
   onAddOpening?: () => Promise<CommitResult> | CommitResult;
   onRemoveDeck?: (deckId: string) => Promise<CommitResult> | CommitResult;
@@ -59,8 +59,6 @@ type HouseFirstWorkbenchRailProps = {
     patch: Partial<HouseFirstOpeningDraft>,
   ) => Promise<CommitResult> | CommitResult;
   onStartDeckOutline?: (deckId: string) => Promise<CommitResult> | CommitResult;
-  pendingDeckCreationKind?: 'attached_preset' | null;
-  onCancelPendingDeckCreation?: () => void;
   pergolaFallback: ReactNode;
 };
 
@@ -108,10 +106,6 @@ const DECK_KIND_OPTIONS: SelectOption[] = [
 const DECK_SHAPE_OPTIONS: Array<SelectOption & { value: DeckShape }> = [
   { label: 'Rectangular preset', value: 'preset' },
   { label: 'Custom outline', value: 'custom' },
-];
-const DECK_ATTACHMENT_OPTIONS: SelectOption[] = [
-  { label: 'Attached', value: 'attached' },
-  { label: 'Detached', value: 'detached' },
 ];
 const DECK_ELEVATION_OPTIONS: Array<SelectOption & { value: DeckElevationMode }> = [
   { label: 'Ground', value: 'ground' },
@@ -161,10 +155,10 @@ function resolveDeckValidationSummary(deck: HouseModel['decks'][number]): string
     return 'This deck overlaps another deck. Pull the rectangles apart by reducing width/depth or shifting the center offset.';
   }
   if (codes.has('attached_missing_host_edge')) {
-    return 'Attached decks need a host edge before the rectangle can rebuild cleanly.';
+    return 'Preset decks snapped to the house need a host edge before the rectangle can rebuild cleanly.';
   }
   if (codes.has('detached_threshold_alignment')) {
-    return 'Detached decks cannot stay threshold aligned. Use ground or stepped elevation instead.';
+    return 'Free decks cannot stay threshold aligned. Use ground or stepped elevation instead.';
   }
   if (codes.has('self_intersecting_outline')) {
     return 'This custom outline folds back through itself. Redraw the outline or switch back to a rectangular preset.';
@@ -180,11 +174,11 @@ function resolveDeckWarningSummaries(deck: HouseModel['decks'][number]): string[
   const resolved: Array<string | null> = deck.supportContext.warningCodes.map((code) => {
     switch (code) {
       case 'insufficient_host_edge_contact':
-        return 'The deck barely contacts the selected host edge. Widen it or reduce the center offset to keep the attachment legible.';
+        return 'The deck barely contacts the selected host edge. Widen it or reduce the center offset to keep the snapped placement legible.';
       case 'detached_too_close_to_house':
-        return 'This detached deck is sitting too close to the house. Increase the detached gap or switch the placement back to attached.';
+        return 'This free deck is sitting too close to the house. Increase the reference edge gap or pull it farther out into space.';
       case 'threshold_alignment_offset':
-        return 'Threshold-aligned decks should stay close to the house datum. Reduce the level offset if this is meant to read as an attached landing.';
+        return 'Threshold-aligned decks should stay close to the house datum. Reduce the level offset if this is meant to read as a snapped landing.';
       case 'unsupported_house_intersection':
         return 'Part of this outline is running through unsupported house geometry zones.';
       default:
@@ -446,8 +440,6 @@ function HouseModeRail({
   onCommitDeckPatch,
   onCommitOpeningPatch,
   onStartDeckOutline,
-  pendingDeckCreationKind,
-  onCancelPendingDeckCreation,
 }: Omit<
   HouseFirstWorkbenchRailProps,
   'workbenchMode' | 'pergolaFallback'
@@ -914,28 +906,16 @@ function HouseModeRail({
   const deckSections = useMemo(() => {
     const deckValidationSummary = activeDeck ? resolveDeckValidationSummary(activeDeck) : null;
     const deckWarningSummaries = activeDeck ? resolveDeckWarningSummaries(activeDeck) : [];
-    const pendingAttachedDeckCreation = pendingDeckCreationKind === 'attached_preset';
     const deckButtons: ReactNode[] = [
       <div key="deck-actions" className={styles.buttonRow}>
         <ActionButton
-          label="Add attached"
-          disabled={disabled || pendingAttachedDeckCreation}
-          onClick={() =>
-            void runDeckAction(
-              'deck-add-attached',
-              onAddDeck?.('attached_preset'),
-              'Unable to add an attached deck.',
-            )
-          }
-        />
-        <ActionButton
-          label="Add detached"
+          label="Add deck"
           disabled={disabled}
           onClick={() =>
             void runDeckAction(
-              'deck-add-detached',
-              onAddDeck?.('detached_preset'),
-              'Unable to add a detached deck.',
+              'deck-add-preset',
+              onAddDeck?.('preset'),
+              'Unable to add a deck.',
             )
           }
         />
@@ -953,29 +933,12 @@ function HouseModeRail({
       </div>,
     ];
 
-    if (pendingAttachedDeckCreation) {
-      deckButtons.push(
-        <p key="deck-pending-hint" className={styles.fieldHint}>
-          Click a house side in Model Space plan or 3D View to place the new attached deck.
-        </p>,
-        <div key="deck-pending-actions" className={styles.buttonRow}>
-          <ActionButton
-            label="Cancel"
-            disabled={disabled}
-            onClick={() => onCancelPendingDeckCreation?.()}
-          />
-        </div>,
-      );
-    }
-
     if (!activeDeck) {
-      if (!pendingAttachedDeckCreation) {
-        deckButtons.push(
-          <p key="deck-empty" className={styles.empty}>
-            Add a shared deck to start building external house context.
-          </p>,
-        );
-      }
+      deckButtons.push(
+        <p key="deck-empty" className={styles.empty}>
+          Add a shared deck to start building external house context.
+        </p>,
+      );
       return deckButtons;
     }
 
@@ -996,23 +959,18 @@ function HouseModeRail({
       <div key="deck-active-summary" className={styles.inlineMeta}>
         <span className={styles.inlineLabel}>Editing</span>
         <span className={styles.inlineValue}>
-          {activeDeck.isAttached ? 'Attached' : 'Detached'}{' '}
+          {activeDeck.isAttached ? 'Snapped to house edge' : 'Free in space'}{' '}
           {activeDeck.shape === 'preset' ? 'rectangular preset' : 'custom outline'}
         </span>
       </div>,
       <p key="deck-selection-hint" className={styles.fieldHint}>
-        {activeDeck.shape === 'preset' && activeDeck.isAttached
-          ? 'Only the selected deck shows active dimensions in plan/model space. Attached rectangular presets can be dragged in Model Space and expose host-edge relationship dimensions on selection.'
+        {activeDeck.shape === 'preset'
+          ? 'Only the selected deck shows active dimensions in plan/model space. Rectangular presets can be dragged in Model Space, snap to the house edge, or sit free in space with witness dimensions.'
           : 'Only the selected deck shows active dimensions in plan/model space. Secondary decks stay visible but muted.'}
       </p>,
       activeDeck.shape === 'custom' ? (
         <p key="deck-custom-deferred" className={styles.fieldHint}>
           Custom outlines keep their existing point/edge editing flow. Object drag, snap previews, and house-edge relationship dimensions are still deferred for custom decks.
-        </p>
-      ) : null,
-      activeDeck.shape === 'preset' && !activeDeck.isAttached ? (
-        <p key="deck-detached-deferred" className={styles.fieldHint}>
-          Detached rectangular decks keep the preset fields below, but drag, snap, and house-edge relationship dimensions currently apply only to attached preset decks.
         </p>
       ) : null,
       <TextField
@@ -1044,36 +1002,6 @@ function HouseModeRail({
           )
         }
       />,
-      <SelectField
-        key="deck-attachment"
-        label="Deck placement"
-        value={activeDeck.isAttached ? 'attached' : 'detached'}
-        options={DECK_ATTACHMENT_OPTIONS}
-        disabled={disabled}
-        error={fieldErrors[`deck-placement-${activeDeck.id}`]}
-        helperText={
-          activeDeck.isAttached
-            ? 'Attached decks rebuild directly off the selected exterior host edge.'
-            : 'Detached decks keep the same rectangular editor, but offset away from the house.'
-        }
-        onCommit={(value) =>
-          runDeckAction(
-            `deck-placement-${activeDeck.id}`,
-            onCommitDeckPatch?.(activeDeck.id, {
-              isAttached: value === 'attached',
-              presetType: value === 'attached' ? 'rect_attached' : 'rect_detached',
-              hostEdgeId: activeDeck.hostEdgeId ?? house?.footprint.attachmentSide ?? 'rear',
-              elevationMode:
-                value === 'attached' && activeDeck.elevationMode === 'ground'
-                  ? 'aligned_to_threshold'
-                  : value === 'detached' && activeDeck.elevationMode === 'aligned_to_threshold'
-                    ? 'ground'
-                    : activeDeck.elevationMode,
-            }),
-            'Unable to update the deck placement.',
-          )
-        }
-      />,
     );
 
     deckButtons.push(
@@ -1086,8 +1014,8 @@ function HouseModeRail({
         error={fieldErrors[`deck-host-${activeDeck.id}`]}
         helperText={
           activeDeck.isAttached
-            ? 'The preset rectangle will rebuild fully outside this edge.'
-            : 'This edge acts as the reference side for deck width, depth, and detached gap.'
+            ? 'The snapped preset rectangle rebuilds fully outside this edge.'
+            : 'This edge is the sticky house reference for width, depth, and free-space witness dimensions.'
         }
         onCommit={(value) =>
           runDeckAction(
@@ -1205,7 +1133,7 @@ function HouseModeRail({
       if (activeDeck.isAttached) {
         deckButtons.push(
           <p key="deck-model-space-hint" className={styles.fieldHint}>
-            In Model Space, select this deck to edit width/depth plus host-edge start and end gaps. Drag the deck body to move it along the host edge.
+            In Model Space, select this deck to edit width/depth plus host-edge start and end gaps. Drag the deck body to move it along the house edge or pull it free into space.
           </p>,
         );
       }
@@ -1214,11 +1142,11 @@ function HouseModeRail({
         deckButtons.push(
           <NumberField
             key="deck-detached-gap"
-            label="Detached gap (m)"
+            label="Reference edge gap (m)"
             value={activeDeck.presetRect?.detachedGapM ?? ''}
             disabled={disabled}
             error={fieldErrors[`deck-detached-gap-${activeDeck.id}`]}
-            helperText="Clear gap from the house-side host edge."
+            helperText="Perpendicular clearance from the sticky house reference edge."
             onCommit={(value) =>
               runDeckAction(
                 `deck-detached-gap-${activeDeck.id}`,
@@ -1316,12 +1244,10 @@ function HouseModeRail({
     house?.decks,
     house?.footprint.attachmentSide,
     onAddDeck,
-    onCancelPendingDeckCreation,
     onCommitDeckPatch,
     onRemoveDeck,
     onSelectDeck,
     onStartDeckOutline,
-    pendingDeckCreationKind,
     runDeckAction,
   ]);
   const openingSections = useMemo(() => {
@@ -1559,8 +1485,6 @@ export default function HouseFirstWorkbenchRail({
   onCommitDeckPatch,
   onCommitOpeningPatch,
   onStartDeckOutline,
-  pendingDeckCreationKind,
-  onCancelPendingDeckCreation,
   pergolaFallback,
 }: HouseFirstWorkbenchRailProps) {
   if (workbenchMode === 'pergolas') {
@@ -1602,8 +1526,6 @@ export default function HouseFirstWorkbenchRail({
         onCommitDeckPatch={onCommitDeckPatch}
         onCommitOpeningPatch={onCommitOpeningPatch}
         onStartDeckOutline={onStartDeckOutline}
-      pendingDeckCreationKind={pendingDeckCreationKind}
-      onCancelPendingDeckCreation={onCancelPendingDeckCreation}
     />
   );
 }

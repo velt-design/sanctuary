@@ -630,15 +630,7 @@ describe('DesignWorkbenchEstimateClient', () => {
     expect(readLabeledValue(rendered.container, 'Deck count')).toBe('0');
     expect(readLabeledValue(rendered.container, 'Selected deck id')).toBe('none');
 
-    clickButtonByText(rendered.container, 'Add attached');
-    await flushAsyncWork();
-
-    expect(getLocalFirstWorkingCopy<any>(entityKey)?.data.houseFirst?.decks ?? []).toEqual([]);
-    expect(rendered.container.textContent).toContain('Click a house side in Model Space plan or 3D View');
-
-    clickButtonByText(rendered.container, 'Model Space');
-    await flushAsyncWork();
-    clickPlanFootprintEdge(rendered.container, 'rear');
+    clickButtonByText(rendered.container, 'Add deck');
     await flushAsyncWork();
 
     expect(getLocalFirstWorkingCopy<any>(entityKey)?.data.houseFirst?.decks?.map((deck: any) => deck.id)).toEqual(['deck-1']);
@@ -656,17 +648,21 @@ describe('DesignWorkbenchEstimateClient', () => {
     expect(readLabeledValue(rendered.container, '3D deck bracket')).toBe('Yes');
     expect(readLabeledValue(rendered.container, 'Selected deck id')).toBe('deck-1');
     expect(readLabeledValue(rendered.container, 'House polygon source')).toBe('preset_derived');
-    expect(readLabeledValue(rendered.container, 'Selected deck type')).toBe('attached_preset_rect');
+    expect(readLabeledValue(rendered.container, 'Selected deck type')).toBe('preset_snapped');
     expect(readLabeledValue(rendered.container, 'Deck drag eligible')).toBe('Yes');
     expect(readLabeledValue(rendered.container, 'Deck host-edge resolvable')).toBe('Yes');
     expect(readLabeledValue(rendered.container, 'Deck relationship dims')).toBe('Yes');
+
+    clickButtonByText(rendered.container, 'Model Space');
+    await flushAsyncWork();
+
     expect(readLabeledValue(rendered.container, 'Model-space house polygon')).toBe('preset_derived');
-    expect(readLabeledValue(rendered.container, 'Model-space deck type')).toBe('attached_preset_rect');
+    expect(readLabeledValue(rendered.container, 'Model-space deck type')).toBe('preset_snapped');
     expect(readLabeledValue(rendered.container, 'Model-space drag eligible')).toBe('Yes');
     expect(readLabeledValue(rendered.container, 'Model-space relationship dims')).toBe('Yes');
     expect(readLabeledValue(rendered.container, 'Model-space snap state')).toBe('idle');
 
-    clickButtonByText(rendered.container, 'Add detached');
+    clickButtonByText(rendered.container, 'Add deck');
     await flushAsyncWork();
 
     expect(getLocalFirstWorkingCopy<any>(entityKey)?.data.houseFirst?.decks?.map((deck: any) => deck.id)).toEqual([
@@ -675,15 +671,15 @@ describe('DesignWorkbenchEstimateClient', () => {
     ]);
     expect(readLabeledValue(rendered.container, 'Deck count')).toBe('2');
     expect(readLabeledValue(rendered.container, 'Selected deck id')).toBe('deck-2');
-    expect(readLabeledValue(rendered.container, 'Selected deck type')).toBe('detached_preset_rect');
-    expect(readLabeledValue(rendered.container, 'Deck drag eligible')).toBe('No');
-    expect(readLabeledValue(rendered.container, 'Deck relationship dims')).toBe('No');
+    expect(readLabeledValue(rendered.container, 'Selected deck type')).toBe('preset_snapped');
+    expect(readLabeledValue(rendered.container, 'Deck drag eligible')).toBe('Yes');
+    expect(readLabeledValue(rendered.container, 'Deck relationship dims')).toBe('Yes');
 
     clickButtonByText(rendered.container, 'Deck 1');
     await flushAsyncWork();
 
     expect(readLabeledValue(rendered.container, 'Selected deck id')).toBe('deck-1');
-    expect(readLabeledValue(rendered.container, 'Selected deck type')).toBe('attached_preset_rect');
+    expect(readLabeledValue(rendered.container, 'Selected deck type')).toBe('preset_snapped');
 
     clickButtonByText(rendered.container, 'Remove deck');
     await flushAsyncWork();
@@ -783,55 +779,6 @@ describe('DesignWorkbenchEstimateClient', () => {
     rendered.unmount();
   });
 
-  it('starts attached deck host-edge picking in 3D without creating a deck immediately', async () => {
-    const estimate = buildEstimateDetail();
-    const entityKey = buildEstimateDrawingDraftEntityKey(estimate.id);
-
-    const rendered = renderIntoDocument(
-      <DesignWorkbenchEstimateClient estimate={estimate} projectName="Deck Build" siteAddress="1 Test Street" />,
-    );
-
-    await flushAsyncWork();
-    expect(rendered.container.querySelector('[data-testid="geometry-3d-canvas-shell"]')).not.toBeNull();
-
-    clickButtonByText(rendered.container, 'Add attached');
-    await flushAsyncWork();
-
-    expect(rendered.container.querySelector('[data-testid="geometry-3d-canvas-shell"]')).not.toBeNull();
-    expect(getLocalFirstWorkingCopy<any>(entityKey)?.data.houseFirst?.decks ?? []).toEqual([]);
-    expect(rendered.container.textContent).toContain('Pick house side for new deck');
-
-    rendered.unmount();
-  });
-
-  it('auto-switches from sheet view to model-space plan for attached deck host-edge picking and can cancel', async () => {
-    const estimate = buildEstimateDetail();
-    const entityKey = buildEstimateDrawingDraftEntityKey(estimate.id);
-
-    const rendered = renderIntoDocument(
-      <DesignWorkbenchEstimateClient estimate={estimate} projectName="Deck Build" siteAddress="1 Test Street" />,
-    );
-
-    await flushAsyncWork();
-    clickButtonByText(rendered.container, 'Sheet View');
-    await flushAsyncWork();
-
-    clickButtonByText(rendered.container, 'Add attached');
-    await flushAsyncWork();
-
-    expect(rendered.container.querySelector('[data-footprint-edge="right"]')).not.toBeNull();
-    expect(getLocalFirstWorkingCopy<any>(entityKey)?.data.houseFirst?.decks ?? []).toEqual([]);
-
-    clickButtonByText(rendered.container, 'Cancel');
-    await flushAsyncWork();
-
-    expect(rendered.container.querySelector('[data-footprint-edge="right"]')).toBeNull();
-    expect(getLocalFirstWorkingCopy<any>(entityKey)?.data.houseFirst?.decks ?? []).toEqual([]);
-    expect(rendered.container.textContent).not.toContain('Click a house side in Model Space plan or 3D View');
-
-    rendered.unmount();
-  });
-
   it('edits preset decks and hides deck controls in pergolas mode', async () => {
     const estimate = buildEstimateDetail();
     const entityKey = buildEstimateDrawingDraftEntityKey(estimate.id);
@@ -841,25 +788,12 @@ describe('DesignWorkbenchEstimateClient', () => {
     );
 
     await flushAsyncWork();
-    clickButtonByText(rendered.container, 'Add attached');
-    await flushAsyncWork();
-    clickButtonByText(rendered.container, 'Model Space');
-    await flushAsyncWork();
-    clickPlanFootprintEdge(rendered.container, 'rear');
+    clickButtonByText(rendered.container, 'Add deck');
     await flushAsyncWork();
 
     fillInputByLabel(rendered.container, 'Width (m)', '20');
     await flushAsyncWork();
     expect(getLocalFirstWorkingCopy<any>(entityKey)?.data.houseFirst?.decks?.[0]?.presetRect?.widthM).toBe('6');
-
-    changeSelectByLabel(rendered.container, 'Deck placement', 'detached');
-    await flushAsyncWork();
-    expect(getLocalFirstWorkingCopy<any>(entityKey)?.data.houseFirst?.decks?.[0]?.isAttached).toBe(false);
-    expect(getLocalFirstWorkingCopy<any>(entityKey)?.data.houseFirst?.decks?.[0]?.hostEdgeId).toBe('rear');
-
-    fillInputByLabel(rendered.container, 'Detached gap (m)', '0.05');
-    await flushAsyncWork();
-    expect(getLocalFirstWorkingCopy<any>(entityKey)?.data.houseFirst?.decks?.[0]?.presetRect?.detachedGapM).toBe('0.2');
 
     changeSelectByLabel(rendered.container, 'Shape', 'custom');
     await flushAsyncWork();
@@ -876,7 +810,7 @@ describe('DesignWorkbenchEstimateClient', () => {
     await flushAsyncWork();
 
     expect(rendered.container.textContent).toContain('Pergola Mode');
-    expect(rendered.container.textContent).not.toContain('Add attached');
+    expect(rendered.container.textContent).not.toContain('Add deck');
     expect(rendered.container.textContent).not.toContain('Deck placement');
     rendered.unmount();
   });

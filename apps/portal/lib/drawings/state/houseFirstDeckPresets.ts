@@ -379,7 +379,9 @@ export function sanitizeDeckPresetRect(input: {
     0;
   const availableOffsetHalfSpanM =
     widthM <= hostEdgeLengthM + EPSILON ? Math.max(0, (hostEdgeLengthM - widthM) / 2) : 0;
-  const centerOffsetM = clamp(requestedCenterOffsetM, -availableOffsetHalfSpanM, availableOffsetHalfSpanM);
+  const centerOffsetM = input.attached
+    ? clamp(requestedCenterOffsetM, -availableOffsetHalfSpanM, availableOffsetHalfSpanM)
+    : requestedCenterOffsetM;
 
   return {
     widthM: formatDeckMetres(widthM),

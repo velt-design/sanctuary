@@ -41,7 +41,7 @@ export type DrawingWorkbenchModuleEntry = {
 };
 
 export type WorkbenchDeckInteractionDiagnostic = {
-  selectedDeckType: 'none' | 'attached_preset_rect' | 'detached_preset_rect' | 'custom_outline' | 'preset_unresolved';
+  selectedDeckType: 'none' | 'preset_snapped' | 'preset_free' | 'custom_outline' | 'preset_unresolved';
   dragEligible: boolean;
   dragReason: string | null;
   hostEdgeResolvable: boolean;
@@ -76,8 +76,9 @@ export type DrawingWorkbenchStore = {
     deckCount: number;
     openingCount: number;
     invalidOpeningCount: number;
-    attachedDeckCount: number;
-    detachedDeckCount: number;
+    snappedPresetDeckCount: number;
+    freePresetDeckCount: number;
+    customDeckCount: number;
     invalidDeckCount: number;
     deckSupportWarningCount: number;
     activeDeckSupport: WorkbenchDeckSupportDiagnostic | null;
@@ -118,30 +119,20 @@ function buildDeckInteractionDiagnostic(
     };
   }
 
-  if (!deck.isAttached || deck.presetType === 'rect_detached') {
-    return {
-      selectedDeckType: 'detached_preset_rect',
-      dragEligible: false,
-      dragReason: 'Drag and snap currently apply only to attached preset rectangular decks.',
-      hostEdgeResolvable,
-      relationshipDimensionsAvailable: false,
-    };
-  }
-
-  if (!hostEdgeResolvable || deck.presetType !== 'rect_attached' || !deck.presetRect) {
+  if (!hostEdgeResolvable || !deck.presetRect) {
     return {
       selectedDeckType: 'preset_unresolved',
       dragEligible: false,
-      dragReason: 'This attached deck needs a resolvable host edge before drag and relationship dims are available.',
+      dragReason: 'This preset deck needs a resolvable house reference edge before drag and relationship dims are available.',
       hostEdgeResolvable,
       relationshipDimensionsAvailable: false,
     };
   }
 
   return {
-    selectedDeckType: 'attached_preset_rect',
+    selectedDeckType: deck.isAttached ? 'preset_snapped' : 'preset_free',
     dragEligible: true,
-    dragReason: 'Drag the selected deck body to move it along the host edge, or click dimensions to edit.',
+    dragReason: 'Drag the selected deck body to move it near the house edge or out in free space, or click dimensions to edit.',
     hostEdgeResolvable: true,
     relationshipDimensionsAvailable: true,
   };
@@ -330,8 +321,9 @@ export function buildDrawingWorkbenchStore(input: {
       deckCount: decks.length,
       openingCount: openings.length,
       invalidOpeningCount: openings.filter((opening) => opening.validation.status === 'invalid').length,
-      attachedDeckCount: decks.filter((deck) => deck.isAttached).length,
-      detachedDeckCount: decks.filter((deck) => !deck.isAttached).length,
+      snappedPresetDeckCount: decks.filter((deck) => deck.shape === 'preset' && deck.isAttached).length,
+      freePresetDeckCount: decks.filter((deck) => deck.shape === 'preset' && !deck.isAttached).length,
+      customDeckCount: decks.filter((deck) => deck.shape === 'custom').length,
       invalidDeckCount: decks.filter((deck) => deck.validation.status === 'invalid').length,
       deckSupportWarningCount,
       activeDeckSupport,

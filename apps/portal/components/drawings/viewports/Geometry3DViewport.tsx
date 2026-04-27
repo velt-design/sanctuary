@@ -33,8 +33,6 @@ import styles from "./Geometry3DViewport.module.css";
 const ORBIT_MOUSE_DISABLED = -1 as THREE.MOUSE;
 
 const HOUSE_DISPLAY_LAYER_IDS = new Set(["house", "house_roof_materials"]);
-type AttachmentSide = "rear" | "front" | "left" | "right";
-
 type SceneBounds = {
   min: Point3;
   max: Point3;
@@ -529,16 +527,6 @@ function metadataNumberValue(
 ): number | null {
   const value = metadata?.[key];
   return typeof value === "number" && Number.isFinite(value) ? value : null;
-}
-
-function metadataAttachmentSide(
-  metadata: ViewerSceneObject["metadata"],
-  key: string,
-): AttachmentSide | null {
-  const value = metadata?.[key];
-  return value === "rear" || value === "front" || value === "left" || value === "right"
-    ? value
-    : null;
 }
 
 type DeckMaterialKey = "timber_decking" | "composite" | "concrete";
@@ -2155,19 +2143,6 @@ function objectSummary(
   ];
 }
 
-function pickableAttachedDeckHostEdgeSide(
-  object: ViewerSceneObject | null,
-): AttachmentSide | null {
-  if (!object) return null;
-  if (object.type === "house_surface_solid" && object.kind === "wall") {
-    return metadataAttachmentSide(object.metadata, "hostEdgeSide");
-  }
-  if (object.type === "house_surface" && object.kind === "wall") {
-    return metadataAttachmentSide(object.metadata, "hostEdgeSide");
-  }
-  return null;
-}
-
 function MemberObject({
   object,
   color,
@@ -3427,16 +3402,12 @@ export default function Geometry3DViewport({
   viewportKey = "geometry3d",
   viewportState,
   onViewportStateChange,
-  pendingAttachedDeckHostEdgePick = false,
-  onPickAttachedDeckHostEdge,
 }: {
   geometryPreview?: GeometryPreviewState | null;
   displayMode?: WorkbenchMode;
   viewportKey?: string;
   viewportState?: Geometry3DViewportState | null;
   onViewportStateChange?: (next: Geometry3DViewportState) => void;
-  pendingAttachedDeckHostEdgePick?: boolean;
-  onPickAttachedDeckHostEdge?: (side: AttachmentSide) => void;
 }) {
   const [panelOpen, setPanelOpen] = useState(false);
   const [layerVisibility, setLayerVisibility] = useState<
@@ -3813,25 +3784,12 @@ export default function Geometry3DViewport({
   const handleObjectSelect = useCallback(
     (id: string) => {
       const object = allObjects.find((entry) => entry.id === id) ?? null;
-      if (pendingAttachedDeckHostEdgePick) {
-        const pickedSide = pickableAttachedDeckHostEdgeSide(object);
-        if (pickedSide && onPickAttachedDeckHostEdge) {
-          onPickAttachedDeckHostEdge(pickedSide);
-        }
-        return;
-      }
       setSelectedObjectId(id);
       if (!measurement.enabled) return;
       if (!object) return;
       assignMeasurementAnchor(buildMeasurementAnchor(object), "selection");
     },
-    [
-      allObjects,
-      assignMeasurementAnchor,
-      measurement.enabled,
-      onPickAttachedDeckHostEdge,
-      pendingAttachedDeckHostEdgePick,
-    ],
+    [allObjects, assignMeasurementAnchor, measurement.enabled],
   );
 
   const useDatumOriginAnchor = useCallback(() => {
@@ -4124,7 +4082,6 @@ export default function Geometry3DViewport({
         data-native-selection-suppressed="true"
         onContextMenu={(event) => event.preventDefault()}
         onClick={() => {
-          if (pendingAttachedDeckHostEdgePick) return;
           setSelectedObjectId(null);
         }}
       >
@@ -4147,11 +4104,6 @@ export default function Geometry3DViewport({
           </div>
           <div className={styles.toolbarSpacer} />
           <div className={styles.toolbarGroup}>
-            {pendingAttachedDeckHostEdgePick ? (
-              <span className={styles.activeToolbarButton}>
-                Pick house side for new deck
-              </span>
-            ) : null}
             <button
               type="button"
               className={styles.resetButton}

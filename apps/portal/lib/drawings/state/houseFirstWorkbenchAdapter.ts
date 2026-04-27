@@ -48,6 +48,7 @@ import type {
   PergolaModel,
   WorkbenchProjectModel,
 } from './houseFirstWorkbenchModel';
+import { normalizeWallOpeningKind } from './houseFirstWorkbenchModel';
 import {
   buildDeckReferenceHousePolygon,
   parseDeckLocalPolygon,
@@ -611,6 +612,12 @@ function normalizeOpeningWallId(
   return fallback;
 }
 
+function normalizeExactOpeningHostEdgeId(value: string | null | undefined): string | null {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  return /^footprint-edge-\d+$/.test(trimmed) ? trimmed : null;
+}
+
 function buildSharedOpenings(input: {
   openingDrafts: HouseFirstOpeningDraft[] | null | undefined;
   housePolygon: CalculatorHouseFootprintPolygonPoint[];
@@ -619,16 +626,11 @@ function buildSharedOpenings(input: {
   const openings: HouseModel['openings'] = [];
   const occupiedByWall = new Map<string, Array<{ start: number; end: number }>>();
 
-  const normalizeExactOpeningHostEdgeId = (value: string | null | undefined): string | null => {
-    if (typeof value !== 'string') return null;
-    const trimmed = value.trim();
-    return /^footprint-edge-\d+$/.test(trimmed) ? trimmed : null;
-  };
-
   for (const draft of input.openingDrafts ?? []) {
     if (!draft || typeof draft.id !== 'string' || draft.id.trim().length === 0) continue;
     const requestedWallId = normalizeOpeningWallId(draft.wallId, input.fallbackWallId);
     const exactHostEdgeId = normalizeExactOpeningHostEdgeId(draft.hostEdgeId);
+    const kind = normalizeWallOpeningKind(draft.kind);
     const exactFrame = exactHostEdgeId
       ? resolveDeckHostEdgeFrame({
           housePolygon: input.housePolygon,
@@ -684,25 +686,25 @@ function buildSharedOpenings(input: {
 
     const message =
       codes[0] === 'missing_host_wall'
-        ? 'Select a valid wall before placing this window.'
+        ? 'Select a valid wall before placing this opening.'
         : codes[0] === 'invalid_width'
-          ? 'Window width must be at least 0.3m.'
+          ? 'Opening width must be at least 0.3m.'
           : codes[0] === 'invalid_height'
-            ? 'Window height must be at least 0.3m.'
+            ? 'Opening height must be at least 0.3m.'
             : codes[0] === 'invalid_sill_height'
-              ? 'Sill height must be zero or greater.'
+              ? 'Opening base height must be zero or greater.'
               : codes[0] === 'offset_out_of_bounds'
-                ? 'Window offset must stay on the selected wall.'
+                ? 'Opening offset must stay on the selected wall.'
                 : codes[0] === 'span_exceeds_wall'
-                  ? 'Window width extends beyond the selected wall span.'
+                  ? 'Opening width extends beyond the selected wall span.'
                   : codes[0] === 'overlapping_openings'
-                    ? 'Windows on the same wall cannot overlap.'
+                    ? 'Openings on the same wall cannot overlap.'
                     : null;
 
     const opening: HouseModel['openings'][number] = {
       id: draft.id.trim(),
       label: draft.label?.trim() || `Window ${openings.length + 1}`,
-      kind: 'window',
+      kind,
       wallId,
       hostEdgeId,
       widthM: formatOpeningMetres(widthM),

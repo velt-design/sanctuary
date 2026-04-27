@@ -45,6 +45,7 @@ export type DeckValidationCode =
   | 'detached_threshold_alignment'
   | 'unsupported_house_intersection';
 export type WallOpeningKind = 'window' | 'hinged_door' | 'slider' | 'stacker';
+export const WALL_OPENING_KINDS = ['window', 'hinged_door', 'slider', 'stacker'] as const;
 export type WallOpeningHostSide = NonNullable<CalculatorModuleInputs['attachmentSide']>;
 export type WallOpeningValidationCode =
   | 'missing_host_wall'
@@ -252,7 +253,7 @@ export type HouseFirstDeckDraft = {
 export type HouseFirstOpeningDraft = {
   id: string;
   label?: string | null;
-  kind?: Extract<WallOpeningKind, 'window'> | null;
+  kind?: WallOpeningKind | null;
   wallId?: WallOpeningHostSide | null;
   hostEdgeId?: string | null;
   widthM?: string | null;
@@ -260,6 +261,14 @@ export type HouseFirstOpeningDraft = {
   sillHeightM?: string | null;
   offsetAlongWallM?: string | null;
 };
+
+export function isWallOpeningKind(value: unknown): value is WallOpeningKind {
+  return typeof value === 'string' && WALL_OPENING_KINDS.includes(value as WallOpeningKind);
+}
+
+export function normalizeWallOpeningKind(value: unknown): WallOpeningKind {
+  return isWallOpeningKind(value) ? value : 'window';
+}
 
 export type WorkbenchProjectModel = {
   source: 'legacy_estimate_snapshot';

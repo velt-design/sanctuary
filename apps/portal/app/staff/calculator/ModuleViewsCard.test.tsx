@@ -145,6 +145,19 @@ function makeFootprintEditor(overrides: Partial<{
   };
 }
 
+function extractPolygonPoints(markup: string, dataAttribute: string, value: string): Array<{ x: number; y: number }> {
+  const pattern = new RegExp(`points="([^"]+)"[^>]*${dataAttribute}="${value}"`);
+  const match = markup.match(pattern);
+  if (!match?.[1]) return [];
+  return match[1].split(' ').map((pair) => {
+    const [x, y] = pair.split(',');
+    return {
+      x: Number(x),
+      y: Number(y),
+    };
+  });
+}
+
 function extractDebugRect(markup: string, marker: string): { minX: number; maxX: number; minY: number; maxY: number } {
   const markerIndex = markup.indexOf(`data-debug-crop="${marker}"`);
   expect(markerIndex).toBeGreaterThanOrEqual(0);
@@ -735,6 +748,100 @@ describe('ModuleViewsCard', () => {
     expect(markup).not.toContain('rotate(90');
     expect(markup).not.toContain('rotate(180');
     expect(markup).not.toContain('rotate(270');
+  });
+
+  it('renders house-mode model space as a birdseye projection without flipping sheet or card behavior', () => {
+    const drawing = makeDrawingModule();
+    const planModel: ModulePlanModel = {
+      ...drawing.planModel!,
+      houseContext: {
+        surfaces: [
+          {
+            id: 'house-footprint',
+            kind: 'footprint',
+            boundary: [
+              { x: 0, y: -2 },
+              { x: 2, y: -2 },
+              { x: 2, y: 0 },
+              { x: 0, y: 0 },
+            ],
+          },
+        ],
+        lines: [
+          {
+            id: 'wall-1',
+            kind: 'wall_segment',
+            line: { start: { x: 0, y: 0 }, end: { x: 2, y: 0 } },
+            metadata: { sourceEdgeId: 'footprint-edge-1' },
+          },
+        ],
+      },
+    };
+    const houseOverlay: HouseFirstPlanOverlay = {
+      housePolygonSource: 'preset_derived',
+      shapes: [
+        {
+          ownerKind: 'opening',
+          ownerId: 'opening-1',
+          polygon: [
+            { x: 0.4, y: 0 },
+            { x: 1.4, y: 0 },
+            { x: 1.4, y: -0.12 },
+            { x: 0.4, y: -0.12 },
+          ],
+          selected: true,
+          custom: false,
+          muted: false,
+          invalid: false,
+          invalidMessage: null,
+          deckInteraction: null,
+          openingInteraction: {
+            kind: 'opening',
+            hostEdgeId: 'footprint-edge-1',
+            hostEdgeStart: { x: 0, y: 0 },
+            hostEdgeEnd: { x: 2, y: 0 },
+            hostSpanM: 2,
+            openingWidthM: 1,
+            offsetAlongWallM: 0.4,
+            minOffsetAlongWallM: 0,
+            maxOffsetAlongWallM: 1,
+          },
+          deckDragEligibility: null,
+          openingDragEligibility: null,
+        },
+      ],
+      presetAnnotations: [],
+      customEdgeCandidates: [],
+    };
+
+    const modelMarkup = renderToStaticMarkup(
+      <ModuleDrawingRenderer
+        view="plan"
+        status="ready"
+        planModel={planModel}
+        sectionModel={drawing.sectionModel}
+        presentation="model"
+        displayMode="house"
+        houseFirstPlanOverlay={houseOverlay}
+      />,
+    );
+    const cardMarkup = renderToStaticMarkup(
+      <ModuleDrawingRenderer
+        view="plan"
+        status="ready"
+        planModel={planModel}
+        sectionModel={drawing.sectionModel}
+        houseFirstPlanOverlay={houseOverlay}
+      />,
+    );
+
+    const modelFootprintPoints = extractPolygonPoints(modelMarkup, 'data-house-plan-surface', 'footprint');
+    const cardFootprintPoints = extractPolygonPoints(cardMarkup, 'data-house-plan-surface', 'footprint');
+    const modelOpeningPoints = extractPolygonPoints(modelMarkup, 'data-house-first-shape', 'opening:opening-1');
+
+    expect(modelFootprintPoints[0]?.y).toBeGreaterThan(modelFootprintPoints[2]?.y);
+    expect(cardFootprintPoints[0]?.y).toBeLessThan(cardFootprintPoints[2]?.y);
+    expect(modelOpeningPoints[0]?.y).toBeLessThan(modelOpeningPoints[2]?.y);
   });
 
   it('shows the edit-footprint trigger for eligible calculator plan views', () => {

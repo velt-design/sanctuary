@@ -1,4 +1,10 @@
 import { describe, expect, it } from 'vitest';
+import {
+  buildHouseFootprintPresetSideLocalPoints,
+  houseFootprintSideLocalPointToWorld,
+  resolveHouseFootprintFrame,
+} from '@sp/geometry';
+import type { ModulePlanHouseContext } from '@/app/staff/calculator/moduleViews';
 import type { DeckModel, HouseModel } from '@/lib/drawings/state/houseFirstWorkbenchModel';
 import { buildEstimateDrawingDraftFromSnapshot, type EstimateDrawingDraft } from '@/lib/estimates/drawingEdits';
 import { buildWorkbenchGeometryPreview } from '@/lib/drawings/geometry/buildWorkbenchGeometryPreview';
@@ -6,7 +12,7 @@ import { getSanctuaryGeometryWorkbenchFixture } from '@/lib/drawings/sanctuaryWo
 import { buildDrawingWorkbenchStore } from '@/lib/drawings/state/drawingWorkbenchStore';
 import { createDrawingWorkbenchUiState } from '@/lib/drawings/state/drawingWorkbenchUiState';
 import {
-  buildHouseFirstPlanOverlay,
+  buildHouseFirstPlanOverlay as buildHouseFirstPlanOverlayRaw,
   resizeCustomPolygonEdge,
 } from './houseFirstPlanOverlay';
 import { resolveDeckPresetGeometry } from '@/lib/drawings/state/houseFirstDeckPresets';
@@ -188,6 +194,123 @@ function toScenePolygonMetres(points: Array<{ x: number; y: number }>) {
   }));
 }
 
+function parsePolygonPoints(polygon: Array<{ alongM: string; depthM: string }>) {
+  return polygon.map((point) => ({
+    x: Number(point.alongM),
+    y: Number(point.depthM),
+  }));
+}
+
+function makeGeometryHouseContext(
+  house: HouseModel,
+  input: {
+    moduleLengthM?: number;
+    moduleProjectionM?: number;
+  } = {},
+): ModulePlanHouseContext {
+  const moduleLengthM = input.moduleLengthM ?? 6;
+  const moduleProjectionM = input.moduleProjectionM ?? 3;
+  const offsetXM = Number(house.footprint.params.offsetXM ?? '0') || 0;
+  const setbackM = Math.max(0, Number(house.footprint.params.setbackM ?? '0') || 0);
+  const toWorldPoint = (
+    point: { x: number; y: number },
+    options: { unitFrame?: boolean; offsetXM?: number; setbackM?: number } = {},
+  ) => {
+    const unitFrame = options.unitFrame ?? false;
+    const frame = resolveHouseFootprintFrame({
+      pergolaWidthMm: Math.round((unitFrame ? 1 : moduleLengthM) * 1000),
+      pergolaDepthMm: Math.round((unitFrame ? 1 : moduleProjectionM) * 1000),
+      attachmentSide: house.footprint.attachmentSide,
+    });
+    const world = houseFootprintSideLocalPointToWorld({
+      point: {
+        alongM: point.x,
+        depthM: point.y,
+      },
+      frame,
+      resolved: {
+        widthM: 1,
+        offsetXM: options.offsetXM ?? 0,
+        setbackM: options.setbackM ?? 0,
+        bandDepthM: 1,
+        returnRunM: 1,
+        recessWidthM: 1,
+        recessDepthM: 1,
+        leftLegRunM: 1,
+        rightLegRunM: 1,
+        sideRunM: 1,
+      },
+    });
+    return {
+      x: Number((world.x / 1000).toFixed(6)),
+      y: Number((world.y / 1000).toFixed(6)),
+    };
+  };
+  const rawFootprint =
+    house.footprint.mode === 'custom_polygon' && house.footprint.polygon.length
+      ? parsePolygonPoints(house.footprint.polygon)
+      : buildHouseFootprintPresetSideLocalPoints({
+          pergolaWidthMm: Math.round(moduleLengthM * 1000),
+          pergolaDepthMm: Math.round(moduleProjectionM * 1000),
+          preset: house.footprint.preset,
+          params: house.footprint.params,
+          attachmentSide: house.footprint.attachmentSide,
+        }).map((point) => ({
+          x: point.alongM,
+          y: point.depthM,
+        }));
+  const footprint = rawFootprint.map((point) =>
+    toWorldPoint(point, {
+      offsetXM,
+      setbackM,
+    }),
+  );
+
+  return {
+    surfaces: [
+      {
+        id: 'house-footprint',
+        kind: 'footprint',
+        boundary: footprint,
+      },
+      ...house.decks.map((deck) => ({
+        id: deck.id,
+        kind: 'deck' as const,
+        boundary: parsePolygonPoints(deck.outline).map((point) => toWorldPoint(point, { unitFrame: true })),
+      })),
+    ],
+    lines: footprint.map((point, index) => ({
+      id: `house-wall-${index + 1}`,
+      kind: 'wall_segment' as const,
+      line: {
+        start: point,
+        end: footprint[(index + 1) % footprint.length]!,
+      },
+      metadata: {
+        sourceEdgeId: `footprint-edge-${index + 1}`,
+      },
+    })),
+  };
+}
+
+function buildHouseFirstPlanOverlay(
+  input: Omit<Parameters<typeof buildHouseFirstPlanOverlayRaw>[0], 'geometryHouseContext'> & {
+    geometryHouseContext?: ModulePlanHouseContext | null;
+  },
+) {
+  return buildHouseFirstPlanOverlayRaw({
+    ...input,
+    geometryHouseContext:
+      input.geometryHouseContext ??
+      (input.house
+        ? makeGeometryHouseContext(input.house, {
+            moduleLengthM: Number(input.moduleLengthM ?? '6') || 6,
+            moduleProjectionM: Number(input.moduleProjectionM ?? '3') || 3,
+          })
+        : null),
+  });
+}
+
 describe('houseFirstPlanOverlay', () => {
   it('builds preset footprint annotations for the selected house footprint only', () => {
     const overlay = buildHouseFirstPlanOverlay({
@@ -245,7 +368,7 @@ describe('houseFirstPlanOverlay', () => {
 
     expect(overlay?.shapes).toHaveLength(2);
     expect(overlay?.presetAnnotations.map((annotation) => annotation.fieldKey)).toEqual(
-      expect.arrayContaining(['widthM', 'depthM', 'detachedGapM']),
+      expect.arrayContaining(['widthM', 'depthM', 'referenceEdgeGapM', 'crossEdgeGapM']),
     );
     expect(overlay?.presetAnnotations.find((annotation) => annotation.fieldKey === 'centerOffsetM')).toBeUndefined();
   });
@@ -339,7 +462,7 @@ describe('houseFirstPlanOverlay', () => {
       overlay?.shapes.find((shape) => shape.ownerKind === 'deck')?.deckDragEligibility,
     ).toEqual({
       eligible: true,
-      reason: 'Drag the selected deck body to move it along the host edge, or click dimensions to edit.',
+      reason: 'Drag the selected deck body to move it near the house edge or out in free space, or click dimensions to edit.',
     });
   });
 
@@ -380,6 +503,107 @@ describe('houseFirstPlanOverlay', () => {
       'offsetAlongWallM',
     ]);
     expect(overlay?.presetAnnotations.every((annotation) => annotation.targetKind === 'opening_param')).toBe(true);
+  });
+
+  it('anchors opening polygons to the resolved wall line instead of the roof or gutter line', () => {
+    const house = makeHouse({
+      openings: [
+        {
+          id: 'opening-1',
+          label: 'Window 1',
+          kind: 'window',
+          wallId: 'rear',
+          hostEdgeId: 'footprint-edge-1',
+          widthM: '1.8',
+          heightM: '1.2',
+          sillHeightM: '0.9',
+          offsetAlongWallM: '0.6',
+          validation: {
+            status: 'valid',
+            codes: [],
+            message: null,
+          },
+        },
+      ],
+    });
+    const geometryHouseContext: ModulePlanHouseContext = {
+      ...makeGeometryHouseContext(house),
+      lines: [
+        {
+          id: 'wall-1',
+          kind: 'wall_segment',
+          line: { start: { x: 0, y: 0 }, end: { x: 6, y: 0 } },
+          metadata: { sourceEdgeId: 'footprint-edge-1' },
+        },
+        {
+          id: 'gutter-1',
+          kind: 'gutter',
+          line: { start: { x: 0, y: -0.45 }, end: { x: 6, y: -0.45 } },
+          metadata: { sourceEdgeId: 'footprint-edge-1' },
+        },
+      ],
+    };
+
+    const overlay = buildHouseFirstPlanOverlay({
+      house,
+      selection: { kind: 'opening', targetId: 'opening-1' },
+      moduleLengthM: '6',
+      moduleProjectionM: '3',
+      geometryHouseContext,
+    });
+
+    const openingShape = overlay?.shapes.find((shape) => shape.ownerKind === 'opening' && shape.ownerId === 'opening-1');
+    expect(openingShape?.polygon[0]?.y).toBeCloseTo(0, 6);
+    expect(openingShape?.polygon[1]?.y).toBeCloseTo(0, 6);
+    expect(openingShape?.polygon.some((point) => Math.abs(point.y + 0.45) <= 1e-6)).toBe(false);
+  });
+
+  it('derives opening drag bounds from the resolved host wall span instead of the merged house side span', () => {
+    const house = makeHouse({
+      footprint: {
+        mode: 'custom_polygon',
+        preset: 'u_shape',
+        polygon: [
+          { alongM: '0', depthM: '0' },
+          { alongM: '2', depthM: '0' },
+          { alongM: '2', depthM: '2' },
+          { alongM: '4', depthM: '2' },
+          { alongM: '4', depthM: '0' },
+          { alongM: '6', depthM: '0' },
+          { alongM: '6', depthM: '4' },
+          { alongM: '0', depthM: '4' },
+        ],
+      },
+      openings: [
+        {
+          id: 'opening-1',
+          label: 'Window 1',
+          kind: 'window',
+          wallId: 'rear',
+          hostEdgeId: 'footprint-edge-1',
+          widthM: '1.8',
+          heightM: '1.2',
+          sillHeightM: '0.9',
+          offsetAlongWallM: '0.1',
+          validation: {
+            status: 'valid',
+            codes: [],
+            message: null,
+          },
+        },
+      ],
+    });
+
+    const overlay = buildHouseFirstPlanOverlay({
+      house,
+      selection: { kind: 'opening', targetId: 'opening-1' },
+      moduleLengthM: '6',
+      moduleProjectionM: '4',
+    });
+
+    const openingShape = overlay?.shapes.find((shape) => shape.ownerKind === 'opening' && shape.ownerId === 'opening-1');
+    expect(openingShape?.openingInteraction?.hostSpanM).toBeCloseTo(2, 6);
+    expect(openingShape?.openingInteraction?.maxOffsetAlongWallM).toBeCloseTo(0.2, 6);
   });
 
   it('keeps driving dimensions but omits relationship dimensions when the host edge is unresolved', () => {
@@ -425,7 +649,7 @@ describe('houseFirstPlanOverlay', () => {
     ).toEqual({
       eligible: false,
       reason:
-        'This attached deck needs a resolvable host edge before drag and relationship dims are available.',
+        'This preset deck needs a resolvable house reference edge before drag and relationship dims are available.',
     });
   });
 
@@ -501,6 +725,7 @@ describe('houseFirstPlanOverlay', () => {
       selection: { kind: 'opening', targetId: 'opening-debug' },
       moduleLengthM: String(store.derived.activePlanModel?.lengthA ?? ''),
       moduleProjectionM: String(store.derived.activePlanModel?.spanA ?? ''),
+      geometryHouseContext: store.derived.activePlanModel?.houseContext ?? null,
     });
 
     const deckShape = overlay?.shapes.find((shape) => shape.ownerId === 'deck-debug');
@@ -551,6 +776,99 @@ describe('houseFirstPlanOverlay', () => {
     expect(openingObject).toBeUndefined();
     expect(preview.scene.metadata.houseOpeningSkippedInvalidCount).toBe(1);
     expect(store.derived.house?.openings[0]?.validation.status).toBe('invalid');
+  });
+
+  it('matches a valid opening plan polygon to the XY wall footprint of the 3D opening marker', () => {
+    const fixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
+    expect(fixture).not.toBeNull();
+    if (!fixture) return;
+
+    const draft = makeDraft(fixture.snapshot, (current) => {
+      current.houseFirst = {
+        openings: [
+          {
+            id: 'opening-valid',
+            label: 'Kitchen window',
+            kind: 'window',
+            wallId: 'rear',
+            widthM: '2.4',
+            heightM: '1.2',
+            sillHeightM: '0.9',
+            offsetAlongWallM: '1.1',
+          },
+        ],
+      };
+    });
+
+    const store = buildDrawingWorkbenchStore({
+      snapshot: fixture.snapshot,
+      draft,
+      ui: {
+        ...createDrawingWorkbenchUiState(),
+        activeModuleIndex: 0,
+        activeHouseTab: 'house',
+        activeHouseSelection: { kind: 'opening', targetId: 'opening-valid' },
+        viewportMode: 'model_space',
+        activeView: 'plan',
+        workbenchMode: 'house',
+      },
+    });
+    const preview = buildWorkbenchGeometryPreview({
+      projectId: fixture.estimate.id,
+      estimateId: fixture.estimate.id,
+      designRequestId: fixture.request.id,
+      snapshot: fixture.snapshot,
+      draft,
+      moduleIndex: 0,
+    });
+
+    expect(preview.kind).toBe('ready');
+    if (preview.kind !== 'ready') return;
+
+    const overlay = buildHouseFirstPlanOverlay({
+      house: store.derived.house,
+      selection: { kind: 'opening', targetId: 'opening-valid' },
+      moduleLengthM: String(store.derived.activePlanModel?.lengthA ?? ''),
+      moduleProjectionM: String(store.derived.activePlanModel?.spanA ?? ''),
+      geometryHouseContext: store.derived.activePlanModel?.houseContext ?? null,
+    });
+
+    const openingShape = overlay?.shapes.find((shape) => shape.ownerKind === 'opening' && shape.ownerId === 'opening-valid');
+    const openingMarker = preview.scene.layers
+      .find((layer) => layer.id === 'house')
+      ?.objects.find(
+        (object) =>
+          object.type === 'house_surface' &&
+          object.kind === 'opening_marker' &&
+          object.metadata?.openingId === 'opening-valid',
+      );
+
+    const markerWallEdge = openingMarker && 'boundary' in openingMarker
+      ? Array.from(
+          new Set(
+            openingMarker.boundary.map((point) => `${(point.x / 1000).toFixed(3)},${(point.y / 1000).toFixed(3)}`),
+          ),
+        )
+          .map((value) => {
+            const [x, y] = value.split(',');
+            return { x: Number(x), y: Number(y) };
+          })
+          .sort((left, right) => left.x - right.x || left.y - right.y)
+      : [];
+    const overlayWallEdge = (openingShape?.polygon ?? [])
+      .slice(0, 2)
+      .map((point) => ({
+        x: Number(point.x.toFixed(3)),
+        y: Number(point.y.toFixed(3)),
+      }))
+      .sort((left, right) => left.x - right.x || left.y - right.y);
+
+    expect(markerWallEdge).toHaveLength(2);
+    expect(overlayWallEdge).toHaveLength(2);
+    expect(overlayWallEdge[0]?.x).toBeCloseTo(markerWallEdge[0]?.x ?? 0, 3);
+    expect(overlayWallEdge[1]?.x).toBeCloseTo(markerWallEdge[1]?.x ?? 0, 3);
+    expect(overlayWallEdge[0]?.y).toBeCloseTo(markerWallEdge[0]?.y ?? 0, 2);
+    expect(overlayWallEdge[1]?.y).toBeCloseTo(markerWallEdge[1]?.y ?? 0, 2);
   });
 
   it('mutes secondary decks and carries deck invalidity on the selected deck only', () => {
@@ -678,7 +996,7 @@ describe('houseFirstPlanOverlay', () => {
     expect(depthAnnotation?.witnessEnd.y).toBeCloseTo(4, 6);
   });
 
-  it('renders a deck center offset annotation when the selected deck is intentionally offset', () => {
+  it('uses relationship dimensions instead of a center offset annotation when the selected deck is intentionally offset', () => {
     const baseHouse = makeHouse();
     const deck = makeDeck({
       presetRect: {
@@ -708,11 +1026,10 @@ describe('houseFirstPlanOverlay', () => {
       moduleProjectionM: '3',
     });
 
-    expect(overlay?.presetAnnotations.find((annotation) => annotation.fieldKey === 'centerOffsetM')).toMatchObject({
-      ownerId: 'deck-1',
-      rawValue: '0.5',
-      displayValue: '0.50m',
-    });
+    expect(overlay?.presetAnnotations.find((annotation) => annotation.fieldKey === 'centerOffsetM')).toBeUndefined();
+    expect(overlay?.presetAnnotations.map((annotation) => annotation.fieldKey)).toEqual(
+      expect.arrayContaining(['hostStartGapM', 'hostEndGapM']),
+    );
   });
 
   it('builds custom edge candidates for selected custom polygons without preset annotations', () => {

@@ -1801,10 +1801,18 @@ function rectToPoints(x: number, y: number, width: number, height: number): Poin
   ];
 }
 
-function planHousePointToSvg(point: Point, baseX: number, baseY: number, scale: number): Point {
+function planHousePointToSvg(
+  point: Point,
+  baseX: number,
+  baseY: number,
+  scale: number,
+  options?: { invertY?: boolean; maxWorldY?: number | null },
+): Point {
+  const invertY = Boolean(options?.invertY);
+  const maxWorldY = invertY && typeof options?.maxWorldY === 'number' ? options.maxWorldY : null;
   return {
     x: baseX + point.x * scale,
-    y: baseY + point.y * scale,
+    y: baseY + (invertY && maxWorldY !== null ? maxWorldY - point.y : point.y) * scale,
   };
 }
 
@@ -4454,64 +4462,120 @@ function PlanSvg({
   const isSheetFootprintEditor = presentation === 'sheet' && editorSurface === 'sheet' && Boolean(footprintEditor?.available);
   const isModelFootprintEditor = presentation === 'model' && editorSurface === 'model' && Boolean(footprintEditor?.available);
   const isEditingFootprint = canEditFootprint && Boolean(footprintEditor?.isEditing);
+  const isModelHouseDisplay = presentation === 'model' && displayMode === 'house';
   const houseClipRect = isSheet
     ? (sheetLayout?.outerField ?? getSheetDrawingField())
     : isModel && modelSpaceLayout
       ? modelSpaceLayout.worldBox
-    : { x: 0, y: 0, width: 120, height: 90 };
-  const semanticPlanHouseSurfaces = (model.houseContext?.surfaces ?? []).map((surface) => ({
+      : { x: 0, y: 0, width: 120, height: 90 };
+  const rawSemanticPlanHouseSurfaces = model.houseContext?.surfaces ?? [];
+  const rawSemanticPlanHouseLines = model.houseContext?.lines ?? [];
+  const rawHouseFirstOverlayShapes = presentation === 'model' ? houseFirstPlanOverlay?.shapes ?? [] : [];
+  const rawHouseFirstPresetAnnotations = presentation === 'model' ? houseFirstPlanOverlay?.presetAnnotations ?? [] : [];
+  const rawHouseFirstCustomEdgeCandidates = presentation === 'model' ? houseFirstPlanOverlay?.customEdgeCandidates ?? [] : [];
+  const rawHouseFirstPreviewShape = presentation === 'model' ? houseFirstPreviewOverlay : null;
+  const housePlanProjectionMaxY = isModelHouseDisplay
+    ? Math.max(
+        ...[
+          ...rawSemanticPlanHouseSurfaces.flatMap((surface) => surface.boundary.map((point) => point.y)),
+          ...rawSemanticPlanHouseLines.flatMap((line) => [line.line.start.y, line.line.end.y]),
+          ...rawHouseFirstOverlayShapes.flatMap((shape) => shape.polygon.map((point) => point.y)),
+          ...rawHouseFirstPresetAnnotations.flatMap((annotation) => [
+            annotation.witnessStart.y,
+            annotation.witnessEnd.y,
+            annotation.lineStart.y,
+            annotation.lineEnd.y,
+          ]),
+          ...rawHouseFirstCustomEdgeCandidates.flatMap((annotation) => [
+            annotation.witnessStart.y,
+            annotation.witnessEnd.y,
+            annotation.lineStart.y,
+            annotation.lineEnd.y,
+          ]),
+          ...(rawHouseFirstPreviewShape
+            ? [
+                ...rawHouseFirstPreviewShape.polygon.map((point) => point.y),
+                ...(rawHouseFirstPreviewShape.hostEdge
+                  ? [rawHouseFirstPreviewShape.hostEdge.start.y, rawHouseFirstPreviewShape.hostEdge.end.y]
+                  : []),
+              ]
+            : []),
+          0,
+        ],
+      )
+    : null;
+  const planHousePointProjector = (point: Point) =>
+    planHousePointToSvg(point, x, y, scale, {
+      invertY: isModelHouseDisplay,
+      maxWorldY: housePlanProjectionMaxY,
+    });
+  const selectedOpeningHostEdgeId =
+    rawHouseFirstOverlayShapes.find((shape) => shape.ownerKind === 'opening' && shape.selected)?.openingInteraction?.hostEdgeId ?? null;
+  const toneHouseRoofContext = Boolean(selectedOpeningHostEdgeId);
+  const semanticPlanHouseSurfaces = rawSemanticPlanHouseSurfaces.map((surface) => ({
     ...surface,
-    points: surface.boundary.map((point) => planHousePointToSvg(point, x, y, scale)),
+    points: surface.boundary.map((point) => planHousePointProjector(point)),
+    toned:
+      toneHouseRoofContext &&
+      (surface.kind === 'roof' || surface.kind === 'soffit' || surface.kind === 'fascia' || surface.kind === 'attachment_zone'),
   }));
-  const semanticPlanHouseLines = (model.houseContext?.lines ?? []).map((line) => ({
+  const semanticPlanHouseLines = rawSemanticPlanHouseLines.map((line) => ({
     ...line,
-    start: planHousePointToSvg(line.line.start, x, y, scale),
-    end: planHousePointToSvg(line.line.end, x, y, scale),
+    start: planHousePointProjector(line.line.start),
+    end: planHousePointProjector(line.line.end),
+    emphasized: selectedOpeningHostEdgeId !== null && line.metadata?.sourceEdgeId === selectedOpeningHostEdgeId,
   }));
   const houseFirstOverlayShapes =
     presentation === 'model'
-      ? (houseFirstPlanOverlay?.shapes ?? []).map((shape) => ({
+      ? rawHouseFirstOverlayShapes.map((shape) => ({
           ...shape,
-          points: shape.polygon.map((point) => planHousePointToSvg(point, x, y, scale)),
+          points: shape.polygon.map((point) => planHousePointProjector(point)),
           deckInteraction: shape.deckInteraction
             ? {
                 ...shape.deckInteraction,
-                hostEdgeStart: planHousePointToSvg(shape.deckInteraction.hostEdgeStart, x, y, scale),
-                hostEdgeEnd: planHousePointToSvg(shape.deckInteraction.hostEdgeEnd, x, y, scale),
+                hostEdgeStart: planHousePointProjector(shape.deckInteraction.hostEdgeStart),
+                hostEdgeEnd: planHousePointProjector(shape.deckInteraction.hostEdgeEnd),
+              }
+            : null,
+          openingInteraction: shape.openingInteraction
+            ? {
+                ...shape.openingInteraction,
+                hostEdgeStart: planHousePointProjector(shape.openingInteraction.hostEdgeStart),
+                hostEdgeEnd: planHousePointProjector(shape.openingInteraction.hostEdgeEnd),
               }
             : null,
         }))
       : [];
   const houseFirstPresetAnnotations =
     presentation === 'model'
-      ? (houseFirstPlanOverlay?.presetAnnotations ?? []).map((annotation) => ({
+      ? rawHouseFirstPresetAnnotations.map((annotation) => ({
           ...annotation,
-          witnessStart: planHousePointToSvg(annotation.witnessStart, x, y, scale),
-          witnessEnd: planHousePointToSvg(annotation.witnessEnd, x, y, scale),
-          lineStart: planHousePointToSvg(annotation.lineStart, x, y, scale),
-          lineEnd: planHousePointToSvg(annotation.lineEnd, x, y, scale),
+          witnessStart: planHousePointProjector(annotation.witnessStart),
+          witnessEnd: planHousePointProjector(annotation.witnessEnd),
+          lineStart: planHousePointProjector(annotation.lineStart),
+          lineEnd: planHousePointProjector(annotation.lineEnd),
         }))
       : [];
   const houseFirstCustomEdgeCandidates =
     presentation === 'model'
-      ? (houseFirstPlanOverlay?.customEdgeCandidates ?? []).map((annotation) => ({
+      ? rawHouseFirstCustomEdgeCandidates.map((annotation) => ({
           ...annotation,
-          witnessStart: planHousePointToSvg(annotation.witnessStart, x, y, scale),
-          witnessEnd: planHousePointToSvg(annotation.witnessEnd, x, y, scale),
-          lineStart: planHousePointToSvg(annotation.lineStart, x, y, scale),
-          lineEnd: planHousePointToSvg(annotation.lineEnd, x, y, scale),
+          witnessStart: planHousePointProjector(annotation.witnessStart),
+          witnessEnd: planHousePointProjector(annotation.witnessEnd),
+          lineStart: planHousePointProjector(annotation.lineStart),
+          lineEnd: planHousePointProjector(annotation.lineEnd),
         }))
       : [];
   const houseFirstPreviewShape =
-    presentation === 'model' && houseFirstPreviewOverlay
+    presentation === 'model' && rawHouseFirstPreviewShape
       ? {
-          ownerId: houseFirstPreviewOverlay.ownerId,
-          points: houseFirstPreviewOverlay.polygon.map((point) => planHousePointToSvg(point, x, y, scale)),
-          hostEdge: houseFirstPreviewOverlay.hostEdge
+          ownerId: rawHouseFirstPreviewShape.ownerId,
+          points: rawHouseFirstPreviewShape.polygon.map((point) => planHousePointProjector(point)),
+          hostEdge: rawHouseFirstPreviewShape.hostEdge
             ? {
-                start: planHousePointToSvg(houseFirstPreviewOverlay.hostEdge.start, x, y, scale),
-                end: planHousePointToSvg(houseFirstPreviewOverlay.hostEdge.end, x, y, scale),
-                snapped: houseFirstPreviewOverlay.hostEdge.snapped,
+                start: planHousePointProjector(rawHouseFirstPreviewShape.hostEdge.start),
+                end: planHousePointProjector(rawHouseFirstPreviewShape.hostEdge.end),
+                snapped: rawHouseFirstPreviewShape.hostEdge.snapped,
               }
             : null,
         }
@@ -4855,7 +4919,11 @@ function PlanSvg({
                 <polygon
                   key={surface.id}
                   points={toPointsAttr(surface.points)}
-                  className={planHouseSurfaceClass(surface.kind)}
+                  className={
+                    surface.toned
+                      ? `${planHouseSurfaceClass(surface.kind)} ${styles.modulePlanHouseSurfaceToned}`
+                      : planHouseSurfaceClass(surface.kind)
+                  }
                   data-house-plan-surface={surface.kind}
                 />
               ))
@@ -4868,7 +4936,11 @@ function PlanSvg({
                   y1={line.start.y}
                   x2={line.end.x}
                   y2={line.end.y}
-                  className={planHouseLineClass(line.kind)}
+                  className={
+                    line.emphasized
+                      ? `${planHouseLineClass(line.kind)} ${styles.modulePlanHouseLineEmphasized}`
+                      : planHouseLineClass(line.kind)
+                  }
                   data-house-plan-line={line.kind}
                 />
               ))

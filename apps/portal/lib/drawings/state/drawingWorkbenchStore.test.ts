@@ -708,18 +708,18 @@ describe('buildDrawingWorkbenchStore', () => {
     });
 
     expect(attachedStore.derived.activeDeckInteraction).toEqual({
-      selectedDeckType: 'attached_preset_rect',
+      selectedDeckType: 'preset_snapped',
       dragEligible: true,
-      dragReason: 'Drag the selected deck body to move it along the host edge, or click dimensions to edit.',
+      dragReason: 'Drag the selected deck body to move it near the house edge or out in free space, or click dimensions to edit.',
       hostEdgeResolvable: true,
       relationshipDimensionsAvailable: true,
     });
     expect(detachedStore.derived.activeDeckInteraction).toEqual({
-      selectedDeckType: 'detached_preset_rect',
-      dragEligible: false,
-      dragReason: 'Drag and snap currently apply only to attached preset rectangular decks.',
+      selectedDeckType: 'preset_free',
+      dragEligible: true,
+      dragReason: 'Drag the selected deck body to move it near the house edge or out in free space, or click dimensions to edit.',
       hostEdgeResolvable: true,
-      relationshipDimensionsAvailable: false,
+      relationshipDimensionsAvailable: true,
     });
     expect(customStore.derived.activeDeckInteraction).toEqual({
       selectedDeckType: 'custom_outline',

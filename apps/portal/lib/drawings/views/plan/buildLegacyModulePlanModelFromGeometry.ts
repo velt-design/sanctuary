@@ -47,11 +47,13 @@ function buildHouseContext(geometryPlan: GeometryPlanViewModel): ModulePlanHouse
     id: surface.id,
     kind: surface.kind,
     boundary: polygonToMetres(surface.boundary),
+    metadata: surface.metadata,
   }));
   const lines = (geometryPlan.house.lines ?? []).map((line) => ({
     id: line.id,
     kind: line.kind,
     line: lineToMetres(line.line),
+    metadata: line.metadata,
   }));
 
   if (!surfaces.length && !lines.length) {

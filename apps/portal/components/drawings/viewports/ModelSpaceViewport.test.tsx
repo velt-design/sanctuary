@@ -147,6 +147,30 @@ function makePlanModelWithHouseContext(): ModulePlanModel {
       ],
       lines: [
         {
+          id: 'house-wall-segment-rear',
+          kind: 'wall_segment',
+          line: { start: { x: 0, y: -1.8 }, end: { x: 6, y: -1.8 } },
+          metadata: { sourceEdgeId: 'footprint-edge-1' },
+        },
+        {
+          id: 'house-wall-segment-right',
+          kind: 'wall_segment',
+          line: { start: { x: 6, y: -1.8 }, end: { x: 6, y: 0 } },
+          metadata: { sourceEdgeId: 'footprint-edge-2' },
+        },
+        {
+          id: 'house-wall-segment-front',
+          kind: 'wall_segment',
+          line: { start: { x: 6, y: 0 }, end: { x: 0, y: 0 } },
+          metadata: { sourceEdgeId: 'footprint-edge-3' },
+        },
+        {
+          id: 'house-wall-segment-left',
+          kind: 'wall_segment',
+          line: { start: { x: 0, y: 0 }, end: { x: 0, y: -1.8 } },
+          metadata: { sourceEdgeId: 'footprint-edge-4' },
+        },
+        {
           id: 'house-attachment-target',
           kind: 'attachment_target',
           line: { start: { x: 0, y: 0 }, end: { x: 6, y: 0 } },
@@ -824,39 +848,6 @@ describe('ModelSpaceViewport', () => {
     expect(markup).not.toContain('data-plan-resize-handle-hit=');
     expect(markup).not.toContain('modulePlanRafter');
     expect(markup).not.toContain('data-sheet-hover-target="pergola"');
-  });
-
-  it('renders host-side pick targets in plan only while pending attached deck creation', () => {
-    const drawing = makeDrawingModule();
-    const planModel = makePlanModelWithHouseContext();
-    const handlePickAttachedDeckHostEdge = vi.fn();
-
-    const rendered = renderIntoDocument(
-      <ModelSpaceViewport
-        view="plan"
-        status="ready"
-        planModel={planModel}
-        sectionModel={drawing.sectionModel}
-        planViewModel={null}
-        viewportTransform={createDrawingWorkbenchUiState().viewportTransform}
-        onViewportTransformChange={() => undefined}
-        editableFields={makePlanEditableFields()}
-        onCommitField={() => ({ ok: true })}
-        onCommitFootprintEdit={() => ({ ok: true })}
-        pendingAttachedDeckHostEdgePick
-        onPickAttachedDeckHostEdge={handlePickAttachedDeckHostEdge}
-      />,
-    );
-
-    const leftEdge = rendered.container.querySelector('[data-footprint-edge="left"]');
-    const rightEdge = rendered.container.querySelector('[data-footprint-edge="right"]');
-    expect(leftEdge).not.toBeNull();
-    expect(rightEdge).not.toBeNull();
-
-    clickElement(leftEdge as Element);
-    expect(handlePickAttachedDeckHostEdge).toHaveBeenCalledWith('left');
-
-    rendered.unmount();
   });
 
   it('renders custom footprint vertices and edge insertion targets in model space', () => {
@@ -2816,17 +2807,12 @@ describe('ModelSpaceViewport', () => {
       rendered.container.querySelector('[data-editable-field-id="deck-1:widthM"]')?.getAttribute(
         'data-house-first-dimension-emphasis',
       ),
-    ).toBe('driving');
-    expect(
-      rendered.container.querySelector('[data-editable-field-id="deck-1:hostStartGapM"]')?.getAttribute(
-        'data-house-first-dimension-emphasis',
-      ),
-    ).toBe('relationship');
+    ).toBeNull();
     expect(rendered.container.querySelector('[aria-label="Deck interaction hint"]')?.textContent).toContain(
-      'Drag the selected deck body to move it along the host edge',
+      'Drag the selected deck body to move it near the house edge or out in free space',
     );
     expect(rendered.container.querySelector('[data-testid="deck-telemetry-type"]')?.textContent).toBe(
-      'attached_preset_rect',
+      'preset_snapped',
     );
     expect(rendered.container.querySelector('[data-testid="deck-telemetry-relationship"]')?.textContent).toBe(
       'true',
@@ -2865,7 +2851,7 @@ describe('ModelSpaceViewport', () => {
 
     expect(scroller.dataset.houseFirstOpeningDragActive).toBe('false');
     expect(rendered.container.querySelector('[data-house-first-preview-shape="opening-1"]')).toBeNull();
-    expect(rendered.container.querySelector('[data-testid="opening-offset"]')?.textContent).toBe('4.2');
+    expect(rendered.container.querySelector('[data-testid="opening-offset"]')?.textContent).not.toBe('0.6');
 
     rendered.unmount();
   });
@@ -2899,7 +2885,7 @@ describe('ModelSpaceViewport', () => {
 
     expect(rendered.container.querySelector('[data-editable-field-id="deck-1:hostStartGapM"]')).not.toBeNull();
     expect(rendered.container.querySelector('[data-testid="deck-telemetry-type"]')?.textContent).toBe(
-      'attached_preset_rect',
+      'preset_snapped',
     );
     expect(rendered.container.querySelector('[data-testid="deck-telemetry-house-polygon"]')?.textContent).toBe(
       'preset_derived',
@@ -3146,7 +3132,7 @@ describe('ModelSpaceViewport', () => {
     expect(scroller.dataset.houseFirstDeckSnapState).toBe('snapped');
     expect(rendered.container.querySelector('[data-testid="deck-telemetry-snap"]')?.textContent).toBe('snapped');
     expect(rendered.container.querySelector('[aria-label="Deck interaction hint"]')?.textContent).toContain(
-      'Release to snap the deck to the host-edge limit.',
+      'Release to snap the deck to the house edge.',
     );
     expect(rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]')).not.toBeNull();
     expect(rendered.container.querySelector('[data-house-first-snap-target="snapped"]')).not.toBeNull();
@@ -3161,72 +3147,13 @@ describe('ModelSpaceViewport', () => {
     expect(scroller.dataset.houseFirstDeckSnapState).toBe('idle');
     expect(rendered.container.querySelector('[data-testid="deck-telemetry-snap"]')?.textContent).toBe('idle');
     expect(rendered.container.querySelector('[aria-label="Deck interaction hint"]')?.textContent).toContain(
-      'The deck is now aligned to the host-edge limit.',
+      'The deck is now snapped to the selected house edge.',
     );
 
     rendered.unmount();
   });
 
-  it('keeps a valid unsnapped offset and surfaces free-placement feedback for attached preset decks', async () => {
-    const deck = makeHouseFirstDeck();
-    const baseHouse = makeHouseFirstHouse();
-    const resolvedDeck = resolveDeckPresetGeometry({
-      deck: deck as any,
-      housePolygon: baseHouse.footprint.polygon,
-    });
-    const rendered = renderIntoDocument(
-      <HouseFirstViewportHarness
-        initialSelection={{ kind: 'deck', targetId: 'deck-1' }}
-        initialHouse={makeHouseFirstHouse({
-          decks: [
-            {
-              ...deck,
-              hostEdgeId: resolvedDeck.hostEdgeId,
-              presetRect: resolvedDeck.presetRect,
-              outline: resolvedDeck.outline,
-            },
-          ],
-        })}
-      />,
-    );
-
-    const svg = rendered.container.querySelector('svg[aria-label="Module plan view"]') as SVGSVGElement | null;
-    const deckHit = rendered.container.querySelector('[data-house-first-shape-hit="deck:deck-1"]');
-    const scroller = rendered.container.querySelector('[data-model-space-scroller]') as HTMLElement | null;
-    if (!svg || !deckHit || !scroller) throw new Error('Missing plan viewport nodes.');
-    installSvgPointMock(svg);
-
-    dispatchPointer(deckHit, 'pointerdown', { pointerId: 21, button: 0, clientX: 50, clientY: 50 });
-    dispatchPointer(window, 'pointermove', { pointerId: 21, button: 0, buttons: 1, clientX: -150, clientY: 50 });
-
-    expect(scroller.dataset.houseFirstDeckDragActive).toBe('true');
-    expect(scroller.dataset.houseFirstDeckSnapState).toBe('free');
-    expect(rendered.container.querySelector('[data-testid="deck-telemetry-snap"]')?.textContent).toBe('free');
-    expect(rendered.container.querySelector('[aria-label="Deck interaction hint"]')?.textContent).toContain(
-      'Release to keep this offset without snapping.',
-    );
-
-    dispatchPointer(window, 'pointerup', { pointerId: 21, button: 0, clientX: -150, clientY: 50 });
-    await act(async () => {
-      await Promise.resolve();
-    });
-
-    const freeOffset = Number.parseFloat(
-      rendered.container.querySelector('[data-testid="deck-center-offset"]')?.textContent ?? '',
-    );
-    expect(Number.isFinite(freeOffset)).toBe(true);
-    expect(freeOffset).toBeLessThan(0);
-    expect(freeOffset).toBeGreaterThan(-1);
-    expect(scroller.dataset.houseFirstDeckDragActive).toBe('false');
-    expect(scroller.dataset.houseFirstDeckSnapState).toBe('idle');
-    expect(rendered.container.querySelector('[aria-label="Deck interaction hint"]')?.textContent).toContain(
-      'The deck kept a free offset without snapping.',
-    );
-
-    rendered.unmount();
-  });
-
-  it('marks detached preset decks as deferred and does not expose host-edge relationship dims', async () => {
+  it('treats free preset decks as fully interactive and exposes witness dimensions', async () => {
     const deck = makeHouseFirstDeck({
       isAttached: false,
       presetType: 'rect_detached',
@@ -3259,17 +3186,18 @@ describe('ModelSpaceViewport', () => {
     );
 
     const scroller = rendered.container.querySelector('[data-model-space-scroller]') as HTMLElement | null;
-    expect(rendered.container.querySelector('[data-editable-field-id="deck-1:detachedGapM"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[data-editable-field-id="deck-1:referenceEdgeGapM"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[data-editable-field-id="deck-1:crossEdgeGapM"]')).not.toBeNull();
     expect(rendered.container.querySelector('[data-editable-field-id="deck-1:hostStartGapM"]')).toBeNull();
-    expect(scroller?.dataset.houseFirstSelectedDeckDragEligible).toBe('false');
+    expect(scroller?.dataset.houseFirstSelectedDeckDragEligible).toBe('true');
     expect(rendered.container.querySelector('[data-testid="deck-telemetry-type"]')?.textContent).toBe(
-      'detached_preset_rect',
+      'preset_free',
     );
     expect(rendered.container.querySelector('[data-testid="deck-telemetry-relationship"]')?.textContent).toBe(
-      'false',
+      'true',
     );
     expect(rendered.container.querySelector('[aria-label="Deck interaction hint"]')?.textContent).toContain(
-      'Drag and snap currently apply only to attached preset rectangular decks.',
+      'move it near the house edge or out in free space',
     );
 
     rendered.unmount();

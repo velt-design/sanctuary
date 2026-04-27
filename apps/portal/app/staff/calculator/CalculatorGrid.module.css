@@ -3304,6 +3304,11 @@
   vector-effect: non-scaling-stroke;
 }
 
+.modulePlanHouseSurfaceToned {
+  fill-opacity: 0.32;
+  stroke-opacity: 0.5;
+}
+
 .modulePlanHouseFootprint {
   fill: var(--mv-house-fill);
   stroke: var(--mv-line-hidden);
@@ -3334,6 +3339,11 @@
   fill: none;
   stroke-linecap: square;
   vector-effect: non-scaling-stroke;
+}
+
+.modulePlanHouseLineEmphasized {
+  stroke: rgba(var(--accentRgb), 0.96);
+  stroke-width: var(--mv-line-major-width);
 }
 
 .modulePlanHouseWallSemantic {

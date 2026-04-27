@@ -28,6 +28,9 @@ export type ModuleHousePoint2D = {
   y: number;
 };
 
+export type ModuleHouseMetadataValue = string | number | boolean | null;
+export type ModuleHouseMetadata = Record<string, ModuleHouseMetadataValue>;
+
 export type ModulePlanHouseLineKind = 'wall_segment' | 'roof_feature' | 'gutter' | 'attachment_target';
 export type ModuleSectionHouseLineKind = 'gutter' | 'roof_feature' | 'attachment_target' | 'house_reference';
 
@@ -38,6 +41,7 @@ export type ModuleHouseLine2D<Kind extends string = ModulePlanHouseLineKind | Mo
     start: ModuleHousePoint2D;
     end: ModuleHousePoint2D;
   };
+  metadata?: ModuleHouseMetadata;
 };
 
 export type ModulePlanHouseLine2D = ModuleHouseLine2D<ModulePlanHouseLineKind>;
@@ -47,12 +51,14 @@ export type ModulePlanHouseSurface = {
   id: string;
   kind: 'footprint' | 'roof' | 'soffit' | 'fascia' | 'deck' | 'attachment_zone';
   boundary: ModuleHousePoint2D[];
+  metadata?: ModuleHouseMetadata;
 };
 
 export type ModuleSectionHouseSurface = {
   id: string;
   kind: 'wall' | 'roof' | 'soffit' | 'fascia' | 'deck' | 'attachment_zone';
   boundary: ModuleHousePoint2D[];
+  metadata?: ModuleHouseMetadata;
 };
 
 export type ModulePlanHouseContext = {

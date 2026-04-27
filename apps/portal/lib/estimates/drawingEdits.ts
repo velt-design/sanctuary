@@ -13,6 +13,7 @@ import type {
   HouseFirstRoofDraft,
   WallOpeningHostSide,
 } from '@/lib/drawings/state/houseFirstWorkbenchModel';
+import { normalizeWallOpeningKind } from '@/lib/drawings/state/houseFirstWorkbenchModel';
 import {
   isPrimaryFlashingLengthAutoLinked,
   normalizeFlashingsStateForUi,
@@ -822,7 +823,7 @@ function normalizeHouseFirstOpeningDraft(
   return {
     id: opening.id.trim(),
     ...(label ? { label } : null),
-    kind: 'window',
+    kind: normalizeWallOpeningKind(opening.kind),
     ...(isWallOpeningHostSide(opening.wallId) ? { wallId: opening.wallId } : null),
     ...(typeof opening.hostEdgeId === 'string' && opening.hostEdgeId.trim()
       ? { hostEdgeId: opening.hostEdgeId.trim() }

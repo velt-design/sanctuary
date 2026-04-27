@@ -46,6 +46,7 @@ import type {
   HouseModel,
   WorkbenchHouseSelection,
 } from '@/lib/drawings/state/houseFirstWorkbenchModel';
+import { normalizeWallOpeningKind } from '@/lib/drawings/state/houseFirstWorkbenchModel';
 import { buildEstimateDrawingModuleInfoRows, buildEstimateDrawingSheetMeta } from '@/lib/estimates/drawingSheet';
 import type { EstimateDetail } from '@/lib/estimates/types';
 import type { CalculatorHouseFootprintPolygonPoint, CalculatorModuleInputs } from '@/lib/types/calculator';
@@ -59,23 +60,15 @@ type DesignWorkbenchEstimateClientProps = {
 };
 
 type CommitResult = { ok: boolean; error?: string };
-type AttachmentSide = NonNullable<CalculatorModuleInputs['attachmentSide']>;
 
 type DrawOutlineTarget =
   | { kind: 'footprint'; deckId: null }
   | { kind: 'deck'; deckId: string };
 
-type PendingDeckCreation =
-  | {
-      kind: 'attached_preset';
-      status: 'picking_host_edge';
-    }
-  | null;
-
 type DeckInteractionTelemetry = {
   selectedDeckId: string | null;
   housePolygonSource: 'custom_saved' | 'preset_derived' | null;
-  selectedDeckType: 'none' | 'attached_preset_rect' | 'detached_preset_rect' | 'custom_outline' | 'preset_unresolved';
+  selectedDeckType: 'none' | 'preset_snapped' | 'preset_free' | 'custom_outline' | 'preset_unresolved';
   dragEligible: boolean;
   dragReason: string | null;
   hostEdgeResolvable: boolean;
@@ -138,7 +131,7 @@ function toOpeningDrafts(house: HouseModel | null | undefined): HouseFirstOpenin
   return (house?.openings ?? []).map((opening) => ({
     id: opening.id,
     label: opening.label,
-    kind: 'window',
+    kind: normalizeWallOpeningKind(opening.kind),
     wallId: opening.wallId,
     hostEdgeId: opening.hostEdgeId,
     widthM: opening.widthM,
@@ -252,7 +245,6 @@ export default function DesignWorkbenchEstimateClient({
     kind: 'footprint',
     deckId: null,
   });
-  const [pendingDeckCreation, setPendingDeckCreation] = useState<PendingDeckCreation>(null);
   const baseDraft = useMemo(() => buildEstimateDrawingDraftFromSnapshot(estimate.calculatorSnapshot), [estimate.calculatorSnapshot]);
   const drawingWorkingCopy = useLocalWorkingCopy<EstimateDrawingDraft | null>(
     buildEstimateDrawingDraftEntityKey(estimate.id),
@@ -280,7 +272,6 @@ export default function DesignWorkbenchEstimateClient({
     setModelViewportTransformsByKey({});
     setGeometryViewportStatesByKey({});
     setDrawOutlineTarget({ kind: 'footprint', deckId: null });
-    setPendingDeckCreation(null);
     setDeckInteractionTelemetry(null);
   }, [estimate.calculatorSnapshot]);
 
@@ -598,8 +589,7 @@ export default function DesignWorkbenchEstimateClient({
 
   const addSharedHouseDeck = useCallback(
     async (
-      mode: 'attached_preset' | 'detached_preset' | 'custom_outline',
-      hostEdgeOverride?: AttachmentSide,
+      mode: 'preset' | 'custom_outline',
     ): Promise<CommitResult> => {
       const house = store.derived.house;
       if (!house) {
@@ -609,7 +599,7 @@ export default function DesignWorkbenchEstimateClient({
         drawingDraft?.houseFirst?.decks?.map((deck) => ({ ...deck })) ??
         toDeckDrafts(house);
       const deckId = nextDeckId(currentDecks);
-      const hostEdge = hostEdgeOverride ?? house.footprint.attachmentSide ?? 'rear';
+      const hostEdge = house.footprint.attachmentSide ?? 'rear';
       const housePolygon = deckReferenceHousePolygon({
         house,
         moduleLengthM: activeModuleInput?.lengthM,
@@ -620,16 +610,11 @@ export default function DesignWorkbenchEstimateClient({
         name: `Deck ${currentDecks.length + 1}`,
         kind: 'deck',
         shape: mode === 'custom_outline' ? 'custom' : 'preset',
-        presetType:
-          mode === 'attached_preset'
-            ? 'rect_attached'
-            : mode === 'detached_preset'
-              ? 'rect_detached'
-              : null,
-        elevationMode: mode === 'attached_preset' ? 'aligned_to_threshold' : 'ground',
+        presetType: mode === 'preset' ? 'rect_attached' : null,
+        elevationMode: mode === 'preset' ? 'aligned_to_threshold' : 'ground',
         levelOffsetMm: '0',
         hostEdgeId: hostEdge,
-        isAttached: mode === 'attached_preset',
+        isAttached: mode === 'preset',
         surfaceMaterial: 'timber_decking',
       };
       const nextDeck =
@@ -644,7 +629,7 @@ export default function DesignWorkbenchEstimateClient({
                 presetRect: sanitizeDeckPresetRect({
                   housePolygon,
                   hostEdgeId: hostEdge,
-                  attached: mode === 'attached_preset',
+                  attached: mode === 'preset',
                   presetRect: null,
                 }),
               },
@@ -652,7 +637,6 @@ export default function DesignWorkbenchEstimateClient({
             });
       const result = await commitSharedHouseDeckDrafts([...currentDecks, nextDeck]);
       if (!result.ok) return result;
-      setPendingDeckCreation(null);
       setUi((current) => ({
         ...current,
         workbenchMode: 'house',
@@ -750,47 +734,11 @@ export default function DesignWorkbenchEstimateClient({
     [commitSharedHouseOpeningDrafts, drawingDraft?.houseFirst?.openings, store.derived.house],
   );
 
-  const beginAttachedDeckHostEdgePick = useCallback((): CommitResult => {
-    setPendingDeckCreation({
-      kind: 'attached_preset',
-      status: 'picking_host_edge',
-    });
-    setDrawOutlineTarget({ kind: 'footprint', deckId: null });
-    setUi((current) => {
-      const unsupportedCurrentSurface =
-        current.viewportMode === 'sheet' || (current.viewportMode === 'model' && current.activeView === 'section');
-      return {
-        ...current,
-        workbenchMode: 'house',
-        activeHouseSelection: { kind: 'house', targetId: null },
-        viewportMode: unsupportedCurrentSurface ? 'model' : current.viewportMode,
-        activeView: unsupportedCurrentSurface ? 'plan' : current.activeView,
-      };
-    });
-    return { ok: true };
-  }, []);
-
-  const handleAttachedDeckHostEdgePick = useCallback(
-    async (side: AttachmentSide) => {
-      if (pendingDeckCreation?.kind !== 'attached_preset') return;
-      await addSharedHouseDeck('attached_preset', side);
-    },
-    [addSharedHouseDeck, pendingDeckCreation?.kind],
-  );
-
-  const cancelPendingDeckCreation = useCallback(() => {
-    setPendingDeckCreation(null);
-  }, []);
-
   const runAddSharedHouseDeck = useCallback(
-    async (mode: 'attached_preset' | 'detached_preset' | 'custom_outline'): Promise<CommitResult> => {
-      if (mode === 'attached_preset') {
-        return beginAttachedDeckHostEdgePick();
-      }
-      setPendingDeckCreation(null);
+    async (mode: 'preset' | 'custom_outline'): Promise<CommitResult> => {
       return addSharedHouseDeck(mode);
     },
-    [addSharedHouseDeck, beginAttachedDeckHostEdgePick],
+    [addSharedHouseDeck],
   );
 
   const removeSharedHouseDeck = useCallback(
@@ -1067,7 +1015,6 @@ export default function DesignWorkbenchEstimateClient({
               className={`${styles.modeButton} ${store.ui.workbenchMode === 'house' ? styles.modeButtonActive : ''}`}
               onClick={() => {
                 setDrawOutlineTarget({ kind: 'footprint', deckId: null });
-                setPendingDeckCreation(null);
                 setUi((current) => ({
                   ...current,
                   workbenchMode: 'house',
@@ -1084,7 +1031,6 @@ export default function DesignWorkbenchEstimateClient({
               className={`${styles.modeButton} ${store.ui.workbenchMode === 'pergolas' ? styles.modeButtonActive : ''}`}
               onClick={() => {
                 setDrawOutlineTarget({ kind: 'footprint', deckId: null });
-                setPendingDeckCreation(null);
                 setUi((current) => ({
                   ...current,
                   workbenchMode: 'pergolas',
@@ -1128,12 +1074,16 @@ export default function DesignWorkbenchEstimateClient({
               <span className={styles.diagnosticValue}>{store.derived.invalidOpeningCount}</span>
             </div>
             <div className={styles.diagnosticRow}>
-              <span className={styles.diagnosticLabel}>Decks attached</span>
-              <span className={styles.diagnosticValue}>{store.derived.attachedDeckCount}</span>
+              <span className={styles.diagnosticLabel}>Preset decks snapped</span>
+              <span className={styles.diagnosticValue}>{store.derived.snappedPresetDeckCount}</span>
             </div>
             <div className={styles.diagnosticRow}>
-              <span className={styles.diagnosticLabel}>Decks detached</span>
-              <span className={styles.diagnosticValue}>{store.derived.detachedDeckCount}</span>
+              <span className={styles.diagnosticLabel}>Preset decks free</span>
+              <span className={styles.diagnosticValue}>{store.derived.freePresetDeckCount}</span>
+            </div>
+            <div className={styles.diagnosticRow}>
+              <span className={styles.diagnosticLabel}>Custom decks</span>
+              <span className={styles.diagnosticValue}>{store.derived.customDeckCount}</span>
             </div>
             <div className={styles.diagnosticRow}>
               <span className={styles.diagnosticLabel}>Invalid decks</span>
@@ -1330,13 +1280,13 @@ export default function DesignWorkbenchEstimateClient({
                   </span>
                 </div>
                 <div className={styles.diagnosticRow}>
-                  <span className={styles.diagnosticLabel}>3D window count</span>
+                  <span className={styles.diagnosticLabel}>3D opening count</span>
                   <span className={styles.diagnosticValue}>
                     {String(geometryPreview.kind === 'ready' ? geometryPreview.scene.metadata?.houseOpeningCount ?? 0 : 0)}
                   </span>
                 </div>
                 <div className={styles.diagnosticRow}>
-                  <span className={styles.diagnosticLabel}>3D valid windows</span>
+                  <span className={styles.diagnosticLabel}>3D valid openings</span>
                   <span className={styles.diagnosticValue}>
                     {String(
                       geometryPreview.kind === 'ready' ? geometryPreview.scene.metadata?.houseOpeningValidCount ?? 0 : 0,
@@ -1449,8 +1399,6 @@ export default function DesignWorkbenchEstimateClient({
           onCommitDeckPatch={!isLocked ? commitSharedHouseDeckPatch : undefined}
           onCommitOpeningPatch={!isLocked ? commitSharedHouseOpeningPatch : undefined}
           onStartDeckOutline={!isLocked ? startDeckOutlineEditor : undefined}
-          pendingDeckCreationKind={pendingDeckCreation?.kind ?? null}
-          onCancelPendingDeckCreation={cancelPendingDeckCreation}
           pergolaFallback={pergolaFallbackRail}
         />
 
@@ -1531,8 +1479,6 @@ export default function DesignWorkbenchEstimateClient({
           onCommitHouseFirstFootprintDimension={!isLocked ? commitHouseFirstFootprintDimension : undefined}
           onCommitHouseFirstDeckDimension={!isLocked ? commitHouseFirstDeckDimension : undefined}
           onCommitHouseFirstOpeningDimension={!isLocked ? commitHouseFirstOpeningDimension : undefined}
-          pendingAttachedDeckHostEdgePick={pendingDeckCreation?.kind === 'attached_preset'}
-          onPickAttachedDeckHostEdge={!isLocked ? (side) => void handleAttachedDeckHostEdgePick(side) : undefined}
           onDeckInteractionTelemetryChange={setDeckInteractionTelemetry}
         />
         </div>
