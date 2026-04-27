@@ -65,7 +65,41 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
     expect(projectModel.house?.roof.primaryFallDirection).toBe('negative_x');
     expect(projectModel.house?.roof.ridgeAxis).toBe('y');
     expect(projectModel.house?.roof.appendage.enabled).toBe(true);
+    expect(projectModel.house?.roof.validation.status).toBe('valid');
+    expect(projectModel.house?.roof.validation.approximationReasons).toEqual([]);
+    expect(projectModel.house?.roof.provenance).toMatchObject({
+      form: 'house_first_draft',
+      primaryPitchDeg: 'house_first_draft',
+      primaryFallDirection: 'house_first_draft',
+      ridgeAxis: 'house_first_draft',
+      appendage: 'house_first_draft',
+    });
     expect(projectModel.house?.roof.source).toBe('house_first_draft');
+  });
+
+  it('marks inferred mono roofs as approximate and records roof provenance', () => {
+    const monoFixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
+    if (!monoFixture) throw new Error('Missing mono-standard fixture.');
+
+    const projectModel = buildHouseFirstWorkbenchProjectModel({
+      snapshot: monoFixture.snapshot,
+    });
+
+    expect(projectModel.house?.roof.form).toBe('mono');
+    expect(projectModel.house?.roof.validation.status).toBe('approximate');
+    expect(projectModel.house?.roof.validation.approximationReasons).toEqual([
+      'inferred_form',
+      'inferred_fall_direction',
+    ]);
+    expect(projectModel.house?.roof.provenance).toMatchObject({
+      form: 'legacy_pergola_inference',
+      material: 'legacy_shared_value',
+      primaryPitchDeg: 'default_fallback',
+      primaryFallDirection: 'legacy_pergola_inference',
+      ridgeAxis: 'legacy_pergola_inference',
+      openGableEndIds: 'default_fallback',
+      appendage: 'default_fallback',
+    });
   });
 
   it('derives form-aware roof capabilities from the shared house footprint', () => {
@@ -134,6 +168,39 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
 
     expect(projectModel.house?.roof.openGableEndIds).toEqual([]);
     expect(projectModel.warnings.some((warning) => warning.code === 'invalid_house_first_roof_overlay')).toBe(true);
+    expect(projectModel.house?.roof.validation.status).toBe('valid');
+    expect(projectModel.house?.roof.validation.approximationReasons).toEqual([]);
+  });
+
+  it('marks near-square gable footprints as approximate when the ridge axis is inferred', () => {
+    const monoFixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
+    if (!monoFixture) throw new Error('Missing mono-standard fixture.');
+    const draft = buildEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
+    if (!draft) throw new Error('Expected drawing draft.');
+    draft.inputs.modules[0]!.houseFootprintMode = 'custom_polygon';
+    draft.inputs.modules[0]!.houseFootprintPolygon = [
+      { alongM: '0', depthM: '0' },
+      { alongM: '6', depthM: '0' },
+      { alongM: '6', depthM: '5.5' },
+      { alongM: '0', depthM: '5.5' },
+    ];
+    draft.houseFirst = {
+      roof: {
+        form: 'gable',
+      },
+    };
+
+    const projectModel = buildHouseFirstWorkbenchProjectModel({
+      snapshot: monoFixture.snapshot,
+      draft,
+    });
+
+    expect(projectModel.house?.roof.validation.status).toBe('approximate');
+    expect(projectModel.house?.roof.validation.approximationReasons).toEqual([
+      'inferred_ridge_axis',
+      'ambiguous_ridge_axis',
+    ]);
+    expect(projectModel.house?.roof.provenance?.ridgeAxis).toBe('legacy_pergola_inference');
   });
 
   it('surfaces only the outer open-end options for U-shaped bent gables', () => {
@@ -319,6 +386,32 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
       widthM: '3.6',
       depthM: '3',
     });
+  });
+
+  it('keeps invalid appendages blocked instead of downgrading them to approximate', () => {
+    const monoFixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
+    if (!monoFixture) throw new Error('Missing mono-standard fixture.');
+    const draft = buildEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
+    if (!draft) throw new Error('Expected drawing draft.');
+    draft.inputs.modules[0]!.houseFootprintPreset = 'u_shape';
+    draft.houseFirst = {
+      roof: {
+        appendage: {
+          enabled: true,
+          hostEdge: 'rear',
+          pitchDeg: '5',
+          dropMm: '450',
+        },
+      },
+    };
+
+    const projectModel = buildHouseFirstWorkbenchProjectModel({
+      snapshot: monoFixture.snapshot,
+      draft,
+    });
+
+    expect(projectModel.house?.roof.validation.status).toBe('invalid');
+    expect(projectModel.house?.roof.validation.code).toBe('invalid_appendage');
   });
 
   it('uses floating preset rects as detached preset geometry without discarding legacy preset fields', () => {

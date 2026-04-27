@@ -41,8 +41,11 @@ import type {
   HouseFirstRoofDraft,
   HouseFirstMigrationWarning,
   HouseModel,
+  HouseRoofApproximationReason,
   HouseRoofAppendageForm,
+  HouseRoofFieldSource,
   HouseRoofPrimaryFallDirection,
+  HouseRoofProvenance,
   HouseRoofRidgeAxis,
   HouseRoofForm,
   PergolaModel,
@@ -71,6 +74,7 @@ type SharedFieldResult<T> = {
   value: T;
   warning: HouseFirstMigrationWarning | null;
   lowConfidence: boolean;
+  source: Extract<HouseRoofFieldSource, 'legacy_shared_value' | 'default_fallback'>;
 };
 
 function isBlankString(value: string | null | undefined): boolean {
@@ -146,6 +150,16 @@ function normalizeAppendageForm(
   return value === 'mono' || value === 'flat' ? value : null;
 }
 
+function hasExplicitRoofPitch(value: string | null | undefined): boolean {
+  return !isBlankString(value);
+}
+
+function hasExplicitRoofAppendage(
+  value: HouseFirstRoofDraft['appendage'] | null | undefined,
+): boolean {
+  return value !== null && value !== undefined;
+}
+
 function isOrthogonal2D(
   polygon: CalculatorHouseFootprintPolygonPoint[],
 ): boolean {
@@ -209,6 +223,29 @@ function inferRoofRidgeAxis(input: {
   return 'x';
 }
 
+function resolveRectangularFootprintSpans(
+  polygon: CalculatorHouseFootprintPolygonPoint[],
+): { alongM: number; depthM: number } | null {
+  if (!isRectanglePolygon2D(polygon)) return null;
+  const alongValues = polygon.map((point) => Number(point.alongM));
+  const depthValues = polygon.map((point) => Number(point.depthM));
+  return {
+    alongM: Math.max(...alongValues) - Math.min(...alongValues),
+    depthM: Math.max(...depthValues) - Math.min(...depthValues),
+  };
+}
+
+function hasAmbiguousRidgeAxisSelection(
+  polygon: CalculatorHouseFootprintPolygonPoint[],
+): boolean {
+  const spans = resolveRectangularFootprintSpans(polygon);
+  if (!spans) return false;
+  const longerSpan = Math.max(spans.alongM, spans.depthM);
+  const shorterSpan = Math.min(spans.alongM, spans.depthM);
+  if (!(Number.isFinite(longerSpan) && Number.isFinite(shorterSpan)) || shorterSpan <= 0) return false;
+  return longerSpan < shorterSpan * 1.15;
+}
+
 function validateSharedRoof(input: {
   footprint: Polygon3;
   roofForm: HouseRoofForm;
@@ -231,6 +268,7 @@ function validateSharedRoof(input: {
     status: result.status,
     code: result.code,
     message: result.message,
+    approximationReasons: [],
   };
 }
 
@@ -851,6 +889,7 @@ function resolveSharedHouseField<T>(
       value: config.fallback,
       warning: null,
       lowConfidence: false,
+      source: 'default_fallback',
     };
   }
 
@@ -861,6 +900,7 @@ function resolveSharedHouseField<T>(
       value: firstPopulated.value,
       warning: null,
       lowConfidence: false,
+      source: 'legacy_shared_value',
     };
   }
 
@@ -879,6 +919,7 @@ function resolveSharedHouseField<T>(
       message: `Legacy modules disagree on house ${config.field}. Using module ${firstPopulated.moduleIndex + 1} as the temporary shared value.`,
     },
     lowConfidence: true,
+    source: 'legacy_shared_value',
   };
 }
 
@@ -900,12 +941,13 @@ function buildSharedHouse(
 
   const warnings: HouseFirstMigrationWarning[] = [];
   let lowConfidence = false;
-  const collect = <T,>(config: SharedFieldConfig<T>) => {
+  const collectResult = <T,>(config: SharedFieldConfig<T>) => {
     const result = resolveSharedHouseField(modules, config);
     if (result.warning) warnings.push(result.warning);
     if (result.lowConfidence) lowConfidence = true;
-    return result.value;
+    return result;
   };
+  const collect = <T,>(config: SharedFieldConfig<T>) => collectResult(config).value;
 
   const preset = collect({
     field: 'footprint preset',
@@ -969,12 +1011,13 @@ function buildSharedHouse(
     pick: (module) => module.houseWallHeightM ?? '',
     isBlank: isBlankString,
   });
-  const roofPitchDeg = collect({
+  const roofPitchResult = collectResult({
     field: 'roof pitch',
     fallback: '',
     pick: (module) => module.houseRoofPitchDeg ?? '',
     isBlank: isBlankString,
   });
+  const roofPitchDeg = roofPitchResult.value;
   const soffitDepthMm = collect({
     field: 'soffit depth',
     fallback: '',
@@ -1011,12 +1054,13 @@ function buildSharedHouse(
     pick: (module) => module.houseEaveOverhangMm ?? '',
     isBlank: isBlankString,
   });
-  const roofMaterial = collect({
+  const roofMaterialResult = collectResult({
     field: 'roof material',
     fallback: 'corrugated_iron',
     pick: (module) => module.houseRoofMaterial,
     normalize: (value) => normalizeHouseRoofMaterial(value),
   });
+  const roofMaterial = roofMaterialResult.value;
   const roofForm = collect({
     field: 'roof form',
     fallback: 'mono' as const,
@@ -1063,21 +1107,43 @@ function buildSharedHouse(
     footprintPolygon: normalizedFootprintPolygon,
   });
   const normalizedRoofDraft = roofDraft ?? null;
-  const sharedRoofForm = normalizedRoofDraft?.form ?? roofForm;
+  const explicitRoofForm = normalizedRoofDraft?.form ?? null;
+  const explicitRoofMaterial = normalizedRoofDraft?.material ?? null;
+  const explicitRoofPitchDeg = normalizedRoofDraft?.primaryPitchDeg ?? null;
+  const explicitPrimaryFallDirection = normalizeRoofPrimaryFallDirection(
+    normalizedRoofDraft?.primaryFallDirection,
+  );
+  const explicitRidgeAxis = normalizeRoofRidgeAxis(normalizedRoofDraft?.ridgeAxis);
+  const explicitOpenGableEndIds = normalizedRoofDraft?.openGableEndIds;
+  const explicitAppendage = normalizedRoofDraft?.appendage ?? null;
+  const sharedRoofForm = explicitRoofForm ?? roofForm;
   const sharedRoofPitchDeg = normalizeRoofDraftPitch(
-    normalizedRoofDraft?.primaryPitchDeg ?? null,
+    explicitRoofPitchDeg,
     inferredPrimaryPitchDeg,
   );
   const sharedRoofMaterial =
-    normalizedRoofDraft?.material
-      ? (normalizeHouseRoofMaterial(normalizedRoofDraft.material) as CalculatorHouseRoofMaterial)
+    explicitRoofMaterial
+      ? (normalizeHouseRoofMaterial(explicitRoofMaterial) as CalculatorHouseRoofMaterial)
       : normalizedRoofMaterial;
   const sharedPrimaryFallDirection =
-    normalizeRoofPrimaryFallDirection(normalizedRoofDraft?.primaryFallDirection) ??
+    explicitPrimaryFallDirection ??
     inferredPrimaryFallDirection;
   const sharedRidgeAxis =
-    normalizeRoofRidgeAxis(normalizedRoofDraft?.ridgeAxis) ??
+    explicitRidgeAxis ??
     inferredRidgeAxis;
+  const roofProvenance: HouseRoofProvenance = {
+    form: explicitRoofForm ? 'house_first_draft' : 'legacy_pergola_inference',
+    material: explicitRoofMaterial ? 'house_first_draft' : roofMaterialResult.source,
+    primaryPitchDeg: hasExplicitRoofPitch(explicitRoofPitchDeg)
+      ? 'house_first_draft'
+      : roofPitchResult.source,
+    primaryFallDirection: explicitPrimaryFallDirection
+      ? 'house_first_draft'
+      : 'legacy_pergola_inference',
+    ridgeAxis: explicitRidgeAxis ? 'house_first_draft' : 'legacy_pergola_inference',
+    openGableEndIds: Array.isArray(explicitOpenGableEndIds) ? 'house_first_draft' : 'default_fallback',
+    appendage: hasExplicitRoofAppendage(explicitAppendage) ? 'house_first_draft' : 'default_fallback',
+  };
   const terminalEnds = deriveHouseGableTerminalEnds({
     footprint: localPolygonToGeometryPolygon(derivedHousePolygon),
     ridgeAxis: sharedRidgeAxis,
@@ -1099,17 +1165,17 @@ function buildSharedHouse(
     });
   }
   const appendage = {
-    enabled: Boolean(normalizedRoofDraft?.appendage?.enabled),
-    form: normalizeAppendageForm(normalizedRoofDraft?.appendage?.form) ?? 'mono',
+    enabled: Boolean(explicitAppendage?.enabled),
+    form: normalizeAppendageForm(explicitAppendage?.form) ?? 'mono',
     hostEdge: normalizeAttachmentSide(
-      normalizedRoofDraft?.appendage?.hostEdge ?? normalizedAttachmentSide,
+      explicitAppendage?.hostEdge ?? normalizedAttachmentSide,
     ) as NonNullable<CalculatorModuleInputs['attachmentSide']>,
     pitchDeg: normalizeRoofDraftPitch(
-      normalizedRoofDraft?.appendage?.pitchDeg ?? null,
+      explicitAppendage?.pitchDeg ?? null,
       sharedRoofPitchDeg,
     ),
     dropMm: normalizeRoofDraftPitch(
-      normalizedRoofDraft?.appendage?.dropMm ?? null,
+      explicitAppendage?.dropMm ?? null,
       '450',
     ),
   };
@@ -1139,6 +1205,47 @@ function buildSharedHouse(
     roofForm: sharedRoofForm,
     footprint: localPolygonToGeometryPolygon(derivedHousePolygon),
   });
+  const approximationReasons = new Set<HouseRoofApproximationReason>();
+  if (roofProvenance.form === 'legacy_pergola_inference') {
+    approximationReasons.add('inferred_form');
+  }
+  if (
+    sharedRoofForm === 'mono' &&
+    roofProvenance.primaryFallDirection === 'legacy_pergola_inference'
+  ) {
+    approximationReasons.add('inferred_fall_direction');
+  }
+  const ridgeAxisRelevant = sharedRoofForm === 'gable' || sharedRoofForm === 'hipped';
+  if (ridgeAxisRelevant && roofProvenance.ridgeAxis === 'legacy_pergola_inference') {
+    approximationReasons.add('inferred_ridge_axis');
+  }
+  if (
+    ridgeAxisRelevant &&
+    roofProvenance.ridgeAxis !== 'house_first_draft' &&
+    hasAmbiguousRidgeAxisSelection(derivedHousePolygon)
+  ) {
+    approximationReasons.add('ambiguous_ridge_axis');
+  }
+  const roofApproximationReasons = Array.from(approximationReasons);
+  const roofValidation: HouseModel['roof']['validation'] =
+    validation.status === 'invalid'
+      ? {
+          ...validation,
+          approximationReasons: roofApproximationReasons,
+        }
+      : {
+          ...validation,
+          status: roofApproximationReasons.length > 0 ? 'approximate' : 'valid',
+          approximationReasons: roofApproximationReasons,
+        };
+  const hasExplicitRoofDraftField =
+    explicitRoofForm !== null ||
+    explicitRoofMaterial !== null ||
+    hasExplicitRoofPitch(explicitRoofPitchDeg) ||
+    explicitPrimaryFallDirection !== null ||
+    explicitRidgeAxis !== null ||
+    (explicitOpenGableEndIds !== undefined && explicitOpenGableEndIds !== null) ||
+    hasExplicitRoofAppendage(explicitAppendage);
   const decks = buildSharedDecks({
     deckDrafts,
     housePolygon: derivedHousePolygon,
@@ -1180,10 +1287,11 @@ function buildSharedHouse(
           isOpen: openGableEndIds.includes(end.id),
         })),
         appendage,
-        validation,
+        validation: roofValidation,
+        provenance: roofProvenance,
         capabilities,
         confidence: lowConfidence ? 'low' : 'high',
-        source: normalizedRoofDraft ? 'house_first_draft' : 'legacy_module_inference',
+        source: hasExplicitRoofDraftField ? 'house_first_draft' : 'legacy_module_inference',
       },
       storeyMode: normalizedStoreyMode,
       attachmentStrategy,

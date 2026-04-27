@@ -86,9 +86,12 @@ export type DrawingWorkbenchStore = {
     activeDeckSupport: WorkbenchDeckSupportDiagnostic | null;
     activeDeckInteraction: WorkbenchDeckInteractionDiagnostic | null;
     roofForm: HouseModel['roof']['form'] | null;
+    roofReviewStatus: 'ready' | 'approximate' | 'blocked' | 'none';
     roofValidationStatus: HouseModel['roof']['validation']['status'] | null;
     roofValidationCode: HouseModel['roof']['validation']['code'] | null;
     roofValidationMessage: string | null;
+    roofApproximationReasons: NonNullable<HouseModel['roof']['validation']['approximationReasons']>;
+    roofProvenance: HouseModel['roof']['provenance'] | null;
     roofAppendageEnabled: boolean;
     roofAppendageStatus: 'valid' | 'invalid' | 'off';
     pergolas: PergolaModel[];
@@ -332,9 +335,19 @@ export function buildDrawingWorkbenchStore(input: {
       activeDeckSupport,
       activeDeckInteraction,
       roofForm: projectModel.house?.roof.form ?? null,
+      roofReviewStatus:
+        projectModel.house?.roof.validation.status === 'invalid'
+          ? 'blocked'
+          : projectModel.house?.roof.validation.status === 'approximate'
+            ? 'approximate'
+            : projectModel.house?.roof.validation.status === 'valid'
+              ? 'ready'
+              : 'none',
       roofValidationStatus: projectModel.house?.roof.validation.status ?? null,
       roofValidationCode: projectModel.house?.roof.validation.code ?? null,
       roofValidationMessage: projectModel.house?.roof.validation.message ?? null,
+      roofApproximationReasons: projectModel.house?.roof.validation.approximationReasons ?? [],
+      roofProvenance: projectModel.house?.roof.provenance ?? null,
       roofAppendageEnabled: Boolean(projectModel.house?.roof.appendage.enabled),
       roofAppendageStatus: projectModel.house?.roof.appendage.enabled
         ? projectModel.house?.roof.validation.code === 'invalid_appendage'

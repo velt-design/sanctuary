@@ -11,6 +11,8 @@ import type {
   HouseFirstDeckDraft,
   HouseFirstRoofDraft,
   HouseModel,
+  HouseRoofApproximationReason,
+  HouseRoofFieldSource,
   HouseRoofPrimaryFallDirection,
   HouseRoofRidgeAxis,
 } from '@/lib/drawings/state/houseFirstWorkbenchModel';
@@ -100,6 +102,53 @@ export function labelForRoofForm(value: HouseModel['roof']['form'] | null | unde
     case 'mono':
     default:
       return 'Mono';
+  }
+}
+
+export function labelForRoofReviewStatus(
+  value: HouseModel['roof']['validation']['status'] | 'none' | null | undefined,
+): string {
+  switch (value) {
+    case 'invalid':
+      return 'Blocked';
+    case 'approximate':
+      return 'Approximate';
+    case 'valid':
+      return 'Ready';
+    default:
+      return 'None';
+  }
+}
+
+export function labelForRoofFieldSource(value: HouseRoofFieldSource | null | undefined): string {
+  switch (value) {
+    case 'house_first_draft':
+      return 'Explicit house draft';
+    case 'legacy_shared_value':
+      return 'Legacy shared value';
+    case 'legacy_pergola_inference':
+      return 'Legacy pergola inference';
+    case 'default_fallback':
+      return 'Default fallback';
+    default:
+      return 'Unknown';
+  }
+}
+
+export function labelForRoofApproximationReason(
+  value: HouseRoofApproximationReason,
+): string {
+  switch (value) {
+    case 'inferred_form':
+      return 'Roof form inferred from legacy pergola data';
+    case 'inferred_fall_direction':
+      return 'Mono fall direction inferred from legacy pergola data';
+    case 'inferred_ridge_axis':
+      return 'Ridge axis inferred from legacy pergola data';
+    case 'ambiguous_ridge_axis':
+      return 'Near-square rectangular footprint keeps a best-guess ridge axis';
+    default:
+      return value;
   }
 }
 

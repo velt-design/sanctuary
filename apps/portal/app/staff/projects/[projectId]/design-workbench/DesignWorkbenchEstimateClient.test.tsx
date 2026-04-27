@@ -426,6 +426,57 @@ describe('DesignWorkbenchEstimateClient', () => {
     rendered.unmount();
   });
 
+  it('renders approximate roof diagnostics and field sources for inferred house roofs', () => {
+    const estimate = buildEstimateDetail();
+
+    const rendered = renderIntoDocument(
+      <DesignWorkbenchEstimateClient estimate={estimate} projectName="Deck Build" siteAddress="1 Test Street" />,
+    );
+
+    expect(readLabeledValue(rendered.container, 'Roof status')).toBe('Approximate');
+    expect(readLabeledValue(rendered.container, 'Roof approximation reasons')).toContain(
+      'Roof form inferred from legacy pergola data',
+    );
+    expect(readLabeledValue(rendered.container, 'Roof approximation reasons')).toContain(
+      'Mono fall direction inferred from legacy pergola data',
+    );
+    expect(readLabeledValue(rendered.container, 'Roof form source')).toBe('Legacy pergola inference');
+    expect(readLabeledValue(rendered.container, 'Roof material source')).toBe('Legacy shared value');
+    expect(readLabeledValue(rendered.container, 'Roof appendage source')).toBe('Default fallback');
+
+    rendered.unmount();
+  });
+
+  it('keeps blocked roof diagnostics for unsupported house roof topology', () => {
+    const estimate = buildEstimateDetail({
+      mutateSnapshot: (snapshot) => {
+        const next = structuredClone(snapshot) as {
+          inputs?: { modules?: Array<Record<string, unknown>> };
+        } | null;
+        const module = next?.inputs?.modules?.[0];
+        if (module) {
+          module.houseFootprintMode = 'custom_polygon';
+          module.houseFootprintPolygon = [
+            { alongM: '0', depthM: '-1.8' },
+            { alongM: '6', depthM: '-1.8' },
+            { alongM: '4.2', depthM: '0.6' },
+            { alongM: '0', depthM: '0' },
+          ];
+        }
+        return next as Record<string, unknown> | null;
+      },
+    });
+
+    const rendered = renderIntoDocument(
+      <DesignWorkbenchEstimateClient estimate={estimate} projectName="Deck Build" siteAddress="1 Test Street" />,
+    );
+
+    expect(readLabeledValue(rendered.container, 'Roof status')).toBe('Blocked');
+    expect(readLabeledValue(rendered.container, 'Roof reason code')).toBe('unsupported_roof_topology');
+
+    rendered.unmount();
+  });
+
   it('writes module edits into the local working copy and clears them when reverted to the snapshot', async () => {
     const estimate = buildEstimateDetail();
     const entityKey = buildEstimateDrawingDraftEntityKey(estimate.id);

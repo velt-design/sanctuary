@@ -3,6 +3,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import SanctuaryWorkbenchRail from '@/components/drawings/rail/SanctuaryWorkbenchRail';
 import HouseFirstWorkbenchRail from '@/components/drawings/rail/HouseFirstWorkbenchRail';
+import {
+  labelForRoofApproximationReason,
+  labelForRoofFieldSource,
+} from '@/components/drawings/rail/houseRailShared';
 import DrawingWorkbench from '@/components/drawings/workbench/DrawingWorkbench';
 import type { Geometry3DViewportState } from '@/components/drawings/viewports/Geometry3DViewport';
 import {
@@ -557,12 +561,66 @@ export default function DesignWorkbenchEstimateClient({
             <div className={styles.diagnosticRow}>
               <span className={styles.diagnosticLabel}>Roof status</span>
               <span className={styles.diagnosticValue}>
-                {store.derived.roofValidationStatus === 'invalid' ? 'Blocked' : 'Ready'}
+                {store.derived.roofReviewStatus === 'blocked'
+                  ? 'Blocked'
+                  : store.derived.roofReviewStatus === 'approximate'
+                    ? 'Approximate'
+                    : store.derived.roofReviewStatus === 'ready'
+                      ? 'Ready'
+                      : 'none'}
+              </span>
+            </div>
+            <div className={styles.diagnosticRow}>
+              <span className={styles.diagnosticLabel}>Roof approximation reasons</span>
+              <span className={styles.diagnosticValue}>
+                {store.derived.roofApproximationReasons.map((reason) => labelForRoofApproximationReason(reason)).join(', ') || 'none'}
               </span>
             </div>
             <div className={styles.diagnosticRow}>
               <span className={styles.diagnosticLabel}>Roof reason code</span>
               <span className={styles.diagnosticValue}>{store.derived.roofValidationCode ?? 'none'}</span>
+            </div>
+            <div className={styles.diagnosticRow}>
+              <span className={styles.diagnosticLabel}>Roof form source</span>
+              <span className={styles.diagnosticValue}>
+                {labelForRoofFieldSource(store.derived.roofProvenance?.form)}
+              </span>
+            </div>
+            <div className={styles.diagnosticRow}>
+              <span className={styles.diagnosticLabel}>Roof material source</span>
+              <span className={styles.diagnosticValue}>
+                {labelForRoofFieldSource(store.derived.roofProvenance?.material)}
+              </span>
+            </div>
+            <div className={styles.diagnosticRow}>
+              <span className={styles.diagnosticLabel}>Roof pitch source</span>
+              <span className={styles.diagnosticValue}>
+                {labelForRoofFieldSource(store.derived.roofProvenance?.primaryPitchDeg)}
+              </span>
+            </div>
+            <div className={styles.diagnosticRow}>
+              <span className={styles.diagnosticLabel}>Roof fall source</span>
+              <span className={styles.diagnosticValue}>
+                {labelForRoofFieldSource(store.derived.roofProvenance?.primaryFallDirection)}
+              </span>
+            </div>
+            <div className={styles.diagnosticRow}>
+              <span className={styles.diagnosticLabel}>Roof ridge source</span>
+              <span className={styles.diagnosticValue}>
+                {labelForRoofFieldSource(store.derived.roofProvenance?.ridgeAxis)}
+              </span>
+            </div>
+            <div className={styles.diagnosticRow}>
+              <span className={styles.diagnosticLabel}>Roof open-end source</span>
+              <span className={styles.diagnosticValue}>
+                {labelForRoofFieldSource(store.derived.roofProvenance?.openGableEndIds)}
+              </span>
+            </div>
+            <div className={styles.diagnosticRow}>
+              <span className={styles.diagnosticLabel}>Roof appendage source</span>
+              <span className={styles.diagnosticValue}>
+                {labelForRoofFieldSource(store.derived.roofProvenance?.appendage)}
+              </span>
             </div>
             <div className={styles.diagnosticRow}>
               <span className={styles.diagnosticLabel}>Roof appendage</span>

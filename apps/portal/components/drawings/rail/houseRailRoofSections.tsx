@@ -15,7 +15,10 @@ import {
   ROOF_MATERIAL_OPTIONS,
   ROOF_RIDGE_AXIS_OPTIONS,
   SelectField,
+  SummarySection,
   buildRoofDraftFromHouse,
+  labelForRoofApproximationReason,
+  labelForRoofFieldSource,
 } from './houseRailShared';
 import styles from './ConfiguratorRail.module.css';
 
@@ -34,6 +37,8 @@ export function buildHouseRailRoofSections({
 }: BuildHouseRailRoofSectionsInput): ReactNode[] {
   const roofDraft = buildRoofDraftFromHouse(house);
   const roofCapabilities = house?.roof.capabilities ?? null;
+  const roofProvenance = house?.roof.provenance ?? null;
+  const approximationReasons = house?.roof.validation.approximationReasons ?? [];
   const appendageHelperText = roofCapabilities?.appendageSupported
     ? 'One lower appendage band is supported in this milestone.'
     : 'Appendage bands are limited to straight or rectangular house footprints in this milestone.';
@@ -234,6 +239,47 @@ export function buildHouseRailRoofSections({
       />,
     );
   }
+
+  const ridgeBasisLabel =
+    approximationReasons.includes('ambiguous_ridge_axis')
+      ? `${labelForRoofFieldSource(roofProvenance?.ridgeAxis)}; near-square rectangular footprint keeps the current axis`
+      : labelForRoofFieldSource(roofProvenance?.ridgeAxis);
+  const appendageSupportLabel =
+    house?.roof.validation.code === 'invalid_appendage'
+      ? 'Blocked on the current footprint'
+      : roofCapabilities?.appendageSupported
+        ? 'Supported on the current footprint'
+        : 'Not supported on the current footprint';
+
+  fields.push(
+    <SummarySection
+      key="roof-review-basis"
+      title="Review Basis"
+      items={[
+        { label: 'Roof form basis', value: labelForRoofFieldSource(roofProvenance?.form) },
+        {
+          label: 'Mono fall basis',
+          value:
+            (roofCapabilities?.controls.primaryFallDirection ?? (roofDraft.form === 'mono'))
+              ? labelForRoofFieldSource(roofProvenance?.primaryFallDirection)
+              : 'Not used for this roof',
+        },
+        {
+          label: 'Ridge basis',
+          value:
+            roofDraft.form === 'gable' || roofDraft.form === 'hipped'
+              ? ridgeBasisLabel
+              : 'Not used for this roof',
+        },
+        { label: 'Appendage support', value: appendageSupportLabel },
+      ]}
+      hint={
+        approximationReasons.length > 0
+          ? approximationReasons.map((reason) => labelForRoofApproximationReason(reason)).join(' | ')
+          : 'These review signals explain whether the current roof is explicit, inherited, or best-guess.'
+      }
+    />,
+  );
 
   if (house?.roof.validation.status === 'invalid' && house.roof.validation.message) {
     fields.push(

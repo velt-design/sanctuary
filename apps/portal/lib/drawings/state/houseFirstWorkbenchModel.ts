@@ -20,6 +20,25 @@ export type HouseRoofForm = 'flat' | 'mono' | 'gable' | 'hipped';
 export type HouseRoofPrimaryFallDirection = 'positive_x' | 'negative_x' | 'positive_y' | 'negative_y';
 export type HouseRoofRidgeAxis = 'x' | 'y';
 export type HouseRoofAppendageForm = 'flat' | 'mono';
+export type HouseRoofFieldSource =
+  | 'house_first_draft'
+  | 'legacy_shared_value'
+  | 'legacy_pergola_inference'
+  | 'default_fallback';
+export type HouseRoofApproximationReason =
+  | 'inferred_form'
+  | 'inferred_fall_direction'
+  | 'inferred_ridge_axis'
+  | 'ambiguous_ridge_axis';
+export type HouseRoofProvenance = {
+  form: HouseRoofFieldSource;
+  material: HouseRoofFieldSource;
+  primaryPitchDeg: HouseRoofFieldSource;
+  primaryFallDirection: HouseRoofFieldSource;
+  ridgeAxis: HouseRoofFieldSource;
+  openGableEndIds: HouseRoofFieldSource;
+  appendage: HouseRoofFieldSource;
+};
 export type DeckKind = 'deck' | 'landing';
 export type DeckShape = 'preset' | 'custom';
 export type DeckPlacementMode = 'snapped' | 'floating';
@@ -101,7 +120,7 @@ export type HouseRoofModel = {
     dropMm: string;
   };
   validation: {
-    status: 'valid' | 'invalid';
+    status: 'valid' | 'approximate' | 'invalid';
     code:
       | 'unsupported_roof_topology'
       | 'unsupported_gable_topology'
@@ -109,7 +128,9 @@ export type HouseRoofModel = {
       | 'invalid_appendage'
       | null;
     message: string | null;
+    approximationReasons?: HouseRoofApproximationReason[];
   };
+  provenance?: HouseRoofProvenance;
   capabilities: HouseRoofCapabilities & {
     footprintTopology: HouseRoofFootprintTopology;
     selectedFormFootprintRequirement: HouseRoofFootprintRequirement;

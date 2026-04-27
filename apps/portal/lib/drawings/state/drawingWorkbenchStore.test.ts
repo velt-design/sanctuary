@@ -541,9 +541,13 @@ describe('buildDrawingWorkbenchStore', () => {
     });
 
     expect(store.derived.roofForm).toBe('gable');
-    expect(store.derived.roofValidationStatus).toBe('valid');
+    expect(store.derived.roofReviewStatus).toBe('approximate');
+    expect(store.derived.roofValidationStatus).toBe('approximate');
     expect(store.derived.roofValidationCode).toBeNull();
     expect(store.derived.roofValidationMessage).toBeNull();
+    expect(store.derived.roofApproximationReasons).toEqual(['inferred_ridge_axis']);
+    expect(store.derived.roofProvenance?.form).toBe('house_first_draft');
+    expect(store.derived.roofProvenance?.ridgeAxis).toBe('legacy_pergola_inference');
     expect(store.derived.roofAppendageStatus).toBe('off');
   });
 
@@ -563,9 +567,14 @@ describe('buildDrawingWorkbenchStore', () => {
     });
 
     expect(store.derived.roofForm).toBe('mono');
-    expect(store.derived.roofValidationStatus).toBe('valid');
+    expect(store.derived.roofReviewStatus).toBe('approximate');
+    expect(store.derived.roofValidationStatus).toBe('approximate');
     expect(store.derived.roofValidationCode).toBeNull();
     expect(store.derived.roofValidationMessage).toBeNull();
+    expect(store.derived.roofApproximationReasons).toEqual([
+      'inferred_form',
+      'inferred_fall_direction',
+    ]);
   });
 
   it('derives active-side deck support diagnostics for attached and detached deck scenarios', () => {

@@ -51,6 +51,9 @@ describe('HouseFirstWorkbenchRail', () => {
     expect(markup).toContain('House Configurator');
     expect(markup).toContain('Footprint');
     expect(markup).toContain('Roof');
+    expect(markup).toContain('Approximate');
+    expect(markup).toContain('Review Basis');
+    expect(markup).toContain('Roof form basis');
     expect(markup).toContain('Decks');
     expect(markup).toContain('Openings');
     expect(markup).toContain('Add deck');

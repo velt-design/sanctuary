@@ -1,4 +1,11 @@
-import { SummarySection, formatRotation, labelForAttachmentSide, labelForPreset, labelForRoofForm } from './houseRailShared';
+import {
+  SummarySection,
+  formatRotation,
+  labelForAttachmentSide,
+  labelForPreset,
+  labelForRoofForm,
+  labelForRoofReviewStatus,
+} from './houseRailShared';
 import type { HouseFirstMigrationWarning, HouseModel, PergolaModel } from '@/lib/drawings/state/houseFirstWorkbenchModel';
 
 type BuildHouseRailOverviewSectionInput = {
@@ -20,7 +27,7 @@ export function buildHouseRailOverviewSection({
         { label: 'Roof form', value: labelForRoofForm(house?.roof.form) },
         {
           label: 'Roof status',
-          value: house?.roof.validation.status === 'invalid' ? 'Blocked' : 'Ready',
+          value: labelForRoofReviewStatus(house?.roof.validation.status),
         },
         { label: 'Decks', value: String(house?.decks.length ?? 0) },
         { label: 'Openings', value: String(house?.openings.length ?? 0) },
