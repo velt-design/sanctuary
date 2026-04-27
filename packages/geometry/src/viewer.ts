@@ -596,7 +596,7 @@ function buildHouseOpeningMarkerObjects(
 ): ViewerSceneObject[] {
   const objects: ViewerSceneObject[] = [];
   for (const opening of model.openings ?? []) {
-    if (opening.kind !== "window" || opening.validationStatus !== "valid") continue;
+    if (opening.validationStatus !== "valid") continue;
     const wallSegment = resolveWindowHostWallSegment({
       model,
       hostEdgeId: opening.hostEdgeId,
@@ -638,6 +638,7 @@ function buildHouseOpeningMarkerObjects(
       ...(opening.metadata ?? {}),
       openingId: opening.id,
       openingLabel: opening.label ?? opening.id,
+      openingKind: opening.kind,
       openingWallId: opening.wallId,
       openingHostEdgeId: opening.hostEdgeId ?? null,
       sourceWallId: wallSegment.id,

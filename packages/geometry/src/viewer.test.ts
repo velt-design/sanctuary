@@ -314,7 +314,7 @@ describe("buildViewerSceneModel", () => {
     expect(houseRoofFlashing.wings).toHaveLength(2);
   });
 
-  it("renders valid window markers on supported house walls and skips invalid openings", () => {
+  it("renders valid opening markers for supported opening kinds and skips invalid openings", () => {
     const fixture = requireSupportedFixture("mono_attached_soffit_away_standard");
     const config = addHouseModelContext(fixture.config, {
       lengthMm: 7200,
@@ -342,13 +342,29 @@ describe("buildViewerSceneModel", () => {
         },
         {
           id: "window-left",
-          label: "Left window",
-          kind: "window",
+          label: "Left slider",
+          kind: "slider",
           wallId: "left",
           hostEdgeId: "footprint-edge-4",
           widthMm: 1800,
           heightMm: 1200,
           sillHeightMm: 900,
+          offsetAlongWallMm: 300,
+          validation: {
+            status: "valid",
+            codes: [],
+            message: null,
+          },
+        },
+        {
+          id: "door-front",
+          label: "Front door",
+          kind: "hinged_door",
+          wallId: "front",
+          hostEdgeId: "footprint-edge-3",
+          widthMm: 900,
+          heightMm: 2100,
+          sillHeightMm: 0,
           offsetAlongWallMm: 300,
           validation: {
             status: "valid",
@@ -369,7 +385,7 @@ describe("buildViewerSceneModel", () => {
           validation: {
             status: "invalid",
             codes: ["overlapping_openings"],
-            message: "Windows on the same wall cannot overlap.",
+            message: "Openings on the same wall cannot overlap.",
           },
         },
       ],
@@ -398,19 +414,20 @@ describe("buildViewerSceneModel", () => {
         object.metadata?.openingId === "window-rear",
     ).length;
 
-    expect(markerIds).toEqual(expect.arrayContaining(["window-rear", "window-left"]));
+    expect(markerIds).toEqual(expect.arrayContaining(["window-rear", "window-left", "door-front"]));
     expect(markerIds).not.toContain("window-invalid");
     expect(rearMarker?.metadata).toMatchObject({
+      openingKind: "window",
       openingWallId: "rear",
       openingHostEdgeId: "footprint-edge-1",
       resolvedHostEdgeId: "footprint-edge-1",
     });
     expect(rearOutlineCount).toBe(4);
-    expect(scene.metadata?.houseOpeningCount).toBe(3);
-    expect(scene.metadata?.houseOpeningValidCount).toBe(2);
-    expect(scene.metadata?.houseOpeningHostEdgeResolvedCount).toBe(2);
+    expect(scene.metadata?.houseOpeningCount).toBe(4);
+    expect(scene.metadata?.houseOpeningValidCount).toBe(3);
+    expect(scene.metadata?.houseOpeningHostEdgeResolvedCount).toBe(3);
     expect(scene.metadata?.houseOpeningHostEdgeUnresolvedCount).toBe(0);
-    expect(scene.metadata?.houseOpeningRenderedMarkerCount).toBe(2);
+    expect(scene.metadata?.houseOpeningRenderedMarkerCount).toBe(3);
     expect(scene.metadata?.houseOpeningSkippedInvalidCount).toBe(1);
     expect(scene.metadata?.houseOpeningUnresolvedValidCount).toBe(0);
   });

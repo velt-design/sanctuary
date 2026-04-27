@@ -540,10 +540,17 @@ function buildHouseModelConfig(input: {
           opening.wallId === 'right'
             ? opening.wallId
             : 'rear';
+        const kind =
+          opening.kind === 'hinged_door' ||
+          opening.kind === 'slider' ||
+          opening.kind === 'stacker' ||
+          opening.kind === 'window'
+            ? opening.kind
+            : 'window';
         return {
           id: opening.id,
           label: opening.label?.trim() || null,
-          kind: opening.kind === 'window' ? 'window' : 'window',
+          kind,
           wallId,
           hostEdgeId: typeof opening.hostEdgeId === 'string' ? opening.hostEdgeId.trim() || null : null,
           widthMm: resolveOptionalMillimetres(opening.widthMm),

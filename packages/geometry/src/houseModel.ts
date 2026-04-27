@@ -6433,9 +6433,16 @@ function buildHouseOpenings(input: {
       ) {
         return null;
       }
+      const kind =
+        opening.kind === 'hinged_door' ||
+        opening.kind === 'slider' ||
+        opening.kind === 'stacker' ||
+        opening.kind === 'window'
+          ? opening.kind
+          : 'window';
       return {
         ...opening,
-        kind: 'window',
+        kind,
         wallId:
           opening.wallId === 'front' ||
           opening.wallId === 'left' ||

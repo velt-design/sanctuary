@@ -1624,18 +1624,18 @@ function buildOpeningDragEligibility(input: {
   if (!input.openingInteraction) {
     return {
       eligible: false,
-      reason: 'This window needs a resolvable host wall before drag is available.',
+      reason: 'This opening needs a resolvable host wall before drag is available.',
     };
   }
   if (input.openingInteraction.openingWidthM > input.openingInteraction.hostSpanM + ZERO_DIMENSION_EPSILON_M) {
     return {
       eligible: false,
-      reason: 'This window is wider than the selected wall span, so drag is blocked until the width is reduced.',
+      reason: 'This opening is wider than the selected wall span, so drag is blocked until the width is reduced.',
     };
   }
   return {
     eligible: true,
-    reason: 'Drag the selected window along the host wall, or click dimensions to edit.',
+    reason: 'Drag the selected opening along the host wall, or click dimensions to edit.',
   };
 }
 

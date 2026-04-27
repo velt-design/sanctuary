@@ -387,7 +387,7 @@ describe('buildRawGeometryModuleInput', () => {
     ]);
   });
 
-  it('maps shared house windows into raw house context', () => {
+  it('maps shared house openings into raw house context', () => {
     const fixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
     if (!fixture) throw new Error('Expected mono fixture');
     const draft = buildEstimateDrawingDraftFromSnapshot(fixture.snapshot);
@@ -396,8 +396,8 @@ describe('buildRawGeometryModuleInput', () => {
       openings: [
         {
           id: 'opening-1',
-          label: 'Kitchen window',
-          kind: 'window',
+          label: 'Kitchen slider',
+          kind: 'slider',
           wallId: 'rear',
           widthM: '2.4',
           heightM: '1.2',
@@ -422,8 +422,8 @@ describe('buildRawGeometryModuleInput', () => {
     expect(raw.houseContext.openings).toEqual([
       {
         id: 'opening-1',
-        label: 'Kitchen window',
-        kind: 'window',
+        label: 'Kitchen slider',
+        kind: 'slider',
         wallId: 'rear',
         hostEdgeId: 'footprint-edge-3',
         widthMm: 2400,

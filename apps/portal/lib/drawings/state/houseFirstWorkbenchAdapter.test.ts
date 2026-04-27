@@ -492,7 +492,7 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
     expect(projectModel.house?.decks[0]?.validation.status).toBe('valid');
   });
 
-  it('builds shared windows from opening drafts and validates overlaps on the same wall', () => {
+  it('builds shared openings from opening drafts and validates overlaps on the same wall', () => {
     const monoFixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
     if (!monoFixture) throw new Error('Missing mono-standard fixture.');
     const draft = buildEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
@@ -539,7 +539,59 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
     expect(projectModel.house?.openings[1]?.validation).toMatchObject({
       status: 'invalid',
       codes: ['overlapping_openings'],
-      message: 'Windows on the same wall cannot overlap.',
+      message: 'Openings on the same wall cannot overlap.',
     });
+  });
+
+  it('preserves supported opening kinds and defaults unknown kinds to window', () => {
+    const monoFixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
+    if (!monoFixture) throw new Error('Missing mono-standard fixture.');
+    const draft = buildEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
+    if (!draft) throw new Error('Expected drawing draft.');
+    draft.houseFirst = {
+      openings: [
+        {
+          id: 'opening-slider',
+          label: 'Slider',
+          kind: 'slider',
+          wallId: 'rear',
+          widthM: '2.4',
+          heightM: '2.1',
+          sillHeightM: '0',
+          offsetAlongWallM: '0.5',
+        },
+        {
+          id: 'opening-door',
+          label: 'Door',
+          kind: 'hinged_door',
+          wallId: 'left',
+          widthM: '0.9',
+          heightM: '2.1',
+          sillHeightM: '0',
+          offsetAlongWallM: '0.3',
+        },
+        {
+          id: 'opening-fallback',
+          label: 'Fallback',
+          kind: 'unknown_family' as any,
+          wallId: 'front',
+          widthM: '1.2',
+          heightM: '1.2',
+          sillHeightM: '0.9',
+          offsetAlongWallM: '0.4',
+        },
+      ],
+    };
+
+    const projectModel = buildHouseFirstWorkbenchProjectModel({
+      snapshot: monoFixture.snapshot,
+      draft,
+    });
+
+    expect(projectModel.house?.openings.map((opening) => opening.kind)).toEqual([
+      'slider',
+      'hinged_door',
+      'window',
+    ]);
   });
 });

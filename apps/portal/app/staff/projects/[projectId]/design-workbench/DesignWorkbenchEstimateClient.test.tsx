@@ -728,7 +728,7 @@ describe('DesignWorkbenchEstimateClient', () => {
     expect(getLocalFirstWorkingCopy<any>(entityKey)?.data.houseFirst?.openings?.[0]?.widthM).toBe('2.4');
     expect(rendered.container.querySelector('[data-editable-field-id="opening-1:widthM"]')?.textContent).toContain('2.40m');
 
-    clickButtonByText(rendered.container, 'Remove window');
+    clickButtonByText(rendered.container, 'Remove opening');
     await flushAsyncWork();
 
     expect(getLocalFirstWorkingCopy<any>(entityKey)?.data.houseFirst?.openings ?? []).toEqual([]);
@@ -738,7 +738,7 @@ describe('DesignWorkbenchEstimateClient', () => {
     rendered.unmount();
   });
 
-  it('shows 3D window marker diagnostics for valid and invalid shared-house windows', async () => {
+  it('shows 3D opening marker diagnostics for valid and invalid shared-house openings', async () => {
     const estimate = buildEstimateDetail();
     const entityKey = buildEstimateDrawingDraftEntityKey(estimate.id);
 
@@ -750,7 +750,7 @@ describe('DesignWorkbenchEstimateClient', () => {
     clickButtonByText(rendered.container, 'Add window');
     await flushAsyncWork();
 
-    fillInputByLabel(rendered.container, 'Window width (m)', '20');
+    fillInputByLabel(rendered.container, 'Opening width (m)', '20');
     await flushAsyncWork();
 
     clickButtonByText(rendered.container, 'Add window');
@@ -759,22 +759,79 @@ describe('DesignWorkbenchEstimateClient', () => {
     const openingDrafts = getLocalFirstWorkingCopy<any>(entityKey)?.data.houseFirst?.openings ?? [];
     expect(openingDrafts.map((opening: any) => opening.id)).toEqual(['opening-1', 'opening-2']);
 
-    fillInputByLabel(rendered.container, 'Window width (m)', '2.4');
-    fillInputByLabel(rendered.container, 'Window height (m)', '1.2');
-    fillInputByLabel(rendered.container, 'Sill height (m)', '0.9');
+    fillInputByLabel(rendered.container, 'Opening width (m)', '2.4');
+    fillInputByLabel(rendered.container, 'Opening height (m)', '1.2');
+    fillInputByLabel(rendered.container, 'Opening base height (m)', '0.9');
     fillInputByLabel(rendered.container, 'Offset along wall (m)', '1.1');
     await flushAsyncWork();
 
     clickButtonByText(rendered.container, '3D View');
     await flushAsyncWork();
 
-    expect(readLabeledValue(rendered.container, '3D window count')).toBe('2');
-    expect(readLabeledValue(rendered.container, '3D valid windows')).toBe('1');
+    expect(readLabeledValue(rendered.container, '3D opening count')).toBe('2');
+    expect(readLabeledValue(rendered.container, '3D valid openings')).toBe('1');
     expect(readLabeledValue(rendered.container, '3D host edges resolved')).toBe('1');
     expect(readLabeledValue(rendered.container, '3D host edges unresolved')).toBe('0');
     expect(readLabeledValue(rendered.container, '3D rendered markers')).toBe('1');
     expect(readLabeledValue(rendered.container, '3D skipped invalid')).toBe('1');
     expect(readLabeledValue(rendered.container, '3D unresolved valid')).toBe('0');
+
+    rendered.unmount();
+  });
+
+  it('preserves a typed opening kind when editing non-kind fields from a local working copy', async () => {
+    const estimate = buildEstimateDetail();
+    const entityKey = buildEstimateDrawingDraftEntityKey(estimate.id);
+    const baseDraft = buildEstimateDrawingDraftFromSnapshot(estimate.calculatorSnapshot);
+    if (!baseDraft) throw new Error('Expected drawing draft');
+
+    await ensureLocalFirstStoreReady();
+    await writeLocalFirstWorkingCopy({
+      entityKey,
+      data: {
+        ...baseDraft,
+        houseFirst: {
+          ...baseDraft.houseFirst,
+          openings: [
+            {
+              id: 'opening-1',
+              label: 'Rear slider',
+              kind: 'slider',
+              wallId: 'rear',
+              widthM: '2.4',
+              heightM: '2.1',
+              sillHeightM: '0',
+              offsetAlongWallM: '0.8',
+            },
+          ],
+        },
+      },
+    });
+
+    const rendered = renderIntoDocument(
+      <DesignWorkbenchEstimateClient estimate={estimate} projectName="Opening Build" siteAddress="1 Test Street" />,
+    );
+
+    await flushAsyncWork();
+    clickButtonByText(rendered.container, 'House');
+    await flushAsyncWork();
+    clickButtonByText(rendered.container, 'Model Space');
+    await flushAsyncWork();
+
+    const openingShape = rendered.container.querySelector('[data-house-first-shape-hit="opening:opening-1"]');
+    if (!(openingShape instanceof Element)) throw new Error('Missing typed opening shape.');
+    clickElement(openingShape);
+    await flushAsyncWork();
+
+    const widthLabel = rendered.container.querySelector('[data-editable-field-id="opening-1:widthM"]');
+    if (!(widthLabel instanceof Element)) throw new Error('Missing typed opening width dimension.');
+    clickElement(widthLabel);
+    fillPlanDimensionInput(rendered.container, '2.8');
+    await flushAsyncWork();
+
+    const openingDraft = getLocalFirstWorkingCopy<any>(entityKey)?.data.houseFirst?.openings?.[0];
+    expect(openingDraft?.kind).toBe('slider');
+    expect(openingDraft?.widthM).toBe('2.8');
 
     rendered.unmount();
   });

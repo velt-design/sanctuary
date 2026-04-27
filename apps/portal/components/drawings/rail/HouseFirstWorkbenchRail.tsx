@@ -1292,11 +1292,11 @@ function HouseModeRail({
         ))}
       </div>,
       <p key="opening-selection-hint" className={styles.fieldHint}>
-        Selected windows show width and along-wall offset dimensions in Model Space plan. Drag the selected window body there to reposition it along the host wall. Height and sill stay editable in the rail for this slice.
+        Selected openings show width and along-wall offset dimensions in Model Space plan. Drag the selected opening body there to reposition it along the host wall. Height and base height stay editable in the rail for this slice.
       </p>,
       <TextField
         key="opening-label"
-        label="Window label"
+        label="Opening label"
         value={activeOpening.label}
         disabled={disabled}
         error={fieldErrors[`opening-label-${activeOpening.id}`]}
@@ -1304,7 +1304,7 @@ function HouseModeRail({
           runDeckAction(
             `opening-label-${activeOpening.id}`,
             onCommitOpeningPatch?.(activeOpening.id, { label: value }),
-            'Unable to rename the window.',
+            'Unable to rename the opening.',
           )
         }
       />,
@@ -1325,7 +1325,7 @@ function HouseModeRail({
       />,
       <NumberField
         key="opening-width"
-        label="Window width (m)"
+        label="Opening width (m)"
         value={activeOpening.widthM}
         disabled={disabled}
         error={fieldErrors[`opening-width-${activeOpening.id}`]}
@@ -1333,13 +1333,13 @@ function HouseModeRail({
           runDeckAction(
             `opening-width-${activeOpening.id}`,
             onCommitOpeningPatch?.(activeOpening.id, { widthM: value }),
-            'Unable to update the window width.',
+            'Unable to update the opening width.',
           )
         }
       />,
       <NumberField
         key="opening-height"
-        label="Window height (m)"
+        label="Opening height (m)"
         value={activeOpening.heightM}
         disabled={disabled}
         error={fieldErrors[`opening-height-${activeOpening.id}`]}
@@ -1347,13 +1347,13 @@ function HouseModeRail({
           runDeckAction(
             `opening-height-${activeOpening.id}`,
             onCommitOpeningPatch?.(activeOpening.id, { heightM: value }),
-            'Unable to update the window height.',
+            'Unable to update the opening height.',
           )
         }
       />,
       <NumberField
         key="opening-sill-height"
-        label="Sill height (m)"
+        label="Opening base height (m)"
         value={activeOpening.sillHeightM}
         disabled={disabled}
         error={fieldErrors[`opening-sill-height-${activeOpening.id}`]}
@@ -1361,7 +1361,7 @@ function HouseModeRail({
           runDeckAction(
             `opening-sill-height-${activeOpening.id}`,
             onCommitOpeningPatch?.(activeOpening.id, { sillHeightM: value }),
-            'Unable to update the sill height.',
+            'Unable to update the opening base height.',
           )
         }
       />,
@@ -1382,13 +1382,13 @@ function HouseModeRail({
       />,
       <div key="opening-edit-actions" className={styles.buttonRow}>
         <ActionButton
-          label="Remove window"
+          label="Remove opening"
           disabled={disabled}
           onClick={() =>
             void runDeckAction(
               `opening-remove-${activeOpening.id}`,
               onRemoveOpening?.(activeOpening.id),
-              'Unable to remove the window.',
+              'Unable to remove the opening.',
             )
           }
         />
@@ -1429,7 +1429,7 @@ function HouseModeRail({
             value: house?.roof.validation.status === 'invalid' ? 'Blocked' : 'Ready',
           },
           { label: 'Decks', value: String(house?.decks.length ?? 0) },
-          { label: 'Windows', value: String(house?.openings.length ?? 0) },
+          { label: 'Openings', value: String(house?.openings.length ?? 0) },
           { label: 'Footprint', value: labelForPreset(house?.footprint.preset) },
           { label: 'Rotation', value: formatRotation(house?.footprint.drawingRotationQuarterTurns) },
           { label: 'Attachment side', value: labelForAttachmentSide(house?.footprint.attachmentSide) },

@@ -120,7 +120,7 @@ export type HouseDeckSupportClassification =
   | "ground_supported"
   | "threshold_attached"
   | "mixed_or_unclear";
-export type HouseOpeningKind = "window";
+export type HouseOpeningKind = "window" | "hinged_door" | "slider" | "stacker";
 export type HouseRoofMaterial =
   | "corrugated_iron"
   | "trapezoidal_5_rib"

@@ -1,6 +1,7 @@
 import type { CostOutputV1 } from '@sp/costing';
 import type { RawGeometryModuleInput } from '@sp/geometry';
 import type { HouseModel } from '@/lib/drawings/state/houseFirstWorkbenchModel';
+import { normalizeWallOpeningKind } from '@/lib/drawings/state/houseFirstWorkbenchModel';
 import {
   DEFAULT_CALCULATOR_ATTACHMENT_SIDE,
   DEFAULT_CALCULATOR_HOUSE_FOOTPRINT_PRESET,
@@ -304,7 +305,7 @@ export function buildRawGeometryModuleInput(input: {
         sharedHouse?.openings.map((opening) => ({
           id: opening.id,
           label: opening.label,
-          kind: opening.kind === 'window' ? 'window' : 'window',
+          kind: normalizeWallOpeningKind(opening.kind),
           wallId: opening.wallId,
           hostEdgeId: opening.hostEdgeId,
           widthMm: Math.round(Number(opening.widthM) * 1000),

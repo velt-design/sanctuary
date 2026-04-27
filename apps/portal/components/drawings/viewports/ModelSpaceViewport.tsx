@@ -1158,7 +1158,7 @@ export default function ModelSpaceViewport({
                 [annotation.fieldKey]: nextValue,
               } as Partial<HouseFirstOpeningDraft>),
             )
-          : { ok: false, error: 'Window dimensions are not editable in this view.' };
+          : { ok: false, error: 'Opening dimensions are not editable in this view.' };
       } else {
         result = { ok: false, error: 'Unsupported dimension target.' };
       }
