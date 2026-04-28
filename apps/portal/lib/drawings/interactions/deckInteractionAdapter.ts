@@ -7,8 +7,14 @@ import type {
   HouseFirstPlanShapeOverlay,
   PlanPoint,
 } from '@/lib/drawings/views/plan/houseFirstPlanOverlay';
-import type { ObjectInteractionPhase, ObjectInteractionSessionBase } from './objectInteractionEngine';
 import {
+  buildObjectInteractionViewState,
+  type ObjectInteractionPhase,
+  type ObjectInteractionSessionBase,
+  type ObjectInteractionViewState,
+} from './objectInteractionEngine';
+import {
+  buildDeckInteractionCapabilityFromSelection,
   resolveDeckInteractionHint,
   resolveDeckSelectedTypeFromShape,
   type DeckInteractionCapability,
@@ -40,10 +46,12 @@ export type DeckDragSession = ObjectInteractionSessionBase & {
 export type DeckPreviewState = {
   deckId: string;
   polygon: PlanPoint[];
+  previewAnchor: PlanPoint;
   semanticPlacementSide: AttachmentSide | null;
   semanticWitnessSide: AttachmentSide;
   placementEdgeId: string | null;
   witnessEdgeId: string;
+  highlightTargetId: string | null;
   hostEdgeStart: PlanPoint;
   hostEdgeEnd: PlanPoint;
   centerOffsetM: number;
@@ -345,10 +353,12 @@ export function resolveDeckPreviewState(input: {
     });
     return {
       deckId: input.session.deckId,
+      previewAnchor: center,
       semanticPlacementSide: null,
       semanticWitnessSide: witnessFrame.hostEdgeId,
       placementEdgeId: null,
       witnessEdgeId: witnessFrame.sourceEdgeId,
+      highlightTargetId: witnessFrame.sourceEdgeId,
       hostEdgeStart: witnessFrame.hostEdgeStart,
       hostEdgeEnd: witnessFrame.hostEdgeEnd,
       centerOffsetM: projection?.centerOffsetM ?? 0,
@@ -423,10 +433,12 @@ export function resolveDeckPreviewState(input: {
 
   return {
     deckId: input.session.deckId,
+    previewAnchor: center,
     semanticPlacementSide: releasePlacement === 'snapped' ? frame.hostEdgeId : null,
     semanticWitnessSide: witnessFrame.hostEdgeId,
     placementEdgeId: releasePlacement === 'snapped' ? frame.sourceEdgeId : null,
     witnessEdgeId: witnessFrame.sourceEdgeId,
+    highlightTargetId: frame.sourceEdgeId,
     hostEdgeStart: frame.hostEdgeStart,
     hostEdgeEnd: frame.hostEdgeEnd,
     centerOffsetM,
@@ -445,6 +457,74 @@ export function resolveDeckPreviewState(input: {
           })
         : translatedPolygon,
   };
+}
+
+export function buildDeckInteractionViewState(input: {
+  capability: DeckInteractionCapability | null;
+  selectedDeckShape:
+    | {
+        custom: boolean;
+        deckInteraction: HouseFirstPlanShapeOverlay['deckInteraction'];
+      }
+    | null;
+  phase: ObjectInteractionPhase;
+  previewState: DeckPreviewState | null;
+  dragSession: DeckDragSession | null;
+}): ObjectInteractionViewState {
+  const capability =
+    input.capability ??
+    (input.selectedDeckShape
+      ? buildDeckInteractionCapabilityFromSelection({
+          custom: input.selectedDeckShape.custom,
+          interactionPlacement: input.selectedDeckShape.deckInteraction?.placement ?? null,
+          dragEligible: false,
+          dragReason: null,
+          hostEdgeResolvable: Boolean(input.selectedDeckShape.deckInteraction),
+          relationshipDimensionsAvailable: false,
+        })
+      : null);
+  const hint = resolveDeckInteractionHint({
+    capability,
+    phase: input.phase,
+    previewState: input.previewState,
+  });
+
+  const placementState =
+    !capability
+      ? 'none'
+      : !capability.dragEligible
+        ? 'blocked'
+        : input.previewState?.releasePlacement === 'snapped'
+          ? input.previewState.placement === 'snapped'
+            ? 'snapped'
+            : 'snap-available'
+          : input.previewState
+            ? 'floating'
+            : 'none';
+
+  const previewAnchor =
+    input.previewState?.previewAnchor ??
+    input.dragSession?.startCenter ??
+    input.selectedDeckShape?.deckInteraction?.renderedCenter ??
+    null;
+  const nextPhase =
+    capability === null
+      ? 'idle'
+      : !capability.dragEligible
+        ? 'selected'
+        : input.phase === 'idle'
+          ? 'selected'
+          : input.phase;
+
+  return buildObjectInteractionViewState({
+    phase: nextPhase,
+    placementState,
+    statusLabel: hint?.label ?? null,
+    statusDetail: hint?.detail ?? null,
+    canCommit: Boolean(capability?.dragEligible && input.phase === 'dragging' && input.previewState),
+    highlightTargetId: input.previewState?.highlightTargetId ?? null,
+    previewAnchor,
+  });
 }
 
 export function buildDeckCommitPatch(input: {
@@ -495,6 +575,7 @@ export function buildDeckInteractionTelemetry(input: {
   selectedDeckId: string | null;
   housePolygonSource: 'custom_saved' | 'preset_derived' | null;
   capability: DeckInteractionCapability | null;
+  viewState: ObjectInteractionViewState;
   selectedDeckShape:
     | {
         custom: boolean;
@@ -502,14 +583,8 @@ export function buildDeckInteractionTelemetry(input: {
       }
     | null;
   previewState: DeckPreviewState | null;
-  phase: ObjectInteractionPhase;
 }): DeckInteractionTelemetry {
   const capability = input.capability;
-  const hint = resolveDeckInteractionHint({
-    capability,
-    phase: input.phase,
-    previewState: input.previewState,
-  });
   const selectedDeckType =
     capability?.selectedDeckType ??
     (input.selectedDeckShape
@@ -527,9 +602,34 @@ export function buildDeckInteractionTelemetry(input: {
     dragReason: capability?.dragReason ?? null,
     hostEdgeResolvable: capability?.hostEdgeResolvable ?? false,
     relationshipDimensionsAvailable: capability?.relationshipDimensionsAvailable ?? false,
-    snapState: input.previewState ? (input.previewState.placement === 'snapped' ? 'snapped' : 'floating') : 'idle',
-    snapMessage: hint?.detail ?? null,
-    interactionState: hint?.state ?? 'idle',
-    interactionLabel: hint?.label ?? null,
+    phase: input.viewState.phase,
+    placementState: input.viewState.placementState,
+    snapState:
+      input.viewState.placementState === 'none'
+        ? 'idle'
+        : input.viewState.placementState,
+    snapMessage: input.viewState.statusDetail,
+    interactionState:
+      input.viewState.placementState === 'blocked'
+        ? 'blocked'
+        : input.viewState.placementState === 'snap-available'
+          ? 'snap-available'
+          : input.viewState.placementState === 'snapped'
+            ? 'snapped'
+            : input.viewState.placementState === 'floating'
+              ? 'floating'
+              : input.viewState.phase === 'settling'
+                ? 'commit'
+                : input.viewState.phase === 'drag-intent'
+                  ? 'drag-intent'
+                  : input.viewState.phase === 'dragging'
+                    ? 'dragging'
+                    : input.viewState.phase === 'selected'
+                      ? 'selected'
+                      : 'idle',
+    interactionLabel: input.viewState.statusLabel,
+    canCommit: input.viewState.canCommit,
+    highlightTargetId: input.viewState.highlightTargetId,
+    previewAnchor: input.viewState.previewAnchor,
   };
 }

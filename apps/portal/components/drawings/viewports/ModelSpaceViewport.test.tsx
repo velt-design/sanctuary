@@ -4397,7 +4397,7 @@ describe('ModelSpaceViewport', () => {
     rendered.unmount();
   });
 
-  it('does not emit per-move external deck telemetry while dragging', async () => {
+  it('emits shared deck interaction telemetry while dragging', async () => {
     const telemetrySpy = vi.fn();
     const deck = makeHouseFirstDeck();
     const baseHouse = makeHouseFirstHouse();
@@ -4440,7 +4440,12 @@ describe('ModelSpaceViewport', () => {
 
     expect(scroller.dataset.houseFirstDeckDragActive).toBe('true');
     expect(rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]')).not.toBeNull();
-    expect(telemetrySpy.mock.calls).toHaveLength(telemetryCallsBeforeDrag);
+    expect(telemetrySpy.mock.calls.length).toBeGreaterThan(telemetryCallsBeforeDrag);
+    expect(telemetrySpy.mock.calls.at(-1)?.[0]).toMatchObject({
+      phase: 'dragging',
+      placementState: 'snapped',
+      canCommit: true,
+    });
 
     dispatchPointer(window, 'pointerup', { pointerId: 24, button: 0, clientX: -220, clientY: 50 });
     await act(async () => {
@@ -5324,8 +5329,9 @@ describe('ModelSpaceViewport', () => {
     dispatchPointer(deckHit, 'pointerdown', { pointerId: 24, button: 0, clientX: 50, clientY: 50 });
     dispatchPointer(window, 'pointermove', { pointerId: 24, button: 0, buttons: 1, clientX: 56.1, clientY: 56.1 });
 
-    expect(scroller.dataset.houseFirstDeckSnapState).toBe('floating');
-    expect(rendered.container.querySelector('[data-house-first-snap-target="snapped"]')).not.toBeNull();
+    expect(scroller.dataset.houseFirstDeckPlacementState).toBe('snap-available');
+    expect(scroller.dataset.houseFirstDeckSnapState).toBe('snap-available');
+    expect(rendered.container.querySelector('[data-house-first-snap-target="snap-available"]')).not.toBeNull();
 
     dispatchPointer(window, 'pointerup', { pointerId: 24, button: 0, clientX: 56.1, clientY: 56.1 });
     await act(async () => {
@@ -5394,8 +5400,9 @@ describe('ModelSpaceViewport', () => {
     dispatchPointer(deckHit, 'pointerdown', { pointerId: 124, button: 0, clientX: 50, clientY: 50 });
     dispatchPointer(window, 'pointermove', { pointerId: 124, button: 0, buttons: 1, clientX: 56.1, clientY: 56.1 });
 
-    expect(scroller.dataset.houseFirstDeckSnapState).toBe('floating');
-    expect(rendered.container.querySelector('[data-house-first-snap-target="snapped"]')).not.toBeNull();
+    expect(scroller.dataset.houseFirstDeckPlacementState).toBe('snap-available');
+    expect(scroller.dataset.houseFirstDeckSnapState).toBe('snap-available');
+    expect(rendered.container.querySelector('[data-house-first-snap-target="snap-available"]')).not.toBeNull();
 
     dispatchPointer(window, 'pointerup', { pointerId: 124, button: 0, clientX: 56.1, clientY: 56.1 });
     await act(async () => {

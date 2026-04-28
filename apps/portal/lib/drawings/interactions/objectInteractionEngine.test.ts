@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   OBJECT_DRAG_INTENT_THRESHOLD_PX,
+  buildObjectInteractionViewState,
   createObjectInteractionSession,
   resolveObjectInteractionMove,
   setObjectInteractionPhase,
@@ -16,6 +17,23 @@ describe('objectInteractionEngine', () => {
     });
 
     expect(session.phase).toBe('drag-intent');
+  });
+
+  it('normalizes shared interaction view state defaults', () => {
+    const state = buildObjectInteractionViewState({
+      phase: 'selected',
+      statusLabel: 'Drag deck',
+    });
+
+    expect(state).toMatchObject({
+      phase: 'selected',
+      placementState: 'none',
+      statusLabel: 'Drag deck',
+      statusDetail: null,
+      canCommit: false,
+      highlightTargetId: null,
+      previewAnchor: null,
+    });
   });
 
   it('keeps the session in drag-intent until the threshold is crossed', () => {

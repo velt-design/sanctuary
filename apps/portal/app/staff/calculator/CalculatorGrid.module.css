@@ -3145,6 +3145,11 @@
   stroke: rgba(var(--accentRgb), 0.98);
 }
 
+.moduleHouseFirstSnapTargetAvailable {
+  stroke: rgba(37, 102, 146, 0.86);
+  stroke-dasharray: 0.55 0.4;
+}
+
 .modulePergolaContextHit {
   fill: transparent;
   cursor: pointer;

@@ -1,5 +1,9 @@
 import { resolveDeckPlacementMode, type HouseModel } from '@/lib/drawings/state/houseFirstWorkbenchModel';
-import type { ObjectInteractionPhase } from './objectInteractionEngine';
+import type {
+  ObjectInteractionPhase,
+  ObjectInteractionPlacementState,
+  ObjectInteractionPreviewAnchor,
+} from './objectInteractionEngine';
 
 export type DeckInteractionSelectedType =
   | 'none'
@@ -42,10 +46,15 @@ export type DeckInteractionTelemetry = {
   dragReason: string | null;
   hostEdgeResolvable: boolean;
   relationshipDimensionsAvailable: boolean;
-  snapState: 'idle' | 'floating' | 'snapped';
+  phase: ObjectInteractionPhase;
+  placementState: ObjectInteractionPlacementState;
+  snapState: 'idle' | 'floating' | 'snap-available' | 'snapped' | 'blocked';
   snapMessage: string | null;
   interactionState: DeckInteractionState;
   interactionLabel: string | null;
+  canCommit: boolean;
+  highlightTargetId: string | null;
+  previewAnchor: ObjectInteractionPreviewAnchor | null;
 };
 
 export function resolveDeckSelectedTypeFromShape(input: {
@@ -95,6 +104,27 @@ export function resolveDeckInteractionCapability(input: {
     hostEdgeResolvable: true,
     relationshipDimensionsAvailable: true,
     selectionBadgeLabel: 'Drag deck',
+  };
+}
+
+export function buildDeckInteractionCapabilityFromSelection(input: {
+  custom: boolean;
+  interactionPlacement: 'snapped' | 'floating' | null;
+  dragEligible: boolean;
+  dragReason: string | null;
+  hostEdgeResolvable: boolean;
+  relationshipDimensionsAvailable: boolean;
+}): DeckInteractionCapability {
+  return {
+    selectedDeckType: resolveDeckSelectedTypeFromShape({
+      custom: input.custom,
+      interactionPlacement: input.interactionPlacement,
+    }),
+    dragEligible: input.dragEligible,
+    dragReason: input.dragReason,
+    hostEdgeResolvable: input.hostEdgeResolvable,
+    relationshipDimensionsAvailable: input.relationshipDimensionsAvailable,
+    selectionBadgeLabel: input.dragEligible ? 'Drag deck' : 'Blocked',
   };
 }
 

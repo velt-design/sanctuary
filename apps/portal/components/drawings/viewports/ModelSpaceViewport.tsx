@@ -29,21 +29,26 @@ import {
 } from '@/app/staff/calculator/ModuleViewsCard';
 import type { HouseFootprintHandleId, ModulePlanModel, ModuleSectionModel } from '@/app/staff/calculator/moduleViews';
 import type { PlanViewModel } from '@/lib/drawings/views/plan/buildPlanViewModel';
-import type {
-  DeckInteractionCapability,
-  DeckInteractionTelemetry,
+import {
+  buildDeckInteractionCapabilityFromSelection,
+  type DeckInteractionCapability,
+  type DeckInteractionTelemetry,
 } from '@/lib/drawings/interactions/deckInteractionContract';
 import {
   buildDeckCommitPatch,
   buildDeckDragSession,
   buildDeckInteractionTelemetry,
+  buildDeckInteractionViewState,
   resolveDeckPreviewState,
+  type DeckDragSession,
+  type DeckPreviewState,
 } from '@/lib/drawings/interactions/deckInteractionAdapter';
 import {
   OBJECT_DRAG_INTENT_THRESHOLD_PX,
   resolveObjectInteractionMove,
   setObjectInteractionPhase,
   type ObjectInteractionPhase,
+  type ObjectInteractionViewState,
 } from '@/lib/drawings/interactions/objectInteractionEngine';
 import type {
   DrawingWorkbenchViewportTransform,
@@ -72,6 +77,7 @@ import {
   type PlanPoint,
 } from '@/lib/drawings/views/plan/houseFirstPlanOverlay';
 import { blockNativeSelectionEvent } from './nativeSelection';
+import { buildObjectInteractionHudModel, resolvePreviewHostEdgeState } from './objectInteractionPresenter';
 import styles from './ModelSpaceViewport.module.css';
 import { CLOSE_START_TOLERANCE_M, MIN_OUTLINE_SEGMENT_M, distanceBetweenOutlinePoints } from './drawOutlineToolGeometry';
 import {
@@ -174,39 +180,6 @@ type HouseFirstDimensionEditorState = {
 };
 
 type DeckSvgInteraction = Extract<HouseFirstPlanShapeDragStartMeta, { ownerKind: 'deck' }>['deckInteraction'];
-
-type DeckDragSession = {
-  pointerId: number;
-  startClientX: number;
-  startClientY: number;
-  phase: Exclude<ObjectInteractionPhase, 'idle'>;
-  deckId: string;
-  startSvgX: number;
-  startSvgY: number;
-  startDragPlanPoint: PlanPoint | null;
-  startCenter: PlanPoint;
-  startPolygon: PlanPoint[];
-  startWidthM: number;
-  startDepthM: number;
-  interaction: HouseFirstPlanDeckInteraction;
-  svgInteraction: DeckSvgInteraction;
-};
-
-type DeckPreviewState = {
-  deckId: string;
-  polygon: PlanPoint[];
-  semanticPlacementSide: AttachmentSide | null;
-  semanticWitnessSide: AttachmentSide;
-  placementEdgeId: string | null;
-  witnessEdgeId: string;
-  hostEdgeStart: PlanPoint;
-  hostEdgeEnd: PlanPoint;
-  centerOffsetM: number;
-  referenceEdgeGapM: number;
-  placement: 'snapped' | 'floating';
-  snapEligible: boolean;
-  releasePlacement: 'snapped' | 'floating';
-};
 
 type DeckDragPhase = ObjectInteractionPhase;
 
@@ -2337,6 +2310,12 @@ export default function ModelSpaceViewport({
     }
   }, [deckDragLocked]);
 
+  const handleScrollerLostPointerCapture = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+    if (activeDeckDragPointerIdRef.current !== event.pointerId) return;
+    if (deckDragPhaseRef.current === 'settling') return;
+    resetDeckDragInteraction({ suppressClick: true });
+  }, [resetDeckDragInteraction]);
+
   useEffect(() => {
     const scroller = scrollerRef.current;
     if (!scroller) return;
@@ -3085,31 +3064,6 @@ export default function ModelSpaceViewport({
 
   const houseFirstPlanOverlay =
     view === 'plan' && !drawOutlineViewModel.isActive ? planViewModel?.houseFirst ?? null : null;
-  const houseFirstPreviewOverlay = useMemo(
-    () =>
-      deckPreviewState && deckDragSession
-        ? {
-            ownerId: deckPreviewState.deckId,
-            polygon: deckPreviewState.polygon,
-            hostEdge: {
-              start: deckPreviewState.hostEdgeStart,
-              end: deckPreviewState.hostEdgeEnd,
-              snapped: deckPreviewState.snapEligible,
-            },
-          }
-        : openingPreviewState && openingDragSession
-          ? {
-              ownerId: openingPreviewState.openingId,
-              polygon: openingPreviewState.polygon,
-              hostEdge: {
-                start: openingDragSession.interaction.hostEdgeStart,
-                end: openingDragSession.interaction.hostEdgeEnd,
-                snapped: false,
-              },
-            }
-        : null,
-    [deckDragSession, deckPreviewState, openingDragSession, openingPreviewState],
-  );
   const selectedDeckShape = useMemo(
     () =>
       houseFirstPlanOverlay?.shapes.find(
@@ -3133,6 +3087,7 @@ export default function ModelSpaceViewport({
         : null,
     [deckDragSettleState, houseFirstPlanOverlay],
   );
+  const settledDeckShapeReady = Boolean(settledDeckShape);
   const selectedDeckRelationshipDimensionsAvailable = useMemo(
     () =>
       selectedDeckShape
@@ -3149,29 +3104,20 @@ export default function ModelSpaceViewport({
   const selectedDeckCapability = useMemo<DeckInteractionCapability | null>(
     () =>
       selectedDeckShape
-        ? {
-            selectedDeckType:
-              selectedDeckShape.custom
-                ? 'custom_outline'
-                : selectedDeckShape.deckInteraction
-                  ? selectedDeckShape.deckInteraction.placement === 'snapped'
-                    ? 'preset_snapped'
-                    : 'preset_floating'
-                  : 'preset_unresolved',
+        ? buildDeckInteractionCapabilityFromSelection({
+            custom: selectedDeckShape.custom,
+            interactionPlacement: selectedDeckShape.deckInteraction?.placement ?? null,
             dragEligible: selectedDeckShape.deckDragEligibility?.eligible ?? false,
             dragReason: selectedDeckShape.deckDragEligibility?.reason ?? null,
             hostEdgeResolvable: Boolean(selectedDeckShape.deckInteraction),
             relationshipDimensionsAvailable: selectedDeckRelationshipDimensionsAvailable,
-            selectionBadgeLabel: selectedDeckShape.deckDragEligibility?.eligible ? 'Drag deck' : 'Blocked',
-          }
+          })
         : null,
     [selectedDeckRelationshipDimensionsAvailable, selectedDeckShape],
   );
-  const deckInteractionTelemetry = useMemo(
+  const deckInteractionViewState = useMemo(
     () =>
-      buildDeckInteractionTelemetry({
-        selectedDeckId,
-        housePolygonSource: houseFirstPlanOverlay?.housePolygonSource ?? null,
+      buildDeckInteractionViewState({
         capability: selectedDeckCapability,
         selectedDeckShape: selectedDeckShape
           ? {
@@ -3179,11 +3125,49 @@ export default function ModelSpaceViewport({
               deckInteraction: selectedDeckShape.deckInteraction,
             }
           : null,
-        previewState: deckPreviewState,
         phase: deckDragPhase,
+        previewState: deckPreviewState,
+        dragSession: deckDragSession,
+      }),
+    [deckDragPhase, deckDragSession, deckPreviewState, selectedDeckCapability, selectedDeckShape],
+  );
+  const openingInteractionViewState = useMemo<ObjectInteractionViewState | null>(() => {
+    if (!selectedOpeningShape) return null;
+    const dragEligible = selectedOpeningShape.openingDragEligibility?.eligible ?? false;
+    const dragReason = selectedOpeningShape.openingDragEligibility?.reason ?? null;
+    const isDragging =
+      openingDragSession?.openingId === selectedOpeningShape.ownerId && Boolean(openingPreviewState);
+    return {
+      phase: isDragging ? 'dragging' : 'selected',
+      placementState: dragEligible ? (isDragging ? 'floating' : 'none') : 'blocked',
+      statusLabel: dragEligible ? 'Drag opening' : 'Blocked',
+      statusDetail: dragReason,
+      canCommit: isDragging,
+      highlightTargetId: selectedOpeningShape.openingInteraction?.hostEdgeId ?? null,
+      previewAnchor: null,
+    };
+  }, [openingDragSession, openingPreviewState, selectedOpeningShape]);
+  const deckInteractionHud = useMemo(
+    () => buildObjectInteractionHudModel(deckInteractionViewState),
+    [deckInteractionViewState],
+  );
+  const deckInteractionTelemetry = useMemo(
+    () =>
+      buildDeckInteractionTelemetry({
+        selectedDeckId,
+        housePolygonSource: houseFirstPlanOverlay?.housePolygonSource ?? null,
+        capability: selectedDeckCapability,
+        viewState: deckInteractionViewState,
+        selectedDeckShape: selectedDeckShape
+          ? {
+              custom: selectedDeckShape.custom,
+              deckInteraction: selectedDeckShape.deckInteraction,
+            }
+          : null,
+        previewState: deckPreviewState,
       }),
     [
-      deckDragPhase,
+      deckInteractionViewState,
       deckPreviewState,
       houseFirstPlanOverlay?.housePolygonSource,
       selectedDeckCapability,
@@ -3191,10 +3175,37 @@ export default function ModelSpaceViewport({
       selectedDeckShape,
     ],
   );
-  const showDeckInteractionHud = Boolean(
-    selectedDeckId &&
-      deckInteractionTelemetry.interactionState !== 'idle' &&
-      deckInteractionTelemetry.interactionState !== 'selected',
+  const houseFirstPreviewOverlay = useMemo(
+    () =>
+      deckPreviewState && deckDragSession
+        ? {
+            ownerId: deckPreviewState.deckId,
+            polygon: deckPreviewState.polygon,
+            hostEdge: {
+              start: deckPreviewState.hostEdgeStart,
+              end: deckPreviewState.hostEdgeEnd,
+              state: resolvePreviewHostEdgeState(deckInteractionViewState),
+            },
+          }
+        : openingPreviewState && openingDragSession
+          ? {
+              ownerId: openingPreviewState.openingId,
+              polygon: openingPreviewState.polygon,
+              hostEdge: {
+                start: openingDragSession.interaction.hostEdgeStart,
+                end: openingDragSession.interaction.hostEdgeEnd,
+                state: resolvePreviewHostEdgeState(openingInteractionViewState),
+              },
+            }
+          : null,
+    [
+      deckDragSession,
+      deckInteractionViewState,
+      deckPreviewState,
+      openingDragSession,
+      openingInteractionViewState,
+      openingPreviewState,
+    ],
   );
 
   useEffect(() => {
@@ -3210,7 +3221,7 @@ export default function ModelSpaceViewport({
       finalizeAnimationFrameId = window.requestAnimationFrame(() => {
         if (cancelled) return;
         restoreDeckDragPinnedScrollTargets();
-        const committedGeometryReady = deckDragSettleState.success ? Boolean(settledDeckShape) : true;
+        const committedGeometryReady = deckDragSettleState.success ? settledDeckShapeReady : true;
         const drift = measureDeckDragViewportAnchorDrift();
         if (committedGeometryReady && isDeckDragViewportAnchorStable(drift)) {
           stableFrameCount += 1;
@@ -3252,14 +3263,11 @@ export default function ModelSpaceViewport({
     isDeckDragViewportAnchorStable,
     measureDeckDragViewportAnchorDrift,
     restoreDeckDragPinnedScrollTargets,
-    settledDeckShape,
+    settledDeckShapeReady,
   ]);
 
   useEffect(() => {
     if (!onDeckInteractionTelemetryChange) {
-      return;
-    }
-    if (deckDragLocked) {
       return;
     }
     const signature = [
@@ -3270,6 +3278,13 @@ export default function ModelSpaceViewport({
       deckInteractionTelemetry.dragReason ?? '',
       deckInteractionTelemetry.hostEdgeResolvable ? '1' : '0',
       deckInteractionTelemetry.relationshipDimensionsAvailable ? '1' : '0',
+      deckInteractionTelemetry.phase,
+      deckInteractionTelemetry.placementState,
+      deckInteractionTelemetry.canCommit ? '1' : '0',
+      deckInteractionTelemetry.highlightTargetId ?? '',
+      deckInteractionTelemetry.previewAnchor
+        ? `${deckInteractionTelemetry.previewAnchor.x},${deckInteractionTelemetry.previewAnchor.y}`
+        : '',
       deckInteractionTelemetry.snapState,
       deckInteractionTelemetry.snapMessage ?? '',
       deckInteractionTelemetry.interactionState,
@@ -3281,7 +3296,6 @@ export default function ModelSpaceViewport({
     lastDeckTelemetrySignatureRef.current = signature;
     onDeckInteractionTelemetryChange(deckInteractionTelemetry);
   }, [
-    deckDragLocked,
     deckInteractionTelemetry,
     onDeckInteractionTelemetryChange,
   ]);
@@ -3624,7 +3638,8 @@ export default function ModelSpaceViewport({
         data-model-space-auto-fit-ready={modelSpaceAutoFitReady ? 'true' : 'false'}
         data-house-first-deck-drag-active={deckDragLocked ? 'true' : 'false'}
         data-house-first-deck-drag-locked={deckDragLocked ? 'true' : 'false'}
-        data-house-first-deck-drag-phase={deckDragSession ? deckDragPhase : 'idle'}
+        data-house-first-deck-drag-phase={deckInteractionViewState.phase}
+        data-house-first-deck-placement-state={deckInteractionViewState.placementState}
         data-house-first-deck-snap-state={deckInteractionTelemetry.snapState}
         data-house-first-opening-drag-active={openingDragSession ? 'true' : 'false'}
         data-house-first-selected-deck-id={deckInteractionTelemetry.selectedDeckId ?? ''}
@@ -3650,6 +3665,7 @@ export default function ModelSpaceViewport({
             : ''
         }`}
         onClickCapture={handleScrollerClickCapture}
+        onLostPointerCapture={handleScrollerLostPointerCapture}
         onPointerDownCapture={handleScrollerPointerDownCapture}
         onPointerMove={handleScrollerPointerMove}
         onPointerLeave={handleScrollerPointerLeave}
@@ -3692,20 +3708,20 @@ export default function ModelSpaceViewport({
 
         {interactionError ? <p className={styles.error}>{interactionError}</p> : null}
 
-        {showDeckInteractionHud ? (
+        {deckInteractionHud.visible ? (
           <div
             className={`${styles.drawStatus} ${
-              deckInteractionTelemetry.interactionState === 'blocked'
+              deckInteractionHud.tone === 'blocked'
                 ? styles.interactionStatusBlocked
-                : deckInteractionTelemetry.interactionState === 'snapped'
+                : deckInteractionHud.tone === 'snapped'
                   ? styles.interactionStatusSnapped
                   : styles.interactionStatusReady
             }`}
             aria-label="Deck interaction hint"
           >
-            <span className={styles.drawStatusText}>{deckInteractionTelemetry.interactionLabel}</span>
-            {deckInteractionTelemetry.snapMessage ? (
-              <span className={styles.drawStatusMeta}>{deckInteractionTelemetry.snapMessage}</span>
+            <span className={styles.drawStatusText}>{deckInteractionHud.label}</span>
+            {deckInteractionHud.detail ? (
+              <span className={styles.drawStatusMeta}>{deckInteractionHud.detail}</span>
             ) : null}
           </div>
         ) : null}

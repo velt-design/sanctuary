@@ -141,7 +141,7 @@ type HouseFirstPlanPreviewOverlay = {
   hostEdge: {
     start: PlanPoint;
     end: PlanPoint;
-    snapped: boolean;
+    state: 'preview' | 'snap-available' | 'snapped';
   } | null;
 };
 
@@ -2983,7 +2983,7 @@ function renderHouseFirstPlanOverlay(input: {
   previewShape: {
     ownerId: string;
     points: Point[];
-    hostEdge: { start: Point; end: Point; snapped: boolean } | null;
+    hostEdge: { start: Point; end: Point; state: 'preview' | 'snap-available' | 'snapped' } | null;
   } | null;
   customEdgeCandidates: Array<HouseFirstPlanCustomEdgeCandidate & {
     witnessStart: Point;
@@ -3162,11 +3162,13 @@ function renderHouseFirstPlanOverlay(input: {
               y1={previewShape.hostEdge.start.y}
               x2={previewShape.hostEdge.end.x}
               y2={previewShape.hostEdge.end.y}
-              data-house-first-snap-target={previewShape.hostEdge.snapped ? 'snapped' : 'preview'}
+              data-house-first-snap-target={previewShape.hostEdge.state}
               className={
-                previewShape.hostEdge.snapped
+                previewShape.hostEdge.state === 'snapped'
                   ? `${styles.moduleHouseFirstSnapTarget} ${styles.moduleHouseFirstSnapTargetSnapped}`
-                  : styles.moduleHouseFirstSnapTarget
+                  : previewShape.hostEdge.state === 'snap-available'
+                    ? `${styles.moduleHouseFirstSnapTarget} ${styles.moduleHouseFirstSnapTargetAvailable}`
+                    : styles.moduleHouseFirstSnapTarget
               }
             />
           ) : null}
@@ -4841,7 +4843,7 @@ function PlanSvg({
             ? {
                 start: planHousePointProjector(rawHouseFirstPreviewShape.hostEdge.start),
                 end: planHousePointProjector(rawHouseFirstPreviewShape.hostEdge.end),
-                snapped: rawHouseFirstPreviewShape.hostEdge.snapped,
+                state: rawHouseFirstPreviewShape.hostEdge.state,
               }
             : null,
         }
