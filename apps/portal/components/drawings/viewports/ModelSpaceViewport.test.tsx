@@ -711,6 +711,14 @@ function dispatchWindowKey(key: string): void {
   });
 }
 
+async function flushAnimationFrame(): Promise<void> {
+  await act(async () => {
+    await new Promise<void>((resolve) => {
+      window.setTimeout(() => resolve(), 0);
+    });
+  });
+}
+
 function dispatchDrawClick(svg: SVGSVGElement, init: MouseEventInit & { pointerId?: number }): void {
   const pointerId = init.pointerId ?? 1;
   dispatchPointer(svg, 'pointerdown', { ...init, pointerId, button: init.button ?? 0 });
@@ -3648,9 +3656,8 @@ describe('ModelSpaceViewport', () => {
     await act(async () => {
       await Promise.resolve();
     });
-    await act(async () => {
-      await Promise.resolve();
-    });
+    await flushAnimationFrame();
+    await flushAnimationFrame();
 
     expect(rendered.container.querySelector('[data-testid="deck-center-offset"]')?.textContent).toBe('-1');
     expect(scroller.dataset.houseFirstDeckDragActive).toBe('false');
@@ -3707,6 +3714,7 @@ describe('ModelSpaceViewport', () => {
     await act(async () => {
       await Promise.resolve();
     });
+    await flushAnimationFrame();
 
     expect(rendered.container.querySelector('[data-testid="deck-is-attached"]')?.textContent).toBe('false');
     expect(rendered.container.querySelector('[data-testid="deck-floating-center-along"]')?.textContent).not.toBe('');
@@ -3884,6 +3892,10 @@ describe('ModelSpaceViewport', () => {
 
     expect(rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]')).not.toBeNull();
     expect(rendered.container.querySelector('[data-testid="deck-telemetry-snap"]')?.textContent).toBe('floating');
+    expect(getDrawOutlineDiagnostics(rendered.container).houseFirstDeckDragLocked).toBe('true');
+
+    clickButtonByText(rendered.container, '+');
+    expect(getViewportTransformSnapshot(rendered.container)).toEqual(initialTransform);
 
     dispatchWheel(scroller, { deltaY: -480, clientX: 50, clientY: 20 });
     dispatchGesture(scroller, 'gesturestart', { clientX: 50, clientY: 20, scale: 1.1 });
@@ -3898,8 +3910,10 @@ describe('ModelSpaceViewport', () => {
     await act(async () => {
       await Promise.resolve();
     });
+    await flushAnimationFrame();
 
     expect(getViewportTransformSnapshot(rendered.container)).toEqual(initialTransform);
+    expect(getDrawOutlineDiagnostics(rendered.container).houseFirstDeckDragLocked).toBe('false');
     rendered.unmount();
   });
 
@@ -3951,18 +3965,24 @@ describe('ModelSpaceViewport', () => {
     expect(rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]')).not.toBeNull();
     expect(getViewportTransformSnapshot(rendered.container)).toEqual(initialTransform);
     expect(rendered.container.querySelector('[data-testid="flush-deck-commit"]')).not.toBeNull();
+    expect(getDrawOutlineDiagnostics(rendered.container).houseFirstDeckDragLocked).toBe('true');
 
     const flushButton = rendered.container.querySelector('[data-testid="flush-deck-commit"]');
     if (!(flushButton instanceof HTMLButtonElement)) throw new Error('Missing flush deck commit button.');
-    act(() => {
-      flushButton.click();
-    });
     await act(async () => {
+      flushButton.click();
       await Promise.resolve();
     });
 
+    expect(rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]')).not.toBeNull();
+    expect(getDrawOutlineDiagnostics(rendered.container).houseFirstDeckDragLocked).toBe('true');
+    expect(getViewportTransformSnapshot(rendered.container)).toEqual(initialTransform);
+
+    await flushAnimationFrame();
+    await flushAnimationFrame();
     expect(rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]')).toBeNull();
     expect(getViewportTransformSnapshot(rendered.container)).toEqual(initialTransform);
+    expect(getDrawOutlineDiagnostics(rendered.container).houseFirstDeckDragLocked).toBe('false');
     rendered.unmount();
   });
 
@@ -4286,9 +4306,7 @@ describe('ModelSpaceViewport', () => {
     await act(async () => {
       await Promise.resolve();
     });
-    await act(async () => {
-      await Promise.resolve();
-    });
+    await flushAnimationFrame();
 
     expect(scroller.dataset.houseFirstDeckDragActive).toBe('false');
     expect(rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]')).toBeNull();

@@ -248,6 +248,15 @@
   color: rgba(var(--portal-text-rgb), 0.84);
 }
 
+.scroller[data-house-first-deck-drag-locked="true"] .canvasControls,
+.scroller[data-house-first-deck-drag-locked="true"] .drawRedrawBar,
+.scroller[data-house-first-deck-drag-locked="true"] .deckInteractionHint {
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
 .drawPopover {
   position: absolute;
   top: 66px;
