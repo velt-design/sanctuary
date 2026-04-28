@@ -1,7 +1,6 @@
 'use client';
 
 import { useCallback, useMemo, useState } from 'react';
-import type { DrawingWorkbenchRailTab } from '@/lib/drawings/state/drawingWorkbenchUiState';
 import { buildHouseRailDeckSections } from './houseRailDeckSections';
 import { buildHouseRailFootprintSections } from './houseRailFootprintSections';
 import { buildHouseRailOpeningSections } from './houseRailOpeningSections';
@@ -16,45 +15,40 @@ import type {
 } from './houseRailTypes';
 import styles from './ConfiguratorRail.module.css';
 
-const RAIL_TABS: Array<{ id: DrawingWorkbenchRailTab; label: string }> = [
-  { id: 'house_forms', label: 'House Forms' },
-  { id: 'pergolas', label: 'Pergolas' },
-  { id: 'decks', label: 'Decks' },
-  { id: 'openings', label: 'Openings' },
-  { id: 'diagnostics', label: 'Diagnostics' },
-];
-
 export default function HouseFirstWorkbenchRail({
-  house,
-  pergolas,
-  warnings,
+  model,
   disabled,
   activeRailTab,
   activeObjectRef,
-  activeDeckId,
-  activeOpeningId,
-  canEditFootprint,
-  canStartDrawOutline,
   visibility,
   onSelectRailTab,
+  onSelectObjectRef,
   onVisibilityChange,
-  onStartDrawOutline,
-  onCommitFootprintEdit,
-  onCommitRoofDraft,
-  onSelectDeck,
-  onSelectOpening,
-  onAddDeck,
-  onAddOpening,
-  onRemoveDeck,
-  onRemoveOpening,
-  onCommitDeckPatch,
-  onCommitOpeningPatch,
-  onStartDeckOutline,
-  houseContextPanel,
-  pergolaInspectorPanel,
-  diagnosticsPanel,
+  compatibilityInspectorState,
 }: HouseFirstWorkbenchRailProps) {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const {
+    house,
+    pergolas,
+    warnings,
+    activeDeckId,
+    activeOpeningId,
+    canEditFootprint,
+    canStartDrawOutline,
+    onStartDrawOutline,
+    onCommitFootprintEdit,
+    onCommitRoofDraft,
+    onAddDeck,
+    onAddOpening,
+    onRemoveDeck,
+    onRemoveOpening,
+    onCommitDeckPatch,
+    onCommitOpeningPatch,
+    onStartDeckOutline,
+    houseContextPanel,
+    pergolaInspectorPanel,
+    diagnosticsPanel,
+  } = compatibilityInspectorState;
 
   const runFootprintCommit = useCallback<RunFootprintCommit>(
     async (fieldId, edit) => {
@@ -150,7 +144,6 @@ export default function HouseFirstWorkbenchRail({
         onAddDeck,
         onCommitDeckPatch,
         onRemoveDeck,
-        onSelectDeck,
         onStartDeckOutline,
         runDeckAction,
       }),
@@ -162,7 +155,6 @@ export default function HouseFirstWorkbenchRail({
       onAddDeck,
       onCommitDeckPatch,
       onRemoveDeck,
-      onSelectDeck,
       onStartDeckOutline,
       runDeckAction,
     ],
@@ -178,7 +170,6 @@ export default function HouseFirstWorkbenchRail({
         onAddOpening,
         onCommitOpeningPatch,
         onRemoveOpening,
-        onSelectOpening,
         runDeckAction,
       }),
     [
@@ -189,10 +180,74 @@ export default function HouseFirstWorkbenchRail({
       onAddOpening,
       onCommitOpeningPatch,
       onRemoveOpening,
-      onSelectOpening,
       runDeckAction,
     ],
   );
+
+  const activeFamily =
+    activeRailTab === 'diagnostics' ? model.selectedInspector.family : activeRailTab;
+  const activeObjectEntries = model.objectLists[activeFamily];
+  const activeObjectKey = `${activeFamily}:${activeObjectRef.objectId ?? 'none'}`;
+
+  const inspectorPanel =
+    activeRailTab === 'diagnostics' ? (
+      diagnosticsPanel
+    ) : (
+      <div data-active-workbench-object={activeObjectKey}>
+        {activeFamily === 'house_forms' ? (
+          model.selectedInspector.hasSelection ? (
+            <>
+              {overviewSection}
+
+              <section className={styles.section}>
+                <h4 className={styles.sectionTitle}>Footprint</h4>
+                <div className={styles.sectionBody}>{footprintSections}</div>
+              </section>
+
+              <section className={styles.section}>
+                <h4 className={styles.sectionTitle}>Roof</h4>
+                <div className={styles.sectionBody}>{roofSections}</div>
+              </section>
+
+              {houseContextPanel ? (
+                <section className={styles.section}>
+                  <h4 className={styles.sectionTitle}>Attachment Context</h4>
+                  <div className={styles.sectionBody}>{houseContextPanel}</div>
+                </section>
+              ) : null}
+            </>
+          ) : (
+            <section className={styles.section}>
+              <h4 className={styles.sectionTitle}>{model.selectedInspector.emptyTitle}</h4>
+              <div className={styles.sectionBody}>
+                <p className={styles.empty}>{model.selectedInspector.emptyMessage}</p>
+              </div>
+            </section>
+          )
+        ) : activeFamily === 'pergolas' ? (
+          model.selectedInspector.hasSelection ? (
+            pergolaInspectorPanel
+          ) : (
+            <section className={styles.section}>
+              <h4 className={styles.sectionTitle}>{model.selectedInspector.emptyTitle}</h4>
+              <div className={styles.sectionBody}>
+                <p className={styles.empty}>{model.selectedInspector.emptyMessage}</p>
+              </div>
+            </section>
+          )
+        ) : activeFamily === 'decks' ? (
+          <section className={styles.section}>
+            <h4 className={styles.sectionTitle}>Deck Inspector</h4>
+            <div className={styles.sectionBody}>{deckSections}</div>
+          </section>
+        ) : (
+          <section className={styles.section}>
+            <h4 className={styles.sectionTitle}>Opening Inspector</h4>
+            <div className={styles.sectionBody}>{openingSections}</div>
+          </section>
+        )}
+      </div>
+    );
 
   return (
     <div className={styles.rail}>
@@ -227,70 +282,95 @@ export default function HouseFirstWorkbenchRail({
       </section>
 
       <section className={styles.section}>
-        <h4 className={styles.sectionTitle}>Editor</h4>
-        <div className={styles.fieldStack} role="tablist" aria-label="Workbench editor tabs">
-          {RAIL_TABS.map((tab) => {
-            const active = activeRailTab === tab.id;
+        <h4 className={styles.sectionTitle}>Object Navigator</h4>
+        <div className={styles.navigatorStack} role="tablist" aria-label="Workbench object families">
+          {model.familySummaries.map((family) => {
+            const active = activeRailTab === family.family;
             return (
               <button
-                key={tab.id}
+                key={family.family}
                 type="button"
                 role="tab"
                 aria-selected={active}
-                className={active ? styles.buttonPrimary : styles.secondaryButton}
-                onClick={() => onSelectRailTab?.(tab.id)}
+                className={`${active ? styles.buttonPrimary : styles.secondaryButton} ${styles.navigatorButton}`}
+                onClick={() => onSelectRailTab?.(family.family)}
               >
-                {tab.label}
+                <span className={styles.navigatorLabel}>{family.label}</span>
+                <span className={styles.navigatorMeta}>{family.countLabel}</span>
               </button>
             );
           })}
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeRailTab === 'diagnostics'}
+            className={`${activeRailTab === 'diagnostics' ? styles.buttonPrimary : styles.secondaryButton} ${styles.navigatorButton}`}
+            onClick={() => onSelectRailTab?.('diagnostics')}
+          >
+            <span className={styles.navigatorLabel}>Diagnostics</span>
+            <span className={styles.navigatorMeta}>Compatibility checks</span>
+          </button>
         </div>
       </section>
 
-      {activeRailTab === 'house_forms' ? (
-        <>
-          {overviewSection}
-
-          <section className={styles.section}>
-            <h4 className={styles.sectionTitle}>Footprint</h4>
-            <div className={styles.sectionBody}>{footprintSections}</div>
-          </section>
-
-          <section className={styles.section}>
-            <h4 className={styles.sectionTitle}>Roof</h4>
-            <div className={styles.sectionBody}>{roofSections}</div>
-          </section>
-
-          {houseContextPanel ? (
-            <section className={styles.section}>
-              <h4 className={styles.sectionTitle}>Attachment Context</h4>
-              <div className={styles.sectionBody}>{houseContextPanel}</div>
-            </section>
-          ) : null}
-        </>
-      ) : null}
-
-      {activeRailTab === 'pergolas' ? (
-        <div data-active-workbench-object={`${activeObjectRef.family}:${activeObjectRef.objectId ?? 'none'}`}>
-          {pergolaInspectorPanel}
-        </div>
-      ) : null}
-
-      {activeRailTab === 'decks' ? (
+      {activeRailTab !== 'diagnostics' ? (
         <section className={styles.section}>
-          <h4 className={styles.sectionTitle}>Decks</h4>
-          <div className={styles.sectionBody}>{deckSections}</div>
+          <h4 className={styles.sectionTitle}>{model.selectedInspector.familyLabel}</h4>
+          <div className={styles.sectionBody}>
+            {activeObjectEntries.length ? (
+              <div className={styles.objectList}>
+                {activeObjectEntries.map((entry) => {
+                  const selected =
+                    activeObjectRef.family === entry.ref.family && activeObjectRef.objectId === entry.ref.objectId;
+                  return (
+                    <button
+                      key={`${entry.ref.family}:${entry.ref.objectId ?? 'none'}`}
+                      type="button"
+                      data-workbench-object-button={`${entry.ref.family}:${entry.ref.objectId ?? 'none'}`}
+                      className={`${selected ? styles.buttonPrimary : styles.secondaryButton} ${styles.objectButton}`}
+                      onClick={() => onSelectObjectRef?.(entry.ref)}
+                    >
+                      <span className={styles.objectButtonLabel}>{entry.label}</span>
+                      <span className={styles.objectButtonMeta}>
+                        {entry.statusLabel}
+                        {entry.meta ? ` • ${entry.meta}` : ''}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className={styles.empty}>{model.selectedInspector.emptyMessage}</p>
+            )}
+            {model.selectedInspector.addActionLabels.length ? (
+              <p className={styles.fieldHint}>
+                Available actions: {model.selectedInspector.addActionLabels.join(', ')}.
+              </p>
+            ) : null}
+          </div>
         </section>
       ) : null}
 
-      {activeRailTab === 'openings' ? (
+      {activeRailTab !== 'diagnostics' && model.selectedInspector.hasSelection ? (
         <section className={styles.section}>
-          <h4 className={styles.sectionTitle}>Openings</h4>
-          <div className={styles.sectionBody}>{openingSections}</div>
+          <h4 className={styles.sectionTitle}>Selected Object</h4>
+          <div className={styles.sectionBody}>
+            <div className={styles.inlineMeta}>
+              <span className={styles.inlineLabel}>{model.selectedInspector.singularLabel}</span>
+              <span className={styles.inlineValue}>{model.selectedInspector.selectedObjectLabel}</span>
+            </div>
+            {model.selectedInspector.selectedObjectStatusLabel || model.selectedInspector.selectedObjectMeta ? (
+              <p className={styles.fieldHint}>
+                {[model.selectedInspector.selectedObjectStatusLabel, model.selectedInspector.selectedObjectMeta]
+                  .filter(Boolean)
+                  .join(' • ')}
+              </p>
+            ) : null}
+          </div>
         </section>
       ) : null}
 
-      {activeRailTab === 'diagnostics' ? diagnosticsPanel : null}
+      {inspectorPanel}
     </div>
   );
 }

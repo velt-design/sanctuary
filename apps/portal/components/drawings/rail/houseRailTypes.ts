@@ -4,6 +4,7 @@ import type {
   DrawingWorkbenchRailTab,
   DrawingWorkbenchVisibilityState,
 } from '@/lib/drawings/state/drawingWorkbenchUiState';
+import type { DrawingWorkbenchRailModel } from '@/lib/drawings/state/drawingWorkbenchRailModel';
 import type {
   HouseFirstDeckDraft,
   HouseFirstMigrationWarning,
@@ -17,25 +18,17 @@ import type { WorkbenchObjectRef } from '@/lib/drawings/state/objectFirstWorkben
 
 export type CommitResult = { ok: boolean; error?: string };
 
-export type HouseFirstWorkbenchRailProps = {
+export type HouseFirstWorkbenchRailCompatibilityInspectorState = {
   house: HouseModel | null;
   pergolas: PergolaModel[];
   warnings: HouseFirstMigrationWarning[];
-  disabled?: boolean;
-  activeRailTab: DrawingWorkbenchRailTab;
-  activeObjectRef: WorkbenchObjectRef;
   activeDeckId?: string | null;
   activeOpeningId?: string | null;
   canEditFootprint?: boolean;
   canStartDrawOutline?: boolean;
-  visibility: DrawingWorkbenchVisibilityState;
-  onSelectRailTab?: (tab: DrawingWorkbenchRailTab) => void;
-  onVisibilityChange?: (family: keyof DrawingWorkbenchVisibilityState, visible: boolean) => void;
   onStartDrawOutline?: () => Promise<CommitResult> | CommitResult;
   onCommitFootprintEdit?: (edit: EstimateDrawingFootprintEdit) => Promise<CommitResult> | CommitResult;
   onCommitRoofDraft?: (roof: HouseFirstRoofDraft) => Promise<CommitResult> | CommitResult;
-  onSelectDeck?: (deckId: string | null) => void;
-  onSelectOpening?: (openingId: string | null) => void;
   onAddDeck?: (mode: 'preset' | 'custom_outline') => Promise<CommitResult> | CommitResult;
   onAddOpening?: (
     kind: Extract<WallOpeningKind, 'window' | 'hinged_door' | 'slider' | 'stacker'>,
@@ -54,6 +47,18 @@ export type HouseFirstWorkbenchRailProps = {
   houseContextPanel?: ReactNode;
   pergolaInspectorPanel: ReactNode;
   diagnosticsPanel: ReactNode;
+};
+
+export type HouseFirstWorkbenchRailProps = {
+  model: DrawingWorkbenchRailModel;
+  disabled?: boolean;
+  activeRailTab: DrawingWorkbenchRailTab;
+  activeObjectRef: WorkbenchObjectRef;
+  visibility: DrawingWorkbenchVisibilityState;
+  onSelectRailTab?: (tab: DrawingWorkbenchRailTab) => void;
+  onSelectObjectRef?: (ref: WorkbenchObjectRef) => void;
+  onVisibilityChange?: (family: keyof DrawingWorkbenchVisibilityState, visible: boolean) => void;
+  compatibilityInspectorState: HouseFirstWorkbenchRailCompatibilityInspectorState;
 };
 
 export type FieldErrors = Record<string, string>;

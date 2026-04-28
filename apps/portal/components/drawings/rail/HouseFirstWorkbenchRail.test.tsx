@@ -1,96 +1,122 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { getSanctuaryGeometryWorkbenchFixture } from '@/lib/drawings/sanctuaryWorkbenchFixtures';
+import { buildEstimateDrawingDraftFromSnapshot, type EstimateDrawingDraft } from '@/lib/estimates/drawingEdits';
 import { buildDrawingWorkbenchStore } from '@/lib/drawings/state/drawingWorkbenchStore';
-import { createDrawingWorkbenchUiState } from '@/lib/drawings/state/drawingWorkbenchUiState';
+import { createDrawingWorkbenchUiState, type DrawingWorkbenchRailTab } from '@/lib/drawings/state/drawingWorkbenchUiState';
+import type { WorkbenchObjectRef } from '@/lib/drawings/state/objectFirstWorkbenchModel';
 import HouseFirstWorkbenchRail from './HouseFirstWorkbenchRail';
 
-function buildRailState(fixtureSlug: 'mono-standard' | 'box-standard' = 'mono-standard') {
-  const fixture = getSanctuaryGeometryWorkbenchFixture(fixtureSlug);
+function buildRailProps(input?: {
+  fixtureSlug?: 'mono-standard' | 'box-standard';
+  draft?: EstimateDrawingDraft | null;
+  activeRailTab?: DrawingWorkbenchRailTab;
+  activeObjectRef?: WorkbenchObjectRef;
+}) {
+  const fixture = getSanctuaryGeometryWorkbenchFixture(input?.fixtureSlug ?? 'mono-standard');
   if (!fixture) throw new Error('Expected Sanctuary fixture.');
+
+  const bootstrapStore = buildDrawingWorkbenchStore({
+    snapshot: fixture.snapshot,
+    draft: input?.draft ?? null,
+    ui: createDrawingWorkbenchUiState({ workbenchMode: 'house' }),
+  });
+  const activeRailTab = input?.activeRailTab ?? 'house_forms';
+  const defaultHouseRef: WorkbenchObjectRef = {
+    family: 'house_forms',
+    objectId: bootstrapStore.derived.house?.id ?? null,
+  };
+  const defaultPergolaRef: WorkbenchObjectRef = {
+    family: 'pergolas',
+    objectId: bootstrapStore.derived.pergolas[0]?.id ?? null,
+  };
+  const activeObjectRef =
+    input?.activeObjectRef ??
+    (activeRailTab === 'pergolas'
+      ? defaultPergolaRef
+      : activeRailTab === 'decks'
+        ? { family: 'decks', objectId: bootstrapStore.derived.decks[0]?.id ?? null }
+        : activeRailTab === 'openings'
+          ? { family: 'openings', objectId: bootstrapStore.derived.openings[0]?.id ?? null }
+          : defaultHouseRef);
+
   const store = buildDrawingWorkbenchStore({
     snapshot: fixture.snapshot,
-    draft: null,
-    ui: createDrawingWorkbenchUiState({ workbenchMode: 'house' }),
+    draft: input?.draft ?? null,
+    ui: createDrawingWorkbenchUiState({
+      workbenchMode: activeObjectRef.family === 'pergolas' ? 'pergolas' : 'house',
+      activeRailTab,
+      activeObjectFamily: activeObjectRef.family,
+      activeObjectRef,
+      activePergolaId: activeObjectRef.family === 'pergolas' ? activeObjectRef.objectId : null,
+      activeHouseSelection:
+        activeObjectRef.family === 'decks'
+          ? { kind: 'deck', targetId: activeObjectRef.objectId }
+          : activeObjectRef.family === 'openings'
+            ? { kind: 'opening', targetId: activeObjectRef.objectId }
+            : { kind: 'house', targetId: null },
+    }),
   });
 
   return {
-    house: store.derived.house,
-    pergolas: store.derived.pergolas,
-    warnings: store.derived.migrationWarnings,
-    visibility: store.ui.visibility,
+    model: store.derived.railModel,
+    disabled: false,
+    activeRailTab: store.ui.activeRailTab,
     activeObjectRef: store.ui.activeObjectRef,
+    visibility: store.ui.visibility,
+    compatibilityInspectorState: {
+      house: store.derived.house,
+      activeDeckId: store.derived.activeDeckId,
+      activeOpeningId: store.derived.activeOpeningId,
+      pergolas: store.derived.pergolas,
+      warnings: store.derived.migrationWarnings,
+      canEditFootprint: true,
+      canStartDrawOutline: true,
+      onStartDrawOutline: () => ({ ok: true }),
+      onCommitFootprintEdit: () => ({ ok: true }),
+      onCommitRoofDraft: () => ({ ok: true }),
+      onAddDeck: () => ({ ok: true }),
+      onAddOpening: () => ({ ok: true }),
+      onRemoveDeck: () => ({ ok: true }),
+      onRemoveOpening: () => ({ ok: true }),
+      onCommitDeckPatch: () => ({ ok: true }),
+      onCommitOpeningPatch: () => ({ ok: true }),
+      onStartDeckOutline: () => ({ ok: true }),
+      houseContextPanel: <div>Attachment context extras</div>,
+      pergolaInspectorPanel: <div>Native pergola inspector</div>,
+      diagnosticsPanel: <section>Migration diagnostics</section>,
+    },
   };
 }
 
 describe('HouseFirstWorkbenchRail', () => {
-  it('renders the canonical rail tabs with house-forms content by default', () => {
-    const { house, pergolas, warnings, visibility, activeObjectRef } = buildRailState();
-    const markup = renderToStaticMarkup(
-      <HouseFirstWorkbenchRail
-        house={house}
-        pergolas={pergolas}
-        warnings={warnings}
-        visibility={visibility}
-        activeRailTab="house_forms"
-        activeObjectRef={activeObjectRef}
-        canEditFootprint
-        canStartDrawOutline
-        onStartDrawOutline={() => ({ ok: true })}
-        onCommitFootprintEdit={() => ({ ok: true })}
-        onCommitRoofDraft={() => ({ ok: true })}
-        onSelectDeck={() => undefined}
-        onSelectOpening={() => undefined}
-        onAddDeck={() => ({ ok: true })}
-        onAddOpening={() => ({ ok: true })}
-        onRemoveDeck={() => ({ ok: true })}
-        onRemoveOpening={() => ({ ok: true })}
-        onCommitDeckPatch={() => ({ ok: true })}
-        onCommitOpeningPatch={() => ({ ok: true })}
-        onStartDeckOutline={() => ({ ok: true })}
-        houseContextPanel={<div>Attachment context extras</div>}
-        pergolaInspectorPanel={<div>Native pergola inspector</div>}
-        diagnosticsPanel={<section>Migration diagnostics</section>}
-      />,
-    );
+  it('renders the canonical family navigator and selected house-form inspector by default', () => {
+    const markup = renderToStaticMarkup(<HouseFirstWorkbenchRail {...buildRailProps()} />);
 
+    expect(markup).toContain('Object Navigator');
     expect(markup).toContain('House Forms');
-    expect(markup).toContain('Diagnostics');
-    expect(markup).toContain('House Configurator');
-    expect(markup).toContain('Footprint');
-    expect(markup).toContain('Roof');
-    expect(markup).toContain('Approximate');
-    expect(markup).toContain('Review Basis');
-    expect(markup).toContain('Roof geometry');
-    expect(markup).toContain('Roof form basis');
-    expect(markup).toContain('Appendage supported edges');
     expect(markup).toContain('Decks');
     expect(markup).toContain('Openings');
-    expect(markup).toContain('Visibility');
     expect(markup).toContain('Pergolas');
-    expect(markup).toContain('Shown');
+    expect(markup).toContain('Diagnostics');
+    expect(markup).toContain('House Form Inspector');
+    expect(markup).toContain('Footprint');
+    expect(markup).toContain('Roof');
+    expect(markup).toContain('Review Basis');
     expect(markup).toContain('Attachment Context');
     expect(markup).toContain('Attachment context extras');
-    expect(markup).not.toContain('Add deck');
-    expect(markup).not.toContain('Add window');
+    expect(markup).toContain('Selected Object');
+    expect(markup).toContain('Visibility');
+    expect(markup).not.toContain('House Configurator');
   });
 
-  it('renders the native pergola inspector inside the canonical Pergolas tab', () => {
-    const { house, pergolas, warnings, visibility, activeObjectRef } = buildRailState();
+  it('renders the native pergola inspector inside the canonical Pergolas family', () => {
     const markup = renderToStaticMarkup(
-      <HouseFirstWorkbenchRail
-        house={house}
-        pergolas={pergolas}
-        warnings={warnings}
-        visibility={visibility}
-        activeRailTab="pergolas"
-        activeObjectRef={activeObjectRef}
-        pergolaInspectorPanel={<div>Native pergola inspector</div>}
-        diagnosticsPanel={<section>Migration diagnostics</section>}
-      />,
+      <HouseFirstWorkbenchRail {...buildRailProps({ activeRailTab: 'pergolas' })} />,
     );
 
     expect(markup).toContain('Native pergola inspector');
+    expect(markup).toContain('data-workbench-object-button="pergolas:pergola-1"');
     expect(markup).not.toContain('Add deck');
     expect(markup).not.toContain('Add window');
     expect(markup).not.toContain('Add door');
@@ -99,44 +125,32 @@ describe('HouseFirstWorkbenchRail', () => {
   });
 
   it('keeps the opening type editable for hinged doors without deferred family copy', () => {
-    const { house, pergolas, warnings, visibility, activeObjectRef } = buildRailState();
-    if (!house) throw new Error('Expected shared house.');
+    const fixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
+    if (!fixture) throw new Error('Expected Sanctuary fixture.');
+    const draft = buildEstimateDrawingDraftFromSnapshot(fixture.snapshot);
+    if (!draft) throw new Error('Expected drawing draft.');
+    draft.houseFirst = {
+      openings: [
+        {
+          id: 'opening-door-1',
+          label: 'Rear door',
+          kind: 'hinged_door',
+          wallId: 'rear',
+          widthM: '0.9',
+          heightM: '2.1',
+          sillHeightM: '0',
+          offsetAlongWallM: '0.6',
+        },
+      ],
+    };
+
     const markup = renderToStaticMarkup(
       <HouseFirstWorkbenchRail
-        house={{
-          ...house,
-          openings: [
-            {
-              id: 'opening-door-1',
-              label: 'Rear door',
-              kind: 'hinged_door',
-              panelCount: null,
-              wallId: 'rear',
-              hostEdgeId: 'footprint-edge-3',
-              widthM: '0.9',
-              heightM: '2.1',
-              sillHeightM: '0',
-              offsetAlongWallM: '0.6',
-              validation: {
-                status: 'valid',
-                codes: [],
-                message: null,
-              },
-            },
-          ],
-        }}
-        pergolas={pergolas}
-        warnings={warnings}
-        visibility={visibility}
-        activeRailTab="openings"
-        activeObjectRef={activeObjectRef}
-        activeOpeningId="opening-door-1"
-        onAddOpening={() => ({ ok: true })}
-        onRemoveOpening={() => ({ ok: true })}
-        onCommitOpeningPatch={() => ({ ok: true })}
-        onSelectOpening={() => undefined}
-        pergolaInspectorPanel={<div>Native pergola inspector</div>}
-        diagnosticsPanel={<section>Migration diagnostics</section>}
+        {...buildRailProps({
+          draft,
+          activeRailTab: 'openings',
+          activeObjectRef: { family: 'openings', objectId: 'opening-door-1' },
+        })}
       />,
     );
 
@@ -144,34 +158,9 @@ describe('HouseFirstWorkbenchRail', () => {
     expect(markup).not.toContain('Family-specific editing for this opening is deferred in this slice.');
   });
 
-  it('shows legacy flat roofs as view-only in the house-mode roof section', () => {
-    const { house, pergolas, warnings, visibility, activeObjectRef } = buildRailState('box-standard');
+  it('shows legacy flat roofs as view-only in the house-form roof section', () => {
     const markup = renderToStaticMarkup(
-      <HouseFirstWorkbenchRail
-        house={house}
-        pergolas={pergolas}
-        warnings={warnings}
-        visibility={visibility}
-        activeRailTab="house_forms"
-        activeObjectRef={activeObjectRef}
-        canEditFootprint
-        canStartDrawOutline
-        onStartDrawOutline={() => ({ ok: true })}
-        onCommitFootprintEdit={() => ({ ok: true })}
-        onCommitRoofDraft={() => ({ ok: true })}
-        onSelectDeck={() => undefined}
-        onSelectOpening={() => undefined}
-        onAddDeck={() => ({ ok: true })}
-        onAddOpening={() => ({ ok: true })}
-        onRemoveDeck={() => ({ ok: true })}
-        onRemoveOpening={() => ({ ok: true })}
-        onCommitDeckPatch={() => ({ ok: true })}
-        onCommitOpeningPatch={() => ({ ok: true })}
-        onStartDeckOutline={() => ({ ok: true })}
-        houseContextPanel={<div>Attachment context extras</div>}
-        pergolaInspectorPanel={<div>Native pergola inspector</div>}
-        diagnosticsPanel={<section>Migration diagnostics</section>}
-      />,
+      <HouseFirstWorkbenchRail {...buildRailProps({ fixtureSlug: 'box-standard' })} />,
     );
 
     expect(markup).toContain('Current roof family');

@@ -36,7 +36,6 @@ type BuildHouseRailOpeningSectionsInput = {
     patch: Partial<HouseFirstOpeningDraft>,
   ) => Promise<CommitResult> | CommitResult;
   onRemoveOpening?: (openingId: string) => Promise<CommitResult> | CommitResult;
-  onSelectOpening?: (openingId: string | null) => void;
   runDeckAction: RunAction;
 };
 
@@ -48,11 +47,10 @@ export function buildHouseRailOpeningSections({
   onAddOpening,
   onCommitOpeningPatch,
   onRemoveOpening,
-  onSelectOpening,
   runDeckAction,
 }: BuildHouseRailOpeningSectionsInput): ReactNode[] {
   const activeOpening =
-    house?.openings.find((opening) => opening.id === activeOpeningId) ?? house?.openings[0] ?? null;
+    activeOpeningId ? house?.openings.find((opening) => opening.id === activeOpeningId) ?? null : null;
   const openingValidationSummary = activeOpening?.validation.message ?? null;
   const sections: ReactNode[] = [
     <div key="opening-actions" className={styles.buttonRow}>
@@ -106,7 +104,7 @@ export function buildHouseRailOpeningSections({
   if (!activeOpening) {
     sections.push(
       <p key="opening-empty" className={styles.empty}>
-        Add a shared opening to start editing host-wall openings in house mode.
+        Select an opening from the object list, or add one to start editing hosted wall objects.
       </p>,
     );
     return sections;
@@ -122,19 +120,6 @@ export function buildHouseRailOpeningSections({
           : 'Window';
 
   sections.push(
-    <div key="opening-list" className={styles.buttonRow}>
-      {house?.openings.map((opening) => (
-        <button
-          key={opening.id}
-          type="button"
-          className={opening.id === activeOpening.id ? styles.buttonPrimary : styles.overlayButton}
-          disabled={disabled}
-          onClick={() => onSelectOpening?.(opening.id)}
-        >
-          {opening.label}
-        </button>
-      ))}
-    </div>,
     <p key="opening-selection-hint" className={styles.fieldHint}>
       Selected openings show width and along-wall offset dimensions in Model Space plan. Drag the selected opening body there to reposition it along the host wall. Height and base height stay editable in the rail for this slice.
     </p>,

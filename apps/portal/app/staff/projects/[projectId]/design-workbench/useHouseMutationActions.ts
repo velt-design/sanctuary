@@ -391,13 +391,16 @@ export function useHouseMutationActions({
                 : selection.kind === 'opening'
                   ? 'openings'
                   : 'house_forms',
-            objectId: selection.kind === 'deck' || selection.kind === 'opening' ? selection.targetId ?? null : null,
+            objectId:
+              selection.kind === 'deck' || selection.kind === 'opening'
+                ? selection.targetId ?? null
+                : store.derived.house?.id ?? null,
           },
           activeHouseSelection: selection,
         }),
       }));
     },
-    [setUi],
+    [setUi, store.derived.house?.id],
   );
 
   const clearSelectedHouseTarget = useCallback(
@@ -413,7 +416,9 @@ export function useHouseMutationActions({
                 objectId: null,
               },
               activeHouseSelection:
-                current.activeObjectFamily === 'house_forms'
+                current.activeObjectFamily === 'house_forms' ||
+                current.activeObjectFamily === 'decks' ||
+                current.activeObjectFamily === 'openings'
                   ? { kind: 'house', targetId: null }
                   : current.activeHouseSelection,
               activePergolaId: current.activePergolaId,

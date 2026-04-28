@@ -87,6 +87,33 @@
   gap: 10px;
 }
 
+.navigatorStack,
+.objectList {
+  display: grid;
+  gap: 8px;
+}
+
+.navigatorButton,
+.objectButton {
+  display: grid;
+  gap: 2px;
+  text-align: left;
+}
+
+.navigatorLabel,
+.objectButtonLabel {
+  font-size: 12px;
+  font-weight: 700;
+  color: rgba(var(--portal-text-rgb), 0.92);
+}
+
+.navigatorMeta,
+.objectButtonMeta {
+  font-size: 11px;
+  line-height: 1.4;
+  color: rgba(var(--portal-text-rgb), 0.62);
+}
+
 .summaryList {
   display: grid;
   gap: 8px;

@@ -21,9 +21,9 @@ export function buildHouseRailOverviewSection({
 }: BuildHouseRailOverviewSectionInput) {
   return (
     <SummarySection
-      title="House Configurator"
+      title="House Form Inspector"
       items={[
-        { label: 'Shared house', value: house?.label ?? 'Not derived yet' },
+        { label: 'Selected form', value: house?.label ?? 'Not derived yet' },
         { label: 'Roof form', value: labelForRoofForm(house?.roof.form) },
         {
           label: 'Roof status',
@@ -38,8 +38,8 @@ export function buildHouseRailOverviewSection({
       ]}
       hint={
         house?.lowConfidence
-          ? `Migration warnings are present for the shared house (${warnings.length}).`
-          : 'House mode is the shared source of truth for footprint editing in this slice.'
+          ? `Migration warnings are present for the compatibility house form (${warnings.length}).`
+          : 'House Forms is the compatibility source for footprint editing in this slice.'
       }
     />
   );

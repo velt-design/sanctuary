@@ -10,12 +10,14 @@ import type {
   DrawingWorkbenchCanonicalSelectionState,
 } from '@/lib/drawings/state/drawingWorkbenchUiState';
 import type { WorkbenchHouseSelection } from '@/lib/drawings/state/houseFirstWorkbenchModel';
+import type { WorkbenchObjectFamily, WorkbenchObjectRef } from '@/lib/drawings/state/objectFirstWorkbenchModel';
 import type { CommitResult, DrawOutlineTarget } from './houseWorkbenchClientTypes';
 
 type UseHouseWorkbenchSelectionInput = {
   setUi: Dispatch<SetStateAction<DrawingWorkbenchUiState>>;
   setDrawOutlineTarget: Dispatch<SetStateAction<DrawOutlineTarget>>;
   setDrawOutlineRequestId: Dispatch<SetStateAction<number>>;
+  availableObjectIdsByFamily: Record<WorkbenchObjectFamily, string[]>;
 };
 
 const FOOTPRINT_DRAW_OUTLINE_TARGET: DrawOutlineTarget = {
@@ -52,62 +54,114 @@ function deriveRailTabFromHouseSelection(selection: WorkbenchHouseSelection): Ex
   }
 }
 
+function buildSelectionStateForObjectRef(
+  current: DrawingWorkbenchUiState,
+  ref: WorkbenchObjectRef,
+  houseSelectionOverride?: WorkbenchHouseSelection,
+): DrawingWorkbenchCanonicalSelectionState {
+  return buildDrawingWorkbenchCanonicalSelectionState({
+    activeRailTab: ref.family,
+    activeObjectRef: ref,
+    activeHouseSelection:
+      houseSelectionOverride ??
+      (ref.family === 'decks'
+        ? ref.objectId
+          ? { kind: 'deck', targetId: ref.objectId }
+          : { kind: 'house', targetId: null }
+        : ref.family === 'openings'
+          ? ref.objectId
+            ? { kind: 'opening', targetId: ref.objectId }
+            : { kind: 'house', targetId: null }
+          : ref.family === 'house_forms'
+            ? { kind: 'house', targetId: null }
+            : current.activeHouseSelection),
+    activePergolaId: ref.family === 'pergolas' ? ref.objectId : current.activePergolaId,
+  });
+}
+
 export function useHouseWorkbenchSelection({
   setUi,
   setDrawOutlineTarget,
   setDrawOutlineRequestId,
+  availableObjectIdsByFamily,
 }: UseHouseWorkbenchSelectionInput) {
   const resetDrawOutlineTarget = useCallback(() => {
     setDrawOutlineTarget(FOOTPRINT_DRAW_OUTLINE_TARGET);
   }, [setDrawOutlineTarget]);
 
+  const getDefaultObjectId = useCallback(
+    (family: WorkbenchObjectFamily) => availableObjectIdsByFamily[family][0] ?? null,
+    [availableObjectIdsByFamily],
+  );
+
   const selectHouseWorkbenchMode = useCallback(() => {
     resetDrawOutlineTarget();
     setUi((current) => ({
       ...current,
-      ...buildSelectionStateForTab(current, 'house_forms'),
+      ...buildSelectionStateForObjectRef(current, {
+        family: 'house_forms',
+        objectId:
+          current.activeObjectRef.family === 'house_forms' && current.activeObjectRef.objectId
+            ? current.activeObjectRef.objectId
+            : getDefaultObjectId('house_forms'),
+      }),
     }));
-  }, [resetDrawOutlineTarget, setUi]);
+  }, [getDefaultObjectId, resetDrawOutlineTarget, setUi]);
 
   const selectPergolaWorkbenchMode = useCallback(
     (defaultPergolaId: string | null) => {
       resetDrawOutlineTarget();
       setUi((current) => ({
         ...current,
-        ...buildDrawingWorkbenchCanonicalSelectionState({
-          activeRailTab: 'pergolas',
-          activeObjectRef: {
-            family: 'pergolas',
-            objectId: defaultPergolaId ?? current.activePergolaId,
-          },
-          activePergolaId: defaultPergolaId ?? current.activePergolaId,
+        ...buildSelectionStateForObjectRef(current, {
+          family: 'pergolas',
+          objectId:
+            defaultPergolaId ??
+            (current.activeObjectRef.family === 'pergolas' ? current.activeObjectRef.objectId : null) ??
+            current.activePergolaId ??
+            getDefaultObjectId('pergolas'),
         }),
       }));
     },
-    [resetDrawOutlineTarget, setUi],
+    [getDefaultObjectId, resetDrawOutlineTarget, setUi],
   );
 
   const selectRailTab = useCallback(
-    (tab: DrawingWorkbenchRailTab, defaultPergolaId: string | null = null) => {
+    (tab: DrawingWorkbenchRailTab, defaultObjectId: string | null = null) => {
       resetDrawOutlineTarget();
       setUi((current) => {
-        if (tab === 'pergolas') {
-          const pergolaId = defaultPergolaId ?? current.activePergolaId ?? current.activeObjectRef.objectId;
+        if (tab === 'diagnostics') {
           return {
             ...current,
-            ...buildDrawingWorkbenchCanonicalSelectionState({
-              activeRailTab: 'pergolas',
-              activeObjectRef: { family: 'pergolas', objectId: pergolaId },
-              activePergolaId: pergolaId,
-            }),
+            ...buildSelectionStateForTab(current, tab),
           };
         }
 
+        const family = tab;
+        const objectId =
+          current.activeObjectRef.family === family && current.activeObjectRef.objectId
+            ? current.activeObjectRef.objectId
+            : defaultObjectId ?? getDefaultObjectId(family);
+
         return {
           ...current,
-          ...buildSelectionStateForTab(current, tab),
+          ...buildSelectionStateForObjectRef(current, {
+            family,
+            objectId,
+          }),
         };
       });
+    },
+    [getDefaultObjectId, resetDrawOutlineTarget, setUi],
+  );
+
+  const selectObjectRef = useCallback(
+    (ref: WorkbenchObjectRef) => {
+      resetDrawOutlineTarget();
+      setUi((current) => ({
+        ...current,
+        ...buildSelectionStateForObjectRef(current, ref),
+      }));
     },
     [resetDrawOutlineTarget, setUi],
   );
@@ -118,14 +172,18 @@ export function useHouseWorkbenchSelection({
       ...current,
       viewportMode: 'model',
       activeView: 'plan',
-      ...buildDrawingWorkbenchCanonicalSelectionState({
-        activeRailTab: 'house_forms',
-        activeHouseSelection: { kind: 'footprint', targetId: null },
-      }),
+      ...buildSelectionStateForObjectRef(
+        current,
+        {
+          family: 'house_forms',
+          objectId: getDefaultObjectId('house_forms'),
+        },
+        { kind: 'footprint', targetId: null },
+      ),
     }));
     setDrawOutlineRequestId((current) => current + 1);
     return { ok: true };
-  }, [setDrawOutlineRequestId, setDrawOutlineTarget, setUi]);
+  }, [getDefaultObjectId, setDrawOutlineRequestId, setDrawOutlineTarget, setUi]);
 
   const startDeckOutlineEditor = useCallback(
     (deckId: string): CommitResult => {
@@ -134,11 +192,7 @@ export function useHouseWorkbenchSelection({
         ...current,
         viewportMode: 'model',
         activeView: 'plan',
-        ...buildDrawingWorkbenchCanonicalSelectionState({
-          activeRailTab: 'decks',
-          activeObjectRef: { family: 'decks', objectId: deckId },
-          activeHouseSelection: { kind: 'deck', targetId: deckId },
-        }),
+        ...buildSelectionStateForObjectRef(current, { family: 'decks', objectId: deckId }),
       }));
       setDrawOutlineRequestId((current) => current + 1);
       return { ok: true };
@@ -151,11 +205,7 @@ export function useHouseWorkbenchSelection({
       resetDrawOutlineTarget();
       setUi((current) => ({
         ...current,
-        ...buildDrawingWorkbenchCanonicalSelectionState({
-          activeRailTab: 'decks',
-          activeObjectRef: { family: 'decks', objectId: deckId },
-          activeHouseSelection: deckId ? { kind: 'deck', targetId: deckId } : { kind: 'house', targetId: null },
-        }),
+        ...buildSelectionStateForObjectRef(current, { family: 'decks', objectId: deckId }),
       }));
     },
     [resetDrawOutlineTarget, setUi],
@@ -166,13 +216,7 @@ export function useHouseWorkbenchSelection({
       resetDrawOutlineTarget();
       setUi((current) => ({
         ...current,
-        ...buildDrawingWorkbenchCanonicalSelectionState({
-          activeRailTab: 'openings',
-          activeObjectRef: { family: 'openings', objectId: openingId },
-          activeHouseSelection: openingId
-            ? { kind: 'opening', targetId: openingId }
-            : { kind: 'house', targetId: null },
-        }),
+        ...buildSelectionStateForObjectRef(current, { family: 'openings', objectId: openingId }),
       }));
     },
     [resetDrawOutlineTarget, setUi],
@@ -188,13 +232,16 @@ export function useHouseWorkbenchSelection({
           activeRailTab: nextTab,
           activeObjectRef: {
             family: nextTab,
-            objectId: nextTab === 'decks' || nextTab === 'openings' ? selection.targetId ?? null : null,
+            objectId:
+              nextTab === 'decks' || nextTab === 'openings'
+                ? selection.targetId ?? null
+                : getDefaultObjectId('house_forms'),
           },
           activeHouseSelection: selection,
         }),
       }));
     },
-    [resetDrawOutlineTarget, setUi],
+    [getDefaultObjectId, resetDrawOutlineTarget, setUi],
   );
 
   const selectPergolaObject = useCallback(
@@ -202,13 +249,9 @@ export function useHouseWorkbenchSelection({
       resetDrawOutlineTarget();
       setUi((current) => ({
         ...current,
-        ...buildDrawingWorkbenchCanonicalSelectionState({
-          activeRailTab: 'pergolas',
-          activeObjectRef: {
-            family: 'pergolas',
-            objectId: pergolaId ?? current.activePergolaId,
-          },
-          activePergolaId: pergolaId ?? current.activePergolaId,
+        ...buildSelectionStateForObjectRef(current, {
+          family: 'pergolas',
+          objectId: pergolaId,
         }),
       }));
     },
@@ -228,8 +271,8 @@ export function useHouseWorkbenchSelection({
             objectId: null,
           },
           activeHouseSelection:
-            current.activeRailTab === 'diagnostics'
-              ? current.activeHouseSelection
+            current.activeObjectFamily === 'decks' || current.activeObjectFamily === 'openings'
+              ? { kind: 'house', targetId: null }
               : current.activeObjectFamily === 'house_forms'
                 ? { kind: 'house', targetId: null }
                 : current.activeHouseSelection,
@@ -243,6 +286,7 @@ export function useHouseWorkbenchSelection({
     selectHouseWorkbenchMode,
     selectPergolaWorkbenchMode,
     selectRailTab,
+    selectObjectRef,
     startDrawOutlineEditor,
     startDeckOutlineEditor,
     selectSharedHouseDeck,

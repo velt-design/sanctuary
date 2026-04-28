@@ -165,6 +165,20 @@ describe('buildDrawingWorkbenchStore', () => {
     expect(store.persisted.projectModel.house?.id).toBe('house-main');
     expect(store.derived.house?.footprint.preset).toBe('straight');
     expect(store.derived.pergolas).toHaveLength(1);
+    expect(store.derived.railModel.familySummaries.map((family) => family.family)).toEqual([
+      'house_forms',
+      'decks',
+      'openings',
+      'pergolas',
+    ]);
+    expect(store.derived.railModel.objectLists.house_forms[0]?.ref).toEqual({
+      family: 'house_forms',
+      objectId: store.derived.house?.id ?? null,
+    });
+    expect(store.derived.railModel.objectLists.pergolas[0]?.ref).toEqual({
+      family: 'pergolas',
+      objectId: 'pergola-1',
+    });
     expect(store.derived.status).toBe('ready');
   });
 
@@ -415,13 +429,21 @@ describe('buildDrawingWorkbenchStore', () => {
       draft: removedDraft,
       ui: createDrawingWorkbenchUiState({
         workbenchMode: 'house',
+        activeRailTab: 'decks',
+        activeObjectFamily: 'decks',
+        activeObjectRef: { family: 'decks', objectId: 'deck-b' },
         activeHouseSelection: { kind: 'deck', targetId: 'deck-b' },
       }),
     });
 
     expect(removedStore.derived.decks.map((deck) => deck.id)).toEqual(['deck-a']);
+    expect(removedStore.ui.activeRailTab).toBe('decks');
+    expect(removedStore.ui.activeObjectFamily).toBe('decks');
+    expect(removedStore.ui.activeObjectRef).toEqual({ family: 'decks', objectId: null });
     expect(removedStore.derived.activeDeckId).toBeNull();
     expect(removedStore.ui.activeHouseSelection).toEqual({ kind: 'house', targetId: null });
+    expect(removedStore.derived.railModel.selectedInspector.hasSelection).toBe(false);
+    expect(removedStore.derived.railModel.objectLists.decks.map((deck) => deck.ref.objectId)).toEqual(['deck-a']);
 
     const pergolaStore = buildDrawingWorkbenchStore({
       snapshot: fixture.snapshot,

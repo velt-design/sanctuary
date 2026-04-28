@@ -343,7 +343,7 @@ describe('DesignWorkbenchEstimateClient', () => {
       />,
     );
 
-    expect(rendered.container.textContent).toContain('House Configurator');
+    expect(rendered.container.textContent).toContain('House Form Inspector');
     expect(rendered.container.textContent).toContain('Footprint');
     expect(rendered.container.textContent).toContain('House Forms');
     expect(rendered.container.textContent).toContain('Diagnostics');
@@ -458,6 +458,34 @@ describe('DesignWorkbenchEstimateClient', () => {
 
     expect(getButtonByText(rendered.container, 'Pergolas').getAttribute('aria-selected')).toBe('true');
     expect(rendered.container.querySelector('[data-active-workbench-object="pergolas:none"]')).not.toBeNull();
+    expect(rendered.container.textContent).toContain('Select a pergola to edit geometry, supports, and overrides.');
+
+    rendered.unmount();
+  });
+
+  it('syncs the active module when selecting a pergola from the object list', async () => {
+    const rendered = renderIntoDocument(
+      <DesignWorkbenchEstimateClient
+        estimate={buildMultiModuleEstimateDetail()}
+        projectName="Deck Build"
+        siteAddress="1 Test Street"
+      />,
+    );
+
+    await flushAsyncWork();
+    clickButtonByText(rendered.container, 'Pergolas');
+    await flushAsyncWork();
+
+    const secondPergolaButton = rendered.container.querySelector(
+      '[data-workbench-object-button="pergolas:pergola-2"]',
+    );
+    if (!(secondPergolaButton instanceof Element)) throw new Error('Missing second pergola object button.');
+    clickElement(secondPergolaButton);
+    await flushAsyncWork();
+
+    const moduleSelect = rendered.container.querySelector('[aria-label="Drawing module"]') as HTMLSelectElement | null;
+    expect(moduleSelect?.value).toBe('1');
+    expect(rendered.container.querySelector('[data-active-workbench-object="pergolas:pergola-2"]')).not.toBeNull();
 
     rendered.unmount();
   });
@@ -479,7 +507,7 @@ describe('DesignWorkbenchEstimateClient', () => {
       <DesignWorkbenchEstimateClient estimate={estimate} projectName="Deck Build" siteAddress="1 Test Street" />,
     );
 
-    expect(rendered.container.textContent).toContain('House Configurator');
+    expect(rendered.container.textContent).toContain('House Form Inspector');
     clickButtonByText(rendered.container, 'Pergolas');
     expect(rendered.container.textContent).toContain('Editing Deferred');
     expect(rendered.container.textContent).toContain('not supported for native editing yet');

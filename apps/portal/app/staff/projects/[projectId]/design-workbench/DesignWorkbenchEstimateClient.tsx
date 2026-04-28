@@ -16,6 +16,7 @@ import {
 } from '@/lib/drawings/geometry/geometryEditAdapter';
 import { buildWorkbenchGeometryPreview } from '@/lib/drawings/geometry/buildWorkbenchGeometryPreview';
 import { buildDrawingWorkbenchStore } from '@/lib/drawings/state/drawingWorkbenchStore';
+import { buildHouseFirstWorkbenchProjectModel } from '@/lib/drawings/state/houseFirstWorkbenchAdapter';
 import {
   buildDrawingWorkbenchCanonicalSelectionState,
   createDrawingWorkbenchUiState,
@@ -42,6 +43,22 @@ type DesignWorkbenchEstimateClientProps = {
 };
 
 const DEFAULT_MODEL_VIEWPORT_TRANSFORM = createDrawingWorkbenchUiState().viewportTransform;
+
+function buildInitialWorkbenchUiState(snapshot: Record<string, unknown> | null) {
+  const defaultHouseFormId =
+    buildHouseFirstWorkbenchProjectModel({
+      snapshot,
+      draft: null,
+    }).house?.id ?? null;
+
+  return createDrawingWorkbenchUiState({
+    viewportMode: 'geometry3d',
+    activeObjectRef: {
+      family: 'house_forms',
+      objectId: defaultHouseFormId,
+    },
+  });
+}
 
 function viewportTransformsEqual(
   a: DrawingWorkbenchViewportTransform,
@@ -73,7 +90,7 @@ export default function DesignWorkbenchEstimateClient({
   siteAddress,
   backHref,
 }: DesignWorkbenchEstimateClientProps) {
-  const [ui, setUi] = useState(() => createDrawingWorkbenchUiState({ viewportMode: 'geometry3d' }));
+  const [ui, setUi] = useState(() => buildInitialWorkbenchUiState(estimate.calculatorSnapshot));
   const [modelViewportTransformsByKey, setModelViewportTransformsByKey] = useState<
     Record<string, DrawingWorkbenchViewportTransform>
   >({});
@@ -101,6 +118,12 @@ export default function DesignWorkbenchEstimateClient({
   );
 
   useEffect(() => {
+    const defaultHouseFormId =
+      buildHouseFirstWorkbenchProjectModel({
+        snapshot: estimate.calculatorSnapshot,
+        draft: null,
+      }).house?.id ?? null;
+
     setUi((current) => ({
       ...current,
       activeModuleIndex: 0,
@@ -108,7 +131,7 @@ export default function DesignWorkbenchEstimateClient({
       activeRailTab: 'house_forms',
       activeHouseSelection: { kind: 'house', targetId: null },
       activeObjectFamily: 'house_forms',
-      activeObjectRef: { family: 'house_forms', objectId: null },
+      activeObjectRef: { family: 'house_forms', objectId: defaultHouseFormId },
     }));
     setModelViewportTransformsByKey({});
     setGeometryViewportStatesByKey({});
@@ -355,6 +378,12 @@ export default function DesignWorkbenchEstimateClient({
     setUi,
     setDrawOutlineTarget,
     setDrawOutlineRequestId,
+    availableObjectIdsByFamily: {
+      house_forms: store.derived.railModel.objectLists.house_forms.map((entry) => entry.ref.objectId ?? '').filter(Boolean),
+      decks: store.derived.railModel.objectLists.decks.map((entry) => entry.ref.objectId ?? '').filter(Boolean),
+      openings: store.derived.railModel.objectLists.openings.map((entry) => entry.ref.objectId ?? '').filter(Boolean),
+      pergolas: store.derived.railModel.objectLists.pergolas.map((entry) => entry.ref.objectId ?? '').filter(Boolean),
+    },
   });
   const houseActions = useHouseMutationActions({
     activeModuleInput,
@@ -387,45 +416,78 @@ export default function DesignWorkbenchEstimateClient({
     );
   }
 
-  const defaultPergolaId = store.derived.activePergolaId ?? activeModule.drawingModule.input.pergolaId ?? null;
-  const handleRailTabSelect = (tab: DrawingWorkbenchRailTab) => {
-    houseSelectionActions.selectRailTab(tab, defaultPergolaId);
-  };
-  const handleCanonicalPergolaSelection = (pergolaId: string | null) => {
-    setUi((current) => {
-      const nextModuleIndex =
-        pergolaId === null
-          ? current.activeModuleIndex
-          : Math.max(
-              0,
-              store.persisted.modules.findIndex((module) => module.drawingModule.input.pergolaId === pergolaId),
-            );
-      return {
-        ...current,
-        activeModuleIndex: nextModuleIndex,
-        ...buildDrawingWorkbenchCanonicalSelectionState({
-          activeRailTab: 'pergolas',
-          activeObjectFamily: 'pergolas',
-          activeObjectRef: { family: 'pergolas', objectId: pergolaId },
-          activeHouseSelection: current.activeHouseSelection,
-          activePergolaId: pergolaId,
-        }),
-      };
-    });
-  };
-  const selectablePergolas = useMemo(() => {
-    const pergolas = store.derived.pergolas.map((pergola, index) => ({
-      id: pergola.id,
-      label: pergola.label || `Pergola ${index + 1}`,
-    }));
-    const uniquePergolas = new Map<string, { id: string; label: string }>();
-    for (const pergola of pergolas) {
-      if (!uniquePergolas.has(pergola.id)) {
-        uniquePergolas.set(pergola.id, pergola);
+  const defaultPergolaId =
+    store.ui.activeObjectFamily === 'pergolas' && store.ui.activeObjectRef.objectId
+      ? store.ui.activeObjectRef.objectId
+      : store.derived.activePergolaId ??
+        activeModule.drawingModule.input.pergolaId ??
+        store.derived.railModel.objectLists.pergolas[0]?.ref.objectId ??
+        null;
+  const handleRailTabSelect = useCallback(
+    (tab: DrawingWorkbenchRailTab) => {
+      if (tab !== 'pergolas') {
+        houseSelectionActions.selectRailTab(tab);
+        return;
       }
-    }
-    return Array.from(uniquePergolas.values());
-  }, [store.derived.pergolas]);
+
+      setUi((current) => {
+        const nextModuleIndex =
+          defaultPergolaId === null
+            ? current.activeModuleIndex
+            : Math.max(
+                0,
+                store.persisted.modules.findIndex((module) => module.drawingModule.input.pergolaId === defaultPergolaId),
+              );
+        return {
+          ...current,
+          activeModuleIndex: nextModuleIndex,
+          ...buildDrawingWorkbenchCanonicalSelectionState({
+            activeRailTab: 'pergolas',
+            activeObjectFamily: 'pergolas',
+            activeObjectRef: { family: 'pergolas', objectId: defaultPergolaId },
+            activeHouseSelection: current.activeHouseSelection,
+            activePergolaId: defaultPergolaId,
+          }),
+        };
+      });
+    },
+    [defaultPergolaId, houseSelectionActions, setUi, store.persisted.modules],
+  );
+  const handleCanonicalPergolaSelection = useCallback(
+    (pergolaId: string | null) => {
+      setUi((current) => {
+        const nextModuleIndex =
+          pergolaId === null
+            ? current.activeModuleIndex
+            : Math.max(
+                0,
+                store.persisted.modules.findIndex((module) => module.drawingModule.input.pergolaId === pergolaId),
+              );
+        return {
+          ...current,
+          activeModuleIndex: nextModuleIndex,
+          ...buildDrawingWorkbenchCanonicalSelectionState({
+            activeRailTab: 'pergolas',
+            activeObjectFamily: 'pergolas',
+            activeObjectRef: { family: 'pergolas', objectId: pergolaId },
+            activeHouseSelection: current.activeHouseSelection,
+            activePergolaId: pergolaId,
+          }),
+        };
+      });
+    },
+    [setUi, store.persisted.modules],
+  );
+  const handleRailObjectSelect = useCallback(
+    (ref: { family: 'house_forms' | 'decks' | 'openings' | 'pergolas'; objectId: string | null }) => {
+      if (ref.family === 'pergolas') {
+        handleCanonicalPergolaSelection(ref.objectId);
+        return;
+      }
+      houseSelectionActions.selectObjectRef(ref);
+    },
+    [houseSelectionActions, handleCanonicalPergolaSelection],
+  );
   const houseContextPanel =
     supportsSanctuaryEditing && activeModuleInput ? (
       <SanctuaryWorkbenchRail
@@ -464,23 +526,6 @@ export default function DesignWorkbenchEstimateClient({
           Open House Forms
         </button>
       </section>
-      {selectablePergolas.length > 1 ? (
-        <section className={styles.moduleSection}>
-          <p className={styles.moduleSectionTitle}>Pergola</p>
-          <select
-            className={styles.moduleSelect}
-            aria-label="Pergola"
-            value={store.derived.activePergolaId ?? ''}
-            onChange={(event) => handleCanonicalPergolaSelection(event.target.value || null)}
-          >
-            {selectablePergolas.map((pergola) => (
-              <option key={pergola.id} value={pergola.id}>
-                {pergola.label}
-              </option>
-            ))}
-          </select>
-        </section>
-      ) : null}
       {modules.length > 1 ? (
         <section className={styles.moduleSection}>
           <p className={styles.moduleSectionTitle}>Module</p>
@@ -937,16 +982,13 @@ export default function DesignWorkbenchEstimateClient({
       <aside className={styles.configuratorColumn}>
         <div className={styles.configuratorScroll}>
         <HouseFirstWorkbenchRail
-          house={store.derived.house}
+          model={store.derived.railModel}
           activeRailTab={store.ui.activeRailTab}
           activeObjectRef={store.ui.activeObjectRef}
-          activeDeckId={store.derived.activeDeckId}
-          activeOpeningId={store.derived.activeOpeningId}
-          pergolas={store.derived.pergolas}
-          warnings={store.derived.migrationWarnings}
           disabled={isLocked}
           visibility={store.ui.visibility}
           onSelectRailTab={handleRailTabSelect}
+          onSelectObjectRef={handleRailObjectSelect}
           onVisibilityChange={(family, visible) =>
             setUi((current) => ({
               ...current,
@@ -956,23 +998,28 @@ export default function DesignWorkbenchEstimateClient({
               },
             }))
           }
-          canEditFootprint={Boolean(activeModule.assemblyModel.capabilities.canEditHouseFootprint)}
-          canStartDrawOutline={!isLocked}
-          onStartDrawOutline={houseSelectionActions.startDrawOutlineEditor}
-          onCommitFootprintEdit={!isLocked ? houseActions.commitSharedHouseFootprintEdit : undefined}
-          onCommitRoofDraft={!isLocked ? houseActions.commitSharedHouseRoofDraft : undefined}
-          onSelectDeck={houseSelectionActions.selectSharedHouseDeck}
-          onSelectOpening={houseSelectionActions.selectSharedHouseOpening}
-          onAddDeck={!isLocked ? houseActions.addSharedHouseDeck : undefined}
-          onAddOpening={!isLocked ? houseActions.addSharedHouseOpening : undefined}
-          onRemoveDeck={!isLocked ? houseActions.removeSharedHouseDeck : undefined}
-          onRemoveOpening={!isLocked ? houseActions.removeSharedHouseOpening : undefined}
-          onCommitDeckPatch={!isLocked ? houseActions.commitSharedHouseDeckPatch : undefined}
-          onCommitOpeningPatch={!isLocked ? houseActions.commitSharedHouseOpeningPatch : undefined}
-          onStartDeckOutline={!isLocked ? houseSelectionActions.startDeckOutlineEditor : undefined}
-          houseContextPanel={houseContextPanel}
-          pergolaInspectorPanel={pergolaInspectorPanel}
-          diagnosticsPanel={diagnosticsPanel}
+          compatibilityInspectorState={{
+            house: store.derived.house,
+            activeDeckId: store.derived.activeDeckId,
+            activeOpeningId: store.derived.activeOpeningId,
+            pergolas: store.derived.pergolas,
+            warnings: store.derived.migrationWarnings,
+            canEditFootprint: Boolean(activeModule.assemblyModel.capabilities.canEditHouseFootprint),
+            canStartDrawOutline: !isLocked,
+            onStartDrawOutline: houseSelectionActions.startDrawOutlineEditor,
+            onCommitFootprintEdit: !isLocked ? houseActions.commitSharedHouseFootprintEdit : undefined,
+            onCommitRoofDraft: !isLocked ? houseActions.commitSharedHouseRoofDraft : undefined,
+            onAddDeck: !isLocked ? houseActions.addSharedHouseDeck : undefined,
+            onAddOpening: !isLocked ? houseActions.addSharedHouseOpening : undefined,
+            onRemoveDeck: !isLocked ? houseActions.removeSharedHouseDeck : undefined,
+            onRemoveOpening: !isLocked ? houseActions.removeSharedHouseOpening : undefined,
+            onCommitDeckPatch: !isLocked ? houseActions.commitSharedHouseDeckPatch : undefined,
+            onCommitOpeningPatch: !isLocked ? houseActions.commitSharedHouseOpeningPatch : undefined,
+            onStartDeckOutline: !isLocked ? houseSelectionActions.startDeckOutlineEditor : undefined,
+            houseContextPanel,
+            pergolaInspectorPanel,
+            diagnosticsPanel,
+          }}
         />
 
         {isLocked ? (

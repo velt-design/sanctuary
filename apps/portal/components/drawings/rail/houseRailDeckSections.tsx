@@ -28,7 +28,6 @@ type BuildHouseRailDeckSectionsInput = {
     patch: Partial<HouseFirstDeckDraft>,
   ) => Promise<CommitResult> | CommitResult;
   onRemoveDeck?: (deckId: string) => Promise<CommitResult> | CommitResult;
-  onSelectDeck?: (deckId: string | null) => void;
   onStartDeckOutline?: (deckId: string) => Promise<CommitResult> | CommitResult;
   runDeckAction: RunAction;
 };
@@ -41,11 +40,10 @@ export function buildHouseRailDeckSections({
   onAddDeck,
   onCommitDeckPatch,
   onRemoveDeck,
-  onSelectDeck,
   onStartDeckOutline,
   runDeckAction,
 }: BuildHouseRailDeckSectionsInput): ReactNode[] {
-  const activeDeck = house?.decks.find((deck) => deck.id === activeDeckId) ?? house?.decks[0] ?? null;
+  const activeDeck = activeDeckId ? house?.decks.find((deck) => deck.id === activeDeckId) ?? null : null;
   const activeDeckPlacement = activeDeck ? resolveDeckPlacementMode(activeDeck.isAttached) : null;
   const deckValidationSummary = activeDeck ? resolveDeckValidationSummary(activeDeck) : null;
   const deckWarningSummaries = activeDeck ? resolveDeckWarningSummaries(activeDeck) : [];
@@ -79,26 +77,13 @@ export function buildHouseRailDeckSections({
   if (!activeDeck) {
     deckButtons.push(
       <p key="deck-empty" className={styles.empty}>
-        Add a shared deck to start building external house context.
+        Select a deck from the object list, or add one to start building external house context.
       </p>,
     );
     return deckButtons;
   }
 
   deckButtons.push(
-    <div key="deck-list" className={styles.buttonRow}>
-      {house?.decks.map((deck) => (
-        <button
-          key={deck.id}
-          type="button"
-          className={deck.id === activeDeck.id ? styles.buttonPrimary : styles.overlayButton}
-          disabled={disabled}
-          onClick={() => onSelectDeck?.(deck.id)}
-        >
-          {deck.name}
-        </button>
-      ))}
-    </div>,
     <div key="deck-active-summary" className={styles.inlineMeta}>
       <span className={styles.inlineLabel}>Editing</span>
       <span className={styles.inlineValue}>

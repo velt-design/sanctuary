@@ -18,6 +18,10 @@ import {
   type DeckInteractionCapability,
 } from '@/lib/drawings/interactions/deckInteractionContract';
 import { normalizeDrawingWorkbenchUiState, type DrawingWorkbenchUiState } from './drawingWorkbenchUiState';
+import {
+  buildDrawingWorkbenchRailModel,
+  type DrawingWorkbenchRailModel,
+} from './drawingWorkbenchRailModel';
 import { buildHouseFirstWorkbenchProjectModel } from './houseFirstWorkbenchAdapter';
 import {
   buildWorkbenchDeckSupportDiagnostic,
@@ -71,6 +75,7 @@ export type DrawingWorkbenchStore = {
     activeDeck: HouseModel['decks'][number] | null;
     activeOpeningId: string | null;
     activeOpening: HouseModel['openings'][number] | null;
+    railModel: DrawingWorkbenchRailModel;
     deckCount: number;
     openingCount: number;
     sliderOpeningCount: number;
@@ -138,6 +143,7 @@ export function buildDrawingWorkbenchStore(input: {
   });
   const ui = normalizeDrawingWorkbenchUiState(input.ui, {
     moduleCount: drawingModules.length,
+    houseFormIds: projectModel.house ? [projectModel.house.id] : [],
     pergolaIds: projectModel.pergolas.map((pergola) => pergola.id),
     deckIds: projectModel.house?.decks.map((deck) => deck.id) ?? [],
     openingIds: projectModel.house?.openings.map((opening) => opening.id) ?? [],
@@ -246,6 +252,18 @@ export function buildDrawingWorkbenchStore(input: {
       })
     : null;
   const activeDeckInteraction = buildDeckInteractionDiagnostic(activeDeck);
+  const railModel = buildDrawingWorkbenchRailModel({
+    activeRailTab: ui.activeRailTab,
+    activeObjectFamily: ui.activeObjectFamily,
+    activeObjectRef: ui.activeObjectRef,
+    house: projectModel.house,
+    pergolas: projectModel.pergolas,
+    warnings: projectModel.warnings,
+    modules: modules.map((module) => ({
+      pergolaId: module.drawingModule.input.pergolaId,
+      planRenderStatus: module.planRenderStatus,
+    })),
+  });
 
   return {
     persisted: {
@@ -272,6 +290,7 @@ export function buildDrawingWorkbenchStore(input: {
       activeDeck,
       activeOpeningId: activeOpening?.id ?? null,
       activeOpening,
+      railModel,
       deckCount: decks.length,
       openingCount: openings.length,
       sliderOpeningCount: openings.filter((opening) => opening.kind === 'slider').length,
