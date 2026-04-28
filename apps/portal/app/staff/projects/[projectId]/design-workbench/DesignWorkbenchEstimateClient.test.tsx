@@ -888,6 +888,98 @@ describe('DesignWorkbenchEstimateClient', () => {
     rendered.unmount();
   });
 
+  it('adds hinged doors and stackers in house mode with the expected defaults', async () => {
+    const estimate = buildEstimateDetail();
+    const entityKey = buildEstimateDrawingDraftEntityKey(estimate.id);
+
+    const rendered = renderIntoDocument(
+      <DesignWorkbenchEstimateClient estimate={estimate} projectName="Opening Families" siteAddress="1 Test Street" />,
+    );
+
+    await flushAsyncWork();
+    clickButtonByText(rendered.container, 'Add door');
+    await flushAsyncWork();
+
+    expect(readLabeledValue(rendered.container, 'Selected opening id')).toBe('opening-1');
+    expect(getLocalFirstWorkingCopy<any>(entityKey)?.data.houseFirst?.openings?.[0]).toMatchObject({
+      kind: 'hinged_door',
+      widthM: '0.9',
+      heightM: '2.1',
+      sillHeightM: '0',
+      offsetAlongWallM: '0.6',
+    });
+
+    clickButtonByText(rendered.container, 'Add stacker');
+    await flushAsyncWork();
+
+    expect(readLabeledValue(rendered.container, 'Selected opening id')).toBe('opening-2');
+    expect(getLocalFirstWorkingCopy<any>(entityKey)?.data.houseFirst?.openings?.[1]).toMatchObject({
+      kind: 'stacker',
+      widthM: '3.6',
+      heightM: '2.1',
+      sillHeightM: '0',
+      offsetAlongWallM: '0.6',
+    });
+
+    rendered.unmount();
+  });
+
+  it('normalizes opening panel counts when switching between all four opening families', async () => {
+    const estimate = buildEstimateDetail();
+    const entityKey = buildEstimateDrawingDraftEntityKey(estimate.id);
+
+    const rendered = renderIntoDocument(
+      <DesignWorkbenchEstimateClient estimate={estimate} projectName="Opening Kinds" siteAddress="1 Test Street" />,
+    );
+
+    await flushAsyncWork();
+    clickButtonByText(rendered.container, 'Add window');
+    await flushAsyncWork();
+
+    changeSelectByLabel(rendered.container, 'Opening type', 'slider');
+    await flushAsyncWork();
+    expect(getLocalFirstWorkingCopy<any>(entityKey)?.data.houseFirst?.openings?.[0]).toMatchObject({
+      kind: 'slider',
+      panelCount: 2,
+      widthM: '1.8',
+      heightM: '1.2',
+      sillHeightM: '0.9',
+      offsetAlongWallM: '0.6',
+    });
+
+    changeSelectByLabel(rendered.container, 'Panel count', '4');
+    await flushAsyncWork();
+    expect(getLocalFirstWorkingCopy<any>(entityKey)?.data.houseFirst?.openings?.[0]?.panelCount).toBe(4);
+
+    changeSelectByLabel(rendered.container, 'Opening type', 'stacker');
+    await flushAsyncWork();
+    expect(getLocalFirstWorkingCopy<any>(entityKey)?.data.houseFirst?.openings?.[0]).toMatchObject({
+      kind: 'stacker',
+      widthM: '1.8',
+      heightM: '1.2',
+      sillHeightM: '0.9',
+      offsetAlongWallM: '0.6',
+    });
+
+    changeSelectByLabel(rendered.container, 'Opening type', 'hinged_door');
+    await flushAsyncWork();
+    expect(getLocalFirstWorkingCopy<any>(entityKey)?.data.houseFirst?.openings?.[0]).toMatchObject({
+      kind: 'hinged_door',
+    });
+
+    changeSelectByLabel(rendered.container, 'Opening type', 'window');
+    await flushAsyncWork();
+    expect(getLocalFirstWorkingCopy<any>(entityKey)?.data.houseFirst?.openings?.[0]).toMatchObject({
+      kind: 'window',
+      widthM: '1.8',
+      heightM: '1.2',
+      sillHeightM: '0.9',
+      offsetAlongWallM: '0.6',
+    });
+
+    rendered.unmount();
+  });
+
   it('preserves a typed opening kind when editing non-kind fields from a local working copy', async () => {
     const estimate = buildEstimateDetail();
     const entityKey = buildEstimateDrawingDraftEntityKey(estimate.id);

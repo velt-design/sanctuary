@@ -153,6 +153,7 @@ type DeckDragSession = {
   startSvgX: number;
   startSvgY: number;
   startDragPlanPoint: PlanPoint | null;
+  startViewportTransform: DrawingWorkbenchViewportTransform;
   startCenter: PlanPoint;
   startPolygon: PlanPoint[];
   startWidthM: number;
@@ -176,6 +177,8 @@ type DeckPreviewState = {
   snapEligible: boolean;
   releasePlacement: 'snapped' | 'floating';
 };
+
+type DeckDragPhase = 'dragging' | 'settling';
 
 type OpeningSvgInteraction = Extract<HouseFirstPlanShapeDragStartMeta, { ownerKind: 'opening' }>['openingInteraction'];
 
@@ -1191,6 +1194,8 @@ export default function ModelSpaceViewport({
   const drawOutlineCanvasPointResolverRef = useRef<ModuleFootprintCanvasPointResolver | null>(null);
   const planPointResolverRef = useRef<((clientX: number, clientY: number) => PlanPoint | null) | null>(null);
   const deckDragPointResolverRef = useRef<((clientX: number, clientY: number) => PlanPoint | null) | null>(null);
+  const activeDeckDragPointerIdRef = useRef<number | null>(null);
+  const lastResolvedDeckDragPlanPointRef = useRef<PlanPoint | null>(null);
   const drawOutlinePointerSessionRef = useRef<DrawOutlinePointerSession | null>(null);
   const lastDeckTelemetrySignatureRef = useRef<string | null>(null);
   const activeTouchPointersRef = useRef<Map<number, TouchPointerSnapshot>>(new Map());
@@ -1225,6 +1230,7 @@ export default function ModelSpaceViewport({
   const [houseFirstDimensionPopoverPosition, setHouseFirstDimensionPopoverPosition] = useState<DrawPopoverPosition | null>(null);
   const [deckDragSession, setDeckDragSession] = useState<DeckDragSession | null>(null);
   const [deckPreviewState, setDeckPreviewState] = useState<DeckPreviewState | null>(null);
+  const [deckDragPhase, setDeckDragPhase] = useState<DeckDragPhase>('dragging');
   const [openingDragSession, setOpeningDragSession] = useState<OpeningDragSession | null>(null);
   const [openingPreviewState, setOpeningPreviewState] = useState<OpeningPreviewState | null>(null);
   const [deckInteractionHint, setDeckInteractionHint] = useState<DeckInteractionHintState | null>(null);
@@ -1354,6 +1360,53 @@ export default function ModelSpaceViewport({
     [closeHouseFirstDimensionEditor, onSelectHouseFirstTarget],
   );
 
+  const clearTouchNavigation = useCallback(() => {
+    activeTouchPointersRef.current.clear();
+    pinchZoomSessionRef.current = null;
+    setActiveTouchCount(0);
+    setPinchZoomActive(false);
+    setPinchSource((current) => (current === 'touch-pointer' ? 'none' : current));
+    setViewportNavigationGesture((current) => (current === 'pinch-zoom' ? 'idle' : current));
+  }, []);
+
+  const clearWebKitGestureNavigation = useCallback(() => {
+    webKitGestureSessionRef.current = null;
+    setPinchZoomActive(false);
+    setPinchSource((current) => (current === 'webkit-gesture' ? 'none' : current));
+    setViewportNavigationGesture((current) => (current === 'trackpad-pinch' ? 'idle' : current));
+  }, []);
+
+  const captureDeckDragPointer = useCallback((pointerId: number) => {
+    const captureTarget = footprintSvgRef.current ?? scrollerRef.current;
+    if (!captureTarget || typeof captureTarget.setPointerCapture !== 'function') return;
+    try {
+      captureTarget.setPointerCapture(pointerId);
+      activeDeckDragPointerIdRef.current = pointerId;
+    } catch {
+      activeDeckDragPointerIdRef.current = null;
+    }
+  }, []);
+
+  const releaseDeckDragPointer = useCallback((pointerId?: number | null) => {
+    const captureTarget = footprintSvgRef.current ?? scrollerRef.current;
+    const activePointerId = pointerId ?? activeDeckDragPointerIdRef.current;
+    if (!captureTarget || activePointerId === null || typeof captureTarget.releasePointerCapture !== 'function') {
+      activeDeckDragPointerIdRef.current = null;
+      return;
+    }
+    try {
+      if (typeof captureTarget.hasPointerCapture === 'function' && !captureTarget.hasPointerCapture(activePointerId)) {
+        activeDeckDragPointerIdRef.current = null;
+        return;
+      }
+      captureTarget.releasePointerCapture(activePointerId);
+    } catch {
+      // Ignore release failures during drag cleanup.
+    } finally {
+      activeDeckDragPointerIdRef.current = null;
+    }
+  }, []);
+
   const handleHouseFirstShapeDragStart = useCallback(
     (
       meta: HouseFirstPlanShapeDragStartMeta,
@@ -1388,12 +1441,14 @@ export default function ModelSpaceViewport({
               : 'Drag the deck freely. Release near a house edge to snap it back.',
           tone: 'status',
         });
+        setDeckDragPhase('dragging');
         setDeckDragSession({
           pointerId: event.pointerId,
           deckId: meta.ownerId,
           startSvgX: startPoint.x,
           startSvgY: startPoint.y,
           startDragPlanPoint,
+          startViewportTransform: viewportTransform,
           startCenter: overlayShape.deckInteraction.renderedCenter,
           startPolygon: overlayShape.polygon,
           startWidthM: overlayShape.deckInteraction.deckWidthM,
@@ -1401,6 +1456,11 @@ export default function ModelSpaceViewport({
           interaction: overlayShape.deckInteraction,
           svgInteraction: meta.deckInteraction,
         });
+        setPanDragSession(null);
+        clearTouchNavigation();
+        clearWebKitGestureNavigation();
+        lastResolvedDeckDragPlanPointRef.current = startDragPlanPoint;
+        captureDeckDragPointer(event.pointerId);
         return;
       }
 
@@ -1416,6 +1476,8 @@ export default function ModelSpaceViewport({
       setDeckDragSession(null);
       setDeckPreviewState(null);
       setDeckInteractionHint(null);
+      releaseDeckDragPointer(activeDeckDragPointerIdRef.current);
+      lastResolvedDeckDragPlanPointRef.current = null;
       setOpeningPreviewState(null);
       setOpeningDragSession({
         pointerId: event.pointerId,
@@ -1433,6 +1495,11 @@ export default function ModelSpaceViewport({
       onCommitHouseFirstDeckDimension,
       onCommitHouseFirstOpeningDimension,
       planViewModel,
+      viewportTransform,
+      clearTouchNavigation,
+      clearWebKitGestureNavigation,
+      captureDeckDragPointer,
+      releaseDeckDragPointer,
     ],
   );
 
@@ -1765,22 +1832,6 @@ export default function ModelSpaceViewport({
     [onViewportTransformChange, viewportTransform.panX, viewportTransform.panY, zoom],
   );
 
-  const clearTouchNavigation = useCallback(() => {
-    activeTouchPointersRef.current.clear();
-    pinchZoomSessionRef.current = null;
-    setActiveTouchCount(0);
-    setPinchZoomActive(false);
-    setPinchSource((current) => (current === 'touch-pointer' ? 'none' : current));
-    setViewportNavigationGesture((current) => (current === 'pinch-zoom' ? 'idle' : current));
-  }, []);
-
-  const clearWebKitGestureNavigation = useCallback(() => {
-    webKitGestureSessionRef.current = null;
-    setPinchZoomActive(false);
-    setPinchSource((current) => (current === 'webkit-gesture' ? 'none' : current));
-    setViewportNavigationGesture((current) => (current === 'trackpad-pinch' ? 'idle' : current));
-  }, []);
-
   const markTransientViewportGesture = useCallback((gesture: 'wheel-pan' | 'wheel-zoom', source: ModelSpacePinchSource = 'none') => {
     setViewportNavigationGesture(gesture);
     setPinchSource(source);
@@ -1848,10 +1899,11 @@ export default function ModelSpaceViewport({
 
   const handleZoomChange = useCallback(
     (delta: number) => {
+      if (deckDragSession) return;
       userAdjustedViewportRef.current = true;
       updateViewportTransform({ zoom: clampZoom(zoom + delta) });
     },
-    [updateViewportTransform, zoom],
+    [deckDragSession, updateViewportTransform, zoom],
   );
 
   const measureFitViewTransform = useCallback((): DrawingWorkbenchViewportTransform | null => {
@@ -1888,13 +1940,15 @@ export default function ModelSpaceViewport({
   }, [zoom]);
 
   const fitViewportToContent = useCallback((): boolean => {
+    if (deckDragSession) return false;
     const next = measureFitViewTransform();
     if (!next) return false;
     updateViewportTransform(next);
     return true;
-  }, [measureFitViewTransform, updateViewportTransform]);
+  }, [deckDragSession, measureFitViewTransform, updateViewportTransform]);
 
   const handleFitView = useCallback(() => {
+    if (deckDragSession) return;
     setFootprintError(null);
     setFieldError(null);
     setPanDragSession(null);
@@ -1906,10 +1960,14 @@ export default function ModelSpaceViewport({
     } else {
       updateViewportTransform({ zoom: 1, panX: 0, panY: 0 });
     }
-  }, [clearTouchNavigation, clearWebKitGestureNavigation, fitViewportToContent, modelSpaceAutoFitKey, updateViewportTransform]);
+  }, [clearTouchNavigation, clearWebKitGestureNavigation, deckDragSession, fitViewportToContent, modelSpaceAutoFitKey, updateViewportTransform]);
 
   const handleWheel = useCallback(
     (event: WheelEvent<HTMLDivElement>) => {
+      if (deckDragSession) {
+        event.preventDefault();
+        return;
+      }
       if (isViewportNavigationControlTarget(event.target)) return;
       const delta = normalizeWheelDeltaPixels(event);
       if (delta.deltaX === 0 && delta.deltaY === 0) return;
@@ -1940,6 +1998,7 @@ export default function ModelSpaceViewport({
       viewportTransform.panX,
       viewportTransform.panY,
       zoom,
+      deckDragSession,
     ],
   );
 
@@ -2241,6 +2300,11 @@ export default function ModelSpaceViewport({
   const handleScrollerPointerDownCapture = useCallback(
     (event: ReactPointerEvent<HTMLDivElement>) => {
       if (event.pointerType === 'touch' && !isViewportNavigationControlTarget(event.target)) {
+        if (deckDragSession) {
+          event.preventDefault();
+          event.stopPropagation();
+          return;
+        }
         activeTouchPointersRef.current.set(event.pointerId, {
           pointerId: event.pointerId,
           clientX: event.clientX,
@@ -2256,6 +2320,11 @@ export default function ModelSpaceViewport({
         }
       }
 
+      if (deckDragSession) {
+        event.preventDefault();
+        event.stopPropagation();
+        return;
+      }
       if (!isDrawOutlineActive(drawOutlineState) || event.button !== 0 || isViewportMousePanIgnoredTarget(event.target)) return;
       const point = drawOutlineCanvasPointResolverRef.current?.(event.clientX, event.clientY) ?? null;
       if (!point) {
@@ -2270,7 +2339,7 @@ export default function ModelSpaceViewport({
         shiftKey: event.shiftKey,
       });
     },
-    [clearViewportEditSessions, drawOutlineState, handleDrawOutlineCanvasPointerDown, startPinchZoomSessionFromActiveTouches],
+    [clearViewportEditSessions, deckDragSession, drawOutlineState, handleDrawOutlineCanvasPointerDown, startPinchZoomSessionFromActiveTouches],
   );
 
     const handleScrollerPointerMove = useCallback(
@@ -2296,6 +2365,11 @@ export default function ModelSpaceViewport({
   const handleCanvasPanStart = useCallback(
     (event: ReactPointerEvent<HTMLDivElement>) => {
       if (event.pointerType === 'touch') return;
+      if (deckDragSession) {
+        event.preventDefault();
+        event.stopPropagation();
+        return;
+      }
       if (!isSecondaryMouseButton(event)) return;
       if (isViewportNavigationControlTarget(event.target)) return;
       event.preventDefault();
@@ -2309,7 +2383,7 @@ export default function ModelSpaceViewport({
         startPanY: viewportTransform.panY,
       });
     },
-    [viewportTransform.panX, viewportTransform.panY],
+    [deckDragSession, viewportTransform.panX, viewportTransform.panY],
   );
 
   useEffect(() => {
@@ -2323,6 +2397,10 @@ export default function ModelSpaceViewport({
 
     const handleGestureStart = (event: Event) => {
       if (!shouldHandleGestureEvent(event)) return;
+      if (deckDragSession) {
+        event.preventDefault();
+        return;
+      }
       const gestureEvent = event as NativeGestureEvent;
       const anchor = resolveViewportAnchorFromGestureEvent(gestureEvent);
       if (!anchor) return;
@@ -2344,6 +2422,10 @@ export default function ModelSpaceViewport({
 
     const handleGestureChange = (event: Event) => {
       if (!shouldHandleGestureEvent(event)) return;
+      if (deckDragSession) {
+        event.preventDefault();
+        return;
+      }
       const session = webKitGestureSessionRef.current;
       if (!session) return;
       const scale = Number((event as NativeGestureEvent).scale ?? 1);
@@ -2381,6 +2463,7 @@ export default function ModelSpaceViewport({
     clearTouchNavigation,
     clearViewportEditSessions,
     clearWebKitGestureNavigation,
+    deckDragSession,
     resolveViewportAnchorFromGestureEvent,
     viewportTransform.panX,
     viewportTransform.panY,
@@ -2468,7 +2551,7 @@ export default function ModelSpaceViewport({
   }, [drawOutlineActiveForPointerListeners, handleDrawOutlinePointSelect]);
 
   useEffect(() => {
-    if (activeTouchCount <= 0) return;
+    if (activeTouchCount <= 0 || deckDragSession) return;
 
     const handlePointerMove = (event: PointerEvent) => {
       const current = activeTouchPointersRef.current.get(event.pointerId);
@@ -2522,10 +2605,10 @@ export default function ModelSpaceViewport({
       window.removeEventListener('pointerup', handlePointerEnd);
       window.removeEventListener('pointercancel', handlePointerEnd);
     };
-  }, [activeTouchCount, applyAnchoredViewportZoom, clearTouchNavigation, resolveViewportAnchor]);
+  }, [activeTouchCount, applyAnchoredViewportZoom, clearTouchNavigation, deckDragSession, resolveViewportAnchor]);
 
   useEffect(() => {
-    if (!panDragSession) return;
+    if (!panDragSession || deckDragSession) return;
 
     const handlePointerMove = (event: PointerEvent) => {
       if (event.pointerId !== panDragSession.pointerId) return;
@@ -2550,7 +2633,7 @@ export default function ModelSpaceViewport({
       window.removeEventListener('pointerup', handlePointerEnd);
       window.removeEventListener('pointercancel', handlePointerEnd);
     };
-  }, [panDragSession, updateViewportTransform]);
+  }, [deckDragSession, panDragSession, updateViewportTransform]);
 
   useEffect(() => {
     if (!footprintDragSession || !onCommitFootprintEdit) return;
@@ -2724,14 +2807,22 @@ export default function ModelSpaceViewport({
 
     const handlePointerMove = (event: PointerEvent) => {
       if (event.pointerId !== deckDragSession.pointerId) return;
+      event.preventDefault();
       const svg = footprintSvgRef.current;
       if (!svg) return;
       const nextPoint = clientPointToSvg(svg, event.clientX, event.clientY);
       if (!nextPoint) return;
-      const nextDragPlanPoint =
+      const resolvedNextDragPlanPoint =
         deckDragPointResolverRef.current?.(event.clientX, event.clientY) ??
         planPointResolverRef.current?.(event.clientX, event.clientY) ??
         null;
+      const nextDragPlanPoint =
+        resolvedNextDragPlanPoint ??
+        (deckDragSession.startDragPlanPoint ? lastResolvedDeckDragPlanPointRef.current : null);
+      if (resolvedNextDragPlanPoint) {
+        lastResolvedDeckDragPlanPointRef.current = resolvedNextDragPlanPoint;
+      }
+      if (deckDragSession.startDragPlanPoint && !nextDragPlanPoint) return;
       const preview = resolveDeckPreviewState({
         session: deckDragSession,
         nextSvgX: nextPoint.x,
@@ -2759,10 +2850,12 @@ export default function ModelSpaceViewport({
 
     const finishDrag = async (event: PointerEvent) => {
       if (event.pointerId !== deckDragSession.pointerId) return;
+      event.preventDefault();
       const preview = deckPreviewState;
-      setDeckDragSession(null);
-      setDeckPreviewState(null);
+      releaseDeckDragPointer(event.pointerId);
+      lastResolvedDeckDragPlanPointRef.current = null;
       if (!preview) return;
+      setDeckDragPhase('settling');
       const floatingRect =
         preview.releasePlacement === 'floating'
           ? deckDragSession.interaction.kind === 'custom_outline'
@@ -2807,6 +2900,9 @@ export default function ModelSpaceViewport({
       );
       setFieldError(result.ok ? null : result.error ?? 'Unable to update the deck position.');
       if (result.ok) setFootprintError(null);
+      setDeckDragSession(null);
+      setDeckPreviewState(null);
+      setDeckDragPhase('dragging');
       setDeckInteractionHint(
         result.ok
           ? {
@@ -2832,16 +2928,18 @@ export default function ModelSpaceViewport({
       );
     };
 
-    window.addEventListener('pointermove', handlePointerMove);
-    window.addEventListener('pointerup', finishDrag);
-    window.addEventListener('pointercancel', finishDrag);
+    window.addEventListener('pointermove', handlePointerMove, { passive: false });
+    window.addEventListener('pointerup', finishDrag, { passive: false });
+    window.addEventListener('pointercancel', finishDrag, { passive: false });
 
     return () => {
+      releaseDeckDragPointer(deckDragSession.pointerId);
+      lastResolvedDeckDragPlanPointRef.current = null;
       window.removeEventListener('pointermove', handlePointerMove);
       window.removeEventListener('pointerup', finishDrag);
       window.removeEventListener('pointercancel', finishDrag);
     };
-  }, [deckDragSession, deckPreviewState, onCommitHouseFirstDeckDimension]);
+  }, [deckDragSession, deckPreviewState, onCommitHouseFirstDeckDimension, releaseDeckDragPointer]);
 
   useEffect(() => {
     if (!openingDragSession || !onCommitHouseFirstOpeningDimension) return;
@@ -3017,10 +3115,11 @@ export default function ModelSpaceViewport({
 
   useEffect(() => {
     if (!autoFitOnReady) return;
+    if (deckDragSession) return;
     if (!modelSpaceAutoFitReady) return;
     if (autoFitKeyRef.current === modelSpaceAutoFitKey) return;
     if (fitViewportToContent()) autoFitKeyRef.current = modelSpaceAutoFitKey;
-  }, [autoFitOnReady, fitViewportToContent, modelSpaceAutoFitKey, modelSpaceAutoFitReady]);
+  }, [autoFitOnReady, deckDragSession, fitViewportToContent, modelSpaceAutoFitKey, modelSpaceAutoFitReady]);
 
   useEffect(() => {
     if (!showDrawOutlineDistanceHud) {
@@ -3425,14 +3524,26 @@ export default function ModelSpaceViewport({
     handleDrawOutlineClose,
   ]);
 
+  useEffect(() => {
+    if (view === 'plan' && planModel) return;
+    planPointResolverRef.current = null;
+    deckDragPointResolverRef.current = null;
+  }, [planModel, view]);
+
   const planInteraction = useMemo<ModulePlanInteractionProps | undefined>(() => {
-    if (!canEditPlanDimensions) return undefined;
+    if (view !== 'plan' || !planModel) return undefined;
     return {
-      available: true,
+      available: canEditPlanDimensions,
       hoveredResizeFieldId: planHoveredResizeFieldId,
       activeResizeFieldId: planActiveResizeFieldId,
-      onResizeFieldHover: (fieldId) => setPlanHoveredResizeFieldId(fieldId),
-      onResizeFieldDragStart: handlePlanFieldDragStart,
+      onResizeFieldHover: (fieldId) => {
+        if (!canEditPlanDimensions) return;
+        setPlanHoveredResizeFieldId(fieldId);
+      },
+      onResizeFieldDragStart: (meta, event) => {
+        if (!canEditPlanDimensions) return;
+        handlePlanFieldDragStart(meta, event);
+      },
       onPlanPointResolverChange: (resolver) => {
         planPointResolverRef.current = resolver;
       },
@@ -3443,7 +3554,7 @@ export default function ModelSpaceViewport({
         footprintSvgRef.current = node;
       },
     };
-  }, [canEditPlanDimensions, handlePlanFieldDragStart, planActiveResizeFieldId, planHoveredResizeFieldId]);
+  }, [canEditPlanDimensions, handlePlanFieldDragStart, planActiveResizeFieldId, planHoveredResizeFieldId, planModel, view]);
 
   const scaleFrameStyle = useMemo(
     () => ({

@@ -796,8 +796,54 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
     expect(projectModel.house?.openings[0]?.validation).toMatchObject({
       status: 'invalid',
       codes: ['insufficient_corner_clearance'],
-      message: 'Sliders need at least 0.3m clearance from each wall corner.',
+      message: 'Sliders and stackers need at least 0.3m clearance from each wall corner.',
     });
     expect(projectModel.house?.openings[1]?.validation.status).toBe('valid');
+  });
+
+  it('applies the same corner-clearance rule to stackers while keeping doors on shared wall-fit rules', () => {
+    const monoFixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
+    if (!monoFixture) throw new Error('Missing mono-standard fixture.');
+    const draft = buildEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
+    if (!draft) throw new Error('Expected drawing draft.');
+    draft.houseFirst = {
+      openings: [
+        {
+          id: 'opening-stacker-clearance',
+          label: 'Corner stacker',
+          kind: 'stacker',
+          wallId: 'rear',
+          widthM: '3.6',
+          heightM: '2.1',
+          sillHeightM: '0',
+          offsetAlongWallM: '0.1',
+        },
+        {
+          id: 'opening-door-valid',
+          label: 'Rear door',
+          kind: 'hinged_door',
+          wallId: 'rear',
+          widthM: '0.9',
+          heightM: '2.1',
+          sillHeightM: '0',
+          offsetAlongWallM: '4.8',
+        },
+      ],
+    };
+
+    const projectModel = buildHouseFirstWorkbenchProjectModel({
+      snapshot: monoFixture.snapshot,
+      draft,
+    });
+
+    expect(projectModel.house?.openings[0]?.validation).toMatchObject({
+      status: 'invalid',
+      codes: ['insufficient_corner_clearance'],
+      message: 'Sliders and stackers need at least 0.3m clearance from each wall corner.',
+    });
+    expect(projectModel.house?.openings[1]?.validation).toMatchObject({
+      status: 'valid',
+      message: null,
+    });
   });
 });

@@ -58,7 +58,9 @@ describe('HouseFirstWorkbenchRail', () => {
     expect(markup).toContain('Openings');
     expect(markup).toContain('Add deck');
     expect(markup).toContain('Add window');
+    expect(markup).toContain('Add door');
     expect(markup).toContain('Add slider');
+    expect(markup).toContain('Add stacker');
   });
 
   it('keeps pergola fallback isolated from the house-mode sections', () => {
@@ -77,7 +79,52 @@ describe('HouseFirstWorkbenchRail', () => {
     expect(markup).toContain('Fallback rail');
     expect(markup).not.toContain('Add deck');
     expect(markup).not.toContain('Add window');
+    expect(markup).not.toContain('Add door');
     expect(markup).not.toContain('Add slider');
+    expect(markup).not.toContain('Add stacker');
+  });
+
+  it('keeps the opening type editable for hinged doors without deferred family copy', () => {
+    const { house, pergolas, warnings } = buildRailState();
+    if (!house) throw new Error('Expected shared house.');
+    const markup = renderToStaticMarkup(
+      <HouseFirstWorkbenchRail
+        workbenchMode="house"
+        house={{
+          ...house,
+          openings: [
+            {
+              id: 'opening-door-1',
+              label: 'Rear door',
+              kind: 'hinged_door',
+              panelCount: null,
+              wallId: 'rear',
+              hostEdgeId: 'footprint-edge-3',
+              widthM: '0.9',
+              heightM: '2.1',
+              sillHeightM: '0',
+              offsetAlongWallM: '0.6',
+              validation: {
+                status: 'valid',
+                codes: [],
+                message: null,
+              },
+            },
+          ],
+        }}
+        pergolas={pergolas}
+        warnings={warnings}
+        activeOpeningId="opening-door-1"
+        onAddOpening={() => ({ ok: true })}
+        onRemoveOpening={() => ({ ok: true })}
+        onCommitOpeningPatch={() => ({ ok: true })}
+        onSelectOpening={() => undefined}
+        pergolaFallback={<div>Fallback rail</div>}
+      />,
+    );
+
+    expect(markup).toContain('aria-label="Opening type"');
+    expect(markup).not.toContain('Family-specific editing for this opening is deferred in this slice.');
   });
 
   it('shows legacy flat roofs as view-only in the house-mode roof section', () => {

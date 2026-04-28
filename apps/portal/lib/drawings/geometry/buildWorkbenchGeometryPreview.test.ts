@@ -805,4 +805,59 @@ describe('buildWorkbenchGeometryPreview', () => {
     expect(preview.scene.metadata?.houseOpeningSkippedInvalidCount).toBe(1);
     expect(preview.scene.metadata?.houseOpeningUnresolvedValidCount).toBe(0);
   });
+
+  it('keeps hinged-door and stacker metadata in the shared-house 3D preview', () => {
+    const fixture = requireFixture('mono-standard');
+    const draft = makeDraft(fixture.snapshot, (current) => {
+      current.houseFirst = {
+        openings: [
+          {
+            id: 'opening-door',
+            label: 'Rear door',
+            kind: 'hinged_door',
+            panelCount: null,
+            wallId: 'rear',
+            widthM: '0.9',
+            heightM: '2.1',
+            sillHeightM: '0',
+            offsetAlongWallM: '4.9',
+          },
+          {
+            id: 'opening-stacker',
+            label: 'Rear stacker',
+            kind: 'stacker',
+            panelCount: null,
+            wallId: 'rear',
+            widthM: '3.6',
+            heightM: '2.1',
+            sillHeightM: '0',
+            offsetAlongWallM: '1.2',
+          },
+        ],
+      };
+    });
+
+    const preview = buildWorkbenchGeometryPreview({
+      projectId: 'proj_preview',
+      estimateId: fixture.estimate.id,
+      designRequestId: fixture.request.id,
+      snapshot: fixture.snapshot,
+      draft,
+      moduleIndex: 0,
+    });
+
+    expect(preview.kind).toBe('ready');
+    if (preview.kind !== 'ready') return;
+
+    const houseObjects = preview.scene.layers.find((layer) => layer.id === 'house')?.objects ?? [];
+    const markerKinds = houseObjects
+      .filter((object) => object.type === 'house_surface' && object.kind === 'opening_marker')
+      .map((object) => object.metadata?.openingKind);
+
+    expect(markerKinds).toContain('hinged_door');
+    expect(markerKinds).toContain('stacker');
+    expect(preview.scene.metadata?.houseOpeningCount).toBe(2);
+    expect(preview.scene.metadata?.houseOpeningValidCount).toBe(2);
+    expect(preview.scene.metadata?.houseOpeningRenderedMarkerCount).toBe(2);
+  });
 });

@@ -29,7 +29,9 @@ export type HouseFirstWorkbenchRailProps = {
   onSelectDeck?: (deckId: string | null) => void;
   onSelectOpening?: (openingId: string | null) => void;
   onAddDeck?: (mode: 'preset' | 'custom_outline') => Promise<CommitResult> | CommitResult;
-  onAddOpening?: (kind: Extract<WallOpeningKind, 'window' | 'slider'>) => Promise<CommitResult> | CommitResult;
+  onAddOpening?: (
+    kind: Extract<WallOpeningKind, 'window' | 'hinged_door' | 'slider' | 'stacker'>,
+  ) => Promise<CommitResult> | CommitResult;
   onRemoveDeck?: (deckId: string) => Promise<CommitResult> | CommitResult;
   onRemoveOpening?: (openingId: string) => Promise<CommitResult> | CommitResult;
   onCommitDeckPatch?: (

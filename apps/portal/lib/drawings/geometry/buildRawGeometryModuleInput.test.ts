@@ -441,6 +441,64 @@ describe('buildRawGeometryModuleInput', () => {
     ]);
   });
 
+  it('preserves hinged-door and stacker kinds in raw house context', () => {
+    const fixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
+    if (!fixture) throw new Error('Expected mono fixture');
+    const draft = buildEstimateDrawingDraftFromSnapshot(fixture.snapshot);
+    if (!draft) throw new Error('Expected draft');
+    draft.houseFirst = {
+      openings: [
+        {
+          id: 'opening-door',
+          label: 'Rear door',
+          kind: 'hinged_door',
+          wallId: 'rear',
+          widthM: '0.9',
+          heightM: '2.1',
+          sillHeightM: '0',
+          offsetAlongWallM: '0.6',
+        },
+        {
+          id: 'opening-stacker',
+          label: 'Rear stacker',
+          kind: 'stacker',
+          wallId: 'rear',
+          widthM: '3.6',
+          heightM: '2.1',
+          sillHeightM: '0',
+          offsetAlongWallM: '1.2',
+        },
+      ],
+    };
+    const projectModel = buildHouseFirstWorkbenchProjectModel({
+      snapshot: fixture.snapshot,
+      draft,
+    });
+
+    const raw = buildRawGeometryModuleInput({
+      projectId: 'proj_1',
+      estimateId: 'est_1',
+      module: makeModule(),
+      result: makeResult(),
+      sharedHouse: projectModel.house,
+    });
+
+    expect(raw.houseContext.openings).toEqual([
+      expect.objectContaining({
+        id: 'opening-door',
+        kind: 'hinged_door',
+        panelCount: null,
+        hostEdgeId: 'footprint-edge-3',
+      }),
+      expect.objectContaining({
+        id: 'opening-stacker',
+        kind: 'stacker',
+        panelCount: null,
+        hostEdgeId: 'footprint-edge-3',
+      }),
+    ]);
+  });
+
   it('preserves deck support metadata from the fixture matrix in raw house context', () => {
     const wrapFixture = makeHouseFirstDeckSupportProjectFixture({
       id: 'rear_wrap_multi_edge',

@@ -3,6 +3,7 @@ import type {
   HouseFirstOpeningDraft,
   HouseModel,
   SliderPanelCount,
+  WallOpeningKind,
   WallOpeningHostSide,
 } from '@/lib/drawings/state/houseFirstWorkbenchModel';
 import type { CommitResult, FieldErrors, RunAction } from './houseRailTypes';
@@ -11,7 +12,9 @@ import styles from './ConfiguratorRail.module.css';
 
 const OPENING_TYPE_OPTIONS = [
   { label: 'Window', value: 'window' },
+  { label: 'Hinged door', value: 'hinged_door' },
   { label: 'Slider', value: 'slider' },
+  { label: 'Stacker', value: 'stacker' },
 ] as const;
 
 const SLIDER_PANEL_COUNT_OPTIONS = [
@@ -25,7 +28,9 @@ type BuildHouseRailOpeningSectionsInput = {
   disabled?: boolean;
   fieldErrors: FieldErrors;
   house: HouseModel | null;
-  onAddOpening?: (kind: 'window' | 'slider') => Promise<CommitResult> | CommitResult;
+  onAddOpening?: (
+    kind: 'window' | 'hinged_door' | 'slider' | 'stacker'
+  ) => Promise<CommitResult> | CommitResult;
   onCommitOpeningPatch?: (
     openingId: string,
     patch: Partial<HouseFirstOpeningDraft>,
@@ -63,6 +68,17 @@ export function buildHouseRailOpeningSections({
         }
       />
       <ActionButton
+        label="Add door"
+        disabled={disabled}
+        onClick={() =>
+          void runDeckAction(
+            'opening-add-door',
+            onAddOpening?.('hinged_door'),
+            'Unable to add a door.',
+          )
+        }
+      />
+      <ActionButton
         label="Add slider"
         disabled={disabled}
         onClick={() =>
@@ -70,6 +86,17 @@ export function buildHouseRailOpeningSections({
             'opening-add-slider',
             onAddOpening?.('slider'),
             'Unable to add a slider.',
+          )
+        }
+      />
+      <ActionButton
+        label="Add stacker"
+        disabled={disabled}
+        onClick={() =>
+          void runDeckAction(
+            'opening-add-stacker',
+            onAddOpening?.('stacker'),
+            'Unable to add a stacker.',
           )
         }
       />
@@ -125,27 +152,22 @@ export function buildHouseRailOpeningSections({
         )
       }
     />,
-    activeOpening.kind === 'window' || activeOpening.kind === 'slider' ? (
-      <SelectField
-        key="opening-kind"
-        label="Opening type"
-        value={activeOpening.kind}
-        options={[...OPENING_TYPE_OPTIONS]}
-        disabled={disabled}
-        error={fieldErrors[`opening-kind-${activeOpening.id}`]}
-        onCommit={(value) =>
-          runDeckAction(
-            `opening-kind-${activeOpening.id}`,
-            onCommitOpeningPatch?.(activeOpening.id, { kind: value as 'window' | 'slider' }),
-            'Unable to update the opening type.',
-          )
-        }
-      />
-    ) : (
-      <p key="opening-kind-readonly" className={styles.fieldHint}>
-        {`Opening type: ${activeOpeningTypeLabel}. Family-specific editing for this opening is deferred in this slice.`}
-      </p>
-    ),
+    <SelectField
+      key="opening-kind"
+      label="Opening type"
+      value={activeOpening.kind}
+      options={[...OPENING_TYPE_OPTIONS]}
+      disabled={disabled}
+      error={fieldErrors[`opening-kind-${activeOpening.id}`]}
+      helperText={`Current opening family: ${activeOpeningTypeLabel}.`}
+      onCommit={(value) =>
+        runDeckAction(
+          `opening-kind-${activeOpening.id}`,
+          onCommitOpeningPatch?.(activeOpening.id, { kind: value as WallOpeningKind }),
+          'Unable to update the opening type.',
+        )
+      }
+    />,
     <SelectField
       key="opening-wall"
       label="Host wall"

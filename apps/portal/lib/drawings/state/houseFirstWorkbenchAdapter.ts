@@ -712,7 +712,7 @@ function buildSharedOpenings(input: {
       codes.push('span_exceeds_wall');
     }
     if (
-      kind === 'slider' &&
+      (kind === 'slider' || kind === 'stacker') &&
       frame &&
       Number.isFinite(widthM) &&
       Number.isFinite(offsetAlongWallM) &&
@@ -757,7 +757,7 @@ function buildSharedOpenings(input: {
                 : codes[0] === 'span_exceeds_wall'
                   ? 'Opening width extends beyond the selected wall span.'
                   : codes[0] === 'insufficient_corner_clearance'
-                    ? `Sliders need at least ${MIN_SLIDER_CORNER_CLEARANCE_M.toFixed(1)}m clearance from each wall corner.`
+                    ? `Sliders and stackers need at least ${MIN_SLIDER_CORNER_CLEARANCE_M.toFixed(1)}m clearance from each wall corner.`
                     : codes[0] === 'overlapping_openings'
                       ? 'Openings on the same wall cannot overlap.'
                       : null;

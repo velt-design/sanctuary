@@ -3021,6 +3021,8 @@ function renderHouseFirstPlanOverlay(input: {
                 onPointerDown={(event) => {
                   if (event.button !== 0 || !shape.selected) return;
                   if (shape.ownerKind === 'deck' && shape.deckInteraction) {
+                    event.preventDefault();
+                    event.stopPropagation();
                     onShapeDragStart?.(
                       {
                         ownerKind: 'deck',

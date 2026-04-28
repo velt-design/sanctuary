@@ -233,7 +233,7 @@ function buildNewDeckDraft(input: {
 
 function buildNewOpeningDraft(input: {
   currentOpenings: HouseFirstOpeningDraft[];
-  kind: 'window' | 'slider';
+  kind: 'window' | 'hinged_door' | 'slider' | 'stacker';
   openingId: string;
   wallId: string;
 }): HouseFirstOpeningDraft {
@@ -252,6 +252,37 @@ function buildNewOpeningDraft(input: {
           sillHeightM: '0',
           offsetAlongWallM: '0.6',
         }
+      : input.kind === 'stacker'
+        ? {
+            id: input.openingId,
+            label: `Stacker ${
+              input.currentOpenings.filter((opening) => normalizeWallOpeningKind(opening.kind) === 'stacker').length +
+              1
+            }`,
+            kind: 'stacker',
+            panelCount: null,
+            wallId: input.wallId,
+            widthM: '3.6',
+            heightM: '2.1',
+            sillHeightM: '0',
+            offsetAlongWallM: '0.6',
+          }
+        : input.kind === 'hinged_door'
+          ? {
+              id: input.openingId,
+              label: `Door ${
+                input.currentOpenings.filter(
+                  (opening) => normalizeWallOpeningKind(opening.kind) === 'hinged_door',
+                ).length + 1
+              }`,
+              kind: 'hinged_door',
+              panelCount: null,
+              wallId: input.wallId,
+              widthM: '0.9',
+              heightM: '2.1',
+              sillHeightM: '0',
+              offsetAlongWallM: '0.6',
+            }
       : {
           id: input.openingId,
           label: `Window ${
@@ -556,7 +587,7 @@ export function useHouseMutationActions({
   );
 
   const addSharedHouseOpening = useCallback(
-    async (kind: 'window' | 'slider'): Promise<CommitResult> => {
+    async (kind: 'window' | 'hinged_door' | 'slider' | 'stacker'): Promise<CommitResult> => {
       const house = store.derived.house;
       if (!house) return missingSharedHouseResult();
 
