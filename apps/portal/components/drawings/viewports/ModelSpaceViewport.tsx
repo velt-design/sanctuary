@@ -211,6 +211,13 @@ type DeckDragViewportAnchor = {
   scrollTargets: DeckDragPinnedScrollTarget[];
 };
 
+type DeckDragViewportAnchorDrift = {
+  top: number;
+  left: number;
+  width: number;
+  height: number;
+};
+
 type OpeningSvgInteraction = Extract<HouseFirstPlanShapeDragStartMeta, { ownerKind: 'opening' }>['openingInteraction'];
 
 type OpeningDragSession = {
@@ -277,6 +284,7 @@ const DECK_REFERENCE_SWITCH_HYSTERESIS_M = 0.2;
 const DECK_SETTLE_MATCH_TOLERANCE_M = 0.1;
 const DECK_SETTLE_MAX_WAIT_MS = 500;
 const DECK_RELEASE_CLICK_SUPPRESSION_MS = 400;
+const DECK_VIEWPORT_STABILITY_TOLERANCE_PX = 0.5;
 
 function clampZoom(value: number): number {
   return Math.min(Math.max(value, MIN_MODEL_ZOOM), MAX_MODEL_ZOOM);
@@ -1516,10 +1524,9 @@ export default function ModelSpaceViewport({
     deckDragViewportAnchorRef.current = null;
   }, []);
 
-  const restoreDeckDragViewportAnchor = useCallback((): boolean => {
+  const restoreDeckDragPinnedScrollTargets = useCallback(() => {
     const anchor = deckDragViewportAnchorRef.current;
-    const scroller = scrollerRef.current;
-    if (!anchor || !scroller) return true;
+    if (!anchor) return;
     for (const target of anchor.scrollTargets) {
       if (target.node.scrollTop !== target.scrollTop) {
         target.node.scrollTop = target.scrollTop;
@@ -1528,12 +1535,28 @@ export default function ModelSpaceViewport({
         target.node.scrollLeft = target.scrollLeft;
       }
     }
+  }, []);
+
+  const measureDeckDragViewportAnchorDrift = useCallback((): DeckDragViewportAnchorDrift | null => {
+    const anchor = deckDragViewportAnchorRef.current;
+    const scroller = scrollerRef.current;
+    if (!anchor || !scroller) return null;
     const rect = scroller.getBoundingClientRect();
+    return {
+      top: rect.top - anchor.scrollerTop,
+      left: rect.left - anchor.scrollerLeft,
+      width: rect.width - anchor.scrollerWidth,
+      height: rect.height - anchor.scrollerHeight,
+    };
+  }, []);
+
+  const isDeckDragViewportAnchorStable = useCallback((drift: DeckDragViewportAnchorDrift | null) => {
+    if (!drift) return true;
     return (
-      Math.abs(rect.top - anchor.scrollerTop) <= 0.5 &&
-      Math.abs(rect.left - anchor.scrollerLeft) <= 0.5 &&
-      Math.abs(rect.width - anchor.scrollerWidth) <= 0.5 &&
-      Math.abs(rect.height - anchor.scrollerHeight) <= 0.5
+      Math.abs(drift.top) <= DECK_VIEWPORT_STABILITY_TOLERANCE_PX &&
+      Math.abs(drift.left) <= DECK_VIEWPORT_STABILITY_TOLERANCE_PX &&
+      Math.abs(drift.width) <= DECK_VIEWPORT_STABILITY_TOLERANCE_PX &&
+      Math.abs(drift.height) <= DECK_VIEWPORT_STABILITY_TOLERANCE_PX
     );
   }, []);
 
@@ -2996,7 +3019,7 @@ export default function ModelSpaceViewport({
       if (event.pointerId !== deckDragSession.pointerId) return;
       if (deckDragPhase !== 'dragging') return;
       event.preventDefault();
-      if (!restoreDeckDragViewportAnchor()) return;
+      restoreDeckDragPinnedScrollTargets();
       const svg = footprintSvgRef.current;
       if (!svg) return;
       const nextPoint = clientPointToSvg(svg, event.clientX, event.clientY);
@@ -3026,7 +3049,7 @@ export default function ModelSpaceViewport({
       if (event.pointerId !== deckDragSession.pointerId) return;
       if (deckDragPhase !== 'dragging') return;
       event.preventDefault();
-      restoreDeckDragViewportAnchor();
+      restoreDeckDragPinnedScrollTargets();
       const preview = deckPreviewStateRef.current;
       lastResolvedDeckDragPlanPointRef.current = null;
       if (!preview) {
@@ -3102,7 +3125,7 @@ export default function ModelSpaceViewport({
     deckDragSession,
     finalizeDeckDragSettlement,
     onCommitHouseFirstDeckDimension,
-    restoreDeckDragViewportAnchor,
+    restoreDeckDragPinnedScrollTargets,
   ]);
 
   useEffect(() => {
@@ -3416,37 +3439,41 @@ export default function ModelSpaceViewport({
   useEffect(() => {
     if (deckDragPhase !== 'settling' || !deckDragSession || !deckDragSettleState) return;
 
-    const committedPreviewReady =
-      deckDragSettleState.success &&
-      settledDeckShape &&
-      polygonsVisuallyMatch(settledDeckShape.polygon, deckDragSettleState.previewPolygon);
+    const committedGeometryReady = deckDragSettleState.success ? Boolean(settledDeckShape) : true;
     let cancelled = false;
+    const handoffReady = committedGeometryReady;
     let fallbackTimeoutId: number | null = null;
     let finalizeAnimationFrameId: number | null = null;
-    let secondFinalizeAnimationFrameId: number | null = null;
-    const finalize = () => {
+    let stableFrameCount = 0;
+    let timedOut = false;
+
+    const finalizeWhenStable = () => {
       finalizeAnimationFrameId = window.requestAnimationFrame(() => {
         if (cancelled) return;
-        if (!restoreDeckDragViewportAnchor()) {
-          secondFinalizeAnimationFrameId = window.requestAnimationFrame(() => {
-            if (cancelled) return;
-            restoreDeckDragViewportAnchor();
-            finalizeDeckDragSettlement();
-          });
+        restoreDeckDragPinnedScrollTargets();
+        const drift = measureDeckDragViewportAnchorDrift();
+        if (isDeckDragViewportAnchorStable(drift)) {
+          stableFrameCount += 1;
+        } else {
+          stableFrameCount = 0;
+        }
+        if (stableFrameCount >= 2 || timedOut) {
+          finalizeDeckDragSettlement();
           return;
         }
-        finalizeDeckDragSettlement();
+        finalizeWhenStable();
       });
     };
 
-    if (deckDragSettleState.releasePlacement === 'snapped' || committedPreviewReady || !deckDragSettleState.success) {
-      finalize();
+    if (handoffReady) {
+      finalizeWhenStable();
     } else {
       const elapsedMs = Date.now() - deckDragSettleState.resolvedAtMs;
       const remainingMs = Math.max(0, DECK_SETTLE_MAX_WAIT_MS - elapsedMs);
       fallbackTimeoutId = window.setTimeout(() => {
         if (cancelled) return;
-        finalize();
+        timedOut = true;
+        finalizeWhenStable();
       }, remainingMs);
     }
 
@@ -3458,16 +3485,15 @@ export default function ModelSpaceViewport({
       if (finalizeAnimationFrameId !== null) {
         window.cancelAnimationFrame(finalizeAnimationFrameId);
       }
-      if (secondFinalizeAnimationFrameId !== null) {
-        window.cancelAnimationFrame(secondFinalizeAnimationFrameId);
-      }
     };
   }, [
     deckDragPhase,
     deckDragSession,
     deckDragSettleState,
     finalizeDeckDragSettlement,
-    restoreDeckDragViewportAnchor,
+    isDeckDragViewportAnchorStable,
+    measureDeckDragViewportAnchorDrift,
+    restoreDeckDragPinnedScrollTargets,
     settledDeckShape,
   ]);
 
@@ -3553,7 +3579,7 @@ export default function ModelSpaceViewport({
       preventDefaultOnly(event);
     };
     const restorePinnedViewport = () => {
-      restoreDeckDragViewportAnchor();
+      restoreDeckDragPinnedScrollTargets();
     };
     const scrollTargets = deckDragViewportAnchorRef.current?.scrollTargets.map((target) => target.node) ?? [];
 
@@ -3580,7 +3606,7 @@ export default function ModelSpaceViewport({
         target.removeEventListener('scroll', restorePinnedViewport);
       }
     };
-  }, [deckDragLocked, restoreDeckDragViewportAnchor]);
+  }, [deckDragLocked, restoreDeckDragPinnedScrollTargets]);
 
   useEffect(() => {
     if (!houseFirstPlanOverlay?.customEdgeCandidates.some((candidate) => candidate.id === houseFirstActiveCustomEdgeId)) {

@@ -3724,6 +3724,7 @@ describe('ModelSpaceViewport', () => {
     });
     await flushAnimationFrame();
     await flushAnimationFrame();
+    await flushAnimationFrame();
 
     expect(rendered.container.querySelector('[data-testid="deck-center-offset"]')?.textContent).toBe('-1');
     expect(scroller.dataset.houseFirstDeckDragActive).toBe('false');
@@ -3776,6 +3777,10 @@ describe('ModelSpaceViewport', () => {
     await act(async () => {
       await Promise.resolve();
     });
+    await flushAnimationFrame();
+    await flushAnimationFrame();
+    await flushAnimationFrame();
+    await flushAnimationFrame();
     await flushAnimationFrame();
 
     expect(rendered.container.querySelector('[data-testid="deck-is-attached"]')?.textContent).toBe('false');
@@ -3952,11 +3957,15 @@ describe('ModelSpaceViewport', () => {
     const initialScrollTop = getScrollTop();
     const initialScrollerRect = snapshotRect(getScrollerRect());
     dispatchPointer(deckHit, 'pointerdown', { pointerId: 130, button: 0, clientX: 50, clientY: 50 });
+    dispatchPointer(window, 'pointermove', { pointerId: 130, button: 0, buttons: 1, clientX: 50, clientY: -1200 });
+    const midPreviewY = polygonCentroidY(rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]'));
     dispatchPointer(window, 'pointermove', { pointerId: 130, button: 0, buttons: 1, clientX: 50, clientY: -4000 });
+    const topPreviewY = polygonCentroidY(rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]'));
 
     expect(rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]')).not.toBeNull();
     expect(rendered.container.querySelector('[data-testid="deck-telemetry-snap"]')?.textContent).toBe('floating');
     expect(getDrawOutlineDiagnostics(rendered.container).houseFirstDeckDragLocked).toBe('true');
+    expect(topPreviewY).toBeLessThan(midPreviewY);
     act(() => {
       scrollParent.scrollTop = initialScrollTop + 120;
       scrollParent.dispatchEvent(new Event('scroll'));
@@ -3977,6 +3986,9 @@ describe('ModelSpaceViewport', () => {
     await act(async () => {
       await Promise.resolve();
     });
+    await flushAnimationFrame();
+    await flushAnimationFrame();
+    await flushAnimationFrame();
     await flushAnimationFrame();
     await flushAnimationFrame();
 
@@ -4057,6 +4069,12 @@ describe('ModelSpaceViewport', () => {
     });
     expect(getScrollTop()).toBe(initialScrollTop);
     expect(snapshotRect(getScrollerRect())).toEqual(initialScrollerRect);
+    expect(rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]')).not.toBeNull();
+
+    await flushAnimationFrame();
+    expect(rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]')).not.toBeNull();
+    expect(getDrawOutlineDiagnostics(rendered.container).houseFirstDeckDragLocked).toBe('true');
+    expect(snapshotRect(getScrollerRect())).toEqual(initialScrollerRect);
 
     await flushAnimationFrame();
     await flushAnimationFrame();
@@ -4118,13 +4136,14 @@ describe('ModelSpaceViewport', () => {
     await act(async () => {
       await Promise.resolve();
     });
-    await act(async () => {
-      await Promise.resolve();
-    });
+    await flushAnimationFrame();
+    await flushAnimationFrame();
+    await flushAnimationFrame();
 
     expect(rendered.container.querySelector('[data-testid="deck-is-attached"]')?.textContent).toBe('false');
     expect(rendered.container.querySelector('[data-testid="deck-floating-center-along"]')?.textContent).not.toBe('');
     expect(rendered.container.querySelector('[data-testid="deck-floating-center-depth"]')?.textContent).not.toBe('');
+    expect(scroller.dataset.houseFirstDeckDragActive).toBe('false');
     expect(rendered.container.querySelector('[aria-label="Deck interaction hint"]')).toBeNull();
 
     rendered.unmount();
@@ -4186,6 +4205,11 @@ describe('ModelSpaceViewport', () => {
     await act(async () => {
       await Promise.resolve();
     });
+    await flushAnimationFrame();
+    await flushAnimationFrame();
+    await flushAnimationFrame();
+    await flushAnimationFrame();
+    await flushAnimationFrame();
 
     expect(rendered.container.querySelector('[data-testid="deck-is-attached"]')?.textContent).toBe('true');
     expect(rendered.container.querySelector('[data-testid="deck-host-edge"]')?.textContent).toBe('footprint-edge-4');
@@ -4251,6 +4275,11 @@ describe('ModelSpaceViewport', () => {
     await act(async () => {
       await Promise.resolve();
     });
+    await flushAnimationFrame();
+    await flushAnimationFrame();
+    await flushAnimationFrame();
+    await flushAnimationFrame();
+    await flushAnimationFrame();
 
     expect(rendered.container.querySelector('[data-testid="deck-is-attached"]')?.textContent).toBe('true');
     expect(rendered.container.querySelector('[data-testid="deck-host-edge"]')?.textContent).toBe('footprint-edge-4');
@@ -4378,6 +4407,7 @@ describe('ModelSpaceViewport', () => {
     await act(async () => {
       await Promise.resolve();
     });
+    await flushAnimationFrame();
     await flushAnimationFrame();
     await flushAnimationFrame();
     await flushAnimationFrame();
