@@ -3,6 +3,6 @@
 Date: 2026-04-08
 Status: Superseded
 
-This document is superseded by [`docs/house-first-design-workbench-implementation-plan.md`](./house-first-design-workbench-implementation-plan.md) and [`docs/house-first-design-workbench-execution-board.md`](./house-first-design-workbench-execution-board.md).
+This document is superseded by the active object-first workbench authorities: [`docs/house-first-design-workbench-implementation-plan.md`](./house-first-design-workbench-implementation-plan.md) and [`docs/house-first-design-workbench-execution-board.md`](./house-first-design-workbench-execution-board.md).
 
 Its historical value was crystallizing the geometry-truth, shared-kernel, and hidden-route posture that the canonical house-first docs now absorb.

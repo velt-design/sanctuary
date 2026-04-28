@@ -2414,6 +2414,64 @@ describe('house model geometry builder', () => {
     ).toBe(true);
   });
 
+  it('blocks appendage bands on split exterior host edges while keeping the selected roof family explicit', () => {
+    const footprint: Polygon3 = [
+      { x: -1800, y: -1800, z: 0 },
+      { x: 7800, y: -1800, z: 0 },
+      { x: 7800, y: 2400, z: 0 },
+      { x: 6000, y: 2400, z: 0 },
+      { x: 6000, y: 0, z: 0 },
+      { x: 0, y: 0, z: 0 },
+      { x: 0, y: 2400, z: 0 },
+      { x: -1800, y: 2400, z: 0 },
+    ];
+    const model = buildHouseModel3D({
+      config: makeConfig({
+        footprint,
+        roofForm: 'mono',
+        roofAppendage: {
+          enabled: true,
+          form: 'mono',
+          hostEdge: 'front',
+          pitchDeg: 5,
+          dropMm: 450,
+        },
+      }),
+      attachmentEdge: makeAttachmentEdge(),
+    });
+
+    expect(model?.metadata?.roofForm).toBe('mono');
+    expect(model?.metadata?.roofQaStatus).toBe('invalid');
+    expect(model?.metadata?.roofQaFailureReason).toBe('invalid_appendage_host_edge');
+  });
+
+  it('blocks appendage bands when the footprint exposes no continuous exterior appendage host edge', () => {
+    const footprint: Polygon3 = [
+      { x: 0, y: -1800, z: 0 },
+      { x: 6000, y: -1600, z: 0 },
+      { x: 5600, y: 0, z: 0 },
+      { x: 0, y: 0, z: 0 },
+    ];
+    const model = buildHouseModel3D({
+      config: makeConfig({
+        footprint,
+        roofForm: 'flat',
+        roofAppendage: {
+          enabled: true,
+          form: 'mono',
+          hostEdge: 'rear',
+          pitchDeg: 5,
+          dropMm: 450,
+        },
+      }),
+      attachmentEdge: makeAttachmentEdge(),
+    });
+
+    expect(model?.metadata?.roofForm).toBe('flat');
+    expect(model?.metadata?.roofQaStatus).toBe('invalid');
+    expect(model?.metadata?.roofQaFailureReason).toBe('invalid_appendage_topology');
+  });
+
   it('builds shared deck geometry for attached, detached, and custom decks', () => {
     const config = makeConfig();
     config.houseContext.model = {

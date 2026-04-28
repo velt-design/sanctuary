@@ -53,7 +53,9 @@ describe('HouseFirstWorkbenchRail', () => {
     expect(markup).toContain('Roof');
     expect(markup).toContain('Approximate');
     expect(markup).toContain('Review Basis');
+    expect(markup).toContain('Roof geometry');
     expect(markup).toContain('Roof form basis');
+    expect(markup).toContain('Appendage supported edges');
     expect(markup).toContain('Decks');
     expect(markup).toContain('Openings');
     expect(markup).toContain('Add deck');

@@ -150,8 +150,32 @@ export function labelForRoofApproximationReason(
   }
 }
 
+export function labelForRoofGeometryKind(value: HouseModel['roof']['geometryKind'] | null | undefined): string {
+  switch (value) {
+    case 'footprint_flat':
+      return 'Footprint flat';
+    case 'footprint_mono':
+      return 'Footprint mono';
+    case 'rectangular_gable':
+      return 'Rectangular gable';
+    case 'bent_spine_joined_gable':
+      return 'Bent-spine joined gable';
+    case 'rectangular_hipped':
+      return 'Rectangular hipped';
+    case 'rectilinear_joined_hipped':
+      return 'Rectilinear joined hipped';
+    default:
+      return 'None';
+  }
+}
+
 export function labelForAttachmentSide(value: string | null | undefined): string {
   return ATTACHMENT_SIDE_OPTIONS.find((option) => option.value === value)?.label ?? 'Rear';
+}
+
+export function labelForAttachmentSideList(values: Array<string> | null | undefined): string {
+  if (!values?.length) return 'None';
+  return values.map((value) => labelForAttachmentSide(value)).join(', ');
 }
 
 export function formatRotation(value: number | null | undefined): string {

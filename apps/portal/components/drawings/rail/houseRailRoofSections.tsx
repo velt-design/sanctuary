@@ -18,8 +18,10 @@ import {
   SummarySection,
   buildRoofDraftFromHouse,
   labelForRoofApproximationReason,
+  labelForAttachmentSideList,
   labelForRoofFieldSource,
   labelForRoofForm,
+  labelForRoofGeometryKind,
 } from './houseRailShared';
 import styles from './ConfiguratorRail.module.css';
 
@@ -40,16 +42,18 @@ export function buildHouseRailRoofSections({
   const roofCapabilities = house?.roof.capabilities ?? null;
   const roofProvenance = house?.roof.provenance ?? null;
   const approximationReasons = house?.roof.validation.approximationReasons ?? [];
+  const appendageSupportedHostEdges = house?.roof.appendageSupportedHostEdges ?? [];
   const roofFormEditable = roofDraft.form === 'mono' || roofDraft.form === 'gable';
   const selectedFormSupported = roofCapabilities?.selectedFormSupported ?? roofFormEditable;
   const canEditSelectedRoofForm = roofFormEditable && selectedFormSupported;
   const canShowAppendageControls = roofFormEditable;
   const appendageHelperText =
-    house?.roof.validation.code === 'invalid_appendage'
+    house?.roof.validation.code === 'invalid_appendage_topology' ||
+    house?.roof.validation.code === 'invalid_appendage_host_edge'
       ? 'The current appendage remains editable so you can disable it or adjust it after the footprint changes.'
       : roofCapabilities?.appendageSupported
-        ? 'One lower appendage band is supported in this milestone.'
-        : 'Appendage bands are limited to straight or rectangular house footprints in this milestone.';
+        ? `Supported host edges: ${labelForAttachmentSideList(appendageSupportedHostEdges)}.`
+        : 'Appendage bands require at least one continuous exterior perimeter run on the current footprint.';
   const fields: ReactNode[] = [];
 
   if (roofFormEditable) {
@@ -231,6 +235,11 @@ export function buildHouseRailRoofSections({
         options={ATTACHMENT_SIDE_OPTIONS}
         disabled={disabled}
         error={fieldErrors['appendage-host-edge']}
+        helperText={
+          house?.roof.validation.code === 'invalid_appendage_host_edge'
+            ? house.roof.appendageSupportReason ?? `Supported edges: ${labelForAttachmentSideList(appendageSupportedHostEdges)}.`
+            : `Supported edges: ${labelForAttachmentSideList(appendageSupportedHostEdges)}.`
+        }
         onCommit={(value) =>
           runRoofCommit('appendage-host-edge', {
             ...roofDraft,
@@ -282,8 +291,9 @@ export function buildHouseRailRoofSections({
       ? `${labelForRoofFieldSource(roofProvenance?.ridgeAxis)}; near-square rectangular footprint keeps the current axis`
       : labelForRoofFieldSource(roofProvenance?.ridgeAxis);
   const appendageSupportLabel =
-    house?.roof.validation.code === 'invalid_appendage'
-      ? 'Blocked on the current footprint'
+    house?.roof.validation.code === 'invalid_appendage_topology' ||
+      house?.roof.validation.code === 'invalid_appendage_host_edge'
+      ? house?.roof.appendageSupportReason ?? 'Blocked on the current footprint'
       : roofCapabilities?.appendageSupported
         ? 'Supported on the current footprint'
         : 'Not supported on the current footprint';
@@ -293,6 +303,7 @@ export function buildHouseRailRoofSections({
       key="roof-review-basis"
       title="Review Basis"
       items={[
+        { label: 'Roof geometry', value: labelForRoofGeometryKind(house?.roof.geometryKind) },
         { label: 'Roof form basis', value: labelForRoofFieldSource(roofProvenance?.form) },
         {
           label: 'Mono fall basis',
@@ -309,6 +320,7 @@ export function buildHouseRailRoofSections({
               : 'Not used for this roof',
         },
         { label: 'Appendage support', value: appendageSupportLabel },
+        { label: 'Appendage supported edges', value: labelForAttachmentSideList(appendageSupportedHostEdges) },
       ]}
       hint={
         approximationReasons.length > 0

@@ -9,7 +9,7 @@ Depends on:
 
 ## Objective
 
-Support house-mode footprint editing inside the canonical house-first workbench direction by making Model Space outline drawing feel like a polished, reliable CAD-style editing tool instead of a partial overlay on top of generated drawings.
+Support house-form footprint editing inside the canonical object-first workbench direction by making Model Space outline drawing feel like a polished, reliable CAD-style editing tool instead of a partial overlay on top of generated drawings.
 
 The end state should support:
 
@@ -21,7 +21,7 @@ The end state should support:
 - robust validation with actionable errors
 - browser-level regression coverage for the real user flow
 
-This is a tactical implementation note, not a competing workbench spec. It supports the house-first plan and execution board by tightening one important part of house-mode model-space editing.
+This is a tactical implementation note, not a competing workbench spec. It supports the active object-first implementation plan and execution board by tightening one important part of selected-house-form editing in `Model Space`.
 
 ## Current State
 
@@ -70,7 +70,7 @@ Outline drawing is considered polished when:
 
 - Draw Outline is a Model Space plan tool only.
 - Sheet View can show the resulting context, but it should not host the outline drawing workflow.
-- The drawn outline represents house/context footprint geometry in model coordinates.
+- The drawn outline represents selected house-form footprint geometry in model coordinates.
 - Commit should update the existing drawing draft path. No new persistence surface is introduced.
 - The outer Model Space viewport remains the only visible viewport shell.
 - Panning should remain possible while drawing, but must not conflict with point placement.

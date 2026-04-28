@@ -4853,6 +4853,7 @@ function buildSharedHouseRoof(input: {
     roofForm: input.roofForm,
     footprint: input.sourceFootprint,
     appendageEnabled: Boolean(input.roofAppendage?.enabled),
+    appendageHostEdge: input.roofAppendage?.hostEdge ?? 'rear',
   });
   if (
     roofSelectionValidation.code === 'unsupported_roof_topology' ||
@@ -4900,14 +4901,17 @@ function buildSharedHouseRoof(input: {
   if (!input.roofAppendage?.enabled || primary.metadata.roofQaStatus !== 'valid') {
     return primary;
   }
-  if (roofSelectionValidation.code === 'invalid_appendage') {
+  if (
+    roofSelectionValidation.code === 'invalid_appendage_topology' ||
+    roofSelectionValidation.code === 'invalid_appendage_host_edge'
+  ) {
     return {
       ...primary,
       metadata: {
         ...primary.metadata,
         roofQaStatus: 'invalid',
-        roofQaFailureReason: 'invalid_appendage',
-        roofTopologyFailureReason: 'invalid_appendage',
+        roofQaFailureReason: roofSelectionValidation.code,
+        roofTopologyFailureReason: roofSelectionValidation.code,
       },
     };
   }

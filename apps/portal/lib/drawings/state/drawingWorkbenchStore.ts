@@ -92,8 +92,11 @@ export type DrawingWorkbenchStore = {
     roofValidationMessage: string | null;
     roofApproximationReasons: NonNullable<HouseModel['roof']['validation']['approximationReasons']>;
     roofProvenance: HouseModel['roof']['provenance'] | null;
+    roofGeometryKind: HouseModel['roof']['geometryKind'] | null;
     roofAppendageEnabled: boolean;
     roofAppendageStatus: 'valid' | 'invalid' | 'off';
+    roofAppendageSupportedHostEdges: HouseModel['roof']['appendageSupportedHostEdges'];
+    roofAppendageSupportReason: string | null;
     pergolas: PergolaModel[];
     activePergolaId: string | null;
     activePergola: PergolaModel | null;
@@ -350,9 +353,13 @@ export function buildDrawingWorkbenchStore(input: {
       roofValidationMessage: projectModel.house?.roof.validation.message ?? null,
       roofApproximationReasons: projectModel.house?.roof.validation.approximationReasons ?? [],
       roofProvenance: projectModel.house?.roof.provenance ?? null,
+      roofGeometryKind: projectModel.house?.roof.geometryKind ?? null,
       roofAppendageEnabled: Boolean(projectModel.house?.roof.appendage.enabled),
+      roofAppendageSupportedHostEdges: projectModel.house?.roof.appendageSupportedHostEdges ?? [],
+      roofAppendageSupportReason: projectModel.house?.roof.appendageSupportReason ?? null,
       roofAppendageStatus: projectModel.house?.roof.appendage.enabled
-        ? projectModel.house?.roof.validation.code === 'invalid_appendage'
+        ? projectModel.house?.roof.validation.code === 'invalid_appendage_topology' ||
+          projectModel.house?.roof.validation.code === 'invalid_appendage_host_edge'
           ? 'invalid'
           : 'valid'
         : 'off',

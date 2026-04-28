@@ -548,6 +548,7 @@ describe('buildDrawingWorkbenchStore', () => {
     expect(store.derived.roofApproximationReasons).toEqual([]);
     expect(store.derived.roofProvenance?.form).toBe('house_first_draft');
     expect(store.derived.roofProvenance?.ridgeAxis).toBe('default_fallback');
+    expect(store.derived.roofGeometryKind).toBe('bent_spine_joined_gable');
     expect(store.derived.roofAppendageStatus).toBe('off');
   });
 
@@ -616,6 +617,38 @@ describe('buildDrawingWorkbenchStore', () => {
 
     expect(ridgeStore.derived.roofReviewStatus).toBe('blocked');
     expect(ridgeStore.derived.roofValidationCode).toBe('invalid_ridge_axis');
+  });
+
+  it('derives appendage support edges and blocks unsupported host edges without hiding support metadata', () => {
+    const fixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
+    if (!fixture) throw new Error('Missing mono-standard fixture.');
+    const draft = buildEstimateDrawingDraftFromSnapshot(fixture.snapshot);
+    if (!draft) throw new Error('Expected drawing draft.');
+    draft.inputs.modules[0]!.houseFootprintPreset = 'u_shape';
+    draft.houseFirst = {
+      roof: {
+        appendage: {
+          enabled: true,
+          hostEdge: 'rear',
+          pitchDeg: '5',
+          dropMm: '450',
+        },
+      },
+    };
+
+    const store = buildDrawingWorkbenchStore({
+      snapshot: fixture.snapshot,
+      draft,
+      ui: createDrawingWorkbenchUiState({
+        workbenchMode: 'house',
+      }),
+    });
+
+    expect(store.derived.roofReviewStatus).toBe('blocked');
+    expect(store.derived.roofValidationCode).toBe('invalid_appendage_host_edge');
+    expect(store.derived.roofAppendageStatus).toBe('invalid');
+    expect(store.derived.roofAppendageSupportedHostEdges).toEqual(['front', 'left', 'right']);
+    expect(store.derived.roofAppendageSupportReason).toContain('Supported edges: Front, Left, Right');
   });
 
   it('derives active-side deck support diagnostics for attached and detached deck scenarios', () => {

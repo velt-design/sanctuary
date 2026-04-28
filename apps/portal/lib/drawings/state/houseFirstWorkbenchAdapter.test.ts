@@ -314,6 +314,29 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
     expect(projectModel.house?.roof.validation.status).toBe('valid');
     expect(projectModel.house?.roof.ridgeAxis).toBe('x');
     expect(projectModel.house?.roof.provenance?.ridgeAxis).toBe('default_fallback');
+    expect(projectModel.house?.roof.geometryKind).toBe('bent_spine_joined_gable');
+  });
+
+  it('keeps orthogonal hipped footprints valid and exposes joined-hipped geometry', () => {
+    const monoFixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
+    if (!monoFixture) throw new Error('Missing mono-standard fixture.');
+    const draft = buildEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
+    if (!draft) throw new Error('Expected drawing draft.');
+    draft.inputs.modules[0]!.houseFootprintPreset = 'u_shape';
+    draft.houseFirst = {
+      roof: {
+        form: 'hipped',
+      },
+    };
+
+    const projectModel = buildHouseFirstWorkbenchProjectModel({
+      snapshot: monoFixture.snapshot,
+      draft,
+    });
+
+    expect(projectModel.house?.roof.validation.status).toBe('valid');
+    expect(projectModel.house?.roof.validation.code).toBeNull();
+    expect(projectModel.house?.roof.geometryKind).toBe('rectilinear_joined_hipped');
   });
 
   it('filters invalid saved open gable ends when the ridge orientation changes', () => {
@@ -584,7 +607,7 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
     });
   });
 
-  it('keeps invalid appendages blocked instead of downgrading them to approximate', () => {
+  it('surfaces supported appendage host edges and blocks unsupported ones', () => {
     const monoFixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
     if (!monoFixture) throw new Error('Missing mono-standard fixture.');
     const draft = buildEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
@@ -607,7 +630,9 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
     });
 
     expect(projectModel.house?.roof.validation.status).toBe('invalid');
-    expect(projectModel.house?.roof.validation.code).toBe('invalid_appendage');
+    expect(projectModel.house?.roof.validation.code).toBe('invalid_appendage_host_edge');
+    expect(projectModel.house?.roof.appendageSupportedHostEdges).toEqual(['front', 'left', 'right']);
+    expect(projectModel.house?.roof.appendageSupportReason).toContain('Supported edges: Front, Left, Right');
   });
 
   it('uses floating preset rects as detached preset geometry without discarding legacy preset fields', () => {

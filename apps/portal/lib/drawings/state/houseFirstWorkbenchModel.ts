@@ -1,5 +1,6 @@
 import type {
   HouseRoofCapabilities,
+  HouseRoofGeometryKind,
   HouseRoofFootprintRequirement,
   HouseRoofFootprintTopology,
 } from '@sp/geometry';
@@ -119,13 +120,17 @@ export type HouseRoofModel = {
     pitchDeg: string;
     dropMm: string;
   };
+  geometryKind: HouseRoofGeometryKind | null;
+  appendageSupportedHostEdges: Array<NonNullable<CalculatorModuleInputs['attachmentSide']>>;
+  appendageSupportReason: string | null;
   validation: {
     status: 'valid' | 'approximate' | 'invalid';
     code:
       | 'unsupported_roof_topology'
       | 'unsupported_gable_topology'
       | 'unsupported_hipped_topology'
-      | 'invalid_appendage'
+      | 'invalid_appendage_topology'
+      | 'invalid_appendage_host_edge'
       | 'invalid_mono_fall_direction'
       | 'invalid_ridge_axis'
       | null;

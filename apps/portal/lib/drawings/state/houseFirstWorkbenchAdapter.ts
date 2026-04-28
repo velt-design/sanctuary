@@ -8,6 +8,8 @@ import {
   deriveHouseGableTerminalEnds,
   buildHouseFootprintPresetSideLocalPoints,
   deriveHouseRoofCapabilities,
+  deriveHouseRoofAppendageSupportedHostEdges,
+  deriveHouseRoofGeometryKind,
   preferredMonoFallDirectionForAttachmentSide,
   validateHouseRoofSelection,
   type Line3,
@@ -401,6 +403,7 @@ function validateSharedRoof(input: {
     roofRidgeAxis: input.roofRidgeAxis,
     roofRidgeAxisExplicit: input.roofRidgeAxisExplicit,
     preferredRidgeAxis: input.preferredRidgeAxis,
+    appendageHostEdge: input.appendage.hostEdge,
   });
   return {
     status: result.status,
@@ -1464,6 +1467,17 @@ function buildSharedHouse(
     roofForm: sharedRoofForm,
     footprint: localPolygonToGeometryPolygon(derivedHousePolygon),
   });
+  const roofGeometryKind = deriveHouseRoofGeometryKind({
+    roofForm: sharedRoofForm,
+    footprint: localPolygonToGeometryPolygon(derivedHousePolygon),
+  });
+  const appendageSupportedHostEdges = deriveHouseRoofAppendageSupportedHostEdges({
+    footprint: localPolygonToGeometryPolygon(derivedHousePolygon),
+  }) as Array<NonNullable<CalculatorModuleInputs['attachmentSide']>>;
+  const appendageSupportReason =
+    validation.code === 'invalid_appendage_topology' || validation.code === 'invalid_appendage_host_edge'
+      ? validation.message
+      : null;
   const approximationReasons = new Set<HouseRoofApproximationReason>();
   if (roofProvenance.form === 'legacy_pergola_inference') {
     approximationReasons.add('inferred_form');
@@ -1556,6 +1570,9 @@ function buildSharedHouse(
           isOpen: openGableEndIds.includes(end.id),
         })),
         appendage,
+        geometryKind: roofGeometryKind,
+        appendageSupportedHostEdges,
+        appendageSupportReason,
         validation: roofValidation,
         provenance: roofProvenance,
         capabilities,

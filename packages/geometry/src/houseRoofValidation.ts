@@ -8,6 +8,13 @@ import type {
 
 export type HouseRoofFootprintTopology = 'polygonal' | 'orthogonal' | 'rectangular';
 export type HouseRoofFootprintRequirement = 'any' | 'orthogonal' | 'rectangular';
+export type HouseRoofGeometryKind =
+  | 'footprint_flat'
+  | 'footprint_mono'
+  | 'rectangular_gable'
+  | 'bent_spine_joined_gable'
+  | 'rectangular_hipped'
+  | 'rectilinear_joined_hipped';
 
 export type HouseRoofCapabilities = {
   roofForm: HouseRoofForm;
@@ -32,12 +39,20 @@ export type HouseRoofSelectionValidation = {
     | 'unsupported_roof_topology'
     | 'unsupported_gable_topology'
     | 'unsupported_hipped_topology'
-    | 'invalid_appendage'
+    | 'invalid_appendage_topology'
+    | 'invalid_appendage_host_edge'
     | 'invalid_mono_fall_direction'
     | 'invalid_ridge_axis'
     | null;
   message: string | null;
 };
+
+function formatAttachmentSideList(sides: AttachmentSide[]): string {
+  if (sides.length === 0) return 'none';
+  return sides
+    .map((side) => side.charAt(0).toUpperCase() + side.slice(1))
+    .join(', ');
+}
 
 export function preferredMonoFallDirectionForAttachmentSide(
   attachmentSide: AttachmentSide,
@@ -101,11 +116,65 @@ export function classifyHouseRoofFootprintTopology(footprint: Polygon3): HouseRo
   return 'polygonal';
 }
 
+export function deriveHouseRoofGeometryKind(input: {
+  roofForm: HouseRoofForm;
+  footprint: Polygon3;
+}): HouseRoofGeometryKind | null {
+  const footprintTopology = classifyHouseRoofFootprintTopology(input.footprint);
+  switch (input.roofForm) {
+    case 'flat':
+      return 'footprint_flat';
+    case 'mono':
+      return footprintTopology === 'polygonal' ? null : 'footprint_mono';
+    case 'gable':
+      if (footprintTopology === 'rectangular') return 'rectangular_gable';
+      return footprintTopology === 'orthogonal' ? 'bent_spine_joined_gable' : null;
+    case 'hipped':
+      if (footprintTopology === 'rectangular') return 'rectangular_hipped';
+      return footprintTopology === 'orthogonal' ? 'rectilinear_joined_hipped' : null;
+    default:
+      return null;
+  }
+}
+
+export function deriveHouseRoofAppendageSupportedHostEdges(input: {
+  footprint: Polygon3;
+}): AttachmentSide[] {
+  if (!isOrthogonalFootprint(input.footprint)) return [];
+  const minX = Math.min(...input.footprint.map((point) => point.x));
+  const maxX = Math.max(...input.footprint.map((point) => point.x));
+  const minY = Math.min(...input.footprint.map((point) => point.y));
+  const maxY = Math.max(...input.footprint.map((point) => point.y));
+  const counts: Record<AttachmentSide, number> = {
+    rear: 0,
+    front: 0,
+    left: 0,
+    right: 0,
+  };
+  for (let index = 0; index < input.footprint.length; index += 1) {
+    const start = input.footprint[index]!;
+    const end = input.footprint[(index + 1) % input.footprint.length]!;
+    if (Math.abs(start.y - end.y) <= 1e-6) {
+      if (Math.abs(start.y - minY) <= 1e-6 && Math.abs(end.y - minY) <= 1e-6) counts.rear += 1;
+      if (Math.abs(start.y - maxY) <= 1e-6 && Math.abs(end.y - maxY) <= 1e-6) counts.front += 1;
+    }
+    if (Math.abs(start.x - end.x) <= 1e-6) {
+      if (Math.abs(start.x - minX) <= 1e-6 && Math.abs(end.x - minX) <= 1e-6) counts.left += 1;
+      if (Math.abs(start.x - maxX) <= 1e-6 && Math.abs(end.x - maxX) <= 1e-6) counts.right += 1;
+    }
+  }
+  return (['rear', 'front', 'left', 'right'] as const).filter((side) => counts[side] === 1);
+}
+
 export function deriveHouseRoofCapabilities(input: {
   roofForm: HouseRoofForm;
   footprint: Polygon3;
 }): HouseRoofCapabilities {
   const footprintTopology = classifyHouseRoofFootprintTopology(input.footprint);
+  const roofGeometryKind = deriveHouseRoofGeometryKind(input);
+  const appendageSupportedHostEdges = deriveHouseRoofAppendageSupportedHostEdges({
+    footprint: input.footprint,
+  });
   const selectedFormFootprintRequirement: HouseRoofFootprintRequirement =
     input.roofForm === 'mono'
       ? 'orthogonal'
@@ -126,9 +195,12 @@ export function deriveHouseRoofCapabilities(input: {
       appendage: true,
     },
     selectedFormFootprintRequirement,
-    selectedFormSupported: requirementSatisfied(footprintTopology, selectedFormFootprintRequirement),
+    selectedFormSupported:
+      input.roofForm === 'flat'
+        ? true
+        : roofGeometryKind !== null && requirementSatisfied(footprintTopology, selectedFormFootprintRequirement),
     appendageFootprintRequirement: 'rectangular',
-    appendageSupported: footprintTopology === 'rectangular',
+    appendageSupported: appendageSupportedHostEdges.length > 0,
   };
 }
 
@@ -143,9 +215,13 @@ export function validateHouseRoofSelection(input: {
   roofRidgeAxis?: HouseRoofRidgeAxis | null;
   roofRidgeAxisExplicit?: boolean;
   preferredRidgeAxis?: HouseRoofRidgeAxis | null;
+  appendageHostEdge?: AttachmentSide | null;
 }): HouseRoofSelectionValidation {
   const capabilities = deriveHouseRoofCapabilities({
     roofForm: input.roofForm,
+    footprint: input.footprint,
+  });
+  const appendageSupportedHostEdges = deriveHouseRoofAppendageSupportedHostEdges({
     footprint: input.footprint,
   });
 
@@ -207,12 +283,25 @@ export function validateHouseRoofSelection(input: {
     };
   }
 
-  if (input.appendageEnabled && !capabilities.appendageSupported) {
+  if (input.appendageEnabled && appendageSupportedHostEdges.length === 0) {
     return {
       status: 'invalid',
       blockedBy: 'appendage',
-      code: 'invalid_appendage',
-      message: 'Appendage bands are currently limited to straight or rectangular house footprints.',
+      code: 'invalid_appendage_topology',
+      message: 'Appendage bands require at least one continuous exterior perimeter run on the current house footprint.',
+    };
+  }
+
+  if (
+    input.appendageEnabled &&
+    input.appendageHostEdge &&
+    !appendageSupportedHostEdges.includes(input.appendageHostEdge)
+  ) {
+    return {
+      status: 'invalid',
+      blockedBy: 'appendage',
+      code: 'invalid_appendage_host_edge',
+      message: `The ${input.appendageHostEdge} edge does not resolve to one continuous exterior appendage run on this footprint. Supported edges: ${formatAttachmentSideList(appendageSupportedHostEdges)}.`,
     };
   }
 

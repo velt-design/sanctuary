@@ -4,8 +4,10 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import SanctuaryWorkbenchRail from '@/components/drawings/rail/SanctuaryWorkbenchRail';
 import HouseFirstWorkbenchRail from '@/components/drawings/rail/HouseFirstWorkbenchRail';
 import {
+  labelForAttachmentSideList,
   labelForRoofApproximationReason,
   labelForRoofFieldSource,
+  labelForRoofGeometryKind,
 } from '@/components/drawings/rail/houseRailShared';
 import DrawingWorkbench from '@/components/drawings/workbench/DrawingWorkbench';
 import type { Geometry3DViewportState } from '@/components/drawings/viewports/Geometry3DViewport';
@@ -632,6 +634,12 @@ export default function DesignWorkbenchEstimateClient({
               <span className={styles.diagnosticValue}>{store.derived.roofValidationCode ?? 'none'}</span>
             </div>
             <div className={styles.diagnosticRow}>
+              <span className={styles.diagnosticLabel}>Roof geometry</span>
+              <span className={styles.diagnosticValue}>
+                {labelForRoofGeometryKind(store.derived.roofGeometryKind)}
+              </span>
+            </div>
+            <div className={styles.diagnosticRow}>
               <span className={styles.diagnosticLabel}>Roof form source</span>
               <span className={styles.diagnosticValue}>
                 {labelForRoofFieldSource(store.derived.roofProvenance?.form)}
@@ -676,6 +684,21 @@ export default function DesignWorkbenchEstimateClient({
             <div className={styles.diagnosticRow}>
               <span className={styles.diagnosticLabel}>Roof appendage</span>
               <span className={styles.diagnosticValue}>{store.derived.roofAppendageStatus}</span>
+            </div>
+            <div className={styles.diagnosticRow}>
+              <span className={styles.diagnosticLabel}>Appendage support</span>
+              <span className={styles.diagnosticValue}>
+                {store.derived.roofAppendageSupportReason ??
+                  (store.derived.roofAppendageSupportedHostEdges.length > 0
+                    ? 'Supported'
+                    : 'Not supported')}
+              </span>
+            </div>
+            <div className={styles.diagnosticRow}>
+              <span className={styles.diagnosticLabel}>Appendage supported edges</span>
+              <span className={styles.diagnosticValue}>
+                {labelForAttachmentSideList(store.derived.roofAppendageSupportedHostEdges)}
+              </span>
             </div>
             {store.derived.roofValidationMessage ? (
               <div className={styles.diagnosticRow}>

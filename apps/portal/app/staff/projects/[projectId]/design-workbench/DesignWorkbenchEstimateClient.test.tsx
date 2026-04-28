@@ -442,6 +442,9 @@ describe('DesignWorkbenchEstimateClient', () => {
     expect(readLabeledValue(rendered.container, 'Roof fall source')).toBe('Default fallback');
     expect(readLabeledValue(rendered.container, 'Roof ridge source')).toBe('Default fallback');
     expect(readLabeledValue(rendered.container, 'Roof appendage source')).toBe('Default fallback');
+    expect(readLabeledValue(rendered.container, 'Roof geometry')).toBe('Footprint mono');
+    expect(readLabeledValue(rendered.container, 'Appendage support')).toBe('Supported');
+    expect(readLabeledValue(rendered.container, 'Appendage supported edges')).toBe('Rear, Front, Left, Right');
 
     rendered.unmount();
   });
@@ -748,9 +751,10 @@ describe('DesignWorkbenchEstimateClient', () => {
 
     expect(readLabeledValue(rendered.container, 'Selected roof form')).toBe('mono');
     expect(readLabeledValue(rendered.container, 'Roof appendage')).toBe('invalid');
-    expect(readLabeledValue(rendered.container, 'Roof reason code')).toBe('invalid_appendage');
+    expect(readLabeledValue(rendered.container, 'Roof reason code')).toBe('invalid_appendage_host_edge');
+    expect(readLabeledValue(rendered.container, 'Appendage supported edges')).toBe('Front, Left, Right');
     expect(rendered.container.textContent).toContain(
-      'Appendage bands are currently limited to straight or rectangular house footprints.',
+      'The rear edge does not resolve to one continuous exterior appendage run on this footprint.',
     );
 
     rendered.unmount();
