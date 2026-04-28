@@ -1,6 +1,9 @@
-import type { ObjectInteractionViewState } from '@/lib/drawings/interactions/objectInteractionEngine';
-
-export type PreviewHostEdgeState = 'preview' | 'snap-available' | 'snapped';
+import type {
+  ObjectInteractionPreviewBodyState,
+  ObjectInteractionPreviewOverlay,
+  ObjectInteractionPreviewTargetState,
+  ObjectInteractionViewState,
+} from '@/lib/drawings/interactions/objectInteractionEngine';
 
 export type ObjectInteractionHudModel = {
   visible: boolean;
@@ -37,8 +40,55 @@ export function buildObjectInteractionHudModel(viewState: ObjectInteractionViewS
   };
 }
 
-export function resolvePreviewHostEdgeState(viewState: ObjectInteractionViewState | null): PreviewHostEdgeState {
+export function resolveObjectInteractionPreviewTargetState(
+  viewState: ObjectInteractionViewState | null,
+): ObjectInteractionPreviewTargetState {
   if (viewState?.placementState === 'snapped') return 'snapped';
   if (viewState?.placementState === 'snap-available') return 'snap-available';
   return 'preview';
+}
+
+export function resolveObjectInteractionPreviewBodyState(
+  viewState: ObjectInteractionViewState | null,
+): ObjectInteractionPreviewBodyState {
+  if (viewState?.affordanceState === 'grabbed') return 'grabbed';
+  if (viewState?.affordanceState === 'snap-available') return 'snap-available';
+  if (viewState?.affordanceState === 'snapped') return 'snapped';
+  if (viewState?.affordanceState === 'blocked') return 'blocked';
+  if (viewState?.affordanceState === 'settling') return 'settling';
+  return 'floating';
+}
+
+export function buildObjectInteractionPreviewOverlay<TPoint extends { x: number; y: number }>(input: {
+  ownerKind: ObjectInteractionPreviewOverlay<TPoint>['ownerKind'];
+  ownerId: string;
+  polygon: TPoint[];
+  viewState: ObjectInteractionViewState | null;
+  anchorPoint?: TPoint | null;
+  referenceGuide?: ObjectInteractionPreviewOverlay<TPoint>['referenceGuide'];
+  targetHighlight?:
+    | ({
+        start: TPoint;
+        end: TPoint;
+      } & Partial<Pick<NonNullable<ObjectInteractionPreviewOverlay<TPoint>['targetHighlight']>, 'state'>>)
+    | null;
+}): ObjectInteractionPreviewOverlay<TPoint> {
+  return {
+    ownerKind: input.ownerKind,
+    ownerId: input.ownerId,
+    polygon: input.polygon,
+    bodyState: resolveObjectInteractionPreviewBodyState(input.viewState),
+    anchorPoint: input.anchorPoint ?? null,
+    referenceGuide:
+      input.viewState?.referenceGuideState !== 'none'
+        ? input.referenceGuide ?? null
+        : null,
+    targetHighlight: input.targetHighlight
+      ? {
+          start: input.targetHighlight.start,
+          end: input.targetHighlight.end,
+          state: input.targetHighlight.state ?? resolveObjectInteractionPreviewTargetState(input.viewState),
+        }
+      : null,
+  };
 }

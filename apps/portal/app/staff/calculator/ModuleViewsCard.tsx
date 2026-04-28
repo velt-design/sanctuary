@@ -46,6 +46,7 @@ import type {
   HouseFirstPlanPresetDimensionAnnotation,
   PlanPoint,
 } from '@/lib/drawings/views/plan/houseFirstPlanOverlay';
+import type { ObjectInteractionPreviewOverlay } from '@/lib/drawings/interactions/objectInteractionEngine';
 import type {
   WorkbenchPergolaRenderSource,
   WorkbenchPergolaRenderStatus,
@@ -135,22 +136,7 @@ export type HouseFirstPlanShapeDragStartMeta =
       };
     };
 
-type HouseFirstPlanPreviewOverlay = {
-  ownerId: string;
-  polygon: PlanPoint[];
-  bodyState: 'grabbed' | 'floating' | 'snap-available' | 'snapped' | 'blocked' | 'settling';
-  anchorPoint: PlanPoint | null;
-  referenceGuide: {
-    start: PlanPoint;
-    end: PlanPoint;
-    state: 'witness' | 'snap-lane';
-  } | null;
-  hostEdge: {
-    start: PlanPoint;
-    end: PlanPoint;
-    state: 'preview' | 'snap-available' | 'snapped';
-  } | null;
-};
+export type HouseFirstObjectPreviewOverlay = ObjectInteractionPreviewOverlay<PlanPoint>;
 
 export type ModuleFootprintCanvasPointResolver = (clientX: number, clientY: number) => ModuleFootprintCanvasPoint | null;
 
@@ -251,7 +237,7 @@ type ModuleDrawingRendererProps = {
     annotation: HouseFirstPlanPresetDimensionAnnotation | HouseFirstPlanCustomEdgeCandidate,
     target: SVGTextElement,
   ) => void;
-  houseFirstPreviewOverlay?: HouseFirstPlanPreviewOverlay | null;
+  houseFirstPreviewOverlay?: HouseFirstObjectPreviewOverlay | null;
   modelSpacePergolaGeometry?: GeometryPlanViewModel | null;
   modelSpacePergolaRenderSource?: WorkbenchPergolaRenderSource;
   modelSpacePergolaRenderStatus?: WorkbenchPergolaRenderStatus;
@@ -2994,9 +2980,10 @@ function renderHouseFirstDimension(
 function renderHouseFirstPlanOverlay(input: {
   shapes: Array<HouseFirstPlanOverlay['shapes'][number] & { points: Point[] }>;
   previewShape: {
+    ownerKind: 'deck' | 'opening';
     ownerId: string;
     points: Point[];
-    hostEdge: { start: Point; end: Point; state: 'preview' | 'snap-available' | 'snapped' } | null;
+    targetHighlight: { start: Point; end: Point; state: 'preview' | 'snap-available' | 'snapped' } | null;
   } | null;
   customEdgeCandidates: Array<HouseFirstPlanCustomEdgeCandidate & {
     witnessStart: Point;
@@ -3199,7 +3186,7 @@ function renderHouseFirstPlanOverlay(input: {
           ))
         : null}
       {previewShape ? (
-        <g data-house-first-preview-owner={previewShape.ownerId}>
+        <g data-house-first-preview-owner={previewShape.ownerId} data-house-first-preview-owner-kind={previewShape.ownerKind}>
           {previewShape.referenceGuide ? (
             <line
               x1={previewShape.referenceGuide.start.x}
@@ -3214,17 +3201,17 @@ function renderHouseFirstPlanOverlay(input: {
               }
             />
           ) : null}
-          {previewShape.hostEdge ? (
+          {previewShape.targetHighlight ? (
             <line
-              x1={previewShape.hostEdge.start.x}
-              y1={previewShape.hostEdge.start.y}
-              x2={previewShape.hostEdge.end.x}
-              y2={previewShape.hostEdge.end.y}
-              data-house-first-snap-target={previewShape.hostEdge.state}
+              x1={previewShape.targetHighlight.start.x}
+              y1={previewShape.targetHighlight.start.y}
+              x2={previewShape.targetHighlight.end.x}
+              y2={previewShape.targetHighlight.end.y}
+              data-house-first-snap-target={previewShape.targetHighlight.state}
               className={
-                previewShape.hostEdge.state === 'snapped'
+                previewShape.targetHighlight.state === 'snapped'
                   ? `${styles.moduleHouseFirstSnapTarget} ${styles.moduleHouseFirstSnapTargetSnapped}`
-                  : previewShape.hostEdge.state === 'snap-available'
+                  : previewShape.targetHighlight.state === 'snap-available'
                     ? `${styles.moduleHouseFirstSnapTarget} ${styles.moduleHouseFirstSnapTargetAvailable}`
                     : styles.moduleHouseFirstSnapTarget
               }
@@ -4581,7 +4568,7 @@ function PlanSvg({
     annotation: HouseFirstPlanPresetDimensionAnnotation | HouseFirstPlanCustomEdgeCandidate,
     target: SVGTextElement,
   ) => void;
-  houseFirstPreviewOverlay?: HouseFirstPlanPreviewOverlay | null;
+  houseFirstPreviewOverlay?: HouseFirstObjectPreviewOverlay | null;
   modelSpacePergolaGeometry?: GeometryPlanViewModel | null;
   modelSpacePergolaRenderSource?: WorkbenchPergolaRenderSource;
   modelSpacePergolaRenderStatus?: WorkbenchPergolaRenderStatus;
@@ -4928,6 +4915,7 @@ function PlanSvg({
   const houseFirstPreviewShape =
     presentation === 'model' && rawHouseFirstPreviewShape
       ? {
+          ownerKind: rawHouseFirstPreviewShape.ownerKind,
           ownerId: rawHouseFirstPreviewShape.ownerId,
           points: rawHouseFirstPreviewShape.polygon.map((point) => planHousePointProjector(point)),
           bodyState: rawHouseFirstPreviewShape.bodyState,
@@ -4941,11 +4929,11 @@ function PlanSvg({
                 state: rawHouseFirstPreviewShape.referenceGuide.state,
               }
             : null,
-          hostEdge: rawHouseFirstPreviewShape.hostEdge
+          targetHighlight: rawHouseFirstPreviewShape.targetHighlight
             ? {
-                start: planHousePointProjector(rawHouseFirstPreviewShape.hostEdge.start),
-                end: planHousePointProjector(rawHouseFirstPreviewShape.hostEdge.end),
-                state: rawHouseFirstPreviewShape.hostEdge.state,
+                start: planHousePointProjector(rawHouseFirstPreviewShape.targetHighlight.start),
+                end: planHousePointProjector(rawHouseFirstPreviewShape.targetHighlight.end),
+                state: rawHouseFirstPreviewShape.targetHighlight.state,
               }
             : null,
         }

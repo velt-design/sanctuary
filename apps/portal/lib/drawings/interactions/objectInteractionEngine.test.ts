@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   OBJECT_DRAG_INTENT_THRESHOLD_PX,
+  buildObjectInteractionTelemetry,
   buildObjectInteractionViewState,
   createObjectInteractionSession,
   resolveObjectInteractionMove,
@@ -38,6 +39,35 @@ describe('objectInteractionEngine', () => {
       settleVisualState: null,
       affordanceState: 'idle',
       referenceGuideState: 'none',
+    });
+  });
+
+  it('builds shared object interaction telemetry from the normalized view state', () => {
+    const state = buildObjectInteractionViewState({
+      phase: 'dragging',
+      placementState: 'floating',
+      statusLabel: 'Dragging object',
+      canCommit: true,
+      highlightTargetId: 'edge-1',
+      affordanceState: 'floating',
+    });
+
+    const telemetry = buildObjectInteractionTelemetry({
+      objectKind: 'opening',
+      selectedObjectId: 'opening-1',
+      viewState: state,
+    });
+
+    expect(telemetry).toMatchObject({
+      objectKind: 'opening',
+      selectedObjectId: 'opening-1',
+      hoveredObjectId: null,
+      phase: 'dragging',
+      placementState: 'floating',
+      statusLabel: 'Dragging object',
+      canCommit: true,
+      highlightTargetId: 'edge-1',
+      affordanceState: 'floating',
     });
   });
 

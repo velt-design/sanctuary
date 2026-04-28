@@ -1,5 +1,6 @@
 import { resolveDeckPlacementMode, type HouseModel } from '@/lib/drawings/state/houseFirstWorkbenchModel';
 import type {
+  ObjectInteractionTelemetry,
   ObjectInteractionAffordanceState,
   ObjectInteractionPhase,
   ObjectInteractionPlacementState,
@@ -43,7 +44,7 @@ export type DeckInteractionHint = {
   detail: string | null;
 };
 
-export type DeckInteractionTelemetry = {
+export type DeckInteractionTelemetry = ObjectInteractionTelemetry<'deck'> & {
   selectedDeckId: string | null;
   hoveredDeckId: string | null;
   housePolygonSource: 'custom_saved' | 'preset_derived' | null;

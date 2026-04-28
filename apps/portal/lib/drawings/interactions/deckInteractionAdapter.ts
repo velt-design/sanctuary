@@ -8,6 +8,7 @@ import type {
   PlanPoint,
 } from '@/lib/drawings/views/plan/houseFirstPlanOverlay';
 import {
+  buildObjectInteractionTelemetry,
   buildObjectInteractionViewState,
   type ObjectInteractionAffordanceState,
   type ObjectInteractionPhase,
@@ -704,6 +705,12 @@ export function buildDeckInteractionTelemetry(input: {
   previewState: DeckPreviewState | null;
 }): DeckInteractionTelemetry {
   const capability = input.capability;
+  const sharedTelemetry = buildObjectInteractionTelemetry({
+    objectKind: 'deck',
+    selectedObjectId: input.selectedDeckId,
+    hoveredObjectId: input.hoveredDeckId,
+    viewState: input.viewState,
+  });
   const selectedDeckType =
     capability?.selectedDeckType ??
     (input.selectedDeckShape
@@ -714,6 +721,7 @@ export function buildDeckInteractionTelemetry(input: {
       : 'none');
 
   return {
+    ...sharedTelemetry,
     selectedDeckId: input.selectedDeckId,
     hoveredDeckId: input.hoveredDeckId,
     housePolygonSource: input.housePolygonSource,

@@ -3912,12 +3912,24 @@ describe('ModelSpaceViewport', () => {
 
     expect(rendered.container.querySelector('[data-editable-field-id="opening-1:offsetAlongWallM"]')).not.toBeNull();
     expect(scroller.dataset.houseFirstSelectedOpeningDragEligible).toBe('true');
+    expect(scroller.dataset.houseFirstOpeningDragPhase).toBe('selected');
+    expect(scroller.dataset.houseFirstOpeningPlacementState).toBe('none');
+    expect(scroller.dataset.houseFirstOpeningAffordanceState).toBe('idle');
+    expect(scroller.dataset.houseFirstOpeningReferenceGuideState).toBe('none');
 
     dispatchPointer(openingHit, 'pointerdown', { pointerId: 61, button: 0, clientX: 50, clientY: 50 });
     dispatchPointer(window, 'pointermove', { pointerId: 61, button: 0, buttons: 1, clientX: 250, clientY: 50 });
 
     expect(scroller.dataset.houseFirstOpeningDragActive).toBe('true');
+    expect(scroller.dataset.houseFirstOpeningDragPhase).toBe('dragging');
+    expect(scroller.dataset.houseFirstOpeningPlacementState).toBe('floating');
+    expect(scroller.dataset.houseFirstOpeningAffordanceState).toBe('floating');
+    expect(scroller.dataset.houseFirstOpeningReferenceGuideState).toBe('none');
+    expect(scroller.dataset.houseFirstOpeningHighlightTargetId).not.toBe('');
     expect(rendered.container.querySelector('[data-house-first-preview-shape="opening-1"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[data-house-first-preview-owner-kind="opening"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[data-house-first-preview-body-state="floating"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[data-house-first-reference-guide]')).toBeNull();
 
     dispatchPointer(window, 'pointerup', { pointerId: 61, button: 0, clientX: 250, clientY: 50 });
     await act(async () => {
@@ -3925,6 +3937,7 @@ describe('ModelSpaceViewport', () => {
     });
 
     expect(scroller.dataset.houseFirstOpeningDragActive).toBe('false');
+    expect(scroller.dataset.houseFirstOpeningDragPhase).toBe('selected');
     expect(rendered.container.querySelector('[data-house-first-preview-shape="opening-1"]')).toBeNull();
     expect(rendered.container.querySelector('[data-testid="opening-offset"]')?.textContent).not.toBe('0.6');
 

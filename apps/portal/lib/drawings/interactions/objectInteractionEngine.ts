@@ -16,10 +16,42 @@ export type ObjectInteractionAffordanceState =
   | 'blocked'
   | 'settling';
 export type ObjectInteractionReferenceGuideState = 'none' | 'witness' | 'snap-lane';
+export type ObjectInteractionPreviewBodyState =
+  | 'grabbed'
+  | 'floating'
+  | 'snap-available'
+  | 'snapped'
+  | 'blocked'
+  | 'settling';
+export type ObjectInteractionPreviewTargetState = 'preview' | 'snap-available' | 'snapped';
 
 export type ObjectInteractionPreviewAnchor = {
   x: number;
   y: number;
+};
+
+export type ObjectInteractionPreviewOwnerKind = 'deck' | 'opening';
+
+export type ObjectInteractionPreviewReferenceGuide<TPoint extends ObjectInteractionPreviewAnchor> = {
+  start: TPoint;
+  end: TPoint;
+  state: Exclude<ObjectInteractionReferenceGuideState, 'none'>;
+};
+
+export type ObjectInteractionPreviewTargetHighlight<TPoint extends ObjectInteractionPreviewAnchor> = {
+  start: TPoint;
+  end: TPoint;
+  state: ObjectInteractionPreviewTargetState;
+};
+
+export type ObjectInteractionPreviewOverlay<TPoint extends ObjectInteractionPreviewAnchor> = {
+  ownerKind: ObjectInteractionPreviewOwnerKind;
+  ownerId: string;
+  polygon: TPoint[];
+  bodyState: ObjectInteractionPreviewBodyState;
+  anchorPoint: TPoint | null;
+  referenceGuide: ObjectInteractionPreviewReferenceGuide<TPoint> | null;
+  targetHighlight: ObjectInteractionPreviewTargetHighlight<TPoint> | null;
 };
 
 export type ObjectInteractionViewState = {
@@ -33,6 +65,24 @@ export type ObjectInteractionViewState = {
   releaseOutcome: ObjectInteractionReleaseOutcome;
   releasePlacement: ObjectInteractionReleasePlacement | null;
   settleVisualState: ObjectInteractionSettleVisualState | null;
+  affordanceState: ObjectInteractionAffordanceState;
+  referenceGuideState: ObjectInteractionReferenceGuideState;
+};
+
+export type ObjectInteractionTelemetry<TObjectKind extends string = string> = {
+  objectKind: TObjectKind;
+  selectedObjectId: string | null;
+  hoveredObjectId: string | null;
+  phase: ObjectInteractionPhase;
+  placementState: ObjectInteractionPlacementState;
+  releaseOutcome: ObjectInteractionReleaseOutcome;
+  releasePlacement: ObjectInteractionReleasePlacement | null;
+  settleVisualState: ObjectInteractionSettleVisualState | null;
+  statusLabel: string | null;
+  statusDetail: string | null;
+  canCommit: boolean;
+  highlightTargetId: string | null;
+  previewAnchor: ObjectInteractionPreviewAnchor | null;
   affordanceState: ObjectInteractionAffordanceState;
   referenceGuideState: ObjectInteractionReferenceGuideState;
 };
@@ -62,6 +112,31 @@ export function buildObjectInteractionViewState(
     settleVisualState: state.settleVisualState ?? null,
     affordanceState: state.affordanceState ?? 'idle',
     referenceGuideState: state.referenceGuideState ?? 'none',
+  };
+}
+
+export function buildObjectInteractionTelemetry<TObjectKind extends string>(input: {
+  objectKind: TObjectKind;
+  selectedObjectId?: string | null;
+  hoveredObjectId?: string | null;
+  viewState: ObjectInteractionViewState;
+}): ObjectInteractionTelemetry<TObjectKind> {
+  return {
+    objectKind: input.objectKind,
+    selectedObjectId: input.selectedObjectId ?? null,
+    hoveredObjectId: input.hoveredObjectId ?? null,
+    phase: input.viewState.phase,
+    placementState: input.viewState.placementState,
+    releaseOutcome: input.viewState.releaseOutcome,
+    releasePlacement: input.viewState.releasePlacement,
+    settleVisualState: input.viewState.settleVisualState,
+    statusLabel: input.viewState.statusLabel,
+    statusDetail: input.viewState.statusDetail,
+    canCommit: input.viewState.canCommit,
+    highlightTargetId: input.viewState.highlightTargetId,
+    previewAnchor: input.viewState.previewAnchor,
+    affordanceState: input.viewState.affordanceState,
+    referenceGuideState: input.viewState.referenceGuideState,
   };
 }
 
