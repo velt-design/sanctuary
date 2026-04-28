@@ -1,5 +1,6 @@
 import type { ModuleViewsTab } from '@/app/staff/calculator/ModuleViewsCard';
 import type { WorkbenchHouseSelection, WorkbenchMode } from './houseFirstWorkbenchModel';
+import type { WorkbenchObjectFamily, WorkbenchObjectRef } from './objectFirstWorkbenchModel';
 
 export type DrawingWorkbenchViewportMode = 'sheet' | 'model' | 'geometry3d';
 
@@ -29,6 +30,8 @@ export type DrawingWorkbenchUiState = {
   activeModuleIndex: number;
   activeHouseSelection: WorkbenchHouseSelection;
   activePergolaId: string | null;
+  activeObjectFamily: WorkbenchObjectFamily;
+  activeObjectRef: WorkbenchObjectRef;
   activeView: ModuleViewsTab;
   viewportMode: DrawingWorkbenchViewportMode;
   selection: DrawingWorkbenchSelectionState;
@@ -45,6 +48,8 @@ export function createDrawingWorkbenchUiState(
     activeModuleIndex: 0,
     activeHouseSelection: { kind: 'house', targetId: null },
     activePergolaId: null,
+    activeObjectFamily: 'house_forms',
+    activeObjectRef: { family: 'house_forms', objectId: null },
     activeView: 'plan',
     viewportMode: 'sheet',
     selection: { kind: 'none', targetId: null },
@@ -57,6 +62,20 @@ export function createDrawingWorkbenchUiState(
 
 function normalizeWorkbenchMode(value: DrawingWorkbenchUiState['workbenchMode']): WorkbenchMode {
   return value === 'pergolas' ? 'pergolas' : 'house';
+}
+
+function normalizeActiveObjectFamily(
+  value: DrawingWorkbenchUiState['activeObjectFamily'],
+): WorkbenchObjectFamily {
+  switch (value) {
+    case 'decks':
+    case 'openings':
+    case 'pergolas':
+      return value;
+    case 'house_forms':
+    default:
+      return 'house_forms';
+  }
 }
 
 function normalizeActiveHouseSelection(value: WorkbenchHouseSelection | null | undefined): WorkbenchHouseSelection {
@@ -85,6 +104,45 @@ function normalizeActivePergolaId(
   return pergolaIds[0] ?? null;
 }
 
+function getObjectIdsForFamily(
+  family: WorkbenchObjectFamily,
+  input: {
+    houseFormIds?: string[];
+    deckIds?: string[];
+    openingIds?: string[];
+    pergolaIds?: string[];
+  },
+): string[] {
+  switch (family) {
+    case 'decks':
+      return input.deckIds ?? [];
+    case 'openings':
+      return input.openingIds ?? [];
+    case 'pergolas':
+      return input.pergolaIds ?? [];
+    case 'house_forms':
+    default:
+      return input.houseFormIds ?? [];
+  }
+}
+
+function normalizeActiveObjectRef(
+  value: WorkbenchObjectRef | null | undefined,
+  input: {
+    houseFormIds?: string[];
+    deckIds?: string[];
+    openingIds?: string[];
+    pergolaIds?: string[];
+  },
+): WorkbenchObjectRef {
+  const family = normalizeActiveObjectFamily(value?.family ?? 'house_forms');
+  const objectId = value?.objectId ?? null;
+  return {
+    family,
+    objectId: objectId && getObjectIdsForFamily(family, input).includes(objectId) ? objectId : null,
+  };
+}
+
 export function clampDrawingWorkbenchModuleIndex(index: number, moduleCount: number): number {
   if (moduleCount <= 0) return 0;
   return Math.min(Math.max(index, 0), moduleCount - 1);
@@ -104,6 +162,7 @@ export function normalizeDrawingWorkbenchUiState(
   state: DrawingWorkbenchUiState,
   input: {
     moduleCount: number;
+    houseFormIds?: string[];
     pergolaIds?: string[];
     deckIds?: string[];
     openingIds?: string[];
@@ -111,6 +170,8 @@ export function normalizeDrawingWorkbenchUiState(
 ): DrawingWorkbenchUiState {
   const workbenchMode = normalizeWorkbenchMode(state.workbenchMode);
   const activeHouseSelection = normalizeActiveHouseSelection(state.activeHouseSelection);
+  const activeObjectFamily = normalizeActiveObjectFamily(state.activeObjectFamily);
+  const activeObjectRef = normalizeActiveObjectRef(state.activeObjectRef, input);
   const normalizedHouseSelection =
     activeHouseSelection.kind === 'deck' &&
     activeHouseSelection.targetId &&
@@ -133,6 +194,8 @@ export function normalizeDrawingWorkbenchUiState(
       workbenchMode === 'house'
         ? null
         : normalizeActivePergolaId(state.activePergolaId, input.pergolaIds ?? []),
+    activeObjectFamily,
+    activeObjectRef,
     viewportTransform: clampDrawingWorkbenchViewportTransform(state.viewportTransform),
   };
 }
