@@ -36,6 +36,8 @@ describe('objectInteractionEngine', () => {
       releaseOutcome: 'none',
       releasePlacement: null,
       settleVisualState: null,
+      affordanceState: 'idle',
+      referenceGuideState: 'none',
     });
   });
 

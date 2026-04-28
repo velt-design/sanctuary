@@ -6,6 +6,16 @@ export type ObjectInteractionPlacementState = 'none' | 'snap-available' | 'snapp
 export type ObjectInteractionReleaseOutcome = 'none' | 'pending' | 'committed' | 'failed';
 export type ObjectInteractionReleasePlacement = 'snapped' | 'floating';
 export type ObjectInteractionSettleVisualState = 'holding-preview' | 'reconciling' | 'complete' | 'failed';
+export type ObjectInteractionAffordanceState =
+  | 'idle'
+  | 'hover'
+  | 'grabbed'
+  | 'floating'
+  | 'snap-available'
+  | 'snapped'
+  | 'blocked'
+  | 'settling';
+export type ObjectInteractionReferenceGuideState = 'none' | 'witness' | 'snap-lane';
 
 export type ObjectInteractionPreviewAnchor = {
   x: number;
@@ -23,6 +33,8 @@ export type ObjectInteractionViewState = {
   releaseOutcome: ObjectInteractionReleaseOutcome;
   releasePlacement: ObjectInteractionReleasePlacement | null;
   settleVisualState: ObjectInteractionSettleVisualState | null;
+  affordanceState: ObjectInteractionAffordanceState;
+  referenceGuideState: ObjectInteractionReferenceGuideState;
 };
 
 export type ObjectInteractionSessionBase = {
@@ -48,6 +60,8 @@ export function buildObjectInteractionViewState(
     releaseOutcome: state.releaseOutcome ?? 'none',
     releasePlacement: state.releasePlacement ?? null,
     settleVisualState: state.settleVisualState ?? null,
+    affordanceState: state.affordanceState ?? 'idle',
+    referenceGuideState: state.referenceGuideState ?? 'none',
   };
 }
 

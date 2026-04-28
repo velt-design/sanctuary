@@ -3049,6 +3049,12 @@
   stroke-width: var(--mv-line-major-width);
 }
 
+.moduleHouseFirstShapeHovered {
+  fill: rgba(var(--accentRgb), 0.13);
+  stroke: rgba(var(--accentRgb), 0.82);
+  stroke-width: var(--mv-line-major-width);
+}
+
 .moduleHouseFirstDrivingWitness {
   stroke: rgba(var(--accentRgb), 0.76);
 }
@@ -3130,6 +3136,66 @@
   stroke-dasharray: 1.4 0.9;
   vector-effect: non-scaling-stroke;
   pointer-events: none;
+}
+
+.moduleHouseFirstPreviewShapeFloating {
+  fill: rgba(var(--accentRgb), 0.1);
+  stroke-dasharray: 1.4 0.9;
+}
+
+.moduleHouseFirstPreviewShapeAvailable {
+  fill: rgba(37, 102, 146, 0.12);
+  stroke: rgba(37, 102, 146, 0.94);
+  stroke-dasharray: 1.1 0.72;
+}
+
+.moduleHouseFirstPreviewShapeSnapped {
+  fill: rgba(var(--accentRgb), 0.17);
+  stroke: rgba(var(--accentRgb), 0.98);
+  stroke-dasharray: none;
+}
+
+.moduleHouseFirstPreviewShapeBlocked {
+  fill: rgba(182, 63, 50, 0.14);
+  stroke: rgba(182, 63, 50, 0.9);
+  stroke-dasharray: 0.9 0.62;
+}
+
+.moduleHouseFirstPreviewShapeSettling {
+  fill-opacity: 0.9;
+  stroke-opacity: 0.86;
+}
+
+.moduleHouseFirstPreviewGuide {
+  stroke: rgba(37, 102, 146, 0.78);
+  stroke-width: var(--mv-line-secondary-width);
+  stroke-linecap: round;
+  stroke-dasharray: 0.8 0.55;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
+.moduleHouseFirstPreviewGuideSnapLane {
+  stroke: rgba(var(--accentRgb), 0.9);
+  stroke-dasharray: 0.45 0.3;
+}
+
+.moduleHouseFirstPreviewAnchor {
+  fill: rgba(var(--accentRgb), 0.22);
+  stroke: rgba(var(--accentRgb), 0.94);
+  stroke-width: var(--mv-line-major-width);
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
+.moduleHouseFirstPreviewAnchorGrabbed {
+  fill: rgba(var(--accentRgb), 0.14);
+  stroke-width: calc(var(--mv-line-major-width) + 0.18px);
+}
+
+.moduleHouseFirstPreviewAnchorBlocked {
+  fill: rgba(182, 63, 50, 0.14);
+  stroke: rgba(182, 63, 50, 0.9);
 }
 
 .moduleHouseFirstSnapTarget {

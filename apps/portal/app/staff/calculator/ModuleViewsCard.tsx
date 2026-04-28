@@ -138,6 +138,13 @@ export type HouseFirstPlanShapeDragStartMeta =
 type HouseFirstPlanPreviewOverlay = {
   ownerId: string;
   polygon: PlanPoint[];
+  bodyState: 'grabbed' | 'floating' | 'snap-available' | 'snapped' | 'blocked' | 'settling';
+  anchorPoint: PlanPoint | null;
+  referenceGuide: {
+    start: PlanPoint;
+    end: PlanPoint;
+    state: 'witness' | 'snap-lane';
+  } | null;
   hostEdge: {
     start: PlanPoint;
     end: PlanPoint;
@@ -230,6 +237,8 @@ type ModuleDrawingRendererProps = {
   houseFirstPlanOverlay?: HouseFirstPlanOverlay | null;
   activeHouseFirstCustomEdgeId?: string | null;
   onHouseFirstShapeSelect?: (target: { ownerKind: 'footprint' | 'deck' | 'opening'; ownerId: string }) => void;
+  hoveredHouseFirstDeckId?: string | null;
+  onHouseFirstDeckHoverChange?: (deckId: string | null) => void;
   currentPergolaId?: string | null;
   onPergolaSelect?: (pergolaId: string) => void;
   onCanvasSelect?: () => void;
@@ -401,6 +410,8 @@ export function ModuleDrawingRenderer({
   planInteraction,
   sheetPlanInteraction,
   houseFirstPlanOverlay,
+  hoveredHouseFirstDeckId,
+  onHouseFirstDeckHoverChange,
   activeHouseFirstCustomEdgeId,
   onHouseFirstShapeSelect,
   currentPergolaId,
@@ -530,6 +541,8 @@ export function ModuleDrawingRenderer({
               planInteraction={planInteraction}
               sheetPlanInteraction={sheetPlanInteraction}
               houseFirstPlanOverlay={houseFirstPlanOverlay}
+              hoveredHouseFirstDeckId={hoveredHouseFirstDeckId}
+              onHouseFirstDeckHoverChange={onHouseFirstDeckHoverChange}
               activeHouseFirstCustomEdgeId={activeHouseFirstCustomEdgeId}
               onHouseFirstShapeSelect={onHouseFirstShapeSelect}
               currentPergolaId={currentPergolaId}
@@ -2999,6 +3012,8 @@ function renderHouseFirstPlanOverlay(input: {
   }>;
   activeCustomEdgeId: string | null;
   onShapeSelect?: (target: { ownerKind: 'footprint' | 'deck' | 'opening'; ownerId: string }) => void;
+  hoveredDeckId?: string | null;
+  onDeckHoverChange?: (deckId: string | null) => void;
   onShapeDragStart?: (
     meta: HouseFirstPlanShapeDragStartMeta,
     event: { pointerId: number; clientX: number; clientY: number },
@@ -3009,7 +3024,19 @@ function renderHouseFirstPlanOverlay(input: {
     target: SVGTextElement,
   ) => void;
 }) {
-  const { shapes, previewShape, customEdgeCandidates, presetAnnotations, activeCustomEdgeId, onShapeSelect, onShapeDragStart, onCustomEdgeSelect, onDimensionActivate } = input;
+  const {
+    shapes,
+    previewShape,
+    customEdgeCandidates,
+    presetAnnotations,
+    activeCustomEdgeId,
+    hoveredDeckId,
+    onDeckHoverChange,
+    onShapeSelect,
+    onShapeDragStart,
+    onCustomEdgeSelect,
+    onDimensionActivate,
+  } = input;
 
   return (
     <>
@@ -3021,6 +3048,9 @@ function renderHouseFirstPlanOverlay(input: {
                 data-house-first-shape={`${shape.ownerKind}:${shape.ownerId}`}
                 data-house-first-shape-muted={shape.muted ? 'true' : 'false'}
                 data-house-first-shape-invalid={shape.invalid ? 'true' : 'false'}
+                data-house-first-shape-hovered={
+                  shape.ownerKind === 'deck' && hoveredDeckId === shape.ownerId ? 'true' : 'false'
+                }
                 className={[
                   shape.ownerKind === 'deck' || shape.ownerKind === 'opening'
                     ? styles.moduleHouseFirstDeckShape
@@ -3028,6 +3058,7 @@ function renderHouseFirstPlanOverlay(input: {
                   shape.muted ? styles.moduleHouseFirstShapeMuted : '',
                   shape.invalid ? styles.moduleHouseFirstShapeInvalid : '',
                   shape.selected ? styles.moduleHouseFirstShapeSelected : '',
+                  shape.ownerKind === 'deck' && hoveredDeckId === shape.ownerId ? styles.moduleHouseFirstShapeHovered : '',
                 ]
                   .filter(Boolean)
                   .join(' ')}
@@ -3065,11 +3096,24 @@ function renderHouseFirstPlanOverlay(input: {
                 }
                 className={styles.moduleHouseFirstShapeHit}
                 onClick={() => onShapeSelect?.({ ownerKind: shape.ownerKind, ownerId: shape.ownerId })}
+                onPointerEnter={() => {
+                  if (shape.ownerKind !== 'deck') return;
+                  onDeckHoverChange?.(shape.ownerId);
+                }}
+                onPointerMove={() => {
+                  if (shape.ownerKind !== 'deck') return;
+                  onDeckHoverChange?.(shape.ownerId);
+                }}
+                onPointerLeave={() => {
+                  if (shape.ownerKind !== 'deck') return;
+                  onDeckHoverChange?.(null);
+                }}
                 onPointerDown={(event) => {
                   if (event.button !== 0) return;
                   if (shape.ownerKind === 'deck' && shape.deckInteraction) {
                     event.preventDefault();
                     event.stopPropagation();
+                    onDeckHoverChange?.(shape.ownerId);
                     if (!shape.selected) {
                       onShapeSelect?.({ ownerKind: shape.ownerKind, ownerId: shape.ownerId });
                     }
@@ -3156,6 +3200,20 @@ function renderHouseFirstPlanOverlay(input: {
         : null}
       {previewShape ? (
         <g data-house-first-preview-owner={previewShape.ownerId}>
+          {previewShape.referenceGuide ? (
+            <line
+              x1={previewShape.referenceGuide.start.x}
+              y1={previewShape.referenceGuide.start.y}
+              x2={previewShape.referenceGuide.end.x}
+              y2={previewShape.referenceGuide.end.y}
+              data-house-first-reference-guide={previewShape.referenceGuide.state}
+              className={
+                previewShape.referenceGuide.state === 'snap-lane'
+                  ? `${styles.moduleHouseFirstPreviewGuide} ${styles.moduleHouseFirstPreviewGuideSnapLane}`
+                  : styles.moduleHouseFirstPreviewGuide
+              }
+            />
+          ) : null}
           {previewShape.hostEdge ? (
             <line
               x1={previewShape.hostEdge.start.x}
@@ -3172,11 +3230,40 @@ function renderHouseFirstPlanOverlay(input: {
               }
             />
           ) : null}
-          <polygon
-            points={toPointsAttr(previewShape.points)}
-            data-house-first-preview-shape={previewShape.ownerId}
-            className={styles.moduleHouseFirstPreviewShape}
-          />
+          {previewShape.bodyState === 'grabbed' ? null : (
+            <polygon
+              points={toPointsAttr(previewShape.points)}
+              data-house-first-preview-shape={previewShape.ownerId}
+              data-house-first-preview-body-state={previewShape.bodyState}
+              className={[
+                styles.moduleHouseFirstPreviewShape,
+                previewShape.bodyState === 'snap-available'
+                  ? styles.moduleHouseFirstPreviewShapeAvailable
+                  : previewShape.bodyState === 'snapped'
+                    ? styles.moduleHouseFirstPreviewShapeSnapped
+                    : previewShape.bodyState === 'blocked'
+                      ? styles.moduleHouseFirstPreviewShapeBlocked
+                      : previewShape.bodyState === 'settling'
+                        ? styles.moduleHouseFirstPreviewShapeSettling
+                        : styles.moduleHouseFirstPreviewShapeFloating,
+              ].join(' ')}
+            />
+          )}
+          {previewShape.anchorPoint ? (
+            <circle
+              cx={previewShape.anchorPoint.x}
+              cy={previewShape.anchorPoint.y}
+              r={1.05}
+              data-house-first-preview-anchor={previewShape.bodyState}
+              className={
+                previewShape.bodyState === 'blocked'
+                  ? `${styles.moduleHouseFirstPreviewAnchor} ${styles.moduleHouseFirstPreviewAnchorBlocked}`
+                  : previewShape.bodyState === 'grabbed'
+                    ? `${styles.moduleHouseFirstPreviewAnchor} ${styles.moduleHouseFirstPreviewAnchorGrabbed}`
+                    : styles.moduleHouseFirstPreviewAnchor
+              }
+            />
+          ) : null}
         </g>
       ) : null}
       {customEdgeCandidates.length
@@ -4448,6 +4535,8 @@ function PlanSvg({
   planInteraction,
   sheetPlanInteraction,
   houseFirstPlanOverlay,
+  hoveredHouseFirstDeckId,
+  onHouseFirstDeckHoverChange,
   activeHouseFirstCustomEdgeId,
   onHouseFirstShapeSelect,
   currentPergolaId,
@@ -4476,6 +4565,8 @@ function PlanSvg({
   planInteraction?: ModulePlanInteractionProps;
   sheetPlanInteraction?: ModulePlanSheetInteractionProps;
   houseFirstPlanOverlay?: HouseFirstPlanOverlay | null;
+  hoveredHouseFirstDeckId?: string | null;
+  onHouseFirstDeckHoverChange?: (deckId: string | null) => void;
   activeHouseFirstCustomEdgeId?: string | null;
   onHouseFirstShapeSelect?: (target: { ownerKind: 'footprint' | 'deck' | 'opening'; ownerId: string }) => void;
   currentPergolaId?: string | null;
@@ -4839,6 +4930,17 @@ function PlanSvg({
       ? {
           ownerId: rawHouseFirstPreviewShape.ownerId,
           points: rawHouseFirstPreviewShape.polygon.map((point) => planHousePointProjector(point)),
+          bodyState: rawHouseFirstPreviewShape.bodyState,
+          anchorPoint: rawHouseFirstPreviewShape.anchorPoint
+            ? planHousePointProjector(rawHouseFirstPreviewShape.anchorPoint)
+            : null,
+          referenceGuide: rawHouseFirstPreviewShape.referenceGuide
+            ? {
+                start: planHousePointProjector(rawHouseFirstPreviewShape.referenceGuide.start),
+                end: planHousePointProjector(rawHouseFirstPreviewShape.referenceGuide.end),
+                state: rawHouseFirstPreviewShape.referenceGuide.state,
+              }
+            : null,
           hostEdge: rawHouseFirstPreviewShape.hostEdge
             ? {
                 start: planHousePointProjector(rawHouseFirstPreviewShape.hostEdge.start),
@@ -5568,6 +5670,8 @@ function PlanSvg({
           customEdgeCandidates: houseFirstCustomEdgeCandidates,
           presetAnnotations: houseFirstPresetAnnotations,
           activeCustomEdgeId: activeHouseFirstCustomEdgeId ?? null,
+          hoveredDeckId: hoveredHouseFirstDeckId ?? null,
+          onDeckHoverChange: onHouseFirstDeckHoverChange,
           onShapeSelect: onHouseFirstShapeSelect,
           onShapeDragStart: onHouseFirstShapeDragStart,
           onCustomEdgeSelect: onHouseFirstCustomEdgeSelect,

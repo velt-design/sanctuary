@@ -49,6 +49,7 @@ import {
   resolveObjectInteractionMove,
   setObjectInteractionPhase,
   type ObjectInteractionPhase,
+  type ObjectInteractionReferenceGuideState,
   type ObjectInteractionReleaseOutcome,
   type ObjectInteractionSettleVisualState,
   type ObjectInteractionViewState,
@@ -1086,6 +1087,7 @@ export default function ModelSpaceViewport({
   const [deckDragPhase, setDeckDragPhase] = useState<DeckDragPhase>('idle');
   const [deckDragSettleState, setDeckDragSettleState] = useState<DeckDragSettleState | null>(null);
   const [deckReleaseFeedbackState, setDeckReleaseFeedbackState] = useState<DeckReleaseFeedbackState | null>(null);
+  const [hoveredDeckId, setHoveredDeckId] = useState<string | null>(null);
   const [openingDragSession, setOpeningDragSession] = useState<OpeningDragSession | null>(null);
   const [openingPreviewState, setOpeningPreviewState] = useState<OpeningPreviewState | null>(null);
   const deckDragClickSuppressedUntilRef = useRef(0);
@@ -1240,8 +1242,14 @@ export default function ModelSpaceViewport({
   const handleWorkbenchCanvasSelect = useCallback(() => {
     closeHouseFirstDimensionEditor();
     setHouseFirstActiveCustomEdgeId(null);
+    setHoveredDeckId(null);
     onClearWorkbenchSelection?.();
   }, [closeHouseFirstDimensionEditor, onClearWorkbenchSelection]);
+
+  const handleHouseFirstDeckHoverChange = useCallback((deckId: string | null) => {
+    if (deckDragPhaseRef.current === 'settling' || deckDragSessionRef.current) return;
+    setHoveredDeckId(deckId);
+  }, []);
 
   const clearTouchNavigation = useCallback(() => {
     activeTouchPointersRef.current.clear();
@@ -2338,6 +2346,7 @@ export default function ModelSpaceViewport({
 
   const handleScrollerPointerLeave = useCallback(
     () => {
+      setHoveredDeckId(null);
       if (!isDrawOutlineActive(drawOutlineState)) return;
       handleDrawOutlinePointHover(null);
     },
@@ -3228,6 +3237,7 @@ export default function ModelSpaceViewport({
         phase: deckDragPhase,
         previewState: deckPreviewState,
         dragSession: deckDragSession,
+        hovered: hoveredDeckId === selectedDeckId,
         releaseState:
           deckDragSettleState
             ? {
@@ -3257,7 +3267,9 @@ export default function ModelSpaceViewport({
       deckDragSettleState,
       deckPreviewState,
       deckReleaseFeedbackState,
+      hoveredDeckId,
       selectedDeckCapability,
+      selectedDeckId,
       selectedDeckShape,
     ],
   );
@@ -3278,6 +3290,8 @@ export default function ModelSpaceViewport({
       releaseOutcome: 'none',
       releasePlacement: null,
       settleVisualState: null,
+      affordanceState: 'idle',
+      referenceGuideState: 'none',
     };
   }, [openingDragSession, openingPreviewState, selectedOpeningShape]);
   const deckInteractionHud = useMemo(
@@ -3288,6 +3302,7 @@ export default function ModelSpaceViewport({
     () =>
       buildDeckInteractionTelemetry({
         selectedDeckId,
+        hoveredDeckId,
         housePolygonSource: houseFirstPlanOverlay?.housePolygonSource ?? null,
         capability: selectedDeckCapability,
         viewState: deckInteractionViewState,
@@ -3302,6 +3317,7 @@ export default function ModelSpaceViewport({
     [
       deckInteractionViewState,
       deckPreviewState,
+      hoveredDeckId,
       houseFirstPlanOverlay?.housePolygonSource,
       selectedDeckCapability,
       selectedDeckId,
@@ -3310,40 +3326,80 @@ export default function ModelSpaceViewport({
   );
   const activeDeckPreviewState = useMemo(() => {
     if (deckDragSettleState) {
-      if (deckDragSettleState.releaseOutcome === 'failed' || deckDragSettleState.settleVisualState === 'complete') {
+      if (deckDragSettleState.settleVisualState === 'complete') {
         return null;
       }
       return deckDragSettleState.previewState;
     }
+    if (deckReleaseFeedbackState?.releaseOutcome === 'failed') {
+      return deckReleaseFeedbackState.previewState;
+    }
     return deckPreviewState;
-  }, [deckDragSettleState, deckPreviewState]);
+  }, [deckDragSettleState, deckPreviewState, deckReleaseFeedbackState]);
   const houseFirstPreviewOverlay = useMemo(
-    () =>
-      activeDeckPreviewState
-        ? {
-            ownerId: activeDeckPreviewState.deckId,
-            polygon: activeDeckPreviewState.polygon,
-            hostEdge:
-              deckInteractionViewState.releaseOutcome !== 'none' && deckInteractionViewState.releasePlacement === 'floating'
-                ? null
-                : {
-                    start: activeDeckPreviewState.hostEdgeStart,
-                    end: activeDeckPreviewState.hostEdgeEnd,
-                    state: resolvePreviewHostEdgeState(deckInteractionViewState),
-                  },
-          }
-        : openingPreviewState && openingDragSession
-          ? {
-              ownerId: openingPreviewState.openingId,
-              polygon: openingPreviewState.polygon,
-              hostEdge: {
-                start: openingDragSession.interaction.hostEdgeStart,
-                end: openingDragSession.interaction.hostEdgeEnd,
-                state: resolvePreviewHostEdgeState(openingInteractionViewState),
-              },
-            }
-          : null,
+    () => {
+      if (deckDragPhase === 'drag-intent' && deckDragSession) {
+        return {
+          ownerId: deckDragSession.deckId,
+          polygon: deckDragSession.startPolygon,
+          bodyState: 'grabbed' as const,
+          anchorPoint: deckInteractionViewState.previewAnchor,
+          referenceGuide: null,
+          hostEdge: null,
+        };
+      }
+      if (activeDeckPreviewState) {
+        const bodyState =
+          deckInteractionViewState.affordanceState === 'snap-available'
+            ? 'snap-available'
+            : deckInteractionViewState.affordanceState === 'snapped'
+              ? 'snapped'
+              : deckInteractionViewState.affordanceState === 'blocked'
+                ? 'blocked'
+                : deckInteractionViewState.affordanceState === 'settling'
+                  ? 'settling'
+                  : 'floating';
+        const referenceGuide =
+          deckInteractionViewState.referenceGuideState !== 'none' && activeDeckPreviewState.referenceGuide
+            ? activeDeckPreviewState.referenceGuide
+            : null;
+        const showHostEdge =
+          activeDeckPreviewState.releasePlacement === 'snapped' || deckInteractionViewState.referenceGuideState === 'snap-lane';
+        return {
+          ownerId: activeDeckPreviewState.deckId,
+          polygon: activeDeckPreviewState.polygon,
+          bodyState,
+          anchorPoint: deckInteractionViewState.previewAnchor,
+          referenceGuide,
+          hostEdge:
+            showHostEdge
+              ? {
+                  start: activeDeckPreviewState.hostEdgeStart,
+                  end: activeDeckPreviewState.hostEdgeEnd,
+                  state: resolvePreviewHostEdgeState(deckInteractionViewState),
+                }
+              : null,
+        };
+      }
+      if (openingPreviewState && openingDragSession) {
+        return {
+          ownerId: openingPreviewState.openingId,
+          polygon: openingPreviewState.polygon,
+          bodyState: 'floating' as const,
+          anchorPoint: null,
+          referenceGuide: null,
+          hostEdge: {
+            start: openingDragSession.interaction.hostEdgeStart,
+            end: openingDragSession.interaction.hostEdgeEnd,
+            state: resolvePreviewHostEdgeState(openingInteractionViewState),
+          },
+        };
+      }
+      return null;
+    },
     [
+      deckDragPhase,
+      deckDragSession,
       activeDeckPreviewState,
       deckInteractionViewState,
       openingDragSession,
@@ -3446,6 +3502,9 @@ export default function ModelSpaceViewport({
       deckInteractionTelemetry.releaseOutcome,
       deckInteractionTelemetry.releasePlacement ?? '',
       deckInteractionTelemetry.settleVisualState ?? '',
+      deckInteractionTelemetry.hoveredDeckId ?? '',
+      deckInteractionTelemetry.affordanceState,
+      deckInteractionTelemetry.referenceGuideState,
       deckInteractionTelemetry.canCommit ? '1' : '0',
       deckInteractionTelemetry.highlightTargetId ?? '',
       deckInteractionTelemetry.previewAnchor
@@ -3806,10 +3865,13 @@ export default function ModelSpaceViewport({
         data-house-first-deck-drag-locked={deckDragLocked ? 'true' : 'false'}
         data-house-first-deck-drag-phase={deckInteractionViewState.phase}
         data-house-first-deck-placement-state={deckInteractionViewState.placementState}
+        data-house-first-deck-affordance-state={deckInteractionViewState.affordanceState}
+        data-house-first-deck-reference-guide-state={deckInteractionViewState.referenceGuideState}
         data-house-first-deck-release-outcome={deckInteractionViewState.releaseOutcome}
         data-house-first-deck-release-placement={deckInteractionViewState.releasePlacement ?? 'none'}
         data-house-first-deck-settle-visual-state={deckInteractionViewState.settleVisualState ?? 'none'}
         data-house-first-deck-snap-state={deckInteractionTelemetry.snapState}
+        data-house-first-hovered-deck-id={hoveredDeckId ?? ''}
         data-house-first-opening-drag-active={openingDragSession ? 'true' : 'false'}
         data-house-first-selected-deck-id={deckInteractionTelemetry.selectedDeckId ?? ''}
         data-house-first-selected-deck-type={deckInteractionTelemetry.selectedDeckType}
@@ -3972,11 +4034,13 @@ export default function ModelSpaceViewport({
                 planInteraction={showPlanViewport ? planInteraction : undefined}
                 houseFirstPlanOverlay={showPlanViewport ? houseFirstPlanOverlay : null}
                 houseFirstPreviewOverlay={showPlanViewport ? houseFirstPreviewOverlay : null}
+                hoveredHouseFirstDeckId={showPlanViewport ? hoveredDeckId : null}
                 modelSpacePergolaGeometry={showPlanViewport ? planViewModel?.modelSpacePergola.geometryPlan ?? null : null}
                 modelSpacePergolaRenderSource={showPlanViewport ? planViewModel?.modelSpacePergola.renderSource : undefined}
                 modelSpacePergolaRenderStatus={showPlanViewport ? planViewModel?.modelSpacePergola.renderStatus : undefined}
                 activeHouseFirstCustomEdgeId={houseFirstActiveCustomEdgeId}
                 onHouseFirstShapeSelect={showPlanViewport ? handleHouseFirstShapeSelect : undefined}
+                onHouseFirstDeckHoverChange={showPlanViewport ? handleHouseFirstDeckHoverChange : undefined}
                 onPergolaSelect={showPlanViewport ? handlePergolaTargetSelect : undefined}
                 onCanvasSelect={showPlanViewport ? handleWorkbenchCanvasSelect : undefined}
                 onHouseFirstShapeDragStart={showPlanViewport ? handleHouseFirstShapeDragStart : undefined}

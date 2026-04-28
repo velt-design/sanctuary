@@ -1,8 +1,10 @@
 import { resolveDeckPlacementMode, type HouseModel } from '@/lib/drawings/state/houseFirstWorkbenchModel';
 import type {
+  ObjectInteractionAffordanceState,
   ObjectInteractionPhase,
   ObjectInteractionPlacementState,
   ObjectInteractionPreviewAnchor,
+  ObjectInteractionReferenceGuideState,
   ObjectInteractionReleaseOutcome,
   ObjectInteractionReleasePlacement,
   ObjectInteractionSettleVisualState,
@@ -43,6 +45,7 @@ export type DeckInteractionHint = {
 
 export type DeckInteractionTelemetry = {
   selectedDeckId: string | null;
+  hoveredDeckId: string | null;
   housePolygonSource: 'custom_saved' | 'preset_derived' | null;
   selectedDeckType: DeckInteractionSelectedType;
   dragEligible: boolean;
@@ -61,6 +64,8 @@ export type DeckInteractionTelemetry = {
   canCommit: boolean;
   highlightTargetId: string | null;
   previewAnchor: ObjectInteractionPreviewAnchor | null;
+  affordanceState: ObjectInteractionAffordanceState;
+  referenceGuideState: ObjectInteractionReferenceGuideState;
 };
 
 export function resolveDeckSelectedTypeFromShape(input: {

@@ -9,7 +9,9 @@ import type {
 } from '@/lib/drawings/views/plan/houseFirstPlanOverlay';
 import {
   buildObjectInteractionViewState,
+  type ObjectInteractionAffordanceState,
   type ObjectInteractionPhase,
+  type ObjectInteractionReferenceGuideState,
   type ObjectInteractionReleaseOutcome,
   type ObjectInteractionSessionBase,
   type ObjectInteractionSettleVisualState,
@@ -61,6 +63,11 @@ export type DeckPreviewState = {
   placement: 'snapped' | 'floating';
   snapEligible: boolean;
   releasePlacement: 'snapped' | 'floating';
+  referenceGuide: {
+    start: PlanPoint;
+    end: PlanPoint;
+    state: Exclude<ObjectInteractionReferenceGuideState, 'none'>;
+  } | null;
 };
 
 export type DeckReleaseState = {
@@ -263,6 +270,17 @@ function buildDeckPreviewPolygon(input: {
   ];
 }
 
+function resolveDeckReferenceGuidePoint(input: {
+  frame: HouseFirstPlanDeckReferenceFrame;
+  alongM: number;
+}): PlanPoint {
+  const clampedAlongM = clampValue(input.alongM, input.frame.spanStartM, input.frame.spanEndM);
+  return {
+    x: input.frame.hostEdgeStart.x + input.frame.alongUnitX * (clampedAlongM - input.frame.spanStartM),
+    y: input.frame.hostEdgeStart.y + input.frame.alongUnitY * (clampedAlongM - input.frame.spanStartM),
+  };
+}
+
 function resolveDeckReferenceFrameFromCenter(input: {
   center: PlanPoint;
   polygon: PlanPoint[];
@@ -357,6 +375,7 @@ export function resolveDeckPreviewState(input: {
       frames: input.session.interaction.referenceFrames,
       previousHostEdgeId: currentHostEdgeId,
     });
+    const centerProjection = projectPointToDeckReferenceFrame(center, witnessFrame);
     const projection = projectPolygonToDeckReferenceFrame({
       polygon: translatedPolygon,
       frame: witnessFrame,
@@ -376,6 +395,14 @@ export function resolveDeckPreviewState(input: {
       placement: 'floating',
       snapEligible: false,
       releasePlacement: 'floating',
+      referenceGuide: {
+        start: center,
+        end: resolveDeckReferenceGuidePoint({
+          frame: witnessFrame,
+          alongM: centerProjection.alongM,
+        }),
+        state: 'witness',
+      },
       polygon: translatedPolygon,
     };
   }
@@ -440,6 +467,17 @@ export function resolveDeckPreviewState(input: {
       })
     : rawCenterOffsetM;
   const referenceEdgeGapM = releasePlacement === 'snapped' ? 0 : rawGapM;
+  const referenceGuide =
+    releasePlacement === 'snapped' && placement === 'snapped'
+      ? null
+      : {
+          start: center,
+          end: resolveDeckReferenceGuidePoint({
+            frame,
+            alongM: projection.alongM,
+          }),
+          state: releasePlacement === 'snapped' ? 'snap-lane' : 'witness',
+        };
 
   return {
     deckId: input.session.deckId,
@@ -456,6 +494,7 @@ export function resolveDeckPreviewState(input: {
     placement,
     snapEligible,
     releasePlacement,
+    referenceGuide,
     polygon:
       placement === 'snapped'
         ? buildDeckPreviewPolygon({
@@ -481,6 +520,7 @@ export function buildDeckInteractionViewState(input: {
   previewState: DeckPreviewState | null;
   dragSession: DeckDragSession | null;
   releaseState: DeckReleaseState | null;
+  hovered: boolean;
 }): ObjectInteractionViewState {
   const previewState = input.releaseState?.previewState ?? input.previewState;
   const capability =
@@ -549,6 +589,7 @@ export function buildDeckInteractionViewState(input: {
 
   const previewAnchor =
     previewState?.previewAnchor ??
+    input.dragSession?.startDragPlanPoint ??
     input.dragSession?.startCenter ??
     input.selectedDeckShape?.deckInteraction?.renderedCenter ??
     null;
@@ -558,8 +599,32 @@ export function buildDeckInteractionViewState(input: {
       : !capability.dragEligible
         ? 'selected'
         : input.phase === 'idle'
-          ? 'selected'
+          ? input.hovered
+            ? 'hover'
+            : 'selected'
           : input.phase;
+  let affordanceState: ObjectInteractionAffordanceState = 'idle';
+  let referenceGuideState: ObjectInteractionReferenceGuideState = 'none';
+  if (input.releaseState) {
+    affordanceState = input.releaseState.outcome === 'failed' ? 'blocked' : 'settling';
+    referenceGuideState =
+      input.releaseState.previewState?.referenceGuide?.state ??
+      (input.releaseState.releasePlacement === 'floating' ? 'witness' : 'none');
+  } else if (!capability) {
+    affordanceState = 'idle';
+  } else if (!capability.dragEligible) {
+    affordanceState = 'blocked';
+  } else if (nextPhase === 'hover') {
+    affordanceState = 'hover';
+  } else if (nextPhase === 'drag-intent') {
+    affordanceState = 'grabbed';
+  } else if (previewState?.releasePlacement === 'snapped') {
+    affordanceState = previewState.placement === 'snapped' ? 'snapped' : 'snap-available';
+    referenceGuideState = previewState.placement === 'snapped' ? 'none' : 'snap-lane';
+  } else if (previewState) {
+    affordanceState = 'floating';
+    referenceGuideState = 'witness';
+  }
 
   return buildObjectInteractionViewState({
     phase: nextPhase,
@@ -575,6 +640,8 @@ export function buildDeckInteractionViewState(input: {
     releaseOutcome: input.releaseState?.outcome ?? 'none',
     releasePlacement: input.releaseState?.releasePlacement ?? null,
     settleVisualState: input.releaseState?.settleVisualState ?? null,
+    affordanceState,
+    referenceGuideState,
   });
 }
 
@@ -624,6 +691,7 @@ export function buildDeckCommitPatch(input: {
 
 export function buildDeckInteractionTelemetry(input: {
   selectedDeckId: string | null;
+  hoveredDeckId: string | null;
   housePolygonSource: 'custom_saved' | 'preset_derived' | null;
   capability: DeckInteractionCapability | null;
   viewState: ObjectInteractionViewState;
@@ -647,6 +715,7 @@ export function buildDeckInteractionTelemetry(input: {
 
   return {
     selectedDeckId: input.selectedDeckId,
+    hoveredDeckId: input.hoveredDeckId,
     housePolygonSource: input.housePolygonSource,
     selectedDeckType,
     dragEligible: capability?.dragEligible ?? false,
@@ -685,5 +754,7 @@ export function buildDeckInteractionTelemetry(input: {
     canCommit: input.viewState.canCommit,
     highlightTargetId: input.viewState.highlightTargetId,
     previewAnchor: input.viewState.previewAnchor,
+    affordanceState: input.viewState.affordanceState,
+    referenceGuideState: input.viewState.referenceGuideState,
   };
 }
