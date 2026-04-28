@@ -33,6 +33,9 @@ describe('objectInteractionEngine', () => {
       canCommit: false,
       highlightTargetId: null,
       previewAnchor: null,
+      releaseOutcome: 'none',
+      releasePlacement: null,
+      settleVisualState: null,
     });
   });
 

@@ -20,15 +20,16 @@ export function buildObjectInteractionHudModel(viewState: ObjectInteractionViewS
   }
 
   const visible =
+    viewState.releaseOutcome !== 'none' ||
     viewState.placementState === 'blocked' ||
     (viewState.phase !== 'idle' && viewState.phase !== 'hover' && viewState.phase !== 'selected');
 
   return {
     visible,
     tone:
-      viewState.placementState === 'blocked'
+      viewState.releaseOutcome === 'failed' || viewState.placementState === 'blocked'
         ? 'blocked'
-        : viewState.placementState === 'snapped'
+        : viewState.releasePlacement === 'snapped' || viewState.placementState === 'snapped'
           ? 'snapped'
           : 'ready',
     label: viewState.statusLabel,

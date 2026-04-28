@@ -40,6 +40,7 @@ import {
   buildDeckInteractionTelemetry,
   buildDeckInteractionViewState,
   resolveDeckPreviewState,
+  type DeckReleaseState,
   type DeckDragSession,
   type DeckPreviewState,
 } from '@/lib/drawings/interactions/deckInteractionAdapter';
@@ -48,6 +49,8 @@ import {
   resolveObjectInteractionMove,
   setObjectInteractionPhase,
   type ObjectInteractionPhase,
+  type ObjectInteractionReleaseOutcome,
+  type ObjectInteractionSettleVisualState,
   type ObjectInteractionViewState,
 } from '@/lib/drawings/interactions/objectInteractionEngine';
 import type {
@@ -185,10 +188,25 @@ type DeckDragPhase = ObjectInteractionPhase;
 
 type DeckDragSettleState = {
   deckId: string;
-  previewPolygon: PlanPoint[];
-  resolvedAtMs: number;
+  previewState: DeckPreviewState;
+  commitStartedAtMs: number;
+  commitResolvedAtMs: number | null;
   releasePlacement: 'snapped' | 'floating';
-  success: boolean;
+  releaseOutcome: Exclude<ObjectInteractionReleaseOutcome, 'none'>;
+  settleVisualState: ObjectInteractionSettleVisualState;
+  resolvedSuccess: boolean | null;
+  matchedCommittedGeometry: boolean;
+  releaseError: string | null;
+};
+
+type DeckReleaseFeedbackState = {
+  deckId: string;
+  releaseOutcome: Extract<ObjectInteractionReleaseOutcome, 'committed' | 'failed'>;
+  releasePlacement: 'snapped' | 'floating' | null;
+  settleVisualState: Extract<ObjectInteractionSettleVisualState, 'complete' | 'failed'>;
+  releaseError: string | null;
+  previewState: DeckPreviewState | null;
+  expiresAtMs: number;
 };
 
 type DeckDragPinnedScrollTarget = {
@@ -263,6 +281,8 @@ const WHEEL_GESTURE_IDLE_MS = 600;
 const DECK_SETTLE_MATCH_TOLERANCE_M = 0.1;
 const DECK_SETTLE_MAX_WAIT_MS = 500;
 const DECK_RELEASE_CLICK_SUPPRESSION_MS = 400;
+const DECK_RELEASE_SUCCESS_FEEDBACK_MS = 180;
+const DECK_RELEASE_FAILURE_FEEDBACK_MS = 1400;
 const DECK_VIEWPORT_STABILITY_TOLERANCE_PX = 0.5;
 
 function clampZoom(value: number): number {
@@ -319,6 +339,33 @@ function polygonsVisuallyMatch(
     Math.abs(leftBounds.minY - rightBounds.minY) <= toleranceM &&
     Math.abs(leftBounds.maxY - rightBounds.maxY) <= toleranceM
   );
+}
+
+function deckShapeSemanticallyMatchesPreview(input: {
+  shape: {
+    polygon: PlanPoint[];
+    deckInteraction: HouseFirstPlanShapeOverlay['deckInteraction'];
+  } | null;
+  preview: DeckPreviewState;
+  toleranceM?: number;
+}): boolean {
+  if (!input.shape?.deckInteraction) return false;
+  const toleranceM = input.toleranceM ?? DECK_SETTLE_MATCH_TOLERANCE_M;
+  const interaction = input.shape.deckInteraction;
+  if (interaction.witnessEdgeId !== input.preview.witnessEdgeId) return false;
+  if (interaction.placement !== input.preview.releasePlacement) return false;
+  if (Math.abs(interaction.centerOffsetM - input.preview.centerOffsetM) > toleranceM) return false;
+  if (
+    Math.abs(
+      interaction.referenceEdgeGapM - (input.preview.releasePlacement === 'snapped' ? 0 : input.preview.referenceEdgeGapM),
+    ) > toleranceM
+  ) {
+    return false;
+  }
+  if (input.preview.releasePlacement === 'snapped') {
+    return interaction.placementEdgeId === input.preview.placementEdgeId;
+  }
+  return pointsApproximatelyEqual(interaction.renderedCenter, input.preview.previewAnchor, toleranceM);
 }
 
 function clampValue(value: number, min: number, max: number): number {
@@ -1038,6 +1085,7 @@ export default function ModelSpaceViewport({
   const [deckPreviewState, setDeckPreviewState] = useState<DeckPreviewState | null>(null);
   const [deckDragPhase, setDeckDragPhase] = useState<DeckDragPhase>('idle');
   const [deckDragSettleState, setDeckDragSettleState] = useState<DeckDragSettleState | null>(null);
+  const [deckReleaseFeedbackState, setDeckReleaseFeedbackState] = useState<DeckReleaseFeedbackState | null>(null);
   const [openingDragSession, setOpeningDragSession] = useState<OpeningDragSession | null>(null);
   const [openingPreviewState, setOpeningPreviewState] = useState<OpeningPreviewState | null>(null);
   const deckDragClickSuppressedUntilRef = useRef(0);
@@ -1310,7 +1358,10 @@ export default function ModelSpaceViewport({
     [releaseDeckDragPointer],
   );
 
-  const resetDeckDragInteraction = useCallback((options?: { suppressClick?: boolean }) => {
+  const resetDeckDragInteraction = useCallback((options?: {
+    suppressClick?: boolean;
+    releaseFeedback?: DeckReleaseFeedbackState | null;
+  }) => {
     deckDragClickSuppressedUntilRef.current = options?.suppressClick ? Date.now() + DECK_RELEASE_CLICK_SUPPRESSION_MS : 0;
     releaseDeckDragPointer(activeDeckDragPointerIdRef.current);
     clearDeckDragViewportAnchor();
@@ -1321,11 +1372,25 @@ export default function ModelSpaceViewport({
     setDeckPreviewState(null);
     setDeckDragSettleState(null);
     setDeckDragPhase('idle');
+    setDeckReleaseFeedbackState(options?.releaseFeedback ?? null);
   }, [clearDeckDragViewportAnchor, releaseDeckDragPointer]);
 
-  const finalizeDeckDragSettlement = useCallback(() => {
-    resetDeckDragInteraction({ suppressClick: true });
+  const finalizeDeckDragSettlement = useCallback((releaseFeedback?: DeckReleaseFeedbackState | null) => {
+    resetDeckDragInteraction({ suppressClick: true, releaseFeedback });
   }, [resetDeckDragInteraction]);
+
+  useEffect(() => {
+    if (!deckReleaseFeedbackState) return;
+    const timeoutMs = Math.max(0, deckReleaseFeedbackState.expiresAtMs - Date.now());
+    const timeoutId = window.setTimeout(() => {
+      setDeckReleaseFeedbackState((current) =>
+        current && current.expiresAtMs === deckReleaseFeedbackState.expiresAtMs ? null : current,
+      );
+    }, timeoutMs);
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [deckReleaseFeedbackState]);
 
   const handleHouseFirstShapeDragStart = useCallback(
     (
@@ -1353,6 +1418,7 @@ export default function ModelSpaceViewport({
         closeHouseFirstDimensionEditor();
         setFieldError(null);
         setFootprintError(null);
+        setDeckReleaseFeedbackState(null);
         setOpeningDragSession(null);
         setOpeningPreviewState(null);
         setDeckDragSettleState(null);
@@ -1392,6 +1458,7 @@ export default function ModelSpaceViewport({
       closeHouseFirstDimensionEditor();
       setFieldError(null);
       setFootprintError(null);
+      setDeckReleaseFeedbackState(null);
       resetDeckDragInteraction();
       setOpeningPreviewState(null);
       setOpeningDragSession({
@@ -2796,8 +2863,21 @@ export default function ModelSpaceViewport({
         finalizeDeckDragSettlement();
         return;
       }
+      const commitStartedAtMs = Date.now();
       deckDragPhaseRef.current = 'settling';
       setDeckDragPhase('settling');
+      setDeckDragSettleState({
+        deckId: activeDeckDragSession.deckId,
+        previewState: preview,
+        commitStartedAtMs,
+        commitResolvedAtMs: null,
+        releasePlacement: preview.releasePlacement,
+        releaseOutcome: 'pending',
+        settleVisualState: 'holding-preview',
+        resolvedSuccess: null,
+        matchedCommittedGeometry: false,
+        releaseError: null,
+      });
       const result = await resolveCommitResult(
         onCommitHouseFirstDeckDimension(
           activeDeckDragSession.deckId,
@@ -2807,15 +2887,21 @@ export default function ModelSpaceViewport({
           }),
         ),
       );
-      setFieldError(result.ok ? null : result.error ?? 'Unable to update the deck position.');
+      const releaseError = result.ok ? null : result.error ?? 'Unable to update the deck position.';
+      setFieldError(result.ok ? null : releaseError);
       if (result.ok) setFootprintError(null);
-      setDeckDragSettleState({
-        deckId: activeDeckDragSession.deckId,
-        previewPolygon: preview.polygon,
-        resolvedAtMs: Date.now(),
-        releasePlacement: preview.releasePlacement,
-        success: result.ok,
-      });
+      setDeckDragSettleState((current) =>
+        current && current.deckId === activeDeckDragSession.deckId
+          ? {
+              ...current,
+              commitResolvedAtMs: Date.now(),
+              releaseOutcome: result.ok ? 'committed' : 'failed',
+              settleVisualState: result.ok ? 'reconciling' : 'failed',
+              resolvedSuccess: result.ok,
+              releaseError,
+            }
+          : current,
+      );
     };
 
     window.addEventListener('pointermove', handlePointerMove, { passive: false });
@@ -3087,7 +3173,21 @@ export default function ModelSpaceViewport({
         : null,
     [deckDragSettleState, houseFirstPlanOverlay],
   );
-  const settledDeckShapeReady = Boolean(settledDeckShape);
+  const settledDeckShapeMatchesPreview = useMemo(
+    () =>
+      Boolean(
+        deckDragSettleState &&
+          settledDeckShape &&
+          (
+            polygonsVisuallyMatch(settledDeckShape.polygon, deckDragSettleState.previewState.polygon) ||
+            deckShapeSemanticallyMatchesPreview({
+              shape: settledDeckShape,
+              preview: deckDragSettleState.previewState,
+            })
+          ),
+      ),
+    [deckDragSettleState, settledDeckShape],
+  );
   const selectedDeckRelationshipDimensionsAvailable = useMemo(
     () =>
       selectedDeckShape
@@ -3128,8 +3228,38 @@ export default function ModelSpaceViewport({
         phase: deckDragPhase,
         previewState: deckPreviewState,
         dragSession: deckDragSession,
+        releaseState:
+          deckDragSettleState
+            ? {
+                outcome: deckDragSettleState.releaseOutcome,
+                releasePlacement: deckDragSettleState.releasePlacement,
+                settleVisualState: deckDragSettleState.settleVisualState,
+                errorDetail: deckDragSettleState.releaseError,
+                previewState:
+                  deckDragSettleState.releaseOutcome === 'failed' ||
+                  deckDragSettleState.settleVisualState === 'complete'
+                    ? null
+                    : deckDragSettleState.previewState,
+              }
+            : deckReleaseFeedbackState
+              ? {
+                  outcome: deckReleaseFeedbackState.releaseOutcome,
+                  releasePlacement: deckReleaseFeedbackState.releasePlacement,
+                  settleVisualState: deckReleaseFeedbackState.settleVisualState,
+                  errorDetail: deckReleaseFeedbackState.releaseError,
+                  previewState: deckReleaseFeedbackState.previewState,
+                }
+              : null,
       }),
-    [deckDragPhase, deckDragSession, deckPreviewState, selectedDeckCapability, selectedDeckShape],
+    [
+      deckDragPhase,
+      deckDragSession,
+      deckDragSettleState,
+      deckPreviewState,
+      deckReleaseFeedbackState,
+      selectedDeckCapability,
+      selectedDeckShape,
+    ],
   );
   const openingInteractionViewState = useMemo<ObjectInteractionViewState | null>(() => {
     if (!selectedOpeningShape) return null;
@@ -3145,6 +3275,9 @@ export default function ModelSpaceViewport({
       canCommit: isDragging,
       highlightTargetId: selectedOpeningShape.openingInteraction?.hostEdgeId ?? null,
       previewAnchor: null,
+      releaseOutcome: 'none',
+      releasePlacement: null,
+      settleVisualState: null,
     };
   }, [openingDragSession, openingPreviewState, selectedOpeningShape]);
   const deckInteractionHud = useMemo(
@@ -3175,17 +3308,29 @@ export default function ModelSpaceViewport({
       selectedDeckShape,
     ],
   );
+  const activeDeckPreviewState = useMemo(() => {
+    if (deckDragSettleState) {
+      if (deckDragSettleState.releaseOutcome === 'failed' || deckDragSettleState.settleVisualState === 'complete') {
+        return null;
+      }
+      return deckDragSettleState.previewState;
+    }
+    return deckPreviewState;
+  }, [deckDragSettleState, deckPreviewState]);
   const houseFirstPreviewOverlay = useMemo(
     () =>
-      deckPreviewState && deckDragSession
+      activeDeckPreviewState
         ? {
-            ownerId: deckPreviewState.deckId,
-            polygon: deckPreviewState.polygon,
-            hostEdge: {
-              start: deckPreviewState.hostEdgeStart,
-              end: deckPreviewState.hostEdgeEnd,
-              state: resolvePreviewHostEdgeState(deckInteractionViewState),
-            },
+            ownerId: activeDeckPreviewState.deckId,
+            polygon: activeDeckPreviewState.polygon,
+            hostEdge:
+              deckInteractionViewState.releaseOutcome !== 'none' && deckInteractionViewState.releasePlacement === 'floating'
+                ? null
+                : {
+                    start: activeDeckPreviewState.hostEdgeStart,
+                    end: activeDeckPreviewState.hostEdgeEnd,
+                    state: resolvePreviewHostEdgeState(deckInteractionViewState),
+                  },
           }
         : openingPreviewState && openingDragSession
           ? {
@@ -3199,9 +3344,8 @@ export default function ModelSpaceViewport({
             }
           : null,
     [
-      deckDragSession,
+      activeDeckPreviewState,
       deckInteractionViewState,
-      deckPreviewState,
       openingDragSession,
       openingInteractionViewState,
       openingPreviewState,
@@ -3212,45 +3356,64 @@ export default function ModelSpaceViewport({
     if (deckDragPhase !== 'settling' || !deckDragSession || !deckDragSettleState) return;
 
     let cancelled = false;
-    const settleDeadlineMs = deckDragSettleState.resolvedAtMs + DECK_SETTLE_MAX_WAIT_MS;
     let finalizeAnimationFrameId: number | null = null;
-    let finalizeTimeoutId: number | null = null;
-    let stableFrameCount = 0;
+    const buildReleaseFeedback = (
+      outcome: Extract<ObjectInteractionReleaseOutcome, 'committed' | 'failed'>,
+      settleVisualState: Extract<ObjectInteractionSettleVisualState, 'complete' | 'failed'>,
+    ): DeckReleaseFeedbackState => ({
+      deckId: deckDragSettleState.deckId,
+      releaseOutcome: outcome,
+      releasePlacement: deckDragSettleState.releasePlacement,
+      settleVisualState,
+      releaseError: deckDragSettleState.releaseError,
+      previewState: deckDragSettleState.previewState,
+      expiresAtMs:
+        Date.now() +
+        (outcome === 'committed' ? DECK_RELEASE_SUCCESS_FEEDBACK_MS : DECK_RELEASE_FAILURE_FEEDBACK_MS),
+    });
 
-    const finalizeWhenReady = () => {
+    const finalizeSuccess = () => {
+      cancelled = true;
+      finalizeDeckDragSettlement(buildReleaseFeedback('committed', 'complete'));
+    };
+
+    const finalizeFailure = () => {
+      cancelled = true;
+      finalizeDeckDragSettlement(buildReleaseFeedback('failed', 'failed'));
+    };
+
+    const observeSettlement = () => {
       finalizeAnimationFrameId = window.requestAnimationFrame(() => {
         if (cancelled) return;
         restoreDeckDragPinnedScrollTargets();
-        const committedGeometryReady = deckDragSettleState.success ? settledDeckShapeReady : true;
         const drift = measureDeckDragViewportAnchorDrift();
-        if (committedGeometryReady && isDeckDragViewportAnchorStable(drift)) {
-          stableFrameCount += 1;
-        } else {
-          stableFrameCount = 0;
+        const viewportStable = isDeckDragViewportAnchorStable(drift);
+        if (settledDeckShapeMatchesPreview && !deckDragSettleState.matchedCommittedGeometry) {
+          setDeckDragSettleState((current) =>
+            current && current.deckId === deckDragSettleState.deckId
+              ? { ...current, matchedCommittedGeometry: true }
+              : current,
+          );
         }
-        if (stableFrameCount >= 2) {
-          cancelled = true;
-          finalizeDeckDragSettlement();
+        if (deckDragSettleState.releaseOutcome === 'failed') {
+          finalizeFailure();
           return;
         }
-        finalizeWhenReady();
+        if (deckDragSettleState.releaseOutcome === 'committed' && deckDragSettleState.commitResolvedAtMs !== null) {
+          const settleDeadlineMs = deckDragSettleState.commitResolvedAtMs + DECK_SETTLE_MAX_WAIT_MS;
+          if ((settledDeckShapeMatchesPreview && viewportStable) || Date.now() >= settleDeadlineMs) {
+            finalizeSuccess();
+            return;
+          }
+        }
+        observeSettlement();
       });
     };
 
-    const remainingMs = Math.max(0, settleDeadlineMs - Date.now());
-    finalizeTimeoutId = window.setTimeout(() => {
-      if (cancelled) return;
-      cancelled = true;
-      restoreDeckDragPinnedScrollTargets();
-      finalizeDeckDragSettlement();
-    }, remainingMs);
-    finalizeWhenReady();
+    observeSettlement();
 
     return () => {
       cancelled = true;
-      if (finalizeTimeoutId !== null) {
-        window.clearTimeout(finalizeTimeoutId);
-      }
       if (finalizeAnimationFrameId !== null) {
         window.cancelAnimationFrame(finalizeAnimationFrameId);
       }
@@ -3263,7 +3426,7 @@ export default function ModelSpaceViewport({
     isDeckDragViewportAnchorStable,
     measureDeckDragViewportAnchorDrift,
     restoreDeckDragPinnedScrollTargets,
-    settledDeckShapeReady,
+    settledDeckShapeMatchesPreview,
   ]);
 
   useEffect(() => {
@@ -3280,6 +3443,9 @@ export default function ModelSpaceViewport({
       deckInteractionTelemetry.relationshipDimensionsAvailable ? '1' : '0',
       deckInteractionTelemetry.phase,
       deckInteractionTelemetry.placementState,
+      deckInteractionTelemetry.releaseOutcome,
+      deckInteractionTelemetry.releasePlacement ?? '',
+      deckInteractionTelemetry.settleVisualState ?? '',
       deckInteractionTelemetry.canCommit ? '1' : '0',
       deckInteractionTelemetry.highlightTargetId ?? '',
       deckInteractionTelemetry.previewAnchor
@@ -3640,6 +3806,9 @@ export default function ModelSpaceViewport({
         data-house-first-deck-drag-locked={deckDragLocked ? 'true' : 'false'}
         data-house-first-deck-drag-phase={deckInteractionViewState.phase}
         data-house-first-deck-placement-state={deckInteractionViewState.placementState}
+        data-house-first-deck-release-outcome={deckInteractionViewState.releaseOutcome}
+        data-house-first-deck-release-placement={deckInteractionViewState.releasePlacement ?? 'none'}
+        data-house-first-deck-settle-visual-state={deckInteractionViewState.settleVisualState ?? 'none'}
         data-house-first-deck-snap-state={deckInteractionTelemetry.snapState}
         data-house-first-opening-drag-active={openingDragSession ? 'true' : 'false'}
         data-house-first-selected-deck-id={deckInteractionTelemetry.selectedDeckId ?? ''}

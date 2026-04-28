@@ -3,6 +3,9 @@ import type {
   ObjectInteractionPhase,
   ObjectInteractionPlacementState,
   ObjectInteractionPreviewAnchor,
+  ObjectInteractionReleaseOutcome,
+  ObjectInteractionReleasePlacement,
+  ObjectInteractionSettleVisualState,
 } from './objectInteractionEngine';
 
 export type DeckInteractionSelectedType =
@@ -48,6 +51,9 @@ export type DeckInteractionTelemetry = {
   relationshipDimensionsAvailable: boolean;
   phase: ObjectInteractionPhase;
   placementState: ObjectInteractionPlacementState;
+  releaseOutcome: ObjectInteractionReleaseOutcome;
+  releasePlacement: ObjectInteractionReleasePlacement | null;
+  settleVisualState: ObjectInteractionSettleVisualState | null;
   snapState: 'idle' | 'floating' | 'snap-available' | 'snapped' | 'blocked';
   snapMessage: string | null;
   interactionState: DeckInteractionState;

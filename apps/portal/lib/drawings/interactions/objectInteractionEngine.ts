@@ -3,6 +3,9 @@ export type ObjectInteractionPhase = 'idle' | 'hover' | 'selected' | 'drag-inten
 export type ObjectInteractionActivePhase = Extract<ObjectInteractionPhase, 'drag-intent' | 'dragging' | 'settling'>;
 
 export type ObjectInteractionPlacementState = 'none' | 'snap-available' | 'snapped' | 'floating' | 'blocked';
+export type ObjectInteractionReleaseOutcome = 'none' | 'pending' | 'committed' | 'failed';
+export type ObjectInteractionReleasePlacement = 'snapped' | 'floating';
+export type ObjectInteractionSettleVisualState = 'holding-preview' | 'reconciling' | 'complete' | 'failed';
 
 export type ObjectInteractionPreviewAnchor = {
   x: number;
@@ -17,6 +20,9 @@ export type ObjectInteractionViewState = {
   canCommit: boolean;
   highlightTargetId: string | null;
   previewAnchor: ObjectInteractionPreviewAnchor | null;
+  releaseOutcome: ObjectInteractionReleaseOutcome;
+  releasePlacement: ObjectInteractionReleasePlacement | null;
+  settleVisualState: ObjectInteractionSettleVisualState | null;
 };
 
 export type ObjectInteractionSessionBase = {
@@ -39,6 +45,9 @@ export function buildObjectInteractionViewState(
     canCommit: state.canCommit ?? false,
     highlightTargetId: state.highlightTargetId ?? null,
     previewAnchor: state.previewAnchor ?? null,
+    releaseOutcome: state.releaseOutcome ?? 'none',
+    releasePlacement: state.releasePlacement ?? null,
+    settleVisualState: state.settleVisualState ?? null,
   };
 }
 

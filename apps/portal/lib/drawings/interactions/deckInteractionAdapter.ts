@@ -10,7 +10,9 @@ import type {
 import {
   buildObjectInteractionViewState,
   type ObjectInteractionPhase,
+  type ObjectInteractionReleaseOutcome,
   type ObjectInteractionSessionBase,
+  type ObjectInteractionSettleVisualState,
   type ObjectInteractionViewState,
 } from './objectInteractionEngine';
 import {
@@ -59,6 +61,14 @@ export type DeckPreviewState = {
   placement: 'snapped' | 'floating';
   snapEligible: boolean;
   releasePlacement: 'snapped' | 'floating';
+};
+
+export type DeckReleaseState = {
+  outcome: Exclude<ObjectInteractionReleaseOutcome, 'none'>;
+  releasePlacement: 'snapped' | 'floating' | null;
+  settleVisualState: ObjectInteractionSettleVisualState;
+  errorDetail: string | null;
+  previewState: DeckPreviewState | null;
 };
 
 function formatDeckPresetValue(value: number): string {
@@ -470,7 +480,9 @@ export function buildDeckInteractionViewState(input: {
   phase: ObjectInteractionPhase;
   previewState: DeckPreviewState | null;
   dragSession: DeckDragSession | null;
+  releaseState: DeckReleaseState | null;
 }): ObjectInteractionViewState {
+  const previewState = input.releaseState?.previewState ?? input.previewState;
   const capability =
     input.capability ??
     (input.selectedDeckShape
@@ -483,27 +495,60 @@ export function buildDeckInteractionViewState(input: {
           relationshipDimensionsAvailable: false,
         })
       : null);
-  const hint = resolveDeckInteractionHint({
-    capability,
-    phase: input.phase,
-    previewState: input.previewState,
-  });
 
-  const placementState =
-    !capability
-      ? 'none'
-      : !capability.dragEligible
+  let statusLabel: string | null = null;
+  let statusDetail: string | null = null;
+  let placementState: ObjectInteractionViewState['placementState'] = 'none';
+
+  if (input.releaseState) {
+    placementState =
+      input.releaseState.outcome === 'failed'
         ? 'blocked'
-        : input.previewState?.releasePlacement === 'snapped'
-          ? input.previewState.placement === 'snapped'
-            ? 'snapped'
-            : 'snap-available'
-          : input.previewState
+        : input.releaseState.releasePlacement === 'snapped'
+          ? 'snapped'
+          : input.releaseState.releasePlacement === 'floating'
             ? 'floating'
             : 'none';
+    if (input.releaseState.outcome === 'pending') {
+      statusLabel = 'Applying deck position';
+      statusDetail =
+        input.releaseState.releasePlacement === 'snapped'
+          ? 'Holding the snapped preview while the draft settles.'
+          : 'Holding the floating preview while the draft settles.';
+    } else if (input.releaseState.outcome === 'committed') {
+      statusLabel = 'Position updated';
+      statusDetail =
+        input.releaseState.releasePlacement === 'snapped'
+          ? 'Deck stayed attached to the host edge.'
+          : 'Deck stayed in its floating position.';
+    } else {
+      statusLabel = "Couldn't move deck";
+      statusDetail = input.releaseState.errorDetail ?? 'The deck returned to its previous position.';
+    }
+  } else {
+    const hint = resolveDeckInteractionHint({
+      capability,
+      phase: input.phase,
+      previewState,
+    });
+    statusLabel = hint?.label ?? null;
+    statusDetail = hint?.detail ?? null;
+    placementState =
+      !capability
+        ? 'none'
+        : !capability.dragEligible
+          ? 'blocked'
+          : previewState?.releasePlacement === 'snapped'
+            ? previewState.placement === 'snapped'
+              ? 'snapped'
+              : 'snap-available'
+            : previewState
+              ? 'floating'
+              : 'none';
+  }
 
   const previewAnchor =
-    input.previewState?.previewAnchor ??
+    previewState?.previewAnchor ??
     input.dragSession?.startCenter ??
     input.selectedDeckShape?.deckInteraction?.renderedCenter ??
     null;
@@ -519,11 +564,17 @@ export function buildDeckInteractionViewState(input: {
   return buildObjectInteractionViewState({
     phase: nextPhase,
     placementState,
-    statusLabel: hint?.label ?? null,
-    statusDetail: hint?.detail ?? null,
-    canCommit: Boolean(capability?.dragEligible && input.phase === 'dragging' && input.previewState),
-    highlightTargetId: input.previewState?.highlightTargetId ?? null,
+    statusLabel,
+    statusDetail,
+    canCommit: Boolean(!input.releaseState && capability?.dragEligible && input.phase === 'dragging' && previewState),
+    highlightTargetId:
+      input.releaseState?.outcome === 'failed'
+        ? null
+        : previewState?.highlightTargetId ?? null,
     previewAnchor,
+    releaseOutcome: input.releaseState?.outcome ?? 'none',
+    releasePlacement: input.releaseState?.releasePlacement ?? null,
+    settleVisualState: input.releaseState?.settleVisualState ?? null,
   });
 }
 
@@ -604,6 +655,9 @@ export function buildDeckInteractionTelemetry(input: {
     relationshipDimensionsAvailable: capability?.relationshipDimensionsAvailable ?? false,
     phase: input.viewState.phase,
     placementState: input.viewState.placementState,
+    releaseOutcome: input.viewState.releaseOutcome,
+    releasePlacement: input.viewState.releasePlacement,
+    settleVisualState: input.viewState.settleVisualState,
     snapState:
       input.viewState.placementState === 'none'
         ? 'idle'
