@@ -2185,8 +2185,8 @@ export function buildHouseFirstPlanOverlay(input: {
         moduleProjectionM,
       });
     const selected = input.selection.kind === 'deck' && input.selection.targetId === deck.id;
-    const deckInteraction = selected
-      ? deck.shape === 'custom'
+    const deckInteraction =
+      deck.shape === 'custom'
         ? buildCustomDeckInteraction({
             house,
             houseLocalPolygon,
@@ -2204,8 +2204,7 @@ export function buildHouseFirstPlanOverlay(input: {
             moduleProjectionM,
             deckPolygon,
             geometryHouseLookup,
-          })
-      : null;
+          });
     shapes.push({
       ownerKind: 'deck',
       ownerId: deck.id,

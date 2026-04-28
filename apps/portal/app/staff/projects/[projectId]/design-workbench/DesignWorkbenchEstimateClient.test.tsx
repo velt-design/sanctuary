@@ -881,6 +881,66 @@ describe('DesignWorkbenchEstimateClient', () => {
     rendered.unmount();
   });
 
+  it('auto-selects and keeps dragging a deck in the real workbench without a prior click selection step', async () => {
+    const estimate = buildEstimateDetail();
+
+    const rendered = renderIntoDocument(
+      <DesignWorkbenchEstimateClient estimate={estimate} projectName="Deck Build" siteAddress="1 Test Street" />,
+    );
+
+    await flushAsyncWork();
+    clickButtonByText(rendered.container, 'Add deck');
+    await flushAsyncWork();
+    clickButtonByText(rendered.container, 'Model Space');
+    await flushAsyncWork();
+
+    const deckShape = rendered.container.querySelector('[data-house-first-shape-hit="deck:deck-1"]');
+    if (!(deckShape instanceof Element)) throw new Error('Missing model-space deck shape.');
+
+    dispatchPointer(deckShape, 'pointerdown', { pointerId: 92, button: 0, clientX: 50, clientY: 50 });
+    dispatchPointer(window, 'pointermove', { pointerId: 92, button: 0, buttons: 1, clientX: -120, clientY: 50 });
+    dispatchPointer(window, 'pointermove', { pointerId: 92, button: 0, buttons: 1, clientX: -220, clientY: 50 });
+
+    expect(rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]')).not.toBeNull();
+    expect(readLabeledValue(rendered.container, 'Selected deck id')).toBe('deck-1');
+
+    dispatchPointer(window, 'pointerup', { pointerId: 92, button: 0, clientX: -220, clientY: 50 });
+    await flushAsyncWork();
+
+    rendered.unmount();
+  });
+
+  it('allows immediately re-grabbing the same deck after releasing it in the real workbench', async () => {
+    const estimate = buildEstimateDetail();
+
+    const rendered = renderIntoDocument(
+      <DesignWorkbenchEstimateClient estimate={estimate} projectName="Deck Build" siteAddress="1 Test Street" />,
+    );
+
+    await flushAsyncWork();
+    clickButtonByText(rendered.container, 'Add deck');
+    await flushAsyncWork();
+    clickButtonByText(rendered.container, 'Model Space');
+    await flushAsyncWork();
+
+    const deckShape = rendered.container.querySelector('[data-house-first-shape-hit="deck:deck-1"]');
+    if (!(deckShape instanceof Element)) throw new Error('Missing model-space deck shape.');
+
+    dispatchPointer(deckShape, 'pointerdown', { pointerId: 93, button: 0, clientX: 50, clientY: 50 });
+    dispatchPointer(window, 'pointermove', { pointerId: 93, button: 0, buttons: 1, clientX: -120, clientY: 50 });
+    dispatchPointer(window, 'pointerup', { pointerId: 93, button: 0, clientX: -120, clientY: 50 });
+
+    dispatchPointer(deckShape, 'pointerdown', { pointerId: 94, button: 0, clientX: 50, clientY: 50 });
+    dispatchPointer(window, 'pointermove', { pointerId: 94, button: 0, buttons: 1, clientX: -220, clientY: 50 });
+
+    expect(rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]')).not.toBeNull();
+
+    dispatchPointer(window, 'pointerup', { pointerId: 94, button: 0, clientX: -220, clientY: 50 });
+    await flushAsyncWork();
+
+    rendered.unmount();
+  });
+
   it('adds windows in house mode, selects them in model space, and commits width edits through plan dimensions', async () => {
     const estimate = buildEstimateDetail();
     const entityKey = buildEstimateDrawingDraftEntityKey(estimate.id);

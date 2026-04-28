@@ -3019,10 +3019,13 @@ function renderHouseFirstPlanOverlay(input: {
                 className={styles.moduleHouseFirstShapeHit}
                 onClick={() => onShapeSelect?.({ ownerKind: shape.ownerKind, ownerId: shape.ownerId })}
                 onPointerDown={(event) => {
-                  if (event.button !== 0 || !shape.selected) return;
+                  if (event.button !== 0) return;
                   if (shape.ownerKind === 'deck' && shape.deckInteraction) {
                     event.preventDefault();
                     event.stopPropagation();
+                    if (!shape.selected) {
+                      onShapeSelect?.({ ownerKind: shape.ownerKind, ownerId: shape.ownerId });
+                    }
                     onShapeDragStart?.(
                       {
                         ownerKind: 'deck',
@@ -3041,6 +3044,7 @@ function renderHouseFirstPlanOverlay(input: {
                     );
                     return;
                   }
+                  if (!shape.selected) return;
                   if (shape.ownerKind === 'opening' && shape.openingInteraction) {
                     onShapeDragStart?.(
                       {
