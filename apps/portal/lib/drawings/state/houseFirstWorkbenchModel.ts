@@ -198,6 +198,21 @@ export type HouseAttachmentZoneModel = {
   side: NonNullable<CalculatorModuleInputs['attachmentSide']>;
 };
 
+export type HouseAttachmentZoneBlockReason =
+  | 'invalid_roof_state'
+  | 'missing_host_edge'
+  | 'side_openings_block_wall'
+  | 'side_openings_block_roof_zone'
+  | 'unsupported_roof_form';
+
+export type HouseAttachmentZoneDiagnosticsModel = {
+  blocked: Array<{
+    side: NonNullable<CalculatorModuleInputs['attachmentSide']>;
+    kind: HouseAttachmentZoneKind;
+    reason: HouseAttachmentZoneBlockReason;
+  }>;
+};
+
 export type HouseModel = {
   id: string;
   label: string;
@@ -227,6 +242,7 @@ export type HouseModel = {
   decks: DeckModel[];
   openings: WallOpeningModel[];
   attachmentZones: HouseAttachmentZoneModel[];
+  attachmentZoneDiagnostics: HouseAttachmentZoneDiagnosticsModel;
 };
 
 export type PergolaAttachmentModel = {
@@ -252,7 +268,8 @@ export type HouseFirstMigrationWarning = {
   code:
     | 'conflicting_house_field'
     | 'invalid_house_first_roof_overlay'
-    | 'invalid_house_first_deck_overlay';
+    | 'invalid_house_first_deck_overlay'
+    | 'invalid_house_attachment_zone_overlay';
   severity: 'blocking';
   field: string;
   chosenModuleIndex: number;

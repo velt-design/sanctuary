@@ -172,6 +172,7 @@ export function makeHouseFirstOnePergolaFixture(): WorkbenchProjectModel {
       decks: [],
       openings: [],
       attachmentZones: [{ id: 'zone-soffit-rear', label: 'Rear soffit', kind: 'soffit', side: 'rear' }],
+      attachmentZoneDiagnostics: { blocked: [] },
     },
     pergolas: [
       {
@@ -339,6 +340,7 @@ export function makeHouseFirstDeckSupportProjectFixture(input: {
       projectModel.house!.attachmentZones = [
         { id: 'zone-soffit-left', label: 'Left soffit', kind: 'soffit', side: 'left' },
       ];
+      projectModel.house!.attachmentZoneDiagnostics = { blocked: [] };
       projectModel.pergolas[0]!.attachment = {
         ...projectModel.pergolas[0]!.attachment,
         houseAttachmentZoneId: 'zone-soffit-left',

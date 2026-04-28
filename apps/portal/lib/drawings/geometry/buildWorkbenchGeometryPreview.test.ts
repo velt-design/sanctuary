@@ -259,6 +259,61 @@ describe('buildWorkbenchGeometryPreview', () => {
     expect(preview.message).toContain('not supported by Sanctuary geometry V1');
   });
 
+  it('reports shared attachment-zone counts and pergola resolution metadata in the 3D preview', () => {
+    const fixture = requireFixture('mono-standard');
+
+    const preview = buildWorkbenchGeometryPreview({
+      projectId: 'proj_preview',
+      estimateId: fixture.estimate.id,
+      designRequestId: fixture.request.id,
+      snapshot: fixture.snapshot,
+      moduleIndex: 0,
+    });
+
+    expect(preview.kind).toBe('ready');
+    if (preview.kind !== 'ready') return;
+    expect(preview.scene.metadata?.houseAttachmentZoneCount).toBeGreaterThan(0);
+    expect(preview.scene.metadata?.houseAttachmentZoneKinds).toContain('rear:soffit');
+    expect(preview.scene.metadata?.pergolaResolvedAttachmentZoneCount).toBe(1);
+    expect(preview.scene.metadata?.pergolaUnresolvedAttachmentZoneCount).toBe(0);
+  });
+
+  it('reports blocked shared attachment zones when side openings suppress them', () => {
+    const fixture = requireFixture('mono-standard');
+    const draft = makeDraft(fixture.snapshot, (current) => {
+      current.houseFirst = {
+        openings: [
+          {
+            id: 'opening-slider-rear',
+            kind: 'slider',
+            wallId: 'rear',
+            widthM: '2.4',
+            heightM: '2.1',
+            sillHeightM: '0',
+            offsetAlongWallM: '0.8',
+          },
+        ],
+      };
+    });
+
+    const preview = buildWorkbenchGeometryPreview({
+      projectId: 'proj_preview',
+      estimateId: fixture.estimate.id,
+      designRequestId: fixture.request.id,
+      snapshot: fixture.snapshot,
+      draft,
+      moduleIndex: 0,
+    });
+
+    expect(preview.kind).toBe('ready');
+    if (preview.kind !== 'ready') return;
+    expect(preview.scene.metadata?.houseAttachmentZoneBlockedReasons).toContain(
+      'rear:soffit:side_openings_block_roof_zone',
+    );
+    expect(preview.scene.metadata?.pergolaResolvedAttachmentZoneCount).toBe(0);
+    expect(preview.scene.metadata?.pergolaUnresolvedAttachmentZoneCount).toBe(1);
+  });
+
   it('returns an error for malformed geometry inputs that cannot normalize', () => {
     const fixture = requireFixture('mono-standard');
     const snapshot = structuredClone(fixture.snapshot) as {

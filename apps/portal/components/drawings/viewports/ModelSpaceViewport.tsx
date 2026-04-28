@@ -53,6 +53,7 @@ import {
   type PlanPoint,
 } from '@/lib/drawings/views/plan/houseFirstPlanOverlay';
 import { blockNativeSelectionEvent } from './nativeSelection';
+import { lockDocumentScroll, unlockDocumentScroll } from '@/components/ui/scrollLock';
 import styles from './ModelSpaceViewport.module.css';
 import { CLOSE_START_TOLERANCE_M, MIN_OUTLINE_SEGMENT_M, distanceBetweenOutlinePoints } from './drawOutlineToolGeometry';
 import {
@@ -192,7 +193,6 @@ type DeckDragPhase = 'dragging' | 'settling';
 type DeckDragSettleState = {
   deckId: string;
   previewPolygon: PlanPoint[];
-  hint: DeckInteractionHintState;
   resolvedAtMs: number;
   releasePlacement: 'snapped' | 'floating';
   success: boolean;
@@ -228,12 +228,6 @@ type DeckInteractionTelemetry = {
   relationshipDimensionsAvailable: boolean;
   snapState: 'idle' | 'floating' | 'snapped';
   snapMessage: string | null;
-};
-
-type DeckInteractionHintState = {
-  title: string;
-  detail: string;
-  tone: 'eligible' | 'deferred' | 'status';
 };
 
 type ModelSpaceRect = {
@@ -1307,7 +1301,6 @@ export default function ModelSpaceViewport({
   const [deckDragSettleState, setDeckDragSettleState] = useState<DeckDragSettleState | null>(null);
   const [openingDragSession, setOpeningDragSession] = useState<OpeningDragSession | null>(null);
   const [openingPreviewState, setOpeningPreviewState] = useState<OpeningPreviewState | null>(null);
-  const [deckInteractionHint, setDeckInteractionHint] = useState<DeckInteractionHintState | null>(null);
   const deckDragClickSuppressedUntilRef = useRef(0);
 
   useEffect(() => {
@@ -1483,19 +1476,15 @@ export default function ModelSpaceViewport({
     }
   }, []);
 
-  const finalizeDeckDragSettlement = useCallback(
-    (hint: DeckInteractionHintState) => {
-      deckDragClickSuppressedUntilRef.current = Date.now() + DECK_RELEASE_CLICK_SUPPRESSION_MS;
-      releaseDeckDragPointer(activeDeckDragPointerIdRef.current);
-      lastResolvedDeckDragPlanPointRef.current = null;
-      setDeckDragSession(null);
-      setDeckPreviewState(null);
-      setDeckDragSettleState(null);
-      setDeckDragPhase('dragging');
-      setDeckInteractionHint(hint);
-    },
-    [releaseDeckDragPointer],
-  );
+  const finalizeDeckDragSettlement = useCallback(() => {
+    deckDragClickSuppressedUntilRef.current = Date.now() + DECK_RELEASE_CLICK_SUPPRESSION_MS;
+    releaseDeckDragPointer(activeDeckDragPointerIdRef.current);
+    lastResolvedDeckDragPlanPointRef.current = null;
+    setDeckDragSession(null);
+    setDeckPreviewState(null);
+    setDeckDragSettleState(null);
+    setDeckDragPhase('dragging');
+  }, [releaseDeckDragPointer]);
 
   const handleHouseFirstShapeDragStart = useCallback(
     (
@@ -1524,14 +1513,6 @@ export default function ModelSpaceViewport({
         setOpeningPreviewState(null);
         setDeckDragSettleState(null);
         setDeckPreviewState(null);
-        setDeckInteractionHint({
-          title: 'Deck drag',
-          detail:
-            overlayShape.custom
-              ? 'Drag the custom deck to translate it relative to the house.'
-              : 'Drag the deck freely. Release near a house edge to snap it back.',
-          tone: 'status',
-        });
         setDeckDragPhase('dragging');
         setDeckDragSession({
           pointerId: event.pointerId,
@@ -1568,7 +1549,6 @@ export default function ModelSpaceViewport({
       setDeckDragSession(null);
       setDeckPreviewState(null);
       setDeckDragSettleState(null);
-      setDeckInteractionHint(null);
       releaseDeckDragPointer(activeDeckDragPointerIdRef.current);
       lastResolvedDeckDragPlanPointRef.current = null;
       setOpeningPreviewState(null);
@@ -2934,21 +2914,6 @@ export default function ModelSpaceViewport({
         previousPreviewState: deckPreviewState,
       });
       setDeckPreviewState(preview);
-      setDeckInteractionHint({
-        title:
-          deckDragSession.interaction.kind === 'custom_outline'
-            ? 'Custom deck move'
-            : preview.releasePlacement === 'snapped'
-              ? 'Snap preview'
-              : 'Floating placement',
-        detail:
-          deckDragSession.interaction.kind === 'custom_outline'
-            ? 'Release to move this custom deck while keeping its outline shape.'
-            : preview.releasePlacement === 'snapped'
-              ? 'Release to snap the deck to the house edge.'
-              : 'Release to keep this deck in floating placement.',
-        tone: 'status',
-      });
     };
 
     const finishDrag = async (event: PointerEvent) => {
@@ -2958,11 +2923,7 @@ export default function ModelSpaceViewport({
       const preview = deckPreviewState;
       lastResolvedDeckDragPlanPointRef.current = null;
       if (!preview) {
-        finalizeDeckDragSettlement({
-          title: 'Deck move blocked',
-          detail: 'Unable to resolve the deck preview state.',
-          tone: 'deferred',
-        });
+        finalizeDeckDragSettlement();
         return;
       }
       setDeckDragPhase('settling');
@@ -3013,27 +2974,6 @@ export default function ModelSpaceViewport({
       setDeckDragSettleState({
         deckId: deckDragSession.deckId,
         previewPolygon: preview.polygon,
-        hint: result.ok
-          ? {
-              title:
-                deckDragSession.interaction.kind === 'custom_outline'
-                  ? 'Custom deck moved'
-                  : preview.releasePlacement === 'snapped'
-                    ? 'Deck snapped'
-                    : 'Deck moved',
-              detail:
-                deckDragSession.interaction.kind === 'custom_outline'
-                  ? 'The custom deck moved while keeping its saved outline.'
-                  : preview.releasePlacement === 'snapped'
-                    ? 'The deck is now snapped to the selected house edge.'
-                    : 'The deck stayed in floating placement with witness dimensions.',
-              tone: 'status',
-            }
-          : {
-              title: 'Deck move blocked',
-              detail: result.error ?? 'Unable to update the deck position.',
-              tone: 'deferred',
-            },
         resolvedAtMs: Date.now(),
         releasePlacement: preview.releasePlacement,
         success: result.ok,
@@ -3381,7 +3321,7 @@ export default function ModelSpaceViewport({
     const finalize = () => {
       finalizeTimeoutId = window.setTimeout(() => {
         if (cancelled) return;
-        finalizeDeckDragSettlement(deckDragSettleState.hint);
+        finalizeDeckDragSettlement();
       }, 0);
     };
 
@@ -3406,46 +3346,6 @@ export default function ModelSpaceViewport({
       }
     };
   }, [deckDragPhase, deckDragSession, deckDragSettleState, finalizeDeckDragSettlement, settledDeckShape]);
-
-  useEffect(() => {
-    setDeckInteractionHint(null);
-  }, [selectedDeckId]);
-
-  useEffect(() => {
-    if (deckDragSession || deckPreviewState) {
-      return;
-    }
-    if (!selectedDeckShape?.deckDragEligibility) {
-      setDeckInteractionHint((current) => (current === null ? current : null));
-      return;
-    }
-    const nextHint: DeckInteractionHintState = {
-      title:
-        selectedDeckShape.deckDragEligibility.eligible
-          ? selectedDeckType === 'custom_outline'
-            ? 'Custom deck'
-            : selectedDeckType === 'preset_floating'
-              ? 'Floating preset deck'
-              : 'Snapped preset deck'
-          : selectedDeckType === 'custom_outline'
-            ? 'Custom deck'
-            : selectedDeckType === 'preset_floating'
-              ? 'Floating preset deck'
-              : 'Deck interaction',
-      detail: selectedDeckShape.deckDragEligibility.reason,
-      tone: selectedDeckShape.deckDragEligibility.eligible ? 'eligible' : 'deferred',
-    };
-    setDeckInteractionHint((current) =>
-      current?.tone === 'status'
-        ? current
-        : current &&
-            current.title === nextHint.title &&
-            current.detail === nextHint.detail &&
-            current.tone === nextHint.tone
-          ? current
-          : nextHint,
-    );
-  }, [deckDragSession, deckPreviewState, selectedDeckShape?.deckDragEligibility, selectedDeckType, selectedDeckId]);
 
   useEffect(() => {
     const telemetry = {
@@ -3509,6 +3409,47 @@ export default function ModelSpaceViewport({
       node.removeEventListener('dragstart', handleDragStart, true);
     };
   }, [handleNativeSelectionCapture]);
+
+  useEffect(() => {
+    if (!deckDragLocked) return;
+
+    lockDocumentScroll();
+
+    const preventDefaultOnly = (event: Event) => {
+      event.preventDefault();
+    };
+    const preventSelectionEvent = (event: Event) => {
+      event.preventDefault();
+      event.stopPropagation();
+    };
+    const handlePointerMove = (event: PointerEvent) => {
+      if (activeDeckDragPointerIdRef.current !== null && event.pointerId !== activeDeckDragPointerIdRef.current) return;
+      preventDefaultOnly(event);
+    };
+    const handlePointerEnd = (event: PointerEvent) => {
+      if (activeDeckDragPointerIdRef.current !== null && event.pointerId !== activeDeckDragPointerIdRef.current) return;
+      preventDefaultOnly(event);
+    };
+
+    window.addEventListener('pointermove', handlePointerMove, { passive: false, capture: true });
+    window.addEventListener('pointerup', handlePointerEnd, { passive: false, capture: true });
+    window.addEventListener('pointercancel', handlePointerEnd, { passive: false, capture: true });
+    window.addEventListener('wheel', preventDefaultOnly, { passive: false, capture: true });
+    window.addEventListener('touchmove', preventDefaultOnly, { passive: false, capture: true });
+    document.addEventListener('selectstart', preventSelectionEvent, true);
+    document.addEventListener('dragstart', preventSelectionEvent, true);
+
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove, true);
+      window.removeEventListener('pointerup', handlePointerEnd, true);
+      window.removeEventListener('pointercancel', handlePointerEnd, true);
+      window.removeEventListener('wheel', preventDefaultOnly, true);
+      window.removeEventListener('touchmove', preventDefaultOnly, true);
+      document.removeEventListener('selectstart', preventSelectionEvent, true);
+      document.removeEventListener('dragstart', preventSelectionEvent, true);
+      unlockDocumentScroll();
+    };
+  }, [deckDragLocked]);
 
   useEffect(() => {
     if (!houseFirstPlanOverlay?.customEdgeCandidates.some((candidate) => candidate.id === houseFirstActiveCustomEdgeId)) {
@@ -3850,26 +3791,6 @@ export default function ModelSpaceViewport({
             }}>
               Redraw outline
             </button>
-          </div>
-        ) : null}
-
-        {!drawOutlineViewModel.isActive && deckInteractionHint ? (
-          <div
-            className={[
-              styles.deckInteractionHint,
-              deckInteractionHint.tone === 'eligible'
-                ? styles.deckInteractionHintEligible
-                : deckInteractionHint.tone === 'deferred'
-                  ? styles.deckInteractionHintDeferred
-                  : styles.deckInteractionHintStatus,
-            ]
-              .filter(Boolean)
-              .join(' ')}
-            aria-label="Deck interaction hint"
-            onPointerDown={(event) => event.stopPropagation()}
-          >
-            <span className={styles.deckInteractionHintTitle}>{deckInteractionHint.title}</span>
-            <span className={styles.deckInteractionHintText}>{deckInteractionHint.detail}</span>
           </div>
         ) : null}
 

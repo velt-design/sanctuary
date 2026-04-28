@@ -14,6 +14,7 @@ describe('houseFirstWorkbenchFixtures', () => {
     expect(fixture.house?.id).toBe('house-main');
     expect(fixture.pergolas).toHaveLength(1);
     expect(fixture.house?.roof.form).toBe('mono');
+    expect(fixture.house?.attachmentZoneDiagnostics.blocked).toEqual([]);
   });
 
   it('provides a two-pergola shared house fixture', () => {

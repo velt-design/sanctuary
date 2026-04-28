@@ -139,6 +139,7 @@ function makeHouse(overrides: Partial<HouseModel> = {}): HouseModel {
     decks: [],
     openings: [],
     attachmentZones: [],
+    attachmentZoneDiagnostics: { blocked: [] },
   };
   return {
     ...house,

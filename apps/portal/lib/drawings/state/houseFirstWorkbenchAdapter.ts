@@ -626,11 +626,121 @@ function resolvePergolaAttachmentKind(
   return module.houseConnectionType;
 }
 
-function resolveAttachmentZoneKind(module: CalculatorModuleInputs): HouseAttachmentZoneKind {
-  if (module.houseConnectionType === 'facade') return 'wall';
-  if (module.houseConnectionType === 'fascia') return 'fascia';
-  if (module.houseAttachmentStrategy === 'fascia_under_gutter') return 'roof_edge';
-  return 'soffit';
+const HOUSE_ATTACHMENT_SIDES = ['rear', 'front', 'left', 'right'] as const;
+
+function formatAttachmentZoneLabel(
+  side: NonNullable<CalculatorModuleInputs['attachmentSide']>,
+  kind: HouseAttachmentZoneKind,
+): string {
+  return `${side.charAt(0).toUpperCase()}${side.slice(1)} ${kind.replace('_', ' ')}`;
+}
+
+function resolveAttachmentStrategyZoneKinds(
+  strategy: CalculatorHouseAttachmentStrategy | null,
+): HouseAttachmentZoneKind[] {
+  if (strategy === 'none') return [];
+  const kinds = new Set<HouseAttachmentZoneKind>();
+  if (strategy === 'facade_ledger' || strategy === 'post_supported_tieback' || strategy === null) {
+    kinds.add('wall');
+  }
+  if (strategy === 'soffit_brackets' || strategy === 'post_supported_tieback' || strategy === null) {
+    kinds.add('soffit');
+  }
+  if (strategy === 'fascia_under_gutter' || strategy === null) {
+    kinds.add('fascia');
+  }
+  if (strategy === 'fascia_under_gutter') {
+    kinds.add('roof_edge');
+  }
+  return Array.from(kinds);
+}
+
+function deriveSharedAttachmentZones(input: {
+  housePolygon: CalculatorHouseFootprintPolygonPoint[];
+  roof: Pick<HouseModel['roof'], 'form' | 'validation'>;
+  attachmentStrategy: CalculatorHouseAttachmentStrategy | null;
+  openings: HouseModel['openings'];
+}): {
+  zones: HouseModel['attachmentZones'];
+  diagnostics: HouseModel['attachmentZoneDiagnostics'];
+} {
+  const candidateKinds = resolveAttachmentStrategyZoneKinds(input.attachmentStrategy);
+  const zones: HouseModel['attachmentZones'] = [];
+  const blocked: HouseModel['attachmentZoneDiagnostics']['blocked'] = [];
+  if (!candidateKinds.length) {
+    return {
+      zones,
+      diagnostics: { blocked },
+    };
+  }
+
+  for (const side of HOUSE_ATTACHMENT_SIDES) {
+    const frame = resolveDeckHostEdgeFrame({
+      housePolygon: input.housePolygon,
+      hostEdgeId: side,
+    });
+    const sideOpenings = input.openings.filter(
+      (opening) => opening.wallId === side && opening.validation.status === 'valid',
+    );
+    const hasAnyOpening = sideOpenings.length > 0;
+    const hasLargeOpening = sideOpenings.some(
+      (opening) => opening.kind === 'slider' || opening.kind === 'stacker',
+    );
+
+    for (const kind of candidateKinds) {
+      if (!frame) {
+        blocked.push({
+          side,
+          kind,
+          reason: 'missing_host_edge',
+        });
+        continue;
+      }
+      if (kind === 'roof_edge' && input.roof.form === 'flat') {
+        blocked.push({
+          side,
+          kind,
+          reason: 'unsupported_roof_form',
+        });
+        continue;
+      }
+      if ((kind === 'soffit' || kind === 'fascia' || kind === 'roof_edge') && input.roof.validation.status === 'invalid') {
+        blocked.push({
+          side,
+          kind,
+          reason: 'invalid_roof_state',
+        });
+        continue;
+      }
+      if (kind === 'wall' && hasAnyOpening) {
+        blocked.push({
+          side,
+          kind,
+          reason: 'side_openings_block_wall',
+        });
+        continue;
+      }
+      if ((kind === 'soffit' || kind === 'fascia' || kind === 'roof_edge') && hasLargeOpening) {
+        blocked.push({
+          side,
+          kind,
+          reason: 'side_openings_block_roof_zone',
+        });
+        continue;
+      }
+      zones.push({
+        id: `zone-${kind}-${side}`,
+        label: formatAttachmentZoneLabel(side, kind),
+        kind,
+        side,
+      });
+    }
+  }
+
+  return {
+    zones,
+    diagnostics: { blocked },
+  };
 }
 
 const MIN_WINDOW_WIDTH_M = 0.3;
@@ -1068,7 +1178,6 @@ function buildSharedHouse(
   });
 
   const sourceModuleIds = modules.map((_, index) => `module-${index + 1}`);
-  const attachmentZoneKind = resolveAttachmentZoneKind(modules[0]!);
   const attachmentKind = resolvePergolaAttachmentKind(modules[0]!);
   const normalizedFootprintMode = normalizeHouseFootprintMode(footprintMode) as CalculatorHouseFootprintMode;
   const normalizedFootprintPreset = normalizeHouseFootprintPreset(preset) as CalculatorHouseFootprintPreset;
@@ -1082,7 +1191,6 @@ function buildSharedHouse(
   ) as NonNullable<CalculatorModuleInputs['attachmentSide']>;
   const normalizedRoofMaterial = normalizeHouseRoofMaterial(roofMaterial) as CalculatorHouseRoofMaterial;
   const normalizedStoreyMode = normalizeStoreyMode(storeyMode) as CalculatorHouseStoreyMode;
-  const attachmentZoneId = `zone-${attachmentZoneKind}-${normalizedAttachmentSide}`;
   const firstModuleLengthMm = Math.round((Number(modules[0]!.lengthM) || 6) * 1000);
   const firstModuleProjectionMm = Math.round((Number(modules[0]!.projectionM) || 3) * 1000);
   const derivedHousePolygon =
@@ -1256,6 +1364,15 @@ function buildSharedHouse(
     housePolygon: derivedHousePolygon,
     fallbackWallId: normalizedAttachmentSide,
   });
+  const attachmentZones = deriveSharedAttachmentZones({
+    housePolygon: derivedHousePolygon,
+    roof: {
+      form: sharedRoofForm,
+      validation: roofValidation,
+    },
+    attachmentStrategy,
+    openings,
+  });
 
   return {
     house: {
@@ -1305,14 +1422,8 @@ function buildSharedHouse(
       eaveOverhangMm,
       decks,
       openings,
-      attachmentZones: [
-        {
-          id: attachmentZoneId,
-          label: `${normalizedAttachmentSide} ${attachmentZoneKind}`,
-          kind: attachmentZoneKind,
-          side: normalizedAttachmentSide,
-        },
-      ],
+      attachmentZones: attachmentZones.zones,
+      attachmentZoneDiagnostics: attachmentZones.diagnostics,
     },
     warnings,
   };
@@ -1322,7 +1433,10 @@ function buildPergolas(input: {
   modules: ReturnType<typeof buildEstimateDrawingModules>;
   legacyPergolas: Array<{ id: string; label: string }>;
   house: HouseModel | null;
-}): PergolaModel[] {
+}): {
+  pergolas: PergolaModel[];
+  warnings: HouseFirstMigrationWarning[];
+} {
   const groups = new Map<
     string,
     {
@@ -1347,7 +1461,8 @@ function buildPergolas(input: {
     });
   });
 
-  return Array.from(groups.entries()).map(([pergolaId, group]) => {
+  const warnings: HouseFirstMigrationWarning[] = [];
+  const pergolas = Array.from(groups.entries()).map(([pergolaId, group]) => {
     const firstModule = group.modules[0]!;
     const moduleInput = firstModule.moduleInput;
     const attachmentKind = resolvePergolaAttachmentKind(moduleInput);
@@ -1367,6 +1482,17 @@ function buildPergolas(input: {
               zone.side === normalizedAttachmentSide,
           )?.id ?? null
         : null;
+    if (zoneKind && input.house && houseAttachmentZoneId === null) {
+      warnings.push({
+        id: `house-attachment-zone-${pergolaId}`,
+        code: 'invalid_house_attachment_zone_overlay',
+        severity: 'blocking',
+        field: `pergolas.${pergolaId}.attachment.houseAttachmentZoneId`,
+        chosenModuleIndex: firstModule.moduleIndex,
+        conflictingModuleIndexes: [],
+        message: `The shared house no longer exposes a valid ${normalizedAttachmentSide} ${zoneKind.replace('_', ' ')} attachment zone for this pergola. The saved shared-zone reference was cleared.`,
+      });
+    }
 
     return {
       id: pergolaId,
@@ -1384,6 +1510,11 @@ function buildPergolas(input: {
       },
     };
   });
+
+  return {
+    pergolas,
+    warnings,
+  };
 }
 
 export function buildHouseFirstWorkbenchProjectModel(input: {
@@ -1402,7 +1533,7 @@ export function buildHouseFirstWorkbenchProjectModel(input: {
     input.draft?.houseFirst?.decks ?? null,
     input.draft?.houseFirst?.openings ?? null,
   );
-  const pergolas = buildPergolas({
+  const pergolaResult = buildPergolas({
     modules,
     legacyPergolas: calculatorInputs?.pergolas ?? [],
     house: sharedHouse.house,
@@ -1411,7 +1542,7 @@ export function buildHouseFirstWorkbenchProjectModel(input: {
   return {
     source: 'legacy_estimate_snapshot',
     house: sharedHouse.house,
-    pergolas,
-    warnings: sharedHouse.warnings,
+    pergolas: pergolaResult.pergolas,
+    warnings: [...sharedHouse.warnings, ...pergolaResult.warnings],
   };
 }

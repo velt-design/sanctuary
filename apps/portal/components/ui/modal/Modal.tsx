@@ -3,32 +3,13 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import styles from './Modal.module.css';
+import { lockDocumentScroll, unlockDocumentScroll } from '../scrollLock';
 
 export const MODAL_DEFAULTS = {
   closeOnBackdrop: true,
   closeOnEsc: true,
   maxWidthPx: 720,
 } as const;
-
-let scrollLockCount = 0;
-
-function lockScroll(): void {
-  if (typeof document === 'undefined') return;
-  if (scrollLockCount === 0) {
-    document.documentElement.classList.add('scroll-locked');
-    document.body.classList.add('scroll-locked');
-  }
-  scrollLockCount += 1;
-}
-
-function unlockScroll(): void {
-  if (typeof document === 'undefined') return;
-  scrollLockCount = Math.max(0, scrollLockCount - 1);
-  if (scrollLockCount === 0) {
-    document.documentElement.classList.remove('scroll-locked');
-    document.body.classList.remove('scroll-locked');
-  }
-}
 
 export type ModalProps = {
   open: boolean;
@@ -78,7 +59,7 @@ export default function Modal({
     if (!open) return;
     if (typeof window === 'undefined') return;
 
-    lockScroll();
+    lockDocumentScroll();
 
     const prevFocus = document.activeElement as HTMLElement | null;
 
@@ -107,7 +88,7 @@ export default function Modal({
     return () => {
       window.clearTimeout(t);
       window.removeEventListener('keydown', onKeyDown);
-      unlockScroll();
+      unlockDocumentScroll();
 
       if (prevFocus && typeof prevFocus.focus === 'function') {
         try {

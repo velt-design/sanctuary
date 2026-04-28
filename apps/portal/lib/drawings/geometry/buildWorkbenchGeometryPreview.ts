@@ -128,6 +128,35 @@ function annotateSceneHostEdgeSides(
   };
 }
 
+function annotateSceneAttachmentZoneMetadata(
+  scene: ViewerSceneModel,
+  projectModel: ReturnType<typeof buildHouseFirstWorkbenchProjectModel>,
+): ViewerSceneModel {
+  const zones = projectModel.house?.attachmentZones ?? [];
+  const blocked = projectModel.house?.attachmentZoneDiagnostics.blocked ?? [];
+  const resolvedPergolaAttachmentZoneCount = projectModel.pergolas.filter(
+    (pergola) => pergola.attachment.houseAttachmentZoneId !== null,
+  ).length;
+  const unresolvedPergolaAttachmentZoneCount = projectModel.pergolas.filter(
+    (pergola) => pergola.attachment.kind !== 'freestanding' && pergola.attachment.houseAttachmentZoneId === null,
+  ).length;
+  return {
+    ...scene,
+    metadata: {
+      ...(scene.metadata ?? {}),
+      houseAttachmentZoneCount: zones.length,
+      houseAttachmentZoneKinds: zones.length
+        ? zones.map((zone) => `${zone.side}:${zone.kind}`).join(',')
+        : 'none',
+      houseAttachmentZoneBlockedReasons: blocked.length
+        ? blocked.map((entry) => `${entry.side}:${entry.kind}:${entry.reason}`).join(',')
+        : 'none',
+      pergolaResolvedAttachmentZoneCount: resolvedPergolaAttachmentZoneCount,
+      pergolaUnresolvedAttachmentZoneCount: unresolvedPergolaAttachmentZoneCount,
+    },
+  };
+}
+
 export function buildWorkbenchGeometryPreview(input: {
   projectId: string;
   estimateId: string;
@@ -226,9 +255,12 @@ export function buildWorkbenchGeometryPreview(input: {
     config: normalized.value,
     assembly: solveResult.value,
     validation,
-    scene: annotateSceneHostEdgeSides(
-      buildViewerSceneModel(solveResult.value),
-      projectModel.house?.footprint.polygon,
+    scene: annotateSceneAttachmentZoneMetadata(
+      annotateSceneHostEdgeSides(
+        buildViewerSceneModel(solveResult.value),
+        projectModel.house?.footprint.polygon,
+      ),
+      projectModel,
     ),
     deckSupport,
   };

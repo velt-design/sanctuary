@@ -477,6 +477,48 @@ describe('DesignWorkbenchEstimateClient', () => {
     rendered.unmount();
   });
 
+  it('shows shared attachment-zone diagnostics and unresolved pergola counts when side openings block a zone', async () => {
+    const estimate = buildEstimateDetail();
+    const entityKey = buildEstimateDrawingDraftEntityKey(estimate.id);
+    const draft = buildEstimateDrawingDraftFromSnapshot(estimate.calculatorSnapshot);
+    if (!draft) throw new Error('Expected drawing draft.');
+    draft.houseFirst = {
+      openings: [
+        {
+          id: 'opening-slider-rear',
+          kind: 'slider',
+          wallId: 'rear',
+          widthM: '2.4',
+          heightM: '2.1',
+          sillHeightM: '0',
+          offsetAlongWallM: '0.8',
+        },
+      ],
+    };
+    await ensureLocalFirstStoreReady();
+    await writeLocalFirstWorkingCopy({
+      entityKey,
+      data: draft,
+    });
+
+    const rendered = renderIntoDocument(
+      <DesignWorkbenchEstimateClient estimate={estimate} projectName="Deck Build" siteAddress="1 Test Street" />,
+    );
+    await flushAsyncWork();
+
+    expect(Number(readLabeledValue(rendered.container, 'Attachment zones') ?? '0')).toBeGreaterThan(0);
+    expect(readLabeledValue(rendered.container, 'Attachment zone kinds')).toContain('front: wall, soffit, fascia');
+    expect(readLabeledValue(rendered.container, 'Attachment zone blocks')).toContain(
+      'rear soffit (side_openings_block_roof_zone)',
+    );
+    expect(readLabeledValue(rendered.container, 'Resolved pergola zones')).toBe('0');
+    expect(readLabeledValue(rendered.container, 'Unresolved pergola zones')).toBe('1');
+    expect(readLabeledValue(rendered.container, 'Warnings')).toBe('1');
+    expect(readLabeledValue(rendered.container, '3D unresolved pergola zones')).toBe('1');
+
+    rendered.unmount();
+  });
+
   it('writes module edits into the local working copy and clears them when reverted to the snapshot', async () => {
     const estimate = buildEstimateDetail();
     const entityKey = buildEstimateDrawingDraftEntityKey(estimate.id);

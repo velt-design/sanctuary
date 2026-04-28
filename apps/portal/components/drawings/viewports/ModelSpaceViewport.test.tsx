@@ -336,6 +336,7 @@ function makeHouseFirstHouse(overrides: Partial<HouseModel> = {}): HouseModel {
     decks: [],
     openings: [],
     attachmentZones: [],
+    attachmentZoneDiagnostics: { blocked: [] },
   };
   return {
     ...house,
@@ -3235,9 +3236,7 @@ describe('ModelSpaceViewport', () => {
         'data-house-first-dimension-emphasis',
       ),
     ).toBeNull();
-    expect(rendered.container.querySelector('[aria-label="Deck interaction hint"]')?.textContent).toContain(
-      'Drag the selected deck body to move it freely. Release near a house edge to snap it back',
-    );
+    expect(rendered.container.querySelector('[aria-label="Deck interaction hint"]')).toBeNull();
     expect(rendered.container.querySelector('[data-testid="deck-telemetry-type"]')?.textContent).toBe(
       'preset_snapped',
     );
@@ -3405,9 +3404,7 @@ describe('ModelSpaceViewport', () => {
     expect(rendered.container.querySelector('[data-testid="deck-telemetry-house-polygon"]')?.textContent).toBe(
       'preset_derived',
     );
-    expect(rendered.container.querySelector('[aria-label="Deck interaction hint"]')?.textContent).not.toContain(
-      'needs a resolvable host edge',
-    );
+    expect(rendered.container.querySelector('[aria-label="Deck interaction hint"]')).toBeNull();
 
     const svg = rendered.container.querySelector('svg[aria-label="Module plan view"]') as SVGSVGElement | null;
     const deckHit = rendered.container.querySelector('[data-house-first-shape-hit="deck:deck-1"]');
@@ -3646,9 +3643,7 @@ describe('ModelSpaceViewport', () => {
     expect(scroller.dataset.houseFirstDeckDragActive).toBe('true');
     expect(scroller.dataset.houseFirstDeckSnapState).toBe('snapped');
     expect(rendered.container.querySelector('[data-testid="deck-telemetry-snap"]')?.textContent).toBe('snapped');
-    expect(rendered.container.querySelector('[aria-label="Deck interaction hint"]')?.textContent).toContain(
-      'Release to snap the deck to the house edge.',
-    );
+    expect(rendered.container.querySelector('[aria-label="Deck interaction hint"]')).toBeNull();
     expect(rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]')).not.toBeNull();
     expect(rendered.container.querySelector('[data-house-first-snap-target="snapped"]')).not.toBeNull();
 
@@ -3663,9 +3658,7 @@ describe('ModelSpaceViewport', () => {
     expect(scroller.dataset.houseFirstDeckDragActive).toBe('false');
     expect(scroller.dataset.houseFirstDeckSnapState).toBe('idle');
     expect(rendered.container.querySelector('[data-testid="deck-telemetry-snap"]')?.textContent).toBe('idle');
-    expect(rendered.container.querySelector('[aria-label="Deck interaction hint"]')?.textContent).toContain(
-      'The deck is now snapped to the selected house edge.',
-    );
+    expect(rendered.container.querySelector('[aria-label="Deck interaction hint"]')).toBeNull();
 
     rendered.unmount();
   });
@@ -3706,9 +3699,7 @@ describe('ModelSpaceViewport', () => {
     expect(scroller.dataset.houseFirstDeckDragActive).toBe('true');
     expect(scroller.dataset.houseFirstDeckSnapState).toBe('floating');
     expect(rendered.container.querySelector('[data-testid="deck-telemetry-snap"]')?.textContent).toBe('floating');
-    expect(rendered.container.querySelector('[aria-label="Deck interaction hint"]')?.textContent).toContain(
-      'Release to keep this deck in floating placement.',
-    );
+    expect(rendered.container.querySelector('[aria-label="Deck interaction hint"]')).toBeNull();
 
     dispatchPointer(window, 'pointerup', { pointerId: 21, button: 0, clientX: -5000, clientY: -5000 });
     await act(async () => {
@@ -3719,9 +3710,7 @@ describe('ModelSpaceViewport', () => {
     expect(rendered.container.querySelector('[data-testid="deck-is-attached"]')?.textContent).toBe('false');
     expect(rendered.container.querySelector('[data-testid="deck-floating-center-along"]')?.textContent).not.toBe('');
     expect(rendered.container.querySelector('[data-testid="deck-floating-center-depth"]')?.textContent).not.toBe('');
-    expect(rendered.container.querySelector('[aria-label="Deck interaction hint"]')?.textContent).toContain(
-      'The deck stayed in floating placement with witness dimensions.',
-    );
+    expect(rendered.container.querySelector('[aria-label="Deck interaction hint"]')).toBeNull();
 
     rendered.unmount();
   });
@@ -3893,6 +3882,8 @@ describe('ModelSpaceViewport', () => {
     expect(rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]')).not.toBeNull();
     expect(rendered.container.querySelector('[data-testid="deck-telemetry-snap"]')?.textContent).toBe('floating');
     expect(getDrawOutlineDiagnostics(rendered.container).houseFirstDeckDragLocked).toBe('true');
+    expect(document.documentElement.classList.contains('scroll-locked')).toBe(true);
+    expect(document.body.classList.contains('scroll-locked')).toBe(true);
 
     clickButtonByText(rendered.container, '+');
     expect(getViewportTransformSnapshot(rendered.container)).toEqual(initialTransform);
@@ -3914,6 +3905,8 @@ describe('ModelSpaceViewport', () => {
 
     expect(getViewportTransformSnapshot(rendered.container)).toEqual(initialTransform);
     expect(getDrawOutlineDiagnostics(rendered.container).houseFirstDeckDragLocked).toBe('false');
+    expect(document.documentElement.classList.contains('scroll-locked')).toBe(false);
+    expect(document.body.classList.contains('scroll-locked')).toBe(false);
     rendered.unmount();
   });
 
@@ -3966,6 +3959,8 @@ describe('ModelSpaceViewport', () => {
     expect(getViewportTransformSnapshot(rendered.container)).toEqual(initialTransform);
     expect(rendered.container.querySelector('[data-testid="flush-deck-commit"]')).not.toBeNull();
     expect(getDrawOutlineDiagnostics(rendered.container).houseFirstDeckDragLocked).toBe('true');
+    expect(document.documentElement.classList.contains('scroll-locked')).toBe(true);
+    expect(document.body.classList.contains('scroll-locked')).toBe(true);
 
     const flushButton = rendered.container.querySelector('[data-testid="flush-deck-commit"]');
     if (!(flushButton instanceof HTMLButtonElement)) throw new Error('Missing flush deck commit button.');
@@ -3983,6 +3978,8 @@ describe('ModelSpaceViewport', () => {
     expect(rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]')).toBeNull();
     expect(getViewportTransformSnapshot(rendered.container)).toEqual(initialTransform);
     expect(getDrawOutlineDiagnostics(rendered.container).houseFirstDeckDragLocked).toBe('false');
+    expect(document.documentElement.classList.contains('scroll-locked')).toBe(false);
+    expect(document.body.classList.contains('scroll-locked')).toBe(false);
     rendered.unmount();
   });
 
@@ -4031,9 +4028,7 @@ describe('ModelSpaceViewport', () => {
     expect(scroller.dataset.houseFirstDeckDragActive).toBe('true');
     expect(scroller.dataset.houseFirstDeckSnapState).toBe('floating');
     expect(rendered.container.querySelector('[data-testid="deck-telemetry-snap"]')?.textContent).toBe('floating');
-    expect(rendered.container.querySelector('[aria-label="Deck interaction hint"]')?.textContent).toContain(
-      'Release to keep this deck in floating placement.',
-    );
+    expect(rendered.container.querySelector('[aria-label="Deck interaction hint"]')).toBeNull();
     expect(rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]')).not.toBeNull();
 
     dispatchPointer(window, 'pointerup', { pointerId: 22, button: 0, clientX: 49.5, clientY: 49.5 });
@@ -4047,9 +4042,7 @@ describe('ModelSpaceViewport', () => {
     expect(rendered.container.querySelector('[data-testid="deck-is-attached"]')?.textContent).toBe('false');
     expect(rendered.container.querySelector('[data-testid="deck-floating-center-along"]')?.textContent).not.toBe('');
     expect(rendered.container.querySelector('[data-testid="deck-floating-center-depth"]')?.textContent).not.toBe('');
-    expect(rendered.container.querySelector('[aria-label="Deck interaction hint"]')?.textContent).toContain(
-      'The deck stayed in floating placement with witness dimensions.',
-    );
+    expect(rendered.container.querySelector('[aria-label="Deck interaction hint"]')).toBeNull();
 
     rendered.unmount();
   });
@@ -4226,9 +4219,7 @@ describe('ModelSpaceViewport', () => {
     expect(rendered.container.querySelector('[data-testid="deck-telemetry-relationship"]')?.textContent).toBe(
       'true',
     );
-    expect(rendered.container.querySelector('[aria-label="Deck interaction hint"]')?.textContent).toContain(
-      'move it freely. Release near a house edge to snap it back',
-    );
+    expect(rendered.container.querySelector('[aria-label="Deck interaction hint"]')).toBeNull();
 
     rendered.unmount();
   });
@@ -4263,9 +4254,7 @@ describe('ModelSpaceViewport', () => {
     expect(rendered.container.querySelector('[data-testid="deck-telemetry-relationship"]')?.textContent).toBe(
       'true',
     );
-    expect(rendered.container.querySelector('[aria-label="Deck interaction hint"]')?.textContent).toContain(
-      'translate it relative to the house',
-    );
+    expect(rendered.container.querySelector('[aria-label="Deck interaction hint"]')).toBeNull();
 
     rendered.unmount();
   });
@@ -4311,9 +4300,7 @@ describe('ModelSpaceViewport', () => {
     expect(scroller.dataset.houseFirstDeckDragActive).toBe('false');
     expect(rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]')).toBeNull();
     expect(rendered.container.querySelector('[data-testid="deck-outline-0-along"]')?.textContent).not.toBe('1');
-    expect(rendered.container.querySelector('[aria-label="Deck interaction hint"]')?.textContent).toContain(
-      'Custom deck moved',
-    );
+    expect(rendered.container.querySelector('[aria-label="Deck interaction hint"]')).toBeNull();
 
     rendered.unmount();
   });

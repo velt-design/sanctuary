@@ -238,6 +238,37 @@ export default function DesignWorkbenchEstimateClient({
       }),
     [drawingDraft, estimate.calculatorSnapshot, estimate.id, estimate.projectId, store.derived.activeModuleIndex],
   );
+  const attachmentZoneKindsSummary = useMemo(() => {
+    const zones = store.derived.house?.attachmentZones ?? [];
+    if (!zones.length) return 'none';
+    const zonesBySide = new Map<string, string[]>();
+    for (const zone of zones) {
+      const existing = zonesBySide.get(zone.side) ?? [];
+      existing.push(zone.kind);
+      zonesBySide.set(zone.side, existing);
+    }
+    return Array.from(zonesBySide.entries())
+      .map(([side, kinds]) => `${side}: ${kinds.join(', ')}`)
+      .join(' | ');
+  }, [store.derived.house?.attachmentZones]);
+  const attachmentZoneBlockedSummary = useMemo(() => {
+    const blocked = store.derived.house?.attachmentZoneDiagnostics.blocked ?? [];
+    if (!blocked.length) return 'none';
+    return blocked
+      .map((entry) => `${entry.side} ${entry.kind} (${entry.reason})`)
+      .join(' | ');
+  }, [store.derived.house?.attachmentZoneDiagnostics.blocked]);
+  const resolvedPergolaAttachmentZoneCount = useMemo(
+    () => store.derived.pergolas.filter((pergola) => pergola.attachment.houseAttachmentZoneId !== null).length,
+    [store.derived.pergolas],
+  );
+  const unresolvedPergolaAttachmentZoneCount = useMemo(
+    () =>
+      store.derived.pergolas.filter(
+        (pergola) => pergola.attachment.kind !== 'freestanding' && pergola.attachment.houseAttachmentZoneId === null,
+      ).length,
+    [store.derived.pergolas],
+  );
   const modelViewportSurfaceKey = `${store.ui.workbenchMode}:${store.derived.activeModuleIndex}:${store.ui.activeView}`;
   const geometryViewportSurfaceKey = `${store.ui.workbenchMode}:${store.derived.activeModuleIndex}`;
   const activeModelViewportTransform =
@@ -393,6 +424,26 @@ export default function DesignWorkbenchEstimateClient({
             <div className={styles.diagnosticRow}>
               <span className={styles.diagnosticLabel}>Opening count</span>
               <span className={styles.diagnosticValue}>{store.derived.openingCount}</span>
+            </div>
+            <div className={styles.diagnosticRow}>
+              <span className={styles.diagnosticLabel}>Attachment zones</span>
+              <span className={styles.diagnosticValue}>{store.derived.house?.attachmentZones.length ?? 0}</span>
+            </div>
+            <div className={styles.diagnosticRow}>
+              <span className={styles.diagnosticLabel}>Attachment zone kinds</span>
+              <span className={styles.diagnosticValue}>{attachmentZoneKindsSummary}</span>
+            </div>
+            <div className={styles.diagnosticRow}>
+              <span className={styles.diagnosticLabel}>Attachment zone blocks</span>
+              <span className={styles.diagnosticValue}>{attachmentZoneBlockedSummary}</span>
+            </div>
+            <div className={styles.diagnosticRow}>
+              <span className={styles.diagnosticLabel}>Resolved pergola zones</span>
+              <span className={styles.diagnosticValue}>{resolvedPergolaAttachmentZoneCount}</span>
+            </div>
+            <div className={styles.diagnosticRow}>
+              <span className={styles.diagnosticLabel}>Unresolved pergola zones</span>
+              <span className={styles.diagnosticValue}>{unresolvedPergolaAttachmentZoneCount}</span>
             </div>
             <div className={styles.diagnosticRow}>
               <span className={styles.diagnosticLabel}>Slider openings</span>
@@ -666,6 +717,52 @@ export default function DesignWorkbenchEstimateClient({
                   <span className={styles.diagnosticLabel}>3D opening count</span>
                   <span className={styles.diagnosticValue}>
                     {String(geometryPreview.kind === 'ready' ? geometryPreview.scene.metadata?.houseOpeningCount ?? 0 : 0)}
+                  </span>
+                </div>
+                <div className={styles.diagnosticRow}>
+                  <span className={styles.diagnosticLabel}>3D attachment zones</span>
+                  <span className={styles.diagnosticValue}>
+                    {String(geometryPreview.kind === 'ready' ? geometryPreview.scene.metadata?.houseAttachmentZoneCount ?? 0 : 0)}
+                  </span>
+                </div>
+                <div className={styles.diagnosticRow}>
+                  <span className={styles.diagnosticLabel}>3D zone kinds</span>
+                  <span className={styles.diagnosticValue}>
+                    {String(
+                      geometryPreview.kind === 'ready'
+                        ? geometryPreview.scene.metadata?.houseAttachmentZoneKinds ?? 'none'
+                        : 'none',
+                    )}
+                  </span>
+                </div>
+                <div className={styles.diagnosticRow}>
+                  <span className={styles.diagnosticLabel}>3D zone blocks</span>
+                  <span className={styles.diagnosticValue}>
+                    {String(
+                      geometryPreview.kind === 'ready'
+                        ? geometryPreview.scene.metadata?.houseAttachmentZoneBlockedReasons ?? 'none'
+                        : 'none',
+                    )}
+                  </span>
+                </div>
+                <div className={styles.diagnosticRow}>
+                  <span className={styles.diagnosticLabel}>3D resolved pergola zones</span>
+                  <span className={styles.diagnosticValue}>
+                    {String(
+                      geometryPreview.kind === 'ready'
+                        ? geometryPreview.scene.metadata?.pergolaResolvedAttachmentZoneCount ?? 0
+                        : 0,
+                    )}
+                  </span>
+                </div>
+                <div className={styles.diagnosticRow}>
+                  <span className={styles.diagnosticLabel}>3D unresolved pergola zones</span>
+                  <span className={styles.diagnosticValue}>
+                    {String(
+                      geometryPreview.kind === 'ready'
+                        ? geometryPreview.scene.metadata?.pergolaUnresolvedAttachmentZoneCount ?? 0
+                        : 0,
+                    )}
                   </span>
                 </div>
                 <div className={styles.diagnosticRow}>

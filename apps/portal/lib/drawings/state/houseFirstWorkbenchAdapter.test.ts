@@ -77,6 +77,136 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
     expect(projectModel.house?.roof.source).toBe('house_first_draft');
   });
 
+  it('derives shared soffit and fascia attachment zones from shared house context', () => {
+    const monoFixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
+    if (!monoFixture) throw new Error('Missing mono-standard fixture.');
+
+    const soffitProject = buildHouseFirstWorkbenchProjectModel({
+      snapshot: monoFixture.snapshot,
+    });
+    expect(soffitProject.house?.attachmentZones.some((zone) => zone.id === 'zone-soffit-rear')).toBe(true);
+    expect(soffitProject.pergolas[0]?.attachment.houseAttachmentZoneId).toBe('zone-soffit-rear');
+
+    const fasciaDraft = buildEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
+    if (!fasciaDraft) throw new Error('Expected drawing draft.');
+    fasciaDraft.inputs.modules[0]!.houseAttachmentStrategy = 'fascia_under_gutter';
+    fasciaDraft.inputs.modules[0]!.houseConnectionType = 'fascia';
+
+    const fasciaProject = buildHouseFirstWorkbenchProjectModel({
+      snapshot: monoFixture.snapshot,
+      draft: fasciaDraft,
+    });
+    expect(fasciaProject.house?.attachmentZones.some((zone) => zone.id === 'zone-fascia-rear')).toBe(true);
+    expect(fasciaProject.house?.attachmentZones.some((zone) => zone.id === 'zone-roof_edge-rear')).toBe(true);
+    expect(fasciaProject.pergolas[0]?.attachment.houseAttachmentZoneId).toBe('zone-fascia-rear');
+  });
+
+  it('recomputes shared attachment zones when the roof state becomes blocked', () => {
+    const monoFixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
+    if (!monoFixture) throw new Error('Missing mono-standard fixture.');
+    const draft = buildEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
+    if (!draft) throw new Error('Expected drawing draft.');
+    draft.inputs.modules[0]!.houseFootprintMode = 'custom_polygon';
+    draft.inputs.modules[0]!.houseFootprintPolygon = [
+      { alongM: '0', depthM: '-1.8' },
+      { alongM: '6', depthM: '-1.8' },
+      { alongM: '4.2', depthM: '0.6' },
+      { alongM: '0', depthM: '0' },
+    ];
+
+    const projectModel = buildHouseFirstWorkbenchProjectModel({
+      snapshot: monoFixture.snapshot,
+      draft,
+    });
+
+    expect(projectModel.house?.roof.validation.status).toBe('invalid');
+    expect(projectModel.house?.attachmentZones.some((zone) => zone.side === 'rear' && zone.kind === 'soffit')).toBe(false);
+    expect(projectModel.house?.attachmentZoneDiagnostics.blocked).toContainEqual({
+      side: 'rear',
+      kind: 'soffit',
+      reason: 'invalid_roof_state',
+    });
+    expect(projectModel.pergolas[0]?.attachment.houseAttachmentZoneId).toBeNull();
+    expect(projectModel.warnings.some((warning) => warning.code === 'invalid_house_attachment_zone_overlay')).toBe(
+      true,
+    );
+  });
+
+  it('suppresses roof-adjacent shared attachment zones when large openings occupy the same side', () => {
+    const monoFixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
+    if (!monoFixture) throw new Error('Missing mono-standard fixture.');
+    const draft = buildEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
+    if (!draft) throw new Error('Expected drawing draft.');
+    draft.houseFirst = {
+      openings: [
+        {
+          id: 'opening-slider-rear',
+          kind: 'slider',
+          wallId: 'rear',
+          widthM: '2.4',
+          heightM: '2.1',
+          sillHeightM: '0',
+          offsetAlongWallM: '0.8',
+        },
+      ],
+    };
+
+    const projectModel = buildHouseFirstWorkbenchProjectModel({
+      snapshot: monoFixture.snapshot,
+      draft,
+    });
+
+    expect(projectModel.house?.attachmentZones.some((zone) => zone.side === 'rear' && zone.kind === 'soffit')).toBe(
+      false,
+    );
+    expect(projectModel.house?.attachmentZoneDiagnostics.blocked).toContainEqual({
+      side: 'rear',
+      kind: 'soffit',
+      reason: 'side_openings_block_roof_zone',
+    });
+    expect(projectModel.pergolas[0]?.attachment.houseAttachmentZoneId).toBeNull();
+  });
+
+  it('resolves shared attachment zones once for a shared house across multiple pergolas', () => {
+    const monoFixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
+    if (!monoFixture) throw new Error('Missing mono-standard fixture.');
+    const snapshot = structuredClone(monoFixture.snapshot) as {
+      inputs?: {
+        pergolas?: Array<{ id: string; label: string }>;
+        modules?: Array<Record<string, unknown>>;
+      };
+      outputs?: {
+        pergolas?: Array<{ id: string; modules: Array<Record<string, unknown>> }>;
+      };
+    };
+    if (!snapshot.inputs?.modules?.[0]) {
+      throw new Error('Expected fixture snapshot module.');
+    }
+    snapshot.inputs.pergolas = [
+      { id: 'pergola-1', label: 'Pergola 1' },
+      { id: 'pergola-2', label: 'Pergola 2' },
+    ];
+    snapshot.inputs.modules = [
+      structuredClone(snapshot.inputs.modules[0]),
+      {
+        ...structuredClone(snapshot.inputs.modules[0]),
+        pergolaId: 'pergola-2',
+        lengthM: '4.5',
+        projectionM: '2.5',
+      },
+    ];
+
+    const projectModel = buildHouseFirstWorkbenchProjectModel({
+      snapshot: snapshot as Record<string, unknown>,
+    });
+
+    expect(projectModel.pergolas).toHaveLength(2);
+    expect(projectModel.house?.attachmentZones.filter((zone) => zone.id === 'zone-soffit-rear')).toHaveLength(1);
+    expect(new Set(projectModel.pergolas.map((pergola) => pergola.attachment.houseAttachmentZoneId))).toEqual(
+      new Set(['zone-soffit-rear']),
+    );
+  });
+
   it('marks inferred mono roofs as approximate and records roof provenance', () => {
     const monoFixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
     if (!monoFixture) throw new Error('Missing mono-standard fixture.');
