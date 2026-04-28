@@ -105,8 +105,11 @@ export default function DesignWorkbenchFixtureClient({
       }),
     [fixture.draft, fixture.estimate.id, fixture.request.id, fixture.slug, fixture.snapshot, store.derived.activeModuleIndex],
   );
-  const modelViewportSurfaceKey = `${store.ui.workbenchMode}:${store.derived.activeModuleIndex}:${store.ui.activeView}`;
-  const geometryViewportSurfaceKey = `${store.ui.workbenchMode}:${store.derived.activeModuleIndex}`;
+  const activeSelectionFamily =
+    store.ui.activeRailTab === 'diagnostics' ? store.ui.activeObjectFamily : store.ui.activeRailTab;
+  const canonicalWorkbenchDisplayMode = activeSelectionFamily === 'pergolas' ? 'pergolas' : 'house';
+  const modelViewportSurfaceKey = `${canonicalWorkbenchDisplayMode}:${store.derived.activeModuleIndex}:${store.ui.activeView}`;
+  const geometryViewportSurfaceKey = `${canonicalWorkbenchDisplayMode}:${store.derived.activeModuleIndex}`;
   const activeModelViewportTransform =
     modelViewportTransformsByKey[modelViewportSurfaceKey] ?? DEFAULT_MODEL_VIEWPORT_TRANSFORM;
   const activeGeometryViewportState =

@@ -175,6 +175,10 @@ export default function DesignWorkbenchEstimateClient({
 
   const activeModule = store.derived.activeModule;
   const activeModuleInput = activeModule?.drawingModule.input ?? null;
+  const activePergolaModel =
+    store.derived.pergolas.find((pergola) => pergola.id === store.derived.activePergolaId) ??
+    store.derived.pergolas[0] ??
+    null;
   const activeDeck =
     store.derived.house?.decks.find((deck) => deck.id === drawOutlineTarget.deckId) ??
     store.derived.activeDeck ??
@@ -373,25 +377,6 @@ export default function DesignWorkbenchEstimateClient({
     !isLocked && canonicalWorkbenchDisplayMode === 'house' && store.ui.viewportMode === 'model'
       ? houseActions.commitSharedHouseFootprintEdit
       : undefined;
-  const embeddedPergolaEditor =
-    supportsSanctuaryEditing && activeModuleInput ? (
-      <SanctuaryWorkbenchRail
-        moduleLabel={store.derived.activeModuleLabel}
-        geometryState={geometryEditState}
-        view={store.ui.activeView}
-        disabled={isLocked}
-        canStartDrawOutline={!isLocked}
-        onStartDrawOutline={houseSelectionActions.startDrawOutlineEditor}
-        onCommitGeometryEdit={!isLocked ? houseActions.commitGeometryIntent : undefined}
-      />
-    ) : (
-      <section className={styles.notice}>
-        <p className={styles.noticeTitle}>Editing Deferred</p>
-        <p className={styles.noticeText}>
-          This module is not supported for Sanctuary editing yet in the embedded pergola editor, but it can still be reviewed in the canonical workbench.
-        </p>
-      </section>
-    );
 
   if (!activeModule) {
     return (
@@ -406,8 +391,96 @@ export default function DesignWorkbenchEstimateClient({
   const handleRailTabSelect = (tab: DrawingWorkbenchRailTab) => {
     houseSelectionActions.selectRailTab(tab, defaultPergolaId);
   };
-  const pergolaPanel = (
+  const handleCanonicalPergolaSelection = (pergolaId: string | null) => {
+    setUi((current) => {
+      const nextModuleIndex =
+        pergolaId === null
+          ? current.activeModuleIndex
+          : Math.max(
+              0,
+              store.persisted.modules.findIndex((module) => module.drawingModule.input.pergolaId === pergolaId),
+            );
+      return {
+        ...current,
+        activeModuleIndex: nextModuleIndex,
+        ...buildDrawingWorkbenchCanonicalSelectionState({
+          activeRailTab: 'pergolas',
+          activeObjectFamily: 'pergolas',
+          activeObjectRef: { family: 'pergolas', objectId: pergolaId },
+          activeHouseSelection: current.activeHouseSelection,
+          activePergolaId: pergolaId,
+        }),
+      };
+    });
+  };
+  const selectablePergolas = useMemo(() => {
+    const pergolas = store.derived.pergolas.map((pergola, index) => ({
+      id: pergola.id,
+      label: pergola.label || `Pergola ${index + 1}`,
+    }));
+    const uniquePergolas = new Map<string, { id: string; label: string }>();
+    for (const pergola of pergolas) {
+      if (!uniquePergolas.has(pergola.id)) {
+        uniquePergolas.set(pergola.id, pergola);
+      }
+    }
+    return Array.from(uniquePergolas.values());
+  }, [store.derived.pergolas]);
+  const houseContextPanel =
+    supportsSanctuaryEditing && activeModuleInput ? (
+      <SanctuaryWorkbenchRail
+        moduleLabel={store.derived.activeModuleLabel}
+        geometryState={geometryEditState}
+        view={store.ui.activeView}
+        disabled={isLocked}
+        canStartDrawOutline={!isLocked}
+        onStartDrawOutline={houseSelectionActions.startDrawOutlineEditor}
+        onCommitGeometryEdit={!isLocked ? houseActions.commitGeometryIntent : undefined}
+        chrome="embedded"
+        renderSummary={false}
+        houseContextSectionTitle="Attachment Context"
+        sections={{
+          geometry: false,
+          roof: false,
+          gable: false,
+          houseContext: 'canonical_extras',
+          supports: false,
+          overrides: false,
+        }}
+      />
+    ) : null;
+  const pergolaInspectorPanel = (
     <>
+      <section className={styles.moduleSection}>
+        <p className={styles.moduleSectionTitle}>Pergola Inspector</p>
+        <p className={styles.noticeText}>
+          Geometry, roof, supports, and overrides live here. House attachment, footprint, and rotation stay in House Forms.
+        </p>
+        <button
+          type="button"
+          className={styles.modeButton}
+          onClick={() => handleRailTabSelect('house_forms')}
+        >
+          Open House Forms
+        </button>
+      </section>
+      {selectablePergolas.length > 1 ? (
+        <section className={styles.moduleSection}>
+          <p className={styles.moduleSectionTitle}>Pergola</p>
+          <select
+            className={styles.moduleSelect}
+            aria-label="Pergola"
+            value={store.derived.activePergolaId ?? ''}
+            onChange={(event) => handleCanonicalPergolaSelection(event.target.value || null)}
+          >
+            {selectablePergolas.map((pergola) => (
+              <option key={pergola.id} value={pergola.id}>
+                {pergola.label}
+              </option>
+            ))}
+          </select>
+        </section>
+      ) : null}
       {modules.length > 1 ? (
         <section className={styles.moduleSection}>
           <p className={styles.moduleSectionTitle}>Module</p>
@@ -416,25 +489,9 @@ export default function DesignWorkbenchEstimateClient({
             aria-label="Drawing module"
             value={String(store.derived.activeModuleIndex)}
             onChange={(event) =>
-              setUi((current) => {
-                const nextIndex = Number(event.target.value);
-                const nextModule = store.persisted.modules[nextIndex];
-                const nextPergolaId = nextModule?.drawingModule.input.pergolaId ?? current.activePergolaId;
-                const nextPergolaSelection = buildDrawingWorkbenchCanonicalSelectionState({
-                  activeRailTab: current.activeRailTab,
-                  activeObjectFamily: current.activeObjectFamily,
-                  activeObjectRef: { family: 'pergolas', objectId: nextPergolaId },
-                  activeHouseSelection: current.activeHouseSelection,
-                  activePergolaId: nextPergolaId,
-                });
-                return {
-                  ...current,
-                  activeModuleIndex: nextIndex,
-                  ...(current.activeObjectFamily === 'pergolas' || current.activeRailTab === 'pergolas'
-                    ? nextPergolaSelection
-                    : {}),
-                };
-              })
+              handleCanonicalPergolaSelection(
+                store.persisted.modules[Number(event.target.value)]?.drawingModule.input.pergolaId ?? null,
+              )
             }
           >
             {modules.map((module, index) => (
@@ -445,7 +502,49 @@ export default function DesignWorkbenchEstimateClient({
           </select>
         </section>
       ) : null}
-      {embeddedPergolaEditor}
+      {supportsSanctuaryEditing && activeModuleInput && activePergolaModel ? (
+        <>
+          <section className={styles.moduleSection}>
+            <p className={styles.moduleSectionTitle}>Selection</p>
+            <div className={styles.diagnosticsList}>
+              <div className={styles.diagnosticRow}>
+                <span className={styles.diagnosticLabel}>Active pergola</span>
+                <span className={styles.diagnosticValue}>{activePergolaModel.label || activePergolaModel.id}</span>
+              </div>
+              <div className={styles.diagnosticRow}>
+                <span className={styles.diagnosticLabel}>Module</span>
+                <span className={styles.diagnosticValue}>{store.derived.activeModuleLabel}</span>
+              </div>
+            </div>
+          </section>
+          <SanctuaryWorkbenchRail
+            moduleLabel={store.derived.activeModuleLabel}
+            geometryState={geometryEditState}
+            view={store.ui.activeView}
+            disabled={isLocked}
+            canStartDrawOutline={!isLocked}
+            onStartDrawOutline={houseSelectionActions.startDrawOutlineEditor}
+            onCommitGeometryEdit={!isLocked ? houseActions.commitGeometryIntent : undefined}
+            chrome="embedded"
+            renderSummary={false}
+            sections={{
+              geometry: true,
+              roof: true,
+              gable: true,
+              houseContext: 'none',
+              supports: true,
+              overrides: true,
+            }}
+          />
+        </>
+      ) : (
+        <section className={styles.notice}>
+          <p className={styles.noticeTitle}>Editing Deferred</p>
+          <p className={styles.noticeText}>
+            This pergola family is not supported for native editing yet, but it can still be reviewed in the canonical workbench.
+          </p>
+        </section>
+      )}
     </>
   );
   const diagnosticsPanel = (
@@ -871,7 +970,8 @@ export default function DesignWorkbenchEstimateClient({
           onCommitDeckPatch={!isLocked ? houseActions.commitSharedHouseDeckPatch : undefined}
           onCommitOpeningPatch={!isLocked ? houseActions.commitSharedHouseOpeningPatch : undefined}
           onStartDeckOutline={!isLocked ? houseSelectionActions.startDeckOutlineEditor : undefined}
-          pergolaPanel={pergolaPanel}
+          houseContextPanel={houseContextPanel}
+          pergolaInspectorPanel={pergolaInspectorPanel}
           diagnosticsPanel={diagnosticsPanel}
         />
 

@@ -58,7 +58,16 @@ type RailFieldDefinition =
       onCommit: (value: boolean) => Promise<unknown> | void;
     };
 
-type SanctuaryWorkbenchRailProps = {
+type SanctuaryWorkbenchSectionVisibility = {
+  geometry?: boolean;
+  roof?: boolean;
+  gable?: boolean;
+  houseContext?: 'full' | 'canonical_extras' | 'none';
+  supports?: boolean;
+  overrides?: boolean;
+};
+
+export type SanctuaryWorkbenchRailProps = {
   moduleLabel: string;
   geometryState?: GeometryEditState | null;
   view: ModuleViewsTab;
@@ -66,6 +75,11 @@ type SanctuaryWorkbenchRailProps = {
   canStartDrawOutline?: boolean;
   onStartDrawOutline?: () => Promise<CommitResult> | CommitResult;
   onCommitGeometryEdit?: (intent: GeometryEditIntent) => Promise<CommitResult> | CommitResult;
+  chrome?: 'rail' | 'embedded';
+  renderSummary?: boolean;
+  sections?: SanctuaryWorkbenchSectionVisibility;
+  houseContextSectionTitle?: string;
+  emptyMessage?: string;
 };
 
 const FAMILY_OPTIONS: SelectOption[] = [
@@ -153,6 +167,22 @@ const FRONT_BEAM_PROFILE_OPTIONS: SelectOption[] = [DEFAULT_OVERRIDE_OPTION, { l
 const RIDGE_BEAM_PROFILE_OPTIONS: SelectOption[] = [DEFAULT_OVERRIDE_OPTION, { label: '100x50', value: '100x50' }, { label: '150x50', value: '150x50' }, { label: '200x50', value: '200x50' }, { label: 'Steel RHS 150x50x3', value: 'RHS 150x50x3' }];
 const BOX_BEAM_PROFILE_OPTIONS: SelectOption[] = [DEFAULT_OVERRIDE_OPTION, { label: '300x50', value: '300x50' }, { label: '250x50', value: '250x50' }, { label: '200x50', value: '200x50' }];
 const STRUT_PROFILE_OPTIONS: SelectOption[] = [DEFAULT_OVERRIDE_OPTION, { label: '50x50', value: '50x50' }, { label: '80x50', value: '80x50' }, { label: '100x50', value: '100x50' }, { label: '150x50', value: '150x50' }, { label: '200x50', value: '200x50' }];
+const CANONICAL_HOUSE_CONTEXT_EXCLUDED_IDS = new Set([
+  'attachment-side',
+  'house-footprint-mode',
+  'house-footprint-preset',
+  'drawing-rotation',
+  'house-footprint-width',
+  'house-footprint-offset-x',
+  'house-footprint-setback',
+  'house-footprint-band-depth',
+  'house-footprint-return-run',
+  'house-footprint-recess-width',
+  'house-footprint-recess-depth',
+  'house-footprint-left-leg',
+  'house-footprint-right-leg',
+  'house-footprint-side-run',
+]);
 
 function withCurrentOption(options: SelectOption[], value: string, fallbackLabel: string): SelectOption[] {
   if (!value || options.some((option) => option.value === value)) return options;
@@ -282,6 +312,11 @@ export default function SanctuaryWorkbenchRail({
   canStartDrawOutline = false,
   onStartDrawOutline,
   onCommitGeometryEdit,
+  chrome = 'rail',
+  renderSummary = true,
+  sections,
+  houseContextSectionTitle = 'House / Context',
+  emptyMessage,
 }: SanctuaryWorkbenchRailProps) {
   const [pendingFieldId, setPendingFieldId] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -1137,33 +1172,69 @@ export default function SanctuaryWorkbenchRail({
     return fields;
   }, [commitGeometryEdit, disabled, family, fieldErrors, geometryState, onCommitGeometryEdit, pendingFieldId]);
 
+  const sectionVisibility = {
+    geometry: sections?.geometry ?? true,
+    roof: sections?.roof ?? true,
+    gable: sections?.gable ?? true,
+    houseContext: sections?.houseContext ?? 'full',
+    supports: sections?.supports ?? true,
+    overrides: sections?.overrides ?? true,
+  } as const;
+
+  const visibleHouseFields =
+    sectionVisibility.houseContext === 'canonical_extras'
+      ? houseFields.filter((field) => !CANONICAL_HOUSE_CONTEXT_EXCLUDED_IDS.has(field.id))
+      : houseFields;
+
   if (!geometryState || !family) {
+    if (!renderSummary) {
+      return <p className={styles.empty}>{emptyMessage ?? 'No Sanctuary controls are available for this module.'}</p>;
+    }
     return (
       <section className={styles.summary}>
         <p className={styles.eyebrow}>Sanctuary Controls</p>
         <h3 className={styles.title}>{moduleLabel}</h3>
-        <p className={styles.empty}>No Sanctuary controls are available for this module.</p>
+        <p className={styles.empty}>{emptyMessage ?? 'No Sanctuary controls are available for this module.'}</p>
       </section>
     );
   }
 
+  const content = (
+    <>
+      {renderSummary ? (
+        <section className={styles.summary}>
+          <p className={styles.eyebrow}>Sanctuary Controls</p>
+          <h3 className={styles.title}>{moduleLabel}</h3>
+          <p className={styles.summaryText}>
+            Local draft edits only.{' '}
+            {view === 'section'
+              ? 'Section stays review-first while these controls update the shared design.'
+              : 'Model Space remains the primary editing surface.'}
+          </p>
+          {disabled ? <p className={styles.empty}>Editing is currently disabled for this estimate.</p> : null}
+        </section>
+      ) : null}
+
+      {sectionVisibility.geometry ? <Section title="Geometry">{geometryFields.map(renderField)}</Section> : null}
+      {sectionVisibility.roof ? <Section title="Roof">{roofFields.map(renderField)}</Section> : null}
+      {sectionVisibility.gable && gableFields.length ? (
+        <Section title="Gable Baseline">{gableFields.map(renderField)}</Section>
+      ) : null}
+      {sectionVisibility.houseContext !== 'none' && visibleHouseFields.length ? (
+        <Section title={houseContextSectionTitle}>{visibleHouseFields.map(renderField)}</Section>
+      ) : null}
+      {sectionVisibility.supports ? <Section title="Supports">{supportFields.map(renderField)}</Section> : null}
+      {sectionVisibility.overrides ? <Section title="Overrides">{overrideFields.map(renderField)}</Section> : null}
+    </>
+  );
+
+  if (chrome === 'embedded') {
+    return content;
+  }
+
   return (
     <aside className={styles.rail} aria-label="Sanctuary workbench rail">
-      <section className={styles.summary}>
-        <p className={styles.eyebrow}>Sanctuary Controls</p>
-        <h3 className={styles.title}>{moduleLabel}</h3>
-        <p className={styles.summaryText}>
-          Local draft edits only. {view === 'section' ? 'Section stays review-first while these controls update the shared design.' : 'Model Space remains the primary editing surface.'}
-        </p>
-        {disabled ? <p className={styles.empty}>Editing is currently disabled for this estimate.</p> : null}
-      </section>
-
-      <Section title="Geometry">{geometryFields.map(renderField)}</Section>
-      <Section title="Roof">{roofFields.map(renderField)}</Section>
-      {gableFields.length ? <Section title="Gable Baseline">{gableFields.map(renderField)}</Section> : null}
-      <Section title="House / Context">{houseFields.map(renderField)}</Section>
-      <Section title="Supports">{supportFields.map(renderField)}</Section>
-      <Section title="Overrides">{overrideFields.map(renderField)}</Section>
+      {content}
     </aside>
   );
 }

@@ -48,7 +48,8 @@ describe('HouseFirstWorkbenchRail', () => {
         onCommitDeckPatch={() => ({ ok: true })}
         onCommitOpeningPatch={() => ({ ok: true })}
         onStartDeckOutline={() => ({ ok: true })}
-        pergolaPanel={<div>Fallback rail</div>}
+        houseContextPanel={<div>Attachment context extras</div>}
+        pergolaInspectorPanel={<div>Native pergola inspector</div>}
         diagnosticsPanel={<section>Migration diagnostics</section>}
       />,
     );
@@ -68,11 +69,13 @@ describe('HouseFirstWorkbenchRail', () => {
     expect(markup).toContain('Visibility');
     expect(markup).toContain('Pergolas');
     expect(markup).toContain('Shown');
+    expect(markup).toContain('Attachment Context');
+    expect(markup).toContain('Attachment context extras');
     expect(markup).not.toContain('Add deck');
     expect(markup).not.toContain('Add window');
   });
 
-  it('renders the embedded pergola panel inside the canonical Pergolas tab', () => {
+  it('renders the native pergola inspector inside the canonical Pergolas tab', () => {
     const { house, pergolas, warnings, visibility, activeObjectRef } = buildRailState();
     const markup = renderToStaticMarkup(
       <HouseFirstWorkbenchRail
@@ -82,12 +85,12 @@ describe('HouseFirstWorkbenchRail', () => {
         visibility={visibility}
         activeRailTab="pergolas"
         activeObjectRef={activeObjectRef}
-        pergolaPanel={<div>Fallback rail</div>}
+        pergolaInspectorPanel={<div>Native pergola inspector</div>}
         diagnosticsPanel={<section>Migration diagnostics</section>}
       />,
     );
 
-    expect(markup).toContain('Fallback rail');
+    expect(markup).toContain('Native pergola inspector');
     expect(markup).not.toContain('Add deck');
     expect(markup).not.toContain('Add window');
     expect(markup).not.toContain('Add door');
@@ -132,7 +135,7 @@ describe('HouseFirstWorkbenchRail', () => {
         onRemoveOpening={() => ({ ok: true })}
         onCommitOpeningPatch={() => ({ ok: true })}
         onSelectOpening={() => undefined}
-        pergolaPanel={<div>Fallback rail</div>}
+        pergolaInspectorPanel={<div>Native pergola inspector</div>}
         diagnosticsPanel={<section>Migration diagnostics</section>}
       />,
     );
@@ -165,7 +168,8 @@ describe('HouseFirstWorkbenchRail', () => {
         onCommitDeckPatch={() => ({ ok: true })}
         onCommitOpeningPatch={() => ({ ok: true })}
         onStartDeckOutline={() => ({ ok: true })}
-        pergolaPanel={<div>Fallback rail</div>}
+        houseContextPanel={<div>Attachment context extras</div>}
+        pergolaInspectorPanel={<div>Native pergola inspector</div>}
         diagnosticsPanel={<section>Migration diagnostics</section>}
       />,
     );

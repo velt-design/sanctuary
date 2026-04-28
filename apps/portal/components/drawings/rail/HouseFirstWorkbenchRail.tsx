@@ -50,7 +50,8 @@ export default function HouseFirstWorkbenchRail({
   onCommitDeckPatch,
   onCommitOpeningPatch,
   onStartDeckOutline,
-  pergolaPanel,
+  houseContextPanel,
+  pergolaInspectorPanel,
   diagnosticsPanel,
 }: HouseFirstWorkbenchRailProps) {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -259,12 +260,19 @@ export default function HouseFirstWorkbenchRail({
             <h4 className={styles.sectionTitle}>Roof</h4>
             <div className={styles.sectionBody}>{roofSections}</div>
           </section>
+
+          {houseContextPanel ? (
+            <section className={styles.section}>
+              <h4 className={styles.sectionTitle}>Attachment Context</h4>
+              <div className={styles.sectionBody}>{houseContextPanel}</div>
+            </section>
+          ) : null}
         </>
       ) : null}
 
       {activeRailTab === 'pergolas' ? (
         <div data-active-workbench-object={`${activeObjectRef.family}:${activeObjectRef.objectId ?? 'none'}`}>
-          {pergolaPanel}
+          {pergolaInspectorPanel}
         </div>
       ) : null}
 

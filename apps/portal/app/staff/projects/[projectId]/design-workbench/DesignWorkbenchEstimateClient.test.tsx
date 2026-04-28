@@ -331,7 +331,7 @@ describe('DesignWorkbenchEstimateClient', () => {
     __setLocalFirstStorageAdapterForTests(null);
   });
 
-  it('renders the house-first hidden workbench shell and keeps the Sanctuary editor behind pergolas mode', async () => {
+  it('renders the house-first hidden workbench shell and mounts a native pergola inspector in the Pergolas tab', async () => {
     const estimate = buildEstimateDetail();
 
     const rendered = renderIntoDocument(
@@ -364,9 +364,10 @@ describe('DesignWorkbenchEstimateClient', () => {
     await flushAsyncWork();
 
     expect(rendered.container.querySelector('[data-testid="scene-object-outer-gutter"]')).not.toBeNull();
-    expect(rendered.container.textContent).toContain('Sanctuary Controls');
+    expect(rendered.container.textContent).toContain('Pergola Inspector');
+    expect(rendered.container.textContent).toContain('Open House Forms');
     expect(rendered.container.textContent).toContain('Geometry');
-    expect(rendered.container.textContent).toContain('House / Context');
+    expect(rendered.container.textContent).not.toContain('House / Context');
     expect(rendered.container.textContent).toContain('Overrides');
     expect(rendered.container.textContent).toContain('Ledger override');
     clickButtonByText(rendered.container, 'Workspace panel');
@@ -411,7 +412,7 @@ describe('DesignWorkbenchEstimateClient', () => {
 
     clickButtonByText(gableRendered.container, 'Pergolas');
     expect(gableRendered.container.textContent).toContain('Pergola family');
-    expect(gableRendered.container.textContent).not.toContain('not supported for Sanctuary editing yet');
+    expect(gableRendered.container.textContent).not.toContain('not supported for native editing yet');
     gableRendered.unmount();
 
     const boxRendered = renderIntoDocument(
@@ -448,7 +449,7 @@ describe('DesignWorkbenchEstimateClient', () => {
 
     expect(getButtonByText(rendered.container, 'Pergolas').getAttribute('aria-selected')).toBe('true');
     expect(rendered.container.querySelector('[data-active-workbench-object="pergolas:pergola-1"]')).not.toBeNull();
-    expect(rendered.container.textContent).toContain('Sanctuary Controls');
+    expect(rendered.container.textContent).toContain('Pergola Inspector');
 
     const planSvg = rendered.container.querySelector('svg[aria-label="Module plan view"]');
     if (!(planSvg instanceof SVGSVGElement)) throw new Error('Missing plan svg.');
@@ -481,7 +482,7 @@ describe('DesignWorkbenchEstimateClient', () => {
     expect(rendered.container.textContent).toContain('House Configurator');
     clickButtonByText(rendered.container, 'Pergolas');
     expect(rendered.container.textContent).toContain('Editing Deferred');
-    expect(rendered.container.textContent).toContain('not supported for Sanctuary editing yet');
+    expect(rendered.container.textContent).toContain('not supported for native editing yet');
     expect(rendered.container.textContent).not.toContain('Pergola family');
 
     clickButtonByText(rendered.container, 'Model Space');
@@ -1340,7 +1341,7 @@ describe('DesignWorkbenchEstimateClient', () => {
     clickButtonByText(rendered.container, 'Pergolas');
     await flushAsyncWork();
 
-    expect(rendered.container.textContent).toContain('Sanctuary Controls');
+    expect(rendered.container.textContent).toContain('Pergola Inspector');
     expect(rendered.container.textContent).not.toContain('Add deck');
     expect(rendered.container.textContent).not.toContain('Deck placement');
     rendered.unmount();
@@ -1437,7 +1438,7 @@ describe('DesignWorkbenchEstimateClient', () => {
     rendered.unmount();
   });
 
-  it('shows mode diagnostics while keeping pergola fallback editing available', async () => {
+  it('shows mode diagnostics while keeping canonical pergola editing available', async () => {
     const estimate = buildEstimateDetail();
 
     const rendered = renderIntoDocument(
@@ -1456,7 +1457,7 @@ describe('DesignWorkbenchEstimateClient', () => {
     clickButtonByText(rendered.container, 'Pergolas');
     await flushAsyncWork();
 
-    expect(rendered.container.textContent).toContain('Sanctuary Controls');
+    expect(rendered.container.textContent).toContain('Pergola Inspector');
     rendered.unmount();
   });
 });

@@ -51,7 +51,8 @@ export type HouseFirstWorkbenchRailProps = {
     patch: Partial<HouseFirstOpeningDraft>,
   ) => Promise<CommitResult> | CommitResult;
   onStartDeckOutline?: (deckId: string) => Promise<CommitResult> | CommitResult;
-  pergolaPanel: ReactNode;
+  houseContextPanel?: ReactNode;
+  pergolaInspectorPanel: ReactNode;
   diagnosticsPanel: ReactNode;
 };
 
