@@ -733,10 +733,10 @@ describe('buildDrawingWorkbenchStore', () => {
     });
     expect(customStore.derived.activeDeckInteraction).toEqual({
       selectedDeckType: 'custom_outline',
-      dragEligible: false,
-      dragReason: 'Custom deck dragging is deferred. Use dimensions or redraw the outline.',
+      dragEligible: true,
+      dragReason: 'Drag the selected custom deck body to translate it relative to the house, or click relationship dimensions and outline edges to edit.',
       hostEdgeResolvable: true,
-      relationshipDimensionsAvailable: false,
+      relationshipDimensionsAvailable: true,
     });
   });
 });

@@ -26,7 +26,7 @@ type AttachmentSide = NonNullable<CalculatorModuleInputs['attachmentSide']>;
 export type HouseFirstPlanHousePolygonSource = 'custom_saved' | 'preset_derived';
 
 export type HouseFirstPlanDeckInteraction = {
-  kind: 'preset_rect';
+  kind: 'preset_rect' | 'custom_outline';
   placement: 'snapped' | 'floating';
   houseAttachmentSide: AttachmentSide;
   semanticPlacementSide: AttachmentSide | null;
@@ -1724,6 +1724,92 @@ function buildDeckPresetAnnotations(input: {
   );
 }
 
+function buildCustomDeckRelationshipAnnotations(input: {
+  deck: HouseModel['decks'][number];
+  deckPolygon: PlanPoint[];
+  deckInteraction: HouseFirstPlanDeckInteraction | null;
+}): HouseFirstPlanPresetDimensionAnnotation[] {
+  const interaction = input.deckInteraction;
+  if (!interaction || interaction.kind !== 'custom_outline') return [];
+
+  const referenceFrame = interaction.referenceFrames.find(
+    (frame) => frame.sourceEdgeId === interaction.witnessEdgeId,
+  );
+  const referenceProjection =
+    referenceFrame
+      ? projectWorldPolygonToReferenceFrame({
+          polygon: input.deckPolygon,
+          frame: referenceFrame,
+        })
+      : null;
+  if (!referenceFrame || !referenceProjection) return [];
+
+  const pointOnFrame = (frame: HouseFirstPlanDeckReferenceFrame, alongM: number, outM: number): PlanPoint => ({
+    x: frame.hostEdgeStart.x + frame.alongUnitX * (alongM - frame.spanStartM) + frame.outwardUnitX * outM,
+    y: frame.hostEdgeStart.y + frame.alongUnitY * (alongM - frame.spanStartM) + frame.outwardUnitY * outM,
+  });
+
+  const centerAlongM = (referenceProjection.alongMinM + referenceProjection.alongMaxM) / 2;
+  const annotations: Array<HouseFirstPlanPresetDimensionAnnotation | null> = [];
+  annotations.push(
+    makeAnnotation({
+      id: `${input.deck.id}:referenceEdgeGapM`,
+      targetKind: 'deck_host_edge_reference',
+      emphasis: 'relationship',
+      ownerKind: 'deck',
+      ownerId: input.deck.id,
+      fieldKey: 'referenceEdgeGapM',
+      rawValue: formatRawMetres(interaction.referenceEdgeGapM),
+      displayValue: formatDisplayMetres(interaction.referenceEdgeGapM),
+      segmentStart: pointOnFrame(referenceFrame, centerAlongM, 0),
+      segmentEnd: pointOnFrame(referenceFrame, centerAlongM, interaction.referenceEdgeGapM),
+      polygon: input.deckPolygon,
+      deckInteraction: interaction,
+    }),
+  );
+
+  if (interaction.crossEdgeReference) {
+    const xValues = input.deckPolygon.map((point) => point.x);
+    const yValues = input.deckPolygon.map((point) => point.y);
+    const minAlongM = Math.min(...xValues);
+    const maxAlongM = Math.max(...xValues);
+    const minDepthM = Math.min(...yValues);
+    const maxDepthM = Math.max(...yValues);
+    const crossGapM =
+      interaction.crossEdgeReference.frame.hostEdgeId === 'left'
+        ? Math.max(0, minAlongM - interaction.crossEdgeReference.frame.edgeCoordinateM)
+        : interaction.crossEdgeReference.frame.hostEdgeId === 'right'
+          ? Math.max(0, interaction.crossEdgeReference.frame.edgeCoordinateM - maxAlongM)
+          : interaction.crossEdgeReference.frame.hostEdgeId === 'rear'
+            ? Math.max(0, minDepthM - interaction.crossEdgeReference.frame.edgeCoordinateM)
+            : Math.max(0, interaction.crossEdgeReference.frame.edgeCoordinateM - maxDepthM);
+    const crossCenterAlongM =
+      interaction.crossEdgeReference.frame.axis === 'along'
+        ? (minAlongM + maxAlongM) / 2
+        : (minDepthM + maxDepthM) / 2;
+    annotations.push(
+      makeAnnotation({
+        id: `${input.deck.id}:crossEdgeGapM`,
+        targetKind: 'deck_host_edge_reference',
+        emphasis: 'relationship',
+        ownerKind: 'deck',
+        ownerId: input.deck.id,
+        fieldKey: 'crossEdgeGapM',
+        rawValue: formatRawMetres(crossGapM),
+        displayValue: formatDisplayMetres(crossGapM),
+        segmentStart: pointOnFrame(interaction.crossEdgeReference.frame, crossCenterAlongM, 0),
+        segmentEnd: pointOnFrame(interaction.crossEdgeReference.frame, crossCenterAlongM, crossGapM),
+        polygon: input.deckPolygon,
+        deckInteraction: interaction,
+      }),
+    );
+  }
+
+  return annotations.filter(
+    (annotation): annotation is HouseFirstPlanPresetDimensionAnnotation => Boolean(annotation),
+  );
+}
+
 function buildPresetDeckInteraction(input: {
   house: HouseModel;
   houseLocalPolygon: LocalPoint[];
@@ -1832,25 +1918,92 @@ function buildPresetDeckInteraction(input: {
   };
 }
 
+function buildCustomDeckInteraction(input: {
+  house: HouseModel;
+  houseLocalPolygon: LocalPoint[];
+  deck: HouseModel['decks'][number];
+  moduleLengthM: number;
+  moduleProjectionM: number;
+  deckPolygon: PlanPoint[];
+  geometryHouseLookup: GeometryHouseLookup;
+}): HouseFirstPlanDeckInteraction | null {
+  if (input.deck.shape !== 'custom') return null;
+  if (input.deckPolygon.length < 3) return null;
+
+  const referenceFrames =
+    input.geometryHouseLookup.footprintPolygon?.length
+      ? buildWorldDeckReferenceFrames(input.geometryHouseLookup.footprintPolygon)
+      : buildDeckReferenceFrames({
+          house: input.house,
+          houseLocalPolygon: input.houseLocalPolygon,
+          moduleLengthM: input.moduleLengthM,
+          moduleProjectionM: input.moduleProjectionM,
+        });
+  const witnessFrame = resolveDeckReferenceFrameForPolygon({
+    polygon: input.deckPolygon,
+    referenceFrames,
+    requestedEdgeId: input.deck.hostEdgeId,
+  });
+  if (!witnessFrame) return null;
+
+  const referenceProjection = projectWorldPolygonToReferenceFrame({
+    polygon: input.deckPolygon,
+    frame: witnessFrame,
+  });
+  if (!referenceProjection) return null;
+
+  const hostSpanM = Math.max(0, witnessFrame.spanEndM - witnessFrame.spanStartM);
+  const availableHalfSpanM =
+    referenceProjection.widthM <= hostSpanM + ZERO_DIMENSION_EPSILON_M
+      ? Math.max(0, (hostSpanM - referenceProjection.widthM) / 2)
+      : 0;
+
+  return {
+    kind: 'custom_outline',
+    placement: 'floating',
+    houseAttachmentSide: input.house.footprint.attachmentSide,
+    semanticPlacementSide: null,
+    semanticWitnessSide: witnessFrame.hostEdgeId,
+    placementEdgeId: null,
+    witnessEdgeId: witnessFrame.sourceEdgeId,
+    hostEdgeStart: witnessFrame.hostEdgeStart,
+    hostEdgeEnd: witnessFrame.hostEdgeEnd,
+    hostSpanM,
+    deckWidthM: referenceProjection.widthM,
+    deckDepthM: referenceProjection.depthM,
+    centerOffsetM: referenceProjection.centerOffsetM,
+    referenceEdgeGapM: referenceProjection.nearGapM,
+    minCenterOffsetM: -availableHalfSpanM,
+    maxCenterOffsetM: availableHalfSpanM,
+    renderedCenter: resolvePolygonCenter(input.deckPolygon),
+    referenceFrames,
+    crossEdgeReference: resolveWorldCrossEdgeReference({
+      primaryFrame: witnessFrame,
+      referenceFrames,
+      polygon: input.deckPolygon,
+    }),
+  };
+}
+
 function buildDeckDragEligibility(input: {
   deck: HouseModel['decks'][number];
   deckInteraction: HouseFirstPlanDeckInteraction | null;
 }): HouseFirstPlanShapeOverlay['deckDragEligibility'] {
-  if (input.deck.shape === 'custom') {
-    return {
-      eligible: false,
-      reason: 'Custom deck dragging is deferred. Use dimensions or redraw the outline.',
-    };
-  }
   if (!input.deckInteraction) {
     return {
       eligible: false,
-      reason: 'This preset deck needs a resolvable house reference edge before drag and relationship dims are available.',
+      reason:
+        input.deck.shape === 'custom'
+          ? 'This custom deck needs a resolvable house reference edge before translation and relationship dims are available.'
+          : 'This preset deck needs a resolvable house reference edge before drag and relationship dims are available.',
     };
   }
   return {
     eligible: true,
-    reason: 'Drag the selected deck body to move it freely. Release near a house edge to snap it back, or click dimensions to edit.',
+    reason:
+      input.deck.shape === 'custom'
+        ? 'Drag the selected deck body to translate it relative to the house, or click relationship dimensions and outline edges to edit.'
+        : 'Drag the selected deck body to move it freely. Release near a house edge to snap it back, or click dimensions to edit.',
   };
 }
 
@@ -2033,15 +2186,25 @@ export function buildHouseFirstPlanOverlay(input: {
       });
     const selected = input.selection.kind === 'deck' && input.selection.targetId === deck.id;
     const deckInteraction = selected
-      ? buildPresetDeckInteraction({
-          house,
-          houseLocalPolygon,
-          deck,
-          moduleLengthM,
-          moduleProjectionM,
-          deckPolygon,
-          geometryHouseLookup,
-        })
+      ? deck.shape === 'custom'
+        ? buildCustomDeckInteraction({
+            house,
+            houseLocalPolygon,
+            deck,
+            moduleLengthM,
+            moduleProjectionM,
+            deckPolygon,
+            geometryHouseLookup,
+          })
+        : buildPresetDeckInteraction({
+            house,
+            houseLocalPolygon,
+            deck,
+            moduleLengthM,
+            moduleProjectionM,
+            deckPolygon,
+            geometryHouseLookup,
+          })
       : null;
     shapes.push({
       ownerKind: 'deck',
@@ -2151,6 +2314,13 @@ export function buildHouseFirstPlanOverlay(input: {
     if (deck && shape) {
       const localPolygon = parseLocalPolygon(deck.outline);
       if (deck.shape === 'custom') {
+        presetAnnotations.push(
+          ...buildCustomDeckRelationshipAnnotations({
+            deck,
+            deckPolygon: shape.polygon,
+            deckInteraction: shape.deckInteraction,
+          }),
+        );
         customEdgeCandidates.push(
           ...buildCustomEdgeCandidates({
             ownerKind: 'deck',

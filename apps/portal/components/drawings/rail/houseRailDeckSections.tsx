@@ -109,13 +109,8 @@ export function buildHouseRailDeckSections({
     <p key="deck-selection-hint" className={styles.fieldHint}>
       {activeDeck.shape === 'preset'
         ? 'Only the selected deck shows active dimensions in plan/model space. Rectangular presets can be dragged in Model Space, snap to the house edge, or sit in floating placement with witness dimensions.'
-        : 'Only the selected deck shows active dimensions in plan/model space. Secondary decks stay visible but muted.'}
+        : 'Only the selected deck shows active dimensions in plan/model space. Custom outlines can translate as one object relative to the house, expose witness dimensions, and still use the outline edge workflow for shape changes.'}
     </p>,
-    activeDeck.shape === 'custom' ? (
-      <p key="deck-custom-deferred" className={styles.fieldHint}>
-        Custom outlines keep their existing point/edge editing flow. Object drag, snap previews, and house-edge relationship dimensions are still deferred for custom decks.
-      </p>
-    ) : null,
     <TextField
       key="deck-name"
       label="Deck name"

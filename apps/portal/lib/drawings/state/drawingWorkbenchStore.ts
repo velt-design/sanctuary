@@ -117,10 +117,12 @@ function buildDeckInteractionDiagnostic(
   if (deck.shape === 'custom') {
     return {
       selectedDeckType: 'custom_outline',
-      dragEligible: false,
-      dragReason: 'Custom deck dragging is deferred. Use dimensions or redraw the outline.',
+      dragEligible: hostEdgeResolvable,
+      dragReason: hostEdgeResolvable
+        ? 'Drag the selected custom deck body to translate it relative to the house, or click relationship dimensions and outline edges to edit.'
+        : 'This custom deck needs a resolvable house reference edge before translation and relationship dims are available.',
       hostEdgeResolvable,
-      relationshipDimensionsAvailable: false,
+      relationshipDimensionsAvailable: hostEdgeResolvable,
     };
   }
 

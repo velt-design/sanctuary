@@ -458,6 +458,8 @@ function HouseFirstViewportHarness({
       <div data-testid="deck-is-attached">{house.decks[0]?.isAttached ? 'true' : 'false'}</div>
       <div data-testid="deck-floating-center-along">{house.decks[0]?.floatingRect?.centerAlongM ?? ''}</div>
       <div data-testid="deck-floating-center-depth">{house.decks[0]?.floatingRect?.centerDepthM ?? ''}</div>
+      <div data-testid="deck-outline-0-along">{house.decks[0]?.outline?.[0]?.alongM ?? ''}</div>
+      <div data-testid="deck-outline-0-depth">{house.decks[0]?.outline?.[0]?.depthM ?? ''}</div>
       <div data-testid="deck-telemetry-type">{deckTelemetry?.selectedDeckType ?? 'none'}</div>
       <div data-testid="deck-telemetry-house-polygon">{deckTelemetry?.housePolygonSource ?? 'none'}</div>
       <div data-testid="deck-telemetry-drag">{deckTelemetry ? String(deckTelemetry.dragEligible) : 'false'}</div>
@@ -3772,7 +3774,6 @@ describe('ModelSpaceViewport', () => {
     );
 
     const scroller = rendered.container.querySelector('[data-model-space-scroller]') as HTMLElement | null;
-    expect(rendered.container.querySelector('[data-editable-field-id="deck-1:referenceEdgeGapM"]')).not.toBeNull();
     expect(rendered.container.querySelector('[data-editable-field-id="deck-1:crossEdgeGapM"]')).not.toBeNull();
     expect(rendered.container.querySelector('[data-editable-field-id="deck-1:hostStartGapM"]')).toBeNull();
     expect(scroller?.dataset.houseFirstSelectedDeckDragEligible).toBe('true');
@@ -3789,7 +3790,7 @@ describe('ModelSpaceViewport', () => {
     rendered.unmount();
   });
 
-  it('marks custom decks as deferred without host-edge relationship dimensions', async () => {
+  it('treats custom decks as draggable with relationship dimensions', async () => {
     const rendered = renderIntoDocument(
       <HouseFirstViewportHarness
         initialSelection={{ kind: 'deck', targetId: 'deck-1' }}
@@ -3810,13 +3811,64 @@ describe('ModelSpaceViewport', () => {
     );
 
     const scroller = rendered.container.querySelector('[data-model-space-scroller]') as HTMLElement | null;
+    expect(rendered.container.querySelector('[data-editable-field-id="deck-1:crossEdgeGapM"]')).not.toBeNull();
     expect(rendered.container.querySelector('[data-editable-field-id="deck-1:hostStartGapM"]')).toBeNull();
-    expect(scroller?.dataset.houseFirstSelectedDeckDragEligible).toBe('false');
+    expect(scroller?.dataset.houseFirstSelectedDeckDragEligible).toBe('true');
     expect(rendered.container.querySelector('[data-testid="deck-telemetry-type"]')?.textContent).toBe(
       'custom_outline',
     );
+    expect(rendered.container.querySelector('[data-testid="deck-telemetry-relationship"]')?.textContent).toBe(
+      'true',
+    );
     expect(rendered.container.querySelector('[aria-label="Deck interaction hint"]')?.textContent).toContain(
-      'Custom deck dragging is deferred. Use dimensions or redraw the outline.',
+      'translate it relative to the house',
+    );
+
+    rendered.unmount();
+  });
+
+  it('drags a selected custom deck as one translated outline in model space', async () => {
+    const rendered = renderIntoDocument(
+      <HouseFirstViewportHarness
+        initialSelection={{ kind: 'deck', targetId: 'deck-1' }}
+        initialHouse={makeHouseFirstHouse({
+          decks: [
+            makeHouseFirstDeck({
+              shape: 'custom',
+              outline: [
+                { alongM: '1', depthM: '0' },
+                { alongM: '5', depthM: '0' },
+                { alongM: '5', depthM: '-3' },
+                { alongM: '1', depthM: '-3' },
+              ],
+            }),
+          ],
+        })}
+      />,
+    );
+
+    const svg = rendered.container.querySelector('svg[aria-label="Module plan view"]') as SVGSVGElement | null;
+    const deckHit = rendered.container.querySelector('[data-house-first-shape-hit="deck:deck-1"]');
+    const scroller = rendered.container.querySelector('[data-model-space-scroller]') as HTMLElement | null;
+    if (!svg || !deckHit || !scroller) throw new Error('Missing plan viewport nodes.');
+    installSvgPointMock(svg);
+
+    dispatchPointer(deckHit, 'pointerdown', { pointerId: 81, button: 0, clientX: 50, clientY: 50 });
+    dispatchPointer(window, 'pointermove', { pointerId: 81, button: 0, buttons: 1, clientX: 150, clientY: 50 });
+
+    expect(scroller.dataset.houseFirstDeckDragActive).toBe('true');
+    expect(rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]')).not.toBeNull();
+
+    dispatchPointer(window, 'pointerup', { pointerId: 81, button: 0, clientX: 150, clientY: 50 });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(scroller.dataset.houseFirstDeckDragActive).toBe('false');
+    expect(rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]')).toBeNull();
+    expect(rendered.container.querySelector('[data-testid="deck-outline-0-along"]')?.textContent).not.toBe('1');
+    expect(rendered.container.querySelector('[aria-label="Deck interaction hint"]')?.textContent).toContain(
+      'Custom deck moved',
     );
 
     rendered.unmount();

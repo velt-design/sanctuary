@@ -691,6 +691,49 @@ describe('houseFirstPlanOverlay', () => {
     });
   });
 
+  it('adds relationship annotations and drag eligibility for selected custom decks', () => {
+    const baseHouse = makeHouse();
+    const house = makeHouse({
+      decks: [
+        {
+          ...makeDeck({
+            shape: 'custom',
+            isAttached: false,
+            presetType: null,
+            hostEdgeId: 'rear',
+            outline: [
+              { alongM: '1', depthM: '0' },
+              { alongM: '5', depthM: '0' },
+              { alongM: '5', depthM: '-3' },
+              { alongM: '1', depthM: '-3' },
+            ],
+          }),
+        },
+      ],
+      footprint: {
+        ...baseHouse.footprint,
+      },
+    });
+
+    const overlay = buildHouseFirstPlanOverlay({
+      house,
+      selection: { kind: 'deck', targetId: 'deck-1' },
+      moduleLengthM: '6',
+      moduleProjectionM: '3',
+    });
+
+    expect(overlay?.presetAnnotations.map((annotation) => annotation.fieldKey)).toEqual(
+      expect.arrayContaining(['crossEdgeGapM']),
+    );
+    expect(
+      overlay?.shapes.find((shape) => shape.ownerKind === 'deck')?.deckDragEligibility,
+    ).toEqual({
+      eligible: true,
+      reason:
+        'Drag the selected deck body to translate it relative to the house, or click relationship dimensions and outline edges to edit.',
+    });
+  });
+
   it('keeps screenshot-style plan deck and footprint overlays aligned with the geometry preview scene', () => {
     const fixture = getSanctuaryGeometryWorkbenchFixture('gable-u-hipped-screenshot');
     expect(fixture).not.toBeNull();
