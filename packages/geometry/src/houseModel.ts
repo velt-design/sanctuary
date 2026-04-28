@@ -4857,7 +4857,9 @@ function buildSharedHouseRoof(input: {
   if (
     roofSelectionValidation.code === 'unsupported_roof_topology' ||
     roofSelectionValidation.code === 'unsupported_gable_topology' ||
-    roofSelectionValidation.code === 'unsupported_hipped_topology'
+    roofSelectionValidation.code === 'unsupported_hipped_topology' ||
+    roofSelectionValidation.code === 'invalid_mono_fall_direction' ||
+    roofSelectionValidation.code === 'invalid_ridge_axis'
   ) {
     return invalidHouseRoof({
       eavePolygon: input.eavePolygon,

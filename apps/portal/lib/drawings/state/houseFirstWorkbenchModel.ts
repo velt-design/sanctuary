@@ -126,6 +126,8 @@ export type HouseRoofModel = {
       | 'unsupported_gable_topology'
       | 'unsupported_hipped_topology'
       | 'invalid_appendage'
+      | 'invalid_mono_fall_direction'
+      | 'invalid_ridge_axis'
       | null;
     message: string | null;
     approximationReasons?: HouseRoofApproximationReason[];

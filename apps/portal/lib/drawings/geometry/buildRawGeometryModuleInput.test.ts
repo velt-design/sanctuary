@@ -313,6 +313,54 @@ describe('buildRawGeometryModuleInput', () => {
     });
   });
 
+  it('maps corrected derived shared house roof orientation into raw house context without explicit overrides', () => {
+    const fixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
+    if (!fixture) throw new Error('Expected mono fixture');
+    const projectModel = buildHouseFirstWorkbenchProjectModel({
+      snapshot: fixture.snapshot,
+    });
+
+    const raw = buildRawGeometryModuleInput({
+      projectId: 'proj_1',
+      estimateId: 'est_1',
+      module: makeModule({
+        attachmentSide: 'rear',
+        houseFootprintPreset: 'straight',
+      }),
+      result: makeResult(),
+      sharedHouse: projectModel.house,
+    });
+
+    expect(raw.houseContext.roofForm).toBe('mono');
+    expect(raw.houseContext.roofPrimaryFallDirection).toBe('negative_y');
+
+    const gableDraft = buildEstimateDrawingDraftFromSnapshot(fixture.snapshot);
+    if (!gableDraft) throw new Error('Expected draft');
+    gableDraft.inputs.modules[0]!.houseFootprintPreset = 'u_shape';
+    gableDraft.houseFirst = {
+      roof: {
+        form: 'gable',
+      },
+    };
+    const gableProjectModel = buildHouseFirstWorkbenchProjectModel({
+      snapshot: fixture.snapshot,
+      draft: gableDraft,
+    });
+
+    const gableRaw = buildRawGeometryModuleInput({
+      projectId: 'proj_1',
+      estimateId: 'est_1',
+      module: makeModule({
+        attachmentSide: 'rear',
+        houseFootprintPreset: 'u_shape',
+      }),
+      result: makeResult(),
+      sharedHouse: gableProjectModel.house,
+    });
+
+    expect(gableRaw.houseContext.roofRidgeAxis).toBe('x');
+  });
+
   it('maps shared house decks into raw house context', () => {
     const fixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
     if (!fixture) throw new Error('Expected mono fixture');

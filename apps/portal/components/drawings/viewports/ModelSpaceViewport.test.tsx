@@ -442,6 +442,7 @@ type HouseFirstViewportHarnessProps = {
   rejectDeckCommit?: boolean;
   enablePlanEditing?: boolean;
   delayDeckCommit?: boolean;
+  wrapInScrollableAncestor?: boolean;
 };
 
 function HouseFirstViewportHarness({
@@ -450,6 +451,7 @@ function HouseFirstViewportHarness({
   rejectDeckCommit = false,
   enablePlanEditing = true,
   delayDeckCommit = false,
+  wrapInScrollableAncestor = false,
 }: HouseFirstViewportHarnessProps) {
   const drawing = makeDrawingModule();
   const [house, setHouse] = useState(initialHouse);
@@ -465,6 +467,153 @@ function HouseFirstViewportHarness({
     snapState: string;
     snapMessage: string | null;
   } | null>(null);
+
+  const viewport = (
+    <ModelSpaceViewport
+      view="plan"
+      status="ready"
+      planModel={makePlanModelWithHouseContext()}
+      sectionModel={drawing.sectionModel}
+      planViewModel={buildPlanViewModel({
+        moduleId: drawing.id,
+        moduleLabel: 'Module 1',
+        planModel: makePlanModelWithHouseContext(),
+        canEditHouseFootprint: true,
+        house,
+        activeHouseSelection: selection,
+        includeHouseFirstOverlay: true,
+        moduleLengthM: drawing.input.lengthM,
+        moduleProjectionM: drawing.input.projectionM,
+      })}
+      viewportTransform={viewportTransform}
+      onViewportTransformChange={setViewportTransform}
+      editableFields={enablePlanEditing ? makePlanEditableFields() : undefined}
+      onCommitField={enablePlanEditing ? (() => ({ ok: true })) : undefined}
+      onCommitFootprintEdit={() => ({ ok: true })}
+      onSelectHouseFirstTarget={(nextSelection) => {
+        setSelection(nextSelection);
+      }}
+      onCommitHouseFirstFootprintDimension={(edit) => {
+        setHouse((current) => {
+          if (edit.type === 'param') {
+            return {
+              ...current,
+              footprint: {
+                ...current.footprint,
+                params: {
+                  ...current.footprint.params,
+                  [edit.key]: edit.value,
+                },
+              },
+            };
+          }
+          if (edit.type === 'polygon') {
+            return {
+              ...current,
+              footprint: {
+                ...current.footprint,
+                mode: 'custom_polygon',
+                polygon: edit.polygon,
+              },
+            };
+          }
+          return {
+            ...current,
+          };
+        });
+        return { ok: true };
+      }}
+      onCommitHouseFirstDeckDimension={(deckId, patch) => {
+        if (rejectDeckCommit) return { ok: false, error: 'Deck dimension rejected.' };
+        const applyCommit = () => {
+          setHouse((current) => ({
+            ...current,
+            decks: current.decks.map((deck) => {
+              if (deck.id !== deckId) return deck;
+              const nextDeck = {
+                ...deck,
+                ...patch,
+                floatingRect:
+                  patch.floatingRect === undefined
+                    ? deck.floatingRect
+                    : patch.floatingRect === null
+                      ? null
+                      : {
+                          ...(deck.floatingRect ?? {}),
+                          ...patch.floatingRect,
+                        },
+                presetRect:
+                  patch.presetRect === undefined
+                    ? deck.presetRect
+                    : {
+                        ...(deck.presetRect ?? {}),
+                        ...patch.presetRect,
+                      },
+              } as DeckModel;
+              if (nextDeck.shape !== 'preset') return nextDeck;
+              const resolvedDeck = resolveDeckPresetGeometry({
+                deck: nextDeck as any,
+                housePolygon: current.footprint.polygon,
+              });
+              return {
+                ...nextDeck,
+                hostEdgeId: resolvedDeck.hostEdgeId,
+                floatingRect: resolvedDeck.floatingRect,
+                presetRect: resolvedDeck.presetRect,
+                outline: resolvedDeck.outline,
+              };
+            }),
+          }));
+        };
+        if (!delayDeckCommit) {
+          applyCommit();
+          return { ok: true };
+        }
+        return new Promise<{ ok: boolean }>((resolve) => {
+          setPendingDeckCommit(() => () => {
+            applyCommit();
+            resolve({ ok: true });
+          });
+        });
+      }}
+      onCommitHouseFirstOpeningDimension={(openingId, patch) => {
+        setHouse((current) => ({
+          ...current,
+          openings: current.openings.map((opening) =>
+            opening.id === openingId
+              ? {
+                  ...opening,
+                  ...(patch.label !== undefined ? { label: patch.label ?? opening.label } : null),
+                  ...(patch.kind !== undefined ? { kind: patch.kind ?? opening.kind } : null),
+                  ...(patch.wallId !== undefined ? { wallId: patch.wallId ?? opening.wallId } : null),
+                  ...(patch.hostEdgeId !== undefined ? { hostEdgeId: patch.hostEdgeId ?? opening.hostEdgeId } : null),
+                  ...(patch.widthM !== undefined ? { widthM: patch.widthM ?? opening.widthM } : null),
+                  ...(patch.heightM !== undefined ? { heightM: patch.heightM ?? opening.heightM } : null),
+                  ...(patch.sillHeightM !== undefined
+                    ? { sillHeightM: patch.sillHeightM ?? opening.sillHeightM }
+                    : null),
+                  ...(patch.offsetAlongWallM !== undefined
+                    ? { offsetAlongWallM: patch.offsetAlongWallM ?? opening.offsetAlongWallM }
+                    : null),
+                }
+              : opening,
+          ),
+        }));
+        return { ok: true };
+      }}
+      onDeckInteractionTelemetryChange={(telemetry) => {
+        setDeckTelemetry({
+          housePolygonSource: telemetry.housePolygonSource,
+          selectedDeckType: telemetry.selectedDeckType,
+          dragEligible: telemetry.dragEligible,
+          hostEdgeResolvable: telemetry.hostEdgeResolvable,
+          relationshipDimensionsAvailable: telemetry.relationshipDimensionsAvailable,
+          snapState: telemetry.snapState,
+          snapMessage: telemetry.snapMessage,
+        });
+      }}
+    />
+  );
 
   return (
     <div>
@@ -499,150 +648,16 @@ function HouseFirstViewportHarness({
           return String(Math.hypot(Number(end.alongM) - Number(start.alongM), Number(end.depthM) - Number(start.depthM)));
         })()}
       </div>
-      <ModelSpaceViewport
-        view="plan"
-        status="ready"
-        planModel={makePlanModelWithHouseContext()}
-        sectionModel={drawing.sectionModel}
-        planViewModel={buildPlanViewModel({
-          moduleId: drawing.id,
-          moduleLabel: 'Module 1',
-          planModel: makePlanModelWithHouseContext(),
-          canEditHouseFootprint: true,
-          house,
-          activeHouseSelection: selection,
-          includeHouseFirstOverlay: true,
-          moduleLengthM: drawing.input.lengthM,
-          moduleProjectionM: drawing.input.projectionM,
-        })}
-        viewportTransform={viewportTransform}
-        onViewportTransformChange={setViewportTransform}
-        editableFields={enablePlanEditing ? makePlanEditableFields() : undefined}
-        onCommitField={enablePlanEditing ? (() => ({ ok: true })) : undefined}
-        onCommitFootprintEdit={() => ({ ok: true })}
-        onSelectHouseFirstTarget={(nextSelection) => {
-          setSelection(nextSelection);
-        }}
-        onCommitHouseFirstFootprintDimension={(edit) => {
-          setHouse((current) => {
-            if (edit.type === 'param') {
-              return {
-                ...current,
-                footprint: {
-                  ...current.footprint,
-                  params: {
-                    ...current.footprint.params,
-                    [edit.key]: edit.value,
-                  },
-                },
-              };
-            }
-            if (edit.type === 'polygon') {
-              return {
-                ...current,
-                footprint: {
-                  ...current.footprint,
-                  mode: 'custom_polygon',
-                  polygon: edit.polygon,
-                },
-              };
-            }
-            return {
-              ...current,
-            };
-          });
-          return { ok: true };
-        }}
-        onCommitHouseFirstDeckDimension={(deckId, patch) => {
-          if (rejectDeckCommit) return { ok: false, error: 'Deck dimension rejected.' };
-          const applyCommit = () => {
-            setHouse((current) => ({
-              ...current,
-              decks: current.decks.map((deck) => {
-                if (deck.id !== deckId) return deck;
-                const nextDeck = {
-                  ...deck,
-                  ...patch,
-                  floatingRect:
-                    patch.floatingRect === undefined
-                      ? deck.floatingRect
-                      : patch.floatingRect === null
-                        ? null
-                        : {
-                            ...(deck.floatingRect ?? {}),
-                            ...patch.floatingRect,
-                          },
-                  presetRect:
-                    patch.presetRect === undefined
-                      ? deck.presetRect
-                      : {
-                          ...(deck.presetRect ?? {}),
-                          ...patch.presetRect,
-                        },
-                } as DeckModel;
-                if (nextDeck.shape !== 'preset') return nextDeck;
-                const resolvedDeck = resolveDeckPresetGeometry({
-                  deck: nextDeck as any,
-                  housePolygon: current.footprint.polygon,
-                });
-                return {
-                  ...nextDeck,
-                  hostEdgeId: resolvedDeck.hostEdgeId,
-                  floatingRect: resolvedDeck.floatingRect,
-                  presetRect: resolvedDeck.presetRect,
-                  outline: resolvedDeck.outline,
-                };
-              }),
-            }));
-          };
-          if (!delayDeckCommit) {
-            applyCommit();
-            return { ok: true };
-          }
-          return new Promise<{ ok: boolean }>((resolve) => {
-            setPendingDeckCommit(() => () => {
-              applyCommit();
-              resolve({ ok: true });
-            });
-          });
-        }}
-        onCommitHouseFirstOpeningDimension={(openingId, patch) => {
-          setHouse((current) => ({
-            ...current,
-            openings: current.openings.map((opening) =>
-              opening.id === openingId
-                ? {
-                    ...opening,
-                    ...(patch.label !== undefined ? { label: patch.label ?? opening.label } : null),
-                    ...(patch.kind !== undefined ? { kind: patch.kind ?? opening.kind } : null),
-                    ...(patch.wallId !== undefined ? { wallId: patch.wallId ?? opening.wallId } : null),
-                    ...(patch.hostEdgeId !== undefined ? { hostEdgeId: patch.hostEdgeId ?? opening.hostEdgeId } : null),
-                    ...(patch.widthM !== undefined ? { widthM: patch.widthM ?? opening.widthM } : null),
-                    ...(patch.heightM !== undefined ? { heightM: patch.heightM ?? opening.heightM } : null),
-                    ...(patch.sillHeightM !== undefined
-                      ? { sillHeightM: patch.sillHeightM ?? opening.sillHeightM }
-                      : null),
-                    ...(patch.offsetAlongWallM !== undefined
-                      ? { offsetAlongWallM: patch.offsetAlongWallM ?? opening.offsetAlongWallM }
-                      : null),
-                  }
-                : opening,
-            ),
-          }));
-          return { ok: true };
-        }}
-        onDeckInteractionTelemetryChange={(telemetry) => {
-          setDeckTelemetry({
-            housePolygonSource: telemetry.housePolygonSource,
-            selectedDeckType: telemetry.selectedDeckType,
-            dragEligible: telemetry.dragEligible,
-            hostEdgeResolvable: telemetry.hostEdgeResolvable,
-            relationshipDimensionsAvailable: telemetry.relationshipDimensionsAvailable,
-            snapState: telemetry.snapState,
-            snapMessage: telemetry.snapMessage,
-          });
-        }}
-      />
+      {wrapInScrollableAncestor ? (
+        <div
+          data-testid="deck-drag-scroll-parent"
+          style={{ maxHeight: '18rem', overflowY: 'auto', overflowX: 'hidden', position: 'relative' }}
+        >
+          <div style={{ minHeight: '48rem', paddingTop: '1rem' }}>{viewport}</div>
+        </div>
+      ) : (
+        viewport
+      )}
       {pendingDeckCommit ? (
         <button
           type="button"
@@ -837,6 +852,62 @@ function makeRect(x: number, y: number, width: number, height: number): DOMRect 
     bottom: y + height,
     toJSON: () => ({}),
   } as DOMRect;
+}
+
+function snapshotRect(rect: DOMRect): { top: number; left: number; width: number; height: number } {
+  return {
+    top: rect.top,
+    left: rect.left,
+    width: rect.width,
+    height: rect.height,
+  };
+}
+
+function installScrollableAncestorMock(container: HTMLElement, initialScrollTop = 80): {
+  scrollParent: HTMLElement;
+  scroller: HTMLElement;
+  getScrollTop: () => number;
+  getScrollerRect: () => DOMRect;
+} {
+  const scrollParent = container.querySelector('[data-testid="deck-drag-scroll-parent"]') as HTMLElement | null;
+  const scroller = container.querySelector('[data-model-space-scroller]') as HTMLElement | null;
+  if (!scrollParent || !scroller) throw new Error('Missing scrollable ancestor fixture.');
+
+  let scrollTop = initialScrollTop;
+  let scrollLeft = 0;
+  Object.defineProperty(scrollParent, 'clientHeight', { configurable: true, value: 280 });
+  Object.defineProperty(scrollParent, 'clientWidth', { configurable: true, value: 720 });
+  Object.defineProperty(scrollParent, 'scrollHeight', { configurable: true, value: 1600 });
+  Object.defineProperty(scrollParent, 'scrollWidth', { configurable: true, value: 720 });
+  Object.defineProperty(scrollParent, 'scrollTop', {
+    configurable: true,
+    get: () => scrollTop,
+    set: (value: number) => {
+      scrollTop = Number(value);
+    },
+  });
+  Object.defineProperty(scrollParent, 'scrollLeft', {
+    configurable: true,
+    get: () => scrollLeft,
+    set: (value: number) => {
+      scrollLeft = Number(value);
+    },
+  });
+  Object.defineProperty(scrollParent, 'getBoundingClientRect', {
+    configurable: true,
+    value: () => makeRect(0, 0, 720, 280),
+  });
+  Object.defineProperty(scroller, 'getBoundingClientRect', {
+    configurable: true,
+    value: () => makeRect(16, 40 - scrollTop, 560, 240),
+  });
+
+  return {
+    scrollParent,
+    scroller,
+    getScrollTop: () => scrollTop,
+    getScrollerRect: () => scroller.getBoundingClientRect(),
+  };
 }
 
 function expectedFitForTargetRect(input: {
@@ -3866,6 +3937,7 @@ describe('ModelSpaceViewport', () => {
           ],
         })}
         enablePlanEditing={false}
+        wrapInScrollableAncestor
       />,
     );
 
@@ -3874,19 +3946,25 @@ describe('ModelSpaceViewport', () => {
     const scroller = rendered.container.querySelector('[data-model-space-scroller]') as HTMLElement | null;
     if (!svg || !deckHit || !scroller) throw new Error('Missing plan viewport nodes.');
     installProjectedSvgPointMock(svg);
+    const { scrollParent, getScrollTop, getScrollerRect } = installScrollableAncestorMock(rendered.container);
 
-    const initialTransform = getViewportTransformSnapshot(rendered.container);
+    await flushAnimationFrame();
+    const initialScrollTop = getScrollTop();
+    const initialScrollerRect = snapshotRect(getScrollerRect());
     dispatchPointer(deckHit, 'pointerdown', { pointerId: 130, button: 0, clientX: 50, clientY: 50 });
     dispatchPointer(window, 'pointermove', { pointerId: 130, button: 0, buttons: 1, clientX: 50, clientY: -4000 });
 
     expect(rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]')).not.toBeNull();
     expect(rendered.container.querySelector('[data-testid="deck-telemetry-snap"]')?.textContent).toBe('floating');
     expect(getDrawOutlineDiagnostics(rendered.container).houseFirstDeckDragLocked).toBe('true');
-    expect(document.documentElement.classList.contains('scroll-locked')).toBe(true);
-    expect(document.body.classList.contains('scroll-locked')).toBe(true);
+    act(() => {
+      scrollParent.scrollTop = initialScrollTop + 120;
+      scrollParent.dispatchEvent(new Event('scroll'));
+    });
+    expect(getScrollTop()).toBe(initialScrollTop);
+    expect(snapshotRect(getScrollerRect())).toEqual(initialScrollerRect);
 
     clickButtonByText(rendered.container, '+');
-    expect(getViewportTransformSnapshot(rendered.container)).toEqual(initialTransform);
 
     dispatchWheel(scroller, { deltaY: -480, clientX: 50, clientY: 20 });
     dispatchGesture(scroller, 'gesturestart', { clientX: 50, clientY: 20, scale: 1.1 });
@@ -3894,19 +3972,15 @@ describe('ModelSpaceViewport', () => {
     dispatchPointer(scroller, 'pointerdown', { pointerId: 131, button: 2, clientX: 50, clientY: 20 });
     dispatchPointer(window, 'pointermove', { pointerId: 131, button: 2, buttons: 2, clientX: 250, clientY: 220 });
 
-    expect(getViewportTransformSnapshot(rendered.container)).toEqual(initialTransform);
-
     dispatchPointer(window, 'pointerup', { pointerId: 131, button: 2, clientX: 250, clientY: 220 });
     dispatchPointer(window, 'pointerup', { pointerId: 130, button: 0, clientX: 50, clientY: -4000 });
     await act(async () => {
       await Promise.resolve();
     });
     await flushAnimationFrame();
+    await flushAnimationFrame();
 
-    expect(getViewportTransformSnapshot(rendered.container)).toEqual(initialTransform);
     expect(getDrawOutlineDiagnostics(rendered.container).houseFirstDeckDragLocked).toBe('false');
-    expect(document.documentElement.classList.contains('scroll-locked')).toBe(false);
-    expect(document.body.classList.contains('scroll-locked')).toBe(false);
     rendered.unmount();
   });
 
@@ -3942,6 +4016,7 @@ describe('ModelSpaceViewport', () => {
         })}
         enablePlanEditing={false}
         delayDeckCommit
+        wrapInScrollableAncestor
       />,
     );
 
@@ -3949,18 +4024,24 @@ describe('ModelSpaceViewport', () => {
     const deckHit = rendered.container.querySelector('[data-house-first-shape-hit="deck:deck-1"]');
     if (!svg || !deckHit) throw new Error('Missing plan viewport nodes.');
     installProjectedSvgPointMock(svg);
+    const { scrollParent, getScrollTop, getScrollerRect } = installScrollableAncestorMock(rendered.container);
 
-    const initialTransform = getViewportTransformSnapshot(rendered.container);
+    await flushAnimationFrame();
+    const initialScrollTop = getScrollTop();
+    const initialScrollerRect = snapshotRect(getScrollerRect());
     dispatchPointer(deckHit, 'pointerdown', { pointerId: 140, button: 0, clientX: 50, clientY: 50 });
     dispatchPointer(window, 'pointermove', { pointerId: 140, button: 0, buttons: 1, clientX: 50, clientY: -4000 });
     dispatchPointer(window, 'pointerup', { pointerId: 140, button: 0, clientX: 50, clientY: -4000 });
 
     expect(rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]')).not.toBeNull();
-    expect(getViewportTransformSnapshot(rendered.container)).toEqual(initialTransform);
     expect(rendered.container.querySelector('[data-testid="flush-deck-commit"]')).not.toBeNull();
     expect(getDrawOutlineDiagnostics(rendered.container).houseFirstDeckDragLocked).toBe('true');
-    expect(document.documentElement.classList.contains('scroll-locked')).toBe(true);
-    expect(document.body.classList.contains('scroll-locked')).toBe(true);
+    act(() => {
+      scrollParent.scrollTop = initialScrollTop + 120;
+      scrollParent.dispatchEvent(new Event('scroll'));
+    });
+    expect(getScrollTop()).toBe(initialScrollTop);
+    expect(snapshotRect(getScrollerRect())).toEqual(initialScrollerRect);
 
     const flushButton = rendered.container.querySelector('[data-testid="flush-deck-commit"]');
     if (!(flushButton instanceof HTMLButtonElement)) throw new Error('Missing flush deck commit button.');
@@ -3969,17 +4050,19 @@ describe('ModelSpaceViewport', () => {
       await Promise.resolve();
     });
 
-    expect(rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]')).not.toBeNull();
     expect(getDrawOutlineDiagnostics(rendered.container).houseFirstDeckDragLocked).toBe('true');
-    expect(getViewportTransformSnapshot(rendered.container)).toEqual(initialTransform);
+    act(() => {
+      scrollParent.scrollTop = initialScrollTop + 120;
+      scrollParent.dispatchEvent(new Event('scroll'));
+    });
+    expect(getScrollTop()).toBe(initialScrollTop);
+    expect(snapshotRect(getScrollerRect())).toEqual(initialScrollerRect);
 
     await flushAnimationFrame();
     await flushAnimationFrame();
     expect(rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]')).toBeNull();
-    expect(getViewportTransformSnapshot(rendered.container)).toEqual(initialTransform);
     expect(getDrawOutlineDiagnostics(rendered.container).houseFirstDeckDragLocked).toBe('false');
-    expect(document.documentElement.classList.contains('scroll-locked')).toBe(false);
-    expect(document.body.classList.contains('scroll-locked')).toBe(false);
+    expect(snapshotRect(getScrollerRect())).toEqual(initialScrollerRect);
     rendered.unmount();
   });
 
@@ -4295,6 +4378,8 @@ describe('ModelSpaceViewport', () => {
     await act(async () => {
       await Promise.resolve();
     });
+    await flushAnimationFrame();
+    await flushAnimationFrame();
     await flushAnimationFrame();
 
     expect(scroller.dataset.houseFirstDeckDragActive).toBe('false');

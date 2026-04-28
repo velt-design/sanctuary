@@ -541,13 +541,13 @@ describe('buildDrawingWorkbenchStore', () => {
     });
 
     expect(store.derived.roofForm).toBe('gable');
-    expect(store.derived.roofReviewStatus).toBe('approximate');
-    expect(store.derived.roofValidationStatus).toBe('approximate');
+    expect(store.derived.roofReviewStatus).toBe('ready');
+    expect(store.derived.roofValidationStatus).toBe('valid');
     expect(store.derived.roofValidationCode).toBeNull();
     expect(store.derived.roofValidationMessage).toBeNull();
-    expect(store.derived.roofApproximationReasons).toEqual(['inferred_ridge_axis']);
+    expect(store.derived.roofApproximationReasons).toEqual([]);
     expect(store.derived.roofProvenance?.form).toBe('house_first_draft');
-    expect(store.derived.roofProvenance?.ridgeAxis).toBe('legacy_pergola_inference');
+    expect(store.derived.roofProvenance?.ridgeAxis).toBe('default_fallback');
     expect(store.derived.roofAppendageStatus).toBe('off');
   });
 
@@ -571,10 +571,51 @@ describe('buildDrawingWorkbenchStore', () => {
     expect(store.derived.roofValidationStatus).toBe('approximate');
     expect(store.derived.roofValidationCode).toBeNull();
     expect(store.derived.roofValidationMessage).toBeNull();
-    expect(store.derived.roofApproximationReasons).toEqual([
-      'inferred_form',
-      'inferred_fall_direction',
-    ]);
+    expect(store.derived.roofApproximationReasons).toEqual(['inferred_form']);
+  });
+
+  it('exposes blocked roof review state for invalid mono fall and ridge selections', () => {
+    const fixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
+    if (!fixture) throw new Error('Missing mono-standard fixture.');
+    const monoDraft = buildEstimateDrawingDraftFromSnapshot(fixture.snapshot);
+    if (!monoDraft) throw new Error('Expected drawing draft.');
+    monoDraft.houseFirst = {
+      roof: {
+        form: 'mono',
+        primaryFallDirection: 'positive_y',
+      },
+    };
+
+    const monoStore = buildDrawingWorkbenchStore({
+      snapshot: fixture.snapshot,
+      draft: monoDraft,
+      ui: createDrawingWorkbenchUiState({
+        workbenchMode: 'house',
+      }),
+    });
+
+    expect(monoStore.derived.roofReviewStatus).toBe('blocked');
+    expect(monoStore.derived.roofValidationCode).toBe('invalid_mono_fall_direction');
+
+    const ridgeDraft = buildEstimateDrawingDraftFromSnapshot(fixture.snapshot);
+    if (!ridgeDraft) throw new Error('Expected drawing draft.');
+    ridgeDraft.houseFirst = {
+      roof: {
+        form: 'gable',
+        ridgeAxis: 'y',
+      },
+    };
+
+    const ridgeStore = buildDrawingWorkbenchStore({
+      snapshot: fixture.snapshot,
+      draft: ridgeDraft,
+      ui: createDrawingWorkbenchUiState({
+        workbenchMode: 'house',
+      }),
+    });
+
+    expect(ridgeStore.derived.roofReviewStatus).toBe('blocked');
+    expect(ridgeStore.derived.roofValidationCode).toBe('invalid_ridge_axis');
   });
 
   it('derives active-side deck support diagnostics for attached and detached deck scenarios', () => {

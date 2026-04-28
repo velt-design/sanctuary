@@ -1,5 +1,8 @@
 import type {
+  AttachmentSide,
   HouseRoofForm,
+  HouseRoofPrimaryFallDirection,
+  HouseRoofRidgeAxis,
   Polygon3,
 } from './contracts';
 
@@ -24,15 +27,33 @@ export type HouseRoofCapabilities = {
 
 export type HouseRoofSelectionValidation = {
   status: 'valid' | 'invalid';
-  blockedBy: 'selected_form' | 'appendage' | null;
+  blockedBy: 'selected_form' | 'appendage' | 'orientation' | null;
   code:
     | 'unsupported_roof_topology'
     | 'unsupported_gable_topology'
     | 'unsupported_hipped_topology'
     | 'invalid_appendage'
+    | 'invalid_mono_fall_direction'
+    | 'invalid_ridge_axis'
     | null;
   message: string | null;
 };
+
+export function preferredMonoFallDirectionForAttachmentSide(
+  attachmentSide: AttachmentSide,
+): HouseRoofPrimaryFallDirection {
+  switch (attachmentSide) {
+    case 'front':
+      return 'positive_y';
+    case 'left':
+      return 'negative_x';
+    case 'right':
+      return 'positive_x';
+    case 'rear':
+    default:
+      return 'negative_y';
+  }
+}
 
 function signedAreaXY(polygon: Polygon3): number {
   return polygon.reduce((sum, current, index) => {
@@ -115,6 +136,13 @@ export function validateHouseRoofSelection(input: {
   roofForm: HouseRoofForm;
   footprint: Polygon3;
   appendageEnabled: boolean;
+  roofPrimaryFallDirection?: HouseRoofPrimaryFallDirection | null;
+  roofPrimaryFallDirectionExplicit?: boolean;
+  preferredMonoFallDirection?: HouseRoofPrimaryFallDirection | null;
+  enforcePreferredMonoFallDirection?: boolean;
+  roofRidgeAxis?: HouseRoofRidgeAxis | null;
+  roofRidgeAxisExplicit?: boolean;
+  preferredRidgeAxis?: HouseRoofRidgeAxis | null;
 }): HouseRoofSelectionValidation {
   const capabilities = deriveHouseRoofCapabilities({
     roofForm: input.roofForm,
@@ -146,6 +174,37 @@ export function validateHouseRoofSelection(input: {
         message: 'Hipped roofs require an orthogonal footprint with clean roof topology in this milestone.',
       };
     }
+  }
+
+  if (
+    input.roofForm === 'mono' &&
+    input.roofPrimaryFallDirectionExplicit &&
+    input.enforcePreferredMonoFallDirection &&
+    input.preferredMonoFallDirection &&
+    input.roofPrimaryFallDirection &&
+    input.roofPrimaryFallDirection !== input.preferredMonoFallDirection
+  ) {
+    return {
+      status: 'invalid',
+      blockedBy: 'orientation',
+      code: 'invalid_mono_fall_direction',
+      message: 'This mono fall direction drains back into the attachment side. Choose the outward drain direction for the current house attachment.',
+    };
+  }
+
+  if (
+    (input.roofForm === 'gable' || input.roofForm === 'hipped') &&
+    input.roofRidgeAxisExplicit &&
+    input.preferredRidgeAxis &&
+    input.roofRidgeAxis &&
+    input.roofRidgeAxis !== input.preferredRidgeAxis
+  ) {
+    return {
+      status: 'invalid',
+      blockedBy: 'orientation',
+      code: 'invalid_ridge_axis',
+      message: 'This ridge orientation does not match the current house footprint. Choose the axis that follows the stronger roof span/topology.',
+    };
   }
 
   if (input.appendageEnabled && !capabilities.appendageSupported) {

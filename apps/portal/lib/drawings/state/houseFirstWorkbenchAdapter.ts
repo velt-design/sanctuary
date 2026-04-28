@@ -8,6 +8,7 @@ import {
   deriveHouseGableTerminalEnds,
   buildHouseFootprintPresetSideLocalPoints,
   deriveHouseRoofCapabilities,
+  preferredMonoFallDirectionForAttachmentSide,
   validateHouseRoofSelection,
   type Line3,
   type Polygon3,
@@ -75,6 +76,13 @@ type SharedFieldResult<T> = {
   warning: HouseFirstMigrationWarning | null;
   lowConfidence: boolean;
   source: Extract<HouseRoofFieldSource, 'legacy_shared_value' | 'default_fallback'>;
+};
+
+type DerivedRoofRidgeAxisResolution = {
+  value: HouseRoofRidgeAxis;
+  source: Extract<HouseRoofFieldSource, 'default_fallback'>;
+  ambiguous: boolean;
+  usedFallback: boolean;
 };
 
 function isBlankString(value: string | null | undefined): boolean {
@@ -196,11 +204,7 @@ function isRectanglePolygon2D(
     new Set(depth.map((value) => value.toFixed(6))).size === 2;
 }
 
-function inferRoofPrimaryFallDirection(module: CalculatorModuleInputs): HouseRoofPrimaryFallDirection {
-  return module.invertedEnabled ? 'negative_y' : 'positive_y';
-}
-
-function inferRoofRidgeAxis(input: {
+function inferLegacyRoofRidgeAxis(input: {
   footprintMode: CalculatorHouseFootprintMode;
   footprintPreset: CalculatorHouseFootprintPreset;
   footprintParams: CalculatorHouseFootprintParams;
@@ -221,6 +225,24 @@ function inferRoofRidgeAxis(input: {
     }
   }
   return 'x';
+}
+
+function resolveBoundingFootprintSpans(
+  polygon: CalculatorHouseFootprintPolygonPoint[],
+): { alongM: number; depthM: number } | null {
+  if (!polygon.length) return null;
+  const alongValues = polygon.map((point) => Number(point.alongM));
+  const depthValues = polygon.map((point) => Number(point.depthM));
+  if (
+    alongValues.some((value) => !Number.isFinite(value)) ||
+    depthValues.some((value) => !Number.isFinite(value))
+  ) {
+    return null;
+  }
+  return {
+    alongM: Math.max(...alongValues) - Math.min(...alongValues),
+    depthM: Math.max(...depthValues) - Math.min(...depthValues),
+  };
 }
 
 function resolveRectangularFootprintSpans(
@@ -246,13 +268,122 @@ function hasAmbiguousRidgeAxisSelection(
   return longerSpan < shorterSpan * 1.15;
 }
 
+function scoreGableTerminalTopology(input: {
+  footprint: Polygon3;
+  ridgeAxis: HouseRoofRidgeAxis;
+}): number {
+  return deriveHouseGableTerminalEnds({
+    footprint: input.footprint,
+    ridgeAxis: input.ridgeAxis,
+  }).length;
+}
+
+function resolveDerivedMonoFallDirection(input: {
+  attachmentSide: NonNullable<CalculatorModuleInputs['attachmentSide']>;
+}): {
+  value: HouseRoofPrimaryFallDirection;
+  source: Extract<HouseRoofFieldSource, 'default_fallback'>;
+} {
+  return {
+    value: preferredMonoFallDirectionForAttachmentSide(input.attachmentSide),
+    source: 'default_fallback',
+  };
+}
+
+function resolveDerivedRidgeAxis(input: {
+  footprintMode: CalculatorHouseFootprintMode;
+  footprintPreset: CalculatorHouseFootprintPreset;
+  footprintParams: CalculatorHouseFootprintParams;
+  footprintPolygon: CalculatorHouseFootprintPolygonPoint[];
+}): DerivedRoofRidgeAxisResolution {
+  const fallback = inferLegacyRoofRidgeAxis(input);
+  const rectangularSpans = resolveRectangularFootprintSpans(input.footprintPolygon);
+  if (rectangularSpans) {
+    if (hasAmbiguousRidgeAxisSelection(input.footprintPolygon)) {
+      return {
+        value: fallback,
+        source: 'default_fallback',
+        ambiguous: true,
+        usedFallback: true,
+      };
+    }
+    return {
+      value: rectangularSpans.alongM >= rectangularSpans.depthM ? 'x' : 'y',
+      source: 'default_fallback',
+      ambiguous: false,
+      usedFallback: false,
+    };
+  }
+
+  if (!isOrthogonal2D(input.footprintPolygon)) {
+    return {
+      value: fallback,
+      source: 'default_fallback',
+      ambiguous: true,
+      usedFallback: true,
+    };
+  }
+
+  const footprint = localPolygonToGeometryPolygon(input.footprintPolygon);
+  const xScore = scoreGableTerminalTopology({ footprint, ridgeAxis: 'x' });
+  const yScore = scoreGableTerminalTopology({ footprint, ridgeAxis: 'y' });
+  if (xScore > yScore) {
+    return {
+      value: 'x',
+      source: 'default_fallback',
+      ambiguous: false,
+      usedFallback: false,
+    };
+  }
+  if (yScore > xScore) {
+    return {
+      value: 'y',
+      source: 'default_fallback',
+      ambiguous: false,
+      usedFallback: false,
+    };
+  }
+
+  const spans = resolveBoundingFootprintSpans(input.footprintPolygon);
+  if (spans) {
+    if (spans.alongM > spans.depthM * 1.05) {
+      return {
+        value: 'x',
+        source: 'default_fallback',
+        ambiguous: false,
+        usedFallback: false,
+      };
+    }
+    if (spans.depthM > spans.alongM * 1.05) {
+      return {
+        value: 'y',
+        source: 'default_fallback',
+        ambiguous: false,
+        usedFallback: false,
+      };
+    }
+  }
+
+  return {
+    value: fallback,
+    source: 'default_fallback',
+    ambiguous: true,
+    usedFallback: true,
+  };
+}
+
 function validateSharedRoof(input: {
   footprint: Polygon3;
   roofForm: HouseRoofForm;
   roofPrimaryFallDirection: HouseRoofPrimaryFallDirection;
+  roofPrimaryFallDirectionExplicit: boolean;
+  preferredMonoFallDirection: HouseRoofPrimaryFallDirection | null;
   attachmentStrategy: CalculatorHouseAttachmentStrategy | null;
   attachmentRequiresDrainEdge: boolean;
   attachmentEdge: Line3 | null;
+  roofRidgeAxis: HouseRoofRidgeAxis;
+  roofRidgeAxisExplicit: boolean;
+  preferredRidgeAxis: HouseRoofRidgeAxis | null;
   appendage: {
     enabled: boolean;
     form: HouseRoofAppendageForm;
@@ -263,6 +394,13 @@ function validateSharedRoof(input: {
     roofForm: input.roofForm,
     footprint: input.footprint,
     appendageEnabled: input.appendage.enabled,
+    roofPrimaryFallDirection: input.roofPrimaryFallDirection,
+    roofPrimaryFallDirectionExplicit: input.roofPrimaryFallDirectionExplicit,
+    preferredMonoFallDirection: input.preferredMonoFallDirection,
+    enforcePreferredMonoFallDirection: input.attachmentRequiresDrainEdge,
+    roofRidgeAxis: input.roofRidgeAxis,
+    roofRidgeAxisExplicit: input.roofRidgeAxisExplicit,
+    preferredRidgeAxis: input.preferredRidgeAxis,
   });
   return {
     status: result.status,
@@ -1207,12 +1345,14 @@ function buildSharedHouse(
           depthM: String(point.depthM),
         }));
   const inferredPrimaryPitchDeg = roofPitchDeg;
-  const inferredPrimaryFallDirection = inferRoofPrimaryFallDirection(modules[0]!);
-  const inferredRidgeAxis = inferRoofRidgeAxis({
+  const derivedMonoFallDirection = resolveDerivedMonoFallDirection({
+    attachmentSide: normalizedAttachmentSide,
+  });
+  const derivedRidgeAxis = resolveDerivedRidgeAxis({
     footprintMode: normalizedFootprintMode,
     footprintPreset: normalizedFootprintPreset,
     footprintParams: normalizedFootprintParams,
-    footprintPolygon: normalizedFootprintPolygon,
+    footprintPolygon: derivedHousePolygon,
   });
   const normalizedRoofDraft = roofDraft ?? null;
   const explicitRoofForm = normalizedRoofDraft?.form ?? null;
@@ -1235,10 +1375,10 @@ function buildSharedHouse(
       : normalizedRoofMaterial;
   const sharedPrimaryFallDirection =
     explicitPrimaryFallDirection ??
-    inferredPrimaryFallDirection;
+    derivedMonoFallDirection.value;
   const sharedRidgeAxis =
     explicitRidgeAxis ??
-    inferredRidgeAxis;
+    derivedRidgeAxis.value;
   const roofProvenance: HouseRoofProvenance = {
     form: explicitRoofForm ? 'house_first_draft' : 'legacy_pergola_inference',
     material: explicitRoofMaterial ? 'house_first_draft' : roofMaterialResult.source,
@@ -1247,8 +1387,8 @@ function buildSharedHouse(
       : roofPitchResult.source,
     primaryFallDirection: explicitPrimaryFallDirection
       ? 'house_first_draft'
-      : 'legacy_pergola_inference',
-    ridgeAxis: explicitRidgeAxis ? 'house_first_draft' : 'legacy_pergola_inference',
+      : derivedMonoFallDirection.source,
+    ridgeAxis: explicitRidgeAxis ? 'house_first_draft' : derivedRidgeAxis.source,
     openGableEndIds: Array.isArray(explicitOpenGableEndIds) ? 'house_first_draft' : 'default_fallback',
     appendage: hasExplicitRoofAppendage(explicitAppendage) ? 'house_first_draft' : 'default_fallback',
   };
@@ -1291,6 +1431,11 @@ function buildSharedHouse(
     footprint: localPolygonToGeometryPolygon(derivedHousePolygon),
     roofForm: sharedRoofForm,
     roofPrimaryFallDirection: sharedPrimaryFallDirection,
+    roofPrimaryFallDirectionExplicit: explicitPrimaryFallDirection !== null,
+    preferredMonoFallDirection:
+      sharedRoofForm === 'mono'
+        ? derivedMonoFallDirection.value
+        : null,
     attachmentStrategy,
     attachmentRequiresDrainEdge:
       attachmentKind === 'soffit' || attachmentKind === 'fascia',
@@ -1303,6 +1448,12 @@ function buildSharedHouse(
             pergolaDepthMm: firstModuleProjectionMm,
             zMm: 0,
           }),
+    roofRidgeAxis: sharedRidgeAxis,
+    roofRidgeAxisExplicit: explicitRidgeAxis !== null,
+    preferredRidgeAxis:
+      sharedRoofForm === 'gable' || sharedRoofForm === 'hipped'
+        ? derivedRidgeAxis.value
+        : null,
     appendage: {
       enabled: appendage.enabled,
       form: appendage.form,
@@ -1319,18 +1470,19 @@ function buildSharedHouse(
   }
   if (
     sharedRoofForm === 'mono' &&
+    explicitPrimaryFallDirection === null &&
     roofProvenance.primaryFallDirection === 'legacy_pergola_inference'
   ) {
     approximationReasons.add('inferred_fall_direction');
   }
   const ridgeAxisRelevant = sharedRoofForm === 'gable' || sharedRoofForm === 'hipped';
-  if (ridgeAxisRelevant && roofProvenance.ridgeAxis === 'legacy_pergola_inference') {
+  if (ridgeAxisRelevant && explicitRidgeAxis === null && derivedRidgeAxis.usedFallback) {
     approximationReasons.add('inferred_ridge_axis');
   }
   if (
     ridgeAxisRelevant &&
-    roofProvenance.ridgeAxis !== 'house_first_draft' &&
-    hasAmbiguousRidgeAxisSelection(derivedHousePolygon)
+    explicitRidgeAxis === null &&
+    derivedRidgeAxis.ambiguous
   ) {
     approximationReasons.add('ambiguous_ridge_axis');
   }

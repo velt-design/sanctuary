@@ -40,6 +40,13 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
     if (!monoFixture) throw new Error('Missing mono-standard fixture.');
     const draft = buildEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
     if (!draft) throw new Error('Expected drawing draft.');
+    draft.inputs.modules[0]!.houseFootprintMode = 'custom_polygon';
+    draft.inputs.modules[0]!.houseFootprintPolygon = [
+      { alongM: '0', depthM: '0' },
+      { alongM: '5', depthM: '0' },
+      { alongM: '5', depthM: '8' },
+      { alongM: '0', depthM: '8' },
+    ];
     draft.houseFirst = {
       roof: {
         form: 'gable',
@@ -217,19 +224,47 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
 
     expect(projectModel.house?.roof.form).toBe('mono');
     expect(projectModel.house?.roof.validation.status).toBe('approximate');
-    expect(projectModel.house?.roof.validation.approximationReasons).toEqual([
-      'inferred_form',
-      'inferred_fall_direction',
-    ]);
+    expect(projectModel.house?.roof.validation.approximationReasons).toEqual(['inferred_form']);
+    expect(projectModel.house?.roof.primaryFallDirection).toBe('negative_y');
     expect(projectModel.house?.roof.provenance).toMatchObject({
       form: 'legacy_pergola_inference',
       material: 'legacy_shared_value',
       primaryPitchDeg: 'default_fallback',
-      primaryFallDirection: 'legacy_pergola_inference',
-      ridgeAxis: 'legacy_pergola_inference',
+      primaryFallDirection: 'default_fallback',
+      ridgeAxis: 'default_fallback',
       openGableEndIds: 'default_fallback',
       appendage: 'default_fallback',
     });
+  });
+
+  it('keeps coherent explicit mono fall directions valid and blocks incoherent drain-back directions', () => {
+    const monoFixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
+    if (!monoFixture) throw new Error('Missing mono-standard fixture.');
+    const draft = buildEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
+    if (!draft) throw new Error('Expected drawing draft.');
+
+    draft.houseFirst = {
+      roof: {
+        form: 'mono',
+        primaryFallDirection: 'negative_y',
+      },
+    };
+    const coherentProjectModel = buildHouseFirstWorkbenchProjectModel({
+      snapshot: monoFixture.snapshot,
+      draft,
+    });
+
+    expect(coherentProjectModel.house?.roof.validation.status).toBe('valid');
+    expect(coherentProjectModel.house?.roof.validation.code).toBeNull();
+
+    draft.houseFirst.roof!.primaryFallDirection = 'positive_y';
+    const incoherentProjectModel = buildHouseFirstWorkbenchProjectModel({
+      snapshot: monoFixture.snapshot,
+      draft,
+    });
+
+    expect(incoherentProjectModel.house?.roof.validation.status).toBe('invalid');
+    expect(incoherentProjectModel.house?.roof.validation.code).toBe('invalid_mono_fall_direction');
   });
 
   it('derives form-aware roof capabilities from the shared house footprint', () => {
@@ -276,6 +311,9 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
     expect(projectModel.house?.roof.capabilities.selectedFormSupported).toBe(true);
     expect(projectModel.house?.roof.validation.code).toBeNull();
     expect(projectModel.house?.roof.validation.message).toBeNull();
+    expect(projectModel.house?.roof.validation.status).toBe('valid');
+    expect(projectModel.house?.roof.ridgeAxis).toBe('x');
+    expect(projectModel.house?.roof.provenance?.ridgeAxis).toBe('default_fallback');
   });
 
   it('filters invalid saved open gable ends when the ridge orientation changes', () => {
@@ -283,6 +321,13 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
     if (!monoFixture) throw new Error('Missing mono-standard fixture.');
     const draft = buildEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
     if (!draft) throw new Error('Expected drawing draft.');
+    draft.inputs.modules[0]!.houseFootprintMode = 'custom_polygon';
+    draft.inputs.modules[0]!.houseFootprintPolygon = [
+      { alongM: '0', depthM: '0' },
+      { alongM: '5', depthM: '0' },
+      { alongM: '5', depthM: '8' },
+      { alongM: '0', depthM: '8' },
+    ];
     draft.houseFirst = {
       roof: {
         form: 'gable',
@@ -330,7 +375,28 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
       'inferred_ridge_axis',
       'ambiguous_ridge_axis',
     ]);
-    expect(projectModel.house?.roof.provenance?.ridgeAxis).toBe('legacy_pergola_inference');
+    expect(projectModel.house?.roof.provenance?.ridgeAxis).toBe('default_fallback');
+  });
+
+  it('blocks explicit ridge axes that do not match the current footprint span/topology', () => {
+    const monoFixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
+    if (!monoFixture) throw new Error('Missing mono-standard fixture.');
+    const draft = buildEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
+    if (!draft) throw new Error('Expected drawing draft.');
+    draft.houseFirst = {
+      roof: {
+        form: 'gable',
+        ridgeAxis: 'y',
+      },
+    };
+
+    const projectModel = buildHouseFirstWorkbenchProjectModel({
+      snapshot: monoFixture.snapshot,
+      draft,
+    });
+
+    expect(projectModel.house?.roof.validation.status).toBe('invalid');
+    expect(projectModel.house?.roof.validation.code).toBe('invalid_ridge_axis');
   });
 
   it('surfaces only the outer open-end options for U-shaped bent gables', () => {

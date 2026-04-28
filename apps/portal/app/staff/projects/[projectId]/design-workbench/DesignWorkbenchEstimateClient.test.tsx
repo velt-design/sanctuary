@@ -437,11 +437,10 @@ describe('DesignWorkbenchEstimateClient', () => {
     expect(readLabeledValue(rendered.container, 'Roof approximation reasons')).toContain(
       'Roof form inferred from legacy pergola data',
     );
-    expect(readLabeledValue(rendered.container, 'Roof approximation reasons')).toContain(
-      'Mono fall direction inferred from legacy pergola data',
-    );
     expect(readLabeledValue(rendered.container, 'Roof form source')).toBe('Legacy pergola inference');
     expect(readLabeledValue(rendered.container, 'Roof material source')).toBe('Legacy shared value');
+    expect(readLabeledValue(rendered.container, 'Roof fall source')).toBe('Default fallback');
+    expect(readLabeledValue(rendered.container, 'Roof ridge source')).toBe('Default fallback');
     expect(readLabeledValue(rendered.container, 'Roof appendage source')).toBe('Default fallback');
 
     rendered.unmount();
@@ -653,6 +652,46 @@ describe('DesignWorkbenchEstimateClient', () => {
 
     expect(rendered.container.textContent).toContain('Ready');
     expect(readLabeledValue(rendered.container, 'Roof reason code')).toBe('none');
+
+    rendered.unmount();
+  });
+
+  it('blocks explicit mono fall directions that drain back into the attachment side', async () => {
+    const estimate = buildEstimateDetail();
+    const rendered = renderIntoDocument(
+      <DesignWorkbenchEstimateClient estimate={estimate} projectName="Deck Build" siteAddress="1 Test Street" />,
+    );
+
+    await flushAsyncWork();
+    changeSelectByLabel(rendered.container, 'Mono fall direction', 'positive_y');
+    await flushAsyncWork();
+
+    expect(readLabeledValue(rendered.container, 'Roof status')).toBe('Blocked');
+    expect(readLabeledValue(rendered.container, 'Roof reason code')).toBe('invalid_mono_fall_direction');
+    expect(rendered.container.textContent).toContain(
+      'This mono fall direction drains back into the attachment side.',
+    );
+
+    rendered.unmount();
+  });
+
+  it('blocks explicit ridge orientations that do not match the current footprint span', async () => {
+    const estimate = buildEstimateDetail();
+    const rendered = renderIntoDocument(
+      <DesignWorkbenchEstimateClient estimate={estimate} projectName="Deck Build" siteAddress="1 Test Street" />,
+    );
+
+    await flushAsyncWork();
+    changeSelectByLabel(rendered.container, 'Roof form', 'gable');
+    await flushAsyncWork();
+    changeSelectByLabel(rendered.container, 'Gable ridge orientation', 'y');
+    await flushAsyncWork();
+
+    expect(readLabeledValue(rendered.container, 'Roof status')).toBe('Blocked');
+    expect(readLabeledValue(rendered.container, 'Roof reason code')).toBe('invalid_ridge_axis');
+    expect(rendered.container.textContent).toContain(
+      'This ridge orientation does not match the current house footprint.',
+    );
 
     rendered.unmount();
   });
