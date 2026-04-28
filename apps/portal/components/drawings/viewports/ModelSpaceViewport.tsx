@@ -3454,48 +3454,45 @@ export default function ModelSpaceViewport({
   useEffect(() => {
     if (deckDragPhase !== 'settling' || !deckDragSession || !deckDragSettleState) return;
 
-    const committedGeometryReady = deckDragSettleState.success ? Boolean(settledDeckShape) : true;
     let cancelled = false;
-    const handoffReady = committedGeometryReady;
-    let fallbackTimeoutId: number | null = null;
+    const settleDeadlineMs = deckDragSettleState.resolvedAtMs + DECK_SETTLE_MAX_WAIT_MS;
     let finalizeAnimationFrameId: number | null = null;
+    let finalizeTimeoutId: number | null = null;
     let stableFrameCount = 0;
-    let timedOut = false;
 
-    const finalizeWhenStable = () => {
+    const finalizeWhenReady = () => {
       finalizeAnimationFrameId = window.requestAnimationFrame(() => {
         if (cancelled) return;
         restoreDeckDragPinnedScrollTargets();
+        const committedGeometryReady = deckDragSettleState.success ? Boolean(settledDeckShape) : true;
         const drift = measureDeckDragViewportAnchorDrift();
-        if (isDeckDragViewportAnchorStable(drift)) {
+        if (committedGeometryReady && isDeckDragViewportAnchorStable(drift)) {
           stableFrameCount += 1;
         } else {
           stableFrameCount = 0;
         }
-        if (stableFrameCount >= 2 || timedOut) {
+        if (stableFrameCount >= 2) {
+          cancelled = true;
           finalizeDeckDragSettlement();
           return;
         }
-        finalizeWhenStable();
+        finalizeWhenReady();
       });
     };
 
-    if (handoffReady) {
-      finalizeWhenStable();
-    } else {
-      const elapsedMs = Date.now() - deckDragSettleState.resolvedAtMs;
-      const remainingMs = Math.max(0, DECK_SETTLE_MAX_WAIT_MS - elapsedMs);
-      fallbackTimeoutId = window.setTimeout(() => {
-        if (cancelled) return;
-        timedOut = true;
-        finalizeWhenStable();
-      }, remainingMs);
-    }
+    const remainingMs = Math.max(0, settleDeadlineMs - Date.now());
+    finalizeTimeoutId = window.setTimeout(() => {
+      if (cancelled) return;
+      cancelled = true;
+      restoreDeckDragPinnedScrollTargets();
+      finalizeDeckDragSettlement();
+    }, remainingMs);
+    finalizeWhenReady();
 
     return () => {
       cancelled = true;
-      if (fallbackTimeoutId !== null) {
-        window.clearTimeout(fallbackTimeoutId);
+      if (finalizeTimeoutId !== null) {
+        window.clearTimeout(finalizeTimeoutId);
       }
       if (finalizeAnimationFrameId !== null) {
         window.cancelAnimationFrame(finalizeAnimationFrameId);

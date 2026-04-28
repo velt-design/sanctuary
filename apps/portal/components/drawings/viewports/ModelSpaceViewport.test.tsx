@@ -4398,6 +4398,89 @@ describe('ModelSpaceViewport', () => {
     });
   });
 
+  it('releases the deck settle lock on deadline when viewport drift never stabilizes after a successful commit', async () => {
+    const deck = makeHouseFirstDeck({
+      isAttached: false,
+      presetType: 'rect_detached',
+      presetRect: {
+        widthM: '4',
+        depthM: '3',
+        centerOffsetM: '0',
+        detachedGapM: '0.6',
+      },
+    });
+    const baseHouse = makeHouseFirstHouse();
+    const resolvedDeck = resolveDeckPresetGeometry({
+      deck: deck as any,
+      housePolygon: baseHouse.footprint.polygon,
+    });
+    const rendered = renderIntoDocument(
+      <HouseFirstViewportHarness
+        initialSelection={{ kind: 'deck', targetId: 'deck-1' }}
+        initialHouse={makeHouseFirstHouse({
+          decks: [
+            {
+              ...deck,
+              hostEdgeId: resolvedDeck.hostEdgeId,
+              floatingRect: resolvedDeck.floatingRect,
+              presetRect: resolvedDeck.presetRect,
+              outline: resolvedDeck.outline,
+            },
+          ],
+        })}
+        enablePlanEditing={false}
+        delayDeckCommit
+        wrapInScrollableAncestor
+      />,
+    );
+
+    const svg = rendered.container.querySelector('svg[aria-label="Module plan view"]') as SVGSVGElement | null;
+    const deckHit = rendered.container.querySelector('[data-house-first-shape-hit="deck:deck-1"]');
+    if (!svg || !deckHit) throw new Error('Missing plan viewport nodes.');
+    installProjectedSvgPointMock(svg);
+    const { getScrollTop, scroller } = installScrollableAncestorMock(rendered.container);
+
+    dispatchPointer(deckHit, 'pointerdown', { pointerId: 141, button: 0, clientX: 50, clientY: 50 });
+    dispatchPointer(window, 'pointermove', { pointerId: 141, button: 0, buttons: 1, clientX: 50, clientY: -4000 });
+    dispatchPointer(window, 'pointerup', { pointerId: 141, button: 0, clientX: 50, clientY: -4000 });
+
+    const flushButton = rendered.container.querySelector('[data-testid="flush-deck-commit"]');
+    if (!(flushButton instanceof HTMLButtonElement)) throw new Error('Missing flush deck commit button.');
+
+    let driftReadCount = 0;
+    Object.defineProperty(scroller, 'getBoundingClientRect', {
+      configurable: true,
+      value: () => {
+        driftReadCount += 1;
+        return makeRect(16, 40 - getScrollTop() + driftReadCount * 0.75, 560, 240);
+      },
+    });
+
+    await act(async () => {
+      flushButton.click();
+      await Promise.resolve();
+    });
+
+    expect(getDrawOutlineDiagnostics(rendered.container).houseFirstDeckDragLocked).toBe('true');
+    expect(rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]')).not.toBeNull();
+
+    await flushAnimationFrame();
+    expect(getDrawOutlineDiagnostics(rendered.container).houseFirstDeckDragLocked).toBe('true');
+    expect(rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]')).not.toBeNull();
+
+    await act(async () => {
+      await new Promise<void>((resolve) => {
+        window.setTimeout(() => resolve(), 560);
+      });
+    });
+    await flushAnimationFrame();
+
+    expect(getDrawOutlineDiagnostics(rendered.container).houseFirstDeckDragLocked).toBe('false');
+    expect(rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]')).toBeNull();
+
+    rendered.unmount();
+  });
+
   it('allows an immediate second deck drag right after the first release settles visually', async () => {
     const deck = makeHouseFirstDeck({
       isAttached: false,
