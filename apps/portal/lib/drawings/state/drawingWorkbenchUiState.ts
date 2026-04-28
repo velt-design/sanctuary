@@ -51,6 +51,24 @@ export type DrawingWorkbenchUiState = {
   visibility: DrawingWorkbenchVisibilityState;
 };
 
+export type DrawingWorkbenchCanonicalSelectionState = Pick<
+  DrawingWorkbenchUiState,
+  'activeRailTab' | 'activeObjectFamily' | 'activeObjectRef' | 'workbenchMode' | 'activeHouseSelection' | 'activePergolaId'
+>;
+
+export type DrawingWorkbenchCanonicalSelectionInput = {
+  activeRailTab: DrawingWorkbenchRailTab;
+  activeObjectFamily?: WorkbenchObjectFamily | null | undefined;
+  activeObjectRef?: WorkbenchObjectRef | null | undefined;
+  activeHouseSelection?: WorkbenchHouseSelection | null | undefined;
+  activePergolaId?: string | null | undefined;
+};
+
+type DrawingWorkbenchCanonicalCompatInput = Pick<
+  DrawingWorkbenchUiState,
+  'activeRailTab' | 'activeObjectFamily' | 'activeObjectRef' | 'activeHouseSelection' | 'activePergolaId'
+>;
+
 export function createDrawingWorkbenchUiState(
   overrides: Partial<DrawingWorkbenchUiState> = {},
 ): DrawingWorkbenchUiState {
@@ -139,6 +157,14 @@ function normalizeActivePergolaId(
   return pergolaIds[0] ?? null;
 }
 
+function deriveWorkbenchModeFromCanonicalSelection(
+  selection: Pick<DrawingWorkbenchCanonicalSelectionState, 'activeRailTab' | 'activeObjectFamily'>,
+): WorkbenchMode {
+  return selection.activeRailTab === 'pergolas' || selection.activeObjectFamily === 'pergolas'
+    ? 'pergolas'
+    : 'house';
+}
+
 function getObjectIdsForFamily(
   family: WorkbenchObjectFamily,
   input: {
@@ -175,6 +201,95 @@ function normalizeActiveObjectRef(
   return {
     family,
     objectId: objectId && getObjectIdsForFamily(family, input).includes(objectId) ? objectId : null,
+  };
+}
+
+export function buildDrawingWorkbenchCanonicalSelectionState(
+  input: DrawingWorkbenchCanonicalSelectionInput,
+): DrawingWorkbenchCanonicalSelectionState {
+  const activeRailTab =
+    input.activeRailTab === 'diagnostics'
+      ? 'diagnostics'
+      : normalizeActiveObjectFamily(input.activeRailTab);
+  const activeObjectFamily =
+    activeRailTab === 'diagnostics'
+      ? normalizeActiveObjectFamily(input.activeObjectFamily ?? input.activeObjectRef?.family ?? 'house_forms')
+      : activeRailTab;
+  const explicitObjectId =
+    input.activeObjectRef?.family === activeObjectFamily ? input.activeObjectRef.objectId ?? null : null;
+  const inferredObjectId =
+    activeObjectFamily === 'pergolas'
+      ? input.activePergolaId ?? null
+      : activeObjectFamily === 'decks' && input.activeHouseSelection?.kind === 'deck'
+        ? input.activeHouseSelection.targetId ?? null
+        : activeObjectFamily === 'openings' && input.activeHouseSelection?.kind === 'opening'
+          ? input.activeHouseSelection.targetId ?? null
+          : null;
+  const objectId = explicitObjectId ?? inferredObjectId;
+  const activeObjectRef: WorkbenchObjectRef = {
+    family: activeObjectFamily,
+    objectId: objectId ?? null,
+  };
+  return {
+    activeRailTab,
+    activeObjectFamily,
+    activeObjectRef,
+    ...deriveDrawingWorkbenchCompatibilityState({
+      activeRailTab,
+      activeObjectFamily,
+      activeObjectRef,
+      activeHouseSelection: input.activeHouseSelection ?? { kind: 'house', targetId: null },
+      activePergolaId: input.activePergolaId ?? null,
+    }),
+  };
+}
+
+export function deriveDrawingWorkbenchCompatibilityState(
+  input: DrawingWorkbenchCanonicalCompatInput,
+): Pick<DrawingWorkbenchCanonicalSelectionState, 'workbenchMode' | 'activeHouseSelection' | 'activePergolaId'> {
+  const deckObjectId =
+    input.activeObjectRef.family === 'decks'
+      ? input.activeObjectRef.objectId ?? null
+      : input.activeHouseSelection.kind === 'deck'
+        ? input.activeHouseSelection.targetId ?? null
+        : null;
+  const openingObjectId =
+    input.activeObjectRef.family === 'openings'
+      ? input.activeObjectRef.objectId ?? null
+      : input.activeHouseSelection.kind === 'opening'
+        ? input.activeHouseSelection.targetId ?? null
+        : null;
+  const activeHouseSelection =
+    input.activeObjectFamily === 'pergolas'
+      ? { kind: 'house' as const, targetId: null }
+      : input.activeObjectFamily === 'decks'
+        ? deckObjectId
+          ? { kind: 'deck' as const, targetId: deckObjectId }
+          : { kind: 'house' as const, targetId: null }
+        : input.activeObjectFamily === 'openings'
+          ? openingObjectId
+            ? { kind: 'opening' as const, targetId: openingObjectId }
+            : { kind: 'house' as const, targetId: null }
+          : normalizeActiveHouseSelection(input.activeHouseSelection);
+  const workbenchMode = deriveWorkbenchModeFromCanonicalSelection({
+    activeRailTab: input.activeRailTab,
+    activeObjectFamily: input.activeObjectFamily,
+  });
+
+  return {
+    workbenchMode,
+    activeHouseSelection:
+      input.activeObjectFamily === 'house_forms'
+        ? activeHouseSelection.kind === 'deck' || activeHouseSelection.kind === 'opening'
+          ? { kind: 'house', targetId: null }
+          : activeHouseSelection
+        : activeHouseSelection,
+    activePergolaId:
+      input.activeObjectFamily === 'pergolas'
+        ? input.activeObjectRef.family === 'pergolas'
+          ? input.activeObjectRef.objectId ?? input.activePergolaId ?? null
+          : input.activePergolaId ?? null
+        : null,
   };
 }
 
@@ -271,10 +386,7 @@ export function normalizeDrawingWorkbenchUiState(
 ): DrawingWorkbenchUiState {
   const workbenchMode = normalizeWorkbenchMode(state.workbenchMode);
   const activeHouseSelection = normalizeActiveHouseSelection(state.activeHouseSelection);
-  const normalizedPergolaId =
-    workbenchMode === 'house'
-      ? null
-      : normalizeActivePergolaId(state.activePergolaId, input.pergolaIds ?? []);
+  const normalizedPergolaId = normalizeActivePergolaId(state.activePergolaId, input.pergolaIds ?? []);
   const canonicalSelection = shouldDeriveCanonicalSelectionFromLegacy(state)
     ? deriveCanonicalSelectionFromLegacy({
         ...state,
@@ -283,19 +395,14 @@ export function normalizeDrawingWorkbenchUiState(
         activePergolaId: normalizedPergolaId,
       })
     : null;
-  const activeObjectFamily = normalizeActiveObjectFamily(
-    canonicalSelection?.activeObjectFamily ?? state.activeObjectFamily,
-  );
-  const activeObjectRef = normalizeActiveObjectRef(
-    canonicalSelection?.activeObjectRef ?? state.activeObjectRef,
-    input,
-  );
+  const activeObjectFamily = normalizeActiveObjectFamily(canonicalSelection?.activeObjectFamily ?? state.activeObjectFamily);
+  const activeObjectRef = normalizeActiveObjectRef(canonicalSelection?.activeObjectRef ?? state.activeObjectRef, input);
   const activeRailTab = normalizeActiveRailTab(
     canonicalSelection ? canonicalSelection.activeObjectFamily : state.activeRailTab,
     activeObjectFamily,
     workbenchMode,
   );
-  const normalizedHouseSelection: WorkbenchHouseSelection =
+  const normalizedLegacyHouseSelection: WorkbenchHouseSelection =
     activeHouseSelection.kind === 'deck' &&
     activeHouseSelection.targetId &&
     !(input.deckIds ?? []).includes(activeHouseSelection.targetId)
@@ -305,16 +412,19 @@ export function normalizeDrawingWorkbenchUiState(
           !(input.openingIds ?? []).includes(activeHouseSelection.targetId)
         ? { kind: 'house', targetId: null }
         : activeHouseSelection;
+  const normalizedCompatibility = deriveDrawingWorkbenchCompatibilityState({
+    activeRailTab,
+    activeObjectFamily,
+    activeObjectRef,
+    activeHouseSelection: normalizedLegacyHouseSelection,
+    activePergolaId: normalizedPergolaId,
+  });
   return {
     ...state,
-    workbenchMode,
+    workbenchMode: normalizedCompatibility.workbenchMode,
     activeModuleIndex: clampDrawingWorkbenchModuleIndex(state.activeModuleIndex, input.moduleCount),
-    activeHouseSelection:
-      workbenchMode === 'pergolas'
-        ? { kind: 'house', targetId: null }
-        : normalizedHouseSelection,
-    activePergolaId:
-      normalizedPergolaId,
+    activeHouseSelection: normalizedCompatibility.activeHouseSelection,
+    activePergolaId: normalizedCompatibility.activePergolaId,
     activeRailTab,
     activeObjectFamily,
     activeObjectRef,

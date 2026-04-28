@@ -17,6 +17,7 @@ import {
 import { buildWorkbenchGeometryPreview } from '@/lib/drawings/geometry/buildWorkbenchGeometryPreview';
 import { buildDrawingWorkbenchStore } from '@/lib/drawings/state/drawingWorkbenchStore';
 import {
+  buildDrawingWorkbenchCanonicalSelectionState,
   createDrawingWorkbenchUiState,
   type DrawingWorkbenchRailTab,
   type DrawingWorkbenchViewportTransform,
@@ -232,9 +233,13 @@ export default function DesignWorkbenchEstimateClient({
       store.ui.activeView,
     ],
   );
+  const activeSelectionFamily =
+    store.ui.activeRailTab === 'diagnostics' ? store.ui.activeObjectFamily : store.ui.activeRailTab;
+  const canonicalWorkbenchDisplayMode = activeSelectionFamily === 'pergolas' ? 'pergolas' : 'house';
+  const isPergolaTabActive = store.ui.activeRailTab === 'pergolas';
   const drawingEditableFields = useMemo(
     () =>
-      !drawingDraft || isLocked || !supportsSanctuaryEditing || store.ui.workbenchMode !== 'pergolas'
+      !drawingDraft || isLocked || !supportsSanctuaryEditing || !isPergolaTabActive
         ? []
         : deriveEstimateDrawingEditableFields({
             draft: drawingDraft,
@@ -253,7 +258,7 @@ export default function DesignWorkbenchEstimateClient({
       store.derived.activeSectionModel,
       store.ui.activeView,
       supportsSanctuaryEditing,
-      store.ui.workbenchMode,
+      isPergolaTabActive,
     ],
   );
   const geometryPreview = useMemo(
@@ -298,8 +303,8 @@ export default function DesignWorkbenchEstimateClient({
       ).length,
     [store.derived.pergolas],
   );
-  const modelViewportSurfaceKey = `${store.ui.workbenchMode}:${store.derived.activeModuleIndex}:${store.ui.activeView}`;
-  const geometryViewportSurfaceKey = `${store.ui.workbenchMode}:${store.derived.activeModuleIndex}`;
+  const modelViewportSurfaceKey = `${canonicalWorkbenchDisplayMode}:${store.derived.activeModuleIndex}:${store.ui.activeView}`;
+  const geometryViewportSurfaceKey = `${canonicalWorkbenchDisplayMode}:${store.derived.activeModuleIndex}`;
   const activeModelViewportTransform =
     modelViewportTransformsByKey[modelViewportSurfaceKey] ?? DEFAULT_MODEL_VIEWPORT_TRANSFORM;
   const activeGeometryViewportState =
@@ -361,14 +366,14 @@ export default function DesignWorkbenchEstimateClient({
   });
 
   const workbenchFieldCommit =
-    !isLocked && supportsSanctuaryEditing && store.ui.workbenchMode === 'pergolas'
+    !isLocked && supportsSanctuaryEditing && isPergolaTabActive
       ? houseActions.commitDrawingField
       : undefined;
   const workbenchFootprintCommit =
-    !isLocked && store.ui.workbenchMode === 'house' && store.ui.viewportMode === 'model'
+    !isLocked && canonicalWorkbenchDisplayMode === 'house' && store.ui.viewportMode === 'model'
       ? houseActions.commitSharedHouseFootprintEdit
       : undefined;
-  const pergolaFallbackRail =
+  const embeddedPergolaEditor =
     supportsSanctuaryEditing && activeModuleInput ? (
       <SanctuaryWorkbenchRail
         moduleLabel={store.derived.activeModuleLabel}
@@ -383,7 +388,7 @@ export default function DesignWorkbenchEstimateClient({
       <section className={styles.notice}>
         <p className={styles.noticeTitle}>Editing Deferred</p>
         <p className={styles.noticeText}>
-          This module is not supported for Sanctuary editing yet. The hidden route stays open so the design can still be reviewed here.
+          This module is not supported for Sanctuary editing yet in the embedded pergola editor, but it can still be reviewed in the canonical workbench.
         </p>
       </section>
     );
@@ -415,17 +420,19 @@ export default function DesignWorkbenchEstimateClient({
                 const nextIndex = Number(event.target.value);
                 const nextModule = store.persisted.modules[nextIndex];
                 const nextPergolaId = nextModule?.drawingModule.input.pergolaId ?? current.activePergolaId;
+                const nextPergolaSelection = buildDrawingWorkbenchCanonicalSelectionState({
+                  activeRailTab: current.activeRailTab,
+                  activeObjectFamily: current.activeObjectFamily,
+                  activeObjectRef: { family: 'pergolas', objectId: nextPergolaId },
+                  activeHouseSelection: current.activeHouseSelection,
+                  activePergolaId: nextPergolaId,
+                });
                 return {
                   ...current,
-                  workbenchMode: 'pergolas',
-                  activeRailTab: 'pergolas',
                   activeModuleIndex: nextIndex,
-                  activePergolaId: nextPergolaId,
-                  activeObjectFamily: 'pergolas',
-                  activeObjectRef: {
-                    family: 'pergolas',
-                    objectId: nextPergolaId,
-                  },
+                  ...(current.activeObjectFamily === 'pergolas' || current.activeRailTab === 'pergolas'
+                    ? nextPergolaSelection
+                    : {}),
                 };
               })
             }
@@ -438,7 +445,7 @@ export default function DesignWorkbenchEstimateClient({
           </select>
         </section>
       ) : null}
-      {pergolaFallbackRail}
+      {embeddedPergolaEditor}
     </>
   );
   const diagnosticsPanel = (
@@ -446,7 +453,15 @@ export default function DesignWorkbenchEstimateClient({
       <p className={styles.moduleSectionTitle}>Migration diagnostics</p>
       <div className={styles.diagnosticsList}>
         <div className={styles.diagnosticRow}>
-          <span className={styles.diagnosticLabel}>Mode</span>
+          <span className={styles.diagnosticLabel}>Canonical tab</span>
+          <span className={styles.diagnosticValue}>{store.ui.activeRailTab}</span>
+        </div>
+        <div className={styles.diagnosticRow}>
+          <span className={styles.diagnosticLabel}>Selection family</span>
+          <span className={styles.diagnosticValue}>{store.ui.activeObjectFamily}</span>
+        </div>
+        <div className={styles.diagnosticRow}>
+          <span className={styles.diagnosticLabel}>Compatibility mode</span>
           <span className={styles.diagnosticValue}>{store.ui.workbenchMode}</span>
         </div>
         <div className={styles.diagnosticRow}>
@@ -890,18 +905,18 @@ export default function DesignWorkbenchEstimateClient({
             setUi((current) => ({
               ...current,
               activeModuleIndex: index,
-              activePergolaId:
-                current.activeRailTab === 'pergolas' || current.workbenchMode === 'pergolas'
-                  ? store.persisted.modules[index]?.drawingModule.input.pergolaId ?? current.activePergolaId
-                  : current.activePergolaId,
-              ...(current.activeRailTab === 'pergolas'
-                ? {
-                    activeObjectFamily: 'pergolas' as const,
+              ...(current.activeObjectFamily === 'pergolas'
+                ? buildDrawingWorkbenchCanonicalSelectionState({
+                    activeRailTab: current.activeRailTab,
+                    activeObjectFamily: current.activeObjectFamily,
                     activeObjectRef: {
-                      family: 'pergolas' as const,
+                      family: 'pergolas',
                       objectId: store.persisted.modules[index]?.drawingModule.input.pergolaId ?? current.activePergolaId,
                     },
-                  }
+                    activeHouseSelection: current.activeHouseSelection,
+                    activePergolaId:
+                      store.persisted.modules[index]?.drawingModule.input.pergolaId ?? current.activePergolaId,
+                  })
                 : {}),
             }))
           }
@@ -913,7 +928,7 @@ export default function DesignWorkbenchEstimateClient({
             }))
           }
           viewportMode={store.ui.viewportMode}
-          workbenchDisplayMode={store.ui.workbenchMode}
+          workbenchDisplayMode={canonicalWorkbenchDisplayMode}
           visibility={store.ui.visibility}
           availableViewportModes={['sheet', 'model', 'geometry3d']}
           onViewportModeChange={(viewportMode) =>
@@ -943,7 +958,7 @@ export default function DesignWorkbenchEstimateClient({
           onGeometryViewportStateChange={handleGeometryViewportStateChange}
           meta={meta}
           backHref={backHref}
-          modelEditableFields={store.ui.workbenchMode === 'pergolas' ? drawingEditableFields : []}
+          modelEditableFields={isPergolaTabActive ? drawingEditableFields : []}
           onCommitModelField={workbenchFieldCommit}
           onCommitFootprintEdit={workbenchFootprintCommit}
           onCommitCustomPolygon={!isLocked ? houseActions.commitSharedDeckCustomPolygon : undefined}

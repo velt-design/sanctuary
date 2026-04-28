@@ -207,7 +207,7 @@ export function buildDrawingWorkbenchStore(input: {
         canEditHouseFootprint: assemblyModel.capabilities.canEditHouseFootprint,
         house: projectModel.house,
         activeHouseSelection: ui.activeHouseSelection,
-        includeHouseFirstOverlay: ui.workbenchMode === 'house',
+        includeHouseFirstOverlay: ui.activeRailTab !== 'pergolas',
         moduleLengthM: geometryModule.lengthM,
         moduleProjectionM: geometryModule.projectionM,
       }),
@@ -228,12 +228,12 @@ export function buildDrawingWorkbenchStore(input: {
   const decks = projectModel.house?.decks ?? [];
   const openings = projectModel.house?.openings ?? [];
   const activeDeck =
-    ui.workbenchMode === 'house' && ui.activeHouseSelection.kind === 'deck'
-      ? decks.find((deck) => deck.id === ui.activeHouseSelection.targetId) ?? null
+    ui.activeObjectFamily === 'decks'
+      ? decks.find((deck) => deck.id === ui.activeObjectRef.objectId) ?? null
       : null;
   const activeOpening =
-    ui.workbenchMode === 'house' && ui.activeHouseSelection.kind === 'opening'
-      ? openings.find((opening) => opening.id === ui.activeHouseSelection.targetId) ?? null
+    ui.activeObjectFamily === 'openings'
+      ? openings.find((opening) => opening.id === ui.activeObjectRef.objectId) ?? null
       : null;
   const deckSupportWarningCount = decks.reduce(
     (sum, deck) => sum + deck.supportContext.warningCodes.length,

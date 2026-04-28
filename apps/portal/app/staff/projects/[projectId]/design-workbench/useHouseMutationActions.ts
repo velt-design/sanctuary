@@ -7,6 +7,9 @@ import {
   type GeometryEditIntent,
 } from '@/lib/drawings/geometry/geometryEditAdapter';
 import { buildDrawingWorkbenchStore } from '@/lib/drawings/state/drawingWorkbenchStore';
+import {
+  buildDrawingWorkbenchCanonicalSelectionState,
+} from '@/lib/drawings/state/drawingWorkbenchUiState';
 import type { DrawingWorkbenchUiState } from '@/lib/drawings/state/drawingWorkbenchUiState';
 import type {
   HouseFirstDeckDraft,
@@ -378,8 +381,20 @@ export function useHouseMutationActions({
     (selection: DrawingWorkbenchUiState['activeHouseSelection']) => {
       setUi((current) => ({
         ...current,
-        workbenchMode: 'house',
-        activeHouseSelection: selection,
+        ...buildDrawingWorkbenchCanonicalSelectionState({
+          activeRailTab:
+            selection.kind === 'deck' ? 'decks' : selection.kind === 'opening' ? 'openings' : 'house_forms',
+          activeObjectRef: {
+            family:
+              selection.kind === 'deck'
+                ? 'decks'
+                : selection.kind === 'opening'
+                  ? 'openings'
+                  : 'house_forms',
+            objectId: selection.kind === 'deck' || selection.kind === 'opening' ? selection.targetId ?? null : null,
+          },
+          activeHouseSelection: selection,
+        }),
       }));
     },
     [setUi],
@@ -389,10 +404,23 @@ export function useHouseMutationActions({
     (kind: DrawingWorkbenchUiState['activeHouseSelection']['kind'], targetId: string) => {
       setUi((current) => ({
         ...current,
-        activeHouseSelection:
-          current.activeHouseSelection.kind === kind && current.activeHouseSelection.targetId === targetId
-            ? { kind: 'house', targetId: null }
-            : current.activeHouseSelection,
+        ...(current.activeHouseSelection.kind === kind && current.activeHouseSelection.targetId === targetId
+          ? buildDrawingWorkbenchCanonicalSelectionState({
+              activeRailTab: current.activeRailTab,
+              activeObjectFamily: current.activeObjectFamily,
+              activeObjectRef: {
+                family: current.activeObjectFamily,
+                objectId: null,
+              },
+              activeHouseSelection:
+                current.activeObjectFamily === 'house_forms'
+                  ? { kind: 'house', targetId: null }
+                  : current.activeHouseSelection,
+              activePergolaId: current.activePergolaId,
+            })
+          : {
+              activeHouseSelection: current.activeHouseSelection,
+            }),
       }));
     },
     [setUi],
