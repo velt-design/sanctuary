@@ -817,11 +817,11 @@ describe('DesignWorkbenchEstimateClient', () => {
     clickButtonByText(rendered.container, 'Model Space');
     await flushAsyncWork();
 
-    expect(readLabeledValue(rendered.container, 'Model-space house polygon')).toBe('preset_derived');
-    expect(readLabeledValue(rendered.container, 'Model-space deck type')).toBe('preset_snapped');
-    expect(readLabeledValue(rendered.container, 'Model-space drag eligible')).toBe('Yes');
-    expect(readLabeledValue(rendered.container, 'Model-space relationship dims')).toBe('Yes');
-    expect(readLabeledValue(rendered.container, 'Model-space snap state')).toBe('idle');
+    expect(readLabeledValue(rendered.container, 'Model-space house polygon')).toBeNull();
+    expect(readLabeledValue(rendered.container, 'Model-space deck type')).toBeNull();
+    expect(readLabeledValue(rendered.container, 'Model-space drag eligible')).toBeNull();
+    expect(readLabeledValue(rendered.container, 'Model-space relationship dims')).toBeNull();
+    expect(readLabeledValue(rendered.container, 'Model-space snap state')).toBeNull();
 
     clickButtonByText(rendered.container, 'Add deck');
     await flushAsyncWork();
@@ -848,6 +848,36 @@ describe('DesignWorkbenchEstimateClient', () => {
     expect(getLocalFirstWorkingCopy<any>(entityKey)?.data.houseFirst?.decks?.map((deck: any) => deck.id)).toEqual(['deck-2']);
     expect(readLabeledValue(rendered.container, 'Deck count')).toBe('1');
     expect(readLabeledValue(rendered.container, 'Selected deck id')).toBe('none');
+    rendered.unmount();
+  });
+
+  it('keeps real workbench deck dragging local to the viewport without duplicate model-space diagnostics', async () => {
+    const estimate = buildEstimateDetail();
+
+    const rendered = renderIntoDocument(
+      <DesignWorkbenchEstimateClient estimate={estimate} projectName="Deck Build" siteAddress="1 Test Street" />,
+    );
+
+    await flushAsyncWork();
+    clickButtonByText(rendered.container, 'Add deck');
+    await flushAsyncWork();
+    clickButtonByText(rendered.container, 'Model Space');
+    await flushAsyncWork();
+
+    expect(readLabeledValue(rendered.container, 'Model-space snap state')).toBeNull();
+
+    const deckShape = rendered.container.querySelector('[data-house-first-shape-hit="deck:deck-1"]');
+    if (!(deckShape instanceof Element)) throw new Error('Missing model-space deck shape.');
+
+    dispatchPointer(deckShape, 'pointerdown', { pointerId: 91, button: 0, clientX: 50, clientY: 50 });
+    dispatchPointer(window, 'pointermove', { pointerId: 91, button: 0, buttons: 1, clientX: -120, clientY: 50 });
+    dispatchPointer(window, 'pointermove', { pointerId: 91, button: 0, buttons: 1, clientX: -220, clientY: 50 });
+
+    expect(rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]')).not.toBeNull();
+
+    dispatchPointer(window, 'pointerup', { pointerId: 91, button: 0, clientX: -220, clientY: 50 });
+    await flushAsyncWork();
+
     rendered.unmount();
   });
 

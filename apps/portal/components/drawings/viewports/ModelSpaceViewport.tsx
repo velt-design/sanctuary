@@ -3519,6 +3519,12 @@ export default function ModelSpaceViewport({
   ]);
 
   useEffect(() => {
+    if (!onDeckInteractionTelemetryChange) {
+      return;
+    }
+    if (deckDragLocked) {
+      return;
+    }
     const telemetry = {
       selectedDeckId: selectedDeckShape?.ownerId ?? null,
       housePolygonSource: houseFirstPlanOverlay?.housePolygonSource ?? null,
@@ -3554,8 +3560,9 @@ export default function ModelSpaceViewport({
       return;
     }
     lastDeckTelemetrySignatureRef.current = signature;
-    onDeckInteractionTelemetryChange?.(telemetry);
+    onDeckInteractionTelemetryChange(telemetry);
   }, [
+    deckDragLocked,
     deckPreviewState,
     houseFirstPlanOverlay?.housePolygonSource,
     onDeckInteractionTelemetryChange,

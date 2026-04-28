@@ -10,6 +10,7 @@ import { createDrawingWorkbenchUiState } from '@/lib/drawings/state/drawingWorkb
 import { buildAssemblyModel } from '@/lib/drawings/assembly/buildAssemblyModel';
 import { buildPlanViewModel } from '@/lib/drawings/views/plan/buildPlanViewModel';
 import { resolveDeckPresetGeometry } from '@/lib/drawings/state/houseFirstDeckPresets';
+import type { DeckInteractionTelemetry } from '@/app/staff/projects/[projectId]/design-workbench/houseWorkbenchClientTypes';
 import type {
   DeckModel,
   HouseModel,
@@ -443,6 +444,7 @@ type HouseFirstViewportHarnessProps = {
   enablePlanEditing?: boolean;
   delayDeckCommit?: boolean;
   wrapInScrollableAncestor?: boolean;
+  onDeckInteractionTelemetryChange?: (telemetry: DeckInteractionTelemetry) => void;
 };
 
 function HouseFirstViewportHarness({
@@ -452,6 +454,7 @@ function HouseFirstViewportHarness({
   enablePlanEditing = true,
   delayDeckCommit = false,
   wrapInScrollableAncestor = false,
+  onDeckInteractionTelemetryChange,
 }: HouseFirstViewportHarnessProps) {
   const drawing = makeDrawingModule();
   const [house, setHouse] = useState(initialHouse);
@@ -611,6 +614,7 @@ function HouseFirstViewportHarness({
           snapState: telemetry.snapState,
           snapMessage: telemetry.snapMessage,
         });
+        onDeckInteractionTelemetryChange?.(telemetry);
       }}
     />
   );
@@ -3713,7 +3717,6 @@ describe('ModelSpaceViewport', () => {
 
     expect(scroller.dataset.houseFirstDeckDragActive).toBe('true');
     expect(scroller.dataset.houseFirstDeckSnapState).toBe('snapped');
-    expect(rendered.container.querySelector('[data-testid="deck-telemetry-snap"]')?.textContent).toBe('snapped');
     expect(rendered.container.querySelector('[aria-label="Deck interaction hint"]')).toBeNull();
     expect(rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]')).not.toBeNull();
     expect(rendered.container.querySelector('[data-house-first-snap-target="snapped"]')).not.toBeNull();
@@ -3774,7 +3777,6 @@ describe('ModelSpaceViewport', () => {
 
     expect(scroller.dataset.houseFirstDeckDragActive).toBe('true');
     expect(scroller.dataset.houseFirstDeckSnapState).toBe('floating');
-    expect(rendered.container.querySelector('[data-testid="deck-telemetry-snap"]')?.textContent).toBe('floating');
     expect(rendered.container.querySelector('[aria-label="Deck interaction hint"]')).toBeNull();
 
     dispatchPointer(window, 'pointerup', { pointerId: 21, button: 0, clientX: -5000, clientY: -5000 });
@@ -3791,6 +3793,66 @@ describe('ModelSpaceViewport', () => {
     expect(rendered.container.querySelector('[data-testid="deck-floating-center-along"]')?.textContent).not.toBe('');
     expect(rendered.container.querySelector('[data-testid="deck-floating-center-depth"]')?.textContent).not.toBe('');
     expect(rendered.container.querySelector('[aria-label="Deck interaction hint"]')).toBeNull();
+
+    rendered.unmount();
+  });
+
+  it('does not emit per-move external deck telemetry while dragging', async () => {
+    const telemetrySpy = vi.fn();
+    const deck = makeHouseFirstDeck();
+    const baseHouse = makeHouseFirstHouse();
+    const resolvedDeck = resolveDeckPresetGeometry({
+      deck: deck as any,
+      housePolygon: baseHouse.footprint.polygon,
+    });
+    const rendered = renderIntoDocument(
+      <HouseFirstViewportHarness
+        initialSelection={{ kind: 'deck', targetId: 'deck-1' }}
+        initialHouse={makeHouseFirstHouse({
+          decks: [
+            {
+              ...deck,
+              hostEdgeId: resolvedDeck.hostEdgeId,
+              floatingRect: resolvedDeck.floatingRect,
+              presetRect: resolvedDeck.presetRect,
+              outline: resolvedDeck.outline,
+            },
+          ],
+        })}
+        onDeckInteractionTelemetryChange={telemetrySpy}
+      />,
+    );
+
+    const svg = rendered.container.querySelector('svg[aria-label="Module plan view"]') as SVGSVGElement | null;
+    const deckHit = rendered.container.querySelector('[data-house-first-shape-hit="deck:deck-1"]');
+    const scroller = rendered.container.querySelector('[data-model-space-scroller]') as HTMLElement | null;
+    if (!svg || !deckHit || !scroller) throw new Error('Missing plan viewport nodes.');
+    installSvgPointMock(svg);
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+    const telemetryCallsBeforeDrag = telemetrySpy.mock.calls.length;
+
+    dispatchPointer(deckHit, 'pointerdown', { pointerId: 24, button: 0, clientX: 50, clientY: 50 });
+    dispatchPointer(window, 'pointermove', { pointerId: 24, button: 0, buttons: 1, clientX: -120, clientY: 50 });
+    dispatchPointer(window, 'pointermove', { pointerId: 24, button: 0, buttons: 1, clientX: -220, clientY: 50 });
+
+    expect(scroller.dataset.houseFirstDeckDragActive).toBe('true');
+    expect(rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]')).not.toBeNull();
+    expect(telemetrySpy.mock.calls).toHaveLength(telemetryCallsBeforeDrag);
+
+    dispatchPointer(window, 'pointerup', { pointerId: 24, button: 0, clientX: -220, clientY: 50 });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    await flushAnimationFrame();
+    await flushAnimationFrame();
+    await flushAnimationFrame();
+    await flushAnimationFrame();
+    await flushAnimationFrame();
+
+    expect(scroller.dataset.houseFirstDeckDragActive).toBe('false');
 
     rendered.unmount();
   });
@@ -4033,7 +4095,6 @@ describe('ModelSpaceViewport', () => {
     const topPreviewY = polygonCentroidY(rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]'));
 
     expect(rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]')).not.toBeNull();
-    expect(rendered.container.querySelector('[data-testid="deck-telemetry-snap"]')?.textContent).toBe('floating');
     expect(getDrawOutlineDiagnostics(rendered.container).houseFirstDeckDragLocked).toBe('true');
     expect(topPreviewY).toBeLessThan(midPreviewY);
     act(() => {
@@ -4204,7 +4265,6 @@ describe('ModelSpaceViewport', () => {
 
     expect(scroller.dataset.houseFirstDeckDragActive).toBe('true');
     expect(scroller.dataset.houseFirstDeckSnapState).toBe('floating');
-    expect(rendered.container.querySelector('[data-testid="deck-telemetry-snap"]')?.textContent).toBe('floating');
     expect(rendered.container.querySelector('[aria-label="Deck interaction hint"]')).toBeNull();
     expect(rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]')).not.toBeNull();
 

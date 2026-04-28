@@ -26,10 +26,7 @@ import {
 } from '@/lib/estimates/drawingEdits';
 import { buildEstimateDrawingModuleInfoRows, buildEstimateDrawingSheetMeta } from '@/lib/estimates/drawingSheet';
 import type { EstimateDetail } from '@/lib/estimates/types';
-import {
-  type DeckInteractionTelemetry,
-  type DrawOutlineTarget,
-} from './houseWorkbenchClientTypes';
+import { type DrawOutlineTarget } from './houseWorkbenchClientTypes';
 import { useHouseDraftPersistence } from './useHouseDraftPersistence';
 import { useHouseMutationActions } from './useHouseMutationActions';
 import { useHouseWorkbenchSelection } from './useHouseWorkbenchSelection';
@@ -81,7 +78,6 @@ export default function DesignWorkbenchEstimateClient({
   const [geometryViewportStatesByKey, setGeometryViewportStatesByKey] = useState<
     Record<string, Geometry3DViewportState>
   >({});
-  const [deckInteractionTelemetry, setDeckInteractionTelemetry] = useState<DeckInteractionTelemetry | null>(null);
   const [drawOutlineRequestId, setDrawOutlineRequestId] = useState(0);
   const [drawOutlineTarget, setDrawOutlineTarget] = useState<DrawOutlineTarget>({
     kind: 'footprint',
@@ -112,7 +108,6 @@ export default function DesignWorkbenchEstimateClient({
     setModelViewportTransformsByKey({});
     setGeometryViewportStatesByKey({});
     setDrawOutlineTarget({ kind: 'footprint', deckId: null });
-    setDeckInteractionTelemetry(null);
   }, [estimate.calculatorSnapshot]);
 
   useEffect(() => {
@@ -555,48 +550,6 @@ export default function DesignWorkbenchEstimateClient({
                 </div>
               </>
             ) : null}
-            {deckInteractionTelemetry ? (
-              <>
-                <div className={styles.diagnosticRow}>
-                  <span className={styles.diagnosticLabel}>Model-space house polygon</span>
-                  <span className={styles.diagnosticValue}>
-                    {deckInteractionTelemetry.housePolygonSource ?? 'none'}
-                  </span>
-                </div>
-                <div className={styles.diagnosticRow}>
-                  <span className={styles.diagnosticLabel}>Model-space deck type</span>
-                  <span className={styles.diagnosticValue}>{deckInteractionTelemetry.selectedDeckType}</span>
-                </div>
-                <div className={styles.diagnosticRow}>
-                  <span className={styles.diagnosticLabel}>Model-space drag eligible</span>
-                  <span className={styles.diagnosticValue}>
-                    {deckInteractionTelemetry.dragEligible ? 'Yes' : 'No'}
-                  </span>
-                </div>
-                <div className={styles.diagnosticRow}>
-                  <span className={styles.diagnosticLabel}>Model-space host-edge resolvable</span>
-                  <span className={styles.diagnosticValue}>
-                    {deckInteractionTelemetry.hostEdgeResolvable ? 'Yes' : 'No'}
-                  </span>
-                </div>
-                <div className={styles.diagnosticRow}>
-                  <span className={styles.diagnosticLabel}>Model-space relationship dims</span>
-                  <span className={styles.diagnosticValue}>
-                    {deckInteractionTelemetry.relationshipDimensionsAvailable ? 'Yes' : 'No'}
-                  </span>
-                </div>
-                <div className={styles.diagnosticRow}>
-                  <span className={styles.diagnosticLabel}>Model-space snap state</span>
-                  <span className={styles.diagnosticValue}>{deckInteractionTelemetry.snapState}</span>
-                </div>
-                <div className={styles.diagnosticRow}>
-                  <span className={styles.diagnosticLabel}>Model-space snap message</span>
-                  <span className={styles.diagnosticValue}>
-                    {deckInteractionTelemetry.snapMessage ?? 'none'}
-                  </span>
-                </div>
-              </>
-            ) : null}
             <div className={styles.diagnosticRow}>
               <span className={styles.diagnosticLabel}>Warnings</span>
               <span className={styles.diagnosticValue}>{store.derived.migrationWarningCount}</span>
@@ -985,7 +938,6 @@ export default function DesignWorkbenchEstimateClient({
           onCommitHouseFirstFootprintDimension={!isLocked ? houseActions.commitHouseFirstFootprintDimension : undefined}
           onCommitHouseFirstDeckDimension={!isLocked ? houseActions.commitHouseFirstDeckDimension : undefined}
           onCommitHouseFirstOpeningDimension={!isLocked ? houseActions.commitHouseFirstOpeningDimension : undefined}
-          onDeckInteractionTelemetryChange={setDeckInteractionTelemetry}
         />
         </div>
       </div>
