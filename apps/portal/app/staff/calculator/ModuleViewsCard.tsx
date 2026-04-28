@@ -1,4 +1,4 @@
-import { useId, type PointerEvent as ReactPointerEvent } from 'react';
+import { useCallback, useEffect, useId, useRef, type PointerEvent as ReactPointerEvent } from 'react';
 import type { AttachmentSide } from '@sp/costing';
 import styles from './CalculatorGrid.module.css';
 import {
@@ -4966,6 +4966,52 @@ function PlanSvg({
       y: planHouseProjectionOptions.invertY ? -projectedY : projectedY,
     };
   };
+  const planSvgRef = useRef<SVGSVGElement | null>(null);
+  const footprintEditorRef = useRef(footprintEditor);
+  const planInteractionRef = useRef(planInteraction);
+  const resolvePlanClientPointRef = useRef(resolvePlanClientPoint);
+  const resolveRawPlanClientPointRef = useRef(resolveRawPlanClientPoint);
+  const resolveDeckDragClientPointRef = useRef(resolveDeckDragClientPoint);
+
+  useEffect(() => {
+    footprintEditorRef.current = footprintEditor;
+    planInteractionRef.current = planInteraction;
+    resolvePlanClientPointRef.current = resolvePlanClientPoint;
+    resolveRawPlanClientPointRef.current = resolveRawPlanClientPoint;
+    resolveDeckDragClientPointRef.current = resolveDeckDragClientPoint;
+  }, [
+    footprintEditor,
+    planInteraction,
+    resolveDeckDragClientPoint,
+    resolvePlanClientPoint,
+    resolveRawPlanClientPoint,
+  ]);
+
+  const syncPlanSvgBridge = useCallback((node: SVGSVGElement | null) => {
+    const currentFootprintEditor = footprintEditorRef.current;
+    const currentPlanInteraction = planInteractionRef.current;
+    currentFootprintEditor?.onSvgMount?.(node);
+    currentPlanInteraction?.onSvgMount?.(node);
+    currentFootprintEditor?.onCanvasPointResolverChange?.(
+      node ? (clientX, clientY) => resolvePlanClientPointRef.current(node, clientX, clientY) : null,
+    );
+    currentPlanInteraction?.onPlanPointResolverChange?.(
+      node ? (clientX, clientY) => resolveRawPlanClientPointRef.current(node, clientX, clientY) : null,
+    );
+    currentPlanInteraction?.onDeckDragPointResolverChange?.(
+      node ? (clientX, clientY) => resolveDeckDragClientPointRef.current(node, clientX, clientY) : null,
+    );
+  }, []);
+
+  const handlePlanSvgRef = useCallback((node: SVGSVGElement | null) => {
+    planSvgRef.current = node;
+    syncPlanSvgBridge(node);
+  }, [syncPlanSvgBridge]);
+
+  useEffect(() => {
+    syncPlanSvgBridge(planSvgRef.current);
+  }, [syncPlanSvgBridge, footprintEditor, planInteraction, resolvePlanClientPoint, resolveRawPlanClientPoint, resolveDeckDragClientPoint]);
+
   const resolvePlanSvgPointerPoint = (event: ReactPointerEvent<SVGSVGElement>): ModuleFootprintCanvasPoint | null =>
     resolvePlanClientPoint(event.currentTarget, event.clientX, event.clientY);
   const handlePlanSvgPointerDown = (event: ReactPointerEvent<SVGSVGElement>) => {
@@ -5002,13 +5048,7 @@ function PlanSvg({
         data-model-space-focus-box={modelSpaceLayout?.focusBoxValue}
         role="img"
         aria-label="Module plan view"
-        ref={(node) => {
-          footprintEditor?.onSvgMount?.(node);
-          planInteraction?.onSvgMount?.(node);
-          footprintEditor?.onCanvasPointResolverChange?.(node ? (clientX, clientY) => resolvePlanClientPoint(node, clientX, clientY) : null);
-          planInteraction?.onPlanPointResolverChange?.(node ? (clientX, clientY) => resolveRawPlanClientPoint(node, clientX, clientY) : null);
-          planInteraction?.onDeckDragPointResolverChange?.(node ? (clientX, clientY) => resolveDeckDragClientPoint(node, clientX, clientY) : null);
-        }}
+        ref={handlePlanSvgRef}
         onPointerDown={handlePlanSvgPointerDown}
         onPointerMove={handlePlanSvgPointerMove}
         onPointerLeave={() => footprintEditor?.onCanvasPointHover?.(null)}

@@ -3725,6 +3725,8 @@ describe('ModelSpaceViewport', () => {
     await flushAnimationFrame();
     await flushAnimationFrame();
     await flushAnimationFrame();
+    await flushAnimationFrame();
+    await flushAnimationFrame();
 
     expect(rendered.container.querySelector('[data-testid="deck-center-offset"]')?.textContent).toBe('-1');
     expect(scroller.dataset.houseFirstDeckDragActive).toBe('false');
@@ -3732,7 +3734,9 @@ describe('ModelSpaceViewport', () => {
     expect(rendered.container.querySelector('[data-testid="deck-telemetry-snap"]')?.textContent).toBe('idle');
     expect(rendered.container.querySelector('[aria-label="Deck interaction hint"]')).toBeNull();
 
-    rendered.unmount();
+    await act(async () => {
+      rendered.unmount();
+    });
   });
 
   it('pulls a snapped preset deck free and commits a floating rect from the dragged preview', async () => {
@@ -3911,6 +3915,72 @@ describe('ModelSpaceViewport', () => {
     expect(draggedDownPreviewY).toBeGreaterThan(draggedUpPreviewY);
   });
 
+  it('keeps deck dragging responsive through a plan svg rerender in house mode', async () => {
+    const deck = makeHouseFirstDeck({
+      isAttached: false,
+      presetType: 'rect_detached',
+      presetRect: {
+        widthM: '4',
+        depthM: '3',
+        centerOffsetM: '0',
+        detachedGapM: '0.6',
+      },
+    });
+    const baseHouse = makeHouseFirstHouse();
+    const resolvedDeck = resolveDeckPresetGeometry({
+      deck: deck as any,
+      housePolygon: baseHouse.footprint.polygon,
+    });
+    const initialHouse = makeHouseFirstHouse({
+      decks: [
+        {
+          ...deck,
+          hostEdgeId: resolvedDeck.hostEdgeId,
+          floatingRect: resolvedDeck.floatingRect,
+          presetRect: resolvedDeck.presetRect,
+          outline: resolvedDeck.outline,
+        },
+      ],
+    });
+    const renderHarness = () => (
+      <HouseFirstViewportHarness
+        initialSelection={{ kind: 'deck', targetId: 'deck-1' }}
+        initialHouse={initialHouse}
+        enablePlanEditing={false}
+      />
+    );
+    const rendered = renderIntoDocument(renderHarness());
+
+    let svg = rendered.container.querySelector('svg[aria-label="Module plan view"]') as SVGSVGElement | null;
+    const deckHit = rendered.container.querySelector('[data-house-first-shape-hit="deck:deck-1"]');
+    if (!svg || !deckHit) throw new Error('Missing plan viewport nodes.');
+    installProjectedSvgPointMock(svg);
+
+    dispatchPointer(deckHit, 'pointerdown', { pointerId: 126, button: 0, clientX: 50, clientY: 50 });
+    dispatchPointer(window, 'pointermove', { pointerId: 126, button: 0, buttons: 1, clientX: 50, clientY: -1200 });
+    const midPreviewY = polygonCentroidY(rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]'));
+
+    rendered.rerender(renderHarness());
+    svg = rendered.container.querySelector('svg[aria-label="Module plan view"]') as SVGSVGElement | null;
+    if (!svg) throw new Error('Missing rerendered plan viewport svg.');
+    installProjectedSvgPointMock(svg);
+
+    dispatchPointer(window, 'pointermove', { pointerId: 126, button: 0, buttons: 1, clientX: 50, clientY: -2400 });
+    const topPreviewY = polygonCentroidY(rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]'));
+
+    expect(topPreviewY).toBeLessThan(midPreviewY);
+
+    dispatchPointer(window, 'pointerup', { pointerId: 126, button: 0, clientX: 50, clientY: -2400 });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    await flushAnimationFrame();
+    await flushAnimationFrame();
+    await flushAnimationFrame();
+
+    rendered.unmount();
+  });
+
   it('locks viewport pan and zoom while dragging a deck near the top edge', async () => {
     const deck = makeHouseFirstDeck({
       isAttached: false,
@@ -4078,10 +4148,16 @@ describe('ModelSpaceViewport', () => {
 
     await flushAnimationFrame();
     await flushAnimationFrame();
+    await flushAnimationFrame();
+    await act(async () => {
+      await Promise.resolve();
+    });
     expect(rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]')).toBeNull();
     expect(getDrawOutlineDiagnostics(rendered.container).houseFirstDeckDragLocked).toBe('false');
     expect(snapshotRect(getScrollerRect())).toEqual(initialScrollerRect);
-    rendered.unmount();
+    await act(async () => {
+      rendered.unmount();
+    });
   });
 
   it('keeps floating decks visually free while dragging them without live-snapping the deck body', async () => {
@@ -4139,6 +4215,8 @@ describe('ModelSpaceViewport', () => {
     await flushAnimationFrame();
     await flushAnimationFrame();
     await flushAnimationFrame();
+    await flushAnimationFrame();
+    await flushAnimationFrame();
 
     expect(rendered.container.querySelector('[data-testid="deck-is-attached"]')?.textContent).toBe('false');
     expect(rendered.container.querySelector('[data-testid="deck-floating-center-along"]')?.textContent).not.toBe('');
@@ -4146,7 +4224,9 @@ describe('ModelSpaceViewport', () => {
     expect(scroller.dataset.houseFirstDeckDragActive).toBe('false');
     expect(rendered.container.querySelector('[aria-label="Deck interaction hint"]')).toBeNull();
 
-    rendered.unmount();
+    await act(async () => {
+      rendered.unmount();
+    });
   });
 
   it('snaps a floating preset deck onto the exact left house edge on release', async () => {

@@ -1312,7 +1312,9 @@ export default function ModelSpaceViewport({
   const deckDragPointResolverRef = useRef<((clientX: number, clientY: number) => PlanPoint | null) | null>(null);
   const activeDeckDragPointerIdRef = useRef<number | null>(null);
   const lastResolvedDeckDragPlanPointRef = useRef<PlanPoint | null>(null);
+  const deckDragSessionRef = useRef<DeckDragSession | null>(null);
   const deckPreviewStateRef = useRef<DeckPreviewState | null>(null);
+  const deckDragPhaseRef = useRef<DeckDragPhase>('dragging');
   const deckDragViewportAnchorRef = useRef<DeckDragViewportAnchor | null>(null);
   const drawOutlinePointerSessionRef = useRef<DrawOutlinePointerSession | null>(null);
   const lastDeckTelemetrySignatureRef = useRef<string | null>(null);
@@ -1361,6 +1363,14 @@ export default function ModelSpaceViewport({
   useEffect(() => {
     deckPreviewStateRef.current = deckPreviewState;
   }, [deckPreviewState]);
+
+  useEffect(() => {
+    deckDragSessionRef.current = deckDragSession;
+  }, [deckDragSession]);
+
+  useEffect(() => {
+    deckDragPhaseRef.current = deckDragPhase;
+  }, [deckDragPhase]);
 
   useEffect(
     () => () => {
@@ -1604,6 +1614,8 @@ export default function ModelSpaceViewport({
     releaseDeckDragPointer(activeDeckDragPointerIdRef.current);
     clearDeckDragViewportAnchor();
     lastResolvedDeckDragPlanPointRef.current = null;
+    deckDragSessionRef.current = null;
+    deckDragPhaseRef.current = 'dragging';
     setDeckDragSession(null);
     setDeckPreviewState(null);
     setDeckDragSettleState(null);
@@ -1637,8 +1649,7 @@ export default function ModelSpaceViewport({
         setOpeningPreviewState(null);
         setDeckDragSettleState(null);
         setDeckPreviewState(null);
-        setDeckDragPhase('dragging');
-        setDeckDragSession({
+        const nextDeckDragSession = {
           pointerId: event.pointerId,
           deckId: meta.ownerId,
           startSvgX: startPoint.x,
@@ -1651,7 +1662,11 @@ export default function ModelSpaceViewport({
           startDepthM: overlayShape.deckInteraction.deckDepthM,
           interaction: overlayShape.deckInteraction,
           svgInteraction: meta.deckInteraction,
-        });
+        };
+        deckDragPhaseRef.current = 'dragging';
+        deckDragSessionRef.current = nextDeckDragSession;
+        setDeckDragPhase('dragging');
+        setDeckDragSession(nextDeckDragSession);
         setPanDragSession(null);
         clearTouchNavigation();
         clearWebKitGestureNavigation();
@@ -1671,6 +1686,8 @@ export default function ModelSpaceViewport({
       closeHouseFirstDimensionEditor();
       setFieldError(null);
       setFootprintError(null);
+      deckDragSessionRef.current = null;
+      deckDragPhaseRef.current = 'dragging';
       setDeckDragSession(null);
       setDeckPreviewState(null);
       setDeckDragSettleState(null);
@@ -3013,11 +3030,13 @@ export default function ModelSpaceViewport({
   }, [commitFieldEdit, onCommitField, planFieldDragSession]);
 
   useEffect(() => {
-    if (!deckDragSession || !onCommitHouseFirstDeckDimension) return;
+    if (!onCommitHouseFirstDeckDimension) return;
 
     const handlePointerMove = (event: PointerEvent) => {
-      if (event.pointerId !== deckDragSession.pointerId) return;
-      if (deckDragPhase !== 'dragging') return;
+      const activeDeckDragSession = deckDragSessionRef.current;
+      if (!activeDeckDragSession) return;
+      if (event.pointerId !== activeDeckDragSession.pointerId) return;
+      if (deckDragPhaseRef.current !== 'dragging') return;
       event.preventDefault();
       restoreDeckDragPinnedScrollTargets();
       const svg = footprintSvgRef.current;
@@ -3030,24 +3049,25 @@ export default function ModelSpaceViewport({
         null;
       const nextDragPlanPoint =
         resolvedNextDragPlanPoint ??
-        (deckDragSession.startDragPlanPoint ? lastResolvedDeckDragPlanPointRef.current : null);
+        (activeDeckDragSession.startDragPlanPoint ? lastResolvedDeckDragPlanPointRef.current : null);
       if (resolvedNextDragPlanPoint) {
         lastResolvedDeckDragPlanPointRef.current = resolvedNextDragPlanPoint;
       }
-      if (deckDragSession.startDragPlanPoint && !nextDragPlanPoint) return;
       const preview = resolveDeckPreviewState({
-        session: deckDragSession,
+        session: activeDeckDragSession,
         nextSvgX: nextPoint.x,
         nextSvgY: nextPoint.y,
         nextDragPlanPoint,
-        previousPreviewState: deckPreviewState,
+        previousPreviewState: deckPreviewStateRef.current,
       });
       setDeckPreviewState(preview);
     };
 
     const finishDrag = async (event: PointerEvent) => {
-      if (event.pointerId !== deckDragSession.pointerId) return;
-      if (deckDragPhase !== 'dragging') return;
+      const activeDeckDragSession = deckDragSessionRef.current;
+      if (!activeDeckDragSession) return;
+      if (event.pointerId !== activeDeckDragSession.pointerId) return;
+      if (deckDragPhaseRef.current !== 'dragging') return;
       event.preventDefault();
       restoreDeckDragPinnedScrollTargets();
       const preview = deckPreviewStateRef.current;
@@ -3056,35 +3076,36 @@ export default function ModelSpaceViewport({
         finalizeDeckDragSettlement();
         return;
       }
+      deckDragPhaseRef.current = 'settling';
       setDeckDragPhase('settling');
       const floatingRect =
         preview.releasePlacement === 'floating'
-          ? deckDragSession.interaction.kind === 'custom_outline'
+          ? activeDeckDragSession.interaction.kind === 'custom_outline'
             ? null
             : inferFloatingRectFromPlanPolygon({
                 polygon: preview.polygon,
-                attachmentSide: deckDragSession.interaction.houseAttachmentSide,
+                attachmentSide: activeDeckDragSession.interaction.houseAttachmentSide,
               })
           : null;
       const result = await resolveCommitResult(
         onCommitHouseFirstDeckDimension(
-          deckDragSession.deckId,
-          deckDragSession.interaction.kind === 'custom_outline'
+          activeDeckDragSession.deckId,
+          activeDeckDragSession.interaction.kind === 'custom_outline'
             ? {
                 hostEdgeId: preview.witnessEdgeId,
                 isAttached: false,
                 outline: serializeDeckOutlineFromPlanPolygon({
                   polygon: preview.polygon,
-                  attachmentSide: deckDragSession.interaction.houseAttachmentSide,
+                  attachmentSide: activeDeckDragSession.interaction.houseAttachmentSide,
                 }),
               }
             : {
                 hostEdgeId: preview.releasePlacement === 'snapped' ? preview.placementEdgeId : preview.witnessEdgeId,
                 isAttached: preview.releasePlacement === 'snapped',
                 presetType: preview.releasePlacement === 'snapped' ? 'rect_attached' : 'rect_detached',
-                ...(preview.releasePlacement === 'snapped' && deckDragSession.interaction.placement === 'floating'
+                ...(preview.releasePlacement === 'snapped' && activeDeckDragSession.interaction.placement === 'floating'
                   ? { elevationMode: 'aligned_to_threshold' as const }
-                  : preview.releasePlacement === 'floating' && deckDragSession.interaction.placement === 'snapped'
+                  : preview.releasePlacement === 'floating' && activeDeckDragSession.interaction.placement === 'snapped'
                     ? { elevationMode: 'ground' as const }
                     : null),
                 floatingRect,
@@ -3102,7 +3123,7 @@ export default function ModelSpaceViewport({
       setFieldError(result.ok ? null : result.error ?? 'Unable to update the deck position.');
       if (result.ok) setFootprintError(null);
       setDeckDragSettleState({
-        deckId: deckDragSession.deckId,
+        deckId: activeDeckDragSession.deckId,
         previewPolygon: preview.polygon,
         resolvedAtMs: Date.now(),
         releasePlacement: preview.releasePlacement,
@@ -3115,14 +3136,11 @@ export default function ModelSpaceViewport({
     window.addEventListener('pointercancel', finishDrag, { passive: false });
 
     return () => {
-      lastResolvedDeckDragPlanPointRef.current = null;
       window.removeEventListener('pointermove', handlePointerMove);
       window.removeEventListener('pointerup', finishDrag);
       window.removeEventListener('pointercancel', finishDrag);
     };
   }, [
-    deckDragPhase,
-    deckDragSession,
     finalizeDeckDragSettlement,
     onCommitHouseFirstDeckDimension,
     restoreDeckDragPinnedScrollTargets,
@@ -3222,6 +3240,9 @@ export default function ModelSpaceViewport({
         releaseDeckDragPointer(activeDeckDragPointerIdRef.current);
         clearDeckDragViewportAnchor();
         deckDragClickSuppressedUntilRef.current = Date.now() + DECK_RELEASE_CLICK_SUPPRESSION_MS;
+        lastResolvedDeckDragPlanPointRef.current = null;
+        deckDragSessionRef.current = null;
+        deckDragPhaseRef.current = 'dragging';
         setDeckDragSession(null);
         setDeckPreviewState(null);
         setDeckDragSettleState(null);
@@ -3615,23 +3636,28 @@ export default function ModelSpaceViewport({
   }, [houseFirstActiveCustomEdgeId, houseFirstPlanOverlay]);
 
   useEffect(() => {
-    const selectedDeckStillVisible =
-      deckDragSession &&
-      houseFirstPlanOverlay?.shapes.some(
-        (shape) => shape.ownerKind === 'deck' && shape.ownerId === deckDragSession.deckId && shape.selected,
-      );
+    if (!deckDragSession) return;
+    const overlayShapes = houseFirstPlanOverlay?.shapes;
+    if (!overlayShapes) return;
+    const selectedDeckStillVisible = overlayShapes.some(
+      (shape) => shape.ownerKind === 'deck' && shape.ownerId === deckDragSession.deckId && shape.selected,
+    );
     if (!selectedDeckStillVisible) {
+      lastResolvedDeckDragPlanPointRef.current = null;
+      deckDragSessionRef.current = null;
+      deckDragPhaseRef.current = 'dragging';
       setDeckDragSession(null);
       setDeckPreviewState(null);
     }
   }, [deckDragSession, houseFirstPlanOverlay]);
 
   useEffect(() => {
-    const selectedOpeningStillVisible =
-      openingDragSession &&
-      houseFirstPlanOverlay?.shapes.some(
-        (shape) => shape.ownerKind === 'opening' && shape.ownerId === openingDragSession.openingId && shape.selected,
-      );
+    if (!openingDragSession) return;
+    const overlayShapes = houseFirstPlanOverlay?.shapes;
+    if (!overlayShapes) return;
+    const selectedOpeningStillVisible = overlayShapes.some(
+      (shape) => shape.ownerKind === 'opening' && shape.ownerId === openingDragSession.openingId && shape.selected,
+    );
     if (!selectedOpeningStillVisible) {
       setOpeningDragSession(null);
       setOpeningPreviewState(null);
