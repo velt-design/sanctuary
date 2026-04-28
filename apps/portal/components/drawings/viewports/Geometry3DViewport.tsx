@@ -27,13 +27,13 @@ import type {
   GeometryPreviewState,
 } from "@/lib/drawings/geometry/buildWorkbenchGeometryPreview";
 import type { WorkbenchMode } from "@/lib/drawings/state/houseFirstWorkbenchModel";
+import type { DrawingWorkbenchVisibilityState } from "@/lib/drawings/state/drawingWorkbenchUiState";
 import { blockNativeSelectionEvent } from "./nativeSelection";
 import styles from "./Geometry3DViewport.module.css";
 
 const ORBIT_MOUSE_DISABLED = -1 as THREE.MOUSE;
 const ORBIT_ZOOM_SPEED = 2.85;
 
-const HOUSE_DISPLAY_LAYER_IDS = new Set(["house", "house_roof_materials"]);
 type SceneBounds = {
   min: Point3;
   max: Point3;
@@ -44,11 +44,71 @@ type SceneBounds = {
 function sceneForDisplayMode(
   scene: ViewerSceneModel,
   displayMode: WorkbenchMode,
+  visibility?: DrawingWorkbenchVisibilityState,
 ): ViewerSceneModel {
   if (displayMode !== "house") return scene;
+
+  const houseVisibility = visibility ?? {
+    house: true,
+    pergolas: true,
+    decks: true,
+    openings: true,
+  };
+
   return {
     ...scene,
-    layers: scene.layers.filter((layer) => HOUSE_DISPLAY_LAYER_IDS.has(layer.id)),
+    layers: scene.layers
+      .map((layer) => {
+        if (layer.id === "house") {
+          return {
+            ...layer,
+            objects: layer.objects.filter((object) => {
+              const metadata =
+                "metadata" in object &&
+                object.metadata &&
+                typeof object.metadata === "object"
+                  ? object.metadata
+                  : {};
+              const openingKind =
+                "kind" in object &&
+                (object.kind === "opening_marker" ||
+                  object.kind === "opening_outline");
+              const isOpening =
+                openingKind ||
+                ("openingId" in metadata &&
+                  typeof metadata.openingId === "string");
+              if (isOpening) return houseVisibility.openings;
+
+              const isDeck =
+                object.id.includes("deck-") ||
+                ("deckId" in metadata &&
+                  typeof metadata.deckId === "string") ||
+                ("deckSurfaceMaterial" in metadata &&
+                  typeof metadata.deckSurfaceMaterial === "string");
+              if (isDeck) return houseVisibility.decks;
+
+              return houseVisibility.house;
+            }),
+          };
+        }
+
+        if (layer.id === "house_roof_materials") {
+          return houseVisibility.house
+            ? layer
+            : {
+                ...layer,
+                objects: [],
+              };
+        }
+
+        return houseVisibility.pergolas
+          ? layer
+          : {
+              ...layer,
+              objects: [],
+            };
+      })
+      .filter((layer) => layer.objects.length > 0),
   };
 }
 
@@ -3400,12 +3460,14 @@ function MeasurementProbeOverlay({
 export default function Geometry3DViewport({
   geometryPreview,
   displayMode = "pergolas",
+  visibility,
   viewportKey = "geometry3d",
   viewportState,
   onViewportStateChange,
 }: {
   geometryPreview?: GeometryPreviewState | null;
   displayMode?: WorkbenchMode;
+  visibility?: DrawingWorkbenchVisibilityState;
   viewportKey?: string;
   viewportState?: Geometry3DViewportState | null;
   onViewportStateChange?: (next: Geometry3DViewportState) => void;
@@ -3476,8 +3538,8 @@ export default function Geometry3DViewport({
   const rawScene =
     geometryPreview?.kind === "ready" ? geometryPreview.scene : null;
   const scene = useMemo(
-    () => (rawScene ? sceneForDisplayMode(rawScene, displayMode) : null),
-    [displayMode, rawScene],
+    () => (rawScene ? sceneForDisplayMode(rawScene, displayMode, visibility) : null),
+    [displayMode, rawScene, visibility],
   );
   const datumOrigin =
     geometryPreview?.kind === "ready"

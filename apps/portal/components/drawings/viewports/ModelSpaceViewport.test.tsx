@@ -1012,7 +1012,7 @@ describe('ModelSpaceViewport', () => {
     expect(markup).not.toContain('Rotate -90');
   });
 
-  it('renders house-first plan overlays without pergola graphics in house display mode', () => {
+  it('renders house-first plan overlays alongside pergola graphics in house display mode by default', () => {
     const drawing = makeDrawingModule();
     const baseHouse = makeHouseFirstHouse();
     const deck = makeHouseFirstDeck();
@@ -1065,10 +1065,49 @@ describe('ModelSpaceViewport', () => {
     expect(markup).toContain('data-house-first-shape-hit="footprint:house-main"');
     expect(markup).toContain('data-house-first-shape-hit="deck:deck-1"');
     expect(markup).toContain('data-editable-field-id="house-main:widthM"');
-    expect(markup).not.toContain('data-plan-primary-fill="true"');
+    expect(markup).toContain('data-plan-primary-fill="true"');
+    expect(markup).not.toContain('data-editable-field-id="plan:lengthA"');
     expect(markup).not.toContain('data-plan-resize-handle-hit=');
-    expect(markup).not.toContain('modulePlanRafter');
+    expect(markup).toContain('modulePlanRafter');
     expect(markup).not.toContain('data-sheet-hover-target="pergola"');
+  });
+
+  it('hides pergola graphics in house display mode when pergola visibility is turned off', () => {
+    const drawing = makeDrawingModule();
+    const planModel = makePlanModelWithHouseContext();
+
+    const markup = renderToStaticMarkup(
+      <ModelSpaceViewport
+        view="plan"
+        workbenchDisplayMode="house"
+        visibility={{
+          house: true,
+          pergolas: false,
+          decks: true,
+          openings: true,
+        }}
+        status="ready"
+        planModel={planModel}
+        sectionModel={drawing.sectionModel}
+        planViewModel={buildPlanViewModel({
+          moduleId: drawing.id,
+          moduleLabel: 'Module 1',
+          planModel,
+          canEditHouseFootprint: true,
+          house: makeHouseFirstHouse(),
+          activeHouseSelection: { kind: 'house', targetId: null },
+          includeHouseFirstOverlay: true,
+          moduleLengthM: drawing.input.lengthM,
+          moduleProjectionM: drawing.input.projectionM,
+        })}
+        viewportTransform={createDrawingWorkbenchUiState().viewportTransform}
+        onViewportTransformChange={() => undefined}
+      />,
+    );
+
+    expect(markup).toContain('data-house-plan-surface="footprint"');
+    expect(markup).not.toContain('data-plan-primary-fill="true"');
+    expect(markup).not.toContain('modulePlanRafter');
   });
 
   it('renders custom footprint vertices and edge insertion targets in model space', () => {

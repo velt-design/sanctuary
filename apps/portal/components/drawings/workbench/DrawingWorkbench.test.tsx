@@ -184,7 +184,7 @@ describe('DrawingWorkbench', () => {
     expect(markup).not.toContain('Rotate +90');
   });
 
-  it('passes house display mode to model space without changing sheet view', () => {
+  it('passes house display mode to model space without changing sheet view, while showing pergolas by default', () => {
     const drawing = makeDrawingModule();
     const meta = buildEstimateDrawingSheetMeta({
       moduleLabel: 'M1 - Pitched - 6m x 3m - Acrylic',
@@ -235,7 +235,44 @@ describe('DrawingWorkbench', () => {
     expect(sheetMarkup).toContain('aria-label="Plan view A3 drawing sheet"');
     expect(sheetMarkup).toContain('data-plan-primary-fill="true"');
     expect(modelMarkup).toContain('aria-label="Plan model space viewport"');
-    expect(modelMarkup).not.toContain('data-plan-primary-fill="true"');
+    expect(modelMarkup).toContain('data-plan-primary-fill="true"');
+  });
+
+  it('passes family visibility to model space so pergolas can be hidden without changing sheet output', () => {
+    const drawing = makeDrawingModule();
+    const meta = buildEstimateDrawingSheetMeta({
+      moduleLabel: 'M1 - Pitched - 6m x 3m - Acrylic',
+      view: 'plan',
+    });
+
+    const hiddenMarkup = renderToStaticMarkup(
+      <DrawingWorkbench
+        moduleLabel="M1 - Pitched - 6m x 3m - Acrylic"
+        modules={[{ id: 'module-1', label: 'M1 - Pitched - 6m x 3m - Acrylic' }]}
+        activeModuleIndex={0}
+        onActiveModuleIndexChange={() => undefined}
+        view="plan"
+        onViewChange={() => undefined}
+        viewportMode="model"
+        workbenchDisplayMode="house"
+        visibility={{
+          house: true,
+          pergolas: false,
+          decks: true,
+          openings: true,
+        }}
+        onViewportModeChange={() => undefined}
+        status="ready"
+        planModel={drawing.planModel}
+        sectionModel={drawing.sectionModel}
+        modelViewportTransform={createDrawingWorkbenchUiState().viewportTransform}
+        onModelViewportTransformChange={() => undefined}
+        meta={meta}
+      />
+    );
+
+    expect(hiddenMarkup).toContain('aria-label="Plan model space viewport"');
+    expect(hiddenMarkup).not.toContain('data-plan-primary-fill="true"');
   });
 
   it('exposes the hidden 3D viewport mode only when explicitly enabled', () => {

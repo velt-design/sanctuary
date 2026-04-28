@@ -10,6 +10,12 @@ describe('drawingWorkbenchUiState', () => {
 
     expect(state.activeObjectFamily).toBe('house_forms');
     expect(state.activeObjectRef).toEqual({ family: 'house_forms', objectId: null });
+    expect(state.visibility).toEqual({
+      house: true,
+      pergolas: true,
+      decks: true,
+      openings: true,
+    });
   });
 
   it('normalizes object-first selection independently from legacy workbench mode state', () => {
@@ -92,5 +98,29 @@ describe('drawingWorkbenchUiState', () => {
 
     expect(normalizedDeck.activeHouseSelection).toEqual({ kind: 'house', targetId: null });
     expect(normalizedOpening.activeHouseSelection).toEqual({ kind: 'house', targetId: null });
+  });
+
+  it('normalizes missing visibility flags back to visible defaults', () => {
+    const normalized = normalizeDrawingWorkbenchUiState(
+      {
+        ...createDrawingWorkbenchUiState(),
+        visibility: {
+          house: true,
+          pergolas: false,
+          decks: undefined as unknown as boolean,
+          openings: undefined as unknown as boolean,
+        },
+      },
+      {
+        moduleCount: 1,
+      },
+    );
+
+    expect(normalized.visibility).toEqual({
+      house: true,
+      pergolas: false,
+      decks: true,
+      openings: true,
+    });
   });
 });

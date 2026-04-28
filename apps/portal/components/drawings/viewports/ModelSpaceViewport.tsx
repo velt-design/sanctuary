@@ -29,7 +29,10 @@ import {
 } from '@/app/staff/calculator/ModuleViewsCard';
 import type { HouseFootprintHandleId, ModulePlanModel, ModuleSectionModel } from '@/app/staff/calculator/moduleViews';
 import type { PlanViewModel } from '@/lib/drawings/views/plan/buildPlanViewModel';
-import type { DrawingWorkbenchViewportTransform } from '@/lib/drawings/state/drawingWorkbenchUiState';
+import type {
+  DrawingWorkbenchViewportTransform,
+  DrawingWorkbenchVisibilityState,
+} from '@/lib/drawings/state/drawingWorkbenchUiState';
 import type { EstimateDrawingField, EstimateDrawingFootprintEdit } from '@/lib/estimates/drawingEdits';
 import type {
   HouseFirstDeckDraft,
@@ -1241,6 +1244,7 @@ function resolveOpeningPreviewState(input: {
 export default function ModelSpaceViewport({
   view,
   workbenchDisplayMode = 'pergolas',
+  visibility,
   status,
   planModel,
   sectionModel,
@@ -1265,6 +1269,7 @@ export default function ModelSpaceViewport({
 }: {
   view: ModuleViewsTab;
   workbenchDisplayMode?: WorkbenchMode;
+  visibility?: DrawingWorkbenchVisibilityState;
   status: ModuleViewsStatus;
   planModel?: ModulePlanModel | null;
   sectionModel?: ModuleSectionModel | null;
@@ -4041,6 +4046,7 @@ export default function ModelSpaceViewport({
                 sectionModel={sectionModel}
                 presentation="model"
                 displayMode={workbenchDisplayMode}
+                visibility={visibility}
                 interactiveFields={showPlanViewport ? modelInteractiveFields : undefined}
                 footprintEditor={showPlanViewport ? footprintEditor : undefined}
                 planInteraction={showPlanViewport ? planInteraction : undefined}

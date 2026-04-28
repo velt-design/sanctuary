@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import type { EstimateDrawingFootprintEdit } from '@/lib/estimates/drawingEdits';
+import type { DrawingWorkbenchVisibilityState } from '@/lib/drawings/state/drawingWorkbenchUiState';
 import type {
   HouseFirstDeckDraft,
   HouseFirstMigrationWarning,
@@ -23,6 +24,8 @@ export type HouseFirstWorkbenchRailProps = {
   activeOpeningId?: string | null;
   canEditFootprint?: boolean;
   canStartDrawOutline?: boolean;
+  visibility: DrawingWorkbenchVisibilityState;
+  onVisibilityChange?: (family: keyof DrawingWorkbenchVisibilityState, visible: boolean) => void;
   onStartDrawOutline?: () => Promise<CommitResult> | CommitResult;
   onCommitFootprintEdit?: (edit: EstimateDrawingFootprintEdit) => Promise<CommitResult> | CommitResult;
   onCommitRoofDraft?: (roof: HouseFirstRoofDraft) => Promise<CommitResult> | CommitResult;

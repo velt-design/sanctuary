@@ -7,7 +7,11 @@ import type { PlanViewModel } from '@/lib/drawings/views/plan/buildPlanViewModel
 import type { GeometryPreviewState } from '@/lib/drawings/geometry/buildWorkbenchGeometryPreview';
 import type { EstimateDrawingField, EstimateDrawingFootprintEdit } from '@/lib/estimates/drawingEdits';
 import type { EstimateDrawingSheetMeta } from '@/lib/estimates/drawingSheet';
-import type { DrawingWorkbenchViewportMode, DrawingWorkbenchViewportTransform } from '@/lib/drawings/state/drawingWorkbenchUiState';
+import type {
+  DrawingWorkbenchViewportMode,
+  DrawingWorkbenchViewportTransform,
+  DrawingWorkbenchVisibilityState,
+} from '@/lib/drawings/state/drawingWorkbenchUiState';
 import type { CalculatorHouseFootprintPolygonPoint } from '@/lib/types/calculator';
 import type {
   HouseFirstDeckDraft,
@@ -37,6 +41,7 @@ type DrawingWorkbenchProps = {
   onViewChange: (view: ModuleViewsTab) => void;
   viewportMode: DrawingWorkbenchViewportMode;
   workbenchDisplayMode?: WorkbenchMode;
+  visibility?: DrawingWorkbenchVisibilityState;
   onViewportModeChange: (mode: DrawingWorkbenchViewportMode) => void;
   availableViewportModes?: DrawingWorkbenchViewportMode[];
   status: ModuleViewsStatus;
@@ -108,6 +113,7 @@ export default function DrawingWorkbench({
   onViewChange,
   viewportMode,
   workbenchDisplayMode = 'pergolas',
+  visibility,
   onViewportModeChange,
   availableViewportModes,
   status,
@@ -198,6 +204,7 @@ export default function DrawingWorkbench({
           <ModelSpaceViewport
             view={view}
             workbenchDisplayMode={workbenchDisplayMode}
+            visibility={visibility}
             status={status}
             planModel={planModel}
             sectionModel={sectionModel}
@@ -224,6 +231,7 @@ export default function DrawingWorkbench({
           <Geometry3DViewport
             geometryPreview={geometryPreview}
             displayMode={workbenchDisplayMode}
+            visibility={visibility}
             viewportKey={geometryViewportKey ?? `${workbenchDisplayMode}:${activeModuleIndex}`}
             viewportState={geometryViewportState}
             onViewportStateChange={onGeometryViewportStateChange}

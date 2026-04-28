@@ -116,7 +116,11 @@ export default function DesignWorkbenchEstimateClient({
       store.ui.workbenchMode === ui.workbenchMode &&
       store.ui.activePergolaId === ui.activePergolaId &&
       store.ui.activeHouseSelection.kind === ui.activeHouseSelection.kind &&
-      store.ui.activeHouseSelection.targetId === ui.activeHouseSelection.targetId
+      store.ui.activeHouseSelection.targetId === ui.activeHouseSelection.targetId &&
+      store.ui.visibility.house === ui.visibility.house &&
+      store.ui.visibility.pergolas === ui.visibility.pergolas &&
+      store.ui.visibility.decks === ui.visibility.decks &&
+      store.ui.visibility.openings === ui.visibility.openings
     ) {
       return;
     }
@@ -126,8 +130,13 @@ export default function DesignWorkbenchEstimateClient({
       workbenchMode: store.ui.workbenchMode,
       activePergolaId: store.ui.activePergolaId,
       activeHouseSelection: store.ui.activeHouseSelection,
+      visibility: store.ui.visibility,
     }));
   }, [
+    store.ui.visibility.decks,
+    store.ui.visibility.house,
+    store.ui.visibility.openings,
+    store.ui.visibility.pergolas,
     store.ui.activeHouseSelection.kind,
     store.ui.activeHouseSelection.targetId,
     store.ui.activeModuleIndex,
@@ -137,6 +146,10 @@ export default function DesignWorkbenchEstimateClient({
     ui.activeHouseSelection.targetId,
     ui.activeModuleIndex,
     ui.activePergolaId,
+    ui.visibility.decks,
+    ui.visibility.house,
+    ui.visibility.openings,
+    ui.visibility.pergolas,
     ui.workbenchMode,
   ]);
 
@@ -841,6 +854,16 @@ export default function DesignWorkbenchEstimateClient({
           pergolas={store.derived.pergolas}
           warnings={store.derived.migrationWarnings}
           disabled={isLocked}
+          visibility={store.ui.visibility}
+          onVisibilityChange={(family, visible) =>
+            setUi((current) => ({
+              ...current,
+              visibility: {
+                ...current.visibility,
+                [family]: visible,
+              },
+            }))
+          }
           canEditFootprint={Boolean(activeModule.assemblyModel.capabilities.canEditHouseFootprint)}
           canStartDrawOutline={!isLocked}
           onStartDrawOutline={houseSelectionActions.startDrawOutlineEditor}
@@ -903,6 +926,7 @@ export default function DesignWorkbenchEstimateClient({
           }
           viewportMode={store.ui.viewportMode}
           workbenchDisplayMode={store.ui.workbenchMode}
+          visibility={store.ui.visibility}
           availableViewportModes={['sheet', 'model', 'geometry3d']}
           onViewportModeChange={(viewportMode) =>
             setUi((current) => ({

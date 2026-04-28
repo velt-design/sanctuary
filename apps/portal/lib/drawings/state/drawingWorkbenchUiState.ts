@@ -25,6 +25,13 @@ export type DrawingWorkbenchViewportTransform = {
   panY: number;
 };
 
+export type DrawingWorkbenchVisibilityState = {
+  house: boolean;
+  pergolas: boolean;
+  decks: boolean;
+  openings: boolean;
+};
+
 export type DrawingWorkbenchUiState = {
   workbenchMode: WorkbenchMode;
   activeModuleIndex: number;
@@ -38,6 +45,7 @@ export type DrawingWorkbenchUiState = {
   hover: DrawingWorkbenchHoverState;
   drag: DrawingWorkbenchDragState;
   viewportTransform: DrawingWorkbenchViewportTransform;
+  visibility: DrawingWorkbenchVisibilityState;
 };
 
 export function createDrawingWorkbenchUiState(
@@ -56,6 +64,12 @@ export function createDrawingWorkbenchUiState(
     hover: { kind: 'none', targetId: null },
     drag: { kind: 'none', targetId: null },
     viewportTransform: { zoom: 1, panX: 0, panY: 0 },
+    visibility: {
+      house: true,
+      pergolas: true,
+      decks: true,
+      openings: true,
+    },
     ...overrides,
   };
 }
@@ -158,6 +172,17 @@ export function clampDrawingWorkbenchViewportTransform(
   };
 }
 
+export function normalizeDrawingWorkbenchVisibilityState(
+  visibility: Partial<DrawingWorkbenchVisibilityState> | null | undefined,
+): DrawingWorkbenchVisibilityState {
+  return {
+    house: visibility?.house !== false,
+    pergolas: visibility?.pergolas !== false,
+    decks: visibility?.decks !== false,
+    openings: visibility?.openings !== false,
+  };
+}
+
 export function normalizeDrawingWorkbenchUiState(
   state: DrawingWorkbenchUiState,
   input: {
@@ -172,7 +197,7 @@ export function normalizeDrawingWorkbenchUiState(
   const activeHouseSelection = normalizeActiveHouseSelection(state.activeHouseSelection);
   const activeObjectFamily = normalizeActiveObjectFamily(state.activeObjectFamily);
   const activeObjectRef = normalizeActiveObjectRef(state.activeObjectRef, input);
-  const normalizedHouseSelection =
+  const normalizedHouseSelection: WorkbenchHouseSelection =
     activeHouseSelection.kind === 'deck' &&
     activeHouseSelection.targetId &&
     !(input.deckIds ?? []).includes(activeHouseSelection.targetId)
@@ -197,5 +222,6 @@ export function normalizeDrawingWorkbenchUiState(
     activeObjectFamily,
     activeObjectRef,
     viewportTransform: clampDrawingWorkbenchViewportTransform(state.viewportTransform),
+    visibility: normalizeDrawingWorkbenchVisibilityState(state.visibility),
   };
 }

@@ -16,6 +16,7 @@ import {
   type EstimateDrawingScale,
   type EstimateDrawingFixedScaleValue,
 } from '@/lib/estimates/drawingSheet';
+import type { DrawingWorkbenchVisibilityState } from '@/lib/drawings/state/drawingWorkbenchUiState';
 import {
   getDrawingSheetViewportMm,
   getViewBoxUnitsPerMetreAtScale,
@@ -203,6 +204,7 @@ type ModuleDrawingRendererProps = {
   interactiveFields?: ModuleDrawingInteractiveFieldMap;
   showDebugOverlays?: boolean;
   displayMode?: ModuleDrawingDisplayMode;
+  visibility?: DrawingWorkbenchVisibilityState;
   footprintEditor?: ModuleFootprintEditorProps;
   planInteraction?: ModulePlanInteractionProps;
   sheetPlanInteraction?: ModulePlanSheetInteractionProps;
@@ -369,6 +371,7 @@ export function ModuleDrawingRenderer({
   interactiveFields,
   showDebugOverlays,
   displayMode = 'pergolas',
+  visibility,
   footprintEditor,
   planInteraction,
   sheetPlanInteraction,
@@ -491,6 +494,7 @@ export function ModuleDrawingRenderer({
               interactiveFields={interactiveFields}
               showDebugOverlays={effectiveShowDebugOverlays}
               displayMode={displayMode}
+              visibility={visibility}
               footprintEditor={footprintEditor}
               planInteraction={planInteraction}
               sheetPlanInteraction={sheetPlanInteraction}
@@ -4407,6 +4411,7 @@ function PlanSvg({
   interactiveFields,
   showDebugOverlays,
   displayMode = 'pergolas',
+  visibility,
   footprintEditor,
   planInteraction,
   sheetPlanInteraction,
@@ -4428,6 +4433,7 @@ function PlanSvg({
   interactiveFields?: ModuleDrawingInteractiveFieldMap;
   showDebugOverlays?: boolean;
   displayMode?: ModuleDrawingDisplayMode;
+  visibility?: DrawingWorkbenchVisibilityState;
   footprintEditor?: ModuleFootprintEditorProps;
   planInteraction?: ModulePlanInteractionProps;
   sheetPlanInteraction?: ModulePlanSheetInteractionProps;
@@ -4448,7 +4454,13 @@ function PlanSvg({
   const effectiveShowDebugOverlays = showDebugOverlays ?? presentation === 'sheet';
   const isSheet = presentation === 'sheet';
   const isModel = presentation === 'model';
-  const showPergolaGeometry = !(isModel && displayMode === 'house');
+  const familyVisibility = visibility ?? {
+    house: true,
+    pergolas: true,
+    decks: true,
+    openings: true,
+  };
+  const showPergolaGeometry = familyVisibility.pergolas;
   const isModelHouseDisplay = presentation === 'model' && displayMode === 'house';
   const rawSemanticPlanHouseSurfaces = model.houseContext?.surfaces ?? [];
   const rawSemanticPlanHouseLines = model.houseContext?.lines ?? [];
@@ -4551,7 +4563,7 @@ function PlanSvg({
   const isDrawOutlineDraftOpen = Boolean(footprintEditor?.customPolygonOpen);
   const customPolygonHasError = Boolean(footprintEditor?.customPolygonHasError);
   const hideHouseFootprint = Boolean(footprintEditor?.hideHouseFootprint);
-  const showHouseFootprint = model.houseConnectionType !== 'none' && !hideHouseFootprint;
+  const showHouseFootprint = familyVisibility.house && model.houseConnectionType !== 'none' && !hideHouseFootprint;
   const houseBandOffset = isSheet ? (planSheetFrame?.houseBandOffset ?? 1.15) : layout.houseBandOffset;
   const houseBandHeight = isSheet ? (planSheetFrame?.houseBandHeight ?? 5.3) : layout.houseBandHeight;
   const houseInset = isSheet ? (planSheetFrame?.houseInset ?? 1.7) : layout.houseInset;
@@ -4622,8 +4634,20 @@ function PlanSvg({
   });
   const planHousePointProjector = (point: Point) =>
     planHousePointToSvg(point, x, y, scale, planHouseProjectionOptions);
+  const visibleRawHouseFirstOverlayShapes = rawHouseFirstOverlayShapes.filter((shape) => {
+    switch (shape.ownerKind) {
+      case 'footprint':
+        return familyVisibility.house;
+      case 'deck':
+        return familyVisibility.decks;
+      case 'opening':
+        return familyVisibility.openings;
+      default:
+        return true;
+    }
+  });
   const selectedOpeningHostEdgeId =
-    rawHouseFirstOverlayShapes.find((shape) => shape.ownerKind === 'opening' && shape.selected)?.openingInteraction?.hostEdgeId ?? null;
+    visibleRawHouseFirstOverlayShapes.find((shape) => shape.ownerKind === 'opening' && shape.selected)?.openingInteraction?.hostEdgeId ?? null;
   const toneHouseRoofContext = Boolean(selectedOpeningHostEdgeId);
   const semanticPlanHouseSurfaces = rawSemanticPlanHouseSurfaces.map((surface) => ({
     ...surface,
@@ -4640,7 +4664,7 @@ function PlanSvg({
   }));
   const houseFirstOverlayShapes =
     presentation === 'model'
-      ? rawHouseFirstOverlayShapes.map((shape) => ({
+      ? visibleRawHouseFirstOverlayShapes.map((shape) => ({
           ...shape,
           points: shape.polygon.map((point) => planHousePointProjector(point)),
           detailSegments: shape.detailSegments.map((segment) => ({
@@ -4665,7 +4689,20 @@ function PlanSvg({
       : [];
   const houseFirstPresetAnnotations =
     presentation === 'model'
-      ? rawHouseFirstPresetAnnotations.map((annotation) => ({
+      ? rawHouseFirstPresetAnnotations
+          .filter((annotation) => {
+            switch (annotation.ownerKind) {
+              case 'footprint':
+                return familyVisibility.house;
+              case 'deck':
+                return familyVisibility.decks;
+              case 'opening':
+                return familyVisibility.openings;
+              default:
+                return true;
+            }
+          })
+          .map((annotation) => ({
           ...annotation,
           witnessStart: planHousePointProjector(annotation.witnessStart),
           witnessEnd: planHousePointProjector(annotation.witnessEnd),
@@ -4675,7 +4712,9 @@ function PlanSvg({
       : [];
   const houseFirstCustomEdgeCandidates =
     presentation === 'model'
-      ? rawHouseFirstCustomEdgeCandidates.map((annotation) => ({
+      ? rawHouseFirstCustomEdgeCandidates
+          .filter((annotation) => annotation.ownerKind === 'footprint' ? familyVisibility.house : familyVisibility.decks)
+          .map((annotation) => ({
           ...annotation,
           witnessStart: planHousePointProjector(annotation.witnessStart),
           witnessEnd: planHousePointProjector(annotation.witnessEnd),
@@ -4698,7 +4737,10 @@ function PlanSvg({
         }
       : null;
   const hasSemanticPlanHouseContext =
-    !customPolygonOverrideActive && !hideHouseFootprint && (semanticPlanHouseSurfaces.length > 0 || semanticPlanHouseLines.length > 0);
+    familyVisibility.house &&
+    !customPolygonOverrideActive &&
+    !hideHouseFootprint &&
+    (semanticPlanHouseSurfaces.length > 0 || semanticPlanHouseLines.length > 0);
 
   const rafterXsA = projectLinearPositions(model.rafterPositionsA, model.rafterEdgeLengthM, x, aW);
   const rafterXsB = projectLinearPositions(model.rafterPositionsB ?? null, model.lengthB, x, bW);
@@ -4844,10 +4886,12 @@ function PlanSvg({
     (isModelFootprintEditor &&
       (Boolean(footprintEditor?.isContextHovered) || Boolean(footprintEditor?.hoveredHandleId) || Boolean(footprintEditor?.activeHandleId)));
   const showHouseLabel = showHouseFootprint && !showFootprintControls && !isSheetFootprintEditor && !isModelFootprintEditor;
+  const isMergedHouseModelDisplay = isModel && displayMode === 'house';
+  const allowPergolaModelEditing = !isSheet && showPergolaGeometry && !isMergedHouseModelDisplay;
   const showPinnedSheetPrimaryDimensions = isSheet && !isHipCorner;
   const showModelPrimaryDimensions = !isSheet && showPergolaGeometry;
   const showModelSecondaryAnnotations = !isSheet && !isModel;
-  const showPlanResizeHandles = isModel && showPergolaGeometry && Boolean(planInteraction?.available) && !isHipCorner;
+  const showPlanResizeHandles = isModel && allowPergolaModelEditing && Boolean(planInteraction?.available) && !isHipCorner;
   const primaryDimensionSwap = showPinnedSheetPrimaryDimensions && rotationFrame.turns % 2 !== 0;
   const bottomDimensionLabel = formatMetres(primaryDimensionSwap ? model.spanA : model.lengthA);
   const leftDimensionLabel = formatMetres(primaryDimensionSwap ? model.lengthA : model.spanA);
@@ -5386,7 +5430,7 @@ function PlanSvg({
               y2={dimBaseY}
               label={formatMetres(model.lengthA)}
               presentation={presentation}
-              interactiveField={interactiveFields?.['plan:lengthA']}
+              interactiveField={allowPergolaModelEditing ? interactiveFields?.['plan:lengthA'] : undefined}
             />
           </g>
         )}
@@ -5402,7 +5446,7 @@ function PlanSvg({
               y2={y + aH}
               label={formatMetres(model.spanA)}
               presentation={presentation}
-              interactiveField={interactiveFields?.['plan:spanA']}
+              interactiveField={allowPergolaModelEditing ? interactiveFields?.['plan:spanA'] : undefined}
             />
           </g>
         )}
@@ -5418,7 +5462,7 @@ function PlanSvg({
               y2={secondaryDimY}
               label={formatMetres(model.lengthB)}
               presentation={presentation}
-              interactiveField={interactiveFields?.['plan:lengthB']}
+              interactiveField={allowPergolaModelEditing ? interactiveFields?.['plan:lengthB'] : undefined}
             />
 
             <line x1={x + bW} y1={splitY} x2={x + bW + dimensionOffsets.hipSide} y2={splitY} className={styles.moduleDimWitness} />
@@ -5430,7 +5474,7 @@ function PlanSvg({
               y2={bottomY}
               label={formatMetres(model.spanB)}
               presentation={presentation}
-              interactiveField={interactiveFields?.['plan:spanB']}
+              interactiveField={allowPergolaModelEditing ? interactiveFields?.['plan:spanB'] : undefined}
             />
           </>
         ) : null}

@@ -1537,11 +1537,52 @@ describe("Geometry3DViewport", () => {
     ).not.toBeNull();
     expect(
       houseRendered.container.querySelector('[data-testid="scene-object-outer-gutter"]'),
-    ).toBeNull();
+    ).not.toBeNull();
     expect(
       houseRendered.container.querySelector('[data-testid="scene-object-acrylic-panel-1"]'),
-    ).toBeNull();
+    ).not.toBeNull();
     expect(viewportDiagnostics(houseRendered.container).sceneObjectCount).toBe(
+      String(
+        geometryPreview.scene.layers
+          .flatMap((layer) => layer.objects).length,
+      ),
+    );
+
+    clickButtonByText(houseRendered.container, "Workspace panel");
+    expect(houseRendered.container.textContent).toContain("House");
+
+    houseRendered.unmount();
+
+    const hiddenPergolaRendered = renderIntoDocument(
+      <Geometry3DViewport
+        geometryPreview={geometryPreview}
+        displayMode="house"
+        visibility={{
+          house: true,
+          pergolas: false,
+          decks: true,
+          openings: true,
+        }}
+      />,
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(
+      hiddenPergolaRendered.container.querySelector('[data-testid="scene-object-house-solid-house-wall-1"]'),
+    ).not.toBeNull();
+    expect(
+      hiddenPergolaRendered.container.querySelector('[data-testid="scene-object-house-solid-deck-1"]'),
+    ).not.toBeNull();
+    expect(
+      hiddenPergolaRendered.container.querySelector('[data-testid="scene-object-outer-gutter"]'),
+    ).toBeNull();
+    expect(
+      hiddenPergolaRendered.container.querySelector('[data-testid="scene-object-acrylic-panel-1"]'),
+    ).toBeNull();
+    expect(viewportDiagnostics(hiddenPergolaRendered.container).sceneObjectCount).toBe(
       String(
         geometryPreview.scene.layers
           .filter((layer) => layer.id === "house" || layer.id === "house_roof_materials")
@@ -1549,12 +1590,7 @@ describe("Geometry3DViewport", () => {
       ),
     );
 
-    clickButtonByText(houseRendered.container, "Workspace panel");
-    expect(houseRendered.container.textContent).toContain("House");
-    expect(houseRendered.container.textContent).not.toContain("Posts");
-    expect(houseRendered.container.textContent).not.toContain("Rafters");
-
-    houseRendered.unmount();
+    hiddenPergolaRendered.unmount();
   });
 
   it("keeps moved semantic house context renderable and in focus bounds", async () => {
@@ -1822,6 +1858,9 @@ describe("Geometry3DViewport", () => {
 
   it("keeps screenshot-style U roof QA diagnostics finite in the 3D viewport", async () => {
     const geometryPreview = buildScreenshotStyleRoofPreview();
+    if (geometryPreview.kind !== "ready") {
+      throw new Error("Expected ready geometry preview.");
+    }
     const houseObjects =
       geometryPreview.scene.layers.find((layer) => layer.id === "house")?.objects ?? [];
     const qaStatus = String(geometryPreview.scene.metadata?.houseRoofQaStatus ?? "");

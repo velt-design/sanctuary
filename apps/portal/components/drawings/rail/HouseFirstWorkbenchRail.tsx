@@ -25,6 +25,8 @@ function HouseModeRail({
   disabled,
   canEditFootprint,
   canStartDrawOutline,
+  visibility,
+  onVisibilityChange,
   onStartDrawOutline,
   onCommitFootprintEdit,
   onCommitRoofDraft,
@@ -183,6 +185,36 @@ function HouseModeRail({
       {overviewSection}
 
       <section className={styles.section}>
+        <h4 className={styles.sectionTitle}>Visibility</h4>
+        <div className={styles.sectionBody}>
+          {(
+            [
+              ['house', 'House'],
+              ['pergolas', 'Pergolas'],
+              ['decks', 'Decks'],
+              ['openings', 'Openings'],
+            ] as const
+          ).map(([family, label]) => {
+            const visible = visibility[family];
+            return (
+              <div key={family} className={styles.inlineMeta}>
+                <span className={styles.inlineLabel}>{label}</span>
+                <button
+                  type="button"
+                  className={`${styles.toggleButton} ${visible ? styles.toggleButtonActive : ''}`}
+                  aria-label={`${label} visibility`}
+                  aria-pressed={visible}
+                  onClick={() => onVisibilityChange?.(family, !visible)}
+                >
+                  {visible ? 'Shown' : 'Hidden'}
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      <section className={styles.section}>
         <h4 className={styles.sectionTitle}>Footprint</h4>
         <div className={styles.sectionBody}>{footprintSections}</div>
       </section>
@@ -215,6 +247,8 @@ export default function HouseFirstWorkbenchRail({
   disabled,
   canEditFootprint,
   canStartDrawOutline,
+  visibility,
+  onVisibilityChange,
   onStartDrawOutline,
   onCommitFootprintEdit,
   onCommitRoofDraft,
@@ -256,6 +290,8 @@ export default function HouseFirstWorkbenchRail({
       disabled={disabled}
       canEditFootprint={canEditFootprint}
       canStartDrawOutline={canStartDrawOutline}
+      visibility={visibility}
+      onVisibilityChange={onVisibilityChange}
       onStartDrawOutline={onStartDrawOutline}
       onCommitFootprintEdit={onCommitFootprintEdit}
       onCommitRoofDraft={onCommitRoofDraft}
