@@ -2332,10 +2332,11 @@ describe('house model geometry builder', () => {
     const model = buildHouseModel3D({
       config: makeConfig({
         roofForm: 'mono',
+        roofPrimaryFallDirection: 'positive_y',
         roofAppendage: {
           enabled: true,
           form: 'mono',
-          hostEdge: 'rear',
+          hostEdge: 'front',
           pitchDeg: 5,
           dropMm: 500,
         },
@@ -2351,19 +2352,19 @@ describe('house model geometry builder', () => {
       model?.solids?.surfaceSolids.filter(
         (solid) =>
           solid.kind === 'soffit' &&
-          solid.metadata?.sourceRoofPlaneId === 'house-roof-appendage-rear',
+          solid.metadata?.sourceRoofPlaneId === 'house-roof-appendage-front',
       ) ?? [];
     const appendageFascias =
       model?.solids?.surfaceSolids.filter(
         (solid) =>
           solid.kind === 'fascia' &&
-          solid.metadata?.sourceRoofPlaneId === 'house-roof-appendage-rear',
+          solid.metadata?.sourceRoofPlaneId === 'house-roof-appendage-front',
       ) ?? [];
     const appendageGutters =
       model?.solids?.linearSolids.filter(
         (solid) =>
           solid.kind === 'gutter' &&
-          solid.metadata?.sourceRoofPlaneId === 'house-roof-appendage-rear',
+          solid.metadata?.sourceRoofPlaneId === 'house-roof-appendage-front',
       ) ?? [];
     const appendageFlashings =
       model?.roofFlashings?.filter(
@@ -2378,33 +2379,43 @@ describe('house model geometry builder', () => {
     expect(appendageGutters[0]?.metadata?.houseRoofPerimeterRole).toBe('drain_eave');
     expect(
       appendageFlashings.map((flashing) => ({
-        sourceEdgeId: flashing.metadata?.sourceEdgeId,
-        flashingRole: flashing.metadata?.flashingRole,
-        perimeterRole: flashing.metadata?.houseRoofPerimeterRole,
+        sourceEdgeId: flashing.metadata?.sourceEdgeId ?? null,
+        sourceRoofPlaneId: flashing.metadata?.sourceRoofPlaneId ?? null,
+        flashingRole: flashing.metadata?.flashingRole ?? null,
+        perimeterRole: flashing.metadata?.houseRoofPerimeterRole ?? null,
       })),
     ).toEqual([
       {
-        sourceEdgeId: 'footprint-edge-1',
+        sourceEdgeId: 'footprint-edge-3',
+        sourceRoofPlaneId: 'house-roof-appendage-front',
+        flashingRole: 'house_apron',
+        perimeterRole: 'house_apron_edge',
+      },
+      {
+        sourceEdgeId: 'house-roof-appendage-front-edge-1',
+        sourceRoofPlaneId: 'house-roof-appendage-front',
         flashingRole: 'high_side',
         perimeterRole: 'weather_flashed_edge',
       },
       {
-        sourceEdgeId: 'house-roof-appendage-rear-edge-1',
-        flashingRole: 'high_side',
-        perimeterRole: 'weather_flashed_edge',
-      },
-      {
-        sourceEdgeId: 'house-roof-appendage-rear-edge-2',
+        sourceEdgeId: 'house-roof-appendage-front-edge-2',
+        sourceRoofPlaneId: 'house-roof-appendage-front',
         flashingRole: 'rake',
         perimeterRole: 'weather_flashed_edge',
       },
       {
-        sourceEdgeId: 'house-roof-appendage-rear-edge-4',
+        sourceEdgeId: 'house-roof-appendage-front-edge-4',
+        sourceRoofPlaneId: 'house-roof-appendage-front',
         flashingRole: 'rake',
         perimeterRole: 'weather_flashed_edge',
       },
     ]);
-    expect(appendageFlashings.every((flashing) => flashing.metadata?.houseRoofPerimeterRole === 'weather_flashed_edge')).toBe(true);
+    expect(
+      appendageFlashings.every((flashing) =>
+        flashing.metadata?.houseRoofPerimeterRole === 'weather_flashed_edge' ||
+        flashing.metadata?.houseRoofPerimeterRole === 'house_apron_edge',
+      ),
+    ).toBe(true);
     expect(
       appendageFlashings.every(
         (flashing) =>
@@ -2414,25 +2425,24 @@ describe('house model geometry builder', () => {
     ).toBe(true);
   });
 
-  it('blocks appendage bands on split exterior host edges while keeping the selected roof family explicit', () => {
+  it('builds appendage bands from the resolved host run span instead of the house bounding box span', () => {
     const footprint: Polygon3 = [
-      { x: -1800, y: -1800, z: 0 },
-      { x: 7800, y: -1800, z: 0 },
-      { x: 7800, y: 2400, z: 0 },
-      { x: 6000, y: 2400, z: 0 },
-      { x: 6000, y: 0, z: 0 },
       { x: 0, y: 0, z: 0 },
-      { x: 0, y: 2400, z: 0 },
-      { x: -1800, y: 2400, z: 0 },
+      { x: 6000, y: 0, z: 0 },
+      { x: 6000, y: 2000, z: 0 },
+      { x: 4000, y: 2000, z: 0 },
+      { x: 4000, y: 4000, z: 0 },
+      { x: 0, y: 4000, z: 0 },
     ];
     const model = buildHouseModel3D({
       config: makeConfig({
         footprint,
         roofForm: 'mono',
+        roofPrimaryFallDirection: 'positive_x',
         roofAppendage: {
           enabled: true,
           form: 'mono',
-          hostEdge: 'front',
+          hostEdge: 'right',
           pitchDeg: 5,
           dropMm: 450,
         },
@@ -2440,7 +2450,29 @@ describe('house model geometry builder', () => {
       attachmentEdge: makeAttachmentEdge(),
     });
 
-    expect(model?.metadata?.roofForm).toBe('mono');
+    const appendagePlane = model?.roofPlanes.find((plane) => plane.id === 'house-roof-appendage-right');
+    expect(appendagePlane).toBeTruthy();
+    expect(Math.abs((appendagePlane?.boundary[1]?.y ?? 0) - (appendagePlane?.boundary[0]?.y ?? 0))).toBe(2900);
+    expect(Math.abs((appendagePlane?.boundary[1]?.y ?? 0) - (appendagePlane?.boundary[0]?.y ?? 0))).toBeLessThan(4000);
+  });
+
+  it('blocks unsupported appendage host edges while keeping the selected roof family explicit', () => {
+    const model = buildHouseModel3D({
+      config: makeConfig({
+        roofForm: 'gable',
+        roofRidgeAxis: 'y',
+        roofAppendage: {
+          enabled: true,
+          form: 'mono',
+          hostEdge: 'rear',
+          pitchDeg: 5,
+          dropMm: 450,
+        },
+      }),
+      attachmentEdge: makeAttachmentEdge(),
+    });
+
+    expect(model?.metadata?.roofForm).toBe('gable');
     expect(model?.metadata?.roofQaStatus).toBe('invalid');
     expect(model?.metadata?.roofQaFailureReason).toBe('invalid_appendage_host_edge');
   });

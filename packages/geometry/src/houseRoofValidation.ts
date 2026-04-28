@@ -47,6 +47,11 @@ export type HouseRoofSelectionValidation = {
   message: string | null;
 };
 
+export type HouseRoofAppendageSupport = {
+  supportedHostEdges: AttachmentSide[];
+  blockedReasonsBySide?: Partial<Record<AttachmentSide, string>>;
+};
+
 function formatAttachmentSideList(sides: AttachmentSide[]): string {
   if (sides.length === 0) return 'none';
   return sides
@@ -216,14 +221,17 @@ export function validateHouseRoofSelection(input: {
   roofRidgeAxisExplicit?: boolean;
   preferredRidgeAxis?: HouseRoofRidgeAxis | null;
   appendageHostEdge?: AttachmentSide | null;
+  appendageSupport?: HouseRoofAppendageSupport | null;
 }): HouseRoofSelectionValidation {
   const capabilities = deriveHouseRoofCapabilities({
     roofForm: input.roofForm,
     footprint: input.footprint,
   });
-  const appendageSupportedHostEdges = deriveHouseRoofAppendageSupportedHostEdges({
-    footprint: input.footprint,
-  });
+  const appendageSupportedHostEdges =
+    input.appendageSupport?.supportedHostEdges ??
+    deriveHouseRoofAppendageSupportedHostEdges({
+      footprint: input.footprint,
+    });
 
   if (!capabilities.selectedFormSupported) {
     if (input.roofForm === 'mono') {
@@ -297,11 +305,14 @@ export function validateHouseRoofSelection(input: {
     input.appendageHostEdge &&
     !appendageSupportedHostEdges.includes(input.appendageHostEdge)
   ) {
+    const blockedReason = input.appendageSupport?.blockedReasonsBySide?.[input.appendageHostEdge] ?? null;
     return {
       status: 'invalid',
       blockedBy: 'appendage',
       code: 'invalid_appendage_host_edge',
-      message: `The ${input.appendageHostEdge} edge does not resolve to one continuous exterior appendage run on this footprint. Supported edges: ${formatAttachmentSideList(appendageSupportedHostEdges)}.`,
+      message: blockedReason
+        ? `${blockedReason} Supported edges: ${formatAttachmentSideList(appendageSupportedHostEdges)}.`
+        : `The ${input.appendageHostEdge} edge does not resolve to one continuous exterior appendage run on this footprint. Supported edges: ${formatAttachmentSideList(appendageSupportedHostEdges)}.`,
     };
   }
 

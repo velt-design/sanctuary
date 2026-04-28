@@ -7,8 +7,8 @@ import { buildEstimateDrawingModules } from '@/lib/estimates/moduleDrawing';
 import {
   deriveHouseGableTerminalEnds,
   buildHouseFootprintPresetSideLocalPoints,
+  deriveHouseRoofAppendageSupport,
   deriveHouseRoofCapabilities,
-  deriveHouseRoofAppendageSupportedHostEdges,
   deriveHouseRoofGeometryKind,
   preferredMonoFallDirectionForAttachmentSide,
   validateHouseRoofSelection,
@@ -386,6 +386,10 @@ function validateSharedRoof(input: {
   roofRidgeAxis: HouseRoofRidgeAxis;
   roofRidgeAxisExplicit: boolean;
   preferredRidgeAxis: HouseRoofRidgeAxis | null;
+  appendageSupport: {
+    supportedHostEdges: NonNullable<CalculatorModuleInputs['attachmentSide']>[];
+    blockedReasonsBySide?: Partial<Record<NonNullable<CalculatorModuleInputs['attachmentSide']>, string>>;
+  };
   appendage: {
     enabled: boolean;
     form: HouseRoofAppendageForm;
@@ -404,6 +408,7 @@ function validateSharedRoof(input: {
     roofRidgeAxisExplicit: input.roofRidgeAxisExplicit,
     preferredRidgeAxis: input.preferredRidgeAxis,
     appendageHostEdge: input.appendage.hostEdge,
+    appendageSupport: input.appendageSupport,
   });
   return {
     status: result.status,
@@ -437,6 +442,61 @@ function buildLocalHouseAttachmentLine(input: {
     start: { x: 0, y: 0, z: input.zMm },
     end: { x: spanMm, y: 0, z: input.zMm },
   };
+}
+
+function resolveAttachmentSourceEdgeId(input: {
+  footprint: Polygon3;
+  attachmentSide: NonNullable<CalculatorModuleInputs['attachmentSide']>;
+  attachmentLine: Line3 | null;
+}): string | null {
+  if (input.footprint.length < 2) return null;
+  const minX = Math.min(...input.footprint.map((point) => point.x));
+  const maxX = Math.max(...input.footprint.map((point) => point.x));
+  const minY = Math.min(...input.footprint.map((point) => point.y));
+  const maxY = Math.max(...input.footprint.map((point) => point.y));
+  const targetMidpoint = input.attachmentLine
+    ? {
+        x: (input.attachmentLine.start.x + input.attachmentLine.end.x) / 2,
+        y: (input.attachmentLine.start.y + input.attachmentLine.end.y) / 2,
+      }
+    : null;
+  let selected: { id: string; distanceSq: number; lengthSq: number } | null = null;
+
+  for (let index = 0; index < input.footprint.length; index += 1) {
+    const start = input.footprint[index]!;
+    const end = input.footprint[(index + 1) % input.footprint.length]!;
+    let edgeSide: NonNullable<CalculatorModuleInputs['attachmentSide']> | null = null;
+    if (Math.abs(start.y - end.y) <= 1e-6) {
+      if (Math.abs(start.y - minY) <= 1e-6 && Math.abs(end.y - minY) <= 1e-6) edgeSide = 'rear';
+      if (Math.abs(start.y - maxY) <= 1e-6 && Math.abs(end.y - maxY) <= 1e-6) edgeSide = 'front';
+    } else if (Math.abs(start.x - end.x) <= 1e-6) {
+      if (Math.abs(start.x - minX) <= 1e-6 && Math.abs(end.x - minX) <= 1e-6) edgeSide = 'left';
+      if (Math.abs(start.x - maxX) <= 1e-6 && Math.abs(end.x - maxX) <= 1e-6) edgeSide = 'right';
+    }
+    if (edgeSide !== input.attachmentSide) continue;
+
+    const midpoint = {
+      x: (start.x + end.x) / 2,
+      y: (start.y + end.y) / 2,
+    };
+    const distanceSq = targetMidpoint
+      ? (midpoint.x - targetMidpoint.x) ** 2 + (midpoint.y - targetMidpoint.y) ** 2
+      : 0;
+    const lengthSq = (end.x - start.x) ** 2 + (end.y - start.y) ** 2;
+    if (
+      !selected ||
+      distanceSq < selected.distanceSq ||
+      (Math.abs(distanceSq - selected.distanceSq) <= 1e-6 && lengthSq > selected.lengthSq)
+    ) {
+      selected = {
+        id: `footprint-edge-${index + 1}`,
+        distanceSq,
+        lengthSq,
+      };
+    }
+  }
+
+  return selected?.id ?? null;
 }
 
 type LocalPolygonPoint = {
@@ -1430,8 +1490,42 @@ function buildSharedHouse(
       '450',
     ),
   };
+  const resolvedEaveHeightMm = Number.isFinite(Number(eaveHeightM))
+    ? Number(eaveHeightM) * 1000
+    : 2400;
+  const resolvedEaveOverhangMm = Number.isFinite(Number(eaveOverhangMm))
+    ? Number(eaveOverhangMm)
+    : 450;
+  const geometryFootprint = localPolygonToGeometryPolygon(derivedHousePolygon);
+  const attachmentLine =
+    attachmentKind === 'freestanding' || attachmentKind === 'wall'
+      ? null
+      : buildLocalHouseAttachmentLine({
+          attachmentSide: normalizedAttachmentSide,
+          pergolaWidthMm: firstModuleLengthMm,
+          pergolaDepthMm: firstModuleProjectionMm,
+          zMm: 0,
+        });
+  const attachmentSourceEdgeId =
+    attachmentKind === 'fascia'
+      ? resolveAttachmentSourceEdgeId({
+          footprint: geometryFootprint,
+          attachmentSide: normalizedAttachmentSide,
+          attachmentLine,
+        })
+      : null;
+  const appendageSupport = deriveHouseRoofAppendageSupport({
+    sourceFootprint: geometryFootprint,
+    eaveHeightMm: resolvedEaveHeightMm,
+    eaveOverhangMm: resolvedEaveOverhangMm,
+    roofPitchDeg: Number(sharedRoofPitchDeg),
+    roofForm: sharedRoofForm,
+    roofPrimaryFallDirection: sharedPrimaryFallDirection,
+    roofRidgeAxis: sharedRidgeAxis,
+    attachmentSourceEdgeId,
+  });
   const validation = validateSharedRoof({
-    footprint: localPolygonToGeometryPolygon(derivedHousePolygon),
+    footprint: geometryFootprint,
     roofForm: sharedRoofForm,
     roofPrimaryFallDirection: sharedPrimaryFallDirection,
     roofPrimaryFallDirectionExplicit: explicitPrimaryFallDirection !== null,
@@ -1442,21 +1536,17 @@ function buildSharedHouse(
     attachmentStrategy,
     attachmentRequiresDrainEdge:
       attachmentKind === 'soffit' || attachmentKind === 'fascia',
-    attachmentEdge:
-      attachmentKind === 'freestanding' || attachmentKind === 'wall'
-        ? null
-        : buildLocalHouseAttachmentLine({
-            attachmentSide: normalizedAttachmentSide,
-            pergolaWidthMm: firstModuleLengthMm,
-            pergolaDepthMm: firstModuleProjectionMm,
-            zMm: 0,
-          }),
+    attachmentEdge: attachmentLine,
     roofRidgeAxis: sharedRidgeAxis,
     roofRidgeAxisExplicit: explicitRidgeAxis !== null,
     preferredRidgeAxis:
       sharedRoofForm === 'gable' || sharedRoofForm === 'hipped'
         ? derivedRidgeAxis.value
         : null,
+    appendageSupport: {
+      supportedHostEdges: appendageSupport.supportedHostEdges as Array<NonNullable<CalculatorModuleInputs['attachmentSide']>>,
+      blockedReasonsBySide: appendageSupport.blockedReasonsBySide,
+    },
     appendage: {
       enabled: appendage.enabled,
       form: appendage.form,
@@ -1465,15 +1555,15 @@ function buildSharedHouse(
   });
   const capabilities = deriveHouseRoofCapabilities({
     roofForm: sharedRoofForm,
-    footprint: localPolygonToGeometryPolygon(derivedHousePolygon),
+    footprint: geometryFootprint,
   });
+  capabilities.appendageSupported = appendageSupport.supportedHostEdges.length > 0;
   const roofGeometryKind = deriveHouseRoofGeometryKind({
     roofForm: sharedRoofForm,
-    footprint: localPolygonToGeometryPolygon(derivedHousePolygon),
+    footprint: geometryFootprint,
   });
-  const appendageSupportedHostEdges = deriveHouseRoofAppendageSupportedHostEdges({
-    footprint: localPolygonToGeometryPolygon(derivedHousePolygon),
-  }) as Array<NonNullable<CalculatorModuleInputs['attachmentSide']>>;
+  const appendageSupportedHostEdges =
+    appendageSupport.supportedHostEdges as Array<NonNullable<CalculatorModuleInputs['attachmentSide']>>;
   const appendageSupportReason =
     validation.code === 'invalid_appendage_topology' || validation.code === 'invalid_appendage_host_edge'
       ? validation.message

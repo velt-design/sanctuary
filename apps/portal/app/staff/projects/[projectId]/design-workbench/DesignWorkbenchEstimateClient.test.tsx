@@ -444,7 +444,7 @@ describe('DesignWorkbenchEstimateClient', () => {
     expect(readLabeledValue(rendered.container, 'Roof appendage source')).toBe('Default fallback');
     expect(readLabeledValue(rendered.container, 'Roof geometry')).toBe('Footprint mono');
     expect(readLabeledValue(rendered.container, 'Appendage support')).toBe('Supported');
-    expect(readLabeledValue(rendered.container, 'Appendage supported edges')).toBe('Rear, Front, Left, Right');
+    expect(readLabeledValue(rendered.container, 'Appendage supported edges')).toBe('Rear');
 
     rendered.unmount();
   });
@@ -751,10 +751,10 @@ describe('DesignWorkbenchEstimateClient', () => {
 
     expect(readLabeledValue(rendered.container, 'Selected roof form')).toBe('mono');
     expect(readLabeledValue(rendered.container, 'Roof appendage')).toBe('invalid');
-    expect(readLabeledValue(rendered.container, 'Roof reason code')).toBe('invalid_appendage_host_edge');
-    expect(readLabeledValue(rendered.container, 'Appendage supported edges')).toBe('Front, Left, Right');
+    expect(readLabeledValue(rendered.container, 'Roof reason code')).toBe('invalid_appendage_topology');
+    expect(readLabeledValue(rendered.container, 'Appendage supported edges')).toBe('None');
     expect(rendered.container.textContent).toContain(
-      'The rear edge does not resolve to one continuous exterior appendage run on this footprint.',
+      'Appendage bands require at least one continuous exterior perimeter run on the current house footprint.',
     );
 
     rendered.unmount();

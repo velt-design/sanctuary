@@ -55,7 +55,7 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
         ridgeAxis: 'y',
         appendage: {
           enabled: true,
-          hostEdge: 'rear',
+          hostEdge: 'left',
           pitchDeg: '5',
           dropMm: '600',
         },
@@ -615,9 +615,11 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
     draft.inputs.modules[0]!.houseFootprintPreset = 'u_shape';
     draft.houseFirst = {
       roof: {
+        form: 'gable',
+        ridgeAxis: 'x',
         appendage: {
           enabled: true,
-          hostEdge: 'rear',
+          hostEdge: 'front',
           pitchDeg: '5',
           dropMm: '450',
         },
@@ -630,9 +632,9 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
     });
 
     expect(projectModel.house?.roof.validation.status).toBe('invalid');
-    expect(projectModel.house?.roof.validation.code).toBe('invalid_appendage_host_edge');
-    expect(projectModel.house?.roof.appendageSupportedHostEdges).toEqual(['front', 'left', 'right']);
-    expect(projectModel.house?.roof.appendageSupportReason).toContain('Supported edges: Front, Left, Right');
+    expect(projectModel.house?.roof.validation.code).toBe('invalid_appendage_topology');
+    expect(projectModel.house?.roof.appendageSupportedHostEdges).toEqual([]);
+    expect(projectModel.house?.roof.appendageSupportReason).toContain('Appendage bands require at least one continuous exterior perimeter run');
   });
 
   it('uses floating preset rects as detached preset geometry without discarding legacy preset fields', () => {

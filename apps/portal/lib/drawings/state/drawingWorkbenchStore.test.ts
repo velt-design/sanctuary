@@ -645,10 +645,10 @@ describe('buildDrawingWorkbenchStore', () => {
     });
 
     expect(store.derived.roofReviewStatus).toBe('blocked');
-    expect(store.derived.roofValidationCode).toBe('invalid_appendage_host_edge');
+    expect(store.derived.roofValidationCode).toBe('invalid_appendage_topology');
     expect(store.derived.roofAppendageStatus).toBe('invalid');
-    expect(store.derived.roofAppendageSupportedHostEdges).toEqual(['front', 'left', 'right']);
-    expect(store.derived.roofAppendageSupportReason).toContain('Supported edges: Front, Left, Right');
+    expect(store.derived.roofAppendageSupportedHostEdges).toEqual([]);
+    expect(store.derived.roofAppendageSupportReason).toContain('Appendage bands require at least one continuous exterior perimeter run');
   });
 
   it('derives active-side deck support diagnostics for attached and detached deck scenarios', () => {
