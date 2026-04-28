@@ -1,15 +1,13 @@
 import {
   buildViewerSceneModel,
-  normalizeGeometryConfig,
-  solveAssembly3D,
-  validateGeometrySolve,
   type Assembly3D,
   type GeometryConfig,
+  validateGeometrySolve,
   type GeometryValidationReport,
   type ViewerSceneModel,
 } from '@sp/geometry';
 import type { EstimateDrawingDraft } from '@/lib/estimates/drawingEdits';
-import { buildRawGeometryModuleInput } from './buildRawGeometryModuleInput';
+import { deriveWorkbenchGeometry } from './deriveWorkbenchGeometry';
 import { coerceHiddenWorkbenchGableBaseline } from './hiddenWorkbenchGableBaseline';
 import { resolveWorkbenchGeometryModule } from './resolveWorkbenchGeometryModule';
 import { buildHouseFirstWorkbenchProjectModel } from '../state/houseFirstWorkbenchAdapter';
@@ -203,7 +201,7 @@ export function buildWorkbenchGeometryPreview(input: {
     };
   }
 
-  const rawInput = buildRawGeometryModuleInput({
+  const derivation = deriveWorkbenchGeometry({
     projectId: input.projectId,
     estimateId: input.estimateId,
     designRequestId: input.designRequestId ?? null,
@@ -212,52 +210,40 @@ export function buildWorkbenchGeometryPreview(input: {
     result: resolved.moduleResult,
     sharedHouse: projectModel.house,
   });
-
-  const normalized = normalizeGeometryConfig(rawInput);
-
-  if (!normalized.ok) {
-    if (normalized.code === 'unsupported_family') {
-      return {
-        kind: 'unsupported',
-        previewMode,
-        deckSupport,
-        message: normalized.error,
-      };
-    }
-
-    return {
-      kind: 'error',
-      message: normalized.error,
-    };
-  }
-
-  const solveResult = solveAssembly3D(normalized.value);
-  const validation = validateGeometrySolve({
-    config: normalized.value,
-    solveResult,
-  });
-
-  if (!solveResult.ok) {
+  if (derivation.kind === 'legacy_unsupported_family') {
     return {
       kind: 'unsupported',
       previewMode,
-      config: normalized.value,
-      validation,
       deckSupport,
-      message: solveResult.error,
+      message: derivation.message,
     };
   }
+
+  if (derivation.kind === 'invalid_geometry') {
+    return {
+      kind: 'error',
+      message: derivation.message,
+    };
+  }
+
+  const validation = validateGeometrySolve({
+    config: derivation.config,
+    solveResult: {
+      ok: true,
+      value: derivation.assembly,
+    },
+  });
 
   return {
     kind: 'ready',
     previewMode,
     resultSource: resolved.resultSource,
-    config: normalized.value,
-    assembly: solveResult.value,
+    config: derivation.config,
+    assembly: derivation.assembly,
     validation,
     scene: annotateSceneAttachmentZoneMetadata(
       annotateSceneHostEdgeSides(
-        buildViewerSceneModel(solveResult.value),
+        buildViewerSceneModel(derivation.assembly),
         projectModel.house?.footprint.polygon,
       ),
       projectModel,

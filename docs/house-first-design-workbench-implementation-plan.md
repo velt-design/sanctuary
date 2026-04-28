@@ -148,7 +148,9 @@ An individually selectable and movable authored building form.
 The merged building result derived from the active set of house forms.
 
 - Touching or overlapping forms always merge behaviorally.
-- The merged result drives wall hosting, roof behavior, eaves, gutters, and pergola attachment zones.
+- The merged result drives wall hosting, roof behavior, derived edges, eaves, gutters, and pergola attachment zones.
+- Derived edges are assembly-level outputs, not authored edges copied from a single form.
+- Attachment zones are projected from derived envelope behavior and may reference derived edge and wall outputs together.
 - This document defines the behavioral contract only, not the exact geometry algorithms.
 
 ### `Deck`
@@ -206,6 +208,7 @@ This does not mean authored forms lose identity. Authored forms remain individua
 
 - Pergolas attach to the derived envelope.
 - Attachment edges and zones are derived after house-form merge behavior resolves.
+- Pergola attachment references a derived `edgeId` plus an optional supporting `zoneId`.
 - Pergolas should not rely on hidden per-module house copies.
 
 ## Interaction Architecture

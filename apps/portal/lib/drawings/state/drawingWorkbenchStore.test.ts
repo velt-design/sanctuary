@@ -168,7 +168,7 @@ describe('buildDrawingWorkbenchStore', () => {
     expect(store.derived.status).toBe('ready');
   });
 
-  it('returns empty plan state instead of falling back to legacy plan geometry when geometry solving is unsupported', () => {
+  it('keeps legacy plan state available for unsupported hip families while marking model-space render status', () => {
     const snapshot = {
       inputs: {
         schemaVersion: 'v2',
@@ -197,10 +197,14 @@ describe('buildDrawingWorkbenchStore', () => {
 
     expect(store.persisted.modules[0]?.drawingModule.planModel).not.toBeNull();
     expect(store.persisted.modules[0]?.drawingModule.sectionModel).not.toBeNull();
-    expect(store.derived.activePlanModel).toBeNull();
-    expect(store.derived.activePlanViewModel).toBeNull();
-    expect(store.derived.activeSectionModel).toBeNull();
-    expect(store.derived.status).toBe('empty');
+    expect(store.persisted.modules[0]?.geometryPlanViewModel).toBeNull();
+    expect(store.persisted.modules[0]?.planRenderSource).toBe('legacy');
+    expect(store.persisted.modules[0]?.planRenderStatus).toBe('legacy_unsupported_family');
+    expect(store.derived.activePlanModel).not.toBeNull();
+    expect(store.derived.activePlanViewModel?.modelSpacePergola.renderSource).toBe('legacy');
+    expect(store.derived.activePlanViewModel?.modelSpacePergola.renderStatus).toBe('legacy_unsupported_family');
+    expect(store.derived.activeSectionModel).not.toBeNull();
+    expect(store.derived.status).toBe('ready');
   });
 
   it('locally resolves stale pricing outputs so sheet models remain available', () => {

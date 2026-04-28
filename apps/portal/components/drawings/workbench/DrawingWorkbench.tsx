@@ -7,6 +7,7 @@ import type { PlanViewModel } from '@/lib/drawings/views/plan/buildPlanViewModel
 import type { GeometryPreviewState } from '@/lib/drawings/geometry/buildWorkbenchGeometryPreview';
 import type { EstimateDrawingField, EstimateDrawingFootprintEdit } from '@/lib/estimates/drawingEdits';
 import type { EstimateDrawingSheetMeta } from '@/lib/estimates/drawingSheet';
+import type { DeckInteractionTelemetry } from '@/lib/drawings/interactions/deckInteractionContract';
 import type {
   DrawingWorkbenchViewportMode,
   DrawingWorkbenchViewportTransform,
@@ -91,17 +92,7 @@ type DrawingWorkbenchProps = {
     openingId: string,
     patch: Partial<HouseFirstOpeningDraft>,
   ) => Promise<{ ok: boolean; error?: string }> | { ok: boolean; error?: string };
-  onDeckInteractionTelemetryChange?: (telemetry: {
-    selectedDeckId: string | null;
-    housePolygonSource: 'custom_saved' | 'preset_derived' | null;
-    selectedDeckType: 'none' | 'preset_snapped' | 'preset_floating' | 'custom_outline' | 'preset_unresolved';
-    dragEligible: boolean;
-    dragReason: string | null;
-    hostEdgeResolvable: boolean;
-    relationshipDimensionsAvailable: boolean;
-    snapState: 'idle' | 'floating' | 'snapped';
-    snapMessage: string | null;
-  }) => void;
+  onDeckInteractionTelemetryChange?: (telemetry: DeckInteractionTelemetry) => void;
 };
 
 export default function DrawingWorkbench({

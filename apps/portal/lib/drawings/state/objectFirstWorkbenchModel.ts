@@ -96,7 +96,7 @@ export type DerivedWallModel = {
   id: string;
   label: string;
   sourceFormIds: string[];
-  hostEdgeIds: string[];
+  edgeIds: string[];
   kind: 'exterior';
   polygon: CalculatorHouseFootprintPolygonPoint[];
 };
@@ -110,10 +110,30 @@ export type DerivedWallGraphModel = {
   }>;
 };
 
+export type DerivedEnvelopeEdgeSemanticKind =
+  | 'wall_perimeter'
+  | 'roof_perimeter'
+  | 'ridge'
+  | 'valley'
+  | 'eave'
+  | 'gutter';
+
+export type DerivedEnvelopeEdgeModel = {
+  id: string;
+  label: string;
+  semanticKind: DerivedEnvelopeEdgeSemanticKind;
+  sourceFormIds: string[];
+  hostWallId: string | null;
+  hostRoofZoneIds: string[];
+  start: CalculatorHouseFootprintPolygonPoint;
+  end: CalculatorHouseFootprintPolygonPoint;
+};
+
 export type DerivedRoofZoneModel = {
   id: string;
   label: string;
   sourceFormIds: string[];
+  edgeIds: string[];
   boundary: CalculatorHouseFootprintPolygonPoint[];
 };
 
@@ -124,6 +144,7 @@ export type DerivedAttachmentZoneModel = {
   side: NonNullable<CalculatorModuleInputs['attachmentSide']>;
   sourceFormIds: string[];
   hostWallId: string | null;
+  hostEdgeId: string | null;
   hostRoofZoneId: string | null;
 };
 
@@ -132,6 +153,7 @@ export type DerivedBuildingEnvelopeModel = {
   footprint: CalculatorHouseFootprintPolygonPoint[];
   wallGraph: DerivedWallGraphModel;
   roofZones: DerivedRoofZoneModel[];
+  edges: DerivedEnvelopeEdgeModel[];
   attachmentZones: DerivedAttachmentZoneModel[];
 };
 

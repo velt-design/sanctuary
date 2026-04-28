@@ -1,21 +1,22 @@
 import type { ModuleViewsStatus } from '@/app/staff/calculator/ModuleViewsCard';
 import type { ModulePlanModel, ModuleSectionModel } from '@/app/staff/calculator/moduleViews';
-import {
-  buildPlanViewModel as buildGeometryPlanViewModel,
-  buildSectionViewModel as buildGeometrySectionViewModel,
-  normalizeGeometryConfig,
-  solveAssembly3D,
-} from '@sp/geometry';
+import type { GeometryPlanViewModel } from '@sp/geometry';
 import { buildAssemblyModel } from '@/lib/drawings/assembly/buildAssemblyModel';
 import type { DrawingAssemblyModel } from '@/lib/drawings/assembly/types';
-import { buildRawGeometryModuleInput } from '@/lib/drawings/geometry/buildRawGeometryModuleInput';
 import { coerceHiddenWorkbenchGableBaseline } from '@/lib/drawings/geometry/hiddenWorkbenchGableBaseline';
+import {
+  deriveWorkbenchGeometry,
+  type WorkbenchPergolaRenderSource,
+  type WorkbenchPergolaRenderStatus,
+} from '@/lib/drawings/geometry/deriveWorkbenchGeometry';
 import { resolveWorkbenchGeometryModule } from '@/lib/drawings/geometry/resolveWorkbenchGeometryModule';
-import { buildLegacyModulePlanModelFromGeometry } from '@/lib/drawings/views/plan/buildLegacyModulePlanModelFromGeometry';
-import { buildLegacyModuleSectionModelFromGeometry } from '@/lib/drawings/views/section/buildLegacyModuleSectionModelFromGeometry';
 import { buildPlanViewModel, type PlanViewModel } from '@/lib/drawings/views/plan/buildPlanViewModel';
 import { buildEstimateDrawingModules, type EstimateDrawingModule } from '@/lib/estimates/moduleDrawing';
 import { mergeEstimateDrawingDraftIntoSnapshot, type EstimateDrawingDraft } from '@/lib/estimates/drawingEdits';
+import {
+  resolveDeckInteractionCapability,
+  type DeckInteractionCapability,
+} from '@/lib/drawings/interactions/deckInteractionContract';
 import { normalizeDrawingWorkbenchUiState, type DrawingWorkbenchUiState } from './drawingWorkbenchUiState';
 import { buildHouseFirstWorkbenchProjectModel } from './houseFirstWorkbenchAdapter';
 import {
@@ -29,7 +30,6 @@ import type {
   PergolaModel,
   WorkbenchProjectModel,
 } from './houseFirstWorkbenchModel';
-import { resolveDeckPlacementMode } from './houseFirstWorkbenchModel';
 
 export type DrawingWorkbenchModuleEntry = {
   id: string;
@@ -37,17 +37,14 @@ export type DrawingWorkbenchModuleEntry = {
   drawingModule: EstimateDrawingModule;
   assemblyModel: DrawingAssemblyModel;
   planViewModel: PlanViewModel | null;
+  geometryPlanViewModel: GeometryPlanViewModel | null;
+  planRenderSource: WorkbenchPergolaRenderSource;
+  planRenderStatus: WorkbenchPergolaRenderStatus;
   planModel: ModulePlanModel | null;
   sectionModel: ModuleSectionModel | null;
 };
 
-export type WorkbenchDeckInteractionDiagnostic = {
-  selectedDeckType: 'none' | 'preset_snapped' | 'preset_floating' | 'custom_outline' | 'preset_unresolved';
-  dragEligible: boolean;
-  dragReason: string | null;
-  hostEdgeResolvable: boolean;
-  relationshipDimensionsAvailable: boolean;
-};
+export type WorkbenchDeckInteractionDiagnostic = DeckInteractionCapability;
 
 export type DrawingWorkbenchStore = {
   persisted: {
@@ -111,91 +108,16 @@ function buildDeckInteractionDiagnostic(
   deck: HouseModel['decks'][number] | null,
 ): WorkbenchDeckInteractionDiagnostic | null {
   if (!deck) return null;
-  const hostEdgeResolvable =
+  const dragInteractionAvailable =
     deck.hostEdgeId === 'rear' ||
     deck.hostEdgeId === 'front' ||
     deck.hostEdgeId === 'left' ||
     deck.hostEdgeId === 'right';
 
-  if (deck.shape === 'custom') {
-    return {
-      selectedDeckType: 'custom_outline',
-      dragEligible: hostEdgeResolvable,
-      dragReason: hostEdgeResolvable
-        ? 'Drag the selected custom deck body to translate it relative to the house, or click relationship dimensions and outline edges to edit.'
-        : 'This custom deck needs a resolvable house reference edge before translation and relationship dims are available.',
-      hostEdgeResolvable,
-      relationshipDimensionsAvailable: hostEdgeResolvable,
-    };
-  }
-
-  if (!hostEdgeResolvable || !deck.presetRect) {
-    return {
-      selectedDeckType: 'preset_unresolved',
-      dragEligible: false,
-      dragReason: 'This preset deck needs a resolvable house reference edge before drag and relationship dims are available.',
-      hostEdgeResolvable,
-      relationshipDimensionsAvailable: false,
-    };
-  }
-
-  return {
-    selectedDeckType: resolveDeckPlacementMode(deck.isAttached) === 'snapped' ? 'preset_snapped' : 'preset_floating',
-    dragEligible: true,
-    dragReason: 'Drag the selected deck body to move it near the house edge or into floating placement, or click dimensions to edit.',
-    hostEdgeResolvable: true,
-    relationshipDimensionsAvailable: true,
-  };
-}
-
-function buildGeometryDerivedModels(input: {
-  drawingModule: EstimateDrawingModule;
-  moduleInput: EstimateDrawingModule['input'];
-  moduleResult: EstimateDrawingModule['result'];
-  sharedHouse: HouseModel | null;
-}): {
-  planModel: ModulePlanModel | null;
-  sectionModel: ModuleSectionModel | null;
-} {
-  const rawInput = buildRawGeometryModuleInput({
-    projectId: 'hidden-workbench-project',
-    estimateId: 'hidden-workbench-estimate',
-    designRequestId: null,
-    moduleId: input.drawingModule.id,
-    module: input.moduleInput,
-    result: input.moduleResult,
-    sharedHouse: input.sharedHouse,
+  return resolveDeckInteractionCapability({
+    deck,
+    dragInteractionAvailable,
   });
-  const normalized = normalizeGeometryConfig(rawInput);
-  if (!normalized.ok) {
-    return {
-      planModel: null,
-      sectionModel: null,
-    };
-  }
-
-  const solved = solveAssembly3D(normalized.value);
-  if (!solved.ok) {
-    return {
-      planModel: null,
-      sectionModel: null,
-    };
-  }
-
-  const geometryPlan = buildGeometryPlanViewModel(solved.value);
-  const geometrySection = buildGeometrySectionViewModel(solved.value);
-  return {
-    planModel: buildLegacyModulePlanModelFromGeometry({
-      geometryPlan,
-      module: input.moduleInput,
-      fallbackMetadata: input.drawingModule.planModel,
-    }),
-    sectionModel: buildLegacyModuleSectionModelFromGeometry({
-      geometrySection,
-      module: input.moduleInput,
-      fallbackMetadata: input.drawingModule.sectionModel,
-    }),
-  };
 }
 
 export function buildDrawingWorkbenchStore(input: {
@@ -233,25 +155,41 @@ export function buildDrawingWorkbenchStore(input: {
       ...drawingModule,
       result: resolved.ok ? resolved.moduleResult : null,
     };
-    const geometryModels = resolved.ok
-        ? buildGeometryDerivedModels({
-          drawingModule: resolvedDrawingModule,
-          moduleInput: geometryModule,
-          moduleResult: resolved.moduleResult,
+    const derivation = resolved.ok
+      ? deriveWorkbenchGeometry({
+          projectId: 'hidden-workbench-project',
+          estimateId: 'hidden-workbench-estimate',
+          moduleId: drawingModule.id,
+          module: geometryModule,
+          result: resolved.moduleResult,
           sharedHouse: projectModel.house,
+          fallbackPlanModel: resolvedDrawingModule.planModel,
+          fallbackSectionModel: resolvedDrawingModule.sectionModel,
         })
-      : {
-          planModel: null,
-          sectionModel: null,
-        };
+      : null;
+    const planModel =
+      derivation?.kind === 'geometry'
+        ? derivation.planModel
+        : derivation?.kind === 'legacy_unsupported_family'
+          ? derivation.planModel
+          : null;
+    const sectionModel =
+      derivation?.kind === 'geometry'
+        ? derivation.sectionModel
+        : derivation?.kind === 'legacy_unsupported_family'
+          ? derivation.sectionModel
+          : null;
+    const geometryPlanViewModel = derivation?.kind === 'geometry' ? derivation.geometryPlan : null;
+    const planRenderSource = derivation?.renderSource ?? 'legacy';
+    const planRenderStatus = derivation?.renderStatus ?? 'invalid_geometry';
     const assemblyModel = buildAssemblyModel({
       id: drawingModule.id,
       label,
       moduleIndex: index,
       moduleInput: geometryModule,
       moduleResult: resolvedDrawingModule.result,
-      planModel: geometryModels.planModel,
-      sectionModel: geometryModels.sectionModel,
+      planModel,
+      sectionModel,
     });
 
     return {
@@ -262,7 +200,10 @@ export function buildDrawingWorkbenchStore(input: {
       planViewModel: buildPlanViewModel({
         moduleId: drawingModule.id,
         moduleLabel: label,
-        planModel: geometryModels.planModel,
+        planModel,
+        geometryPlan: geometryPlanViewModel,
+        pergolaRenderSource: planRenderSource,
+        pergolaRenderStatus: planRenderStatus,
         canEditHouseFootprint: assemblyModel.capabilities.canEditHouseFootprint,
         house: projectModel.house,
         activeHouseSelection: ui.activeHouseSelection,
@@ -270,8 +211,11 @@ export function buildDrawingWorkbenchStore(input: {
         moduleLengthM: geometryModule.lengthM,
         moduleProjectionM: geometryModule.projectionM,
       }),
-      planModel: geometryModels.planModel,
-      sectionModel: geometryModels.sectionModel,
+      geometryPlanViewModel,
+      planRenderSource,
+      planRenderStatus,
+      planModel,
+      sectionModel,
     };
   });
 

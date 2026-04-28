@@ -1,5 +1,13 @@
 import { useCallback, useEffect, useId, useRef, type PointerEvent as ReactPointerEvent } from 'react';
 import type { AttachmentSide } from '@sp/costing';
+import type {
+  GeometryPlanMember2D,
+  GeometryPlanSurface2D,
+  GeometryPlanViewModel,
+  Line2,
+  Point2,
+  Vector2,
+} from '@sp/geometry';
 import styles from './CalculatorGrid.module.css';
 import {
   attachmentSideQuarterTurns,
@@ -31,6 +39,10 @@ import type {
   HouseFirstPlanPresetDimensionAnnotation,
   PlanPoint,
 } from '@/lib/drawings/views/plan/houseFirstPlanOverlay';
+import type {
+  WorkbenchPergolaRenderSource,
+  WorkbenchPergolaRenderStatus,
+} from '@/lib/drawings/geometry/deriveWorkbenchGeometry';
 
 export type ModuleViewsTab = 'plan' | 'section';
 export type ModuleViewsStatus = 'loading' | 'ready' | 'error' | 'empty';
@@ -221,6 +233,9 @@ type ModuleDrawingRendererProps = {
     target: SVGTextElement,
   ) => void;
   houseFirstPreviewOverlay?: HouseFirstPlanPreviewOverlay | null;
+  modelSpacePergolaGeometry?: GeometryPlanViewModel | null;
+  modelSpacePergolaRenderSource?: WorkbenchPergolaRenderSource;
+  modelSpacePergolaRenderStatus?: WorkbenchPergolaRenderStatus;
 };
 
 type ModuleDrawingInteractiveField = {
@@ -382,6 +397,9 @@ export function ModuleDrawingRenderer({
   onHouseFirstCustomEdgeSelect,
   onHouseFirstDimensionActivate,
   houseFirstPreviewOverlay,
+  modelSpacePergolaGeometry,
+  modelSpacePergolaRenderSource,
+  modelSpacePergolaRenderStatus,
 }: ModuleDrawingRendererProps) {
   const effectiveShowDebugOverlays = showDebugOverlays ?? presentation === 'sheet';
   const isCompact = presentation !== 'card';
@@ -505,6 +523,9 @@ export function ModuleDrawingRenderer({
               onHouseFirstCustomEdgeSelect={onHouseFirstCustomEdgeSelect}
               onHouseFirstDimensionActivate={onHouseFirstDimensionActivate}
               houseFirstPreviewOverlay={houseFirstPreviewOverlay}
+              modelSpacePergolaGeometry={modelSpacePergolaGeometry}
+              modelSpacePergolaRenderSource={modelSpacePergolaRenderSource}
+              modelSpacePergolaRenderStatus={modelSpacePergolaRenderStatus}
             />
           </div>
           {isCompact ? null : (
@@ -1695,6 +1716,64 @@ function toPointsAttr(points: Point[]): string {
   return points.map((point) => `${point.x.toFixed(2)},${point.y.toFixed(2)}`).join(' ');
 }
 
+function mmPointToPlanSvg(point: Point2, baseX: number, baseY: number, scale: number): Point {
+  return {
+    x: baseX + (point.x / 1000) * scale,
+    y: baseY + (point.y / 1000) * scale,
+  };
+}
+
+function mmLineToPlanSvg(line: Line2, baseX: number, baseY: number, scale: number): { start: Point; end: Point } {
+  return {
+    start: mmPointToPlanSvg(line.start, baseX, baseY, scale),
+    end: mmPointToPlanSvg(line.end, baseX, baseY, scale),
+  };
+}
+
+function mmPolygonToPlanSvg(points: Point2[], baseX: number, baseY: number, scale: number): Point[] {
+  return points.map((point) => mmPointToPlanSvg(point, baseX, baseY, scale));
+}
+
+function buildPlanMemberFootprint(input: {
+  member: GeometryPlanMember2D;
+  baseX: number;
+  baseY: number;
+  scale: number;
+}): Point[] {
+  const start = mmPointToPlanSvg(input.member.centerline.start, input.baseX, input.baseY, input.scale);
+  const end = mmPointToPlanSvg(input.member.centerline.end, input.baseX, input.baseY, input.scale);
+  const halfWidth = Math.max(0.15, (input.member.profile.widthMm / 1000) * input.scale / 2);
+  const dx = end.x - start.x;
+  const dy = end.y - start.y;
+  const length = Math.hypot(dx, dy);
+
+  if (length <= 0.001) {
+    const center = start;
+    return [
+      { x: center.x - halfWidth, y: center.y - halfWidth },
+      { x: center.x + halfWidth, y: center.y - halfWidth },
+      { x: center.x + halfWidth, y: center.y + halfWidth },
+      { x: center.x - halfWidth, y: center.y + halfWidth },
+    ];
+  }
+
+  const nx = -dy / length;
+  const ny = dx / length;
+  return [
+    { x: start.x + nx * halfWidth, y: start.y + ny * halfWidth },
+    { x: end.x + nx * halfWidth, y: end.y + ny * halfWidth },
+    { x: end.x - nx * halfWidth, y: end.y - ny * halfWidth },
+    { x: start.x - nx * halfWidth, y: start.y - ny * halfWidth },
+  ];
+}
+
+function geometryFallDirectionToCardinal(direction: Vector2): CardinalDirection {
+  if (Math.abs(direction.x) >= Math.abs(direction.y)) {
+    return direction.x >= 0 ? 'right' : 'left';
+  }
+  return direction.y >= 0 ? 'down' : 'up';
+}
+
 function segmentDownNormal(x1: number, y1: number, x2: number, y2: number): { nx: number; ny: number; len: number } {
   const dx = x2 - x1;
   const dy = y2 - y1;
@@ -1813,59 +1892,10 @@ function planHousePointToSvg(
   baseX: number,
   baseY: number,
   scale: number,
-  options?: { invertY?: boolean; maxWorldY?: number | null },
 ): Point {
-  const invertY = Boolean(options?.invertY);
-  const maxWorldY = invertY && typeof options?.maxWorldY === 'number' ? options.maxWorldY : null;
   return {
     x: baseX + point.x * scale,
-    y: baseY + (invertY && maxWorldY !== null ? maxWorldY - point.y : point.y) * scale,
-  };
-}
-
-function resolvePlanHouseProjectionMaxWorldY(input: {
-  surfaces?: Array<{ boundary: Point[] }>;
-  lines?: Array<{ line: { start: Point; end: Point } }>;
-  overlayShapes?: Array<{ polygon: Point[] }>;
-  presetAnnotations?: Array<{ witnessStart: Point; witnessEnd: Point; lineStart: Point; lineEnd: Point }>;
-  customEdgeCandidates?: Array<{ witnessStart: Point; witnessEnd: Point; lineStart: Point; lineEnd: Point }>;
-  previewShape?: { polygon: Point[]; hostEdge: { start: Point; end: Point } | null } | null;
-}): number | null {
-  const yValues = [
-    ...(input.surfaces ?? []).flatMap((surface) => surface.boundary.map((point) => point.y)),
-    ...(input.lines ?? []).flatMap((line) => [line.line.start.y, line.line.end.y]),
-    ...(input.overlayShapes ?? []).flatMap((shape) => shape.polygon.map((point) => point.y)),
-    ...(input.presetAnnotations ?? []).flatMap((annotation) => [
-      annotation.witnessStart.y,
-      annotation.witnessEnd.y,
-      annotation.lineStart.y,
-      annotation.lineEnd.y,
-    ]),
-    ...(input.customEdgeCandidates ?? []).flatMap((annotation) => [
-      annotation.witnessStart.y,
-      annotation.witnessEnd.y,
-      annotation.lineStart.y,
-      annotation.lineEnd.y,
-    ]),
-    ...(input.previewShape
-      ? [
-          ...input.previewShape.polygon.map((point) => point.y),
-          ...(input.previewShape.hostEdge ? [input.previewShape.hostEdge.start.y, input.previewShape.hostEdge.end.y] : []),
-        ]
-      : []),
-  ];
-  return yValues.length ? Math.max(...yValues) : null;
-}
-
-function resolvePlanHouseProjectionOptions(input: {
-  presentation: ModuleDrawingPresentation;
-  displayMode?: ModuleDrawingDisplayMode;
-  houseProjectionMaxWorldY?: number | null;
-}): { invertY: boolean; maxWorldY: number | null } {
-  const invertY = input.presentation === 'model' && input.displayMode === 'house';
-  return {
-    invertY,
-    maxWorldY: invertY ? input.houseProjectionMaxWorldY ?? null : null,
+    y: baseY + point.y * scale,
   };
 }
 
@@ -1875,9 +1905,6 @@ function planRotationTurnsForPresentation(input: {
   presentation: ModuleDrawingPresentation;
 }): number {
   if (input.roofType === 'hip_corner') return 0;
-  // Model space should track the geometry world orientation so it stays aligned
-  // with the 3D viewport; quarter-turn drawing rotation remains a sheet/card concern.
-  if (input.presentation === 'model') return 0;
   return input.drawingRotationQuarterTurns;
 }
 
@@ -3105,7 +3132,7 @@ function renderHouseFirstPlanOverlay(input: {
                     ? shape.ownerKind === 'deck'
                       ? 'Drag deck'
                       : 'Drag opening'
-                    : 'Dims only'}
+                    : 'Blocked'}
                 </text>
               ) : null}
             </g>
@@ -3364,7 +3391,6 @@ function measurePlanAnnotatedBounds(input: {
   displayMode?: ModuleDrawingDisplayMode;
   frame: PlanSheetFrame;
   includeHouseContext?: boolean;
-  houseProjectionMaxWorldY?: number | null;
   footprintEditor?: Pick<
     ModuleFootprintEditorProps,
     | 'customPolygonOverride'
@@ -3376,7 +3402,7 @@ function measurePlanAnnotatedBounds(input: {
     | 'hideHouseFootprint'
   >;
 }): AnnotatedBounds {
-  const { model, x, y, scale, presentation = 'sheet', displayMode = 'pergolas', frame } = input;
+  const { model, x, y, scale, presentation = 'sheet', frame } = input;
   const includeHouseContext = input.includeHouseContext ?? true;
   const isHipCorner = model.roofType === 'hip_corner';
   const isGableLike = model.roofType === 'gable' || model.roofType === 'low_gable' || model.roofType === 'hip';
@@ -3487,20 +3513,15 @@ function measurePlanAnnotatedBounds(input: {
     start: pointOnAttachmentFrame(footprintFrame, sx, -2.3),
     end: pointOnAttachmentFrame(footprintFrame, sx, 0.1),
   }));
-  const semanticHouseProjectionOptions = resolvePlanHouseProjectionOptions({
-    presentation,
-    displayMode,
-    houseProjectionMaxWorldY: input.houseProjectionMaxWorldY,
-  });
   const semanticHouseSurfacePoints = includeHouseContext
     ? (model.houseContext?.surfaces ?? []).map((surface) =>
-        surface.boundary.map((point) => planHousePointToSvg(point, baseX, baseY, scale, semanticHouseProjectionOptions)),
+        surface.boundary.map((point) => planHousePointToSvg(point, baseX, baseY, scale)),
       )
     : [];
   const semanticHouseLines = includeHouseContext
     ? (model.houseContext?.lines ?? []).map((line) => ({
-        start: planHousePointToSvg(line.line.start, baseX, baseY, scale, semanticHouseProjectionOptions),
-        end: planHousePointToSvg(line.line.end, baseX, baseY, scale, semanticHouseProjectionOptions),
+        start: planHousePointToSvg(line.line.start, baseX, baseY, scale),
+        end: planHousePointToSvg(line.line.end, baseX, baseY, scale),
       }))
     : [];
   const fallIsHorizontal = attachmentSide === 'left' || attachmentSide === 'right';
@@ -3755,7 +3776,6 @@ function measurePlanModelSpaceFocusBounds(input: {
   y: number;
   scale: number;
   displayMode?: ModuleDrawingDisplayMode;
-  houseProjectionMaxWorldY?: number | null;
 }): AnnotatedBounds {
   const { model, x, y, scale, displayMode = 'pergolas' } = input;
   const isHipCorner = model.roofType === 'hip_corner';
@@ -3819,22 +3839,17 @@ function measurePlanModelSpaceFocusBounds(input: {
   const rafterXsB = projectLinearPositions(model.rafterPositionsB ?? null, model.lengthB, baseX, bW);
   const interiorRafterXsA = interiorPlanRafterXs(rafterXsA);
   const interiorRafterXsB = interiorPlanRafterXs(rafterXsB);
-  const semanticHouseProjectionOptions = resolvePlanHouseProjectionOptions({
-    presentation: 'model',
-    displayMode,
-    houseProjectionMaxWorldY: input.houseProjectionMaxWorldY,
-  });
   const semanticHouseSurfacePoints =
     displayMode === 'house'
       ? (model.houseContext?.surfaces ?? []).map((surface) =>
-          surface.boundary.map((point) => planHousePointToSvg(point, baseX, baseY, scale, semanticHouseProjectionOptions)),
+          surface.boundary.map((point) => planHousePointToSvg(point, baseX, baseY, scale)),
         )
       : [];
   const semanticHouseLines =
     displayMode === 'house'
       ? (model.houseContext?.lines ?? []).map((line) => ({
-          start: planHousePointToSvg(line.line.start, baseX, baseY, scale, semanticHouseProjectionOptions),
-          end: planHousePointToSvg(line.line.end, baseX, baseY, scale, semanticHouseProjectionOptions),
+          start: planHousePointToSvg(line.line.start, baseX, baseY, scale),
+          end: planHousePointToSvg(line.line.end, baseX, baseY, scale),
         }))
       : [];
   const yTopInner = baseY + topFrameW;
@@ -3972,11 +3987,12 @@ function resolvePlanModelSpaceLayout(
     | 'customPolygonPreviewPointKind'
     | 'customPolygonCloseReady'
     | 'customPolygonCloseHovered'
+    | 'customPolygonLandingPoint'
+    | 'customPolygonLockedDistanceM'
     | 'hideHouseFootprint'
   >,
   options?: {
     displayMode?: ModuleDrawingDisplayMode;
-    houseProjectionMaxWorldY?: number | null;
   },
 ): ResolvedModelSpaceLayout {
   const frame = getPlanModelSpaceFrame(model.roofType === 'hip_corner');
@@ -3991,7 +4007,6 @@ function resolvePlanModelSpaceLayout(
     presentation: 'model',
     displayMode: options?.displayMode,
     frame,
-    houseProjectionMaxWorldY: options?.houseProjectionMaxWorldY,
     footprintEditor,
   });
   const focusBounds = measurePlanModelSpaceFocusBounds({
@@ -4000,7 +4015,6 @@ function resolvePlanModelSpaceLayout(
     y,
     scale,
     displayMode: options?.displayMode,
-    houseProjectionMaxWorldY: options?.houseProjectionMaxWorldY,
   });
   const svgMetrics = resolveModelSpaceSvgMetrics(focusBounds);
   const focusMetrics = resolveModelSpaceFocusMetrics(focusBounds);
@@ -4422,6 +4436,9 @@ function PlanSvg({
   onHouseFirstCustomEdgeSelect,
   onHouseFirstDimensionActivate,
   houseFirstPreviewOverlay,
+  modelSpacePergolaGeometry,
+  modelSpacePergolaRenderSource = 'legacy',
+  modelSpacePergolaRenderStatus = 'invalid_geometry',
 }: {
   model: ModulePlanModel;
   idBase: string;
@@ -4450,6 +4467,9 @@ function PlanSvg({
     target: SVGTextElement,
   ) => void;
   houseFirstPreviewOverlay?: HouseFirstPlanPreviewOverlay | null;
+  modelSpacePergolaGeometry?: GeometryPlanViewModel | null;
+  modelSpacePergolaRenderSource?: WorkbenchPergolaRenderSource;
+  modelSpacePergolaRenderStatus?: WorkbenchPergolaRenderStatus;
 }) {
   const effectiveShowDebugOverlays = showDebugOverlays ?? presentation === 'sheet';
   const isSheet = presentation === 'sheet';
@@ -4468,16 +4488,6 @@ function PlanSvg({
   const rawHouseFirstPresetAnnotations = presentation === 'model' ? houseFirstPlanOverlay?.presetAnnotations ?? [] : [];
   const rawHouseFirstCustomEdgeCandidates = presentation === 'model' ? houseFirstPlanOverlay?.customEdgeCandidates ?? [] : [];
   const rawHouseFirstPreviewShape = presentation === 'model' ? houseFirstPreviewOverlay : null;
-  const housePlanProjectionMaxY = isModelHouseDisplay
-    ? resolvePlanHouseProjectionMaxWorldY({
-        surfaces: rawSemanticPlanHouseSurfaces,
-        lines: rawSemanticPlanHouseLines,
-        overlayShapes: rawHouseFirstOverlayShapes,
-        presetAnnotations: rawHouseFirstPresetAnnotations,
-        customEdgeCandidates: rawHouseFirstCustomEdgeCandidates,
-        previewShape: rawHouseFirstPreviewShape,
-      })
-    : null;
   const isHipCorner = model.roofType === 'hip_corner';
   const isGableLike = model.roofType === 'gable' || model.roofType === 'low_gable' || model.roofType === 'hip';
   const hasFullLengthRidge = hasFullLengthPlanRidge(model.roofType);
@@ -4486,8 +4496,7 @@ function PlanSvg({
   const sheetLayout = isSheet ? resolvePlanSheetLayout({ model, drawingScale, viewportMm: sheetViewportMm }) : null;
   const modelSpaceLayout = isModel
     ? resolvePlanModelSpaceLayout(model, footprintEditor, {
-        displayMode,
-        houseProjectionMaxWorldY: housePlanProjectionMaxY,
+      displayMode,
       })
     : null;
   const layout = sheetLayout ?? modelSpaceLayout ?? resolvePlanFitBox(total.widthM, total.heightM, presentation, isHipCorner);
@@ -4514,6 +4523,90 @@ function PlanSvg({
   const y = rotationFrame.baseY;
   const planRotationTransform =
     rotationFrame.turns === 0 ? undefined : `rotate(${rotationFrame.turns * 90} ${rotationFrame.center.x} ${rotationFrame.center.y})`;
+  const useGeometryBackedPergola =
+    presentation === 'model' &&
+    modelSpacePergolaRenderSource === 'geometry' &&
+    modelSpacePergolaRenderStatus === 'geometry_ready' &&
+    Boolean(modelSpacePergolaGeometry);
+  const geometryOutlinePoints =
+    useGeometryBackedPergola && modelSpacePergolaGeometry
+      ? mmPolygonToPlanSvg(modelSpacePergolaGeometry.outline, x, y, scale)
+      : [];
+  const geometryRoofPlaneSurfaces =
+    useGeometryBackedPergola && modelSpacePergolaGeometry
+      ? modelSpacePergolaGeometry.surfaces.roofPlanes.map((surface) => ({
+          ...surface,
+          points: mmPolygonToPlanSvg(surface.boundary, x, y, scale),
+        }))
+      : [];
+  const geometryRoofCladdingSurfaces =
+    useGeometryBackedPergola && modelSpacePergolaGeometry
+      ? modelSpacePergolaGeometry.surfaces.roofCladding.map((surface) => ({
+          ...surface,
+          points: mmPolygonToPlanSvg(surface.boundary, x, y, scale),
+        }))
+      : [];
+  const geometryPergolaStripMembers =
+    useGeometryBackedPergola && modelSpacePergolaGeometry
+      ? [
+          ...modelSpacePergolaGeometry.members.posts.map((member) => ({
+            member,
+            footprint: buildPlanMemberFootprint({ member, baseX: x, baseY: y, scale }),
+            className: styles.modulePlanPrimaryZone,
+            outlineClassName: styles.modulePlanMemberEdge,
+          })),
+          ...modelSpacePergolaGeometry.members.beams.map((member) => ({
+            member,
+            footprint: buildPlanMemberFootprint({ member, baseX: x, baseY: y, scale }),
+            className: styles.modulePlanPrimaryZone,
+            outlineClassName: styles.modulePlanMemberEdge,
+          })),
+          ...modelSpacePergolaGeometry.members.ledgers.map((member) => ({
+            member,
+            footprint: buildPlanMemberFootprint({ member, baseX: x, baseY: y, scale }),
+            className: styles.modulePlanPrimaryZone,
+            outlineClassName: styles.modulePlanMemberEdge,
+          })),
+          ...modelSpacePergolaGeometry.members.gutters.map((member) => ({
+            member,
+            footprint: buildPlanMemberFootprint({ member, baseX: x, baseY: y, scale }),
+            className: styles.modulePlanPrimaryZone,
+            outlineClassName: styles.modulePlanMemberEdge,
+          })),
+          ...modelSpacePergolaGeometry.members.joiners.map((member) => ({
+            member,
+            footprint: buildPlanMemberFootprint({ member, baseX: x, baseY: y, scale }),
+            className: styles.modulePlanPrimaryZone,
+            outlineClassName: styles.modulePlanMemberEdge,
+          })),
+        ]
+      : [];
+  const geometryRafterMembers =
+    useGeometryBackedPergola && modelSpacePergolaGeometry
+      ? modelSpacePergolaGeometry.members.rafters.map((member) => ({
+          member,
+          footprint: buildPlanMemberFootprint({ member, baseX: x, baseY: y, scale }),
+        }))
+      : [];
+  const geometryRidgeMembers =
+    useGeometryBackedPergola && modelSpacePergolaGeometry
+      ? modelSpacePergolaGeometry.members.ridge.map((member) => ({
+          member,
+          footprint: buildPlanMemberFootprint({ member, baseX: x, baseY: y, scale }),
+        }))
+      : [];
+  const geometryAttachmentEdge =
+    useGeometryBackedPergola && modelSpacePergolaGeometry?.attachmentEdge
+      ? mmLineToPlanSvg(modelSpacePergolaGeometry.attachmentEdge, x, y, scale)
+      : null;
+  const geometryFallAnchor =
+    useGeometryBackedPergola && modelSpacePergolaGeometry?.anchors.fall
+      ? {
+          point: mmPointToPlanSvg(modelSpacePergolaGeometry.anchors.fall.point, x, y, scale),
+          direction: modelSpacePergolaGeometry.anchors.fall.direction,
+          dual: modelSpacePergolaGeometry.anchors.fall.dual,
+        }
+      : null;
 
   const aW = model.lengthA * scale;
   const aH = model.spanA * scale;
@@ -4627,13 +4720,8 @@ function PlanSvg({
     : isModel && modelSpaceLayout
       ? modelSpaceLayout.worldBox
       : { x: 0, y: 0, width: 120, height: 90 };
-  const planHouseProjectionOptions = resolvePlanHouseProjectionOptions({
-    presentation,
-    displayMode,
-    houseProjectionMaxWorldY: housePlanProjectionMaxY,
-  });
   const planHousePointProjector = (point: Point) =>
-    planHousePointToSvg(point, x, y, scale, planHouseProjectionOptions);
+    planHousePointToSvg(point, x, y, scale);
   const visibleRawHouseFirstOverlayShapes = rawHouseFirstOverlayShapes.filter((shape) => {
     switch (shape.ownerKind) {
       case 'footprint':
@@ -4985,33 +5073,10 @@ function PlanSvg({
     const unrotatedPoint = rotatePointQuarterTurns(rootPoint, rotationFrame.center, -rotationFrame.turns);
     const projectedX = (unrotatedPoint.x - x) / scale;
     const projectedY = (unrotatedPoint.y - y) / scale;
-    const rawY =
-      planHouseProjectionOptions.invertY && typeof planHouseProjectionOptions.maxWorldY === 'number'
-        ? planHouseProjectionOptions.maxWorldY - projectedY
-        : projectedY;
-    if (!Number.isFinite(projectedX) || !Number.isFinite(rawY)) return null;
-    return {
-      x: projectedX,
-      y: rawY,
-    };
-  };
-  const resolveDeckDragClientPoint = (svg: SVGSVGElement, clientX: number, clientY: number): PlanPoint | null => {
-    const ctm = svg.getScreenCTM();
-    if (!ctm || !Number.isFinite(scale) || scale <= 0) return null;
-    const svgPoint = svg.createSVGPoint();
-    svgPoint.x = clientX;
-    svgPoint.y = clientY;
-    const rootPoint = svgPoint.matrixTransform(ctm.inverse());
-    const unrotatedPoint = rotatePointQuarterTurns(rootPoint, rotationFrame.center, -rotationFrame.turns);
-    const projectedX = (unrotatedPoint.x - x) / scale;
-    const projectedY = (unrotatedPoint.y - y) / scale;
     if (!Number.isFinite(projectedX) || !Number.isFinite(projectedY)) return null;
     return {
       x: projectedX,
-      // Model house plan rendering flips Y for presentation. Drag-space uses
-      // the same visual orientation as the cursor so deck previews follow
-      // direct manipulation even when the underlying plan geometry keeps raw Y.
-      y: planHouseProjectionOptions.invertY ? -projectedY : projectedY,
+      y: projectedY,
     };
   };
   const planSvgRef = useRef<SVGSVGElement | null>(null);
@@ -5019,18 +5084,15 @@ function PlanSvg({
   const planInteractionRef = useRef(planInteraction);
   const resolvePlanClientPointRef = useRef(resolvePlanClientPoint);
   const resolveRawPlanClientPointRef = useRef(resolveRawPlanClientPoint);
-  const resolveDeckDragClientPointRef = useRef(resolveDeckDragClientPoint);
 
   useEffect(() => {
     footprintEditorRef.current = footprintEditor;
     planInteractionRef.current = planInteraction;
     resolvePlanClientPointRef.current = resolvePlanClientPoint;
     resolveRawPlanClientPointRef.current = resolveRawPlanClientPoint;
-    resolveDeckDragClientPointRef.current = resolveDeckDragClientPoint;
   }, [
     footprintEditor,
     planInteraction,
-    resolveDeckDragClientPoint,
     resolvePlanClientPoint,
     resolveRawPlanClientPoint,
   ]);
@@ -5047,7 +5109,7 @@ function PlanSvg({
       node ? (clientX, clientY) => resolveRawPlanClientPointRef.current(node, clientX, clientY) : null,
     );
     currentPlanInteraction?.onDeckDragPointResolverChange?.(
-      node ? (clientX, clientY) => resolveDeckDragClientPointRef.current(node, clientX, clientY) : null,
+      node ? (clientX, clientY) => resolveRawPlanClientPointRef.current(node, clientX, clientY) : null,
     );
   }, []);
 
@@ -5058,7 +5120,7 @@ function PlanSvg({
 
   useEffect(() => {
     syncPlanSvgBridge(planSvgRef.current);
-  }, [syncPlanSvgBridge, footprintEditor, planInteraction, resolvePlanClientPoint, resolveRawPlanClientPoint, resolveDeckDragClientPoint]);
+  }, [syncPlanSvgBridge, footprintEditor, planInteraction, resolvePlanClientPoint, resolveRawPlanClientPoint]);
 
   const resolvePlanSvgPointerPoint = (event: ReactPointerEvent<SVGSVGElement>): ModuleFootprintCanvasPoint | null =>
     resolvePlanClientPoint(event.currentTarget, event.clientX, event.clientY);
@@ -5094,6 +5156,8 @@ function PlanSvg({
         data-model-space-view-box={modelSpaceLayout?.viewBoxValue}
         data-model-space-world-box={modelSpaceLayout?.worldBoxValue}
         data-model-space-focus-box={modelSpaceLayout?.focusBoxValue}
+        data-plan-render-source={isModel ? modelSpacePergolaRenderSource : 'legacy'}
+        data-plan-render-status={isModel ? modelSpacePergolaRenderStatus : 'legacy_unsupported_family'}
         role="img"
         aria-label="Module plan view"
         ref={handlePlanSvgRef}
@@ -5228,112 +5292,239 @@ function PlanSvg({
         ) : null}
 
         {showPergolaGeometry ? (
-          <>
-            <polygon points={toPointsAttr(primaryPoints)} className={styles.modulePlanFill} data-plan-primary-fill="true" />
-            {!isHipCorner ? (
-              <>
-                <rect x={x} y={y} width={aW} height={topFrameW} className={styles.modulePlanPrimaryZone} />
-                <rect x={x} y={y + aH - gutterW} width={aW} height={gutterW} className={styles.modulePlanPrimaryZone} />
-                <rect x={x} y={y + topFrameW} width={sideFrameW} height={Math.max(0.2, aH - topFrameW - gutterW)} className={styles.modulePlanPrimaryZone} />
-                <rect x={x + aW - sideFrameW} y={y + topFrameW} width={sideFrameW} height={Math.max(0.2, aH - topFrameW - gutterW)} className={styles.modulePlanPrimaryZone} />
-                <polygon points={toPointsAttr(primaryPoints)} className={styles.modulePlanPerimeter} />
-                <line x1={x + sideFrameW} y1={y + topFrameW} x2={x + aW - sideFrameW} y2={y + topFrameW} className={styles.modulePlanMemberEdge} />
-                <line x1={x + sideFrameW} y1={y + aH - gutterW} x2={x + aW - sideFrameW} y2={y + aH - gutterW} className={styles.modulePlanMemberEdge} />
-                <line x1={x + sideFrameW} y1={y + topFrameW} x2={x + sideFrameW} y2={y + aH - gutterW} className={styles.modulePlanMemberEdge} />
-                <line x1={x + aW - sideFrameW} y1={y + topFrameW} x2={x + aW - sideFrameW} y2={y + aH - gutterW} className={styles.modulePlanMemberEdge} />
-              </>
-            ) : (
-              <>
-                <polygon points={toPointsAttr(primaryPoints)} className={styles.modulePlanPerimeter} />
-                {hipInner ? <polygon points={toPointsAttr(hipInner)} className={styles.modulePlanMemberEdge} /> : null}
-              </>
-            )}
-
-            {model.boxPerimeterEnabled ? <polygon points={toPointsAttr(insetPoints)} className={styles.modulePlanBoxInset} /> : null}
-            {hasFullLengthRidge && ridgeBandWidth > 0 ? <rect x={ridgeBandX} y={ridgeBandY} width={ridgeBandWidth} height={ridgeBandW} className={styles.modulePlanRidgeBand} /> : null}
-            {model.roofType === 'hip' ? (
-              <>
-                <line x1={hipRidgeStartX} y1={gableMidY} x2={hipRidgeEndX} y2={gableMidY} className={styles.modulePlanRidge} />
-                <line x1={x} y1={y} x2={hipRidgeStartX} y2={gableMidY} className={styles.modulePlanHipLine} />
-                <line x1={x + aW} y1={y} x2={hipRidgeEndX} y2={gableMidY} className={styles.modulePlanHipLine} />
-                <line x1={x} y1={y + aH} x2={hipRidgeStartX} y2={gableMidY} className={styles.modulePlanHipLine} />
-                <line x1={x + aW} y1={y + aH} x2={hipRidgeEndX} y2={gableMidY} className={styles.modulePlanHipLine} />
-              </>
-            ) : null}
-            {isHipCorner ? <line x1={x} y1={splitY} x2={x + bW} y2={splitY} className={styles.modulePlanJointLine} /> : null}
-
-            {interiorRafterXsA.map((rx) => (
-              <rect
-                key={`rafter_a_${rx.toFixed(3)}`}
-                x={rx - rafterW / 2}
-                y={yTopInner}
-                width={rafterW}
-                height={Math.max(0.2, (isHipCorner ? splitY - gutterW : yBottomInner) - yTopInner)}
-                className={styles.modulePlanRafter}
+          useGeometryBackedPergola ? (
+            <>
+              <polygon
+                points={toPointsAttr(geometryOutlinePoints)}
+                className={styles.modulePlanFill}
+                data-plan-primary-fill="true"
+                data-plan-geometry-outline="true"
               />
-            ))}
-            {isHipCorner
-              ? interiorRafterXsB.map((rx) => (
-                  <rect
-                    key={`rafter_b_${rx.toFixed(3)}`}
-                    x={rx - rafterW / 2}
-                    y={splitY + topFrameW}
-                    width={rafterW}
-                    height={Math.max(0.2, bottomY - gutterW - (splitY + topFrameW))}
-                    className={styles.modulePlanRafter}
-                  />
-                ))
-              : null}
-
-            {model.houseConnectionType === 'soffit' && soffitXs.length > 0 && !hasSemanticPlanHouseContext ? (
-              <>
-                <line x1={soffitGuideStart.x} y1={soffitGuideStart.y} x2={soffitGuideEnd.x} y2={soffitGuideEnd.y} className={styles.modulePlanSoffitGuide} />
-                {soffitBracketLines.map((line, idx) => (
-                  <line
-                    key={`bracket_${idx}`}
-                    x1={line.start.x}
-                    y1={line.start.y}
-                    x2={line.end.x}
-                    y2={line.end.y}
-                    className={styles.modulePlanSoffitBracket}
-                  />
-                ))}
-              </>
-            ) : null}
-
-            {model.overhangEnabled && overhangDepth > 0 ? <rect x={overhangX} y={overhangY} width={overhangWidth} height={overhangDepth} className={styles.modulePlanOverhangZone} /> : null}
-            {model.boxPerimeterEnabled && showModelSecondaryAnnotations ? (
-              <>
-                <line x1={centerX} y1={y + 2.8} x2={centerX} y2={(isHipCorner ? bottomY : y + aH) - 2.8} className={styles.modulePlanInternalAngle} />
-                <text x={centerX + 2.5} y={centerY + 0.5} className={styles.modulePlanAngleText}>
-                  internal roof angle
-                </text>
-              </>
-            ) : null}
-
-            {showModelSecondaryAnnotations ? <line x1={fallStart.x} y1={fallStart.y} x2={fallEnd.x} y2={fallEnd.y} className={styles.moduleFallLine} /> : null}
-            {showModelSecondaryAnnotations && isGableLike ? (
-              <>
-                <ArrowHead x={fallStart.x} y={fallStart.y} direction={fallIsHorizontal ? (attachmentSide === 'left' ? 'left' : 'right') : 'up'} presentation={presentation} />
-                <ArrowHead x={fallEnd.x} y={fallEnd.y} direction={fallIsHorizontal ? (attachmentSide === 'left' ? 'right' : 'left') : 'down'} presentation={presentation} />
-                <text x={fallLabelPoint.x} y={fallLabelPoint.y} className={`${styles.moduleFallLabel} ${isSheet ? styles.moduleFallLabelSheet : ''}`}>
-                  fall both sides
-                </text>
-              </>
-            ) : showModelSecondaryAnnotations ? (
-              <>
-                <ArrowHead
-                  x={model.slopeDirection === 'toward_house' ? fallStart.x : fallEnd.x}
-                  y={model.slopeDirection === 'toward_house' ? fallStart.y : fallEnd.y}
-                  direction={fallIsHorizontal ? (attachmentSide === 'left' ? 'left' : 'right') : model.slopeDirection === 'toward_house' ? 'up' : 'down'}
-                  presentation={presentation}
+              {geometryRoofPlaneSurfaces.map((surface) => (
+                <polygon
+                  key={surface.id}
+                  points={toPointsAttr(surface.points)}
+                  className={styles.modulePlanPrimaryZone}
+                  data-plan-geometry-surface={surface.kind}
+                  data-plan-surface-id={surface.id}
                 />
-                <text x={fallLabelPoint.x} y={fallLabelPoint.y} className={`${styles.moduleFallLabel} ${isSheet ? styles.moduleFallLabelSheet : ''}`}>
-                  fall
-                </text>
-              </>
-            ) : null}
-          </>
+              ))}
+              {geometryRoofCladdingSurfaces.map((surface) => (
+                <polygon
+                  key={surface.id}
+                  points={toPointsAttr(surface.points)}
+                  className={styles.modulePlanBoxInset}
+                  data-plan-geometry-surface={surface.kind}
+                  data-plan-surface-id={surface.id}
+                />
+              ))}
+              {geometryPergolaStripMembers.map(({ member, footprint, className, outlineClassName }) => (
+                <g
+                  key={member.id}
+                  data-plan-member-id={member.id}
+                  data-plan-member-role={member.role}
+                  data-plan-member-centerline-mm={`${member.centerline.start.x},${member.centerline.start.y},${member.centerline.end.x},${member.centerline.end.y}`}
+                >
+                  <polygon points={toPointsAttr(footprint)} className={className} />
+                  <polygon points={toPointsAttr(footprint)} className={outlineClassName} />
+                </g>
+              ))}
+              {geometryRafterMembers.map(({ member, footprint }) => (
+                <polygon
+                  key={member.id}
+                  points={toPointsAttr(footprint)}
+                  className={styles.modulePlanRafter}
+                  data-plan-member-id={member.id}
+                  data-plan-member-role={member.role}
+                  data-plan-member-centerline-mm={`${member.centerline.start.x},${member.centerline.start.y},${member.centerline.end.x},${member.centerline.end.y}`}
+                />
+              ))}
+              {geometryRidgeMembers.map(({ member, footprint }) => (
+                <polygon
+                  key={member.id}
+                  points={toPointsAttr(footprint)}
+                  className={styles.modulePlanRidgeBand}
+                  data-plan-member-id={member.id}
+                  data-plan-member-role={member.role}
+                  data-plan-member-centerline-mm={`${member.centerline.start.x},${member.centerline.start.y},${member.centerline.end.x},${member.centerline.end.y}`}
+                />
+              ))}
+              <polygon points={toPointsAttr(geometryOutlinePoints)} className={styles.modulePlanPerimeter} />
+              {geometryAttachmentEdge ? (
+                <line
+                  x1={geometryAttachmentEdge.start.x}
+                  y1={geometryAttachmentEdge.start.y}
+                  x2={geometryAttachmentEdge.end.x}
+                  y2={geometryAttachmentEdge.end.y}
+                  className={styles.modulePlanHouseWall}
+                  data-plan-attachment-edge="geometry"
+                />
+              ) : null}
+              {geometryFallAnchor ? (
+                (() => {
+                  const fallLineLength = Math.max(4.8, scale * 0.72);
+                  const halfLength = geometryFallAnchor.dual ? fallLineLength / 2 : fallLineLength * 0.35;
+                  const start = {
+                    x: geometryFallAnchor.point.x - geometryFallAnchor.direction.x * halfLength,
+                    y: geometryFallAnchor.point.y - geometryFallAnchor.direction.y * halfLength,
+                  };
+                  const end = {
+                    x: geometryFallAnchor.point.x + geometryFallAnchor.direction.x * halfLength,
+                    y: geometryFallAnchor.point.y + geometryFallAnchor.direction.y * halfLength,
+                  };
+                  const labelPoint = {
+                    x: geometryFallAnchor.point.x + (Math.abs(geometryFallAnchor.direction.x) >= Math.abs(geometryFallAnchor.direction.y) ? 0 : 2.2),
+                    y: geometryFallAnchor.point.y + (Math.abs(geometryFallAnchor.direction.x) >= Math.abs(geometryFallAnchor.direction.y) ? -2.2 : 0),
+                  };
+                  const arrowDirection = geometryFallDirectionToCardinal(geometryFallAnchor.direction);
+                  const reverseArrowDirection =
+                    arrowDirection === 'up'
+                      ? 'down'
+                      : arrowDirection === 'down'
+                        ? 'up'
+                        : arrowDirection === 'left'
+                          ? 'right'
+                          : 'left';
+
+                  return (
+                    <>
+                      <line
+                        x1={start.x}
+                        y1={start.y}
+                        x2={end.x}
+                        y2={end.y}
+                        className={styles.moduleFallLine}
+                        data-plan-fall-direction={`${geometryFallAnchor.direction.x},${geometryFallAnchor.direction.y}`}
+                      />
+                      {geometryFallAnchor.dual ? (
+                        <>
+                          <ArrowHead x={start.x} y={start.y} direction={reverseArrowDirection} presentation={presentation} />
+                          <ArrowHead x={end.x} y={end.y} direction={arrowDirection} presentation={presentation} />
+                          <text x={labelPoint.x} y={labelPoint.y} className={styles.moduleFallLabel}>
+                            fall both sides
+                          </text>
+                        </>
+                      ) : (
+                        <>
+                          <ArrowHead x={end.x} y={end.y} direction={arrowDirection} presentation={presentation} />
+                          <text x={labelPoint.x} y={labelPoint.y} className={styles.moduleFallLabel}>
+                            fall
+                          </text>
+                        </>
+                      )}
+                    </>
+                  );
+                })()
+              ) : null}
+            </>
+          ) : (
+            <>
+              <polygon points={toPointsAttr(primaryPoints)} className={styles.modulePlanFill} data-plan-primary-fill="true" />
+              {!isHipCorner ? (
+                <>
+                  <rect x={x} y={y} width={aW} height={topFrameW} className={styles.modulePlanPrimaryZone} />
+                  <rect x={x} y={y + aH - gutterW} width={aW} height={gutterW} className={styles.modulePlanPrimaryZone} />
+                  <rect x={x} y={y + topFrameW} width={sideFrameW} height={Math.max(0.2, aH - topFrameW - gutterW)} className={styles.modulePlanPrimaryZone} />
+                  <rect x={x + aW - sideFrameW} y={y + topFrameW} width={sideFrameW} height={Math.max(0.2, aH - topFrameW - gutterW)} className={styles.modulePlanPrimaryZone} />
+                  <polygon points={toPointsAttr(primaryPoints)} className={styles.modulePlanPerimeter} />
+                  <line x1={x + sideFrameW} y1={y + topFrameW} x2={x + aW - sideFrameW} y2={y + topFrameW} className={styles.modulePlanMemberEdge} />
+                  <line x1={x + sideFrameW} y1={y + aH - gutterW} x2={x + aW - sideFrameW} y2={y + aH - gutterW} className={styles.modulePlanMemberEdge} />
+                  <line x1={x + sideFrameW} y1={y + topFrameW} x2={x + sideFrameW} y2={y + aH - gutterW} className={styles.modulePlanMemberEdge} />
+                  <line x1={x + aW - sideFrameW} y1={y + topFrameW} x2={x + aW - sideFrameW} y2={y + aH - gutterW} className={styles.modulePlanMemberEdge} />
+                </>
+              ) : (
+                <>
+                  <polygon points={toPointsAttr(primaryPoints)} className={styles.modulePlanPerimeter} />
+                  {hipInner ? <polygon points={toPointsAttr(hipInner)} className={styles.modulePlanMemberEdge} /> : null}
+                </>
+              )}
+
+              {model.boxPerimeterEnabled ? <polygon points={toPointsAttr(insetPoints)} className={styles.modulePlanBoxInset} /> : null}
+              {hasFullLengthRidge && ridgeBandWidth > 0 ? <rect x={ridgeBandX} y={ridgeBandY} width={ridgeBandWidth} height={ridgeBandW} className={styles.modulePlanRidgeBand} /> : null}
+              {model.roofType === 'hip' ? (
+                <>
+                  <line x1={hipRidgeStartX} y1={gableMidY} x2={hipRidgeEndX} y2={gableMidY} className={styles.modulePlanRidge} />
+                  <line x1={x} y1={y} x2={hipRidgeStartX} y2={gableMidY} className={styles.modulePlanHipLine} />
+                  <line x1={x + aW} y1={y} x2={hipRidgeEndX} y2={gableMidY} className={styles.modulePlanHipLine} />
+                  <line x1={x} y1={y + aH} x2={hipRidgeStartX} y2={gableMidY} className={styles.modulePlanHipLine} />
+                  <line x1={x + aW} y1={y + aH} x2={hipRidgeEndX} y2={gableMidY} className={styles.modulePlanHipLine} />
+                </>
+              ) : null}
+              {isHipCorner ? <line x1={x} y1={splitY} x2={x + bW} y2={splitY} className={styles.modulePlanJointLine} /> : null}
+
+              {interiorRafterXsA.map((rx) => (
+                <rect
+                  key={`rafter_a_${rx.toFixed(3)}`}
+                  x={rx - rafterW / 2}
+                  y={yTopInner}
+                  width={rafterW}
+                  height={Math.max(0.2, (isHipCorner ? splitY - gutterW : yBottomInner) - yTopInner)}
+                  className={styles.modulePlanRafter}
+                />
+              ))}
+              {isHipCorner
+                ? interiorRafterXsB.map((rx) => (
+                    <rect
+                      key={`rafter_b_${rx.toFixed(3)}`}
+                      x={rx - rafterW / 2}
+                      y={splitY + topFrameW}
+                      width={rafterW}
+                      height={Math.max(0.2, bottomY - gutterW - (splitY + topFrameW))}
+                      className={styles.modulePlanRafter}
+                    />
+                  ))
+                : null}
+
+              {model.houseConnectionType === 'soffit' && soffitXs.length > 0 && !hasSemanticPlanHouseContext ? (
+                <>
+                  <line x1={soffitGuideStart.x} y1={soffitGuideStart.y} x2={soffitGuideEnd.x} y2={soffitGuideEnd.y} className={styles.modulePlanSoffitGuide} />
+                  {soffitBracketLines.map((line, idx) => (
+                    <line
+                      key={`bracket_${idx}`}
+                      x1={line.start.x}
+                      y1={line.start.y}
+                      x2={line.end.x}
+                      y2={line.end.y}
+                      className={styles.modulePlanSoffitBracket}
+                    />
+                  ))}
+                </>
+              ) : null}
+
+              {model.overhangEnabled && overhangDepth > 0 ? <rect x={overhangX} y={overhangY} width={overhangWidth} height={overhangDepth} className={styles.modulePlanOverhangZone} /> : null}
+              {model.boxPerimeterEnabled && showModelSecondaryAnnotations ? (
+                <>
+                  <line x1={centerX} y1={y + 2.8} x2={centerX} y2={(isHipCorner ? bottomY : y + aH) - 2.8} className={styles.modulePlanInternalAngle} />
+                  <text x={centerX + 2.5} y={centerY + 0.5} className={styles.modulePlanAngleText}>
+                    internal roof angle
+                  </text>
+                </>
+              ) : null}
+
+              {showModelSecondaryAnnotations ? <line x1={fallStart.x} y1={fallStart.y} x2={fallEnd.x} y2={fallEnd.y} className={styles.moduleFallLine} /> : null}
+              {showModelSecondaryAnnotations && isGableLike ? (
+                <>
+                  <ArrowHead x={fallStart.x} y={fallStart.y} direction={fallIsHorizontal ? (attachmentSide === 'left' ? 'left' : 'right') : 'up'} presentation={presentation} />
+                  <ArrowHead x={fallEnd.x} y={fallEnd.y} direction={fallIsHorizontal ? (attachmentSide === 'left' ? 'right' : 'left') : 'down'} presentation={presentation} />
+                  <text x={fallLabelPoint.x} y={fallLabelPoint.y} className={`${styles.moduleFallLabel} ${isSheet ? styles.moduleFallLabelSheet : ''}`}>
+                    fall both sides
+                  </text>
+                </>
+              ) : showModelSecondaryAnnotations ? (
+                <>
+                  <ArrowHead
+                    x={model.slopeDirection === 'toward_house' ? fallStart.x : fallEnd.x}
+                    y={model.slopeDirection === 'toward_house' ? fallStart.y : fallEnd.y}
+                    direction={fallIsHorizontal ? (attachmentSide === 'left' ? 'left' : 'right') : model.slopeDirection === 'toward_house' ? 'up' : 'down'}
+                    presentation={presentation}
+                  />
+                  <text x={fallLabelPoint.x} y={fallLabelPoint.y} className={`${styles.moduleFallLabel} ${isSheet ? styles.moduleFallLabelSheet : ''}`}>
+                    fall
+                  </text>
+                </>
+              ) : null}
+            </>
+          )
         ) : null}
 
         {renderHouseFirstPlanOverlay({

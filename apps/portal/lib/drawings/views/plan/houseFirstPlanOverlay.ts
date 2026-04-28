@@ -14,6 +14,7 @@ import {
   buildDeckReferenceHousePolygon,
   resolveDeckHostEdgeFrame,
 } from '@/lib/drawings/state/houseFirstDeckPresets';
+import { resolveDeckInteractionCapability } from '@/lib/drawings/interactions/deckInteractionContract';
 import {
   normalizeHouseFootprintParams,
   normalizeHouseFootprintPolygon,
@@ -1989,21 +1990,13 @@ function buildDeckDragEligibility(input: {
   deck: HouseModel['decks'][number];
   deckInteraction: HouseFirstPlanDeckInteraction | null;
 }): HouseFirstPlanShapeOverlay['deckDragEligibility'] {
-  if (!input.deckInteraction) {
-    return {
-      eligible: false,
-      reason:
-        input.deck.shape === 'custom'
-          ? 'This custom deck needs a resolvable house reference edge before translation and relationship dims are available.'
-          : 'This preset deck needs a resolvable house reference edge before drag and relationship dims are available.',
-    };
-  }
+  const capability = resolveDeckInteractionCapability({
+    deck: input.deck,
+    dragInteractionAvailable: Boolean(input.deckInteraction),
+  });
   return {
-    eligible: true,
-    reason:
-      input.deck.shape === 'custom'
-        ? 'Drag the selected deck body to translate it relative to the house, or click relationship dimensions and outline edges to edit.'
-        : 'Drag the selected deck body to move it freely. Release near a house edge to snap it back, or click dimensions to edit.',
+    eligible: capability.dragEligible,
+    reason: capability.dragReason ?? '',
   };
 }
 

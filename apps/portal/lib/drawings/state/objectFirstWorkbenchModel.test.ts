@@ -109,7 +109,7 @@ describe('objectFirstWorkbenchModel contracts', () => {
               id: 'wall-1',
               label: 'South Wall',
               sourceFormIds: ['form-a', 'form-b'],
-              hostEdgeIds: ['form-a-front', 'form-b-front'],
+              edgeIds: ['edge-wall-1', 'edge-eave-1'],
               kind: 'exterior',
               polygon: [
                 { alongM: '0', depthM: '0' },
@@ -130,7 +130,40 @@ describe('objectFirstWorkbenchModel contracts', () => {
             id: 'roof-zone-1',
             label: 'Merged Roof',
             sourceFormIds: ['form-a', 'form-b'],
+            edgeIds: ['edge-ridge-1', 'edge-eave-1'],
             boundary: makePolygon(),
+          },
+        ],
+        edges: [
+          {
+            id: 'edge-wall-1',
+            label: 'South Wall Perimeter',
+            semanticKind: 'wall_perimeter',
+            sourceFormIds: ['form-a', 'form-b'],
+            hostWallId: 'wall-1',
+            hostRoofZoneIds: [],
+            start: { alongM: '0', depthM: '0' },
+            end: { alongM: '10', depthM: '0' },
+          },
+          {
+            id: 'edge-eave-1',
+            label: 'South Eave',
+            semanticKind: 'eave',
+            sourceFormIds: ['form-a', 'form-b'],
+            hostWallId: 'wall-1',
+            hostRoofZoneIds: ['roof-zone-1'],
+            start: { alongM: '0', depthM: '0' },
+            end: { alongM: '10', depthM: '0' },
+          },
+          {
+            id: 'edge-ridge-1',
+            label: 'Main Ridge',
+            semanticKind: 'ridge',
+            sourceFormIds: ['form-a', 'form-b'],
+            hostWallId: null,
+            hostRoofZoneIds: ['roof-zone-1'],
+            start: { alongM: '2', depthM: '2' },
+            end: { alongM: '8', depthM: '2' },
           },
         ],
         attachmentZones: [
@@ -141,6 +174,7 @@ describe('objectFirstWorkbenchModel contracts', () => {
             side: 'rear',
             sourceFormIds: ['form-a', 'form-b'],
             hostWallId: 'wall-1',
+            hostEdgeId: 'edge-eave-1',
             hostRoofZoneId: 'roof-zone-1',
           },
         ],
@@ -151,6 +185,18 @@ describe('objectFirstWorkbenchModel contracts', () => {
     expect(assembly.houseForms[0]?.transform.offsetXM).toBe(0);
     expect(assembly.houseForms[1]?.transform.offsetXM).toBe(4);
     expect(assembly.derivedEnvelope?.mergedFormIds).toEqual(['form-a', 'form-b']);
+    expect(assembly.derivedEnvelope?.edges.map((edge) => edge.id)).toEqual([
+      'edge-wall-1',
+      'edge-eave-1',
+      'edge-ridge-1',
+    ]);
+    expect(assembly.derivedEnvelope?.wallGraph.walls[0]?.edgeIds).toEqual(['edge-wall-1', 'edge-eave-1']);
+    expect(assembly.derivedEnvelope?.roofZones[0]?.edgeIds).toEqual(['edge-ridge-1', 'edge-eave-1']);
+    expect(assembly.derivedEnvelope?.attachmentZones[0]).toMatchObject({
+      hostWallId: 'wall-1',
+      hostEdgeId: 'edge-eave-1',
+      hostRoofZoneId: 'roof-zone-1',
+    });
   });
 
   it('treats opening hosting as a derived wall contract', () => {
@@ -184,6 +230,84 @@ describe('objectFirstWorkbenchModel contracts', () => {
 
     expect(pergola.attachmentEdgeId).toBe('edge-south');
     expect(pergola.attachmentZoneId).toBe('zone-1');
+  });
+
+  it('keeps derived edges as the assembly-level bridge for hosted objects', () => {
+    const assembly: HouseAssemblyModel = {
+      id: 'assembly-main',
+      label: 'Main House',
+      houseForms: [],
+      derivedEnvelope: {
+        mergedFormIds: ['form-a', 'form-b'],
+        footprint: makePolygon(),
+        wallGraph: {
+          walls: [
+            {
+              id: 'wall-1',
+              label: 'Rear Wall',
+              sourceFormIds: ['form-a', 'form-b'],
+              edgeIds: ['edge-wall-1'],
+              kind: 'exterior',
+              polygon: [
+                { alongM: '0', depthM: '0' },
+                { alongM: '6', depthM: '0' },
+              ],
+            },
+          ],
+          mergeGroups: [],
+        },
+        roofZones: [
+          {
+            id: 'roof-zone-1',
+            label: 'Roof Zone 1',
+            sourceFormIds: ['form-a', 'form-b'],
+            edgeIds: ['edge-eave-1'],
+            boundary: makePolygon(),
+          },
+        ],
+        edges: [
+          {
+            id: 'edge-wall-1',
+            label: 'Rear Wall Edge',
+            semanticKind: 'wall_perimeter',
+            sourceFormIds: ['form-a', 'form-b'],
+            hostWallId: 'wall-1',
+            hostRoofZoneIds: [],
+            start: { alongM: '0', depthM: '0' },
+            end: { alongM: '6', depthM: '0' },
+          },
+          {
+            id: 'edge-eave-1',
+            label: 'Rear Eave',
+            semanticKind: 'eave',
+            sourceFormIds: ['form-a', 'form-b'],
+            hostWallId: 'wall-1',
+            hostRoofZoneIds: ['roof-zone-1'],
+            start: { alongM: '0', depthM: '0' },
+            end: { alongM: '6', depthM: '0' },
+          },
+        ],
+        attachmentZones: [
+          {
+            id: 'zone-1',
+            label: 'Rear Soffit',
+            kind: 'soffit',
+            side: 'rear',
+            sourceFormIds: ['form-a', 'form-b'],
+            hostWallId: 'wall-1',
+            hostEdgeId: 'edge-eave-1',
+            hostRoofZoneId: 'roof-zone-1',
+          },
+        ],
+      },
+    };
+
+    expect(assembly.derivedEnvelope?.edges[1]).toMatchObject({
+      semanticKind: 'eave',
+      hostWallId: 'wall-1',
+      hostRoofZoneIds: ['roof-zone-1'],
+    });
+    expect(assembly.derivedEnvelope?.attachmentZones[0]?.hostEdgeId).toBe('edge-eave-1');
   });
 
   it('keeps the project contract object-first instead of exposing a single shared house footprint', () => {

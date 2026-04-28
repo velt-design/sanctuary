@@ -2,11 +2,15 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { act, useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import type { CostOutputV1 } from '@sp/costing';
+import type { GeometryPlanViewModel } from '@sp/geometry';
 import type { CalculatorModuleInputs } from '@/lib/types/calculator';
 import type { EstimateDrawingField } from '@/lib/estimates/drawingEdits';
 import type { ModulePlanModel } from '@/app/staff/calculator/moduleViews';
 import { buildEstimateDrawingModules } from '@/lib/estimates/moduleDrawing';
-import { createDrawingWorkbenchUiState } from '@/lib/drawings/state/drawingWorkbenchUiState';
+import {
+  createDrawingWorkbenchUiState,
+  type DrawingWorkbenchVisibilityState,
+} from '@/lib/drawings/state/drawingWorkbenchUiState';
 import { buildAssemblyModel } from '@/lib/drawings/assembly/buildAssemblyModel';
 import { buildPlanViewModel } from '@/lib/drawings/views/plan/buildPlanViewModel';
 import { resolveDeckPresetGeometry } from '@/lib/drawings/state/houseFirstDeckPresets';
@@ -106,6 +110,160 @@ function makeDrawingModule() {
   })[0]!;
 }
 
+function makeGeometryPlanFixture(): GeometryPlanViewModel {
+  return {
+    family: 'mono',
+    connectionType: 'soffit',
+    roofForm: {
+      mono: true,
+      gable: false,
+      box: false,
+    },
+    outline: [
+      { x: 0, y: 0 },
+      { x: 6000, y: 0 },
+      { x: 6000, y: 3000 },
+      { x: 0, y: 3000 },
+    ],
+    attachmentEdge: {
+      start: { x: 0, y: 0 },
+      end: { x: 6000, y: 0 },
+    },
+    house: {
+      footprint: null,
+      fasciaLine: null,
+      roofEdgeLine: null,
+      wallReferenceLine: null,
+      surfaces: [],
+      lines: [],
+    },
+    members: {
+      posts: [
+        {
+          id: 'post-left',
+          role: 'post',
+          centerline: { start: { x: 500, y: 2450 }, end: { x: 500, y: 2450 } },
+          profile: { shape: 'rectangular', widthMm: 90, depthMm: 90, profileKey: '90x90' },
+          lengthMm: 0,
+        },
+      ],
+      beams: [
+        {
+          id: 'support-beam-front',
+          role: 'beam',
+          centerline: { start: { x: 500, y: 2800 }, end: { x: 5600, y: 2800 } },
+          profile: { shape: 'rectangular', widthMm: 150, depthMm: 50, profileKey: '150x50' },
+          lengthMm: 5100,
+        },
+      ],
+      ledgers: [
+        {
+          id: 'ledger-rear',
+          role: 'ledger',
+          centerline: { start: { x: 0, y: 120 }, end: { x: 6000, y: 120 } },
+          profile: { shape: 'rectangular', widthMm: 100, depthMm: 50, profileKey: '100x50' },
+          lengthMm: 6000,
+        },
+      ],
+      rafters: [
+        {
+          id: 'rafter-a',
+          role: 'rafter',
+          centerline: { start: { x: 800, y: 220 }, end: { x: 800, y: 2840 } },
+          profile: { shape: 'rectangular', widthMm: 50, depthMm: 150, profileKey: '50x150' },
+          lengthMm: 2620,
+        },
+        {
+          id: 'rafter-b',
+          role: 'rafter',
+          centerline: { start: { x: 2100, y: 220 }, end: { x: 2100, y: 2840 } },
+          profile: { shape: 'rectangular', widthMm: 50, depthMm: 150, profileKey: '50x150' },
+          lengthMm: 2620,
+        },
+        {
+          id: 'rafter-c',
+          role: 'rafter',
+          centerline: { start: { x: 4500, y: 220 }, end: { x: 4500, y: 2840 } },
+          profile: { shape: 'rectangular', widthMm: 50, depthMm: 150, profileKey: '50x150' },
+          lengthMm: 2620,
+        },
+      ],
+      gutters: [
+        {
+          id: 'gutter-front',
+          role: 'gutter',
+          centerline: { start: { x: 0, y: 2940 }, end: { x: 6000, y: 2940 } },
+          profile: { shape: 'rectangular', widthMm: 120, depthMm: 150, profileKey: '120x150' },
+          lengthMm: 6000,
+        },
+      ],
+      ridge: [],
+      joiners: [
+        {
+          id: 'joiner-run-1',
+          role: 'joiner',
+          centerline: { start: { x: 3200, y: 280 }, end: { x: 3200, y: 2750 } },
+          profile: { shape: 'rectangular', widthMm: 40, depthMm: 40, profileKey: '40x40' },
+          lengthMm: 2470,
+        },
+      ],
+    },
+    surfaces: {
+      roofPlanes: [
+        {
+          id: 'roof-plane-main',
+          kind: 'roof_plane',
+          boundary: [
+            { x: 0, y: 0 },
+            { x: 6000, y: 0 },
+            { x: 6000, y: 3000 },
+            { x: 0, y: 3000 },
+          ],
+        },
+      ],
+      roofCladding: [
+        {
+          id: 'roof-cladding-main',
+          kind: 'roof_cladding',
+          boundary: [
+            { x: 140, y: 140 },
+            { x: 5860, y: 140 },
+            { x: 5860, y: 2860 },
+            { x: 140, y: 2860 },
+          ],
+        },
+      ],
+    },
+    anchors: {
+      primarySize: {
+        length: { start: { x: 0, y: 0 }, end: { x: 6000, y: 0 } },
+        projection: { start: { x: 0, y: 0 }, end: { x: 0, y: 3000 } },
+      },
+      fall: {
+        point: { x: 2600, y: 1500 },
+        direction: { x: 0, y: 1 },
+        dual: false,
+      },
+      rafterSpacing: {
+        line: { start: { x: 0, y: 0 }, end: { x: 6000, y: 0 } },
+        positionsMm: [800, 2100, 4500],
+      },
+      ridgeLine: null,
+      attachmentSide: {
+        line: { start: { x: 0, y: 0 }, end: { x: 6000, y: 0 } },
+      },
+    },
+    extents: {
+      minX: 0,
+      minY: 0,
+      maxX: 6000,
+      maxY: 3000,
+      lengthMm: 6000,
+      projectionMm: 3000,
+    },
+  };
+}
+
 function makePlanEditableFields(): EstimateDrawingField[] {
   return [
     {
@@ -195,6 +353,22 @@ function makePlanModelWithLargeHouseContext(): ModulePlanModel {
             { x: 140, y: 0 },
             { x: -80, y: 0 },
           ],
+        },
+      ],
+      lines: [],
+    },
+  };
+}
+
+function makePlanModelWithSemanticHouseBoundary(boundary: Array<{ x: number; y: number }>): ModulePlanModel {
+  return {
+    ...makePlanModelWithHouseContext(),
+    houseContext: {
+      surfaces: [
+        {
+          id: 'house-footprint',
+          kind: 'footprint',
+          boundary,
         },
       ],
       lines: [],
@@ -381,6 +555,34 @@ function polygonCentroidY(element: Element | null): number {
   return ys.reduce((sum, value) => sum + value, 0) / ys.length;
 }
 
+function polygonCentroidX(element: Element | null): number {
+  const pointsAttr = element?.getAttribute('points');
+  if (!pointsAttr) throw new Error('Missing polygon points.');
+  const pairs = pointsAttr
+    .trim()
+    .split(/\s+/)
+    .map((pair) => pair.split(',').map((value) => Number.parseFloat(value)));
+  const xs = pairs.map(([x]) => x).filter((value): value is number => Number.isFinite(value));
+  if (!xs.length) throw new Error('Missing polygon X coordinates.');
+  return xs.reduce((sum, value) => sum + value, 0) / xs.length;
+}
+
+function polygonPointsAttr(element: Element | null): string {
+  const pointsAttr = element?.getAttribute('points');
+  if (!pointsAttr) throw new Error('Missing polygon points.');
+  return pointsAttr;
+}
+
+function parseViewBoxAttr(value: string | null | undefined): { x: number; y: number; width: number; height: number } {
+  if (!value) throw new Error('Missing viewBox attribute.');
+  const parts = value.split(/\s+/).map((part) => Number.parseFloat(part));
+  if (parts.length !== 4 || parts.some((part) => !Number.isFinite(part))) {
+    throw new Error(`Invalid viewBox attribute: ${value}`);
+  }
+  const [x, y, width, height] = parts;
+  return { x: x!, y: y!, width: width!, height: height! };
+}
+
 function getViewportTransformSnapshot(container: HTMLElement): { panX: number; panY: number; zoom: number } {
   const panX = Number.parseFloat(container.querySelector('[data-testid="viewport-pan-x"]')?.textContent ?? '');
   const panY = Number.parseFloat(container.querySelector('[data-testid="viewport-pan-y"]')?.textContent ?? '');
@@ -446,6 +648,8 @@ type HouseFirstViewportHarnessProps = {
   wrapInScrollableAncestor?: boolean;
   onDeckInteractionTelemetryChange?: (telemetry: DeckInteractionTelemetry) => void;
   renderSelectionControls?: boolean;
+  workbenchDisplayMode?: 'house' | 'pergolas';
+  visibility?: DrawingWorkbenchVisibilityState;
 };
 
 function HouseFirstViewportHarness({
@@ -457,6 +661,8 @@ function HouseFirstViewportHarness({
   wrapInScrollableAncestor = false,
   onDeckInteractionTelemetryChange,
   renderSelectionControls = false,
+  workbenchDisplayMode = 'pergolas',
+  visibility,
 }: HouseFirstViewportHarnessProps) {
   const drawing = makeDrawingModule();
   const [house, setHouse] = useState(initialHouse);
@@ -476,6 +682,8 @@ function HouseFirstViewportHarness({
   const viewport = (
     <ModelSpaceViewport
       view="plan"
+      workbenchDisplayMode={workbenchDisplayMode}
+      visibility={visibility}
       status="ready"
       planModel={makePlanModelWithHouseContext()}
       sectionModel={drawing.sectionModel}
@@ -1070,6 +1278,282 @@ describe('ModelSpaceViewport', () => {
     expect(markup).not.toContain('data-plan-resize-handle-hit=');
     expect(markup).toContain('modulePlanRafter');
     expect(markup).not.toContain('data-sheet-hover-target="pergola"');
+  });
+
+  it('keeps house-mode semantic house placement aligned with geometry-backed pergolas for rear, front, and side contexts', () => {
+    const drawing = makeDrawingModule();
+    const geometryPlan = makeGeometryPlanFixture();
+    const cases = [
+      {
+        label: 'rear',
+        planModel: makePlanModelWithSemanticHouseBoundary([
+          { x: 0, y: -1.8 },
+          { x: 6, y: -1.8 },
+          { x: 6, y: 0 },
+          { x: 0, y: 0 },
+        ]),
+        axis: 'y' as const,
+        comparison: 'less' as const,
+      },
+      {
+        label: 'front',
+        planModel: makePlanModelWithSemanticHouseBoundary([
+          { x: 0, y: 3 },
+          { x: 6, y: 3 },
+          { x: 6, y: 4.8 },
+          { x: 0, y: 4.8 },
+        ]),
+        axis: 'y' as const,
+        comparison: 'greater' as const,
+      },
+      {
+        label: 'side',
+        planModel: makePlanModelWithSemanticHouseBoundary([
+          { x: -1.8, y: 0 },
+          { x: 0, y: 0 },
+          { x: 0, y: 3 },
+          { x: -1.8, y: 3 },
+        ]),
+        axis: 'x' as const,
+        comparison: 'less' as const,
+      },
+    ];
+
+    for (const testCase of cases) {
+      const rendered = renderIntoDocument(
+        <ModelSpaceViewport
+          view="plan"
+          workbenchDisplayMode="house"
+          status="ready"
+          planModel={testCase.planModel}
+          sectionModel={drawing.sectionModel}
+          planViewModel={buildPlanViewModel({
+            moduleId: drawing.id,
+            moduleLabel: 'Module 1',
+            planModel: testCase.planModel,
+            geometryPlan,
+            pergolaRenderSource: 'geometry',
+            pergolaRenderStatus: 'geometry_ready',
+          })}
+          viewportTransform={createDrawingWorkbenchUiState().viewportTransform}
+          onViewportTransformChange={() => undefined}
+          editableFields={makePlanEditableFields()}
+          onCommitField={() => ({ ok: true })}
+          onCommitFootprintEdit={() => ({ ok: true })}
+        />,
+      );
+
+      const houseSurface = rendered.container.querySelector('[data-house-plan-surface="footprint"]');
+      const pergolaFill = rendered.container.querySelector('[data-plan-primary-fill="true"]');
+      if (!houseSurface || !pergolaFill) {
+        throw new Error(`Missing house-mode plan nodes for ${testCase.label} case.`);
+      }
+
+      if (testCase.axis === 'x') {
+        const houseCentroid = polygonCentroidX(houseSurface);
+        const pergolaCentroid = polygonCentroidX(pergolaFill);
+        expect(houseCentroid).toBeLessThan(pergolaCentroid);
+      } else {
+        const houseCentroid = polygonCentroidY(houseSurface);
+        const pergolaCentroid = polygonCentroidY(pergolaFill);
+        if (testCase.comparison === 'less') {
+          expect(houseCentroid).toBeLessThan(pergolaCentroid);
+        } else {
+          expect(houseCentroid).toBeGreaterThan(pergolaCentroid);
+        }
+      }
+
+      rendered.unmount();
+    }
+  });
+
+  it('keeps the house-first footprint overlay on the same world side of the pergola as the semantic house surface in house mode', () => {
+    const drawing = makeDrawingModule();
+    const geometryPlan = makeGeometryPlanFixture();
+    const house = makeHouseFirstHouse();
+    const planModel = makePlanModelWithHouseContext();
+    const rendered = renderIntoDocument(
+      <ModelSpaceViewport
+        view="plan"
+        workbenchDisplayMode="house"
+        status="ready"
+        planModel={planModel}
+        sectionModel={drawing.sectionModel}
+        planViewModel={buildPlanViewModel({
+          moduleId: drawing.id,
+          moduleLabel: 'Module 1',
+          planModel,
+          geometryPlan,
+          pergolaRenderSource: 'geometry',
+          pergolaRenderStatus: 'geometry_ready',
+          canEditHouseFootprint: true,
+          house,
+          activeHouseSelection: { kind: 'deck', targetId: 'deck-1' },
+          includeHouseFirstOverlay: true,
+          moduleLengthM: drawing.input.lengthM,
+          moduleProjectionM: drawing.input.projectionM,
+        })}
+        viewportTransform={createDrawingWorkbenchUiState().viewportTransform}
+        onViewportTransformChange={() => undefined}
+        editableFields={makePlanEditableFields()}
+        onCommitField={() => ({ ok: true })}
+        onCommitFootprintEdit={() => ({ ok: true })}
+        onSelectHouseFirstTarget={() => undefined}
+        onCommitHouseFirstFootprintDimension={() => ({ ok: true })}
+        onCommitHouseFirstDeckDimension={() => ({ ok: true })}
+      />,
+    );
+
+    const houseSurface = rendered.container.querySelector('[data-house-plan-surface="footprint"]');
+    const footprintShape = rendered.container.querySelector('[data-house-first-shape="footprint:house-main"]');
+    const pergolaFill = rendered.container.querySelector('[data-plan-primary-fill="true"]');
+    if (!houseSurface || !footprintShape || !pergolaFill) {
+      throw new Error('Missing merged house-mode footprint alignment nodes.');
+    }
+
+    const houseCentroidY = polygonCentroidY(houseSurface);
+    const footprintCentroidY = polygonCentroidY(footprintShape);
+    const pergolaCentroidY = polygonCentroidY(pergolaFill);
+
+    expect(houseCentroidY).toBeLessThan(pergolaCentroidY);
+    expect(footprintCentroidY).toBeLessThan(pergolaCentroidY);
+
+    rendered.unmount();
+  });
+
+  it('expands model-space focus and world bounds to the true house coordinates in house mode', () => {
+    const drawing = makeDrawingModule();
+    const planModel = makePlanModelWithLargeHouseContext();
+    const rendered = renderIntoDocument(
+      <ModelSpaceViewport
+        view="plan"
+        workbenchDisplayMode="house"
+        status="ready"
+        planModel={planModel}
+        sectionModel={drawing.sectionModel}
+        planViewModel={buildPlanViewModel({
+          moduleId: drawing.id,
+          moduleLabel: 'Module 1',
+          planModel,
+          geometryPlan: makeGeometryPlanFixture(),
+          pergolaRenderSource: 'geometry',
+          pergolaRenderStatus: 'geometry_ready',
+        })}
+        viewportTransform={createDrawingWorkbenchUiState().viewportTransform}
+        onViewportTransformChange={() => undefined}
+        editableFields={makePlanEditableFields()}
+        onCommitField={() => ({ ok: true })}
+        onCommitFootprintEdit={() => ({ ok: true })}
+      />,
+    );
+
+    const svg = rendered.container.querySelector('svg[aria-label="Module plan view"]');
+    if (!svg) throw new Error('Missing model-space plan svg.');
+
+    const worldBox = parseViewBoxAttr(svg.getAttribute('data-model-space-world-box'));
+    const focusBox = parseViewBoxAttr(svg.getAttribute('data-model-space-focus-box'));
+
+    expect(worldBox.x).toBeLessThan(-700);
+    expect(worldBox.y).toBeLessThan(-500);
+    expect(focusBox.y).toBeLessThan(-500);
+    expect(focusBox.height).toBeGreaterThan(600);
+
+    rendered.unmount();
+  });
+
+  it('renders model-space pergolas from the geometry-backed plan payload instead of legacy rafter reconstruction', () => {
+    const drawing = makeDrawingModule();
+    const geometryPlan = makeGeometryPlanFixture();
+    const legacyPlanModel: ModulePlanModel = {
+      ...makePlanModelWithHouseContext(),
+      rafterPositionsA: [0.6, 1.4, 2.2, 3.0, 3.8, 4.6, 5.4],
+      rafterCountA: 7,
+      drawingRotationQuarterTurns: 0,
+    };
+
+    const markup = renderToStaticMarkup(
+      <ModelSpaceViewport
+        view="plan"
+        status="ready"
+        planModel={legacyPlanModel}
+        sectionModel={drawing.sectionModel}
+        planViewModel={buildPlanViewModel({
+          moduleId: drawing.id,
+          moduleLabel: 'Module 1',
+          planModel: legacyPlanModel,
+          geometryPlan,
+          pergolaRenderSource: 'geometry',
+          pergolaRenderStatus: 'geometry_ready',
+        })}
+        viewportTransform={createDrawingWorkbenchUiState().viewportTransform}
+        onViewportTransformChange={() => undefined}
+        editableFields={makePlanEditableFields()}
+        onCommitField={() => ({ ok: true })}
+        onCommitFootprintEdit={() => ({ ok: true })}
+      />,
+    );
+
+    expect(markup).toContain('data-plan-render-source="geometry"');
+    expect(markup).toContain('data-plan-render-status="geometry_ready"');
+    expect(markup).toContain('data-plan-primary-fill="true"');
+    expect(markup).toContain('data-plan-member-id="rafter-a"');
+    expect(markup).toContain('data-plan-member-id="rafter-b"');
+    expect(markup).toContain('data-plan-member-id="joiner-run-1"');
+    expect(markup).toContain('data-plan-member-centerline-mm="800,220,800,2840"');
+    expect(markup).toContain('data-plan-member-centerline-mm="2100,220,2100,2840"');
+    expect(markup).toContain('data-plan-member-centerline-mm="4500,220,4500,2840"');
+    expect(markup).toContain('data-plan-attachment-edge="geometry"');
+    expect(markup).toContain('data-plan-fall-direction="0,1"');
+  });
+
+  it('keeps model-space quarter-turn rotation active for geometry-backed pergola plans', () => {
+    const drawing = makeDrawingModule();
+    const geometryPlan = makeGeometryPlanFixture();
+
+    const turnCases = [
+      { turns: 0 as const, expectedTransform: null },
+      { turns: 1 as const, expectedTransform: 'rotate(90 ' },
+      { turns: 2 as const, expectedTransform: 'rotate(180 ' },
+      { turns: 3 as const, expectedTransform: 'rotate(270 ' },
+    ];
+
+    for (const testCase of turnCases) {
+      const planModel: ModulePlanModel = {
+        ...makePlanModelWithHouseContext(),
+        drawingRotationQuarterTurns: testCase.turns,
+      };
+
+      const markup = renderToStaticMarkup(
+        <ModelSpaceViewport
+          view="plan"
+          status="ready"
+          planModel={planModel}
+          sectionModel={drawing.sectionModel}
+          planViewModel={buildPlanViewModel({
+            moduleId: drawing.id,
+            moduleLabel: 'Module 1',
+            planModel,
+            geometryPlan,
+            pergolaRenderSource: 'geometry',
+            pergolaRenderStatus: 'geometry_ready',
+          })}
+          viewportTransform={createDrawingWorkbenchUiState().viewportTransform}
+          onViewportTransformChange={() => undefined}
+          editableFields={makePlanEditableFields()}
+          onCommitField={() => ({ ok: true })}
+          onCommitFootprintEdit={() => ({ ok: true })}
+        />,
+      );
+
+      expect(markup).toContain('data-plan-render-source="geometry"');
+      if (testCase.expectedTransform) {
+        expect(markup).toContain(testCase.expectedTransform);
+      } else {
+        expect(markup).not.toContain('rotate(90 ');
+        expect(markup).not.toContain('rotate(180 ');
+        expect(markup).not.toContain('rotate(270 ');
+      }
+    }
   });
 
   it('hides pergola graphics in house display mode when pergola visibility is turned off', () => {
@@ -3780,7 +4264,7 @@ describe('ModelSpaceViewport', () => {
 
     expect(scroller.dataset.houseFirstDeckDragActive).toBe('true');
     expect(scroller.dataset.houseFirstDeckSnapState).toBe('snapped');
-    expect(rendered.container.querySelector('[aria-label="Deck interaction hint"]')).toBeNull();
+    expect(rendered.container.querySelector('[aria-label="Deck interaction hint"]')?.textContent).toContain('Snapped');
     expect(rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]')).not.toBeNull();
     expect(rendered.container.querySelector('[data-house-first-snap-target="snapped"]')).not.toBeNull();
 
@@ -3840,7 +4324,7 @@ describe('ModelSpaceViewport', () => {
 
     expect(scroller.dataset.houseFirstDeckDragActive).toBe('true');
     expect(scroller.dataset.houseFirstDeckSnapState).toBe('floating');
-    expect(rendered.container.querySelector('[aria-label="Deck interaction hint"]')).toBeNull();
+    expect(rendered.container.querySelector('[aria-label="Deck interaction hint"]')?.textContent).toContain('Floating');
 
     dispatchPointer(window, 'pointerup', { pointerId: 21, button: 0, clientX: -5000, clientY: -5000 });
     await act(async () => {
@@ -4034,8 +4518,8 @@ describe('ModelSpaceViewport', () => {
     rendered.unmount();
   });
 
-  it('moves the floating deck preview in the same on-screen vertical direction as the pointer', async () => {
-    const renderDraggedPreviewY = async (pointerMoveY: number) => {
+  it('uses geometry-true deck drag coordinates in house mode', async () => {
+    const renderCommittedDeckDepth = async (pointerMoveY: number) => {
       const deck = makeHouseFirstDeck({
         isAttached: false,
         presetType: 'rect_detached',
@@ -4054,6 +4538,7 @@ describe('ModelSpaceViewport', () => {
       const rendered = renderIntoDocument(
         <HouseFirstViewportHarness
           initialSelection={{ kind: 'deck', targetId: 'deck-1' }}
+          workbenchDisplayMode="house"
           initialHouse={makeHouseFirstHouse({
             decks: [
               {
@@ -4071,28 +4556,33 @@ describe('ModelSpaceViewport', () => {
       const svg = rendered.container.querySelector('svg[aria-label="Module plan view"]') as SVGSVGElement | null;
       const deckHit = rendered.container.querySelector('[data-house-first-shape-hit="deck:deck-1"]');
       if (!svg || !deckHit) throw new Error('Missing plan viewport nodes.');
-      installSvgPointMock(svg);
+      installProjectedSvgPointMock(svg);
 
       dispatchPointer(deckHit, 'pointerdown', { pointerId: 23, button: 0, clientX: 50, clientY: 50 });
       dispatchPointer(window, 'pointermove', { pointerId: 23, button: 0, buttons: 1, clientX: 50, clientY: pointerMoveY });
-      const previewY = polygonCentroidY(rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]'));
       dispatchPointer(window, 'pointerup', { pointerId: 23, button: 0, clientX: 50, clientY: pointerMoveY });
       await act(async () => {
         await Promise.resolve();
       });
+      await flushAnimationFrame();
+      await flushAnimationFrame();
+      await flushAnimationFrame();
+      const committedDepth = Number.parseFloat(
+        rendered.container.querySelector('[data-testid="deck-floating-center-depth"]')?.textContent ?? '',
+      );
       rendered.unmount();
-      return previewY;
+      return committedDepth;
     };
 
-    const draggedDownPreviewY = await renderDraggedPreviewY(5000);
-    const draggedUpPreviewY = await renderDraggedPreviewY(-5000);
+    const draggedDownDepth = await renderCommittedDeckDepth(5000);
+    const draggedUpDepth = await renderCommittedDeckDepth(-5000);
 
-    expect(Number.isFinite(draggedDownPreviewY)).toBe(true);
-    expect(Number.isFinite(draggedUpPreviewY)).toBe(true);
-    expect(draggedDownPreviewY).toBeGreaterThan(draggedUpPreviewY);
+    expect(Number.isFinite(draggedDownDepth)).toBe(true);
+    expect(Number.isFinite(draggedUpDepth)).toBe(true);
+    expect(draggedDownDepth).not.toBe(draggedUpDepth);
   });
 
-  it('keeps the projection-aware deck drag resolver mounted in house mode when plan dimensions are not editable', async () => {
+  it('keeps geometry-true deck dragging active in house mode when plan dimensions are not editable', async () => {
     const renderDraggedPreviewY = async (pointerMoveY: number) => {
       const deck = makeHouseFirstDeck({
         isAttached: false,
@@ -4112,6 +4602,7 @@ describe('ModelSpaceViewport', () => {
       const rendered = renderIntoDocument(
         <HouseFirstViewportHarness
           initialSelection={{ kind: 'deck', targetId: 'deck-1' }}
+          workbenchDisplayMode="house"
           initialHouse={makeHouseFirstHouse({
             decks: [
               {
@@ -4151,7 +4642,174 @@ describe('ModelSpaceViewport', () => {
 
     expect(Number.isFinite(draggedDownPreviewY)).toBe(true);
     expect(Number.isFinite(draggedUpPreviewY)).toBe(true);
-    expect(draggedDownPreviewY).toBeGreaterThan(draggedUpPreviewY);
+    expect(draggedDownPreviewY).not.toBe(draggedUpPreviewY);
+  });
+
+  it('keeps pergola and house plan geometry fixed while only the deck preview moves in merged house mode', async () => {
+    const deck = makeHouseFirstDeck({
+      isAttached: false,
+      presetType: 'rect_detached',
+      presetRect: {
+        widthM: '4',
+        depthM: '3',
+        centerOffsetM: '0',
+        detachedGapM: '0.6',
+      },
+    });
+    const baseHouse = makeHouseFirstHouse();
+    const resolvedDeck = resolveDeckPresetGeometry({
+      deck: deck as any,
+      housePolygon: baseHouse.footprint.polygon,
+    });
+    const rendered = renderIntoDocument(
+      <HouseFirstViewportHarness
+        initialSelection={{ kind: 'deck', targetId: 'deck-1' }}
+        workbenchDisplayMode="house"
+        visibility={{
+          house: true,
+          pergolas: true,
+          decks: true,
+          openings: true,
+        }}
+        initialHouse={makeHouseFirstHouse({
+          decks: [
+            {
+              ...deck,
+              hostEdgeId: resolvedDeck.hostEdgeId,
+              floatingRect: resolvedDeck.floatingRect,
+              presetRect: resolvedDeck.presetRect,
+              outline: resolvedDeck.outline,
+            },
+          ],
+        })}
+      />,
+    );
+
+    const svg = rendered.container.querySelector('svg[aria-label="Module plan view"]') as SVGSVGElement | null;
+    const deckHit = rendered.container.querySelector('[data-house-first-shape-hit="deck:deck-1"]');
+    const houseShape = rendered.container.querySelector('[data-house-first-shape="footprint:house-main"]');
+    const deckShape = rendered.container.querySelector('[data-house-first-shape="deck:deck-1"]');
+    const houseSurface = rendered.container.querySelector('[data-house-plan-surface="footprint"]');
+    const pergolaFill = rendered.container.querySelector('[data-plan-primary-fill="true"]');
+    if (!svg || !deckHit || !houseShape || !deckShape || !houseSurface || !pergolaFill) {
+      throw new Error('Missing merged house-mode plan nodes.');
+    }
+    installProjectedSvgPointMock(svg);
+
+    const houseShapeBefore = polygonPointsAttr(houseShape);
+    const deckShapeBefore = polygonPointsAttr(deckShape);
+    const houseSurfaceBefore = polygonPointsAttr(houseSurface);
+    const pergolaFillBefore = polygonPointsAttr(pergolaFill);
+
+    dispatchPointer(deckHit, 'pointerdown', { pointerId: 223, button: 0, clientX: 50, clientY: 50 });
+    dispatchPointer(window, 'pointermove', { pointerId: 223, button: 0, buttons: 1, clientX: 50, clientY: -2400 });
+
+    const previewShape = rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]');
+    expect(previewShape).not.toBeNull();
+    expect(polygonPointsAttr(previewShape)).not.toBe(deckShapeBefore);
+    expect(polygonPointsAttr(rendered.container.querySelector('[data-house-first-shape="footprint:house-main"]'))).toBe(houseShapeBefore);
+    expect(polygonPointsAttr(rendered.container.querySelector('[data-house-first-shape="deck:deck-1"]'))).toBe(deckShapeBefore);
+    expect(polygonPointsAttr(rendered.container.querySelector('[data-house-plan-surface="footprint"]'))).toBe(houseSurfaceBefore);
+    expect(polygonPointsAttr(rendered.container.querySelector('[data-plan-primary-fill="true"]'))).toBe(pergolaFillBefore);
+
+    dispatchPointer(window, 'pointerup', { pointerId: 223, button: 0, clientX: 50, clientY: -2400 });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    await flushAnimationFrame();
+    await flushAnimationFrame();
+    await flushAnimationFrame();
+
+    rendered.unmount();
+  });
+
+  it('commits the dragged deck position back into the rebuilt plan overlay in merged house mode', async () => {
+    const deck = makeHouseFirstDeck({
+      isAttached: false,
+      presetType: 'rect_detached',
+      presetRect: {
+        widthM: '4',
+        depthM: '3',
+        centerOffsetM: '0',
+        detachedGapM: '0.6',
+      },
+    });
+    const baseHouse = makeHouseFirstHouse();
+    const resolvedDeck = resolveDeckPresetGeometry({
+      deck: deck as any,
+      housePolygon: baseHouse.footprint.polygon,
+    });
+    const rendered = renderIntoDocument(
+      <HouseFirstViewportHarness
+        initialSelection={{ kind: 'deck', targetId: 'deck-1' }}
+        workbenchDisplayMode="house"
+        visibility={{
+          house: true,
+          pergolas: true,
+          decks: true,
+          openings: true,
+        }}
+        initialHouse={makeHouseFirstHouse({
+          decks: [
+            {
+              ...deck,
+              hostEdgeId: resolvedDeck.hostEdgeId,
+              floatingRect: resolvedDeck.floatingRect,
+              presetRect: resolvedDeck.presetRect,
+              outline: resolvedDeck.outline,
+            },
+          ],
+        })}
+      />,
+    );
+
+    const svg = rendered.container.querySelector('svg[aria-label="Module plan view"]') as SVGSVGElement | null;
+    const deckHit = rendered.container.querySelector('[data-house-first-shape-hit="deck:deck-1"]');
+    const deckShape = rendered.container.querySelector('[data-house-first-shape="deck:deck-1"]');
+    if (!svg || !deckHit || !deckShape) {
+      throw new Error('Missing merged house-mode deck nodes.');
+    }
+    installProjectedSvgPointMock(svg);
+
+    const committedDeckBefore = polygonPointsAttr(deckShape);
+    const committedDepthBefore =
+      rendered.container.querySelector('[data-testid="deck-floating-center-depth"]')?.textContent ?? '';
+    const committedOutlineAlongBefore =
+      rendered.container.querySelector('[data-testid="deck-outline-0-along"]')?.textContent ?? '';
+    const committedOutlineDepthBefore =
+      rendered.container.querySelector('[data-testid="deck-outline-0-depth"]')?.textContent ?? '';
+    dispatchPointer(deckHit, 'pointerdown', { pointerId: 323, button: 0, clientX: 50, clientY: 50 });
+    dispatchPointer(window, 'pointermove', { pointerId: 323, button: 0, buttons: 1, clientX: 50, clientY: 5000 });
+
+    const previewPoints = polygonPointsAttr(rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]'));
+    expect(previewPoints).not.toBe(committedDeckBefore);
+
+    dispatchPointer(window, 'pointerup', { pointerId: 323, button: 0, clientX: 50, clientY: 5000 });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    await flushAnimationFrame();
+    await flushAnimationFrame();
+    await flushAnimationFrame();
+    await flushAnimationFrame();
+    await flushAnimationFrame();
+
+    const committedDeckAfter = polygonPointsAttr(
+      rendered.container.querySelector('[data-house-first-shape="deck:deck-1"]'),
+    );
+    const committedDepthAfter =
+      rendered.container.querySelector('[data-testid="deck-floating-center-depth"]')?.textContent ?? '';
+    const committedOutlineAlongAfter =
+      rendered.container.querySelector('[data-testid="deck-outline-0-along"]')?.textContent ?? '';
+    const committedOutlineDepthAfter =
+      rendered.container.querySelector('[data-testid="deck-outline-0-depth"]')?.textContent ?? '';
+    expect(committedDeckAfter).not.toBe(committedDeckBefore);
+    expect(committedDepthAfter).not.toBe(committedDepthBefore);
+    expect(committedOutlineAlongAfter).toBe(committedOutlineAlongBefore);
+    expect(committedOutlineDepthAfter).not.toBe(committedOutlineDepthBefore);
+    expect(rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]')).toBeNull();
+
+    rendered.unmount();
   });
 
   it('keeps deck dragging responsive through a plan svg rerender in house mode', async () => {
@@ -4591,9 +5249,10 @@ describe('ModelSpaceViewport', () => {
     dispatchPointer(window, 'pointermove', { pointerId: 22, button: 0, buttons: 1, clientX: 49.5, clientY: 49.5 });
 
     expect(scroller.dataset.houseFirstDeckDragActive).toBe('true');
-    expect(scroller.dataset.houseFirstDeckSnapState).toBe('floating');
-    expect(rendered.container.querySelector('[aria-label="Deck interaction hint"]')).toBeNull();
-    expect(rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]')).not.toBeNull();
+    expect(scroller.dataset.houseFirstDeckDragPhase).toBe('drag-intent');
+    expect(scroller.dataset.houseFirstDeckSnapState).toBe('idle');
+    expect(rendered.container.querySelector('[aria-label="Deck interaction hint"]')?.textContent).toContain('Deck grabbed');
+    expect(rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]')).toBeNull();
 
     dispatchPointer(window, 'pointerup', { pointerId: 22, button: 0, clientX: 49.5, clientY: 49.5 });
     await act(async () => {
@@ -4663,12 +5322,12 @@ describe('ModelSpaceViewport', () => {
     installSvgPointMock(svg);
 
     dispatchPointer(deckHit, 'pointerdown', { pointerId: 24, button: 0, clientX: 50, clientY: 50 });
-    dispatchPointer(window, 'pointermove', { pointerId: 24, button: 0, buttons: 1, clientX: 50.1, clientY: 50.1 });
+    dispatchPointer(window, 'pointermove', { pointerId: 24, button: 0, buttons: 1, clientX: 56.1, clientY: 56.1 });
 
     expect(scroller.dataset.houseFirstDeckSnapState).toBe('floating');
     expect(rendered.container.querySelector('[data-house-first-snap-target="snapped"]')).not.toBeNull();
 
-    dispatchPointer(window, 'pointerup', { pointerId: 24, button: 0, clientX: 50.1, clientY: 50.1 });
+    dispatchPointer(window, 'pointerup', { pointerId: 24, button: 0, clientX: 56.1, clientY: 56.1 });
     await act(async () => {
       await Promise.resolve();
     });
@@ -4733,12 +5392,12 @@ describe('ModelSpaceViewport', () => {
     installProjectedSvgPointMock(svg);
 
     dispatchPointer(deckHit, 'pointerdown', { pointerId: 124, button: 0, clientX: 50, clientY: 50 });
-    dispatchPointer(window, 'pointermove', { pointerId: 124, button: 0, buttons: 1, clientX: 50.1, clientY: 50.1 });
+    dispatchPointer(window, 'pointermove', { pointerId: 124, button: 0, buttons: 1, clientX: 56.1, clientY: 56.1 });
 
     expect(scroller.dataset.houseFirstDeckSnapState).toBe('floating');
     expect(rendered.container.querySelector('[data-house-first-snap-target="snapped"]')).not.toBeNull();
 
-    dispatchPointer(window, 'pointerup', { pointerId: 124, button: 0, clientX: 50.1, clientY: 50.1 });
+    dispatchPointer(window, 'pointerup', { pointerId: 124, button: 0, clientX: 56.1, clientY: 56.1 });
     await act(async () => {
       await Promise.resolve();
     });

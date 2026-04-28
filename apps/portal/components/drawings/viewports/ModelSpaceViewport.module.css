@@ -201,6 +201,25 @@
   color: rgba(var(--portal-text-rgb), 0.58);
 }
 
+.interactionStatusReady {
+  border-color: rgba(var(--accentRgb), 0.24);
+}
+
+.interactionStatusSnapped {
+  border-color: rgba(var(--accentRgb), 0.34);
+  background: rgba(var(--portal-bg-rgb), 0.98);
+}
+
+.interactionStatusBlocked {
+  border-color: rgba(185, 28, 28, 0.18);
+  background: rgba(254, 242, 242, 0.94);
+}
+
+.interactionStatusBlocked .drawStatusText,
+.interactionStatusBlocked .drawStatusMeta {
+  color: rgb(153, 27, 27);
+}
+
 .scroller[data-house-first-deck-drag-locked="true"] .canvasControls,
 .scroller[data-house-first-deck-drag-locked="true"] .drawRedrawBar {
   pointer-events: none;
