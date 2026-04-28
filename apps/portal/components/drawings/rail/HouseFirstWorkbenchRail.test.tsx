@@ -19,19 +19,21 @@ function buildRailState(fixtureSlug: 'mono-standard' | 'box-standard' = 'mono-st
     pergolas: store.derived.pergolas,
     warnings: store.derived.migrationWarnings,
     visibility: store.ui.visibility,
+    activeObjectRef: store.ui.activeObjectRef,
   };
 }
 
 describe('HouseFirstWorkbenchRail', () => {
-  it('renders the extracted house-mode section stack', () => {
-    const { house, pergolas, warnings, visibility } = buildRailState();
+  it('renders the canonical rail tabs with house-forms content by default', () => {
+    const { house, pergolas, warnings, visibility, activeObjectRef } = buildRailState();
     const markup = renderToStaticMarkup(
       <HouseFirstWorkbenchRail
-        workbenchMode="house"
         house={house}
         pergolas={pergolas}
         warnings={warnings}
         visibility={visibility}
+        activeRailTab="house_forms"
+        activeObjectRef={activeObjectRef}
         canEditFootprint
         canStartDrawOutline
         onStartDrawOutline={() => ({ ok: true })}
@@ -46,10 +48,13 @@ describe('HouseFirstWorkbenchRail', () => {
         onCommitDeckPatch={() => ({ ok: true })}
         onCommitOpeningPatch={() => ({ ok: true })}
         onStartDeckOutline={() => ({ ok: true })}
-        pergolaFallback={<div>Fallback rail</div>}
+        pergolaPanel={<div>Fallback rail</div>}
+        diagnosticsPanel={<section>Migration diagnostics</section>}
       />,
     );
 
+    expect(markup).toContain('House Forms');
+    expect(markup).toContain('Diagnostics');
     expect(markup).toContain('House Configurator');
     expect(markup).toContain('Footprint');
     expect(markup).toContain('Roof');
@@ -63,27 +68,25 @@ describe('HouseFirstWorkbenchRail', () => {
     expect(markup).toContain('Visibility');
     expect(markup).toContain('Pergolas');
     expect(markup).toContain('Shown');
-    expect(markup).toContain('Add deck');
-    expect(markup).toContain('Add window');
-    expect(markup).toContain('Add door');
-    expect(markup).toContain('Add slider');
-    expect(markup).toContain('Add stacker');
+    expect(markup).not.toContain('Add deck');
+    expect(markup).not.toContain('Add window');
   });
 
-  it('keeps pergola fallback isolated from the house-mode sections', () => {
-    const { house, pergolas, warnings, visibility } = buildRailState();
+  it('renders the embedded pergola panel inside the canonical Pergolas tab', () => {
+    const { house, pergolas, warnings, visibility, activeObjectRef } = buildRailState();
     const markup = renderToStaticMarkup(
       <HouseFirstWorkbenchRail
-        workbenchMode="pergolas"
         house={house}
         pergolas={pergolas}
         warnings={warnings}
         visibility={visibility}
-        pergolaFallback={<div>Fallback rail</div>}
+        activeRailTab="pergolas"
+        activeObjectRef={activeObjectRef}
+        pergolaPanel={<div>Fallback rail</div>}
+        diagnosticsPanel={<section>Migration diagnostics</section>}
       />,
     );
 
-    expect(markup).toContain('Pergola Mode');
     expect(markup).toContain('Fallback rail');
     expect(markup).not.toContain('Add deck');
     expect(markup).not.toContain('Add window');
@@ -93,11 +96,10 @@ describe('HouseFirstWorkbenchRail', () => {
   });
 
   it('keeps the opening type editable for hinged doors without deferred family copy', () => {
-    const { house, pergolas, warnings, visibility } = buildRailState();
+    const { house, pergolas, warnings, visibility, activeObjectRef } = buildRailState();
     if (!house) throw new Error('Expected shared house.');
     const markup = renderToStaticMarkup(
       <HouseFirstWorkbenchRail
-        workbenchMode="house"
         house={{
           ...house,
           openings: [
@@ -123,12 +125,15 @@ describe('HouseFirstWorkbenchRail', () => {
         pergolas={pergolas}
         warnings={warnings}
         visibility={visibility}
+        activeRailTab="openings"
+        activeObjectRef={activeObjectRef}
         activeOpeningId="opening-door-1"
         onAddOpening={() => ({ ok: true })}
         onRemoveOpening={() => ({ ok: true })}
         onCommitOpeningPatch={() => ({ ok: true })}
         onSelectOpening={() => undefined}
-        pergolaFallback={<div>Fallback rail</div>}
+        pergolaPanel={<div>Fallback rail</div>}
+        diagnosticsPanel={<section>Migration diagnostics</section>}
       />,
     );
 
@@ -137,14 +142,15 @@ describe('HouseFirstWorkbenchRail', () => {
   });
 
   it('shows legacy flat roofs as view-only in the house-mode roof section', () => {
-    const { house, pergolas, warnings, visibility } = buildRailState('box-standard');
+    const { house, pergolas, warnings, visibility, activeObjectRef } = buildRailState('box-standard');
     const markup = renderToStaticMarkup(
       <HouseFirstWorkbenchRail
-        workbenchMode="house"
         house={house}
         pergolas={pergolas}
         warnings={warnings}
         visibility={visibility}
+        activeRailTab="house_forms"
+        activeObjectRef={activeObjectRef}
         canEditFootprint
         canStartDrawOutline
         onStartDrawOutline={() => ({ ok: true })}
@@ -159,7 +165,8 @@ describe('HouseFirstWorkbenchRail', () => {
         onCommitDeckPatch={() => ({ ok: true })}
         onCommitOpeningPatch={() => ({ ok: true })}
         onStartDeckOutline={() => ({ ok: true })}
-        pergolaFallback={<div>Fallback rail</div>}
+        pergolaPanel={<div>Fallback rail</div>}
+        diagnosticsPanel={<section>Migration diagnostics</section>}
       />,
     );
 

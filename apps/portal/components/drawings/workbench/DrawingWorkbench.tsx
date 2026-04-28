@@ -50,6 +50,7 @@ type DrawingWorkbenchProps = {
   sectionModel?: ModuleSectionModel | null;
   planViewModel?: PlanViewModel | null;
   geometryPreview?: GeometryPreviewState | null;
+  activePergolaId?: string | null;
   modelViewportKey?: string;
   modelViewportTransform: DrawingWorkbenchViewportTransform;
   modelViewportAutoFitOnReady?: boolean;
@@ -81,6 +82,8 @@ type DrawingWorkbenchProps = {
     polygon: CalculatorHouseFootprintPolygonPoint[],
   ) => Promise<{ ok: boolean; error?: string }> | { ok: boolean; error?: string };
   onSelectHouseFirstTarget?: (selection: WorkbenchHouseSelection) => void;
+  onSelectPergolaTarget?: (pergolaId: string) => void;
+  onClearWorkbenchSelection?: () => void;
   onCommitHouseFirstFootprintDimension?: (
     edit: EstimateDrawingFootprintEdit,
   ) => Promise<{ ok: boolean; error?: string }> | { ok: boolean; error?: string };
@@ -112,6 +115,7 @@ export default function DrawingWorkbench({
   sectionModel,
   planViewModel,
   geometryPreview,
+  activePergolaId,
   modelViewportKey,
   modelViewportTransform,
   modelViewportAutoFitOnReady = true,
@@ -133,6 +137,8 @@ export default function DrawingWorkbench({
   onCommitFootprintEdit,
   onCommitCustomPolygon,
   onSelectHouseFirstTarget,
+  onSelectPergolaTarget,
+  onClearWorkbenchSelection,
   onCommitHouseFirstFootprintDimension,
   onCommitHouseFirstDeckDimension,
   onCommitHouseFirstOpeningDimension,
@@ -200,6 +206,7 @@ export default function DrawingWorkbench({
             planModel={planModel}
             sectionModel={sectionModel}
             planViewModel={planViewModel}
+            activePergolaId={activePergolaId}
             drawOutlineRequestId={drawOutlineRequestId}
             drawOutlineMode={drawOutlineMode}
             drawOutlineSeedPolygon={drawOutlineSeedPolygon}
@@ -213,6 +220,8 @@ export default function DrawingWorkbench({
             onCommitFootprintEdit={onCommitFootprintEdit}
             onCommitCustomPolygon={onCommitCustomPolygon}
             onSelectHouseFirstTarget={onSelectHouseFirstTarget}
+            onSelectPergolaTarget={onSelectPergolaTarget}
+            onClearWorkbenchSelection={onClearWorkbenchSelection}
             onCommitHouseFirstFootprintDimension={onCommitHouseFirstFootprintDimension}
             onCommitHouseFirstDeckDimension={onCommitHouseFirstDeckDimension}
             onCommitHouseFirstOpeningDimension={onCommitHouseFirstOpeningDimension}

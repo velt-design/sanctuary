@@ -951,6 +951,7 @@ export default function ModelSpaceViewport({
   planModel,
   sectionModel,
   planViewModel,
+  activePergolaId,
   drawOutlineRequestId,
   drawOutlineMode,
   drawOutlineSeedPolygon,
@@ -964,6 +965,8 @@ export default function ModelSpaceViewport({
   onCommitFootprintEdit,
   onCommitCustomPolygon,
   onSelectHouseFirstTarget,
+  onSelectPergolaTarget,
+  onClearWorkbenchSelection,
   onCommitHouseFirstFootprintDimension,
   onCommitHouseFirstDeckDimension,
   onCommitHouseFirstOpeningDimension,
@@ -976,6 +979,7 @@ export default function ModelSpaceViewport({
   planModel?: ModulePlanModel | null;
   sectionModel?: ModuleSectionModel | null;
   planViewModel?: PlanViewModel | null;
+  activePergolaId?: string | null;
   drawOutlineRequestId?: number;
   drawOutlineMode?: 'footprint' | 'deck' | null;
   drawOutlineSeedPolygon?: CalculatorHouseFootprintPolygonPoint[] | null;
@@ -996,6 +1000,8 @@ export default function ModelSpaceViewport({
     polygon: CalculatorHouseFootprintPolygonPoint[],
   ) => Promise<{ ok: boolean; error?: string }> | { ok: boolean; error?: string };
   onSelectHouseFirstTarget?: (selection: WorkbenchHouseSelection) => void;
+  onSelectPergolaTarget?: (pergolaId: string) => void;
+  onClearWorkbenchSelection?: () => void;
   onCommitHouseFirstFootprintDimension?: (
     edit: EstimateDrawingFootprintEdit,
   ) => Promise<{ ok: boolean; error?: string }> | { ok: boolean; error?: string };
@@ -1200,6 +1206,21 @@ export default function ModelSpaceViewport({
     },
     [closeHouseFirstDimensionEditor, onSelectHouseFirstTarget],
   );
+
+  const handlePergolaTargetSelect = useCallback(
+    (pergolaId: string) => {
+      closeHouseFirstDimensionEditor();
+      setHouseFirstActiveCustomEdgeId(null);
+      onSelectPergolaTarget?.(pergolaId);
+    },
+    [closeHouseFirstDimensionEditor, onSelectPergolaTarget],
+  );
+
+  const handleWorkbenchCanvasSelect = useCallback(() => {
+    closeHouseFirstDimensionEditor();
+    setHouseFirstActiveCustomEdgeId(null);
+    onClearWorkbenchSelection?.();
+  }, [closeHouseFirstDimensionEditor, onClearWorkbenchSelection]);
 
   const clearTouchNavigation = useCallback(() => {
     activeTouchPointersRef.current.clear();
@@ -3760,6 +3781,7 @@ export default function ModelSpaceViewport({
                 presentation="model"
                 displayMode={workbenchDisplayMode}
                 visibility={visibility}
+                currentPergolaId={activePergolaId}
                 interactiveFields={showPlanViewport ? modelInteractiveFields : undefined}
                 footprintEditor={showPlanViewport ? footprintEditor : undefined}
                 planInteraction={showPlanViewport ? planInteraction : undefined}
@@ -3770,6 +3792,8 @@ export default function ModelSpaceViewport({
                 modelSpacePergolaRenderStatus={showPlanViewport ? planViewModel?.modelSpacePergola.renderStatus : undefined}
                 activeHouseFirstCustomEdgeId={houseFirstActiveCustomEdgeId}
                 onHouseFirstShapeSelect={showPlanViewport ? handleHouseFirstShapeSelect : undefined}
+                onPergolaSelect={showPlanViewport ? handlePergolaTargetSelect : undefined}
+                onCanvasSelect={showPlanViewport ? handleWorkbenchCanvasSelect : undefined}
                 onHouseFirstShapeDragStart={showPlanViewport ? handleHouseFirstShapeDragStart : undefined}
                 onHouseFirstCustomEdgeSelect={showPlanViewport ? handleHouseFirstCustomEdgeSelect : undefined}
                 onHouseFirstDimensionActivate={showPlanViewport ? activateHouseFirstDimensionEditor : undefined}

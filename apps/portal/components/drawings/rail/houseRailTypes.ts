@@ -1,6 +1,9 @@
 import type { ReactNode } from 'react';
 import type { EstimateDrawingFootprintEdit } from '@/lib/estimates/drawingEdits';
-import type { DrawingWorkbenchVisibilityState } from '@/lib/drawings/state/drawingWorkbenchUiState';
+import type {
+  DrawingWorkbenchRailTab,
+  DrawingWorkbenchVisibilityState,
+} from '@/lib/drawings/state/drawingWorkbenchUiState';
 import type {
   HouseFirstDeckDraft,
   HouseFirstMigrationWarning,
@@ -9,22 +12,24 @@ import type {
   HouseModel,
   PergolaModel,
   WallOpeningKind,
-  WorkbenchMode,
 } from '@/lib/drawings/state/houseFirstWorkbenchModel';
+import type { WorkbenchObjectRef } from '@/lib/drawings/state/objectFirstWorkbenchModel';
 
 export type CommitResult = { ok: boolean; error?: string };
 
 export type HouseFirstWorkbenchRailProps = {
-  workbenchMode: WorkbenchMode;
   house: HouseModel | null;
   pergolas: PergolaModel[];
   warnings: HouseFirstMigrationWarning[];
   disabled?: boolean;
+  activeRailTab: DrawingWorkbenchRailTab;
+  activeObjectRef: WorkbenchObjectRef;
   activeDeckId?: string | null;
   activeOpeningId?: string | null;
   canEditFootprint?: boolean;
   canStartDrawOutline?: boolean;
   visibility: DrawingWorkbenchVisibilityState;
+  onSelectRailTab?: (tab: DrawingWorkbenchRailTab) => void;
   onVisibilityChange?: (family: keyof DrawingWorkbenchVisibilityState, visible: boolean) => void;
   onStartDrawOutline?: () => Promise<CommitResult> | CommitResult;
   onCommitFootprintEdit?: (edit: EstimateDrawingFootprintEdit) => Promise<CommitResult> | CommitResult;
@@ -46,10 +51,9 @@ export type HouseFirstWorkbenchRailProps = {
     patch: Partial<HouseFirstOpeningDraft>,
   ) => Promise<CommitResult> | CommitResult;
   onStartDeckOutline?: (deckId: string) => Promise<CommitResult> | CommitResult;
-  pergolaFallback: ReactNode;
+  pergolaPanel: ReactNode;
+  diagnosticsPanel: ReactNode;
 };
-
-export type HouseModeRailProps = Omit<HouseFirstWorkbenchRailProps, 'workbenchMode' | 'pergolaFallback'>;
 
 export type FieldErrors = Record<string, string>;
 

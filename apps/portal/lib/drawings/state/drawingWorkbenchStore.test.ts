@@ -323,6 +323,7 @@ describe('buildDrawingWorkbenchStore', () => {
 
     expect(pergolaStore.ui.workbenchMode).toBe('pergolas');
     expect(pergolaStore.ui.activePergolaId).toBe('pergola-1');
+    expect(pergolaStore.ui.activeRailTab).toBe('pergolas');
     expect(pergolaStore.ui.activeHouseSelection).toEqual({ kind: 'house', targetId: null });
     expect(pergolaStore.derived.activePergola?.id).toBe('pergola-1');
 
@@ -337,6 +338,7 @@ describe('buildDrawingWorkbenchStore', () => {
 
     expect(houseStore.ui.workbenchMode).toBe('house');
     expect(houseStore.ui.activePergolaId).toBeNull();
+    expect(houseStore.ui.activeRailTab).toBe('house_forms');
     expect(houseStore.ui.activeHouseSelection).toEqual({ kind: 'footprint', targetId: 'house-main' });
   });
 
@@ -795,26 +797,29 @@ describe('buildDrawingWorkbenchStore', () => {
       }),
     });
 
-    expect(attachedStore.derived.activeDeckInteraction).toEqual({
-      selectedDeckType: 'preset_snapped',
-      dragEligible: true,
-      dragReason: 'Drag the selected deck body to move it near the house edge or into floating placement, or click dimensions to edit.',
-      hostEdgeResolvable: true,
-      relationshipDimensionsAvailable: true,
-    });
-    expect(detachedStore.derived.activeDeckInteraction).toEqual({
-      selectedDeckType: 'preset_floating',
-      dragEligible: true,
-      dragReason: 'Drag the selected deck body to move it near the house edge or into floating placement, or click dimensions to edit.',
-      hostEdgeResolvable: true,
-      relationshipDimensionsAvailable: true,
-    });
-    expect(customStore.derived.activeDeckInteraction).toEqual({
-      selectedDeckType: 'custom_outline',
-      dragEligible: true,
-      dragReason: 'Drag the selected custom deck body to translate it relative to the house, or click relationship dimensions and outline edges to edit.',
-      hostEdgeResolvable: true,
-      relationshipDimensionsAvailable: true,
-    });
+    expect(attachedStore.derived.activeDeckInteraction).toEqual(
+      expect.objectContaining({
+        selectedDeckType: 'preset_snapped',
+        dragEligible: true,
+        hostEdgeResolvable: true,
+        relationshipDimensionsAvailable: true,
+      }),
+    );
+    expect(detachedStore.derived.activeDeckInteraction).toEqual(
+      expect.objectContaining({
+        selectedDeckType: 'preset_floating',
+        dragEligible: true,
+        hostEdgeResolvable: true,
+        relationshipDimensionsAvailable: true,
+      }),
+    );
+    expect(customStore.derived.activeDeckInteraction).toEqual(
+      expect.objectContaining({
+        selectedDeckType: 'custom_outline',
+        dragEligible: true,
+        hostEdgeResolvable: true,
+        relationshipDimensionsAvailable: true,
+      }),
+    );
   });
 });

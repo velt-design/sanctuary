@@ -1,31 +1,42 @@
 'use client';
 
 import { useCallback, useMemo, useState } from 'react';
+import type { DrawingWorkbenchRailTab } from '@/lib/drawings/state/drawingWorkbenchUiState';
 import { buildHouseRailDeckSections } from './houseRailDeckSections';
 import { buildHouseRailFootprintSections } from './houseRailFootprintSections';
 import { buildHouseRailOpeningSections } from './houseRailOpeningSections';
 import { buildHouseRailOverviewSection } from './houseRailOverviewSection';
 import { buildHouseRailRoofSections } from './houseRailRoofSections';
-import { SummarySection, resolveCommitResult } from './houseRailShared';
+import { resolveCommitResult } from './houseRailShared';
 import type {
   HouseFirstWorkbenchRailProps,
-  HouseModeRailProps,
   RunAction,
   RunFootprintCommit,
   RunRoofCommit,
 } from './houseRailTypes';
 import styles from './ConfiguratorRail.module.css';
 
-function HouseModeRail({
+const RAIL_TABS: Array<{ id: DrawingWorkbenchRailTab; label: string }> = [
+  { id: 'house_forms', label: 'House Forms' },
+  { id: 'pergolas', label: 'Pergolas' },
+  { id: 'decks', label: 'Decks' },
+  { id: 'openings', label: 'Openings' },
+  { id: 'diagnostics', label: 'Diagnostics' },
+];
+
+export default function HouseFirstWorkbenchRail({
   house,
-  activeDeckId,
-  activeOpeningId,
   pergolas,
   warnings,
   disabled,
+  activeRailTab,
+  activeObjectRef,
+  activeDeckId,
+  activeOpeningId,
   canEditFootprint,
   canStartDrawOutline,
   visibility,
+  onSelectRailTab,
   onVisibilityChange,
   onStartDrawOutline,
   onCommitFootprintEdit,
@@ -39,7 +50,9 @@ function HouseModeRail({
   onCommitDeckPatch,
   onCommitOpeningPatch,
   onStartDeckOutline,
-}: HouseModeRailProps) {
+  pergolaPanel,
+  diagnosticsPanel,
+}: HouseFirstWorkbenchRailProps) {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const runFootprintCommit = useCallback<RunFootprintCommit>(
@@ -182,8 +195,6 @@ function HouseModeRail({
 
   return (
     <div className={styles.rail}>
-      {overviewSection}
-
       <section className={styles.section}>
         <h4 className={styles.sectionTitle}>Visibility</h4>
         <div className={styles.sectionBody}>
@@ -215,95 +226,63 @@ function HouseModeRail({
       </section>
 
       <section className={styles.section}>
-        <h4 className={styles.sectionTitle}>Footprint</h4>
-        <div className={styles.sectionBody}>{footprintSections}</div>
+        <h4 className={styles.sectionTitle}>Editor</h4>
+        <div className={styles.fieldStack} role="tablist" aria-label="Workbench editor tabs">
+          {RAIL_TABS.map((tab) => {
+            const active = activeRailTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                className={active ? styles.buttonPrimary : styles.secondaryButton}
+                onClick={() => onSelectRailTab?.(tab.id)}
+              >
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
       </section>
 
-      <section className={styles.section}>
-        <h4 className={styles.sectionTitle}>Roof</h4>
-        <div className={styles.sectionBody}>{roofSections}</div>
-      </section>
+      {activeRailTab === 'house_forms' ? (
+        <>
+          {overviewSection}
 
-      <section className={styles.section}>
-        <h4 className={styles.sectionTitle}>Decks</h4>
-        <div className={styles.sectionBody}>{deckSections}</div>
-      </section>
+          <section className={styles.section}>
+            <h4 className={styles.sectionTitle}>Footprint</h4>
+            <div className={styles.sectionBody}>{footprintSections}</div>
+          </section>
 
-      <section className={styles.section}>
-        <h4 className={styles.sectionTitle}>Openings</h4>
-        <div className={styles.sectionBody}>{openingSections}</div>
-      </section>
+          <section className={styles.section}>
+            <h4 className={styles.sectionTitle}>Roof</h4>
+            <div className={styles.sectionBody}>{roofSections}</div>
+          </section>
+        </>
+      ) : null}
+
+      {activeRailTab === 'pergolas' ? (
+        <div data-active-workbench-object={`${activeObjectRef.family}:${activeObjectRef.objectId ?? 'none'}`}>
+          {pergolaPanel}
+        </div>
+      ) : null}
+
+      {activeRailTab === 'decks' ? (
+        <section className={styles.section}>
+          <h4 className={styles.sectionTitle}>Decks</h4>
+          <div className={styles.sectionBody}>{deckSections}</div>
+        </section>
+      ) : null}
+
+      {activeRailTab === 'openings' ? (
+        <section className={styles.section}>
+          <h4 className={styles.sectionTitle}>Openings</h4>
+          <div className={styles.sectionBody}>{openingSections}</div>
+        </section>
+      ) : null}
+
+      {activeRailTab === 'diagnostics' ? diagnosticsPanel : null}
     </div>
-  );
-}
-
-export default function HouseFirstWorkbenchRail({
-  workbenchMode,
-  house,
-  activeDeckId,
-  activeOpeningId,
-  pergolas,
-  warnings,
-  disabled,
-  canEditFootprint,
-  canStartDrawOutline,
-  visibility,
-  onVisibilityChange,
-  onStartDrawOutline,
-  onCommitFootprintEdit,
-  onCommitRoofDraft,
-  onSelectDeck,
-  onSelectOpening,
-  onAddDeck,
-  onAddOpening,
-  onRemoveDeck,
-  onRemoveOpening,
-  onCommitDeckPatch,
-  onCommitOpeningPatch,
-  onStartDeckOutline,
-  pergolaFallback,
-}: HouseFirstWorkbenchRailProps) {
-  if (workbenchMode === 'pergolas') {
-    return (
-      <div className={styles.rail}>
-        <SummarySection
-          title="Pergola Mode"
-          items={[
-            { label: 'Pergolas', value: String(pergolas.length) },
-            { label: 'Shared house', value: house?.label ?? 'Not derived yet' },
-            { label: 'Warnings', value: String(warnings.length) },
-          ]}
-          hint="Pergola editing is still routed through the existing Sanctuary fallback editor in this slice."
-        />
-        {pergolaFallback}
-      </div>
-    );
-  }
-
-  return (
-    <HouseModeRail
-      house={house}
-      activeDeckId={activeDeckId}
-      activeOpeningId={activeOpeningId}
-      pergolas={pergolas}
-      warnings={warnings}
-      disabled={disabled}
-      canEditFootprint={canEditFootprint}
-      canStartDrawOutline={canStartDrawOutline}
-      visibility={visibility}
-      onVisibilityChange={onVisibilityChange}
-      onStartDrawOutline={onStartDrawOutline}
-      onCommitFootprintEdit={onCommitFootprintEdit}
-      onCommitRoofDraft={onCommitRoofDraft}
-      onSelectDeck={onSelectDeck}
-      onSelectOpening={onSelectOpening}
-      onAddDeck={onAddDeck}
-      onAddOpening={onAddOpening}
-      onRemoveDeck={onRemoveDeck}
-      onRemoveOpening={onRemoveOpening}
-      onCommitDeckPatch={onCommitDeckPatch}
-      onCommitOpeningPatch={onCommitOpeningPatch}
-      onStartDeckOutline={onStartDeckOutline}
-    />
   );
 }

@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useId, useRef, type PointerEvent as ReactPointerEvent } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useRef,
+  type MouseEvent as ReactMouseEvent,
+  type PointerEvent as ReactPointerEvent,
+} from 'react';
 import type { AttachmentSide } from '@sp/costing';
 import type {
   GeometryPlanMember2D,
@@ -223,6 +230,9 @@ type ModuleDrawingRendererProps = {
   houseFirstPlanOverlay?: HouseFirstPlanOverlay | null;
   activeHouseFirstCustomEdgeId?: string | null;
   onHouseFirstShapeSelect?: (target: { ownerKind: 'footprint' | 'deck' | 'opening'; ownerId: string }) => void;
+  currentPergolaId?: string | null;
+  onPergolaSelect?: (pergolaId: string) => void;
+  onCanvasSelect?: () => void;
   onHouseFirstShapeDragStart?: (
     meta: HouseFirstPlanShapeDragStartMeta,
     event: { pointerId: number; clientX: number; clientY: number },
@@ -393,6 +403,9 @@ export function ModuleDrawingRenderer({
   houseFirstPlanOverlay,
   activeHouseFirstCustomEdgeId,
   onHouseFirstShapeSelect,
+  currentPergolaId,
+  onPergolaSelect,
+  onCanvasSelect,
   onHouseFirstShapeDragStart,
   onHouseFirstCustomEdgeSelect,
   onHouseFirstDimensionActivate,
@@ -519,6 +532,9 @@ export function ModuleDrawingRenderer({
               houseFirstPlanOverlay={houseFirstPlanOverlay}
               activeHouseFirstCustomEdgeId={activeHouseFirstCustomEdgeId}
               onHouseFirstShapeSelect={onHouseFirstShapeSelect}
+              currentPergolaId={currentPergolaId}
+              onPergolaSelect={onPergolaSelect}
+              onCanvasSelect={onCanvasSelect}
               onHouseFirstShapeDragStart={onHouseFirstShapeDragStart}
               onHouseFirstCustomEdgeSelect={onHouseFirstCustomEdgeSelect}
               onHouseFirstDimensionActivate={onHouseFirstDimensionActivate}
@@ -4432,6 +4448,9 @@ function PlanSvg({
   houseFirstPlanOverlay,
   activeHouseFirstCustomEdgeId,
   onHouseFirstShapeSelect,
+  currentPergolaId,
+  onPergolaSelect,
+  onCanvasSelect,
   onHouseFirstShapeDragStart,
   onHouseFirstCustomEdgeSelect,
   onHouseFirstDimensionActivate,
@@ -4457,6 +4476,9 @@ function PlanSvg({
   houseFirstPlanOverlay?: HouseFirstPlanOverlay | null;
   activeHouseFirstCustomEdgeId?: string | null;
   onHouseFirstShapeSelect?: (target: { ownerKind: 'footprint' | 'deck' | 'opening'; ownerId: string }) => void;
+  currentPergolaId?: string | null;
+  onPergolaSelect?: (pergolaId: string) => void;
+  onCanvasSelect?: () => void;
   onHouseFirstShapeDragStart?: (
     meta: HouseFirstPlanShapeDragStartMeta,
     event: { pointerId: number; clientX: number; clientY: number },
@@ -4969,6 +4991,8 @@ function PlanSvg({
   const showPergolaPopover = isSheet && Boolean(sheetPlanInteraction?.isPergolaPopoverOpen) && !showHousePopover;
   const showHouseHoverTarget = (isSheetFootprintEditor || isModelFootprintEditor) && showHouseFootprint && !isDrawOutlineDraftOpen;
   const showPergolaHoverTarget = isSheet && Boolean(sheetPlanInteraction?.onPergolaHoverChange) && !isHipCorner;
+  const showPergolaSelectionHitTarget =
+    !isSheet && showPergolaGeometry && Boolean(onPergolaSelect) && Boolean(currentPergolaId);
   const showHouseHoverState =
     (isSheetFootprintEditor && (Boolean(footprintEditor?.isEditing) || showHousePopover)) ||
     (isModelFootprintEditor &&
@@ -5118,6 +5142,14 @@ function PlanSvg({
     syncPlanSvgBridge(node);
   }, [syncPlanSvgBridge]);
 
+  const handlePlanCanvasClick = useCallback(
+    (event: ReactMouseEvent<SVGSVGElement>) => {
+      if (event.target !== event.currentTarget) return;
+      onCanvasSelect?.();
+    },
+    [onCanvasSelect],
+  );
+
   useEffect(() => {
     syncPlanSvgBridge(planSvgRef.current);
   }, [syncPlanSvgBridge, footprintEditor, planInteraction, resolvePlanClientPoint, resolveRawPlanClientPoint]);
@@ -5161,6 +5193,7 @@ function PlanSvg({
         role="img"
         aria-label="Module plan view"
         ref={handlePlanSvgRef}
+        onClick={handlePlanCanvasClick}
         onPointerDown={handlePlanSvgPointerDown}
         onPointerMove={handlePlanSvgPointerMove}
         onPointerLeave={() => footprintEditor?.onCanvasPointHover?.(null)}
@@ -5538,6 +5571,15 @@ function PlanSvg({
           onCustomEdgeSelect: onHouseFirstCustomEdgeSelect,
           onDimensionActivate: onHouseFirstDimensionActivate,
         })}
+
+        {showPergolaSelectionHitTarget && currentPergolaId ? (
+          <polygon
+            points={toPointsAttr(primaryPoints)}
+            className={styles.modulePergolaContextHit}
+            data-pergola-shape-hit={currentPergolaId}
+            onClick={() => onPergolaSelect?.(currentPergolaId)}
+          />
+        ) : null}
 
         {showPergolaHoverTarget ? (
           <polygon

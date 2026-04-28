@@ -26,15 +26,59 @@ vi.mock('@react-three/drei', () => ({
 }));
 
 function clickButtonByText(container: HTMLElement, label: string) {
-  const button = Array.from(container.querySelectorAll('button')).find((node) => node.textContent?.includes(label));
-  if (!button) throw new Error(`Missing button: ${label}`);
+  const button = getButtonByText(container, label);
   act(() => {
     button.dispatchEvent(new MouseEvent('click', { bubbles: true }));
   });
 }
 
+function getButtonByText(container: HTMLElement, label: string) {
+  const findButton = () =>
+    Array.from(container.querySelectorAll('button')).find((node) => node.textContent?.includes(label));
+  let button = findButton();
+  if (!button) {
+    const fallbackTab =
+      label === 'Add deck' || label === 'Remove deck' || label.includes('Deck ')
+        ? 'Decks'
+        : label === 'Add window' ||
+            label === 'Add door' ||
+            label === 'Add slider' ||
+            label === 'Add stacker' ||
+            label === 'Remove opening'
+          ? 'Openings'
+          : null;
+    if (fallbackTab) {
+      const tabButton = Array.from(container.querySelectorAll('button')).find((node) =>
+        node.textContent?.includes(fallbackTab),
+      );
+      if (tabButton) {
+        act(() => {
+          tabButton.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        });
+        button = findButton();
+      }
+    }
+  }
+  if (!button) throw new Error(`Missing button: ${label}`);
+  return button as HTMLButtonElement;
+}
+
 function changeSelectByLabel(container: HTMLElement, label: string, value: string) {
-  const select = container.querySelector(`[aria-label="${label}"]`) as HTMLSelectElement | null;
+  let select = container.querySelector(`[aria-label="${label}"]`) as HTMLSelectElement | null;
+  if (!select) {
+    const fallbackTab =
+      label === 'House footprint' || label === 'Roof form' || label === 'Roof material'
+        ? 'House Forms'
+        : label === 'Panel count' || label === 'Opening type'
+          ? 'Openings'
+          : label === 'Shape'
+            ? 'Decks'
+            : null;
+    if (fallbackTab) {
+      clickButtonByText(container, fallbackTab);
+      select = container.querySelector(`[aria-label="${label}"]`) as HTMLSelectElement | null;
+    }
+  }
   if (!select) throw new Error(`Missing select: ${label}`);
   act(() => {
     select.value = value;
@@ -89,7 +133,18 @@ function fillPlanDimensionInput(container: HTMLElement, value: string, commit: '
 }
 
 function readLabeledValue(container: HTMLElement, label: string): string | null {
-  const labelNode = Array.from(container.querySelectorAll('span')).find((node) => node.textContent?.trim() === label);
+  let labelNode = Array.from(container.querySelectorAll('span')).find((node) => node.textContent?.trim() === label);
+  if (!labelNode) {
+    const diagnosticsButton = Array.from(container.querySelectorAll('button')).find((node) =>
+      node.textContent?.includes('Diagnostics'),
+    );
+    if (diagnosticsButton) {
+      act(() => {
+        diagnosticsButton.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      });
+      labelNode = Array.from(container.querySelectorAll('span')).find((node) => node.textContent?.trim() === label);
+    }
+  }
   return labelNode?.nextElementSibling?.textContent?.trim() ?? null;
 }
 
@@ -290,8 +345,8 @@ describe('DesignWorkbenchEstimateClient', () => {
 
     expect(rendered.container.textContent).toContain('House Configurator');
     expect(rendered.container.textContent).toContain('Footprint');
-    expect(rendered.container.textContent).toContain('Migration diagnostics');
-    expect(rendered.container.textContent).toContain('Derived houses');
+    expect(rendered.container.textContent).toContain('House Forms');
+    expect(rendered.container.textContent).toContain('Diagnostics');
     expect(rendered.container.textContent).toContain('Pergolas');
     expect(rendered.container.textContent).toContain('Sheet View');
     expect(rendered.container.textContent).toContain('Model Space');
@@ -303,7 +358,7 @@ describe('DesignWorkbenchEstimateClient', () => {
     expect(rendered.container.textContent).not.toContain('Inspection');
     expect(rendered.container.querySelector('[data-testid="geometry-3d-canvas"]')).not.toBeNull();
     expect(rendered.container.querySelector('[data-testid="scene-object-house-solid-house-wall-1"]')).not.toBeNull();
-    expect(rendered.container.querySelector('[data-testid="scene-object-outer-gutter"]')).toBeNull();
+    expect(rendered.container.querySelector('[data-testid="scene-object-outer-gutter"]')).not.toBeNull();
 
     clickButtonByText(rendered.container, 'Pergolas');
     await flushAsyncWork();
@@ -336,6 +391,12 @@ describe('DesignWorkbenchEstimateClient', () => {
     expect(rendered.container.querySelector('[aria-label="Section model space viewport"]')).not.toBeNull();
     expect(rendered.container.querySelector('[aria-label="Module section view"]')).not.toBeNull();
 
+    clickButtonByText(rendered.container, 'Diagnostics');
+    await flushAsyncWork();
+
+    expect(rendered.container.textContent).toContain('Migration diagnostics');
+    expect(rendered.container.textContent).toContain('Derived houses');
+
     rendered.unmount();
   });
 
@@ -366,6 +427,38 @@ describe('DesignWorkbenchEstimateClient', () => {
     expect(boxRendered.container.textContent).toContain('Box perimeter');
     expect(pitchInput?.disabled).toBe(true);
     boxRendered.unmount();
+  });
+
+  it('opens the matching canonical tab from viewport selection and keeps the tab on empty-space clear', async () => {
+    const estimate = buildEstimateDetail();
+    const rendered = renderIntoDocument(
+      <DesignWorkbenchEstimateClient estimate={estimate} projectName="Deck Build" siteAddress="1 Test Street" />,
+    );
+
+    await flushAsyncWork();
+    clickButtonByText(rendered.container, 'Model Space');
+    await flushAsyncWork();
+    clickButtonByText(rendered.container, 'Diagnostics');
+    await flushAsyncWork();
+
+    const pergolaShape = rendered.container.querySelector('[data-pergola-shape-hit="pergola-1"]');
+    if (!(pergolaShape instanceof Element)) throw new Error('Missing pergola hit target.');
+    clickElement(pergolaShape);
+    await flushAsyncWork();
+
+    expect(getButtonByText(rendered.container, 'Pergolas').getAttribute('aria-selected')).toBe('true');
+    expect(rendered.container.querySelector('[data-active-workbench-object="pergolas:pergola-1"]')).not.toBeNull();
+    expect(rendered.container.textContent).toContain('Sanctuary Controls');
+
+    const planSvg = rendered.container.querySelector('svg[aria-label="Module plan view"]');
+    if (!(planSvg instanceof SVGSVGElement)) throw new Error('Missing plan svg.');
+    clickElement(planSvg);
+    await flushAsyncWork();
+
+    expect(getButtonByText(rendered.container, 'Pergolas').getAttribute('aria-selected')).toBe('true');
+    expect(rendered.container.querySelector('[data-active-workbench-object="pergolas:none"]')).not.toBeNull();
+
+    rendered.unmount();
   });
 
   it('renders unsupported geometry as view-only without the Sanctuary rail', () => {
@@ -711,6 +804,8 @@ describe('DesignWorkbenchEstimateClient', () => {
     await flushAsyncWork();
 
     expect(readLabeledValue(rendered.container, 'Selected roof form')).toBe('flat');
+    clickButtonByText(rendered.container, 'House Forms');
+    await flushAsyncWork();
     expect(rendered.container.textContent).toContain('Current roof family');
     expect(rendered.container.textContent).toContain('View-only for now');
     expect(rendered.container.textContent).toContain(
@@ -971,6 +1066,7 @@ describe('DesignWorkbenchEstimateClient', () => {
     if (!(openingShape instanceof Element)) throw new Error('Missing window opening shape.');
     clickElement(openingShape);
     await flushAsyncWork();
+    expect(getButtonByText(rendered.container, 'Openings').getAttribute('aria-selected')).toBe('true');
 
     const widthLabel = rendered.container.querySelector('[data-editable-field-id="opening-1:widthM"]');
     if (!(widthLabel instanceof Element)) throw new Error('Missing window width dimension.');
@@ -1190,7 +1286,7 @@ describe('DesignWorkbenchEstimateClient', () => {
     );
 
     await flushAsyncWork();
-    clickButtonByText(rendered.container, 'House');
+    clickButtonByText(rendered.container, 'House Forms');
     await flushAsyncWork();
     clickButtonByText(rendered.container, 'Model Space');
     await flushAsyncWork();
@@ -1244,7 +1340,7 @@ describe('DesignWorkbenchEstimateClient', () => {
     clickButtonByText(rendered.container, 'Pergolas');
     await flushAsyncWork();
 
-    expect(rendered.container.textContent).toContain('Pergola Mode');
+    expect(rendered.container.textContent).toContain('Sanctuary Controls');
     expect(rendered.container.textContent).not.toContain('Add deck');
     expect(rendered.container.textContent).not.toContain('Deck placement');
     rendered.unmount();
@@ -1348,6 +1444,11 @@ describe('DesignWorkbenchEstimateClient', () => {
       <DesignWorkbenchEstimateClient estimate={estimate} projectName="Deck Build" siteAddress="1 Test Street" />,
     );
 
+    expect(rendered.container.textContent).toContain('Diagnostics');
+
+    clickButtonByText(rendered.container, 'Diagnostics');
+    await flushAsyncWork();
+
     expect(rendered.container.textContent).toContain('Migration diagnostics');
     expect(rendered.container.textContent).toContain('Derived houses');
     expect(rendered.container.textContent).toContain('Low confidence');
@@ -1355,7 +1456,6 @@ describe('DesignWorkbenchEstimateClient', () => {
     clickButtonByText(rendered.container, 'Pergolas');
     await flushAsyncWork();
 
-    expect(rendered.container.textContent).toContain('Pergola Mode');
     expect(rendered.container.textContent).toContain('Sanctuary Controls');
     rendered.unmount();
   });

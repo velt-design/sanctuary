@@ -10,6 +10,7 @@ describe('drawingWorkbenchUiState', () => {
 
     expect(state.activeObjectFamily).toBe('house_forms');
     expect(state.activeObjectRef).toEqual({ family: 'house_forms', objectId: null });
+    expect(state.activeRailTab).toBe('house_forms');
     expect(state.visibility).toEqual({
       house: true,
       pergolas: true,
@@ -70,6 +71,9 @@ describe('drawingWorkbenchUiState', () => {
 
     expect(normalized.workbenchMode).toBe('pergolas');
     expect(normalized.activePergolaId).toBe('pergola-1');
+    expect(normalized.activeRailTab).toBe('pergolas');
+    expect(normalized.activeObjectFamily).toBe('pergolas');
+    expect(normalized.activeObjectRef).toEqual({ family: 'pergolas', objectId: 'pergola-1' });
     expect(normalized.activeHouseSelection).toEqual({ kind: 'house', targetId: null });
   });
 
@@ -122,5 +126,25 @@ describe('drawingWorkbenchUiState', () => {
       decks: true,
       openings: true,
     });
+  });
+
+  it('normalizes diagnostics rail state without changing the selected object family', () => {
+    const normalized = normalizeDrawingWorkbenchUiState(
+      {
+        ...createDrawingWorkbenchUiState({
+          activeRailTab: 'diagnostics',
+          activeObjectFamily: 'decks',
+          activeObjectRef: { family: 'decks', objectId: 'deck-a' },
+        }),
+      },
+      {
+        moduleCount: 1,
+        deckIds: ['deck-a'],
+      },
+    );
+
+    expect(normalized.activeRailTab).toBe('diagnostics');
+    expect(normalized.activeObjectFamily).toBe('decks');
+    expect(normalized.activeObjectRef).toEqual({ family: 'decks', objectId: 'deck-a' });
   });
 });
