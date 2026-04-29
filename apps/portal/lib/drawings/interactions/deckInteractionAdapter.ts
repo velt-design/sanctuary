@@ -26,13 +26,15 @@ import {
   type DeckInteractionTelemetry,
 } from './deckInteractionContract';
 
-const DECK_SNAP_TOLERANCE_M = 0.25;
-const DECK_UNSNAP_TOLERANCE_M = 0.4;
-const DECK_REFERENCE_SWITCH_HYSTERESIS_M = 0.2;
-const DECK_CORNER_SNAP_ZONE_M = 0.38;
-const DECK_CORNER_UNSNAP_ZONE_M = 0.52;
-const DECK_END_CATCH_TOLERANCE_M = 0.18;
-const DECK_END_CATCH_UNSNAP_TOLERANCE_M = 0.28;
+const DECK_SNAP_TOLERANCE_M = 0.18;
+const DECK_UNSNAP_TOLERANCE_M = 0.28;
+const DECK_REFERENCE_SWITCH_HYSTERESIS_M = 0.08;
+const DECK_CORNER_SNAP_ZONE_M = 0.26;
+const DECK_CORNER_UNSNAP_ZONE_M = 0.36;
+const DECK_END_CATCH_TOLERANCE_M = 0.1;
+const DECK_END_CATCH_UNSNAP_TOLERANCE_M = 0.16;
+const DECK_WALL_SPAN_CANDIDATE_TOLERANCE_M = 0.35;
+const DECK_WALL_SPAN_RETAIN_TOLERANCE_M = 0.5;
 
 export type DeckSvgInteraction = {
   hostEdgeStart: PlanPoint;
@@ -57,9 +59,13 @@ export type DeckPreviewState = {
   deckId: string;
   polygon: PlanPoint[];
   previewAnchor: PlanPoint;
+  activeSnapMode: 'floating' | 'single_edge' | 'corner_dual_edge';
+  snapTargetState: 'none' | 'candidate' | 'locked';
   attachmentMode: 'floating' | 'single_edge' | 'corner_dual_edge';
   semanticPlacementSide: AttachmentSide | null;
   semanticWitnessSide: AttachmentSide;
+  activePrimaryTargetId: string | null;
+  activeSecondaryTargetId: string | null;
   placementEdgeId: string | null;
   primaryHostEdgeId: string | null;
   secondaryHostEdgeId: string | null;
@@ -284,6 +290,97 @@ function scoreDeckReferenceFrameForPolygon(input: {
     outsidePenaltyM: Math.max(0, outwardMinM),
     midpointDistanceM: Math.abs(deckMidpointM - frameMidpointM),
   };
+}
+
+type DeckWallCandidate = {
+  frame: HouseFirstPlanDeckReferenceFrame;
+  nearGapM: number;
+  centerOffsetM: number;
+  heldAlongM: number;
+  heldOutwardM: number;
+  heldSpanOutsideM: number;
+  overlapPenaltyM: number;
+  outsidePenaltyM: number;
+  midpointDistanceM: number;
+};
+
+function scoreDeckWallCandidate(input: {
+  heldPoint: PlanPoint;
+  polygon: PlanPoint[];
+  frame: HouseFirstPlanDeckReferenceFrame;
+}): DeckWallCandidate | null {
+  const polygonProjection = projectPolygonToDeckReferenceFrame({
+    polygon: input.polygon,
+    frame: input.frame,
+  });
+  const frameScore = scoreDeckReferenceFrameForPolygon({
+    polygon: input.polygon,
+    frame: input.frame,
+  });
+  if (!polygonProjection || !frameScore) return null;
+  const heldProjection = projectPointToDeckReferenceFrame(input.heldPoint, input.frame);
+  const heldSpanOutsideM =
+    heldProjection.alongM < input.frame.spanStartM
+      ? input.frame.spanStartM - heldProjection.alongM
+      : heldProjection.alongM > input.frame.spanEndM
+        ? heldProjection.alongM - input.frame.spanEndM
+        : 0;
+  return {
+    frame: input.frame,
+    nearGapM: polygonProjection.nearGapM,
+    centerOffsetM: polygonProjection.centerOffsetM,
+    heldAlongM: heldProjection.alongM,
+    heldOutwardM: heldProjection.outwardM,
+    heldSpanOutsideM,
+    overlapPenaltyM: frameScore.overlapPenaltyM,
+    outsidePenaltyM: frameScore.outsidePenaltyM,
+    midpointDistanceM: frameScore.midpointDistanceM,
+  };
+}
+
+function selectDeckWallCandidate(input: {
+  heldPoint: PlanPoint;
+  polygon: PlanPoint[];
+  frames: HouseFirstPlanDeckReferenceFrame[];
+  previousPreviewState: DeckPreviewState | null;
+  fallbackEdgeId: string;
+}): DeckWallCandidate {
+  const candidates =
+    input.frames
+      .map((frame) => scoreDeckWallCandidate({
+        heldPoint: input.heldPoint,
+        polygon: input.polygon,
+        frame,
+      }))
+      .filter((candidate): candidate is DeckWallCandidate => Boolean(candidate));
+  const previousTargetId =
+    input.previousPreviewState?.activePrimaryTargetId ??
+    input.previousPreviewState?.placementEdgeId ??
+    input.previousPreviewState?.witnessEdgeId ??
+    input.fallbackEdgeId;
+  const previousCandidate = candidates.find((candidate) => candidate.frame.sourceEdgeId === previousTargetId) ?? candidates[0]!;
+  const bestCandidate =
+    [...candidates].sort((left, right) =>
+      left.nearGapM - right.nearGapM ||
+      left.overlapPenaltyM - right.overlapPenaltyM ||
+      left.outsidePenaltyM - right.outsidePenaltyM ||
+      left.heldSpanOutsideM - right.heldSpanOutsideM ||
+      left.midpointDistanceM - right.midpointDistanceM,
+    )[0] ?? previousCandidate;
+
+  if (bestCandidate.frame.sourceEdgeId === previousCandidate.frame.sourceEdgeId) {
+    return bestCandidate;
+  }
+
+  const previousStillCompetitive =
+    previousCandidate.nearGapM <= DECK_UNSNAP_TOLERANCE_M ||
+    previousCandidate.overlapPenaltyM <= DECK_UNSNAP_TOLERANCE_M;
+  const materiallyBetter =
+    bestCandidate.nearGapM + DECK_REFERENCE_SWITCH_HYSTERESIS_M < previousCandidate.nearGapM ||
+    bestCandidate.overlapPenaltyM + DECK_REFERENCE_SWITCH_HYSTERESIS_M < previousCandidate.overlapPenaltyM ||
+    bestCandidate.heldSpanOutsideM + DECK_REFERENCE_SWITCH_HYSTERESIS_M < previousCandidate.heldSpanOutsideM;
+
+  return previousStillCompetitive && !materiallyBetter ? previousCandidate : bestCandidate;
 }
 
 function buildDeckPreviewPolygon(input: {
@@ -613,9 +710,13 @@ export function resolveDeckPreviewState(input: {
     return {
       deckId: input.session.deckId,
       previewAnchor: center,
+      activeSnapMode: 'floating',
+      snapTargetState: 'none',
       attachmentMode: 'floating',
       semanticPlacementSide: null,
       semanticWitnessSide: witnessFrame.hostEdgeId,
+      activePrimaryTargetId: null,
+      activeSecondaryTargetId: null,
       placementEdgeId: null,
       primaryHostEdgeId: null,
       secondaryHostEdgeId: null,
@@ -650,90 +751,123 @@ export function resolveDeckPreviewState(input: {
 
   const currentHostEdgeId =
     input.previousPreviewState?.placementEdgeId ??
+    input.previousPreviewState?.activePrimaryTargetId ??
     input.previousPreviewState?.witnessEdgeId ??
+    input.session.interaction.primaryHostEdgeId ??
     input.session.interaction.placementEdgeId ??
     input.session.interaction.witnessEdgeId;
-  const candidateFrame = resolveDeckReferenceFrameFromCenter({
-    center,
-    polygon: translatedPolygon,
-    frames: input.session.interaction.referenceFrames,
-    previousHostEdgeId: currentHostEdgeId,
-  });
-  const anchoredFrame = findDeckReferenceFrameById(input.session.interaction.referenceFrames, currentHostEdgeId) ?? candidateFrame;
-  const anchoredProjection = projectPointToDeckReferenceFrame(center, anchoredFrame);
-  const anchoredRawGapM = Math.max(0, anchoredProjection.outwardM - input.session.startDepthM / 2);
-  const startedFloating = input.session.interaction.placement === 'floating';
-  const previousPlacement = input.previousPreviewState?.placement ?? input.session.interaction.placement;
   const translatedHeldCornerPoint = resolvePolygonPointByIndex(translatedPolygon, input.session.heldCornerIndex);
-  const placement =
-    startedFloating || previousPlacement === 'floating'
-      ? 'floating'
-      : anchoredRawGapM > DECK_UNSNAP_TOLERANCE_M
-        ? 'floating'
-        : 'snapped';
-  const candidateProjection =
-    placement === 'snapped' ? anchoredProjection : projectPointToDeckReferenceFrame(center, candidateFrame);
-  const candidateRawGapM =
-    placement === 'snapped'
-      ? anchoredRawGapM
-      : Math.max(0, candidateProjection.outwardM - input.session.startDepthM / 2);
-  const candidateSnapEligible =
-    placement !== 'snapped' &&
-    candidateProjection.outwardM >= 0 &&
-    candidateRawGapM <= DECK_SNAP_TOLERANCE_M;
-  const anchoredSnapEligible =
-    placement !== 'snapped' &&
-    anchoredProjection.outwardM >= 0 &&
-    anchoredRawGapM <= DECK_SNAP_TOLERANCE_M;
-  const snapFrame =
-    placement === 'snapped'
-      ? anchoredFrame
-      : candidateSnapEligible
-        ? candidateFrame
-        : anchoredSnapEligible
-          ? anchoredFrame
-          : null;
-  const witnessFrame = placement === 'snapped' ? anchoredFrame : candidateFrame;
-  const frame = placement === 'snapped' ? anchoredFrame : snapFrame ?? witnessFrame;
-  const witnessProjection = witnessFrame.sourceEdgeId === anchoredFrame.sourceEdgeId ? anchoredProjection : candidateProjection;
-  const projection = frame.sourceEdgeId === witnessFrame.sourceEdgeId ? witnessProjection : anchoredProjection;
-  const rawCenterOffsetM = projection.alongM - ((frame.spanStartM + frame.spanEndM) / 2);
-  const rawGapM = frame.sourceEdgeId === witnessFrame.sourceEdgeId ? candidateRawGapM : anchoredRawGapM;
-  const snapEligible = snapFrame !== null;
-  const singleEdgeReleasePlacement = placement === 'snapped' || snapEligible ? 'snapped' : 'floating';
-  const unclampedCenterOffsetM = placement === 'snapped'
+  const previousLockedWallId =
+    input.previousPreviewState?.placement === 'snapped' && input.previousPreviewState.attachmentMode !== 'corner_dual_edge'
+      ? input.previousPreviewState.primaryHostEdgeId
+      : input.previousPreviewState === null &&
+          input.session.interaction.placement === 'snapped' &&
+          input.session.interaction.attachmentMode !== 'corner_dual_edge'
+        ? input.session.interaction.primaryHostEdgeId ??
+          input.session.interaction.placementEdgeId ??
+          input.session.interaction.witnessEdgeId
+        : null;
+  const previousLockedCornerId =
+    input.previousPreviewState?.placement === 'snapped' && input.previousPreviewState.attachmentMode === 'corner_dual_edge'
+      ? input.previousPreviewState.cornerVertexId
+      : input.previousPreviewState === null &&
+          input.session.interaction.placement === 'snapped' &&
+          input.session.interaction.attachmentMode === 'corner_dual_edge'
+        ? input.session.interaction.cornerVertexId
+        : null;
+  const lockedWallFrameCandidate =
+    previousLockedWallId !== null
+      ? scoreDeckWallCandidate({
+          heldPoint: translatedHeldCornerPoint,
+          polygon: translatedPolygon,
+          frame:
+            findDeckReferenceFrameById(input.session.interaction.referenceFrames, previousLockedWallId) ??
+            input.session.interaction.referenceFrames[0]!,
+        })
+      : null;
+  const wallCandidate =
+    lockedWallFrameCandidate && lockedWallFrameCandidate.nearGapM <= DECK_UNSNAP_TOLERANCE_M
+      ? lockedWallFrameCandidate
+      : selectDeckWallCandidate({
+          heldPoint: translatedHeldCornerPoint,
+          polygon: translatedPolygon,
+          frames: input.session.interaction.referenceFrames,
+          previousPreviewState: input.previousPreviewState,
+          fallbackEdgeId: currentHostEdgeId,
+        });
+  const activeFrame = wallCandidate.frame;
+  const wallSpanEligible =
+    wallCandidate.heldSpanOutsideM <= DECK_WALL_SPAN_CANDIDATE_TOLERANCE_M ||
+    (input.previousPreviewState?.activePrimaryTargetId === wallCandidate.frame.sourceEdgeId &&
+      wallCandidate.heldSpanOutsideM <= DECK_WALL_SPAN_RETAIN_TOLERANCE_M) ||
+    (previousLockedWallId === wallCandidate.frame.sourceEdgeId &&
+      wallCandidate.heldSpanOutsideM <= Number.POSITIVE_INFINITY);
+  const wallCandidateActive =
+    (wallCandidate.nearGapM <= DECK_SNAP_TOLERANCE_M && wallSpanEligible) ||
+    (input.previousPreviewState?.activePrimaryTargetId === wallCandidate.frame.sourceEdgeId &&
+      wallCandidate.nearGapM <= DECK_UNSNAP_TOLERANCE_M &&
+      wallCandidate.heldSpanOutsideM <= DECK_WALL_SPAN_RETAIN_TOLERANCE_M) ||
+    (previousLockedWallId === wallCandidate.frame.sourceEdgeId && wallCandidate.nearGapM <= DECK_UNSNAP_TOLERANCE_M);
+  const wallLocked =
+    previousLockedWallId !== null &&
+    wallCandidate.frame.sourceEdgeId === previousLockedWallId &&
+    (lockedWallFrameCandidate?.nearGapM ?? wallCandidate.nearGapM) <= DECK_UNSNAP_TOLERANCE_M;
+  const unclampedCenterOffsetM = wallCandidateActive
     ? clampPresetDeckCenterOffset({
-        centerOffsetM: rawCenterOffsetM,
-        frame,
+        centerOffsetM: wallCandidate.centerOffsetM,
+        frame: activeFrame,
         deckWidthM: input.session.startWidthM,
       })
-    : rawCenterOffsetM;
+    : wallCandidate.centerOffsetM;
   const endCatch =
-    singleEdgeReleasePlacement === 'snapped'
+    wallLocked
       ? resolveDeckEndCatch({
-          frame,
+          frame: activeFrame,
           deckWidthM: input.session.startWidthM,
           centerOffsetM: unclampedCenterOffsetM,
           previousPreviewState: input.previousPreviewState,
         })
       : null;
   const cornerCandidate =
-    singleEdgeReleasePlacement === 'snapped'
+    wallCandidateActive
       ? resolveDeckCornerCandidate({
-        primaryFrame: frame,
+        primaryFrame: activeFrame,
         heldCornerPoint: translatedHeldCornerPoint,
         frames: input.session.interaction.referenceFrames,
         previousPreviewState: input.previousPreviewState,
       })
       : null;
-  const releasePlacement = cornerCandidate ? 'snapped' : singleEdgeReleasePlacement;
-  const centerOffsetM = cornerCandidate
-    ? unclampedCenterOffsetM
-    : endCatch?.centerOffsetM ?? unclampedCenterOffsetM;
-  const referenceEdgeGapM = releasePlacement === 'snapped' ? 0 : rawGapM;
-  const attachmentMode = cornerCandidate ? 'corner_dual_edge' : releasePlacement === 'snapped' ? 'single_edge' : 'floating';
-  const previewPolygon =
+  const cornerLocked =
+    cornerCandidate !== null &&
+    ((previousLockedCornerId !== null && cornerCandidate.cornerVertexId === previousLockedCornerId) || wallLocked);
+  const placement = cornerLocked
+    ? 'snapped'
+    : wallLocked
+      ? 'snapped'
+      : 'floating';
+  const releasePlacement =
+    cornerCandidate || wallCandidateActive
+      ? 'snapped'
+      : 'floating';
+  const activeSnapMode =
     cornerCandidate
+      ? 'corner_dual_edge'
+      : wallCandidateActive
+        ? 'single_edge'
+        : 'floating';
+  const snapTargetState =
+    placement === 'snapped'
+      ? 'locked'
+      : releasePlacement === 'snapped'
+        ? 'candidate'
+        : 'none';
+  const centerOffsetM = placement === 'snapped' && !cornerLocked
+    ? endCatch?.centerOffsetM ?? unclampedCenterOffsetM
+    : unclampedCenterOffsetM;
+  const referenceEdgeGapM = releasePlacement === 'snapped' ? 0 : wallCandidate.nearGapM;
+  const attachmentMode = activeSnapMode;
+  const previewPolygon =
+    cornerLocked
       ? buildDeckCornerPreviewPolygon({
           primaryFrame: cornerCandidate.primaryFrame,
           secondaryFrame: cornerCandidate.secondaryFrame,
@@ -741,9 +875,9 @@ export function resolveDeckPreviewState(input: {
           deckWidthM: input.session.startWidthM,
           deckDepthM: input.session.startDepthM,
         })
-      : releasePlacement === 'snapped'
+      : wallLocked
         ? buildDeckPreviewPolygon({
-            frame,
+            frame: activeFrame,
             deckWidthM: input.session.startWidthM,
             deckDepthM: input.session.startDepthM,
             centerOffsetM,
@@ -755,7 +889,7 @@ export function resolveDeckPreviewState(input: {
     point: translatedHeldCornerPoint,
   });
   const referenceGuide =
-    releasePlacement === 'snapped' && placement === 'snapped'
+    snapTargetState === 'locked'
       ? null
       : cornerCandidate
         ? {
@@ -766,37 +900,41 @@ export function resolveDeckPreviewState(input: {
         : {
             start: resolvedHeldPreviewCorner.point,
             end: resolveDeckReferenceGuidePoint({
-              frame,
-              alongM: projectPointToDeckReferenceFrame(translatedHeldCornerPoint, frame).alongM,
+              frame: activeFrame,
+              alongM: wallCandidate.heldAlongM,
             }),
-            state: releasePlacement === 'snapped' ? 'snap-lane' : 'witness',
+            state: wallCandidateActive ? 'snap-lane' : 'witness',
           };
 
   return {
     deckId: input.session.deckId,
     previewAnchor: resolvedHeldPreviewCorner.point,
+    activeSnapMode,
+    snapTargetState,
     attachmentMode,
-    semanticPlacementSide: releasePlacement === 'snapped' ? frame.hostEdgeId : null,
-    semanticWitnessSide: witnessFrame.hostEdgeId,
-    placementEdgeId: releasePlacement === 'snapped' ? frame.sourceEdgeId : null,
-    primaryHostEdgeId: releasePlacement === 'snapped' ? frame.sourceEdgeId : null,
+    semanticPlacementSide: releasePlacement === 'snapped' ? activeFrame.hostEdgeId : null,
+    semanticWitnessSide: activeFrame.hostEdgeId,
+    activePrimaryTargetId: releasePlacement === 'snapped' ? activeFrame.sourceEdgeId : null,
+    activeSecondaryTargetId: cornerCandidate?.secondaryFrame.sourceEdgeId ?? null,
+    placementEdgeId: placement === 'snapped' ? activeFrame.sourceEdgeId : null,
+    primaryHostEdgeId: releasePlacement === 'snapped' ? activeFrame.sourceEdgeId : null,
     secondaryHostEdgeId: cornerCandidate?.secondaryFrame.sourceEdgeId ?? null,
     cornerVertexId: cornerCandidate?.cornerVertexId ?? null,
-    witnessEdgeId: witnessFrame.sourceEdgeId,
-    highlightTargetId: frame.sourceEdgeId,
-    hostEdgeStart: frame.hostEdgeStart,
-    hostEdgeEnd: frame.hostEdgeEnd,
+    witnessEdgeId: activeFrame.sourceEdgeId,
+    highlightTargetId: releasePlacement === 'snapped' ? activeFrame.sourceEdgeId : null,
+    hostEdgeStart: activeFrame.hostEdgeStart,
+    hostEdgeEnd: activeFrame.hostEdgeEnd,
     secondaryHostEdgeStart: cornerCandidate?.secondaryFrame.hostEdgeStart ?? null,
     secondaryHostEdgeEnd: cornerCandidate?.secondaryFrame.hostEdgeEnd ?? null,
     heldCornerIndex: resolvedHeldPreviewCorner.index,
     heldCornerPoint: resolvedHeldPreviewCorner.point,
-    lockedCornerPoint: cornerCandidate?.cornerPoint ?? null,
-    endCatchSide: cornerCandidate ? null : endCatch?.endCatchSide ?? null,
-    endCatchPoint: cornerCandidate ? null : endCatch?.endCatchPoint ?? null,
+    lockedCornerPoint: cornerLocked ? cornerCandidate?.cornerPoint ?? null : null,
+    endCatchSide: placement === 'snapped' && !cornerLocked ? endCatch?.endCatchSide ?? null : null,
+    endCatchPoint: placement === 'snapped' && !cornerLocked ? endCatch?.endCatchPoint ?? null : null,
     centerOffsetM,
     referenceEdgeGapM,
     placement,
-    snapEligible,
+    snapEligible: wallCandidateActive,
     releasePlacement,
     referenceGuide,
     polygon: previewPolygon,

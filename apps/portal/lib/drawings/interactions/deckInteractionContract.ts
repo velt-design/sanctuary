@@ -195,8 +195,8 @@ export function resolveDeckInteractionHint(input: {
         }
         return {
           state: 'snap-available',
-          label: 'Corner snap available',
-          detail: 'Move into the corner lock zone, then release to attach to both walls.',
+          label: 'Corner candidate',
+          detail: 'Move closer to the corner to lock both walls, or release to attach now.',
         };
       }
       if (input.previewState.endCatchSide) {
@@ -215,8 +215,8 @@ export function resolveDeckInteractionHint(input: {
       }
       return {
         state: 'snap-available',
-        label: 'Wall snap available',
-        detail: 'Release near the wall to attach the deck without losing its overhang.',
+        label: 'Wall candidate',
+        detail: 'Stay close to the wall to lock it in, or release now to attach without losing overhang.',
       };
     }
 

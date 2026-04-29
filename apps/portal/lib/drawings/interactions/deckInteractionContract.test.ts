@@ -79,7 +79,7 @@ describe('deckInteractionContract', () => {
 
     expect(hint).toMatchObject({
       state: 'snap-available',
-      label: 'Wall snap available',
+      label: 'Wall candidate',
     });
   });
 });

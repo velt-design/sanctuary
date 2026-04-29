@@ -20,17 +20,23 @@ function makeInteraction(input: {
   deckWidthM: number;
   deckDepthM: number;
   renderedCenter: PlanPoint;
+  placement?: 'snapped' | 'floating';
+  attachmentMode?: 'floating' | 'single_edge' | 'corner_dual_edge';
+  primaryHostEdgeId?: string | null;
 }): HouseFirstPlanDeckInteraction {
   const primaryFrame = input.frames[0]!;
   return {
     kind: 'preset_rect',
-    placement: 'snapped',
-    attachmentMode: 'single_edge',
+    placement: input.placement ?? 'snapped',
+    attachmentMode: input.attachmentMode ?? 'single_edge',
     houseAttachmentSide: 'rear',
-    semanticPlacementSide: 'rear',
+    semanticPlacementSide: (input.placement ?? 'snapped') === 'snapped' ? 'rear' : null,
     semanticWitnessSide: 'rear',
-    placementEdgeId: primaryFrame.sourceEdgeId,
-    primaryHostEdgeId: primaryFrame.sourceEdgeId,
+    placementEdgeId: (input.placement ?? 'snapped') === 'snapped' ? primaryFrame.sourceEdgeId : null,
+    primaryHostEdgeId:
+      (input.placement ?? 'snapped') === 'snapped'
+        ? input.primaryHostEdgeId ?? primaryFrame.sourceEdgeId
+        : null,
     secondaryHostEdgeId: null,
     cornerVertexId: null,
     witnessEdgeId: primaryFrame.sourceEdgeId,
@@ -56,6 +62,8 @@ function makeSession(input: {
   renderedCenter: PlanPoint;
   deckWidthM: number;
   deckDepthM: number;
+  placement?: 'snapped' | 'floating';
+  attachmentMode?: 'floating' | 'single_edge' | 'corner_dual_edge';
 }) {
   const overlayShape = {
     ownerKind: 'deck',
@@ -73,6 +81,8 @@ function makeSession(input: {
       deckWidthM: input.deckWidthM,
       deckDepthM: input.deckDepthM,
       renderedCenter: input.renderedCenter,
+      placement: input.placement,
+      attachmentMode: input.attachmentMode,
     }),
     openingInteraction: null,
     deckDragEligibility: { eligible: true, reason: 'Drag deck' },
@@ -202,6 +212,50 @@ describe('deckInteractionAdapter', () => {
     expect(jitteredPreview.heldCornerIndex).toBe(firstPreview.heldCornerIndex);
   });
 
+  it('keeps a provisional wall candidate stable through small jitter near the corner', () => {
+    const polygon = [
+      { x: -0.28, y: 0.1 },
+      { x: 4.72, y: 0.1 },
+      { x: 4.72, y: 2.1 },
+      { x: -0.28, y: 2.1 },
+    ];
+    const session = makeSession({
+      polygon,
+      startDragPlanPoint: { x: 4.5, y: 0.24 },
+      frames: [rearFrame, leftFrame],
+      renderedCenter: { x: 2.22, y: 1.1 },
+      deckWidthM: 5,
+      deckDepthM: 2,
+      placement: 'floating',
+      attachmentMode: 'floating',
+    });
+
+    const firstPreview = resolveDeckPreviewState({
+      session,
+      nextSvgX: session.startSvgX,
+      nextSvgY: session.startSvgY,
+      nextDragPlanPoint: session.startDragPlanPoint,
+      previousPreviewState: null,
+    });
+    const jitteredPreview = resolveDeckPreviewState({
+      session,
+      nextSvgX: session.startSvgX - 0.04,
+      nextSvgY: session.startSvgY + 0.03,
+      nextDragPlanPoint: {
+        x: session.startDragPlanPoint!.x - 0.04,
+        y: session.startDragPlanPoint!.y + 0.03,
+      },
+      previousPreviewState: firstPreview,
+    });
+
+    expect(firstPreview.activeSnapMode).toBe('single_edge');
+    expect(firstPreview.snapTargetState).toBe('candidate');
+    expect(firstPreview.attachmentMode).toBe('single_edge');
+    expect(jitteredPreview.activePrimaryTargetId).toBe(firstPreview.activePrimaryTargetId);
+    expect(jitteredPreview.attachmentMode).toBe('single_edge');
+    expect(jitteredPreview.snapTargetState).toBe('candidate');
+  });
+
   it('softly aligns oversized single-edge decks to wall ends without clamping them to the span', () => {
     const polygon = [
       { x: 0.06, y: 0 },
@@ -231,5 +285,41 @@ describe('deckInteractionAdapter', () => {
     expect(preview.endCatchSide).toBe('start');
     expect(preview.endCatchPoint).toEqual(rearFrame.hostEdgeStart);
     expect(preview.centerOffsetM).toBe(1);
+  });
+
+  it('keeps the deck body translated while a wall target is only a provisional candidate', () => {
+    const polygon = [
+      { x: 1, y: 0.6 },
+      { x: 5, y: 0.6 },
+      { x: 5, y: 3.6 },
+      { x: 1, y: 3.6 },
+    ];
+    const session = makeSession({
+      polygon,
+      startDragPlanPoint: { x: 1.1, y: 0.7 },
+      frames: [rearFrame, leftFrame],
+      renderedCenter: { x: 3, y: 2.1 },
+      deckWidthM: 4,
+      deckDepthM: 3,
+      placement: 'floating',
+      attachmentMode: 'floating',
+    });
+
+    const preview = resolveDeckPreviewState({
+      session,
+      nextSvgX: session.startSvgX,
+      nextSvgY: session.startSvgY - 0.48,
+      nextDragPlanPoint: {
+        x: session.startDragPlanPoint!.x,
+        y: session.startDragPlanPoint!.y - 0.48,
+      },
+      previousPreviewState: null,
+    });
+
+    expect(preview.releasePlacement).toBe('snapped');
+    expect(preview.placement).toBe('floating');
+    expect(preview.snapTargetState).toBe('candidate');
+    expect(preview.polygon[0]).toEqual({ x: 1, y: 0.12 });
+    expect(preview.referenceGuide?.state).toBe('snap-lane');
   });
 });
