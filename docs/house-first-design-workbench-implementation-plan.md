@@ -16,6 +16,7 @@ This section describes current repo state only. It does not change the canonical
 - Object-first TypeScript contracts now exist for `WorkbenchProjectModel`, `HouseAssembly`, `HouseForm`, authored decks, openings, pergolas, derived hosting resolvers, and the `ObjectFirstWorkbenchDraftVNext` draft envelope.
 - `drawingWorkbenchStore` now exposes a shadow object-first `WorkbenchProjectModel` built from the compatibility model.
 - The hidden workbench rail already exposes object-family navigation for `House Forms`, `Decks`, `Openings`, and `Pergolas`, with selected-object inspector scaffolding.
+- The compatibility House Forms inspector now supports all existing house footprint presets and live house roof form selection for flat, mono, gable, and hipped roofs.
 - Opening host resolution now flows through object-first derived wall contracts in store and rail state, while draft persistence remains compatibility-bound.
 - Pergola attachment resolution now flows through object-first derived edge and zone contracts in store, rail, and inspector option state, while module edits and draft persistence remain compatibility-bound.
 - Shared interaction state helpers exist, and deck plus opening work have started moving toward adapter-backed object interaction.

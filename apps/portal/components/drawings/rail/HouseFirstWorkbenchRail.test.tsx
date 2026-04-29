@@ -192,16 +192,19 @@ describe('HouseFirstWorkbenchRail', () => {
     expect(markup).toContain('Host wall');
   });
 
-  it('shows legacy flat roofs as view-only in the house-form roof section', () => {
+  it('keeps all supported house roof forms editable in the house-form roof section', () => {
     const markup = renderToStaticMarkup(
       <HouseFirstWorkbenchRail {...buildRailProps({ fixtureSlug: 'box-standard' })} />,
     );
 
-    expect(markup).toContain('Current roof family');
     expect(markup).toContain('Flat');
-    expect(markup).toContain('View-only for now');
-    expect(markup).toContain('Only mono and gable are first-pass editable in house mode for this milestone.');
-    expect(markup).not.toContain('aria-label="Roof form"');
+    expect(markup).toContain('aria-label="Roof form"');
+    expect(markup).toContain('value="flat"');
+    expect(markup).toContain('value="mono"');
+    expect(markup).toContain('value="gable"');
+    expect(markup).toContain('value="hipped"');
+    expect(markup).not.toContain('View-only for now');
     expect(markup).not.toContain('Roof pitch (deg)');
+    expect(markup).toContain('aria-label="Roof material"');
   });
 });

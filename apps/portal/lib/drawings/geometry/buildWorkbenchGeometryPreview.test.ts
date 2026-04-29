@@ -693,6 +693,42 @@ describe('buildWorkbenchGeometryPreview', () => {
     ).toBe(true);
   });
 
+  it('renders every editable shared house roof form through the ready preview path', () => {
+    const fixture = requireFixture('mono-standard');
+
+    for (const roof of [
+      { form: 'flat', primaryPitchDeg: '0' },
+      { form: 'mono', primaryPitchDeg: '12', primaryFallDirection: 'negative_y' },
+      { form: 'gable', primaryPitchDeg: '18', ridgeAxis: 'x' },
+      { form: 'hipped', primaryPitchDeg: '22', ridgeAxis: 'x' },
+    ] as const) {
+      const draft = makeDraft(fixture.snapshot, (current) => {
+        current.houseFirst = {
+          roof,
+        };
+      });
+
+      const preview = buildWorkbenchGeometryPreview({
+        projectId: 'proj_preview',
+        estimateId: fixture.estimate.id,
+        designRequestId: fixture.request.id,
+        snapshot: fixture.snapshot,
+        draft,
+        moduleIndex: 0,
+      });
+
+      expect(preview.kind).toBe('ready');
+      if (preview.kind !== 'ready') continue;
+      expect(preview.config.houseContext.model?.roofForm).toBe(roof.form);
+      expect(preview.scene.metadata?.houseRoofQaStatus).toBe('valid');
+      expect(
+        preview.scene.layers
+          .flatMap((layer) => layer.objects)
+          .some((object) => object.type === 'house_surface_solid' && object.kind === 'roof'),
+      ).toBe(true);
+    }
+  });
+
   it('exposes deck support diagnostics for active-side attached and detached deck contexts', () => {
     const attachedFixture = makeHouseFirstDeckSupportSnapshotFixture('rear_threshold_attached');
     const detachedFixture = makeHouseFirstDeckSupportSnapshotFixture('detached_rear_near_house');

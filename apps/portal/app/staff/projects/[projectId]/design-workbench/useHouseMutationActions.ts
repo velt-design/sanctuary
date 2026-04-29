@@ -22,6 +22,7 @@ import type {
   HouseFirstPergolaDraft,
   HouseFirstRoofDraft,
   HouseModel,
+  HouseRoofForm,
   PergolaModel,
   WallOpeningHostSide,
 } from '@/lib/drawings/state/houseFirstWorkbenchModel';
@@ -509,6 +510,55 @@ function mirrorSharedRoofDraftToModules(
   return draft;
 }
 
+function normalizeSharedHouseRoofDraftForCommit(
+  roof: HouseFirstRoofDraft,
+): HouseFirstRoofDraft {
+  const form: HouseRoofForm =
+    roof.form === 'flat' || roof.form === 'mono' || roof.form === 'gable' || roof.form === 'hipped'
+      ? roof.form
+      : 'mono';
+  const pitchDeg = roof.primaryPitchDeg?.trim() ?? '';
+  const base: HouseFirstRoofDraft = {
+    ...roof,
+    form,
+  };
+
+  switch (form) {
+    case 'flat':
+      return {
+        ...base,
+        primaryPitchDeg: '0',
+        primaryFallDirection: null,
+        ridgeAxis: null,
+        openGableEndIds: [],
+        appendage: null,
+      };
+    case 'mono':
+      return {
+        ...base,
+        primaryPitchDeg: pitchDeg,
+        ridgeAxis: null,
+        openGableEndIds: [],
+      };
+    case 'gable':
+      return {
+        ...base,
+        primaryPitchDeg: pitchDeg,
+        primaryFallDirection: null,
+      };
+    case 'hipped':
+      return {
+        ...base,
+        primaryPitchDeg: pitchDeg,
+        primaryFallDirection: null,
+        openGableEndIds: [],
+        appendage: null,
+      };
+    default:
+      return base;
+  }
+}
+
 function buildNewDeckDraft(input: {
   deckId: string;
   deckIndex: number;
@@ -883,16 +933,19 @@ export function useHouseMutationActions({
   const commitSharedHouseRoofDraft = useCallback(
     async (roof: HouseFirstRoofDraft): Promise<CommitResult> =>
       runDraftTransaction({
-        buildNextDraft: (draft) => ({
-          ok: true,
-          draft: mirrorSharedRoofDraftToModules(
-            updateEstimateDrawingHouseFirstRoofDraft({
-              draft,
-              roof,
-            }),
-            roof,
-          ),
-        }),
+        buildNextDraft: (draft) => {
+          const normalizedRoof = normalizeSharedHouseRoofDraftForCommit(roof);
+          return {
+            ok: true,
+            draft: mirrorSharedRoofDraftToModules(
+              updateEstimateDrawingHouseFirstRoofDraft({
+                draft,
+                roof: normalizedRoof,
+              }),
+              normalizedRoof,
+            ),
+          };
+        },
       }),
     [runDraftTransaction],
   );

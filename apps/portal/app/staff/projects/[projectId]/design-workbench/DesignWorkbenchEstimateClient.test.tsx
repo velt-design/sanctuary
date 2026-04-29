@@ -244,6 +244,17 @@ function buildMultiModuleEstimateDetail(): EstimateDetail {
   };
 }
 
+const HOUSE_FOOTPRINT_PRESETS = [
+  'straight',
+  'l_left',
+  'l_right',
+  'recess_left',
+  'recess_right',
+  'u_shape',
+  'wrap_left',
+  'wrap_right',
+] as const;
+
 type SvgGeometryRestore = {
   restoreCreateSvgPoint: (() => void) | null;
   restoreGetScreenCtm: (() => void) | null;
@@ -851,11 +862,46 @@ describe('DesignWorkbenchEstimateClient', () => {
     );
 
     await flushAsyncWork();
-    changeSelectByLabel(rendered.container, 'House footprint', 'u_shape');
-    await flushAsyncWork();
+    for (const preset of HOUSE_FOOTPRINT_PRESETS) {
+      clickButtonByText(rendered.container, 'House Forms');
+      await flushAsyncWork();
+      changeSelectByLabel(rendered.container, 'House footprint', preset);
+      await flushAsyncWork();
 
-    expect(getLocalFirstWorkingCopy<any>(entityKey)?.data.inputs.modules[0]?.houseFootprintPreset).toBe('u_shape');
-    expect(getLocalFirstWorkingCopy<any>(entityKey)?.data.inputs.modules[1]?.houseFootprintPreset).toBe('u_shape');
+      const workingCopy = getLocalFirstWorkingCopy<any>(entityKey)?.data;
+      expect(workingCopy?.inputs.modules[0]?.houseFootprintPreset ?? 'straight').toBe(preset);
+      expect(workingCopy?.inputs.modules[1]?.houseFootprintPreset ?? 'straight').toBe(preset);
+      expect(readLabeledValue(rendered.container, 'House polygon source')).toBe('preset_derived');
+
+      clickButtonByText(rendered.container, 'House Forms');
+      await flushAsyncWork();
+      if (preset === 'l_left' || preset === 'l_right') {
+        expect(rendered.container.querySelector('[aria-label="Return run (m)"]')).not.toBeNull();
+      }
+      if (preset === 'recess_left' || preset === 'recess_right') {
+        expect(rendered.container.querySelector('[aria-label="Recess width (m)"]')).not.toBeNull();
+        expect(rendered.container.querySelector('[aria-label="Recess depth (m)"]')).not.toBeNull();
+      }
+      if (preset === 'u_shape') {
+        expect(rendered.container.querySelector('[aria-label="Left leg run (m)"]')).not.toBeNull();
+        expect(rendered.container.querySelector('[aria-label="Right leg run (m)"]')).not.toBeNull();
+      }
+      if (preset === 'wrap_left' || preset === 'wrap_right') {
+        expect(rendered.container.querySelector('[aria-label="Side run (m)"]')).not.toBeNull();
+      }
+
+      clickButtonByText(rendered.container, 'Model Space');
+      await flushAsyncWork();
+      expect(rendered.container.querySelector('[data-house-first-shape-hit="footprint:house-main"]')).not.toBeNull();
+
+      clickButtonByText(rendered.container, 'Sheet View');
+      await flushAsyncWork();
+      expect(rendered.container.querySelector('[aria-label="Plan view A3 drawing sheet"]')).not.toBeNull();
+
+      clickButtonByText(rendered.container, '3D View');
+      await flushAsyncWork();
+      expect(rendered.container.querySelector('[data-testid="scene-object-house-solid-house-wall-1"]')).not.toBeNull();
+    }
     rendered.unmount();
   });
 
@@ -871,7 +917,12 @@ describe('DesignWorkbenchEstimateClient', () => {
     expect(rendered.container.textContent).toContain('Mono fall direction');
     expect(rendered.container.textContent).not.toContain('Gable ridge orientation');
     const roofFormSelect = rendered.container.querySelector('[aria-label="Roof form"]') as HTMLSelectElement | null;
-    expect(Array.from(roofFormSelect?.options ?? []).map((option) => option.value)).toEqual(['mono', 'gable']);
+    expect(Array.from(roofFormSelect?.options ?? []).map((option) => option.value)).toEqual([
+      'flat',
+      'mono',
+      'gable',
+      'hipped',
+    ]);
     changeSelectByLabel(rendered.container, 'Roof form', 'gable');
     await flushAsyncWork();
     fillInputByLabel(rendered.container, 'Roof pitch (deg)', '18');
@@ -890,6 +941,85 @@ describe('DesignWorkbenchEstimateClient', () => {
 
     expect(rendered.container.textContent).toContain('Ready');
     expect(readLabeledValue(rendered.container, 'Roof reason code')).toBe('none');
+
+    rendered.unmount();
+  });
+
+  it('normalizes all house roof form transitions into the local working copy', async () => {
+    const estimate = buildEstimateDetail();
+    const entityKey = buildEstimateDrawingDraftEntityKey(estimate.id);
+
+    const rendered = renderIntoDocument(
+      <DesignWorkbenchEstimateClient estimate={estimate} projectName="Roof Forms" siteAddress="1 Test Street" />,
+    );
+
+    await flushAsyncWork();
+
+    changeSelectByLabel(rendered.container, 'Roof form', 'gable');
+    await flushAsyncWork();
+    changeSelectByLabel(rendered.container, 'Gable ridge orientation', 'x');
+    await flushAsyncWork();
+    changeSelectByLabel(rendered.container, 'Appendage band', 'enabled');
+    await flushAsyncWork();
+    const gableDraft = getLocalFirstWorkingCopy<any>(entityKey)?.data.houseFirst?.roof;
+    expect(gableDraft).toMatchObject({
+      form: 'gable',
+      ridgeAxis: 'x',
+      appendage: expect.objectContaining({ enabled: true }),
+    });
+    expect(gableDraft?.primaryFallDirection).toBeUndefined();
+    expect(rendered.container.querySelector('[aria-label="Gable ridge orientation"]')).not.toBeNull();
+    expect(readLabeledValue(rendered.container, 'Selected roof form')).toBe('gable');
+
+    clickButtonByText(rendered.container, 'House Forms');
+    await flushAsyncWork();
+    changeSelectByLabel(rendered.container, 'Roof form', 'flat');
+    await flushAsyncWork();
+    const flatDraft = getLocalFirstWorkingCopy<any>(entityKey)?.data.houseFirst?.roof;
+    expect(flatDraft).toMatchObject({
+      form: 'flat',
+      primaryPitchDeg: '0',
+    });
+    expect(flatDraft?.ridgeAxis).toBeUndefined();
+    expect(flatDraft?.primaryFallDirection).toBeUndefined();
+    expect(flatDraft?.openGableEndIds).toBeUndefined();
+    expect(flatDraft?.appendage).toBeUndefined();
+    expect(readLabeledValue(rendered.container, 'Selected roof form')).toBe('flat');
+    clickButtonByText(rendered.container, 'House Forms');
+    await flushAsyncWork();
+    expect(rendered.container.querySelector('[aria-label="Roof form"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[aria-label="Roof pitch (deg)"]')).toBeNull();
+    expect(rendered.container.querySelector('[aria-label="Appendage band"]')).toBeNull();
+
+    changeSelectByLabel(rendered.container, 'Roof form', 'mono');
+    await flushAsyncWork();
+    changeSelectByLabel(rendered.container, 'Mono fall direction', 'negative_y');
+    await flushAsyncWork();
+    const monoDraft = getLocalFirstWorkingCopy<any>(entityKey)?.data.houseFirst?.roof;
+    expect(monoDraft).toMatchObject({
+      form: 'mono',
+      primaryFallDirection: 'negative_y',
+    });
+    expect(monoDraft?.ridgeAxis).toBeUndefined();
+    expect(monoDraft?.openGableEndIds).toBeUndefined();
+    expect(readLabeledValue(rendered.container, 'Selected roof form')).toBe('mono');
+
+    clickButtonByText(rendered.container, 'House Forms');
+    await flushAsyncWork();
+    changeSelectByLabel(rendered.container, 'Roof form', 'hipped');
+    await flushAsyncWork();
+    const hippedDraft = getLocalFirstWorkingCopy<any>(entityKey)?.data.houseFirst?.roof;
+    expect(hippedDraft).toMatchObject({
+      form: 'hipped',
+    });
+    expect(hippedDraft?.primaryFallDirection).toBeUndefined();
+    expect(hippedDraft?.openGableEndIds).toBeUndefined();
+    expect(hippedDraft?.appendage).toBeUndefined();
+    expect(readLabeledValue(rendered.container, 'Selected roof form')).toBe('hipped');
+    clickButtonByText(rendered.container, 'House Forms');
+    await flushAsyncWork();
+    expect(rendered.container.querySelector('[aria-label="Hipped ridge orientation"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[aria-label="Appendage band"]')).toBeNull();
 
     rendered.unmount();
   });
@@ -934,7 +1064,7 @@ describe('DesignWorkbenchEstimateClient', () => {
     rendered.unmount();
   });
 
-  it('keeps legacy flat roofs readable but view-only in house mode', async () => {
+  it('keeps legacy flat roofs editable in house mode', async () => {
     const rendered = renderIntoDocument(
       <DesignWorkbenchEstimateClient
         estimate={buildEstimateDetail({ fixtureSlug: 'box-standard' })}
@@ -948,13 +1078,16 @@ describe('DesignWorkbenchEstimateClient', () => {
     expect(readLabeledValue(rendered.container, 'Selected roof form')).toBe('flat');
     clickButtonByText(rendered.container, 'House Forms');
     await flushAsyncWork();
-    expect(rendered.container.textContent).toContain('Current roof family');
-    expect(rendered.container.textContent).toContain('View-only for now');
-    expect(rendered.container.textContent).toContain(
-      'Only mono and gable are first-pass editable in house mode for this milestone.',
-    );
-    expect(rendered.container.querySelector('[aria-label="Roof form"]')).toBeNull();
+    const roofFormSelect = rendered.container.querySelector('[aria-label="Roof form"]') as HTMLSelectElement | null;
+    expect(Array.from(roofFormSelect?.options ?? []).map((option) => option.value)).toEqual([
+      'flat',
+      'mono',
+      'gable',
+      'hipped',
+    ]);
     expect(rendered.container.textContent).not.toContain('Roof pitch (deg)');
+    expect(rendered.container.textContent).not.toContain('View-only for now');
+    expect(rendered.container.querySelector('[aria-label="Roof material"]')).not.toBeNull();
 
     rendered.unmount();
   });

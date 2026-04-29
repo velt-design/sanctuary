@@ -196,7 +196,7 @@ export function deriveHouseRoofCapabilities(input: {
       pitch: true,
       material: true,
       primaryFallDirection: input.roofForm === 'mono',
-      ridgeAxis: input.roofForm === 'gable',
+      ridgeAxis: input.roofForm === 'gable' || input.roofForm === 'hipped',
       appendage: true,
     },
     selectedFormFootprintRequirement,

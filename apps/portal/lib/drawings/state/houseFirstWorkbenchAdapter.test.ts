@@ -432,6 +432,7 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
     expect(projectModel.house?.roof.validation.status).toBe('valid');
     expect(projectModel.house?.roof.validation.code).toBeNull();
     expect(projectModel.house?.roof.geometryKind).toBe('rectilinear_joined_hipped');
+    expect(projectModel.house?.roof.capabilities.controls.ridgeAxis).toBe(true);
   });
 
   it('filters invalid saved open gable ends when the ridge orientation changes', () => {

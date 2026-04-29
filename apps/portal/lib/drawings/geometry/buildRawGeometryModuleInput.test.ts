@@ -364,6 +364,45 @@ describe('buildRawGeometryModuleInput', () => {
     expect(gableRaw.houseContext.roofRidgeAxis).toBe('x');
   });
 
+  it('maps every editable shared house roof form into raw house context', () => {
+    const fixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
+    if (!fixture) throw new Error('Expected mono fixture');
+
+    for (const roof of [
+      { form: 'flat', primaryPitchDeg: '0', ridgeAxis: undefined },
+      { form: 'mono', primaryPitchDeg: '12', primaryFallDirection: 'negative_y', ridgeAxis: undefined },
+      { form: 'gable', primaryPitchDeg: '18', ridgeAxis: 'x' },
+      { form: 'hipped', primaryPitchDeg: '22', ridgeAxis: 'x' },
+    ] as const) {
+      const draft = buildEstimateDrawingDraftFromSnapshot(fixture.snapshot);
+      if (!draft) throw new Error('Expected draft');
+      draft.houseFirst = {
+        roof,
+      };
+      const projectModel = buildHouseFirstWorkbenchProjectModel({
+        snapshot: fixture.snapshot,
+        draft,
+      });
+
+      const raw = buildRawGeometryModuleInput({
+        projectId: 'proj_1',
+        estimateId: 'est_1',
+        module: makeModule(),
+        result: makeResult(),
+        sharedHouse: projectModel.house,
+      });
+
+      expect(raw.houseContext.roofForm).toBe(roof.form);
+      expect(raw.houseContext.roofPitchDeg).toBe(roof.primaryPitchDeg);
+      if (roof.form === 'mono') {
+        expect(raw.houseContext.roofPrimaryFallDirection).toBe('negative_y');
+      }
+      if (roof.form === 'gable' || roof.form === 'hipped') {
+        expect(raw.houseContext.roofRidgeAxis).toBe('x');
+      }
+    }
+  });
+
   it('maps shared house decks into raw house context', () => {
     const fixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
     if (!fixture) throw new Error('Expected mono fixture');

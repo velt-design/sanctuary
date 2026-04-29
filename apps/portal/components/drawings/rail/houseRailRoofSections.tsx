@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import type { CalculatorHouseRoofMaterial, CalculatorModuleInputs } from '@/lib/types/calculator';
 import type {
   HouseModel,
+  HouseRoofForm,
   HouseRoofPrimaryFallDirection,
   HouseRoofRidgeAxis,
 } from '@/lib/drawings/state/houseFirstWorkbenchModel';
@@ -9,7 +10,7 @@ import type { FieldErrors, RunRoofCommit } from './houseRailTypes';
 import {
   ATTACHMENT_SIDE_OPTIONS,
   ActionButton,
-  EDITABLE_ROOF_FORM_OPTIONS,
+  HOUSE_ROOF_FORM_OPTIONS,
   NumberField,
   ROOF_FALL_DIRECTION_OPTIONS,
   ROOF_MATERIAL_OPTIONS,
@@ -43,10 +44,9 @@ export function buildHouseRailRoofSections({
   const roofProvenance = house?.roof.provenance ?? null;
   const approximationReasons = house?.roof.validation.approximationReasons ?? [];
   const appendageSupportedHostEdges = house?.roof.appendageSupportedHostEdges ?? [];
-  const roofFormEditable = roofDraft.form === 'mono' || roofDraft.form === 'gable';
-  const selectedFormSupported = roofCapabilities?.selectedFormSupported ?? roofFormEditable;
-  const canEditSelectedRoofForm = roofFormEditable && selectedFormSupported;
-  const canShowAppendageControls = roofFormEditable;
+  const selectedFormSupported = roofCapabilities?.selectedFormSupported ?? true;
+  const canEditSelectedRoofForm = selectedFormSupported;
+  const canShowAppendageControls = roofDraft.form === 'mono' || roofDraft.form === 'gable';
   const appendageHelperText =
     house?.roof.validation.code === 'invalid_appendage_topology' ||
     house?.roof.validation.code === 'invalid_appendage_host_edge'
@@ -56,53 +56,44 @@ export function buildHouseRailRoofSections({
         : 'Appendage bands require at least one continuous exterior perimeter run on the current footprint.';
   const fields: ReactNode[] = [];
 
-  if (roofFormEditable) {
-    fields.push(
-      <SelectField
-        key="roof-form"
-        label="Roof form"
-        value={roofDraft.form ?? 'mono'}
-        options={EDITABLE_ROOF_FORM_OPTIONS}
-        disabled={disabled}
-        error={fieldErrors['roof-form']}
-        onCommit={(value) =>
-          runRoofCommit('roof-form', {
-            ...roofDraft,
-            form: value as typeof roofDraft.form,
-          })
-        }
-      />,
-    );
-  } else {
-    fields.push(
-      <SummarySection
-        key="roof-edit-scope"
-        title="Editing Scope"
-        items={[
-          { label: 'Current roof family', value: labelForRoofForm(roofDraft.form) },
-          { label: 'Editing status', value: 'View-only for now' },
-        ]}
-        hint="Only mono and gable are first-pass editable in house mode for this milestone."
-      />,
-    );
-  }
+  fields.push(
+    <SelectField
+      key="roof-form"
+      label="Roof form"
+      value={roofDraft.form ?? 'mono'}
+      options={HOUSE_ROOF_FORM_OPTIONS}
+      disabled={disabled}
+      error={fieldErrors['roof-form']}
+      onCommit={(value) =>
+        runRoofCommit('roof-form', {
+          ...roofDraft,
+          form: value as HouseRoofForm,
+        })
+      }
+    />,
+  );
 
   if (canEditSelectedRoofForm) {
+    if (roofDraft.form !== 'flat') {
+      fields.push(
+        <NumberField
+          key="roof-pitch"
+          label="Roof pitch (deg)"
+          value={roofDraft.primaryPitchDeg ?? ''}
+          disabled={disabled}
+          error={fieldErrors['roof-pitch']}
+          helperText="Shared roof pitch for the main house roof."
+          onCommit={(value) =>
+            runRoofCommit('roof-pitch', {
+              ...roofDraft,
+              primaryPitchDeg: value,
+            })
+          }
+        />,
+      );
+    }
+
     fields.push(
-      <NumberField
-        key="roof-pitch"
-        label="Roof pitch (deg)"
-        value={roofDraft.primaryPitchDeg ?? ''}
-        disabled={disabled}
-        error={fieldErrors['roof-pitch']}
-        helperText="Shared roof pitch for the main house roof."
-        onCommit={(value) =>
-          runRoofCommit('roof-pitch', {
-            ...roofDraft,
-            primaryPitchDeg: value,
-          })
-        }
-      />,
       <SelectField
         key="roof-material"
         label="Roof material"
@@ -143,7 +134,7 @@ export function buildHouseRailRoofSections({
     fields.push(
       <SelectField
         key="roof-ridge-axis"
-        label="Gable ridge orientation"
+        label={roofDraft.form === 'hipped' ? 'Hipped ridge orientation' : 'Gable ridge orientation'}
         value={roofDraft.ridgeAxis ?? 'x'}
         options={ROOF_RIDGE_AXIS_OPTIONS}
         disabled={disabled}

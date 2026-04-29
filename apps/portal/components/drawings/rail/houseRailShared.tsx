@@ -11,6 +11,7 @@ import type {
   HouseFirstDeckDraft,
   HouseFirstRoofDraft,
   HouseModel,
+  HouseRoofForm,
   HouseRoofApproximationReason,
   HouseRoofFieldSource,
   HouseRoofPrimaryFallDirection,
@@ -38,9 +39,11 @@ export const ATTACHMENT_SIDE_OPTIONS: SelectOption[] = [
   { label: 'Right', value: 'right' },
 ];
 
-export const EDITABLE_ROOF_FORM_OPTIONS: SelectOption[] = [
+export const HOUSE_ROOF_FORM_OPTIONS: Array<SelectOption & { value: HouseRoofForm }> = [
+  { label: 'Flat', value: 'flat' },
   { label: 'Mono', value: 'mono' },
   { label: 'Gable', value: 'gable' },
+  { label: 'Hipped', value: 'hipped' },
 ];
 
 export const ROOF_MATERIAL_OPTIONS: Array<SelectOption & { value: CalculatorHouseRoofMaterial }> = [

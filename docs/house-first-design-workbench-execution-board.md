@@ -16,6 +16,7 @@ This section describes current repo state only. It does not change the canonical
 - Object-first contracts, draft normalizers, and derived hosting resolvers already exist for the future `HouseAssembly` / `HouseForm` model and authored decks, openings, and pergolas.
 - The store now exposes a shadow object-first `WorkbenchProjectModel` built from the compatibility model.
 - Object-family rail navigation and selected-object inspector scaffolding already exist on the hidden route, although the data still comes through the compatibility model.
+- The compatibility House Forms inspector now treats all existing footprint presets and flat, mono, gable, and hipped house roof forms as live hidden-route editing controls.
 - Shared interaction state helpers exist, and deck plus opening interaction work has started moving toward adapter-backed behavior.
 - Persistence, editor commits, geometry, rail, and rendering still consume the compatibility `houseFirst` model rather than a true `HouseAssembly` plus multiple movable `HouseForm`s source of truth.
 - The current hidden-route workbench is a bridge implementation and validation surface, not the canonical end-state described by this execution board.
