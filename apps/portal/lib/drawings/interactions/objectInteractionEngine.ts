@@ -50,6 +50,8 @@ export type ObjectInteractionPreviewOverlay<TPoint extends ObjectInteractionPrev
   polygon: TPoint[];
   bodyState: ObjectInteractionPreviewBodyState;
   anchorPoint: TPoint | null;
+  lockedCornerPoint: TPoint | null;
+  endCatchPoint: TPoint | null;
   referenceGuide: ObjectInteractionPreviewReferenceGuide<TPoint> | null;
   targetHighlights: ObjectInteractionPreviewTargetHighlight<TPoint>[];
 };

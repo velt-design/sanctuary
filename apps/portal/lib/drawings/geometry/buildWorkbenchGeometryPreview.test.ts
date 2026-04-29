@@ -735,7 +735,7 @@ describe('buildWorkbenchGeometryPreview', () => {
     );
   });
 
-  it('keeps warning-heavy and non-relevant deck contexts visible but not eligible in preview diagnostics', () => {
+  it('keeps warning-heavy and non-relevant deck contexts visible while attached warnings stay advisory in preview diagnostics', () => {
     const warningFixture = makeHouseFirstDeckSupportSnapshotFixture('rear_warning_heavy_attached');
     const nonRelevantFixture = makeHouseFirstDeckSupportSnapshotFixture(
       'left_non_relevant_when_rear_active',
@@ -763,7 +763,7 @@ describe('buildWorkbenchGeometryPreview', () => {
         activeHostSide: 'rear',
         hasRelevantDeck: true,
         resolvedClassification: 'threshold_attached',
-        deckBracketEligible: false,
+        deckBracketEligible: true,
       }),
     );
     expect(warningPreview.deckSupport.warningCodes).toContain('threshold_alignment_offset');

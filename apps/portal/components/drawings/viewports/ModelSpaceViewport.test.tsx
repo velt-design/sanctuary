@@ -4306,7 +4306,7 @@ describe('ModelSpaceViewport', () => {
     expect(scroller.dataset.houseFirstDeckAffordanceState).toBe('snapped');
     expect(scroller.dataset.houseFirstDeckReferenceGuideState).toBe('none');
     expect(scroller.dataset.houseFirstDeckSnapState).toBe('snapped');
-    expect(rendered.container.querySelector('[aria-label="Deck interaction hint"]')?.textContent).toContain('Snapped');
+    expect(rendered.container.querySelector('[aria-label="Deck interaction hint"]')?.textContent).toContain('Wall attached');
     expect(rendered.container.querySelector('[data-house-first-preview-body-state="snapped"]')).not.toBeNull();
     expect(rendered.container.querySelector('[data-house-first-reference-guide]')).toBeNull();
     expect(rendered.container.querySelector('[data-house-first-snap-target="snapped"]')).not.toBeNull();

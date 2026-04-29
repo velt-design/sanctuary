@@ -42,7 +42,7 @@ describe('buildWorkbenchDeckSupportDiagnostic', () => {
     expect(nonMatching.resolvedClassification).toBe('none');
   });
 
-  it('keeps detached and warning-heavy decks visible while withholding eligibility', () => {
+  it('keeps detached decks ineligible while preserving advisory warnings on attached decks', () => {
     const detachedFixture = makeHouseFirstDeckSupportProjectFixture({
       id: 'detached_rear_near_house',
     });
@@ -65,7 +65,7 @@ describe('buildWorkbenchDeckSupportDiagnostic', () => {
     expect(detached.warningCodes).toContain('detached_too_close_to_house');
 
     expect(warningHeavy.resolvedClassification).toBe('threshold_attached');
-    expect(warningHeavy.deckBracketEligible).toBe(false);
+    expect(warningHeavy.deckBracketEligible).toBe(true);
     expect(warningHeavy.warningCodes).toEqual(
       expect.arrayContaining(['threshold_alignment_offset', 'insufficient_host_edge_contact']),
     );

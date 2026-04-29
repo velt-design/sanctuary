@@ -2984,6 +2984,8 @@ function renderHouseFirstPlanOverlay(input: {
     ownerId: string;
     points: Point[];
     targetHighlights: Array<{ start: Point; end: Point; state: 'preview' | 'snap-available' | 'snapped' }>;
+    lockedCornerPoint: Point | null;
+    endCatchPoint: Point | null;
   } | null;
   customEdgeCandidates: Array<HouseFirstPlanCustomEdgeCandidate & {
     witnessStart: Point;
@@ -3218,6 +3220,24 @@ function renderHouseFirstPlanOverlay(input: {
               }
             />
           ))}
+          {previewShape.lockedCornerPoint ? (
+            <circle
+              cx={previewShape.lockedCornerPoint.x}
+              cy={previewShape.lockedCornerPoint.y}
+              r={0.92}
+              data-house-first-preview-corner-lock={previewShape.bodyState}
+              className={styles.moduleHouseFirstPreviewCornerLock}
+            />
+          ) : null}
+          {previewShape.endCatchPoint ? (
+            <circle
+              cx={previewShape.endCatchPoint.x}
+              cy={previewShape.endCatchPoint.y}
+              r={0.82}
+              data-house-first-preview-end-catch={previewShape.bodyState}
+              className={styles.moduleHouseFirstPreviewEndCatch}
+            />
+          ) : null}
           {previewShape.bodyState === 'grabbed' ? null : (
             <polygon
               points={toPointsAttr(previewShape.points)}
@@ -4922,6 +4942,12 @@ function PlanSvg({
           bodyState: rawHouseFirstPreviewShape.bodyState,
           anchorPoint: rawHouseFirstPreviewShape.anchorPoint
             ? planHousePointProjector(rawHouseFirstPreviewShape.anchorPoint)
+            : null,
+          lockedCornerPoint: rawHouseFirstPreviewShape.lockedCornerPoint
+            ? planHousePointProjector(rawHouseFirstPreviewShape.lockedCornerPoint)
+            : null,
+          endCatchPoint: rawHouseFirstPreviewShape.endCatchPoint
+            ? planHousePointProjector(rawHouseFirstPreviewShape.endCatchPoint)
             : null,
           referenceGuide: rawHouseFirstPreviewShape.referenceGuide
             ? {

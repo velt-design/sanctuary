@@ -65,6 +65,8 @@ export function buildObjectInteractionPreviewOverlay<TPoint extends { x: number;
   polygon: TPoint[];
   viewState: ObjectInteractionViewState | null;
   anchorPoint?: TPoint | null;
+  lockedCornerPoint?: TPoint | null;
+  endCatchPoint?: TPoint | null;
   referenceGuide?: ObjectInteractionPreviewOverlay<TPoint>['referenceGuide'];
   targetHighlights?: Array<{
         start: TPoint;
@@ -79,6 +81,8 @@ export function buildObjectInteractionPreviewOverlay<TPoint extends { x: number;
     polygon: input.polygon,
     bodyState: resolveObjectInteractionPreviewBodyState(input.viewState),
     anchorPoint: input.anchorPoint ?? null,
+    lockedCornerPoint: input.lockedCornerPoint ?? null,
+    endCatchPoint: input.endCatchPoint ?? null,
     referenceGuide:
       input.viewState?.referenceGuideState !== 'none'
         ? input.referenceGuide ?? null

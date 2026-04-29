@@ -150,6 +150,7 @@ export function resolveDeckInteractionHint(input: {
   previewState:
     | {
         attachmentMode?: 'floating' | 'single_edge' | 'corner_dual_edge';
+        endCatchSide?: 'start' | 'end' | null;
         placement: 'snapped' | 'floating';
         releasePlacement: 'snapped' | 'floating';
       }
@@ -184,29 +185,38 @@ export function resolveDeckInteractionHint(input: {
 
   if (input.previewState) {
     if (input.previewState.releasePlacement === 'snapped') {
+      if (input.previewState.attachmentMode === 'corner_dual_edge') {
+        if (input.previewState.placement === 'snapped') {
+          return {
+            state: 'snapped',
+            label: 'Corner attached',
+            detail: 'Release to keep the deck locked to both corner walls.',
+          };
+        }
+        return {
+          state: 'snap-available',
+          label: 'Corner snap available',
+          detail: 'Move into the corner lock zone, then release to attach to both walls.',
+        };
+      }
+      if (input.previewState.endCatchSide) {
+        return {
+          state: input.previewState.placement === 'snapped' ? 'snapped' : 'snap-available',
+          label: 'End aligned',
+          detail: 'Release to keep the deck aligned with the nearby wall end.',
+        };
+      }
       if (input.previewState.placement === 'snapped') {
         return {
           state: 'snapped',
-          label:
-            input.previewState.attachmentMode === 'corner_dual_edge'
-              ? 'Corner attached'
-              : 'Snapped',
-          detail:
-            input.previewState.attachmentMode === 'corner_dual_edge'
-              ? 'Release to keep the deck locked to both corner walls.'
-              : 'Release to keep the deck attached to the host edge.',
+          label: 'Wall attached',
+          detail: 'Release to keep the deck attached to the host wall.',
         };
       }
       return {
         state: 'snap-available',
-        label:
-          input.previewState.attachmentMode === 'corner_dual_edge'
-            ? 'Corner snap available'
-            : 'Snap on release',
-        detail:
-          input.previewState.attachmentMode === 'corner_dual_edge'
-            ? 'Release near the corner to attach the deck to both walls.'
-            : 'Release near the house edge to attach the deck.',
+        label: 'Wall snap available',
+        detail: 'Release near the wall to attach the deck without losing its overhang.',
       };
     }
 

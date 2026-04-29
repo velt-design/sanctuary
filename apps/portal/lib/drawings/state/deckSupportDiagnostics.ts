@@ -72,9 +72,7 @@ export function buildWorkbenchDeckSupportDiagnostic(input: {
   const positiveDecks = relevantDecks.filter(
     (deck) => deck.supportContext.classification === 'threshold_attached',
   );
-  const eligibleDecks = positiveDecks.filter(
-    (deck) => deck.supportContext.warningCodes.length === 0,
-  );
+  const eligibleDecks = positiveDecks;
   const warningCodes = Array.from(
     new Set(relevantDecks.flatMap((deck) => deck.supportContext.warningCodes)),
   );

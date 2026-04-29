@@ -3198,6 +3198,22 @@
   stroke: rgba(182, 63, 50, 0.9);
 }
 
+.moduleHouseFirstPreviewCornerLock {
+  fill: rgba(var(--accentRgb), 0.98);
+  stroke: rgba(255, 255, 255, 0.96);
+  stroke-width: calc(var(--mv-line-major-width) + 0.1px);
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
+.moduleHouseFirstPreviewEndCatch {
+  fill: rgba(37, 102, 146, 0.22);
+  stroke: rgba(37, 102, 146, 0.88);
+  stroke-width: var(--mv-line-secondary-width);
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
 .moduleHouseFirstSnapTarget {
   stroke: rgba(37, 102, 146, 0.58);
   stroke-width: var(--mv-line-major-width);

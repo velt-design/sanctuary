@@ -3299,6 +3299,8 @@ export default function ModelSpaceViewport({
           polygon: activeDeckPreviewState.polygon,
           viewState: deckInteractionViewState,
           anchorPoint: deckInteractionViewState.previewAnchor,
+          lockedCornerPoint: activeDeckPreviewState.lockedCornerPoint,
+          endCatchPoint: activeDeckPreviewState.endCatchPoint,
           referenceGuide: activeDeckPreviewState.referenceGuide,
           targetHighlights: showTargetHighlight
             ? [
@@ -3811,6 +3813,9 @@ export default function ModelSpaceViewport({
         data-house-first-deck-release-placement={deckInteractionViewState.releasePlacement ?? 'none'}
         data-house-first-deck-settle-visual-state={deckInteractionViewState.settleVisualState ?? 'none'}
         data-house-first-deck-snap-state={deckInteractionTelemetry.snapState}
+        data-house-first-deck-attachment-mode={deckInteractionTelemetry.attachmentMode ?? 'floating'}
+        data-house-first-deck-secondary-host-edge-id={deckInteractionTelemetry.secondaryHostEdgeId ?? ''}
+        data-house-first-deck-corner-vertex-id={deckInteractionTelemetry.cornerVertexId ?? ''}
         data-house-first-hovered-deck-id={hoveredDeckId ?? ''}
         data-house-first-opening-drag-active={openingDragSession ? 'true' : 'false'}
         data-house-first-opening-drag-phase={openingInteractionViewState?.phase ?? 'idle'}

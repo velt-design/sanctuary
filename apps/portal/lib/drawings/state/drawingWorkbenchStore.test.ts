@@ -717,7 +717,7 @@ describe('buildDrawingWorkbenchStore', () => {
     );
   });
 
-  it('limits active-side deck support diagnostics to the current host side and downgrades warning-heavy decks', () => {
+  it('limits active-side deck support diagnostics to the current host side while keeping attached warnings advisory', () => {
     const sideFixture = makeHouseFirstDeckSupportSnapshotFixture('left_threshold_attached');
     const nonRelevantFixture = makeHouseFirstDeckSupportSnapshotFixture(
       'left_non_relevant_when_rear_active',
@@ -767,7 +767,7 @@ describe('buildDrawingWorkbenchStore', () => {
         activeHostSide: 'rear',
         hasRelevantDeck: true,
         resolvedClassification: 'threshold_attached',
-        deckBracketEligible: false,
+        deckBracketEligible: true,
       }),
     );
     expect(warningStore.derived.activeDeckSupport?.warningCodes).toContain(
