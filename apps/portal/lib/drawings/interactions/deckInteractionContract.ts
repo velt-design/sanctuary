@@ -151,6 +151,7 @@ export function resolveDeckInteractionHint(input: {
     | {
         attachmentMode?: 'floating' | 'single_edge' | 'corner_dual_edge';
         endCatchSide?: 'start' | 'end' | null;
+        snapTargetState?: 'none' | 'candidate' | 'stable' | 'locked';
         placement: 'snapped' | 'floating';
         releasePlacement: 'snapped' | 'floating';
       }
@@ -213,10 +214,17 @@ export function resolveDeckInteractionHint(input: {
           detail: 'Release to keep the deck attached to the host wall.',
         };
       }
+      if (input.previewState.snapTargetState === 'stable') {
+        return {
+          state: 'snap-available',
+          label: 'Wall candidate',
+          detail: 'Release to attach on this wall face, or keep dragging to refine the hold point.',
+        };
+      }
       return {
         state: 'snap-available',
         label: 'Wall candidate',
-        detail: 'Stay close to the wall to lock it in, or release now to attach without losing overhang.',
+        detail: 'Stay close to the wall to rotate and lock it in, or keep dragging free.',
       };
     }
 

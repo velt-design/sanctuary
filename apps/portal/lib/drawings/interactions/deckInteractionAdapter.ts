@@ -55,12 +55,14 @@ export type DeckDragSession = ObjectInteractionSessionBase & {
   svgInteraction: DeckSvgInteraction;
 };
 
+type DeckWallTargetStability = 'none' | 'transient' | 'stable' | 'locked';
+
 export type DeckPreviewState = {
   deckId: string;
   polygon: PlanPoint[];
   previewAnchor: PlanPoint;
   activeSnapMode: 'floating' | 'single_edge' | 'corner_dual_edge';
-  snapTargetState: 'none' | 'candidate' | 'locked';
+  snapTargetState: 'none' | 'candidate' | 'stable' | 'locked';
   attachmentMode: 'floating' | 'single_edge' | 'corner_dual_edge';
   semanticPlacementSide: AttachmentSide | null;
   semanticWitnessSide: AttachmentSide;
@@ -78,6 +80,13 @@ export type DeckPreviewState = {
   secondaryHostEdgeEnd: PlanPoint | null;
   heldCornerIndex: number;
   heldCornerPoint: PlanPoint;
+  grabbedCornerAlongOffsetFromCenterM: number | null;
+  grabbedCornerOutwardM: number | null;
+  previewWallFrameId: string | null;
+  activeLockedWallFrameId: string | null;
+  anchorAlongM: number | null;
+  anchorDerivedCenterOffsetM: number | null;
+  wallTargetStability: DeckWallTargetStability;
   lockedCornerPoint: PlanPoint | null;
   endCatchSide: 'start' | 'end' | null;
   endCatchPoint: PlanPoint | null;
@@ -161,6 +170,59 @@ function resolveNearestPreviewCorner(input: {
   return {
     index,
     point: resolvePolygonPointByIndex(input.polygon, index),
+  };
+}
+
+function resolveDeckHeldCornerAnchor(input: {
+  frame: HouseFirstPlanDeckReferenceFrame;
+  deckWidthM: number;
+  deckDepthM: number;
+  heldCornerIndex: number;
+  referenceEdgeGapM: number;
+}): {
+  alongOffsetFromCenterM: number;
+  outwardM: number;
+} {
+  const basePolygon = buildDeckPreviewPolygon({
+    frame: input.frame,
+    deckWidthM: input.deckWidthM,
+    deckDepthM: input.deckDepthM,
+    centerOffsetM: 0,
+    referenceEdgeGapM: input.referenceEdgeGapM,
+  });
+  const frameMidpointM = (input.frame.spanStartM + input.frame.spanEndM) / 2;
+  const baseHeldCornerPoint = resolvePolygonPointByIndex(basePolygon, input.heldCornerIndex);
+  const baseHeldProjection = projectPointToDeckReferenceFrame(baseHeldCornerPoint, input.frame);
+  return {
+    alongOffsetFromCenterM: baseHeldProjection.alongM - frameMidpointM,
+    outwardM: baseHeldProjection.outwardM,
+  };
+}
+
+function resolveDeckAnchoredCenterOffset(input: {
+  frame: HouseFirstPlanDeckReferenceFrame;
+  deckWidthM: number;
+  deckDepthM: number;
+  heldCornerIndex: number;
+  heldAlongM: number;
+  referenceEdgeGapM: number;
+}): {
+  centerOffsetM: number;
+  grabbedCornerAlongOffsetFromCenterM: number;
+  grabbedCornerOutwardM: number;
+} {
+  const heldCornerAnchor = resolveDeckHeldCornerAnchor({
+    frame: input.frame,
+    deckWidthM: input.deckWidthM,
+    deckDepthM: input.deckDepthM,
+    heldCornerIndex: input.heldCornerIndex,
+    referenceEdgeGapM: input.referenceEdgeGapM,
+  });
+  const frameMidpointM = (input.frame.spanStartM + input.frame.spanEndM) / 2;
+  return {
+    centerOffsetM: input.heldAlongM - frameMidpointM - heldCornerAnchor.alongOffsetFromCenterM,
+    grabbedCornerAlongOffsetFromCenterM: heldCornerAnchor.alongOffsetFromCenterM,
+    grabbedCornerOutwardM: heldCornerAnchor.outwardM,
   };
 }
 
@@ -729,6 +791,13 @@ export function resolveDeckPreviewState(input: {
       secondaryHostEdgeEnd: null,
       heldCornerIndex: input.session.heldCornerIndex,
       heldCornerPoint: resolvePolygonPointByIndex(translatedPolygon, input.session.heldCornerIndex),
+      grabbedCornerAlongOffsetFromCenterM: null,
+      grabbedCornerOutwardM: null,
+      previewWallFrameId: null,
+      activeLockedWallFrameId: null,
+      anchorAlongM: null,
+      anchorDerivedCenterOffsetM: null,
+      wallTargetStability: 'none',
       lockedCornerPoint: null,
       endCatchSide: null,
       endCatchPoint: null,
@@ -808,19 +877,46 @@ export function resolveDeckPreviewState(input: {
       wallCandidate.nearGapM <= DECK_UNSNAP_TOLERANCE_M &&
       wallCandidate.heldSpanOutsideM <= DECK_WALL_SPAN_RETAIN_TOLERANCE_M) ||
     (previousLockedWallId === wallCandidate.frame.sourceEdgeId && wallCandidate.nearGapM <= DECK_UNSNAP_TOLERANCE_M);
+  const wallTransient =
+    wallSpanEligible &&
+    (wallCandidate.nearGapM <= DECK_UNSNAP_TOLERANCE_M || wallCandidate.overlapPenaltyM <= DECK_UNSNAP_TOLERANCE_M);
+  const previousStableWallId =
+    input.previousPreviewState?.wallTargetStability === 'stable' ||
+    input.previousPreviewState?.wallTargetStability === 'locked'
+      ? input.previousPreviewState.previewWallFrameId
+      : null;
+  const wallStable = wallCandidateActive;
   const wallLocked =
-    previousLockedWallId !== null &&
-    wallCandidate.frame.sourceEdgeId === previousLockedWallId &&
-    (lockedWallFrameCandidate?.nearGapM ?? wallCandidate.nearGapM) <= DECK_UNSNAP_TOLERANCE_M;
-  const unclampedCenterOffsetM = wallCandidateActive
-    ? clampPresetDeckCenterOffset({
-        centerOffsetM: wallCandidate.centerOffsetM,
-        frame: activeFrame,
-        deckWidthM: input.session.startWidthM,
-      })
-    : wallCandidate.centerOffsetM;
+    wallStable &&
+    (
+      (previousLockedWallId !== null &&
+        wallCandidate.frame.sourceEdgeId === previousLockedWallId &&
+        (lockedWallFrameCandidate?.nearGapM ?? wallCandidate.nearGapM) <= DECK_UNSNAP_TOLERANCE_M) ||
+      previousStableWallId === wallCandidate.frame.sourceEdgeId
+    );
+  const wallTargetStability: DeckWallTargetStability =
+    wallLocked ? 'locked' : wallStable ? 'stable' : wallTransient ? 'transient' : 'none';
+  const anchoredCenterOffset =
+    wallStable || wallLocked
+      ? resolveDeckAnchoredCenterOffset({
+          frame: activeFrame,
+          deckWidthM: input.session.startWidthM,
+          deckDepthM: input.session.startDepthM,
+          heldCornerIndex: input.session.heldCornerIndex,
+          heldAlongM: wallCandidate.heldAlongM,
+          referenceEdgeGapM: 0,
+        })
+      : null;
+  const unclampedCenterOffsetM =
+    anchoredCenterOffset
+      ? clampPresetDeckCenterOffset({
+          centerOffsetM: anchoredCenterOffset.centerOffsetM,
+          frame: activeFrame,
+          deckWidthM: input.session.startWidthM,
+        })
+      : wallCandidate.centerOffsetM;
   const endCatch =
-    wallLocked
+    wallStable || wallLocked
       ? resolveDeckEndCatch({
           frame: activeFrame,
           deckWidthM: input.session.startWidthM,
@@ -846,19 +942,21 @@ export function resolveDeckPreviewState(input: {
       ? 'snapped'
       : 'floating';
   const releasePlacement =
-    cornerCandidate || wallCandidateActive
+    cornerCandidate || wallStable || wallLocked
       ? 'snapped'
       : 'floating';
   const activeSnapMode =
     cornerCandidate
       ? 'corner_dual_edge'
-      : wallCandidateActive
+      : wallTransient || wallStable || wallLocked
         ? 'single_edge'
         : 'floating';
   const snapTargetState =
     placement === 'snapped'
       ? 'locked'
-      : releasePlacement === 'snapped'
+      : wallStable
+        ? 'stable'
+        : releasePlacement === 'snapped'
         ? 'candidate'
         : 'none';
   const centerOffsetM = placement === 'snapped' && !cornerLocked
@@ -875,7 +973,7 @@ export function resolveDeckPreviewState(input: {
           deckWidthM: input.session.startWidthM,
           deckDepthM: input.session.startDepthM,
         })
-      : wallLocked
+      : wallStable || wallLocked
         ? buildDeckPreviewPolygon({
             frame: activeFrame,
             deckWidthM: input.session.startWidthM,
@@ -884,39 +982,37 @@ export function resolveDeckPreviewState(input: {
             referenceEdgeGapM: 0,
           })
         : translatedPolygon;
-  const resolvedHeldPreviewCorner = resolveNearestPreviewCorner({
-    polygon: previewPolygon,
-    point: translatedHeldCornerPoint,
-  });
-  const referenceGuide =
+  const heldPreviewCornerPoint = resolvePolygonPointByIndex(previewPolygon, input.session.heldCornerIndex);
+  const referenceGuide: DeckPreviewState['referenceGuide'] =
     snapTargetState === 'locked'
       ? null
       : cornerCandidate
         ? {
-            start: resolvedHeldPreviewCorner.point,
+            start: heldPreviewCornerPoint,
             end: cornerCandidate.cornerPoint,
             state: 'snap-lane' as const,
           }
         : {
-            start: resolvedHeldPreviewCorner.point,
+            start: heldPreviewCornerPoint,
             end: resolveDeckReferenceGuidePoint({
               frame: activeFrame,
               alongM: wallCandidate.heldAlongM,
             }),
-            state: wallCandidateActive ? 'snap-lane' : 'witness',
+            state: wallStable ? 'snap-lane' : 'witness',
           };
 
   return {
     deckId: input.session.deckId,
-    previewAnchor: resolvedHeldPreviewCorner.point,
+    previewAnchor: heldPreviewCornerPoint,
     activeSnapMode,
     snapTargetState,
     attachmentMode,
     semanticPlacementSide: releasePlacement === 'snapped' ? activeFrame.hostEdgeId : null,
     semanticWitnessSide: activeFrame.hostEdgeId,
-    activePrimaryTargetId: releasePlacement === 'snapped' ? activeFrame.sourceEdgeId : null,
+    activePrimaryTargetId:
+      wallTransient || wallStable || wallLocked || cornerCandidate ? activeFrame.sourceEdgeId : null,
     activeSecondaryTargetId: cornerCandidate?.secondaryFrame.sourceEdgeId ?? null,
-    placementEdgeId: placement === 'snapped' ? activeFrame.sourceEdgeId : null,
+    placementEdgeId: releasePlacement === 'snapped' ? activeFrame.sourceEdgeId : null,
     primaryHostEdgeId: releasePlacement === 'snapped' ? activeFrame.sourceEdgeId : null,
     secondaryHostEdgeId: cornerCandidate?.secondaryFrame.sourceEdgeId ?? null,
     cornerVertexId: cornerCandidate?.cornerVertexId ?? null,
@@ -926,15 +1022,23 @@ export function resolveDeckPreviewState(input: {
     hostEdgeEnd: activeFrame.hostEdgeEnd,
     secondaryHostEdgeStart: cornerCandidate?.secondaryFrame.hostEdgeStart ?? null,
     secondaryHostEdgeEnd: cornerCandidate?.secondaryFrame.hostEdgeEnd ?? null,
-    heldCornerIndex: resolvedHeldPreviewCorner.index,
-    heldCornerPoint: resolvedHeldPreviewCorner.point,
+    heldCornerIndex: input.session.heldCornerIndex,
+    heldCornerPoint: heldPreviewCornerPoint,
+    grabbedCornerAlongOffsetFromCenterM: anchoredCenterOffset?.grabbedCornerAlongOffsetFromCenterM ?? null,
+    grabbedCornerOutwardM: anchoredCenterOffset?.grabbedCornerOutwardM ?? null,
+    previewWallFrameId: wallTransient || wallStable || wallLocked || cornerCandidate ? activeFrame.sourceEdgeId : null,
+    activeLockedWallFrameId: wallLocked ? activeFrame.sourceEdgeId : previousLockedWallId,
+    anchorAlongM: wallTransient || wallStable || wallLocked || cornerCandidate ? wallCandidate.heldAlongM : null,
+    anchorDerivedCenterOffsetM:
+      anchoredCenterOffset ? (endCatch?.centerOffsetM ?? anchoredCenterOffset.centerOffsetM) : null,
+    wallTargetStability,
     lockedCornerPoint: cornerLocked ? cornerCandidate?.cornerPoint ?? null : null,
-    endCatchSide: placement === 'snapped' && !cornerLocked ? endCatch?.endCatchSide ?? null : null,
-    endCatchPoint: placement === 'snapped' && !cornerLocked ? endCatch?.endCatchPoint ?? null : null,
+    endCatchSide: (wallStable || wallLocked) && !cornerLocked ? endCatch?.endCatchSide ?? null : null,
+    endCatchPoint: (wallStable || wallLocked) && !cornerLocked ? endCatch?.endCatchPoint ?? null : null,
     centerOffsetM,
     referenceEdgeGapM,
     placement,
-    snapEligible: wallCandidateActive,
+    snapEligible: wallStable || wallLocked,
     releasePlacement,
     referenceGuide,
     polygon: previewPolygon,
@@ -1126,7 +1230,11 @@ export function buildDeckCommitPatch(input: {
         : null),
     floatingRect,
     presetRect: {
-      centerOffsetM: formatDeckPresetValue(input.preview.centerOffsetM),
+      centerOffsetM: formatDeckPresetValue(
+        input.preview.releasePlacement === 'snapped'
+          ? input.preview.anchorDerivedCenterOffsetM ?? input.preview.centerOffsetM
+          : input.preview.centerOffsetM,
+      ),
       detachedGapM:
         input.preview.releasePlacement === 'floating'
           ? formatDeckPresetValue(input.preview.referenceEdgeGapM)

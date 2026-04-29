@@ -6,6 +6,7 @@ import type {
   PlanPoint,
 } from '@/lib/drawings/views/plan/houseFirstPlanOverlay';
 import {
+  buildDeckCommitPatch,
   buildDeckDragSession,
   resolveDeckPreviewState,
 } from './deckInteractionAdapter';
@@ -212,7 +213,7 @@ describe('deckInteractionAdapter', () => {
     expect(jitteredPreview.heldCornerIndex).toBe(firstPreview.heldCornerIndex);
   });
 
-  it('keeps a provisional wall candidate stable through small jitter near the corner', () => {
+  it('keeps a stable wall-face preview on the same target through small jitter near the corner', () => {
     const polygon = [
       { x: -0.28, y: 0.1 },
       { x: 4.72, y: 0.1 },
@@ -249,11 +250,15 @@ describe('deckInteractionAdapter', () => {
     });
 
     expect(firstPreview.activeSnapMode).toBe('single_edge');
-    expect(firstPreview.snapTargetState).toBe('candidate');
+    expect(firstPreview.snapTargetState).toBe('stable');
     expect(firstPreview.attachmentMode).toBe('single_edge');
+    expect(firstPreview.previewWallFrameId).toBe(firstPreview.activePrimaryTargetId);
+    expect(firstPreview.wallTargetStability).toBe('stable');
     expect(jitteredPreview.activePrimaryTargetId).toBe(firstPreview.activePrimaryTargetId);
     expect(jitteredPreview.attachmentMode).toBe('single_edge');
-    expect(jitteredPreview.snapTargetState).toBe('candidate');
+    expect(jitteredPreview.snapTargetState).toBe('locked');
+    expect(jitteredPreview.previewWallFrameId).toBe(firstPreview.previewWallFrameId);
+    expect(jitteredPreview.heldCornerIndex).toBe(firstPreview.heldCornerIndex);
   });
 
   it('softly aligns oversized single-edge decks to wall ends without clamping them to the span', () => {
@@ -287,7 +292,7 @@ describe('deckInteractionAdapter', () => {
     expect(preview.centerOffsetM).toBe(1);
   });
 
-  it('keeps the deck body translated while a wall target is only a provisional candidate', () => {
+  it('autorotates the preview body onto a stable wall candidate before release', () => {
     const polygon = [
       { x: 1, y: 0.6 },
       { x: 5, y: 0.6 },
@@ -318,8 +323,49 @@ describe('deckInteractionAdapter', () => {
 
     expect(preview.releasePlacement).toBe('snapped');
     expect(preview.placement).toBe('floating');
-    expect(preview.snapTargetState).toBe('candidate');
-    expect(preview.polygon[0]).toEqual({ x: 1, y: 0.12 });
+    expect(preview.snapTargetState).toBe('stable');
+    expect(preview.wallTargetStability).toBe('stable');
+    expect(preview.polygon[0]).toEqual({ x: 1, y: 0 });
+    expect(preview.previewAnchor).toEqual(preview.heldCornerPoint);
     expect(preview.referenceGuide?.state).toBe('snap-lane');
+  });
+
+  it('derives attached commit offset from the held-corner preview instead of snapping back to center projection', () => {
+    const polygon = [
+      { x: 1, y: 0.6 },
+      { x: 5, y: 0.6 },
+      { x: 5, y: 3.6 },
+      { x: 1, y: 3.6 },
+    ];
+    const session = makeSession({
+      polygon,
+      startDragPlanPoint: { x: 1.1, y: 0.7 },
+      frames: [rearFrame, leftFrame],
+      renderedCenter: { x: 3, y: 2.1 },
+      deckWidthM: 4,
+      deckDepthM: 3,
+      placement: 'floating',
+      attachmentMode: 'floating',
+    });
+
+    const preview = resolveDeckPreviewState({
+      session,
+      nextSvgX: session.startSvgX,
+      nextSvgY: session.startSvgY - 0.48,
+      nextDragPlanPoint: {
+        x: session.startDragPlanPoint!.x,
+        y: session.startDragPlanPoint!.y - 0.48,
+      },
+      previousPreviewState: null,
+    });
+    const patch = buildDeckCommitPatch({
+      session,
+      preview,
+    });
+
+    expect(preview.releasePlacement).toBe('snapped');
+    expect(preview.anchorDerivedCenterOffsetM).toBe(1);
+    expect(patch.hostEdgeId).toBe('footprint-edge-1');
+    expect((patch.presetRect as { centerOffsetM: string }).centerOffsetM).toBe('1');
   });
 });
