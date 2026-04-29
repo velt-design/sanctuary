@@ -17,6 +17,7 @@ This section describes current repo state only. It does not change the canonical
 - `drawingWorkbenchStore` now exposes a shadow object-first `WorkbenchProjectModel` built from the compatibility model.
 - The hidden workbench rail already exposes object-family navigation for `House Forms`, `Decks`, `Openings`, and `Pergolas`, with selected-object inspector scaffolding.
 - Opening host resolution now flows through object-first derived wall contracts in store and rail state, while draft persistence remains compatibility-bound.
+- Pergola attachment resolution now flows through object-first derived edge and zone contracts in store, rail, and inspector option state, while module edits and draft persistence remain compatibility-bound.
 - Shared interaction state helpers exist, and deck plus opening work have started moving toward adapter-backed object interaction.
 - Persistence, editor commits, geometry, rail, and rendering still consume the compatibility `houseFirst` model rather than a true `HouseAssembly` plus multiple movable `HouseForm`s source of truth.
 - The existing hidden-route workbench is a bridge implementation for internal iteration, not the canonical end-state described by this document.
@@ -420,7 +421,7 @@ Use current deck movement and snapping as the template for reusable object manip
 
 Reconnect wall-hosted and attached objects against derived building truth.
 
-Current status: opening host resolution is partially reconnected through object-first derived wall contracts in the store and rail. Pergola reconnect and full hosted-object runtime migration remain next.
+Current status: opening host resolution and pergola attachment resolution are partially reconnected through object-first derived contracts in the store and rail. Full hosted-object runtime and persistence migration remain next.
 
 ### Acceptance Criteria
 

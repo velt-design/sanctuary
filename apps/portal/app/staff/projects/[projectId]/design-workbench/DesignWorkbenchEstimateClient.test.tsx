@@ -704,6 +704,58 @@ describe('DesignWorkbenchEstimateClient', () => {
     rendered.unmount();
   });
 
+  it('writes pergola attachment edits from object-first derived edge and zone options into compatibility drafts', async () => {
+    const estimate = buildEstimateDetail();
+    const entityKey = buildEstimateDrawingDraftEntityKey(estimate.id);
+
+    const rendered = renderIntoDocument(
+      <DesignWorkbenchEstimateClient estimate={estimate} projectName="Deck Build" siteAddress="1 Test Street" />,
+    );
+    await flushAsyncWork();
+    clickButtonByText(rendered.container, 'Pergolas');
+    await flushAsyncWork();
+
+    changeSelectByLabel(rendered.container, 'Pergola connection', 'fascia');
+    await flushAsyncWork();
+
+    let workingCopy = getLocalFirstWorkingCopy<any>(entityKey)?.data;
+    expect(workingCopy?.inputs.modules[0]?.houseConnectionType).toBe('fascia');
+    expect(workingCopy?.houseFirst?.pergolas?.[0]?.attachmentZoneId).toContain('zone-fascia-');
+    expect(workingCopy?.houseFirst?.pergolas?.[0]?.attachmentEdgeId).toMatch(/^footprint-edge-\d+$/);
+
+    const edgeSelect = rendered.container.querySelector('[aria-label="Pergola host edge"]') as HTMLSelectElement | null;
+    if (!edgeSelect) throw new Error('Missing pergola host edge select.');
+    const edgeOptions = Array.from(edgeSelect.options).map((option) => option.value).filter(Boolean);
+    const currentEdge = workingCopy?.houseFirst?.pergolas?.[0]?.attachmentEdgeId ?? null;
+    const nextEdge = edgeOptions.find((value) => value !== currentEdge) ?? edgeOptions[0];
+    if (!nextEdge) throw new Error('Expected at least one pergola host edge option.');
+
+    changeSelectByLabel(rendered.container, 'Pergola host edge', nextEdge);
+    await flushAsyncWork();
+
+    let pergolaDraft = getLocalFirstWorkingCopy<any>(entityKey)?.data.houseFirst?.pergolas?.[0];
+    expect(pergolaDraft).toMatchObject({
+      id: 'pergola-1',
+      attachmentEdgeId: nextEdge,
+    });
+    expect(pergolaDraft?.attachmentZoneId).toContain(nextEdge);
+
+    const zoneSelect = rendered.container.querySelector('[aria-label="Pergola host zone"]') as HTMLSelectElement | null;
+    if (!zoneSelect) throw new Error('Missing pergola host zone select.');
+    const zoneOptions = Array.from(zoneSelect.options).map((option) => option.value).filter(Boolean);
+    const nextZone = zoneOptions.find((value) => value !== zoneSelect.value) ?? zoneOptions[0];
+    if (!nextZone) throw new Error('Expected at least one pergola host zone option.');
+
+    changeSelectByLabel(rendered.container, 'Pergola host zone', nextZone);
+    await flushAsyncWork();
+
+    pergolaDraft = getLocalFirstWorkingCopy<any>(entityKey)?.data.houseFirst?.pergolas?.[0];
+    expect(pergolaDraft?.attachmentZoneId).toBe(nextZone);
+    expect(pergolaDraft?.attachmentEdgeId).toMatch(/^footprint-edge-\d+$/);
+
+    rendered.unmount();
+  });
+
   it('writes module edits into the local working copy and clears them when reverted to the snapshot', async () => {
     const estimate = buildEstimateDetail();
     const entityKey = buildEstimateDrawingDraftEntityKey(estimate.id);

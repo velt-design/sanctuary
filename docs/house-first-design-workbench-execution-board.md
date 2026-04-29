@@ -105,7 +105,7 @@ Each ticket should still be a narrow, reviewable slice:
 | P3 | Partial | Shared interaction state exists, with deck/opening adapter work started but not complete for all object families |
 | P4 | Partial | Object navigator + inspector rail scaffold exists, still backed by compatibility `houseFirst` data |
 | P5 | Partial | Deck interaction work is adapter-backed enough to validate the pattern, but remains an active stabilization lane |
-| P6 | Partial | Opening host resolution now uses object-first derived wall contracts; pergola reconnect remains next |
+| P6 | Partial | Opening and pergola host resolution now use object-first derived contracts; full runtime/persistence migration remains deferred |
 | P7 | Blocked/Deferred | Validation, fixtures, and internal review follow the runtime and hosting migration |
 
 ## P0: Freeze Canonical Direction
@@ -466,17 +466,19 @@ Depends on:
 
 ### Ticket P6.2: Reconnect pergolas against derived edges and zones
 
-Status: Next.
+Status: Partial / bridge-landed.
 
 Scope:
 
 - make pergola attachment consume derived edge and zone truth
 - retire the old per-module house-copy assumption from the canonical path
+- keep module edits, geometry, and persistence compatibility-bound during this slice
 
 Acceptance criteria:
 
 - pergolas attach to derived building behavior
 - pergola editing no longer relies on the old duplicated house context as the primary architecture
+- object-first pergola attachment resolution is exposed in store state and rail status
 
 Suggested PR slice:
 

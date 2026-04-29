@@ -12,6 +12,7 @@ import {
 } from '@/lib/drawings/state/drawingWorkbenchUiState';
 import type { DrawingWorkbenchUiState } from '@/lib/drawings/state/drawingWorkbenchUiState';
 import type {
+  DerivedAttachmentZoneModel,
   DerivedWallModel,
   HouseAssemblyModel,
 } from '@/lib/drawings/state/objectFirstWorkbenchModel';
@@ -134,7 +135,7 @@ type OpeningHostWallOption = {
   spanM: number;
 };
 
-type PergolaDerivedAttachmentZoneOption = NonNullable<HouseModel['derivedEnvelope']>['attachmentZones'][number];
+type PergolaDerivedAttachmentZoneOption = DerivedAttachmentZoneModel;
 
 function formatOpeningMetres(value: number): string {
   return String(Math.round(value * 1000) / 1000);
@@ -268,42 +269,42 @@ function toModuleHouseConnectionType(
 }
 
 function buildPergolaZoneLookup(
-  house: HouseModel | null,
+  houseAssembly: HouseAssemblyModel | null,
 ): Map<string, PergolaDerivedAttachmentZoneOption> {
   const byId = new Map<string, PergolaDerivedAttachmentZoneOption>();
-  for (const zone of house?.derivedEnvelope?.attachmentZones ?? []) {
+  for (const zone of houseAssembly?.derivedEnvelope?.attachmentZones ?? []) {
     byId.set(zone.id, zone);
   }
   return byId;
 }
 
 function resolvePergolaZonesForKind(
-  house: HouseModel | null,
+  houseAssembly: HouseAssemblyModel | null,
   kind: PergolaAttachmentKind,
 ): PergolaDerivedAttachmentZoneOption[] {
   const zoneKind = resolvePergolaZoneKind(kind);
   if (!zoneKind) return [];
-  return (house?.derivedEnvelope?.attachmentZones ?? []).filter((zone) => zone.kind === zoneKind);
+  return (houseAssembly?.derivedEnvelope?.attachmentZones ?? []).filter((zone) => zone.kind === zoneKind);
 }
 
 function resolvePreferredPergolaZoneForKind(input: {
-  house: HouseModel | null;
+  houseAssembly: HouseAssemblyModel | null;
   currentPergola: PergolaModel;
   nextKind: PergolaAttachmentKind;
   preferredEdgeId?: string | null;
 }): PergolaDerivedAttachmentZoneOption | null {
-  const candidateZones = resolvePergolaZonesForKind(input.house, input.nextKind);
+  const candidateZones = resolvePergolaZonesForKind(input.houseAssembly, input.nextKind);
   if (!candidateZones.length) return null;
-
-  if (input.currentPergola.attachment.attachmentZoneId) {
-    const currentZone = candidateZones.find((zone) => zone.id === input.currentPergola.attachment.attachmentZoneId);
-    if (currentZone) return currentZone;
-  }
 
   const preferredEdgeId = input.preferredEdgeId ?? input.currentPergola.attachment.attachmentEdgeId ?? null;
   if (preferredEdgeId) {
     const edgeZone = candidateZones.find((zone) => zone.hostEdgeId === preferredEdgeId);
     if (edgeZone) return edgeZone;
+  }
+
+  if (input.currentPergola.attachment.attachmentZoneId) {
+    const currentZone = candidateZones.find((zone) => zone.id === input.currentPergola.attachment.attachmentZoneId);
+    if (currentZone) return currentZone;
   }
 
   const sameSideZone = candidateZones.find((zone) => zone.side === input.currentPergola.attachment.side);
@@ -1049,7 +1050,7 @@ export function useHouseMutationActions({
             kind === 'freestanding'
               ? null
               : resolvePreferredPergolaZoneForKind({
-                  house: store.derived.house,
+                  houseAssembly: store.derived.houseAssembly,
                   currentPergola,
                   nextKind: kind,
                 });
@@ -1069,7 +1070,7 @@ export function useHouseMutationActions({
           });
         },
       }),
-    [commitPergolaDraftMutation, store.derived.house],
+    [commitPergolaDraftMutation, store.derived.houseAssembly],
   );
 
   const commitSharedPergolaAttachmentEdge = useCallback(
@@ -1084,7 +1085,7 @@ export function useHouseMutationActions({
             };
           }
           const nextZone = resolvePreferredPergolaZoneForKind({
-            house: store.derived.house,
+            houseAssembly: store.derived.houseAssembly,
             currentPergola,
             nextKind: currentPergola.attachment.kind,
             preferredEdgeId: edgeId,
@@ -1110,7 +1111,7 @@ export function useHouseMutationActions({
           });
         },
       }),
-    [commitPergolaDraftMutation, store.derived.house],
+    [commitPergolaDraftMutation, store.derived.houseAssembly],
   );
 
   const commitSharedPergolaAttachmentZone = useCallback(
@@ -1118,7 +1119,7 @@ export function useHouseMutationActions({
       commitPergolaDraftMutation({
         pergolaId,
         buildNextPergolas: ({ draft, currentPergolas, currentPergola }) => {
-          const zone = buildPergolaZoneLookup(store.derived.house).get(zoneId) ?? null;
+          const zone = buildPergolaZoneLookup(store.derived.houseAssembly).get(zoneId) ?? null;
           if (!zone || zone.hostEdgeId === null) {
             return {
               ok: false,
@@ -1149,7 +1150,7 @@ export function useHouseMutationActions({
           });
         },
       }),
-    [commitPergolaDraftMutation, store.derived.house],
+    [commitPergolaDraftMutation, store.derived.houseAssembly],
   );
 
   const commitSharedPergolaAttachmentStrategy = useCallback(

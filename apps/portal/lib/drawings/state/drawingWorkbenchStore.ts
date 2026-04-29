@@ -19,7 +19,9 @@ import {
 } from '@/lib/drawings/interactions/deckInteractionContract';
 import { normalizeDrawingWorkbenchUiState, type DrawingWorkbenchUiState } from './drawingWorkbenchUiState';
 import {
+  resolveObjectFirstPergolaAttachment,
   resolveObjectFirstOpeningHost,
+  type ObjectFirstPergolaAttachmentResolution,
   type ObjectFirstOpeningHostResolution,
 } from './objectFirstDerivedHosting';
 import {
@@ -43,6 +45,7 @@ import type {
   HouseAssemblyModel,
   HouseFormModel,
   OpeningObjectModel,
+  PergolaObjectModel,
   WorkbenchProjectModel,
 } from './objectFirstWorkbenchModel';
 
@@ -124,6 +127,11 @@ export type DrawingWorkbenchStore = {
     pergolas: PergolaModel[];
     activePergolaId: string | null;
     activePergola: PergolaModel | null;
+    objectFirstPergolas: PergolaObjectModel[];
+    activeObjectFirstPergola: PergolaObjectModel | null;
+    pergolaAttachmentResolutions: Record<string, ObjectFirstPergolaAttachmentResolution>;
+    activePergolaAttachmentResolution: ObjectFirstPergolaAttachmentResolution | null;
+    unresolvedPergolaAttachmentCount: number;
     migrationWarnings: HouseFirstMigrationWarning[];
     migrationWarningCount: number;
     houseIsLowConfidence: boolean;
@@ -252,11 +260,18 @@ export function buildDrawingWorkbenchStore(input: {
   });
 
   const activeModule = modules[ui.activeModuleIndex] ?? null;
+  const objectFirstPergolas = projectModel.pergolas;
   const activePergola =
     compatibilityProjectModel.pergolas.find((pergola) => pergola.id === ui.activePergolaId) ??
     compatibilityProjectModel.pergolas.find((pergola) => pergola.id === activeModule?.drawingModule.input.pergolaId) ??
     compatibilityProjectModel.pergolas[0] ??
     null;
+  const activeObjectFirstPergola =
+    ui.activeObjectFamily === 'pergolas'
+      ? objectFirstPergolas.find((pergola) => pergola.id === ui.activeObjectRef.objectId) ?? null
+      : activePergola
+        ? objectFirstPergolas.find((pergola) => pergola.id === activePergola.id) ?? null
+        : null;
   const activeHouseForm =
     ui.activeObjectFamily === 'house_forms'
       ? houseForms.find((houseForm) => houseForm.id === ui.activeObjectRef.objectId) ?? null
@@ -291,6 +306,24 @@ export function buildDrawingWorkbenchStore(input: {
   const unresolvedOpeningHostCount = Object.values(openingHostResolutions).filter(
     (resolution) => resolution.status === 'unresolved',
   ).length;
+  const pergolaAttachmentResolutions = Object.fromEntries(
+    objectFirstPergolas.map((pergola) => [
+      pergola.id,
+      resolveObjectFirstPergolaAttachment({
+        houseAssembly: projectModel.houseAssembly,
+        pergola,
+      }),
+    ]),
+  ) as Record<string, ObjectFirstPergolaAttachmentResolution>;
+  const activePergolaAttachmentResolution = activeObjectFirstPergola
+    ? pergolaAttachmentResolutions[activeObjectFirstPergola.id] ?? null
+    : null;
+  const compatibilityPergolasById = new Map(compatibilityProjectModel.pergolas.map((pergola) => [pergola.id, pergola]));
+  const unresolvedPergolaAttachmentCount = Object.entries(pergolaAttachmentResolutions).filter(
+    ([pergolaId, resolution]) =>
+      resolution.status === 'unresolved' &&
+      compatibilityPergolasById.get(pergolaId)?.attachment.kind !== 'freestanding',
+  ).length;
   const deckSupportWarningCount = decks.reduce(
     (sum, deck) => sum + deck.supportContext.warningCodes.length,
     0,
@@ -309,7 +342,9 @@ export function buildDrawingWorkbenchStore(input: {
     house: compatibilityProjectModel.house,
     openings: objectFirstOpenings,
     openingHostResolutions,
-    pergolas: compatibilityProjectModel.pergolas,
+    pergolas: objectFirstPergolas,
+    compatibilityPergolas: compatibilityProjectModel.pergolas,
+    pergolaAttachmentResolutions,
     warnings: compatibilityProjectModel.warnings,
     modules: modules.map((module) => ({
       pergolaId: module.drawingModule.input.pergolaId,
@@ -391,6 +426,11 @@ export function buildDrawingWorkbenchStore(input: {
       pergolas: compatibilityProjectModel.pergolas,
       activePergolaId: activePergola?.id ?? null,
       activePergola,
+      objectFirstPergolas,
+      activeObjectFirstPergola,
+      pergolaAttachmentResolutions,
+      activePergolaAttachmentResolution,
+      unresolvedPergolaAttachmentCount,
       migrationWarnings: compatibilityProjectModel.warnings,
       migrationWarningCount: compatibilityProjectModel.warnings.length,
       houseIsLowConfidence: Boolean(compatibilityProjectModel.house?.lowConfidence),

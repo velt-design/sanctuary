@@ -436,18 +436,18 @@ export default function DesignWorkbenchEstimateClient({
     : null;
   const compatiblePergolaZones = useMemo(() => {
     if (!activePergolaModel || !activePergolaZoneKind) return [];
-    return (store.derived.house?.derivedEnvelope?.attachmentZones ?? []).filter(
+    return (store.derived.houseAssembly?.derivedEnvelope?.attachmentZones ?? []).filter(
       (zone) => zone.kind === activePergolaZoneKind,
     );
-  }, [activePergolaModel, activePergolaZoneKind, store.derived.house?.derivedEnvelope?.attachmentZones]);
+  }, [activePergolaModel, activePergolaZoneKind, store.derived.houseAssembly?.derivedEnvelope?.attachmentZones]);
   const compatiblePergolaEdges = useMemo(() => {
     const allowedEdgeIds = new Set(
       compatiblePergolaZones
         .map((zone) => zone.hostEdgeId)
         .filter((hostEdgeId): hostEdgeId is string => typeof hostEdgeId === 'string' && hostEdgeId.length > 0),
     );
-    return (store.derived.house?.derivedEnvelope?.edges ?? []).filter((edge) => allowedEdgeIds.has(edge.id));
-  }, [compatiblePergolaZones, store.derived.house?.derivedEnvelope?.edges]);
+    return (store.derived.houseAssembly?.derivedEnvelope?.edges ?? []).filter((edge) => allowedEdgeIds.has(edge.id));
+  }, [compatiblePergolaZones, store.derived.houseAssembly?.derivedEnvelope?.edges]);
   const selectedPergolaEdgeOptionMissing = Boolean(
     activePergolaModel?.attachment.attachmentEdgeId &&
       !compatiblePergolaEdges.some((edge) => edge.id === activePergolaModel.attachment.attachmentEdgeId),

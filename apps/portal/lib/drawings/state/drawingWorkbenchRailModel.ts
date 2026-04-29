@@ -1,8 +1,16 @@
 import type { WorkbenchPergolaRenderStatus } from '@/lib/drawings/geometry/deriveWorkbenchGeometry';
-import type { ObjectFirstOpeningHostResolution } from './objectFirstDerivedHosting';
+import type {
+  ObjectFirstOpeningHostResolution,
+  ObjectFirstPergolaAttachmentResolution,
+} from './objectFirstDerivedHosting';
 import type { HouseFirstMigrationWarning, HouseModel, PergolaModel } from './houseFirstWorkbenchModel';
 import type { DrawingWorkbenchRailTab } from './drawingWorkbenchUiState';
-import type { OpeningObjectModel, WorkbenchObjectFamily, WorkbenchObjectRef } from './objectFirstWorkbenchModel';
+import type {
+  OpeningObjectModel,
+  PergolaObjectModel,
+  WorkbenchObjectFamily,
+  WorkbenchObjectRef,
+} from './objectFirstWorkbenchModel';
 
 export type DrawingWorkbenchRailObjectStatus = 'ready' | 'approximate' | 'blocked' | 'deferred';
 
@@ -177,19 +185,16 @@ function buildOpeningEntries(input: {
 }
 
 function resolvePergolaEntryStatus(input: {
-  pergola: PergolaModel;
+  pergola: PergolaObjectModel;
+  compatibilityPergola: PergolaModel | null;
+  attachmentResolution: ObjectFirstPergolaAttachmentResolution | null;
   moduleStates: DrawingWorkbenchRailPergolaModuleState[];
 }): Pick<DrawingWorkbenchRailObjectEntry, 'status' | 'statusLabel'> {
-  if (input.pergola.attachment.kind !== 'freestanding' && input.pergola.attachment.resolution.status === 'ambiguous') {
+  const isFreestanding = input.compatibilityPergola?.attachment.kind === 'freestanding';
+  if (!isFreestanding && input.attachmentResolution?.status === 'unresolved') {
     return {
       status: 'blocked',
-      statusLabel: 'Ambiguous host',
-    };
-  }
-  if (input.pergola.attachment.kind !== 'freestanding' && input.pergola.attachment.resolution.status === 'unresolved') {
-    return {
-      status: 'blocked',
-      statusLabel: 'Unresolved host',
+      statusLabel: 'Unresolved attachment',
     };
   }
   if (input.moduleStates.some((module) => module.planRenderStatus === 'legacy_unsupported_family')) {
@@ -204,7 +209,7 @@ function resolvePergolaEntryStatus(input: {
       statusLabel: 'Invalid geometry',
     };
   }
-  if (input.pergola.confidence === 'low') {
+  if (input.compatibilityPergola?.confidence === 'low') {
     return {
       status: 'approximate',
       statusLabel: 'Approximate',
@@ -217,35 +222,35 @@ function resolvePergolaEntryStatus(input: {
 }
 
 function buildPergolaEntries(input: {
-  house: HouseModel | null;
-  pergolas: PergolaModel[];
+  pergolas: PergolaObjectModel[];
+  compatibilityPergolas: PergolaModel[];
+  attachmentResolutions: Record<string, ObjectFirstPergolaAttachmentResolution>;
   modules: DrawingWorkbenchRailPergolaModuleState[];
 }): DrawingWorkbenchRailObjectEntry[] {
-  const pergolasById = new Map<string, PergolaModel>();
-  for (const pergola of input.pergolas) {
-    if (!pergolasById.has(pergola.id)) {
-      pergolasById.set(pergola.id, pergola);
-    }
-  }
+  const compatibilityById = new Map(input.compatibilityPergolas.map((pergola) => [pergola.id, pergola]));
 
-  return Array.from(pergolasById.values()).map((pergola) => {
+  return input.pergolas.map((pergola) => {
+    const compatibilityPergola = compatibilityById.get(pergola.id) ?? null;
+    const attachmentResolution = input.attachmentResolutions[pergola.id] ?? null;
     const moduleStates = input.modules.filter((module) => module.pergolaId === pergola.id);
     const status = resolvePergolaEntryStatus({
       pergola,
+      compatibilityPergola,
+      attachmentResolution,
       moduleStates,
     });
-    const edgeLabel = pergola.attachment.attachmentEdgeId
-      ? input.house?.derivedEnvelope?.edges.find((edge) => edge.id === pergola.attachment.attachmentEdgeId)?.label ??
-        'Unavailable saved edge'
-      : pergola.attachment.kind === 'freestanding'
+    const edgeLabel = attachmentResolution?.edge
+      ? attachmentResolution.edge.label
+      : compatibilityPergola?.attachment.kind === 'freestanding'
         ? 'Freestanding'
-        : 'No host edge';
-    const zoneLabel = pergola.attachment.attachmentZoneId
-      ? input.house?.derivedEnvelope?.attachmentZones.find((zone) => zone.id === pergola.attachment.attachmentZoneId)?.label ??
-        'Unavailable saved zone'
-      : pergola.attachment.kind === 'freestanding'
+        : 'Unresolved host edge';
+    const zoneLabel = attachmentResolution?.zone
+      ? attachmentResolution.zone.label
+      : compatibilityPergola?.attachment.kind === 'freestanding'
         ? null
-        : 'No host zone';
+        : pergola.attachmentZoneId
+          ? 'Unresolved host zone'
+          : null;
     return {
       ref: {
         family: 'pergolas',
@@ -286,7 +291,9 @@ export function buildDrawingWorkbenchRailModel(input: {
   house: HouseModel | null;
   openings: OpeningObjectModel[];
   openingHostResolutions: Record<string, ObjectFirstOpeningHostResolution>;
-  pergolas: PergolaModel[];
+  pergolas: PergolaObjectModel[];
+  compatibilityPergolas: PergolaModel[];
+  pergolaAttachmentResolutions: Record<string, ObjectFirstPergolaAttachmentResolution>;
   warnings: HouseFirstMigrationWarning[];
   modules: DrawingWorkbenchRailPergolaModuleState[];
 }): DrawingWorkbenchRailModel {
@@ -299,8 +306,9 @@ export function buildDrawingWorkbenchRailModel(input: {
       hostResolutions: input.openingHostResolutions,
     }),
     pergolas: buildPergolaEntries({
-      house: input.house,
       pergolas: input.pergolas,
+      compatibilityPergolas: input.compatibilityPergolas,
+      attachmentResolutions: input.pergolaAttachmentResolutions,
       modules: input.modules,
     }),
   };

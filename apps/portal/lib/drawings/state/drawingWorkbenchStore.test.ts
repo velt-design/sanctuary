@@ -349,6 +349,10 @@ describe('buildDrawingWorkbenchStore', () => {
     expect(pergolaStore.ui.activeRailTab).toBe('pergolas');
     expect(pergolaStore.ui.activeHouseSelection).toEqual({ kind: 'house', targetId: null });
     expect(pergolaStore.derived.activePergola?.id).toBe('pergola-1');
+    expect(pergolaStore.derived.objectFirstPergolas.map((pergola) => pergola.id)).toEqual(['pergola-1', 'pergola-2']);
+    expect(pergolaStore.derived.activeObjectFirstPergola?.id).toBe('pergola-1');
+    expect(pergolaStore.derived.activePergolaAttachmentResolution?.status).toBe('resolved');
+    expect(pergolaStore.derived.unresolvedPergolaAttachmentCount).toBe(0);
 
     const houseStore = buildDrawingWorkbenchStore({
       snapshot,
@@ -363,6 +367,83 @@ describe('buildDrawingWorkbenchStore', () => {
     expect(houseStore.ui.activePergolaId).toBeNull();
     expect(houseStore.ui.activeRailTab).toBe('house_forms');
     expect(houseStore.ui.activeHouseSelection).toEqual({ kind: 'footprint', targetId: 'house-main' });
+  });
+
+  it('uses object-first derived attachment resolution for pergola rail state without retargeting stale hosts', () => {
+    const fixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
+    if (!fixture) throw new Error('Missing mono-standard fixture.');
+    const staleEdgeDraft = buildEstimateDrawingDraftFromSnapshot(fixture.snapshot);
+    if (!staleEdgeDraft) throw new Error('Expected drawing draft.');
+    staleEdgeDraft.houseFirst = {
+      pergolas: [
+        {
+          id: 'pergola-1',
+          attachmentEdgeId: 'footprint-edge-99',
+        },
+      ],
+    };
+
+    const staleEdgeStore = buildDrawingWorkbenchStore({
+      snapshot: fixture.snapshot,
+      draft: staleEdgeDraft,
+      ui: createDrawingWorkbenchUiState({
+        workbenchMode: 'pergolas',
+        activePergolaId: 'pergola-1',
+      }),
+    });
+
+    expect(staleEdgeStore.derived.objectFirstPergolas[0]).toMatchObject({
+      id: 'pergola-1',
+      attachmentEdgeId: 'footprint-edge-99',
+    });
+    expect(staleEdgeStore.derived.activePergolaAttachmentResolution).toMatchObject({
+      status: 'unresolved',
+      code: 'missing_attachment_edge',
+      attachmentEdgeId: 'footprint-edge-99',
+      edge: null,
+      zone: null,
+    });
+    expect(staleEdgeStore.derived.unresolvedPergolaAttachmentCount).toBe(1);
+    expect(staleEdgeStore.derived.railModel.objectLists.pergolas[0]).toMatchObject({
+      status: 'blocked',
+      statusLabel: 'Unresolved attachment',
+      meta: 'Mono | Unresolved host edge',
+    });
+
+    const staleZoneDraft = buildEstimateDrawingDraftFromSnapshot(fixture.snapshot);
+    if (!staleZoneDraft) throw new Error('Expected drawing draft.');
+    staleZoneDraft.houseFirst = {
+      pergolas: [
+        {
+          id: 'pergola-1',
+          attachmentEdgeId: 'footprint-edge-3',
+          attachmentZoneId: 'zone-soffit-footprint-edge-99',
+        },
+      ],
+    };
+
+    const staleZoneStore = buildDrawingWorkbenchStore({
+      snapshot: fixture.snapshot,
+      draft: staleZoneDraft,
+      ui: createDrawingWorkbenchUiState({
+        workbenchMode: 'pergolas',
+        activePergolaId: 'pergola-1',
+      }),
+    });
+
+    expect(staleZoneStore.derived.activePergolaAttachmentResolution).toMatchObject({
+      status: 'unresolved',
+      code: 'missing_attachment_zone',
+      attachmentEdgeId: 'footprint-edge-3',
+      attachmentZoneId: 'zone-soffit-footprint-edge-99',
+    });
+    expect(staleZoneStore.derived.activePergolaAttachmentResolution?.edge?.id).toBe('footprint-edge-3');
+    expect(staleZoneStore.derived.unresolvedPergolaAttachmentCount).toBe(1);
+    expect(staleZoneStore.derived.railModel.objectLists.pergolas[0]).toMatchObject({
+      status: 'blocked',
+      statusLabel: 'Unresolved attachment',
+      meta: 'Mono | Rear wall | Unresolved host zone',
+    });
   });
 
   it('preserves stable deck ids and normalizes invalid deck selection state', () => {
