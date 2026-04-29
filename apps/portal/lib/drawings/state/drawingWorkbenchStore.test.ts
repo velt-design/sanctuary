@@ -163,6 +163,7 @@ describe('buildDrawingWorkbenchStore', () => {
     expect(store.derived.activeSectionModel?.rightEdgeHeightM).toBeCloseTo(2.1);
     expect(store.derived.activePlanViewModel?.annotations.suppressDocumentAnnotationsInModelSpace).toBe(true);
     expect(store.persisted.projectModel.house?.id).toBe('house-main');
+    expect('houseAssembly' in (store.persisted.projectModel as Record<string, unknown>)).toBe(false);
     expect(store.derived.house?.footprint.preset).toBe('straight');
     expect(store.derived.pergolas).toHaveLength(1);
     expect(store.derived.railModel.familySummaries.map((family) => family.family)).toEqual([

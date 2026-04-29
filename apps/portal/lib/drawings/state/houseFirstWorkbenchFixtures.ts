@@ -6,7 +6,7 @@ import {
 } from '@/lib/estimates/drawingEdits';
 import type {
   DeckModel,
-  WorkbenchProjectModel,
+  HouseFirstWorkbenchProjectModel,
 } from './houseFirstWorkbenchModel';
 
 function makeBaseLegacySnapshot() {
@@ -108,7 +108,7 @@ function makeBaseLegacySnapshot() {
   } satisfies Record<string, unknown>;
 }
 
-export function makeHouseFirstOnePergolaFixture(): WorkbenchProjectModel {
+export function makeHouseFirstOnePergolaFixture(): HouseFirstWorkbenchProjectModel {
   const roofFootprint = [
     { x: 0, y: -3000, z: 0 },
     { x: 6000, y: -3000, z: 0 },
@@ -195,7 +195,7 @@ export function makeHouseFirstOnePergolaFixture(): WorkbenchProjectModel {
   };
 }
 
-export function makeHouseFirstTwoPergolaSharedHouseFixture(): WorkbenchProjectModel {
+export function makeHouseFirstTwoPergolaSharedHouseFixture(): HouseFirstWorkbenchProjectModel {
   const base = makeBaseLegacySnapshot();
   const modules = (base.inputs as { modules: Array<Record<string, unknown>> }).modules;
   modules.push({
@@ -320,7 +320,7 @@ export function makeHouseFirstDeckSupportProjectFixture(input: {
   id: HouseFirstDeckSupportFixtureId;
 }): {
   activeHostSide: 'rear' | 'front' | 'left' | 'right';
-  projectModel: WorkbenchProjectModel;
+  projectModel: HouseFirstWorkbenchProjectModel;
 } {
   const projectModel = structuredClone(makeHouseFirstOnePergolaFixture());
   let activeHostSide: 'rear' | 'front' | 'left' | 'right' = 'rear';

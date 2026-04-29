@@ -210,6 +210,16 @@ export type ObjectFirstWorkbenchProjectModel = {
   warnings: string[];
 };
 
+// Canonical object-first vocabulary used by the active April workbench docs.
+// The existing `*Model` / `ObjectFirst*` exports remain as temporary compatibility aliases for this slice.
+export type HouseForm = HouseFormModel;
+export type DerivedBuildingEnvelope = DerivedBuildingEnvelopeModel;
+export type Deck = DeckObjectModel;
+export type Opening = OpeningObjectModel;
+export type Pergola = PergolaObjectModel;
+export type HouseAssembly = HouseAssemblyModel;
+export type WorkbenchProjectModel = ObjectFirstWorkbenchProjectModel;
+
 export type ObjectFirstHouseFormDraft = {
   id: string;
   label: string;
@@ -279,11 +289,12 @@ export type ObjectFirstWorkbenchDraftVNext = {
 };
 
 // Migration boundary notes:
-// - The current hidden workbench still runs from `houseFirstWorkbenchModel.ts`.
-// - These object-first contracts are the canonical vNext type authority for future work.
-// - This file does not imply dual-runtime support.
+// - The current hidden workbench still runs from `houseFirstWorkbenchModel.ts` and `buildHouseFirstWorkbenchProjectModel`.
+// - This file is the canonical object-first type authority for the active April workbench docs.
+// - The canonical names above align code vocabulary with the docs while the runtime remains house-first.
+// - This slice does not introduce dual-runtime support.
 // - Persistence migration into `EstimateDrawingDraft` is intentionally deferred.
-// - The authored draft helpers below define the future persistence shape only.
+// - The authored draft helpers below define the future persistence shape for P1.2 only.
 // - Current hidden workbench persistence remains `houseFirst` until a later migration slice.
 
 function trimNullableString(value: string | null | undefined): string | null {

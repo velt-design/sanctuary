@@ -394,6 +394,23 @@ function scoreDeckWallCandidate(input: {
   };
 }
 
+function resolveDeckCenterOffsetFromPreviewPolygon(input: {
+  preview: DeckPreviewState;
+  session: DeckDragSession;
+}): number {
+  const frame =
+    findDeckReferenceFrameById(
+      input.session.interaction.referenceFrames,
+      input.preview.primaryHostEdgeId ?? input.preview.placementEdgeId ?? input.preview.witnessEdgeId,
+    ) ?? input.session.interaction.referenceFrames[0];
+  if (!frame) return input.preview.anchorDerivedCenterOffsetM ?? input.preview.centerOffsetM;
+  const projection = projectPolygonToDeckReferenceFrame({
+    polygon: input.preview.polygon,
+    frame,
+  });
+  return projection?.centerOffsetM ?? input.preview.anchorDerivedCenterOffsetM ?? input.preview.centerOffsetM;
+}
+
 function selectDeckWallCandidate(input: {
   heldPoint: PlanPoint;
   polygon: PlanPoint[];
@@ -432,9 +449,18 @@ function selectDeckWallCandidate(input: {
   const previousStillCompetitive =
     previousCandidate.nearGapM <= DECK_UNSNAP_TOLERANCE_M ||
     previousCandidate.overlapPenaltyM <= DECK_UNSNAP_TOLERANCE_M;
-  const materiallyBetter =
+  const betterByContact =
     bestCandidate.nearGapM + DECK_REFERENCE_SWITCH_HYSTERESIS_M < previousCandidate.nearGapM ||
     bestCandidate.overlapPenaltyM + DECK_REFERENCE_SWITCH_HYSTERESIS_M < previousCandidate.overlapPenaltyM ||
+    bestCandidate.outsidePenaltyM + DECK_REFERENCE_SWITCH_HYSTERESIS_M < previousCandidate.outsidePenaltyM;
+  const previousWallStillFlush =
+    previousCandidate.nearGapM <= DECK_SNAP_TOLERANCE_M &&
+    previousCandidate.outsidePenaltyM <= DECK_UNSNAP_TOLERANCE_M;
+  if (previousWallStillFlush && !betterByContact) {
+    return previousCandidate;
+  }
+  const materiallyBetter =
+    betterByContact ||
     bestCandidate.snapSpanPenaltyM + DECK_REFERENCE_SWITCH_HYSTERESIS_M < previousCandidate.snapSpanPenaltyM ||
     bestCandidate.heldSpanOutsideM + DECK_REFERENCE_SWITCH_HYSTERESIS_M < previousCandidate.heldSpanOutsideM;
 
@@ -898,8 +924,22 @@ export function resolveDeckPreviewState(input: {
             input.session.interaction.referenceFrames[0]!,
         })
       : null;
+  const initialLockedWallFrame =
+    previousLockedWallId !== null
+      ? findDeckReferenceFrameById(input.session.interaction.referenceFrames, previousLockedWallId)
+      : null;
+  const lockedWallParallelMove =
+    initialLockedWallFrame && lockedWallFrameCandidate && input.session.startDragPlanPoint
+      ? (() => {
+          const startProjection = projectPointToDeckReferenceFrame(input.session.grabbedPlanPoint, initialLockedWallFrame);
+          const currentProjection = projectPointToDeckReferenceFrame(translatedGrabbedPoint, initialLockedWallFrame);
+          const deltaAlongM = Math.abs(currentProjection.alongM - startProjection.alongM);
+          const deltaOutwardM = Math.abs(currentProjection.outwardM - startProjection.outwardM);
+          return deltaOutwardM <= DECK_SNAP_TOLERANCE_M && deltaAlongM > deltaOutwardM;
+        })()
+      : false;
   const wallCandidate =
-    lockedWallFrameCandidate && lockedWallFrameCandidate.nearGapM <= DECK_UNSNAP_TOLERANCE_M
+    lockedWallParallelMove && lockedWallFrameCandidate
       ? lockedWallFrameCandidate
       : selectDeckWallCandidate({
           heldPoint: translatedGrabbedPoint,
@@ -1309,7 +1349,7 @@ export function buildDeckCommitPatch(input: {
     presetRect: {
       centerOffsetM: formatDeckPresetValue(
         input.preview.releasePlacement === 'snapped'
-          ? input.preview.anchorDerivedCenterOffsetM ?? input.preview.centerOffsetM
+          ? resolveDeckCenterOffsetFromPreviewPolygon(input)
           : input.preview.centerOffsetM,
       ),
       detachedGapM:

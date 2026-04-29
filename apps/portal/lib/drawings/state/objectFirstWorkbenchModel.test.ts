@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import type {
-  HouseAssemblyModel,
+  HouseAssembly,
+  HouseForm,
   ObjectFirstWorkbenchProjectModel,
-  OpeningObjectModel,
-  PergolaObjectModel,
+  Opening,
+  Pergola,
+  WorkbenchProjectModel,
 } from './objectFirstWorkbenchModel';
 
 function makePolygon() {
@@ -32,69 +34,71 @@ function makeFootprintParams() {
 
 describe('objectFirstWorkbenchModel contracts', () => {
   it('expresses a house assembly as multiple independently movable house forms', () => {
-    const assembly: HouseAssemblyModel = {
+    const houseForms: HouseForm[] = [
+      {
+        id: 'form-a',
+        label: 'Form A',
+        transform: { offsetXM: 0, offsetYM: 0, rotationQuarterTurns: 0 },
+        footprint: {
+          mode: 'preset',
+          preset: 'straight',
+          params: makeFootprintParams(),
+          polygon: makePolygon(),
+          attachmentSide: 'rear',
+        },
+        roofIntent: {
+          form: 'gable',
+          material: 'corrugated_iron',
+          primaryPitchDeg: '7',
+          primaryFallDirection: 'negative_y',
+          ridgeAxis: 'x',
+          openGableEndIds: [],
+          appendage: {
+            enabled: false,
+            form: 'flat',
+            hostEdge: 'rear',
+            pitchDeg: '0',
+            dropMm: '0',
+          },
+        },
+        storeyMode: 'single_storey',
+        attachmentStrategy: null,
+      },
+      {
+        id: 'form-b',
+        label: 'Form B',
+        transform: { offsetXM: 4, offsetYM: 0, rotationQuarterTurns: 1 },
+        footprint: {
+          mode: 'preset',
+          preset: 'straight',
+          params: makeFootprintParams(),
+          polygon: makePolygon(),
+          attachmentSide: 'left',
+        },
+        roofIntent: {
+          form: 'mono',
+          material: 'corrugated_iron',
+          primaryPitchDeg: '5',
+          primaryFallDirection: 'negative_x',
+          ridgeAxis: 'y',
+          openGableEndIds: [],
+          appendage: {
+            enabled: false,
+            form: 'flat',
+            hostEdge: 'left',
+            pitchDeg: '0',
+            dropMm: '0',
+          },
+        },
+        storeyMode: 'single_storey',
+        attachmentStrategy: null,
+      },
+    ];
+
+    const assembly: HouseAssembly = {
       id: 'assembly-main',
       label: 'Main House',
-      houseForms: [
-        {
-          id: 'form-a',
-          label: 'Form A',
-          transform: { offsetXM: 0, offsetYM: 0, rotationQuarterTurns: 0 },
-          footprint: {
-            mode: 'preset',
-            preset: 'straight',
-            params: makeFootprintParams(),
-            polygon: makePolygon(),
-            attachmentSide: 'rear',
-          },
-          roofIntent: {
-            form: 'gable',
-            material: 'corrugated_iron',
-            primaryPitchDeg: '7',
-            primaryFallDirection: 'negative_y',
-            ridgeAxis: 'x',
-            openGableEndIds: [],
-            appendage: {
-              enabled: false,
-              form: 'flat',
-              hostEdge: 'rear',
-              pitchDeg: '0',
-              dropMm: '0',
-            },
-          },
-          storeyMode: 'single_storey',
-          attachmentStrategy: null,
-        },
-        {
-          id: 'form-b',
-          label: 'Form B',
-          transform: { offsetXM: 4, offsetYM: 0, rotationQuarterTurns: 1 },
-          footprint: {
-            mode: 'preset',
-            preset: 'straight',
-            params: makeFootprintParams(),
-            polygon: makePolygon(),
-            attachmentSide: 'left',
-          },
-          roofIntent: {
-            form: 'mono',
-            material: 'corrugated_iron',
-            primaryPitchDeg: '5',
-            primaryFallDirection: 'negative_x',
-            ridgeAxis: 'y',
-            openGableEndIds: [],
-            appendage: {
-              enabled: false,
-              form: 'flat',
-              hostEdge: 'left',
-              pitchDeg: '0',
-              dropMm: '0',
-            },
-          },
-          storeyMode: 'single_storey',
-          attachmentStrategy: null,
-        },
-      ],
+      houseForms,
       derivedEnvelope: {
         mergedFormIds: ['form-a', 'form-b'],
         footprint: [
@@ -200,7 +204,7 @@ describe('objectFirstWorkbenchModel contracts', () => {
   });
 
   it('treats opening hosting as a derived wall contract', () => {
-    const opening: OpeningObjectModel = {
+    const opening: Opening = {
       id: 'opening-1',
       label: 'Kitchen Slider',
       kind: 'slider',
@@ -218,7 +222,7 @@ describe('objectFirstWorkbenchModel contracts', () => {
   });
 
   it('treats pergola attachment as a derived envelope contract', () => {
-    const pergola: PergolaObjectModel = {
+    const pergola: Pergola = {
       id: 'pergola-1',
       label: 'Rear Pergola',
       family: 'gable',
@@ -233,7 +237,7 @@ describe('objectFirstWorkbenchModel contracts', () => {
   });
 
   it('keeps derived edges as the assembly-level bridge for hosted objects', () => {
-    const assembly: HouseAssemblyModel = {
+    const assembly: HouseAssembly = {
       id: 'assembly-main',
       label: 'Main House',
       houseForms: [],
@@ -311,7 +315,7 @@ describe('objectFirstWorkbenchModel contracts', () => {
   });
 
   it('keeps the project contract object-first instead of exposing a single shared house footprint', () => {
-    const project: ObjectFirstWorkbenchProjectModel = {
+    const project: WorkbenchProjectModel = {
       source: 'legacy_estimate_snapshot',
       houseAssembly: {
         id: 'assembly-main',
@@ -327,5 +331,8 @@ describe('objectFirstWorkbenchModel contracts', () => {
 
     expect(project.houseAssembly?.houseForms).toEqual([]);
     expect('house' in project).toBe(false);
+
+    const legacyAliasProject: ObjectFirstWorkbenchProjectModel = project;
+    expect(legacyAliasProject.houseAssembly?.houseForms).toEqual([]);
   });
 });

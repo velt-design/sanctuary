@@ -377,7 +377,9 @@ export function resolveOpeningPanelCount(
   return normalizeSliderPanelCount(value) ?? 2;
 }
 
-export type WorkbenchProjectModel = {
+// Compatibility runtime contract for the current hidden workbench store.
+// This is not the canonical object-first project contract described by the active April docs.
+export type HouseFirstWorkbenchProjectModel = {
   source: 'legacy_estimate_snapshot';
   house: HouseModel | null;
   pergolas: PergolaModel[];

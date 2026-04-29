@@ -30,9 +30,9 @@ import {
 } from './deckSupportDiagnostics';
 import type {
   HouseFirstMigrationWarning,
+  HouseFirstWorkbenchProjectModel,
   HouseModel,
   PergolaModel,
-  WorkbenchProjectModel,
 } from './houseFirstWorkbenchModel';
 
 export type DrawingWorkbenchModuleEntry = {
@@ -55,7 +55,9 @@ export type DrawingWorkbenchStore = {
     snapshot: Record<string, unknown> | null;
     ignoreModuleResults: boolean;
     modules: DrawingWorkbenchModuleEntry[];
-    projectModel: WorkbenchProjectModel;
+    // P1.1 boundary: the hidden workbench store still consumes the house-first compatibility contract.
+    // The object-first contracts in `objectFirstWorkbenchModel.ts` are canonical for future slices, but not wired here yet.
+    projectModel: HouseFirstWorkbenchProjectModel;
   };
   ui: DrawingWorkbenchUiState;
   derived: {
@@ -136,6 +138,8 @@ export function buildDrawingWorkbenchStore(input: {
   const drawingModules = buildEstimateDrawingModules(effectiveSnapshot, {
     ignoreModuleResults: input.ignoreModuleResults,
   });
+  // P1.1 boundary: keep the active hidden workbench runtime on the compatibility `houseFirst` project model.
+  // Object-first contract reconciliation happens in types/tests only during this slice.
   const projectModel = buildHouseFirstWorkbenchProjectModel({
     snapshot: input.snapshot,
     draft: input.draft,

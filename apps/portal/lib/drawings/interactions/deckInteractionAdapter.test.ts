@@ -406,4 +406,111 @@ describe('deckInteractionAdapter', () => {
     expect(patch.hostEdgeId).toBe('footprint-edge-1');
     expect((patch.presetRect as { centerOffsetM: string }).centerOffsetM).toBe('1');
   });
+
+  it('commits the exact same-wall overhang that was shown at release instead of mirroring to the far end', () => {
+    const polygon = [
+      { x: 0, y: 0 },
+      { x: 4, y: 0 },
+      { x: 4, y: 2 },
+      { x: 0, y: 2 },
+    ];
+    const session = makeSession({
+      polygon,
+      startDragPlanPoint: { x: 1.3, y: 1.1 },
+      frames: [rearFrame, leftFrame],
+      renderedCenter: { x: 2, y: 1 },
+      deckWidthM: 4,
+      deckDepthM: 2,
+      placement: 'snapped',
+      attachmentMode: 'single_edge',
+    });
+
+    const preview = resolveDeckPreviewState({
+      session,
+      nextSvgX: session.startSvgX - 1.6,
+      nextSvgY: session.startSvgY,
+      nextDragPlanPoint: {
+        x: session.startDragPlanPoint!.x - 1.6,
+        y: session.startDragPlanPoint!.y,
+      },
+      previousPreviewState: null,
+    });
+    const patch = buildDeckCommitPatch({
+      session,
+      preview,
+    });
+
+    expect(preview.releasePlacement).toBe('snapped');
+    expect(preview.primaryHostEdgeId).toBe('footprint-edge-1');
+    expect(preview.centerOffsetM).toBeCloseTo(-1.6, 6);
+    expect((patch.presetRect as { centerOffsetM: string }).centerOffsetM).toBe('-1.6');
+  });
+
+  it('can hand off live from the current snapped wall to the adjacent wall without detaching first', () => {
+    const polygon = [
+      { x: 0, y: 0 },
+      { x: 4, y: 0 },
+      { x: 4, y: 3 },
+      { x: 0, y: 3 },
+    ];
+    const session = makeSession({
+      polygon,
+      startDragPlanPoint: { x: 0.1, y: 0.7 },
+      frames: [rearFrame, leftFrame],
+      renderedCenter: { x: 2, y: 1.5 },
+      deckWidthM: 4,
+      deckDepthM: 3,
+      placement: 'snapped',
+      attachmentMode: 'single_edge',
+    });
+
+    const preview = resolveDeckPreviewState({
+      session,
+      nextSvgX: session.startSvgX,
+      nextSvgY: session.startSvgY + 0.9,
+      nextDragPlanPoint: {
+        x: session.startDragPlanPoint!.x,
+        y: session.startDragPlanPoint!.y + 0.9,
+      },
+      previousPreviewState: null,
+    });
+
+    expect(preview.releasePlacement).toBe('snapped');
+    expect(preview.primaryHostEdgeId).toBe('footprint-edge-4');
+    expect(preview.previewWallFrameId).toBe('footprint-edge-4');
+    expect(preview.placement).toBe('floating');
+    expect(preview.snapTargetState).toBe('stable');
+  });
+
+  it('keeps a snapped deck attached during a very large along-wall drag while it stays flush to the same wall', () => {
+    const polygon = [
+      { x: 0, y: 0 },
+      { x: 4, y: 0 },
+      { x: 4, y: 3 },
+      { x: 0, y: 3 },
+    ];
+    const session = makeSession({
+      polygon,
+      startDragPlanPoint: { x: 50, y: 50 },
+      frames: [rearFrame, leftFrame],
+      renderedCenter: { x: 2, y: 1.5 },
+      deckWidthM: 4,
+      deckDepthM: 3,
+      placement: 'snapped',
+      attachmentMode: 'single_edge',
+    });
+
+    const preview = resolveDeckPreviewState({
+      session,
+      nextSvgX: -250,
+      nextSvgY: 50,
+      nextDragPlanPoint: { x: -250, y: 50 },
+      previousPreviewState: null,
+    });
+
+    expect(preview.releasePlacement).toBe('snapped');
+    expect(preview.placement).toBe('snapped');
+    expect(preview.primaryHostEdgeId).toBe('footprint-edge-1');
+    expect(preview.snapTargetState).toBe('locked');
+  });
 });

@@ -51,8 +51,8 @@ import type {
   HouseRoofProvenance,
   HouseRoofRidgeAxis,
   HouseRoofForm,
+  HouseFirstWorkbenchProjectModel,
   PergolaModel,
-  WorkbenchProjectModel,
 } from './houseFirstWorkbenchModel';
 import {
   normalizeWallOpeningKind,
@@ -1968,7 +1968,7 @@ export function buildHouseFirstWorkbenchProjectModel(input: {
   snapshot: Record<string, unknown> | null;
   draft?: EstimateDrawingDraft | null;
   ignoreModuleResults?: boolean;
-}): WorkbenchProjectModel {
+}): HouseFirstWorkbenchProjectModel {
   const effectiveSnapshot = mergeEstimateDrawingDraftIntoSnapshot(input.snapshot, input.draft);
   const calculatorInputs = resolveCalculatorInputsFromSnapshot(effectiveSnapshot);
   const modules = buildEstimateDrawingModules(effectiveSnapshot, {
