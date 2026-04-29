@@ -75,7 +75,7 @@ describe('deriveWorkbenchGeometry', () => {
     });
   });
 
-  it('preserves legacy sheet-compatible models for unsupported hip families', () => {
+  it('builds geometry-backed models for hip families', () => {
     const fixture = requireFixture('mono-standard');
     const snapshot = structuredClone(fixture.snapshot) as {
       inputs: { modules: Array<{ pergolaStyle: string }> };
@@ -106,11 +106,65 @@ describe('deriveWorkbenchGeometry', () => {
       fallbackSectionModel: drawingModule.sectionModel,
     });
 
-    expect(derivation.kind).toBe('legacy_unsupported_family');
-    if (derivation.kind !== 'legacy_unsupported_family') return;
-    expect(derivation.planModel).not.toBeNull();
-    expect(derivation.sectionModel).not.toBeNull();
-    expect(derivation.renderSource).toBe('legacy');
-    expect(derivation.renderStatus).toBe('legacy_unsupported_family');
+    expect(derivation.kind).toBe('geometry');
+    if (derivation.kind !== 'geometry') return;
+    expect(derivation.config.family).toBe('hip');
+    expect(derivation.assembly.family).toBe('hip');
+    expect(derivation.geometryPlan.family).toBe('hip');
+    expect(derivation.renderSource).toBe('geometry');
+    expect(derivation.renderStatus).toBe('geometry_ready');
+    expect(derivation.planModel?.roofType).toBe('hip');
+    expect(derivation.sectionModel?.roofType).toBe('hip');
+  });
+
+  it('builds geometry-backed models for hip-corner families while preserving B-dimension sheet metadata', () => {
+    const fixture = requireFixture('mono-standard');
+    const snapshot = structuredClone(fixture.snapshot) as {
+      inputs: {
+        modules: Array<{
+          pergolaStyle: string;
+          hipCornerLengthBM?: string;
+          hipCornerProjectionBM?: string;
+        }>;
+      };
+    };
+    snapshot.inputs.modules[0]!.pergolaStyle = 'hip_corner';
+    snapshot.inputs.modules[0]!.hipCornerLengthBM = '4';
+    snapshot.inputs.modules[0]!.hipCornerProjectionBM = '2';
+
+    const resolved = resolveWorkbenchGeometryModule({
+      snapshot: snapshot as unknown as Record<string, unknown>,
+      moduleIndex: 0,
+    });
+    if (!resolved.ok) throw new Error('Expected resolved hip-corner geometry module.');
+
+    const drawingModule = buildEstimateDrawingModules(snapshot as unknown as Record<string, unknown>)[0];
+    if (!drawingModule) throw new Error('Expected hip-corner drawing module.');
+
+    const projectModel = buildHouseFirstWorkbenchProjectModel({
+      snapshot: snapshot as unknown as Record<string, unknown>,
+    });
+    const derivation = deriveWorkbenchGeometry({
+      projectId: 'proj_shared',
+      estimateId: fixture.estimate.id,
+      designRequestId: fixture.request.id,
+      moduleId: drawingModule.id,
+      module: coerceHiddenWorkbenchGableBaseline(resolved.module),
+      result: resolved.moduleResult,
+      sharedHouse: projectModel.house,
+      fallbackPlanModel: drawingModule.planModel,
+      fallbackSectionModel: drawingModule.sectionModel,
+    });
+
+    expect(derivation.kind).toBe('geometry');
+    if (derivation.kind !== 'geometry') return;
+    expect(derivation.config.family).toBe('hip_corner');
+    expect(derivation.assembly.family).toBe('hip_corner');
+    expect(derivation.geometryPlan.family).toBe('hip_corner');
+    expect(derivation.renderSource).toBe('geometry');
+    expect(derivation.renderStatus).toBe('geometry_ready');
+    expect(derivation.planModel?.roofType).toBe('hip_corner');
+    expect(derivation.planModel?.lengthB).toBeCloseTo(4);
+    expect(derivation.planModel?.spanB).toBeCloseTo(2);
   });
 });

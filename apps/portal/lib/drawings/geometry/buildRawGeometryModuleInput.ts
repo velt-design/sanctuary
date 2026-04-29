@@ -218,6 +218,9 @@ export function buildRawGeometryModuleInput(input: {
       roofPitchDeg: module.roofPitchDeg,
       overhangEnabled: typeof result?.derived.overhang_enabled === 'boolean' ? result.derived.overhang_enabled : Boolean(module.overhangEnabled),
       overhangM: resolveOverhangAmountM(module, result),
+      mixedAcrylicBaysMain: module.mixedAcrylicBaysMain,
+      mixedAcrylicBaysA: module.mixedAcrylicBaysA,
+      mixedAcrylicBaysB: module.mixedAcrylicBaysB,
     },
     gable: {
       endFramesMode: module.gableEndFramesMode,

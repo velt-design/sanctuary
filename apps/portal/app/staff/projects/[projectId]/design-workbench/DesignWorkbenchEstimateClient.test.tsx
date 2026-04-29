@@ -401,7 +401,7 @@ describe('DesignWorkbenchEstimateClient', () => {
     rendered.unmount();
   });
 
-  it('renders the Sanctuary rail for supported gable and box estimates', () => {
+  it('renders the Sanctuary rail for supported gable, box, hip, and hip-corner estimates', () => {
     const gableRendered = renderIntoDocument(
       <DesignWorkbenchEstimateClient
         estimate={buildEstimateDetail({ fixtureSlug: 'gable-standard' })}
@@ -428,6 +428,57 @@ describe('DesignWorkbenchEstimateClient', () => {
     expect(boxRendered.container.textContent).toContain('Box perimeter');
     expect(pitchInput?.disabled).toBe(true);
     boxRendered.unmount();
+
+    const hipRendered = renderIntoDocument(
+      <DesignWorkbenchEstimateClient
+        estimate={buildEstimateDetail({
+          mutateSnapshot: (snapshot) => {
+            const next = structuredClone(snapshot);
+            const inputs = (next as { inputs?: { modules?: Array<Record<string, unknown>> } } | null)?.inputs;
+            if (inputs?.modules?.[0]) {
+              inputs.modules[0].pergolaStyle = 'hip';
+            }
+            return next;
+          },
+        })}
+        projectName="Deck Build"
+        siteAddress="1 Test Street"
+      />,
+    );
+
+    clickButtonByText(hipRendered.container, 'Pergolas');
+    expect(hipRendered.container.textContent).toContain('Pergola family');
+    expect(hipRendered.container.textContent).toContain('Hip');
+    expect(hipRendered.container.textContent).not.toContain('Editing Deferred');
+    hipRendered.unmount();
+
+    const hipCornerRendered = renderIntoDocument(
+      <DesignWorkbenchEstimateClient
+        estimate={buildEstimateDetail({
+          mutateSnapshot: (snapshot) => {
+            const next = structuredClone(snapshot);
+            const inputs =
+              (next as {
+                inputs?: { modules?: Array<Record<string, unknown>> };
+              } | null)?.inputs;
+            if (inputs?.modules?.[0]) {
+              inputs.modules[0].pergolaStyle = 'hip_corner';
+              inputs.modules[0].hipCornerLengthBM = '4';
+              inputs.modules[0].hipCornerProjectionBM = '2';
+            }
+            return next;
+          },
+        })}
+        projectName="Deck Build"
+        siteAddress="1 Test Street"
+      />,
+    );
+
+    clickButtonByText(hipCornerRendered.container, 'Pergolas');
+    expect(hipCornerRendered.container.textContent).toContain('Roof length B (m)');
+    expect(hipCornerRendered.container.textContent).toContain('Roof span B (m)');
+    expect(hipCornerRendered.container.textContent).not.toContain('Editing Deferred');
+    hipCornerRendered.unmount();
   });
 
   it('opens the matching canonical tab from viewport selection and keeps the tab on empty-space clear', async () => {
@@ -496,7 +547,7 @@ describe('DesignWorkbenchEstimateClient', () => {
         const next = structuredClone(snapshot);
         const inputs = (next as { inputs?: { modules?: Array<Record<string, unknown>> } } | null)?.inputs;
         if (inputs?.modules?.[0]) {
-          inputs.modules[0].pergolaStyle = 'hip';
+          inputs.modules[0].pergolaStyle = 'unsupported_custom_family';
           inputs.modules[0].boxPerimeterEnabled = false;
         }
         return next;

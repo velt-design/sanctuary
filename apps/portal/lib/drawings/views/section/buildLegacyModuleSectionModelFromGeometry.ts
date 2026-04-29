@@ -9,6 +9,8 @@ import {
 } from '@/lib/types/calculator';
 
 function roofTypeFromGeometry(geometrySection: GeometrySectionViewModel): RoofType {
+  if (geometrySection.family === 'hip_corner') return 'hip_corner';
+  if (geometrySection.family === 'hip') return 'hip';
   if (geometrySection.family === 'gable') return 'gable';
   return 'pitched';
 }
@@ -72,10 +74,16 @@ function profileDimsMetres(
 }
 
 function slopeDirectionFromGeometry(geometrySection: GeometrySectionViewModel): ModuleSectionModel['slopeDirection'] {
-  if (geometrySection.family === 'gable') {
+  if (geometrySection.family === 'gable' || geometrySection.family === 'hip') {
     return 'away_from_house';
   }
   return geometrySection.anchors.pitch?.fallDirection === 'negativeY' ? 'toward_house' : 'away_from_house';
+}
+
+function parsePositiveMetres(value: string | null | undefined): number | null {
+  if (typeof value !== 'string') return null;
+  const parsed = Number.parseFloat(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
 }
 
 export function buildLegacyModuleSectionModelFromGeometry(input: {
@@ -114,11 +122,12 @@ export function buildLegacyModuleSectionModelFromGeometry(input: {
     fallbackMetadata?.ridgeBeamWidthM ?? 0.05,
     fallbackMetadata?.ridgeBeamDepthM ?? 0.15,
   );
+  const roofType = roofTypeFromGeometry(geometrySection);
 
   return {
     dataSource: fallbackMetadata?.dataSource ?? 'derived',
     pergolaStyle: module.pergolaStyle,
-    roofType: roofTypeFromGeometry(geometrySection),
+    roofType,
     boxPerimeterEnabled: geometrySection.roofForm.box,
     houseConnectionType: module.houseConnectionType,
     attachmentSide: attachmentSideFromModule(module),
@@ -128,7 +137,7 @@ export function buildLegacyModuleSectionModelFromGeometry(input: {
     slopeDirection: slopeDirectionFromGeometry(geometrySection),
     sectionKind: geometrySection.sectionKind,
     spanA: Number((geometrySection.metrics.spanMm / 1000).toFixed(6)),
-    spanB: null,
+    spanB: roofType === 'hip_corner' ? parsePositiveMetres(module.hipCornerProjectionBM) : null,
     pitchDeg: Number((geometrySection.metrics.pitchDeg ?? 0).toFixed(1)),
     postWidthM: postDims.widthM,
     postDepthM: postDims.depthM,

@@ -182,7 +182,7 @@ describe('buildDrawingWorkbenchStore', () => {
     expect(store.derived.status).toBe('ready');
   });
 
-  it('keeps legacy plan state available for unsupported hip families while marking model-space render status', () => {
+  it('keeps sheet models available while marking supported hip families as geometry-ready', () => {
     const snapshot = {
       inputs: {
         schemaVersion: 'v2',
@@ -211,12 +211,13 @@ describe('buildDrawingWorkbenchStore', () => {
 
     expect(store.persisted.modules[0]?.drawingModule.planModel).not.toBeNull();
     expect(store.persisted.modules[0]?.drawingModule.sectionModel).not.toBeNull();
-    expect(store.persisted.modules[0]?.geometryPlanViewModel).toBeNull();
-    expect(store.persisted.modules[0]?.planRenderSource).toBe('legacy');
-    expect(store.persisted.modules[0]?.planRenderStatus).toBe('legacy_unsupported_family');
+    expect(store.persisted.modules[0]?.geometryPlanViewModel).not.toBeNull();
+    expect(store.persisted.modules[0]?.planRenderSource).toBe('geometry');
+    expect(store.persisted.modules[0]?.planRenderStatus).toBe('geometry_ready');
     expect(store.derived.activePlanModel).not.toBeNull();
-    expect(store.derived.activePlanViewModel?.modelSpacePergola.renderSource).toBe('legacy');
-    expect(store.derived.activePlanViewModel?.modelSpacePergola.renderStatus).toBe('legacy_unsupported_family');
+    expect(store.derived.activePlanViewModel?.modelSpacePergola.renderSource).toBe('geometry');
+    expect(store.derived.activePlanViewModel?.modelSpacePergola.renderStatus).toBe('geometry_ready');
+    expect(store.derived.activePlanModel?.roofType).toBe('hip');
     expect(store.derived.activeSectionModel).not.toBeNull();
     expect(store.derived.status).toBe('ready');
   });

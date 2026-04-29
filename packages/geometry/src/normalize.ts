@@ -80,6 +80,8 @@ function resolveFamily(input: RawGeometryModuleInput): GeometryConfig['family'] 
     return input.boxPerimeterEnabled ? 'box' : 'mono';
   }
   if (input.pergolaStyle === 'gable') return 'gable';
+  if (input.pergolaStyle === 'hip') return 'hip';
+  if (input.pergolaStyle === 'hip_corner') return 'hip_corner';
   return null;
 }
 
@@ -214,7 +216,7 @@ function resolveRoofMaterial(input: RawGeometryModuleInput): { material: RoofMat
 }
 
 function resolveFallDirection(input: RawGeometryModuleInput, family: GeometryConfig['family']): RoofFallDirection {
-  if (family === 'gable') return 'dual';
+  if (family === 'gable' || family === 'hip') return 'dual';
   const slopeDirection = input.derived?.slopeDirection ?? input.roof.slopeDirection ?? 'away_from_house';
   return slopeDirection === 'toward_house' ? 'negativeY' : 'positiveY';
 }
@@ -397,6 +399,10 @@ function resolveMillimetresWithDefault(value: string | number | null | undefined
 function resolveOptionalSquareMetresToSquareMillimetres(value: number | null | undefined): number | null {
   const parsed = parseNonNegativeNumber(value);
   return parsed === null ? null : Math.round(parsed * 1_000_000);
+}
+
+function resolveOptionalCount(value: string | number | null | undefined): number | null {
+  return parseNonNegativeInteger(value);
 }
 
 function resolveFootprintPreset(value: HouseFootprintPreset | null | undefined): HouseFootprintPreset {
@@ -640,6 +646,22 @@ export function normalizeGeometryConfig(input: RawGeometryModuleInput): Normaliz
   });
   if (!projection.ok) return fail(projection.code, projection.error);
 
+  let hipCornerLengthB: { ok: true; value: number } | { ok: false; code: NormalizeGeometryConfigErrorCode; error: string } | null = null;
+  let hipCornerProjectionB: { ok: true; value: number } | { ok: false; code: NormalizeGeometryConfigErrorCode; error: string } | null = null;
+  if (family === 'hip_corner') {
+    hipCornerLengthB = resolveDimensionMm({
+      label: 'length B',
+      rawValue: input.dimensions.hipCornerLengthBM,
+    });
+    if (!hipCornerLengthB.ok) return fail(hipCornerLengthB.code, hipCornerLengthB.error);
+
+    hipCornerProjectionB = resolveDimensionMm({
+      label: 'projection B',
+      rawValue: input.dimensions.hipCornerProjectionBM,
+    });
+    if (!hipCornerProjectionB.ok) return fail(hipCornerProjectionB.code, hipCornerProjectionB.error);
+  }
+
   const pitch = resolvePitchDeg(input);
   if (!pitch.ok) return fail(pitch.code, pitch.error);
 
@@ -668,7 +690,7 @@ export function normalizeGeometryConfig(input: RawGeometryModuleInput): Normaliz
   const boxRiseMm = resolveOptionalMillimetres(input.derived?.boxRiseMm);
   const boxMaxFallMm = resolveOptionalMillimetres(input.derived?.boxMaxFallMm);
   const roofCoveringKind =
-    (family === 'mono' || family === 'gable') && roof.material === 'acrylic' ? 'acrylic' : null;
+    (family === 'mono' || family === 'gable' || family === 'hip') && roof.material === 'acrylic' ? 'acrylic' : null;
   const footprintMode = resolveFootprintMode(input.houseContext.footprintMode);
   let houseFootprint: GeometryConfig['houseContext']['footprint'] = null;
   if (connectionType !== 'freestanding') {
@@ -736,6 +758,8 @@ export function normalizeGeometryConfig(input: RawGeometryModuleInput): Normaliz
     dimensions: {
       lengthMm: length.value,
       projectionMm: projection.value,
+      lengthBMm: family === 'hip_corner' ? hipCornerLengthB?.value ?? null : null,
+      projectionBMm: family === 'hip_corner' ? hipCornerProjectionB?.value ?? null : null,
       roofPitchDeg: pitch.value,
     },
     roof: {
@@ -760,12 +784,15 @@ export function normalizeGeometryConfig(input: RawGeometryModuleInput): Normaliz
         roofCoveringKind === 'acrylic' ? resolveOptionalMetresToMillimetres(input.derived?.rafterFarAllowanceM) : null,
       acrylicAreaMm2:
         roofCoveringKind === 'acrylic' ? resolveOptionalSquareMetresToSquareMillimetres(input.derived?.acrylicAreaM2) : null,
+      mixedAcrylicBaysMain: resolveOptionalCount(input.roof.mixedAcrylicBaysMain),
+      mixedAcrylicBaysA: resolveOptionalCount(input.roof.mixedAcrylicBaysA),
+      mixedAcrylicBaysB: resolveOptionalCount(input.roof.mixedAcrylicBaysB),
     },
     gable: {
-      ridgePositionMm: family === 'gable' ? projection.value / 2 : null,
-      endFramesMode: family === 'gable' ? gableEndFramesMode ?? 'none' : null,
-      houseEaveGutterMode: family === 'gable' ? gableHouseEaveGutterMode : null,
-      outerEaveGutterMode: family === 'gable' ? gableOuterEaveGutterMode : null,
+      ridgePositionMm: family === 'gable' || family === 'hip' ? projection.value / 2 : null,
+      endFramesMode: family === 'gable' || family === 'hip' ? gableEndFramesMode ?? 'none' : null,
+      houseEaveGutterMode: family === 'gable' || family === 'hip' ? gableHouseEaveGutterMode : null,
+      outerEaveGutterMode: family === 'gable' || family === 'hip' ? gableOuterEaveGutterMode : null,
     },
     box: {
       houseEdgeGutterMode: family === 'box' ? boxHouseEdgeGutterMode : null,

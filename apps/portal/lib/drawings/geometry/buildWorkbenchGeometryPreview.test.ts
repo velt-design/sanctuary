@@ -211,7 +211,7 @@ describe('buildWorkbenchGeometryPreview', () => {
     expect(preview.assembly.roofPlanes[0]?.boundary[2]?.z).not.toBe(baseline.assembly.roofPlanes[0]?.boundary[2]?.z);
   });
 
-  it('surfaces unsupported family geometry instead of crashing', () => {
+  it('surfaces supported hip geometry through the ready preview path', () => {
     const fixture = requireFixture('mono-standard');
     const snapshot = structuredClone(fixture.snapshot) as {
       inputs?: { modules?: Array<Record<string, unknown>> };
@@ -234,15 +234,19 @@ describe('buildWorkbenchGeometryPreview', () => {
       moduleIndex: 0,
     });
 
-    expect(preview.kind).toBe('unsupported');
-    if (preview.kind !== 'unsupported') return;
-    expect(preview.message).toContain('not supported by Sanctuary geometry V1');
+    expect(preview.kind).toBe('ready');
+    if (preview.kind !== 'ready') return;
+    expect(preview.previewMode).toBe('snapshot_local_resolved');
+    expect(preview.config.family).toBe('hip');
+    expect(preview.validation.status).toBe('pass');
   });
 
-  it('surfaces unsupported draft geometry instead of falling back to stale snapshot outputs', () => {
+  it('surfaces supported hip-corner draft geometry instead of falling back to stale snapshot outputs', () => {
     const fixture = requireFixture('mono-standard');
     const draft = makeDraft(fixture.snapshot, (current) => {
-      current.inputs.modules[0]!.pergolaStyle = 'hip';
+      current.inputs.modules[0]!.pergolaStyle = 'hip_corner';
+      current.inputs.modules[0]!.hipCornerLengthBM = '4';
+      current.inputs.modules[0]!.hipCornerProjectionBM = '2';
     });
 
     const preview = buildWorkbenchGeometryPreview({
@@ -253,10 +257,11 @@ describe('buildWorkbenchGeometryPreview', () => {
       moduleIndex: 0,
     });
 
-    expect(preview.kind).toBe('unsupported');
-    if (preview.kind !== 'unsupported') return;
+    expect(preview.kind).toBe('ready');
+    if (preview.kind !== 'ready') return;
     expect(preview.previewMode).toBe('draft_local_resolved');
-    expect(preview.message).toContain('not supported by Sanctuary geometry V1');
+    expect(preview.config.family).toBe('hip_corner');
+    expect(preview.validation.status).toBe('pass');
   });
 
   it('reports shared attachment-zone counts and pergola resolution metadata in the 3D preview', () => {

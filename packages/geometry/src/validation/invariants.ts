@@ -67,7 +67,7 @@ function recomputeQuantityHooks(assembly: Assembly3D): QuantityHook[] {
         unit: 'mm',
       });
     }
-  } else if (assembly.family === 'gable') {
+  } else if (assembly.family === 'gable' || assembly.family === 'hip') {
     const ridge = assembly.members.find((member) => member.role === 'ridge');
     const houseSupport = assembly.members.find((member) => member.id === 'ledger' || member.id === 'house-beam');
     const outerSupport = assembly.members.find((member) => member.id === 'outer-beam');
@@ -157,6 +157,32 @@ function recomputeQuantityHooks(assembly: Assembly3D): QuantityHook[] {
       quantity: assembly.roofPlanes.length,
       unit: 'count',
     });
+  } else if (assembly.family === 'hip_corner') {
+    const supportBeams = assembly.members.filter((member) => member.role === 'beam');
+    const guttersForHooks = assembly.members.filter((member) => member.role === 'gutter');
+    quantityHooks.push({
+      key: 'support_beams.total_length_mm',
+      quantity: Math.round(supportBeams.reduce((sum, member) => sum + lineLength(member.centerline), 0)),
+      unit: 'mm',
+    });
+    quantityHooks.push({
+      key: 'gutters.total_length_mm',
+      quantity: Math.round(guttersForHooks.reduce((sum, member) => sum + lineLength(member.centerline), 0)),
+      unit: 'mm',
+    });
+    quantityHooks.push({
+      key: 'roof_planes.count',
+      quantity: assembly.roofPlanes.length,
+      unit: 'count',
+    });
+    if (assembly.members.some((member) => member.id === 'ledger')) {
+      const ledger = assembly.members.find((member) => member.id === 'ledger')!;
+      quantityHooks.push({
+        key: 'ledger.length_mm',
+        quantity: Math.round(lineLength(ledger.centerline)),
+        unit: 'mm',
+      });
+    }
   }
 
   return quantityHooks.sort((a, b) => a.key.localeCompare(b.key));
@@ -168,14 +194,22 @@ function validateOutline(config: GeometryConfig, assembly: Assembly3D): Geometry
   const maxX = Math.max(...assembly.outline.map((point) => point.x));
   const minY = Math.min(...assembly.outline.map((point) => point.y));
   const maxY = Math.max(...assembly.outline.map((point) => point.y));
+  const expectedMaxX =
+    config.family === 'hip_corner'
+      ? Math.max(config.dimensions.lengthMm, config.dimensions.lengthBMm ?? 0)
+      : config.dimensions.lengthMm;
+  const expectedMaxY =
+    config.family === 'hip_corner'
+      ? config.dimensions.projectionMm + (config.dimensions.projectionBMm ?? 0)
+      : config.dimensions.projectionMm;
   return [
     allGrounded
       ? pass('outline.ground_plane', 'Outline lies on the ground plane.')
       : fail('outline.ground_plane', 'Outline must lie on the ground plane.'),
     approxEqual(minX, 0) &&
-    approxEqual(maxX, config.dimensions.lengthMm) &&
+    approxEqual(maxX, expectedMaxX) &&
     approxEqual(minY, 0) &&
-    approxEqual(maxY, config.dimensions.projectionMm)
+    approxEqual(maxY, expectedMaxY)
       ? pass('outline.dimensions', 'Outline matches the normalized plan dimensions.')
       : fail('outline.dimensions', 'Outline dimensions do not match the normalized plan dimensions.'),
   ];
@@ -275,7 +309,7 @@ function validateRoofPlanes(config: GeometryConfig, assembly: Assembly3D): Geome
   );
 
   let fallOkay = false;
-  if (config.family === 'gable') {
+  if (config.family === 'gable' || config.family === 'hip') {
     fallOkay =
       assembly.roofPlanes.length === 2 &&
       assembly.roofPlanes.some((roofPlane) => roofPlane.fallVector.y < 0 && roofPlane.fallVector.z < 0) &&
@@ -526,6 +560,33 @@ function validateGable(config: GeometryConfig, assembly: Assembly3D): GeometryVa
     symmetricalOk
       ? pass('gable.symmetrical_eaves', 'Gable eave support heights remain symmetrical.')
       : fail('gable.symmetrical_eaves', 'Gable eave support heights must remain symmetrical.'),
+  ];
+}
+
+function validateHipCorner(config: GeometryConfig, assembly: Assembly3D): GeometryValidationInvariant[] {
+  const roofPlaneCountOk = assembly.roofPlanes.length === 2;
+  const hasWingARafters = assembly.members.some((member) => member.role === 'rafter' && member.metadata?.wing === 'A');
+  const hasWingBRafters = assembly.members.some((member) => member.role === 'rafter' && member.metadata?.wing === 'B');
+  const secondaryDimensions = assembly.semantics.secondaryDimensionsMm;
+  const secondaryDimensionsOk =
+    secondaryDimensions !== null &&
+    typeof secondaryDimensions?.length === 'number' &&
+    secondaryDimensions.length > 0 &&
+    typeof secondaryDimensions?.projection === 'number' &&
+    secondaryDimensions.projection > 0 &&
+    approxEqual(config.dimensions.lengthBMm ?? Number.NaN, secondaryDimensions.length) &&
+    approxEqual(config.dimensions.projectionBMm ?? Number.NaN, secondaryDimensions.projection);
+
+  return [
+    roofPlaneCountOk
+      ? pass('roof_planes.count', 'Hip-corner assembly has one roof plane per wing.')
+      : fail('roof_planes.count', 'Hip-corner assembly must have one roof plane per wing.'),
+    hasWingARafters && hasWingBRafters
+      ? pass('hip_corner.rafter_wings', 'Hip-corner assembly contains rafters for both A and B wings.')
+      : fail('hip_corner.rafter_wings', 'Hip-corner assembly must contain rafters for both A and B wings.'),
+    secondaryDimensionsOk
+      ? pass('hip_corner.secondary_dimensions', 'Hip-corner secondary dimensions match the normalized config.')
+      : fail('hip_corner.secondary_dimensions', 'Hip-corner secondary dimensions do not match the normalized config.'),
   ];
 }
 
@@ -783,11 +844,13 @@ export function runGeometryInvariants(config: GeometryConfig, assembly: Assembly
   if (assembly.family === 'mono') {
     invariants.push(...validateMono(config, assembly));
     invariants.push(...validateMonoAcrylic(config, assembly));
-  } else if (assembly.family === 'gable') {
+  } else if (assembly.family === 'gable' || assembly.family === 'hip') {
     invariants.push(...validateGable(config, assembly));
     invariants.push(...validateGableAcrylic(config, assembly));
   } else if (assembly.family === 'box') {
     invariants.push(...validateBox(config, assembly));
+  } else if (assembly.family === 'hip_corner') {
+    invariants.push(...validateHipCorner(config, assembly));
   }
 
   return invariants;

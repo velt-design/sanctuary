@@ -119,6 +119,9 @@ describe('buildRawGeometryModuleInput', () => {
         roofPitchDeg: '5',
         overhangEnabled: false,
         overhangM: 0,
+        mixedAcrylicBaysMain: '0',
+        mixedAcrylicBaysA: '0',
+        mixedAcrylicBaysB: '0',
       },
       gable: {
         endFramesMode: 'outer_end_only',

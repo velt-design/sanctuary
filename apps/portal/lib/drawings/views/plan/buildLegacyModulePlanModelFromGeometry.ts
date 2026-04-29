@@ -101,16 +101,24 @@ function profileDimsMetres(
 }
 
 function roofTypeFromGeometry(geometryPlan: GeometryPlanViewModel): RoofType {
+  if (geometryPlan.family === 'hip_corner') return 'hip_corner';
+  if (geometryPlan.family === 'hip') return 'hip';
   if (geometryPlan.family === 'gable') return 'gable';
   return 'pitched';
 }
 
 function slopeDirectionFromGeometry(geometryPlan: GeometryPlanViewModel): ModulePlanModel['slopeDirection'] {
-  if (geometryPlan.family === 'gable') {
+  if (geometryPlan.family === 'gable' || geometryPlan.family === 'hip') {
     return 'away_from_house';
   }
 
   return (geometryPlan.anchors.fall?.direction.y ?? 0) < 0 ? 'toward_house' : 'away_from_house';
+}
+
+function parsePositiveMetres(value: string | null | undefined): number | null {
+  if (typeof value !== 'string') return null;
+  const parsed = Number.parseFloat(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
 }
 
 export function buildLegacyModulePlanModelFromGeometry(input: {
@@ -171,11 +179,14 @@ export function buildLegacyModulePlanModelFromGeometry(input: {
     fallbackMetadata?.ridgeBeamWidthM ?? 0.05,
     fallbackMetadata?.ridgeBeamDepthM ?? 0.15,
   );
+  const roofType = roofTypeFromGeometry(geometryPlan);
+  const hipCornerLengthB = roofType === 'hip_corner' ? parsePositiveMetres(module.hipCornerLengthBM) : null;
+  const hipCornerSpanB = roofType === 'hip_corner' ? parsePositiveMetres(module.hipCornerProjectionBM) : null;
 
   return {
     dataSource: fallbackMetadata?.dataSource ?? 'derived',
     pergolaStyle: module.pergolaStyle,
-    roofType: roofTypeFromGeometry(geometryPlan),
+    roofType,
     boxPerimeterEnabled: geometryPlan.roofForm.box,
     houseConnectionType: module.houseConnectionType,
     attachmentSide,
@@ -190,8 +201,8 @@ export function buildLegacyModulePlanModelFromGeometry(input: {
     slopeDirection: slopeDirectionFromGeometry(geometryPlan),
     lengthA: Number((geometryPlan.extents.lengthMm / 1000).toFixed(6)),
     spanA: Number((geometryPlan.extents.projectionMm / 1000).toFixed(6)),
-    lengthB: null,
-    spanB: null,
+    lengthB: hipCornerLengthB,
+    spanB: hipCornerSpanB,
     rafterWidthM: rafterDims.rafterWidthM,
     rafterDepthM: rafterDims.rafterDepthM,
     ledgerBeamWidthM: ledgerDims.rafterWidthM,
@@ -207,9 +218,9 @@ export function buildLegacyModulePlanModelFromGeometry(input: {
     rafterSpacingA: averageSpacingMetres(rafterPositionsA),
     rafterPositionsA,
     rafterEdgeLengthM: Number((geometryPlan.extents.lengthMm / 1000).toFixed(6)),
-    rafterCountB: null,
-    rafterSpacingB: null,
-    rafterPositionsB: null,
+    rafterCountB: roofType === 'hip_corner' ? fallbackMetadata?.rafterCountB ?? null : null,
+    rafterSpacingB: roofType === 'hip_corner' ? fallbackMetadata?.rafterSpacingB ?? null : null,
+    rafterPositionsB: roofType === 'hip_corner' ? fallbackMetadata?.rafterPositionsB ?? null : null,
     attachmentEdgeLengthM,
     soffitBracketOffsetM: fallbackMetadata?.soffitBracketOffsetM ?? 0.5,
     soffitBracketMaxSpacingM: fallbackMetadata?.soffitBracketMaxSpacingM ?? 1.5,

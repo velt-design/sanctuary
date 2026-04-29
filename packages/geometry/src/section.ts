@@ -334,12 +334,12 @@ function pitchFromLine(line: Line2 | null, family: Assembly3D['family']): number
   if (!line) return null;
   const run = Math.abs(line.end.x - line.start.x);
   const rise = Math.abs(line.end.y - line.start.y);
-  if (run <= SECTION_EPSILON_MM) return family === 'gable' ? 0 : null;
+  if (run <= SECTION_EPSILON_MM) return family === 'gable' || family === 'hip' ? 0 : null;
   return round((Math.atan(rise / run) * 180) / Math.PI, 3);
 }
 
 function fallDirectionFromLine(line: Line2 | null, family: Assembly3D['family']): RoofFallDirection {
-  if (family === 'gable') return 'dual';
+  if (family === 'gable' || family === 'hip') return 'dual';
   if (!line) return 'positiveY';
   return line.end.y > line.start.y ? 'positiveY' : 'negativeY';
 }
@@ -480,11 +480,13 @@ export function buildSectionViewModel(assembly: Assembly3D): GeometrySectionView
   return {
     family: assembly.family,
     connectionType: assembly.semantics.connectionType,
-    sectionKind: assembly.family === 'gable' ? 'gable' : 'mono',
+    sectionKind: assembly.family === 'gable' || assembly.family === 'hip' ? 'gable' : 'mono',
     roofForm: {
       mono: assembly.family === 'mono',
-      gable: assembly.family === 'gable',
+      gable: assembly.family === 'gable' || assembly.family === 'hip',
       box: assembly.family === 'box',
+      hip: assembly.family === 'hip',
+      hipCorner: assembly.family === 'hip_corner',
     },
     sliceXMm,
     baseline,

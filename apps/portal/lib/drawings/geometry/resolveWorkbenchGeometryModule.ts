@@ -37,6 +37,17 @@ function hasStalePricingSyncState(snapshot: Record<string, unknown> | null): boo
   return outputs?.[ESTIMATE_PRICING_SYNC_STATE_OUTPUT_KEY] === 'stale';
 }
 
+function hasIncompleteSnapshotGeometryResult(moduleResult: CostOutputV1 | null): boolean {
+  if (!moduleResult) return true;
+  const missingLength = typeof moduleResult.derived.length_m !== 'number' || !Number.isFinite(moduleResult.derived.length_m);
+  const missingProjection =
+    typeof moduleResult.derived.projection_m !== 'number' || !Number.isFinite(moduleResult.derived.projection_m);
+  return (
+    missingLength &&
+    missingProjection
+  );
+}
+
 export function resolveWorkbenchGeometryModule(input: {
   snapshot: Record<string, unknown> | null;
   draft?: EstimateDrawingDraft | null;
@@ -78,7 +89,7 @@ export function resolveWorkbenchGeometryModule(input: {
 
   const snapshotModuleResult = getModuleCostOutputFromSnapshot(effectiveSnapshot, input.moduleIndex);
   const shouldResolveLocally =
-    resultSource === 'local_resolve' || !snapshotModuleResult;
+    resultSource === 'local_resolve' || hasIncompleteSnapshotGeometryResult(snapshotModuleResult);
 
   if (!shouldResolveLocally && snapshotModuleResult) {
     return {

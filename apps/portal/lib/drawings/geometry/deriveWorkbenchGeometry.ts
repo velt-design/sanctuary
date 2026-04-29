@@ -110,7 +110,6 @@ export function deriveWorkbenchGeometry(input: {
 
   const geometryPlan = buildGeometryPlanViewModel(solved.value);
   const geometrySection = buildGeometrySectionViewModel(solved.value);
-
   return {
     kind: 'geometry',
     renderSource: 'geometry',

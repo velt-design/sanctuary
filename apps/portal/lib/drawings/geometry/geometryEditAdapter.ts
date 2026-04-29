@@ -40,7 +40,7 @@ import {
 import { solveActiveGeometryModuleResult } from './solveActiveGeometryModuleResult';
 import { normalizeGeometryConfig, type AttachmentSide, type GeometryConfig } from '@sp/geometry';
 
-export type SanctuaryPergolaFamily = 'mono' | 'gable' | 'box';
+export type SanctuaryPergolaFamily = 'mono' | 'gable' | 'box' | 'hip' | 'hip_corner';
 
 export type GeometryEditConnectionType = 'soffit' | 'fascia' | 'wall' | 'freestanding';
 export type GeometryEditHouseAttachmentStrategy = CalculatorHouseAttachmentStrategy | 'auto';
@@ -64,11 +64,16 @@ export type GeometryEditState = {
   dimensions: {
     lengthM: string;
     projectionM: string;
+    hipCornerLengthBM: string;
+    hipCornerProjectionBM: string;
   };
   roof: {
     material: CalculatorModuleInputs['roofMaterial'];
     pitchDeg: string;
     boxPerimeterEnabled: boolean;
+    mixedAcrylicBaysMain: string;
+    mixedAcrylicBaysA: string;
+    mixedAcrylicBaysB: string;
   };
   connection: {
     type: GeometryEditConnectionType;
@@ -129,9 +134,10 @@ type GeometryEditableOverrideKey =
 
 export type GeometryEditIntent =
   | { type: 'family'; value: SanctuaryPergolaFamily }
-  | { type: 'dimension'; field: 'lengthM' | 'projectionM'; value: string }
+  | { type: 'dimension'; field: 'lengthM' | 'projectionM' | 'hipCornerLengthBM' | 'hipCornerProjectionBM'; value: string }
   | { type: 'roof_material'; value: CalculatorModuleInputs['roofMaterial'] }
   | { type: 'roof_pitch'; value: string }
+  | { type: 'mixed_acrylic_bays'; field: 'mixedAcrylicBaysMain' | 'mixedAcrylicBaysA' | 'mixedAcrylicBaysB'; value: string }
   | { type: 'gable_end_frames'; value: CalculatorModuleInputs['gableEndFramesMode'] }
   | { type: 'house_connection'; value: GeometryEditConnectionType }
   | { type: 'house_config'; key: GeometryHouseConfigKey; value: string }
@@ -208,6 +214,8 @@ function formatMillimetresOverride(value: string | null | undefined, fallbackMm:
 }
 
 function resolveFamily(value: GeometryConfig['family']): SanctuaryPergolaFamily {
+  if (value === 'hip_corner') return 'hip_corner';
+  if (value === 'hip') return 'hip';
   if (value === 'gable') return 'gable';
   if (value === 'box') return 'box';
   return 'mono';
@@ -339,11 +347,16 @@ export function buildGeometryEditState(input: {
       dimensions: {
         lengthM: formatMetres(normalized.value.dimensions.lengthMm),
         projectionM: formatMetres(normalized.value.dimensions.projectionMm),
+        hipCornerLengthBM: formatMetres(normalized.value.dimensions.lengthBMm),
+        hipCornerProjectionBM: formatMetres(normalized.value.dimensions.projectionBMm),
       },
       roof: {
         material: mapRoofMaterial(normalized.value),
         pitchDeg: formatNumber(normalized.value.dimensions.roofPitchDeg),
         boxPerimeterEnabled: normalized.value.roof.boxPerimeterEnabled,
+        mixedAcrylicBaysMain: String(resolved.module.mixedAcrylicBaysMain ?? ''),
+        mixedAcrylicBaysA: String(resolved.module.mixedAcrylicBaysA ?? ''),
+        mixedAcrylicBaysB: String(resolved.module.mixedAcrylicBaysB ?? ''),
       },
       connection: {
         type: resolveConnectionType(normalized.value.connection.type),
@@ -435,7 +448,7 @@ function applyModuleEdit(
 function applyFieldEdit(
   draft: EstimateDrawingDraft,
   moduleIndex: number,
-  field: 'lengthM' | 'projectionM' | 'roofPitchDeg' | 'postCutHeightM',
+  field: 'lengthM' | 'projectionM' | 'hipCornerLengthBM' | 'hipCornerProjectionBM' | 'roofPitchDeg' | 'postCutHeightM',
   nextValue: string,
 ): GeometryEditApplyResult {
   const result = applyEstimateDrawingFieldEdit({
@@ -515,6 +528,16 @@ function applyFamilyEdit(
           { field: 'moduleValue', key: 'gableHouseEdgeGutter', value: gableHouseEdgeGutter },
           { field: 'moduleValue', key: 'gableOuterEdgeGutter', value: 'our' },
         ]
+      : family === 'hip'
+        ? [
+            { field: 'pergolaStyle', value: 'hip' },
+            { field: 'moduleValue', key: 'boxPerimeterEnabled', value: false },
+          ]
+        : family === 'hip_corner'
+          ? [
+              { field: 'pergolaStyle', value: 'hip_corner' },
+              { field: 'moduleValue', key: 'boxPerimeterEnabled', value: false },
+            ]
       : family === 'box'
         ? [
             { field: 'pergolaStyle', value: 'pitched' },
@@ -591,6 +614,12 @@ export function applyGeometryEditIntent(input: {
     }
     case 'roof_pitch':
       return applyFieldEdit(input.draft, input.moduleIndex, 'roofPitchDeg', input.intent.value);
+    case 'mixed_acrylic_bays':
+      return applyModuleEdit(input.draft, input.moduleIndex, {
+        field: 'moduleValue',
+        key: input.intent.field,
+        value: input.intent.value,
+      });
     case 'house_config':
       return applyModuleEdit(input.draft, input.moduleIndex, {
         field: 'moduleValue',
@@ -763,6 +792,18 @@ export function translateEstimateDrawingFieldToGeometryIntent(
       return {
         type: 'dimension',
         field: 'projectionM',
+        value: nextValue,
+      };
+    case 'hipCornerLengthBM':
+      return {
+        type: 'dimension',
+        field: 'hipCornerLengthBM',
+        value: nextValue,
+      };
+    case 'hipCornerProjectionBM':
+      return {
+        type: 'dimension',
+        field: 'hipCornerProjectionBM',
         value: nextValue,
       };
     case 'roofPitchDeg':

@@ -248,8 +248,10 @@ export function buildPlanViewModel(assembly: Assembly3D): GeometryPlanViewModel 
     connectionType: assembly.semantics.connectionType,
     roofForm: {
       mono: assembly.family === 'mono',
-      gable: assembly.family === 'gable',
+      gable: assembly.family === 'gable' || assembly.family === 'hip',
       box: assembly.family === 'box',
+      hip: assembly.family === 'hip',
+      hipCorner: assembly.family === 'hip_corner',
     },
     outline,
     attachmentEdge,
@@ -290,7 +292,7 @@ export function buildPlanViewModel(assembly: Assembly3D): GeometryPlanViewModel 
           ? {
               point: polygonCentroid(roofPlaneForFall.boundary),
               direction: fallDirection,
-              dual: assembly.family === 'gable',
+              dual: assembly.family === 'gable' || assembly.family === 'hip',
             }
           : null,
       rafterSpacing:

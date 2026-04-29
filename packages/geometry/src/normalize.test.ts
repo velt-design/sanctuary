@@ -173,11 +173,11 @@ describe('normalizeGeometryConfig', () => {
     expect(result).toEqual({
       ok: true,
       value: expect.objectContaining({
-        dimensions: {
+        dimensions: expect.objectContaining({
           lengthMm: 6400,
           projectionMm: 3100,
           roofPitchDeg: 12,
-        },
+        }),
         roof: expect.objectContaining({
           overhangMm: 0,
         }),
@@ -415,7 +415,7 @@ describe('normalizeGeometryConfig', () => {
     if (!result.ok) return;
 
     expect(result.value.houseContext.attachmentStrategy).toBe('soffit_brackets');
-    expect(result.value.houseContext.model).toEqual({
+    expect(result.value.houseContext.model).toEqual(expect.objectContaining({
       footprint: result.value.houseContext.footprint,
       storeyMode: 'single_storey',
       wallConstruction: 'timber_frame',
@@ -433,7 +433,7 @@ describe('normalizeGeometryConfig', () => {
         gutterProjectionMm: 125,
         eaveOverhangMm: 450,
       },
-    });
+    }));
   });
 
   it('maps existing house connection types into first-class house attachment strategies', () => {
@@ -511,7 +511,7 @@ describe('normalizeGeometryConfig', () => {
     );
   });
 
-  it('returns unsupported_family for unsupported pergola styles', () => {
+  it('normalizes hip geometry using the supported dual-fall family mapping', () => {
     const result = normalizeGeometryConfig(
       makeRawInput({
         pergolaStyle: 'hip',
@@ -519,9 +519,43 @@ describe('normalizeGeometryConfig', () => {
     );
 
     expect(result).toEqual({
-      ok: false,
-      code: 'unsupported_family',
-      error: expect.stringContaining('hip'),
+      ok: true,
+      value: expect.objectContaining({
+        family: 'hip',
+        roof: expect.objectContaining({
+          fallDirection: 'dual',
+        }),
+        gable: expect.objectContaining({
+          ridgePositionMm: 1500,
+        }),
+      }),
+    });
+  });
+
+  it('normalizes hip-corner geometry with secondary dimensions', () => {
+    const result = normalizeGeometryConfig(
+      makeRawInput({
+        pergolaStyle: 'hip_corner',
+        dimensions: {
+          lengthM: '6',
+          projectionM: '3',
+          hipCornerLengthBM: '4',
+          hipCornerProjectionBM: '2',
+        },
+      }),
+    );
+
+    expect(result).toEqual({
+      ok: true,
+      value: expect.objectContaining({
+        family: 'hip_corner',
+        dimensions: expect.objectContaining({
+          lengthMm: 6000,
+          projectionMm: 3000,
+          lengthBMm: 4000,
+          projectionBMm: 2000,
+        }),
+      }),
     });
   });
 

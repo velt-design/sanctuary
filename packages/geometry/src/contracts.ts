@@ -78,7 +78,7 @@ export type DatumFrame3 = {
 /**
  * Supported V1 Sanctuary families only.
  */
-export type PergolaFamily = "mono" | "gable" | "box";
+export type PergolaFamily = "mono" | "gable" | "box" | "hip" | "hip_corner";
 
 export type RoofMaterial = "acrylic" | "insulated" | "timber" | "louvre";
 export type ConnectionType = "fascia" | "soffit" | "wall" | "freestanding";
@@ -337,6 +337,9 @@ export type RawGeometryModuleInput = {
     roofPitchDeg?: string | number | null;
     overhangEnabled?: boolean | null;
     overhangM?: string | number | null;
+    mixedAcrylicBaysMain?: string | number | null;
+    mixedAcrylicBaysA?: string | number | null;
+    mixedAcrylicBaysB?: string | number | null;
   };
   gable?: {
     endFramesMode?: RawGableEndFramesMode | null;
@@ -514,6 +517,8 @@ export type GeometryConfig = {
   dimensions: {
     lengthMm: number;
     projectionMm: number;
+    lengthBMm?: number | null;
+    projectionBMm?: number | null;
     roofPitchDeg: number;
   };
   roof: {
@@ -532,6 +537,9 @@ export type GeometryConfig = {
     houseAllowanceMm: number | null;
     farAllowanceMm: number | null;
     acrylicAreaMm2: number | null;
+    mixedAcrylicBaysMain?: number | null;
+    mixedAcrylicBaysA?: number | null;
+    mixedAcrylicBaysB?: number | null;
   };
   gable: {
     ridgePositionMm: number | null;
@@ -848,6 +856,14 @@ export type Assembly3D = {
     connectionType: ConnectionType;
     roofType: PergolaFamily;
     structuralZones: string[];
+    primaryDimensionsMm?: {
+      length: number;
+      projection: number;
+    };
+    secondaryDimensionsMm?: {
+      length: number;
+      projection: number;
+    } | null;
   };
 };
 
@@ -907,6 +923,8 @@ export type GeometryPlanViewModel = {
     mono: boolean;
     gable: boolean;
     box: boolean;
+    hip?: boolean;
+    hipCorner?: boolean;
   };
   outline: Polygon2;
   attachmentEdge: Line2 | null;
@@ -1008,6 +1026,8 @@ export type GeometrySectionViewModel = {
     mono: boolean;
     gable: boolean;
     box: boolean;
+    hip?: boolean;
+    hipCorner?: boolean;
   };
   sliceXMm: number;
   baseline: Line2;

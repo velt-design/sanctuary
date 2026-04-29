@@ -86,6 +86,8 @@ const FAMILY_OPTIONS: SelectOption[] = [
   { label: 'Mono', value: 'mono' },
   { label: 'Gable', value: 'gable' },
   { label: 'Box', value: 'box' },
+  { label: 'Hip', value: 'hip' },
+  { label: 'Hip (corner)', value: 'hip_corner' },
 ];
 const ROOF_MATERIAL_OPTIONS: SelectOption[] = [
   { label: 'Acrylic', value: 'acrylic' },
@@ -326,7 +328,13 @@ export default function SanctuaryWorkbenchRail({
   const footprintPreset = geometryState ? normalizeHouseFootprintPreset(geometryState.houseContext.footprintPreset) : 'straight';
   const footprintParams = geometryState ? normalizeHouseFootprintParams(geometryState.houseContext.footprintParams) : normalizeHouseFootprintParams(undefined);
   const drawingRotation = geometryState ? String(normalizeDrawingRotationQuarterTurns(geometryState.houseContext.drawingRotationQuarterTurns)) : '0';
-  const boxToggleDisabled = disabled || !geometryState || family === 'gable' || !onCommitGeometryEdit;
+  const boxToggleDisabled =
+    disabled ||
+    !geometryState ||
+    family === 'gable' ||
+    family === 'hip' ||
+    family === 'hip_corner' ||
+    !onCommitGeometryEdit;
   const canEditHouseContext =
     !disabled &&
     Boolean(geometryState) &&
@@ -414,7 +422,10 @@ export default function SanctuaryWorkbenchRail({
         kind: 'toggle',
         label: 'Box perimeter',
         value: geometryState.roof.boxPerimeterEnabled,
-        helperText: family === 'gable' ? 'Box perimeter is only available for mono/box layouts.' : 'Keep this on for box-family layouts.',
+        helperText:
+          family === 'gable' || family === 'hip' || family === 'hip_corner'
+            ? 'Box perimeter is only available for mono/box layouts.'
+            : 'Keep this on for box-family layouts.',
         pending: pendingFieldId === 'box-perimeter-enabled',
         error: fieldErrors['box-perimeter-enabled'],
         disabled: boxToggleDisabled,
@@ -427,7 +438,7 @@ export default function SanctuaryWorkbenchRail({
       {
         id: 'lengthM',
         kind: 'number',
-        label: 'Roof length (m)',
+        label: family === 'hip_corner' ? 'Roof length A (m)' : 'Roof length (m)',
         value: geometryState.dimensions.lengthM,
         pending: pendingFieldId === 'lengthM',
         error: fieldErrors.lengthM,
@@ -442,7 +453,7 @@ export default function SanctuaryWorkbenchRail({
       {
         id: 'projectionM',
         kind: 'number',
-        label: 'Roof span (m)',
+        label: family === 'hip_corner' ? 'Roof span A (m)' : 'Roof span (m)',
         value: geometryState.dimensions.projectionM,
         pending: pendingFieldId === 'projectionM',
         error: fieldErrors.projectionM,
@@ -454,6 +465,40 @@ export default function SanctuaryWorkbenchRail({
             value,
           }),
       },
+      ...(family === 'hip_corner'
+        ? ([
+            {
+              id: 'hip-corner-length-b',
+              kind: 'number',
+              label: 'Roof length B (m)',
+              value: geometryState.dimensions.hipCornerLengthBM,
+              pending: pendingFieldId === 'hip-corner-length-b',
+              error: fieldErrors['hip-corner-length-b'],
+              disabled: disabled || !onCommitGeometryEdit,
+              onCommit: (value: string) =>
+                commitGeometryEdit('hip-corner-length-b', {
+                  type: 'dimension',
+                  field: 'hipCornerLengthBM',
+                  value,
+                }),
+            },
+            {
+              id: 'hip-corner-projection-b',
+              kind: 'number',
+              label: 'Roof span B (m)',
+              value: geometryState.dimensions.hipCornerProjectionBM,
+              pending: pendingFieldId === 'hip-corner-projection-b',
+              error: fieldErrors['hip-corner-projection-b'],
+              disabled: disabled || !onCommitGeometryEdit,
+              onCommit: (value: string) =>
+                commitGeometryEdit('hip-corner-projection-b', {
+                  type: 'dimension',
+                  field: 'hipCornerProjectionBM',
+                  value,
+                }),
+            },
+          ] satisfies RailFieldDefinition[])
+        : []),
     ] satisfies RailFieldDefinition[];
   }, [boxToggleDisabled, commitGeometryEdit, disabled, family, fieldErrors, geometryState, onCommitGeometryEdit, pendingFieldId, view]);
 
@@ -490,8 +535,60 @@ export default function SanctuaryWorkbenchRail({
             value,
           }),
       },
+      ...(geometryState.roof.material === 'mixed'
+        ? family === 'mono' || family === 'box'
+          ? ([
+              {
+                id: 'mixed-acrylic-main',
+                kind: 'number',
+                label: 'Acrylic bays (main)',
+                value: geometryState.roof.mixedAcrylicBaysMain,
+                pending: pendingFieldId === 'mixed-acrylic-main',
+                error: fieldErrors['mixed-acrylic-main'],
+                disabled: disabled || !onCommitGeometryEdit,
+                onCommit: (value: string) =>
+                  commitGeometryEdit('mixed-acrylic-main', {
+                    type: 'mixed_acrylic_bays',
+                    field: 'mixedAcrylicBaysMain',
+                    value,
+                  }),
+              },
+            ] satisfies RailFieldDefinition[])
+          : ([
+              {
+                id: 'mixed-acrylic-a',
+                kind: 'number',
+                label: family === 'hip_corner' ? 'Acrylic bays (leg A)' : 'Acrylic bays (side A)',
+                value: geometryState.roof.mixedAcrylicBaysA,
+                pending: pendingFieldId === 'mixed-acrylic-a',
+                error: fieldErrors['mixed-acrylic-a'],
+                disabled: disabled || !onCommitGeometryEdit,
+                onCommit: (value: string) =>
+                  commitGeometryEdit('mixed-acrylic-a', {
+                    type: 'mixed_acrylic_bays',
+                    field: 'mixedAcrylicBaysA',
+                    value,
+                  }),
+              },
+              {
+                id: 'mixed-acrylic-b',
+                kind: 'number',
+                label: family === 'hip_corner' ? 'Acrylic bays (leg B)' : 'Acrylic bays (side B)',
+                value: geometryState.roof.mixedAcrylicBaysB,
+                pending: pendingFieldId === 'mixed-acrylic-b',
+                error: fieldErrors['mixed-acrylic-b'],
+                disabled: disabled || !onCommitGeometryEdit,
+                onCommit: (value: string) =>
+                  commitGeometryEdit('mixed-acrylic-b', {
+                    type: 'mixed_acrylic_bays',
+                    field: 'mixedAcrylicBaysB',
+                    value,
+                  }),
+              },
+            ] satisfies RailFieldDefinition[])
+        : []),
     ] satisfies RailFieldDefinition[];
-  }, [commitGeometryEdit, disabled, fieldErrors, geometryState, onCommitGeometryEdit, pendingFieldId]);
+  }, [commitGeometryEdit, disabled, family, fieldErrors, geometryState, onCommitGeometryEdit, pendingFieldId]);
 
   const gableFields = useMemo(() => {
     if (!geometryState || family !== 'gable' || !geometryState.gable) return [];
