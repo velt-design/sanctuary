@@ -13,8 +13,15 @@ This section describes current repo state only. It does not change the canonical
 - A hidden, staff-only, feature-flagged design workbench route already exists in the portal.
 - `Model Space`, `Sheet View`, and 3D review are already available there for internal use and QA.
 - Local working-copy draft behavior already exists for workbench edits on that hidden route.
+- Object-first contracts and draft normalizers already exist for the future `HouseAssembly` / `HouseForm` model and authored decks, openings, and pergolas.
+- Object-family rail navigation and selected-object inspector scaffolding already exist on the hidden route, although the data still comes through the compatibility model.
+- Shared interaction state helpers exist, and deck plus opening interaction work has started moving toward adapter-backed behavior.
 - The current runtime/store still derives from the compatibility `houseFirst` model rather than a true `HouseAssembly` plus multiple movable `HouseForm`s source of truth.
 - The current hidden-route workbench is a bridge implementation and validation surface, not the canonical end-state described by this execution board.
+
+## Current Bridge Boundary
+
+Object-first code contracts are canonical for new work, but they are not yet the live runtime source of truth. `drawingWorkbenchStore` still builds the hidden workbench from `buildHouseFirstWorkbenchProjectModel`, so this board tracks both landed bridge pieces and the remaining migration path to true object-first runtime state.
 
 ## Purpose
 
@@ -28,6 +35,13 @@ This board is for:
 - scope control for the next serious implementation pass
 
 The implementation plan remains the canonical authority for terminology and architecture. This board is the active build order.
+
+## Status Legend
+
+- `Done`: landed for the current docs or bridge layer.
+- `Partial`: meaningful bridge implementation exists, but the canonical runtime target is not complete.
+- `Next`: highest-priority implementation work.
+- `Blocked/Deferred`: should wait for prerequisite contracts, runtime migration, or validation.
 
 ## First-Pass Definition
 
@@ -82,20 +96,22 @@ Each ticket should still be a narrow, reviewable slice:
 
 ## Phase Overview
 
-| Phase | Outcome |
-| --- | --- |
-| P0 | Object-first scope, terminology, and merge/hosting rules are frozen |
-| P1 | `HouseAssembly` + `HouseForm` contracts and draft envelope exist |
-| P2 | Derived envelope and hosting contracts exist |
-| P3 | Shared interaction engine and adapter boundaries exist |
-| P4 | Object navigator + inspector rail scaffold exists |
-| P5 | Deck interaction work is generalized onto the shared engine |
-| P6 | Openings and pergolas reconnect against derived envelope truth |
-| P7 | Validation, fixtures, and internal review are strong enough for the next pass |
+| Phase | Status | Outcome |
+| --- | --- | --- |
+| P0 | Done | Object-first scope, terminology, and merge/hosting rules are frozen in the active docs |
+| P1 | Partial | `HouseAssembly` + `HouseForm` contracts and draft envelope exist, but are not wired into the live runtime |
+| P2 | Next | Derived envelope and hosting contracts need to be tightened before hosted-object migration |
+| P3 | Partial | Shared interaction state exists, with deck/opening adapter work started but not complete for all object families |
+| P4 | Partial | Object navigator + inspector rail scaffold exists, still backed by compatibility `houseFirst` data |
+| P5 | Partial | Deck interaction work is adapter-backed enough to validate the pattern, but remains an active stabilization lane |
+| P6 | Blocked/Deferred | Openings and pergolas should reconnect after derived envelope/hosting contracts are explicit |
+| P7 | Blocked/Deferred | Validation, fixtures, and internal review follow the runtime and hosting migration |
 
 ## P0: Freeze Canonical Direction
 
 ### Ticket P0.1: Commit the object-first implementation plan and execution board
+
+Status: Done.
 
 Scope:
 
@@ -114,6 +130,8 @@ Suggested PR slice:
 - docs only
 
 ### Ticket P0.2: Freeze merge and hosting rules
+
+Status: Done in docs.
 
 Scope:
 
@@ -151,6 +169,8 @@ Proceed only if all three answers are yes.
 
 ### Ticket P1.1: Add `HouseAssembly` and `HouseForm` contracts
 
+Status: Partial / mostly landed.
+
 Scope:
 
 - add initial TS contracts for:
@@ -166,6 +186,7 @@ Acceptance criteria:
 - multiple house forms are supported in the contract
 - stable ids are explicit
 - per-form roof intent is explicit
+- runtime use of these contracts remains deferred until the compatibility store boundary is crossed
 
 Suggested PR slice:
 
@@ -177,6 +198,8 @@ Depends on:
 
 ### Ticket P1.2: Add authored draft envelope contract
 
+Status: Partial / mostly landed.
+
 Scope:
 
 - define the persisted draft envelope for object-first workbench state
@@ -187,6 +210,7 @@ Acceptance criteria:
 - `HouseAssembly` draft location is explicit
 - object lists and ids are coherent
 - UI-only state is not mixed into persisted authored state
+- live hidden-route persistence still uses the compatibility `houseFirst` draft path
 
 Suggested PR slice:
 
@@ -199,6 +223,8 @@ Depends on:
 ## P2: Derived Envelope And Hosting Contracts
 
 ### Ticket P2.1: Add derived building envelope contract
+
+Status: Next.
 
 Scope:
 
@@ -220,6 +246,8 @@ Depends on:
 - `P1.2`
 
 ### Ticket P2.2: Add hosted-object resolution rules
+
+Status: Next.
 
 Scope:
 
@@ -253,6 +281,8 @@ Proceed only if all three answers are yes.
 
 ### Ticket P3.1: Add interaction engine contract
 
+Status: Partial.
+
 Scope:
 
 - define shared responsibilities for:
@@ -268,6 +298,7 @@ Acceptance criteria:
 
 - interaction responsibilities are explicit
 - the engine is UI-facing but object-agnostic
+- current shared state helpers are kept, but broader snap/dimension/commit orchestration still needs adapter hardening
 
 Suggested PR slice:
 
@@ -278,6 +309,8 @@ Depends on:
 - `P1.2`
 
 ### Ticket P3.2: Add object adapter contracts
+
+Status: Partial.
 
 Scope:
 
@@ -291,6 +324,7 @@ Acceptance criteria:
 
 - object-specific behavior is isolated behind adapters
 - future object families have a clear extension point
+- deck and opening adapter work exists; house-form and pergola adapter boundaries remain incomplete
 
 Suggested PR slice:
 
@@ -304,6 +338,8 @@ Depends on:
 
 ### Ticket P4.1: Add family navigator scaffold
 
+Status: Partial.
+
 Scope:
 
 - add left-rail family navigation for:
@@ -316,6 +352,7 @@ Acceptance criteria:
 
 - the primary rail structure reflects object-first navigation
 - the active family is explicit in shared UI state
+- the scaffold may continue consuming compatibility data until object-first runtime state is wired
 
 Suggested PR slice:
 
@@ -327,6 +364,8 @@ Depends on:
 
 ### Ticket P4.2: Add per-family object list and selected-object inspector scaffold
 
+Status: Partial.
+
 Scope:
 
 - define the inspector ownership model
@@ -336,6 +375,7 @@ Acceptance criteria:
 
 - selecting an object swaps the inspector controls for that object type
 - the rail no longer depends on house/pergolas as the primary user-facing grouping
+- compatibility panels can remain inside the scaffold during the bridge phase
 
 Suggested PR slice:
 
@@ -349,6 +389,8 @@ Depends on:
 
 ### Ticket P5.1: Move deck movement and snapping onto the shared interaction engine
 
+Status: Partial.
+
 Scope:
 
 - treat current deck interaction behavior as the first adapter-backed implementation
@@ -358,6 +400,7 @@ Acceptance criteria:
 
 - deck selection, drag, snap, preview, and dimensions read as shared interaction primitives
 - deck logic is no longer the implicit final architecture
+- current deck adapter work should be stabilized before repeating the pattern for new object families
 
 Suggested PR slice:
 
@@ -370,6 +413,8 @@ Depends on:
 
 ### Ticket P5.2: Preserve current deck UX while changing the architecture
 
+Status: Partial.
+
 Scope:
 
 - keep current snapping and movement behavior intact
@@ -379,6 +424,7 @@ Acceptance criteria:
 
 - current deck interaction tests still pass
 - interaction extraction does not reduce existing deck polish
+- snap-preview and commit-settle behavior remain active regression areas
 
 Suggested PR slice:
 
@@ -391,6 +437,8 @@ Depends on:
 ## P6: Reconnect Openings And Pergolas
 
 ### Ticket P6.1: Reconnect openings against derived walls
+
+Status: Blocked/Deferred until P2.
 
 Scope:
 
@@ -412,6 +460,8 @@ Depends on:
 - `P3.2`
 
 ### Ticket P6.2: Reconnect pergolas against derived edges and zones
+
+Status: Blocked/Deferred until P2.
 
 Scope:
 
@@ -446,6 +496,8 @@ Proceed only if all three answers are yes.
 
 ### Ticket P7.1: Strengthen fixtures and regression coverage for object-first flows
 
+Status: Blocked/Deferred until P6.
+
 Scope:
 
 - add fixture coverage for:
@@ -468,6 +520,8 @@ Depends on:
 - `P6.2`
 
 ### Ticket P7.2: Internal review cleanup
+
+Status: Blocked/Deferred until P7.1.
 
 Scope:
 

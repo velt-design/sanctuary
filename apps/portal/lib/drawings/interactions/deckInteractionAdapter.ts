@@ -358,6 +358,14 @@ type DeckWallCandidate = {
   midpointDistanceM: number;
 };
 
+function isDeckWallSnapCandidate(candidate: DeckWallCandidate): boolean {
+  return (
+    candidate.nearGapM <= DECK_SNAP_TOLERANCE_M &&
+    candidate.overlapPenaltyM <= DECK_UNSNAP_TOLERANCE_M + 1e-6 &&
+    candidate.snapSpanPenaltyM <= DECK_WALL_SPAN_CANDIDATE_TOLERANCE_M
+  );
+}
+
 function scoreDeckWallCandidate(input: {
   heldPoint: PlanPoint;
   polygon: PlanPoint[];
@@ -434,16 +442,26 @@ function selectDeckWallCandidate(input: {
   const previousCandidate = candidates.find((candidate) => candidate.frame.sourceEdgeId === previousTargetId) ?? candidates[0]!;
   const bestCandidate =
     [...candidates].sort((left, right) =>
+      Number(isDeckWallSnapCandidate(right)) - Number(isDeckWallSnapCandidate(left)) ||
       left.overlapPenaltyM - right.overlapPenaltyM ||
       left.nearGapM - right.nearGapM ||
-      left.outsidePenaltyM - right.outsidePenaltyM ||
       left.snapSpanPenaltyM - right.snapSpanPenaltyM ||
+      left.outsidePenaltyM - right.outsidePenaltyM ||
       left.heldSpanOutsideM - right.heldSpanOutsideM ||
       left.midpointDistanceM - right.midpointDistanceM,
     )[0] ?? previousCandidate;
 
   if (bestCandidate.frame.sourceEdgeId === previousCandidate.frame.sourceEdgeId) {
     return bestCandidate;
+  }
+
+  const previousRetainEligible =
+    input.previousPreviewState?.activePrimaryTargetId === previousCandidate.frame.sourceEdgeId &&
+    previousCandidate.nearGapM <= DECK_UNSNAP_TOLERANCE_M &&
+    previousCandidate.overlapPenaltyM <= DECK_CORNER_UNSNAP_ZONE_M + 1e-6 &&
+    previousCandidate.snapSpanPenaltyM <= DECK_WALL_SPAN_RETAIN_TOLERANCE_M;
+  if (previousRetainEligible && !isDeckWallSnapCandidate(bestCandidate)) {
+    return previousCandidate;
   }
 
   const previousStillCompetitive =
@@ -955,19 +973,20 @@ export function resolveDeckPreviewState(input: {
       wallCandidate.snapSpanPenaltyM <= DECK_WALL_SPAN_RETAIN_TOLERANCE_M) ||
     (previousLockedWallId === wallCandidate.frame.sourceEdgeId &&
       wallCandidate.heldSpanOutsideM <= Number.POSITIVE_INFINITY);
-  const wallFaceEligible = wallCandidate.overlapPenaltyM <= DECK_UNSNAP_TOLERANCE_M;
+  const wallFaceSnapEligible = wallCandidate.overlapPenaltyM <= DECK_UNSNAP_TOLERANCE_M + 1e-6;
+  const wallFaceRetainEligible = wallCandidate.overlapPenaltyM <= DECK_CORNER_UNSNAP_ZONE_M + 1e-6;
   const wallCandidateActive =
-    (wallCandidate.nearGapM <= DECK_SNAP_TOLERANCE_M && wallFaceEligible && wallSpanEligible) ||
+    (wallCandidate.nearGapM <= DECK_SNAP_TOLERANCE_M && wallFaceSnapEligible && wallSpanEligible) ||
     (input.previousPreviewState?.activePrimaryTargetId === wallCandidate.frame.sourceEdgeId &&
       wallCandidate.nearGapM <= DECK_UNSNAP_TOLERANCE_M &&
-      wallFaceEligible &&
+      wallFaceRetainEligible &&
       wallCandidate.snapSpanPenaltyM <= DECK_WALL_SPAN_RETAIN_TOLERANCE_M) ||
     (previousLockedWallId === wallCandidate.frame.sourceEdgeId &&
       wallCandidate.nearGapM <= DECK_UNSNAP_TOLERANCE_M &&
-      wallFaceEligible);
+      wallFaceRetainEligible);
   const wallTransient =
     wallSpanEligible &&
-    wallFaceEligible &&
+    wallFaceRetainEligible &&
     wallCandidate.nearGapM <= DECK_UNSNAP_TOLERANCE_M;
   const previousStableWallId =
     input.previousPreviewState?.wallTargetStability === 'stable' ||

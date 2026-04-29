@@ -13,8 +13,15 @@ This section describes current repo state only. It does not change the canonical
 - A hidden, staff-only, feature-flagged design workbench route already exists in the portal.
 - `Model Space`, `Sheet View`, and 3D review are already present on that hidden route for internal use and QA.
 - Local working-copy draft behavior already exists for workbench edits on the hidden route.
+- Object-first TypeScript contracts now exist for `WorkbenchProjectModel`, `HouseAssembly`, `HouseForm`, authored decks, openings, pergolas, and the `ObjectFirstWorkbenchDraftVNext` draft envelope.
+- The hidden workbench rail already exposes object-family navigation for `House Forms`, `Decks`, `Openings`, and `Pergolas`, with selected-object inspector scaffolding.
+- Shared interaction state helpers exist, and deck plus opening work have started moving toward adapter-backed object interaction.
 - The current runtime/store still derives from the compatibility `houseFirst` model rather than a true `HouseAssembly` plus multiple movable `HouseForm`s source of truth.
 - The existing hidden-route workbench is a bridge implementation for internal iteration, not the canonical end-state described by this document.
+
+## Current Bridge Boundary
+
+Object-first code contracts are now the canonical vocabulary for future slices, but the live hidden workbench runtime is still compatibility-bound. In particular, `drawingWorkbenchStore` still builds its project model through `buildHouseFirstWorkbenchProjectModel`, and the object-first draft envelope is not yet wired as the active persistence/runtime source of truth.
 
 ## Purpose
 

@@ -5526,16 +5526,16 @@ describe('ModelSpaceViewport', () => {
       hostEdgeId: 'front',
       primaryHostEdgeId: 'footprint-edge-3',
       presetRect: {
-        widthM: '3',
+        widthM: '1.4',
         depthM: '2',
         centerOffsetM: '0',
         detachedGapM: '0.5',
       },
       floatingRect: {
-        centerAlongM: '-1',
-        centerDepthM: '1.2',
-        widthM: '3',
-        depthM: '2',
+        centerAlongM: '-0.85',
+        centerDepthM: '0.9',
+        widthM: '1.4',
+        depthM: '1.4',
       },
     });
     const baseHouse = makeHouseFirstHouse();
@@ -5564,10 +5564,10 @@ describe('ModelSpaceViewport', () => {
     const deckHit = rendered.container.querySelector('[data-house-first-shape-hit="deck:deck-1"]');
     const scroller = rendered.container.querySelector('[data-model-space-scroller]') as HTMLElement | null;
     if (!svg || !deckHit || !scroller) throw new Error('Missing plan viewport nodes.');
-    installSvgPointMock(svg);
+    installProjectedSvgPointMock(svg, { xScale: 0.05, yScale: 0.05, xOffset: 0, yOffset: 0 });
 
     dispatchPointer(deckHit, 'pointerdown', { pointerId: 24, button: 0, clientX: 50, clientY: 50 });
-    dispatchPointer(window, 'pointermove', { pointerId: 24, button: 0, buttons: 1, clientX: 56.1, clientY: 56.1 });
+    dispatchPointer(window, 'pointermove', { pointerId: 24, button: 0, buttons: 1, clientX: 44.5, clientY: 50 });
 
     expect(scroller.dataset.houseFirstDeckPlacementState).toBe('snap-available');
     expect(scroller.dataset.houseFirstDeckAffordanceState).toBe('snap-available');
@@ -5580,7 +5580,7 @@ describe('ModelSpaceViewport', () => {
       rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]'),
     );
 
-    dispatchPointer(window, 'pointerup', { pointerId: 24, button: 0, clientX: 56.1, clientY: 56.1 });
+    dispatchPointer(window, 'pointerup', { pointerId: 24, button: 0, clientX: 44.5, clientY: 50 });
     await act(async () => {
       await Promise.resolve();
     });
@@ -5798,16 +5798,16 @@ describe('ModelSpaceViewport', () => {
       presetType: 'rect_detached',
       hostEdgeId: null,
       presetRect: {
-        widthM: '3',
+        widthM: '1.4',
         depthM: '2',
         centerOffsetM: '0',
         detachedGapM: '0.5',
       },
       floatingRect: {
-        centerAlongM: '-1',
-        centerDepthM: '1.2',
-        widthM: '3',
-        depthM: '2',
+        centerAlongM: '-0.85',
+        centerDepthM: '0.9',
+        widthM: '1.4',
+        depthM: '1.4',
       },
     });
     const baseHouse = makeHouseFirstHouse();
@@ -5837,10 +5837,10 @@ describe('ModelSpaceViewport', () => {
     const deckHit = rendered.container.querySelector('[data-house-first-shape-hit="deck:deck-1"]');
     const scroller = rendered.container.querySelector('[data-model-space-scroller]') as HTMLElement | null;
     if (!svg || !deckHit || !scroller) throw new Error('Missing plan viewport nodes.');
-    installProjectedSvgPointMock(svg);
+    installProjectedSvgPointMock(svg, { xScale: 0.05, yScale: 0.05, xOffset: 0, yOffset: 0 });
 
     dispatchPointer(deckHit, 'pointerdown', { pointerId: 124, button: 0, clientX: 50, clientY: 50 });
-    dispatchPointer(window, 'pointermove', { pointerId: 124, button: 0, buttons: 1, clientX: 56.1, clientY: 56.1 });
+    dispatchPointer(window, 'pointermove', { pointerId: 124, button: 0, buttons: 1, clientX: 44.5, clientY: 50 });
 
     expect(scroller.dataset.houseFirstDeckPlacementState).toBe('snap-available');
     expect(scroller.dataset.houseFirstDeckAffordanceState).toBe('snap-available');
@@ -5850,7 +5850,7 @@ describe('ModelSpaceViewport', () => {
     expect(rendered.container.querySelector('[data-house-first-reference-guide="snap-lane"]')).not.toBeNull();
     expect(rendered.container.querySelector('[data-house-first-snap-target="snap-available"]')).not.toBeNull();
 
-    dispatchPointer(window, 'pointerup', { pointerId: 124, button: 0, clientX: 56.1, clientY: 56.1 });
+    dispatchPointer(window, 'pointerup', { pointerId: 124, button: 0, clientX: 44.5, clientY: 50 });
     await act(async () => {
       await Promise.resolve();
     });
