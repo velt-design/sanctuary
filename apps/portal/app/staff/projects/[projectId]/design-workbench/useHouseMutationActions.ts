@@ -14,8 +14,10 @@ import type { DrawingWorkbenchUiState } from '@/lib/drawings/state/drawingWorkbe
 import type {
   HouseFirstDeckDraft,
   HouseFirstOpeningDraft,
+  HouseFirstPergolaDraft,
   HouseFirstRoofDraft,
   HouseModel,
+  PergolaModel,
   WallOpeningHostSide,
 } from '@/lib/drawings/state/houseFirstWorkbenchModel';
 import {
@@ -24,16 +26,22 @@ import {
 } from '@/lib/drawings/state/houseFirstWorkbenchModel';
 import { resolveDeckHostEdgeFrame, sanitizeDeckPresetRect } from '@/lib/drawings/state/houseFirstDeckPresets';
 import {
+  applyEstimateDrawingModuleFieldEdit,
   applyEstimateDrawingFootprintEdit,
   updateEstimateDrawingHouseFirstDeckDrafts,
   updateEstimateDrawingHouseFirstOpeningDrafts,
+  updateEstimateDrawingHouseFirstPergolaDrafts,
   updateEstimateDrawingHouseFirstRoofDraft,
   type EstimateDrawingDraft,
   type EstimateDrawingField,
   type EstimateDrawingFootprintEdit,
 } from '@/lib/estimates/drawingEdits';
 import type { EstimateDetail } from '@/lib/estimates/types';
-import type { CalculatorHouseFootprintPolygonPoint, CalculatorModuleInputs } from '@/lib/types/calculator';
+import type {
+  CalculatorHouseAttachmentStrategy,
+  CalculatorHouseFootprintPolygonPoint,
+  CalculatorModuleInputs,
+} from '@/lib/types/calculator';
 import type { CommitResult, DrawOutlineTarget } from './houseWorkbenchClientTypes';
 import {
   deckReferenceHousePolygon,
@@ -43,6 +51,7 @@ import {
   resolveDeckDraftGeometry,
   toDeckDrafts,
   toOpeningDrafts,
+  toPergolaDrafts,
 } from './houseDraftBuilders';
 
 type UseHouseMutationActionsInput = {
@@ -77,6 +86,13 @@ type OpeningMutationInput = {
   currentOpenings: HouseFirstOpeningDraft[];
 };
 
+type PergolaMutationInput = {
+  currentPergolas: HouseFirstPergolaDraft[];
+};
+
+type PergolaAttachmentKind = PergolaModel['attachment']['kind'];
+type PergolaAttachmentStrategyValue = CalculatorHouseAttachmentStrategy | 'auto';
+
 function missingDrawingDraftResult(): CommitResult {
   return { ok: false, error: 'Drawing inputs are not available for this estimate.' };
 }
@@ -99,6 +115,13 @@ function resolveCurrentOpeningDrafts(
   return drawingDraft?.houseFirst?.openings?.map((opening) => ({ ...opening })) ?? toOpeningDrafts(house);
 }
 
+function resolveCurrentPergolaDrafts(
+  drawingDraft: EstimateDrawingDraft | null,
+  pergolas: PergolaModel[],
+): HouseFirstPergolaDraft[] {
+  return drawingDraft?.houseFirst?.pergolas?.map((pergola) => ({ ...pergola })) ?? toPergolaDrafts(pergolas);
+}
+
 type OpeningHostWallOption = {
   wallId: string;
   label: string;
@@ -106,6 +129,8 @@ type OpeningHostWallOption = {
   hostEdgeId: string | null;
   spanM: number;
 };
+
+type PergolaDerivedAttachmentZoneOption = NonNullable<HouseModel['derivedEnvelope']>['attachmentZones'][number];
 
 function formatOpeningMetres(value: number): string {
   return String(Math.round(value * 1000) / 1000);
@@ -214,6 +239,161 @@ function resolvePreferredNewOpeningHostWall(input: {
   const matchingSide = options.filter((option) => option.semanticSide === input.preferredSide);
   if (matchingSide.length === 1) return matchingSide[0]!;
   return options[0] ?? null;
+}
+
+function resolvePergolaZoneKind(
+  kind: PergolaAttachmentKind,
+): PergolaDerivedAttachmentZoneOption['kind'] | null {
+  if (kind === 'freestanding') return null;
+  if (kind === 'wall') return 'wall';
+  return kind;
+}
+
+function toModuleHouseConnectionType(
+  kind: PergolaAttachmentKind,
+): CalculatorModuleInputs['houseConnectionType'] {
+  if (kind === 'freestanding') return 'none';
+  if (kind === 'wall') return 'facade';
+  return kind;
+}
+
+function buildPergolaZoneLookup(
+  house: HouseModel | null,
+): Map<string, PergolaDerivedAttachmentZoneOption> {
+  const byId = new Map<string, PergolaDerivedAttachmentZoneOption>();
+  for (const zone of house?.derivedEnvelope?.attachmentZones ?? []) {
+    byId.set(zone.id, zone);
+  }
+  return byId;
+}
+
+function resolvePergolaZonesForKind(
+  house: HouseModel | null,
+  kind: PergolaAttachmentKind,
+): PergolaDerivedAttachmentZoneOption[] {
+  const zoneKind = resolvePergolaZoneKind(kind);
+  if (!zoneKind) return [];
+  return (house?.derivedEnvelope?.attachmentZones ?? []).filter((zone) => zone.kind === zoneKind);
+}
+
+function resolvePreferredPergolaZoneForKind(input: {
+  house: HouseModel | null;
+  currentPergola: PergolaModel;
+  nextKind: PergolaAttachmentKind;
+  preferredEdgeId?: string | null;
+}): PergolaDerivedAttachmentZoneOption | null {
+  const candidateZones = resolvePergolaZonesForKind(input.house, input.nextKind);
+  if (!candidateZones.length) return null;
+
+  if (input.currentPergola.attachment.attachmentZoneId) {
+    const currentZone = candidateZones.find((zone) => zone.id === input.currentPergola.attachment.attachmentZoneId);
+    if (currentZone) return currentZone;
+  }
+
+  const preferredEdgeId = input.preferredEdgeId ?? input.currentPergola.attachment.attachmentEdgeId ?? null;
+  if (preferredEdgeId) {
+    const edgeZone = candidateZones.find((zone) => zone.hostEdgeId === preferredEdgeId);
+    if (edgeZone) return edgeZone;
+  }
+
+  const sameSideZone = candidateZones.find((zone) => zone.side === input.currentPergola.attachment.side);
+  return sameSideZone ?? candidateZones[0] ?? null;
+}
+
+function upsertPergolaDrafts(
+  currentPergolas: HouseFirstPergolaDraft[],
+  pergolaId: string,
+  patch: Partial<HouseFirstPergolaDraft>,
+): HouseFirstPergolaDraft[] {
+  let found = false;
+  const nextPergolas = currentPergolas.map((pergola) => {
+    if (pergola.id !== pergolaId) return pergola;
+    found = true;
+    return {
+      ...pergola,
+      ...patch,
+    };
+  });
+  if (found) return nextPergolas;
+  return [
+    ...nextPergolas,
+    {
+      id: pergolaId,
+      ...patch,
+    },
+  ];
+}
+
+function applyPergolaModuleEdits(input: {
+  draft: EstimateDrawingDraft;
+  moduleIndexes: number[];
+  kind?: PergolaAttachmentKind;
+  strategy?: PergolaAttachmentStrategyValue;
+  side?: NonNullable<CalculatorModuleInputs['attachmentSide']> | null;
+}): DraftBuildResult {
+  let nextDraft = input.draft;
+
+  for (const moduleIndex of input.moduleIndexes) {
+    if (input.kind) {
+      const connectionResult = applyEstimateDrawingModuleFieldEdit({
+        draft: nextDraft,
+        moduleIndex,
+        edit: {
+          field: 'houseConnectionType',
+          value: toModuleHouseConnectionType(input.kind),
+        },
+      });
+      if (!connectionResult.ok) {
+        return {
+          ok: false,
+          error: connectionResult.error,
+        };
+      }
+      nextDraft = connectionResult.draft;
+    }
+
+    if (input.strategy !== undefined) {
+      const strategyResult = applyEstimateDrawingModuleFieldEdit({
+        draft: nextDraft,
+        moduleIndex,
+        edit: {
+          field: 'moduleValue',
+          key: 'houseAttachmentStrategy',
+          value: input.strategy,
+        },
+      });
+      if (!strategyResult.ok) {
+        return {
+          ok: false,
+          error: strategyResult.error,
+        };
+      }
+      nextDraft = strategyResult.draft;
+    }
+
+    if (input.side) {
+      const sideResult = applyEstimateDrawingFootprintEdit({
+        draft: nextDraft,
+        moduleIndex,
+        edit: {
+          type: 'attachment_side',
+          side: input.side,
+        },
+      });
+      if (!sideResult.ok) {
+        return {
+          ok: false,
+          error: sideResult.error,
+        };
+      }
+      nextDraft = sideResult.draft;
+    }
+  }
+
+  return {
+    ok: true,
+    draft: nextDraft,
+  };
 }
 
 function applyDeckPatch(input: {
@@ -632,6 +812,38 @@ export function useHouseMutationActions({
     [runDraftTransaction, store.derived.house],
   );
 
+  const commitPergolaDraftMutation = useCallback(
+    async (input: {
+      pergolaId: string;
+      buildNextPergolas: (context: {
+        draft: EstimateDrawingDraft;
+        currentPergolas: HouseFirstPergolaDraft[];
+        currentPergola: PergolaModel;
+      }) => DraftBuildResult;
+      afterPersist?: () => CommitResult | void | Promise<CommitResult | void>;
+    }): Promise<CommitResult> =>
+      runDraftTransaction({
+        buildNextDraft: (draft) => {
+          const currentPergolas = resolveCurrentPergolaDrafts(draft, store.derived.pergolas);
+          const currentPergola =
+            store.derived.pergolas.find((pergola) => pergola.id === input.pergolaId) ?? null;
+          if (!currentPergola) {
+            return {
+              ok: false,
+              error: 'This pergola is no longer available.',
+            };
+          }
+          return input.buildNextPergolas({
+            draft,
+            currentPergolas,
+            currentPergola,
+          });
+        },
+        afterPersist: input.afterPersist,
+      }),
+    [runDraftTransaction, store.derived.pergolas],
+  );
+
   const commitSharedHouseFootprintEdit = useCallback(
     async (edit: EstimateDrawingFootprintEdit): Promise<CommitResult> =>
       runDraftTransaction({
@@ -809,6 +1021,137 @@ export function useHouseMutationActions({
     [clearSelectedHouseTarget, commitOpeningDraftMutation],
   );
 
+  const commitSharedPergolaConnectionKind = useCallback(
+    async (pergolaId: string, kind: PergolaAttachmentKind): Promise<CommitResult> =>
+      commitPergolaDraftMutation({
+        pergolaId,
+        buildNextPergolas: ({ draft, currentPergolas, currentPergola }) => {
+          const nextZone =
+            kind === 'freestanding'
+              ? null
+              : resolvePreferredPergolaZoneForKind({
+                  house: store.derived.house,
+                  currentPergola,
+                  nextKind: kind,
+                });
+          const nextPergolas = upsertPergolaDrafts(currentPergolas, pergolaId, {
+            attachmentEdgeId: nextZone?.hostEdgeId ?? null,
+            attachmentZoneId: nextZone?.id ?? null,
+          });
+          const nextDraft = updateEstimateDrawingHouseFirstPergolaDrafts({
+            draft,
+            pergolas: nextPergolas,
+          });
+          return applyPergolaModuleEdits({
+            draft: nextDraft,
+            moduleIndexes: currentPergola.sourceModuleIndexes,
+            kind,
+            side: nextZone?.side ?? null,
+          });
+        },
+      }),
+    [commitPergolaDraftMutation, store.derived.house],
+  );
+
+  const commitSharedPergolaAttachmentEdge = useCallback(
+    async (pergolaId: string, edgeId: string): Promise<CommitResult> =>
+      commitPergolaDraftMutation({
+        pergolaId,
+        buildNextPergolas: ({ draft, currentPergolas, currentPergola }) => {
+          if (currentPergola.attachment.kind === 'freestanding') {
+            return {
+              ok: false,
+              error: 'Switch this pergola to an attached connection before selecting a host edge.',
+            };
+          }
+          const nextZone = resolvePreferredPergolaZoneForKind({
+            house: store.derived.house,
+            currentPergola,
+            nextKind: currentPergola.attachment.kind,
+            preferredEdgeId: edgeId,
+          });
+          if (!nextZone || nextZone.hostEdgeId !== edgeId) {
+            return {
+              ok: false,
+              error: 'The selected host edge does not expose a compatible derived attachment zone.',
+            };
+          }
+          const nextPergolas = upsertPergolaDrafts(currentPergolas, pergolaId, {
+            attachmentEdgeId: edgeId,
+            attachmentZoneId: nextZone.id,
+          });
+          const nextDraft = updateEstimateDrawingHouseFirstPergolaDrafts({
+            draft,
+            pergolas: nextPergolas,
+          });
+          return applyPergolaModuleEdits({
+            draft: nextDraft,
+            moduleIndexes: currentPergola.sourceModuleIndexes,
+            side: nextZone.side,
+          });
+        },
+      }),
+    [commitPergolaDraftMutation, store.derived.house],
+  );
+
+  const commitSharedPergolaAttachmentZone = useCallback(
+    async (pergolaId: string, zoneId: string): Promise<CommitResult> =>
+      commitPergolaDraftMutation({
+        pergolaId,
+        buildNextPergolas: ({ draft, currentPergolas, currentPergola }) => {
+          const zone = buildPergolaZoneLookup(store.derived.house).get(zoneId) ?? null;
+          if (!zone || zone.hostEdgeId === null) {
+            return {
+              ok: false,
+              error: 'The selected derived host zone is no longer available.',
+            };
+          }
+          if (currentPergola.attachment.kind !== 'freestanding') {
+            const expectedKind = resolvePergolaZoneKind(currentPergola.attachment.kind);
+            if (zone.kind !== expectedKind) {
+              return {
+                ok: false,
+                error: 'The selected host zone does not match this pergola connection type.',
+              };
+            }
+          }
+          const nextPergolas = upsertPergolaDrafts(currentPergolas, pergolaId, {
+            attachmentEdgeId: zone.hostEdgeId,
+            attachmentZoneId: zone.id,
+          });
+          const nextDraft = updateEstimateDrawingHouseFirstPergolaDrafts({
+            draft,
+            pergolas: nextPergolas,
+          });
+          return applyPergolaModuleEdits({
+            draft: nextDraft,
+            moduleIndexes: currentPergola.sourceModuleIndexes,
+            side: zone.side,
+          });
+        },
+      }),
+    [commitPergolaDraftMutation, store.derived.house],
+  );
+
+  const commitSharedPergolaAttachmentStrategy = useCallback(
+    async (pergolaId: string, strategy: PergolaAttachmentStrategyValue): Promise<CommitResult> =>
+      commitPergolaDraftMutation({
+        pergolaId,
+        buildNextPergolas: ({ draft, currentPergolas, currentPergola }) => {
+          const nextDraft = updateEstimateDrawingHouseFirstPergolaDrafts({
+            draft,
+            pergolas: upsertPergolaDrafts(currentPergolas, pergolaId, {}),
+          });
+          return applyPergolaModuleEdits({
+            draft: nextDraft,
+            moduleIndexes: currentPergola.sourceModuleIndexes,
+            strategy,
+          });
+        },
+      }),
+    [commitPergolaDraftMutation],
+  );
+
   const commitDrawingField = useCallback(
     async (field: EstimateDrawingField, nextValue: string): Promise<CommitResult> => {
       const intent = translateEstimateDrawingFieldToGeometryIntent(field, nextValue);
@@ -862,6 +1205,10 @@ export function useHouseMutationActions({
     commitHouseFirstDeckDimension,
     commitHouseFirstFootprintDimension,
     commitHouseFirstOpeningDimension,
+    commitSharedPergolaAttachmentEdge,
+    commitSharedPergolaAttachmentStrategy,
+    commitSharedPergolaAttachmentZone,
+    commitSharedPergolaConnectionKind,
     commitSharedDeckCustomPolygon,
     commitSharedHouseDeckPatch,
     commitSharedHouseFootprintEdit,

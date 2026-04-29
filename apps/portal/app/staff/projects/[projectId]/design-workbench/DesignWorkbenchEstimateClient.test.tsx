@@ -366,6 +366,16 @@ describe('DesignWorkbenchEstimateClient', () => {
     expect(rendered.container.querySelector('[data-testid="scene-object-outer-gutter"]')).not.toBeNull();
     expect(rendered.container.textContent).toContain('Pergola Inspector');
     expect(rendered.container.textContent).toContain('Open House Forms');
+    expect(rendered.container.textContent).toContain('Host Attachment');
+    expect(rendered.container.textContent).toContain('Connection');
+    expect(rendered.container.textContent).toContain('Attachment strategy');
+    expect(rendered.container.textContent).toContain('Host edge');
+    expect(rendered.container.textContent).toContain('Host zone');
+    expect(rendered.container.textContent).toContain('Resolution');
+    expect(rendered.container.textContent).toContain('Host side');
+    expect(rendered.container.querySelector('[aria-label="Pergola connection"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[aria-label="Pergola host edge"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[aria-label="Pergola host zone"]')).not.toBeNull();
     expect(rendered.container.textContent).toContain('Geometry');
     expect(rendered.container.textContent).not.toContain('House / Context');
     expect(rendered.container.textContent).toContain('Overrides');
@@ -509,7 +519,7 @@ describe('DesignWorkbenchEstimateClient', () => {
 
     expect(getButtonByText(rendered.container, 'Pergolas').getAttribute('aria-selected')).toBe('true');
     expect(rendered.container.querySelector('[data-active-workbench-object="pergolas:none"]')).not.toBeNull();
-    expect(rendered.container.textContent).toContain('Select a pergola to edit geometry, supports, and overrides.');
+    expect(rendered.container.textContent).toContain('Select a pergola to edit hosting, geometry, supports, and overrides.');
 
     rendered.unmount();
   });

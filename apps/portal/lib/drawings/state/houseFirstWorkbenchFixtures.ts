@@ -9,6 +9,104 @@ import type {
   HouseFirstWorkbenchProjectModel,
 } from './houseFirstWorkbenchModel';
 
+const FIXTURE_WALLS = [
+  {
+    id: 'wall-footprint-edge-1',
+    label: 'Rear wall',
+    sourceFormIds: ['house-main'],
+    edgeIds: ['footprint-edge-1'],
+    kind: 'exterior' as const,
+    polygon: [
+      { alongM: '0', depthM: '-3' },
+      { alongM: '6', depthM: '-3' },
+    ],
+  },
+  {
+    id: 'wall-footprint-edge-2',
+    label: 'Right wall',
+    sourceFormIds: ['house-main'],
+    edgeIds: ['footprint-edge-2'],
+    kind: 'exterior' as const,
+    polygon: [
+      { alongM: '6', depthM: '-3' },
+      { alongM: '6', depthM: '0' },
+    ],
+  },
+  {
+    id: 'wall-footprint-edge-3',
+    label: 'Front wall',
+    sourceFormIds: ['house-main'],
+    edgeIds: ['footprint-edge-3'],
+    kind: 'exterior' as const,
+    polygon: [
+      { alongM: '6', depthM: '0' },
+      { alongM: '0', depthM: '0' },
+    ],
+  },
+  {
+    id: 'wall-footprint-edge-4',
+    label: 'Left wall',
+    sourceFormIds: ['house-main'],
+    edgeIds: ['footprint-edge-4'],
+    kind: 'exterior' as const,
+    polygon: [
+      { alongM: '0', depthM: '0' },
+      { alongM: '0', depthM: '-3' },
+    ],
+  },
+];
+
+function buildFixtureDerivedEnvelope(input?: {
+  zoneSide?: 'rear' | 'front' | 'left' | 'right';
+  zoneKind?: 'wall' | 'soffit' | 'fascia' | 'roof_edge';
+}) {
+  const zoneSide = input?.zoneSide ?? 'rear';
+  const zoneKind = input?.zoneKind ?? 'soffit';
+  const hostEdgeId =
+    zoneSide === 'rear'
+      ? 'footprint-edge-1'
+      : zoneSide === 'right'
+        ? 'footprint-edge-2'
+        : zoneSide === 'front'
+          ? 'footprint-edge-3'
+          : 'footprint-edge-4';
+  const hostWallId = `wall-${hostEdgeId}`;
+  const hostWallLabel =
+    FIXTURE_WALLS.find((wall) => wall.id === hostWallId)?.label ??
+    `${zoneSide.charAt(0).toUpperCase()}${zoneSide.slice(1)} wall`;
+  return {
+    mergedFormIds: ['house-main'],
+    footprint: [],
+    wallGraph: {
+      walls: FIXTURE_WALLS,
+      mergeGroups: [],
+    },
+    roofZones: [],
+    edges: FIXTURE_WALLS.map((wall) => ({
+      id: wall.edgeIds[0]!,
+      label: wall.label,
+      semanticKind: 'wall_perimeter' as const,
+      sourceFormIds: ['house-main'],
+      hostWallId: wall.id,
+      hostRoofZoneIds: [],
+      start: wall.polygon[0]!,
+      end: wall.polygon[1]!,
+    })),
+    attachmentZones: [
+      {
+        id: `zone-${zoneKind}-${hostEdgeId}`,
+        label: `${hostWallLabel} ${zoneKind.replace('_', ' ')}`,
+        kind: zoneKind,
+        side: zoneSide,
+        sourceFormIds: ['house-main'],
+        hostWallId,
+        hostEdgeId,
+        hostRoofZoneId: null,
+      },
+    ],
+  };
+}
+
 function makeBaseLegacySnapshot() {
   return {
     inputs: {
@@ -169,9 +267,21 @@ export function makeHouseFirstOnePergolaFixture(): HouseFirstWorkbenchProjectMod
       gutterDepthMm: '120',
       gutterProjectionMm: '95',
       eaveOverhangMm: '450',
+      derivedEnvelope: buildFixtureDerivedEnvelope(),
+      derivedWallGraph: {
+        walls: FIXTURE_WALLS,
+        mergeGroups: [],
+      },
       decks: [],
       openings: [],
-      attachmentZones: [{ id: 'zone-soffit-rear', label: 'Rear soffit', kind: 'soffit', side: 'rear' }],
+      attachmentZones: [
+        {
+          id: 'zone-soffit-footprint-edge-1',
+          label: 'Rear wall soffit',
+          kind: 'soffit',
+          side: 'rear',
+        },
+      ],
       attachmentZoneDiagnostics: { blocked: [] },
     },
     pergolas: [
@@ -185,9 +295,15 @@ export function makeHouseFirstOnePergolaFixture(): HouseFirstWorkbenchProjectMod
         attachment: {
           id: 'attachment-pergola-1',
           kind: 'soffit',
-          houseAttachmentZoneId: 'zone-soffit-rear',
+          attachmentEdgeId: 'footprint-edge-1',
+          attachmentZoneId: 'zone-soffit-footprint-edge-1',
+          houseAttachmentZoneId: 'zone-soffit-footprint-edge-1',
           side: 'rear',
           strategy: 'soffit_brackets',
+          resolution: {
+            status: 'resolved',
+            message: null,
+          },
         },
       },
     ],
@@ -218,9 +334,15 @@ export function makeHouseFirstTwoPergolaSharedHouseFixture(): HouseFirstWorkbenc
         attachment: {
           id: 'attachment-pergola-2',
           kind: 'soffit',
-          houseAttachmentZoneId: 'zone-soffit-rear',
+          attachmentEdgeId: 'footprint-edge-1',
+          attachmentZoneId: 'zone-soffit-footprint-edge-1',
+          houseAttachmentZoneId: 'zone-soffit-footprint-edge-1',
           side: 'rear',
           strategy: 'soffit_brackets',
+          resolution: {
+            status: 'resolved',
+            message: null,
+          },
         },
       },
     ],
@@ -337,13 +459,19 @@ export function makeHouseFirstDeckSupportProjectFixture(input: {
     case 'left_threshold_attached':
       activeHostSide = 'left';
       projectModel.house!.footprint.attachmentSide = 'left';
+      projectModel.house!.derivedEnvelope = buildFixtureDerivedEnvelope({
+        zoneSide: 'left',
+      });
+      projectModel.house!.derivedWallGraph = projectModel.house!.derivedEnvelope.wallGraph;
       projectModel.house!.attachmentZones = [
-        { id: 'zone-soffit-left', label: 'Left soffit', kind: 'soffit', side: 'left' },
+        { id: 'zone-soffit-footprint-edge-4', label: 'Left wall soffit', kind: 'soffit', side: 'left' },
       ];
       projectModel.house!.attachmentZoneDiagnostics = { blocked: [] };
       projectModel.pergolas[0]!.attachment = {
         ...projectModel.pergolas[0]!.attachment,
-        houseAttachmentZoneId: 'zone-soffit-left',
+        attachmentEdgeId: 'footprint-edge-4',
+        attachmentZoneId: 'zone-soffit-footprint-edge-4',
+        houseAttachmentZoneId: 'zone-soffit-footprint-edge-4',
         side: 'left',
       };
       projectModel.house!.decks = [

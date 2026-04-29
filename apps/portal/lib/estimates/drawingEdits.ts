@@ -11,6 +11,7 @@ import type {
   DeckSurfaceMaterial,
   HouseFirstDeckDraft,
   HouseFirstOpeningDraft,
+  HouseFirstPergolaDraft,
   HouseFirstRoofDraft,
   SliderPanelCount,
   WallOpeningHostSide,
@@ -69,6 +70,7 @@ export type EstimateDrawingDraft = {
     roof?: HouseFirstRoofDraft | null;
     decks?: HouseFirstDeckDraft[] | null;
     openings?: HouseFirstOpeningDraft[] | null;
+    pergolas?: HouseFirstPergolaDraft[] | null;
   };
 };
 
@@ -879,6 +881,19 @@ function normalizeHouseFirstOpeningDraft(
   };
 }
 
+function normalizeHouseFirstPergolaDraft(
+  pergola: HouseFirstPergolaDraft | null | undefined,
+): HouseFirstPergolaDraft | null {
+  if (!pergola || typeof pergola.id !== 'string' || pergola.id.trim().length === 0) return null;
+  const attachmentEdgeId = trimNullableString(pergola.attachmentEdgeId ?? null);
+  const attachmentZoneId = trimNullableString(pergola.attachmentZoneId ?? null);
+  return {
+    id: pergola.id.trim(),
+    ...(attachmentEdgeId ? { attachmentEdgeId } : null),
+    ...(attachmentZoneId ? { attachmentZoneId } : null),
+  };
+}
+
 function normalizeHouseFirstDraft(
   value: EstimateDrawingDraft['houseFirst'] | null | undefined,
 ): EstimateDrawingDraft['houseFirst'] | undefined {
@@ -889,11 +904,15 @@ function normalizeHouseFirstDraft(
   const openings = (value?.openings ?? [])
     .map((opening) => normalizeHouseFirstOpeningDraft(opening))
     .filter((opening): opening is HouseFirstOpeningDraft => Boolean(opening));
-  return roof || decks.length || openings.length
+  const pergolas = (value?.pergolas ?? [])
+    .map((pergola) => normalizeHouseFirstPergolaDraft(pergola))
+    .filter((pergola): pergola is HouseFirstPergolaDraft => Boolean(pergola));
+  return roof || decks.length || openings.length || pergolas.length
     ? {
         ...(roof ? { roof } : null),
         ...(decks.length ? { decks } : null),
         ...(openings.length ? { openings } : null),
+        ...(pergolas.length ? { pergolas } : null),
       }
     : undefined;
 }
@@ -1020,6 +1039,18 @@ export function updateEstimateDrawingHouseFirstOpeningDrafts(input: {
   nextDraft.houseFirst = normalizeHouseFirstDraft({
     ...(nextDraft.houseFirst ?? {}),
     openings: input.openings,
+  });
+  return nextDraft;
+}
+
+export function updateEstimateDrawingHouseFirstPergolaDrafts(input: {
+  draft: EstimateDrawingDraft;
+  pergolas: HouseFirstPergolaDraft[] | null;
+}): EstimateDrawingDraft {
+  const nextDraft = cloneValue(input.draft);
+  nextDraft.houseFirst = normalizeHouseFirstDraft({
+    ...(nextDraft.houseFirst ?? {}),
+    pergolas: input.pergolas,
   });
   return nextDraft;
 }

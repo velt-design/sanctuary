@@ -15,7 +15,10 @@ import type {
   CalculatorHouseStoreyMode,
   CalculatorModuleInputs,
 } from '@/lib/types/calculator';
-import type { DerivedWallGraphModel } from './objectFirstWorkbenchModel';
+import type {
+  DerivedBuildingEnvelopeModel,
+  DerivedWallGraphModel,
+} from './objectFirstWorkbenchModel';
 
 export type WorkbenchMode = 'house' | 'pergolas';
 export type HouseRoofForm = 'flat' | 'mono' | 'gable' | 'hipped';
@@ -258,6 +261,7 @@ export type HouseModel = {
   gutterDepthMm: string;
   gutterProjectionMm: string;
   eaveOverhangMm: string;
+  derivedEnvelope: DerivedBuildingEnvelopeModel | null;
   derivedWallGraph: DerivedWallGraphModel;
   decks: DeckModel[];
   openings: WallOpeningModel[];
@@ -268,9 +272,15 @@ export type HouseModel = {
 export type PergolaAttachmentModel = {
   id: string;
   kind: 'freestanding' | 'soffit' | 'fascia' | 'wall';
+  attachmentEdgeId: string | null;
+  attachmentZoneId: string | null;
   houseAttachmentZoneId: string | null;
   side: NonNullable<CalculatorModuleInputs['attachmentSide']>;
   strategy: CalculatorHouseAttachmentStrategy | null;
+  resolution: {
+    status: 'resolved' | 'unresolved' | 'ambiguous';
+    message: string | null;
+  };
 };
 
 export type PergolaModel = {
@@ -346,6 +356,12 @@ export type HouseFirstOpeningDraft = {
   heightM?: string | null;
   sillHeightM?: string | null;
   offsetAlongWallM?: string | null;
+};
+
+export type HouseFirstPergolaDraft = {
+  id: string;
+  attachmentEdgeId?: string | null;
+  attachmentZoneId?: string | null;
 };
 
 export function isWallOpeningKind(value: unknown): value is WallOpeningKind {

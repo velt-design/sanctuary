@@ -41,6 +41,7 @@ import type {
   HouseAttachmentZoneKind,
   HouseFirstDeckDraft,
   HouseFirstOpeningDraft,
+  HouseFirstPergolaDraft,
   HouseFirstRoofDraft,
   HouseFirstMigrationWarning,
   HouseModel,
@@ -901,15 +902,6 @@ function resolvePergolaAttachmentKind(
   return module.houseConnectionType;
 }
 
-const HOUSE_ATTACHMENT_SIDES = ['rear', 'front', 'left', 'right'] as const;
-
-function formatAttachmentZoneLabel(
-  side: NonNullable<CalculatorModuleInputs['attachmentSide']>,
-  kind: HouseAttachmentZoneKind,
-): string {
-  return `${side.charAt(0).toUpperCase()}${side.slice(1)} ${kind.replace('_', ' ')}`;
-}
-
 function resolveAttachmentStrategyZoneKinds(
   strategy: CalculatorHouseAttachmentStrategy | null,
 ): HouseAttachmentZoneKind[] {
@@ -928,94 +920,6 @@ function resolveAttachmentStrategyZoneKinds(
     kinds.add('roof_edge');
   }
   return Array.from(kinds);
-}
-
-function deriveSharedAttachmentZones(input: {
-  housePolygon: CalculatorHouseFootprintPolygonPoint[];
-  roof: Pick<HouseModel['roof'], 'form' | 'validation'>;
-  attachmentStrategy: CalculatorHouseAttachmentStrategy | null;
-  openings: HouseModel['openings'];
-}): {
-  zones: HouseModel['attachmentZones'];
-  diagnostics: HouseModel['attachmentZoneDiagnostics'];
-} {
-  const candidateKinds = resolveAttachmentStrategyZoneKinds(input.attachmentStrategy);
-  const zones: HouseModel['attachmentZones'] = [];
-  const blocked: HouseModel['attachmentZoneDiagnostics']['blocked'] = [];
-  if (!candidateKinds.length) {
-    return {
-      zones,
-      diagnostics: { blocked },
-    };
-  }
-
-  for (const side of HOUSE_ATTACHMENT_SIDES) {
-    const frame = resolveDeckHostEdgeFrame({
-      housePolygon: input.housePolygon,
-      hostEdgeId: side,
-    });
-    const sideOpenings = input.openings.filter(
-      (opening) => opening.wallId === side && opening.validation.status === 'valid',
-    );
-    const hasAnyOpening = sideOpenings.length > 0;
-    const hasLargeOpening = sideOpenings.some(
-      (opening) => opening.kind === 'slider' || opening.kind === 'stacker',
-    );
-
-    for (const kind of candidateKinds) {
-      if (!frame) {
-        blocked.push({
-          side,
-          kind,
-          reason: 'missing_host_edge',
-        });
-        continue;
-      }
-      if (kind === 'roof_edge' && input.roof.form === 'flat') {
-        blocked.push({
-          side,
-          kind,
-          reason: 'unsupported_roof_form',
-        });
-        continue;
-      }
-      if ((kind === 'soffit' || kind === 'fascia' || kind === 'roof_edge') && input.roof.validation.status === 'invalid') {
-        blocked.push({
-          side,
-          kind,
-          reason: 'invalid_roof_state',
-        });
-        continue;
-      }
-      if (kind === 'wall' && hasAnyOpening) {
-        blocked.push({
-          side,
-          kind,
-          reason: 'side_openings_block_wall',
-        });
-        continue;
-      }
-      if ((kind === 'soffit' || kind === 'fascia' || kind === 'roof_edge') && hasLargeOpening) {
-        blocked.push({
-          side,
-          kind,
-          reason: 'side_openings_block_roof_zone',
-        });
-        continue;
-      }
-      zones.push({
-        id: `zone-${kind}-${side}`,
-        label: formatAttachmentZoneLabel(side, kind),
-        kind,
-        side,
-      });
-    }
-  }
-
-  return {
-    zones,
-    diagnostics: { blocked },
-  };
 }
 
 const MIN_WINDOW_WIDTH_M = 0.3;
@@ -1051,6 +955,18 @@ function normalizeExactOpeningHostEdgeId(value: string | null | undefined): stri
   return /^footprint-edge-\d+$/.test(trimmed) ? trimmed : null;
 }
 
+function normalizePergolaAttachmentZoneId(value: string | null | undefined): string | null {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  return trimmed.length ? trimmed : null;
+}
+
+function normalizePergolaAttachmentEdgeId(value: string | null | undefined): string | null {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  return /^footprint-edge-\d+$/.test(trimmed) ? trimmed : null;
+}
+
 type DerivedWallResolution = {
   wall: HouseModel['derivedWallGraph']['walls'][number];
   side: NonNullable<CalculatorModuleInputs['attachmentSide']>;
@@ -1063,6 +979,23 @@ type DerivedWallLookup = {
   byWallId: Map<string, DerivedWallResolution>;
   byEdgeId: Map<string, DerivedWallResolution>;
   bySide: Map<NonNullable<CalculatorModuleInputs['attachmentSide']>, DerivedWallResolution[]>;
+};
+
+type DerivedAttachmentZoneResolution = {
+  zone: NonNullable<HouseModel['derivedEnvelope']>['attachmentZones'][number];
+  wall: HouseModel['derivedWallGraph']['walls'][number];
+  side: NonNullable<CalculatorModuleInputs['attachmentSide']>;
+  sourceEdgeId: string;
+};
+
+type DerivedEnvelopeLookup = {
+  envelope: NonNullable<HouseModel['derivedEnvelope']>;
+  compatibilityZones: HouseModel['attachmentZones'];
+  diagnostics: HouseModel['attachmentZoneDiagnostics'];
+  byEdgeId: Map<string, NonNullable<HouseModel['derivedEnvelope']>['edges'][number]>;
+  byZoneId: Map<string, DerivedAttachmentZoneResolution>;
+  zonesByEdgeId: Map<string, DerivedAttachmentZoneResolution[]>;
+  zonesBySideAndKind: Map<string, DerivedAttachmentZoneResolution[]>;
 };
 
 function formatDerivedWallLabel(
@@ -1132,6 +1065,159 @@ function buildDerivedWallLookup(input: {
     byWallId,
     byEdgeId,
     bySide,
+  };
+}
+
+function formatDerivedAttachmentZoneLabel(input: {
+  edgeLabel: string;
+  kind: HouseAttachmentZoneKind;
+}): string {
+  return `${input.edgeLabel} ${input.kind.replace('_', ' ')}`;
+}
+
+function buildDerivedEnvelopeLookup(input: {
+  houseId: string;
+  housePolygon: CalculatorHouseFootprintPolygonPoint[];
+  derivedWalls: DerivedWallLookup;
+  roof: Pick<HouseModel['roof'], 'form' | 'validation'>;
+  attachmentStrategy: CalculatorHouseAttachmentStrategy | null;
+  openings: HouseModel['openings'];
+}): DerivedEnvelopeLookup {
+  const edges: NonNullable<HouseModel['derivedEnvelope']>['edges'] = [];
+  for (const resolvedWall of input.derivedWalls.byWallId.values()) {
+    const [start, end] = resolvedWall.wall.polygon;
+    if (!start || !end) continue;
+    edges.push({
+      id: resolvedWall.sourceEdgeId,
+      label: resolvedWall.wall.label,
+      semanticKind: 'wall_perimeter',
+      sourceFormIds: [input.houseId],
+      hostWallId: resolvedWall.wall.id,
+      hostRoofZoneIds: [],
+      start,
+      end,
+    });
+  }
+
+  const candidateKinds = resolveAttachmentStrategyZoneKinds(input.attachmentStrategy);
+  const envelopeAttachmentZones: NonNullable<HouseModel['derivedEnvelope']>['attachmentZones'] = [];
+  const compatibilityZones: HouseModel['attachmentZones'] = [];
+  const blocked: HouseModel['attachmentZoneDiagnostics']['blocked'] = [];
+  const blockedKeys = new Set<string>();
+  const openingsByWallId = new Map<string, HouseModel['openings']>();
+  for (const opening of input.openings) {
+    const key = opening.hostWallId ?? '';
+    if (!key) continue;
+    const existing = openingsByWallId.get(key) ?? [];
+    existing.push(opening);
+    openingsByWallId.set(key, existing);
+  }
+
+  for (const resolvedWall of input.derivedWalls.byWallId.values()) {
+    const wallOpenings = openingsByWallId.get(resolvedWall.wall.id) ?? [];
+    const hasAnyOpening = wallOpenings.some((opening) => opening.validation.status === 'valid');
+    const hasLargeOpening = wallOpenings.some(
+      (opening) =>
+        opening.validation.status === 'valid' &&
+        (opening.kind === 'slider' || opening.kind === 'stacker'),
+    );
+
+    for (const kind of candidateKinds) {
+      let reason: HouseModel['attachmentZoneDiagnostics']['blocked'][number]['reason'] | null = null;
+      if (kind === 'roof_edge' && input.roof.form === 'flat') {
+        reason = 'unsupported_roof_form';
+      } else if (
+        (kind === 'soffit' || kind === 'fascia' || kind === 'roof_edge') &&
+        input.roof.validation.status === 'invalid'
+      ) {
+        reason = 'invalid_roof_state';
+      } else if (kind === 'wall' && hasAnyOpening) {
+        reason = 'side_openings_block_wall';
+      } else if ((kind === 'soffit' || kind === 'fascia' || kind === 'roof_edge') && hasLargeOpening) {
+        reason = 'side_openings_block_roof_zone';
+      }
+
+      if (reason) {
+        const blockedKey = `${resolvedWall.side}:${kind}:${reason}`;
+        if (!blockedKeys.has(blockedKey)) {
+          blocked.push({
+            side: resolvedWall.side,
+            kind,
+            reason,
+          });
+          blockedKeys.add(blockedKey);
+        }
+        continue;
+      }
+
+      const zoneId = `zone-${kind}-${resolvedWall.sourceEdgeId}`;
+      const label = formatDerivedAttachmentZoneLabel({
+        edgeLabel: resolvedWall.wall.label,
+        kind,
+      });
+      envelopeAttachmentZones.push({
+        id: zoneId,
+        label,
+        kind,
+        side: resolvedWall.side,
+        sourceFormIds: [input.houseId],
+        hostWallId: resolvedWall.wall.id,
+        hostEdgeId: resolvedWall.sourceEdgeId,
+        hostRoofZoneId: null,
+      });
+      compatibilityZones.push({
+        id: zoneId,
+        label,
+        kind,
+        side: resolvedWall.side,
+      });
+    }
+  }
+
+  const envelope: NonNullable<HouseModel['derivedEnvelope']> = {
+    mergedFormIds: [input.houseId],
+    footprint: input.housePolygon,
+    wallGraph: input.derivedWalls.graph,
+    roofZones: [],
+    edges,
+    attachmentZones: envelopeAttachmentZones,
+  };
+
+  const byEdgeId = new Map<string, NonNullable<HouseModel['derivedEnvelope']>['edges'][number]>();
+  for (const edge of edges) {
+    byEdgeId.set(edge.id, edge);
+  }
+
+  const byZoneId = new Map<string, DerivedAttachmentZoneResolution>();
+  const zonesByEdgeId = new Map<string, DerivedAttachmentZoneResolution[]>();
+  const zonesBySideAndKind = new Map<string, DerivedAttachmentZoneResolution[]>();
+  for (const zone of envelopeAttachmentZones) {
+    const wall = zone.hostWallId ? input.derivedWalls.byWallId.get(zone.hostWallId)?.wall ?? null : null;
+    if (!wall || !zone.hostEdgeId) continue;
+    const resolved = {
+      zone,
+      wall,
+      side: zone.side,
+      sourceEdgeId: zone.hostEdgeId,
+    } satisfies DerivedAttachmentZoneResolution;
+    byZoneId.set(zone.id, resolved);
+    const edgeZones = zonesByEdgeId.get(zone.hostEdgeId) ?? [];
+    edgeZones.push(resolved);
+    zonesByEdgeId.set(zone.hostEdgeId, edgeZones);
+    const sideKey = `${zone.side}:${zone.kind}`;
+    const sideZones = zonesBySideAndKind.get(sideKey) ?? [];
+    sideZones.push(resolved);
+    zonesBySideAndKind.set(sideKey, sideZones);
+  }
+
+  return {
+    envelope,
+    compatibilityZones,
+    diagnostics: { blocked },
+    byEdgeId,
+    byZoneId,
+    zonesByEdgeId,
+    zonesBySideAndKind,
   };
 }
 
@@ -1807,8 +1893,10 @@ function buildSharedHouse(
     derivedWalls,
     fallbackWallId: normalizedAttachmentSide,
   });
-  const attachmentZones = deriveSharedAttachmentZones({
+  const derivedEnvelope = buildDerivedEnvelopeLookup({
+    houseId: 'house-main',
     housePolygon: derivedHousePolygon,
+    derivedWalls,
     roof: {
       form: sharedRoofForm,
       validation: roofValidation,
@@ -1866,11 +1954,12 @@ function buildSharedHouse(
       gutterDepthMm,
       gutterProjectionMm,
       eaveOverhangMm,
+      derivedEnvelope: derivedEnvelope.envelope,
       derivedWallGraph: derivedWalls.graph,
       decks,
       openings,
-      attachmentZones: attachmentZones.zones,
-      attachmentZoneDiagnostics: attachmentZones.diagnostics,
+      attachmentZones: derivedEnvelope.compatibilityZones,
+      attachmentZoneDiagnostics: derivedEnvelope.diagnostics,
     },
     warnings,
   };
@@ -1880,6 +1969,7 @@ function buildPergolas(input: {
   modules: ReturnType<typeof buildEstimateDrawingModules>;
   legacyPergolas: Array<{ id: string; label: string }>;
   house: HouseModel | null;
+  pergolaDrafts: HouseFirstPergolaDraft[] | null | undefined;
 }): {
   pergolas: PergolaModel[];
   warnings: HouseFirstMigrationWarning[];
@@ -1908,6 +1998,33 @@ function buildPergolas(input: {
     });
   });
 
+  const draftByPergolaId = new Map<string, HouseFirstPergolaDraft>();
+  for (const draft of input.pergolaDrafts ?? []) {
+    if (!draft || typeof draft.id !== 'string' || draft.id.trim().length === 0) continue;
+    draftByPergolaId.set(draft.id.trim(), draft);
+  }
+
+  const derivedEnvelope = input.house?.derivedEnvelope ?? null;
+  const zonesById = new Map<string, NonNullable<HouseModel['derivedEnvelope']>['attachmentZones'][number]>();
+  const edgesById = new Map<string, NonNullable<HouseModel['derivedEnvelope']>['edges'][number]>();
+  const zonesByEdgeId = new Map<string, Array<NonNullable<HouseModel['derivedEnvelope']>['attachmentZones'][number]>>();
+  const zonesBySideAndKind = new Map<string, Array<NonNullable<HouseModel['derivedEnvelope']>['attachmentZones'][number]>>();
+  for (const edge of derivedEnvelope?.edges ?? []) {
+    edgesById.set(edge.id, edge);
+  }
+  for (const zone of derivedEnvelope?.attachmentZones ?? []) {
+    zonesById.set(zone.id, zone);
+    if (zone.hostEdgeId) {
+      const edgeZones = zonesByEdgeId.get(zone.hostEdgeId) ?? [];
+      edgeZones.push(zone);
+      zonesByEdgeId.set(zone.hostEdgeId, edgeZones);
+    }
+    const sideKey = `${zone.side}:${zone.kind}`;
+    const sideZones = zonesBySideAndKind.get(sideKey) ?? [];
+    sideZones.push(zone);
+    zonesBySideAndKind.set(sideKey, sideZones);
+  }
+
   const warnings: HouseFirstMigrationWarning[] = [];
   const pergolas = Array.from(groups.entries()).map(([pergolaId, group]) => {
     const firstModule = group.modules[0]!;
@@ -1921,23 +2038,94 @@ function buildPergolas(input: {
       : attachmentKind === 'wall'
         ? 'wall'
         : attachmentKind;
-    const houseAttachmentZoneId =
-      zoneKind && input.house
-        ? input.house.attachmentZones.find(
-            (zone) =>
-              zone.kind === zoneKind &&
-              zone.side === normalizedAttachmentSide,
-          )?.id ?? null
-        : null;
-    if (zoneKind && input.house && houseAttachmentZoneId === null) {
+    const savedDraft = draftByPergolaId.get(pergolaId) ?? null;
+    const requestedAttachmentZoneId = normalizePergolaAttachmentZoneId(savedDraft?.attachmentZoneId);
+    const requestedAttachmentEdgeId = normalizePergolaAttachmentEdgeId(savedDraft?.attachmentEdgeId);
+    let attachmentEdgeId =
+      attachmentKind === 'freestanding'
+        ? null
+        : requestedAttachmentEdgeId;
+    let attachmentZoneId =
+      attachmentKind === 'freestanding'
+        ? null
+        : requestedAttachmentZoneId;
+    let houseAttachmentZoneId: string | null = null;
+    let resolvedAttachmentSide = normalizedAttachmentSide;
+    let resolutionStatus: PergolaModel['attachment']['resolution']['status'] =
+      attachmentKind === 'freestanding' ? 'resolved' : 'unresolved';
+    let resolutionMessage: string | null = null;
+
+    if (zoneKind === null) {
+      attachmentEdgeId = null;
+      attachmentZoneId = null;
+    } else if (!derivedEnvelope) {
+      resolutionMessage = 'This pergola no longer has a derived building envelope to attach to.';
+    } else if (requestedAttachmentZoneId !== null) {
+      const requestedZone = zonesById.get(requestedAttachmentZoneId) ?? null;
+      if (requestedZone && requestedZone.kind === zoneKind && requestedZone.hostEdgeId) {
+        attachmentZoneId = requestedZone.id;
+        attachmentEdgeId = requestedZone.hostEdgeId;
+        houseAttachmentZoneId = requestedZone.id;
+        resolvedAttachmentSide = requestedZone.side;
+        resolutionStatus = 'resolved';
+      } else {
+        resolutionMessage =
+          `The saved ${zoneKind.replace('_', ' ')} host zone for this pergola is no longer available. Select a new host zone.`;
+      }
+    } else if (requestedAttachmentEdgeId !== null) {
+      const compatibleZones = (zonesByEdgeId.get(requestedAttachmentEdgeId) ?? []).filter(
+        (zone) => zone.kind === zoneKind,
+      );
+      const requestedEdge = edgesById.get(requestedAttachmentEdgeId) ?? null;
+      if (requestedEdge && compatibleZones.length === 1) {
+        const resolvedZone = compatibleZones[0]!;
+        attachmentEdgeId = requestedEdge.id;
+        attachmentZoneId = resolvedZone.id;
+        houseAttachmentZoneId = resolvedZone.id;
+        resolvedAttachmentSide = resolvedZone.side;
+        resolutionStatus = 'resolved';
+      } else {
+        resolutionMessage =
+          compatibleZones.length > 1
+            ? `The saved host edge now resolves to multiple compatible ${zoneKind.replace('_', ' ')} zones. Select one explicitly.`
+            : `The saved host edge no longer supports a ${zoneKind.replace('_', ' ')} attachment for this pergola. Select a new host edge.`;
+      }
+    } else {
+      const legacyZones = zonesBySideAndKind.get(`${normalizedAttachmentSide}:${zoneKind}`) ?? [];
+      if (legacyZones.length === 1) {
+        const resolvedZone = legacyZones[0]!;
+        attachmentEdgeId = resolvedZone.hostEdgeId ?? null;
+        attachmentZoneId = resolvedZone.id;
+        houseAttachmentZoneId = resolvedZone.id;
+        resolvedAttachmentSide = resolvedZone.side;
+        resolutionStatus = 'resolved';
+      } else if (legacyZones.length > 1) {
+        resolutionStatus = 'ambiguous';
+        resolutionMessage =
+          `Multiple compatible ${zoneKind.replace('_', ' ')} host edges exist on the ${normalizedAttachmentSide} side. Select the correct host edge for this pergola.`;
+      } else {
+        resolutionMessage =
+          `The shared house no longer exposes a valid ${normalizedAttachmentSide} ${zoneKind.replace('_', ' ')} host zone for this pergola.`;
+      }
+    }
+
+    if (zoneKind && resolutionStatus !== 'resolved') {
+      const warningField =
+        requestedAttachmentZoneId !== null
+          ? `houseFirst.pergolas.${pergolaId}.attachmentZoneId`
+          : requestedAttachmentEdgeId !== null
+            ? `houseFirst.pergolas.${pergolaId}.attachmentEdgeId`
+            : `inputs.modules.${firstModule.moduleIndex}.attachmentSide`;
       warnings.push({
         id: `house-attachment-zone-${pergolaId}`,
         code: 'invalid_house_attachment_zone_overlay',
         severity: 'blocking',
-        field: `pergolas.${pergolaId}.attachment.houseAttachmentZoneId`,
+        field: warningField,
         chosenModuleIndex: firstModule.moduleIndex,
         conflictingModuleIndexes: [],
-        message: `The shared house no longer exposes a valid ${normalizedAttachmentSide} ${zoneKind.replace('_', ' ')} attachment zone for this pergola. The saved shared-zone reference was cleared.`,
+        message:
+          resolutionMessage ??
+          `The shared house no longer exposes a valid ${normalizedAttachmentSide} ${zoneKind.replace('_', ' ')} host zone for this pergola.`,
       });
     }
 
@@ -1951,9 +2139,15 @@ function buildPergolas(input: {
       attachment: {
         id: `attachment-${pergolaId}`,
         kind: attachmentKind,
+        attachmentEdgeId,
+        attachmentZoneId,
         houseAttachmentZoneId,
-        side: normalizedAttachmentSide,
+        side: resolvedAttachmentSide,
         strategy: pickFirstDefined(moduleInput.houseAttachmentStrategy, null),
+        resolution: {
+          status: resolutionStatus,
+          message: resolutionMessage,
+        },
       },
     };
   });
@@ -1984,6 +2178,7 @@ export function buildHouseFirstWorkbenchProjectModel(input: {
     modules,
     legacyPergolas: calculatorInputs?.pergolas ?? [],
     house: sharedHouse.house,
+    pergolaDrafts: input.draft?.houseFirst?.pergolas ?? null,
   });
 
   return {

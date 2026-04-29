@@ -32,7 +32,8 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
 
     expect(projectModel.house?.footprint.preset).toBe('wrap_left');
     expect(projectModel.pergolas).toHaveLength(1);
-    expect(projectModel.warnings).toHaveLength(0);
+    expect(projectModel.pergolas[0]?.attachment.resolution.status).toBe('ambiguous');
+    expect(projectModel.warnings).toHaveLength(1);
   });
 
   it('lets the shared roof draft override legacy roof inference', () => {
@@ -91,8 +92,12 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
     const soffitProject = buildHouseFirstWorkbenchProjectModel({
       snapshot: monoFixture.snapshot,
     });
-    expect(soffitProject.house?.attachmentZones.some((zone) => zone.id === 'zone-soffit-rear')).toBe(true);
-    expect(soffitProject.pergolas[0]?.attachment.houseAttachmentZoneId).toBe('zone-soffit-rear');
+    expect(soffitProject.pergolas[0]?.attachment.houseAttachmentZoneId).not.toBeNull();
+    expect(
+      soffitProject.house?.attachmentZones.some(
+        (zone) => zone.id === soffitProject.pergolas[0]?.attachment.houseAttachmentZoneId,
+      ),
+    ).toBe(true);
 
     const fasciaDraft = buildEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
     if (!fasciaDraft) throw new Error('Expected drawing draft.');
@@ -103,9 +108,18 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
       snapshot: monoFixture.snapshot,
       draft: fasciaDraft,
     });
-    expect(fasciaProject.house?.attachmentZones.some((zone) => zone.id === 'zone-fascia-rear')).toBe(true);
-    expect(fasciaProject.house?.attachmentZones.some((zone) => zone.id === 'zone-roof_edge-rear')).toBe(true);
-    expect(fasciaProject.pergolas[0]?.attachment.houseAttachmentZoneId).toBe('zone-fascia-rear');
+    const fasciaZoneId = fasciaProject.pergolas[0]?.attachment.houseAttachmentZoneId ?? null;
+    expect(fasciaZoneId).not.toBeNull();
+    const fasciaZone = fasciaProject.house?.derivedEnvelope?.attachmentZones.find((zone) => zone.id === fasciaZoneId) ?? null;
+    expect(fasciaZone?.kind).toBe('fascia');
+    expect(
+      fasciaProject.house?.attachmentZones.some((zone) => zone.id === fasciaZoneId && zone.kind === 'fascia'),
+    ).toBe(true);
+    expect(
+      fasciaProject.house?.derivedEnvelope?.attachmentZones.some(
+        (zone) => zone.kind === 'roof_edge' && zone.hostEdgeId === fasciaZone?.hostEdgeId,
+      ),
+    ).toBe(true);
   });
 
   it('recomputes shared attachment zones when the roof state becomes blocked', () => {
@@ -208,9 +222,90 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
     });
 
     expect(projectModel.pergolas).toHaveLength(2);
-    expect(projectModel.house?.attachmentZones.filter((zone) => zone.id === 'zone-soffit-rear')).toHaveLength(1);
-    expect(new Set(projectModel.pergolas.map((pergola) => pergola.attachment.houseAttachmentZoneId))).toEqual(
-      new Set(['zone-soffit-rear']),
+    expect(
+      projectModel.house?.attachmentZones.filter((zone) => zone.kind === 'soffit' && zone.side === 'rear').length,
+    ).toBeGreaterThan(0);
+    const resolvedZoneIds = new Set(
+      projectModel.pergolas
+        .map((pergola) => pergola.attachment.houseAttachmentZoneId)
+        .filter((zoneId): zoneId is string => typeof zoneId === 'string' && zoneId.length > 0),
+    );
+    expect(resolvedZoneIds.size).toBe(1);
+    const sharedZoneId = Array.from(resolvedZoneIds)[0] ?? null;
+    expect(
+      projectModel.house?.attachmentZones.some((zone) => zone.id === sharedZoneId && zone.kind === 'soffit'),
+    ).toBe(true);
+  });
+
+  it('prefers saved canonical pergola attachment zones over saved edges and legacy side fallbacks', () => {
+    const monoFixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
+    if (!monoFixture) throw new Error('Missing mono-standard fixture.');
+    const draft = buildEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
+    if (!draft) throw new Error('Expected drawing draft.');
+    draft.houseFirst = {
+      pergolas: [
+        {
+          id: 'pergola-1',
+          attachmentEdgeId: 'footprint-edge-3',
+          attachmentZoneId: 'zone-soffit-footprint-edge-4',
+        },
+      ],
+    };
+
+    const projectModel = buildHouseFirstWorkbenchProjectModel({
+      snapshot: monoFixture.snapshot,
+      draft,
+    });
+
+    expect(projectModel.pergolas[0]?.attachment).toMatchObject({
+      attachmentEdgeId: 'footprint-edge-4',
+      attachmentZoneId: 'zone-soffit-footprint-edge-4',
+      houseAttachmentZoneId: 'zone-soffit-footprint-edge-4',
+      side: 'left',
+      resolution: {
+        status: 'resolved',
+        message: null,
+      },
+    });
+    expect(projectModel.warnings).toEqual([]);
+  });
+
+  it('keeps stale saved pergola attachment zones unresolved instead of silently retargeting them', () => {
+    const monoFixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
+    if (!monoFixture) throw new Error('Missing mono-standard fixture.');
+    const draft = buildEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
+    if (!draft) throw new Error('Expected drawing draft.');
+    draft.houseFirst = {
+      pergolas: [
+        {
+          id: 'pergola-1',
+          attachmentEdgeId: 'footprint-edge-3',
+          attachmentZoneId: 'zone-soffit-footprint-edge-99',
+        },
+      ],
+    };
+
+    const projectModel = buildHouseFirstWorkbenchProjectModel({
+      snapshot: monoFixture.snapshot,
+      draft,
+    });
+
+    expect(projectModel.pergolas[0]?.attachment).toMatchObject({
+      attachmentEdgeId: 'footprint-edge-3',
+      attachmentZoneId: 'zone-soffit-footprint-edge-99',
+      houseAttachmentZoneId: null,
+      side: 'rear',
+      resolution: {
+        status: 'unresolved',
+        message:
+          'The saved soffit host zone for this pergola is no longer available. Select a new host zone.',
+      },
+    });
+    expect(projectModel.warnings).toContainEqual(
+      expect.objectContaining({
+        code: 'invalid_house_attachment_zone_overlay',
+        field: 'houseFirst.pergolas.pergola-1.attachmentZoneId',
+      }),
     );
   });
 

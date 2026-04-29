@@ -44,6 +44,30 @@ type DesignWorkbenchEstimateClientProps = {
 
 const DEFAULT_MODEL_VIEWPORT_TRANSFORM = createDrawingWorkbenchUiState().viewportTransform;
 
+const PERGOLA_CONNECTION_OPTIONS = [
+  { value: 'soffit', label: 'Soffit attached' },
+  { value: 'fascia', label: 'Fascia attached' },
+  { value: 'wall', label: 'Wall attached' },
+  { value: 'freestanding', label: 'Freestanding' },
+] as const;
+
+const PERGOLA_ATTACHMENT_STRATEGY_OPTIONS = [
+  { value: 'auto', label: 'Auto' },
+  { value: 'soffit_brackets', label: 'Soffit brackets' },
+  { value: 'fascia_under_gutter', label: 'Fascia under gutter' },
+  { value: 'facade_ledger', label: 'Facade ledger' },
+  { value: 'post_supported_tieback', label: 'Post supported tieback' },
+  { value: 'none', label: 'None' },
+] as const;
+
+function resolvePergolaZoneKind(
+  kind: 'freestanding' | 'soffit' | 'fascia' | 'wall',
+): 'wall' | 'soffit' | 'fascia' | null {
+  if (kind === 'freestanding') return null;
+  if (kind === 'wall') return 'wall';
+  return kind;
+}
+
 function buildInitialWorkbenchUiState(snapshot: Record<string, unknown> | null) {
   const defaultHouseFormId =
     buildHouseFirstWorkbenchProjectModel({
@@ -302,31 +326,39 @@ export default function DesignWorkbenchEstimateClient({
   const attachmentZoneKindsSummary = useMemo(() => {
     const zones = store.derived.house?.attachmentZones ?? [];
     if (!zones.length) return 'none';
-    const zonesBySide = new Map<string, string[]>();
+    const zonesBySide = new Map<string, Set<string>>();
     for (const zone of zones) {
-      const existing = zonesBySide.get(zone.side) ?? [];
-      existing.push(zone.kind);
+      const existing = zonesBySide.get(zone.side) ?? new Set<string>();
+      existing.add(zone.kind);
       zonesBySide.set(zone.side, existing);
     }
     return Array.from(zonesBySide.entries())
-      .map(([side, kinds]) => `${side}: ${kinds.join(', ')}`)
+      .map(([side, kinds]) => `${side}: ${Array.from(kinds).join(', ')}`)
       .join(' | ');
   }, [store.derived.house?.attachmentZones]);
   const attachmentZoneBlockedSummary = useMemo(() => {
     const blocked = store.derived.house?.attachmentZoneDiagnostics.blocked ?? [];
     if (!blocked.length) return 'none';
-    return blocked
-      .map((entry) => `${entry.side} ${entry.kind} (${entry.reason})`)
-      .join(' | ');
+    return Array.from(
+      new Set(blocked.map((entry) => `${entry.side} ${entry.kind} (${entry.reason})`)),
+    ).join(' | ');
   }, [store.derived.house?.attachmentZoneDiagnostics.blocked]);
   const resolvedPergolaAttachmentZoneCount = useMemo(
-    () => store.derived.pergolas.filter((pergola) => pergola.attachment.houseAttachmentZoneId !== null).length,
+    () =>
+      store.derived.pergolas.filter(
+        (pergola) =>
+          pergola.attachment.kind !== 'freestanding' &&
+          pergola.attachment.resolution.status === 'resolved' &&
+          pergola.attachment.attachmentZoneId !== null,
+      ).length,
     [store.derived.pergolas],
   );
   const unresolvedPergolaAttachmentZoneCount = useMemo(
     () =>
       store.derived.pergolas.filter(
-        (pergola) => pergola.attachment.kind !== 'freestanding' && pergola.attachment.houseAttachmentZoneId === null,
+        (pergola) =>
+          pergola.attachment.kind !== 'freestanding' &&
+          pergola.attachment.resolution.status !== 'resolved',
       ).length,
     [store.derived.pergolas],
   );
@@ -397,6 +429,49 @@ export default function DesignWorkbenchEstimateClient({
     store,
     ui,
   });
+  const [pergolaAttachmentPendingFieldId, setPergolaAttachmentPendingFieldId] = useState<string | null>(null);
+  const [pergolaAttachmentFieldErrors, setPergolaAttachmentFieldErrors] = useState<Record<string, string>>({});
+  const activePergolaZoneKind = activePergolaModel
+    ? resolvePergolaZoneKind(activePergolaModel.attachment.kind)
+    : null;
+  const compatiblePergolaZones = useMemo(() => {
+    if (!activePergolaModel || !activePergolaZoneKind) return [];
+    return (store.derived.house?.derivedEnvelope?.attachmentZones ?? []).filter(
+      (zone) => zone.kind === activePergolaZoneKind,
+    );
+  }, [activePergolaModel, activePergolaZoneKind, store.derived.house?.derivedEnvelope?.attachmentZones]);
+  const compatiblePergolaEdges = useMemo(() => {
+    const allowedEdgeIds = new Set(
+      compatiblePergolaZones
+        .map((zone) => zone.hostEdgeId)
+        .filter((hostEdgeId): hostEdgeId is string => typeof hostEdgeId === 'string' && hostEdgeId.length > 0),
+    );
+    return (store.derived.house?.derivedEnvelope?.edges ?? []).filter((edge) => allowedEdgeIds.has(edge.id));
+  }, [compatiblePergolaZones, store.derived.house?.derivedEnvelope?.edges]);
+  const selectedPergolaEdgeOptionMissing = Boolean(
+    activePergolaModel?.attachment.attachmentEdgeId &&
+      !compatiblePergolaEdges.some((edge) => edge.id === activePergolaModel.attachment.attachmentEdgeId),
+  );
+  const selectedPergolaZoneOptionMissing = Boolean(
+    activePergolaModel?.attachment.attachmentZoneId &&
+      !compatiblePergolaZones.some((zone) => zone.id === activePergolaModel.attachment.attachmentZoneId),
+  );
+  const runPergolaAttachmentAction = useCallback(
+    async (
+      fieldId: string,
+      action: Promise<{ ok: boolean; error?: string }> | { ok: boolean; error?: string } | undefined,
+      fallbackMessage: string,
+    ) => {
+      setPergolaAttachmentPendingFieldId(fieldId);
+      const result = await Promise.resolve(action ?? { ok: false, error: fallbackMessage });
+      setPergolaAttachmentFieldErrors((current) => ({
+        ...current,
+        [fieldId]: result.ok ? '' : result.error ?? fallbackMessage,
+      }));
+      setPergolaAttachmentPendingFieldId((current) => (current === fieldId ? null : current));
+    },
+    [],
+  );
 
   const workbenchFieldCommit =
     !isLocked && supportsSanctuaryEditing && isPergolaTabActive
@@ -516,7 +591,7 @@ export default function DesignWorkbenchEstimateClient({
       <section className={styles.moduleSection}>
         <p className={styles.moduleSectionTitle}>Pergola Inspector</p>
         <p className={styles.noticeText}>
-          Geometry, roof, supports, and overrides live here. House attachment, footprint, and rotation stay in House Forms.
+          Geometry, roof, supports, and overrides live here. Footprint and drawing rotation still live in House Forms.
         </p>
         <button
           type="button"
@@ -526,6 +601,164 @@ export default function DesignWorkbenchEstimateClient({
           Open House Forms
         </button>
       </section>
+      {activePergolaModel ? (
+        <section className={styles.moduleSection}>
+          <p className={styles.moduleSectionTitle}>Host Attachment</p>
+          <label className={styles.moduleSectionTitle} htmlFor="pergola-connection-type">
+            Connection
+          </label>
+          <select
+            id="pergola-connection-type"
+            className={styles.moduleSelect}
+            aria-label="Pergola connection"
+            value={activePergolaModel.attachment.kind}
+            disabled={isLocked || pergolaAttachmentPendingFieldId === 'pergola-connection'}
+            onChange={(event) =>
+              runPergolaAttachmentAction(
+                'pergola-connection',
+                !isLocked
+                  ? houseActions.commitSharedPergolaConnectionKind(
+                      activePergolaModel.id,
+                      event.target.value as typeof activePergolaModel.attachment.kind,
+                    )
+                  : undefined,
+                'Unable to update the pergola connection.',
+              )
+            }
+          >
+            {PERGOLA_CONNECTION_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+          <label className={styles.moduleSectionTitle} htmlFor="pergola-attachment-strategy">
+            Attachment strategy
+          </label>
+          <select
+            id="pergola-attachment-strategy"
+            className={styles.moduleSelect}
+            aria-label="Pergola attachment strategy"
+            value={activePergolaModel.attachment.strategy ?? 'auto'}
+            disabled={
+              isLocked ||
+              activePergolaModel.attachment.kind === 'freestanding' ||
+              pergolaAttachmentPendingFieldId === 'pergola-strategy'
+            }
+            onChange={(event) =>
+              runPergolaAttachmentAction(
+                'pergola-strategy',
+                !isLocked
+                  ? houseActions.commitSharedPergolaAttachmentStrategy(
+                      activePergolaModel.id,
+                      event.target.value as (typeof PERGOLA_ATTACHMENT_STRATEGY_OPTIONS)[number]['value'],
+                    )
+                  : undefined,
+                'Unable to update the pergola attachment strategy.',
+              )
+            }
+          >
+            {PERGOLA_ATTACHMENT_STRATEGY_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+          <label className={styles.moduleSectionTitle} htmlFor="pergola-host-edge">
+            Host edge
+          </label>
+          <select
+            id="pergola-host-edge"
+            className={styles.moduleSelect}
+            aria-label="Pergola host edge"
+            value={activePergolaModel.attachment.attachmentEdgeId ?? ''}
+            disabled={
+              isLocked ||
+              activePergolaModel.attachment.kind === 'freestanding' ||
+              (!compatiblePergolaEdges.length && !selectedPergolaEdgeOptionMissing) ||
+              pergolaAttachmentPendingFieldId === 'pergola-edge'
+            }
+            onChange={(event) =>
+              runPergolaAttachmentAction(
+                'pergola-edge',
+                !isLocked
+                  ? houseActions.commitSharedPergolaAttachmentEdge(activePergolaModel.id, event.target.value)
+                  : undefined,
+                'Unable to update the pergola host edge.',
+              )
+            }
+          >
+            {selectedPergolaEdgeOptionMissing && activePergolaModel.attachment.attachmentEdgeId ? (
+              <option value={activePergolaModel.attachment.attachmentEdgeId}>Unavailable saved edge</option>
+            ) : null}
+            {compatiblePergolaEdges.map((edge) => (
+              <option key={edge.id} value={edge.id}>
+                {edge.label}
+              </option>
+            ))}
+          </select>
+          <label className={styles.moduleSectionTitle} htmlFor="pergola-host-zone">
+            Host zone
+          </label>
+          <select
+            id="pergola-host-zone"
+            className={styles.moduleSelect}
+            aria-label="Pergola host zone"
+            value={activePergolaModel.attachment.attachmentZoneId ?? ''}
+            disabled={
+              isLocked ||
+              activePergolaModel.attachment.kind === 'freestanding' ||
+              (!compatiblePergolaZones.length && !selectedPergolaZoneOptionMissing) ||
+              pergolaAttachmentPendingFieldId === 'pergola-zone'
+            }
+            onChange={(event) =>
+              runPergolaAttachmentAction(
+                'pergola-zone',
+                !isLocked
+                  ? houseActions.commitSharedPergolaAttachmentZone(activePergolaModel.id, event.target.value)
+                  : undefined,
+                'Unable to update the pergola host zone.',
+              )
+            }
+          >
+            {selectedPergolaZoneOptionMissing && activePergolaModel.attachment.attachmentZoneId ? (
+              <option value={activePergolaModel.attachment.attachmentZoneId}>Unavailable saved zone</option>
+            ) : null}
+            {compatiblePergolaZones.map((zone) => (
+              <option key={zone.id} value={zone.id}>
+                {zone.label}
+              </option>
+            ))}
+          </select>
+          <div className={styles.diagnosticsList}>
+            <div className={styles.diagnosticRow}>
+              <span className={styles.diagnosticLabel}>Resolution</span>
+              <span className={styles.diagnosticValue}>{activePergolaModel.attachment.resolution.status}</span>
+            </div>
+            <div className={styles.diagnosticRow}>
+              <span className={styles.diagnosticLabel}>Host side</span>
+              <span className={styles.diagnosticValue}>
+                {labelForAttachmentSideList([activePergolaModel.attachment.side])}
+              </span>
+            </div>
+          </div>
+          {activePergolaModel.attachment.resolution.message ? (
+            <p className={styles.noticeText}>{activePergolaModel.attachment.resolution.message}</p>
+          ) : null}
+          {pergolaAttachmentFieldErrors['pergola-connection'] ? (
+            <p className={styles.noticeText}>{pergolaAttachmentFieldErrors['pergola-connection']}</p>
+          ) : null}
+          {pergolaAttachmentFieldErrors['pergola-strategy'] ? (
+            <p className={styles.noticeText}>{pergolaAttachmentFieldErrors['pergola-strategy']}</p>
+          ) : null}
+          {pergolaAttachmentFieldErrors['pergola-edge'] ? (
+            <p className={styles.noticeText}>{pergolaAttachmentFieldErrors['pergola-edge']}</p>
+          ) : null}
+          {pergolaAttachmentFieldErrors['pergola-zone'] ? (
+            <p className={styles.noticeText}>{pergolaAttachmentFieldErrors['pergola-zone']}</p>
+          ) : null}
+        </section>
+      ) : null}
       {modules.length > 1 ? (
         <section className={styles.moduleSection}>
           <p className={styles.moduleSectionTitle}>Module</p>
@@ -582,14 +815,14 @@ export default function DesignWorkbenchEstimateClient({
             }}
           />
         </>
-      ) : (
+      ) : activePergolaModel ? (
         <section className={styles.notice}>
           <p className={styles.noticeTitle}>Editing Deferred</p>
           <p className={styles.noticeText}>
             This pergola family is not supported for native editing yet, but it can still be reviewed in the canonical workbench.
           </p>
         </section>
-      )}
+      ) : null}
     </>
   );
   const diagnosticsPanel = (

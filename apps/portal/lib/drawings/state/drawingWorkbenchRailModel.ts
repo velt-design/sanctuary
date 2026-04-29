@@ -86,7 +86,7 @@ const FAMILY_DESCRIPTORS: Record<
     singularLabel: 'Pergola',
     addActionLabels: [],
     emptyTitle: 'No pergola selected',
-    emptyMessage: 'Select a pergola to edit geometry, supports, and overrides.',
+    emptyMessage: 'Select a pergola to edit hosting, geometry, supports, and overrides.',
   },
 };
 
@@ -169,6 +169,18 @@ function resolvePergolaEntryStatus(input: {
   pergola: PergolaModel;
   moduleStates: DrawingWorkbenchRailPergolaModuleState[];
 }): Pick<DrawingWorkbenchRailObjectEntry, 'status' | 'statusLabel'> {
+  if (input.pergola.attachment.kind !== 'freestanding' && input.pergola.attachment.resolution.status === 'ambiguous') {
+    return {
+      status: 'blocked',
+      statusLabel: 'Ambiguous host',
+    };
+  }
+  if (input.pergola.attachment.kind !== 'freestanding' && input.pergola.attachment.resolution.status === 'unresolved') {
+    return {
+      status: 'blocked',
+      statusLabel: 'Unresolved host',
+    };
+  }
   if (input.moduleStates.some((module) => module.planRenderStatus === 'legacy_unsupported_family')) {
     return {
       status: 'deferred',
@@ -194,6 +206,7 @@ function resolvePergolaEntryStatus(input: {
 }
 
 function buildPergolaEntries(input: {
+  house: HouseModel | null;
   pergolas: PergolaModel[];
   modules: DrawingWorkbenchRailPergolaModuleState[];
 }): DrawingWorkbenchRailObjectEntry[] {
@@ -210,6 +223,18 @@ function buildPergolaEntries(input: {
       pergola,
       moduleStates,
     });
+    const edgeLabel = pergola.attachment.attachmentEdgeId
+      ? input.house?.derivedEnvelope?.edges.find((edge) => edge.id === pergola.attachment.attachmentEdgeId)?.label ??
+        'Unavailable saved edge'
+      : pergola.attachment.kind === 'freestanding'
+        ? 'Freestanding'
+        : 'No host edge';
+    const zoneLabel = pergola.attachment.attachmentZoneId
+      ? input.house?.derivedEnvelope?.attachmentZones.find((zone) => zone.id === pergola.attachment.attachmentZoneId)?.label ??
+        'Unavailable saved zone'
+      : pergola.attachment.kind === 'freestanding'
+        ? null
+        : 'No host zone';
     return {
       ref: {
         family: 'pergolas',
@@ -218,7 +243,7 @@ function buildPergolaEntries(input: {
       label: pergola.label,
       status: status.status,
       statusLabel: status.statusLabel,
-      meta: `${humanizePergolaFamily(pergola.family)} | ${pergola.attachment.kind}`,
+      meta: `${humanizePergolaFamily(pergola.family)} | ${edgeLabel}${zoneLabel ? ` | ${zoneLabel}` : ''}`,
     };
   });
 }
@@ -257,6 +282,7 @@ export function buildDrawingWorkbenchRailModel(input: {
     decks: buildDeckEntries(input.house),
     openings: buildOpeningEntries(input.house),
     pergolas: buildPergolaEntries({
+      house: input.house,
       pergolas: input.pergolas,
       modules: input.modules,
     }),

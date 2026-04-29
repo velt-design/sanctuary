@@ -9,6 +9,7 @@ import {
   deriveEstimateDrawingEditableFields,
   resolveEstimateDrawingOverridesFromSnapshot,
   updateEstimateDrawingHouseFirstDeckDrafts,
+  updateEstimateDrawingHouseFirstPergolaDrafts,
 } from './drawingEdits';
 import { buildEstimateDrawingModules } from './moduleDrawing';
 
@@ -364,5 +365,29 @@ describe('drawingEdits', () => {
       widthM: '3.6',
       depthM: '3',
     });
+  });
+
+  it('round-trips canonical pergola attachment drafts through house-first pergola updates', () => {
+    const snapshot = makeSnapshot(makeModule());
+    const draft = buildEstimateDrawingDraftFromSnapshot(snapshot)!;
+
+    const nextDraft = updateEstimateDrawingHouseFirstPergolaDrafts({
+      draft,
+      pergolas: [
+        {
+          id: ' pergola-1 ',
+          attachmentEdgeId: ' footprint-edge-4 ',
+          attachmentZoneId: ' zone-soffit-footprint-edge-4 ',
+        },
+      ],
+    });
+
+    expect(nextDraft.houseFirst?.pergolas).toEqual([
+      {
+        id: 'pergola-1',
+        attachmentEdgeId: 'footprint-edge-4',
+        attachmentZoneId: 'zone-soffit-footprint-edge-4',
+      },
+    ]);
   });
 });

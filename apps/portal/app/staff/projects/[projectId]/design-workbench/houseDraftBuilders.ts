@@ -6,7 +6,9 @@ import {
 import type {
   HouseFirstDeckDraft,
   HouseFirstOpeningDraft,
+  HouseFirstPergolaDraft,
   HouseModel,
+  PergolaModel,
 } from '@/lib/drawings/state/houseFirstWorkbenchModel';
 import {
   normalizeWallOpeningKind,
@@ -55,6 +57,16 @@ export function toOpeningDrafts(house: HouseModel | null | undefined): HouseFirs
     heightM: opening.heightM,
     sillHeightM: opening.sillHeightM,
     offsetAlongWallM: opening.offsetAlongWallM,
+  }));
+}
+
+export function toPergolaDrafts(
+  pergolas: PergolaModel[] | null | undefined,
+): HouseFirstPergolaDraft[] {
+  return (pergolas ?? []).map((pergola) => ({
+    id: pergola.id,
+    attachmentEdgeId: pergola.attachment.attachmentEdgeId,
+    attachmentZoneId: pergola.attachment.attachmentZoneId,
   }));
 }
 

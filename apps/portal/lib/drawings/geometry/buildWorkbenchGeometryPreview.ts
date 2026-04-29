@@ -133,10 +133,15 @@ function annotateSceneAttachmentZoneMetadata(
   const zones = projectModel.house?.attachmentZones ?? [];
   const blocked = projectModel.house?.attachmentZoneDiagnostics.blocked ?? [];
   const resolvedPergolaAttachmentZoneCount = projectModel.pergolas.filter(
-    (pergola) => pergola.attachment.houseAttachmentZoneId !== null,
+    (pergola) =>
+      pergola.attachment.kind !== 'freestanding' &&
+      pergola.attachment.resolution.status === 'resolved' &&
+      pergola.attachment.attachmentZoneId !== null,
   ).length;
   const unresolvedPergolaAttachmentZoneCount = projectModel.pergolas.filter(
-    (pergola) => pergola.attachment.kind !== 'freestanding' && pergola.attachment.houseAttachmentZoneId === null,
+    (pergola) =>
+      pergola.attachment.kind !== 'freestanding' &&
+      pergola.attachment.resolution.status !== 'resolved',
   ).length;
   return {
     ...scene,
