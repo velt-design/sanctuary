@@ -4514,7 +4514,12 @@ describe('ModelSpaceViewport', () => {
 
     expect(scroller.dataset.houseFirstDeckDragActive).toBe('true');
     expect(rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]')).not.toBeNull();
-    expect(rendered.container.querySelector('[data-editable-field-id="deck-1:widthM"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[data-editable-field-id="deck-1:widthM"]')).toBeNull();
+    expect(
+      rendered.container
+        .querySelector('[data-house-first-shape="deck:deck-1"]')
+        ?.getAttribute('data-house-first-shape-preview-suppressed'),
+    ).toBe('true');
 
     dispatchPointer(window, 'pointerup', { pointerId: 25, button: 0, clientX: -220, clientY: 50 });
     await act(async () => {
@@ -4833,9 +4838,17 @@ describe('ModelSpaceViewport', () => {
 
     const previewShape = rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]');
     expect(previewShape).not.toBeNull();
+    expect(rendered.container.querySelectorAll('[data-house-first-preview-shape="deck-1"]')).toHaveLength(1);
     expect(polygonPointsAttr(previewShape)).not.toBe(deckShapeBefore);
+    const committedDeckDuringPreview = rendered.container.querySelector('[data-house-first-shape="deck:deck-1"]');
+    expect(committedDeckDuringPreview?.getAttribute('data-house-first-shape-preview-suppressed')).toBe('true');
+    expect(
+      rendered.container
+        .querySelector('[data-house-first-shape-hit="deck:deck-1"]')
+        ?.getAttribute('data-house-first-shape-hit-preview-suppressed'),
+    ).toBe('true');
     expect(polygonPointsAttr(rendered.container.querySelector('[data-house-first-shape="footprint:house-main"]'))).toBe(houseShapeBefore);
-    expect(polygonPointsAttr(rendered.container.querySelector('[data-house-first-shape="deck:deck-1"]'))).toBe(deckShapeBefore);
+    expect(polygonPointsAttr(committedDeckDuringPreview)).toBe(deckShapeBefore);
     expect(polygonPointsAttr(rendered.container.querySelector('[data-house-plan-surface="footprint"]'))).toBe(houseSurfaceBefore);
     expect(polygonPointsAttr(rendered.container.querySelector('[data-plan-primary-fill="true"]'))).toBe(pergolaFillBefore);
 
@@ -5139,6 +5152,11 @@ describe('ModelSpaceViewport', () => {
     dispatchPointer(window, 'pointerup', { pointerId: 140, button: 0, clientX: 50, clientY: -4000 });
 
     expect(rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]')).not.toBeNull();
+    expect(
+      rendered.container
+        .querySelector('[data-house-first-shape="deck:deck-1"]')
+        ?.getAttribute('data-house-first-shape-preview-suppressed'),
+    ).toBe('true');
     expect(rendered.container.querySelector('[data-testid="flush-deck-commit"]')).not.toBeNull();
     expect(getDrawOutlineDiagnostics(rendered.container).houseFirstDeckDragLocked).toBe('true');
     expect(rendered.container.querySelector('[data-testid="deck-telemetry-release-outcome"]')?.textContent).toBe('pending');
@@ -5161,6 +5179,11 @@ describe('ModelSpaceViewport', () => {
     expect(getDrawOutlineDiagnostics(rendered.container).houseFirstDeckDragLocked).toBe('true');
     expect(rendered.container.querySelector('[data-testid="deck-telemetry-release-outcome"]')?.textContent).toBe('committed');
     expect(rendered.container.querySelector('[data-testid="deck-telemetry-settle-visual"]')?.textContent).toBe('reconciling');
+    expect(
+      rendered.container
+        .querySelector('[data-house-first-shape="deck:deck-1"]')
+        ?.getAttribute('data-house-first-shape-preview-suppressed'),
+    ).toBe('true');
     act(() => {
       scrollParent.scrollTop = initialScrollTop + 120;
       scrollParent.dispatchEvent(new Event('scroll'));
@@ -5180,6 +5203,11 @@ describe('ModelSpaceViewport', () => {
     expect(rendered.container.querySelector('[data-testid="deck-telemetry-release-outcome"]')?.textContent).toBe('committed');
     expect(rendered.container.querySelector('[data-testid="deck-telemetry-settle-visual"]')?.textContent).toBe('complete');
     expect(rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]')).toBeNull();
+    expect(
+      rendered.container
+        .querySelector('[data-house-first-shape="deck:deck-1"]')
+        ?.getAttribute('data-house-first-shape-preview-suppressed'),
+    ).toBe('false');
     expect(getDrawOutlineDiagnostics(rendered.container).houseFirstDeckDragLocked).toBe('false');
     expect(snapshotRect(getScrollerRect())).toEqual(initialScrollerRect);
     await act(async () => {
@@ -5742,6 +5770,11 @@ describe('ModelSpaceViewport', () => {
       rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]'),
     );
     expect(releasePreviewPoints).not.toBe(committedDeckBefore);
+    expect(
+      rendered.container
+        .querySelector('[data-house-first-shape="deck:deck-1"]')
+        ?.getAttribute('data-house-first-shape-preview-suppressed'),
+    ).toBe('true');
     expect(rendered.container.querySelector('[data-testid="flush-deck-commit"]')).not.toBeNull();
     expect(rendered.container.querySelector('[data-testid="deck-telemetry-release-outcome"]')?.textContent).toBe('pending');
     expect(rendered.container.querySelector('[data-testid="deck-telemetry-release-placement"]')?.textContent).toBe(
@@ -5765,6 +5798,14 @@ describe('ModelSpaceViewport', () => {
       'reconciling',
     );
     expect(rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]')).not.toBeNull();
+    expect(
+      rendered.container
+        .querySelector('[data-house-first-shape="deck:deck-1"]')
+        ?.getAttribute('data-house-first-shape-preview-suppressed'),
+    ).toBe('true');
+    expect(
+      normalizePolygonPointSet(polygonPointsAttr(rendered.container.querySelector('[data-house-first-shape="deck:deck-1"]'))),
+    ).toBe(normalizePolygonPointSet(releasePreviewPoints));
 
     await flushAnimationFrame();
     await flushAnimationFrame();
@@ -5788,6 +5829,11 @@ describe('ModelSpaceViewport', () => {
       'complete',
     );
     expect(rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]')).toBeNull();
+    expect(
+      rendered.container
+        .querySelector('[data-house-first-shape="deck:deck-1"]')
+        ?.getAttribute('data-house-first-shape-preview-suppressed'),
+    ).toBe('false');
 
     rendered.unmount();
   });

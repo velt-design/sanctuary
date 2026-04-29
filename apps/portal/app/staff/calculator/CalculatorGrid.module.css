@@ -3055,6 +3055,11 @@
   stroke-width: var(--mv-line-major-width);
 }
 
+.moduleHouseFirstShapePreviewSuppressed {
+  opacity: 0;
+  pointer-events: none;
+}
+
 .moduleHouseFirstDrivingWitness {
   stroke: rgba(var(--accentRgb), 0.76);
 }

@@ -1210,6 +1210,47 @@ describe('houseFirstPlanOverlay', () => {
     expect(deckShape?.deckInteraction?.renderedCenter).toEqual(renderedCenter);
   });
 
+  it('uses the editable draft deck polygon before stale generated deck surfaces', () => {
+    const draftDeck = makeDeck({
+      shape: 'custom',
+      presetType: null,
+      presetRect: null,
+      isAttached: false,
+      hostEdgeId: null,
+      outline: [
+        { alongM: '0.5', depthM: '-0.25' },
+        { alongM: '3.5', depthM: '-0.25' },
+        { alongM: '3.5', depthM: '-2.25' },
+        { alongM: '0.5', depthM: '-2.25' },
+      ],
+    });
+    const staleGeometryDeck = {
+      ...draftDeck,
+      outline: [
+        { alongM: '9', depthM: '9' },
+        { alongM: '10', depthM: '9' },
+        { alongM: '10', depthM: '10' },
+        { alongM: '9', depthM: '10' },
+      ],
+    };
+    const house = makeHouse({ decks: [draftDeck] });
+    const expectedDraftSurface = makeGeometryHouseContext(house).surfaces.find((surface) => surface.id === 'deck-1');
+    const staleGeometryHouseContext = makeGeometryHouseContext(makeHouse({ decks: [staleGeometryDeck] }));
+
+    const overlay = buildHouseFirstPlanOverlay({
+      house,
+      selection: { kind: 'deck', targetId: 'deck-1' },
+      moduleLengthM: '6',
+      moduleProjectionM: '3',
+      geometryHouseContext: staleGeometryHouseContext,
+    });
+
+    const deckShape = overlay?.shapes.find((shape) => shape.ownerKind === 'deck' && shape.ownerId === 'deck-1');
+    const staleDeckSurface = staleGeometryHouseContext.surfaces.find((surface) => surface.id === 'deck-1');
+    expect(toScenePolygonMetres(deckShape?.polygon ?? [])).toEqual(toScenePolygonMetres(expectedDraftSurface?.boundary ?? []));
+    expect(toScenePolygonMetres(deckShape?.polygon ?? [])).not.toEqual(toScenePolygonMetres(staleDeckSurface?.boundary ?? []));
+  });
+
   it('resolves floating and snapped preset decks against exact side edges instead of merged side buckets', () => {
     const baseHouse = makeHouse({
       footprint: {

@@ -869,9 +869,9 @@ describe('ModuleViewsCard', () => {
     const cardFootprintPoints = extractPolygonPoints(cardMarkup, 'data-house-plan-surface', 'footprint');
     const modelOpeningPoints = extractPolygonPoints(modelMarkup, 'data-house-first-shape', 'opening:opening-1');
 
-    expect(modelFootprintPoints[0]?.y).toBeGreaterThan(modelFootprintPoints[2]?.y);
+    expect(modelFootprintPoints[0]?.y).toBeLessThan(modelFootprintPoints[2]?.y);
     expect(cardFootprintPoints[0]?.y).toBeLessThan(cardFootprintPoints[2]?.y);
-    expect(modelOpeningPoints[0]?.y).toBeLessThan(modelOpeningPoints[2]?.y);
+    expect(modelOpeningPoints[0]?.y).toBeGreaterThan(modelOpeningPoints[2]?.y);
   });
 
   it('keeps house-mode roof and gutter geometry inside the projected model-space clip box', () => {
@@ -1320,6 +1320,237 @@ describe('ModuleViewsCard', () => {
     const deckHitIndex = markup.indexOf('data-house-first-shape-hit="deck:deck-1"');
     expect(pergolaFillIndex).toBeGreaterThanOrEqual(0);
     expect(deckHitIndex).toBeGreaterThan(pergolaFillIndex);
+  });
+
+  it('uses the house-first deck overlay as the single house-mode plan deck body', () => {
+    const drawing = makeDrawingModule();
+    const planModel: ModulePlanModel = {
+      ...drawing.planModel!,
+      houseContext: {
+        surfaces: [
+          {
+            id: 'house-footprint',
+            kind: 'footprint',
+            boundary: [
+              { x: 0, y: -3 },
+              { x: 6, y: -3 },
+              { x: 6, y: 0 },
+              { x: 0, y: 0 },
+            ],
+          },
+          {
+            id: 'deck-1',
+            kind: 'deck',
+            boundary: [
+              { x: 0, y: 0 },
+              { x: 6, y: 0 },
+              { x: 6, y: 3 },
+              { x: 0, y: 3 },
+            ],
+          },
+        ],
+        lines: [],
+      },
+    };
+    const houseFirstPlanOverlay: HouseFirstPlanOverlay = {
+      housePolygonSource: 'preset_derived',
+      shapes: [
+        {
+          ownerKind: 'deck',
+          ownerId: 'deck-1',
+          polygon: [
+            { x: 0, y: 0 },
+            { x: 6, y: 0 },
+            { x: 6, y: 3 },
+            { x: 0, y: 3 },
+          ],
+          detailSegments: [],
+          selected: true,
+          custom: false,
+          muted: false,
+          invalid: false,
+          invalidMessage: null,
+          deckInteraction: null,
+          openingInteraction: null,
+          deckDragEligibility: null,
+          openingDragEligibility: null,
+        },
+      ],
+      presetAnnotations: [],
+      customEdgeCandidates: [],
+    };
+
+    const markup = renderToStaticMarkup(
+      <ModuleDrawingRenderer
+        view="plan"
+        status="ready"
+        planModel={planModel}
+        sectionModel={drawing.sectionModel}
+        presentation="model"
+        displayMode="house"
+        houseFirstPlanOverlay={houseFirstPlanOverlay}
+      />,
+    );
+
+    expect(markup).toContain('data-house-first-shape="deck:deck-1"');
+    expect(markup).toContain('data-house-plan-surface="footprint"');
+    expect(markup).not.toContain('data-house-plan-surface="deck"');
+  });
+
+  it('hides semantic and house-first deck visuals when deck visibility is off', () => {
+    const drawing = makeDrawingModule();
+    const planModel: ModulePlanModel = {
+      ...drawing.planModel!,
+      houseContext: {
+        surfaces: [
+          {
+            id: 'house-footprint',
+            kind: 'footprint',
+            boundary: [
+              { x: 0, y: -3 },
+              { x: 6, y: -3 },
+              { x: 6, y: 0 },
+              { x: 0, y: 0 },
+            ],
+          },
+          {
+            id: 'deck-1',
+            kind: 'deck',
+            boundary: [
+              { x: 0, y: 0 },
+              { x: 6, y: 0 },
+              { x: 6, y: 3 },
+              { x: 0, y: 3 },
+            ],
+          },
+        ],
+        lines: [],
+      },
+    };
+    const houseFirstPlanOverlay: HouseFirstPlanOverlay = {
+      housePolygonSource: 'preset_derived',
+      shapes: [
+        {
+          ownerKind: 'deck',
+          ownerId: 'deck-1',
+          polygon: [
+            { x: 0, y: 0 },
+            { x: 6, y: 0 },
+            { x: 6, y: 3 },
+            { x: 0, y: 3 },
+          ],
+          detailSegments: [],
+          selected: true,
+          custom: false,
+          muted: false,
+          invalid: false,
+          invalidMessage: null,
+          deckInteraction: null,
+          openingInteraction: null,
+          deckDragEligibility: null,
+          openingDragEligibility: null,
+        },
+      ],
+      presetAnnotations: [],
+      customEdgeCandidates: [],
+    };
+
+    const markup = renderToStaticMarkup(
+      <ModuleDrawingRenderer
+        view="plan"
+        status="ready"
+        planModel={planModel}
+        sectionModel={drawing.sectionModel}
+        presentation="model"
+        displayMode="house"
+        visibility={{ house: true, pergolas: true, decks: false, openings: true }}
+        houseFirstPlanOverlay={houseFirstPlanOverlay}
+      />,
+    );
+
+    expect(markup).toContain('data-house-plan-surface="footprint"');
+    expect(markup).not.toContain('data-house-plan-surface="deck"');
+    expect(markup).not.toContain('data-house-first-shape="deck:deck-1"');
+    expect(markup).not.toContain('data-house-first-shape-hit="deck:deck-1"');
+  });
+
+  it('suppresses the committed deck body and dimensions while a deck preview is active', () => {
+    const drawing = makeDrawingModule();
+    const houseFirstPlanOverlay: HouseFirstPlanOverlay = {
+      housePolygonSource: 'preset_derived',
+      shapes: [
+        {
+          ownerKind: 'deck',
+          ownerId: 'deck-1',
+          polygon: [
+            { x: 0, y: 0 },
+            { x: 6, y: 0 },
+            { x: 6, y: 3 },
+            { x: 0, y: 3 },
+          ],
+          detailSegments: [],
+          selected: true,
+          custom: false,
+          muted: false,
+          invalid: false,
+          invalidMessage: null,
+          deckInteraction: null,
+          openingInteraction: null,
+          deckDragEligibility: null,
+          openingDragEligibility: null,
+        },
+      ],
+      presetAnnotations: [
+        {
+          id: 'deck-width',
+          ownerKind: 'deck',
+          ownerId: 'deck-1',
+          fieldKey: 'widthM',
+          displayValue: '6.00m',
+          witnessStart: { x: 0, y: 0 },
+          witnessEnd: { x: 6, y: 0 },
+          lineStart: { x: 0, y: -0.6 },
+          lineEnd: { x: 6, y: -0.6 },
+          emphasis: 'driving',
+        } as any,
+      ],
+      customEdgeCandidates: [],
+    };
+
+    const markup = renderToStaticMarkup(
+      <ModuleDrawingRenderer
+        view="plan"
+        status="ready"
+        planModel={drawing.planModel}
+        sectionModel={drawing.sectionModel}
+        presentation="model"
+        houseFirstPlanOverlay={houseFirstPlanOverlay}
+        houseFirstPreviewOverlay={
+          {
+            ownerKind: 'deck',
+            ownerId: 'deck-1',
+            polygon: [
+              { x: 0.5, y: 0.5 },
+              { x: 6.5, y: 0.5 },
+              { x: 6.5, y: 3.5 },
+              { x: 0.5, y: 3.5 },
+            ],
+            bodyState: 'snapped',
+            anchorPoint: { x: 3.5, y: 2 },
+            lockedCornerPoint: null,
+            endCatchPoint: null,
+            referenceGuide: null,
+            targetHighlights: [],
+          } as any
+        }
+      />,
+    );
+
+    expect(markup).toContain('data-house-first-shape="deck:deck-1"');
+    expect(markup).toContain('data-house-first-shape-preview-suppressed="true"');
+    expect(markup).toContain('data-house-first-shape-hit-preview-suppressed="true"');
+    expect(markup).toContain('data-house-first-preview-shape="deck-1"');
+    expect(markup).not.toContain('data-house-first-plan-dimension="deck-width"');
   });
 
   it('renders custom draw preview edges and vertex aid markers in model space', () => {

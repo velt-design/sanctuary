@@ -2983,6 +2983,13 @@ function renderHouseFirstPlanOverlay(input: {
     ownerKind: 'deck' | 'opening';
     ownerId: string;
     points: Point[];
+    bodyState: HouseFirstObjectPreviewOverlay['bodyState'];
+    anchorPoint: Point | null;
+    referenceGuide: {
+      start: Point;
+      end: Point;
+      state: NonNullable<HouseFirstObjectPreviewOverlay['referenceGuide']>['state'];
+    } | null;
     targetHighlights: Array<{ start: Point; end: Point; state: 'preview' | 'snap-available' | 'snapped' }>;
     lockedCornerPoint: Point | null;
     endCatchPoint: Point | null;
@@ -3026,17 +3033,33 @@ function renderHouseFirstPlanOverlay(input: {
     onCustomEdgeSelect,
     onDimensionActivate,
   } = input;
+  const previewSuppressedOwner =
+    previewShape?.ownerKind === 'deck' && previewShape.bodyState !== 'grabbed'
+      ? { ownerKind: previewShape.ownerKind, ownerId: previewShape.ownerId }
+      : null;
+  const isPreviewSuppressedOwner = (ownerKind: 'footprint' | 'deck' | 'opening', ownerId: string) =>
+    previewSuppressedOwner?.ownerKind === ownerKind && previewSuppressedOwner.ownerId === ownerId;
+  const visibleCustomEdgeCandidates = previewSuppressedOwner
+    ? customEdgeCandidates.filter((annotation) => !isPreviewSuppressedOwner(annotation.ownerKind, annotation.ownerId))
+    : customEdgeCandidates;
+  const visiblePresetAnnotations = previewSuppressedOwner
+    ? presetAnnotations.filter((annotation) => !isPreviewSuppressedOwner(annotation.ownerKind, annotation.ownerId))
+    : presetAnnotations;
 
   return (
     <>
       {shapes.length
-        ? shapes.map((shape) => (
+        ? shapes.map((shape) => {
+            const previewSuppressed = isPreviewSuppressedOwner(shape.ownerKind, shape.ownerId);
+            const detailSegments = shape.detailSegments ?? [];
+            return (
             <g key={`house-first-shape-${shape.ownerKind}-${shape.ownerId}`}>
               <polygon
                 points={toPointsAttr(shape.points)}
                 data-house-first-shape={`${shape.ownerKind}:${shape.ownerId}`}
                 data-house-first-shape-muted={shape.muted ? 'true' : 'false'}
                 data-house-first-shape-invalid={shape.invalid ? 'true' : 'false'}
+                data-house-first-shape-preview-suppressed={previewSuppressed ? 'true' : 'false'}
                 data-house-first-shape-hovered={
                   shape.ownerKind === 'deck' && hoveredDeckId === shape.ownerId ? 'true' : 'false'
                 }
@@ -3048,11 +3071,12 @@ function renderHouseFirstPlanOverlay(input: {
                   shape.invalid ? styles.moduleHouseFirstShapeInvalid : '',
                   shape.selected ? styles.moduleHouseFirstShapeSelected : '',
                   shape.ownerKind === 'deck' && hoveredDeckId === shape.ownerId ? styles.moduleHouseFirstShapeHovered : '',
+                  previewSuppressed ? styles.moduleHouseFirstShapePreviewSuppressed : '',
                 ]
                   .filter(Boolean)
                   .join(' ')}
               />
-              {shape.detailSegments.map((segment, index) => (
+              {previewSuppressed ? null : detailSegments.map((segment, index) => (
                 <line
                   key={`house-first-shape-detail-${shape.ownerKind}-${shape.ownerId}-${index + 1}`}
                   x1={segment.start.x}
@@ -3065,6 +3089,7 @@ function renderHouseFirstPlanOverlay(input: {
               <polygon
                 points={toPointsAttr(shape.points)}
                 data-house-first-shape-hit={`${shape.ownerKind}:${shape.ownerId}`}
+                data-house-first-shape-hit-preview-suppressed={previewSuppressed ? 'true' : 'false'}
                 data-house-first-shape-draggable={
                   shape.ownerKind === 'deck'
                     ? shape.deckDragEligibility?.eligible
@@ -3145,7 +3170,7 @@ function renderHouseFirstPlanOverlay(input: {
                   }
                 }}
               />
-              {(shape.ownerKind === 'deck' || shape.ownerKind === 'opening') && shape.selected && shape.invalid ? (
+              {!previewSuppressed && (shape.ownerKind === 'deck' || shape.ownerKind === 'opening') && shape.selected && shape.invalid ? (
                 <text
                   x={shape.points.reduce((sum, point) => sum + point.x, 0) / Math.max(shape.points.length, 1)}
                   y={shape.points.reduce((sum, point) => sum + point.y, 0) / Math.max(shape.points.length, 1)}
@@ -3164,7 +3189,8 @@ function renderHouseFirstPlanOverlay(input: {
                           : 'Invalid deck'}
                 </text>
               ) : null}
-              {(shape.ownerKind === 'deck' || shape.ownerKind === 'opening') &&
+              {!previewSuppressed &&
+              (shape.ownerKind === 'deck' || shape.ownerKind === 'opening') &&
               shape.selected &&
               (shape.ownerKind === 'deck' ? shape.deckDragEligibility : shape.openingDragEligibility) ? (
                 <text
@@ -3185,7 +3211,8 @@ function renderHouseFirstPlanOverlay(input: {
                 </text>
               ) : null}
             </g>
-          ))
+            );
+          })
         : null}
       {previewShape ? (
         <g data-house-first-preview-owner={previewShape.ownerId} data-house-first-preview-owner-kind={previewShape.ownerKind}>
@@ -3274,8 +3301,8 @@ function renderHouseFirstPlanOverlay(input: {
           ) : null}
         </g>
       ) : null}
-      {customEdgeCandidates.length
-        ? customEdgeCandidates.map((annotation) => (
+      {visibleCustomEdgeCandidates.length
+        ? visibleCustomEdgeCandidates.map((annotation) => (
             <g key={`house-first-edge-${annotation.id}`}>
               <line
                 x1={annotation.witnessStart.x}
@@ -3307,9 +3334,11 @@ function renderHouseFirstPlanOverlay(input: {
             </g>
           ))
         : null}
-      {presetAnnotations.length ? presetAnnotations.map((annotation) => renderHouseFirstDimension(annotation, onDimensionActivate)) : null}
-      {customEdgeCandidates.length
-        ? customEdgeCandidates
+      {visiblePresetAnnotations.length
+        ? visiblePresetAnnotations.map((annotation) => renderHouseFirstDimension(annotation, onDimensionActivate))
+        : null}
+      {visibleCustomEdgeCandidates.length
+        ? visibleCustomEdgeCandidates
             .filter((annotation) => annotation.id === activeCustomEdgeId)
             .map((annotation) => renderHouseFirstDimension(annotation, onDimensionActivate))
         : null}
@@ -4610,7 +4639,18 @@ function PlanSvg({
   const rawHouseFirstOverlayShapes = presentation === 'model' ? houseFirstPlanOverlay?.shapes ?? [] : [];
   const rawHouseFirstPresetAnnotations = presentation === 'model' ? houseFirstPlanOverlay?.presetAnnotations ?? [] : [];
   const rawHouseFirstCustomEdgeCandidates = presentation === 'model' ? houseFirstPlanOverlay?.customEdgeCandidates ?? [] : [];
-  const rawHouseFirstPreviewShape = presentation === 'model' ? houseFirstPreviewOverlay : null;
+  const rawHouseFirstPreviewShape =
+    presentation === 'model' && houseFirstPreviewOverlay
+      ? houseFirstPreviewOverlay.ownerKind === 'deck'
+        ? familyVisibility.decks
+          ? houseFirstPreviewOverlay
+          : null
+        : houseFirstPreviewOverlay.ownerKind === 'opening'
+          ? familyVisibility.openings
+            ? houseFirstPreviewOverlay
+            : null
+          : houseFirstPreviewOverlay
+      : null;
   const isHipCorner = model.roofType === 'hip_corner';
   const isGableLike = model.roofType === 'gable' || model.roofType === 'low_gable' || model.roofType === 'hip';
   const hasFullLengthRidge = hasFullLengthPlanRidge(model.roofType);
@@ -4857,16 +4897,27 @@ function PlanSvg({
         return true;
     }
   });
+  const visibleHouseFirstDeckIds = new Set(
+    visibleRawHouseFirstOverlayShapes
+      .filter((shape) => shape.ownerKind === 'deck')
+      .map((shape) => shape.ownerId),
+  );
   const selectedOpeningHostEdgeId =
     visibleRawHouseFirstOverlayShapes.find((shape) => shape.ownerKind === 'opening' && shape.selected)?.openingInteraction?.hostEdgeId ?? null;
   const toneHouseRoofContext = Boolean(selectedOpeningHostEdgeId);
-  const semanticPlanHouseSurfaces = rawSemanticPlanHouseSurfaces.map((surface) => ({
-    ...surface,
-    points: surface.boundary.map((point) => planHousePointProjector(point)),
-    toned:
-      toneHouseRoofContext &&
-      (surface.kind === 'roof' || surface.kind === 'soffit' || surface.kind === 'fascia' || surface.kind === 'attachment_zone'),
-  }));
+  const semanticPlanHouseSurfaces = rawSemanticPlanHouseSurfaces
+    .filter((surface) => {
+      if (surface.kind !== 'deck') return true;
+      if (!familyVisibility.decks) return false;
+      return !visibleHouseFirstDeckIds.has(surface.id);
+    })
+    .map((surface) => ({
+      ...surface,
+      points: surface.boundary.map((point) => planHousePointProjector(point)),
+      toned:
+        toneHouseRoofContext &&
+        (surface.kind === 'roof' || surface.kind === 'soffit' || surface.kind === 'fascia' || surface.kind === 'attachment_zone'),
+    }));
   const semanticPlanHouseLines = rawSemanticPlanHouseLines.map((line) => ({
     ...line,
     start: planHousePointProjector(line.line.start),
@@ -4878,7 +4929,7 @@ function PlanSvg({
       ? visibleRawHouseFirstOverlayShapes.map((shape) => ({
           ...shape,
           points: shape.polygon.map((point) => planHousePointProjector(point)),
-          detailSegments: shape.detailSegments.map((segment) => ({
+          detailSegments: (shape.detailSegments ?? []).map((segment) => ({
             start: planHousePointProjector(segment.start),
             end: planHousePointProjector(segment.end),
           })),
@@ -5381,6 +5432,7 @@ function PlanSvg({
                       : planHouseSurfaceClass(surface.kind)
                   }
                   data-house-plan-surface={surface.kind}
+                  data-house-plan-surface-id={surface.id}
                 />
               ))
             : null}

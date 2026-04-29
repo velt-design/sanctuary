@@ -1317,7 +1317,14 @@ function resolvePresetDeckGeometryFrame(input: {
     return input.referenceFrames.find((frame) => frame.sourceEdgeId === exactHostEdgeId) ?? null;
   }
   if (isSemanticAttachmentSide(requestedHostEdgeId) && input.geometryHouseLookup.footprintPolygon?.length) {
-    return resolveWorldHostEdgeFrame({
+    const fallbackFrame = input.fallbackPolygon.length
+      ? resolveDeckReferenceFrameForPolygon({
+          polygon: input.fallbackPolygon,
+          referenceFrames: input.referenceFrames,
+          requestedEdgeId: requestedHostEdgeId,
+        })
+      : null;
+    return fallbackFrame ?? resolveWorldHostEdgeFrame({
       housePolygon: input.geometryHouseLookup.footprintPolygon,
       hostEdgeId: requestedHostEdgeId,
     });
@@ -2433,6 +2440,9 @@ export function buildHouseFirstPlanOverlay(input: {
   });
   const houseLocalPolygon = canonicalHousePolygon.localPolygon;
   const footprintPolygon = geometryHouseLookup.footprintPolygon;
+  const footprintOffsetActive =
+    Math.abs(parseMetres(house.footprint.params.offsetXM, 0)) > ZERO_DIMENSION_EPSILON_M ||
+    Math.abs(parseMetres(house.footprint.params.setbackM, 0)) > ZERO_DIMENSION_EPSILON_M;
   const shapes: HouseFirstPlanShapeOverlay[] = [
     {
       ownerKind: 'footprint',
@@ -2453,14 +2463,14 @@ export function buildHouseFirstPlanOverlay(input: {
 
   for (const deck of house.decks) {
     const localPolygon = parseLocalPolygon(deck.outline);
-    const fallbackDeckPolygon =
-      geometryHouseLookup.deckPolygons.get(deck.id) ??
-      buildDeckWorldPolygon({
-        localPolygon,
-        attachmentSide: house.footprint.attachmentSide,
-        moduleLengthM,
-        moduleProjectionM,
-      });
+    const draftDeckPolygon = buildDeckWorldPolygon({
+      localPolygon,
+      attachmentSide: house.footprint.attachmentSide,
+      moduleLengthM,
+      moduleProjectionM,
+    });
+    const geometryDeckPolygon = geometryHouseLookup.deckPolygons.get(deck.id) ?? [];
+    const fallbackDeckPolygon = draftDeckPolygon.length ? draftDeckPolygon : geometryDeckPolygon;
     const deckReferenceFrames =
       geometryHouseLookup.footprintPolygon?.length
         ? buildWorldDeckReferenceFrames(geometryHouseLookup.footprintPolygon)
@@ -2470,13 +2480,18 @@ export function buildHouseFirstPlanOverlay(input: {
             moduleLengthM,
             moduleProjectionM,
           });
+    const presetDeckPolygon = buildPresetAttachedDeckWorldPolygon({
+      deck,
+      referenceFrames: deckReferenceFrames,
+      fallbackPolygon: fallbackDeckPolygon,
+      geometryHouseLookup,
+    });
     const deckPolygon =
-      buildPresetAttachedDeckWorldPolygon({
-        deck,
-        referenceFrames: deckReferenceFrames,
-        fallbackPolygon: fallbackDeckPolygon,
-        geometryHouseLookup,
-      }) ?? fallbackDeckPolygon;
+      deck.shape === 'preset' && deck.isAttached && !footprintOffsetActive
+        ? (presetDeckPolygon ?? (draftDeckPolygon.length ? draftDeckPolygon : geometryDeckPolygon))
+        : draftDeckPolygon.length
+          ? draftDeckPolygon
+          : (presetDeckPolygon ?? geometryDeckPolygon);
     const selected = input.selection.kind === 'deck' && input.selection.targetId === deck.id;
     const deckInteraction =
       deck.shape === 'custom'
