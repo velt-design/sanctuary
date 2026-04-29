@@ -107,7 +107,7 @@ Each ticket should still be a narrow, reviewable slice:
 | P4 | Partial | Object navigator + inspector rail scaffold exists, still backed by compatibility `houseFirst` data |
 | P5 | Partial | Deck interaction work is adapter-backed enough to validate the pattern, but remains an active stabilization lane |
 | P6 | Partial | Opening and pergola host resolution now use object-first derived contracts; full runtime/persistence migration remains deferred |
-| P7 | Blocked/Deferred | Validation, fixtures, and internal review follow the runtime and hosting migration |
+| P7 | Partial | Object-first fixture and regression coverage is landing; internal review cleanup remains next |
 
 ## P0: Freeze Canonical Direction
 
@@ -504,7 +504,7 @@ Proceed only if all three answers are yes.
 
 ### Ticket P7.1: Strengthen fixtures and regression coverage for object-first flows
 
-Status: Blocked/Deferred until P6.
+Status: Partial / bridge-landed.
 
 Scope:
 
@@ -518,6 +518,7 @@ Acceptance criteria:
 
 - internal QA can exercise the new canonical object model through fixtures
 - multi-form derived behavior is covered by tests, not only by docs
+- object-first hosted-object and deck interaction regressions are covered at the bridge boundary
 
 Suggested PR slice:
 
@@ -529,7 +530,7 @@ Depends on:
 
 ### Ticket P7.2: Internal review cleanup
 
-Status: Blocked/Deferred until P7.1.
+Status: Next.
 
 Scope:
 

@@ -5,6 +5,7 @@ import type {
   HouseFirstPlanShapeOverlay,
   PlanPoint,
 } from '@/lib/drawings/views/plan/houseFirstPlanOverlay';
+import { makeObjectFirstWorkbenchProjectFixture } from '@/lib/drawings/state/objectFirstWorkbenchFixtures';
 import {
   buildDeckCommitPatch,
   buildDeckDragSession,
@@ -687,5 +688,48 @@ describe('deckInteractionAdapter', () => {
     expect(preview.placement).toBe('snapped');
     expect(preview.primaryHostEdgeId).toBe('footprint-edge-1');
     expect(preview.snapTargetState).toBe('locked');
+  });
+
+  it('keeps deck drag state stable while object-first fixtures preserve authored deck ids', () => {
+    const objectFirstProject = makeObjectFirstWorkbenchProjectFixture('touching_merged_forms');
+    const polygon = rectOnFrame({
+      frame: realRearFrame,
+      deckWidthM: 4,
+      deckDepthM: 2,
+      centerOffsetM: 0,
+      referenceEdgeGapM: 0,
+    });
+    const session = makeSession({
+      polygon,
+      startDragPlanPoint: { x: 2, y: -1 },
+      frames: [realRearFrame],
+      renderedCenter: polygonCenter(polygon),
+      deckWidthM: 4,
+      deckDepthM: 2,
+      placement: 'snapped',
+      attachmentMode: 'single_edge',
+    });
+
+    const firstPreview = resolveDeckPreviewState({
+      session,
+      nextSvgX: session.startSvgX + 0.15,
+      nextSvgY: session.startSvgY,
+      nextDragPlanPoint: { x: session.startDragPlanPoint!.x + 0.15, y: session.startDragPlanPoint!.y },
+      previousPreviewState: null,
+    });
+    const secondPreview = resolveDeckPreviewState({
+      session,
+      nextSvgX: session.startSvgX + 0.2,
+      nextSvgY: session.startSvgY,
+      nextDragPlanPoint: { x: session.startDragPlanPoint!.x + 0.2, y: session.startDragPlanPoint!.y },
+      previousPreviewState: firstPreview,
+    });
+    const patch = buildDeckCommitPatch({ session, preview: secondPreview });
+
+    expect(objectFirstProject.decks.map((deck) => deck.id)).toEqual(['deck-a']);
+    expect(firstPreview.primaryHostEdgeId).toBe('footprint-edge-1');
+    expect(secondPreview.primaryHostEdgeId).toBe(firstPreview.primaryHostEdgeId);
+    expect(secondPreview.snapTargetState).toBe('locked');
+    expect(patch.hostEdgeId).toBe('rear');
   });
 });

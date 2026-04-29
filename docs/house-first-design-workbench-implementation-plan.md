@@ -19,6 +19,7 @@ This section describes current repo state only. It does not change the canonical
 - The compatibility House Forms inspector now supports all existing house footprint presets and live house roof form selection for flat, mono, gable, and hipped roofs.
 - Opening host resolution now flows through object-first derived wall contracts in store and rail state, while draft persistence remains compatibility-bound.
 - Pergola attachment resolution now flows through object-first derived edge and zone contracts in store, rail, and inspector option state, while module edits and draft persistence remain compatibility-bound.
+- Object-first validation fixtures now cover separate forms, touching/merged forms, stale hosted-object references, and deck interaction regression checks.
 - Shared interaction state helpers exist, and deck plus opening work have started moving toward adapter-backed object interaction.
 - Persistence, editor commits, geometry, rail, and rendering still consume the compatibility `houseFirst` model rather than a true `HouseAssembly` plus multiple movable `HouseForm`s source of truth.
 - The existing hidden-route workbench is a bridge implementation for internal iteration, not the canonical end-state described by this document.

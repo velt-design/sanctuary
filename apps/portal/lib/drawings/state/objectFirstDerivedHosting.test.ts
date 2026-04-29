@@ -8,6 +8,7 @@ import type {
   OpeningObjectModel,
   PergolaObjectModel,
 } from './objectFirstWorkbenchModel';
+import { makeObjectFirstWorkbenchProjectFixture } from './objectFirstWorkbenchFixtures';
 
 function point(alongM: string, depthM: string) {
   return { alongM, depthM };
@@ -259,6 +260,70 @@ describe('object-first derived hosting contracts', () => {
       code: 'missing_envelope',
       edge: null,
       zone: null,
+    });
+  });
+
+  it('resolves fixture-hosted objects through assembly-level derived hosting contracts', () => {
+    const project = makeObjectFirstWorkbenchProjectFixture('touching_merged_forms');
+    const opening = project.openings[0]!;
+    const pergola = project.pergolas[0]!;
+
+    const openingResolution = resolveObjectFirstOpeningHost({
+      houseAssembly: project.houseAssembly,
+      opening,
+    });
+    const pergolaResolution = resolveObjectFirstPergolaAttachment({
+      houseAssembly: project.houseAssembly,
+      pergola,
+    });
+
+    expect(openingResolution).toMatchObject({
+      status: 'resolved',
+      code: null,
+      hostWallId: 'wall-merged-rear',
+    });
+    expect(openingResolution.wall?.sourceFormIds).toEqual(['form-a', 'form-b']);
+    expect(pergolaResolution).toMatchObject({
+      status: 'resolved',
+      code: null,
+      attachmentEdgeId: 'edge-merged-eave',
+      attachmentZoneId: 'zone-merged-soffit',
+    });
+    expect(pergolaResolution.edge?.sourceFormIds).toEqual(['form-a', 'form-b']);
+    expect(pergolaResolution.zone?.hostWallId).toBe('wall-merged-rear');
+  });
+
+  it('keeps stale fixture hosts unresolved with stable codes', () => {
+    const project = makeObjectFirstWorkbenchProjectFixture('stale_hosts');
+
+    const openingResolution = resolveObjectFirstOpeningHost({
+      houseAssembly: project.houseAssembly,
+      opening: project.openings[0]!,
+    });
+    const missingEdgeResolution = resolveObjectFirstPergolaAttachment({
+      houseAssembly: project.houseAssembly,
+      pergola: project.pergolas[0]!,
+    });
+    const mismatchResolution = resolveObjectFirstPergolaAttachment({
+      houseAssembly: project.houseAssembly,
+      pergola: project.pergolas[1]!,
+    });
+
+    expect(openingResolution).toMatchObject({
+      status: 'unresolved',
+      code: 'missing_host_wall',
+      hostWallId: 'wall-removed',
+    });
+    expect(missingEdgeResolution).toMatchObject({
+      status: 'unresolved',
+      code: 'missing_attachment_edge',
+      attachmentEdgeId: 'edge-removed',
+    });
+    expect(mismatchResolution).toMatchObject({
+      status: 'unresolved',
+      code: 'attachment_zone_edge_mismatch',
+      attachmentEdgeId: 'edge-merged-eave',
+      attachmentZoneId: 'zone-b-right-soffit',
     });
   });
 });

@@ -5,8 +5,12 @@ import { getSanctuaryGeometryWorkbenchFixture } from '@/lib/drawings/sanctuaryWo
 import { buildEstimateDrawingDraftFromSnapshot } from '@/lib/estimates/drawingEdits';
 import { ESTIMATE_PRICING_SYNC_STATE_OUTPUT_KEY } from '@/lib/estimates/costingPayload';
 import { buildDrawingWorkbenchStore } from './drawingWorkbenchStore';
-import { createDrawingWorkbenchUiState } from './drawingWorkbenchUiState';
+import {
+  createDrawingWorkbenchUiState,
+  normalizeDrawingWorkbenchUiState,
+} from './drawingWorkbenchUiState';
 import { makeHouseFirstDeckSupportSnapshotFixture } from './houseFirstWorkbenchFixtures';
+import { makeObjectFirstWorkbenchProjectFixture } from './objectFirstWorkbenchFixtures';
 
 function makeModule(overrides: Partial<CalculatorModuleInputs> = {}): CalculatorModuleInputs {
   const base: Partial<CalculatorModuleInputs> = {
@@ -506,7 +510,9 @@ describe('buildDrawingWorkbenchStore', () => {
     });
 
     expect(selectedStore.derived.decks.map((deck) => deck.id)).toEqual(['deck-a', 'deck-b']);
+    expect(selectedStore.persisted.projectModel.decks.map((deck) => deck.id)).toEqual(['deck-a', 'deck-b']);
     expect(selectedStore.derived.activeDeckId).toBe('deck-b');
+    expect(selectedStore.ui.activeObjectRef).toEqual({ family: 'decks', objectId: 'deck-b' });
     expect(selectedStore.ui.activeHouseSelection).toEqual({ kind: 'deck', targetId: 'deck-b' });
 
     const removedDraft = structuredClone(draft);
@@ -546,6 +552,51 @@ describe('buildDrawingWorkbenchStore', () => {
 
     expect(pergolaStore.ui.activeHouseSelection).toEqual({ kind: 'house', targetId: null });
     expect(pergolaStore.derived.activeDeckId).toBeNull();
+  });
+
+  it('normalizes object-family selections against object-first fixture ids', () => {
+    const project = makeObjectFirstWorkbenchProjectFixture('touching_merged_forms');
+    const ids = {
+      houseFormIds: project.houseAssembly?.houseForms.map((form) => form.id) ?? [],
+      deckIds: project.decks.map((deck) => deck.id),
+      openingIds: project.openings.map((opening) => opening.id),
+      pergolaIds: project.pergolas.map((pergola) => pergola.id),
+    };
+
+    const openingSelection = normalizeDrawingWorkbenchUiState(
+      createDrawingWorkbenchUiState({
+        activeRailTab: 'openings',
+        activeObjectFamily: 'openings',
+        activeObjectRef: { family: 'openings', objectId: 'opening-merged' },
+        activeHouseSelection: { kind: 'house', targetId: null },
+      }),
+      { moduleCount: 1, ...ids },
+    );
+    const pergolaSelection = normalizeDrawingWorkbenchUiState(
+      createDrawingWorkbenchUiState({
+        activeRailTab: 'pergolas',
+        activeObjectFamily: 'pergolas',
+        activeObjectRef: { family: 'pergolas', objectId: 'pergola-merged' },
+        activePergolaId: null,
+      }),
+      { moduleCount: 1, ...ids },
+    );
+    const staleSelection = normalizeDrawingWorkbenchUiState(
+      createDrawingWorkbenchUiState({
+        activeRailTab: 'openings',
+        activeObjectFamily: 'openings',
+        activeObjectRef: { family: 'openings', objectId: 'opening-removed' },
+        activeHouseSelection: { kind: 'opening', targetId: 'opening-removed' },
+      }),
+      { moduleCount: 1, ...ids },
+    );
+
+    expect(openingSelection.activeObjectRef).toEqual({ family: 'openings', objectId: 'opening-merged' });
+    expect(openingSelection.activeHouseSelection).toEqual({ kind: 'opening', targetId: 'opening-merged' });
+    expect(pergolaSelection.workbenchMode).toBe('pergolas');
+    expect(pergolaSelection.activePergolaId).toBe('pergola-merged');
+    expect(staleSelection.activeObjectRef).toEqual({ family: 'openings', objectId: null });
+    expect(staleSelection.activeHouseSelection).toEqual({ kind: 'house', targetId: null });
   });
 
   it('preserves stable opening ids and normalizes invalid opening selection state', () => {
