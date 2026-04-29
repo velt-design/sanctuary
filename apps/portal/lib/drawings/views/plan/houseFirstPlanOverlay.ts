@@ -50,6 +50,7 @@ export type HouseFirstPlanDeckInteraction = {
   maxCenterOffsetM: number;
   renderedCenter: PlanPoint;
   referenceFrames: HouseFirstPlanDeckReferenceFrame[];
+  commitReferenceFrames: HouseFirstPlanDeckReferenceFrame[];
   crossEdgeReference: HouseFirstPlanDeckCrossEdgeReference | null;
 };
 
@@ -701,6 +702,122 @@ function buildDeckReferenceFrames(input: {
     alongM: Number(point.alongM),
     depthM: Number(point.depthM),
   }));
+  const alongValues = localPolygon.map((point) => point.alongM);
+  const depthValues = localPolygon.map((point) => point.depthM);
+  const bounds = {
+    minAlongM: Math.min(...alongValues),
+    maxAlongM: Math.max(...alongValues),
+    minDepthM: Math.min(...depthValues),
+    maxDepthM: Math.max(...depthValues),
+  };
+
+  return localPolygon.flatMap((point, index) => {
+    const nextPoint = localPolygon[(index + 1) % localPolygon.length];
+    if (!nextPoint) return [];
+    const sourceEdgeId = `footprint-edge-${index + 1}`;
+    const frame =
+      Math.abs(point.depthM - nextPoint.depthM) <= ZERO_DIMENSION_EPSILON_M &&
+      Math.abs(point.depthM - bounds.minDepthM) <= ZERO_DIMENSION_EPSILON_M
+        ? {
+            hostEdgeId: 'rear' as const,
+            sourceEdgeId,
+            axis: 'along' as const,
+            spanStartM: Math.min(point.alongM, nextPoint.alongM),
+            spanEndM: Math.max(point.alongM, nextPoint.alongM),
+            edgeCoordinateM: bounds.minDepthM,
+            outwardDirection: -1 as const,
+          }
+        : Math.abs(point.depthM - nextPoint.depthM) <= ZERO_DIMENSION_EPSILON_M &&
+            Math.abs(point.depthM - bounds.maxDepthM) <= ZERO_DIMENSION_EPSILON_M
+          ? {
+              hostEdgeId: 'front' as const,
+              sourceEdgeId,
+              axis: 'along' as const,
+              spanStartM: Math.min(point.alongM, nextPoint.alongM),
+              spanEndM: Math.max(point.alongM, nextPoint.alongM),
+              edgeCoordinateM: bounds.maxDepthM,
+              outwardDirection: 1 as const,
+            }
+          : Math.abs(point.alongM - nextPoint.alongM) <= ZERO_DIMENSION_EPSILON_M &&
+              Math.abs(point.alongM - bounds.minAlongM) <= ZERO_DIMENSION_EPSILON_M
+            ? {
+                hostEdgeId: 'left' as const,
+                sourceEdgeId,
+                axis: 'depth' as const,
+                spanStartM: Math.min(point.depthM, nextPoint.depthM),
+                spanEndM: Math.max(point.depthM, nextPoint.depthM),
+                edgeCoordinateM: bounds.minAlongM,
+                outwardDirection: -1 as const,
+              }
+            : Math.abs(point.alongM - nextPoint.alongM) <= ZERO_DIMENSION_EPSILON_M &&
+                Math.abs(point.alongM - bounds.maxAlongM) <= ZERO_DIMENSION_EPSILON_M
+              ? {
+                  hostEdgeId: 'right' as const,
+                  sourceEdgeId,
+                  axis: 'depth' as const,
+                  spanStartM: Math.min(point.depthM, nextPoint.depthM),
+                  spanEndM: Math.max(point.depthM, nextPoint.depthM),
+                  edgeCoordinateM: bounds.maxAlongM,
+                  outwardDirection: 1 as const,
+                }
+              : null;
+    if (!frame) return [];
+
+    const edgeStartLocal =
+      frame.axis === 'along'
+        ? { alongM: frame.spanStartM, depthM: frame.edgeCoordinateM }
+        : { alongM: frame.edgeCoordinateM, depthM: frame.spanStartM };
+    const edgeEndLocal =
+      frame.axis === 'along'
+        ? { alongM: frame.spanEndM, depthM: frame.edgeCoordinateM }
+        : { alongM: frame.edgeCoordinateM, depthM: frame.spanEndM };
+    const outwardProbeLocal =
+      frame.axis === 'along'
+        ? { alongM: frame.spanStartM, depthM: frame.edgeCoordinateM + frame.outwardDirection }
+        : { alongM: frame.edgeCoordinateM + frame.outwardDirection, depthM: frame.spanStartM };
+    const edgeStart = toWorld(edgeStartLocal);
+    const edgeEnd = toWorld(edgeEndLocal);
+    const outwardProbe = toWorld(outwardProbeLocal);
+    const alongUnit = normalizeVector(edgeEnd.x - edgeStart.x, edgeEnd.y - edgeStart.y);
+    const outwardUnit = normalizeVector(outwardProbe.x - edgeStart.x, outwardProbe.y - edgeStart.y);
+    return [
+      {
+        hostEdgeId: frame.hostEdgeId,
+        sourceEdgeId: frame.sourceEdgeId,
+        axis: frame.axis,
+        spanStartM: frame.spanStartM,
+        spanEndM: frame.spanEndM,
+        edgeCoordinateM: frame.edgeCoordinateM,
+        outwardDirection: frame.outwardDirection,
+        hostEdgeStart: edgeStart,
+        hostEdgeEnd: edgeEnd,
+        alongUnitX: alongUnit.x,
+        alongUnitY: alongUnit.y,
+        outwardUnitX: outwardUnit.x,
+        outwardUnitY: outwardUnit.y,
+      } satisfies HouseFirstPlanDeckReferenceFrame,
+    ];
+  });
+}
+
+function buildDeckDraftReferenceFrames(input: {
+  house: HouseModel;
+  houseLocalPolygon: LocalPoint[];
+  moduleLengthM: number;
+  moduleProjectionM: number;
+}): HouseFirstPlanDeckReferenceFrame[] {
+  const toWorld = (point: LocalPoint) =>
+    localPointToPlanWorld({
+      point,
+      attachmentSide: input.house.footprint.attachmentSide,
+      offsetXM: 0,
+      setbackM: 0,
+      moduleLengthM: input.moduleLengthM,
+      moduleProjectionM: input.moduleProjectionM,
+      unitFrame: true,
+    });
+  const savedDraftPolygon = parseLocalPolygon(input.house.footprint.polygon);
+  const localPolygon = savedDraftPolygon.length ? savedDraftPolygon : input.houseLocalPolygon;
   const alongValues = localPolygon.map((point) => point.alongM);
   const depthValues = localPolygon.map((point) => point.depthM);
   const bounds = {
@@ -1882,15 +1999,16 @@ function buildPresetDeckInteraction(input: {
   if (input.deck.shape !== 'preset' || !input.deck.presetRect) return null;
   if (input.deckPolygon.length < 4) return null;
 
+  const commitReferenceFrames = buildDeckDraftReferenceFrames({
+    house: input.house,
+    houseLocalPolygon: input.houseLocalPolygon,
+    moduleLengthM: input.moduleLengthM,
+    moduleProjectionM: input.moduleProjectionM,
+  });
   const referenceFrames =
     input.geometryHouseLookup.footprintPolygon?.length
       ? buildWorldDeckReferenceFrames(input.geometryHouseLookup.footprintPolygon)
-      : buildDeckReferenceFrames({
-          house: input.house,
-          houseLocalPolygon: input.houseLocalPolygon,
-          moduleLengthM: input.moduleLengthM,
-          moduleProjectionM: input.moduleProjectionM,
-        });
+      : commitReferenceFrames;
   const attachmentMode =
     input.deck.attachmentMode ??
     (input.deck.secondaryHostEdgeId && input.deck.cornerVertexId
@@ -1992,6 +2110,7 @@ function buildPresetDeckInteraction(input: {
     maxCenterOffsetM: input.deck.isAttached ? Number.POSITIVE_INFINITY : availableHalfSpanM,
     renderedCenter: resolvePolygonCenter(input.deckPolygon),
     referenceFrames,
+    commitReferenceFrames,
     crossEdgeReference: cornerAttachment
       ? {
           hostEdgeId: cornerAttachment.secondaryFrame.hostEdgeId,
@@ -2018,15 +2137,16 @@ function buildCustomDeckInteraction(input: {
   if (input.deck.shape !== 'custom') return null;
   if (input.deckPolygon.length < 3) return null;
 
+  const commitReferenceFrames = buildDeckDraftReferenceFrames({
+    house: input.house,
+    houseLocalPolygon: input.houseLocalPolygon,
+    moduleLengthM: input.moduleLengthM,
+    moduleProjectionM: input.moduleProjectionM,
+  });
   const referenceFrames =
     input.geometryHouseLookup.footprintPolygon?.length
       ? buildWorldDeckReferenceFrames(input.geometryHouseLookup.footprintPolygon)
-      : buildDeckReferenceFrames({
-          house: input.house,
-          houseLocalPolygon: input.houseLocalPolygon,
-          moduleLengthM: input.moduleLengthM,
-          moduleProjectionM: input.moduleProjectionM,
-        });
+      : commitReferenceFrames;
   const witnessFrame = resolveDeckReferenceFrameForPolygon({
     polygon: input.deckPolygon,
     referenceFrames,
@@ -2069,6 +2189,7 @@ function buildCustomDeckInteraction(input: {
     maxCenterOffsetM: availableHalfSpanM,
     renderedCenter: resolvePolygonCenter(input.deckPolygon),
     referenceFrames,
+    commitReferenceFrames,
     crossEdgeReference: resolveWorldCrossEdgeReference({
       primaryFrame: witnessFrame,
       referenceFrames,

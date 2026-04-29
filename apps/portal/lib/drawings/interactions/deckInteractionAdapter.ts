@@ -398,11 +398,15 @@ function resolveDeckCenterOffsetFromPreviewPolygon(input: {
   preview: DeckPreviewState;
   session: DeckDragSession;
 }): number {
+  const commitReferenceFrames =
+    input.session.interaction.commitReferenceFrames.length
+      ? input.session.interaction.commitReferenceFrames
+      : input.session.interaction.referenceFrames;
   const frame =
     findDeckReferenceFrameById(
-      input.session.interaction.referenceFrames,
+      commitReferenceFrames,
       input.preview.primaryHostEdgeId ?? input.preview.placementEdgeId ?? input.preview.witnessEdgeId,
-    ) ?? input.session.interaction.referenceFrames[0];
+    ) ?? commitReferenceFrames[0];
   if (!frame) return input.preview.anchorDerivedCenterOffsetM ?? input.preview.centerOffsetM;
   const projection = projectPolygonToDeckReferenceFrame({
     polygon: input.preview.polygon,

@@ -613,6 +613,16 @@ function polygonPointsAttr(element: Element | null): string {
   return pointsAttr;
 }
 
+function normalizePolygonPointSet(pointsAttr: string): string {
+  return pointsAttr
+    .trim()
+    .split(/\s+/)
+    .map((pair) => pair.split(',').map((value) => Number.parseFloat(value)))
+    .sort((left, right) => (left[0] ?? 0) - (right[0] ?? 0) || (left[1] ?? 0) - (right[1] ?? 0))
+    .map(([x, y]) => `${x?.toFixed(2) ?? 'NaN'},${y?.toFixed(2) ?? 'NaN'}`)
+    .join(' ');
+}
+
 function parseViewBoxAttr(value: string | null | undefined): { x: number; y: number; width: number; height: number } {
   if (!value) throw new Error('Missing viewBox attribute.');
   const parts = value.split(/\s+/).map((part) => Number.parseFloat(part));
@@ -888,6 +898,7 @@ function HouseFirstViewportHarness({
       <div data-testid="deck-width">{house.decks[0]?.presetRect?.widthM ?? ''}</div>
       <div data-testid="deck-center-offset">{house.decks[0]?.presetRect?.centerOffsetM ?? ''}</div>
       <div data-testid="deck-host-edge">{house.decks[0]?.hostEdgeId ?? ''}</div>
+      <div data-testid="deck-primary-host-edge">{house.decks[0]?.primaryHostEdgeId ?? ''}</div>
       <div data-testid="deck-is-attached">{house.decks[0]?.isAttached ? 'true' : 'false'}</div>
       <div data-testid="deck-floating-center-along">{house.decks[0]?.floatingRect?.centerAlongM ?? ''}</div>
       <div data-testid="deck-floating-center-depth">{house.decks[0]?.floatingRect?.centerDepthM ?? ''}</div>
@@ -5578,6 +5589,123 @@ describe('ModelSpaceViewport', () => {
     expect(rendered.container.querySelector('[data-testid="deck-is-attached"]')?.textContent).toBe('true');
     expect(rendered.container.querySelector('[data-testid="deck-host-edge"]')?.textContent).toBe('left');
     expect(rendered.container.querySelector('[data-testid="deck-floating-center-along"]')?.textContent).toBe('');
+
+    rendered.unmount();
+  });
+
+  it('keeps a right-wall snapped release frozen until the rebuilt committed deck matches the preview geometry', async () => {
+    const deck = makeHouseFirstDeck({
+      isAttached: false,
+      presetType: 'rect_detached',
+      hostEdgeId: null,
+      presetRect: {
+        widthM: '3',
+        depthM: '2',
+        centerOffsetM: '0',
+        detachedGapM: '0.5',
+      },
+      floatingRect: {
+        centerAlongM: '7',
+        centerDepthM: '1.2',
+        widthM: '3',
+        depthM: '2',
+      },
+    });
+    const baseHouse = makeHouseFirstHouse();
+    const resolvedDeck = resolveDeckPresetGeometry({
+      deck: deck as any,
+      housePolygon: baseHouse.footprint.polygon,
+    });
+    const rendered = renderIntoDocument(
+      <HouseFirstViewportHarness
+        initialSelection={{ kind: 'deck', targetId: 'deck-1' }}
+        initialHouse={makeHouseFirstHouse({
+          decks: [
+            {
+              ...deck,
+              hostEdgeId: resolvedDeck.hostEdgeId,
+              floatingRect: resolvedDeck.floatingRect,
+              presetRect: resolvedDeck.presetRect,
+              outline: resolvedDeck.outline,
+            },
+          ],
+        })}
+        delayDeckCommit
+      />,
+    );
+
+    const svg = rendered.container.querySelector('svg[aria-label="Module plan view"]') as SVGSVGElement | null;
+    const deckHit = rendered.container.querySelector('[data-house-first-shape-hit="deck:deck-1"]');
+    const scroller = rendered.container.querySelector('[data-model-space-scroller]') as HTMLElement | null;
+    if (!svg || !deckHit || !scroller) throw new Error('Missing plan viewport nodes.');
+    installSvgPointMock(svg);
+
+    const committedDeckBefore = polygonPointsAttr(rendered.container.querySelector('[data-house-first-shape="deck:deck-1"]'));
+
+    dispatchPointer(deckHit, 'pointerdown', { pointerId: 224, button: 0, clientX: 50, clientY: 50 });
+    dispatchPointer(window, 'pointermove', { pointerId: 224, button: 0, buttons: 1, clientX: 56.1, clientY: 56.1 });
+
+    expect(scroller.dataset.houseFirstDeckPlacementState).toBe('snap-available');
+    expect(scroller.dataset.houseFirstDeckAffordanceState).toBe('snap-available');
+    expect(scroller.dataset.houseFirstDeckReferenceGuideState).toBe('snap-lane');
+    expect(scroller.dataset.houseFirstDeckSnapState).toBe('snap-available');
+    expect(rendered.container.querySelector('[data-house-first-preview-body-state="snap-available"]')).not.toBeNull();
+
+    dispatchPointer(window, 'pointerup', { pointerId: 224, button: 0, clientX: 56.1, clientY: 56.1 });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    const releasePreviewPoints = polygonPointsAttr(
+      rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]'),
+    );
+    expect(releasePreviewPoints).not.toBe(committedDeckBefore);
+    expect(rendered.container.querySelector('[data-testid="flush-deck-commit"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[data-testid="deck-telemetry-release-outcome"]')?.textContent).toBe('pending');
+    expect(rendered.container.querySelector('[data-testid="deck-telemetry-release-placement"]')?.textContent).toBe(
+      'snapped',
+    );
+    expect(rendered.container.querySelector('[data-testid="deck-telemetry-settle-visual"]')?.textContent).toBe(
+      'holding-preview',
+    );
+
+    const flushButton = rendered.container.querySelector('[data-testid="flush-deck-commit"]');
+    if (!(flushButton instanceof HTMLButtonElement)) throw new Error('Missing flush deck commit button.');
+    await act(async () => {
+      flushButton.click();
+      await Promise.resolve();
+    });
+
+    expect(rendered.container.querySelector('[data-testid="deck-telemetry-release-outcome"]')?.textContent).toBe(
+      'committed',
+    );
+    expect(rendered.container.querySelector('[data-testid="deck-telemetry-settle-visual"]')?.textContent).toBe(
+      'reconciling',
+    );
+    expect(rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]')).not.toBeNull();
+
+    await flushAnimationFrame();
+    await flushAnimationFrame();
+    await flushAnimationFrame();
+    await act(async () => {
+      await Promise.resolve();
+    });
+    await waitForHouseFirstDeckDragUnlock(rendered.container);
+
+    const committedDeckAfter = polygonPointsAttr(
+      rendered.container.querySelector('[data-house-first-shape="deck:deck-1"]'),
+    );
+    expect(normalizePolygonPointSet(committedDeckAfter)).toBe(normalizePolygonPointSet(releasePreviewPoints));
+    expect(rendered.container.querySelector('[data-testid="deck-is-attached"]')?.textContent).toBe('true');
+    expect(rendered.container.querySelector('[data-testid="deck-host-edge"]')?.textContent).toBe('right');
+    expect(rendered.container.querySelector('[data-testid="deck-primary-host-edge"]')?.textContent).toBe(
+      'footprint-edge-2',
+    );
+    expect(rendered.container.querySelector('[data-testid="deck-floating-center-along"]')?.textContent).toBe('');
+    expect(rendered.container.querySelector('[data-testid="deck-telemetry-settle-visual"]')?.textContent).toBe(
+      'complete',
+    );
+    expect(rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]')).toBeNull();
 
     rendered.unmount();
   });

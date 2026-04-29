@@ -52,6 +52,7 @@ function makeInteraction(input: {
     maxCenterOffsetM: 20,
     renderedCenter: input.renderedCenter,
     referenceFrames: input.frames,
+    commitReferenceFrames: input.frames,
     crossEdgeReference: null,
   };
 }
