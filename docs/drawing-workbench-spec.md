@@ -1,7 +1,16 @@
-# Drawing Workbench Architecture Spec
+# Drawing Workbench Architecture Spec (Superseded Compatibility Reference)
 
 Date: 2026-03-21
-Status: Locked
+Status: Superseded
+
+This March 2026 document is retained as a historical compatibility reference only.
+
+Active workbench authority now lives in:
+
+- [`docs/house-first-design-workbench-implementation-plan.md`](./house-first-design-workbench-implementation-plan.md)
+- [`docs/house-first-design-workbench-execution-board.md`](./house-first-design-workbench-execution-board.md)
+
+This page captures the previous single-shared-house / compatibility workbench direction. It is no longer the canonical authority for current planning or implementation.
 
 ## Goal
 

@@ -292,6 +292,43 @@ describe('deckInteractionAdapter', () => {
     expect(preview.centerOffsetM).toBe(1);
   });
 
+  it('keeps the exact grabbed point under the cursor while dragging along the same attached wall', () => {
+    const polygon = [
+      { x: 0, y: 0 },
+      { x: 4, y: 0 },
+      { x: 4, y: 2 },
+      { x: 0, y: 2 },
+    ];
+    const session = makeSession({
+      polygon,
+      startDragPlanPoint: { x: 1.3, y: 1.1 },
+      frames: [rearFrame, leftFrame],
+      renderedCenter: { x: 2, y: 1 },
+      deckWidthM: 4,
+      deckDepthM: 2,
+      placement: 'snapped',
+      attachmentMode: 'single_edge',
+    });
+
+    const preview = resolveDeckPreviewState({
+      session,
+      nextSvgX: session.startSvgX - 0.9,
+      nextSvgY: session.startSvgY,
+      nextDragPlanPoint: {
+        x: session.startDragPlanPoint!.x - 0.9,
+        y: session.startDragPlanPoint!.y,
+      },
+      previousPreviewState: null,
+    });
+
+    expect(preview.snapTargetState).toBe('locked');
+    expect(preview.previewAnchor.x).toBeCloseTo(0.4, 6);
+    expect(preview.previewAnchor.y).toBeCloseTo(1.1, 6);
+    expect(preview.grabbedPlanPoint.x).toBeCloseTo(preview.previewAnchor.x, 6);
+    expect(preview.grabbedPlanPoint.y).toBeCloseTo(preview.previewAnchor.y, 6);
+    expect(preview.centerOffsetM).toBeCloseTo(-0.9, 6);
+  });
+
   it('autorotates the preview body onto a stable wall candidate before release', () => {
     const polygon = [
       { x: 1, y: 0.6 },
@@ -325,8 +362,9 @@ describe('deckInteractionAdapter', () => {
     expect(preview.placement).toBe('floating');
     expect(preview.snapTargetState).toBe('stable');
     expect(preview.wallTargetStability).toBe('stable');
-    expect(preview.polygon[0]).toEqual({ x: 1, y: 0 });
-    expect(preview.previewAnchor).toEqual(preview.heldCornerPoint);
+    expect(preview.polygon[0]).toEqual({ x: 1, y: 0.12 });
+    expect(preview.previewAnchor.x).toBeCloseTo(1.1, 6);
+    expect(preview.previewAnchor.y).toBeCloseTo(0.22, 6);
     expect(preview.referenceGuide?.state).toBe('snap-lane');
   });
 

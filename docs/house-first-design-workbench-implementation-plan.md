@@ -6,6 +6,16 @@ Depends on:
 
 - [`docs/portal-local-first-spec.md`](./portal-local-first-spec.md)
 
+## Current Implementation Status
+
+This section describes current repo state only. It does not change the canonical target architecture defined by this document.
+
+- A hidden, staff-only, feature-flagged design workbench route already exists in the portal.
+- `Model Space`, `Sheet View`, and 3D review are already present on that hidden route for internal use and QA.
+- Local working-copy draft behavior already exists for workbench edits on the hidden route.
+- The current runtime/store still derives from the compatibility `houseFirst` model rather than a true `HouseAssembly` plus multiple movable `HouseForm`s source of truth.
+- The existing hidden-route workbench is a bridge implementation for internal iteration, not the canonical end-state described by this document.
+
 ## Purpose
 
 Replace the previous single-shared-house workbench direction with a cleaner canonical architecture for the next serious implementation pass.

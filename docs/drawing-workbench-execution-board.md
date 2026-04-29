@@ -1,11 +1,21 @@
-# Drawing Workbench Execution Board
+# Drawing Workbench Execution Board (Superseded Compatibility Reference)
 
 Date: 2026-03-21
+Status: Superseded
 Depends on:
 
 - `docs/drawing-workbench-spec.md`
 
-## Objective
+This March 2026 execution board is retained as a historical compatibility reference only.
+
+Active workbench authority now lives in:
+
+- [`docs/house-first-design-workbench-implementation-plan.md`](./house-first-design-workbench-implementation-plan.md)
+- [`docs/house-first-design-workbench-execution-board.md`](./house-first-design-workbench-execution-board.md)
+
+This page captures the previous single-shared-house / compatibility delivery direction. It is no longer the canonical authority for current planning or implementation.
+
+## Historical Objective
 
 Ship a portal drawing workbench that supports:
 

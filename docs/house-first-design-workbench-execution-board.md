@@ -6,9 +6,19 @@ Depends on:
 
 - [`docs/house-first-design-workbench-implementation-plan.md`](./house-first-design-workbench-implementation-plan.md)
 
+## Current Implementation Status
+
+This section describes current repo state only. It does not change the canonical target architecture defined by the active April workbench docs.
+
+- A hidden, staff-only, feature-flagged design workbench route already exists in the portal.
+- `Model Space`, `Sheet View`, and 3D review are already available there for internal use and QA.
+- Local working-copy draft behavior already exists for workbench edits on that hidden route.
+- The current runtime/store still derives from the compatibility `houseFirst` model rather than a true `HouseAssembly` plus multiple movable `HouseForm`s source of truth.
+- The current hidden-route workbench is a bridge implementation and validation surface, not the canonical end-state described by this execution board.
+
 ## Purpose
 
-Convert the canonical object-first workbench direction into a tight first-pass delivery sequence.
+Convert the canonical object-first workbench direction into a tight next serious implementation pass on top of the existing hidden compatibility workbench.
 
 This board is for:
 
@@ -21,7 +31,7 @@ The implementation plan remains the canonical authority for terminology and arch
 
 ## First-Pass Definition
 
-The next implementation pass should deliver a hidden-route workbench that can:
+The next implementation pass should advance the existing hidden-route workbench so it can:
 
 1. load a `HouseAssembly` plus authored `Deck`, `Opening`, and `Pergola` objects
 2. author multiple movable `HouseForm`s inside the same assembly

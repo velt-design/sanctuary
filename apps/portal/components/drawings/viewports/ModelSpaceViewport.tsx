@@ -357,7 +357,7 @@ function deckShapeSemanticallyMatchesPreview(input: {
   if (input.preview.releasePlacement === 'snapped') {
     return interaction.placementEdgeId === input.preview.placementEdgeId;
   }
-  return pointsApproximatelyEqual(interaction.renderedCenter, input.preview.previewAnchor, toleranceM);
+  return pointsApproximatelyEqual(interaction.renderedCenter, resolvePolygonCenter(input.preview.polygon) ?? input.preview.previewAnchor, toleranceM);
 }
 
 function clampValue(value: number, min: number, max: number): number {
