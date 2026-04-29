@@ -23,6 +23,7 @@ import {
   type DrawingWorkbenchRailModel,
 } from './drawingWorkbenchRailModel';
 import { buildHouseFirstWorkbenchProjectModel } from './houseFirstWorkbenchAdapter';
+import { buildObjectFirstWorkbenchProjectModel } from './objectFirstWorkbenchAdapter';
 import {
   buildWorkbenchDeckSupportDiagnostic,
   resolveWorkbenchDeckSupportActiveSide,
@@ -34,6 +35,11 @@ import type {
   HouseModel,
   PergolaModel,
 } from './houseFirstWorkbenchModel';
+import type {
+  HouseAssemblyModel,
+  HouseFormModel,
+  WorkbenchProjectModel,
+} from './objectFirstWorkbenchModel';
 
 export type DrawingWorkbenchModuleEntry = {
   id: string;
@@ -55,9 +61,9 @@ export type DrawingWorkbenchStore = {
     snapshot: Record<string, unknown> | null;
     ignoreModuleResults: boolean;
     modules: DrawingWorkbenchModuleEntry[];
-    // P1.1 boundary: the hidden workbench store still consumes the house-first compatibility contract.
-    // The object-first contracts in `objectFirstWorkbenchModel.ts` are canonical for future slices, but not wired here yet.
-    projectModel: HouseFirstWorkbenchProjectModel;
+    projectModel: WorkbenchProjectModel;
+    // Compatibility model remains the live source for existing geometry, rail, and editor paths in this shadow-runtime slice.
+    compatibilityProjectModel: HouseFirstWorkbenchProjectModel;
   };
   ui: DrawingWorkbenchUiState;
   derived: {
@@ -69,6 +75,10 @@ export type DrawingWorkbenchStore = {
     activePlanModel: ModulePlanModel | null;
     activeSectionModel: ModuleSectionModel | null;
     activeModuleLabel: string;
+    houseAssembly: HouseAssemblyModel | null;
+    houseForms: HouseFormModel[];
+    houseFormCount: number;
+    activeHouseForm: HouseFormModel | null;
     house: HouseModel | null;
     houseCount: number;
     decks: HouseModel['decks'];
@@ -138,19 +148,21 @@ export function buildDrawingWorkbenchStore(input: {
   const drawingModules = buildEstimateDrawingModules(effectiveSnapshot, {
     ignoreModuleResults: input.ignoreModuleResults,
   });
-  // P1.1 boundary: keep the active hidden workbench runtime on the compatibility `houseFirst` project model.
-  // Object-first contract reconciliation happens in types/tests only during this slice.
-  const projectModel = buildHouseFirstWorkbenchProjectModel({
+  const compatibilityProjectModel = buildHouseFirstWorkbenchProjectModel({
     snapshot: input.snapshot,
     draft: input.draft,
     ignoreModuleResults: input.ignoreModuleResults,
   });
+  const projectModel = buildObjectFirstWorkbenchProjectModel({
+    compatibilityProjectModel,
+  });
+  const houseForms = projectModel.houseAssembly?.houseForms ?? [];
   const ui = normalizeDrawingWorkbenchUiState(input.ui, {
     moduleCount: drawingModules.length,
-    houseFormIds: projectModel.house ? [projectModel.house.id] : [],
+    houseFormIds: houseForms.map((houseForm) => houseForm.id),
     pergolaIds: projectModel.pergolas.map((pergola) => pergola.id),
-    deckIds: projectModel.house?.decks.map((deck) => deck.id) ?? [],
-    openingIds: projectModel.house?.openings.map((opening) => opening.id) ?? [],
+    deckIds: projectModel.decks.map((deck) => deck.id),
+    openingIds: projectModel.openings.map((opening) => opening.id),
   });
   const modules = drawingModules.map((drawingModule, index) => {
     const label = input.moduleLabels?.[index] ?? drawingModule.label;
@@ -172,7 +184,7 @@ export function buildDrawingWorkbenchStore(input: {
           moduleId: drawingModule.id,
           module: geometryModule,
           result: resolved.moduleResult,
-          sharedHouse: projectModel.house,
+          sharedHouse: compatibilityProjectModel.house,
           fallbackPlanModel: resolvedDrawingModule.planModel,
           fallbackSectionModel: resolvedDrawingModule.sectionModel,
         })
@@ -215,7 +227,7 @@ export function buildDrawingWorkbenchStore(input: {
         pergolaRenderSource: planRenderSource,
         pergolaRenderStatus: planRenderStatus,
         canEditHouseFootprint: assemblyModel.capabilities.canEditHouseFootprint,
-        house: projectModel.house,
+        house: compatibilityProjectModel.house,
         activeHouseSelection: ui.activeHouseSelection,
         includeHouseFirstOverlay: ui.activeRailTab !== 'pergolas',
         moduleLengthM: geometryModule.lengthM,
@@ -231,12 +243,16 @@ export function buildDrawingWorkbenchStore(input: {
 
   const activeModule = modules[ui.activeModuleIndex] ?? null;
   const activePergola =
-    projectModel.pergolas.find((pergola) => pergola.id === ui.activePergolaId) ??
-    projectModel.pergolas.find((pergola) => pergola.id === activeModule?.drawingModule.input.pergolaId) ??
-    projectModel.pergolas[0] ??
+    compatibilityProjectModel.pergolas.find((pergola) => pergola.id === ui.activePergolaId) ??
+    compatibilityProjectModel.pergolas.find((pergola) => pergola.id === activeModule?.drawingModule.input.pergolaId) ??
+    compatibilityProjectModel.pergolas[0] ??
     null;
-  const decks = projectModel.house?.decks ?? [];
-  const openings = projectModel.house?.openings ?? [];
+  const activeHouseForm =
+    ui.activeObjectFamily === 'house_forms'
+      ? houseForms.find((houseForm) => houseForm.id === ui.activeObjectRef.objectId) ?? null
+      : null;
+  const decks = compatibilityProjectModel.house?.decks ?? [];
+  const openings = compatibilityProjectModel.house?.openings ?? [];
   const activeDeck =
     ui.activeObjectFamily === 'decks'
       ? decks.find((deck) => deck.id === ui.activeObjectRef.objectId) ?? null
@@ -260,9 +276,9 @@ export function buildDrawingWorkbenchStore(input: {
     activeRailTab: ui.activeRailTab,
     activeObjectFamily: ui.activeObjectFamily,
     activeObjectRef: ui.activeObjectRef,
-    house: projectModel.house,
-    pergolas: projectModel.pergolas,
-    warnings: projectModel.warnings,
+    house: compatibilityProjectModel.house,
+    pergolas: compatibilityProjectModel.pergolas,
+    warnings: compatibilityProjectModel.warnings,
     modules: modules.map((module) => ({
       pergolaId: module.drawingModule.input.pergolaId,
       planRenderStatus: module.planRenderStatus,
@@ -275,6 +291,7 @@ export function buildDrawingWorkbenchStore(input: {
       ignoreModuleResults: Boolean(input.ignoreModuleResults),
       modules,
       projectModel,
+      compatibilityProjectModel,
     },
     ui,
     derived: {
@@ -286,8 +303,12 @@ export function buildDrawingWorkbenchStore(input: {
       activePlanModel: activeModule?.planModel ?? null,
       activeSectionModel: activeModule?.sectionModel ?? null,
       activeModuleLabel: activeModule?.label ?? 'Module',
-      house: projectModel.house,
-      houseCount: projectModel.house ? 1 : 0,
+      houseAssembly: projectModel.houseAssembly,
+      houseForms,
+      houseFormCount: houseForms.length,
+      activeHouseForm,
+      house: compatibilityProjectModel.house,
+      houseCount: compatibilityProjectModel.house ? 1 : 0,
       decks,
       openings,
       activeDeckId: activeDeck?.id ?? null,
@@ -306,36 +327,36 @@ export function buildDrawingWorkbenchStore(input: {
       deckSupportWarningCount,
       activeDeckSupport,
       activeDeckInteraction,
-      roofForm: projectModel.house?.roof.form ?? null,
+      roofForm: compatibilityProjectModel.house?.roof.form ?? null,
       roofReviewStatus:
-        projectModel.house?.roof.validation.status === 'invalid'
+        compatibilityProjectModel.house?.roof.validation.status === 'invalid'
           ? 'blocked'
-          : projectModel.house?.roof.validation.status === 'approximate'
+          : compatibilityProjectModel.house?.roof.validation.status === 'approximate'
             ? 'approximate'
-            : projectModel.house?.roof.validation.status === 'valid'
+            : compatibilityProjectModel.house?.roof.validation.status === 'valid'
               ? 'ready'
               : 'none',
-      roofValidationStatus: projectModel.house?.roof.validation.status ?? null,
-      roofValidationCode: projectModel.house?.roof.validation.code ?? null,
-      roofValidationMessage: projectModel.house?.roof.validation.message ?? null,
-      roofApproximationReasons: projectModel.house?.roof.validation.approximationReasons ?? [],
-      roofProvenance: projectModel.house?.roof.provenance ?? null,
-      roofGeometryKind: projectModel.house?.roof.geometryKind ?? null,
-      roofAppendageEnabled: Boolean(projectModel.house?.roof.appendage.enabled),
-      roofAppendageSupportedHostEdges: projectModel.house?.roof.appendageSupportedHostEdges ?? [],
-      roofAppendageSupportReason: projectModel.house?.roof.appendageSupportReason ?? null,
-      roofAppendageStatus: projectModel.house?.roof.appendage.enabled
-        ? projectModel.house?.roof.validation.code === 'invalid_appendage_topology' ||
-          projectModel.house?.roof.validation.code === 'invalid_appendage_host_edge'
+      roofValidationStatus: compatibilityProjectModel.house?.roof.validation.status ?? null,
+      roofValidationCode: compatibilityProjectModel.house?.roof.validation.code ?? null,
+      roofValidationMessage: compatibilityProjectModel.house?.roof.validation.message ?? null,
+      roofApproximationReasons: compatibilityProjectModel.house?.roof.validation.approximationReasons ?? [],
+      roofProvenance: compatibilityProjectModel.house?.roof.provenance ?? null,
+      roofGeometryKind: compatibilityProjectModel.house?.roof.geometryKind ?? null,
+      roofAppendageEnabled: Boolean(compatibilityProjectModel.house?.roof.appendage.enabled),
+      roofAppendageSupportedHostEdges: compatibilityProjectModel.house?.roof.appendageSupportedHostEdges ?? [],
+      roofAppendageSupportReason: compatibilityProjectModel.house?.roof.appendageSupportReason ?? null,
+      roofAppendageStatus: compatibilityProjectModel.house?.roof.appendage.enabled
+        ? compatibilityProjectModel.house?.roof.validation.code === 'invalid_appendage_topology' ||
+          compatibilityProjectModel.house?.roof.validation.code === 'invalid_appendage_host_edge'
           ? 'invalid'
           : 'valid'
         : 'off',
-      pergolas: projectModel.pergolas,
+      pergolas: compatibilityProjectModel.pergolas,
       activePergolaId: activePergola?.id ?? null,
       activePergola,
-      migrationWarnings: projectModel.warnings,
-      migrationWarningCount: projectModel.warnings.length,
-      houseIsLowConfidence: Boolean(projectModel.house?.lowConfidence),
+      migrationWarnings: compatibilityProjectModel.warnings,
+      migrationWarningCount: compatibilityProjectModel.warnings.length,
+      houseIsLowConfidence: Boolean(compatibilityProjectModel.house?.lowConfidence),
       status:
         ui.activeView === 'section'
           ? activeModule?.sectionModel

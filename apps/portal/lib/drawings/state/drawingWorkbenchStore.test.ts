@@ -144,6 +144,7 @@ describe('buildDrawingWorkbenchStore', () => {
       snapshot,
       ui: createDrawingWorkbenchUiState({
         activeModuleIndex: 7,
+        activeObjectRef: { family: 'house_forms', objectId: 'house-main' },
         activeView: 'plan',
         viewportMode: 'model',
         viewportTransform: { zoom: 99, panX: 12, panY: -4 },
@@ -162,8 +163,14 @@ describe('buildDrawingWorkbenchStore', () => {
     expect(store.derived.activeSectionModel?.leftEdgeHeightM).toBeCloseTo(2.4);
     expect(store.derived.activeSectionModel?.rightEdgeHeightM).toBeCloseTo(2.1);
     expect(store.derived.activePlanViewModel?.annotations.suppressDocumentAnnotationsInModelSpace).toBe(true);
-    expect(store.persisted.projectModel.house?.id).toBe('house-main');
-    expect('houseAssembly' in (store.persisted.projectModel as Record<string, unknown>)).toBe(false);
+    expect(store.persisted.projectModel.houseAssembly?.id).toBe('assembly-main');
+    expect(store.persisted.projectModel.houseAssembly?.houseForms[0]?.id).toBe('house-main');
+    expect('house' in (store.persisted.projectModel as Record<string, unknown>)).toBe(false);
+    expect(store.persisted.compatibilityProjectModel.house?.id).toBe('house-main');
+    expect(store.derived.houseAssembly?.id).toBe('assembly-main');
+    expect(store.derived.houseForms.map((houseForm) => houseForm.id)).toEqual(['house-main']);
+    expect(store.derived.houseFormCount).toBe(1);
+    expect(store.derived.activeHouseForm?.id).toBe('house-main');
     expect(store.derived.house?.footprint.preset).toBe('straight');
     expect(store.derived.pergolas).toHaveLength(1);
     expect(store.derived.railModel.familySummaries.map((family) => family.family)).toEqual([
