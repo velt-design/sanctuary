@@ -398,15 +398,11 @@ function resolveDeckCenterOffsetFromPreviewPolygon(input: {
   preview: DeckPreviewState;
   session: DeckDragSession;
 }): number {
-  const commitReferenceFrames =
-    input.session.interaction.commitReferenceFrames.length
-      ? input.session.interaction.commitReferenceFrames
-      : input.session.interaction.referenceFrames;
   const frame =
     findDeckReferenceFrameById(
-      commitReferenceFrames,
+      input.session.interaction.referenceFrames,
       input.preview.primaryHostEdgeId ?? input.preview.placementEdgeId ?? input.preview.witnessEdgeId,
-    ) ?? commitReferenceFrames[0];
+    ) ?? input.session.interaction.referenceFrames[0];
   if (!frame) return input.preview.anchorDerivedCenterOffsetM ?? input.preview.centerOffsetM;
   const projection = projectPolygonToDeckReferenceFrame({
     polygon: input.preview.polygon,
@@ -438,8 +434,8 @@ function selectDeckWallCandidate(input: {
   const previousCandidate = candidates.find((candidate) => candidate.frame.sourceEdgeId === previousTargetId) ?? candidates[0]!;
   const bestCandidate =
     [...candidates].sort((left, right) =>
-      left.nearGapM - right.nearGapM ||
       left.overlapPenaltyM - right.overlapPenaltyM ||
+      left.nearGapM - right.nearGapM ||
       left.outsidePenaltyM - right.outsidePenaltyM ||
       left.snapSpanPenaltyM - right.snapSpanPenaltyM ||
       left.heldSpanOutsideM - right.heldSpanOutsideM ||
@@ -959,15 +955,20 @@ export function resolveDeckPreviewState(input: {
       wallCandidate.snapSpanPenaltyM <= DECK_WALL_SPAN_RETAIN_TOLERANCE_M) ||
     (previousLockedWallId === wallCandidate.frame.sourceEdgeId &&
       wallCandidate.heldSpanOutsideM <= Number.POSITIVE_INFINITY);
+  const wallFaceEligible = wallCandidate.overlapPenaltyM <= DECK_UNSNAP_TOLERANCE_M;
   const wallCandidateActive =
-    (wallCandidate.nearGapM <= DECK_SNAP_TOLERANCE_M && wallSpanEligible) ||
+    (wallCandidate.nearGapM <= DECK_SNAP_TOLERANCE_M && wallFaceEligible && wallSpanEligible) ||
     (input.previousPreviewState?.activePrimaryTargetId === wallCandidate.frame.sourceEdgeId &&
       wallCandidate.nearGapM <= DECK_UNSNAP_TOLERANCE_M &&
+      wallFaceEligible &&
       wallCandidate.snapSpanPenaltyM <= DECK_WALL_SPAN_RETAIN_TOLERANCE_M) ||
-    (previousLockedWallId === wallCandidate.frame.sourceEdgeId && wallCandidate.nearGapM <= DECK_UNSNAP_TOLERANCE_M);
+    (previousLockedWallId === wallCandidate.frame.sourceEdgeId &&
+      wallCandidate.nearGapM <= DECK_UNSNAP_TOLERANCE_M &&
+      wallFaceEligible);
   const wallTransient =
     wallSpanEligible &&
-    (wallCandidate.nearGapM <= DECK_UNSNAP_TOLERANCE_M || wallCandidate.overlapPenaltyM <= DECK_UNSNAP_TOLERANCE_M);
+    wallFaceEligible &&
+    wallCandidate.nearGapM <= DECK_UNSNAP_TOLERANCE_M;
   const previousStableWallId =
     input.previousPreviewState?.wallTargetStability === 'stable' ||
     input.previousPreviewState?.wallTargetStability === 'locked'
@@ -1064,16 +1065,10 @@ export function resolveDeckPreviewState(input: {
   const centerOffsetM = placement === 'snapped' && !cornerLocked
     ? endCatch?.centerOffsetM ?? unclampedCenterOffsetM
     : unclampedCenterOffsetM;
-  const snappedPreviewGapM =
-    wallLocked
-      ? 0
-      : wallStable
-        ? Math.max(0, wallCandidate.heldOutwardM - input.session.grabbedPointDepthFromNearEdgeM)
-        : wallCandidate.nearGapM;
-  const referenceEdgeGapM = releasePlacement === 'snapped' ? snappedPreviewGapM : wallCandidate.nearGapM;
+  const referenceEdgeGapM = releasePlacement === 'snapped' ? 0 : wallCandidate.nearGapM;
   const attachmentMode = activeSnapMode;
   const previewPolygon =
-    cornerLocked
+    cornerCandidate && releasePlacement === 'snapped'
       ? buildDeckCornerPreviewPolygon({
           primaryFrame: cornerCandidate.primaryFrame,
           secondaryFrame: cornerCandidate.secondaryFrame,
@@ -1090,7 +1085,7 @@ export function resolveDeckPreviewState(input: {
             referenceEdgeGapM,
           })
         : translatedPolygon;
-  const previewGrabbedPoint =
+  const bodyGrabbedPoint =
     wallStable || wallLocked
       ? resolveDeckPreviewGrabbedPoint({
           frame: activeFrame,
@@ -1100,6 +1095,10 @@ export function resolveDeckPreviewState(input: {
           grabbedPointDepthFromNearEdgeM: input.session.grabbedPointDepthFromNearEdgeM,
         })
       : translatedGrabbedPoint;
+  const previewGrabbedPoint =
+    releasePlacement === 'snapped' && placement !== 'snapped'
+      ? translatedGrabbedPoint
+      : bodyGrabbedPoint;
   const referenceGuide: DeckPreviewState['referenceGuide'] =
     snapTargetState === 'locked'
       ? null

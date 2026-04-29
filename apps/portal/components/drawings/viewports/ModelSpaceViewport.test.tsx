@@ -5523,7 +5523,8 @@ describe('ModelSpaceViewport', () => {
     const deck = makeHouseFirstDeck({
       isAttached: false,
       presetType: 'rect_detached',
-      hostEdgeId: null,
+      hostEdgeId: 'front',
+      primaryHostEdgeId: 'footprint-edge-3',
       presetRect: {
         widthM: '3',
         depthM: '2',
@@ -5575,19 +5576,100 @@ describe('ModelSpaceViewport', () => {
     expect(rendered.container.querySelector('[data-house-first-preview-body-state="snap-available"]')).not.toBeNull();
     expect(rendered.container.querySelector('[data-house-first-reference-guide="snap-lane"]')).not.toBeNull();
     expect(rendered.container.querySelector('[data-house-first-snap-target="snap-available"]')).not.toBeNull();
+    const releasePreviewPoints = polygonPointsAttr(
+      rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]'),
+    );
 
     dispatchPointer(window, 'pointerup', { pointerId: 24, button: 0, clientX: 56.1, clientY: 56.1 });
     await act(async () => {
       await Promise.resolve();
     });
-    await flushAnimationFrame();
-    await flushAnimationFrame();
-    await flushAnimationFrame();
-    await flushAnimationFrame();
-    await flushAnimationFrame();
+    await waitForHouseFirstDeckDragUnlock(rendered.container);
+
+    const committedDeckAfter = polygonPointsAttr(
+      rendered.container.querySelector('[data-house-first-shape="deck:deck-1"]'),
+    );
+    expect(normalizePolygonPointSet(committedDeckAfter)).toBe(normalizePolygonPointSet(releasePreviewPoints));
 
     expect(rendered.container.querySelector('[data-testid="deck-is-attached"]')?.textContent).toBe('true');
     expect(rendered.container.querySelector('[data-testid="deck-host-edge"]')?.textContent).toBe('left');
+    expect(rendered.container.querySelector('[data-testid="deck-floating-center-along"]')?.textContent).toBe('');
+
+    rendered.unmount();
+  });
+
+  it('snaps a floating preset deck onto the exact front house edge on release without a post-release jump', async () => {
+    const deck = makeHouseFirstDeck({
+      isAttached: false,
+      presetType: 'rect_detached',
+      hostEdgeId: null,
+      presetRect: {
+        widthM: '3',
+        depthM: '2',
+        centerOffsetM: '0',
+        detachedGapM: '0.5',
+      },
+      floatingRect: {
+        centerAlongM: '3',
+        centerDepthM: '-1.05',
+        widthM: '3',
+        depthM: '2',
+      },
+    });
+    const baseHouse = makeHouseFirstHouse();
+    const resolvedDeck = resolveDeckPresetGeometry({
+      deck: deck as any,
+      housePolygon: baseHouse.footprint.polygon,
+    });
+    const rendered = renderIntoDocument(
+      <HouseFirstViewportHarness
+        initialSelection={{ kind: 'deck', targetId: 'deck-1' }}
+        initialHouse={makeHouseFirstHouse({
+          decks: [
+            {
+              ...deck,
+              hostEdgeId: resolvedDeck.hostEdgeId,
+              floatingRect: resolvedDeck.floatingRect,
+              presetRect: resolvedDeck.presetRect,
+              outline: resolvedDeck.outline,
+            },
+          ],
+        })}
+      />,
+    );
+
+    const svg = rendered.container.querySelector('svg[aria-label="Module plan view"]') as SVGSVGElement | null;
+    const deckHit = rendered.container.querySelector('[data-house-first-shape-hit="deck:deck-1"]');
+    const scroller = rendered.container.querySelector('[data-model-space-scroller]') as HTMLElement | null;
+    if (!svg || !deckHit || !scroller) throw new Error('Missing plan viewport nodes.');
+    installProjectedSvgPointMock(svg, { xScale: 0.05, yScale: 0.05, xOffset: 0, yOffset: 0 });
+
+    dispatchPointer(deckHit, 'pointerdown', { pointerId: 324, button: 0, clientX: 50, clientY: 50 });
+    dispatchPointer(window, 'pointermove', { pointerId: 324, button: 0, buttons: 1, clientX: 50, clientY: 43.9 });
+
+    expect(scroller.dataset.houseFirstDeckPlacementState).toBe('snap-available');
+    expect(scroller.dataset.houseFirstDeckAffordanceState).toBe('snap-available');
+    expect(scroller.dataset.houseFirstDeckReferenceGuideState).toBe('snap-lane');
+    expect(scroller.dataset.houseFirstDeckSnapState).toBe('snap-available');
+    const releasePreviewPoints = polygonPointsAttr(
+      rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]'),
+    );
+
+    dispatchPointer(window, 'pointerup', { pointerId: 324, button: 0, clientX: 50, clientY: 43.9 });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    await waitForHouseFirstDeckDragUnlock(rendered.container);
+
+    const committedDeckAfter = polygonPointsAttr(
+      rendered.container.querySelector('[data-house-first-shape="deck:deck-1"]'),
+    );
+    expect(normalizePolygonPointSet(committedDeckAfter)).toBe(normalizePolygonPointSet(releasePreviewPoints));
+    expect(rendered.container.querySelector('[data-testid="deck-is-attached"]')?.textContent).toBe('true');
+    expect(rendered.container.querySelector('[data-testid="deck-host-edge"]')?.textContent).toBe('front');
+    expect(rendered.container.querySelector('[data-testid="deck-primary-host-edge"]')?.textContent).toBe(
+      'footprint-edge-3',
+    );
     expect(rendered.container.querySelector('[data-testid="deck-floating-center-along"]')?.textContent).toBe('');
 
     rendered.unmount();

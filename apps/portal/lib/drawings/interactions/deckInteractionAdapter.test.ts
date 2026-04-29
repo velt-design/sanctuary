@@ -111,6 +111,69 @@ function makeSession(input: {
   return session;
 }
 
+function pointOnFrame(
+  frame: HouseFirstPlanDeckReferenceFrame,
+  alongM: number,
+  outwardM: number,
+): PlanPoint {
+  return {
+    x: frame.hostEdgeStart.x + frame.alongUnitX * (alongM - frame.spanStartM) + frame.outwardUnitX * outwardM,
+    y: frame.hostEdgeStart.y + frame.alongUnitY * (alongM - frame.spanStartM) + frame.outwardUnitY * outwardM,
+  };
+}
+
+function rectOnFrame(input: {
+  frame: HouseFirstPlanDeckReferenceFrame;
+  deckWidthM: number;
+  deckDepthM: number;
+  centerOffsetM: number;
+  referenceEdgeGapM: number;
+}): PlanPoint[] {
+  const edgeMidpointM = (input.frame.spanStartM + input.frame.spanEndM) / 2;
+  const centerAlongM = edgeMidpointM + input.centerOffsetM;
+  const nearAlongM = centerAlongM - input.deckWidthM / 2;
+  const farAlongM = centerAlongM + input.deckWidthM / 2;
+  const nearOutM = input.referenceEdgeGapM;
+  const farOutM = nearOutM + input.deckDepthM;
+  if (input.frame.outwardDirection < 0) {
+    return [
+      pointOnFrame(input.frame, nearAlongM, farOutM),
+      pointOnFrame(input.frame, farAlongM, farOutM),
+      pointOnFrame(input.frame, farAlongM, nearOutM),
+      pointOnFrame(input.frame, nearAlongM, nearOutM),
+    ];
+  }
+  return [
+    pointOnFrame(input.frame, nearAlongM, nearOutM),
+    pointOnFrame(input.frame, farAlongM, nearOutM),
+    pointOnFrame(input.frame, farAlongM, farOutM),
+    pointOnFrame(input.frame, nearAlongM, farOutM),
+  ];
+}
+
+function polygonCenter(polygon: PlanPoint[]): PlanPoint {
+  return polygon.reduce(
+    (center, point) => ({
+      x: center.x + point.x / polygon.length,
+      y: center.y + point.y / polygon.length,
+    }),
+    { x: 0, y: 0 },
+  );
+}
+
+function nearGapToFrame(polygon: PlanPoint[], frame: HouseFirstPlanDeckReferenceFrame): number {
+  return Math.max(
+    0,
+    Math.min(
+      ...polygon.map(
+        (point) =>
+          (point.x - frame.hostEdgeStart.x) * frame.outwardUnitX +
+          (point.y - frame.hostEdgeStart.y) * frame.outwardUnitY,
+      ),
+    ),
+  );
+}
+
 describe('deckInteractionAdapter', () => {
   const rearFrame = makeFrame({
     hostEdgeId: 'rear',
@@ -141,6 +204,116 @@ describe('deckInteractionAdapter', () => {
     alongUnitY: 1,
     outwardUnitX: 1,
     outwardUnitY: 0,
+  });
+  const realRearFrame = makeFrame({
+    hostEdgeId: 'rear',
+    sourceEdgeId: 'footprint-edge-1',
+    axis: 'along',
+    spanStartM: 0,
+    spanEndM: 6,
+    edgeCoordinateM: 0,
+    outwardDirection: -1,
+    hostEdgeStart: { x: 0, y: 0 },
+    hostEdgeEnd: { x: 6, y: 0 },
+    alongUnitX: 1,
+    alongUnitY: 0,
+    outwardUnitX: 0,
+    outwardUnitY: -1,
+  });
+  const realRightFrame = makeFrame({
+    hostEdgeId: 'right',
+    sourceEdgeId: 'footprint-edge-2',
+    axis: 'depth',
+    spanStartM: 0,
+    spanEndM: 2.4,
+    edgeCoordinateM: 6,
+    outwardDirection: 1,
+    hostEdgeStart: { x: 6, y: 0 },
+    hostEdgeEnd: { x: 6, y: 2.4 },
+    alongUnitX: 0,
+    alongUnitY: 1,
+    outwardUnitX: 1,
+    outwardUnitY: 0,
+  });
+  const realFrontFrame = makeFrame({
+    hostEdgeId: 'front',
+    sourceEdgeId: 'footprint-edge-3',
+    axis: 'along',
+    spanStartM: 0,
+    spanEndM: 6,
+    edgeCoordinateM: 2.4,
+    outwardDirection: 1,
+    hostEdgeStart: { x: 0, y: 2.4 },
+    hostEdgeEnd: { x: 6, y: 2.4 },
+    alongUnitX: 1,
+    alongUnitY: 0,
+    outwardUnitX: 0,
+    outwardUnitY: 1,
+  });
+  const realLeftFrame = makeFrame({
+    hostEdgeId: 'left',
+    sourceEdgeId: 'footprint-edge-4',
+    axis: 'depth',
+    spanStartM: 0,
+    spanEndM: 2.4,
+    edgeCoordinateM: 0,
+    outwardDirection: -1,
+    hostEdgeStart: { x: 0, y: 0 },
+    hostEdgeEnd: { x: 0, y: 2.4 },
+    alongUnitX: 0,
+    alongUnitY: 1,
+    outwardUnitX: -1,
+    outwardUnitY: 0,
+  });
+
+  it.each([
+    ['rear', realRearFrame],
+    ['front', realFrontFrame],
+    ['left', realLeftFrame],
+    ['right', realRightFrame],
+  ])('draws snap-available release previews as attached geometry on the %s wall', (_label, frame) => {
+    const deckWidthM = 3;
+    const deckDepthM = 2;
+    const centerOffsetM = 0.4;
+    const initialGapM = 0.12;
+    const polygon = rectOnFrame({
+      frame,
+      deckWidthM,
+      deckDepthM,
+      centerOffsetM,
+      referenceEdgeGapM: initialGapM,
+    });
+    const edgeMidpointM = (frame.spanStartM + frame.spanEndM) / 2;
+    const startDragPlanPoint = pointOnFrame(frame, edgeMidpointM + centerOffsetM - 0.6, initialGapM + 0.5);
+    const session = makeSession({
+      polygon,
+      startDragPlanPoint,
+      frames: [frame],
+      renderedCenter: polygonCenter(polygon),
+      deckWidthM,
+      deckDepthM,
+      placement: 'floating',
+      attachmentMode: 'floating',
+    });
+
+    const preview = resolveDeckPreviewState({
+      session,
+      nextSvgX: session.startSvgX,
+      nextSvgY: session.startSvgY,
+      nextDragPlanPoint: session.startDragPlanPoint,
+      previousPreviewState: null,
+    });
+    const patch = buildDeckCommitPatch({ session, preview });
+
+    expect(preview.releasePlacement).toBe('snapped');
+    expect(preview.placement).toBe('floating');
+    expect(preview.referenceEdgeGapM).toBe(0);
+    expect(nearGapToFrame(preview.polygon, frame)).toBeCloseTo(0, 6);
+    expect(preview.previewAnchor.x).toBeCloseTo(startDragPlanPoint.x, 6);
+    expect(preview.previewAnchor.y).toBeCloseTo(startDragPlanPoint.y, 6);
+    expect(patch.hostEdgeId).toBe(frame.hostEdgeId);
+    expect(patch.primaryHostEdgeId).toBe(frame.sourceEdgeId);
+    expect((patch.presetRect as { centerOffsetM: string }).centerOffsetM).toBe('0.4');
   });
 
   it('does not trigger corner mode just because a wide deck overlaps a second wall span', () => {
@@ -363,7 +536,7 @@ describe('deckInteractionAdapter', () => {
     expect(preview.placement).toBe('floating');
     expect(preview.snapTargetState).toBe('stable');
     expect(preview.wallTargetStability).toBe('stable');
-    expect(preview.polygon[0]).toEqual({ x: 1, y: 0.12 });
+    expect(preview.polygon[0]).toEqual({ x: 1, y: 0 });
     expect(preview.previewAnchor.x).toBeCloseTo(1.1, 6);
     expect(preview.previewAnchor.y).toBeCloseTo(0.22, 6);
     expect(preview.referenceGuide?.state).toBe('snap-lane');

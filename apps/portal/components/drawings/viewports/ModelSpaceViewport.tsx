@@ -3203,18 +3203,20 @@ export default function ModelSpaceViewport({
     [deckDragSettleState, houseFirstPlanOverlay],
   );
   const settledDeckShapeMatchesPreview = useMemo(
-    () =>
-      Boolean(
-        deckDragSettleState &&
-          settledDeckShape &&
-          (
-            polygonsVisuallyMatch(settledDeckShape.polygon, deckDragSettleState.previewState.polygon) ||
-            deckShapeSemanticallyMatchesPreview({
-              shape: settledDeckShape,
-              preview: deckDragSettleState.previewState,
-            })
-          ),
-      ),
+    () => {
+      if (!deckDragSettleState || !settledDeckShape) return false;
+      const visuallyMatches = polygonsVisuallyMatch(settledDeckShape.polygon, deckDragSettleState.previewState.polygon);
+      if (deckDragSettleState.releasePlacement === 'snapped') {
+        return visuallyMatches;
+      }
+      return (
+        visuallyMatches ||
+        deckShapeSemanticallyMatchesPreview({
+          shape: settledDeckShape,
+          preview: deckDragSettleState.previewState,
+        })
+      );
+    },
     [deckDragSettleState, settledDeckShape],
   );
   const selectedDeckRelationshipDimensionsAvailable = useMemo(

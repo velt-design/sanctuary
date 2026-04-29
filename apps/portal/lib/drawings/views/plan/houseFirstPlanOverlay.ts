@@ -1305,6 +1305,78 @@ function buildDeckWorldPolygonFromCornerAttachment(input: {
   ];
 }
 
+function resolvePresetDeckGeometryFrame(input: {
+  deck: HouseModel['decks'][number];
+  referenceFrames: HouseFirstPlanDeckReferenceFrame[];
+  fallbackPolygon: PlanPoint[];
+  geometryHouseLookup: GeometryHouseLookup;
+}): HouseFirstPlanDeckReferenceFrame | null {
+  const requestedHostEdgeId = input.deck.primaryHostEdgeId ?? input.deck.hostEdgeId;
+  const exactHostEdgeId = normalizeSourceEdgeId(requestedHostEdgeId);
+  if (exactHostEdgeId) {
+    return input.referenceFrames.find((frame) => frame.sourceEdgeId === exactHostEdgeId) ?? null;
+  }
+  if (isSemanticAttachmentSide(requestedHostEdgeId) && input.geometryHouseLookup.footprintPolygon?.length) {
+    return resolveWorldHostEdgeFrame({
+      housePolygon: input.geometryHouseLookup.footprintPolygon,
+      hostEdgeId: requestedHostEdgeId,
+    });
+  }
+  return resolveDeckReferenceFrameForPolygon({
+    polygon: input.fallbackPolygon,
+    referenceFrames: input.referenceFrames,
+    requestedEdgeId: requestedHostEdgeId,
+  });
+}
+
+function buildPresetAttachedDeckWorldPolygon(input: {
+  deck: HouseModel['decks'][number];
+  referenceFrames: HouseFirstPlanDeckReferenceFrame[];
+  fallbackPolygon: PlanPoint[];
+  geometryHouseLookup: GeometryHouseLookup;
+}): PlanPoint[] | null {
+  if (input.deck.shape !== 'preset' || !input.deck.presetRect || !input.deck.isAttached) return null;
+  if (!input.referenceFrames.length) return null;
+
+  const widthM = Number(input.deck.presetRect.widthM);
+  const depthM = Number(input.deck.presetRect.depthM);
+  const centerOffsetM = Number(input.deck.presetRect.centerOffsetM);
+  if (!Number.isFinite(widthM) || !Number.isFinite(depthM) || !Number.isFinite(centerOffsetM)) return null;
+
+  const attachmentMode =
+    input.deck.attachmentMode ??
+    (input.deck.secondaryHostEdgeId && input.deck.cornerVertexId ? 'corner_dual_edge' : 'single_edge');
+  const cornerAttachment =
+    attachmentMode === 'corner_dual_edge' && input.geometryHouseLookup.footprintPolygon?.length
+      ? resolveWorldCornerAttachmentCandidate({
+          housePolygon: input.geometryHouseLookup.footprintPolygon,
+          referenceFrames: input.referenceFrames,
+          primaryHostEdgeId: input.deck.primaryHostEdgeId ?? input.deck.hostEdgeId,
+          secondaryHostEdgeId: input.deck.secondaryHostEdgeId,
+          cornerVertexId: input.deck.cornerVertexId,
+        })
+      : null;
+  if (cornerAttachment) {
+    return buildDeckWorldPolygonFromCornerAttachment({
+      primaryFrame: cornerAttachment.primaryFrame,
+      secondaryFrame: cornerAttachment.secondaryFrame,
+      cornerPoint: cornerAttachment.cornerPoint,
+      widthM,
+      depthM,
+    });
+  }
+
+  const frame = resolvePresetDeckGeometryFrame(input);
+  if (!frame) return null;
+  return buildDeckWorldPolygonFromReferenceFrame({
+    frame,
+    widthM,
+    depthM,
+    centerOffsetM,
+    referenceEdgeGapM: 0,
+  });
+}
+
 function buildOpeningPolygonFromGeometryFrame(input: {
   frame: GeometryOpeningFrame;
   widthM: number;
@@ -2381,7 +2453,7 @@ export function buildHouseFirstPlanOverlay(input: {
 
   for (const deck of house.decks) {
     const localPolygon = parseLocalPolygon(deck.outline);
-    const deckPolygon =
+    const fallbackDeckPolygon =
       geometryHouseLookup.deckPolygons.get(deck.id) ??
       buildDeckWorldPolygon({
         localPolygon,
@@ -2389,6 +2461,22 @@ export function buildHouseFirstPlanOverlay(input: {
         moduleLengthM,
         moduleProjectionM,
       });
+    const deckReferenceFrames =
+      geometryHouseLookup.footprintPolygon?.length
+        ? buildWorldDeckReferenceFrames(geometryHouseLookup.footprintPolygon)
+        : buildDeckDraftReferenceFrames({
+            house,
+            houseLocalPolygon,
+            moduleLengthM,
+            moduleProjectionM,
+          });
+    const deckPolygon =
+      buildPresetAttachedDeckWorldPolygon({
+        deck,
+        referenceFrames: deckReferenceFrames,
+        fallbackPolygon: fallbackDeckPolygon,
+        geometryHouseLookup,
+      }) ?? fallbackDeckPolygon;
     const selected = input.selection.kind === 'deck' && input.selection.targetId === deck.id;
     const deckInteraction =
       deck.shape === 'custom'
