@@ -1345,6 +1345,70 @@ describe('houseFirstPlanOverlay', () => {
     expect(snappedInteraction?.placementEdgeId).toBe(leftEdgeId);
   });
 
+  it('resolves attached preset overlays by deck polygon when generated footprint edge numbering differs', () => {
+    const baseHouse = makeHouse({
+      footprint: {
+        mode: 'preset',
+        preset: 'straight',
+      },
+    });
+    const deck = makeDeck({
+      hostEdgeId: 'left',
+      primaryHostEdgeId: 'footprint-edge-4',
+      presetRect: {
+        widthM: '2',
+        depthM: '1.5',
+        centerOffsetM: '0.2',
+      },
+    });
+    const resolvedDeck = resolveDeckPresetGeometry({
+      deck,
+      housePolygon: baseHouse.footprint.polygon,
+    });
+    const house = makeHouse({
+      footprint: baseHouse.footprint,
+      decks: [
+        {
+          ...deck,
+          hostEdgeId: resolvedDeck.hostEdgeId,
+          primaryHostEdgeId: resolvedDeck.primaryHostEdgeId,
+          outline: resolvedDeck.outline,
+          presetRect: resolvedDeck.presetRect,
+        },
+      ],
+    });
+    const geometryHouseContext = makeGeometryHouseContext(house);
+    const rotatedGeometryHouseContext: ModulePlanHouseContext = {
+      ...geometryHouseContext,
+      surfaces: geometryHouseContext.surfaces.map((surface) =>
+        surface.kind === 'footprint'
+          ? {
+              ...surface,
+              boundary: [
+                surface.boundary[1]!,
+                surface.boundary[2]!,
+                surface.boundary[3]!,
+                surface.boundary[0]!,
+              ],
+            }
+          : surface,
+      ),
+    };
+
+    const overlay = buildHouseFirstPlanOverlay({
+      house,
+      selection: { kind: 'deck', targetId: 'deck-1' },
+      moduleLengthM: '6',
+      moduleProjectionM: '3',
+      geometryHouseContext: rotatedGeometryHouseContext,
+    });
+
+    const deckShape = overlay?.shapes.find((shape) => shape.ownerKind === 'deck' && shape.ownerId === 'deck-1');
+    const expectedDeckSurface = geometryHouseContext.surfaces.find((surface) => surface.id === 'deck-1');
+    expect(deckShape?.deckInteraction?.semanticPlacementSide).toBe('left');
+    expect(toScenePolygonMetres(deckShape?.polygon ?? [])).toEqual(toScenePolygonMetres(expectedDeckSurface?.boundary ?? []));
+  });
+
   it('resolves floating preset witness geometry against the exact right-side edge', () => {
     const baseHouse = makeHouse({
       footprint: {

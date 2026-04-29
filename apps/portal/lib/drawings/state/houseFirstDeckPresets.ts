@@ -459,15 +459,14 @@ function resolveCompatibleDeckGeometryHostEdgeId(input: {
   if (!exactPrimaryHostEdgeId) {
     return semanticHostEdgeId ?? resolveDeckGeometryHostEdgeId(input.primaryHostEdgeId ?? input.semanticHostEdgeId);
   }
-  if (!semanticHostEdgeId) return exactPrimaryHostEdgeId;
   const exactFrame = resolveDeckHostEdgeFrame({
     housePolygon: input.housePolygon,
     hostEdgeId: exactPrimaryHostEdgeId,
   });
-  if (exactFrame?.hostEdge === semanticHostEdgeId) {
+  if (exactFrame?.sourceEdgeId === exactPrimaryHostEdgeId) {
     return exactPrimaryHostEdgeId;
   }
-  return semanticHostEdgeId;
+  return semanticHostEdgeId ?? exactPrimaryHostEdgeId;
 }
 
 function fallbackPresetRect(input: {

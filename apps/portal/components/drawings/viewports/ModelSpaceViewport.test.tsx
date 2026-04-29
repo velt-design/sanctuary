@@ -696,8 +696,10 @@ type HouseFirstViewportHarnessProps = {
   rejectDeckCommit?: boolean;
   enablePlanEditing?: boolean;
   delayDeckCommit?: boolean;
+  forceDeckCommitMismatch?: boolean;
   wrapInScrollableAncestor?: boolean;
   onDeckInteractionTelemetryChange?: (telemetry: DeckInteractionTelemetry) => void;
+  onDeckCommit?: (deckId: string, patch: Partial<DeckModel>) => void;
   renderSelectionControls?: boolean;
   workbenchDisplayMode?: 'house' | 'pergolas';
   visibility?: DrawingWorkbenchVisibilityState;
@@ -709,8 +711,10 @@ function HouseFirstViewportHarness({
   rejectDeckCommit = false,
   enablePlanEditing = true,
   delayDeckCommit = false,
+  forceDeckCommitMismatch = false,
   wrapInScrollableAncestor = false,
   onDeckInteractionTelemetryChange,
+  onDeckCommit,
   renderSelectionControls = false,
   workbenchDisplayMode = 'pergolas',
   visibility,
@@ -794,13 +798,14 @@ function HouseFirstViewportHarness({
         return { ok: true };
       }}
       onCommitHouseFirstDeckDimension={(deckId, patch) => {
+        onDeckCommit?.(deckId, patch as Partial<DeckModel>);
         if (rejectDeckCommit) return { ok: false, error: 'Deck dimension rejected.' };
         const applyCommit = () => {
           setHouse((current) => ({
             ...current,
             decks: current.decks.map((deck) => {
               if (deck.id !== deckId) return deck;
-              const nextDeck = {
+              const patchedDeck = {
                 ...deck,
                 ...patch,
                 floatingRect:
@@ -820,6 +825,16 @@ function HouseFirstViewportHarness({
                         ...patch.presetRect,
                       },
               } as DeckModel;
+              const nextDeck =
+                forceDeckCommitMismatch && patchedDeck.presetRect
+                  ? {
+                      ...patchedDeck,
+                      presetRect: {
+                        ...patchedDeck.presetRect,
+                        centerOffsetM: String(Number(patchedDeck.presetRect.centerOffsetM ?? '0') + 1),
+                      },
+                    }
+                  : patchedDeck;
               if (nextDeck.shape !== 'preset') return nextDeck;
               const resolvedDeck = resolveDeckPresetGeometry({
                 deck: nextDeck as any,
@@ -4532,6 +4547,101 @@ describe('ModelSpaceViewport', () => {
     rendered.unmount();
   });
 
+  it('click-selects an unselected preset deck without committing a drag', async () => {
+    const commitSpy = vi.fn();
+    const deck = makeHouseFirstDeck();
+    const baseHouse = makeHouseFirstHouse();
+    const resolvedDeck = resolveDeckPresetGeometry({
+      deck: deck as any,
+      housePolygon: baseHouse.footprint.polygon,
+    });
+    const rendered = renderIntoDocument(
+      <HouseFirstViewportHarness
+        initialSelection={{ kind: 'house', targetId: null }}
+        initialHouse={makeHouseFirstHouse({
+          decks: [
+            {
+              ...deck,
+              hostEdgeId: resolvedDeck.hostEdgeId,
+              floatingRect: resolvedDeck.floatingRect,
+              presetRect: resolvedDeck.presetRect,
+              outline: resolvedDeck.outline,
+            },
+          ],
+        })}
+        onDeckCommit={commitSpy}
+      />,
+    );
+
+    const svg = rendered.container.querySelector('svg[aria-label="Module plan view"]') as SVGSVGElement | null;
+    const deckHit = rendered.container.querySelector('[data-house-first-shape-hit="deck:deck-1"]');
+    const scroller = rendered.container.querySelector('[data-model-space-scroller]') as HTMLElement | null;
+    if (!svg || !deckHit || !scroller) throw new Error('Missing plan viewport nodes.');
+    installSvgPointMock(svg);
+
+    dispatchPointer(deckHit, 'pointerdown', { pointerId: 125, button: 0, clientX: 50, clientY: 50 });
+    dispatchPointer(window, 'pointerup', { pointerId: 125, button: 0, clientX: 50, clientY: 50 });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(scroller.dataset.houseFirstSelectedDeckId).toBe('deck-1');
+    expect(scroller.dataset.houseFirstDeckDragActive).toBe('false');
+    expect(rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]')).toBeNull();
+    expect(commitSpy).not.toHaveBeenCalled();
+
+    rendered.unmount();
+  });
+
+  it('keeps an unselected deck selected when drag intent loses pointer capture before moving', async () => {
+    const commitSpy = vi.fn();
+    const deck = makeHouseFirstDeck();
+    const baseHouse = makeHouseFirstHouse();
+    const resolvedDeck = resolveDeckPresetGeometry({
+      deck: deck as any,
+      housePolygon: baseHouse.footprint.polygon,
+    });
+    const rendered = renderIntoDocument(
+      <HouseFirstViewportHarness
+        initialSelection={{ kind: 'house', targetId: null }}
+        initialHouse={makeHouseFirstHouse({
+          decks: [
+            {
+              ...deck,
+              hostEdgeId: resolvedDeck.hostEdgeId,
+              floatingRect: resolvedDeck.floatingRect,
+              presetRect: resolvedDeck.presetRect,
+              outline: resolvedDeck.outline,
+            },
+          ],
+        })}
+        onDeckCommit={commitSpy}
+      />,
+    );
+
+    const svg = rendered.container.querySelector('svg[aria-label="Module plan view"]') as SVGSVGElement | null;
+    const deckHit = rendered.container.querySelector('[data-house-first-shape-hit="deck:deck-1"]');
+    const scroller = rendered.container.querySelector('[data-model-space-scroller]') as HTMLElement | null;
+    if (!svg || !deckHit || !scroller) throw new Error('Missing plan viewport nodes.');
+    installSvgPointMock(svg);
+    (svg as unknown as { setPointerCapture: (pointerId: number) => void }).setPointerCapture = vi.fn();
+    (svg as unknown as { releasePointerCapture: (pointerId: number) => void }).releasePointerCapture = vi.fn();
+    (svg as unknown as { hasPointerCapture: (pointerId: number) => boolean }).hasPointerCapture = () => true;
+
+    dispatchPointer(deckHit, 'pointerdown', { pointerId: 126, button: 0, clientX: 50, clientY: 50 });
+    dispatchPointer(svg, 'lostpointercapture', { pointerId: 126, button: 0, clientX: 50, clientY: 50 });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(scroller.dataset.houseFirstSelectedDeckId).toBe('deck-1');
+    expect(scroller.dataset.houseFirstDeckDragActive).toBe('false');
+    expect(rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]')).toBeNull();
+    expect(commitSpy).not.toHaveBeenCalled();
+
+    rendered.unmount();
+  });
+
   it('emits shared deck interaction telemetry while dragging', async () => {
     const telemetrySpy = vi.fn();
     const deck = makeHouseFirstDeck();
@@ -5834,6 +5944,84 @@ describe('ModelSpaceViewport', () => {
         .querySelector('[data-house-first-shape="deck:deck-1"]')
         ?.getAttribute('data-house-first-shape-preview-suppressed'),
     ).toBe('false');
+
+    rendered.unmount();
+  });
+
+  it('does not clear a snapped deck release preview on the settle deadline when committed geometry still differs', async () => {
+    const deck = makeHouseFirstDeck({
+      isAttached: false,
+      presetType: 'rect_detached',
+      hostEdgeId: null,
+      presetRect: {
+        widthM: '3',
+        depthM: '2',
+        centerOffsetM: '0',
+        detachedGapM: '0.5',
+      },
+      floatingRect: {
+        centerAlongM: '3',
+        centerDepthM: '-1.05',
+        widthM: '3',
+        depthM: '2',
+      },
+    });
+    const baseHouse = makeHouseFirstHouse();
+    const resolvedDeck = resolveDeckPresetGeometry({
+      deck: deck as any,
+      housePolygon: baseHouse.footprint.polygon,
+    });
+    const rendered = renderIntoDocument(
+      <HouseFirstViewportHarness
+        initialSelection={{ kind: 'deck', targetId: 'deck-1' }}
+        initialHouse={makeHouseFirstHouse({
+          decks: [
+            {
+              ...deck,
+              hostEdgeId: resolvedDeck.hostEdgeId,
+              floatingRect: resolvedDeck.floatingRect,
+              presetRect: resolvedDeck.presetRect,
+              outline: resolvedDeck.outline,
+            },
+          ],
+        })}
+        forceDeckCommitMismatch
+      />,
+    );
+
+    const svg = rendered.container.querySelector('svg[aria-label="Module plan view"]') as SVGSVGElement | null;
+    const deckHit = rendered.container.querySelector('[data-house-first-shape-hit="deck:deck-1"]');
+    const scroller = rendered.container.querySelector('[data-model-space-scroller]') as HTMLElement | null;
+    if (!svg || !deckHit || !scroller) throw new Error('Missing plan viewport nodes.');
+    installProjectedSvgPointMock(svg, { xScale: 0.05, yScale: 0.05, xOffset: 0, yOffset: 0 });
+
+    dispatchPointer(deckHit, 'pointerdown', { pointerId: 424, button: 0, clientX: 50, clientY: 50 });
+    dispatchPointer(window, 'pointermove', { pointerId: 424, button: 0, buttons: 1, clientX: 50, clientY: 43.9 });
+
+    expect(scroller.dataset.houseFirstDeckPlacementState).toBe('snap-available');
+    const releasePreviewPoints = polygonPointsAttr(
+      rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]'),
+    );
+
+    dispatchPointer(window, 'pointerup', { pointerId: 424, button: 0, clientX: 50, clientY: 43.9 });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    await act(async () => {
+      await new Promise<void>((resolve) => {
+        window.setTimeout(() => resolve(), 560);
+      });
+    });
+    await flushAnimationFrame();
+
+    expect(scroller.dataset.houseFirstDeckDragActive).toBe('true');
+    expect(rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]')).not.toBeNull();
+    expect(
+      normalizePolygonPointSet(polygonPointsAttr(rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]'))),
+    ).toBe(normalizePolygonPointSet(releasePreviewPoints));
+    expect(
+      normalizePolygonPointSet(polygonPointsAttr(rendered.container.querySelector('[data-house-first-shape="deck:deck-1"]'))),
+    ).not.toBe(normalizePolygonPointSet(releasePreviewPoints));
 
     rendered.unmount();
   });

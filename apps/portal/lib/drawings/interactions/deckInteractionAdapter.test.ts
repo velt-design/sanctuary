@@ -25,6 +25,7 @@ function makeInteraction(input: {
   placement?: 'snapped' | 'floating';
   attachmentMode?: 'floating' | 'single_edge' | 'corner_dual_edge';
   primaryHostEdgeId?: string | null;
+  commitFrames?: HouseFirstPlanDeckReferenceFrame[];
 }): HouseFirstPlanDeckInteraction {
   const primaryFrame = input.frames[0]!;
   return {
@@ -53,7 +54,7 @@ function makeInteraction(input: {
     maxCenterOffsetM: 20,
     renderedCenter: input.renderedCenter,
     referenceFrames: input.frames,
-    commitReferenceFrames: input.frames,
+    commitReferenceFrames: input.commitFrames ?? input.frames,
     crossEdgeReference: null,
   };
 }
@@ -67,6 +68,7 @@ function makeSession(input: {
   deckDepthM: number;
   placement?: 'snapped' | 'floating';
   attachmentMode?: 'floating' | 'single_edge' | 'corner_dual_edge';
+  commitFrames?: HouseFirstPlanDeckReferenceFrame[];
 }) {
   const overlayShape = {
     ownerKind: 'deck',
@@ -86,6 +88,7 @@ function makeSession(input: {
       renderedCenter: input.renderedCenter,
       placement: input.placement,
       attachmentMode: input.attachmentMode,
+      commitFrames: input.commitFrames,
     }),
     openingInteraction: null,
     deckDragEligibility: { eligible: true, reason: 'Drag deck' },
@@ -315,6 +318,58 @@ describe('deckInteractionAdapter', () => {
     expect(patch.hostEdgeId).toBe(frame.hostEdgeId);
     expect(patch.primaryHostEdgeId).toBe(frame.sourceEdgeId);
     expect((patch.presetRect as { centerOffsetM: string }).centerOffsetM).toBe('0.4');
+  });
+
+  it('commits snapped releases through draft reference frames when render frame ids differ', () => {
+    const renderFrame = {
+      ...realLeftFrame,
+      sourceEdgeId: 'geometry-left-wall',
+    };
+    const commitFrame = {
+      ...realLeftFrame,
+      sourceEdgeId: 'footprint-edge-7',
+      spanStartM: 4,
+      spanEndM: 6.4,
+    };
+    const deckWidthM = 1.4;
+    const deckDepthM = 2;
+    const centerOffsetM = 0.25;
+    const initialGapM = 0.12;
+    const polygon = rectOnFrame({
+      frame: renderFrame,
+      deckWidthM,
+      deckDepthM,
+      centerOffsetM,
+      referenceEdgeGapM: initialGapM,
+    });
+    const edgeMidpointM = (renderFrame.spanStartM + renderFrame.spanEndM) / 2;
+    const startDragPlanPoint = pointOnFrame(renderFrame, edgeMidpointM + centerOffsetM, initialGapM + 0.4);
+    const session = makeSession({
+      polygon,
+      startDragPlanPoint,
+      frames: [renderFrame],
+      commitFrames: [commitFrame],
+      renderedCenter: polygonCenter(polygon),
+      deckWidthM,
+      deckDepthM,
+      placement: 'floating',
+      attachmentMode: 'floating',
+    });
+
+    const preview = resolveDeckPreviewState({
+      session,
+      nextSvgX: session.startSvgX,
+      nextSvgY: session.startSvgY,
+      nextDragPlanPoint: session.startDragPlanPoint,
+      previousPreviewState: null,
+    });
+    const patch = buildDeckCommitPatch({ session, preview });
+
+    expect(preview.releasePlacement).toBe('snapped');
+    expect(preview.primaryHostEdgeId).toBe('geometry-left-wall');
+    expect(patch.hostEdgeId).toBe('left');
+    expect(patch.primaryHostEdgeId).toBe('footprint-edge-7');
+    expect((patch.presetRect as { centerOffsetM: string }).centerOffsetM).toBe('0.25');
   });
 
   it('does not trigger corner mode just because a wide deck overlaps a second wall span', () => {

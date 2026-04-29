@@ -1437,9 +1437,11 @@ export default function ModelSpaceViewport({
         if (deckDragPhaseRef.current === 'settling' || deckDragSessionRef.current) {
           resetDeckDragInteraction();
         }
-        const overlayShape = planViewModel?.houseFirst?.shapes.find(
-          (shape) => shape.ownerKind === 'deck' && shape.ownerId === meta.ownerId,
-        );
+        const overlayShape =
+          meta.overlayShape ??
+          planViewModel?.houseFirst?.shapes.find(
+            (shape) => shape.ownerKind === 'deck' && shape.ownerId === meta.ownerId,
+          );
         if (!overlayShape?.deckInteraction) return;
 
         closeHouseFirstDimensionEditor();
@@ -3490,7 +3492,9 @@ export default function ModelSpaceViewport({
           const settleDeadlineMs = deckDragSettleState.commitResolvedAtMs + DECK_SETTLE_MAX_WAIT_MS;
           const settledPreviewConfirmed =
             matchedAndStable && deckDragSettleState.stableMatchFrameCount >= DECK_SETTLE_MATCH_STABLE_FRAMES;
-          if (settledPreviewConfirmed || Date.now() >= settleDeadlineMs) {
+          const deadlineCanUnlock =
+            deckDragSettleState.releasePlacement !== 'snapped' && Date.now() >= settleDeadlineMs;
+          if (settledPreviewConfirmed || deadlineCanUnlock) {
             finalizeSuccess();
             return;
           }

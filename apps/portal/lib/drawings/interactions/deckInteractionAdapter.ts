@@ -35,6 +35,7 @@ const DECK_END_CATCH_TOLERANCE_M = 0.1;
 const DECK_END_CATCH_UNSNAP_TOLERANCE_M = 0.16;
 const DECK_WALL_SPAN_CANDIDATE_TOLERANCE_M = 0.35;
 const DECK_WALL_SPAN_RETAIN_TOLERANCE_M = 0.5;
+const DECK_COMMIT_FRAME_MATCH_TOLERANCE_M = 1.5;
 
 export type DeckSvgInteraction = {
   hostEdgeStart: PlanPoint;
@@ -128,6 +129,98 @@ function findDeckReferenceFrameById(
 ): HouseFirstPlanDeckReferenceFrame | null {
   if (!edgeId) return null;
   return frames.find((frame) => frame.sourceEdgeId === edgeId) ?? null;
+}
+
+function pointDistance(left: PlanPoint, right: PlanPoint): number {
+  return Math.hypot(left.x - right.x, left.y - right.y);
+}
+
+function unitVectorDistance(
+  left: { x: number; y: number },
+  right: { x: number; y: number },
+): number {
+  return Math.hypot(left.x - right.x, left.y - right.y);
+}
+
+function scoreDeckReferenceFrameGeometryMatch(input: {
+  renderFrame: HouseFirstPlanDeckReferenceFrame;
+  commitFrame: HouseFirstPlanDeckReferenceFrame;
+}): number {
+  const directEndpointDistance =
+    pointDistance(input.renderFrame.hostEdgeStart, input.commitFrame.hostEdgeStart) +
+    pointDistance(input.renderFrame.hostEdgeEnd, input.commitFrame.hostEdgeEnd);
+  const reversedEndpointDistance =
+    pointDistance(input.renderFrame.hostEdgeStart, input.commitFrame.hostEdgeEnd) +
+    pointDistance(input.renderFrame.hostEdgeEnd, input.commitFrame.hostEdgeStart);
+  const endpointDistance = Math.min(directEndpointDistance, reversedEndpointDistance);
+  const alongDistance = Math.min(
+    unitVectorDistance(
+      { x: input.renderFrame.alongUnitX, y: input.renderFrame.alongUnitY },
+      { x: input.commitFrame.alongUnitX, y: input.commitFrame.alongUnitY },
+    ),
+    unitVectorDistance(
+      { x: input.renderFrame.alongUnitX, y: input.renderFrame.alongUnitY },
+      { x: -input.commitFrame.alongUnitX, y: -input.commitFrame.alongUnitY },
+    ),
+  );
+  const outwardDistance = unitVectorDistance(
+    { x: input.renderFrame.outwardUnitX, y: input.renderFrame.outwardUnitY },
+    { x: input.commitFrame.outwardUnitX, y: input.commitFrame.outwardUnitY },
+  );
+  const semanticPenalty =
+    input.renderFrame.hostEdgeId === input.commitFrame.hostEdgeId ? 0 : 2;
+  const axisPenalty = input.renderFrame.axis === input.commitFrame.axis ? 0 : 0.5;
+  const outwardDirectionPenalty =
+    input.renderFrame.outwardDirection === input.commitFrame.outwardDirection ? 0 : 0.5;
+  return endpointDistance + alongDistance + outwardDistance + semanticPenalty + axisPenalty + outwardDirectionPenalty;
+}
+
+function resolveDeckCommitReferenceFrame(input: {
+  interaction: HouseFirstPlanDeckInteraction;
+  renderEdgeId: string | null | undefined;
+}): HouseFirstPlanDeckReferenceFrame | null {
+  const commitFrames = input.interaction.commitReferenceFrames.length
+    ? input.interaction.commitReferenceFrames
+    : input.interaction.referenceFrames;
+  const exactCommitFrame = findDeckReferenceFrameById(commitFrames, input.renderEdgeId);
+  const renderFrame = findDeckReferenceFrameById(input.interaction.referenceFrames, input.renderEdgeId);
+  if (!renderFrame) return exactCommitFrame;
+
+  const bestGeometryMatch =
+    commitFrames
+      .map((commitFrame) => ({
+        commitFrame,
+        score: scoreDeckReferenceFrameGeometryMatch({
+          renderFrame,
+          commitFrame,
+        }),
+      }))
+      .sort((left, right) => left.score - right.score || left.commitFrame.sourceEdgeId.localeCompare(right.commitFrame.sourceEdgeId))[0] ??
+    null;
+  if (bestGeometryMatch && bestGeometryMatch.score <= DECK_COMMIT_FRAME_MATCH_TOLERANCE_M) {
+    return bestGeometryMatch.commitFrame;
+  }
+  return exactCommitFrame;
+}
+
+function resolveDeckCommitCornerVertexId(input: {
+  preview: DeckPreviewState;
+  primaryCommitFrame: HouseFirstPlanDeckReferenceFrame | null;
+  secondaryCommitFrame: HouseFirstPlanDeckReferenceFrame | null;
+}): string | null {
+  if (!input.preview.cornerVertexId) return null;
+  const cornerPoint = input.preview.lockedCornerPoint ?? input.preview.heldCornerPoint;
+  const frames = [input.primaryCommitFrame, input.secondaryCommitFrame].filter(
+    (frame): frame is HouseFirstPlanDeckReferenceFrame => Boolean(frame),
+  );
+  for (const frame of frames) {
+    const edgeNumberMatch = /^footprint-edge-(\d+)$/.exec(frame.sourceEdgeId);
+    const edgeNumber = edgeNumberMatch ? Number.parseInt(edgeNumberMatch[1]!, 10) : null;
+    if (!Number.isFinite(edgeNumber) || edgeNumber === null) continue;
+    if (pointDistance(frame.hostEdgeStart, cornerPoint) <= 0.05) return `footprint-vertex-${edgeNumber}`;
+    if (pointDistance(frame.hostEdgeEnd, cornerPoint) <= 0.05) return `footprint-vertex-${edgeNumber + 1}`;
+  }
+  return input.preview.cornerVertexId;
 }
 
 function translatePolygon(polygon: PlanPoint[], deltaX: number, deltaY: number): PlanPoint[] {
@@ -406,10 +499,20 @@ function resolveDeckCenterOffsetFromPreviewPolygon(input: {
   preview: DeckPreviewState;
   session: DeckDragSession;
 }): number {
+  const previewEdgeId =
+    input.preview.primaryHostEdgeId ?? input.preview.placementEdgeId ?? input.preview.witnessEdgeId;
+  const commitFrame =
+    input.preview.releasePlacement === 'snapped'
+      ? resolveDeckCommitReferenceFrame({
+          interaction: input.session.interaction,
+          renderEdgeId: previewEdgeId,
+        })
+      : null;
   const frame =
+    commitFrame ??
     findDeckReferenceFrameById(
       input.session.interaction.referenceFrames,
-      input.preview.primaryHostEdgeId ?? input.preview.placementEdgeId ?? input.preview.witnessEdgeId,
+      previewEdgeId,
     ) ?? input.session.interaction.referenceFrames[0];
   if (!frame) return input.preview.anchorDerivedCenterOffsetM ?? input.preview.centerOffsetM;
   const projection = projectPolygonToDeckReferenceFrame({
@@ -1086,18 +1189,33 @@ export function resolveDeckPreviewState(input: {
     : unclampedCenterOffsetM;
   const referenceEdgeGapM = releasePlacement === 'snapped' ? 0 : wallCandidate.nearGapM;
   const attachmentMode = activeSnapMode;
+  const committedPrimaryPreviewFrame =
+    releasePlacement === 'snapped'
+      ? resolveDeckCommitReferenceFrame({
+          interaction: input.session.interaction,
+          renderEdgeId: activeFrame.sourceEdgeId,
+        })
+      : null;
+  const committedSecondaryPreviewFrame =
+    cornerCandidate && releasePlacement === 'snapped'
+      ? resolveDeckCommitReferenceFrame({
+          interaction: input.session.interaction,
+          renderEdgeId: cornerCandidate.secondaryFrame.sourceEdgeId,
+        })
+      : null;
+  const previewBodyFrame = committedPrimaryPreviewFrame ?? activeFrame;
   const previewPolygon =
     cornerCandidate && releasePlacement === 'snapped'
       ? buildDeckCornerPreviewPolygon({
-          primaryFrame: cornerCandidate.primaryFrame,
-          secondaryFrame: cornerCandidate.secondaryFrame,
+          primaryFrame: committedPrimaryPreviewFrame ?? cornerCandidate.primaryFrame,
+          secondaryFrame: committedSecondaryPreviewFrame ?? cornerCandidate.secondaryFrame,
           cornerPoint: cornerCandidate.cornerPoint,
           deckWidthM: input.session.startWidthM,
           deckDepthM: input.session.startDepthM,
         })
       : wallStable || wallLocked
         ? buildDeckPreviewPolygon({
-            frame: activeFrame,
+            frame: previewBodyFrame,
             deckWidthM: input.session.startWidthM,
             deckDepthM: input.session.startDepthM,
             centerOffsetM,
@@ -1107,7 +1225,7 @@ export function resolveDeckPreviewState(input: {
   const bodyGrabbedPoint =
     wallStable || wallLocked
       ? resolveDeckPreviewGrabbedPoint({
-          frame: activeFrame,
+          frame: previewBodyFrame,
           centerOffsetM,
           referenceEdgeGapM,
           grabbedPointAlongOffsetFromCenterM: input.session.grabbedPointAlongOffsetFromCenterM,
@@ -1325,9 +1443,13 @@ export function buildDeckCommitPatch(input: {
   session: DeckDragSession;
   preview: DeckPreviewState;
 }): Partial<HouseFirstDeckDraft> {
+  const commitWitnessFrame = resolveDeckCommitReferenceFrame({
+    interaction: input.session.interaction,
+    renderEdgeId: input.preview.witnessEdgeId,
+  });
   if (input.session.interaction.kind === 'custom_outline') {
     return {
-      hostEdgeId: input.preview.witnessEdgeId,
+      hostEdgeId: commitWitnessFrame?.sourceEdgeId ?? input.preview.witnessEdgeId,
       attachmentMode: 'floating',
       primaryHostEdgeId: null,
       secondaryHostEdgeId: null,
@@ -1340,6 +1462,34 @@ export function buildDeckCommitPatch(input: {
     };
   }
 
+  const snappedPrimaryCommitFrame =
+    input.preview.releasePlacement === 'snapped'
+      ? resolveDeckCommitReferenceFrame({
+          interaction: input.session.interaction,
+          renderEdgeId: input.preview.primaryHostEdgeId ?? input.preview.placementEdgeId,
+        })
+      : null;
+  const snappedSecondaryCommitFrame =
+    input.preview.releasePlacement === 'snapped' && input.preview.attachmentMode === 'corner_dual_edge'
+      ? resolveDeckCommitReferenceFrame({
+          interaction: input.session.interaction,
+          renderEdgeId: input.preview.secondaryHostEdgeId,
+        })
+      : null;
+  const snappedPrimaryHostEdgeId =
+    snappedPrimaryCommitFrame?.sourceEdgeId ??
+    input.preview.primaryHostEdgeId ??
+    input.preview.placementEdgeId ??
+    null;
+  const snappedSecondaryHostEdgeId = snappedSecondaryCommitFrame?.sourceEdgeId ?? input.preview.secondaryHostEdgeId ?? null;
+  const snappedCornerVertexId = resolveDeckCommitCornerVertexId({
+    preview: input.preview,
+    primaryCommitFrame: snappedPrimaryCommitFrame,
+    secondaryCommitFrame: snappedSecondaryCommitFrame,
+  });
+  const snappedSemanticPlacementSide =
+    snappedPrimaryCommitFrame?.hostEdgeId ?? input.preview.semanticPlacementSide ?? null;
+  const floatingWitnessEdgeId = commitWitnessFrame?.sourceEdgeId ?? input.preview.witnessEdgeId;
   const floatingRect =
     input.preview.releasePlacement === 'floating'
       ? inferFloatingRectFromPlanPolygon({
@@ -1351,17 +1501,17 @@ export function buildDeckCommitPatch(input: {
   return {
     hostEdgeId:
       input.preview.releasePlacement === 'snapped'
-        ? input.preview.semanticPlacementSide ?? input.preview.primaryHostEdgeId
-        : input.preview.witnessEdgeId,
+        ? snappedSemanticPlacementSide ?? snappedPrimaryHostEdgeId
+        : floatingWitnessEdgeId,
     attachmentMode: input.preview.attachmentMode,
-    primaryHostEdgeId: input.preview.releasePlacement === 'snapped' ? input.preview.primaryHostEdgeId : null,
+    primaryHostEdgeId: input.preview.releasePlacement === 'snapped' ? snappedPrimaryHostEdgeId : null,
     secondaryHostEdgeId:
       input.preview.releasePlacement === 'snapped' && input.preview.attachmentMode === 'corner_dual_edge'
-        ? input.preview.secondaryHostEdgeId
+        ? snappedSecondaryHostEdgeId
         : null,
     cornerVertexId:
       input.preview.releasePlacement === 'snapped' && input.preview.attachmentMode === 'corner_dual_edge'
-        ? input.preview.cornerVertexId
+        ? snappedCornerVertexId
         : null,
     isAttached: input.preview.releasePlacement === 'snapped',
     presetType: input.preview.releasePlacement === 'snapped' ? 'rect_attached' : 'rect_detached',

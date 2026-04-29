@@ -122,6 +122,7 @@ export type HouseFirstPlanShapeDragStartMeta =
   | {
       ownerKind: 'deck';
       ownerId: string;
+      overlayShape: HouseFirstPlanOverlay['shapes'][number];
       deckInteraction: HouseFirstPlanDeckInteraction & {
         hostEdgeStart: Point;
         hostEdgeEnd: Point;
@@ -3135,6 +3136,7 @@ function renderHouseFirstPlanOverlay(input: {
                       {
                         ownerKind: 'deck',
                         ownerId: shape.ownerId,
+                        overlayShape: shape,
                         deckInteraction: {
                           ...shape.deckInteraction,
                           hostEdgeStart: shape.deckInteraction.hostEdgeStart,

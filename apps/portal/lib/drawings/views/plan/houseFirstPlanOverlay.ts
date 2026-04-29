@@ -262,6 +262,39 @@ function pointsAlmostEqual(a: PlanPoint, b: PlanPoint, tolerance = 0.01): boolea
   return Math.abs(a.x - b.x) <= tolerance && Math.abs(a.y - b.y) <= tolerance;
 }
 
+function referenceFramesAlmostEqual(
+  a: HouseFirstPlanDeckReferenceFrame,
+  b: HouseFirstPlanDeckReferenceFrame,
+  tolerance = 0.05,
+): boolean {
+  const endpointsMatch =
+    (pointsAlmostEqual(a.hostEdgeStart, b.hostEdgeStart, tolerance) &&
+      pointsAlmostEqual(a.hostEdgeEnd, b.hostEdgeEnd, tolerance)) ||
+    (pointsAlmostEqual(a.hostEdgeStart, b.hostEdgeEnd, tolerance) &&
+      pointsAlmostEqual(a.hostEdgeEnd, b.hostEdgeStart, tolerance));
+  return a.axis === b.axis && endpointsMatch;
+}
+
+function hasExactDeckReferenceFrameMismatch(input: {
+  deck: HouseModel['decks'][number];
+  renderReferenceFrames: HouseFirstPlanDeckReferenceFrame[];
+  draftReferenceFrames: HouseFirstPlanDeckReferenceFrame[];
+}): boolean {
+  const exactIds = [
+    input.deck.primaryHostEdgeId,
+    input.deck.secondaryHostEdgeId,
+    input.deck.hostEdgeId,
+  ]
+    .map(normalizeSourceEdgeId)
+    .filter((value): value is string => Boolean(value));
+  for (const exactId of exactIds) {
+    const renderFrame = input.renderReferenceFrames.find((frame) => frame.sourceEdgeId === exactId) ?? null;
+    const draftFrame = input.draftReferenceFrames.find((frame) => frame.sourceEdgeId === exactId) ?? null;
+    if (renderFrame && draftFrame && !referenceFramesAlmostEqual(renderFrame, draftFrame)) return true;
+  }
+  return false;
+}
+
 function inferSourceEdgeIdFromFootprintLine(input: {
   start: PlanPoint;
   end: PlanPoint;
@@ -1314,7 +1347,17 @@ function resolvePresetDeckGeometryFrame(input: {
   const requestedHostEdgeId = input.deck.primaryHostEdgeId ?? input.deck.hostEdgeId;
   const exactHostEdgeId = normalizeSourceEdgeId(requestedHostEdgeId);
   if (exactHostEdgeId) {
-    return input.referenceFrames.find((frame) => frame.sourceEdgeId === exactHostEdgeId) ?? null;
+    const exactFrame = input.referenceFrames.find((frame) => frame.sourceEdgeId === exactHostEdgeId) ?? null;
+    if (exactFrame) return exactFrame;
+    const semanticFallbackEdgeId = isSemanticAttachmentSide(input.deck.hostEdgeId) ? input.deck.hostEdgeId : null;
+    const polygonFrame = input.fallbackPolygon.length
+      ? resolveDeckReferenceFrameForPolygon({
+          polygon: input.fallbackPolygon,
+          referenceFrames: input.referenceFrames,
+          requestedEdgeId: semanticFallbackEdgeId,
+        })
+      : null;
+    return polygonFrame;
   }
   if (isSemanticAttachmentSide(requestedHostEdgeId) && input.geometryHouseLookup.footprintPolygon?.length) {
     const fallbackFrame = input.fallbackPolygon.length
@@ -2074,6 +2117,7 @@ function buildPresetDeckInteraction(input: {
   moduleProjectionM: number;
   deckPolygon: PlanPoint[];
   geometryHouseLookup: GeometryHouseLookup;
+  referenceFramesOverride?: HouseFirstPlanDeckReferenceFrame[] | null;
 }): HouseFirstPlanDeckInteraction | null {
   if (input.deck.shape !== 'preset' || !input.deck.presetRect) return null;
   if (input.deckPolygon.length < 4) return null;
@@ -2084,8 +2128,9 @@ function buildPresetDeckInteraction(input: {
     moduleLengthM: input.moduleLengthM,
     moduleProjectionM: input.moduleProjectionM,
   });
-  const referenceFrames =
-    input.geometryHouseLookup.footprintPolygon?.length
+  const referenceFrames = input.referenceFramesOverride?.length
+    ? input.referenceFramesOverride
+    : input.geometryHouseLookup.footprintPolygon?.length
       ? buildWorldDeckReferenceFrames(input.geometryHouseLookup.footprintPolygon)
       : commitReferenceFrames;
   const attachmentMode =
@@ -2471,15 +2516,25 @@ export function buildHouseFirstPlanOverlay(input: {
     });
     const geometryDeckPolygon = geometryHouseLookup.deckPolygons.get(deck.id) ?? [];
     const fallbackDeckPolygon = draftDeckPolygon.length ? draftDeckPolygon : geometryDeckPolygon;
-    const deckReferenceFrames =
-      geometryHouseLookup.footprintPolygon?.length
-        ? buildWorldDeckReferenceFrames(geometryHouseLookup.footprintPolygon)
-        : buildDeckDraftReferenceFrames({
-            house,
-            houseLocalPolygon,
-            moduleLengthM,
-            moduleProjectionM,
-          });
+    const draftDeckReferenceFrames = buildDeckDraftReferenceFrames({
+      house,
+      houseLocalPolygon,
+      moduleLengthM,
+      moduleProjectionM,
+    });
+    const geometryDeckReferenceFrames = geometryHouseLookup.footprintPolygon?.length
+      ? buildWorldDeckReferenceFrames(geometryHouseLookup.footprintPolygon)
+      : [];
+    const renderDeckReferenceFrames = geometryDeckReferenceFrames.length ? geometryDeckReferenceFrames : draftDeckReferenceFrames;
+    const exactReferenceFrameMismatch =
+      deck.shape === 'preset' && deck.isAttached && !footprintOffsetActive && draftDeckPolygon.length
+        ? hasExactDeckReferenceFrameMismatch({
+            deck,
+            renderReferenceFrames: renderDeckReferenceFrames,
+            draftReferenceFrames: draftDeckReferenceFrames,
+          })
+        : false;
+    const deckReferenceFrames = exactReferenceFrameMismatch ? draftDeckReferenceFrames : renderDeckReferenceFrames;
     const presetDeckPolygon = buildPresetAttachedDeckWorldPolygon({
       deck,
       referenceFrames: deckReferenceFrames,
@@ -2488,7 +2543,9 @@ export function buildHouseFirstPlanOverlay(input: {
     });
     const deckPolygon =
       deck.shape === 'preset' && deck.isAttached && !footprintOffsetActive
-        ? (presetDeckPolygon ?? (draftDeckPolygon.length ? draftDeckPolygon : geometryDeckPolygon))
+        ? exactReferenceFrameMismatch
+          ? draftDeckPolygon
+          : (presetDeckPolygon ?? (draftDeckPolygon.length ? draftDeckPolygon : geometryDeckPolygon))
         : draftDeckPolygon.length
           ? draftDeckPolygon
           : (presetDeckPolygon ?? geometryDeckPolygon);
@@ -2512,6 +2569,7 @@ export function buildHouseFirstPlanOverlay(input: {
             moduleProjectionM,
             deckPolygon,
             geometryHouseLookup,
+            referenceFramesOverride: exactReferenceFrameMismatch ? deckReferenceFrames : null,
           });
     shapes.push({
       ownerKind: 'deck',
