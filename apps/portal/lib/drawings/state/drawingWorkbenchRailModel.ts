@@ -78,7 +78,7 @@ const FAMILY_DESCRIPTORS: Record<
     singularLabel: 'Opening',
     addActionLabels: ['Add window', 'Add door', 'Add slider', 'Add stacker'],
     emptyTitle: 'No opening selected',
-    emptyMessage: 'Select an opening to edit it, or add one to start defining hosted wall objects.',
+    emptyMessage: 'Select an opening to edit it, or add one to start defining derived-wall-hosted openings.',
   },
   pergolas: {
     family: 'pergolas',
@@ -125,7 +125,7 @@ function buildHouseFormEntries(
       label: house.label,
       status: house.lowConfidence ? 'approximate' : 'ready',
       statusLabel: house.lowConfidence ? 'Approximate' : 'Ready',
-      meta: `${house.footprint.preset} footprint • ${house.roof.form} roof • ${warnings.length} warning${
+      meta: `${house.footprint.preset} footprint | ${house.roof.form} roof | ${warnings.length} warning${
         warnings.length === 1 ? '' : 's'
       }`,
     },
@@ -141,23 +141,28 @@ function buildDeckEntries(house: HouseModel | null): DrawingWorkbenchRailObjectE
     label: deck.name,
     status: deck.validation.status === 'invalid' ? 'blocked' : 'ready',
     statusLabel: deck.validation.status === 'invalid' ? 'Invalid' : 'Ready',
-    meta: `${deck.isAttached ? 'Attached' : 'Floating'} • ${
+    meta: `${deck.isAttached ? 'Attached' : 'Floating'} | ${
       deck.shape === 'preset' ? 'Preset rectangle' : 'Custom outline'
     }`,
   }));
 }
 
 function buildOpeningEntries(house: HouseModel | null): DrawingWorkbenchRailObjectEntry[] {
-  return (house?.openings ?? []).map((opening) => ({
-    ref: {
-      family: 'openings',
-      objectId: opening.id,
-    },
-    label: opening.label,
-    status: opening.validation.status === 'invalid' ? 'blocked' : 'ready',
-    statusLabel: opening.validation.status === 'invalid' ? 'Invalid' : 'Ready',
-    meta: `${opening.kind.replace('_', ' ')} • ${opening.wallId ?? 'unhosted wall'}`,
-  }));
+  return (house?.openings ?? []).map((opening) => {
+    const hostWallLabel = opening.hostWallId
+      ? house?.derivedWallGraph.walls.find((wall) => wall.id === opening.hostWallId)?.label ?? 'Unavailable saved wall'
+      : 'Unresolved host wall';
+    return {
+      ref: {
+        family: 'openings',
+        objectId: opening.id,
+      },
+      label: opening.label,
+      status: opening.validation.status === 'invalid' ? 'blocked' : 'ready',
+      statusLabel: opening.validation.status === 'invalid' ? 'Invalid' : 'Ready',
+      meta: `${opening.kind.replace('_', ' ')} | ${hostWallLabel}`,
+    };
+  });
 }
 
 function resolvePergolaEntryStatus(input: {
@@ -213,7 +218,7 @@ function buildPergolaEntries(input: {
       label: pergola.label,
       status: status.status,
       statusLabel: status.statusLabel,
-      meta: `${humanizePergolaFamily(pergola.family)} • ${pergola.attachment.kind}`,
+      meta: `${humanizePergolaFamily(pergola.family)} | ${pergola.attachment.kind}`,
     };
   });
 }

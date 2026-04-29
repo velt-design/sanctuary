@@ -16,12 +16,13 @@ import type {
   HouseFirstOpeningDraft,
   HouseFirstRoofDraft,
   HouseModel,
+  WallOpeningHostSide,
 } from '@/lib/drawings/state/houseFirstWorkbenchModel';
 import {
   normalizeWallOpeningKind,
   resolveOpeningPanelCount,
 } from '@/lib/drawings/state/houseFirstWorkbenchModel';
-import { sanitizeDeckPresetRect } from '@/lib/drawings/state/houseFirstDeckPresets';
+import { resolveDeckHostEdgeFrame, sanitizeDeckPresetRect } from '@/lib/drawings/state/houseFirstDeckPresets';
 import {
   applyEstimateDrawingFootprintEdit,
   updateEstimateDrawingHouseFirstDeckDrafts,
@@ -36,6 +37,7 @@ import type { CalculatorHouseFootprintPolygonPoint, CalculatorModuleInputs } fro
 import type { CommitResult, DrawOutlineTarget } from './houseWorkbenchClientTypes';
 import {
   deckReferenceHousePolygon,
+  houseLocalPolygon,
   nextDeckId,
   nextOpeningId,
   resolveDeckDraftGeometry,
@@ -95,6 +97,123 @@ function resolveCurrentOpeningDrafts(
   house: HouseModel | null,
 ): HouseFirstOpeningDraft[] {
   return drawingDraft?.houseFirst?.openings?.map((opening) => ({ ...opening })) ?? toOpeningDrafts(house);
+}
+
+type OpeningHostWallOption = {
+  wallId: string;
+  label: string;
+  semanticSide: WallOpeningHostSide | null;
+  hostEdgeId: string | null;
+  spanM: number;
+};
+
+function formatOpeningMetres(value: number): string {
+  return String(Math.round(value * 1000) / 1000);
+}
+
+function resolveOpeningWallSpanM(
+  wall: HouseModel['derivedWallGraph']['walls'][number],
+): number {
+  const start = wall.polygon[0];
+  const end = wall.polygon[1];
+  const dx = Number(end?.alongM ?? NaN) - Number(start?.alongM ?? NaN);
+  const dy = Number(end?.depthM ?? NaN) - Number(start?.depthM ?? NaN);
+  if (!Number.isFinite(dx) || !Number.isFinite(dy)) return 0;
+  return Math.hypot(dx, dy);
+}
+
+function buildOpeningHostWallOptions(
+  house: HouseModel | null,
+  activeModuleInput: CalculatorModuleInputs | null,
+): OpeningHostWallOption[] {
+  if (!house) return [];
+  const wallPolygon = houseLocalPolygon({
+    house,
+    moduleLengthM: activeModuleInput?.lengthM,
+    moduleProjectionM: activeModuleInput?.projectionM,
+  });
+
+  return house.derivedWallGraph.walls.map((wall) => {
+    const hostEdgeId = wall.edgeIds[0] ?? null;
+    const frame = hostEdgeId
+      ? resolveDeckHostEdgeFrame({
+          housePolygon: wallPolygon,
+          hostEdgeId,
+        })
+      : null;
+    return {
+      wallId: wall.id,
+      label: wall.label,
+      semanticSide: frame?.hostEdge ?? null,
+      hostEdgeId,
+      spanM: resolveOpeningWallSpanM(wall),
+    };
+  });
+}
+
+function clampOpeningOffsetForHostWall(input: {
+  opening: HouseFirstOpeningDraft;
+  patch: Partial<HouseFirstOpeningDraft>;
+  spanM: number;
+}): string {
+  const widthM = Number(input.patch.widthM ?? input.opening.widthM ?? '');
+  if (!Number.isFinite(widthM) || widthM > input.spanM + 1e-6) return '0';
+
+  const rawOffsetM = Number(input.patch.offsetAlongWallM ?? input.opening.offsetAlongWallM ?? '');
+  const clampedOffsetM = Number.isFinite(rawOffsetM)
+    ? Math.min(Math.max(rawOffsetM, 0), Math.max(0, input.spanM - widthM))
+    : 0;
+  return formatOpeningMetres(clampedOffsetM);
+}
+
+function normalizeOpeningPatchAgainstDerivedWalls(input: {
+  activeModuleInput: CalculatorModuleInputs | null;
+  currentOpening: HouseFirstOpeningDraft;
+  house: HouseModel | null;
+  patch: Partial<HouseFirstOpeningDraft>;
+}): Partial<HouseFirstOpeningDraft> {
+  if (input.patch.hostWallId === undefined) return input.patch;
+
+  const resolvedWall = buildOpeningHostWallOptions(input.house, input.activeModuleInput).find(
+    (wall) => wall.wallId === input.patch.hostWallId,
+  );
+  if (!resolvedWall) {
+    return {
+      ...input.patch,
+      hostEdgeId: null,
+    };
+  }
+
+  return {
+    ...input.patch,
+    hostWallId: resolvedWall.wallId,
+    hostEdgeId: resolvedWall.hostEdgeId,
+    wallId: resolvedWall.semanticSide,
+    offsetAlongWallM: clampOpeningOffsetForHostWall({
+      opening: input.currentOpening,
+      patch: input.patch,
+      spanM: resolvedWall.spanM,
+    }),
+  };
+}
+
+function resolvePreferredNewOpeningHostWall(input: {
+  activeModuleInput: CalculatorModuleInputs | null;
+  house: HouseModel | null;
+  preferredHostWallId: string | null;
+  preferredSide: WallOpeningHostSide;
+}): OpeningHostWallOption | null {
+  const options = buildOpeningHostWallOptions(input.house, input.activeModuleInput);
+  if (!options.length) return null;
+
+  if (input.preferredHostWallId) {
+    const preferredWall = options.find((option) => option.wallId === input.preferredHostWallId);
+    if (preferredWall) return preferredWall;
+  }
+
+  const matchingSide = options.filter((option) => option.semanticSide === input.preferredSide);
+  if (matchingSide.length === 1) return matchingSide[0]!;
+  return options[0] ?? null;
 }
 
 function applyDeckPatch(input: {
@@ -157,7 +276,11 @@ function applyOpeningPatch(input: {
         input.patch.panelCount !== undefined || input.patch.kind !== undefined
           ? resolveOpeningPanelCount(nextKind, input.patch.panelCount ?? opening.panelCount)
           : opening.panelCount ?? resolveOpeningPanelCount(nextKind, opening.panelCount),
-      ...(input.patch.wallId !== undefined ? { hostEdgeId: null } : null),
+      ...(input.patch.wallId !== undefined &&
+      input.patch.hostWallId === undefined &&
+      input.patch.hostEdgeId === undefined
+        ? { hostWallId: null, hostEdgeId: null }
+        : null),
     };
   });
 }
@@ -242,6 +365,8 @@ function buildNewOpeningDraft(input: {
   currentOpenings: HouseFirstOpeningDraft[];
   kind: 'window' | 'hinged_door' | 'slider' | 'stacker';
   openingId: string;
+  hostWallId: string | null;
+  hostEdgeId: string | null;
   wallId: string;
 }): HouseFirstOpeningDraft {
   const baseOpening: HouseFirstOpeningDraft =
@@ -253,7 +378,9 @@ function buildNewOpeningDraft(input: {
           }`,
           kind: 'slider',
           panelCount: 2,
+          hostWallId: input.hostWallId,
           wallId: input.wallId,
+          hostEdgeId: input.hostEdgeId,
           widthM: '2.4',
           heightM: '2.1',
           sillHeightM: '0',
@@ -268,7 +395,9 @@ function buildNewOpeningDraft(input: {
             }`,
             kind: 'stacker',
             panelCount: null,
+            hostWallId: input.hostWallId,
             wallId: input.wallId,
+            hostEdgeId: input.hostEdgeId,
             widthM: '3.6',
             heightM: '2.1',
             sillHeightM: '0',
@@ -284,7 +413,9 @@ function buildNewOpeningDraft(input: {
               }`,
               kind: 'hinged_door',
               panelCount: null,
+              hostWallId: input.hostWallId,
               wallId: input.wallId,
+              hostEdgeId: input.hostEdgeId,
               widthM: '0.9',
               heightM: '2.1',
               sillHeightM: '0',
@@ -297,7 +428,9 @@ function buildNewOpeningDraft(input: {
           }`,
           kind: 'window',
           panelCount: null,
+          hostWallId: input.hostWallId,
           wallId: input.wallId,
+          hostEdgeId: input.hostEdgeId,
           widthM: '1.8',
           heightM: '1.2',
           sillHeightM: '0.9',
@@ -617,10 +750,15 @@ export function useHouseMutationActions({
           applyOpeningPatch({
             currentOpenings,
             openingId,
-            patch,
+            patch: normalizeOpeningPatchAgainstDerivedWalls({
+              activeModuleInput,
+              currentOpening: currentOpenings.find((opening) => opening.id === openingId) ?? { id: openingId },
+              house: store.derived.house,
+              patch,
+            }),
           }),
       }),
-    [commitOpeningDraftMutation],
+    [activeModuleInput, commitOpeningDraftMutation, store.derived.house],
   );
 
   const addSharedHouseOpening = useCallback(
@@ -633,13 +771,21 @@ export function useHouseMutationActions({
       return commitOpeningDraftMutation({
         buildNextOpenings: ({ currentOpenings }) => {
           openingId = nextOpeningId(currentOpenings);
+          const preferredWall = resolvePreferredNewOpeningHostWall({
+            activeModuleInput,
+            house,
+            preferredHostWallId: store.derived.activeOpening?.hostWallId ?? null,
+            preferredSide: house.footprint.attachmentSide ?? 'rear',
+          });
           return [
             ...currentOpenings,
             buildNewOpeningDraft({
               currentOpenings,
               kind,
               openingId,
-              wallId: house.footprint.attachmentSide ?? 'rear',
+              hostWallId: preferredWall?.wallId ?? null,
+              hostEdgeId: preferredWall?.hostEdgeId ?? null,
+              wallId: preferredWall?.semanticSide ?? house.footprint.attachmentSide ?? 'rear',
             }),
           ];
         },
@@ -648,7 +794,7 @@ export function useHouseMutationActions({
         },
       });
     },
-    [commitOpeningDraftMutation, selectHouseTarget, store.derived.house],
+    [activeModuleInput, commitOpeningDraftMutation, selectHouseTarget, store.derived.activeOpening?.hostWallId, store.derived.house],
   );
 
   const removeSharedHouseOpening = useCallback(

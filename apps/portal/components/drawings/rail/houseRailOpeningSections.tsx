@@ -4,10 +4,10 @@ import type {
   HouseModel,
   SliderPanelCount,
   WallOpeningKind,
-  WallOpeningHostSide,
 } from '@/lib/drawings/state/houseFirstWorkbenchModel';
 import type { CommitResult, FieldErrors, RunAction } from './houseRailTypes';
-import { ATTACHMENT_SIDE_OPTIONS, ActionButton, NumberField, TextField, SelectField } from './houseRailShared';
+import type { SelectOption } from './houseRailShared';
+import { ActionButton, NumberField, TextField, SelectField } from './houseRailShared';
 import styles from './ConfiguratorRail.module.css';
 
 const OPENING_TYPE_OPTIONS = [
@@ -38,6 +38,29 @@ type BuildHouseRailOpeningSectionsInput = {
   onRemoveOpening?: (openingId: string) => Promise<CommitResult> | CommitResult;
   runDeckAction: RunAction;
 };
+
+function buildOpeningHostWallOptions(
+  house: HouseModel | null,
+  activeOpening: HouseModel['openings'][number] | null,
+): SelectOption[] {
+  const baseOptions =
+    house?.derivedWallGraph.walls.map((wall) => ({
+      label: wall.label,
+      value: wall.id,
+    })) ?? [];
+
+  if (!activeOpening?.hostWallId) {
+    return baseOptions.length
+      ? [{ label: 'Select derived wall', value: '' }, ...baseOptions]
+      : [{ label: 'No derived walls available', value: '' }];
+  }
+
+  if (baseOptions.some((option) => option.value === activeOpening.hostWallId)) {
+    return baseOptions;
+  }
+
+  return [{ label: 'Unavailable saved wall', value: activeOpening.hostWallId }, ...baseOptions];
+}
 
 export function buildHouseRailOpeningSections({
   activeOpeningId,
@@ -104,12 +127,15 @@ export function buildHouseRailOpeningSections({
   if (!activeOpening) {
     sections.push(
       <p key="opening-empty" className={styles.empty}>
-        Select an opening from the object list, or add one to start editing hosted wall objects.
+        Select an opening from the object list, or add one to start editing derived-wall-hosted openings.
       </p>,
     );
     return sections;
   }
 
+  const hostWallOptions = buildOpeningHostWallOptions(house, activeOpening);
+  const selectedHostWallValue =
+    activeOpening.hostWallId ?? (hostWallOptions.some((option) => option.value === '') ? '' : hostWallOptions[0]?.value ?? '');
   const activeOpeningTypeLabel =
     activeOpening.kind === 'slider'
       ? 'Slider'
@@ -121,7 +147,7 @@ export function buildHouseRailOpeningSections({
 
   sections.push(
     <p key="opening-selection-hint" className={styles.fieldHint}>
-      Selected openings show width and along-wall offset dimensions in Model Space plan. Drag the selected opening body there to reposition it along the host wall. Height and base height stay editable in the rail for this slice.
+      Selected openings show width and along-wall offset dimensions in Model Space plan. Drag the selected opening body there to reposition it along the resolved host wall. Height and base height stay editable in the rail for this slice.
     </p>,
     <TextField
       key="opening-label"
@@ -156,15 +182,22 @@ export function buildHouseRailOpeningSections({
     <SelectField
       key="opening-wall"
       label="Host wall"
-      value={activeOpening.wallId ?? house?.footprint.attachmentSide ?? 'rear'}
-      options={ATTACHMENT_SIDE_OPTIONS}
-      disabled={disabled}
+      value={selectedHostWallValue}
+      options={hostWallOptions}
+      disabled={disabled || !hostWallOptions.length}
       error={fieldErrors[`opening-wall-${activeOpening.id}`]}
+      helperText={
+        house?.derivedWallGraph.walls.length
+          ? 'Openings host to derived walls from the current house envelope.'
+          : 'Derived host walls are unavailable for this house right now.'
+      }
       onCommit={(value) =>
         runDeckAction(
           `opening-wall-${activeOpening.id}`,
-          onCommitOpeningPatch?.(activeOpening.id, { wallId: value as WallOpeningHostSide }),
-          'Unable to update the host wall.',
+          value
+            ? onCommitOpeningPatch?.(activeOpening.id, { hostWallId: value })
+            : { ok: false, error: 'Select a derived host wall first.' },
+          'Unable to update the derived host wall.',
         )
       }
     />,
@@ -238,7 +271,7 @@ export function buildHouseRailOpeningSections({
       value={activeOpening.offsetAlongWallM}
       disabled={disabled}
       error={fieldErrors[`opening-offset-${activeOpening.id}`]}
-      helperText="Measured from the selected wall start in the current house-side frame."
+      helperText="Measured from the start of the resolved derived host wall."
       onCommit={(value) =>
         runDeckAction(
           `opening-offset-${activeOpening.id}`,

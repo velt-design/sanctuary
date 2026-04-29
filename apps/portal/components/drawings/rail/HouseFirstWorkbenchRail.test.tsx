@@ -158,6 +158,40 @@ describe('HouseFirstWorkbenchRail', () => {
     expect(markup).not.toContain('Family-specific editing for this opening is deferred in this slice.');
   });
 
+  it('shows derived host wall labels for openings in the canonical rail shell', () => {
+    const fixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
+    if (!fixture) throw new Error('Expected Sanctuary fixture.');
+    const draft = buildEstimateDrawingDraftFromSnapshot(fixture.snapshot);
+    if (!draft) throw new Error('Expected drawing draft.');
+    draft.houseFirst = {
+      openings: [
+        {
+          id: 'opening-window-1',
+          label: 'Rear window',
+          kind: 'window',
+          wallId: 'rear',
+          widthM: '1.8',
+          heightM: '1.2',
+          sillHeightM: '0.9',
+          offsetAlongWallM: '0.6',
+        },
+      ],
+    };
+
+    const markup = renderToStaticMarkup(
+      <HouseFirstWorkbenchRail
+        {...buildRailProps({
+          draft,
+          activeRailTab: 'openings',
+          activeObjectRef: { family: 'openings', objectId: 'opening-window-1' },
+        })}
+      />,
+    );
+
+    expect(markup).toContain('Rear wall');
+    expect(markup).toContain('Host wall');
+  });
+
   it('shows legacy flat roofs as view-only in the house-form roof section', () => {
     const markup = renderToStaticMarkup(
       <HouseFirstWorkbenchRail {...buildRailProps({ fixtureSlug: 'box-standard' })} />,

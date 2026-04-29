@@ -13,7 +13,7 @@ import {
 } from '@/lib/drawings/state/drawingWorkbenchUiState';
 import { buildAssemblyModel } from '@/lib/drawings/assembly/buildAssemblyModel';
 import { buildPlanViewModel } from '@/lib/drawings/views/plan/buildPlanViewModel';
-import { resolveDeckPresetGeometry } from '@/lib/drawings/state/houseFirstDeckPresets';
+import { resolveDeckHostEdgeFrame, resolveDeckPresetGeometry } from '@/lib/drawings/state/houseFirstDeckPresets';
 import type { DeckInteractionTelemetry } from '@/app/staff/projects/[projectId]/design-workbench/houseWorkbenchClientTypes';
 import type {
   DeckModel,
@@ -426,6 +426,40 @@ function makeHouseFirstDeck(overrides: Partial<DeckModel> = {}): DeckModel {
   };
 }
 
+function buildDerivedWallGraph(
+  polygon: Array<{ alongM: string; depthM: string }>,
+  houseId = 'house-main',
+): HouseModel['derivedWallGraph'] {
+  const sideCounts = new Map<'rear' | 'front' | 'left' | 'right', number>();
+  const walls = polygon.flatMap((point, index) => {
+    const nextPoint = polygon[(index + 1) % polygon.length];
+    if (!nextPoint) return [];
+    const sourceEdgeId = `footprint-edge-${index + 1}`;
+    const frame = resolveDeckHostEdgeFrame({
+      housePolygon: polygon,
+      hostEdgeId: sourceEdgeId,
+    });
+    if (!frame?.sourceEdgeId) return [];
+    const nextCount = (sideCounts.get(frame.hostEdge) ?? 0) + 1;
+    sideCounts.set(frame.hostEdge, nextCount);
+    const labelPrefix = `${frame.hostEdge.charAt(0).toUpperCase()}${frame.hostEdge.slice(1)} wall`;
+    return [
+      {
+        id: `wall-${frame.sourceEdgeId}`,
+        label: nextCount === 1 ? labelPrefix : `${labelPrefix} ${nextCount}`,
+        sourceFormIds: [houseId],
+        edgeIds: [frame.sourceEdgeId],
+        kind: 'exterior' as const,
+        polygon: [point, nextPoint],
+      },
+    ];
+  });
+  return {
+    walls,
+    mergeGroups: [],
+  };
+}
+
 function makeHouseFirstHouse(overrides: Partial<HouseModel> = {}): HouseModel {
   const house: HouseModel = {
     id: 'house-main',
@@ -513,7 +547,7 @@ function makeHouseFirstHouse(overrides: Partial<HouseModel> = {}): HouseModel {
     attachmentZones: [],
     attachmentZoneDiagnostics: { blocked: [] },
   };
-  return {
+  const resolvedHouse = {
     ...house,
     ...overrides,
     footprint: {
@@ -540,6 +574,12 @@ function makeHouseFirstHouse(overrides: Partial<HouseModel> = {}): HouseModel {
         ...overrides.roof?.capabilities,
       },
     },
+  };
+  return {
+    ...resolvedHouse,
+    derivedWallGraph:
+      overrides.derivedWallGraph ??
+      buildDerivedWallGraph(resolvedHouse.footprint.polygon, resolvedHouse.id),
   };
 }
 
@@ -599,6 +639,7 @@ function makeHouseFirstOpening(overrides: Partial<WallOpeningModel> = {}): WallO
     label: 'Window 1',
     kind: 'window',
     panelCount: null,
+    hostWallId: null,
     wallId: 'rear',
     hostEdgeId: 'rear',
     widthM: '1.8',
@@ -4028,6 +4069,36 @@ describe('ModelSpaceViewport', () => {
     expect(scroller.dataset.houseFirstOpeningDragActive).toBe('false');
     expect(rendered.container.querySelector('[data-house-first-preview-shape="opening-1"]')).toBeNull();
     expect(rendered.container.querySelector('[data-testid="opening-offset"]')?.textContent).not.toBe('0.6');
+
+    rendered.unmount();
+  });
+
+  it('keeps unresolved house-first openings selectable but blocks drag until a host wall resolves', async () => {
+    const house = makeHouseFirstHouse({
+      openings: [
+        makeHouseFirstOpening({
+          hostWallId: 'wall-footprint-edge-99',
+          hostEdgeId: null,
+          wallId: 'rear',
+          validation: {
+            status: 'invalid',
+            codes: ['missing_host_wall'],
+            message: 'This opening no longer has a valid derived host wall. Select a new host wall before placing it.',
+          },
+        }),
+      ],
+    });
+    const rendered = renderIntoDocument(
+      <HouseFirstViewportHarness initialHouse={house} initialSelection={{ kind: 'opening', targetId: 'opening-1' }} />,
+    );
+
+    const scroller = rendered.container.querySelector('[data-model-space-scroller]') as HTMLElement | null;
+    if (!scroller) throw new Error('Missing model-space scroller.');
+
+    expect(scroller.dataset.houseFirstSelectedOpeningDragEligible).toBe('false');
+    expect(scroller.dataset.houseFirstSelectedOpeningDragReason).toContain('resolvable host wall');
+    expect(scroller.dataset.houseFirstOpeningDragPhase).toBe('selected');
+    expect(rendered.container.querySelector('[data-house-first-preview-shape="opening-1"]')).toBeNull();
 
     rendered.unmount();
   });

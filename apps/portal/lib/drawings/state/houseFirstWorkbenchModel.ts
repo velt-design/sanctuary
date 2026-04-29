@@ -15,6 +15,7 @@ import type {
   CalculatorHouseStoreyMode,
   CalculatorModuleInputs,
 } from '@/lib/types/calculator';
+import type { DerivedWallGraphModel } from './objectFirstWorkbenchModel';
 
 export type WorkbenchMode = 'house' | 'pergolas';
 export type HouseRoofForm = 'flat' | 'mono' | 'gable' | 'hipped';
@@ -84,6 +85,7 @@ export const SLIDER_PANEL_COUNTS = [2, 3, 4] as const;
 export type WallOpeningHostSide = NonNullable<CalculatorModuleInputs['attachmentSide']>;
 export type WallOpeningValidationCode =
   | 'missing_host_wall'
+  | 'ambiguous_host_wall'
   | 'invalid_width'
   | 'invalid_height'
   | 'invalid_sill_height'
@@ -194,6 +196,7 @@ export type WallOpeningModel = {
   label: string;
   kind: WallOpeningKind;
   panelCount: SliderPanelCount | null;
+  hostWallId: string | null;
   wallId: WallOpeningHostSide | null;
   hostEdgeId: string | null;
   widthM: string;
@@ -255,6 +258,7 @@ export type HouseModel = {
   gutterDepthMm: string;
   gutterProjectionMm: string;
   eaveOverhangMm: string;
+  derivedWallGraph: DerivedWallGraphModel;
   decks: DeckModel[];
   openings: WallOpeningModel[];
   attachmentZones: HouseAttachmentZoneModel[];
@@ -335,6 +339,7 @@ export type HouseFirstOpeningDraft = {
   label?: string | null;
   kind?: WallOpeningKind | null;
   panelCount?: SliderPanelCount | null;
+  hostWallId?: string | null;
   wallId?: WallOpeningHostSide | null;
   hostEdgeId?: string | null;
   widthM?: string | null;

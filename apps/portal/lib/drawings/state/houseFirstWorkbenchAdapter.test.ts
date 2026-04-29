@@ -924,6 +924,223 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
     });
   });
 
+  it('builds stable derived wall graphs for straight, custom, and multi-segment same-side footprints', () => {
+    const monoFixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
+    const screenshotFixture = getSanctuaryGeometryWorkbenchFixture('gable-u-hipped-screenshot');
+    if (!monoFixture || !screenshotFixture) {
+      throw new Error('Missing Sanctuary workbench fixtures.');
+    }
+
+    const straightProject = buildHouseFirstWorkbenchProjectModel({
+      snapshot: monoFixture.snapshot,
+    });
+    expect(straightProject.house?.derivedWallGraph.walls.map((wall) => ({
+      id: wall.id,
+      label: wall.label,
+      edgeIds: wall.edgeIds,
+    }))).toEqual([
+      { id: 'wall-footprint-edge-1', label: 'Front wall', edgeIds: ['footprint-edge-1'] },
+      { id: 'wall-footprint-edge-2', label: 'Right wall', edgeIds: ['footprint-edge-2'] },
+      { id: 'wall-footprint-edge-3', label: 'Rear wall', edgeIds: ['footprint-edge-3'] },
+      { id: 'wall-footprint-edge-4', label: 'Left wall', edgeIds: ['footprint-edge-4'] },
+    ]);
+
+    const customDraft = buildEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
+    if (!customDraft) throw new Error('Expected drawing draft.');
+    customDraft.inputs.modules[0]!.houseFootprintMode = 'custom_polygon';
+    customDraft.inputs.modules[0]!.houseFootprintPolygon = [
+      { alongM: '-1.8', depthM: '1.8' },
+      { alongM: '9.8', depthM: '1.8' },
+      { alongM: '9.8', depthM: '-5' },
+      { alongM: '8', depthM: '-5' },
+      { alongM: '8', depthM: '0' },
+      { alongM: '0', depthM: '0' },
+      { alongM: '0', depthM: '-5' },
+      { alongM: '-1.8', depthM: '-5' },
+    ];
+
+    const customProject = buildHouseFirstWorkbenchProjectModel({
+      snapshot: monoFixture.snapshot,
+      draft: customDraft,
+    });
+    expect(
+      customProject.house?.derivedWallGraph.walls
+        .filter((wall) => wall.label.startsWith('Rear wall'))
+        .map((wall) => `${wall.id}:${wall.label}`),
+    ).toEqual([
+      'wall-footprint-edge-3:Rear wall',
+      'wall-footprint-edge-5:Rear wall 2',
+      'wall-footprint-edge-7:Rear wall 3',
+    ]);
+
+    const screenshotProject = buildHouseFirstWorkbenchProjectModel({
+      snapshot: screenshotFixture.snapshot,
+      draft: screenshotFixture.draft,
+    });
+    expect(
+      screenshotProject.house?.derivedWallGraph.walls
+        .filter((wall) => wall.label.startsWith('Rear wall'))
+        .map((wall) => `${wall.id}:${wall.label}`),
+    ).toEqual([
+      'wall-footprint-edge-3:Rear wall',
+      'wall-footprint-edge-5:Rear wall 2',
+      'wall-footprint-edge-7:Rear wall 3',
+    ]);
+  });
+
+  it('prefers hostWallId over exact host edges and legacy side fallbacks when resolving shared openings', () => {
+    const monoFixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
+    if (!monoFixture) throw new Error('Missing mono-standard fixture.');
+    const draft = buildEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
+    if (!draft) throw new Error('Expected drawing draft.');
+    draft.houseFirst = {
+      openings: [
+        {
+          id: 'opening-priority',
+          label: 'Priority window',
+          kind: 'window',
+          hostWallId: 'wall-footprint-edge-3',
+          wallId: 'left',
+          hostEdgeId: 'footprint-edge-4',
+          widthM: '1.8',
+          heightM: '1.2',
+          sillHeightM: '0.9',
+          offsetAlongWallM: '0.4',
+        },
+      ],
+    };
+
+    const projectModel = buildHouseFirstWorkbenchProjectModel({
+      snapshot: monoFixture.snapshot,
+      draft,
+    });
+
+    expect(projectModel.house?.openings[0]).toMatchObject({
+      hostWallId: 'wall-footprint-edge-3',
+      wallId: 'rear',
+      hostEdgeId: 'footprint-edge-3',
+      validation: {
+        status: 'valid',
+        codes: [],
+        message: null,
+      },
+    });
+  });
+
+  it('prefers exact host edges over legacy side fallbacks when canonical hostWallId is absent', () => {
+    const monoFixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
+    if (!monoFixture) throw new Error('Missing mono-standard fixture.');
+    const draft = buildEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
+    if (!draft) throw new Error('Expected drawing draft.');
+    draft.houseFirst = {
+      openings: [
+        {
+          id: 'opening-exact-edge',
+          label: 'Exact edge window',
+          kind: 'window',
+          wallId: 'rear',
+          hostEdgeId: 'footprint-edge-4',
+          widthM: '0.9',
+          heightM: '1.2',
+          sillHeightM: '0.9',
+          offsetAlongWallM: '0.3',
+        },
+      ],
+    };
+
+    const projectModel = buildHouseFirstWorkbenchProjectModel({
+      snapshot: monoFixture.snapshot,
+      draft,
+    });
+
+    expect(projectModel.house?.openings[0]).toMatchObject({
+      hostWallId: 'wall-footprint-edge-4',
+      wallId: 'left',
+      hostEdgeId: 'footprint-edge-4',
+      validation: {
+        status: 'valid',
+        codes: [],
+        message: null,
+      },
+    });
+  });
+
+  it('marks side-only opening hosts ambiguous when the selected side has multiple derived wall segments', () => {
+    const screenshotFixture = getSanctuaryGeometryWorkbenchFixture('gable-u-hipped-screenshot');
+    if (!screenshotFixture) throw new Error('Missing gable-u-hipped-screenshot fixture.');
+    const draft = buildEstimateDrawingDraftFromSnapshot(screenshotFixture.snapshot);
+    if (!draft) throw new Error('Expected drawing draft.');
+    draft.houseFirst = {
+      openings: [
+        {
+          id: 'opening-ambiguous',
+          label: 'Ambiguous window',
+          kind: 'window',
+          wallId: 'rear',
+          widthM: '1.2',
+          heightM: '1.2',
+          sillHeightM: '0.9',
+          offsetAlongWallM: '0.2',
+        },
+      ],
+    };
+
+    const projectModel = buildHouseFirstWorkbenchProjectModel({
+      snapshot: screenshotFixture.snapshot,
+      draft,
+    });
+
+    expect(projectModel.house?.openings[0]).toMatchObject({
+      hostWallId: null,
+      wallId: 'rear',
+      hostEdgeId: null,
+      validation: {
+        status: 'invalid',
+        codes: ['ambiguous_host_wall'],
+        message: 'Select a specific derived host wall because this side has multiple wall segments.',
+      },
+    });
+  });
+
+  it('keeps stale saved hostWallIds unresolved instead of silently retargeting openings', () => {
+    const monoFixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
+    if (!monoFixture) throw new Error('Missing mono-standard fixture.');
+    const draft = buildEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
+    if (!draft) throw new Error('Expected drawing draft.');
+    draft.houseFirst = {
+      openings: [
+        {
+          id: 'opening-stale-wall',
+          label: 'Stale host wall window',
+          kind: 'window',
+          hostWallId: 'wall-footprint-edge-99',
+          wallId: 'rear',
+          hostEdgeId: 'footprint-edge-3',
+          widthM: '1.8',
+          heightM: '1.2',
+          sillHeightM: '0.9',
+          offsetAlongWallM: '0.4',
+        },
+      ],
+    };
+
+    const projectModel = buildHouseFirstWorkbenchProjectModel({
+      snapshot: monoFixture.snapshot,
+      draft,
+    });
+
+    expect(projectModel.house?.openings[0]).toMatchObject({
+      hostWallId: 'wall-footprint-edge-99',
+      wallId: 'rear',
+      hostEdgeId: 'footprint-edge-3',
+      validation: {
+        status: 'invalid',
+        codes: ['missing_host_wall'],
+        message: 'This opening no longer has a valid derived host wall. Select a new host wall before placing it.',
+      },
+    });
+  });
+
   it('preserves supported opening kinds and defaults unknown kinds to window', () => {
     const monoFixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
     if (!monoFixture) throw new Error('Missing mono-standard fixture.');

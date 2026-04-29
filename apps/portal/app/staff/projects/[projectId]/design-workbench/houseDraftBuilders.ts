@@ -48,6 +48,7 @@ export function toOpeningDrafts(house: HouseModel | null | undefined): HouseFirs
     id: opening.id,
     label: opening.label,
     panelCount: resolveOpeningPanelCount(normalizeWallOpeningKind(opening.kind), opening.panelCount),
+    hostWallId: opening.hostWallId,
     wallId: opening.wallId,
     hostEdgeId: opening.hostEdgeId,
     widthM: opening.widthM,

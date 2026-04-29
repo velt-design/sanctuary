@@ -860,12 +860,14 @@ function normalizeHouseFirstOpeningDraft(
   const heightM = trimNullableString(opening.heightM ?? null);
   const sillHeightM = trimNullableString(opening.sillHeightM ?? null);
   const offsetAlongWallM = trimNullableString(opening.offsetAlongWallM ?? null);
+  const hostWallId = trimNullableString(opening.hostWallId ?? null);
   const panelCount = resolveOpeningPanelCount(kind, opening.panelCount);
   return {
     id: opening.id.trim(),
     ...(label ? { label } : null),
     kind,
     ...(panelCount !== null ? { panelCount: panelCount as SliderPanelCount } : null),
+    ...(hostWallId ? { hostWallId } : null),
     ...(isWallOpeningHostSide(opening.wallId) ? { wallId: opening.wallId } : null),
     ...(typeof opening.hostEdgeId === 'string' && opening.hostEdgeId.trim()
       ? { hostEdgeId: opening.hostEdgeId.trim() }

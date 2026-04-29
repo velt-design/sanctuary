@@ -15,7 +15,7 @@ import {
   buildHouseFirstPlanOverlay as buildHouseFirstPlanOverlayRaw,
   resizeCustomPolygonEdge,
 } from './houseFirstPlanOverlay';
-import { resolveDeckPresetGeometry } from '@/lib/drawings/state/houseFirstDeckPresets';
+import { resolveDeckHostEdgeFrame, resolveDeckPresetGeometry } from '@/lib/drawings/state/houseFirstDeckPresets';
 
 function makeDeck(overrides: Partial<DeckModel> = {}): DeckModel {
   return {
@@ -51,6 +51,40 @@ function makeDeck(overrides: Partial<DeckModel> = {}): DeckModel {
       message: null,
     },
     ...overrides,
+  };
+}
+
+function buildDerivedWallGraph(
+  polygon: Array<{ alongM: string; depthM: string }>,
+  houseId = 'house-main',
+): HouseModel['derivedWallGraph'] {
+  const sideCounts = new Map<'rear' | 'front' | 'left' | 'right', number>();
+  const walls = polygon.flatMap((point, index) => {
+    const nextPoint = polygon[(index + 1) % polygon.length];
+    if (!nextPoint) return [];
+    const sourceEdgeId = `footprint-edge-${index + 1}`;
+    const frame = resolveDeckHostEdgeFrame({
+      housePolygon: polygon,
+      hostEdgeId: sourceEdgeId,
+    });
+    if (!frame?.sourceEdgeId) return [];
+    const nextCount = (sideCounts.get(frame.hostEdge) ?? 0) + 1;
+    sideCounts.set(frame.hostEdge, nextCount);
+    const labelPrefix = `${frame.hostEdge.charAt(0).toUpperCase()}${frame.hostEdge.slice(1)} wall`;
+    return [
+      {
+        id: `wall-${frame.sourceEdgeId}`,
+        label: nextCount === 1 ? labelPrefix : `${labelPrefix} ${nextCount}`,
+        sourceFormIds: [houseId],
+        edgeIds: [frame.sourceEdgeId],
+        kind: 'exterior' as const,
+        polygon: [point, nextPoint],
+      },
+    ];
+  });
+  return {
+    walls,
+    mergeGroups: [],
   };
 }
 
@@ -141,7 +175,7 @@ function makeHouse(overrides: Partial<HouseModel> = {}): HouseModel {
     attachmentZones: [],
     attachmentZoneDiagnostics: { blocked: [] },
   };
-  return {
+  const resolvedHouse = {
     ...house,
     ...overrides,
     footprint: {
@@ -168,6 +202,12 @@ function makeHouse(overrides: Partial<HouseModel> = {}): HouseModel {
         ...overrides.roof?.capabilities,
       },
     },
+  };
+  return {
+    ...resolvedHouse,
+    derivedWallGraph:
+      overrides.derivedWallGraph ??
+      buildDerivedWallGraph(resolvedHouse.footprint.polygon, resolvedHouse.id),
   };
 }
 
@@ -766,6 +806,7 @@ describe('houseFirstPlanOverlay', () => {
             label: 'Debug window',
             kind: 'window',
             panelCount: null,
+            hostWallId: 'wall-footprint-edge-5',
             wallId: 'rear',
             widthM: '1.8',
             heightM: '1.2',

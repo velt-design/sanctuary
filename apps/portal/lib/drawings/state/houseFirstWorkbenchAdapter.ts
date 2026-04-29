@@ -1039,15 +1039,105 @@ function normalizeOpeningWallId(
   return fallback;
 }
 
+function normalizeOpeningHostWallId(value: string | null | undefined): string | null {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  return trimmed.length ? trimmed : null;
+}
+
 function normalizeExactOpeningHostEdgeId(value: string | null | undefined): string | null {
   if (typeof value !== 'string') return null;
   const trimmed = value.trim();
   return /^footprint-edge-\d+$/.test(trimmed) ? trimmed : null;
 }
 
+type DerivedWallResolution = {
+  wall: HouseModel['derivedWallGraph']['walls'][number];
+  side: NonNullable<CalculatorModuleInputs['attachmentSide']>;
+  sourceEdgeId: string;
+  spanM: number;
+};
+
+type DerivedWallLookup = {
+  graph: HouseModel['derivedWallGraph'];
+  byWallId: Map<string, DerivedWallResolution>;
+  byEdgeId: Map<string, DerivedWallResolution>;
+  bySide: Map<NonNullable<CalculatorModuleInputs['attachmentSide']>, DerivedWallResolution[]>;
+};
+
+function formatDerivedWallLabel(
+  side: NonNullable<CalculatorModuleInputs['attachmentSide']>,
+  index: number,
+): string {
+  const prefix = `${side.charAt(0).toUpperCase()}${side.slice(1)} wall`;
+  return index === 1 ? prefix : `${prefix} ${index}`;
+}
+
+function buildDerivedWallLookup(input: {
+  houseId: string;
+  housePolygon: CalculatorHouseFootprintPolygonPoint[];
+}): DerivedWallLookup {
+  const walls: HouseModel['derivedWallGraph']['walls'] = [];
+  const byWallId = new Map<string, DerivedWallResolution>();
+  const byEdgeId = new Map<string, DerivedWallResolution>();
+  const bySide = new Map<NonNullable<CalculatorModuleInputs['attachmentSide']>, DerivedWallResolution[]>();
+  const sideCounts = new Map<NonNullable<CalculatorModuleInputs['attachmentSide']>, number>();
+
+  for (let index = 0; index < input.housePolygon.length; index += 1) {
+    const startPoint = input.housePolygon[index];
+    const endPoint = input.housePolygon[(index + 1) % input.housePolygon.length];
+    if (!startPoint || !endPoint) continue;
+
+    const sourceEdgeId = `footprint-edge-${index + 1}`;
+    const frame = resolveDeckHostEdgeFrame({
+      housePolygon: input.housePolygon,
+      hostEdgeId: sourceEdgeId,
+    });
+    if (!frame?.sourceEdgeId) continue;
+
+    const nextCount = (sideCounts.get(frame.hostEdge) ?? 0) + 1;
+    sideCounts.set(frame.hostEdge, nextCount);
+
+    const wall = {
+      id: `wall-${frame.sourceEdgeId}`,
+      label: formatDerivedWallLabel(frame.hostEdge, nextCount),
+      sourceFormIds: [input.houseId],
+      edgeIds: [frame.sourceEdgeId],
+      kind: 'exterior' as const,
+      polygon: [
+        { alongM: String(startPoint.alongM), depthM: String(startPoint.depthM) },
+        { alongM: String(endPoint.alongM), depthM: String(endPoint.depthM) },
+      ],
+    };
+    const resolved = {
+      wall,
+      side: frame.hostEdge,
+      sourceEdgeId: frame.sourceEdgeId,
+      spanM: Math.max(0, frame.end - frame.start),
+    } satisfies DerivedWallResolution;
+
+    walls.push(wall);
+    byWallId.set(wall.id, resolved);
+    byEdgeId.set(frame.sourceEdgeId, resolved);
+    const sideWalls = bySide.get(frame.hostEdge) ?? [];
+    sideWalls.push(resolved);
+    bySide.set(frame.hostEdge, sideWalls);
+  }
+
+  return {
+    graph: {
+      walls,
+      mergeGroups: [],
+    },
+    byWallId,
+    byEdgeId,
+    bySide,
+  };
+}
+
 function buildSharedOpenings(input: {
   openingDrafts: HouseFirstOpeningDraft[] | null | undefined;
-  housePolygon: CalculatorHouseFootprintPolygonPoint[];
+  derivedWalls: DerivedWallLookup;
   fallbackWallId: NonNullable<CalculatorModuleInputs['attachmentSide']>;
 }): HouseModel['openings'] {
   const openings: HouseModel['openings'] = [];
@@ -1055,41 +1145,47 @@ function buildSharedOpenings(input: {
 
   for (const draft of input.openingDrafts ?? []) {
     if (!draft || typeof draft.id !== 'string' || draft.id.trim().length === 0) continue;
+    const requestedHostWallId = normalizeOpeningHostWallId(draft.hostWallId);
     const requestedWallId = normalizeOpeningWallId(draft.wallId, input.fallbackWallId);
     const exactHostEdgeId = normalizeExactOpeningHostEdgeId(draft.hostEdgeId);
     const kind = normalizeWallOpeningKind(draft.kind);
-    const exactFrame = exactHostEdgeId
-      ? resolveDeckHostEdgeFrame({
-          housePolygon: input.housePolygon,
-          hostEdgeId: exactHostEdgeId,
-        })
-      : null;
-    const frame =
-      exactFrame && exactFrame.hostEdge === requestedWallId
-        ? exactFrame
-        : resolveDeckHostEdgeFrame({
-            housePolygon: input.housePolygon,
-            hostEdgeId: requestedWallId,
-          });
-    const wallId = frame?.hostEdge ?? requestedWallId;
-    const hostEdgeId = frame?.sourceEdgeId ?? exactHostEdgeId;
+    const exactWall = exactHostEdgeId ? input.derivedWalls.byEdgeId.get(exactHostEdgeId) ?? null : null;
+    const sideWalls = input.derivedWalls.bySide.get(requestedWallId) ?? [];
+    const resolvedWall =
+      requestedHostWallId !== null
+        ? input.derivedWalls.byWallId.get(requestedHostWallId) ?? null
+        : exactWall ??
+          (sideWalls.length === 1 ? sideWalls[0]! : null);
+    const hostWallId = resolvedWall?.wall.id ?? requestedHostWallId ?? null;
+    const wallId = resolvedWall?.side ?? requestedWallId;
+    const hostEdgeId = resolvedWall?.sourceEdgeId ?? exactHostEdgeId;
     const panelCount = resolveOpeningPanelCount(kind, draft.panelCount);
     const widthM = parseFiniteOpeningMetres(draft.widthM, 1.8);
     const heightM = parseFiniteOpeningMetres(draft.heightM, 1.2);
     const sillHeightM = parseFiniteOpeningMetres(draft.sillHeightM, 0.9);
     const offsetAlongWallM = parseFiniteOpeningMetres(draft.offsetAlongWallM, 0.6);
-    const wallSpanM = frame ? Math.max(0, frame.end - frame.start) : 0;
+    const wallSpanM = resolvedWall?.spanM ?? 0;
     const codes: HouseModel['openings'][number]['validation']['codes'] = [];
 
-    if (!frame) codes.push('missing_host_wall');
+    if (!resolvedWall) {
+      if (requestedHostWallId !== null && !input.derivedWalls.byWallId.has(requestedHostWallId)) {
+        codes.push('missing_host_wall');
+      } else if (requestedHostWallId === null && exactHostEdgeId === null && sideWalls.length > 1) {
+        codes.push('ambiguous_host_wall');
+      } else {
+        codes.push('missing_host_wall');
+      }
+    }
     if (!Number.isFinite(widthM) || widthM < MIN_WINDOW_WIDTH_M) codes.push('invalid_width');
     if (!Number.isFinite(heightM) || heightM < MIN_WINDOW_HEIGHT_M) codes.push('invalid_height');
     if (!Number.isFinite(sillHeightM) || sillHeightM < 0) codes.push('invalid_sill_height');
     if (!Number.isFinite(offsetAlongWallM) || offsetAlongWallM < 0) codes.push('offset_out_of_bounds');
-    if (frame && Number.isFinite(widthM) && widthM > wallSpanM + 1e-6) codes.push('span_exceeds_wall');
-    if (frame && Number.isFinite(offsetAlongWallM) && offsetAlongWallM > wallSpanM + 1e-6) codes.push('offset_out_of_bounds');
+    if (resolvedWall && Number.isFinite(widthM) && widthM > wallSpanM + 1e-6) codes.push('span_exceeds_wall');
+    if (resolvedWall && Number.isFinite(offsetAlongWallM) && offsetAlongWallM > wallSpanM + 1e-6) {
+      codes.push('offset_out_of_bounds');
+    }
     if (
-      frame &&
+      resolvedWall &&
       Number.isFinite(widthM) &&
       Number.isFinite(offsetAlongWallM) &&
       offsetAlongWallM + widthM > wallSpanM + 1e-6
@@ -1098,7 +1194,7 @@ function buildSharedOpenings(input: {
     }
     if (
       (kind === 'slider' || kind === 'stacker') &&
-      frame &&
+      resolvedWall &&
       Number.isFinite(widthM) &&
       Number.isFinite(offsetAlongWallM) &&
       offsetAlongWallM >= 0 &&
@@ -1115,10 +1211,10 @@ function buildSharedOpenings(input: {
 
     const intervalStart = offsetAlongWallM;
     const intervalEnd = offsetAlongWallM + widthM;
-    const occupancyKey = hostEdgeId ?? wallId;
+    const occupancyKey = hostWallId ?? hostEdgeId ?? wallId;
     const existingIntervals = occupiedByWall.get(occupancyKey) ?? [];
     if (
-      frame &&
+      resolvedWall &&
       codes.length === 0 &&
       existingIntervals.some(
         (interval) =>
@@ -1130,7 +1226,11 @@ function buildSharedOpenings(input: {
 
     const message =
       codes[0] === 'missing_host_wall'
-        ? 'Select a valid wall before placing this opening.'
+        ? requestedHostWallId !== null && !input.derivedWalls.byWallId.has(requestedHostWallId)
+          ? 'This opening no longer has a valid derived host wall. Select a new host wall before placing it.'
+          : 'Select a valid derived host wall before placing this opening.'
+        : codes[0] === 'ambiguous_host_wall'
+          ? 'Select a specific derived host wall because this side has multiple wall segments.'
         : codes[0] === 'invalid_width'
           ? 'Opening width must be at least 0.3m.'
           : codes[0] === 'invalid_height'
@@ -1152,6 +1252,7 @@ function buildSharedOpenings(input: {
       label: draft.label?.trim() || `Window ${openings.length + 1}`,
       kind,
       panelCount,
+      hostWallId,
       wallId,
       hostEdgeId,
       widthM: formatOpeningMetres(widthM),
@@ -1692,6 +1793,10 @@ function buildSharedHouse(
     explicitRidgeAxis !== null ||
     (explicitOpenGableEndIds !== undefined && explicitOpenGableEndIds !== null) ||
     hasExplicitRoofAppendage(explicitAppendage);
+  const derivedWalls = buildDerivedWallLookup({
+    houseId: 'house-main',
+    housePolygon: derivedHousePolygon,
+  });
   const decks = buildSharedDecks({
     deckDrafts,
     housePolygon: derivedHousePolygon,
@@ -1699,7 +1804,7 @@ function buildSharedHouse(
   });
   const openings = buildSharedOpenings({
     openingDrafts,
-    housePolygon: derivedHousePolygon,
+    derivedWalls,
     fallbackWallId: normalizedAttachmentSide,
   });
   const attachmentZones = deriveSharedAttachmentZones({
@@ -1761,6 +1866,7 @@ function buildSharedHouse(
       gutterDepthMm,
       gutterProjectionMm,
       eaveOverhangMm,
+      derivedWallGraph: derivedWalls.graph,
       decks,
       openings,
       attachmentZones: attachmentZones.zones,

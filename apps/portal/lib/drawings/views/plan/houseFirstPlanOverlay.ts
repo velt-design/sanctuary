@@ -600,15 +600,26 @@ function buildGeometryHouseLookup(geometryHouseContext: ModulePlanHouseContext |
   };
 }
 
+function resolveOpeningHostEdgeIdFromDerivedWall(input: {
+  house: HouseModel;
+  opening: HouseModel['openings'][number];
+}): string | null {
+  if (!input.opening.hostWallId) return null;
+  const wall = input.house.derivedWallGraph.walls.find((candidate) => candidate.id === input.opening.hostWallId);
+  return normalizeSourceEdgeId(wall?.edgeIds[0] ?? null);
+}
+
 function resolveOpeningFrameFromGeometry(input: {
   resolvedHostEdgeId: string | null;
   opening: HouseModel['openings'][number];
   geometryHouseLookup: GeometryHouseLookup;
+  allowLegacyFallback: boolean;
 }): GeometryOpeningFrame | null {
   const exactHostEdgeId = input.resolvedHostEdgeId ?? normalizeSourceEdgeId(input.opening.hostEdgeId ?? input.opening.wallId);
   if (exactHostEdgeId) {
     return input.geometryHouseLookup.openingFrames.get(exactHostEdgeId) ?? null;
   }
+  if (!input.allowLegacyFallback) return null;
 
   const side =
     input.opening.hostEdgeId === 'front' ||
@@ -625,7 +636,7 @@ function resolveOpeningFrameFromGeometry(input: {
   return frames?.length === 1 ? frames[0]! : null;
 }
 
-function resolveOpeningHostEdgeIdFromDraft(input: {
+function resolveOpeningHostEdgeIdFromCompatibility(input: {
   opening: HouseModel['openings'][number];
   houseLocalPolygon: LocalPoint[];
 }): string | null {
@@ -2300,14 +2311,20 @@ export function buildHouseFirstPlanOverlay(input: {
 
   for (const opening of house.openings) {
     const selected = input.selection.kind === 'opening' && input.selection.targetId === opening.id;
-    const resolvedOpeningHostEdgeId = resolveOpeningHostEdgeIdFromDraft({
-      opening,
-      houseLocalPolygon,
-    });
+    const resolvedOpeningHostEdgeId = opening.hostWallId
+      ? resolveOpeningHostEdgeIdFromDerivedWall({
+          house,
+          opening,
+        })
+      : resolveOpeningHostEdgeIdFromCompatibility({
+          opening,
+          houseLocalPolygon,
+        });
     const openingFrame = resolveOpeningFrameFromGeometry({
       resolvedHostEdgeId: resolvedOpeningHostEdgeId,
       opening,
       geometryHouseLookup,
+      allowLegacyFallback: opening.hostWallId === null,
     });
     const widthM = Number(opening.widthM);
     const offsetAlongWallM = Number(opening.offsetAlongWallM);
@@ -2419,17 +2436,23 @@ export function buildHouseFirstPlanOverlay(input: {
     const opening = house.openings.find((candidate) => candidate.id === input.selection.targetId);
     const shape = shapes.find((candidate) => candidate.ownerKind === 'opening' && candidate.ownerId === input.selection.targetId);
     const resolvedOpeningHostEdgeId =
-      opening
-        ? resolveOpeningHostEdgeIdFromDraft({
+      opening && opening.hostWallId
+        ? resolveOpeningHostEdgeIdFromDerivedWall({
+            house,
             opening,
-            houseLocalPolygon,
           })
-        : null;
+        : opening
+          ? resolveOpeningHostEdgeIdFromCompatibility({
+              opening,
+              houseLocalPolygon,
+            })
+          : null;
     const openingFrame = opening
       ? resolveOpeningFrameFromGeometry({
           resolvedHostEdgeId: resolvedOpeningHostEdgeId,
           opening,
           geometryHouseLookup,
+          allowLegacyFallback: opening.hostWallId === null,
         })
       : null;
     if (opening && shape && openingFrame) {

@@ -1167,6 +1167,39 @@ describe('DesignWorkbenchEstimateClient', () => {
     rendered.unmount();
   });
 
+  it('seeds and rehosts openings with canonical derived host wall ids while syncing compatibility fields', async () => {
+    const estimate = buildEstimateDetail();
+    const entityKey = buildEstimateDrawingDraftEntityKey(estimate.id);
+
+    const rendered = renderIntoDocument(
+      <DesignWorkbenchEstimateClient estimate={estimate} projectName="Window Build" siteAddress="1 Test Street" />,
+    );
+
+    await flushAsyncWork();
+    clickButtonByText(rendered.container, 'Add window');
+    await flushAsyncWork();
+
+    expect(getLocalFirstWorkingCopy<any>(entityKey)?.data.houseFirst?.openings?.[0]).toMatchObject({
+      id: 'opening-1',
+      hostWallId: 'wall-footprint-edge-3',
+      wallId: 'rear',
+      hostEdgeId: 'footprint-edge-3',
+    });
+
+    changeSelectByLabel(rendered.container, 'Host wall', 'wall-footprint-edge-4');
+    await flushAsyncWork();
+
+    const openingDraft = getLocalFirstWorkingCopy<any>(entityKey)?.data.houseFirst?.openings?.[0];
+    expect(openingDraft).toMatchObject({
+      hostWallId: 'wall-footprint-edge-4',
+      wallId: 'left',
+      hostEdgeId: 'footprint-edge-4',
+    });
+    expect(Number.parseFloat(openingDraft?.offsetAlongWallM ?? '')).toBe(0);
+
+    rendered.unmount();
+  });
+
   it('shows 3D opening marker diagnostics for valid and invalid shared-house openings', async () => {
     const estimate = buildEstimateDetail();
     const entityKey = buildEstimateDrawingDraftEntityKey(estimate.id);
