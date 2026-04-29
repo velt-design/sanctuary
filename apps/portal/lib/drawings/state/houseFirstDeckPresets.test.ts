@@ -376,4 +376,45 @@ describe('houseFirstDeckPresets', () => {
       { alongM: '2', depthM: '4' },
     ]);
   });
+
+  it('falls back to the semantic right wall when a saved exact host edge id resolves to a different side', () => {
+    expect(
+      resolveDeckPresetGeometry({
+        deck: {
+          id: 'deck-right-release',
+          shape: 'preset',
+          presetType: 'rect_attached',
+          hostEdgeId: 'right',
+          primaryHostEdgeId: 'footprint-edge-1',
+          isAttached: true,
+          presetRect: {
+            widthM: '2',
+            depthM: '1.5',
+            centerOffsetM: '-0.5',
+          },
+          outline: [],
+        },
+        housePolygon: HOUSE_POLYGON,
+      }),
+    ).toEqual({
+      hostEdgeId: 'right',
+      attachmentMode: 'single_edge',
+      primaryHostEdgeId: 'right',
+      secondaryHostEdgeId: null,
+      cornerVertexId: null,
+      presetRect: {
+        widthM: '2',
+        depthM: '1.5',
+        centerOffsetM: '-0.5',
+        detachedGapM: null,
+      },
+      floatingRect: null,
+      outline: [
+        { alongM: '8', depthM: '0.5' },
+        { alongM: '8', depthM: '2.5' },
+        { alongM: '9.5', depthM: '2.5' },
+        { alongM: '9.5', depthM: '0.5' },
+      ],
+    });
+  });
 });

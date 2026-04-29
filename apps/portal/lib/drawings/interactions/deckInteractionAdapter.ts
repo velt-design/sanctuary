@@ -1327,7 +1327,10 @@ export function buildDeckCommitPatch(input: {
       : null;
 
   return {
-    hostEdgeId: input.preview.releasePlacement === 'snapped' ? input.preview.primaryHostEdgeId : input.preview.witnessEdgeId,
+    hostEdgeId:
+      input.preview.releasePlacement === 'snapped'
+        ? input.preview.semanticPlacementSide ?? input.preview.primaryHostEdgeId
+        : input.preview.witnessEdgeId,
     attachmentMode: input.preview.attachmentMode,
     primaryHostEdgeId: input.preview.releasePlacement === 'snapped' ? input.preview.primaryHostEdgeId : null,
     secondaryHostEdgeId:

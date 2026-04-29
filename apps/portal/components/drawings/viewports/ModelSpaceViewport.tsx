@@ -208,6 +208,7 @@ type DeckDragSettleState = {
   settleVisualState: ObjectInteractionSettleVisualState;
   resolvedSuccess: boolean | null;
   matchedCommittedGeometry: boolean;
+  stableMatchFrameCount: number;
   releaseError: string | null;
 };
 
@@ -271,7 +272,9 @@ const WHEEL_PAGE_DELTA_PX = 240;
 const WHEEL_ZOOM_SENSITIVITY = 0.0036;
 const WHEEL_GESTURE_IDLE_MS = 600;
 const DECK_SETTLE_MATCH_TOLERANCE_M = 0.1;
+const DECK_SETTLE_SEMANTIC_MATCH_TOLERANCE_M = 0.025;
 const DECK_SETTLE_MAX_WAIT_MS = 500;
+const DECK_SETTLE_MATCH_STABLE_FRAMES = 1;
 const DECK_RELEASE_CLICK_SUPPRESSION_MS = 400;
 const DECK_RELEASE_SUCCESS_FEEDBACK_MS = 180;
 const DECK_RELEASE_FAILURE_FEEDBACK_MS = 1400;
@@ -333,6 +336,49 @@ function polygonsVisuallyMatch(
   );
 }
 
+function findDeckReferenceFrameById(
+  frames: readonly HouseFirstPlanDeckReferenceFrame[],
+  edgeId: string | null | undefined,
+): HouseFirstPlanDeckReferenceFrame | null {
+  if (!edgeId) return null;
+  return frames.find((frame) => frame.sourceEdgeId === edgeId) ?? null;
+}
+
+function projectPointToDeckReferenceFrame(
+  point: PlanPoint,
+  frame: HouseFirstPlanDeckReferenceFrame,
+): { alongM: number; outwardM: number } {
+  const relative = {
+    x: point.x - frame.hostEdgeStart.x,
+    y: point.y - frame.hostEdgeStart.y,
+  };
+  return {
+    alongM: relative.x * frame.alongUnitX + relative.y * frame.alongUnitY + frame.spanStartM,
+    outwardM: relative.x * frame.outwardUnitX + relative.y * frame.outwardUnitY,
+  };
+}
+
+function projectPolygonToDeckReferenceFrame(input: {
+  polygon: readonly PlanPoint[];
+  frame: HouseFirstPlanDeckReferenceFrame;
+}): {
+  nearGapM: number;
+  centerOffsetM: number;
+} | null {
+  if (!input.polygon.length) return null;
+  const projections = input.polygon.map((point) => projectPointToDeckReferenceFrame(point, input.frame));
+  const alongValues = projections.map((projection) => projection.alongM);
+  const outwardValues = projections.map((projection) => projection.outwardM);
+  const alongMinM = Math.min(...alongValues);
+  const alongMaxM = Math.max(...alongValues);
+  const outwardMinM = Math.min(...outwardValues);
+  const frameMidpointM = (input.frame.spanStartM + input.frame.spanEndM) / 2;
+  return {
+    nearGapM: Math.max(0, outwardMinM),
+    centerOffsetM: ((alongMinM + alongMaxM) / 2) - frameMidpointM,
+  };
+}
+
 function deckShapeSemanticallyMatchesPreview(input: {
   shape: {
     polygon: PlanPoint[];
@@ -342,22 +388,54 @@ function deckShapeSemanticallyMatchesPreview(input: {
   toleranceM?: number;
 }): boolean {
   if (!input.shape?.deckInteraction) return false;
-  const toleranceM = input.toleranceM ?? DECK_SETTLE_MATCH_TOLERANCE_M;
+  const toleranceM = Math.min(
+    input.toleranceM ?? DECK_SETTLE_MATCH_TOLERANCE_M,
+    DECK_SETTLE_SEMANTIC_MATCH_TOLERANCE_M,
+  );
   const interaction = input.shape.deckInteraction;
-  if (interaction.witnessEdgeId !== input.preview.witnessEdgeId) return false;
   if (interaction.placement !== input.preview.releasePlacement) return false;
-  if (Math.abs(interaction.centerOffsetM - input.preview.centerOffsetM) > toleranceM) return false;
-  if (
-    Math.abs(
-      interaction.referenceEdgeGapM - (input.preview.releasePlacement === 'snapped' ? 0 : input.preview.referenceEdgeGapM),
-    ) > toleranceM
-  ) {
+  if (input.preview.releasePlacement === 'snapped') {
+    if (interaction.attachmentMode !== input.preview.attachmentMode) return false;
+    const interactionSnapEdgeId =
+      interaction.primaryHostEdgeId ?? interaction.placementEdgeId ?? interaction.witnessEdgeId;
+    const previewSnapEdgeId =
+      input.preview.primaryHostEdgeId ?? input.preview.placementEdgeId ?? input.preview.witnessEdgeId;
+    if (input.preview.attachmentMode === 'corner_dual_edge') {
+      if (interactionSnapEdgeId !== previewSnapEdgeId) return false;
+      if (interaction.secondaryHostEdgeId !== input.preview.secondaryHostEdgeId) return false;
+      if (interaction.cornerVertexId !== input.preview.cornerVertexId) return false;
+    } else if (interactionSnapEdgeId !== previewSnapEdgeId) {
+      return false;
+    }
+  } else if (interaction.witnessEdgeId !== input.preview.witnessEdgeId) {
     return false;
   }
-  if (input.preview.releasePlacement === 'snapped') {
-    return interaction.placementEdgeId === input.preview.placementEdgeId;
+
+  const comparisonFrame =
+    findDeckReferenceFrameById(
+      interaction.referenceFrames,
+      input.preview.releasePlacement === 'snapped'
+        ? input.preview.primaryHostEdgeId ?? input.preview.placementEdgeId ?? interaction.placementEdgeId
+        : input.preview.witnessEdgeId ?? interaction.witnessEdgeId,
+    ) ?? interaction.referenceFrames[0] ?? null;
+  if (!comparisonFrame) return false;
+
+  const previewProjection = projectPolygonToDeckReferenceFrame({
+    polygon: input.preview.polygon,
+    frame: comparisonFrame,
+  });
+  if (!previewProjection) return false;
+
+  if (Math.abs(interaction.centerOffsetM - previewProjection.centerOffsetM) > toleranceM) return false;
+
+  const expectedGapM = input.preview.releasePlacement === 'snapped' ? 0 : previewProjection.nearGapM;
+  if (Math.abs(interaction.referenceEdgeGapM - expectedGapM) > toleranceM) return false;
+  if (input.preview.releasePlacement === 'snapped' && input.preview.attachmentMode !== 'corner_dual_edge') {
+    return true;
   }
-  return pointsApproximatelyEqual(interaction.renderedCenter, resolvePolygonCenter(input.preview.polygon) ?? input.preview.previewAnchor, toleranceM);
+
+  const previewCenter = resolvePolygonCenter(input.preview.polygon) ?? input.preview.previewAnchor;
+  return pointsApproximatelyEqual(interaction.renderedCenter, previewCenter, toleranceM);
 }
 
 function clampValue(value: number, min: number, max: number): number {
@@ -758,14 +836,6 @@ function resolveDeckCrossEdgeCenterOffset(input: {
     ok: true,
     centerOffsetM: formatDeckPresetValue(centerAlongM - hostMidpointM),
   };
-}
-
-function findDeckReferenceFrameById(
-  frames: HouseFirstPlanDeckReferenceFrame[],
-  edgeId: string | null | undefined,
-): HouseFirstPlanDeckReferenceFrame | null {
-  if (!edgeId) return null;
-  return frames.find((frame) => frame.sourceEdgeId === edgeId) ?? null;
 }
 
 function translatePolygon(
@@ -2834,6 +2904,7 @@ export default function ModelSpaceViewport({
         settleVisualState: 'holding-preview',
         resolvedSuccess: null,
         matchedCommittedGeometry: false,
+        stableMatchFrameCount: 0,
         releaseError: null,
       });
       const result = await resolveCommitResult(
@@ -3386,10 +3457,26 @@ export default function ModelSpaceViewport({
         restoreDeckDragPinnedScrollTargets();
         const drift = measureDeckDragViewportAnchorDrift();
         const viewportStable = isDeckDragViewportAnchorStable(drift);
-        if (settledDeckShapeMatchesPreview && !deckDragSettleState.matchedCommittedGeometry) {
+        const matchedAndStable = settledDeckShapeMatchesPreview && viewportStable;
+        if (!matchedAndStable) {
+          if (deckDragSettleState.stableMatchFrameCount > 0 || deckDragSettleState.matchedCommittedGeometry) {
+            setDeckDragSettleState((current) =>
+              current && current.deckId === deckDragSettleState.deckId
+                ? { ...current, matchedCommittedGeometry: false, stableMatchFrameCount: 0 }
+                : current,
+            );
+          }
+        } else if (deckDragSettleState.stableMatchFrameCount < DECK_SETTLE_MATCH_STABLE_FRAMES) {
           setDeckDragSettleState((current) =>
             current && current.deckId === deckDragSettleState.deckId
-              ? { ...current, matchedCommittedGeometry: true }
+              ? {
+                  ...current,
+                  matchedCommittedGeometry: true,
+                  stableMatchFrameCount: Math.min(
+                    current.stableMatchFrameCount + 1,
+                    DECK_SETTLE_MATCH_STABLE_FRAMES,
+                  ),
+                }
               : current,
           );
         }
@@ -3399,7 +3486,9 @@ export default function ModelSpaceViewport({
         }
         if (deckDragSettleState.releaseOutcome === 'committed' && deckDragSettleState.commitResolvedAtMs !== null) {
           const settleDeadlineMs = deckDragSettleState.commitResolvedAtMs + DECK_SETTLE_MAX_WAIT_MS;
-          if ((settledDeckShapeMatchesPreview && viewportStable) || Date.now() >= settleDeadlineMs) {
+          const settledPreviewConfirmed =
+            matchedAndStable && deckDragSettleState.stableMatchFrameCount >= DECK_SETTLE_MATCH_STABLE_FRAMES;
+          if (settledPreviewConfirmed || Date.now() >= settleDeadlineMs) {
             finalizeSuccess();
             return;
           }

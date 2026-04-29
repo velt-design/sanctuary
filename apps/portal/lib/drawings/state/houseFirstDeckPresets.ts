@@ -62,6 +62,10 @@ function normalizeHostEdgeId(value: string | null | undefined): AttachmentSide {
   return 'rear';
 }
 
+function isSemanticHostEdgeId(value: string | null | undefined): value is AttachmentSide {
+  return value === 'rear' || value === 'front' || value === 'left' || value === 'right';
+}
+
 function resolveDeckGeometryHostEdgeId(value: string | null | undefined): string {
   const exactHostEdgeId = normalizeExactHostEdgeId(value);
   if (exactHostEdgeId) return exactHostEdgeId;
@@ -445,6 +449,27 @@ export function resolveDeckHostEdgeFrame(input: {
   };
 }
 
+function resolveCompatibleDeckGeometryHostEdgeId(input: {
+  housePolygon: CalculatorHouseFootprintPolygonPoint[] | null | undefined;
+  semanticHostEdgeId: string | null | undefined;
+  primaryHostEdgeId: string | null | undefined;
+}): string {
+  const exactPrimaryHostEdgeId = normalizeExactHostEdgeId(input.primaryHostEdgeId);
+  const semanticHostEdgeId = isSemanticHostEdgeId(input.semanticHostEdgeId) ? input.semanticHostEdgeId : null;
+  if (!exactPrimaryHostEdgeId) {
+    return semanticHostEdgeId ?? resolveDeckGeometryHostEdgeId(input.primaryHostEdgeId ?? input.semanticHostEdgeId);
+  }
+  if (!semanticHostEdgeId) return exactPrimaryHostEdgeId;
+  const exactFrame = resolveDeckHostEdgeFrame({
+    housePolygon: input.housePolygon,
+    hostEdgeId: exactPrimaryHostEdgeId,
+  });
+  if (exactFrame?.hostEdge === semanticHostEdgeId) {
+    return exactPrimaryHostEdgeId;
+  }
+  return semanticHostEdgeId;
+}
+
 function fallbackPresetRect(input: {
   frame: DeckHostEdgeFrame;
   attached: boolean;
@@ -758,7 +783,11 @@ export function resolveDeckPresetGeometry(input: {
     secondaryHostEdgeId: input.deck.secondaryHostEdgeId,
     cornerVertexId: input.deck.cornerVertexId,
   });
-  const fallbackPrimaryHostEdgeId = resolveDeckGeometryHostEdgeId(normalizeDeckPrimaryHostEdgeId(input.deck));
+  const fallbackPrimaryHostEdgeId = resolveCompatibleDeckGeometryHostEdgeId({
+    housePolygon: input.housePolygon,
+    semanticHostEdgeId: input.deck.hostEdgeId,
+    primaryHostEdgeId: normalizeDeckPrimaryHostEdgeId(input.deck),
+  });
   const fallbackSecondaryHostEdgeId = normalizeExactHostEdgeId(normalizeDeckSecondaryHostEdgeId(input.deck));
   const fallbackCornerVertexId = normalizeDeckCornerVertexId(input.deck);
   const cornerAttachment =
@@ -781,7 +810,10 @@ export function resolveDeckPresetGeometry(input: {
     (input.deck.shape === 'preset' ? fallbackPrimaryHostEdgeId : normalizeDeckPrimaryHostEdgeId(input.deck));
   const secondaryHostEdgeId = cornerAttachment?.secondaryHostEdgeId ?? null;
   const cornerVertexId = cornerAttachment?.cornerVertexId ?? null;
-  const hostEdgeId = input.deck.shape === 'preset' ? primaryHostEdgeId : input.deck.hostEdgeId ?? null;
+  const hostEdgeId =
+    input.deck.shape === 'preset'
+      ? (isSemanticHostEdgeId(input.deck.hostEdgeId) ? input.deck.hostEdgeId : primaryHostEdgeId)
+      : input.deck.hostEdgeId ?? null;
   const inferredPresetRect =
     input.deck.shape === 'preset'
       ? inferDeckPresetRectFromOutline({

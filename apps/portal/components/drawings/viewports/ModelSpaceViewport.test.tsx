@@ -5164,6 +5164,7 @@ describe('ModelSpaceViewport', () => {
     await act(async () => {
       await Promise.resolve();
     });
+    await waitForHouseFirstDeckDragUnlock(rendered.container);
     expect(rendered.container.querySelector('[aria-label="Deck interaction hint"]')?.textContent).toContain('Position updated');
     expect(rendered.container.querySelector('[data-testid="deck-telemetry-release-outcome"]')?.textContent).toBe('committed');
     expect(rendered.container.querySelector('[data-testid="deck-telemetry-settle-visual"]')?.textContent).toBe('complete');
@@ -5575,7 +5576,7 @@ describe('ModelSpaceViewport', () => {
     await flushAnimationFrame();
 
     expect(rendered.container.querySelector('[data-testid="deck-is-attached"]')?.textContent).toBe('true');
-    expect(rendered.container.querySelector('[data-testid="deck-host-edge"]')?.textContent).toBe('footprint-edge-4');
+    expect(rendered.container.querySelector('[data-testid="deck-host-edge"]')?.textContent).toBe('left');
     expect(rendered.container.querySelector('[data-testid="deck-floating-center-along"]')?.textContent).toBe('');
 
     rendered.unmount();
@@ -5650,7 +5651,7 @@ describe('ModelSpaceViewport', () => {
     await flushAnimationFrame();
 
     expect(rendered.container.querySelector('[data-testid="deck-is-attached"]')?.textContent).toBe('true');
-    expect(rendered.container.querySelector('[data-testid="deck-host-edge"]')?.textContent).toBe('footprint-edge-4');
+    expect(rendered.container.querySelector('[data-testid="deck-host-edge"]')?.textContent).toBe('left');
     expect(rendered.container.querySelector('[data-testid="deck-floating-center-along"]')?.textContent).toBe('');
 
     rendered.unmount();

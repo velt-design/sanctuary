@@ -403,7 +403,8 @@ describe('deckInteractionAdapter', () => {
 
     expect(preview.releasePlacement).toBe('snapped');
     expect(preview.anchorDerivedCenterOffsetM).toBe(1);
-    expect(patch.hostEdgeId).toBe('footprint-edge-1');
+    expect(patch.hostEdgeId).toBe('rear');
+    expect(patch.primaryHostEdgeId).toBe('footprint-edge-1');
     expect((patch.presetRect as { centerOffsetM: string }).centerOffsetM).toBe('1');
   });
 
