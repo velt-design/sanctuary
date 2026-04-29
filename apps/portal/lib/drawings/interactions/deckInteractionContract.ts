@@ -48,6 +48,10 @@ export type DeckInteractionTelemetry = ObjectInteractionTelemetry<'deck'> & {
   selectedDeckId: string | null;
   hoveredDeckId: string | null;
   housePolygonSource: 'custom_saved' | 'preset_derived' | null;
+  attachmentMode?: 'floating' | 'single_edge' | 'corner_dual_edge';
+  secondaryHostEdgeId?: string | null;
+  cornerVertexId?: string | null;
+  activeSnapTargetCount?: number;
   selectedDeckType: DeckInteractionSelectedType;
   dragEligible: boolean;
   dragReason: string | null;
@@ -145,6 +149,7 @@ export function resolveDeckInteractionHint(input: {
   phase: ObjectInteractionPhase;
   previewState:
     | {
+        attachmentMode?: 'floating' | 'single_edge' | 'corner_dual_edge';
         placement: 'snapped' | 'floating';
         releasePlacement: 'snapped' | 'floating';
       }
@@ -182,14 +187,26 @@ export function resolveDeckInteractionHint(input: {
       if (input.previewState.placement === 'snapped') {
         return {
           state: 'snapped',
-          label: 'Snapped',
-          detail: 'Release to keep the deck attached to the host edge.',
+          label:
+            input.previewState.attachmentMode === 'corner_dual_edge'
+              ? 'Corner attached'
+              : 'Snapped',
+          detail:
+            input.previewState.attachmentMode === 'corner_dual_edge'
+              ? 'Release to keep the deck locked to both corner walls.'
+              : 'Release to keep the deck attached to the host edge.',
         };
       }
       return {
         state: 'snap-available',
-        label: 'Snap on release',
-        detail: 'Release near the house edge to attach the deck.',
+        label:
+          input.previewState.attachmentMode === 'corner_dual_edge'
+            ? 'Corner snap available'
+            : 'Snap on release',
+        detail:
+          input.previewState.attachmentMode === 'corner_dual_edge'
+            ? 'Release near the corner to attach the deck to both walls.'
+            : 'Release near the house edge to attach the deck.',
       };
     }
 

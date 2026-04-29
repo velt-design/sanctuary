@@ -3300,12 +3300,23 @@ export default function ModelSpaceViewport({
           viewState: deckInteractionViewState,
           anchorPoint: deckInteractionViewState.previewAnchor,
           referenceGuide: activeDeckPreviewState.referenceGuide,
-          targetHighlight: showTargetHighlight
-            ? {
-                start: activeDeckPreviewState.hostEdgeStart,
-                end: activeDeckPreviewState.hostEdgeEnd,
-                state: resolveObjectInteractionPreviewTargetState(deckInteractionViewState),
-              }
+          targetHighlights: showTargetHighlight
+            ? [
+                {
+                  start: activeDeckPreviewState.hostEdgeStart,
+                  end: activeDeckPreviewState.hostEdgeEnd,
+                  state: resolveObjectInteractionPreviewTargetState(deckInteractionViewState),
+                },
+                ...(activeDeckPreviewState.secondaryHostEdgeStart && activeDeckPreviewState.secondaryHostEdgeEnd
+                  ? [
+                      {
+                        start: activeDeckPreviewState.secondaryHostEdgeStart,
+                        end: activeDeckPreviewState.secondaryHostEdgeEnd,
+                        state: resolveObjectInteractionPreviewTargetState(deckInteractionViewState),
+                      },
+                    ]
+                  : []),
+              ]
             : null,
         });
       }
@@ -3315,11 +3326,13 @@ export default function ModelSpaceViewport({
           ownerId: openingPreviewState.openingId,
           polygon: openingPreviewState.polygon,
           viewState: openingInteractionViewState,
-          targetHighlight: {
-            start: openingDragSession.interaction.hostEdgeStart,
-            end: openingDragSession.interaction.hostEdgeEnd,
-            state: resolveObjectInteractionPreviewTargetState(openingInteractionViewState),
-          },
+          targetHighlights: [
+            {
+              start: openingDragSession.interaction.hostEdgeStart,
+              end: openingDragSession.interaction.hostEdgeEnd,
+              state: resolveObjectInteractionPreviewTargetState(openingInteractionViewState),
+            },
+          ],
         });
       }
       return null;

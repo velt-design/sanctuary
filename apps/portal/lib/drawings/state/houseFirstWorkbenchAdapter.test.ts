@@ -696,7 +696,7 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
     ]);
   });
 
-  it('preserves custom deck outlines and clamps attached preset width to the host edge length', () => {
+  it('preserves custom deck outlines and keeps oversized attached preset width and offset intact', () => {
     const monoFixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
     if (!monoFixture) throw new Error('Missing mono-standard fixture.');
     const draft = buildEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
@@ -746,16 +746,16 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
     });
 
     expect(projectModel.house?.decks[0]?.presetRect).toEqual({
-      widthM: '6',
+      widthM: '12',
       depthM: '2',
-      centerOffsetM: '0',
+      centerOffsetM: '999',
       detachedGapM: null,
     });
     expect(projectModel.house?.decks[0]?.outline).toEqual([
-      { alongM: '0', depthM: '-2' },
-      { alongM: '6', depthM: '-2' },
-      { alongM: '6', depthM: '0' },
-      { alongM: '0', depthM: '0' },
+      { alongM: '996', depthM: '-2' },
+      { alongM: '1008', depthM: '-2' },
+      { alongM: '1008', depthM: '0' },
+      { alongM: '996', depthM: '0' },
     ]);
     expect(projectModel.house?.decks[1]?.outline).toEqual([
       { alongM: '7', depthM: '-1' },
@@ -814,7 +814,7 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
     expect(projectModel.house?.decks[0]?.validation.status).toBe('valid');
   });
 
-  it('keeps attached preset decks outside custom house footprints when the selected host edge has multiple segments', () => {
+  it('keeps oversized attached preset decks anchored to the selected exact custom-footprint wall segment', () => {
     const monoFixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
     if (!monoFixture) throw new Error('Missing mono-standard fixture.');
     const draft = buildEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
@@ -859,16 +859,16 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
     });
 
     expect(projectModel.house?.decks[0]?.presetRect).toEqual({
-      widthM: '2',
+      widthM: '12',
       depthM: '2.2',
-      centerOffsetM: '0',
+      centerOffsetM: '999',
       detachedGapM: null,
     });
     expect(projectModel.house?.decks[0]?.outline).toEqual([
-      { alongM: '0', depthM: '-2.2' },
-      { alongM: '2', depthM: '-2.2' },
-      { alongM: '2', depthM: '0' },
-      { alongM: '0', depthM: '0' },
+      { alongM: '996', depthM: '-2.2' },
+      { alongM: '1008', depthM: '-2.2' },
+      { alongM: '1008', depthM: '0' },
+      { alongM: '996', depthM: '0' },
     ]);
     expect(projectModel.house?.decks[0]?.validation.status).toBe('valid');
   });

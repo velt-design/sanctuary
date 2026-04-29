@@ -100,7 +100,7 @@ describe('houseFirstDeckPresets', () => {
     ]);
   });
 
-  it('sanitizes preset params by clamping attached width, center offset, and detached gap', () => {
+  it('preserves oversized attached preset width and along-wall offset while still clamping detached gap', () => {
     expect(
       sanitizeDeckPresetRect({
         housePolygon: HOUSE_POLYGON,
@@ -113,9 +113,9 @@ describe('houseFirstDeckPresets', () => {
         },
       }),
     ).toEqual({
-      widthM: '8',
+      widthM: '20',
       depthM: '0.3',
-      centerOffsetM: '0',
+      centerOffsetM: '999',
       detachedGapM: null,
     });
 
@@ -166,20 +166,20 @@ describe('houseFirstDeckPresets', () => {
     });
   });
 
-  it('anchors attached presets to the selected host-edge segment instead of the house bounds', () => {
+  it('anchors oversized attached presets to the selected exact host-edge segment without clamping them to the span', () => {
     expect(
       sanitizeDeckPresetRect({
         housePolygon: U_HOUSE_POLYGON,
-        hostEdgeId: 'rear',
+        hostEdgeId: 'footprint-edge-1',
         attached: true,
         presetRect: {
           widthM: '10',
           depthM: '2.2',
-          centerOffsetM: '999',
+          centerOffsetM: '0',
         },
       }),
     ).toEqual({
-      widthM: '2',
+      widthM: '10',
       depthM: '2.2',
       centerOffsetM: '0',
       detachedGapM: null,
@@ -188,19 +188,19 @@ describe('houseFirstDeckPresets', () => {
     expect(
       buildRectangularDeckOutline({
         housePolygon: U_HOUSE_POLYGON,
-        hostEdgeId: 'rear',
+        hostEdgeId: 'footprint-edge-1',
         attached: true,
         presetRect: {
           widthM: '10',
           depthM: '2.2',
-          centerOffsetM: '999',
+          centerOffsetM: '0',
         },
       }),
     ).toEqual([
-      { alongM: '0', depthM: '-2.2' },
-      { alongM: '2', depthM: '-2.2' },
-      { alongM: '2', depthM: '0' },
-      { alongM: '0', depthM: '0' },
+      { alongM: '-4', depthM: '-2.2' },
+      { alongM: '6', depthM: '-2.2' },
+      { alongM: '6', depthM: '0' },
+      { alongM: '-4', depthM: '0' },
     ]);
   });
 
@@ -282,6 +282,10 @@ describe('houseFirstDeckPresets', () => {
       }),
     ).toEqual({
       hostEdgeId: 'rear',
+      attachmentMode: 'floating',
+      primaryHostEdgeId: 'rear',
+      secondaryHostEdgeId: null,
+      cornerVertexId: null,
       presetRect: {
         widthM: '3.6',
         depthM: '3',
@@ -324,6 +328,10 @@ describe('houseFirstDeckPresets', () => {
       }),
     ).toEqual({
       hostEdgeId: 'rear',
+      attachmentMode: 'floating',
+      primaryHostEdgeId: 'rear',
+      secondaryHostEdgeId: null,
+      cornerVertexId: null,
       presetRect: {
         widthM: '3.6',
         depthM: '3',
@@ -343,5 +351,29 @@ describe('houseFirstDeckPresets', () => {
         { alongM: '5', depthM: '6' },
       ],
     });
+  });
+
+  it('builds preset corner-attached outlines from two exact host edges and a saved corner vertex', () => {
+    expect(
+      buildRectangularDeckOutline({
+        housePolygon: U_HOUSE_POLYGON,
+        hostEdgeId: 'footprint-edge-2',
+        primaryHostEdgeId: 'footprint-edge-2',
+        secondaryHostEdgeId: 'footprint-edge-3',
+        cornerVertexId: 'footprint-vertex-3',
+        attachmentMode: 'corner_dual_edge',
+        attached: true,
+        presetRect: {
+          widthM: '3',
+          depthM: '2',
+          centerOffsetM: '0',
+        },
+      }),
+    ).toEqual([
+      { alongM: '2', depthM: '2' },
+      { alongM: '5', depthM: '2' },
+      { alongM: '5', depthM: '4' },
+      { alongM: '2', depthM: '4' },
+    ]);
   });
 });

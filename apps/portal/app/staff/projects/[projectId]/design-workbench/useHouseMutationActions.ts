@@ -211,6 +211,10 @@ function buildNewDeckDraft(input: {
     elevationMode: input.mode === 'preset' ? 'aligned_to_threshold' : 'ground',
     levelOffsetMm: '0',
     hostEdgeId: input.hostEdgeId,
+    attachmentMode: input.mode === 'preset' ? 'single_edge' : 'floating',
+    primaryHostEdgeId: input.hostEdgeId,
+    secondaryHostEdgeId: null,
+    cornerVertexId: null,
     isAttached: input.mode === 'preset',
     surfaceMaterial: 'timber_decking',
   };

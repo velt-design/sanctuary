@@ -43,6 +43,7 @@ export type HouseRoofProvenance = {
 export type DeckKind = 'deck' | 'landing';
 export type DeckShape = 'preset' | 'custom';
 export type DeckPlacementMode = 'snapped' | 'floating';
+export type DeckAttachmentMode = 'floating' | 'single_edge' | 'corner_dual_edge';
 // `rect_attached` / `rect_detached` remain the legacy persistence values in PR1.
 // They are not the long-term canonical placement semantics for preset decks.
 export type DeckPresetType = 'rect_attached' | 'rect_detached';
@@ -161,6 +162,10 @@ export type DeckModel = {
   levelOffsetMm: string;
   // Floating preset decks may retain an optional witness edge for dimensions and future resnap hints.
   hostEdgeId: string | null;
+  attachmentMode?: DeckAttachmentMode;
+  primaryHostEdgeId?: string | null;
+  secondaryHostEdgeId?: string | null;
+  cornerVertexId?: string | null;
   isAttached: boolean;
   surfaceMaterial: DeckSurfaceMaterial;
   topSurfaceElevationMm: number;
@@ -169,6 +174,10 @@ export type DeckModel = {
     nearestHouseEdgeId: string | null;
     nearestHouseEdgeDistanceMm: number | null;
     attachmentContactLengthMm: number | null;
+    attachmentContacts?: Array<{
+      hostEdgeId: string;
+      lengthMm: number;
+    }>;
     warningCodes: DeckSupportWarningCode[];
     warningMessages: string[];
   };
@@ -313,6 +322,10 @@ export type HouseFirstDeckDraft = {
   elevationMode?: DeckElevationMode | null;
   levelOffsetMm?: string | null;
   hostEdgeId?: string | null;
+  attachmentMode?: DeckAttachmentMode | null;
+  primaryHostEdgeId?: string | null;
+  secondaryHostEdgeId?: string | null;
+  cornerVertexId?: string | null;
   isAttached?: boolean | null;
   surfaceMaterial?: DeckSurfaceMaterial | null;
 };

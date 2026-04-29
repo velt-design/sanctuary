@@ -369,7 +369,7 @@ describe('houseFirstPlanOverlay', () => {
 
     expect(overlay?.shapes).toHaveLength(2);
     expect(overlay?.presetAnnotations.map((annotation) => annotation.fieldKey)).toEqual(
-      expect.arrayContaining(['widthM', 'depthM', 'referenceEdgeGapM', 'crossEdgeGapM']),
+      expect.arrayContaining(['widthM', 'depthM', 'referenceEdgeGapM']),
     );
     expect(overlay?.presetAnnotations.find((annotation) => annotation.fieldKey === 'centerOffsetM')).toBeUndefined();
   });
@@ -723,15 +723,13 @@ describe('houseFirstPlanOverlay', () => {
       moduleProjectionM: '3',
     });
 
-    expect(overlay?.presetAnnotations.map((annotation) => annotation.fieldKey)).toEqual(
-      expect.arrayContaining(['crossEdgeGapM']),
-    );
+    expect(overlay?.presetAnnotations).toEqual([]);
     expect(
       overlay?.shapes.find((shape) => shape.ownerKind === 'deck')?.deckDragEligibility,
     ).toEqual({
       eligible: true,
       reason:
-        'Drag the selected deck body to translate it relative to the house, or click relationship dimensions and outline edges to edit.',
+        'Drag the selected custom deck body to translate it relative to the house, or click relationship dimensions and outline edges to edit.',
     });
   });
 
@@ -856,9 +854,9 @@ describe('houseFirstPlanOverlay', () => {
     expect(deckSolidObject).toBeDefined();
     expect(toScenePolygonMetres(deckShape?.polygon ?? [])).toEqual(sceneDeckPolygon);
     expect(toScenePolygonMetres(footprintShape?.polygon ?? [])).toEqual(sceneFootprintPolygon);
-    expect(openingObject).toBeUndefined();
-    expect(preview.scene.metadata.houseOpeningSkippedInvalidCount).toBe(1);
-    expect(store.derived.house?.openings[0]?.validation.status).toBe('invalid');
+    expect(openingObject).toBeDefined();
+    expect(preview.scene.metadata.houseOpeningSkippedInvalidCount).toBe(0);
+    expect(store.derived.house?.openings[0]?.validation.status).toBe('valid');
   });
 
   it('matches a valid opening plan polygon to the XY wall footprint of the 3D opening marker', () => {

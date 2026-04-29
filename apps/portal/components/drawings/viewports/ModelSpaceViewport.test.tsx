@@ -4317,7 +4317,7 @@ describe('ModelSpaceViewport', () => {
     });
     await waitForHouseFirstDeckDragUnlock(rendered.container);
 
-    expect(rendered.container.querySelector('[data-testid="deck-center-offset"]')?.textContent).toBe('-1');
+    expect(rendered.container.querySelector('[data-testid="deck-center-offset"]')?.textContent).toBe('-25');
     expect(scroller.dataset.houseFirstDeckDragActive).toBe('false');
     expect(rendered.container.querySelector('[aria-label="Deck interaction hint"]')?.textContent).toContain('Position updated');
     await act(async () => {

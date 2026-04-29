@@ -765,6 +765,10 @@ function isDeckElevationMode(value: unknown): value is DeckElevationMode {
   return value === 'ground' || value === 'stepped' || value === 'aligned_to_threshold';
 }
 
+function isDeckAttachmentMode(value: unknown): value is HouseFirstDeckDraft['attachmentMode'] {
+  return value === 'floating' || value === 'single_edge' || value === 'corner_dual_edge';
+}
+
 function isDeckSurfaceMaterial(value: unknown): value is DeckSurfaceMaterial {
   return value === 'timber_decking' || value === 'composite' || value === 'concrete';
 }
@@ -825,6 +829,16 @@ function normalizeHouseFirstDeckDraft(
       : null),
     ...(typeof deck.hostEdgeId === 'string' && deck.hostEdgeId.trim()
       ? { hostEdgeId: deck.hostEdgeId.trim() }
+      : null),
+    ...(isDeckAttachmentMode(deck.attachmentMode) ? { attachmentMode: deck.attachmentMode } : null),
+    ...(typeof deck.primaryHostEdgeId === 'string' && deck.primaryHostEdgeId.trim()
+      ? { primaryHostEdgeId: deck.primaryHostEdgeId.trim() }
+      : null),
+    ...(typeof deck.secondaryHostEdgeId === 'string' && deck.secondaryHostEdgeId.trim()
+      ? { secondaryHostEdgeId: deck.secondaryHostEdgeId.trim() }
+      : null),
+    ...(typeof deck.cornerVertexId === 'string' && deck.cornerVertexId.trim()
+      ? { cornerVertexId: deck.cornerVertexId.trim() }
       : null),
     ...(typeof deck.isAttached === 'boolean' ? { isAttached: deck.isAttached } : null),
     ...(isDeckSurfaceMaterial(deck.surfaceMaterial) ? { surfaceMaterial: deck.surfaceMaterial } : null),

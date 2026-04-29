@@ -51,7 +51,7 @@ export type ObjectInteractionPreviewOverlay<TPoint extends ObjectInteractionPrev
   bodyState: ObjectInteractionPreviewBodyState;
   anchorPoint: TPoint | null;
   referenceGuide: ObjectInteractionPreviewReferenceGuide<TPoint> | null;
-  targetHighlight: ObjectInteractionPreviewTargetHighlight<TPoint> | null;
+  targetHighlights: ObjectInteractionPreviewTargetHighlight<TPoint>[];
 };
 
 export type ObjectInteractionViewState = {

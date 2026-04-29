@@ -680,6 +680,50 @@ function nearestHouseEdge(polygon: LocalPolygonPoint[], candidate: LocalPolygonP
   };
 }
 
+function collectHouseEdgeAttachmentContacts(input: {
+  polygon: LocalPolygonPoint[];
+  candidate: LocalPolygonPoint[];
+}): Array<{ hostEdgeId: string; lengthMm: number }> {
+  if (!input.polygon.length || !input.candidate.length) return [];
+  const contacts = new Map<string, number>();
+
+  for (let houseIndex = 0; houseIndex < input.polygon.length; houseIndex += 1) {
+    const houseStart = input.polygon[houseIndex]!;
+    const houseEnd = input.polygon[(houseIndex + 1) % input.polygon.length]!;
+    for (let candidateIndex = 0; candidateIndex < input.candidate.length; candidateIndex += 1) {
+      const candidateStart = input.candidate[candidateIndex]!;
+      const candidateEnd = input.candidate[(candidateIndex + 1) % input.candidate.length]!;
+      const horizontalMatch =
+        Math.abs(houseStart.depthM - houseEnd.depthM) <= 1e-6 &&
+        Math.abs(candidateStart.depthM - candidateEnd.depthM) <= 1e-6 &&
+        Math.abs(houseStart.depthM - candidateStart.depthM) <= 1e-6;
+      const verticalMatch =
+        Math.abs(houseStart.alongM - houseEnd.alongM) <= 1e-6 &&
+        Math.abs(candidateStart.alongM - candidateEnd.alongM) <= 1e-6 &&
+        Math.abs(houseStart.alongM - candidateStart.alongM) <= 1e-6;
+      if (!horizontalMatch && !verticalMatch) continue;
+      const overlapM = horizontalMatch
+        ? Math.max(
+            0,
+            Math.min(Math.max(houseStart.alongM, houseEnd.alongM), Math.max(candidateStart.alongM, candidateEnd.alongM)) -
+              Math.max(Math.min(houseStart.alongM, houseEnd.alongM), Math.min(candidateStart.alongM, candidateEnd.alongM)),
+          )
+        : Math.max(
+            0,
+            Math.min(Math.max(houseStart.depthM, houseEnd.depthM), Math.max(candidateStart.depthM, candidateEnd.depthM)) -
+              Math.max(Math.min(houseStart.depthM, houseEnd.depthM), Math.min(candidateStart.depthM, candidateEnd.depthM)),
+          );
+      if (overlapM <= 1e-6) continue;
+      const hostEdgeId = `footprint-edge-${houseIndex + 1}`;
+      contacts.set(hostEdgeId, Math.max(contacts.get(hostEdgeId) ?? 0, Math.round(overlapM * 1000)));
+    }
+  }
+
+  return Array.from(contacts.entries())
+    .map(([hostEdgeId, lengthMm]) => ({ hostEdgeId, lengthMm }))
+    .sort((left, right) => right.lengthMm - left.lengthMm || left.hostEdgeId.localeCompare(right.hostEdgeId));
+}
+
 function outlinesOverlap(left: LocalPolygonPoint[], right: LocalPolygonPoint[]): boolean {
   if (!left.length || !right.length) return false;
   if (left.some((point) => pointInLocalPolygon(point, right))) return true;
@@ -711,6 +755,10 @@ function validateDeckDraft(
     nearestHouseEdgeId: string | null;
     nearestHouseEdgeDistanceMm: number | null;
     attachmentContactLengthMm: number | null;
+    attachmentContacts: Array<{
+      hostEdgeId: string;
+      lengthMm: number;
+    }>;
     warningCodes: DeckSupportWarningCode[];
     warningMessages: string[];
   };
@@ -722,8 +770,26 @@ function validateDeckDraft(
   const warningCodes: DeckSupportWarningCode[] = [];
   const warningMessages: string[] = [];
   const nearestEdge = nearestHouseEdge(context.housePolygon, outline);
+  const attachmentContacts = collectHouseEdgeAttachmentContacts({
+    polygon: context.housePolygon,
+    candidate: outline,
+  });
   const levelOffsetMm = Math.round(Number(deck.levelOffsetMm ?? '0') || 0);
   const isAttached = Boolean(deck.isAttached);
+  const attachmentMode = deck.attachmentMode ?? (deck.secondaryHostEdgeId && deck.cornerVertexId ? 'corner_dual_edge' : isAttached ? 'single_edge' : 'floating');
+  const requestedAttachmentContacts = [
+    deck.primaryHostEdgeId ?? deck.hostEdgeId ?? null,
+    attachmentMode === 'corner_dual_edge' ? deck.secondaryHostEdgeId ?? null : null,
+  ]
+    .filter((hostEdgeId): hostEdgeId is string => typeof hostEdgeId === 'string' && hostEdgeId.trim().length > 0)
+    .map((hostEdgeId) => ({
+      hostEdgeId,
+      lengthMm: attachmentContacts.find((contact) => contact.hostEdgeId === hostEdgeId)?.lengthMm ?? 0,
+    }));
+  const minimumRequestedContactLengthMm =
+    requestedAttachmentContacts.length > 0
+      ? Math.min(...requestedAttachmentContacts.map((contact) => contact.lengthMm))
+      : 0;
   const elevationMode = deck.elevationMode ?? 'ground';
 
   if (outline.length < 3 || Math.abs(localPolygonArea(outline)) <= 1e-6) {
@@ -753,7 +819,7 @@ function validateDeckDraft(
     }
   }
 
-  if (isAttached && isBlankString(deck.hostEdgeId ?? '')) {
+  if (isAttached && isBlankString((deck.primaryHostEdgeId ?? deck.hostEdgeId) ?? '')) {
     codes.push('attached_missing_host_edge');
     messages.push('Attached decks need a host edge.');
   }
@@ -762,9 +828,13 @@ function validateDeckDraft(
     messages.push('Detached decks cannot use threshold-aligned elevation.');
   }
 
-  if (isAttached && (nearestEdge.attachmentContactLengthMm ?? 0) < 200) {
+  if (isAttached && minimumRequestedContactLengthMm < 200) {
     warningCodes.push('insufficient_host_edge_contact');
-    warningMessages.push('Attached deck contact to the selected host edge is too small to classify cleanly.');
+    warningMessages.push(
+      attachmentMode === 'corner_dual_edge'
+        ? 'Corner-attached deck contact is too small on one or both attached walls to classify cleanly.'
+        : 'Attached deck contact to the selected host edge is too small to classify cleanly.',
+    );
   }
   if (!isAttached && (nearestEdge.distanceMm ?? Number.POSITIVE_INFINITY) < 150) {
     warningCodes.push('detached_too_close_to_house');
@@ -797,7 +867,11 @@ function validateDeckDraft(
       classification,
       nearestHouseEdgeId: nearestEdge.id,
       nearestHouseEdgeDistanceMm: nearestEdge.distanceMm,
-      attachmentContactLengthMm: nearestEdge.attachmentContactLengthMm,
+      attachmentContactLengthMm:
+        requestedAttachmentContacts.length > 0
+          ? Math.max(...requestedAttachmentContacts.map((contact) => contact.lengthMm))
+          : nearestEdge.attachmentContactLengthMm,
+      attachmentContacts,
       warningCodes,
       warningMessages,
     },
@@ -1127,6 +1201,10 @@ function buildSharedDecks(input: {
       {
         ...draft,
         hostEdgeId: presetGeometry.hostEdgeId,
+        attachmentMode: presetGeometry.attachmentMode,
+        primaryHostEdgeId: presetGeometry.primaryHostEdgeId,
+        secondaryHostEdgeId: presetGeometry.secondaryHostEdgeId,
+        cornerVertexId: presetGeometry.cornerVertexId,
         presetRect: presetGeometry.presetRect,
         outline,
       },
@@ -1155,7 +1233,11 @@ function buildSharedDecks(input: {
           : 'ground',
       levelOffsetMm: draft.levelOffsetMm?.trim() || '0',
       hostEdgeId: presetGeometry.hostEdgeId,
-      isAttached: Boolean(draft.isAttached),
+      attachmentMode: presetGeometry.attachmentMode,
+      primaryHostEdgeId: presetGeometry.primaryHostEdgeId,
+      secondaryHostEdgeId: presetGeometry.secondaryHostEdgeId,
+      cornerVertexId: presetGeometry.cornerVertexId,
+      isAttached: presetGeometry.attachmentMode !== 'floating',
       surfaceMaterial:
         draft.surfaceMaterial === 'composite' || draft.surfaceMaterial === 'concrete'
           ? draft.surfaceMaterial

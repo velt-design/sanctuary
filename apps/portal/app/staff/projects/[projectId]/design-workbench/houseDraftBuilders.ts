@@ -26,6 +26,10 @@ export function toDeckDrafts(house: HouseModel | null | undefined): HouseFirstDe
     elevationMode: deck.elevationMode,
     levelOffsetMm: deck.levelOffsetMm,
     hostEdgeId: deck.hostEdgeId,
+    attachmentMode: deck.attachmentMode,
+    primaryHostEdgeId: deck.primaryHostEdgeId,
+    secondaryHostEdgeId: deck.secondaryHostEdgeId,
+    cornerVertexId: deck.cornerVertexId,
     isAttached: deck.isAttached,
     surfaceMaterial: deck.surfaceMaterial,
   }));
@@ -105,6 +109,10 @@ export function resolveDeckDraftGeometry(input: {
   return {
     ...input.deck,
     hostEdgeId: resolved.hostEdgeId,
+    attachmentMode: resolved.attachmentMode,
+    primaryHostEdgeId: resolved.primaryHostEdgeId,
+    secondaryHostEdgeId: resolved.secondaryHostEdgeId,
+    cornerVertexId: resolved.cornerVertexId,
     presetRect: resolved.presetRect,
     floatingRect: resolved.floatingRect,
     outline: resolved.outline,

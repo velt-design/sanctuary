@@ -66,11 +66,11 @@ export function buildObjectInteractionPreviewOverlay<TPoint extends { x: number;
   viewState: ObjectInteractionViewState | null;
   anchorPoint?: TPoint | null;
   referenceGuide?: ObjectInteractionPreviewOverlay<TPoint>['referenceGuide'];
-  targetHighlight?:
-    | ({
+  targetHighlights?: Array<{
         start: TPoint;
         end: TPoint;
-      } & Partial<Pick<NonNullable<ObjectInteractionPreviewOverlay<TPoint>['targetHighlight']>, 'state'>>)
+        state?: ObjectInteractionPreviewTargetState;
+      }>
     | null;
 }): ObjectInteractionPreviewOverlay<TPoint> {
   return {
@@ -83,12 +83,10 @@ export function buildObjectInteractionPreviewOverlay<TPoint extends { x: number;
       input.viewState?.referenceGuideState !== 'none'
         ? input.referenceGuide ?? null
         : null,
-    targetHighlight: input.targetHighlight
-      ? {
-          start: input.targetHighlight.start,
-          end: input.targetHighlight.end,
-          state: input.targetHighlight.state ?? resolveObjectInteractionPreviewTargetState(input.viewState),
-        }
-      : null,
+    targetHighlights: (input.targetHighlights ?? []).map((targetHighlight) => ({
+      start: targetHighlight.start,
+      end: targetHighlight.end,
+      state: targetHighlight.state ?? resolveObjectInteractionPreviewTargetState(input.viewState),
+    })),
   };
 }

@@ -4,6 +4,7 @@ import type {
   CalculatorHouseFootprintPolygonPoint,
 } from '@/lib/types/calculator';
 import type {
+  DeckAttachmentMode,
   DeckFloatingPresetRect,
   DeckPresetRect,
   HouseFirstDeckDraft,
@@ -67,6 +68,39 @@ function resolveDeckGeometryHostEdgeId(value: string | null | undefined): string
   return normalizeHostEdgeId(value);
 }
 
+function normalizeDeckAttachmentMode(input: {
+  attachmentMode: DeckAttachmentMode | null | undefined;
+  isAttached: boolean;
+  secondaryHostEdgeId: string | null | undefined;
+  cornerVertexId: string | null | undefined;
+}): DeckAttachmentMode {
+  if (input.attachmentMode === 'corner_dual_edge') return 'corner_dual_edge';
+  if (
+    input.isAttached &&
+    typeof input.secondaryHostEdgeId === 'string' &&
+    input.secondaryHostEdgeId.trim().length > 0 &&
+    typeof input.cornerVertexId === 'string' &&
+    input.cornerVertexId.trim().length > 0
+  ) {
+    return 'corner_dual_edge';
+  }
+  if (input.attachmentMode === 'single_edge') return 'single_edge';
+  if (input.isAttached) return 'single_edge';
+  return 'floating';
+}
+
+function normalizeDeckPrimaryHostEdgeId(deck: HouseFirstDeckDraft): string | null {
+  return deck.primaryHostEdgeId ?? deck.hostEdgeId ?? null;
+}
+
+function normalizeDeckSecondaryHostEdgeId(deck: HouseFirstDeckDraft): string | null {
+  return deck.secondaryHostEdgeId ?? null;
+}
+
+function normalizeDeckCornerVertexId(deck: HouseFirstDeckDraft): string | null {
+  return deck.cornerVertexId ?? null;
+}
+
 export function parseDeckLocalPolygon(
   polygon: CalculatorHouseFootprintPolygonPoint[] | null | undefined,
 ): LocalPolygonPoint[] {
@@ -108,6 +142,21 @@ type EdgeInterval = {
 
 type HostEdgeCandidate = DeckHostEdgeFrame & {
   sourceEdgeId: string;
+  sourceVertexIndex: number;
+  startPoint: LocalPolygonPoint;
+  endPoint: LocalPolygonPoint;
+};
+
+type DeckCornerAttachmentCandidate = {
+  attachmentMode: 'corner_dual_edge';
+  primaryFrame: HostEdgeCandidate;
+  secondaryFrame: HostEdgeCandidate;
+  primaryHostEdgeId: string;
+  secondaryHostEdgeId: string;
+  cornerVertexId: string;
+  cornerPoint: LocalPolygonPoint;
+  alongDirection: -1 | 1;
+  depthDirection: -1 | 1;
 };
 
 function mergeTouchingIntervals(intervals: EdgeInterval[]): EdgeInterval[] {
@@ -138,86 +187,169 @@ function pickPrimaryEdgeInterval(intervals: EdgeInterval[]): EdgeInterval | null
 }
 
 function edgeCandidatesForHousePolygon(housePolygon: LocalPolygonPoint[]): HostEdgeCandidate[] {
-  const bounds = computeHouseBounds(housePolygon);
   return housePolygon.flatMap((point, index) => {
     const nextPoint = housePolygon[(index + 1) % housePolygon.length];
     if (!nextPoint) return [];
     const sourceEdgeId = `footprint-edge-${index + 1}`;
+    const horizontal = Math.abs(point.depthM - nextPoint.depthM) <= EPSILON;
+    const vertical = Math.abs(point.alongM - nextPoint.alongM) <= EPSILON;
+    if (!horizontal && !vertical) return [];
 
-    if (
-      Math.abs(point.depthM - nextPoint.depthM) <= EPSILON &&
-      Math.abs(point.depthM - bounds.minDepth) <= EPSILON
-    ) {
-      return [
-        {
-          hostEdge: 'rear' as const,
-          sourceEdgeId,
-          axis: 'along' as const,
-          start: Math.min(point.alongM, nextPoint.alongM),
-          end: Math.max(point.alongM, nextPoint.alongM),
-          edgeCoordinate: bounds.minDepth,
-          outwardAxis: 'depth' as const,
-          outwardDirection: -1 as const,
-        },
-      ];
-    }
+    const midpoint = {
+      alongM: (point.alongM + nextPoint.alongM) / 2,
+      depthM: (point.depthM + nextPoint.depthM) / 2,
+    };
+    const probeDistanceM = 0.05;
+    const normalA = horizontal
+      ? { alongM: 0, depthM: 1 }
+      : { alongM: 1, depthM: 0 };
+    const normalB = horizontal
+      ? { alongM: 0, depthM: -1 }
+      : { alongM: -1, depthM: 0 };
+    const probeA = {
+      alongM: midpoint.alongM + normalA.alongM * probeDistanceM,
+      depthM: midpoint.depthM + normalA.depthM * probeDistanceM,
+    };
+    const probeB = {
+      alongM: midpoint.alongM + normalB.alongM * probeDistanceM,
+      depthM: midpoint.depthM + normalB.depthM * probeDistanceM,
+    };
+    const probeAInside = pointInLocalPolygon(probeA, housePolygon);
+    const probeBInside = pointInLocalPolygon(probeB, housePolygon);
+    const outward =
+      probeAInside && !probeBInside
+        ? normalB
+        : !probeAInside && probeBInside
+          ? normalA
+          : normalB;
+    const hostEdge = horizontal
+      ? (outward.depthM < 0 ? 'rear' : 'front')
+      : (outward.alongM < 0 ? 'left' : 'right');
 
-    if (
-      Math.abs(point.depthM - nextPoint.depthM) <= EPSILON &&
-      Math.abs(point.depthM - bounds.maxDepth) <= EPSILON
-    ) {
-      return [
-        {
-          hostEdge: 'front' as const,
-          sourceEdgeId,
-          axis: 'along' as const,
-          start: Math.min(point.alongM, nextPoint.alongM),
-          end: Math.max(point.alongM, nextPoint.alongM),
-          edgeCoordinate: bounds.maxDepth,
-          outwardAxis: 'depth' as const,
-          outwardDirection: 1 as const,
-        },
-      ];
-    }
-
-    if (
-      Math.abs(point.alongM - nextPoint.alongM) <= EPSILON &&
-      Math.abs(point.alongM - bounds.minAlong) <= EPSILON
-    ) {
-      return [
-        {
-          hostEdge: 'left' as const,
-          sourceEdgeId,
-          axis: 'depth' as const,
-          start: Math.min(point.depthM, nextPoint.depthM),
-          end: Math.max(point.depthM, nextPoint.depthM),
-          edgeCoordinate: bounds.minAlong,
-          outwardAxis: 'along' as const,
-          outwardDirection: -1 as const,
-        },
-      ];
-    }
-
-    if (
-      Math.abs(point.alongM - nextPoint.alongM) <= EPSILON &&
-      Math.abs(point.alongM - bounds.maxAlong) <= EPSILON
-    ) {
-      return [
-        {
-          hostEdge: 'right' as const,
-          sourceEdgeId,
-          axis: 'depth' as const,
-          start: Math.min(point.depthM, nextPoint.depthM),
-          end: Math.max(point.depthM, nextPoint.depthM),
-          edgeCoordinate: bounds.maxAlong,
-          outwardAxis: 'along' as const,
-          outwardDirection: 1 as const,
-        },
-      ];
-    }
-
-    return [];
+    return [
+      {
+        hostEdge,
+        sourceEdgeId,
+        axis: horizontal ? 'along' : 'depth',
+        start: horizontal ? Math.min(point.alongM, nextPoint.alongM) : Math.min(point.depthM, nextPoint.depthM),
+        end: horizontal ? Math.max(point.alongM, nextPoint.alongM) : Math.max(point.depthM, nextPoint.depthM),
+        edgeCoordinate: horizontal ? point.depthM : point.alongM,
+        outwardAxis: horizontal ? 'depth' : 'along',
+        outwardDirection: horizontal
+          ? (outward.depthM < 0 ? -1 : 1)
+          : (outward.alongM < 0 ? -1 : 1),
+        sourceVertexIndex: index,
+        startPoint: point,
+        endPoint: nextPoint,
+      },
+    ];
   });
+}
+
+function buildDeckCornerVertexId(vertexIndex: number): string {
+  return `footprint-vertex-${vertexIndex + 1}`;
+}
+
+function pointsMatch(left: LocalPolygonPoint, right: LocalPolygonPoint): boolean {
+  return Math.abs(left.alongM - right.alongM) <= EPSILON && Math.abs(left.depthM - right.depthM) <= EPSILON;
+}
+
+function resolveCornerVertexPoint(input: {
+  primaryFrame: HostEdgeCandidate;
+  secondaryFrame: HostEdgeCandidate;
+  requestedCornerVertexId: string | null | undefined;
+}): { cornerVertexId: string; cornerPoint: LocalPolygonPoint } | null {
+  const primaryEndpoints = [
+    { point: input.primaryFrame.startPoint, vertexIndex: input.primaryFrame.sourceVertexIndex },
+    { point: input.primaryFrame.endPoint, vertexIndex: input.primaryFrame.sourceVertexIndex + 1 },
+  ];
+  const secondaryEndpoints = [
+    { point: input.secondaryFrame.startPoint, vertexIndex: input.secondaryFrame.sourceVertexIndex },
+    { point: input.secondaryFrame.endPoint, vertexIndex: input.secondaryFrame.sourceVertexIndex + 1 },
+  ];
+  const sharedEndpoint =
+    primaryEndpoints.flatMap((primaryEndpoint) =>
+      secondaryEndpoints
+        .filter((secondaryEndpoint) => pointsMatch(primaryEndpoint.point, secondaryEndpoint.point))
+        .map(() => primaryEndpoint),
+    )[0] ?? null;
+  if (!sharedEndpoint) return null;
+
+  const cornerVertexId = buildDeckCornerVertexId(sharedEndpoint.vertexIndex);
+  if (
+    input.requestedCornerVertexId &&
+    input.requestedCornerVertexId.trim().length > 0 &&
+    input.requestedCornerVertexId.trim() !== cornerVertexId
+  ) {
+    return null;
+  }
+
+  return {
+    cornerVertexId,
+    cornerPoint: sharedEndpoint.point,
+  };
+}
+
+function pointInLocalPolygon(point: LocalPolygonPoint, polygon: LocalPolygonPoint[]): boolean {
+  let inside = false;
+  for (let index = 0, previous = polygon.length - 1; index < polygon.length; previous = index, index += 1) {
+    const currentPoint = polygon[index]!;
+    const previousPoint = polygon[previous]!;
+    const intersects =
+      currentPoint.depthM > point.depthM !== previousPoint.depthM > point.depthM &&
+      point.alongM <
+        ((previousPoint.alongM - currentPoint.alongM) * (point.depthM - currentPoint.depthM)) /
+          Math.max(previousPoint.depthM - currentPoint.depthM, Number.EPSILON) +
+          currentPoint.alongM;
+    if (intersects) inside = !inside;
+  }
+  return inside;
+}
+
+function resolveDeckCornerAttachmentCandidate(input: {
+  housePolygon: CalculatorHouseFootprintPolygonPoint[] | null | undefined;
+  primaryHostEdgeId: string | null | undefined;
+  secondaryHostEdgeId: string | null | undefined;
+  cornerVertexId: string | null | undefined;
+}): DeckCornerAttachmentCandidate | null {
+  const housePolygon = parseDeckLocalPolygon(input.housePolygon);
+  if (!housePolygon.length) return null;
+  const exactPrimaryHostEdgeId = normalizeExactHostEdgeId(input.primaryHostEdgeId);
+  const exactSecondaryHostEdgeId = normalizeExactHostEdgeId(input.secondaryHostEdgeId);
+  if (!exactPrimaryHostEdgeId || !exactSecondaryHostEdgeId || exactPrimaryHostEdgeId === exactSecondaryHostEdgeId) {
+    return null;
+  }
+
+  const candidates = edgeCandidatesForHousePolygon(housePolygon);
+  const primaryFrame = candidates.find((candidate) => candidate.sourceEdgeId === exactPrimaryHostEdgeId) ?? null;
+  const secondaryFrame = candidates.find((candidate) => candidate.sourceEdgeId === exactSecondaryHostEdgeId) ?? null;
+  if (!primaryFrame || !secondaryFrame || primaryFrame.axis === secondaryFrame.axis) return null;
+
+  const cornerVertex = resolveCornerVertexPoint({
+    primaryFrame,
+    secondaryFrame,
+    requestedCornerVertexId: input.cornerVertexId,
+  });
+  if (!cornerVertex) return null;
+
+  const summedAlongDirection =
+    (primaryFrame.outwardAxis === 'along' ? primaryFrame.outwardDirection : 0) +
+    (secondaryFrame.outwardAxis === 'along' ? secondaryFrame.outwardDirection : 0);
+  const summedDepthDirection =
+    (primaryFrame.outwardAxis === 'depth' ? primaryFrame.outwardDirection : 0) +
+    (secondaryFrame.outwardAxis === 'depth' ? secondaryFrame.outwardDirection : 0);
+
+  return {
+    attachmentMode: 'corner_dual_edge',
+    primaryFrame,
+    secondaryFrame,
+    primaryHostEdgeId: primaryFrame.sourceEdgeId,
+    secondaryHostEdgeId: secondaryFrame.sourceEdgeId,
+    cornerVertexId: cornerVertex.cornerVertexId,
+    cornerPoint: cornerVertex.cornerPoint,
+    alongDirection: summedAlongDirection < 0 ? -1 : 1,
+    depthDirection: summedDepthDirection < 0 ? -1 : 1,
+  };
 }
 
 function normalizeExactHostEdgeId(value: string | null | undefined): string | null {
@@ -360,8 +492,7 @@ export function sanitizeDeckPresetRect(input: {
       MIN_DECK_WIDTH_M,
       parseFiniteDeckMetres(fallback.widthM) ?? parseFiniteDeckMetres(defaults.widthM) ?? MIN_DECK_WIDTH_M,
     );
-    const resolved = Math.max(MIN_DECK_WIDTH_M, parsed ?? fallbackValue);
-    return input.attached ? Math.min(resolved, hostEdgeLengthM || resolved) : resolved;
+    return Math.max(MIN_DECK_WIDTH_M, parsed ?? fallbackValue);
   })();
   const depthM = Math.max(
     MIN_DECK_DEPTH_M,
@@ -387,11 +518,7 @@ export function sanitizeDeckPresetRect(input: {
     parseFiniteDeckMetres(fallback.centerOffsetM) ??
     parseFiniteDeckMetres(defaults.centerOffsetM) ??
     0;
-  const availableOffsetHalfSpanM =
-    widthM <= hostEdgeLengthM + EPSILON ? Math.max(0, (hostEdgeLengthM - widthM) / 2) : 0;
-  const centerOffsetM = input.attached
-    ? clamp(requestedCenterOffsetM, -availableOffsetHalfSpanM, availableOffsetHalfSpanM)
-    : requestedCenterOffsetM;
+  const centerOffsetM = requestedCenterOffsetM;
 
   return {
     widthM: formatDeckMetres(widthM),
@@ -438,18 +565,54 @@ export function buildRectangularDeckOutline(input: {
   housePolygon: CalculatorHouseFootprintPolygonPoint[] | null | undefined;
   hostEdgeId: string | null | undefined;
   attached: boolean;
+  attachmentMode?: DeckAttachmentMode | null | undefined;
+  primaryHostEdgeId?: string | null | undefined;
+  secondaryHostEdgeId?: string | null | undefined;
+  cornerVertexId?: string | null | undefined;
   presetRect: Partial<DeckPresetRect> | null | undefined;
   fallbackPresetRect?: DeckPresetRect | null | undefined;
 }): CalculatorHouseFootprintPolygonPoint[] {
+  const attachmentMode = normalizeDeckAttachmentMode({
+    attachmentMode: input.attachmentMode,
+    isAttached: input.attached,
+    secondaryHostEdgeId: input.secondaryHostEdgeId,
+    cornerVertexId: input.cornerVertexId,
+  });
+  const primaryHostEdgeId = input.primaryHostEdgeId ?? input.hostEdgeId;
   const frame = resolveDeckHostEdgeFrame({
     housePolygon: input.housePolygon,
-    hostEdgeId: input.hostEdgeId,
+    hostEdgeId: primaryHostEdgeId,
   });
-  const presetRect = sanitizeDeckPresetRect(input);
+  const presetRect = sanitizeDeckPresetRect({
+    housePolygon: input.housePolygon,
+    hostEdgeId: primaryHostEdgeId,
+    attached: input.attached,
+    presetRect: input.presetRect,
+    fallbackPresetRect: input.fallbackPresetRect,
+  });
   if (!frame || !presetRect) return [];
 
   const widthM = Number(presetRect.widthM);
   const depthM = Number(presetRect.depthM);
+  if (attachmentMode === 'corner_dual_edge') {
+    const cornerAttachment = resolveDeckCornerAttachmentCandidate({
+      housePolygon: input.housePolygon,
+      primaryHostEdgeId,
+      secondaryHostEdgeId: input.secondaryHostEdgeId,
+      cornerVertexId: input.cornerVertexId,
+    });
+    if (!cornerAttachment) return [];
+    const minAlongM = cornerAttachment.cornerPoint.alongM + Math.min(0, cornerAttachment.alongDirection * widthM);
+    const maxAlongM = cornerAttachment.cornerPoint.alongM + Math.max(0, cornerAttachment.alongDirection * widthM);
+    const minDepthM = cornerAttachment.cornerPoint.depthM + Math.min(0, cornerAttachment.depthDirection * depthM);
+    const maxDepthM = cornerAttachment.cornerPoint.depthM + Math.max(0, cornerAttachment.depthDirection * depthM);
+    return [
+      { alongM: formatDeckMetres(minAlongM), depthM: formatDeckMetres(minDepthM) },
+      { alongM: formatDeckMetres(maxAlongM), depthM: formatDeckMetres(minDepthM) },
+      { alongM: formatDeckMetres(maxAlongM), depthM: formatDeckMetres(maxDepthM) },
+      { alongM: formatDeckMetres(minAlongM), depthM: formatDeckMetres(maxDepthM) },
+    ];
+  }
   const centerOffsetM = Number(presetRect.centerOffsetM);
   const detachedGapM = input.attached ? 0 : Number(presetRect.detachedGapM ?? DEFAULT_DETACHED_DECK_GAP_M);
   const edgeMidpoint = (frame.start + frame.end) / 2;
@@ -580,18 +743,50 @@ export function resolveDeckPresetGeometry(input: {
   housePolygon: CalculatorHouseFootprintPolygonPoint[] | null | undefined;
 }): {
   hostEdgeId: AttachmentSide | string | null;
+  attachmentMode: DeckAttachmentMode;
+  primaryHostEdgeId: string | null;
+  secondaryHostEdgeId: string | null;
+  cornerVertexId: string | null;
   presetRect: DeckPresetRect | null;
   floatingRect: DeckFloatingPresetRect | null;
   outline: CalculatorHouseFootprintPolygonPoint[];
 } {
   const attached = Boolean(input.deck.isAttached);
-  const fallbackHostEdgeId = resolveDeckGeometryHostEdgeId(input.deck.hostEdgeId);
-  const hostEdgeId = input.deck.shape === 'preset' ? fallbackHostEdgeId : input.deck.hostEdgeId ?? null;
+  const normalizedAttachmentMode = normalizeDeckAttachmentMode({
+    attachmentMode: input.deck.attachmentMode,
+    isAttached: attached,
+    secondaryHostEdgeId: input.deck.secondaryHostEdgeId,
+    cornerVertexId: input.deck.cornerVertexId,
+  });
+  const fallbackPrimaryHostEdgeId = resolveDeckGeometryHostEdgeId(normalizeDeckPrimaryHostEdgeId(input.deck));
+  const fallbackSecondaryHostEdgeId = normalizeExactHostEdgeId(normalizeDeckSecondaryHostEdgeId(input.deck));
+  const fallbackCornerVertexId = normalizeDeckCornerVertexId(input.deck);
+  const cornerAttachment =
+    input.deck.shape === 'preset' && normalizedAttachmentMode === 'corner_dual_edge'
+      ? resolveDeckCornerAttachmentCandidate({
+          housePolygon: input.housePolygon,
+          primaryHostEdgeId: fallbackPrimaryHostEdgeId,
+          secondaryHostEdgeId: fallbackSecondaryHostEdgeId,
+          cornerVertexId: fallbackCornerVertexId,
+        })
+      : null;
+  const attachmentMode =
+    input.deck.shape === 'preset' && cornerAttachment
+      ? 'corner_dual_edge'
+      : input.deck.shape === 'preset' && attached
+        ? 'single_edge'
+        : 'floating';
+  const primaryHostEdgeId =
+    cornerAttachment?.primaryHostEdgeId ??
+    (input.deck.shape === 'preset' ? fallbackPrimaryHostEdgeId : normalizeDeckPrimaryHostEdgeId(input.deck));
+  const secondaryHostEdgeId = cornerAttachment?.secondaryHostEdgeId ?? null;
+  const cornerVertexId = cornerAttachment?.cornerVertexId ?? null;
+  const hostEdgeId = input.deck.shape === 'preset' ? primaryHostEdgeId : input.deck.hostEdgeId ?? null;
   const inferredPresetRect =
     input.deck.shape === 'preset'
       ? inferDeckPresetRectFromOutline({
           housePolygon: input.housePolygon,
-          hostEdgeId: fallbackHostEdgeId,
+          hostEdgeId: primaryHostEdgeId,
           attached,
           outline: input.deck.outline,
         })
@@ -600,7 +795,7 @@ export function resolveDeckPresetGeometry(input: {
     input.deck.shape === 'preset'
       ? sanitizeDeckPresetRect({
           housePolygon: input.housePolygon,
-          hostEdgeId: fallbackHostEdgeId,
+          hostEdgeId: primaryHostEdgeId,
           attached,
           // Floating presets still keep the legacy edge-relative presetRect for compatibility,
           // but PR2 stops using it as the geometry source of truth.
@@ -612,8 +807,12 @@ export function resolveDeckPresetGeometry(input: {
     input.deck.shape === 'preset'
       ? buildRectangularDeckOutline({
           housePolygon: input.housePolygon,
-          hostEdgeId: fallbackHostEdgeId,
+          hostEdgeId: primaryHostEdgeId,
           attached,
+          attachmentMode,
+          primaryHostEdgeId,
+          secondaryHostEdgeId,
+          cornerVertexId,
           presetRect,
           fallbackPresetRect: inferredPresetRect,
         })
@@ -639,6 +838,10 @@ export function resolveDeckPresetGeometry(input: {
 
   return {
     hostEdgeId,
+    attachmentMode,
+    primaryHostEdgeId,
+    secondaryHostEdgeId,
+    cornerVertexId,
     presetRect,
     floatingRect,
     outline,

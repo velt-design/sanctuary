@@ -2983,7 +2983,7 @@ function renderHouseFirstPlanOverlay(input: {
     ownerKind: 'deck' | 'opening';
     ownerId: string;
     points: Point[];
-    targetHighlight: { start: Point; end: Point; state: 'preview' | 'snap-available' | 'snapped' } | null;
+    targetHighlights: Array<{ start: Point; end: Point; state: 'preview' | 'snap-available' | 'snapped' }>;
   } | null;
   customEdgeCandidates: Array<HouseFirstPlanCustomEdgeCandidate & {
     witnessStart: Point;
@@ -3201,22 +3201,23 @@ function renderHouseFirstPlanOverlay(input: {
               }
             />
           ) : null}
-          {previewShape.targetHighlight ? (
+          {previewShape.targetHighlights.map((targetHighlight, index) => (
             <line
-              x1={previewShape.targetHighlight.start.x}
-              y1={previewShape.targetHighlight.start.y}
-              x2={previewShape.targetHighlight.end.x}
-              y2={previewShape.targetHighlight.end.y}
-              data-house-first-snap-target={previewShape.targetHighlight.state}
+              key={`house-first-preview-target-${previewShape.ownerId}-${index + 1}`}
+              x1={targetHighlight.start.x}
+              y1={targetHighlight.start.y}
+              x2={targetHighlight.end.x}
+              y2={targetHighlight.end.y}
+              data-house-first-snap-target={targetHighlight.state}
               className={
-                previewShape.targetHighlight.state === 'snapped'
+                targetHighlight.state === 'snapped'
                   ? `${styles.moduleHouseFirstSnapTarget} ${styles.moduleHouseFirstSnapTargetSnapped}`
-                  : previewShape.targetHighlight.state === 'snap-available'
+                  : targetHighlight.state === 'snap-available'
                     ? `${styles.moduleHouseFirstSnapTarget} ${styles.moduleHouseFirstSnapTargetAvailable}`
                     : styles.moduleHouseFirstSnapTarget
               }
             />
-          ) : null}
+          ))}
           {previewShape.bodyState === 'grabbed' ? null : (
             <polygon
               points={toPointsAttr(previewShape.points)}
@@ -4929,13 +4930,11 @@ function PlanSvg({
                 state: rawHouseFirstPreviewShape.referenceGuide.state,
               }
             : null,
-          targetHighlight: rawHouseFirstPreviewShape.targetHighlight
-            ? {
-                start: planHousePointProjector(rawHouseFirstPreviewShape.targetHighlight.start),
-                end: planHousePointProjector(rawHouseFirstPreviewShape.targetHighlight.end),
-                state: rawHouseFirstPreviewShape.targetHighlight.state,
-              }
-            : null,
+          targetHighlights: rawHouseFirstPreviewShape.targetHighlights.map((targetHighlight) => ({
+            start: planHousePointProjector(targetHighlight.start),
+            end: planHousePointProjector(targetHighlight.end),
+            state: targetHighlight.state,
+          })),
         }
       : null;
   const hasSemanticPlanHouseContext =
