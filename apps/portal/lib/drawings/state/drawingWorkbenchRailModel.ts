@@ -1,7 +1,8 @@
 import type { WorkbenchPergolaRenderStatus } from '@/lib/drawings/geometry/deriveWorkbenchGeometry';
+import type { ObjectFirstOpeningHostResolution } from './objectFirstDerivedHosting';
 import type { HouseFirstMigrationWarning, HouseModel, PergolaModel } from './houseFirstWorkbenchModel';
 import type { DrawingWorkbenchRailTab } from './drawingWorkbenchUiState';
-import type { WorkbenchObjectFamily, WorkbenchObjectRef } from './objectFirstWorkbenchModel';
+import type { OpeningObjectModel, WorkbenchObjectFamily, WorkbenchObjectRef } from './objectFirstWorkbenchModel';
 
 export type DrawingWorkbenchRailObjectStatus = 'ready' | 'approximate' | 'blocked' | 'deferred';
 
@@ -147,19 +148,29 @@ function buildDeckEntries(house: HouseModel | null): DrawingWorkbenchRailObjectE
   }));
 }
 
-function buildOpeningEntries(house: HouseModel | null): DrawingWorkbenchRailObjectEntry[] {
-  return (house?.openings ?? []).map((opening) => {
-    const hostWallLabel = opening.hostWallId
-      ? house?.derivedWallGraph.walls.find((wall) => wall.id === opening.hostWallId)?.label ?? 'Unavailable saved wall'
-      : 'Unresolved host wall';
+function buildOpeningEntries(input: {
+  openings: OpeningObjectModel[];
+  compatibilityOpenings: HouseModel['openings'];
+  hostResolutions: Record<string, ObjectFirstOpeningHostResolution>;
+}): DrawingWorkbenchRailObjectEntry[] {
+  const compatibilityById = new Map(input.compatibilityOpenings.map((opening) => [opening.id, opening]));
+  return input.openings.map((opening) => {
+    const compatibilityOpening = compatibilityById.get(opening.id) ?? null;
+    const hostResolution = input.hostResolutions[opening.id] ?? null;
+    const hostWallLabel =
+      hostResolution?.status === 'resolved'
+        ? hostResolution.wall?.label ?? 'Resolved derived wall'
+        : 'Unresolved host wall';
+    const invalid = compatibilityOpening?.validation.status === 'invalid';
+    const unresolved = hostResolution?.status === 'unresolved';
     return {
       ref: {
         family: 'openings',
         objectId: opening.id,
       },
       label: opening.label,
-      status: opening.validation.status === 'invalid' ? 'blocked' : 'ready',
-      statusLabel: opening.validation.status === 'invalid' ? 'Invalid' : 'Ready',
+      status: invalid || unresolved ? 'blocked' : 'ready',
+      statusLabel: unresolved ? 'Unresolved host' : invalid ? 'Invalid' : 'Ready',
       meta: `${opening.kind.replace('_', ' ')} | ${hostWallLabel}`,
     };
   });
@@ -273,6 +284,8 @@ export function buildDrawingWorkbenchRailModel(input: {
   activeObjectFamily: WorkbenchObjectFamily;
   activeObjectRef: WorkbenchObjectRef;
   house: HouseModel | null;
+  openings: OpeningObjectModel[];
+  openingHostResolutions: Record<string, ObjectFirstOpeningHostResolution>;
   pergolas: PergolaModel[];
   warnings: HouseFirstMigrationWarning[];
   modules: DrawingWorkbenchRailPergolaModuleState[];
@@ -280,7 +293,11 @@ export function buildDrawingWorkbenchRailModel(input: {
   const objectLists: Record<WorkbenchObjectFamily, DrawingWorkbenchRailObjectEntry[]> = {
     house_forms: buildHouseFormEntries(input.house, input.warnings),
     decks: buildDeckEntries(input.house),
-    openings: buildOpeningEntries(input.house),
+    openings: buildOpeningEntries({
+      openings: input.openings,
+      compatibilityOpenings: input.house?.openings ?? [],
+      hostResolutions: input.openingHostResolutions,
+    }),
     pergolas: buildPergolaEntries({
       house: input.house,
       pergolas: input.pergolas,

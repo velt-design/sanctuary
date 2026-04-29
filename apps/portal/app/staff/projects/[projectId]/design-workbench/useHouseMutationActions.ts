@@ -12,6 +12,10 @@ import {
 } from '@/lib/drawings/state/drawingWorkbenchUiState';
 import type { DrawingWorkbenchUiState } from '@/lib/drawings/state/drawingWorkbenchUiState';
 import type {
+  DerivedWallModel,
+  HouseAssemblyModel,
+} from '@/lib/drawings/state/objectFirstWorkbenchModel';
+import type {
   HouseFirstDeckDraft,
   HouseFirstOpeningDraft,
   HouseFirstPergolaDraft,
@@ -136,9 +140,7 @@ function formatOpeningMetres(value: number): string {
   return String(Math.round(value * 1000) / 1000);
 }
 
-function resolveOpeningWallSpanM(
-  wall: HouseModel['derivedWallGraph']['walls'][number],
-): number {
+function resolveOpeningWallSpanM(wall: DerivedWallModel): number {
   const start = wall.polygon[0];
   const end = wall.polygon[1];
   const dx = Number(end?.alongM ?? NaN) - Number(start?.alongM ?? NaN);
@@ -148,19 +150,23 @@ function resolveOpeningWallSpanM(
 }
 
 function buildOpeningHostWallOptions(
-  house: HouseModel | null,
+  houseAssembly: HouseAssemblyModel | null,
+  compatibilityHouse: HouseModel | null,
   activeModuleInput: CalculatorModuleInputs | null,
 ): OpeningHostWallOption[] {
-  if (!house) return [];
-  const wallPolygon = houseLocalPolygon({
-    house,
-    moduleLengthM: activeModuleInput?.lengthM,
-    moduleProjectionM: activeModuleInput?.projectionM,
-  });
+  const walls = houseAssembly?.derivedEnvelope?.wallGraph.walls ?? [];
+  if (!walls.length) return [];
+  const wallPolygon = compatibilityHouse
+    ? houseLocalPolygon({
+        house: compatibilityHouse,
+        moduleLengthM: activeModuleInput?.lengthM,
+        moduleProjectionM: activeModuleInput?.projectionM,
+      })
+    : [];
 
-  return house.derivedWallGraph.walls.map((wall) => {
+  return walls.map((wall) => {
     const hostEdgeId = wall.edgeIds[0] ?? null;
-    const frame = hostEdgeId
+    const frame = hostEdgeId && wallPolygon.length
       ? resolveDeckHostEdgeFrame({
           housePolygon: wallPolygon,
           hostEdgeId,
@@ -194,14 +200,17 @@ function clampOpeningOffsetForHostWall(input: {
 function normalizeOpeningPatchAgainstDerivedWalls(input: {
   activeModuleInput: CalculatorModuleInputs | null;
   currentOpening: HouseFirstOpeningDraft;
+  houseAssembly: HouseAssemblyModel | null;
   house: HouseModel | null;
   patch: Partial<HouseFirstOpeningDraft>;
 }): Partial<HouseFirstOpeningDraft> {
   if (input.patch.hostWallId === undefined) return input.patch;
 
-  const resolvedWall = buildOpeningHostWallOptions(input.house, input.activeModuleInput).find(
-    (wall) => wall.wallId === input.patch.hostWallId,
-  );
+  const resolvedWall = buildOpeningHostWallOptions(
+    input.houseAssembly,
+    input.house,
+    input.activeModuleInput,
+  ).find((wall) => wall.wallId === input.patch.hostWallId);
   if (!resolvedWall) {
     return {
       ...input.patch,
@@ -224,11 +233,12 @@ function normalizeOpeningPatchAgainstDerivedWalls(input: {
 
 function resolvePreferredNewOpeningHostWall(input: {
   activeModuleInput: CalculatorModuleInputs | null;
+  houseAssembly: HouseAssemblyModel | null;
   house: HouseModel | null;
   preferredHostWallId: string | null;
   preferredSide: WallOpeningHostSide;
 }): OpeningHostWallOption | null {
-  const options = buildOpeningHostWallOptions(input.house, input.activeModuleInput);
+  const options = buildOpeningHostWallOptions(input.houseAssembly, input.house, input.activeModuleInput);
   if (!options.length) return null;
 
   if (input.preferredHostWallId) {
@@ -965,12 +975,13 @@ export function useHouseMutationActions({
             patch: normalizeOpeningPatchAgainstDerivedWalls({
               activeModuleInput,
               currentOpening: currentOpenings.find((opening) => opening.id === openingId) ?? { id: openingId },
+              houseAssembly: store.derived.houseAssembly,
               house: store.derived.house,
               patch,
             }),
           }),
       }),
-    [activeModuleInput, commitOpeningDraftMutation, store.derived.house],
+    [activeModuleInput, commitOpeningDraftMutation, store.derived.house, store.derived.houseAssembly],
   );
 
   const addSharedHouseOpening = useCallback(
@@ -985,6 +996,7 @@ export function useHouseMutationActions({
           openingId = nextOpeningId(currentOpenings);
           const preferredWall = resolvePreferredNewOpeningHostWall({
             activeModuleInput,
+            houseAssembly: store.derived.houseAssembly,
             house,
             preferredHostWallId: store.derived.activeOpening?.hostWallId ?? null,
             preferredSide: house.footprint.attachmentSide ?? 'rear',
@@ -1006,7 +1018,14 @@ export function useHouseMutationActions({
         },
       });
     },
-    [activeModuleInput, commitOpeningDraftMutation, selectHouseTarget, store.derived.activeOpening?.hostWallId, store.derived.house],
+    [
+      activeModuleInput,
+      commitOpeningDraftMutation,
+      selectHouseTarget,
+      store.derived.activeOpening?.hostWallId,
+      store.derived.house,
+      store.derived.houseAssembly,
+    ],
   );
 
   const removeSharedHouseOpening = useCallback(

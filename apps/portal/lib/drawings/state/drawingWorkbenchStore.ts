@@ -19,6 +19,10 @@ import {
 } from '@/lib/drawings/interactions/deckInteractionContract';
 import { normalizeDrawingWorkbenchUiState, type DrawingWorkbenchUiState } from './drawingWorkbenchUiState';
 import {
+  resolveObjectFirstOpeningHost,
+  type ObjectFirstOpeningHostResolution,
+} from './objectFirstDerivedHosting';
+import {
   buildDrawingWorkbenchRailModel,
   type DrawingWorkbenchRailModel,
 } from './drawingWorkbenchRailModel';
@@ -38,6 +42,7 @@ import type {
 import type {
   HouseAssemblyModel,
   HouseFormModel,
+  OpeningObjectModel,
   WorkbenchProjectModel,
 } from './objectFirstWorkbenchModel';
 
@@ -83,10 +88,15 @@ export type DrawingWorkbenchStore = {
     houseCount: number;
     decks: HouseModel['decks'];
     openings: HouseModel['openings'];
+    objectFirstOpenings: OpeningObjectModel[];
     activeDeckId: string | null;
     activeDeck: HouseModel['decks'][number] | null;
     activeOpeningId: string | null;
     activeOpening: HouseModel['openings'][number] | null;
+    activeObjectFirstOpening: OpeningObjectModel | null;
+    openingHostResolutions: Record<string, ObjectFirstOpeningHostResolution>;
+    activeOpeningHostResolution: ObjectFirstOpeningHostResolution | null;
+    unresolvedOpeningHostCount: number;
     railModel: DrawingWorkbenchRailModel;
     deckCount: number;
     openingCount: number;
@@ -253,6 +263,7 @@ export function buildDrawingWorkbenchStore(input: {
       : null;
   const decks = compatibilityProjectModel.house?.decks ?? [];
   const openings = compatibilityProjectModel.house?.openings ?? [];
+  const objectFirstOpenings = projectModel.openings;
   const activeDeck =
     ui.activeObjectFamily === 'decks'
       ? decks.find((deck) => deck.id === ui.activeObjectRef.objectId) ?? null
@@ -261,6 +272,25 @@ export function buildDrawingWorkbenchStore(input: {
     ui.activeObjectFamily === 'openings'
       ? openings.find((opening) => opening.id === ui.activeObjectRef.objectId) ?? null
       : null;
+  const activeObjectFirstOpening =
+    ui.activeObjectFamily === 'openings'
+      ? objectFirstOpenings.find((opening) => opening.id === ui.activeObjectRef.objectId) ?? null
+      : null;
+  const openingHostResolutions = Object.fromEntries(
+    objectFirstOpenings.map((opening) => [
+      opening.id,
+      resolveObjectFirstOpeningHost({
+        houseAssembly: projectModel.houseAssembly,
+        opening,
+      }),
+    ]),
+  ) as Record<string, ObjectFirstOpeningHostResolution>;
+  const activeOpeningHostResolution = activeObjectFirstOpening
+    ? openingHostResolutions[activeObjectFirstOpening.id] ?? null
+    : null;
+  const unresolvedOpeningHostCount = Object.values(openingHostResolutions).filter(
+    (resolution) => resolution.status === 'unresolved',
+  ).length;
   const deckSupportWarningCount = decks.reduce(
     (sum, deck) => sum + deck.supportContext.warningCodes.length,
     0,
@@ -277,6 +307,8 @@ export function buildDrawingWorkbenchStore(input: {
     activeObjectFamily: ui.activeObjectFamily,
     activeObjectRef: ui.activeObjectRef,
     house: compatibilityProjectModel.house,
+    openings: objectFirstOpenings,
+    openingHostResolutions,
     pergolas: compatibilityProjectModel.pergolas,
     warnings: compatibilityProjectModel.warnings,
     modules: modules.map((module) => ({
@@ -311,10 +343,15 @@ export function buildDrawingWorkbenchStore(input: {
       houseCount: compatibilityProjectModel.house ? 1 : 0,
       decks,
       openings,
+      objectFirstOpenings,
       activeDeckId: activeDeck?.id ?? null,
       activeDeck,
       activeOpeningId: activeOpening?.id ?? null,
       activeOpening,
+      activeObjectFirstOpening,
+      openingHostResolutions,
+      activeOpeningHostResolution,
+      unresolvedOpeningHostCount,
       railModel,
       deckCount: decks.length,
       openingCount: openings.length,

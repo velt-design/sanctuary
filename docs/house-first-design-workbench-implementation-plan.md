@@ -13,15 +13,17 @@ This section describes current repo state only. It does not change the canonical
 - A hidden, staff-only, feature-flagged design workbench route already exists in the portal.
 - `Model Space`, `Sheet View`, and 3D review are already present on that hidden route for internal use and QA.
 - Local working-copy draft behavior already exists for workbench edits on the hidden route.
-- Object-first TypeScript contracts now exist for `WorkbenchProjectModel`, `HouseAssembly`, `HouseForm`, authored decks, openings, pergolas, and the `ObjectFirstWorkbenchDraftVNext` draft envelope.
+- Object-first TypeScript contracts now exist for `WorkbenchProjectModel`, `HouseAssembly`, `HouseForm`, authored decks, openings, pergolas, derived hosting resolvers, and the `ObjectFirstWorkbenchDraftVNext` draft envelope.
+- `drawingWorkbenchStore` now exposes a shadow object-first `WorkbenchProjectModel` built from the compatibility model.
 - The hidden workbench rail already exposes object-family navigation for `House Forms`, `Decks`, `Openings`, and `Pergolas`, with selected-object inspector scaffolding.
+- Opening host resolution now flows through object-first derived wall contracts in store and rail state, while draft persistence remains compatibility-bound.
 - Shared interaction state helpers exist, and deck plus opening work have started moving toward adapter-backed object interaction.
-- The current runtime/store still derives from the compatibility `houseFirst` model rather than a true `HouseAssembly` plus multiple movable `HouseForm`s source of truth.
+- Persistence, editor commits, geometry, rail, and rendering still consume the compatibility `houseFirst` model rather than a true `HouseAssembly` plus multiple movable `HouseForm`s source of truth.
 - The existing hidden-route workbench is a bridge implementation for internal iteration, not the canonical end-state described by this document.
 
 ## Current Bridge Boundary
 
-Object-first code contracts are now the canonical vocabulary for future slices, but the live hidden workbench runtime is still compatibility-bound. In particular, `drawingWorkbenchStore` still builds its project model through `buildHouseFirstWorkbenchProjectModel`, and the object-first draft envelope is not yet wired as the active persistence/runtime source of truth.
+Object-first code contracts are now the canonical vocabulary for future slices, and the store exposes a shadow object-first project model. The live hidden workbench still builds that model through the compatibility `buildHouseFirstWorkbenchProjectModel` path, and the object-first draft envelope is not yet wired as the active persistence/runtime source of truth.
 
 ## Purpose
 
@@ -168,6 +170,7 @@ The merged building result derived from the active set of house forms.
 - The merged result drives wall hosting, roof behavior, derived edges, eaves, gutters, and pergola attachment zones.
 - Derived edges are assembly-level outputs, not authored edges copied from a single form.
 - Attachment zones are projected from derived envelope behavior and may reference derived edge and wall outputs together.
+- Contract helpers now resolve hosted objects only against the assembly-level derived envelope.
 - This document defines the behavioral contract only, not the exact geometry algorithms.
 
 ### `Deck`
@@ -219,6 +222,7 @@ This does not mean authored forms lose identity. Authored forms remain individua
 
 - Openings host to the derived wall graph.
 - They are not canonically bound to the authored form that first produced a wall segment.
+- `sourceFormId` is provenance only; it is not a fallback host.
 - Moving or merging house forms may re-resolve opening hosting against the updated derived wall graph.
 
 ### Pergolas
@@ -226,6 +230,7 @@ This does not mean authored forms lose identity. Authored forms remain individua
 - Pergolas attach to the derived envelope.
 - Attachment edges and zones are derived after house-form merge behavior resolves.
 - Pergola attachment references a derived `edgeId` plus an optional supporting `zoneId`.
+- When both are present, the attachment zone must belong to the resolved derived edge.
 - Pergolas should not rely on hidden per-module house copies.
 
 ## Interaction Architecture
@@ -366,6 +371,8 @@ Define the minimum persisted shape and selection semantics for `HouseAssembly` a
 
 Define how authored forms become one behavioral building when they touch or overlap.
 
+Current status: derived-envelope and hosted-object resolution contracts are explicit in code, tests, and docs. Exact multi-form geometry algorithms remain deferred.
+
 ### Acceptance Criteria
 
 - the merge rule is explicit
@@ -412,6 +419,8 @@ Use current deck movement and snapping as the template for reusable object manip
 ### Goal
 
 Reconnect wall-hosted and attached objects against derived building truth.
+
+Current status: opening host resolution is partially reconnected through object-first derived wall contracts in the store and rail. Pergola reconnect and full hosted-object runtime migration remain next.
 
 ### Acceptance Criteria
 

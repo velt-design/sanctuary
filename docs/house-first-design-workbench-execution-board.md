@@ -13,15 +13,16 @@ This section describes current repo state only. It does not change the canonical
 - A hidden, staff-only, feature-flagged design workbench route already exists in the portal.
 - `Model Space`, `Sheet View`, and 3D review are already available there for internal use and QA.
 - Local working-copy draft behavior already exists for workbench edits on that hidden route.
-- Object-first contracts and draft normalizers already exist for the future `HouseAssembly` / `HouseForm` model and authored decks, openings, and pergolas.
+- Object-first contracts, draft normalizers, and derived hosting resolvers already exist for the future `HouseAssembly` / `HouseForm` model and authored decks, openings, and pergolas.
+- The store now exposes a shadow object-first `WorkbenchProjectModel` built from the compatibility model.
 - Object-family rail navigation and selected-object inspector scaffolding already exist on the hidden route, although the data still comes through the compatibility model.
 - Shared interaction state helpers exist, and deck plus opening interaction work has started moving toward adapter-backed behavior.
-- The current runtime/store still derives from the compatibility `houseFirst` model rather than a true `HouseAssembly` plus multiple movable `HouseForm`s source of truth.
+- Persistence, editor commits, geometry, rail, and rendering still consume the compatibility `houseFirst` model rather than a true `HouseAssembly` plus multiple movable `HouseForm`s source of truth.
 - The current hidden-route workbench is a bridge implementation and validation surface, not the canonical end-state described by this execution board.
 
 ## Current Bridge Boundary
 
-Object-first code contracts are canonical for new work, but they are not yet the live runtime source of truth. `drawingWorkbenchStore` still builds the hidden workbench from `buildHouseFirstWorkbenchProjectModel`, so this board tracks both landed bridge pieces and the remaining migration path to true object-first runtime state.
+Object-first code contracts are canonical for new work, and `drawingWorkbenchStore` now exposes a shadow object-first project model. The hidden workbench still builds that shadow model from `buildHouseFirstWorkbenchProjectModel`, while persistence, editor commits, geometry, rail, and rendering remain compatibility-bound. This board tracks both landed bridge pieces and the remaining migration path to true object-first runtime state.
 
 ## Purpose
 
@@ -99,12 +100,12 @@ Each ticket should still be a narrow, reviewable slice:
 | Phase | Status | Outcome |
 | --- | --- | --- |
 | P0 | Done | Object-first scope, terminology, and merge/hosting rules are frozen in the active docs |
-| P1 | Partial | `HouseAssembly` + `HouseForm` contracts and draft envelope exist, but are not wired into the live runtime |
-| P2 | Next | Derived envelope and hosting contracts need to be tightened before hosted-object migration |
+| P1 | Partial | `HouseAssembly` + `HouseForm` contracts, draft envelope, and shadow runtime exist, but persistence/source-of-truth wiring remains deferred |
+| P2 | Done | Derived envelope and hosted-object resolution contracts are explicit in code, tests, and docs |
 | P3 | Partial | Shared interaction state exists, with deck/opening adapter work started but not complete for all object families |
 | P4 | Partial | Object navigator + inspector rail scaffold exists, still backed by compatibility `houseFirst` data |
 | P5 | Partial | Deck interaction work is adapter-backed enough to validate the pattern, but remains an active stabilization lane |
-| P6 | Blocked/Deferred | Openings and pergolas should reconnect after derived envelope/hosting contracts are explicit |
+| P6 | Partial | Opening host resolution now uses object-first derived wall contracts; pergola reconnect remains next |
 | P7 | Blocked/Deferred | Validation, fixtures, and internal review follow the runtime and hosting migration |
 
 ## P0: Freeze Canonical Direction
@@ -224,7 +225,7 @@ Depends on:
 
 ### Ticket P2.1: Add derived building envelope contract
 
-Status: Next.
+Status: Done.
 
 Scope:
 
@@ -239,7 +240,7 @@ Acceptance criteria:
 
 Suggested PR slice:
 
-- types and docs
+- types, docs, and contract tests
 
 Depends on:
 
@@ -247,7 +248,7 @@ Depends on:
 
 ### Ticket P2.2: Add hosted-object resolution rules
 
-Status: Next.
+Status: Done.
 
 Scope:
 
@@ -261,13 +262,15 @@ Acceptance criteria:
 
 Suggested PR slice:
 
-- docs and contract tests
+- docs, resolver contracts, and contract tests
 
 Depends on:
 
 - `P2.1`
 
 ### Review Gate P2
+
+Status: Done for the contract slice. Runtime reconnection remains tracked in `P6`.
 
 Review questions:
 
@@ -438,17 +441,19 @@ Depends on:
 
 ### Ticket P6.1: Reconnect openings against derived walls
 
-Status: Blocked/Deferred until P2.
+Status: Partial / bridge-landed.
 
 Scope:
 
 - make opening hosting and movement consume derived wall truth
 - align opening inspector behavior with object-first rail state
+- keep persistence, plan overlay, and geometry compatibility-bound during this slice
 
 Acceptance criteria:
 
 - openings remain coherent when forms move or merge
 - opening edits do not assume a single shared-house source object
+- object-first opening host resolution is exposed in store state and rail status
 
 Suggested PR slice:
 
@@ -461,7 +466,7 @@ Depends on:
 
 ### Ticket P6.2: Reconnect pergolas against derived edges and zones
 
-Status: Blocked/Deferred until P2.
+Status: Next.
 
 Scope:
 

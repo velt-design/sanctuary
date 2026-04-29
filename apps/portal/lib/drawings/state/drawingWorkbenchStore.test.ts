@@ -499,6 +499,11 @@ describe('buildDrawingWorkbenchStore', () => {
     expect(selectedStore.derived.openingCount).toBe(1);
     expect(selectedStore.derived.sliderOpeningCount).toBe(0);
     expect(selectedStore.derived.activeOpeningId).toBe('opening-1');
+    expect(selectedStore.derived.objectFirstOpenings.map((opening) => opening.id)).toEqual(['opening-1']);
+    expect(selectedStore.derived.activeObjectFirstOpening?.id).toBe('opening-1');
+    expect(selectedStore.derived.activeOpeningHostResolution?.status).toBe('resolved');
+    expect(selectedStore.derived.activeOpeningHostResolution?.wall?.id).toBe(selectedStore.derived.activeOpening?.hostWallId);
+    expect(selectedStore.derived.unresolvedOpeningHostCount).toBe(0);
     expect(selectedStore.ui.activeHouseSelection).toEqual({ kind: 'opening', targetId: 'opening-1' });
 
     const removedDraft = structuredClone(draft);
@@ -517,6 +522,59 @@ describe('buildDrawingWorkbenchStore', () => {
 
     expect(removedStore.derived.activeOpeningId).toBeNull();
     expect(removedStore.ui.activeHouseSelection).toEqual({ kind: 'house', targetId: null });
+  });
+
+  it('uses object-first derived wall resolution for opening rail state without source-form fallback', () => {
+    const fixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
+    if (!fixture) throw new Error('Missing mono-standard fixture.');
+    const draft = buildEstimateDrawingDraftFromSnapshot(fixture.snapshot);
+    if (!draft) throw new Error('Expected drawing draft.');
+    draft.houseFirst = {
+      openings: [
+        {
+          id: 'opening-stale',
+          label: 'Stale opening',
+          kind: 'window',
+          hostWallId: 'wall-footprint-edge-99',
+          wallId: 'rear',
+          hostEdgeId: 'footprint-edge-3',
+          widthM: '1.8',
+          heightM: '1.2',
+          sillHeightM: '0.9',
+          offsetAlongWallM: '0.6',
+        },
+      ],
+    };
+
+    const store = buildDrawingWorkbenchStore({
+      snapshot: fixture.snapshot,
+      draft,
+      ui: createDrawingWorkbenchUiState({
+        workbenchMode: 'house',
+        activeHouseSelection: { kind: 'opening', targetId: 'opening-stale' },
+      }),
+    });
+
+    expect(store.derived.openings.map((opening) => opening.id)).toEqual(['opening-stale']);
+    expect(store.derived.objectFirstOpenings[0]).toMatchObject({
+      id: 'opening-stale',
+      sourceFormId: store.derived.house?.id,
+      hostWallId: 'wall-footprint-edge-99',
+    });
+    expect(store.derived.activeOpeningHostResolution).toMatchObject({
+      status: 'unresolved',
+      code: 'missing_host_wall',
+      hostWallId: 'wall-footprint-edge-99',
+      wall: null,
+    });
+    expect(store.derived.unresolvedOpeningHostCount).toBe(1);
+    expect(store.derived.railModel.objectLists.openings[0]).toMatchObject({
+      status: 'blocked',
+      statusLabel: 'Unresolved host',
+      meta: 'window | Unresolved host wall',
+    });
+    expect(store.derived.activeOpening?.hostEdgeId).toBe('footprint-edge-3');
+    expect(store.ui.activeHouseSelection).toEqual({ kind: 'opening', targetId: 'opening-stale' });
   });
 
   it('marks the shared house as low confidence when legacy modules disagree on house context', () => {
