@@ -6,40 +6,37 @@ import {
   labelForRoofForm,
   labelForRoofReviewStatus,
 } from './objectRailShared';
-import type { HouseFirstMigrationWarning, HouseModel, PergolaModel } from '@/lib/drawings/state/houseFirstWorkbenchModel';
+import type { ObjectWorkbenchHouseFormInspectorModel } from '@/lib/drawings/state/objectWorkbenchInspectorModel';
 
 type BuildHouseFormOverviewSectionInput = {
-  house: HouseModel | null;
-  pergolas: PergolaModel[];
-  warnings: HouseFirstMigrationWarning[];
+  houseFormContext: ObjectWorkbenchHouseFormInspectorModel;
 };
 
 export function buildHouseFormOverviewSection({
-  house,
-  pergolas,
-  warnings,
+  houseFormContext,
 }: BuildHouseFormOverviewSectionInput) {
+  const houseForm = houseFormContext.houseForm;
   return (
     <SummarySection
       title="House Form Inspector"
       items={[
-        { label: 'Selected form', value: house?.label ?? 'Not derived yet' },
-        { label: 'Roof form', value: labelForRoofForm(house?.roof.form) },
+        { label: 'Selected form', value: houseForm?.label ?? 'Not derived yet' },
+        { label: 'Roof form', value: labelForRoofForm(houseFormContext.roof.intent.form) },
         {
           label: 'Roof status',
-          value: labelForRoofReviewStatus(house?.roof.validation.status),
+          value: labelForRoofReviewStatus(houseFormContext.roof.validationStatus),
         },
-        { label: 'Decks', value: String(house?.decks.length ?? 0) },
-        { label: 'Openings', value: String(house?.openings.length ?? 0) },
-        { label: 'Footprint', value: labelForPreset(house?.footprint.preset) },
-        { label: 'Rotation', value: formatRotation(house?.footprint.drawingRotationQuarterTurns) },
-        { label: 'Attachment side', value: labelForAttachmentSide(house?.footprint.attachmentSide) },
-        { label: 'Pergolas', value: String(pergolas.length) },
+        { label: 'Decks', value: String(houseFormContext.deckCount) },
+        { label: 'Openings', value: String(houseFormContext.openingCount) },
+        { label: 'Footprint', value: labelForPreset(houseForm?.footprint.preset) },
+        { label: 'Rotation', value: formatRotation(houseForm?.transform.rotationQuarterTurns) },
+        { label: 'Attachment side', value: labelForAttachmentSide(houseForm?.footprint.attachmentSide) },
+        { label: 'Pergolas', value: String(houseFormContext.pergolaCount) },
       ]}
       hint={
-        house?.lowConfidence
-          ? `Migration warnings are present for the compatibility house form (${warnings.length}).`
-          : 'House Forms is the compatibility source for footprint editing in this slice.'
+        houseFormContext.lowConfidence
+          ? `Compatibility warnings are present for this object-workbench form (${houseFormContext.warnings.length}).`
+          : 'House Forms is the object-workbench source for footprint editing in this slice.'
       }
     />
   );

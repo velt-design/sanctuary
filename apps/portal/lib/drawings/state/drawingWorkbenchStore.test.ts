@@ -521,13 +521,64 @@ describe('buildDrawingWorkbenchStore', () => {
     });
 
     expect(store.derived.decks.map((deck) => deck.id)).toEqual(['deck-object']);
+    expect(store.derived.objectWorkbench.decks[0]).toMatchObject({
+      id: 'deck-object',
+      label: 'Object deck',
+      hostEdgeId: 'rear',
+      validation: { status: 'valid' },
+    });
     expect(store.derived.objectFirstOpenings.map((opening) => opening.id)).toEqual(['opening-object']);
+    expect(store.derived.objectWorkbench.openings[0]).toMatchObject({
+      id: 'opening-object',
+      label: 'Object opening',
+      hostWallId: 'wall-footprint-edge-3',
+    });
     expect(store.derived.objectFirstPergolas[0]).toMatchObject({
       id: 'pergola-1',
       attachmentEdgeId: 'footprint-edge-3',
     });
+    expect(store.derived.objectWorkbench.pergolas[0]).toMatchObject({
+      id: 'pergola-1',
+      label: 'Object pergola',
+      attachmentEdgeId: 'footprint-edge-3',
+      attachmentZoneId: 'zone-soffit-footprint-edge-3',
+    });
     expect(store.derived.activeDeck?.id).toBe('deck-object');
+    expect(store.derived.objectWorkbench.activeDeck?.id).toBe('deck-object');
     expect(store.derived.unresolvedPergolaAttachmentCount).toBe(0);
+  });
+
+  it('populates the object-workbench facade from compatibility fallback drafts', () => {
+    const fixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
+    if (!fixture) throw new Error('Missing mono-standard fixture.');
+    const draft = buildEstimateDrawingDraftFromSnapshot(fixture.snapshot);
+    if (!draft) throw new Error('Expected drawing draft.');
+    draft.houseFirst = {
+      decks: [{ id: 'legacy-deck', name: 'Legacy deck', hostEdgeId: 'rear' }],
+      openings: [{ id: 'legacy-opening', label: 'Legacy opening', wallId: 'rear' }],
+    };
+
+    const store = buildDrawingWorkbenchStore({
+      snapshot: fixture.snapshot,
+      draft,
+      ui: createDrawingWorkbenchUiState({
+        activeObjectFamily: 'openings',
+        activeObjectRef: { family: 'openings', objectId: 'legacy-opening' },
+      }),
+    });
+
+    expect(store.derived.objectWorkbench.houseForm.houseForm?.id).toBe('house-main');
+    expect(store.derived.objectWorkbench.decks[0]).toMatchObject({
+      id: 'legacy-deck',
+      label: 'Legacy deck',
+      hostEdgeId: 'rear',
+    });
+    expect(store.derived.objectWorkbench.openings[0]).toMatchObject({
+      id: 'legacy-opening',
+      label: 'Legacy opening',
+      wallId: 'rear',
+    });
+    expect(store.derived.objectWorkbench.activeOpening?.id).toBe('legacy-opening');
   });
 
   it('preserves stable deck ids and normalizes invalid deck selection state', () => {

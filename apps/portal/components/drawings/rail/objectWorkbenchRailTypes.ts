@@ -6,42 +6,38 @@ import type {
 } from '@/lib/drawings/state/drawingWorkbenchUiState';
 import type { DrawingWorkbenchRailModel } from '@/lib/drawings/state/drawingWorkbenchRailModel';
 import type {
-  HouseFirstDeckDraft,
-  HouseFirstMigrationWarning,
-  HouseFirstOpeningDraft,
-  HouseFirstRoofDraft,
-  HouseModel,
-  PergolaModel,
-  WallOpeningKind,
-} from '@/lib/drawings/state/houseFirstWorkbenchModel';
-import type { WorkbenchObjectRef } from '@/lib/drawings/state/objectFirstWorkbenchModel';
+  ObjectWorkbenchDeckPatch,
+  ObjectWorkbenchInspectorFacade,
+  ObjectWorkbenchOpeningPatch,
+} from '@/lib/drawings/state/objectWorkbenchInspectorModel';
+import type {
+  HouseFormRoofIntentModel,
+  WorkbenchObjectRef,
+} from '@/lib/drawings/state/objectFirstWorkbenchModel';
+import type { OpeningObjectModel } from '@/lib/drawings/state/objectFirstWorkbenchModel';
 
 export type CommitResult = { ok: boolean; error?: string };
 
 export type ObjectWorkbenchRailInspectorContext = {
-  house: HouseModel | null;
-  pergolas: PergolaModel[];
-  warnings: HouseFirstMigrationWarning[];
-  activeDeckId?: string | null;
-  activeOpeningId?: string | null;
+  objectWorkbench: ObjectWorkbenchInspectorFacade;
   canEditFootprint?: boolean;
   canStartDrawOutline?: boolean;
   onStartDrawOutline?: () => Promise<CommitResult> | CommitResult;
   onCommitFootprintEdit?: (edit: EstimateDrawingFootprintEdit) => Promise<CommitResult> | CommitResult;
-  onCommitRoofDraft?: (roof: HouseFirstRoofDraft) => Promise<CommitResult> | CommitResult;
+  onCommitRoofIntent?: (roof: HouseFormRoofIntentModel) => Promise<CommitResult> | CommitResult;
   onAddDeck?: (mode: 'preset' | 'custom_outline') => Promise<CommitResult> | CommitResult;
   onAddOpening?: (
-    kind: Extract<WallOpeningKind, 'window' | 'hinged_door' | 'slider' | 'stacker'>,
+    kind: Extract<OpeningObjectModel['kind'], 'window' | 'hinged_door' | 'slider' | 'stacker'>,
   ) => Promise<CommitResult> | CommitResult;
   onRemoveDeck?: (deckId: string) => Promise<CommitResult> | CommitResult;
   onRemoveOpening?: (openingId: string) => Promise<CommitResult> | CommitResult;
   onCommitDeckPatch?: (
     deckId: string,
-    patch: Partial<HouseFirstDeckDraft>,
+    patch: ObjectWorkbenchDeckPatch,
   ) => Promise<CommitResult> | CommitResult;
   onCommitOpeningPatch?: (
     openingId: string,
-    patch: Partial<HouseFirstOpeningDraft>,
+    patch: ObjectWorkbenchOpeningPatch,
   ) => Promise<CommitResult> | CommitResult;
   onStartDeckOutline?: (deckId: string) => Promise<CommitResult> | CommitResult;
   houseFormAttachmentContextPanel?: ReactNode;
@@ -65,7 +61,7 @@ export type FieldErrors = Record<string, string>;
 
 export type RunFootprintCommit = (fieldId: string, edit: EstimateDrawingFootprintEdit) => Promise<void>;
 
-export type RunRoofCommit = (fieldId: string, nextRoof: HouseFirstRoofDraft) => Promise<void>;
+export type RunRoofCommit = (fieldId: string, nextRoof: HouseFormRoofIntentModel) => Promise<void>;
 
 export type RunAction = (
   fieldId: string,

@@ -1,12 +1,8 @@
 import type { ReactNode } from 'react';
 import { getHouseRoofFormBehavior } from '@sp/geometry';
 import type { CalculatorHouseRoofMaterial, CalculatorModuleInputs } from '@/lib/types/calculator';
-import type {
-  HouseModel,
-  HouseRoofForm,
-  HouseRoofPrimaryFallDirection,
-  HouseRoofRidgeAxis,
-} from '@/lib/drawings/state/houseFirstWorkbenchModel';
+import type { HouseFormRoofIntentModel } from '@/lib/drawings/state/objectFirstWorkbenchModel';
+import type { ObjectWorkbenchHouseFormInspectorModel } from '@/lib/drawings/state/objectWorkbenchInspectorModel';
 import type { FieldErrors, RunRoofCommit } from './objectWorkbenchRailTypes';
 import {
   ATTACHMENT_SIDE_OPTIONS,
@@ -18,7 +14,6 @@ import {
   ROOF_RIDGE_AXIS_OPTIONS,
   SelectField,
   SummarySection,
-  buildRoofDraftFromHouse,
   labelForRoofApproximationReason,
   labelForAttachmentSideList,
   labelForRoofFieldSource,
@@ -29,31 +24,31 @@ import styles from './WorkbenchRail.module.css';
 type BuildHouseFormRoofSectionsInput = {
   disabled?: boolean;
   fieldErrors: FieldErrors;
-  house: HouseModel | null;
+  houseFormContext: ObjectWorkbenchHouseFormInspectorModel;
   runRoofCommit: RunRoofCommit;
 };
 
 export function buildHouseFormRoofSections({
   disabled,
   fieldErrors,
-  house,
+  houseFormContext,
   runRoofCommit,
 }: BuildHouseFormRoofSectionsInput): ReactNode[] {
-  const roofDraft = buildRoofDraftFromHouse(house);
-  const roofCapabilities = house?.roof.capabilities ?? null;
-  const roofProvenance = house?.roof.provenance ?? null;
-  const approximationReasons = house?.roof.validation.approximationReasons ?? [];
-  const appendageSupportedHostEdges = house?.roof.appendageSupportedHostEdges ?? [];
-  const terminalEnds = house?.roof.terminalEnds ?? [];
-  const selectedFormSupported = roofCapabilities?.selectedFormSupported ?? true;
+  const roofContext = houseFormContext.roof;
+  const roofDraft = roofContext.intent;
+  const roofProvenance = roofContext.provenance;
+  const approximationReasons = roofContext.approximationReasons;
+  const appendageSupportedHostEdges = roofContext.appendageSupportedHostEdges;
+  const terminalEnds = roofContext.terminalEnds;
+  const selectedFormSupported = roofContext.selectedFormSupported;
   const canEditSelectedRoofForm = selectedFormSupported;
-  const roofControls = roofCapabilities?.controls ?? getHouseRoofFormBehavior(roofDraft.form ?? 'mono').controls;
+  const roofControls = roofContext.controls ?? getHouseRoofFormBehavior(roofDraft.form ?? 'mono').controls;
   const canShowAppendageControls = canEditSelectedRoofForm && roofControls.appendage;
   const appendageHelperText =
-    house?.roof.validation.code === 'invalid_appendage_topology' ||
-    house?.roof.validation.code === 'invalid_appendage_host_edge'
+    roofContext.validationCode === 'invalid_appendage_topology' ||
+    roofContext.validationCode === 'invalid_appendage_host_edge'
       ? 'The current appendage remains editable so you can disable it or adjust it after the footprint changes.'
-      : roofCapabilities?.appendageSupported
+      : roofContext.appendageSupported
         ? `Supported host edges: ${labelForAttachmentSideList(appendageSupportedHostEdges)}.`
         : 'Appendage bands require at least one continuous exterior perimeter run on the current footprint.';
   const fields: ReactNode[] = [];
@@ -69,7 +64,7 @@ export function buildHouseFormRoofSections({
       onCommit={(value) =>
         runRoofCommit('roof-form', {
           ...roofDraft,
-          form: value as HouseRoofForm,
+          form: value as HouseFormRoofIntentModel['form'],
         })
       }
     />,
@@ -127,7 +122,7 @@ export function buildHouseFormRoofSections({
         onCommit={(value) =>
           runRoofCommit('roof-fall-direction', {
             ...roofDraft,
-            primaryFallDirection: value as HouseRoofPrimaryFallDirection,
+            primaryFallDirection: value as HouseFormRoofIntentModel['primaryFallDirection'],
           })
         }
       />,
@@ -146,7 +141,7 @@ export function buildHouseFormRoofSections({
         onCommit={(value) =>
           runRoofCommit('roof-ridge-axis', {
             ...roofDraft,
-            ridgeAxis: value as HouseRoofRidgeAxis,
+            ridgeAxis: value as HouseFormRoofIntentModel['ridgeAxis'],
           })
         }
       />,
@@ -213,7 +208,7 @@ export function buildHouseFormRoofSections({
         }
       />,
     );
-  } else if (canEditSelectedRoofForm && roofControls.appendage && !roofCapabilities?.appendageSupported) {
+  } else if (canEditSelectedRoofForm && roofControls.appendage && !roofContext.appendageSupported) {
     fields.push(
       <p key="appendage-disabled-hint" className={styles.fieldHint}>
         {appendageHelperText}
@@ -231,8 +226,8 @@ export function buildHouseFormRoofSections({
         disabled={disabled}
         error={fieldErrors['appendage-host-edge']}
         helperText={
-          house?.roof.validation.code === 'invalid_appendage_host_edge'
-            ? house.roof.appendageSupportReason ?? `Supported edges: ${labelForAttachmentSideList(appendageSupportedHostEdges)}.`
+          roofContext.validationCode === 'invalid_appendage_host_edge'
+            ? roofContext.appendageSupportReason ?? `Supported edges: ${labelForAttachmentSideList(appendageSupportedHostEdges)}.`
             : `Supported edges: ${labelForAttachmentSideList(appendageSupportedHostEdges)}.`
         }
         onCommit={(value) =>
@@ -288,10 +283,10 @@ export function buildHouseFormRoofSections({
   const appendageSupportLabel =
     !roofControls.appendage
       ? 'Not used for this roof'
-      : house?.roof.validation.code === 'invalid_appendage_topology' ||
-          house?.roof.validation.code === 'invalid_appendage_host_edge'
-        ? house?.roof.appendageSupportReason ?? 'Blocked on the current footprint'
-        : roofCapabilities?.appendageSupported
+      : roofContext.validationCode === 'invalid_appendage_topology' ||
+          roofContext.validationCode === 'invalid_appendage_host_edge'
+        ? roofContext.appendageSupportReason ?? 'Blocked on the current footprint'
+        : roofContext.appendageSupported
           ? 'Supported on the current footprint'
           : 'Not supported on the current footprint';
   const appendageSupportedEdgesLabel = roofControls.appendage
@@ -303,7 +298,7 @@ export function buildHouseFormRoofSections({
       key="roof-review-basis"
       title="Review Basis"
       items={[
-        { label: 'Roof geometry', value: labelForRoofGeometryKind(house?.roof.geometryKind) },
+        { label: 'Roof geometry', value: labelForRoofGeometryKind(roofContext.geometryKind) },
         { label: 'Roof form basis', value: labelForRoofFieldSource(roofProvenance?.form) },
         {
           label: 'Mono fall basis',
@@ -327,10 +322,10 @@ export function buildHouseFormRoofSections({
     />,
   );
 
-  if (house?.roof.validation.status === 'invalid' && house.roof.validation.message) {
+  if (roofContext.validationStatus === 'invalid' && roofContext.validationMessage) {
     fields.push(
       <p key="roof-invalid" className={styles.fieldError}>
-        {house.roof.validation.message}
+        {roofContext.validationMessage}
       </p>,
     );
   }

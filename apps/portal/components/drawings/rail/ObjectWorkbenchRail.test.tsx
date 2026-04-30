@@ -4,8 +4,7 @@ import { getSanctuaryGeometryWorkbenchFixture } from '@/lib/drawings/sanctuaryWo
 import { buildEstimateDrawingDraftFromSnapshot, type EstimateDrawingDraft } from '@/lib/estimates/drawingEdits';
 import { buildDrawingWorkbenchStore } from '@/lib/drawings/state/drawingWorkbenchStore';
 import { createDrawingWorkbenchUiState, type DrawingWorkbenchRailTab } from '@/lib/drawings/state/drawingWorkbenchUiState';
-import type { WorkbenchObjectRef } from '@/lib/drawings/state/objectFirstWorkbenchModel';
-import type { HouseRoofForm } from '@/lib/drawings/state/houseFirstWorkbenchModel';
+import type { HouseFormRoofIntentModel, WorkbenchObjectRef } from '@/lib/drawings/state/objectFirstWorkbenchModel';
 import ObjectWorkbenchRail from './ObjectWorkbenchRail';
 
 function buildRailProps(input?: {
@@ -25,20 +24,20 @@ function buildRailProps(input?: {
   const activeRailTab = input?.activeRailTab ?? 'house_forms';
   const defaultHouseRef: WorkbenchObjectRef = {
     family: 'house_forms',
-    objectId: bootstrapStore.derived.house?.id ?? null,
+    objectId: bootstrapStore.derived.houseForms[0]?.id ?? null,
   };
   const defaultPergolaRef: WorkbenchObjectRef = {
     family: 'pergolas',
-    objectId: bootstrapStore.derived.pergolas[0]?.id ?? null,
+    objectId: bootstrapStore.derived.objectFirstPergolas[0]?.id ?? null,
   };
   const activeObjectRef =
     input?.activeObjectRef ??
     (activeRailTab === 'pergolas'
       ? defaultPergolaRef
       : activeRailTab === 'decks'
-        ? { family: 'decks', objectId: bootstrapStore.derived.decks[0]?.id ?? null }
+        ? { family: 'decks', objectId: bootstrapStore.derived.objectWorkbench.decks[0]?.id ?? null }
         : activeRailTab === 'openings'
-          ? { family: 'openings', objectId: bootstrapStore.derived.openings[0]?.id ?? null }
+          ? { family: 'openings', objectId: bootstrapStore.derived.objectFirstOpenings[0]?.id ?? null }
           : defaultHouseRef);
 
   const store = buildDrawingWorkbenchStore({
@@ -66,16 +65,12 @@ function buildRailProps(input?: {
     activeObjectRef: store.ui.activeObjectRef,
     visibility: store.ui.visibility,
     inspectorContext: {
-      house: store.derived.house,
-      activeDeckId: store.derived.activeDeckId,
-      activeOpeningId: store.derived.activeOpeningId,
-      pergolas: store.derived.pergolas,
-      warnings: store.derived.migrationWarnings,
+      objectWorkbench: store.derived.objectWorkbench,
       canEditFootprint: true,
       canStartDrawOutline: true,
       onStartDrawOutline: () => ({ ok: true }),
       onCommitFootprintEdit: () => ({ ok: true }),
-      onCommitRoofDraft: () => ({ ok: true }),
+      onCommitRoofIntent: () => ({ ok: true }),
       onAddDeck: () => ({ ok: true }),
       onAddOpening: () => ({ ok: true }),
       onRemoveDeck: () => ({ ok: true }),
@@ -90,7 +85,7 @@ function buildRailProps(input?: {
   };
 }
 
-function buildDraftWithRoofForm(form: HouseRoofForm): EstimateDrawingDraft {
+function buildDraftWithRoofForm(form: HouseFormRoofIntentModel['form']): EstimateDrawingDraft {
   const fixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
   if (!fixture) throw new Error('Expected Sanctuary fixture.');
   const draft = buildEstimateDrawingDraftFromSnapshot(fixture.snapshot);

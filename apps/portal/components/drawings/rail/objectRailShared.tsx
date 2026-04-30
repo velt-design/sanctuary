@@ -5,21 +5,20 @@ import { HOUSE_ROOF_FORM_ORDER } from '@sp/geometry';
 import { HOUSE_FOOTPRINT_PRESET_OPTIONS } from '@/app/staff/calculator/ModuleViewsCard';
 import { normalizeHouseFootprintParams, type CalculatorHouseRoofMaterial } from '@/lib/types/calculator';
 import type {
-  DeckElevationMode,
-  DeckPresetRect,
-  DeckShape,
-  DeckSurfaceMaterial,
-  HouseFirstDeckDraft,
-  HouseFirstRoofDraft,
-  HouseModel,
-  HouseRoofForm,
-  HouseRoofApproximationReason,
-  HouseRoofFieldSource,
-  HouseRoofPrimaryFallDirection,
-  HouseRoofRidgeAxis,
-} from '@/lib/drawings/state/houseFirstWorkbenchModel';
+  DeckObjectModel,
+  HouseFormModel,
+  HouseFormRoofIntentModel,
+} from '@/lib/drawings/state/objectFirstWorkbenchModel';
+import type { ObjectWorkbenchDeckInspectorModel } from '@/lib/drawings/state/objectWorkbenchInspectorModel';
 import type { CommitResult } from './objectWorkbenchRailTypes';
 import styles from './WorkbenchRail.module.css';
+
+type RoofFieldSourceValue =
+  | 'house_first_draft'
+  | 'legacy_shared_value'
+  | 'legacy_pergola_inference'
+  | 'default_fallback'
+  | string;
 
 export type SelectOption = { label: string; value: string };
 
@@ -40,7 +39,7 @@ export const ATTACHMENT_SIDE_OPTIONS: SelectOption[] = [
   { label: 'Right', value: 'right' },
 ];
 
-export const HOUSE_ROOF_FORM_OPTIONS: Array<SelectOption & { value: HouseRoofForm }> =
+export const HOUSE_ROOF_FORM_OPTIONS: Array<SelectOption & { value: HouseFormRoofIntentModel['form'] }> =
   HOUSE_ROOF_FORM_ORDER.map((value) => ({
     label: labelForRoofForm(value),
     value,
@@ -54,14 +53,14 @@ export const ROOF_MATERIAL_OPTIONS: Array<SelectOption & { value: CalculatorHous
   { label: 'Shingles', value: 'shingles' },
 ];
 
-export const ROOF_FALL_DIRECTION_OPTIONS: Array<SelectOption & { value: HouseRoofPrimaryFallDirection }> = [
+export const ROOF_FALL_DIRECTION_OPTIONS: Array<SelectOption & { value: HouseFormRoofIntentModel['primaryFallDirection'] }> = [
   { label: 'Fall +Y', value: 'positive_y' },
   { label: 'Fall -Y', value: 'negative_y' },
   { label: 'Fall +X', value: 'positive_x' },
   { label: 'Fall -X', value: 'negative_x' },
 ];
 
-export const ROOF_RIDGE_AXIS_OPTIONS: Array<SelectOption & { value: HouseRoofRidgeAxis }> = [
+export const ROOF_RIDGE_AXIS_OPTIONS: Array<SelectOption & { value: HouseFormRoofIntentModel['ridgeAxis'] }> = [
   { label: 'Ridge X', value: 'x' },
   { label: 'Ridge Y', value: 'y' },
 ];
@@ -71,18 +70,18 @@ export const DECK_KIND_OPTIONS: SelectOption[] = [
   { label: 'Landing', value: 'landing' },
 ];
 
-export const DECK_SHAPE_OPTIONS: Array<SelectOption & { value: DeckShape }> = [
+export const DECK_SHAPE_OPTIONS: Array<SelectOption & { value: DeckObjectModel['shape'] }> = [
   { label: 'Rectangular preset', value: 'preset' },
   { label: 'Custom outline', value: 'custom' },
 ];
 
-export const DECK_ELEVATION_OPTIONS: Array<SelectOption & { value: DeckElevationMode }> = [
+export const DECK_ELEVATION_OPTIONS: Array<SelectOption & { value: DeckObjectModel['elevationMode'] }> = [
   { label: 'Ground', value: 'ground' },
   { label: 'Stepped', value: 'stepped' },
   { label: 'Threshold aligned', value: 'aligned_to_threshold' },
 ];
 
-export const DECK_SURFACE_OPTIONS: Array<SelectOption & { value: DeckSurfaceMaterial }> = [
+export const DECK_SURFACE_OPTIONS: Array<SelectOption & { value: DeckObjectModel['surfaceMaterial'] }> = [
   { label: 'Timber decking', value: 'timber_decking' },
   { label: 'Composite', value: 'composite' },
   { label: 'Concrete', value: 'concrete' },
@@ -92,7 +91,7 @@ export function labelForPreset(value: string | null | undefined): string {
   return FOOTPRINT_OPTIONS.find((option) => option.value === value)?.label ?? 'Straight';
 }
 
-export function labelForRoofForm(value: HouseModel['roof']['form'] | null | undefined): string {
+export function labelForRoofForm(value: HouseFormRoofIntentModel['form'] | null | undefined): string {
   switch (value) {
     case 'flat':
       return 'Flat';
@@ -107,7 +106,7 @@ export function labelForRoofForm(value: HouseModel['roof']['form'] | null | unde
 }
 
 export function labelForRoofReviewStatus(
-  value: HouseModel['roof']['validation']['status'] | 'none' | null | undefined,
+  value: 'valid' | 'approximate' | 'invalid' | 'none' | null | undefined,
 ): string {
   switch (value) {
     case 'invalid':
@@ -121,7 +120,7 @@ export function labelForRoofReviewStatus(
   }
 }
 
-export function labelForRoofFieldSource(value: HouseRoofFieldSource | null | undefined): string {
+export function labelForRoofFieldSource(value: RoofFieldSourceValue | null | undefined): string {
   switch (value) {
     case 'house_first_draft':
       return 'Explicit house draft';
@@ -136,9 +135,7 @@ export function labelForRoofFieldSource(value: HouseRoofFieldSource | null | und
   }
 }
 
-export function labelForRoofApproximationReason(
-  value: HouseRoofApproximationReason,
-): string {
+export function labelForRoofApproximationReason(value: string): string {
   switch (value) {
     case 'inferred_form':
       return 'Roof form inferred from legacy pergola data';
@@ -153,7 +150,7 @@ export function labelForRoofApproximationReason(
   }
 }
 
-export function labelForRoofGeometryKind(value: HouseModel['roof']['geometryKind'] | null | undefined): string {
+export function labelForRoofGeometryKind(value: string | null | undefined): string {
   switch (value) {
     case 'footprint_flat':
       return 'Footprint flat';
@@ -185,7 +182,7 @@ export function formatRotation(value: number | null | undefined): string {
   return `${((value ?? 0) % 4) * 90} deg`;
 }
 
-export function resolveDeckValidationSummary(deck: HouseModel['decks'][number]): string | null {
+export function resolveDeckValidationSummary(deck: ObjectWorkbenchDeckInspectorModel): string | null {
   if (deck.validation.status !== 'invalid') return null;
   const codes = new Set(deck.validation.codes);
 
@@ -211,8 +208,8 @@ export function resolveDeckValidationSummary(deck: HouseModel['decks'][number]):
   return deck.validation.message ?? 'Deck geometry is blocked.';
 }
 
-export function resolveDeckWarningSummaries(deck: HouseModel['decks'][number]): string[] {
-  const resolved: Array<string | null> = deck.supportContext.warningCodes.map((code) => {
+export function resolveDeckWarningSummaries(deck: ObjectWorkbenchDeckInspectorModel): string[] {
+  const resolved: Array<string | null> = deck.supportWarnings.codes.map((code) => {
     switch (code) {
       case 'insufficient_host_edge_contact':
         return 'The deck barely contacts the selected host edge. Widen it or reduce the center offset to keep the snapped placement legible.';
@@ -227,11 +224,11 @@ export function resolveDeckWarningSummaries(deck: HouseModel['decks'][number]): 
     }
   });
 
-  const fallback = deck.supportContext.warningMessages.filter(Boolean);
+  const fallback = deck.supportWarnings.messages.filter(Boolean);
   return Array.from(new Set([...resolved.filter((value): value is string => value !== null), ...fallback]));
 }
 
-export function resolveDeckPresetRectDraft(deck: HouseModel['decks'][number] | HouseFirstDeckDraft): DeckPresetRect {
+export function resolveDeckPresetRectDraft(deck: ObjectWorkbenchDeckInspectorModel): NonNullable<DeckObjectModel['presetRect']> {
   return {
     widthM: deck.presetRect?.widthM ?? '',
     depthM: deck.presetRect?.depthM ?? '',
@@ -246,26 +243,8 @@ export function resolveCommitResult(
   return Promise.resolve(action ?? { ok: false, error: 'Editing is not available right now.' });
 }
 
-export function buildRoofDraftFromHouse(house: HouseModel | null): HouseFirstRoofDraft {
-  return {
-    form: house?.roof.form ?? 'mono',
-    material: house?.roof.material ?? 'corrugated_iron',
-    primaryPitchDeg: house?.roof.primaryPitchDeg ?? house?.roof.pitchDeg ?? '',
-    primaryFallDirection: house?.roof.primaryFallDirection ?? 'positive_y',
-    ridgeAxis: house?.roof.ridgeAxis ?? 'x',
-    openGableEndIds: house?.roof.openGableEndIds ?? [],
-    appendage: {
-      enabled: house?.roof.appendage.enabled ?? false,
-      form: house?.roof.appendage.form ?? 'mono',
-      hostEdge: house?.roof.appendage.hostEdge ?? 'rear',
-      pitchDeg: house?.roof.appendage.pitchDeg ?? '',
-      dropMm: house?.roof.appendage.dropMm ?? '450',
-    },
-  };
-}
-
-export function resolveFootprintParams(house: HouseModel | null) {
-  return normalizeHouseFootprintParams(house?.footprint.params);
+export function resolveFootprintParams(houseForm: HouseFormModel | null) {
+  return normalizeHouseFootprintParams(houseForm?.footprint.params);
 }
 
 export function SummarySection({

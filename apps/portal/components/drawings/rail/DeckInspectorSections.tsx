@@ -1,5 +1,9 @@
 import type { ReactNode } from 'react';
-import { resolveDeckPlacementMode, type HouseFirstDeckDraft, type HouseModel } from '@/lib/drawings/state/houseFirstWorkbenchModel';
+import type {
+  ObjectWorkbenchDeckInspectorModel,
+  ObjectWorkbenchDeckPatch,
+} from '@/lib/drawings/state/objectWorkbenchInspectorModel';
+import type { DeckObjectModel } from '@/lib/drawings/state/objectFirstWorkbenchModel';
 import type { CommitResult, FieldErrors, RunAction } from './objectWorkbenchRailTypes';
 import {
   ATTACHMENT_SIDE_OPTIONS,
@@ -18,14 +22,13 @@ import {
 import styles from './WorkbenchRail.module.css';
 
 type BuildDeckInspectorSectionsInput = {
-  activeDeckId?: string | null;
+  activeDeck: ObjectWorkbenchDeckInspectorModel | null;
   disabled?: boolean;
   fieldErrors: FieldErrors;
-  house: HouseModel | null;
   onAddDeck?: (mode: 'preset' | 'custom_outline') => Promise<CommitResult> | CommitResult;
   onCommitDeckPatch?: (
     deckId: string,
-    patch: Partial<HouseFirstDeckDraft>,
+    patch: ObjectWorkbenchDeckPatch,
   ) => Promise<CommitResult> | CommitResult;
   onRemoveDeck?: (deckId: string) => Promise<CommitResult> | CommitResult;
   onStartDeckOutline?: (deckId: string) => Promise<CommitResult> | CommitResult;
@@ -33,18 +36,16 @@ type BuildDeckInspectorSectionsInput = {
 };
 
 export function buildDeckInspectorSections({
-  activeDeckId,
+  activeDeck,
   disabled,
   fieldErrors,
-  house,
   onAddDeck,
   onCommitDeckPatch,
   onRemoveDeck,
   onStartDeckOutline,
   runAction,
 }: BuildDeckInspectorSectionsInput): ReactNode[] {
-  const activeDeck = activeDeckId ? house?.decks.find((deck) => deck.id === activeDeckId) ?? null : null;
-  const activeDeckPlacement = activeDeck ? resolveDeckPlacementMode(activeDeck.isAttached) : null;
+  const activeDeckPlacement = activeDeck?.isAttached ? 'snapped' : 'floating';
   const deckValidationSummary = activeDeck ? resolveDeckValidationSummary(activeDeck) : null;
   const deckWarningSummaries = activeDeck ? resolveDeckWarningSummaries(activeDeck) : [];
   const deckButtons: ReactNode[] = [
@@ -99,13 +100,13 @@ export function buildDeckInspectorSections({
     <TextField
       key="deck-name"
       label="Deck name"
-      value={activeDeck.name}
+      value={activeDeck.label}
       disabled={disabled}
       error={fieldErrors[`deck-name-${activeDeck.id}`]}
       onCommit={(value) =>
         runAction(
           `deck-name-${activeDeck.id}`,
-          onCommitDeckPatch?.(activeDeck.id, { name: value }),
+          onCommitDeckPatch?.(activeDeck.id, { label: value }),
           'Unable to rename the deck.',
         )
       }
@@ -120,7 +121,7 @@ export function buildDeckInspectorSections({
       onCommit={(value) =>
         runAction(
           `deck-kind-${activeDeck.id}`,
-          onCommitDeckPatch?.(activeDeck.id, { kind: value as HouseFirstDeckDraft['kind'] }),
+          onCommitDeckPatch?.(activeDeck.id, { kind: value as DeckObjectModel['kind'] }),
           'Unable to update the deck kind.',
         )
       }
@@ -131,7 +132,7 @@ export function buildDeckInspectorSections({
     <SelectField
       key="deck-host-edge"
       label={activeDeck.isAttached ? 'Host edge' : 'Witness / snap edge'}
-      value={activeDeck.hostEdgeId ?? house?.footprint.attachmentSide ?? 'rear'}
+      value={activeDeck.hostEdgeId ?? activeDeck.defaultHostEdgeId}
       options={ATTACHMENT_SIDE_OPTIONS}
       disabled={disabled}
       error={fieldErrors[`deck-host-${activeDeck.id}`]}
@@ -160,7 +161,7 @@ export function buildDeckInspectorSections({
         runAction(
           `deck-shape-${activeDeck.id}`,
           onCommitDeckPatch?.(activeDeck.id, {
-            shape: value as HouseFirstDeckDraft['shape'],
+            shape: value as DeckObjectModel['shape'],
             presetType:
               value === 'preset'
                 ? activeDeck.isAttached
@@ -298,7 +299,7 @@ export function buildDeckInspectorSections({
       onCommit={(value) =>
         runAction(
           `deck-elevation-${activeDeck.id}`,
-          onCommitDeckPatch?.(activeDeck.id, { elevationMode: value as HouseFirstDeckDraft['elevationMode'] }),
+          onCommitDeckPatch?.(activeDeck.id, { elevationMode: value as DeckObjectModel['elevationMode'] }),
           'Unable to update the deck elevation mode.',
         )
       }
@@ -328,7 +329,7 @@ export function buildDeckInspectorSections({
       onCommit={(value) =>
         runAction(
           `deck-surface-${activeDeck.id}`,
-          onCommitDeckPatch?.(activeDeck.id, { surfaceMaterial: value as HouseFirstDeckDraft['surfaceMaterial'] }),
+          onCommitDeckPatch?.(activeDeck.id, { surfaceMaterial: value as DeckObjectModel['surfaceMaterial'] }),
           'Unable to update the deck material.',
         )
       }

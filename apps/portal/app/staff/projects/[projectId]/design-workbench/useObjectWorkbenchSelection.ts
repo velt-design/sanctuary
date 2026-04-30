@@ -9,9 +9,10 @@ import type {
   DrawingWorkbenchUiState,
   DrawingWorkbenchCanonicalSelectionState,
 } from '@/lib/drawings/state/drawingWorkbenchUiState';
-import type { WorkbenchHouseSelection } from '@/lib/drawings/state/houseFirstWorkbenchModel';
 import type { WorkbenchObjectFamily, WorkbenchObjectRef } from '@/lib/drawings/state/objectFirstWorkbenchModel';
 import type { CommitResult, DrawOutlineTarget } from './objectWorkbenchClientTypes';
+
+type ObjectWorkbenchTargetSelection = DrawingWorkbenchUiState['activeHouseSelection'];
 
 type UseObjectWorkbenchSelectionInput = {
   setUi: Dispatch<SetStateAction<DrawingWorkbenchUiState>>;
@@ -43,7 +44,9 @@ function buildSelectionStateForTab(
   });
 }
 
-function deriveRailTabFromHouseSelection(selection: WorkbenchHouseSelection): Exclude<DrawingWorkbenchRailTab, 'diagnostics'> {
+function deriveRailTabFromHouseSelection(
+  selection: ObjectWorkbenchTargetSelection,
+): Exclude<DrawingWorkbenchRailTab, 'diagnostics'> {
   switch (selection.kind) {
     case 'deck':
       return 'decks';
@@ -57,7 +60,7 @@ function deriveRailTabFromHouseSelection(selection: WorkbenchHouseSelection): Ex
 function buildSelectionStateForObjectRef(
   current: DrawingWorkbenchUiState,
   ref: WorkbenchObjectRef,
-  houseSelectionOverride?: WorkbenchHouseSelection,
+  houseSelectionOverride?: ObjectWorkbenchTargetSelection,
 ): DrawingWorkbenchCanonicalSelectionState {
   return buildDrawingWorkbenchCanonicalSelectionState({
     activeRailTab: ref.family,
@@ -223,7 +226,7 @@ export function useObjectWorkbenchSelection({
   );
 
   const selectObjectWorkbenchTarget = useCallback(
-    (selection: WorkbenchHouseSelection) => {
+    (selection: ObjectWorkbenchTargetSelection) => {
       resetDrawOutlineTarget();
       const nextTab = deriveRailTabFromHouseSelection(selection);
       setUi((current) => ({

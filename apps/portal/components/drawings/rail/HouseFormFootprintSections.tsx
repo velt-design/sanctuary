@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import type { CalculatorModuleInputs } from '@/lib/types/calculator';
+import type { HouseFormModel } from '@/lib/drawings/state/objectFirstWorkbenchModel';
 import type { FieldErrors, RunFootprintCommit } from './objectWorkbenchRailTypes';
-import type { HouseModel } from '@/lib/drawings/state/houseFirstWorkbenchModel';
 import {
   ActionButton,
   ATTACHMENT_SIDE_OPTIONS,
@@ -18,7 +18,7 @@ type BuildHouseFormFootprintSectionsInput = {
   canStartDrawOutline?: boolean;
   disabled?: boolean;
   fieldErrors: FieldErrors;
-  house: HouseModel | null;
+  houseForm: HouseFormModel | null;
   runFootprintCommit: RunFootprintCommit;
   runStartOutline: () => Promise<void>;
 };
@@ -28,13 +28,13 @@ export function buildHouseFormFootprintSections({
   canStartDrawOutline,
   disabled,
   fieldErrors,
-  house,
+  houseForm,
   runFootprintCommit,
   runStartOutline,
 }: BuildHouseFormFootprintSectionsInput): ReactNode[] {
-  const footprintParams = resolveFootprintParams(house);
-  const footprintMode = house?.footprint.mode ?? 'preset';
-  const footprintPreset = house?.footprint.preset ?? 'straight';
+  const footprintParams = resolveFootprintParams(houseForm);
+  const footprintMode = houseForm?.footprint.mode ?? 'preset';
+  const footprintPreset = houseForm?.footprint.preset ?? 'straight';
   const fields: ReactNode[] = [
     <SelectField
       key="footprint-mode"
@@ -71,7 +71,7 @@ export function buildHouseFormFootprintSections({
     <SelectField
       key="attachment-side"
       label="Attachment side"
-      value={house?.footprint.attachmentSide ?? 'rear'}
+      value={houseForm?.footprint.attachmentSide ?? 'rear'}
       options={ATTACHMENT_SIDE_OPTIONS}
       disabled={disabled || !canEditFootprint}
       error={fieldErrors['attachment-side']}

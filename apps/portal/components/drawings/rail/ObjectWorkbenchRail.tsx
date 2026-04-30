@@ -26,16 +26,12 @@ export default function ObjectWorkbenchRail({
 }: ObjectWorkbenchRailProps) {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const {
-    house,
-    pergolas,
-    warnings,
-    activeDeckId,
-    activeOpeningId,
+    objectWorkbench,
     canEditFootprint,
     canStartDrawOutline,
     onStartDrawOutline,
     onCommitFootprintEdit,
-    onCommitRoofDraft,
+    onCommitRoofIntent,
     onAddDeck,
     onAddOpening,
     onRemoveDeck,
@@ -69,13 +65,13 @@ export default function ObjectWorkbenchRail({
 
   const runRoofCommit = useCallback<RunRoofCommit>(
     async (fieldId, nextRoof) => {
-      const result = await resolveCommitResult(onCommitRoofDraft?.(nextRoof));
+      const result = await resolveCommitResult(onCommitRoofIntent?.(nextRoof));
       setFieldErrors((current) => ({
         ...current,
         [fieldId]: result.ok ? '' : result.error ?? 'Unable to update the shared house roof.',
       }));
     },
-    [onCommitRoofDraft],
+    [onCommitRoofIntent],
   );
 
   const runInspectorAction = useCallback<RunAction>(
@@ -104,9 +100,7 @@ export default function ObjectWorkbenchRail({
             hasSelection={model.selectedInspector.hasSelection}
             emptyTitle={model.selectedInspector.emptyTitle}
             emptyMessage={model.selectedInspector.emptyMessage}
-            house={house}
-            pergolas={pergolas}
-            warnings={warnings}
+            houseFormContext={objectWorkbench.houseForm}
             disabled={disabled}
             fieldErrors={fieldErrors}
             canEditFootprint={canEditFootprint}
@@ -129,10 +123,9 @@ export default function ObjectWorkbenchRail({
           )
         ) : activeFamily === 'decks' ? (
           <DeckInspector
-            activeDeckId={activeDeckId}
+            activeDeck={objectWorkbench.activeDeck}
             disabled={disabled}
             fieldErrors={fieldErrors}
-            house={house}
             onAddDeck={onAddDeck}
             onCommitDeckPatch={onCommitDeckPatch}
             onRemoveDeck={onRemoveDeck}
@@ -141,10 +134,9 @@ export default function ObjectWorkbenchRail({
           />
         ) : (
           <OpeningInspector
-            activeOpeningId={activeOpeningId}
+            activeOpening={objectWorkbench.activeOpening}
             disabled={disabled}
             fieldErrors={fieldErrors}
-            house={house}
             onAddOpening={onAddOpening}
             onCommitOpeningPatch={onCommitOpeningPatch}
             onRemoveOpening={onRemoveOpening}

@@ -1,20 +1,22 @@
 'use client';
 
 import { useMemo } from 'react';
-import type { HouseFirstDeckDraft, HouseModel } from '@/lib/drawings/state/houseFirstWorkbenchModel';
+import type {
+  ObjectWorkbenchDeckInspectorModel,
+  ObjectWorkbenchDeckPatch,
+} from '@/lib/drawings/state/objectWorkbenchInspectorModel';
 import type { CommitResult, FieldErrors, RunAction } from './objectWorkbenchRailTypes';
 import { buildDeckInspectorSections } from './DeckInspectorSections';
 import styles from './WorkbenchRail.module.css';
 
 type DeckInspectorProps = {
-  activeDeckId?: string | null;
+  activeDeck: ObjectWorkbenchDeckInspectorModel | null;
   disabled?: boolean;
   fieldErrors: FieldErrors;
-  house: HouseModel | null;
   onAddDeck?: (mode: 'preset' | 'custom_outline') => Promise<CommitResult> | CommitResult;
   onCommitDeckPatch?: (
     deckId: string,
-    patch: Partial<HouseFirstDeckDraft>,
+    patch: ObjectWorkbenchDeckPatch,
   ) => Promise<CommitResult> | CommitResult;
   onRemoveDeck?: (deckId: string) => Promise<CommitResult> | CommitResult;
   onStartDeckOutline?: (deckId: string) => Promise<CommitResult> | CommitResult;
@@ -22,10 +24,9 @@ type DeckInspectorProps = {
 };
 
 export default function DeckInspector({
-  activeDeckId,
+  activeDeck,
   disabled,
   fieldErrors,
-  house,
   onAddDeck,
   onCommitDeckPatch,
   onRemoveDeck,
@@ -35,10 +36,9 @@ export default function DeckInspector({
   const deckSections = useMemo(
     () =>
       buildDeckInspectorSections({
-        activeDeckId,
+        activeDeck,
         disabled,
         fieldErrors,
-        house,
         onAddDeck,
         onCommitDeckPatch,
         onRemoveDeck,
@@ -46,10 +46,9 @@ export default function DeckInspector({
         runAction,
       }),
     [
-      activeDeckId,
+      activeDeck,
       disabled,
       fieldErrors,
-      house,
       onAddDeck,
       onCommitDeckPatch,
       onRemoveDeck,

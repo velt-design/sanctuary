@@ -195,8 +195,8 @@ export default function DesignWorkbenchEstimateClient({
   const activeModule = store.derived.activeModule;
   const activeModuleInput = activeModule?.drawingModule.input ?? null;
   const activePergolaModel =
-    store.derived.pergolas.find((pergola) => pergola.id === store.derived.activePergolaId) ??
-    store.derived.pergolas[0] ??
+    store.derived.objectWorkbench.activePergola ??
+    store.derived.objectWorkbench.pergolas[0] ??
     null;
   const activeDeck =
     store.derived.house?.decks.find((deck) => deck.id === drawOutlineTarget.deckId) ??
@@ -492,7 +492,13 @@ export default function DesignWorkbenchEstimateClient({
       onCommitAttachmentZone={!isLocked ? objectWorkbenchActions.commitSharedPergolaAttachmentZone : undefined}
     />
   );
-  const diagnosticsPanel = <WorkbenchDiagnosticsPanel store={store} geometryPreview={geometryPreview} />;
+  const diagnosticsPanel = (
+    <WorkbenchDiagnosticsPanel
+      objectWorkbench={store.derived.objectWorkbench}
+      ui={store.ui}
+      geometryPreview={geometryPreview}
+    />
+  );
   return (
     <div className={styles.shell}>
       <aside className={styles.configuratorColumn}>
@@ -515,16 +521,12 @@ export default function DesignWorkbenchEstimateClient({
             }))
           }
           inspectorContext={{
-            house: store.derived.house,
-            activeDeckId: store.derived.activeDeckId,
-            activeOpeningId: store.derived.activeOpeningId,
-            pergolas: store.derived.pergolas,
-            warnings: store.derived.migrationWarnings,
+            objectWorkbench: store.derived.objectWorkbench,
             canEditFootprint: Boolean(activeModule.assemblyModel.capabilities.canEditHouseFootprint),
             canStartDrawOutline: !isLocked,
             onStartDrawOutline: objectSelectionActions.startDrawOutlineEditor,
             onCommitFootprintEdit: !isLocked ? objectWorkbenchActions.commitSharedHouseFootprintEdit : undefined,
-            onCommitRoofDraft: !isLocked ? objectWorkbenchActions.commitSharedHouseRoofDraft : undefined,
+            onCommitRoofIntent: !isLocked ? objectWorkbenchActions.commitSharedHouseRoofDraft : undefined,
             onAddDeck: !isLocked ? objectWorkbenchActions.addSharedHouseDeck : undefined,
             onAddOpening: !isLocked ? objectWorkbenchActions.addSharedHouseOpening : undefined,
             onRemoveDeck: !isLocked ? objectWorkbenchActions.removeSharedHouseDeck : undefined,

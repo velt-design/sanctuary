@@ -1,36 +1,34 @@
 'use client';
 
 import { useMemo } from 'react';
+import type { OpeningObjectModel } from '@/lib/drawings/state/objectFirstWorkbenchModel';
 import type {
-  HouseFirstOpeningDraft,
-  HouseModel,
-  WallOpeningKind,
-} from '@/lib/drawings/state/houseFirstWorkbenchModel';
+  ObjectWorkbenchOpeningInspectorModel,
+  ObjectWorkbenchOpeningPatch,
+} from '@/lib/drawings/state/objectWorkbenchInspectorModel';
 import type { CommitResult, FieldErrors, RunAction } from './objectWorkbenchRailTypes';
 import { buildOpeningInspectorSections } from './OpeningInspectorSections';
 import styles from './WorkbenchRail.module.css';
 
 type OpeningInspectorProps = {
-  activeOpeningId?: string | null;
+  activeOpening: ObjectWorkbenchOpeningInspectorModel | null;
   disabled?: boolean;
   fieldErrors: FieldErrors;
-  house: HouseModel | null;
   onAddOpening?: (
-    kind: Extract<WallOpeningKind, 'window' | 'hinged_door' | 'slider' | 'stacker'>,
+    kind: Extract<OpeningObjectModel['kind'], 'window' | 'hinged_door' | 'slider' | 'stacker'>,
   ) => Promise<CommitResult> | CommitResult;
   onCommitOpeningPatch?: (
     openingId: string,
-    patch: Partial<HouseFirstOpeningDraft>,
+    patch: ObjectWorkbenchOpeningPatch,
   ) => Promise<CommitResult> | CommitResult;
   onRemoveOpening?: (openingId: string) => Promise<CommitResult> | CommitResult;
   runAction: RunAction;
 };
 
 export default function OpeningInspector({
-  activeOpeningId,
+  activeOpening,
   disabled,
   fieldErrors,
-  house,
   onAddOpening,
   onCommitOpeningPatch,
   onRemoveOpening,
@@ -39,20 +37,18 @@ export default function OpeningInspector({
   const openingSections = useMemo(
     () =>
       buildOpeningInspectorSections({
-        activeOpeningId,
+        activeOpening,
         disabled,
         fieldErrors,
-        house,
         onAddOpening,
         onCommitOpeningPatch,
         onRemoveOpening,
         runAction,
       }),
     [
-      activeOpeningId,
+      activeOpening,
       disabled,
       fieldErrors,
-      house,
       onAddOpening,
       onCommitOpeningPatch,
       onRemoveOpening,

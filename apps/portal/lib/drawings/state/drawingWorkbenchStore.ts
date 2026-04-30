@@ -38,6 +38,10 @@ import {
   resolveWorkbenchDeckSupportActiveSide,
   type WorkbenchDeckSupportDiagnostic,
 } from './deckSupportDiagnostics';
+import {
+  buildObjectWorkbenchInspectorFacade,
+  type ObjectWorkbenchInspectorFacade,
+} from './objectWorkbenchInspectorModel';
 import type {
   HouseFirstMigrationWarning,
   HouseFirstWorkbenchProjectModel,
@@ -115,6 +119,7 @@ export type DrawingWorkbenchStore = {
     deckSupportWarningCount: number;
     activeDeckSupport: WorkbenchDeckSupportDiagnostic | null;
     activeDeckInteraction: WorkbenchDeckInteractionDiagnostic | null;
+    objectWorkbench: ObjectWorkbenchInspectorFacade;
     roofForm: HouseModel['roof']['form'] | null;
     roofReviewStatus: 'ready' | 'approximate' | 'blocked' | 'none';
     roofValidationStatus: HouseModel['roof']['validation']['status'] | null;
@@ -349,6 +354,16 @@ export function buildDrawingWorkbenchStore(input: {
       })
     : null;
   const activeDeckInteraction = buildDeckInteractionDiagnostic(activeDeck);
+  const objectWorkbench = buildObjectWorkbenchInspectorFacade({
+    activeDeckInteraction,
+    activeDeckSupport,
+    activeObjectRef: ui.activeObjectRef,
+    compatibilityProjectModel,
+    houseAssembly: projectModel.houseAssembly,
+    openingHostResolutions: new Map(Object.entries(openingHostResolutions)),
+    pergolaAttachmentResolutions: new Map(Object.entries(pergolaAttachmentResolutions)),
+    projectModel,
+  });
   const railModel = buildDrawingWorkbenchRailModel({
     activeRailTab: ui.activeRailTab,
     activeObjectFamily: ui.activeObjectFamily,
@@ -413,6 +428,7 @@ export function buildDrawingWorkbenchStore(input: {
       deckSupportWarningCount,
       activeDeckSupport,
       activeDeckInteraction,
+      objectWorkbench,
       roofForm: compatibilityProjectModel.house?.roof.form ?? null,
       roofReviewStatus:
         compatibilityProjectModel.house?.roof.validation.status === 'invalid'

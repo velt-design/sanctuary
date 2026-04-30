@@ -1,12 +1,10 @@
 import type { ReactNode } from 'react';
+import type { OpeningObjectModel } from '@/lib/drawings/state/objectFirstWorkbenchModel';
 import type {
-  HouseFirstOpeningDraft,
-  HouseModel,
-  SliderPanelCount,
-  WallOpeningKind,
-} from '@/lib/drawings/state/houseFirstWorkbenchModel';
+  ObjectWorkbenchOpeningInspectorModel,
+  ObjectWorkbenchOpeningPatch,
+} from '@/lib/drawings/state/objectWorkbenchInspectorModel';
 import type { CommitResult, FieldErrors, RunAction } from './objectWorkbenchRailTypes';
-import type { SelectOption } from './objectRailShared';
 import { ActionButton, NumberField, TextField, SelectField } from './objectRailShared';
 import styles from './WorkbenchRail.module.css';
 
@@ -24,56 +22,29 @@ const SLIDER_PANEL_COUNT_OPTIONS = [
 ] as const;
 
 type BuildOpeningInspectorSectionsInput = {
-  activeOpeningId?: string | null;
+  activeOpening: ObjectWorkbenchOpeningInspectorModel | null;
   disabled?: boolean;
   fieldErrors: FieldErrors;
-  house: HouseModel | null;
   onAddOpening?: (
     kind: 'window' | 'hinged_door' | 'slider' | 'stacker'
   ) => Promise<CommitResult> | CommitResult;
   onCommitOpeningPatch?: (
     openingId: string,
-    patch: Partial<HouseFirstOpeningDraft>,
+    patch: ObjectWorkbenchOpeningPatch,
   ) => Promise<CommitResult> | CommitResult;
   onRemoveOpening?: (openingId: string) => Promise<CommitResult> | CommitResult;
   runAction: RunAction;
 };
 
-function buildOpeningHostWallOptions(
-  house: HouseModel | null,
-  activeOpening: HouseModel['openings'][number] | null,
-): SelectOption[] {
-  const baseOptions =
-    house?.derivedWallGraph.walls.map((wall) => ({
-      label: wall.label,
-      value: wall.id,
-    })) ?? [];
-
-  if (!activeOpening?.hostWallId) {
-    return baseOptions.length
-      ? [{ label: 'Select derived wall', value: '' }, ...baseOptions]
-      : [{ label: 'No derived walls available', value: '' }];
-  }
-
-  if (baseOptions.some((option) => option.value === activeOpening.hostWallId)) {
-    return baseOptions;
-  }
-
-  return [{ label: 'Unavailable saved wall', value: activeOpening.hostWallId }, ...baseOptions];
-}
-
 export function buildOpeningInspectorSections({
-  activeOpeningId,
+  activeOpening,
   disabled,
   fieldErrors,
-  house,
   onAddOpening,
   onCommitOpeningPatch,
   onRemoveOpening,
   runAction,
 }: BuildOpeningInspectorSectionsInput): ReactNode[] {
-  const activeOpening =
-    activeOpeningId ? house?.openings.find((opening) => opening.id === activeOpeningId) ?? null : null;
   const openingValidationSummary = activeOpening?.validation.message ?? null;
   const sections: ReactNode[] = [
     <div key="opening-actions" className={styles.buttonRow}>
@@ -133,9 +104,14 @@ export function buildOpeningInspectorSections({
     return sections;
   }
 
-  const hostWallOptions = buildOpeningHostWallOptions(house, activeOpening);
+  const hostWallOptions = activeOpening.hostWallOptions.length
+    ? activeOpening.hostWallOptions
+    : [{ label: 'No derived walls available', value: '' }];
+  const hostWallSelectOptions = activeOpening.hostWallId
+    ? hostWallOptions
+    : [{ label: 'Select derived wall', value: '' }, ...hostWallOptions.filter((option) => option.value !== '')];
   const selectedHostWallValue =
-    activeOpening.hostWallId ?? (hostWallOptions.some((option) => option.value === '') ? '' : hostWallOptions[0]?.value ?? '');
+    activeOpening.hostWallId ?? (hostWallSelectOptions.some((option) => option.value === '') ? '' : hostWallSelectOptions[0]?.value ?? '');
   const activeOpeningTypeLabel =
     activeOpening.kind === 'slider'
       ? 'Slider'
@@ -174,7 +150,7 @@ export function buildOpeningInspectorSections({
       onCommit={(value) =>
         runAction(
           `opening-kind-${activeOpening.id}`,
-          onCommitOpeningPatch?.(activeOpening.id, { kind: value as WallOpeningKind }),
+          onCommitOpeningPatch?.(activeOpening.id, { kind: value as OpeningObjectModel['kind'] }),
           'Unable to update the opening type.',
         )
       }
@@ -183,11 +159,11 @@ export function buildOpeningInspectorSections({
       key="opening-wall"
       label="Host wall"
       value={selectedHostWallValue}
-      options={hostWallOptions}
-      disabled={disabled || !hostWallOptions.length}
+      options={hostWallSelectOptions}
+      disabled={disabled || !hostWallSelectOptions.length}
       error={fieldErrors[`opening-wall-${activeOpening.id}`]}
       helperText={
-        house?.derivedWallGraph.walls.length
+        activeOpening.hostWallOptions.length
           ? 'Openings host to derived walls from the current house envelope.'
           : 'Derived host walls are unavailable for this house right now.'
       }
@@ -215,7 +191,7 @@ export function buildOpeningInspectorSections({
               runAction(
                 `opening-panel-count-${activeOpening.id}`,
                 onCommitOpeningPatch?.(activeOpening.id, {
-                  panelCount: Number.parseInt(value, 10) as SliderPanelCount,
+                  panelCount: Number.parseInt(value, 10) as NonNullable<OpeningObjectModel['panelCount']>,
                 }),
                 'Unable to update the slider panel count.',
               )

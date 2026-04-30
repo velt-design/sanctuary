@@ -9,16 +9,19 @@ import type {
   GeometryEditState,
 } from '@/lib/drawings/geometry/geometryEditAdapter';
 import type { HouseAssemblyModel } from '@/lib/drawings/state/objectFirstWorkbenchModel';
-import type { PergolaModel } from '@/lib/drawings/state/houseFirstWorkbenchModel';
 import type {
-  CalculatorHouseAttachmentStrategy,
+  ObjectWorkbenchPergolaAttachmentStrategy,
+  ObjectWorkbenchPergolaConnectionKind,
+  ObjectWorkbenchPergolaInspectorModel,
+} from '@/lib/drawings/state/objectWorkbenchInspectorModel';
+import type {
   CalculatorModuleInputs,
 } from '@/lib/types/calculator';
 import type { CommitResult } from './objectWorkbenchClientTypes';
 import styles from './DesignWorkbenchEstimateClient.module.css';
 
-type PergolaAttachmentKind = PergolaModel['attachment']['kind'];
-type PergolaAttachmentStrategyValue = CalculatorHouseAttachmentStrategy | 'auto';
+type PergolaAttachmentKind = ObjectWorkbenchPergolaConnectionKind;
+type PergolaAttachmentStrategyValue = ObjectWorkbenchPergolaAttachmentStrategy;
 
 type PergolaInspectorModule = {
   id: string;
@@ -27,7 +30,7 @@ type PergolaInspectorModule = {
 };
 
 type PergolaInspectorProps = {
-  activePergolaModel: PergolaModel | null;
+  activePergolaModel: ObjectWorkbenchPergolaInspectorModel | null;
   activeModuleInput: CalculatorModuleInputs | null;
   activeModuleIndex: number;
   activeModuleLabel: string;
@@ -101,7 +104,7 @@ export default function PergolaInspector({
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const activePergolaZoneKind = activePergolaModel
-    ? resolvePergolaZoneKind(activePergolaModel.attachment.kind)
+    ? resolvePergolaZoneKind(activePergolaModel.connectionKind)
     : null;
   const compatiblePergolaZones = useMemo(() => {
     if (!activePergolaModel || !activePergolaZoneKind) return [];
@@ -118,12 +121,12 @@ export default function PergolaInspector({
     return (houseAssembly?.derivedEnvelope?.edges ?? []).filter((edge) => allowedEdgeIds.has(edge.id));
   }, [compatiblePergolaZones, houseAssembly?.derivedEnvelope?.edges]);
   const selectedPergolaEdgeOptionMissing = Boolean(
-    activePergolaModel?.attachment.attachmentEdgeId &&
-      !compatiblePergolaEdges.some((edge) => edge.id === activePergolaModel.attachment.attachmentEdgeId),
+    activePergolaModel?.attachmentEdgeId &&
+      !compatiblePergolaEdges.some((edge) => edge.id === activePergolaModel.attachmentEdgeId),
   );
   const selectedPergolaZoneOptionMissing = Boolean(
-    activePergolaModel?.attachment.attachmentZoneId &&
-      !compatiblePergolaZones.some((zone) => zone.id === activePergolaModel.attachment.attachmentZoneId),
+    activePergolaModel?.attachmentZoneId &&
+      !compatiblePergolaZones.some((zone) => zone.id === activePergolaModel.attachmentZoneId),
   );
 
   const runAttachmentAction = useCallback(
@@ -165,7 +168,7 @@ export default function PergolaInspector({
             id="pergola-connection-type"
             className={styles.moduleSelect}
             aria-label="Pergola connection"
-            value={activePergolaModel.attachment.kind}
+            value={activePergolaModel.connectionKind}
             disabled={disabled || pendingFieldId === 'pergola-connection'}
             onChange={(event) =>
               runAttachmentAction(
@@ -189,10 +192,10 @@ export default function PergolaInspector({
             id="pergola-attachment-strategy"
             className={styles.moduleSelect}
             aria-label="Pergola attachment strategy"
-            value={activePergolaModel.attachment.strategy ?? 'auto'}
+            value={activePergolaModel.attachmentStrategy}
             disabled={
               disabled ||
-              activePergolaModel.attachment.kind === 'freestanding' ||
+              activePergolaModel.connectionKind === 'freestanding' ||
               pendingFieldId === 'pergola-strategy'
             }
             onChange={(event) =>
@@ -220,10 +223,10 @@ export default function PergolaInspector({
             id="pergola-host-edge"
             className={styles.moduleSelect}
             aria-label="Pergola host edge"
-            value={activePergolaModel.attachment.attachmentEdgeId ?? ''}
+            value={activePergolaModel.attachmentEdgeId ?? ''}
             disabled={
               disabled ||
-              activePergolaModel.attachment.kind === 'freestanding' ||
+              activePergolaModel.connectionKind === 'freestanding' ||
               (!compatiblePergolaEdges.length && !selectedPergolaEdgeOptionMissing) ||
               pendingFieldId === 'pergola-edge'
             }
@@ -235,8 +238,8 @@ export default function PergolaInspector({
               )
             }
           >
-            {selectedPergolaEdgeOptionMissing && activePergolaModel.attachment.attachmentEdgeId ? (
-              <option value={activePergolaModel.attachment.attachmentEdgeId}>Unavailable saved edge</option>
+            {selectedPergolaEdgeOptionMissing && activePergolaModel.attachmentEdgeId ? (
+              <option value={activePergolaModel.attachmentEdgeId}>Unavailable saved edge</option>
             ) : null}
             {compatiblePergolaEdges.map((edge) => (
               <option key={edge.id} value={edge.id}>
@@ -252,10 +255,10 @@ export default function PergolaInspector({
             id="pergola-host-zone"
             className={styles.moduleSelect}
             aria-label="Pergola host zone"
-            value={activePergolaModel.attachment.attachmentZoneId ?? ''}
+            value={activePergolaModel.attachmentZoneId ?? ''}
             disabled={
               disabled ||
-              activePergolaModel.attachment.kind === 'freestanding' ||
+              activePergolaModel.connectionKind === 'freestanding' ||
               (!compatiblePergolaZones.length && !selectedPergolaZoneOptionMissing) ||
               pendingFieldId === 'pergola-zone'
             }
@@ -267,8 +270,8 @@ export default function PergolaInspector({
               )
             }
           >
-            {selectedPergolaZoneOptionMissing && activePergolaModel.attachment.attachmentZoneId ? (
-              <option value={activePergolaModel.attachment.attachmentZoneId}>Unavailable saved zone</option>
+            {selectedPergolaZoneOptionMissing && activePergolaModel.attachmentZoneId ? (
+              <option value={activePergolaModel.attachmentZoneId}>Unavailable saved zone</option>
             ) : null}
             {compatiblePergolaZones.map((zone) => (
               <option key={zone.id} value={zone.id}>
@@ -280,18 +283,18 @@ export default function PergolaInspector({
           <div className={styles.diagnosticsList}>
             <div className={styles.diagnosticRow}>
               <span className={styles.diagnosticLabel}>Resolution</span>
-              <span className={styles.diagnosticValue}>{activePergolaModel.attachment.resolution.status}</span>
+              <span className={styles.diagnosticValue}>{activePergolaModel.resolution.status}</span>
             </div>
             <div className={styles.diagnosticRow}>
               <span className={styles.diagnosticLabel}>Host side</span>
               <span className={styles.diagnosticValue}>
-                {labelForAttachmentSideList([activePergolaModel.attachment.side])}
+                {labelForAttachmentSideList([activePergolaModel.side])}
               </span>
             </div>
           </div>
 
-          {activePergolaModel.attachment.resolution.message ? (
-            <p className={styles.noticeText}>{activePergolaModel.attachment.resolution.message}</p>
+          {activePergolaModel.resolution.message ? (
+            <p className={styles.noticeText}>{activePergolaModel.resolution.message}</p>
           ) : null}
           {fieldErrors['pergola-connection'] ? (
             <p className={styles.noticeText}>{fieldErrors['pergola-connection']}</p>

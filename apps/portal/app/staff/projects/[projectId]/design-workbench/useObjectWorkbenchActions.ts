@@ -16,6 +16,7 @@ import type {
   DerivedAttachmentZoneModel,
   DerivedWallModel,
   HouseAssemblyModel,
+  HouseFormRoofIntentModel,
   ObjectFirstWorkbenchDraftVNext,
 } from '@/lib/drawings/state/objectFirstWorkbenchModel';
 import {
@@ -42,6 +43,12 @@ import {
   normalizeWallOpeningKind,
   resolveOpeningPanelCount,
 } from '@/lib/drawings/state/houseFirstWorkbenchModel';
+import type {
+  ObjectWorkbenchDeckPatch,
+  ObjectWorkbenchOpeningPatch,
+  ObjectWorkbenchPergolaAttachmentStrategy,
+  ObjectWorkbenchPergolaConnectionKind,
+} from '@/lib/drawings/state/objectWorkbenchInspectorModel';
 import { resolveDeckHostEdgeFrame, sanitizeDeckPresetRect } from '@/lib/drawings/state/houseFirstDeckPresets';
 import {
   applyEstimateDrawingModuleFieldEdit,
@@ -53,7 +60,6 @@ import {
 } from '@/lib/estimates/drawingEdits';
 import type { EstimateDetail } from '@/lib/estimates/types';
 import type {
-  CalculatorHouseAttachmentStrategy,
   CalculatorHouseFootprintPolygonPoint,
   CalculatorModuleInputs,
 } from '@/lib/types/calculator';
@@ -102,8 +108,8 @@ type PergolaMutationInput = {
   currentPergolas: HouseFirstPergolaDraft[];
 };
 
-type PergolaAttachmentKind = PergolaModel['attachment']['kind'];
-type PergolaAttachmentStrategyValue = CalculatorHouseAttachmentStrategy | 'auto';
+type PergolaAttachmentKind = ObjectWorkbenchPergolaConnectionKind;
+type PergolaAttachmentStrategyValue = ObjectWorkbenchPergolaAttachmentStrategy;
 
 function missingDrawingDraftResult(): CommitResult {
   return { ok: false, error: 'Drawing inputs are not available for this estimate.' };
@@ -526,6 +532,18 @@ function mirrorSharedRoofDraftToModules(
   return draft;
 }
 
+function buildHouseFirstRoofDraftFromIntent(roof: HouseFormRoofIntentModel): HouseFirstRoofDraft {
+  return {
+    form: roof.form,
+    material: roof.material,
+    primaryPitchDeg: roof.primaryPitchDeg,
+    primaryFallDirection: roof.primaryFallDirection,
+    ridgeAxis: roof.ridgeAxis,
+    openGableEndIds: roof.openGableEndIds,
+    appendage: roof.appendage,
+  };
+}
+
 function normalizeSharedHouseRoofDraftForCommit(
   roof: HouseFirstRoofDraft,
 ): HouseFirstRoofDraft {
@@ -545,6 +563,22 @@ function normalizeSharedHouseRoofDraftForCommit(
     openGableEndIds: form === 'gable' ? base.openGableEndIds ?? [] : [],
     appendage: behavior.controls.appendage ? base.appendage ?? null : null,
   };
+}
+
+function buildHouseFirstDeckPatchFromObjectPatch(
+  patch: ObjectWorkbenchDeckPatch,
+): Partial<HouseFirstDeckDraft> {
+  const { label, ...objectPatch } = patch;
+  return {
+    ...objectPatch,
+    ...(label !== undefined ? { name: label } : null),
+  } as Partial<HouseFirstDeckDraft>;
+}
+
+function buildHouseFirstOpeningPatchFromObjectPatch(
+  patch: ObjectWorkbenchOpeningPatch,
+): Partial<HouseFirstOpeningDraft> {
+  return patch as Partial<HouseFirstOpeningDraft>;
 }
 
 function buildNewDeckDraft(input: {
@@ -968,11 +1002,13 @@ export function useObjectWorkbenchActions({
   );
 
   const commitSharedHouseRoofDraft = useCallback(
-    async (roof: HouseFirstRoofDraft): Promise<CommitResult> =>
+    async (roof: HouseFormRoofIntentModel): Promise<CommitResult> =>
       runDraftTransaction({
         buildNextDraft: (draft) => {
           const objectFirstDraft = resolveObjectFirstDraft(draft, store);
-          const normalizedRoof = normalizeSharedHouseRoofDraftForCommit(roof);
+          const normalizedRoof = normalizeSharedHouseRoofDraftForCommit(
+            buildHouseFirstRoofDraftFromIntent(roof),
+          );
           const nextObjectFirstDraft: ObjectFirstWorkbenchDraftVNext = {
             ...objectFirstDraft,
             houseAssembly: objectFirstDraft.houseAssembly
@@ -1037,7 +1073,7 @@ export function useObjectWorkbenchActions({
     [runDraftTransaction, store],
   );
 
-  const commitSharedHouseDeckPatch = useCallback(
+  const commitCompatibilityHouseDeckPatch = useCallback(
     async (deckId: string, patch: Partial<HouseFirstDeckDraft>): Promise<CommitResult> =>
       commitDeckDraftMutation({
         buildNextDecks: ({ currentDecks, housePolygon }) =>
@@ -1049,6 +1085,12 @@ export function useObjectWorkbenchActions({
           }),
       }),
     [commitDeckDraftMutation],
+  );
+
+  const commitSharedHouseDeckPatch = useCallback(
+    async (deckId: string, patch: ObjectWorkbenchDeckPatch): Promise<CommitResult> =>
+      commitCompatibilityHouseDeckPatch(deckId, buildHouseFirstDeckPatchFromObjectPatch(patch)),
+    [commitCompatibilityHouseDeckPatch],
   );
 
   const addSharedHouseDeck = useCallback(
@@ -1106,7 +1148,7 @@ export function useObjectWorkbenchActions({
     [commitSharedHouseDeckPatch, drawOutlineTarget],
   );
 
-  const commitSharedHouseOpeningPatch = useCallback(
+  const commitCompatibilityHouseOpeningPatch = useCallback(
     async (openingId: string, patch: Partial<HouseFirstOpeningDraft>): Promise<CommitResult> =>
       commitOpeningDraftMutation({
         buildNextOpenings: ({ currentOpenings }) =>
@@ -1123,6 +1165,12 @@ export function useObjectWorkbenchActions({
           }),
       }),
     [activeModuleInput, commitOpeningDraftMutation, store.derived.house, store.derived.houseAssembly],
+  );
+
+  const commitSharedHouseOpeningPatch = useCallback(
+    async (openingId: string, patch: ObjectWorkbenchOpeningPatch): Promise<CommitResult> =>
+      commitCompatibilityHouseOpeningPatch(openingId, buildHouseFirstOpeningPatchFromObjectPatch(patch)),
+    [commitCompatibilityHouseOpeningPatch],
   );
 
   const addSharedHouseOpening = useCallback(
@@ -1409,8 +1457,8 @@ export function useObjectWorkbenchActions({
 
   const commitOpeningDimension = useCallback(
     async (openingId: string, patch: Partial<HouseFirstOpeningDraft>): Promise<CommitResult> =>
-      commitSharedHouseOpeningPatch(openingId, patch),
-    [commitSharedHouseOpeningPatch],
+      commitCompatibilityHouseOpeningPatch(openingId, patch),
+    [commitCompatibilityHouseOpeningPatch],
   );
 
   return {

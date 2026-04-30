@@ -432,8 +432,8 @@ describe('DesignWorkbenchEstimateClient', () => {
     clickButtonByText(rendered.container, 'Diagnostics');
     await flushAsyncWork();
 
-    expect(rendered.container.textContent).toContain('Migration diagnostics');
-    expect(rendered.container.textContent).toContain('Derived houses');
+    expect(rendered.container.textContent).toContain('Object diagnostics');
+    expect(rendered.container.textContent).toContain('House forms');
 
     rendered.unmount();
   });
@@ -1796,8 +1796,8 @@ describe('DesignWorkbenchEstimateClient', () => {
     clickButtonByText(rendered.container, 'Diagnostics');
     await flushAsyncWork();
 
-    expect(rendered.container.textContent).toContain('Migration diagnostics');
-    expect(rendered.container.textContent).toContain('Derived houses');
+    expect(rendered.container.textContent).toContain('Object diagnostics');
+    expect(rendered.container.textContent).toContain('House forms');
     expect(rendered.container.textContent).toContain('Low confidence');
 
     clickButtonByText(rendered.container, 'Pergolas');

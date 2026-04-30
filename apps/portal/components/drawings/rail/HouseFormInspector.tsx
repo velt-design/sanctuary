@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, type ReactNode } from 'react';
-import type { HouseFirstMigrationWarning, HouseModel, PergolaModel } from '@/lib/drawings/state/houseFirstWorkbenchModel';
+import type { ObjectWorkbenchHouseFormInspectorModel } from '@/lib/drawings/state/objectWorkbenchInspectorModel';
 import type { FieldErrors, RunFootprintCommit, RunRoofCommit } from './objectWorkbenchRailTypes';
 import { buildHouseFormFootprintSections } from './HouseFormFootprintSections';
 import { buildHouseFormOverviewSection } from './HouseFormOverviewSection';
@@ -12,9 +12,7 @@ type HouseFormInspectorProps = {
   hasSelection: boolean;
   emptyTitle: string;
   emptyMessage: string;
-  house: HouseModel | null;
-  pergolas: PergolaModel[];
-  warnings: HouseFirstMigrationWarning[];
+  houseFormContext: ObjectWorkbenchHouseFormInspectorModel;
   disabled?: boolean;
   fieldErrors: FieldErrors;
   canEditFootprint?: boolean;
@@ -29,9 +27,7 @@ export default function HouseFormInspector({
   hasSelection,
   emptyTitle,
   emptyMessage,
-  house,
-  pergolas,
-  warnings,
+  houseFormContext,
   disabled,
   fieldErrors,
   canEditFootprint,
@@ -44,11 +40,9 @@ export default function HouseFormInspector({
   const overviewSection = useMemo(
     () =>
       buildHouseFormOverviewSection({
-        house,
-        pergolas,
-        warnings,
+        houseFormContext,
       }),
-    [house, pergolas, warnings],
+    [houseFormContext],
   );
 
   const footprintSections = useMemo(
@@ -58,7 +52,7 @@ export default function HouseFormInspector({
         canStartDrawOutline,
         disabled,
         fieldErrors,
-        house,
+        houseForm: houseFormContext.houseForm,
         runFootprintCommit,
         runStartOutline,
       }),
@@ -67,7 +61,7 @@ export default function HouseFormInspector({
       canStartDrawOutline,
       disabled,
       fieldErrors,
-      house,
+      houseFormContext.houseForm,
       runFootprintCommit,
       runStartOutline,
     ],
@@ -78,10 +72,10 @@ export default function HouseFormInspector({
       buildHouseFormRoofSections({
         disabled,
         fieldErrors,
-        house,
+        houseFormContext,
         runRoofCommit,
       }),
-    [disabled, fieldErrors, house, runRoofCommit],
+    [disabled, fieldErrors, houseFormContext, runRoofCommit],
   );
 
   if (!hasSelection) {
