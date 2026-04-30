@@ -128,6 +128,16 @@ export default function WorkbenchDiagnosticsPanel({
           <span className={styles.diagnosticValue}>{compatibilitySelection.workbenchMode}</span>
         </div>
         <div className={styles.diagnosticRow}>
+          <span className={styles.diagnosticLabel}>Active trust</span>
+          <span className={styles.diagnosticValue}>{diagnostics.activeTrustLabel}</span>
+        </div>
+        <div className={styles.diagnosticRow}>
+          <span className={styles.diagnosticLabel}>Trust issues</span>
+          <span className={styles.diagnosticValue}>
+            {diagnostics.activeTrust.issues.join(', ') || 'none'}
+          </span>
+        </div>
+        <div className={styles.diagnosticRow}>
           <span className={styles.diagnosticLabel}>House forms</span>
           <span className={styles.diagnosticValue}>{diagnostics.houseCount}</span>
         </div>

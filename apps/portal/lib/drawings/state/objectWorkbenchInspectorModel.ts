@@ -23,6 +23,11 @@ import type {
   ObjectWorkbenchRoofProvenance,
   ObjectWorkbenchStatusFacade,
 } from './objectWorkbenchStatusModel';
+import {
+  labelForWorkbenchTrustStatus,
+  type WorkbenchTrustStatus,
+  type WorkbenchTrustStatusKind,
+} from './workbenchSolvedModel';
 
 export type ObjectWorkbenchDeckPatch = Partial<
   Pick<
@@ -95,6 +100,8 @@ export type ObjectWorkbenchHouseFormInspectorModel = {
   houseForm: HouseFormModel | null;
   houseForms: HouseFormModel[];
   roof: ObjectWorkbenchRoofInspectorModel;
+  trustStatus: WorkbenchTrustStatusKind;
+  trustLabel: string;
   deckCount: number;
   openingCount: number;
   pergolaCount: number;
@@ -102,8 +109,10 @@ export type ObjectWorkbenchHouseFormInspectorModel = {
   lowConfidence: boolean;
 };
 
-export type ObjectWorkbenchDeckInspectorModel = DeckObjectModel & {
+export type ObjectWorkbenchDeckInspectorModel = Omit<DeckObjectModel, 'validation'> & {
   defaultHostEdgeId: string;
+  trustStatus: WorkbenchTrustStatusKind;
+  trustLabel: string;
   validation: {
     status: 'valid' | 'invalid';
     codes: string[];
@@ -116,7 +125,9 @@ export type ObjectWorkbenchDeckInspectorModel = DeckObjectModel & {
   };
 };
 
-export type ObjectWorkbenchOpeningInspectorModel = OpeningObjectModel & {
+export type ObjectWorkbenchOpeningInspectorModel = Omit<OpeningObjectModel, 'validation'> & {
+  trustStatus: WorkbenchTrustStatusKind;
+  trustLabel: string;
   validation: {
     status: 'valid' | 'invalid';
     codes: string[];
@@ -130,6 +141,8 @@ export type ObjectWorkbenchOpeningInspectorModel = OpeningObjectModel & {
 };
 
 export type ObjectWorkbenchPergolaInspectorModel = PergolaObjectModel & {
+  trustStatus: WorkbenchTrustStatusKind;
+  trustLabel: string;
   connectionKind: ObjectWorkbenchPergolaConnectionKind;
   attachmentStrategy: ObjectWorkbenchPergolaAttachmentStrategy;
   attachmentEdgeId: string | null;
@@ -164,6 +177,8 @@ export type ObjectWorkbenchDiagnosticsModel = {
   footprintSource: 'custom_saved' | 'preset_derived';
   lowConfidence: boolean;
   migrationWarningCount: number;
+  activeTrust: WorkbenchTrustStatus;
+  activeTrustLabel: string;
   roof: ObjectWorkbenchRoofInspectorModel;
 };
 
@@ -180,6 +195,7 @@ export type ObjectWorkbenchInspectorFacade = {
 
 type BuildObjectWorkbenchInspectorFacadeInput = {
   activeObjectRef: WorkbenchObjectRef;
+  activeTrust: WorkbenchTrustStatus;
   houseAssembly: HouseAssemblyModel | null;
   openingHostResolutions: Map<string, ObjectFirstOpeningHostResolution>;
   pergolaAttachmentResolutions: Map<string, ObjectFirstPergolaAttachmentResolution>;
@@ -234,6 +250,42 @@ function buildRoofInspector(
   };
 }
 
+function resolveHouseFormTrustStatus(input: {
+  activeTrust: WorkbenchTrustStatus;
+  roof: ObjectWorkbenchRoofInspectorModel;
+  status: ObjectWorkbenchStatusFacade;
+}): WorkbenchTrustStatusKind {
+  if (input.roof.validationStatus === 'invalid') return 'invalid_geometry';
+  if (
+    input.roof.validationStatus === 'approximate' ||
+    input.status.houseForm.lowConfidence ||
+    input.status.houseForm.warnings.length > 0
+  ) {
+    return 'approximate';
+  }
+  return input.activeTrust.status;
+}
+
+function buildTrustLabel(status: WorkbenchTrustStatusKind): string {
+  return labelForWorkbenchTrustStatus(status);
+}
+
+function resolveModuleTrustStatus(trust: WorkbenchTrustStatus): WorkbenchTrustStatusKind {
+  if (trust.status === 'invalid_geometry' || trust.issues.includes('invalid_geometry')) {
+    return 'invalid_geometry';
+  }
+  if (trust.status === 'unresolved_host' || trust.issues.includes('unresolved_host')) {
+    return 'unresolved_host';
+  }
+  if (trust.status === 'legacy_unsupported_family' && trust.issues.includes('legacy_fallback')) {
+    return 'legacy_fallback';
+  }
+  if (trust.status === 'approximate' || trust.issues.includes('approximate')) {
+    return 'approximate';
+  }
+  return trust.status;
+}
+
 function buildDeckInspectorModels(input: {
   decks: DeckObjectModel[];
   status: ObjectWorkbenchStatusFacade;
@@ -245,6 +297,10 @@ function buildDeckInspectorModels(input: {
     return {
       ...deck,
       defaultHostEdgeId,
+      trustStatus: deckStatus?.validation.status === 'invalid' ? 'invalid_geometry' : 'geometry_ready',
+      trustLabel: buildTrustLabel(
+        deckStatus?.validation.status === 'invalid' ? 'invalid_geometry' : 'geometry_ready',
+      ),
       validation: {
         status: deckStatus?.validation.status ?? 'valid',
         codes: deckStatus?.validation.codes ?? [],
@@ -273,6 +329,16 @@ function buildOpeningInspectorModels(input: {
 
   return input.openings.map((opening) => {
     const openingStatus = input.status.openingStatuses[opening.id] ?? null;
+    const hostResolution = input.openingHostResolutions.get(opening.id) ?? null;
+    const hasInvalidGeometry =
+      openingStatus?.validation.status === 'invalid' &&
+      openingStatus.validation.codes.some((code) => code !== 'missing_host_wall');
+    const trustStatus: WorkbenchTrustStatusKind =
+      hasInvalidGeometry
+        ? 'invalid_geometry'
+        : hostResolution?.status === 'unresolved'
+          ? 'unresolved_host'
+          : 'geometry_ready';
     const hostWallOptions =
       opening.hostWallId && !baseHostWallOptions.some((option) => option.value === opening.hostWallId)
         ? [{ label: 'Unavailable saved wall', value: opening.hostWallId }, ...baseHostWallOptions]
@@ -280,18 +346,21 @@ function buildOpeningInspectorModels(input: {
 
     return {
       ...opening,
+      trustStatus,
+      trustLabel: buildTrustLabel(trustStatus),
       validation: {
         status: openingStatus?.validation.status ?? 'valid',
         codes: openingStatus?.validation.codes ?? [],
         message: openingStatus?.validation.message ?? null,
       },
       hostWallOptions,
-      hostResolution: input.openingHostResolutions.get(opening.id) ?? null,
+      hostResolution,
     };
   });
 }
 
 function buildPergolaInspectorModels(input: {
+  activeTrust: WorkbenchTrustStatus;
   pergolaAttachmentResolutions: Map<string, ObjectFirstPergolaAttachmentResolution>;
   pergolas: PergolaObjectModel[];
   status: ObjectWorkbenchStatusFacade;
@@ -299,8 +368,20 @@ function buildPergolaInspectorModels(input: {
   return input.pergolas.map((pergola) => {
     const pergolaStatus = input.status.pergolaStatuses[pergola.id] ?? null;
     const resolution = input.pergolaAttachmentResolutions.get(pergola.id);
+    const isFreestanding = pergolaStatus?.isFreestanding ?? false;
+    const moduleTrustStatus = resolveModuleTrustStatus(input.activeTrust);
+    const trustStatus: WorkbenchTrustStatusKind =
+      !isFreestanding && resolution?.status === 'unresolved'
+        ? 'unresolved_host'
+        : moduleTrustStatus !== 'geometry_ready'
+          ? moduleTrustStatus
+          : pergolaStatus?.confidence === 'low'
+            ? 'approximate'
+            : 'geometry_ready';
     return {
       ...pergola,
+      trustStatus,
+      trustLabel: buildTrustLabel(trustStatus),
       connectionKind: pergolaStatus?.connectionKind ?? 'soffit',
       attachmentStrategy: pergolaStatus?.attachmentStrategy ?? pergola.strategy ?? 'auto',
       attachmentEdgeId: pergola.attachmentEdgeId,
@@ -353,6 +434,7 @@ function buildDiagnostics(input: {
   activeDeckInteraction: DeckInteractionCapability | null;
   activeDeckSupport: WorkbenchDeckSupportDiagnostic | null;
   activeOpening: ObjectWorkbenchOpeningInspectorModel | null;
+  activeTrust: WorkbenchTrustStatus;
   houseAssembly: HouseAssemblyModel | null;
   houseFormContext: ObjectWorkbenchHouseFormInspectorModel;
   pergolas: ObjectWorkbenchPergolaInspectorModel[];
@@ -384,12 +466,15 @@ function buildDiagnostics(input: {
     footprintSource: houseFormContext.houseForm?.footprint.mode === 'custom_polygon' ? 'custom_saved' : 'preset_derived',
     lowConfidence: houseFormContext.lowConfidence,
     migrationWarningCount: houseFormContext.warnings.length,
+    activeTrust: input.activeTrust,
+    activeTrustLabel: buildTrustLabel(input.activeTrust.status),
     roof: houseFormContext.roof,
   };
 }
 
 export function buildObjectWorkbenchInspectorFacade({
   activeObjectRef,
+  activeTrust,
   houseAssembly,
   openingHostResolutions,
   pergolaAttachmentResolutions,
@@ -414,6 +499,7 @@ export function buildObjectWorkbenchInspectorFacade({
     status,
   });
   const pergolas = buildPergolaInspectorModels({
+    activeTrust,
     pergolaAttachmentResolutions,
     pergolas: projectModel.pergolas,
     status,
@@ -430,11 +516,18 @@ export function buildObjectWorkbenchInspectorFacade({
     activeObjectRef.family === 'pergolas'
       ? pergolas.find((pergola) => pergola.id === activeObjectRef.objectId) ?? null
       : null;
+  const houseFormTrustStatus = resolveHouseFormTrustStatus({
+    activeTrust,
+    roof,
+    status,
+  });
   const houseFormContext: ObjectWorkbenchHouseFormInspectorModel = {
     houseAssembly,
     houseForm: selectedHouseForm,
     houseForms,
     roof,
+    trustStatus: houseFormTrustStatus,
+    trustLabel: buildTrustLabel(houseFormTrustStatus),
     deckCount: decks.length,
     openingCount: openings.length,
     pergolaCount: pergolas.length,
@@ -445,6 +538,7 @@ export function buildObjectWorkbenchInspectorFacade({
     activeDeck,
     activeDeckInteraction: status.activeDeckInteraction,
     activeDeckSupport: status.activeDeckSupport,
+    activeTrust,
     activeOpening,
     houseAssembly,
     houseFormContext,

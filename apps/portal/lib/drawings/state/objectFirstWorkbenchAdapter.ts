@@ -94,6 +94,9 @@ function buildDeckObjects(house: ObjectWorkbenchCompatibilityHouseModel | null):
     primaryHostEdgeId: deck.primaryHostEdgeId,
     secondaryHostEdgeId: deck.secondaryHostEdgeId,
     cornerVertexId: deck.cornerVertexId,
+    topSurfaceElevationMm: deck.topSurfaceElevationMm,
+    supportContext: deck.supportContext,
+    validation: deck.validation,
   }));
 }
 
@@ -111,6 +114,7 @@ function buildOpeningObjects(house: ObjectWorkbenchCompatibilityHouseModel | nul
     heightM: opening.heightM,
     sillHeightM: opening.sillHeightM,
     offsetAlongWallM: opening.offsetAlongWallM,
+    validation: opening.validation,
   }));
 }
 
@@ -257,16 +261,37 @@ export function buildObjectFirstWorkbenchDraftFromProjectModel(
   });
 }
 
-function buildDeckModelsFromDrafts(decks: ObjectFirstDeckDraft[]): DeckObjectModel[] {
-  return decks.map((deck) => ({
-    ...deck,
-  }));
+function buildDeckModelsFromDrafts(
+  decks: ObjectFirstDeckDraft[],
+  compatibilityHouse: ObjectWorkbenchCompatibilityHouseModel | null,
+): DeckObjectModel[] {
+  const compatibilityDeckById = new Map((compatibilityHouse?.decks ?? []).map((deck) => [deck.id, deck]));
+  return decks.map((deck) => {
+    const compatibilityDeck = compatibilityDeckById.get(deck.id);
+    return {
+      ...deck,
+      topSurfaceElevationMm: compatibilityDeck?.topSurfaceElevationMm,
+      supportContext: compatibilityDeck?.supportContext,
+      validation: compatibilityDeck?.validation,
+    };
+  });
 }
 
-function buildOpeningModelsFromDrafts(openings: ObjectFirstOpeningDraft[]): OpeningObjectModel[] {
-  return openings.map((opening) => ({
-    ...opening,
-  }));
+function buildOpeningModelsFromDrafts(
+  openings: ObjectFirstOpeningDraft[],
+  compatibilityHouse: ObjectWorkbenchCompatibilityHouseModel | null,
+): OpeningObjectModel[] {
+  const compatibilityOpeningById = new Map((compatibilityHouse?.openings ?? []).map((opening) => [opening.id, opening]));
+  return openings.map((opening) => {
+    const compatibilityOpening = compatibilityOpeningById.get(opening.id);
+    return {
+      ...opening,
+      hostWallId: opening.hostWallId ?? compatibilityOpening?.hostWallId ?? null,
+      wallId: opening.wallId ?? compatibilityOpening?.wallId ?? null,
+      hostEdgeId: opening.hostEdgeId ?? compatibilityOpening?.hostEdgeId ?? null,
+      validation: compatibilityOpening?.validation,
+    };
+  });
 }
 
 function buildPergolaModelsFromDrafts(pergolas: ObjectFirstPergolaDraft[]): PergolaObjectModel[] {
@@ -406,8 +431,8 @@ export function buildObjectFirstWorkbenchProjectModel(input: {
       objectFirstDraft.houseAssembly !== null
         ? buildHouseAssemblyFromDraft(objectFirstDraft.houseAssembly, house)
         : null,
-    decks: buildDeckModelsFromDrafts(objectFirstDraft.decks),
-    openings: buildOpeningModelsFromDrafts(objectFirstDraft.openings),
+    decks: buildDeckModelsFromDrafts(objectFirstDraft.decks, house),
+    openings: buildOpeningModelsFromDrafts(objectFirstDraft.openings, house),
     pergolas: buildPergolaModelsFromDrafts(objectFirstDraft.pergolas),
     warnings: input.compatibilityProjectModel.warnings.map(formatWarning),
   };

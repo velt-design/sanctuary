@@ -1,4 +1,9 @@
 import type { ObjectWorkbenchPergolaRenderStatus } from '@/lib/drawings/geometry/deriveWorkbenchGeometry';
+import {
+  labelForWorkbenchTrustStatus,
+  type WorkbenchTrustStatus,
+  type WorkbenchTrustStatusKind,
+} from './workbenchSolvedModel';
 import type {
   ObjectFirstOpeningHostResolution,
   ObjectFirstPergolaAttachmentResolution,
@@ -20,6 +25,8 @@ export type DrawingWorkbenchRailObjectEntry = {
   ref: WorkbenchObjectRef;
   label: string;
   status: DrawingWorkbenchRailObjectStatus;
+  trustStatus: WorkbenchTrustStatusKind;
+  trustLabel: string;
   statusLabel: string;
   meta: string | null;
 };
@@ -42,6 +49,8 @@ export type DrawingWorkbenchRailInspectorContext = {
   title: string;
   hasSelection: boolean;
   selectedObjectLabel: string | null;
+  selectedObjectTrustStatus: WorkbenchTrustStatusKind | null;
+  selectedObjectTrustLabel: string | null;
   selectedObjectStatusLabel: string | null;
   selectedObjectMeta: string | null;
   emptyTitle: string;
@@ -58,6 +67,7 @@ export type DrawingWorkbenchRailModel = {
 type DrawingWorkbenchRailPergolaModuleState = {
   pergolaId: string | null | undefined;
   planRenderStatus: ObjectWorkbenchPergolaRenderStatus;
+  trust: WorkbenchTrustStatus;
 };
 
 const FAMILY_ORDER: WorkbenchObjectFamily[] = ['house_forms', 'decks', 'openings', 'pergolas'];
@@ -122,20 +132,67 @@ function humanizePergolaFamily(family: PergolaObjectModel['family']): string {
   }
 }
 
+function buildTrustLabel(status: WorkbenchTrustStatusKind): string {
+  return labelForWorkbenchTrustStatus(status);
+}
+
+function railStatusForTrustStatus(status: WorkbenchTrustStatusKind): DrawingWorkbenchRailObjectStatus {
+  switch (status) {
+    case 'invalid_geometry':
+    case 'unresolved_host':
+      return 'blocked';
+    case 'legacy_unsupported_family':
+      return 'deferred';
+    case 'approximate':
+    case 'legacy_fallback':
+      return 'approximate';
+    case 'geometry_ready':
+    default:
+      return 'ready';
+  }
+}
+
+function resolveModuleTrustStatus(trust: WorkbenchTrustStatus): WorkbenchTrustStatusKind {
+  if (trust.status === 'invalid_geometry' || trust.issues.includes('invalid_geometry')) {
+    return 'invalid_geometry';
+  }
+  if (trust.status === 'unresolved_host' || trust.issues.includes('unresolved_host')) {
+    return 'unresolved_host';
+  }
+  if (trust.status === 'legacy_unsupported_family' && trust.issues.includes('legacy_fallback')) {
+    return 'legacy_fallback';
+  }
+  if (trust.status === 'approximate' || trust.issues.includes('approximate')) {
+    return 'approximate';
+  }
+  return trust.status;
+}
+
 function buildHouseFormEntries(
   houseForms: HouseFormModel[],
+  activeTrust: WorkbenchTrustStatus,
   status: ObjectWorkbenchStatusFacade,
 ): DrawingWorkbenchRailObjectEntry[] {
   return houseForms.map((houseForm) => {
     const warningCount = status.houseForm.warnings.length;
+    const roofStatus = status.houseForm.roof?.validationStatus ?? null;
+    const trustStatus: WorkbenchTrustStatusKind =
+      roofStatus === 'invalid'
+        ? 'invalid_geometry'
+        : roofStatus === 'approximate' || status.houseForm.lowConfidence || warningCount > 0
+          ? 'approximate'
+          : activeTrust.status;
+    const trustLabel = buildTrustLabel(trustStatus);
     return {
       ref: {
         family: 'house_forms',
         objectId: houseForm.id,
       },
       label: houseForm.label,
-      status: status.houseForm.lowConfidence ? 'approximate' : 'ready',
-      statusLabel: status.houseForm.lowConfidence ? 'Approximate' : 'Ready',
+      status: railStatusForTrustStatus(trustStatus),
+      trustStatus,
+      trustLabel,
+      statusLabel: trustLabel,
       meta: `${status.houseForm.footprintPreset ?? houseForm.footprint.preset} footprint | ${
         status.houseForm.roofForm ?? houseForm.roofIntent.form
       } roof | ${warningCount} warning${warningCount === 1 ? '' : 's'}`,
@@ -149,15 +206,19 @@ function buildDeckEntries(input: {
 }): DrawingWorkbenchRailObjectEntry[] {
   return input.decks.map((deck) => {
     const deckStatus = input.status.deckStatuses[deck.id] ?? null;
-    const invalid = deckStatus?.validation.status === 'invalid';
+    const trustStatus: WorkbenchTrustStatusKind =
+      deckStatus?.validation.status === 'invalid' ? 'invalid_geometry' : 'geometry_ready';
+    const trustLabel = buildTrustLabel(trustStatus);
     return {
       ref: {
         family: 'decks',
         objectId: deck.id,
       },
       label: deck.label,
-      status: invalid ? 'blocked' : 'ready',
-      statusLabel: invalid ? 'Invalid' : 'Ready',
+      status: railStatusForTrustStatus(trustStatus),
+      trustStatus,
+      trustLabel,
+      statusLabel: trustLabel,
       meta: `${deck.isAttached ? 'Attached' : 'Floating'} | ${
         deck.shape === 'preset' ? 'Preset rectangle' : 'Custom outline'
       }`,
@@ -177,16 +238,26 @@ function buildOpeningEntries(input: {
       hostResolution?.status === 'resolved'
         ? hostResolution.wall?.label ?? 'Resolved derived wall'
         : 'Unresolved host wall';
-    const invalid = openingStatus?.validation.status === 'invalid';
-    const unresolved = hostResolution?.status === 'unresolved';
+    const hasInvalidGeometry =
+      openingStatus?.validation.status === 'invalid' &&
+      openingStatus.validation.codes.some((code) => code !== 'missing_host_wall');
+    const trustStatus: WorkbenchTrustStatusKind =
+      hasInvalidGeometry
+        ? 'invalid_geometry'
+        : hostResolution?.status === 'unresolved'
+          ? 'unresolved_host'
+          : 'geometry_ready';
+    const trustLabel = buildTrustLabel(trustStatus);
     return {
       ref: {
         family: 'openings',
         objectId: opening.id,
       },
       label: opening.label,
-      status: invalid || unresolved ? 'blocked' : 'ready',
-      statusLabel: unresolved ? 'Unresolved host' : invalid ? 'Invalid' : 'Ready',
+      status: railStatusForTrustStatus(trustStatus),
+      trustStatus,
+      trustLabel,
+      statusLabel: trustLabel,
       meta: `${opening.kind.replace('_', ' ')} | ${hostWallLabel}`,
     };
   });
@@ -197,36 +268,55 @@ function resolvePergolaEntryStatus(input: {
   attachmentResolution: ObjectFirstPergolaAttachmentResolution | null;
   moduleStates: DrawingWorkbenchRailPergolaModuleState[];
   status: ObjectWorkbenchStatusFacade;
-}): Pick<DrawingWorkbenchRailObjectEntry, 'status' | 'statusLabel'> {
+}): Pick<DrawingWorkbenchRailObjectEntry, 'status' | 'statusLabel' | 'trustStatus' | 'trustLabel'> {
   const pergolaStatus = input.status.pergolaStatuses[input.pergola.id] ?? null;
   const isFreestanding = pergolaStatus?.isFreestanding;
+  const moduleTrustStatus = input.moduleStates
+    .map((module) => resolveModuleTrustStatus(module.trust))
+    .find((status) => status !== 'geometry_ready') ?? null;
+  const trustStatus: WorkbenchTrustStatusKind =
+    !isFreestanding && input.attachmentResolution?.status === 'unresolved'
+      ? 'unresolved_host'
+      : moduleTrustStatus ??
+        (pergolaStatus?.confidence === 'low' ? 'approximate' : 'geometry_ready');
+  const trustLabel = buildTrustLabel(trustStatus);
   if (!isFreestanding && input.attachmentResolution?.status === 'unresolved') {
     return {
-      status: 'blocked',
-      statusLabel: 'Unresolved attachment',
+      status: railStatusForTrustStatus(trustStatus),
+      trustStatus,
+      trustLabel,
+      statusLabel: trustLabel,
     };
   }
   if (input.moduleStates.some((module) => module.planRenderStatus === 'legacy_unsupported_family')) {
     return {
-      status: 'deferred',
-      statusLabel: 'View only',
+      status: railStatusForTrustStatus(trustStatus),
+      trustStatus,
+      trustLabel,
+      statusLabel: trustLabel,
     };
   }
   if (input.moduleStates.some((module) => module.planRenderStatus === 'invalid_geometry')) {
     return {
-      status: 'blocked',
-      statusLabel: 'Invalid geometry',
+      status: railStatusForTrustStatus(trustStatus),
+      trustStatus,
+      trustLabel,
+      statusLabel: trustLabel,
     };
   }
   if (pergolaStatus?.confidence === 'low') {
     return {
-      status: 'approximate',
-      statusLabel: 'Approximate',
+      status: railStatusForTrustStatus(trustStatus),
+      trustStatus,
+      trustLabel,
+      statusLabel: trustLabel,
     };
   }
   return {
-    status: 'ready',
-    statusLabel: 'Ready',
+    status: railStatusForTrustStatus(trustStatus),
+    trustStatus,
+    trustLabel,
+    statusLabel: trustLabel,
   };
 }
 
@@ -265,6 +355,8 @@ function buildPergolaEntries(input: {
       },
       label: pergola.label,
       status: entryStatus.status,
+      trustStatus: entryStatus.trustStatus,
+      trustLabel: entryStatus.trustLabel,
       statusLabel: entryStatus.statusLabel,
       meta: `${humanizePergolaFamily(pergola.family)} | ${edgeLabel}${zoneLabel ? ` | ${zoneLabel}` : ''}`,
     };
@@ -302,10 +394,11 @@ export function buildDrawingWorkbenchRailModel(input: {
   pergolas: PergolaObjectModel[];
   pergolaAttachmentResolutions: Record<string, ObjectFirstPergolaAttachmentResolution>;
   modules: DrawingWorkbenchRailPergolaModuleState[];
+  activeTrust: WorkbenchTrustStatus;
   status: ObjectWorkbenchStatusFacade;
 }): DrawingWorkbenchRailModel {
   const objectLists: Record<WorkbenchObjectFamily, DrawingWorkbenchRailObjectEntry[]> = {
-    house_forms: buildHouseFormEntries(input.houseForms, input.status),
+    house_forms: buildHouseFormEntries(input.houseForms, input.activeTrust, input.status),
     decks: buildDeckEntries({
       decks: input.decks,
       status: input.status,
@@ -338,6 +431,8 @@ export function buildDrawingWorkbenchRailModel(input: {
       title: `${selectedDescriptor.singularLabel} Inspector`,
       hasSelection: selectedEntry !== null,
       selectedObjectLabel: selectedEntry?.label ?? null,
+      selectedObjectTrustStatus: selectedEntry?.trustStatus ?? null,
+      selectedObjectTrustLabel: selectedEntry?.trustLabel ?? null,
       selectedObjectStatusLabel: selectedEntry?.statusLabel ?? null,
       selectedObjectMeta: selectedEntry?.meta ?? null,
       emptyTitle: selectedDescriptor.emptyTitle,

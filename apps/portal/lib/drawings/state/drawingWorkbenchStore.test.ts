@@ -239,6 +239,10 @@ describe('buildDrawingWorkbenchStore', () => {
     expect(store.derived.activeSolution).toBe(store.derived.activeModule?.solution);
     expect(store.derived.activeSolution?.id).toBe(store.derived.activeModule?.id);
     expect(store.derived.activeSolution?.trust.status).toBe('geometry_ready');
+    expect(store.derived.activeTrustGate.status).toBe('warn');
+    expect(store.derived.activeTrustGate.warningIssues).toContain('approximate');
+    expect(store.derived.exportReadiness.canExport).toBe(true);
+    expect(store.derived.reviewReadiness.canReview).toBe(true);
     expect(store.derived.activeSolution?.planModel).toBe(store.derived.activePlanModel);
     expect(store.derived.activeSolution?.sectionModel).toBe(store.derived.activeSectionModel);
     expect(store.derived.activeSolution?.geometryPlan).toBe(store.derived.activeModule?.geometryPlanViewModel);
@@ -327,6 +331,9 @@ describe('buildDrawingWorkbenchStore', () => {
     expect(store.persisted.modules[0]?.planRenderStatus).toBe('geometry_ready');
     expect(store.derived.activeSolution?.trust.status).toBe('geometry_ready');
     expect(store.derived.activeSolution?.renderStatus).toBe('geometry_ready');
+    expect(store.derived.activeTrustGate.status).toBe('warn');
+    expect(store.derived.activeTrustGate.warningIssues).toContain('approximate');
+    expect(store.derived.exportReadiness.canExport).toBe(true);
     expect(store.derived.activeSolution?.geometryPlan).toBe(store.persisted.modules[0]?.geometryPlanViewModel);
     expect(store.derived.activePlanModel).not.toBeNull();
     expect(store.derived.activePlanViewModel?.modelSpacePergola.renderSource).toBe('geometry');
@@ -361,9 +368,111 @@ describe('buildDrawingWorkbenchStore', () => {
 
     expect(store.derived.activeSolution?.trust.status).toBe('invalid_geometry');
     expect(store.derived.activeSolution?.renderStatus).toBe('invalid_geometry');
+    expect(store.derived.activeTrustGate).toMatchObject({
+      status: 'block',
+      canExport: false,
+      canReview: false,
+      label: 'Blocked: Invalid geometry',
+    });
+    expect(store.derived.activeTrustGate.blockingIssues).toContain('invalid_geometry');
     expect(store.derived.activeSolution?.geometryPreview.kind).toBe('error');
     expect(store.derived.activePlanModel).toBeNull();
     expect(store.derived.status).toBe('empty');
+  });
+
+  it('warns on legacy fallback geometry while keeping fallback sheet models available', () => {
+    const snapshot = {
+      inputs: {
+        schemaVersion: 'v2',
+        projectName: 'Legacy Pergola',
+        quoteRef: 'Q-1002',
+        access: 'normal',
+        height: 'single_storey',
+        jobType: 'residential',
+        travelExGst: '0',
+        extrasAllowanceExGst: '0',
+        quoteDiscountPct: '0',
+        pergolas: [{ id: 'pergola-1', label: 'Pergola 1' }],
+        modules: [
+          makeModule({
+            pergolaStyle: 'curved' as unknown as CalculatorModuleInputs['pergolaStyle'],
+          }),
+        ],
+      },
+      outputs: {
+        pergolas: [{ id: 'pergola-1', modules: [makeResult()] }],
+      },
+    } satisfies Record<string, unknown>;
+
+    const store = buildDrawingWorkbenchStore({
+      snapshot,
+      ui: createDrawingWorkbenchUiState({
+        activeView: 'plan',
+        workbenchMode: 'pergolas',
+        activeObjectFamily: 'pergolas',
+        activeObjectRef: { family: 'pergolas', objectId: 'pergola-1' },
+      }),
+    });
+
+    expect(store.derived.activeSolution?.trust.status).toBe('legacy_unsupported_family');
+    expect(store.derived.activeSolution?.trust.issues).toContain('legacy_fallback');
+    expect(store.derived.activeTrustGate).toMatchObject({
+      status: 'warn',
+      canExport: true,
+      canReview: true,
+      label: 'Warning: Legacy fallback',
+    });
+    expect(store.derived.activePlanModel).not.toBeNull();
+    expect(store.derived.activeSectionModel).not.toBeNull();
+    expect(store.derived.railModel.objectLists.pergolas[0]).toMatchObject({
+      status: 'approximate',
+      trustStatus: 'legacy_fallback',
+      trustLabel: 'Legacy fallback',
+      statusLabel: 'Legacy fallback',
+    });
+    expect(store.derived.objectWorkbench.activePergola).toMatchObject({
+      trustStatus: 'legacy_fallback',
+      trustLabel: 'Legacy fallback',
+    });
+  });
+
+  it('passes export and review when the active object-workbench view is geometry-ready', () => {
+    const fixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
+    if (!fixture) throw new Error('Missing mono-standard fixture.');
+    const draft = buildEstimateDrawingDraftFromSnapshot(fixture.snapshot);
+    if (!draft) throw new Error('Expected drawing draft.');
+    draft.inputs.modules[0]!.houseConnectionType = 'none';
+    applyObjectFirstCompatibilityDraft({
+      snapshot: fixture.snapshot,
+      draft,
+      compatibility: {
+        roof: {
+          form: 'gable',
+        },
+      },
+    });
+
+    const store = buildDrawingWorkbenchStore({
+      snapshot: fixture.snapshot,
+      draft,
+      ui: createDrawingWorkbenchUiState({
+        workbenchMode: 'house',
+      }),
+    });
+
+    expect(store.derived.objectWorkbench.houseForm.roof.validationStatus).toBe('valid');
+    expect(store.derived.objectWorkbench.houseForm).toMatchObject({
+      trustStatus: 'geometry_ready',
+      trustLabel: 'Geometry ready',
+    });
+    expect(store.derived.activeTrustGate).toMatchObject({
+      status: 'pass',
+      canExport: true,
+      canReview: true,
+      label: 'Geometry ready',
+    });
+    expect(store.derived.exportReadiness).toBe(store.derived.activeTrustGate);
+    expect(store.derived.reviewReadiness).toBe(store.derived.activeTrustGate);
   });
 
   it('locally resolves stale pricing outputs so sheet models remain available', () => {
@@ -546,9 +655,18 @@ describe('buildDrawingWorkbenchStore', () => {
       zone: null,
     });
     expect(staleEdgeStore.derived.unresolvedPergolaAttachmentCount).toBe(1);
+    expect(staleEdgeStore.derived.activeTrustGate).toMatchObject({
+      status: 'block',
+      canExport: false,
+      canReview: false,
+      label: 'Blocked: Unresolved host',
+    });
+    expect(staleEdgeStore.derived.activeTrustGate.blockingIssues).toContain('unresolved_host');
     expect(staleEdgeStore.derived.railModel.objectLists.pergolas[0]).toMatchObject({
       status: 'blocked',
-      statusLabel: 'Unresolved attachment',
+      trustStatus: 'unresolved_host',
+      trustLabel: 'Unresolved host',
+      statusLabel: 'Unresolved host',
       meta: 'Mono | Unresolved host edge',
     });
 
@@ -585,9 +703,17 @@ describe('buildDrawingWorkbenchStore', () => {
     });
     expect(staleZoneStore.derived.activePergolaAttachmentResolution?.edge?.id).toBe('footprint-edge-3');
     expect(staleZoneStore.derived.unresolvedPergolaAttachmentCount).toBe(1);
+    expect(staleZoneStore.derived.activeTrustGate).toMatchObject({
+      status: 'block',
+      canExport: false,
+      canReview: false,
+      label: 'Blocked: Unresolved host',
+    });
     expect(staleZoneStore.derived.railModel.objectLists.pergolas[0]).toMatchObject({
       status: 'blocked',
-      statusLabel: 'Unresolved attachment',
+      trustStatus: 'unresolved_host',
+      trustLabel: 'Unresolved host',
+      statusLabel: 'Unresolved host',
       meta: 'Mono | Rear wall | Unresolved host zone',
     });
   });
@@ -1001,10 +1127,23 @@ describe('buildDrawingWorkbenchStore', () => {
       wall: null,
     });
     expect(store.derived.unresolvedOpeningHostCount).toBe(1);
+    expect(store.derived.activeTrustGate).toMatchObject({
+      status: 'block',
+      canExport: false,
+      canReview: false,
+      label: 'Blocked: Unresolved host',
+    });
+    expect(store.derived.activeTrustGate.blockingIssues).toContain('unresolved_host');
     expect(store.derived.railModel.objectLists.openings[0]).toMatchObject({
       status: 'blocked',
+      trustStatus: 'unresolved_host',
+      trustLabel: 'Unresolved host',
       statusLabel: 'Unresolved host',
       meta: 'window | Unresolved host wall',
+    });
+    expect(store.derived.objectWorkbench.activeOpening).toMatchObject({
+      trustStatus: 'unresolved_host',
+      trustLabel: 'Unresolved host',
     });
     expect(store.derived.objectWorkbench.activeOpening?.hostEdgeId).toBe('footprint-edge-3');
     expect(deriveDrawingWorkbenchCompatibilitySelection(store.ui).activeHouseSelection).toEqual({
@@ -1049,6 +1188,16 @@ describe('buildDrawingWorkbenchStore', () => {
     expect(store.persisted.projectModel.houseAssembly?.houseForms[0]?.footprint.preset).toBe('straight');
     expect(store.derived.objectWorkbench.houseForm.lowConfidence).toBe(true);
     expect(store.derived.objectWorkbench.houseForm.warnings.length).toBeGreaterThan(0);
+    expect(store.derived.objectWorkbench.houseForm).toMatchObject({
+      trustStatus: 'approximate',
+      trustLabel: 'Approximate',
+    });
+    expect(store.derived.activeTrustGate).toMatchObject({
+      status: 'warn',
+      canExport: true,
+      canReview: true,
+      label: 'Warning: Approximate',
+    });
   });
 
   it('exposes shared roof diagnostics through derived store state', () => {
@@ -1057,6 +1206,7 @@ describe('buildDrawingWorkbenchStore', () => {
     const draft = buildEstimateDrawingDraftFromSnapshot(fixture.snapshot);
     if (!draft) throw new Error('Expected drawing draft.');
     draft.inputs.modules[0]!.houseFootprintPreset = 'u_shape';
+    draft.inputs.modules[0]!.houseConnectionType = 'none';
     applyObjectFirstCompatibilityDraft({
       snapshot: fixture.snapshot,
       draft,
@@ -1084,6 +1234,16 @@ describe('buildDrawingWorkbenchStore', () => {
     expect(store.derived.objectWorkbench.houseForm.roof.provenance.ridgeAxis).toBe('house_first_draft');
     expect(store.derived.objectWorkbench.houseForm.roof.geometryKind).toBe('bent_spine_joined_gable');
     expect(store.derived.objectWorkbench.houseForm.roof.intent.appendage.enabled).toBe(false);
+    expect(store.derived.objectWorkbench.houseForm).toMatchObject({
+      trustStatus: 'geometry_ready',
+      trustLabel: 'Geometry ready',
+    });
+    expect(store.derived.activeTrustGate).toMatchObject({
+      status: 'pass',
+      canExport: true,
+      canReview: true,
+      label: 'Geometry ready',
+    });
   });
 
   it('exposes orthogonal mono presets as valid through derived store state', () => {
@@ -1092,6 +1252,7 @@ describe('buildDrawingWorkbenchStore', () => {
     const draft = buildEstimateDrawingDraftFromSnapshot(fixture.snapshot);
     if (!draft) throw new Error('Expected drawing draft.');
     draft.inputs.modules[0]!.houseFootprintPreset = 'u_shape';
+    draft.inputs.modules[0]!.houseConnectionType = 'none';
 
     const store = buildDrawingWorkbenchStore({
       snapshot: fixture.snapshot,
@@ -1106,6 +1267,16 @@ describe('buildDrawingWorkbenchStore', () => {
     expect(store.derived.objectWorkbench.houseForm.roof.validationCode).toBeNull();
     expect(store.derived.objectWorkbench.houseForm.roof.validationMessage).toBeNull();
     expect(store.derived.objectWorkbench.houseForm.roof.approximationReasons).toEqual(['inferred_form']);
+    expect(store.derived.objectWorkbench.houseForm).toMatchObject({
+      trustStatus: 'approximate',
+      trustLabel: 'Approximate',
+    });
+    expect(store.derived.activeTrustGate).toMatchObject({
+      status: 'warn',
+      canExport: true,
+      canReview: true,
+      label: 'Warning: Approximate',
+    });
   });
 
   it('exposes blocked roof review state for invalid mono fall and ridge selections', () => {
@@ -1134,6 +1305,16 @@ describe('buildDrawingWorkbenchStore', () => {
 
     expect(monoStore.derived.objectWorkbench.houseForm.roof.validationStatus).toBe('invalid');
     expect(monoStore.derived.objectWorkbench.houseForm.roof.validationCode).toBe('invalid_mono_fall_direction');
+    expect(monoStore.derived.objectWorkbench.houseForm).toMatchObject({
+      trustStatus: 'invalid_geometry',
+      trustLabel: 'Invalid geometry',
+    });
+    expect(monoStore.derived.activeTrustGate).toMatchObject({
+      status: 'block',
+      canExport: false,
+      canReview: false,
+      label: 'Blocked: Invalid geometry',
+    });
 
     const ridgeDraft = buildEstimateDrawingDraftFromSnapshot(fixture.snapshot);
     if (!ridgeDraft) throw new Error('Expected drawing draft.');
@@ -1165,6 +1346,12 @@ describe('buildDrawingWorkbenchStore', () => {
 
     expect(ridgeStore.derived.objectWorkbench.houseForm.roof.validationStatus).toBe('invalid');
     expect(ridgeStore.derived.objectWorkbench.houseForm.roof.validationCode).toBe('invalid_ridge_axis');
+    expect(ridgeStore.derived.activeTrustGate).toMatchObject({
+      status: 'block',
+      canExport: false,
+      canReview: false,
+      label: 'Blocked: Invalid geometry',
+    });
   });
 
   it('heals stale object-first preset ridge intent before deriving roof and rail state', () => {
@@ -1258,6 +1445,12 @@ describe('buildDrawingWorkbenchStore', () => {
 
     expect(store.derived.objectWorkbench.houseForm.roof.validationStatus).toBe('invalid');
     expect(store.derived.objectWorkbench.houseForm.roof.validationCode).toBe('invalid_appendage_topology');
+    expect(store.derived.activeTrustGate).toMatchObject({
+      status: 'block',
+      canExport: false,
+      canReview: false,
+      label: 'Blocked: Invalid geometry',
+    });
     expect(store.derived.objectWorkbench.houseForm.roof.appendageSupportedHostEdges).toEqual([]);
     expect(store.derived.objectWorkbench.houseForm.roof.appendageSupportReason).toContain('Appendage bands require at least one continuous exterior perimeter run');
   });

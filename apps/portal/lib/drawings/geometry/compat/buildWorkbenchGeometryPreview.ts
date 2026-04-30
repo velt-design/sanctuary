@@ -1,5 +1,6 @@
 import type { EstimateDrawingDraft } from '@/lib/estimates/drawingEdits';
 import type { WorkbenchProjectModel } from '../../state/objectFirstWorkbenchModel';
+import { buildObjectWorkbenchGeometryContext } from './objectWorkbenchGeometryContext';
 import {
   buildGeometryPreviewStateFromSolvedModule,
   buildWorkbenchSolvedModel,
@@ -11,6 +12,26 @@ export type {
   GeometryPreviewState,
 } from '../../state/workbenchSolvedModel';
 
+function attachCompatibilityPreviewMetadata(
+  preview: GeometryPreviewState,
+  geometryContext: ReturnType<typeof buildObjectWorkbenchGeometryContext>,
+): GeometryPreviewState {
+  if (preview.kind !== 'ready') return preview;
+  const blocked = geometryContext.house?.attachmentZoneDiagnostics.blocked ?? [];
+  return {
+    ...preview,
+    scene: {
+      ...preview.scene,
+      metadata: {
+        ...(preview.scene.metadata ?? {}),
+        houseAttachmentZoneBlockedReasons: blocked.length
+          ? blocked.map((entry) => `${entry.side}:${entry.kind}:${entry.reason}`).join(',')
+          : 'none',
+      },
+    },
+  };
+}
+
 export function buildWorkbenchGeometryPreview(input: {
   projectId: string;
   estimateId: string;
@@ -20,6 +41,11 @@ export function buildWorkbenchGeometryPreview(input: {
   moduleIndex: number;
   objectWorkbenchProjectModel?: WorkbenchProjectModel | null;
 }): GeometryPreviewState {
+  const geometryContext = buildObjectWorkbenchGeometryContext({
+    snapshot: input.snapshot,
+    draft: input.draft,
+    projectModel: input.objectWorkbenchProjectModel,
+  });
   const solvedModel = buildWorkbenchSolvedModel({
     snapshot: input.snapshot,
     draft: input.draft,
@@ -29,8 +55,14 @@ export function buildWorkbenchGeometryPreview(input: {
       estimateId: input.estimateId,
       designRequestId: input.designRequestId ?? null,
     },
-    projectModel: input.objectWorkbenchProjectModel,
+    projectModel: geometryContext.projectModel,
+    objectWorkbenchGeometryContext: {
+      projectModel: geometryContext.projectModel,
+    },
   });
 
-  return buildGeometryPreviewStateFromSolvedModule(solvedModel.activeModule);
+  return attachCompatibilityPreviewMetadata(
+    buildGeometryPreviewStateFromSolvedModule(solvedModel.activeModule),
+    geometryContext,
+  );
 }

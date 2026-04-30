@@ -25,7 +25,6 @@ import {
   buildObjectFirstOpeningDraftsFromCompatibilityDrafts,
   buildObjectFirstWorkbenchDraftFromProjectModel,
 } from '@/lib/drawings/state/objectFirstWorkbenchAdapter';
-import type { HouseFormRoofIntentModel } from '@/lib/drawings/state/objectFirstWorkbenchModel';
 import { applyGeometryEditIntent } from './geometryEditAdapter';
 import { buildWorkbenchGeometryPreview } from './buildWorkbenchGeometryPreview';
 
@@ -237,16 +236,30 @@ function setObjectFirstRoofIntent(
   if (!houseForm) {
     throw new Error('Expected object-first house form.');
   }
-  const appendage = roof.appendage
-    ? {
-        ...houseForm.roofIntent.appendage,
-        ...roof.appendage,
-      }
-    : houseForm.roofIntent.appendage;
   houseForm.roofIntent = {
     ...houseForm.roofIntent,
-    ...(roof as Partial<HouseFormRoofIntentModel>),
-    appendage,
+    ...(roof.form ? { form: roof.form } : null),
+    ...(roof.material ? { material: roof.material } : null),
+    ...(roof.primaryPitchDeg !== undefined && roof.primaryPitchDeg !== null
+      ? { primaryPitchDeg: roof.primaryPitchDeg }
+      : null),
+    ...(roof.primaryFallDirection ? { primaryFallDirection: roof.primaryFallDirection } : null),
+    ...(roof.ridgeAxis ? { ridgeAxis: roof.ridgeAxis } : null),
+    ...(roof.openGableEndIds ? { openGableEndIds: roof.openGableEndIds } : null),
+    appendage: {
+      ...houseForm.roofIntent.appendage,
+      ...(roof.appendage?.enabled !== undefined && roof.appendage.enabled !== null
+        ? { enabled: roof.appendage.enabled }
+        : null),
+      ...(roof.appendage?.form ? { form: roof.appendage.form } : null),
+      ...(roof.appendage?.hostEdge ? { hostEdge: roof.appendage.hostEdge } : null),
+      ...(roof.appendage?.pitchDeg !== undefined && roof.appendage.pitchDeg !== null
+        ? { pitchDeg: roof.appendage.pitchDeg }
+        : null),
+      ...(roof.appendage?.dropMm !== undefined && roof.appendage.dropMm !== null
+        ? { dropMm: roof.appendage.dropMm }
+        : null),
+    },
   };
   houseForm.roofIntentAuthored = true;
 }
@@ -989,7 +1002,7 @@ describe('buildWorkbenchGeometryPreview', () => {
           );
           expect(preview.config.houseContext.model?.roofForm, `${preset}/${attachmentSide}/${form} form`).toBe(form);
           expect(
-            preview.config.houseContext.model?.footprint.length,
+            preview.config.houseContext.model?.footprint?.length,
             `${preset}/${attachmentSide}/${form} footprint points`,
           ).toBeGreaterThan(3);
           expectSupportedHouseRoofVisualQa(preview, {
@@ -1014,6 +1027,11 @@ describe('buildWorkbenchGeometryPreview', () => {
         offsetXM: '-.5',
         setbackM: '.5',
         bandDepthM: '6',
+        returnRunM: current.inputs.modules[0]!.houseFootprintParams?.returnRunM ?? '2.4',
+        recessWidthM: current.inputs.modules[0]!.houseFootprintParams?.recessWidthM ?? '2.4',
+        recessDepthM: current.inputs.modules[0]!.houseFootprintParams?.recessDepthM ?? '1.2',
+        leftLegRunM: current.inputs.modules[0]!.houseFootprintParams?.leftLegRunM ?? '2.4',
+        rightLegRunM: current.inputs.modules[0]!.houseFootprintParams?.rightLegRunM ?? '2.4',
         sideRunM: '4',
       };
     });

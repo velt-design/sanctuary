@@ -44,13 +44,31 @@ function applyObjectFirstCompatibilityDraft(input: {
   const objectFirst = buildObjectFirstWorkbenchDraftFromProjectModel(objectFirstProjectModel);
   const houseForm = objectFirst.houseAssembly?.houseForms[0] ?? null;
   if (input.compatibility.roof && houseForm) {
+    const roof = input.compatibility.roof;
     houseForm.roofIntentAuthored = true;
     houseForm.roofIntent = {
       ...houseForm.roofIntent,
-      ...input.compatibility.roof,
+      ...(roof.form ? { form: roof.form } : null),
+      ...(roof.material ? { material: roof.material } : null),
+      ...(roof.primaryPitchDeg !== undefined && roof.primaryPitchDeg !== null
+        ? { primaryPitchDeg: roof.primaryPitchDeg }
+        : null),
+      ...(roof.primaryFallDirection ? { primaryFallDirection: roof.primaryFallDirection } : null),
+      ...(roof.ridgeAxis ? { ridgeAxis: roof.ridgeAxis } : null),
+      ...(roof.openGableEndIds ? { openGableEndIds: roof.openGableEndIds } : null),
       appendage: {
         ...houseForm.roofIntent.appendage,
-        ...(input.compatibility.roof.appendage ?? {}),
+        ...(roof.appendage?.enabled !== undefined && roof.appendage.enabled !== null
+          ? { enabled: roof.appendage.enabled }
+          : null),
+        ...(roof.appendage?.form ? { form: roof.appendage.form } : null),
+        ...(roof.appendage?.hostEdge ? { hostEdge: roof.appendage.hostEdge } : null),
+        ...(roof.appendage?.pitchDeg !== undefined && roof.appendage.pitchDeg !== null
+          ? { pitchDeg: roof.appendage.pitchDeg }
+          : null),
+        ...(roof.appendage?.dropMm !== undefined && roof.appendage.dropMm !== null
+          ? { dropMm: roof.appendage.dropMm }
+          : null),
       },
     };
   }
@@ -82,6 +100,14 @@ function buildGeometryContextFromObjectFirstDraft(input: {
     snapshot: input.snapshot,
     draft: input.draft,
     projectModel,
+  });
+}
+
+function buildGeometryContextFromCompatibilityProjectModel(
+  compatibilityProjectModel: Parameters<typeof buildObjectFirstWorkbenchProjectModel>[0]['compatibilityProjectModel'],
+) {
+  return buildObjectWorkbenchGeometryContext({
+    projectModel: buildObjectFirstWorkbenchProjectModel({ compatibilityProjectModel }),
   });
 }
 
@@ -411,7 +437,7 @@ describe('buildRawGeometryModuleInput', () => {
         houseFootprintPreset: 'straight',
       }),
       result: makeResult(),
-      sharedHouse: projectModel.house,
+      objectWorkbenchGeometryContext: buildGeometryContextFromCompatibilityProjectModel(projectModel),
     });
 
     expect(raw.houseContext.roofForm).toBe('mono');
@@ -438,7 +464,7 @@ describe('buildRawGeometryModuleInput', () => {
         houseFootprintPreset: 'u_shape',
       }),
       result: makeResult(),
-      sharedHouse: gableProjectModel.house,
+      objectWorkbenchGeometryContext: buildGeometryContextFromCompatibilityProjectModel(gableProjectModel),
     });
 
     expect(gableRaw.houseContext.roofRidgeAxis).toBe('x');
@@ -474,7 +500,7 @@ describe('buildRawGeometryModuleInput', () => {
           estimateId: 'est_1',
           module: makeModule({ houseFootprintPreset: preset }),
           result: makeResult(),
-          sharedHouse: projectModel.house,
+          objectWorkbenchGeometryContext: buildGeometryContextFromCompatibilityProjectModel(projectModel),
         });
 
         expect(raw.houseContext.footprintPreset, `${preset}/${form} footprint`).toBe(preset);
@@ -524,7 +550,7 @@ describe('buildRawGeometryModuleInput', () => {
             estimateId: 'est_1',
             module: makeModule({ attachmentSide, houseFootprintPreset: preset }),
             result: makeResult(),
-            sharedHouse: projectModel.house,
+            objectWorkbenchGeometryContext: buildGeometryContextFromCompatibilityProjectModel(projectModel),
           });
 
           expect(projectModel.house?.roof.validation.code, `${preset}/${attachmentSide}/${form} validation`).toBeNull();
@@ -587,7 +613,7 @@ describe('buildRawGeometryModuleInput', () => {
       estimateId: 'est_1',
       module: makeModule(),
       result: makeResult(),
-      sharedHouse: projectModel.house,
+      objectWorkbenchGeometryContext: buildGeometryContextFromCompatibilityProjectModel(projectModel),
     });
 
     expect(raw.houseContext.decks).toEqual([
@@ -652,7 +678,7 @@ describe('buildRawGeometryModuleInput', () => {
       estimateId: 'est_1',
       module: makeModule(),
       result: makeResult(),
-      sharedHouse: projectModel.house,
+      objectWorkbenchGeometryContext: buildGeometryContextFromCompatibilityProjectModel(projectModel),
     });
 
     expect(raw.houseContext.openings).toEqual([
@@ -719,7 +745,7 @@ describe('buildRawGeometryModuleInput', () => {
       estimateId: 'est_1',
       module: makeModule(),
       result: makeResult(),
-      sharedHouse: projectModel.house,
+      objectWorkbenchGeometryContext: buildGeometryContextFromCompatibilityProjectModel(projectModel),
     });
 
     expect(raw.houseContext.openings).toEqual([
@@ -753,7 +779,7 @@ describe('buildRawGeometryModuleInput', () => {
         attachmentSide: wrapFixture.activeHostSide,
       }),
       result: makeResult(),
-      sharedHouse: wrapFixture.projectModel.house,
+      objectWorkbenchGeometryContext: buildGeometryContextFromCompatibilityProjectModel(wrapFixture.projectModel),
     });
     const warningRaw = buildRawGeometryModuleInput({
       projectId: 'proj_1',
@@ -762,16 +788,16 @@ describe('buildRawGeometryModuleInput', () => {
         attachmentSide: warningFixture.activeHostSide,
       }),
       result: makeResult(),
-      sharedHouse: warningFixture.projectModel.house,
+      objectWorkbenchGeometryContext: buildGeometryContextFromCompatibilityProjectModel(warningFixture.projectModel),
     });
 
-    expect(wrapRaw.houseContext.decks[0]?.supportContext).toEqual(
+    expect(wrapRaw.houseContext.decks?.[0]?.supportContext).toEqual(
       expect.objectContaining({
         classification: 'threshold_attached',
         nearestHouseEdgeId: 'left',
       }),
     );
-    expect(warningRaw.houseContext.decks[0]?.supportContext).toEqual(
+    expect(warningRaw.houseContext.decks?.[0]?.supportContext).toEqual(
       expect.objectContaining({
         classification: 'threshold_attached',
         warningCodes: ['threshold_alignment_offset', 'insufficient_host_edge_contact'],

@@ -21,6 +21,7 @@ import type {
   ObjectWorkbenchViewportTargetSelection,
 } from '@/lib/drawings/state/objectWorkbenchViewportTypes';
 import type { WorkbenchObjectRef } from '@/lib/drawings/state/objectFirstWorkbenchModel';
+import type { WorkbenchTrustGateModel } from '@/lib/drawings/state/workbenchSolvedModel';
 import SheetViewport from '@/components/drawings/viewports/SheetViewport';
 import ModelSpaceViewport from '@/components/drawings/viewports/ModelSpaceViewport';
 import Geometry3DViewport, {
@@ -47,6 +48,7 @@ type DrawingWorkbenchProps = {
   onViewportModeChange: (mode: DrawingWorkbenchViewportMode) => void;
   availableViewportModes?: DrawingWorkbenchViewportMode[];
   status: ModuleViewsStatus;
+  trustGate?: WorkbenchTrustGateModel | null;
   planModel?: ModulePlanModel | null;
   sectionModel?: ModuleSectionModel | null;
   planViewModel?: PlanViewModel | null;
@@ -112,6 +114,7 @@ export default function DrawingWorkbench({
   onViewportModeChange,
   availableViewportModes,
   status,
+  trustGate,
   planModel,
   sectionModel,
   planViewModel,
@@ -149,6 +152,12 @@ export default function DrawingWorkbench({
   void modules;
   void activeModuleIndex;
   void onActiveModuleIndexChange;
+  const trustBadgeClass =
+    trustGate?.status === 'block'
+      ? `${styles.trustBadge} ${styles.trustBadgeBlock}`
+      : trustGate?.status === 'warn'
+        ? `${styles.trustBadge} ${styles.trustBadgeWarn}`
+        : styles.trustBadge;
 
   return (
     <section className={styles.workbench} aria-label="Drawing workbench">
@@ -163,6 +172,17 @@ export default function DrawingWorkbench({
             <Link href={backHref} className={styles.toolbarLink}>
               Back to Project
             </Link>
+          ) : null}
+          {trustGate ? (
+            <span
+              className={trustBadgeClass}
+              data-workbench-trust-status={trustGate.status}
+              data-workbench-trust-kind={trustGate.trustStatus}
+              aria-label={`Workbench trust: ${trustGate.label}`}
+              title={trustGate.message ?? trustGate.label}
+            >
+              <span className={styles.trustBadgeLabel}>{trustGate.label}</span>
+            </span>
           ) : null}
           <div className={styles.toggleGroup} role="tablist" aria-label="Drawing view">
             {VIEW_OPTIONS.map((option) => {

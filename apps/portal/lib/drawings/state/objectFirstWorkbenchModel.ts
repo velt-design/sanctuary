@@ -29,7 +29,10 @@ import type {
   DeckPresetRect,
   DeckPresetType,
   DeckShape,
+  DeckSupportClassification,
+  DeckSupportWarningCode,
   DeckSurfaceMaterial,
+  DeckValidationCode,
   HouseAttachmentZoneKind,
   HouseRoofAppendageForm,
   HouseRoofForm,
@@ -38,6 +41,7 @@ import type {
   SliderPanelCount,
   WallOpeningHostSide,
   WallOpeningKind,
+  WallOpeningValidationCode,
 } from './compat/objectWorkbenchCompatibilityModel';
 
 export type WorkbenchObjectFamily = 'house_forms' | 'decks' | 'openings' | 'pergolas';
@@ -181,6 +185,25 @@ export type DeckObjectModel = {
   primaryHostEdgeId?: string | null;
   secondaryHostEdgeId?: string | null;
   cornerVertexId?: string | null;
+  topSurfaceElevationMm?: number | null;
+  supportContext?: {
+    classification: DeckSupportClassification;
+    nearestHouseEdgeId: string | null;
+    nearestHouseEdgeDistanceMm: number | null;
+    attachmentContactLengthMm: number | null;
+    attachmentContacts?: Array<{
+      hostEdgeId: string;
+      lengthMm: number;
+    }>;
+    warningCodes: DeckSupportWarningCode[];
+    warningMessages: string[];
+  } | null;
+  validation?: {
+    status: 'valid' | 'invalid';
+    codes: DeckValidationCode[];
+    messages: string[];
+    message: string | null;
+  } | null;
 };
 
 export type OpeningObjectModel = {
@@ -196,6 +219,11 @@ export type OpeningObjectModel = {
   heightM: string;
   sillHeightM: string;
   offsetAlongWallM: string;
+  validation?: {
+    status: 'valid' | 'invalid';
+    codes: WallOpeningValidationCode[];
+    message: string | null;
+  } | null;
 };
 
 export type PergolaObjectModel = {

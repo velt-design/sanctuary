@@ -38,10 +38,15 @@ import {
 } from './objectWorkbenchInspectorModel';
 import { buildObjectWorkbenchStatusFacade } from './objectWorkbenchStatusModel';
 import {
+  appendWorkbenchTrustIssues,
   buildWorkbenchSolvedModel,
+  resolveWorkbenchTrustGate,
   type WorkbenchGeometryIdentity,
   type WorkbenchSolvedModel,
   type WorkbenchSolvedModule,
+  type WorkbenchTrustGateModel,
+  type WorkbenchTrustStatus,
+  type WorkbenchTrustStatusKind,
 } from './workbenchSolvedModel';
 import type {
   HouseAssemblyModel,
@@ -80,6 +85,10 @@ export type DrawingWorkbenchStore = {
     activeModuleIndex: number;
     solvedModel: WorkbenchSolvedModel;
     activeSolution: WorkbenchSolvedModule | null;
+    activeTrust: WorkbenchTrustStatus;
+    activeTrustGate: WorkbenchTrustGateModel;
+    exportReadiness: WorkbenchTrustGateModel;
+    reviewReadiness: WorkbenchTrustGateModel;
     activeModule: DrawingWorkbenchModuleEntry | null;
     activeAssemblyModel: DrawingAssemblyModel | null;
     activePlanViewModel: PlanViewModel | null;
@@ -293,8 +302,36 @@ export function buildDrawingWorkbenchStore(input: {
       resolution.status === 'unresolved' &&
       objectWorkbenchStatus.pergolaStatuses[pergolaId]?.connectionKind !== 'freestanding',
   ).length;
+  const additionalTrustIssues: WorkbenchTrustStatusKind[] = [];
+  if (unresolvedOpeningHostCount > 0 || unresolvedPergolaAttachmentCount > 0) {
+    additionalTrustIssues.push('unresolved_host');
+  }
+  if (
+    objectWorkbenchStatus.houseForm.roof?.validationStatus === 'approximate' ||
+    objectWorkbenchStatus.houseForm.lowConfidence ||
+    objectWorkbenchStatus.houseForm.warnings.length > 0
+  ) {
+    additionalTrustIssues.push('approximate');
+  }
+  if (
+    Object.values(objectWorkbenchStatus.deckStatuses).some((deck) => deck.validation.status === 'invalid') ||
+    Object.values(objectWorkbenchStatus.openingStatuses).some(
+      (opening) =>
+        opening.validation.status === 'invalid' &&
+        opening.validation.codes.some((code) => code !== 'missing_host_wall'),
+    ) ||
+    objectWorkbenchStatus.houseForm.roof?.validationStatus === 'invalid'
+  ) {
+    additionalTrustIssues.push('invalid_geometry');
+  }
+  const activeTrust = appendWorkbenchTrustIssues(
+    activeSolution?.trust ?? solvedModel.trust,
+    additionalTrustIssues,
+  );
+  const activeTrustGate = resolveWorkbenchTrustGate(activeTrust);
   const objectWorkbench = buildObjectWorkbenchInspectorFacade({
     activeObjectRef: ui.activeObjectRef,
+    activeTrust,
     houseAssembly: projectModel.houseAssembly,
     openingHostResolutions: new Map(Object.entries(openingHostResolutions)),
     pergolaAttachmentResolutions: new Map(Object.entries(pergolaAttachmentResolutions)),
@@ -314,7 +351,9 @@ export function buildDrawingWorkbenchStore(input: {
     modules: modules.map((module) => ({
       pergolaId: module.drawingModule.input.pergolaId,
       planRenderStatus: module.planRenderStatus,
+      trust: module.solution.trust,
     })),
+    activeTrust,
     status: objectWorkbenchStatus,
   });
   return {
@@ -330,6 +369,10 @@ export function buildDrawingWorkbenchStore(input: {
       activeModuleIndex: ui.activeModuleIndex,
       solvedModel,
       activeSolution,
+      activeTrust,
+      activeTrustGate,
+      exportReadiness: activeTrustGate,
+      reviewReadiness: activeTrustGate,
       activeModule,
       activeAssemblyModel: activeModule?.assemblyModel ?? null,
       activePlanViewModel: activeModule?.planViewModel ?? null,

@@ -1,18 +1,27 @@
 import { describe, expect, it } from 'vitest';
 import { buildEstimateDrawingModules } from '@/lib/estimates/moduleDrawing';
 import { getSanctuaryGeometryWorkbenchFixture } from '@/lib/drawings/sanctuaryWorkbenchFixtures';
-import { buildHouseFirstWorkbenchProjectModel } from '@/lib/drawings/state/houseFirstWorkbenchAdapter';
+import { buildObjectWorkbenchCompatibilityProjectModel } from '@/lib/drawings/state/compat/objectWorkbenchCompatibilityModel';
+import { buildObjectFirstWorkbenchProjectModel } from '@/lib/drawings/state/objectFirstWorkbenchAdapter';
 import { buildDrawingWorkbenchStore } from '@/lib/drawings/state/drawingWorkbenchStore';
 import { createDrawingWorkbenchUiState } from '@/lib/drawings/state/drawingWorkbenchUiState';
 import { buildWorkbenchGeometryPreview } from './buildWorkbenchGeometryPreview';
 import { coerceHiddenWorkbenchGableBaseline } from './hiddenWorkbenchGableBaseline';
 import { deriveWorkbenchGeometry } from './deriveWorkbenchGeometry';
+import { buildObjectWorkbenchGeometryContext } from './objectWorkbenchGeometryContext';
 import { resolveWorkbenchGeometryModule } from './resolveWorkbenchGeometryModule';
 
 function requireFixture(slug: 'mono-standard' | 'gable-standard' | 'box-standard') {
   const fixture = getSanctuaryGeometryWorkbenchFixture(slug);
   if (!fixture) throw new Error(`Missing ${slug} fixture.`);
   return fixture;
+}
+
+function buildGeometryContextFromSnapshot(snapshot: Record<string, unknown>) {
+  const compatibilityProjectModel = buildObjectWorkbenchCompatibilityProjectModel({ snapshot });
+  return buildObjectWorkbenchGeometryContext({
+    projectModel: buildObjectFirstWorkbenchProjectModel({ compatibilityProjectModel }),
+  });
 }
 
 describe('deriveWorkbenchGeometry', () => {
@@ -28,9 +37,6 @@ describe('deriveWorkbenchGeometry', () => {
       const drawingModule = buildEstimateDrawingModules(fixture.snapshot)[0];
       if (!drawingModule) throw new Error(`Expected drawing module for ${slug}.`);
 
-      const projectModel = buildHouseFirstWorkbenchProjectModel({
-        snapshot: fixture.snapshot,
-      });
       const derivation = deriveWorkbenchGeometry({
         projectId: 'proj_shared',
         estimateId: fixture.estimate.id,
@@ -38,7 +44,7 @@ describe('deriveWorkbenchGeometry', () => {
         moduleId: drawingModule.id,
         module: coerceHiddenWorkbenchGableBaseline(resolved.module),
         result: resolved.moduleResult,
-        sharedHouse: projectModel.house,
+        objectWorkbenchGeometryContext: buildGeometryContextFromSnapshot(fixture.snapshot),
         fallbackPlanModel: drawingModule.planModel,
         fallbackSectionModel: drawingModule.sectionModel,
       });
@@ -99,9 +105,6 @@ describe('deriveWorkbenchGeometry', () => {
     const drawingModule = buildEstimateDrawingModules(snapshot as unknown as Record<string, unknown>)[0];
     if (!drawingModule) throw new Error('Expected hip drawing module.');
 
-    const projectModel = buildHouseFirstWorkbenchProjectModel({
-      snapshot: snapshot as unknown as Record<string, unknown>,
-    });
     const derivation = deriveWorkbenchGeometry({
       projectId: 'proj_shared',
       estimateId: fixture.estimate.id,
@@ -109,7 +112,7 @@ describe('deriveWorkbenchGeometry', () => {
       moduleId: drawingModule.id,
       module: coerceHiddenWorkbenchGableBaseline(resolved.module),
       result: resolved.moduleResult,
-      sharedHouse: projectModel.house,
+      objectWorkbenchGeometryContext: buildGeometryContextFromSnapshot(snapshot as unknown as Record<string, unknown>),
       fallbackPlanModel: drawingModule.planModel,
       fallbackSectionModel: drawingModule.sectionModel,
     });
@@ -149,9 +152,6 @@ describe('deriveWorkbenchGeometry', () => {
     const drawingModule = buildEstimateDrawingModules(snapshot as unknown as Record<string, unknown>)[0];
     if (!drawingModule) throw new Error('Expected hip-corner drawing module.');
 
-    const projectModel = buildHouseFirstWorkbenchProjectModel({
-      snapshot: snapshot as unknown as Record<string, unknown>,
-    });
     const derivation = deriveWorkbenchGeometry({
       projectId: 'proj_shared',
       estimateId: fixture.estimate.id,
@@ -159,7 +159,7 @@ describe('deriveWorkbenchGeometry', () => {
       moduleId: drawingModule.id,
       module: coerceHiddenWorkbenchGableBaseline(resolved.module),
       result: resolved.moduleResult,
-      sharedHouse: projectModel.house,
+      objectWorkbenchGeometryContext: buildGeometryContextFromSnapshot(snapshot as unknown as Record<string, unknown>),
       fallbackPlanModel: drawingModule.planModel,
       fallbackSectionModel: drawingModule.sectionModel,
     });

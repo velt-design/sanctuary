@@ -7,6 +7,10 @@ import { buildEstimateDrawingModules } from '@/lib/estimates/moduleDrawing';
 import { buildEstimateDrawingSheetMeta } from '@/lib/estimates/drawingSheet';
 import { createDrawingWorkbenchUiState } from '@/lib/drawings/state/drawingWorkbenchUiState';
 import type { DrawingWorkbenchViewportMode } from '@/lib/drawings/state/drawingWorkbenchUiState';
+import {
+  resolveWorkbenchTrustGate,
+  type WorkbenchTrustStatusKind,
+} from '@/lib/drawings/state/workbenchSolvedModel';
 import { renderIntoDocument } from '../../../../../test/reactHarness';
 import DrawingWorkbench from './DrawingWorkbench';
 
@@ -110,6 +114,43 @@ function makeCustomPolygonPlanModel() {
   };
 }
 
+function makeTrustGate(status: WorkbenchTrustStatusKind, issues: WorkbenchTrustStatusKind[] = []) {
+  return resolveWorkbenchTrustGate({
+    status,
+    issues,
+    renderSource: status === 'geometry_ready' || status === 'approximate' ? 'geometry' : 'legacy',
+    message: null,
+  });
+}
+
+function renderWorkbenchWithTrust(status: WorkbenchTrustStatusKind, issues: WorkbenchTrustStatusKind[] = []) {
+  const drawing = makeDrawingModule();
+  const meta = buildEstimateDrawingSheetMeta({
+    moduleLabel: 'M1 - Pitched - 6m x 3m - Acrylic',
+    view: 'plan',
+  });
+
+  return renderToStaticMarkup(
+    <DrawingWorkbench
+      moduleLabel="M1 - Pitched - 6m x 3m - Acrylic"
+      modules={[{ id: 'module-1', label: 'M1 - Pitched - 6m x 3m - Acrylic' }]}
+      activeModuleIndex={0}
+      onActiveModuleIndexChange={() => undefined}
+      view="plan"
+      onViewChange={() => undefined}
+      viewportMode="sheet"
+      onViewportModeChange={() => undefined}
+      status="ready"
+      trustGate={makeTrustGate(status, issues)}
+      planModel={drawing.planModel}
+      sectionModel={drawing.sectionModel}
+      modelViewportTransform={createDrawingWorkbenchUiState().viewportTransform}
+      onModelViewportTransformChange={() => undefined}
+      meta={meta}
+    />,
+  );
+}
+
 describe('DrawingWorkbench', () => {
   it('renders the new workbench shell with the viewport mode switch', () => {
     const drawing = makeDrawingModule();
@@ -147,6 +188,19 @@ describe('DrawingWorkbench', () => {
     expect(markup).not.toContain('Sheet Preview');
     expect(markup).not.toContain('Pergola style');
     expect(markup).not.toContain('Drawing Workbench</');
+  });
+
+  it('renders pass, warning, and block trust badges in the workbench toolbar', () => {
+    const passMarkup = renderWorkbenchWithTrust('geometry_ready');
+    const warnMarkup = renderWorkbenchWithTrust('geometry_ready', ['approximate']);
+    const blockMarkup = renderWorkbenchWithTrust('geometry_ready', ['unresolved_host']);
+
+    expect(passMarkup).toContain('data-workbench-trust-status="pass"');
+    expect(passMarkup).toContain('Geometry ready');
+    expect(warnMarkup).toContain('data-workbench-trust-status="warn"');
+    expect(warnMarkup).toContain('Warning: Approximate');
+    expect(blockMarkup).toContain('data-workbench-trust-status="block"');
+    expect(blockMarkup).toContain('Blocked: Unresolved host');
   });
 
   it('renders the model-space viewport without sheet furniture when model mode is active', () => {

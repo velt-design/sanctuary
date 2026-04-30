@@ -425,6 +425,7 @@ export default function DesignWorkbenchEstimateClient({
             }))
           }
           status={store.derived.status}
+          trustGate={store.derived.activeTrustGate}
           planModel={store.derived.activePlanModel}
           sectionModel={store.derived.activeSectionModel}
           planViewModel={store.derived.activePlanViewModel}

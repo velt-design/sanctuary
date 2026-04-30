@@ -256,6 +256,12 @@ export default function ObjectWorkbenchRail({
               <span className={styles.inlineLabel}>{model.selectedInspector.singularLabel}</span>
               <span className={styles.inlineValue}>{model.selectedInspector.selectedObjectLabel}</span>
             </div>
+            {model.selectedInspector.selectedObjectTrustLabel ? (
+              <div className={styles.inlineMeta}>
+                <span className={styles.inlineLabel}>Trust</span>
+                <span className={styles.inlineValue}>{model.selectedInspector.selectedObjectTrustLabel}</span>
+              </div>
+            ) : null}
             {model.selectedInspector.selectedObjectStatusLabel || model.selectedInspector.selectedObjectMeta ? (
               <p className={styles.fieldHint}>
                 {[model.selectedInspector.selectedObjectStatusLabel, model.selectedInspector.selectedObjectMeta]

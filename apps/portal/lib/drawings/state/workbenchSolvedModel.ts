@@ -29,6 +29,7 @@ import {
   type WorkbenchDeckSupportDiagnostic,
 } from './deckSupportDiagnostics';
 import type { WorkbenchProjectModel } from './objectFirstWorkbenchModel';
+import { resolveObjectFirstPergolaAttachment } from './objectFirstDerivedHosting';
 
 type AttachmentSide = 'rear' | 'front' | 'left' | 'right';
 type LocalPolygonPoint = { alongM: number; depthM: number };
@@ -74,6 +75,20 @@ export type WorkbenchTrustStatus = {
   message: string | null;
 };
 
+export type WorkbenchTrustGateAction = 'pass' | 'warn' | 'block';
+
+export type WorkbenchTrustGateModel = {
+  status: WorkbenchTrustGateAction;
+  trustStatus: WorkbenchTrustStatusKind;
+  issues: WorkbenchTrustStatusKind[];
+  blockingIssues: WorkbenchTrustStatusKind[];
+  warningIssues: WorkbenchTrustStatusKind[];
+  canExport: boolean;
+  canReview: boolean;
+  label: string;
+  message: string | null;
+};
+
 export type WorkbenchGeometryIdentity = {
   projectId: string;
   estimateId: string;
@@ -116,6 +131,15 @@ const DEFAULT_GEOMETRY_IDENTITY: Required<WorkbenchGeometryIdentity> = {
   projectId: 'hidden-workbench-project',
   estimateId: 'hidden-workbench-estimate',
   designRequestId: null,
+};
+
+const EMPTY_WORKBENCH_PROJECT_MODEL: WorkbenchProjectModel = {
+  source: 'legacy_estimate_snapshot',
+  houseAssembly: null,
+  decks: [],
+  openings: [],
+  pergolas: [],
+  warnings: [],
 };
 
 function resolveGeometryIdentity(
@@ -212,18 +236,17 @@ function annotateSceneAttachmentZoneMetadata(
   scene: ViewerSceneModel,
   geometryContext: ObjectWorkbenchGeometryContext,
 ): ViewerSceneModel {
-  const zones = geometryContext.house?.attachmentZones ?? [];
-  const blocked = geometryContext.house?.attachmentZoneDiagnostics.blocked ?? [];
-  const resolvedPergolaAttachmentZoneCount = geometryContext.pergolas.filter(
-    (pergola) =>
-      pergola.attachment.kind !== 'freestanding' &&
-      pergola.attachment.resolution.status === 'resolved' &&
-      pergola.attachment.attachmentZoneId !== null,
+  const projectModel = geometryContext.projectModel;
+  const houseAssembly = projectModel?.houseAssembly ?? null;
+  const zones = houseAssembly?.derivedEnvelope?.attachmentZones ?? [];
+  const pergolaAttachmentResolutions = (projectModel?.pergolas ?? []).map((pergola) =>
+    resolveObjectFirstPergolaAttachment({ houseAssembly, pergola }),
+  );
+  const resolvedPergolaAttachmentZoneCount = pergolaAttachmentResolutions.filter(
+    (resolution) => resolution.status === 'resolved' && resolution.attachmentZoneId !== null,
   ).length;
-  const unresolvedPergolaAttachmentZoneCount = geometryContext.pergolas.filter(
-    (pergola) =>
-      pergola.attachment.kind !== 'freestanding' &&
-      pergola.attachment.resolution.status !== 'resolved',
+  const unresolvedPergolaAttachmentZoneCount = pergolaAttachmentResolutions.filter(
+    (resolution) => resolution.status !== 'resolved',
   ).length;
   return {
     ...scene,
@@ -233,40 +256,32 @@ function annotateSceneAttachmentZoneMetadata(
       houseAttachmentZoneKinds: zones.length
         ? zones.map((zone) => `${zone.side}:${zone.kind}`).join(',')
         : 'none',
-      houseAttachmentZoneBlockedReasons: blocked.length
-        ? blocked.map((entry) => `${entry.side}:${entry.kind}:${entry.reason}`).join(',')
-        : 'none',
+      houseAttachmentZoneBlockedReasons: 'none',
       pergolaResolvedAttachmentZoneCount: resolvedPergolaAttachmentZoneCount,
       pergolaUnresolvedAttachmentZoneCount: unresolvedPergolaAttachmentZoneCount,
     },
   };
 }
 
-function numericStringValue(value: string | null | undefined): number | null {
-  if (typeof value !== 'string') return null;
-  const numericValue = Number(value);
-  return Number.isFinite(numericValue) ? numericValue : null;
-}
-
 function annotateSceneHouseRoofMetadata(
   scene: ViewerSceneModel,
-  geometryContext: ObjectWorkbenchGeometryContext,
+  config: GeometryConfig,
 ): ViewerSceneModel {
-  const roof = geometryContext.house?.roof ?? null;
+  const roof = config.houseContext.model ?? null;
   if (!roof) return scene;
   return {
     ...scene,
     metadata: {
       ...(scene.metadata ?? {}),
-      houseRoofForm: roof.form,
-      houseRoofGeometryKind: roof.geometryKind,
-      houseRoofHealedPitchDeg: numericStringValue(roof.primaryPitchDeg),
-      houseRoofHealedRidgeAxis: roof.capabilities.controls.ridgeAxis ? roof.ridgeAxis : null,
+      houseRoofForm: roof.roofForm ?? null,
+      houseRoofHealedPitchDeg: roof.roofPitchDeg ?? null,
+      houseRoofHealedRidgeAxis: roof.roofRidgeAxis ?? null,
     },
   };
 }
 
 function buildViewerSceneFromSolvedGeometry(input: {
+  config: GeometryConfig;
   assembly: Assembly3D;
   geometryContext: ObjectWorkbenchGeometryContext;
 }): ViewerSceneModel {
@@ -274,16 +289,129 @@ function buildViewerSceneFromSolvedGeometry(input: {
     annotateSceneAttachmentZoneMetadata(
       annotateSceneHostEdgeSides(
         buildViewerSceneModel(input.assembly),
-        input.geometryContext.house?.footprint.polygon,
+        input.geometryContext.projectModel?.houseAssembly?.houseForms[0]?.footprint.polygon,
       ),
       input.geometryContext,
     ),
-    input.geometryContext,
+    input.config,
   );
 }
 
 function uniqueIssues(issues: WorkbenchTrustStatusKind[]): WorkbenchTrustStatusKind[] {
   return Array.from(new Set(issues));
+}
+
+function isBlockingTrustIssue(issue: WorkbenchTrustStatusKind): boolean {
+  return issue === 'invalid_geometry' || issue === 'unresolved_host';
+}
+
+function isWarningTrustIssue(issue: WorkbenchTrustStatusKind): boolean {
+  return (
+    issue === 'approximate' ||
+    issue === 'legacy_fallback' ||
+    issue === 'legacy_unsupported_family'
+  );
+}
+
+function sortTrustIssuesByPriority(
+  issues: WorkbenchTrustStatusKind[],
+  priority: WorkbenchTrustStatusKind[],
+): WorkbenchTrustStatusKind[] {
+  return [...issues].sort((left, right) => {
+    const leftIndex = priority.indexOf(left);
+    const rightIndex = priority.indexOf(right);
+    return (leftIndex === -1 ? priority.length : leftIndex) -
+      (rightIndex === -1 ? priority.length : rightIndex);
+  });
+}
+
+export function labelForWorkbenchTrustStatus(status: WorkbenchTrustStatusKind): string {
+  switch (status) {
+    case 'geometry_ready':
+      return 'Geometry ready';
+    case 'legacy_fallback':
+      return 'Legacy fallback';
+    case 'legacy_unsupported_family':
+      return 'Unsupported family';
+    case 'invalid_geometry':
+      return 'Invalid geometry';
+    case 'unresolved_host':
+      return 'Unresolved host';
+    case 'approximate':
+      return 'Approximate';
+    default:
+      return 'Unknown';
+  }
+}
+
+function messageForWorkbenchTrustIssue(
+  issue: WorkbenchTrustStatusKind,
+  trust: WorkbenchTrustStatus,
+): string {
+  if (trust.status === issue && trust.message) return trust.message;
+  switch (issue) {
+    case 'invalid_geometry':
+      return 'Geometry is invalid. Resolve the blocking geometry issue before export or review.';
+    case 'unresolved_host':
+      return 'Resolve unresolved object hosts before export or review.';
+    case 'approximate':
+      return 'Geometry is approximate. Export and review can continue with a warning.';
+    case 'legacy_fallback':
+      return 'This view is using legacy fallback geometry. Verify accuracy before export or review.';
+    case 'legacy_unsupported_family':
+      return 'This family is not fully supported by native geometry. Verify accuracy before export or review.';
+    case 'geometry_ready':
+      return 'Geometry is ready for export and review.';
+    default:
+      return 'Review geometry trust before export.';
+  }
+}
+
+export function appendWorkbenchTrustIssues(
+  trust: WorkbenchTrustStatus,
+  issues: WorkbenchTrustStatusKind[],
+): WorkbenchTrustStatus {
+  if (!issues.length) return trust;
+  return {
+    ...trust,
+    issues: uniqueIssues([...trust.issues, ...issues]),
+  };
+}
+
+export function resolveWorkbenchTrustGate(trust: WorkbenchTrustStatus): WorkbenchTrustGateModel {
+  const issues = uniqueIssues([trust.status, ...trust.issues].filter(
+    (issue) => issue !== 'geometry_ready',
+  ));
+  const blockingIssues = sortTrustIssuesByPriority(
+    issues.filter(isBlockingTrustIssue),
+    ['invalid_geometry', 'unresolved_host'],
+  );
+  const warningIssues = sortTrustIssuesByPriority(
+    issues.filter(isWarningTrustIssue),
+    ['legacy_fallback', 'legacy_unsupported_family', 'approximate'],
+  );
+  const firstBlockingIssue = blockingIssues[0] ?? null;
+  const firstWarningIssue = warningIssues[0] ?? null;
+  const status: WorkbenchTrustGateAction = firstBlockingIssue
+    ? 'block'
+    : firstWarningIssue
+      ? 'warn'
+      : 'pass';
+  const primaryIssue = firstBlockingIssue ?? firstWarningIssue;
+
+  return {
+    status,
+    trustStatus: primaryIssue ?? trust.status,
+    issues,
+    blockingIssues,
+    warningIssues,
+    canExport: status !== 'block',
+    canReview: status !== 'block',
+    label: primaryIssue
+      ? `${status === 'block' ? 'Blocked' : 'Warning'}: ${labelForWorkbenchTrustStatus(primaryIssue)}`
+      : labelForWorkbenchTrustStatus('geometry_ready'),
+    message: primaryIssue ? messageForWorkbenchTrustIssue(primaryIssue, trust) : null,
+  };
 }
 
 function buildTrustStatus(input: {
@@ -304,21 +432,9 @@ function collectGeometryTrustIssues(
   geometryContext: ObjectWorkbenchGeometryContext,
 ): WorkbenchTrustStatusKind[] {
   const issues: WorkbenchTrustStatusKind[] = [];
-  if (
-    geometryContext.house?.roof.validation.status === 'approximate' ||
-    geometryContext.house?.lowConfidence ||
-    geometryContext.warnings.length > 0
-  ) {
+  const projectModel = geometryContext.projectModel;
+  if ((projectModel?.warnings.length ?? 0) > 0) {
     issues.push('approximate');
-  }
-  if (
-    geometryContext.pergolas.some(
-      (pergola) =>
-        pergola.attachment.kind !== 'freestanding' &&
-        pergola.attachment.resolution.status !== 'resolved',
-    )
-  ) {
-    issues.push('unresolved_host');
   }
   return uniqueIssues(issues);
 }
@@ -329,7 +445,7 @@ function buildDeckSupport(input: {
 }): WorkbenchDeckSupportDiagnostic {
   return buildWorkbenchDeckSupportDiagnostic({
     activeHostSide: resolveWorkbenchDeckSupportActiveSide(input.moduleInput),
-    decks: input.geometryContext.house?.decks ?? [],
+    decks: input.geometryContext.projectModel?.decks ?? [],
   });
 }
 
@@ -439,25 +555,6 @@ function buildSolvedModule(input: {
     result: resolved.moduleResult,
   };
 
-  if (input.geometryContext.house?.roof.validation.status === 'invalid') {
-    const message =
-      input.geometryContext.house.roof.validation.message ??
-      'The selected house roof configuration is not supported by Sanctuary geometry V1.';
-    return buildInvalidSolvedModule({
-      index: input.index,
-      drawingModule: input.drawingModule,
-      label: input.label,
-      moduleInput,
-      previewMode,
-      resultSource: resolved.resultSource,
-      draftTouchesGeometry: resolved.draftTouchesGeometry,
-      message,
-      drawingResult: resolved.moduleResult,
-      deckSupport,
-      previewKind: 'unsupported',
-    });
-  }
-
   const derivation = deriveObjectWorkbenchGeometry({
     projectId: input.geometryIdentity.projectId,
     estimateId: input.geometryIdentity.estimateId,
@@ -531,6 +628,7 @@ function buildSolvedModule(input: {
     },
   });
   const scene = buildViewerSceneFromSolvedGeometry({
+    config: derivation.config,
     assembly: derivation.assembly,
     geometryContext: input.geometryContext,
   });
@@ -599,7 +697,7 @@ export function buildWorkbenchSolvedModel(input: {
       projectModel: input.projectModel,
       ignoreModuleResults: input.ignoreModuleResults,
     });
-  const projectModel = input.projectModel ?? geometryContext.projectModel;
+  const projectModel = input.projectModel ?? geometryContext.projectModel ?? EMPTY_WORKBENCH_PROJECT_MODEL;
   const modules = drawingModules.map((drawingModule, index) =>
     buildSolvedModule({
       index,

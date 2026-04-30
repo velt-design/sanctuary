@@ -282,6 +282,10 @@ export default function PergolaInspector({
 
           <div className={styles.diagnosticsList}>
             <div className={styles.diagnosticRow}>
+              <span className={styles.diagnosticLabel}>Trust</span>
+              <span className={styles.diagnosticValue}>{activePergolaModel.trustLabel}</span>
+            </div>
+            <div className={styles.diagnosticRow}>
               <span className={styles.diagnosticLabel}>Resolution</span>
               <span className={styles.diagnosticValue}>{activePergolaModel.resolution.status}</span>
             </div>

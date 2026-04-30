@@ -16,6 +16,7 @@ import type {
   DeckShape,
   DeckSupportClassification,
   DeckSupportWarningCode,
+  DeckValidationCode,
   DeckSurfaceMaterial,
   HouseAttachmentZoneKind,
   HouseFirstDeckDraft,
@@ -33,6 +34,7 @@ import type {
   SliderPanelCount,
   WallOpeningHostSide,
   WallOpeningKind,
+  WallOpeningValidationCode,
   WorkbenchHouseSelection,
   WorkbenchMode,
 } from '../houseFirstWorkbenchModel';
@@ -67,6 +69,7 @@ export type {
   DeckShape,
   DeckSupportClassification,
   DeckSupportWarningCode,
+  DeckValidationCode,
   DeckSurfaceMaterial,
   HouseAttachmentZoneKind,
   HouseRoofAppendageForm,
@@ -76,6 +79,7 @@ export type {
   SliderPanelCount,
   WallOpeningHostSide,
   WallOpeningKind,
+  WallOpeningValidationCode,
   WorkbenchHouseSelection,
   WorkbenchMode,
 };

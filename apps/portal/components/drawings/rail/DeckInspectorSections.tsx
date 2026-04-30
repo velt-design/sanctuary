@@ -92,6 +92,10 @@ export function buildDeckInspectorSections({
         {activeDeck.shape === 'preset' ? 'rectangular preset' : 'custom outline'}
       </span>
     </div>,
+    <div key="deck-trust" className={styles.inlineMeta}>
+      <span className={styles.inlineLabel}>Trust</span>
+      <span className={styles.inlineValue}>{activeDeck.trustLabel}</span>
+    </div>,
     <p key="deck-selection-hint" className={styles.fieldHint}>
       {activeDeck.shape === 'preset'
         ? 'Only the selected deck shows active dimensions in plan/model space. Rectangular presets can be dragged in Model Space, snap to the house edge, or sit in floating placement with witness dimensions.'

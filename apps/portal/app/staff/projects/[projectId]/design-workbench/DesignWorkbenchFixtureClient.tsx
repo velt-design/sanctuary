@@ -219,6 +219,7 @@ export default function DesignWorkbenchFixtureClient({
               }))
             }
             status={store.derived.status}
+            trustGate={store.derived.activeTrustGate}
             planModel={store.derived.activePlanModel}
             sectionModel={store.derived.activeSectionModel}
             planViewModel={store.derived.activePlanViewModel}

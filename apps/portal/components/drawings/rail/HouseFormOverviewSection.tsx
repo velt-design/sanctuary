@@ -21,6 +21,7 @@ export function buildHouseFormOverviewSection({
       title="House Form Inspector"
       items={[
         { label: 'Selected form', value: houseForm?.label ?? 'Not derived yet' },
+        { label: 'Trust', value: houseFormContext.trustLabel },
         { label: 'Roof form', value: labelForRoofForm(houseFormContext.roof.intent.form) },
         {
           label: 'Roof status',

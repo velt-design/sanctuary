@@ -324,6 +324,9 @@ describe('object workbench import guards', () => {
       if (PERSISTED_COMPATIBILITY_BRIDGE_PROJECT_MODEL_READ.test(source)) {
         violations.push(`${relativeBoundaryPath} reads the persisted compatibility project model from a public geometry facade`);
       }
+      if (/\bsharedHouse\b/.test(source)) {
+        violations.push(`${relativeBoundaryPath} exposes sharedHouse from a public geometry facade`);
+      }
     }
 
     for (const root of OBJECT_WORKBENCH_GEOMETRY_UI_ROOTS) {
