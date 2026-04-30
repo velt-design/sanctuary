@@ -1413,6 +1413,51 @@ describe('houseFirstPlanOverlay', () => {
     expect(toScenePolygonMetres(deckShape?.polygon ?? [])).toEqual(toScenePolygonMetres(expectedDeckSurface?.boundary ?? []));
   });
 
+  it('keeps attached preset overlays on the exact primary edge when semantic host metadata disagrees', () => {
+    const baseHouse = makeHouse({
+      footprint: {
+        mode: 'preset',
+        preset: 'straight',
+      },
+    });
+    const deck = makeDeck({
+      hostEdgeId: 'right',
+      primaryHostEdgeId: 'footprint-edge-1',
+      presetRect: {
+        widthM: '2',
+        depthM: '1.5',
+        centerOffsetM: '-0.5',
+      },
+    });
+    const resolvedDeck = resolveDeckPresetGeometry({
+      deck,
+      housePolygon: baseHouse.footprint.polygon,
+    });
+    const overlay = buildHouseFirstPlanOverlay({
+      house: makeHouse({
+        footprint: baseHouse.footprint,
+        decks: [
+          {
+            ...deck,
+            hostEdgeId: resolvedDeck.hostEdgeId,
+            primaryHostEdgeId: resolvedDeck.primaryHostEdgeId,
+            outline: resolvedDeck.outline,
+            presetRect: resolvedDeck.presetRect,
+          },
+        ],
+      }),
+      selection: { kind: 'deck', targetId: 'deck-1' },
+      moduleLengthM: '6',
+      moduleProjectionM: '3',
+    });
+
+    const deckShape = overlay?.shapes.find((shape) => shape.ownerKind === 'deck' && shape.ownerId === 'deck-1');
+    expect(deckShape?.deckInteraction?.placement).toBe('snapped');
+    expect(deckShape?.deckInteraction?.semanticPlacementSide).toBe('rear');
+    expect(deckShape?.deckInteraction?.placementEdgeId).toBe('footprint-edge-1');
+    expect(deckShape?.deckInteraction?.primaryHostEdgeId).toBe('footprint-edge-1');
+  });
+
   it('resolves floating preset witness geometry against the exact right-side edge', () => {
     const baseHouse = makeHouse({
       footprint: {

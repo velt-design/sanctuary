@@ -377,7 +377,7 @@ describe('houseFirstDeckPresets', () => {
     ]);
   });
 
-  it('falls back to the semantic right wall when a saved exact host edge id resolves to a different side', () => {
+  it('keeps a valid exact primary host edge even when legacy semantic host metadata disagrees', () => {
     expect(
       resolveDeckPresetGeometry({
         deck: {
@@ -399,7 +399,7 @@ describe('houseFirstDeckPresets', () => {
     ).toEqual({
       hostEdgeId: 'right',
       attachmentMode: 'single_edge',
-      primaryHostEdgeId: 'right',
+      primaryHostEdgeId: 'footprint-edge-1',
       secondaryHostEdgeId: null,
       cornerVertexId: null,
       presetRect: {
@@ -410,10 +410,10 @@ describe('houseFirstDeckPresets', () => {
       },
       floatingRect: null,
       outline: [
-        { alongM: '8', depthM: '0.5' },
-        { alongM: '8', depthM: '2.5' },
-        { alongM: '9.5', depthM: '2.5' },
-        { alongM: '9.5', depthM: '0.5' },
+        { alongM: '2.5', depthM: '-1.5' },
+        { alongM: '4.5', depthM: '-1.5' },
+        { alongM: '4.5', depthM: '0' },
+        { alongM: '2.5', depthM: '0' },
       ],
     });
   });

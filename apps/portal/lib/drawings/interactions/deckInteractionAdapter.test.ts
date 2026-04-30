@@ -377,6 +377,65 @@ describe('deckInteractionAdapter', () => {
     expect((patch.presetRect as { centerOffsetM: string }).centerOffsetM).toBe('0.25');
   });
 
+  it('ignores an opposite-side commit frame even when its source id matches the render frame', () => {
+    const renderFrame = {
+      ...realLeftFrame,
+      sourceEdgeId: 'geometry-left-wall',
+    };
+    const oppositeExactCommitFrame = {
+      ...realRightFrame,
+      sourceEdgeId: 'geometry-left-wall',
+    };
+    const compatibleCommitFrame = {
+      ...realLeftFrame,
+      sourceEdgeId: 'footprint-edge-7',
+      spanStartM: 4,
+      spanEndM: 6.4,
+      edgeCoordinateM: 0.4,
+      hostEdgeStart: { x: 0.4, y: 0 },
+      hostEdgeEnd: { x: 0.4, y: 2.4 },
+    };
+    const deckWidthM = 1.4;
+    const deckDepthM = 2;
+    const centerOffsetM = 0.25;
+    const initialGapM = 0.12;
+    const polygon = rectOnFrame({
+      frame: renderFrame,
+      deckWidthM,
+      deckDepthM,
+      centerOffsetM,
+      referenceEdgeGapM: initialGapM,
+    });
+    const edgeMidpointM = (renderFrame.spanStartM + renderFrame.spanEndM) / 2;
+    const startDragPlanPoint = pointOnFrame(renderFrame, edgeMidpointM + centerOffsetM, initialGapM + 0.4);
+    const session = makeSession({
+      polygon,
+      startDragPlanPoint,
+      frames: [renderFrame],
+      commitFrames: [oppositeExactCommitFrame, compatibleCommitFrame],
+      renderedCenter: polygonCenter(polygon),
+      deckWidthM,
+      deckDepthM,
+      placement: 'floating',
+      attachmentMode: 'floating',
+    });
+
+    const preview = resolveDeckPreviewState({
+      session,
+      nextSvgX: session.startSvgX,
+      nextSvgY: session.startSvgY,
+      nextDragPlanPoint: session.startDragPlanPoint,
+      previousPreviewState: null,
+    });
+    const patch = buildDeckCommitPatch({ session, preview });
+
+    expect(preview.releasePlacement).toBe('snapped');
+    expect(preview.primaryHostEdgeId).toBe('geometry-left-wall');
+    expect(patch.hostEdgeId).toBe('left');
+    expect(patch.primaryHostEdgeId).toBe('footprint-edge-7');
+    expect((patch.presetRect as { centerOffsetM: string }).centerOffsetM).toBe('0.25');
+  });
+
   it('does not trigger corner mode just because a wide deck overlaps a second wall span', () => {
     const polygon = [
       { x: -0.45, y: 0 },

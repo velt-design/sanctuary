@@ -36,6 +36,8 @@ const DECK_END_CATCH_UNSNAP_TOLERANCE_M = 0.16;
 const DECK_WALL_SPAN_CANDIDATE_TOLERANCE_M = 0.35;
 const DECK_WALL_SPAN_RETAIN_TOLERANCE_M = 0.5;
 const DECK_COMMIT_FRAME_MATCH_TOLERANCE_M = 1.5;
+const DECK_COMMIT_FRAME_LINE_TOLERANCE_M = 0.5;
+const DECK_COMMIT_FRAME_VECTOR_DOT_TOLERANCE = 0.75;
 
 export type DeckSvgInteraction = {
   hostEdgeStart: PlanPoint;
@@ -175,6 +177,38 @@ function scoreDeckReferenceFrameGeometryMatch(input: {
   return endpointDistance + alongDistance + outwardDistance + semanticPenalty + axisPenalty + outwardDirectionPenalty;
 }
 
+function deckReferenceFramesAreCompatibleForCommit(input: {
+  renderFrame: HouseFirstPlanDeckReferenceFrame;
+  commitFrame: HouseFirstPlanDeckReferenceFrame;
+}): boolean {
+  if (input.renderFrame.axis !== input.commitFrame.axis) return false;
+  if (input.renderFrame.hostEdgeId !== input.commitFrame.hostEdgeId) return false;
+  if (input.renderFrame.outwardDirection !== input.commitFrame.outwardDirection) return false;
+
+  const alongDot =
+    input.renderFrame.alongUnitX * input.commitFrame.alongUnitX +
+    input.renderFrame.alongUnitY * input.commitFrame.alongUnitY;
+  const outwardDot =
+    input.renderFrame.outwardUnitX * input.commitFrame.outwardUnitX +
+    input.renderFrame.outwardUnitY * input.commitFrame.outwardUnitY;
+  if (Math.abs(alongDot) < DECK_COMMIT_FRAME_VECTOR_DOT_TOLERANCE) return false;
+  if (outwardDot < DECK_COMMIT_FRAME_VECTOR_DOT_TOLERANCE) return false;
+
+  const directEndpointDistance =
+    pointDistance(input.renderFrame.hostEdgeStart, input.commitFrame.hostEdgeStart) +
+    pointDistance(input.renderFrame.hostEdgeEnd, input.commitFrame.hostEdgeEnd);
+  const reversedEndpointDistance =
+    pointDistance(input.renderFrame.hostEdgeStart, input.commitFrame.hostEdgeEnd) +
+    pointDistance(input.renderFrame.hostEdgeEnd, input.commitFrame.hostEdgeStart);
+  const endpointDistance = Math.min(directEndpointDistance, reversedEndpointDistance);
+  const edgeCoordinateDistance = Math.abs(input.renderFrame.edgeCoordinateM - input.commitFrame.edgeCoordinateM);
+
+  return (
+    endpointDistance <= DECK_COMMIT_FRAME_LINE_TOLERANCE_M ||
+    edgeCoordinateDistance <= DECK_COMMIT_FRAME_LINE_TOLERANCE_M
+  );
+}
+
 function resolveDeckCommitReferenceFrame(input: {
   interaction: HouseFirstPlanDeckInteraction;
   renderEdgeId: string | null | undefined;
@@ -188,6 +222,12 @@ function resolveDeckCommitReferenceFrame(input: {
 
   const bestGeometryMatch =
     commitFrames
+      .filter((commitFrame) =>
+        deckReferenceFramesAreCompatibleForCommit({
+          renderFrame,
+          commitFrame,
+        }),
+      )
       .map((commitFrame) => ({
         commitFrame,
         score: scoreDeckReferenceFrameGeometryMatch({
@@ -200,7 +240,13 @@ function resolveDeckCommitReferenceFrame(input: {
   if (bestGeometryMatch && bestGeometryMatch.score <= DECK_COMMIT_FRAME_MATCH_TOLERANCE_M) {
     return bestGeometryMatch.commitFrame;
   }
-  return exactCommitFrame;
+  return exactCommitFrame &&
+    deckReferenceFramesAreCompatibleForCommit({
+      renderFrame,
+      commitFrame: exactCommitFrame,
+    })
+    ? exactCommitFrame
+    : null;
 }
 
 function resolveDeckCommitCornerVertexId(input: {

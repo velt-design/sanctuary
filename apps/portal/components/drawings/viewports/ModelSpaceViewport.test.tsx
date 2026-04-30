@@ -767,6 +767,9 @@ function HouseFirstViewportHarness({
       onSelectObjectWorkbenchTarget={(nextSelection) => {
         setSelection(nextSelection);
       }}
+      onClearWorkbenchSelection={() => {
+        setSelection({ kind: 'house', targetId: null });
+      }}
       onCommitHouseFormFootprintDimension={(edit) => {
         setHouse((current) => {
           if (edit.type === 'param') {
@@ -4574,6 +4577,7 @@ describe('ModelSpaceViewport', () => {
 
     dispatchPointer(deckHit, 'pointerdown', { pointerId: 125, button: 0, clientX: 50, clientY: 50 });
     dispatchPointer(window, 'pointerup', { pointerId: 125, button: 0, clientX: 50, clientY: 50 });
+    clickElement(svg);
     await act(async () => {
       await Promise.resolve();
     });
@@ -4582,6 +4586,91 @@ describe('ModelSpaceViewport', () => {
     expect(scroller.dataset.houseFirstDeckDragActive).toBe('false');
     expect(rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]')).toBeNull();
     expect(commitSpy).not.toHaveBeenCalled();
+
+    rendered.unmount();
+  });
+
+  it('keeps a selected preset deck selected after a plain click without committing a drag', async () => {
+    const commitSpy = vi.fn();
+    const deck = makeHouseFirstDeck();
+    const baseHouse = makeHouseFirstHouse();
+    const resolvedDeck = resolveDeckPresetGeometry({
+      deck: deck as any,
+      housePolygon: baseHouse.footprint.polygon,
+    });
+    const rendered = renderIntoDocument(
+      <HouseFirstViewportHarness
+        initialSelection={{ kind: 'deck', targetId: 'deck-1' }}
+        initialHouse={makeHouseFirstHouse({
+          decks: [
+            {
+              ...deck,
+              hostEdgeId: resolvedDeck.hostEdgeId,
+              floatingRect: resolvedDeck.floatingRect,
+              presetRect: resolvedDeck.presetRect,
+              outline: resolvedDeck.outline,
+            },
+          ],
+        })}
+        onDeckCommit={commitSpy}
+      />,
+    );
+
+    const svg = rendered.container.querySelector('svg[aria-label="Module plan view"]') as SVGSVGElement | null;
+    const deckHit = rendered.container.querySelector('[data-house-first-shape-hit="deck:deck-1"]');
+    const scroller = rendered.container.querySelector('[data-model-space-scroller]') as HTMLElement | null;
+    if (!svg || !deckHit || !scroller) throw new Error('Missing plan viewport nodes.');
+    installSvgPointMock(svg);
+
+    dispatchPointer(deckHit, 'pointerdown', { pointerId: 126, button: 0, clientX: 50, clientY: 50 });
+    dispatchPointer(window, 'pointerup', { pointerId: 126, button: 0, clientX: 50, clientY: 50 });
+    clickElement(svg);
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(scroller.dataset.houseFirstSelectedDeckId).toBe('deck-1');
+    expect(scroller.dataset.houseFirstDeckDragActive).toBe('false');
+    expect(rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]')).toBeNull();
+    expect(commitSpy).not.toHaveBeenCalled();
+
+    rendered.unmount();
+  });
+
+  it('clears deck selection when an empty canvas click starts on the plan svg', async () => {
+    const deck = makeHouseFirstDeck();
+    const baseHouse = makeHouseFirstHouse();
+    const resolvedDeck = resolveDeckPresetGeometry({
+      deck: deck as any,
+      housePolygon: baseHouse.footprint.polygon,
+    });
+    const rendered = renderIntoDocument(
+      <HouseFirstViewportHarness
+        initialSelection={{ kind: 'deck', targetId: 'deck-1' }}
+        initialHouse={makeHouseFirstHouse({
+          decks: [
+            {
+              ...deck,
+              hostEdgeId: resolvedDeck.hostEdgeId,
+              floatingRect: resolvedDeck.floatingRect,
+              presetRect: resolvedDeck.presetRect,
+              outline: resolvedDeck.outline,
+            },
+          ],
+        })}
+      />,
+    );
+
+    const svg = rendered.container.querySelector('svg[aria-label="Module plan view"]') as SVGSVGElement | null;
+    const scroller = rendered.container.querySelector('[data-model-space-scroller]') as HTMLElement | null;
+    if (!svg || !scroller) throw new Error('Missing plan viewport nodes.');
+
+    clickElement(svg);
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(scroller.dataset.houseFirstSelectedDeckId).toBe('');
 
     rendered.unmount();
   });

@@ -463,10 +463,7 @@ function resolveCompatibleDeckGeometryHostEdgeId(input: {
     housePolygon: input.housePolygon,
     hostEdgeId: exactPrimaryHostEdgeId,
   });
-  if (
-    exactFrame?.sourceEdgeId === exactPrimaryHostEdgeId &&
-    (!semanticHostEdgeId || exactFrame.hostEdge === semanticHostEdgeId)
-  ) {
+  if (exactFrame?.sourceEdgeId === exactPrimaryHostEdgeId) {
     return exactPrimaryHostEdgeId;
   }
   return semanticHostEdgeId ?? exactPrimaryHostEdgeId;

@@ -2889,7 +2889,9 @@ export default function ModelSpaceViewport({
       if (!activeDeckDragSession) return;
       if (event.pointerId !== activeDeckDragSession.pointerId) return;
       if (deckDragPhaseRef.current === 'drag-intent') {
-        resetDeckDragInteraction();
+        event.preventDefault();
+        releaseDeckDragPointer(event.pointerId);
+        resetDeckDragInteraction({ suppressClick: true });
         return;
       }
       if (deckDragPhaseRef.current !== 'dragging') return;
