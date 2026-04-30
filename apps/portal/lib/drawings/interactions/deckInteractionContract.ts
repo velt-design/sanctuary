@@ -47,7 +47,7 @@ export type DeckInteractionHint = {
 export type DeckInteractionTelemetry = ObjectInteractionTelemetry<'deck'> & {
   selectedDeckId: string | null;
   hoveredDeckId: string | null;
-  housePolygonSource: 'custom_saved' | 'preset_derived' | null;
+  housePolygonSource: 'custom_saved' | 'preset_derived' | 'geometry_projection' | null;
   attachmentMode?: 'floating' | 'single_edge' | 'corner_dual_edge';
   secondaryHostEdgeId?: string | null;
   cornerVertexId?: string | null;

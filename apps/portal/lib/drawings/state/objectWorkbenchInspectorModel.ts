@@ -12,6 +12,8 @@ import type {
   HouseFormModel,
   HouseFormRoofIntentModel,
   ObjectFirstWorkbenchProjectModel,
+  ObjectFirstPergolaConnectionKind,
+  ObjectFirstPergolaGeometryDraft,
   OpeningObjectModel,
   PergolaObjectModel,
   WorkbenchObjectRef,
@@ -67,6 +69,22 @@ export type ObjectWorkbenchOpeningPatch = Partial<
     | 'offsetAlongWallM'
   >
 >;
+
+export type ObjectWorkbenchPergolaPatch = Partial<
+  Pick<
+    PergolaObjectModel,
+    | 'label'
+    | 'family'
+    | 'connectionKind'
+    | 'attachmentEdgeId'
+    | 'attachmentZoneId'
+    | 'side'
+    | 'strategy'
+  >
+> & {
+  connectionKind?: ObjectFirstPergolaConnectionKind | null;
+  geometry?: ObjectFirstPergolaGeometryDraft | null;
+};
 
 export type {
   ObjectWorkbenchMigrationWarning,

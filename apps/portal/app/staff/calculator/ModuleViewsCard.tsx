@@ -4817,6 +4817,7 @@ function PlanSvg({
           dual: modelSpacePergolaGeometry.anchors.fall.dual,
         }
       : null;
+  const canRenderPergolaPlanGeometry = showPergolaGeometry && (!isModel || useGeometryBackedPergola);
 
   const aW = model.lengthA * scale;
   const aH = model.spanA * scale;
@@ -5207,16 +5208,16 @@ function PlanSvg({
   const showHouseHoverTarget = (isSheetFootprintEditor || isModelFootprintEditor) && showHouseFootprint && !isDrawOutlineDraftOpen;
   const showPergolaHoverTarget = isSheet && Boolean(sheetPlanInteraction?.onPergolaHoverChange) && !isHipCorner;
   const showPergolaSelectionHitTarget =
-    !isSheet && showPergolaGeometry && Boolean(onPergolaSelect) && Boolean(currentPergolaId);
+    !isSheet && canRenderPergolaPlanGeometry && Boolean(onPergolaSelect) && Boolean(currentPergolaId);
   const showHouseHoverState =
     (isSheetFootprintEditor && (Boolean(footprintEditor?.isEditing) || showHousePopover)) ||
     (isModelFootprintEditor &&
       (Boolean(footprintEditor?.isContextHovered) || Boolean(footprintEditor?.hoveredHandleId) || Boolean(footprintEditor?.activeHandleId)));
   const showHouseLabel = showHouseFootprint && !showFootprintControls && !isSheetFootprintEditor && !isModelFootprintEditor;
   const isMergedHouseModelDisplay = isModel && displayMode === 'house';
-  const allowPergolaModelEditing = !isSheet && showPergolaGeometry && !isMergedHouseModelDisplay;
+  const allowPergolaModelEditing = !isSheet && canRenderPergolaPlanGeometry && !isMergedHouseModelDisplay;
   const showPinnedSheetPrimaryDimensions = isSheet && !isHipCorner;
-  const showModelPrimaryDimensions = !isSheet && showPergolaGeometry;
+  const showModelPrimaryDimensions = !isSheet && canRenderPergolaPlanGeometry;
   const showModelSecondaryAnnotations = !isSheet && !isModel;
   const showPlanResizeHandles = isModel && allowPergolaModelEditing && Boolean(planInteraction?.available) && !isHipCorner;
   const primaryDimensionSwap = showPinnedSheetPrimaryDimensions && rotationFrame.turns % 2 !== 0;
@@ -5540,7 +5541,7 @@ function PlanSvg({
           </>
         ) : null}
 
-        {showPergolaGeometry ? (
+        {canRenderPergolaPlanGeometry ? (
           useGeometryBackedPergola ? (
             <>
               <polygon
@@ -5666,7 +5667,7 @@ function PlanSvg({
                 })()
               ) : null}
             </>
-          ) : (
+          ) : !isModel ? (
             <>
               <polygon points={toPointsAttr(primaryPoints)} className={styles.modulePlanFill} data-plan-primary-fill="true" />
               {!isHipCorner ? (
@@ -5773,7 +5774,7 @@ function PlanSvg({
                 </>
               ) : null}
             </>
-          )
+          ) : null
         ) : null}
 
         {renderObjectWorkbenchPlanOverlay({
@@ -5792,9 +5793,10 @@ function PlanSvg({
 
         {showPergolaSelectionHitTarget && currentPergolaId ? (
           <polygon
-            points={toPointsAttr(primaryPoints)}
+            points={toPointsAttr(useGeometryBackedPergola && geometryOutlinePoints.length > 0 ? geometryOutlinePoints : primaryPoints)}
             className={styles.modulePergolaContextHit}
             data-pergola-shape-hit={currentPergolaId}
+            data-pergola-shape-hit-source={useGeometryBackedPergola ? 'geometry' : 'legacy'}
             onClick={() => onPergolaSelect?.(currentPergolaId)}
           />
         ) : null}

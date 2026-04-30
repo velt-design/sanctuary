@@ -42,6 +42,7 @@ import type {
   ObjectWorkbenchPergolaAttachmentStrategy,
   ObjectWorkbenchPergolaConnectionKind,
   ObjectWorkbenchPergolaInspectorModel,
+  ObjectWorkbenchPergolaPatch,
 } from '@/lib/drawings/state/objectWorkbenchInspectorModel';
 
 type AttachmentSide = NonNullable<CalculatorModuleInputs['attachmentSide']>;
@@ -54,6 +55,20 @@ export type ObjectWorkbenchCompatibilitySelection = {
 export type ObjectWorkbenchDeckDraft = ObjectFirstDeckDraft;
 export type ObjectWorkbenchOpeningDraft = ObjectFirstOpeningDraft;
 export type ObjectWorkbenchPergolaDraft = ObjectFirstPergolaDraft;
+
+export type ObjectWorkbenchObjectPatchCommit =
+  | {
+      target: { family: 'decks'; objectId: string };
+      patch: ObjectWorkbenchDeckPatch;
+    }
+  | {
+      target: { family: 'openings'; objectId: string };
+      patch: ObjectWorkbenchOpeningPatch;
+    }
+  | {
+      target: { family: 'pergolas'; objectId: string };
+      patch: ObjectWorkbenchPergolaPatch;
+    };
 
 export type ObjectWorkbenchDraftBuildResult =
   | { ok: true; draft: EstimateDrawingDraft }
@@ -378,6 +393,73 @@ export function upsertObjectWorkbenchPergolaDrafts(
       ...patch,
     },
   ];
+}
+
+function mergePergolaGeometryDraft(
+  current: ObjectWorkbenchPergolaDraft['geometry'] | null | undefined,
+  patch: ObjectWorkbenchPergolaPatch['geometry'] | undefined,
+): ObjectWorkbenchPergolaDraft['geometry'] | null | undefined {
+  if (patch === undefined) return current;
+  if (patch === null) return null;
+  return {
+    ...(current ?? {}),
+    ...patch,
+    dimensions:
+      patch.dimensions === undefined
+        ? current?.dimensions
+        : {
+            ...(current?.dimensions ?? {}),
+            ...patch.dimensions,
+          },
+    roof:
+      patch.roof === undefined
+        ? current?.roof
+        : {
+            ...(current?.roof ?? {}),
+            ...patch.roof,
+          },
+    gable:
+      patch.gable === undefined
+        ? current?.gable
+        : {
+            ...(current?.gable ?? {}),
+            ...patch.gable,
+          },
+    supports:
+      patch.supports === undefined
+        ? current?.supports
+        : {
+            ...(current?.supports ?? {}),
+            ...patch.supports,
+          },
+    overrides:
+      patch.overrides === undefined
+        ? current?.overrides
+        : {
+            ...(current?.overrides ?? {}),
+            ...patch.overrides,
+          },
+  };
+}
+
+export function applyObjectWorkbenchPergolaPatch(input: {
+  currentPergolas: ObjectWorkbenchPergolaDraft[];
+  pergolaId: string;
+  patch: ObjectWorkbenchPergolaPatch;
+  fallbackPergola?: ObjectWorkbenchPergolaInspectorModel | ObjectFirstPergolaDraft | null;
+}): ObjectWorkbenchPergolaDraft[] {
+  const currentPergola = input.currentPergolas.find((pergola) => pergola.id === input.pergolaId) ?? null;
+  return upsertObjectWorkbenchPergolaDrafts(
+    input.currentPergolas,
+    input.pergolaId,
+    {
+      ...input.patch,
+      ...(input.patch.geometry !== undefined
+        ? { geometry: mergePergolaGeometryDraft(currentPergola?.geometry, input.patch.geometry) }
+        : null),
+    },
+    input.fallbackPergola,
+  );
 }
 
 export function applyObjectWorkbenchPergolaModuleEdits(input: {

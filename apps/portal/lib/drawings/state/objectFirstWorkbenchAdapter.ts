@@ -123,6 +123,7 @@ function buildPergolaObjects(pergolas: ObjectWorkbenchCompatibilityPergolaModel[
     id: pergola.id,
     label: pergola.label,
     family: pergola.family,
+    connectionKind: pergola.attachment.kind,
     attachmentEdgeId: pergola.attachment.attachmentEdgeId,
     attachmentZoneId: pergola.attachment.attachmentZoneId,
     side: pergola.attachment.side,

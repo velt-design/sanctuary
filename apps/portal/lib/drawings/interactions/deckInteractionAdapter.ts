@@ -1617,7 +1617,7 @@ export function buildDeckCommitPatch(input: {
 export function buildDeckInteractionTelemetry(input: {
   selectedDeckId: string | null;
   hoveredDeckId: string | null;
-  housePolygonSource: 'custom_saved' | 'preset_derived' | null;
+  housePolygonSource: 'custom_saved' | 'preset_derived' | 'geometry_projection' | null;
   capability: DeckInteractionCapability | null;
   viewState: ObjectInteractionViewState;
   selectedDeckShape:

@@ -1169,7 +1169,12 @@ export default function ModelSpaceViewport({
     Boolean(onCommitField) &&
     (editableFieldMap.has('plan:lengthA') || editableFieldMap.has('plan:spanA'));
   const showHouseSectionPlaceholder = workbenchDisplayMode === 'house' && view === 'section';
-  const showPlanViewport = view === 'plan' && Boolean(planModel);
+  const hasGeometryReadyPlan =
+    view === 'plan' &&
+    planViewModel?.modelSpacePergola.renderSource === 'geometry' &&
+    planViewModel.modelSpacePergola.renderStatus === 'geometry_ready' &&
+    Boolean(planViewModel.modelSpacePergola.geometryPlan);
+  const showPlanViewport = view === 'plan' && Boolean(planModel) && hasGeometryReadyPlan;
   const showSectionViewport = view === 'section' && Boolean(sectionModel) && !showHouseSectionPlaceholder;
   const showDrawingViewport = showPlanViewport || showSectionViewport;
   const modelSpaceAutoFitReady = showDrawingViewport;
@@ -3201,7 +3206,7 @@ export default function ModelSpaceViewport({
   }, [drawOutlinePopoverAnchorPointCount, showDrawOutlineDistanceHud, viewportTransform.panX, viewportTransform.panY, zoom]);
 
   const objectWorkbenchPlanOverlay =
-    view === 'plan' && !drawOutlineViewModel.isActive ? planViewModel?.objectWorkbenchOverlay ?? null : null;
+    showPlanViewport && !drawOutlineViewModel.isActive ? planViewModel?.objectWorkbenchOverlay ?? null : null;
   const selectedDeckShape = useMemo(
     () =>
       objectWorkbenchPlanOverlay?.shapes.find(

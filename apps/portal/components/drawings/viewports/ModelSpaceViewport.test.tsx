@@ -268,6 +268,39 @@ function makeGeometryPlanFixture(): GeometryPlanViewModel {
   };
 }
 
+function makeGeometryPlanFromPlanModel(planModel: ModulePlanModel): GeometryPlanViewModel {
+  const base = makeGeometryPlanFixture();
+  const houseSurfaces = (planModel.houseContext?.surfaces ?? []).map((surface) => ({
+    ...surface,
+    boundary: surface.boundary.map((point) => ({
+      x: point.x * 1000,
+      y: point.y * 1000,
+    })),
+  }));
+  const houseLines = (planModel.houseContext?.lines ?? []).map((line) => ({
+    ...line,
+    line: {
+      start: {
+        x: line.line.start.x * 1000,
+        y: line.line.start.y * 1000,
+      },
+      end: {
+        x: line.line.end.x * 1000,
+        y: line.line.end.y * 1000,
+      },
+    },
+  }));
+  return {
+    ...base,
+    house: {
+      ...base.house,
+      footprint: houseSurfaces.find((surface) => surface.kind === 'footprint')?.boundary ?? base.house.footprint,
+      surfaces: houseSurfaces,
+      lines: houseLines,
+    },
+  };
+}
+
 function makePlanEditableFields(): EstimateDrawingField[] {
   return [
     {
@@ -768,7 +801,7 @@ function makeObjectWorkbenchOverlayInputFromHouse(input: {
     selection: input.selection,
     moduleLengthM: input.drawing.input.lengthM,
     moduleProjectionM: input.drawing.input.projectionM,
-    geometryHouseContext: input.planModel.houseContext,
+    geometryPlan: makeGeometryPlanFromPlanModel(input.planModel),
     status: {
       houseForm: {
         lowConfidence: input.house.lowConfidence,
@@ -907,6 +940,7 @@ function HouseFirstViewportHarness({
     snapMessage: string | null;
   } | null>(null);
   const planModel = makePlanModelWithHouseContext();
+  const geometryPlan = makeGeometryPlanFromPlanModel(planModel);
 
   const viewport = (
     <ModelSpaceViewport
@@ -920,6 +954,9 @@ function HouseFirstViewportHarness({
         moduleId: drawing.id,
         moduleLabel: 'Module 1',
         planModel,
+        geometryPlan,
+        pergolaRenderSource: 'geometry',
+        pergolaRenderStatus: 'geometry_ready',
         canEditHouseFootprint: true,
         objectWorkbenchOverlayInput: makeObjectWorkbenchOverlayInputFromHouse({
           drawing,
@@ -1447,6 +1484,7 @@ describe('ModelSpaceViewport', () => {
       planModel,
       sectionModel: drawing.sectionModel,
     });
+    const geometryPlan = makeGeometryPlanFromPlanModel(planModel);
 
     const markup = renderToStaticMarkup(
       <ModelSpaceViewport
@@ -1454,7 +1492,15 @@ describe('ModelSpaceViewport', () => {
         status="ready"
         planModel={planModel}
         sectionModel={drawing.sectionModel}
-        planViewModel={buildPlanViewModel(assembly)}
+        planViewModel={buildPlanViewModel({
+          moduleId: assembly.id,
+          moduleLabel: assembly.label,
+          planModel,
+          geometryPlan,
+          pergolaRenderSource: 'geometry',
+          pergolaRenderStatus: 'geometry_ready',
+          canEditHouseFootprint: assembly.capabilities.canEditHouseFootprint,
+        })}
         viewportTransform={createDrawingWorkbenchUiState().viewportTransform}
         onViewportTransformChange={() => undefined}
         editableFields={makePlanEditableFields()}
@@ -1514,6 +1560,7 @@ describe('ModelSpaceViewport', () => {
       ],
     });
     const planModel = makePlanModelWithHouseContext();
+    const geometryPlan = makeGeometryPlanFromPlanModel(planModel);
 
     const markup = renderToStaticMarkup(
       <ModelSpaceViewport
@@ -1645,9 +1692,9 @@ describe('ModelSpaceViewport', () => {
 
   it('keeps the house-first footprint overlay on the same world side of the pergola as the semantic house surface in house mode', () => {
     const drawing = makeDrawingModule();
-    const geometryPlan = makeGeometryPlanFixture();
     const house = makeHouseFirstHouse();
     const planModel = makePlanModelWithHouseContext();
+    const geometryPlan = makeGeometryPlanFromPlanModel(planModel);
     const rendered = renderIntoDocument(
       <ModelSpaceViewport
         view="plan"
@@ -1836,6 +1883,7 @@ describe('ModelSpaceViewport', () => {
   it('hides pergola graphics in house display mode when pergola visibility is turned off', () => {
     const drawing = makeDrawingModule();
     const planModel = makePlanModelWithHouseContext();
+    const geometryPlan = makeGeometryPlanFromPlanModel(planModel);
 
     const markup = renderToStaticMarkup(
       <ModelSpaceViewport
@@ -1854,6 +1902,9 @@ describe('ModelSpaceViewport', () => {
           moduleId: drawing.id,
           moduleLabel: 'Module 1',
           planModel,
+          geometryPlan,
+          pergolaRenderSource: 'geometry',
+          pergolaRenderStatus: 'geometry_ready',
           canEditHouseFootprint: true,
           objectWorkbenchOverlayInput: makeObjectWorkbenchOverlayInputFromHouse({
             drawing,
@@ -1886,6 +1937,7 @@ describe('ModelSpaceViewport', () => {
         { alongM: '0', depthM: '1.2' },
       ],
     };
+    const geometryPlan = makeGeometryPlanFromPlanModel(planModel);
 
     const markup = renderToStaticMarkup(
       <ModelSpaceViewport
@@ -1893,6 +1945,15 @@ describe('ModelSpaceViewport', () => {
         status="ready"
         planModel={planModel}
         sectionModel={drawing.sectionModel}
+        planViewModel={buildPlanViewModel({
+          moduleId: drawing.id,
+          moduleLabel: 'Module 1',
+          planModel,
+          geometryPlan,
+          pergolaRenderSource: 'geometry',
+          pergolaRenderStatus: 'geometry_ready',
+          canEditHouseFootprint: true,
+        })}
         viewportTransform={createDrawingWorkbenchUiState().viewportTransform}
         onViewportTransformChange={() => undefined}
         editableFields={makePlanEditableFields()}

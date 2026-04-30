@@ -3,19 +3,20 @@
 import { useCallback, type Dispatch, type SetStateAction } from 'react';
 import {
   applyObjectWorkbenchGeometryEditIntent,
+  buildObjectWorkbenchPergolaPatchFromGeometryIntent,
+  mirrorObjectWorkbenchPergolaPatchToTemporaryGeometryModuleFields,
   translateEstimateDrawingFieldToObjectWorkbenchGeometryIntent,
   type ObjectWorkbenchGeometryEditIntent,
 } from '@/lib/drawings/geometry/geometryEditAdapter';
 import { buildDrawingWorkbenchStore } from '@/lib/drawings/state/drawingWorkbenchStore';
 import {
   buildDrawingWorkbenchObjectSelectionState,
-  buildDrawingWorkbenchObjectSelectionStateFromBridgeTarget,
-  deriveDrawingWorkbenchCompatibilitySelection,
 } from '@/lib/drawings/state/drawingWorkbenchUiState';
 import type { DrawingWorkbenchUiState } from '@/lib/drawings/state/drawingWorkbenchUiState';
 import type {
   HouseFormRoofIntentModel,
   ObjectFirstWorkbenchDraftVNext,
+  WorkbenchObjectRef,
 } from '@/lib/drawings/state/objectFirstWorkbenchModel';
 import {
   normalizeObjectFirstWorkbenchDraftVNext,
@@ -28,6 +29,7 @@ import type {
   ObjectWorkbenchOpeningPatch,
   ObjectWorkbenchPergolaAttachmentStrategy,
   ObjectWorkbenchPergolaConnectionKind,
+  ObjectWorkbenchPergolaPatch,
 } from '@/lib/drawings/state/objectWorkbenchInspectorModel';
 import {
   applyEstimateDrawingFootprintEdit,
@@ -45,7 +47,7 @@ import type { CommitResult, DrawOutlineTarget } from './objectWorkbenchClientTyp
 import {
   applyObjectWorkbenchDeckPatch,
   applyObjectWorkbenchOpeningPatch,
-  applyObjectWorkbenchPergolaModuleEdits,
+  applyObjectWorkbenchPergolaPatch,
   buildNewObjectWorkbenchDeckDraft,
   buildNewObjectWorkbenchOpeningDraft,
   buildObjectFirstDraftWithDecks,
@@ -64,12 +66,10 @@ import {
   resolvePreferredNewObjectWorkbenchOpeningHostWall,
   resolvePreferredObjectWorkbenchPergolaZone,
   updateDraftObjectFirst,
-  upsertObjectWorkbenchPergolaDrafts,
-  type ObjectWorkbenchCompatibilitySelection,
   type ObjectWorkbenchDeckMutationInput,
   type ObjectWorkbenchDraftBuildResult,
+  type ObjectWorkbenchObjectPatchCommit,
   type ObjectWorkbenchOpeningMutationInput,
-  type ObjectWorkbenchPergolaMutationInput,
 } from './objectWorkbenchDraftActions';
 
 type UseObjectWorkbenchActionsInput = {
@@ -96,8 +96,6 @@ type DraftTransaction = {
 type DeckMutationInput = ObjectWorkbenchDeckMutationInput;
 
 type OpeningMutationInput = ObjectWorkbenchOpeningMutationInput;
-
-type PergolaMutationInput = ObjectWorkbenchPergolaMutationInput;
 
 type PergolaAttachmentKind = ObjectWorkbenchPergolaConnectionKind;
 type PergolaAttachmentStrategyValue = ObjectWorkbenchPergolaAttachmentStrategy;
@@ -196,8 +194,132 @@ export function useObjectWorkbenchActions({
     [snapshot, ui],
   );
 
+  const commitObjectWorkbenchPatch = useCallback(
+    async (
+      commit: ObjectWorkbenchObjectPatchCommit,
+      options: Pick<DraftTransaction, 'validateDraft' | 'afterPersist'> = {},
+    ): Promise<CommitResult> =>
+      runDraftTransaction({
+        buildNextDraft: (draft) => {
+          const objectFirstDraft = resolveObjectFirstDraft(draft, store);
+
+          if (commit.target.family === 'decks') {
+            const currentDecks = resolveCurrentObjectWorkbenchDeckDrafts(objectFirstDraft);
+            if (!currentDecks.some((deck) => deck.id === commit.target.objectId)) {
+              return { ok: false, error: 'This deck is no longer available.' };
+            }
+            const housePolygon = resolveDeckReferencePolygon(houseForm, activeModuleInput);
+            return {
+              ok: true,
+              draft: updateDraftObjectFirst({
+                draft,
+                objectFirst: buildObjectFirstDraftWithDecks({
+                  objectFirstDraft,
+                  decks: applyObjectWorkbenchDeckPatch({
+                    currentDecks,
+                    deckId: commit.target.objectId,
+                    housePolygon,
+                    patch: commit.patch,
+                  }),
+                }),
+              }),
+            };
+          }
+
+          if (commit.target.family === 'openings') {
+            const currentOpenings = resolveCurrentObjectWorkbenchOpeningDrafts(objectFirstDraft);
+            if (!currentOpenings.some((opening) => opening.id === commit.target.objectId)) {
+              return { ok: false, error: 'This opening is no longer available.' };
+            }
+            return {
+              ok: true,
+              draft: updateDraftObjectFirst({
+                draft,
+                objectFirst: buildObjectFirstDraftWithOpenings({
+                  objectFirstDraft,
+                  openings: applyObjectWorkbenchOpeningPatch({
+                    activeModuleInput,
+                    currentOpenings,
+                    openingId: commit.target.objectId,
+                    houseAssembly: store.derived.houseAssembly,
+                    houseForm,
+                    patch: commit.patch,
+                  }),
+                  sourceFormId: houseForm?.id ?? null,
+                }),
+              }),
+            };
+          }
+
+          const currentPergolas = resolveCurrentObjectWorkbenchPergolaDrafts(objectFirstDraft);
+          const currentPergola =
+            store.derived.objectWorkbench.pergolas.find(
+              (pergola) => pergola.id === commit.target.objectId,
+            ) ?? null;
+          if (!currentPergola) {
+            return { ok: false, error: 'This pergola is no longer available.' };
+          }
+          const moduleIndexes = store.persisted.modules.flatMap((module, moduleIndex) =>
+            module.drawingModule.input.pergolaId === commit.target.objectId ? [moduleIndex] : [],
+          );
+          const nextDraft = updateDraftObjectFirst({
+            draft,
+            objectFirst: buildObjectFirstDraftWithPergolas({
+              objectFirstDraft,
+              pergolas: applyObjectWorkbenchPergolaPatch({
+                currentPergolas,
+                pergolaId: commit.target.objectId,
+                patch: commit.patch,
+                fallbackPergola: currentPergola,
+              }),
+            }),
+          });
+          const mirrorResult = mirrorObjectWorkbenchPergolaPatchToTemporaryGeometryModuleFields({
+            snapshot,
+            draft: nextDraft,
+            moduleIndexes,
+            patch: commit.patch,
+          });
+          if (!mirrorResult.ok) {
+            return {
+              ok: false,
+              error: mirrorResult.message,
+            };
+          }
+          return {
+            ok: true,
+            draft: mirrorResult.draft,
+          };
+        },
+        validateDraft: options.validateDraft,
+        afterPersist: options.afterPersist,
+      }),
+    [
+      activeModuleInput,
+      houseForm,
+      houseForm?.id,
+      runDraftTransaction,
+      snapshot,
+      store,
+    ],
+  );
+
   const runGeometryIntentTransaction = useCallback(
     async (intent: ObjectWorkbenchGeometryEditIntent): Promise<CommitResult> => {
+      const activePergolaId =
+        ui.activeObjectFamily === 'pergolas' && ui.activeObjectRef.family === 'pergolas'
+          ? ui.activeObjectRef.objectId
+          : null;
+      const pergolaPatch = activePergolaId
+        ? buildObjectWorkbenchPergolaPatchFromGeometryIntent(intent)
+        : null;
+      if (activePergolaId && pergolaPatch) {
+        return commitObjectWorkbenchPatch({
+          target: { family: 'pergolas', objectId: activePergolaId },
+          patch: pergolaPatch,
+        });
+      }
+
       if (!drawingDraft) return missingDrawingDraftResult();
 
       const result = applyObjectWorkbenchGeometryEditIntent({
@@ -218,10 +340,14 @@ export function useObjectWorkbenchActions({
       return { ok: true };
     },
     [
+      commitObjectWorkbenchPatch,
       drawingDraft,
       persistDrawingDraftLocally,
       snapshot,
       store.derived.activeModuleIndex,
+      ui.activeObjectFamily,
+      ui.activeObjectRef.family,
+      ui.activeObjectRef.objectId,
     ],
   );
 
@@ -246,32 +372,29 @@ export function useObjectWorkbenchActions({
     [snapshot, ui],
   );
 
-  const selectHouseTarget = useCallback(
-    (selection: ObjectWorkbenchCompatibilitySelection) => {
+  const selectObjectTarget = useCallback(
+    (ref: WorkbenchObjectRef) => {
       setUi((current) => ({
         ...current,
-        ...buildDrawingWorkbenchObjectSelectionStateFromBridgeTarget({
-          target: selection,
-          defaultHouseFormId: store.derived.houseForms[0]?.id ?? null,
+        ...buildDrawingWorkbenchObjectSelectionState({
+          activeRailTab: ref.family,
+          activeObjectRef: ref,
         }),
-        selection: {
-          kind: selection.kind === 'house' ? 'none' : 'geometry',
-          targetId: selection.targetId,
-          targetKind: selection.kind === 'house' ? undefined : selection.kind,
-        },
+        selection:
+          ref.family === 'decks'
+            ? { kind: 'geometry', targetId: ref.objectId, targetKind: 'deck' }
+            : ref.family === 'openings'
+              ? { kind: 'geometry', targetId: ref.objectId, targetKind: 'opening' }
+              : { kind: 'none', targetId: null },
       }));
     },
-    [setUi, store.derived.houseForms],
+    [setUi],
   );
 
-  const clearSelectedHouseTarget = useCallback(
-    (kind: ObjectWorkbenchCompatibilitySelection['kind'], targetId: string) => {
+  const clearSelectedObjectTarget = useCallback(
+    (family: WorkbenchObjectRef['family'], targetId: string) => {
       setUi((current) => {
-        const compatibilitySelection = deriveDrawingWorkbenchCompatibilitySelection(current);
-        if (
-          compatibilitySelection.activeHouseSelection.kind !== kind ||
-          compatibilitySelection.activeHouseSelection.targetId !== targetId
-        ) {
+        if (current.activeObjectRef.family !== family || current.activeObjectRef.objectId !== targetId) {
           return current;
         }
         return {
@@ -280,7 +403,7 @@ export function useObjectWorkbenchActions({
             activeRailTab: current.activeRailTab,
             activeObjectFamily: current.activeObjectFamily,
             activeObjectRef: {
-              family: current.activeObjectFamily,
+              family,
               objectId: null,
             },
           }),
@@ -363,39 +486,6 @@ export function useObjectWorkbenchActions({
     [houseForm?.id, runDraftTransaction, store],
   );
 
-  const commitPergolaDraftMutation = useCallback(
-    async (input: {
-      pergolaId: string;
-      buildNextPergolas: (context: PergolaMutationInput) => DraftBuildResult;
-      afterPersist?: () => CommitResult | void | Promise<CommitResult | void>;
-    }): Promise<CommitResult> =>
-      runDraftTransaction({
-        buildNextDraft: (draft) => {
-          const objectFirstDraft = resolveObjectFirstDraft(draft, store);
-          const currentPergolas = resolveCurrentObjectWorkbenchPergolaDrafts(objectFirstDraft);
-          const currentPergola =
-            store.derived.objectWorkbench.pergolas.find((pergola) => pergola.id === input.pergolaId) ?? null;
-          if (!currentPergola) {
-            return {
-              ok: false,
-              error: 'This pergola is no longer available.',
-            };
-          }
-          const moduleIndexes = store.persisted.modules.flatMap((module, moduleIndex) =>
-            module.drawingModule.input.pergolaId === input.pergolaId ? [moduleIndex] : [],
-          );
-          return input.buildNextPergolas({
-            draft,
-            currentPergolas,
-            currentPergola,
-            moduleIndexes,
-          });
-        },
-        afterPersist: input.afterPersist,
-      }),
-    [runDraftTransaction, store],
-  );
-
   const commitSharedHouseFootprintEdit = useCallback(
     async (edit: EstimateDrawingFootprintEdit): Promise<CommitResult> =>
       runDraftTransaction({
@@ -448,16 +538,11 @@ export function useObjectWorkbenchActions({
 
   const commitSharedHouseDeckPatch = useCallback(
     async (deckId: string, patch: ObjectWorkbenchDeckPatch): Promise<CommitResult> =>
-      commitDeckDraftMutation({
-        buildNextDecks: ({ currentDecks, housePolygon }) =>
-          applyObjectWorkbenchDeckPatch({
-            currentDecks,
-            deckId,
-            housePolygon,
-            patch,
-          }),
+      commitObjectWorkbenchPatch({
+        target: { family: 'decks', objectId: deckId },
+        patch,
       }),
-    [commitDeckDraftMutation],
+    [commitObjectWorkbenchPatch],
   );
 
   const addSharedHouseDeck = useCallback(
@@ -482,11 +567,11 @@ export function useObjectWorkbenchActions({
           if (mode === 'custom_outline') {
             return startDeckOutlineEditor(deckId);
           }
-          selectHouseTarget({ kind: 'deck', targetId: deckId });
+          selectObjectTarget({ family: 'decks', objectId: deckId });
         },
       });
     },
-    [commitDeckDraftMutation, houseForm, selectHouseTarget, startDeckOutlineEditor],
+    [commitDeckDraftMutation, houseForm, selectObjectTarget, startDeckOutlineEditor],
   );
 
   const removeSharedHouseDeck = useCallback(
@@ -494,11 +579,11 @@ export function useObjectWorkbenchActions({
       commitDeckDraftMutation({
         buildNextDecks: ({ currentDecks }) => currentDecks.filter((deck) => deck.id !== deckId),
         afterPersist: () => {
-          clearSelectedHouseTarget('deck', deckId);
+          clearSelectedObjectTarget('decks', deckId);
           resetDrawOutlineDeckTarget(deckId);
         },
       }),
-    [clearSelectedHouseTarget, commitDeckDraftMutation, resetDrawOutlineDeckTarget],
+    [clearSelectedObjectTarget, commitDeckDraftMutation, resetDrawOutlineDeckTarget],
   );
 
   const commitSharedDeckCustomPolygon = useCallback(
@@ -516,18 +601,11 @@ export function useObjectWorkbenchActions({
 
   const commitSharedHouseOpeningPatch = useCallback(
     async (openingId: string, patch: ObjectWorkbenchOpeningPatch): Promise<CommitResult> =>
-      commitOpeningDraftMutation({
-        buildNextOpenings: ({ currentOpenings }) =>
-          applyObjectWorkbenchOpeningPatch({
-            activeModuleInput,
-            currentOpenings,
-            openingId,
-            houseAssembly: store.derived.houseAssembly,
-            houseForm,
-            patch,
-          }),
+      commitObjectWorkbenchPatch({
+        target: { family: 'openings', objectId: openingId },
+        patch,
       }),
-    [activeModuleInput, commitOpeningDraftMutation, houseForm, store.derived.houseAssembly],
+    [commitObjectWorkbenchPatch],
   );
 
   const addSharedHouseOpening = useCallback(
@@ -560,7 +638,7 @@ export function useObjectWorkbenchActions({
           ];
         },
         afterPersist: () => {
-          selectHouseTarget({ kind: 'opening', targetId: openingId });
+          selectObjectTarget({ family: 'openings', objectId: openingId });
         },
       });
     },
@@ -569,7 +647,7 @@ export function useObjectWorkbenchActions({
       activeObjectWorkbenchOpening?.hostWallId,
       commitOpeningDraftMutation,
       houseForm,
-      selectHouseTarget,
+      selectObjectTarget,
       store.derived.houseAssembly,
     ],
   );
@@ -580,152 +658,110 @@ export function useObjectWorkbenchActions({
         buildNextOpenings: ({ currentOpenings }) =>
           currentOpenings.filter((opening) => opening.id !== openingId),
         afterPersist: () => {
-          clearSelectedHouseTarget('opening', openingId);
+          clearSelectedObjectTarget('openings', openingId);
         },
       }),
-    [clearSelectedHouseTarget, commitOpeningDraftMutation],
+    [clearSelectedObjectTarget, commitOpeningDraftMutation],
   );
 
   const commitSharedPergolaConnectionKind = useCallback(
-    async (pergolaId: string, kind: PergolaAttachmentKind): Promise<CommitResult> =>
-      commitPergolaDraftMutation({
-        pergolaId,
-        buildNextPergolas: ({ draft, currentPergolas, currentPergola, moduleIndexes }) => {
-          const nextZone =
-            kind === 'freestanding'
-              ? null
-              : resolvePreferredObjectWorkbenchPergolaZone({
-                  houseAssembly: store.derived.houseAssembly,
-                  currentPergola,
-                  nextKind: kind,
-                });
-          const nextPergolas = upsertObjectWorkbenchPergolaDrafts(
-            currentPergolas,
-            pergolaId,
-            {
-              attachmentEdgeId: nextZone?.hostEdgeId ?? null,
-              attachmentZoneId: nextZone?.id ?? null,
-              ...(nextZone?.side ? { side: nextZone.side } : null),
-            },
-            currentPergola,
-          );
-          const objectFirstDraft = resolveObjectFirstDraft(draft, store);
-          const nextDraft = updateDraftObjectFirst({
-            draft,
-            objectFirst: buildObjectFirstDraftWithPergolas({
-              objectFirstDraft,
-              pergolas: nextPergolas,
-            }),
-          });
-          return applyObjectWorkbenchPergolaModuleEdits({
-            draft: nextDraft,
-            moduleIndexes,
-            kind,
-            side: nextZone?.side ?? null,
-          });
+    async (pergolaId: string, kind: PergolaAttachmentKind): Promise<CommitResult> => {
+      const currentPergola =
+        store.derived.objectWorkbench.pergolas.find((pergola) => pergola.id === pergolaId) ?? null;
+      if (!currentPergola) {
+        return { ok: false, error: 'This pergola is no longer available.' };
+      }
+      const nextZone =
+        kind === 'freestanding'
+          ? null
+          : resolvePreferredObjectWorkbenchPergolaZone({
+              houseAssembly: store.derived.houseAssembly,
+              currentPergola,
+              nextKind: kind,
+            });
+      return commitObjectWorkbenchPatch({
+        target: { family: 'pergolas', objectId: pergolaId },
+        patch: {
+          connectionKind: kind,
+          attachmentEdgeId: nextZone?.hostEdgeId ?? null,
+          attachmentZoneId: nextZone?.id ?? null,
+          ...(nextZone?.side ? { side: nextZone.side } : null),
         },
-      }),
-    [commitPergolaDraftMutation, store],
+      });
+    },
+    [commitObjectWorkbenchPatch, store.derived.houseAssembly, store.derived.objectWorkbench.pergolas],
   );
 
   const commitSharedPergolaAttachmentEdge = useCallback(
-    async (pergolaId: string, edgeId: string): Promise<CommitResult> =>
-      commitPergolaDraftMutation({
-        pergolaId,
-        buildNextPergolas: ({ draft, currentPergolas, currentPergola, moduleIndexes }) => {
-          if (currentPergola.connectionKind === 'freestanding') {
-            return {
-              ok: false,
-              error: 'Switch this pergola to an attached connection before selecting a host edge.',
-            };
-          }
-          const nextZone = resolvePreferredObjectWorkbenchPergolaZone({
-            houseAssembly: store.derived.houseAssembly,
-            currentPergola,
-            nextKind: currentPergola.connectionKind,
-            preferredEdgeId: edgeId,
-          });
-          if (!nextZone || nextZone.hostEdgeId !== edgeId) {
-            return {
-              ok: false,
-              error: 'The selected host edge does not expose a compatible derived attachment zone.',
-            };
-          }
-          const nextPergolas = upsertObjectWorkbenchPergolaDrafts(
-            currentPergolas,
-            pergolaId,
-            {
-              attachmentEdgeId: edgeId,
-              attachmentZoneId: nextZone.id,
-              side: nextZone.side,
-            },
-            currentPergola,
-          );
-          const objectFirstDraft = resolveObjectFirstDraft(draft, store);
-          const nextDraft = updateDraftObjectFirst({
-            draft,
-            objectFirst: buildObjectFirstDraftWithPergolas({
-              objectFirstDraft,
-              pergolas: nextPergolas,
-            }),
-          });
-          return applyObjectWorkbenchPergolaModuleEdits({
-            draft: nextDraft,
-            moduleIndexes,
-            side: nextZone.side,
-          });
+    async (pergolaId: string, edgeId: string): Promise<CommitResult> => {
+      const currentPergola =
+        store.derived.objectWorkbench.pergolas.find((pergola) => pergola.id === pergolaId) ?? null;
+      if (!currentPergola) {
+        return { ok: false, error: 'This pergola is no longer available.' };
+      }
+      if (currentPergola.connectionKind === 'freestanding') {
+        return {
+          ok: false,
+          error: 'Switch this pergola to an attached connection before selecting a host edge.',
+        };
+      }
+      const nextZone = resolvePreferredObjectWorkbenchPergolaZone({
+        houseAssembly: store.derived.houseAssembly,
+        currentPergola,
+        nextKind: currentPergola.connectionKind,
+        preferredEdgeId: edgeId,
+      });
+      if (!nextZone || nextZone.hostEdgeId !== edgeId) {
+        return {
+          ok: false,
+          error: 'The selected host edge does not expose a compatible derived attachment zone.',
+        };
+      }
+      return commitObjectWorkbenchPatch({
+        target: { family: 'pergolas', objectId: pergolaId },
+        patch: {
+          attachmentEdgeId: edgeId,
+          attachmentZoneId: nextZone.id,
+          side: nextZone.side,
         },
-      }),
-    [commitPergolaDraftMutation, store],
+      });
+    },
+    [commitObjectWorkbenchPatch, store.derived.houseAssembly, store.derived.objectWorkbench.pergolas],
   );
 
   const commitSharedPergolaAttachmentZone = useCallback(
-    async (pergolaId: string, zoneId: string): Promise<CommitResult> =>
-      commitPergolaDraftMutation({
-        pergolaId,
-        buildNextPergolas: ({ draft, currentPergolas, currentPergola, moduleIndexes }) => {
-          const zone = buildObjectWorkbenchPergolaZoneLookup(store.derived.houseAssembly).get(zoneId) ?? null;
-          if (!zone || zone.hostEdgeId === null) {
-            return {
-              ok: false,
-              error: 'The selected derived host zone is no longer available.',
-            };
-          }
-          if (currentPergola.connectionKind !== 'freestanding') {
-            const expectedKind = resolveObjectWorkbenchPergolaZoneKind(currentPergola.connectionKind);
-            if (zone.kind !== expectedKind) {
-              return {
-                ok: false,
-                error: 'The selected host zone does not match this pergola connection type.',
-              };
-            }
-          }
-          const nextPergolas = upsertObjectWorkbenchPergolaDrafts(
-            currentPergolas,
-            pergolaId,
-            {
-              attachmentEdgeId: zone.hostEdgeId,
-              attachmentZoneId: zone.id,
-              side: zone.side,
-            },
-            currentPergola,
-          );
-          const objectFirstDraft = resolveObjectFirstDraft(draft, store);
-          const nextDraft = updateDraftObjectFirst({
-            draft,
-            objectFirst: buildObjectFirstDraftWithPergolas({
-              objectFirstDraft,
-              pergolas: nextPergolas,
-            }),
-          });
-          return applyObjectWorkbenchPergolaModuleEdits({
-            draft: nextDraft,
-            moduleIndexes,
-            side: zone.side,
-          });
+    async (pergolaId: string, zoneId: string): Promise<CommitResult> => {
+      const currentPergola =
+        store.derived.objectWorkbench.pergolas.find((pergola) => pergola.id === pergolaId) ?? null;
+      if (!currentPergola) {
+        return { ok: false, error: 'This pergola is no longer available.' };
+      }
+      const zone = buildObjectWorkbenchPergolaZoneLookup(store.derived.houseAssembly).get(zoneId) ?? null;
+      if (!zone || zone.hostEdgeId === null) {
+        return {
+          ok: false,
+          error: 'The selected derived host zone is no longer available.',
+        };
+      }
+      if (currentPergola.connectionKind !== 'freestanding') {
+        const expectedKind = resolveObjectWorkbenchPergolaZoneKind(currentPergola.connectionKind);
+        if (zone.kind !== expectedKind) {
+          return {
+            ok: false,
+            error: 'The selected host zone does not match this pergola connection type.',
+          };
+        }
+      }
+      return commitObjectWorkbenchPatch({
+        target: { family: 'pergolas', objectId: pergolaId },
+        patch: {
+          attachmentEdgeId: zone.hostEdgeId,
+          attachmentZoneId: zone.id,
+          side: zone.side,
         },
-      }),
-    [commitPergolaDraftMutation, store],
+      });
+    },
+    [commitObjectWorkbenchPatch, store.derived.houseAssembly, store.derived.objectWorkbench.pergolas],
   );
 
   const commitSharedPergolaAttachmentStrategy = useCallback(

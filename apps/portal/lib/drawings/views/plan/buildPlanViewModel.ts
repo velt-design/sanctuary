@@ -1,5 +1,5 @@
 import type { DrawingAssemblyModel } from '@/lib/drawings/assembly/types';
-import type { GeometryPlanViewModel } from '@sp/geometry';
+import type { Assembly3D, GeometryPlanViewModel } from '@sp/geometry';
 import type { ModulePlanModel } from '@/app/staff/calculator/moduleViews';
 import {
   buildObjectWorkbenchPlanOverlay,
@@ -13,6 +13,7 @@ import type {
 
 export type ModelSpacePergolaViewModel = {
   geometryPlan: GeometryPlanViewModel | null;
+  geometryAssembly: Assembly3D | null;
   renderSource: WorkbenchPergolaRenderSource;
   renderStatus: WorkbenchPergolaRenderStatus;
 };
@@ -60,6 +61,7 @@ type PlanViewModelSource =
       moduleLabel: string;
       planModel: ModulePlanModel | null;
       geometryPlan?: GeometryPlanViewModel | null;
+      geometryAssembly?: Assembly3D | null;
       pergolaRenderSource?: WorkbenchPergolaRenderSource;
       pergolaRenderStatus?: WorkbenchPergolaRenderStatus;
       canEditHouseFootprint?: boolean;
@@ -80,6 +82,7 @@ export function buildPlanViewModel(source: PlanViewModelSource | null): PlanView
     ? source.capabilities.canEditHouseFootprint
     : Boolean(source.canEditHouseFootprint);
   const geometryPlan = !isDrawingAssemblyModel(source) ? source.geometryPlan ?? null : null;
+  const geometryAssembly = !isDrawingAssemblyModel(source) ? source.geometryAssembly ?? null : null;
   const renderSource =
     !isDrawingAssemblyModel(source) && source.pergolaRenderSource
       ? source.pergolaRenderSource
@@ -128,12 +131,19 @@ export function buildPlanViewModel(source: PlanViewModelSource | null): PlanView
     },
     modelSpacePergola: {
       geometryPlan,
+      geometryAssembly,
       renderSource,
       renderStatus,
     },
     objectWorkbenchOverlay:
       !isDrawingAssemblyModel(source) && source.objectWorkbenchOverlayInput
-        ? buildObjectWorkbenchPlanOverlay(source.objectWorkbenchOverlayInput)
+        ? buildObjectWorkbenchPlanOverlay({
+            ...source.objectWorkbenchOverlayInput,
+            geometryPlan,
+            geometryAssembly: source.geometryAssembly ?? source.objectWorkbenchOverlayInput.geometryAssembly ?? null,
+            geometryRenderSource: renderSource,
+            geometryRenderStatus: renderStatus,
+          })
         : null,
     planModel,
   };

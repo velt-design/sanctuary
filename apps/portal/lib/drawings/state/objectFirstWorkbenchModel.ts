@@ -230,10 +230,12 @@ export type PergolaObjectModel = {
   id: string;
   label: string;
   family: 'mono' | 'gable' | 'box' | 'hip' | 'hip_corner' | 'unknown';
+  connectionKind?: ObjectFirstPergolaConnectionKind | null;
   attachmentEdgeId: string | null;
   attachmentZoneId: string | null;
   side: NonNullable<CalculatorModuleInputs['attachmentSide']>;
   strategy: CalculatorHouseAttachmentStrategy | null;
+  geometry?: ObjectFirstPergolaGeometryDraft | null;
 };
 
 export type HouseAssemblyModel = {
@@ -326,10 +328,51 @@ export type ObjectFirstPergolaDraft = {
   id: string;
   label: string;
   family: 'mono' | 'gable' | 'box' | 'hip' | 'hip_corner' | 'unknown';
+  connectionKind?: ObjectFirstPergolaConnectionKind | null;
   attachmentEdgeId: string | null;
   attachmentZoneId: string | null;
   side: NonNullable<CalculatorModuleInputs['attachmentSide']>;
   strategy: CalculatorHouseAttachmentStrategy | null;
+  geometry?: ObjectFirstPergolaGeometryDraft | null;
+};
+
+export type ObjectFirstPergolaConnectionKind = 'freestanding' | 'soffit' | 'fascia' | 'wall';
+
+export type ObjectFirstPergolaGeometryDraft = {
+  dimensions?: Partial<Record<
+    'lengthM' | 'projectionM' | 'hipCornerLengthBM' | 'hipCornerProjectionBM',
+    string
+  >>;
+  roof?: Partial<{
+    material: CalculatorModuleInputs['roofMaterial'];
+    pitchDeg: string;
+    boxPerimeterEnabled: boolean;
+    mixedAcrylicBaysMain: string;
+    mixedAcrylicBaysA: string;
+    mixedAcrylicBaysB: string;
+  }>;
+  gable?: Partial<{
+    endFramesMode: CalculatorModuleInputs['gableEndFramesMode'];
+    houseEaveGutterMode: CalculatorModuleInputs['gableHouseEdgeGutter'];
+    outerEaveGutterMode: CalculatorModuleInputs['gableOuterEdgeGutter'];
+  }>;
+  supports?: Partial<{
+    postConnectionType: CalculatorModuleInputs['postConnectionType'];
+    ground: CalculatorModuleInputs['ground'];
+    postCount: string;
+    postCutHeightM: string;
+  }>;
+  overrides?: Partial<Pick<
+    NonNullable<CalculatorModuleInputs['overrides']>,
+    | 'ledgerProfile'
+    | 'rafterProfile'
+    | 'postProfile'
+    | 'frontBeamProfile'
+    | 'ridgeBeamProfile'
+    | 'boxPerimeterBeamProfile'
+    | 'tieBeamProfile'
+    | 'strutProfile'
+  >>;
 };
 
 export type ObjectFirstWorkbenchDraftVNext = {
@@ -424,6 +467,30 @@ function isPergolaFamily(value: unknown): value is ObjectFirstPergolaDraft['fami
     value === 'hip_corner' ||
     value === 'unknown'
   );
+}
+
+function isObjectFirstPergolaConnectionKind(value: unknown): value is ObjectFirstPergolaConnectionKind {
+  return value === 'freestanding' || value === 'soffit' || value === 'fascia' || value === 'wall';
+}
+
+function isPortalRoofMaterial(value: unknown): value is CalculatorModuleInputs['roofMaterial'] {
+  return value === 'acrylic' || value === 'timber' || value === 'mixed' || value === 'insulated' || value === 'louvre';
+}
+
+function isGableEndFramesMode(value: unknown): value is CalculatorModuleInputs['gableEndFramesMode'] {
+  return value === 'none' || value === 'outer_end_only' || value === 'both_ends';
+}
+
+function isHouseEdgeGutterMode(value: unknown): value is CalculatorModuleInputs['gableHouseEdgeGutter'] {
+  return value === 'house' || value === 'our';
+}
+
+function isPostConnectionType(value: unknown): value is CalculatorModuleInputs['postConnectionType'] {
+  return value === 'pile_1m' || value === 'pile_1_5m' || value === 'deck_bracket' || value === 'slab_anchors';
+}
+
+function isGroundCondition(value: unknown): value is CalculatorModuleInputs['ground'] {
+  return value === 'easy' || value === 'hard';
 }
 
 function isWallOpeningHostSide(value: unknown): value is WallOpeningHostSide {
@@ -626,6 +693,87 @@ export function normalizeObjectFirstOpeningDraft(
   };
 }
 
+function normalizePergolaGeometryStringFields<T extends string>(
+  source: Partial<Record<T, string | null | undefined>> | null | undefined,
+  keys: T[],
+): Partial<Record<T, string>> | undefined {
+  const result: Partial<Record<T, string>> = {};
+  for (const key of keys) {
+    const value = trimNullableString(source?.[key]);
+    if (value !== null) {
+      result[key] = value;
+    }
+  }
+  return Object.keys(result).length ? result : undefined;
+}
+
+function normalizeObjectFirstPergolaGeometryDraft(
+  value: Partial<ObjectFirstPergolaGeometryDraft> | null | undefined,
+): ObjectFirstPergolaGeometryDraft | null {
+  if (!value) return null;
+
+  const dimensions = normalizePergolaGeometryStringFields(value.dimensions, [
+    'lengthM',
+    'projectionM',
+    'hipCornerLengthBM',
+    'hipCornerProjectionBM',
+  ]);
+  const roofStringFields = normalizePergolaGeometryStringFields(value.roof, [
+    'pitchDeg',
+    'mixedAcrylicBaysMain',
+    'mixedAcrylicBaysA',
+    'mixedAcrylicBaysB',
+  ]);
+  const roof: ObjectFirstPergolaGeometryDraft['roof'] = {
+    ...(roofStringFields ?? {}),
+    ...(isPortalRoofMaterial(value.roof?.material) ? { material: value.roof.material } : null),
+    ...(typeof value.roof?.boxPerimeterEnabled === 'boolean'
+      ? { boxPerimeterEnabled: value.roof.boxPerimeterEnabled }
+      : null),
+  };
+  const gable: ObjectFirstPergolaGeometryDraft['gable'] = {
+    ...(isGableEndFramesMode(value.gable?.endFramesMode)
+      ? { endFramesMode: value.gable.endFramesMode }
+      : null),
+    ...(isHouseEdgeGutterMode(value.gable?.houseEaveGutterMode)
+      ? { houseEaveGutterMode: value.gable.houseEaveGutterMode }
+      : null),
+    ...(isHouseEdgeGutterMode(value.gable?.outerEaveGutterMode)
+      ? { outerEaveGutterMode: value.gable.outerEaveGutterMode }
+      : null),
+  };
+  const supportStringFields = normalizePergolaGeometryStringFields(value.supports, [
+    'postCount',
+    'postCutHeightM',
+  ]);
+  const supports: ObjectFirstPergolaGeometryDraft['supports'] = {
+    ...(supportStringFields ?? {}),
+    ...(isPostConnectionType(value.supports?.postConnectionType)
+      ? { postConnectionType: value.supports.postConnectionType }
+      : null),
+    ...(isGroundCondition(value.supports?.ground) ? { ground: value.supports.ground } : null),
+  };
+  const overrides = normalizePergolaGeometryStringFields(value.overrides, [
+    'ledgerProfile',
+    'rafterProfile',
+    'postProfile',
+    'frontBeamProfile',
+    'ridgeBeamProfile',
+    'boxPerimeterBeamProfile',
+    'tieBeamProfile',
+    'strutProfile',
+  ]);
+
+  const result: ObjectFirstPergolaGeometryDraft = {
+    ...(dimensions ? { dimensions } : null),
+    ...(roof && Object.keys(roof).length ? { roof } : null),
+    ...(gable && Object.keys(gable).length ? { gable } : null),
+    ...(supports && Object.keys(supports).length ? { supports } : null),
+    ...(overrides ? { overrides } : null),
+  };
+  return Object.keys(result).length ? result : null;
+}
+
 export function normalizeObjectFirstPergolaDraft(
   value: Partial<ObjectFirstPergolaDraft> | null | undefined,
 ): ObjectFirstPergolaDraft | null {
@@ -636,10 +784,16 @@ export function normalizeObjectFirstPergolaDraft(
     id,
     label: trimNullableString(value?.label) ?? id,
     family: isPergolaFamily(value?.family) ? value.family : 'unknown',
+    ...(isObjectFirstPergolaConnectionKind(value?.connectionKind)
+      ? { connectionKind: value.connectionKind }
+      : null),
     attachmentEdgeId: normalizeStableId(value?.attachmentEdgeId),
     attachmentZoneId: normalizeStableId(value?.attachmentZoneId),
     side: normalizeAttachmentSide(value?.side),
     strategy: isCalculatorHouseAttachmentStrategy(value?.strategy) ? value.strategy : null,
+    ...(normalizeObjectFirstPergolaGeometryDraft(value?.geometry)
+      ? { geometry: normalizeObjectFirstPergolaGeometryDraft(value?.geometry) }
+      : null),
   };
 }
 

@@ -29,6 +29,7 @@ import {
   type EstimateDrawingField,
   type EstimateDrawingFootprintEdit,
 } from '@/lib/estimates/drawingEdits';
+import type { ObjectWorkbenchPergolaPatch } from '@/lib/drawings/state/objectWorkbenchInspectorModel';
 import { buildRawGeometryModuleInput } from './buildRawGeometryModuleInput';
 import { buildObjectWorkbenchGeometryContext } from './objectWorkbenchGeometryContext';
 import {
@@ -139,6 +140,8 @@ export type GeometryEditIntent =
   | { type: 'roof_pitch'; value: string }
   | { type: 'mixed_acrylic_bays'; field: 'mixedAcrylicBaysMain' | 'mixedAcrylicBaysA' | 'mixedAcrylicBaysB'; value: string }
   | { type: 'gable_end_frames'; value: CalculatorModuleInputs['gableEndFramesMode'] }
+  | { type: 'gable_house_edge_gutter'; value: CalculatorModuleInputs['gableHouseEdgeGutter'] }
+  | { type: 'gable_outer_edge_gutter'; value: CalculatorModuleInputs['gableOuterEdgeGutter'] }
   | { type: 'house_connection'; value: GeometryEditConnectionType }
   | { type: 'house_config'; key: GeometryHouseConfigKey; value: string }
   | { type: 'attachment_side'; value: CalculatorModuleInputs['attachmentSide'] }
@@ -666,6 +669,18 @@ export function applyGeometryEditIntent(input: {
         draft: nextDraft,
       };
     }
+    case 'gable_house_edge_gutter':
+      return applyModuleEdit(input.draft, input.moduleIndex, {
+        field: 'moduleValue',
+        key: 'gableHouseEdgeGutter',
+        value: input.intent.value,
+      });
+    case 'gable_outer_edge_gutter':
+      return applyModuleEdit(input.draft, input.moduleIndex, {
+        field: 'moduleValue',
+        key: 'gableOuterEdgeGutter',
+        value: input.intent.value,
+      });
     case 'house_connection': {
       const connectionResult = applyModuleEdit(input.draft, input.moduleIndex, {
         field: 'houseConnectionType',
@@ -773,6 +788,137 @@ export function applyGeometryEditIntent(input: {
         message: 'This geometry edit is not supported in the hidden workbench yet.',
       };
   }
+}
+
+function familyToGeometryIntentValue(
+  family: ObjectWorkbenchPergolaPatch['family'],
+): SanctuaryPergolaFamily | null {
+  switch (family) {
+    case 'mono':
+    case 'gable':
+    case 'box':
+    case 'hip':
+    case 'hip_corner':
+      return family;
+    default:
+      return null;
+  }
+}
+
+function buildTemporaryGeometryIntentsFromPergolaPatch(
+  patch: ObjectWorkbenchPergolaPatch,
+): GeometryEditIntent[] {
+  const intents: GeometryEditIntent[] = [];
+  const family = familyToGeometryIntentValue(patch.family);
+  if (family) {
+    intents.push({ type: 'family', value: family });
+  }
+
+  const geometry = patch.geometry ?? null;
+  if (!family && typeof geometry?.roof?.boxPerimeterEnabled === 'boolean') {
+    intents.push({
+      type: 'family',
+      value: geometry.roof.boxPerimeterEnabled ? 'box' : 'mono',
+    });
+  }
+  if (patch.connectionKind) {
+    intents.push({ type: 'house_connection', value: patch.connectionKind });
+  }
+  if (patch.side) {
+    intents.push({ type: 'attachment_side', value: patch.side });
+  }
+  if (patch.strategy !== undefined) {
+    intents.push({
+      type: 'house_config',
+      key: 'houseAttachmentStrategy',
+      value: patch.strategy ?? 'auto',
+    });
+  }
+
+  for (const field of ['lengthM', 'projectionM', 'hipCornerLengthBM', 'hipCornerProjectionBM'] as const) {
+    const value = geometry?.dimensions?.[field];
+    if (value !== undefined) {
+      intents.push({ type: 'dimension', field, value });
+    }
+  }
+  if (geometry?.roof?.material !== undefined) {
+    intents.push({ type: 'roof_material', value: geometry.roof.material });
+  }
+  if (geometry?.roof?.pitchDeg !== undefined) {
+    intents.push({ type: 'roof_pitch', value: geometry.roof.pitchDeg });
+  }
+  for (const field of ['mixedAcrylicBaysMain', 'mixedAcrylicBaysA', 'mixedAcrylicBaysB'] as const) {
+    const value = geometry?.roof?.[field];
+    if (value !== undefined) {
+      intents.push({ type: 'mixed_acrylic_bays', field, value });
+    }
+  }
+  if (geometry?.gable?.endFramesMode !== undefined) {
+    intents.push({ type: 'gable_end_frames', value: geometry.gable.endFramesMode });
+  }
+  if (geometry?.gable?.houseEaveGutterMode !== undefined) {
+    intents.push({ type: 'gable_house_edge_gutter', value: geometry.gable.houseEaveGutterMode });
+  }
+  if (geometry?.gable?.outerEaveGutterMode !== undefined) {
+    intents.push({ type: 'gable_outer_edge_gutter', value: geometry.gable.outerEaveGutterMode });
+  }
+  if (geometry?.supports?.postConnectionType !== undefined) {
+    intents.push({ type: 'post_connection', value: geometry.supports.postConnectionType });
+  }
+  if (geometry?.supports?.ground !== undefined) {
+    intents.push({ type: 'ground', value: geometry.supports.ground });
+  }
+  if (geometry?.supports?.postCount !== undefined) {
+    intents.push({ type: 'post_count', value: geometry.supports.postCount });
+  }
+  if (geometry?.supports?.postCutHeightM !== undefined) {
+    intents.push({ type: 'post_cut_height', value: geometry.supports.postCutHeightM });
+  }
+  for (const key of [
+    'ledgerProfile',
+    'rafterProfile',
+    'postProfile',
+    'frontBeamProfile',
+    'ridgeBeamProfile',
+    'boxPerimeterBeamProfile',
+    'tieBeamProfile',
+    'strutProfile',
+  ] as const) {
+    const value = geometry?.overrides?.[key];
+    if (value !== undefined) {
+      intents.push({ type: 'override', key, value });
+    }
+  }
+
+  return intents;
+}
+
+export function mirrorPergolaPatchToTemporaryGeometryModuleFields(input: {
+  snapshot: Record<string, unknown> | null;
+  draft: EstimateDrawingDraft;
+  moduleIndexes: number[];
+  patch: ObjectWorkbenchPergolaPatch;
+}): GeometryEditApplyResult {
+  const intents = buildTemporaryGeometryIntentsFromPergolaPatch(input.patch);
+  let nextDraft = input.draft;
+
+  for (const moduleIndex of input.moduleIndexes) {
+    for (const intent of intents) {
+      const result = applyGeometryEditIntent({
+        snapshot: input.snapshot,
+        draft: nextDraft,
+        moduleIndex,
+        intent,
+      });
+      if (!result.ok) return result;
+      nextDraft = result.draft;
+    }
+  }
+
+  return {
+    ok: true,
+    draft: nextDraft,
+  };
 }
 
 export function translateEstimateDrawingFieldToGeometryIntent(
