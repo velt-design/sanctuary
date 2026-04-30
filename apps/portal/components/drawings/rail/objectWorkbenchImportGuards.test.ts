@@ -13,7 +13,7 @@ const OBJECT_WORKBENCH_BOUNDARY_FILES = [
   path.join('apps', 'portal', 'components', 'drawings', 'viewports', 'Geometry3DViewport.tsx'),
 ];
 const ALLOWLISTED_COMPATIBILITY_FILES = new Set([
-  path.normalize(path.join('apps', 'portal', 'app', 'staff', 'projects', '[projectId]', 'design-workbench', 'useObjectWorkbenchActions.ts')),
+  path.normalize(path.join('apps', 'portal', 'app', 'staff', 'projects', '[projectId]', 'design-workbench', 'compat', 'objectWorkbenchDraftActionBridge.ts')),
   path.normalize(path.join('apps', 'portal', 'app', 'staff', 'projects', '[projectId]', 'design-workbench', 'compat', 'workbenchCompatibilityDraftBuilders.ts')),
 ]);
 const ALLOWLISTED_CONFIGURATOR_FILES = new Set([
