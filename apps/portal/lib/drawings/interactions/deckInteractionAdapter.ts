@@ -38,6 +38,7 @@ const DECK_WALL_SPAN_RETAIN_TOLERANCE_M = 0.5;
 const DECK_COMMIT_FRAME_MATCH_TOLERANCE_M = 1.5;
 const DECK_COMMIT_FRAME_LINE_TOLERANCE_M = 0.5;
 const DECK_COMMIT_FRAME_VECTOR_DOT_TOLERANCE = 0.75;
+const DECK_COMMIT_FRAME_POINT_SPAN_TOLERANCE_M = 0.25;
 
 export type DeckSvgInteraction = {
   hostEdgeStart: PlanPoint;
@@ -137,6 +138,17 @@ function pointDistance(left: PlanPoint, right: PlanPoint): number {
   return Math.hypot(left.x - right.x, left.y - right.y);
 }
 
+function polygonCenter(polygon: PlanPoint[]): PlanPoint | null {
+  if (!polygon.length) return null;
+  return polygon.reduce(
+    (center, point) => ({
+      x: center.x + point.x / polygon.length,
+      y: center.y + point.y / polygon.length,
+    }),
+    { x: 0, y: 0 },
+  );
+}
+
 function unitVectorDistance(
   left: { x: number; y: number },
   right: { x: number; y: number },
@@ -209,9 +221,20 @@ function deckReferenceFramesAreCompatibleForCommit(input: {
   );
 }
 
+function deckReferenceFramePointSpanDistance(input: {
+  frame: HouseFirstPlanDeckReferenceFrame;
+  point: PlanPoint;
+}): number {
+  const projection = projectPointToDeckReferenceFrame(input.point, input.frame);
+  if (projection.alongM < input.frame.spanStartM) return input.frame.spanStartM - projection.alongM;
+  if (projection.alongM > input.frame.spanEndM) return projection.alongM - input.frame.spanEndM;
+  return 0;
+}
+
 function resolveDeckCommitReferenceFrame(input: {
   interaction: HouseFirstPlanDeckInteraction;
   renderEdgeId: string | null | undefined;
+  referencePoint?: PlanPoint | null;
 }): HouseFirstPlanDeckReferenceFrame | null {
   const commitFrames = input.interaction.commitReferenceFrames.length
     ? input.interaction.commitReferenceFrames
@@ -220,14 +243,25 @@ function resolveDeckCommitReferenceFrame(input: {
   const renderFrame = findDeckReferenceFrameById(input.interaction.referenceFrames, input.renderEdgeId);
   if (!renderFrame) return exactCommitFrame;
 
-  const bestGeometryMatch =
-    commitFrames
-      .filter((commitFrame) =>
-        deckReferenceFramesAreCompatibleForCommit({
-          renderFrame,
-          commitFrame,
-        }),
+  const compatibleCommitFrames = commitFrames.filter((commitFrame) =>
+    deckReferenceFramesAreCompatibleForCommit({
+      renderFrame,
+      commitFrame,
+    }),
+  );
+  const referencePoint = input.referencePoint ?? null;
+  const containingCommitFrames = referencePoint
+    ? compatibleCommitFrames.filter(
+        (commitFrame) =>
+          deckReferenceFramePointSpanDistance({
+            frame: commitFrame,
+            point: referencePoint,
+          }) <= DECK_COMMIT_FRAME_POINT_SPAN_TOLERANCE_M,
       )
+    : [];
+  const scoredCommitFrames = containingCommitFrames.length ? containingCommitFrames : compatibleCommitFrames;
+  const bestGeometryMatch =
+    scoredCommitFrames
       .map((commitFrame) => ({
         commitFrame,
         score: scoreDeckReferenceFrameGeometryMatch({
@@ -237,7 +271,10 @@ function resolveDeckCommitReferenceFrame(input: {
       }))
       .sort((left, right) => left.score - right.score || left.commitFrame.sourceEdgeId.localeCompare(right.commitFrame.sourceEdgeId))[0] ??
     null;
-  if (bestGeometryMatch && bestGeometryMatch.score <= DECK_COMMIT_FRAME_MATCH_TOLERANCE_M) {
+  if (
+    bestGeometryMatch &&
+    (containingCommitFrames.length > 0 || bestGeometryMatch.score <= DECK_COMMIT_FRAME_MATCH_TOLERANCE_M)
+  ) {
     return bestGeometryMatch.commitFrame;
   }
   return exactCommitFrame &&
@@ -547,6 +584,7 @@ function resolveDeckCommitCenterOffset(input: {
 }): number {
   const previewEdgeId =
     input.preview.primaryHostEdgeId ?? input.preview.placementEdgeId ?? input.preview.witnessEdgeId;
+  const previewCenter = polygonCenter(input.preview.polygon);
   const renderFrame =
     findDeckReferenceFrameById(
       input.session.interaction.referenceFrames,
@@ -563,35 +601,14 @@ function resolveDeckCommitCenterOffset(input: {
   const commitFrame = resolveDeckCommitReferenceFrame({
     interaction: input.session.interaction,
     renderEdgeId: previewEdgeId,
+    referencePoint: previewCenter,
   });
-  if (!commitFrame) return renderCenterOffsetM;
-
-  const renderSpanM = renderFrame.spanEndM - renderFrame.spanStartM;
-  const commitSpanM = commitFrame.spanEndM - commitFrame.spanStartM;
-  if (Math.abs(renderSpanM) <= 1e-6 || Math.abs(commitSpanM) <= 1e-6) {
-    return renderCenterOffsetM;
+  if (commitFrame && previewCenter) {
+    const commitProjection = projectPointToDeckReferenceFrame(previewCenter, commitFrame);
+    return commitProjection.alongM - ((commitFrame.spanStartM + commitFrame.spanEndM) / 2);
   }
 
-  const framesAligned =
-    renderFrame.alongUnitX * commitFrame.alongUnitX + renderFrame.alongUnitY * commitFrame.alongUnitY >= 0;
-  const commitFrameMidpointM = (commitFrame.spanStartM + commitFrame.spanEndM) / 2;
-  if (input.preview.endCatchSide) {
-    const commitEndCatchSide =
-      framesAligned
-        ? input.preview.endCatchSide
-        : input.preview.endCatchSide === 'start'
-          ? 'end'
-          : 'start';
-    return commitEndCatchSide === 'start'
-      ? commitFrame.spanStartM + input.session.interaction.deckWidthM / 2 - commitFrameMidpointM
-      : commitFrame.spanEndM - input.session.interaction.deckWidthM / 2 - commitFrameMidpointM;
-  }
-
-  const renderFrameMidpointM = (renderFrame.spanStartM + renderFrame.spanEndM) / 2;
-  const renderCenterAlongM = renderFrameMidpointM + renderCenterOffsetM;
-  const renderCenterRatio = (renderCenterAlongM - renderFrame.spanStartM) / renderSpanM;
-  const commitCenterRatio = framesAligned ? renderCenterRatio : 1 - renderCenterRatio;
-  return commitFrame.spanStartM + commitCenterRatio * commitSpanM - commitFrameMidpointM;
+  return renderCenterOffsetM;
 }
 
 function selectDeckWallCandidate(input: {
@@ -1519,11 +1536,14 @@ export function buildDeckCommitPatch(input: {
     };
   }
 
+  const snappedPreviewCenter =
+    input.preview.releasePlacement === 'snapped' ? polygonCenter(input.preview.polygon) : null;
   const snappedPrimaryCommitFrame =
     input.preview.releasePlacement === 'snapped'
       ? resolveDeckCommitReferenceFrame({
           interaction: input.session.interaction,
           renderEdgeId: input.preview.primaryHostEdgeId ?? input.preview.placementEdgeId,
+          referencePoint: snappedPreviewCenter,
         })
       : null;
   const snappedSecondaryCommitFrame =
@@ -1531,6 +1551,7 @@ export function buildDeckCommitPatch(input: {
       ? resolveDeckCommitReferenceFrame({
           interaction: input.session.interaction,
           renderEdgeId: input.preview.secondaryHostEdgeId,
+          referencePoint: input.preview.lockedCornerPoint ?? input.preview.heldCornerPoint,
         })
       : null;
   const snappedPrimaryHostEdgeId =

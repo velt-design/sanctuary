@@ -208,6 +208,8 @@ const EDGE_LABEL_OFFSET_M = 0.9;
 const EDGE_NORMAL_PROBE_M = 0.12;
 const ZERO_DIMENSION_EPSILON_M = 1e-6;
 const OPENING_PLAN_THICKNESS_M = 0.12;
+const DECK_FRAME_TRANSFER_LINE_TOLERANCE_M = 0.5;
+const DECK_FRAME_TRANSFER_VECTOR_DOT_TOLERANCE = 0.75;
 
 function roundMetres(value: number): number {
   return Math.round(value * 1000) / 1000;
@@ -1147,13 +1149,9 @@ function projectWorldPolygonToReferenceFrame(input: {
   centerOffsetM: number;
 } | null {
   if (!input.polygon.length) return null;
-  const alongValues = input.polygon.map((point) => {
-    const vector = subtractPoints(point, input.frame.hostEdgeStart);
-    return input.frame.spanStartM + dotProduct(vector, { x: input.frame.alongUnitX, y: input.frame.alongUnitY });
-  });
-  const outwardValues = input.polygon.map((point) =>
-    dotProduct(subtractPoints(point, input.frame.hostEdgeStart), { x: input.frame.outwardUnitX, y: input.frame.outwardUnitY }),
-  );
+  const projections = input.polygon.map((point) => projectWorldPointToReferenceFrame({ point, frame: input.frame }));
+  const alongValues = projections.map((projection) => projection.alongM);
+  const outwardValues = projections.map((projection) => projection.outwardM);
   const alongMinM = Math.min(...alongValues);
   const alongMaxM = Math.max(...alongValues);
   const outwardMinM = Math.min(...outwardValues);
@@ -1171,6 +1169,81 @@ function projectWorldPolygonToReferenceFrame(input: {
   };
 }
 
+function projectWorldPointToReferenceFrame(input: {
+  point: PlanPoint;
+  frame: HouseFirstPlanDeckReferenceFrame;
+}): {
+  alongM: number;
+  outwardM: number;
+} {
+  const vector = subtractPoints(input.point, input.frame.hostEdgeStart);
+  return {
+    alongM: input.frame.spanStartM + dotProduct(vector, { x: input.frame.alongUnitX, y: input.frame.alongUnitY }),
+    outwardM: dotProduct(vector, { x: input.frame.outwardUnitX, y: input.frame.outwardUnitY }),
+  };
+}
+
+function buildWorldPointOnDeckReferenceFrame(input: {
+  frame: HouseFirstPlanDeckReferenceFrame;
+  alongM: number;
+  outwardM: number;
+}): PlanPoint {
+  return {
+    x:
+      input.frame.hostEdgeStart.x +
+      input.frame.alongUnitX * (input.alongM - input.frame.spanStartM) +
+      input.frame.outwardUnitX * input.outwardM,
+    y:
+      input.frame.hostEdgeStart.y +
+      input.frame.alongUnitY * (input.alongM - input.frame.spanStartM) +
+      input.frame.outwardUnitY * input.outwardM,
+  };
+}
+
+function referenceFramesSupportWorldPointTransfer(input: {
+  fromFrame: HouseFirstPlanDeckReferenceFrame;
+  toFrame: HouseFirstPlanDeckReferenceFrame;
+}): boolean {
+  if (input.fromFrame.axis !== input.toFrame.axis) return false;
+  if (input.fromFrame.hostEdgeId !== input.toFrame.hostEdgeId) return false;
+  if (input.fromFrame.outwardDirection !== input.toFrame.outwardDirection) return false;
+
+  const alongDot =
+    input.fromFrame.alongUnitX * input.toFrame.alongUnitX +
+    input.fromFrame.alongUnitY * input.toFrame.alongUnitY;
+  const outwardDot =
+    input.fromFrame.outwardUnitX * input.toFrame.outwardUnitX +
+    input.fromFrame.outwardUnitY * input.toFrame.outwardUnitY;
+  if (Math.abs(alongDot) < DECK_FRAME_TRANSFER_VECTOR_DOT_TOLERANCE) return false;
+  if (outwardDot < DECK_FRAME_TRANSFER_VECTOR_DOT_TOLERANCE) return false;
+
+  const directEndpointDistance =
+    Math.hypot(
+      input.fromFrame.hostEdgeStart.x - input.toFrame.hostEdgeStart.x,
+      input.fromFrame.hostEdgeStart.y - input.toFrame.hostEdgeStart.y,
+    ) +
+    Math.hypot(
+      input.fromFrame.hostEdgeEnd.x - input.toFrame.hostEdgeEnd.x,
+      input.fromFrame.hostEdgeEnd.y - input.toFrame.hostEdgeEnd.y,
+    );
+  const reversedEndpointDistance =
+    Math.hypot(
+      input.fromFrame.hostEdgeStart.x - input.toFrame.hostEdgeEnd.x,
+      input.fromFrame.hostEdgeStart.y - input.toFrame.hostEdgeEnd.y,
+    ) +
+    Math.hypot(
+      input.fromFrame.hostEdgeEnd.x - input.toFrame.hostEdgeStart.x,
+      input.fromFrame.hostEdgeEnd.y - input.toFrame.hostEdgeStart.y,
+    );
+  const endpointDistance = Math.min(directEndpointDistance, reversedEndpointDistance);
+  const edgeCoordinateDistance = Math.abs(input.fromFrame.edgeCoordinateM - input.toFrame.edgeCoordinateM);
+
+  return (
+    endpointDistance <= DECK_FRAME_TRANSFER_LINE_TOLERANCE_M ||
+    edgeCoordinateDistance <= DECK_FRAME_TRANSFER_LINE_TOLERANCE_M
+  );
+}
+
 function transferDeckCenterOffsetBetweenReferenceFrames(input: {
   centerOffsetM: number;
   fromFrame: HouseFirstPlanDeckReferenceFrame;
@@ -1184,6 +1257,20 @@ function transferDeckCenterOffsetBetweenReferenceFrames(input: {
 
   const fromFrameMidpointM = (input.fromFrame.spanStartM + input.fromFrame.spanEndM) / 2;
   const toFrameMidpointM = (input.toFrame.spanStartM + input.toFrame.spanEndM) / 2;
+  if (referenceFramesSupportWorldPointTransfer(input)) {
+    const fromCenterAlongM = fromFrameMidpointM + input.centerOffsetM;
+    const worldCenterPoint = buildWorldPointOnDeckReferenceFrame({
+      frame: input.fromFrame,
+      alongM: fromCenterAlongM,
+      outwardM: 0,
+    });
+    const toProjection = projectWorldPointToReferenceFrame({
+      point: worldCenterPoint,
+      frame: input.toFrame,
+    });
+    return toProjection.alongM - toFrameMidpointM;
+  }
+
   const fromCenterAlongM = fromFrameMidpointM + input.centerOffsetM;
   const fromCenterRatio = (fromCenterAlongM - input.fromFrame.spanStartM) / fromSpanM;
   const framesAligned =

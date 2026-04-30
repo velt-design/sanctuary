@@ -242,6 +242,16 @@ function parsePolygonPoints(polygon: Array<{ alongM: string; depthM: string }>) 
   }));
 }
 
+function averageScenePoint(points: Array<{ x: number; y: number }>) {
+  return points.reduce(
+    (center, point) => ({
+      x: center.x + point.x / points.length,
+      y: center.y + point.y / points.length,
+    }),
+    { x: 0, y: 0 },
+  );
+}
+
 function makeGeometryHouseContext(
   house: HouseModel,
   input: {
@@ -1456,6 +1466,68 @@ describe('houseFirstPlanOverlay', () => {
     expect(deckShape?.deckInteraction?.semanticPlacementSide).toBe('rear');
     expect(deckShape?.deckInteraction?.placementEdgeId).toBe('footprint-edge-1');
     expect(deckShape?.deckInteraction?.primaryHostEdgeId).toBe('footprint-edge-1');
+  });
+
+  it('rebuilds attached preset overlays from the stored world center when render and commit spans differ', () => {
+    const baseHouse = makeHouse({
+      footprint: {
+        mode: 'preset',
+        preset: 'straight',
+      },
+    });
+    const deck = makeDeck({
+      hostEdgeId: 'rear',
+      primaryHostEdgeId: 'footprint-edge-1',
+      presetRect: {
+        widthM: '2',
+        depthM: '1',
+        centerOffsetM: '1',
+      },
+    });
+    const resolvedDeck = resolveDeckPresetGeometry({
+      deck,
+      housePolygon: baseHouse.footprint.polygon,
+    });
+    const house = makeHouse({
+      footprint: baseHouse.footprint,
+      decks: [
+        {
+          ...deck,
+          hostEdgeId: resolvedDeck.hostEdgeId,
+          primaryHostEdgeId: resolvedDeck.primaryHostEdgeId,
+          outline: resolvedDeck.outline,
+          presetRect: resolvedDeck.presetRect,
+        },
+      ],
+    });
+    const geometryHouseContext = makeGeometryHouseContext(house);
+    const stretchedRearWallContext: ModulePlanHouseContext = {
+      ...geometryHouseContext,
+      lines: geometryHouseContext.lines.map((line) =>
+        line.metadata?.sourceEdgeId === 'footprint-edge-1'
+          ? {
+              ...line,
+              line: {
+                start: { x: 0, y: line.line.start.y },
+                end: { x: 8, y: line.line.end.y },
+              },
+            }
+          : line,
+      ),
+    };
+
+    const overlay = buildHouseFirstPlanOverlay({
+      house,
+      selection: { kind: 'deck', targetId: 'deck-1' },
+      moduleLengthM: '6',
+      moduleProjectionM: '3',
+      geometryHouseContext: stretchedRearWallContext,
+    });
+
+    const deckShape = overlay?.shapes.find((shape) => shape.ownerKind === 'deck' && shape.ownerId === 'deck-1');
+    const deckCenter = averageScenePoint(deckShape?.polygon ?? []);
+    expect(deckShape?.deckInteraction?.placementEdgeId).toBe('footprint-edge-1');
+    expect(deckCenter.x).toBeCloseTo(4, 3);
   });
 
   it('resolves floating preset witness geometry against the exact right-side edge', () => {

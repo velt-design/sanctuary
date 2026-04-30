@@ -436,6 +436,124 @@ describe('deckInteractionAdapter', () => {
     expect((patch.presetRect as { centerOffsetM: string }).centerOffsetM).toBe('0.25');
   });
 
+  it('chooses the same-wall commit segment that contains the release preview center', () => {
+    const renderFrame = {
+      ...realRearFrame,
+      sourceEdgeId: 'geometry-rear-wall',
+    };
+    const firstCommitSegment = {
+      ...realRearFrame,
+      sourceEdgeId: 'footprint-edge-1',
+      spanStartM: 0,
+      spanEndM: 3,
+      hostEdgeStart: { x: 0, y: 0 },
+      hostEdgeEnd: { x: 3, y: 0 },
+    };
+    const secondCommitSegment = {
+      ...realRearFrame,
+      sourceEdgeId: 'footprint-edge-2',
+      spanStartM: 3,
+      spanEndM: 6,
+      hostEdgeStart: { x: 3, y: 0 },
+      hostEdgeEnd: { x: 6, y: 0 },
+    };
+    const deckWidthM = 1.2;
+    const deckDepthM = 1.8;
+    const centerOffsetM = 1.5;
+    const initialGapM = 0.12;
+    const polygon = rectOnFrame({
+      frame: renderFrame,
+      deckWidthM,
+      deckDepthM,
+      centerOffsetM,
+      referenceEdgeGapM: initialGapM,
+    });
+    const edgeMidpointM = (renderFrame.spanStartM + renderFrame.spanEndM) / 2;
+    const startDragPlanPoint = pointOnFrame(renderFrame, edgeMidpointM + centerOffsetM, initialGapM + 0.4);
+    const session = makeSession({
+      polygon,
+      startDragPlanPoint,
+      frames: [renderFrame],
+      commitFrames: [firstCommitSegment, secondCommitSegment],
+      renderedCenter: polygonCenter(polygon),
+      deckWidthM,
+      deckDepthM,
+      placement: 'floating',
+      attachmentMode: 'floating',
+    });
+
+    const preview = resolveDeckPreviewState({
+      session,
+      nextSvgX: session.startSvgX,
+      nextSvgY: session.startSvgY,
+      nextDragPlanPoint: session.startDragPlanPoint,
+      previousPreviewState: null,
+    });
+    const patch = buildDeckCommitPatch({ session, preview });
+
+    expect(preview.releasePlacement).toBe('snapped');
+    expect(preview.primaryHostEdgeId).toBe('geometry-rear-wall');
+    expect(patch.hostEdgeId).toBe('rear');
+    expect(patch.primaryHostEdgeId).toBe('footprint-edge-2');
+    expect((patch.presetRect as { centerOffsetM: string }).centerOffsetM).toBe('0');
+  });
+
+  it('commits snapped offsets by preview world center when render and commit spans differ', () => {
+    const renderFrame = {
+      ...realRearFrame,
+      sourceEdgeId: 'geometry-rear-wall',
+      spanStartM: 0,
+      spanEndM: 8,
+      hostEdgeStart: { x: 0, y: 0 },
+      hostEdgeEnd: { x: 8, y: 0 },
+    };
+    const commitFrame = {
+      ...realRearFrame,
+      sourceEdgeId: 'footprint-edge-1',
+      spanStartM: 2,
+      spanEndM: 6,
+      hostEdgeStart: { x: 2, y: 0 },
+      hostEdgeEnd: { x: 6, y: 0 },
+    };
+    const deckWidthM = 1.2;
+    const deckDepthM = 1.8;
+    const centerOffsetM = 1;
+    const initialGapM = 0.12;
+    const polygon = rectOnFrame({
+      frame: renderFrame,
+      deckWidthM,
+      deckDepthM,
+      centerOffsetM,
+      referenceEdgeGapM: initialGapM,
+    });
+    const edgeMidpointM = (renderFrame.spanStartM + renderFrame.spanEndM) / 2;
+    const startDragPlanPoint = pointOnFrame(renderFrame, edgeMidpointM + centerOffsetM, initialGapM + 0.4);
+    const session = makeSession({
+      polygon,
+      startDragPlanPoint,
+      frames: [renderFrame],
+      commitFrames: [commitFrame],
+      renderedCenter: polygonCenter(polygon),
+      deckWidthM,
+      deckDepthM,
+      placement: 'floating',
+      attachmentMode: 'floating',
+    });
+
+    const preview = resolveDeckPreviewState({
+      session,
+      nextSvgX: session.startSvgX,
+      nextSvgY: session.startSvgY,
+      nextDragPlanPoint: session.startDragPlanPoint,
+      previousPreviewState: null,
+    });
+    const patch = buildDeckCommitPatch({ session, preview });
+
+    expect(preview.releasePlacement).toBe('snapped');
+    expect(patch.primaryHostEdgeId).toBe('footprint-edge-1');
+    expect((patch.presetRect as { centerOffsetM: string }).centerOffsetM).toBe('1');
+  });
+
   it('does not trigger corner mode just because a wide deck overlaps a second wall span', () => {
     const polygon = [
       { x: -0.45, y: 0 },

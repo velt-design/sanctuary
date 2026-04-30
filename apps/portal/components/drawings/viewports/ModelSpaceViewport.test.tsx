@@ -4419,6 +4419,9 @@ describe('ModelSpaceViewport', () => {
     expect(rendered.container.querySelector('[data-house-first-preview-body-state="snapped"]')).not.toBeNull();
     expect(rendered.container.querySelector('[data-house-first-reference-guide]')).toBeNull();
     expect(rendered.container.querySelector('[data-house-first-snap-target="snapped"]')).not.toBeNull();
+    const releasePreviewPoints = polygonPointsAttr(
+      rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]'),
+    );
 
     dispatchPointer(window, 'pointerup', { pointerId: 11, button: 0, clientX: -250, clientY: 50 });
     await act(async () => {
@@ -4426,6 +4429,10 @@ describe('ModelSpaceViewport', () => {
     });
     await waitForHouseFirstDeckDragUnlock(rendered.container);
 
+    const committedDeckAfter = polygonPointsAttr(
+      rendered.container.querySelector('[data-house-first-shape="deck:deck-1"]'),
+    );
+    expect(normalizePolygonPointSet(committedDeckAfter)).toBe(normalizePolygonPointSet(releasePreviewPoints));
     expect(rendered.container.querySelector('[data-testid="deck-center-offset"]')?.textContent).toBe('-25');
     expect(scroller.dataset.houseFirstDeckDragActive).toBe('false');
     expect(rendered.container.querySelector('[aria-label="Deck interaction hint"]')?.textContent).toContain('Position updated');
