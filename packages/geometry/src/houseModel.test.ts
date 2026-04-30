@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type {
+  AttachmentSide,
   GeometryConfig,
   HouseAttachmentStrategy,
   HouseFootprintPreset,
@@ -46,6 +47,7 @@ const HOUSE_FOOTPRINT_PRESETS: readonly HouseFootprintPreset[] = [
 ];
 
 const HOUSE_ROOF_FORMS: readonly HouseRoofForm[] = ['flat', 'mono', 'gable', 'hipped'];
+const ATTACHMENT_SIDES: readonly AttachmentSide[] = ['rear', 'front', 'left', 'right'];
 
 function pointOnSegment2D(
   candidate: { x: number; y: number },
@@ -1783,6 +1785,39 @@ describe('house model geometry builder', () => {
         );
         expect(model.roofPlanes.length).toBeGreaterThan(0);
         expectRoofQaValid(model);
+      }
+    }
+  });
+
+  it('builds valid gable and hipped roofs for every preset attachment-side rotation', () => {
+    for (const attachmentSide of ATTACHMENT_SIDES) {
+      for (const preset of HOUSE_FOOTPRINT_PRESETS) {
+        const footprint = buildHouseFootprintPolygon({
+          pergolaWidthMm: 6000,
+          pergolaDepthMm: 1800,
+          preset,
+          attachmentSide,
+        });
+
+        for (const roofForm of ['gable', 'hipped'] as const) {
+          const model = buildHouseModel3D({
+            config: makeConfig({
+              footprint,
+              attachmentSide,
+              roofForm,
+              roofPitchDeg: 20,
+              roofRidgeAxis: 'x',
+            }),
+            attachmentEdge: makeAttachmentEdge(),
+          });
+
+          expect(model, `${preset}/${attachmentSide}/${roofForm} model`).not.toBeNull();
+          if (!model) continue;
+          expect(model.metadata?.roofForm).toBe(roofForm);
+          expect(model.metadata?.roofGeometry, `${preset}/${attachmentSide}/${roofForm} geometry`).not.toBeNull();
+          expect(model.roofPlanes.length, `${preset}/${attachmentSide}/${roofForm} roof planes`).toBeGreaterThan(0);
+          expectRoofQaValid(model);
+        }
       }
     }
   });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { HouseFootprintPreset, HouseRoofForm } from './contracts';
+import type { AttachmentSide, HouseFootprintPreset, HouseRoofForm } from './contracts';
 import { buildHouseFootprintPolygon } from './footprints';
 import {
   classifyHouseRoofFootprintTopology,
@@ -20,13 +20,14 @@ const HOUSE_FOOTPRINT_PRESETS: readonly HouseFootprintPreset[] = [
 ];
 
 const HOUSE_ROOF_FORMS: readonly HouseRoofForm[] = ['flat', 'mono', 'gable', 'hipped'];
+const ATTACHMENT_SIDES: readonly AttachmentSide[] = ['rear', 'front', 'left', 'right'];
 
-function buildPresetFootprint(preset: HouseFootprintPreset) {
+function buildPresetFootprint(preset: HouseFootprintPreset, attachmentSide: AttachmentSide = 'rear') {
   return buildHouseFootprintPolygon({
     pergolaWidthMm: 6000,
     pergolaDepthMm: 1800,
     preset,
-    attachmentSide: 'rear',
+    attachmentSide,
   });
 }
 
@@ -53,6 +54,32 @@ describe('house roof validation', () => {
         expect(capabilities.selectedFormSupported, `${preset}/${roofForm} supported`).toBe(true);
         expect(validation.status, `${preset}/${roofForm} validation status`).toBe('valid');
         expect(validation.code, `${preset}/${roofForm} validation code`).toBeNull();
+      }
+    }
+  });
+
+  it('supports gable and hipped roofs on every preset and attachment side', () => {
+    for (const attachmentSide of ATTACHMENT_SIDES) {
+      for (const preset of HOUSE_FOOTPRINT_PRESETS) {
+        const footprint = buildPresetFootprint(preset, attachmentSide);
+
+        for (const roofForm of ['gable', 'hipped'] as const) {
+          const geometryKind = deriveHouseRoofGeometryKind({ roofForm, footprint });
+          const capabilities = deriveHouseRoofCapabilities({ roofForm, footprint });
+          const validation = validateHouseRoofSelection({
+            roofForm,
+            footprint,
+            appendageEnabled: false,
+            roofRidgeAxis: 'x',
+          });
+
+          expect(geometryKind, `${preset}/${attachmentSide}/${roofForm} geometry kind`).not.toBeNull();
+          expect(capabilities.selectedFormSupported, `${preset}/${attachmentSide}/${roofForm} supported`).toBe(
+            true,
+          );
+          expect(validation.code, `${preset}/${attachmentSide}/${roofForm} validation code`).toBeNull();
+          expect(validation.status, `${preset}/${attachmentSide}/${roofForm} validation status`).toBe('valid');
+        }
       }
     }
   });

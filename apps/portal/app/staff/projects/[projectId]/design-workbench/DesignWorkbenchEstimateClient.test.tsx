@@ -1008,6 +1008,63 @@ describe('DesignWorkbenchEstimateClient', () => {
     rendered.unmount();
   });
 
+  it('heals stale ridge and open-gable intent when preset changes rebuild supported roofs', async () => {
+    const estimate = buildEstimateDetail();
+    const entityKey = buildEstimateDrawingDraftEntityKey(estimate.id);
+
+    const rendered = renderIntoDocument(
+      <DesignWorkbenchEstimateClient estimate={estimate} projectName="Roof Forms" siteAddress="1 Test Street" />,
+    );
+
+    await flushAsyncWork();
+    changeSelectByLabel(rendered.container, 'Roof form', 'gable');
+    await flushAsyncWork();
+    changeSelectByLabel(rendered.container, 'Gable ridge orientation', 'x');
+    await flushAsyncWork();
+    clickButtonByText(rendered.container, 'Open End 1');
+    await flushAsyncWork();
+
+    const openGableDraft = readObjectFirstRoofDraft(getLocalFirstWorkingCopy<any>(entityKey)?.data);
+    expect(openGableDraft?.openGableEndIds?.length).toBeGreaterThan(0);
+
+    changeSelectByLabel(rendered.container, 'Gable ridge orientation', 'y');
+    await flushAsyncWork();
+    expect(readLabeledValue(rendered.container, 'Roof reason code')).toBe('invalid_ridge_axis');
+
+    changeSelectByLabel(rendered.container, 'House footprint', 'u_shape');
+    await flushAsyncWork();
+
+    const healedGableDraft = readObjectFirstRoofDraft(getLocalFirstWorkingCopy<any>(entityKey)?.data);
+    expect(healedGableDraft).toMatchObject({
+      form: 'gable',
+      ridgeAxis: 'x',
+      openGableEndIds: [],
+    });
+    expect(readLabeledValue(rendered.container, 'Roof reason code')).toBe('none');
+    expect(readLabeledValue(rendered.container, 'Roof status')).not.toBe('Blocked');
+
+    changeSelectByLabel(rendered.container, 'Roof form', 'hipped');
+    await flushAsyncWork();
+    changeSelectByLabel(rendered.container, 'Hipped ridge orientation', 'y');
+    await flushAsyncWork();
+    expect(readLabeledValue(rendered.container, 'Roof reason code')).toBe('invalid_ridge_axis');
+
+    changeSelectByLabel(rendered.container, 'House footprint', 'wrap_left');
+    await flushAsyncWork();
+
+    const healedHippedDraft = readObjectFirstRoofDraft(getLocalFirstWorkingCopy<any>(entityKey)?.data);
+    expect(healedHippedDraft).toMatchObject({
+      form: 'hipped',
+      ridgeAxis: 'x',
+      openGableEndIds: [],
+    });
+    expect(healedHippedDraft?.appendage?.enabled).toBe(false);
+    expect(readLabeledValue(rendered.container, 'Roof reason code')).toBe('none');
+    expect(readLabeledValue(rendered.container, 'Roof status')).not.toBe('Blocked');
+
+    rendered.unmount();
+  });
+
   it('normalizes all house roof form transitions into the local working copy', async () => {
     const estimate = buildEstimateDetail();
     const entityKey = buildEstimateDrawingDraftEntityKey(estimate.id);

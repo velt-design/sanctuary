@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { CostOutputV1 } from '@sp/costing';
-import type { HouseFootprintPreset, HouseRoofForm } from '@sp/geometry';
+import type { AttachmentSide, HouseFootprintPreset, HouseRoofForm } from '@sp/geometry';
 import { getSanctuaryGeometryWorkbenchFixture } from '@/lib/drawings/sanctuaryWorkbenchFixtures';
 import { buildHouseFirstWorkbenchProjectModel } from '@/lib/drawings/state/houseFirstWorkbenchAdapter';
 import { makeHouseFirstDeckSupportProjectFixture } from '@/lib/drawings/state/houseFirstWorkbenchFixtures';
@@ -22,6 +22,7 @@ const HOUSE_FOOTPRINT_PRESETS: readonly HouseFootprintPreset[] = [
 ];
 
 const HOUSE_ROOF_FORMS: readonly HouseRoofForm[] = ['flat', 'mono', 'gable', 'hipped'];
+const ATTACHMENT_SIDES: readonly AttachmentSide[] = ['rear', 'front', 'left', 'right'];
 
 function makeModule(overrides: Partial<CalculatorModuleInputs> = {}): CalculatorModuleInputs {
   return {
@@ -419,6 +420,49 @@ describe('buildRawGeometryModuleInput', () => {
         }
         if (form === 'gable' || form === 'hipped') {
           expect(raw.houseContext.roofRidgeAxis, `${preset}/${form} ridge axis`).toBe('x');
+        }
+      }
+    }
+  });
+
+  it('maps gable and hipped preset roof rotations into raw house context', () => {
+    const fixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
+    if (!fixture) throw new Error('Expected mono fixture');
+
+    for (const attachmentSide of ATTACHMENT_SIDES) {
+      for (const preset of HOUSE_FOOTPRINT_PRESETS) {
+        for (const form of ['gable', 'hipped'] as const) {
+          const draft = buildEstimateDrawingDraftFromSnapshot(fixture.snapshot);
+          if (!draft) throw new Error('Expected draft');
+          draft.inputs.modules[0]!.attachmentSide = attachmentSide;
+          draft.inputs.modules[0]!.houseFootprintPreset = preset;
+          draft.houseFirst = {
+            roof: {
+              form,
+              primaryPitchDeg: form === 'gable' ? '18' : '22',
+              material: 'corrugated_iron',
+            },
+          };
+          const projectModel = buildHouseFirstWorkbenchProjectModel({
+            snapshot: fixture.snapshot,
+            draft,
+          });
+
+          const raw = buildRawGeometryModuleInput({
+            projectId: 'proj_1',
+            estimateId: 'est_1',
+            module: makeModule({ attachmentSide, houseFootprintPreset: preset }),
+            result: makeResult(),
+            sharedHouse: projectModel.house,
+          });
+
+          expect(projectModel.house?.roof.validation.code, `${preset}/${attachmentSide}/${form} validation`).toBeNull();
+          expect(raw.connection.attachmentSide, `${preset}/${attachmentSide}/${form} side`).toBe(attachmentSide);
+          expect(raw.houseContext.footprintPreset, `${preset}/${attachmentSide}/${form} footprint`).toBe(preset);
+          expect(raw.houseContext.roofForm, `${preset}/${attachmentSide}/${form} form`).toBe(form);
+          expect(raw.houseContext.roofRidgeAxis, `${preset}/${attachmentSide}/${form} ridge`).toBe(
+            projectModel.house?.roof.ridgeAxis,
+          );
         }
       }
     }

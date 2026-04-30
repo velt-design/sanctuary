@@ -19,6 +19,7 @@ import type {
   DerivedWallModel,
   HouseAssemblyModel,
   HouseFormRoofIntentModel,
+  ObjectFirstHouseFormDraft,
   ObjectFirstWorkbenchDraftVNext,
 } from '@/lib/drawings/state/objectFirstWorkbenchModel';
 import {
@@ -570,6 +571,46 @@ function normalizeSharedHouseRoofDraftForCommit(
   };
 }
 
+function mergeHouseFormRoofIntentAfterFootprintSync(input: {
+  previewHouseForm: ObjectFirstHouseFormDraft;
+  existingHouseForm: ObjectFirstHouseFormDraft | null;
+  terminalEndIds: ReadonlySet<string>;
+}): ObjectFirstHouseFormDraft {
+  const { previewHouseForm, existingHouseForm, terminalEndIds } = input;
+  if (!existingHouseForm?.roofIntentAuthored) return previewHouseForm;
+
+  const existingRoof = existingHouseForm.roofIntent;
+  const previewRoof = previewHouseForm.roofIntent;
+  const form = existingRoof.form;
+  const behavior = getHouseRoofFormBehavior(form);
+  const openGableEndIds =
+    form === 'gable'
+      ? existingRoof.openGableEndIds.filter((id) => terminalEndIds.has(id))
+      : [];
+
+  return {
+    ...previewHouseForm,
+    roofIntentAuthored: true,
+    roofIntent: {
+      ...previewRoof,
+      form,
+      material: existingRoof.material,
+      primaryPitchDeg: behavior.controls.pitch ? existingRoof.primaryPitchDeg : '0',
+      primaryFallDirection: behavior.controls.primaryFallDirection
+        ? existingRoof.primaryFallDirection
+        : 'negative_y',
+      ridgeAxis: behavior.controls.ridgeAxis ? previewRoof.ridgeAxis : 'x',
+      openGableEndIds,
+      appendage: behavior.controls.appendage
+        ? existingRoof.appendage
+        : {
+            ...previewRoof.appendage,
+            enabled: false,
+          },
+    },
+  };
+}
+
 function buildHouseFirstDeckPatchFromObjectPatch(
   patch: ObjectWorkbenchDeckPatch,
 ): Partial<HouseFirstDeckDraft> {
@@ -757,6 +798,9 @@ export function useObjectWorkbenchActions({
         previewStore.persisted.projectModel,
       );
       const existingHouseForms = objectFirstDraft.houseAssembly?.houseForms ?? [];
+      const terminalEndIds = new Set(
+        previewStore.persisted.compatibilityProjectModel.house?.roof.terminalEnds.map((end) => end.id) ?? [],
+      );
       return {
         ...objectFirstDraft,
         houseAssembly: previewObjectFirst.houseAssembly
@@ -767,13 +811,11 @@ export function useObjectWorkbenchActions({
                   existingHouseForms.find((candidate) => candidate.id === houseForm.id) ??
                   existingHouseForms[index] ??
                   null;
-                return existingHouseForm?.roofIntentAuthored
-                  ? {
-                      ...houseForm,
-                      roofIntent: existingHouseForm.roofIntent,
-                      roofIntentAuthored: true,
-                    }
-                  : houseForm;
+                return mergeHouseFormRoofIntentAfterFootprintSync({
+                  previewHouseForm: houseForm,
+                  existingHouseForm,
+                  terminalEndIds,
+                });
               }),
             }
           : previewObjectFirst.houseAssembly,

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { HouseFootprintPreset, HouseRoofForm } from '@sp/geometry';
+import type { AttachmentSide, HouseFootprintPreset, HouseRoofForm } from '@sp/geometry';
 import { getSanctuaryGeometryWorkbenchFixture } from '@/lib/drawings/sanctuaryWorkbenchFixtures';
 import {
   buildEstimateDrawingDraftFromSnapshot,
@@ -22,6 +22,7 @@ const HOUSE_FOOTPRINT_PRESETS: readonly HouseFootprintPreset[] = [
 ];
 
 const HOUSE_ROOF_FORMS: readonly HouseRoofForm[] = ['flat', 'mono', 'gable', 'hipped'];
+const ATTACHMENT_SIDES: readonly AttachmentSide[] = ['rear', 'front', 'left', 'right'];
 
 function makeScreenshotStyleUHouseFootprint() {
   return [
@@ -744,6 +745,57 @@ describe('buildWorkbenchGeometryPreview', () => {
             .some((object) => object.type === 'house_surface_solid' && object.kind === 'roof'),
           `${preset}/${form} roof solid`,
         ).toBe(true);
+      }
+    }
+  });
+
+  it('renders gable and hipped preset roof rotations through the ready preview path', () => {
+    const fixture = requireFixture('mono-standard');
+
+    for (const attachmentSide of ATTACHMENT_SIDES) {
+      for (const preset of HOUSE_FOOTPRINT_PRESETS) {
+        for (const form of ['gable', 'hipped'] as const) {
+          const draft = makeDraft(fixture.snapshot, (current) => {
+            current.inputs.modules[0]!.attachmentSide = attachmentSide;
+            current.inputs.modules[0]!.houseFootprintPreset = preset;
+            current.houseFirst = {
+              roof: {
+                form,
+                primaryPitchDeg: form === 'gable' ? '18' : '22',
+                material: 'corrugated_iron',
+              },
+            };
+          });
+
+          const preview = buildWorkbenchGeometryPreview({
+            projectId: 'proj_preview',
+            estimateId: fixture.estimate.id,
+            designRequestId: fixture.request.id,
+            snapshot: fixture.snapshot,
+            draft,
+            moduleIndex: 0,
+          });
+
+          expect(preview.kind, `${preset}/${attachmentSide}/${form} preview kind`).toBe('ready');
+          if (preview.kind !== 'ready') continue;
+          expect(preview.config.connection.attachmentSide, `${preset}/${attachmentSide}/${form} side`).toBe(
+            attachmentSide,
+          );
+          expect(preview.config.houseContext.model?.roofForm, `${preset}/${attachmentSide}/${form} form`).toBe(form);
+          expect(
+            preview.config.houseContext.model?.footprint.length,
+            `${preset}/${attachmentSide}/${form} footprint points`,
+          ).toBeGreaterThan(3);
+          expect(preview.scene.metadata?.houseRoofQaStatus, `${preset}/${attachmentSide}/${form} roof QA`).toBe(
+            'valid',
+          );
+          expect(
+            preview.scene.layers
+              .flatMap((layer) => layer.objects)
+              .some((object) => object.type === 'house_surface_solid' && object.kind === 'roof'),
+            `${preset}/${attachmentSide}/${form} roof solid`,
+          ).toBe(true);
+        }
       }
     }
   });

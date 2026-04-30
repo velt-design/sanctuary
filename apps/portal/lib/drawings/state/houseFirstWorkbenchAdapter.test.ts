@@ -16,6 +16,7 @@ const HOUSE_FOOTPRINT_PRESETS = [
 ] as const;
 
 const HOUSE_ROOF_FORMS = ['flat', 'mono', 'gable', 'hipped'] as const;
+const ATTACHMENT_SIDES = ['rear', 'front', 'left', 'right'] as const;
 
 describe('buildHouseFirstWorkbenchProjectModel', () => {
   it('classifies mono, gable, and box legacy fixtures into first-pass roof forms', () => {
@@ -642,6 +643,51 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
         expect(projectModel.house?.roof.validation.status, `${preset}/${form} validation status`).not.toBe(
           'invalid',
         );
+      }
+    }
+  });
+
+  it('keeps gable and hipped preset roofs supported across attachment-side rotations', () => {
+    const monoFixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
+    if (!monoFixture) throw new Error('Missing mono-standard fixture.');
+
+    for (const attachmentSide of ATTACHMENT_SIDES) {
+      for (const preset of HOUSE_FOOTPRINT_PRESETS) {
+        for (const form of ['gable', 'hipped'] as const) {
+          const draft = buildEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
+          if (!draft) throw new Error('Expected drawing draft.');
+          draft.inputs.modules[0]!.attachmentSide = attachmentSide;
+          draft.inputs.modules[0]!.houseFootprintPreset = preset;
+          draft.houseFirst = {
+            roof: {
+              form,
+              primaryPitchDeg: '18',
+              material: 'corrugated_iron',
+            },
+          };
+
+          const projectModel = buildHouseFirstWorkbenchProjectModel({
+            snapshot: monoFixture.snapshot,
+            draft,
+          });
+
+          expect(projectModel.house?.footprint.preset, `${preset}/${attachmentSide}/${form} footprint`).toBe(
+            preset,
+          );
+          expect(projectModel.house?.footprint.attachmentSide, `${preset}/${attachmentSide}/${form} side`).toBe(
+            attachmentSide,
+          );
+          expect(projectModel.house?.roof.form, `${preset}/${attachmentSide}/${form} form`).toBe(form);
+          expect(projectModel.house?.roof.geometryKind, `${preset}/${attachmentSide}/${form} geometry`).not.toBeNull();
+          expect(
+            projectModel.house?.roof.capabilities.selectedFormSupported,
+            `${preset}/${attachmentSide}/${form} supported`,
+          ).toBe(true);
+          expect(projectModel.house?.roof.validation.code, `${preset}/${attachmentSide}/${form} code`).toBeNull();
+          expect(projectModel.house?.roof.validation.status, `${preset}/${attachmentSide}/${form} status`).not.toBe(
+            'invalid',
+          );
+        }
       }
     }
   });
