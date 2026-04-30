@@ -67,6 +67,15 @@ import {
   resolveDeckHostEdgeFrame,
 } from './houseFirstDeckPresets';
 
+type HouseFirstWorkbenchDraftCarrier = EstimateDrawingDraft & {
+  houseFirst?: {
+    roof?: HouseFirstRoofDraft | null;
+    decks?: HouseFirstDeckDraft[] | null;
+    openings?: HouseFirstOpeningDraft[] | null;
+    pergolas?: HouseFirstPergolaDraft[] | null;
+  } | null;
+};
+
 type SharedFieldConfig<T> = {
   field: string;
   fallback: T;
@@ -2181,7 +2190,7 @@ function buildPergolas(input: {
 
 export function buildHouseFirstWorkbenchProjectModel(input: {
   snapshot: Record<string, unknown> | null;
-  draft?: EstimateDrawingDraft | null;
+  draft?: HouseFirstWorkbenchDraftCarrier | null;
   ignoreModuleResults?: boolean;
 }): HouseFirstWorkbenchProjectModel {
   const effectiveSnapshot = mergeEstimateDrawingDraftIntoSnapshot(input.snapshot, input.draft);

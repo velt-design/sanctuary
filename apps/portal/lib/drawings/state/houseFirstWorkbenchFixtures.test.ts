@@ -56,8 +56,8 @@ describe('houseFirstWorkbenchFixtures', () => {
     const side = makeHouseFirstDeckSupportSnapshotFixture('left_threshold_attached');
     const detached = makeHouseFirstDeckSupportSnapshotFixture('detached_rear_near_house');
 
-    expect(attached.draft.houseFirst?.decks?.[0]?.hostEdgeId).toBe('rear');
+    expect(attached.draft.objectFirst?.decks?.[0]?.hostEdgeId).toBe('rear');
     expect(side.draft.inputs.modules[0]?.attachmentSide).toBe('left');
-    expect(detached.draft.houseFirst?.decks?.[0]?.presetType).toBe('rect_detached');
+    expect(detached.draft.objectFirst?.decks?.[0]?.presetType).toBe('rect_detached');
   });
 });

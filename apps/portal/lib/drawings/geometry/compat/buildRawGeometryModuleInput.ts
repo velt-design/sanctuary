@@ -117,6 +117,31 @@ function resolveDerivedSlopeDirection(result: CostOutputV1 | null): RawGeometryD
   return null;
 }
 
+function parsePositiveNumber(value: string | number | null | undefined): number | null {
+  const parsed = typeof value === 'number' ? value : Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+}
+
+function resolveFallbackOuterUndersideM(
+  module: CalculatorModuleInputs,
+  result: CostOutputV1 | null,
+  houseUndersideM: string | number | null,
+): number | string | null {
+  const houseUnderside = parsePositiveNumber(houseUndersideM);
+  if (houseUnderside === null) return null;
+  const pitchDeg = parsePositiveNumber(resolveDerivedRoofPitchDeg(module, result) ?? module.roofPitchDeg) ?? 0;
+  const runM =
+    parsePositiveNumber(result?.derived.effective_run_m) ??
+    parsePositiveNumber(module.projectionM) ??
+    0;
+  const slopeDirection =
+    resolveDerivedSlopeDirection(result) ?? (module.invertedEnabled ? 'toward_house' : 'away_from_house');
+  const fallM = Math.max(0, runM) * Math.tan((pitchDeg * Math.PI) / 180);
+  const outerUnderside = houseUnderside + (slopeDirection === 'toward_house' ? fallM : -fallM);
+  if (!Number.isFinite(outerUnderside)) return houseUndersideM;
+  return Math.max(0, Math.round(outerUnderside * 1000) / 1000);
+}
+
 function resolveOverhangAmountM(module: CalculatorModuleInputs, result: CostOutputV1 | null): string | number | null {
   const derivedEnabled = result?.derived.overhang_enabled;
   const enabled = typeof derivedEnabled === 'boolean' ? derivedEnabled : Boolean(module.overhangEnabled);
@@ -128,7 +153,9 @@ function resolveOverhangAmountM(module: CalculatorModuleInputs, result: CostOutp
 
 function resolveStructuralHeights(module: CalculatorModuleInputs, result: CostOutputV1 | null): NonNullable<RawGeometryModuleInput['structural']>['heights'] {
   const houseUndersideM = result?.derived.post_cut_height_house_side_m ?? result?.derived.ledger_underside_height_m ?? module.postCutHeightM ?? null;
-  const outerUndersideM = result?.derived.post_cut_height_outer_side_m ?? null;
+  const outerUndersideM =
+    result?.derived.post_cut_height_outer_side_m ??
+    resolveFallbackOuterUndersideM(module, result, houseUndersideM);
 
   return {
     houseUndersideM,

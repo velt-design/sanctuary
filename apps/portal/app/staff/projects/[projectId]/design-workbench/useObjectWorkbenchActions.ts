@@ -133,6 +133,14 @@ export function useObjectWorkbenchActions({
   store,
   ui,
 }: UseObjectWorkbenchActionsInput) {
+  const compatibilityProjectModel = store.persisted.compatibilityBridge.projectModel;
+  const compatibilityHouse = compatibilityProjectModel.house;
+  const compatibilityPergolas = compatibilityProjectModel.pergolas;
+  const activeCompatibilityOpening =
+    ui.activeObjectFamily === 'openings'
+      ? compatibilityHouse?.openings.find((opening) => opening.id === ui.activeObjectRef.objectId) ?? null
+      : null;
+
   const runDraftTransaction = useCallback(
     async (transaction: DraftTransaction): Promise<CommitResult> => {
       if (!drawingDraft) return missingDrawingDraftResult();
@@ -226,7 +234,9 @@ export function useObjectWorkbenchActions({
         draft: nextDraft,
         ui,
       });
-      const nextDeck = previewStore.derived.compatibilityBridge.decks.find((deck) => deck.id === deckId);
+      const nextDeck = previewStore.persisted.compatibilityBridge.projectModel.house?.decks.find(
+        (deck) => deck.id === deckId,
+      );
       if (nextDeck?.validation.status === 'invalid') {
         return {
           ok: false,
@@ -303,9 +313,8 @@ export function useObjectWorkbenchActions({
       runDraftTransaction({
         buildNextDraft: (draft) => {
           const objectFirstDraft = resolveObjectFirstDraft(draft, store);
-          const house = store.derived.compatibilityBridge.house;
           const currentDecks = resolveCurrentObjectWorkbenchDeckDrafts(objectFirstDraft);
-          const housePolygon = resolveDeckReferencePolygon(house, activeModuleInput);
+          const housePolygon = resolveDeckReferencePolygon(compatibilityHouse, activeModuleInput);
           const nextDecks = input.buildNextDecks({
             currentDecks,
             housePolygon,
@@ -324,7 +333,7 @@ export function useObjectWorkbenchActions({
         validateDraft: input.validateDraft,
         afterPersist: input.afterPersist,
       }),
-    [activeModuleInput, runDraftTransaction, store],
+    [activeModuleInput, compatibilityHouse, runDraftTransaction, store],
   );
 
   const commitOpeningDraftMutation = useCallback(
@@ -346,14 +355,14 @@ export function useObjectWorkbenchActions({
               objectFirst: buildObjectFirstDraftWithCompatibilityOpenings({
                 objectFirstDraft,
                 openings: nextOpenings,
-                sourceFormId: store.derived.activeHouseForm?.id ?? store.derived.compatibilityBridge.house?.id ?? null,
+                sourceFormId: store.derived.activeHouseForm?.id ?? compatibilityHouse?.id ?? null,
               }),
             }),
           };
         },
         afterPersist: input.afterPersist,
       }),
-    [runDraftTransaction, store],
+    [compatibilityHouse?.id, runDraftTransaction, store],
   );
 
   const commitPergolaDraftMutation = useCallback(
@@ -367,7 +376,7 @@ export function useObjectWorkbenchActions({
           const objectFirstDraft = resolveObjectFirstDraft(draft, store);
           const currentPergolas = resolveCurrentObjectWorkbenchPergolaDrafts(objectFirstDraft);
           const currentPergola =
-            store.derived.compatibilityBridge.pergolas.find((pergola) => pergola.id === input.pergolaId) ?? null;
+            compatibilityPergolas.find((pergola) => pergola.id === input.pergolaId) ?? null;
           if (!currentPergola) {
             return {
               ok: false,
@@ -382,7 +391,7 @@ export function useObjectWorkbenchActions({
         },
         afterPersist: input.afterPersist,
       }),
-    [runDraftTransaction, store],
+    [compatibilityPergolas, runDraftTransaction, store],
   );
 
   const commitSharedHouseFootprintEdit = useCallback(
@@ -451,7 +460,7 @@ export function useObjectWorkbenchActions({
 
   const addSharedHouseDeck = useCallback(
     async (mode: 'preset' | 'custom_outline'): Promise<CommitResult> => {
-      const house = store.derived.compatibilityBridge.house;
+      const house = compatibilityHouse;
       if (!house) return missingSharedHouseResult();
 
       let deckId = '';
@@ -476,7 +485,7 @@ export function useObjectWorkbenchActions({
         },
       });
     },
-    [commitDeckDraftMutation, selectHouseTarget, startDeckOutlineEditor, store.derived.compatibilityBridge.house],
+    [commitDeckDraftMutation, compatibilityHouse, selectHouseTarget, startDeckOutlineEditor],
   );
 
   const removeSharedHouseDeck = useCallback(
@@ -513,16 +522,16 @@ export function useObjectWorkbenchActions({
             currentOpenings,
             openingId,
             houseAssembly: store.derived.houseAssembly,
-            house: store.derived.compatibilityBridge.house,
+            house: compatibilityHouse,
             patch,
           }),
       }),
-    [activeModuleInput, commitOpeningDraftMutation, store.derived.compatibilityBridge.house, store.derived.houseAssembly],
+    [activeModuleInput, commitOpeningDraftMutation, compatibilityHouse, store.derived.houseAssembly],
   );
 
   const addSharedHouseOpening = useCallback(
     async (kind: 'window' | 'hinged_door' | 'slider' | 'stacker'): Promise<CommitResult> => {
-      const house = store.derived.compatibilityBridge.house;
+      const house = compatibilityHouse;
       if (!house) return missingSharedHouseResult();
 
       let openingId = '';
@@ -534,7 +543,7 @@ export function useObjectWorkbenchActions({
             activeModuleInput,
             houseAssembly: store.derived.houseAssembly,
             house,
-            preferredHostWallId: store.derived.compatibilityBridge.activeOpening?.hostWallId ?? null,
+            preferredHostWallId: activeCompatibilityOpening?.hostWallId ?? null,
             preferredSide: house.footprint.attachmentSide ?? 'rear',
           });
           return [
@@ -556,10 +565,10 @@ export function useObjectWorkbenchActions({
     },
     [
       activeModuleInput,
+      activeCompatibilityOpening?.hostWallId,
       commitOpeningDraftMutation,
+      compatibilityHouse,
       selectHouseTarget,
-      store.derived.compatibilityBridge.activeOpening?.hostWallId,
-      store.derived.compatibilityBridge.house,
       store.derived.houseAssembly,
     ],
   );
@@ -599,7 +608,7 @@ export function useObjectWorkbenchActions({
             objectFirst: buildObjectFirstDraftWithCompatibilityPergolas({
               objectFirstDraft,
               pergolas: nextPergolas,
-              compatibilityPergolas: store.derived.compatibilityBridge.pergolas,
+              compatibilityPergolas,
               mapPergola: (pergola) =>
                 pergola.id === pergolaId
                   ? {
@@ -617,7 +626,7 @@ export function useObjectWorkbenchActions({
           });
         },
       }),
-    [commitPergolaDraftMutation, store],
+    [commitPergolaDraftMutation, compatibilityPergolas, store],
   );
 
   const commitSharedPergolaAttachmentEdge = useCallback(
@@ -653,7 +662,7 @@ export function useObjectWorkbenchActions({
             objectFirst: buildObjectFirstDraftWithCompatibilityPergolas({
               objectFirstDraft,
               pergolas: nextPergolas,
-              compatibilityPergolas: store.derived.compatibilityBridge.pergolas,
+              compatibilityPergolas,
               mapPergola: (pergola) =>
                 pergola.id === pergolaId
                   ? {
@@ -670,7 +679,7 @@ export function useObjectWorkbenchActions({
           });
         },
       }),
-    [commitPergolaDraftMutation, store],
+    [commitPergolaDraftMutation, compatibilityPergolas, store],
   );
 
   const commitSharedPergolaAttachmentZone = useCallback(
@@ -704,7 +713,7 @@ export function useObjectWorkbenchActions({
             objectFirst: buildObjectFirstDraftWithCompatibilityPergolas({
               objectFirstDraft,
               pergolas: nextPergolas,
-              compatibilityPergolas: store.derived.compatibilityBridge.pergolas,
+              compatibilityPergolas,
               mapPergola: (pergola) =>
                 pergola.id === pergolaId
                   ? {
@@ -721,7 +730,7 @@ export function useObjectWorkbenchActions({
           });
         },
       }),
-    [commitPergolaDraftMutation, store],
+    [commitPergolaDraftMutation, compatibilityPergolas, store],
   );
 
   const commitSharedPergolaAttachmentStrategy = useCallback(
@@ -735,7 +744,7 @@ export function useObjectWorkbenchActions({
             objectFirst: buildObjectFirstDraftWithCompatibilityPergolas({
               objectFirstDraft,
               pergolas: upsertObjectWorkbenchPergolaDrafts(currentPergolas, pergolaId, {}),
-              compatibilityPergolas: store.derived.compatibilityBridge.pergolas,
+              compatibilityPergolas,
               mapPergola: (pergola) =>
                 pergola.id === pergolaId
                   ? {
@@ -752,7 +761,7 @@ export function useObjectWorkbenchActions({
           });
         },
       }),
-    [commitPergolaDraftMutation, store],
+    [commitPergolaDraftMutation, compatibilityPergolas, store],
   );
 
   const commitDrawingField = useCallback(

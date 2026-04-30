@@ -2,10 +2,6 @@ import type { ModuleViewsTab } from '@/app/staff/calculator/ModuleViewsCard';
 import type { ModulePlanModel, ModuleSectionModel } from '@/app/staff/calculator/moduleViews';
 import { buildCustomHouseFootprintPolygon, buildHouseFootprintPresetSideLocalPoints } from '@sp/geometry';
 import {
-  normalizeEstimateDrawingHouseFirstDraft as normalizeHouseFirstDraft,
-  type EstimateDrawingHouseFirstDraft,
-} from './compat/drawingDraftCompatibility';
-import {
   normalizeObjectFirstWorkbenchDraftVNext,
   type ObjectFirstDeckDraft,
   type ObjectFirstHouseAssemblyDraft,
@@ -47,20 +43,6 @@ import {
   type CalculatorHouseFootprintPolygonPoint,
 } from '@/lib/types/calculator';
 
-export {
-  updateEstimateDrawingHouseFirstDeckDrafts,
-  updateEstimateDrawingHouseFirstOpeningDrafts,
-  updateEstimateDrawingHouseFirstPergolaDrafts,
-  updateEstimateDrawingHouseFirstRoofDraft,
-} from './compat/drawingDraftCompatibility';
-export type {
-  EstimateDrawingHouseFirstDeckDraft,
-  EstimateDrawingHouseFirstDraft,
-  EstimateDrawingHouseFirstOpeningDraft,
-  EstimateDrawingHouseFirstPergolaDraft,
-  EstimateDrawingHouseFirstRoofDraft,
-} from './compat/drawingDraftCompatibility';
-
 type AnyRecord = Record<string, unknown>;
 
 export const ESTIMATE_DRAWING_OVERRIDES_OUTPUT_KEY = 'drawing_sheet_overrides';
@@ -74,7 +56,6 @@ export type EstimateDrawingDraft = {
   inputs: CalculatorInputs;
   overrides: EstimateDrawingOverrides;
   objectFirst?: ObjectFirstWorkbenchDraftVNext;
-  houseFirst?: EstimateDrawingHouseFirstDraft;
 };
 
 export type EstimateDrawingFieldTarget =
@@ -740,7 +721,6 @@ export function buildEstimateDrawingDraftFromSnapshot(snapshot: Record<string, u
     inputs,
     overrides: resolveEstimateDrawingOverridesFromSnapshot(snapshot),
     objectFirst: undefined,
-    houseFirst: undefined,
   };
 }
 
@@ -755,9 +735,7 @@ export function estimateDrawingDraftMatchesSnapshot(
     JSON.stringify(draft.inputs) === JSON.stringify(current.inputs) &&
     JSON.stringify(normalizeOverrides(draft.overrides)) === JSON.stringify(normalizeOverrides(current.overrides)) &&
     JSON.stringify(normalizeObjectFirstDraft(draft.objectFirst)) ===
-      JSON.stringify(normalizeObjectFirstDraft(current.objectFirst)) &&
-    JSON.stringify(normalizeHouseFirstDraft(draft.houseFirst)) ===
-      JSON.stringify(normalizeHouseFirstDraft(current.houseFirst))
+      JSON.stringify(normalizeObjectFirstDraft(current.objectFirst))
   );
 }
 
@@ -770,9 +748,7 @@ export function estimateDrawingDraftTouchesGeometry(
   return (
     JSON.stringify(draft.inputs) !== JSON.stringify(current.inputs) ||
     JSON.stringify(normalizeObjectFirstDraft(draft.objectFirst)) !==
-      JSON.stringify(normalizeObjectFirstDraft(current.objectFirst)) ||
-    JSON.stringify(normalizeHouseFirstDraft(draft.houseFirst)) !==
-      JSON.stringify(normalizeHouseFirstDraft(current.houseFirst))
+      JSON.stringify(normalizeObjectFirstDraft(current.objectFirst))
   );
 }
 
@@ -815,7 +791,7 @@ export function updateEstimateDrawingObjectFirstWorkbenchDraft(input: {
 }): EstimateDrawingDraft {
   const nextDraft = cloneValue(input.draft);
   nextDraft.objectFirst = normalizeObjectFirstDraft(input.objectFirst);
-  delete nextDraft.houseFirst;
+  delete (nextDraft as EstimateDrawingDraft & { houseFirst?: unknown }).houseFirst;
   return nextDraft;
 }
 

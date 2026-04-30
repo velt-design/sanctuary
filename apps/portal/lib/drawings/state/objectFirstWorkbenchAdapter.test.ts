@@ -5,7 +5,13 @@ import {
   buildObjectWorkbenchCompatibilityProjectModel,
   type ObjectWorkbenchCompatibilityProjectModel,
 } from './compat/objectWorkbenchCompatibilityModel';
-import { buildObjectFirstWorkbenchProjectModel } from './objectFirstWorkbenchAdapter';
+import {
+  buildObjectFirstDeckDraftsFromCompatibilityDrafts,
+  buildObjectFirstOpeningDraftsFromCompatibilityDrafts,
+  buildObjectFirstPergolaDraftsFromCompatibilityDrafts,
+  buildObjectFirstWorkbenchDraftFromProjectModel,
+  buildObjectFirstWorkbenchProjectModel,
+} from './objectFirstWorkbenchAdapter';
 
 function loadFixtureProject(slug = 'mono-standard'): ObjectWorkbenchCompatibilityProjectModel {
   const fixture = getSanctuaryGeometryWorkbenchFixture(slug);
@@ -90,23 +96,30 @@ describe('buildObjectFirstWorkbenchProjectModel', () => {
     if (!draft) {
       throw new Error('Expected fixture draft.');
     }
-    draft.houseFirst = {
-      ...(draft.houseFirst ?? {}),
-      decks: [
-        {
-          id: 'deck-1',
-          name: 'Rear deck',
-          kind: 'deck',
-          shape: 'preset',
-          presetType: 'rect_attached',
-          elevationMode: 'aligned_to_threshold',
-          levelOffsetMm: '0',
-          hostEdgeId: 'rear',
-          isAttached: true,
-          surfaceMaterial: 'timber_decking',
-        },
-      ],
-      openings: [
+    const baselineCompatibilityProject = buildObjectWorkbenchCompatibilityProjectModel({
+      snapshot: fixture.snapshot,
+      draft,
+    });
+    const baselineObjectFirstProject = buildObjectFirstWorkbenchProjectModel({
+      compatibilityProjectModel: baselineCompatibilityProject,
+    });
+    draft.objectFirst = buildObjectFirstWorkbenchDraftFromProjectModel(baselineObjectFirstProject);
+    draft.objectFirst.decks = buildObjectFirstDeckDraftsFromCompatibilityDrafts([
+      {
+        id: 'deck-1',
+        name: 'Rear deck',
+        kind: 'deck',
+        shape: 'preset',
+        presetType: 'rect_attached',
+        elevationMode: 'aligned_to_threshold',
+        levelOffsetMm: '0',
+        hostEdgeId: 'rear',
+        isAttached: true,
+        surfaceMaterial: 'timber_decking',
+      },
+    ]);
+    draft.objectFirst.openings = buildObjectFirstOpeningDraftsFromCompatibilityDrafts(
+      [
         {
           id: 'opening-1',
           label: 'Slider',
@@ -120,14 +133,18 @@ describe('buildObjectFirstWorkbenchProjectModel', () => {
           offsetAlongWallM: '1.2',
         },
       ],
-      pergolas: [
+      baselineCompatibilityProject.house?.id ?? null,
+    );
+    draft.objectFirst.pergolas = buildObjectFirstPergolaDraftsFromCompatibilityDrafts(
+      [
         {
           id: 'pergola-1',
           attachmentEdgeId: 'footprint-edge-1',
           attachmentZoneId: 'zone-soffit-footprint-edge-1',
         },
       ],
-    };
+      baselineCompatibilityProject.pergolas,
+    );
     const compatibilityProject = buildObjectWorkbenchCompatibilityProjectModel({
       snapshot: fixture.snapshot,
       draft,

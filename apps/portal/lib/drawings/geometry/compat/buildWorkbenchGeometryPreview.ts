@@ -10,8 +10,7 @@ import type { EstimateDrawingDraft } from '@/lib/estimates/drawingEdits';
 import { deriveWorkbenchGeometry } from './deriveWorkbenchGeometry';
 import { coerceHiddenWorkbenchGableBaseline } from '../hiddenWorkbenchGableBaseline';
 import { resolveWorkbenchGeometryModule } from '../resolveWorkbenchGeometryModule';
-import { buildHouseFirstWorkbenchProjectModel } from '../../state/houseFirstWorkbenchAdapter';
-import { buildHouseFirstCompatibilityDraftFromObjectFirstDraft } from '../../state/objectFirstWorkbenchAdapter';
+import { buildObjectWorkbenchCompatibilityProjectModel } from '../../state/compat/objectWorkbenchCompatibilityModel';
 import {
   buildWorkbenchDeckSupportDiagnostic,
   resolveWorkbenchDeckSupportActiveSide,
@@ -129,7 +128,7 @@ function annotateSceneHostEdgeSides(
 
 function annotateSceneAttachmentZoneMetadata(
   scene: ViewerSceneModel,
-  projectModel: ReturnType<typeof buildHouseFirstWorkbenchProjectModel>,
+  projectModel: ReturnType<typeof buildObjectWorkbenchCompatibilityProjectModel>,
 ): ViewerSceneModel {
   const zones = projectModel.house?.attachmentZones ?? [];
   const blocked = projectModel.house?.attachmentZoneDiagnostics.blocked ?? [];
@@ -169,16 +168,9 @@ export function buildWorkbenchGeometryPreview(input: {
   draft?: EstimateDrawingDraft | null;
   moduleIndex: number;
 }): GeometryPreviewState {
-  const compatibilityDraft =
-    input.draft?.objectFirst
-      ? {
-          ...input.draft,
-          houseFirst: buildHouseFirstCompatibilityDraftFromObjectFirstDraft(input.draft.objectFirst),
-        }
-      : input.draft;
-  const projectModel = buildHouseFirstWorkbenchProjectModel({
+  const projectModel = buildObjectWorkbenchCompatibilityProjectModel({
     snapshot: input.snapshot,
-    draft: compatibilityDraft,
+    draft: input.draft,
   });
   const resolved = resolveWorkbenchGeometryModule({
     snapshot: input.snapshot,

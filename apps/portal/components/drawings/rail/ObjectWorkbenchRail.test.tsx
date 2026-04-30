@@ -5,6 +5,11 @@ import { buildEstimateDrawingDraftFromSnapshot, type EstimateDrawingDraft } from
 import { buildDrawingWorkbenchStore } from '@/lib/drawings/state/drawingWorkbenchStore';
 import { createDrawingWorkbenchUiState, type DrawingWorkbenchRailTab } from '@/lib/drawings/state/drawingWorkbenchUiState';
 import type { HouseFormRoofIntentModel, WorkbenchObjectRef } from '@/lib/drawings/state/objectFirstWorkbenchModel';
+import type { ObjectWorkbenchCompatibilityDraft } from '@/lib/drawings/state/compat/objectWorkbenchCompatibilityModel';
+import {
+  buildObjectFirstOpeningDraftsFromCompatibilityDrafts,
+  buildObjectFirstWorkbenchDraftFromProjectModel,
+} from '@/lib/drawings/state/objectFirstWorkbenchAdapter';
 import ObjectWorkbenchRail from './ObjectWorkbenchRail';
 
 function buildRailProps(input?: {
@@ -77,28 +82,64 @@ function buildRailProps(input?: {
   };
 }
 
+function applyObjectFirstCompatibilityDraft(input: {
+  fixtureSlug?: 'mono-standard' | 'box-standard';
+  draft: EstimateDrawingDraft;
+  compatibility: ObjectWorkbenchCompatibilityDraft;
+}) {
+  const fixture = getSanctuaryGeometryWorkbenchFixture(input.fixtureSlug ?? 'mono-standard');
+  if (!fixture) throw new Error('Expected Sanctuary fixture.');
+  const baselineStore = buildDrawingWorkbenchStore({
+    snapshot: fixture.snapshot,
+    ui: createDrawingWorkbenchUiState(),
+  });
+  const objectFirst = buildObjectFirstWorkbenchDraftFromProjectModel(baselineStore.persisted.projectModel);
+  const houseForm = objectFirst.houseAssembly?.houseForms[0] ?? null;
+  if (input.compatibility.roof && houseForm) {
+    houseForm.roofIntentAuthored = true;
+    houseForm.roofIntent = {
+      ...houseForm.roofIntent,
+      ...input.compatibility.roof,
+      appendage: {
+        ...houseForm.roofIntent.appendage,
+        ...(input.compatibility.roof.appendage ?? {}),
+      },
+    };
+  }
+  if (input.compatibility.openings) {
+    objectFirst.openings = buildObjectFirstOpeningDraftsFromCompatibilityDrafts(
+      input.compatibility.openings,
+      houseForm?.id ?? null,
+    );
+  }
+  input.draft.objectFirst = objectFirst;
+}
+
 function buildDraftWithRoofForm(form: HouseFormRoofIntentModel['form']): EstimateDrawingDraft {
   const fixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
   if (!fixture) throw new Error('Expected Sanctuary fixture.');
   const draft = buildEstimateDrawingDraftFromSnapshot(fixture.snapshot);
   if (!draft) throw new Error('Expected drawing draft.');
-  draft.houseFirst = {
-    roof: {
-      form,
-      material: 'corrugated_iron',
-      primaryPitchDeg: '12',
-      primaryFallDirection: 'negative_y',
-      ridgeAxis: 'x',
-      openGableEndIds: ['house-gable-end-x-1'],
-      appendage: {
-        enabled: true,
-        form: 'mono',
-        hostEdge: 'rear',
-        pitchDeg: '5',
-        dropMm: '450',
+  applyObjectFirstCompatibilityDraft({
+    draft,
+    compatibility: {
+      roof: {
+        form,
+        material: 'corrugated_iron',
+        primaryPitchDeg: '12',
+        primaryFallDirection: 'negative_y',
+        ridgeAxis: 'x',
+        openGableEndIds: ['house-gable-end-x-1'],
+        appendage: {
+          enabled: true,
+          form: 'mono',
+          hostEdge: 'rear',
+          pitchDeg: '5',
+          dropMm: '450',
+        },
       },
     },
-  };
+  });
   return draft;
 }
 
@@ -142,20 +183,23 @@ describe('ObjectWorkbenchRail', () => {
     if (!fixture) throw new Error('Expected Sanctuary fixture.');
     const draft = buildEstimateDrawingDraftFromSnapshot(fixture.snapshot);
     if (!draft) throw new Error('Expected drawing draft.');
-    draft.houseFirst = {
-      openings: [
-        {
-          id: 'opening-door-1',
-          label: 'Rear door',
-          kind: 'hinged_door',
-          wallId: 'rear',
-          widthM: '0.9',
-          heightM: '2.1',
-          sillHeightM: '0',
-          offsetAlongWallM: '0.6',
-        },
-      ],
-    };
+    applyObjectFirstCompatibilityDraft({
+      draft,
+      compatibility: {
+        openings: [
+          {
+            id: 'opening-door-1',
+            label: 'Rear door',
+            kind: 'hinged_door',
+            wallId: 'rear',
+            widthM: '0.9',
+            heightM: '2.1',
+            sillHeightM: '0',
+            offsetAlongWallM: '0.6',
+          },
+        ],
+      },
+    });
 
     const markup = renderToStaticMarkup(
       <ObjectWorkbenchRail
@@ -176,20 +220,23 @@ describe('ObjectWorkbenchRail', () => {
     if (!fixture) throw new Error('Expected Sanctuary fixture.');
     const draft = buildEstimateDrawingDraftFromSnapshot(fixture.snapshot);
     if (!draft) throw new Error('Expected drawing draft.');
-    draft.houseFirst = {
-      openings: [
-        {
-          id: 'opening-window-1',
-          label: 'Rear window',
-          kind: 'window',
-          wallId: 'rear',
-          widthM: '1.8',
-          heightM: '1.2',
-          sillHeightM: '0.9',
-          offsetAlongWallM: '0.6',
-        },
-      ],
-    };
+    applyObjectFirstCompatibilityDraft({
+      draft,
+      compatibility: {
+        openings: [
+          {
+            id: 'opening-window-1',
+            label: 'Rear window',
+            kind: 'window',
+            wallId: 'rear',
+            widthM: '1.8',
+            heightM: '1.2',
+            sillHeightM: '0.9',
+            offsetAlongWallM: '0.6',
+          },
+        ],
+      },
+    });
 
     const markup = renderToStaticMarkup(
       <ObjectWorkbenchRail

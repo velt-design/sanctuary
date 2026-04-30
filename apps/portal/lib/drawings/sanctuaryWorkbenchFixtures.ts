@@ -4,9 +4,15 @@ import type { CostOutputV1, RoofType } from '@sp/costing';
 import type { CalculatorModuleInputs } from '@/lib/types/calculator';
 import {
   buildEstimateDrawingDraftFromSnapshot,
-  updateEstimateDrawingHouseFirstRoofDraft,
+  updateEstimateDrawingObjectFirstWorkbenchDraft,
   type EstimateDrawingDraft,
 } from '@/lib/estimates/drawingEdits';
+import { buildObjectWorkbenchCompatibilityProjectModel } from './state/compat/objectWorkbenchCompatibilityModel';
+import {
+  buildObjectFirstWorkbenchDraftFromProjectModel,
+  buildObjectFirstWorkbenchProjectModel,
+} from './state/objectFirstWorkbenchAdapter';
+import type { HouseFormRoofIntentModel } from './state/objectFirstWorkbenchModel';
 import type { SanctuaryGeometryWorkbenchFixture } from './sanctuaryWorkbenchFixtures.types';
 
 function makeModule(overrides: Partial<CalculatorModuleInputs> = {}): CalculatorModuleInputs {
@@ -156,15 +162,36 @@ function makeSnapshot(module: CalculatorModuleInputs, result: CostOutputV1, labe
 
 function makeHouseRoofDraftFixtureDraft(input: {
   snapshot: Record<string, unknown>;
-  roof: NonNullable<EstimateDrawingDraft['houseFirst']>['roof'];
+  roof: Partial<HouseFormRoofIntentModel>;
 }): EstimateDrawingDraft {
   const draft = buildEstimateDrawingDraftFromSnapshot(input.snapshot);
   if (!draft) {
     throw new Error('Expected drawing draft from fixture snapshot.');
   }
-  return updateEstimateDrawingHouseFirstRoofDraft({
+  const compatibilityProjectModel = buildObjectWorkbenchCompatibilityProjectModel({
+    snapshot: input.snapshot,
     draft,
-    roof: input.roof ?? null,
+  });
+  const projectModel = buildObjectFirstWorkbenchProjectModel({
+    compatibilityProjectModel,
+  });
+  const objectFirst = buildObjectFirstWorkbenchDraftFromProjectModel(projectModel);
+  const houseForm = objectFirst.houseAssembly?.houseForms[0];
+  if (!houseForm) {
+    throw new Error('Expected object-first house form from fixture snapshot.');
+  }
+  houseForm.roofIntentAuthored = true;
+  houseForm.roofIntent = {
+    ...houseForm.roofIntent,
+    ...input.roof,
+    appendage: {
+      ...houseForm.roofIntent.appendage,
+      ...(input.roof.appendage ?? {}),
+    },
+  };
+  return updateEstimateDrawingObjectFirstWorkbenchDraft({
+    draft,
+    objectFirst,
   });
 }
 

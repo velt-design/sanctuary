@@ -34,7 +34,6 @@ import {
 } from './drawingWorkbenchRailModel';
 import { buildObjectWorkbenchCompatibilityProjectModel } from './compat/objectWorkbenchCompatibilityModel';
 import {
-  buildObjectWorkbenchCompatibilityDraftFromObjectFirstDraft,
   buildObjectFirstWorkbenchProjectModel,
 } from './objectFirstWorkbenchAdapter';
 import {
@@ -47,10 +46,8 @@ import {
   type ObjectWorkbenchInspectorFacade,
 } from './objectWorkbenchInspectorModel';
 import type {
-  ObjectWorkbenchCompatibilityMigrationWarning,
   ObjectWorkbenchCompatibilityProjectModel,
   ObjectWorkbenchCompatibilityHouseModel,
-  ObjectWorkbenchCompatibilityPergolaModel,
 } from './compat/objectWorkbenchCompatibilityModel';
 import type {
   HouseAssemblyModel,
@@ -75,36 +72,6 @@ export type DrawingWorkbenchModuleEntry = {
 
 export type WorkbenchDeckInteractionDiagnostic = DeckInteractionCapability;
 
-export type DrawingWorkbenchCompatibilityBridge = {
-  projectModel: ObjectWorkbenchCompatibilityProjectModel;
-  house: ObjectWorkbenchCompatibilityHouseModel | null;
-  houseCount: number;
-  decks: ObjectWorkbenchCompatibilityHouseModel['decks'];
-  openings: ObjectWorkbenchCompatibilityHouseModel['openings'];
-  activeDeckId: string | null;
-  activeDeck: ObjectWorkbenchCompatibilityHouseModel['decks'][number] | null;
-  activeOpeningId: string | null;
-  activeOpening: ObjectWorkbenchCompatibilityHouseModel['openings'][number] | null;
-  roofForm: ObjectWorkbenchCompatibilityHouseModel['roof']['form'] | null;
-  roofReviewStatus: 'ready' | 'approximate' | 'blocked' | 'none';
-  roofValidationStatus: ObjectWorkbenchCompatibilityHouseModel['roof']['validation']['status'] | null;
-  roofValidationCode: ObjectWorkbenchCompatibilityHouseModel['roof']['validation']['code'] | null;
-  roofValidationMessage: string | null;
-  roofApproximationReasons: NonNullable<ObjectWorkbenchCompatibilityHouseModel['roof']['validation']['approximationReasons']>;
-  roofProvenance: ObjectWorkbenchCompatibilityHouseModel['roof']['provenance'] | null;
-  roofGeometryKind: ObjectWorkbenchCompatibilityHouseModel['roof']['geometryKind'] | null;
-  roofAppendageEnabled: boolean;
-  roofAppendageStatus: 'valid' | 'invalid' | 'off';
-  roofAppendageSupportedHostEdges: ObjectWorkbenchCompatibilityHouseModel['roof']['appendageSupportedHostEdges'];
-  roofAppendageSupportReason: string | null;
-  pergolas: ObjectWorkbenchCompatibilityPergolaModel[];
-  activePergolaId: string | null;
-  activePergola: ObjectWorkbenchCompatibilityPergolaModel | null;
-  migrationWarnings: ObjectWorkbenchCompatibilityMigrationWarning[];
-  migrationWarningCount: number;
-  houseIsLowConfidence: boolean;
-};
-
 export type DrawingWorkbenchStore = {
   persisted: {
     snapshot: Record<string, unknown> | null;
@@ -114,8 +81,6 @@ export type DrawingWorkbenchStore = {
     compatibilityBridge: {
       projectModel: ObjectWorkbenchCompatibilityProjectModel;
     };
-    // Compatibility model is a derived projection for geometry/editor paths that have not moved to object-first yet.
-    compatibilityProjectModel: ObjectWorkbenchCompatibilityProjectModel;
   };
   ui: DrawingWorkbenchUiState;
   derived: {
@@ -149,7 +114,6 @@ export type DrawingWorkbenchStore = {
     activeDeckSupport: WorkbenchDeckSupportDiagnostic | null;
     activeDeckInteraction: WorkbenchDeckInteractionDiagnostic | null;
     objectWorkbench: ObjectWorkbenchInspectorFacade;
-    compatibilityBridge: DrawingWorkbenchCompatibilityBridge;
     objectFirstPergolas: PergolaObjectModel[];
     activeObjectFirstPergola: PergolaObjectModel | null;
     pergolaAttachmentResolutions: Record<string, ObjectFirstPergolaAttachmentResolution>;
@@ -186,19 +150,9 @@ export function buildDrawingWorkbenchStore(input: {
   const drawingModules = buildEstimateDrawingModules(effectiveSnapshot, {
     ignoreModuleResults: input.ignoreModuleResults,
   });
-  const hasObjectFirstDraft = input.draft?.objectFirst !== undefined && input.draft.objectFirst !== null;
-  const compatibilityDraft =
-    hasObjectFirstDraft && input.draft
-      ? {
-          ...input.draft,
-          houseFirst: buildObjectWorkbenchCompatibilityDraftFromObjectFirstDraft(
-            input.draft.objectFirst,
-          ),
-        }
-      : input.draft;
   const compatibilityProjectModel = buildObjectWorkbenchCompatibilityProjectModel({
     snapshot: input.snapshot,
-    draft: compatibilityDraft,
+    draft: input.draft,
     ignoreModuleResults: input.ignoreModuleResults,
   });
   const projectModel = buildObjectFirstWorkbenchProjectModel({
@@ -393,49 +347,6 @@ export function buildDrawingWorkbenchStore(input: {
       planRenderStatus: module.planRenderStatus,
     })),
   });
-  const compatibilityRoofValidationStatus = compatibilityProjectModel.house?.roof.validation.status ?? null;
-  const compatibilityBridge: DrawingWorkbenchCompatibilityBridge = {
-    projectModel: compatibilityProjectModel,
-    house: compatibilityProjectModel.house,
-    houseCount: compatibilityProjectModel.house ? 1 : 0,
-    decks,
-    openings,
-    activeDeckId: activeDeck?.id ?? null,
-    activeDeck,
-    activeOpeningId: activeOpening?.id ?? null,
-    activeOpening,
-    roofForm: compatibilityProjectModel.house?.roof.form ?? null,
-    roofReviewStatus:
-      compatibilityRoofValidationStatus === 'invalid'
-        ? 'blocked'
-        : compatibilityRoofValidationStatus === 'approximate'
-          ? 'approximate'
-          : compatibilityRoofValidationStatus === 'valid'
-            ? 'ready'
-            : 'none',
-    roofValidationStatus: compatibilityRoofValidationStatus,
-    roofValidationCode: compatibilityProjectModel.house?.roof.validation.code ?? null,
-    roofValidationMessage: compatibilityProjectModel.house?.roof.validation.message ?? null,
-    roofApproximationReasons: compatibilityProjectModel.house?.roof.validation.approximationReasons ?? [],
-    roofProvenance: compatibilityProjectModel.house?.roof.provenance ?? null,
-    roofGeometryKind: compatibilityProjectModel.house?.roof.geometryKind ?? null,
-    roofAppendageEnabled: Boolean(compatibilityProjectModel.house?.roof.appendage.enabled),
-    roofAppendageSupportedHostEdges: compatibilityProjectModel.house?.roof.appendageSupportedHostEdges ?? [],
-    roofAppendageSupportReason: compatibilityProjectModel.house?.roof.appendageSupportReason ?? null,
-    roofAppendageStatus: compatibilityProjectModel.house?.roof.appendage.enabled
-      ? compatibilityProjectModel.house?.roof.validation.code === 'invalid_appendage_topology' ||
-        compatibilityProjectModel.house?.roof.validation.code === 'invalid_appendage_host_edge'
-        ? 'invalid'
-        : 'valid'
-      : 'off',
-    pergolas: compatibilityProjectModel.pergolas,
-    activePergolaId: activePergola?.id ?? null,
-    activePergola,
-    migrationWarnings: compatibilityProjectModel.warnings,
-    migrationWarningCount: compatibilityProjectModel.warnings.length,
-    houseIsLowConfidence: Boolean(compatibilityProjectModel.house?.lowConfidence),
-  };
-
   return {
     persisted: {
       snapshot: effectiveSnapshot,
@@ -445,7 +356,6 @@ export function buildDrawingWorkbenchStore(input: {
       compatibilityBridge: {
         projectModel: compatibilityProjectModel,
       },
-      compatibilityProjectModel,
     },
     ui,
     derived: {
@@ -479,7 +389,6 @@ export function buildDrawingWorkbenchStore(input: {
       activeDeckSupport,
       activeDeckInteraction,
       objectWorkbench,
-      compatibilityBridge,
       objectFirstPergolas,
       activeObjectFirstPergola,
       pergolaAttachmentResolutions,

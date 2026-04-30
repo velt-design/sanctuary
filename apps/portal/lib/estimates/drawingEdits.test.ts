@@ -8,8 +8,6 @@ import {
   buildEstimateDrawingDraftFromSnapshot,
   deriveEstimateDrawingEditableFields,
   resolveEstimateDrawingOverridesFromSnapshot,
-  updateEstimateDrawingHouseFirstDeckDrafts,
-  updateEstimateDrawingHouseFirstPergolaDrafts,
   updateEstimateDrawingObjectFirstDeckDrafts,
   updateEstimateDrawingObjectFirstPergolaDrafts,
 } from './drawingEdits';
@@ -320,85 +318,9 @@ describe('drawingEdits', () => {
     expect(mixedRoof.draft.inputs.modules[0]?.roofMaterial).toBe('mixed');
   });
 
-  it('round-trips presetRect deck drafts through house-first deck updates', () => {
+  it('writes object-first drafts without dual-writing compatibility state', () => {
     const snapshot = makeSnapshot(makeModule());
     const draft = buildEstimateDrawingDraftFromSnapshot(snapshot)!;
-
-    const nextDraft = updateEstimateDrawingHouseFirstDeckDrafts({
-      draft,
-      decks: [
-        {
-          id: 'deck-1',
-          shape: 'preset',
-          presetType: 'rect_detached',
-          presetRect: {
-            widthM: '3.6',
-            depthM: '3',
-            centerOffsetM: '0.4',
-            detachedGapM: '0.6',
-          },
-          floatingRect: {
-            centerAlongM: '5',
-            centerDepthM: '-2.1',
-            widthM: '3.6',
-            depthM: '3',
-          },
-          outline: [
-            { alongM: '0', depthM: '0' },
-            { alongM: '3.6', depthM: '0' },
-            { alongM: '3.6', depthM: '3' },
-            { alongM: '0', depthM: '3' },
-          ],
-          isAttached: false,
-          surfaceMaterial: 'composite',
-        },
-      ],
-    });
-
-    expect(nextDraft.houseFirst?.decks?.[0]?.presetRect).toEqual({
-      widthM: '3.6',
-      depthM: '3',
-      centerOffsetM: '0.4',
-      detachedGapM: '0.6',
-    });
-    expect(nextDraft.houseFirst?.decks?.[0]?.floatingRect).toEqual({
-      centerAlongM: '5',
-      centerDepthM: '-2.1',
-      widthM: '3.6',
-      depthM: '3',
-    });
-  });
-
-  it('round-trips canonical pergola attachment drafts through house-first pergola updates', () => {
-    const snapshot = makeSnapshot(makeModule());
-    const draft = buildEstimateDrawingDraftFromSnapshot(snapshot)!;
-
-    const nextDraft = updateEstimateDrawingHouseFirstPergolaDrafts({
-      draft,
-      pergolas: [
-        {
-          id: ' pergola-1 ',
-          attachmentEdgeId: ' footprint-edge-4 ',
-          attachmentZoneId: ' zone-soffit-footprint-edge-4 ',
-        },
-      ],
-    });
-
-    expect(nextDraft.houseFirst?.pergolas).toEqual([
-      {
-        id: 'pergola-1',
-        attachmentEdgeId: 'footprint-edge-4',
-        attachmentZoneId: 'zone-soffit-footprint-edge-4',
-      },
-    ]);
-  });
-
-  it('writes object-first drafts without dual-writing house-first compatibility state', () => {
-    const snapshot = makeSnapshot(makeModule());
-    const draft = buildEstimateDrawingDraftFromSnapshot(snapshot)!;
-    draft.houseFirst = {
-      pergolas: [{ id: 'pergola-legacy', attachmentEdgeId: 'footprint-edge-1' }],
-    };
 
     const deckDraft = updateEstimateDrawingObjectFirstDeckDrafts({
       draft,
@@ -424,7 +346,7 @@ describe('drawingEdits', () => {
       ],
     });
 
-    expect(deckDraft.houseFirst).toBeUndefined();
+    expect('houseFirst' in (deckDraft as Record<string, unknown>)).toBe(false);
     expect(deckDraft.objectFirst?.decks[0]).toMatchObject({
       id: 'deck-1',
       label: 'Rear deck',
@@ -451,7 +373,7 @@ describe('drawingEdits', () => {
       ],
     });
 
-    expect(pergolaDraft.houseFirst).toBeUndefined();
+    expect('houseFirst' in (pergolaDraft as Record<string, unknown>)).toBe(false);
     expect(pergolaDraft.objectFirst?.pergolas[0]?.attachmentZoneId).toBe('zone-soffit-footprint-edge-3');
   });
 });

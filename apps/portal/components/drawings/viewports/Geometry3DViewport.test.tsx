@@ -19,6 +19,12 @@ import { getSanctuaryGeometryWorkbenchFixture } from "@/lib/drawings/sanctuaryWo
 import { buildObjectWorkbenchGeometryPreview } from "@/lib/drawings/geometry/buildWorkbenchGeometryPreview";
 import { buildEstimateDrawingDraftFromSnapshot } from "@/lib/estimates/drawingEdits";
 import { applyObjectWorkbenchGeometryEditIntent } from "@/lib/drawings/geometry/geometryEditAdapter";
+import { buildDrawingWorkbenchStore } from "@/lib/drawings/state/drawingWorkbenchStore";
+import { createDrawingWorkbenchUiState } from "@/lib/drawings/state/drawingWorkbenchUiState";
+import {
+  buildObjectFirstDeckDraftsFromCompatibilityDrafts,
+  buildObjectFirstWorkbenchDraftFromProjectModel,
+} from "@/lib/drawings/state/objectFirstWorkbenchAdapter";
 import Geometry3DViewport, {
   buildClippedBoxGeometry,
   buildClippedProfileExtrusionGeometry,
@@ -1419,8 +1425,14 @@ describe("Geometry3DViewport", () => {
     if (!draft) {
       throw new Error("Expected drawing draft.");
     }
-    draft.houseFirst = {
-      decks: [
+    const baselineStore = buildDrawingWorkbenchStore({
+      snapshot: fixture.snapshot,
+      ui: createDrawingWorkbenchUiState(),
+    });
+    draft.objectFirst = buildObjectFirstWorkbenchDraftFromProjectModel(
+      baselineStore.persisted.projectModel,
+    );
+    draft.objectFirst.decks = buildObjectFirstDeckDraftsFromCompatibilityDrafts([
         {
           id: "deck-1",
           name: "Deck 1",
@@ -1468,8 +1480,7 @@ describe("Geometry3DViewport", () => {
           isAttached: false,
           surfaceMaterial: "composite",
         },
-      ],
-    };
+      ]);
 
     const geometryPreview = buildObjectWorkbenchGeometryPreview({
       projectId: "proj_preview",

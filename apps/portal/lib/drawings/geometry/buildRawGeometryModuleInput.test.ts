@@ -4,9 +4,18 @@ import { describe, expect, it } from 'vitest';
 import type { CostOutputV1 } from '@sp/costing';
 import type { AttachmentSide, HouseFootprintPreset, HouseRoofForm } from '@sp/geometry';
 import { getSanctuaryGeometryWorkbenchFixture } from '@/lib/drawings/sanctuaryWorkbenchFixtures';
-import { buildHouseFirstWorkbenchProjectModel } from '@/lib/drawings/state/houseFirstWorkbenchAdapter';
+import {
+  buildObjectWorkbenchCompatibilityProjectModel,
+  type ObjectWorkbenchCompatibilityDraft,
+} from '@/lib/drawings/state/compat/objectWorkbenchCompatibilityModel';
 import { makeHouseFirstDeckSupportProjectFixture } from '@/lib/drawings/state/houseFirstWorkbenchFixtures';
-import { buildEstimateDrawingDraftFromSnapshot } from '@/lib/estimates/drawingEdits';
+import { buildEstimateDrawingDraftFromSnapshot, type EstimateDrawingDraft } from '@/lib/estimates/drawingEdits';
+import {
+  buildObjectFirstDeckDraftsFromCompatibilityDrafts,
+  buildObjectFirstOpeningDraftsFromCompatibilityDrafts,
+  buildObjectFirstWorkbenchDraftFromProjectModel,
+  buildObjectFirstWorkbenchProjectModel,
+} from '@/lib/drawings/state/objectFirstWorkbenchAdapter';
 import { buildRawGeometryModuleInput } from './buildRawGeometryModuleInput';
 import type { CalculatorModuleInputs } from '@/lib/types/calculator';
 
@@ -23,6 +32,38 @@ const HOUSE_FOOTPRINT_PRESETS: readonly HouseFootprintPreset[] = [
 
 const HOUSE_ROOF_FORMS: readonly HouseRoofForm[] = ['flat', 'mono', 'gable', 'hipped'];
 const ATTACHMENT_SIDES: readonly AttachmentSide[] = ['rear', 'front', 'left', 'right'];
+
+function applyObjectFirstCompatibilityDraft(input: {
+  snapshot: Record<string, unknown>;
+  draft: EstimateDrawingDraft;
+  compatibility: ObjectWorkbenchCompatibilityDraft;
+}) {
+  const compatibilityProjectModel = buildObjectWorkbenchCompatibilityProjectModel({ snapshot: input.snapshot });
+  const objectFirstProjectModel = buildObjectFirstWorkbenchProjectModel({ compatibilityProjectModel });
+  const objectFirst = buildObjectFirstWorkbenchDraftFromProjectModel(objectFirstProjectModel);
+  const houseForm = objectFirst.houseAssembly?.houseForms[0] ?? null;
+  if (input.compatibility.roof && houseForm) {
+    houseForm.roofIntentAuthored = true;
+    houseForm.roofIntent = {
+      ...houseForm.roofIntent,
+      ...input.compatibility.roof,
+      appendage: {
+        ...houseForm.roofIntent.appendage,
+        ...(input.compatibility.roof.appendage ?? {}),
+      },
+    };
+  }
+  if (input.compatibility.decks) {
+    objectFirst.decks = buildObjectFirstDeckDraftsFromCompatibilityDrafts(input.compatibility.decks);
+  }
+  if (input.compatibility.openings) {
+    objectFirst.openings = buildObjectFirstOpeningDraftsFromCompatibilityDrafts(
+      input.compatibility.openings,
+      houseForm?.id ?? null,
+    );
+  }
+  input.draft.objectFirst = objectFirst;
+}
 
 function makeModule(overrides: Partial<CalculatorModuleInputs> = {}): CalculatorModuleInputs {
   return {
@@ -160,7 +201,7 @@ describe('buildRawGeometryModuleInput', () => {
       structural: {
         heights: {
           houseUndersideM: '2.4',
-          outerUndersideM: null,
+          outerUndersideM: 2.768,
           referenceUndersideM: '2.4',
         },
         profiles: {
@@ -291,21 +332,25 @@ describe('buildRawGeometryModuleInput', () => {
     if (!fixture) throw new Error('Expected mono fixture');
     const draft = buildEstimateDrawingDraftFromSnapshot(fixture.snapshot);
     if (!draft) throw new Error('Expected draft');
-    draft.houseFirst = {
-      roof: {
-        form: 'gable',
-        primaryPitchDeg: '18',
-        primaryFallDirection: 'negative_x',
-        ridgeAxis: 'y',
-        appendage: {
-          enabled: true,
-          hostEdge: 'front',
-          pitchDeg: '4',
-          dropMm: '500',
+    applyObjectFirstCompatibilityDraft({
+      snapshot: fixture.snapshot,
+      draft,
+      compatibility: {
+        roof: {
+          form: 'gable',
+          primaryPitchDeg: '18',
+          primaryFallDirection: 'negative_x',
+          ridgeAxis: 'y',
+          appendage: {
+            enabled: true,
+            hostEdge: 'front',
+            pitchDeg: '4',
+            dropMm: '500',
+          },
         },
       },
-    };
-    const projectModel = buildHouseFirstWorkbenchProjectModel({
+    });
+    const projectModel = buildObjectWorkbenchCompatibilityProjectModel({
       snapshot: fixture.snapshot,
       draft,
     });
@@ -334,7 +379,7 @@ describe('buildRawGeometryModuleInput', () => {
   it('maps corrected derived shared house roof orientation into raw house context without explicit overrides', () => {
     const fixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
     if (!fixture) throw new Error('Expected mono fixture');
-    const projectModel = buildHouseFirstWorkbenchProjectModel({
+    const projectModel = buildObjectWorkbenchCompatibilityProjectModel({
       snapshot: fixture.snapshot,
     });
 
@@ -355,12 +400,12 @@ describe('buildRawGeometryModuleInput', () => {
     const gableDraft = buildEstimateDrawingDraftFromSnapshot(fixture.snapshot);
     if (!gableDraft) throw new Error('Expected draft');
     gableDraft.inputs.modules[0]!.houseFootprintPreset = 'u_shape';
-    gableDraft.houseFirst = {
-      roof: {
-        form: 'gable',
-      },
-    };
-    const gableProjectModel = buildHouseFirstWorkbenchProjectModel({
+    applyObjectFirstCompatibilityDraft({
+      snapshot: fixture.snapshot,
+      draft: gableDraft,
+      compatibility: { roof: { form: 'gable' } },
+    });
+    const gableProjectModel = buildObjectWorkbenchCompatibilityProjectModel({
       snapshot: fixture.snapshot,
       draft: gableDraft,
     });
@@ -394,10 +439,12 @@ describe('buildRawGeometryModuleInput', () => {
         const draft = buildEstimateDrawingDraftFromSnapshot(fixture.snapshot);
         if (!draft) throw new Error('Expected draft');
         draft.inputs.modules[0]!.houseFootprintPreset = preset;
-        draft.houseFirst = {
-          roof,
-        };
-        const projectModel = buildHouseFirstWorkbenchProjectModel({
+        applyObjectFirstCompatibilityDraft({
+          snapshot: fixture.snapshot,
+          draft,
+          compatibility: { roof },
+        });
+        const projectModel = buildObjectWorkbenchCompatibilityProjectModel({
           snapshot: fixture.snapshot,
           draft,
         });
@@ -436,14 +483,18 @@ describe('buildRawGeometryModuleInput', () => {
           if (!draft) throw new Error('Expected draft');
           draft.inputs.modules[0]!.attachmentSide = attachmentSide;
           draft.inputs.modules[0]!.houseFootprintPreset = preset;
-          draft.houseFirst = {
-            roof: {
-              form,
-              primaryPitchDeg: form === 'gable' ? '' : '0',
-              material: 'corrugated_iron',
+          applyObjectFirstCompatibilityDraft({
+            snapshot: fixture.snapshot,
+            draft,
+            compatibility: {
+              roof: {
+                form,
+                primaryPitchDeg: form === 'gable' ? '' : '0',
+                material: 'corrugated_iron',
+              },
             },
-          };
-          const projectModel = buildHouseFirstWorkbenchProjectModel({
+          });
+          const projectModel = buildObjectWorkbenchCompatibilityProjectModel({
             snapshot: fixture.snapshot,
             draft,
           });
@@ -474,35 +525,39 @@ describe('buildRawGeometryModuleInput', () => {
     if (!fixture) throw new Error('Expected mono fixture');
     const draft = buildEstimateDrawingDraftFromSnapshot(fixture.snapshot);
     if (!draft) throw new Error('Expected draft');
-    draft.houseFirst = {
-      decks: [
-        {
-          id: 'deck-1',
-          name: 'Detached deck',
-          kind: 'deck',
-          shape: 'preset',
-          presetType: 'rect_detached',
-          presetRect: {
-            widthM: '3.6',
-            depthM: '3',
-            centerOffsetM: '0',
-            detachedGapM: '0.6',
+    applyObjectFirstCompatibilityDraft({
+      snapshot: fixture.snapshot,
+      draft,
+      compatibility: {
+        decks: [
+          {
+            id: 'deck-1',
+            name: 'Detached deck',
+            kind: 'deck',
+            shape: 'preset',
+            presetType: 'rect_detached',
+            presetRect: {
+              widthM: '3.6',
+              depthM: '3',
+              centerOffsetM: '0',
+              detachedGapM: '0.6',
+            },
+            outline: [
+              { alongM: '1.7', depthM: '-3.6' },
+              { alongM: '5.3', depthM: '-3.6' },
+              { alongM: '5.3', depthM: '-0.6' },
+              { alongM: '1.7', depthM: '-0.6' },
+            ],
+            elevationMode: 'stepped',
+            levelOffsetMm: '350',
+            hostEdgeId: 'rear',
+            isAttached: false,
+            surfaceMaterial: 'composite',
           },
-          outline: [
-            { alongM: '1.7', depthM: '-3.6' },
-            { alongM: '5.3', depthM: '-3.6' },
-            { alongM: '5.3', depthM: '-0.6' },
-            { alongM: '1.7', depthM: '-0.6' },
-          ],
-          elevationMode: 'stepped',
-          levelOffsetMm: '350',
-          hostEdgeId: 'rear',
-          isAttached: false,
-          surfaceMaterial: 'composite',
-        },
-      ],
-    };
-    const projectModel = buildHouseFirstWorkbenchProjectModel({
+        ],
+      },
+    });
+    const projectModel = buildObjectWorkbenchCompatibilityProjectModel({
       snapshot: fixture.snapshot,
       draft,
     });
@@ -548,22 +603,26 @@ describe('buildRawGeometryModuleInput', () => {
     if (!fixture) throw new Error('Expected mono fixture');
     const draft = buildEstimateDrawingDraftFromSnapshot(fixture.snapshot);
     if (!draft) throw new Error('Expected draft');
-    draft.houseFirst = {
-      openings: [
-        {
-          id: 'opening-1',
-          label: 'Kitchen slider',
-          kind: 'slider',
-          panelCount: 3,
-          wallId: 'rear',
-          widthM: '2.4',
-          heightM: '1.2',
-          sillHeightM: '0.9',
-          offsetAlongWallM: '1.1',
-        },
-      ],
-    };
-    const projectModel = buildHouseFirstWorkbenchProjectModel({
+    applyObjectFirstCompatibilityDraft({
+      snapshot: fixture.snapshot,
+      draft,
+      compatibility: {
+        openings: [
+          {
+            id: 'opening-1',
+            label: 'Kitchen slider',
+            kind: 'slider',
+            panelCount: 3,
+            wallId: 'rear',
+            widthM: '2.4',
+            heightM: '1.2',
+            sillHeightM: '0.9',
+            offsetAlongWallM: '1.1',
+          },
+        ],
+      },
+    });
+    const projectModel = buildObjectWorkbenchCompatibilityProjectModel({
       snapshot: fixture.snapshot,
       draft,
     });
@@ -602,31 +661,35 @@ describe('buildRawGeometryModuleInput', () => {
     if (!fixture) throw new Error('Expected mono fixture');
     const draft = buildEstimateDrawingDraftFromSnapshot(fixture.snapshot);
     if (!draft) throw new Error('Expected draft');
-    draft.houseFirst = {
-      openings: [
-        {
-          id: 'opening-door',
-          label: 'Rear door',
-          kind: 'hinged_door',
-          wallId: 'rear',
-          widthM: '0.9',
-          heightM: '2.1',
-          sillHeightM: '0',
-          offsetAlongWallM: '0.6',
-        },
-        {
-          id: 'opening-stacker',
-          label: 'Rear stacker',
-          kind: 'stacker',
-          wallId: 'rear',
-          widthM: '3.6',
-          heightM: '2.1',
-          sillHeightM: '0',
-          offsetAlongWallM: '1.2',
-        },
-      ],
-    };
-    const projectModel = buildHouseFirstWorkbenchProjectModel({
+    applyObjectFirstCompatibilityDraft({
+      snapshot: fixture.snapshot,
+      draft,
+      compatibility: {
+        openings: [
+          {
+            id: 'opening-door',
+            label: 'Rear door',
+            kind: 'hinged_door',
+            wallId: 'rear',
+            widthM: '0.9',
+            heightM: '2.1',
+            sillHeightM: '0',
+            offsetAlongWallM: '0.6',
+          },
+          {
+            id: 'opening-stacker',
+            label: 'Rear stacker',
+            kind: 'stacker',
+            wallId: 'rear',
+            widthM: '3.6',
+            heightM: '2.1',
+            sillHeightM: '0',
+            offsetAlongWallM: '1.2',
+          },
+        ],
+      },
+    });
+    const projectModel = buildObjectWorkbenchCompatibilityProjectModel({
       snapshot: fixture.snapshot,
       draft,
     });

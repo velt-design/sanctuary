@@ -18,10 +18,10 @@ import type {
   ObjectFirstWorkbenchDraftVNext,
 } from '@/lib/drawings/state/objectFirstWorkbenchModel';
 import {
-  buildHouseFirstCompatibilityDraftFromObjectFirstDraft,
-  buildObjectFirstDeckDraftsFromHouseFirstDrafts,
-  buildObjectFirstOpeningDraftsFromHouseFirstDrafts,
-  buildObjectFirstPergolaDraftsFromHouseFirstDrafts,
+  buildObjectFirstDeckDraftsFromCompatibilityDrafts,
+  buildObjectFirstOpeningDraftsFromCompatibilityDrafts,
+  buildObjectFirstPergolaDraftsFromCompatibilityDrafts,
+  buildObjectWorkbenchCompatibilityDraftFromObjectFirstDraft,
 } from '@/lib/drawings/state/objectFirstWorkbenchAdapter';
 import type {
   HouseFirstDeckDraft,
@@ -97,19 +97,19 @@ type PergolaDerivedAttachmentZoneOption = DerivedAttachmentZoneModel;
 export function resolveCurrentObjectWorkbenchDeckDrafts(
   objectFirstDraft: ObjectFirstWorkbenchDraftVNext,
 ): ObjectWorkbenchCompatibilityDeckDraft[] {
-  return buildHouseFirstCompatibilityDraftFromObjectFirstDraft(objectFirstDraft).decks ?? [];
+  return buildObjectWorkbenchCompatibilityDraftFromObjectFirstDraft(objectFirstDraft).decks ?? [];
 }
 
 export function resolveCurrentObjectWorkbenchOpeningDrafts(
   objectFirstDraft: ObjectFirstWorkbenchDraftVNext,
 ): ObjectWorkbenchCompatibilityOpeningDraft[] {
-  return buildHouseFirstCompatibilityDraftFromObjectFirstDraft(objectFirstDraft).openings ?? [];
+  return buildObjectWorkbenchCompatibilityDraftFromObjectFirstDraft(objectFirstDraft).openings ?? [];
 }
 
 export function resolveCurrentObjectWorkbenchPergolaDrafts(
   objectFirstDraft: ObjectFirstWorkbenchDraftVNext,
 ): ObjectWorkbenchCompatibilityPergolaDraft[] {
-  return buildHouseFirstCompatibilityDraftFromObjectFirstDraft(objectFirstDraft).pergolas ?? [];
+  return buildObjectWorkbenchCompatibilityDraftFromObjectFirstDraft(objectFirstDraft).pergolas ?? [];
 }
 
 export function updateDraftObjectFirst(input: {
@@ -128,7 +128,7 @@ export function buildObjectFirstDraftWithCompatibilityDecks(input: {
 }): ObjectFirstWorkbenchDraftVNext {
   return {
     ...input.objectFirstDraft,
-    decks: buildObjectFirstDeckDraftsFromHouseFirstDrafts(input.decks),
+    decks: buildObjectFirstDeckDraftsFromCompatibilityDrafts(input.decks),
   };
 }
 
@@ -139,7 +139,7 @@ export function buildObjectFirstDraftWithCompatibilityOpenings(input: {
 }): ObjectFirstWorkbenchDraftVNext {
   return {
     ...input.objectFirstDraft,
-    openings: buildObjectFirstOpeningDraftsFromHouseFirstDrafts(
+    openings: buildObjectFirstOpeningDraftsFromCompatibilityDrafts(
       input.openings,
       input.sourceFormId,
     ),
@@ -152,7 +152,7 @@ export function buildObjectFirstDraftWithCompatibilityPergolas(input: {
   compatibilityPergolas: ObjectWorkbenchCompatibilityPergolaModel[];
   mapPergola?: (pergola: ObjectFirstPergolaDraft) => ObjectFirstPergolaDraft;
 }): ObjectFirstWorkbenchDraftVNext {
-  const pergolas = buildObjectFirstPergolaDraftsFromHouseFirstDrafts(
+  const pergolas = buildObjectFirstPergolaDraftsFromCompatibilityDrafts(
     input.pergolas,
     input.compatibilityPergolas,
   );

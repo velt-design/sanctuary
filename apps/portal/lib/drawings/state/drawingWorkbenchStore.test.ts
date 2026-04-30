@@ -11,7 +11,14 @@ import {
   normalizeDrawingWorkbenchUiState,
 } from './drawingWorkbenchUiState';
 import { makeHouseFirstDeckSupportSnapshotFixture } from './houseFirstWorkbenchFixtures';
-import { buildObjectFirstWorkbenchDraftFromProjectModel } from './objectFirstWorkbenchAdapter';
+import type { ObjectWorkbenchCompatibilityDraft } from './compat/objectWorkbenchCompatibilityModel';
+import {
+  buildObjectFirstDeckDraftsFromCompatibilityDrafts,
+  buildObjectFirstOpeningDraftsFromCompatibilityDrafts,
+  buildObjectFirstPergolaDraftsFromCompatibilityDrafts,
+  buildObjectFirstWorkbenchDraftFromProjectModel,
+} from './objectFirstWorkbenchAdapter';
+import type { EstimateDrawingDraft } from '@/lib/estimates/drawingEdits';
 import { makeObjectFirstWorkbenchProjectFixture } from './objectFirstWorkbenchFixtures';
 
 function makeModule(overrides: Partial<CalculatorModuleInputs> = {}): CalculatorModuleInputs {
@@ -99,6 +106,66 @@ function makeResult(params: { lengthA?: number; spanA?: number } = {}): CostOutp
   } as unknown as CostOutputV1;
 }
 
+function applyObjectFirstCompatibilityDraft(input: {
+  snapshot: Record<string, unknown>;
+  draft: EstimateDrawingDraft;
+  compatibility: ObjectWorkbenchCompatibilityDraft;
+}): EstimateDrawingDraft {
+  const baselineStore = buildDrawingWorkbenchStore({
+    snapshot: input.snapshot,
+    draft: input.draft,
+    ui: createDrawingWorkbenchUiState(),
+  });
+  const objectFirst = buildObjectFirstWorkbenchDraftFromProjectModel(baselineStore.persisted.projectModel);
+  const houseForm = objectFirst.houseAssembly?.houseForms[0] ?? null;
+  const compatibilityHouse = baselineStore.persisted.compatibilityBridge.projectModel.house;
+
+  if (input.compatibility.roof && houseForm) {
+    houseForm.roofIntentAuthored = true;
+    houseForm.roofIntent = {
+      ...houseForm.roofIntent,
+      ...input.compatibility.roof,
+      appendage: {
+        ...houseForm.roofIntent.appendage,
+        ...(input.compatibility.roof.appendage ?? {}),
+      },
+    };
+  }
+  if (input.compatibility.decks) {
+    objectFirst.decks = buildObjectFirstDeckDraftsFromCompatibilityDrafts(input.compatibility.decks);
+  }
+  if (input.compatibility.openings) {
+    const openings = input.compatibility.openings.map((opening) => {
+      const hostWallId =
+        opening.hostWallId ??
+        (opening.hostEdgeId
+          ? compatibilityHouse?.derivedEnvelope.edges.find((edge) => edge.id === opening.hostEdgeId)?.hostWallId ?? null
+          : null) ??
+        (opening.wallId
+          ? compatibilityHouse?.derivedEnvelope.attachmentZones.find((zone) => zone.side === opening.wallId)?.hostWallId ??
+            null
+          : null);
+      return {
+        ...opening,
+        hostWallId,
+      };
+    });
+    objectFirst.openings = buildObjectFirstOpeningDraftsFromCompatibilityDrafts(
+      openings,
+      houseForm?.id ?? null,
+    );
+  }
+  if (input.compatibility.pergolas) {
+    objectFirst.pergolas = buildObjectFirstPergolaDraftsFromCompatibilityDrafts(
+      input.compatibility.pergolas,
+      baselineStore.persisted.compatibilityBridge.projectModel.pergolas,
+    );
+  }
+
+  input.draft.objectFirst = objectFirst;
+  return input.draft;
+}
+
 function makeStaleGableFixtureSnapshot(houseConnectionType: 'none' | 'soffit' = 'soffit') {
   const fixture = getSanctuaryGeometryWorkbenchFixture('gable-standard');
   if (!fixture) {
@@ -173,27 +240,24 @@ describe('buildDrawingWorkbenchStore', () => {
     expect(store.persisted.projectModel.houseAssembly?.houseForms[0]?.id).toBe('house-main');
     expect('house' in (store.persisted.projectModel as Record<string, unknown>)).toBe(false);
     expect(store.persisted.compatibilityBridge.projectModel.house?.id).toBe('house-main');
-    expect(store.persisted.compatibilityProjectModel).toBe(store.persisted.compatibilityBridge.projectModel);
+    expect('compatibilityProjectModel' in (store.persisted as Record<string, unknown>)).toBe(false);
     expect(store.derived.houseAssembly?.id).toBe('assembly-main');
     expect(store.derived.houseForms.map((houseForm) => houseForm.id)).toEqual(['house-main']);
     expect(store.derived.houseFormCount).toBe(1);
     expect(store.derived.activeHouseForm?.id).toBe('house-main');
-    expect(store.derived.compatibilityBridge.house?.footprint.preset).toBe('straight');
-    expect(store.derived.compatibilityBridge.pergolas).toHaveLength(1);
-    expect(store.derived.compatibilityBridge.projectModel).toBe(store.persisted.compatibilityBridge.projectModel);
-    expect(store.derived.compatibilityBridge.house).toBe(store.persisted.compatibilityBridge.projectModel.house);
-    expect(store.derived.compatibilityBridge.houseCount).toBe(1);
-    expect(store.derived.compatibilityBridge.decks).toBe(store.persisted.compatibilityBridge.projectModel.house?.decks);
-    expect(store.derived.compatibilityBridge.openings).toBe(store.persisted.compatibilityBridge.projectModel.house?.openings);
-    expect(store.derived.compatibilityBridge.pergolas).toBe(store.persisted.compatibilityBridge.projectModel.pergolas);
-    expect(store.derived.compatibilityBridge.activeDeck).toBeNull();
-    expect(store.derived.compatibilityBridge.activeOpening).toBeNull();
-    expect(store.derived.compatibilityBridge.activePergolaId).toBe('pergola-1');
-    expect(store.derived.compatibilityBridge.roofReviewStatus).toBe('approximate');
-    expect(store.derived.compatibilityBridge.migrationWarnings).toBe(
+    expect(store.persisted.compatibilityBridge.projectModel.house?.footprint.preset).toBe('straight');
+    expect(store.persisted.compatibilityBridge.projectModel.pergolas).toHaveLength(1);
+    expect(store.persisted.compatibilityBridge.projectModel.house ? 1 : 0).toBe(1);
+    expect(store.persisted.compatibilityBridge.projectModel.house?.decks).toEqual([]);
+    expect(store.persisted.compatibilityBridge.projectModel.house?.openings).toEqual([]);
+    expect(store.derived.objectWorkbench.activeDeck).toBeNull();
+    expect(store.derived.objectWorkbench.activeOpening).toBeNull();
+    expect(store.derived.objectWorkbench.activePergola).toBeNull();
+    expect(store.derived.objectWorkbench.houseForm.roof.validationStatus).toBe('approximate');
+    expect(store.derived.objectWorkbench.houseForm.warnings).toEqual(
       store.persisted.compatibilityBridge.projectModel.warnings,
     );
-    expect(store.derived.compatibilityBridge.houseIsLowConfidence).toBe(false);
+    expect(store.derived.objectWorkbench.houseForm.lowConfidence).toBe(false);
     expect(store.derived.railModel.familySummaries.map((family) => family.family)).toEqual([
       'house_forms',
       'decks',
@@ -370,7 +434,7 @@ describe('buildDrawingWorkbenchStore', () => {
     expect(pergolaCompatibility.activePergolaId).toBe('pergola-1');
     expect(pergolaStore.ui.activeRailTab).toBe('pergolas');
     expect(pergolaCompatibility.activeHouseSelection).toEqual({ kind: 'house', targetId: null });
-    expect(pergolaStore.derived.compatibilityBridge.activePergola?.id).toBe('pergola-1');
+    expect(pergolaStore.derived.objectWorkbench.activePergola?.id).toBe('pergola-1');
     expect(pergolaStore.derived.objectFirstPergolas.map((pergola) => pergola.id)).toEqual(['pergola-1', 'pergola-2']);
     expect(pergolaStore.derived.activeObjectFirstPergola?.id).toBe('pergola-1');
     expect(pergolaStore.derived.activePergolaAttachmentResolution?.status).toBe('resolved');
@@ -397,14 +461,18 @@ describe('buildDrawingWorkbenchStore', () => {
     if (!fixture) throw new Error('Missing mono-standard fixture.');
     const staleEdgeDraft = buildEstimateDrawingDraftFromSnapshot(fixture.snapshot);
     if (!staleEdgeDraft) throw new Error('Expected drawing draft.');
-    staleEdgeDraft.houseFirst = {
-      pergolas: [
-        {
-          id: 'pergola-1',
-          attachmentEdgeId: 'footprint-edge-99',
-        },
-      ],
-    };
+    applyObjectFirstCompatibilityDraft({
+      snapshot: fixture.snapshot,
+      draft: staleEdgeDraft,
+      compatibility: {
+        pergolas: [
+          {
+            id: 'pergola-1',
+            attachmentEdgeId: 'footprint-edge-99',
+          },
+        ],
+      },
+    });
 
     const staleEdgeStore = buildDrawingWorkbenchStore({
       snapshot: fixture.snapshot,
@@ -435,15 +503,19 @@ describe('buildDrawingWorkbenchStore', () => {
 
     const staleZoneDraft = buildEstimateDrawingDraftFromSnapshot(fixture.snapshot);
     if (!staleZoneDraft) throw new Error('Expected drawing draft.');
-    staleZoneDraft.houseFirst = {
-      pergolas: [
-        {
-          id: 'pergola-1',
-          attachmentEdgeId: 'footprint-edge-3',
-          attachmentZoneId: 'zone-soffit-footprint-edge-99',
-        },
-      ],
-    };
+    applyObjectFirstCompatibilityDraft({
+      snapshot: fixture.snapshot,
+      draft: staleZoneDraft,
+      compatibility: {
+        pergolas: [
+          {
+            id: 'pergola-1',
+            attachmentEdgeId: 'footprint-edge-3',
+            attachmentZoneId: 'zone-soffit-footprint-edge-99',
+          },
+        ],
+      },
+    });
 
     const staleZoneStore = buildDrawingWorkbenchStore({
       snapshot: fixture.snapshot,
@@ -469,7 +541,7 @@ describe('buildDrawingWorkbenchStore', () => {
     });
   });
 
-  it('uses object-first draft objects ahead of legacy house-first fallback drafts', () => {
+  it('uses object-first draft objects as the persisted workbench source', () => {
     const fixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
     if (!fixture) throw new Error('Missing mono-standard fixture.');
     const baselineStore = buildDrawingWorkbenchStore({
@@ -478,11 +550,6 @@ describe('buildDrawingWorkbenchStore', () => {
     });
     const draft = buildEstimateDrawingDraftFromSnapshot(fixture.snapshot);
     if (!draft) throw new Error('Expected drawing draft.');
-    draft.houseFirst = {
-      decks: [{ id: 'legacy-deck', hostEdgeId: 'front' }],
-      openings: [{ id: 'legacy-opening', wallId: 'front' }],
-      pergolas: [{ id: 'pergola-1', attachmentEdgeId: 'footprint-edge-99' }],
-    };
     draft.objectFirst = {
       ...buildObjectFirstWorkbenchDraftFromProjectModel(baselineStore.persisted.projectModel),
       decks: [
@@ -538,7 +605,7 @@ describe('buildDrawingWorkbenchStore', () => {
       }),
     });
 
-    expect(store.derived.compatibilityBridge.decks.map((deck) => deck.id)).toEqual(['deck-object']);
+    expect(store.persisted.compatibilityBridge.projectModel.house?.decks.map((deck) => deck.id)).toEqual(['deck-object']);
     expect(store.derived.objectWorkbench.decks[0]).toMatchObject({
       id: 'deck-object',
       label: 'Object deck',
@@ -561,42 +628,45 @@ describe('buildDrawingWorkbenchStore', () => {
       attachmentEdgeId: 'footprint-edge-3',
       attachmentZoneId: 'zone-soffit-footprint-edge-3',
     });
-    expect(store.derived.compatibilityBridge.activeDeck?.id).toBe('deck-object');
     expect(store.derived.objectWorkbench.activeDeck?.id).toBe('deck-object');
     expect(store.derived.unresolvedPergolaAttachmentCount).toBe(0);
   });
 
-  it('populates the object-workbench facade from compatibility fallback drafts', () => {
+  it('populates the object-workbench facade from object-first draft objects', () => {
     const fixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
     if (!fixture) throw new Error('Missing mono-standard fixture.');
     const draft = buildEstimateDrawingDraftFromSnapshot(fixture.snapshot);
     if (!draft) throw new Error('Expected drawing draft.');
-    draft.houseFirst = {
-      decks: [{ id: 'legacy-deck', name: 'Legacy deck', hostEdgeId: 'rear' }],
-      openings: [{ id: 'legacy-opening', label: 'Legacy opening', wallId: 'rear' }],
-    };
+    applyObjectFirstCompatibilityDraft({
+      snapshot: fixture.snapshot,
+      draft,
+      compatibility: {
+        decks: [{ id: 'object-deck', name: 'Object deck', hostEdgeId: 'rear' }],
+        openings: [{ id: 'object-opening', label: 'Object opening', wallId: 'rear' }],
+      },
+    });
 
     const store = buildDrawingWorkbenchStore({
       snapshot: fixture.snapshot,
       draft,
       ui: createDrawingWorkbenchUiState({
         activeObjectFamily: 'openings',
-        activeObjectRef: { family: 'openings', objectId: 'legacy-opening' },
+        activeObjectRef: { family: 'openings', objectId: 'object-opening' },
       }),
     });
 
     expect(store.derived.objectWorkbench.houseForm.houseForm?.id).toBe('house-main');
     expect(store.derived.objectWorkbench.decks[0]).toMatchObject({
-      id: 'legacy-deck',
-      label: 'Legacy deck',
+      id: 'object-deck',
+      label: 'Object deck',
       hostEdgeId: 'rear',
     });
     expect(store.derived.objectWorkbench.openings[0]).toMatchObject({
-      id: 'legacy-opening',
-      label: 'Legacy opening',
+      id: 'object-opening',
+      label: 'Object opening',
       wallId: 'rear',
     });
-    expect(store.derived.objectWorkbench.activeOpening?.id).toBe('legacy-opening');
+    expect(store.derived.objectWorkbench.activeOpening?.id).toBe('object-opening');
   });
 
   it('preserves stable deck ids and normalizes invalid deck selection state', () => {
@@ -604,50 +674,53 @@ describe('buildDrawingWorkbenchStore', () => {
     if (!fixture) throw new Error('Missing mono-standard fixture.');
     const draft = buildEstimateDrawingDraftFromSnapshot(fixture.snapshot);
     if (!draft) throw new Error('Expected drawing draft.');
-    draft.houseFirst = {
-      decks: [
-        {
-          id: 'deck-a',
-          name: 'Deck A',
-          kind: 'deck',
-          shape: 'preset',
-          presetType: 'rect_attached',
-          presetRect: {
-            widthM: '3.6',
-            depthM: '3',
-            centerOffsetM: '0',
-            detachedGapM: null,
-          },
-          outline: [
-            { alongM: '0', depthM: '0' },
-            { alongM: '3.6', depthM: '0' },
-            { alongM: '3.6', depthM: '3' },
-            { alongM: '0', depthM: '3' },
-          ],
-          elevationMode: 'aligned_to_threshold',
-          levelOffsetMm: '0',
-          hostEdgeId: 'rear',
-          isAttached: true,
-          surfaceMaterial: 'timber_decking',
+    const deckDrafts = [
+      {
+        id: 'deck-a',
+        name: 'Deck A',
+        kind: 'deck' as const,
+        shape: 'preset' as const,
+        presetType: 'rect_attached' as const,
+        presetRect: {
+          widthM: '3.6',
+          depthM: '3',
+          centerOffsetM: '0',
+          detachedGapM: null,
         },
-        {
-          id: 'deck-b',
-          name: 'Deck B',
-          kind: 'deck',
-          shape: 'custom',
-          outline: [
-            { alongM: '8', depthM: '2' },
-            { alongM: '11', depthM: '2' },
-            { alongM: '11', depthM: '5' },
-            { alongM: '8', depthM: '5' },
-          ],
-          elevationMode: 'stepped',
-          levelOffsetMm: '350',
-          isAttached: false,
-          surfaceMaterial: 'composite',
-        },
-      ],
-    };
+        outline: [
+          { alongM: '0', depthM: '0' },
+          { alongM: '3.6', depthM: '0' },
+          { alongM: '3.6', depthM: '3' },
+          { alongM: '0', depthM: '3' },
+        ],
+        elevationMode: 'aligned_to_threshold' as const,
+        levelOffsetMm: '0',
+        hostEdgeId: 'rear',
+        isAttached: true,
+        surfaceMaterial: 'timber_decking' as const,
+      },
+      {
+        id: 'deck-b',
+        name: 'Deck B',
+        kind: 'deck' as const,
+        shape: 'custom' as const,
+        outline: [
+          { alongM: '8', depthM: '2' },
+          { alongM: '11', depthM: '2' },
+          { alongM: '11', depthM: '5' },
+          { alongM: '8', depthM: '5' },
+        ],
+        elevationMode: 'stepped' as const,
+        levelOffsetMm: '350',
+        isAttached: false,
+        surfaceMaterial: 'composite' as const,
+      },
+    ];
+    applyObjectFirstCompatibilityDraft({
+      snapshot: fixture.snapshot,
+      draft,
+      compatibility: { decks: deckDrafts },
+    });
 
     const selectedStore = buildDrawingWorkbenchStore({
       snapshot: fixture.snapshot,
@@ -658,9 +731,9 @@ describe('buildDrawingWorkbenchStore', () => {
       }),
     });
 
-    expect(selectedStore.derived.compatibilityBridge.decks.map((deck) => deck.id)).toEqual(['deck-a', 'deck-b']);
+    expect(selectedStore.persisted.compatibilityBridge.projectModel.house?.decks.map((deck) => deck.id)).toEqual(['deck-a', 'deck-b']);
     expect(selectedStore.persisted.projectModel.decks.map((deck) => deck.id)).toEqual(['deck-a', 'deck-b']);
-    expect(selectedStore.derived.compatibilityBridge.activeDeckId).toBe('deck-b');
+    expect(selectedStore.derived.objectWorkbench.diagnostics.activeDeckId).toBe('deck-b');
     expect(selectedStore.ui.activeObjectRef).toEqual({ family: 'decks', objectId: 'deck-b' });
     expect(deriveDrawingWorkbenchCompatibilitySelection(selectedStore.ui).activeHouseSelection).toEqual({
       kind: 'deck',
@@ -668,9 +741,9 @@ describe('buildDrawingWorkbenchStore', () => {
     });
 
     const removedDraft = structuredClone(draft);
-    removedDraft.houseFirst = {
-      decks: draft.houseFirst?.decks?.filter((deck) => deck.id !== 'deck-b') ?? [],
-    };
+    if (removedDraft.objectFirst) {
+      removedDraft.objectFirst.decks = removedDraft.objectFirst.decks.filter((deck) => deck.id !== 'deck-b');
+    }
 
     const removedStore = buildDrawingWorkbenchStore({
       snapshot: fixture.snapshot,
@@ -684,11 +757,11 @@ describe('buildDrawingWorkbenchStore', () => {
       }),
     });
 
-    expect(removedStore.derived.compatibilityBridge.decks.map((deck) => deck.id)).toEqual(['deck-a']);
+    expect(removedStore.persisted.compatibilityBridge.projectModel.house?.decks.map((deck) => deck.id)).toEqual(['deck-a']);
     expect(removedStore.ui.activeRailTab).toBe('decks');
     expect(removedStore.ui.activeObjectFamily).toBe('decks');
     expect(removedStore.ui.activeObjectRef).toEqual({ family: 'decks', objectId: null });
-    expect(removedStore.derived.compatibilityBridge.activeDeckId).toBeNull();
+    expect(removedStore.derived.objectWorkbench.diagnostics.activeDeckId).toBeNull();
     expect(deriveDrawingWorkbenchCompatibilitySelection(removedStore.ui).activeHouseSelection).toEqual({
       kind: 'house',
       targetId: null,
@@ -709,7 +782,7 @@ describe('buildDrawingWorkbenchStore', () => {
       kind: 'house',
       targetId: null,
     });
-    expect(pergolaStore.derived.compatibilityBridge.activeDeckId).toBeNull();
+    expect(pergolaStore.derived.objectWorkbench.diagnostics.activeDeckId).toBeNull();
   });
 
   it('normalizes object-family selections against object-first fixture ids', () => {
@@ -766,20 +839,24 @@ describe('buildDrawingWorkbenchStore', () => {
     if (!fixture) throw new Error('Missing mono-standard fixture.');
     const draft = buildEstimateDrawingDraftFromSnapshot(fixture.snapshot);
     if (!draft) throw new Error('Expected drawing draft.');
-    draft.houseFirst = {
-      openings: [
-        {
-          id: 'opening-1',
-          label: 'Window 1',
-          kind: 'window',
-          wallId: 'rear',
-          widthM: '1.8',
-          heightM: '1.2',
-          sillHeightM: '0.9',
-          offsetAlongWallM: '0.6',
-        },
-      ],
-    };
+    applyObjectFirstCompatibilityDraft({
+      snapshot: fixture.snapshot,
+      draft,
+      compatibility: {
+        openings: [
+          {
+            id: 'opening-1',
+            label: 'Window 1',
+            kind: 'window',
+            wallId: 'rear',
+            widthM: '1.8',
+            heightM: '1.2',
+            sillHeightM: '0.9',
+            offsetAlongWallM: '0.6',
+          },
+        ],
+      },
+    });
 
     const selectedStore = buildDrawingWorkbenchStore({
       snapshot: fixture.snapshot,
@@ -792,12 +869,12 @@ describe('buildDrawingWorkbenchStore', () => {
 
     expect(selectedStore.derived.openingCount).toBe(1);
     expect(selectedStore.derived.sliderOpeningCount).toBe(0);
-    expect(selectedStore.derived.compatibilityBridge.activeOpeningId).toBe('opening-1');
+    expect(selectedStore.derived.objectWorkbench.diagnostics.activeOpeningId).toBe('opening-1');
     expect(selectedStore.derived.objectFirstOpenings.map((opening) => opening.id)).toEqual(['opening-1']);
     expect(selectedStore.derived.activeObjectFirstOpening?.id).toBe('opening-1');
     expect(selectedStore.derived.activeOpeningHostResolution?.status).toBe('resolved');
     expect(selectedStore.derived.activeOpeningHostResolution?.wall?.id).toBe(
-      selectedStore.derived.compatibilityBridge.activeOpening?.hostWallId,
+      selectedStore.derived.objectWorkbench.activeOpening?.hostWallId,
     );
     expect(selectedStore.derived.unresolvedOpeningHostCount).toBe(0);
     expect(deriveDrawingWorkbenchCompatibilitySelection(selectedStore.ui).activeHouseSelection).toEqual({
@@ -806,9 +883,9 @@ describe('buildDrawingWorkbenchStore', () => {
     });
 
     const removedDraft = structuredClone(draft);
-    removedDraft.houseFirst = {
-      openings: [],
-    };
+    if (removedDraft.objectFirst) {
+      removedDraft.objectFirst.openings = [];
+    }
 
     const removedStore = buildDrawingWorkbenchStore({
       snapshot: fixture.snapshot,
@@ -819,7 +896,7 @@ describe('buildDrawingWorkbenchStore', () => {
       }),
     });
 
-    expect(removedStore.derived.compatibilityBridge.activeOpeningId).toBeNull();
+    expect(removedStore.derived.objectWorkbench.diagnostics.activeOpeningId).toBeNull();
     expect(deriveDrawingWorkbenchCompatibilitySelection(removedStore.ui).activeHouseSelection).toEqual({
       kind: 'house',
       targetId: null,
@@ -831,22 +908,26 @@ describe('buildDrawingWorkbenchStore', () => {
     if (!fixture) throw new Error('Missing mono-standard fixture.');
     const draft = buildEstimateDrawingDraftFromSnapshot(fixture.snapshot);
     if (!draft) throw new Error('Expected drawing draft.');
-    draft.houseFirst = {
-      openings: [
-        {
-          id: 'opening-stale',
-          label: 'Stale opening',
-          kind: 'window',
-          hostWallId: 'wall-footprint-edge-99',
-          wallId: 'rear',
-          hostEdgeId: 'footprint-edge-3',
-          widthM: '1.8',
-          heightM: '1.2',
-          sillHeightM: '0.9',
-          offsetAlongWallM: '0.6',
-        },
-      ],
-    };
+    applyObjectFirstCompatibilityDraft({
+      snapshot: fixture.snapshot,
+      draft,
+      compatibility: {
+        openings: [
+          {
+            id: 'opening-stale',
+            label: 'Stale opening',
+            kind: 'window',
+            hostWallId: 'wall-footprint-edge-99',
+            wallId: 'rear',
+            hostEdgeId: 'footprint-edge-3',
+            widthM: '1.8',
+            heightM: '1.2',
+            sillHeightM: '0.9',
+            offsetAlongWallM: '0.6',
+          },
+        ],
+      },
+    });
 
     const store = buildDrawingWorkbenchStore({
       snapshot: fixture.snapshot,
@@ -857,7 +938,7 @@ describe('buildDrawingWorkbenchStore', () => {
       }),
     });
 
-    expect(store.derived.compatibilityBridge.openings.map((opening) => opening.id)).toEqual(['opening-stale']);
+    expect(store.persisted.compatibilityBridge.projectModel.house?.openings.map((opening) => opening.id)).toEqual(['opening-stale']);
     expect(store.derived.objectFirstOpenings[0]).toMatchObject({
       id: 'opening-stale',
       sourceFormId: store.derived.houseForms[0]?.id,
@@ -875,7 +956,7 @@ describe('buildDrawingWorkbenchStore', () => {
       statusLabel: 'Unresolved host',
       meta: 'window | Unresolved host wall',
     });
-    expect(store.derived.compatibilityBridge.activeOpening?.hostEdgeId).toBe('footprint-edge-3');
+    expect(store.derived.objectWorkbench.activeOpening?.hostEdgeId).toBe('footprint-edge-3');
     expect(deriveDrawingWorkbenchCompatibilitySelection(store.ui).activeHouseSelection).toEqual({
       kind: 'opening',
       targetId: 'opening-stale',
@@ -915,9 +996,9 @@ describe('buildDrawingWorkbenchStore', () => {
       }),
     });
 
-    expect(store.derived.compatibilityBridge.house?.footprint.preset).toBe('straight');
-    expect(store.derived.compatibilityBridge.houseIsLowConfidence).toBe(true);
-    expect(store.derived.compatibilityBridge.migrationWarningCount).toBeGreaterThan(0);
+    expect(store.persisted.compatibilityBridge.projectModel.house?.footprint.preset).toBe('straight');
+    expect(store.derived.objectWorkbench.houseForm.lowConfidence).toBe(true);
+    expect(store.derived.objectWorkbench.houseForm.warnings.length).toBeGreaterThan(0);
   });
 
   it('exposes shared roof diagnostics through derived store state', () => {
@@ -926,11 +1007,15 @@ describe('buildDrawingWorkbenchStore', () => {
     const draft = buildEstimateDrawingDraftFromSnapshot(fixture.snapshot);
     if (!draft) throw new Error('Expected drawing draft.');
     draft.inputs.modules[0]!.houseFootprintPreset = 'u_shape';
-    draft.houseFirst = {
-      roof: {
-        form: 'gable',
+    applyObjectFirstCompatibilityDraft({
+      snapshot: fixture.snapshot,
+      draft,
+      compatibility: {
+        roof: {
+          form: 'gable',
+        },
       },
-    };
+    });
 
     const store = buildDrawingWorkbenchStore({
       snapshot: fixture.snapshot,
@@ -940,16 +1025,15 @@ describe('buildDrawingWorkbenchStore', () => {
       }),
     });
 
-    expect(store.derived.compatibilityBridge.roofForm).toBe('gable');
-    expect(store.derived.compatibilityBridge.roofReviewStatus).toBe('ready');
-    expect(store.derived.compatibilityBridge.roofValidationStatus).toBe('valid');
-    expect(store.derived.compatibilityBridge.roofValidationCode).toBeNull();
-    expect(store.derived.compatibilityBridge.roofValidationMessage).toBeNull();
-    expect(store.derived.compatibilityBridge.roofApproximationReasons).toEqual([]);
-    expect(store.derived.compatibilityBridge.roofProvenance?.form).toBe('house_first_draft');
-    expect(store.derived.compatibilityBridge.roofProvenance?.ridgeAxis).toBe('default_fallback');
-    expect(store.derived.compatibilityBridge.roofGeometryKind).toBe('bent_spine_joined_gable');
-    expect(store.derived.compatibilityBridge.roofAppendageStatus).toBe('off');
+    expect(store.derived.objectWorkbench.houseForm.roof.intent.form).toBe('gable');
+    expect(store.derived.objectWorkbench.houseForm.roof.validationStatus).toBe('valid');
+    expect(store.derived.objectWorkbench.houseForm.roof.validationCode).toBeNull();
+    expect(store.derived.objectWorkbench.houseForm.roof.validationMessage).toBeNull();
+    expect(store.derived.objectWorkbench.houseForm.roof.approximationReasons).toEqual([]);
+    expect(store.derived.objectWorkbench.houseForm.roof.provenance.form).toBe('house_first_draft');
+    expect(store.derived.objectWorkbench.houseForm.roof.provenance.ridgeAxis).toBe('house_first_draft');
+    expect(store.derived.objectWorkbench.houseForm.roof.geometryKind).toBe('bent_spine_joined_gable');
+    expect(store.derived.objectWorkbench.houseForm.roof.intent.appendage.enabled).toBe(false);
   });
 
   it('exposes orthogonal mono presets as valid through derived store state', () => {
@@ -967,12 +1051,11 @@ describe('buildDrawingWorkbenchStore', () => {
       }),
     });
 
-    expect(store.derived.compatibilityBridge.roofForm).toBe('mono');
-    expect(store.derived.compatibilityBridge.roofReviewStatus).toBe('approximate');
-    expect(store.derived.compatibilityBridge.roofValidationStatus).toBe('approximate');
-    expect(store.derived.compatibilityBridge.roofValidationCode).toBeNull();
-    expect(store.derived.compatibilityBridge.roofValidationMessage).toBeNull();
-    expect(store.derived.compatibilityBridge.roofApproximationReasons).toEqual(['inferred_form']);
+    expect(store.derived.objectWorkbench.houseForm.roof.intent.form).toBe('mono');
+    expect(store.derived.objectWorkbench.houseForm.roof.validationStatus).toBe('approximate');
+    expect(store.derived.objectWorkbench.houseForm.roof.validationCode).toBeNull();
+    expect(store.derived.objectWorkbench.houseForm.roof.validationMessage).toBeNull();
+    expect(store.derived.objectWorkbench.houseForm.roof.approximationReasons).toEqual(['inferred_form']);
   });
 
   it('exposes blocked roof review state for invalid mono fall and ridge selections', () => {
@@ -980,12 +1063,16 @@ describe('buildDrawingWorkbenchStore', () => {
     if (!fixture) throw new Error('Missing mono-standard fixture.');
     const monoDraft = buildEstimateDrawingDraftFromSnapshot(fixture.snapshot);
     if (!monoDraft) throw new Error('Expected drawing draft.');
-    monoDraft.houseFirst = {
-      roof: {
-        form: 'mono',
-        primaryFallDirection: 'positive_y',
+    applyObjectFirstCompatibilityDraft({
+      snapshot: fixture.snapshot,
+      draft: monoDraft,
+      compatibility: {
+        roof: {
+          form: 'mono',
+          primaryFallDirection: 'positive_y',
+        },
       },
-    };
+    });
 
     const monoStore = buildDrawingWorkbenchStore({
       snapshot: fixture.snapshot,
@@ -995,8 +1082,8 @@ describe('buildDrawingWorkbenchStore', () => {
       }),
     });
 
-    expect(monoStore.derived.compatibilityBridge.roofReviewStatus).toBe('blocked');
-    expect(monoStore.derived.compatibilityBridge.roofValidationCode).toBe('invalid_mono_fall_direction');
+    expect(monoStore.derived.objectWorkbench.houseForm.roof.validationStatus).toBe('invalid');
+    expect(monoStore.derived.objectWorkbench.houseForm.roof.validationCode).toBe('invalid_mono_fall_direction');
 
     const ridgeDraft = buildEstimateDrawingDraftFromSnapshot(fixture.snapshot);
     if (!ridgeDraft) throw new Error('Expected drawing draft.');
@@ -1007,12 +1094,16 @@ describe('buildDrawingWorkbenchStore', () => {
       { alongM: '6', depthM: '1.8' },
       { alongM: '0', depthM: '1.8' },
     ];
-    ridgeDraft.houseFirst = {
-      roof: {
-        form: 'gable',
-        ridgeAxis: 'y',
+    applyObjectFirstCompatibilityDraft({
+      snapshot: fixture.snapshot,
+      draft: ridgeDraft,
+      compatibility: {
+        roof: {
+          form: 'gable',
+          ridgeAxis: 'y',
+        },
       },
-    };
+    });
 
     const ridgeStore = buildDrawingWorkbenchStore({
       snapshot: fixture.snapshot,
@@ -1022,8 +1113,8 @@ describe('buildDrawingWorkbenchStore', () => {
       }),
     });
 
-    expect(ridgeStore.derived.compatibilityBridge.roofReviewStatus).toBe('blocked');
-    expect(ridgeStore.derived.compatibilityBridge.roofValidationCode).toBe('invalid_ridge_axis');
+    expect(ridgeStore.derived.objectWorkbench.houseForm.roof.validationStatus).toBe('invalid');
+    expect(ridgeStore.derived.objectWorkbench.houseForm.roof.validationCode).toBe('invalid_ridge_axis');
   });
 
   it('heals stale object-first preset ridge intent before deriving roof and rail state', () => {
@@ -1075,13 +1166,13 @@ describe('buildDrawingWorkbenchStore', () => {
       }),
     });
 
-    expect(store.derived.compatibilityBridge.roofReviewStatus).not.toBe('blocked');
-    expect(store.derived.compatibilityBridge.roofValidationCode).toBeNull();
-    expect(store.derived.compatibilityBridge.house?.roof.form).toBe('hipped');
-    expect(store.derived.compatibilityBridge.house?.roof.primaryPitchDeg).toBe('5');
-    expect(store.derived.compatibilityBridge.house?.roof.ridgeAxis).toBe('x');
-    expect(store.derived.compatibilityBridge.house?.roof.openGableEndIds).toEqual([]);
-    expect(store.derived.compatibilityBridge.house?.roof.appendage.enabled).toBe(false);
+    expect(store.derived.objectWorkbench.houseForm.roof.validationStatus).not.toBe('invalid');
+    expect(store.derived.objectWorkbench.houseForm.roof.validationCode).toBeNull();
+    expect(store.persisted.compatibilityBridge.projectModel.house?.roof.form).toBe('hipped');
+    expect(store.persisted.compatibilityBridge.projectModel.house?.roof.primaryPitchDeg).toBe('5');
+    expect(store.persisted.compatibilityBridge.projectModel.house?.roof.ridgeAxis).toBe('x');
+    expect(store.persisted.compatibilityBridge.projectModel.house?.roof.openGableEndIds).toEqual([]);
+    expect(store.persisted.compatibilityBridge.projectModel.house?.roof.appendage.enabled).toBe(false);
     expect(store.persisted.projectModel.houseAssembly?.houseForms[0]?.roofIntent).toMatchObject({
       form: 'hipped',
       primaryPitchDeg: '5',
@@ -1097,16 +1188,20 @@ describe('buildDrawingWorkbenchStore', () => {
     const draft = buildEstimateDrawingDraftFromSnapshot(fixture.snapshot);
     if (!draft) throw new Error('Expected drawing draft.');
     draft.inputs.modules[0]!.houseFootprintPreset = 'u_shape';
-    draft.houseFirst = {
-      roof: {
-        appendage: {
-          enabled: true,
-          hostEdge: 'rear',
-          pitchDeg: '5',
-          dropMm: '450',
+    applyObjectFirstCompatibilityDraft({
+      snapshot: fixture.snapshot,
+      draft,
+      compatibility: {
+        roof: {
+          appendage: {
+            enabled: true,
+            hostEdge: 'rear',
+            pitchDeg: '5',
+            dropMm: '450',
+          },
         },
       },
-    };
+    });
 
     const store = buildDrawingWorkbenchStore({
       snapshot: fixture.snapshot,
@@ -1116,11 +1211,10 @@ describe('buildDrawingWorkbenchStore', () => {
       }),
     });
 
-    expect(store.derived.compatibilityBridge.roofReviewStatus).toBe('blocked');
-    expect(store.derived.compatibilityBridge.roofValidationCode).toBe('invalid_appendage_topology');
-    expect(store.derived.compatibilityBridge.roofAppendageStatus).toBe('invalid');
-    expect(store.derived.compatibilityBridge.roofAppendageSupportedHostEdges).toEqual([]);
-    expect(store.derived.compatibilityBridge.roofAppendageSupportReason).toContain('Appendage bands require at least one continuous exterior perimeter run');
+    expect(store.derived.objectWorkbench.houseForm.roof.validationStatus).toBe('invalid');
+    expect(store.derived.objectWorkbench.houseForm.roof.validationCode).toBe('invalid_appendage_topology');
+    expect(store.derived.objectWorkbench.houseForm.roof.appendageSupportedHostEdges).toEqual([]);
+    expect(store.derived.objectWorkbench.houseForm.roof.appendageSupportReason).toContain('Appendage bands require at least one continuous exterior perimeter run');
   });
 
   it('derives active-side deck support diagnostics for attached and detached deck scenarios', () => {
@@ -1223,12 +1317,22 @@ describe('buildDrawingWorkbenchStore', () => {
     const detachedFixture = makeHouseFirstDeckSupportSnapshotFixture('detached_rear_near_house');
     const customFixture = makeHouseFirstDeckSupportSnapshotFixture('rear_threshold_attached');
 
-    if (!customFixture.draft?.houseFirst?.decks?.[0]) {
-      throw new Error('Expected house-first deck drafts in fixture.');
+    if (!customFixture.draft?.objectFirst?.decks?.[0]) {
+      const baselineStore = buildDrawingWorkbenchStore({
+        snapshot: customFixture.snapshot,
+        draft: customFixture.draft,
+        ui: createDrawingWorkbenchUiState(),
+      });
+      customFixture.draft.objectFirst = buildObjectFirstWorkbenchDraftFromProjectModel(
+        baselineStore.persisted.projectModel,
+      );
+    }
+    if (!customFixture.draft.objectFirst?.decks[0]) {
+      throw new Error('Expected object-first deck drafts in fixture.');
     }
 
-    customFixture.draft.houseFirst.decks[0] = {
-      ...customFixture.draft.houseFirst.decks[0],
+    customFixture.draft.objectFirst.decks[0] = {
+      ...customFixture.draft.objectFirst.decks[0],
       shape: 'custom',
       outline: [
         { alongM: '0', depthM: '0' },

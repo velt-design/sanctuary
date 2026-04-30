@@ -8,6 +8,11 @@ import type {
   DeckModel,
   HouseFirstWorkbenchProjectModel,
 } from './houseFirstWorkbenchModel';
+import { buildObjectWorkbenchCompatibilityProjectModel } from './compat/objectWorkbenchCompatibilityModel';
+import {
+  buildObjectFirstWorkbenchDraftFromProjectModel,
+  buildObjectFirstWorkbenchProjectModel,
+} from './objectFirstWorkbenchAdapter';
 
 const FIXTURE_WALLS = [
   {
@@ -704,6 +709,15 @@ export function makeHouseFirstDeckSupportSnapshotFixture(
       ],
     };
   }
+
+  const compatibilityProjectModel = buildObjectWorkbenchCompatibilityProjectModel({
+    snapshot,
+    draft,
+  });
+  const objectFirstProjectModel = buildObjectFirstWorkbenchProjectModel({
+    compatibilityProjectModel,
+  });
+  draft.objectFirst = buildObjectFirstWorkbenchDraftFromProjectModel(objectFirstProjectModel);
 
   return {
     snapshot,

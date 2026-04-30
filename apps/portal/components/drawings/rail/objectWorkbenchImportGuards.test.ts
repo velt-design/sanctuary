@@ -46,14 +46,19 @@ const OBJECT_WORKBENCH_RENDERER_TEST_FILES = [
 ];
 const FLAT_COMPATIBILITY_DERIVED_FIELD_READ =
   /\b[A-Za-z_$][\w$]*\.derived\.(?:house|houseCount|decks|openings|activeDeck|activeDeckId|activeOpening|activeOpeningId|pergolas|activePergola|activePergolaId|roofForm|roofReviewStatus|roofValidationStatus|roofValidationCode|roofValidationMessage|roofApproximationReasons|roofProvenance|roofGeometryKind|roofAppendageEnabled|roofAppendageStatus|roofAppendageSupportedHostEdges|roofAppendageSupportReason|migrationWarnings|migrationWarningCount|houseIsLowConfidence)\b/;
+const REMOVED_DERIVED_COMPATIBILITY_BRIDGE_READ =
+  /\b[A-Za-z_$][\w$]*\.derived\.compatibilityBridge\b/;
+const FLAT_PERSISTED_COMPATIBILITY_PROJECT_MODEL_READ =
+  /\b[A-Za-z_$][\w$]*\.persisted\.compatibilityProjectModel\b/;
+const REMOVED_ESTIMATE_HOUSE_FIRST_API =
+  /\b(?:EstimateDrawingHouseFirst[A-Za-z0-9_]*|updateEstimateDrawingHouseFirst[A-Za-z0-9_]*)\b/;
+const PERSISTED_HOUSE_FIRST_DRAFT_USAGE =
+  /\b[A-Za-z_$][\w$]*\.houseFirst\b|\bhouseFirst\s*:/;
 const LEGACY_RENDERER_BOUNDARY_NAMES =
   /\b(?:HouseFirstPlanShapeDragStartMeta|HouseFirstObjectPreviewOverlay|houseFirstPlanOverlay|houseFirstPreviewOverlay|activeHouseFirstCustomEdgeId|hoveredHouseFirstDeckId|onHouseFirstShapeSelect|onHouseFirstDeckHoverChange|onHouseFirstShapeDragStart|onHouseFirstCustomEdgeSelect|onHouseFirstDimensionActivate)\b/;
 const ALLOWLISTED_COMPATIBILITY_FILES = new Set([
   path.normalize(path.join('apps', 'portal', 'app', 'staff', 'projects', '[projectId]', 'design-workbench', 'compat', 'objectWorkbenchDraftActionBridge.ts')),
   path.normalize(path.join('apps', 'portal', 'app', 'staff', 'projects', '[projectId]', 'design-workbench', 'compat', 'workbenchCompatibilityDraftBuilders.ts')),
-]);
-const ALLOWLISTED_COMPATIBILITY_BRIDGE_READERS = new Set([
-  path.normalize(path.join('apps', 'portal', 'app', 'staff', 'projects', '[projectId]', 'design-workbench', 'useObjectWorkbenchActions.ts')),
 ]);
 const ALLOWLISTED_CONFIGURATOR_FILES = new Set([
   path.normalize(path.join('apps', 'portal', 'components', 'drawings', 'rail', 'ConfiguratorRail.tsx')),
@@ -77,13 +82,19 @@ function toRepoRelativePath(absolutePath: string): string {
   return path.normalize(path.relative(process.cwd(), absolutePath));
 }
 
-function canReadCompatibilityBridge(relativePath: string): boolean {
-  return ALLOWLISTED_COMPATIBILITY_BRIDGE_READERS.has(relativePath) || relativePath.includes(`${path.sep}compat${path.sep}`);
-}
-
 function canImportLegacyStateCompatibility(relativePath: string): boolean {
   const basename = path.basename(relativePath);
   return relativePath.includes(STATE_COMPAT_PATH_SEGMENT) || basename.startsWith('houseFirst');
+}
+
+function isLegacyPersistenceCompatibilityZone(relativePath: string): boolean {
+  const basename = path.basename(relativePath);
+  return (
+    relativePath.includes(STATE_COMPAT_PATH_SEGMENT) ||
+    relativePath.includes(GEOMETRY_COMPAT_PATH_SEGMENT) ||
+    basename.startsWith('houseFirst') ||
+    relativePath.endsWith(path.normalize(path.join('apps', 'portal', 'lib', 'estimates', 'drawingEdits.ts')))
+  );
 }
 
 describe('object workbench import guards', () => {
@@ -99,9 +110,9 @@ describe('object workbench import guards', () => {
         const readsCompatibilityUiSelection =
           /\b(?:ui|current|store\.ui)\.(?:workbenchMode|activeHouseSelection|activePergolaId)\b/.test(source);
         const readsFlatCompatibilityDerivedField = FLAT_COMPATIBILITY_DERIVED_FIELD_READ.test(source);
-        const readsCompatibilityBridge = /\bstore\.derived\.compatibilityBridge\b/.test(source);
-        const readsPersistenceCompatibilityDraft =
-          /\b(?:draft|nextDraft|drawingDraft|baseDraft)\.houseFirst\b|\bhouseFirst\s*:/.test(source);
+        const readsFlatPersistedCompatibilityModel = FLAT_PERSISTED_COMPATIBILITY_PROJECT_MODEL_READ.test(source);
+        const readsCompatibilityBridge = REMOVED_DERIVED_COMPATIBILITY_BRIDGE_READ.test(source);
+        const readsPersistenceCompatibilityDraft = PERSISTED_HOUSE_FIRST_DRAFT_USAGE.test(source);
 
         if (importsHouseFirstModel && !ALLOWLISTED_COMPATIBILITY_FILES.has(relativePath)) {
           violations.push(`${relativePath} imports houseFirstWorkbenchModel`);
@@ -115,8 +126,11 @@ describe('object workbench import guards', () => {
         if (readsFlatCompatibilityDerivedField) {
           violations.push(`${relativePath} reads flat compatibility fields from store.derived`);
         }
-        if (readsCompatibilityBridge && !canReadCompatibilityBridge(relativePath)) {
-          violations.push(`${relativePath} reads compatibilityBridge outside an explicit bridge/compat file`);
+        if (readsFlatPersistedCompatibilityModel) {
+          violations.push(`${relativePath} reads removed flat compatibility model from store.persisted`);
+        }
+        if (readsCompatibilityBridge) {
+          violations.push(`${relativePath} reads removed derived compatibilityBridge`);
         }
         if (readsPersistenceCompatibilityDraft && !relativePath.includes(`${path.sep}compat${path.sep}`)) {
           violations.push(`${relativePath} reads or writes EstimateDrawingDraft.houseFirst outside compat`);
@@ -167,6 +181,59 @@ describe('object workbench import guards', () => {
         const source = fs.readFileSync(absolutePath, 'utf8');
         if (FLAT_COMPATIBILITY_DERIVED_FIELD_READ.test(source)) {
           violations.push(`${relativePath} reads removed flat compatibility fields from store.derived`);
+        }
+        if (REMOVED_DERIVED_COMPATIBILITY_BRIDGE_READ.test(source)) {
+          violations.push(`${relativePath} reads removed derived compatibilityBridge`);
+        }
+      }
+    }
+
+    expect(violations).toEqual([]);
+  });
+
+  it('keeps public workbench persistence off removed house-first draft APIs', () => {
+    const violations: string[] = [];
+    const roots = [
+      path.join('apps', 'portal', 'app', 'staff', 'projects', '[projectId]', 'design-workbench'),
+      path.join('apps', 'portal', 'components', 'drawings'),
+      path.join('apps', 'portal', 'lib', 'drawings'),
+      path.join('apps', 'portal', 'lib', 'estimates'),
+    ];
+
+    for (const root of roots) {
+      for (const absolutePath of listSourceFiles(path.join(process.cwd(), root), { includeTests: true })) {
+        const relativePath = toRepoRelativePath(absolutePath);
+        if (relativePath.endsWith(path.normalize(path.join('components', 'drawings', 'rail', 'objectWorkbenchImportGuards.test.ts')))) {
+          continue;
+        }
+        if (isLegacyPersistenceCompatibilityZone(relativePath)) continue;
+        const source = fs.readFileSync(absolutePath, 'utf8');
+        if (REMOVED_ESTIMATE_HOUSE_FIRST_API.test(source)) {
+          violations.push(`${relativePath} references removed house-first drawing draft API`);
+        }
+        if (PERSISTED_HOUSE_FIRST_DRAFT_USAGE.test(source)) {
+          violations.push(`${relativePath} reads or writes removed EstimateDrawingDraft.houseFirst data`);
+        }
+      }
+    }
+
+    expect(violations).toEqual([]);
+  });
+
+  it('keeps callers off the removed flat persisted compatibility store model', () => {
+    const violations: string[] = [];
+    const roots = [
+      path.join('apps', 'portal', 'app', 'staff', 'projects', '[projectId]', 'design-workbench'),
+      path.join('apps', 'portal', 'components', 'drawings'),
+      path.join('apps', 'portal', 'lib', 'drawings'),
+    ];
+
+    for (const root of roots) {
+      for (const absolutePath of listSourceFiles(path.join(process.cwd(), root), { includeTests: true })) {
+        const relativePath = toRepoRelativePath(absolutePath);
+        const source = fs.readFileSync(absolutePath, 'utf8');
+        if (FLAT_PERSISTED_COMPATIBILITY_PROJECT_MODEL_READ.test(source)) {
+          violations.push(`${relativePath} reads removed flat compatibility model from store.persisted`);
         }
       }
     }

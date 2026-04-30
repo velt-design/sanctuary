@@ -9,7 +9,15 @@ import { ESTIMATE_PRICING_SYNC_STATE_OUTPUT_KEY } from '@/lib/estimates/costingP
 import { makeHouseFirstDeckSupportSnapshotFixture } from '@/lib/drawings/state/houseFirstWorkbenchFixtures';
 import { buildDrawingWorkbenchStore } from '@/lib/drawings/state/drawingWorkbenchStore';
 import { createDrawingWorkbenchUiState } from '@/lib/drawings/state/drawingWorkbenchUiState';
-import { buildObjectFirstWorkbenchDraftFromProjectModel } from '@/lib/drawings/state/objectFirstWorkbenchAdapter';
+import type {
+  ObjectWorkbenchCompatibilityOpeningDraft,
+  ObjectWorkbenchCompatibilityRoofDraft,
+} from '@/lib/drawings/state/compat/objectWorkbenchCompatibilityModel';
+import {
+  buildObjectFirstOpeningDraftsFromCompatibilityDrafts,
+  buildObjectFirstWorkbenchDraftFromProjectModel,
+} from '@/lib/drawings/state/objectFirstWorkbenchAdapter';
+import type { HouseFormRoofIntentModel } from '@/lib/drawings/state/objectFirstWorkbenchModel';
 import { applyGeometryEditIntent } from './geometryEditAdapter';
 import { buildWorkbenchGeometryPreview } from './buildWorkbenchGeometryPreview';
 
@@ -92,6 +100,52 @@ function makeDraft(snapshot: Record<string, unknown> | null, mutate: (draft: Est
   }
   mutate(draft);
   return draft;
+}
+
+function ensureObjectFirstDraft(snapshot: Record<string, unknown> | null, draft: EstimateDrawingDraft) {
+  const baselineStore = buildDrawingWorkbenchStore({
+    snapshot,
+    draft,
+    ui: createDrawingWorkbenchUiState(),
+  });
+  draft.objectFirst = buildObjectFirstWorkbenchDraftFromProjectModel(baselineStore.persisted.projectModel);
+  return {
+    objectFirst: draft.objectFirst,
+    sourceFormId: baselineStore.persisted.compatibilityBridge.projectModel.house?.id ?? null,
+  };
+}
+
+function setObjectFirstRoofIntent(
+  snapshot: Record<string, unknown> | null,
+  draft: EstimateDrawingDraft,
+  roof: Partial<ObjectWorkbenchCompatibilityRoofDraft>,
+) {
+  const { objectFirst } = ensureObjectFirstDraft(snapshot, draft);
+  const houseForm = objectFirst.houseAssembly?.houseForms[0] ?? null;
+  if (!houseForm) {
+    throw new Error('Expected object-first house form.');
+  }
+  const appendage = roof.appendage
+    ? {
+        ...houseForm.roofIntent.appendage,
+        ...roof.appendage,
+      }
+    : houseForm.roofIntent.appendage;
+  houseForm.roofIntent = {
+    ...houseForm.roofIntent,
+    ...(roof as Partial<HouseFormRoofIntentModel>),
+    appendage,
+  };
+  houseForm.roofIntentAuthored = true;
+}
+
+function setObjectFirstOpeningDrafts(
+  snapshot: Record<string, unknown> | null,
+  draft: EstimateDrawingDraft,
+  openings: ObjectWorkbenchCompatibilityOpeningDraft[],
+) {
+  const { objectFirst, sourceFormId } = ensureObjectFirstDraft(snapshot, draft);
+  objectFirst.openings = buildObjectFirstOpeningDraftsFromCompatibilityDrafts(openings, sourceFormId);
 }
 
 function makeStaleGableSnapshot(
@@ -304,19 +358,17 @@ describe('buildWorkbenchGeometryPreview', () => {
   it('reports blocked shared attachment zones when side openings suppress them', () => {
     const fixture = requireFixture('mono-standard');
     const draft = makeDraft(fixture.snapshot, (current) => {
-      current.houseFirst = {
-        openings: [
-          {
-            id: 'opening-slider-rear',
-            kind: 'slider',
-            wallId: 'rear',
-            widthM: '2.4',
-            heightM: '2.1',
-            sillHeightM: '0',
-            offsetAlongWallM: '0.8',
-          },
-        ],
-      };
+      setObjectFirstOpeningDrafts(fixture.snapshot, current, [
+        {
+          id: 'opening-slider-rear',
+          kind: 'slider',
+          wallId: 'rear',
+          widthM: '2.4',
+          heightM: '2.1',
+          sillHeightM: '0',
+          offsetAlongWallM: '0.8',
+        },
+      ]);
     });
 
     const preview = buildWorkbenchGeometryPreview({
@@ -724,9 +776,7 @@ describe('buildWorkbenchGeometryPreview', () => {
         } as const;
         const draft = makeDraft(fixture.snapshot, (current) => {
           current.inputs.modules[0]!.houseFootprintPreset = preset;
-          current.houseFirst = {
-            roof,
-          };
+          setObjectFirstRoofIntent(fixture.snapshot, current, roof);
         });
 
         const preview = buildWorkbenchGeometryPreview({
@@ -761,13 +811,11 @@ describe('buildWorkbenchGeometryPreview', () => {
           const draft = makeDraft(fixture.snapshot, (current) => {
             current.inputs.modules[0]!.attachmentSide = attachmentSide;
             current.inputs.modules[0]!.houseFootprintPreset = preset;
-            current.houseFirst = {
-              roof: {
-                form,
-                primaryPitchDeg: form === 'gable' ? '' : '0',
-                material: 'corrugated_iron',
-              },
-            };
+            setObjectFirstRoofIntent(fixture.snapshot, current, {
+              form,
+              primaryPitchDeg: form === 'gable' ? '' : '0',
+              material: 'corrugated_iron',
+            });
           });
 
           const preview = buildWorkbenchGeometryPreview({
@@ -972,32 +1020,30 @@ describe('buildWorkbenchGeometryPreview', () => {
   it('renders valid shared-house window markers and reports opening diagnostics in 3D preview metadata', () => {
     const fixture = requireFixture('mono-standard');
     const draft = makeDraft(fixture.snapshot, (current) => {
-      current.houseFirst = {
-        openings: [
-          {
-            id: 'opening-valid',
-            label: 'Kitchen window',
-            kind: 'window',
-            panelCount: null,
-            wallId: 'rear',
-            widthM: '2.4',
-            heightM: '1.2',
-            sillHeightM: '0.9',
-            offsetAlongWallM: '1.1',
-          },
-          {
-            id: 'opening-invalid',
-            label: 'Bad window',
-            kind: 'window',
-            panelCount: null,
-            wallId: 'rear',
-            widthM: '20',
-            heightM: '1.2',
-            sillHeightM: '0.9',
-            offsetAlongWallM: '0.2',
-          },
-        ],
-      };
+      setObjectFirstOpeningDrafts(fixture.snapshot, current, [
+        {
+          id: 'opening-valid',
+          label: 'Kitchen window',
+          kind: 'window',
+          panelCount: null,
+          wallId: 'rear',
+          widthM: '2.4',
+          heightM: '1.2',
+          sillHeightM: '0.9',
+          offsetAlongWallM: '1.1',
+        },
+        {
+          id: 'opening-invalid',
+          label: 'Bad window',
+          kind: 'window',
+          panelCount: null,
+          wallId: 'rear',
+          widthM: '20',
+          heightM: '1.2',
+          sillHeightM: '0.9',
+          offsetAlongWallM: '0.2',
+        },
+      ]);
     });
 
     const preview = buildWorkbenchGeometryPreview({
@@ -1040,32 +1086,30 @@ describe('buildWorkbenchGeometryPreview', () => {
   it('keeps hinged-door and stacker metadata in the shared-house 3D preview', () => {
     const fixture = requireFixture('mono-standard');
     const draft = makeDraft(fixture.snapshot, (current) => {
-      current.houseFirst = {
-        openings: [
-          {
-            id: 'opening-door',
-            label: 'Rear door',
-            kind: 'hinged_door',
-            panelCount: null,
-            wallId: 'rear',
-            widthM: '0.9',
-            heightM: '2.1',
-            sillHeightM: '0',
-            offsetAlongWallM: '4.9',
-          },
-          {
-            id: 'opening-stacker',
-            label: 'Rear stacker',
-            kind: 'stacker',
-            panelCount: null,
-            wallId: 'rear',
-            widthM: '3.6',
-            heightM: '2.1',
-            sillHeightM: '0',
-            offsetAlongWallM: '1.2',
-          },
-        ],
-      };
+      setObjectFirstOpeningDrafts(fixture.snapshot, current, [
+        {
+          id: 'opening-door',
+          label: 'Rear door',
+          kind: 'hinged_door',
+          panelCount: null,
+          wallId: 'rear',
+          widthM: '0.9',
+          heightM: '2.1',
+          sillHeightM: '0',
+          offsetAlongWallM: '4.9',
+        },
+        {
+          id: 'opening-stacker',
+          label: 'Rear stacker',
+          kind: 'stacker',
+          panelCount: null,
+          wallId: 'rear',
+          widthM: '3.6',
+          heightM: '2.1',
+          sillHeightM: '0',
+          offsetAlongWallM: '1.2',
+        },
+      ]);
     });
 
     const preview = buildWorkbenchGeometryPreview({

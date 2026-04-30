@@ -11,6 +11,12 @@ import { buildWorkbenchGeometryPreview } from '@/lib/drawings/geometry/buildWork
 import { getSanctuaryGeometryWorkbenchFixture } from '@/lib/drawings/sanctuaryWorkbenchFixtures';
 import { buildDrawingWorkbenchStore } from '@/lib/drawings/state/drawingWorkbenchStore';
 import { createDrawingWorkbenchUiState } from '@/lib/drawings/state/drawingWorkbenchUiState';
+import type { ObjectWorkbenchCompatibilityDraft } from '@/lib/drawings/state/compat/objectWorkbenchCompatibilityModel';
+import {
+  buildObjectFirstDeckDraftsFromCompatibilityDrafts,
+  buildObjectFirstOpeningDraftsFromCompatibilityDrafts,
+  buildObjectFirstWorkbenchDraftFromProjectModel,
+} from '@/lib/drawings/state/objectFirstWorkbenchAdapter';
 import {
   buildHouseFirstPlanOverlay as buildHouseFirstPlanOverlayRaw,
   resizeCustomPolygonEdge,
@@ -226,6 +232,29 @@ function makeDraft(snapshot: Record<string, unknown> | null, mutate: (draft: Est
   if (!draft) throw new Error('Expected draft from snapshot.');
   mutate(draft);
   return draft;
+}
+
+function applyObjectFirstCompatibilityDraft(input: {
+  snapshot: Record<string, unknown>;
+  draft: EstimateDrawingDraft;
+  compatibility: ObjectWorkbenchCompatibilityDraft;
+}) {
+  const baselineStore = buildDrawingWorkbenchStore({
+    snapshot: input.snapshot,
+    ui: createDrawingWorkbenchUiState(),
+  });
+  const objectFirst = buildObjectFirstWorkbenchDraftFromProjectModel(baselineStore.persisted.projectModel);
+  const houseFormId = objectFirst.houseAssembly?.houseForms[0]?.id ?? null;
+  if (input.compatibility.decks) {
+    objectFirst.decks = buildObjectFirstDeckDraftsFromCompatibilityDrafts(input.compatibility.decks);
+  }
+  if (input.compatibility.openings) {
+    objectFirst.openings = buildObjectFirstOpeningDraftsFromCompatibilityDrafts(
+      input.compatibility.openings,
+      houseFormId,
+    );
+  }
+  input.draft.objectFirst = objectFirst;
 }
 
 function toScenePolygonMetres(points: Array<{ x: number; y: number }>) {
@@ -789,42 +818,46 @@ describe('houseFirstPlanOverlay', () => {
     if (!fixture) return;
 
     const draft = makeDraft(fixture.snapshot, (current) => {
-      current.houseFirst = {
-        decks: [
-          {
-            id: 'deck-debug',
-            name: 'Debug deck',
-            kind: 'deck',
-            shape: 'preset',
-            presetType: 'rect_attached',
-            presetRect: {
-              widthM: '3.6',
-              depthM: '2.4',
-              centerOffsetM: '0',
-              detachedGapM: null,
+      applyObjectFirstCompatibilityDraft({
+        snapshot: fixture.snapshot,
+        draft: current,
+        compatibility: {
+          decks: [
+            {
+              id: 'deck-debug',
+              name: 'Debug deck',
+              kind: 'deck',
+              shape: 'preset',
+              presetType: 'rect_attached',
+              presetRect: {
+                widthM: '3.6',
+                depthM: '2.4',
+                centerOffsetM: '0',
+                detachedGapM: null,
+              },
+              elevationMode: 'aligned_to_threshold',
+              levelOffsetMm: '0',
+              hostEdgeId: 'rear',
+              isAttached: true,
+              surfaceMaterial: 'timber_decking',
             },
-            elevationMode: 'aligned_to_threshold',
-            levelOffsetMm: '0',
-            hostEdgeId: 'rear',
-            isAttached: true,
-            surfaceMaterial: 'timber_decking',
-          },
-        ],
-        openings: [
-          {
-            id: 'opening-debug',
-            label: 'Debug window',
-            kind: 'window',
-            panelCount: null,
-            hostWallId: 'wall-footprint-edge-5',
-            wallId: 'rear',
-            widthM: '1.8',
-            heightM: '1.2',
-            sillHeightM: '0.9',
-            offsetAlongWallM: '0.6',
-          },
-        ],
-      };
+          ],
+          openings: [
+            {
+              id: 'opening-debug',
+              label: 'Debug window',
+              kind: 'window',
+              panelCount: null,
+              hostWallId: 'wall-footprint-edge-5',
+              wallId: 'rear',
+              widthM: '1.8',
+              heightM: '1.2',
+              sillHeightM: '0.9',
+              offsetAlongWallM: '0.6',
+            },
+          ],
+        },
+      });
     });
 
     const store = buildDrawingWorkbenchStore({
@@ -853,7 +886,7 @@ describe('houseFirstPlanOverlay', () => {
     if (preview.kind !== 'ready') return;
 
     const overlay = buildHouseFirstPlanOverlay({
-      house: store.derived.compatibilityBridge.house,
+      house: store.persisted.compatibilityBridge.projectModel.house,
       selection: { kind: 'opening', targetId: 'opening-debug' },
       moduleLengthM: String(store.derived.activePlanModel?.lengthA ?? ''),
       moduleProjectionM: String(store.derived.activePlanModel?.spanA ?? ''),
@@ -907,7 +940,7 @@ describe('houseFirstPlanOverlay', () => {
     expect(toScenePolygonMetres(footprintShape?.polygon ?? [])).toEqual(sceneFootprintPolygon);
     expect(openingObject).toBeDefined();
     expect(preview.scene.metadata.houseOpeningSkippedInvalidCount).toBe(0);
-    expect(store.derived.compatibilityBridge.house?.openings[0]?.validation.status).toBe('valid');
+    expect(store.persisted.compatibilityBridge.projectModel.house?.openings[0]?.validation.status).toBe('valid');
   });
 
   it('matches a valid opening plan polygon to the XY wall footprint of the 3D opening marker', () => {
@@ -916,21 +949,25 @@ describe('houseFirstPlanOverlay', () => {
     if (!fixture) return;
 
     const draft = makeDraft(fixture.snapshot, (current) => {
-      current.houseFirst = {
-        openings: [
-          {
-            id: 'opening-valid',
-            label: 'Kitchen window',
-            kind: 'window',
-            panelCount: null,
-            wallId: 'rear',
-            widthM: '2.4',
-            heightM: '1.2',
-            sillHeightM: '0.9',
-            offsetAlongWallM: '1.1',
-          },
-        ],
-      };
+      applyObjectFirstCompatibilityDraft({
+        snapshot: fixture.snapshot,
+        draft: current,
+        compatibility: {
+          openings: [
+            {
+              id: 'opening-valid',
+              label: 'Kitchen window',
+              kind: 'window',
+              panelCount: null,
+              wallId: 'rear',
+              widthM: '2.4',
+              heightM: '1.2',
+              sillHeightM: '0.9',
+              offsetAlongWallM: '1.1',
+            },
+          ],
+        },
+      });
     });
 
     const store = buildDrawingWorkbenchStore({
@@ -959,7 +996,7 @@ describe('houseFirstPlanOverlay', () => {
     if (preview.kind !== 'ready') return;
 
     const overlay = buildHouseFirstPlanOverlay({
-      house: store.derived.compatibilityBridge.house,
+      house: store.persisted.compatibilityBridge.projectModel.house,
       selection: { kind: 'opening', targetId: 'opening-valid' },
       moduleLengthM: String(store.derived.activePlanModel?.lengthA ?? ''),
       moduleProjectionM: String(store.derived.activePlanModel?.spanA ?? ''),

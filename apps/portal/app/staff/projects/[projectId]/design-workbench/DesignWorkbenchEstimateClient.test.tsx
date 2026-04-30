@@ -17,7 +17,11 @@ import type { EstimateDetail } from '@/lib/estimates/types';
 import type { LocalFirstPersistedState } from '@/lib/localFirst/types';
 import { buildDrawingWorkbenchStore } from '@/lib/drawings/state/drawingWorkbenchStore';
 import { createDrawingWorkbenchUiState } from '@/lib/drawings/state/drawingWorkbenchUiState';
-import { buildObjectFirstWorkbenchDraftFromProjectModel } from '@/lib/drawings/state/objectFirstWorkbenchAdapter';
+import {
+  buildObjectFirstOpeningDraftsFromCompatibilityDrafts,
+  buildObjectFirstWorkbenchDraftFromProjectModel,
+} from '@/lib/drawings/state/objectFirstWorkbenchAdapter';
+import type { ObjectWorkbenchCompatibilityOpeningDraft } from '@/lib/drawings/state/compat/objectWorkbenchCompatibilityModel';
 import { dispatchPointer, installDomGeometryMock, renderIntoDocument } from '../../../../../../../test/reactHarness';
 
 vi.mock('@react-three/fiber', () => ({
@@ -190,6 +194,23 @@ function readObjectFirstOpenings(data: any) {
 
 function readObjectFirstPergolas(data: any) {
   return data?.objectFirst?.pergolas ?? [];
+}
+
+function setObjectFirstOpeningDrafts(input: {
+  snapshot: Record<string, unknown> | null;
+  draft: NonNullable<ReturnType<typeof buildEstimateDrawingDraftFromSnapshot>>;
+  openings: ObjectWorkbenchCompatibilityOpeningDraft[];
+}) {
+  const baselineStore = buildDrawingWorkbenchStore({
+    snapshot: input.snapshot,
+    ui: createDrawingWorkbenchUiState(),
+  });
+  const objectFirst = buildObjectFirstWorkbenchDraftFromProjectModel(baselineStore.persisted.projectModel);
+  objectFirst.openings = buildObjectFirstOpeningDraftsFromCompatibilityDrafts(
+    input.openings,
+    objectFirst.houseAssembly?.houseForms[0]?.id ?? null,
+  );
+  input.draft.objectFirst = objectFirst;
 }
 
 function buildEstimateDetail(input?: {
@@ -727,7 +748,9 @@ describe('DesignWorkbenchEstimateClient', () => {
     const entityKey = buildEstimateDrawingDraftEntityKey(estimate.id);
     const draft = buildEstimateDrawingDraftFromSnapshot(estimate.calculatorSnapshot);
     if (!draft) throw new Error('Expected drawing draft.');
-    draft.houseFirst = {
+    setObjectFirstOpeningDrafts({
+      snapshot: estimate.calculatorSnapshot,
+      draft,
       openings: [
         {
           id: 'opening-slider-rear',
@@ -739,7 +762,7 @@ describe('DesignWorkbenchEstimateClient', () => {
           offsetAlongWallM: '0.8',
         },
       ],
-    };
+    });
     await ensureLocalFirstStoreReady();
     await writeLocalFirstWorkingCopy({
       entityKey,
@@ -782,7 +805,7 @@ describe('DesignWorkbenchEstimateClient', () => {
     expect(workingCopy?.inputs.modules[0]?.houseConnectionType).toBe('fascia');
     expect(readObjectFirstPergolas(workingCopy)[0]?.attachmentZoneId).toContain('zone-fascia-');
     expect(readObjectFirstPergolas(workingCopy)[0]?.attachmentEdgeId).toMatch(/^footprint-edge-\d+$/);
-    expect(workingCopy?.houseFirst).toBeUndefined();
+    expect('houseFirst' in (workingCopy ?? {})).toBe(false);
 
     const edgeSelect = rendered.container.querySelector('[aria-label="Pergola host edge"]') as HTMLSelectElement | null;
     if (!edgeSelect) throw new Error('Missing pergola host edge select.');
@@ -979,7 +1002,7 @@ describe('DesignWorkbenchEstimateClient', () => {
     await flushAsyncWork();
 
     expect(readObjectFirstRoofDraft(getLocalFirstWorkingCopy<any>(entityKey)?.data)?.form).toBe('gable');
-    expect(getLocalFirstWorkingCopy<any>(entityKey)?.data.houseFirst).toBeUndefined();
+    expect('houseFirst' in (getLocalFirstWorkingCopy<any>(entityKey)?.data ?? {})).toBe(false);
     expect(rendered.container.textContent).not.toContain('Mono fall direction');
     expect(rendered.container.textContent).toContain('Gable ridge orientation');
     expect(readLabeledValue(rendered.container, 'Selected roof form')).toBe('gable');
@@ -1110,7 +1133,6 @@ describe('DesignWorkbenchEstimateClient', () => {
       ui: createDrawingWorkbenchUiState({ workbenchMode: 'house' }),
     });
     draft.objectFirst = buildObjectFirstWorkbenchDraftFromProjectModel(baselineStore.persisted.projectModel);
-    draft.houseFirst = undefined;
     const houseForm = draft.objectFirst.houseAssembly?.houseForms[0];
     if (!houseForm) throw new Error('Expected object-first house form.');
     houseForm.roofIntentAuthored = true;
@@ -1451,7 +1473,7 @@ describe('DesignWorkbenchEstimateClient', () => {
       depthM: '3',
       centerOffsetM: '0',
     });
-    expect(getLocalFirstWorkingCopy<any>(entityKey)?.data.houseFirst).toBeUndefined();
+    expect('houseFirst' in (getLocalFirstWorkingCopy<any>(entityKey)?.data ?? {})).toBe(false);
     expect(readLabeledValue(rendered.container, 'Deck count')).toBe('1');
     expect(readLabeledValue(rendered.container, 'Active host side')).toBe('rear');
     expect(readLabeledValue(rendered.container, 'Active-side deck present')).toBe('Yes');
@@ -1612,7 +1634,7 @@ describe('DesignWorkbenchEstimateClient', () => {
     expect(readObjectFirstOpenings(getLocalFirstWorkingCopy<any>(entityKey)?.data).map((opening: any) => opening.id)).toEqual([
       'opening-1',
     ]);
-    expect(getLocalFirstWorkingCopy<any>(entityKey)?.data.houseFirst).toBeUndefined();
+    expect('houseFirst' in (getLocalFirstWorkingCopy<any>(entityKey)?.data ?? {})).toBe(false);
     expect(readLabeledValue(rendered.container, 'Opening count')).toBe('1');
     expect(readLabeledValue(rendered.container, 'Slider openings')).toBe('0');
     expect(readLabeledValue(rendered.container, 'Selected opening id')).toBe('opening-1');
@@ -1847,29 +1869,28 @@ describe('DesignWorkbenchEstimateClient', () => {
     const entityKey = buildEstimateDrawingDraftEntityKey(estimate.id);
     const baseDraft = buildEstimateDrawingDraftFromSnapshot(estimate.calculatorSnapshot);
     if (!baseDraft) throw new Error('Expected drawing draft');
+    setObjectFirstOpeningDrafts({
+      snapshot: estimate.calculatorSnapshot,
+      draft: baseDraft,
+      openings: [
+        {
+          id: 'opening-1',
+          label: 'Rear slider',
+          kind: 'slider',
+          panelCount: 4,
+          wallId: 'rear',
+          widthM: '2.4',
+          heightM: '2.1',
+          sillHeightM: '0',
+          offsetAlongWallM: '0.8',
+        },
+      ],
+    });
 
     await ensureLocalFirstStoreReady();
     await writeLocalFirstWorkingCopy({
       entityKey,
-      data: {
-        ...baseDraft,
-        houseFirst: {
-          ...baseDraft.houseFirst,
-          openings: [
-            {
-              id: 'opening-1',
-              label: 'Rear slider',
-              kind: 'slider',
-              panelCount: 4,
-              wallId: 'rear',
-              widthM: '2.4',
-              heightM: '2.1',
-              sillHeightM: '0',
-              offsetAlongWallM: '0.8',
-            },
-          ],
-        },
-      },
+      data: baseDraft,
     });
 
     const rendered = renderIntoDocument(
