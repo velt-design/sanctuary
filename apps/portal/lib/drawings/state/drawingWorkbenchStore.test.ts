@@ -1075,11 +1075,13 @@ describe('buildDrawingWorkbenchStore', () => {
     expect(store.derived.compatibilityBridge.roofReviewStatus).not.toBe('blocked');
     expect(store.derived.compatibilityBridge.roofValidationCode).toBeNull();
     expect(store.derived.compatibilityBridge.house?.roof.form).toBe('hipped');
+    expect(store.derived.compatibilityBridge.house?.roof.primaryPitchDeg).toBe('5');
     expect(store.derived.compatibilityBridge.house?.roof.ridgeAxis).toBe('x');
     expect(store.derived.compatibilityBridge.house?.roof.openGableEndIds).toEqual([]);
     expect(store.derived.compatibilityBridge.house?.roof.appendage.enabled).toBe(false);
     expect(store.persisted.projectModel.houseAssembly?.houseForms[0]?.roofIntent).toMatchObject({
       form: 'hipped',
+      primaryPitchDeg: '5',
       ridgeAxis: 'x',
       openGableEndIds: [],
       appendage: expect.objectContaining({ enabled: false }),

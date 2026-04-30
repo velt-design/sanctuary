@@ -30,6 +30,7 @@ export type HouseRoofFormBehavior = {
 };
 
 export const HOUSE_ROOF_FORM_ORDER: readonly HouseRoofForm[] = ['flat', 'mono', 'gable', 'hipped'];
+export const MIN_VISIBLE_HOUSE_ROOF_PITCH_DEG = 5;
 
 export const HOUSE_ROOF_FORM_BEHAVIORS: Record<HouseRoofForm, HouseRoofFormBehavior> = {
   flat: {
@@ -80,6 +81,52 @@ export function isHouseRoofForm(value: unknown): value is HouseRoofForm {
 
 export function getHouseRoofFormBehavior(roofForm: HouseRoofForm): HouseRoofFormBehavior {
   return HOUSE_ROOF_FORM_BEHAVIORS[roofForm];
+}
+
+export function houseRoofFormUsesMinimumVisiblePitch(roofForm: HouseRoofForm): boolean {
+  return roofForm === 'gable' || roofForm === 'hipped';
+}
+
+export function normalizeHouseRoofPitchDegForForm(input: {
+  roofForm: HouseRoofForm;
+  pitchDeg: number | null | undefined;
+  fallbackPitchDeg: number;
+}): number {
+  if (input.roofForm === 'flat') return 0;
+  const fallback = Number.isFinite(input.fallbackPitchDeg)
+    ? input.fallbackPitchDeg
+    : MIN_VISIBLE_HOUSE_ROOF_PITCH_DEG;
+  const pitch = typeof input.pitchDeg === 'number' && Number.isFinite(input.pitchDeg)
+    ? input.pitchDeg
+    : fallback;
+  if (houseRoofFormUsesMinimumVisiblePitch(input.roofForm)) {
+    return Math.max(MIN_VISIBLE_HOUSE_ROOF_PITCH_DEG, pitch);
+  }
+  return pitch;
+}
+
+export function normalizeHouseRoofPitchInputForForm(input: {
+  roofForm: HouseRoofForm;
+  value: string | number | null | undefined;
+  fallbackValue?: string | number | null | undefined;
+}): string {
+  if (input.roofForm === 'flat') return '0';
+  const rawValue =
+    input.value !== null && input.value !== undefined && String(input.value).trim().length > 0
+      ? String(input.value).trim()
+      : input.fallbackValue !== null &&
+          input.fallbackValue !== undefined &&
+          String(input.fallbackValue).trim().length > 0
+        ? String(input.fallbackValue).trim()
+        : '';
+  if (!houseRoofFormUsesMinimumVisiblePitch(input.roofForm)) {
+    return rawValue;
+  }
+  const parsed = Number(rawValue);
+  if (!Number.isFinite(parsed) || parsed < MIN_VISIBLE_HOUSE_ROOF_PITCH_DEG) {
+    return String(MIN_VISIBLE_HOUSE_ROOF_PITCH_DEG);
+  }
+  return rawValue;
 }
 
 export type HouseRoofCapabilities = {

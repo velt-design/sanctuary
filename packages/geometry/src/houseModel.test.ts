@@ -1822,6 +1822,26 @@ describe('house model geometry builder', () => {
     }
   });
 
+  it('auto-heals zero gable and hipped roof pitches to visible roof geometry', () => {
+    for (const roofForm of ['gable', 'hipped'] as const) {
+      const model = buildHouseModel3D({
+        config: makeConfig({
+          footprint: makePresetFootprint('wrap_left'),
+          roofForm,
+          roofPitchDeg: 0,
+          roofRidgeAxis: 'x',
+        }),
+        attachmentEdge: makeAttachmentEdge(),
+      });
+
+      expect(model, roofForm).not.toBeNull();
+      if (!model) continue;
+      expect(model.roofPlanes.length, roofForm).toBeGreaterThan(0);
+      expect(model.roofPlanes.every((plane) => plane.metadata?.pitchDeg === 5), roofForm).toBe(true);
+      expectRoofQaValid(model);
+    }
+  });
+
   it('aligns mono wall tops to the roof plane without dropping below the wall height', () => {
     const model = buildHouseModel3D({
       config: makeConfig({

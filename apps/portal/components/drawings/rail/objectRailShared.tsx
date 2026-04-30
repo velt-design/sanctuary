@@ -317,6 +317,7 @@ export function NumberField({
   disabled,
   error,
   helperText,
+  normalizeOnCommit,
   onCommit,
 }: {
   label: string;
@@ -324,6 +325,7 @@ export function NumberField({
   disabled?: boolean;
   error?: string;
   helperText?: string;
+  normalizeOnCommit?: (value: string) => string;
   onCommit: (value: string) => Promise<unknown> | void;
 }) {
   const [draft, setDraft] = useState(value);
@@ -332,10 +334,15 @@ export function NumberField({
     setDraft(value);
   }, [value]);
 
-  const commit = useCallback(async () => {
-    if (draft === value) return;
-    await onCommit(draft);
-  }, [draft, onCommit, value]);
+  const commit = useCallback(async (rawValue?: string) => {
+    const sourceValue = rawValue ?? draft;
+    const nextDraft = normalizeOnCommit ? normalizeOnCommit(sourceValue) : sourceValue;
+    if (nextDraft !== sourceValue || nextDraft !== draft) {
+      setDraft(nextDraft);
+    }
+    if (nextDraft === value) return;
+    await onCommit(nextDraft);
+  }, [draft, normalizeOnCommit, onCommit, value]);
 
   return (
     <label className={styles.field}>
@@ -347,11 +354,11 @@ export function NumberField({
         value={draft}
         disabled={disabled}
         onChange={(event) => setDraft(event.target.value)}
-        onBlur={() => void commit()}
+        onBlur={(event) => void commit(event.currentTarget.value)}
         onKeyDown={(event) => {
           if (event.key === 'Enter') {
             event.preventDefault();
-            void commit();
+            void commit(event.currentTarget.value);
           }
           if (event.key === 'Escape') {
             event.preventDefault();

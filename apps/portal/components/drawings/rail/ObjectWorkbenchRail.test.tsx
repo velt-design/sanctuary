@@ -247,6 +247,7 @@ describe('ObjectWorkbenchRail', () => {
       <ObjectWorkbenchRail {...buildRailProps({ draft: buildDraftWithRoofForm('gable') })} />,
     );
     expect(gableMarkup).toContain('Roof pitch (deg)');
+    expect(gableMarkup).toContain('Minimum is 5 deg for this roof.');
     expect(gableMarkup).toContain('Gable ridge orientation');
     expect(gableMarkup).toContain('Open gable ends');
     expect(gableMarkup).toContain('Appendage band');
@@ -256,6 +257,7 @@ describe('ObjectWorkbenchRail', () => {
       <ObjectWorkbenchRail {...buildRailProps({ draft: buildDraftWithRoofForm('hipped') })} />,
     );
     expect(hippedMarkup).toContain('Roof pitch (deg)');
+    expect(hippedMarkup).toContain('Minimum is 5 deg for this roof.');
     expect(hippedMarkup).toContain('Hipped ridge orientation');
     expect(hippedMarkup).not.toContain('Mono fall direction');
     expect(hippedMarkup).not.toContain('Open gable ends');

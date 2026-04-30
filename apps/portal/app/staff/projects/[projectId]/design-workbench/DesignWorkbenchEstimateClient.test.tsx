@@ -102,6 +102,25 @@ function fillInputByLabel(container: HTMLElement, label: string, value: string) 
   });
 }
 
+function commitInputByLabel(container: HTMLElement, label: string, value: string) {
+  const input = container.querySelector(`[aria-label="${label}"]`) as HTMLInputElement | null;
+  if (!input) throw new Error(`Missing input: ${label}`);
+  const valueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')?.set;
+  act(() => {
+    input.focus();
+    if (valueSetter) {
+      valueSetter.call(input, value);
+    } else {
+      input.value = value;
+    }
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  act(() => {
+    input.blur();
+  });
+}
+
 function clickElement(target: Element): void {
   act(() => {
     target.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
@@ -1129,6 +1148,51 @@ describe('DesignWorkbenchEstimateClient', () => {
     rendered.unmount();
   });
 
+  it('normalizes gable and hipped pitch to the minimum visible value when switching from flat', async () => {
+    const estimate = buildEstimateDetail();
+    const entityKey = buildEstimateDrawingDraftEntityKey(estimate.id);
+
+    const rendered = renderIntoDocument(
+      <DesignWorkbenchEstimateClient estimate={estimate} projectName="Roof Forms" siteAddress="1 Test Street" />,
+    );
+
+    await flushAsyncWork();
+
+    changeSelectByLabel(rendered.container, 'Roof form', 'flat');
+    await flushAsyncWork();
+    expect(readObjectFirstRoofDraft(getLocalFirstWorkingCopy<any>(entityKey)?.data)?.primaryPitchDeg).toBe('0');
+
+    changeSelectByLabel(rendered.container, 'Roof form', 'gable');
+    await flushAsyncWork();
+    let roofDraft = readObjectFirstRoofDraft(getLocalFirstWorkingCopy<any>(entityKey)?.data);
+    expect(roofDraft).toMatchObject({ form: 'gable', primaryPitchDeg: '5' });
+    expect((rendered.container.querySelector('[aria-label="Roof pitch (deg)"]') as HTMLInputElement | null)?.value).toBe(
+      '5',
+    );
+    expect(rendered.container.textContent).toContain('Minimum is 5 deg for this roof.');
+
+    commitInputByLabel(rendered.container, 'Roof pitch (deg)', '2');
+    await flushAsyncWork();
+    roofDraft = readObjectFirstRoofDraft(getLocalFirstWorkingCopy<any>(entityKey)?.data);
+    expect(roofDraft).toMatchObject({ form: 'gable', primaryPitchDeg: '5' });
+    await flushAsyncWork();
+    expect((rendered.container.querySelector('[aria-label="Roof pitch (deg)"]') as HTMLInputElement | null)?.value).toBe(
+      '5',
+    );
+
+    changeSelectByLabel(rendered.container, 'Roof form', 'flat');
+    await flushAsyncWork();
+    changeSelectByLabel(rendered.container, 'Roof form', 'hipped');
+    await flushAsyncWork();
+    roofDraft = readObjectFirstRoofDraft(getLocalFirstWorkingCopy<any>(entityKey)?.data);
+    expect(roofDraft).toMatchObject({ form: 'hipped', primaryPitchDeg: '5' });
+    expect((rendered.container.querySelector('[aria-label="Roof pitch (deg)"]') as HTMLInputElement | null)?.value).toBe(
+      '5',
+    );
+
+    rendered.unmount();
+  });
+
   it('normalizes all house roof form transitions into the local working copy', async () => {
     const estimate = buildEstimateDetail();
     const entityKey = buildEstimateDrawingDraftEntityKey(estimate.id);
@@ -1206,6 +1270,7 @@ describe('DesignWorkbenchEstimateClient', () => {
     const hippedDraft = readObjectFirstRoofDraft(getLocalFirstWorkingCopy<any>(entityKey)?.data);
     expect(hippedDraft).toMatchObject({
       form: 'hipped',
+      primaryPitchDeg: '5',
     });
     expect(hippedDraft?.appendage?.enabled).toBe(false);
     expect(hippedDraft?.openGableEndIds).toEqual([]);

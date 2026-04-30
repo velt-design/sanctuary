@@ -764,7 +764,7 @@ describe('buildWorkbenchGeometryPreview', () => {
             current.houseFirst = {
               roof: {
                 form,
-                primaryPitchDeg: form === 'gable' ? '18' : '22',
+                primaryPitchDeg: form === 'gable' ? '' : '0',
                 material: 'corrugated_iron',
               },
             };
@@ -785,6 +785,10 @@ describe('buildWorkbenchGeometryPreview', () => {
             attachmentSide,
           );
           expect(preview.config.houseContext.model?.roofForm, `${preset}/${attachmentSide}/${form} form`).toBe(form);
+          expect(
+            preview.config.houseContext.model?.roofPitchDeg,
+            `${preset}/${attachmentSide}/${form} pitch`,
+          ).toBe(5);
           expect(
             preview.config.houseContext.model?.footprint.length,
             `${preset}/${attachmentSide}/${form} footprint points`,
@@ -829,7 +833,7 @@ describe('buildWorkbenchGeometryPreview', () => {
     houseForm.roofIntent = {
       ...houseForm.roofIntent,
       form: 'hipped',
-      primaryPitchDeg: '22',
+      primaryPitchDeg: '0',
       ridgeAxis: 'y',
       openGableEndIds: ['house-gable-end-y-1'],
       appendage: {
@@ -850,6 +854,7 @@ describe('buildWorkbenchGeometryPreview', () => {
     expect(preview.kind).toBe('ready');
     if (preview.kind !== 'ready') return;
     expect(preview.config.houseContext.model?.roofForm).toBe('hipped');
+    expect(preview.config.houseContext.model?.roofPitchDeg).toBe(5);
     expect(preview.config.houseContext.model?.roofRidgeAxis).toBe('x');
     expect(preview.scene.metadata?.houseRoofQaStatus).toBe('valid');
     expect(

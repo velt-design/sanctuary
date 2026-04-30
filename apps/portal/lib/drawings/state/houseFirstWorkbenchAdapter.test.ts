@@ -618,6 +618,54 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
     }
   });
 
+  it('auto-heals stale or too-low preset gable and hipped roof pitch while preserving flat and mono pitch behavior', () => {
+    const monoFixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
+    if (!monoFixture) throw new Error('Missing mono-standard fixture.');
+
+    for (const [form, primaryPitchDeg] of [
+      ['gable', '0'],
+      ['hipped', '3.5'],
+      ['gable', ''],
+      ['hipped', '-1'],
+    ] as const) {
+      const draft = buildEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
+      if (!draft) throw new Error('Expected drawing draft.');
+      draft.inputs.modules[0]!.houseFootprintPreset = 'wrap_left';
+      draft.houseFirst = {
+        roof: {
+          form,
+          primaryPitchDeg,
+          ridgeAxis: 'x',
+        },
+      };
+
+      const projectModel = buildHouseFirstWorkbenchProjectModel({
+        snapshot: monoFixture.snapshot,
+        draft,
+      });
+
+      expect(projectModel.house?.roof.form, `${form}/${primaryPitchDeg}`).toBe(form);
+      expect(projectModel.house?.roof.primaryPitchDeg, `${form}/${primaryPitchDeg}`).toBe('5');
+      expect(projectModel.house?.roof.validation.code, `${form}/${primaryPitchDeg}`).toBeNull();
+    }
+
+    const flatDraft = buildEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
+    if (!flatDraft) throw new Error('Expected drawing draft.');
+    flatDraft.houseFirst = { roof: { form: 'flat', primaryPitchDeg: '18' } };
+    expect(
+      buildHouseFirstWorkbenchProjectModel({ snapshot: monoFixture.snapshot, draft: flatDraft }).house?.roof
+        .primaryPitchDeg,
+    ).toBe('0');
+
+    const monoDraft = buildEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
+    if (!monoDraft) throw new Error('Expected drawing draft.');
+    monoDraft.houseFirst = { roof: { form: 'mono', primaryPitchDeg: '0' } };
+    expect(
+      buildHouseFirstWorkbenchProjectModel({ snapshot: monoFixture.snapshot, draft: monoDraft }).house?.roof
+        .primaryPitchDeg,
+    ).toBe('0');
+  });
+
   it('surfaces only the outer open-end options for U-shaped bent gables', () => {
     const monoFixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
     if (!monoFixture) throw new Error('Missing mono-standard fixture.');

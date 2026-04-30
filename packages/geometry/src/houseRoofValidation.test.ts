@@ -5,6 +5,9 @@ import {
   classifyHouseRoofFootprintTopology,
   deriveHouseRoofCapabilities,
   deriveHouseRoofGeometryKind,
+  MIN_VISIBLE_HOUSE_ROOF_PITCH_DEG,
+  normalizeHouseRoofPitchDegForForm,
+  normalizeHouseRoofPitchInputForForm,
   validateHouseRoofSelection,
 } from './houseRoofValidation';
 
@@ -32,6 +35,35 @@ function buildPresetFootprint(preset: HouseFootprintPreset, attachmentSide: Atta
 }
 
 describe('house roof validation', () => {
+  it('normalizes gable and hipped roof pitches to a visible minimum', () => {
+    for (const roofForm of ['gable', 'hipped'] as const) {
+      expect(normalizeHouseRoofPitchInputForForm({ roofForm, value: '' }), roofForm).toBe(
+        String(MIN_VISIBLE_HOUSE_ROOF_PITCH_DEG),
+      );
+      expect(normalizeHouseRoofPitchInputForForm({ roofForm, value: '0' }), roofForm).toBe(
+        String(MIN_VISIBLE_HOUSE_ROOF_PITCH_DEG),
+      );
+      expect(normalizeHouseRoofPitchInputForForm({ roofForm, value: '-1' }), roofForm).toBe(
+        String(MIN_VISIBLE_HOUSE_ROOF_PITCH_DEG),
+      );
+      expect(normalizeHouseRoofPitchInputForForm({ roofForm, value: '3.5' }), roofForm).toBe(
+        String(MIN_VISIBLE_HOUSE_ROOF_PITCH_DEG),
+      );
+      expect(normalizeHouseRoofPitchInputForForm({ roofForm, value: '7.5' }), roofForm).toBe('7.5');
+      expect(
+        normalizeHouseRoofPitchDegForForm({
+          roofForm,
+          pitchDeg: 0,
+          fallbackPitchDeg: 25,
+        }),
+        roofForm,
+      ).toBe(MIN_VISIBLE_HOUSE_ROOF_PITCH_DEG);
+    }
+
+    expect(normalizeHouseRoofPitchInputForForm({ roofForm: 'flat', value: '18' })).toBe('0');
+    expect(normalizeHouseRoofPitchInputForForm({ roofForm: 'mono', value: '0' })).toBe('0');
+  });
+
   it('supports every live roof form on every preset house footprint', () => {
     for (const preset of HOUSE_FOOTPRINT_PRESETS) {
       const footprint = buildPresetFootprint(preset);

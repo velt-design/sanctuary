@@ -1,4 +1,4 @@
-import { getHouseRoofFormBehavior, isHouseRoofForm } from '@sp/geometry';
+import { getHouseRoofFormBehavior, isHouseRoofForm, normalizeHouseRoofPitchInputForForm } from '@sp/geometry';
 import {
   applyEstimateDrawingFootprintEdit,
   applyEstimateDrawingModuleFieldEdit,
@@ -582,7 +582,10 @@ function normalizeSharedHouseRoofDraftForCommit(
 ): HouseFirstRoofDraft {
   const form: HouseRoofForm = isHouseRoofForm(roof.form) ? roof.form : 'mono';
   const behavior = getHouseRoofFormBehavior(form);
-  const pitchDeg = roof.primaryPitchDeg?.trim() ?? '';
+  const pitchDeg = normalizeHouseRoofPitchInputForForm({
+    roofForm: form,
+    value: roof.primaryPitchDeg,
+  });
   const base: HouseFirstRoofDraft = {
     ...roof,
     form,
@@ -622,7 +625,11 @@ export function mergeHouseFormRoofIntentAfterFootprintSync(input: {
       ...previewRoof,
       form,
       material: existingRoof.material,
-      primaryPitchDeg: behavior.controls.pitch ? existingRoof.primaryPitchDeg : '0',
+      primaryPitchDeg: normalizeHouseRoofPitchInputForForm({
+        roofForm: form,
+        value: existingRoof.primaryPitchDeg,
+        fallbackValue: previewRoof.primaryPitchDeg,
+      }),
       primaryFallDirection: behavior.controls.primaryFallDirection
         ? existingRoof.primaryFallDirection
         : 'negative_y',

@@ -29,6 +29,7 @@ import type {
   Vector3,
 } from './contracts';
 import {
+  normalizeHouseRoofPitchDegForForm,
   validateHouseRoofSelection,
   type HouseRoofAppendageSupport,
 } from './houseRoofValidation';
@@ -7263,7 +7264,12 @@ export function buildHouseModel3D(input: {
       DEFAULT_EAVE_HEIGHT_MM,
   );
   const wallHeightMm = finiteNumber(model.wallHeightMm, eaveHeightMm);
-  const roofPitchDeg = finiteNumber(model.roofPitchDeg, DEFAULT_ROOF_PITCH_DEG);
+  const roofForm = model.roofForm ?? 'hipped';
+  const roofPitchDeg = normalizeHouseRoofPitchDegForForm({
+    roofForm,
+    pitchDeg: finiteNumber(model.roofPitchDeg, DEFAULT_ROOF_PITCH_DEG),
+    fallbackPitchDeg: DEFAULT_ROOF_PITCH_DEG,
+  });
   const soffitDepthMm = positiveNumber(model.eave?.soffitDepthMm, DEFAULT_SOFFIT_DEPTH_MM);
   const fasciaHeightMm = positiveNumber(model.eave?.fasciaHeightMm, DEFAULT_FASCIA_HEIGHT_MM);
   const gutterWidthMm = positiveNumber(model.eave?.gutterWidthMm, DEFAULT_GUTTER_WIDTH_MM);
@@ -7271,7 +7277,6 @@ export function buildHouseModel3D(input: {
   const gutterProjectionMm = positiveNumber(model.eave?.gutterProjectionMm, DEFAULT_GUTTER_PROJECTION_MM);
   const eaveOverhangMm = positiveNumber(model.eave?.eaveOverhangMm, DEFAULT_EAVE_OVERHANG_MM);
   const roofMaterial = model.roofMaterial ?? DEFAULT_HOUSE_ROOF_MATERIAL;
-  const roofForm = model.roofForm ?? 'hipped';
   const roofPrimaryFallDirection = model.roofPrimaryFallDirection ?? 'positive_y';
   const roofRidgeAxis = model.roofRidgeAxis ?? 'x';
   const semanticAttachmentEdge = buildSemanticHouseAttachmentEdge(input.config, input.attachmentEdge);

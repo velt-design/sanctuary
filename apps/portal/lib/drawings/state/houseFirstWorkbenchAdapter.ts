@@ -10,6 +10,7 @@ import {
   deriveHouseRoofAppendageSupport,
   deriveHouseRoofCapabilities,
   deriveHouseRoofGeometryKind,
+  normalizeHouseRoofPitchInputForForm,
   preferredMonoFallDirectionForAttachmentSide,
   validateHouseRoofSelection,
   type Line3,
@@ -1697,10 +1698,15 @@ function buildSharedHouse(
   const explicitOpenGableEndIds = normalizedRoofDraft?.openGableEndIds;
   const explicitAppendage = normalizedRoofDraft?.appendage ?? null;
   const sharedRoofForm = explicitRoofForm ?? roofForm;
-  const sharedRoofPitchDeg = normalizeRoofDraftPitch(
-    explicitRoofPitchDeg,
-    inferredPrimaryPitchDeg,
-  );
+  const sharedRoofPitchFallback =
+    explicitRoofPitchDeg === null || explicitRoofPitchDeg === undefined || sharedRoofForm === 'mono'
+      ? inferredPrimaryPitchDeg
+      : null;
+  const sharedRoofPitchDeg = normalizeHouseRoofPitchInputForForm({
+    roofForm: sharedRoofForm,
+    value: explicitRoofPitchDeg,
+    fallbackValue: sharedRoofPitchFallback,
+  });
   const sharedRoofMaterial =
     explicitRoofMaterial
       ? (normalizeHouseRoofMaterial(explicitRoofMaterial) as CalculatorHouseRoofMaterial)

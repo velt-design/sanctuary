@@ -439,7 +439,7 @@ describe('buildRawGeometryModuleInput', () => {
           draft.houseFirst = {
             roof: {
               form,
-              primaryPitchDeg: form === 'gable' ? '18' : '22',
+              primaryPitchDeg: form === 'gable' ? '' : '0',
               material: 'corrugated_iron',
             },
           };
@@ -460,6 +460,7 @@ describe('buildRawGeometryModuleInput', () => {
           expect(raw.connection.attachmentSide, `${preset}/${attachmentSide}/${form} side`).toBe(attachmentSide);
           expect(raw.houseContext.footprintPreset, `${preset}/${attachmentSide}/${form} footprint`).toBe(preset);
           expect(raw.houseContext.roofForm, `${preset}/${attachmentSide}/${form} form`).toBe(form);
+          expect(raw.houseContext.roofPitchDeg, `${preset}/${attachmentSide}/${form} pitch`).toBe('5');
           expect(raw.houseContext.roofRidgeAxis, `${preset}/${attachmentSide}/${form} ridge`).toBe(
             projectModel.house?.roof.ridgeAxis,
           );

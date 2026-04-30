@@ -1,5 +1,10 @@
 import type { ReactNode } from 'react';
-import { getHouseRoofFormBehavior } from '@sp/geometry';
+import {
+  getHouseRoofFormBehavior,
+  houseRoofFormUsesMinimumVisiblePitch,
+  MIN_VISIBLE_HOUSE_ROOF_PITCH_DEG,
+  normalizeHouseRoofPitchInputForForm,
+} from '@sp/geometry';
 import type { CalculatorHouseRoofMaterial, CalculatorModuleInputs } from '@/lib/types/calculator';
 import type { HouseFormRoofIntentModel } from '@/lib/drawings/state/objectFirstWorkbenchModel';
 import type { ObjectWorkbenchHouseFormInspectorModel } from '@/lib/drawings/state/objectWorkbenchInspectorModel';
@@ -43,6 +48,9 @@ export function buildHouseFormRoofSections({
   const selectedFormSupported = roofContext.selectedFormSupported;
   const canEditSelectedRoofForm = selectedFormSupported;
   const roofControls = roofContext.controls ?? getHouseRoofFormBehavior(roofDraft.form ?? 'mono').controls;
+  const pitchHelperText = houseRoofFormUsesMinimumVisiblePitch(roofDraft.form ?? 'mono')
+    ? `Minimum is ${MIN_VISIBLE_HOUSE_ROOF_PITCH_DEG} deg for this roof.`
+    : 'Shared roof pitch for the main house roof.';
   const canShowAppendageControls = canEditSelectedRoofForm && roofControls.appendage;
   const appendageHelperText =
     roofContext.validationCode === 'invalid_appendage_topology' ||
@@ -79,7 +87,13 @@ export function buildHouseFormRoofSections({
           value={roofDraft.primaryPitchDeg ?? ''}
           disabled={disabled}
           error={fieldErrors['roof-pitch']}
-          helperText="Shared roof pitch for the main house roof."
+          helperText={pitchHelperText}
+          normalizeOnCommit={(value) =>
+            normalizeHouseRoofPitchInputForForm({
+              roofForm: roofDraft.form ?? 'mono',
+              value,
+            })
+          }
           onCommit={(value) =>
             runRoofCommit('roof-pitch', {
               ...roofDraft,

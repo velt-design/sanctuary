@@ -32,6 +32,7 @@ import {
   houseFootprintSideLocalToWorldPolygon,
   resolveHouseFootprintFrame,
 } from './footprints';
+import { normalizeHouseRoofPitchDegForForm } from './houseRoofValidation';
 import { makeDatumFrame } from './math3d';
 import { parseAssemblyMemberProfile } from './profiles';
 import {
@@ -442,7 +443,12 @@ function buildHouseModelConfig(input: {
     input.houseUndersideMm ??
     DEFAULT_HOUSE_EAVE_HEIGHT_MM;
   const wallHeightMm = resolveOptionalMetresToMillimetres(input.rawHouseContext.wallHeightM) ?? eaveHeightMm;
-  const roofPitchDeg = resolveOptionalDegrees(input.rawHouseContext.roofPitchDeg) ?? DEFAULT_HOUSE_ROOF_PITCH_DEG;
+  const roofForm = resolveHouseRoofForm(input.rawHouseContext.roofForm);
+  const roofPitchDeg = normalizeHouseRoofPitchDegForForm({
+    roofForm,
+    pitchDeg: resolveOptionalDegrees(input.rawHouseContext.roofPitchDeg),
+    fallbackPitchDeg: DEFAULT_HOUSE_ROOF_PITCH_DEG,
+  });
   const rawEave = input.rawHouseContext.eave;
   const deckFrame = resolveHouseFootprintFrame({
     pergolaWidthMm: 1000,
@@ -593,7 +599,7 @@ function buildHouseModelConfig(input: {
     footprint: input.footprint,
     storeyMode: resolveHouseStoreyMode(input.rawHouseContext.storeyMode),
     wallConstruction: resolveHouseWallConstruction(input.rawHouseContext.wallConstruction),
-    roofForm: resolveHouseRoofForm(input.rawHouseContext.roofForm),
+    roofForm,
     roofMaterial: resolveHouseRoofMaterial(input.rawHouseContext.roofMaterial),
     eaveHeightMm,
     wallHeightMm,
