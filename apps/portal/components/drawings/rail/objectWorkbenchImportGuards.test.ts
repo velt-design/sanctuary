@@ -16,6 +16,9 @@ const ALLOWLISTED_COMPATIBILITY_FILES = new Set([
   path.normalize(path.join('apps', 'portal', 'app', 'staff', 'projects', '[projectId]', 'design-workbench', 'compat', 'objectWorkbenchDraftActionBridge.ts')),
   path.normalize(path.join('apps', 'portal', 'app', 'staff', 'projects', '[projectId]', 'design-workbench', 'compat', 'workbenchCompatibilityDraftBuilders.ts')),
 ]);
+const ALLOWLISTED_COMPATIBILITY_BRIDGE_READERS = new Set([
+  path.normalize(path.join('apps', 'portal', 'app', 'staff', 'projects', '[projectId]', 'design-workbench', 'useObjectWorkbenchActions.ts')),
+]);
 const ALLOWLISTED_CONFIGURATOR_FILES = new Set([
   path.normalize(path.join('apps', 'portal', 'components', 'drawings', 'rail', 'ConfiguratorRail.tsx')),
 ]);
@@ -38,6 +41,10 @@ function toRepoRelativePath(absolutePath: string): string {
   return path.normalize(path.relative(process.cwd(), absolutePath));
 }
 
+function canReadCompatibilityBridge(relativePath: string): boolean {
+  return ALLOWLISTED_COMPATIBILITY_BRIDGE_READERS.has(relativePath) || relativePath.includes(`${path.sep}compat${path.sep}`);
+}
+
 describe('object workbench import guards', () => {
   it('keeps canonical rail and hidden-route UI off compatibility-only imports', () => {
     const violations: string[] = [];
@@ -50,6 +57,9 @@ describe('object workbench import guards', () => {
         const importsConfiguratorRail = /from ['"][^'"]*ConfiguratorRail['"]/.test(source);
         const readsCompatibilityUiSelection =
           /\b(?:ui|current|store\.ui)\.(?:workbenchMode|activeHouseSelection|activePergolaId)\b/.test(source);
+        const readsFlatCompatibilityDerivedField =
+          /\bstore\.derived\.(?:house|houseCount|decks|openings|activeDeck|activeDeckId|activeOpening|activeOpeningId|pergolas|activePergola|activePergolaId|roofForm|roofReviewStatus|roofValidationStatus|roofValidationCode|roofValidationMessage|roofApproximationReasons|roofProvenance|roofGeometryKind|roofAppendageEnabled|roofAppendageStatus|roofAppendageSupportedHostEdges|roofAppendageSupportReason|migrationWarnings|migrationWarningCount|houseIsLowConfidence)\b/.test(source);
+        const readsCompatibilityBridge = /\bstore\.derived\.compatibilityBridge\b/.test(source);
 
         if (importsHouseFirstModel && !ALLOWLISTED_COMPATIBILITY_FILES.has(relativePath)) {
           violations.push(`${relativePath} imports houseFirstWorkbenchModel`);
@@ -59,6 +69,12 @@ describe('object workbench import guards', () => {
         }
         if (readsCompatibilityUiSelection) {
           violations.push(`${relativePath} reads compatibility selection fields from ui`);
+        }
+        if (readsFlatCompatibilityDerivedField) {
+          violations.push(`${relativePath} reads flat compatibility fields from store.derived`);
+        }
+        if (readsCompatibilityBridge && !canReadCompatibilityBridge(relativePath)) {
+          violations.push(`${relativePath} reads compatibilityBridge outside an explicit bridge/compat file`);
         }
       }
     }

@@ -229,7 +229,7 @@ export function useObjectWorkbenchActions({
         draft: nextDraft,
         ui,
       });
-      const nextDeck = previewStore.derived.house?.decks.find((deck) => deck.id === deckId);
+      const nextDeck = previewStore.derived.compatibilityBridge.decks.find((deck) => deck.id === deckId);
       if (nextDeck?.validation.status === 'invalid') {
         return {
           ok: false,
@@ -306,7 +306,7 @@ export function useObjectWorkbenchActions({
       runDraftTransaction({
         buildNextDraft: (draft) => {
           const objectFirstDraft = resolveObjectFirstDraft(draft, store);
-          const house = store.derived.house;
+          const house = store.derived.compatibilityBridge.house;
           const currentDecks = resolveCurrentObjectWorkbenchDeckDrafts(objectFirstDraft);
           const housePolygon = resolveDeckReferencePolygon(house, activeModuleInput);
           const nextDecks = input.buildNextDecks({
@@ -349,7 +349,7 @@ export function useObjectWorkbenchActions({
               objectFirst: buildObjectFirstDraftWithCompatibilityOpenings({
                 objectFirstDraft,
                 openings: nextOpenings,
-                sourceFormId: store.derived.activeHouseForm?.id ?? store.derived.house?.id ?? null,
+                sourceFormId: store.derived.activeHouseForm?.id ?? store.derived.compatibilityBridge.house?.id ?? null,
               }),
             }),
           };
@@ -370,7 +370,7 @@ export function useObjectWorkbenchActions({
           const objectFirstDraft = resolveObjectFirstDraft(draft, store);
           const currentPergolas = resolveCurrentObjectWorkbenchPergolaDrafts(objectFirstDraft);
           const currentPergola =
-            store.derived.pergolas.find((pergola) => pergola.id === input.pergolaId) ?? null;
+            store.derived.compatibilityBridge.pergolas.find((pergola) => pergola.id === input.pergolaId) ?? null;
           if (!currentPergola) {
             return {
               ok: false,
@@ -454,7 +454,7 @@ export function useObjectWorkbenchActions({
 
   const addSharedHouseDeck = useCallback(
     async (mode: 'preset' | 'custom_outline'): Promise<CommitResult> => {
-      const house = store.derived.house;
+      const house = store.derived.compatibilityBridge.house;
       if (!house) return missingSharedHouseResult();
 
       let deckId = '';
@@ -479,7 +479,7 @@ export function useObjectWorkbenchActions({
         },
       });
     },
-    [commitDeckDraftMutation, selectHouseTarget, startDeckOutlineEditor, store.derived.house],
+    [commitDeckDraftMutation, selectHouseTarget, startDeckOutlineEditor, store.derived.compatibilityBridge.house],
   );
 
   const removeSharedHouseDeck = useCallback(
@@ -516,16 +516,16 @@ export function useObjectWorkbenchActions({
             currentOpenings,
             openingId,
             houseAssembly: store.derived.houseAssembly,
-            house: store.derived.house,
+            house: store.derived.compatibilityBridge.house,
             patch,
           }),
       }),
-    [activeModuleInput, commitOpeningDraftMutation, store.derived.house, store.derived.houseAssembly],
+    [activeModuleInput, commitOpeningDraftMutation, store.derived.compatibilityBridge.house, store.derived.houseAssembly],
   );
 
   const addSharedHouseOpening = useCallback(
     async (kind: 'window' | 'hinged_door' | 'slider' | 'stacker'): Promise<CommitResult> => {
-      const house = store.derived.house;
+      const house = store.derived.compatibilityBridge.house;
       if (!house) return missingSharedHouseResult();
 
       let openingId = '';
@@ -537,7 +537,7 @@ export function useObjectWorkbenchActions({
             activeModuleInput,
             houseAssembly: store.derived.houseAssembly,
             house,
-            preferredHostWallId: store.derived.activeOpening?.hostWallId ?? null,
+            preferredHostWallId: store.derived.compatibilityBridge.activeOpening?.hostWallId ?? null,
             preferredSide: house.footprint.attachmentSide ?? 'rear',
           });
           return [
@@ -561,8 +561,8 @@ export function useObjectWorkbenchActions({
       activeModuleInput,
       commitOpeningDraftMutation,
       selectHouseTarget,
-      store.derived.activeOpening?.hostWallId,
-      store.derived.house,
+      store.derived.compatibilityBridge.activeOpening?.hostWallId,
+      store.derived.compatibilityBridge.house,
       store.derived.houseAssembly,
     ],
   );
@@ -602,7 +602,7 @@ export function useObjectWorkbenchActions({
             objectFirst: buildObjectFirstDraftWithCompatibilityPergolas({
               objectFirstDraft,
               pergolas: nextPergolas,
-              compatibilityPergolas: store.derived.pergolas,
+              compatibilityPergolas: store.derived.compatibilityBridge.pergolas,
               mapPergola: (pergola) =>
                 pergola.id === pergolaId
                   ? {
@@ -656,7 +656,7 @@ export function useObjectWorkbenchActions({
             objectFirst: buildObjectFirstDraftWithCompatibilityPergolas({
               objectFirstDraft,
               pergolas: nextPergolas,
-              compatibilityPergolas: store.derived.pergolas,
+              compatibilityPergolas: store.derived.compatibilityBridge.pergolas,
               mapPergola: (pergola) =>
                 pergola.id === pergolaId
                   ? {
@@ -707,7 +707,7 @@ export function useObjectWorkbenchActions({
             objectFirst: buildObjectFirstDraftWithCompatibilityPergolas({
               objectFirstDraft,
               pergolas: nextPergolas,
-              compatibilityPergolas: store.derived.pergolas,
+              compatibilityPergolas: store.derived.compatibilityBridge.pergolas,
               mapPergola: (pergola) =>
                 pergola.id === pergolaId
                   ? {
@@ -738,7 +738,7 @@ export function useObjectWorkbenchActions({
             objectFirst: buildObjectFirstDraftWithCompatibilityPergolas({
               objectFirstDraft,
               pergolas: upsertObjectWorkbenchPergolaDrafts(currentPergolas, pergolaId, {}),
-              compatibilityPergolas: store.derived.pergolas,
+              compatibilityPergolas: store.derived.compatibilityBridge.pergolas,
               mapPergola: (pergola) =>
                 pergola.id === pergolaId
                   ? {

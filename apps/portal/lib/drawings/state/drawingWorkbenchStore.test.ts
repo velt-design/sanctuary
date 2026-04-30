@@ -179,6 +179,18 @@ describe('buildDrawingWorkbenchStore', () => {
     expect(store.derived.activeHouseForm?.id).toBe('house-main');
     expect(store.derived.house?.footprint.preset).toBe('straight');
     expect(store.derived.pergolas).toHaveLength(1);
+    expect(store.derived.compatibilityBridge.projectModel).toBe(store.persisted.compatibilityProjectModel);
+    expect(store.derived.compatibilityBridge.house).toBe(store.derived.house);
+    expect(store.derived.compatibilityBridge.houseCount).toBe(store.derived.houseCount);
+    expect(store.derived.compatibilityBridge.decks).toBe(store.derived.decks);
+    expect(store.derived.compatibilityBridge.openings).toBe(store.derived.openings);
+    expect(store.derived.compatibilityBridge.pergolas).toBe(store.derived.pergolas);
+    expect(store.derived.compatibilityBridge.activeDeck).toBe(store.derived.activeDeck);
+    expect(store.derived.compatibilityBridge.activeOpening).toBe(store.derived.activeOpening);
+    expect(store.derived.compatibilityBridge.activePergolaId).toBe(store.derived.activePergolaId);
+    expect(store.derived.compatibilityBridge.roofReviewStatus).toBe(store.derived.roofReviewStatus);
+    expect(store.derived.compatibilityBridge.migrationWarnings).toBe(store.derived.migrationWarnings);
+    expect(store.derived.compatibilityBridge.houseIsLowConfidence).toBe(store.derived.houseIsLowConfidence);
     expect(store.derived.railModel.familySummaries.map((family) => family.family)).toEqual([
       'house_forms',
       'decks',

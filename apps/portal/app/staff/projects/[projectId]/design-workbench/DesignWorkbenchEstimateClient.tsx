@@ -158,8 +158,8 @@ export default function DesignWorkbenchEstimateClient({
   const activeModule = store.derived.activeModule;
   const activeModuleInput = activeModule?.drawingModule.input ?? null;
   const activeDeck =
-    store.derived.house?.decks.find((deck) => deck.id === drawOutlineTarget.deckId) ??
-    store.derived.activeDeck ??
+    store.derived.objectWorkbench.decks.find((deck) => deck.id === drawOutlineTarget.deckId) ??
+    store.derived.objectWorkbench.activeDeck ??
     null;
   const drawOutlineMode = drawOutlineTarget.kind;
   const drawOutlineSeedPolygon =
@@ -256,10 +256,15 @@ export default function DesignWorkbenchEstimateClient({
   );
   const modelViewportSurfaceKey = `${objectWorkbenchDisplayFamily}:${store.derived.activeModuleIndex}:${store.ui.activeView}`;
   const geometryViewportSurfaceKey = `${objectWorkbenchDisplayFamily}:${store.derived.activeModuleIndex}`;
+  const viewportPergolaId =
+    store.derived.objectWorkbench.activePergola?.id ??
+    activeModuleInput?.pergolaId ??
+    store.derived.objectWorkbench.pergolas[0]?.id ??
+    null;
   const viewportActiveObjectRef =
     store.ui.activeObjectRef.family === 'pergolas'
       ? store.ui.activeObjectRef
-      : { family: 'pergolas' as const, objectId: store.derived.activePergolaId };
+      : { family: 'pergolas' as const, objectId: viewportPergolaId };
   const activeModelViewportTransform =
     modelViewportTransformsByKey[modelViewportSurfaceKey] ?? DEFAULT_MODEL_VIEWPORT_TRANSFORM;
   const activeGeometryViewportState =

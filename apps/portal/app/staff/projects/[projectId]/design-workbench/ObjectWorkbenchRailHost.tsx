@@ -50,7 +50,7 @@ export default function ObjectWorkbenchRailHost({
   const defaultPergolaId =
     store.ui.activeObjectFamily === 'pergolas' && store.ui.activeObjectRef.objectId
       ? store.ui.activeObjectRef.objectId
-      : store.derived.activePergolaId ??
+      : store.derived.objectWorkbench.activePergola?.id ??
         activeModuleInput?.pergolaId ??
         store.derived.railModel.objectLists.pergolas[0]?.ref.objectId ??
         null;
