@@ -13,6 +13,8 @@ const FLAT_COMPATIBILITY_DERIVED_READ_ROOTS = [
 ];
 const GEOMETRY_SOURCE_ROOT = path.join('apps', 'portal', 'lib', 'drawings', 'geometry');
 const GEOMETRY_COMPAT_PATH_SEGMENT = `${path.sep}geometry${path.sep}compat${path.sep}`;
+const ESTIMATES_SOURCE_ROOT = path.join('apps', 'portal', 'lib', 'estimates');
+const ESTIMATES_COMPAT_PATH_SEGMENT = `${path.sep}estimates${path.sep}compat${path.sep}`;
 const OBJECT_WORKBENCH_GEOMETRY_UI_ROOTS = [
   path.join('apps', 'portal', 'components', 'drawings', 'rail'),
   path.join('apps', 'portal', 'components', 'drawings', 'viewports'),
@@ -91,6 +93,8 @@ describe('object workbench import guards', () => {
           /\b(?:ui|current|store\.ui)\.(?:workbenchMode|activeHouseSelection|activePergolaId)\b/.test(source);
         const readsFlatCompatibilityDerivedField = FLAT_COMPATIBILITY_DERIVED_FIELD_READ.test(source);
         const readsCompatibilityBridge = /\bstore\.derived\.compatibilityBridge\b/.test(source);
+        const readsPersistenceCompatibilityDraft =
+          /\b(?:draft|nextDraft|drawingDraft|baseDraft)\.houseFirst\b|\bhouseFirst\s*:/.test(source);
 
         if (importsHouseFirstModel && !ALLOWLISTED_COMPATIBILITY_FILES.has(relativePath)) {
           violations.push(`${relativePath} imports houseFirstWorkbenchModel`);
@@ -106,6 +110,12 @@ describe('object workbench import guards', () => {
         }
         if (readsCompatibilityBridge && !canReadCompatibilityBridge(relativePath)) {
           violations.push(`${relativePath} reads compatibilityBridge outside an explicit bridge/compat file`);
+        }
+        if (readsPersistenceCompatibilityDraft && !relativePath.includes(`${path.sep}compat${path.sep}`)) {
+          violations.push(`${relativePath} reads or writes EstimateDrawingDraft.houseFirst outside compat`);
+        }
+        if (source.includes('useHouseDraftPersistence')) {
+          violations.push(`${relativePath} uses the legacy house draft persistence hook name`);
         }
       }
     }
@@ -176,6 +186,21 @@ describe('object workbench import guards', () => {
         if (/from ['"][^'"]*\/geometry\/compat\//.test(source)) {
           violations.push(`${relativePath} imports geometry compatibility internals`);
         }
+      }
+    }
+
+    expect(violations).toEqual([]);
+  });
+
+  it('keeps estimate drawing persistence compatibility behind the explicit compat namespace', () => {
+    const violations: string[] = [];
+
+    for (const absolutePath of listSourceFiles(path.join(process.cwd(), ESTIMATES_SOURCE_ROOT))) {
+      const relativePath = toRepoRelativePath(absolutePath);
+      if (relativePath.includes(ESTIMATES_COMPAT_PATH_SEGMENT)) continue;
+      const source = fs.readFileSync(absolutePath, 'utf8');
+      if (/from ['"][^'"]*houseFirstWorkbenchModel['"]/.test(source)) {
+        violations.push(`${relativePath} imports houseFirstWorkbenchModel outside estimates compat`);
       }
     }
 

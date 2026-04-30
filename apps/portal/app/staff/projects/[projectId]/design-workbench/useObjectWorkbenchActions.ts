@@ -31,6 +31,7 @@ import type {
 } from '@/lib/drawings/state/objectWorkbenchInspectorModel';
 import {
   applyEstimateDrawingFootprintEdit,
+  updateEstimateDrawingObjectFirstWorkbenchDraft,
   type EstimateDrawingDraft,
   type EstimateDrawingField,
   type EstimateDrawingFootprintEdit,
@@ -156,11 +157,7 @@ export function useObjectWorkbenchActions({
     ): ObjectFirstWorkbenchDraftVNext => {
       const previewStore = buildDrawingWorkbenchStore({
         snapshot,
-        draft: {
-          ...draft,
-          objectFirst: undefined,
-          houseFirst: undefined,
-        },
+        draft: updateEstimateDrawingObjectFirstWorkbenchDraft({ draft, objectFirst: null }),
         ui,
       });
       const previewObjectFirst = buildObjectFirstWorkbenchDraftFromProjectModel(

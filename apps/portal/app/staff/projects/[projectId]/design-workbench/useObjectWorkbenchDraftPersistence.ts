@@ -10,15 +10,15 @@ import {
 } from '@/lib/estimates/drawingEdits';
 import type { EstimateDetail } from '@/lib/estimates/types';
 
-type UseHouseDraftPersistenceInput = {
+type UseObjectWorkbenchDraftPersistenceInput = {
   estimateId: string;
   snapshot: EstimateDetail['calculatorSnapshot'];
 };
 
-export function useHouseDraftPersistence({
+export function useObjectWorkbenchDraftPersistence({
   estimateId,
   snapshot,
-}: UseHouseDraftPersistenceInput) {
+}: UseObjectWorkbenchDraftPersistenceInput) {
   const baseDraft = useMemo(() => buildEstimateDrawingDraftFromSnapshot(snapshot), [snapshot]);
   const drawingWorkingCopy = useLocalWorkingCopy<EstimateDrawingDraft | null>(
     buildEstimateDrawingDraftEntityKey(estimateId),

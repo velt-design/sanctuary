@@ -24,7 +24,7 @@ import { buildEstimateDrawingModuleInfoRows, buildEstimateDrawingSheetMeta } fro
 import type { EstimateDetail } from '@/lib/estimates/types';
 import { type DrawOutlineTarget } from './objectWorkbenchClientTypes';
 import ObjectWorkbenchRailHost from './ObjectWorkbenchRailHost';
-import { useHouseDraftPersistence } from './useHouseDraftPersistence';
+import { useObjectWorkbenchDraftPersistence } from './useObjectWorkbenchDraftPersistence';
 import { useObjectWorkbenchActions } from './useObjectWorkbenchActions';
 import { useObjectWorkbenchSelection } from './useObjectWorkbenchSelection';
 import styles from './DesignWorkbenchEstimateClient.module.css';
@@ -99,7 +99,7 @@ export default function DesignWorkbenchEstimateClient({
     kind: 'footprint',
     deckId: null,
   });
-  const { drawingDraft, persistDrawingDraftLocally } = useHouseDraftPersistence({
+  const { drawingDraft, persistDrawingDraftLocally } = useObjectWorkbenchDraftPersistence({
     estimateId: estimate.id,
     snapshot: estimate.calculatorSnapshot,
   });
