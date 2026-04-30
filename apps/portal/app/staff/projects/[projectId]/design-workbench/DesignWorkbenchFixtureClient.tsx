@@ -102,8 +102,17 @@ export default function DesignWorkbenchFixtureClient({
         snapshot: fixture.snapshot,
         draft: fixture.draft,
         moduleIndex: store.derived.activeModuleIndex,
+        objectWorkbenchProjectModel: store.persisted.projectModel,
       }),
-    [fixture.draft, fixture.estimate.id, fixture.request.id, fixture.slug, fixture.snapshot, store.derived.activeModuleIndex],
+    [
+      fixture.draft,
+      fixture.estimate.id,
+      fixture.request.id,
+      fixture.slug,
+      fixture.snapshot,
+      store.derived.activeModuleIndex,
+      store.persisted.projectModel,
+    ],
   );
   const activeSelectionFamily =
     store.ui.activeRailTab === 'diagnostics' ? store.ui.activeObjectFamily : store.ui.activeRailTab;

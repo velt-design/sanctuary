@@ -9,6 +9,7 @@ import {
   type ObjectWorkbenchPergolaRenderSource,
   type ObjectWorkbenchPergolaRenderStatus,
 } from '@/lib/drawings/geometry/deriveWorkbenchGeometry';
+import { buildObjectWorkbenchGeometryContext } from '@/lib/drawings/geometry/objectWorkbenchGeometryContext';
 import { resolveWorkbenchGeometryModule } from '@/lib/drawings/geometry/resolveWorkbenchGeometryModule';
 import { buildPlanViewModel, type PlanViewModel } from '@/lib/drawings/views/plan/buildPlanViewModel';
 import { buildEstimateDrawingModules, type EstimateDrawingModule } from '@/lib/estimates/moduleDrawing';
@@ -168,6 +169,12 @@ export function buildDrawingWorkbenchStore(input: {
     openingIds: projectModel.openings.map((opening) => opening.id),
   });
   const compatibilitySelection = deriveDrawingWorkbenchCompatibilitySelection(ui);
+  const objectWorkbenchGeometryContext = buildObjectWorkbenchGeometryContext({
+    snapshot: input.snapshot,
+    draft: input.draft,
+    projectModel,
+    ignoreModuleResults: input.ignoreModuleResults,
+  });
   const modules = drawingModules.map((drawingModule, index) => {
     const label = input.moduleLabels?.[index] ?? drawingModule.label;
     const geometryModule = coerceHiddenWorkbenchGableBaseline(drawingModule.input);
@@ -188,7 +195,7 @@ export function buildDrawingWorkbenchStore(input: {
           moduleId: drawingModule.id,
           module: geometryModule,
           result: resolved.moduleResult,
-          sharedHouse: compatibilityProjectModel.house,
+          objectWorkbenchGeometryContext,
           fallbackPlanModel: resolvedDrawingModule.planModel,
           fallbackSectionModel: resolvedDrawingModule.sectionModel,
         })

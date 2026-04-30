@@ -10,12 +10,16 @@ import type { EstimateDrawingDraft } from '@/lib/estimates/drawingEdits';
 import { deriveWorkbenchGeometry } from './deriveWorkbenchGeometry';
 import { coerceHiddenWorkbenchGableBaseline } from '../hiddenWorkbenchGableBaseline';
 import { resolveWorkbenchGeometryModule } from '../resolveWorkbenchGeometryModule';
-import { buildObjectWorkbenchCompatibilityProjectModel } from '../../state/compat/objectWorkbenchCompatibilityModel';
+import type { WorkbenchProjectModel } from '../../state/objectFirstWorkbenchModel';
 import {
   buildWorkbenchDeckSupportDiagnostic,
   resolveWorkbenchDeckSupportActiveSide,
   type WorkbenchDeckSupportDiagnostic,
 } from '../../state/deckSupportDiagnostics';
+import {
+  buildObjectWorkbenchGeometryContext,
+  type ObjectWorkbenchGeometryContext,
+} from './objectWorkbenchGeometryContext';
 
 type AttachmentSide = 'rear' | 'front' | 'left' | 'right';
 type LocalPolygonPoint = { alongM: number; depthM: number };
@@ -128,17 +132,17 @@ function annotateSceneHostEdgeSides(
 
 function annotateSceneAttachmentZoneMetadata(
   scene: ViewerSceneModel,
-  projectModel: ReturnType<typeof buildObjectWorkbenchCompatibilityProjectModel>,
+  geometryContext: ObjectWorkbenchGeometryContext,
 ): ViewerSceneModel {
-  const zones = projectModel.house?.attachmentZones ?? [];
-  const blocked = projectModel.house?.attachmentZoneDiagnostics.blocked ?? [];
-  const resolvedPergolaAttachmentZoneCount = projectModel.pergolas.filter(
+  const zones = geometryContext.house?.attachmentZones ?? [];
+  const blocked = geometryContext.house?.attachmentZoneDiagnostics.blocked ?? [];
+  const resolvedPergolaAttachmentZoneCount = geometryContext.pergolas.filter(
     (pergola) =>
       pergola.attachment.kind !== 'freestanding' &&
       pergola.attachment.resolution.status === 'resolved' &&
       pergola.attachment.attachmentZoneId !== null,
   ).length;
-  const unresolvedPergolaAttachmentZoneCount = projectModel.pergolas.filter(
+  const unresolvedPergolaAttachmentZoneCount = geometryContext.pergolas.filter(
     (pergola) =>
       pergola.attachment.kind !== 'freestanding' &&
       pergola.attachment.resolution.status !== 'resolved',
@@ -167,10 +171,12 @@ export function buildWorkbenchGeometryPreview(input: {
   snapshot: Record<string, unknown> | null;
   draft?: EstimateDrawingDraft | null;
   moduleIndex: number;
+  objectWorkbenchProjectModel?: WorkbenchProjectModel | null;
 }): GeometryPreviewState {
-  const projectModel = buildObjectWorkbenchCompatibilityProjectModel({
+  const geometryContext = buildObjectWorkbenchGeometryContext({
     snapshot: input.snapshot,
     draft: input.draft,
+    projectModel: input.objectWorkbenchProjectModel,
   });
   const resolved = resolveWorkbenchGeometryModule({
     snapshot: input.snapshot,
@@ -192,16 +198,16 @@ export function buildWorkbenchGeometryPreview(input: {
   const geometryModule = coerceHiddenWorkbenchGableBaseline(resolved.module);
   const deckSupport = buildWorkbenchDeckSupportDiagnostic({
     activeHostSide: resolveWorkbenchDeckSupportActiveSide(geometryModule),
-    decks: projectModel.house?.decks ?? [],
+    decks: geometryContext.house?.decks ?? [],
   });
 
-  if (projectModel.house?.roof.validation.status === 'invalid') {
+  if (geometryContext.house?.roof.validation.status === 'invalid') {
     return {
       kind: 'unsupported',
       previewMode,
       deckSupport,
       message:
-        projectModel.house.roof.validation.message ??
+        geometryContext.house.roof.validation.message ??
         'The selected house roof configuration is not supported by Sanctuary geometry V1.',
     };
   }
@@ -213,7 +219,7 @@ export function buildWorkbenchGeometryPreview(input: {
     moduleId: `module-${input.moduleIndex + 1}`,
     module: geometryModule,
     result: resolved.moduleResult,
-    sharedHouse: projectModel.house,
+    objectWorkbenchGeometryContext: geometryContext,
   });
   if (derivation.kind === 'legacy_unsupported_family') {
     return {
@@ -249,9 +255,9 @@ export function buildWorkbenchGeometryPreview(input: {
     scene: annotateSceneAttachmentZoneMetadata(
       annotateSceneHostEdgeSides(
         buildViewerSceneModel(derivation.assembly),
-        projectModel.house?.footprint.polygon,
+        geometryContext.house?.footprint.polygon,
       ),
-      projectModel,
+      geometryContext,
     ),
     deckSupport,
   };

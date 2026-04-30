@@ -5,6 +5,7 @@ import {
   normalizeWallOpeningKind,
   resolveOpeningPanelCount,
 } from '@/lib/drawings/state/houseFirstWorkbenchModel';
+import type { ObjectWorkbenchGeometryContext } from './objectWorkbenchGeometryContext';
 import {
   DEFAULT_CALCULATOR_ATTACHMENT_SIDE,
   DEFAULT_CALCULATOR_HOUSE_FOOTPRINT_PRESET,
@@ -227,9 +228,20 @@ export function buildRawGeometryModuleInput(input: {
   moduleId?: string | null;
   module: CalculatorModuleInputs;
   result: CostOutputV1 | null;
+  objectWorkbenchGeometryContext?: ObjectWorkbenchGeometryContext | null;
   sharedHouse?: HouseModel | null;
 }): RawGeometryModuleInput {
-  const { projectId, estimateId, designRequestId = null, moduleId = null, module, result, sharedHouse = null } = input;
+  const {
+    projectId,
+    estimateId,
+    designRequestId = null,
+    moduleId = null,
+    module,
+    result,
+    objectWorkbenchGeometryContext = null,
+    sharedHouse: legacySharedHouse = null,
+  } = input;
+  const sharedHouse = objectWorkbenchGeometryContext?.house ?? legacySharedHouse;
 
   return {
     projectId,

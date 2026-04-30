@@ -15,6 +15,7 @@ import { buildLegacyModulePlanModelFromGeometry } from '@/lib/drawings/views/pla
 import { buildLegacyModuleSectionModelFromGeometry } from '@/lib/drawings/views/section/buildLegacyModuleSectionModelFromGeometry';
 import type { HouseModel } from '@/lib/drawings/state/houseFirstWorkbenchModel';
 import type { CalculatorModuleInputs } from '@/lib/types/calculator';
+import type { ObjectWorkbenchGeometryContext } from './objectWorkbenchGeometryContext';
 
 export type WorkbenchPergolaRenderSource = 'geometry' | 'legacy';
 export type WorkbenchPergolaRenderStatus =
@@ -59,10 +60,12 @@ export function deriveWorkbenchGeometry(input: {
   moduleId: string;
   module: CalculatorModuleInputs;
   result: CostOutputV1 | null;
-  sharedHouse: HouseModel | null;
+  objectWorkbenchGeometryContext?: ObjectWorkbenchGeometryContext | null;
+  sharedHouse?: HouseModel | null;
   fallbackPlanModel?: ModulePlanModel | null;
   fallbackSectionModel?: ModuleSectionModel | null;
 }): WorkbenchGeometryDerivation {
+  const sharedHouse = input.objectWorkbenchGeometryContext?.house ?? input.sharedHouse ?? null;
   const rawInput = buildRawGeometryModuleInput({
     projectId: input.projectId,
     estimateId: input.estimateId,
@@ -70,7 +73,8 @@ export function deriveWorkbenchGeometry(input: {
     moduleId: input.moduleId,
     module: input.module,
     result: input.result,
-    sharedHouse: input.sharedHouse,
+    objectWorkbenchGeometryContext: input.objectWorkbenchGeometryContext ?? null,
+    sharedHouse,
   });
   const normalized = normalizeGeometryConfig(rawInput);
 

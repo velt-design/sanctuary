@@ -44,25 +44,33 @@ const OBJECT_WORKBENCH_RENDERER_TEST_FILES = [
   path.join('apps', 'portal', 'app', 'staff', 'calculator', 'ModuleViewsCard.test.tsx'),
   path.join('apps', 'portal', 'components', 'drawings', 'viewports', 'ModelSpaceViewport.test.tsx'),
 ];
+const OBJECT_WORKBENCH_GEOMETRY_PUBLIC_BOUNDARY_FILES = [
+  path.join('apps', 'portal', 'lib', 'drawings', 'geometry', 'buildRawGeometryModuleInput.ts'),
+  path.join('apps', 'portal', 'lib', 'drawings', 'geometry', 'buildWorkbenchGeometryPreview.ts'),
+  path.join('apps', 'portal', 'lib', 'drawings', 'geometry', 'deriveWorkbenchGeometry.ts'),
+  path.join('apps', 'portal', 'lib', 'drawings', 'geometry', 'objectWorkbenchGeometryContext.ts'),
+];
 const FLAT_COMPATIBILITY_DERIVED_FIELD_READ =
   /\b[A-Za-z_$][\w$]*\.derived\.(?:house|houseCount|decks|openings|activeDeck|activeDeckId|activeOpening|activeOpeningId|pergolas|activePergola|activePergolaId|roofForm|roofReviewStatus|roofValidationStatus|roofValidationCode|roofValidationMessage|roofApproximationReasons|roofProvenance|roofGeometryKind|roofAppendageEnabled|roofAppendageStatus|roofAppendageSupportedHostEdges|roofAppendageSupportReason|migrationWarnings|migrationWarningCount|houseIsLowConfidence)\b/;
 const REMOVED_DERIVED_COMPATIBILITY_BRIDGE_READ =
   /\b[A-Za-z_$][\w$]*\.derived\.compatibilityBridge\b/;
 const FLAT_PERSISTED_COMPATIBILITY_PROJECT_MODEL_READ =
   /\b[A-Za-z_$][\w$]*\.persisted\.compatibilityProjectModel\b/;
+const PERSISTED_COMPATIBILITY_BRIDGE_PROJECT_MODEL_READ =
+  /\b[A-Za-z_$][\w$]*\.persisted\.compatibilityBridge\.projectModel\b/;
 const REMOVED_ESTIMATE_HOUSE_FIRST_API =
   /\b(?:EstimateDrawingHouseFirst[A-Za-z0-9_]*|updateEstimateDrawingHouseFirst[A-Za-z0-9_]*)\b/;
 const PERSISTED_HOUSE_FIRST_DRAFT_USAGE =
   /\b[A-Za-z_$][\w$]*\.houseFirst\b|\bhouseFirst\s*:/;
+const OBJECT_FIRST_TO_COMPATIBILITY_DRAFT_BUILDER =
+  /\bbuildObjectWorkbenchCompatibilityDraftFromObjectFirstDraft\b/;
 const LEGACY_RENDERER_BOUNDARY_NAMES =
   /\b(?:HouseFirstPlanShapeDragStartMeta|HouseFirstObjectPreviewOverlay|houseFirstPlanOverlay|houseFirstPreviewOverlay|activeHouseFirstCustomEdgeId|hoveredHouseFirstDeckId|onHouseFirstShapeSelect|onHouseFirstDeckHoverChange|onHouseFirstShapeDragStart|onHouseFirstCustomEdgeSelect|onHouseFirstDimensionActivate)\b/;
-const ALLOWLISTED_COMPATIBILITY_FILES = new Set([
-  path.normalize(path.join('apps', 'portal', 'app', 'staff', 'projects', '[projectId]', 'design-workbench', 'compat', 'objectWorkbenchDraftActionBridge.ts')),
-  path.normalize(path.join('apps', 'portal', 'app', 'staff', 'projects', '[projectId]', 'design-workbench', 'compat', 'workbenchCompatibilityDraftBuilders.ts')),
-]);
+const ALLOWLISTED_COMPATIBILITY_FILES = new Set<string>();
 const ALLOWLISTED_CONFIGURATOR_FILES = new Set([
   path.normalize(path.join('apps', 'portal', 'components', 'drawings', 'rail', 'ConfiguratorRail.tsx')),
 ]);
+const ALLOWLISTED_PERSISTED_COMPATIBILITY_BRIDGE_READERS = new Set<string>();
 
 function listSourceFiles(directory: string, options: { includeTests?: boolean } = {}): string[] {
   const entries = fs.readdirSync(directory, { withFileTypes: true });
@@ -111,8 +119,12 @@ describe('object workbench import guards', () => {
           /\b(?:ui|current|store\.ui)\.(?:workbenchMode|activeHouseSelection|activePergolaId)\b/.test(source);
         const readsFlatCompatibilityDerivedField = FLAT_COMPATIBILITY_DERIVED_FIELD_READ.test(source);
         const readsFlatPersistedCompatibilityModel = FLAT_PERSISTED_COMPATIBILITY_PROJECT_MODEL_READ.test(source);
+        const readsPersistedCompatibilityBridgeProjectModel =
+          PERSISTED_COMPATIBILITY_BRIDGE_PROJECT_MODEL_READ.test(source);
         const readsCompatibilityBridge = REMOVED_DERIVED_COMPATIBILITY_BRIDGE_READ.test(source);
         const readsPersistenceCompatibilityDraft = PERSISTED_HOUSE_FIRST_DRAFT_USAGE.test(source);
+        const callsObjectFirstToCompatibilityDraftBuilder =
+          OBJECT_FIRST_TO_COMPATIBILITY_DRAFT_BUILDER.test(source);
 
         if (importsHouseFirstModel && !ALLOWLISTED_COMPATIBILITY_FILES.has(relativePath)) {
           violations.push(`${relativePath} imports houseFirstWorkbenchModel`);
@@ -129,11 +141,20 @@ describe('object workbench import guards', () => {
         if (readsFlatPersistedCompatibilityModel) {
           violations.push(`${relativePath} reads removed flat compatibility model from store.persisted`);
         }
+        if (
+          readsPersistedCompatibilityBridgeProjectModel &&
+          !ALLOWLISTED_PERSISTED_COMPATIBILITY_BRIDGE_READERS.has(relativePath)
+        ) {
+          violations.push(`${relativePath} reads the persisted compatibility project model outside a write bridge`);
+        }
         if (readsCompatibilityBridge) {
           violations.push(`${relativePath} reads removed derived compatibilityBridge`);
         }
         if (readsPersistenceCompatibilityDraft && !relativePath.includes(`${path.sep}compat${path.sep}`)) {
           violations.push(`${relativePath} reads or writes EstimateDrawingDraft.houseFirst outside compat`);
+        }
+        if (callsObjectFirstToCompatibilityDraftBuilder && !relativePath.includes(`${path.sep}compat${path.sep}`)) {
+          violations.push(`${relativePath} calls the object-first to compatibility draft builder outside compat`);
         }
         if (source.includes('useHouseDraftPersistence')) {
           violations.push(`${relativePath} uses the legacy house draft persistence hook name`);
@@ -250,6 +271,16 @@ describe('object workbench import guards', () => {
       const source = fs.readFileSync(absolutePath, 'utf8');
       if (/from ['"][^'"]*houseFirstWorkbench(?:Model|Adapter)['"]/.test(source)) {
         violations.push(`${relativePath} imports house-first workbench state outside geometry compat`);
+      }
+    }
+
+    for (const relativeBoundaryPath of OBJECT_WORKBENCH_GEOMETRY_PUBLIC_BOUNDARY_FILES.map((filePath) => path.normalize(filePath))) {
+      const source = fs.readFileSync(path.join(process.cwd(), relativeBoundaryPath), 'utf8');
+      if (/from ['"][^'"]*(?:houseFirstWorkbench(?:Model|Adapter)|state\/compat\/objectWorkbenchCompatibilityModel)['"]/.test(source)) {
+        violations.push(`${relativeBoundaryPath} imports compatibility state directly from a public geometry facade`);
+      }
+      if (PERSISTED_COMPATIBILITY_BRIDGE_PROJECT_MODEL_READ.test(source)) {
+        violations.push(`${relativeBoundaryPath} reads the persisted compatibility project model from a public geometry facade`);
       }
     }
 

@@ -251,8 +251,16 @@ export default function DesignWorkbenchEstimateClient({
         snapshot: estimate.calculatorSnapshot,
         draft: drawingDraft,
         moduleIndex: store.derived.activeModuleIndex,
+        objectWorkbenchProjectModel: store.persisted.projectModel,
       }),
-    [drawingDraft, estimate.calculatorSnapshot, estimate.id, estimate.projectId, store.derived.activeModuleIndex],
+    [
+      drawingDraft,
+      estimate.calculatorSnapshot,
+      estimate.id,
+      estimate.projectId,
+      store.derived.activeModuleIndex,
+      store.persisted.projectModel,
+    ],
   );
   const modelViewportSurfaceKey = `${objectWorkbenchDisplayFamily}:${store.derived.activeModuleIndex}:${store.ui.activeView}`;
   const geometryViewportSurfaceKey = `${objectWorkbenchDisplayFamily}:${store.derived.activeModuleIndex}`;

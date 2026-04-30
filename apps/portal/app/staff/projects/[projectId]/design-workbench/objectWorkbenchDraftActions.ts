@@ -1,4 +1,9 @@
-import { getHouseRoofFormBehavior, isHouseRoofForm, normalizeHouseRoofPitchInputForForm } from '@sp/geometry';
+import {
+  buildHouseFootprintPresetSideLocalPoints,
+  getHouseRoofFormBehavior,
+  isHouseRoofForm,
+  normalizeHouseRoofPitchInputForForm,
+} from '@sp/geometry';
 import {
   applyEstimateDrawingFootprintEdit,
   applyEstimateDrawingModuleFieldEdit,
@@ -6,86 +11,74 @@ import {
   type EstimateDrawingDraft,
 } from '@/lib/estimates/drawingEdits';
 import type {
+  CalculatorHouseFootprintPolygonPoint,
   CalculatorModuleInputs,
 } from '@/lib/types/calculator';
+import {
+  buildDeckReferenceHousePolygon,
+  resolveDeckHostEdgeFrame,
+  resolveDeckPresetGeometry,
+  sanitizeDeckPresetRect,
+} from '@/lib/drawings/state/houseFirstDeckPresets';
+import {
+  normalizeWallOpeningKind,
+  resolveOpeningPanelCount,
+} from '@/lib/drawings/state/compat/objectWorkbenchCompatibilityModel';
 import type {
   DerivedAttachmentZoneModel,
   DerivedWallModel,
   HouseAssemblyModel,
+  HouseFormModel,
   HouseFormRoofIntentModel,
+  ObjectFirstDeckDraft,
   ObjectFirstHouseFormDraft,
+  ObjectFirstOpeningDraft,
   ObjectFirstPergolaDraft,
   ObjectFirstWorkbenchDraftVNext,
 } from '@/lib/drawings/state/objectFirstWorkbenchModel';
-import {
-  buildObjectFirstDeckDraftsFromCompatibilityDrafts,
-  buildObjectFirstOpeningDraftsFromCompatibilityDrafts,
-  buildObjectFirstPergolaDraftsFromCompatibilityDrafts,
-  buildObjectWorkbenchCompatibilityDraftFromObjectFirstDraft,
-} from '@/lib/drawings/state/objectFirstWorkbenchAdapter';
-import type {
-  HouseFirstDeckDraft,
-  HouseFirstOpeningDraft,
-  HouseFirstPergolaDraft,
-  HouseFirstRoofDraft,
-  HouseModel,
-  HouseRoofForm,
-  PergolaModel,
-  WallOpeningHostSide,
-  WorkbenchHouseSelection,
-} from '@/lib/drawings/state/houseFirstWorkbenchModel';
-import {
-  normalizeWallOpeningKind,
-  resolveOpeningPanelCount,
-} from '@/lib/drawings/state/houseFirstWorkbenchModel';
 import type {
   ObjectWorkbenchDeckPatch,
   ObjectWorkbenchOpeningPatch,
   ObjectWorkbenchPergolaAttachmentStrategy,
   ObjectWorkbenchPergolaConnectionKind,
+  ObjectWorkbenchPergolaInspectorModel,
 } from '@/lib/drawings/state/objectWorkbenchInspectorModel';
-import {
-  resolveDeckHostEdgeFrame,
-  sanitizeDeckPresetRect,
-} from '@/lib/drawings/state/houseFirstDeckPresets';
-import {
-  deckReferenceHousePolygon,
-  houseLocalPolygon,
-  nextDeckId,
-  nextOpeningId,
-  resolveDeckDraftGeometry,
-} from './workbenchCompatibilityDraftBuilders';
 
-export type ObjectWorkbenchCompatibilitySelection = WorkbenchHouseSelection;
-export type ObjectWorkbenchCompatibilityDeckDraft = HouseFirstDeckDraft;
-export type ObjectWorkbenchCompatibilityOpeningDraft = HouseFirstOpeningDraft;
-export type ObjectWorkbenchCompatibilityPergolaDraft = HouseFirstPergolaDraft;
-export type ObjectWorkbenchCompatibilityPergolaModel = PergolaModel;
-export type ObjectWorkbenchCompatibilityHostSide = WallOpeningHostSide;
+type AttachmentSide = NonNullable<CalculatorModuleInputs['attachmentSide']>;
+
+export type ObjectWorkbenchCompatibilitySelection = {
+  kind: 'house' | 'footprint' | 'roof' | 'deck' | 'opening' | 'attachment_zone';
+  targetId: string | null;
+};
+
+export type ObjectWorkbenchDeckDraft = ObjectFirstDeckDraft;
+export type ObjectWorkbenchOpeningDraft = ObjectFirstOpeningDraft;
+export type ObjectWorkbenchPergolaDraft = ObjectFirstPergolaDraft;
 
 export type ObjectWorkbenchDraftBuildResult =
   | { ok: true; draft: EstimateDrawingDraft }
   | { ok: false; error: string };
 
 export type ObjectWorkbenchDeckMutationInput = {
-  currentDecks: ObjectWorkbenchCompatibilityDeckDraft[];
-  housePolygon: Array<{ alongM: string; depthM: string }>;
+  currentDecks: ObjectWorkbenchDeckDraft[];
+  housePolygon: CalculatorHouseFootprintPolygonPoint[];
 };
 
 export type ObjectWorkbenchOpeningMutationInput = {
-  currentOpenings: ObjectWorkbenchCompatibilityOpeningDraft[];
+  currentOpenings: ObjectWorkbenchOpeningDraft[];
 };
 
 export type ObjectWorkbenchPergolaMutationInput = {
   draft: EstimateDrawingDraft;
-  currentPergolas: ObjectWorkbenchCompatibilityPergolaDraft[];
-  currentPergola: ObjectWorkbenchCompatibilityPergolaModel;
+  currentPergolas: ObjectWorkbenchPergolaDraft[];
+  currentPergola: ObjectWorkbenchPergolaInspectorModel;
+  moduleIndexes: number[];
 };
 
 type OpeningHostWallOption = {
   wallId: string;
   label: string;
-  semanticSide: WallOpeningHostSide | null;
+  semanticSide: AttachmentSide | null;
   hostEdgeId: string | null;
   spanM: number;
 };
@@ -96,20 +89,20 @@ type PergolaDerivedAttachmentZoneOption = DerivedAttachmentZoneModel;
 
 export function resolveCurrentObjectWorkbenchDeckDrafts(
   objectFirstDraft: ObjectFirstWorkbenchDraftVNext,
-): ObjectWorkbenchCompatibilityDeckDraft[] {
-  return buildObjectWorkbenchCompatibilityDraftFromObjectFirstDraft(objectFirstDraft).decks ?? [];
+): ObjectWorkbenchDeckDraft[] {
+  return objectFirstDraft.decks;
 }
 
 export function resolveCurrentObjectWorkbenchOpeningDrafts(
   objectFirstDraft: ObjectFirstWorkbenchDraftVNext,
-): ObjectWorkbenchCompatibilityOpeningDraft[] {
-  return buildObjectWorkbenchCompatibilityDraftFromObjectFirstDraft(objectFirstDraft).openings ?? [];
+): ObjectWorkbenchOpeningDraft[] {
+  return objectFirstDraft.openings;
 }
 
 export function resolveCurrentObjectWorkbenchPergolaDrafts(
   objectFirstDraft: ObjectFirstWorkbenchDraftVNext,
-): ObjectWorkbenchCompatibilityPergolaDraft[] {
-  return buildObjectWorkbenchCompatibilityDraftFromObjectFirstDraft(objectFirstDraft).pergolas ?? [];
+): ObjectWorkbenchPergolaDraft[] {
+  return objectFirstDraft.pergolas;
 }
 
 export function updateDraftObjectFirst(input: {
@@ -122,43 +115,37 @@ export function updateDraftObjectFirst(input: {
   });
 }
 
-export function buildObjectFirstDraftWithCompatibilityDecks(input: {
+export function buildObjectFirstDraftWithDecks(input: {
   objectFirstDraft: ObjectFirstWorkbenchDraftVNext;
-  decks: ObjectWorkbenchCompatibilityDeckDraft[];
+  decks: ObjectWorkbenchDeckDraft[];
 }): ObjectFirstWorkbenchDraftVNext {
   return {
     ...input.objectFirstDraft,
-    decks: buildObjectFirstDeckDraftsFromCompatibilityDrafts(input.decks),
+    decks: input.decks,
   };
 }
 
-export function buildObjectFirstDraftWithCompatibilityOpenings(input: {
+export function buildObjectFirstDraftWithOpenings(input: {
   objectFirstDraft: ObjectFirstWorkbenchDraftVNext;
-  openings: ObjectWorkbenchCompatibilityOpeningDraft[];
+  openings: ObjectWorkbenchOpeningDraft[];
   sourceFormId: string | null;
 }): ObjectFirstWorkbenchDraftVNext {
   return {
     ...input.objectFirstDraft,
-    openings: buildObjectFirstOpeningDraftsFromCompatibilityDrafts(
-      input.openings,
-      input.sourceFormId,
-    ),
+    openings: input.openings.map((opening) => ({
+      ...opening,
+      sourceFormId: opening.sourceFormId ?? input.sourceFormId ?? undefined,
+    })),
   };
 }
 
-export function buildObjectFirstDraftWithCompatibilityPergolas(input: {
+export function buildObjectFirstDraftWithPergolas(input: {
   objectFirstDraft: ObjectFirstWorkbenchDraftVNext;
-  pergolas: ObjectWorkbenchCompatibilityPergolaDraft[];
-  compatibilityPergolas: ObjectWorkbenchCompatibilityPergolaModel[];
-  mapPergola?: (pergola: ObjectFirstPergolaDraft) => ObjectFirstPergolaDraft;
+  pergolas: ObjectWorkbenchPergolaDraft[];
 }): ObjectFirstWorkbenchDraftVNext {
-  const pergolas = buildObjectFirstPergolaDraftsFromCompatibilityDrafts(
-    input.pergolas,
-    input.compatibilityPergolas,
-  );
   return {
     ...input.objectFirstDraft,
-    pergolas: input.mapPergola ? pergolas.map(input.mapPergola) : pergolas,
+    pergolas: input.pergolas,
   };
 }
 
@@ -175,18 +162,40 @@ function resolveOpeningWallSpanM(wall: DerivedWallModel): number {
   return Math.hypot(dx, dy);
 }
 
-function buildOpeningHostWallOptions(
-  houseAssembly: HouseAssemblyModel | null,
-  compatibilityHouse: HouseModel | null,
-  activeModuleInput: CalculatorModuleInputs | null,
-): OpeningHostWallOption[] {
-  const walls = houseAssembly?.derivedEnvelope?.wallGraph.walls ?? [];
+function houseFormLocalPolygon(input: {
+  houseForm: HouseFormModel;
+  moduleLengthM: string | undefined;
+  moduleProjectionM: string | undefined;
+}): CalculatorHouseFootprintPolygonPoint[] {
+  if (input.houseForm.footprint.mode === 'custom_polygon' && input.houseForm.footprint.polygon.length) {
+    return input.houseForm.footprint.polygon;
+  }
+  const widthMm = Math.round((Number(input.moduleLengthM) || 6) * 1000);
+  const depthMm = Math.round((Number(input.moduleProjectionM) || 3) * 1000);
+  return buildHouseFootprintPresetSideLocalPoints({
+    pergolaWidthMm: widthMm,
+    pergolaDepthMm: depthMm,
+    preset: input.houseForm.footprint.preset,
+    params: input.houseForm.footprint.params,
+    attachmentSide: input.houseForm.footprint.attachmentSide,
+  }).map((point) => ({
+    alongM: String(point.alongM),
+    depthM: String(point.depthM),
+  }));
+}
+
+function buildOpeningHostWallOptions(input: {
+  activeModuleInput: CalculatorModuleInputs | null;
+  houseAssembly: HouseAssemblyModel | null;
+  houseForm: HouseFormModel | null;
+}): OpeningHostWallOption[] {
+  const walls = input.houseAssembly?.derivedEnvelope?.wallGraph.walls ?? [];
   if (!walls.length) return [];
-  const wallPolygon = compatibilityHouse
-    ? houseLocalPolygon({
-        house: compatibilityHouse,
-        moduleLengthM: activeModuleInput?.lengthM,
-        moduleProjectionM: activeModuleInput?.projectionM,
+  const wallPolygon = input.houseForm
+    ? houseFormLocalPolygon({
+        houseForm: input.houseForm,
+        moduleLengthM: input.activeModuleInput?.lengthM,
+        moduleProjectionM: input.activeModuleInput?.projectionM,
       })
     : [];
 
@@ -209,8 +218,8 @@ function buildOpeningHostWallOptions(
 }
 
 function clampOpeningOffsetForHostWall(input: {
-  opening: HouseFirstOpeningDraft;
-  patch: Partial<HouseFirstOpeningDraft>;
+  opening: ObjectWorkbenchOpeningDraft;
+  patch: ObjectWorkbenchOpeningPatch;
   spanM: number;
 }): string {
   const widthM = Number(input.patch.widthM ?? input.opening.widthM ?? '');
@@ -225,18 +234,18 @@ function clampOpeningOffsetForHostWall(input: {
 
 function normalizeOpeningPatchAgainstDerivedWalls(input: {
   activeModuleInput: CalculatorModuleInputs | null;
-  currentOpening: HouseFirstOpeningDraft;
+  currentOpening: ObjectWorkbenchOpeningDraft;
   houseAssembly: HouseAssemblyModel | null;
-  house: HouseModel | null;
-  patch: Partial<HouseFirstOpeningDraft>;
-}): Partial<HouseFirstOpeningDraft> {
+  houseForm: HouseFormModel | null;
+  patch: ObjectWorkbenchOpeningPatch;
+}): ObjectWorkbenchOpeningPatch {
   if (input.patch.hostWallId === undefined) return input.patch;
 
-  const resolvedWall = buildOpeningHostWallOptions(
-    input.houseAssembly,
-    input.house,
-    input.activeModuleInput,
-  ).find((wall) => wall.wallId === input.patch.hostWallId);
+  const resolvedWall = buildOpeningHostWallOptions({
+    activeModuleInput: input.activeModuleInput,
+    houseAssembly: input.houseAssembly,
+    houseForm: input.houseForm,
+  }).find((wall) => wall.wallId === input.patch.hostWallId);
   if (!resolvedWall) {
     return {
       ...input.patch,
@@ -260,11 +269,15 @@ function normalizeOpeningPatchAgainstDerivedWalls(input: {
 export function resolvePreferredNewObjectWorkbenchOpeningHostWall(input: {
   activeModuleInput: CalculatorModuleInputs | null;
   houseAssembly: HouseAssemblyModel | null;
-  house: HouseModel | null;
+  houseForm: HouseFormModel | null;
   preferredHostWallId: string | null;
-  preferredSide: WallOpeningHostSide;
+  preferredSide: AttachmentSide;
 }): OpeningHostWallOption | null {
-  const options = buildOpeningHostWallOptions(input.houseAssembly, input.house, input.activeModuleInput);
+  const options = buildOpeningHostWallOptions({
+    activeModuleInput: input.activeModuleInput,
+    houseAssembly: input.houseAssembly,
+    houseForm: input.houseForm,
+  });
   if (!options.length) return null;
 
   if (input.preferredHostWallId) {
@@ -314,33 +327,34 @@ function resolvePergolaZonesForKind(
 
 export function resolvePreferredObjectWorkbenchPergolaZone(input: {
   houseAssembly: HouseAssemblyModel | null;
-  currentPergola: PergolaModel;
+  currentPergola: Pick<ObjectWorkbenchPergolaInspectorModel, 'attachmentEdgeId' | 'attachmentZoneId' | 'side'>;
   nextKind: PergolaAttachmentKind;
   preferredEdgeId?: string | null;
 }): PergolaDerivedAttachmentZoneOption | null {
   const candidateZones = resolvePergolaZonesForKind(input.houseAssembly, input.nextKind);
   if (!candidateZones.length) return null;
 
-  const preferredEdgeId = input.preferredEdgeId ?? input.currentPergola.attachment.attachmentEdgeId ?? null;
+  const preferredEdgeId = input.preferredEdgeId ?? input.currentPergola.attachmentEdgeId ?? null;
   if (preferredEdgeId) {
     const edgeZone = candidateZones.find((zone) => zone.hostEdgeId === preferredEdgeId);
     if (edgeZone) return edgeZone;
   }
 
-  if (input.currentPergola.attachment.attachmentZoneId) {
-    const currentZone = candidateZones.find((zone) => zone.id === input.currentPergola.attachment.attachmentZoneId);
+  if (input.currentPergola.attachmentZoneId) {
+    const currentZone = candidateZones.find((zone) => zone.id === input.currentPergola.attachmentZoneId);
     if (currentZone) return currentZone;
   }
 
-  const sameSideZone = candidateZones.find((zone) => zone.side === input.currentPergola.attachment.side);
+  const sameSideZone = candidateZones.find((zone) => zone.side === input.currentPergola.side);
   return sameSideZone ?? candidateZones[0] ?? null;
 }
 
 export function upsertObjectWorkbenchPergolaDrafts(
-  currentPergolas: ObjectWorkbenchCompatibilityPergolaDraft[],
+  currentPergolas: ObjectWorkbenchPergolaDraft[],
   pergolaId: string,
-  patch: Partial<ObjectWorkbenchCompatibilityPergolaDraft>,
-): ObjectWorkbenchCompatibilityPergolaDraft[] {
+  patch: Partial<ObjectWorkbenchPergolaDraft>,
+  fallbackPergola?: ObjectWorkbenchPergolaInspectorModel | ObjectFirstPergolaDraft | null,
+): ObjectWorkbenchPergolaDraft[] {
   let found = false;
   const nextPergolas = currentPergolas.map((pergola) => {
     if (pergola.id !== pergolaId) return pergola;
@@ -355,6 +369,12 @@ export function upsertObjectWorkbenchPergolaDrafts(
     ...nextPergolas,
     {
       id: pergolaId,
+      label: fallbackPergola?.label ?? pergolaId,
+      family: fallbackPergola?.family ?? 'unknown',
+      attachmentEdgeId: null,
+      attachmentZoneId: null,
+      side: fallbackPergola?.side ?? 'rear',
+      strategy: fallbackPergola?.strategy ?? null,
       ...patch,
     },
   ];
@@ -365,7 +385,7 @@ export function applyObjectWorkbenchPergolaModuleEdits(input: {
   moduleIndexes: number[];
   kind?: PergolaAttachmentKind;
   strategy?: PergolaAttachmentStrategyValue;
-  side?: NonNullable<CalculatorModuleInputs['attachmentSide']> | null;
+  side?: AttachmentSide | null;
 }): ObjectWorkbenchDraftBuildResult {
   let nextDraft = input.draft;
 
@@ -432,81 +452,96 @@ export function applyObjectWorkbenchPergolaModuleEdits(input: {
   };
 }
 
-function buildHouseFirstDeckPatchFromObjectPatch(
-  patch: ObjectWorkbenchDeckPatch,
-): Partial<HouseFirstDeckDraft> {
-  const { label, ...objectPatch } = patch;
+function resolveObjectWorkbenchDeckDraftGeometry(input: {
+  deck: ObjectWorkbenchDeckDraft;
+  housePolygon: CalculatorHouseFootprintPolygonPoint[];
+}): ObjectWorkbenchDeckDraft {
+  const resolved = resolveDeckPresetGeometry({
+    deck: {
+      ...input.deck,
+      name: input.deck.label,
+    },
+    housePolygon: input.housePolygon,
+  });
+
   return {
-    ...objectPatch,
-    ...(label !== undefined ? { name: label } : null),
-  } as Partial<HouseFirstDeckDraft>;
+    ...input.deck,
+    hostEdgeId: resolved.hostEdgeId,
+    attachmentMode: resolved.attachmentMode,
+    primaryHostEdgeId: resolved.primaryHostEdgeId,
+    secondaryHostEdgeId: resolved.secondaryHostEdgeId,
+    cornerVertexId: resolved.cornerVertexId,
+    presetRect: resolved.presetRect,
+    floatingRect: resolved.floatingRect,
+    outline: resolved.outline,
+  };
 }
 
 export function applyObjectWorkbenchDeckPatch(input: {
-  currentDecks: ObjectWorkbenchCompatibilityDeckDraft[];
+  currentDecks: ObjectWorkbenchDeckDraft[];
   deckId: string;
-  housePolygon: Array<{ alongM: string; depthM: string }>;
+  housePolygon: CalculatorHouseFootprintPolygonPoint[];
   patch: ObjectWorkbenchDeckPatch;
-}): ObjectWorkbenchCompatibilityDeckDraft[] {
-  const patch = buildHouseFirstDeckPatchFromObjectPatch(input.patch);
-  return input.currentDecks.map((deck) =>
-    deck.id === input.deckId
-      ? resolveDeckDraftGeometry({
-          deck: {
-            ...deck,
-            ...patch,
-            floatingRect:
-              patch.floatingRect === undefined
-                ? deck.floatingRect
-                : patch.floatingRect === null
-                  ? null
-                  : {
-                      ...(deck.floatingRect ?? {}),
-                      ...patch.floatingRect,
-                    },
-            presetRect:
-              patch.presetRect === undefined
-                ? deck.presetRect
-                : patch.presetRect === null
-                  ? null
-                  : {
-                      ...(deck.presetRect ?? {}),
-                      ...patch.presetRect,
-                    },
-            shape:
-              patch.outline && patch.outline.length
-                ? 'custom'
-                : patch.shape ?? deck.shape ?? 'preset',
-          },
-          housePolygon: input.housePolygon,
-        })
-      : deck,
-  );
-}
-
-function buildHouseFirstOpeningPatchFromObjectPatch(
-  patch: ObjectWorkbenchOpeningPatch,
-): Partial<HouseFirstOpeningDraft> {
-  return patch as Partial<HouseFirstOpeningDraft>;
+}): ObjectWorkbenchDeckDraft[] {
+  return input.currentDecks.map((deck) => {
+    if (deck.id !== input.deckId) return deck;
+    const patch = input.patch;
+    return resolveObjectWorkbenchDeckDraftGeometry({
+      deck: {
+        ...deck,
+        ...patch,
+        floatingRect:
+          patch.floatingRect === undefined
+            ? deck.floatingRect
+            : patch.floatingRect === null
+              ? null
+              : {
+                  ...(deck.floatingRect ?? {}),
+                  ...patch.floatingRect,
+                },
+        presetRect:
+          patch.presetRect === undefined
+            ? deck.presetRect
+            : patch.presetRect === null
+              ? null
+              : {
+                  ...(deck.presetRect ?? {}),
+                  ...patch.presetRect,
+                },
+        shape:
+          patch.outline && patch.outline.length
+            ? 'custom'
+            : patch.shape ?? deck.shape ?? 'preset',
+      },
+      housePolygon: input.housePolygon,
+    });
+  });
 }
 
 export function applyObjectWorkbenchOpeningPatch(input: {
   activeModuleInput: CalculatorModuleInputs | null;
-  currentOpenings: ObjectWorkbenchCompatibilityOpeningDraft[];
+  currentOpenings: ObjectWorkbenchOpeningDraft[];
   openingId: string;
   houseAssembly: HouseAssemblyModel | null;
-  house: HouseModel | null;
+  houseForm: HouseFormModel | null;
   patch: ObjectWorkbenchOpeningPatch;
-}): ObjectWorkbenchCompatibilityOpeningDraft[] {
-  const compatibilityPatch = buildHouseFirstOpeningPatchFromObjectPatch(input.patch);
+}): ObjectWorkbenchOpeningDraft[] {
   const patch = normalizeOpeningPatchAgainstDerivedWalls({
     activeModuleInput: input.activeModuleInput,
     currentOpening: input.currentOpenings.find((opening) => opening.id === input.openingId) ?? {
       id: input.openingId,
+      label: input.openingId,
+      kind: 'window',
+      panelCount: null,
+      hostWallId: null,
+      widthM: '0',
+      heightM: '0',
+      sillHeightM: '0',
+      offsetAlongWallM: '0',
     },
     houseAssembly: input.houseAssembly,
-    house: input.house,
-    patch: compatibilityPatch,
+    houseForm: input.houseForm,
+    patch: input.patch,
   });
 
   return input.currentOpenings.map((opening) => {
@@ -533,21 +568,24 @@ export function applyObjectWorkbenchOpeningPatch(input: {
 }
 
 export function resolveDeckReferencePolygon(
-  house: HouseModel | null,
+  houseForm: HouseFormModel | null,
   activeModuleInput: CalculatorModuleInputs | null,
-): Array<{ alongM: string; depthM: string }> {
-  return house
-    ? deckReferenceHousePolygon({
-        house,
-        moduleLengthM: activeModuleInput?.lengthM,
-        moduleProjectionM: activeModuleInput?.projectionM,
+): CalculatorHouseFootprintPolygonPoint[] {
+  return houseForm
+    ? buildDeckReferenceHousePolygon({
+        housePolygon: houseFormLocalPolygon({
+          houseForm,
+          moduleLengthM: activeModuleInput?.lengthM,
+          moduleProjectionM: activeModuleInput?.projectionM,
+        }),
+        footprintParams: houseForm.footprint.params,
       })
     : [];
 }
 
 function mirrorSharedRoofDraftToModules(
   draft: EstimateDrawingDraft,
-  roof: HouseFirstRoofDraft,
+  roof: HouseFormRoofIntentModel,
 ): EstimateDrawingDraft {
   const material = roof.material;
   const pitchDeg = roof.primaryPitchDeg?.trim() ?? '';
@@ -565,39 +603,27 @@ function mirrorSharedRoofDraftToModules(
   return draft;
 }
 
-function buildHouseFirstRoofDraftFromIntent(roof: HouseFormRoofIntentModel): HouseFirstRoofDraft {
-  return {
-    form: roof.form,
-    material: roof.material,
-    primaryPitchDeg: roof.primaryPitchDeg,
-    primaryFallDirection: roof.primaryFallDirection,
-    ridgeAxis: roof.ridgeAxis,
-    openGableEndIds: roof.openGableEndIds,
-    appendage: roof.appendage,
-  };
-}
-
-function normalizeSharedHouseRoofDraftForCommit(
-  roof: HouseFirstRoofDraft,
-): HouseFirstRoofDraft {
-  const form: HouseRoofForm = isHouseRoofForm(roof.form) ? roof.form : 'mono';
+function normalizeSharedHouseRoofIntentForCommit(roof: HouseFormRoofIntentModel): HouseFormRoofIntentModel {
+  const form = isHouseRoofForm(roof.form) ? roof.form : 'mono';
   const behavior = getHouseRoofFormBehavior(form);
   const pitchDeg = normalizeHouseRoofPitchInputForForm({
     roofForm: form,
     value: roof.primaryPitchDeg,
   });
-  const base: HouseFirstRoofDraft = {
-    ...roof,
-    form,
-  };
 
   return {
-    ...base,
+    ...roof,
+    form,
     primaryPitchDeg: behavior.controls.pitch ? pitchDeg : '0',
-    primaryFallDirection: behavior.controls.primaryFallDirection ? base.primaryFallDirection ?? null : null,
-    ridgeAxis: behavior.controls.ridgeAxis ? base.ridgeAxis ?? null : null,
-    openGableEndIds: form === 'gable' ? base.openGableEndIds ?? [] : [],
-    appendage: behavior.controls.appendage ? base.appendage ?? null : null,
+    primaryFallDirection: behavior.controls.primaryFallDirection ? roof.primaryFallDirection : 'negative_y',
+    ridgeAxis: behavior.controls.ridgeAxis ? roof.ridgeAxis : 'x',
+    openGableEndIds: form === 'gable' ? roof.openGableEndIds ?? [] : [],
+    appendage: behavior.controls.appendage
+      ? roof.appendage
+      : {
+          ...roof.appendage,
+          enabled: false,
+        },
   };
 }
 
@@ -650,9 +676,7 @@ export function buildObjectWorkbenchRoofCommitDraft(input: {
   objectFirstDraft: ObjectFirstWorkbenchDraftVNext;
   roof: HouseFormRoofIntentModel;
 }): EstimateDrawingDraft {
-  const normalizedRoof = normalizeSharedHouseRoofDraftForCommit(
-    buildHouseFirstRoofDraftFromIntent(input.roof),
-  );
+  const normalizedRoof = normalizeSharedHouseRoofIntentForCommit(input.roof);
   const nextObjectFirstDraft: ObjectFirstWorkbenchDraftVNext = {
     ...input.objectFirstDraft,
     houseAssembly: input.objectFirstDraft.houseAssembly
@@ -660,46 +684,11 @@ export function buildObjectWorkbenchRoofCommitDraft(input: {
           ...input.objectFirstDraft.houseAssembly,
           houseForms: input.objectFirstDraft.houseAssembly.houseForms.map((houseForm, index) =>
             index === 0
-              ? (() => {
-                  const form = normalizedRoof.form ?? houseForm.roofIntent.form;
-                  const behavior = getHouseRoofFormBehavior(form);
-                  return {
-                    ...houseForm,
-                    roofIntentAuthored: true,
-                    roofIntent: {
-                      ...houseForm.roofIntent,
-                      form,
-                      material: normalizedRoof.material ?? houseForm.roofIntent.material,
-                      primaryPitchDeg:
-                        normalizedRoof.primaryPitchDeg ?? houseForm.roofIntent.primaryPitchDeg,
-                      primaryFallDirection: behavior.controls.primaryFallDirection
-                        ? normalizedRoof.primaryFallDirection ?? houseForm.roofIntent.primaryFallDirection
-                        : 'negative_y',
-                      ridgeAxis: behavior.controls.ridgeAxis
-                        ? normalizedRoof.ridgeAxis ?? houseForm.roofIntent.ridgeAxis
-                        : 'x',
-                      openGableEndIds:
-                        form === 'gable'
-                          ? normalizedRoof.openGableEndIds ?? houseForm.roofIntent.openGableEndIds
-                          : [],
-                      appendage:
-                        behavior.controls.appendage && normalizedRoof.appendage
-                          ? {
-                              enabled: Boolean(normalizedRoof.appendage.enabled),
-                              form: normalizedRoof.appendage.form ?? houseForm.roofIntent.appendage.form,
-                              hostEdge:
-                                normalizedRoof.appendage.hostEdge ?? houseForm.roofIntent.appendage.hostEdge,
-                              pitchDeg:
-                                normalizedRoof.appendage.pitchDeg ?? houseForm.roofIntent.appendage.pitchDeg,
-                              dropMm: normalizedRoof.appendage.dropMm ?? houseForm.roofIntent.appendage.dropMm,
-                            }
-                          : {
-                              ...houseForm.roofIntent.appendage,
-                              enabled: false,
-                            },
-                    },
-                  };
-                })()
+              ? {
+                  ...houseForm,
+                  roofIntentAuthored: true,
+                  roofIntent: normalizedRoof,
+                }
               : houseForm,
           ),
         }
@@ -715,12 +704,12 @@ export function buildNewObjectWorkbenchDeckDraft(input: {
   deckId: string;
   deckIndex: number;
   hostEdgeId: string;
-  housePolygon: Array<{ alongM: string; depthM: string }>;
+  housePolygon: CalculatorHouseFootprintPolygonPoint[];
   mode: 'preset' | 'custom_outline';
-}): ObjectWorkbenchCompatibilityDeckDraft {
-  const baseDeck: HouseFirstDeckDraft = {
+}): ObjectWorkbenchDeckDraft {
+  const baseDeck: ObjectWorkbenchDeckDraft = {
     id: input.deckId,
-    name: `Deck ${input.deckIndex + 1}`,
+    label: `Deck ${input.deckIndex + 1}`,
     kind: 'deck',
     shape: input.mode === 'custom_outline' ? 'custom' : 'preset',
     presetType: input.mode === 'preset' ? 'rect_attached' : null,
@@ -733,14 +722,10 @@ export function buildNewObjectWorkbenchDeckDraft(input: {
     cornerVertexId: null,
     isAttached: input.mode === 'preset',
     surfaceMaterial: 'timber_decking',
+    outline: [],
   };
-  if (input.mode === 'custom_outline') {
-    return {
-      ...baseDeck,
-      outline: [],
-    };
-  }
-  return resolveDeckDraftGeometry({
+  if (input.mode === 'custom_outline') return baseDeck;
+  return resolveObjectWorkbenchDeckDraftGeometry({
     deck: {
       ...baseDeck,
       presetRect: sanitizeDeckPresetRect({
@@ -755,14 +740,15 @@ export function buildNewObjectWorkbenchDeckDraft(input: {
 }
 
 export function buildNewObjectWorkbenchOpeningDraft(input: {
-  currentOpenings: ObjectWorkbenchCompatibilityOpeningDraft[];
+  currentOpenings: ObjectWorkbenchOpeningDraft[];
   kind: 'window' | 'hinged_door' | 'slider' | 'stacker';
   openingId: string;
+  sourceFormId: string | null;
   hostWallId: string | null;
   hostEdgeId: string | null;
-  wallId: WallOpeningHostSide;
-}): ObjectWorkbenchCompatibilityOpeningDraft {
-  const baseOpening: HouseFirstOpeningDraft =
+  wallId: AttachmentSide;
+}): ObjectWorkbenchOpeningDraft {
+  const baseOpening: ObjectWorkbenchOpeningDraft =
     input.kind === 'slider'
       ? {
           id: input.openingId,
@@ -771,6 +757,7 @@ export function buildNewObjectWorkbenchOpeningDraft(input: {
           }`,
           kind: 'slider',
           panelCount: 2,
+          sourceFormId: input.sourceFormId ?? undefined,
           hostWallId: input.hostWallId,
           wallId: input.wallId,
           hostEdgeId: input.hostEdgeId,
@@ -788,6 +775,7 @@ export function buildNewObjectWorkbenchOpeningDraft(input: {
             }`,
             kind: 'stacker',
             panelCount: null,
+            sourceFormId: input.sourceFormId ?? undefined,
             hostWallId: input.hostWallId,
             wallId: input.wallId,
             hostEdgeId: input.hostEdgeId,
@@ -806,6 +794,7 @@ export function buildNewObjectWorkbenchOpeningDraft(input: {
               }`,
               kind: 'hinged_door',
               panelCount: null,
+              sourceFormId: input.sourceFormId ?? undefined,
               hostWallId: input.hostWallId,
               wallId: input.wallId,
               hostEdgeId: input.hostEdgeId,
@@ -814,31 +803,38 @@ export function buildNewObjectWorkbenchOpeningDraft(input: {
               sillHeightM: '0',
               offsetAlongWallM: '0.6',
             }
-      : {
-          id: input.openingId,
-          label: `Window ${
-            input.currentOpenings.filter((opening) => normalizeWallOpeningKind(opening.kind) === 'window').length + 1
-          }`,
-          kind: 'window',
-          panelCount: null,
-          hostWallId: input.hostWallId,
-          wallId: input.wallId,
-          hostEdgeId: input.hostEdgeId,
-          widthM: '1.8',
-          heightM: '1.2',
-          sillHeightM: '0.9',
-          offsetAlongWallM: '0.6',
-        };
+          : {
+              id: input.openingId,
+              label: `Window ${
+                input.currentOpenings.filter((opening) => normalizeWallOpeningKind(opening.kind) === 'window').length + 1
+              }`,
+              kind: 'window',
+              panelCount: null,
+              sourceFormId: input.sourceFormId ?? undefined,
+              hostWallId: input.hostWallId,
+              wallId: input.wallId,
+              hostEdgeId: input.hostEdgeId,
+              widthM: '1.8',
+              heightM: '1.2',
+              sillHeightM: '0.9',
+              offsetAlongWallM: '0.6',
+            };
   return {
     ...baseOpening,
     panelCount: resolveOpeningPanelCount(input.kind, baseOpening.panelCount),
   };
 }
 
-export function nextObjectWorkbenchDeckId(existing: ObjectWorkbenchCompatibilityDeckDraft[]): string {
-  return nextDeckId(existing);
+export function nextObjectWorkbenchDeckId(existing: ObjectWorkbenchDeckDraft[]): string {
+  const used = new Set(existing.map((deck) => deck.id));
+  let index = existing.length + 1;
+  while (used.has(`deck-${index}`)) index += 1;
+  return `deck-${index}`;
 }
 
-export function nextObjectWorkbenchOpeningId(existing: ObjectWorkbenchCompatibilityOpeningDraft[]): string {
-  return nextOpeningId(existing);
+export function nextObjectWorkbenchOpeningId(existing: ObjectWorkbenchOpeningDraft[]): string {
+  const used = new Set(existing.map((opening) => opening.id));
+  let index = existing.length + 1;
+  while (used.has(`opening-${index}`)) index += 1;
+  return `opening-${index}`;
 }

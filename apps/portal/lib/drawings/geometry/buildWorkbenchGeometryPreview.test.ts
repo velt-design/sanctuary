@@ -196,6 +196,38 @@ describe('buildWorkbenchGeometryPreview', () => {
     expect(preview.scene.layers.map((layer) => layer.id)).toContain('roof_planes');
   });
 
+  it('builds ready mono preview from object-first read model when old results omit outer underside height', () => {
+    const fixture = requireFixture('mono-standard');
+    const snapshot = structuredClone(fixture.snapshot) as {
+      outputs?: { pergolas?: Array<{ modules?: Array<{ derived?: Record<string, unknown> }> }> };
+    };
+    const derived = snapshot.outputs?.pergolas?.[0]?.modules?.[0]?.derived;
+    if (!derived) {
+      throw new Error('Expected fixture snapshot module result.');
+    }
+    delete derived.post_cut_height_outer_side_m;
+    derived.post_cut_height_house_side_m = derived.post_cut_height_house_side_m ?? 2.4;
+
+    const store = buildDrawingWorkbenchStore({
+      snapshot,
+      ui: createDrawingWorkbenchUiState(),
+    });
+    const preview = buildWorkbenchGeometryPreview({
+      projectId: 'proj_preview',
+      estimateId: fixture.estimate.id,
+      designRequestId: fixture.request.id,
+      snapshot,
+      moduleIndex: 0,
+      objectWorkbenchProjectModel: store.persisted.projectModel,
+    });
+
+    expect(preview.kind).toBe('ready');
+    if (preview.kind !== 'ready') return;
+    expect(preview.config.family).toBe('mono');
+    expect(preview.validation.status).toBe('pass');
+    expect(preview.scene.layers.map((layer) => layer.id)).toContain('roof_planes');
+  });
+
   it('returns ready + draft_local_resolved when local geometry edits are present', () => {
     const fixture = requireFixture('mono-standard');
     const draft = makeDraft(fixture.snapshot, (current) => {

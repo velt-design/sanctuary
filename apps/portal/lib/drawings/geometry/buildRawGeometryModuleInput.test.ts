@@ -16,6 +16,7 @@ import {
   buildObjectFirstWorkbenchDraftFromProjectModel,
   buildObjectFirstWorkbenchProjectModel,
 } from '@/lib/drawings/state/objectFirstWorkbenchAdapter';
+import { buildObjectWorkbenchGeometryContext } from './objectWorkbenchGeometryContext';
 import { buildRawGeometryModuleInput } from './buildRawGeometryModuleInput';
 import type { CalculatorModuleInputs } from '@/lib/types/calculator';
 
@@ -63,6 +64,25 @@ function applyObjectFirstCompatibilityDraft(input: {
     );
   }
   input.draft.objectFirst = objectFirst;
+}
+
+function buildGeometryContextFromObjectFirstDraft(input: {
+  snapshot: Record<string, unknown>;
+  draft?: EstimateDrawingDraft | null;
+}) {
+  const compatibilityProjectModel = buildObjectWorkbenchCompatibilityProjectModel({
+    snapshot: input.snapshot,
+    draft: input.draft,
+  });
+  const projectModel = buildObjectFirstWorkbenchProjectModel({
+    compatibilityProjectModel,
+    objectFirstDraft: input.draft?.objectFirst,
+  });
+  return buildObjectWorkbenchGeometryContext({
+    snapshot: input.snapshot,
+    draft: input.draft,
+    projectModel,
+  });
 }
 
 function makeModule(overrides: Partial<CalculatorModuleInputs> = {}): CalculatorModuleInputs {
@@ -327,7 +347,7 @@ describe('buildRawGeometryModuleInput', () => {
     );
   });
 
-  it('maps shared house roof overrides into raw house context', () => {
+  it('maps object-first geometry context roof overrides into raw house context', () => {
     const fixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
     if (!fixture) throw new Error('Expected mono fixture');
     const draft = buildEstimateDrawingDraftFromSnapshot(fixture.snapshot);
@@ -350,7 +370,7 @@ describe('buildRawGeometryModuleInput', () => {
         },
       },
     });
-    const projectModel = buildObjectWorkbenchCompatibilityProjectModel({
+    const geometryContext = buildGeometryContextFromObjectFirstDraft({
       snapshot: fixture.snapshot,
       draft,
     });
@@ -360,7 +380,7 @@ describe('buildRawGeometryModuleInput', () => {
       estimateId: 'est_1',
       module: makeModule(),
       result: makeResult(),
-      sharedHouse: projectModel.house,
+      objectWorkbenchGeometryContext: geometryContext,
     });
 
     expect(raw.houseContext.roofForm).toBe('gable');
