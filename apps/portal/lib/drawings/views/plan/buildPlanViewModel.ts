@@ -1,10 +1,10 @@
 import type { DrawingAssemblyModel } from '@/lib/drawings/assembly/types';
 import type { GeometryPlanViewModel } from '@sp/geometry';
 import type { ModulePlanModel } from '@/app/staff/calculator/moduleViews';
-import type { HouseModel, WorkbenchHouseSelection } from '@/lib/drawings/state/houseFirstWorkbenchModel';
 import {
   buildObjectWorkbenchPlanOverlay,
   type ObjectWorkbenchPlanOverlay,
+  type ObjectWorkbenchPlanOverlayInput,
 } from './objectWorkbenchPlanOverlay';
 import type {
   WorkbenchPergolaRenderSource,
@@ -63,11 +63,7 @@ type PlanViewModelSource =
       pergolaRenderSource?: WorkbenchPergolaRenderSource;
       pergolaRenderStatus?: WorkbenchPergolaRenderStatus;
       canEditHouseFootprint?: boolean;
-      objectWorkbenchCompatibilityHouse?: HouseModel | null;
-      objectWorkbenchCompatibilitySelection?: WorkbenchHouseSelection | null;
-      includeObjectWorkbenchOverlay?: boolean;
-      moduleLengthM?: string | null;
-      moduleProjectionM?: string | null;
+      objectWorkbenchOverlayInput?: ObjectWorkbenchPlanOverlayInput | null;
     };
 
 function isDrawingAssemblyModel(source: PlanViewModelSource): source is DrawingAssemblyModel {
@@ -136,14 +132,8 @@ export function buildPlanViewModel(source: PlanViewModelSource | null): PlanView
       renderStatus,
     },
     objectWorkbenchOverlay:
-      !isDrawingAssemblyModel(source) && source.includeObjectWorkbenchOverlay
-        ? buildObjectWorkbenchPlanOverlay({
-            house: source.objectWorkbenchCompatibilityHouse,
-            selection: source.objectWorkbenchCompatibilitySelection ?? { kind: 'house', targetId: null },
-            moduleLengthM: source.moduleLengthM,
-            moduleProjectionM: source.moduleProjectionM,
-            geometryHouseContext: planModel?.houseContext ?? null,
-          })
+      !isDrawingAssemblyModel(source) && source.objectWorkbenchOverlayInput
+        ? buildObjectWorkbenchPlanOverlay(source.objectWorkbenchOverlayInput)
         : null,
     planModel,
   };

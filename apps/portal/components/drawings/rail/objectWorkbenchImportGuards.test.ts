@@ -59,6 +59,10 @@ const OBJECT_WORKBENCH_GEOMETRY_EDIT_ADAPTER_FILE = path.join(
   'compat',
   'geometryEditAdapter.ts',
 );
+const OBJECT_WORKBENCH_RAIL_INSPECTOR_STATE_BOUNDARY_FILES = [
+  path.join('apps', 'portal', 'lib', 'drawings', 'state', 'drawingWorkbenchRailModel.ts'),
+  path.join('apps', 'portal', 'lib', 'drawings', 'state', 'objectWorkbenchInspectorModel.ts'),
+];
 const FLAT_COMPATIBILITY_DERIVED_FIELD_READ =
   /\b[A-Za-z_$][\w$]*\.derived\.(?:house|houseCount|decks|openings|activeDeck|activeDeckId|activeOpening|activeOpeningId|pergolas|activePergola|activePergolaId|roofForm|roofReviewStatus|roofValidationStatus|roofValidationCode|roofValidationMessage|roofApproximationReasons|roofProvenance|roofGeometryKind|roofAppendageEnabled|roofAppendageStatus|roofAppendageSupportedHostEdges|roofAppendageSupportReason|migrationWarnings|migrationWarningCount|houseIsLowConfidence)\b/;
 const REMOVED_DERIVED_COMPATIBILITY_BRIDGE_READ =
@@ -77,6 +81,8 @@ const OBJECT_FIRST_TO_COMPATIBILITY_DRAFT_BUILDER =
   /\bbuildObjectWorkbenchCompatibilityDraftFromObjectFirstDraft\b/;
 const LEGACY_RENDERER_BOUNDARY_NAMES =
   /\b(?:HouseFirstPlanShapeDragStartMeta|HouseFirstObjectPreviewOverlay|houseFirstPlanOverlay|houseFirstPreviewOverlay|activeHouseFirstCustomEdgeId|hoveredHouseFirstDeckId|onHouseFirstShapeSelect|onHouseFirstDeckHoverChange|onHouseFirstShapeDragStart|onHouseFirstCustomEdgeSelect|onHouseFirstDimensionActivate)\b/;
+const REMOVED_PLAN_VIEW_MODEL_COMPATIBILITY_PROPS =
+  /\b(?:objectWorkbenchCompatibilityHouse|objectWorkbenchCompatibilitySelection)\b/;
 const ALLOWLISTED_COMPATIBILITY_FILES = new Set<string>();
 const ALLOWLISTED_CONFIGURATOR_FILES = new Set([
   path.normalize(path.join('apps', 'portal', 'components', 'drawings', 'rail', 'ConfiguratorRail.tsx')),
@@ -188,6 +194,15 @@ describe('object workbench import guards', () => {
       const source = fs.readFileSync(path.join(process.cwd(), relativeBoundaryPath), 'utf8');
       if (/from ['"][^'"]*houseFirstPlanOverlay['"]/.test(source)) {
         violations.push(`${relativeBoundaryPath} imports houseFirstPlanOverlay directly`);
+      }
+      if (REMOVED_PLAN_VIEW_MODEL_COMPATIBILITY_PROPS.test(source)) {
+        violations.push(`${relativeBoundaryPath} uses removed plan view-model compatibility overlay props`);
+      }
+      if (
+        relativeBoundaryPath.endsWith(path.normalize(path.join('views', 'plan', 'buildPlanViewModel.ts'))) &&
+        /from ['"][^'"]*(?:houseFirstWorkbench(?:Model|Adapter)|state\/compat\/objectWorkbenchCompatibilityModel)['"]/.test(source)
+      ) {
+        violations.push(`${relativeBoundaryPath} imports compatibility state directly`);
       }
     }
 
@@ -333,6 +348,25 @@ describe('object workbench import guards', () => {
       const source = fs.readFileSync(absolutePath, 'utf8');
       if (/from ['"][^'"]*houseFirstWorkbench(?:Model|Adapter)['"]/.test(source)) {
         violations.push(`${relativePath} imports legacy state compatibility directly`);
+      }
+    }
+
+    expect(violations).toEqual([]);
+  });
+
+  it('keeps rail and inspector read models on neutral object-workbench status inputs', () => {
+    const violations: string[] = [];
+
+    for (const relativeBoundaryPath of OBJECT_WORKBENCH_RAIL_INSPECTOR_STATE_BOUNDARY_FILES.map((filePath) => path.normalize(filePath))) {
+      const source = fs.readFileSync(path.join(process.cwd(), relativeBoundaryPath), 'utf8');
+      if (/from ['"][^'"]*houseFirstWorkbench(?:Model|Adapter)['"]/.test(source)) {
+        violations.push(`${relativeBoundaryPath} imports legacy house-first state directly`);
+      }
+      if (/from ['"][^'"]*state\/compat\/objectWorkbenchCompatibilityModel['"]/.test(source)) {
+        violations.push(`${relativeBoundaryPath} imports the compatibility state facade directly`);
+      }
+      if (/from ['"][^'"]*\.\/compat\/objectWorkbenchCompatibilityModel['"]/.test(source)) {
+        violations.push(`${relativeBoundaryPath} imports the compatibility state facade directly`);
       }
     }
 

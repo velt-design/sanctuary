@@ -1,11 +1,18 @@
 import { describe, expect, it } from 'vitest';
 import type { ModulePlanModel } from '@/app/staff/calculator/moduleViews';
-import type { HouseModel } from '@/lib/drawings/state/houseFirstWorkbenchModel';
+import type { HouseAssemblyModel, HouseFormModel } from '@/lib/drawings/state/objectFirstWorkbenchModel';
 import { buildPlanViewModel } from './buildPlanViewModel';
+import type { ObjectWorkbenchPlanOverlayInput } from './objectWorkbenchPlanOverlay';
 
-function makeCompatibilityHouse(): HouseModel {
+function makeHouseForm(): HouseFormModel {
   return {
     id: 'house-main',
+    label: 'House',
+    transform: {
+      offsetXM: 0,
+      offsetYM: 0,
+      rotationQuarterTurns: 0,
+    },
     footprint: {
       mode: 'preset',
       preset: 'straight',
@@ -27,12 +34,45 @@ function makeCompatibilityHouse(): HouseModel {
         { alongM: '6', depthM: '1.8' },
         { alongM: '0', depthM: '1.8' },
       ],
-      drawingRotationQuarterTurns: 0,
       attachmentSide: 'rear',
     },
-    decks: [],
-    openings: [],
-  } as unknown as HouseModel;
+    roofIntent: {
+      form: 'mono',
+      material: 'corrugated_iron',
+      primaryPitchDeg: '5',
+      primaryFallDirection: 'negative_y',
+      ridgeAxis: 'x',
+      openGableEndIds: [],
+      appendage: {
+        enabled: false,
+        form: 'flat',
+        hostEdge: 'rear',
+        pitchDeg: '0',
+        dropMm: '0',
+      },
+    },
+    storeyMode: 'single_storey',
+    attachmentStrategy: null,
+  };
+}
+
+function makeHouseAssembly(houseForm: HouseFormModel): HouseAssemblyModel {
+  return {
+    id: 'assembly-main',
+    label: 'House',
+    houseForms: [houseForm],
+    derivedEnvelope: {
+      mergedFormIds: [houseForm.id],
+      footprint: houseForm.footprint.polygon,
+      wallGraph: {
+        walls: [],
+        mergeGroups: [],
+      },
+      roofZones: [],
+      edges: [],
+      attachmentZones: [],
+    },
+  };
 }
 
 function makePlanModelWithHouseContext(): ModulePlanModel {
@@ -71,18 +111,46 @@ function makePlanModelWithHouseContext(): ModulePlanModel {
   } as unknown as ModulePlanModel;
 }
 
+function makeObjectWorkbenchOverlayInput(planModel: ModulePlanModel): ObjectWorkbenchPlanOverlayInput {
+  const houseForm = makeHouseForm();
+  return {
+    houseAssembly: makeHouseAssembly(houseForm),
+    houseForm,
+    decks: [],
+    openings: [],
+    selection: { kind: 'footprint', targetId: 'house-main' },
+    moduleLengthM: '6',
+    moduleProjectionM: '3',
+    geometryHouseContext: planModel.houseContext,
+    status: {
+      houseForm: {
+        lowConfidence: false,
+        warnings: [],
+        footprintPreset: houseForm.footprint.preset,
+        roofForm: houseForm.roofIntent.form,
+        defaultDeckHostEdgeId: 'rear',
+        attachmentZoneBlockedSummary: 'none',
+        roof: null,
+      },
+      deckStatuses: {},
+      openingStatuses: {},
+      pergolaStatuses: {},
+      activeDeckSupport: null,
+      activeDeckInteraction: null,
+      deckSupportWarningCount: 0,
+    },
+  };
+}
+
 describe('buildPlanViewModel', () => {
-  it('exposes the object-workbench overlay when compatibility context is requested', () => {
+  it('exposes the object-workbench overlay when overlay input is provided', () => {
+    const planModel = makePlanModelWithHouseContext();
     const viewModel = buildPlanViewModel({
       moduleId: 'module-1',
       moduleLabel: 'Module 1',
-      planModel: makePlanModelWithHouseContext(),
+      planModel,
       canEditHouseFootprint: true,
-      objectWorkbenchCompatibilityHouse: makeCompatibilityHouse(),
-      objectWorkbenchCompatibilitySelection: { kind: 'footprint', targetId: 'house-main' },
-      includeObjectWorkbenchOverlay: true,
-      moduleLengthM: '6',
-      moduleProjectionM: '3',
+      objectWorkbenchOverlayInput: makeObjectWorkbenchOverlayInput(planModel),
     });
 
     expect(viewModel?.objectWorkbenchOverlay?.shapes).toEqual(

@@ -1,12 +1,6 @@
 import { getHouseRoofFormBehavior } from '@sp/geometry';
-import type { CalculatorHouseAttachmentStrategy, CalculatorModuleInputs } from '@/lib/types/calculator';
+import type { CalculatorModuleInputs } from '@/lib/types/calculator';
 import type { DeckInteractionCapability } from '@/lib/drawings/interactions/deckInteractionContract';
-import type {
-  ObjectWorkbenchCompatibilityMigrationWarning,
-  ObjectWorkbenchCompatibilityProjectModel,
-  ObjectWorkbenchCompatibilityHouseModel,
-  ObjectWorkbenchCompatibilityPergolaModel,
-} from './compat/objectWorkbenchCompatibilityModel';
 import type { WorkbenchDeckSupportDiagnostic } from './deckSupportDiagnostics';
 import type {
   ObjectFirstOpeningHostResolution,
@@ -22,6 +16,13 @@ import type {
   PergolaObjectModel,
   WorkbenchObjectRef,
 } from './objectFirstWorkbenchModel';
+import type {
+  ObjectWorkbenchMigrationWarning,
+  ObjectWorkbenchPergolaAttachmentStrategy,
+  ObjectWorkbenchPergolaConnectionKind,
+  ObjectWorkbenchRoofProvenance,
+  ObjectWorkbenchStatusFacade,
+} from './objectWorkbenchStatusModel';
 
 export type ObjectWorkbenchDeckPatch = Partial<
   Pick<
@@ -62,27 +63,12 @@ export type ObjectWorkbenchOpeningPatch = Partial<
   >
 >;
 
-export type ObjectWorkbenchPergolaConnectionKind = 'freestanding' | 'soffit' | 'fascia' | 'wall';
-
-export type ObjectWorkbenchPergolaAttachmentStrategy = CalculatorHouseAttachmentStrategy | 'auto';
-
-export type ObjectWorkbenchMigrationWarning = Pick<
-  ObjectWorkbenchCompatibilityMigrationWarning,
-  'id' | 'code' | 'field' | 'message' | 'severity'
->;
-
-export type ObjectWorkbenchRoofProvenance = Partial<
-  Record<
-    | 'form'
-    | 'material'
-    | 'primaryPitchDeg'
-    | 'primaryFallDirection'
-    | 'ridgeAxis'
-    | 'openGableEndIds'
-    | 'appendage',
-    string | null
-  >
->;
+export type {
+  ObjectWorkbenchMigrationWarning,
+  ObjectWorkbenchPergolaAttachmentStrategy,
+  ObjectWorkbenchPergolaConnectionKind,
+  ObjectWorkbenchRoofProvenance,
+};
 
 export type ObjectWorkbenchRoofInspectorModel = {
   intent: HouseFormRoofIntentModel;
@@ -193,14 +179,12 @@ export type ObjectWorkbenchInspectorFacade = {
 };
 
 type BuildObjectWorkbenchInspectorFacadeInput = {
-  activeDeckInteraction: DeckInteractionCapability | null;
-  activeDeckSupport: WorkbenchDeckSupportDiagnostic | null;
   activeObjectRef: WorkbenchObjectRef;
-  compatibilityProjectModel: ObjectWorkbenchCompatibilityProjectModel;
   houseAssembly: HouseAssemblyModel | null;
   openingHostResolutions: Map<string, ObjectFirstOpeningHostResolution>;
   pergolaAttachmentResolutions: Map<string, ObjectFirstPergolaAttachmentResolution>;
   projectModel: ObjectFirstWorkbenchProjectModel;
+  status: ObjectWorkbenchStatusFacade;
 };
 
 function buildFallbackRoofIntent(houseForm: HouseFormModel | null): HouseFormRoofIntentModel {
@@ -223,17 +207,17 @@ function buildFallbackRoofIntent(houseForm: HouseFormModel | null): HouseFormRoo
 
 function buildRoofInspector(
   houseForm: HouseFormModel | null,
-  compatibilityHouse: ObjectWorkbenchCompatibilityHouseModel | null,
+  status: ObjectWorkbenchStatusFacade,
 ): ObjectWorkbenchRoofInspectorModel {
   const intent = buildFallbackRoofIntent(houseForm);
-  const roof = compatibilityHouse?.roof ?? null;
+  const roof = status.houseForm.roof;
   const fallbackControls = getHouseRoofFormBehavior(intent.form).controls;
 
   return {
     intent,
-    controls: roof?.capabilities.controls ?? fallbackControls,
-    selectedFormSupported: roof?.capabilities.selectedFormSupported ?? true,
-    appendageSupported: roof?.capabilities.appendageSupported ?? false,
+    controls: roof?.controls ?? fallbackControls,
+    selectedFormSupported: roof?.selectedFormSupported ?? true,
+    appendageSupported: roof?.appendageSupported ?? false,
     appendageSupportedHostEdges: roof?.appendageSupportedHostEdges ?? [],
     appendageSupportReason: roof?.appendageSupportReason ?? null,
     terminalEnds: roof?.terminalEnds.map((end) => ({
@@ -242,63 +226,45 @@ function buildRoofInspector(
       isOpen: end.isOpen,
     })) ?? [],
     geometryKind: roof?.geometryKind ?? null,
-    validationStatus: roof?.validation.status ?? null,
-    validationCode: roof?.validation.code ?? null,
-    validationMessage: roof?.validation.message ?? null,
-    approximationReasons: roof?.validation.approximationReasons ?? [],
+    validationStatus: roof?.validationStatus ?? null,
+    validationCode: roof?.validationCode ?? null,
+    validationMessage: roof?.validationMessage ?? null,
+    approximationReasons: roof?.approximationReasons ?? [],
     provenance: roof?.provenance ?? {},
   };
 }
 
-function buildMigrationWarnings(
-  warnings: ObjectWorkbenchCompatibilityMigrationWarning[],
-): ObjectWorkbenchMigrationWarning[] {
-  return warnings.map((warning) => ({
-    id: warning.id,
-    code: warning.code,
-    field: warning.field,
-    message: warning.message,
-    severity: warning.severity,
-  }));
-}
-
 function buildDeckInspectorModels(input: {
-  compatibilityHouse: ObjectWorkbenchCompatibilityHouseModel | null;
   decks: DeckObjectModel[];
+  status: ObjectWorkbenchStatusFacade;
 }): ObjectWorkbenchDeckInspectorModel[] {
-  const compatibilityDecksById = new Map(
-    (input.compatibilityHouse?.decks ?? []).map((deck) => [deck.id, deck]),
-  );
-  const defaultHostEdgeId = input.compatibilityHouse?.footprint.attachmentSide ?? 'rear';
+  const defaultHostEdgeId = input.status.houseForm.defaultDeckHostEdgeId;
 
   return input.decks.map((deck) => {
-    const compatibilityDeck = compatibilityDecksById.get(deck.id) ?? null;
+    const deckStatus = input.status.deckStatuses[deck.id] ?? null;
     return {
       ...deck,
       defaultHostEdgeId,
       validation: {
-        status: compatibilityDeck?.validation.status ?? 'valid',
-        codes: compatibilityDeck?.validation.codes ?? [],
-        messages: compatibilityDeck?.validation.messages ?? [],
-        message: compatibilityDeck?.validation.message ?? null,
+        status: deckStatus?.validation.status ?? 'valid',
+        codes: deckStatus?.validation.codes ?? [],
+        messages: deckStatus?.validation.messages ?? [],
+        message: deckStatus?.validation.message ?? null,
       },
       supportWarnings: {
-        codes: compatibilityDeck?.supportContext.warningCodes ?? [],
-        messages: compatibilityDeck?.supportContext.warningMessages ?? [],
+        codes: deckStatus?.supportWarnings.codes ?? [],
+        messages: deckStatus?.supportWarnings.messages ?? [],
       },
     };
   });
 }
 
 function buildOpeningInspectorModels(input: {
-  compatibilityHouse: ObjectWorkbenchCompatibilityHouseModel | null;
   houseAssembly: HouseAssemblyModel | null;
   openingHostResolutions: Map<string, ObjectFirstOpeningHostResolution>;
   openings: OpeningObjectModel[];
+  status: ObjectWorkbenchStatusFacade;
 }): ObjectWorkbenchOpeningInspectorModel[] {
-  const compatibilityOpeningsById = new Map(
-    (input.compatibilityHouse?.openings ?? []).map((opening) => [opening.id, opening]),
-  );
   const baseHostWallOptions =
     input.houseAssembly?.derivedEnvelope?.wallGraph.walls.map((wall) => ({
       label: wall.label,
@@ -306,7 +272,7 @@ function buildOpeningInspectorModels(input: {
     })) ?? [];
 
   return input.openings.map((opening) => {
-    const compatibilityOpening = compatibilityOpeningsById.get(opening.id) ?? null;
+    const openingStatus = input.status.openingStatuses[opening.id] ?? null;
     const hostWallOptions =
       opening.hostWallId && !baseHostWallOptions.some((option) => option.value === opening.hostWallId)
         ? [{ label: 'Unavailable saved wall', value: opening.hostWallId }, ...baseHostWallOptions]
@@ -315,9 +281,9 @@ function buildOpeningInspectorModels(input: {
     return {
       ...opening,
       validation: {
-        status: compatibilityOpening?.validation.status ?? 'valid',
-        codes: compatibilityOpening?.validation.codes ?? [],
-        message: compatibilityOpening?.validation.message ?? null,
+        status: openingStatus?.validation.status ?? 'valid',
+        codes: openingStatus?.validation.codes ?? [],
+        message: openingStatus?.validation.message ?? null,
       },
       hostWallOptions,
       hostResolution: input.openingHostResolutions.get(opening.id) ?? null,
@@ -326,26 +292,22 @@ function buildOpeningInspectorModels(input: {
 }
 
 function buildPergolaInspectorModels(input: {
-  compatibilityProjectModel: ObjectWorkbenchCompatibilityProjectModel;
   pergolaAttachmentResolutions: Map<string, ObjectFirstPergolaAttachmentResolution>;
   pergolas: PergolaObjectModel[];
+  status: ObjectWorkbenchStatusFacade;
 }): ObjectWorkbenchPergolaInspectorModel[] {
-  const compatibilityPergolasById = new Map(
-    (input.compatibilityProjectModel.pergolas ?? []).map((pergola) => [pergola.id, pergola]),
-  );
-
   return input.pergolas.map((pergola) => {
-    const compatibilityPergola = compatibilityPergolasById.get(pergola.id) ?? null;
+    const pergolaStatus = input.status.pergolaStatuses[pergola.id] ?? null;
     const resolution = input.pergolaAttachmentResolutions.get(pergola.id);
     return {
       ...pergola,
-      connectionKind: compatibilityPergola?.attachment.kind ?? 'soffit',
-      attachmentStrategy: compatibilityPergola?.attachment.strategy ?? pergola.strategy ?? 'auto',
+      connectionKind: pergolaStatus?.connectionKind ?? 'soffit',
+      attachmentStrategy: pergolaStatus?.attachmentStrategy ?? pergola.strategy ?? 'auto',
       attachmentEdgeId: pergola.attachmentEdgeId,
       attachmentZoneId: pergola.attachmentZoneId,
       resolution: {
-        status: resolution?.status ?? compatibilityPergola?.attachment.resolution.status ?? 'unresolved',
-        message: compatibilityPergola?.attachment.resolution.message ?? resolution?.code ?? null,
+        status: resolution?.status ?? pergolaStatus?.resolution.status ?? 'unresolved',
+        message: pergolaStatus?.resolution.message ?? resolution?.code ?? null,
       },
     };
   });
@@ -363,14 +325,6 @@ function summarizeAttachmentZoneKinds(houseAssembly: HouseAssemblyModel | null):
   return Array.from(zonesBySide.entries())
     .map(([side, kinds]) => `${side}: ${Array.from(kinds).join(', ')}`)
     .join(' | ');
-}
-
-function summarizeAttachmentZoneBlocks(compatibilityHouse: ObjectWorkbenchCompatibilityHouseModel | null): string {
-  const blocked = compatibilityHouse?.attachmentZoneDiagnostics.blocked ?? [];
-  if (!blocked.length) return 'none';
-  return Array.from(
-    new Set(blocked.map((entry) => `${entry.side} ${entry.kind} (${entry.reason})`)),
-  ).join(' | ');
 }
 
 function countPergolaAttachmentResolutions(
@@ -399,12 +353,12 @@ function buildDiagnostics(input: {
   activeDeckInteraction: DeckInteractionCapability | null;
   activeDeckSupport: WorkbenchDeckSupportDiagnostic | null;
   activeOpening: ObjectWorkbenchOpeningInspectorModel | null;
-  compatibilityHouse: ObjectWorkbenchCompatibilityHouseModel | null;
   houseAssembly: HouseAssemblyModel | null;
   houseFormContext: ObjectWorkbenchHouseFormInspectorModel;
   pergolas: ObjectWorkbenchPergolaInspectorModel[];
+  status: ObjectWorkbenchStatusFacade;
 }): ObjectWorkbenchDiagnosticsModel {
-  const { activeDeck, activeOpening, compatibilityHouse, houseAssembly, houseFormContext, pergolas } = input;
+  const { activeDeck, activeOpening, houseAssembly, houseFormContext, pergolas } = input;
   const resolutionCounts = countPergolaAttachmentResolutions(pergolas);
 
   return {
@@ -414,7 +368,7 @@ function buildDiagnostics(input: {
     openingCount: houseFormContext.openingCount,
     attachmentZoneCount: houseAssembly?.derivedEnvelope?.attachmentZones.length ?? 0,
     attachmentZoneKindsSummary: summarizeAttachmentZoneKinds(houseAssembly),
-    attachmentZoneBlockedSummary: summarizeAttachmentZoneBlocks(compatibilityHouse),
+    attachmentZoneBlockedSummary: input.status.houseForm.attachmentZoneBlockedSummary,
     ...resolutionCounts,
     sliderOpeningCount: 0,
     invalidOpeningCount: 0,
@@ -435,37 +389,34 @@ function buildDiagnostics(input: {
 }
 
 export function buildObjectWorkbenchInspectorFacade({
-  activeDeckInteraction,
-  activeDeckSupport,
   activeObjectRef,
-  compatibilityProjectModel,
   houseAssembly,
   openingHostResolutions,
   pergolaAttachmentResolutions,
   projectModel,
+  status,
 }: BuildObjectWorkbenchInspectorFacadeInput): ObjectWorkbenchInspectorFacade {
-  const compatibilityHouse = compatibilityProjectModel.house;
   const houseForms = projectModel.houseAssembly?.houseForms ?? [];
   const selectedHouseForm =
     activeObjectRef.family === 'house_forms'
       ? houseForms.find((houseForm) => houseForm.id === activeObjectRef.objectId) ?? houseForms[0] ?? null
       : houseForms[0] ?? null;
-  const roof = buildRoofInspector(selectedHouseForm, compatibilityHouse);
-  const warnings = buildMigrationWarnings(compatibilityProjectModel.warnings ?? []);
+  const roof = buildRoofInspector(selectedHouseForm, status);
+  const warnings = status.houseForm.warnings;
   const decks = buildDeckInspectorModels({
-    compatibilityHouse,
     decks: projectModel.decks,
+    status,
   });
   const openings = buildOpeningInspectorModels({
-    compatibilityHouse,
     houseAssembly,
     openingHostResolutions,
     openings: projectModel.openings,
+    status,
   });
   const pergolas = buildPergolaInspectorModels({
-    compatibilityProjectModel,
     pergolaAttachmentResolutions,
     pergolas: projectModel.pergolas,
+    status,
   });
   const activeDeck =
     activeObjectRef.family === 'decks'
@@ -488,17 +439,17 @@ export function buildObjectWorkbenchInspectorFacade({
     openingCount: openings.length,
     pergolaCount: pergolas.length,
     warnings,
-    lowConfidence: compatibilityHouse?.lowConfidence ?? warnings.length > 0,
+    lowConfidence: status.houseForm.lowConfidence,
   };
   const diagnostics = buildDiagnostics({
     activeDeck,
-    activeDeckInteraction,
-    activeDeckSupport,
+    activeDeckInteraction: status.activeDeckInteraction,
+    activeDeckSupport: status.activeDeckSupport,
     activeOpening,
-    compatibilityHouse,
     houseAssembly,
     houseFormContext,
     pergolas,
+    status,
   });
 
   return {

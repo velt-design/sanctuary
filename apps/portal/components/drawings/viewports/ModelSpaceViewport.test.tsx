@@ -13,6 +13,7 @@ import {
 } from '@/lib/drawings/state/drawingWorkbenchUiState';
 import { buildAssemblyModel } from '@/lib/drawings/assembly/buildAssemblyModel';
 import { buildPlanViewModel } from '@/lib/drawings/views/plan/buildPlanViewModel';
+import type { ObjectWorkbenchPlanOverlayInput } from '@/lib/drawings/views/plan/objectWorkbenchPlanOverlay';
 import { resolveDeckHostEdgeFrame, resolveDeckPresetGeometry } from '@/lib/drawings/state/houseFirstDeckPresets';
 import type { DeckInteractionTelemetry } from '@/app/staff/projects/[projectId]/design-workbench/objectWorkbenchClientTypes';
 import type {
@@ -668,6 +669,169 @@ function makeHouseFirstOpening(overrides: Partial<WallOpeningModel> = {}): WallO
   };
 }
 
+function makeObjectWorkbenchOverlayInputFromHouse(input: {
+  drawing: ReturnType<typeof makeDrawingModule>;
+  house: HouseModel;
+  planModel: ModulePlanModel;
+  selection: ObjectWorkbenchViewportTargetSelection;
+}): ObjectWorkbenchPlanOverlayInput {
+  const houseForm = {
+    id: input.house.id,
+    label: input.house.label,
+    transform: {
+      offsetXM: 0,
+      offsetYM: 0,
+      rotationQuarterTurns: input.house.footprint.drawingRotationQuarterTurns,
+    },
+    footprint: {
+      mode: input.house.footprint.mode,
+      preset: input.house.footprint.preset,
+      params: input.house.footprint.params,
+      polygon: input.house.footprint.polygon,
+      attachmentSide: input.house.footprint.attachmentSide,
+    },
+    roofIntent: {
+      form: input.house.roof.form,
+      material: input.house.roof.material,
+      primaryPitchDeg: input.house.roof.primaryPitchDeg,
+      primaryFallDirection: input.house.roof.primaryFallDirection,
+      ridgeAxis: input.house.roof.ridgeAxis,
+      openGableEndIds: input.house.roof.openGableEndIds,
+      appendage: input.house.roof.appendage,
+    },
+    storeyMode: input.house.storeyMode,
+    attachmentStrategy: input.house.attachmentStrategy,
+    eaveHeightM: input.house.eaveHeightM,
+    wallHeightM: input.house.wallHeightM,
+    soffitDepthMm: input.house.soffitDepthMm,
+    fasciaHeightMm: input.house.fasciaHeightMm,
+    gutterWidthMm: input.house.gutterWidthMm,
+    gutterDepthMm: input.house.gutterDepthMm,
+    gutterProjectionMm: input.house.gutterProjectionMm,
+    eaveOverhangMm: input.house.eaveOverhangMm,
+    sourceModuleIndexes: input.house.sourceModuleIndexes,
+    sourceModuleIds: input.house.sourceModuleIds,
+  };
+  return {
+    houseAssembly: {
+      id: 'assembly-main',
+      label: input.house.label,
+      houseForms: [houseForm],
+      derivedEnvelope: {
+        mergedFormIds: [input.house.id],
+        footprint: input.house.footprint.polygon,
+        wallGraph: input.house.derivedWallGraph,
+        roofZones: [],
+        edges: [],
+        attachmentZones: input.house.attachmentZones.map((zone) => ({
+          ...zone,
+          sourceFormIds: [input.house.id],
+          hostWallId: null,
+          hostEdgeId: null,
+          hostRoofZoneId: null,
+        })),
+      },
+    },
+    houseForm,
+    decks: input.house.decks.map((deck) => ({
+      id: deck.id,
+      label: deck.name,
+      kind: deck.kind,
+      shape: deck.shape,
+      presetType: deck.presetType,
+      presetRect: deck.presetRect,
+      floatingRect: deck.floatingRect,
+      outline: deck.outline,
+      elevationMode: deck.elevationMode,
+      levelOffsetMm: deck.levelOffsetMm,
+      isAttached: deck.isAttached,
+      surfaceMaterial: deck.surfaceMaterial,
+      hostEdgeId: deck.hostEdgeId,
+      attachmentMode: deck.attachmentMode,
+      primaryHostEdgeId: deck.primaryHostEdgeId,
+      secondaryHostEdgeId: deck.secondaryHostEdgeId,
+      cornerVertexId: deck.cornerVertexId,
+    })),
+    openings: input.house.openings.map((opening) => ({
+      id: opening.id,
+      label: opening.label,
+      kind: opening.kind,
+      panelCount: opening.panelCount,
+      hostWallId: opening.hostWallId,
+      wallId: opening.wallId,
+      hostEdgeId: opening.hostEdgeId,
+      widthM: opening.widthM,
+      heightM: opening.heightM,
+      sillHeightM: opening.sillHeightM,
+      offsetAlongWallM: opening.offsetAlongWallM,
+    })),
+    selection: input.selection,
+    moduleLengthM: input.drawing.input.lengthM,
+    moduleProjectionM: input.drawing.input.projectionM,
+    geometryHouseContext: input.planModel.houseContext,
+    status: {
+      houseForm: {
+        lowConfidence: input.house.lowConfidence,
+        warnings: [],
+        footprintPreset: input.house.footprint.preset,
+        roofForm: input.house.roof.form,
+        defaultDeckHostEdgeId: input.house.footprint.attachmentSide,
+        attachmentZoneBlockedSummary: 'none',
+        roof: {
+          form: input.house.roof.form,
+          controls: input.house.roof.capabilities.controls,
+          selectedFormSupported: input.house.roof.capabilities.selectedFormSupported,
+          appendageSupported: input.house.roof.capabilities.appendageSupported,
+          appendageSupportedHostEdges: input.house.roof.appendageSupportedHostEdges ?? [],
+          appendageSupportReason: input.house.roof.appendageSupportReason ?? null,
+          terminalEnds: input.house.roof.terminalEnds,
+          geometryKind: input.house.roof.geometryKind ?? null,
+          validationStatus: input.house.roof.validation.status,
+          validationCode: input.house.roof.validation.code,
+          validationMessage: input.house.roof.validation.message,
+          approximationReasons: input.house.roof.validation.approximationReasons ?? [],
+          provenance: input.house.roof.provenance ?? {},
+        },
+      },
+      deckStatuses: Object.fromEntries(
+        input.house.decks.map((deck) => [
+          deck.id,
+          {
+            validation: deck.validation,
+            supportWarnings: {
+              codes: deck.supportContext.warningCodes,
+              messages: deck.supportContext.warningMessages,
+            },
+            interaction: {
+              selectedDeckType: deck.shape === 'custom' ? 'custom_outline' : deck.isAttached ? 'preset_snapped' : 'preset_floating',
+              dragEligible: true,
+              dragReason: null,
+              hostEdgeResolvable: true,
+              relationshipDimensionsAvailable: true,
+              selectionBadgeLabel: 'Drag deck',
+            },
+          },
+        ]),
+      ),
+      openingStatuses: Object.fromEntries(
+        input.house.openings.map((opening) => [
+          opening.id,
+          {
+            validation: opening.validation,
+          },
+        ]),
+      ),
+      pergolaStatuses: {},
+      activeDeckSupport: null,
+      activeDeckInteraction: null,
+      deckSupportWarningCount: input.house.decks.reduce(
+        (sum, deck) => sum + deck.supportContext.warningCodes.length,
+        0,
+      ),
+    },
+  };
+}
+
 function clickElement(target: Element): void {
   act(() => {
     target.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
@@ -742,6 +906,7 @@ function HouseFirstViewportHarness({
     snapState: string;
     snapMessage: string | null;
   } | null>(null);
+  const planModel = makePlanModelWithHouseContext();
 
   const viewport = (
     <ModelSpaceViewport
@@ -749,18 +914,19 @@ function HouseFirstViewportHarness({
       objectWorkbenchDisplayFamily={objectWorkbenchDisplayFamily}
       visibility={visibility}
       status="ready"
-      planModel={makePlanModelWithHouseContext()}
+      planModel={planModel}
       sectionModel={drawing.sectionModel}
       planViewModel={buildPlanViewModel({
         moduleId: drawing.id,
         moduleLabel: 'Module 1',
-        planModel: makePlanModelWithHouseContext(),
+        planModel,
         canEditHouseFootprint: true,
-        objectWorkbenchCompatibilityHouse: house,
-        objectWorkbenchCompatibilitySelection: selection,
-        includeObjectWorkbenchOverlay: true,
-        moduleLengthM: drawing.input.lengthM,
-        moduleProjectionM: drawing.input.projectionM,
+        objectWorkbenchOverlayInput: makeObjectWorkbenchOverlayInputFromHouse({
+          drawing,
+          house,
+          planModel,
+          selection,
+        }),
       })}
       viewportTransform={viewportTransform}
       onViewportTransformChange={setViewportTransform}
@@ -1361,11 +1527,12 @@ describe('ModelSpaceViewport', () => {
           moduleLabel: 'Module 1',
           planModel,
           canEditHouseFootprint: true,
-          objectWorkbenchCompatibilityHouse: house,
-          objectWorkbenchCompatibilitySelection: { kind: 'footprint', targetId: 'house-main' },
-          includeObjectWorkbenchOverlay: true,
-          moduleLengthM: drawing.input.lengthM,
-          moduleProjectionM: drawing.input.projectionM,
+          objectWorkbenchOverlayInput: makeObjectWorkbenchOverlayInputFromHouse({
+            drawing,
+            house,
+            planModel,
+            selection: { kind: 'footprint', targetId: 'house-main' },
+          }),
         })}
         viewportTransform={createDrawingWorkbenchUiState().viewportTransform}
         onViewportTransformChange={() => undefined}
@@ -1496,11 +1663,12 @@ describe('ModelSpaceViewport', () => {
           pergolaRenderSource: 'geometry',
           pergolaRenderStatus: 'geometry_ready',
           canEditHouseFootprint: true,
-          objectWorkbenchCompatibilityHouse: house,
-          objectWorkbenchCompatibilitySelection: { kind: 'deck', targetId: 'deck-1' },
-          includeObjectWorkbenchOverlay: true,
-          moduleLengthM: drawing.input.lengthM,
-          moduleProjectionM: drawing.input.projectionM,
+          objectWorkbenchOverlayInput: makeObjectWorkbenchOverlayInputFromHouse({
+            drawing,
+            house,
+            planModel,
+            selection: { kind: 'deck', targetId: 'deck-1' },
+          }),
         })}
         viewportTransform={createDrawingWorkbenchUiState().viewportTransform}
         onViewportTransformChange={() => undefined}
@@ -1687,11 +1855,12 @@ describe('ModelSpaceViewport', () => {
           moduleLabel: 'Module 1',
           planModel,
           canEditHouseFootprint: true,
-          objectWorkbenchCompatibilityHouse: makeHouseFirstHouse(),
-          objectWorkbenchCompatibilitySelection: { kind: 'house', targetId: null },
-          includeObjectWorkbenchOverlay: true,
-          moduleLengthM: drawing.input.lengthM,
-          moduleProjectionM: drawing.input.projectionM,
+          objectWorkbenchOverlayInput: makeObjectWorkbenchOverlayInputFromHouse({
+            drawing,
+            house: makeHouseFirstHouse(),
+            planModel,
+            selection: { kind: 'house', targetId: null },
+          }),
         })}
         viewportTransform={createDrawingWorkbenchUiState().viewportTransform}
         onViewportTransformChange={() => undefined}

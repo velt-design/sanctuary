@@ -3,14 +3,16 @@ import type {
   ObjectFirstOpeningHostResolution,
   ObjectFirstPergolaAttachmentResolution,
 } from './objectFirstDerivedHosting';
-import type { ObjectWorkbenchCompatibilityMigrationWarning, ObjectWorkbenchCompatibilityHouseModel, ObjectWorkbenchCompatibilityPergolaModel } from './compat/objectWorkbenchCompatibilityModel';
 import type { DrawingWorkbenchRailTab } from './drawingWorkbenchUiState';
 import type {
+  DeckObjectModel,
+  HouseFormModel,
   OpeningObjectModel,
   PergolaObjectModel,
   WorkbenchObjectFamily,
   WorkbenchObjectRef,
 } from './objectFirstWorkbenchModel';
+import type { ObjectWorkbenchStatusFacade } from './objectWorkbenchStatusModel';
 
 export type DrawingWorkbenchRailObjectStatus = 'ready' | 'approximate' | 'blocked' | 'deferred';
 
@@ -103,7 +105,7 @@ function formatCountLabel(count: number): string {
   return `${count} ${count === 1 ? 'object' : 'objects'}`;
 }
 
-function humanizePergolaFamily(family: ObjectWorkbenchCompatibilityPergolaModel['family']): string {
+function humanizePergolaFamily(family: PergolaObjectModel['family']): string {
   switch (family) {
     case 'hip_corner':
       return 'Hip corner';
@@ -121,55 +123,61 @@ function humanizePergolaFamily(family: ObjectWorkbenchCompatibilityPergolaModel[
 }
 
 function buildHouseFormEntries(
-  house: ObjectWorkbenchCompatibilityHouseModel | null,
-  warnings: ObjectWorkbenchCompatibilityMigrationWarning[],
+  houseForms: HouseFormModel[],
+  status: ObjectWorkbenchStatusFacade,
 ): DrawingWorkbenchRailObjectEntry[] {
-  if (!house) return [];
-  return [
-    {
+  return houseForms.map((houseForm) => {
+    const warningCount = status.houseForm.warnings.length;
+    return {
       ref: {
         family: 'house_forms',
-        objectId: house.id,
+        objectId: houseForm.id,
       },
-      label: house.label,
-      status: house.lowConfidence ? 'approximate' : 'ready',
-      statusLabel: house.lowConfidence ? 'Approximate' : 'Ready',
-      meta: `${house.footprint.preset} footprint | ${house.roof.form} roof | ${warnings.length} warning${
-        warnings.length === 1 ? '' : 's'
-      }`,
-    },
-  ];
+      label: houseForm.label,
+      status: status.houseForm.lowConfidence ? 'approximate' : 'ready',
+      statusLabel: status.houseForm.lowConfidence ? 'Approximate' : 'Ready',
+      meta: `${status.houseForm.footprintPreset ?? houseForm.footprint.preset} footprint | ${
+        status.houseForm.roofForm ?? houseForm.roofIntent.form
+      } roof | ${warningCount} warning${warningCount === 1 ? '' : 's'}`,
+    };
+  });
 }
 
-function buildDeckEntries(house: ObjectWorkbenchCompatibilityHouseModel | null): DrawingWorkbenchRailObjectEntry[] {
-  return (house?.decks ?? []).map((deck) => ({
-    ref: {
-      family: 'decks',
-      objectId: deck.id,
-    },
-    label: deck.name,
-    status: deck.validation.status === 'invalid' ? 'blocked' : 'ready',
-    statusLabel: deck.validation.status === 'invalid' ? 'Invalid' : 'Ready',
-    meta: `${deck.isAttached ? 'Attached' : 'Floating'} | ${
-      deck.shape === 'preset' ? 'Preset rectangle' : 'Custom outline'
-    }`,
-  }));
+function buildDeckEntries(input: {
+  decks: DeckObjectModel[];
+  status: ObjectWorkbenchStatusFacade;
+}): DrawingWorkbenchRailObjectEntry[] {
+  return input.decks.map((deck) => {
+    const deckStatus = input.status.deckStatuses[deck.id] ?? null;
+    const invalid = deckStatus?.validation.status === 'invalid';
+    return {
+      ref: {
+        family: 'decks',
+        objectId: deck.id,
+      },
+      label: deck.label,
+      status: invalid ? 'blocked' : 'ready',
+      statusLabel: invalid ? 'Invalid' : 'Ready',
+      meta: `${deck.isAttached ? 'Attached' : 'Floating'} | ${
+        deck.shape === 'preset' ? 'Preset rectangle' : 'Custom outline'
+      }`,
+    };
+  });
 }
 
 function buildOpeningEntries(input: {
   openings: OpeningObjectModel[];
-  compatibilityOpenings: ObjectWorkbenchCompatibilityHouseModel['openings'];
   hostResolutions: Record<string, ObjectFirstOpeningHostResolution>;
+  status: ObjectWorkbenchStatusFacade;
 }): DrawingWorkbenchRailObjectEntry[] {
-  const compatibilityById = new Map(input.compatibilityOpenings.map((opening) => [opening.id, opening]));
   return input.openings.map((opening) => {
-    const compatibilityOpening = compatibilityById.get(opening.id) ?? null;
+    const openingStatus = input.status.openingStatuses[opening.id] ?? null;
     const hostResolution = input.hostResolutions[opening.id] ?? null;
     const hostWallLabel =
       hostResolution?.status === 'resolved'
         ? hostResolution.wall?.label ?? 'Resolved derived wall'
         : 'Unresolved host wall';
-    const invalid = compatibilityOpening?.validation.status === 'invalid';
+    const invalid = openingStatus?.validation.status === 'invalid';
     const unresolved = hostResolution?.status === 'unresolved';
     return {
       ref: {
@@ -186,11 +194,12 @@ function buildOpeningEntries(input: {
 
 function resolvePergolaEntryStatus(input: {
   pergola: PergolaObjectModel;
-  compatibilityPergola: ObjectWorkbenchCompatibilityPergolaModel | null;
   attachmentResolution: ObjectFirstPergolaAttachmentResolution | null;
   moduleStates: DrawingWorkbenchRailPergolaModuleState[];
+  status: ObjectWorkbenchStatusFacade;
 }): Pick<DrawingWorkbenchRailObjectEntry, 'status' | 'statusLabel'> {
-  const isFreestanding = input.compatibilityPergola?.attachment.kind === 'freestanding';
+  const pergolaStatus = input.status.pergolaStatuses[input.pergola.id] ?? null;
+  const isFreestanding = pergolaStatus?.isFreestanding;
   if (!isFreestanding && input.attachmentResolution?.status === 'unresolved') {
     return {
       status: 'blocked',
@@ -209,7 +218,7 @@ function resolvePergolaEntryStatus(input: {
       statusLabel: 'Invalid geometry',
     };
   }
-  if (input.compatibilityPergola?.confidence === 'low') {
+  if (pergolaStatus?.confidence === 'low') {
     return {
       status: 'approximate',
       statusLabel: 'Approximate',
@@ -223,30 +232,28 @@ function resolvePergolaEntryStatus(input: {
 
 function buildPergolaEntries(input: {
   pergolas: PergolaObjectModel[];
-  compatibilityPergolas: ObjectWorkbenchCompatibilityPergolaModel[];
   attachmentResolutions: Record<string, ObjectFirstPergolaAttachmentResolution>;
   modules: DrawingWorkbenchRailPergolaModuleState[];
+  status: ObjectWorkbenchStatusFacade;
 }): DrawingWorkbenchRailObjectEntry[] {
-  const compatibilityById = new Map(input.compatibilityPergolas.map((pergola) => [pergola.id, pergola]));
-
   return input.pergolas.map((pergola) => {
-    const compatibilityPergola = compatibilityById.get(pergola.id) ?? null;
+    const pergolaStatus = input.status.pergolaStatuses[pergola.id] ?? null;
     const attachmentResolution = input.attachmentResolutions[pergola.id] ?? null;
     const moduleStates = input.modules.filter((module) => module.pergolaId === pergola.id);
-    const status = resolvePergolaEntryStatus({
+    const entryStatus = resolvePergolaEntryStatus({
       pergola,
-      compatibilityPergola,
       attachmentResolution,
       moduleStates,
+      status: input.status,
     });
     const edgeLabel = attachmentResolution?.edge
       ? attachmentResolution.edge.label
-      : compatibilityPergola?.attachment.kind === 'freestanding'
+      : pergolaStatus?.isFreestanding
         ? 'Freestanding'
         : 'Unresolved host edge';
     const zoneLabel = attachmentResolution?.zone
       ? attachmentResolution.zone.label
-      : compatibilityPergola?.attachment.kind === 'freestanding'
+      : pergolaStatus?.isFreestanding
         ? null
         : pergola.attachmentZoneId
           ? 'Unresolved host zone'
@@ -257,8 +264,8 @@ function buildPergolaEntries(input: {
         objectId: pergola.id,
       },
       label: pergola.label,
-      status: status.status,
-      statusLabel: status.statusLabel,
+      status: entryStatus.status,
+      statusLabel: entryStatus.statusLabel,
       meta: `${humanizePergolaFamily(pergola.family)} | ${edgeLabel}${zoneLabel ? ` | ${zoneLabel}` : ''}`,
     };
   });
@@ -288,28 +295,31 @@ export function buildDrawingWorkbenchRailModel(input: {
   activeRailTab: DrawingWorkbenchRailTab;
   activeObjectFamily: WorkbenchObjectFamily;
   activeObjectRef: WorkbenchObjectRef;
-  house: ObjectWorkbenchCompatibilityHouseModel | null;
+  houseForms: HouseFormModel[];
+  decks: DeckObjectModel[];
   openings: OpeningObjectModel[];
   openingHostResolutions: Record<string, ObjectFirstOpeningHostResolution>;
   pergolas: PergolaObjectModel[];
-  compatibilityPergolas: ObjectWorkbenchCompatibilityPergolaModel[];
   pergolaAttachmentResolutions: Record<string, ObjectFirstPergolaAttachmentResolution>;
-  warnings: ObjectWorkbenchCompatibilityMigrationWarning[];
   modules: DrawingWorkbenchRailPergolaModuleState[];
+  status: ObjectWorkbenchStatusFacade;
 }): DrawingWorkbenchRailModel {
   const objectLists: Record<WorkbenchObjectFamily, DrawingWorkbenchRailObjectEntry[]> = {
-    house_forms: buildHouseFormEntries(input.house, input.warnings),
-    decks: buildDeckEntries(input.house),
+    house_forms: buildHouseFormEntries(input.houseForms, input.status),
+    decks: buildDeckEntries({
+      decks: input.decks,
+      status: input.status,
+    }),
     openings: buildOpeningEntries({
       openings: input.openings,
-      compatibilityOpenings: input.house?.openings ?? [],
       hostResolutions: input.openingHostResolutions,
+      status: input.status,
     }),
     pergolas: buildPergolaEntries({
       pergolas: input.pergolas,
-      compatibilityPergolas: input.compatibilityPergolas,
       attachmentResolutions: input.pergolaAttachmentResolutions,
       modules: input.modules,
+      status: input.status,
     }),
   };
   const familySummaries = FAMILY_ORDER.map((family) => buildFamilySummary(family, objectLists));

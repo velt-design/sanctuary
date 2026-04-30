@@ -14,10 +14,7 @@ import { resolveWorkbenchGeometryModule } from '@/lib/drawings/geometry/resolveW
 import { buildPlanViewModel, type PlanViewModel } from '@/lib/drawings/views/plan/buildPlanViewModel';
 import { buildEstimateDrawingModules, type EstimateDrawingModule } from '@/lib/estimates/moduleDrawing';
 import { mergeEstimateDrawingDraftIntoSnapshot, type EstimateDrawingDraft } from '@/lib/estimates/drawingEdits';
-import {
-  resolveDeckInteractionCapability,
-  type DeckInteractionCapability,
-} from '@/lib/drawings/interactions/deckInteractionContract';
+import type { DeckInteractionCapability } from '@/lib/drawings/interactions/deckInteractionContract';
 import {
   deriveDrawingWorkbenchCompatibilitySelection,
   normalizeDrawingWorkbenchUiState,
@@ -37,18 +34,12 @@ import { buildObjectWorkbenchCompatibilityProjectModel } from './compat/objectWo
 import {
   buildObjectFirstWorkbenchProjectModel,
 } from './objectFirstWorkbenchAdapter';
-import {
-  buildWorkbenchDeckSupportDiagnostic,
-  resolveWorkbenchDeckSupportActiveSide,
-  type WorkbenchDeckSupportDiagnostic,
-} from './deckSupportDiagnostics';
+import type { WorkbenchDeckSupportDiagnostic } from './deckSupportDiagnostics';
 import {
   buildObjectWorkbenchInspectorFacade,
   type ObjectWorkbenchInspectorFacade,
 } from './objectWorkbenchInspectorModel';
-import type {
-  ObjectWorkbenchCompatibilityHouseModel,
-} from './compat/objectWorkbenchCompatibilityModel';
+import { buildObjectWorkbenchStatusFacade } from './objectWorkbenchStatusModel';
 import type {
   HouseAssemblyModel,
   HouseFormModel,
@@ -120,22 +111,6 @@ export type DrawingWorkbenchStore = {
   };
 };
 
-function buildDeckInteractionDiagnostic(
-  deck: ObjectWorkbenchCompatibilityHouseModel['decks'][number] | null,
-): WorkbenchDeckInteractionDiagnostic | null {
-  if (!deck) return null;
-  const dragInteractionAvailable =
-    deck.hostEdgeId === 'rear' ||
-    deck.hostEdgeId === 'front' ||
-    deck.hostEdgeId === 'left' ||
-    deck.hostEdgeId === 'right';
-
-  return resolveDeckInteractionCapability({
-    deck,
-    dragInteractionAvailable,
-  });
-}
-
 export function buildDrawingWorkbenchStore(input: {
   snapshot: Record<string, unknown> | null;
   draft?: EstimateDrawingDraft | null;
@@ -157,14 +132,26 @@ export function buildDrawingWorkbenchStore(input: {
     objectFirstDraft: input.draft?.objectFirst,
   });
   const houseForms = projectModel.houseAssembly?.houseForms ?? [];
+  const objectFirstDecks = projectModel.decks;
+  const objectFirstOpenings = projectModel.openings;
+  const objectFirstPergolas = projectModel.pergolas;
   const ui = normalizeDrawingWorkbenchUiState(input.ui, {
     moduleCount: drawingModules.length,
     houseFormIds: houseForms.map((houseForm) => houseForm.id),
-    pergolaIds: projectModel.pergolas.map((pergola) => pergola.id),
-    deckIds: projectModel.decks.map((deck) => deck.id),
-    openingIds: projectModel.openings.map((opening) => opening.id),
+    pergolaIds: objectFirstPergolas.map((pergola) => pergola.id),
+    deckIds: objectFirstDecks.map((deck) => deck.id),
+    openingIds: objectFirstOpenings.map((opening) => opening.id),
   });
   const compatibilitySelection = deriveDrawingWorkbenchCompatibilitySelection(ui);
+  const overlayHouseForm =
+    ui.activeObjectFamily === 'house_forms'
+      ? houseForms.find((houseForm) => houseForm.id === ui.activeObjectRef.objectId) ?? houseForms[0] ?? null
+      : houseForms[0] ?? null;
+  const objectWorkbenchOverlayStatus = buildObjectWorkbenchStatusFacade({
+    activeDeckId: null,
+    activeModuleInput: undefined,
+    compatibilityProjectModel,
+  });
   const objectWorkbenchGeometryContext = buildObjectWorkbenchGeometryContext({
     snapshot: input.snapshot,
     draft: input.draft,
@@ -234,11 +221,19 @@ export function buildDrawingWorkbenchStore(input: {
         pergolaRenderSource: planRenderSource,
         pergolaRenderStatus: planRenderStatus,
         canEditHouseFootprint: assemblyModel.capabilities.canEditHouseFootprint,
-        objectWorkbenchCompatibilityHouse: compatibilityProjectModel.house,
-        objectWorkbenchCompatibilitySelection: compatibilitySelection.activeHouseSelection,
-        includeObjectWorkbenchOverlay: ui.activeRailTab !== 'pergolas',
-        moduleLengthM: geometryModule.lengthM,
-        moduleProjectionM: geometryModule.projectionM,
+        objectWorkbenchOverlayInput: ui.activeRailTab !== 'pergolas'
+          ? {
+              houseAssembly: projectModel.houseAssembly,
+              houseForm: overlayHouseForm,
+              decks: objectFirstDecks,
+              openings: objectFirstOpenings,
+              selection: compatibilitySelection.activeHouseSelection,
+              moduleLengthM: geometryModule.lengthM,
+              moduleProjectionM: geometryModule.projectionM,
+              geometryHouseContext: planModel?.houseContext ?? null,
+              status: objectWorkbenchOverlayStatus,
+            }
+          : null,
       }),
       geometryPlanViewModel,
       planRenderSource,
@@ -249,11 +244,10 @@ export function buildDrawingWorkbenchStore(input: {
   });
 
   const activeModule = modules[ui.activeModuleIndex] ?? null;
-  const objectFirstPergolas = projectModel.pergolas;
   const activePergola =
-    compatibilityProjectModel.pergolas.find((pergola) => pergola.id === compatibilitySelection.activePergolaId) ??
-    compatibilityProjectModel.pergolas.find((pergola) => pergola.id === activeModule?.drawingModule.input.pergolaId) ??
-    compatibilityProjectModel.pergolas[0] ??
+    objectFirstPergolas.find((pergola) => pergola.id === compatibilitySelection.activePergolaId) ??
+    objectFirstPergolas.find((pergola) => pergola.id === activeModule?.drawingModule.input.pergolaId) ??
+    objectFirstPergolas[0] ??
     null;
   const activeObjectFirstPergola =
     ui.activeObjectFamily === 'pergolas'
@@ -265,16 +259,9 @@ export function buildDrawingWorkbenchStore(input: {
     ui.activeObjectFamily === 'house_forms'
       ? houseForms.find((houseForm) => houseForm.id === ui.activeObjectRef.objectId) ?? null
       : null;
-  const decks = compatibilityProjectModel.house?.decks ?? [];
-  const openings = compatibilityProjectModel.house?.openings ?? [];
-  const objectFirstOpenings = projectModel.openings;
-  const activeDeck =
+  const activeObjectFirstDeck =
     ui.activeObjectFamily === 'decks'
-      ? decks.find((deck) => deck.id === ui.activeObjectRef.objectId) ?? null
-      : null;
-  const activeOpening =
-    ui.activeObjectFamily === 'openings'
-      ? openings.find((opening) => opening.id === ui.activeObjectRef.objectId) ?? null
+      ? objectFirstDecks.find((deck) => deck.id === ui.activeObjectRef.objectId) ?? null
       : null;
   const activeObjectFirstOpening =
     ui.activeObjectFamily === 'openings'
@@ -307,48 +294,39 @@ export function buildDrawingWorkbenchStore(input: {
   const activePergolaAttachmentResolution = activeObjectFirstPergola
     ? pergolaAttachmentResolutions[activeObjectFirstPergola.id] ?? null
     : null;
-  const compatibilityPergolasById = new Map(compatibilityProjectModel.pergolas.map((pergola) => [pergola.id, pergola]));
+  const objectWorkbenchStatus = buildObjectWorkbenchStatusFacade({
+    activeDeckId: activeObjectFirstDeck?.id ?? null,
+    activeModuleInput: activeModule?.assemblyModel.moduleInput,
+    compatibilityProjectModel,
+  });
   const unresolvedPergolaAttachmentCount = Object.entries(pergolaAttachmentResolutions).filter(
     ([pergolaId, resolution]) =>
       resolution.status === 'unresolved' &&
-      compatibilityPergolasById.get(pergolaId)?.attachment.kind !== 'freestanding',
+      objectWorkbenchStatus.pergolaStatuses[pergolaId]?.connectionKind !== 'freestanding',
   ).length;
-  const deckSupportWarningCount = decks.reduce(
-    (sum, deck) => sum + deck.supportContext.warningCodes.length,
-    0,
-  );
-  const activeDeckSupport = activeModule
-    ? buildWorkbenchDeckSupportDiagnostic({
-        activeHostSide: resolveWorkbenchDeckSupportActiveSide(activeModule.assemblyModel.moduleInput),
-        decks,
-      })
-    : null;
-  const activeDeckInteraction = buildDeckInteractionDiagnostic(activeDeck);
   const objectWorkbench = buildObjectWorkbenchInspectorFacade({
-    activeDeckInteraction,
-    activeDeckSupport,
     activeObjectRef: ui.activeObjectRef,
-    compatibilityProjectModel,
     houseAssembly: projectModel.houseAssembly,
     openingHostResolutions: new Map(Object.entries(openingHostResolutions)),
     pergolaAttachmentResolutions: new Map(Object.entries(pergolaAttachmentResolutions)),
     projectModel,
+    status: objectWorkbenchStatus,
   });
   const railModel = buildDrawingWorkbenchRailModel({
     activeRailTab: ui.activeRailTab,
     activeObjectFamily: ui.activeObjectFamily,
     activeObjectRef: ui.activeObjectRef,
-    house: compatibilityProjectModel.house,
+    houseForms,
+    decks: objectFirstDecks,
     openings: objectFirstOpenings,
     openingHostResolutions,
     pergolas: objectFirstPergolas,
-    compatibilityPergolas: compatibilityProjectModel.pergolas,
     pergolaAttachmentResolutions,
-    warnings: compatibilityProjectModel.warnings,
     modules: modules.map((module) => ({
       pergolaId: module.drawingModule.input.pergolaId,
       planRenderStatus: module.planRenderStatus,
     })),
+    status: objectWorkbenchStatus,
   });
   return {
     persisted: {
@@ -377,17 +355,17 @@ export function buildDrawingWorkbenchStore(input: {
       activeOpeningHostResolution,
       unresolvedOpeningHostCount,
       railModel,
-      deckCount: decks.length,
-      openingCount: openings.length,
-      sliderOpeningCount: openings.filter((opening) => opening.kind === 'slider').length,
-      invalidOpeningCount: openings.filter((opening) => opening.validation.status === 'invalid').length,
-      snappedPresetDeckCount: decks.filter((deck) => deck.shape === 'preset' && deck.isAttached).length,
-      floatingPresetDeckCount: decks.filter((deck) => deck.shape === 'preset' && !deck.isAttached).length,
-      customDeckCount: decks.filter((deck) => deck.shape === 'custom').length,
-      invalidDeckCount: decks.filter((deck) => deck.validation.status === 'invalid').length,
-      deckSupportWarningCount,
-      activeDeckSupport,
-      activeDeckInteraction,
+      deckCount: objectWorkbench.diagnostics.deckCount,
+      openingCount: objectWorkbench.diagnostics.openingCount,
+      sliderOpeningCount: objectWorkbench.diagnostics.sliderOpeningCount,
+      invalidOpeningCount: objectWorkbench.diagnostics.invalidOpeningCount,
+      snappedPresetDeckCount: objectWorkbench.diagnostics.snappedPresetDeckCount,
+      floatingPresetDeckCount: objectWorkbench.diagnostics.floatingPresetDeckCount,
+      customDeckCount: objectWorkbench.diagnostics.customDeckCount,
+      invalidDeckCount: objectWorkbench.diagnostics.invalidDeckCount,
+      deckSupportWarningCount: objectWorkbenchStatus.deckSupportWarningCount,
+      activeDeckSupport: objectWorkbenchStatus.activeDeckSupport,
+      activeDeckInteraction: objectWorkbenchStatus.activeDeckInteraction,
       objectWorkbench,
       objectFirstPergolas,
       activeObjectFirstPergola,
