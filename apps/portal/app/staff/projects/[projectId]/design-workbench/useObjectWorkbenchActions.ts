@@ -2,9 +2,9 @@
 
 import { useCallback, type Dispatch, type SetStateAction } from 'react';
 import {
-  applyGeometryEditIntent,
-  translateEstimateDrawingFieldToGeometryIntent,
-  type GeometryEditIntent,
+  applyObjectWorkbenchGeometryEditIntent,
+  translateEstimateDrawingFieldToObjectWorkbenchGeometryIntent,
+  type ObjectWorkbenchGeometryEditIntent,
 } from '@/lib/drawings/geometry/geometryEditAdapter';
 import { buildDrawingWorkbenchStore } from '@/lib/drawings/state/drawingWorkbenchStore';
 import {
@@ -194,10 +194,10 @@ export function useObjectWorkbenchActions({
   );
 
   const runGeometryIntentTransaction = useCallback(
-    async (intent: GeometryEditIntent): Promise<CommitResult> => {
+    async (intent: ObjectWorkbenchGeometryEditIntent): Promise<CommitResult> => {
       if (!drawingDraft) return missingDrawingDraftResult();
 
-      const result = applyGeometryEditIntent({
+      const result = applyObjectWorkbenchGeometryEditIntent({
         snapshot,
         draft: drawingDraft,
         moduleIndex: store.derived.activeModuleIndex,
@@ -760,7 +760,7 @@ export function useObjectWorkbenchActions({
 
   const commitDrawingField = useCallback(
     async (field: EstimateDrawingField, nextValue: string): Promise<CommitResult> => {
-      const intent = translateEstimateDrawingFieldToGeometryIntent(field, nextValue);
+      const intent = translateEstimateDrawingFieldToObjectWorkbenchGeometryIntent(field, nextValue);
       if (!intent) {
         return {
           ok: false,
@@ -773,7 +773,7 @@ export function useObjectWorkbenchActions({
   );
 
   const commitGeometryIntent = useCallback(
-    async (intent: GeometryEditIntent): Promise<CommitResult> => runGeometryIntentTransaction(intent),
+    async (intent: ObjectWorkbenchGeometryEditIntent): Promise<CommitResult> => runGeometryIntentTransaction(intent),
     [runGeometryIntentTransaction],
   );
 

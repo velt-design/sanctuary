@@ -5,9 +5,9 @@ import { buildAssemblyModel } from '@/lib/drawings/assembly/buildAssemblyModel';
 import type { DrawingAssemblyModel } from '@/lib/drawings/assembly/types';
 import { coerceHiddenWorkbenchGableBaseline } from '@/lib/drawings/geometry/hiddenWorkbenchGableBaseline';
 import {
-  deriveWorkbenchGeometry,
-  type WorkbenchPergolaRenderSource,
-  type WorkbenchPergolaRenderStatus,
+  deriveObjectWorkbenchGeometry,
+  type ObjectWorkbenchPergolaRenderSource,
+  type ObjectWorkbenchPergolaRenderStatus,
 } from '@/lib/drawings/geometry/deriveWorkbenchGeometry';
 import { resolveWorkbenchGeometryModule } from '@/lib/drawings/geometry/resolveWorkbenchGeometryModule';
 import { buildPlanViewModel, type PlanViewModel } from '@/lib/drawings/views/plan/buildPlanViewModel';
@@ -67,8 +67,8 @@ export type DrawingWorkbenchModuleEntry = {
   assemblyModel: DrawingAssemblyModel;
   planViewModel: PlanViewModel | null;
   geometryPlanViewModel: GeometryPlanViewModel | null;
-  planRenderSource: WorkbenchPergolaRenderSource;
-  planRenderStatus: WorkbenchPergolaRenderStatus;
+  planRenderSource: ObjectWorkbenchPergolaRenderSource;
+  planRenderStatus: ObjectWorkbenchPergolaRenderStatus;
   planModel: ModulePlanModel | null;
   sectionModel: ModuleSectionModel | null;
 };
@@ -225,7 +225,7 @@ export function buildDrawingWorkbenchStore(input: {
       result: resolved.ok ? resolved.moduleResult : null,
     };
     const derivation = resolved.ok
-      ? deriveWorkbenchGeometry({
+      ? deriveObjectWorkbenchGeometry({
           projectId: 'hidden-workbench-project',
           estimateId: 'hidden-workbench-estimate',
           moduleId: drawingModule.id,
@@ -274,9 +274,9 @@ export function buildDrawingWorkbenchStore(input: {
         pergolaRenderSource: planRenderSource,
         pergolaRenderStatus: planRenderStatus,
         canEditHouseFootprint: assemblyModel.capabilities.canEditHouseFootprint,
-        house: compatibilityProjectModel.house,
-        activeHouseSelection: compatibilitySelection.activeHouseSelection,
-        includeHouseFirstOverlay: ui.activeRailTab !== 'pergolas',
+        objectWorkbenchCompatibilityHouse: compatibilityProjectModel.house,
+        objectWorkbenchCompatibilitySelection: compatibilitySelection.activeHouseSelection,
+        includeObjectWorkbenchOverlay: ui.activeRailTab !== 'pergolas',
         moduleLengthM: geometryModule.lengthM,
         moduleProjectionM: geometryModule.projectionM,
       }),

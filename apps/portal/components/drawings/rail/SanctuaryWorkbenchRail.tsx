@@ -15,7 +15,7 @@ import type {
   CalculatorHouseStoreyMode,
   CalculatorModuleInputs,
 } from '@/lib/types/calculator';
-import type { GeometryEditIntent, GeometryEditState, SanctuaryPergolaFamily } from '@/lib/drawings/geometry/geometryEditAdapter';
+import type { ObjectWorkbenchGeometryEditIntent, ObjectWorkbenchGeometryEditState, ObjectWorkbenchPergolaFamily } from '@/lib/drawings/geometry/geometryEditAdapter';
 import styles from './WorkbenchRail.module.css';
 
 type CommitResult = { ok: boolean; error?: string };
@@ -69,12 +69,12 @@ type SanctuaryWorkbenchSectionVisibility = {
 
 export type SanctuaryWorkbenchRailProps = {
   moduleLabel: string;
-  geometryState?: GeometryEditState | null;
+  geometryState?: ObjectWorkbenchGeometryEditState | null;
   view: ModuleViewsTab;
   disabled?: boolean;
   canStartDrawOutline?: boolean;
   onStartDrawOutline?: () => Promise<CommitResult> | CommitResult;
-  onCommitGeometryEdit?: (intent: GeometryEditIntent) => Promise<CommitResult> | CommitResult;
+  onCommitGeometryEdit?: (intent: ObjectWorkbenchGeometryEditIntent) => Promise<CommitResult> | CommitResult;
   chrome?: 'rail' | 'embedded';
   renderSummary?: boolean;
   sections?: SanctuaryWorkbenchSectionVisibility;
@@ -191,7 +191,7 @@ function withCurrentOption(options: SelectOption[], value: string, fallbackLabel
   return [{ label: `${fallbackLabel}: ${value}`, value }, ...options];
 }
 
-function gableEndFrameOptionsForConnection(connectionType: GeometryEditState['connection']['type']): SelectOption[] {
+function gableEndFrameOptionsForConnection(connectionType: ObjectWorkbenchGeometryEditState['connection']['type']): SelectOption[] {
   return GABLE_END_FRAME_OPTIONS.filter((option) => {
     if (option.value === 'none') return true;
     if (connectionType === 'freestanding') return option.value === 'both_ends';
@@ -359,7 +359,7 @@ export default function SanctuaryWorkbenchRail({
   }, []);
 
   const commitGeometryEdit = useCallback(
-    async (fieldId: string, intent: GeometryEditIntent) => {
+    async (fieldId: string, intent: ObjectWorkbenchGeometryEditIntent) => {
       if (!onCommitGeometryEdit) {
         return { ok: false, error: 'Sanctuary controls are not available right now.' } satisfies CommitResult;
       }
@@ -414,7 +414,7 @@ export default function SanctuaryWorkbenchRail({
         onCommit: (value: string) =>
           commitGeometryEdit('pergola-family', {
             type: 'family',
-            value: value as SanctuaryPergolaFamily,
+            value: value as ObjectWorkbenchPergolaFamily,
           }),
       },
       {
@@ -657,7 +657,7 @@ export default function SanctuaryWorkbenchRail({
         onCommit: (value: string) =>
           commitGeometryEdit('house-connection', {
             type: 'house_connection',
-            value: value as GeometryEditState['connection']['type'],
+            value: value as ObjectWorkbenchGeometryEditState['connection']['type'],
           }),
       },
       {

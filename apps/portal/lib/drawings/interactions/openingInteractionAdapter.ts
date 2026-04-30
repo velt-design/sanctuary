@@ -1,4 +1,4 @@
-import type { HouseFirstPlanShapeOverlay, HouseFirstPlanOpeningInteraction, PlanPoint } from '@/lib/drawings/views/plan/houseFirstPlanOverlay';
+import type { ObjectWorkbenchPlanShapeOverlay, ObjectWorkbenchPlanOpeningInteraction, PlanPoint } from '@/lib/drawings/views/plan/objectWorkbenchPlanOverlay';
 import {
   buildObjectInteractionTelemetry,
   buildObjectInteractionViewState,
@@ -18,7 +18,7 @@ export type OpeningDragSession = {
   startSvgY: number;
   startPolygon: PlanPoint[];
   startOffsetAlongWallM: number;
-  interaction: HouseFirstPlanOpeningInteraction;
+  interaction: ObjectWorkbenchPlanOpeningInteraction;
   svgInteraction: OpeningSvgInteraction;
 };
 
@@ -46,7 +46,7 @@ export function buildOpeningDragSession(input: {
   startSvgX: number;
   startSvgY: number;
   openingId: string;
-  overlayShape: HouseFirstPlanShapeOverlay;
+  overlayShape: ObjectWorkbenchPlanShapeOverlay;
   svgInteraction: OpeningSvgInteraction;
 }): OpeningDragSession | null {
   if (!input.overlayShape.openingInteraction) return null;
@@ -111,7 +111,7 @@ export function resolveOpeningPreviewState(input: {
 }
 
 export function buildOpeningInteractionViewState(input: {
-  selectedOpeningShape: Pick<HouseFirstPlanShapeOverlay, 'ownerId' | 'openingInteraction' | 'openingDragEligibility'> | null;
+  selectedOpeningShape: Pick<ObjectWorkbenchPlanShapeOverlay, 'ownerId' | 'openingInteraction' | 'openingDragEligibility'> | null;
   dragSession: OpeningDragSession | null;
   previewState: OpeningPreviewState | null;
 }): ObjectInteractionViewState | null {

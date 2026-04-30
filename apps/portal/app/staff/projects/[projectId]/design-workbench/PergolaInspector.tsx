@@ -5,8 +5,8 @@ import { type ModuleViewsTab } from '@/app/staff/calculator/ModuleViewsCard';
 import SanctuaryWorkbenchRail from '@/components/drawings/rail/SanctuaryWorkbenchRail';
 import { labelForAttachmentSideList } from '@/components/drawings/rail/objectRailShared';
 import type {
-  GeometryEditIntent,
-  GeometryEditState,
+  ObjectWorkbenchGeometryEditIntent,
+  ObjectWorkbenchGeometryEditState,
 } from '@/lib/drawings/geometry/geometryEditAdapter';
 import type { HouseAssemblyModel } from '@/lib/drawings/state/objectFirstWorkbenchModel';
 import type {
@@ -35,7 +35,7 @@ type PergolaInspectorProps = {
   activeModuleIndex: number;
   activeModuleLabel: string;
   disabled?: boolean;
-  geometryState: GeometryEditState | null;
+  geometryState: ObjectWorkbenchGeometryEditState | null;
   houseAssembly: HouseAssemblyModel | null;
   modules: PergolaInspectorModule[];
   supportsSanctuaryEditing: boolean;
@@ -43,7 +43,7 @@ type PergolaInspectorProps = {
   onOpenHouseForms: () => void;
   onSelectPergolaByModule: (pergolaId: string | null) => void;
   onStartDrawOutline?: () => Promise<CommitResult> | CommitResult;
-  onCommitGeometryEdit?: (intent: GeometryEditIntent) => Promise<CommitResult> | CommitResult;
+  onCommitGeometryEdit?: (intent: ObjectWorkbenchGeometryEditIntent) => Promise<CommitResult> | CommitResult;
   onCommitConnectionKind?: (
     pergolaId: string,
     kind: PergolaAttachmentKind,

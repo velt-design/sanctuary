@@ -4,7 +4,7 @@ import Link from 'next/link';
 import type { ModuleViewsStatus, ModuleViewsTab } from '@/app/staff/calculator/ModuleViewsCard';
 import type { ModulePlanModel, ModuleSectionModel } from '@/app/staff/calculator/moduleViews';
 import type { PlanViewModel } from '@/lib/drawings/views/plan/buildPlanViewModel';
-import type { GeometryPreviewState } from '@/lib/drawings/geometry/buildWorkbenchGeometryPreview';
+import type { ObjectWorkbenchGeometryPreviewState } from '@/lib/drawings/geometry/buildWorkbenchGeometryPreview';
 import type { EstimateDrawingField, EstimateDrawingFootprintEdit } from '@/lib/estimates/drawingEdits';
 import type { EstimateDrawingSheetMeta } from '@/lib/estimates/drawingSheet';
 import type { DeckInteractionTelemetry } from '@/lib/drawings/interactions/deckInteractionContract';
@@ -50,7 +50,7 @@ type DrawingWorkbenchProps = {
   planModel?: ModulePlanModel | null;
   sectionModel?: ModuleSectionModel | null;
   planViewModel?: PlanViewModel | null;
-  geometryPreview?: GeometryPreviewState | null;
+  geometryPreview?: ObjectWorkbenchGeometryPreviewState | null;
   activeObjectRef?: WorkbenchObjectRef | null;
   modelViewportKey?: string;
   modelViewportTransform: DrawingWorkbenchViewportTransform;

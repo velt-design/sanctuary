@@ -3,19 +3,19 @@
 import { type ModuleViewsTab } from '@/app/staff/calculator/ModuleViewsCard';
 import SanctuaryWorkbenchRail from '@/components/drawings/rail/SanctuaryWorkbenchRail';
 import type {
-  GeometryEditIntent,
-  GeometryEditState,
+  ObjectWorkbenchGeometryEditIntent,
+  ObjectWorkbenchGeometryEditState,
 } from '@/lib/drawings/geometry/geometryEditAdapter';
 import type { CommitResult } from './objectWorkbenchClientTypes';
 
 type HouseFormAttachmentContextPanelProps = {
   moduleLabel: string;
-  geometryState: GeometryEditState | null;
+  geometryState: ObjectWorkbenchGeometryEditState | null;
   view: ModuleViewsTab;
   disabled?: boolean;
   canStartDrawOutline?: boolean;
   onStartDrawOutline?: () => Promise<CommitResult> | CommitResult;
-  onCommitGeometryEdit?: (intent: GeometryEditIntent) => Promise<CommitResult> | CommitResult;
+  onCommitGeometryEdit?: (intent: ObjectWorkbenchGeometryEditIntent) => Promise<CommitResult> | CommitResult;
 };
 
 export default function HouseFormAttachmentContextPanel({

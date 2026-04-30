@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import type {
-  HouseFirstPlanDeckInteraction,
-  HouseFirstPlanDeckReferenceFrame,
-  HouseFirstPlanShapeOverlay,
+  ObjectWorkbenchPlanDeckInteraction,
+  ObjectWorkbenchPlanDeckReferenceFrame,
+  ObjectWorkbenchPlanShapeOverlay,
   PlanPoint,
-} from '@/lib/drawings/views/plan/houseFirstPlanOverlay';
+} from '@/lib/drawings/views/plan/objectWorkbenchPlanOverlay';
 import { makeObjectFirstWorkbenchProjectFixture } from '@/lib/drawings/state/objectFirstWorkbenchFixtures';
 import {
   buildDeckCommitPatch,
@@ -12,21 +12,21 @@ import {
   resolveDeckPreviewState,
 } from './deckInteractionAdapter';
 
-function makeFrame(input: Partial<HouseFirstPlanDeckReferenceFrame> & Pick<HouseFirstPlanDeckReferenceFrame, 'hostEdgeId' | 'sourceEdgeId' | 'axis' | 'hostEdgeStart' | 'hostEdgeEnd' | 'alongUnitX' | 'alongUnitY' | 'outwardUnitX' | 'outwardUnitY' | 'spanStartM' | 'spanEndM' | 'edgeCoordinateM' | 'outwardDirection'>): HouseFirstPlanDeckReferenceFrame {
+function makeFrame(input: Partial<ObjectWorkbenchPlanDeckReferenceFrame> & Pick<ObjectWorkbenchPlanDeckReferenceFrame, 'hostEdgeId' | 'sourceEdgeId' | 'axis' | 'hostEdgeStart' | 'hostEdgeEnd' | 'alongUnitX' | 'alongUnitY' | 'outwardUnitX' | 'outwardUnitY' | 'spanStartM' | 'spanEndM' | 'edgeCoordinateM' | 'outwardDirection'>): ObjectWorkbenchPlanDeckReferenceFrame {
   return input;
 }
 
 function makeInteraction(input: {
   polygon: PlanPoint[];
-  frames: HouseFirstPlanDeckReferenceFrame[];
+  frames: ObjectWorkbenchPlanDeckReferenceFrame[];
   deckWidthM: number;
   deckDepthM: number;
   renderedCenter: PlanPoint;
   placement?: 'snapped' | 'floating';
   attachmentMode?: 'floating' | 'single_edge' | 'corner_dual_edge';
   primaryHostEdgeId?: string | null;
-  commitFrames?: HouseFirstPlanDeckReferenceFrame[];
-}): HouseFirstPlanDeckInteraction {
+  commitFrames?: ObjectWorkbenchPlanDeckReferenceFrame[];
+}): ObjectWorkbenchPlanDeckInteraction {
   const primaryFrame = input.frames[0]!;
   return {
     kind: 'preset_rect',
@@ -62,13 +62,13 @@ function makeInteraction(input: {
 function makeSession(input: {
   polygon: PlanPoint[];
   startDragPlanPoint: PlanPoint;
-  frames: HouseFirstPlanDeckReferenceFrame[];
+  frames: ObjectWorkbenchPlanDeckReferenceFrame[];
   renderedCenter: PlanPoint;
   deckWidthM: number;
   deckDepthM: number;
   placement?: 'snapped' | 'floating';
   attachmentMode?: 'floating' | 'single_edge' | 'corner_dual_edge';
-  commitFrames?: HouseFirstPlanDeckReferenceFrame[];
+  commitFrames?: ObjectWorkbenchPlanDeckReferenceFrame[];
 }) {
   const overlayShape = {
     ownerKind: 'deck',
@@ -93,7 +93,7 @@ function makeSession(input: {
     openingInteraction: null,
     deckDragEligibility: { eligible: true, reason: 'Drag deck' },
     openingDragEligibility: null,
-  } satisfies HouseFirstPlanShapeOverlay;
+  } satisfies ObjectWorkbenchPlanShapeOverlay;
 
   const session = buildDeckDragSession({
     pointerId: 1,
@@ -116,7 +116,7 @@ function makeSession(input: {
 }
 
 function pointOnFrame(
-  frame: HouseFirstPlanDeckReferenceFrame,
+  frame: ObjectWorkbenchPlanDeckReferenceFrame,
   alongM: number,
   outwardM: number,
 ): PlanPoint {
@@ -127,7 +127,7 @@ function pointOnFrame(
 }
 
 function rectOnFrame(input: {
-  frame: HouseFirstPlanDeckReferenceFrame;
+  frame: ObjectWorkbenchPlanDeckReferenceFrame;
   deckWidthM: number;
   deckDepthM: number;
   centerOffsetM: number;
@@ -165,7 +165,7 @@ function polygonCenter(polygon: PlanPoint[]): PlanPoint {
   );
 }
 
-function nearGapToFrame(polygon: PlanPoint[], frame: HouseFirstPlanDeckReferenceFrame): number {
+function nearGapToFrame(polygon: PlanPoint[], frame: ObjectWorkbenchPlanDeckReferenceFrame): number {
   return Math.max(
     0,
     Math.min(

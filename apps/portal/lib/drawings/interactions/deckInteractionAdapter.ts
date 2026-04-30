@@ -2,11 +2,11 @@ import type { AttachmentSide } from '@sp/costing';
 import type { CalculatorHouseFootprintPolygonPoint } from '@/lib/types/calculator';
 import type { ObjectWorkbenchDeckPatch } from '@/lib/drawings/state/objectWorkbenchInspectorModel';
 import type {
-  HouseFirstPlanDeckInteraction,
-  HouseFirstPlanDeckReferenceFrame,
-  HouseFirstPlanShapeOverlay,
+  ObjectWorkbenchPlanDeckInteraction,
+  ObjectWorkbenchPlanDeckReferenceFrame,
+  ObjectWorkbenchPlanShapeOverlay,
   PlanPoint,
-} from '@/lib/drawings/views/plan/houseFirstPlanOverlay';
+} from '@/lib/drawings/views/plan/objectWorkbenchPlanOverlay';
 import {
   buildObjectInteractionTelemetry,
   buildObjectInteractionViewState,
@@ -58,7 +58,7 @@ export type DeckDragSession = ObjectInteractionSessionBase & {
   heldCornerIndex: number;
   grabbedPointAlongOffsetFromCenterM: number;
   grabbedPointDepthFromNearEdgeM: number;
-  interaction: HouseFirstPlanDeckInteraction;
+  interaction: ObjectWorkbenchPlanDeckInteraction;
   svgInteraction: DeckSvgInteraction;
 };
 
@@ -127,9 +127,9 @@ function clampValue(value: number, min: number, max: number): number {
 }
 
 function findDeckReferenceFrameById(
-  frames: HouseFirstPlanDeckReferenceFrame[],
+  frames: ObjectWorkbenchPlanDeckReferenceFrame[],
   edgeId: string | null | undefined,
-): HouseFirstPlanDeckReferenceFrame | null {
+): ObjectWorkbenchPlanDeckReferenceFrame | null {
   if (!edgeId) return null;
   return frames.find((frame) => frame.sourceEdgeId === edgeId) ?? null;
 }
@@ -157,8 +157,8 @@ function unitVectorDistance(
 }
 
 function scoreDeckReferenceFrameGeometryMatch(input: {
-  renderFrame: HouseFirstPlanDeckReferenceFrame;
-  commitFrame: HouseFirstPlanDeckReferenceFrame;
+  renderFrame: ObjectWorkbenchPlanDeckReferenceFrame;
+  commitFrame: ObjectWorkbenchPlanDeckReferenceFrame;
 }): number {
   const directEndpointDistance =
     pointDistance(input.renderFrame.hostEdgeStart, input.commitFrame.hostEdgeStart) +
@@ -190,8 +190,8 @@ function scoreDeckReferenceFrameGeometryMatch(input: {
 }
 
 function deckReferenceFramesAreCompatibleForCommit(input: {
-  renderFrame: HouseFirstPlanDeckReferenceFrame;
-  commitFrame: HouseFirstPlanDeckReferenceFrame;
+  renderFrame: ObjectWorkbenchPlanDeckReferenceFrame;
+  commitFrame: ObjectWorkbenchPlanDeckReferenceFrame;
 }): boolean {
   if (input.renderFrame.axis !== input.commitFrame.axis) return false;
   if (input.renderFrame.hostEdgeId !== input.commitFrame.hostEdgeId) return false;
@@ -222,7 +222,7 @@ function deckReferenceFramesAreCompatibleForCommit(input: {
 }
 
 function deckReferenceFramePointSpanDistance(input: {
-  frame: HouseFirstPlanDeckReferenceFrame;
+  frame: ObjectWorkbenchPlanDeckReferenceFrame;
   point: PlanPoint;
 }): number {
   const projection = projectPointToDeckReferenceFrame(input.point, input.frame);
@@ -232,10 +232,10 @@ function deckReferenceFramePointSpanDistance(input: {
 }
 
 function resolveDeckCommitReferenceFrame(input: {
-  interaction: HouseFirstPlanDeckInteraction;
+  interaction: ObjectWorkbenchPlanDeckInteraction;
   renderEdgeId: string | null | undefined;
   referencePoint?: PlanPoint | null;
-}): HouseFirstPlanDeckReferenceFrame | null {
+}): ObjectWorkbenchPlanDeckReferenceFrame | null {
   const commitFrames = input.interaction.commitReferenceFrames.length
     ? input.interaction.commitReferenceFrames
     : input.interaction.referenceFrames;
@@ -288,13 +288,13 @@ function resolveDeckCommitReferenceFrame(input: {
 
 function resolveDeckCommitCornerVertexId(input: {
   preview: DeckPreviewState;
-  primaryCommitFrame: HouseFirstPlanDeckReferenceFrame | null;
-  secondaryCommitFrame: HouseFirstPlanDeckReferenceFrame | null;
+  primaryCommitFrame: ObjectWorkbenchPlanDeckReferenceFrame | null;
+  secondaryCommitFrame: ObjectWorkbenchPlanDeckReferenceFrame | null;
 }): string | null {
   if (!input.preview.cornerVertexId) return null;
   const cornerPoint = input.preview.lockedCornerPoint ?? input.preview.heldCornerPoint;
   const frames = [input.primaryCommitFrame, input.secondaryCommitFrame].filter(
-    (frame): frame is HouseFirstPlanDeckReferenceFrame => Boolean(frame),
+    (frame): frame is ObjectWorkbenchPlanDeckReferenceFrame => Boolean(frame),
   );
   for (const frame of frames) {
     const edgeNumberMatch = /^footprint-edge-(\d+)$/.exec(frame.sourceEdgeId);
@@ -354,7 +354,7 @@ function resolveNearestPreviewCorner(input: {
 }
 
 function resolveDeckGrabPointAnchor(input: {
-  frame: HouseFirstPlanDeckReferenceFrame;
+  frame: ObjectWorkbenchPlanDeckReferenceFrame;
   grabbedPlanPoint: PlanPoint;
   polygon: PlanPoint[];
   fallbackReferenceEdgeGapM: number;
@@ -378,7 +378,7 @@ function resolveDeckGrabPointAnchor(input: {
 }
 
 function resolveDeckAnchoredCenterOffset(input: {
-  frame: HouseFirstPlanDeckReferenceFrame;
+  frame: ObjectWorkbenchPlanDeckReferenceFrame;
   heldAlongM: number;
   grabbedPointAlongOffsetFromCenterM: number;
 }): {
@@ -423,7 +423,7 @@ function serializeDeckOutlineFromPlanPolygon(input: {
 
 function projectPointToDeckReferenceFrame(
   point: PlanPoint,
-  frame: HouseFirstPlanDeckReferenceFrame,
+  frame: ObjectWorkbenchPlanDeckReferenceFrame,
 ): { alongM: number; outwardM: number } {
   const relative = {
     x: point.x - frame.hostEdgeStart.x,
@@ -437,7 +437,7 @@ function projectPointToDeckReferenceFrame(
 
 function projectPolygonToDeckReferenceFrame(input: {
   polygon: PlanPoint[];
-  frame: HouseFirstPlanDeckReferenceFrame;
+  frame: ObjectWorkbenchPlanDeckReferenceFrame;
 }): {
   nearGapM: number;
   centerOffsetM: number;
@@ -485,7 +485,7 @@ function inferFloatingRectFromPlanPolygon(input: {
 
 function clampPresetDeckCenterOffset(input: {
   centerOffsetM: number;
-  frame: HouseFirstPlanDeckReferenceFrame;
+  frame: ObjectWorkbenchPlanDeckReferenceFrame;
   deckWidthM: number;
 }): number {
   void input.frame;
@@ -495,9 +495,9 @@ function clampPresetDeckCenterOffset(input: {
 
 function scoreDeckReferenceFrameForPolygon(input: {
   polygon: PlanPoint[];
-  frame: HouseFirstPlanDeckReferenceFrame;
+  frame: ObjectWorkbenchPlanDeckReferenceFrame;
 }): {
-  frame: HouseFirstPlanDeckReferenceFrame;
+  frame: ObjectWorkbenchPlanDeckReferenceFrame;
   overlapPenaltyM: number;
   spanPenaltyM: number;
   outsidePenaltyM: number;
@@ -521,7 +521,7 @@ function scoreDeckReferenceFrameForPolygon(input: {
 }
 
 type DeckWallCandidate = {
-  frame: HouseFirstPlanDeckReferenceFrame;
+  frame: ObjectWorkbenchPlanDeckReferenceFrame;
   nearGapM: number;
   centerOffsetM: number;
   heldAlongM: number;
@@ -545,7 +545,7 @@ function isDeckWallSnapCandidate(candidate: DeckWallCandidate): boolean {
 function scoreDeckWallCandidate(input: {
   heldPoint: PlanPoint;
   polygon: PlanPoint[];
-  frame: HouseFirstPlanDeckReferenceFrame;
+  frame: ObjectWorkbenchPlanDeckReferenceFrame;
 }): DeckWallCandidate | null {
   const polygonProjection = projectPolygonToDeckReferenceFrame({
     polygon: input.polygon,
@@ -614,7 +614,7 @@ function resolveDeckCommitCenterOffset(input: {
 function selectDeckWallCandidate(input: {
   heldPoint: PlanPoint;
   polygon: PlanPoint[];
-  frames: HouseFirstPlanDeckReferenceFrame[];
+  frames: ObjectWorkbenchPlanDeckReferenceFrame[];
   previousPreviewState: DeckPreviewState | null;
   fallbackEdgeId: string;
 }): DeckWallCandidate {
@@ -678,7 +678,7 @@ function selectDeckWallCandidate(input: {
 }
 
 function buildPlanPointOnDeckReferenceFrame(input: {
-  frame: HouseFirstPlanDeckReferenceFrame;
+  frame: ObjectWorkbenchPlanDeckReferenceFrame;
   alongM: number;
   outwardM: number;
 }): PlanPoint {
@@ -695,7 +695,7 @@ function buildPlanPointOnDeckReferenceFrame(input: {
 }
 
 function buildDeckPreviewPolygon(input: {
-  frame: HouseFirstPlanDeckReferenceFrame;
+  frame: ObjectWorkbenchPlanDeckReferenceFrame;
   deckWidthM: number;
   deckDepthM: number;
   centerOffsetM: number;
@@ -724,7 +724,7 @@ function buildDeckPreviewPolygon(input: {
 }
 
 function resolveDeckPreviewAlongExtents(input: {
-  frame: HouseFirstPlanDeckReferenceFrame;
+  frame: ObjectWorkbenchPlanDeckReferenceFrame;
   deckWidthM: number;
   centerOffsetM: number;
 }): {
@@ -742,7 +742,7 @@ function resolveDeckPreviewAlongExtents(input: {
 }
 
 function resolveDeckPreviewGrabbedPoint(input: {
-  frame: HouseFirstPlanDeckReferenceFrame;
+  frame: ObjectWorkbenchPlanDeckReferenceFrame;
   centerOffsetM: number;
   referenceEdgeGapM: number;
   grabbedPointAlongOffsetFromCenterM: number;
@@ -757,7 +757,7 @@ function resolveDeckPreviewGrabbedPoint(input: {
 }
 
 function resolveDeckEndCatch(input: {
-  frame: HouseFirstPlanDeckReferenceFrame;
+  frame: ObjectWorkbenchPlanDeckReferenceFrame;
   deckWidthM: number;
   centerOffsetM: number;
   previousPreviewState: DeckPreviewState | null;
@@ -813,8 +813,8 @@ function resolveDeckEndCatch(input: {
 }
 
 function buildDeckCornerPreviewPolygon(input: {
-  primaryFrame: HouseFirstPlanDeckReferenceFrame;
-  secondaryFrame: HouseFirstPlanDeckReferenceFrame;
+  primaryFrame: ObjectWorkbenchPlanDeckReferenceFrame;
+  secondaryFrame: ObjectWorkbenchPlanDeckReferenceFrame;
   cornerPoint: PlanPoint;
   deckWidthM: number;
   deckDepthM: number;
@@ -842,7 +842,7 @@ function buildDeckCornerPreviewPolygon(input: {
 }
 
 function resolveDeckReferenceGuidePoint(input: {
-  frame: HouseFirstPlanDeckReferenceFrame;
+  frame: ObjectWorkbenchPlanDeckReferenceFrame;
   alongM: number;
 }): PlanPoint {
   const clampedAlongM = clampValue(input.alongM, input.frame.spanStartM, input.frame.spanEndM);
@@ -853,13 +853,13 @@ function resolveDeckReferenceGuidePoint(input: {
 }
 
 function resolveDeckCornerCandidate(input: {
-  primaryFrame: HouseFirstPlanDeckReferenceFrame;
+  primaryFrame: ObjectWorkbenchPlanDeckReferenceFrame;
   heldCornerPoint: PlanPoint;
-  frames: HouseFirstPlanDeckReferenceFrame[];
+  frames: ObjectWorkbenchPlanDeckReferenceFrame[];
   previousPreviewState: DeckPreviewState | null;
 }): {
-  primaryFrame: HouseFirstPlanDeckReferenceFrame;
-  secondaryFrame: HouseFirstPlanDeckReferenceFrame;
+  primaryFrame: ObjectWorkbenchPlanDeckReferenceFrame;
+  secondaryFrame: ObjectWorkbenchPlanDeckReferenceFrame;
   cornerPoint: PlanPoint;
   cornerVertexId: string | null;
 } | null {
@@ -889,7 +889,7 @@ function resolveDeckCornerCandidate(input: {
           cornerDistanceM: Math.hypot(input.heldCornerPoint.x - sharedPoint.x, input.heldCornerPoint.y - sharedPoint.y),
         };
       })
-      .filter((value): value is { frame: HouseFirstPlanDeckReferenceFrame; sharedPoint: PlanPoint; cornerDistanceM: number } => Boolean(value))
+      .filter((value): value is { frame: ObjectWorkbenchPlanDeckReferenceFrame; sharedPoint: PlanPoint; cornerDistanceM: number } => Boolean(value))
       .sort((left, right) =>
         left.cornerDistanceM - right.cornerDistanceM || left.frame.sourceEdgeId.localeCompare(right.frame.sourceEdgeId),
       )[0] ?? null;
@@ -922,9 +922,9 @@ function resolveDeckCornerCandidate(input: {
 function resolveDeckReferenceFrameFromCenter(input: {
   center: PlanPoint;
   polygon: PlanPoint[];
-  frames: HouseFirstPlanDeckReferenceFrame[];
+  frames: ObjectWorkbenchPlanDeckReferenceFrame[];
   previousHostEdgeId: string;
-}): HouseFirstPlanDeckReferenceFrame {
+}): ObjectWorkbenchPlanDeckReferenceFrame {
   void input.center;
   const scoredFrames =
     input.frames
@@ -957,7 +957,7 @@ export function buildDeckDragSession(input: {
   startSvgY: number;
   startDragPlanPoint: PlanPoint | null;
   deckId: string;
-  overlayShape: HouseFirstPlanShapeOverlay;
+  overlayShape: ObjectWorkbenchPlanShapeOverlay;
   svgInteraction: DeckSvgInteraction;
 }): DeckDragSession | null {
   if (!input.overlayShape.deckInteraction) return null;
@@ -1381,7 +1381,7 @@ export function buildDeckInteractionViewState(input: {
   selectedDeckShape:
     | {
         custom: boolean;
-        deckInteraction: HouseFirstPlanShapeOverlay['deckInteraction'];
+        deckInteraction: ObjectWorkbenchPlanShapeOverlay['deckInteraction'];
       }
     | null;
   phase: ObjectInteractionPhase;
@@ -1623,7 +1623,7 @@ export function buildDeckInteractionTelemetry(input: {
   selectedDeckShape:
     | {
         custom: boolean;
-        deckInteraction: HouseFirstPlanShapeOverlay['deckInteraction'];
+        deckInteraction: ObjectWorkbenchPlanShapeOverlay['deckInteraction'];
       }
     | null;
   previewState: DeckPreviewState | null;

@@ -1,16 +1,16 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import type { GeometryEditState } from '@/lib/drawings/geometry/geometryEditAdapter';
+import type { ObjectWorkbenchGeometryEditState } from '@/lib/drawings/geometry/geometryEditAdapter';
 import SanctuaryWorkbenchRail from './SanctuaryWorkbenchRail';
 
 function makeGeometryState(
-  overrides: Partial<Omit<GeometryEditState, 'houseContext'>> & {
-    houseContext?: Partial<GeometryEditState['houseContext']>;
+  overrides: Partial<Omit<ObjectWorkbenchGeometryEditState, 'houseContext'>> & {
+    houseContext?: Partial<ObjectWorkbenchGeometryEditState['houseContext']>;
   } = {},
-): GeometryEditState {
-  const base: GeometryEditState = {
+): ObjectWorkbenchGeometryEditState {
+  const base: ObjectWorkbenchGeometryEditState = {
     family: 'mono',
-    config: {} as GeometryEditState['config'],
+    config: {} as ObjectWorkbenchGeometryEditState['config'],
     dimensions: {
       lengthM: '6',
       projectionM: '3',

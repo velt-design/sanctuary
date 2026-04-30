@@ -2,8 +2,8 @@
 
 import { useCallback, type Dispatch, type SetStateAction } from 'react';
 import ObjectWorkbenchRail from '@/components/drawings/rail/ObjectWorkbenchRail';
-import type { GeometryPreviewState } from '@/lib/drawings/geometry/buildWorkbenchGeometryPreview';
-import type { GeometryEditState } from '@/lib/drawings/geometry/geometryEditAdapter';
+import type { ObjectWorkbenchGeometryPreviewState } from '@/lib/drawings/geometry/buildWorkbenchGeometryPreview';
+import type { ObjectWorkbenchGeometryEditState } from '@/lib/drawings/geometry/geometryEditAdapter';
 import type { DrawingWorkbenchStore } from '@/lib/drawings/state/drawingWorkbenchStore';
 import {
   buildDrawingWorkbenchObjectSelectionState,
@@ -21,8 +21,8 @@ import WorkbenchDiagnosticsPanel from './WorkbenchDiagnosticsPanel';
 
 type ObjectWorkbenchRailHostProps = {
   activeModuleInput: CalculatorModuleInputs | null;
-  geometryEditState: GeometryEditState | null;
-  geometryPreview: GeometryPreviewState;
+  geometryEditState: ObjectWorkbenchGeometryEditState | null;
+  geometryPreview: ObjectWorkbenchGeometryPreviewState;
   isLocked: boolean;
   objectSelectionActions: ObjectWorkbenchSelectionActions;
   objectWorkbenchActions: ObjectWorkbenchActions;

@@ -3,9 +3,9 @@ import type { GeometryPlanViewModel } from '@sp/geometry';
 import type { ModulePlanModel } from '@/app/staff/calculator/moduleViews';
 import type { HouseModel, WorkbenchHouseSelection } from '@/lib/drawings/state/houseFirstWorkbenchModel';
 import {
-  buildHouseFirstPlanOverlay,
-  type HouseFirstPlanOverlay,
-} from './houseFirstPlanOverlay';
+  buildObjectWorkbenchPlanOverlay,
+  type ObjectWorkbenchPlanOverlay,
+} from './objectWorkbenchPlanOverlay';
 import type {
   WorkbenchPergolaRenderSource,
   WorkbenchPergolaRenderStatus,
@@ -49,7 +49,7 @@ export type PlanViewModel = {
     suppressDocumentAnnotationsInModelSpace: true;
   };
   modelSpacePergola: ModelSpacePergolaViewModel;
-  houseFirst: HouseFirstPlanOverlay | null;
+  objectWorkbenchOverlay: ObjectWorkbenchPlanOverlay | null;
   planModel: ModulePlanModel | null;
 };
 
@@ -63,9 +63,9 @@ type PlanViewModelSource =
       pergolaRenderSource?: WorkbenchPergolaRenderSource;
       pergolaRenderStatus?: WorkbenchPergolaRenderStatus;
       canEditHouseFootprint?: boolean;
-      house?: HouseModel | null;
-      activeHouseSelection?: WorkbenchHouseSelection | null;
-      includeHouseFirstOverlay?: boolean;
+      objectWorkbenchCompatibilityHouse?: HouseModel | null;
+      objectWorkbenchCompatibilitySelection?: WorkbenchHouseSelection | null;
+      includeObjectWorkbenchOverlay?: boolean;
       moduleLengthM?: string | null;
       moduleProjectionM?: string | null;
     };
@@ -135,11 +135,11 @@ export function buildPlanViewModel(source: PlanViewModelSource | null): PlanView
       renderSource,
       renderStatus,
     },
-    houseFirst:
-      !isDrawingAssemblyModel(source) && source.includeHouseFirstOverlay
-        ? buildHouseFirstPlanOverlay({
-            house: source.house,
-            selection: source.activeHouseSelection ?? { kind: 'house', targetId: null },
+    objectWorkbenchOverlay:
+      !isDrawingAssemblyModel(source) && source.includeObjectWorkbenchOverlay
+        ? buildObjectWorkbenchPlanOverlay({
+            house: source.objectWorkbenchCompatibilityHouse,
+            selection: source.objectWorkbenchCompatibilitySelection ?? { kind: 'house', targetId: null },
             moduleLengthM: source.moduleLengthM,
             moduleProjectionM: source.moduleProjectionM,
             geometryHouseContext: planModel?.houseContext ?? null,

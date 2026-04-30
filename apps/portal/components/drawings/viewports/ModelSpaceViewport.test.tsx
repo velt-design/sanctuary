@@ -756,9 +756,9 @@ function HouseFirstViewportHarness({
         moduleLabel: 'Module 1',
         planModel: makePlanModelWithHouseContext(),
         canEditHouseFootprint: true,
-        house,
-        activeHouseSelection: selection,
-        includeHouseFirstOverlay: true,
+        objectWorkbenchCompatibilityHouse: house,
+        objectWorkbenchCompatibilitySelection: selection,
+        includeObjectWorkbenchOverlay: true,
         moduleLengthM: drawing.input.lengthM,
         moduleProjectionM: drawing.input.projectionM,
       })}
@@ -1062,19 +1062,19 @@ async function flushAnimationFrame(): Promise<void> {
   });
 }
 
-async function waitForHouseFirstDeckDragUnlock(container: Element, maxFrames = 12): Promise<void> {
+async function waitForObjectWorkbenchDeckDragUnlock(container: Element, maxFrames = 12): Promise<void> {
   for (let frame = 0; frame < maxFrames; frame += 1) {
-    if (container.querySelector('[data-model-space-scroller]')?.getAttribute('data-house-first-deck-drag-active') === 'false') {
+    if (container.querySelector('[data-model-space-scroller]')?.getAttribute('data-object-workbench-deck-drag-active') === 'false') {
       return;
     }
     await flushAnimationFrame();
   }
 }
 
-async function waitForHouseFirstDeckSettleComplete(container: Element, maxFrames = 24): Promise<void> {
+async function waitForObjectWorkbenchDeckSettleComplete(container: Element, maxFrames = 24): Promise<void> {
   for (let frame = 0; frame < maxFrames; frame += 1) {
     const settleVisual = container.querySelector('[data-testid="deck-telemetry-settle-visual"]')?.textContent;
-    const preview = container.querySelector('[data-house-first-preview-shape="deck-1"]');
+    const preview = container.querySelector('[data-object-workbench-preview-shape="deck-1"]');
     if (settleVisual === 'complete' && !preview) return;
     await flushAnimationFrame();
   }
@@ -1361,9 +1361,9 @@ describe('ModelSpaceViewport', () => {
           moduleLabel: 'Module 1',
           planModel,
           canEditHouseFootprint: true,
-          house,
-          activeHouseSelection: { kind: 'footprint', targetId: 'house-main' },
-          includeHouseFirstOverlay: true,
+          objectWorkbenchCompatibilityHouse: house,
+          objectWorkbenchCompatibilitySelection: { kind: 'footprint', targetId: 'house-main' },
+          includeObjectWorkbenchOverlay: true,
           moduleLengthM: drawing.input.lengthM,
           moduleProjectionM: drawing.input.projectionM,
         })}
@@ -1379,8 +1379,8 @@ describe('ModelSpaceViewport', () => {
     );
 
     expect(markup).toContain('data-house-plan-surface="footprint"');
-    expect(markup).toContain('data-house-first-shape-hit="footprint:house-main"');
-    expect(markup).toContain('data-house-first-shape-hit="deck:deck-1"');
+    expect(markup).toContain('data-object-workbench-shape-hit="footprint:house-main"');
+    expect(markup).toContain('data-object-workbench-shape-hit="deck:deck-1"');
     expect(markup).toContain('data-editable-field-id="house-main:widthM"');
     expect(markup).toContain('data-plan-primary-fill="true"');
     expect(markup).not.toContain('data-editable-field-id="plan:lengthA"');
@@ -1496,9 +1496,9 @@ describe('ModelSpaceViewport', () => {
           pergolaRenderSource: 'geometry',
           pergolaRenderStatus: 'geometry_ready',
           canEditHouseFootprint: true,
-          house,
-          activeHouseSelection: { kind: 'deck', targetId: 'deck-1' },
-          includeHouseFirstOverlay: true,
+          objectWorkbenchCompatibilityHouse: house,
+          objectWorkbenchCompatibilitySelection: { kind: 'deck', targetId: 'deck-1' },
+          includeObjectWorkbenchOverlay: true,
           moduleLengthM: drawing.input.lengthM,
           moduleProjectionM: drawing.input.projectionM,
         })}
@@ -1514,7 +1514,7 @@ describe('ModelSpaceViewport', () => {
     );
 
     const houseSurface = rendered.container.querySelector('[data-house-plan-surface="footprint"]');
-    const footprintShape = rendered.container.querySelector('[data-house-first-shape="footprint:house-main"]');
+    const footprintShape = rendered.container.querySelector('[data-object-workbench-shape="footprint:house-main"]');
     const pergolaFill = rendered.container.querySelector('[data-plan-primary-fill="true"]');
     if (!houseSurface || !footprintShape || !pergolaFill) {
       throw new Error('Missing merged house-mode footprint alignment nodes.');
@@ -1687,9 +1687,9 @@ describe('ModelSpaceViewport', () => {
           moduleLabel: 'Module 1',
           planModel,
           canEditHouseFootprint: true,
-          house: makeHouseFirstHouse(),
-          activeHouseSelection: { kind: 'house', targetId: null },
-          includeHouseFirstOverlay: true,
+          objectWorkbenchCompatibilityHouse: makeHouseFirstHouse(),
+          objectWorkbenchCompatibilitySelection: { kind: 'house', targetId: null },
+          includeObjectWorkbenchOverlay: true,
           moduleLengthM: drawing.input.lengthM,
           moduleProjectionM: drawing.input.projectionM,
         })}
@@ -3426,7 +3426,7 @@ describe('ModelSpaceViewport', () => {
     );
 
     const svg = rendered.container.querySelector('svg[aria-label="Module plan view"]') as SVGSVGElement | null;
-    const openingHit = rendered.container.querySelector('[data-house-first-shape-hit="opening:opening-1"]');
+    const openingHit = rendered.container.querySelector('[data-object-workbench-shape-hit="opening:opening-1"]');
     const scroller = rendered.container.querySelector('[data-model-space-scroller]') as HTMLElement | null;
     if (!svg || !openingHit || !scroller) throw new Error('Missing plan viewport nodes.');
     installSvgPointMock(svg);
@@ -3435,8 +3435,8 @@ describe('ModelSpaceViewport', () => {
     expect(scroller.dataset.modelSpaceGesture).toBe('mouse-pan');
 
     dispatchPointer(window, 'pointermove', { pointerId: 62, button: 2, buttons: 2, clientX: 250, clientY: 50 });
-    expect(scroller.dataset.houseFirstOpeningDragActive).toBe('false');
-    expect(rendered.container.querySelector('[data-house-first-preview-shape="opening-1"]')).toBeNull();
+    expect(scroller.dataset.objectWorkbenchOpeningDragActive).toBe('false');
+    expect(rendered.container.querySelector('[data-object-workbench-preview-shape="opening-1"]')).toBeNull();
 
     dispatchPointer(window, 'pointerup', { pointerId: 62, button: 2, clientX: 250, clientY: 50 });
     expect(scroller.dataset.modelSpaceGesture).toBe('idle');
@@ -3939,7 +3939,7 @@ describe('ModelSpaceViewport', () => {
     expect(rendered.container.querySelector('[data-editable-field-id="house-main:widthM"]')).toBeNull();
     expect(rendered.container.querySelector('[data-editable-field-id="deck-1:widthM"]')).toBeNull();
 
-    const footprintHit = rendered.container.querySelector('[data-house-first-shape-hit="footprint:house-main"]');
+    const footprintHit = rendered.container.querySelector('[data-object-workbench-shape-hit="footprint:house-main"]');
     if (!footprintHit) throw new Error('Missing footprint hit target.');
     clickElement(footprintHit);
     await act(async () => {
@@ -3949,7 +3949,7 @@ describe('ModelSpaceViewport', () => {
     expect(rendered.container.querySelector('[data-editable-field-id="house-main:widthM"]')).not.toBeNull();
     expect(rendered.container.querySelector('[data-editable-field-id="deck-1:widthM"]')).toBeNull();
 
-    const deckHit = rendered.container.querySelector('[data-house-first-shape-hit="deck:deck-1"]');
+    const deckHit = rendered.container.querySelector('[data-object-workbench-shape-hit="deck:deck-1"]');
     if (!deckHit) throw new Error('Missing deck hit target.');
     clickElement(deckHit);
     await act(async () => {
@@ -3964,7 +3964,7 @@ describe('ModelSpaceViewport', () => {
     expect(rendered.container.textContent).not.toContain('0.00m');
     expect(
       rendered.container.querySelector('[data-editable-field-id="deck-1:widthM"]')?.getAttribute(
-        'data-house-first-dimension-emphasis',
+        'data-object-workbench-dimension-emphasis',
       ),
     ).toBeNull();
     expect(rendered.container.querySelector('[aria-label="Deck interaction hint"]')).toBeNull();
@@ -3987,40 +3987,40 @@ describe('ModelSpaceViewport', () => {
     );
 
     const svg = rendered.container.querySelector('svg[aria-label="Module plan view"]') as SVGSVGElement | null;
-    const openingHit = rendered.container.querySelector('[data-house-first-shape-hit="opening:opening-1"]');
+    const openingHit = rendered.container.querySelector('[data-object-workbench-shape-hit="opening:opening-1"]');
     const scroller = rendered.container.querySelector('[data-model-space-scroller]') as HTMLElement | null;
     if (!svg || !openingHit || !scroller) throw new Error('Missing plan viewport nodes.');
     installSvgPointMock(svg);
 
     expect(rendered.container.querySelector('[data-editable-field-id="opening-1:offsetAlongWallM"]')).not.toBeNull();
-    expect(scroller.dataset.houseFirstSelectedOpeningDragEligible).toBe('true');
-    expect(scroller.dataset.houseFirstOpeningDragPhase).toBe('selected');
-    expect(scroller.dataset.houseFirstOpeningPlacementState).toBe('none');
-    expect(scroller.dataset.houseFirstOpeningAffordanceState).toBe('idle');
-    expect(scroller.dataset.houseFirstOpeningReferenceGuideState).toBe('none');
+    expect(scroller.dataset.objectWorkbenchSelectedOpeningDragEligible).toBe('true');
+    expect(scroller.dataset.objectWorkbenchOpeningDragPhase).toBe('selected');
+    expect(scroller.dataset.objectWorkbenchOpeningPlacementState).toBe('none');
+    expect(scroller.dataset.objectWorkbenchOpeningAffordanceState).toBe('idle');
+    expect(scroller.dataset.objectWorkbenchOpeningReferenceGuideState).toBe('none');
 
     dispatchPointer(openingHit, 'pointerdown', { pointerId: 61, button: 0, clientX: 50, clientY: 50 });
     dispatchPointer(window, 'pointermove', { pointerId: 61, button: 0, buttons: 1, clientX: 250, clientY: 50 });
 
-    expect(scroller.dataset.houseFirstOpeningDragActive).toBe('true');
-    expect(scroller.dataset.houseFirstOpeningDragPhase).toBe('dragging');
-    expect(scroller.dataset.houseFirstOpeningPlacementState).toBe('floating');
-    expect(scroller.dataset.houseFirstOpeningAffordanceState).toBe('floating');
-    expect(scroller.dataset.houseFirstOpeningReferenceGuideState).toBe('none');
-    expect(scroller.dataset.houseFirstOpeningHighlightTargetId).not.toBe('');
-    expect(rendered.container.querySelector('[data-house-first-preview-shape="opening-1"]')).not.toBeNull();
-    expect(rendered.container.querySelector('[data-house-first-preview-owner-kind="opening"]')).not.toBeNull();
-    expect(rendered.container.querySelector('[data-house-first-preview-body-state="floating"]')).not.toBeNull();
-    expect(rendered.container.querySelector('[data-house-first-reference-guide]')).toBeNull();
+    expect(scroller.dataset.objectWorkbenchOpeningDragActive).toBe('true');
+    expect(scroller.dataset.objectWorkbenchOpeningDragPhase).toBe('dragging');
+    expect(scroller.dataset.objectWorkbenchOpeningPlacementState).toBe('floating');
+    expect(scroller.dataset.objectWorkbenchOpeningAffordanceState).toBe('floating');
+    expect(scroller.dataset.objectWorkbenchOpeningReferenceGuideState).toBe('none');
+    expect(scroller.dataset.objectWorkbenchOpeningHighlightTargetId).not.toBe('');
+    expect(rendered.container.querySelector('[data-object-workbench-preview-shape="opening-1"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[data-object-workbench-preview-owner-kind="opening"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[data-object-workbench-preview-body-state="floating"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[data-object-workbench-reference-guide]')).toBeNull();
 
     dispatchPointer(window, 'pointerup', { pointerId: 61, button: 0, clientX: 250, clientY: 50 });
     await act(async () => {
       await Promise.resolve();
     });
 
-    expect(scroller.dataset.houseFirstOpeningDragActive).toBe('false');
-    expect(scroller.dataset.houseFirstOpeningDragPhase).toBe('selected');
-    expect(rendered.container.querySelector('[data-house-first-preview-shape="opening-1"]')).toBeNull();
+    expect(scroller.dataset.objectWorkbenchOpeningDragActive).toBe('false');
+    expect(scroller.dataset.objectWorkbenchOpeningDragPhase).toBe('selected');
+    expect(rendered.container.querySelector('[data-object-workbench-preview-shape="opening-1"]')).toBeNull();
     expect(rendered.container.querySelector('[data-testid="opening-offset"]')?.textContent).not.toBe('0.6');
 
     rendered.unmount();
@@ -4044,27 +4044,27 @@ describe('ModelSpaceViewport', () => {
     );
 
     const svg = rendered.container.querySelector('svg[aria-label="Module plan view"]') as SVGSVGElement | null;
-    const openingHit = rendered.container.querySelector('[data-house-first-shape-hit="opening:opening-1"]');
+    const openingHit = rendered.container.querySelector('[data-object-workbench-shape-hit="opening:opening-1"]');
     const scroller = rendered.container.querySelector('[data-model-space-scroller]') as HTMLElement | null;
     if (!svg || !openingHit || !scroller) throw new Error('Missing plan viewport nodes.');
     installSvgPointMock(svg);
 
     expect(rendered.container.querySelector('[data-editable-field-id="opening-1:offsetAlongWallM"]')).not.toBeNull();
-    expect(scroller.dataset.houseFirstSelectedOpeningDragEligible).toBe('true');
+    expect(scroller.dataset.objectWorkbenchSelectedOpeningDragEligible).toBe('true');
 
     dispatchPointer(openingHit, 'pointerdown', { pointerId: 71, button: 0, clientX: 50, clientY: 50 });
     dispatchPointer(window, 'pointermove', { pointerId: 71, button: 0, buttons: 1, clientX: 250, clientY: 50 });
 
-    expect(scroller.dataset.houseFirstOpeningDragActive).toBe('true');
-    expect(rendered.container.querySelector('[data-house-first-preview-shape="opening-1"]')).not.toBeNull();
+    expect(scroller.dataset.objectWorkbenchOpeningDragActive).toBe('true');
+    expect(rendered.container.querySelector('[data-object-workbench-preview-shape="opening-1"]')).not.toBeNull();
 
     dispatchPointer(window, 'pointerup', { pointerId: 71, button: 0, clientX: 250, clientY: 50 });
     await act(async () => {
       await Promise.resolve();
     });
 
-    expect(scroller.dataset.houseFirstOpeningDragActive).toBe('false');
-    expect(rendered.container.querySelector('[data-house-first-preview-shape="opening-1"]')).toBeNull();
+    expect(scroller.dataset.objectWorkbenchOpeningDragActive).toBe('false');
+    expect(rendered.container.querySelector('[data-object-workbench-preview-shape="opening-1"]')).toBeNull();
     expect(rendered.container.querySelector('[data-testid="opening-offset"]')?.textContent).not.toBe('0.6');
 
     rendered.unmount();
@@ -4088,27 +4088,27 @@ describe('ModelSpaceViewport', () => {
     );
 
     const svg = rendered.container.querySelector('svg[aria-label="Module plan view"]') as SVGSVGElement | null;
-    const openingHit = rendered.container.querySelector('[data-house-first-shape-hit="opening:opening-1"]');
+    const openingHit = rendered.container.querySelector('[data-object-workbench-shape-hit="opening:opening-1"]');
     const scroller = rendered.container.querySelector('[data-model-space-scroller]') as HTMLElement | null;
     if (!svg || !openingHit || !scroller) throw new Error('Missing plan viewport nodes.');
     installSvgPointMock(svg);
 
     expect(rendered.container.querySelector('[data-editable-field-id="opening-1:offsetAlongWallM"]')).not.toBeNull();
-    expect(scroller.dataset.houseFirstSelectedOpeningDragEligible).toBe('true');
+    expect(scroller.dataset.objectWorkbenchSelectedOpeningDragEligible).toBe('true');
 
     dispatchPointer(openingHit, 'pointerdown', { pointerId: 72, button: 0, clientX: 50, clientY: 50 });
     dispatchPointer(window, 'pointermove', { pointerId: 72, button: 0, buttons: 1, clientX: 250, clientY: 50 });
 
-    expect(scroller.dataset.houseFirstOpeningDragActive).toBe('true');
-    expect(rendered.container.querySelector('[data-house-first-preview-shape="opening-1"]')).not.toBeNull();
+    expect(scroller.dataset.objectWorkbenchOpeningDragActive).toBe('true');
+    expect(rendered.container.querySelector('[data-object-workbench-preview-shape="opening-1"]')).not.toBeNull();
 
     dispatchPointer(window, 'pointerup', { pointerId: 72, button: 0, clientX: 250, clientY: 50 });
     await act(async () => {
       await Promise.resolve();
     });
 
-    expect(scroller.dataset.houseFirstOpeningDragActive).toBe('false');
-    expect(rendered.container.querySelector('[data-house-first-preview-shape="opening-1"]')).toBeNull();
+    expect(scroller.dataset.objectWorkbenchOpeningDragActive).toBe('false');
+    expect(rendered.container.querySelector('[data-object-workbench-preview-shape="opening-1"]')).toBeNull();
     expect(rendered.container.querySelector('[data-testid="opening-offset"]')?.textContent).not.toBe('0.6');
 
     rendered.unmount();
@@ -4136,10 +4136,10 @@ describe('ModelSpaceViewport', () => {
     const scroller = rendered.container.querySelector('[data-model-space-scroller]') as HTMLElement | null;
     if (!scroller) throw new Error('Missing model-space scroller.');
 
-    expect(scroller.dataset.houseFirstSelectedOpeningDragEligible).toBe('false');
-    expect(scroller.dataset.houseFirstSelectedOpeningDragReason).toContain('resolvable host wall');
-    expect(scroller.dataset.houseFirstOpeningDragPhase).toBe('selected');
-    expect(rendered.container.querySelector('[data-house-first-preview-shape="opening-1"]')).toBeNull();
+    expect(scroller.dataset.objectWorkbenchSelectedOpeningDragEligible).toBe('false');
+    expect(scroller.dataset.objectWorkbenchSelectedOpeningDragReason).toContain('resolvable host wall');
+    expect(scroller.dataset.objectWorkbenchOpeningDragPhase).toBe('selected');
+    expect(rendered.container.querySelector('[data-object-workbench-preview-shape="opening-1"]')).toBeNull();
 
     rendered.unmount();
   });
@@ -4181,7 +4181,7 @@ describe('ModelSpaceViewport', () => {
     expect(rendered.container.querySelector('[aria-label="Deck interaction hint"]')).toBeNull();
 
     const svg = rendered.container.querySelector('svg[aria-label="Module plan view"]') as SVGSVGElement | null;
-    const deckHit = rendered.container.querySelector('[data-house-first-shape-hit="deck:deck-1"]');
+    const deckHit = rendered.container.querySelector('[data-object-workbench-shape-hit="deck:deck-1"]');
     const scroller = rendered.container.querySelector('[data-model-space-scroller]') as HTMLElement | null;
     if (!svg || !deckHit || !scroller) throw new Error('Missing plan viewport nodes.');
     installSvgPointMock(svg);
@@ -4189,8 +4189,8 @@ describe('ModelSpaceViewport', () => {
     dispatchPointer(deckHit, 'pointerdown', { pointerId: 31, button: 0, clientX: 50, clientY: 50 });
     dispatchPointer(window, 'pointermove', { pointerId: 31, button: 0, buttons: 1, clientX: -250, clientY: 50 });
 
-    expect(scroller.dataset.houseFirstDeckDragActive).toBe('true');
-    expect(scroller.dataset.houseFirstDeckSnapState).toBe('snapped');
+    expect(scroller.dataset.objectWorkbenchDeckDragActive).toBe('true');
+    expect(scroller.dataset.objectWorkbenchDeckSnapState).toBe('snapped');
 
     dispatchPointer(window, 'pointerup', { pointerId: 31, button: 0, clientX: -250, clientY: 50 });
     await act(async () => {
@@ -4300,7 +4300,7 @@ describe('ModelSpaceViewport', () => {
       />,
     );
 
-    const edgeHit = rendered.container.querySelector('[data-house-first-custom-edge-hit="house-main:edge:0"]');
+    const edgeHit = rendered.container.querySelector('[data-object-workbench-custom-edge-hit="house-main:edge:0"]');
     if (!edgeHit) throw new Error('Missing custom edge hit target.');
     clickElement(edgeHit);
     await act(async () => {
@@ -4406,7 +4406,7 @@ describe('ModelSpaceViewport', () => {
     );
 
     const svg = rendered.container.querySelector('svg[aria-label="Module plan view"]') as SVGSVGElement | null;
-    const deckHit = rendered.container.querySelector('[data-house-first-shape-hit="deck:deck-1"]');
+    const deckHit = rendered.container.querySelector('[data-object-workbench-shape-hit="deck:deck-1"]');
     const scroller = rendered.container.querySelector('[data-model-space-scroller]') as HTMLElement | null;
     if (!svg || !deckHit || !scroller) throw new Error('Missing plan viewport nodes.');
     installSvgPointMock(svg);
@@ -4414,30 +4414,30 @@ describe('ModelSpaceViewport', () => {
     dispatchPointer(deckHit, 'pointerdown', { pointerId: 11, button: 0, clientX: 50, clientY: 50 });
     dispatchPointer(window, 'pointermove', { pointerId: 11, button: 0, buttons: 1, clientX: -250, clientY: 50 });
 
-    expect(scroller.dataset.houseFirstDeckDragActive).toBe('true');
-    expect(scroller.dataset.houseFirstDeckAffordanceState).toBe('snapped');
-    expect(scroller.dataset.houseFirstDeckReferenceGuideState).toBe('none');
-    expect(scroller.dataset.houseFirstDeckSnapState).toBe('snapped');
+    expect(scroller.dataset.objectWorkbenchDeckDragActive).toBe('true');
+    expect(scroller.dataset.objectWorkbenchDeckAffordanceState).toBe('snapped');
+    expect(scroller.dataset.objectWorkbenchDeckReferenceGuideState).toBe('none');
+    expect(scroller.dataset.objectWorkbenchDeckSnapState).toBe('snapped');
     expect(rendered.container.querySelector('[aria-label="Deck interaction hint"]')?.textContent).toContain('Wall attached');
-    expect(rendered.container.querySelector('[data-house-first-preview-body-state="snapped"]')).not.toBeNull();
-    expect(rendered.container.querySelector('[data-house-first-reference-guide]')).toBeNull();
-    expect(rendered.container.querySelector('[data-house-first-snap-target="snapped"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[data-object-workbench-preview-body-state="snapped"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[data-object-workbench-reference-guide]')).toBeNull();
+    expect(rendered.container.querySelector('[data-object-workbench-snap-target="snapped"]')).not.toBeNull();
     const releasePreviewPoints = polygonPointsAttr(
-      rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]'),
+      rendered.container.querySelector('[data-object-workbench-preview-shape="deck-1"]'),
     );
 
     dispatchPointer(window, 'pointerup', { pointerId: 11, button: 0, clientX: -250, clientY: 50 });
     await act(async () => {
       await Promise.resolve();
     });
-    await waitForHouseFirstDeckDragUnlock(rendered.container);
+    await waitForObjectWorkbenchDeckDragUnlock(rendered.container);
 
     const committedDeckAfter = polygonPointsAttr(
-      rendered.container.querySelector('[data-house-first-shape="deck:deck-1"]'),
+      rendered.container.querySelector('[data-object-workbench-shape="deck:deck-1"]'),
     );
     expect(normalizePolygonPointSet(committedDeckAfter)).toBe(normalizePolygonPointSet(releasePreviewPoints));
     expect(rendered.container.querySelector('[data-testid="deck-center-offset"]')?.textContent).toBe('-25');
-    expect(scroller.dataset.houseFirstDeckDragActive).toBe('false');
+    expect(scroller.dataset.objectWorkbenchDeckDragActive).toBe('false');
     expect(rendered.container.querySelector('[aria-label="Deck interaction hint"]')?.textContent).toContain('Position updated');
     await act(async () => {
       rendered.unmount();
@@ -4469,7 +4469,7 @@ describe('ModelSpaceViewport', () => {
     );
 
     const svg = rendered.container.querySelector('svg[aria-label="Module plan view"]') as SVGSVGElement | null;
-    const deckHit = rendered.container.querySelector('[data-house-first-shape-hit="deck:deck-1"]');
+    const deckHit = rendered.container.querySelector('[data-object-workbench-shape-hit="deck:deck-1"]');
     const scroller = rendered.container.querySelector('[data-model-space-scroller]') as HTMLElement | null;
     if (!svg || !deckHit || !scroller) throw new Error('Missing plan viewport nodes.');
     installSvgPointMock(svg);
@@ -4477,20 +4477,20 @@ describe('ModelSpaceViewport', () => {
     dispatchPointer(deckHit, 'pointerdown', { pointerId: 21, button: 0, clientX: 50, clientY: 50 });
     dispatchPointer(window, 'pointermove', { pointerId: 21, button: 0, buttons: 1, clientX: -5000, clientY: -5000 });
 
-    expect(scroller.dataset.houseFirstDeckDragActive).toBe('true');
-    expect(scroller.dataset.houseFirstDeckAffordanceState).toBe('floating');
-    expect(scroller.dataset.houseFirstDeckReferenceGuideState).toBe('witness');
-    expect(scroller.dataset.houseFirstDeckSnapState).toBe('floating');
+    expect(scroller.dataset.objectWorkbenchDeckDragActive).toBe('true');
+    expect(scroller.dataset.objectWorkbenchDeckAffordanceState).toBe('floating');
+    expect(scroller.dataset.objectWorkbenchDeckReferenceGuideState).toBe('witness');
+    expect(scroller.dataset.objectWorkbenchDeckSnapState).toBe('floating');
     expect(rendered.container.querySelector('[aria-label="Deck interaction hint"]')?.textContent).toContain('Floating');
-    expect(rendered.container.querySelector('[data-house-first-preview-body-state="floating"]')).not.toBeNull();
-    expect(rendered.container.querySelector('[data-house-first-reference-guide="witness"]')).not.toBeNull();
-    expect(rendered.container.querySelector('[data-house-first-snap-target]')).toBeNull();
+    expect(rendered.container.querySelector('[data-object-workbench-preview-body-state="floating"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[data-object-workbench-reference-guide="witness"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[data-object-workbench-snap-target]')).toBeNull();
 
     dispatchPointer(window, 'pointerup', { pointerId: 21, button: 0, clientX: -5000, clientY: -5000 });
     await act(async () => {
       await Promise.resolve();
     });
-    await waitForHouseFirstDeckDragUnlock(rendered.container);
+    await waitForObjectWorkbenchDeckDragUnlock(rendered.container);
 
     expect(rendered.container.querySelector('[data-testid="deck-is-attached"]')?.textContent).toBe('false');
     expect(rendered.container.querySelector('[data-testid="deck-floating-center-along"]')?.textContent).not.toBe('');
@@ -4524,7 +4524,7 @@ describe('ModelSpaceViewport', () => {
     );
 
     const svg = rendered.container.querySelector('svg[aria-label="Module plan view"]') as SVGSVGElement | null;
-    const deckHit = rendered.container.querySelector('[data-house-first-shape-hit="deck:deck-1"]');
+    const deckHit = rendered.container.querySelector('[data-object-workbench-shape-hit="deck:deck-1"]');
     const scroller = rendered.container.querySelector('[data-model-space-scroller]') as HTMLElement | null;
     if (!svg || !deckHit || !scroller) throw new Error('Missing plan viewport nodes.');
     installSvgPointMock(svg);
@@ -4533,22 +4533,22 @@ describe('ModelSpaceViewport', () => {
     dispatchPointer(window, 'pointermove', { pointerId: 25, button: 0, buttons: 1, clientX: -120, clientY: 50 });
     dispatchPointer(window, 'pointermove', { pointerId: 25, button: 0, buttons: 1, clientX: -220, clientY: 50 });
 
-    expect(scroller.dataset.houseFirstDeckDragActive).toBe('true');
-    expect(rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]')).not.toBeNull();
+    expect(scroller.dataset.objectWorkbenchDeckDragActive).toBe('true');
+    expect(rendered.container.querySelector('[data-object-workbench-preview-shape="deck-1"]')).not.toBeNull();
     expect(rendered.container.querySelector('[data-editable-field-id="deck-1:widthM"]')).toBeNull();
     expect(
       rendered.container
-        .querySelector('[data-house-first-shape="deck:deck-1"]')
-        ?.getAttribute('data-house-first-shape-preview-suppressed'),
+        .querySelector('[data-object-workbench-shape="deck:deck-1"]')
+        ?.getAttribute('data-object-workbench-shape-preview-suppressed'),
     ).toBe('true');
 
     dispatchPointer(window, 'pointerup', { pointerId: 25, button: 0, clientX: -220, clientY: 50 });
     await act(async () => {
       await Promise.resolve();
     });
-    await waitForHouseFirstDeckDragUnlock(rendered.container);
+    await waitForObjectWorkbenchDeckDragUnlock(rendered.container);
 
-    expect(scroller.dataset.houseFirstDeckDragActive).toBe('false');
+    expect(scroller.dataset.objectWorkbenchDeckDragActive).toBe('false');
 
     rendered.unmount();
   });
@@ -4580,7 +4580,7 @@ describe('ModelSpaceViewport', () => {
     );
 
     const svg = rendered.container.querySelector('svg[aria-label="Module plan view"]') as SVGSVGElement | null;
-    const deckHit = rendered.container.querySelector('[data-house-first-shape-hit="deck:deck-1"]');
+    const deckHit = rendered.container.querySelector('[data-object-workbench-shape-hit="deck:deck-1"]');
     const scroller = rendered.container.querySelector('[data-model-space-scroller]') as HTMLElement | null;
     if (!svg || !deckHit || !scroller) throw new Error('Missing plan viewport nodes.');
     installSvgPointMock(svg);
@@ -4592,9 +4592,9 @@ describe('ModelSpaceViewport', () => {
       await Promise.resolve();
     });
 
-    expect(scroller.dataset.houseFirstSelectedDeckId).toBe('deck-1');
-    expect(scroller.dataset.houseFirstDeckDragActive).toBe('false');
-    expect(rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]')).toBeNull();
+    expect(scroller.dataset.objectWorkbenchSelectedDeckId).toBe('deck-1');
+    expect(scroller.dataset.objectWorkbenchDeckDragActive).toBe('false');
+    expect(rendered.container.querySelector('[data-object-workbench-preview-shape="deck-1"]')).toBeNull();
     expect(commitSpy).not.toHaveBeenCalled();
 
     rendered.unmount();
@@ -4627,7 +4627,7 @@ describe('ModelSpaceViewport', () => {
     );
 
     const svg = rendered.container.querySelector('svg[aria-label="Module plan view"]') as SVGSVGElement | null;
-    const deckHit = rendered.container.querySelector('[data-house-first-shape-hit="deck:deck-1"]');
+    const deckHit = rendered.container.querySelector('[data-object-workbench-shape-hit="deck:deck-1"]');
     const scroller = rendered.container.querySelector('[data-model-space-scroller]') as HTMLElement | null;
     if (!svg || !deckHit || !scroller) throw new Error('Missing plan viewport nodes.');
     installSvgPointMock(svg);
@@ -4639,9 +4639,9 @@ describe('ModelSpaceViewport', () => {
       await Promise.resolve();
     });
 
-    expect(scroller.dataset.houseFirstSelectedDeckId).toBe('deck-1');
-    expect(scroller.dataset.houseFirstDeckDragActive).toBe('false');
-    expect(rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]')).toBeNull();
+    expect(scroller.dataset.objectWorkbenchSelectedDeckId).toBe('deck-1');
+    expect(scroller.dataset.objectWorkbenchDeckDragActive).toBe('false');
+    expect(rendered.container.querySelector('[data-object-workbench-preview-shape="deck-1"]')).toBeNull();
     expect(commitSpy).not.toHaveBeenCalled();
 
     rendered.unmount();
@@ -4680,7 +4680,7 @@ describe('ModelSpaceViewport', () => {
       await Promise.resolve();
     });
 
-    expect(scroller.dataset.houseFirstSelectedDeckId).toBe('');
+    expect(scroller.dataset.objectWorkbenchSelectedDeckId).toBe('');
 
     rendered.unmount();
   });
@@ -4712,7 +4712,7 @@ describe('ModelSpaceViewport', () => {
     );
 
     const svg = rendered.container.querySelector('svg[aria-label="Module plan view"]') as SVGSVGElement | null;
-    const deckHit = rendered.container.querySelector('[data-house-first-shape-hit="deck:deck-1"]');
+    const deckHit = rendered.container.querySelector('[data-object-workbench-shape-hit="deck:deck-1"]');
     const scroller = rendered.container.querySelector('[data-model-space-scroller]') as HTMLElement | null;
     if (!svg || !deckHit || !scroller) throw new Error('Missing plan viewport nodes.');
     installSvgPointMock(svg);
@@ -4726,9 +4726,9 @@ describe('ModelSpaceViewport', () => {
       await Promise.resolve();
     });
 
-    expect(scroller.dataset.houseFirstSelectedDeckId).toBe('deck-1');
-    expect(scroller.dataset.houseFirstDeckDragActive).toBe('false');
-    expect(rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]')).toBeNull();
+    expect(scroller.dataset.objectWorkbenchSelectedDeckId).toBe('deck-1');
+    expect(scroller.dataset.objectWorkbenchDeckDragActive).toBe('false');
+    expect(rendered.container.querySelector('[data-object-workbench-preview-shape="deck-1"]')).toBeNull();
     expect(commitSpy).not.toHaveBeenCalled();
 
     rendered.unmount();
@@ -4761,7 +4761,7 @@ describe('ModelSpaceViewport', () => {
     );
 
     const svg = rendered.container.querySelector('svg[aria-label="Module plan view"]') as SVGSVGElement | null;
-    const deckHit = rendered.container.querySelector('[data-house-first-shape-hit="deck:deck-1"]');
+    const deckHit = rendered.container.querySelector('[data-object-workbench-shape-hit="deck:deck-1"]');
     const scroller = rendered.container.querySelector('[data-model-space-scroller]') as HTMLElement | null;
     if (!svg || !deckHit || !scroller) throw new Error('Missing plan viewport nodes.');
     installSvgPointMock(svg);
@@ -4775,8 +4775,8 @@ describe('ModelSpaceViewport', () => {
     dispatchPointer(window, 'pointermove', { pointerId: 24, button: 0, buttons: 1, clientX: -120, clientY: 50 });
     dispatchPointer(window, 'pointermove', { pointerId: 24, button: 0, buttons: 1, clientX: -220, clientY: 50 });
 
-    expect(scroller.dataset.houseFirstDeckDragActive).toBe('true');
-    expect(rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]')).not.toBeNull();
+    expect(scroller.dataset.objectWorkbenchDeckDragActive).toBe('true');
+    expect(rendered.container.querySelector('[data-object-workbench-preview-shape="deck-1"]')).not.toBeNull();
     expect(telemetrySpy.mock.calls.length).toBeGreaterThan(telemetryCallsBeforeDrag);
     expect(telemetrySpy.mock.calls.at(-1)?.[0]).toMatchObject({
       phase: 'dragging',
@@ -4788,9 +4788,9 @@ describe('ModelSpaceViewport', () => {
     await act(async () => {
       await Promise.resolve();
     });
-    await waitForHouseFirstDeckDragUnlock(rendered.container);
+    await waitForObjectWorkbenchDeckDragUnlock(rendered.container);
 
-    expect(scroller.dataset.houseFirstDeckDragActive).toBe('false');
+    expect(scroller.dataset.objectWorkbenchDeckDragActive).toBe('false');
 
     rendered.unmount();
   });
@@ -4821,7 +4821,7 @@ describe('ModelSpaceViewport', () => {
     );
 
     const svg = rendered.container.querySelector('svg[aria-label="Module plan view"]') as SVGSVGElement | null;
-    const deckHit = rendered.container.querySelector('[data-house-first-shape-hit="deck:deck-1"]');
+    const deckHit = rendered.container.querySelector('[data-object-workbench-shape-hit="deck:deck-1"]');
     const scroller = rendered.container.querySelector('[data-model-space-scroller]') as HTMLElement | null;
     const selectHouseButton = rendered.container.querySelector('[data-testid="select-house-target"]');
     if (!svg || !deckHit || !scroller || !(selectHouseButton instanceof HTMLButtonElement)) {
@@ -4838,16 +4838,16 @@ describe('ModelSpaceViewport', () => {
 
     dispatchPointer(window, 'pointermove', { pointerId: 26, button: 0, buttons: 1, clientX: -220, clientY: 50 });
 
-    expect(scroller.dataset.houseFirstDeckDragActive).toBe('true');
-    expect(rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]')).not.toBeNull();
+    expect(scroller.dataset.objectWorkbenchDeckDragActive).toBe('true');
+    expect(rendered.container.querySelector('[data-object-workbench-preview-shape="deck-1"]')).not.toBeNull();
 
     dispatchPointer(window, 'pointerup', { pointerId: 26, button: 0, clientX: -220, clientY: 50 });
     await act(async () => {
       await Promise.resolve();
     });
-    await waitForHouseFirstDeckDragUnlock(rendered.container);
+    await waitForObjectWorkbenchDeckDragUnlock(rendered.container);
 
-    expect(scroller.dataset.houseFirstDeckDragActive).toBe('false');
+    expect(scroller.dataset.objectWorkbenchDeckDragActive).toBe('false');
 
     rendered.unmount();
   });
@@ -4888,7 +4888,7 @@ describe('ModelSpaceViewport', () => {
       );
 
       const svg = rendered.container.querySelector('svg[aria-label="Module plan view"]') as SVGSVGElement | null;
-      const deckHit = rendered.container.querySelector('[data-house-first-shape-hit="deck:deck-1"]');
+      const deckHit = rendered.container.querySelector('[data-object-workbench-shape-hit="deck:deck-1"]');
       if (!svg || !deckHit) throw new Error('Missing plan viewport nodes.');
       installProjectedSvgPointMock(svg);
 
@@ -4953,7 +4953,7 @@ describe('ModelSpaceViewport', () => {
       );
 
       const svg = rendered.container.querySelector('svg[aria-label="Module plan view"]') as SVGSVGElement | null;
-      const deckHit = rendered.container.querySelector('[data-house-first-shape-hit="deck:deck-1"]');
+      const deckHit = rendered.container.querySelector('[data-object-workbench-shape-hit="deck:deck-1"]');
       if (!svg || !deckHit) throw new Error('Missing plan viewport nodes.');
       installProjectedSvgPointMock(svg);
 
@@ -4962,7 +4962,7 @@ describe('ModelSpaceViewport', () => {
 
       dispatchPointer(deckHit, 'pointerdown', { pointerId: 123, button: 0, clientX: 50, clientY: 50 });
       dispatchPointer(window, 'pointermove', { pointerId: 123, button: 0, buttons: 1, clientX: 50, clientY: pointerMoveY });
-      const previewY = polygonCentroidY(rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]'));
+      const previewY = polygonCentroidY(rendered.container.querySelector('[data-object-workbench-preview-shape="deck-1"]'));
       dispatchPointer(window, 'pointerup', { pointerId: 123, button: 0, clientX: 50, clientY: pointerMoveY });
       await act(async () => {
         await Promise.resolve();
@@ -5020,9 +5020,9 @@ describe('ModelSpaceViewport', () => {
     );
 
     const svg = rendered.container.querySelector('svg[aria-label="Module plan view"]') as SVGSVGElement | null;
-    const deckHit = rendered.container.querySelector('[data-house-first-shape-hit="deck:deck-1"]');
-    const houseShape = rendered.container.querySelector('[data-house-first-shape="footprint:house-main"]');
-    const deckShape = rendered.container.querySelector('[data-house-first-shape="deck:deck-1"]');
+    const deckHit = rendered.container.querySelector('[data-object-workbench-shape-hit="deck:deck-1"]');
+    const houseShape = rendered.container.querySelector('[data-object-workbench-shape="footprint:house-main"]');
+    const deckShape = rendered.container.querySelector('[data-object-workbench-shape="deck:deck-1"]');
     const houseSurface = rendered.container.querySelector('[data-house-plan-surface="footprint"]');
     const pergolaFill = rendered.container.querySelector('[data-plan-primary-fill="true"]');
     if (!svg || !deckHit || !houseShape || !deckShape || !houseSurface || !pergolaFill) {
@@ -5038,18 +5038,18 @@ describe('ModelSpaceViewport', () => {
     dispatchPointer(deckHit, 'pointerdown', { pointerId: 223, button: 0, clientX: 50, clientY: 50 });
     dispatchPointer(window, 'pointermove', { pointerId: 223, button: 0, buttons: 1, clientX: 50, clientY: -2400 });
 
-    const previewShape = rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]');
+    const previewShape = rendered.container.querySelector('[data-object-workbench-preview-shape="deck-1"]');
     expect(previewShape).not.toBeNull();
-    expect(rendered.container.querySelectorAll('[data-house-first-preview-shape="deck-1"]')).toHaveLength(1);
+    expect(rendered.container.querySelectorAll('[data-object-workbench-preview-shape="deck-1"]')).toHaveLength(1);
     expect(polygonPointsAttr(previewShape)).not.toBe(deckShapeBefore);
-    const committedDeckDuringPreview = rendered.container.querySelector('[data-house-first-shape="deck:deck-1"]');
-    expect(committedDeckDuringPreview?.getAttribute('data-house-first-shape-preview-suppressed')).toBe('true');
+    const committedDeckDuringPreview = rendered.container.querySelector('[data-object-workbench-shape="deck:deck-1"]');
+    expect(committedDeckDuringPreview?.getAttribute('data-object-workbench-shape-preview-suppressed')).toBe('true');
     expect(
       rendered.container
-        .querySelector('[data-house-first-shape-hit="deck:deck-1"]')
-        ?.getAttribute('data-house-first-shape-hit-preview-suppressed'),
+        .querySelector('[data-object-workbench-shape-hit="deck:deck-1"]')
+        ?.getAttribute('data-object-workbench-shape-hit-preview-suppressed'),
     ).toBe('true');
-    expect(polygonPointsAttr(rendered.container.querySelector('[data-house-first-shape="footprint:house-main"]'))).toBe(houseShapeBefore);
+    expect(polygonPointsAttr(rendered.container.querySelector('[data-object-workbench-shape="footprint:house-main"]'))).toBe(houseShapeBefore);
     expect(polygonPointsAttr(committedDeckDuringPreview)).toBe(deckShapeBefore);
     expect(polygonPointsAttr(rendered.container.querySelector('[data-house-plan-surface="footprint"]'))).toBe(houseSurfaceBefore);
     expect(polygonPointsAttr(rendered.container.querySelector('[data-plan-primary-fill="true"]'))).toBe(pergolaFillBefore);
@@ -5106,8 +5106,8 @@ describe('ModelSpaceViewport', () => {
     );
 
     const svg = rendered.container.querySelector('svg[aria-label="Module plan view"]') as SVGSVGElement | null;
-    const deckHit = rendered.container.querySelector('[data-house-first-shape-hit="deck:deck-1"]');
-    const deckShape = rendered.container.querySelector('[data-house-first-shape="deck:deck-1"]');
+    const deckHit = rendered.container.querySelector('[data-object-workbench-shape-hit="deck:deck-1"]');
+    const deckShape = rendered.container.querySelector('[data-object-workbench-shape="deck:deck-1"]');
     if (!svg || !deckHit || !deckShape) {
       throw new Error('Missing merged house-mode deck nodes.');
     }
@@ -5123,17 +5123,17 @@ describe('ModelSpaceViewport', () => {
     dispatchPointer(deckHit, 'pointerdown', { pointerId: 323, button: 0, clientX: 50, clientY: 50 });
     dispatchPointer(window, 'pointermove', { pointerId: 323, button: 0, buttons: 1, clientX: 50, clientY: 5000 });
 
-    const previewPoints = polygonPointsAttr(rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]'));
+    const previewPoints = polygonPointsAttr(rendered.container.querySelector('[data-object-workbench-preview-shape="deck-1"]'));
     expect(previewPoints).not.toBe(committedDeckBefore);
 
     dispatchPointer(window, 'pointerup', { pointerId: 323, button: 0, clientX: 50, clientY: 5000 });
     await act(async () => {
       await Promise.resolve();
     });
-    await waitForHouseFirstDeckSettleComplete(rendered.container);
+    await waitForObjectWorkbenchDeckSettleComplete(rendered.container);
 
     const committedDeckAfter = polygonPointsAttr(
-      rendered.container.querySelector('[data-house-first-shape="deck:deck-1"]'),
+      rendered.container.querySelector('[data-object-workbench-shape="deck:deck-1"]'),
     );
     const committedDepthAfter =
       rendered.container.querySelector('[data-testid="deck-floating-center-depth"]')?.textContent ?? '';
@@ -5145,7 +5145,7 @@ describe('ModelSpaceViewport', () => {
     expect(committedDepthAfter).not.toBe(committedDepthBefore);
     expect(committedOutlineAlongAfter).toBe(committedOutlineAlongBefore);
     expect(committedOutlineDepthAfter).not.toBe(committedOutlineDepthBefore);
-    expect(rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]')).toBeNull();
+    expect(rendered.container.querySelector('[data-object-workbench-preview-shape="deck-1"]')).toBeNull();
 
     rendered.unmount();
   });
@@ -5187,13 +5187,13 @@ describe('ModelSpaceViewport', () => {
     const rendered = renderIntoDocument(renderHarness());
 
     let svg = rendered.container.querySelector('svg[aria-label="Module plan view"]') as SVGSVGElement | null;
-    const deckHit = rendered.container.querySelector('[data-house-first-shape-hit="deck:deck-1"]');
+    const deckHit = rendered.container.querySelector('[data-object-workbench-shape-hit="deck:deck-1"]');
     if (!svg || !deckHit) throw new Error('Missing plan viewport nodes.');
     installProjectedSvgPointMock(svg);
 
     dispatchPointer(deckHit, 'pointerdown', { pointerId: 126, button: 0, clientX: 50, clientY: 50 });
     dispatchPointer(window, 'pointermove', { pointerId: 126, button: 0, buttons: 1, clientX: 50, clientY: -1200 });
-    const midPreviewY = polygonCentroidY(rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]'));
+    const midPreviewY = polygonCentroidY(rendered.container.querySelector('[data-object-workbench-preview-shape="deck-1"]'));
 
     rendered.rerender(renderHarness());
     svg = rendered.container.querySelector('svg[aria-label="Module plan view"]') as SVGSVGElement | null;
@@ -5201,7 +5201,7 @@ describe('ModelSpaceViewport', () => {
     installProjectedSvgPointMock(svg);
 
     dispatchPointer(window, 'pointermove', { pointerId: 126, button: 0, buttons: 1, clientX: 50, clientY: -2400 });
-    const topPreviewY = polygonCentroidY(rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]'));
+    const topPreviewY = polygonCentroidY(rendered.container.querySelector('[data-object-workbench-preview-shape="deck-1"]'));
 
     expect(topPreviewY).toBeLessThan(midPreviewY);
 
@@ -5252,7 +5252,7 @@ describe('ModelSpaceViewport', () => {
     );
 
     const svg = rendered.container.querySelector('svg[aria-label="Module plan view"]') as SVGSVGElement | null;
-    const deckHit = rendered.container.querySelector('[data-house-first-shape-hit="deck:deck-1"]');
+    const deckHit = rendered.container.querySelector('[data-object-workbench-shape-hit="deck:deck-1"]');
     const scroller = rendered.container.querySelector('[data-model-space-scroller]') as HTMLElement | null;
     if (!svg || !deckHit || !scroller) throw new Error('Missing plan viewport nodes.');
     installProjectedSvgPointMock(svg);
@@ -5263,11 +5263,11 @@ describe('ModelSpaceViewport', () => {
     const initialScrollerRect = snapshotRect(getScrollerRect());
     dispatchPointer(deckHit, 'pointerdown', { pointerId: 130, button: 0, clientX: 50, clientY: 50 });
     dispatchPointer(window, 'pointermove', { pointerId: 130, button: 0, buttons: 1, clientX: 50, clientY: -1200 });
-    const midPreviewY = polygonCentroidY(rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]'));
+    const midPreviewY = polygonCentroidY(rendered.container.querySelector('[data-object-workbench-preview-shape="deck-1"]'));
     dispatchPointer(window, 'pointermove', { pointerId: 130, button: 0, buttons: 1, clientX: 50, clientY: -4000 });
-    const topPreviewY = polygonCentroidY(rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]'));
+    const topPreviewY = polygonCentroidY(rendered.container.querySelector('[data-object-workbench-preview-shape="deck-1"]'));
 
-    expect(rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[data-object-workbench-preview-shape="deck-1"]')).not.toBeNull();
     expect(getDrawOutlineDiagnostics(rendered.container).houseFirstDeckDragLocked).toBe('true');
     expect(topPreviewY).toBeLessThan(midPreviewY);
     act(() => {
@@ -5337,7 +5337,7 @@ describe('ModelSpaceViewport', () => {
     );
 
     const svg = rendered.container.querySelector('svg[aria-label="Module plan view"]') as SVGSVGElement | null;
-    const deckHit = rendered.container.querySelector('[data-house-first-shape-hit="deck:deck-1"]');
+    const deckHit = rendered.container.querySelector('[data-object-workbench-shape-hit="deck:deck-1"]');
     if (!svg || !deckHit) throw new Error('Missing plan viewport nodes.');
     installProjectedSvgPointMock(svg);
     const { scrollParent, getScrollTop, getScrollerRect } = installScrollableAncestorMock(rendered.container);
@@ -5349,11 +5349,11 @@ describe('ModelSpaceViewport', () => {
     dispatchPointer(window, 'pointermove', { pointerId: 140, button: 0, buttons: 1, clientX: 50, clientY: -4000 });
     dispatchPointer(window, 'pointerup', { pointerId: 140, button: 0, clientX: 50, clientY: -4000 });
 
-    expect(rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[data-object-workbench-preview-shape="deck-1"]')).not.toBeNull();
     expect(
       rendered.container
-        .querySelector('[data-house-first-shape="deck:deck-1"]')
-        ?.getAttribute('data-house-first-shape-preview-suppressed'),
+        .querySelector('[data-object-workbench-shape="deck:deck-1"]')
+        ?.getAttribute('data-object-workbench-shape-preview-suppressed'),
     ).toBe('true');
     expect(rendered.container.querySelector('[data-testid="flush-deck-commit"]')).not.toBeNull();
     expect(getDrawOutlineDiagnostics(rendered.container).houseFirstDeckDragLocked).toBe('true');
@@ -5379,25 +5379,25 @@ describe('ModelSpaceViewport', () => {
     expect(rendered.container.querySelector('[data-testid="deck-telemetry-settle-visual"]')?.textContent).toBe('reconciling');
     expect(
       rendered.container
-        .querySelector('[data-house-first-shape="deck:deck-1"]')
-        ?.getAttribute('data-house-first-shape-preview-suppressed'),
+        .querySelector('[data-object-workbench-shape="deck:deck-1"]')
+        ?.getAttribute('data-object-workbench-shape-preview-suppressed'),
     ).toBe('true');
     act(() => {
       scrollParent.scrollTop = initialScrollTop + 120;
       scrollParent.dispatchEvent(new Event('scroll'));
     });
     expect(getScrollTop()).toBe(initialScrollTop + 120);
-    expect(rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[data-object-workbench-preview-shape="deck-1"]')).not.toBeNull();
 
-    await waitForHouseFirstDeckSettleComplete(rendered.container);
+    await waitForObjectWorkbenchDeckSettleComplete(rendered.container);
     expect(rendered.container.querySelector('[aria-label="Deck interaction hint"]')?.textContent).toContain('Position updated');
     expect(rendered.container.querySelector('[data-testid="deck-telemetry-release-outcome"]')?.textContent).toBe('committed');
     expect(rendered.container.querySelector('[data-testid="deck-telemetry-settle-visual"]')?.textContent).toBe('complete');
-    expect(rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]')).toBeNull();
+    expect(rendered.container.querySelector('[data-object-workbench-preview-shape="deck-1"]')).toBeNull();
     expect(
       rendered.container
-        .querySelector('[data-house-first-shape="deck:deck-1"]')
-        ?.getAttribute('data-house-first-shape-preview-suppressed'),
+        .querySelector('[data-object-workbench-shape="deck:deck-1"]')
+        ?.getAttribute('data-object-workbench-shape-preview-suppressed'),
     ).toBe('false');
     expect(getDrawOutlineDiagnostics(rendered.container).houseFirstDeckDragLocked).toBe('false');
     expect(getScrollTop()).toBe(initialScrollTop + 120);
@@ -5438,7 +5438,7 @@ describe('ModelSpaceViewport', () => {
     );
 
     const svg = rendered.container.querySelector('svg[aria-label="Module plan view"]') as SVGSVGElement | null;
-    const deckHit = rendered.container.querySelector('[data-house-first-shape-hit="deck:deck-1"]');
+    const deckHit = rendered.container.querySelector('[data-object-workbench-shape-hit="deck:deck-1"]');
     const scroller = rendered.container.querySelector('[data-model-space-scroller]') as HTMLElement | null;
     if (!svg || !deckHit || !scroller) throw new Error('Missing plan viewport nodes.');
     installSvgPointMock(svg);
@@ -5449,23 +5449,23 @@ describe('ModelSpaceViewport', () => {
     await act(async () => {
       await Promise.resolve();
     });
-    await waitForHouseFirstDeckDragUnlock(rendered.container);
+    await waitForObjectWorkbenchDeckDragUnlock(rendered.container);
 
-    expect(scroller.dataset.houseFirstDeckDragActive).toBe('false');
-    expect(rendered.container.querySelector('[data-house-first-preview-body-state="blocked"]')).not.toBeNull();
-    expect(rendered.container.querySelector('[data-house-first-preview-anchor="blocked"]')).not.toBeNull();
+    expect(scroller.dataset.objectWorkbenchDeckDragActive).toBe('false');
+    expect(rendered.container.querySelector('[data-object-workbench-preview-body-state="blocked"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[data-object-workbench-preview-anchor="blocked"]')).not.toBeNull();
     expect(rendered.container.querySelector('[data-testid="deck-center-offset"]')?.textContent).toBe('0');
     expect(rendered.container.querySelector('[aria-label="Deck interaction hint"]')?.textContent).toContain("Couldn't move deck");
     expect(rendered.container.querySelector('[data-testid="deck-telemetry-release-outcome"]')?.textContent).toBe('failed');
     expect(rendered.container.querySelector('[data-testid="deck-telemetry-settle-visual"]')?.textContent).toBe('failed');
-    expect(scroller.dataset.houseFirstDeckAffordanceState).toBe('blocked');
+    expect(scroller.dataset.objectWorkbenchDeckAffordanceState).toBe('blocked');
     expect(rendered.container.textContent).toContain('Deck dimension rejected.');
 
     dispatchPointer(deckHit, 'pointerdown', { pointerId: 143, button: 0, clientX: 50, clientY: 50 });
     dispatchPointer(window, 'pointermove', { pointerId: 143, button: 0, buttons: 1, clientX: -120, clientY: 50 });
 
-    expect(scroller.dataset.houseFirstDeckDragActive).toBe('true');
-    expect(rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]')).not.toBeNull();
+    expect(scroller.dataset.objectWorkbenchDeckDragActive).toBe('true');
+    expect(rendered.container.querySelector('[data-object-workbench-preview-shape="deck-1"]')).not.toBeNull();
 
     dispatchPointer(window, 'pointerup', { pointerId: 143, button: 0, clientX: -120, clientY: 50 });
     await act(async () => {
@@ -5512,7 +5512,7 @@ describe('ModelSpaceViewport', () => {
     );
 
     const svg = rendered.container.querySelector('svg[aria-label="Module plan view"]') as SVGSVGElement | null;
-    const deckHit = rendered.container.querySelector('[data-house-first-shape-hit="deck:deck-1"]');
+    const deckHit = rendered.container.querySelector('[data-object-workbench-shape-hit="deck:deck-1"]');
     if (!svg || !deckHit) throw new Error('Missing plan viewport nodes.');
     installProjectedSvgPointMock(svg);
     const { getScrollTop, scroller } = installScrollableAncestorMock(rendered.container);
@@ -5539,11 +5539,11 @@ describe('ModelSpaceViewport', () => {
     });
 
     expect(getDrawOutlineDiagnostics(rendered.container).houseFirstDeckDragLocked).toBe('false');
-    expect(rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[data-object-workbench-preview-shape="deck-1"]')).not.toBeNull();
 
     await flushAnimationFrame();
     expect(getDrawOutlineDiagnostics(rendered.container).houseFirstDeckDragLocked).toBe('false');
-    expect(rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[data-object-workbench-preview-shape="deck-1"]')).not.toBeNull();
 
     await act(async () => {
       await new Promise<void>((resolve) => {
@@ -5553,7 +5553,7 @@ describe('ModelSpaceViewport', () => {
     await flushAnimationFrame();
 
     expect(getDrawOutlineDiagnostics(rendered.container).houseFirstDeckDragLocked).toBe('false');
-    expect(rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]')).toBeNull();
+    expect(rendered.container.querySelector('[data-object-workbench-preview-shape="deck-1"]')).toBeNull();
 
     rendered.unmount();
   });
@@ -5593,7 +5593,7 @@ describe('ModelSpaceViewport', () => {
     );
 
     const svg = rendered.container.querySelector('svg[aria-label="Module plan view"]') as SVGSVGElement | null;
-    const deckHit = rendered.container.querySelector('[data-house-first-shape-hit="deck:deck-1"]');
+    const deckHit = rendered.container.querySelector('[data-object-workbench-shape-hit="deck:deck-1"]');
     const scroller = rendered.container.querySelector('[data-model-space-scroller]') as HTMLElement | null;
     if (!svg || !deckHit || !scroller) throw new Error('Missing plan viewport nodes.');
     installProjectedSvgPointMock(svg);
@@ -5602,13 +5602,13 @@ describe('ModelSpaceViewport', () => {
     dispatchPointer(window, 'pointermove', { pointerId: 150, button: 0, buttons: 1, clientX: 50, clientY: -1200 });
     dispatchPointer(window, 'pointerup', { pointerId: 150, button: 0, clientX: 50, clientY: -1200 });
 
-    expect(scroller.dataset.houseFirstDeckDragActive).toBe('true');
+    expect(scroller.dataset.objectWorkbenchDeckDragActive).toBe('true');
 
     dispatchPointer(deckHit, 'pointerdown', { pointerId: 151, button: 0, clientX: 50, clientY: 50 });
     dispatchPointer(window, 'pointermove', { pointerId: 151, button: 0, buttons: 1, clientX: 50, clientY: -2400 });
 
-    expect(scroller.dataset.houseFirstDeckDragActive).toBe('true');
-    expect(rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]')).not.toBeNull();
+    expect(scroller.dataset.objectWorkbenchDeckDragActive).toBe('true');
+    expect(rendered.container.querySelector('[data-object-workbench-preview-shape="deck-1"]')).not.toBeNull();
 
     dispatchPointer(window, 'pointerup', { pointerId: 151, button: 0, clientX: 50, clientY: -2400 });
     await act(async () => {
@@ -5620,7 +5620,7 @@ describe('ModelSpaceViewport', () => {
     await flushAnimationFrame();
     await flushAnimationFrame();
 
-    expect(scroller.dataset.houseFirstDeckDragActive).toBe('false');
+    expect(scroller.dataset.objectWorkbenchDeckDragActive).toBe('false');
 
     rendered.unmount();
   });
@@ -5649,17 +5649,17 @@ describe('ModelSpaceViewport', () => {
       />,
     );
 
-    const deckHit = rendered.container.querySelector('[data-house-first-shape-hit="deck:deck-1"]');
-    const deckShape = rendered.container.querySelector('[data-house-first-shape="deck:deck-1"]');
+    const deckHit = rendered.container.querySelector('[data-object-workbench-shape-hit="deck:deck-1"]');
+    const deckShape = rendered.container.querySelector('[data-object-workbench-shape="deck:deck-1"]');
     const scroller = rendered.container.querySelector('[data-model-space-scroller]') as HTMLElement | null;
     if (!deckHit || !deckShape || !scroller) throw new Error('Missing plan viewport nodes.');
 
     dispatchPointer(deckHit, 'pointermove', { pointerId: 201, clientX: 50, clientY: 50 });
 
-    expect(scroller.dataset.houseFirstDeckDragPhase).toBe('hover');
-    expect(scroller.dataset.houseFirstDeckAffordanceState).toBe('hover');
-    expect(scroller.dataset.houseFirstHoveredDeckId).toBe('deck-1');
-    expect(deckShape.getAttribute('data-house-first-shape-hovered')).toBe('true');
+    expect(scroller.dataset.objectWorkbenchDeckDragPhase).toBe('hover');
+    expect(scroller.dataset.objectWorkbenchDeckAffordanceState).toBe('hover');
+    expect(scroller.dataset.objectWorkbenchHoveredDeckId).toBe('deck-1');
+    expect(deckShape.getAttribute('data-object-workbench-shape-hovered')).toBe('true');
     expect(rendered.container.querySelector('[aria-label="Deck interaction hint"]')).toBeNull();
     expect(rendered.container.querySelector('[data-testid="deck-telemetry-hovered"]')?.textContent).toBe('deck-1');
 
@@ -5700,7 +5700,7 @@ describe('ModelSpaceViewport', () => {
     );
 
     const svg = rendered.container.querySelector('svg[aria-label="Module plan view"]') as SVGSVGElement | null;
-    const deckHit = rendered.container.querySelector('[data-house-first-shape-hit="deck:deck-1"]');
+    const deckHit = rendered.container.querySelector('[data-object-workbench-shape-hit="deck:deck-1"]');
     const scroller = rendered.container.querySelector('[data-model-space-scroller]') as HTMLElement | null;
     if (!svg || !deckHit || !scroller) throw new Error('Missing plan viewport nodes.');
     installSvgPointMock(svg);
@@ -5708,15 +5708,15 @@ describe('ModelSpaceViewport', () => {
     dispatchPointer(deckHit, 'pointerdown', { pointerId: 22, button: 0, clientX: 50, clientY: 50 });
     dispatchPointer(window, 'pointermove', { pointerId: 22, button: 0, buttons: 1, clientX: 49.5, clientY: 49.5 });
 
-    expect(scroller.dataset.houseFirstDeckDragActive).toBe('true');
-    expect(scroller.dataset.houseFirstDeckDragPhase).toBe('drag-intent');
-    expect(scroller.dataset.houseFirstDeckAffordanceState).toBe('grabbed');
-    expect(scroller.dataset.houseFirstDeckReferenceGuideState).toBe('none');
-    expect(scroller.dataset.houseFirstDeckSnapState).toBe('idle');
+    expect(scroller.dataset.objectWorkbenchDeckDragActive).toBe('true');
+    expect(scroller.dataset.objectWorkbenchDeckDragPhase).toBe('drag-intent');
+    expect(scroller.dataset.objectWorkbenchDeckAffordanceState).toBe('grabbed');
+    expect(scroller.dataset.objectWorkbenchDeckReferenceGuideState).toBe('none');
+    expect(scroller.dataset.objectWorkbenchDeckSnapState).toBe('idle');
     expect(rendered.container.querySelector('[aria-label="Deck interaction hint"]')?.textContent).toContain('Deck grabbed');
-    expect(rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]')).toBeNull();
-    expect(rendered.container.querySelector('[data-house-first-preview-anchor="grabbed"]')).not.toBeNull();
-    expect(rendered.container.querySelector('[data-house-first-reference-guide]')).toBeNull();
+    expect(rendered.container.querySelector('[data-object-workbench-preview-shape="deck-1"]')).toBeNull();
+    expect(rendered.container.querySelector('[data-object-workbench-preview-anchor="grabbed"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[data-object-workbench-reference-guide]')).toBeNull();
 
     dispatchPointer(window, 'pointerup', { pointerId: 22, button: 0, clientX: 49.5, clientY: 49.5 });
     await act(async () => {
@@ -5731,7 +5731,7 @@ describe('ModelSpaceViewport', () => {
     expect(rendered.container.querySelector('[data-testid="deck-is-attached"]')?.textContent).toBe('false');
     expect(rendered.container.querySelector('[data-testid="deck-floating-center-along"]')?.textContent).not.toBe('');
     expect(rendered.container.querySelector('[data-testid="deck-floating-center-depth"]')?.textContent).not.toBe('');
-    expect(scroller.dataset.houseFirstDeckDragActive).toBe('false');
+    expect(scroller.dataset.objectWorkbenchDeckDragActive).toBe('false');
     expect(rendered.container.querySelector('[aria-label="Deck interaction hint"]')).toBeNull();
 
     await act(async () => {
@@ -5781,7 +5781,7 @@ describe('ModelSpaceViewport', () => {
     );
 
     const svg = rendered.container.querySelector('svg[aria-label="Module plan view"]') as SVGSVGElement | null;
-    const deckHit = rendered.container.querySelector('[data-house-first-shape-hit="deck:deck-1"]');
+    const deckHit = rendered.container.querySelector('[data-object-workbench-shape-hit="deck:deck-1"]');
     const scroller = rendered.container.querySelector('[data-model-space-scroller]') as HTMLElement | null;
     if (!svg || !deckHit || !scroller) throw new Error('Missing plan viewport nodes.');
     installProjectedSvgPointMock(svg, { xScale: 0.05, yScale: 0.05, xOffset: 0, yOffset: 0 });
@@ -5789,25 +5789,25 @@ describe('ModelSpaceViewport', () => {
     dispatchPointer(deckHit, 'pointerdown', { pointerId: 24, button: 0, clientX: 50, clientY: 50 });
     dispatchPointer(window, 'pointermove', { pointerId: 24, button: 0, buttons: 1, clientX: 44.5, clientY: 50 });
 
-    expect(scroller.dataset.houseFirstDeckPlacementState).toBe('snap-available');
-    expect(scroller.dataset.houseFirstDeckAffordanceState).toBe('snap-available');
-    expect(scroller.dataset.houseFirstDeckReferenceGuideState).toBe('snap-lane');
-    expect(scroller.dataset.houseFirstDeckSnapState).toBe('snap-available');
-    expect(rendered.container.querySelector('[data-house-first-preview-body-state="snap-available"]')).not.toBeNull();
-    expect(rendered.container.querySelector('[data-house-first-reference-guide="snap-lane"]')).not.toBeNull();
-    expect(rendered.container.querySelector('[data-house-first-snap-target="snap-available"]')).not.toBeNull();
+    expect(scroller.dataset.objectWorkbenchDeckPlacementState).toBe('snap-available');
+    expect(scroller.dataset.objectWorkbenchDeckAffordanceState).toBe('snap-available');
+    expect(scroller.dataset.objectWorkbenchDeckReferenceGuideState).toBe('snap-lane');
+    expect(scroller.dataset.objectWorkbenchDeckSnapState).toBe('snap-available');
+    expect(rendered.container.querySelector('[data-object-workbench-preview-body-state="snap-available"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[data-object-workbench-reference-guide="snap-lane"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[data-object-workbench-snap-target="snap-available"]')).not.toBeNull();
     const releasePreviewPoints = polygonPointsAttr(
-      rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]'),
+      rendered.container.querySelector('[data-object-workbench-preview-shape="deck-1"]'),
     );
 
     dispatchPointer(window, 'pointerup', { pointerId: 24, button: 0, clientX: 44.5, clientY: 50 });
     await act(async () => {
       await Promise.resolve();
     });
-    await waitForHouseFirstDeckDragUnlock(rendered.container);
+    await waitForObjectWorkbenchDeckDragUnlock(rendered.container);
 
     const committedDeckAfter = polygonPointsAttr(
-      rendered.container.querySelector('[data-house-first-shape="deck:deck-1"]'),
+      rendered.container.querySelector('[data-object-workbench-shape="deck:deck-1"]'),
     );
     expect(normalizePolygonPointSet(committedDeckAfter)).toBe(normalizePolygonPointSet(releasePreviewPoints));
 
@@ -5859,7 +5859,7 @@ describe('ModelSpaceViewport', () => {
     );
 
     const svg = rendered.container.querySelector('svg[aria-label="Module plan view"]') as SVGSVGElement | null;
-    const deckHit = rendered.container.querySelector('[data-house-first-shape-hit="deck:deck-1"]');
+    const deckHit = rendered.container.querySelector('[data-object-workbench-shape-hit="deck:deck-1"]');
     const scroller = rendered.container.querySelector('[data-model-space-scroller]') as HTMLElement | null;
     if (!svg || !deckHit || !scroller) throw new Error('Missing plan viewport nodes.');
     installProjectedSvgPointMock(svg, { xScale: 0.05, yScale: 0.05, xOffset: 0, yOffset: 0 });
@@ -5867,22 +5867,22 @@ describe('ModelSpaceViewport', () => {
     dispatchPointer(deckHit, 'pointerdown', { pointerId: 324, button: 0, clientX: 50, clientY: 50 });
     dispatchPointer(window, 'pointermove', { pointerId: 324, button: 0, buttons: 1, clientX: 50, clientY: 43.9 });
 
-    expect(scroller.dataset.houseFirstDeckPlacementState).toBe('snap-available');
-    expect(scroller.dataset.houseFirstDeckAffordanceState).toBe('snap-available');
-    expect(scroller.dataset.houseFirstDeckReferenceGuideState).toBe('snap-lane');
-    expect(scroller.dataset.houseFirstDeckSnapState).toBe('snap-available');
+    expect(scroller.dataset.objectWorkbenchDeckPlacementState).toBe('snap-available');
+    expect(scroller.dataset.objectWorkbenchDeckAffordanceState).toBe('snap-available');
+    expect(scroller.dataset.objectWorkbenchDeckReferenceGuideState).toBe('snap-lane');
+    expect(scroller.dataset.objectWorkbenchDeckSnapState).toBe('snap-available');
     const releasePreviewPoints = polygonPointsAttr(
-      rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]'),
+      rendered.container.querySelector('[data-object-workbench-preview-shape="deck-1"]'),
     );
 
     dispatchPointer(window, 'pointerup', { pointerId: 324, button: 0, clientX: 50, clientY: 43.9 });
     await act(async () => {
       await Promise.resolve();
     });
-    await waitForHouseFirstDeckDragUnlock(rendered.container);
+    await waitForObjectWorkbenchDeckDragUnlock(rendered.container);
 
     const committedDeckAfter = polygonPointsAttr(
-      rendered.container.querySelector('[data-house-first-shape="deck:deck-1"]'),
+      rendered.container.querySelector('[data-object-workbench-shape="deck:deck-1"]'),
     );
     expect(normalizePolygonPointSet(committedDeckAfter)).toBe(normalizePolygonPointSet(releasePreviewPoints));
     expect(rendered.container.querySelector('[data-testid="deck-is-attached"]')?.textContent).toBe('true');
@@ -5937,7 +5937,7 @@ describe('ModelSpaceViewport', () => {
     );
 
     const svg = rendered.container.querySelector('svg[aria-label="Module plan view"]') as SVGSVGElement | null;
-    const deckHit = rendered.container.querySelector('[data-house-first-shape-hit="deck:deck-1"]');
+    const deckHit = rendered.container.querySelector('[data-object-workbench-shape-hit="deck:deck-1"]');
     const scroller = rendered.container.querySelector('[data-model-space-scroller]') as HTMLElement | null;
     if (!svg || !deckHit || !scroller) throw new Error('Missing plan viewport nodes.');
     installSvgPointMock(svg);
@@ -5946,16 +5946,16 @@ describe('ModelSpaceViewport', () => {
       releasePointerCapture;
     (svg as unknown as { hasPointerCapture: (pointerId: number) => boolean }).hasPointerCapture = () => true;
 
-    const committedDeckBefore = polygonPointsAttr(rendered.container.querySelector('[data-house-first-shape="deck:deck-1"]'));
+    const committedDeckBefore = polygonPointsAttr(rendered.container.querySelector('[data-object-workbench-shape="deck:deck-1"]'));
 
     dispatchPointer(deckHit, 'pointerdown', { pointerId: 224, button: 0, clientX: 50, clientY: 50 });
     dispatchPointer(window, 'pointermove', { pointerId: 224, button: 0, buttons: 1, clientX: 56.1, clientY: 56.1 });
 
-    expect(scroller.dataset.houseFirstDeckPlacementState).toBe('snap-available');
-    expect(scroller.dataset.houseFirstDeckAffordanceState).toBe('snap-available');
-    expect(scroller.dataset.houseFirstDeckReferenceGuideState).toBe('snap-lane');
-    expect(scroller.dataset.houseFirstDeckSnapState).toBe('snap-available');
-    expect(rendered.container.querySelector('[data-house-first-preview-body-state="snap-available"]')).not.toBeNull();
+    expect(scroller.dataset.objectWorkbenchDeckPlacementState).toBe('snap-available');
+    expect(scroller.dataset.objectWorkbenchDeckAffordanceState).toBe('snap-available');
+    expect(scroller.dataset.objectWorkbenchDeckReferenceGuideState).toBe('snap-lane');
+    expect(scroller.dataset.objectWorkbenchDeckSnapState).toBe('snap-available');
+    expect(rendered.container.querySelector('[data-object-workbench-preview-body-state="snap-available"]')).not.toBeNull();
 
     dispatchPointer(window, 'pointerup', { pointerId: 224, button: 0, clientX: 56.1, clientY: 56.1 });
     await act(async () => {
@@ -5963,13 +5963,13 @@ describe('ModelSpaceViewport', () => {
     });
 
     const releasePreviewPoints = polygonPointsAttr(
-      rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]'),
+      rendered.container.querySelector('[data-object-workbench-preview-shape="deck-1"]'),
     );
     expect(releasePreviewPoints).not.toBe(committedDeckBefore);
     expect(
       rendered.container
-        .querySelector('[data-house-first-shape="deck:deck-1"]')
-        ?.getAttribute('data-house-first-shape-preview-suppressed'),
+        .querySelector('[data-object-workbench-shape="deck:deck-1"]')
+        ?.getAttribute('data-object-workbench-shape-preview-suppressed'),
     ).toBe('true');
     expect(rendered.container.querySelector('[data-testid="flush-deck-commit"]')).not.toBeNull();
     expect(rendered.container.querySelector('[data-testid="deck-telemetry-release-outcome"]')?.textContent).toBe('pending');
@@ -5979,8 +5979,8 @@ describe('ModelSpaceViewport', () => {
     expect(rendered.container.querySelector('[data-testid="deck-telemetry-settle-visual"]')?.textContent).toBe(
       'holding-preview',
     );
-    expect(scroller.dataset.houseFirstDeckDragActive).toBe('true');
-    expect(scroller.dataset.houseFirstDeckDragLocked).toBe('true');
+    expect(scroller.dataset.objectWorkbenchDeckDragActive).toBe('true');
+    expect(scroller.dataset.objectWorkbenchDeckDragLocked).toBe('true');
     expect(releasePointerCapture).toHaveBeenCalledWith(224);
 
     const flushButton = rendered.container.querySelector('[data-testid="flush-deck-commit"]');
@@ -5996,22 +5996,22 @@ describe('ModelSpaceViewport', () => {
     expect(rendered.container.querySelector('[data-testid="deck-telemetry-settle-visual"]')?.textContent).toBe(
       'reconciling',
     );
-    expect(scroller.dataset.houseFirstDeckDragActive).toBe('false');
-    expect(scroller.dataset.houseFirstDeckDragLocked).toBe('false');
-    expect(rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]')).not.toBeNull();
+    expect(scroller.dataset.objectWorkbenchDeckDragActive).toBe('false');
+    expect(scroller.dataset.objectWorkbenchDeckDragLocked).toBe('false');
+    expect(rendered.container.querySelector('[data-object-workbench-preview-shape="deck-1"]')).not.toBeNull();
     expect(
       rendered.container
-        .querySelector('[data-house-first-shape="deck:deck-1"]')
-        ?.getAttribute('data-house-first-shape-preview-suppressed'),
+        .querySelector('[data-object-workbench-shape="deck:deck-1"]')
+        ?.getAttribute('data-object-workbench-shape-preview-suppressed'),
     ).toBe('true');
     expect(
-      normalizePolygonPointSet(polygonPointsAttr(rendered.container.querySelector('[data-house-first-shape="deck:deck-1"]'))),
+      normalizePolygonPointSet(polygonPointsAttr(rendered.container.querySelector('[data-object-workbench-shape="deck:deck-1"]'))),
     ).toBe(normalizePolygonPointSet(releasePreviewPoints));
 
-    await waitForHouseFirstDeckSettleComplete(rendered.container);
+    await waitForObjectWorkbenchDeckSettleComplete(rendered.container);
 
     const committedDeckAfter = polygonPointsAttr(
-      rendered.container.querySelector('[data-house-first-shape="deck:deck-1"]'),
+      rendered.container.querySelector('[data-object-workbench-shape="deck:deck-1"]'),
     );
     expect(normalizePolygonPointSet(committedDeckAfter)).toBe(normalizePolygonPointSet(releasePreviewPoints));
     expect(rendered.container.querySelector('[data-testid="deck-is-attached"]')?.textContent).toBe('true');
@@ -6023,11 +6023,11 @@ describe('ModelSpaceViewport', () => {
     expect(rendered.container.querySelector('[data-testid="deck-telemetry-settle-visual"]')?.textContent).toBe(
       'complete',
     );
-    expect(rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]')).toBeNull();
+    expect(rendered.container.querySelector('[data-object-workbench-preview-shape="deck-1"]')).toBeNull();
     expect(
       rendered.container
-        .querySelector('[data-house-first-shape="deck:deck-1"]')
-        ?.getAttribute('data-house-first-shape-preview-suppressed'),
+        .querySelector('[data-object-workbench-shape="deck:deck-1"]')
+        ?.getAttribute('data-object-workbench-shape-preview-suppressed'),
     ).toBe('false');
 
     rendered.unmount();
@@ -6075,7 +6075,7 @@ describe('ModelSpaceViewport', () => {
     );
 
     const svg = rendered.container.querySelector('svg[aria-label="Module plan view"]') as SVGSVGElement | null;
-    const deckHit = rendered.container.querySelector('[data-house-first-shape-hit="deck:deck-1"]');
+    const deckHit = rendered.container.querySelector('[data-object-workbench-shape-hit="deck:deck-1"]');
     const scroller = rendered.container.querySelector('[data-model-space-scroller]') as HTMLElement | null;
     if (!svg || !deckHit || !scroller) throw new Error('Missing plan viewport nodes.');
     installProjectedSvgPointMock(svg, { xScale: 0.05, yScale: 0.05, xOffset: 0, yOffset: 0 });
@@ -6083,9 +6083,9 @@ describe('ModelSpaceViewport', () => {
     dispatchPointer(deckHit, 'pointerdown', { pointerId: 424, button: 0, clientX: 50, clientY: 50 });
     dispatchPointer(window, 'pointermove', { pointerId: 424, button: 0, buttons: 1, clientX: 50, clientY: 43.9 });
 
-    expect(scroller.dataset.houseFirstDeckPlacementState).toBe('snap-available');
+    expect(scroller.dataset.objectWorkbenchDeckPlacementState).toBe('snap-available');
     const releasePreviewPoints = polygonPointsAttr(
-      rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]'),
+      rendered.container.querySelector('[data-object-workbench-preview-shape="deck-1"]'),
     );
 
     dispatchPointer(window, 'pointerup', { pointerId: 424, button: 0, clientX: 50, clientY: 43.9 });
@@ -6099,11 +6099,11 @@ describe('ModelSpaceViewport', () => {
     });
     await flushAnimationFrame();
 
-    expect(scroller.dataset.houseFirstDeckDragActive).toBe('false');
-    expect(scroller.dataset.houseFirstDeckDragLocked).toBe('false');
-    expect(rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]')).toBeNull();
+    expect(scroller.dataset.objectWorkbenchDeckDragActive).toBe('false');
+    expect(scroller.dataset.objectWorkbenchDeckDragLocked).toBe('false');
+    expect(rendered.container.querySelector('[data-object-workbench-preview-shape="deck-1"]')).toBeNull();
     expect(
-      normalizePolygonPointSet(polygonPointsAttr(rendered.container.querySelector('[data-house-first-shape="deck:deck-1"]'))),
+      normalizePolygonPointSet(polygonPointsAttr(rendered.container.querySelector('[data-object-workbench-shape="deck:deck-1"]'))),
     ).not.toBe(normalizePolygonPointSet(releasePreviewPoints));
     expect(rendered.container.querySelector('[data-testid="deck-telemetry-settle-visual"]')?.textContent).toBe(
       'complete',
@@ -6113,13 +6113,13 @@ describe('ModelSpaceViewport', () => {
     dispatchWheel(scroller, { deltaY: -120, clientX: 120, clientY: 90 });
     expect(getViewportTransformSnapshot(rendered.container).zoom).toBeGreaterThan(zoomBefore);
 
-    const footprintHit = rendered.container.querySelector('[data-house-first-shape-hit^="footprint:"]');
+    const footprintHit = rendered.container.querySelector('[data-object-workbench-shape-hit^="footprint:"]');
     if (!footprintHit) throw new Error('Missing footprint hit target.');
     clickElement(footprintHit);
     await act(async () => {
       await Promise.resolve();
     });
-    expect(scroller.dataset.houseFirstSelectedDeckId).toBe('');
+    expect(scroller.dataset.objectWorkbenchSelectedDeckId).toBe('');
 
     rendered.unmount();
   });
@@ -6166,7 +6166,7 @@ describe('ModelSpaceViewport', () => {
     );
 
     const svg = rendered.container.querySelector('svg[aria-label="Module plan view"]') as SVGSVGElement | null;
-    const deckHit = rendered.container.querySelector('[data-house-first-shape-hit="deck:deck-1"]');
+    const deckHit = rendered.container.querySelector('[data-object-workbench-shape-hit="deck:deck-1"]');
     const scroller = rendered.container.querySelector('[data-model-space-scroller]') as HTMLElement | null;
     if (!svg || !deckHit || !scroller) throw new Error('Missing plan viewport nodes.');
     installProjectedSvgPointMock(svg, { xScale: 0.05, yScale: 0.05, xOffset: 0, yOffset: 0 });
@@ -6174,13 +6174,13 @@ describe('ModelSpaceViewport', () => {
     dispatchPointer(deckHit, 'pointerdown', { pointerId: 124, button: 0, clientX: 50, clientY: 50 });
     dispatchPointer(window, 'pointermove', { pointerId: 124, button: 0, buttons: 1, clientX: 44.5, clientY: 50 });
 
-    expect(scroller.dataset.houseFirstDeckPlacementState).toBe('snap-available');
-    expect(scroller.dataset.houseFirstDeckAffordanceState).toBe('snap-available');
-    expect(scroller.dataset.houseFirstDeckReferenceGuideState).toBe('snap-lane');
-    expect(scroller.dataset.houseFirstDeckSnapState).toBe('snap-available');
-    expect(rendered.container.querySelector('[data-house-first-preview-body-state="snap-available"]')).not.toBeNull();
-    expect(rendered.container.querySelector('[data-house-first-reference-guide="snap-lane"]')).not.toBeNull();
-    expect(rendered.container.querySelector('[data-house-first-snap-target="snap-available"]')).not.toBeNull();
+    expect(scroller.dataset.objectWorkbenchDeckPlacementState).toBe('snap-available');
+    expect(scroller.dataset.objectWorkbenchDeckAffordanceState).toBe('snap-available');
+    expect(scroller.dataset.objectWorkbenchDeckReferenceGuideState).toBe('snap-lane');
+    expect(scroller.dataset.objectWorkbenchDeckSnapState).toBe('snap-available');
+    expect(rendered.container.querySelector('[data-object-workbench-preview-body-state="snap-available"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[data-object-workbench-reference-guide="snap-lane"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[data-object-workbench-snap-target="snap-available"]')).not.toBeNull();
 
     dispatchPointer(window, 'pointerup', { pointerId: 124, button: 0, clientX: 44.5, clientY: 50 });
     await act(async () => {
@@ -6235,7 +6235,7 @@ describe('ModelSpaceViewport', () => {
     const scroller = rendered.container.querySelector('[data-model-space-scroller]') as HTMLElement | null;
     expect(rendered.container.querySelector('[data-editable-field-id="deck-1:crossEdgeGapM"]')).not.toBeNull();
     expect(rendered.container.querySelector('[data-editable-field-id="deck-1:hostStartGapM"]')).toBeNull();
-    expect(scroller?.dataset.houseFirstSelectedDeckDragEligible).toBe('true');
+    expect(scroller?.dataset.objectWorkbenchSelectedDeckDragEligible).toBe('true');
     expect(rendered.container.querySelector('[data-testid="deck-telemetry-type"]')?.textContent).toBe(
       'preset_floating',
     );
@@ -6270,7 +6270,7 @@ describe('ModelSpaceViewport', () => {
     const scroller = rendered.container.querySelector('[data-model-space-scroller]') as HTMLElement | null;
     expect(rendered.container.querySelector('[data-editable-field-id="deck-1:crossEdgeGapM"]')).not.toBeNull();
     expect(rendered.container.querySelector('[data-editable-field-id="deck-1:hostStartGapM"]')).toBeNull();
-    expect(scroller?.dataset.houseFirstSelectedDeckDragEligible).toBe('true');
+    expect(scroller?.dataset.objectWorkbenchSelectedDeckDragEligible).toBe('true');
     expect(rendered.container.querySelector('[data-testid="deck-telemetry-type"]')?.textContent).toBe(
       'custom_outline',
     );
@@ -6303,7 +6303,7 @@ describe('ModelSpaceViewport', () => {
     );
 
     const svg = rendered.container.querySelector('svg[aria-label="Module plan view"]') as SVGSVGElement | null;
-    const deckHit = rendered.container.querySelector('[data-house-first-shape-hit="deck:deck-1"]');
+    const deckHit = rendered.container.querySelector('[data-object-workbench-shape-hit="deck:deck-1"]');
     const scroller = rendered.container.querySelector('[data-model-space-scroller]') as HTMLElement | null;
     if (!svg || !deckHit || !scroller) throw new Error('Missing plan viewport nodes.');
     installSvgPointMock(svg);
@@ -6311,17 +6311,17 @@ describe('ModelSpaceViewport', () => {
     dispatchPointer(deckHit, 'pointerdown', { pointerId: 81, button: 0, clientX: 50, clientY: 50 });
     dispatchPointer(window, 'pointermove', { pointerId: 81, button: 0, buttons: 1, clientX: 150, clientY: 50 });
 
-    expect(scroller.dataset.houseFirstDeckDragActive).toBe('true');
-    expect(rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]')).not.toBeNull();
+    expect(scroller.dataset.objectWorkbenchDeckDragActive).toBe('true');
+    expect(rendered.container.querySelector('[data-object-workbench-preview-shape="deck-1"]')).not.toBeNull();
 
     dispatchPointer(window, 'pointerup', { pointerId: 81, button: 0, clientX: 150, clientY: 50 });
     await act(async () => {
       await Promise.resolve();
     });
-    await waitForHouseFirstDeckSettleComplete(rendered.container);
+    await waitForObjectWorkbenchDeckSettleComplete(rendered.container);
 
-    expect(scroller.dataset.houseFirstDeckDragActive).toBe('false');
-    expect(rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]')).toBeNull();
+    expect(scroller.dataset.objectWorkbenchDeckDragActive).toBe('false');
+    expect(rendered.container.querySelector('[data-object-workbench-preview-shape="deck-1"]')).toBeNull();
     expect(rendered.container.querySelector('[data-testid="deck-outline-0-along"]')?.textContent).not.toBe('1');
     expect(rendered.container.querySelector('[aria-label="Deck interaction hint"]')?.textContent).toContain('Position updated');
     await act(async () => {

@@ -11,13 +11,39 @@ const FLAT_COMPATIBILITY_DERIVED_READ_ROOTS = [
   path.join('apps', 'portal', 'lib', 'drawings', 'state'),
   path.join('apps', 'portal', 'lib', 'drawings', 'views', 'plan'),
 ];
+const GEOMETRY_SOURCE_ROOT = path.join('apps', 'portal', 'lib', 'drawings', 'geometry');
+const GEOMETRY_COMPAT_PATH_SEGMENT = `${path.sep}geometry${path.sep}compat${path.sep}`;
+const OBJECT_WORKBENCH_GEOMETRY_UI_ROOTS = [
+  path.join('apps', 'portal', 'components', 'drawings', 'rail'),
+  path.join('apps', 'portal', 'components', 'drawings', 'viewports'),
+  path.join('apps', 'portal', 'components', 'drawings', 'workbench'),
+  path.join('apps', 'portal', 'app', 'staff', 'projects', '[projectId]', 'design-workbench'),
+];
 const OBJECT_WORKBENCH_BOUNDARY_FILES = [
   path.join('apps', 'portal', 'components', 'drawings', 'workbench', 'DrawingWorkbench.tsx'),
   path.join('apps', 'portal', 'components', 'drawings', 'viewports', 'ModelSpaceViewport.tsx'),
   path.join('apps', 'portal', 'components', 'drawings', 'viewports', 'Geometry3DViewport.tsx'),
 ];
+const OBJECT_WORKBENCH_PLAN_OVERLAY_BOUNDARY_FILES = [
+  path.join('apps', 'portal', 'app', 'staff', 'calculator', 'ModuleViewsCard.tsx'),
+  path.join('apps', 'portal', 'app', 'staff', 'calculator', 'ModuleViewsCard.test.tsx'),
+  path.join('apps', 'portal', 'lib', 'drawings', 'views', 'plan', 'buildPlanViewModel.ts'),
+  path.join('apps', 'portal', 'lib', 'drawings', 'interactions', 'deckInteractionAdapter.ts'),
+  path.join('apps', 'portal', 'lib', 'drawings', 'interactions', 'openingInteractionAdapter.ts'),
+  path.join('apps', 'portal', 'lib', 'drawings', 'interactions', 'deckInteractionAdapter.test.ts'),
+  path.join('apps', 'portal', 'components', 'drawings', 'viewports', 'ModelSpaceViewport.tsx'),
+];
+const OBJECT_WORKBENCH_RENDERER_BOUNDARY_FILES = [
+  path.join('apps', 'portal', 'components', 'drawings', 'viewports', 'ModelSpaceViewport.tsx'),
+];
+const OBJECT_WORKBENCH_RENDERER_TEST_FILES = [
+  path.join('apps', 'portal', 'app', 'staff', 'calculator', 'ModuleViewsCard.test.tsx'),
+  path.join('apps', 'portal', 'components', 'drawings', 'viewports', 'ModelSpaceViewport.test.tsx'),
+];
 const FLAT_COMPATIBILITY_DERIVED_FIELD_READ =
   /\b[A-Za-z_$][\w$]*\.derived\.(?:house|houseCount|decks|openings|activeDeck|activeDeckId|activeOpening|activeOpeningId|pergolas|activePergola|activePergolaId|roofForm|roofReviewStatus|roofValidationStatus|roofValidationCode|roofValidationMessage|roofApproximationReasons|roofProvenance|roofGeometryKind|roofAppendageEnabled|roofAppendageStatus|roofAppendageSupportedHostEdges|roofAppendageSupportReason|migrationWarnings|migrationWarningCount|houseIsLowConfidence)\b/;
+const LEGACY_RENDERER_BOUNDARY_NAMES =
+  /\b(?:HouseFirstPlanShapeDragStartMeta|HouseFirstObjectPreviewOverlay|houseFirstPlanOverlay|houseFirstPreviewOverlay|activeHouseFirstCustomEdgeId|hoveredHouseFirstDeckId|onHouseFirstShapeSelect|onHouseFirstDeckHoverChange|onHouseFirstShapeDragStart|onHouseFirstCustomEdgeSelect|onHouseFirstDimensionActivate)\b/;
 const ALLOWLISTED_COMPATIBILITY_FILES = new Set([
   path.normalize(path.join('apps', 'portal', 'app', 'staff', 'projects', '[projectId]', 'design-workbench', 'compat', 'objectWorkbenchDraftActionBridge.ts')),
   path.normalize(path.join('apps', 'portal', 'app', 'staff', 'projects', '[projectId]', 'design-workbench', 'compat', 'workbenchCompatibilityDraftBuilders.ts')),
@@ -91,6 +117,27 @@ describe('object workbench import guards', () => {
       }
     }
 
+    for (const relativeBoundaryPath of OBJECT_WORKBENCH_PLAN_OVERLAY_BOUNDARY_FILES.map((filePath) => path.normalize(filePath))) {
+      const source = fs.readFileSync(path.join(process.cwd(), relativeBoundaryPath), 'utf8');
+      if (/from ['"][^'"]*houseFirstPlanOverlay['"]/.test(source)) {
+        violations.push(`${relativeBoundaryPath} imports houseFirstPlanOverlay directly`);
+      }
+    }
+
+    for (const relativeBoundaryPath of OBJECT_WORKBENCH_RENDERER_BOUNDARY_FILES.map((filePath) => path.normalize(filePath))) {
+      const source = fs.readFileSync(path.join(process.cwd(), relativeBoundaryPath), 'utf8');
+      if (LEGACY_RENDERER_BOUNDARY_NAMES.test(source)) {
+        violations.push(`${relativeBoundaryPath} uses legacy house-first renderer boundary names`);
+      }
+    }
+
+    for (const relativeTestPath of OBJECT_WORKBENCH_RENDERER_TEST_FILES.map((filePath) => path.normalize(filePath))) {
+      const source = fs.readFileSync(path.join(process.cwd(), relativeTestPath), 'utf8');
+      if (/data-house-first-|dataset\.houseFirst|waitForHouseFirst/.test(source)) {
+        violations.push(`${relativeTestPath} uses legacy house-first renderer selectors`);
+      }
+    }
+
     expect(violations).toEqual([]);
   });
 
@@ -103,6 +150,31 @@ describe('object workbench import guards', () => {
         const source = fs.readFileSync(absolutePath, 'utf8');
         if (FLAT_COMPATIBILITY_DERIVED_FIELD_READ.test(source)) {
           violations.push(`${relativePath} reads removed flat compatibility fields from store.derived`);
+        }
+      }
+    }
+
+    expect(violations).toEqual([]);
+  });
+
+  it('keeps geometry compatibility imports behind the explicit compat namespace', () => {
+    const violations: string[] = [];
+
+    for (const absolutePath of listSourceFiles(path.join(process.cwd(), GEOMETRY_SOURCE_ROOT))) {
+      const relativePath = toRepoRelativePath(absolutePath);
+      if (relativePath.includes(GEOMETRY_COMPAT_PATH_SEGMENT)) continue;
+      const source = fs.readFileSync(absolutePath, 'utf8');
+      if (/from ['"][^'"]*houseFirstWorkbench(?:Model|Adapter)['"]/.test(source)) {
+        violations.push(`${relativePath} imports house-first workbench state outside geometry compat`);
+      }
+    }
+
+    for (const root of OBJECT_WORKBENCH_GEOMETRY_UI_ROOTS) {
+      for (const absolutePath of listSourceFiles(path.join(process.cwd(), root), { includeTests: true })) {
+        const relativePath = toRepoRelativePath(absolutePath);
+        const source = fs.readFileSync(absolutePath, 'utf8');
+        if (/from ['"][^'"]*\/geometry\/compat\//.test(source)) {
+          violations.push(`${relativePath} imports geometry compatibility internals`);
         }
       }
     }

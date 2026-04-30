@@ -16,9 +16,9 @@ import type {
   ViewerSceneObject,
 } from "@sp/geometry";
 import { getSanctuaryGeometryWorkbenchFixture } from "@/lib/drawings/sanctuaryWorkbenchFixtures";
-import { buildWorkbenchGeometryPreview } from "@/lib/drawings/geometry/buildWorkbenchGeometryPreview";
+import { buildObjectWorkbenchGeometryPreview } from "@/lib/drawings/geometry/buildWorkbenchGeometryPreview";
 import { buildEstimateDrawingDraftFromSnapshot } from "@/lib/estimates/drawingEdits";
-import { applyGeometryEditIntent } from "@/lib/drawings/geometry/geometryEditAdapter";
+import { applyObjectWorkbenchGeometryEditIntent } from "@/lib/drawings/geometry/geometryEditAdapter";
 import Geometry3DViewport, {
   buildClippedBoxGeometry,
   buildClippedProfileExtrusionGeometry,
@@ -556,7 +556,7 @@ function buildMovedHousePreview(input: {
   ];
 
   for (const intent of intents) {
-    const result = applyGeometryEditIntent({
+    const result = applyObjectWorkbenchGeometryEditIntent({
       snapshot: fixture.snapshot,
       draft,
       moduleIndex: 0,
@@ -569,7 +569,7 @@ function buildMovedHousePreview(input: {
     draft = result.draft;
   }
 
-  const geometryPreview = buildWorkbenchGeometryPreview({
+  const geometryPreview = buildObjectWorkbenchGeometryPreview({
     projectId: "proj_preview",
     estimateId: fixture.estimate.id,
     designRequestId: fixture.request.id,
@@ -588,7 +588,7 @@ function buildScreenshotStyleRoofPreview(
 ) {
   const fixture = requireFixture(slug);
 
-  return buildWorkbenchGeometryPreview({
+  return buildObjectWorkbenchGeometryPreview({
     projectId: "proj_preview",
     estimateId: fixture.estimate.id,
     designRequestId: fixture.request.id,
@@ -703,7 +703,7 @@ describe("Geometry3DViewport", () => {
 
   it("clips rectangular gable rafter tail geometry at the gutter inside face", () => {
     const fixture = requireFixture("gable-standard");
-    const geometryPreview = buildWorkbenchGeometryPreview({
+    const geometryPreview = buildObjectWorkbenchGeometryPreview({
       projectId: "proj_preview",
       estimateId: fixture.estimate.id,
       designRequestId: fixture.request.id,
@@ -783,7 +783,7 @@ describe("Geometry3DViewport", () => {
     if (!draft?.inputs.modules[0]) {
       throw new Error("Expected draft geometry module.");
     }
-    const acrylic = applyGeometryEditIntent({
+    const acrylic = applyObjectWorkbenchGeometryEditIntent({
       snapshot: fixture.snapshot,
       draft,
       moduleIndex: 0,
@@ -797,7 +797,7 @@ describe("Geometry3DViewport", () => {
       return;
     }
 
-    const geometryPreview = buildWorkbenchGeometryPreview({
+    const geometryPreview = buildObjectWorkbenchGeometryPreview({
       projectId: "proj_preview",
       estimateId: fixture.estimate.id,
       designRequestId: fixture.request.id,
@@ -875,7 +875,7 @@ describe("Geometry3DViewport", () => {
 
   it("renders inspection controls, camera actions, and inspector updates for the 3D scene", async () => {
     const fixture = requireFixture("mono-standard");
-    const geometryPreview = buildWorkbenchGeometryPreview({
+    const geometryPreview = buildObjectWorkbenchGeometryPreview({
       projectId: "proj_preview",
       estimateId: fixture.estimate.id,
       designRequestId: fixture.request.id,
@@ -1234,7 +1234,7 @@ describe("Geometry3DViewport", () => {
 
   it("suppresses native selection on the 3D canvas shell without blocking workspace panel controls", async () => {
     const fixture = requireFixture("mono-standard");
-    const geometryPreview = buildWorkbenchGeometryPreview({
+    const geometryPreview = buildObjectWorkbenchGeometryPreview({
       projectId: "proj_preview",
       estimateId: fixture.estimate.id,
       designRequestId: fixture.request.id,
@@ -1291,7 +1291,7 @@ describe("Geometry3DViewport", () => {
 
   it("renders and inspects semantic house model scene objects", async () => {
     const fixture = requireFixture("mono-standard");
-    const geometryPreview = buildWorkbenchGeometryPreview({
+    const geometryPreview = buildObjectWorkbenchGeometryPreview({
       projectId: "proj_preview",
       estimateId: fixture.estimate.id,
       designRequestId: fixture.request.id,
@@ -1471,7 +1471,7 @@ describe("Geometry3DViewport", () => {
       ],
     };
 
-    const geometryPreview = buildWorkbenchGeometryPreview({
+    const geometryPreview = buildObjectWorkbenchGeometryPreview({
       projectId: "proj_preview",
       estimateId: fixture.estimate.id,
       designRequestId: fixture.request.id,
@@ -1605,7 +1605,7 @@ describe("Geometry3DViewport", () => {
       ["offsetXM", "-1"],
       ["setbackM", "0.4"],
     ] as const) {
-      const result = applyGeometryEditIntent({
+      const result = applyObjectWorkbenchGeometryEditIntent({
         snapshot: fixture.snapshot,
         draft,
         moduleIndex: 0,
@@ -1620,7 +1620,7 @@ describe("Geometry3DViewport", () => {
       draft = result.draft;
     }
 
-    const geometryPreview = buildWorkbenchGeometryPreview({
+    const geometryPreview = buildObjectWorkbenchGeometryPreview({
       projectId: "proj_preview",
       estimateId: fixture.estimate.id,
       designRequestId: fixture.request.id,
@@ -1941,7 +1941,7 @@ describe("Geometry3DViewport", () => {
 
   it("skips invalid semantic house objects without corrupting scene focus", async () => {
     const fixture = requireFixture("mono-standard");
-    const geometryPreview = buildWorkbenchGeometryPreview({
+    const geometryPreview = buildObjectWorkbenchGeometryPreview({
       projectId: "proj_preview",
       estimateId: fixture.estimate.id,
       designRequestId: fixture.request.id,
@@ -2094,7 +2094,7 @@ describe("Geometry3DViewport", () => {
       projection_m: null,
     };
 
-    const geometryPreview = buildWorkbenchGeometryPreview({
+    const geometryPreview = buildObjectWorkbenchGeometryPreview({
       projectId: "proj_preview",
       estimateId: fixture.estimate.id,
       snapshot,
@@ -2124,7 +2124,7 @@ describe("Geometry3DViewport", () => {
     if (!draft?.inputs.modules[0]) {
       throw new Error("Expected draft geometry module.");
     }
-    const acrylic = applyGeometryEditIntent({
+    const acrylic = applyObjectWorkbenchGeometryEditIntent({
       snapshot: fixture.snapshot,
       draft,
       moduleIndex: 0,
@@ -2138,7 +2138,7 @@ describe("Geometry3DViewport", () => {
       return;
     }
 
-    const geometryPreview = buildWorkbenchGeometryPreview({
+    const geometryPreview = buildObjectWorkbenchGeometryPreview({
       projectId: "proj_preview",
       estimateId: fixture.estimate.id,
       designRequestId: fixture.request.id,

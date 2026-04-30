@@ -1,4 +1,4 @@
-import type { WorkbenchPergolaRenderStatus } from '@/lib/drawings/geometry/deriveWorkbenchGeometry';
+import type { ObjectWorkbenchPergolaRenderStatus } from '@/lib/drawings/geometry/deriveWorkbenchGeometry';
 import type {
   ObjectFirstOpeningHostResolution,
   ObjectFirstPergolaAttachmentResolution,
@@ -55,7 +55,7 @@ export type DrawingWorkbenchRailModel = {
 
 type DrawingWorkbenchRailPergolaModuleState = {
   pergolaId: string | null | undefined;
-  planRenderStatus: WorkbenchPergolaRenderStatus;
+  planRenderStatus: ObjectWorkbenchPergolaRenderStatus;
 };
 
 const FAMILY_ORDER: WorkbenchObjectFamily[] = ['house_forms', 'decks', 'openings', 'pergolas'];

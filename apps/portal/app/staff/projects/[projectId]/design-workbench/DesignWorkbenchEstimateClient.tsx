@@ -4,9 +4,9 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import DrawingWorkbench from '@/components/drawings/workbench/DrawingWorkbench';
 import type { Geometry3DViewportState } from '@/components/drawings/viewports/Geometry3DViewport';
 import {
-  buildGeometryEditState,
+  buildObjectWorkbenchGeometryEditState,
 } from '@/lib/drawings/geometry/geometryEditAdapter';
-import { buildWorkbenchGeometryPreview } from '@/lib/drawings/geometry/buildWorkbenchGeometryPreview';
+import { buildObjectWorkbenchGeometryPreview } from '@/lib/drawings/geometry/buildWorkbenchGeometryPreview';
 import { buildDrawingWorkbenchStore } from '@/lib/drawings/state/drawingWorkbenchStore';
 import {
   areDrawingWorkbenchObjectSelectionStatesEqual,
@@ -172,7 +172,7 @@ export default function DesignWorkbenchEstimateClient({
   }));
   const isLocked = estimate.editability.isLocked;
   const geometryEditState = useMemo(() => {
-    const result = buildGeometryEditState({
+    const result = buildObjectWorkbenchGeometryEditState({
       snapshot: estimate.calculatorSnapshot,
       draft: drawingDraft,
       moduleIndex: store.derived.activeModuleIndex,
@@ -245,7 +245,7 @@ export default function DesignWorkbenchEstimateClient({
   );
   const geometryPreview = useMemo(
     () =>
-      buildWorkbenchGeometryPreview({
+      buildObjectWorkbenchGeometryPreview({
         projectId: estimate.projectId,
         estimateId: estimate.id,
         snapshot: estimate.calculatorSnapshot,

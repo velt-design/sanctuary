@@ -2,7 +2,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import type { CostOutputV1 } from '@sp/costing';
 import type { CalculatorModuleInputs } from '@/lib/types/calculator';
-import type { HouseFirstPlanOverlay } from '@/lib/drawings/views/plan/houseFirstPlanOverlay';
+import type { ObjectWorkbenchPlanOverlay } from '@/lib/drawings/views/plan/objectWorkbenchPlanOverlay';
 import { buildEstimateDrawingModules } from '@/lib/estimates/moduleDrawing';
 import ModuleViewsCard, {
   ModuleDrawingRenderer,
@@ -807,7 +807,7 @@ describe('ModuleViewsCard', () => {
         ],
       },
     };
-    const houseOverlay: HouseFirstPlanOverlay = {
+    const houseOverlay: ObjectWorkbenchPlanOverlay = {
       housePolygonSource: 'preset_derived',
       shapes: [
         {
@@ -852,7 +852,7 @@ describe('ModuleViewsCard', () => {
         sectionModel={drawing.sectionModel}
         presentation="model"
         displayMode="house"
-        houseFirstPlanOverlay={houseOverlay}
+        objectWorkbenchPlanOverlay={houseOverlay}
       />,
     );
     const cardMarkup = renderToStaticMarkup(
@@ -861,13 +861,13 @@ describe('ModuleViewsCard', () => {
         status="ready"
         planModel={planModel}
         sectionModel={drawing.sectionModel}
-        houseFirstPlanOverlay={houseOverlay}
+        objectWorkbenchPlanOverlay={houseOverlay}
       />,
     );
 
     const modelFootprintPoints = extractPolygonPoints(modelMarkup, 'data-house-plan-surface', 'footprint');
     const cardFootprintPoints = extractPolygonPoints(cardMarkup, 'data-house-plan-surface', 'footprint');
-    const modelOpeningPoints = extractPolygonPoints(modelMarkup, 'data-house-first-shape', 'opening:opening-1');
+    const modelOpeningPoints = extractPolygonPoints(modelMarkup, 'data-object-workbench-shape', 'opening:opening-1');
 
     expect(modelFootprintPoints[0]?.y).toBeLessThan(modelFootprintPoints[2]?.y);
     expect(cardFootprintPoints[0]?.y).toBeLessThan(cardFootprintPoints[2]?.y);
@@ -1277,9 +1277,9 @@ describe('ModuleViewsCard', () => {
     expect(sheetMarkup).not.toContain('data-plan-resize-handle-hit=');
   });
 
-  it('renders house-first deck targets above the pergola plan fill in model space', () => {
+  it('renders object-workbench deck targets above the pergola plan fill in model space', () => {
     const drawing = makeDrawingModule();
-    const houseFirstPlanOverlay: HouseFirstPlanOverlay = {
+    const objectWorkbenchPlanOverlay: ObjectWorkbenchPlanOverlay = {
       housePolygonSource: 'preset_derived',
       shapes: [
         {
@@ -1312,17 +1312,17 @@ describe('ModuleViewsCard', () => {
         planModel={drawing.planModel}
         sectionModel={drawing.sectionModel}
         presentation="model"
-        houseFirstPlanOverlay={houseFirstPlanOverlay}
+        objectWorkbenchPlanOverlay={objectWorkbenchPlanOverlay}
       />,
     );
 
     const pergolaFillIndex = markup.indexOf('data-plan-primary-fill="true"');
-    const deckHitIndex = markup.indexOf('data-house-first-shape-hit="deck:deck-1"');
+    const deckHitIndex = markup.indexOf('data-object-workbench-shape-hit="deck:deck-1"');
     expect(pergolaFillIndex).toBeGreaterThanOrEqual(0);
     expect(deckHitIndex).toBeGreaterThan(pergolaFillIndex);
   });
 
-  it('uses the house-first deck overlay as the single house-mode plan deck body', () => {
+  it('uses the object-workbench deck overlay as the single house-mode plan deck body', () => {
     const drawing = makeDrawingModule();
     const planModel: ModulePlanModel = {
       ...drawing.planModel!,
@@ -1352,7 +1352,7 @@ describe('ModuleViewsCard', () => {
         lines: [],
       },
     };
-    const houseFirstPlanOverlay: HouseFirstPlanOverlay = {
+    const objectWorkbenchPlanOverlay: ObjectWorkbenchPlanOverlay = {
       housePolygonSource: 'preset_derived',
       shapes: [
         {
@@ -1388,16 +1388,16 @@ describe('ModuleViewsCard', () => {
         sectionModel={drawing.sectionModel}
         presentation="model"
         displayMode="house"
-        houseFirstPlanOverlay={houseFirstPlanOverlay}
+        objectWorkbenchPlanOverlay={objectWorkbenchPlanOverlay}
       />,
     );
 
-    expect(markup).toContain('data-house-first-shape="deck:deck-1"');
+    expect(markup).toContain('data-object-workbench-shape="deck:deck-1"');
     expect(markup).toContain('data-house-plan-surface="footprint"');
     expect(markup).not.toContain('data-house-plan-surface="deck"');
   });
 
-  it('hides semantic and house-first deck visuals when deck visibility is off', () => {
+  it('hides semantic and object-workbench deck visuals when deck visibility is off', () => {
     const drawing = makeDrawingModule();
     const planModel: ModulePlanModel = {
       ...drawing.planModel!,
@@ -1427,7 +1427,7 @@ describe('ModuleViewsCard', () => {
         lines: [],
       },
     };
-    const houseFirstPlanOverlay: HouseFirstPlanOverlay = {
+    const objectWorkbenchPlanOverlay: ObjectWorkbenchPlanOverlay = {
       housePolygonSource: 'preset_derived',
       shapes: [
         {
@@ -1464,19 +1464,19 @@ describe('ModuleViewsCard', () => {
         presentation="model"
         displayMode="house"
         visibility={{ house: true, pergolas: true, decks: false, openings: true }}
-        houseFirstPlanOverlay={houseFirstPlanOverlay}
+        objectWorkbenchPlanOverlay={objectWorkbenchPlanOverlay}
       />,
     );
 
     expect(markup).toContain('data-house-plan-surface="footprint"');
     expect(markup).not.toContain('data-house-plan-surface="deck"');
-    expect(markup).not.toContain('data-house-first-shape="deck:deck-1"');
-    expect(markup).not.toContain('data-house-first-shape-hit="deck:deck-1"');
+    expect(markup).not.toContain('data-object-workbench-shape="deck:deck-1"');
+    expect(markup).not.toContain('data-object-workbench-shape-hit="deck:deck-1"');
   });
 
   it('suppresses the committed deck body and dimensions while a deck preview is active', () => {
     const drawing = makeDrawingModule();
-    const houseFirstPlanOverlay: HouseFirstPlanOverlay = {
+    const objectWorkbenchPlanOverlay: ObjectWorkbenchPlanOverlay = {
       housePolygonSource: 'preset_derived',
       shapes: [
         {
@@ -1524,8 +1524,8 @@ describe('ModuleViewsCard', () => {
         planModel={drawing.planModel}
         sectionModel={drawing.sectionModel}
         presentation="model"
-        houseFirstPlanOverlay={houseFirstPlanOverlay}
-        houseFirstPreviewOverlay={
+        objectWorkbenchPlanOverlay={objectWorkbenchPlanOverlay}
+        objectWorkbenchPreviewOverlay={
           {
             ownerKind: 'deck',
             ownerId: 'deck-1',
@@ -1546,11 +1546,11 @@ describe('ModuleViewsCard', () => {
       />,
     );
 
-    expect(markup).toContain('data-house-first-shape="deck:deck-1"');
-    expect(markup).toContain('data-house-first-shape-preview-suppressed="true"');
-    expect(markup).toContain('data-house-first-shape-hit-preview-suppressed="true"');
-    expect(markup).toContain('data-house-first-preview-shape="deck-1"');
-    expect(markup).not.toContain('data-house-first-plan-dimension="deck-width"');
+    expect(markup).toContain('data-object-workbench-shape="deck:deck-1"');
+    expect(markup).toContain('data-object-workbench-shape-preview-suppressed="true"');
+    expect(markup).toContain('data-object-workbench-shape-hit-preview-suppressed="true"');
+    expect(markup).toContain('data-object-workbench-preview-shape="deck-1"');
+    expect(markup).not.toContain('data-object-workbench-plan-dimension="deck-width"');
   });
 
   it('renders custom draw preview edges and vertex aid markers in model space', () => {

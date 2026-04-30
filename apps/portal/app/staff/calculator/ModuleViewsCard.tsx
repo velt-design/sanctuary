@@ -39,17 +39,17 @@ import {
   type DrawingSheetFitResult,
 } from '@/lib/estimates/drawingSheetLayout';
 import type {
-  HouseFirstPlanDeckInteraction,
-  HouseFirstPlanOpeningInteraction,
-  HouseFirstPlanCustomEdgeCandidate,
-  HouseFirstPlanOverlay,
-  HouseFirstPlanPresetDimensionAnnotation,
+  ObjectWorkbenchPlanDeckInteraction,
+  ObjectWorkbenchPlanOpeningInteraction,
+  ObjectWorkbenchPlanCustomEdgeCandidate,
+  ObjectWorkbenchPlanOverlay,
+  ObjectWorkbenchPlanPresetDimensionAnnotation,
   PlanPoint,
-} from '@/lib/drawings/views/plan/houseFirstPlanOverlay';
+} from '@/lib/drawings/views/plan/objectWorkbenchPlanOverlay';
 import type { ObjectInteractionPreviewOverlay } from '@/lib/drawings/interactions/objectInteractionEngine';
 import type {
-  WorkbenchPergolaRenderSource,
-  WorkbenchPergolaRenderStatus,
+  ObjectWorkbenchPergolaRenderSource,
+  ObjectWorkbenchPergolaRenderStatus,
 } from '@/lib/drawings/geometry/deriveWorkbenchGeometry';
 
 export type ModuleViewsTab = 'plan' | 'section';
@@ -118,12 +118,12 @@ export type ModulePlanInteractionProps = {
   onSvgMount?: (node: SVGSVGElement | null) => void;
 };
 
-export type HouseFirstPlanShapeDragStartMeta =
+export type ObjectWorkbenchPlanShapeDragStartMeta =
   | {
       ownerKind: 'deck';
       ownerId: string;
-      overlayShape: HouseFirstPlanOverlay['shapes'][number];
-      deckInteraction: HouseFirstPlanDeckInteraction & {
+      overlayShape: ObjectWorkbenchPlanOverlay['shapes'][number];
+      deckInteraction: ObjectWorkbenchPlanDeckInteraction & {
         hostEdgeStart: Point;
         hostEdgeEnd: Point;
       };
@@ -131,13 +131,15 @@ export type HouseFirstPlanShapeDragStartMeta =
   | {
       ownerKind: 'opening';
       ownerId: string;
-      openingInteraction: HouseFirstPlanOpeningInteraction & {
+      openingInteraction: ObjectWorkbenchPlanOpeningInteraction & {
         hostEdgeStart: Point;
         hostEdgeEnd: Point;
       };
     };
 
-export type HouseFirstObjectPreviewOverlay = ObjectInteractionPreviewOverlay<PlanPoint>;
+export type ObjectWorkbenchPreviewOverlay = ObjectInteractionPreviewOverlay<PlanPoint>;
+export type HouseFirstPlanShapeDragStartMeta = ObjectWorkbenchPlanShapeDragStartMeta;
+export type HouseFirstObjectPreviewOverlay = ObjectWorkbenchPreviewOverlay;
 
 export type ModuleFootprintCanvasPointResolver = (clientX: number, clientY: number) => ModuleFootprintCanvasPoint | null;
 
@@ -221,27 +223,27 @@ type ModuleDrawingRendererProps = {
   footprintEditor?: ModuleFootprintEditorProps;
   planInteraction?: ModulePlanInteractionProps;
   sheetPlanInteraction?: ModulePlanSheetInteractionProps;
-  houseFirstPlanOverlay?: HouseFirstPlanOverlay | null;
-  activeHouseFirstCustomEdgeId?: string | null;
-  onHouseFirstShapeSelect?: (target: { ownerKind: 'footprint' | 'deck' | 'opening'; ownerId: string }) => void;
-  hoveredHouseFirstDeckId?: string | null;
-  onHouseFirstDeckHoverChange?: (deckId: string | null) => void;
+  objectWorkbenchPlanOverlay?: ObjectWorkbenchPlanOverlay | null;
+  activeObjectWorkbenchCustomEdgeId?: string | null;
+  onObjectWorkbenchShapeSelect?: (target: { ownerKind: 'footprint' | 'deck' | 'opening'; ownerId: string }) => void;
+  hoveredObjectWorkbenchDeckId?: string | null;
+  onObjectWorkbenchDeckHoverChange?: (deckId: string | null) => void;
   currentPergolaId?: string | null;
   onPergolaSelect?: (pergolaId: string) => void;
   onCanvasSelect?: () => void;
-  onHouseFirstShapeDragStart?: (
-    meta: HouseFirstPlanShapeDragStartMeta,
+  onObjectWorkbenchShapeDragStart?: (
+    meta: ObjectWorkbenchPlanShapeDragStartMeta,
     event: { pointerId: number; clientX: number; clientY: number },
   ) => void;
-  onHouseFirstCustomEdgeSelect?: (target: { ownerKind: 'footprint' | 'deck'; ownerId: string; edgeIndex: number }) => void;
-  onHouseFirstDimensionActivate?: (
-    annotation: HouseFirstPlanPresetDimensionAnnotation | HouseFirstPlanCustomEdgeCandidate,
+  onObjectWorkbenchCustomEdgeSelect?: (target: { ownerKind: 'footprint' | 'deck'; ownerId: string; edgeIndex: number }) => void;
+  onObjectWorkbenchDimensionActivate?: (
+    annotation: ObjectWorkbenchPlanPresetDimensionAnnotation | ObjectWorkbenchPlanCustomEdgeCandidate,
     target: SVGTextElement,
   ) => void;
-  houseFirstPreviewOverlay?: HouseFirstObjectPreviewOverlay | null;
+  objectWorkbenchPreviewOverlay?: ObjectWorkbenchPreviewOverlay | null;
   modelSpacePergolaGeometry?: GeometryPlanViewModel | null;
-  modelSpacePergolaRenderSource?: WorkbenchPergolaRenderSource;
-  modelSpacePergolaRenderStatus?: WorkbenchPergolaRenderStatus;
+  modelSpacePergolaRenderSource?: ObjectWorkbenchPergolaRenderSource;
+  modelSpacePergolaRenderStatus?: ObjectWorkbenchPergolaRenderStatus;
 };
 
 type ModuleDrawingInteractiveField = {
@@ -396,18 +398,18 @@ export function ModuleDrawingRenderer({
   footprintEditor,
   planInteraction,
   sheetPlanInteraction,
-  houseFirstPlanOverlay,
-  hoveredHouseFirstDeckId,
-  onHouseFirstDeckHoverChange,
-  activeHouseFirstCustomEdgeId,
-  onHouseFirstShapeSelect,
+  objectWorkbenchPlanOverlay,
+  hoveredObjectWorkbenchDeckId,
+  onObjectWorkbenchDeckHoverChange,
+  activeObjectWorkbenchCustomEdgeId,
+  onObjectWorkbenchShapeSelect,
   currentPergolaId,
   onPergolaSelect,
   onCanvasSelect,
-  onHouseFirstShapeDragStart,
-  onHouseFirstCustomEdgeSelect,
-  onHouseFirstDimensionActivate,
-  houseFirstPreviewOverlay,
+  onObjectWorkbenchShapeDragStart,
+  onObjectWorkbenchCustomEdgeSelect,
+  onObjectWorkbenchDimensionActivate,
+  objectWorkbenchPreviewOverlay,
   modelSpacePergolaGeometry,
   modelSpacePergolaRenderSource,
   modelSpacePergolaRenderStatus,
@@ -527,18 +529,18 @@ export function ModuleDrawingRenderer({
               footprintEditor={footprintEditor}
               planInteraction={planInteraction}
               sheetPlanInteraction={sheetPlanInteraction}
-              houseFirstPlanOverlay={houseFirstPlanOverlay}
-              hoveredHouseFirstDeckId={hoveredHouseFirstDeckId}
-              onHouseFirstDeckHoverChange={onHouseFirstDeckHoverChange}
-              activeHouseFirstCustomEdgeId={activeHouseFirstCustomEdgeId}
-              onHouseFirstShapeSelect={onHouseFirstShapeSelect}
+              objectWorkbenchPlanOverlay={objectWorkbenchPlanOverlay}
+              hoveredObjectWorkbenchDeckId={hoveredObjectWorkbenchDeckId}
+              onObjectWorkbenchDeckHoverChange={onObjectWorkbenchDeckHoverChange}
+              activeObjectWorkbenchCustomEdgeId={activeObjectWorkbenchCustomEdgeId}
+              onObjectWorkbenchShapeSelect={onObjectWorkbenchShapeSelect}
               currentPergolaId={currentPergolaId}
               onPergolaSelect={onPergolaSelect}
               onCanvasSelect={onCanvasSelect}
-              onHouseFirstShapeDragStart={onHouseFirstShapeDragStart}
-              onHouseFirstCustomEdgeSelect={onHouseFirstCustomEdgeSelect}
-              onHouseFirstDimensionActivate={onHouseFirstDimensionActivate}
-              houseFirstPreviewOverlay={houseFirstPreviewOverlay}
+              onObjectWorkbenchShapeDragStart={onObjectWorkbenchShapeDragStart}
+              onObjectWorkbenchCustomEdgeSelect={onObjectWorkbenchCustomEdgeSelect}
+              onObjectWorkbenchDimensionActivate={onObjectWorkbenchDimensionActivate}
+              objectWorkbenchPreviewOverlay={objectWorkbenchPreviewOverlay}
               modelSpacePergolaGeometry={modelSpacePergolaGeometry}
               modelSpacePergolaRenderSource={modelSpacePergolaRenderSource}
               modelSpacePergolaRenderStatus={modelSpacePergolaRenderStatus}
@@ -2906,10 +2908,10 @@ function estimateTickDimensionBounds(
   ]);
 }
 
-function renderHouseFirstDimension(
-  annotation: HouseFirstPlanPresetDimensionAnnotation | HouseFirstPlanCustomEdgeCandidate,
+function renderObjectWorkbenchDimension(
+  annotation: ObjectWorkbenchPlanPresetDimensionAnnotation | ObjectWorkbenchPlanCustomEdgeCandidate,
   onActivate?: (
-    annotation: HouseFirstPlanPresetDimensionAnnotation | HouseFirstPlanCustomEdgeCandidate,
+    annotation: ObjectWorkbenchPlanPresetDimensionAnnotation | ObjectWorkbenchPlanCustomEdgeCandidate,
     target: SVGTextElement,
   ) => void,
 ) {
@@ -2980,30 +2982,30 @@ function renderHouseFirstDimension(
   );
 }
 
-function renderHouseFirstPlanOverlay(input: {
-  shapes: Array<HouseFirstPlanOverlay['shapes'][number] & { points: Point[] }>;
+function renderObjectWorkbenchPlanOverlay(input: {
+  shapes: Array<ObjectWorkbenchPlanOverlay['shapes'][number] & { points: Point[] }>;
   previewShape: {
     ownerKind: 'deck' | 'opening';
     ownerId: string;
     points: Point[];
-    bodyState: HouseFirstObjectPreviewOverlay['bodyState'];
+    bodyState: ObjectWorkbenchPreviewOverlay['bodyState'];
     anchorPoint: Point | null;
     referenceGuide: {
       start: Point;
       end: Point;
-      state: NonNullable<HouseFirstObjectPreviewOverlay['referenceGuide']>['state'];
+      state: NonNullable<ObjectWorkbenchPreviewOverlay['referenceGuide']>['state'];
     } | null;
     targetHighlights: Array<{ start: Point; end: Point; state: 'preview' | 'snap-available' | 'snapped' }>;
     lockedCornerPoint: Point | null;
     endCatchPoint: Point | null;
   } | null;
-  customEdgeCandidates: Array<HouseFirstPlanCustomEdgeCandidate & {
+  customEdgeCandidates: Array<ObjectWorkbenchPlanCustomEdgeCandidate & {
     witnessStart: Point;
     witnessEnd: Point;
     lineStart: Point;
     lineEnd: Point;
   }>;
-  presetAnnotations: Array<HouseFirstPlanPresetDimensionAnnotation & {
+  presetAnnotations: Array<ObjectWorkbenchPlanPresetDimensionAnnotation & {
     witnessStart: Point;
     witnessEnd: Point;
     lineStart: Point;
@@ -3014,12 +3016,12 @@ function renderHouseFirstPlanOverlay(input: {
   hoveredDeckId?: string | null;
   onDeckHoverChange?: (deckId: string | null) => void;
   onShapeDragStart?: (
-    meta: HouseFirstPlanShapeDragStartMeta,
+    meta: ObjectWorkbenchPlanShapeDragStartMeta,
     event: { pointerId: number; clientX: number; clientY: number },
   ) => void;
   onCustomEdgeSelect?: (target: { ownerKind: 'footprint' | 'deck'; ownerId: string; edgeIndex: number }) => void;
   onDimensionActivate?: (
-    annotation: HouseFirstPlanPresetDimensionAnnotation | HouseFirstPlanCustomEdgeCandidate,
+    annotation: ObjectWorkbenchPlanPresetDimensionAnnotation | ObjectWorkbenchPlanCustomEdgeCandidate,
     target: SVGTextElement,
   ) => void;
 }) {
@@ -3380,12 +3382,12 @@ function renderHouseFirstPlanOverlay(input: {
           ))
         : null}
       {visiblePresetAnnotations.length
-        ? visiblePresetAnnotations.map((annotation) => renderHouseFirstDimension(annotation, onDimensionActivate))
+        ? visiblePresetAnnotations.map((annotation) => renderObjectWorkbenchDimension(annotation, onDimensionActivate))
         : null}
       {visibleCustomEdgeCandidates.length
         ? visibleCustomEdgeCandidates
             .filter((annotation) => annotation.id === activeCustomEdgeId)
-            .map((annotation) => renderHouseFirstDimension(annotation, onDimensionActivate))
+            .map((annotation) => renderObjectWorkbenchDimension(annotation, onDimensionActivate))
         : null}
     </>
   );
@@ -4616,18 +4618,18 @@ function PlanSvg({
   footprintEditor,
   planInteraction,
   sheetPlanInteraction,
-  houseFirstPlanOverlay,
-  hoveredHouseFirstDeckId,
-  onHouseFirstDeckHoverChange,
-  activeHouseFirstCustomEdgeId,
-  onHouseFirstShapeSelect,
+  objectWorkbenchPlanOverlay,
+  hoveredObjectWorkbenchDeckId,
+  onObjectWorkbenchDeckHoverChange,
+  activeObjectWorkbenchCustomEdgeId,
+  onObjectWorkbenchShapeSelect,
   currentPergolaId,
   onPergolaSelect,
   onCanvasSelect,
-  onHouseFirstShapeDragStart,
-  onHouseFirstCustomEdgeSelect,
-  onHouseFirstDimensionActivate,
-  houseFirstPreviewOverlay,
+  onObjectWorkbenchShapeDragStart,
+  onObjectWorkbenchCustomEdgeSelect,
+  onObjectWorkbenchDimensionActivate,
+  objectWorkbenchPreviewOverlay,
   modelSpacePergolaGeometry,
   modelSpacePergolaRenderSource = 'legacy',
   modelSpacePergolaRenderStatus = 'invalid_geometry',
@@ -4646,27 +4648,27 @@ function PlanSvg({
   footprintEditor?: ModuleFootprintEditorProps;
   planInteraction?: ModulePlanInteractionProps;
   sheetPlanInteraction?: ModulePlanSheetInteractionProps;
-  houseFirstPlanOverlay?: HouseFirstPlanOverlay | null;
-  hoveredHouseFirstDeckId?: string | null;
-  onHouseFirstDeckHoverChange?: (deckId: string | null) => void;
-  activeHouseFirstCustomEdgeId?: string | null;
-  onHouseFirstShapeSelect?: (target: { ownerKind: 'footprint' | 'deck' | 'opening'; ownerId: string }) => void;
+  objectWorkbenchPlanOverlay?: ObjectWorkbenchPlanOverlay | null;
+  hoveredObjectWorkbenchDeckId?: string | null;
+  onObjectWorkbenchDeckHoverChange?: (deckId: string | null) => void;
+  activeObjectWorkbenchCustomEdgeId?: string | null;
+  onObjectWorkbenchShapeSelect?: (target: { ownerKind: 'footprint' | 'deck' | 'opening'; ownerId: string }) => void;
   currentPergolaId?: string | null;
   onPergolaSelect?: (pergolaId: string) => void;
   onCanvasSelect?: () => void;
-  onHouseFirstShapeDragStart?: (
-    meta: HouseFirstPlanShapeDragStartMeta,
+  onObjectWorkbenchShapeDragStart?: (
+    meta: ObjectWorkbenchPlanShapeDragStartMeta,
     event: { pointerId: number; clientX: number; clientY: number },
   ) => void;
-  onHouseFirstCustomEdgeSelect?: (target: { ownerKind: 'footprint' | 'deck'; ownerId: string; edgeIndex: number }) => void;
-  onHouseFirstDimensionActivate?: (
-    annotation: HouseFirstPlanPresetDimensionAnnotation | HouseFirstPlanCustomEdgeCandidate,
+  onObjectWorkbenchCustomEdgeSelect?: (target: { ownerKind: 'footprint' | 'deck'; ownerId: string; edgeIndex: number }) => void;
+  onObjectWorkbenchDimensionActivate?: (
+    annotation: ObjectWorkbenchPlanPresetDimensionAnnotation | ObjectWorkbenchPlanCustomEdgeCandidate,
     target: SVGTextElement,
   ) => void;
-  houseFirstPreviewOverlay?: HouseFirstObjectPreviewOverlay | null;
+  objectWorkbenchPreviewOverlay?: ObjectWorkbenchPreviewOverlay | null;
   modelSpacePergolaGeometry?: GeometryPlanViewModel | null;
-  modelSpacePergolaRenderSource?: WorkbenchPergolaRenderSource;
-  modelSpacePergolaRenderStatus?: WorkbenchPergolaRenderStatus;
+  modelSpacePergolaRenderSource?: ObjectWorkbenchPergolaRenderSource;
+  modelSpacePergolaRenderStatus?: ObjectWorkbenchPergolaRenderStatus;
 }) {
   const effectiveShowDebugOverlays = showDebugOverlays ?? presentation === 'sheet';
   const isSheet = presentation === 'sheet';
@@ -4681,20 +4683,20 @@ function PlanSvg({
   const isModelHouseDisplay = presentation === 'model' && displayMode === 'house';
   const rawSemanticPlanHouseSurfaces = model.houseContext?.surfaces ?? [];
   const rawSemanticPlanHouseLines = model.houseContext?.lines ?? [];
-  const rawHouseFirstOverlayShapes = presentation === 'model' ? houseFirstPlanOverlay?.shapes ?? [] : [];
-  const rawHouseFirstPresetAnnotations = presentation === 'model' ? houseFirstPlanOverlay?.presetAnnotations ?? [] : [];
-  const rawHouseFirstCustomEdgeCandidates = presentation === 'model' ? houseFirstPlanOverlay?.customEdgeCandidates ?? [] : [];
-  const rawHouseFirstPreviewShape =
-    presentation === 'model' && houseFirstPreviewOverlay
-      ? houseFirstPreviewOverlay.ownerKind === 'deck'
+  const rawObjectWorkbenchOverlayShapes = presentation === 'model' ? objectWorkbenchPlanOverlay?.shapes ?? [] : [];
+  const rawObjectWorkbenchPresetAnnotations = presentation === 'model' ? objectWorkbenchPlanOverlay?.presetAnnotations ?? [] : [];
+  const rawObjectWorkbenchCustomEdgeCandidates = presentation === 'model' ? objectWorkbenchPlanOverlay?.customEdgeCandidates ?? [] : [];
+  const rawObjectWorkbenchPreviewShape =
+    presentation === 'model' && objectWorkbenchPreviewOverlay
+      ? objectWorkbenchPreviewOverlay.ownerKind === 'deck'
         ? familyVisibility.decks
-          ? houseFirstPreviewOverlay
+          ? objectWorkbenchPreviewOverlay
           : null
-        : houseFirstPreviewOverlay.ownerKind === 'opening'
+        : objectWorkbenchPreviewOverlay.ownerKind === 'opening'
           ? familyVisibility.openings
-            ? houseFirstPreviewOverlay
+            ? objectWorkbenchPreviewOverlay
             : null
-          : houseFirstPreviewOverlay
+          : objectWorkbenchPreviewOverlay
       : null;
   const isHipCorner = model.roofType === 'hip_corner';
   const isGableLike = model.roofType === 'gable' || model.roofType === 'low_gable' || model.roofType === 'hip';
@@ -4930,7 +4932,7 @@ function PlanSvg({
       : { x: 0, y: 0, width: 120, height: 90 };
   const planHousePointProjector = (point: Point) =>
     planHousePointToSvg(point, x, y, scale);
-  const visibleRawHouseFirstOverlayShapes = rawHouseFirstOverlayShapes.filter((shape) => {
+  const visibleRawObjectWorkbenchOverlayShapes = rawObjectWorkbenchOverlayShapes.filter((shape) => {
     switch (shape.ownerKind) {
       case 'footprint':
         return familyVisibility.house;
@@ -4942,19 +4944,19 @@ function PlanSvg({
         return true;
     }
   });
-  const visibleHouseFirstDeckIds = new Set(
-    visibleRawHouseFirstOverlayShapes
+  const visibleObjectWorkbenchDeckIds = new Set(
+    visibleRawObjectWorkbenchOverlayShapes
       .filter((shape) => shape.ownerKind === 'deck')
       .map((shape) => shape.ownerId),
   );
   const selectedOpeningHostEdgeId =
-    visibleRawHouseFirstOverlayShapes.find((shape) => shape.ownerKind === 'opening' && shape.selected)?.openingInteraction?.hostEdgeId ?? null;
+    visibleRawObjectWorkbenchOverlayShapes.find((shape) => shape.ownerKind === 'opening' && shape.selected)?.openingInteraction?.hostEdgeId ?? null;
   const toneHouseRoofContext = Boolean(selectedOpeningHostEdgeId);
   const semanticPlanHouseSurfaces = rawSemanticPlanHouseSurfaces
     .filter((surface) => {
       if (surface.kind !== 'deck') return true;
       if (!familyVisibility.decks) return false;
-      return !visibleHouseFirstDeckIds.has(surface.id);
+      return !visibleObjectWorkbenchDeckIds.has(surface.id);
     })
     .map((surface) => ({
       ...surface,
@@ -4969,9 +4971,9 @@ function PlanSvg({
     end: planHousePointProjector(line.line.end),
     emphasized: selectedOpeningHostEdgeId !== null && line.metadata?.sourceEdgeId === selectedOpeningHostEdgeId,
   }));
-  const houseFirstOverlayShapes =
+  const objectWorkbenchOverlayShapes =
     presentation === 'model'
-      ? visibleRawHouseFirstOverlayShapes.map((shape) => ({
+      ? visibleRawObjectWorkbenchOverlayShapes.map((shape) => ({
           ...shape,
           points: shape.polygon.map((point) => planHousePointProjector(point)),
           detailSegments: (shape.detailSegments ?? []).map((segment) => ({
@@ -4994,9 +4996,9 @@ function PlanSvg({
             : null,
         }))
       : [];
-  const houseFirstPresetAnnotations =
+  const objectWorkbenchPresetAnnotations =
     presentation === 'model'
-      ? rawHouseFirstPresetAnnotations
+      ? rawObjectWorkbenchPresetAnnotations
           .filter((annotation) => {
             switch (annotation.ownerKind) {
               case 'footprint':
@@ -5017,9 +5019,9 @@ function PlanSvg({
           lineEnd: planHousePointProjector(annotation.lineEnd),
         }))
       : [];
-  const houseFirstCustomEdgeCandidates =
+  const objectWorkbenchCustomEdgeCandidates =
     presentation === 'model'
-      ? rawHouseFirstCustomEdgeCandidates
+      ? rawObjectWorkbenchCustomEdgeCandidates
           .filter((annotation) => annotation.ownerKind === 'footprint' ? familyVisibility.house : familyVisibility.decks)
           .map((annotation) => ({
           ...annotation,
@@ -5029,30 +5031,30 @@ function PlanSvg({
           lineEnd: planHousePointProjector(annotation.lineEnd),
         }))
       : [];
-  const houseFirstPreviewShape =
-    presentation === 'model' && rawHouseFirstPreviewShape
+  const objectWorkbenchPreviewShape =
+    presentation === 'model' && rawObjectWorkbenchPreviewShape
       ? {
-          ownerKind: rawHouseFirstPreviewShape.ownerKind,
-          ownerId: rawHouseFirstPreviewShape.ownerId,
-          points: rawHouseFirstPreviewShape.polygon.map((point) => planHousePointProjector(point)),
-          bodyState: rawHouseFirstPreviewShape.bodyState,
-          anchorPoint: rawHouseFirstPreviewShape.anchorPoint
-            ? planHousePointProjector(rawHouseFirstPreviewShape.anchorPoint)
+          ownerKind: rawObjectWorkbenchPreviewShape.ownerKind,
+          ownerId: rawObjectWorkbenchPreviewShape.ownerId,
+          points: rawObjectWorkbenchPreviewShape.polygon.map((point) => planHousePointProjector(point)),
+          bodyState: rawObjectWorkbenchPreviewShape.bodyState,
+          anchorPoint: rawObjectWorkbenchPreviewShape.anchorPoint
+            ? planHousePointProjector(rawObjectWorkbenchPreviewShape.anchorPoint)
             : null,
-          lockedCornerPoint: rawHouseFirstPreviewShape.lockedCornerPoint
-            ? planHousePointProjector(rawHouseFirstPreviewShape.lockedCornerPoint)
+          lockedCornerPoint: rawObjectWorkbenchPreviewShape.lockedCornerPoint
+            ? planHousePointProjector(rawObjectWorkbenchPreviewShape.lockedCornerPoint)
             : null,
-          endCatchPoint: rawHouseFirstPreviewShape.endCatchPoint
-            ? planHousePointProjector(rawHouseFirstPreviewShape.endCatchPoint)
+          endCatchPoint: rawObjectWorkbenchPreviewShape.endCatchPoint
+            ? planHousePointProjector(rawObjectWorkbenchPreviewShape.endCatchPoint)
             : null,
-          referenceGuide: rawHouseFirstPreviewShape.referenceGuide
+          referenceGuide: rawObjectWorkbenchPreviewShape.referenceGuide
             ? {
-                start: planHousePointProjector(rawHouseFirstPreviewShape.referenceGuide.start),
-                end: planHousePointProjector(rawHouseFirstPreviewShape.referenceGuide.end),
-                state: rawHouseFirstPreviewShape.referenceGuide.state,
+                start: planHousePointProjector(rawObjectWorkbenchPreviewShape.referenceGuide.start),
+                end: planHousePointProjector(rawObjectWorkbenchPreviewShape.referenceGuide.end),
+                state: rawObjectWorkbenchPreviewShape.referenceGuide.state,
               }
             : null,
-          targetHighlights: rawHouseFirstPreviewShape.targetHighlights.map((targetHighlight) => ({
+          targetHighlights: rawObjectWorkbenchPreviewShape.targetHighlights.map((targetHighlight) => ({
             start: planHousePointProjector(targetHighlight.start),
             end: planHousePointProjector(targetHighlight.end),
             state: targetHighlight.state,
@@ -5774,18 +5776,18 @@ function PlanSvg({
           )
         ) : null}
 
-        {renderHouseFirstPlanOverlay({
-          shapes: houseFirstOverlayShapes,
-          previewShape: houseFirstPreviewShape,
-          customEdgeCandidates: houseFirstCustomEdgeCandidates,
-          presetAnnotations: houseFirstPresetAnnotations,
-          activeCustomEdgeId: activeHouseFirstCustomEdgeId ?? null,
-          hoveredDeckId: hoveredHouseFirstDeckId ?? null,
-          onDeckHoverChange: onHouseFirstDeckHoverChange,
-          onShapeSelect: onHouseFirstShapeSelect,
-          onShapeDragStart: onHouseFirstShapeDragStart,
-          onCustomEdgeSelect: onHouseFirstCustomEdgeSelect,
-          onDimensionActivate: onHouseFirstDimensionActivate,
+        {renderObjectWorkbenchPlanOverlay({
+          shapes: objectWorkbenchOverlayShapes,
+          previewShape: objectWorkbenchPreviewShape,
+          customEdgeCandidates: objectWorkbenchCustomEdgeCandidates,
+          presetAnnotations: objectWorkbenchPresetAnnotations,
+          activeCustomEdgeId: activeObjectWorkbenchCustomEdgeId ?? null,
+          hoveredDeckId: hoveredObjectWorkbenchDeckId ?? null,
+          onDeckHoverChange: onObjectWorkbenchDeckHoverChange,
+          onShapeSelect: onObjectWorkbenchShapeSelect,
+          onShapeDragStart: onObjectWorkbenchShapeDragStart,
+          onCustomEdgeSelect: onObjectWorkbenchCustomEdgeSelect,
+          onDimensionActivate: onObjectWorkbenchDimensionActivate,
         })}
 
         {showPergolaSelectionHitTarget && currentPergolaId ? (

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import DrawingWorkbench from '@/components/drawings/workbench/DrawingWorkbench';
 import type { Geometry3DViewportState } from '@/components/drawings/viewports/Geometry3DViewport';
-import { buildWorkbenchGeometryPreview } from '@/lib/drawings/geometry/buildWorkbenchGeometryPreview';
+import { buildObjectWorkbenchGeometryPreview } from '@/lib/drawings/geometry/buildWorkbenchGeometryPreview';
 import { buildDrawingWorkbenchStore } from '@/lib/drawings/state/drawingWorkbenchStore';
 import {
   createDrawingWorkbenchUiState,
@@ -95,7 +95,7 @@ export default function DesignWorkbenchFixtureClient({
   );
   const geometryPreview = useMemo(
     () =>
-      buildWorkbenchGeometryPreview({
+      buildObjectWorkbenchGeometryPreview({
         projectId: `fixture-${fixture.slug}`,
         estimateId: fixture.estimate.id,
         designRequestId: fixture.request.id,
