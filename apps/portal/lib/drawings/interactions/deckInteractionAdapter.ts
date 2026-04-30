@@ -495,31 +495,57 @@ function scoreDeckWallCandidate(input: {
   };
 }
 
-function resolveDeckCenterOffsetFromPreviewPolygon(input: {
+function resolveDeckCommitCenterOffset(input: {
   preview: DeckPreviewState;
   session: DeckDragSession;
 }): number {
   const previewEdgeId =
     input.preview.primaryHostEdgeId ?? input.preview.placementEdgeId ?? input.preview.witnessEdgeId;
-  const commitFrame =
-    input.preview.releasePlacement === 'snapped'
-      ? resolveDeckCommitReferenceFrame({
-          interaction: input.session.interaction,
-          renderEdgeId: previewEdgeId,
-        })
-      : null;
-  const frame =
-    commitFrame ??
+  const renderFrame =
     findDeckReferenceFrameById(
       input.session.interaction.referenceFrames,
       previewEdgeId,
     ) ?? input.session.interaction.referenceFrames[0];
-  if (!frame) return input.preview.anchorDerivedCenterOffsetM ?? input.preview.centerOffsetM;
-  const projection = projectPolygonToDeckReferenceFrame({
+  if (!renderFrame) return input.preview.anchorDerivedCenterOffsetM ?? input.preview.centerOffsetM;
+
+  const renderProjection = projectPolygonToDeckReferenceFrame({
     polygon: input.preview.polygon,
-    frame,
+    frame: renderFrame,
   });
-  return projection?.centerOffsetM ?? input.preview.anchorDerivedCenterOffsetM ?? input.preview.centerOffsetM;
+  const renderCenterOffsetM =
+    renderProjection?.centerOffsetM ?? input.preview.anchorDerivedCenterOffsetM ?? input.preview.centerOffsetM;
+  const commitFrame = resolveDeckCommitReferenceFrame({
+    interaction: input.session.interaction,
+    renderEdgeId: previewEdgeId,
+  });
+  if (!commitFrame) return renderCenterOffsetM;
+
+  const renderSpanM = renderFrame.spanEndM - renderFrame.spanStartM;
+  const commitSpanM = commitFrame.spanEndM - commitFrame.spanStartM;
+  if (Math.abs(renderSpanM) <= 1e-6 || Math.abs(commitSpanM) <= 1e-6) {
+    return renderCenterOffsetM;
+  }
+
+  const framesAligned =
+    renderFrame.alongUnitX * commitFrame.alongUnitX + renderFrame.alongUnitY * commitFrame.alongUnitY >= 0;
+  const commitFrameMidpointM = (commitFrame.spanStartM + commitFrame.spanEndM) / 2;
+  if (input.preview.endCatchSide) {
+    const commitEndCatchSide =
+      framesAligned
+        ? input.preview.endCatchSide
+        : input.preview.endCatchSide === 'start'
+          ? 'end'
+          : 'start';
+    return commitEndCatchSide === 'start'
+      ? commitFrame.spanStartM + input.session.interaction.deckWidthM / 2 - commitFrameMidpointM
+      : commitFrame.spanEndM - input.session.interaction.deckWidthM / 2 - commitFrameMidpointM;
+  }
+
+  const renderFrameMidpointM = (renderFrame.spanStartM + renderFrame.spanEndM) / 2;
+  const renderCenterAlongM = renderFrameMidpointM + renderCenterOffsetM;
+  const renderCenterRatio = (renderCenterAlongM - renderFrame.spanStartM) / renderSpanM;
+  const commitCenterRatio = framesAligned ? renderCenterRatio : 1 - renderCenterRatio;
+  return commitFrame.spanStartM + commitCenterRatio * commitSpanM - commitFrameMidpointM;
 }
 
 function selectDeckWallCandidate(input: {
@@ -1189,33 +1215,18 @@ export function resolveDeckPreviewState(input: {
     : unclampedCenterOffsetM;
   const referenceEdgeGapM = releasePlacement === 'snapped' ? 0 : wallCandidate.nearGapM;
   const attachmentMode = activeSnapMode;
-  const committedPrimaryPreviewFrame =
-    releasePlacement === 'snapped'
-      ? resolveDeckCommitReferenceFrame({
-          interaction: input.session.interaction,
-          renderEdgeId: activeFrame.sourceEdgeId,
-        })
-      : null;
-  const committedSecondaryPreviewFrame =
-    cornerCandidate && releasePlacement === 'snapped'
-      ? resolveDeckCommitReferenceFrame({
-          interaction: input.session.interaction,
-          renderEdgeId: cornerCandidate.secondaryFrame.sourceEdgeId,
-        })
-      : null;
-  const previewBodyFrame = committedPrimaryPreviewFrame ?? activeFrame;
   const previewPolygon =
     cornerCandidate && releasePlacement === 'snapped'
       ? buildDeckCornerPreviewPolygon({
-          primaryFrame: committedPrimaryPreviewFrame ?? cornerCandidate.primaryFrame,
-          secondaryFrame: committedSecondaryPreviewFrame ?? cornerCandidate.secondaryFrame,
+          primaryFrame: cornerCandidate.primaryFrame,
+          secondaryFrame: cornerCandidate.secondaryFrame,
           cornerPoint: cornerCandidate.cornerPoint,
           deckWidthM: input.session.startWidthM,
           deckDepthM: input.session.startDepthM,
         })
       : wallStable || wallLocked
         ? buildDeckPreviewPolygon({
-            frame: previewBodyFrame,
+            frame: activeFrame,
             deckWidthM: input.session.startWidthM,
             deckDepthM: input.session.startDepthM,
             centerOffsetM,
@@ -1225,7 +1236,7 @@ export function resolveDeckPreviewState(input: {
   const bodyGrabbedPoint =
     wallStable || wallLocked
       ? resolveDeckPreviewGrabbedPoint({
-          frame: previewBodyFrame,
+          frame: activeFrame,
           centerOffsetM,
           referenceEdgeGapM,
           grabbedPointAlongOffsetFromCenterM: input.session.grabbedPointAlongOffsetFromCenterM,
@@ -1524,7 +1535,7 @@ export function buildDeckCommitPatch(input: {
     presetRect: {
       centerOffsetM: formatDeckPresetValue(
         input.preview.releasePlacement === 'snapped'
-          ? resolveDeckCenterOffsetFromPreviewPolygon(input)
+          ? resolveDeckCommitCenterOffset(input)
           : input.preview.centerOffsetM,
       ),
       detachedGapM:

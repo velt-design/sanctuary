@@ -1345,7 +1345,7 @@ describe('houseFirstPlanOverlay', () => {
     expect(snappedInteraction?.placementEdgeId).toBe(leftEdgeId);
   });
 
-  it('resolves attached preset overlays by deck polygon when generated footprint edge numbering differs', () => {
+  it('resolves attached preset overlays from wall-line render frames when generated footprint edge numbering differs', () => {
     const baseHouse = makeHouse({
       footprint: {
         mode: 'preset',
@@ -1406,6 +1406,10 @@ describe('houseFirstPlanOverlay', () => {
     const deckShape = overlay?.shapes.find((shape) => shape.ownerKind === 'deck' && shape.ownerId === 'deck-1');
     const expectedDeckSurface = geometryHouseContext.surfaces.find((surface) => surface.id === 'deck-1');
     expect(deckShape?.deckInteraction?.semanticPlacementSide).toBe('left');
+    expect(deckShape?.deckInteraction?.placementEdgeId).toBe('footprint-edge-4');
+    expect(deckShape?.deckInteraction?.referenceFrames.map((frame) => frame.sourceEdgeId)).toEqual(
+      geometryHouseContext.lines.map((line) => line.metadata?.sourceEdgeId),
+    );
     expect(toScenePolygonMetres(deckShape?.polygon ?? [])).toEqual(toScenePolygonMetres(expectedDeckSurface?.boundary ?? []));
   });
 

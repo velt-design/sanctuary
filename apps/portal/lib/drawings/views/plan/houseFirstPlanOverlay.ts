@@ -184,6 +184,7 @@ type GeometryOpeningFrame = {
 type GeometryHouseLookup = {
   footprintPolygon: PlanPoint[] | null;
   deckPolygons: Map<string, PlanPoint[]>;
+  deckReferenceFrames: HouseFirstPlanDeckReferenceFrame[];
   openingFrames: Map<string, GeometryOpeningFrame>;
   openingFramesBySide: Map<AttachmentSide, GeometryOpeningFrame[]>;
 };
@@ -260,39 +261,6 @@ function isSemanticAttachmentSide(value: string | null | undefined): value is At
 
 function pointsAlmostEqual(a: PlanPoint, b: PlanPoint, tolerance = 0.01): boolean {
   return Math.abs(a.x - b.x) <= tolerance && Math.abs(a.y - b.y) <= tolerance;
-}
-
-function referenceFramesAlmostEqual(
-  a: HouseFirstPlanDeckReferenceFrame,
-  b: HouseFirstPlanDeckReferenceFrame,
-  tolerance = 0.05,
-): boolean {
-  const endpointsMatch =
-    (pointsAlmostEqual(a.hostEdgeStart, b.hostEdgeStart, tolerance) &&
-      pointsAlmostEqual(a.hostEdgeEnd, b.hostEdgeEnd, tolerance)) ||
-    (pointsAlmostEqual(a.hostEdgeStart, b.hostEdgeEnd, tolerance) &&
-      pointsAlmostEqual(a.hostEdgeEnd, b.hostEdgeStart, tolerance));
-  return a.axis === b.axis && endpointsMatch;
-}
-
-function hasExactDeckReferenceFrameMismatch(input: {
-  deck: HouseModel['decks'][number];
-  renderReferenceFrames: HouseFirstPlanDeckReferenceFrame[];
-  draftReferenceFrames: HouseFirstPlanDeckReferenceFrame[];
-}): boolean {
-  const exactIds = [
-    input.deck.primaryHostEdgeId,
-    input.deck.secondaryHostEdgeId,
-    input.deck.hostEdgeId,
-  ]
-    .map(normalizeSourceEdgeId)
-    .filter((value): value is string => Boolean(value));
-  for (const exactId of exactIds) {
-    const renderFrame = input.renderReferenceFrames.find((frame) => frame.sourceEdgeId === exactId) ?? null;
-    const draftFrame = input.draftReferenceFrames.find((frame) => frame.sourceEdgeId === exactId) ?? null;
-    if (renderFrame && draftFrame && !referenceFramesAlmostEqual(renderFrame, draftFrame)) return true;
-  }
-  return false;
 }
 
 function inferSourceEdgeIdFromFootprintLine(input: {
@@ -551,6 +519,7 @@ function buildGeometryHouseLookup(geometryHouseContext: ModulePlanHouseContext |
     deckPolygons.set(surface.id, toPlanPolygon(surface.boundary));
   }
 
+  const deckReferenceFramesBySourceEdgeId = new Map<string, HouseFirstPlanDeckReferenceFrame>();
   const openingFrames = new Map<string, GeometryOpeningFrame>();
   const openingFramesBySide = new Map<AttachmentSide, GeometryOpeningFrame[]>();
   if (footprintPolygon?.length) {
@@ -601,6 +570,40 @@ function buildGeometryHouseLookup(geometryHouseContext: ModulePlanHouseContext |
           : !pointInPolygon(probeA, footprintPolygon) && pointInPolygon(probeB, footprintPolygon)
             ? normalA
             : normalA;
+      const horizontal = Math.abs(hostEdgeStart.y - hostEdgeEnd.y) <= ZERO_DIMENSION_EPSILON_M;
+      const vertical = Math.abs(hostEdgeStart.x - hostEdgeEnd.x) <= ZERO_DIMENSION_EPSILON_M;
+      if ((horizontal || vertical) && !deckReferenceFramesBySourceEdgeId.has(sourceEdgeId)) {
+        const spanStartM = horizontal
+          ? Math.min(hostEdgeStart.x, hostEdgeEnd.x)
+          : Math.min(hostEdgeStart.y, hostEdgeEnd.y);
+        const spanEndM = horizontal
+          ? Math.max(hostEdgeStart.x, hostEdgeEnd.x)
+          : Math.max(hostEdgeStart.y, hostEdgeEnd.y);
+        const outwardDirection = horizontal
+          ? (outward.y < 0 ? -1 : 1)
+          : (outward.x < 0 ? -1 : 1);
+        deckReferenceFramesBySourceEdgeId.set(sourceEdgeId, {
+          hostEdgeId: horizontal
+            ? (outward.y < 0 ? 'rear' : 'front')
+            : (outward.x < 0 ? 'left' : 'right'),
+          sourceEdgeId,
+          axis: horizontal ? 'along' : 'depth',
+          spanStartM,
+          spanEndM,
+          edgeCoordinateM: horizontal ? hostEdgeStart.y : hostEdgeStart.x,
+          outwardDirection,
+          hostEdgeStart: horizontal
+            ? { x: spanStartM, y: hostEdgeStart.y }
+            : { x: hostEdgeStart.x, y: spanStartM },
+          hostEdgeEnd: horizontal
+            ? { x: spanEndM, y: hostEdgeStart.y }
+            : { x: hostEdgeStart.x, y: spanEndM },
+          alongUnitX: horizontal ? 1 : 0,
+          alongUnitY: horizontal ? 0 : 1,
+          outwardUnitX: horizontal ? 0 : outwardDirection,
+          outwardUnitY: horizontal ? outwardDirection : 0,
+        });
+      }
       const frame = {
         hostEdgeId: sourceEdgeId,
         hostEdgeStart,
@@ -629,6 +632,7 @@ function buildGeometryHouseLookup(geometryHouseContext: ModulePlanHouseContext |
   return {
     footprintPolygon,
     deckPolygons,
+    deckReferenceFrames: Array.from(deckReferenceFramesBySourceEdgeId.values()),
     openingFrames,
     openingFramesBySide,
   };
@@ -1006,6 +1010,16 @@ function buildWorldDeckReferenceFrames(housePolygon: PlanPoint[]): HouseFirstPla
   });
 }
 
+function resolveGeometryDeckReferenceFrames(
+  geometryHouseLookup: GeometryHouseLookup,
+): HouseFirstPlanDeckReferenceFrame[] {
+  return geometryHouseLookup.deckReferenceFrames.length
+    ? geometryHouseLookup.deckReferenceFrames
+    : geometryHouseLookup.footprintPolygon?.length
+      ? buildWorldDeckReferenceFrames(geometryHouseLookup.footprintPolygon)
+      : [];
+}
+
 function resolveWorldHostEdgeFrame(input: {
   housePolygon: PlanPoint[];
   hostEdgeId: string | null | undefined;
@@ -1155,6 +1169,62 @@ function projectWorldPolygonToReferenceFrame(input: {
     depthM,
     centerOffsetM,
   };
+}
+
+function transferDeckCenterOffsetBetweenReferenceFrames(input: {
+  centerOffsetM: number;
+  fromFrame: HouseFirstPlanDeckReferenceFrame;
+  toFrame: HouseFirstPlanDeckReferenceFrame;
+}): number {
+  const fromSpanM = input.fromFrame.spanEndM - input.fromFrame.spanStartM;
+  const toSpanM = input.toFrame.spanEndM - input.toFrame.spanStartM;
+  if (Math.abs(fromSpanM) <= ZERO_DIMENSION_EPSILON_M || Math.abs(toSpanM) <= ZERO_DIMENSION_EPSILON_M) {
+    return input.centerOffsetM;
+  }
+
+  const fromFrameMidpointM = (input.fromFrame.spanStartM + input.fromFrame.spanEndM) / 2;
+  const toFrameMidpointM = (input.toFrame.spanStartM + input.toFrame.spanEndM) / 2;
+  const fromCenterAlongM = fromFrameMidpointM + input.centerOffsetM;
+  const fromCenterRatio = (fromCenterAlongM - input.fromFrame.spanStartM) / fromSpanM;
+  const framesAligned =
+    input.fromFrame.alongUnitX * input.toFrame.alongUnitX + input.fromFrame.alongUnitY * input.toFrame.alongUnitY >= 0;
+  const toCenterRatio = framesAligned ? fromCenterRatio : 1 - fromCenterRatio;
+  return input.toFrame.spanStartM + toCenterRatio * toSpanM - toFrameMidpointM;
+}
+
+function resolvePresetDeckCommitFrame(input: {
+  deck: HouseModel['decks'][number];
+  commitReferenceFrames: HouseFirstPlanDeckReferenceFrame[];
+}): HouseFirstPlanDeckReferenceFrame | null {
+  const exactHostEdgeId = normalizeSourceEdgeId(input.deck.primaryHostEdgeId ?? input.deck.hostEdgeId);
+  if (exactHostEdgeId) {
+    return input.commitReferenceFrames.find((frame) => frame.sourceEdgeId === exactHostEdgeId) ?? null;
+  }
+
+  const semanticHostEdgeId = isSemanticAttachmentSide(input.deck.primaryHostEdgeId ?? input.deck.hostEdgeId)
+    ? (input.deck.primaryHostEdgeId ?? input.deck.hostEdgeId)
+    : null;
+  if (!semanticHostEdgeId) return null;
+  const semanticFrames = input.commitReferenceFrames.filter((frame) => frame.hostEdgeId === semanticHostEdgeId);
+  return semanticFrames.length === 1 ? semanticFrames[0]! : null;
+}
+
+function resolvePresetDeckRenderCenterOffset(input: {
+  deck: HouseModel['decks'][number];
+  renderFrame: HouseFirstPlanDeckReferenceFrame;
+  commitReferenceFrames: HouseFirstPlanDeckReferenceFrame[];
+  fallbackCenterOffsetM: number;
+}): number {
+  const commitFrame = resolvePresetDeckCommitFrame({
+    deck: input.deck,
+    commitReferenceFrames: input.commitReferenceFrames,
+  });
+  if (!commitFrame) return input.fallbackCenterOffsetM;
+  return transferDeckCenterOffsetBetweenReferenceFrames({
+    centerOffsetM: input.fallbackCenterOffsetM,
+    fromFrame: commitFrame,
+    toFrame: input.renderFrame,
+  });
 }
 
 function resolveDeckReferenceFrameForPolygon(input: {
@@ -1382,6 +1452,7 @@ function resolvePresetDeckGeometryFrame(input: {
 function buildPresetAttachedDeckWorldPolygon(input: {
   deck: HouseModel['decks'][number];
   referenceFrames: HouseFirstPlanDeckReferenceFrame[];
+  commitReferenceFrames: HouseFirstPlanDeckReferenceFrame[];
   fallbackPolygon: PlanPoint[];
   geometryHouseLookup: GeometryHouseLookup;
 }): PlanPoint[] | null {
@@ -1418,11 +1489,17 @@ function buildPresetAttachedDeckWorldPolygon(input: {
 
   const frame = resolvePresetDeckGeometryFrame(input);
   if (!frame) return null;
+  const renderCenterOffsetM = resolvePresetDeckRenderCenterOffset({
+    deck: input.deck,
+    renderFrame: frame,
+    commitReferenceFrames: input.commitReferenceFrames,
+    fallbackCenterOffsetM: centerOffsetM,
+  });
   return buildDeckWorldPolygonFromReferenceFrame({
     frame,
     widthM,
     depthM,
-    centerOffsetM,
+    centerOffsetM: renderCenterOffsetM,
     referenceEdgeGapM: 0,
   });
 }
@@ -2128,10 +2205,11 @@ function buildPresetDeckInteraction(input: {
     moduleLengthM: input.moduleLengthM,
     moduleProjectionM: input.moduleProjectionM,
   });
+  const geometryReferenceFrames = resolveGeometryDeckReferenceFrames(input.geometryHouseLookup);
   const referenceFrames = input.referenceFramesOverride?.length
     ? input.referenceFramesOverride
-    : input.geometryHouseLookup.footprintPolygon?.length
-      ? buildWorldDeckReferenceFrames(input.geometryHouseLookup.footprintPolygon)
+    : geometryReferenceFrames.length
+      ? geometryReferenceFrames
       : commitReferenceFrames;
   const attachmentMode =
     input.deck.attachmentMode ??
@@ -2176,6 +2254,7 @@ function buildPresetDeckInteraction(input: {
 
   const widthM = Number(input.deck.presetRect.widthM);
   const depthM = Number(input.deck.presetRect.depthM);
+  const storedCenterOffsetM = Number(input.deck.presetRect.centerOffsetM);
   const legacyDetachedGapM = Number(input.deck.presetRect.detachedGapM ?? '0');
   const preserveLegacyDetachedGap =
     !input.deck.isAttached &&
@@ -2188,11 +2267,16 @@ function buildPresetDeckInteraction(input: {
     frame: witnessFrame,
   });
   const centerOffsetM = input.deck.isAttached
-    ? Number(input.deck.presetRect.centerOffsetM)
+    ? resolvePresetDeckRenderCenterOffset({
+        deck: input.deck,
+        renderFrame: placementFrame,
+        commitReferenceFrames,
+        fallbackCenterOffsetM: storedCenterOffsetM,
+      })
     : referenceProjection
       ? (referenceProjection.alongMinM + referenceProjection.alongMaxM) / 2 -
         ((witnessFrame.spanStartM + witnessFrame.spanEndM) / 2)
-      : Number(input.deck.presetRect.centerOffsetM);
+      : storedCenterOffsetM;
   const referenceEdgeGapM = input.deck.isAttached
     ? 0
     : referenceProjection
@@ -2267,10 +2351,8 @@ function buildCustomDeckInteraction(input: {
     moduleLengthM: input.moduleLengthM,
     moduleProjectionM: input.moduleProjectionM,
   });
-  const referenceFrames =
-    input.geometryHouseLookup.footprintPolygon?.length
-      ? buildWorldDeckReferenceFrames(input.geometryHouseLookup.footprintPolygon)
-      : commitReferenceFrames;
+  const geometryReferenceFrames = resolveGeometryDeckReferenceFrames(input.geometryHouseLookup);
+  const referenceFrames = geometryReferenceFrames.length ? geometryReferenceFrames : commitReferenceFrames;
   const witnessFrame = resolveDeckReferenceFrameForPolygon({
     polygon: input.deckPolygon,
     referenceFrames,
@@ -2522,30 +2604,18 @@ export function buildHouseFirstPlanOverlay(input: {
       moduleLengthM,
       moduleProjectionM,
     });
-    const geometryDeckReferenceFrames = geometryHouseLookup.footprintPolygon?.length
-      ? buildWorldDeckReferenceFrames(geometryHouseLookup.footprintPolygon)
-      : [];
+    const geometryDeckReferenceFrames = resolveGeometryDeckReferenceFrames(geometryHouseLookup);
     const renderDeckReferenceFrames = geometryDeckReferenceFrames.length ? geometryDeckReferenceFrames : draftDeckReferenceFrames;
-    const exactReferenceFrameMismatch =
-      deck.shape === 'preset' && deck.isAttached && !footprintOffsetActive && draftDeckPolygon.length
-        ? hasExactDeckReferenceFrameMismatch({
-            deck,
-            renderReferenceFrames: renderDeckReferenceFrames,
-            draftReferenceFrames: draftDeckReferenceFrames,
-          })
-        : false;
-    const deckReferenceFrames = exactReferenceFrameMismatch ? draftDeckReferenceFrames : renderDeckReferenceFrames;
     const presetDeckPolygon = buildPresetAttachedDeckWorldPolygon({
       deck,
-      referenceFrames: deckReferenceFrames,
+      referenceFrames: renderDeckReferenceFrames,
+      commitReferenceFrames: draftDeckReferenceFrames,
       fallbackPolygon: fallbackDeckPolygon,
       geometryHouseLookup,
     });
     const deckPolygon =
       deck.shape === 'preset' && deck.isAttached && !footprintOffsetActive
-        ? exactReferenceFrameMismatch
-          ? draftDeckPolygon
-          : (presetDeckPolygon ?? (draftDeckPolygon.length ? draftDeckPolygon : geometryDeckPolygon))
+        ? (presetDeckPolygon ?? (draftDeckPolygon.length ? draftDeckPolygon : geometryDeckPolygon))
         : draftDeckPolygon.length
           ? draftDeckPolygon
           : (presetDeckPolygon ?? geometryDeckPolygon);
@@ -2569,7 +2639,6 @@ export function buildHouseFirstPlanOverlay(input: {
             moduleProjectionM,
             deckPolygon,
             geometryHouseLookup,
-            referenceFramesOverride: exactReferenceFrameMismatch ? deckReferenceFrames : null,
           });
     shapes.push({
       ownerKind: 'deck',

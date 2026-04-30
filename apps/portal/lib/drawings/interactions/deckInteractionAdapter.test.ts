@@ -330,6 +330,9 @@ describe('deckInteractionAdapter', () => {
       sourceEdgeId: 'footprint-edge-7',
       spanStartM: 4,
       spanEndM: 6.4,
+      edgeCoordinateM: 0.4,
+      hostEdgeStart: { x: 0.4, y: 0 },
+      hostEdgeEnd: { x: 0.4, y: 2.4 },
     };
     const deckWidthM = 1.4;
     const deckDepthM = 2;
@@ -367,6 +370,8 @@ describe('deckInteractionAdapter', () => {
 
     expect(preview.releasePlacement).toBe('snapped');
     expect(preview.primaryHostEdgeId).toBe('geometry-left-wall');
+    expect(nearGapToFrame(preview.polygon, renderFrame)).toBeCloseTo(0, 6);
+    expect(nearGapToFrame(preview.polygon, commitFrame)).toBeGreaterThan(0.35);
     expect(patch.hostEdgeId).toBe('left');
     expect(patch.primaryHostEdgeId).toBe('footprint-edge-7');
     expect((patch.presetRect as { centerOffsetM: string }).centerOffsetM).toBe('0.25');
