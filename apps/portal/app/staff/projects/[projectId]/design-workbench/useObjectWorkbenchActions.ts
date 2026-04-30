@@ -752,9 +752,27 @@ export function useObjectWorkbenchActions({
       const previewObjectFirst = buildObjectFirstWorkbenchDraftFromProjectModel(
         previewStore.persisted.projectModel,
       );
+      const existingHouseForms = objectFirstDraft.houseAssembly?.houseForms ?? [];
       return {
         ...objectFirstDraft,
-        houseAssembly: previewObjectFirst.houseAssembly,
+        houseAssembly: previewObjectFirst.houseAssembly
+          ? {
+              ...previewObjectFirst.houseAssembly,
+              houseForms: previewObjectFirst.houseAssembly.houseForms.map((houseForm, index) => {
+                const existingHouseForm =
+                  existingHouseForms.find((candidate) => candidate.id === houseForm.id) ??
+                  existingHouseForms[index] ??
+                  null;
+                return existingHouseForm?.roofIntentAuthored
+                  ? {
+                      ...houseForm,
+                      roofIntent: existingHouseForm.roofIntent,
+                      roofIntentAuthored: true,
+                    }
+                  : houseForm;
+              }),
+            }
+          : previewObjectFirst.houseAssembly,
       };
     },
     [snapshot, ui],

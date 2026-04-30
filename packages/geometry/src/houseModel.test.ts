@@ -1,5 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import type { GeometryConfig, HouseAttachmentStrategy, HouseRoofMaterial, Line3, Point3, Polygon3, RenderMesh3D } from './contracts';
+import type {
+  GeometryConfig,
+  HouseAttachmentStrategy,
+  HouseFootprintPreset,
+  HouseRoofForm,
+  HouseRoofMaterial,
+  Line3,
+  Point3,
+  Polygon3,
+  RenderMesh3D,
+} from './contracts';
 import { deriveHouseGableTerminalEnds } from './houseRoofCapabilities';
 import { buildHouseFootprintPolygon } from './footprints';
 import { buildHouseModel3D, buildHouseReferenceGeometry } from './houseModel';
@@ -23,6 +33,19 @@ function makePresetFootprint(preset: 'wrap_left' | 'wrap_right'): Polygon3 {
     attachmentSide: 'rear',
   });
 }
+
+const HOUSE_FOOTPRINT_PRESETS: readonly HouseFootprintPreset[] = [
+  'straight',
+  'l_left',
+  'l_right',
+  'recess_left',
+  'recess_right',
+  'u_shape',
+  'wrap_left',
+  'wrap_right',
+];
+
+const HOUSE_ROOF_FORMS: readonly HouseRoofForm[] = ['flat', 'mono', 'gable', 'hipped'];
 
 function pointOnSegment2D(
   candidate: { x: number; y: number },
@@ -1718,6 +1741,49 @@ describe('house model geometry builder', () => {
       expect(model?.metadata?.roofGeometry).toBe('footprint_mono');
       expect(model?.roofPlanes).toHaveLength(1);
       expectRoofQaValid(model!);
+    }
+  });
+
+  it('builds valid house roof geometry for every preset and live roof form', () => {
+    for (const preset of HOUSE_FOOTPRINT_PRESETS) {
+      const footprint = buildHouseFootprintPolygon({
+        pergolaWidthMm: 6000,
+        pergolaDepthMm: 1800,
+        preset,
+        attachmentSide: 'rear',
+      });
+
+      for (const roofForm of HOUSE_ROOF_FORMS) {
+        const model = buildHouseModel3D({
+          config: makeConfig({
+            footprint,
+            roofForm,
+            roofPitchDeg: roofForm === 'flat' ? 0 : 20,
+            roofPrimaryFallDirection: 'negative_y',
+            roofRidgeAxis: 'x',
+          }),
+          attachmentEdge: makeAttachmentEdge(),
+        });
+
+        expect(model, `${preset}/${roofForm} model`).not.toBeNull();
+        if (!model) continue;
+        expect(model.metadata?.roofForm).toBe(roofForm);
+        expect(model.metadata?.roofGeometry).toBe(
+          roofForm === 'flat'
+            ? 'footprint_flat'
+            : roofForm === 'mono'
+              ? 'footprint_mono'
+              : preset === 'straight' && roofForm === 'gable'
+                ? 'rectangular_gable'
+                : preset === 'straight' && roofForm === 'hipped'
+                  ? 'rectangular_hipped'
+                  : roofForm === 'gable'
+                    ? 'bent_spine_joined_gable'
+                    : 'rectilinear_joined_hipped',
+        );
+        expect(model.roofPlanes.length).toBeGreaterThan(0);
+        expectRoofQaValid(model);
+      }
     }
   });
 

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import type { HouseFootprintPreset, HouseRoofForm } from '@sp/geometry';
 import { getSanctuaryGeometryWorkbenchFixture } from '@/lib/drawings/sanctuaryWorkbenchFixtures';
 import {
   buildEstimateDrawingDraftFromSnapshot,
@@ -8,6 +9,19 @@ import { ESTIMATE_PRICING_SYNC_STATE_OUTPUT_KEY } from '@/lib/estimates/costingP
 import { makeHouseFirstDeckSupportSnapshotFixture } from '@/lib/drawings/state/houseFirstWorkbenchFixtures';
 import { applyGeometryEditIntent } from './geometryEditAdapter';
 import { buildWorkbenchGeometryPreview } from './buildWorkbenchGeometryPreview';
+
+const HOUSE_FOOTPRINT_PRESETS: readonly HouseFootprintPreset[] = [
+  'straight',
+  'l_left',
+  'l_right',
+  'recess_left',
+  'recess_right',
+  'u_shape',
+  'wrap_left',
+  'wrap_right',
+];
+
+const HOUSE_ROOF_FORMS: readonly HouseRoofForm[] = ['flat', 'mono', 'gable', 'hipped'];
 
 function makeScreenshotStyleUHouseFootprint() {
   return [
@@ -693,39 +707,44 @@ describe('buildWorkbenchGeometryPreview', () => {
     ).toBe(true);
   });
 
-  it('renders every editable shared house roof form through the ready preview path', () => {
+  it('renders every preset and editable shared house roof form through the ready preview path', () => {
     const fixture = requireFixture('mono-standard');
 
-    for (const roof of [
-      { form: 'flat', primaryPitchDeg: '0' },
-      { form: 'mono', primaryPitchDeg: '12', primaryFallDirection: 'negative_y' },
-      { form: 'gable', primaryPitchDeg: '18', ridgeAxis: 'x' },
-      { form: 'hipped', primaryPitchDeg: '22', ridgeAxis: 'x' },
-    ] as const) {
-      const draft = makeDraft(fixture.snapshot, (current) => {
-        current.houseFirst = {
-          roof,
-        };
-      });
+    for (const preset of HOUSE_FOOTPRINT_PRESETS) {
+      for (const form of HOUSE_ROOF_FORMS) {
+        const roof = {
+          form,
+          primaryPitchDeg: form === 'flat' ? '0' : form === 'mono' ? '12' : form === 'gable' ? '18' : '22',
+          primaryFallDirection: 'negative_y',
+          ridgeAxis: 'x',
+        } as const;
+        const draft = makeDraft(fixture.snapshot, (current) => {
+          current.inputs.modules[0]!.houseFootprintPreset = preset;
+          current.houseFirst = {
+            roof,
+          };
+        });
 
-      const preview = buildWorkbenchGeometryPreview({
-        projectId: 'proj_preview',
-        estimateId: fixture.estimate.id,
-        designRequestId: fixture.request.id,
-        snapshot: fixture.snapshot,
-        draft,
-        moduleIndex: 0,
-      });
+        const preview = buildWorkbenchGeometryPreview({
+          projectId: 'proj_preview',
+          estimateId: fixture.estimate.id,
+          designRequestId: fixture.request.id,
+          snapshot: fixture.snapshot,
+          draft,
+          moduleIndex: 0,
+        });
 
-      expect(preview.kind).toBe('ready');
-      if (preview.kind !== 'ready') continue;
-      expect(preview.config.houseContext.model?.roofForm).toBe(roof.form);
-      expect(preview.scene.metadata?.houseRoofQaStatus).toBe('valid');
-      expect(
-        preview.scene.layers
-          .flatMap((layer) => layer.objects)
-          .some((object) => object.type === 'house_surface_solid' && object.kind === 'roof'),
-      ).toBe(true);
+        expect(preview.kind, `${preset}/${form} preview kind`).toBe('ready');
+        if (preview.kind !== 'ready') continue;
+        expect(preview.config.houseContext.model?.roofForm, `${preset}/${form} roof form`).toBe(form);
+        expect(preview.scene.metadata?.houseRoofQaStatus, `${preset}/${form} roof QA`).toBe('valid');
+        expect(
+          preview.scene.layers
+            .flatMap((layer) => layer.objects)
+            .some((object) => object.type === 'house_surface_solid' && object.kind === 'roof'),
+          `${preset}/${form} roof solid`,
+        ).toBe(true);
+      }
     }
   });
 

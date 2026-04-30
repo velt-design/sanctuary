@@ -271,6 +271,8 @@ const HOUSE_FOOTPRINT_PRESETS = [
   'wrap_right',
 ] as const;
 
+const HOUSE_ROOF_FORMS = ['flat', 'mono', 'gable', 'hipped'] as const;
+
 type SvgGeometryRestore = {
   restoreCreateSvgPoint: (() => void) | null;
   restoreGetScreenCtm: (() => void) | null;
@@ -686,7 +688,13 @@ describe('DesignWorkbenchEstimateClient', () => {
     expect(readLabeledValue(rendered.container, 'Roof status')).toBe('Blocked');
     expect(readLabeledValue(rendered.container, 'Roof reason code')).toBe('unsupported_roof_topology');
     clickButtonByText(rendered.container, 'House Forms');
-    expect(rendered.container.querySelector('[aria-label="Roof form"]')).not.toBeNull();
+    const roofFormSelect = rendered.container.querySelector('[aria-label="Roof form"]') as HTMLSelectElement | null;
+    expect(Array.from(roofFormSelect?.options ?? []).map((option) => option.value)).toEqual([
+      'flat',
+      'mono',
+      'gable',
+      'hipped',
+    ]);
     expect(rendered.container.querySelector('[aria-label="Roof pitch (deg)"]')).toBeNull();
 
     rendered.unmount();
@@ -962,6 +970,40 @@ describe('DesignWorkbenchEstimateClient', () => {
 
     expect(rendered.container.textContent).toContain('Ready');
     expect(readLabeledValue(rendered.container, 'Roof reason code')).toBe('none');
+
+    rendered.unmount();
+  });
+
+  it('keeps every live roof form available after every preset footprint change', async () => {
+    const estimate = buildMultiModuleEstimateDetail();
+    const entityKey = buildEstimateDrawingDraftEntityKey(estimate.id);
+
+    const rendered = renderIntoDocument(
+      <DesignWorkbenchEstimateClient estimate={estimate} projectName="Deck Build" siteAddress="1 Test Street" />,
+    );
+
+    await flushAsyncWork();
+    for (const form of HOUSE_ROOF_FORMS) {
+      clickButtonByText(rendered.container, 'House Forms');
+      await flushAsyncWork();
+      changeSelectByLabel(rendered.container, 'Roof form', form);
+      await flushAsyncWork();
+
+      for (const preset of HOUSE_FOOTPRINT_PRESETS) {
+        clickButtonByText(rendered.container, 'House Forms');
+        await flushAsyncWork();
+        changeSelectByLabel(rendered.container, 'House footprint', preset);
+        await flushAsyncWork();
+
+        const workingCopy = getLocalFirstWorkingCopy<any>(entityKey)?.data;
+        expect(readObjectFirstRoofDraft(workingCopy)?.form, `${preset}/${form} roof form`).toBe(form);
+        expect(workingCopy?.inputs.modules[0]?.houseFootprintPreset ?? 'straight').toBe(preset);
+        expect(workingCopy?.inputs.modules[1]?.houseFootprintPreset ?? 'straight').toBe(preset);
+        expect(readLabeledValue(rendered.container, 'Selected roof form')).toBe(form);
+        expect(readLabeledValue(rendered.container, 'Roof reason code')).toBe('none');
+        expect(readLabeledValue(rendered.container, 'Roof status')).not.toBe('Blocked');
+      }
+    }
 
     rendered.unmount();
   });

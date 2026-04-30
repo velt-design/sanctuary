@@ -4,6 +4,19 @@ import { buildEstimateDrawingDraftFromSnapshot } from '@/lib/estimates/drawingEd
 import { makeHouseFirstConflictingLegacyContextFixture } from './houseFirstWorkbenchFixtures';
 import { buildHouseFirstWorkbenchProjectModel } from './houseFirstWorkbenchAdapter';
 
+const HOUSE_FOOTPRINT_PRESETS = [
+  'straight',
+  'l_left',
+  'l_right',
+  'recess_left',
+  'recess_right',
+  'u_shape',
+  'wrap_left',
+  'wrap_right',
+] as const;
+
+const HOUSE_ROOF_FORMS = ['flat', 'mono', 'gable', 'hipped'] as const;
+
 describe('buildHouseFirstWorkbenchProjectModel', () => {
   it('classifies mono, gable, and box legacy fixtures into first-pass roof forms', () => {
     const monoFixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
@@ -593,6 +606,44 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
     expect(projectModel.house?.roof.capabilities.selectedFormSupported).toBe(true);
     expect(projectModel.house?.roof.validation.code).toBeNull();
     expect(projectModel.house?.roof.validation.message).toBeNull();
+  });
+
+  it('treats every preset and live roof form as supported in the shared house model', () => {
+    const monoFixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
+    if (!monoFixture) throw new Error('Missing mono-standard fixture.');
+
+    for (const preset of HOUSE_FOOTPRINT_PRESETS) {
+      for (const form of HOUSE_ROOF_FORMS) {
+        const draft = buildEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
+        if (!draft) throw new Error('Expected drawing draft.');
+        draft.inputs.modules[0]!.houseFootprintPreset = preset;
+        draft.houseFirst = {
+          roof: {
+            form,
+            primaryPitchDeg: form === 'flat' ? '0' : '18',
+            material: 'corrugated_iron',
+            primaryFallDirection: 'negative_y',
+            ridgeAxis: 'x',
+          },
+        };
+
+        const projectModel = buildHouseFirstWorkbenchProjectModel({
+          snapshot: monoFixture.snapshot,
+          draft,
+        });
+
+        expect(projectModel.house?.footprint.preset, `${preset}/${form} footprint`).toBe(preset);
+        expect(projectModel.house?.roof.form, `${preset}/${form} form`).toBe(form);
+        expect(projectModel.house?.roof.geometryKind, `${preset}/${form} geometry`).not.toBeNull();
+        expect(projectModel.house?.roof.capabilities.selectedFormSupported, `${preset}/${form} supported`).toBe(
+          true,
+        );
+        expect(projectModel.house?.roof.validation.code, `${preset}/${form} validation code`).toBeNull();
+        expect(projectModel.house?.roof.validation.status, `${preset}/${form} validation status`).not.toBe(
+          'invalid',
+        );
+      }
+    }
   });
 
   it('accepts custom orthogonal mono outlines and blocks non-orthogonal ones', () => {

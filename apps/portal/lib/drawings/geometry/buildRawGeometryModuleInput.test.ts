@@ -2,12 +2,26 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { CostOutputV1 } from '@sp/costing';
+import type { HouseFootprintPreset, HouseRoofForm } from '@sp/geometry';
 import { getSanctuaryGeometryWorkbenchFixture } from '@/lib/drawings/sanctuaryWorkbenchFixtures';
 import { buildHouseFirstWorkbenchProjectModel } from '@/lib/drawings/state/houseFirstWorkbenchAdapter';
 import { makeHouseFirstDeckSupportProjectFixture } from '@/lib/drawings/state/houseFirstWorkbenchFixtures';
 import { buildEstimateDrawingDraftFromSnapshot } from '@/lib/estimates/drawingEdits';
 import { buildRawGeometryModuleInput } from './buildRawGeometryModuleInput';
 import type { CalculatorModuleInputs } from '@/lib/types/calculator';
+
+const HOUSE_FOOTPRINT_PRESETS: readonly HouseFootprintPreset[] = [
+  'straight',
+  'l_left',
+  'l_right',
+  'recess_left',
+  'recess_right',
+  'u_shape',
+  'wrap_left',
+  'wrap_right',
+];
+
+const HOUSE_ROOF_FORMS: readonly HouseRoofForm[] = ['flat', 'mono', 'gable', 'hipped'];
 
 function makeModule(overrides: Partial<CalculatorModuleInputs> = {}): CalculatorModuleInputs {
   return {
@@ -364,41 +378,48 @@ describe('buildRawGeometryModuleInput', () => {
     expect(gableRaw.houseContext.roofRidgeAxis).toBe('x');
   });
 
-  it('maps every editable shared house roof form into raw house context', () => {
+  it('maps every preset and editable shared house roof form into raw house context', () => {
     const fixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
     if (!fixture) throw new Error('Expected mono fixture');
 
-    for (const roof of [
-      { form: 'flat', primaryPitchDeg: '0', ridgeAxis: undefined },
-      { form: 'mono', primaryPitchDeg: '12', primaryFallDirection: 'negative_y', ridgeAxis: undefined },
-      { form: 'gable', primaryPitchDeg: '18', ridgeAxis: 'x' },
-      { form: 'hipped', primaryPitchDeg: '22', ridgeAxis: 'x' },
-    ] as const) {
-      const draft = buildEstimateDrawingDraftFromSnapshot(fixture.snapshot);
-      if (!draft) throw new Error('Expected draft');
-      draft.houseFirst = {
-        roof,
-      };
-      const projectModel = buildHouseFirstWorkbenchProjectModel({
-        snapshot: fixture.snapshot,
-        draft,
-      });
+    for (const preset of HOUSE_FOOTPRINT_PRESETS) {
+      for (const form of HOUSE_ROOF_FORMS) {
+        const roof = {
+          form,
+          primaryPitchDeg: form === 'flat' ? '0' : form === 'mono' ? '12' : form === 'gable' ? '18' : '22',
+          primaryFallDirection: 'negative_y',
+          ridgeAxis: 'x',
+        } as const;
+        const draft = buildEstimateDrawingDraftFromSnapshot(fixture.snapshot);
+        if (!draft) throw new Error('Expected draft');
+        draft.inputs.modules[0]!.houseFootprintPreset = preset;
+        draft.houseFirst = {
+          roof,
+        };
+        const projectModel = buildHouseFirstWorkbenchProjectModel({
+          snapshot: fixture.snapshot,
+          draft,
+        });
 
-      const raw = buildRawGeometryModuleInput({
-        projectId: 'proj_1',
-        estimateId: 'est_1',
-        module: makeModule(),
-        result: makeResult(),
-        sharedHouse: projectModel.house,
-      });
+        const raw = buildRawGeometryModuleInput({
+          projectId: 'proj_1',
+          estimateId: 'est_1',
+          module: makeModule({ houseFootprintPreset: preset }),
+          result: makeResult(),
+          sharedHouse: projectModel.house,
+        });
 
-      expect(raw.houseContext.roofForm).toBe(roof.form);
-      expect(raw.houseContext.roofPitchDeg).toBe(roof.primaryPitchDeg);
-      if (roof.form === 'mono') {
-        expect(raw.houseContext.roofPrimaryFallDirection).toBe('negative_y');
-      }
-      if (roof.form === 'gable' || roof.form === 'hipped') {
-        expect(raw.houseContext.roofRidgeAxis).toBe('x');
+        expect(raw.houseContext.footprintPreset, `${preset}/${form} footprint`).toBe(preset);
+        expect(raw.houseContext.roofForm, `${preset}/${form} roof form`).toBe(form);
+        expect(raw.houseContext.roofPitchDeg, `${preset}/${form} roof pitch`).toBe(roof.primaryPitchDeg);
+        if (form === 'mono') {
+          expect(raw.houseContext.roofPrimaryFallDirection, `${preset}/${form} fall direction`).toBe(
+            'negative_y',
+          );
+        }
+        if (form === 'gable' || form === 'hipped') {
+          expect(raw.houseContext.roofRidgeAxis, `${preset}/${form} ridge axis`).toBe('x');
+        }
       }
     }
   });

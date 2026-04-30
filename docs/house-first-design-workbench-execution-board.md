@@ -16,7 +16,8 @@ This section describes current repo state only. It does not change the canonical
 - Object-first contracts, draft normalizers, and derived hosting resolvers already exist for the future `HouseAssembly` / `HouseForm` model and authored decks, openings, and pergolas.
 - The store now exposes an object-first `WorkbenchProjectModel`, using `EstimateDrawingDraft.objectFirst` when present and deriving a compatibility projection for older geometry paths.
 - Object-family rail navigation and selected-object inspector scaffolding already exist on the hidden route.
-- The compatibility House Forms inspector now treats all existing footprint presets and flat, mono, gable, and hipped house roof forms as live hidden-route editing controls.
+- The compatibility House Forms inspector now treats all existing footprint presets and flat, mono, gable, and hipped house roof forms as live hidden-route editing controls, with all eight preset footprints expected to preview without blocking roof topology diagnostics.
+- Unsupported custom/non-orthogonal gable and hipped topology remains selectable-but-blocked with explicit diagnostics; approximate fallback geometry for those custom cases is still deferred.
 - Shared interaction state helpers exist, and deck plus opening interaction work has started moving toward adapter-backed behavior.
 - Geometry, plan overlay, and some editor helpers still consume a derived compatibility `houseFirst` projection rather than a true multi-form `HouseAssembly` runtime source of truth.
 - The current hidden-route workbench is a bridge implementation and validation surface, not the canonical end-state described by this execution board.

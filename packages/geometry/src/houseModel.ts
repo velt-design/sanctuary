@@ -1726,7 +1726,11 @@ function validateRoofPlaneForQa(roofPlane: RoofPlane3D, eavePolygon: Polygon3): 
     typeof roofPlane.metadata?.roofGeometry === 'string'
       ? roofPlane.metadata.roofGeometry
       : null;
-  if (roofGeometry !== 'footprint_mono' && !pointInOrOnRoofPolygon(centroid, eavePolygon)) {
+  if (
+    roofGeometry !== 'footprint_flat' &&
+    roofGeometry !== 'footprint_mono' &&
+    !pointInOrOnRoofPolygon(centroid, eavePolygon)
+  ) {
     return `${roofPlane.id}:centroid_outside_eave`;
   }
   return null;
