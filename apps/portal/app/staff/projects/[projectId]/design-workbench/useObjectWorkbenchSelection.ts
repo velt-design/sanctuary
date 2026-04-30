@@ -257,3 +257,5 @@ export function useObjectWorkbenchSelection({
     clearActiveWorkbenchSelection,
   };
 }
+
+export type ObjectWorkbenchSelectionActions = ReturnType<typeof useObjectWorkbenchSelection>;

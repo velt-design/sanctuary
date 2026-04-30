@@ -71,7 +71,7 @@ import {
   nextDeckId,
   nextOpeningId,
   resolveDeckDraftGeometry,
-} from './workbenchCompatibilityDraftBuilders';
+} from './compat/workbenchCompatibilityDraftBuilders';
 
 type UseObjectWorkbenchActionsInput = {
   activeModuleInput: CalculatorModuleInputs | null;
@@ -255,6 +255,8 @@ function normalizeOpeningPatchAgainstDerivedWalls(input: {
     }),
   };
 }
+
+export type ObjectWorkbenchActions = ReturnType<typeof useObjectWorkbenchActions>;
 
 function resolvePreferredNewOpeningHostWall(input: {
   activeModuleInput: CalculatorModuleInputs | null;

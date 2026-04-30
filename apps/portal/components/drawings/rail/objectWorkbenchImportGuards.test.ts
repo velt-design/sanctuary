@@ -9,7 +9,7 @@ const SCAN_ROOTS = [
 ];
 const ALLOWLISTED_COMPATIBILITY_FILES = new Set([
   path.normalize(path.join('apps', 'portal', 'app', 'staff', 'projects', '[projectId]', 'design-workbench', 'useObjectWorkbenchActions.ts')),
-  path.normalize(path.join('apps', 'portal', 'app', 'staff', 'projects', '[projectId]', 'design-workbench', 'workbenchCompatibilityDraftBuilders.ts')),
+  path.normalize(path.join('apps', 'portal', 'app', 'staff', 'projects', '[projectId]', 'design-workbench', 'compat', 'workbenchCompatibilityDraftBuilders.ts')),
 ]);
 const ALLOWLISTED_CONFIGURATOR_FILES = new Set([
   path.normalize(path.join('apps', 'portal', 'components', 'drawings', 'rail', 'ConfiguratorRail.tsx')),
