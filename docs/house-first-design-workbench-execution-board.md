@@ -14,16 +14,16 @@ This section describes current repo state only. It does not change the canonical
 - `Model Space`, `Sheet View`, and 3D review are already available there for internal use and QA.
 - Local working-copy draft behavior already exists for workbench edits on that hidden route.
 - Object-first contracts, draft normalizers, and derived hosting resolvers already exist for the future `HouseAssembly` / `HouseForm` model and authored decks, openings, and pergolas.
-- The store now exposes a shadow object-first `WorkbenchProjectModel` built from the compatibility model.
-- Object-family rail navigation and selected-object inspector scaffolding already exist on the hidden route, although the data still comes through the compatibility model.
+- The store now exposes an object-first `WorkbenchProjectModel`, using `EstimateDrawingDraft.objectFirst` when present and deriving a compatibility projection for older geometry paths.
+- Object-family rail navigation and selected-object inspector scaffolding already exist on the hidden route.
 - The compatibility House Forms inspector now treats all existing footprint presets and flat, mono, gable, and hipped house roof forms as live hidden-route editing controls.
 - Shared interaction state helpers exist, and deck plus opening interaction work has started moving toward adapter-backed behavior.
-- Persistence, editor commits, geometry, rail, and rendering still consume the compatibility `houseFirst` model rather than a true `HouseAssembly` plus multiple movable `HouseForm`s source of truth.
+- Geometry, plan overlay, and some editor helpers still consume a derived compatibility `houseFirst` projection rather than a true multi-form `HouseAssembly` runtime source of truth.
 - The current hidden-route workbench is a bridge implementation and validation surface, not the canonical end-state described by this execution board.
 
 ## Current Bridge Boundary
 
-Object-first code contracts are canonical for new work, and `drawingWorkbenchStore` now exposes a shadow object-first project model. The hidden workbench still builds that shadow model from `buildHouseFirstWorkbenchProjectModel`, while persistence, editor commits, geometry, rail, and rendering remain compatibility-bound. This board tracks both landed bridge pieces and the remaining migration path to true object-first runtime state.
+Object-first code contracts are canonical for new work, hidden-route authored edits persist through the `objectFirst` draft envelope, and `drawingWorkbenchStore` exposes an object-first project model. Geometry, plan-overlay, and some editor paths still use a derived compatibility projection. This board tracks both landed bridge pieces and the remaining migration path to true object-first runtime state.
 
 ## Purpose
 
@@ -212,7 +212,7 @@ Acceptance criteria:
 - `HouseAssembly` draft location is explicit
 - object lists and ids are coherent
 - UI-only state is not mixed into persisted authored state
-- live hidden-route persistence still uses the compatibility `houseFirst` draft path
+- live hidden-route persistence uses `EstimateDrawingDraft.objectFirst`, while legacy `houseFirst` fallback loading remains for compatibility
 
 Suggested PR slice:
 
@@ -448,7 +448,7 @@ Scope:
 
 - make opening hosting and movement consume derived wall truth
 - align opening inspector behavior with object-first rail state
-- keep persistence, plan overlay, and geometry compatibility-bound during this slice
+- keep plan overlay and geometry compatibility-bound during this slice
 
 Acceptance criteria:
 
@@ -473,7 +473,7 @@ Scope:
 
 - make pergola attachment consume derived edge and zone truth
 - retire the old per-module house-copy assumption from the canonical path
-- keep module edits, geometry, and persistence compatibility-bound during this slice
+- keep module geometry and plan-overlay paths compatibility-bound during this slice
 
 Acceptance criteria:
 

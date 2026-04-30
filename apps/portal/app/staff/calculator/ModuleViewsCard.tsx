@@ -2930,6 +2930,8 @@ function renderHouseFirstDimension(
   return (
     <g
       key={annotation.id}
+      data-object-workbench-plan-dimension={annotation.id}
+      data-object-workbench-dimension-emphasis={emphasis}
       data-house-first-plan-dimension={annotation.id}
       data-house-first-dimension-emphasis={emphasis}
     >
@@ -3057,10 +3059,17 @@ function renderHouseFirstPlanOverlay(input: {
             <g key={`house-first-shape-${shape.ownerKind}-${shape.ownerId}`}>
               <polygon
                 points={toPointsAttr(shape.points)}
+                data-object-workbench-shape={`${shape.ownerKind}:${shape.ownerId}`}
                 data-house-first-shape={`${shape.ownerKind}:${shape.ownerId}`}
+                data-object-workbench-shape-muted={shape.muted ? 'true' : 'false'}
                 data-house-first-shape-muted={shape.muted ? 'true' : 'false'}
+                data-object-workbench-shape-invalid={shape.invalid ? 'true' : 'false'}
                 data-house-first-shape-invalid={shape.invalid ? 'true' : 'false'}
+                data-object-workbench-shape-preview-suppressed={previewSuppressed ? 'true' : 'false'}
                 data-house-first-shape-preview-suppressed={previewSuppressed ? 'true' : 'false'}
+                data-object-workbench-shape-hovered={
+                  shape.ownerKind === 'deck' && hoveredDeckId === shape.ownerId ? 'true' : 'false'
+                }
                 data-house-first-shape-hovered={
                   shape.ownerKind === 'deck' && hoveredDeckId === shape.ownerId ? 'true' : 'false'
                 }
@@ -3089,8 +3098,21 @@ function renderHouseFirstPlanOverlay(input: {
               ))}
               <polygon
                 points={toPointsAttr(shape.points)}
+                data-object-workbench-shape-hit={`${shape.ownerKind}:${shape.ownerId}`}
                 data-house-first-shape-hit={`${shape.ownerKind}:${shape.ownerId}`}
+                data-object-workbench-shape-hit-preview-suppressed={previewSuppressed ? 'true' : 'false'}
                 data-house-first-shape-hit-preview-suppressed={previewSuppressed ? 'true' : 'false'}
+                data-object-workbench-shape-draggable={
+                  shape.ownerKind === 'deck'
+                    ? shape.deckDragEligibility?.eligible
+                      ? 'true'
+                      : 'false'
+                    : shape.ownerKind === 'opening'
+                      ? shape.openingDragEligibility?.eligible
+                        ? 'true'
+                        : 'false'
+                      : 'false'
+                }
                 data-house-first-shape-draggable={
                   shape.ownerKind === 'deck'
                     ? shape.deckDragEligibility?.eligible
@@ -3101,6 +3123,13 @@ function renderHouseFirstPlanOverlay(input: {
                         ? 'true'
                         : 'false'
                       : 'false'
+                }
+                data-object-workbench-shape-drag-reason={
+                  shape.ownerKind === 'deck'
+                    ? (shape.deckDragEligibility?.reason ?? '')
+                    : shape.ownerKind === 'opening'
+                      ? (shape.openingDragEligibility?.reason ?? '')
+                      : ''
                 }
                 data-house-first-shape-drag-reason={
                   shape.ownerKind === 'deck'
@@ -3217,13 +3246,19 @@ function renderHouseFirstPlanOverlay(input: {
           })
         : null}
       {previewShape ? (
-        <g data-house-first-preview-owner={previewShape.ownerId} data-house-first-preview-owner-kind={previewShape.ownerKind}>
+        <g
+          data-object-workbench-preview-owner={previewShape.ownerId}
+          data-object-workbench-preview-owner-kind={previewShape.ownerKind}
+          data-house-first-preview-owner={previewShape.ownerId}
+          data-house-first-preview-owner-kind={previewShape.ownerKind}
+        >
           {previewShape.referenceGuide ? (
             <line
               x1={previewShape.referenceGuide.start.x}
               y1={previewShape.referenceGuide.start.y}
               x2={previewShape.referenceGuide.end.x}
               y2={previewShape.referenceGuide.end.y}
+              data-object-workbench-reference-guide={previewShape.referenceGuide.state}
               data-house-first-reference-guide={previewShape.referenceGuide.state}
               className={
                 previewShape.referenceGuide.state === 'snap-lane'
@@ -3239,6 +3274,7 @@ function renderHouseFirstPlanOverlay(input: {
               y1={targetHighlight.start.y}
               x2={targetHighlight.end.x}
               y2={targetHighlight.end.y}
+              data-object-workbench-snap-target={targetHighlight.state}
               data-house-first-snap-target={targetHighlight.state}
               className={
                 targetHighlight.state === 'snapped'
@@ -3254,6 +3290,7 @@ function renderHouseFirstPlanOverlay(input: {
               cx={previewShape.lockedCornerPoint.x}
               cy={previewShape.lockedCornerPoint.y}
               r={0.92}
+              data-object-workbench-preview-corner-lock={previewShape.bodyState}
               data-house-first-preview-corner-lock={previewShape.bodyState}
               className={styles.moduleHouseFirstPreviewCornerLock}
             />
@@ -3263,6 +3300,7 @@ function renderHouseFirstPlanOverlay(input: {
               cx={previewShape.endCatchPoint.x}
               cy={previewShape.endCatchPoint.y}
               r={0.82}
+              data-object-workbench-preview-end-catch={previewShape.bodyState}
               data-house-first-preview-end-catch={previewShape.bodyState}
               className={styles.moduleHouseFirstPreviewEndCatch}
             />
@@ -3270,7 +3308,9 @@ function renderHouseFirstPlanOverlay(input: {
           {previewShape.bodyState === 'grabbed' ? null : (
             <polygon
               points={toPointsAttr(previewShape.points)}
+              data-object-workbench-preview-shape={previewShape.ownerId}
               data-house-first-preview-shape={previewShape.ownerId}
+              data-object-workbench-preview-body-state={previewShape.bodyState}
               data-house-first-preview-body-state={previewShape.bodyState}
               className={[
                 styles.moduleHouseFirstPreviewShape,
@@ -3291,6 +3331,7 @@ function renderHouseFirstPlanOverlay(input: {
               cx={previewShape.anchorPoint.x}
               cy={previewShape.anchorPoint.y}
               r={1.05}
+              data-object-workbench-preview-anchor={previewShape.bodyState}
               data-house-first-preview-anchor={previewShape.bodyState}
               className={
                 previewShape.bodyState === 'blocked'
@@ -3311,6 +3352,7 @@ function renderHouseFirstPlanOverlay(input: {
                 y1={annotation.witnessStart.y}
                 x2={annotation.witnessEnd.x}
                 y2={annotation.witnessEnd.y}
+                data-object-workbench-custom-edge={annotation.id}
                 data-house-first-custom-edge={annotation.id}
                 className={
                   annotation.id === activeCustomEdgeId
@@ -3323,6 +3365,7 @@ function renderHouseFirstPlanOverlay(input: {
                 y1={annotation.witnessStart.y}
                 x2={annotation.witnessEnd.x}
                 y2={annotation.witnessEnd.y}
+                data-object-workbench-custom-edge-hit={annotation.id}
                 data-house-first-custom-edge-hit={annotation.id}
                 className={styles.moduleHouseFirstCustomEdgeHit}
                 onClick={() =>

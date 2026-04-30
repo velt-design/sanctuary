@@ -57,16 +57,16 @@ import type {
   CalculatorHouseFootprintPolygonPoint,
   CalculatorModuleInputs,
 } from '@/lib/types/calculator';
-import type { CommitResult, DrawOutlineTarget } from './houseWorkbenchClientTypes';
+import type { CommitResult, DrawOutlineTarget } from './objectWorkbenchClientTypes';
 import {
   deckReferenceHousePolygon,
   houseLocalPolygon,
   nextDeckId,
   nextOpeningId,
   resolveDeckDraftGeometry,
-} from './houseDraftBuilders';
+} from './workbenchCompatibilityDraftBuilders';
 
-type UseHouseMutationActionsInput = {
+type UseObjectWorkbenchActionsInput = {
   activeModuleInput: CalculatorModuleInputs | null;
   drawingDraft: EstimateDrawingDraft | null;
   drawOutlineTarget: DrawOutlineTarget;
@@ -671,7 +671,7 @@ function buildNewOpeningDraft(input: {
   };
 }
 
-export function useHouseMutationActions({
+export function useObjectWorkbenchActions({
   activeModuleInput,
   drawingDraft,
   drawOutlineTarget,
@@ -682,7 +682,7 @@ export function useHouseMutationActions({
   startDeckOutlineEditor,
   store,
   ui,
-}: UseHouseMutationActionsInput) {
+}: UseObjectWorkbenchActionsInput) {
   const runDraftTransaction = useCallback(
     async (transaction: DraftTransaction): Promise<CommitResult> => {
       if (!drawingDraft) return missingDrawingDraftResult();
@@ -1387,12 +1387,12 @@ export function useHouseMutationActions({
     [runGeometryIntentTransaction],
   );
 
-  const commitHouseFirstFootprintDimension = useCallback(
+  const commitHouseFormFootprintDimension = useCallback(
     async (edit: EstimateDrawingFootprintEdit): Promise<CommitResult> => commitSharedHouseFootprintEdit(edit),
     [commitSharedHouseFootprintEdit],
   );
 
-  const commitHouseFirstDeckDimension = useCallback(
+  const commitDeckDimension = useCallback(
     async (deckId: string, patch: Partial<HouseFirstDeckDraft>): Promise<CommitResult> =>
       commitDeckDraftMutation({
         buildNextDecks: ({ currentDecks, housePolygon }) =>
@@ -1407,7 +1407,7 @@ export function useHouseMutationActions({
     [commitDeckDraftMutation, validateDeckPreview],
   );
 
-  const commitHouseFirstOpeningDimension = useCallback(
+  const commitOpeningDimension = useCallback(
     async (openingId: string, patch: Partial<HouseFirstOpeningDraft>): Promise<CommitResult> =>
       commitSharedHouseOpeningPatch(openingId, patch),
     [commitSharedHouseOpeningPatch],
@@ -1417,10 +1417,10 @@ export function useHouseMutationActions({
     addSharedHouseDeck,
     addSharedHouseOpening,
     commitDrawingField,
+    commitDeckDimension,
     commitGeometryIntent,
-    commitHouseFirstDeckDimension,
-    commitHouseFirstFootprintDimension,
-    commitHouseFirstOpeningDimension,
+    commitHouseFormFootprintDimension,
+    commitOpeningDimension,
     commitSharedPergolaAttachmentEdge,
     commitSharedPergolaAttachmentStrategy,
     commitSharedPergolaAttachmentZone,

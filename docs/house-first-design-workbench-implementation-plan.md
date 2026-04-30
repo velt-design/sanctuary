@@ -14,19 +14,19 @@ This section describes current repo state only. It does not change the canonical
 - `Model Space`, `Sheet View`, and 3D review are already present on that hidden route for internal use and QA.
 - Local working-copy draft behavior already exists for workbench edits on the hidden route.
 - Object-first TypeScript contracts now exist for `WorkbenchProjectModel`, `HouseAssembly`, `HouseForm`, authored decks, openings, pergolas, derived hosting resolvers, and the `ObjectFirstWorkbenchDraftVNext` draft envelope.
-- `drawingWorkbenchStore` now exposes a shadow object-first `WorkbenchProjectModel` built from the compatibility model.
+- `drawingWorkbenchStore` now exposes an object-first `WorkbenchProjectModel`, using `EstimateDrawingDraft.objectFirst` when present and deriving a compatibility projection for older geometry paths.
 - The hidden workbench rail already exposes object-family navigation for `House Forms`, `Decks`, `Openings`, and `Pergolas`, with selected-object inspector scaffolding.
 - The compatibility House Forms inspector now supports all existing house footprint presets and live house roof form selection for flat, mono, gable, and hipped roofs.
-- Opening host resolution now flows through object-first derived wall contracts in store and rail state, while draft persistence remains compatibility-bound.
-- Pergola attachment resolution now flows through object-first derived edge and zone contracts in store, rail, and inspector option state, while module edits and draft persistence remain compatibility-bound.
+- Opening host resolution now flows through object-first derived wall contracts in store and rail state, with hidden-route edits persisted to `objectFirst`.
+- Pergola attachment resolution now flows through object-first derived edge and zone contracts in store, rail, and inspector option state, with hidden-route edits persisted to `objectFirst`.
 - Object-first validation fixtures now cover separate forms, touching/merged forms, stale hosted-object references, and deck interaction regression checks.
 - Shared interaction state helpers exist, and deck plus opening work have started moving toward adapter-backed object interaction.
-- Persistence, editor commits, geometry, rail, and rendering still consume the compatibility `houseFirst` model rather than a true `HouseAssembly` plus multiple movable `HouseForm`s source of truth.
+- Geometry, plan overlay, and some editor helpers still consume a derived compatibility `houseFirst` projection rather than a true multi-form `HouseAssembly` runtime source of truth.
 - The existing hidden-route workbench is a bridge implementation for internal iteration, not the canonical end-state described by this document.
 
 ## Current Bridge Boundary
 
-Object-first code contracts are now the canonical vocabulary for future slices, and the store exposes a shadow object-first project model. The live hidden workbench still builds that model through the compatibility `buildHouseFirstWorkbenchProjectModel` path, and the object-first draft envelope is not yet wired as the active persistence/runtime source of truth.
+Object-first code contracts are now the canonical vocabulary for future slices, and hidden-route authored edits persist through the `objectFirst` draft envelope. The live hidden workbench still derives a compatibility `houseFirst` projection for geometry, plan-overlay, and editor paths that have not yet moved to true multi-form runtime state.
 
 ## Purpose
 

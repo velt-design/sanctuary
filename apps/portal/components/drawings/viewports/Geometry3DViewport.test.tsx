@@ -2087,7 +2087,7 @@ describe("Geometry3DViewport", () => {
     ) {
       throw new Error("Expected fixture snapshot modules.");
     }
-    snapshot.inputs.modules[0].pergolaStyle = "hip";
+    snapshot.inputs.modules[0].pergolaStyle = "unsupported_custom_family";
     snapshot.outputs.pergolas[0].modules[0].derived = {
       ...(snapshot.outputs.pergolas[0].modules[0].derived ?? {}),
       length_m: null,

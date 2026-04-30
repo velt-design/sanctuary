@@ -6,7 +6,7 @@ import type {
   GeometryEditIntent,
   GeometryEditState,
 } from '@/lib/drawings/geometry/geometryEditAdapter';
-import type { CommitResult } from './houseWorkbenchClientTypes';
+import type { CommitResult } from './objectWorkbenchClientTypes';
 
 type HouseFormAttachmentContextPanelProps = {
   moduleLabel: string;

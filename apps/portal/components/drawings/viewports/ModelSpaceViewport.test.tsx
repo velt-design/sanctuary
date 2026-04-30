@@ -14,7 +14,7 @@ import {
 import { buildAssemblyModel } from '@/lib/drawings/assembly/buildAssemblyModel';
 import { buildPlanViewModel } from '@/lib/drawings/views/plan/buildPlanViewModel';
 import { resolveDeckHostEdgeFrame, resolveDeckPresetGeometry } from '@/lib/drawings/state/houseFirstDeckPresets';
-import type { DeckInteractionTelemetry } from '@/app/staff/projects/[projectId]/design-workbench/houseWorkbenchClientTypes';
+import type { DeckInteractionTelemetry } from '@/app/staff/projects/[projectId]/design-workbench/objectWorkbenchClientTypes';
 import type {
   DeckModel,
   HouseModel,
@@ -764,10 +764,10 @@ function HouseFirstViewportHarness({
       editableFields={enablePlanEditing ? makePlanEditableFields() : undefined}
       onCommitField={enablePlanEditing ? (() => ({ ok: true })) : undefined}
       onCommitFootprintEdit={() => ({ ok: true })}
-      onSelectHouseFirstTarget={(nextSelection) => {
+      onSelectObjectWorkbenchTarget={(nextSelection) => {
         setSelection(nextSelection);
       }}
-      onCommitHouseFirstFootprintDimension={(edit) => {
+      onCommitHouseFormFootprintDimension={(edit) => {
         setHouse((current) => {
           if (edit.type === 'param') {
             return {
@@ -797,7 +797,7 @@ function HouseFirstViewportHarness({
         });
         return { ok: true };
       }}
-      onCommitHouseFirstDeckDimension={(deckId, patch) => {
+      onCommitDeckDimension={(deckId, patch) => {
         onDeckCommit?.(deckId, patch as Partial<DeckModel>);
         if (rejectDeckCommit) return { ok: false, error: 'Deck dimension rejected.' };
         const applyCommit = () => {
@@ -861,7 +861,7 @@ function HouseFirstViewportHarness({
           });
         });
       }}
-      onCommitHouseFirstOpeningDimension={(openingId, patch) => {
+      onCommitOpeningDimension={(openingId, patch) => {
         setHouse((current) => ({
           ...current,
           openings: current.openings.map((opening) =>
@@ -1357,9 +1357,9 @@ describe('ModelSpaceViewport', () => {
         editableFields={makePlanEditableFields()}
         onCommitField={() => ({ ok: true })}
         onCommitFootprintEdit={() => ({ ok: true })}
-        onSelectHouseFirstTarget={() => undefined}
-        onCommitHouseFirstFootprintDimension={() => ({ ok: true })}
-        onCommitHouseFirstDeckDimension={() => ({ ok: true })}
+        onSelectObjectWorkbenchTarget={() => undefined}
+        onCommitHouseFormFootprintDimension={() => ({ ok: true })}
+        onCommitDeckDimension={() => ({ ok: true })}
       />,
     );
 
@@ -1492,9 +1492,9 @@ describe('ModelSpaceViewport', () => {
         editableFields={makePlanEditableFields()}
         onCommitField={() => ({ ok: true })}
         onCommitFootprintEdit={() => ({ ok: true })}
-        onSelectHouseFirstTarget={() => undefined}
-        onCommitHouseFirstFootprintDimension={() => ({ ok: true })}
-        onCommitHouseFirstDeckDimension={() => ({ ok: true })}
+        onSelectObjectWorkbenchTarget={() => undefined}
+        onCommitHouseFormFootprintDimension={() => ({ ok: true })}
+        onCommitDeckDimension={() => ({ ok: true })}
       />,
     );
 

@@ -11,9 +11,9 @@ import type {
 } from '@/lib/drawings/state/drawingWorkbenchUiState';
 import type { WorkbenchHouseSelection } from '@/lib/drawings/state/houseFirstWorkbenchModel';
 import type { WorkbenchObjectFamily, WorkbenchObjectRef } from '@/lib/drawings/state/objectFirstWorkbenchModel';
-import type { CommitResult, DrawOutlineTarget } from './houseWorkbenchClientTypes';
+import type { CommitResult, DrawOutlineTarget } from './objectWorkbenchClientTypes';
 
-type UseHouseWorkbenchSelectionInput = {
+type UseObjectWorkbenchSelectionInput = {
   setUi: Dispatch<SetStateAction<DrawingWorkbenchUiState>>;
   setDrawOutlineTarget: Dispatch<SetStateAction<DrawOutlineTarget>>;
   setDrawOutlineRequestId: Dispatch<SetStateAction<number>>;
@@ -79,12 +79,12 @@ function buildSelectionStateForObjectRef(
   });
 }
 
-export function useHouseWorkbenchSelection({
+export function useObjectWorkbenchSelection({
   setUi,
   setDrawOutlineTarget,
   setDrawOutlineRequestId,
   availableObjectIdsByFamily,
-}: UseHouseWorkbenchSelectionInput) {
+}: UseObjectWorkbenchSelectionInput) {
   const resetDrawOutlineTarget = useCallback(() => {
     setDrawOutlineTarget(FOOTPRINT_DRAW_OUTLINE_TARGET);
   }, [setDrawOutlineTarget]);
@@ -94,7 +94,7 @@ export function useHouseWorkbenchSelection({
     [availableObjectIdsByFamily],
   );
 
-  const selectHouseWorkbenchMode = useCallback(() => {
+  const selectHouseFormsWorkbenchMode = useCallback(() => {
     resetDrawOutlineTarget();
     setUi((current) => ({
       ...current,
@@ -200,7 +200,7 @@ export function useHouseWorkbenchSelection({
     [setDrawOutlineRequestId, setDrawOutlineTarget, setUi],
   );
 
-  const selectSharedHouseDeck = useCallback(
+  const selectDeckObject = useCallback(
     (deckId: string | null) => {
       resetDrawOutlineTarget();
       setUi((current) => ({
@@ -211,7 +211,7 @@ export function useHouseWorkbenchSelection({
     [resetDrawOutlineTarget, setUi],
   );
 
-  const selectSharedHouseOpening = useCallback(
+  const selectOpeningObject = useCallback(
     (openingId: string | null) => {
       resetDrawOutlineTarget();
       setUi((current) => ({
@@ -222,7 +222,7 @@ export function useHouseWorkbenchSelection({
     [resetDrawOutlineTarget, setUi],
   );
 
-  const selectHouseFirstTarget = useCallback(
+  const selectObjectWorkbenchTarget = useCallback(
     (selection: WorkbenchHouseSelection) => {
       resetDrawOutlineTarget();
       const nextTab = deriveRailTabFromHouseSelection(selection);
@@ -283,15 +283,15 @@ export function useHouseWorkbenchSelection({
   }, [resetDrawOutlineTarget, setUi]);
 
   return {
-    selectHouseWorkbenchMode,
+    selectHouseFormsWorkbenchMode,
     selectPergolaWorkbenchMode,
     selectRailTab,
     selectObjectRef,
     startDrawOutlineEditor,
     startDeckOutlineEditor,
-    selectSharedHouseDeck,
-    selectSharedHouseOpening,
-    selectHouseFirstTarget,
+    selectDeckObject,
+    selectOpeningObject,
+    selectObjectWorkbenchTarget,
     selectPergolaObject,
     clearActiveWorkbenchSelection,
   };

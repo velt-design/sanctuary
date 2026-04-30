@@ -14,7 +14,7 @@ import type {
   CalculatorHouseAttachmentStrategy,
   CalculatorModuleInputs,
 } from '@/lib/types/calculator';
-import type { CommitResult } from './houseWorkbenchClientTypes';
+import type { CommitResult } from './objectWorkbenchClientTypes';
 import styles from './DesignWorkbenchEstimateClient.module.css';
 
 type PergolaAttachmentKind = PergolaModel['attachment']['kind'];

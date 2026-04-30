@@ -358,7 +358,7 @@ describe('DesignWorkbenchEstimateClient', () => {
     __setLocalFirstStorageAdapterForTests(null);
   });
 
-  it('renders the house-first hidden workbench shell and mounts a native pergola inspector in the Pergolas tab', async () => {
+  it('renders the object-first hidden workbench shell and mounts a native pergola inspector in the Pergolas tab', async () => {
     const estimate = buildEstimateDetail();
 
     const rendered = renderIntoDocument(
@@ -912,7 +912,7 @@ describe('DesignWorkbenchEstimateClient', () => {
 
       clickButtonByText(rendered.container, 'Model Space');
       await flushAsyncWork();
-      expect(rendered.container.querySelector('[data-house-first-shape-hit="footprint:house-main"]')).not.toBeNull();
+      expect(rendered.container.querySelector('[data-object-workbench-shape-hit="footprint:house-main"]')).not.toBeNull();
 
       clickButtonByText(rendered.container, 'Sheet View');
       await flushAsyncWork();
@@ -1274,14 +1274,14 @@ describe('DesignWorkbenchEstimateClient', () => {
 
     expect(readLabeledValue(rendered.container, 'Model-space snap state')).toBeNull();
 
-    const deckShape = rendered.container.querySelector('[data-house-first-shape-hit="deck:deck-1"]');
+    const deckShape = rendered.container.querySelector('[data-object-workbench-shape-hit="deck:deck-1"]');
     if (!(deckShape instanceof Element)) throw new Error('Missing model-space deck shape.');
 
     dispatchPointer(deckShape, 'pointerdown', { pointerId: 91, button: 0, clientX: 50, clientY: 50 });
     dispatchPointer(window, 'pointermove', { pointerId: 91, button: 0, buttons: 1, clientX: -120, clientY: 50 });
     dispatchPointer(window, 'pointermove', { pointerId: 91, button: 0, buttons: 1, clientX: -220, clientY: 50 });
 
-    expect(rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[data-object-workbench-preview-shape="deck-1"]')).not.toBeNull();
 
     dispatchPointer(window, 'pointerup', { pointerId: 91, button: 0, clientX: -220, clientY: 50 });
     await flushAsyncWork();
@@ -1302,14 +1302,14 @@ describe('DesignWorkbenchEstimateClient', () => {
     clickButtonByText(rendered.container, 'Model Space');
     await flushAsyncWork();
 
-    const deckShape = rendered.container.querySelector('[data-house-first-shape-hit="deck:deck-1"]');
+    const deckShape = rendered.container.querySelector('[data-object-workbench-shape-hit="deck:deck-1"]');
     if (!(deckShape instanceof Element)) throw new Error('Missing model-space deck shape.');
 
     dispatchPointer(deckShape, 'pointerdown', { pointerId: 92, button: 0, clientX: 50, clientY: 50 });
     dispatchPointer(window, 'pointermove', { pointerId: 92, button: 0, buttons: 1, clientX: -120, clientY: 50 });
     dispatchPointer(window, 'pointermove', { pointerId: 92, button: 0, buttons: 1, clientX: -220, clientY: 50 });
 
-    expect(rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[data-object-workbench-preview-shape="deck-1"]')).not.toBeNull();
     expect(readLabeledValue(rendered.container, 'Selected deck id')).toBe('deck-1');
 
     dispatchPointer(window, 'pointerup', { pointerId: 92, button: 0, clientX: -220, clientY: 50 });
@@ -1331,7 +1331,7 @@ describe('DesignWorkbenchEstimateClient', () => {
     clickButtonByText(rendered.container, 'Model Space');
     await flushAsyncWork();
 
-    const deckShape = rendered.container.querySelector('[data-house-first-shape-hit="deck:deck-1"]');
+    const deckShape = rendered.container.querySelector('[data-object-workbench-shape-hit="deck:deck-1"]');
     if (!(deckShape instanceof Element)) throw new Error('Missing model-space deck shape.');
 
     dispatchPointer(deckShape, 'pointerdown', { pointerId: 93, button: 0, clientX: 50, clientY: 50 });
@@ -1341,7 +1341,7 @@ describe('DesignWorkbenchEstimateClient', () => {
     dispatchPointer(deckShape, 'pointerdown', { pointerId: 94, button: 0, clientX: 50, clientY: 50 });
     dispatchPointer(window, 'pointermove', { pointerId: 94, button: 0, buttons: 1, clientX: -220, clientY: 50 });
 
-    expect(rendered.container.querySelector('[data-house-first-preview-shape="deck-1"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[data-object-workbench-preview-shape="deck-1"]')).not.toBeNull();
 
     dispatchPointer(window, 'pointerup', { pointerId: 94, button: 0, clientX: -220, clientY: 50 });
     await flushAsyncWork();
@@ -1376,7 +1376,7 @@ describe('DesignWorkbenchEstimateClient', () => {
     clickButtonByText(rendered.container, 'Model Space');
     await flushAsyncWork();
 
-    const openingShape = rendered.container.querySelector('[data-house-first-shape-hit="opening:opening-1"]');
+    const openingShape = rendered.container.querySelector('[data-object-workbench-shape-hit="opening:opening-1"]');
     if (!(openingShape instanceof Element)) throw new Error('Missing window opening shape.');
     clickElement(openingShape);
     await flushAsyncWork();
@@ -1638,7 +1638,7 @@ describe('DesignWorkbenchEstimateClient', () => {
     clickButtonByText(rendered.container, 'Model Space');
     await flushAsyncWork();
 
-    const openingShape = rendered.container.querySelector('[data-house-first-shape-hit="opening:opening-1"]');
+    const openingShape = rendered.container.querySelector('[data-object-workbench-shape-hit="opening:opening-1"]');
     if (!(openingShape instanceof Element)) throw new Error('Missing typed opening shape.');
     clickElement(openingShape);
     await flushAsyncWork();

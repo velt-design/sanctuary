@@ -22,12 +22,12 @@ import {
 } from '@/lib/estimates/drawingEdits';
 import { buildEstimateDrawingModuleInfoRows, buildEstimateDrawingSheetMeta } from '@/lib/estimates/drawingSheet';
 import type { EstimateDetail } from '@/lib/estimates/types';
-import { type DrawOutlineTarget } from './houseWorkbenchClientTypes';
+import { type DrawOutlineTarget } from './objectWorkbenchClientTypes';
 import HouseFormAttachmentContextPanel from './HouseFormAttachmentContextPanel';
 import PergolaInspector from './PergolaInspector';
 import { useHouseDraftPersistence } from './useHouseDraftPersistence';
-import { useHouseMutationActions } from './useHouseMutationActions';
-import { useHouseWorkbenchSelection } from './useHouseWorkbenchSelection';
+import { useObjectWorkbenchActions } from './useObjectWorkbenchActions';
+import { useObjectWorkbenchSelection } from './useObjectWorkbenchSelection';
 import WorkbenchDiagnosticsPanel from './WorkbenchDiagnosticsPanel';
 import styles from './DesignWorkbenchEstimateClient.module.css';
 
@@ -339,7 +339,7 @@ export default function DesignWorkbenchEstimateClient({
     },
     [geometryViewportSurfaceKey],
   );
-  const houseSelectionActions = useHouseWorkbenchSelection({
+  const objectSelectionActions = useObjectWorkbenchSelection({
     setUi,
     setDrawOutlineTarget,
     setDrawOutlineRequestId,
@@ -350,7 +350,7 @@ export default function DesignWorkbenchEstimateClient({
       pergolas: store.derived.railModel.objectLists.pergolas.map((entry) => entry.ref.objectId ?? '').filter(Boolean),
     },
   });
-  const houseActions = useHouseMutationActions({
+  const objectWorkbenchActions = useObjectWorkbenchActions({
     activeModuleInput,
     drawingDraft,
     drawOutlineTarget,
@@ -358,18 +358,18 @@ export default function DesignWorkbenchEstimateClient({
     setDrawOutlineTarget,
     setUi,
     snapshot: estimate.calculatorSnapshot,
-    startDeckOutlineEditor: houseSelectionActions.startDeckOutlineEditor,
+    startDeckOutlineEditor: objectSelectionActions.startDeckOutlineEditor,
     store,
     ui,
   });
 
   const workbenchFieldCommit =
     !isLocked && supportsSanctuaryEditing && isPergolaTabActive
-      ? houseActions.commitDrawingField
+      ? objectWorkbenchActions.commitDrawingField
       : undefined;
   const workbenchFootprintCommit =
     !isLocked && canonicalWorkbenchDisplayMode === 'house' && store.ui.viewportMode === 'model'
-      ? houseActions.commitSharedHouseFootprintEdit
+      ? objectWorkbenchActions.commitSharedHouseFootprintEdit
       : undefined;
 
   if (!activeModule) {
@@ -391,7 +391,7 @@ export default function DesignWorkbenchEstimateClient({
   const handleRailTabSelect = useCallback(
     (tab: DrawingWorkbenchRailTab) => {
       if (tab !== 'pergolas') {
-        houseSelectionActions.selectRailTab(tab);
+        objectSelectionActions.selectRailTab(tab);
         return;
       }
 
@@ -416,7 +416,7 @@ export default function DesignWorkbenchEstimateClient({
         };
       });
     },
-    [defaultPergolaId, houseSelectionActions, setUi, store.persisted.modules],
+    [defaultPergolaId, objectSelectionActions, setUi, store.persisted.modules],
   );
   const handleCanonicalPergolaSelection = useCallback(
     (pergolaId: string | null) => {
@@ -449,9 +449,9 @@ export default function DesignWorkbenchEstimateClient({
         handleCanonicalPergolaSelection(ref.objectId);
         return;
       }
-      houseSelectionActions.selectObjectRef(ref);
+      objectSelectionActions.selectObjectRef(ref);
     },
-    [houseSelectionActions, handleCanonicalPergolaSelection],
+    [objectSelectionActions, handleCanonicalPergolaSelection],
   );
   const houseFormAttachmentContextPanel =
     supportsSanctuaryEditing && activeModuleInput ? (
@@ -461,8 +461,8 @@ export default function DesignWorkbenchEstimateClient({
         view={store.ui.activeView}
         disabled={isLocked}
         canStartDrawOutline={!isLocked}
-        onStartDrawOutline={houseSelectionActions.startDrawOutlineEditor}
-        onCommitGeometryEdit={!isLocked ? houseActions.commitGeometryIntent : undefined}
+        onStartDrawOutline={objectSelectionActions.startDrawOutlineEditor}
+        onCommitGeometryEdit={!isLocked ? objectWorkbenchActions.commitGeometryIntent : undefined}
       />
     ) : null;
   const pergolaInspectorModules = store.persisted.modules.map((module) => ({
@@ -484,12 +484,12 @@ export default function DesignWorkbenchEstimateClient({
       view={store.ui.activeView}
       onOpenHouseForms={() => handleRailTabSelect('house_forms')}
       onSelectPergolaByModule={handleCanonicalPergolaSelection}
-      onStartDrawOutline={houseSelectionActions.startDrawOutlineEditor}
-      onCommitGeometryEdit={!isLocked ? houseActions.commitGeometryIntent : undefined}
-      onCommitConnectionKind={!isLocked ? houseActions.commitSharedPergolaConnectionKind : undefined}
-      onCommitAttachmentStrategy={!isLocked ? houseActions.commitSharedPergolaAttachmentStrategy : undefined}
-      onCommitAttachmentEdge={!isLocked ? houseActions.commitSharedPergolaAttachmentEdge : undefined}
-      onCommitAttachmentZone={!isLocked ? houseActions.commitSharedPergolaAttachmentZone : undefined}
+      onStartDrawOutline={objectSelectionActions.startDrawOutlineEditor}
+      onCommitGeometryEdit={!isLocked ? objectWorkbenchActions.commitGeometryIntent : undefined}
+      onCommitConnectionKind={!isLocked ? objectWorkbenchActions.commitSharedPergolaConnectionKind : undefined}
+      onCommitAttachmentStrategy={!isLocked ? objectWorkbenchActions.commitSharedPergolaAttachmentStrategy : undefined}
+      onCommitAttachmentEdge={!isLocked ? objectWorkbenchActions.commitSharedPergolaAttachmentEdge : undefined}
+      onCommitAttachmentZone={!isLocked ? objectWorkbenchActions.commitSharedPergolaAttachmentZone : undefined}
     />
   );
   const diagnosticsPanel = <WorkbenchDiagnosticsPanel store={store} geometryPreview={geometryPreview} />;
@@ -522,16 +522,16 @@ export default function DesignWorkbenchEstimateClient({
             warnings: store.derived.migrationWarnings,
             canEditFootprint: Boolean(activeModule.assemblyModel.capabilities.canEditHouseFootprint),
             canStartDrawOutline: !isLocked,
-            onStartDrawOutline: houseSelectionActions.startDrawOutlineEditor,
-            onCommitFootprintEdit: !isLocked ? houseActions.commitSharedHouseFootprintEdit : undefined,
-            onCommitRoofDraft: !isLocked ? houseActions.commitSharedHouseRoofDraft : undefined,
-            onAddDeck: !isLocked ? houseActions.addSharedHouseDeck : undefined,
-            onAddOpening: !isLocked ? houseActions.addSharedHouseOpening : undefined,
-            onRemoveDeck: !isLocked ? houseActions.removeSharedHouseDeck : undefined,
-            onRemoveOpening: !isLocked ? houseActions.removeSharedHouseOpening : undefined,
-            onCommitDeckPatch: !isLocked ? houseActions.commitSharedHouseDeckPatch : undefined,
-            onCommitOpeningPatch: !isLocked ? houseActions.commitSharedHouseOpeningPatch : undefined,
-            onStartDeckOutline: !isLocked ? houseSelectionActions.startDeckOutlineEditor : undefined,
+            onStartDrawOutline: objectSelectionActions.startDrawOutlineEditor,
+            onCommitFootprintEdit: !isLocked ? objectWorkbenchActions.commitSharedHouseFootprintEdit : undefined,
+            onCommitRoofDraft: !isLocked ? objectWorkbenchActions.commitSharedHouseRoofDraft : undefined,
+            onAddDeck: !isLocked ? objectWorkbenchActions.addSharedHouseDeck : undefined,
+            onAddOpening: !isLocked ? objectWorkbenchActions.addSharedHouseOpening : undefined,
+            onRemoveDeck: !isLocked ? objectWorkbenchActions.removeSharedHouseDeck : undefined,
+            onRemoveOpening: !isLocked ? objectWorkbenchActions.removeSharedHouseOpening : undefined,
+            onCommitDeckPatch: !isLocked ? objectWorkbenchActions.commitSharedHouseDeckPatch : undefined,
+            onCommitOpeningPatch: !isLocked ? objectWorkbenchActions.commitSharedHouseOpeningPatch : undefined,
+            onStartDeckOutline: !isLocked ? objectSelectionActions.startDeckOutlineEditor : undefined,
             houseFormAttachmentContextPanel,
             pergolaInspectorPanel,
             diagnosticsPanel,
@@ -624,13 +624,13 @@ export default function DesignWorkbenchEstimateClient({
           modelEditableFields={isPergolaTabActive ? drawingEditableFields : []}
           onCommitModelField={workbenchFieldCommit}
           onCommitFootprintEdit={workbenchFootprintCommit}
-          onCommitCustomPolygon={!isLocked ? houseActions.commitSharedDeckCustomPolygon : undefined}
-          onSelectHouseFirstTarget={!isLocked ? houseSelectionActions.selectHouseFirstTarget : undefined}
-          onSelectPergolaTarget={!isLocked ? houseSelectionActions.selectPergolaObject : undefined}
-          onClearWorkbenchSelection={!isLocked ? houseSelectionActions.clearActiveWorkbenchSelection : undefined}
-          onCommitHouseFirstFootprintDimension={!isLocked ? houseActions.commitHouseFirstFootprintDimension : undefined}
-          onCommitHouseFirstDeckDimension={!isLocked ? houseActions.commitHouseFirstDeckDimension : undefined}
-          onCommitHouseFirstOpeningDimension={!isLocked ? houseActions.commitHouseFirstOpeningDimension : undefined}
+          onCommitCustomPolygon={!isLocked ? objectWorkbenchActions.commitSharedDeckCustomPolygon : undefined}
+          onSelectObjectWorkbenchTarget={!isLocked ? objectSelectionActions.selectObjectWorkbenchTarget : undefined}
+          onSelectPergolaTarget={!isLocked ? objectSelectionActions.selectPergolaObject : undefined}
+          onClearWorkbenchSelection={!isLocked ? objectSelectionActions.clearActiveWorkbenchSelection : undefined}
+          onCommitHouseFormFootprintDimension={!isLocked ? objectWorkbenchActions.commitHouseFormFootprintDimension : undefined}
+          onCommitDeckDimension={!isLocked ? objectWorkbenchActions.commitDeckDimension : undefined}
+          onCommitOpeningDimension={!isLocked ? objectWorkbenchActions.commitOpeningDimension : undefined}
         />
         </div>
       </div>

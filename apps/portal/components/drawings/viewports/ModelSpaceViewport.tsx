@@ -476,7 +476,7 @@ function isViewportEditHitTarget(target: EventTarget | null): boolean {
     target instanceof Element &&
     Boolean(
       target.closest(
-        '[data-plan-resize-handle-hit],[data-editable-field-id],[data-house-first-shape-hit],[data-house-first-custom-edge-hit],[data-house-first-plan-dimension],[data-footprint-edge],[data-footprint-resize-edge-hit],[data-footprint-custom-edge-hit],[data-footprint-custom-vertex],[data-footprint-custom-vertex-hit],[data-footprint-custom-close-hit]',
+        '[data-plan-resize-handle-hit],[data-editable-field-id],[data-object-workbench-shape-hit],[data-house-first-shape-hit],[data-object-workbench-custom-edge-hit],[data-house-first-custom-edge-hit],[data-object-workbench-plan-dimension],[data-house-first-plan-dimension],[data-footprint-edge],[data-footprint-resize-edge-hit],[data-footprint-custom-edge-hit],[data-footprint-custom-vertex],[data-footprint-custom-vertex-hit],[data-footprint-custom-close-hit]',
       ),
     )
   );
@@ -1004,12 +1004,12 @@ export default function ModelSpaceViewport({
   onCommitField,
   onCommitFootprintEdit,
   onCommitCustomPolygon,
-  onSelectHouseFirstTarget,
+  onSelectObjectWorkbenchTarget,
   onSelectPergolaTarget,
   onClearWorkbenchSelection,
-  onCommitHouseFirstFootprintDimension,
-  onCommitHouseFirstDeckDimension,
-  onCommitHouseFirstOpeningDimension,
+  onCommitHouseFormFootprintDimension,
+  onCommitDeckDimension,
+  onCommitOpeningDimension,
   onDeckInteractionTelemetryChange,
 }: {
   view: ModuleViewsTab;
@@ -1039,17 +1039,17 @@ export default function ModelSpaceViewport({
   onCommitCustomPolygon?: (
     polygon: CalculatorHouseFootprintPolygonPoint[],
   ) => Promise<{ ok: boolean; error?: string }> | { ok: boolean; error?: string };
-  onSelectHouseFirstTarget?: (selection: WorkbenchHouseSelection) => void;
+  onSelectObjectWorkbenchTarget?: (selection: WorkbenchHouseSelection) => void;
   onSelectPergolaTarget?: (pergolaId: string) => void;
   onClearWorkbenchSelection?: () => void;
-  onCommitHouseFirstFootprintDimension?: (
+  onCommitHouseFormFootprintDimension?: (
     edit: EstimateDrawingFootprintEdit,
   ) => Promise<{ ok: boolean; error?: string }> | { ok: boolean; error?: string };
-  onCommitHouseFirstDeckDimension?: (
+  onCommitDeckDimension?: (
     deckId: string,
     patch: Partial<HouseFirstDeckDraft>,
   ) => Promise<{ ok: boolean; error?: string }> | { ok: boolean; error?: string };
-  onCommitHouseFirstOpeningDimension?: (
+  onCommitOpeningDimension?: (
     openingId: string,
     patch: Partial<HouseFirstOpeningDraft>,
   ) => Promise<{ ok: boolean; error?: string }> | { ok: boolean; error?: string };
@@ -1224,8 +1224,8 @@ export default function ModelSpaceViewport({
     (target: { ownerKind: 'footprint' | 'deck' | 'opening'; ownerId: string }) => {
       closeHouseFirstDimensionEditor();
       setHouseFirstActiveCustomEdgeId(null);
-      if (!onSelectHouseFirstTarget) return;
-      onSelectHouseFirstTarget(
+      if (!onSelectObjectWorkbenchTarget) return;
+      onSelectObjectWorkbenchTarget(
         target.ownerKind === 'footprint'
           ? { kind: 'footprint', targetId: target.ownerId }
           : target.ownerKind === 'opening'
@@ -1233,20 +1233,20 @@ export default function ModelSpaceViewport({
             : { kind: 'deck', targetId: target.ownerId },
       );
     },
-    [closeHouseFirstDimensionEditor, onSelectHouseFirstTarget],
+    [closeHouseFirstDimensionEditor, onSelectObjectWorkbenchTarget],
   );
 
   const handleHouseFirstCustomEdgeSelect = useCallback(
     (target: { ownerKind: 'footprint' | 'deck'; ownerId: string; edgeIndex: number }) => {
       closeHouseFirstDimensionEditor();
       setHouseFirstActiveCustomEdgeId(`${target.ownerId}:edge:${target.edgeIndex}`);
-      onSelectHouseFirstTarget?.(
+      onSelectObjectWorkbenchTarget?.(
         target.ownerKind === 'footprint'
           ? { kind: 'footprint', targetId: target.ownerId }
           : { kind: 'deck', targetId: target.ownerId },
       );
     },
-    [closeHouseFirstDimensionEditor, onSelectHouseFirstTarget],
+    [closeHouseFirstDimensionEditor, onSelectObjectWorkbenchTarget],
   );
 
   const handlePergolaTargetSelect = useCallback(
@@ -1433,7 +1433,7 @@ export default function ModelSpaceViewport({
         planPointResolverRef.current?.(event.clientX, event.clientY) ??
         null;
       if (meta.ownerKind === 'deck') {
-        if (!onCommitHouseFirstDeckDimension) return;
+        if (!onCommitDeckDimension) return;
         if (deckDragPhaseRef.current === 'settling' || deckDragSessionRef.current) {
           resetDeckDragInteraction();
         }
@@ -1478,7 +1478,7 @@ export default function ModelSpaceViewport({
         return;
       }
 
-      if (!onCommitHouseFirstOpeningDimension) return;
+      if (!onCommitOpeningDimension) return;
       const overlayShape = planViewModel?.houseFirst?.shapes.find(
         (shape) => shape.ownerKind === 'opening' && shape.ownerId === meta.ownerId,
       );
@@ -1503,8 +1503,8 @@ export default function ModelSpaceViewport({
     },
     [
       closeHouseFirstDimensionEditor,
-      onCommitHouseFirstDeckDimension,
-      onCommitHouseFirstOpeningDimension,
+      onCommitDeckDimension,
+      onCommitOpeningDimension,
       planViewModel,
       clearTouchNavigation,
       clearWebKitGestureNavigation,
@@ -1522,11 +1522,11 @@ export default function ModelSpaceViewport({
     [planViewModel],
   );
 
-  const commitHouseFirstDimensionEdit = useCallback(
+  const commitObjectWorkbenchDimensionEdit = useCallback(
     async (editor: HouseFirstDimensionEditorState): Promise<boolean> => {
       const nextValue = editor.value.trim();
       const annotation = editor.annotation;
-      const houseFootprintDimensionCommit = onCommitHouseFirstFootprintDimension ?? onCommitFootprintEdit;
+      const houseFootprintDimensionCommit = onCommitHouseFormFootprintDimension ?? onCommitFootprintEdit;
       let result:
         | {
             ok: boolean;
@@ -1577,9 +1577,9 @@ export default function ModelSpaceViewport({
                     : annotation.deckInteraction.deckDepthM,
               })
             : null;
-        result = onCommitHouseFirstDeckDimension
+        result = onCommitDeckDimension
           ? await resolveCommitResult(
-              onCommitHouseFirstDeckDimension(annotation.ownerId, {
+              onCommitDeckDimension(annotation.ownerId, {
                 ...(floatingRectPatch ? { floatingRect: floatingRectPatch } : null),
                 presetRect: {
                   [annotation.fieldKey]: nextValue,
@@ -1594,9 +1594,9 @@ export default function ModelSpaceViewport({
           nextLengthM: nextValue,
         });
         result =
-          polygon && onCommitHouseFirstDeckDimension
+          polygon && onCommitDeckDimension
             ? await resolveCommitResult(
-                onCommitHouseFirstDeckDimension(annotation.ownerId, {
+                onCommitDeckDimension(annotation.ownerId, {
                   shape: 'custom',
                   outline: polygon,
                 }),
@@ -1739,9 +1739,9 @@ export default function ModelSpaceViewport({
                 : { ok: false as const, error: 'Unsupported deck relationship dimension.' };
         result =
           customRelationshipPatch
-            ? customRelationshipPatch.ok && onCommitHouseFirstDeckDimension
+            ? customRelationshipPatch.ok && onCommitDeckDimension
               ? await resolveCommitResult(
-                  onCommitHouseFirstDeckDimension(annotation.ownerId, {
+                  onCommitDeckDimension(annotation.ownerId, {
                     hostEdgeId: interaction?.witnessEdgeId ?? null,
                     isAttached: false,
                     outline: customRelationshipPatch.outline,
@@ -1755,9 +1755,9 @@ export default function ModelSpaceViewport({
                 }
             : resolvedRelationship.ok &&
               (!floatingRelationshipPatch || floatingRelationshipPatch.ok) &&
-              onCommitHouseFirstDeckDimension
+              onCommitDeckDimension
             ? await resolveCommitResult(
-                onCommitHouseFirstDeckDimension(annotation.ownerId, {
+                onCommitDeckDimension(annotation.ownerId, {
                   ...(annotation.fieldKey === 'referenceEdgeGapM'
                     ? {
                         isAttached: false,
@@ -1790,9 +1790,9 @@ export default function ModelSpaceViewport({
                     : resolvedRelationship.error,
               };
       } else if (annotation.targetKind === 'opening_param') {
-        result = onCommitHouseFirstOpeningDimension
+        result = onCommitOpeningDimension
           ? await resolveCommitResult(
-              onCommitHouseFirstOpeningDimension(annotation.ownerId, {
+              onCommitOpeningDimension(annotation.ownerId, {
                 [annotation.fieldKey]: nextValue,
               } as Partial<HouseFirstOpeningDraft>),
             )
@@ -1815,9 +1815,9 @@ export default function ModelSpaceViewport({
       closeHouseFirstDimensionEditor,
       findHouseFirstCustomDeckLocalPolygon,
       onCommitFootprintEdit,
-      onCommitHouseFirstDeckDimension,
-      onCommitHouseFirstOpeningDimension,
-      onCommitHouseFirstFootprintDimension,
+      onCommitDeckDimension,
+      onCommitOpeningDimension,
+      onCommitHouseFormFootprintDimension,
     ],
   );
 
@@ -2830,7 +2830,7 @@ export default function ModelSpaceViewport({
   }, [commitFieldEdit, onCommitField, planFieldDragSession]);
 
   useEffect(() => {
-    if (!onCommitHouseFirstDeckDimension) return;
+    if (!onCommitDeckDimension) return;
 
     const handlePointerMove = (event: PointerEvent) => {
       const activeDeckDragSession = deckDragSessionRef.current;
@@ -2910,7 +2910,7 @@ export default function ModelSpaceViewport({
         releaseError: null,
       });
       const result = await resolveCommitResult(
-        onCommitHouseFirstDeckDimension(
+        onCommitDeckDimension(
           activeDeckDragSession.deckId,
           buildDeckCommitPatch({
             session: activeDeckDragSession,
@@ -2946,12 +2946,12 @@ export default function ModelSpaceViewport({
     };
   }, [
     finalizeDeckDragSettlement,
-    onCommitHouseFirstDeckDimension,
+    onCommitDeckDimension,
     restoreDeckDragPinnedScrollTargets,
   ]);
 
   useEffect(() => {
-    if (!openingDragSession || !onCommitHouseFirstOpeningDimension) return;
+    if (!openingDragSession || !onCommitOpeningDimension) return;
 
     const handlePointerMove = (event: PointerEvent) => {
       if (event.pointerId !== openingDragSession.pointerId) return;
@@ -2975,7 +2975,7 @@ export default function ModelSpaceViewport({
       if (!preview) return;
 
       const result = await resolveCommitResult(
-        onCommitHouseFirstOpeningDimension(openingDragSession.openingId, {
+        onCommitOpeningDimension(openingDragSession.openingId, {
           offsetAlongWallM: formatDeckPresetValue(preview.offsetAlongWallM),
         }),
       );
@@ -2992,7 +2992,7 @@ export default function ModelSpaceViewport({
       window.removeEventListener('pointerup', finishDrag);
       window.removeEventListener('pointercancel', finishDrag);
     };
-  }, [onCommitHouseFirstOpeningDimension, openingDragSession, openingPreviewState]);
+  }, [onCommitOpeningDimension, openingDragSession, openingPreviewState]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -3898,40 +3898,78 @@ export default function ModelSpaceViewport({
         data-model-space-pinch-source={pinchSource}
         data-model-space-auto-fit-key={modelSpaceAutoFitKey}
         data-model-space-auto-fit-ready={modelSpaceAutoFitReady ? 'true' : 'false'}
+        data-object-workbench-deck-drag-active={deckDragLocked ? 'true' : 'false'}
         data-house-first-deck-drag-active={deckDragLocked ? 'true' : 'false'}
+        data-object-workbench-deck-drag-locked={deckDragLocked ? 'true' : 'false'}
         data-house-first-deck-drag-locked={deckDragLocked ? 'true' : 'false'}
+        data-object-workbench-deck-drag-phase={deckInteractionViewState.phase}
         data-house-first-deck-drag-phase={deckInteractionViewState.phase}
+        data-object-workbench-deck-placement-state={deckInteractionViewState.placementState}
         data-house-first-deck-placement-state={deckInteractionViewState.placementState}
+        data-object-workbench-deck-affordance-state={deckInteractionViewState.affordanceState}
         data-house-first-deck-affordance-state={deckInteractionViewState.affordanceState}
+        data-object-workbench-deck-reference-guide-state={deckInteractionViewState.referenceGuideState}
         data-house-first-deck-reference-guide-state={deckInteractionViewState.referenceGuideState}
+        data-object-workbench-deck-release-outcome={deckInteractionViewState.releaseOutcome}
         data-house-first-deck-release-outcome={deckInteractionViewState.releaseOutcome}
+        data-object-workbench-deck-release-placement={deckInteractionViewState.releasePlacement ?? 'none'}
         data-house-first-deck-release-placement={deckInteractionViewState.releasePlacement ?? 'none'}
+        data-object-workbench-deck-settle-visual-state={deckInteractionViewState.settleVisualState ?? 'none'}
         data-house-first-deck-settle-visual-state={deckInteractionViewState.settleVisualState ?? 'none'}
+        data-object-workbench-deck-snap-state={deckInteractionTelemetry.snapState}
         data-house-first-deck-snap-state={deckInteractionTelemetry.snapState}
+        data-object-workbench-deck-attachment-mode={deckInteractionTelemetry.attachmentMode ?? 'floating'}
         data-house-first-deck-attachment-mode={deckInteractionTelemetry.attachmentMode ?? 'floating'}
+        data-object-workbench-deck-secondary-host-edge-id={deckInteractionTelemetry.secondaryHostEdgeId ?? ''}
         data-house-first-deck-secondary-host-edge-id={deckInteractionTelemetry.secondaryHostEdgeId ?? ''}
+        data-object-workbench-deck-corner-vertex-id={deckInteractionTelemetry.cornerVertexId ?? ''}
         data-house-first-deck-corner-vertex-id={deckInteractionTelemetry.cornerVertexId ?? ''}
+        data-object-workbench-hovered-deck-id={hoveredDeckId ?? ''}
         data-house-first-hovered-deck-id={hoveredDeckId ?? ''}
+        data-object-workbench-opening-drag-active={openingDragSession ? 'true' : 'false'}
         data-house-first-opening-drag-active={openingDragSession ? 'true' : 'false'}
+        data-object-workbench-opening-drag-phase={openingInteractionViewState?.phase ?? 'idle'}
         data-house-first-opening-drag-phase={openingInteractionViewState?.phase ?? 'idle'}
+        data-object-workbench-opening-placement-state={openingInteractionViewState?.placementState ?? 'none'}
         data-house-first-opening-placement-state={openingInteractionViewState?.placementState ?? 'none'}
+        data-object-workbench-opening-affordance-state={openingInteractionViewState?.affordanceState ?? 'idle'}
         data-house-first-opening-affordance-state={openingInteractionViewState?.affordanceState ?? 'idle'}
+        data-object-workbench-opening-reference-guide-state={openingInteractionViewState?.referenceGuideState ?? 'none'}
         data-house-first-opening-reference-guide-state={openingInteractionViewState?.referenceGuideState ?? 'none'}
+        data-object-workbench-opening-release-outcome={openingInteractionViewState?.releaseOutcome ?? 'none'}
         data-house-first-opening-release-outcome={openingInteractionViewState?.releaseOutcome ?? 'none'}
+        data-object-workbench-opening-release-placement={openingInteractionViewState?.releasePlacement ?? 'none'}
         data-house-first-opening-release-placement={openingInteractionViewState?.releasePlacement ?? 'none'}
+        data-object-workbench-opening-highlight-target-id={openingInteractionTelemetry?.highlightTargetId ?? ''}
         data-house-first-opening-highlight-target-id={openingInteractionTelemetry?.highlightTargetId ?? ''}
+        data-object-workbench-selected-deck-id={deckInteractionTelemetry.selectedDeckId ?? ''}
         data-house-first-selected-deck-id={deckInteractionTelemetry.selectedDeckId ?? ''}
+        data-object-workbench-selected-deck-type={deckInteractionTelemetry.selectedDeckType}
         data-house-first-selected-deck-type={deckInteractionTelemetry.selectedDeckType}
+        data-object-workbench-selected-deck-drag-eligible={deckInteractionTelemetry.dragEligible ? 'true' : 'false'}
         data-house-first-selected-deck-drag-eligible={deckInteractionTelemetry.dragEligible ? 'true' : 'false'}
+        data-object-workbench-selected-deck-host-edge-resolvable={deckInteractionTelemetry.hostEdgeResolvable ? 'true' : 'false'}
         data-house-first-selected-deck-host-edge-resolvable={deckInteractionTelemetry.hostEdgeResolvable ? 'true' : 'false'}
+        data-object-workbench-selected-deck-relationship-dims={
+          deckInteractionTelemetry.relationshipDimensionsAvailable ? 'true' : 'false'
+        }
         data-house-first-selected-deck-relationship-dims={
           deckInteractionTelemetry.relationshipDimensionsAvailable ? 'true' : 'false'
         }
+        data-object-workbench-selected-deck-drag-reason={deckInteractionTelemetry.dragReason ?? ''}
         data-house-first-selected-deck-drag-reason={deckInteractionTelemetry.dragReason ?? ''}
+        data-object-workbench-selected-deck-interaction-state={deckInteractionTelemetry.interactionState}
         data-house-first-selected-deck-interaction-state={deckInteractionTelemetry.interactionState}
+        data-object-workbench-selected-opening-id={selectedOpeningShape?.ownerId ?? ''}
         data-house-first-selected-opening-id={selectedOpeningShape?.ownerId ?? ''}
+        data-object-workbench-selected-opening-drag-eligible={
+          selectedOpeningShape?.openingDragEligibility?.eligible ? 'true' : 'false'
+        }
         data-house-first-selected-opening-drag-eligible={
           selectedOpeningShape?.openingDragEligibility?.eligible ? 'true' : 'false'
+        }
+        data-object-workbench-selected-opening-drag-reason={
+          selectedOpeningShape?.openingDragEligibility?.reason ?? ''
         }
         data-house-first-selected-opening-drag-reason={
           selectedOpeningShape?.openingDragEligibility?.reason ?? ''
@@ -4046,7 +4084,7 @@ export default function ModelSpaceViewport({
                 }
                 onBlur={() => {
                   if (!houseFirstDimensionEditor) return;
-                  void commitHouseFirstDimensionEdit(houseFirstDimensionEditor);
+                  void commitObjectWorkbenchDimensionEdit(houseFirstDimensionEditor);
                 }}
                 onKeyDown={(event) => {
                   if (event.key === 'Escape') {
@@ -4057,7 +4095,7 @@ export default function ModelSpaceViewport({
                   if (event.key !== 'Enter') return;
                   event.preventDefault();
                   if (!houseFirstDimensionEditor) return;
-                  void commitHouseFirstDimensionEdit(houseFirstDimensionEditor);
+                  void commitObjectWorkbenchDimensionEdit(houseFirstDimensionEditor);
                 }}
               />
             </label>

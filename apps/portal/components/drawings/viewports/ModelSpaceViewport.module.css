@@ -220,6 +220,8 @@
   color: rgb(153, 27, 27);
 }
 
+.scroller[data-object-workbench-deck-drag-locked="true"] .canvasControls,
+.scroller[data-object-workbench-deck-drag-locked="true"] .drawRedrawBar,
 .scroller[data-house-first-deck-drag-locked="true"] .canvasControls,
 .scroller[data-house-first-deck-drag-locked="true"] .drawRedrawBar {
   pointer-events: none;
