@@ -18,7 +18,6 @@ import {
   supportsHouseFootprints,
 } from '@/lib/types/calculator';
 import { getModuleCostOutputFromSnapshot } from '@/lib/costingAudit/viewModel';
-import { buildHouseFirstWorkbenchProjectModel } from '@/lib/drawings/state/houseFirstWorkbenchAdapter';
 import {
   applyEstimateDrawingFieldEdit,
   applyEstimateDrawingFootprintEdit,
@@ -31,6 +30,7 @@ import {
   type EstimateDrawingFootprintEdit,
 } from '@/lib/estimates/drawingEdits';
 import { buildRawGeometryModuleInput } from './buildRawGeometryModuleInput';
+import { buildObjectWorkbenchGeometryContext } from './objectWorkbenchGeometryContext';
 import {
   coerceHiddenWorkbenchGableEndFramesMode,
   coerceHiddenWorkbenchGableBaseline,
@@ -313,7 +313,7 @@ export function buildGeometryEditState(input: {
 }): GeometryEditStateResult {
   const resolved = resolveModuleForGeometryState(input);
   if (!('module' in resolved)) return resolved;
-  const projectModel = buildHouseFirstWorkbenchProjectModel({
+  const objectWorkbenchGeometryContext = buildObjectWorkbenchGeometryContext({
     snapshot: input.snapshot,
     draft: input.draft,
   });
@@ -325,7 +325,7 @@ export function buildGeometryEditState(input: {
     moduleId: `module-${input.moduleIndex + 1}`,
     module: resolved.module,
     result: resolved.moduleResult,
-    sharedHouse: projectModel.house,
+    objectWorkbenchGeometryContext,
   });
   const normalized = normalizeGeometryConfig(rawInput);
 

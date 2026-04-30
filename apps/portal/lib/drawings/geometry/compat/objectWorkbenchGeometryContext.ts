@@ -33,6 +33,41 @@ function buildDraftForObjectWorkbenchGeometryContext(input: {
   };
 }
 
+function buildObjectWorkbenchGeometryHouse(input: {
+  projectModel: WorkbenchProjectModel;
+  compatibilityHouse: ObjectWorkbenchCompatibilityHouseModel | null;
+}): ObjectWorkbenchCompatibilityHouseModel | null {
+  const compatibilityHouse = input.compatibilityHouse;
+  const houseForm = input.projectModel.houseAssembly?.houseForms[0] ?? null;
+  if (!compatibilityHouse || !houseForm) return compatibilityHouse;
+
+  return {
+    ...compatibilityHouse,
+    id: houseForm.id,
+    label: houseForm.label,
+    sourceModuleIndexes: houseForm.sourceModuleIndexes ?? compatibilityHouse.sourceModuleIndexes,
+    sourceModuleIds: houseForm.sourceModuleIds ?? compatibilityHouse.sourceModuleIds,
+    footprint: {
+      mode: houseForm.footprint.mode,
+      preset: houseForm.footprint.preset,
+      params: houseForm.footprint.params,
+      polygon: houseForm.footprint.polygon,
+      drawingRotationQuarterTurns: houseForm.transform.rotationQuarterTurns,
+      attachmentSide: houseForm.footprint.attachmentSide,
+    },
+    storeyMode: houseForm.storeyMode,
+    attachmentStrategy: houseForm.attachmentStrategy,
+    eaveHeightM: houseForm.eaveHeightM ?? compatibilityHouse.eaveHeightM,
+    wallHeightM: houseForm.wallHeightM ?? compatibilityHouse.wallHeightM,
+    soffitDepthMm: houseForm.soffitDepthMm ?? compatibilityHouse.soffitDepthMm,
+    fasciaHeightMm: houseForm.fasciaHeightMm ?? compatibilityHouse.fasciaHeightMm,
+    gutterWidthMm: houseForm.gutterWidthMm ?? compatibilityHouse.gutterWidthMm,
+    gutterDepthMm: houseForm.gutterDepthMm ?? compatibilityHouse.gutterDepthMm,
+    gutterProjectionMm: houseForm.gutterProjectionMm ?? compatibilityHouse.gutterProjectionMm,
+    eaveOverhangMm: houseForm.eaveOverhangMm ?? compatibilityHouse.eaveOverhangMm,
+  };
+}
+
 export function buildObjectWorkbenchGeometryContext(input: {
   snapshot: Record<string, unknown> | null;
   draft?: EstimateDrawingDraft | null;
@@ -62,11 +97,15 @@ export function buildObjectWorkbenchGeometryContext(input: {
     draft: geometryDraft,
     ignoreModuleResults: input.ignoreModuleResults,
   });
+  const house = buildObjectWorkbenchGeometryHouse({
+    projectModel,
+    compatibilityHouse: compatibilityProjectModel.house,
+  });
 
   return {
     projectModel,
     compatibilityProjectModel,
-    house: compatibilityProjectModel.house,
+    house,
     pergolas: compatibilityProjectModel.pergolas,
     warnings: compatibilityProjectModel.warnings,
   };

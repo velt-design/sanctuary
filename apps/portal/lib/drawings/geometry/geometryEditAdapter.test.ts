@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { getSanctuaryGeometryWorkbenchFixture } from '@/lib/drawings/sanctuaryWorkbenchFixtures';
 import { buildEstimateDrawingDraftFromSnapshot, type EstimateDrawingField } from '@/lib/estimates/drawingEdits';
+import type { ObjectFirstWorkbenchDraftVNext } from '@/lib/drawings/state/objectFirstWorkbenchModel';
 import {
   applyGeometryEditIntent,
   buildGeometryEditState,
@@ -41,6 +42,112 @@ function makeStaleGableSnapshot(
   return stale as Record<string, unknown>;
 }
 
+function makeObjectFirstGeometryDraft(): ObjectFirstWorkbenchDraftVNext {
+  return {
+    houseAssembly: {
+      id: 'assembly-object',
+      label: 'Object-first house',
+      houseForms: [
+        {
+          id: 'house-object',
+          label: 'Object House',
+          transform: {
+            offsetXM: 0,
+            offsetYM: 0,
+            rotationQuarterTurns: 0,
+          },
+          footprint: {
+            mode: 'custom_polygon',
+            preset: 'straight',
+            params: {
+              widthM: '9',
+              offsetXM: '0',
+              setbackM: '0',
+              bandDepthM: '2.4',
+              returnRunM: '2.4',
+              recessWidthM: '2.4',
+              recessDepthM: '1.2',
+              leftLegRunM: '2.4',
+              rightLegRunM: '2.4',
+              sideRunM: '2.4',
+            },
+            polygon: [
+              { alongM: '0', depthM: '0' },
+              { alongM: '9', depthM: '0' },
+              { alongM: '9', depthM: '2.4' },
+              { alongM: '0', depthM: '2.4' },
+            ],
+            attachmentSide: 'rear',
+          },
+          roofIntent: {
+            form: 'mono',
+            material: 'trapezoidal_5_rib',
+            primaryPitchDeg: '11',
+            primaryFallDirection: 'negative_y',
+            ridgeAxis: 'x',
+            openGableEndIds: [],
+            appendage: {
+              enabled: false,
+              form: 'flat',
+              hostEdge: 'rear',
+              pitchDeg: '0',
+              dropMm: '0',
+            },
+          },
+          roofIntentAuthored: true,
+          storeyMode: 'double_storey',
+          attachmentStrategy: 'facade_ledger',
+          eaveHeightM: '3.4',
+          wallHeightM: '3',
+          soffitDepthMm: '720',
+          fasciaHeightMm: '260',
+          gutterWidthMm: '180',
+          gutterDepthMm: '115',
+          gutterProjectionMm: '155',
+          eaveOverhangMm: '800',
+        },
+      ],
+    },
+    decks: [
+      {
+        id: 'deck-object',
+        label: 'Object Deck',
+        kind: 'deck',
+        shape: 'custom',
+        presetType: null,
+        outline: [
+          { alongM: '0', depthM: '0' },
+          { alongM: '2', depthM: '0' },
+          { alongM: '2', depthM: '1' },
+          { alongM: '0', depthM: '1' },
+        ],
+        elevationMode: 'ground',
+        levelOffsetMm: '0',
+        isAttached: true,
+        surfaceMaterial: 'composite',
+        hostEdgeId: 'footprint-edge-1',
+      },
+    ],
+    openings: [
+      {
+        id: 'opening-object',
+        label: 'Object Opening',
+        kind: 'slider',
+        panelCount: 3,
+        hostWallId: 'wall-rear',
+        sourceFormId: 'house-object',
+        wallId: 'rear',
+        hostEdgeId: 'footprint-edge-1',
+        widthM: '2.4',
+        heightM: '2.1',
+        sillHeightM: '0',
+        offsetAlongWallM: '3',
+      },
+    ],
+    pergolas: [],
+  };
+}
+
 describe('geometryEditAdapter', () => {
   it('builds geometry-backed edit state from the effective draft snapshot', () => {
     const snapshot = getFixtureSnapshot('mono-standard');
@@ -57,6 +164,50 @@ describe('geometryEditAdapter', () => {
     expect(result.value.connection.type).toBe('soffit');
     expect(result.value.supports.postCount).toBe('4');
     expect(result.value.overrides.frontBeamProfile).toBe('');
+  });
+
+  it('builds geometry edit state from object-first house, deck, and opening context', () => {
+    const snapshot = getFixtureSnapshot('mono-standard');
+    const draft = buildEstimateDrawingDraftFromSnapshot(snapshot);
+    if (!draft) throw new Error('Expected draft');
+    const module = draft.inputs.modules[0];
+    if (!module) throw new Error('Expected fixture module');
+    delete module.houseFootprintMode;
+    delete module.houseFootprintPolygon;
+    delete module.houseEaveHeightM;
+    delete module.houseWallHeightM;
+    delete module.houseRoofPitchDeg;
+    delete module.houseSoffitDepthMm;
+    delete module.houseFasciaHeightMm;
+    delete module.houseGutterWidthMm;
+    delete module.houseGutterDepthMm;
+    delete module.houseGutterProjectionMm;
+    delete module.houseEaveOverhangMm;
+    draft.objectFirst = makeObjectFirstGeometryDraft();
+
+    const result = buildGeometryEditState({
+      snapshot,
+      draft,
+      moduleIndex: 0,
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const houseModel = result.value.config.houseContext.model as typeof result.value.config.houseContext.model & {
+      decks?: Array<{ id: string }>;
+      openings?: Array<{ id: string }>;
+    };
+    expect(result.value.houseContext.storeyMode).toBe('double_storey');
+    expect(result.value.houseContext.attachmentStrategy).toBe('auto');
+    expect(result.value.config.houseContext.attachmentStrategy).toBe('facade_ledger');
+    expect(result.value.houseContext.eaveHeightM).toBe('3.4');
+    expect(result.value.houseContext.wallHeightM).toBe('3');
+    expect(result.value.houseContext.soffitDepthMm).toBe('720');
+    expect(result.value.config.houseContext.footprint).toContainEqual({ x: 9000, y: -2400, z: 0 });
+    expect(result.value.config.houseContext.model?.footprint).toContainEqual({ x: 9000, y: -2400, z: 0 });
+    expect(result.value.config.houseContext.model?.eaveHeightMm).toBe(3400);
+    expect(houseModel?.decks?.map((deck) => deck.id)).toContain('deck-object');
+    expect(houseModel?.openings?.map((opening) => opening.id)).toContain('opening-object');
   });
 
   it('applies family switch edits through the geometry adapter and updates underlying draft fields', () => {

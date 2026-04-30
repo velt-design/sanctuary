@@ -50,6 +50,15 @@ const OBJECT_WORKBENCH_GEOMETRY_PUBLIC_BOUNDARY_FILES = [
   path.join('apps', 'portal', 'lib', 'drawings', 'geometry', 'deriveWorkbenchGeometry.ts'),
   path.join('apps', 'portal', 'lib', 'drawings', 'geometry', 'objectWorkbenchGeometryContext.ts'),
 ];
+const OBJECT_WORKBENCH_GEOMETRY_EDIT_ADAPTER_FILE = path.join(
+  'apps',
+  'portal',
+  'lib',
+  'drawings',
+  'geometry',
+  'compat',
+  'geometryEditAdapter.ts',
+);
 const FLAT_COMPATIBILITY_DERIVED_FIELD_READ =
   /\b[A-Za-z_$][\w$]*\.derived\.(?:house|houseCount|decks|openings|activeDeck|activeDeckId|activeOpening|activeOpeningId|pergolas|activePergola|activePergolaId|roofForm|roofReviewStatus|roofValidationStatus|roofValidationCode|roofValidationMessage|roofApproximationReasons|roofProvenance|roofGeometryKind|roofAppendageEnabled|roofAppendageStatus|roofAppendageSupportedHostEdges|roofAppendageSupportReason|migrationWarnings|migrationWarningCount|houseIsLowConfidence)\b/;
 const REMOVED_DERIVED_COMPATIBILITY_BRIDGE_READ =
@@ -292,6 +301,15 @@ describe('object workbench import guards', () => {
           violations.push(`${relativePath} imports geometry compatibility internals`);
         }
       }
+    }
+
+    const geometryEditAdapterPath = path.normalize(OBJECT_WORKBENCH_GEOMETRY_EDIT_ADAPTER_FILE);
+    const geometryEditAdapterSource = fs.readFileSync(path.join(process.cwd(), geometryEditAdapterPath), 'utf8');
+    if (/from ['"][^'"]*houseFirstWorkbench(?:Model|Adapter)['"]/.test(geometryEditAdapterSource)) {
+      violations.push(`${geometryEditAdapterPath} imports house-first workbench state directly`);
+    }
+    if (/\bbuildHouseFirstWorkbenchProjectModel\b/.test(geometryEditAdapterSource)) {
+      violations.push(`${geometryEditAdapterPath} calls buildHouseFirstWorkbenchProjectModel directly`);
     }
 
     expect(violations).toEqual([]);
