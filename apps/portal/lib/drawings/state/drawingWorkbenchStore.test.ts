@@ -10,6 +10,7 @@ import {
   normalizeDrawingWorkbenchUiState,
 } from './drawingWorkbenchUiState';
 import { makeHouseFirstDeckSupportSnapshotFixture } from './houseFirstWorkbenchFixtures';
+import { buildObjectFirstWorkbenchDraftFromProjectModel } from './objectFirstWorkbenchAdapter';
 import { makeObjectFirstWorkbenchProjectFixture } from './objectFirstWorkbenchFixtures';
 
 function makeModule(overrides: Partial<CalculatorModuleInputs> = {}): CalculatorModuleInputs {
@@ -448,6 +449,85 @@ describe('buildDrawingWorkbenchStore', () => {
       statusLabel: 'Unresolved attachment',
       meta: 'Mono | Rear wall | Unresolved host zone',
     });
+  });
+
+  it('uses object-first draft objects ahead of legacy house-first fallback drafts', () => {
+    const fixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
+    if (!fixture) throw new Error('Missing mono-standard fixture.');
+    const baselineStore = buildDrawingWorkbenchStore({
+      snapshot: fixture.snapshot,
+      ui: createDrawingWorkbenchUiState(),
+    });
+    const draft = buildEstimateDrawingDraftFromSnapshot(fixture.snapshot);
+    if (!draft) throw new Error('Expected drawing draft.');
+    draft.houseFirst = {
+      decks: [{ id: 'legacy-deck', hostEdgeId: 'front' }],
+      openings: [{ id: 'legacy-opening', wallId: 'front' }],
+      pergolas: [{ id: 'pergola-1', attachmentEdgeId: 'footprint-edge-99' }],
+    };
+    draft.objectFirst = {
+      ...buildObjectFirstWorkbenchDraftFromProjectModel(baselineStore.persisted.projectModel),
+      decks: [
+        {
+          id: 'deck-object',
+          label: 'Object deck',
+          kind: 'deck',
+          shape: 'preset',
+          presetType: 'rect_attached',
+          presetRect: { widthM: '4', depthM: '2', centerOffsetM: '0' },
+          outline: [],
+          elevationMode: 'aligned_to_threshold',
+          levelOffsetMm: '0',
+          isAttached: true,
+          surfaceMaterial: 'timber_decking',
+          hostEdgeId: 'rear',
+        },
+      ],
+      openings: [
+        {
+          id: 'opening-object',
+          label: 'Object opening',
+          kind: 'window',
+          panelCount: null,
+          hostWallId: 'wall-footprint-edge-3',
+          wallId: 'rear',
+          hostEdgeId: 'footprint-edge-3',
+          widthM: '1.2',
+          heightM: '1.2',
+          sillHeightM: '0.9',
+          offsetAlongWallM: '0.6',
+        },
+      ],
+      pergolas: [
+        {
+          id: 'pergola-1',
+          label: 'Object pergola',
+          family: 'mono',
+          attachmentEdgeId: 'footprint-edge-3',
+          attachmentZoneId: 'zone-soffit-footprint-edge-3',
+          side: 'rear',
+          strategy: null,
+        },
+      ],
+    };
+
+    const store = buildDrawingWorkbenchStore({
+      snapshot: fixture.snapshot,
+      draft,
+      ui: createDrawingWorkbenchUiState({
+        activeObjectFamily: 'decks',
+        activeObjectRef: { family: 'decks', objectId: 'deck-object' },
+      }),
+    });
+
+    expect(store.derived.decks.map((deck) => deck.id)).toEqual(['deck-object']);
+    expect(store.derived.objectFirstOpenings.map((opening) => opening.id)).toEqual(['opening-object']);
+    expect(store.derived.objectFirstPergolas[0]).toMatchObject({
+      id: 'pergola-1',
+      attachmentEdgeId: 'footprint-edge-3',
+    });
+    expect(store.derived.activeDeck?.id).toBe('deck-object');
+    expect(store.derived.unresolvedPergolaAttachmentCount).toBe(0);
   });
 
   it('preserves stable deck ids and normalizes invalid deck selection state', () => {

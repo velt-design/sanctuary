@@ -16,7 +16,7 @@ import type {
   CalculatorModuleInputs,
 } from '@/lib/types/calculator';
 import type { GeometryEditIntent, GeometryEditState, SanctuaryPergolaFamily } from '@/lib/drawings/geometry/geometryEditAdapter';
-import styles from './ConfiguratorRail.module.css';
+import styles from './WorkbenchRail.module.css';
 
 type CommitResult = { ok: boolean; error?: string };
 

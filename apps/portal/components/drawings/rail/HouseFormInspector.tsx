@@ -6,7 +6,7 @@ import type { FieldErrors, RunFootprintCommit, RunRoofCommit } from './objectWor
 import { buildHouseFormFootprintSections } from './HouseFormFootprintSections';
 import { buildHouseFormOverviewSection } from './HouseFormOverviewSection';
 import { buildHouseFormRoofSections } from './HouseFormRoofSections';
-import styles from './ConfiguratorRail.module.css';
+import styles from './WorkbenchRail.module.css';
 
 type HouseFormInspectorProps = {
   hasSelection: boolean;

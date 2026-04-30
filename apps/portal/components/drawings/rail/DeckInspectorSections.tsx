@@ -15,7 +15,7 @@ import {
   resolveDeckValidationSummary,
   resolveDeckWarningSummaries,
 } from './objectRailShared';
-import styles from './ConfiguratorRail.module.css';
+import styles from './WorkbenchRail.module.css';
 
 type BuildDeckInspectorSectionsInput = {
   activeDeckId?: string | null;

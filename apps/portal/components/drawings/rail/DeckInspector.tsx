@@ -4,7 +4,7 @@ import { useMemo } from 'react';
 import type { HouseFirstDeckDraft, HouseModel } from '@/lib/drawings/state/houseFirstWorkbenchModel';
 import type { CommitResult, FieldErrors, RunAction } from './objectWorkbenchRailTypes';
 import { buildDeckInspectorSections } from './DeckInspectorSections';
-import styles from './ConfiguratorRail.module.css';
+import styles from './WorkbenchRail.module.css';
 
 type DeckInspectorProps = {
   activeDeckId?: string | null;

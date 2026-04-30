@@ -8,7 +8,7 @@ import type {
 } from '@/lib/drawings/state/houseFirstWorkbenchModel';
 import type { CommitResult, FieldErrors, RunAction } from './objectWorkbenchRailTypes';
 import { buildOpeningInspectorSections } from './OpeningInspectorSections';
-import styles from './ConfiguratorRail.module.css';
+import styles from './WorkbenchRail.module.css';
 
 type OpeningInspectorProps = {
   activeOpeningId?: string | null;

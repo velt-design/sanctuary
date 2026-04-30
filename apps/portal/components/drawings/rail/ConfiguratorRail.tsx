@@ -33,7 +33,7 @@ import type {
   EstimateDrawingFootprintEdit,
   EstimateDrawingModuleFieldEdit,
 } from '@/lib/estimates/drawingEdits';
-import styles from './ConfiguratorRail.module.css';
+import styles from './WorkbenchRail.module.css';
 
 type CommitResult = { ok: boolean; error?: string };
 

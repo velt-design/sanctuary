@@ -21,6 +21,14 @@ import {
   resolveOpeningPanelCount,
 } from '@/lib/drawings/state/houseFirstWorkbenchModel';
 import {
+  normalizeObjectFirstWorkbenchDraftVNext,
+  type ObjectFirstDeckDraft,
+  type ObjectFirstHouseAssemblyDraft,
+  type ObjectFirstOpeningDraft,
+  type ObjectFirstPergolaDraft,
+  type ObjectFirstWorkbenchDraftVNext,
+} from '@/lib/drawings/state/objectFirstWorkbenchModel';
+import {
   isPrimaryFlashingLengthAutoLinked,
   normalizeFlashingsStateForUi,
   roofLengthForPrimaryFlashing,
@@ -66,6 +74,7 @@ export type EstimateDrawingOverrides = {
 export type EstimateDrawingDraft = {
   inputs: CalculatorInputs;
   overrides: EstimateDrawingOverrides;
+  objectFirst?: ObjectFirstWorkbenchDraftVNext;
   houseFirst?: {
     roof?: HouseFirstRoofDraft | null;
     decks?: HouseFirstDeckDraft[] | null;
@@ -917,6 +926,15 @@ function normalizeHouseFirstDraft(
     : undefined;
 }
 
+function normalizeObjectFirstDraft(
+  value: Partial<ObjectFirstWorkbenchDraftVNext> | null | undefined,
+): ObjectFirstWorkbenchDraftVNext | undefined {
+  const normalized = normalizeObjectFirstWorkbenchDraftVNext(value);
+  return normalized.houseAssembly || normalized.decks.length || normalized.openings.length || normalized.pergolas.length
+    ? normalized
+    : undefined;
+}
+
 export function stripClientFacingModulePrefix(value: string): string {
   return value.replace(/^\s*M\d+\s*-\s*/i, '').trim();
 }
@@ -942,6 +960,7 @@ export function buildEstimateDrawingDraftFromSnapshot(snapshot: Record<string, u
   return {
     inputs,
     overrides: resolveEstimateDrawingOverridesFromSnapshot(snapshot),
+    objectFirst: undefined,
     houseFirst: undefined,
   };
 }
@@ -956,6 +975,8 @@ export function estimateDrawingDraftMatchesSnapshot(
   return (
     JSON.stringify(draft.inputs) === JSON.stringify(current.inputs) &&
     JSON.stringify(normalizeOverrides(draft.overrides)) === JSON.stringify(normalizeOverrides(current.overrides)) &&
+    JSON.stringify(normalizeObjectFirstDraft(draft.objectFirst)) ===
+      JSON.stringify(normalizeObjectFirstDraft(current.objectFirst)) &&
     JSON.stringify(normalizeHouseFirstDraft(draft.houseFirst)) ===
       JSON.stringify(normalizeHouseFirstDraft(current.houseFirst))
   );
@@ -969,6 +990,8 @@ export function estimateDrawingDraftTouchesGeometry(
   if (!draft || !current) return false;
   return (
     JSON.stringify(draft.inputs) !== JSON.stringify(current.inputs) ||
+    JSON.stringify(normalizeObjectFirstDraft(draft.objectFirst)) !==
+      JSON.stringify(normalizeObjectFirstDraft(current.objectFirst)) ||
     JSON.stringify(normalizeHouseFirstDraft(draft.houseFirst)) !==
       JSON.stringify(normalizeHouseFirstDraft(current.houseFirst))
   );
@@ -1053,6 +1076,72 @@ export function updateEstimateDrawingHouseFirstPergolaDrafts(input: {
     pergolas: input.pergolas,
   });
   return nextDraft;
+}
+
+export function updateEstimateDrawingObjectFirstWorkbenchDraft(input: {
+  draft: EstimateDrawingDraft;
+  objectFirst: Partial<ObjectFirstWorkbenchDraftVNext> | null;
+}): EstimateDrawingDraft {
+  const nextDraft = cloneValue(input.draft);
+  nextDraft.objectFirst = normalizeObjectFirstDraft(input.objectFirst);
+  delete nextDraft.houseFirst;
+  return nextDraft;
+}
+
+export function updateEstimateDrawingObjectFirstHouseAssemblyDraft(input: {
+  draft: EstimateDrawingDraft;
+  houseAssembly: ObjectFirstHouseAssemblyDraft | null;
+}): EstimateDrawingDraft {
+  const objectFirst = normalizeObjectFirstWorkbenchDraftVNext(input.draft.objectFirst);
+  return updateEstimateDrawingObjectFirstWorkbenchDraft({
+    draft: input.draft,
+    objectFirst: {
+      ...objectFirst,
+      houseAssembly: input.houseAssembly,
+    },
+  });
+}
+
+export function updateEstimateDrawingObjectFirstDeckDrafts(input: {
+  draft: EstimateDrawingDraft;
+  decks: ObjectFirstDeckDraft[] | null;
+}): EstimateDrawingDraft {
+  const objectFirst = normalizeObjectFirstWorkbenchDraftVNext(input.draft.objectFirst);
+  return updateEstimateDrawingObjectFirstWorkbenchDraft({
+    draft: input.draft,
+    objectFirst: {
+      ...objectFirst,
+      decks: input.decks ?? [],
+    },
+  });
+}
+
+export function updateEstimateDrawingObjectFirstOpeningDrafts(input: {
+  draft: EstimateDrawingDraft;
+  openings: ObjectFirstOpeningDraft[] | null;
+}): EstimateDrawingDraft {
+  const objectFirst = normalizeObjectFirstWorkbenchDraftVNext(input.draft.objectFirst);
+  return updateEstimateDrawingObjectFirstWorkbenchDraft({
+    draft: input.draft,
+    objectFirst: {
+      ...objectFirst,
+      openings: input.openings ?? [],
+    },
+  });
+}
+
+export function updateEstimateDrawingObjectFirstPergolaDrafts(input: {
+  draft: EstimateDrawingDraft;
+  pergolas: ObjectFirstPergolaDraft[] | null;
+}): EstimateDrawingDraft {
+  const objectFirst = normalizeObjectFirstWorkbenchDraftVNext(input.draft.objectFirst);
+  return updateEstimateDrawingObjectFirstWorkbenchDraft({
+    draft: input.draft,
+    objectFirst: {
+      ...objectFirst,
+      pergolas: input.pergolas ?? [],
+    },
+  });
 }
 
 export function buildEstimateDrawingSheetMetaOverrides(input: {

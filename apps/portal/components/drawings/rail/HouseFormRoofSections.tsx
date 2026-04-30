@@ -24,7 +24,7 @@ import {
   labelForRoofForm,
   labelForRoofGeometryKind,
 } from './objectRailShared';
-import styles from './ConfiguratorRail.module.css';
+import styles from './WorkbenchRail.module.css';
 
 type BuildHouseFormRoofSectionsInput = {
   disabled?: boolean;
@@ -44,6 +44,7 @@ export function buildHouseFormRoofSections({
   const roofProvenance = house?.roof.provenance ?? null;
   const approximationReasons = house?.roof.validation.approximationReasons ?? [];
   const appendageSupportedHostEdges = house?.roof.appendageSupportedHostEdges ?? [];
+  const terminalEnds = house?.roof.terminalEnds ?? [];
   const selectedFormSupported = roofCapabilities?.selectedFormSupported ?? true;
   const canEditSelectedRoofForm = selectedFormSupported;
   const canShowAppendageControls = roofDraft.form === 'mono' || roofDraft.form === 'gable';
@@ -150,12 +151,12 @@ export function buildHouseFormRoofSections({
   }
 
   if (roofDraft.form === 'gable' && canEditSelectedRoofForm) {
-    if (house.roof.terminalEnds.length > 0) {
+    if (terminalEnds.length > 0) {
       fields.push(
         <div key="gable-end-frames" className={styles.field}>
           <span className={styles.fieldLabel}>Open gable ends</span>
           <div className={styles.buttonRow}>
-            {house.roof.terminalEnds.map((end) => (
+            {terminalEnds.map((end) => (
               <ActionButton
                 key={end.id}
                 label={`${end.isOpen ? 'Close' : 'Open'} ${end.label}`}

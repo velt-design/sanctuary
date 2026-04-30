@@ -1,12 +1,25 @@
 import type {
   DeckObjectModel,
   HouseFormModel,
+  ObjectFirstDeckDraft,
+  ObjectFirstHouseAssemblyDraft,
+  ObjectFirstHouseFormDraft,
+  ObjectFirstOpeningDraft,
+  ObjectFirstPergolaDraft,
+  ObjectFirstWorkbenchDraftVNext,
   ObjectFirstWorkbenchProjectModel,
   OpeningObjectModel,
   PergolaObjectModel,
 } from './objectFirstWorkbenchModel';
+import {
+  normalizeObjectFirstWorkbenchDraftVNext,
+} from './objectFirstWorkbenchModel';
 import type {
+  HouseFirstDeckDraft,
   HouseFirstMigrationWarning,
+  HouseFirstOpeningDraft,
+  HouseFirstPergolaDraft,
+  HouseFirstRoofDraft,
   HouseFirstWorkbenchProjectModel,
   HouseModel,
   PergolaModel,
@@ -65,12 +78,18 @@ function buildDeckObjects(house: HouseModel | null): DeckObjectModel[] {
     kind: deck.kind,
     shape: deck.shape,
     presetType: deck.presetType,
+    presetRect: deck.presetRect,
+    floatingRect: deck.floatingRect,
     outline: deck.outline,
     elevationMode: deck.elevationMode,
     levelOffsetMm: deck.levelOffsetMm,
     isAttached: deck.isAttached,
     surfaceMaterial: deck.surfaceMaterial,
     hostEdgeId: deck.hostEdgeId,
+    attachmentMode: deck.attachmentMode,
+    primaryHostEdgeId: deck.primaryHostEdgeId,
+    secondaryHostEdgeId: deck.secondaryHostEdgeId,
+    cornerVertexId: deck.cornerVertexId,
   }));
 }
 
@@ -82,6 +101,8 @@ function buildOpeningObjects(house: HouseModel | null): OpeningObjectModel[] {
     panelCount: opening.panelCount,
     hostWallId: opening.hostWallId,
     sourceFormId: house?.id ?? null,
+    wallId: opening.wallId,
+    hostEdgeId: opening.hostEdgeId,
     widthM: opening.widthM,
     heightM: opening.heightM,
     sillHeightM: opening.sillHeightM,
@@ -105,13 +126,226 @@ function formatWarning(warning: HouseFirstMigrationWarning): string {
   return warning.message;
 }
 
+function buildHouseFormDraftFromModel(houseForm: HouseFormModel): ObjectFirstHouseFormDraft {
+  return {
+    id: houseForm.id,
+    label: houseForm.label,
+    transform: houseForm.transform,
+    footprint: houseForm.footprint,
+    roofIntent: houseForm.roofIntent,
+    roofIntentAuthored: houseForm.roofIntentAuthored,
+    storeyMode: houseForm.storeyMode,
+    attachmentStrategy: houseForm.attachmentStrategy,
+    eaveHeightM: houseForm.eaveHeightM,
+    wallHeightM: houseForm.wallHeightM,
+    soffitDepthMm: houseForm.soffitDepthMm,
+    fasciaHeightMm: houseForm.fasciaHeightMm,
+    gutterWidthMm: houseForm.gutterWidthMm,
+    gutterDepthMm: houseForm.gutterDepthMm,
+    gutterProjectionMm: houseForm.gutterProjectionMm,
+    eaveOverhangMm: houseForm.eaveOverhangMm,
+  };
+}
+
+function buildHouseAssemblyDraftFromProject(
+  projectModel: ObjectFirstWorkbenchProjectModel,
+): ObjectFirstHouseAssemblyDraft | null {
+  const houseAssembly = projectModel.houseAssembly;
+  if (!houseAssembly) return null;
+  return {
+    id: houseAssembly.id,
+    label: houseAssembly.label,
+    houseForms: houseAssembly.houseForms.map(buildHouseFormDraftFromModel),
+  };
+}
+
+export function buildObjectFirstDeckDraftsFromHouseFirstDrafts(
+  decks: HouseFirstDeckDraft[] | null | undefined,
+): ObjectFirstDeckDraft[] {
+  return (decks ?? []).map((deck, index) => ({
+    id: deck.id,
+    label: deck.name?.trim() || `Deck ${index + 1}`,
+    kind: deck.kind ?? 'deck',
+    shape: deck.shape ?? 'preset',
+    presetType: deck.presetType ?? null,
+    presetRect: deck.presetRect ?? null,
+    floatingRect: deck.floatingRect ?? null,
+    outline: deck.outline ?? [],
+    elevationMode: deck.elevationMode ?? 'ground',
+    levelOffsetMm: deck.levelOffsetMm?.trim() || '0',
+    isAttached: deck.isAttached ?? true,
+    surfaceMaterial: deck.surfaceMaterial ?? 'timber_decking',
+    hostEdgeId: deck.hostEdgeId ?? null,
+    attachmentMode: deck.attachmentMode ?? null,
+    primaryHostEdgeId: deck.primaryHostEdgeId ?? null,
+    secondaryHostEdgeId: deck.secondaryHostEdgeId ?? null,
+    cornerVertexId: deck.cornerVertexId ?? null,
+  }));
+}
+
+export function buildObjectFirstOpeningDraftsFromHouseFirstDrafts(
+  openings: HouseFirstOpeningDraft[] | null | undefined,
+  sourceFormId: string | null = null,
+): ObjectFirstOpeningDraft[] {
+  return (openings ?? []).map((opening, index) => ({
+    id: opening.id,
+    label: opening.label?.trim() || `Opening ${index + 1}`,
+    kind: opening.kind ?? 'window',
+    panelCount: opening.panelCount ?? null,
+    hostWallId: opening.hostWallId ?? null,
+    sourceFormId,
+    wallId: opening.wallId ?? null,
+    hostEdgeId: opening.hostEdgeId ?? null,
+    widthM: opening.widthM?.trim() || '0',
+    heightM: opening.heightM?.trim() || '0',
+    sillHeightM: opening.sillHeightM?.trim() || '0',
+    offsetAlongWallM: opening.offsetAlongWallM?.trim() || '0',
+  }));
+}
+
+export function buildObjectFirstPergolaDraftsFromHouseFirstDrafts(
+  pergolas: HouseFirstPergolaDraft[] | null | undefined,
+  compatibilityPergolas: PergolaModel[] = [],
+): ObjectFirstPergolaDraft[] {
+  const compatibilityById = new Map(compatibilityPergolas.map((pergola) => [pergola.id, pergola]));
+  return (pergolas ?? []).map((pergola) => {
+    const compatibilityPergola = compatibilityById.get(pergola.id);
+    return {
+      id: pergola.id,
+      label: compatibilityPergola?.label ?? pergola.id,
+      family: compatibilityPergola?.family ?? 'unknown',
+      attachmentEdgeId: pergola.attachmentEdgeId ?? null,
+      attachmentZoneId: pergola.attachmentZoneId ?? null,
+      side: compatibilityPergola?.attachment.side ?? 'rear',
+      strategy: compatibilityPergola?.attachment.strategy ?? null,
+    };
+  });
+}
+
+export function buildObjectFirstWorkbenchDraftFromProjectModel(
+  projectModel: ObjectFirstWorkbenchProjectModel,
+): ObjectFirstWorkbenchDraftVNext {
+  return normalizeObjectFirstWorkbenchDraftVNext({
+    houseAssembly: buildHouseAssemblyDraftFromProject(projectModel),
+    decks: projectModel.decks,
+    openings: projectModel.openings,
+    pergolas: projectModel.pergolas,
+  });
+}
+
+function buildDeckModelsFromDrafts(decks: ObjectFirstDeckDraft[]): DeckObjectModel[] {
+  return decks.map((deck) => ({
+    ...deck,
+  }));
+}
+
+function buildOpeningModelsFromDrafts(openings: ObjectFirstOpeningDraft[]): OpeningObjectModel[] {
+  return openings.map((opening) => ({
+    ...opening,
+  }));
+}
+
+function buildPergolaModelsFromDrafts(pergolas: ObjectFirstPergolaDraft[]): PergolaObjectModel[] {
+  return pergolas.map((pergola) => ({
+    ...pergola,
+  }));
+}
+
+function buildHouseAssemblyFromDraft(
+  draft: ObjectFirstHouseAssemblyDraft | null,
+  compatibilityHouse: HouseModel | null,
+) {
+  if (!draft) return null;
+  return {
+    id: draft.id,
+    label: draft.label,
+    houseForms: draft.houseForms.map((houseForm) => {
+      const compatibilitySource =
+        compatibilityHouse && houseForm.id === compatibilityHouse.id
+          ? compatibilityHouse
+          : compatibilityHouse && draft.houseForms.length === 1
+            ? compatibilityHouse
+            : null;
+      return {
+        ...houseForm,
+        sourceModuleIndexes: compatibilitySource?.sourceModuleIndexes,
+        sourceModuleIds: compatibilitySource?.sourceModuleIds,
+      };
+    }),
+    derivedEnvelope: compatibilityHouse?.derivedEnvelope ?? null,
+  };
+}
+
+export function buildHouseFirstCompatibilityDraftFromObjectFirstDraft(
+  objectFirstDraft: Partial<ObjectFirstWorkbenchDraftVNext> | null | undefined,
+): {
+  roof?: HouseFirstRoofDraft | null;
+  decks?: HouseFirstDeckDraft[] | null;
+  openings?: HouseFirstOpeningDraft[] | null;
+  pergolas?: HouseFirstPergolaDraft[] | null;
+} {
+  const normalized = normalizeObjectFirstWorkbenchDraftVNext(objectFirstDraft);
+  const houseForm = normalized.houseAssembly?.houseForms[0] ?? null;
+  const roof = houseForm?.roofIntentAuthored
+    ? {
+        form: houseForm.roofIntent.form,
+        material: houseForm.roofIntent.material,
+        primaryPitchDeg: houseForm.roofIntent.primaryPitchDeg,
+        primaryFallDirection: houseForm.roofIntent.primaryFallDirection,
+        ridgeAxis: houseForm.roofIntent.ridgeAxis,
+        openGableEndIds: houseForm.roofIntent.openGableEndIds,
+        appendage: houseForm.roofIntent.appendage,
+      }
+    : null;
+  return {
+    ...(roof ? { roof } : null),
+    decks: normalized.decks.map((deck) => ({
+      id: deck.id,
+      name: deck.label,
+      kind: deck.kind,
+      shape: deck.shape,
+      presetType: deck.presetType,
+      presetRect: deck.presetRect ?? null,
+      floatingRect: deck.floatingRect ?? null,
+      outline: deck.outline,
+      elevationMode: deck.elevationMode,
+      levelOffsetMm: deck.levelOffsetMm,
+      hostEdgeId: deck.hostEdgeId,
+      attachmentMode: deck.attachmentMode ?? null,
+      primaryHostEdgeId: deck.primaryHostEdgeId ?? null,
+      secondaryHostEdgeId: deck.secondaryHostEdgeId ?? null,
+      cornerVertexId: deck.cornerVertexId ?? null,
+      isAttached: deck.isAttached,
+      surfaceMaterial: deck.surfaceMaterial,
+    })),
+    openings: normalized.openings.map((opening) => ({
+      id: opening.id,
+      label: opening.label,
+      kind: opening.kind,
+      panelCount: opening.panelCount,
+      hostWallId: opening.hostWallId,
+      wallId: opening.wallId ?? null,
+      hostEdgeId: opening.hostEdgeId ?? null,
+      widthM: opening.widthM,
+      heightM: opening.heightM,
+      sillHeightM: opening.sillHeightM,
+      offsetAlongWallM: opening.offsetAlongWallM,
+    })),
+    pergolas: normalized.pergolas.map((pergola) => ({
+      id: pergola.id,
+      attachmentEdgeId: pergola.attachmentEdgeId,
+      attachmentZoneId: pergola.attachmentZoneId,
+    })),
+  };
+}
+
 export function buildObjectFirstWorkbenchProjectModel(input: {
   compatibilityProjectModel: HouseFirstWorkbenchProjectModel;
+  objectFirstDraft?: Partial<ObjectFirstWorkbenchDraftVNext> | null;
 }): ObjectFirstWorkbenchProjectModel {
   const house = input.compatibilityProjectModel.house;
   const houseForm = house ? buildHouseFormFromCompatibilityHouse(house) : null;
-
-  return {
+  const baseProject: ObjectFirstWorkbenchProjectModel = {
     source: 'legacy_estimate_snapshot',
     houseAssembly: house
       ? {
@@ -124,6 +358,24 @@ export function buildObjectFirstWorkbenchProjectModel(input: {
     decks: buildDeckObjects(house),
     openings: buildOpeningObjects(house),
     pergolas: buildPergolaObjects(input.compatibilityProjectModel.pergolas),
+    warnings: input.compatibilityProjectModel.warnings.map(formatWarning),
+  };
+
+  if (input.objectFirstDraft === undefined || input.objectFirstDraft === null) {
+    return baseProject;
+  }
+
+  const objectFirstDraft = normalizeObjectFirstWorkbenchDraftVNext(input.objectFirstDraft);
+
+  return {
+    source: 'legacy_estimate_snapshot',
+    houseAssembly:
+      objectFirstDraft.houseAssembly !== null
+        ? buildHouseAssemblyFromDraft(objectFirstDraft.houseAssembly, house)
+        : null,
+    decks: buildDeckModelsFromDrafts(objectFirstDraft.decks),
+    openings: buildOpeningModelsFromDrafts(objectFirstDraft.openings),
+    pergolas: buildPergolaModelsFromDrafts(objectFirstDraft.pergolas),
     warnings: input.compatibilityProjectModel.warnings.map(formatWarning),
   };
 }

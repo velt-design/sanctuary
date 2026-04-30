@@ -11,7 +11,7 @@ import {
   SelectField,
   resolveFootprintParams,
 } from './objectRailShared';
-import styles from './ConfiguratorRail.module.css';
+import styles from './WorkbenchRail.module.css';
 
 type BuildHouseFormFootprintSectionsInput = {
   canEditFootprint?: boolean;

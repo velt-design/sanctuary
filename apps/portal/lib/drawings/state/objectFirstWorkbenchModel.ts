@@ -22,7 +22,10 @@ import {
 } from './houseFirstWorkbenchModel';
 import type {
   DeckElevationMode,
+  DeckAttachmentMode,
+  DeckFloatingPresetRect,
   DeckKind,
+  DeckPresetRect,
   DeckPresetType,
   DeckShape,
   DeckSurfaceMaterial,
@@ -32,6 +35,7 @@ import type {
   HouseRoofPrimaryFallDirection,
   HouseRoofRidgeAxis,
   SliderPanelCount,
+  WallOpeningHostSide,
   WallOpeningKind,
 } from './houseFirstWorkbenchModel';
 
@@ -78,6 +82,7 @@ export type HouseFormModel = {
   transform: HouseFormTransformModel;
   footprint: HouseFormFootprintModel;
   roofIntent: HouseFormRoofIntentModel;
+  roofIntentAuthored?: boolean;
   storeyMode: CalculatorHouseStoreyMode;
   attachmentStrategy: CalculatorHouseAttachmentStrategy | null;
   eaveHeightM?: string | null;
@@ -163,12 +168,18 @@ export type DeckObjectModel = {
   kind: DeckKind;
   shape: DeckShape;
   presetType: DeckPresetType | null;
+  presetRect?: DeckPresetRect | null;
+  floatingRect?: DeckFloatingPresetRect | null;
   outline: CalculatorHouseFootprintPolygonPoint[];
   elevationMode: DeckElevationMode;
   levelOffsetMm: string;
   isAttached: boolean;
   surfaceMaterial: DeckSurfaceMaterial;
   hostEdgeId: string | null;
+  attachmentMode?: DeckAttachmentMode | null;
+  primaryHostEdgeId?: string | null;
+  secondaryHostEdgeId?: string | null;
+  cornerVertexId?: string | null;
 };
 
 export type OpeningObjectModel = {
@@ -178,6 +189,8 @@ export type OpeningObjectModel = {
   panelCount: SliderPanelCount | null;
   hostWallId: string | null;
   sourceFormId?: string | null;
+  wallId?: WallOpeningHostSide | null;
+  hostEdgeId?: string | null;
   widthM: string;
   heightM: string;
   sillHeightM: string;
@@ -226,6 +239,7 @@ export type ObjectFirstHouseFormDraft = {
   transform: HouseFormTransformModel;
   footprint: HouseFormFootprintModel;
   roofIntent: HouseFormRoofIntentModel;
+  roofIntentAuthored?: boolean;
   storeyMode: CalculatorHouseStoreyMode;
   attachmentStrategy: CalculatorHouseAttachmentStrategy | null;
   eaveHeightM?: string | null;
@@ -250,12 +264,18 @@ export type ObjectFirstDeckDraft = {
   kind: DeckKind;
   shape: DeckShape;
   presetType: DeckPresetType | null;
+  presetRect?: DeckPresetRect | null;
+  floatingRect?: DeckFloatingPresetRect | null;
   outline: CalculatorHouseFootprintPolygonPoint[];
   elevationMode: DeckElevationMode;
   levelOffsetMm: string;
   isAttached: boolean;
   surfaceMaterial: DeckSurfaceMaterial;
   hostEdgeId: string | null;
+  attachmentMode?: DeckAttachmentMode | null;
+  primaryHostEdgeId?: string | null;
+  secondaryHostEdgeId?: string | null;
+  cornerVertexId?: string | null;
 };
 
 export type ObjectFirstOpeningDraft = {
@@ -265,6 +285,8 @@ export type ObjectFirstOpeningDraft = {
   panelCount: SliderPanelCount | null;
   hostWallId: string | null;
   sourceFormId?: string | null;
+  wallId?: WallOpeningHostSide | null;
+  hostEdgeId?: string | null;
   widthM: string;
   heightM: string;
   sillHeightM: string;
@@ -289,13 +311,10 @@ export type ObjectFirstWorkbenchDraftVNext = {
 };
 
 // Migration boundary notes:
-// - The current hidden workbench still runs from `houseFirstWorkbenchModel.ts` and `buildHouseFirstWorkbenchProjectModel`.
 // - This file is the canonical object-first type authority for the active April workbench docs.
-// - The canonical names above align code vocabulary with the docs while the runtime remains house-first.
-// - This slice does not introduce dual-runtime support.
-// - Persistence migration into `EstimateDrawingDraft` is intentionally deferred.
-// - The authored draft helpers below define the future persistence shape for P1.2 only.
-// - Current hidden workbench persistence remains `houseFirst` until a later migration slice.
+// - Hidden workbench local drafts now write `EstimateDrawingDraft.objectFirst`.
+// - Compatibility projections still feed geometry, overlays, and calculators that consume house-first models.
+// - `roofIntentAuthored` keeps snapshot-inferred roofs from becoming explicit compatibility roof overrides.
 
 function trimNullableString(value: string | null | undefined): string | null {
   if (typeof value !== 'string') return null;
@@ -363,6 +382,10 @@ function isDeckElevationMode(value: unknown): value is DeckElevationMode {
   return value === 'ground' || value === 'stepped' || value === 'aligned_to_threshold';
 }
 
+function isDeckAttachmentMode(value: unknown): value is DeckAttachmentMode {
+  return value === 'floating' || value === 'single_edge' || value === 'corner_dual_edge';
+}
+
 function isDeckSurfaceMaterial(value: unknown): value is DeckSurfaceMaterial {
   return value === 'timber_decking' || value === 'composite' || value === 'concrete';
 }
@@ -376,6 +399,10 @@ function isPergolaFamily(value: unknown): value is ObjectFirstPergolaDraft['fami
     value === 'hip_corner' ||
     value === 'unknown'
   );
+}
+
+function isWallOpeningHostSide(value: unknown): value is WallOpeningHostSide {
+  return value === 'rear' || value === 'front' || value === 'left' || value === 'right';
 }
 
 function normalizeHouseFormTransform(
@@ -431,6 +458,39 @@ function normalizeHouseFormRoofIntent(
   };
 }
 
+function normalizeObjectFirstDeckPresetRect(
+  value: Partial<DeckPresetRect> | null | undefined,
+): DeckPresetRect | null {
+  if (!value) return null;
+  const widthM = trimNullableString(value.widthM);
+  const depthM = trimNullableString(value.depthM);
+  const centerOffsetM = trimNullableString(value.centerOffsetM);
+  if (!widthM && !depthM && !centerOffsetM) return null;
+  return {
+    widthM: widthM ?? '0',
+    depthM: depthM ?? '0',
+    centerOffsetM: centerOffsetM ?? '0',
+    ...(trimNullableString(value.detachedGapM) ? { detachedGapM: trimNullableString(value.detachedGapM) } : null),
+  };
+}
+
+function normalizeObjectFirstDeckFloatingRect(
+  value: Partial<DeckFloatingPresetRect> | null | undefined,
+): DeckFloatingPresetRect | null {
+  if (!value) return null;
+  const centerAlongM = trimNullableString(value.centerAlongM);
+  const centerDepthM = trimNullableString(value.centerDepthM);
+  const widthM = trimNullableString(value.widthM);
+  const depthM = trimNullableString(value.depthM);
+  if (!centerAlongM && !centerDepthM && !widthM && !depthM) return null;
+  return {
+    centerAlongM: centerAlongM ?? '0',
+    centerDepthM: centerDepthM ?? '0',
+    widthM: widthM ?? '0',
+    depthM: depthM ?? '0',
+  };
+}
+
 export function normalizeObjectFirstHouseFormDraft(
   value: Partial<ObjectFirstHouseFormDraft> | null | undefined,
 ): ObjectFirstHouseFormDraft | null {
@@ -443,6 +503,7 @@ export function normalizeObjectFirstHouseFormDraft(
     transform: normalizeHouseFormTransform(value?.transform),
     footprint: normalizeHouseFormFootprint(value?.footprint),
     roofIntent: normalizeHouseFormRoofIntent(value?.roofIntent),
+    ...(value?.roofIntentAuthored === true ? { roofIntentAuthored: true } : null),
     storeyMode: isCalculatorHouseStoreyMode(value?.storeyMode) ? value.storeyMode : 'single_storey',
     attachmentStrategy: isCalculatorHouseAttachmentStrategy(value?.attachmentStrategy)
       ? value.attachmentStrategy
@@ -491,12 +552,24 @@ export function normalizeObjectFirstDeckDraft(
     kind: isDeckKind(value?.kind) ? value.kind : 'deck',
     shape: isDeckShape(value?.shape) ? value.shape : 'preset',
     presetType: isDeckPresetType(value?.presetType) ? value.presetType : null,
+    ...(normalizeObjectFirstDeckPresetRect(value?.presetRect)
+      ? { presetRect: normalizeObjectFirstDeckPresetRect(value?.presetRect) }
+      : null),
+    ...(normalizeObjectFirstDeckFloatingRect(value?.floatingRect)
+      ? { floatingRect: normalizeObjectFirstDeckFloatingRect(value?.floatingRect) }
+      : null),
     outline: normalizeHouseFootprintPolygon(value?.outline),
     elevationMode: isDeckElevationMode(value?.elevationMode) ? value.elevationMode : 'ground',
     levelOffsetMm: trimNullableString(value?.levelOffsetMm) ?? '0',
     isAttached: typeof value?.isAttached === 'boolean' ? value.isAttached : true,
     surfaceMaterial: isDeckSurfaceMaterial(value?.surfaceMaterial) ? value.surfaceMaterial : 'timber_decking',
     hostEdgeId: normalizeStableId(value?.hostEdgeId),
+    ...(isDeckAttachmentMode(value?.attachmentMode) ? { attachmentMode: value.attachmentMode } : null),
+    ...(normalizeStableId(value?.primaryHostEdgeId) ? { primaryHostEdgeId: normalizeStableId(value?.primaryHostEdgeId) } : null),
+    ...(normalizeStableId(value?.secondaryHostEdgeId)
+      ? { secondaryHostEdgeId: normalizeStableId(value?.secondaryHostEdgeId) }
+      : null),
+    ...(normalizeStableId(value?.cornerVertexId) ? { cornerVertexId: normalizeStableId(value?.cornerVertexId) } : null),
   };
 }
 
@@ -508,6 +581,9 @@ export function normalizeObjectFirstOpeningDraft(
 
   const kind = normalizeWallOpeningKind(value?.kind);
   const panelCount = resolveOpeningPanelCount(kind, value?.panelCount);
+  const sourceFormId = normalizeStableId(value?.sourceFormId);
+  const wallId = value?.wallId;
+  const hostEdgeId = normalizeStableId(value?.hostEdgeId);
 
   return {
     id,
@@ -515,7 +591,9 @@ export function normalizeObjectFirstOpeningDraft(
     kind,
     panelCount,
     hostWallId: normalizeStableId(value?.hostWallId),
-    ...(normalizeStableId(value?.sourceFormId) ? { sourceFormId: normalizeStableId(value?.sourceFormId) } : null),
+    ...(sourceFormId ? { sourceFormId } : null),
+    ...(isWallOpeningHostSide(wallId) ? { wallId } : null),
+    ...(hostEdgeId ? { hostEdgeId } : null),
     widthM: trimNullableString(value?.widthM) ?? '0',
     heightM: trimNullableString(value?.heightM) ?? '0',
     sillHeightM: trimNullableString(value?.sillHeightM) ?? '0',

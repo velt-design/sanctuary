@@ -18,7 +18,7 @@ import type {
   HouseRoofRidgeAxis,
 } from '@/lib/drawings/state/houseFirstWorkbenchModel';
 import type { CommitResult } from './objectWorkbenchRailTypes';
-import styles from './ConfiguratorRail.module.css';
+import styles from './WorkbenchRail.module.css';
 
 export type SelectOption = { label: string; value: string };
 

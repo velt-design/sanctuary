@@ -15,7 +15,18 @@ import type {
   DerivedAttachmentZoneModel,
   DerivedWallModel,
   HouseAssemblyModel,
+  ObjectFirstWorkbenchDraftVNext,
 } from '@/lib/drawings/state/objectFirstWorkbenchModel';
+import {
+  normalizeObjectFirstWorkbenchDraftVNext,
+} from '@/lib/drawings/state/objectFirstWorkbenchModel';
+import {
+  buildHouseFirstCompatibilityDraftFromObjectFirstDraft,
+  buildObjectFirstDeckDraftsFromHouseFirstDrafts,
+  buildObjectFirstOpeningDraftsFromHouseFirstDrafts,
+  buildObjectFirstPergolaDraftsFromHouseFirstDrafts,
+  buildObjectFirstWorkbenchDraftFromProjectModel,
+} from '@/lib/drawings/state/objectFirstWorkbenchAdapter';
 import type {
   HouseFirstDeckDraft,
   HouseFirstOpeningDraft,
@@ -34,10 +45,7 @@ import { resolveDeckHostEdgeFrame, sanitizeDeckPresetRect } from '@/lib/drawings
 import {
   applyEstimateDrawingModuleFieldEdit,
   applyEstimateDrawingFootprintEdit,
-  updateEstimateDrawingHouseFirstDeckDrafts,
-  updateEstimateDrawingHouseFirstOpeningDrafts,
-  updateEstimateDrawingHouseFirstPergolaDrafts,
-  updateEstimateDrawingHouseFirstRoofDraft,
+  updateEstimateDrawingObjectFirstWorkbenchDraft,
   type EstimateDrawingDraft,
   type EstimateDrawingField,
   type EstimateDrawingFootprintEdit,
@@ -55,9 +63,6 @@ import {
   nextDeckId,
   nextOpeningId,
   resolveDeckDraftGeometry,
-  toDeckDrafts,
-  toOpeningDrafts,
-  toPergolaDrafts,
 } from './houseDraftBuilders';
 
 type UseHouseMutationActionsInput = {
@@ -107,25 +112,35 @@ function missingSharedHouseResult(): CommitResult {
   return { ok: false, error: 'Shared house context is not available yet.' };
 }
 
-function resolveCurrentDeckDrafts(
-  drawingDraft: EstimateDrawingDraft | null,
-  house: HouseModel | null,
-): HouseFirstDeckDraft[] {
-  return drawingDraft?.houseFirst?.decks?.map((deck) => ({ ...deck })) ?? toDeckDrafts(house);
+function resolveObjectFirstDraft(
+  drawingDraft: EstimateDrawingDraft,
+  store: ReturnType<typeof buildDrawingWorkbenchStore>,
+): ObjectFirstWorkbenchDraftVNext {
+  return normalizeObjectFirstWorkbenchDraftVNext(
+    drawingDraft.objectFirst ?? buildObjectFirstWorkbenchDraftFromProjectModel(store.persisted.projectModel),
+  );
 }
 
-function resolveCurrentOpeningDrafts(
-  drawingDraft: EstimateDrawingDraft | null,
-  house: HouseModel | null,
-): HouseFirstOpeningDraft[] {
-  return drawingDraft?.houseFirst?.openings?.map((opening) => ({ ...opening })) ?? toOpeningDrafts(house);
+function resolveCurrentDeckDrafts(objectFirstDraft: ObjectFirstWorkbenchDraftVNext): HouseFirstDeckDraft[] {
+  return buildHouseFirstCompatibilityDraftFromObjectFirstDraft(objectFirstDraft).decks ?? [];
 }
 
-function resolveCurrentPergolaDrafts(
-  drawingDraft: EstimateDrawingDraft | null,
-  pergolas: PergolaModel[],
-): HouseFirstPergolaDraft[] {
-  return drawingDraft?.houseFirst?.pergolas?.map((pergola) => ({ ...pergola })) ?? toPergolaDrafts(pergolas);
+function resolveCurrentOpeningDrafts(objectFirstDraft: ObjectFirstWorkbenchDraftVNext): HouseFirstOpeningDraft[] {
+  return buildHouseFirstCompatibilityDraftFromObjectFirstDraft(objectFirstDraft).openings ?? [];
+}
+
+function resolveCurrentPergolaDrafts(objectFirstDraft: ObjectFirstWorkbenchDraftVNext): HouseFirstPergolaDraft[] {
+  return buildHouseFirstCompatibilityDraftFromObjectFirstDraft(objectFirstDraft).pergolas ?? [];
+}
+
+function updateDraftObjectFirst(input: {
+  draft: EstimateDrawingDraft;
+  objectFirst: ObjectFirstWorkbenchDraftVNext;
+}): EstimateDrawingDraft {
+  return updateEstimateDrawingObjectFirstWorkbenchDraft({
+    draft: input.draft,
+    objectFirst: input.objectFirst,
+  });
 }
 
 type OpeningHostWallOption = {
@@ -608,7 +623,7 @@ function buildNewOpeningDraft(input: {
   openingId: string;
   hostWallId: string | null;
   hostEdgeId: string | null;
-  wallId: string;
+  wallId: WallOpeningHostSide;
 }): HouseFirstOpeningDraft {
   const baseOpening: HouseFirstOpeningDraft =
     input.kind === 'slider'
@@ -712,6 +727,31 @@ export function useHouseMutationActions({
     [drawingDraft, persistDrawingDraftLocally],
   );
 
+  const syncHouseAssemblyFromDraftInputs = useCallback(
+    (
+      draft: EstimateDrawingDraft,
+      objectFirstDraft: ObjectFirstWorkbenchDraftVNext,
+    ): ObjectFirstWorkbenchDraftVNext => {
+      const previewStore = buildDrawingWorkbenchStore({
+        snapshot,
+        draft: {
+          ...draft,
+          objectFirst: undefined,
+          houseFirst: undefined,
+        },
+        ui,
+      });
+      const previewObjectFirst = buildObjectFirstWorkbenchDraftFromProjectModel(
+        previewStore.persisted.projectModel,
+      );
+      return {
+        ...objectFirstDraft,
+        houseAssembly: previewObjectFirst.houseAssembly,
+      };
+    },
+    [snapshot, ui],
+  );
+
   const runGeometryIntentTransaction = useCallback(
     async (intent: GeometryEditIntent): Promise<CommitResult> => {
       if (!drawingDraft) return missingDrawingDraftResult();
@@ -733,7 +773,12 @@ export function useHouseMutationActions({
       await persistDrawingDraftLocally(result.draft);
       return { ok: true };
     },
-    [drawingDraft, persistDrawingDraftLocally, snapshot, store.derived.activeModuleIndex],
+    [
+      drawingDraft,
+      persistDrawingDraftLocally,
+      snapshot,
+      store.derived.activeModuleIndex,
+    ],
   );
 
   const validateDeckPreview = useCallback(
@@ -828,8 +873,9 @@ export function useHouseMutationActions({
     }): Promise<CommitResult> =>
       runDraftTransaction({
         buildNextDraft: (draft) => {
+          const objectFirstDraft = resolveObjectFirstDraft(draft, store);
           const house = store.derived.house;
-          const currentDecks = resolveCurrentDeckDrafts(draft, house);
+          const currentDecks = resolveCurrentDeckDrafts(objectFirstDraft);
           const housePolygon = resolveDeckReferencePolygon(house, activeModuleInput);
           const nextDecks = input.buildNextDecks({
             currentDecks,
@@ -837,16 +883,19 @@ export function useHouseMutationActions({
           });
           return {
             ok: true,
-            draft: updateEstimateDrawingHouseFirstDeckDrafts({
+            draft: updateDraftObjectFirst({
               draft,
-              decks: nextDecks,
+              objectFirst: {
+                ...objectFirstDraft,
+                decks: buildObjectFirstDeckDraftsFromHouseFirstDrafts(nextDecks),
+              },
             }),
           };
         },
         validateDraft: input.validateDraft,
         afterPersist: input.afterPersist,
       }),
-    [activeModuleInput, runDraftTransaction, store.derived.house],
+    [activeModuleInput, runDraftTransaction, store],
   );
 
   const commitOpeningDraftMutation = useCallback(
@@ -856,21 +905,28 @@ export function useHouseMutationActions({
     }): Promise<CommitResult> =>
       runDraftTransaction({
         buildNextDraft: (draft) => {
-          const currentOpenings = resolveCurrentOpeningDrafts(draft, store.derived.house);
+          const objectFirstDraft = resolveObjectFirstDraft(draft, store);
+          const currentOpenings = resolveCurrentOpeningDrafts(objectFirstDraft);
           const nextOpenings = input.buildNextOpenings({
             currentOpenings,
           });
           return {
             ok: true,
-            draft: updateEstimateDrawingHouseFirstOpeningDrafts({
+            draft: updateDraftObjectFirst({
               draft,
-              openings: nextOpenings,
+              objectFirst: {
+                ...objectFirstDraft,
+                openings: buildObjectFirstOpeningDraftsFromHouseFirstDrafts(
+                  nextOpenings,
+                  store.derived.activeHouseForm?.id ?? store.derived.house?.id ?? null,
+                ),
+              },
             }),
           };
         },
         afterPersist: input.afterPersist,
       }),
-    [runDraftTransaction, store.derived.house],
+    [runDraftTransaction, store],
   );
 
   const commitPergolaDraftMutation = useCallback(
@@ -885,7 +941,8 @@ export function useHouseMutationActions({
     }): Promise<CommitResult> =>
       runDraftTransaction({
         buildNextDraft: (draft) => {
-          const currentPergolas = resolveCurrentPergolaDrafts(draft, store.derived.pergolas);
+          const objectFirstDraft = resolveObjectFirstDraft(draft, store);
+          const currentPergolas = resolveCurrentPergolaDrafts(objectFirstDraft);
           const currentPergola =
             store.derived.pergolas.find((pergola) => pergola.id === input.pergolaId) ?? null;
           if (!currentPergola) {
@@ -902,13 +959,14 @@ export function useHouseMutationActions({
         },
         afterPersist: input.afterPersist,
       }),
-    [runDraftTransaction, store.derived.pergolas],
+    [runDraftTransaction, store],
   );
 
   const commitSharedHouseFootprintEdit = useCallback(
     async (edit: EstimateDrawingFootprintEdit): Promise<CommitResult> =>
       runDraftTransaction({
         buildNextDraft: (draft) => {
+          const objectFirstDraft = resolveObjectFirstDraft(draft, store);
           let nextDraft = draft;
           for (let moduleIndex = 0; moduleIndex < nextDraft.inputs.modules.length; moduleIndex += 1) {
             const result = applyEstimateDrawingFootprintEdit({
@@ -924,30 +982,76 @@ export function useHouseMutationActions({
             }
             nextDraft = result.draft;
           }
-          return { ok: true, draft: nextDraft };
+          return {
+            ok: true,
+            draft: updateDraftObjectFirst({
+              draft: nextDraft,
+              objectFirst: syncHouseAssemblyFromDraftInputs(nextDraft, objectFirstDraft),
+            }),
+          };
         },
       }),
-    [runDraftTransaction],
+    [runDraftTransaction, store, syncHouseAssemblyFromDraftInputs],
   );
 
   const commitSharedHouseRoofDraft = useCallback(
     async (roof: HouseFirstRoofDraft): Promise<CommitResult> =>
       runDraftTransaction({
         buildNextDraft: (draft) => {
+          const objectFirstDraft = resolveObjectFirstDraft(draft, store);
           const normalizedRoof = normalizeSharedHouseRoofDraftForCommit(roof);
+          const nextObjectFirstDraft: ObjectFirstWorkbenchDraftVNext = {
+            ...objectFirstDraft,
+            houseAssembly: objectFirstDraft.houseAssembly
+              ? {
+                  ...objectFirstDraft.houseAssembly,
+                  houseForms: objectFirstDraft.houseAssembly.houseForms.map((houseForm, index) =>
+                    index === 0
+                      ? {
+                          ...houseForm,
+                          roofIntentAuthored: true,
+                          roofIntent: {
+                            ...houseForm.roofIntent,
+                            form: normalizedRoof.form ?? houseForm.roofIntent.form,
+                            material: normalizedRoof.material ?? houseForm.roofIntent.material,
+                            primaryPitchDeg:
+                              normalizedRoof.primaryPitchDeg ?? houseForm.roofIntent.primaryPitchDeg,
+                            primaryFallDirection:
+                              normalizedRoof.primaryFallDirection ?? houseForm.roofIntent.primaryFallDirection,
+                            ridgeAxis: normalizedRoof.ridgeAxis ?? houseForm.roofIntent.ridgeAxis,
+                            openGableEndIds:
+                              normalizedRoof.openGableEndIds ?? houseForm.roofIntent.openGableEndIds,
+                            appendage: normalizedRoof.appendage
+                              ? {
+                                  enabled: Boolean(normalizedRoof.appendage.enabled),
+                                  form: normalizedRoof.appendage.form ?? houseForm.roofIntent.appendage.form,
+                                  hostEdge:
+                                    normalizedRoof.appendage.hostEdge ?? houseForm.roofIntent.appendage.hostEdge,
+                                  pitchDeg:
+                                    normalizedRoof.appendage.pitchDeg ?? houseForm.roofIntent.appendage.pitchDeg,
+                                  dropMm: normalizedRoof.appendage.dropMm ?? houseForm.roofIntent.appendage.dropMm,
+                                }
+                              : {
+                                  ...houseForm.roofIntent.appendage,
+                                  enabled: false,
+                                },
+                          },
+                        }
+                      : houseForm,
+                  ),
+                }
+              : objectFirstDraft.houseAssembly,
+          };
           return {
             ok: true,
-            draft: mirrorSharedRoofDraftToModules(
-              updateEstimateDrawingHouseFirstRoofDraft({
-                draft,
-                roof: normalizedRoof,
-              }),
-              normalizedRoof,
-            ),
+            draft: updateDraftObjectFirst({
+              draft: mirrorSharedRoofDraftToModules(draft, normalizedRoof),
+              objectFirst: nextObjectFirstDraft,
+            }),
           };
         },
       }),
-    [runDraftTransaction],
+    [runDraftTransaction, store],
   );
 
   const commitSharedHouseDeckPatch = useCallback(
@@ -1111,9 +1215,23 @@ export function useHouseMutationActions({
             attachmentEdgeId: nextZone?.hostEdgeId ?? null,
             attachmentZoneId: nextZone?.id ?? null,
           });
-          const nextDraft = updateEstimateDrawingHouseFirstPergolaDrafts({
+          const objectFirstDraft = resolveObjectFirstDraft(draft, store);
+          const nextDraft = updateDraftObjectFirst({
             draft,
-            pergolas: nextPergolas,
+            objectFirst: {
+              ...objectFirstDraft,
+              pergolas: buildObjectFirstPergolaDraftsFromHouseFirstDrafts(
+                nextPergolas,
+                store.derived.pergolas,
+              ).map((pergola) =>
+                pergola.id === pergolaId
+                  ? {
+                      ...pergola,
+                      side: nextZone?.side ?? pergola.side,
+                    }
+                  : pergola,
+              ),
+            },
           });
           return applyPergolaModuleEdits({
             draft: nextDraft,
@@ -1123,7 +1241,7 @@ export function useHouseMutationActions({
           });
         },
       }),
-    [commitPergolaDraftMutation, store.derived.houseAssembly],
+    [commitPergolaDraftMutation, store],
   );
 
   const commitSharedPergolaAttachmentEdge = useCallback(
@@ -1153,9 +1271,23 @@ export function useHouseMutationActions({
             attachmentEdgeId: edgeId,
             attachmentZoneId: nextZone.id,
           });
-          const nextDraft = updateEstimateDrawingHouseFirstPergolaDrafts({
+          const objectFirstDraft = resolveObjectFirstDraft(draft, store);
+          const nextDraft = updateDraftObjectFirst({
             draft,
-            pergolas: nextPergolas,
+            objectFirst: {
+              ...objectFirstDraft,
+              pergolas: buildObjectFirstPergolaDraftsFromHouseFirstDrafts(
+                nextPergolas,
+                store.derived.pergolas,
+              ).map((pergola) =>
+                pergola.id === pergolaId
+                  ? {
+                      ...pergola,
+                      side: nextZone.side,
+                    }
+                  : pergola,
+              ),
+            },
           });
           return applyPergolaModuleEdits({
             draft: nextDraft,
@@ -1164,7 +1296,7 @@ export function useHouseMutationActions({
           });
         },
       }),
-    [commitPergolaDraftMutation, store.derived.houseAssembly],
+    [commitPergolaDraftMutation, store],
   );
 
   const commitSharedPergolaAttachmentZone = useCallback(
@@ -1192,9 +1324,23 @@ export function useHouseMutationActions({
             attachmentEdgeId: zone.hostEdgeId,
             attachmentZoneId: zone.id,
           });
-          const nextDraft = updateEstimateDrawingHouseFirstPergolaDrafts({
+          const objectFirstDraft = resolveObjectFirstDraft(draft, store);
+          const nextDraft = updateDraftObjectFirst({
             draft,
-            pergolas: nextPergolas,
+            objectFirst: {
+              ...objectFirstDraft,
+              pergolas: buildObjectFirstPergolaDraftsFromHouseFirstDrafts(
+                nextPergolas,
+                store.derived.pergolas,
+              ).map((pergola) =>
+                pergola.id === pergolaId
+                  ? {
+                      ...pergola,
+                      side: zone.side,
+                    }
+                  : pergola,
+              ),
+            },
           });
           return applyPergolaModuleEdits({
             draft: nextDraft,
@@ -1203,7 +1349,7 @@ export function useHouseMutationActions({
           });
         },
       }),
-    [commitPergolaDraftMutation, store.derived.houseAssembly],
+    [commitPergolaDraftMutation, store],
   );
 
   const commitSharedPergolaAttachmentStrategy = useCallback(
@@ -1211,9 +1357,23 @@ export function useHouseMutationActions({
       commitPergolaDraftMutation({
         pergolaId,
         buildNextPergolas: ({ draft, currentPergolas, currentPergola }) => {
-          const nextDraft = updateEstimateDrawingHouseFirstPergolaDrafts({
+          const objectFirstDraft = resolveObjectFirstDraft(draft, store);
+          const nextDraft = updateDraftObjectFirst({
             draft,
-            pergolas: upsertPergolaDrafts(currentPergolas, pergolaId, {}),
+            objectFirst: {
+              ...objectFirstDraft,
+              pergolas: buildObjectFirstPergolaDraftsFromHouseFirstDrafts(
+                upsertPergolaDrafts(currentPergolas, pergolaId, {}),
+                store.derived.pergolas,
+              ).map((pergola) =>
+                pergola.id === pergolaId
+                  ? {
+                      ...pergola,
+                      strategy: strategy === 'auto' ? null : strategy,
+                    }
+                  : pergola,
+              ),
+            },
           });
           return applyPergolaModuleEdits({
             draft: nextDraft,
@@ -1222,7 +1382,7 @@ export function useHouseMutationActions({
           });
         },
       }),
-    [commitPergolaDraftMutation],
+    [commitPergolaDraftMutation, store],
   );
 
   const commitDrawingField = useCallback(

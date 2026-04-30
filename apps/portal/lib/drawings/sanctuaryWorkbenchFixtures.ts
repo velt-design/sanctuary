@@ -164,7 +164,7 @@ function makeHouseRoofDraftFixtureDraft(input: {
   }
   return updateEstimateDrawingHouseFirstRoofDraft({
     draft,
-    roof: input.roof,
+    roof: input.roof ?? null,
   });
 }
 

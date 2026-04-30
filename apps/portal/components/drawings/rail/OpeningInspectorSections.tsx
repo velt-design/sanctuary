@@ -8,7 +8,7 @@ import type {
 import type { CommitResult, FieldErrors, RunAction } from './objectWorkbenchRailTypes';
 import type { SelectOption } from './objectRailShared';
 import { ActionButton, NumberField, TextField, SelectField } from './objectRailShared';
-import styles from './ConfiguratorRail.module.css';
+import styles from './WorkbenchRail.module.css';
 
 const OPENING_TYPE_OPTIONS = [
   { label: 'Window', value: 'window' },

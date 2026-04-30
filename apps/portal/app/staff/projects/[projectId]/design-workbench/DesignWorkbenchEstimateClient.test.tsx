@@ -154,6 +154,22 @@ async function flushAsyncWork() {
   });
 }
 
+function readObjectFirstRoofDraft(data: any) {
+  return data?.objectFirst?.houseAssembly?.houseForms?.[0]?.roofIntent;
+}
+
+function readObjectFirstDecks(data: any) {
+  return data?.objectFirst?.decks ?? [];
+}
+
+function readObjectFirstOpenings(data: any) {
+  return data?.objectFirst?.openings ?? [];
+}
+
+function readObjectFirstPergolas(data: any) {
+  return data?.objectFirst?.pergolas ?? [];
+}
+
 function buildEstimateDetail(input?: {
   fixtureSlug?: 'mono-standard' | 'gable-standard' | 'box-standard';
   mutateSnapshot?: (snapshot: Record<string, unknown> | null) => Record<string, unknown> | null;
@@ -731,20 +747,21 @@ describe('DesignWorkbenchEstimateClient', () => {
 
     let workingCopy = getLocalFirstWorkingCopy<any>(entityKey)?.data;
     expect(workingCopy?.inputs.modules[0]?.houseConnectionType).toBe('fascia');
-    expect(workingCopy?.houseFirst?.pergolas?.[0]?.attachmentZoneId).toContain('zone-fascia-');
-    expect(workingCopy?.houseFirst?.pergolas?.[0]?.attachmentEdgeId).toMatch(/^footprint-edge-\d+$/);
+    expect(readObjectFirstPergolas(workingCopy)[0]?.attachmentZoneId).toContain('zone-fascia-');
+    expect(readObjectFirstPergolas(workingCopy)[0]?.attachmentEdgeId).toMatch(/^footprint-edge-\d+$/);
+    expect(workingCopy?.houseFirst).toBeUndefined();
 
     const edgeSelect = rendered.container.querySelector('[aria-label="Pergola host edge"]') as HTMLSelectElement | null;
     if (!edgeSelect) throw new Error('Missing pergola host edge select.');
     const edgeOptions = Array.from(edgeSelect.options).map((option) => option.value).filter(Boolean);
-    const currentEdge = workingCopy?.houseFirst?.pergolas?.[0]?.attachmentEdgeId ?? null;
+    const currentEdge = readObjectFirstPergolas(workingCopy)[0]?.attachmentEdgeId ?? null;
     const nextEdge = edgeOptions.find((value) => value !== currentEdge) ?? edgeOptions[0];
     if (!nextEdge) throw new Error('Expected at least one pergola host edge option.');
 
     changeSelectByLabel(rendered.container, 'Pergola host edge', nextEdge);
     await flushAsyncWork();
 
-    let pergolaDraft = getLocalFirstWorkingCopy<any>(entityKey)?.data.houseFirst?.pergolas?.[0];
+    let pergolaDraft = readObjectFirstPergolas(getLocalFirstWorkingCopy<any>(entityKey)?.data)[0];
     expect(pergolaDraft).toMatchObject({
       id: 'pergola-1',
       attachmentEdgeId: nextEdge,
@@ -760,7 +777,7 @@ describe('DesignWorkbenchEstimateClient', () => {
     changeSelectByLabel(rendered.container, 'Pergola host zone', nextZone);
     await flushAsyncWork();
 
-    pergolaDraft = getLocalFirstWorkingCopy<any>(entityKey)?.data.houseFirst?.pergolas?.[0];
+    pergolaDraft = readObjectFirstPergolas(getLocalFirstWorkingCopy<any>(entityKey)?.data)[0];
     expect(pergolaDraft?.attachmentZoneId).toBe(nextZone);
     expect(pergolaDraft?.attachmentEdgeId).toMatch(/^footprint-edge-\d+$/);
 
@@ -928,7 +945,8 @@ describe('DesignWorkbenchEstimateClient', () => {
     fillInputByLabel(rendered.container, 'Roof pitch (deg)', '18');
     await flushAsyncWork();
 
-    expect(getLocalFirstWorkingCopy<any>(entityKey)?.data.houseFirst?.roof?.form).toBe('gable');
+    expect(readObjectFirstRoofDraft(getLocalFirstWorkingCopy<any>(entityKey)?.data)?.form).toBe('gable');
+    expect(getLocalFirstWorkingCopy<any>(entityKey)?.data.houseFirst).toBeUndefined();
     expect(rendered.container.textContent).not.toContain('Mono fall direction');
     expect(rendered.container.textContent).toContain('Gable ridge orientation');
     expect(readLabeledValue(rendered.container, 'Selected roof form')).toBe('gable');
@@ -961,13 +979,12 @@ describe('DesignWorkbenchEstimateClient', () => {
     await flushAsyncWork();
     changeSelectByLabel(rendered.container, 'Appendage band', 'enabled');
     await flushAsyncWork();
-    const gableDraft = getLocalFirstWorkingCopy<any>(entityKey)?.data.houseFirst?.roof;
+    const gableDraft = readObjectFirstRoofDraft(getLocalFirstWorkingCopy<any>(entityKey)?.data);
     expect(gableDraft).toMatchObject({
       form: 'gable',
       ridgeAxis: 'x',
       appendage: expect.objectContaining({ enabled: true }),
     });
-    expect(gableDraft?.primaryFallDirection).toBeUndefined();
     expect(rendered.container.querySelector('[aria-label="Gable ridge orientation"]')).not.toBeNull();
     expect(readLabeledValue(rendered.container, 'Selected roof form')).toBe('gable');
 
@@ -975,15 +992,12 @@ describe('DesignWorkbenchEstimateClient', () => {
     await flushAsyncWork();
     changeSelectByLabel(rendered.container, 'Roof form', 'flat');
     await flushAsyncWork();
-    const flatDraft = getLocalFirstWorkingCopy<any>(entityKey)?.data.houseFirst?.roof;
+    const flatDraft = readObjectFirstRoofDraft(getLocalFirstWorkingCopy<any>(entityKey)?.data);
     expect(flatDraft).toMatchObject({
       form: 'flat',
       primaryPitchDeg: '0',
     });
-    expect(flatDraft?.ridgeAxis).toBeUndefined();
-    expect(flatDraft?.primaryFallDirection).toBeUndefined();
-    expect(flatDraft?.openGableEndIds).toBeUndefined();
-    expect(flatDraft?.appendage).toBeUndefined();
+    expect(flatDraft?.appendage?.enabled).toBe(false);
     expect(readLabeledValue(rendered.container, 'Selected roof form')).toBe('flat');
     clickButtonByText(rendered.container, 'House Forms');
     await flushAsyncWork();
@@ -995,26 +1009,22 @@ describe('DesignWorkbenchEstimateClient', () => {
     await flushAsyncWork();
     changeSelectByLabel(rendered.container, 'Mono fall direction', 'negative_y');
     await flushAsyncWork();
-    const monoDraft = getLocalFirstWorkingCopy<any>(entityKey)?.data.houseFirst?.roof;
+    const monoDraft = readObjectFirstRoofDraft(getLocalFirstWorkingCopy<any>(entityKey)?.data);
     expect(monoDraft).toMatchObject({
       form: 'mono',
       primaryFallDirection: 'negative_y',
     });
-    expect(monoDraft?.ridgeAxis).toBeUndefined();
-    expect(monoDraft?.openGableEndIds).toBeUndefined();
     expect(readLabeledValue(rendered.container, 'Selected roof form')).toBe('mono');
 
     clickButtonByText(rendered.container, 'House Forms');
     await flushAsyncWork();
     changeSelectByLabel(rendered.container, 'Roof form', 'hipped');
     await flushAsyncWork();
-    const hippedDraft = getLocalFirstWorkingCopy<any>(entityKey)?.data.houseFirst?.roof;
+    const hippedDraft = readObjectFirstRoofDraft(getLocalFirstWorkingCopy<any>(entityKey)?.data);
     expect(hippedDraft).toMatchObject({
       form: 'hipped',
     });
-    expect(hippedDraft?.primaryFallDirection).toBeUndefined();
-    expect(hippedDraft?.openGableEndIds).toBeUndefined();
-    expect(hippedDraft?.appendage).toBeUndefined();
+    expect(hippedDraft?.appendage?.enabled).toBe(false);
     expect(readLabeledValue(rendered.container, 'Selected roof form')).toBe('hipped');
     clickButtonByText(rendered.container, 'House Forms');
     await flushAsyncWork();
@@ -1164,12 +1174,13 @@ describe('DesignWorkbenchEstimateClient', () => {
     clickButtonByText(rendered.container, 'Add deck');
     await flushAsyncWork();
 
-    expect(getLocalFirstWorkingCopy<any>(entityKey)?.data.houseFirst?.decks?.map((deck: any) => deck.id)).toEqual(['deck-1']);
-    expect(getLocalFirstWorkingCopy<any>(entityKey)?.data.houseFirst?.decks?.[0]?.presetRect).toEqual({
+    expect(readObjectFirstDecks(getLocalFirstWorkingCopy<any>(entityKey)?.data).map((deck: any) => deck.id)).toEqual(['deck-1']);
+    expect(readObjectFirstDecks(getLocalFirstWorkingCopy<any>(entityKey)?.data)[0]?.presetRect).toEqual({
       widthM: '6',
       depthM: '3',
       centerOffsetM: '0',
     });
+    expect(getLocalFirstWorkingCopy<any>(entityKey)?.data.houseFirst).toBeUndefined();
     expect(readLabeledValue(rendered.container, 'Deck count')).toBe('1');
     expect(readLabeledValue(rendered.container, 'Active host side')).toBe('rear');
     expect(readLabeledValue(rendered.container, 'Active-side deck present')).toBe('Yes');
@@ -1196,7 +1207,7 @@ describe('DesignWorkbenchEstimateClient', () => {
     clickButtonByText(rendered.container, 'Add deck');
     await flushAsyncWork();
 
-    expect(getLocalFirstWorkingCopy<any>(entityKey)?.data.houseFirst?.decks?.map((deck: any) => deck.id)).toEqual([
+    expect(readObjectFirstDecks(getLocalFirstWorkingCopy<any>(entityKey)?.data).map((deck: any) => deck.id)).toEqual([
       'deck-1',
       'deck-2',
     ]);
@@ -1215,7 +1226,7 @@ describe('DesignWorkbenchEstimateClient', () => {
     clickButtonByText(rendered.container, 'Remove deck');
     await flushAsyncWork();
 
-    expect(getLocalFirstWorkingCopy<any>(entityKey)?.data.houseFirst?.decks?.map((deck: any) => deck.id)).toEqual(['deck-2']);
+    expect(readObjectFirstDecks(getLocalFirstWorkingCopy<any>(entityKey)?.data).map((deck: any) => deck.id)).toEqual(['deck-2']);
     expect(readLabeledValue(rendered.container, 'Deck count')).toBe('1');
     expect(readLabeledValue(rendered.container, 'Selected deck id')).toBe('none');
     rendered.unmount();
@@ -1327,9 +1338,10 @@ describe('DesignWorkbenchEstimateClient', () => {
     clickButtonByText(rendered.container, 'Add window');
     await flushAsyncWork();
 
-    expect(getLocalFirstWorkingCopy<any>(entityKey)?.data.houseFirst?.openings?.map((opening: any) => opening.id)).toEqual([
+    expect(readObjectFirstOpenings(getLocalFirstWorkingCopy<any>(entityKey)?.data).map((opening: any) => opening.id)).toEqual([
       'opening-1',
     ]);
+    expect(getLocalFirstWorkingCopy<any>(entityKey)?.data.houseFirst).toBeUndefined();
     expect(readLabeledValue(rendered.container, 'Opening count')).toBe('1');
     expect(readLabeledValue(rendered.container, 'Slider openings')).toBe('0');
     expect(readLabeledValue(rendered.container, 'Selected opening id')).toBe('opening-1');
@@ -1349,13 +1361,13 @@ describe('DesignWorkbenchEstimateClient', () => {
     fillPlanDimensionInput(rendered.container, '2.4');
     await flushAsyncWork();
 
-    expect(getLocalFirstWorkingCopy<any>(entityKey)?.data.houseFirst?.openings?.[0]?.widthM).toBe('2.4');
+    expect(readObjectFirstOpenings(getLocalFirstWorkingCopy<any>(entityKey)?.data)[0]?.widthM).toBe('2.4');
     expect(rendered.container.querySelector('[data-editable-field-id="opening-1:widthM"]')?.textContent).toContain('2.40m');
 
     clickButtonByText(rendered.container, 'Remove opening');
     await flushAsyncWork();
 
-    expect(getLocalFirstWorkingCopy<any>(entityKey)?.data.houseFirst?.openings ?? []).toEqual([]);
+    expect(readObjectFirstOpenings(getLocalFirstWorkingCopy<any>(entityKey)?.data)).toEqual([]);
     expect(readLabeledValue(rendered.container, 'Opening count')).toBe('0');
     expect(readLabeledValue(rendered.container, 'Selected opening id')).toBe('none');
 
@@ -1374,7 +1386,7 @@ describe('DesignWorkbenchEstimateClient', () => {
     clickButtonByText(rendered.container, 'Add window');
     await flushAsyncWork();
 
-    expect(getLocalFirstWorkingCopy<any>(entityKey)?.data.houseFirst?.openings?.[0]).toMatchObject({
+    expect(readObjectFirstOpenings(getLocalFirstWorkingCopy<any>(entityKey)?.data)[0]).toMatchObject({
       id: 'opening-1',
       hostWallId: 'wall-footprint-edge-3',
       wallId: 'rear',
@@ -1384,7 +1396,7 @@ describe('DesignWorkbenchEstimateClient', () => {
     changeSelectByLabel(rendered.container, 'Host wall', 'wall-footprint-edge-4');
     await flushAsyncWork();
 
-    const openingDraft = getLocalFirstWorkingCopy<any>(entityKey)?.data.houseFirst?.openings?.[0];
+    const openingDraft = readObjectFirstOpenings(getLocalFirstWorkingCopy<any>(entityKey)?.data)[0];
     expect(openingDraft).toMatchObject({
       hostWallId: 'wall-footprint-edge-4',
       wallId: 'left',
@@ -1413,7 +1425,7 @@ describe('DesignWorkbenchEstimateClient', () => {
     clickButtonByText(rendered.container, 'Add window');
     await flushAsyncWork();
 
-    const openingDrafts = getLocalFirstWorkingCopy<any>(entityKey)?.data.houseFirst?.openings ?? [];
+    const openingDrafts = readObjectFirstOpenings(getLocalFirstWorkingCopy<any>(entityKey)?.data);
     expect(openingDrafts.map((opening: any) => opening.id)).toEqual(['opening-1', 'opening-2']);
 
     fillInputByLabel(rendered.container, 'Opening width (m)', '2.4');
@@ -1451,7 +1463,7 @@ describe('DesignWorkbenchEstimateClient', () => {
     expect(readLabeledValue(rendered.container, 'Opening count')).toBe('1');
     expect(readLabeledValue(rendered.container, 'Slider openings')).toBe('1');
     expect(readLabeledValue(rendered.container, 'Selected opening id')).toBe('opening-1');
-    expect(getLocalFirstWorkingCopy<any>(entityKey)?.data.houseFirst?.openings?.[0]).toMatchObject({
+    expect(readObjectFirstOpenings(getLocalFirstWorkingCopy<any>(entityKey)?.data)[0]).toMatchObject({
       kind: 'slider',
       panelCount: 2,
       widthM: '2.4',
@@ -1462,7 +1474,7 @@ describe('DesignWorkbenchEstimateClient', () => {
     changeSelectByLabel(rendered.container, 'Panel count', '4');
     await flushAsyncWork();
 
-    expect(getLocalFirstWorkingCopy<any>(entityKey)?.data.houseFirst?.openings?.[0]?.panelCount).toBe(4);
+    expect(readObjectFirstOpenings(getLocalFirstWorkingCopy<any>(entityKey)?.data)[0]?.panelCount).toBe(4);
 
     rendered.unmount();
   });
@@ -1480,7 +1492,7 @@ describe('DesignWorkbenchEstimateClient', () => {
     await flushAsyncWork();
 
     expect(readLabeledValue(rendered.container, 'Selected opening id')).toBe('opening-1');
-    expect(getLocalFirstWorkingCopy<any>(entityKey)?.data.houseFirst?.openings?.[0]).toMatchObject({
+    expect(readObjectFirstOpenings(getLocalFirstWorkingCopy<any>(entityKey)?.data)[0]).toMatchObject({
       kind: 'hinged_door',
       widthM: '0.9',
       heightM: '2.1',
@@ -1492,7 +1504,7 @@ describe('DesignWorkbenchEstimateClient', () => {
     await flushAsyncWork();
 
     expect(readLabeledValue(rendered.container, 'Selected opening id')).toBe('opening-2');
-    expect(getLocalFirstWorkingCopy<any>(entityKey)?.data.houseFirst?.openings?.[1]).toMatchObject({
+    expect(readObjectFirstOpenings(getLocalFirstWorkingCopy<any>(entityKey)?.data)[1]).toMatchObject({
       kind: 'stacker',
       widthM: '3.6',
       heightM: '2.1',
@@ -1517,7 +1529,7 @@ describe('DesignWorkbenchEstimateClient', () => {
 
     changeSelectByLabel(rendered.container, 'Opening type', 'slider');
     await flushAsyncWork();
-    expect(getLocalFirstWorkingCopy<any>(entityKey)?.data.houseFirst?.openings?.[0]).toMatchObject({
+    expect(readObjectFirstOpenings(getLocalFirstWorkingCopy<any>(entityKey)?.data)[0]).toMatchObject({
       kind: 'slider',
       panelCount: 2,
       widthM: '1.8',
@@ -1528,11 +1540,11 @@ describe('DesignWorkbenchEstimateClient', () => {
 
     changeSelectByLabel(rendered.container, 'Panel count', '4');
     await flushAsyncWork();
-    expect(getLocalFirstWorkingCopy<any>(entityKey)?.data.houseFirst?.openings?.[0]?.panelCount).toBe(4);
+    expect(readObjectFirstOpenings(getLocalFirstWorkingCopy<any>(entityKey)?.data)[0]?.panelCount).toBe(4);
 
     changeSelectByLabel(rendered.container, 'Opening type', 'stacker');
     await flushAsyncWork();
-    expect(getLocalFirstWorkingCopy<any>(entityKey)?.data.houseFirst?.openings?.[0]).toMatchObject({
+    expect(readObjectFirstOpenings(getLocalFirstWorkingCopy<any>(entityKey)?.data)[0]).toMatchObject({
       kind: 'stacker',
       widthM: '1.8',
       heightM: '1.2',
@@ -1542,13 +1554,13 @@ describe('DesignWorkbenchEstimateClient', () => {
 
     changeSelectByLabel(rendered.container, 'Opening type', 'hinged_door');
     await flushAsyncWork();
-    expect(getLocalFirstWorkingCopy<any>(entityKey)?.data.houseFirst?.openings?.[0]).toMatchObject({
+    expect(readObjectFirstOpenings(getLocalFirstWorkingCopy<any>(entityKey)?.data)[0]).toMatchObject({
       kind: 'hinged_door',
     });
 
     changeSelectByLabel(rendered.container, 'Opening type', 'window');
     await flushAsyncWork();
-    expect(getLocalFirstWorkingCopy<any>(entityKey)?.data.houseFirst?.openings?.[0]).toMatchObject({
+    expect(readObjectFirstOpenings(getLocalFirstWorkingCopy<any>(entityKey)?.data)[0]).toMatchObject({
       kind: 'window',
       widthM: '1.8',
       heightM: '1.2',
@@ -1610,7 +1622,7 @@ describe('DesignWorkbenchEstimateClient', () => {
     fillPlanDimensionInput(rendered.container, '2.8');
     await flushAsyncWork();
 
-    const openingDraft = getLocalFirstWorkingCopy<any>(entityKey)?.data.houseFirst?.openings?.[0];
+    const openingDraft = readObjectFirstOpenings(getLocalFirstWorkingCopy<any>(entityKey)?.data)[0];
     expect(openingDraft?.kind).toBe('slider');
     expect(openingDraft?.panelCount).toBe(4);
     expect(openingDraft?.widthM).toBe('2.8');
@@ -1632,16 +1644,16 @@ describe('DesignWorkbenchEstimateClient', () => {
 
     fillInputByLabel(rendered.container, 'Width (m)', '20');
     await flushAsyncWork();
-    expect(getLocalFirstWorkingCopy<any>(entityKey)?.data.houseFirst?.decks?.[0]?.presetRect?.widthM).toBe('6');
+    expect(readObjectFirstDecks(getLocalFirstWorkingCopy<any>(entityKey)?.data)[0]?.presetRect?.widthM).toBe('6');
 
     changeSelectByLabel(rendered.container, 'Shape', 'custom');
     await flushAsyncWork();
-    expect(getLocalFirstWorkingCopy<any>(entityKey)?.data.houseFirst?.decks?.[0]?.shape).toBe('custom');
+    expect(readObjectFirstDecks(getLocalFirstWorkingCopy<any>(entityKey)?.data)[0]?.shape).toBe('custom');
     expect(rendered.container.querySelector('[aria-label="Width (m)"]')).toBeNull();
 
     changeSelectByLabel(rendered.container, 'Shape', 'preset');
     await flushAsyncWork();
-    expect(getLocalFirstWorkingCopy<any>(entityKey)?.data.houseFirst?.decks?.[0]?.shape).toBe('preset');
+    expect(readObjectFirstDecks(getLocalFirstWorkingCopy<any>(entityKey)?.data)[0]?.shape).toBe('preset');
     expect(rendered.container.querySelector('[aria-label="Width (m)"]')).not.toBeNull();
     expect(readLabeledValue(rendered.container, 'Invalid decks')).toBe('0');
 

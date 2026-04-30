@@ -463,7 +463,10 @@ function resolveCompatibleDeckGeometryHostEdgeId(input: {
     housePolygon: input.housePolygon,
     hostEdgeId: exactPrimaryHostEdgeId,
   });
-  if (exactFrame?.sourceEdgeId === exactPrimaryHostEdgeId) {
+  if (
+    exactFrame?.sourceEdgeId === exactPrimaryHostEdgeId &&
+    (!semanticHostEdgeId || exactFrame.hostEdge === semanticHostEdgeId)
+  ) {
     return exactPrimaryHostEdgeId;
   }
   return semanticHostEdgeId ?? exactPrimaryHostEdgeId;
@@ -575,6 +578,7 @@ export function sanitizeDeckFloatingPresetRect(
     parseFiniteDeckMetres(value?.centerDepthM ?? null) ??
     parseFiniteDeckMetres(fallbackValue?.centerDepthM ?? null);
 
+  if (centerAlongM === null || centerDepthM === null) return null;
   if (!Number.isFinite(centerAlongM) || !Number.isFinite(centerDepthM)) return null;
 
   return {

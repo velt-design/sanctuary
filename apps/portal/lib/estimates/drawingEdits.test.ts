@@ -10,6 +10,8 @@ import {
   resolveEstimateDrawingOverridesFromSnapshot,
   updateEstimateDrawingHouseFirstDeckDrafts,
   updateEstimateDrawingHouseFirstPergolaDrafts,
+  updateEstimateDrawingObjectFirstDeckDrafts,
+  updateEstimateDrawingObjectFirstPergolaDrafts,
 } from './drawingEdits';
 import { buildEstimateDrawingModules } from './moduleDrawing';
 
@@ -389,5 +391,67 @@ describe('drawingEdits', () => {
         attachmentZoneId: 'zone-soffit-footprint-edge-4',
       },
     ]);
+  });
+
+  it('writes object-first drafts without dual-writing house-first compatibility state', () => {
+    const snapshot = makeSnapshot(makeModule());
+    const draft = buildEstimateDrawingDraftFromSnapshot(snapshot)!;
+    draft.houseFirst = {
+      pergolas: [{ id: 'pergola-legacy', attachmentEdgeId: 'footprint-edge-1' }],
+    };
+
+    const deckDraft = updateEstimateDrawingObjectFirstDeckDrafts({
+      draft,
+      decks: [
+        {
+          id: ' deck-1 ',
+          label: ' Rear deck ',
+          kind: 'deck',
+          shape: 'preset',
+          presetType: 'rect_attached',
+          presetRect: {
+            widthM: '3.6',
+            depthM: '3',
+            centerOffsetM: '0',
+          },
+          outline: [],
+          elevationMode: 'aligned_to_threshold',
+          levelOffsetMm: '0',
+          isAttached: true,
+          surfaceMaterial: 'timber_decking',
+          hostEdgeId: ' rear ',
+        },
+      ],
+    });
+
+    expect(deckDraft.houseFirst).toBeUndefined();
+    expect(deckDraft.objectFirst?.decks[0]).toMatchObject({
+      id: 'deck-1',
+      label: 'Rear deck',
+      hostEdgeId: 'rear',
+      presetRect: {
+        widthM: '3.6',
+        depthM: '3',
+        centerOffsetM: '0',
+      },
+    });
+
+    const pergolaDraft = updateEstimateDrawingObjectFirstPergolaDrafts({
+      draft: deckDraft,
+      pergolas: [
+        {
+          id: 'pergola-1',
+          label: 'Mono',
+          family: 'mono',
+          attachmentEdgeId: 'footprint-edge-3',
+          attachmentZoneId: 'zone-soffit-footprint-edge-3',
+          side: 'rear',
+          strategy: null,
+        },
+      ],
+    });
+
+    expect(pergolaDraft.houseFirst).toBeUndefined();
+    expect(pergolaDraft.objectFirst?.pergolas[0]?.attachmentZoneId).toBe('zone-soffit-footprint-edge-3');
   });
 });

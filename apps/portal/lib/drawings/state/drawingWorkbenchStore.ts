@@ -29,7 +29,10 @@ import {
   type DrawingWorkbenchRailModel,
 } from './drawingWorkbenchRailModel';
 import { buildHouseFirstWorkbenchProjectModel } from './houseFirstWorkbenchAdapter';
-import { buildObjectFirstWorkbenchProjectModel } from './objectFirstWorkbenchAdapter';
+import {
+  buildHouseFirstCompatibilityDraftFromObjectFirstDraft,
+  buildObjectFirstWorkbenchProjectModel,
+} from './objectFirstWorkbenchAdapter';
 import {
   buildWorkbenchDeckSupportDiagnostic,
   resolveWorkbenchDeckSupportActiveSide,
@@ -70,7 +73,7 @@ export type DrawingWorkbenchStore = {
     ignoreModuleResults: boolean;
     modules: DrawingWorkbenchModuleEntry[];
     projectModel: WorkbenchProjectModel;
-    // Compatibility model remains the live source for existing geometry, rail, and editor paths in this shadow-runtime slice.
+    // Compatibility model is a derived projection for geometry/editor paths that have not moved to object-first yet.
     compatibilityProjectModel: HouseFirstWorkbenchProjectModel;
   };
   ui: DrawingWorkbenchUiState;
@@ -166,13 +169,24 @@ export function buildDrawingWorkbenchStore(input: {
   const drawingModules = buildEstimateDrawingModules(effectiveSnapshot, {
     ignoreModuleResults: input.ignoreModuleResults,
   });
+  const hasObjectFirstDraft = input.draft?.objectFirst !== undefined && input.draft.objectFirst !== null;
+  const compatibilityDraft =
+    hasObjectFirstDraft && input.draft
+      ? {
+          ...input.draft,
+          houseFirst: buildHouseFirstCompatibilityDraftFromObjectFirstDraft(
+            input.draft.objectFirst,
+          ),
+        }
+      : input.draft;
   const compatibilityProjectModel = buildHouseFirstWorkbenchProjectModel({
     snapshot: input.snapshot,
-    draft: input.draft,
+    draft: compatibilityDraft,
     ignoreModuleResults: input.ignoreModuleResults,
   });
   const projectModel = buildObjectFirstWorkbenchProjectModel({
     compatibilityProjectModel,
+    objectFirstDraft: input.draft?.objectFirst,
   });
   const houseForms = projectModel.houseAssembly?.houseForms ?? [];
   const ui = normalizeDrawingWorkbenchUiState(input.ui, {

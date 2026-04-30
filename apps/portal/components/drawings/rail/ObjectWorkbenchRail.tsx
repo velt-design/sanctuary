@@ -11,7 +11,7 @@ import type {
   RunFootprintCommit,
   RunRoofCommit,
 } from './objectWorkbenchRailTypes';
-import styles from './ConfiguratorRail.module.css';
+import styles from './WorkbenchRail.module.css';
 
 export default function ObjectWorkbenchRail({
   model,

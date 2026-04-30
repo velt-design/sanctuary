@@ -11,6 +11,7 @@ import { deriveWorkbenchGeometry } from './deriveWorkbenchGeometry';
 import { coerceHiddenWorkbenchGableBaseline } from './hiddenWorkbenchGableBaseline';
 import { resolveWorkbenchGeometryModule } from './resolveWorkbenchGeometryModule';
 import { buildHouseFirstWorkbenchProjectModel } from '../state/houseFirstWorkbenchAdapter';
+import { buildHouseFirstCompatibilityDraftFromObjectFirstDraft } from '../state/objectFirstWorkbenchAdapter';
 import {
   buildWorkbenchDeckSupportDiagnostic,
   resolveWorkbenchDeckSupportActiveSide,
@@ -168,9 +169,16 @@ export function buildWorkbenchGeometryPreview(input: {
   draft?: EstimateDrawingDraft | null;
   moduleIndex: number;
 }): GeometryPreviewState {
+  const compatibilityDraft =
+    input.draft?.objectFirst
+      ? {
+          ...input.draft,
+          houseFirst: buildHouseFirstCompatibilityDraftFromObjectFirstDraft(input.draft.objectFirst),
+        }
+      : input.draft;
   const projectModel = buildHouseFirstWorkbenchProjectModel({
     snapshot: input.snapshot,
-    draft: input.draft,
+    draft: compatibilityDraft,
   });
   const resolved = resolveWorkbenchGeometryModule({
     snapshot: input.snapshot,
