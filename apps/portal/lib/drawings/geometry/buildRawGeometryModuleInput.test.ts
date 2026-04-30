@@ -321,7 +321,7 @@ describe('buildRawGeometryModuleInput', () => {
     expect(raw.houseContext.roofForm).toBe('gable');
     expect(raw.houseContext.roofPitchDeg).toBe('18');
     expect(raw.houseContext.roofPrimaryFallDirection).toBe('negative_x');
-    expect(raw.houseContext.roofRidgeAxis).toBe('y');
+    expect(raw.houseContext.roofRidgeAxis).toBe('x');
     expect(raw.houseContext.roofAppendage).toEqual({
       enabled: true,
       form: 'mono',

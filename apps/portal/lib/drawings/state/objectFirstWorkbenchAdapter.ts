@@ -25,6 +25,24 @@ import type {
   PergolaModel,
 } from './houseFirstWorkbenchModel';
 
+function buildRoofIntentFromCompatibilityHouse(house: HouseModel): HouseFormModel['roofIntent'] {
+  return {
+    form: house.roof.form,
+    material: house.roof.material,
+    primaryPitchDeg: house.roof.primaryPitchDeg,
+    primaryFallDirection: house.roof.primaryFallDirection,
+    ridgeAxis: house.roof.ridgeAxis,
+    openGableEndIds: house.roof.openGableEndIds,
+    appendage: {
+      enabled: house.roof.appendage.enabled,
+      form: house.roof.appendage.form,
+      hostEdge: house.roof.appendage.hostEdge,
+      pitchDeg: house.roof.appendage.pitchDeg,
+      dropMm: house.roof.appendage.dropMm,
+    },
+  };
+}
+
 function buildHouseFormFromCompatibilityHouse(house: HouseModel): HouseFormModel {
   return {
     id: house.id,
@@ -41,21 +59,7 @@ function buildHouseFormFromCompatibilityHouse(house: HouseModel): HouseFormModel
       polygon: house.footprint.polygon,
       attachmentSide: house.footprint.attachmentSide,
     },
-    roofIntent: {
-      form: house.roof.form,
-      material: house.roof.material,
-      primaryPitchDeg: house.roof.primaryPitchDeg,
-      primaryFallDirection: house.roof.primaryFallDirection,
-      ridgeAxis: house.roof.ridgeAxis,
-      openGableEndIds: house.roof.openGableEndIds,
-      appendage: {
-        enabled: house.roof.appendage.enabled,
-        form: house.roof.appendage.form,
-        hostEdge: house.roof.appendage.hostEdge,
-        pitchDeg: house.roof.appendage.pitchDeg,
-        dropMm: house.roof.appendage.dropMm,
-      },
-    },
+    roofIntent: buildRoofIntentFromCompatibilityHouse(house),
     storeyMode: house.storeyMode,
     attachmentStrategy: house.attachmentStrategy,
     eaveHeightM: house.eaveHeightM,
@@ -268,6 +272,9 @@ function buildHouseAssemblyFromDraft(
             : null;
       return {
         ...houseForm,
+        ...(compatibilitySource
+          ? { roofIntent: buildRoofIntentFromCompatibilityHouse(compatibilitySource) }
+          : null),
         sourceModuleIndexes: compatibilitySource?.sourceModuleIndexes,
         sourceModuleIds: compatibilitySource?.sourceModuleIds,
       };

@@ -7,6 +7,9 @@ import {
 } from '@/lib/estimates/drawingEdits';
 import { ESTIMATE_PRICING_SYNC_STATE_OUTPUT_KEY } from '@/lib/estimates/costingPayload';
 import { makeHouseFirstDeckSupportSnapshotFixture } from '@/lib/drawings/state/houseFirstWorkbenchFixtures';
+import { buildDrawingWorkbenchStore } from '@/lib/drawings/state/drawingWorkbenchStore';
+import { createDrawingWorkbenchUiState } from '@/lib/drawings/state/drawingWorkbenchUiState';
+import { buildObjectFirstWorkbenchDraftFromProjectModel } from '@/lib/drawings/state/objectFirstWorkbenchAdapter';
 import { applyGeometryEditIntent } from './geometryEditAdapter';
 import { buildWorkbenchGeometryPreview } from './buildWorkbenchGeometryPreview';
 
@@ -798,6 +801,62 @@ describe('buildWorkbenchGeometryPreview', () => {
         }
       }
     }
+  });
+
+  it('renders stale object-first hipped preset ridge drafts through the ready preview path', () => {
+    const fixture = requireFixture('mono-standard');
+    const draft = makeDraft(fixture.snapshot, (current) => {
+      current.inputs.modules[0]!.attachmentSide = 'rear';
+      current.inputs.modules[0]!.houseFootprintPreset = 'wrap_left';
+      current.inputs.modules[0]!.houseFootprintParams = {
+        ...(current.inputs.modules[0]!.houseFootprintParams ?? {}),
+        widthM: '10',
+        offsetXM: '-.5',
+        setbackM: '.5',
+        bandDepthM: '6',
+        sideRunM: '4',
+      };
+    });
+    const baselineStore = buildDrawingWorkbenchStore({
+      snapshot: fixture.snapshot,
+      draft,
+      ui: createDrawingWorkbenchUiState({ workbenchMode: 'house' }),
+    });
+    draft.objectFirst = buildObjectFirstWorkbenchDraftFromProjectModel(baselineStore.persisted.projectModel);
+    const houseForm = draft.objectFirst.houseAssembly?.houseForms[0];
+    if (!houseForm) throw new Error('Expected object-first house form.');
+    houseForm.roofIntentAuthored = true;
+    houseForm.roofIntent = {
+      ...houseForm.roofIntent,
+      form: 'hipped',
+      primaryPitchDeg: '22',
+      ridgeAxis: 'y',
+      openGableEndIds: ['house-gable-end-y-1'],
+      appendage: {
+        ...houseForm.roofIntent.appendage,
+        enabled: true,
+      },
+    };
+
+    const preview = buildWorkbenchGeometryPreview({
+      projectId: 'proj_preview',
+      estimateId: fixture.estimate.id,
+      designRequestId: fixture.request.id,
+      snapshot: fixture.snapshot,
+      draft,
+      moduleIndex: 0,
+    });
+
+    expect(preview.kind).toBe('ready');
+    if (preview.kind !== 'ready') return;
+    expect(preview.config.houseContext.model?.roofForm).toBe('hipped');
+    expect(preview.config.houseContext.model?.roofRidgeAxis).toBe('x');
+    expect(preview.scene.metadata?.houseRoofQaStatus).toBe('valid');
+    expect(
+      preview.scene.layers
+        .flatMap((layer) => layer.objects)
+        .some((object) => object.type === 'house_surface_solid' && object.kind === 'roof'),
+    ).toBe(true);
   });
 
   it('exposes deck support diagnostics for active-side attached and detached deck contexts', () => {

@@ -1708,9 +1708,17 @@ function buildSharedHouse(
   const sharedPrimaryFallDirection =
     explicitPrimaryFallDirection ??
     derivedMonoFallDirection.value;
+  const ridgeAxisRelevant = sharedRoofForm === 'gable' || sharedRoofForm === 'hipped';
+  const shouldHealPresetRidgeAxis =
+    normalizedFootprintMode !== 'custom_polygon' &&
+    ridgeAxisRelevant &&
+    explicitRidgeAxis !== null &&
+    explicitRidgeAxis !== derivedRidgeAxis.value;
+  const effectiveRidgeAxisExplicit = explicitRidgeAxis !== null && !shouldHealPresetRidgeAxis;
   const sharedRidgeAxis =
-    explicitRidgeAxis ??
-    derivedRidgeAxis.value;
+    shouldHealPresetRidgeAxis
+      ? derivedRidgeAxis.value
+      : (explicitRidgeAxis ?? derivedRidgeAxis.value);
   const roofProvenance: HouseRoofProvenance = {
     form: explicitRoofForm ? 'house_first_draft' : 'legacy_pergola_inference',
     material: explicitRoofMaterial ? 'house_first_draft' : roofMaterialResult.source,
@@ -1720,7 +1728,7 @@ function buildSharedHouse(
     primaryFallDirection: explicitPrimaryFallDirection
       ? 'house_first_draft'
       : derivedMonoFallDirection.source,
-    ridgeAxis: explicitRidgeAxis ? 'house_first_draft' : derivedRidgeAxis.source,
+    ridgeAxis: effectiveRidgeAxisExplicit ? 'house_first_draft' : derivedRidgeAxis.source,
     openGableEndIds: Array.isArray(explicitOpenGableEndIds) ? 'house_first_draft' : 'default_fallback',
     appendage: hasExplicitRoofAppendage(explicitAppendage) ? 'house_first_draft' : 'default_fallback',
   };
@@ -1729,11 +1737,18 @@ function buildSharedHouse(
     ridgeAxis: sharedRidgeAxis,
   });
   const validTerminalEndIds = new Set(terminalEnds.map((end) => end.id));
-  const requestedOpenGableEndIds = normalizeRoofOpenGableEndIds(
-    normalizedRoofDraft?.openGableEndIds,
-  );
-  const openGableEndIds = requestedOpenGableEndIds.filter((id) => validTerminalEndIds.has(id));
-  if (requestedOpenGableEndIds.length !== openGableEndIds.length) {
+  const requestedOpenGableEndIds =
+    sharedRoofForm === 'gable'
+      ? normalizeRoofOpenGableEndIds(normalizedRoofDraft?.openGableEndIds)
+      : [];
+  const openGableEndIds =
+    sharedRoofForm === 'gable'
+      ? requestedOpenGableEndIds.filter((id) => validTerminalEndIds.has(id))
+      : [];
+  if (
+    normalizedFootprintMode === 'custom_polygon' &&
+    requestedOpenGableEndIds.length !== openGableEndIds.length
+  ) {
     warnings.push({
       id: 'house-roof-open-gable-ends',
       code: 'invalid_house_first_roof_overlay',
@@ -1744,8 +1759,9 @@ function buildSharedHouse(
       message: 'Some saved open gable ends no longer match the current footprint or ridge orientation and were cleared.',
     });
   }
+  const appendageAllowed = sharedRoofForm === 'mono' || sharedRoofForm === 'gable';
   const appendage = {
-    enabled: Boolean(explicitAppendage?.enabled),
+    enabled: appendageAllowed && Boolean(explicitAppendage?.enabled),
     form: normalizeAppendageForm(explicitAppendage?.form) ?? 'mono',
     hostEdge: normalizeAttachmentSide(
       explicitAppendage?.hostEdge ?? normalizedAttachmentSide,
@@ -1807,7 +1823,7 @@ function buildSharedHouse(
       attachmentKind === 'soffit' || attachmentKind === 'fascia',
     attachmentEdge: attachmentLine,
     roofRidgeAxis: sharedRidgeAxis,
-    roofRidgeAxisExplicit: explicitRidgeAxis !== null,
+    roofRidgeAxisExplicit: effectiveRidgeAxisExplicit,
     preferredRidgeAxis:
       sharedRoofForm === 'gable' || sharedRoofForm === 'hipped'
         ? derivedRidgeAxis.value
@@ -1848,13 +1864,12 @@ function buildSharedHouse(
   ) {
     approximationReasons.add('inferred_fall_direction');
   }
-  const ridgeAxisRelevant = sharedRoofForm === 'gable' || sharedRoofForm === 'hipped';
-  if (ridgeAxisRelevant && explicitRidgeAxis === null && derivedRidgeAxis.usedFallback) {
+  if (ridgeAxisRelevant && !effectiveRidgeAxisExplicit && derivedRidgeAxis.usedFallback) {
     approximationReasons.add('inferred_ridge_axis');
   }
   if (
     ridgeAxisRelevant &&
-    explicitRidgeAxis === null &&
+    !effectiveRidgeAxisExplicit &&
     derivedRidgeAxis.ambiguous
   ) {
     approximationReasons.add('ambiguous_ridge_axis');

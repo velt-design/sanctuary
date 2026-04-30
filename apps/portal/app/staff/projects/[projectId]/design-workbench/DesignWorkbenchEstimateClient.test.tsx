@@ -15,6 +15,9 @@ import { buildEstimateDrawingDraftFromSnapshot } from '@/lib/estimates/drawingEd
 import { ESTIMATE_PRICING_SYNC_STATE_OUTPUT_KEY } from '@/lib/estimates/costingPayload';
 import type { EstimateDetail } from '@/lib/estimates/types';
 import type { LocalFirstPersistedState } from '@/lib/localFirst/types';
+import { buildDrawingWorkbenchStore } from '@/lib/drawings/state/drawingWorkbenchStore';
+import { createDrawingWorkbenchUiState } from '@/lib/drawings/state/drawingWorkbenchUiState';
+import { buildObjectFirstWorkbenchDraftFromProjectModel } from '@/lib/drawings/state/objectFirstWorkbenchAdapter';
 import { dispatchPointer, installDomGeometryMock, renderIntoDocument } from '../../../../../../../test/reactHarness';
 
 vi.mock('@react-three/fiber', () => ({
@@ -1029,7 +1032,8 @@ describe('DesignWorkbenchEstimateClient', () => {
 
     changeSelectByLabel(rendered.container, 'Gable ridge orientation', 'y');
     await flushAsyncWork();
-    expect(readLabeledValue(rendered.container, 'Roof reason code')).toBe('invalid_ridge_axis');
+    expect(readLabeledValue(rendered.container, 'Roof reason code')).toBe('none');
+    expect(readLabeledValue(rendered.container, 'Roof status')).not.toBe('Blocked');
 
     changeSelectByLabel(rendered.container, 'House footprint', 'u_shape');
     await flushAsyncWork();
@@ -1047,7 +1051,8 @@ describe('DesignWorkbenchEstimateClient', () => {
     await flushAsyncWork();
     changeSelectByLabel(rendered.container, 'Hipped ridge orientation', 'y');
     await flushAsyncWork();
-    expect(readLabeledValue(rendered.container, 'Roof reason code')).toBe('invalid_ridge_axis');
+    expect(readLabeledValue(rendered.container, 'Roof reason code')).toBe('none');
+    expect(readLabeledValue(rendered.container, 'Roof status')).not.toBe('Blocked');
 
     changeSelectByLabel(rendered.container, 'House footprint', 'wrap_left');
     await flushAsyncWork();
@@ -1059,6 +1064,65 @@ describe('DesignWorkbenchEstimateClient', () => {
       openGableEndIds: [],
     });
     expect(healedHippedDraft?.appendage?.enabled).toBe(false);
+    expect(readLabeledValue(rendered.container, 'Roof reason code')).toBe('none');
+    expect(readLabeledValue(rendered.container, 'Roof status')).not.toBe('Blocked');
+
+    rendered.unmount();
+  });
+
+  it('heals stale local object-first hipped wrap presets before showing the 3D preview', async () => {
+    const estimate = buildEstimateDetail();
+    const entityKey = buildEstimateDrawingDraftEntityKey(estimate.id);
+    const draft = buildEstimateDrawingDraftFromSnapshot(estimate.calculatorSnapshot);
+    if (!draft) throw new Error('Expected drawing draft.');
+    draft.inputs.modules[0]!.attachmentSide = 'rear';
+    draft.inputs.modules[0]!.houseFootprintPreset = 'wrap_left';
+    draft.inputs.modules[0]!.houseFootprintParams = {
+      ...(draft.inputs.modules[0]!.houseFootprintParams ?? {}),
+      widthM: '10',
+      offsetXM: '-.5',
+      setbackM: '.5',
+      bandDepthM: '6',
+      sideRunM: '4',
+    };
+    const baselineStore = buildDrawingWorkbenchStore({
+      snapshot: estimate.calculatorSnapshot,
+      draft,
+      ui: createDrawingWorkbenchUiState({ workbenchMode: 'house' }),
+    });
+    draft.objectFirst = buildObjectFirstWorkbenchDraftFromProjectModel(baselineStore.persisted.projectModel);
+    draft.houseFirst = undefined;
+    const houseForm = draft.objectFirst.houseAssembly?.houseForms[0];
+    if (!houseForm) throw new Error('Expected object-first house form.');
+    houseForm.roofIntentAuthored = true;
+    houseForm.roofIntent = {
+      ...houseForm.roofIntent,
+      form: 'hipped',
+      primaryPitchDeg: '0',
+      ridgeAxis: 'y',
+      openGableEndIds: ['house-gable-end-y-1'],
+      appendage: {
+        ...houseForm.roofIntent.appendage,
+        enabled: true,
+      },
+    };
+    await ensureLocalFirstStoreReady();
+    await writeLocalFirstWorkingCopy({
+      entityKey,
+      data: draft,
+    });
+
+    const rendered = renderIntoDocument(
+      <DesignWorkbenchEstimateClient estimate={estimate} projectName="Roof Forms" siteAddress="1 Test Street" />,
+    );
+
+    await flushAsyncWork();
+    clickButtonByText(rendered.container, '3D View');
+    await flushAsyncWork();
+
+    expect(rendered.container.textContent).not.toContain('3D Preview Unsupported');
+    expect(rendered.container.querySelector('[data-testid="geometry-3d-canvas"]')).not.toBeNull();
+    expect(readLabeledValue(rendered.container, 'Selected roof form')).toBe('hipped');
     expect(readLabeledValue(rendered.container, 'Roof reason code')).toBe('none');
     expect(readLabeledValue(rendered.container, 'Roof status')).not.toBe('Blocked');
 
@@ -1176,6 +1240,22 @@ describe('DesignWorkbenchEstimateClient', () => {
 
   it('blocks explicit ridge orientations that do not match the current footprint span', async () => {
     const estimate = buildEstimateDetail();
+    const entityKey = buildEstimateDrawingDraftEntityKey(estimate.id);
+    const draft = buildEstimateDrawingDraftFromSnapshot(estimate.calculatorSnapshot);
+    if (!draft) throw new Error('Expected drawing draft.');
+    draft.inputs.modules[0]!.houseFootprintMode = 'custom_polygon';
+    draft.inputs.modules[0]!.houseFootprintPolygon = [
+      { alongM: '0', depthM: '0' },
+      { alongM: '6', depthM: '0' },
+      { alongM: '6', depthM: '1.8' },
+      { alongM: '0', depthM: '1.8' },
+    ];
+    await ensureLocalFirstStoreReady();
+    await writeLocalFirstWorkingCopy({
+      entityKey,
+      data: draft,
+    });
+
     const rendered = renderIntoDocument(
       <DesignWorkbenchEstimateClient estimate={estimate} projectName="Deck Build" siteAddress="1 Test Street" />,
     );

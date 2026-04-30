@@ -549,6 +549,13 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
     if (!monoFixture) throw new Error('Missing mono-standard fixture.');
     const draft = buildEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
     if (!draft) throw new Error('Expected drawing draft.');
+    draft.inputs.modules[0]!.houseFootprintMode = 'custom_polygon';
+    draft.inputs.modules[0]!.houseFootprintPolygon = [
+      { alongM: '0', depthM: '0' },
+      { alongM: '6', depthM: '0' },
+      { alongM: '6', depthM: '1.8' },
+      { alongM: '0', depthM: '1.8' },
+    ];
     draft.houseFirst = {
       roof: {
         form: 'gable',
@@ -563,6 +570,52 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
 
     expect(projectModel.house?.roof.validation.status).toBe('invalid');
     expect(projectModel.house?.roof.validation.code).toBe('invalid_ridge_axis');
+  });
+
+  it('auto-heals stale preset ridge axes and dependent roof state for gable and hipped roofs', () => {
+    const monoFixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
+    if (!monoFixture) throw new Error('Missing mono-standard fixture.');
+
+    for (const form of ['gable', 'hipped'] as const) {
+      const draft = buildEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
+      if (!draft) throw new Error('Expected drawing draft.');
+      draft.inputs.modules[0]!.houseFootprintPreset = 'wrap_left';
+      draft.houseFirst = {
+        roof: {
+          form,
+          ridgeAxis: 'y',
+          openGableEndIds: ['house-gable-end-y-1'],
+          ...(form === 'hipped'
+            ? {
+                appendage: {
+                  enabled: true,
+                  form: 'mono' as const,
+                  hostEdge: 'rear' as const,
+                  pitchDeg: '5',
+                  dropMm: '450',
+                },
+              }
+            : null),
+        },
+      };
+
+      const projectModel = buildHouseFirstWorkbenchProjectModel({
+        snapshot: monoFixture.snapshot,
+        draft,
+      });
+
+      expect(projectModel.house?.roof.form, form).toBe(form);
+      expect(projectModel.house?.roof.ridgeAxis, form).toBe('x');
+      expect(projectModel.house?.roof.provenance?.ridgeAxis, form).toBe('default_fallback');
+      expect(projectModel.house?.roof.validation.status, form).not.toBe('invalid');
+      expect(projectModel.house?.roof.validation.code, form).toBeNull();
+      if (form === 'gable') {
+        expect(projectModel.house?.roof.openGableEndIds, form).toEqual([]);
+      } else {
+        expect(projectModel.house?.roof.openGableEndIds, form).toEqual([]);
+        expect(projectModel.house?.roof.appendage.enabled, form).toBe(false);
+      }
+    }
   });
 
   it('surfaces only the outer open-end options for U-shaped bent gables', () => {

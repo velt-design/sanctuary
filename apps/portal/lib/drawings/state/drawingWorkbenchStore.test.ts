@@ -995,6 +995,13 @@ describe('buildDrawingWorkbenchStore', () => {
 
     const ridgeDraft = buildEstimateDrawingDraftFromSnapshot(fixture.snapshot);
     if (!ridgeDraft) throw new Error('Expected drawing draft.');
+    ridgeDraft.inputs.modules[0]!.houseFootprintMode = 'custom_polygon';
+    ridgeDraft.inputs.modules[0]!.houseFootprintPolygon = [
+      { alongM: '0', depthM: '0' },
+      { alongM: '6', depthM: '0' },
+      { alongM: '6', depthM: '1.8' },
+      { alongM: '0', depthM: '1.8' },
+    ];
     ridgeDraft.houseFirst = {
       roof: {
         form: 'gable',
@@ -1012,6 +1019,69 @@ describe('buildDrawingWorkbenchStore', () => {
 
     expect(ridgeStore.derived.roofReviewStatus).toBe('blocked');
     expect(ridgeStore.derived.roofValidationCode).toBe('invalid_ridge_axis');
+  });
+
+  it('heals stale object-first preset ridge intent before deriving roof and rail state', () => {
+    const fixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
+    if (!fixture) throw new Error('Missing mono-standard fixture.');
+    const draft = buildEstimateDrawingDraftFromSnapshot(fixture.snapshot);
+    if (!draft) throw new Error('Expected drawing draft.');
+    draft.inputs.modules[0]!.attachmentSide = 'rear';
+    draft.inputs.modules[0]!.houseFootprintPreset = 'wrap_left';
+    draft.inputs.modules[0]!.houseFootprintParams = {
+      ...(draft.inputs.modules[0]!.houseFootprintParams ?? {}),
+      widthM: '10',
+      offsetXM: '-.5',
+      setbackM: '.5',
+      bandDepthM: '6',
+      sideRunM: '4',
+    };
+
+    const baselineStore = buildDrawingWorkbenchStore({
+      snapshot: fixture.snapshot,
+      draft,
+      ui: createDrawingWorkbenchUiState({
+        workbenchMode: 'house',
+      }),
+    });
+    draft.objectFirst = buildObjectFirstWorkbenchDraftFromProjectModel(baselineStore.persisted.projectModel);
+    const houseForm = draft.objectFirst.houseAssembly?.houseForms[0];
+    if (!houseForm) throw new Error('Expected object-first house form.');
+    houseForm.roofIntentAuthored = true;
+    houseForm.roofIntent = {
+      ...houseForm.roofIntent,
+      form: 'hipped',
+      primaryPitchDeg: '0',
+      ridgeAxis: 'y',
+      openGableEndIds: ['house-gable-end-y-1'],
+      appendage: {
+        ...houseForm.roofIntent.appendage,
+        enabled: true,
+      },
+    };
+
+    const store = buildDrawingWorkbenchStore({
+      snapshot: fixture.snapshot,
+      draft,
+      ui: createDrawingWorkbenchUiState({
+        workbenchMode: 'house',
+        activeObjectFamily: 'house_forms',
+        activeObjectRef: { family: 'house_forms', objectId: houseForm.id },
+      }),
+    });
+
+    expect(store.derived.roofReviewStatus).not.toBe('blocked');
+    expect(store.derived.roofValidationCode).toBeNull();
+    expect(store.derived.house?.roof.form).toBe('hipped');
+    expect(store.derived.house?.roof.ridgeAxis).toBe('x');
+    expect(store.derived.house?.roof.openGableEndIds).toEqual([]);
+    expect(store.derived.house?.roof.appendage.enabled).toBe(false);
+    expect(store.persisted.projectModel.houseAssembly?.houseForms[0]?.roofIntent).toMatchObject({
+      form: 'hipped',
+      ridgeAxis: 'x',
+      openGableEndIds: [],
+      appendage: expect.objectContaining({ enabled: false }),
+    });
   });
 
   it('derives appendage support edges and blocks unsupported host edges without hiding support metadata', () => {
