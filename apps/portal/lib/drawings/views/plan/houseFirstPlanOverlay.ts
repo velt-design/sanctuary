@@ -2685,6 +2685,8 @@ export function buildHouseFirstPlanOverlay(input: {
     });
     const geometryDeckPolygon = geometryHouseLookup.deckPolygons.get(deck.id) ?? [];
     const fallbackDeckPolygon = draftDeckPolygon.length ? draftDeckPolygon : geometryDeckPolygon;
+    const isAttachedPresetDeck = deck.shape === 'preset' && deck.isAttached;
+    const renderedDeckSurfacePolygon = isAttachedPresetDeck && geometryDeckPolygon.length ? geometryDeckPolygon : null;
     const draftDeckReferenceFrames = buildDeckDraftReferenceFrames({
       house,
       houseLocalPolygon,
@@ -2693,19 +2695,22 @@ export function buildHouseFirstPlanOverlay(input: {
     });
     const geometryDeckReferenceFrames = resolveGeometryDeckReferenceFrames(geometryHouseLookup);
     const renderDeckReferenceFrames = geometryDeckReferenceFrames.length ? geometryDeckReferenceFrames : draftDeckReferenceFrames;
-    const presetDeckPolygon = buildPresetAttachedDeckWorldPolygon({
-      deck,
-      referenceFrames: renderDeckReferenceFrames,
-      commitReferenceFrames: draftDeckReferenceFrames,
-      fallbackPolygon: fallbackDeckPolygon,
-      geometryHouseLookup,
-    });
+    const presetDeckPolygon = renderedDeckSurfacePolygon
+      ? null
+      : buildPresetAttachedDeckWorldPolygon({
+          deck,
+          referenceFrames: renderDeckReferenceFrames,
+          commitReferenceFrames: draftDeckReferenceFrames,
+          fallbackPolygon: fallbackDeckPolygon,
+          geometryHouseLookup,
+        });
     const deckPolygon =
-      deck.shape === 'preset' && deck.isAttached && !footprintOffsetActive
+      renderedDeckSurfacePolygon ??
+      (isAttachedPresetDeck && !footprintOffsetActive
         ? (presetDeckPolygon ?? (draftDeckPolygon.length ? draftDeckPolygon : geometryDeckPolygon))
         : draftDeckPolygon.length
           ? draftDeckPolygon
-          : (presetDeckPolygon ?? geometryDeckPolygon);
+          : (presetDeckPolygon ?? geometryDeckPolygon));
     const selected = input.selection.kind === 'deck' && input.selection.targetId === deck.id;
     const deckInteraction =
       deck.shape === 'custom'
