@@ -853,7 +853,7 @@ describe('houseFirstPlanOverlay', () => {
     if (preview.kind !== 'ready') return;
 
     const overlay = buildHouseFirstPlanOverlay({
-      house: store.derived.house,
+      house: store.derived.compatibilityBridge.house,
       selection: { kind: 'opening', targetId: 'opening-debug' },
       moduleLengthM: String(store.derived.activePlanModel?.lengthA ?? ''),
       moduleProjectionM: String(store.derived.activePlanModel?.spanA ?? ''),
@@ -907,7 +907,7 @@ describe('houseFirstPlanOverlay', () => {
     expect(toScenePolygonMetres(footprintShape?.polygon ?? [])).toEqual(sceneFootprintPolygon);
     expect(openingObject).toBeDefined();
     expect(preview.scene.metadata.houseOpeningSkippedInvalidCount).toBe(0);
-    expect(store.derived.house?.openings[0]?.validation.status).toBe('valid');
+    expect(store.derived.compatibilityBridge.house?.openings[0]?.validation.status).toBe('valid');
   });
 
   it('matches a valid opening plan polygon to the XY wall footprint of the 3D opening marker', () => {
@@ -959,7 +959,7 @@ describe('houseFirstPlanOverlay', () => {
     if (preview.kind !== 'ready') return;
 
     const overlay = buildHouseFirstPlanOverlay({
-      house: store.derived.house,
+      house: store.derived.compatibilityBridge.house,
       selection: { kind: 'opening', targetId: 'opening-valid' },
       moduleLengthM: String(store.derived.activePlanModel?.lengthA ?? ''),
       moduleProjectionM: String(store.derived.activePlanModel?.spanA ?? ''),

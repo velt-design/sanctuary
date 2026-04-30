@@ -7,11 +7,17 @@ const SCAN_ROOTS = [
   path.join('apps', 'portal', 'components', 'drawings', 'rail'),
   path.join('apps', 'portal', 'app', 'staff', 'projects', '[projectId]', 'design-workbench'),
 ];
+const FLAT_COMPATIBILITY_DERIVED_READ_ROOTS = [
+  path.join('apps', 'portal', 'lib', 'drawings', 'state'),
+  path.join('apps', 'portal', 'lib', 'drawings', 'views', 'plan'),
+];
 const OBJECT_WORKBENCH_BOUNDARY_FILES = [
   path.join('apps', 'portal', 'components', 'drawings', 'workbench', 'DrawingWorkbench.tsx'),
   path.join('apps', 'portal', 'components', 'drawings', 'viewports', 'ModelSpaceViewport.tsx'),
   path.join('apps', 'portal', 'components', 'drawings', 'viewports', 'Geometry3DViewport.tsx'),
 ];
+const FLAT_COMPATIBILITY_DERIVED_FIELD_READ =
+  /\b[A-Za-z_$][\w$]*\.derived\.(?:house|houseCount|decks|openings|activeDeck|activeDeckId|activeOpening|activeOpeningId|pergolas|activePergola|activePergolaId|roofForm|roofReviewStatus|roofValidationStatus|roofValidationCode|roofValidationMessage|roofApproximationReasons|roofProvenance|roofGeometryKind|roofAppendageEnabled|roofAppendageStatus|roofAppendageSupportedHostEdges|roofAppendageSupportReason|migrationWarnings|migrationWarningCount|houseIsLowConfidence)\b/;
 const ALLOWLISTED_COMPATIBILITY_FILES = new Set([
   path.normalize(path.join('apps', 'portal', 'app', 'staff', 'projects', '[projectId]', 'design-workbench', 'compat', 'objectWorkbenchDraftActionBridge.ts')),
   path.normalize(path.join('apps', 'portal', 'app', 'staff', 'projects', '[projectId]', 'design-workbench', 'compat', 'workbenchCompatibilityDraftBuilders.ts')),
@@ -23,16 +29,16 @@ const ALLOWLISTED_CONFIGURATOR_FILES = new Set([
   path.normalize(path.join('apps', 'portal', 'components', 'drawings', 'rail', 'ConfiguratorRail.tsx')),
 ]);
 
-function listSourceFiles(directory: string): string[] {
+function listSourceFiles(directory: string, options: { includeTests?: boolean } = {}): string[] {
   const entries = fs.readdirSync(directory, { withFileTypes: true });
   return entries.flatMap((entry) => {
     const absolutePath = path.join(directory, entry.name);
     if (entry.isDirectory()) {
-      return listSourceFiles(absolutePath);
+      return listSourceFiles(absolutePath, options);
     }
     if (!entry.isFile()) return [];
     if (!SOURCE_EXTENSIONS.has(path.extname(entry.name))) return [];
-    if (entry.name.includes('.test.')) return [];
+    if (!options.includeTests && entry.name.includes('.test.')) return [];
     return [absolutePath];
   });
 }
@@ -57,8 +63,7 @@ describe('object workbench import guards', () => {
         const importsConfiguratorRail = /from ['"][^'"]*ConfiguratorRail['"]/.test(source);
         const readsCompatibilityUiSelection =
           /\b(?:ui|current|store\.ui)\.(?:workbenchMode|activeHouseSelection|activePergolaId)\b/.test(source);
-        const readsFlatCompatibilityDerivedField =
-          /\bstore\.derived\.(?:house|houseCount|decks|openings|activeDeck|activeDeckId|activeOpening|activeOpeningId|pergolas|activePergola|activePergolaId|roofForm|roofReviewStatus|roofValidationStatus|roofValidationCode|roofValidationMessage|roofApproximationReasons|roofProvenance|roofGeometryKind|roofAppendageEnabled|roofAppendageStatus|roofAppendageSupportedHostEdges|roofAppendageSupportReason|migrationWarnings|migrationWarningCount|houseIsLowConfidence)\b/.test(source);
+        const readsFlatCompatibilityDerivedField = FLAT_COMPATIBILITY_DERIVED_FIELD_READ.test(source);
         const readsCompatibilityBridge = /\bstore\.derived\.compatibilityBridge\b/.test(source);
 
         if (importsHouseFirstModel && !ALLOWLISTED_COMPATIBILITY_FILES.has(relativePath)) {
@@ -83,6 +88,22 @@ describe('object workbench import guards', () => {
       const source = fs.readFileSync(path.join(process.cwd(), relativeBoundaryPath), 'utf8');
       if (/from ['"][^'"]*houseFirstWorkbenchModel['"]/.test(source)) {
         violations.push(`${relativeBoundaryPath} imports houseFirstWorkbenchModel`);
+      }
+    }
+
+    expect(violations).toEqual([]);
+  });
+
+  it('keeps state and plan coverage off removed flat compatibility store fields', () => {
+    const violations: string[] = [];
+
+    for (const root of FLAT_COMPATIBILITY_DERIVED_READ_ROOTS) {
+      for (const absolutePath of listSourceFiles(path.join(process.cwd(), root), { includeTests: true })) {
+        const relativePath = toRepoRelativePath(absolutePath);
+        const source = fs.readFileSync(absolutePath, 'utf8');
+        if (FLAT_COMPATIBILITY_DERIVED_FIELD_READ.test(source)) {
+          violations.push(`${relativePath} reads removed flat compatibility fields from store.derived`);
+        }
       }
     }
 
