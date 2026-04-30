@@ -10,6 +10,8 @@ import type { AttachmentSide } from '@sp/costing';
 import type {
   GeometryPlanMember2D,
   GeometryPlanSurface2D,
+  GeometryTopProjectionShape,
+  GeometryTopProjectionViewModel,
   GeometryPlanViewModel,
   Line2,
   Point2,
@@ -242,6 +244,7 @@ type ModuleDrawingRendererProps = {
   ) => void;
   objectWorkbenchPreviewOverlay?: ObjectWorkbenchPreviewOverlay | null;
   modelSpacePergolaGeometry?: GeometryPlanViewModel | null;
+  modelSpaceTopProjection?: GeometryTopProjectionViewModel | null;
   modelSpacePergolaRenderSource?: ObjectWorkbenchPergolaRenderSource;
   modelSpacePergolaRenderStatus?: ObjectWorkbenchPergolaRenderStatus;
 };
@@ -411,6 +414,7 @@ export function ModuleDrawingRenderer({
   onObjectWorkbenchDimensionActivate,
   objectWorkbenchPreviewOverlay,
   modelSpacePergolaGeometry,
+  modelSpaceTopProjection,
   modelSpacePergolaRenderSource,
   modelSpacePergolaRenderStatus,
 }: ModuleDrawingRendererProps) {
@@ -542,6 +546,7 @@ export function ModuleDrawingRenderer({
               onObjectWorkbenchDimensionActivate={onObjectWorkbenchDimensionActivate}
               objectWorkbenchPreviewOverlay={objectWorkbenchPreviewOverlay}
               modelSpacePergolaGeometry={modelSpacePergolaGeometry}
+              modelSpaceTopProjection={modelSpaceTopProjection}
               modelSpacePergolaRenderSource={modelSpacePergolaRenderSource}
               modelSpacePergolaRenderStatus={modelSpacePergolaRenderStatus}
             />
@@ -899,6 +904,17 @@ function boundsFromPoints(points: Point[], pad = 0): AnnotatedBounds {
   const xs = points.map((point) => point.x);
   const ys = points.map((point) => point.y);
   return createBounds(Math.min(...xs) - pad, Math.min(...ys) - pad, Math.max(...xs) + pad, Math.max(...ys) + pad);
+}
+
+function polygonAreaAbs(points: Point[]): number {
+  if (points.length < 3) return 0;
+  let area = 0;
+  for (let index = 0; index < points.length; index += 1) {
+    const current = points[index]!;
+    const next = points[(index + 1) % points.length]!;
+    area += current.x * next.y - next.x * current.y;
+  }
+  return Math.abs(area / 2);
 }
 
 function unionBounds(bounds: Array<AnnotatedBounds | null | undefined>): AnnotatedBounds {
@@ -1947,6 +1963,42 @@ function planHouseLineClass(kind: NonNullable<ModulePlanModel['houseContext']>['
   if (kind === 'roof_feature') return `${styles.modulePlanHouseLine} ${styles.modulePlanHouseRoofFeature}`;
   if (kind === 'attachment_target') return `${styles.modulePlanHouseLine} ${styles.modulePlanHouseAttachmentTarget}`;
   return `${styles.modulePlanHouseLine} ${styles.modulePlanHouseWallSemantic}`;
+}
+
+function topProjectionShapeVisible(
+  shape: GeometryTopProjectionShape,
+  visibility: DrawingWorkbenchVisibilityState,
+): boolean {
+  if (shape.family === 'pergola') return visibility.pergolas;
+  if (shape.family !== 'house') return true;
+  if (shape.kind === 'deck') return visibility.decks;
+  if (shape.kind === 'opening_marker' || shape.kind === 'opening_outline') return visibility.openings;
+  return visibility.house;
+}
+
+function topProjectionShapeClass(shape: GeometryTopProjectionShape): string {
+  if (shape.family === 'house') {
+    if (shape.kind === 'deck') return `${styles.modulePlanHouseSurface} ${styles.modulePlanHouseDeck}`;
+    if (shape.kind === 'opening_marker' || shape.kind === 'opening_outline') {
+      return `${styles.modulePlanHouseSurface} ${styles.modulePlanHouseOpening}`;
+    }
+    if (shape.kind === 'roof' || shape.kind === 'house_roof_material') return planHouseSurfaceClass('roof');
+    if (shape.kind === 'soffit') return planHouseSurfaceClass('soffit');
+    if (shape.kind === 'fascia') return planHouseSurfaceClass('fascia');
+    if (shape.kind === 'attachment_zone') return planHouseSurfaceClass('attachment_zone');
+    if (shape.kind === 'gutter' || shape.kind === 'roof_feature') {
+      return `${styles.modulePlanHouseSurface} ${styles.modulePlanTopProjectionLine}`;
+    }
+    return `${styles.modulePlanHouseSurface} ${styles.modulePlanHouseFootprint} ${styles.modulePlanTopProjectionReference}`;
+  }
+  if (shape.family === 'reference') return styles.modulePlanTopProjectionReference;
+  if (shape.kind === 'roof_cladding') return styles.modulePlanBoxInset;
+  if (shape.kind === 'rafter') return styles.modulePlanRafter;
+  if (shape.kind === 'ridge') return styles.modulePlanRidgeBand;
+  if (shape.kind === 'post' || shape.kind === 'beam' || shape.kind === 'ledger' || shape.kind === 'gutter' || shape.kind === 'joiner') {
+    return styles.modulePlanPrimaryZone;
+  }
+  return styles.modulePlanPrimaryZone;
 }
 
 function sectionHouseSurfaceClass(kind: NonNullable<ModuleSectionModel['houseContext']>['surfaces'][number]['kind']): string {
@@ -4634,6 +4686,7 @@ function PlanSvg({
   onObjectWorkbenchDimensionActivate,
   objectWorkbenchPreviewOverlay,
   modelSpacePergolaGeometry,
+  modelSpaceTopProjection,
   modelSpacePergolaRenderSource = 'legacy',
   modelSpacePergolaRenderStatus = 'invalid_geometry',
 }: {
@@ -4670,6 +4723,7 @@ function PlanSvg({
   ) => void;
   objectWorkbenchPreviewOverlay?: ObjectWorkbenchPreviewOverlay | null;
   modelSpacePergolaGeometry?: GeometryPlanViewModel | null;
+  modelSpaceTopProjection?: GeometryTopProjectionViewModel | null;
   modelSpacePergolaRenderSource?: ObjectWorkbenchPergolaRenderSource;
   modelSpacePergolaRenderStatus?: ObjectWorkbenchPergolaRenderStatus;
 }) {
@@ -4684,8 +4738,13 @@ function PlanSvg({
   };
   const showPergolaGeometry = familyVisibility.pergolas;
   const isModelHouseDisplay = presentation === 'model' && displayMode === 'house';
-  const rawSemanticPlanHouseSurfaces = model.houseContext?.surfaces ?? [];
-  const rawSemanticPlanHouseLines = model.houseContext?.lines ?? [];
+  const useTopProjectionBackedModel =
+    presentation === 'model' &&
+    modelSpacePergolaRenderSource === 'geometry' &&
+    modelSpacePergolaRenderStatus === 'geometry_ready' &&
+    Boolean(modelSpaceTopProjection);
+  const rawSemanticPlanHouseSurfaces = useTopProjectionBackedModel ? [] : model.houseContext?.surfaces ?? [];
+  const rawSemanticPlanHouseLines = useTopProjectionBackedModel ? [] : model.houseContext?.lines ?? [];
   const rawObjectWorkbenchOverlayShapes = presentation === 'model' ? objectWorkbenchPlanOverlay?.shapes ?? [] : [];
   const rawObjectWorkbenchPresetAnnotations = presentation === 'model' ? objectWorkbenchPlanOverlay?.presetAnnotations ?? [] : [];
   const rawObjectWorkbenchCustomEdgeCandidates = presentation === 'model' ? objectWorkbenchPlanOverlay?.customEdgeCandidates ?? [] : [];
@@ -4820,7 +4879,22 @@ function PlanSvg({
           dual: modelSpacePergolaGeometry.anchors.fall.dual,
         }
       : null;
-  const canRenderPergolaPlanGeometry = showPergolaGeometry && (!isModel || useGeometryBackedPergola);
+  const topProjectionShapes =
+    useTopProjectionBackedModel && modelSpaceTopProjection
+      ? modelSpaceTopProjection.shapes
+          .filter((shape) => topProjectionShapeVisible(shape, familyVisibility))
+          .map((shape) => ({
+            shape,
+            points: mmPolygonToPlanSvg(shape.polygon, x, y, scale),
+          }))
+      : [];
+  const topProjectionPergolaHitPoints =
+    useTopProjectionBackedModel
+      ? topProjectionShapes
+          .filter(({ shape }) => shape.family === 'pergola' && (shape.kind === 'roof_plane' || shape.kind === 'roof_cladding'))
+          .sort((left, right) => polygonAreaAbs(right.points) - polygonAreaAbs(left.points))[0]?.points ?? []
+      : [];
+  const canRenderPergolaPlanGeometry = showPergolaGeometry && (!isModel || useGeometryBackedPergola || useTopProjectionBackedModel);
 
   const aW = model.lengthA * scale;
   const aH = model.spanA * scale;
@@ -5544,7 +5618,101 @@ function PlanSvg({
           </>
         ) : null}
 
-        {canRenderPergolaPlanGeometry ? (
+        {useTopProjectionBackedModel
+          ? topProjectionShapes
+              .filter(({ shape }) => !(shape.family === 'house' && shape.kind === 'footprint' && (hideHouseFootprint || customPolygonOverrideActive)))
+              .map(({ shape, points }) => (
+              <polygon
+                key={shape.id}
+                points={toPointsAttr(points)}
+                className={topProjectionShapeClass(shape)}
+                data-plan-top-projection-shape={shape.id}
+                data-top-projection-source-object-id={shape.sourceObjectId}
+                data-top-projection-source-id={shape.sourceId ?? ''}
+                data-top-projection-source-type={shape.sourceType}
+                data-top-projection-family={shape.family}
+                data-top-projection-kind={shape.kind}
+                data-house-plan-surface={shape.family === 'house' && shape.kind !== 'gutter' && shape.kind !== 'roof_feature' ? shape.kind : undefined}
+                data-house-plan-line={shape.family === 'house' && (shape.kind === 'gutter' || shape.kind === 'roof_feature' || shape.kind === 'attachment_target') ? shape.kind : undefined}
+                data-plan-primary-fill={shape.family === 'pergola' && shape.kind === 'roof_plane' ? 'true' : undefined}
+                data-plan-geometry-surface={shape.family === 'pergola' && (shape.kind === 'roof_plane' || shape.kind === 'roof_cladding') ? shape.kind : undefined}
+                data-plan-surface-id={shape.family === 'pergola' && (shape.kind === 'roof_plane' || shape.kind === 'roof_cladding') ? shape.sourceId ?? shape.sourceObjectId : undefined}
+                data-plan-member-id={shape.family === 'pergola' && shape.kind !== 'roof_plane' && shape.kind !== 'roof_cladding' ? shape.sourceId ?? shape.sourceObjectId : undefined}
+                data-plan-member-role={shape.family === 'pergola' && shape.kind !== 'roof_plane' && shape.kind !== 'roof_cladding' ? shape.kind : undefined}
+                data-plan-member-centerline-mm={typeof shape.metadata?.centerlineMm === 'string' ? shape.metadata.centerlineMm : undefined}
+              />
+            ))
+          : null}
+
+        {useTopProjectionBackedModel && showPergolaGeometry && geometryAttachmentEdge ? (
+          <line
+            x1={geometryAttachmentEdge.start.x}
+            y1={geometryAttachmentEdge.start.y}
+            x2={geometryAttachmentEdge.end.x}
+            y2={geometryAttachmentEdge.end.y}
+            className={styles.modulePlanHouseWall}
+            data-plan-attachment-edge="geometry"
+            data-house-plan-line="attachment_target"
+          />
+        ) : null}
+        {useTopProjectionBackedModel && showPergolaGeometry && geometryFallAnchor ? (
+          (() => {
+            const fallLineLength = Math.max(4.8, scale * 0.72);
+            const halfLength = geometryFallAnchor.dual ? fallLineLength / 2 : fallLineLength * 0.35;
+            const start = {
+              x: geometryFallAnchor.point.x - geometryFallAnchor.direction.x * halfLength,
+              y: geometryFallAnchor.point.y - geometryFallAnchor.direction.y * halfLength,
+            };
+            const end = {
+              x: geometryFallAnchor.point.x + geometryFallAnchor.direction.x * halfLength,
+              y: geometryFallAnchor.point.y + geometryFallAnchor.direction.y * halfLength,
+            };
+            const labelPoint = {
+              x: geometryFallAnchor.point.x + (Math.abs(geometryFallAnchor.direction.x) >= Math.abs(geometryFallAnchor.direction.y) ? 0 : 2.2),
+              y: geometryFallAnchor.point.y + (Math.abs(geometryFallAnchor.direction.x) >= Math.abs(geometryFallAnchor.direction.y) ? -2.2 : 0),
+            };
+            const arrowDirection = geometryFallDirectionToCardinal(geometryFallAnchor.direction);
+            const reverseArrowDirection =
+              arrowDirection === 'up'
+                ? 'down'
+                : arrowDirection === 'down'
+                  ? 'up'
+                  : arrowDirection === 'left'
+                    ? 'right'
+                    : 'left';
+
+            return (
+              <>
+                <line
+                  x1={start.x}
+                  y1={start.y}
+                  x2={end.x}
+                  y2={end.y}
+                  className={styles.moduleFallLine}
+                  data-plan-fall-direction={`${geometryFallAnchor.direction.x},${geometryFallAnchor.direction.y}`}
+                />
+                {geometryFallAnchor.dual ? (
+                  <>
+                    <ArrowHead x={start.x} y={start.y} direction={reverseArrowDirection} presentation={presentation} />
+                    <ArrowHead x={end.x} y={end.y} direction={arrowDirection} presentation={presentation} />
+                    <text x={labelPoint.x} y={labelPoint.y} className={styles.moduleFallLabel}>
+                      fall both sides
+                    </text>
+                  </>
+                ) : (
+                  <>
+                    <ArrowHead x={end.x} y={end.y} direction={arrowDirection} presentation={presentation} />
+                    <text x={labelPoint.x} y={labelPoint.y} className={styles.moduleFallLabel}>
+                      fall
+                    </text>
+                  </>
+                )}
+              </>
+            );
+          })()
+        ) : null}
+
+        {canRenderPergolaPlanGeometry && !useTopProjectionBackedModel ? (
           useGeometryBackedPergola ? (
             <>
               <polygon
@@ -5611,6 +5779,7 @@ function PlanSvg({
                   y2={geometryAttachmentEdge.end.y}
                   className={styles.modulePlanHouseWall}
                   data-plan-attachment-edge="geometry"
+                  data-house-plan-line="attachment_target"
                 />
               ) : null}
               {geometryFallAnchor ? (
@@ -5796,10 +5965,16 @@ function PlanSvg({
 
         {showPergolaSelectionHitTarget && currentPergolaId ? (
           <polygon
-            points={toPointsAttr(useGeometryBackedPergola && geometryOutlinePoints.length > 0 ? geometryOutlinePoints : primaryPoints)}
+            points={toPointsAttr(
+              useTopProjectionBackedModel && topProjectionPergolaHitPoints.length > 0
+                ? topProjectionPergolaHitPoints
+                : useGeometryBackedPergola && geometryOutlinePoints.length > 0
+                  ? geometryOutlinePoints
+                  : primaryPoints,
+            )}
             className={styles.modulePergolaContextHit}
             data-pergola-shape-hit={currentPergolaId}
-            data-pergola-shape-hit-source={useGeometryBackedPergola ? 'geometry' : 'legacy'}
+            data-pergola-shape-hit-source={useTopProjectionBackedModel ? 'top_projection' : useGeometryBackedPergola ? 'geometry' : 'legacy'}
             onClick={() => onPergolaSelect?.(currentPergolaId)}
           />
         ) : null}

@@ -1177,7 +1177,8 @@ export default function ModelSpaceViewport({
     view === 'plan' &&
     planViewModel?.modelSpacePergola.renderSource === 'geometry' &&
     planViewModel.modelSpacePergola.renderStatus === 'geometry_ready' &&
-    Boolean(planViewModel.modelSpacePergola.geometryPlan);
+    Boolean(planViewModel.modelSpacePergola.geometryPlan) &&
+    Boolean(planViewModel.modelSpacePergola.geometryTopProjection);
   const showPlanViewport = view === 'plan' && Boolean(planModel) && hasGeometryReadyPlan;
   const showSectionViewport = view === 'section' && Boolean(sectionModel) && !showHouseSectionPlaceholder;
   const showDrawingViewport = showPlanViewport || showSectionViewport;
@@ -4154,6 +4155,7 @@ export default function ModelSpaceViewport({
                 objectWorkbenchPreviewOverlay={showPlanViewport ? objectWorkbenchPreviewOverlay : null}
                 hoveredObjectWorkbenchDeckId={showPlanViewport ? hoveredDeckId : null}
                 modelSpacePergolaGeometry={showPlanViewport ? planViewModel?.modelSpacePergola.geometryPlan ?? null : null}
+                modelSpaceTopProjection={showPlanViewport ? planViewModel?.modelSpacePergola.geometryTopProjection ?? null : null}
                 modelSpacePergolaRenderSource={showPlanViewport ? planViewModel?.modelSpacePergola.renderSource : undefined}
                 modelSpacePergolaRenderStatus={showPlanViewport ? planViewModel?.modelSpacePergola.renderStatus : undefined}
                 activeObjectWorkbenchCustomEdgeId={objectWorkbenchActiveCustomEdgeId}

@@ -1,16 +1,17 @@
 # Coding Agent Guide
 
-This repo is optimized for coding agents. Read this file first, then follow links into `docs/README.md`. For non-trivial portal work, read `docs/agent-playbook.md` before editing.
+This repo is optimized for coding agents. Read this file first, then follow links into `docs/README.md`. For non-trivial or risky portal work, read `docs/agent-playbook.md` and scan relevant `docs/decision-log.md` entries before editing.
 
 ## First Moves
 
 1. Check `git status --short` before editing.
 2. Read `docs/agent-playbook.md` for non-trivial portal work.
-3. Read the smallest relevant current-state doc in `docs/`.
-4. Prefer `rg` and `rg --files` for repo discovery.
-5. Keep changes scoped to the requested surface.
-6. Do not revert user changes or unrelated worktree changes.
-7. If the task changes portal behavior, data flow, source-of-truth boundaries, test strategy, or known risks, update the relevant doc in the same pass.
+3. Scan `docs/decision-log.md` for matching areas, risks, or past mistakes.
+4. Read the smallest relevant current-state doc in `docs/`.
+5. Prefer `rg` and `rg --files` for repo discovery.
+6. Keep changes scoped to the requested surface.
+7. Do not revert user changes or unrelated worktree changes.
+8. If the task changes portal behavior, data flow, source-of-truth boundaries, test strategy, or known risks, update the relevant doc in the same pass.
 
 ## Repo Map
 
@@ -85,7 +86,7 @@ npm run test:portal:performance
 - `docs/local-first-sync.md`: working copies, queue, aliases, conflict handling.
 - `docs/design-workbench-architecture.md`: object-first design workbench.
 - `docs/design-workbench-parallel-migration-rules.md`: active guardrails for parallel workbench migration work.
-- `docs/decision-log.md`: compact lessons and guardrails from past mistakes.
+- `docs/decision-log.md`: indexed lessons and guardrails from past mistakes.
 - `docs/design-list.md`: Design List current behavior.
 - `docs/running-jobs.md`: Running Jobs current behavior.
 - `docs/schedule.md`: Schedule V2 current behavior and legacy fallback posture.

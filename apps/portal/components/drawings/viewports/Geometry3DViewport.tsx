@@ -34,6 +34,8 @@ import styles from "./Geometry3DViewport.module.css";
 const ORBIT_MOUSE_DISABLED = -1 as THREE.MOUSE;
 const ORBIT_ZOOM_SPEED = 2.85;
 
+type GeometryViewportCamera = THREE.PerspectiveCamera | THREE.OrthographicCamera;
+
 type SceneBounds = {
   min: Point3;
   max: Point3;
@@ -1865,7 +1867,7 @@ function directionForPreset(viewPreset: GeometryCameraPreset): THREE.Vector3 {
   if (viewPreset === "front") return new THREE.Vector3(0, -1, 0.28).normalize();
   if (viewPreset === "right") return new THREE.Vector3(1, 0, 0.28).normalize();
   if (viewPreset === "top")
-    return new THREE.Vector3(0.06, -0.06, 1).normalize();
+    return new THREE.Vector3(0, 0, 1).normalize();
   return new THREE.Vector3(1, -1.15, 0.82).normalize();
 }
 
@@ -3507,7 +3509,7 @@ export default function Geometry3DViewport({
       }),
   );
   const controlsRef = useRef<OrbitControlsImpl | null>(null);
-  const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
+  const cameraRef = useRef<GeometryViewportCamera | null>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
   const canvasShellRef = useRef<HTMLDivElement | null>(null);
   const viewportRestoreSignatureRef = useRef<string | null>(null);
@@ -3622,13 +3624,23 @@ export default function Geometry3DViewport({
     },
     [onViewportStateChange],
   );
+  const useOrthographicTopCamera = cameraState.viewPreset === "top";
   const initialCamera = useMemo(() => {
+    const cameraBase = useOrthographicTopCamera
+      ? {
+          near: 1,
+          far: 40000,
+          zoom: 1,
+        }
+      : {
+          near: 1,
+          far: 40000,
+          fov: 40,
+        };
     if (!sceneBounds) {
       return {
         position: [1800, -1800, 1400] as [number, number, number],
-        near: 1,
-        far: 40000,
-        fov: 40,
+        ...cameraBase,
       };
     }
 
@@ -3640,16 +3652,15 @@ export default function Geometry3DViewport({
     });
     const cameraPosition = seedState.position;
     return {
+      ...cameraBase,
       position: [cameraPosition.x, cameraPosition.y, cameraPosition.z] as [
         number,
         number,
         number,
       ],
-      near: 1,
       far: Math.max(sceneBounds.size * 10, 40000),
-      fov: 40,
     };
-  }, [sceneBounds, sceneFitDistance]);
+  }, [sceneBounds, sceneFitDistance, useOrthographicTopCamera]);
 
   const applyCameraPose = useCallback(
     (nextState: GeometryCameraState) => {
@@ -3658,7 +3669,7 @@ export default function Geometry3DViewport({
       const camera = cameraRef.current;
       const controls = controlsRef.current;
 
-      camera.up.set(0, 0, 1);
+      camera.up.set(0, nextState.viewPreset === "top" ? -1 : 0, nextState.viewPreset === "top" ? 0 : 1);
       camera.position.set(
         nextState.position.x,
         nextState.position.y,
@@ -3666,6 +3677,14 @@ export default function Geometry3DViewport({
       );
       camera.near = 1;
       camera.far = Math.max(sceneBounds.size * 12, 40000);
+      if (camera instanceof THREE.OrthographicCamera) {
+        const halfSpan = Math.max(sceneBounds.size * 0.65, 1000);
+        camera.left = -halfSpan;
+        camera.right = halfSpan;
+        camera.top = halfSpan;
+        camera.bottom = -halfSpan;
+        camera.zoom = 1;
+      }
       camera.lookAt(nextState.target.x, nextState.target.y, nextState.target.z);
       camera.updateProjectionMatrix();
 
@@ -3808,8 +3827,8 @@ export default function Geometry3DViewport({
     ({ gl, camera }: { gl: THREE.WebGLRenderer; camera: THREE.Camera }) => {
       rendererRef.current = gl;
       resetRendererState(gl);
-      cameraRef.current = camera as THREE.PerspectiveCamera;
-      cameraRef.current.up.set(0, 0, 1);
+      cameraRef.current = camera as GeometryViewportCamera;
+      cameraRef.current.up.set(0, cameraState.viewPreset === "top" ? -1 : 0, cameraState.viewPreset === "top" ? 0 : 1);
       syncViewportBindings();
     },
     [syncViewportBindings],
@@ -4641,6 +4660,7 @@ export default function Geometry3DViewport({
           data-house-opening-rendered-marker-count={String(houseOpeningDiagnostics.renderedMarkerCount)}
           data-house-opening-skipped-invalid-count={String(houseOpeningDiagnostics.skippedInvalidCount)}
           data-house-opening-unresolved-valid-count={String(houseOpeningDiagnostics.unresolvedValidCount)}
+          data-top-view-screen-axis={cameraState.viewPreset === "top" ? "world_x_right_world_y_down" : ""}
           data-clipping-enabled={String(sectionCut.enabled)}
           data-selected-object-id={selectedObjectId ?? ""}
           data-shell-width={String(rectDiagnostic.shellWidth)}
@@ -4651,7 +4671,9 @@ export default function Geometry3DViewport({
         />
 
         <Canvas
+          key={useOrthographicTopCamera ? "top-orthographic" : "perspective"}
           className={styles.canvas}
+          orthographic={useOrthographicTopCamera}
           camera={initialCamera}
           data-testid="geometry-3d-canvas"
           onCreated={handleCanvasCreated}

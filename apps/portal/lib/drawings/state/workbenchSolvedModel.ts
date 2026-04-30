@@ -4,6 +4,7 @@ import {
   type GeometryConfig,
   type GeometryPlanViewModel,
   type GeometrySectionViewModel,
+  type GeometryTopProjectionViewModel,
   type GeometryValidationReport,
   type ViewerSceneModel,
   validateGeometrySolve,
@@ -45,6 +46,7 @@ export type GeometryPreviewState =
       assembly: Assembly3D;
       validation: GeometryValidationReport;
       scene: ViewerSceneModel;
+      topProjection: GeometryTopProjectionViewModel;
       deckSupport: WorkbenchDeckSupportDiagnostic;
     }
   | {
@@ -111,6 +113,7 @@ export type WorkbenchSolvedModule = {
   assembly: Assembly3D | null;
   geometryPlan: GeometryPlanViewModel | null;
   geometrySection: GeometrySectionViewModel | null;
+  geometryTopProjection: GeometryTopProjectionViewModel | null;
   validation: GeometryValidationReport | null;
   viewerScene: ViewerSceneModel | null;
   geometryPreview: GeometryPreviewState;
@@ -492,6 +495,7 @@ function buildInvalidSolvedModule(input: {
     assembly: null,
     geometryPlan: null,
     geometrySection: null,
+    geometryTopProjection: null,
     validation: null,
     viewerScene: null,
     geometryPreview:
@@ -595,6 +599,7 @@ function buildSolvedModule(input: {
       assembly: null,
       geometryPlan: null,
       geometrySection: null,
+      geometryTopProjection: null,
       validation: null,
       viewerScene: null,
       geometryPreview: {
@@ -657,6 +662,7 @@ function buildSolvedModule(input: {
     assembly: derivation.assembly,
     geometryPlan: derivation.geometryPlan,
     geometrySection: derivation.geometrySection,
+    geometryTopProjection: derivation.geometryTopProjection,
     validation,
     viewerScene: scene,
     geometryPreview: {
@@ -667,6 +673,7 @@ function buildSolvedModule(input: {
       assembly: derivation.assembly,
       validation,
       scene,
+      topProjection: derivation.geometryTopProjection,
       deckSupport,
     },
     deckSupport,

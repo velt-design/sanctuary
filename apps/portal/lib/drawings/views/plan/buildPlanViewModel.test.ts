@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ModulePlanModel } from '@/app/staff/calculator/moduleViews';
-import type { GeometryPlanViewModel } from '@sp/geometry';
+import type { GeometryPlanViewModel, GeometryTopProjectionViewModel } from '@sp/geometry';
 import type {
   DeckObjectModel,
   HouseAssemblyModel,
@@ -120,7 +120,7 @@ function makePlanModelWithHouseContext(): ModulePlanModel {
 function makeGeometryPlan(): GeometryPlanViewModel {
   return {
     family: 'mono',
-    connectionType: 'attached',
+    connectionType: 'soffit',
     roofForm: {
       mono: true,
       gable: false,
@@ -219,6 +219,83 @@ function makeGeometryPlan(): GeometryPlanViewModel {
   };
 }
 
+function makeGeometryTopProjection(): GeometryTopProjectionViewModel {
+  return {
+    coordinateSpace: 'world_xy_mm',
+    screenAxis: {
+      x: 'world_x_right',
+      y: 'world_y_down',
+    },
+    shapes: [
+      {
+        id: 'house_reference:solved-footprint-projection',
+        sourceObjectId: 'house-footprint-scene',
+        sourceId: 'solved-footprint',
+        sourceType: 'house_reference',
+        family: 'house',
+        kind: 'footprint',
+        polygon: [
+          { x: 0, y: -2100 },
+          { x: 7200, y: -2100 },
+          { x: 7200, y: 0 },
+          { x: 0, y: 0 },
+        ],
+        zOrder: 0,
+        zMin: 0,
+        zMax: 0,
+      },
+      {
+        id: 'house_surface_solid:house-solid-deck-1',
+        sourceObjectId: 'house-solid-deck-1',
+        sourceId: 'house-solid-deck-1',
+        sourceType: 'house_surface_solid',
+        family: 'house',
+        kind: 'deck',
+        polygon: [
+          { x: 1200, y: 650 },
+          { x: 4400, y: 650 },
+          { x: 4400, y: 2650 },
+          { x: 1200, y: 2650 },
+        ],
+        zOrder: 42,
+        zMin: 0,
+        zMax: 120,
+        metadata: {
+          sourceId: 'deck-1',
+        },
+      },
+      {
+        id: 'house_surface:opening-1-marker',
+        sourceObjectId: 'opening-1-marker',
+        sourceId: 'opening-1',
+        sourceType: 'house_surface',
+        family: 'house',
+        kind: 'opening_marker',
+        polygon: [
+          { x: 2100, y: 0 },
+          { x: 3300, y: 0 },
+          { x: 3300, y: -140 },
+          { x: 2100, y: -140 },
+        ],
+        zOrder: 48,
+        zMin: 0,
+        zMax: 2100,
+        metadata: {
+          openingId: 'opening-1',
+        },
+      },
+    ],
+    extents: {
+      minX: 0,
+      minY: -2100,
+      maxX: 7200,
+      maxY: 2650,
+      widthMm: 7200,
+      heightMm: 4750,
+    },
+  };
+}
+
 function makeDeck(): DeckObjectModel {
   return {
     id: 'deck-1',
@@ -270,6 +347,7 @@ function makeObjectWorkbenchOverlayInput(geometryPlan: GeometryPlanViewModel): O
     moduleLengthM: '6',
     moduleProjectionM: '3',
     geometryPlan,
+    geometryTopProjection: makeGeometryTopProjection(),
     status: {
       houseForm: {
         lowConfidence: false,
@@ -294,11 +372,13 @@ describe('buildPlanViewModel', () => {
   it('builds model-space overlay shapes from solved geometry rather than compatibility plan context', () => {
     const planModel = makePlanModelWithHouseContext();
     const geometryPlan = makeGeometryPlan();
+    const geometryTopProjection = makeGeometryTopProjection();
     const viewModel = buildPlanViewModel({
       moduleId: 'module-1',
       moduleLabel: 'Module 1',
       planModel,
       geometryPlan,
+      geometryTopProjection,
       canEditHouseFootprint: true,
       objectWorkbenchOverlayInput: makeObjectWorkbenchOverlayInput(geometryPlan),
     });
@@ -313,12 +393,12 @@ describe('buildPlanViewModel', () => {
       expect.objectContaining({
         ownerKind: 'footprint',
         ownerId: 'house-main',
-        geometrySourceId: 'solved-footprint',
+        geometrySourceId: 'house_reference:solved-footprint-projection',
         source: 'geometry',
         polygon: [
-          { x: 0, y: -2 },
-          { x: 7, y: -2 },
-          { x: 7, y: 0 },
+          { x: 0, y: -2.1 },
+          { x: 7.2, y: -2.1 },
+          { x: 7.2, y: 0 },
           { x: 0, y: 0 },
         ],
       }),
@@ -327,14 +407,14 @@ describe('buildPlanViewModel', () => {
       expect.objectContaining({
         ownerKind: 'deck',
         ownerId: 'deck-1',
-        geometrySourceId: 'deck-1',
+        geometrySourceId: 'house_surface_solid:house-solid-deck-1',
         source: 'geometry',
         selected: true,
         polygon: [
-          { x: 1, y: 0.5 },
-          { x: 4, y: 0.5 },
-          { x: 4, y: 2.5 },
-          { x: 1, y: 2.5 },
+          { x: 1.2, y: 0.65 },
+          { x: 4.4, y: 0.65 },
+          { x: 4.4, y: 2.65 },
+          { x: 1.2, y: 2.65 },
         ],
       }),
     );
@@ -342,13 +422,13 @@ describe('buildPlanViewModel', () => {
       expect.objectContaining({
         ownerKind: 'opening',
         ownerId: 'opening-1',
-        geometrySourceId: 'rear-edge',
-        source: 'geometry_derived',
+        geometrySourceId: 'house_surface:opening-1-marker',
+        source: 'geometry',
         polygon: [
-          { x: 2, y: 0 },
-          { x: 3.2, y: 0 },
-          { x: 3.2, y: -0.12 },
-          { x: 2, y: -0.12 },
+          { x: 2.1, y: 0 },
+          { x: 3.3, y: 0 },
+          { x: 3.3, y: -0.14 },
+          { x: 2.1, y: -0.14 },
         ],
       }),
     );

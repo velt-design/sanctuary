@@ -22,6 +22,19 @@ npm run brand:forbid
 npm run schedule:bundle-budget
 ```
 
+## Docs-Only Checks
+
+For docs-only changes, run these from the repo root:
+
+```bash
+rg -n "/User[s]/|my[-]site|create[-]next[-]app|costing[-]baseline|\\.env\\.example" README.md AGENTS.md docs
+rg -n "[^\\x00-\\x7F]" README.md AGENTS.md docs
+rg -n "decision-log|agent-playbook" AGENTS.md docs/README.md docs/agent-playbook.md docs/decision-log.md
+npm run text:mojibake
+```
+
+The first two `rg` commands should have no output. `rg` exits `1` when there are no matches; for those checks, empty output is the desired result.
+
 ## Portal Browser Tests
 
 Required env:

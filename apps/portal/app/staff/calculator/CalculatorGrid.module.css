@@ -3421,6 +3421,18 @@
   stroke-width: var(--mv-line-hidden-width);
 }
 
+.modulePlanHouseDeck {
+  fill: rgba(156, 142, 88, 0.28);
+  stroke: rgba(86, 96, 79, 0.68);
+  stroke-width: var(--mv-line-secondary-width);
+}
+
+.modulePlanHouseOpening {
+  fill: rgba(47, 111, 150, 0.18);
+  stroke: rgba(47, 111, 150, 0.78);
+  stroke-width: var(--mv-line-secondary-width);
+}
+
 .modulePlanHouseSoffit {
   fill: var(--mv-overhang-fill);
   stroke: var(--mv-line-hidden);
@@ -3465,6 +3477,19 @@
 .modulePlanHouseAttachmentTarget {
   stroke: var(--mv-line-annotation);
   stroke-width: var(--mv-line-annotation-width);
+  stroke-dasharray: var(--mv-dash-guide);
+}
+
+.modulePlanTopProjectionReference {
+  fill-opacity: 0.1;
+  stroke-dasharray: var(--mv-dash-hidden);
+  pointer-events: none;
+}
+
+.modulePlanTopProjectionLine {
+  fill: none;
+  stroke: var(--mv-line-secondary);
+  stroke-width: var(--mv-line-guide-width);
   stroke-dasharray: var(--mv-dash-guide);
 }
 

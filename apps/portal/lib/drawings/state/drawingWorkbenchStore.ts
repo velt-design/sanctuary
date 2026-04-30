@@ -1,6 +1,6 @@
 import type { ModuleViewsStatus } from '@/app/staff/calculator/ModuleViewsCard';
 import type { ModulePlanModel, ModuleSectionModel } from '@/app/staff/calculator/moduleViews';
-import type { GeometryPlanViewModel } from '@sp/geometry';
+import type { GeometryPlanViewModel, GeometryTopProjectionViewModel } from '@sp/geometry';
 import { buildAssemblyModel } from '@/lib/drawings/assembly/buildAssemblyModel';
 import type { DrawingAssemblyModel } from '@/lib/drawings/assembly/types';
 import type {
@@ -63,6 +63,7 @@ export type DrawingWorkbenchModuleEntry = {
   assemblyModel: DrawingAssemblyModel;
   planViewModel: PlanViewModel | null;
   geometryPlanViewModel: GeometryPlanViewModel | null;
+  geometryTopProjectionViewModel: GeometryTopProjectionViewModel | null;
   planRenderSource: ObjectWorkbenchPergolaRenderSource;
   planRenderStatus: ObjectWorkbenchPergolaRenderStatus;
   planModel: ModulePlanModel | null;
@@ -203,6 +204,7 @@ export function buildDrawingWorkbenchStore(input: {
     const planModel = solution.planModel;
     const sectionModel = solution.sectionModel;
     const geometryPlanViewModel = solution.geometryPlan;
+    const geometryTopProjectionViewModel = solution.geometryTopProjection;
     const planRenderSource = solution.renderSource;
     const planRenderStatus = solution.renderStatus;
     const assemblyModel = buildAssemblyModel({
@@ -225,6 +227,7 @@ export function buildDrawingWorkbenchStore(input: {
         moduleLabel: label,
         planModel,
         geometryPlan: geometryPlanViewModel,
+        geometryTopProjection: geometryTopProjectionViewModel,
         geometryAssembly: solution.assembly,
         pergolaRenderSource: planRenderSource,
         pergolaRenderStatus: planRenderStatus,
@@ -237,6 +240,7 @@ export function buildDrawingWorkbenchStore(input: {
               openings: objectFirstOpenings,
               selection: compatibilitySelection.activeHouseSelection,
               geometryPlan: geometryPlanViewModel,
+              geometryTopProjection: geometryTopProjectionViewModel,
               geometryAssembly: solution.assembly,
               geometryRenderSource: planRenderSource,
               geometryRenderStatus: planRenderStatus,
@@ -247,6 +251,7 @@ export function buildDrawingWorkbenchStore(input: {
           : null,
       }),
       geometryPlanViewModel,
+      geometryTopProjectionViewModel,
       planRenderSource,
       planRenderStatus,
       planModel,

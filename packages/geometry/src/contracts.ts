@@ -975,6 +975,43 @@ export type GeometryPlanViewModel = {
   };
 };
 
+export type GeometryTopProjectionFamily = "pergola" | "house" | "reference";
+
+export type GeometryTopProjectionSourceType =
+  | ViewerSceneObject["type"]
+  | "house_reference";
+
+export type GeometryTopProjectionShape = {
+  id: string;
+  sourceObjectId: string;
+  sourceId?: string | null;
+  sourceType: GeometryTopProjectionSourceType;
+  family: GeometryTopProjectionFamily;
+  kind: string;
+  polygon: Polygon2;
+  zOrder: number;
+  zMin: number | null;
+  zMax: number | null;
+  metadata?: GeometryMetadata;
+};
+
+export type GeometryTopProjectionViewModel = {
+  coordinateSpace: "world_xy_mm";
+  screenAxis: {
+    x: "world_x_right";
+    y: "world_y_down";
+  };
+  shapes: GeometryTopProjectionShape[];
+  extents: {
+    minX: number;
+    minY: number;
+    maxX: number;
+    maxY: number;
+    widthMm: number;
+    heightMm: number;
+  } | null;
+};
+
 export type GeometrySectionMember2D = {
   id: string;
   role: AssemblyMemberRole;

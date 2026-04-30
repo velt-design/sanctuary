@@ -13,6 +13,16 @@ This is a private npm workspace with two Next.js apps and shared packages. Treat
 - `supabase`: SQL snapshots plus ordered migrations.
 - `scripts`: operational scripts for imports, invites, media optimization, audits, and generated geometry assets.
 - `playwright`: portal browser test harness.
+- `.github`: CI workflows for portal quality, Lighthouse, and governance.
+
+Root-level directories outside `apps` and `packages` are still active unless proven otherwise:
+
+- `lib`: shared/root legacy application helpers and tests that current suites still reference.
+- `components`: shared/root UI and marketing/portal-era components.
+- `data`, `public`, `src`, `styles`, `test`: shared content, assets, compatibility entrypoints, styling, and test support.
+- Root config files define workspace behavior, package aliases, linting, test setup, and Playwright harnesses.
+
+Inspect these root-level paths before creating new app or package logic. Do not duplicate behavior when an existing root helper is still wired into tests or runtime paths.
 
 ## App Boundaries
 
@@ -71,6 +81,7 @@ npm run emails:preview
 ## Agent Notes
 
 - Check `AGENTS.md` first when starting any task.
+- For non-trivial portal work, scan `docs/decision-log.md` for related guardrails before editing.
 - Prefer changing the smallest owning layer.
 - Keep docs and implementation aligned when behavior changes.
 - Do not edit old applied migrations unless the user explicitly asks for migration-history repair.

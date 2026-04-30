@@ -94,6 +94,9 @@ function makeSession(input: {
     openingInteraction: null,
     deckDragEligibility: { eligible: true, reason: 'Drag deck' },
     openingDragEligibility: null,
+    source: 'geometry',
+    geometrySourceId: 'deck-1',
+    renderStatus: 'geometry_ready',
   } satisfies ObjectWorkbenchPlanShapeOverlay;
 
   const session = buildDeckDragSession({

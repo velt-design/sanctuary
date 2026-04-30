@@ -16,6 +16,7 @@ For marketing-only or shared-package-only tasks, use the parts that affect porta
 
 - Run `git status --short`; identify unrelated worktree changes and leave them untouched.
 - Read `AGENTS.md`, `docs/README.md`, this playbook, and the smallest relevant canonical doc.
+- Scan `docs/decision-log.md` for entries matching the feature area, source-of-truth boundary, or risk pattern.
 - For workbench migration or compatibility work, read `docs/design-workbench-parallel-migration-rules.md` before editing.
 - Use `rg` and `rg --files` to find owner files, tests, routes, APIs, docs, and old compatibility paths.
 - Identify the owning layer before editing: package, domain library, API/RPC route, local-first adapter, component, or page.
@@ -56,7 +57,7 @@ For marketing-only or shared-package-only tasks, use the parts that affect porta
 ## Verification
 
 - Choose tests proportional to risk and blast radius.
-- For docs-only work, run static text checks and `npm run text:mojibake`.
+- For docs-only work, run the docs-only checks in `docs/testing-and-qa.md`.
 - For focused portal logic, prefer the closest unit/integration test first, then broaden if shared behavior changed.
 - For portal UI-heavy work, use Playwright or browser/manual checks where the change affects layout, interaction, routing, auth, or persisted state.
 - For schedule work, consider `npm run schedule:bundle-budget`, smoke/performance checks, and manual drag/drop or Gantt checks when relevant.
@@ -89,7 +90,7 @@ npm run schedule:bundle-budget
 ## Learning Loop
 
 - Add a decision-log entry when user intervention, a bug, a regression, or a near miss reveals a reusable rule.
-- Keep decision-log entries compact: date, area, decision or mistake, why it mattered, current guardrail, related docs/tests.
+- Keep decision-log entries compact and indexed: date, area, status, decision or mistake, why it mattered, current guardrail, promoted-to, and related docs/tests.
 - Leave detailed history out of this playbook; link to the relevant canonical doc or decision-log entry instead.
 - Promote only stable behavior into this playbook. One-off context belongs in `docs/decision-log.md` or the relevant feature doc.
 

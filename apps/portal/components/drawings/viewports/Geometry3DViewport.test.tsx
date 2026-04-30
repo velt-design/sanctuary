@@ -34,7 +34,7 @@ import Geometry3DViewport, {
 } from "./Geometry3DViewport";
 import { renderIntoDocument } from "../../../../../test/reactHarness";
 
-let mockThreeCamera: THREE.PerspectiveCamera | null = null;
+let mockThreeCamera: THREE.PerspectiveCamera | THREE.OrthographicCamera | null = null;
 let mockOrbitControls: { target: { x: number; y: number; z: number } } | null =
   null;
 let mockRendererDispose: ReturnType<typeof vi.fn> | null = null;
@@ -45,14 +45,16 @@ vi.mock("@react-three/fiber", () => ({
   Canvas: ({
     children,
     className,
+    orthographic,
     "data-testid": testId,
     onCreated,
   }: {
     children?: unknown;
     className?: string;
+    orthographic?: boolean;
     "data-testid"?: string;
     onCreated?: (payload: {
-      camera: THREE.PerspectiveCamera;
+      camera: THREE.PerspectiveCamera | THREE.OrthographicCamera;
       gl: {
         localClippingEnabled: boolean;
         domElement: HTMLDivElement | null;
@@ -66,8 +68,11 @@ vi.mock("@react-three/fiber", () => ({
   }) => {
     const canvasRef = useRef<HTMLDivElement | null>(null);
     const camera = useMemo(
-      () => new THREE.PerspectiveCamera(40, 1, 1, 40000),
-      [],
+      () =>
+        orthographic
+          ? new THREE.OrthographicCamera(-1, 1, 1, -1, 1, 40000)
+          : new THREE.PerspectiveCamera(40, 1, 1, 40000),
+      [orthographic],
     );
     const gl = useMemo(
       () => ({
@@ -96,6 +101,7 @@ vi.mock("@react-three/fiber", () => ({
         ref={canvasRef}
         className={className}
         data-testid={testId ?? "geometry-3d-canvas"}
+        data-camera-projection={orthographic ? "orthographic" : "perspective"}
         data-camera-position={`${camera.position.x},${camera.position.y},${camera.position.z}`}
       >
         {children as any}
@@ -973,6 +979,25 @@ describe("Geometry3DViewport", () => {
 
     clickButtonByText(rendered.container, "Top");
     expect(rendered.container.textContent).toContain("Top");
+    expect(mockThreeCamera).toBeInstanceOf(THREE.OrthographicCamera);
+    expect(
+      rendered.container
+        .querySelector('[data-testid="geometry-3d-canvas"]')
+        ?.getAttribute("data-camera-projection"),
+    ).toBe("orthographic");
+    const topPosition = cameraPosition(rendered.container);
+    const topTarget = controlsTarget(rendered.container);
+    expect(topPosition.x).toBeCloseTo(topTarget.x, 6);
+    expect(topPosition.y).toBeCloseTo(topTarget.y, 6);
+    expect(topPosition.z).toBeGreaterThan(topTarget.z);
+    expect(mockThreeCamera?.up.x).toBeCloseTo(0, 6);
+    expect(mockThreeCamera?.up.y).toBeCloseTo(-1, 6);
+    expect(mockThreeCamera?.up.z).toBeCloseTo(0, 6);
+    expect(
+      rendered.container
+        .querySelector('[data-testid="geometry-3d-viewport-diagnostics"]')
+        ?.getAttribute("data-top-view-screen-axis"),
+    ).toBe("world_x_right_world_y_down");
 
     clickButtonByText(rendered.container, "Iso");
     expect(rendered.container.textContent).toContain("Iso");

@@ -13,6 +13,16 @@ Sanctuary is a private npm workspace for the Sanctuary Pergolas marketing site, 
 - `supabase`: baseline SQL and ordered migrations.
 - `scripts`: maintenance, import, optimization, invite, and audit scripts.
 - `playwright`: authenticated portal browser and performance smoke tests.
+- `.github`: CI workflows for portal quality, Lighthouse, and governance.
+
+Other root-level directories are active repo territory:
+
+- `lib`: shared/root legacy application helpers and tests still referenced by current suites.
+- `components`: shared/root UI and marketing/portal-era components.
+- `data`, `public`, `src`, `styles`, `test`: shared content, assets, compatibility entrypoints, styling, and test support.
+- Root config files such as `package.json`, `tsconfig.json`, `vitest.config.ts`, and `playwright.config.ts` define workspace behavior.
+
+Inspect existing root-level paths before assuming ownership. Do not duplicate app or package logic if a root-level helper already participates in tests or shared behavior.
 
 ## Common Commands
 
@@ -45,4 +55,4 @@ Email, tracking, public URL, and Playwright variables are documented in `docs/en
 
 Start with `AGENTS.md` for coding-agent guidance, then `docs/README.md` for the canonical docs index.
 
-The docs are intentionally current-state references. Historical implementation plans and stale specs should not be reintroduced unless they are rewritten as current references or explicit decision records.
+The docs are intentionally current-state references plus active guardrails. Historical implementation plans and stale specs should not be reintroduced unless they are rewritten as current references, active operating rules, or explicit decision records.

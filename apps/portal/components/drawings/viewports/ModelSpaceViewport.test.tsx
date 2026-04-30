@@ -2,7 +2,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { act, useState, type ComponentProps } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import type { CostOutputV1 } from '@sp/costing';
-import type { GeometryPlanViewModel } from '@sp/geometry';
+import type { GeometryPlanMember2D, GeometryPlanViewModel, GeometryTopProjectionViewModel, Point2 } from '@sp/geometry';
 import type { CalculatorModuleInputs } from '@/lib/types/calculator';
 import type { EstimateDrawingField } from '@/lib/estimates/drawingEdits';
 import type { ModulePlanModel } from '@/app/staff/calculator/moduleViews';
@@ -369,6 +369,120 @@ function makeGeometryPlanFromPlanModel(planModel: ModulePlanModel, house?: House
   };
 }
 
+function memberProjectionPolygon(member: GeometryPlanMember2D): Point2[] {
+  const start = member.centerline.start;
+  const end = member.centerline.end;
+  const widthMm = Math.max(member.profile.widthMm, 40);
+  const dx = end.x - start.x;
+  const dy = end.y - start.y;
+  const length = Math.hypot(dx, dy);
+  if (length <= 1e-6) {
+    const half = widthMm / 2;
+    return [
+      { x: start.x - half, y: start.y - half },
+      { x: start.x + half, y: start.y - half },
+      { x: start.x + half, y: start.y + half },
+      { x: start.x - half, y: start.y + half },
+    ];
+  }
+  const half = widthMm / 2;
+  const nx = -dy / length;
+  const ny = dx / length;
+  return [
+    { x: start.x + nx * half, y: start.y + ny * half },
+    { x: end.x + nx * half, y: end.y + ny * half },
+    { x: end.x - nx * half, y: end.y - ny * half },
+    { x: start.x - nx * half, y: start.y - ny * half },
+  ];
+}
+
+function makeTopProjectionFromGeometryPlan(geometryPlan: GeometryPlanViewModel): GeometryTopProjectionViewModel {
+  const houseSurfaceShapes = (geometryPlan.house.surfaces ?? []).map((surface, index) => ({
+    id: `house_surface:${surface.id}`,
+    sourceObjectId: `house-scene-${surface.id}`,
+    sourceId: surface.id,
+    sourceType: 'house_surface' as const,
+    family: 'house' as const,
+    kind: surface.kind,
+    polygon: surface.boundary,
+    zOrder: 10 + index,
+    zMin: 0,
+    zMax: 0,
+    metadata: surface.kind === 'deck' ? { ...(surface.metadata ?? {}), sourceId: surface.id } : surface.metadata,
+  }));
+  const pergolaSurfaceShapes = [
+    ...geometryPlan.surfaces.roofPlanes.map((surface, index) => ({
+      id: `roof_plane:${surface.id}`,
+      sourceObjectId: `scene-${surface.id}`,
+      sourceId: surface.id,
+      sourceType: 'roof_plane' as const,
+      family: 'pergola' as const,
+      kind: 'roof_plane',
+      polygon: surface.boundary,
+      zOrder: 60 + index,
+      zMin: 2400,
+      zMax: 2600,
+      metadata: surface.metadata,
+    })),
+    ...geometryPlan.surfaces.roofCladding.map((surface, index) => ({
+      id: `roof_cladding_panel:${surface.id}`,
+      sourceObjectId: `scene-${surface.id}`,
+      sourceId: surface.id,
+      sourceType: 'roof_cladding_panel' as const,
+      family: 'pergola' as const,
+      kind: 'roof_cladding',
+      polygon: surface.boundary,
+      zOrder: 64 + index,
+      zMin: 2400,
+      zMax: 2600,
+      metadata: surface.metadata,
+    })),
+  ];
+  const memberShapes = [
+    ...geometryPlan.members.posts,
+    ...geometryPlan.members.beams,
+    ...geometryPlan.members.ledgers,
+    ...geometryPlan.members.gutters,
+    ...geometryPlan.members.joiners,
+    ...geometryPlan.members.rafters,
+    ...geometryPlan.members.ridge,
+  ].map((member, index) => ({
+    id: `member_prism:${member.id}`,
+    sourceObjectId: `scene-${member.id}`,
+    sourceId: member.id,
+    sourceType: 'member_prism' as const,
+    family: 'pergola' as const,
+    kind: member.role,
+    polygon: memberProjectionPolygon(member),
+    zOrder: 70 + index,
+    zMin: 2200,
+    zMax: 2600,
+    metadata: {
+      centerlineMm: `${member.centerline.start.x},${member.centerline.start.y},${member.centerline.end.x},${member.centerline.end.y}`,
+    },
+  }));
+  const shapes = [...houseSurfaceShapes, ...pergolaSurfaceShapes, ...memberShapes];
+  const points = shapes.flatMap((shape) => shape.polygon);
+  return {
+    coordinateSpace: 'world_xy_mm',
+    screenAxis: {
+      x: 'world_x_right',
+      y: 'world_y_down',
+    },
+    shapes,
+    extents: points.length
+      ? {
+          minX: Math.min(...points.map((point) => point.x)),
+          minY: Math.min(...points.map((point) => point.y)),
+          maxX: Math.max(...points.map((point) => point.x)),
+          maxY: Math.max(...points.map((point) => point.y)),
+          widthMm: Math.max(...points.map((point) => point.x)) - Math.min(...points.map((point) => point.x)),
+          heightMm: Math.max(...points.map((point) => point.y)) - Math.min(...points.map((point) => point.y)),
+        }
+      : null,
+  };
+}
+
 function TestModelSpaceViewport(props: ComponentProps<typeof ModelSpaceViewport>) {
   const planViewModel =
     props.planViewModel ??
@@ -378,6 +492,7 @@ function TestModelSpaceViewport(props: ComponentProps<typeof ModelSpaceViewport>
           moduleLabel: 'Module 1',
           planModel: props.planModel,
           geometryPlan: makeGeometryPlanFromPlanModel(props.planModel),
+          geometryTopProjection: makeTopProjectionFromGeometryPlan(makeGeometryPlanFromPlanModel(props.planModel)),
           pergolaRenderSource: 'geometry',
           pergolaRenderStatus: 'geometry_ready',
           canEditHouseFootprint: Boolean(props.onCommitFootprintEdit),
@@ -631,6 +746,9 @@ function makeHouseFirstHouse(overrides: Partial<HouseModel> = {}): HouseModel {
         pitchDeg: '3',
         dropMm: '0',
       },
+      geometryKind: null,
+      appendageSupportedHostEdges: ['rear', 'front', 'left', 'right'],
+      appendageSupportReason: null,
       validation: {
         status: 'valid',
         code: null,
@@ -664,6 +782,11 @@ function makeHouseFirstHouse(overrides: Partial<HouseModel> = {}): HouseModel {
     gutterDepthMm: '85',
     gutterProjectionMm: '90',
     eaveOverhangMm: '450',
+    derivedEnvelope: null,
+    derivedWallGraph: {
+      walls: [],
+      mergeGroups: [],
+    },
     decks: [],
     openings: [],
     attachmentZones: [],
@@ -893,6 +1016,7 @@ function makeObjectWorkbenchOverlayInputFromHouse(input: {
     moduleLengthM: input.drawing.input.lengthM,
     moduleProjectionM: input.drawing.input.projectionM,
     geometryPlan: makeGeometryPlanFromPlanModel(input.planModel, input.house),
+    geometryTopProjection: makeTopProjectionFromGeometryPlan(makeGeometryPlanFromPlanModel(input.planModel, input.house)),
     status: {
       houseForm: {
         lowConfidence: input.house.lowConfidence,
@@ -1048,6 +1172,7 @@ function HouseFirstViewportHarness({
         moduleLabel: 'Module 1',
         planModel,
         geometryPlan,
+        geometryTopProjection: makeTopProjectionFromGeometryPlan(geometryPlan),
         pergolaRenderSource: 'geometry',
         pergolaRenderStatus: 'geometry_ready',
         canEditHouseFootprint: true,
@@ -1590,6 +1715,7 @@ describe('ModelSpaceViewport', () => {
           moduleLabel: assembly.label,
           planModel,
           geometryPlan,
+          geometryTopProjection: makeTopProjectionFromGeometryPlan(geometryPlan),
           pergolaRenderSource: 'geometry',
           pergolaRenderStatus: 'geometry_ready',
           canEditHouseFootprint: assembly.capabilities.canEditHouseFootprint,
@@ -1667,6 +1793,7 @@ describe('ModelSpaceViewport', () => {
           moduleLabel: 'Module 1',
           planModel,
           geometryPlan,
+          geometryTopProjection: makeTopProjectionFromGeometryPlan(geometryPlan),
           pergolaRenderSource: 'geometry',
           pergolaRenderStatus: 'geometry_ready',
           canEditHouseFootprint: true,
@@ -1701,7 +1828,6 @@ describe('ModelSpaceViewport', () => {
 
   it('keeps house-mode semantic house placement aligned with geometry-backed pergolas for rear, front, and side contexts', () => {
     const drawing = makeDrawingModule();
-    const geometryPlan = makeGeometryPlanFixture();
     const cases = [
       {
         label: 'rear',
@@ -1739,6 +1865,7 @@ describe('ModelSpaceViewport', () => {
     ];
 
     for (const testCase of cases) {
+      const geometryPlan = makeGeometryPlanFromPlanModel(testCase.planModel);
       const rendered = renderIntoDocument(
         <TestModelSpaceViewport
           view="plan"
@@ -1751,6 +1878,7 @@ describe('ModelSpaceViewport', () => {
             moduleLabel: 'Module 1',
             planModel: testCase.planModel,
             geometryPlan,
+            geometryTopProjection: makeTopProjectionFromGeometryPlan(geometryPlan),
             pergolaRenderSource: 'geometry',
             pergolaRenderStatus: 'geometry_ready',
           })}
@@ -1803,6 +1931,7 @@ describe('ModelSpaceViewport', () => {
           moduleLabel: 'Module 1',
           planModel,
           geometryPlan,
+          geometryTopProjection: makeTopProjectionFromGeometryPlan(geometryPlan),
           pergolaRenderSource: 'geometry',
           pergolaRenderStatus: 'geometry_ready',
           canEditHouseFootprint: true,
@@ -1844,6 +1973,7 @@ describe('ModelSpaceViewport', () => {
   it('expands model-space focus and world bounds to the true house coordinates in house mode', () => {
     const drawing = makeDrawingModule();
     const planModel = makePlanModelWithLargeHouseContext();
+    const geometryPlan = makeGeometryPlanFixture();
     const rendered = renderIntoDocument(
       <TestModelSpaceViewport
         view="plan"
@@ -1855,7 +1985,8 @@ describe('ModelSpaceViewport', () => {
           moduleId: drawing.id,
           moduleLabel: 'Module 1',
           planModel,
-          geometryPlan: makeGeometryPlanFixture(),
+          geometryPlan,
+          geometryTopProjection: makeTopProjectionFromGeometryPlan(geometryPlan),
           pergolaRenderSource: 'geometry',
           pergolaRenderStatus: 'geometry_ready',
         })}
@@ -1902,6 +2033,7 @@ describe('ModelSpaceViewport', () => {
           moduleLabel: 'Module 1',
           planModel: legacyPlanModel,
           geometryPlan,
+          geometryTopProjection: makeTopProjectionFromGeometryPlan(geometryPlan),
           pergolaRenderSource: 'geometry',
           pergolaRenderStatus: 'geometry_ready',
         })}
@@ -1954,6 +2086,7 @@ describe('ModelSpaceViewport', () => {
             moduleLabel: 'Module 1',
             planModel,
             geometryPlan,
+            geometryTopProjection: makeTopProjectionFromGeometryPlan(geometryPlan),
             pergolaRenderSource: 'geometry',
             pergolaRenderStatus: 'geometry_ready',
           })}
@@ -1995,6 +2128,7 @@ describe('ModelSpaceViewport', () => {
           moduleLabel: 'Module 1',
           planModel,
           geometryPlan,
+          geometryTopProjection: makeTopProjectionFromGeometryPlan(geometryPlan),
           pergolaRenderSource: 'geometry',
           pergolaRenderStatus: 'geometry_ready',
           canEditHouseFootprint: true,
@@ -2042,6 +2176,7 @@ describe('ModelSpaceViewport', () => {
           moduleLabel: 'Module 1',
           planModel,
           geometryPlan,
+          geometryTopProjection: makeTopProjectionFromGeometryPlan(geometryPlan),
           pergolaRenderSource: 'geometry',
           pergolaRenderStatus: 'geometry_ready',
           canEditHouseFootprint: true,

@@ -2,12 +2,14 @@ import type { CostOutputV1 } from '@sp/costing';
 import {
   buildPlanViewModel as buildGeometryPlanViewModel,
   buildSectionViewModel as buildGeometrySectionViewModel,
+  buildTopProjectionViewModel as buildGeometryTopProjectionViewModel,
   normalizeGeometryConfig,
   solveAssembly3D,
   type Assembly3D,
   type GeometryConfig,
   type GeometryPlanViewModel,
   type GeometrySectionViewModel,
+  type GeometryTopProjectionViewModel,
 } from '@sp/geometry';
 import type { ModulePlanModel, ModuleSectionModel } from '@/app/staff/calculator/moduleViews';
 import { buildRawGeometryModuleInput } from './buildRawGeometryModuleInput';
@@ -31,6 +33,7 @@ export type WorkbenchGeometryDerivation =
       assembly: Assembly3D;
       geometryPlan: GeometryPlanViewModel;
       geometrySection: GeometrySectionViewModel;
+      geometryTopProjection: GeometryTopProjectionViewModel;
       planModel: ModulePlanModel;
       sectionModel: ModuleSectionModel;
     }
@@ -110,6 +113,7 @@ export function deriveWorkbenchGeometry(input: {
 
   const geometryPlan = buildGeometryPlanViewModel(solved.value);
   const geometrySection = buildGeometrySectionViewModel(solved.value);
+  const geometryTopProjection = buildGeometryTopProjectionViewModel(solved.value);
   return {
     kind: 'geometry',
     renderSource: 'geometry',
@@ -118,6 +122,7 @@ export function deriveWorkbenchGeometry(input: {
     assembly: solved.value,
     geometryPlan,
     geometrySection,
+    geometryTopProjection,
     planModel: buildLegacyModulePlanModelFromGeometry({
       geometryPlan,
       module: input.module,

@@ -36,6 +36,7 @@ const OBJECT_WORKBENCH_PLAN_OVERLAY_BOUNDARY_FILES = [
   path.join('apps', 'portal', 'app', 'staff', 'calculator', 'ModuleViewsCard.tsx'),
   path.join('apps', 'portal', 'app', 'staff', 'calculator', 'ModuleViewsCard.test.tsx'),
   path.join('apps', 'portal', 'lib', 'drawings', 'views', 'plan', 'buildPlanViewModel.ts'),
+  path.join('apps', 'portal', 'lib', 'drawings', 'views', 'plan', 'objectWorkbenchPlanOverlay.ts'),
   path.join('apps', 'portal', 'lib', 'drawings', 'interactions', 'deckInteractionAdapter.ts'),
   path.join('apps', 'portal', 'lib', 'drawings', 'interactions', 'openingInteractionAdapter.ts'),
   path.join('apps', 'portal', 'lib', 'drawings', 'interactions', 'deckInteractionAdapter.test.ts'),

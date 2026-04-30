@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import type { CostOutputV1 } from '@sp/costing';
-import type { GeometryPlanViewModel } from '@sp/geometry';
+import type { GeometryPlanViewModel, GeometryTopProjectionViewModel } from '@sp/geometry';
 import type { CalculatorModuleInputs } from '@/lib/types/calculator';
 import type { ObjectWorkbenchPlanOverlay } from '@/lib/drawings/views/plan/objectWorkbenchPlanOverlay';
 import { buildEstimateDrawingModules } from '@/lib/estimates/moduleDrawing';
@@ -179,6 +179,60 @@ function makeGeometryPlanFixture(): GeometryPlanViewModel {
       maxY: 3000,
       lengthMm: 6000,
       projectionMm: 3000,
+    },
+  };
+}
+
+function makeTopProjectionFixture(): GeometryTopProjectionViewModel {
+  return {
+    coordinateSpace: 'world_xy_mm',
+    screenAxis: {
+      x: 'world_x_right',
+      y: 'world_y_down',
+    },
+    shapes: [
+      {
+        id: 'top-projection-house-roof',
+        sourceObjectId: 'scene-house-roof',
+        sourceId: 'solved-house-roof',
+        sourceType: 'house_surface_solid',
+        family: 'house',
+        kind: 'roof',
+        polygon: [
+          { x: -500, y: -2200 },
+          { x: 6500, y: -2200 },
+          { x: 6500, y: 0 },
+          { x: -500, y: 0 },
+        ],
+        zOrder: 10,
+        zMin: 2400,
+        zMax: 3100,
+      },
+      {
+        id: 'top-projection-pergola-roof',
+        sourceObjectId: 'scene-pergola-roof',
+        sourceId: 'roof-plane-main',
+        sourceType: 'roof_plane',
+        family: 'pergola',
+        kind: 'roof_plane',
+        polygon: [
+          { x: 500, y: 250 },
+          { x: 6500, y: 250 },
+          { x: 6500, y: 3250 },
+          { x: 500, y: 3250 },
+        ],
+        zOrder: 50,
+        zMin: 2400,
+        zMax: 2600,
+      },
+    ],
+    extents: {
+      minX: -500,
+      minY: -2200,
+      maxX: 6500,
+      maxY: 3250,
+      widthMm: 7000,
+      heightMm: 5450,
     },
   };
 }
@@ -550,6 +604,60 @@ describe('ModuleViewsCard', () => {
     expect(markup).not.toContain('data-debug-crop=');
   });
 
+  it('renders model-space pergola visuals and hit targets from the top projection', () => {
+    const drawing = makeDrawingModule();
+    const markup = renderToStaticMarkup(
+      <ModuleDrawingRenderer
+        view="plan"
+        status="ready"
+        planModel={drawing.planModel}
+        sectionModel={drawing.sectionModel}
+        presentation="model"
+        modelSpacePergolaGeometry={makeGeometryPlanFixture()}
+        modelSpaceTopProjection={makeTopProjectionFixture()}
+        modelSpacePergolaRenderSource="geometry"
+        modelSpacePergolaRenderStatus="geometry_ready"
+        currentPergolaId="pergola-1"
+        onPergolaSelect={() => undefined}
+      />,
+    );
+
+    const projectedRoofPoints = extractPolygonPoints(
+      markup,
+      'data-plan-top-projection-shape',
+      'top-projection-pergola-roof',
+    );
+    const hitPoints = extractPolygonPoints(markup, 'data-pergola-shape-hit', 'pergola-1');
+
+    expect(markup).toContain('data-top-projection-source-object-id="scene-pergola-roof"');
+    expect(markup).toContain('data-top-projection-source-type="roof_plane"');
+    expect(markup).toContain('data-pergola-shape-hit-source="top_projection"');
+    expect(hitPoints).toEqual(projectedRoofPoints);
+  });
+
+  it('does not render legacy-looking model-space plan geometry when solved geometry is unsupported', () => {
+    const drawing = makeDrawingModule();
+    const markup = renderToStaticMarkup(
+      <ModuleDrawingRenderer
+        view="plan"
+        status="ready"
+        planModel={drawing.planModel}
+        sectionModel={drawing.sectionModel}
+        presentation="model"
+        modelSpacePergolaGeometry={makeGeometryPlanFixture()}
+        modelSpaceTopProjection={makeTopProjectionFixture()}
+        modelSpacePergolaRenderSource="geometry"
+        modelSpacePergolaRenderStatus="legacy_unsupported_family"
+        currentPergolaId="pergola-1"
+        onPergolaSelect={() => undefined}
+      />,
+    );
+
+    expect(markup).not.toContain('data-plan-primary-fill="true"');
+    expect(markup).not.toContain('data-plan-top-projection-shape=');
+    expect(markup).not.toContain('data-pergola-shape-hit-source="legacy"');
+  });
+
   it('renders section model space with a content-sized SVG viewport', () => {
     const drawing = makeDrawingModule();
     const markup = renderToStaticMarkup(
@@ -911,6 +1019,7 @@ describe('ModuleViewsCard', () => {
             { x: 1.4, y: -0.12 },
             { x: 0.4, y: -0.12 },
           ],
+          detailSegments: [],
           selected: true,
           custom: false,
           muted: false,
@@ -930,6 +1039,9 @@ describe('ModuleViewsCard', () => {
           },
           deckDragEligibility: null,
           openingDragEligibility: null,
+          source: 'geometry',
+          geometrySourceId: 'opening-1-marker',
+          renderStatus: 'geometry_ready',
         },
       ],
       presetAnnotations: [],
@@ -1557,6 +1669,9 @@ describe('ModuleViewsCard', () => {
           openingInteraction: null,
           deckDragEligibility: null,
           openingDragEligibility: null,
+          source: 'geometry',
+          geometrySourceId: 'deck-1',
+          renderStatus: 'geometry_ready',
         },
       ],
       presetAnnotations: [],
@@ -1606,6 +1721,9 @@ describe('ModuleViewsCard', () => {
           openingInteraction: null,
           deckDragEligibility: null,
           openingDragEligibility: null,
+          source: 'geometry',
+          geometrySourceId: 'deck-1',
+          renderStatus: 'geometry_ready',
         },
       ],
       presetAnnotations: [

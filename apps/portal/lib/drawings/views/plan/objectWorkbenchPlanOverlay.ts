@@ -1,7 +1,10 @@
 import {
   buildCustomHouseFootprintPolygon,
   type Assembly3D,
+  type GeometryMetadata,
   type GeometryPlanViewModel,
+  type GeometryTopProjectionShape,
+  type GeometryTopProjectionViewModel,
 } from '@sp/geometry';
 import type {
   CalculatorHouseFootprintPolygonPoint,
@@ -39,6 +42,10 @@ type LocalPoint = {
 
 type GeometryPlanSurface = NonNullable<GeometryPlanViewModel['house']['surfaces']>[number];
 type GeometryPlanLine = NonNullable<GeometryPlanViewModel['house']['lines']>[number];
+type GeometryResolvedPlanPolygon = {
+  id: string;
+  polygon: PlanPoint[];
+};
 
 export type ObjectWorkbenchPlanHousePolygonSource =
   | 'custom_saved'
@@ -185,6 +192,7 @@ export type ObjectWorkbenchPlanOverlayInput = {
   openings: OpeningObjectModel[];
   selection: ObjectWorkbenchPlanOverlaySelection;
   geometryPlan: GeometryPlanViewModel | null | undefined;
+  geometryTopProjection?: GeometryTopProjectionViewModel | null | undefined;
   geometryAssembly?: Assembly3D | null | undefined;
   geometryRenderSource?: WorkbenchPergolaRenderSource;
   geometryRenderStatus?: WorkbenchPergolaRenderStatus;
@@ -209,7 +217,8 @@ type GeometryPlanLookup = {
     id: string;
     polygon: PlanPoint[];
   } | null;
-  deckSurfaces: Map<string, { id: string; polygon: PlanPoint[] }>;
+  deckSurfaces: Map<string, GeometryResolvedPlanPolygon>;
+  openingPolygons: Map<string, GeometryResolvedPlanPolygon>;
   referenceFrames: ObjectWorkbenchPlanDeckReferenceFrame[];
   openingFrames: Map<string, GeometryOpeningFrame>;
 };
@@ -238,7 +247,7 @@ function parseMetres(value: string | number | null | undefined, fallback = 0): n
 }
 
 function metadataString(
-  metadata: GeometryPlanSurface['metadata'] | GeometryPlanLine['metadata'],
+  metadata: GeometryPlanSurface['metadata'] | GeometryPlanLine['metadata'] | GeometryMetadata | undefined,
   key: string,
 ): string | null {
   const value = metadata?.[key];
@@ -270,6 +279,68 @@ function lineToMetres(line: { start: { x: number; y: number }; end: { x: number;
 
 function polygonToMetres(polygon: Array<{ x: number; y: number }>): PlanPoint[] {
   return polygon.map(pointToMetres);
+}
+
+function topProjectionPolygonToMetres(shape: GeometryTopProjectionShape): PlanPoint[] {
+  return polygonToMetres(shape.polygon);
+}
+
+function topProjectionMetadataString(shape: GeometryTopProjectionShape, key: string): string | null {
+  return metadataString(shape.metadata, key);
+}
+
+function topProjectionShapeOwnerId(shape: GeometryTopProjectionShape): string {
+  return shape.sourceId ?? shape.sourceObjectId ?? shape.id;
+}
+
+function buildTopProjectionLookup(
+  topProjection: GeometryTopProjectionViewModel | null | undefined,
+): Pick<GeometryPlanLookup, 'footprint' | 'deckSurfaces' | 'openingPolygons'> {
+  const deckSurfaces = new Map<string, GeometryResolvedPlanPolygon>();
+  const openingPolygons = new Map<string, GeometryResolvedPlanPolygon>();
+  let footprint: GeometryResolvedPlanPolygon | null = null;
+  if (!topProjection) {
+    return {
+      footprint,
+      deckSurfaces,
+      openingPolygons,
+    };
+  }
+
+  const sortedShapes = [...topProjection.shapes].sort((left, right) => left.zOrder - right.zOrder);
+  for (const shape of sortedShapes) {
+    if (shape.family !== 'house') continue;
+    const polygon = topProjectionPolygonToMetres(shape);
+    if (polygon.length < 3) continue;
+    if (shape.kind === 'footprint' && !footprint) {
+      footprint = {
+        id: shape.id,
+        polygon,
+      };
+      continue;
+    }
+    if (shape.kind === 'deck') {
+      const deckId = topProjectionMetadataString(shape, 'sourceId') ?? topProjectionShapeOwnerId(shape);
+      deckSurfaces.set(deckId, {
+        id: shape.id,
+        polygon,
+      });
+      continue;
+    }
+    if (shape.kind === 'opening_marker') {
+      const openingId = topProjectionMetadataString(shape, 'openingId') ?? topProjectionShapeOwnerId(shape);
+      openingPolygons.set(openingId, {
+        id: shape.id,
+        polygon,
+      });
+    }
+  }
+
+  return {
+    footprint,
+    deckSurfaces,
+    openingPolygons,
+  };
 }
 
 function parseLocalPolygon(
@@ -350,17 +421,22 @@ function frameSideFromOutward(input: {
   return input.outward.x < 0 ? 'left' : 'right';
 }
 
-function buildGeometryLookup(geometryPlan: GeometryPlanViewModel): GeometryPlanLookup {
+function buildGeometryLookup(
+  geometryPlan: GeometryPlanViewModel,
+  geometryTopProjection?: GeometryTopProjectionViewModel | null,
+): GeometryPlanLookup {
+  const topProjectionLookup = buildTopProjectionLookup(geometryTopProjection);
   const footprintSurface = (geometryPlan.house.surfaces ?? []).find((surface) => surface.kind === 'footprint') ?? null;
-  const footprint = footprintSurface
+  const footprint = topProjectionLookup.footprint ?? (footprintSurface
     ? {
         id: footprintSurface.id,
         polygon: polygonToMetres(footprintSurface.boundary),
       }
-    : null;
-  const deckSurfaces = new Map<string, { id: string; polygon: PlanPoint[] }>();
+    : null);
+  const deckSurfaces = new Map<string, GeometryResolvedPlanPolygon>(topProjectionLookup.deckSurfaces);
   for (const surface of geometryPlan.house.surfaces ?? []) {
     if (surface.kind !== 'deck') continue;
+    if (deckSurfaces.has(surface.id)) continue;
     deckSurfaces.set(surface.id, {
       id: surface.id,
       polygon: polygonToMetres(surface.boundary),
@@ -432,6 +508,7 @@ function buildGeometryLookup(geometryPlan: GeometryPlanViewModel): GeometryPlanL
   return {
     footprint,
     deckSurfaces,
+    openingPolygons: topProjectionLookup.openingPolygons,
     referenceFrames,
     openingFrames,
   };
@@ -1247,7 +1324,7 @@ export function buildObjectWorkbenchPlanOverlay(input: ObjectWorkbenchPlanOverla
   const geometryPlan = input.geometryPlan;
   if (!geometryPlan) return null;
 
-  const lookup = buildGeometryLookup(geometryPlan);
+  const lookup = buildGeometryLookup(geometryPlan, input.geometryTopProjection);
   const footprint = lookup.footprint;
   if (!footprint?.polygon.length) return null;
   const houseForm = input.houseForm ?? input.houseAssembly?.houseForms[0] ?? null;
@@ -1318,7 +1395,8 @@ export function buildObjectWorkbenchPlanOverlay(input: ObjectWorkbenchPlanOverla
     const widthM = parseMetres(opening.widthM, Number.NaN);
     const offsetAlongWallM = parseMetres(opening.offsetAlongWallM, Number.NaN);
     if (!Number.isFinite(widthM) || !Number.isFinite(offsetAlongWallM)) continue;
-    const polygon = buildOpeningPolygonFromFrame({
+    const geometryOpeningPolygon = lookup.openingPolygons.get(opening.id) ?? null;
+    const polygon = geometryOpeningPolygon?.polygon ?? buildOpeningPolygonFromFrame({
       frame: openingFrame,
       widthM,
       offsetAlongWallM,
@@ -1358,8 +1436,8 @@ export function buildObjectWorkbenchPlanOverlay(input: ObjectWorkbenchPlanOverla
           ? 'Drag the selected opening along the host wall, or click dimensions to edit.'
           : 'This opening needs a resolvable host wall before drag is available.',
       },
-      source: 'geometry_derived',
-      geometrySourceId: openingFrame.hostEdgeId,
+      source: geometryOpeningPolygon ? 'geometry' : 'geometry_derived',
+      geometrySourceId: geometryOpeningPolygon?.id ?? openingFrame.hostEdgeId,
       renderStatus: 'geometry_ready',
     });
   }
