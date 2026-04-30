@@ -65,8 +65,11 @@ const OBJECT_WORKBENCH_GEOMETRY_EDIT_ADAPTER_FILE = path.join(
   'geometryEditAdapter.ts',
 );
 const OBJECT_WORKBENCH_RAIL_INSPECTOR_STATE_BOUNDARY_FILES = [
+  path.join('apps', 'portal', 'lib', 'drawings', 'state', 'drawingWorkbenchStore.ts'),
   path.join('apps', 'portal', 'lib', 'drawings', 'state', 'drawingWorkbenchRailModel.ts'),
   path.join('apps', 'portal', 'lib', 'drawings', 'state', 'objectWorkbenchInspectorModel.ts'),
+  path.join('apps', 'portal', 'lib', 'drawings', 'state', 'objectWorkbenchStatusModel.ts'),
+  path.join('apps', 'portal', 'lib', 'drawings', 'interactions', 'deckInteractionContract.ts'),
 ];
 const FLAT_COMPATIBILITY_DERIVED_FIELD_READ =
   /\b[A-Za-z_$][\w$]*\.derived\.(?:house|houseCount|decks|openings|activeDeck|activeDeckId|activeOpening|activeOpeningId|pergolas|activePergola|activePergolaId|roofForm|roofReviewStatus|roofValidationStatus|roofValidationCode|roofValidationMessage|roofApproximationReasons|roofProvenance|roofGeometryKind|roofAppendageEnabled|roofAppendageStatus|roofAppendageSupportedHostEdges|roofAppendageSupportReason|migrationWarnings|migrationWarningCount|houseIsLowConfidence)\b/;
@@ -394,6 +397,9 @@ describe('object workbench import guards', () => {
       }
       if (/from ['"][^'"]*\.\/compat\/objectWorkbenchCompatibilityModel['"]/.test(source)) {
         violations.push(`${relativeBoundaryPath} imports the compatibility state facade directly`);
+      }
+      if (/from ['"][^'"]*state\/compat\//.test(source) || /from ['"][^'"]*\.\/compat\//.test(source)) {
+        violations.push(`${relativeBoundaryPath} imports state compatibility internals directly`);
       }
     }
 

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { CostOutputV1 } from '@sp/costing';
 import type { CalculatorModuleInputs } from '@/lib/types/calculator';
+import { normalizeHouseFootprintParams } from '@/lib/types/calculator';
 import { getSanctuaryGeometryWorkbenchFixture } from '@/lib/drawings/sanctuaryWorkbenchFixtures';
 import { buildEstimateDrawingDraftFromSnapshot } from '@/lib/estimates/drawingEdits';
 import { ESTIMATE_PRICING_SYNC_STATE_OUTPUT_KEY } from '@/lib/estimates/costingPayload';
@@ -120,13 +121,22 @@ function applyObjectFirstCompatibilityDraft(input: {
   const derivedEnvelope = baselineStore.persisted.projectModel.houseAssembly?.derivedEnvelope ?? null;
 
   if (input.compatibility.roof && houseForm) {
+    const roofPatch = input.compatibility.roof;
     houseForm.roofIntentAuthored = true;
     houseForm.roofIntent = {
       ...houseForm.roofIntent,
-      ...input.compatibility.roof,
+      form: roofPatch.form ?? houseForm.roofIntent.form,
+      material: roofPatch.material ?? houseForm.roofIntent.material,
+      primaryPitchDeg: roofPatch.primaryPitchDeg ?? houseForm.roofIntent.primaryPitchDeg,
+      primaryFallDirection: roofPatch.primaryFallDirection ?? houseForm.roofIntent.primaryFallDirection,
+      ridgeAxis: roofPatch.ridgeAxis ?? houseForm.roofIntent.ridgeAxis,
+      openGableEndIds: roofPatch.openGableEndIds ?? houseForm.roofIntent.openGableEndIds,
       appendage: {
-        ...houseForm.roofIntent.appendage,
-        ...(input.compatibility.roof.appendage ?? {}),
+        enabled: roofPatch.appendage?.enabled ?? houseForm.roofIntent.appendage.enabled,
+        form: roofPatch.appendage?.form ?? houseForm.roofIntent.appendage.form,
+        hostEdge: roofPatch.appendage?.hostEdge ?? houseForm.roofIntent.appendage.hostEdge,
+        pitchDeg: roofPatch.appendage?.pitchDeg ?? houseForm.roofIntent.appendage.pitchDeg,
+        dropMm: roofPatch.appendage?.dropMm ?? houseForm.roofIntent.appendage.dropMm,
       },
     };
   }
@@ -1230,8 +1240,8 @@ describe('buildDrawingWorkbenchStore', () => {
     expect(store.derived.objectWorkbench.houseForm.roof.validationCode).toBeNull();
     expect(store.derived.objectWorkbench.houseForm.roof.validationMessage).toBeNull();
     expect(store.derived.objectWorkbench.houseForm.roof.approximationReasons).toEqual([]);
-    expect(store.derived.objectWorkbench.houseForm.roof.provenance.form).toBe('house_first_draft');
-    expect(store.derived.objectWorkbench.houseForm.roof.provenance.ridgeAxis).toBe('house_first_draft');
+    expect(store.derived.objectWorkbench.houseForm.roof.provenance.form).toBe('object_first_draft');
+    expect(store.derived.objectWorkbench.houseForm.roof.provenance.ridgeAxis).toBe('object_first_draft');
     expect(store.derived.objectWorkbench.houseForm.roof.geometryKind).toBe('bent_spine_joined_gable');
     expect(store.derived.objectWorkbench.houseForm.roof.intent.appendage.enabled).toBe(false);
     expect(store.derived.objectWorkbench.houseForm).toMatchObject({
@@ -1362,7 +1372,7 @@ describe('buildDrawingWorkbenchStore', () => {
     draft.inputs.modules[0]!.attachmentSide = 'rear';
     draft.inputs.modules[0]!.houseFootprintPreset = 'wrap_left';
     draft.inputs.modules[0]!.houseFootprintParams = {
-      ...(draft.inputs.modules[0]!.houseFootprintParams ?? {}),
+      ...normalizeHouseFootprintParams(draft.inputs.modules[0]!.houseFootprintParams),
       widthM: '10',
       offsetXM: '-.5',
       setbackM: '.5',

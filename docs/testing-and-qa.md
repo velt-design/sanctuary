@@ -2,9 +2,17 @@
 
 Use the smallest test that covers the risk. Run broader suites when touching shared workflow, portal shell, scheduling, local-first, Supabase access, or public lead/quote flows.
 
+## Canonical Command Source
+
+Keep general repo command lists here. Other docs should link to this doc instead of duplicating broad command blocks. Feature docs may still list focused commands for their own verification gates.
+
+The root `npm run dev`, `build`, and `start` scripts only print the app-specific command to use.
+
 ## Common Commands
 
 ```bash
+npm run dev:marketing
+npm run dev:portal
 npm run test
 npm run test:marketing
 npm run test:portal
@@ -20,6 +28,16 @@ npm run text:mojibake
 npm run cache:forbid
 npm run brand:forbid
 npm run schedule:bundle-budget
+```
+
+Operational commands:
+
+```bash
+npm run portal:invite
+npm run running-jobs:legacy-import
+npm run costing:rebaseline-overrides
+npm run geometry:generate-profile-assets
+npm run emails:preview
 ```
 
 ## Docs-Only Checks

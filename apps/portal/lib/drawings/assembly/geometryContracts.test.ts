@@ -166,7 +166,9 @@ function profile(widthM: number | null | undefined, depthM: number | null | unde
 }
 
 function normalizeConnectionType(value: DrawingAssemblyModel['houseContext']['connectionType']): ConnectionType {
-  return value === 'none' ? 'freestanding' : value;
+  if (value === 'none') return 'freestanding';
+  if (value === 'facade') return 'wall';
+  return value;
 }
 
 function roofTypeFor(current: DrawingAssemblyModel): Assembly3D['family'] {
@@ -399,6 +401,7 @@ function toAssembly3D(current: DrawingAssemblyModel): Assembly3D {
     },
     members,
     roofPlanes,
+    roofCladdingPanels: [],
     supportConditions: [
       {
         type: 'house_connection',
@@ -489,7 +492,7 @@ describe('geometry contract compatibility', () => {
       makeModule({
         pergolaStyle: 'pitched',
         boxPerimeterEnabled: true,
-        internalRoofType: 'flat',
+        internalRoofType: 'pitched',
         roofMaterial: 'timber',
         lengthM: '5.5',
         projectionM: '3.5',

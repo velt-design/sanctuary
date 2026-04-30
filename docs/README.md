@@ -19,11 +19,12 @@ These docs are current-state references and active guardrails for coding agents.
 | `architecture.md` | Current | You need the repo map, app/package boundaries, or CI/script overview. |
 | `platform-workflow.md` | Current | You need to understand lead, project, estimate, quote, invoice, design, schedule, or running-job flow. |
 | `environment-auth-supabase.md` | Current | You need env vars, Supabase auth, role access, migrations, or schema readiness. |
-| `testing-and-qa.md` | Current | You need test commands, Playwright auth, smoke checks, performance checks, or manual QA gates. |
+| `testing-and-qa.md` | Current | You need the canonical command catalog, Playwright auth, smoke checks, performance checks, or manual QA gates. |
+| `quotes-invoices-job-packs.md` | Current | You are touching quote, invoice, public-token, PDF/email, file-artifact, or job-pack side effects. |
+| `parallel-work-guardrails.md` | Active guardrail | You are working in parallel across apps, packages, shared flows, docs, or design workbench migration lanes. |
 | `costing-and-geometry.md` | Current | You are touching costing inputs/outputs, geometry semantics, or pricing/shape assumptions. |
 | `local-first-sync.md` | Current | You are touching portal working copies, mutation queue, optimistic state, or conflict handling. |
 | `design-workbench-architecture.md` | Current | You are touching drawing workbench, object-first model, geometry preview, or direct manipulation. |
-| `design-workbench-parallel-migration-rules.md` | Active guardrail | You are doing parallel workbench migration work or touching solved-model, compatibility, plan, 3D, sheet, or interaction boundaries. |
 | `decision-log.md` | Active guardrail log | You need lessons from past mistakes, durable decisions, or reusable safety rules before risky work. |
 | `design-list.md` | Current | You are touching `/staff/projects/design-packages` or design-package request APIs. |
 | `running-jobs.md` | Current | You are touching `/staff/projects/running-jobs` or running-job spreadsheet APIs. |

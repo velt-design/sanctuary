@@ -17,34 +17,88 @@ import {
   type CalculatorHouseStoreyMode,
   type CalculatorModuleInputs,
 } from '@/lib/types/calculator';
-import {
-  normalizeWallOpeningKind,
-  resolveOpeningPanelCount,
-} from './compat/objectWorkbenchCompatibilityModel';
-import type {
-  DeckElevationMode,
-  DeckAttachmentMode,
-  DeckFloatingPresetRect,
-  DeckKind,
-  DeckPresetRect,
-  DeckPresetType,
-  DeckShape,
-  DeckSupportClassification,
-  DeckSupportWarningCode,
-  DeckSurfaceMaterial,
-  DeckValidationCode,
-  HouseAttachmentZoneKind,
-  HouseRoofAppendageForm,
-  HouseRoofForm,
-  HouseRoofPrimaryFallDirection,
-  HouseRoofRidgeAxis,
-  SliderPanelCount,
-  WallOpeningHostSide,
-  WallOpeningKind,
-  WallOpeningValidationCode,
-} from './compat/objectWorkbenchCompatibilityModel';
-
 export type WorkbenchObjectFamily = 'house_forms' | 'decks' | 'openings' | 'pergolas';
+
+export type HouseRoofForm = 'flat' | 'mono' | 'gable' | 'hipped';
+export type HouseRoofPrimaryFallDirection = 'positive_x' | 'negative_x' | 'positive_y' | 'negative_y';
+export type HouseRoofRidgeAxis = 'x' | 'y';
+export type HouseRoofAppendageForm = 'flat' | 'mono';
+export type DeckKind = 'deck' | 'landing';
+export type DeckShape = 'preset' | 'custom';
+export type DeckAttachmentMode = 'floating' | 'single_edge' | 'corner_dual_edge';
+export type DeckPresetType = 'rect_attached' | 'rect_detached';
+export type DeckElevationMode = 'ground' | 'stepped' | 'aligned_to_threshold';
+export type DeckSurfaceMaterial = 'timber_decking' | 'composite' | 'concrete';
+export type DeckPresetRect = {
+  widthM: string;
+  depthM: string;
+  centerOffsetM: string;
+  detachedGapM?: string | null;
+};
+export type DeckFloatingPresetRect = {
+  centerAlongM: string;
+  centerDepthM: string;
+  widthM: string;
+  depthM: string;
+};
+export type DeckSupportClassification = 'ground_supported' | 'threshold_attached' | 'mixed_or_unclear';
+export type DeckSupportWarningCode =
+  | 'insufficient_host_edge_contact'
+  | 'detached_too_close_to_house'
+  | 'threshold_alignment_offset'
+  | 'unsupported_house_intersection';
+export type DeckValidationCode =
+  | 'self_intersecting_outline'
+  | 'outline_inside_house'
+  | 'attached_missing_host_edge'
+  | 'overlapping_decks'
+  | 'detached_threshold_alignment'
+  | 'unsupported_house_intersection';
+export type WallOpeningKind = 'window' | 'hinged_door' | 'slider' | 'stacker';
+export const WALL_OPENING_KINDS = ['window', 'hinged_door', 'slider', 'stacker'] as const;
+export type SliderPanelCount = 2 | 3 | 4;
+export const SLIDER_PANEL_COUNTS = [2, 3, 4] as const;
+export type WallOpeningHostSide = NonNullable<CalculatorModuleInputs['attachmentSide']>;
+export type WallOpeningValidationCode =
+  | 'missing_host_wall'
+  | 'ambiguous_host_wall'
+  | 'invalid_width'
+  | 'invalid_height'
+  | 'invalid_sill_height'
+  | 'offset_out_of_bounds'
+  | 'span_exceeds_wall'
+  | 'insufficient_corner_clearance'
+  | 'overlapping_openings';
+export type HouseAttachmentZoneKind = 'wall' | 'soffit' | 'fascia' | 'roof_edge';
+
+export function isWallOpeningKind(value: unknown): value is WallOpeningKind {
+  return typeof value === 'string' && WALL_OPENING_KINDS.includes(value as WallOpeningKind);
+}
+
+export function normalizeWallOpeningKind(value: unknown): WallOpeningKind {
+  return isWallOpeningKind(value) ? value : 'window';
+}
+
+export function isSliderPanelCount(value: unknown): value is SliderPanelCount {
+  return typeof value === 'number' && SLIDER_PANEL_COUNTS.includes(value as SliderPanelCount);
+}
+
+export function normalizeSliderPanelCount(value: unknown): SliderPanelCount | null {
+  if (isSliderPanelCount(value)) return value;
+  if (typeof value === 'string') {
+    const parsed = Number.parseInt(value, 10);
+    return isSliderPanelCount(parsed) ? parsed : null;
+  }
+  return null;
+}
+
+export function resolveOpeningPanelCount(
+  kind: WallOpeningKind,
+  value: unknown,
+): SliderPanelCount | null {
+  if (kind !== 'slider') return null;
+  return normalizeSliderPanelCount(value) ?? 2;
+}
 
 export type WorkbenchObjectRef = {
   family: WorkbenchObjectFamily;

@@ -38,6 +38,7 @@ Quotes are created from estimates and can be viewed publicly through tokenized r
 - Public quote routes live under `apps/marketing/app/quote/[quoteId]`.
 - Deposit invoice routes live under portal staff APIs and public marketing invoice routes.
 - Quote and invoice emails use Resend-backed transactional helpers.
+- Canonical doc: `quotes-invoices-job-packs.md`.
 
 ## Design List
 
@@ -75,6 +76,7 @@ Job packs sit after quoting/design and before or during install preparation.
 - Staff project tab: `apps/portal/components/projects/ProjectPage/tabs/JobPacksTab.tsx`.
 - Staff APIs: `apps/portal/app/api/staff/v1/job-packs`.
 - Output helpers: `apps/portal/lib/outputs` and `apps/portal/lib/jobPacks`.
+- Canonical doc: `quotes-invoices-job-packs.md`.
 
 ## Admin And Pricebook
 

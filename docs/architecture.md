@@ -43,34 +43,7 @@ Shared packages own business logic that must not be forked into apps. If app cod
 
 ## Important Scripts
 
-```bash
-npm run dev:marketing
-npm run dev:portal
-npm run build:marketing
-npm run build:portal
-npm run test:marketing
-npm run test:portal
-npm run lint
-```
-
-Guard scripts:
-
-```bash
-npm run cache:forbid
-npm run brand:forbid
-npm run text:mojibake
-npm run schedule:bundle-budget
-```
-
-Operational scripts:
-
-```bash
-npm run portal:invite
-npm run running-jobs:legacy-import
-npm run costing:rebaseline-overrides
-npm run geometry:generate-profile-assets
-npm run emails:preview
-```
+`docs/testing-and-qa.md` is the canonical command source for common scripts, guard scripts, browser tests, docs-only checks, and operational commands. Update that doc when broad command guidance changes.
 
 ## CI
 

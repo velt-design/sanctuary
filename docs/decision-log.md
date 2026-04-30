@@ -21,11 +21,62 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. Use 
 
 | Date | Area | Status | Guardrail |
 | --- | --- | --- | --- |
+| 2026-05-01 | Docs/Testing | Promoted | Keep broad repo command guidance in `docs/testing-and-qa.md`; link to it instead of duplicating command blocks. |
+| 2026-05-01 | Parallel Work | Promoted | Use universal parallel-work guardrails for concurrent lanes across apps, packages, docs, and workbench migration. |
+| 2026-05-01 | Quotes/Invoices/Job Packs | Promoted | High-risk side-effect workflows need a canonical doc before future behavior changes. |
 | 2026-05-01 | Docs | Promoted | Read the agent playbook for non-trivial portal work; promote durable lessons from this log into the playbook. |
 | 2026-05-01 | Docs | Promoted | Do not delete active guardrail docs without confirming usage or replacing the rule. |
 | 2026-05-01 | Docs | Promoted | Distinguish current-state references from active operating rules. |
 
 ## Entries
+
+### 2026-05-01 - Docs/Testing - Canonical Command Source
+
+Area: Docs/Testing
+
+Status: Promoted
+
+Decision or mistake: broad command lists were repeated across entrypoint and architecture docs, creating drift risk when scripts or verification expectations change.
+
+Why it mattered: future agents need one trusted place for repo commands so docs stay current and task-specific docs can focus on ownership, risks, and focused verification gates.
+
+Current guardrail: keep general repo commands, docs-only checks, browser commands, and operational commands in `docs/testing-and-qa.md`. Other docs should link there and only list focused commands when the area needs a specific gate.
+
+Promoted to: `docs/testing-and-qa.md`, `AGENTS.md`, `README.md`, `docs/architecture.md`, `docs/agent-playbook.md`, `docs/README.md`.
+
+Related docs/tests: `docs/testing-and-qa.md`, `rg -n "/User[s]/|my[-]site|create[-]next[-]app|costing[-]baseline|\\.env\\.example" README.md AGENTS.md docs`, `npm run text:mojibake`.
+
+### 2026-05-01 - Parallel Work - Universal Guardrails
+
+Area: Parallel Work
+
+Status: Promoted
+
+Decision or mistake: the workbench-specific guardrail was broadened into universal parallel-work guardrails for concurrent work across marketing, portal, shared packages, docs, and workbench migration lanes.
+
+Why it mattered: simultaneous marketing and portal work can drift across shared customer flows, quote and invoice routes, analytics and consent behavior, package contracts, and portal source-of-truth boundaries even when files do not conflict.
+
+Current guardrail: before parallel lanes or cross-app work, read `docs/parallel-work-guardrails.md`, declare lane ownership, keep source-of-truth boundaries explicit, make temporary bridges visible, and run the named focused and integration checks.
+
+Promoted to: `docs/parallel-work-guardrails.md`, `docs/agent-playbook.md`, `docs/README.md`, `AGENTS.md`.
+
+Related docs/tests: `docs/parallel-work-guardrails.md`, `docs/platform-workflow.md`, `docs/testing-and-qa.md`, `npm run text:mojibake`.
+
+### 2026-05-01 - Quotes/Invoices/Job Packs - Side-Effect Workflow Doc
+
+Area: Quotes/Invoices/Job Packs
+
+Status: Promoted
+
+Decision or mistake: quote, invoice, public-token, PDF/email, and job-pack flows were identified as high-risk side-effect workflows without a dedicated canonical reference.
+
+Why it mattered: future changes in these areas can affect public access, token security, generated files, email delivery, invoice retries, quote locks, project stages, and job-pack outputs.
+
+Current guardrail: before changing these flows, read `docs/quotes-invoices-job-packs.md` and verify side effects, token boundaries, PDFs, emails, generated artifacts, and failure states.
+
+Promoted to: `docs/quotes-invoices-job-packs.md`, `docs/agent-playbook.md`, `docs/README.md`, `AGENTS.md`.
+
+Related docs/tests: `docs/quotes-invoices-job-packs.md`, `docs/platform-workflow.md`, `docs/testing-and-qa.md`.
 
 ### 2026-05-01 - Docs - Agent Playbook
 
@@ -57,7 +108,7 @@ Current guardrail: before deleting any doc, check whether it is a current refere
 
 Promoted to: `docs/agent-playbook.md`, `docs/README.md`, `AGENTS.md`.
 
-Related docs/tests: `docs/design-workbench-parallel-migration-rules.md`, `docs/README.md`, `AGENTS.md`.
+Related docs/tests: historical predecessor `docs/design-workbench-parallel-migration-rules.md`, now superseded by `docs/parallel-work-guardrails.md`; `docs/README.md`; `AGENTS.md`.
 
 ### 2026-05-01 - Docs - Current References And Operating Rules
 

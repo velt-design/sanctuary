@@ -4,7 +4,10 @@ import type { ObjectWorkbenchGeometryEditState } from '@/lib/drawings/geometry/g
 import SanctuaryWorkbenchRail from './SanctuaryWorkbenchRail';
 
 function makeGeometryState(
-  overrides: Partial<Omit<ObjectWorkbenchGeometryEditState, 'houseContext'>> & {
+  overrides: Omit<Partial<ObjectWorkbenchGeometryEditState>, 'dimensions' | 'roof' | 'connection' | 'houseContext'> & {
+    dimensions?: Partial<ObjectWorkbenchGeometryEditState['dimensions']>;
+    roof?: Partial<ObjectWorkbenchGeometryEditState['roof']>;
+    connection?: Partial<ObjectWorkbenchGeometryEditState['connection']>;
     houseContext?: Partial<ObjectWorkbenchGeometryEditState['houseContext']>;
   } = {},
 ): ObjectWorkbenchGeometryEditState {
@@ -14,11 +17,16 @@ function makeGeometryState(
     dimensions: {
       lengthM: '6',
       projectionM: '3',
+      hipCornerLengthBM: '0',
+      hipCornerProjectionBM: '0',
     },
     roof: {
       material: 'acrylic',
       pitchDeg: '25',
       boxPerimeterEnabled: false,
+      mixedAcrylicBaysMain: '0',
+      mixedAcrylicBaysA: '0',
+      mixedAcrylicBaysB: '0',
     },
     connection: {
       type: 'fascia',

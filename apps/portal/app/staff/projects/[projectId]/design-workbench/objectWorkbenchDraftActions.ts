@@ -18,10 +18,6 @@ import {
   resolveDeckPresetGeometry,
   sanitizeDeckPresetRect,
 } from '@/lib/drawings/state/houseFirstDeckPresets';
-import {
-  normalizeWallOpeningKind,
-  resolveOpeningPanelCount,
-} from '@/lib/drawings/state/compat/objectWorkbenchCompatibilityModel';
 import type {
   DerivedAttachmentZoneModel,
   DerivedWallModel,
@@ -33,6 +29,10 @@ import type {
   ObjectFirstOpeningDraft,
   ObjectFirstPergolaDraft,
   ObjectFirstWorkbenchDraftVNext,
+} from '@/lib/drawings/state/objectFirstWorkbenchModel';
+import {
+  normalizeWallOpeningKind,
+  resolveOpeningPanelCount,
 } from '@/lib/drawings/state/objectFirstWorkbenchModel';
 import type {
   ObjectWorkbenchDeckPatch,

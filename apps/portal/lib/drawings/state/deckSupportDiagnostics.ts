@@ -4,10 +4,13 @@ import {
   supportsHouseFootprints,
   type CalculatorModuleInputs,
 } from '@/lib/types/calculator';
-import type {
-  DeckSupportClassification,
-  DeckSupportWarningCode,
-} from './compat/objectWorkbenchCompatibilityModel';
+
+type DeckSupportClassification = 'ground_supported' | 'threshold_attached' | 'mixed_or_unclear';
+type DeckSupportWarningCode =
+  | 'insufficient_host_edge_contact'
+  | 'detached_too_close_to_house'
+  | 'threshold_alignment_offset'
+  | 'unsupported_house_intersection';
 
 export type DeckSupportAttachmentSide = NonNullable<CalculatorModuleInputs['attachmentSide']>;
 export type DeckSupportResolvedClassification = DeckSupportClassification | 'none';

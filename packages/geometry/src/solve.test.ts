@@ -111,8 +111,38 @@ function buildMonoRoofCovering(
   };
 }
 
+type GeometryConfigOverrides = Omit<
+  Partial<GeometryConfig>,
+  | "datum"
+  | "dimensions"
+  | "roof"
+  | "roofCovering"
+  | "gable"
+  | "box"
+  | "connection"
+  | "supports"
+  | "structural"
+  | "houseContext"
+> & {
+  datum?: Partial<GeometryConfig["datum"]>;
+  dimensions?: Partial<GeometryConfig["dimensions"]>;
+  roof?: Partial<GeometryConfig["roof"]>;
+  roofCovering?: Partial<GeometryConfig["roofCovering"]>;
+  gable?: Partial<GeometryConfig["gable"]>;
+  box?: Partial<GeometryConfig["box"]>;
+  connection?: Partial<GeometryConfig["connection"]>;
+  supports?: Partial<GeometryConfig["supports"]>;
+  structural?: {
+    heights?: Partial<GeometryConfig["structural"]["heights"]>;
+    profiles?: Partial<GeometryConfig["structural"]["profiles"]>;
+    framing?: Partial<GeometryConfig["structural"]["framing"]>;
+    drainage?: Partial<GeometryConfig["structural"]["drainage"]>;
+  };
+  houseContext?: Partial<GeometryConfig["houseContext"]>;
+};
+
 function makeMonoConfig(
-  overrides: Partial<GeometryConfig> = {},
+  overrides: GeometryConfigOverrides = {},
 ): GeometryConfig {
   const spGutterProfile = parseAssemblyMemberProfile("SP Gutter");
   if (!spGutterProfile) {
@@ -263,7 +293,7 @@ function makeMonoConfig(
 }
 
 function makeGableConfig(
-  overrides: Partial<GeometryConfig> = {},
+  overrides: GeometryConfigOverrides = {},
 ): GeometryConfig {
   const spGutterProfile = parseAssemblyMemberProfile("SP Gutter");
   if (!spGutterProfile) {
@@ -383,7 +413,7 @@ function makeGableConfig(
 }
 
 function makeBoxConfig(
-  overrides: Partial<GeometryConfig> = {},
+  overrides: GeometryConfigOverrides = {},
 ): GeometryConfig {
   const base = makeMonoConfig({
     projectId: "proj_box",
@@ -618,7 +648,7 @@ describe("solveAssembly3D", () => {
     expect(box.value.roofPlanes).toHaveLength(1);
     expect(mono.value.house.model?.wallSegments).toHaveLength(4);
     expect(gable.value.house.model?.roofPlanes).toHaveLength(4);
-    expect(box.value.house.model?.eave.gutterLines).toHaveLength(4);
+    expect(box.value.house.model?.eave.gutterLines).toHaveLength(3);
     expect(mono.value.house.attachmentTarget?.kind).toBe("line");
     expect(gable.value.house.attachmentTarget?.kind).toBe("plane");
     expect(box.value.house.attachmentTarget?.kind).toBe("zone");

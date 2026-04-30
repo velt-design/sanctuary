@@ -26,28 +26,7 @@ This repo is optimized for coding agents. Read this file first, then follow link
 
 ## Commands
 
-Use the app-specific scripts:
-
-```bash
-npm run dev:marketing
-npm run dev:portal
-npm run test:marketing
-npm run test:portal
-npm run build:marketing
-npm run build:portal
-npm run lint
-```
-
-Useful focused checks:
-
-```bash
-npm run text:mojibake
-npm run cache:forbid
-npm run brand:forbid
-npm run schedule:bundle-budget
-npm run test:portal:smoke
-npm run test:portal:performance
-```
+Use `docs/testing-and-qa.md` as the canonical command source. Feature docs may list additional focused verification commands for their area.
 
 ## Source Of Truth Boundaries
 
@@ -63,7 +42,7 @@ npm run test:portal:performance
 
 - `apps/portal/app/staff/schedule`: large interactive surface with Board, Gantt, Site Visits, legacy fallback, drag/drop, and performance budgets.
 - `apps/portal/components/projects/ProjectPage/tabs/EstimatesTab.tsx` and `QuotesTab.tsx`: local-first flows, locks, quote state, PDF/email side effects.
-- `apps/portal/lib/drawings` and `apps/portal/components/drawings`: object-first workbench, geometry compatibility, drawing persistence. Read `docs/design-workbench-parallel-migration-rules.md` before migration work here.
+- `apps/portal/lib/drawings` and `apps/portal/components/drawings`: object-first workbench, geometry compatibility, drawing persistence. Read `docs/parallel-work-guardrails.md` before migration work here.
 - `supabase/migrations`: ordered production schema history. Add forward migrations; do not edit old applied migrations without explicit direction.
 - Public marketing analytics and conversion routes: consent, privacy, and tracking docs must stay aligned.
 
@@ -82,10 +61,11 @@ npm run test:portal:performance
 - `docs/platform-workflow.md`: business workflow across marketing and portal.
 - `docs/environment-auth-supabase.md`: env, auth, roles, schema readiness.
 - `docs/testing-and-qa.md`: test commands, Playwright, manual QA.
+- `docs/quotes-invoices-job-packs.md`: quote, invoice, public-token, PDF/email, and job-pack side effects.
+- `docs/parallel-work-guardrails.md`: active guardrails for parallel work across apps, packages, docs, and workbench migration lanes.
 - `docs/costing-and-geometry.md`: costing and geometry semantics.
 - `docs/local-first-sync.md`: working copies, queue, aliases, conflict handling.
 - `docs/design-workbench-architecture.md`: object-first design workbench.
-- `docs/design-workbench-parallel-migration-rules.md`: active guardrails for parallel workbench migration work.
 - `docs/decision-log.md`: indexed lessons and guardrails from past mistakes.
 - `docs/design-list.md`: Design List current behavior.
 - `docs/running-jobs.md`: Running Jobs current behavior.

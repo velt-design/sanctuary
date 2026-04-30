@@ -1,8 +1,14 @@
 import type { ModuleViewsTab } from '@/app/staff/calculator/ModuleViewsCard';
-import type { WorkbenchHouseSelection, WorkbenchMode } from './compat/objectWorkbenchCompatibilityModel';
 import type { WorkbenchObjectFamily, WorkbenchObjectRef } from './objectFirstWorkbenchModel';
 
 export type DrawingWorkbenchViewportMode = 'sheet' | 'model' | 'geometry3d';
+
+export type WorkbenchMode = 'house' | 'pergolas';
+
+export type WorkbenchHouseSelection = {
+  kind: 'house' | 'footprint' | 'roof' | 'deck' | 'opening' | 'attachment_zone';
+  targetId: string | null;
+};
 
 export type DrawingWorkbenchGeometrySelectionKind = WorkbenchHouseSelection['kind'];
 

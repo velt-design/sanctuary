@@ -1950,11 +1950,11 @@ describe('house model geometry builder', () => {
     expect(joinedWall?.boundary[3]?.z).toBeCloseTo(joinBoundaryStart?.z ?? Number.NaN, 6);
     expect(Math.min(...wallTopHeights)).toBeGreaterThan(2500);
     expect(Math.max(...wallTopHeights)).toBeGreaterThan(3500);
-    expect(model.eave.gutterLines[0]).toEqual({
+    expect(model.eave.gutterLines![0]).toEqual({
       start: { x: -3800, y: 8200, z: 2500 },
       end: { x: 9800, y: 8200, z: 2500 },
     });
-    expect(model.eave.soffitPolygons.every((boundary) => !polygonIsHorizontal(boundary))).toBe(true);
+    expect(model.eave.soffitPolygons!.every((boundary) => !polygonIsHorizontal(boundary))).toBe(true);
     expect(
       soffitSolids.every(
         (solid) =>
@@ -2701,15 +2701,15 @@ describe('house model geometry builder', () => {
     });
 
     expect(model?.decks).toHaveLength(3);
-    expect(model?.decks.map((deck) => deck.id)).toEqual([
+    expect(model?.decks!.map((deck) => deck.id)).toEqual([
       'deck-attached',
       'deck-detached',
       'deck-custom',
     ]);
 
-    const attachedDeck = model?.decks.find((deck) => deck.id === 'deck-attached');
-    const detachedDeck = model?.decks.find((deck) => deck.id === 'deck-detached');
-    const customDeck = model?.decks.find((deck) => deck.id === 'deck-custom');
+    const attachedDeck = model?.decks!.find((deck) => deck.id === 'deck-attached');
+    const detachedDeck = model?.decks!.find((deck) => deck.id === 'deck-detached');
+    const customDeck = model?.decks!.find((deck) => deck.id === 'deck-custom');
 
     expect(attachedDeck?.supportClassification).toBe('threshold_attached');
     expect(attachedDeck?.topSurfaceElevationMm).toBe(0);

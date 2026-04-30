@@ -98,7 +98,23 @@ function buildDerivedWallGraph(
   };
 }
 
-function makeHouse(overrides: Partial<HouseModel> = {}): HouseModel {
+type HouseOpeningFixture = Omit<HouseModel['openings'][number], 'hostWallId'> & {
+  hostWallId?: HouseModel['openings'][number]['hostWallId'];
+};
+
+type HouseModelOverrides = Omit<Partial<HouseModel>, 'footprint' | 'roof' | 'openings'> & {
+  footprint?: Omit<Partial<HouseModel['footprint']>, 'params'> & {
+    params?: Partial<HouseModel['footprint']['params']>;
+  };
+  roof?: Omit<Partial<HouseModel['roof']>, 'appendage' | 'validation' | 'capabilities'> & {
+    appendage?: Partial<HouseModel['roof']['appendage']>;
+    validation?: Partial<HouseModel['roof']['validation']>;
+    capabilities?: Partial<HouseModel['roof']['capabilities']>;
+  };
+  openings?: HouseOpeningFixture[];
+};
+
+function makeHouse(overrides: HouseModelOverrides = {}): HouseModel {
   const house: HouseModel = {
     id: 'house-main',
     label: 'House',
@@ -147,6 +163,9 @@ function makeHouse(overrides: Partial<HouseModel> = {}): HouseModel {
         pitchDeg: '3',
         dropMm: '0',
       },
+      geometryKind: 'footprint_mono',
+      appendageSupportedHostEdges: ['rear'],
+      appendageSupportReason: null,
       validation: {
         status: 'valid',
         code: null,
@@ -180,43 +199,55 @@ function makeHouse(overrides: Partial<HouseModel> = {}): HouseModel {
     gutterDepthMm: '85',
     gutterProjectionMm: '90',
     eaveOverhangMm: '450',
+    derivedEnvelope: null,
+    derivedWallGraph: { walls: [], mergeGroups: [] },
     decks: [],
     openings: [],
     attachmentZones: [],
     attachmentZoneDiagnostics: { blocked: [] },
   };
+  const {
+    footprint: footprintOverride,
+    roof: roofOverride,
+    openings: openingOverrides,
+    ...restOverrides
+  } = overrides;
   const resolvedHouse = {
     ...house,
-    ...overrides,
+    ...restOverrides,
+    openings: (openingOverrides ?? house.openings).map((opening) => ({
+      ...opening,
+      hostWallId: opening.hostWallId ?? (opening.hostEdgeId ? `wall-${opening.hostEdgeId}` : null),
+    })),
     footprint: {
       ...house.footprint,
-      ...overrides.footprint,
+      ...footprintOverride,
       params: {
         ...house.footprint.params,
-        ...overrides.footprint?.params,
+        ...footprintOverride?.params,
       },
     },
     roof: {
       ...house.roof,
-      ...overrides.roof,
+      ...roofOverride,
       appendage: {
         ...house.roof.appendage,
-        ...overrides.roof?.appendage,
+        ...roofOverride?.appendage,
       },
       validation: {
         ...house.roof.validation,
-        ...overrides.roof?.validation,
+        ...roofOverride?.validation,
       },
       capabilities: {
         ...house.roof.capabilities,
-        ...overrides.roof?.capabilities,
+        ...roofOverride?.capabilities,
       },
     },
   };
   return {
     ...resolvedHouse,
     derivedWallGraph:
-      overrides.derivedWallGraph ??
+      restOverrides.derivedWallGraph ??
       buildDerivedWallGraph(resolvedHouse.footprint.polygon, resolvedHouse.id),
   };
 }
@@ -867,15 +898,13 @@ describe('houseFirstPlanOverlay', () => {
     const store = buildDrawingWorkbenchStore({
       snapshot: fixture.snapshot,
       draft,
-      ui: {
-        ...createDrawingWorkbenchUiState(),
+      ui: createDrawingWorkbenchUiState({
         activeModuleIndex: 0,
-        activeHouseTab: 'house',
         activeHouseSelection: { kind: 'opening', targetId: 'opening-debug' },
-        viewportMode: 'model_space',
+        viewportMode: 'model',
         activeView: 'plan',
         workbenchMode: 'house',
-      },
+      }),
     });
     const preview = buildWorkbenchGeometryPreview({
       projectId: fixture.estimate.id,
@@ -919,15 +948,15 @@ describe('houseFirstPlanOverlay', () => {
         object.metadata?.openingId === 'opening-debug',
     );
     const wallObjects = houseObjects
-      .filter(
-        (object): object is Extract<(typeof houseObjects)[number], { type: 'house_surface_solid'; kind: 'wall' }> =>
-          object.type === 'house_surface_solid' && object.kind === 'wall' && 'boundary' in object,
-      )
+      .filter((object) => object.type === 'house_surface_solid' && object.kind === 'wall' && 'boundary' in object)
       .sort((left, right) => {
         const leftIndex = Number(String(left.metadata?.sourceEdgeId ?? '').replace('footprint-edge-', ''));
         const rightIndex = Number(String(right.metadata?.sourceEdgeId ?? '').replace('footprint-edge-', ''));
         return leftIndex - rightIndex;
-      });
+      }) as Array<{
+        boundary: Array<{ x: number; y: number }>;
+        metadata?: Record<string, unknown>;
+      }>;
     const sceneDeckPolygon =
       deckSolidObject && 'boundary' in deckSolidObject
         ? toScenePolygonMetres(
@@ -958,7 +987,7 @@ describe('houseFirstPlanOverlay', () => {
     expect(toScenePolygonMetres(deckShape?.polygon ?? [])).toEqual(sceneDeckPolygon);
     expect(toScenePolygonMetres(footprintShape?.polygon ?? [])).toEqual(sceneFootprintPolygon);
     expect(openingObject).toBeDefined();
-    expect(preview.scene.metadata.houseOpeningSkippedInvalidCount).toBe(0);
+    expect(preview.scene.metadata?.houseOpeningSkippedInvalidCount).toBe(0);
     expect(compatibilityProjectModel.house?.openings[0]?.validation.status).toBe('valid');
   });
 
@@ -992,15 +1021,13 @@ describe('houseFirstPlanOverlay', () => {
     const store = buildDrawingWorkbenchStore({
       snapshot: fixture.snapshot,
       draft,
-      ui: {
-        ...createDrawingWorkbenchUiState(),
+      ui: createDrawingWorkbenchUiState({
         activeModuleIndex: 0,
-        activeHouseTab: 'house',
         activeHouseSelection: { kind: 'opening', targetId: 'opening-valid' },
-        viewportMode: 'model_space',
+        viewportMode: 'model',
         activeView: 'plan',
         workbenchMode: 'house',
-      },
+      }),
     });
     const preview = buildWorkbenchGeometryPreview({
       projectId: fixture.estimate.id,

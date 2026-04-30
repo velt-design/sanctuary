@@ -1,0 +1,89 @@
+# Quotes, Invoices, And Job Packs
+
+This doc is the current-state reference for quote, invoice, public-token, PDF/email, and job-pack flows. These workflows have side effects, public access surfaces, file artifacts, and project-stage implications, so verify behavior at the domain boundary, not only in the UI.
+
+## Ownership
+
+- Staff quote UI: `apps/portal/components/projects/ProjectPage/tabs/QuotesTab.tsx`.
+- Staff quote APIs: `apps/portal/app/api/quotes` and `apps/portal/app/api/staff/v1/quotes`.
+- Quote domain helpers: `apps/portal/lib/quotes`.
+- Deposit invoice domain helpers: `apps/portal/lib/invoices`.
+- Transactional email helpers and templates: `apps/portal/lib/emails`.
+- Job-pack domain helpers: `apps/portal/lib/jobPacks` and output helpers in `apps/portal/lib/outputs`.
+- Public quote and invoice viewers: `apps/marketing/app/quote/[quoteId]` and `apps/marketing/app/invoice/[invoiceId]`.
+- Public token helpers: `apps/marketing/lib/quotes/publicQuote.ts` and `apps/marketing/lib/invoices/publicInvoice.ts`.
+
+Important tables and artifacts:
+
+- `quotes`, `quote_versions`, `quote_line_items`, and `quote_send_logs`.
+- `deposit_invoices` and `deposit_invoice_send_logs`.
+- `file_artifacts` for generated PDFs and attached design PDFs.
+- `job_pack_generations` and `job_pack_sheet_overrides`.
+
+## Quote Lifecycle
+
+- Draft quote versions can be edited, refreshed from estimates, previewed, revised, and regenerated.
+- Sending a quote requires a recipient, subject, priced line items, a generated quote PDF, and configured email/public URL env.
+- Sent quote versions are locked from normal draft editing.
+- Sending or resending creates a fresh public accept token hash, logs the email attempt, stores/redacts tokenized body content, and attaches generated PDFs through `file_artifacts`.
+- Accepting a sent quote marks it accepted, writes audit history, refreshes quote artifacts, and ensures a deposit invoice exists.
+- Declining a sent quote marks it declined. Declining an accepted quote also voids the open deposit invoice for the quote.
+
+Do not update quote status or tokens with ad hoc table writes. Use the quote domain helpers and staff/public routes.
+
+## Invoice Lifecycle
+
+- Deposit invoices are created from sent or accepted quote versions.
+- Accepted quotes automatically create an open deposit invoice and attempt to send it.
+- Open deposit invoices have token-hashed public portal links and generated invoice PDFs.
+- Invoice send attempts write `deposit_invoice_send_logs`, track retry/final-failure state, and redact tokenized body content.
+- Public invoice pages require a valid invoice ID plus token and treat invalid, expired, or void invoices as unavailable.
+- Public invoice PDF and source quote PDF downloads are token-scoped and served with private/no-store cache headers.
+
+Do not expose service-role access or raw token values to client components. Token comparisons must stay hash-based.
+
+## Public Token Boundaries
+
+- Public quote links use `quote_versions.accept_token_hash`.
+- Public invoice links use `deposit_invoices.portal_token_hash`.
+- Quote attachments are limited to file IDs from the send log that matches the current accept token hash.
+- Token expiry must be handled as an access state, not as a missing record.
+- Public accept/invoice flows should be treated as server-owned side effects, even though the initiating page lives in marketing.
+
+When changing public routes, verify invalid token, missing token, expired token, already accepted, declined/void, and attachment/PDF unavailable states.
+
+## Job Packs
+
+- Job packs sit after quoting/design and before or during install preparation.
+- Generation is tied to a quote version and estimate version.
+- Eligible quote statuses are sent, accepted, and declined.
+- Existing generations are reused for the same quote version.
+- Job-pack PDFs require a generated job pack for the estimate before download.
+- Powdercoating overrides are stored per estimate and sheet key with version-aware conflict handling.
+
+Do not generate job packs directly from arbitrary estimate state when a quote-version boundary is required.
+
+## Verification
+
+Focused commands:
+
+```bash
+npm run test:portal -- apps/portal/lib/quotes
+npm run test:portal -- apps/portal/lib/emails/invoice.test.ts
+npm run test:portal -- apps/portal/lib/jobPacks
+npm run test:portal -- apps/portal/app/api/quotes
+```
+
+Manual or browser checks should cover:
+
+- Draft quote edit, refresh, preview, PDF generation, send, resend, accept, decline, and revise.
+- Send/resend failure when email or public URL env is missing.
+- Public quote view with valid, missing, invalid, expired, accepted, and declined states.
+- Public quote attachment download only through a token-scoped send-log attachment.
+- Accepted quote creates or reuses a deposit invoice and attempts delivery.
+- Invoice retry/failure/final-failure states remain visible to staff.
+- Public invoice view, invoice PDF, and source quote PDF with valid, missing, invalid, expired, and void states.
+- Job-pack generation from an eligible quote version and PDF download after generation.
+- Powdercoating override save conflict and successful override persistence.
+
+If changing schema or access policy for these flows, also verify the ordered migrations, RLS/service-role boundary, and public token behavior.

@@ -26,20 +26,7 @@ Inspect existing root-level paths before assuming ownership. Do not duplicate ap
 
 ## Common Commands
 
-```bash
-npm run dev:marketing
-npm run dev:portal
-npm run build:marketing
-npm run build:portal
-npm run test
-npm run test:marketing
-npm run test:portal
-npm run test:portal:smoke
-npm run test:portal:performance
-npm run lint
-```
-
-The root `npm run dev`, `build`, and `start` commands only print the app-specific command to use.
+Use `docs/testing-and-qa.md` as the canonical command source. The root `npm run dev`, `build`, and `start` commands only print the app-specific command to use.
 
 ## Environment
 

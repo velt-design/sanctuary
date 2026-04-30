@@ -8,11 +8,9 @@ import {
   estimateDrawingDraftMatchesSnapshot,
   type EstimateDrawingDraft,
 } from '@/lib/estimates/drawingEdits';
-import { buildObjectWorkbenchCompatibilityProjectModel } from '@/lib/drawings/state/compat/objectWorkbenchCompatibilityModel';
 import {
-  buildObjectFirstWorkbenchDraftFromProjectModel,
-  buildObjectFirstWorkbenchProjectModel,
-} from '@/lib/drawings/state/objectFirstWorkbenchAdapter';
+  buildObjectFirstWorkbenchDraftBaselineFromLegacyEstimateSnapshot,
+} from '@/lib/drawings/state/legacyEstimateSnapshotAdapter';
 import {
   normalizeObjectFirstWorkbenchDraftVNext,
   type ObjectFirstPergolaDraft,
@@ -111,15 +109,10 @@ function buildSnapshotObjectFirstBaseline(
   baseDraft: EstimateDrawingDraft | null,
 ): ObjectFirstWorkbenchDraftVNext | null {
   if (!baseDraft) return null;
-  const compatibilityProjectModel = buildObjectWorkbenchCompatibilityProjectModel({
+  return buildObjectFirstWorkbenchDraftBaselineFromLegacyEstimateSnapshot({
     snapshot,
     draft: baseDraft,
   });
-  return buildObjectFirstWorkbenchDraftFromProjectModel(
-    buildObjectFirstWorkbenchProjectModel({
-      compatibilityProjectModel,
-    }),
-  );
 }
 
 function objectFirstMatchesSnapshotBaseline(input: {

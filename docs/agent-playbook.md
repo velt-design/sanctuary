@@ -17,7 +17,7 @@ For marketing-only or shared-package-only tasks, use the parts that affect porta
 - Run `git status --short`; identify unrelated worktree changes and leave them untouched.
 - Read `AGENTS.md`, `docs/README.md`, this playbook, and the smallest relevant canonical doc.
 - Scan `docs/decision-log.md` for entries matching the feature area, source-of-truth boundary, or risk pattern.
-- For workbench migration or compatibility work, read `docs/design-workbench-parallel-migration-rules.md` before editing.
+- For parallel lanes, cross-app work, or workbench migration and compatibility work, read `docs/parallel-work-guardrails.md` before editing.
 - Use `rg` and `rg --files` to find owner files, tests, routes, APIs, docs, and old compatibility paths.
 - Identify the owning layer before editing: package, domain library, API/RPC route, local-first adapter, component, or page.
 - Make the change at the smallest owning layer that actually owns the behavior.
@@ -41,7 +41,7 @@ For marketing-only or shared-package-only tasks, use the parts that affect porta
 - Add forward migrations for schema changes; do not edit old applied migrations without explicit direction.
 - For schedule work, preserve Schedule V2 command/API boundaries and legacy fallback posture.
 - For local-first work, preserve stable entity keys, queue semantics, optimistic edits, locks, and conflict recovery.
-- For design workbench work, keep the object-first model authoritative, keep compatibility boundaries explicit, and follow the parallel migration rules.
+- For design workbench work, keep the object-first model authoritative, keep compatibility boundaries explicit, and follow the parallel work guardrails.
 - For UI-heavy work, keep interaction states, loading states, empty states, keyboard/mouse flows, and responsive behavior in view while editing.
 
 ## Docs As Implementation
@@ -65,19 +65,7 @@ For marketing-only or shared-package-only tasks, use the parts that affect porta
 - For PDF, email, invoice, quote, and public token flows, verify side effects and access boundaries, not only UI rendering.
 - If a relevant check cannot be run, state that clearly in the final response with the reason.
 
-Useful root commands:
-
-```bash
-npm run text:mojibake
-npm run cache:forbid
-npm run brand:forbid
-npm run lint
-npm run test:portal
-npm run test:portal:smoke
-npm run test:portal:performance
-npm run build:portal
-npm run schedule:bundle-budget
-```
+Use `docs/testing-and-qa.md` for the canonical command catalog. Use the feature doc for additional focused verification commands when it lists them.
 
 ## Final Response
 
@@ -98,10 +86,12 @@ npm run schedule:bundle-budget
 
 | Area | Read First | Extra Guardrail |
 | --- | --- | --- |
-| Design workbench | `docs/design-workbench-architecture.md` | Read `docs/design-workbench-parallel-migration-rules.md` before migration or compatibility edits. |
+| Parallel or cross-app work | `docs/parallel-work-guardrails.md` | Declare lanes, owners, shared contracts, tests, docs, and integration dependencies. |
+| Design workbench | `docs/design-workbench-architecture.md` | Read the design workbench overlay in `docs/parallel-work-guardrails.md` before migration or compatibility edits. |
 | Drawing domain libraries | `apps/portal/lib/drawings/README.md` | Keep geometry/package boundaries explicit. |
 | Drawing UI components | `apps/portal/components/drawings/README.md` | Keep component state aligned with object-first persistence. |
 | Local-first estimates/quotes | `docs/local-first-sync.md` | Preserve queue, lock, alias, and conflict behavior. |
+| Quotes, invoices, job packs | `docs/quotes-invoices-job-packs.md` | Verify side effects, token boundaries, PDFs, emails, and generated artifacts. |
 | Schedule | `docs/schedule.md` | Preserve Schedule V2 API/RPC command boundaries and legacy fallback posture. |
 | Auth, env, Supabase | `docs/environment-auth-supabase.md` | Use server session helpers and ordered forward migrations. |
 | Costing and geometry | `docs/costing-and-geometry.md` | Keep source-of-truth logic in packages. |

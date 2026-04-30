@@ -27,10 +27,9 @@ import {
   buildDrawingWorkbenchRailModel,
   type DrawingWorkbenchRailModel,
 } from './drawingWorkbenchRailModel';
-import { buildObjectWorkbenchCompatibilityProjectModel } from './compat/objectWorkbenchCompatibilityModel';
 import {
-  buildObjectFirstWorkbenchProjectModel,
-} from './objectFirstWorkbenchAdapter';
+  buildObjectFirstWorkbenchProjectModelFromLegacyEstimateSnapshot,
+} from './legacyEstimateSnapshotAdapter';
 import type { WorkbenchDeckSupportDiagnostic } from './deckSupportDiagnostics';
 import {
   buildObjectWorkbenchInspectorFacade,
@@ -150,14 +149,10 @@ export function buildDrawingWorkbenchStore(input: {
   const drawingModules = buildEstimateDrawingModules(effectiveSnapshot, {
     ignoreModuleResults: input.ignoreModuleResults,
   });
-  const compatibilityProjectModel = buildObjectWorkbenchCompatibilityProjectModel({
+  const projectModel = buildObjectFirstWorkbenchProjectModelFromLegacyEstimateSnapshot({
     snapshot: input.snapshot,
     draft: input.draft,
     ignoreModuleResults: input.ignoreModuleResults,
-  });
-  const projectModel = buildObjectFirstWorkbenchProjectModel({
-    compatibilityProjectModel,
-    objectFirstDraft: input.draft?.objectFirst,
   });
   const houseForms = projectModel.houseAssembly?.houseForms ?? [];
   const objectFirstDecks = projectModel.decks;
@@ -178,7 +173,7 @@ export function buildDrawingWorkbenchStore(input: {
   const objectWorkbenchOverlayStatus = buildObjectWorkbenchStatusFacade({
     activeDeckId: null,
     activeModuleInput: undefined,
-    compatibilityProjectModel,
+    projectModel,
   });
   const objectWorkbenchGeometryContext = buildObjectWorkbenchGeometryContext({
     snapshot: input.snapshot,
@@ -315,7 +310,7 @@ export function buildDrawingWorkbenchStore(input: {
   const objectWorkbenchStatus = buildObjectWorkbenchStatusFacade({
     activeDeckId: activeObjectFirstDeck?.id ?? null,
     activeModuleInput: activeModule?.assemblyModel.moduleInput,
-    compatibilityProjectModel,
+    projectModel,
   });
   const unresolvedPergolaAttachmentCount = Object.entries(pergolaAttachmentResolutions).filter(
     ([pergolaId, resolution]) =>

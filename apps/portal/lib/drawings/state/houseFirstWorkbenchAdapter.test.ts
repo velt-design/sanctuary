@@ -1,8 +1,19 @@
 import { describe, expect, it } from 'vitest';
 import { getSanctuaryGeometryWorkbenchFixture } from '@/lib/drawings/sanctuaryWorkbenchFixtures';
-import { buildEstimateDrawingDraftFromSnapshot } from '@/lib/estimates/drawingEdits';
+import { buildEstimateDrawingDraftFromSnapshot, type EstimateDrawingDraft } from '@/lib/estimates/drawingEdits';
+import { normalizeHouseFootprintParams } from '@/lib/types/calculator';
 import { makeHouseFirstConflictingLegacyContextFixture } from './houseFirstWorkbenchFixtures';
 import { buildHouseFirstWorkbenchProjectModel } from './houseFirstWorkbenchAdapter';
+
+type LegacyEstimateDrawingDraft = EstimateDrawingDraft & {
+  houseFirst?: any;
+};
+
+function buildLegacyEstimateDrawingDraftFromSnapshot(
+  snapshot: Record<string, unknown> | null,
+): LegacyEstimateDrawingDraft | null {
+  return buildEstimateDrawingDraftFromSnapshot(snapshot) as LegacyEstimateDrawingDraft | null;
+}
 
 const HOUSE_FOOTPRINT_PRESETS = [
   'straight',
@@ -35,7 +46,7 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
   it('derives pergolas and shared house state from a local drawing draft', () => {
     const monoFixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
     if (!monoFixture) throw new Error('Missing mono-standard fixture.');
-    const draft = buildEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
+    const draft = buildLegacyEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
     if (!draft) throw new Error('Expected drawing draft.');
     draft.inputs.modules[0]!.houseFootprintPreset = 'wrap_left';
 
@@ -53,7 +64,7 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
   it('lets the shared roof draft override legacy roof inference', () => {
     const monoFixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
     if (!monoFixture) throw new Error('Missing mono-standard fixture.');
-    const draft = buildEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
+    const draft = buildLegacyEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
     if (!draft) throw new Error('Expected drawing draft.');
     draft.inputs.modules[0]!.houseFootprintMode = 'custom_polygon';
     draft.inputs.modules[0]!.houseFootprintPolygon = [
@@ -113,7 +124,7 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
       ),
     ).toBe(true);
 
-    const fasciaDraft = buildEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
+    const fasciaDraft = buildLegacyEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
     if (!fasciaDraft) throw new Error('Expected drawing draft.');
     fasciaDraft.inputs.modules[0]!.houseAttachmentStrategy = 'fascia_under_gutter';
     fasciaDraft.inputs.modules[0]!.houseConnectionType = 'fascia';
@@ -139,7 +150,7 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
   it('recomputes shared attachment zones when the roof state becomes blocked', () => {
     const monoFixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
     if (!monoFixture) throw new Error('Missing mono-standard fixture.');
-    const draft = buildEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
+    const draft = buildLegacyEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
     if (!draft) throw new Error('Expected drawing draft.');
     draft.inputs.modules[0]!.houseFootprintMode = 'custom_polygon';
     draft.inputs.modules[0]!.houseFootprintPolygon = [
@@ -170,7 +181,7 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
   it('suppresses roof-adjacent shared attachment zones when large openings occupy the same side', () => {
     const monoFixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
     if (!monoFixture) throw new Error('Missing mono-standard fixture.');
-    const draft = buildEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
+    const draft = buildLegacyEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
     if (!draft) throw new Error('Expected drawing draft.');
     draft.houseFirst = {
       openings: [
@@ -254,7 +265,7 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
   it('prefers saved canonical pergola attachment zones over saved edges and legacy side fallbacks', () => {
     const monoFixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
     if (!monoFixture) throw new Error('Missing mono-standard fixture.');
-    const draft = buildEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
+    const draft = buildLegacyEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
     if (!draft) throw new Error('Expected drawing draft.');
     draft.houseFirst = {
       pergolas: [
@@ -287,7 +298,7 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
   it('keeps stale saved pergola attachment zones unresolved instead of silently retargeting them', () => {
     const monoFixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
     if (!monoFixture) throw new Error('Missing mono-standard fixture.');
-    const draft = buildEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
+    const draft = buildLegacyEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
     if (!draft) throw new Error('Expected drawing draft.');
     draft.houseFirst = {
       pergolas: [
@@ -349,7 +360,7 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
   it('keeps coherent explicit mono fall directions valid and blocks incoherent drain-back directions', () => {
     const monoFixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
     if (!monoFixture) throw new Error('Missing mono-standard fixture.');
-    const draft = buildEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
+    const draft = buildLegacyEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
     if (!draft) throw new Error('Expected drawing draft.');
 
     draft.houseFirst = {
@@ -412,7 +423,7 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
     } as const;
 
     for (const [form, controls] of Object.entries(expectedControls)) {
-      const draft = buildEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
+      const draft = buildLegacyEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
       if (!draft) throw new Error('Expected drawing draft.');
       draft.houseFirst = {
         roof: {
@@ -434,7 +445,7 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
   it('updates roof validation and capabilities when the footprint topology becomes orthogonally supported', () => {
     const monoFixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
     if (!monoFixture) throw new Error('Missing mono-standard fixture.');
-    const draft = buildEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
+    const draft = buildLegacyEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
     if (!draft) throw new Error('Expected drawing draft.');
     draft.inputs.modules[0]!.houseFootprintPreset = 'u_shape';
     draft.houseFirst = {
@@ -461,7 +472,7 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
   it('keeps orthogonal hipped footprints valid and exposes joined-hipped geometry', () => {
     const monoFixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
     if (!monoFixture) throw new Error('Missing mono-standard fixture.');
-    const draft = buildEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
+    const draft = buildLegacyEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
     if (!draft) throw new Error('Expected drawing draft.');
     draft.inputs.modules[0]!.houseFootprintPreset = 'u_shape';
     draft.houseFirst = {
@@ -485,7 +496,7 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
   it('filters invalid saved open gable ends when the ridge orientation changes', () => {
     const monoFixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
     if (!monoFixture) throw new Error('Missing mono-standard fixture.');
-    const draft = buildEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
+    const draft = buildLegacyEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
     if (!draft) throw new Error('Expected drawing draft.');
     draft.inputs.modules[0]!.houseFootprintMode = 'custom_polygon';
     draft.inputs.modules[0]!.houseFootprintPolygon = [
@@ -516,7 +527,7 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
   it('marks near-square gable footprints as approximate when the ridge axis is inferred', () => {
     const monoFixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
     if (!monoFixture) throw new Error('Missing mono-standard fixture.');
-    const draft = buildEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
+    const draft = buildLegacyEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
     if (!draft) throw new Error('Expected drawing draft.');
     draft.inputs.modules[0]!.houseFootprintMode = 'custom_polygon';
     draft.inputs.modules[0]!.houseFootprintPolygon = [
@@ -547,7 +558,7 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
   it('blocks explicit ridge axes that do not match the current footprint span/topology', () => {
     const monoFixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
     if (!monoFixture) throw new Error('Missing mono-standard fixture.');
-    const draft = buildEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
+    const draft = buildLegacyEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
     if (!draft) throw new Error('Expected drawing draft.');
     draft.inputs.modules[0]!.houseFootprintMode = 'custom_polygon';
     draft.inputs.modules[0]!.houseFootprintPolygon = [
@@ -577,7 +588,7 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
     if (!monoFixture) throw new Error('Missing mono-standard fixture.');
 
     for (const form of ['gable', 'hipped'] as const) {
-      const draft = buildEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
+      const draft = buildLegacyEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
       if (!draft) throw new Error('Expected drawing draft.');
       draft.inputs.modules[0]!.houseFootprintPreset = 'wrap_left';
       draft.houseFirst = {
@@ -628,7 +639,7 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
       ['gable', ''],
       ['hipped', '-1'],
     ] as const) {
-      const draft = buildEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
+      const draft = buildLegacyEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
       if (!draft) throw new Error('Expected drawing draft.');
       draft.inputs.modules[0]!.houseFootprintPreset = 'wrap_left';
       draft.houseFirst = {
@@ -649,7 +660,7 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
       expect(projectModel.house?.roof.validation.code, `${form}/${primaryPitchDeg}`).toBeNull();
     }
 
-    const flatDraft = buildEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
+    const flatDraft = buildLegacyEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
     if (!flatDraft) throw new Error('Expected drawing draft.');
     flatDraft.houseFirst = { roof: { form: 'flat', primaryPitchDeg: '18' } };
     expect(
@@ -657,7 +668,7 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
         .primaryPitchDeg,
     ).toBe('0');
 
-    const monoDraft = buildEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
+    const monoDraft = buildLegacyEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
     if (!monoDraft) throw new Error('Expected drawing draft.');
     monoDraft.houseFirst = { roof: { form: 'mono', primaryPitchDeg: '0' } };
     expect(
@@ -669,7 +680,7 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
   it('surfaces only the outer open-end options for U-shaped bent gables', () => {
     const monoFixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
     if (!monoFixture) throw new Error('Missing mono-standard fixture.');
-    const draft = buildEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
+    const draft = buildLegacyEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
     if (!draft) throw new Error('Expected drawing draft.');
     draft.inputs.modules[0]!.houseFootprintPreset = 'u_shape';
     draft.houseFirst = {
@@ -694,7 +705,7 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
   it('accepts orthogonal mono presets in shared roof validation', () => {
     const monoFixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
     if (!monoFixture) throw new Error('Missing mono-standard fixture.');
-    const draft = buildEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
+    const draft = buildLegacyEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
     if (!draft) throw new Error('Expected drawing draft.');
     draft.inputs.modules[0]!.houseFootprintPreset = 'u_shape';
 
@@ -716,7 +727,7 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
 
     for (const preset of HOUSE_FOOTPRINT_PRESETS) {
       for (const form of HOUSE_ROOF_FORMS) {
-        const draft = buildEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
+        const draft = buildLegacyEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
         if (!draft) throw new Error('Expected drawing draft.');
         draft.inputs.modules[0]!.houseFootprintPreset = preset;
         draft.houseFirst = {
@@ -755,7 +766,7 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
     for (const attachmentSide of ATTACHMENT_SIDES) {
       for (const preset of HOUSE_FOOTPRINT_PRESETS) {
         for (const form of ['gable', 'hipped'] as const) {
-          const draft = buildEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
+          const draft = buildLegacyEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
           if (!draft) throw new Error('Expected drawing draft.');
           draft.inputs.modules[0]!.attachmentSide = attachmentSide;
           draft.inputs.modules[0]!.houseFootprintPreset = preset;
@@ -796,7 +807,7 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
   it('accepts custom orthogonal mono outlines and blocks non-orthogonal ones', () => {
     const monoFixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
     if (!monoFixture) throw new Error('Missing mono-standard fixture.');
-    const draft = buildEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
+    const draft = buildLegacyEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
     if (!draft) throw new Error('Expected drawing draft.');
     draft.inputs.modules[0]!.houseFootprintMode = 'custom_polygon';
     draft.inputs.modules[0]!.houseFootprintPolygon = [
@@ -855,7 +866,7 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
   it('rebuilds preset deck outlines from presetRect params and backfills missing presetRect data', () => {
     const monoFixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
     if (!monoFixture) throw new Error('Missing mono-standard fixture.');
-    const draft = buildEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
+    const draft = buildLegacyEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
     if (!draft) throw new Error('Expected drawing draft.');
     draft.houseFirst = {
       decks: [
@@ -937,7 +948,7 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
   it('surfaces supported appendage host edges and blocks unsupported ones', () => {
     const monoFixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
     if (!monoFixture) throw new Error('Missing mono-standard fixture.');
-    const draft = buildEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
+    const draft = buildLegacyEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
     if (!draft) throw new Error('Expected drawing draft.');
     draft.inputs.modules[0]!.houseFootprintPreset = 'u_shape';
     draft.houseFirst = {
@@ -967,7 +978,7 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
   it('uses floating preset rects as detached preset geometry without discarding legacy preset fields', () => {
     const monoFixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
     if (!monoFixture) throw new Error('Missing mono-standard fixture.');
-    const draft = buildEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
+    const draft = buildLegacyEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
     if (!draft) throw new Error('Expected drawing draft.');
     draft.houseFirst = {
       decks: [
@@ -1026,7 +1037,7 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
   it('preserves custom deck outlines and keeps oversized attached preset width and offset intact', () => {
     const monoFixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
     if (!monoFixture) throw new Error('Missing mono-standard fixture.');
-    const draft = buildEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
+    const draft = buildLegacyEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
     if (!draft) throw new Error('Expected drawing draft.');
     draft.houseFirst = {
       decks: [
@@ -1094,11 +1105,11 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
   it('attaches preset decks to the rendered house edge when footprint offset and setback are set', () => {
     const monoFixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
     if (!monoFixture) throw new Error('Missing mono-standard fixture.');
-    const draft = buildEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
+    const draft = buildLegacyEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
     if (!draft) throw new Error('Expected drawing draft.');
     draft.inputs.modules[0]!.houseFootprintPreset = 'straight';
     draft.inputs.modules[0]!.houseFootprintParams = {
-      ...draft.inputs.modules[0]!.houseFootprintParams,
+      ...normalizeHouseFootprintParams(draft.inputs.modules[0]!.houseFootprintParams),
       widthM: '6',
       offsetXM: '1.25',
       setbackM: '0.75',
@@ -1144,7 +1155,7 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
   it('keeps oversized attached preset decks anchored to the selected exact custom-footprint wall segment', () => {
     const monoFixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
     if (!monoFixture) throw new Error('Missing mono-standard fixture.');
-    const draft = buildEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
+    const draft = buildLegacyEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
     if (!draft) throw new Error('Expected drawing draft.');
     draft.inputs.modules[0]!.houseFootprintMode = 'custom_polygon';
     draft.inputs.modules[0]!.houseFootprintPolygon = [
@@ -1203,7 +1214,7 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
   it('builds shared openings from opening drafts and validates overlaps on the same wall', () => {
     const monoFixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
     if (!monoFixture) throw new Error('Missing mono-standard fixture.');
-    const draft = buildEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
+    const draft = buildLegacyEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
     if (!draft) throw new Error('Expected drawing draft.');
     draft.houseFirst = {
       openings: [
@@ -1272,7 +1283,7 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
       { id: 'wall-footprint-edge-4', label: 'Left wall', edgeIds: ['footprint-edge-4'] },
     ]);
 
-    const customDraft = buildEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
+    const customDraft = buildLegacyEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
     if (!customDraft) throw new Error('Expected drawing draft.');
     customDraft.inputs.modules[0]!.houseFootprintMode = 'custom_polygon';
     customDraft.inputs.modules[0]!.houseFootprintPolygon = [
@@ -1318,7 +1329,7 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
   it('prefers hostWallId over exact host edges and legacy side fallbacks when resolving shared openings', () => {
     const monoFixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
     if (!monoFixture) throw new Error('Missing mono-standard fixture.');
-    const draft = buildEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
+    const draft = buildLegacyEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
     if (!draft) throw new Error('Expected drawing draft.');
     draft.houseFirst = {
       openings: [
@@ -1357,7 +1368,7 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
   it('prefers exact host edges over legacy side fallbacks when canonical hostWallId is absent', () => {
     const monoFixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
     if (!monoFixture) throw new Error('Missing mono-standard fixture.');
-    const draft = buildEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
+    const draft = buildLegacyEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
     if (!draft) throw new Error('Expected drawing draft.');
     draft.houseFirst = {
       openings: [
@@ -1395,7 +1406,7 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
   it('marks side-only opening hosts ambiguous when the selected side has multiple derived wall segments', () => {
     const screenshotFixture = getSanctuaryGeometryWorkbenchFixture('gable-u-hipped-screenshot');
     if (!screenshotFixture) throw new Error('Missing gable-u-hipped-screenshot fixture.');
-    const draft = buildEstimateDrawingDraftFromSnapshot(screenshotFixture.snapshot);
+    const draft = buildLegacyEstimateDrawingDraftFromSnapshot(screenshotFixture.snapshot);
     if (!draft) throw new Error('Expected drawing draft.');
     draft.houseFirst = {
       openings: [
@@ -1432,7 +1443,7 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
   it('keeps stale saved hostWallIds unresolved instead of silently retargeting openings', () => {
     const monoFixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
     if (!monoFixture) throw new Error('Missing mono-standard fixture.');
-    const draft = buildEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
+    const draft = buildLegacyEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
     if (!draft) throw new Error('Expected drawing draft.');
     draft.houseFirst = {
       openings: [
@@ -1471,7 +1482,7 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
   it('preserves supported opening kinds and defaults unknown kinds to window', () => {
     const monoFixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
     if (!monoFixture) throw new Error('Missing mono-standard fixture.');
-    const draft = buildEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
+    const draft = buildLegacyEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
     if (!draft) throw new Error('Expected drawing draft.');
     draft.houseFirst = {
       openings: [
@@ -1527,7 +1538,7 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
   it('enforces simple slider corner clearance while leaving window validation shared', () => {
     const monoFixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
     if (!monoFixture) throw new Error('Missing mono-standard fixture.');
-    const draft = buildEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
+    const draft = buildLegacyEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
     if (!draft) throw new Error('Expected drawing draft.');
     draft.houseFirst = {
       openings: [
@@ -1571,7 +1582,7 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
   it('applies the same corner-clearance rule to stackers while keeping doors on shared wall-fit rules', () => {
     const monoFixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
     if (!monoFixture) throw new Error('Missing mono-standard fixture.');
-    const draft = buildEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
+    const draft = buildLegacyEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
     if (!draft) throw new Error('Expected drawing draft.');
     draft.houseFirst = {
       openings: [

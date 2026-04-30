@@ -14,7 +14,9 @@ import type { CommitResult } from './objectWorkbenchRailTypes';
 import styles from './WorkbenchRail.module.css';
 
 type RoofFieldSourceValue =
+  | 'object_first_draft'
   | 'house_first_draft'
+  | 'legacy_estimate_snapshot'
   | 'legacy_shared_value'
   | 'legacy_pergola_inference'
   | 'default_fallback'
@@ -122,8 +124,12 @@ export function labelForRoofReviewStatus(
 
 export function labelForRoofFieldSource(value: RoofFieldSourceValue | null | undefined): string {
   switch (value) {
+    case 'object_first_draft':
+      return 'Explicit object draft';
     case 'house_first_draft':
       return 'Explicit house draft';
+    case 'legacy_estimate_snapshot':
+      return 'Legacy estimate snapshot';
     case 'legacy_shared_value':
       return 'Legacy shared value';
     case 'legacy_pergola_inference':

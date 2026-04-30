@@ -96,13 +96,22 @@ function applyObjectFirstCompatibilityDraft(input: {
   const objectFirst = buildObjectFirstWorkbenchDraftFromProjectModel(baselineStore.persisted.projectModel);
   const houseForm = objectFirst.houseAssembly?.houseForms[0] ?? null;
   if (input.compatibility.roof && houseForm) {
+    const roofPatch = input.compatibility.roof;
     houseForm.roofIntentAuthored = true;
     houseForm.roofIntent = {
       ...houseForm.roofIntent,
-      ...input.compatibility.roof,
+      form: roofPatch.form ?? houseForm.roofIntent.form,
+      material: roofPatch.material ?? houseForm.roofIntent.material,
+      primaryPitchDeg: roofPatch.primaryPitchDeg ?? houseForm.roofIntent.primaryPitchDeg,
+      primaryFallDirection: roofPatch.primaryFallDirection ?? houseForm.roofIntent.primaryFallDirection,
+      ridgeAxis: roofPatch.ridgeAxis ?? houseForm.roofIntent.ridgeAxis,
+      openGableEndIds: roofPatch.openGableEndIds ?? houseForm.roofIntent.openGableEndIds,
       appendage: {
-        ...houseForm.roofIntent.appendage,
-        ...(input.compatibility.roof.appendage ?? {}),
+        enabled: roofPatch.appendage?.enabled ?? houseForm.roofIntent.appendage.enabled,
+        form: roofPatch.appendage?.form ?? houseForm.roofIntent.appendage.form,
+        hostEdge: roofPatch.appendage?.hostEdge ?? houseForm.roofIntent.appendage.hostEdge,
+        pitchDeg: roofPatch.appendage?.pitchDeg ?? houseForm.roofIntent.appendage.pitchDeg,
+        dropMm: roofPatch.appendage?.dropMm ?? houseForm.roofIntent.appendage.dropMm,
       },
     };
   }

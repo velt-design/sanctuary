@@ -1,4 +1,5 @@
 import { act } from 'react';
+import type { ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import ContactCreateClient from './ContactCreateClient';
 import { renderIntoDocument } from '../../../../../../test/reactHarness';
@@ -18,7 +19,7 @@ function changeValue(target: HTMLInputElement | null, value: string) {
 }
 
 vi.mock('next/link', () => ({
-  default: ({ children, ...props }: { children?: unknown } & Record<string, unknown>) => <a {...props}>{children ?? null}</a>,
+  default: ({ children, ...props }: { children?: ReactNode } & Record<string, unknown>) => <a {...props}>{children ?? null}</a>,
 }));
 
 vi.mock('next/navigation', () => ({

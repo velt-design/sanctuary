@@ -17,6 +17,7 @@ import type { EstimateDetail } from '@/lib/estimates/types';
 import type { LocalFirstPersistedState } from '@/lib/localFirst/types';
 import { buildDrawingWorkbenchStore } from '@/lib/drawings/state/drawingWorkbenchStore';
 import { createDrawingWorkbenchUiState } from '@/lib/drawings/state/drawingWorkbenchUiState';
+import { normalizeHouseFootprintParams } from '@/lib/types/calculator';
 import {
   buildObjectFirstOpeningDraftsFromCompatibilityDrafts,
   buildObjectFirstWorkbenchDraftFromProjectModel,
@@ -1120,7 +1121,7 @@ describe('DesignWorkbenchEstimateClient', () => {
     draft.inputs.modules[0]!.attachmentSide = 'rear';
     draft.inputs.modules[0]!.houseFootprintPreset = 'wrap_left';
     draft.inputs.modules[0]!.houseFootprintParams = {
-      ...(draft.inputs.modules[0]!.houseFootprintParams ?? {}),
+      ...normalizeHouseFootprintParams(draft.inputs.modules[0]!.houseFootprintParams),
       widthM: '10',
       offsetXM: '-.5',
       setbackM: '.5',

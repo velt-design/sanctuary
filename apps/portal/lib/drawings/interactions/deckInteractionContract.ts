@@ -1,4 +1,3 @@
-import { resolveDeckPlacementMode, type HouseModel } from '@/lib/drawings/state/houseFirstWorkbenchModel';
 import type {
   ObjectInteractionTelemetry,
   ObjectInteractionAffordanceState,
@@ -36,6 +35,12 @@ export type DeckInteractionCapability = {
   hostEdgeResolvable: boolean;
   relationshipDimensionsAvailable: boolean;
   selectionBadgeLabel: string;
+};
+
+type DeckInteractionCapabilityDeck = {
+  shape: 'preset' | 'custom';
+  presetRect?: unknown | null;
+  isAttached: boolean;
 };
 
 export type DeckInteractionHint = {
@@ -84,7 +89,7 @@ export function resolveDeckSelectedTypeFromShape(input: {
 }
 
 export function resolveDeckInteractionCapability(input: {
-  deck: HouseModel['decks'][number];
+  deck: DeckInteractionCapabilityDeck;
   dragInteractionAvailable: boolean;
 }): DeckInteractionCapability {
   const hostEdgeResolvable = input.dragInteractionAvailable;
@@ -114,7 +119,7 @@ export function resolveDeckInteractionCapability(input: {
   }
 
   return {
-    selectedDeckType: resolveDeckPlacementMode(input.deck.isAttached) === 'snapped' ? 'preset_snapped' : 'preset_floating',
+    selectedDeckType: input.deck.isAttached ? 'preset_snapped' : 'preset_floating',
     dragEligible: true,
     dragReason: 'Drag the selected deck body to move it freely. Release near a house edge to snap it back, or click dimensions to edit.',
     hostEdgeResolvable: true,
