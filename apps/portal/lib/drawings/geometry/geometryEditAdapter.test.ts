@@ -4,7 +4,9 @@ import { buildEstimateDrawingDraftFromSnapshot, type EstimateDrawingField } from
 import type { ObjectFirstWorkbenchDraftVNext } from '@/lib/drawings/state/objectFirstWorkbenchModel';
 import {
   applyGeometryEditIntent,
+  buildObjectWorkbenchPergolaPatchFromGeometryIntent,
   buildGeometryEditState,
+  mirrorObjectWorkbenchPergolaPatchToTemporaryGeometryModuleFields,
   translateEstimateDrawingFieldToGeometryIntent,
   translateFootprintEditToGeometryIntent,
 } from './geometryEditAdapter';
@@ -229,6 +231,73 @@ describe('geometryEditAdapter', () => {
     if (!result.ok) return;
     expect(result.draft.inputs.modules[0]?.pergolaStyle).toBe('pitched');
     expect(result.draft.inputs.modules[0]?.boxPerimeterEnabled).toBe(true);
+  });
+
+  it('maps pergola geometry intents to object-first patches and mirrors them through the temporary module adapter', () => {
+    const snapshot = getFixtureSnapshot('mono-standard');
+    const draft = buildEstimateDrawingDraftFromSnapshot(snapshot);
+    if (!draft) throw new Error('Expected draft');
+
+    const dimensionPatch = buildObjectWorkbenchPergolaPatchFromGeometryIntent({
+      type: 'dimension',
+      field: 'lengthM',
+      value: '7',
+    });
+    const strategyPatch = buildObjectWorkbenchPergolaPatchFromGeometryIntent({
+      type: 'house_config',
+      key: 'houseAttachmentStrategy',
+      value: 'facade_ledger',
+    });
+
+    expect(dimensionPatch).toEqual({
+      geometry: {
+        dimensions: {
+          lengthM: '7',
+        },
+      },
+    });
+    expect(strategyPatch).toEqual({
+      strategy: 'facade_ledger',
+    });
+
+    const mirrorResult = mirrorObjectWorkbenchPergolaPatchToTemporaryGeometryModuleFields({
+      snapshot,
+      draft,
+      moduleIndexes: [0],
+      patch: {
+        connectionKind: 'wall',
+        side: 'left',
+        strategy: 'facade_ledger',
+        geometry: {
+          dimensions: {
+            lengthM: '7',
+          },
+          roof: {
+            pitchDeg: '9',
+          },
+          supports: {
+            postCount: '6',
+          },
+          overrides: {
+            ledgerProfile: '100x50',
+          },
+        },
+      },
+    });
+
+    expect(mirrorResult.ok).toBe(true);
+    if (!mirrorResult.ok) return;
+    expect(mirrorResult.draft.inputs.modules[0]).toMatchObject({
+      houseConnectionType: 'facade',
+      attachmentSide: 'left',
+      houseAttachmentStrategy: 'facade_ledger',
+      lengthM: '7',
+      roofPitchDeg: '9',
+      postCount: '6',
+      overrides: {
+        ledgerProfile: '100x50',
+      },
+    });
   });
 
   it('coerces attached family switches onto the supported gable baseline', () => {

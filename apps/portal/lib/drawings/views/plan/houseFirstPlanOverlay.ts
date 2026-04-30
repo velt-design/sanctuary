@@ -2356,7 +2356,7 @@ function buildPresetDeckInteraction(input: {
   const centerOffsetM = input.deck.isAttached
     ? resolvePresetDeckRenderCenterOffset({
         deck: input.deck,
-        renderFrame: placementFrame,
+        renderFrame: placementFrame ?? interactionFrame,
         commitReferenceFrames,
         fallbackCenterOffsetM: storedCenterOffsetM,
       })

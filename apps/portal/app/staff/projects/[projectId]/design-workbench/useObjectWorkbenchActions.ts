@@ -29,7 +29,6 @@ import type {
   ObjectWorkbenchOpeningPatch,
   ObjectWorkbenchPergolaAttachmentStrategy,
   ObjectWorkbenchPergolaConnectionKind,
-  ObjectWorkbenchPergolaPatch,
 } from '@/lib/drawings/state/objectWorkbenchInspectorModel';
 import {
   applyEstimateDrawingFootprintEdit,
@@ -99,6 +98,9 @@ type OpeningMutationInput = ObjectWorkbenchOpeningMutationInput;
 
 type PergolaAttachmentKind = ObjectWorkbenchPergolaConnectionKind;
 type PergolaAttachmentStrategyValue = ObjectWorkbenchPergolaAttachmentStrategy;
+type DeckPatchCommit = Extract<ObjectWorkbenchObjectPatchCommit, { target: { family: 'decks' } }>;
+type OpeningPatchCommit = Extract<ObjectWorkbenchObjectPatchCommit, { target: { family: 'openings' } }>;
+type PergolaPatchCommit = Extract<ObjectWorkbenchObjectPatchCommit, { target: { family: 'pergolas' } }>;
 
 function missingDrawingDraftResult(): CommitResult {
   return { ok: false, error: 'Drawing inputs are not available for this estimate.' };
@@ -115,6 +117,18 @@ function resolveObjectFirstDraft(
   return normalizeObjectFirstWorkbenchDraftVNext(
     drawingDraft.objectFirst ?? buildObjectFirstWorkbenchDraftFromProjectModel(store.persisted.projectModel),
   );
+}
+
+function isDeckPatchCommit(commit: ObjectWorkbenchObjectPatchCommit): commit is DeckPatchCommit {
+  return commit.target.family === 'decks';
+}
+
+function isOpeningPatchCommit(commit: ObjectWorkbenchObjectPatchCommit): commit is OpeningPatchCommit {
+  return commit.target.family === 'openings';
+}
+
+function isPergolaPatchCommit(commit: ObjectWorkbenchObjectPatchCommit): commit is PergolaPatchCommit {
+  return commit.target.family === 'pergolas';
 }
 
 export type ObjectWorkbenchActions = ReturnType<typeof useObjectWorkbenchActions>;
@@ -203,7 +217,7 @@ export function useObjectWorkbenchActions({
         buildNextDraft: (draft) => {
           const objectFirstDraft = resolveObjectFirstDraft(draft, store);
 
-          if (commit.target.family === 'decks') {
+          if (isDeckPatchCommit(commit)) {
             const currentDecks = resolveCurrentObjectWorkbenchDeckDrafts(objectFirstDraft);
             if (!currentDecks.some((deck) => deck.id === commit.target.objectId)) {
               return { ok: false, error: 'This deck is no longer available.' };
@@ -226,7 +240,7 @@ export function useObjectWorkbenchActions({
             };
           }
 
-          if (commit.target.family === 'openings') {
+          if (isOpeningPatchCommit(commit)) {
             const currentOpenings = resolveCurrentObjectWorkbenchOpeningDrafts(objectFirstDraft);
             if (!currentOpenings.some((opening) => opening.id === commit.target.objectId)) {
               return { ok: false, error: 'This opening is no longer available.' };
@@ -249,6 +263,10 @@ export function useObjectWorkbenchActions({
                 }),
               }),
             };
+          }
+
+          if (!isPergolaPatchCommit(commit)) {
+            return { ok: false, error: 'This object patch target is not supported yet.' };
           }
 
           const currentPergolas = resolveCurrentObjectWorkbenchPergolaDrafts(objectFirstDraft);
@@ -766,33 +784,13 @@ export function useObjectWorkbenchActions({
 
   const commitSharedPergolaAttachmentStrategy = useCallback(
     async (pergolaId: string, strategy: PergolaAttachmentStrategyValue): Promise<CommitResult> =>
-      commitPergolaDraftMutation({
-        pergolaId,
-        buildNextPergolas: ({ draft, currentPergolas, currentPergola, moduleIndexes }) => {
-          const objectFirstDraft = resolveObjectFirstDraft(draft, store);
-          const nextPergolas = upsertObjectWorkbenchPergolaDrafts(
-            currentPergolas,
-            pergolaId,
-            {
-              strategy: strategy === 'auto' ? null : strategy,
-            },
-            currentPergola,
-          );
-          const nextDraft = updateDraftObjectFirst({
-            draft,
-            objectFirst: buildObjectFirstDraftWithPergolas({
-              objectFirstDraft,
-              pergolas: nextPergolas,
-            }),
-          });
-          return applyObjectWorkbenchPergolaModuleEdits({
-            draft: nextDraft,
-            moduleIndexes,
-            strategy,
-          });
+      commitObjectWorkbenchPatch({
+        target: { family: 'pergolas', objectId: pergolaId },
+        patch: {
+          strategy: strategy === 'auto' ? null : strategy,
         },
       }),
-    [commitPergolaDraftMutation, store],
+    [commitObjectWorkbenchPatch],
   );
 
   const commitDrawingField = useCallback(
@@ -821,17 +819,16 @@ export function useObjectWorkbenchActions({
 
   const commitDeckDimension = useCallback(
     async (deckId: string, patch: ObjectWorkbenchDeckPatch): Promise<CommitResult> =>
-      commitDeckDraftMutation({
-        buildNextDecks: ({ currentDecks, housePolygon }) =>
-          applyObjectWorkbenchDeckPatch({
-            currentDecks,
-            deckId,
-            housePolygon,
-            patch,
-          }),
-        validateDraft: (nextDraft) => validateDeckPreview(nextDraft, deckId),
-      }),
-    [commitDeckDraftMutation, validateDeckPreview],
+      commitObjectWorkbenchPatch(
+        {
+          target: { family: 'decks', objectId: deckId },
+          patch,
+        },
+        {
+          validateDraft: (nextDraft) => validateDeckPreview(nextDraft, deckId),
+        },
+      ),
+    [commitObjectWorkbenchPatch, validateDeckPreview],
   );
 
   const commitOpeningDimension = useCallback(

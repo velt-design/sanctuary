@@ -1,6 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import type { CostOutputV1 } from '@sp/costing';
+import type { GeometryPlanViewModel } from '@sp/geometry';
 import type { CalculatorModuleInputs } from '@/lib/types/calculator';
 import type { ObjectWorkbenchPlanOverlay } from '@/lib/drawings/views/plan/objectWorkbenchPlanOverlay';
 import { buildEstimateDrawingModules } from '@/lib/estimates/moduleDrawing';
@@ -98,6 +99,88 @@ function makeDrawingModule(overrides: Partial<CalculatorModuleInputs> = {}) {
       pergolas: [{ id: 'pergola-1', modules: [makeResult()] }],
     },
   })[0]!;
+}
+
+function makeGeometryPlanFixture(): GeometryPlanViewModel {
+  return {
+    family: 'mono',
+    connectionType: 'soffit',
+    roofForm: {
+      mono: true,
+      gable: false,
+      box: false,
+    },
+    outline: [
+      { x: 0, y: 0 },
+      { x: 6000, y: 0 },
+      { x: 6000, y: 3000 },
+      { x: 0, y: 3000 },
+    ],
+    attachmentEdge: {
+      start: { x: 0, y: 0 },
+      end: { x: 6000, y: 0 },
+    },
+    house: {
+      footprint: null,
+      fasciaLine: null,
+      roofEdgeLine: null,
+      wallReferenceLine: null,
+      surfaces: [],
+      lines: [],
+    },
+    members: {
+      posts: [],
+      beams: [],
+      ledgers: [],
+      rafters: [
+        {
+          id: 'geometry-rafter',
+          role: 'rafter',
+          centerline: { start: { x: 1800, y: 250 }, end: { x: 1800, y: 2750 } },
+          profile: { shape: 'rectangular', widthMm: 50, depthMm: 150, profileKey: '50x150' },
+          lengthMm: 2500,
+        },
+      ],
+      gutters: [],
+      ridge: [],
+      joiners: [],
+    },
+    surfaces: {
+      roofPlanes: [
+        {
+          id: 'roof-plane-main',
+          kind: 'roof_plane',
+          boundary: [
+            { x: 0, y: 0 },
+            { x: 6000, y: 0 },
+            { x: 6000, y: 3000 },
+            { x: 0, y: 3000 },
+          ],
+        },
+      ],
+      roofCladding: [],
+    },
+    anchors: {
+      primarySize: {
+        length: { start: { x: 0, y: 0 }, end: { x: 6000, y: 0 } },
+        projection: { start: { x: 0, y: 0 }, end: { x: 0, y: 3000 } },
+      },
+      fall: null,
+      rafterSpacing: null,
+      ridgeLine: null,
+      attachmentSide: {
+        line: { start: { x: 0, y: 0 }, end: { x: 6000, y: 0 } },
+      },
+    },
+    extents: {
+      minX: 0,
+      minY: 0,
+      maxX: 6000,
+      maxY: 3000,
+      lengthMm: 6000,
+      projectionMm: 3000,
+    },
+  };
 }
 
 function makeFootprintEditor(overrides: Partial<{
@@ -447,6 +530,9 @@ describe('ModuleViewsCard', () => {
         planModel={drawing.planModel}
         sectionModel={drawing.sectionModel}
         presentation="model"
+        modelSpacePergolaGeometry={makeGeometryPlanFixture()}
+        modelSpacePergolaRenderSource="geometry"
+        modelSpacePergolaRenderStatus="geometry_ready"
       />,
     );
 
@@ -473,6 +559,9 @@ describe('ModuleViewsCard', () => {
         planModel={drawing.planModel}
         sectionModel={drawing.sectionModel}
         presentation="model"
+        modelSpacePergolaGeometry={makeGeometryPlanFixture()}
+        modelSpacePergolaRenderSource="geometry"
+        modelSpacePergolaRenderStatus="geometry_ready"
       />,
     );
 
@@ -772,6 +861,9 @@ describe('ModuleViewsCard', () => {
         planModel={drawing.planModel}
         sectionModel={drawing.sectionModel}
         presentation="model"
+        modelSpacePergolaGeometry={makeGeometryPlanFixture()}
+        modelSpacePergolaRenderSource="geometry"
+        modelSpacePergolaRenderStatus="geometry_ready"
       />,
     );
 
@@ -1246,6 +1338,9 @@ describe('ModuleViewsCard', () => {
         planModel={drawing.planModel}
         sectionModel={drawing.sectionModel}
         presentation="model"
+        modelSpacePergolaGeometry={makeGeometryPlanFixture()}
+        modelSpacePergolaRenderSource="geometry"
+        modelSpacePergolaRenderStatus="geometry_ready"
         interactiveFields={{
           'plan:lengthA': { fieldId: 'plan:lengthA' },
           'plan:spanA': { fieldId: 'plan:spanA' },
@@ -1280,7 +1375,7 @@ describe('ModuleViewsCard', () => {
   it('renders object-workbench deck targets above the pergola plan fill in model space', () => {
     const drawing = makeDrawingModule();
     const objectWorkbenchPlanOverlay: ObjectWorkbenchPlanOverlay = {
-      housePolygonSource: 'preset_derived',
+      housePolygonSource: 'geometry_projection',
       shapes: [
         {
           ownerKind: 'deck',
@@ -1291,6 +1386,7 @@ describe('ModuleViewsCard', () => {
             { x: 6, y: 3 },
             { x: 0, y: 3 },
           ],
+          detailSegments: [],
           selected: true,
           custom: false,
           muted: false,
@@ -1300,6 +1396,9 @@ describe('ModuleViewsCard', () => {
           openingInteraction: null,
           deckDragEligibility: null,
           openingDragEligibility: null,
+          source: 'geometry',
+          geometrySourceId: 'deck-1',
+          renderStatus: 'geometry_ready',
         },
       ],
       presetAnnotations: [],
@@ -1312,6 +1411,9 @@ describe('ModuleViewsCard', () => {
         planModel={drawing.planModel}
         sectionModel={drawing.sectionModel}
         presentation="model"
+        modelSpacePergolaGeometry={makeGeometryPlanFixture()}
+        modelSpacePergolaRenderSource="geometry"
+        modelSpacePergolaRenderStatus="geometry_ready"
         objectWorkbenchPlanOverlay={objectWorkbenchPlanOverlay}
       />,
     );
@@ -1374,6 +1476,9 @@ describe('ModuleViewsCard', () => {
           openingInteraction: null,
           deckDragEligibility: null,
           openingDragEligibility: null,
+          source: 'geometry',
+          geometrySourceId: 'deck-1',
+          renderStatus: 'geometry_ready',
         },
       ],
       presetAnnotations: [],
@@ -1388,6 +1493,9 @@ describe('ModuleViewsCard', () => {
         sectionModel={drawing.sectionModel}
         presentation="model"
         displayMode="house"
+        modelSpacePergolaGeometry={makeGeometryPlanFixture()}
+        modelSpacePergolaRenderSource="geometry"
+        modelSpacePergolaRenderStatus="geometry_ready"
         objectWorkbenchPlanOverlay={objectWorkbenchPlanOverlay}
       />,
     );
@@ -1524,6 +1632,9 @@ describe('ModuleViewsCard', () => {
         planModel={drawing.planModel}
         sectionModel={drawing.sectionModel}
         presentation="model"
+        modelSpacePergolaGeometry={makeGeometryPlanFixture()}
+        modelSpacePergolaRenderSource="geometry"
+        modelSpacePergolaRenderStatus="geometry_ready"
         objectWorkbenchPlanOverlay={objectWorkbenchPlanOverlay}
         objectWorkbenchPreviewOverlay={
           {

@@ -12,7 +12,7 @@ import type {
 import {
   applyObjectWorkbenchDeckPatch,
   applyObjectWorkbenchOpeningPatch,
-  applyObjectWorkbenchPergolaModuleEdits,
+  applyObjectWorkbenchPergolaPatch,
   buildNewObjectWorkbenchDeckDraft,
   buildNewObjectWorkbenchOpeningDraft,
   buildObjectFirstDraftWithDecks,
@@ -20,7 +20,6 @@ import {
   buildObjectFirstDraftWithPergolas,
   buildObjectWorkbenchRoofCommitDraft,
   mergeHouseFormRoofIntentAfterFootprintSync,
-  upsertObjectWorkbenchPergolaDrafts,
   updateDraftObjectFirst,
 } from './objectWorkbenchDraftActions';
 
@@ -308,7 +307,7 @@ describe('objectWorkbenchDraftActions', () => {
     expect(nextObjectFirst.openings).toEqual([]);
   });
 
-  it('updates pergola attachment, side, strategy, and module inputs without compatibility drafts', () => {
+  it('updates pergola attachment, side, strategy, and geometry as an object-first patch', () => {
     const pergola: ObjectFirstPergolaDraft = {
       id: 'pergola-1',
       label: 'Pergola 1',
@@ -318,44 +317,66 @@ describe('objectWorkbenchDraftActions', () => {
       side: 'rear',
       strategy: null,
     };
-    const nextPergolas = upsertObjectWorkbenchPergolaDrafts(
-      [pergola],
-      'pergola-1',
-      {
+    const nextPergolas = applyObjectWorkbenchPergolaPatch({
+      currentPergolas: [pergola],
+      pergolaId: 'pergola-1',
+      patch: {
+        connectionKind: 'wall',
         attachmentEdgeId: 'edge-a',
         attachmentZoneId: 'zone-a',
         side: 'left',
         strategy: 'facade_ledger',
+        geometry: {
+          dimensions: {
+            lengthM: '7',
+          },
+          roof: {
+            pitchDeg: '9',
+          },
+        },
       },
-      pergola,
-    );
+      fallbackPergola: pergola,
+    });
     const objectFirst = buildObjectFirstDraftWithPergolas({
       objectFirstDraft: makeObjectFirstDraft(),
       pergolas: nextPergolas,
     });
-    const moduleEdit = applyObjectWorkbenchPergolaModuleEdits({
-      draft: makeDraft(objectFirst),
-      moduleIndexes: [0],
-      kind: 'wall',
-      side: 'left',
-      strategy: 'facade_ledger',
+    const nextDraft = updateDraftObjectFirst({
+      draft: makeDraft(),
+      objectFirst,
     });
 
     expect(nextPergolas[0]).toMatchObject({
+      connectionKind: 'wall',
       attachmentEdgeId: 'edge-a',
       attachmentZoneId: 'zone-a',
       side: 'left',
       strategy: 'facade_ledger',
+      geometry: {
+        dimensions: {
+          lengthM: '7',
+        },
+        roof: {
+          pitchDeg: '9',
+        },
+      },
     });
-    expect(moduleEdit.ok).toBe(true);
-    if (moduleEdit.ok) {
-      expect(moduleEdit.draft.inputs.modules[0]).toMatchObject({
-        houseConnectionType: 'facade',
-        attachmentSide: 'left',
-        houseAttachmentStrategy: 'facade_ledger',
-      });
-      expectNoStaleHouseFirst(moduleEdit.draft);
-    }
+    expect(nextDraft.objectFirst?.pergolas[0]).toMatchObject({
+      connectionKind: 'wall',
+      attachmentEdgeId: 'edge-a',
+      attachmentZoneId: 'zone-a',
+      side: 'left',
+      strategy: 'facade_ledger',
+      geometry: {
+        dimensions: {
+          lengthM: '7',
+        },
+        roof: {
+          pitchDeg: '9',
+        },
+      },
+    });
+    expectNoStaleHouseFirst(nextDraft);
   });
 
   it('commits roof intent and removes invalid terminal-end ids after footprint sync', () => {

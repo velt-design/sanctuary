@@ -249,7 +249,7 @@ export function buildHouseFormRoofSections({
             ...roofDraft,
             appendage: {
               ...(roofDraft.appendage ?? {}),
-              hostEdge: value as CalculatorModuleInputs['attachmentSide'],
+              hostEdge: value as NonNullable<CalculatorModuleInputs['attachmentSide']>,
             },
           })
         }

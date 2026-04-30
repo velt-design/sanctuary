@@ -463,6 +463,7 @@ export function deriveDrawingWorkbenchCompatibilitySelection(
             ? { kind: 'opening', targetId: state.activeObjectRef.objectId }
             : { kind: 'house', targetId: null }
           : selection.kind === 'geometry' &&
+              selection.targetKind &&
               selection.targetKind !== 'deck' &&
               selection.targetKind !== 'opening'
             ? { kind: selection.targetKind, targetId: selection.targetId }
@@ -485,14 +486,15 @@ export function deriveDrawingWorkbenchCompatibilityState(
     selection?: DrawingWorkbenchSelectionState | null;
   },
 ): DrawingWorkbenchCompatibilitySelectionState {
+  const { activeHouseSelection, activePergolaId, selection, ...objectSelection } = input;
   const state = createDrawingWorkbenchUiState({
-    ...input,
+    ...objectSelection,
     selection:
-      input.selection ??
+      selection ??
       buildSelectionStateFromCompatibility({
         workbenchMode: deriveWorkbenchModeFromObjectSelection(input),
-        activeHouseSelection: normalizeActiveHouseSelection(input.activeHouseSelection),
-        activePergolaId: input.activePergolaId ?? null,
+        activeHouseSelection: normalizeActiveHouseSelection(activeHouseSelection),
+        activePergolaId: activePergolaId ?? null,
       }) ??
       undefined,
   });

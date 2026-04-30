@@ -243,6 +243,8 @@ export function makeHouseFirstOnePergolaFixture(): HouseFirstWorkbenchProjectMod
         primaryPitchDeg: '22.5',
         primaryFallDirection: 'positive_y',
         ridgeAxis: 'x',
+        openGableEndIds: [],
+        terminalEnds: [],
         appendage: {
           enabled: false,
           form: 'mono',
@@ -250,6 +252,9 @@ export function makeHouseFirstOnePergolaFixture(): HouseFirstWorkbenchProjectMod
           pitchDeg: '5',
           dropMm: '450',
         },
+        geometryKind: null,
+        appendageSupportedHostEdges: ['rear', 'front', 'left', 'right'],
+        appendageSupportReason: null,
         validation: {
           status: 'valid',
           code: null,
@@ -592,9 +597,10 @@ export function makeHouseFirstDeckSupportSnapshotFixture(
   } else {
     module.attachmentSide = 'rear';
   }
+  const draftWithHouseFirst = draft as EstimateDrawingDraft & { houseFirst?: unknown };
 
   if (id === 'rear_threshold_attached') {
-    draft.houseFirst = {
+    draftWithHouseFirst.houseFirst = {
       decks: [
         {
           id: 'deck-1',
@@ -617,7 +623,7 @@ export function makeHouseFirstDeckSupportSnapshotFixture(
       ],
     };
   } else if (id === 'left_threshold_attached') {
-    draft.houseFirst = {
+    draftWithHouseFirst.houseFirst = {
       decks: [
         {
           id: 'deck-1',
@@ -640,7 +646,7 @@ export function makeHouseFirstDeckSupportSnapshotFixture(
       ],
     };
   } else if (id === 'detached_rear_near_house') {
-    draft.houseFirst = {
+    draftWithHouseFirst.houseFirst = {
       decks: [
         {
           id: 'deck-1',
@@ -663,7 +669,7 @@ export function makeHouseFirstDeckSupportSnapshotFixture(
       ],
     };
   } else if (id === 'left_non_relevant_when_rear_active') {
-    draft.houseFirst = {
+    draftWithHouseFirst.houseFirst = {
       decks: [
         {
           id: 'deck-1',
@@ -686,7 +692,7 @@ export function makeHouseFirstDeckSupportSnapshotFixture(
       ],
     };
   } else if (id === 'rear_warning_heavy_attached') {
-    draft.houseFirst = {
+    draftWithHouseFirst.houseFirst = {
       decks: [
         {
           id: 'deck-1',

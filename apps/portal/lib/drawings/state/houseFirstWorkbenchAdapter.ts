@@ -2056,7 +2056,7 @@ function buildPergolas(input: {
   }
 
   const warnings: HouseFirstMigrationWarning[] = [];
-  const pergolas = Array.from(groups.entries()).map(([pergolaId, group]) => {
+  const pergolas: PergolaModel[] = Array.from(groups.entries()).map(([pergolaId, group]) => {
     const firstModule = group.modules[0]!;
     const moduleInput = firstModule.moduleInput;
     const attachmentKind = resolvePergolaAttachmentKind(moduleInput);

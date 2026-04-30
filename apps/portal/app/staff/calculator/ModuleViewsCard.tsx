@@ -1923,6 +1923,7 @@ function planRotationTurnsForPresentation(input: {
   presentation: ModuleDrawingPresentation;
 }): number {
   if (input.roofType === 'hip_corner') return 0;
+  if (input.presentation === 'model') return 0;
   return input.drawingRotationQuarterTurns;
 }
 
@@ -3588,6 +3589,8 @@ function measurePlanAnnotatedBounds(input: {
     | 'customPolygonPreviewPointKind'
     | 'customPolygonCloseReady'
     | 'customPolygonCloseHovered'
+    | 'customPolygonLandingPoint'
+    | 'customPolygonLockedDistanceM'
     | 'hideHouseFootprint'
   >;
 }): AnnotatedBounds {

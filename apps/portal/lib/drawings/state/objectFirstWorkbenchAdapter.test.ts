@@ -177,6 +177,7 @@ describe('buildObjectFirstWorkbenchProjectModel', () => {
     expect(project.openings[0]?.hostWallId).toMatch(/^wall-footprint-edge-/);
     expect(project.pergolas[0]).toMatchObject({
       id: 'pergola-1',
+      connectionKind: 'soffit',
       attachmentEdgeId: 'footprint-edge-1',
       attachmentZoneId: 'zone-soffit-footprint-edge-1',
     });

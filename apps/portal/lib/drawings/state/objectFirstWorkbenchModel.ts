@@ -779,6 +779,7 @@ export function normalizeObjectFirstPergolaDraft(
 ): ObjectFirstPergolaDraft | null {
   const id = normalizeStableId(value?.id);
   if (!id) return null;
+  const geometry = normalizeObjectFirstPergolaGeometryDraft(value?.geometry);
 
   return {
     id,
@@ -791,9 +792,7 @@ export function normalizeObjectFirstPergolaDraft(
     attachmentZoneId: normalizeStableId(value?.attachmentZoneId),
     side: normalizeAttachmentSide(value?.side),
     strategy: isCalculatorHouseAttachmentStrategy(value?.strategy) ? value.strategy : null,
-    ...(normalizeObjectFirstPergolaGeometryDraft(value?.geometry)
-      ? { geometry: normalizeObjectFirstPergolaGeometryDraft(value?.geometry) }
-      : null),
+    ...(geometry ? { geometry } : null),
   };
 }
 

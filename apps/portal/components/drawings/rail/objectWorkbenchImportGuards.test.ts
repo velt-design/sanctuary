@@ -23,6 +23,10 @@ const OBJECT_WORKBENCH_GEOMETRY_UI_ROOTS = [
   path.join('apps', 'portal', 'components', 'drawings', 'workbench'),
   path.join('apps', 'portal', 'app', 'staff', 'projects', '[projectId]', 'design-workbench'),
 ];
+const OBJECT_WORKBENCH_ACTION_SELECTION_FILES = [
+  path.join('apps', 'portal', 'app', 'staff', 'projects', '[projectId]', 'design-workbench', 'useObjectWorkbenchActions.ts'),
+  path.join('apps', 'portal', 'app', 'staff', 'projects', '[projectId]', 'design-workbench', 'useObjectWorkbenchSelection.ts'),
+];
 const OBJECT_WORKBENCH_BOUNDARY_FILES = [
   path.join('apps', 'portal', 'components', 'drawings', 'workbench', 'DrawingWorkbench.tsx'),
   path.join('apps', 'portal', 'components', 'drawings', 'viewports', 'ModelSpaceViewport.tsx'),
@@ -219,6 +223,16 @@ describe('object workbench import guards', () => {
       const source = fs.readFileSync(path.join(process.cwd(), relativeBoundaryPath), 'utf8');
       if (LEGACY_RENDERER_BOUNDARY_NAMES.test(source)) {
         violations.push(`${relativeBoundaryPath} uses legacy house-first renderer boundary names`);
+      }
+    }
+
+    for (const relativeBoundaryPath of OBJECT_WORKBENCH_ACTION_SELECTION_FILES.map((filePath) => path.normalize(filePath))) {
+      const source = fs.readFileSync(path.join(process.cwd(), relativeBoundaryPath), 'utf8');
+      if (/\b(?:buildDrawingWorkbenchObjectSelectionStateFromBridgeTarget|deriveDrawingWorkbenchCompatibilitySelection|ObjectWorkbenchCompatibilitySelection)\b/.test(source)) {
+        violations.push(`${relativeBoundaryPath} imports or uses public compatibility selection helpers`);
+      }
+      if (/from ['"][^'"]*\/geometry\/compat\//.test(source)) {
+        violations.push(`${relativeBoundaryPath} imports geometry compatibility internals`);
       }
     }
 

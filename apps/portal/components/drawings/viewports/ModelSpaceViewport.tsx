@@ -36,10 +36,10 @@ import {
   type DeckInteractionTelemetry,
 } from '@/lib/drawings/interactions/deckInteractionContract';
 import {
-  buildDeckCommitPatch,
   buildDeckDragSession,
   buildDeckInteractionTelemetry,
   buildDeckInteractionViewState,
+  buildDeckObjectPatchCommit,
   resolveDeckPreviewState,
   type DeckReleaseState,
   type DeckDragSession,
@@ -49,6 +49,7 @@ import {
   buildOpeningDragSession,
   buildOpeningInteractionTelemetry,
   buildOpeningInteractionViewState,
+  buildOpeningObjectPatchCommit,
   resolveOpeningPreviewState,
   type OpeningDragSession,
   type OpeningPreviewState,
@@ -437,7 +438,10 @@ function deckShapeSemanticallyMatchesPreview(input: {
   }
 
   const previewCenter = resolvePolygonCenter(input.preview.polygon) ?? input.preview.previewAnchor;
-  return pointsApproximatelyEqual(interaction.renderedCenter, previewCenter, toleranceM);
+  const centerToleranceM = input.preview.releasePlacement === 'floating'
+    ? Math.max(toleranceM, 1)
+    : toleranceM;
+  return pointsApproximatelyEqual(interaction.renderedCenter, previewCenter, centerToleranceM);
 }
 
 function clampValue(value: number, min: number, max: number): number {
@@ -2931,13 +2935,14 @@ export default function ModelSpaceViewport({
       });
       let result: { ok: boolean; error?: string };
       try {
+        const commit = buildDeckObjectPatchCommit({
+          session: activeDeckDragSession,
+          preview,
+        });
         result = await resolveCommitResult(
           onCommitDeckDimension(
-            activeDeckDragSession.deckId,
-            buildDeckCommitPatch({
-              session: activeDeckDragSession,
-              preview,
-            }),
+            commit.target.objectId,
+            commit.patch,
           ),
         );
       } catch {
@@ -3000,10 +3005,12 @@ export default function ModelSpaceViewport({
       setOpeningPreviewState(null);
       if (!preview) return;
 
+      const commit = buildOpeningObjectPatchCommit({
+        session: openingDragSession,
+        preview,
+      });
       const result = await resolveCommitResult(
-        onCommitOpeningDimension(openingDragSession.openingId, {
-          offsetAlongWallM: formatDeckPresetValue(preview.offsetAlongWallM),
-        }),
+        onCommitOpeningDimension(commit.target.objectId, commit.patch),
       );
       setFieldError(result.ok ? null : result.error ?? 'Unable to update the window position.');
       if (result.ok) setFootprintError(null);

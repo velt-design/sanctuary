@@ -1,4 +1,5 @@
 import type { ObjectWorkbenchPlanShapeOverlay, ObjectWorkbenchPlanOpeningInteraction, PlanPoint } from '@/lib/drawings/views/plan/objectWorkbenchPlanOverlay';
+import type { ObjectWorkbenchOpeningPatch } from '@/lib/drawings/state/objectWorkbenchInspectorModel';
 import {
   buildObjectInteractionTelemetry,
   buildObjectInteractionViewState,
@@ -11,9 +12,20 @@ export type OpeningSvgInteraction = {
   hostEdgeEnd: PlanPoint;
 };
 
+export type OpeningObjectRef = {
+  family: 'openings';
+  objectId: string;
+};
+
+export type OpeningObjectPatchCommit = {
+  target: OpeningObjectRef;
+  patch: ObjectWorkbenchOpeningPatch;
+};
+
 export type OpeningDragSession = {
   pointerId: number;
   openingId: string;
+  objectRef: OpeningObjectRef;
   startSvgX: number;
   startSvgY: number;
   startPolygon: PlanPoint[];
@@ -31,6 +43,10 @@ export type OpeningPreviewState = {
 
 function clampValue(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
+}
+
+function formatOpeningMetres(value: number): string {
+  return value.toFixed(3).replace(/\.?0+$/, '') || '0';
 }
 
 function translatePolygon(polygon: PlanPoint[], deltaX: number, deltaY: number): PlanPoint[] {
@@ -53,6 +69,10 @@ export function buildOpeningDragSession(input: {
   return {
     pointerId: input.pointerId,
     openingId: input.openingId,
+    objectRef: {
+      family: 'openings',
+      objectId: input.openingId,
+    },
     startSvgX: input.startSvgX,
     startSvgY: input.startSvgY,
     startPolygon: input.overlayShape.polygon,
@@ -107,6 +127,18 @@ export function resolveOpeningPreviewState(input: {
     polygon: translatePolygon(input.session.startPolygon, normalizedAxisX * deltaOffsetM, normalizedAxisY * deltaOffsetM),
     offsetAlongWallM,
     clamped: Math.abs(offsetAlongWallM - unclampedOffsetAlongWallM) > 1e-6,
+  };
+}
+
+export function buildOpeningObjectPatchCommit(input: {
+  session: OpeningDragSession;
+  preview: OpeningPreviewState;
+}): OpeningObjectPatchCommit {
+  return {
+    target: input.session.objectRef,
+    patch: {
+      offsetAlongWallM: formatOpeningMetres(input.preview.offsetAlongWallM),
+    },
   };
 }
 

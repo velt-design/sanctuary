@@ -1732,8 +1732,8 @@ export default function EstimatesTab({
                       planModel={activeDrawingModule?.planModel}
                       sectionModel={activeDrawingModule?.sectionModel}
                       planViewModel={drawingWorkbenchStore.derived.activePlanViewModel}
-                      viewportTransform={drawingWorkbenchStore.ui.viewportTransform}
-                      onViewportTransformChange={(transform) =>
+                      modelViewportTransform={drawingWorkbenchStore.ui.viewportTransform}
+                      onModelViewportTransformChange={(transform) =>
                         setDrawingWorkbenchUi((current) => ({
                           ...current,
                           viewportTransform: transform,

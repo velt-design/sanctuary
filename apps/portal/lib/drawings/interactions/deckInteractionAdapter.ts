@@ -45,8 +45,19 @@ export type DeckSvgInteraction = {
   hostEdgeEnd: PlanPoint;
 };
 
+export type DeckObjectRef = {
+  family: 'decks';
+  objectId: string;
+};
+
+export type DeckObjectPatchCommit = {
+  target: DeckObjectRef;
+  patch: ObjectWorkbenchDeckPatch;
+};
+
 export type DeckDragSession = ObjectInteractionSessionBase & {
   deckId: string;
+  objectRef: DeckObjectRef;
   startSvgX: number;
   startSvgY: number;
   startDragPlanPoint: PlanPoint | null;
@@ -989,6 +1000,10 @@ export function buildDeckDragSession(input: {
     startClientY: input.clientY,
     phase: 'drag-intent',
     deckId: input.deckId,
+    objectRef: {
+      family: 'decks',
+      objectId: input.deckId,
+    },
     startSvgX: input.startSvgX,
     startSvgY: input.startSvgY,
     startDragPlanPoint: input.startDragPlanPoint,
@@ -1609,8 +1624,18 @@ export function buildDeckCommitPatch(input: {
         input.preview.releasePlacement === 'floating'
           ? formatDeckPresetValue(input.preview.referenceEdgeGapM)
           : null,
-    } as unknown as HouseFirstDeckDraft['presetRect'],
+    } as NonNullable<ObjectWorkbenchDeckPatch['presetRect']>,
     ...(input.preview.releasePlacement === 'snapped' ? { floatingRect: null } : null),
+  };
+}
+
+export function buildDeckObjectPatchCommit(input: {
+  session: DeckDragSession;
+  preview: DeckPreviewState;
+}): DeckObjectPatchCommit {
+  return {
+    target: input.session.objectRef,
+    patch: buildDeckCommitPatch(input),
   };
 }
 

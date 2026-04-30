@@ -9,6 +9,7 @@ import { makeObjectFirstWorkbenchProjectFixture } from '@/lib/drawings/state/obj
 import {
   buildDeckCommitPatch,
   buildDeckDragSession,
+  buildDeckObjectPatchCommit,
   resolveDeckPreviewState,
 } from './deckInteractionAdapter';
 
@@ -308,7 +309,9 @@ describe('deckInteractionAdapter', () => {
       previousPreviewState: null,
     });
     const patch = buildDeckCommitPatch({ session, preview });
+    const commit = buildDeckObjectPatchCommit({ session, preview });
 
+    expect(session.objectRef).toEqual({ family: 'decks', objectId: 'deck-1' });
     expect(preview.releasePlacement).toBe('snapped');
     expect(preview.placement).toBe('floating');
     expect(preview.referenceEdgeGapM).toBe(0);
@@ -318,6 +321,10 @@ describe('deckInteractionAdapter', () => {
     expect(patch.hostEdgeId).toBe(frame.hostEdgeId);
     expect(patch.primaryHostEdgeId).toBe(frame.sourceEdgeId);
     expect((patch.presetRect as { centerOffsetM: string }).centerOffsetM).toBe('0.4');
+    expect(commit).toEqual({
+      target: { family: 'decks', objectId: 'deck-1' },
+      patch,
+    });
   });
 
   it('commits snapped releases through draft reference frames when render frame ids differ', () => {

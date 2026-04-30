@@ -3,7 +3,6 @@
 import { useCallback, type Dispatch, type SetStateAction } from 'react';
 import {
   buildDrawingWorkbenchObjectSelectionState,
-  buildDrawingWorkbenchObjectSelectionStateFromBridgeTarget,
 } from '@/lib/drawings/state/drawingWorkbenchUiState';
 import type {
   DrawingWorkbenchRailTab,
@@ -41,13 +40,33 @@ function buildSelectionStateForTab(
 function buildSelectionStateForObjectRef(
   current: DrawingWorkbenchUiState,
   ref: WorkbenchObjectRef,
-  houseSelectionOverride?: ObjectWorkbenchTargetSelection,
 ): ReturnType<typeof buildDrawingWorkbenchObjectSelectionState> {
   return buildDrawingWorkbenchObjectSelectionState({
     activeRailTab: ref.family,
     activeObjectRef: ref,
-    bridgeHouseSelection: houseSelectionOverride,
   });
+}
+
+function buildObjectRefForViewportTarget(
+  selection: ObjectWorkbenchTargetSelection,
+  defaultHouseFormId: string | null,
+): WorkbenchObjectRef {
+  if (selection.kind === 'deck') {
+    return {
+      family: 'decks',
+      objectId: selection.targetId,
+    };
+  }
+  if (selection.kind === 'opening') {
+    return {
+      family: 'openings',
+      objectId: selection.targetId,
+    };
+  }
+  return {
+    family: 'house_forms',
+    objectId: selection.targetId ?? defaultHouseFormId,
+  };
 }
 
 export function useObjectWorkbenchSelection({
@@ -152,7 +171,6 @@ export function useObjectWorkbenchSelection({
           family: 'house_forms',
           objectId: getDefaultObjectId('house_forms'),
         },
-        { kind: 'footprint', targetId: null },
       ),
       selection: {
         kind: 'geometry',
@@ -213,10 +231,10 @@ export function useObjectWorkbenchSelection({
       resetDrawOutlineTarget();
       setUi((current) => ({
         ...current,
-        ...buildDrawingWorkbenchObjectSelectionStateFromBridgeTarget({
-          target: selection,
-          defaultHouseFormId: getDefaultObjectId('house_forms'),
-        }),
+        ...buildSelectionStateForObjectRef(
+          current,
+          buildObjectRefForViewportTarget(selection, getDefaultObjectId('house_forms')),
+        ),
         selection: {
           kind: selection.kind === 'house' ? 'none' : 'geometry',
           targetId: selection.targetId,

@@ -5,8 +5,6 @@ import {
   normalizeHouseRoofPitchInputForForm,
 } from '@sp/geometry';
 import {
-  applyEstimateDrawingFootprintEdit,
-  applyEstimateDrawingModuleFieldEdit,
   updateEstimateDrawingObjectFirstWorkbenchDraft,
   type EstimateDrawingDraft,
 } from '@/lib/estimates/drawingEdits';
@@ -39,18 +37,12 @@ import type {
 import type {
   ObjectWorkbenchDeckPatch,
   ObjectWorkbenchOpeningPatch,
-  ObjectWorkbenchPergolaAttachmentStrategy,
   ObjectWorkbenchPergolaConnectionKind,
   ObjectWorkbenchPergolaInspectorModel,
   ObjectWorkbenchPergolaPatch,
 } from '@/lib/drawings/state/objectWorkbenchInspectorModel';
 
 type AttachmentSide = NonNullable<CalculatorModuleInputs['attachmentSide']>;
-
-export type ObjectWorkbenchCompatibilitySelection = {
-  kind: 'house' | 'footprint' | 'roof' | 'deck' | 'opening' | 'attachment_zone';
-  targetId: string | null;
-};
 
 export type ObjectWorkbenchDeckDraft = ObjectFirstDeckDraft;
 export type ObjectWorkbenchOpeningDraft = ObjectFirstOpeningDraft;
@@ -83,13 +75,6 @@ export type ObjectWorkbenchOpeningMutationInput = {
   currentOpenings: ObjectWorkbenchOpeningDraft[];
 };
 
-export type ObjectWorkbenchPergolaMutationInput = {
-  draft: EstimateDrawingDraft;
-  currentPergolas: ObjectWorkbenchPergolaDraft[];
-  currentPergola: ObjectWorkbenchPergolaInspectorModel;
-  moduleIndexes: number[];
-};
-
 type OpeningHostWallOption = {
   wallId: string;
   label: string;
@@ -99,7 +84,6 @@ type OpeningHostWallOption = {
 };
 
 type PergolaAttachmentKind = ObjectWorkbenchPergolaConnectionKind;
-type PergolaAttachmentStrategyValue = ObjectWorkbenchPergolaAttachmentStrategy;
 type PergolaDerivedAttachmentZoneOption = DerivedAttachmentZoneModel;
 
 export function resolveCurrentObjectWorkbenchDeckDrafts(
@@ -313,14 +297,6 @@ export function resolveObjectWorkbenchPergolaZoneKind(
   return kind;
 }
 
-function toModuleHouseConnectionType(
-  kind: PergolaAttachmentKind,
-): CalculatorModuleInputs['houseConnectionType'] {
-  if (kind === 'freestanding') return 'none';
-  if (kind === 'wall') return 'facade';
-  return kind;
-}
-
 export function buildObjectWorkbenchPergolaZoneLookup(
   houseAssembly: HouseAssemblyModel | null,
 ): Map<string, PergolaDerivedAttachmentZoneOption> {
@@ -460,78 +436,6 @@ export function applyObjectWorkbenchPergolaPatch(input: {
     },
     input.fallbackPergola,
   );
-}
-
-export function applyObjectWorkbenchPergolaModuleEdits(input: {
-  draft: EstimateDrawingDraft;
-  moduleIndexes: number[];
-  kind?: PergolaAttachmentKind;
-  strategy?: PergolaAttachmentStrategyValue;
-  side?: AttachmentSide | null;
-}): ObjectWorkbenchDraftBuildResult {
-  let nextDraft = input.draft;
-
-  for (const moduleIndex of input.moduleIndexes) {
-    if (input.kind) {
-      const connectionResult = applyEstimateDrawingModuleFieldEdit({
-        draft: nextDraft,
-        moduleIndex,
-        edit: {
-          field: 'houseConnectionType',
-          value: toModuleHouseConnectionType(input.kind),
-        },
-      });
-      if (!connectionResult.ok) {
-        return {
-          ok: false,
-          error: connectionResult.error,
-        };
-      }
-      nextDraft = connectionResult.draft;
-    }
-
-    if (input.strategy !== undefined) {
-      const strategyResult = applyEstimateDrawingModuleFieldEdit({
-        draft: nextDraft,
-        moduleIndex,
-        edit: {
-          field: 'moduleValue',
-          key: 'houseAttachmentStrategy',
-          value: input.strategy,
-        },
-      });
-      if (!strategyResult.ok) {
-        return {
-          ok: false,
-          error: strategyResult.error,
-        };
-      }
-      nextDraft = strategyResult.draft;
-    }
-
-    if (input.side) {
-      const sideResult = applyEstimateDrawingFootprintEdit({
-        draft: nextDraft,
-        moduleIndex,
-        edit: {
-          type: 'attachment_side',
-          side: input.side,
-        },
-      });
-      if (!sideResult.ok) {
-        return {
-          ok: false,
-          error: sideResult.error,
-        };
-      }
-      nextDraft = sideResult.draft;
-    }
-  }
-
-  return {
-    ok: true,
-    draft: nextDraft,
-  };
 }
 
 function resolveObjectWorkbenchDeckDraftGeometry(input: {

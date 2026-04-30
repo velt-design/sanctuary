@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  buildPlanViewModel as buildGeometryPlanViewModel,
   buildHouseFootprintPresetSideLocalPoints,
   houseFootprintSideLocalPointToWorld,
   resolveHouseFootprintFrame,
@@ -907,6 +908,10 @@ describe('houseFirstPlanOverlay', () => {
     const deckSolidObject = houseObjects.find(
       (object) => object.type === 'house_surface_solid' && object.kind === 'deck',
     );
+    const previewPlan = buildGeometryPlanViewModel(preview.assembly);
+    const deckPlanSurface = previewPlan.house.surfaces?.find(
+      (surface) => surface.kind === 'deck' && surface.id === 'deck-debug',
+    );
     const openingObject = houseObjects.find(
       (object) =>
         object.type === 'house_surface' &&
@@ -931,7 +936,14 @@ describe('houseFirstPlanOverlay', () => {
               y: point.y / 1000,
             })),
           )
-        : null;
+        : deckPlanSurface
+          ? toScenePolygonMetres(
+              deckPlanSurface.boundary.map((point) => ({
+                x: point.x / 1000,
+                y: point.y / 1000,
+              })),
+            )
+          : null;
     const sceneFootprintPolygon = toScenePolygonMetres(
       wallObjects.map((object) => ({
         x: object.boundary[0]!.x / 1000,
@@ -942,7 +954,7 @@ describe('houseFirstPlanOverlay', () => {
     expect(deckShape?.polygon.length).toBeGreaterThan(0);
     expect(footprintShape?.polygon.length).toBeGreaterThan(0);
     expect(openingShape?.polygon.length).toBeGreaterThan(0);
-    expect(deckSolidObject).toBeDefined();
+    expect(deckSolidObject ?? deckPlanSurface).toBeDefined();
     expect(toScenePolygonMetres(deckShape?.polygon ?? [])).toEqual(sceneDeckPolygon);
     expect(toScenePolygonMetres(footprintShape?.polygon ?? [])).toEqual(sceneFootprintPolygon);
     expect(openingObject).toBeDefined();

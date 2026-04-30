@@ -1080,7 +1080,7 @@ function buildHouseRoofPerimeterEdges(input: {
     return {
       index,
       sourceEdgeId,
-      edgeKind: 'drain_eave',
+      edgeKind: 'drain_eave' as HouseRoofPerimeterEdgeKind,
       perimeterId: 'house-main-roof',
       perimeterPolygon: input.eavePolygon,
       wallStart,
@@ -6661,15 +6661,15 @@ function buildHouseOpenings(input: {
   openings: NonNullable<HouseModel3D['openings']>;
 }): HouseOpening3D[] {
   return input.openings
-    .map((opening) => {
-      if (!opening?.id) return null;
+    .flatMap((opening): HouseOpening3D[] => {
+      if (!opening?.id) return [];
       if (
         !Number.isFinite(opening.widthMm) ||
         !Number.isFinite(opening.heightMm) ||
         !Number.isFinite(opening.sillHeightMm) ||
         !Number.isFinite(opening.offsetAlongWallMm)
       ) {
-        return null;
+        return [];
       }
       const kind =
         opening.kind === 'hinged_door' ||
@@ -6678,7 +6678,7 @@ function buildHouseOpenings(input: {
         opening.kind === 'window'
           ? opening.kind
           : 'window';
-      return {
+      return [{
         ...opening,
         kind,
         panelCount:
@@ -6701,9 +6701,8 @@ function buildHouseOpenings(input: {
         validationStatus: opening.validationStatus === 'invalid' ? 'invalid' : 'valid',
         validationCodes: opening.validationCodes ?? [],
         validationMessage: opening.validationMessage ?? null,
-      };
-    })
-    .filter((opening): opening is HouseOpening3D => opening !== null);
+      }];
+    });
 }
 
 function houseWallIsOpenGableFrame(

@@ -215,6 +215,7 @@ type GeometryPlanLookup = {
 };
 
 const ZERO_DIMENSION_EPSILON_M = 1e-6;
+const ZERO_DIMENSION_LABEL_LENGTH_M = 0.18;
 const EDGE_LABEL_OFFSET_M = 0.9;
 const EDGE_NORMAL_PROBE_M = 0.12;
 const OPENING_PLAN_THICKNESS_M = 0.12;
@@ -404,6 +405,8 @@ function buildGeometryLookup(geometryPlan: GeometryPlanViewModel): GeometryPlanL
       const spanStartM = horizontal ? Math.min(line.start.x, line.end.x) : Math.min(line.start.y, line.end.y);
       const spanEndM = horizontal ? Math.max(line.start.x, line.end.x) : Math.max(line.start.y, line.end.y);
       const edgeCoordinateM = horizontal ? line.start.y : line.start.x;
+      const frameAlongUnitX = horizontal ? 1 : 0;
+      const frameAlongUnitY = horizontal ? 0 : 1;
       referenceFrames.push({
         hostEdgeId: frameSideFromOutward({ horizontal, outward }),
         sourceEdgeId,
@@ -418,8 +421,8 @@ function buildGeometryLookup(geometryPlan: GeometryPlanViewModel): GeometryPlanL
         hostEdgeEnd: horizontal
           ? { x: spanEndM, y: line.start.y }
           : { x: line.start.x, y: spanEndM },
-        alongUnitX,
-        alongUnitY,
+        alongUnitX: frameAlongUnitX,
+        alongUnitY: frameAlongUnitY,
         outwardUnitX: outward.x,
         outwardUnitY: outward.y,
       });
@@ -558,6 +561,34 @@ function resolveDeckPolygon(input: {
     };
   }
 
+  if (input.deck.floatingRect) {
+    const centerAlongM = parseMetres(input.deck.floatingRect.centerAlongM, Number.NaN);
+    const centerDepthM = parseMetres(input.deck.floatingRect.centerDepthM, Number.NaN);
+    const widthM = parseMetres(input.deck.floatingRect.widthM, Number.NaN);
+    const depthM = parseMetres(input.deck.floatingRect.depthM, Number.NaN);
+    if (
+      Number.isFinite(centerAlongM) &&
+      Number.isFinite(centerDepthM) &&
+      Number.isFinite(widthM) &&
+      Number.isFinite(depthM) &&
+      widthM > 0 &&
+      depthM > 0
+    ) {
+      const halfWidthM = widthM / 2;
+      const halfDepthM = depthM / 2;
+      return {
+        polygon: [
+          { x: centerAlongM - halfWidthM, y: centerDepthM - halfDepthM },
+          { x: centerAlongM + halfWidthM, y: centerDepthM - halfDepthM },
+          { x: centerAlongM + halfWidthM, y: centerDepthM + halfDepthM },
+          { x: centerAlongM - halfWidthM, y: centerDepthM + halfDepthM },
+        ],
+        geometrySourceId: input.deck.id,
+        source: 'geometry_derived',
+      };
+    }
+  }
+
   if (!input.deck.presetRect) return null;
   const widthM = parseMetres(input.deck.presetRect.widthM, Number.NaN);
   const depthM = parseMetres(input.deck.presetRect.depthM, Number.NaN);
@@ -581,6 +612,30 @@ function resolveDeckPolygon(input: {
     geometrySourceId: frame.sourceEdgeId,
     source: 'geometry_derived',
   };
+}
+
+function geometryOpeningFrameFromDeckFrame(frame: ObjectWorkbenchPlanDeckReferenceFrame): GeometryOpeningFrame {
+  return {
+    hostEdgeId: frame.sourceEdgeId,
+    hostEdgeStart: frame.hostEdgeStart,
+    hostEdgeEnd: frame.hostEdgeEnd,
+    hostSpanM: frame.spanEndM - frame.spanStartM,
+    alongUnitX: frame.alongUnitX,
+    alongUnitY: frame.alongUnitY,
+    outwardUnitX: frame.outwardUnitX,
+    outwardUnitY: frame.outwardUnitY,
+  };
+}
+
+function findOpeningFrame(
+  lookup: GeometryPlanLookup,
+  hostEdgeId: string | null | undefined,
+): GeometryOpeningFrame | null {
+  if (!hostEdgeId) return null;
+  const openingFrame = lookup.openingFrames.get(hostEdgeId);
+  if (openingFrame) return openingFrame;
+  const referenceFrame = findFrameByEdgeId(lookup.referenceFrames, hostEdgeId);
+  return referenceFrame ? geometryOpeningFrameFromDeckFrame(referenceFrame) : null;
 }
 
 function buildDeckInteraction(input: {
@@ -616,21 +671,29 @@ function buildDeckInteraction(input: {
 
   const presetWidthM = parseMetres(input.deck.presetRect?.widthM, projection.widthM);
   const presetDepthM = parseMetres(input.deck.presetRect?.depthM, projection.depthM);
-  const deckWidthM = Math.max(ZERO_DIMENSION_EPSILON_M, presetWidthM || projection.widthM);
-  const deckDepthM = Math.max(ZERO_DIMENSION_EPSILON_M, presetDepthM || projection.depthM);
+  const useCommittedPresetDimensions = input.deck.shape === 'preset' && !input.deck.isAttached;
+  const deckWidthM = Math.max(
+    ZERO_DIMENSION_EPSILON_M,
+    useCommittedPresetDimensions ? presetWidthM || projection.widthM : projection.widthM,
+  );
+  const deckDepthM = Math.max(
+    ZERO_DIMENSION_EPSILON_M,
+    useCommittedPresetDimensions ? presetDepthM || projection.depthM : projection.depthM,
+  );
   const hostSpanM = Math.max(0, interactionFrame.spanEndM - interactionFrame.spanStartM);
   const availableHalfSpanM = deckWidthM <= hostSpanM ? Math.max(0, (hostSpanM - deckWidthM) / 2) : 0;
   const attachmentMode: DeckAttachmentMode =
     input.deck.attachmentMode ??
     (input.deck.secondaryHostEdgeId && input.deck.cornerVertexId
       ? 'corner_dual_edge'
-      : input.deck.isAttached
+      : input.deck.isAttached && input.deck.shape !== 'custom'
         ? 'single_edge'
         : 'floating');
+  const placement = input.deck.isAttached && input.deck.shape !== 'custom' ? 'snapped' : 'floating';
 
   return {
     kind: input.deck.shape === 'custom' ? 'custom_outline' : 'preset_rect',
-    placement: input.deck.isAttached ? 'snapped' : 'floating',
+    placement,
     attachmentMode,
     houseAttachmentSide: input.houseAttachmentSide,
     semanticPlacementSide: placementFrame?.hostEdgeId ?? null,
@@ -645,12 +708,12 @@ function buildDeckInteraction(input: {
     hostSpanM,
     deckWidthM,
     deckDepthM,
-    centerOffsetM: input.deck.isAttached
+    centerOffsetM: placement === 'snapped'
       ? parseMetres(input.deck.presetRect?.centerOffsetM, projection.centerOffsetM)
       : projection.centerOffsetM,
-    referenceEdgeGapM: input.deck.isAttached ? 0 : projection.nearGapM,
-    minCenterOffsetM: input.deck.isAttached ? Number.NEGATIVE_INFINITY : -availableHalfSpanM,
-    maxCenterOffsetM: input.deck.isAttached ? Number.POSITIVE_INFINITY : availableHalfSpanM,
+    referenceEdgeGapM: placement === 'snapped' ? 0 : projection.nearGapM,
+    minCenterOffsetM: placement === 'snapped' ? Number.NEGATIVE_INFINITY : -availableHalfSpanM,
+    maxCenterOffsetM: placement === 'snapped' ? Number.POSITIVE_INFINITY : availableHalfSpanM,
     renderedCenter: polygonCenter(input.polygon),
     referenceFrames: [...input.lookup.referenceFrames],
     commitReferenceFrames: [...input.lookup.referenceFrames],
@@ -687,7 +750,20 @@ function createOffsetDimensionGeometry(input: {
   const dx = input.segmentEnd.x - input.segmentStart.x;
   const dy = input.segmentEnd.y - input.segmentStart.y;
   const length = Math.hypot(dx, dy);
-  if (length <= ZERO_DIMENSION_EPSILON_M) return null;
+  if (length <= ZERO_DIMENSION_EPSILON_M) {
+    return {
+      witnessStart: input.segmentStart,
+      witnessEnd: input.segmentEnd,
+      lineStart: {
+        x: input.segmentStart.x,
+        y: input.segmentStart.y - EDGE_LABEL_OFFSET_M,
+      },
+      lineEnd: {
+        x: input.segmentStart.x + ZERO_DIMENSION_LABEL_LENGTH_M,
+        y: input.segmentStart.y - EDGE_LABEL_OFFSET_M,
+      },
+    };
+  }
   const normalA = { x: -dy / length, y: dx / length };
   const normalB = { x: -normalA.x, y: -normalA.y };
   const edgeMidpoint = midpoint(input.segmentStart, input.segmentEnd);
@@ -854,12 +930,12 @@ function buildDeckAnnotations(input: {
     const centerAlongM = (projection.alongMinM + projection.alongMaxM) / 2;
     annotations.push(
       makeAnnotation({
-        id: `${input.deck.id}:referenceEdgeGapM`,
+        id: `${input.deck.id}:crossEdgeGapM`,
         targetKind: 'deck_host_edge_reference',
         emphasis: 'relationship',
         ownerKind: 'deck',
         ownerId: input.deck.id,
-        fieldKey: 'referenceEdgeGapM',
+        fieldKey: 'crossEdgeGapM',
         rawValue: formatRawMetres(interaction.referenceEdgeGapM),
         displayValue: formatDisplayMetres(interaction.referenceEdgeGapM),
         segmentStart: pointOnFrame(frame, centerAlongM, 0),
@@ -996,6 +1072,30 @@ function buildOpeningAnnotations(input: {
       displayValue: formatDisplayMetres(offsetAlongWallM),
       segmentStart: offsetStart,
       segmentEnd: openingStart,
+      polygon: input.polygon,
+    }),
+  ].filter((annotation): annotation is ObjectWorkbenchPlanPresetDimensionAnnotation => Boolean(annotation));
+}
+
+function buildFootprintAnnotations(input: {
+  houseForm: HouseFormModel;
+  polygon: PlanPoint[];
+}): ObjectWorkbenchPlanPresetDimensionAnnotation[] {
+  if (input.polygon.length < 2) return [];
+  const widthM = parseMetres(input.houseForm.footprint.params.widthM, Number.NaN);
+  if (!Number.isFinite(widthM) || widthM <= 0) return [];
+  return [
+    makeAnnotation({
+      id: `${input.houseForm.id}:widthM`,
+      targetKind: 'house_preset_param',
+      emphasis: 'driving',
+      ownerKind: 'footprint',
+      ownerId: input.houseForm.id,
+      fieldKey: 'widthM',
+      rawValue: input.houseForm.footprint.params.widthM,
+      displayValue: formatDisplayMetres(widthM),
+      segmentStart: input.polygon[0]!,
+      segmentEnd: input.polygon[1]!,
       polygon: input.polygon,
     }),
   ].filter((annotation): annotation is ObjectWorkbenchPlanPresetDimensionAnnotation => Boolean(annotation));
@@ -1178,24 +1278,13 @@ export function buildObjectWorkbenchPlanOverlay(input: ObjectWorkbenchPlanOverla
 
   for (const opening of input.openings) {
     const hostEdgeId = findOpeningHostEdgeId({ opening, houseAssembly: input.houseAssembly });
-    const exactOpeningFrame = hostEdgeId ? lookup.openingFrames.get(hostEdgeId) ?? null : null;
-    const fallbackReferenceFrame = opening.wallId
+    const exactOpeningFrame = findOpeningFrame(lookup, hostEdgeId);
+    const fallbackReferenceFrame = !exactOpeningFrame && opening.wallId
       ? lookup.referenceFrames.find((candidate) => candidate.hostEdgeId === opening.wallId) ?? null
       : null;
     const openingFrame: GeometryOpeningFrame | null =
       exactOpeningFrame ??
-      (fallbackReferenceFrame
-        ? {
-            hostEdgeId: fallbackReferenceFrame.sourceEdgeId,
-            hostEdgeStart: fallbackReferenceFrame.hostEdgeStart,
-            hostEdgeEnd: fallbackReferenceFrame.hostEdgeEnd,
-            hostSpanM: fallbackReferenceFrame.spanEndM - fallbackReferenceFrame.spanStartM,
-            alongUnitX: fallbackReferenceFrame.alongUnitX,
-            alongUnitY: fallbackReferenceFrame.alongUnitY,
-            outwardUnitX: fallbackReferenceFrame.outwardUnitX,
-            outwardUnitY: fallbackReferenceFrame.outwardUnitY,
-          }
-        : null);
+      (fallbackReferenceFrame ? geometryOpeningFrameFromDeckFrame(fallbackReferenceFrame) : null);
     if (!openingFrame) continue;
     const widthM = parseMetres(opening.widthM, Number.NaN);
     const offsetAlongWallM = parseMetres(opening.offsetAlongWallM, Number.NaN);
@@ -1206,7 +1295,7 @@ export function buildObjectWorkbenchPlanOverlay(input: ObjectWorkbenchPlanOverla
       offsetAlongWallM,
     });
     const selected = input.selection.kind === 'opening' && input.selection.targetId === opening.id;
-    const openingInteraction = selected
+    const openingInteraction = selected && exactOpeningFrame
       ? buildOpeningInteraction({
           opening,
           frame: openingFrame,
@@ -1255,6 +1344,13 @@ export function buildObjectWorkbenchPlanOverlay(input: ObjectWorkbenchPlanOverla
         ownerId: houseForm.id,
         polygon: footprint.polygon,
         localPolygon: parseLocalPolygon(houseForm.footprint.polygon),
+      }),
+    );
+  } else if (input.selection.kind === 'footprint' && houseForm) {
+    presetAnnotations.push(
+      ...buildFootprintAnnotations({
+        houseForm,
+        polygon: footprint.polygon,
       }),
     );
   } else if (input.selection.kind === 'deck' && input.selection.targetId) {

@@ -76,28 +76,34 @@ function buildHouseFormFromCompatibilityHouse(house: ObjectWorkbenchCompatibilit
 }
 
 function buildDeckObjects(house: ObjectWorkbenchCompatibilityHouseModel | null): DeckObjectModel[] {
-  return (house?.decks ?? []).map((deck) => ({
-    id: deck.id,
-    label: deck.name,
-    kind: deck.kind,
-    shape: deck.shape,
-    presetType: deck.presetType,
-    presetRect: deck.presetRect,
-    floatingRect: deck.floatingRect,
-    outline: deck.outline,
-    elevationMode: deck.elevationMode,
-    levelOffsetMm: deck.levelOffsetMm,
-    isAttached: deck.isAttached,
-    surfaceMaterial: deck.surfaceMaterial,
-    hostEdgeId: deck.hostEdgeId,
-    attachmentMode: deck.attachmentMode,
-    primaryHostEdgeId: deck.primaryHostEdgeId,
-    secondaryHostEdgeId: deck.secondaryHostEdgeId,
-    cornerVertexId: deck.cornerVertexId,
-    topSurfaceElevationMm: deck.topSurfaceElevationMm,
-    supportContext: deck.supportContext,
-    validation: deck.validation,
-  }));
+  return (house?.decks ?? []).flatMap((deck) =>
+    deck
+      ? [
+          {
+            id: deck.id,
+            label: deck.name ?? deck.id,
+            kind: deck.kind,
+            shape: deck.shape,
+            presetType: deck.presetType,
+            presetRect: deck.presetRect,
+            floatingRect: deck.floatingRect,
+            outline: deck.outline,
+            elevationMode: deck.elevationMode,
+            levelOffsetMm: deck.levelOffsetMm,
+            isAttached: deck.isAttached,
+            surfaceMaterial: deck.surfaceMaterial,
+            hostEdgeId: deck.hostEdgeId,
+            attachmentMode: deck.attachmentMode,
+            primaryHostEdgeId: deck.primaryHostEdgeId,
+            secondaryHostEdgeId: deck.secondaryHostEdgeId,
+            cornerVertexId: deck.cornerVertexId,
+            topSurfaceElevationMm: deck.topSurfaceElevationMm,
+            supportContext: deck.supportContext,
+            validation: deck.validation,
+          },
+        ]
+      : [],
+  );
 }
 
 function buildOpeningObjects(house: ObjectWorkbenchCompatibilityHouseModel | null): OpeningObjectModel[] {
@@ -236,6 +242,7 @@ export function buildObjectFirstPergolaDraftsFromCompatibilityDrafts(
       id: pergola.id,
       label: compatibilityPergola?.label ?? pergola.id,
       family: compatibilityPergola?.family ?? 'unknown',
+      connectionKind: compatibilityPergola?.attachment.kind,
       attachmentEdgeId: pergola.attachmentEdgeId ?? null,
       attachmentZoneId: pergola.attachmentZoneId ?? null,
       side: compatibilityPergola?.attachment.side ?? 'rear',
