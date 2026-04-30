@@ -1171,7 +1171,12 @@ export default function ModelSpaceViewport({
   const modelSpaceAutoFitReady = showDrawingViewport;
   const modelSpaceAutoFitKey = `${fitViewKey}:${modelSpaceAutoFitReady ? 'ready' : 'empty'}`;
   const interactionError = fieldError ?? footprintError;
-  const deckDragLocked = deckDragSession !== null || deckDragPhase === 'settling';
+  const deckReleaseCommitPending =
+    deckDragPhase === 'settling' && deckDragSettleState?.releaseOutcome === 'pending';
+  const deckDragLocked =
+    deckDragPhase === 'drag-intent' ||
+    deckDragPhase === 'dragging' ||
+    deckReleaseCommitPending;
 
   const commitFootprintEdit = useCallback(
     async (edit: EstimateDrawingFootprintEdit) => {
@@ -1402,9 +1407,12 @@ export default function ModelSpaceViewport({
     setDeckReleaseFeedbackState(options?.releaseFeedback ?? null);
   }, [clearDeckDragViewportAnchor, releaseDeckDragPointer]);
 
-  const finalizeDeckDragSettlement = useCallback((releaseFeedback?: DeckReleaseFeedbackState | null) => {
-    resetDeckDragInteraction({ suppressClick: true, releaseFeedback });
-  }, [resetDeckDragInteraction]);
+  const finalizeDeckDragSettlement = useCallback(
+    (releaseFeedback?: DeckReleaseFeedbackState | null, options?: { suppressClick?: boolean }) => {
+      resetDeckDragInteraction({ suppressClick: options?.suppressClick ?? true, releaseFeedback });
+    },
+    [resetDeckDragInteraction],
+  );
 
   useEffect(() => {
     if (!deckReleaseFeedbackState) return;
@@ -2886,6 +2894,7 @@ export default function ModelSpaceViewport({
       }
       if (deckDragPhaseRef.current !== 'dragging') return;
       event.preventDefault();
+      releaseDeckDragPointer(event.pointerId);
       restoreDeckDragPinnedScrollTargets();
       const preview = deckPreviewStateRef.current;
       lastResolvedDeckDragPlanPointRef.current = null;
@@ -2909,15 +2918,20 @@ export default function ModelSpaceViewport({
         stableMatchFrameCount: 0,
         releaseError: null,
       });
-      const result = await resolveCommitResult(
-        onCommitDeckDimension(
-          activeDeckDragSession.deckId,
-          buildDeckCommitPatch({
-            session: activeDeckDragSession,
-            preview,
-          }),
-        ),
-      );
+      let result: { ok: boolean; error?: string };
+      try {
+        result = await resolveCommitResult(
+          onCommitDeckDimension(
+            activeDeckDragSession.deckId,
+            buildDeckCommitPatch({
+              session: activeDeckDragSession,
+              preview,
+            }),
+          ),
+        );
+      } catch {
+        result = { ok: false, error: 'Unable to update the deck position.' };
+      }
       const releaseError = result.ok ? null : result.error ?? 'Unable to update the deck position.';
       setFieldError(result.ok ? null : releaseError);
       if (result.ok) setFootprintError(null);
@@ -2947,6 +2961,7 @@ export default function ModelSpaceViewport({
   }, [
     finalizeDeckDragSettlement,
     onCommitDeckDimension,
+    releaseDeckDragPointer,
     restoreDeckDragPinnedScrollTargets,
   ]);
 
@@ -3208,9 +3223,6 @@ export default function ModelSpaceViewport({
     () => {
       if (!deckDragSettleState || !settledDeckShape) return false;
       const visuallyMatches = polygonsVisuallyMatch(settledDeckShape.polygon, deckDragSettleState.previewState.polygon);
-      if (deckDragSettleState.releasePlacement === 'snapped') {
-        return visuallyMatches;
-      }
       return (
         visuallyMatches ||
         deckShapeSemanticallyMatchesPreview({
@@ -3447,7 +3459,7 @@ export default function ModelSpaceViewport({
 
     const finalizeSuccess = () => {
       cancelled = true;
-      finalizeDeckDragSettlement(buildReleaseFeedback('committed', 'complete'));
+      finalizeDeckDragSettlement(buildReleaseFeedback('committed', 'complete'), { suppressClick: false });
     };
 
     const finalizeFailure = () => {
@@ -3458,10 +3470,14 @@ export default function ModelSpaceViewport({
     const observeSettlement = () => {
       finalizeAnimationFrameId = window.requestAnimationFrame(() => {
         if (cancelled) return;
-        restoreDeckDragPinnedScrollTargets();
+        if (deckDragSettleState.releaseOutcome === 'pending') {
+          restoreDeckDragPinnedScrollTargets();
+        }
         const drift = measureDeckDragViewportAnchorDrift();
         const viewportStable = isDeckDragViewportAnchorStable(drift);
-        const matchedAndStable = settledDeckShapeMatchesPreview && viewportStable;
+        const committedReleaseReady =
+          deckDragSettleState.releaseOutcome === 'committed' && deckDragSettleState.commitResolvedAtMs !== null;
+        const matchedAndStable = settledDeckShapeMatchesPreview && (committedReleaseReady || viewportStable);
         if (!matchedAndStable) {
           if (deckDragSettleState.stableMatchFrameCount > 0 || deckDragSettleState.matchedCommittedGeometry) {
             setDeckDragSettleState((current) =>
@@ -3492,8 +3508,7 @@ export default function ModelSpaceViewport({
           const settleDeadlineMs = deckDragSettleState.commitResolvedAtMs + DECK_SETTLE_MAX_WAIT_MS;
           const settledPreviewConfirmed =
             matchedAndStable && deckDragSettleState.stableMatchFrameCount >= DECK_SETTLE_MATCH_STABLE_FRAMES;
-          const deadlineCanUnlock =
-            deckDragSettleState.releasePlacement !== 'snapped' && Date.now() >= settleDeadlineMs;
+          const deadlineCanUnlock = Date.now() >= settleDeadlineMs;
           if (settledPreviewConfirmed || deadlineCanUnlock) {
             finalizeSuccess();
             return;
