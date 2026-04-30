@@ -9,7 +9,8 @@ import {
 } from '@/lib/drawings/geometry/geometryEditAdapter';
 import { buildDrawingWorkbenchStore } from '@/lib/drawings/state/drawingWorkbenchStore';
 import {
-  buildDrawingWorkbenchCanonicalSelectionState,
+  buildDrawingWorkbenchObjectSelectionState,
+  buildDrawingWorkbenchObjectSelectionStateFromBridgeTarget,
 } from '@/lib/drawings/state/drawingWorkbenchUiState';
 import type { DrawingWorkbenchUiState } from '@/lib/drawings/state/drawingWorkbenchUiState';
 import type {
@@ -811,52 +812,34 @@ export function useObjectWorkbenchActions({
     (selection: DrawingWorkbenchUiState['activeHouseSelection']) => {
       setUi((current) => ({
         ...current,
-        ...buildDrawingWorkbenchCanonicalSelectionState({
-          activeRailTab:
-            selection.kind === 'deck' ? 'decks' : selection.kind === 'opening' ? 'openings' : 'house_forms',
-          activeObjectRef: {
-            family:
-              selection.kind === 'deck'
-                ? 'decks'
-                : selection.kind === 'opening'
-                  ? 'openings'
-                  : 'house_forms',
-            objectId:
-              selection.kind === 'deck' || selection.kind === 'opening'
-                ? selection.targetId ?? null
-                : store.derived.house?.id ?? null,
-          },
-          activeHouseSelection: selection,
+        ...buildDrawingWorkbenchObjectSelectionStateFromBridgeTarget({
+          target: selection,
+          defaultHouseFormId: store.derived.houseForms[0]?.id ?? null,
         }),
       }));
     },
-    [setUi, store.derived.house?.id],
+    [setUi, store.derived.houseForms],
   );
 
   const clearSelectedHouseTarget = useCallback(
     (kind: DrawingWorkbenchUiState['activeHouseSelection']['kind'], targetId: string) => {
-      setUi((current) => ({
-        ...current,
-        ...(current.activeHouseSelection.kind === kind && current.activeHouseSelection.targetId === targetId
-          ? buildDrawingWorkbenchCanonicalSelectionState({
-              activeRailTab: current.activeRailTab,
-              activeObjectFamily: current.activeObjectFamily,
-              activeObjectRef: {
-                family: current.activeObjectFamily,
-                objectId: null,
-              },
-              activeHouseSelection:
-                current.activeObjectFamily === 'house_forms' ||
-                current.activeObjectFamily === 'decks' ||
-                current.activeObjectFamily === 'openings'
-                  ? { kind: 'house', targetId: null }
-                  : current.activeHouseSelection,
-              activePergolaId: current.activePergolaId,
-            })
-          : {
-              activeHouseSelection: current.activeHouseSelection,
-            }),
-      }));
+      setUi((current) => {
+        if (current.activeHouseSelection.kind !== kind || current.activeHouseSelection.targetId !== targetId) {
+          return current;
+        }
+        return {
+          ...current,
+          ...buildDrawingWorkbenchObjectSelectionState({
+            activeRailTab: current.activeRailTab,
+            activeObjectFamily: current.activeObjectFamily,
+            activeObjectRef: {
+              family: current.activeObjectFamily,
+              objectId: null,
+            },
+            activePergolaId: current.activePergolaId,
+          }),
+        };
+      });
     },
     [setUi],
   );

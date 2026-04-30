@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  buildDrawingWorkbenchObjectSelectionState,
+  buildDrawingWorkbenchObjectSelectionStateFromBridgeTarget,
   createDrawingWorkbenchUiState,
   normalizeDrawingWorkbenchUiState,
 } from './drawingWorkbenchUiState';
@@ -36,7 +38,7 @@ describe('drawingWorkbenchUiState', () => {
 
     expect(normalized.activeHouseSelection).toEqual({ kind: 'deck', targetId: 'deck-a' });
     expect(normalized.activeObjectFamily).toBe('decks');
-    expect(normalized.activeObjectRef).toEqual({ family: 'pergolas', objectId: null });
+    expect(normalized.activeObjectRef).toEqual({ family: 'decks', objectId: 'deck-a' });
   });
 
   it('clears invalid object ids without changing a valid requested family', () => {
@@ -53,7 +55,57 @@ describe('drawingWorkbenchUiState', () => {
     );
 
     expect(normalized.activeObjectFamily).toBe('openings');
-    expect(normalized.activeObjectRef).toEqual({ family: 'house_forms', objectId: null });
+    expect(normalized.activeObjectRef).toEqual({ family: 'openings', objectId: null });
+  });
+
+  it('derives compatibility bridge state from object-workbench deck and pergola refs', () => {
+    const deckSelection = buildDrawingWorkbenchObjectSelectionState({
+      activeRailTab: 'decks',
+      activeObjectRef: { family: 'decks', objectId: 'deck-a' },
+    });
+    const pergolaSelection = buildDrawingWorkbenchObjectSelectionState({
+      activeRailTab: 'pergolas',
+      activeObjectRef: { family: 'pergolas', objectId: 'pergola-1' },
+    });
+
+    expect(deckSelection).toMatchObject({
+      activeObjectFamily: 'decks',
+      activeObjectRef: { family: 'decks', objectId: 'deck-a' },
+      activeHouseSelection: { kind: 'deck', targetId: 'deck-a' },
+      workbenchMode: 'house',
+      activePergolaId: null,
+    });
+    expect(pergolaSelection).toMatchObject({
+      activeObjectFamily: 'pergolas',
+      activeObjectRef: { family: 'pergolas', objectId: 'pergola-1' },
+      activeHouseSelection: { kind: 'house', targetId: null },
+      workbenchMode: 'pergolas',
+      activePergolaId: 'pergola-1',
+    });
+  });
+
+  it('translates viewport bridge targets into object-workbench selection state', () => {
+    const openingSelection = buildDrawingWorkbenchObjectSelectionStateFromBridgeTarget({
+      target: { kind: 'opening', targetId: 'opening-a' },
+      defaultHouseFormId: 'house-main',
+    });
+    const footprintSelection = buildDrawingWorkbenchObjectSelectionStateFromBridgeTarget({
+      target: { kind: 'footprint', targetId: null },
+      defaultHouseFormId: 'house-main',
+    });
+
+    expect(openingSelection).toMatchObject({
+      activeRailTab: 'openings',
+      activeObjectFamily: 'openings',
+      activeObjectRef: { family: 'openings', objectId: 'opening-a' },
+      activeHouseSelection: { kind: 'opening', targetId: 'opening-a' },
+    });
+    expect(footprintSelection).toMatchObject({
+      activeRailTab: 'house_forms',
+      activeObjectFamily: 'house_forms',
+      activeObjectRef: { family: 'house_forms', objectId: 'house-main' },
+      activeHouseSelection: { kind: 'footprint', targetId: null },
+    });
   });
 
   it('preserves legacy pergola normalization semantics', () => {

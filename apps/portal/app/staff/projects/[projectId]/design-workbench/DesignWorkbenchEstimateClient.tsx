@@ -9,10 +9,12 @@ import {
 } from '@/lib/drawings/geometry/geometryEditAdapter';
 import { buildWorkbenchGeometryPreview } from '@/lib/drawings/geometry/buildWorkbenchGeometryPreview';
 import { buildDrawingWorkbenchStore } from '@/lib/drawings/state/drawingWorkbenchStore';
-import { buildHouseFirstWorkbenchProjectModel } from '@/lib/drawings/state/houseFirstWorkbenchAdapter';
 import {
-  buildDrawingWorkbenchCanonicalSelectionState,
+  areDrawingWorkbenchCanonicalSelectionStatesEqual,
+  areDrawingWorkbenchVisibilityStatesEqual,
+  buildDrawingWorkbenchObjectSelectionState,
   createDrawingWorkbenchUiState,
+  pickDrawingWorkbenchCanonicalSelectionState,
   type DrawingWorkbenchRailTab,
   type DrawingWorkbenchViewportTransform,
 } from '@/lib/drawings/state/drawingWorkbenchUiState';
@@ -42,17 +44,20 @@ const DEFAULT_MODEL_VIEWPORT_TRANSFORM = createDrawingWorkbenchUiState().viewpor
 
 function buildInitialWorkbenchUiState(snapshot: Record<string, unknown> | null) {
   const defaultHouseFormId =
-    buildHouseFirstWorkbenchProjectModel({
+    buildDrawingWorkbenchStore({
       snapshot,
-      draft: null,
-    }).house?.id ?? null;
+      ui: createDrawingWorkbenchUiState(),
+    }).derived.houseForms[0]?.id ?? null;
 
   return createDrawingWorkbenchUiState({
     viewportMode: 'geometry3d',
-    activeObjectRef: {
-      family: 'house_forms',
-      objectId: defaultHouseFormId,
-    },
+    ...buildDrawingWorkbenchObjectSelectionState({
+      activeRailTab: 'house_forms',
+      activeObjectRef: {
+        family: 'house_forms',
+        objectId: defaultHouseFormId,
+      },
+    }),
   });
 }
 
@@ -115,19 +120,18 @@ export default function DesignWorkbenchEstimateClient({
 
   useEffect(() => {
     const defaultHouseFormId =
-      buildHouseFirstWorkbenchProjectModel({
+      buildDrawingWorkbenchStore({
         snapshot: estimate.calculatorSnapshot,
-        draft: null,
-      }).house?.id ?? null;
+        ui: createDrawingWorkbenchUiState(),
+      }).derived.houseForms[0]?.id ?? null;
 
     setUi((current) => ({
       ...current,
       activeModuleIndex: 0,
-      activePergolaId: null,
-      activeRailTab: 'house_forms',
-      activeHouseSelection: { kind: 'house', targetId: null },
-      activeObjectFamily: 'house_forms',
-      activeObjectRef: { family: 'house_forms', objectId: defaultHouseFormId },
+      ...buildDrawingWorkbenchObjectSelectionState({
+        activeRailTab: 'house_forms',
+        activeObjectRef: { family: 'house_forms', objectId: defaultHouseFormId },
+      }),
     }));
     setModelViewportTransformsByKey({});
     setGeometryViewportStatesByKey({});
@@ -135,61 +139,24 @@ export default function DesignWorkbenchEstimateClient({
   }, [estimate.calculatorSnapshot]);
 
   useEffect(() => {
+    const storeSelection = pickDrawingWorkbenchCanonicalSelectionState(store.ui);
+    const uiSelection = pickDrawingWorkbenchCanonicalSelectionState(ui);
     if (
       store.ui.activeModuleIndex === ui.activeModuleIndex &&
-      store.ui.workbenchMode === ui.workbenchMode &&
-      store.ui.activePergolaId === ui.activePergolaId &&
-      store.ui.activeRailTab === ui.activeRailTab &&
-      store.ui.activeHouseSelection.kind === ui.activeHouseSelection.kind &&
-      store.ui.activeHouseSelection.targetId === ui.activeHouseSelection.targetId &&
-      store.ui.activeObjectFamily === ui.activeObjectFamily &&
-      store.ui.activeObjectRef.family === ui.activeObjectRef.family &&
-      store.ui.activeObjectRef.objectId === ui.activeObjectRef.objectId &&
-      store.ui.visibility.house === ui.visibility.house &&
-      store.ui.visibility.pergolas === ui.visibility.pergolas &&
-      store.ui.visibility.decks === ui.visibility.decks &&
-      store.ui.visibility.openings === ui.visibility.openings
+      areDrawingWorkbenchCanonicalSelectionStatesEqual(storeSelection, uiSelection) &&
+      areDrawingWorkbenchVisibilityStatesEqual(store.ui.visibility, ui.visibility)
     ) {
       return;
     }
     setUi((current) => ({
       ...current,
       activeModuleIndex: store.ui.activeModuleIndex,
-      workbenchMode: store.ui.workbenchMode,
-      activePergolaId: store.ui.activePergolaId,
-      activeRailTab: store.ui.activeRailTab,
-      activeHouseSelection: store.ui.activeHouseSelection,
-      activeObjectFamily: store.ui.activeObjectFamily,
-      activeObjectRef: store.ui.activeObjectRef,
+      ...storeSelection,
       visibility: store.ui.visibility,
     }));
   }, [
-    store.ui.activeObjectFamily,
-    store.ui.activeObjectRef.family,
-    store.ui.activeObjectRef.objectId,
-    store.ui.activeRailTab,
-    store.ui.visibility.decks,
-    store.ui.visibility.house,
-    store.ui.visibility.openings,
-    store.ui.visibility.pergolas,
-    store.ui.activeHouseSelection.kind,
-    store.ui.activeHouseSelection.targetId,
-    store.ui.activeModuleIndex,
-    store.ui.activePergolaId,
-    store.ui.workbenchMode,
-    ui.activeHouseSelection.kind,
-    ui.activeHouseSelection.targetId,
-    ui.activeModuleIndex,
-    ui.activeObjectFamily,
-    ui.activeObjectRef.family,
-    ui.activeObjectRef.objectId,
-    ui.activePergolaId,
-    ui.activeRailTab,
-    ui.visibility.decks,
-    ui.visibility.house,
-    ui.visibility.openings,
-    ui.visibility.pergolas,
-    ui.workbenchMode,
+    store.ui,
+    ui,
   ]);
 
   const activeModule = store.derived.activeModule;
@@ -406,12 +373,9 @@ export default function DesignWorkbenchEstimateClient({
         return {
           ...current,
           activeModuleIndex: nextModuleIndex,
-          ...buildDrawingWorkbenchCanonicalSelectionState({
+          ...buildDrawingWorkbenchObjectSelectionState({
             activeRailTab: 'pergolas',
-            activeObjectFamily: 'pergolas',
             activeObjectRef: { family: 'pergolas', objectId: defaultPergolaId },
-            activeHouseSelection: current.activeHouseSelection,
-            activePergolaId: defaultPergolaId,
           }),
         };
       });
@@ -431,12 +395,9 @@ export default function DesignWorkbenchEstimateClient({
         return {
           ...current,
           activeModuleIndex: nextModuleIndex,
-          ...buildDrawingWorkbenchCanonicalSelectionState({
+          ...buildDrawingWorkbenchObjectSelectionState({
             activeRailTab: 'pergolas',
-            activeObjectFamily: 'pergolas',
             activeObjectRef: { family: 'pergolas', objectId: pergolaId },
-            activeHouseSelection: current.activeHouseSelection,
-            activePergolaId: pergolaId,
           }),
         };
       });
@@ -571,14 +532,13 @@ export default function DesignWorkbenchEstimateClient({
               ...current,
               activeModuleIndex: index,
               ...(current.activeObjectFamily === 'pergolas'
-                ? buildDrawingWorkbenchCanonicalSelectionState({
+                ? buildDrawingWorkbenchObjectSelectionState({
                     activeRailTab: current.activeRailTab,
                     activeObjectFamily: current.activeObjectFamily,
                     activeObjectRef: {
                       family: 'pergolas',
                       objectId: store.persisted.modules[index]?.drawingModule.input.pergolaId ?? current.activePergolaId,
                     },
-                    activeHouseSelection: current.activeHouseSelection,
                     activePergolaId:
                       store.persisted.modules[index]?.drawingModule.input.pergolaId ?? current.activePergolaId,
                   })
