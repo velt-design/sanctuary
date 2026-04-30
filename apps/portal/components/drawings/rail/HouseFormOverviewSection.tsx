@@ -5,20 +5,20 @@ import {
   labelForPreset,
   labelForRoofForm,
   labelForRoofReviewStatus,
-} from './houseRailShared';
+} from './objectRailShared';
 import type { HouseFirstMigrationWarning, HouseModel, PergolaModel } from '@/lib/drawings/state/houseFirstWorkbenchModel';
 
-type BuildHouseRailOverviewSectionInput = {
+type BuildHouseFormOverviewSectionInput = {
   house: HouseModel | null;
   pergolas: PergolaModel[];
   warnings: HouseFirstMigrationWarning[];
 };
 
-export function buildHouseRailOverviewSection({
+export function buildHouseFormOverviewSection({
   house,
   pergolas,
   warnings,
-}: BuildHouseRailOverviewSectionInput) {
+}: BuildHouseFormOverviewSectionInput) {
   return (
     <SummarySection
       title="House Form Inspector"

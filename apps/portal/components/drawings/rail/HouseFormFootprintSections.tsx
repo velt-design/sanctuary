@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import type { CalculatorModuleInputs } from '@/lib/types/calculator';
-import type { FieldErrors, RunFootprintCommit } from './houseRailTypes';
+import type { FieldErrors, RunFootprintCommit } from './objectWorkbenchRailTypes';
 import type { HouseModel } from '@/lib/drawings/state/houseFirstWorkbenchModel';
 import {
   ActionButton,
@@ -10,10 +10,10 @@ import {
   NumberField,
   SelectField,
   resolveFootprintParams,
-} from './houseRailShared';
+} from './objectRailShared';
 import styles from './ConfiguratorRail.module.css';
 
-type BuildHouseRailFootprintSectionsInput = {
+type BuildHouseFormFootprintSectionsInput = {
   canEditFootprint?: boolean;
   canStartDrawOutline?: boolean;
   disabled?: boolean;
@@ -23,7 +23,7 @@ type BuildHouseRailFootprintSectionsInput = {
   runStartOutline: () => Promise<void>;
 };
 
-export function buildHouseRailFootprintSections({
+export function buildHouseFormFootprintSections({
   canEditFootprint,
   canStartDrawOutline,
   disabled,
@@ -31,7 +31,7 @@ export function buildHouseRailFootprintSections({
   house,
   runFootprintCommit,
   runStartOutline,
-}: BuildHouseRailFootprintSectionsInput): ReactNode[] {
+}: BuildHouseFormFootprintSectionsInput): ReactNode[] {
   const footprintParams = resolveFootprintParams(house);
   const footprintMode = house?.footprint.mode ?? 'preset';
   const footprintPreset = house?.footprint.preset ?? 'straight';

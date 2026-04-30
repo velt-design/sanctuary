@@ -5,7 +5,7 @@ import { buildEstimateDrawingDraftFromSnapshot, type EstimateDrawingDraft } from
 import { buildDrawingWorkbenchStore } from '@/lib/drawings/state/drawingWorkbenchStore';
 import { createDrawingWorkbenchUiState, type DrawingWorkbenchRailTab } from '@/lib/drawings/state/drawingWorkbenchUiState';
 import type { WorkbenchObjectRef } from '@/lib/drawings/state/objectFirstWorkbenchModel';
-import HouseFirstWorkbenchRail from './HouseFirstWorkbenchRail';
+import ObjectWorkbenchRail from './ObjectWorkbenchRail';
 
 function buildRailProps(input?: {
   fixtureSlug?: 'mono-standard' | 'box-standard';
@@ -64,7 +64,7 @@ function buildRailProps(input?: {
     activeRailTab: store.ui.activeRailTab,
     activeObjectRef: store.ui.activeObjectRef,
     visibility: store.ui.visibility,
-    compatibilityInspectorState: {
+    inspectorContext: {
       house: store.derived.house,
       activeDeckId: store.derived.activeDeckId,
       activeOpeningId: store.derived.activeOpeningId,
@@ -82,16 +82,16 @@ function buildRailProps(input?: {
       onCommitDeckPatch: () => ({ ok: true }),
       onCommitOpeningPatch: () => ({ ok: true }),
       onStartDeckOutline: () => ({ ok: true }),
-      houseContextPanel: <div>Attachment context extras</div>,
+      houseFormAttachmentContextPanel: <div>Attachment context extras</div>,
       pergolaInspectorPanel: <div>Native pergola inspector</div>,
       diagnosticsPanel: <section>Migration diagnostics</section>,
     },
   };
 }
 
-describe('HouseFirstWorkbenchRail', () => {
+describe('ObjectWorkbenchRail', () => {
   it('renders the canonical family navigator and selected house-form inspector by default', () => {
-    const markup = renderToStaticMarkup(<HouseFirstWorkbenchRail {...buildRailProps()} />);
+    const markup = renderToStaticMarkup(<ObjectWorkbenchRail {...buildRailProps()} />);
 
     expect(markup).toContain('Object Navigator');
     expect(markup).toContain('House Forms');
@@ -112,7 +112,7 @@ describe('HouseFirstWorkbenchRail', () => {
 
   it('renders the native pergola inspector inside the canonical Pergolas family', () => {
     const markup = renderToStaticMarkup(
-      <HouseFirstWorkbenchRail {...buildRailProps({ activeRailTab: 'pergolas' })} />,
+      <ObjectWorkbenchRail {...buildRailProps({ activeRailTab: 'pergolas' })} />,
     );
 
     expect(markup).toContain('Native pergola inspector');
@@ -145,7 +145,7 @@ describe('HouseFirstWorkbenchRail', () => {
     };
 
     const markup = renderToStaticMarkup(
-      <HouseFirstWorkbenchRail
+      <ObjectWorkbenchRail
         {...buildRailProps({
           draft,
           activeRailTab: 'openings',
@@ -179,7 +179,7 @@ describe('HouseFirstWorkbenchRail', () => {
     };
 
     const markup = renderToStaticMarkup(
-      <HouseFirstWorkbenchRail
+      <ObjectWorkbenchRail
         {...buildRailProps({
           draft,
           activeRailTab: 'openings',
@@ -194,7 +194,7 @@ describe('HouseFirstWorkbenchRail', () => {
 
   it('keeps all supported house roof forms editable in the house-form roof section', () => {
     const markup = renderToStaticMarkup(
-      <HouseFirstWorkbenchRail {...buildRailProps({ fixtureSlug: 'box-standard' })} />,
+      <ObjectWorkbenchRail {...buildRailProps({ fixtureSlug: 'box-standard' })} />,
     );
 
     expect(markup).toContain('Flat');

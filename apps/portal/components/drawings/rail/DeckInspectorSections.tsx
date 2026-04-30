@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { resolveDeckPlacementMode, type HouseFirstDeckDraft, type HouseModel } from '@/lib/drawings/state/houseFirstWorkbenchModel';
-import type { CommitResult, FieldErrors, RunAction } from './houseRailTypes';
+import type { CommitResult, FieldErrors, RunAction } from './objectWorkbenchRailTypes';
 import {
   ATTACHMENT_SIDE_OPTIONS,
   ActionButton,
@@ -14,10 +14,10 @@ import {
   resolveDeckPresetRectDraft,
   resolveDeckValidationSummary,
   resolveDeckWarningSummaries,
-} from './houseRailShared';
+} from './objectRailShared';
 import styles from './ConfiguratorRail.module.css';
 
-type BuildHouseRailDeckSectionsInput = {
+type BuildDeckInspectorSectionsInput = {
   activeDeckId?: string | null;
   disabled?: boolean;
   fieldErrors: FieldErrors;
@@ -29,10 +29,10 @@ type BuildHouseRailDeckSectionsInput = {
   ) => Promise<CommitResult> | CommitResult;
   onRemoveDeck?: (deckId: string) => Promise<CommitResult> | CommitResult;
   onStartDeckOutline?: (deckId: string) => Promise<CommitResult> | CommitResult;
-  runDeckAction: RunAction;
+  runAction: RunAction;
 };
 
-export function buildHouseRailDeckSections({
+export function buildDeckInspectorSections({
   activeDeckId,
   disabled,
   fieldErrors,
@@ -41,8 +41,8 @@ export function buildHouseRailDeckSections({
   onCommitDeckPatch,
   onRemoveDeck,
   onStartDeckOutline,
-  runDeckAction,
-}: BuildHouseRailDeckSectionsInput): ReactNode[] {
+  runAction,
+}: BuildDeckInspectorSectionsInput): ReactNode[] {
   const activeDeck = activeDeckId ? house?.decks.find((deck) => deck.id === activeDeckId) ?? null : null;
   const activeDeckPlacement = activeDeck ? resolveDeckPlacementMode(activeDeck.isAttached) : null;
   const deckValidationSummary = activeDeck ? resolveDeckValidationSummary(activeDeck) : null;
@@ -53,7 +53,7 @@ export function buildHouseRailDeckSections({
         label="Add deck"
         disabled={disabled}
         onClick={() =>
-          void runDeckAction(
+          void runAction(
             'deck-add-preset',
             onAddDeck?.('preset'),
             'Unable to add a deck.',
@@ -64,7 +64,7 @@ export function buildHouseRailDeckSections({
         label="Custom outline"
         disabled={disabled}
         onClick={() =>
-          void runDeckAction(
+          void runAction(
             'deck-add-custom',
             onAddDeck?.('custom_outline'),
             'Unable to start a custom deck outline.',
@@ -103,7 +103,7 @@ export function buildHouseRailDeckSections({
       disabled={disabled}
       error={fieldErrors[`deck-name-${activeDeck.id}`]}
       onCommit={(value) =>
-        runDeckAction(
+        runAction(
           `deck-name-${activeDeck.id}`,
           onCommitDeckPatch?.(activeDeck.id, { name: value }),
           'Unable to rename the deck.',
@@ -118,7 +118,7 @@ export function buildHouseRailDeckSections({
       disabled={disabled}
       error={fieldErrors[`deck-kind-${activeDeck.id}`]}
       onCommit={(value) =>
-        runDeckAction(
+        runAction(
           `deck-kind-${activeDeck.id}`,
           onCommitDeckPatch?.(activeDeck.id, { kind: value as HouseFirstDeckDraft['kind'] }),
           'Unable to update the deck kind.',
@@ -141,7 +141,7 @@ export function buildHouseRailDeckSections({
           : 'This edge is the current witness reference for floating dimensions and a manual snap target hint.'
       }
       onCommit={(value) =>
-        runDeckAction(
+        runAction(
           `deck-host-${activeDeck.id}`,
           onCommitDeckPatch?.(activeDeck.id, { hostEdgeId: value }),
           'Unable to update the deck host edge.',
@@ -157,7 +157,7 @@ export function buildHouseRailDeckSections({
       error={fieldErrors[`deck-shape-${activeDeck.id}`]}
       helperText="Rectangular preset is the main deck workflow. Custom outline is available when the rectangle is not enough."
       onCommit={(value) =>
-        runDeckAction(
+        runAction(
           `deck-shape-${activeDeck.id}`,
           onCommitDeckPatch?.(activeDeck.id, {
             shape: value as HouseFirstDeckDraft['shape'],
@@ -199,7 +199,7 @@ export function buildHouseRailDeckSections({
         error={fieldErrors[`deck-width-${activeDeck.id}`]}
         helperText="Span measured along the selected host edge."
         onCommit={(value) =>
-          runDeckAction(
+          runAction(
             `deck-width-${activeDeck.id}`,
             onCommitDeckPatch?.(activeDeck.id, {
               presetRect: {
@@ -219,7 +219,7 @@ export function buildHouseRailDeckSections({
         error={fieldErrors[`deck-depth-${activeDeck.id}`]}
         helperText="Projection outward from the selected host edge."
         onCommit={(value) =>
-          runDeckAction(
+          runAction(
             `deck-depth-${activeDeck.id}`,
             onCommitDeckPatch?.(activeDeck.id, {
               presetRect: {
@@ -239,7 +239,7 @@ export function buildHouseRailDeckSections({
         error={fieldErrors[`deck-center-offset-${activeDeck.id}`]}
         helperText="Signed offset from the host-edge midpoint."
         onCommit={(value) =>
-          runDeckAction(
+          runAction(
             `deck-center-offset-${activeDeck.id}`,
             onCommitDeckPatch?.(activeDeck.id, {
               presetRect: {
@@ -271,7 +271,7 @@ export function buildHouseRailDeckSections({
           error={fieldErrors[`deck-detached-gap-${activeDeck.id}`]}
           helperText="Perpendicular clearance from the current witness reference edge."
           onCommit={(value) =>
-            runDeckAction(
+            runAction(
               `deck-detached-gap-${activeDeck.id}`,
               onCommitDeckPatch?.(activeDeck.id, {
                 presetRect: {
@@ -296,7 +296,7 @@ export function buildHouseRailDeckSections({
       disabled={disabled}
       error={fieldErrors[`deck-elevation-${activeDeck.id}`]}
       onCommit={(value) =>
-        runDeckAction(
+        runAction(
           `deck-elevation-${activeDeck.id}`,
           onCommitDeckPatch?.(activeDeck.id, { elevationMode: value as HouseFirstDeckDraft['elevationMode'] }),
           'Unable to update the deck elevation mode.',
@@ -311,7 +311,7 @@ export function buildHouseRailDeckSections({
       error={fieldErrors[`deck-offset-${activeDeck.id}`]}
       helperText="One scalar height offset for the deck top surface."
       onCommit={(value) =>
-        runDeckAction(
+        runAction(
           `deck-offset-${activeDeck.id}`,
           onCommitDeckPatch?.(activeDeck.id, { levelOffsetMm: value }),
           'Unable to update the deck level offset.',
@@ -326,7 +326,7 @@ export function buildHouseRailDeckSections({
       disabled={disabled}
       error={fieldErrors[`deck-surface-${activeDeck.id}`]}
       onCommit={(value) =>
-        runDeckAction(
+        runAction(
           `deck-surface-${activeDeck.id}`,
           onCommitDeckPatch?.(activeDeck.id, { surfaceMaterial: value as HouseFirstDeckDraft['surfaceMaterial'] }),
           'Unable to update the deck material.',
@@ -338,7 +338,7 @@ export function buildHouseRailDeckSections({
         label="Redraw outline"
         disabled={disabled}
         onClick={() =>
-          void runDeckAction(
+          void runAction(
             `deck-outline-${activeDeck.id}`,
             onStartDeckOutline?.(activeDeck.id),
             'Unable to start deck outline drawing.',
@@ -349,7 +349,7 @@ export function buildHouseRailDeckSections({
         label="Remove deck"
         disabled={disabled}
         onClick={() =>
-          void runDeckAction(
+          void runAction(
             `deck-remove-${activeDeck.id}`,
             onRemoveDeck?.(activeDeck.id),
             'Unable to remove the deck.',

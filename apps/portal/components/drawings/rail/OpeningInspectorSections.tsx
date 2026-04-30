@@ -5,9 +5,9 @@ import type {
   SliderPanelCount,
   WallOpeningKind,
 } from '@/lib/drawings/state/houseFirstWorkbenchModel';
-import type { CommitResult, FieldErrors, RunAction } from './houseRailTypes';
-import type { SelectOption } from './houseRailShared';
-import { ActionButton, NumberField, TextField, SelectField } from './houseRailShared';
+import type { CommitResult, FieldErrors, RunAction } from './objectWorkbenchRailTypes';
+import type { SelectOption } from './objectRailShared';
+import { ActionButton, NumberField, TextField, SelectField } from './objectRailShared';
 import styles from './ConfiguratorRail.module.css';
 
 const OPENING_TYPE_OPTIONS = [
@@ -23,7 +23,7 @@ const SLIDER_PANEL_COUNT_OPTIONS = [
   { label: '4 panels', value: '4' },
 ] as const;
 
-type BuildHouseRailOpeningSectionsInput = {
+type BuildOpeningInspectorSectionsInput = {
   activeOpeningId?: string | null;
   disabled?: boolean;
   fieldErrors: FieldErrors;
@@ -36,7 +36,7 @@ type BuildHouseRailOpeningSectionsInput = {
     patch: Partial<HouseFirstOpeningDraft>,
   ) => Promise<CommitResult> | CommitResult;
   onRemoveOpening?: (openingId: string) => Promise<CommitResult> | CommitResult;
-  runDeckAction: RunAction;
+  runAction: RunAction;
 };
 
 function buildOpeningHostWallOptions(
@@ -62,7 +62,7 @@ function buildOpeningHostWallOptions(
   return [{ label: 'Unavailable saved wall', value: activeOpening.hostWallId }, ...baseOptions];
 }
 
-export function buildHouseRailOpeningSections({
+export function buildOpeningInspectorSections({
   activeOpeningId,
   disabled,
   fieldErrors,
@@ -70,8 +70,8 @@ export function buildHouseRailOpeningSections({
   onAddOpening,
   onCommitOpeningPatch,
   onRemoveOpening,
-  runDeckAction,
-}: BuildHouseRailOpeningSectionsInput): ReactNode[] {
+  runAction,
+}: BuildOpeningInspectorSectionsInput): ReactNode[] {
   const activeOpening =
     activeOpeningId ? house?.openings.find((opening) => opening.id === activeOpeningId) ?? null : null;
   const openingValidationSummary = activeOpening?.validation.message ?? null;
@@ -81,7 +81,7 @@ export function buildHouseRailOpeningSections({
         label="Add window"
         disabled={disabled}
         onClick={() =>
-          void runDeckAction(
+          void runAction(
             'opening-add-window',
             onAddOpening?.('window'),
             'Unable to add a window.',
@@ -92,7 +92,7 @@ export function buildHouseRailOpeningSections({
         label="Add door"
         disabled={disabled}
         onClick={() =>
-          void runDeckAction(
+          void runAction(
             'opening-add-door',
             onAddOpening?.('hinged_door'),
             'Unable to add a door.',
@@ -103,7 +103,7 @@ export function buildHouseRailOpeningSections({
         label="Add slider"
         disabled={disabled}
         onClick={() =>
-          void runDeckAction(
+          void runAction(
             'opening-add-slider',
             onAddOpening?.('slider'),
             'Unable to add a slider.',
@@ -114,7 +114,7 @@ export function buildHouseRailOpeningSections({
         label="Add stacker"
         disabled={disabled}
         onClick={() =>
-          void runDeckAction(
+          void runAction(
             'opening-add-stacker',
             onAddOpening?.('stacker'),
             'Unable to add a stacker.',
@@ -156,7 +156,7 @@ export function buildHouseRailOpeningSections({
       disabled={disabled}
       error={fieldErrors[`opening-label-${activeOpening.id}`]}
       onCommit={(value) =>
-        runDeckAction(
+        runAction(
           `opening-label-${activeOpening.id}`,
           onCommitOpeningPatch?.(activeOpening.id, { label: value }),
           'Unable to rename the opening.',
@@ -172,7 +172,7 @@ export function buildHouseRailOpeningSections({
       error={fieldErrors[`opening-kind-${activeOpening.id}`]}
       helperText={`Current opening family: ${activeOpeningTypeLabel}.`}
       onCommit={(value) =>
-        runDeckAction(
+        runAction(
           `opening-kind-${activeOpening.id}`,
           onCommitOpeningPatch?.(activeOpening.id, { kind: value as WallOpeningKind }),
           'Unable to update the opening type.',
@@ -192,7 +192,7 @@ export function buildHouseRailOpeningSections({
           : 'Derived host walls are unavailable for this house right now.'
       }
       onCommit={(value) =>
-        runDeckAction(
+        runAction(
           `opening-wall-${activeOpening.id}`,
           value
             ? onCommitOpeningPatch?.(activeOpening.id, { hostWallId: value })
@@ -212,7 +212,7 @@ export function buildHouseRailOpeningSections({
             error={fieldErrors[`opening-panel-count-${activeOpening.id}`]}
             helperText="Simple panel count only for now. Leaf direction and stack behavior come later."
             onCommit={(value) =>
-              runDeckAction(
+              runAction(
                 `opening-panel-count-${activeOpening.id}`,
                 onCommitOpeningPatch?.(activeOpening.id, {
                   panelCount: Number.parseInt(value, 10) as SliderPanelCount,
@@ -230,7 +230,7 @@ export function buildHouseRailOpeningSections({
       disabled={disabled}
       error={fieldErrors[`opening-width-${activeOpening.id}`]}
       onCommit={(value) =>
-        runDeckAction(
+        runAction(
           `opening-width-${activeOpening.id}`,
           onCommitOpeningPatch?.(activeOpening.id, { widthM: value }),
           'Unable to update the opening width.',
@@ -244,7 +244,7 @@ export function buildHouseRailOpeningSections({
       disabled={disabled}
       error={fieldErrors[`opening-height-${activeOpening.id}`]}
       onCommit={(value) =>
-        runDeckAction(
+        runAction(
           `opening-height-${activeOpening.id}`,
           onCommitOpeningPatch?.(activeOpening.id, { heightM: value }),
           'Unable to update the opening height.',
@@ -258,7 +258,7 @@ export function buildHouseRailOpeningSections({
       disabled={disabled}
       error={fieldErrors[`opening-sill-height-${activeOpening.id}`]}
       onCommit={(value) =>
-        runDeckAction(
+        runAction(
           `opening-sill-height-${activeOpening.id}`,
           onCommitOpeningPatch?.(activeOpening.id, { sillHeightM: value }),
           'Unable to update the opening base height.',
@@ -273,7 +273,7 @@ export function buildHouseRailOpeningSections({
       error={fieldErrors[`opening-offset-${activeOpening.id}`]}
       helperText="Measured from the start of the resolved derived host wall."
       onCommit={(value) =>
-        runDeckAction(
+        runAction(
           `opening-offset-${activeOpening.id}`,
           onCommitOpeningPatch?.(activeOpening.id, { offsetAlongWallM: value }),
           'Unable to update the along-wall offset.',
@@ -285,7 +285,7 @@ export function buildHouseRailOpeningSections({
         label="Remove opening"
         disabled={disabled}
         onClick={() =>
-          void runDeckAction(
+          void runAction(
             `opening-remove-${activeOpening.id}`,
             onRemoveOpening?.(activeOpening.id),
             'Unable to remove the opening.',

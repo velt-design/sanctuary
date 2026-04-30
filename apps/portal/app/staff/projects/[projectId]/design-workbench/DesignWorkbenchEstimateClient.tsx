@@ -1,14 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import SanctuaryWorkbenchRail from '@/components/drawings/rail/SanctuaryWorkbenchRail';
-import HouseFirstWorkbenchRail from '@/components/drawings/rail/HouseFirstWorkbenchRail';
-import {
-  labelForAttachmentSideList,
-  labelForRoofApproximationReason,
-  labelForRoofFieldSource,
-  labelForRoofGeometryKind,
-} from '@/components/drawings/rail/houseRailShared';
+import ObjectWorkbenchRail from '@/components/drawings/rail/ObjectWorkbenchRail';
 import DrawingWorkbench from '@/components/drawings/workbench/DrawingWorkbench';
 import type { Geometry3DViewportState } from '@/components/drawings/viewports/Geometry3DViewport';
 import {
@@ -30,9 +23,12 @@ import {
 import { buildEstimateDrawingModuleInfoRows, buildEstimateDrawingSheetMeta } from '@/lib/estimates/drawingSheet';
 import type { EstimateDetail } from '@/lib/estimates/types';
 import { type DrawOutlineTarget } from './houseWorkbenchClientTypes';
+import HouseFormAttachmentContextPanel from './HouseFormAttachmentContextPanel';
+import PergolaInspector from './PergolaInspector';
 import { useHouseDraftPersistence } from './useHouseDraftPersistence';
 import { useHouseMutationActions } from './useHouseMutationActions';
 import { useHouseWorkbenchSelection } from './useHouseWorkbenchSelection';
+import WorkbenchDiagnosticsPanel from './WorkbenchDiagnosticsPanel';
 import styles from './DesignWorkbenchEstimateClient.module.css';
 
 type DesignWorkbenchEstimateClientProps = {
@@ -43,30 +39,6 @@ type DesignWorkbenchEstimateClientProps = {
 };
 
 const DEFAULT_MODEL_VIEWPORT_TRANSFORM = createDrawingWorkbenchUiState().viewportTransform;
-
-const PERGOLA_CONNECTION_OPTIONS = [
-  { value: 'soffit', label: 'Soffit attached' },
-  { value: 'fascia', label: 'Fascia attached' },
-  { value: 'wall', label: 'Wall attached' },
-  { value: 'freestanding', label: 'Freestanding' },
-] as const;
-
-const PERGOLA_ATTACHMENT_STRATEGY_OPTIONS = [
-  { value: 'auto', label: 'Auto' },
-  { value: 'soffit_brackets', label: 'Soffit brackets' },
-  { value: 'fascia_under_gutter', label: 'Fascia under gutter' },
-  { value: 'facade_ledger', label: 'Facade ledger' },
-  { value: 'post_supported_tieback', label: 'Post supported tieback' },
-  { value: 'none', label: 'None' },
-] as const;
-
-function resolvePergolaZoneKind(
-  kind: 'freestanding' | 'soffit' | 'fascia' | 'wall',
-): 'wall' | 'soffit' | 'fascia' | null {
-  if (kind === 'freestanding') return null;
-  if (kind === 'wall') return 'wall';
-  return kind;
-}
 
 function buildInitialWorkbenchUiState(snapshot: Record<string, unknown> | null) {
   const defaultHouseFormId =
@@ -323,45 +295,6 @@ export default function DesignWorkbenchEstimateClient({
       }),
     [drawingDraft, estimate.calculatorSnapshot, estimate.id, estimate.projectId, store.derived.activeModuleIndex],
   );
-  const attachmentZoneKindsSummary = useMemo(() => {
-    const zones = store.derived.house?.attachmentZones ?? [];
-    if (!zones.length) return 'none';
-    const zonesBySide = new Map<string, Set<string>>();
-    for (const zone of zones) {
-      const existing = zonesBySide.get(zone.side) ?? new Set<string>();
-      existing.add(zone.kind);
-      zonesBySide.set(zone.side, existing);
-    }
-    return Array.from(zonesBySide.entries())
-      .map(([side, kinds]) => `${side}: ${Array.from(kinds).join(', ')}`)
-      .join(' | ');
-  }, [store.derived.house?.attachmentZones]);
-  const attachmentZoneBlockedSummary = useMemo(() => {
-    const blocked = store.derived.house?.attachmentZoneDiagnostics.blocked ?? [];
-    if (!blocked.length) return 'none';
-    return Array.from(
-      new Set(blocked.map((entry) => `${entry.side} ${entry.kind} (${entry.reason})`)),
-    ).join(' | ');
-  }, [store.derived.house?.attachmentZoneDiagnostics.blocked]);
-  const resolvedPergolaAttachmentZoneCount = useMemo(
-    () =>
-      store.derived.pergolas.filter(
-        (pergola) =>
-          pergola.attachment.kind !== 'freestanding' &&
-          pergola.attachment.resolution.status === 'resolved' &&
-          pergola.attachment.attachmentZoneId !== null,
-      ).length,
-    [store.derived.pergolas],
-  );
-  const unresolvedPergolaAttachmentZoneCount = useMemo(
-    () =>
-      store.derived.pergolas.filter(
-        (pergola) =>
-          pergola.attachment.kind !== 'freestanding' &&
-          pergola.attachment.resolution.status !== 'resolved',
-      ).length,
-    [store.derived.pergolas],
-  );
   const modelViewportSurfaceKey = `${canonicalWorkbenchDisplayMode}:${store.derived.activeModuleIndex}:${store.ui.activeView}`;
   const geometryViewportSurfaceKey = `${canonicalWorkbenchDisplayMode}:${store.derived.activeModuleIndex}`;
   const activeModelViewportTransform =
@@ -429,49 +362,6 @@ export default function DesignWorkbenchEstimateClient({
     store,
     ui,
   });
-  const [pergolaAttachmentPendingFieldId, setPergolaAttachmentPendingFieldId] = useState<string | null>(null);
-  const [pergolaAttachmentFieldErrors, setPergolaAttachmentFieldErrors] = useState<Record<string, string>>({});
-  const activePergolaZoneKind = activePergolaModel
-    ? resolvePergolaZoneKind(activePergolaModel.attachment.kind)
-    : null;
-  const compatiblePergolaZones = useMemo(() => {
-    if (!activePergolaModel || !activePergolaZoneKind) return [];
-    return (store.derived.houseAssembly?.derivedEnvelope?.attachmentZones ?? []).filter(
-      (zone) => zone.kind === activePergolaZoneKind,
-    );
-  }, [activePergolaModel, activePergolaZoneKind, store.derived.houseAssembly?.derivedEnvelope?.attachmentZones]);
-  const compatiblePergolaEdges = useMemo(() => {
-    const allowedEdgeIds = new Set(
-      compatiblePergolaZones
-        .map((zone) => zone.hostEdgeId)
-        .filter((hostEdgeId): hostEdgeId is string => typeof hostEdgeId === 'string' && hostEdgeId.length > 0),
-    );
-    return (store.derived.houseAssembly?.derivedEnvelope?.edges ?? []).filter((edge) => allowedEdgeIds.has(edge.id));
-  }, [compatiblePergolaZones, store.derived.houseAssembly?.derivedEnvelope?.edges]);
-  const selectedPergolaEdgeOptionMissing = Boolean(
-    activePergolaModel?.attachment.attachmentEdgeId &&
-      !compatiblePergolaEdges.some((edge) => edge.id === activePergolaModel.attachment.attachmentEdgeId),
-  );
-  const selectedPergolaZoneOptionMissing = Boolean(
-    activePergolaModel?.attachment.attachmentZoneId &&
-      !compatiblePergolaZones.some((zone) => zone.id === activePergolaModel.attachment.attachmentZoneId),
-  );
-  const runPergolaAttachmentAction = useCallback(
-    async (
-      fieldId: string,
-      action: Promise<{ ok: boolean; error?: string }> | { ok: boolean; error?: string } | undefined,
-      fallbackMessage: string,
-    ) => {
-      setPergolaAttachmentPendingFieldId(fieldId);
-      const result = await Promise.resolve(action ?? { ok: false, error: fallbackMessage });
-      setPergolaAttachmentFieldErrors((current) => ({
-        ...current,
-        [fieldId]: result.ok ? '' : result.error ?? fallbackMessage,
-      }));
-      setPergolaAttachmentPendingFieldId((current) => (current === fieldId ? null : current));
-    },
-    [],
-  );
 
   const workbenchFieldCommit =
     !isLocked && supportsSanctuaryEditing && isPergolaTabActive
@@ -563,9 +453,9 @@ export default function DesignWorkbenchEstimateClient({
     },
     [houseSelectionActions, handleCanonicalPergolaSelection],
   );
-  const houseContextPanel =
+  const houseFormAttachmentContextPanel =
     supportsSanctuaryEditing && activeModuleInput ? (
-      <SanctuaryWorkbenchRail
+      <HouseFormAttachmentContextPanel
         moduleLabel={store.derived.activeModuleLabel}
         geometryState={geometryEditState}
         view={store.ui.activeView}
@@ -573,648 +463,41 @@ export default function DesignWorkbenchEstimateClient({
         canStartDrawOutline={!isLocked}
         onStartDrawOutline={houseSelectionActions.startDrawOutlineEditor}
         onCommitGeometryEdit={!isLocked ? houseActions.commitGeometryIntent : undefined}
-        chrome="embedded"
-        renderSummary={false}
-        houseContextSectionTitle="Attachment Context"
-        sections={{
-          geometry: false,
-          roof: false,
-          gable: false,
-          houseContext: 'canonical_extras',
-          supports: false,
-          overrides: false,
-        }}
       />
     ) : null;
+  const pergolaInspectorModules = store.persisted.modules.map((module) => ({
+    id: module.id,
+    label: module.label,
+    pergolaId: module.drawingModule.input.pergolaId ?? null,
+  }));
   const pergolaInspectorPanel = (
-    <>
-      <section className={styles.moduleSection}>
-        <p className={styles.moduleSectionTitle}>Pergola Inspector</p>
-        <p className={styles.noticeText}>
-          Geometry, roof, supports, and overrides live here. Footprint and drawing rotation still live in House Forms.
-        </p>
-        <button
-          type="button"
-          className={styles.modeButton}
-          onClick={() => handleRailTabSelect('house_forms')}
-        >
-          Open House Forms
-        </button>
-      </section>
-      {activePergolaModel ? (
-        <section className={styles.moduleSection}>
-          <p className={styles.moduleSectionTitle}>Host Attachment</p>
-          <label className={styles.moduleSectionTitle} htmlFor="pergola-connection-type">
-            Connection
-          </label>
-          <select
-            id="pergola-connection-type"
-            className={styles.moduleSelect}
-            aria-label="Pergola connection"
-            value={activePergolaModel.attachment.kind}
-            disabled={isLocked || pergolaAttachmentPendingFieldId === 'pergola-connection'}
-            onChange={(event) =>
-              runPergolaAttachmentAction(
-                'pergola-connection',
-                !isLocked
-                  ? houseActions.commitSharedPergolaConnectionKind(
-                      activePergolaModel.id,
-                      event.target.value as typeof activePergolaModel.attachment.kind,
-                    )
-                  : undefined,
-                'Unable to update the pergola connection.',
-              )
-            }
-          >
-            {PERGOLA_CONNECTION_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-          <label className={styles.moduleSectionTitle} htmlFor="pergola-attachment-strategy">
-            Attachment strategy
-          </label>
-          <select
-            id="pergola-attachment-strategy"
-            className={styles.moduleSelect}
-            aria-label="Pergola attachment strategy"
-            value={activePergolaModel.attachment.strategy ?? 'auto'}
-            disabled={
-              isLocked ||
-              activePergolaModel.attachment.kind === 'freestanding' ||
-              pergolaAttachmentPendingFieldId === 'pergola-strategy'
-            }
-            onChange={(event) =>
-              runPergolaAttachmentAction(
-                'pergola-strategy',
-                !isLocked
-                  ? houseActions.commitSharedPergolaAttachmentStrategy(
-                      activePergolaModel.id,
-                      event.target.value as (typeof PERGOLA_ATTACHMENT_STRATEGY_OPTIONS)[number]['value'],
-                    )
-                  : undefined,
-                'Unable to update the pergola attachment strategy.',
-              )
-            }
-          >
-            {PERGOLA_ATTACHMENT_STRATEGY_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-          <label className={styles.moduleSectionTitle} htmlFor="pergola-host-edge">
-            Host edge
-          </label>
-          <select
-            id="pergola-host-edge"
-            className={styles.moduleSelect}
-            aria-label="Pergola host edge"
-            value={activePergolaModel.attachment.attachmentEdgeId ?? ''}
-            disabled={
-              isLocked ||
-              activePergolaModel.attachment.kind === 'freestanding' ||
-              (!compatiblePergolaEdges.length && !selectedPergolaEdgeOptionMissing) ||
-              pergolaAttachmentPendingFieldId === 'pergola-edge'
-            }
-            onChange={(event) =>
-              runPergolaAttachmentAction(
-                'pergola-edge',
-                !isLocked
-                  ? houseActions.commitSharedPergolaAttachmentEdge(activePergolaModel.id, event.target.value)
-                  : undefined,
-                'Unable to update the pergola host edge.',
-              )
-            }
-          >
-            {selectedPergolaEdgeOptionMissing && activePergolaModel.attachment.attachmentEdgeId ? (
-              <option value={activePergolaModel.attachment.attachmentEdgeId}>Unavailable saved edge</option>
-            ) : null}
-            {compatiblePergolaEdges.map((edge) => (
-              <option key={edge.id} value={edge.id}>
-                {edge.label}
-              </option>
-            ))}
-          </select>
-          <label className={styles.moduleSectionTitle} htmlFor="pergola-host-zone">
-            Host zone
-          </label>
-          <select
-            id="pergola-host-zone"
-            className={styles.moduleSelect}
-            aria-label="Pergola host zone"
-            value={activePergolaModel.attachment.attachmentZoneId ?? ''}
-            disabled={
-              isLocked ||
-              activePergolaModel.attachment.kind === 'freestanding' ||
-              (!compatiblePergolaZones.length && !selectedPergolaZoneOptionMissing) ||
-              pergolaAttachmentPendingFieldId === 'pergola-zone'
-            }
-            onChange={(event) =>
-              runPergolaAttachmentAction(
-                'pergola-zone',
-                !isLocked
-                  ? houseActions.commitSharedPergolaAttachmentZone(activePergolaModel.id, event.target.value)
-                  : undefined,
-                'Unable to update the pergola host zone.',
-              )
-            }
-          >
-            {selectedPergolaZoneOptionMissing && activePergolaModel.attachment.attachmentZoneId ? (
-              <option value={activePergolaModel.attachment.attachmentZoneId}>Unavailable saved zone</option>
-            ) : null}
-            {compatiblePergolaZones.map((zone) => (
-              <option key={zone.id} value={zone.id}>
-                {zone.label}
-              </option>
-            ))}
-          </select>
-          <div className={styles.diagnosticsList}>
-            <div className={styles.diagnosticRow}>
-              <span className={styles.diagnosticLabel}>Resolution</span>
-              <span className={styles.diagnosticValue}>{activePergolaModel.attachment.resolution.status}</span>
-            </div>
-            <div className={styles.diagnosticRow}>
-              <span className={styles.diagnosticLabel}>Host side</span>
-              <span className={styles.diagnosticValue}>
-                {labelForAttachmentSideList([activePergolaModel.attachment.side])}
-              </span>
-            </div>
-          </div>
-          {activePergolaModel.attachment.resolution.message ? (
-            <p className={styles.noticeText}>{activePergolaModel.attachment.resolution.message}</p>
-          ) : null}
-          {pergolaAttachmentFieldErrors['pergola-connection'] ? (
-            <p className={styles.noticeText}>{pergolaAttachmentFieldErrors['pergola-connection']}</p>
-          ) : null}
-          {pergolaAttachmentFieldErrors['pergola-strategy'] ? (
-            <p className={styles.noticeText}>{pergolaAttachmentFieldErrors['pergola-strategy']}</p>
-          ) : null}
-          {pergolaAttachmentFieldErrors['pergola-edge'] ? (
-            <p className={styles.noticeText}>{pergolaAttachmentFieldErrors['pergola-edge']}</p>
-          ) : null}
-          {pergolaAttachmentFieldErrors['pergola-zone'] ? (
-            <p className={styles.noticeText}>{pergolaAttachmentFieldErrors['pergola-zone']}</p>
-          ) : null}
-        </section>
-      ) : null}
-      {modules.length > 1 ? (
-        <section className={styles.moduleSection}>
-          <p className={styles.moduleSectionTitle}>Module</p>
-          <select
-            className={styles.moduleSelect}
-            aria-label="Drawing module"
-            value={String(store.derived.activeModuleIndex)}
-            onChange={(event) =>
-              handleCanonicalPergolaSelection(
-                store.persisted.modules[Number(event.target.value)]?.drawingModule.input.pergolaId ?? null,
-              )
-            }
-          >
-            {modules.map((module, index) => (
-              <option key={module.id} value={String(index)}>
-                {module.label}
-              </option>
-            ))}
-          </select>
-        </section>
-      ) : null}
-      {supportsSanctuaryEditing && activeModuleInput && activePergolaModel ? (
-        <>
-          <section className={styles.moduleSection}>
-            <p className={styles.moduleSectionTitle}>Selection</p>
-            <div className={styles.diagnosticsList}>
-              <div className={styles.diagnosticRow}>
-                <span className={styles.diagnosticLabel}>Active pergola</span>
-                <span className={styles.diagnosticValue}>{activePergolaModel.label || activePergolaModel.id}</span>
-              </div>
-              <div className={styles.diagnosticRow}>
-                <span className={styles.diagnosticLabel}>Module</span>
-                <span className={styles.diagnosticValue}>{store.derived.activeModuleLabel}</span>
-              </div>
-            </div>
-          </section>
-          <SanctuaryWorkbenchRail
-            moduleLabel={store.derived.activeModuleLabel}
-            geometryState={geometryEditState}
-            view={store.ui.activeView}
-            disabled={isLocked}
-            canStartDrawOutline={!isLocked}
-            onStartDrawOutline={houseSelectionActions.startDrawOutlineEditor}
-            onCommitGeometryEdit={!isLocked ? houseActions.commitGeometryIntent : undefined}
-            chrome="embedded"
-            renderSummary={false}
-            sections={{
-              geometry: true,
-              roof: true,
-              gable: true,
-              houseContext: 'none',
-              supports: true,
-              overrides: true,
-            }}
-          />
-        </>
-      ) : activePergolaModel ? (
-        <section className={styles.notice}>
-          <p className={styles.noticeTitle}>Editing Deferred</p>
-          <p className={styles.noticeText}>
-            This pergola family is not supported for native editing yet, but it can still be reviewed in the canonical workbench.
-          </p>
-        </section>
-      ) : null}
-    </>
+    <PergolaInspector
+      activePergolaModel={activePergolaModel}
+      activeModuleInput={activeModuleInput}
+      activeModuleIndex={store.derived.activeModuleIndex}
+      activeModuleLabel={store.derived.activeModuleLabel}
+      disabled={isLocked}
+      geometryState={geometryEditState}
+      houseAssembly={store.derived.houseAssembly}
+      modules={pergolaInspectorModules}
+      supportsSanctuaryEditing={supportsSanctuaryEditing}
+      view={store.ui.activeView}
+      onOpenHouseForms={() => handleRailTabSelect('house_forms')}
+      onSelectPergolaByModule={handleCanonicalPergolaSelection}
+      onStartDrawOutline={houseSelectionActions.startDrawOutlineEditor}
+      onCommitGeometryEdit={!isLocked ? houseActions.commitGeometryIntent : undefined}
+      onCommitConnectionKind={!isLocked ? houseActions.commitSharedPergolaConnectionKind : undefined}
+      onCommitAttachmentStrategy={!isLocked ? houseActions.commitSharedPergolaAttachmentStrategy : undefined}
+      onCommitAttachmentEdge={!isLocked ? houseActions.commitSharedPergolaAttachmentEdge : undefined}
+      onCommitAttachmentZone={!isLocked ? houseActions.commitSharedPergolaAttachmentZone : undefined}
+    />
   );
-  const diagnosticsPanel = (
-    <section className={styles.moduleSection}>
-      <p className={styles.moduleSectionTitle}>Migration diagnostics</p>
-      <div className={styles.diagnosticsList}>
-        <div className={styles.diagnosticRow}>
-          <span className={styles.diagnosticLabel}>Canonical tab</span>
-          <span className={styles.diagnosticValue}>{store.ui.activeRailTab}</span>
-        </div>
-        <div className={styles.diagnosticRow}>
-          <span className={styles.diagnosticLabel}>Selection family</span>
-          <span className={styles.diagnosticValue}>{store.ui.activeObjectFamily}</span>
-        </div>
-        <div className={styles.diagnosticRow}>
-          <span className={styles.diagnosticLabel}>Compatibility mode</span>
-          <span className={styles.diagnosticValue}>{store.ui.workbenchMode}</span>
-        </div>
-        <div className={styles.diagnosticRow}>
-          <span className={styles.diagnosticLabel}>Derived houses</span>
-          <span className={styles.diagnosticValue}>{store.derived.houseCount}</span>
-        </div>
-        <div className={styles.diagnosticRow}>
-          <span className={styles.diagnosticLabel}>Pergolas</span>
-          <span className={styles.diagnosticValue}>{store.derived.pergolas.length}</span>
-        </div>
-        <div className={styles.diagnosticRow}>
-          <span className={styles.diagnosticLabel}>Deck count</span>
-          <span className={styles.diagnosticValue}>{store.derived.deckCount}</span>
-        </div>
-        <div className={styles.diagnosticRow}>
-          <span className={styles.diagnosticLabel}>Opening count</span>
-          <span className={styles.diagnosticValue}>{store.derived.openingCount}</span>
-        </div>
-        <div className={styles.diagnosticRow}>
-          <span className={styles.diagnosticLabel}>Attachment zones</span>
-          <span className={styles.diagnosticValue}>{store.derived.house?.attachmentZones.length ?? 0}</span>
-        </div>
-        <div className={styles.diagnosticRow}>
-          <span className={styles.diagnosticLabel}>Attachment zone kinds</span>
-          <span className={styles.diagnosticValue}>{attachmentZoneKindsSummary}</span>
-        </div>
-        <div className={styles.diagnosticRow}>
-          <span className={styles.diagnosticLabel}>Attachment zone blocks</span>
-          <span className={styles.diagnosticValue}>{attachmentZoneBlockedSummary}</span>
-        </div>
-        <div className={styles.diagnosticRow}>
-          <span className={styles.diagnosticLabel}>Resolved pergola zones</span>
-          <span className={styles.diagnosticValue}>{resolvedPergolaAttachmentZoneCount}</span>
-        </div>
-        <div className={styles.diagnosticRow}>
-          <span className={styles.diagnosticLabel}>Unresolved pergola zones</span>
-          <span className={styles.diagnosticValue}>{unresolvedPergolaAttachmentZoneCount}</span>
-        </div>
-        <div className={styles.diagnosticRow}>
-          <span className={styles.diagnosticLabel}>Slider openings</span>
-          <span className={styles.diagnosticValue}>{store.derived.sliderOpeningCount}</span>
-        </div>
-        <div className={styles.diagnosticRow}>
-          <span className={styles.diagnosticLabel}>Invalid openings</span>
-          <span className={styles.diagnosticValue}>{store.derived.invalidOpeningCount}</span>
-        </div>
-        <div className={styles.diagnosticRow}>
-          <span className={styles.diagnosticLabel}>Preset decks snapped</span>
-          <span className={styles.diagnosticValue}>{store.derived.snappedPresetDeckCount}</span>
-        </div>
-        <div className={styles.diagnosticRow}>
-          <span className={styles.diagnosticLabel}>Preset decks floating</span>
-          <span className={styles.diagnosticValue}>{store.derived.floatingPresetDeckCount}</span>
-        </div>
-        <div className={styles.diagnosticRow}>
-          <span className={styles.diagnosticLabel}>Custom decks</span>
-          <span className={styles.diagnosticValue}>{store.derived.customDeckCount}</span>
-        </div>
-        <div className={styles.diagnosticRow}>
-          <span className={styles.diagnosticLabel}>Invalid decks</span>
-          <span className={styles.diagnosticValue}>{store.derived.invalidDeckCount}</span>
-        </div>
-        <div className={styles.diagnosticRow}>
-          <span className={styles.diagnosticLabel}>Deck support warnings</span>
-          <span className={styles.diagnosticValue}>{store.derived.deckSupportWarningCount}</span>
-        </div>
-        {store.derived.activeDeckSupport ? (
-          <>
-            <div className={styles.diagnosticRow}>
-              <span className={styles.diagnosticLabel}>Active host side</span>
-              <span className={styles.diagnosticValue}>{store.derived.activeDeckSupport.activeHostSide}</span>
-            </div>
-            <div className={styles.diagnosticRow}>
-              <span className={styles.diagnosticLabel}>Active-side deck present</span>
-              <span className={styles.diagnosticValue}>
-                {store.derived.activeDeckSupport.hasRelevantDeck ? 'Yes' : 'No'}
-              </span>
-            </div>
-            <div className={styles.diagnosticRow}>
-              <span className={styles.diagnosticLabel}>Deck support class</span>
-              <span className={styles.diagnosticValue}>{store.derived.activeDeckSupport.resolvedClassification}</span>
-            </div>
-            <div className={styles.diagnosticRow}>
-              <span className={styles.diagnosticLabel}>Deck bracket eligible</span>
-              <span className={styles.diagnosticValue}>
-                {store.derived.activeDeckSupport.deckBracketEligible ? 'Yes' : 'No'}
-              </span>
-            </div>
-            <div className={styles.diagnosticRow}>
-              <span className={styles.diagnosticLabel}>Deck support codes</span>
-              <span className={styles.diagnosticValue}>
-                {store.derived.activeDeckSupport.warningCodes.join(', ') || 'none'}
-              </span>
-            </div>
-          </>
-        ) : null}
-        <div className={styles.diagnosticRow}>
-          <span className={styles.diagnosticLabel}>Selected deck id</span>
-          <span className={styles.diagnosticValue}>{store.derived.activeDeckId ?? 'none'}</span>
-        </div>
-        <div className={styles.diagnosticRow}>
-          <span className={styles.diagnosticLabel}>Selected opening id</span>
-          <span className={styles.diagnosticValue}>{store.derived.activeOpeningId ?? 'none'}</span>
-        </div>
-        <div className={styles.diagnosticRow}>
-          <span className={styles.diagnosticLabel}>House polygon source</span>
-          <span className={styles.diagnosticValue}>
-            {store.derived.house?.footprint.mode === 'custom_polygon' ? 'custom_saved' : 'preset_derived'}
-          </span>
-        </div>
-        {store.derived.activeDeckInteraction ? (
-          <>
-            <div className={styles.diagnosticRow}>
-              <span className={styles.diagnosticLabel}>Selected deck type</span>
-              <span className={styles.diagnosticValue}>{store.derived.activeDeckInteraction.selectedDeckType}</span>
-            </div>
-            <div className={styles.diagnosticRow}>
-              <span className={styles.diagnosticLabel}>Deck drag eligible</span>
-              <span className={styles.diagnosticValue}>
-                {store.derived.activeDeckInteraction.dragEligible ? 'Yes' : 'No'}
-              </span>
-            </div>
-            <div className={styles.diagnosticRow}>
-              <span className={styles.diagnosticLabel}>Deck drag reason</span>
-              <span className={styles.diagnosticValue}>{store.derived.activeDeckInteraction.dragReason ?? 'none'}</span>
-            </div>
-            <div className={styles.diagnosticRow}>
-              <span className={styles.diagnosticLabel}>Deck host-edge resolvable</span>
-              <span className={styles.diagnosticValue}>
-                {store.derived.activeDeckInteraction.hostEdgeResolvable ? 'Yes' : 'No'}
-              </span>
-            </div>
-            <div className={styles.diagnosticRow}>
-              <span className={styles.diagnosticLabel}>Deck relationship dims</span>
-              <span className={styles.diagnosticValue}>
-                {store.derived.activeDeckInteraction.relationshipDimensionsAvailable ? 'Yes' : 'No'}
-              </span>
-            </div>
-          </>
-        ) : null}
-        <div className={styles.diagnosticRow}>
-          <span className={styles.diagnosticLabel}>Warnings</span>
-          <span className={styles.diagnosticValue}>{store.derived.migrationWarningCount}</span>
-        </div>
-        <div className={styles.diagnosticRow}>
-          <span className={styles.diagnosticLabel}>Low confidence</span>
-          <span className={styles.diagnosticValue}>{store.derived.houseIsLowConfidence ? 'Yes' : 'No'}</span>
-        </div>
-        <div className={styles.diagnosticRow}>
-          <span className={styles.diagnosticLabel}>Selected roof form</span>
-          <span className={styles.diagnosticValue}>{store.derived.roofForm ?? 'none'}</span>
-        </div>
-        <div className={styles.diagnosticRow}>
-          <span className={styles.diagnosticLabel}>Roof status</span>
-          <span className={styles.diagnosticValue}>
-            {store.derived.roofReviewStatus === 'blocked'
-              ? 'Blocked'
-              : store.derived.roofReviewStatus === 'approximate'
-                ? 'Approximate'
-                : store.derived.roofReviewStatus === 'ready'
-                  ? 'Ready'
-                  : 'none'}
-          </span>
-        </div>
-        <div className={styles.diagnosticRow}>
-          <span className={styles.diagnosticLabel}>Roof approximation reasons</span>
-          <span className={styles.diagnosticValue}>
-            {store.derived.roofApproximationReasons.map((reason) => labelForRoofApproximationReason(reason)).join(', ') || 'none'}
-          </span>
-        </div>
-        <div className={styles.diagnosticRow}>
-          <span className={styles.diagnosticLabel}>Roof reason code</span>
-          <span className={styles.diagnosticValue}>{store.derived.roofValidationCode ?? 'none'}</span>
-        </div>
-        <div className={styles.diagnosticRow}>
-          <span className={styles.diagnosticLabel}>Roof geometry</span>
-          <span className={styles.diagnosticValue}>{labelForRoofGeometryKind(store.derived.roofGeometryKind)}</span>
-        </div>
-        <div className={styles.diagnosticRow}>
-          <span className={styles.diagnosticLabel}>Roof form source</span>
-          <span className={styles.diagnosticValue}>{labelForRoofFieldSource(store.derived.roofProvenance?.form)}</span>
-        </div>
-        <div className={styles.diagnosticRow}>
-          <span className={styles.diagnosticLabel}>Roof material source</span>
-          <span className={styles.diagnosticValue}>{labelForRoofFieldSource(store.derived.roofProvenance?.material)}</span>
-        </div>
-        <div className={styles.diagnosticRow}>
-          <span className={styles.diagnosticLabel}>Roof pitch source</span>
-          <span className={styles.diagnosticValue}>{labelForRoofFieldSource(store.derived.roofProvenance?.primaryPitchDeg)}</span>
-        </div>
-        <div className={styles.diagnosticRow}>
-          <span className={styles.diagnosticLabel}>Roof fall source</span>
-          <span className={styles.diagnosticValue}>{labelForRoofFieldSource(store.derived.roofProvenance?.primaryFallDirection)}</span>
-        </div>
-        <div className={styles.diagnosticRow}>
-          <span className={styles.diagnosticLabel}>Roof ridge source</span>
-          <span className={styles.diagnosticValue}>{labelForRoofFieldSource(store.derived.roofProvenance?.ridgeAxis)}</span>
-        </div>
-        <div className={styles.diagnosticRow}>
-          <span className={styles.diagnosticLabel}>Roof open-end source</span>
-          <span className={styles.diagnosticValue}>{labelForRoofFieldSource(store.derived.roofProvenance?.openGableEndIds)}</span>
-        </div>
-        <div className={styles.diagnosticRow}>
-          <span className={styles.diagnosticLabel}>Roof appendage source</span>
-          <span className={styles.diagnosticValue}>{labelForRoofFieldSource(store.derived.roofProvenance?.appendage)}</span>
-        </div>
-        <div className={styles.diagnosticRow}>
-          <span className={styles.diagnosticLabel}>Roof appendage</span>
-          <span className={styles.diagnosticValue}>{store.derived.roofAppendageStatus}</span>
-        </div>
-        <div className={styles.diagnosticRow}>
-          <span className={styles.diagnosticLabel}>Appendage support</span>
-          <span className={styles.diagnosticValue}>
-            {store.derived.roofAppendageSupportReason ??
-              (store.derived.roofAppendageSupportedHostEdges.length > 0 ? 'Supported' : 'Not supported')}
-          </span>
-        </div>
-        <div className={styles.diagnosticRow}>
-          <span className={styles.diagnosticLabel}>Appendage supported edges</span>
-          <span className={styles.diagnosticValue}>
-            {labelForAttachmentSideList(store.derived.roofAppendageSupportedHostEdges)}
-          </span>
-        </div>
-        {store.derived.roofValidationMessage ? (
-          <div className={styles.diagnosticRow}>
-            <span className={styles.diagnosticLabel}>Roof note</span>
-            <span className={styles.diagnosticValue}>{store.derived.roofValidationMessage}</span>
-          </div>
-        ) : null}
-        {geometryPreview.kind !== 'error' ? (
-          <>
-            <div className={styles.diagnosticRow}>
-              <span className={styles.diagnosticLabel}>3D deck host side</span>
-              <span className={styles.diagnosticValue}>{geometryPreview.deckSupport.activeHostSide}</span>
-            </div>
-            <div className={styles.diagnosticRow}>
-              <span className={styles.diagnosticLabel}>3D deck present</span>
-              <span className={styles.diagnosticValue}>
-                {geometryPreview.deckSupport.hasRelevantDeck ? 'Yes' : 'No'}
-              </span>
-            </div>
-            <div className={styles.diagnosticRow}>
-              <span className={styles.diagnosticLabel}>3D deck class</span>
-              <span className={styles.diagnosticValue}>{geometryPreview.deckSupport.resolvedClassification}</span>
-            </div>
-            <div className={styles.diagnosticRow}>
-              <span className={styles.diagnosticLabel}>3D deck bracket</span>
-              <span className={styles.diagnosticValue}>
-                {geometryPreview.deckSupport.deckBracketEligible ? 'Yes' : 'No'}
-              </span>
-            </div>
-            <div className={styles.diagnosticRow}>
-              <span className={styles.diagnosticLabel}>3D deck warnings</span>
-              <span className={styles.diagnosticValue}>
-                {geometryPreview.deckSupport.warningCodes.join(', ') || 'none'}
-              </span>
-            </div>
-            <div className={styles.diagnosticRow}>
-              <span className={styles.diagnosticLabel}>3D opening count</span>
-              <span className={styles.diagnosticValue}>
-                {String(geometryPreview.kind === 'ready' ? geometryPreview.scene.metadata?.houseOpeningCount ?? 0 : 0)}
-              </span>
-            </div>
-            <div className={styles.diagnosticRow}>
-              <span className={styles.diagnosticLabel}>3D attachment zones</span>
-              <span className={styles.diagnosticValue}>
-                {String(geometryPreview.kind === 'ready' ? geometryPreview.scene.metadata?.houseAttachmentZoneCount ?? 0 : 0)}
-              </span>
-            </div>
-            <div className={styles.diagnosticRow}>
-              <span className={styles.diagnosticLabel}>3D zone kinds</span>
-              <span className={styles.diagnosticValue}>
-                {String(
-                  geometryPreview.kind === 'ready'
-                    ? geometryPreview.scene.metadata?.houseAttachmentZoneKinds ?? 'none'
-                    : 'none',
-                )}
-              </span>
-            </div>
-            <div className={styles.diagnosticRow}>
-              <span className={styles.diagnosticLabel}>3D zone blocks</span>
-              <span className={styles.diagnosticValue}>
-                {String(
-                  geometryPreview.kind === 'ready'
-                    ? geometryPreview.scene.metadata?.houseAttachmentZoneBlockedReasons ?? 'none'
-                    : 'none',
-                )}
-              </span>
-            </div>
-            <div className={styles.diagnosticRow}>
-              <span className={styles.diagnosticLabel}>3D resolved pergola zones</span>
-              <span className={styles.diagnosticValue}>
-                {String(
-                  geometryPreview.kind === 'ready'
-                    ? geometryPreview.scene.metadata?.pergolaResolvedAttachmentZoneCount ?? 0
-                    : 0,
-                )}
-              </span>
-            </div>
-            <div className={styles.diagnosticRow}>
-              <span className={styles.diagnosticLabel}>3D unresolved pergola zones</span>
-              <span className={styles.diagnosticValue}>
-                {String(
-                  geometryPreview.kind === 'ready'
-                    ? geometryPreview.scene.metadata?.pergolaUnresolvedAttachmentZoneCount ?? 0
-                    : 0,
-                )}
-              </span>
-            </div>
-            <div className={styles.diagnosticRow}>
-              <span className={styles.diagnosticLabel}>3D valid openings</span>
-              <span className={styles.diagnosticValue}>
-                {String(geometryPreview.kind === 'ready' ? geometryPreview.scene.metadata?.houseOpeningValidCount ?? 0 : 0)}
-              </span>
-            </div>
-            <div className={styles.diagnosticRow}>
-              <span className={styles.diagnosticLabel}>3D host edges resolved</span>
-              <span className={styles.diagnosticValue}>
-                {String(
-                  geometryPreview.kind === 'ready'
-                    ? geometryPreview.scene.metadata?.houseOpeningHostEdgeResolvedCount ?? 0
-                    : 0,
-                )}
-              </span>
-            </div>
-            <div className={styles.diagnosticRow}>
-              <span className={styles.diagnosticLabel}>3D host edges unresolved</span>
-              <span className={styles.diagnosticValue}>
-                {String(
-                  geometryPreview.kind === 'ready'
-                    ? geometryPreview.scene.metadata?.houseOpeningHostEdgeUnresolvedCount ?? 0
-                    : 0,
-                )}
-              </span>
-            </div>
-            <div className={styles.diagnosticRow}>
-              <span className={styles.diagnosticLabel}>3D rendered markers</span>
-              <span className={styles.diagnosticValue}>
-                {String(
-                  geometryPreview.kind === 'ready'
-                    ? geometryPreview.scene.metadata?.houseOpeningRenderedMarkerCount ?? 0
-                    : 0,
-                )}
-              </span>
-            </div>
-            <div className={styles.diagnosticRow}>
-              <span className={styles.diagnosticLabel}>3D skipped invalid</span>
-              <span className={styles.diagnosticValue}>
-                {String(
-                  geometryPreview.kind === 'ready'
-                    ? geometryPreview.scene.metadata?.houseOpeningSkippedInvalidCount ?? 0
-                    : 0,
-                )}
-              </span>
-            </div>
-            <div className={styles.diagnosticRow}>
-              <span className={styles.diagnosticLabel}>3D unresolved valid</span>
-              <span className={styles.diagnosticValue}>
-                {String(
-                  geometryPreview.kind === 'ready'
-                    ? geometryPreview.scene.metadata?.houseOpeningUnresolvedValidCount ?? 0
-                    : 0,
-                )}
-              </span>
-            </div>
-          </>
-        ) : null}
-      </div>
-    </section>
-  );
-
+  const diagnosticsPanel = <WorkbenchDiagnosticsPanel store={store} geometryPreview={geometryPreview} />;
   return (
     <div className={styles.shell}>
       <aside className={styles.configuratorColumn}>
         <div className={styles.configuratorScroll}>
-        <HouseFirstWorkbenchRail
+        <ObjectWorkbenchRail
           model={store.derived.railModel}
           activeRailTab={store.ui.activeRailTab}
           activeObjectRef={store.ui.activeObjectRef}
@@ -1231,7 +514,7 @@ export default function DesignWorkbenchEstimateClient({
               },
             }))
           }
-          compatibilityInspectorState={{
+          inspectorContext={{
             house: store.derived.house,
             activeDeckId: store.derived.activeDeckId,
             activeOpeningId: store.derived.activeOpeningId,
@@ -1249,7 +532,7 @@ export default function DesignWorkbenchEstimateClient({
             onCommitDeckPatch: !isLocked ? houseActions.commitSharedHouseDeckPatch : undefined,
             onCommitOpeningPatch: !isLocked ? houseActions.commitSharedHouseOpeningPatch : undefined,
             onStartDeckOutline: !isLocked ? houseSelectionActions.startDeckOutlineEditor : undefined,
-            houseContextPanel,
+            houseFormAttachmentContextPanel,
             pergolaInspectorPanel,
             diagnosticsPanel,
           }}

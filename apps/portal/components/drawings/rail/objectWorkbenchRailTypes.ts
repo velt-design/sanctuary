@@ -18,7 +18,7 @@ import type { WorkbenchObjectRef } from '@/lib/drawings/state/objectFirstWorkben
 
 export type CommitResult = { ok: boolean; error?: string };
 
-export type HouseFirstWorkbenchRailCompatibilityInspectorState = {
+export type ObjectWorkbenchRailInspectorContext = {
   house: HouseModel | null;
   pergolas: PergolaModel[];
   warnings: HouseFirstMigrationWarning[];
@@ -44,12 +44,12 @@ export type HouseFirstWorkbenchRailCompatibilityInspectorState = {
     patch: Partial<HouseFirstOpeningDraft>,
   ) => Promise<CommitResult> | CommitResult;
   onStartDeckOutline?: (deckId: string) => Promise<CommitResult> | CommitResult;
-  houseContextPanel?: ReactNode;
+  houseFormAttachmentContextPanel?: ReactNode;
   pergolaInspectorPanel: ReactNode;
   diagnosticsPanel: ReactNode;
 };
 
-export type HouseFirstWorkbenchRailProps = {
+export type ObjectWorkbenchRailProps = {
   model: DrawingWorkbenchRailModel;
   disabled?: boolean;
   activeRailTab: DrawingWorkbenchRailTab;
@@ -58,7 +58,7 @@ export type HouseFirstWorkbenchRailProps = {
   onSelectRailTab?: (tab: DrawingWorkbenchRailTab) => void;
   onSelectObjectRef?: (ref: WorkbenchObjectRef) => void;
   onVisibilityChange?: (family: keyof DrawingWorkbenchVisibilityState, visible: boolean) => void;
-  compatibilityInspectorState: HouseFirstWorkbenchRailCompatibilityInspectorState;
+  inspectorContext: ObjectWorkbenchRailInspectorContext;
 };
 
 export type FieldErrors = Record<string, string>;

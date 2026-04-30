@@ -1,21 +1,19 @@
 'use client';
 
-import { useCallback, useMemo, useState } from 'react';
-import { buildHouseRailDeckSections } from './houseRailDeckSections';
-import { buildHouseRailFootprintSections } from './houseRailFootprintSections';
-import { buildHouseRailOpeningSections } from './houseRailOpeningSections';
-import { buildHouseRailOverviewSection } from './houseRailOverviewSection';
-import { buildHouseRailRoofSections } from './houseRailRoofSections';
-import { resolveCommitResult } from './houseRailShared';
+import { useCallback, useState } from 'react';
+import DeckInspector from './DeckInspector';
+import HouseFormInspector from './HouseFormInspector';
+import OpeningInspector from './OpeningInspector';
+import { resolveCommitResult } from './objectRailShared';
 import type {
-  HouseFirstWorkbenchRailProps,
+  ObjectWorkbenchRailProps,
   RunAction,
   RunFootprintCommit,
   RunRoofCommit,
-} from './houseRailTypes';
+} from './objectWorkbenchRailTypes';
 import styles from './ConfiguratorRail.module.css';
 
-export default function HouseFirstWorkbenchRail({
+export default function ObjectWorkbenchRail({
   model,
   disabled,
   activeRailTab,
@@ -24,8 +22,8 @@ export default function HouseFirstWorkbenchRail({
   onSelectRailTab,
   onSelectObjectRef,
   onVisibilityChange,
-  compatibilityInspectorState,
-}: HouseFirstWorkbenchRailProps) {
+  inspectorContext,
+}: ObjectWorkbenchRailProps) {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const {
     house,
@@ -45,10 +43,10 @@ export default function HouseFirstWorkbenchRail({
     onCommitDeckPatch,
     onCommitOpeningPatch,
     onStartDeckOutline,
-    houseContextPanel,
+    houseFormAttachmentContextPanel,
     pergolaInspectorPanel,
     diagnosticsPanel,
-  } = compatibilityInspectorState;
+  } = inspectorContext;
 
   const runFootprintCommit = useCallback<RunFootprintCommit>(
     async (fieldId, edit) => {
@@ -80,7 +78,7 @@ export default function HouseFirstWorkbenchRail({
     [onCommitRoofDraft],
   );
 
-  const runDeckAction = useCallback<RunAction>(
+  const runInspectorAction = useCallback<RunAction>(
     async (fieldId, action, fallbackMessage) => {
       const result = await resolveCommitResult(action);
       setFieldErrors((current) => ({
@@ -89,99 +87,6 @@ export default function HouseFirstWorkbenchRail({
       }));
     },
     [],
-  );
-
-  const overviewSection = useMemo(
-    () =>
-      buildHouseRailOverviewSection({
-        house,
-        pergolas,
-        warnings,
-      }),
-    [house, pergolas, warnings],
-  );
-
-  const footprintSections = useMemo(
-    () =>
-      buildHouseRailFootprintSections({
-        canEditFootprint,
-        canStartDrawOutline,
-        disabled,
-        fieldErrors,
-        house,
-        runFootprintCommit,
-        runStartOutline,
-      }),
-    [
-      canEditFootprint,
-      canStartDrawOutline,
-      disabled,
-      fieldErrors,
-      house,
-      runFootprintCommit,
-      runStartOutline,
-    ],
-  );
-
-  const roofSections = useMemo(
-    () =>
-      buildHouseRailRoofSections({
-        disabled,
-        fieldErrors,
-        house,
-        runRoofCommit,
-      }),
-    [disabled, fieldErrors, house, runRoofCommit],
-  );
-
-  const deckSections = useMemo(
-    () =>
-      buildHouseRailDeckSections({
-        activeDeckId,
-        disabled,
-        fieldErrors,
-        house,
-        onAddDeck,
-        onCommitDeckPatch,
-        onRemoveDeck,
-        onStartDeckOutline,
-        runDeckAction,
-      }),
-    [
-      activeDeckId,
-      disabled,
-      fieldErrors,
-      house,
-      onAddDeck,
-      onCommitDeckPatch,
-      onRemoveDeck,
-      onStartDeckOutline,
-      runDeckAction,
-    ],
-  );
-
-  const openingSections = useMemo(
-    () =>
-      buildHouseRailOpeningSections({
-        activeOpeningId,
-        disabled,
-        fieldErrors,
-        house,
-        onAddOpening,
-        onCommitOpeningPatch,
-        onRemoveOpening,
-        runDeckAction,
-      }),
-    [
-      activeOpeningId,
-      disabled,
-      fieldErrors,
-      house,
-      onAddOpening,
-      onCommitOpeningPatch,
-      onRemoveOpening,
-      runDeckAction,
-    ],
   );
 
   const activeFamily =
@@ -195,35 +100,22 @@ export default function HouseFirstWorkbenchRail({
     ) : (
       <div data-active-workbench-object={activeObjectKey}>
         {activeFamily === 'house_forms' ? (
-          model.selectedInspector.hasSelection ? (
-            <>
-              {overviewSection}
-
-              <section className={styles.section}>
-                <h4 className={styles.sectionTitle}>Footprint</h4>
-                <div className={styles.sectionBody}>{footprintSections}</div>
-              </section>
-
-              <section className={styles.section}>
-                <h4 className={styles.sectionTitle}>Roof</h4>
-                <div className={styles.sectionBody}>{roofSections}</div>
-              </section>
-
-              {houseContextPanel ? (
-                <section className={styles.section}>
-                  <h4 className={styles.sectionTitle}>Attachment Context</h4>
-                  <div className={styles.sectionBody}>{houseContextPanel}</div>
-                </section>
-              ) : null}
-            </>
-          ) : (
-            <section className={styles.section}>
-              <h4 className={styles.sectionTitle}>{model.selectedInspector.emptyTitle}</h4>
-              <div className={styles.sectionBody}>
-                <p className={styles.empty}>{model.selectedInspector.emptyMessage}</p>
-              </div>
-            </section>
-          )
+          <HouseFormInspector
+            hasSelection={model.selectedInspector.hasSelection}
+            emptyTitle={model.selectedInspector.emptyTitle}
+            emptyMessage={model.selectedInspector.emptyMessage}
+            house={house}
+            pergolas={pergolas}
+            warnings={warnings}
+            disabled={disabled}
+            fieldErrors={fieldErrors}
+            canEditFootprint={canEditFootprint}
+            canStartDrawOutline={canStartDrawOutline}
+            runFootprintCommit={runFootprintCommit}
+            runStartOutline={runStartOutline}
+            runRoofCommit={runRoofCommit}
+            attachmentContextPanel={houseFormAttachmentContextPanel}
+          />
         ) : activeFamily === 'pergolas' ? (
           model.selectedInspector.hasSelection ? (
             pergolaInspectorPanel
@@ -236,15 +128,28 @@ export default function HouseFirstWorkbenchRail({
             </section>
           )
         ) : activeFamily === 'decks' ? (
-          <section className={styles.section}>
-            <h4 className={styles.sectionTitle}>Deck Inspector</h4>
-            <div className={styles.sectionBody}>{deckSections}</div>
-          </section>
+          <DeckInspector
+            activeDeckId={activeDeckId}
+            disabled={disabled}
+            fieldErrors={fieldErrors}
+            house={house}
+            onAddDeck={onAddDeck}
+            onCommitDeckPatch={onCommitDeckPatch}
+            onRemoveDeck={onRemoveDeck}
+            onStartDeckOutline={onStartDeckOutline}
+            runAction={runInspectorAction}
+          />
         ) : (
-          <section className={styles.section}>
-            <h4 className={styles.sectionTitle}>Opening Inspector</h4>
-            <div className={styles.sectionBody}>{openingSections}</div>
-          </section>
+          <OpeningInspector
+            activeOpeningId={activeOpeningId}
+            disabled={disabled}
+            fieldErrors={fieldErrors}
+            house={house}
+            onAddOpening={onAddOpening}
+            onCommitOpeningPatch={onCommitOpeningPatch}
+            onRemoveOpening={onRemoveOpening}
+            runAction={runInspectorAction}
+          />
         )}
       </div>
     );

@@ -34,6 +34,10 @@ vi.mock('next/navigation', () => ({
   notFound: () => notFoundMock(),
 }));
 
+vi.mock('@/components/drawings/viewports/Geometry3DViewport', () => ({
+  default: () => <div data-testid="geometry-3d-viewport" />,
+}));
+
 function buildEstimateMeta(overrides: Partial<EstimateMeta> = {}): EstimateMeta {
   return {
     id: 'est_11111111-1111-4111-8111-111111111111',

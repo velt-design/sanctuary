@@ -6,7 +6,7 @@ import type {
   HouseRoofPrimaryFallDirection,
   HouseRoofRidgeAxis,
 } from '@/lib/drawings/state/houseFirstWorkbenchModel';
-import type { FieldErrors, RunRoofCommit } from './houseRailTypes';
+import type { FieldErrors, RunRoofCommit } from './objectWorkbenchRailTypes';
 import {
   ATTACHMENT_SIDE_OPTIONS,
   ActionButton,
@@ -23,22 +23,22 @@ import {
   labelForRoofFieldSource,
   labelForRoofForm,
   labelForRoofGeometryKind,
-} from './houseRailShared';
+} from './objectRailShared';
 import styles from './ConfiguratorRail.module.css';
 
-type BuildHouseRailRoofSectionsInput = {
+type BuildHouseFormRoofSectionsInput = {
   disabled?: boolean;
   fieldErrors: FieldErrors;
   house: HouseModel | null;
   runRoofCommit: RunRoofCommit;
 };
 
-export function buildHouseRailRoofSections({
+export function buildHouseFormRoofSections({
   disabled,
   fieldErrors,
   house,
   runRoofCommit,
-}: BuildHouseRailRoofSectionsInput): ReactNode[] {
+}: BuildHouseFormRoofSectionsInput): ReactNode[] {
   const roofDraft = buildRoofDraftFromHouse(house);
   const roofCapabilities = house?.roof.capabilities ?? null;
   const roofProvenance = house?.roof.provenance ?? null;
