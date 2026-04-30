@@ -68,11 +68,12 @@ import type {
 } from '@/lib/drawings/state/drawingWorkbenchUiState';
 import type { EstimateDrawingField, EstimateDrawingFootprintEdit } from '@/lib/estimates/drawingEdits';
 import type {
-  HouseFirstDeckDraft,
-  HouseFirstOpeningDraft,
-  WorkbenchHouseSelection,
-  WorkbenchMode,
-} from '@/lib/drawings/state/houseFirstWorkbenchModel';
+  ObjectWorkbenchDeckPatch,
+  ObjectWorkbenchDisplayFamily,
+  ObjectWorkbenchOpeningPatch,
+  ObjectWorkbenchViewportTargetSelection,
+} from '@/lib/drawings/state/objectWorkbenchViewportTypes';
+import type { WorkbenchObjectRef } from '@/lib/drawings/state/objectFirstWorkbenchModel';
 import {
   normalizeHouseFootprintParams,
   type CalculatorHouseFootprintParams,
@@ -985,13 +986,13 @@ function buildFloatingRectFromPlanCenter(input: {
 
 export default function ModelSpaceViewport({
   view,
-  workbenchDisplayMode = 'pergolas',
+  objectWorkbenchDisplayFamily = 'pergolas',
   visibility,
   status,
   planModel,
   sectionModel,
   planViewModel,
-  activePergolaId,
+  activeObjectRef,
   drawOutlineRequestId,
   drawOutlineMode,
   drawOutlineSeedPolygon,
@@ -1013,13 +1014,13 @@ export default function ModelSpaceViewport({
   onDeckInteractionTelemetryChange,
 }: {
   view: ModuleViewsTab;
-  workbenchDisplayMode?: WorkbenchMode;
+  objectWorkbenchDisplayFamily?: ObjectWorkbenchDisplayFamily;
   visibility?: DrawingWorkbenchVisibilityState;
   status: ModuleViewsStatus;
   planModel?: ModulePlanModel | null;
   sectionModel?: ModuleSectionModel | null;
   planViewModel?: PlanViewModel | null;
-  activePergolaId?: string | null;
+  activeObjectRef?: WorkbenchObjectRef | null;
   drawOutlineRequestId?: number;
   drawOutlineMode?: 'footprint' | 'deck' | null;
   drawOutlineSeedPolygon?: CalculatorHouseFootprintPolygonPoint[] | null;
@@ -1039,7 +1040,7 @@ export default function ModelSpaceViewport({
   onCommitCustomPolygon?: (
     polygon: CalculatorHouseFootprintPolygonPoint[],
   ) => Promise<{ ok: boolean; error?: string }> | { ok: boolean; error?: string };
-  onSelectObjectWorkbenchTarget?: (selection: WorkbenchHouseSelection) => void;
+  onSelectObjectWorkbenchTarget?: (selection: ObjectWorkbenchViewportTargetSelection) => void;
   onSelectPergolaTarget?: (pergolaId: string) => void;
   onClearWorkbenchSelection?: () => void;
   onCommitHouseFormFootprintDimension?: (
@@ -1047,14 +1048,16 @@ export default function ModelSpaceViewport({
   ) => Promise<{ ok: boolean; error?: string }> | { ok: boolean; error?: string };
   onCommitDeckDimension?: (
     deckId: string,
-    patch: Partial<HouseFirstDeckDraft>,
+    patch: ObjectWorkbenchDeckPatch,
   ) => Promise<{ ok: boolean; error?: string }> | { ok: boolean; error?: string };
   onCommitOpeningDimension?: (
     openingId: string,
-    patch: Partial<HouseFirstOpeningDraft>,
+    patch: ObjectWorkbenchOpeningPatch,
   ) => Promise<{ ok: boolean; error?: string }> | { ok: boolean; error?: string };
   onDeckInteractionTelemetryChange?: (telemetry: DeckInteractionTelemetry) => void;
 }) {
+  const workbenchDisplayMode = objectWorkbenchDisplayFamily === 'house_forms' ? 'house' : 'pergolas';
+  const activePergolaId = activeObjectRef?.family === 'pergolas' ? activeObjectRef.objectId : null;
   const scrollerRef = useRef<HTMLDivElement | null>(null);
   const scaleFrameRef = useRef<HTMLDivElement | null>(null);
   const drawPopoverRef = useRef<HTMLDivElement | null>(null);
@@ -1591,7 +1594,7 @@ export default function ModelSpaceViewport({
                 ...(floatingRectPatch ? { floatingRect: floatingRectPatch } : null),
                 presetRect: {
                   [annotation.fieldKey]: nextValue,
-                } as unknown as HouseFirstDeckDraft['presetRect'],
+                } as NonNullable<ObjectWorkbenchDeckPatch['presetRect']>,
               }),
             )
           : { ok: false, error: 'Deck dimensions are not editable in this view.' };
@@ -1776,7 +1779,7 @@ export default function ModelSpaceViewport({
                           : null),
                         presetRect: {
                           detachedGapM: nextValue,
-                        } as unknown as HouseFirstDeckDraft['presetRect'],
+                        } as NonNullable<ObjectWorkbenchDeckPatch['presetRect']>,
                       }
                     : {
                         ...(floatingRelationshipPatch && 'floatingRect' in floatingRelationshipPatch && floatingRelationshipPatch.floatingRect
@@ -1784,7 +1787,7 @@ export default function ModelSpaceViewport({
                           : null),
                         presetRect: {
                           centerOffsetM: resolvedRelationship.centerOffsetM,
-                        } as unknown as HouseFirstDeckDraft['presetRect'],
+                        } as NonNullable<ObjectWorkbenchDeckPatch['presetRect']>,
                       }),
                 }),
               )
@@ -1802,7 +1805,7 @@ export default function ModelSpaceViewport({
           ? await resolveCommitResult(
               onCommitOpeningDimension(annotation.ownerId, {
                 [annotation.fieldKey]: nextValue,
-              } as Partial<HouseFirstOpeningDraft>),
+              } as ObjectWorkbenchOpeningPatch),
             )
           : { ok: false, error: 'Opening dimensions are not editable in this view.' };
       } else {

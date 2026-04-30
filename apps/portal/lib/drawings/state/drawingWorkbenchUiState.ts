@@ -62,9 +62,6 @@ export type DrawingWorkbenchCompatibilitySelectionState = {
   activePergolaId: string | null;
 };
 
-export type DrawingWorkbenchCompatibilityTargetSelection =
-  DrawingWorkbenchCompatibilitySelectionState['activeHouseSelection'];
-
 export type DrawingWorkbenchUiStateLegacySelectionOverrides = Partial<DrawingWorkbenchCompatibilitySelectionState>;
 
 export type DrawingWorkbenchUiStateOverrides = Partial<DrawingWorkbenchUiState> &

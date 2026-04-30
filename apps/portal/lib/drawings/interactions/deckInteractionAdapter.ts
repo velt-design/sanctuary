@@ -1,6 +1,6 @@
 import type { AttachmentSide } from '@sp/costing';
 import type { CalculatorHouseFootprintPolygonPoint } from '@/lib/types/calculator';
-import type { HouseFirstDeckDraft } from '@/lib/drawings/state/houseFirstWorkbenchModel';
+import type { ObjectWorkbenchDeckPatch } from '@/lib/drawings/state/objectWorkbenchInspectorModel';
 import type {
   HouseFirstPlanDeckInteraction,
   HouseFirstPlanDeckReferenceFrame,
@@ -1516,7 +1516,7 @@ export function buildDeckInteractionViewState(input: {
 export function buildDeckCommitPatch(input: {
   session: DeckDragSession;
   preview: DeckPreviewState;
-}): Partial<HouseFirstDeckDraft> {
+}): ObjectWorkbenchDeckPatch {
   const commitWitnessFrame = resolveDeckCommitReferenceFrame({
     interaction: input.session.interaction,
     renderEdgeId: input.preview.witnessEdgeId,

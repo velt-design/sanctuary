@@ -217,7 +217,7 @@ export default function DesignWorkbenchEstimateClient({
   );
   const activeSelectionFamily =
     store.ui.activeRailTab === 'diagnostics' ? store.ui.activeObjectFamily : store.ui.activeRailTab;
-  const canonicalWorkbenchDisplayMode = activeSelectionFamily === 'pergolas' ? 'pergolas' : 'house';
+  const objectWorkbenchDisplayFamily = activeSelectionFamily === 'pergolas' ? 'pergolas' : 'house_forms';
   const isPergolaTabActive = store.ui.activeRailTab === 'pergolas';
   const drawingEditableFields = useMemo(
     () =>
@@ -254,8 +254,12 @@ export default function DesignWorkbenchEstimateClient({
       }),
     [drawingDraft, estimate.calculatorSnapshot, estimate.id, estimate.projectId, store.derived.activeModuleIndex],
   );
-  const modelViewportSurfaceKey = `${canonicalWorkbenchDisplayMode}:${store.derived.activeModuleIndex}:${store.ui.activeView}`;
-  const geometryViewportSurfaceKey = `${canonicalWorkbenchDisplayMode}:${store.derived.activeModuleIndex}`;
+  const modelViewportSurfaceKey = `${objectWorkbenchDisplayFamily}:${store.derived.activeModuleIndex}:${store.ui.activeView}`;
+  const geometryViewportSurfaceKey = `${objectWorkbenchDisplayFamily}:${store.derived.activeModuleIndex}`;
+  const viewportActiveObjectRef =
+    store.ui.activeObjectRef.family === 'pergolas'
+      ? store.ui.activeObjectRef
+      : { family: 'pergolas' as const, objectId: store.derived.activePergolaId };
   const activeModelViewportTransform =
     modelViewportTransformsByKey[modelViewportSurfaceKey] ?? DEFAULT_MODEL_VIEWPORT_TRANSFORM;
   const activeGeometryViewportState =
@@ -327,7 +331,7 @@ export default function DesignWorkbenchEstimateClient({
       ? objectWorkbenchActions.commitDrawingField
       : undefined;
   const workbenchFootprintCommit =
-    !isLocked && canonicalWorkbenchDisplayMode === 'house' && store.ui.viewportMode === 'model'
+    !isLocked && objectWorkbenchDisplayFamily === 'house_forms' && store.ui.viewportMode === 'model'
       ? objectWorkbenchActions.commitSharedHouseFootprintEdit
       : undefined;
 
@@ -408,7 +412,7 @@ export default function DesignWorkbenchEstimateClient({
             }))
           }
           viewportMode={store.ui.viewportMode}
-          workbenchDisplayMode={canonicalWorkbenchDisplayMode}
+          objectWorkbenchDisplayFamily={objectWorkbenchDisplayFamily}
           visibility={store.ui.visibility}
           availableViewportModes={['sheet', 'model', 'geometry3d']}
           onViewportModeChange={(viewportMode) =>
@@ -422,7 +426,7 @@ export default function DesignWorkbenchEstimateClient({
           sectionModel={store.derived.activeSectionModel}
           planViewModel={store.derived.activePlanViewModel}
           geometryPreview={geometryPreview}
-          activePergolaId={store.derived.activePergolaId}
+          activeObjectRef={viewportActiveObjectRef}
           modelViewportKey={modelViewportSurfaceKey}
           modelViewportTransform={activeModelViewportTransform}
           modelViewportAutoFitOnReady={shouldAutoFitModelViewport}

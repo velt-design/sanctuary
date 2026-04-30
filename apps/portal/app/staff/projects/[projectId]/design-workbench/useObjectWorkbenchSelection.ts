@@ -6,14 +6,14 @@ import {
   buildDrawingWorkbenchObjectSelectionStateFromBridgeTarget,
 } from '@/lib/drawings/state/drawingWorkbenchUiState';
 import type {
-  DrawingWorkbenchCompatibilityTargetSelection,
   DrawingWorkbenchRailTab,
   DrawingWorkbenchUiState,
 } from '@/lib/drawings/state/drawingWorkbenchUiState';
+import type { ObjectWorkbenchViewportTargetSelection } from '@/lib/drawings/state/objectWorkbenchViewportTypes';
 import type { WorkbenchObjectFamily, WorkbenchObjectRef } from '@/lib/drawings/state/objectFirstWorkbenchModel';
 import type { CommitResult, DrawOutlineTarget } from './objectWorkbenchClientTypes';
 
-type ObjectWorkbenchTargetSelection = DrawingWorkbenchCompatibilityTargetSelection;
+type ObjectWorkbenchTargetSelection = ObjectWorkbenchViewportTargetSelection;
 
 type UseObjectWorkbenchSelectionInput = {
   setUi: Dispatch<SetStateAction<DrawingWorkbenchUiState>>;

@@ -1522,7 +1522,7 @@ describe("Geometry3DViewport", () => {
     rendered.unmount();
 
     const houseRendered = renderIntoDocument(
-      <Geometry3DViewport geometryPreview={geometryPreview} displayMode="house" />,
+      <Geometry3DViewport geometryPreview={geometryPreview} objectWorkbenchDisplayFamily="house_forms" />,
     );
 
     await act(async () => {
@@ -1556,7 +1556,7 @@ describe("Geometry3DViewport", () => {
     const hiddenPergolaRendered = renderIntoDocument(
       <Geometry3DViewport
         geometryPreview={geometryPreview}
-        displayMode="house"
+        objectWorkbenchDisplayFamily="house_forms"
         visibility={{
           house: true,
           pergolas: false,

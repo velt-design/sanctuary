@@ -184,7 +184,7 @@ describe('DrawingWorkbench', () => {
     expect(markup).not.toContain('Rotate +90');
   });
 
-  it('passes house display mode to model space without changing sheet view, while showing pergolas by default', () => {
+  it('passes house-form display family to model space without changing sheet view, while showing pergolas by default', () => {
     const drawing = makeDrawingModule();
     const meta = buildEstimateDrawingSheetMeta({
       moduleLabel: 'M1 - Pitched - 6m x 3m - Acrylic',
@@ -200,7 +200,7 @@ describe('DrawingWorkbench', () => {
         view="plan"
         onViewChange={() => undefined}
         viewportMode="sheet"
-        workbenchDisplayMode="house"
+        objectWorkbenchDisplayFamily="house_forms"
         onViewportModeChange={() => undefined}
         status="ready"
         planModel={drawing.planModel}
@@ -220,7 +220,7 @@ describe('DrawingWorkbench', () => {
         view="plan"
         onViewChange={() => undefined}
         viewportMode="model"
-        workbenchDisplayMode="house"
+        objectWorkbenchDisplayFamily="house_forms"
         onViewportModeChange={() => undefined}
         status="ready"
         planModel={drawing.planModel}
@@ -254,7 +254,7 @@ describe('DrawingWorkbench', () => {
         view="plan"
         onViewChange={() => undefined}
         viewportMode="model"
-        workbenchDisplayMode="house"
+        objectWorkbenchDisplayFamily="house_forms"
         visibility={{
           house: true,
           pergolas: false,

@@ -16,10 +16,13 @@ import { buildPlanViewModel } from '@/lib/drawings/views/plan/buildPlanViewModel
 import { resolveDeckHostEdgeFrame, resolveDeckPresetGeometry } from '@/lib/drawings/state/houseFirstDeckPresets';
 import type { DeckInteractionTelemetry } from '@/app/staff/projects/[projectId]/design-workbench/objectWorkbenchClientTypes';
 import type {
+  ObjectWorkbenchDisplayFamily,
+  ObjectWorkbenchViewportTargetSelection,
+} from '@/lib/drawings/state/objectWorkbenchViewportTypes';
+import type {
   DeckModel,
   HouseModel,
   WallOpeningModel,
-  WorkbenchHouseSelection,
 } from '@/lib/drawings/state/houseFirstWorkbenchModel';
 import { dispatchPointer, renderIntoDocument } from '../../../../../test/reactHarness';
 import ModelSpaceViewport from './ModelSpaceViewport';
@@ -692,7 +695,7 @@ function fillAndCommitDimensionInput(input: HTMLInputElement, value: string, com
 
 type HouseFirstViewportHarnessProps = {
   initialHouse: HouseModel;
-  initialSelection?: WorkbenchHouseSelection;
+  initialSelection?: ObjectWorkbenchViewportTargetSelection;
   rejectDeckCommit?: boolean;
   enablePlanEditing?: boolean;
   delayDeckCommit?: boolean;
@@ -701,7 +704,7 @@ type HouseFirstViewportHarnessProps = {
   onDeckInteractionTelemetryChange?: (telemetry: DeckInteractionTelemetry) => void;
   onDeckCommit?: (deckId: string, patch: Partial<DeckModel>) => void;
   renderSelectionControls?: boolean;
-  workbenchDisplayMode?: 'house' | 'pergolas';
+  objectWorkbenchDisplayFamily?: ObjectWorkbenchDisplayFamily;
   visibility?: DrawingWorkbenchVisibilityState;
 };
 
@@ -716,12 +719,12 @@ function HouseFirstViewportHarness({
   onDeckInteractionTelemetryChange,
   onDeckCommit,
   renderSelectionControls = false,
-  workbenchDisplayMode = 'pergolas',
+  objectWorkbenchDisplayFamily = 'pergolas',
   visibility,
 }: HouseFirstViewportHarnessProps) {
   const drawing = makeDrawingModule();
   const [house, setHouse] = useState(initialHouse);
-  const [selection, setSelection] = useState<WorkbenchHouseSelection>(initialSelection);
+  const [selection, setSelection] = useState<ObjectWorkbenchViewportTargetSelection>(initialSelection);
   const [viewportTransform, setViewportTransform] = useState(createDrawingWorkbenchUiState().viewportTransform);
   const [pendingDeckCommit, setPendingDeckCommit] = useState<null | (() => void)>(null);
   const [deckTelemetry, setDeckTelemetry] = useState<{
@@ -743,7 +746,7 @@ function HouseFirstViewportHarness({
   const viewport = (
     <ModelSpaceViewport
       view="plan"
-      workbenchDisplayMode={workbenchDisplayMode}
+      objectWorkbenchDisplayFamily={objectWorkbenchDisplayFamily}
       visibility={visibility}
       status="ready"
       planModel={makePlanModelWithHouseContext()}
@@ -1349,7 +1352,7 @@ describe('ModelSpaceViewport', () => {
     const markup = renderToStaticMarkup(
       <ModelSpaceViewport
         view="plan"
-        workbenchDisplayMode="house"
+        objectWorkbenchDisplayFamily="house_forms"
         status="ready"
         planModel={planModel}
         sectionModel={drawing.sectionModel}
@@ -1429,7 +1432,7 @@ describe('ModelSpaceViewport', () => {
       const rendered = renderIntoDocument(
         <ModelSpaceViewport
           view="plan"
-          workbenchDisplayMode="house"
+          objectWorkbenchDisplayFamily="house_forms"
           status="ready"
           planModel={testCase.planModel}
           sectionModel={drawing.sectionModel}
@@ -1481,7 +1484,7 @@ describe('ModelSpaceViewport', () => {
     const rendered = renderIntoDocument(
       <ModelSpaceViewport
         view="plan"
-        workbenchDisplayMode="house"
+        objectWorkbenchDisplayFamily="house_forms"
         status="ready"
         planModel={planModel}
         sectionModel={drawing.sectionModel}
@@ -1533,7 +1536,7 @@ describe('ModelSpaceViewport', () => {
     const rendered = renderIntoDocument(
       <ModelSpaceViewport
         view="plan"
-        workbenchDisplayMode="house"
+        objectWorkbenchDisplayFamily="house_forms"
         status="ready"
         planModel={planModel}
         sectionModel={drawing.sectionModel}
@@ -1669,7 +1672,7 @@ describe('ModelSpaceViewport', () => {
     const markup = renderToStaticMarkup(
       <ModelSpaceViewport
         view="plan"
-        workbenchDisplayMode="house"
+        objectWorkbenchDisplayFamily="house_forms"
         visibility={{
           house: true,
           pergolas: false,
@@ -1761,7 +1764,7 @@ describe('ModelSpaceViewport', () => {
     const markup = renderToStaticMarkup(
       <ModelSpaceViewport
         view="section"
-        workbenchDisplayMode="house"
+        objectWorkbenchDisplayFamily="house_forms"
         status="ready"
         planModel={drawing.planModel}
         sectionModel={drawing.sectionModel}
@@ -4869,7 +4872,7 @@ describe('ModelSpaceViewport', () => {
       const rendered = renderIntoDocument(
         <HouseFirstViewportHarness
           initialSelection={{ kind: 'deck', targetId: 'deck-1' }}
-          workbenchDisplayMode="house"
+          objectWorkbenchDisplayFamily="house_forms"
           initialHouse={makeHouseFirstHouse({
             decks: [
               {
@@ -4933,7 +4936,7 @@ describe('ModelSpaceViewport', () => {
       const rendered = renderIntoDocument(
         <HouseFirstViewportHarness
           initialSelection={{ kind: 'deck', targetId: 'deck-1' }}
-          workbenchDisplayMode="house"
+          objectWorkbenchDisplayFamily="house_forms"
           initialHouse={makeHouseFirstHouse({
             decks: [
               {
@@ -4995,7 +4998,7 @@ describe('ModelSpaceViewport', () => {
     const rendered = renderIntoDocument(
       <HouseFirstViewportHarness
         initialSelection={{ kind: 'deck', targetId: 'deck-1' }}
-        workbenchDisplayMode="house"
+        objectWorkbenchDisplayFamily="house_forms"
         visibility={{
           house: true,
           pergolas: true,
@@ -5081,7 +5084,7 @@ describe('ModelSpaceViewport', () => {
     const rendered = renderIntoDocument(
       <HouseFirstViewportHarness
         initialSelection={{ kind: 'deck', targetId: 'deck-1' }}
-        workbenchDisplayMode="house"
+        objectWorkbenchDisplayFamily="house_forms"
         visibility={{
           house: true,
           pergolas: true,

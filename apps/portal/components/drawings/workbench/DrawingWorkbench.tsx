@@ -15,11 +15,12 @@ import type {
 } from '@/lib/drawings/state/drawingWorkbenchUiState';
 import type { CalculatorHouseFootprintPolygonPoint } from '@/lib/types/calculator';
 import type {
-  HouseFirstDeckDraft,
-  HouseFirstOpeningDraft,
-  WorkbenchHouseSelection,
-  WorkbenchMode,
-} from '@/lib/drawings/state/houseFirstWorkbenchModel';
+  ObjectWorkbenchDeckPatch,
+  ObjectWorkbenchDisplayFamily,
+  ObjectWorkbenchOpeningPatch,
+  ObjectWorkbenchViewportTargetSelection,
+} from '@/lib/drawings/state/objectWorkbenchViewportTypes';
+import type { WorkbenchObjectRef } from '@/lib/drawings/state/objectFirstWorkbenchModel';
 import SheetViewport from '@/components/drawings/viewports/SheetViewport';
 import ModelSpaceViewport from '@/components/drawings/viewports/ModelSpaceViewport';
 import Geometry3DViewport, {
@@ -41,7 +42,7 @@ type DrawingWorkbenchProps = {
   view: ModuleViewsTab;
   onViewChange: (view: ModuleViewsTab) => void;
   viewportMode: DrawingWorkbenchViewportMode;
-  workbenchDisplayMode?: WorkbenchMode;
+  objectWorkbenchDisplayFamily?: ObjectWorkbenchDisplayFamily;
   visibility?: DrawingWorkbenchVisibilityState;
   onViewportModeChange: (mode: DrawingWorkbenchViewportMode) => void;
   availableViewportModes?: DrawingWorkbenchViewportMode[];
@@ -50,7 +51,7 @@ type DrawingWorkbenchProps = {
   sectionModel?: ModuleSectionModel | null;
   planViewModel?: PlanViewModel | null;
   geometryPreview?: GeometryPreviewState | null;
-  activePergolaId?: string | null;
+  activeObjectRef?: WorkbenchObjectRef | null;
   modelViewportKey?: string;
   modelViewportTransform: DrawingWorkbenchViewportTransform;
   modelViewportAutoFitOnReady?: boolean;
@@ -81,7 +82,7 @@ type DrawingWorkbenchProps = {
   onCommitCustomPolygon?: (
     polygon: CalculatorHouseFootprintPolygonPoint[],
   ) => Promise<{ ok: boolean; error?: string }> | { ok: boolean; error?: string };
-  onSelectObjectWorkbenchTarget?: (selection: WorkbenchHouseSelection) => void;
+  onSelectObjectWorkbenchTarget?: (selection: ObjectWorkbenchViewportTargetSelection) => void;
   onSelectPergolaTarget?: (pergolaId: string) => void;
   onClearWorkbenchSelection?: () => void;
   onCommitHouseFormFootprintDimension?: (
@@ -89,11 +90,11 @@ type DrawingWorkbenchProps = {
   ) => Promise<{ ok: boolean; error?: string }> | { ok: boolean; error?: string };
   onCommitDeckDimension?: (
     deckId: string,
-    patch: Partial<HouseFirstDeckDraft>,
+    patch: ObjectWorkbenchDeckPatch,
   ) => Promise<{ ok: boolean; error?: string }> | { ok: boolean; error?: string };
   onCommitOpeningDimension?: (
     openingId: string,
-    patch: Partial<HouseFirstOpeningDraft>,
+    patch: ObjectWorkbenchOpeningPatch,
   ) => Promise<{ ok: boolean; error?: string }> | { ok: boolean; error?: string };
   onDeckInteractionTelemetryChange?: (telemetry: DeckInteractionTelemetry) => void;
 };
@@ -106,7 +107,7 @@ export default function DrawingWorkbench({
   view,
   onViewChange,
   viewportMode,
-  workbenchDisplayMode = 'pergolas',
+  objectWorkbenchDisplayFamily = 'pergolas',
   visibility,
   onViewportModeChange,
   availableViewportModes,
@@ -115,7 +116,7 @@ export default function DrawingWorkbench({
   sectionModel,
   planViewModel,
   geometryPreview,
-  activePergolaId,
+  activeObjectRef,
   modelViewportKey,
   modelViewportTransform,
   modelViewportAutoFitOnReady = true,
@@ -200,13 +201,13 @@ export default function DrawingWorkbench({
         ) : viewportMode === 'model' ? (
           <ModelSpaceViewport
             view={view}
-            workbenchDisplayMode={workbenchDisplayMode}
+            objectWorkbenchDisplayFamily={objectWorkbenchDisplayFamily}
             visibility={visibility}
             status={status}
             planModel={planModel}
             sectionModel={sectionModel}
             planViewModel={planViewModel}
-            activePergolaId={activePergolaId}
+            activeObjectRef={activeObjectRef}
             drawOutlineRequestId={drawOutlineRequestId}
             drawOutlineMode={drawOutlineMode}
             drawOutlineSeedPolygon={drawOutlineSeedPolygon}
@@ -230,9 +231,9 @@ export default function DrawingWorkbench({
         ) : (
           <Geometry3DViewport
             geometryPreview={geometryPreview}
-            displayMode={workbenchDisplayMode}
+            objectWorkbenchDisplayFamily={objectWorkbenchDisplayFamily}
             visibility={visibility}
-            viewportKey={geometryViewportKey ?? `${workbenchDisplayMode}:${activeModuleIndex}`}
+            viewportKey={geometryViewportKey ?? `${objectWorkbenchDisplayFamily}:${activeModuleIndex}`}
             viewportState={geometryViewportState}
             onViewportStateChange={onGeometryViewportStateChange}
           />

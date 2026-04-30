@@ -26,8 +26,8 @@ import type {
   GeometryPreviewMode,
   GeometryPreviewState,
 } from "@/lib/drawings/geometry/buildWorkbenchGeometryPreview";
-import type { WorkbenchMode } from "@/lib/drawings/state/houseFirstWorkbenchModel";
 import type { DrawingWorkbenchVisibilityState } from "@/lib/drawings/state/drawingWorkbenchUiState";
+import type { ObjectWorkbenchDisplayFamily } from "@/lib/drawings/state/objectWorkbenchViewportTypes";
 import { blockNativeSelectionEvent } from "./nativeSelection";
 import styles from "./Geometry3DViewport.module.css";
 
@@ -43,7 +43,7 @@ type SceneBounds = {
 
 function sceneForDisplayMode(
   scene: ViewerSceneModel,
-  displayMode: WorkbenchMode,
+  displayMode: "house" | "pergolas",
   visibility?: DrawingWorkbenchVisibilityState,
 ): ViewerSceneModel {
   if (displayMode !== "house") return scene;
@@ -3459,19 +3459,20 @@ function MeasurementProbeOverlay({
 
 export default function Geometry3DViewport({
   geometryPreview,
-  displayMode = "pergolas",
+  objectWorkbenchDisplayFamily = "pergolas",
   visibility,
   viewportKey = "geometry3d",
   viewportState,
   onViewportStateChange,
 }: {
   geometryPreview?: GeometryPreviewState | null;
-  displayMode?: WorkbenchMode;
+  objectWorkbenchDisplayFamily?: ObjectWorkbenchDisplayFamily;
   visibility?: DrawingWorkbenchVisibilityState;
   viewportKey?: string;
   viewportState?: Geometry3DViewportState | null;
   onViewportStateChange?: (next: Geometry3DViewportState) => void;
 }) {
+  const displayMode = objectWorkbenchDisplayFamily === "house_forms" ? "house" : "pergolas";
   const [panelOpen, setPanelOpen] = useState(false);
   const [layerVisibility, setLayerVisibility] = useState<
     Record<string, boolean>

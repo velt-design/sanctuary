@@ -1497,14 +1497,14 @@ export function useObjectWorkbenchActions({
   );
 
   const commitDeckDimension = useCallback(
-    async (deckId: string, patch: Partial<HouseFirstDeckDraft>): Promise<CommitResult> =>
+    async (deckId: string, patch: ObjectWorkbenchDeckPatch): Promise<CommitResult> =>
       commitDeckDraftMutation({
         buildNextDecks: ({ currentDecks, housePolygon }) =>
           applyDeckPatch({
             currentDecks,
             deckId,
             housePolygon,
-            patch,
+            patch: buildHouseFirstDeckPatchFromObjectPatch(patch),
           }),
         validateDraft: (nextDraft) => validateDeckPreview(nextDraft, deckId),
       }),
@@ -1512,8 +1512,8 @@ export function useObjectWorkbenchActions({
   );
 
   const commitOpeningDimension = useCallback(
-    async (openingId: string, patch: Partial<HouseFirstOpeningDraft>): Promise<CommitResult> =>
-      commitCompatibilityHouseOpeningPatch(openingId, patch),
+    async (openingId: string, patch: ObjectWorkbenchOpeningPatch): Promise<CommitResult> =>
+      commitCompatibilityHouseOpeningPatch(openingId, buildHouseFirstOpeningPatchFromObjectPatch(patch)),
     [commitCompatibilityHouseOpeningPatch],
   );
 

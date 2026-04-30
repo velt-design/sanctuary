@@ -7,6 +7,11 @@ const SCAN_ROOTS = [
   path.join('apps', 'portal', 'components', 'drawings', 'rail'),
   path.join('apps', 'portal', 'app', 'staff', 'projects', '[projectId]', 'design-workbench'),
 ];
+const OBJECT_WORKBENCH_BOUNDARY_FILES = [
+  path.join('apps', 'portal', 'components', 'drawings', 'workbench', 'DrawingWorkbench.tsx'),
+  path.join('apps', 'portal', 'components', 'drawings', 'viewports', 'ModelSpaceViewport.tsx'),
+  path.join('apps', 'portal', 'components', 'drawings', 'viewports', 'Geometry3DViewport.tsx'),
+];
 const ALLOWLISTED_COMPATIBILITY_FILES = new Set([
   path.normalize(path.join('apps', 'portal', 'app', 'staff', 'projects', '[projectId]', 'design-workbench', 'useObjectWorkbenchActions.ts')),
   path.normalize(path.join('apps', 'portal', 'app', 'staff', 'projects', '[projectId]', 'design-workbench', 'compat', 'workbenchCompatibilityDraftBuilders.ts')),
@@ -55,6 +60,13 @@ describe('object workbench import guards', () => {
         if (readsCompatibilityUiSelection) {
           violations.push(`${relativePath} reads compatibility selection fields from ui`);
         }
+      }
+    }
+
+    for (const relativeBoundaryPath of OBJECT_WORKBENCH_BOUNDARY_FILES.map((filePath) => path.normalize(filePath))) {
+      const source = fs.readFileSync(path.join(process.cwd(), relativeBoundaryPath), 'utf8');
+      if (/from ['"][^'"]*houseFirstWorkbenchModel['"]/.test(source)) {
+        violations.push(`${relativeBoundaryPath} imports houseFirstWorkbenchModel`);
       }
     }
 
