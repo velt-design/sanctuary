@@ -19,7 +19,7 @@ function buildRailProps(input?: {
   const bootstrapStore = buildDrawingWorkbenchStore({
     snapshot: fixture.snapshot,
     draft: input?.draft ?? null,
-    ui: createDrawingWorkbenchUiState({ workbenchMode: 'house' }),
+    ui: createDrawingWorkbenchUiState(),
   });
   const activeRailTab = input?.activeRailTab ?? 'house_forms';
   const defaultHouseRef: WorkbenchObjectRef = {
@@ -44,17 +44,9 @@ function buildRailProps(input?: {
     snapshot: fixture.snapshot,
     draft: input?.draft ?? null,
     ui: createDrawingWorkbenchUiState({
-      workbenchMode: activeObjectRef.family === 'pergolas' ? 'pergolas' : 'house',
       activeRailTab,
       activeObjectFamily: activeObjectRef.family,
       activeObjectRef,
-      activePergolaId: activeObjectRef.family === 'pergolas' ? activeObjectRef.objectId : null,
-      activeHouseSelection:
-        activeObjectRef.family === 'decks'
-          ? { kind: 'deck', targetId: activeObjectRef.objectId }
-          : activeObjectRef.family === 'openings'
-            ? { kind: 'opening', targetId: activeObjectRef.objectId }
-            : { kind: 'house', targetId: null },
     }),
   });
 

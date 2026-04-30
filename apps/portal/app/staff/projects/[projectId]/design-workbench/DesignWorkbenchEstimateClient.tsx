@@ -9,11 +9,11 @@ import {
 import { buildWorkbenchGeometryPreview } from '@/lib/drawings/geometry/buildWorkbenchGeometryPreview';
 import { buildDrawingWorkbenchStore } from '@/lib/drawings/state/drawingWorkbenchStore';
 import {
-  areDrawingWorkbenchCanonicalSelectionStatesEqual,
+  areDrawingWorkbenchObjectSelectionStatesEqual,
   areDrawingWorkbenchVisibilityStatesEqual,
   buildDrawingWorkbenchObjectSelectionState,
   createDrawingWorkbenchUiState,
-  pickDrawingWorkbenchCanonicalSelectionState,
+  pickDrawingWorkbenchObjectSelectionState,
   type DrawingWorkbenchViewportTransform,
 } from '@/lib/drawings/state/drawingWorkbenchUiState';
 import {
@@ -135,11 +135,11 @@ export default function DesignWorkbenchEstimateClient({
   }, [estimate.calculatorSnapshot]);
 
   useEffect(() => {
-    const storeSelection = pickDrawingWorkbenchCanonicalSelectionState(store.ui);
-    const uiSelection = pickDrawingWorkbenchCanonicalSelectionState(ui);
+    const storeSelection = pickDrawingWorkbenchObjectSelectionState(store.ui);
+    const uiSelection = pickDrawingWorkbenchObjectSelectionState(ui);
     if (
       store.ui.activeModuleIndex === ui.activeModuleIndex &&
-      areDrawingWorkbenchCanonicalSelectionStatesEqual(storeSelection, uiSelection) &&
+      areDrawingWorkbenchObjectSelectionStatesEqual(storeSelection, uiSelection) &&
       areDrawingWorkbenchVisibilityStatesEqual(store.ui.visibility, ui.visibility)
     ) {
       return;
@@ -392,10 +392,10 @@ export default function DesignWorkbenchEstimateClient({
                     activeObjectFamily: current.activeObjectFamily,
                     activeObjectRef: {
                       family: 'pergolas',
-                      objectId: store.persisted.modules[index]?.drawingModule.input.pergolaId ?? current.activePergolaId,
+                      objectId:
+                        store.persisted.modules[index]?.drawingModule.input.pergolaId ??
+                        (current.activeObjectRef.family === 'pergolas' ? current.activeObjectRef.objectId : null),
                     },
-                    activePergolaId:
-                      store.persisted.modules[index]?.drawingModule.input.pergolaId ?? current.activePergolaId,
                   })
                 : {}),
             }))

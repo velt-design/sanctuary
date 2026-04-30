@@ -17,7 +17,11 @@ import {
   resolveDeckInteractionCapability,
   type DeckInteractionCapability,
 } from '@/lib/drawings/interactions/deckInteractionContract';
-import { normalizeDrawingWorkbenchUiState, type DrawingWorkbenchUiState } from './drawingWorkbenchUiState';
+import {
+  deriveDrawingWorkbenchCompatibilitySelection,
+  normalizeDrawingWorkbenchUiState,
+  type DrawingWorkbenchUiState,
+} from './drawingWorkbenchUiState';
 import {
   resolveObjectFirstPergolaAttachment,
   resolveObjectFirstOpeningHost,
@@ -201,6 +205,7 @@ export function buildDrawingWorkbenchStore(input: {
     deckIds: projectModel.decks.map((deck) => deck.id),
     openingIds: projectModel.openings.map((opening) => opening.id),
   });
+  const compatibilitySelection = deriveDrawingWorkbenchCompatibilitySelection(ui);
   const modules = drawingModules.map((drawingModule, index) => {
     const label = input.moduleLabels?.[index] ?? drawingModule.label;
     const geometryModule = coerceHiddenWorkbenchGableBaseline(drawingModule.input);
@@ -265,7 +270,7 @@ export function buildDrawingWorkbenchStore(input: {
         pergolaRenderStatus: planRenderStatus,
         canEditHouseFootprint: assemblyModel.capabilities.canEditHouseFootprint,
         house: compatibilityProjectModel.house,
-        activeHouseSelection: ui.activeHouseSelection,
+        activeHouseSelection: compatibilitySelection.activeHouseSelection,
         includeHouseFirstOverlay: ui.activeRailTab !== 'pergolas',
         moduleLengthM: geometryModule.lengthM,
         moduleProjectionM: geometryModule.projectionM,
@@ -281,7 +286,7 @@ export function buildDrawingWorkbenchStore(input: {
   const activeModule = modules[ui.activeModuleIndex] ?? null;
   const objectFirstPergolas = projectModel.pergolas;
   const activePergola =
-    compatibilityProjectModel.pergolas.find((pergola) => pergola.id === ui.activePergolaId) ??
+    compatibilityProjectModel.pergolas.find((pergola) => pergola.id === compatibilitySelection.activePergolaId) ??
     compatibilityProjectModel.pergolas.find((pergola) => pergola.id === activeModule?.drawingModule.input.pergolaId) ??
     compatibilityProjectModel.pergolas[0] ??
     null;

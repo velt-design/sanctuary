@@ -7,6 +7,7 @@ import { ESTIMATE_PRICING_SYNC_STATE_OUTPUT_KEY } from '@/lib/estimates/costingP
 import { buildDrawingWorkbenchStore } from './drawingWorkbenchStore';
 import {
   createDrawingWorkbenchUiState,
+  deriveDrawingWorkbenchCompatibilitySelection,
   normalizeDrawingWorkbenchUiState,
 } from './drawingWorkbenchUiState';
 import { makeHouseFirstDeckSupportSnapshotFixture } from './houseFirstWorkbenchFixtures';
@@ -349,10 +350,11 @@ describe('buildDrawingWorkbenchStore', () => {
       }),
     });
 
-    expect(pergolaStore.ui.workbenchMode).toBe('pergolas');
-    expect(pergolaStore.ui.activePergolaId).toBe('pergola-1');
+    const pergolaCompatibility = deriveDrawingWorkbenchCompatibilitySelection(pergolaStore.ui);
+    expect(pergolaCompatibility.workbenchMode).toBe('pergolas');
+    expect(pergolaCompatibility.activePergolaId).toBe('pergola-1');
     expect(pergolaStore.ui.activeRailTab).toBe('pergolas');
-    expect(pergolaStore.ui.activeHouseSelection).toEqual({ kind: 'house', targetId: null });
+    expect(pergolaCompatibility.activeHouseSelection).toEqual({ kind: 'house', targetId: null });
     expect(pergolaStore.derived.activePergola?.id).toBe('pergola-1');
     expect(pergolaStore.derived.objectFirstPergolas.map((pergola) => pergola.id)).toEqual(['pergola-1', 'pergola-2']);
     expect(pergolaStore.derived.activeObjectFirstPergola?.id).toBe('pergola-1');
@@ -368,10 +370,11 @@ describe('buildDrawingWorkbenchStore', () => {
       }),
     });
 
-    expect(houseStore.ui.workbenchMode).toBe('house');
-    expect(houseStore.ui.activePergolaId).toBeNull();
+    const houseCompatibility = deriveDrawingWorkbenchCompatibilitySelection(houseStore.ui);
+    expect(houseCompatibility.workbenchMode).toBe('house');
+    expect(houseCompatibility.activePergolaId).toBeNull();
     expect(houseStore.ui.activeRailTab).toBe('house_forms');
-    expect(houseStore.ui.activeHouseSelection).toEqual({ kind: 'footprint', targetId: 'house-main' });
+    expect(houseCompatibility.activeHouseSelection).toEqual({ kind: 'footprint', targetId: 'house-main' });
   });
 
   it('uses object-first derived attachment resolution for pergola rail state without retargeting stale hosts', () => {
@@ -644,7 +647,10 @@ describe('buildDrawingWorkbenchStore', () => {
     expect(selectedStore.persisted.projectModel.decks.map((deck) => deck.id)).toEqual(['deck-a', 'deck-b']);
     expect(selectedStore.derived.activeDeckId).toBe('deck-b');
     expect(selectedStore.ui.activeObjectRef).toEqual({ family: 'decks', objectId: 'deck-b' });
-    expect(selectedStore.ui.activeHouseSelection).toEqual({ kind: 'deck', targetId: 'deck-b' });
+    expect(deriveDrawingWorkbenchCompatibilitySelection(selectedStore.ui).activeHouseSelection).toEqual({
+      kind: 'deck',
+      targetId: 'deck-b',
+    });
 
     const removedDraft = structuredClone(draft);
     removedDraft.houseFirst = {
@@ -668,7 +674,10 @@ describe('buildDrawingWorkbenchStore', () => {
     expect(removedStore.ui.activeObjectFamily).toBe('decks');
     expect(removedStore.ui.activeObjectRef).toEqual({ family: 'decks', objectId: null });
     expect(removedStore.derived.activeDeckId).toBeNull();
-    expect(removedStore.ui.activeHouseSelection).toEqual({ kind: 'house', targetId: null });
+    expect(deriveDrawingWorkbenchCompatibilitySelection(removedStore.ui).activeHouseSelection).toEqual({
+      kind: 'house',
+      targetId: null,
+    });
     expect(removedStore.derived.railModel.selectedInspector.hasSelection).toBe(false);
     expect(removedStore.derived.railModel.objectLists.decks.map((deck) => deck.ref.objectId)).toEqual(['deck-a']);
 
@@ -681,7 +690,10 @@ describe('buildDrawingWorkbenchStore', () => {
       }),
     });
 
-    expect(pergolaStore.ui.activeHouseSelection).toEqual({ kind: 'house', targetId: null });
+    expect(deriveDrawingWorkbenchCompatibilitySelection(pergolaStore.ui).activeHouseSelection).toEqual({
+      kind: 'house',
+      targetId: null,
+    });
     expect(pergolaStore.derived.activeDeckId).toBeNull();
   });
 
@@ -722,12 +734,16 @@ describe('buildDrawingWorkbenchStore', () => {
       { moduleCount: 1, ...ids },
     );
 
+    const openingCompatibility = deriveDrawingWorkbenchCompatibilitySelection(openingSelection);
+    const pergolaCompatibility = deriveDrawingWorkbenchCompatibilitySelection(pergolaSelection);
+    const staleCompatibility = deriveDrawingWorkbenchCompatibilitySelection(staleSelection);
+
     expect(openingSelection.activeObjectRef).toEqual({ family: 'openings', objectId: 'opening-merged' });
-    expect(openingSelection.activeHouseSelection).toEqual({ kind: 'opening', targetId: 'opening-merged' });
-    expect(pergolaSelection.workbenchMode).toBe('pergolas');
-    expect(pergolaSelection.activePergolaId).toBe('pergola-merged');
+    expect(openingCompatibility.activeHouseSelection).toEqual({ kind: 'opening', targetId: 'opening-merged' });
+    expect(pergolaCompatibility.workbenchMode).toBe('pergolas');
+    expect(pergolaCompatibility.activePergolaId).toBe('pergola-merged');
     expect(staleSelection.activeObjectRef).toEqual({ family: 'openings', objectId: null });
-    expect(staleSelection.activeHouseSelection).toEqual({ kind: 'house', targetId: null });
+    expect(staleCompatibility.activeHouseSelection).toEqual({ kind: 'house', targetId: null });
   });
 
   it('preserves stable opening ids and normalizes invalid opening selection state', () => {
@@ -767,7 +783,10 @@ describe('buildDrawingWorkbenchStore', () => {
     expect(selectedStore.derived.activeOpeningHostResolution?.status).toBe('resolved');
     expect(selectedStore.derived.activeOpeningHostResolution?.wall?.id).toBe(selectedStore.derived.activeOpening?.hostWallId);
     expect(selectedStore.derived.unresolvedOpeningHostCount).toBe(0);
-    expect(selectedStore.ui.activeHouseSelection).toEqual({ kind: 'opening', targetId: 'opening-1' });
+    expect(deriveDrawingWorkbenchCompatibilitySelection(selectedStore.ui).activeHouseSelection).toEqual({
+      kind: 'opening',
+      targetId: 'opening-1',
+    });
 
     const removedDraft = structuredClone(draft);
     removedDraft.houseFirst = {
@@ -784,7 +803,10 @@ describe('buildDrawingWorkbenchStore', () => {
     });
 
     expect(removedStore.derived.activeOpeningId).toBeNull();
-    expect(removedStore.ui.activeHouseSelection).toEqual({ kind: 'house', targetId: null });
+    expect(deriveDrawingWorkbenchCompatibilitySelection(removedStore.ui).activeHouseSelection).toEqual({
+      kind: 'house',
+      targetId: null,
+    });
   });
 
   it('uses object-first derived wall resolution for opening rail state without source-form fallback', () => {
@@ -837,7 +859,10 @@ describe('buildDrawingWorkbenchStore', () => {
       meta: 'window | Unresolved host wall',
     });
     expect(store.derived.activeOpening?.hostEdgeId).toBe('footprint-edge-3');
-    expect(store.ui.activeHouseSelection).toEqual({ kind: 'opening', targetId: 'opening-stale' });
+    expect(deriveDrawingWorkbenchCompatibilitySelection(store.ui).activeHouseSelection).toEqual({
+      kind: 'opening',
+      targetId: 'opening-stale',
+    });
   });
 
   it('marks the shared house as low confidence when legacy modules disagree on house context', () => {

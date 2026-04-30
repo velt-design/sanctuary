@@ -7,6 +7,7 @@ import type { GeometryEditState } from '@/lib/drawings/geometry/geometryEditAdap
 import type { DrawingWorkbenchStore } from '@/lib/drawings/state/drawingWorkbenchStore';
 import {
   buildDrawingWorkbenchObjectSelectionState,
+  deriveDrawingWorkbenchCompatibilitySelection,
   type DrawingWorkbenchRailTab,
   type DrawingWorkbenchUiState,
 } from '@/lib/drawings/state/drawingWorkbenchUiState';
@@ -45,6 +46,7 @@ export default function ObjectWorkbenchRailHost({
     store.derived.objectWorkbench.activePergola ??
     store.derived.objectWorkbench.pergolas[0] ??
     null;
+  const compatibilitySelection = deriveDrawingWorkbenchCompatibilitySelection(store.ui);
   const defaultPergolaId =
     store.ui.activeObjectFamily === 'pergolas' && store.ui.activeObjectRef.objectId
       ? store.ui.activeObjectRef.objectId
@@ -161,6 +163,7 @@ export default function ObjectWorkbenchRailHost({
     <WorkbenchDiagnosticsPanel
       objectWorkbench={store.derived.objectWorkbench}
       ui={store.ui}
+      compatibilitySelection={compatibilitySelection}
       geometryPreview={geometryPreview}
     />
   );

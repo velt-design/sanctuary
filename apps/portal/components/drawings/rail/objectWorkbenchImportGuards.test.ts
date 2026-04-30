@@ -43,12 +43,17 @@ describe('object workbench import guards', () => {
         const source = fs.readFileSync(absolutePath, 'utf8');
         const importsHouseFirstModel = /from ['"][^'"]*houseFirstWorkbenchModel['"]/.test(source);
         const importsConfiguratorRail = /from ['"][^'"]*ConfiguratorRail['"]/.test(source);
+        const readsCompatibilityUiSelection =
+          /\b(?:ui|current|store\.ui)\.(?:workbenchMode|activeHouseSelection|activePergolaId)\b/.test(source);
 
         if (importsHouseFirstModel && !ALLOWLISTED_COMPATIBILITY_FILES.has(relativePath)) {
           violations.push(`${relativePath} imports houseFirstWorkbenchModel`);
         }
         if (importsConfiguratorRail && !ALLOWLISTED_CONFIGURATOR_FILES.has(relativePath)) {
           violations.push(`${relativePath} imports ConfiguratorRail`);
+        }
+        if (readsCompatibilityUiSelection) {
+          violations.push(`${relativePath} reads compatibility selection fields from ui`);
         }
       }
     }

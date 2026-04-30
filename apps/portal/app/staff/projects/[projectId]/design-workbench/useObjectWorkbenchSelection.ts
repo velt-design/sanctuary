@@ -6,13 +6,14 @@ import {
   buildDrawingWorkbenchObjectSelectionStateFromBridgeTarget,
 } from '@/lib/drawings/state/drawingWorkbenchUiState';
 import type {
+  DrawingWorkbenchCompatibilityTargetSelection,
   DrawingWorkbenchRailTab,
   DrawingWorkbenchUiState,
 } from '@/lib/drawings/state/drawingWorkbenchUiState';
 import type { WorkbenchObjectFamily, WorkbenchObjectRef } from '@/lib/drawings/state/objectFirstWorkbenchModel';
 import type { CommitResult, DrawOutlineTarget } from './objectWorkbenchClientTypes';
 
-type ObjectWorkbenchTargetSelection = DrawingWorkbenchUiState['activeHouseSelection'];
+type ObjectWorkbenchTargetSelection = DrawingWorkbenchCompatibilityTargetSelection;
 
 type UseObjectWorkbenchSelectionInput = {
   setUi: Dispatch<SetStateAction<DrawingWorkbenchUiState>>;
@@ -34,8 +35,6 @@ function buildSelectionStateForTab(
     activeRailTab: tab,
     activeObjectFamily: current.activeObjectFamily,
     activeObjectRef: current.activeObjectRef,
-    bridgeHouseSelection: tab === 'diagnostics' ? current.activeHouseSelection : undefined,
-    activePergolaId: current.activePergolaId,
   });
 }
 
@@ -48,7 +47,6 @@ function buildSelectionStateForObjectRef(
     activeRailTab: ref.family,
     activeObjectRef: ref,
     bridgeHouseSelection: houseSelectionOverride,
-    activePergolaId: ref.family === 'pergolas' ? ref.objectId : current.activePergolaId,
   });
 }
 
@@ -78,6 +76,7 @@ export function useObjectWorkbenchSelection({
             ? current.activeObjectRef.objectId
             : getDefaultObjectId('house_forms'),
       }),
+      selection: { kind: 'none', targetId: null },
     }));
   }, [getDefaultObjectId, resetDrawOutlineTarget, setUi]);
 
@@ -91,9 +90,9 @@ export function useObjectWorkbenchSelection({
           objectId:
             defaultPergolaId ??
             (current.activeObjectRef.family === 'pergolas' ? current.activeObjectRef.objectId : null) ??
-            current.activePergolaId ??
             getDefaultObjectId('pergolas'),
         }),
+        selection: { kind: 'none', targetId: null },
       }));
     },
     [getDefaultObjectId, resetDrawOutlineTarget, setUi],
@@ -122,6 +121,7 @@ export function useObjectWorkbenchSelection({
             family,
             objectId,
           }),
+          selection: { kind: 'none', targetId: null },
         };
       });
     },
@@ -134,6 +134,7 @@ export function useObjectWorkbenchSelection({
       setUi((current) => ({
         ...current,
         ...buildSelectionStateForObjectRef(current, ref),
+        selection: { kind: 'none', targetId: null },
       }));
     },
     [resetDrawOutlineTarget, setUi],
@@ -153,6 +154,11 @@ export function useObjectWorkbenchSelection({
         },
         { kind: 'footprint', targetId: null },
       ),
+      selection: {
+        kind: 'geometry',
+        targetId: getDefaultObjectId('house_forms'),
+        targetKind: 'footprint',
+      },
     }));
     setDrawOutlineRequestId((current) => current + 1);
     return { ok: true };
@@ -166,6 +172,11 @@ export function useObjectWorkbenchSelection({
         viewportMode: 'model',
         activeView: 'plan',
         ...buildSelectionStateForObjectRef(current, { family: 'decks', objectId: deckId }),
+        selection: {
+          kind: 'geometry',
+          targetId: deckId,
+          targetKind: 'deck',
+        },
       }));
       setDrawOutlineRequestId((current) => current + 1);
       return { ok: true };
@@ -179,6 +190,7 @@ export function useObjectWorkbenchSelection({
       setUi((current) => ({
         ...current,
         ...buildSelectionStateForObjectRef(current, { family: 'decks', objectId: deckId }),
+        selection: { kind: 'none', targetId: null },
       }));
     },
     [resetDrawOutlineTarget, setUi],
@@ -190,6 +202,7 @@ export function useObjectWorkbenchSelection({
       setUi((current) => ({
         ...current,
         ...buildSelectionStateForObjectRef(current, { family: 'openings', objectId: openingId }),
+        selection: { kind: 'none', targetId: null },
       }));
     },
     [resetDrawOutlineTarget, setUi],
@@ -204,6 +217,11 @@ export function useObjectWorkbenchSelection({
           target: selection,
           defaultHouseFormId: getDefaultObjectId('house_forms'),
         }),
+        selection: {
+          kind: selection.kind === 'house' ? 'none' : 'geometry',
+          targetId: selection.targetId,
+          targetKind: selection.kind === 'house' ? undefined : selection.kind,
+        },
       }));
     },
     [getDefaultObjectId, resetDrawOutlineTarget, setUi],
@@ -218,6 +236,7 @@ export function useObjectWorkbenchSelection({
           family: 'pergolas',
           objectId: pergolaId,
         }),
+        selection: { kind: 'none', targetId: null },
       }));
     },
     [resetDrawOutlineTarget, setUi],
@@ -237,8 +256,8 @@ export function useObjectWorkbenchSelection({
             family: activeFamily,
             objectId: null,
           },
-          activePergolaId: activeFamily === 'pergolas' ? null : current.activePergolaId,
         }),
+        selection: { kind: 'none', targetId: null },
       };
     });
   }, [resetDrawOutlineTarget, setUi]);

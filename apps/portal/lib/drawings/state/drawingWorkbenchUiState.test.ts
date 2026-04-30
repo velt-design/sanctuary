@@ -3,6 +3,7 @@ import {
   buildDrawingWorkbenchObjectSelectionState,
   buildDrawingWorkbenchObjectSelectionStateFromBridgeTarget,
   createDrawingWorkbenchUiState,
+  deriveDrawingWorkbenchCompatibilitySelection,
   normalizeDrawingWorkbenchUiState,
 } from './drawingWorkbenchUiState';
 
@@ -13,6 +14,9 @@ describe('drawingWorkbenchUiState', () => {
     expect(state.activeObjectFamily).toBe('house_forms');
     expect(state.activeObjectRef).toEqual({ family: 'house_forms', objectId: null });
     expect(state.activeRailTab).toBe('house_forms');
+    expect('workbenchMode' in state).toBe(false);
+    expect('activeHouseSelection' in state).toBe(false);
+    expect('activePergolaId' in state).toBe(false);
     expect(state.visibility).toEqual({
       house: true,
       pergolas: true,
@@ -35,8 +39,9 @@ describe('drawingWorkbenchUiState', () => {
         pergolaIds: ['pergola-1'],
       },
     );
+    const compatibility = deriveDrawingWorkbenchCompatibilitySelection(normalized);
 
-    expect(normalized.activeHouseSelection).toEqual({ kind: 'deck', targetId: 'deck-a' });
+    expect(compatibility.activeHouseSelection).toEqual({ kind: 'deck', targetId: 'deck-a' });
     expect(normalized.activeObjectFamily).toBe('decks');
     expect(normalized.activeObjectRef).toEqual({ family: 'decks', objectId: 'deck-a' });
   });
@@ -67,10 +72,20 @@ describe('drawingWorkbenchUiState', () => {
       activeRailTab: 'pergolas',
       activeObjectRef: { family: 'pergolas', objectId: 'pergola-1' },
     });
+    const deckCompatibility = deriveDrawingWorkbenchCompatibilitySelection({
+      ...createDrawingWorkbenchUiState(),
+      ...deckSelection,
+    });
+    const pergolaCompatibility = deriveDrawingWorkbenchCompatibilitySelection({
+      ...createDrawingWorkbenchUiState(),
+      ...pergolaSelection,
+    });
 
     expect(deckSelection).toMatchObject({
       activeObjectFamily: 'decks',
       activeObjectRef: { family: 'decks', objectId: 'deck-a' },
+    });
+    expect(deckCompatibility).toMatchObject({
       activeHouseSelection: { kind: 'deck', targetId: 'deck-a' },
       workbenchMode: 'house',
       activePergolaId: null,
@@ -78,6 +93,8 @@ describe('drawingWorkbenchUiState', () => {
     expect(pergolaSelection).toMatchObject({
       activeObjectFamily: 'pergolas',
       activeObjectRef: { family: 'pergolas', objectId: 'pergola-1' },
+    });
+    expect(pergolaCompatibility).toMatchObject({
       activeHouseSelection: { kind: 'house', targetId: null },
       workbenchMode: 'pergolas',
       activePergolaId: 'pergola-1',
@@ -98,13 +115,11 @@ describe('drawingWorkbenchUiState', () => {
       activeRailTab: 'openings',
       activeObjectFamily: 'openings',
       activeObjectRef: { family: 'openings', objectId: 'opening-a' },
-      activeHouseSelection: { kind: 'opening', targetId: 'opening-a' },
     });
     expect(footprintSelection).toMatchObject({
       activeRailTab: 'house_forms',
       activeObjectFamily: 'house_forms',
       activeObjectRef: { family: 'house_forms', objectId: 'house-main' },
-      activeHouseSelection: { kind: 'footprint', targetId: null },
     });
   });
 
@@ -120,13 +135,14 @@ describe('drawingWorkbenchUiState', () => {
         pergolaIds: ['pergola-1', 'pergola-2'],
       },
     );
+    const compatibility = deriveDrawingWorkbenchCompatibilitySelection(normalized);
 
-    expect(normalized.workbenchMode).toBe('pergolas');
-    expect(normalized.activePergolaId).toBe('pergola-1');
+    expect(compatibility.workbenchMode).toBe('pergolas');
+    expect(compatibility.activePergolaId).toBe('pergola-1');
     expect(normalized.activeRailTab).toBe('pergolas');
     expect(normalized.activeObjectFamily).toBe('pergolas');
     expect(normalized.activeObjectRef).toEqual({ family: 'pergolas', objectId: 'pergola-1' });
-    expect(normalized.activeHouseSelection).toEqual({ kind: 'house', targetId: null });
+    expect(compatibility.activeHouseSelection).toEqual({ kind: 'house', targetId: null });
   });
 
   it('preserves legacy deck and opening selection clearing semantics', () => {
@@ -151,9 +167,11 @@ describe('drawingWorkbenchUiState', () => {
         openingIds: ['opening-1'],
       },
     );
+    const normalizedDeckCompatibility = deriveDrawingWorkbenchCompatibilitySelection(normalizedDeck);
+    const normalizedOpeningCompatibility = deriveDrawingWorkbenchCompatibilitySelection(normalizedOpening);
 
-    expect(normalizedDeck.activeHouseSelection).toEqual({ kind: 'house', targetId: null });
-    expect(normalizedOpening.activeHouseSelection).toEqual({ kind: 'house', targetId: null });
+    expect(normalizedDeckCompatibility.activeHouseSelection).toEqual({ kind: 'house', targetId: null });
+    expect(normalizedOpeningCompatibility.activeHouseSelection).toEqual({ kind: 'house', targetId: null });
   });
 
   it('normalizes missing visibility flags back to visible defaults', () => {

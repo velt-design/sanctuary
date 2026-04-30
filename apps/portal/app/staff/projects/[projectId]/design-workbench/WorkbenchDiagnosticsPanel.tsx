@@ -7,19 +7,24 @@ import {
   labelForRoofGeometryKind,
 } from '@/components/drawings/rail/objectRailShared';
 import type { GeometryPreviewState } from '@/lib/drawings/geometry/buildWorkbenchGeometryPreview';
-import type { DrawingWorkbenchUiState } from '@/lib/drawings/state/drawingWorkbenchUiState';
+import type {
+  DrawingWorkbenchCompatibilitySelectionState,
+  DrawingWorkbenchUiState,
+} from '@/lib/drawings/state/drawingWorkbenchUiState';
 import type { ObjectWorkbenchInspectorFacade } from '@/lib/drawings/state/objectWorkbenchInspectorModel';
 import styles from './DesignWorkbenchEstimateClient.module.css';
 
 type WorkbenchDiagnosticsPanelProps = {
   objectWorkbench: ObjectWorkbenchInspectorFacade;
   ui: DrawingWorkbenchUiState;
+  compatibilitySelection: DrawingWorkbenchCompatibilitySelectionState;
   geometryPreview: GeometryPreviewState;
 };
 
 export default function WorkbenchDiagnosticsPanel({
   objectWorkbench,
   ui,
+  compatibilitySelection,
   geometryPreview,
 }: WorkbenchDiagnosticsPanelProps) {
   const diagnostics = objectWorkbench.diagnostics;
@@ -74,7 +79,7 @@ export default function WorkbenchDiagnosticsPanel({
         </div>
         <div className={styles.diagnosticRow}>
           <span className={styles.diagnosticLabel}>Workbench mode</span>
-          <span className={styles.diagnosticValue}>{ui.workbenchMode}</span>
+          <span className={styles.diagnosticValue}>{compatibilitySelection.workbenchMode}</span>
         </div>
         <div className={styles.diagnosticRow}>
           <span className={styles.diagnosticLabel}>House forms</span>

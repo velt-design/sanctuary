@@ -11,6 +11,7 @@ import { buildDrawingWorkbenchStore } from '@/lib/drawings/state/drawingWorkbenc
 import {
   buildDrawingWorkbenchObjectSelectionState,
   buildDrawingWorkbenchObjectSelectionStateFromBridgeTarget,
+  deriveDrawingWorkbenchCompatibilitySelection,
 } from '@/lib/drawings/state/drawingWorkbenchUiState';
 import type { DrawingWorkbenchUiState } from '@/lib/drawings/state/drawingWorkbenchUiState';
 import type {
@@ -38,6 +39,7 @@ import type {
   HouseModel,
   HouseRoofForm,
   PergolaModel,
+  WorkbenchHouseSelection,
   WallOpeningHostSide,
 } from '@/lib/drawings/state/houseFirstWorkbenchModel';
 import {
@@ -829,22 +831,31 @@ export function useObjectWorkbenchActions({
   );
 
   const selectHouseTarget = useCallback(
-    (selection: DrawingWorkbenchUiState['activeHouseSelection']) => {
+    (selection: WorkbenchHouseSelection) => {
       setUi((current) => ({
         ...current,
         ...buildDrawingWorkbenchObjectSelectionStateFromBridgeTarget({
           target: selection,
           defaultHouseFormId: store.derived.houseForms[0]?.id ?? null,
         }),
+        selection: {
+          kind: selection.kind === 'house' ? 'none' : 'geometry',
+          targetId: selection.targetId,
+          targetKind: selection.kind === 'house' ? undefined : selection.kind,
+        },
       }));
     },
     [setUi, store.derived.houseForms],
   );
 
   const clearSelectedHouseTarget = useCallback(
-    (kind: DrawingWorkbenchUiState['activeHouseSelection']['kind'], targetId: string) => {
+    (kind: WorkbenchHouseSelection['kind'], targetId: string) => {
       setUi((current) => {
-        if (current.activeHouseSelection.kind !== kind || current.activeHouseSelection.targetId !== targetId) {
+        const compatibilitySelection = deriveDrawingWorkbenchCompatibilitySelection(current);
+        if (
+          compatibilitySelection.activeHouseSelection.kind !== kind ||
+          compatibilitySelection.activeHouseSelection.targetId !== targetId
+        ) {
           return current;
         }
         return {
@@ -856,8 +867,8 @@ export function useObjectWorkbenchActions({
               family: current.activeObjectFamily,
               objectId: null,
             },
-            activePergolaId: current.activePergolaId,
           }),
+          selection: { kind: 'none', targetId: null },
         };
       });
     },
