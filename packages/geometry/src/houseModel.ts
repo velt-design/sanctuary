@@ -4,6 +4,7 @@ import type {
   GeometryConfig,
   GeometryMetadata,
   HouseDeck3D,
+  HouseDeckConfig,
   HouseOpening3D,
   HouseAttachmentStrategy,
   HouseAttachmentTarget3D,
@@ -6657,6 +6658,153 @@ function buildHouseDecks(input: {
     .filter((deck): deck is HouseDeck3D => deck !== null);
 }
 
+function resolveOutwardUnit2D(input: {
+  start: Point3;
+  end: Point3;
+  footprint: Polygon3;
+}): { x: number; y: number } | null {
+  const dx = input.end.x - input.start.x;
+  const dy = input.end.y - input.start.y;
+  const length = Math.hypot(dx, dy);
+  if (length <= 1e-6) return null;
+  const normalA = { x: -dy / length, y: dx / length };
+  const normalB = { x: -normalA.x, y: -normalA.y };
+  const midpoint = {
+    x: (input.start.x + input.end.x) / 2,
+    y: (input.start.y + input.end.y) / 2,
+  };
+  const probeDistanceMm = 10;
+  const probeA = {
+    x: midpoint.x + normalA.x * probeDistanceMm,
+    y: midpoint.y + normalA.y * probeDistanceMm,
+  };
+  const probeB = {
+    x: midpoint.x + normalB.x * probeDistanceMm,
+    y: midpoint.y + normalB.y * probeDistanceMm,
+  };
+  const probeAInside = pointInPolygon2D(probeA, input.footprint);
+  const probeBInside = pointInPolygon2D(probeB, input.footprint);
+  if (probeAInside && !probeBInside) return normalB;
+  if (!probeAInside && probeBInside) return normalA;
+
+  const centroid = polygonCentroid2D(input.footprint);
+  const awayFromCentroid = {
+    x: midpoint.x - centroid.x,
+    y: midpoint.y - centroid.y,
+  };
+  return normalA.x * awayFromCentroid.x + normalA.y * awayFromCentroid.y >= 0 ? normalA : normalB;
+}
+
+function attachmentSideFromWallLine(input: {
+  start: Point3;
+  end: Point3;
+  footprint: Polygon3;
+}): AttachmentSide | null {
+  const outward = resolveOutwardUnit2D(input);
+  if (!outward) return null;
+  const dx = input.end.x - input.start.x;
+  const dy = input.end.y - input.start.y;
+  return Math.abs(dx) >= Math.abs(dy)
+    ? outward.y < 0 ? 'rear' : 'front'
+    : outward.x < 0 ? 'left' : 'right';
+}
+
+function isAttachmentSide(value: string | null | undefined): value is AttachmentSide {
+  return value === 'rear' || value === 'front' || value === 'left' || value === 'right';
+}
+
+function resolveDeckHostWallSegment(input: {
+  deck: HouseDeckConfig;
+  footprint: Polygon3;
+  wallSegments: HouseWallSegment3D[];
+}): HouseWallSegment3D | null {
+  const requestedEdgeId = input.deck.hostEdgeId?.trim() || input.deck.supportContext?.nearestHouseEdgeId?.trim() || null;
+  if (!requestedEdgeId) return null;
+
+  const exactMatch = input.wallSegments.find(
+    (segment) =>
+      segment.id === requestedEdgeId ||
+      segment.sourceEdgeId === requestedEdgeId ||
+      segment.metadata?.sourceEdgeId === requestedEdgeId,
+  );
+  if (exactMatch) return exactMatch;
+
+  if (!isAttachmentSide(requestedEdgeId)) return null;
+
+  return input.wallSegments
+    .filter((segment) =>
+      attachmentSideFromWallLine({
+        start: segment.line.start,
+        end: segment.line.end,
+        footprint: input.footprint,
+      }) === requestedEdgeId,
+    )
+    .sort((left, right) => lineLength(right.line) - lineLength(left.line))[0] ?? null;
+}
+
+function resolvePresetDeckBoundary(input: {
+  deck: HouseDeckConfig;
+  footprint: Polygon3;
+  wallSegments: HouseWallSegment3D[];
+}): Polygon3 | null {
+  const presetRect = input.deck.presetRect;
+  if (!presetRect) return null;
+  const widthMm = Number(presetRect.widthMm);
+  const depthMm = Number(presetRect.depthMm);
+  if (!Number.isFinite(widthMm) || !Number.isFinite(depthMm) || widthMm <= 0 || depthMm <= 0) return null;
+
+  const hostWall = resolveDeckHostWallSegment(input);
+  if (!hostWall) return null;
+  const hostLengthMm = lineLength(hostWall.line);
+  if (hostLengthMm <= 1e-6) return null;
+
+  const alongUnit = {
+    x: (hostWall.line.end.x - hostWall.line.start.x) / hostLengthMm,
+    y: (hostWall.line.end.y - hostWall.line.start.y) / hostLengthMm,
+  };
+  const outwardUnit = resolveOutwardUnit2D({
+    start: hostWall.line.start,
+    end: hostWall.line.end,
+    footprint: input.footprint,
+  });
+  if (!outwardUnit) return null;
+
+  const centerOffsetMm = Number.isFinite(presetRect.centerOffsetMm) ? presetRect.centerOffsetMm : 0;
+  const detachedGapMm =
+    input.deck.isAttached || input.deck.presetType === 'rect_attached'
+      ? 0
+      : Math.max(0, Number.isFinite(presetRect.detachedGapMm) ? presetRect.detachedGapMm : 0);
+  const hostMidpoint = {
+    x: (hostWall.line.start.x + hostWall.line.end.x) / 2,
+    y: (hostWall.line.start.y + hostWall.line.end.y) / 2,
+  };
+  const innerCenter = {
+    x: hostMidpoint.x + alongUnit.x * centerOffsetMm + outwardUnit.x * detachedGapMm,
+    y: hostMidpoint.y + alongUnit.y * centerOffsetMm + outwardUnit.y * detachedGapMm,
+  };
+  const halfWidthMm = widthMm / 2;
+  const start = point(innerCenter.x - alongUnit.x * halfWidthMm, innerCenter.y - alongUnit.y * halfWidthMm, 0);
+  const end = point(innerCenter.x + alongUnit.x * halfWidthMm, innerCenter.y + alongUnit.y * halfWidthMm, 0);
+  return [
+    start,
+    end,
+    point(end.x + outwardUnit.x * depthMm, end.y + outwardUnit.y * depthMm, 0),
+    point(start.x + outwardUnit.x * depthMm, start.y + outwardUnit.y * depthMm, 0),
+  ];
+}
+
+function resolveHouseDeckBoundary(input: {
+  deck: HouseDeckConfig;
+  footprint: Polygon3;
+  wallSegments: HouseWallSegment3D[];
+}): Polygon3 | null {
+  const outline = input.deck.outline?.length ? input.deck.outline : null;
+  if (input.deck.shape === 'custom' && outline && outline.length >= 3) return outline;
+  const presetBoundary = resolvePresetDeckBoundary(input);
+  if (presetBoundary?.length) return presetBoundary;
+  return outline && outline.length >= 3 ? outline : null;
+}
+
 function buildHouseOpenings(input: {
   openings: NonNullable<HouseModel3D['openings']>;
 }): HouseOpening3D[] {
@@ -7413,45 +7561,53 @@ export function buildHouseModel3D(input: {
   const decks = buildHouseDecks({
     decks:
       (model.decks ?? [])
-        .filter((deck): deck is NonNullable<NonNullable<typeof model.decks>[number]> => Boolean(deck?.outline?.length))
-        .map((deck) => ({
-          id: deck.id,
-          name: deck.name ?? null,
-          kind: deck.kind ?? 'deck',
-          shape: deck.shape ?? 'preset',
-          presetType: deck.presetType ?? null,
-          presetRect: deck.presetRect ?? null,
-          boundary: deck.outline ?? [],
-          plane: planeFromOriginAxes(point(0, 0, 0), { x: 1, y: 0, z: 0 }, { x: 0, y: 1, z: 0 }),
-          topSurfaceElevationMm:
-            finiteNumber(deck.topSurfaceElevationMm, finiteNumber(deck.levelOffsetMm, 0)),
-          elevationMode: deck.elevationMode ?? 'ground',
-          hostEdgeId: deck.hostEdgeId ?? null,
-          isAttached: Boolean(deck.isAttached),
-          surfaceMaterial: deck.surfaceMaterial ?? 'timber_decking',
-          supportClassification: deck.supportContext?.classification ?? 'mixed_or_unclear',
-          metadata: {
-            deckName: deck.name ?? deck.id,
-            deckKind: deck.kind ?? 'deck',
-            deckShape: deck.shape ?? 'preset',
-            deckPresetType: deck.presetType ?? null,
-            deckPresetRectWidthMm: deck.presetRect?.widthMm ?? null,
-            deckPresetRectDepthMm: deck.presetRect?.depthMm ?? null,
-            deckPresetRectCenterOffsetMm: deck.presetRect?.centerOffsetMm ?? null,
-            deckPresetRectDetachedGapMm: deck.presetRect?.detachedGapMm ?? null,
-            deckElevationMode: deck.elevationMode ?? 'ground',
-            deckHostEdgeId: deck.hostEdgeId ?? null,
-            deckIsAttached: Boolean(deck.isAttached),
-            deckSurfaceMaterial: deck.surfaceMaterial ?? 'timber_decking',
-            deckSupportClassification: deck.supportContext?.classification ?? 'mixed_or_unclear',
-            deckNearestHouseEdgeId: deck.supportContext?.nearestHouseEdgeId ?? null,
-            deckNearestHouseEdgeDistanceMm: deck.supportContext?.nearestHouseEdgeDistanceMm ?? null,
-            deckAttachmentContactLengthMm: deck.supportContext?.attachmentContactLengthMm ?? null,
-            deckSupportWarnings: deck.supportContext?.warningCodes?.join(',') ?? null,
-            deckValidationStatus: deck.validation?.status ?? 'valid',
-            deckValidationCodes: deck.validation?.codes?.join(',') ?? null,
-          },
-        })) ?? [],
+        .flatMap((deck) => {
+          if (!deck) return [];
+          const boundary = resolveHouseDeckBoundary({
+            deck,
+            footprint,
+            wallSegments: displayWallSegments,
+          });
+          if (!boundary?.length) return [];
+          return [{
+            id: deck.id,
+            name: deck.name ?? null,
+            kind: deck.kind ?? 'deck',
+            shape: deck.shape ?? 'preset',
+            presetType: deck.presetType ?? null,
+            presetRect: deck.presetRect ?? null,
+            boundary,
+            plane: planeFromOriginAxes(point(0, 0, 0), { x: 1, y: 0, z: 0 }, { x: 0, y: 1, z: 0 }),
+            topSurfaceElevationMm:
+              finiteNumber(deck.topSurfaceElevationMm, finiteNumber(deck.levelOffsetMm, 0)),
+            elevationMode: deck.elevationMode ?? 'ground',
+            hostEdgeId: deck.hostEdgeId ?? null,
+            isAttached: Boolean(deck.isAttached),
+            surfaceMaterial: deck.surfaceMaterial ?? 'timber_decking',
+            supportClassification: deck.supportContext?.classification ?? 'mixed_or_unclear',
+            metadata: {
+              deckName: deck.name ?? deck.id,
+              deckKind: deck.kind ?? 'deck',
+              deckShape: deck.shape ?? 'preset',
+              deckPresetType: deck.presetType ?? null,
+              deckPresetRectWidthMm: deck.presetRect?.widthMm ?? null,
+              deckPresetRectDepthMm: deck.presetRect?.depthMm ?? null,
+              deckPresetRectCenterOffsetMm: deck.presetRect?.centerOffsetMm ?? null,
+              deckPresetRectDetachedGapMm: deck.presetRect?.detachedGapMm ?? null,
+              deckElevationMode: deck.elevationMode ?? 'ground',
+              deckHostEdgeId: deck.hostEdgeId ?? null,
+              deckIsAttached: Boolean(deck.isAttached),
+              deckSurfaceMaterial: deck.surfaceMaterial ?? 'timber_decking',
+              deckSupportClassification: deck.supportContext?.classification ?? 'mixed_or_unclear',
+              deckNearestHouseEdgeId: deck.supportContext?.nearestHouseEdgeId ?? null,
+              deckNearestHouseEdgeDistanceMm: deck.supportContext?.nearestHouseEdgeDistanceMm ?? null,
+              deckAttachmentContactLengthMm: deck.supportContext?.attachmentContactLengthMm ?? null,
+              deckSupportWarnings: deck.supportContext?.warningCodes?.join(',') ?? null,
+              deckValidationStatus: deck.validation?.status ?? 'valid',
+              deckValidationCodes: deck.validation?.codes?.join(',') ?? null,
+            },
+          }];
+        }) ?? [],
   });
   const openings = buildHouseOpenings({
     openings:
