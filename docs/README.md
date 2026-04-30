@@ -1,18 +1,20 @@
 # Docs Index
 
-These docs are current-state references for coding agents. They should describe what the repo does now, where source of truth lives, and how to verify changes. Do not add long implementation-history documents unless the history is needed to make a current decision.
+These docs are current-state references and active guardrails for coding agents. They should describe what the repo does now, where source of truth lives, how to verify changes, and what recurring mistakes not to repeat.
 
 ## Read First
 
 1. `../AGENTS.md`: root agent guide and repo boundaries.
-2. `architecture.md`: workspace structure, app/package ownership, CI.
-3. `platform-workflow.md`: business workflow from lead to install completion.
-4. The feature doc for the area you are changing.
+2. `agent-playbook.md`: active protocol for non-trivial portal work.
+3. `architecture.md`: workspace structure, app/package ownership, CI.
+4. `platform-workflow.md`: business workflow from lead to install completion.
+5. The feature doc for the area you are changing.
 
 ## Canonical Reference Docs
 
 | Doc | Status | Use When |
 | --- | --- | --- |
+| `agent-playbook.md` | Active protocol | You are doing non-trivial portal implementation, investigation, bugfix, or verification work. |
 | `architecture.md` | Current | You need the repo map, app/package boundaries, or CI/script overview. |
 | `platform-workflow.md` | Current | You need to understand lead, project, estimate, quote, invoice, design, schedule, or running-job flow. |
 | `environment-auth-supabase.md` | Current | You need env vars, Supabase auth, role access, migrations, or schema readiness. |
@@ -20,6 +22,8 @@ These docs are current-state references for coding agents. They should describe 
 | `costing-and-geometry.md` | Current | You are touching costing inputs/outputs, geometry semantics, or pricing/shape assumptions. |
 | `local-first-sync.md` | Current | You are touching portal working copies, mutation queue, optimistic state, or conflict handling. |
 | `design-workbench-architecture.md` | Current | You are touching drawing workbench, object-first model, geometry preview, or direct manipulation. |
+| `design-workbench-parallel-migration-rules.md` | Active guardrail | You are doing parallel workbench migration work or touching solved-model, compatibility, plan, 3D, sheet, or interaction boundaries. |
+| `decision-log.md` | Active guardrail | You need lessons from past mistakes, durable decisions, or reusable safety rules. |
 | `design-list.md` | Current | You are touching `/staff/projects/design-packages` or design-package request APIs. |
 | `running-jobs.md` | Current | You are touching `/staff/projects/running-jobs` or running-job spreadsheet APIs. |
 | `schedule.md` | Current | You are touching `/staff/schedule`, Schedule V2 APIs, Gantt, Board, Site Visits, or legacy fallback. |
@@ -33,6 +37,11 @@ These docs are current-state references for coding agents. They should describe 
 
 ## Maintenance Rules
 
+- Treat docs as part of the implementation surface, not as optional commentary.
+- When changing portal behavior, data flow, source-of-truth boundaries, test strategy, or known risks, update the relevant canonical doc in the same task unless docs are explicitly out of scope.
+- Prefer small current-state doc updates over new long planning docs.
+- Add reusable lessons to `decision-log.md` when a bug, regression, or correction reveals a guardrail future agents should know.
+- Do not delete active guardrail docs just because they are not pure current-state references.
 - Keep docs ASCII unless a file already intentionally uses another character set.
 - Prefer current paths and commands over prose about old migrations or past plans.
 - Link to repo-relative paths in plain backticks. Avoid local absolute links.

@@ -960,6 +960,37 @@ function findOpeningHostEdgeId(input: {
   return wall?.edgeIds[0] ?? null;
 }
 
+function resolveOpeningFrameForOverlay(input: {
+  opening: OpeningObjectModel;
+  houseAssembly: HouseAssemblyModel | null;
+  lookup: GeometryPlanLookup;
+}): {
+  frame: GeometryOpeningFrame;
+  exact: boolean;
+} | null {
+  const hostEdgeId = findOpeningHostEdgeId({
+    opening: input.opening,
+    houseAssembly: input.houseAssembly,
+  });
+  const exactOpeningFrame = findOpeningFrame(input.lookup, hostEdgeId);
+  if (exactOpeningFrame) {
+    return {
+      frame: exactOpeningFrame,
+      exact: true,
+    };
+  }
+  const fallbackReferenceFrame = input.opening.wallId
+    ? input.lookup.referenceFrames.find((candidate) => candidate.hostEdgeId === input.opening.wallId) ?? null
+    : null;
+  const fallbackFrame = fallbackReferenceFrame ? geometryOpeningFrameFromDeckFrame(fallbackReferenceFrame) : null;
+  return fallbackFrame
+    ? {
+        frame: fallbackFrame,
+        exact: false,
+      }
+    : null;
+}
+
 function buildOpeningPolygonFromFrame(input: {
   frame: GeometryOpeningFrame;
   widthM: number;
@@ -1277,15 +1308,13 @@ export function buildObjectWorkbenchPlanOverlay(input: ObjectWorkbenchPlanOverla
   }
 
   for (const opening of input.openings) {
-    const hostEdgeId = findOpeningHostEdgeId({ opening, houseAssembly: input.houseAssembly });
-    const exactOpeningFrame = findOpeningFrame(lookup, hostEdgeId);
-    const fallbackReferenceFrame = !exactOpeningFrame && opening.wallId
-      ? lookup.referenceFrames.find((candidate) => candidate.hostEdgeId === opening.wallId) ?? null
-      : null;
-    const openingFrame: GeometryOpeningFrame | null =
-      exactOpeningFrame ??
-      (fallbackReferenceFrame ? geometryOpeningFrameFromDeckFrame(fallbackReferenceFrame) : null);
-    if (!openingFrame) continue;
+    const resolvedOpeningFrame = resolveOpeningFrameForOverlay({
+      opening,
+      houseAssembly: input.houseAssembly,
+      lookup,
+    });
+    if (!resolvedOpeningFrame) continue;
+    const openingFrame = resolvedOpeningFrame.frame;
     const widthM = parseMetres(opening.widthM, Number.NaN);
     const offsetAlongWallM = parseMetres(opening.offsetAlongWallM, Number.NaN);
     if (!Number.isFinite(widthM) || !Number.isFinite(offsetAlongWallM)) continue;
@@ -1295,7 +1324,7 @@ export function buildObjectWorkbenchPlanOverlay(input: ObjectWorkbenchPlanOverla
       offsetAlongWallM,
     });
     const selected = input.selection.kind === 'opening' && input.selection.targetId === opening.id;
-    const openingInteraction = selected && exactOpeningFrame
+    const openingInteraction = selected && resolvedOpeningFrame.exact
       ? buildOpeningInteraction({
           opening,
           frame: openingFrame,
@@ -1378,6 +1407,13 @@ export function buildObjectWorkbenchPlanOverlay(input: ObjectWorkbenchPlanOverla
   } else if (input.selection.kind === 'opening' && input.selection.targetId) {
     const opening = input.openings.find((candidate) => candidate.id === input.selection.targetId);
     const shape = shapes.find((candidate) => candidate.ownerKind === 'opening' && candidate.ownerId === input.selection.targetId);
+    const resolvedOpeningFrame = opening
+      ? resolveOpeningFrameForOverlay({
+          opening,
+          houseAssembly: input.houseAssembly,
+          lookup,
+        })
+      : null;
     const frame = shape?.openingInteraction
       ? ({
           hostEdgeId: shape.openingInteraction.hostEdgeId,
@@ -1393,7 +1429,7 @@ export function buildObjectWorkbenchPlanOverlay(input: ObjectWorkbenchPlanOverla
           outwardUnitX: 0,
           outwardUnitY: -1,
         } satisfies GeometryOpeningFrame)
-      : null;
+      : resolvedOpeningFrame?.frame ?? null;
     if (opening && shape && frame) {
       presetAnnotations.push(
         ...buildOpeningAnnotations({
