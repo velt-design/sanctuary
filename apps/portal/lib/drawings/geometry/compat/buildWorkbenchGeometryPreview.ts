@@ -164,6 +164,30 @@ function annotateSceneAttachmentZoneMetadata(
   };
 }
 
+function numericStringValue(value: string | null | undefined): number | null {
+  if (typeof value !== 'string') return null;
+  const numericValue = Number(value);
+  return Number.isFinite(numericValue) ? numericValue : null;
+}
+
+function annotateSceneHouseRoofMetadata(
+  scene: ViewerSceneModel,
+  geometryContext: ObjectWorkbenchGeometryContext,
+): ViewerSceneModel {
+  const roof = geometryContext.house?.roof ?? null;
+  if (!roof) return scene;
+  return {
+    ...scene,
+    metadata: {
+      ...(scene.metadata ?? {}),
+      houseRoofForm: roof.form,
+      houseRoofGeometryKind: roof.geometryKind,
+      houseRoofHealedPitchDeg: numericStringValue(roof.primaryPitchDeg),
+      houseRoofHealedRidgeAxis: roof.capabilities.controls.ridgeAxis ? roof.ridgeAxis : null,
+    },
+  };
+}
+
 export function buildWorkbenchGeometryPreview(input: {
   projectId: string;
   estimateId: string;
@@ -252,10 +276,13 @@ export function buildWorkbenchGeometryPreview(input: {
     config: derivation.config,
     assembly: derivation.assembly,
     validation,
-    scene: annotateSceneAttachmentZoneMetadata(
-      annotateSceneHostEdgeSides(
-        buildViewerSceneModel(derivation.assembly),
-        geometryContext.house?.footprint.polygon,
+    scene: annotateSceneHouseRoofMetadata(
+      annotateSceneAttachmentZoneMetadata(
+        annotateSceneHostEdgeSides(
+          buildViewerSceneModel(derivation.assembly),
+          geometryContext.house?.footprint.polygon,
+        ),
+        geometryContext,
       ),
       geometryContext,
     ),

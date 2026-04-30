@@ -1166,6 +1166,29 @@ describe('DesignWorkbenchEstimateClient', () => {
     expect(readLabeledValue(rendered.container, 'Selected roof form')).toBe('hipped');
     expect(readLabeledValue(rendered.container, 'Roof reason code')).toBe('none');
     expect(readLabeledValue(rendered.container, 'Roof status')).not.toBe('Blocked');
+    expect(readLabeledValue(rendered.container, '3D roof QA')).toBe('valid');
+    expect(readLabeledValue(rendered.container, '3D roof geometry')).toBe('Rectilinear joined hipped');
+    expect(readLabeledValue(rendered.container, '3D roof solids')).toMatch(/rendered, 0 skipped$/);
+    expect(readLabeledValue(rendered.container, 'Healed roof pitch')).toBe('5 deg');
+    expect(readLabeledValue(rendered.container, 'Healed roof ridge')).toBe('Ridge X');
+    const viewportDiagnostics = rendered.container.querySelector('[data-testid="geometry-3d-viewport-diagnostics"]');
+    expect(viewportDiagnostics?.getAttribute('data-house-roof-qa-status')).toBe('valid');
+    expect(viewportDiagnostics?.getAttribute('data-house-roof-solid-skipped-count')).toBe('0');
+    expect(Number(viewportDiagnostics?.getAttribute('data-house-roof-solid-expected-count') ?? '0')).toBeGreaterThan(0);
+    expect(Number(viewportDiagnostics?.getAttribute('data-house-roof-solid-rendered-count') ?? '0')).toBeGreaterThan(0);
+
+    clickButtonByText(rendered.container, 'Model Space');
+    await flushAsyncWork();
+    expect(rendered.container.querySelector('[data-object-workbench-shape-hit="footprint:house-main"]')).not.toBeNull();
+
+    clickButtonByText(rendered.container, 'Sheet View');
+    await flushAsyncWork();
+    expect(rendered.container.querySelector('[aria-label="Plan view A3 drawing sheet"]')).not.toBeNull();
+
+    clickButtonByText(rendered.container, '3D View');
+    await flushAsyncWork();
+    expect(rendered.container.textContent).not.toContain('3D Preview Unsupported');
+    expect(rendered.container.querySelector('[data-testid="geometry-3d-canvas"]')).not.toBeNull();
 
     rendered.unmount();
   });

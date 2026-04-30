@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import type { AttachmentSide, HouseFootprintPreset, HouseRoofForm } from '@sp/geometry';
+import type {
+  AttachmentSide,
+  HouseFootprintPreset,
+  HouseRoofForm,
+  ViewerSceneHouseLineObject,
+  ViewerSceneHouseSurfaceSolidObject,
+  ViewerSceneObject,
+  ViewerSceneModel,
+} from '@sp/geometry';
 import { getSanctuaryGeometryWorkbenchFixture } from '@/lib/drawings/sanctuaryWorkbenchFixtures';
 import {
   buildEstimateDrawingDraftFromSnapshot,
@@ -34,6 +42,110 @@ const HOUSE_FOOTPRINT_PRESETS: readonly HouseFootprintPreset[] = [
 
 const HOUSE_ROOF_FORMS: readonly HouseRoofForm[] = ['flat', 'mono', 'gable', 'hipped'];
 const ATTACHMENT_SIDES: readonly AttachmentSide[] = ['rear', 'front', 'left', 'right'];
+const MONO_FALL_BY_ATTACHMENT_SIDE = {
+  rear: 'negative_y',
+  front: 'positive_y',
+  left: 'negative_x',
+  right: 'positive_x',
+} as const;
+const SUPPORTED_PRESET_ROOF_VISUAL_CASES = ATTACHMENT_SIDES.flatMap((attachmentSide) =>
+  HOUSE_FOOTPRINT_PRESETS.flatMap((preset) =>
+    HOUSE_ROOF_FORMS.map((form) => ({ attachmentSide, preset, form })),
+  ),
+);
+
+type ReadyGeometryPreview = Extract<ReturnType<typeof buildWorkbenchGeometryPreview>, { kind: 'ready' }>;
+
+function sceneObjects(scene: ViewerSceneModel): ViewerSceneObject[] {
+  return scene.layers.flatMap((layer) => layer.objects);
+}
+
+function roofSolidObjects(scene: ViewerSceneModel): ViewerSceneHouseSurfaceSolidObject[] {
+  return sceneObjects(scene).filter(
+    (object): object is ViewerSceneHouseSurfaceSolidObject =>
+      object.type === 'house_surface_solid' && object.kind === 'roof',
+  );
+}
+
+function roofFeatureObjects(scene: ViewerSceneModel): ViewerSceneHouseLineObject[] {
+  return sceneObjects(scene).filter(
+    (object): object is ViewerSceneHouseLineObject =>
+      object.type === 'house_line' && object.kind === 'roof_feature',
+  );
+}
+
+function numericMetadata(scene: ViewerSceneModel, key: string): number {
+  const value = scene.metadata?.[key];
+  return typeof value === 'number' ? value : 0;
+}
+
+function stringMetadata(scene: ViewerSceneModel, key: string): string | null {
+  const value = scene.metadata?.[key];
+  return typeof value === 'string' ? value : null;
+}
+
+function expectSupportedHouseRoofVisualQa(
+  preview: ReadyGeometryPreview,
+  input: {
+    label: string;
+    form: HouseRoofForm;
+    expectedPitchDeg?: number;
+    expectOpenGableFrame?: boolean;
+    expectValleyFeature?: boolean;
+  },
+) {
+  const roofSolids = roofSolidObjects(preview.scene);
+  const roofFeatures = roofFeatureObjects(preview.scene);
+  const featureKinds = roofFeatures.map((object) => object.metadata?.featureKind);
+  const expectedSolidCount = numericMetadata(preview.scene, 'houseRoofSolidExpectedCount');
+  const renderedSolidCount =
+    numericMetadata(preview.scene, 'houseRoofSolidRenderedCount') ||
+    numericMetadata(preview.scene, 'houseRoofSolidSceneCount');
+  const skippedSolidCount = numericMetadata(preview.scene, 'houseRoofSolidSkippedCount');
+
+  expect(preview.scene.metadata?.houseRoofQaStatus, `${input.label} roof QA`).toBe('valid');
+  expect(stringMetadata(preview.scene, 'houseRoofGeometryKind'), `${input.label} geometry kind`).toBeTruthy();
+  expect(expectedSolidCount, `${input.label} expected roof solids`).toBeGreaterThan(0);
+  expect(renderedSolidCount, `${input.label} rendered roof solids`).toBeGreaterThan(0);
+  expect(renderedSolidCount, `${input.label} rendered roof solid metadata`).toBe(roofSolids.length);
+  expect(skippedSolidCount, `${input.label} skipped roof solids`).toBe(0);
+  expect(roofSolids.length, `${input.label} roof solid objects`).toBeGreaterThan(0);
+  expect(preview.assembly.house.model?.metadata?.roofQaStatus, `${input.label} model roof QA`).toBe('valid');
+  expect(
+    preview.assembly.house.model?.solids?.surfaceSolids.filter((solid) => solid.kind === 'roof').length ?? 0,
+    `${input.label} model roof solids`,
+  ).toBeGreaterThan(0);
+
+  if (typeof input.expectedPitchDeg === 'number') {
+    expect(preview.config.houseContext.model?.roofPitchDeg, `${input.label} healed config pitch`).toBe(
+      input.expectedPitchDeg,
+    );
+    expect(numericMetadata(preview.scene, 'houseRoofHealedPitchDeg'), `${input.label} healed scene pitch`).toBe(
+      input.expectedPitchDeg,
+    );
+  }
+
+  if (input.form === 'gable') {
+    expect(featureKinds, `${input.label} gable ridge feature`).toEqual(expect.arrayContaining(['ridge']));
+  }
+
+  if (input.form === 'hipped') {
+    expect(featureKinds, `${input.label} hipped hip feature`).toEqual(expect.arrayContaining(['hip']));
+  }
+
+  if (input.expectOpenGableFrame) {
+    expect(featureKinds, `${input.label} open gable frame feature`).toEqual(
+      expect.arrayContaining(['gable_end_frame']),
+    );
+  }
+
+  if (input.expectValleyFeature) {
+    expect(featureKinds, `${input.label} valley feature`).toEqual(expect.arrayContaining(['valley']));
+    expect(numericMetadata(preview.scene, 'houseRoofTopologyValleyCount'), `${input.label} valley count`).toBeGreaterThan(
+      0,
+    );
+  }
+}
 
 function makeScreenshotStyleUHouseFootprint() {
   return [
@@ -795,42 +907,42 @@ describe('buildWorkbenchGeometryPreview', () => {
     ).toBe(true);
   });
 
-  it('renders every preset and editable shared house roof form through the ready preview path', () => {
+  it('renders every preset, attachment side, and editable shared house roof form through visual QA', () => {
     const fixture = requireFixture('mono-standard');
 
-    for (const preset of HOUSE_FOOTPRINT_PRESETS) {
-      for (const form of HOUSE_ROOF_FORMS) {
-        const roof = {
-          form,
-          primaryPitchDeg: form === 'flat' ? '0' : form === 'mono' ? '12' : form === 'gable' ? '18' : '22',
-          primaryFallDirection: 'negative_y',
-          ridgeAxis: 'x',
-        } as const;
-        const draft = makeDraft(fixture.snapshot, (current) => {
-          current.inputs.modules[0]!.houseFootprintPreset = preset;
-          setObjectFirstRoofIntent(fixture.snapshot, current, roof);
-        });
+    for (const { attachmentSide, preset, form } of SUPPORTED_PRESET_ROOF_VISUAL_CASES) {
+      const roof = {
+        form,
+        primaryPitchDeg: form === 'flat' ? '0' : form === 'mono' ? '12' : form === 'gable' ? '18' : '22',
+        primaryFallDirection: MONO_FALL_BY_ATTACHMENT_SIDE[attachmentSide],
+        ridgeAxis: 'x',
+      } as const;
+      const draft = makeDraft(fixture.snapshot, (current) => {
+        current.inputs.modules[0]!.attachmentSide = attachmentSide;
+        current.inputs.modules[0]!.houseFootprintPreset = preset;
+        setObjectFirstRoofIntent(fixture.snapshot, current, roof);
+      });
 
-        const preview = buildWorkbenchGeometryPreview({
-          projectId: 'proj_preview',
-          estimateId: fixture.estimate.id,
-          designRequestId: fixture.request.id,
-          snapshot: fixture.snapshot,
-          draft,
-          moduleIndex: 0,
-        });
+      const preview = buildWorkbenchGeometryPreview({
+        projectId: 'proj_preview',
+        estimateId: fixture.estimate.id,
+        designRequestId: fixture.request.id,
+        snapshot: fixture.snapshot,
+        draft,
+        moduleIndex: 0,
+      });
 
-        expect(preview.kind, `${preset}/${form} preview kind`).toBe('ready');
-        if (preview.kind !== 'ready') continue;
-        expect(preview.config.houseContext.model?.roofForm, `${preset}/${form} roof form`).toBe(form);
-        expect(preview.scene.metadata?.houseRoofQaStatus, `${preset}/${form} roof QA`).toBe('valid');
-        expect(
-          preview.scene.layers
-            .flatMap((layer) => layer.objects)
-            .some((object) => object.type === 'house_surface_solid' && object.kind === 'roof'),
-          `${preset}/${form} roof solid`,
-        ).toBe(true);
-      }
+      const label = `${attachmentSide}/${preset}/${form}`;
+      expect(preview.kind, `${label} preview kind`).toBe('ready');
+      if (preview.kind !== 'ready') continue;
+      expect(preview.config.connection.attachmentSide, `${label} side`).toBe(attachmentSide);
+      expect(preview.config.houseContext.model?.roofForm, `${label} roof form`).toBe(form);
+      expectSupportedHouseRoofVisualQa(preview, {
+        label,
+        form,
+        expectedPitchDeg: form === 'flat' ? 0 : form === 'mono' ? 12 : form === 'gable' ? 18 : 22,
+        expectValleyFeature: form === 'hipped' && preset !== 'straight',
+      });
     }
   });
 
@@ -866,22 +978,15 @@ describe('buildWorkbenchGeometryPreview', () => {
           );
           expect(preview.config.houseContext.model?.roofForm, `${preset}/${attachmentSide}/${form} form`).toBe(form);
           expect(
-            preview.config.houseContext.model?.roofPitchDeg,
-            `${preset}/${attachmentSide}/${form} pitch`,
-          ).toBe(5);
-          expect(
             preview.config.houseContext.model?.footprint.length,
             `${preset}/${attachmentSide}/${form} footprint points`,
           ).toBeGreaterThan(3);
-          expect(preview.scene.metadata?.houseRoofQaStatus, `${preset}/${attachmentSide}/${form} roof QA`).toBe(
-            'valid',
-          );
-          expect(
-            preview.scene.layers
-              .flatMap((layer) => layer.objects)
-              .some((object) => object.type === 'house_surface_solid' && object.kind === 'roof'),
-            `${preset}/${attachmentSide}/${form} roof solid`,
-          ).toBe(true);
+          expectSupportedHouseRoofVisualQa(preview, {
+            label: `${preset}/${attachmentSide}/${form}`,
+            form,
+            expectedPitchDeg: 5,
+            expectValleyFeature: form === 'hipped' && preset !== 'straight',
+          });
         }
       }
     }
@@ -936,12 +1041,79 @@ describe('buildWorkbenchGeometryPreview', () => {
     expect(preview.config.houseContext.model?.roofForm).toBe('hipped');
     expect(preview.config.houseContext.model?.roofPitchDeg).toBe(5);
     expect(preview.config.houseContext.model?.roofRidgeAxis).toBe('x');
-    expect(preview.scene.metadata?.houseRoofQaStatus).toBe('valid');
-    expect(
-      preview.scene.layers
-        .flatMap((layer) => layer.objects)
-        .some((object) => object.type === 'house_surface_solid' && object.kind === 'roof'),
-    ).toBe(true);
+    expect(preview.scene.metadata?.houseRoofHealedRidgeAxis).toBe('x');
+    expectSupportedHouseRoofVisualQa(preview, {
+      label: 'wrap_left/rear/stale hipped',
+      form: 'hipped',
+      expectedPitchDeg: 5,
+      expectValleyFeature: true,
+    });
+  });
+
+  it('renders non-rectangular preset gable open ends as visible roof features', () => {
+    const fixture = requireFixture('mono-standard');
+    const draft = makeDraft(fixture.snapshot, (current) => {
+      current.inputs.modules[0]!.attachmentSide = 'rear';
+      current.inputs.modules[0]!.houseFootprintPreset = 'u_shape';
+      setObjectFirstRoofIntent(fixture.snapshot, current, {
+        form: 'gable',
+        primaryPitchDeg: '18',
+        ridgeAxis: 'x',
+        openGableEndIds: ['house-gable-end-x-7'],
+      });
+    });
+
+    const preview = buildWorkbenchGeometryPreview({
+      projectId: 'proj_preview',
+      estimateId: fixture.estimate.id,
+      designRequestId: fixture.request.id,
+      snapshot: fixture.snapshot,
+      draft,
+      moduleIndex: 0,
+    });
+
+    expect(preview.kind).toBe('ready');
+    if (preview.kind !== 'ready') return;
+    expect(preview.config.houseContext.model?.roofForm).toBe('gable');
+    expect(preview.assembly.house.model?.metadata?.openGableEndIds).toContain('house-gable-end-x-7');
+    expectSupportedHouseRoofVisualQa(preview, {
+      label: 'u_shape/rear/gable/open-end',
+      form: 'gable',
+      expectedPitchDeg: 18,
+      expectOpenGableFrame: true,
+    });
+  });
+
+  it('renders hipped joined preset valleys as visible roof features', () => {
+    const fixture = requireFixture('mono-standard');
+    const draft = makeDraft(fixture.snapshot, (current) => {
+      current.inputs.modules[0]!.attachmentSide = 'rear';
+      current.inputs.modules[0]!.houseFootprintPreset = 'u_shape';
+      setObjectFirstRoofIntent(fixture.snapshot, current, {
+        form: 'hipped',
+        primaryPitchDeg: '22',
+        ridgeAxis: 'x',
+      });
+    });
+
+    const preview = buildWorkbenchGeometryPreview({
+      projectId: 'proj_preview',
+      estimateId: fixture.estimate.id,
+      designRequestId: fixture.request.id,
+      snapshot: fixture.snapshot,
+      draft,
+      moduleIndex: 0,
+    });
+
+    expect(preview.kind).toBe('ready');
+    if (preview.kind !== 'ready') return;
+    expect(preview.config.houseContext.model?.roofForm).toBe('hipped');
+    expectSupportedHouseRoofVisualQa(preview, {
+      label: 'u_shape/rear/hipped/joined',
+      form: 'hipped',
+      expectedPitchDeg: 22,
+      expectValleyFeature: true,
+    });
   });
 
   it('exposes deck support diagnostics for active-side attached and detached deck contexts', () => {

@@ -21,6 +21,32 @@ type WorkbenchDiagnosticsPanelProps = {
   geometryPreview: ObjectWorkbenchGeometryPreviewState;
 };
 
+function metadataString(metadata: Record<string, unknown> | undefined, key: string): string | null {
+  const value = metadata?.[key];
+  return typeof value === 'string' ? value : null;
+}
+
+function metadataNumber(metadata: Record<string, unknown> | undefined, key: string): number | null {
+  const value = metadata?.[key];
+  return typeof value === 'number' ? value : null;
+}
+
+function numericStringValue(value: string | null | undefined): number | null {
+  if (typeof value !== 'string') return null;
+  const numericValue = Number(value);
+  return Number.isFinite(numericValue) ? numericValue : null;
+}
+
+function formatRoofPitchDeg(value: number | null): string {
+  if (value === null) return 'none';
+  return `${Number.isInteger(value) ? value : Number(value.toFixed(2))} deg`;
+}
+
+function formatRidgeAxis(value: string | null, notUsedLabel: string): string {
+  if (!value) return notUsedLabel;
+  return `Ridge ${value.toUpperCase()}`;
+}
+
 export default function WorkbenchDiagnosticsPanel({
   objectWorkbench,
   ui,
@@ -63,6 +89,26 @@ export default function WorkbenchDiagnosticsPanel({
     : roofControlNotUsedLabel;
   const roofAppendageSupportedEdgesLabel = roofAppendageRelevant
     ? labelForAttachmentSideList(roof.appendageSupportedHostEdges)
+    : roofControlNotUsedLabel;
+  const sceneMetadata = geometryPreview.kind === 'ready' ? geometryPreview.scene.metadata : undefined;
+  const sceneRoofQaStatusLabel = metadataString(sceneMetadata, 'houseRoofQaStatus') ?? 'not available';
+  const sceneRoofExpectedSolidCount = metadataNumber(sceneMetadata, 'houseRoofSolidExpectedCount') ?? 0;
+  const sceneRoofRenderedSolidCount =
+    metadataNumber(sceneMetadata, 'houseRoofSolidRenderedCount') ??
+    metadataNumber(sceneMetadata, 'houseRoofSolidSceneCount') ??
+    0;
+  const sceneRoofSkippedSolidCount = metadataNumber(sceneMetadata, 'houseRoofSolidSkippedCount') ?? 0;
+  const sceneRoofSolidsLabel =
+    `${sceneRoofRenderedSolidCount}/${sceneRoofExpectedSolidCount} rendered, ${sceneRoofSkippedSolidCount} skipped`;
+  const sceneRoofGeometryKind = metadataString(sceneMetadata, 'houseRoofGeometryKind') ?? roof.geometryKind;
+  const sceneRoofGeometryLabel = labelForRoofGeometryKind(sceneRoofGeometryKind);
+  const healedRoofPitchDeg =
+    metadataNumber(sceneMetadata, 'houseRoofHealedPitchDeg') ?? numericStringValue(roof.intent.primaryPitchDeg);
+  const healedRoofRidgeAxis = metadataString(sceneMetadata, 'houseRoofHealedRidgeAxis') ?? (
+    roofControls?.ridgeAxis ? roof.intent.ridgeAxis : null
+  );
+  const healedRoofRidgeLabel = roofControls?.ridgeAxis
+    ? formatRidgeAxis(healedRoofRidgeAxis, 'none')
     : roofControlNotUsedLabel;
 
   return (
@@ -256,6 +302,26 @@ export default function WorkbenchDiagnosticsPanel({
         <div className={styles.diagnosticRow}>
           <span className={styles.diagnosticLabel}>Roof geometry</span>
           <span className={styles.diagnosticValue}>{labelForRoofGeometryKind(roof.geometryKind)}</span>
+        </div>
+        <div className={styles.diagnosticRow}>
+          <span className={styles.diagnosticLabel}>3D roof QA</span>
+          <span className={styles.diagnosticValue}>{sceneRoofQaStatusLabel}</span>
+        </div>
+        <div className={styles.diagnosticRow}>
+          <span className={styles.diagnosticLabel}>3D roof solids</span>
+          <span className={styles.diagnosticValue}>{sceneRoofSolidsLabel}</span>
+        </div>
+        <div className={styles.diagnosticRow}>
+          <span className={styles.diagnosticLabel}>3D roof geometry</span>
+          <span className={styles.diagnosticValue}>{sceneRoofGeometryLabel}</span>
+        </div>
+        <div className={styles.diagnosticRow}>
+          <span className={styles.diagnosticLabel}>Healed roof pitch</span>
+          <span className={styles.diagnosticValue}>{formatRoofPitchDeg(healedRoofPitchDeg)}</span>
+        </div>
+        <div className={styles.diagnosticRow}>
+          <span className={styles.diagnosticLabel}>Healed roof ridge</span>
+          <span className={styles.diagnosticValue}>{healedRoofRidgeLabel}</span>
         </div>
         <div className={styles.diagnosticRow}>
           <span className={styles.diagnosticLabel}>Roof form source</span>

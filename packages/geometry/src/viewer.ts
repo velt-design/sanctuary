@@ -1074,12 +1074,15 @@ function buildViewerSceneMetadata(
 
   const qaStatus = metadataString(model.metadata, "roofQaStatus") ?? "invalid";
   const expectedRoofSolidCount = model.roofPlanes.length;
-  const sceneRoofSolidCount = (model.solids?.surfaceSolids ?? []).filter(
-    (solid) => solid.kind === "roof",
-  ).length;
+  const renderedRoofSolidCount = layers
+    .flatMap((layer) => layer.objects)
+    .filter(
+      (object) =>
+        object.type === "house_surface_solid" && object.kind === "roof",
+    ).length;
   const qaAllowsRoofSolids = qaStatus === "valid";
   const skippedRoofSolidCount = qaAllowsRoofSolids
-    ? Math.max(0, expectedRoofSolidCount - sceneRoofSolidCount)
+    ? Math.max(0, expectedRoofSolidCount - renderedRoofSolidCount)
     : expectedRoofSolidCount;
   const totalOpeningCount = model.openings?.length ?? 0;
   const validOpeningCount =
@@ -1110,6 +1113,7 @@ function buildViewerSceneMetadata(
   return sortMetadata({
     houseRoofQaStatus: qaStatus,
     houseRoofQaFailureReason: metadataString(model.metadata, "roofQaFailureReason"),
+    houseRoofGeometryKind: metadataString(model.metadata, "roofGeometry"),
     houseRoofTopologyFinalFaceCount: metadataNumber(model.metadata, "roofTopologyFinalFaceCount"),
     houseRoofTopologyValleyCount: metadataNumber(model.metadata, "roofTopologyValleyCount"),
     houseRoofTopologyDisconnectedSourceFaceCount: metadataNumber(model.metadata, "roofTopologyDisconnectedSourceFaceCount"),
@@ -1117,7 +1121,8 @@ function buildViewerSceneMetadata(
     houseRoofWavefrontEventCount: metadataNumber(model.metadata, "roofWavefrontEventCount"),
     houseRoofWavefrontFailureReason: metadataString(model.metadata, "roofWavefrontFailureReason"),
     houseRoofSolidExpectedCount: expectedRoofSolidCount,
-    houseRoofSolidSceneCount: qaAllowsRoofSolids ? sceneRoofSolidCount : 0,
+    houseRoofSolidSceneCount: qaAllowsRoofSolids ? renderedRoofSolidCount : 0,
+    houseRoofSolidRenderedCount: qaAllowsRoofSolids ? renderedRoofSolidCount : 0,
     houseRoofSolidSkippedCount: skippedRoofSolidCount,
     houseOpeningCount: totalOpeningCount,
     houseOpeningValidCount: validOpeningCount,
