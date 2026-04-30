@@ -1,3 +1,4 @@
+import { isHouseRoofForm as isSupportedHouseRoofForm } from '@sp/geometry';
 import {
   DEFAULT_CALCULATOR_HOUSE_ROOF_MATERIAL,
   normalizeAttachmentSide,
@@ -326,10 +327,6 @@ function normalizeStableId(value: string | null | undefined): string | null {
   return trimNullableString(value);
 }
 
-function isHouseRoofForm(value: unknown): value is HouseRoofForm {
-  return value === 'flat' || value === 'mono' || value === 'gable' || value === 'hipped';
-}
-
 function isHouseRoofPrimaryFallDirection(value: unknown): value is HouseRoofPrimaryFallDirection {
   return value === 'positive_x' || value === 'negative_x' || value === 'positive_y' || value === 'negative_y';
 }
@@ -440,7 +437,7 @@ function normalizeHouseFormRoofIntent(
     : [];
 
   return {
-    form: isHouseRoofForm(value?.form) ? value.form : 'gable',
+    form: isSupportedHouseRoofForm(value?.form) ? value.form : 'gable',
     material: isCalculatorHouseRoofMaterial(value?.material) ? value.material : DEFAULT_CALCULATOR_HOUSE_ROOF_MATERIAL,
     primaryPitchDeg: trimNullableString(value?.primaryPitchDeg) ?? '5',
     primaryFallDirection: isHouseRoofPrimaryFallDirection(value?.primaryFallDirection)

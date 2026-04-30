@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { HOUSE_ROOF_FORM_ORDER } from '@sp/geometry';
 import { HOUSE_FOOTPRINT_PRESET_OPTIONS } from '@/app/staff/calculator/ModuleViewsCard';
 import { normalizeHouseFootprintParams, type CalculatorHouseRoofMaterial } from '@/lib/types/calculator';
 import type {
@@ -39,12 +40,11 @@ export const ATTACHMENT_SIDE_OPTIONS: SelectOption[] = [
   { label: 'Right', value: 'right' },
 ];
 
-export const HOUSE_ROOF_FORM_OPTIONS: Array<SelectOption & { value: HouseRoofForm }> = [
-  { label: 'Flat', value: 'flat' },
-  { label: 'Mono', value: 'mono' },
-  { label: 'Gable', value: 'gable' },
-  { label: 'Hipped', value: 'hipped' },
-];
+export const HOUSE_ROOF_FORM_OPTIONS: Array<SelectOption & { value: HouseRoofForm }> =
+  HOUSE_ROOF_FORM_ORDER.map((value) => ({
+    label: labelForRoofForm(value),
+    value,
+  }));
 
 export const ROOF_MATERIAL_OPTIONS: Array<SelectOption & { value: CalculatorHouseRoofMaterial }> = [
   { label: 'Corrugated iron', value: 'corrugated_iron' },

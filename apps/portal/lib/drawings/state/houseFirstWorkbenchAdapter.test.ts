@@ -365,24 +365,56 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
   it('derives form-aware roof capabilities from the shared house footprint', () => {
     const monoFixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
     if (!monoFixture) throw new Error('Missing mono-standard fixture.');
-    const draft = buildEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
-    if (!draft) throw new Error('Expected drawing draft.');
-    draft.houseFirst = {
-      roof: {
-        form: 'gable',
+
+    const expectedControls = {
+      flat: {
+        pitch: false,
+        material: true,
+        primaryFallDirection: false,
+        ridgeAxis: false,
+        appendage: false,
       },
-    };
+      mono: {
+        pitch: true,
+        material: true,
+        primaryFallDirection: true,
+        ridgeAxis: false,
+        appendage: true,
+      },
+      gable: {
+        pitch: true,
+        material: true,
+        primaryFallDirection: false,
+        ridgeAxis: true,
+        appendage: true,
+      },
+      hipped: {
+        pitch: true,
+        material: true,
+        primaryFallDirection: false,
+        ridgeAxis: true,
+        appendage: false,
+      },
+    } as const;
 
-    const projectModel = buildHouseFirstWorkbenchProjectModel({
-      snapshot: monoFixture.snapshot,
-      draft,
-    });
+    for (const [form, controls] of Object.entries(expectedControls)) {
+      const draft = buildEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
+      if (!draft) throw new Error('Expected drawing draft.');
+      draft.houseFirst = {
+        roof: {
+          form: form as keyof typeof expectedControls,
+        },
+      };
 
-    expect(projectModel.house?.roof.capabilities.controls.primaryFallDirection).toBe(false);
-    expect(projectModel.house?.roof.capabilities.controls.ridgeAxis).toBe(true);
-    expect(projectModel.house?.roof.capabilities.footprintTopology).toBe('rectangular');
-    expect(projectModel.house?.roof.capabilities.selectedFormSupported).toBe(true);
-    expect(projectModel.house?.roof.capabilities.appendageSupported).toBe(true);
+      const projectModel = buildHouseFirstWorkbenchProjectModel({
+        snapshot: monoFixture.snapshot,
+        draft,
+      });
+
+      expect(projectModel.house?.roof.capabilities.controls).toEqual(controls);
+      expect(projectModel.house?.roof.capabilities.footprintTopology).toBe('rectangular');
+      expect(projectModel.house?.roof.capabilities.selectedFormSupported).toBe(true);
+    }
   });
 
   it('updates roof validation and capabilities when the footprint topology becomes orthogonally supported', () => {
@@ -433,6 +465,7 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
     expect(projectModel.house?.roof.validation.code).toBeNull();
     expect(projectModel.house?.roof.geometryKind).toBe('rectilinear_joined_hipped');
     expect(projectModel.house?.roof.capabilities.controls.ridgeAxis).toBe(true);
+    expect(projectModel.house?.roof.capabilities.controls.appendage).toBe(false);
   });
 
   it('filters invalid saved open gable ends when the ridge orientation changes', () => {

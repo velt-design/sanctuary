@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
+import { getHouseRoofFormBehavior } from '@sp/geometry';
 import {
   labelForAttachmentSideList,
   labelForRoofApproximationReason,
@@ -59,6 +60,36 @@ export default function WorkbenchDiagnosticsPanel({
       ).length,
     [store.derived.pergolas],
   );
+  const roofControls = store.derived.roofForm
+    ? getHouseRoofFormBehavior(store.derived.roofForm).controls
+    : null;
+  const roofControlNotUsedLabel = 'Not used for this roof';
+  const roofPitchSourceLabel = roofControls?.pitch
+    ? labelForRoofFieldSource(store.derived.roofProvenance?.primaryPitchDeg)
+    : roofControlNotUsedLabel;
+  const roofFallSourceLabel = roofControls?.primaryFallDirection
+    ? labelForRoofFieldSource(store.derived.roofProvenance?.primaryFallDirection)
+    : roofControlNotUsedLabel;
+  const roofRidgeSourceLabel = roofControls?.ridgeAxis
+    ? labelForRoofFieldSource(store.derived.roofProvenance?.ridgeAxis)
+    : roofControlNotUsedLabel;
+  const roofOpenEndSourceLabel = store.derived.roofForm === 'gable'
+    ? labelForRoofFieldSource(store.derived.roofProvenance?.openGableEndIds)
+    : roofControlNotUsedLabel;
+  const roofAppendageRelevant = Boolean(roofControls?.appendage);
+  const roofAppendageSourceLabel = roofAppendageRelevant
+    ? labelForRoofFieldSource(store.derived.roofProvenance?.appendage)
+    : roofControlNotUsedLabel;
+  const roofAppendageStatusLabel = roofAppendageRelevant
+    ? store.derived.roofAppendageStatus
+    : roofControlNotUsedLabel;
+  const roofAppendageSupportLabel = roofAppendageRelevant
+    ? store.derived.roofAppendageSupportReason ??
+      (store.derived.roofAppendageSupportedHostEdges.length > 0 ? 'Supported' : 'Not supported')
+    : roofControlNotUsedLabel;
+  const roofAppendageSupportedEdgesLabel = roofAppendageRelevant
+    ? labelForAttachmentSideList(store.derived.roofAppendageSupportedHostEdges)
+    : roofControlNotUsedLabel;
 
   return (
     <section className={styles.moduleSection}>
@@ -262,40 +293,35 @@ export default function WorkbenchDiagnosticsPanel({
         </div>
         <div className={styles.diagnosticRow}>
           <span className={styles.diagnosticLabel}>Roof pitch source</span>
-          <span className={styles.diagnosticValue}>{labelForRoofFieldSource(store.derived.roofProvenance?.primaryPitchDeg)}</span>
+          <span className={styles.diagnosticValue}>{roofPitchSourceLabel}</span>
         </div>
         <div className={styles.diagnosticRow}>
           <span className={styles.diagnosticLabel}>Roof fall source</span>
-          <span className={styles.diagnosticValue}>{labelForRoofFieldSource(store.derived.roofProvenance?.primaryFallDirection)}</span>
+          <span className={styles.diagnosticValue}>{roofFallSourceLabel}</span>
         </div>
         <div className={styles.diagnosticRow}>
           <span className={styles.diagnosticLabel}>Roof ridge source</span>
-          <span className={styles.diagnosticValue}>{labelForRoofFieldSource(store.derived.roofProvenance?.ridgeAxis)}</span>
+          <span className={styles.diagnosticValue}>{roofRidgeSourceLabel}</span>
         </div>
         <div className={styles.diagnosticRow}>
           <span className={styles.diagnosticLabel}>Roof open-end source</span>
-          <span className={styles.diagnosticValue}>{labelForRoofFieldSource(store.derived.roofProvenance?.openGableEndIds)}</span>
+          <span className={styles.diagnosticValue}>{roofOpenEndSourceLabel}</span>
         </div>
         <div className={styles.diagnosticRow}>
           <span className={styles.diagnosticLabel}>Roof appendage source</span>
-          <span className={styles.diagnosticValue}>{labelForRoofFieldSource(store.derived.roofProvenance?.appendage)}</span>
+          <span className={styles.diagnosticValue}>{roofAppendageSourceLabel}</span>
         </div>
         <div className={styles.diagnosticRow}>
           <span className={styles.diagnosticLabel}>Roof appendage</span>
-          <span className={styles.diagnosticValue}>{store.derived.roofAppendageStatus}</span>
+          <span className={styles.diagnosticValue}>{roofAppendageStatusLabel}</span>
         </div>
         <div className={styles.diagnosticRow}>
           <span className={styles.diagnosticLabel}>Appendage support</span>
-          <span className={styles.diagnosticValue}>
-            {store.derived.roofAppendageSupportReason ??
-              (store.derived.roofAppendageSupportedHostEdges.length > 0 ? 'Supported' : 'Not supported')}
-          </span>
+          <span className={styles.diagnosticValue}>{roofAppendageSupportLabel}</span>
         </div>
         <div className={styles.diagnosticRow}>
           <span className={styles.diagnosticLabel}>Appendage supported edges</span>
-          <span className={styles.diagnosticValue}>
-            {labelForAttachmentSideList(store.derived.roofAppendageSupportedHostEdges)}
-          </span>
+          <span className={styles.diagnosticValue}>{roofAppendageSupportedEdgesLabel}</span>
         </div>
         {store.derived.roofValidationMessage ? (
           <div className={styles.diagnosticRow}>

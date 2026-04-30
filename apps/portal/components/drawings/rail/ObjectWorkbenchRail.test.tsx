@@ -5,6 +5,7 @@ import { buildEstimateDrawingDraftFromSnapshot, type EstimateDrawingDraft } from
 import { buildDrawingWorkbenchStore } from '@/lib/drawings/state/drawingWorkbenchStore';
 import { createDrawingWorkbenchUiState, type DrawingWorkbenchRailTab } from '@/lib/drawings/state/drawingWorkbenchUiState';
 import type { WorkbenchObjectRef } from '@/lib/drawings/state/objectFirstWorkbenchModel';
+import type { HouseRoofForm } from '@/lib/drawings/state/houseFirstWorkbenchModel';
 import ObjectWorkbenchRail from './ObjectWorkbenchRail';
 
 function buildRailProps(input?: {
@@ -87,6 +88,31 @@ function buildRailProps(input?: {
       diagnosticsPanel: <section>Migration diagnostics</section>,
     },
   };
+}
+
+function buildDraftWithRoofForm(form: HouseRoofForm): EstimateDrawingDraft {
+  const fixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
+  if (!fixture) throw new Error('Expected Sanctuary fixture.');
+  const draft = buildEstimateDrawingDraftFromSnapshot(fixture.snapshot);
+  if (!draft) throw new Error('Expected drawing draft.');
+  draft.houseFirst = {
+    roof: {
+      form,
+      material: 'corrugated_iron',
+      primaryPitchDeg: '12',
+      primaryFallDirection: 'negative_y',
+      ridgeAxis: 'x',
+      openGableEndIds: ['house-gable-end-x-1'],
+      appendage: {
+        enabled: true,
+        form: 'mono',
+        hostEdge: 'rear',
+        pitchDeg: '5',
+        dropMm: '450',
+      },
+    },
+  };
+  return draft;
 }
 
 describe('ObjectWorkbenchRail', () => {
@@ -206,5 +232,46 @@ describe('ObjectWorkbenchRail', () => {
     expect(markup).not.toContain('View-only for now');
     expect(markup).not.toContain('Roof pitch (deg)');
     expect(markup).toContain('aria-label="Roof material"');
+  });
+
+  it('renders only the controls relevant to each house roof form', () => {
+    const flatMarkup = renderToStaticMarkup(
+      <ObjectWorkbenchRail {...buildRailProps({ draft: buildDraftWithRoofForm('flat') })} />,
+    );
+    expect(flatMarkup).toContain('aria-label="Roof form"');
+    expect(flatMarkup).toContain('aria-label="Roof material"');
+    expect(flatMarkup).not.toContain('Roof pitch (deg)');
+    expect(flatMarkup).not.toContain('Mono fall direction');
+    expect(flatMarkup).not.toContain('Gable ridge orientation');
+    expect(flatMarkup).not.toContain('Hipped ridge orientation');
+    expect(flatMarkup).not.toContain('Open gable ends');
+    expect(flatMarkup).not.toContain('Appendage band');
+
+    const monoMarkup = renderToStaticMarkup(
+      <ObjectWorkbenchRail {...buildRailProps({ draft: buildDraftWithRoofForm('mono') })} />,
+    );
+    expect(monoMarkup).toContain('Roof pitch (deg)');
+    expect(monoMarkup).toContain('Mono fall direction');
+    expect(monoMarkup).toContain('Appendage band');
+    expect(monoMarkup).not.toContain('Gable ridge orientation');
+    expect(monoMarkup).not.toContain('Open gable ends');
+
+    const gableMarkup = renderToStaticMarkup(
+      <ObjectWorkbenchRail {...buildRailProps({ draft: buildDraftWithRoofForm('gable') })} />,
+    );
+    expect(gableMarkup).toContain('Roof pitch (deg)');
+    expect(gableMarkup).toContain('Gable ridge orientation');
+    expect(gableMarkup).toContain('Open gable ends');
+    expect(gableMarkup).toContain('Appendage band');
+    expect(gableMarkup).not.toContain('Mono fall direction');
+
+    const hippedMarkup = renderToStaticMarkup(
+      <ObjectWorkbenchRail {...buildRailProps({ draft: buildDraftWithRoofForm('hipped') })} />,
+    );
+    expect(hippedMarkup).toContain('Roof pitch (deg)');
+    expect(hippedMarkup).toContain('Hipped ridge orientation');
+    expect(hippedMarkup).not.toContain('Mono fall direction');
+    expect(hippedMarkup).not.toContain('Open gable ends');
+    expect(hippedMarkup).not.toContain('Appendage band');
   });
 });

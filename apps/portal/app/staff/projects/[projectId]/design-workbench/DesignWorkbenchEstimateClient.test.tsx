@@ -650,7 +650,7 @@ describe('DesignWorkbenchEstimateClient', () => {
     expect(readLabeledValue(rendered.container, 'Roof form source')).toBe('Legacy pergola inference');
     expect(readLabeledValue(rendered.container, 'Roof material source')).toBe('Legacy shared value');
     expect(readLabeledValue(rendered.container, 'Roof fall source')).toBe('Default fallback');
-    expect(readLabeledValue(rendered.container, 'Roof ridge source')).toBe('Default fallback');
+    expect(readLabeledValue(rendered.container, 'Roof ridge source')).toBe('Not used for this roof');
     expect(readLabeledValue(rendered.container, 'Roof appendage source')).toBe('Default fallback');
     expect(readLabeledValue(rendered.container, 'Roof geometry')).toBe('Footprint mono');
     expect(readLabeledValue(rendered.container, 'Appendage support')).toBe('Supported');
@@ -685,6 +685,9 @@ describe('DesignWorkbenchEstimateClient', () => {
 
     expect(readLabeledValue(rendered.container, 'Roof status')).toBe('Blocked');
     expect(readLabeledValue(rendered.container, 'Roof reason code')).toBe('unsupported_roof_topology');
+    clickButtonByText(rendered.container, 'House Forms');
+    expect(rendered.container.querySelector('[aria-label="Roof form"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[aria-label="Roof pitch (deg)"]')).toBeNull();
 
     rendered.unmount();
   });
@@ -973,9 +976,17 @@ describe('DesignWorkbenchEstimateClient', () => {
 
     await flushAsyncWork();
 
+    changeSelectByLabel(rendered.container, 'Mono fall direction', 'positive_x');
+    await flushAsyncWork();
+    expect(readObjectFirstRoofDraft(getLocalFirstWorkingCopy<any>(entityKey)?.data)?.primaryFallDirection).toBe(
+      'positive_x',
+    );
+
     changeSelectByLabel(rendered.container, 'Roof form', 'gable');
     await flushAsyncWork();
     changeSelectByLabel(rendered.container, 'Gable ridge orientation', 'x');
+    await flushAsyncWork();
+    clickButtonByText(rendered.container, 'Open End 1');
     await flushAsyncWork();
     changeSelectByLabel(rendered.container, 'Appendage band', 'enabled');
     await flushAsyncWork();
@@ -985,8 +996,11 @@ describe('DesignWorkbenchEstimateClient', () => {
       ridgeAxis: 'x',
       appendage: expect.objectContaining({ enabled: true }),
     });
+    expect(gableDraft?.primaryFallDirection).not.toBe('positive_x');
+    expect(gableDraft?.openGableEndIds?.length).toBeGreaterThan(0);
     expect(rendered.container.querySelector('[aria-label="Gable ridge orientation"]')).not.toBeNull();
     expect(readLabeledValue(rendered.container, 'Selected roof form')).toBe('gable');
+    expect(readLabeledValue(rendered.container, 'Roof fall source')).toBe('Not used for this roof');
 
     clickButtonByText(rendered.container, 'House Forms');
     await flushAsyncWork();
@@ -998,7 +1012,11 @@ describe('DesignWorkbenchEstimateClient', () => {
       primaryPitchDeg: '0',
     });
     expect(flatDraft?.appendage?.enabled).toBe(false);
+    expect(flatDraft?.openGableEndIds).toEqual([]);
+    expect(flatDraft?.primaryFallDirection).not.toBe('positive_x');
     expect(readLabeledValue(rendered.container, 'Selected roof form')).toBe('flat');
+    expect(readLabeledValue(rendered.container, 'Roof pitch source')).toBe('Not used for this roof');
+    expect(readLabeledValue(rendered.container, 'Roof appendage source')).toBe('Not used for this roof');
     clickButtonByText(rendered.container, 'House Forms');
     await flushAsyncWork();
     expect(rendered.container.querySelector('[aria-label="Roof form"]')).not.toBeNull();
@@ -1014,7 +1032,9 @@ describe('DesignWorkbenchEstimateClient', () => {
       form: 'mono',
       primaryFallDirection: 'negative_y',
     });
+    expect(monoDraft?.openGableEndIds).toEqual([]);
     expect(readLabeledValue(rendered.container, 'Selected roof form')).toBe('mono');
+    expect(readLabeledValue(rendered.container, 'Roof ridge source')).toBe('Not used for this roof');
 
     clickButtonByText(rendered.container, 'House Forms');
     await flushAsyncWork();
@@ -1025,7 +1045,9 @@ describe('DesignWorkbenchEstimateClient', () => {
       form: 'hipped',
     });
     expect(hippedDraft?.appendage?.enabled).toBe(false);
+    expect(hippedDraft?.openGableEndIds).toEqual([]);
     expect(readLabeledValue(rendered.container, 'Selected roof form')).toBe('hipped');
+    expect(readLabeledValue(rendered.container, 'Roof appendage source')).toBe('Not used for this roof');
     clickButtonByText(rendered.container, 'House Forms');
     await flushAsyncWork();
     expect(rendered.container.querySelector('[aria-label="Hipped ridge orientation"]')).not.toBeNull();
@@ -1086,6 +1108,11 @@ describe('DesignWorkbenchEstimateClient', () => {
     await flushAsyncWork();
 
     expect(readLabeledValue(rendered.container, 'Selected roof form')).toBe('flat');
+    expect(readLabeledValue(rendered.container, 'Roof pitch source')).toBe('Not used for this roof');
+    expect(readLabeledValue(rendered.container, 'Roof fall source')).toBe('Not used for this roof');
+    expect(readLabeledValue(rendered.container, 'Roof ridge source')).toBe('Not used for this roof');
+    expect(readLabeledValue(rendered.container, 'Roof appendage source')).toBe('Not used for this roof');
+    expect(readLabeledValue(rendered.container, 'Appendage support')).toBe('Not used for this roof');
     clickButtonByText(rendered.container, 'House Forms');
     await flushAsyncWork();
     const roofFormSelect = rendered.container.querySelector('[aria-label="Roof form"]') as HTMLSelectElement | null;

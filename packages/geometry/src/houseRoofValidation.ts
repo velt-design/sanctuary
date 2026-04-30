@@ -16,16 +16,76 @@ export type HouseRoofGeometryKind =
   | 'rectangular_hipped'
   | 'rectilinear_joined_hipped';
 
+export type HouseRoofControls = {
+  pitch: boolean;
+  material: true;
+  primaryFallDirection: boolean;
+  ridgeAxis: boolean;
+  appendage: boolean;
+};
+
+export type HouseRoofFormBehavior = {
+  controls: HouseRoofControls;
+  selectedFormFootprintRequirement: HouseRoofFootprintRequirement;
+};
+
+export const HOUSE_ROOF_FORM_ORDER: readonly HouseRoofForm[] = ['flat', 'mono', 'gable', 'hipped'];
+
+export const HOUSE_ROOF_FORM_BEHAVIORS: Record<HouseRoofForm, HouseRoofFormBehavior> = {
+  flat: {
+    controls: {
+      pitch: false,
+      material: true,
+      primaryFallDirection: false,
+      ridgeAxis: false,
+      appendage: false,
+    },
+    selectedFormFootprintRequirement: 'any',
+  },
+  mono: {
+    controls: {
+      pitch: true,
+      material: true,
+      primaryFallDirection: true,
+      ridgeAxis: false,
+      appendage: true,
+    },
+    selectedFormFootprintRequirement: 'orthogonal',
+  },
+  gable: {
+    controls: {
+      pitch: true,
+      material: true,
+      primaryFallDirection: false,
+      ridgeAxis: true,
+      appendage: true,
+    },
+    selectedFormFootprintRequirement: 'orthogonal',
+  },
+  hipped: {
+    controls: {
+      pitch: true,
+      material: true,
+      primaryFallDirection: false,
+      ridgeAxis: true,
+      appendage: false,
+    },
+    selectedFormFootprintRequirement: 'orthogonal',
+  },
+};
+
+export function isHouseRoofForm(value: unknown): value is HouseRoofForm {
+  return typeof value === 'string' && Object.prototype.hasOwnProperty.call(HOUSE_ROOF_FORM_BEHAVIORS, value);
+}
+
+export function getHouseRoofFormBehavior(roofForm: HouseRoofForm): HouseRoofFormBehavior {
+  return HOUSE_ROOF_FORM_BEHAVIORS[roofForm];
+}
+
 export type HouseRoofCapabilities = {
   roofForm: HouseRoofForm;
   footprintTopology: HouseRoofFootprintTopology;
-  controls: {
-    pitch: true;
-    material: true;
-    primaryFallDirection: boolean;
-    ridgeAxis: boolean;
-    appendage: true;
-  };
+  controls: HouseRoofControls;
   selectedFormFootprintRequirement: HouseRoofFootprintRequirement;
   selectedFormSupported: boolean;
   appendageFootprintRequirement: 'rectangular';
@@ -180,25 +240,13 @@ export function deriveHouseRoofCapabilities(input: {
   const appendageSupportedHostEdges = deriveHouseRoofAppendageSupportedHostEdges({
     footprint: input.footprint,
   });
-  const selectedFormFootprintRequirement: HouseRoofFootprintRequirement =
-    input.roofForm === 'mono'
-      ? 'orthogonal'
-      : input.roofForm === 'gable'
-      ? 'orthogonal'
-      : input.roofForm === 'hipped'
-        ? 'orthogonal'
-        : 'any';
+  const behavior = getHouseRoofFormBehavior(input.roofForm);
+  const selectedFormFootprintRequirement = behavior.selectedFormFootprintRequirement;
 
   return {
     roofForm: input.roofForm,
     footprintTopology,
-    controls: {
-      pitch: true,
-      material: true,
-      primaryFallDirection: input.roofForm === 'mono',
-      ridgeAxis: input.roofForm === 'gable' || input.roofForm === 'hipped',
-      appendage: true,
-    },
+    controls: behavior.controls,
     selectedFormFootprintRequirement,
     selectedFormSupported:
       input.roofForm === 'flat'

@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, type Dispatch, type SetStateAction } from 'react';
+import { getHouseRoofFormBehavior, isHouseRoofForm } from '@sp/geometry';
 import {
   applyGeometryEditIntent,
   translateEstimateDrawingFieldToGeometryIntent,
@@ -528,50 +529,22 @@ function mirrorSharedRoofDraftToModules(
 function normalizeSharedHouseRoofDraftForCommit(
   roof: HouseFirstRoofDraft,
 ): HouseFirstRoofDraft {
-  const form: HouseRoofForm =
-    roof.form === 'flat' || roof.form === 'mono' || roof.form === 'gable' || roof.form === 'hipped'
-      ? roof.form
-      : 'mono';
+  const form: HouseRoofForm = isHouseRoofForm(roof.form) ? roof.form : 'mono';
+  const behavior = getHouseRoofFormBehavior(form);
   const pitchDeg = roof.primaryPitchDeg?.trim() ?? '';
   const base: HouseFirstRoofDraft = {
     ...roof,
     form,
   };
 
-  switch (form) {
-    case 'flat':
-      return {
-        ...base,
-        primaryPitchDeg: '0',
-        primaryFallDirection: null,
-        ridgeAxis: null,
-        openGableEndIds: [],
-        appendage: null,
-      };
-    case 'mono':
-      return {
-        ...base,
-        primaryPitchDeg: pitchDeg,
-        ridgeAxis: null,
-        openGableEndIds: [],
-      };
-    case 'gable':
-      return {
-        ...base,
-        primaryPitchDeg: pitchDeg,
-        primaryFallDirection: null,
-      };
-    case 'hipped':
-      return {
-        ...base,
-        primaryPitchDeg: pitchDeg,
-        primaryFallDirection: null,
-        openGableEndIds: [],
-        appendage: null,
-      };
-    default:
-      return base;
-  }
+  return {
+    ...base,
+    primaryPitchDeg: behavior.controls.pitch ? pitchDeg : '0',
+    primaryFallDirection: behavior.controls.primaryFallDirection ? base.primaryFallDirection ?? null : null,
+    ridgeAxis: behavior.controls.ridgeAxis ? base.ridgeAxis ?? null : null,
+    openGableEndIds: form === 'gable' ? base.openGableEndIds ?? [] : [],
+    appendage: behavior.controls.appendage ? base.appendage ?? null : null,
+  };
 }
 
 function buildNewDeckDraft(input: {
@@ -1007,36 +980,46 @@ export function useHouseMutationActions({
                   ...objectFirstDraft.houseAssembly,
                   houseForms: objectFirstDraft.houseAssembly.houseForms.map((houseForm, index) =>
                     index === 0
-                      ? {
-                          ...houseForm,
-                          roofIntentAuthored: true,
-                          roofIntent: {
-                            ...houseForm.roofIntent,
-                            form: normalizedRoof.form ?? houseForm.roofIntent.form,
-                            material: normalizedRoof.material ?? houseForm.roofIntent.material,
-                            primaryPitchDeg:
-                              normalizedRoof.primaryPitchDeg ?? houseForm.roofIntent.primaryPitchDeg,
-                            primaryFallDirection:
-                              normalizedRoof.primaryFallDirection ?? houseForm.roofIntent.primaryFallDirection,
-                            ridgeAxis: normalizedRoof.ridgeAxis ?? houseForm.roofIntent.ridgeAxis,
-                            openGableEndIds:
-                              normalizedRoof.openGableEndIds ?? houseForm.roofIntent.openGableEndIds,
-                            appendage: normalizedRoof.appendage
-                              ? {
-                                  enabled: Boolean(normalizedRoof.appendage.enabled),
-                                  form: normalizedRoof.appendage.form ?? houseForm.roofIntent.appendage.form,
-                                  hostEdge:
-                                    normalizedRoof.appendage.hostEdge ?? houseForm.roofIntent.appendage.hostEdge,
-                                  pitchDeg:
-                                    normalizedRoof.appendage.pitchDeg ?? houseForm.roofIntent.appendage.pitchDeg,
-                                  dropMm: normalizedRoof.appendage.dropMm ?? houseForm.roofIntent.appendage.dropMm,
-                                }
-                              : {
-                                  ...houseForm.roofIntent.appendage,
-                                  enabled: false,
-                                },
-                          },
-                        }
+                      ? (() => {
+                          const form = normalizedRoof.form ?? houseForm.roofIntent.form;
+                          const behavior = getHouseRoofFormBehavior(form);
+                          return {
+                            ...houseForm,
+                            roofIntentAuthored: true,
+                            roofIntent: {
+                              ...houseForm.roofIntent,
+                              form,
+                              material: normalizedRoof.material ?? houseForm.roofIntent.material,
+                              primaryPitchDeg:
+                                normalizedRoof.primaryPitchDeg ?? houseForm.roofIntent.primaryPitchDeg,
+                              primaryFallDirection: behavior.controls.primaryFallDirection
+                                ? normalizedRoof.primaryFallDirection ?? houseForm.roofIntent.primaryFallDirection
+                                : 'negative_y',
+                              ridgeAxis: behavior.controls.ridgeAxis
+                                ? normalizedRoof.ridgeAxis ?? houseForm.roofIntent.ridgeAxis
+                                : 'x',
+                              openGableEndIds:
+                                form === 'gable'
+                                  ? normalizedRoof.openGableEndIds ?? houseForm.roofIntent.openGableEndIds
+                                  : [],
+                              appendage:
+                                behavior.controls.appendage && normalizedRoof.appendage
+                                  ? {
+                                      enabled: Boolean(normalizedRoof.appendage.enabled),
+                                      form: normalizedRoof.appendage.form ?? houseForm.roofIntent.appendage.form,
+                                      hostEdge:
+                                        normalizedRoof.appendage.hostEdge ?? houseForm.roofIntent.appendage.hostEdge,
+                                      pitchDeg:
+                                        normalizedRoof.appendage.pitchDeg ?? houseForm.roofIntent.appendage.pitchDeg,
+                                      dropMm: normalizedRoof.appendage.dropMm ?? houseForm.roofIntent.appendage.dropMm,
+                                    }
+                                  : {
+                                      ...houseForm.roofIntent.appendage,
+                                      enabled: false,
+                                    },
+                            },
+                          };
+                        })()
                       : houseForm,
                   ),
                 }
