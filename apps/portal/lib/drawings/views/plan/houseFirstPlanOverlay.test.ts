@@ -11,7 +11,10 @@ import { buildWorkbenchGeometryPreview } from '@/lib/drawings/geometry/buildWork
 import { getSanctuaryGeometryWorkbenchFixture } from '@/lib/drawings/sanctuaryWorkbenchFixtures';
 import { buildDrawingWorkbenchStore } from '@/lib/drawings/state/drawingWorkbenchStore';
 import { createDrawingWorkbenchUiState } from '@/lib/drawings/state/drawingWorkbenchUiState';
-import type { ObjectWorkbenchCompatibilityDraft } from '@/lib/drawings/state/compat/objectWorkbenchCompatibilityModel';
+import {
+  buildObjectWorkbenchCompatibilityProjectModel,
+  type ObjectWorkbenchCompatibilityDraft,
+} from '@/lib/drawings/state/compat/objectWorkbenchCompatibilityModel';
 import {
   buildObjectFirstDeckDraftsFromCompatibilityDrafts,
   buildObjectFirstOpeningDraftsFromCompatibilityDrafts,
@@ -885,8 +888,12 @@ describe('houseFirstPlanOverlay', () => {
     expect(preview.kind).toBe('ready');
     if (preview.kind !== 'ready') return;
 
+    const compatibilityProjectModel = buildObjectWorkbenchCompatibilityProjectModel({
+      snapshot: fixture.snapshot,
+      draft,
+    });
     const overlay = buildHouseFirstPlanOverlay({
-      house: store.persisted.compatibilityBridge.projectModel.house,
+      house: compatibilityProjectModel.house,
       selection: { kind: 'opening', targetId: 'opening-debug' },
       moduleLengthM: String(store.derived.activePlanModel?.lengthA ?? ''),
       moduleProjectionM: String(store.derived.activePlanModel?.spanA ?? ''),
@@ -940,7 +947,7 @@ describe('houseFirstPlanOverlay', () => {
     expect(toScenePolygonMetres(footprintShape?.polygon ?? [])).toEqual(sceneFootprintPolygon);
     expect(openingObject).toBeDefined();
     expect(preview.scene.metadata.houseOpeningSkippedInvalidCount).toBe(0);
-    expect(store.persisted.compatibilityBridge.projectModel.house?.openings[0]?.validation.status).toBe('valid');
+    expect(compatibilityProjectModel.house?.openings[0]?.validation.status).toBe('valid');
   });
 
   it('matches a valid opening plan polygon to the XY wall footprint of the 3D opening marker', () => {
@@ -995,8 +1002,12 @@ describe('houseFirstPlanOverlay', () => {
     expect(preview.kind).toBe('ready');
     if (preview.kind !== 'ready') return;
 
+    const compatibilityProjectModel = buildObjectWorkbenchCompatibilityProjectModel({
+      snapshot: fixture.snapshot,
+      draft,
+    });
     const overlay = buildHouseFirstPlanOverlay({
-      house: store.persisted.compatibilityBridge.projectModel.house,
+      house: compatibilityProjectModel.house,
       selection: { kind: 'opening', targetId: 'opening-valid' },
       moduleLengthM: String(store.derived.activePlanModel?.lengthA ?? ''),
       moduleProjectionM: String(store.derived.activePlanModel?.spanA ?? ''),

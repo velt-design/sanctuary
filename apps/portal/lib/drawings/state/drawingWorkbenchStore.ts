@@ -47,7 +47,6 @@ import {
   type ObjectWorkbenchInspectorFacade,
 } from './objectWorkbenchInspectorModel';
 import type {
-  ObjectWorkbenchCompatibilityProjectModel,
   ObjectWorkbenchCompatibilityHouseModel,
 } from './compat/objectWorkbenchCompatibilityModel';
 import type {
@@ -79,9 +78,6 @@ export type DrawingWorkbenchStore = {
     ignoreModuleResults: boolean;
     modules: DrawingWorkbenchModuleEntry[];
     projectModel: WorkbenchProjectModel;
-    compatibilityBridge: {
-      projectModel: ObjectWorkbenchCompatibilityProjectModel;
-    };
   };
   ui: DrawingWorkbenchUiState;
   derived: {
@@ -360,9 +356,6 @@ export function buildDrawingWorkbenchStore(input: {
       ignoreModuleResults: Boolean(input.ignoreModuleResults),
       modules,
       projectModel,
-      compatibilityBridge: {
-        projectModel: compatibilityProjectModel,
-      },
     },
     ui,
     derived: {

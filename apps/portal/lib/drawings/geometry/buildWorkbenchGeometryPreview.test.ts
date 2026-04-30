@@ -111,7 +111,7 @@ function ensureObjectFirstDraft(snapshot: Record<string, unknown> | null, draft:
   draft.objectFirst = buildObjectFirstWorkbenchDraftFromProjectModel(baselineStore.persisted.projectModel);
   return {
     objectFirst: draft.objectFirst,
-    sourceFormId: baselineStore.persisted.compatibilityBridge.projectModel.house?.id ?? null,
+    sourceFormId: baselineStore.persisted.projectModel.houseAssembly?.houseForms[0]?.id ?? null,
   };
 }
 

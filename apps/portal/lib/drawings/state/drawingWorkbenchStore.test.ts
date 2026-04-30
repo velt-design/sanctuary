@@ -15,7 +15,6 @@ import type { ObjectWorkbenchCompatibilityDraft } from './compat/objectWorkbench
 import {
   buildObjectFirstDeckDraftsFromCompatibilityDrafts,
   buildObjectFirstOpeningDraftsFromCompatibilityDrafts,
-  buildObjectFirstPergolaDraftsFromCompatibilityDrafts,
   buildObjectFirstWorkbenchDraftFromProjectModel,
 } from './objectFirstWorkbenchAdapter';
 import type { EstimateDrawingDraft } from '@/lib/estimates/drawingEdits';
@@ -118,7 +117,7 @@ function applyObjectFirstCompatibilityDraft(input: {
   });
   const objectFirst = buildObjectFirstWorkbenchDraftFromProjectModel(baselineStore.persisted.projectModel);
   const houseForm = objectFirst.houseAssembly?.houseForms[0] ?? null;
-  const compatibilityHouse = baselineStore.persisted.compatibilityBridge.projectModel.house;
+  const derivedEnvelope = baselineStore.persisted.projectModel.houseAssembly?.derivedEnvelope ?? null;
 
   if (input.compatibility.roof && houseForm) {
     houseForm.roofIntentAuthored = true;
@@ -139,11 +138,10 @@ function applyObjectFirstCompatibilityDraft(input: {
       const hostWallId =
         opening.hostWallId ??
         (opening.hostEdgeId
-          ? compatibilityHouse?.derivedEnvelope.edges.find((edge) => edge.id === opening.hostEdgeId)?.hostWallId ?? null
+          ? derivedEnvelope?.edges.find((edge) => edge.id === opening.hostEdgeId)?.hostWallId ?? null
           : null) ??
         (opening.wallId
-          ? compatibilityHouse?.derivedEnvelope.attachmentZones.find((zone) => zone.side === opening.wallId)?.hostWallId ??
-            null
+          ? derivedEnvelope?.attachmentZones.find((zone) => zone.side === opening.wallId)?.hostWallId ?? null
           : null);
       return {
         ...opening,
@@ -156,10 +154,18 @@ function applyObjectFirstCompatibilityDraft(input: {
     );
   }
   if (input.compatibility.pergolas) {
-    objectFirst.pergolas = buildObjectFirstPergolaDraftsFromCompatibilityDrafts(
-      input.compatibility.pergolas,
-      baselineStore.persisted.compatibilityBridge.projectModel.pergolas,
-    );
+    objectFirst.pergolas = input.compatibility.pergolas.map((pergola) => {
+      const objectPergola = baselineStore.persisted.projectModel.pergolas.find((candidate) => candidate.id === pergola.id);
+      return {
+        id: pergola.id,
+        label: objectPergola?.label ?? pergola.id,
+        family: objectPergola?.family ?? 'unknown',
+        attachmentEdgeId: pergola.attachmentEdgeId ?? null,
+        attachmentZoneId: pergola.attachmentZoneId ?? null,
+        side: objectPergola?.side ?? 'rear',
+        strategy: objectPergola?.strategy ?? null,
+      };
+    });
   }
 
   input.draft.objectFirst = objectFirst;
@@ -239,24 +245,22 @@ describe('buildDrawingWorkbenchStore', () => {
     expect(store.persisted.projectModel.houseAssembly?.id).toBe('assembly-main');
     expect(store.persisted.projectModel.houseAssembly?.houseForms[0]?.id).toBe('house-main');
     expect('house' in (store.persisted.projectModel as Record<string, unknown>)).toBe(false);
-    expect(store.persisted.compatibilityBridge.projectModel.house?.id).toBe('house-main');
+    expect('compatibilityBridge' in (store.persisted as Record<string, unknown>)).toBe(false);
     expect('compatibilityProjectModel' in (store.persisted as Record<string, unknown>)).toBe(false);
     expect(store.derived.houseAssembly?.id).toBe('assembly-main');
     expect(store.derived.houseForms.map((houseForm) => houseForm.id)).toEqual(['house-main']);
     expect(store.derived.houseFormCount).toBe(1);
     expect(store.derived.activeHouseForm?.id).toBe('house-main');
-    expect(store.persisted.compatibilityBridge.projectModel.house?.footprint.preset).toBe('straight');
-    expect(store.persisted.compatibilityBridge.projectModel.pergolas).toHaveLength(1);
-    expect(store.persisted.compatibilityBridge.projectModel.house ? 1 : 0).toBe(1);
-    expect(store.persisted.compatibilityBridge.projectModel.house?.decks).toEqual([]);
-    expect(store.persisted.compatibilityBridge.projectModel.house?.openings).toEqual([]);
+    expect(store.persisted.projectModel.houseAssembly?.houseForms[0]?.footprint.preset).toBe('straight');
+    expect(store.persisted.projectModel.pergolas).toHaveLength(1);
+    expect(store.persisted.projectModel.houseAssembly?.houseForms).toHaveLength(1);
+    expect(store.persisted.projectModel.decks).toEqual([]);
+    expect(store.persisted.projectModel.openings).toEqual([]);
     expect(store.derived.objectWorkbench.activeDeck).toBeNull();
     expect(store.derived.objectWorkbench.activeOpening).toBeNull();
     expect(store.derived.objectWorkbench.activePergola).toBeNull();
     expect(store.derived.objectWorkbench.houseForm.roof.validationStatus).toBe('approximate');
-    expect(store.derived.objectWorkbench.houseForm.warnings).toEqual(
-      store.persisted.compatibilityBridge.projectModel.warnings,
-    );
+    expect(store.derived.objectWorkbench.houseForm.warnings).toEqual([]);
     expect(store.derived.objectWorkbench.houseForm.lowConfidence).toBe(false);
     expect(store.derived.railModel.familySummaries.map((family) => family.family)).toEqual([
       'house_forms',
@@ -605,7 +609,7 @@ describe('buildDrawingWorkbenchStore', () => {
       }),
     });
 
-    expect(store.persisted.compatibilityBridge.projectModel.house?.decks.map((deck) => deck.id)).toEqual(['deck-object']);
+    expect(store.persisted.projectModel.decks.map((deck) => deck.id)).toEqual(['deck-object']);
     expect(store.derived.objectWorkbench.decks[0]).toMatchObject({
       id: 'deck-object',
       label: 'Object deck',
@@ -731,7 +735,6 @@ describe('buildDrawingWorkbenchStore', () => {
       }),
     });
 
-    expect(selectedStore.persisted.compatibilityBridge.projectModel.house?.decks.map((deck) => deck.id)).toEqual(['deck-a', 'deck-b']);
     expect(selectedStore.persisted.projectModel.decks.map((deck) => deck.id)).toEqual(['deck-a', 'deck-b']);
     expect(selectedStore.derived.objectWorkbench.diagnostics.activeDeckId).toBe('deck-b');
     expect(selectedStore.ui.activeObjectRef).toEqual({ family: 'decks', objectId: 'deck-b' });
@@ -757,7 +760,7 @@ describe('buildDrawingWorkbenchStore', () => {
       }),
     });
 
-    expect(removedStore.persisted.compatibilityBridge.projectModel.house?.decks.map((deck) => deck.id)).toEqual(['deck-a']);
+    expect(removedStore.persisted.projectModel.decks.map((deck) => deck.id)).toEqual(['deck-a']);
     expect(removedStore.ui.activeRailTab).toBe('decks');
     expect(removedStore.ui.activeObjectFamily).toBe('decks');
     expect(removedStore.ui.activeObjectRef).toEqual({ family: 'decks', objectId: null });
@@ -938,7 +941,7 @@ describe('buildDrawingWorkbenchStore', () => {
       }),
     });
 
-    expect(store.persisted.compatibilityBridge.projectModel.house?.openings.map((opening) => opening.id)).toEqual(['opening-stale']);
+    expect(store.persisted.projectModel.openings.map((opening) => opening.id)).toEqual(['opening-stale']);
     expect(store.derived.objectFirstOpenings[0]).toMatchObject({
       id: 'opening-stale',
       sourceFormId: store.derived.houseForms[0]?.id,
@@ -996,7 +999,7 @@ describe('buildDrawingWorkbenchStore', () => {
       }),
     });
 
-    expect(store.persisted.compatibilityBridge.projectModel.house?.footprint.preset).toBe('straight');
+    expect(store.persisted.projectModel.houseAssembly?.houseForms[0]?.footprint.preset).toBe('straight');
     expect(store.derived.objectWorkbench.houseForm.lowConfidence).toBe(true);
     expect(store.derived.objectWorkbench.houseForm.warnings.length).toBeGreaterThan(0);
   });
@@ -1168,11 +1171,6 @@ describe('buildDrawingWorkbenchStore', () => {
 
     expect(store.derived.objectWorkbench.houseForm.roof.validationStatus).not.toBe('invalid');
     expect(store.derived.objectWorkbench.houseForm.roof.validationCode).toBeNull();
-    expect(store.persisted.compatibilityBridge.projectModel.house?.roof.form).toBe('hipped');
-    expect(store.persisted.compatibilityBridge.projectModel.house?.roof.primaryPitchDeg).toBe('5');
-    expect(store.persisted.compatibilityBridge.projectModel.house?.roof.ridgeAxis).toBe('x');
-    expect(store.persisted.compatibilityBridge.projectModel.house?.roof.openGableEndIds).toEqual([]);
-    expect(store.persisted.compatibilityBridge.projectModel.house?.roof.appendage.enabled).toBe(false);
     expect(store.persisted.projectModel.houseAssembly?.houseForms[0]?.roofIntent).toMatchObject({
       form: 'hipped',
       primaryPitchDeg: '5',

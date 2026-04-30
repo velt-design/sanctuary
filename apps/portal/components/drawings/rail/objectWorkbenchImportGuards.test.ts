@@ -65,6 +65,8 @@ const REMOVED_DERIVED_COMPATIBILITY_BRIDGE_READ =
   /\b[A-Za-z_$][\w$]*\.derived\.compatibilityBridge\b/;
 const FLAT_PERSISTED_COMPATIBILITY_PROJECT_MODEL_READ =
   /\b[A-Za-z_$][\w$]*\.persisted\.compatibilityProjectModel\b/;
+const REMOVED_PERSISTED_COMPATIBILITY_BRIDGE_READ =
+  /\b[A-Za-z_$][\w$]*\.persisted\.compatibilityBridge\b/;
 const PERSISTED_COMPATIBILITY_BRIDGE_PROJECT_MODEL_READ =
   /\b[A-Za-z_$][\w$]*\.persisted\.compatibilityBridge\.projectModel\b/;
 const REMOVED_ESTIMATE_HOUSE_FIRST_API =
@@ -128,6 +130,7 @@ describe('object workbench import guards', () => {
           /\b(?:ui|current|store\.ui)\.(?:workbenchMode|activeHouseSelection|activePergolaId)\b/.test(source);
         const readsFlatCompatibilityDerivedField = FLAT_COMPATIBILITY_DERIVED_FIELD_READ.test(source);
         const readsFlatPersistedCompatibilityModel = FLAT_PERSISTED_COMPATIBILITY_PROJECT_MODEL_READ.test(source);
+        const readsPersistedCompatibilityBridge = REMOVED_PERSISTED_COMPATIBILITY_BRIDGE_READ.test(source);
         const readsPersistedCompatibilityBridgeProjectModel =
           PERSISTED_COMPATIBILITY_BRIDGE_PROJECT_MODEL_READ.test(source);
         const readsCompatibilityBridge = REMOVED_DERIVED_COMPATIBILITY_BRIDGE_READ.test(source);
@@ -149,6 +152,9 @@ describe('object workbench import guards', () => {
         }
         if (readsFlatPersistedCompatibilityModel) {
           violations.push(`${relativePath} reads removed flat compatibility model from store.persisted`);
+        }
+        if (readsPersistedCompatibilityBridge) {
+          violations.push(`${relativePath} reads removed persisted compatibilityBridge`);
         }
         if (
           readsPersistedCompatibilityBridgeProjectModel &&
@@ -250,7 +256,7 @@ describe('object workbench import guards', () => {
     expect(violations).toEqual([]);
   });
 
-  it('keeps callers off the removed flat persisted compatibility store model', () => {
+  it('keeps callers off removed persisted compatibility store models', () => {
     const violations: string[] = [];
     const roots = [
       path.join('apps', 'portal', 'app', 'staff', 'projects', '[projectId]', 'design-workbench'),
@@ -264,6 +270,9 @@ describe('object workbench import guards', () => {
         const source = fs.readFileSync(absolutePath, 'utf8');
         if (FLAT_PERSISTED_COMPATIBILITY_PROJECT_MODEL_READ.test(source)) {
           violations.push(`${relativePath} reads removed flat compatibility model from store.persisted`);
+        }
+        if (REMOVED_PERSISTED_COMPATIBILITY_BRIDGE_READ.test(source)) {
+          violations.push(`${relativePath} reads removed persisted compatibilityBridge`);
         }
       }
     }
