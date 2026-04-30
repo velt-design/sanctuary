@@ -8,7 +8,7 @@ import type {
   DeckModel,
   DeckSupportClassification,
   DeckSupportWarningCode,
-} from './houseFirstWorkbenchModel';
+} from './compat/objectWorkbenchCompatibilityModel';
 
 export type DeckSupportAttachmentSide = NonNullable<CalculatorModuleInputs['attachmentSide']>;
 export type DeckSupportResolvedClassification = DeckSupportClassification | 'none';

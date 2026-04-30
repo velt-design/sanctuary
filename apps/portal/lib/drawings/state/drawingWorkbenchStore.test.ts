@@ -172,24 +172,27 @@ describe('buildDrawingWorkbenchStore', () => {
     expect(store.persisted.projectModel.houseAssembly?.id).toBe('assembly-main');
     expect(store.persisted.projectModel.houseAssembly?.houseForms[0]?.id).toBe('house-main');
     expect('house' in (store.persisted.projectModel as Record<string, unknown>)).toBe(false);
-    expect(store.persisted.compatibilityProjectModel.house?.id).toBe('house-main');
+    expect(store.persisted.compatibilityBridge.projectModel.house?.id).toBe('house-main');
+    expect(store.persisted.compatibilityProjectModel).toBe(store.persisted.compatibilityBridge.projectModel);
     expect(store.derived.houseAssembly?.id).toBe('assembly-main');
     expect(store.derived.houseForms.map((houseForm) => houseForm.id)).toEqual(['house-main']);
     expect(store.derived.houseFormCount).toBe(1);
     expect(store.derived.activeHouseForm?.id).toBe('house-main');
     expect(store.derived.compatibilityBridge.house?.footprint.preset).toBe('straight');
     expect(store.derived.compatibilityBridge.pergolas).toHaveLength(1);
-    expect(store.derived.compatibilityBridge.projectModel).toBe(store.persisted.compatibilityProjectModel);
-    expect(store.derived.compatibilityBridge.house).toBe(store.persisted.compatibilityProjectModel.house);
+    expect(store.derived.compatibilityBridge.projectModel).toBe(store.persisted.compatibilityBridge.projectModel);
+    expect(store.derived.compatibilityBridge.house).toBe(store.persisted.compatibilityBridge.projectModel.house);
     expect(store.derived.compatibilityBridge.houseCount).toBe(1);
-    expect(store.derived.compatibilityBridge.decks).toBe(store.persisted.compatibilityProjectModel.house?.decks);
-    expect(store.derived.compatibilityBridge.openings).toBe(store.persisted.compatibilityProjectModel.house?.openings);
-    expect(store.derived.compatibilityBridge.pergolas).toBe(store.persisted.compatibilityProjectModel.pergolas);
+    expect(store.derived.compatibilityBridge.decks).toBe(store.persisted.compatibilityBridge.projectModel.house?.decks);
+    expect(store.derived.compatibilityBridge.openings).toBe(store.persisted.compatibilityBridge.projectModel.house?.openings);
+    expect(store.derived.compatibilityBridge.pergolas).toBe(store.persisted.compatibilityBridge.projectModel.pergolas);
     expect(store.derived.compatibilityBridge.activeDeck).toBeNull();
     expect(store.derived.compatibilityBridge.activeOpening).toBeNull();
     expect(store.derived.compatibilityBridge.activePergolaId).toBe('pergola-1');
     expect(store.derived.compatibilityBridge.roofReviewStatus).toBe('approximate');
-    expect(store.derived.compatibilityBridge.migrationWarnings).toBe(store.persisted.compatibilityProjectModel.warnings);
+    expect(store.derived.compatibilityBridge.migrationWarnings).toBe(
+      store.persisted.compatibilityBridge.projectModel.warnings,
+    );
     expect(store.derived.compatibilityBridge.houseIsLowConfidence).toBe(false);
     expect(store.derived.railModel.familySummaries.map((family) => family.family)).toEqual([
       'house_forms',

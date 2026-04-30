@@ -1,16 +1,18 @@
 import { describe, expect, it } from 'vitest';
 import { getSanctuaryGeometryWorkbenchFixture } from '@/lib/drawings/sanctuaryWorkbenchFixtures';
 import { buildEstimateDrawingDraftFromSnapshot } from '@/lib/estimates/drawingEdits';
-import { buildHouseFirstWorkbenchProjectModel } from './houseFirstWorkbenchAdapter';
-import type { HouseFirstWorkbenchProjectModel } from './houseFirstWorkbenchModel';
+import {
+  buildObjectWorkbenchCompatibilityProjectModel,
+  type ObjectWorkbenchCompatibilityProjectModel,
+} from './compat/objectWorkbenchCompatibilityModel';
 import { buildObjectFirstWorkbenchProjectModel } from './objectFirstWorkbenchAdapter';
 
-function loadFixtureProject(slug = 'mono-standard'): HouseFirstWorkbenchProjectModel {
+function loadFixtureProject(slug = 'mono-standard'): ObjectWorkbenchCompatibilityProjectModel {
   const fixture = getSanctuaryGeometryWorkbenchFixture(slug);
   if (!fixture) {
     throw new Error(`Missing fixture: ${slug}`);
   }
-  return buildHouseFirstWorkbenchProjectModel({
+  return buildObjectWorkbenchCompatibilityProjectModel({
     snapshot: fixture.snapshot,
     draft: fixture.draft,
   });
@@ -126,7 +128,7 @@ describe('buildObjectFirstWorkbenchProjectModel', () => {
         },
       ],
     };
-    const compatibilityProject = buildHouseFirstWorkbenchProjectModel({
+    const compatibilityProject = buildObjectWorkbenchCompatibilityProjectModel({
       snapshot: fixture.snapshot,
       draft,
     });

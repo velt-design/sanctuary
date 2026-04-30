@@ -20,7 +20,7 @@ import {
 import {
   normalizeWallOpeningKind,
   resolveOpeningPanelCount,
-} from './houseFirstWorkbenchModel';
+} from './compat/objectWorkbenchCompatibilityModel';
 import type {
   DeckElevationMode,
   DeckAttachmentMode,
@@ -38,7 +38,7 @@ import type {
   SliderPanelCount,
   WallOpeningHostSide,
   WallOpeningKind,
-} from './houseFirstWorkbenchModel';
+} from './compat/objectWorkbenchCompatibilityModel';
 
 export type WorkbenchObjectFamily = 'house_forms' | 'decks' | 'openings' | 'pergolas';
 

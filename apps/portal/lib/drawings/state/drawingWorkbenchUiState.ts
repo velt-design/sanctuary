@@ -1,5 +1,5 @@
 import type { ModuleViewsTab } from '@/app/staff/calculator/ModuleViewsCard';
-import type { WorkbenchHouseSelection, WorkbenchMode } from './houseFirstWorkbenchModel';
+import type { WorkbenchHouseSelection, WorkbenchMode } from './compat/objectWorkbenchCompatibilityModel';
 import type { WorkbenchObjectFamily, WorkbenchObjectRef } from './objectFirstWorkbenchModel';
 
 export type DrawingWorkbenchViewportMode = 'sheet' | 'model' | 'geometry3d';

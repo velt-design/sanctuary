@@ -2,11 +2,11 @@ import { getHouseRoofFormBehavior } from '@sp/geometry';
 import type { CalculatorHouseAttachmentStrategy, CalculatorModuleInputs } from '@/lib/types/calculator';
 import type { DeckInteractionCapability } from '@/lib/drawings/interactions/deckInteractionContract';
 import type {
-  HouseFirstMigrationWarning,
-  HouseFirstWorkbenchProjectModel,
-  HouseModel,
-  PergolaModel,
-} from './houseFirstWorkbenchModel';
+  ObjectWorkbenchCompatibilityMigrationWarning,
+  ObjectWorkbenchCompatibilityProjectModel,
+  ObjectWorkbenchCompatibilityHouseModel,
+  ObjectWorkbenchCompatibilityPergolaModel,
+} from './compat/objectWorkbenchCompatibilityModel';
 import type { WorkbenchDeckSupportDiagnostic } from './deckSupportDiagnostics';
 import type {
   ObjectFirstOpeningHostResolution,
@@ -67,7 +67,7 @@ export type ObjectWorkbenchPergolaConnectionKind = 'freestanding' | 'soffit' | '
 export type ObjectWorkbenchPergolaAttachmentStrategy = CalculatorHouseAttachmentStrategy | 'auto';
 
 export type ObjectWorkbenchMigrationWarning = Pick<
-  HouseFirstMigrationWarning,
+  ObjectWorkbenchCompatibilityMigrationWarning,
   'id' | 'code' | 'field' | 'message' | 'severity'
 >;
 
@@ -196,7 +196,7 @@ type BuildObjectWorkbenchInspectorFacadeInput = {
   activeDeckInteraction: DeckInteractionCapability | null;
   activeDeckSupport: WorkbenchDeckSupportDiagnostic | null;
   activeObjectRef: WorkbenchObjectRef;
-  compatibilityProjectModel: HouseFirstWorkbenchProjectModel;
+  compatibilityProjectModel: ObjectWorkbenchCompatibilityProjectModel;
   houseAssembly: HouseAssemblyModel | null;
   openingHostResolutions: Map<string, ObjectFirstOpeningHostResolution>;
   pergolaAttachmentResolutions: Map<string, ObjectFirstPergolaAttachmentResolution>;
@@ -223,7 +223,7 @@ function buildFallbackRoofIntent(houseForm: HouseFormModel | null): HouseFormRoo
 
 function buildRoofInspector(
   houseForm: HouseFormModel | null,
-  compatibilityHouse: HouseModel | null,
+  compatibilityHouse: ObjectWorkbenchCompatibilityHouseModel | null,
 ): ObjectWorkbenchRoofInspectorModel {
   const intent = buildFallbackRoofIntent(houseForm);
   const roof = compatibilityHouse?.roof ?? null;
@@ -251,7 +251,7 @@ function buildRoofInspector(
 }
 
 function buildMigrationWarnings(
-  warnings: HouseFirstMigrationWarning[],
+  warnings: ObjectWorkbenchCompatibilityMigrationWarning[],
 ): ObjectWorkbenchMigrationWarning[] {
   return warnings.map((warning) => ({
     id: warning.id,
@@ -263,7 +263,7 @@ function buildMigrationWarnings(
 }
 
 function buildDeckInspectorModels(input: {
-  compatibilityHouse: HouseModel | null;
+  compatibilityHouse: ObjectWorkbenchCompatibilityHouseModel | null;
   decks: DeckObjectModel[];
 }): ObjectWorkbenchDeckInspectorModel[] {
   const compatibilityDecksById = new Map(
@@ -291,7 +291,7 @@ function buildDeckInspectorModels(input: {
 }
 
 function buildOpeningInspectorModels(input: {
-  compatibilityHouse: HouseModel | null;
+  compatibilityHouse: ObjectWorkbenchCompatibilityHouseModel | null;
   houseAssembly: HouseAssemblyModel | null;
   openingHostResolutions: Map<string, ObjectFirstOpeningHostResolution>;
   openings: OpeningObjectModel[];
@@ -326,7 +326,7 @@ function buildOpeningInspectorModels(input: {
 }
 
 function buildPergolaInspectorModels(input: {
-  compatibilityProjectModel: HouseFirstWorkbenchProjectModel;
+  compatibilityProjectModel: ObjectWorkbenchCompatibilityProjectModel;
   pergolaAttachmentResolutions: Map<string, ObjectFirstPergolaAttachmentResolution>;
   pergolas: PergolaObjectModel[];
 }): ObjectWorkbenchPergolaInspectorModel[] {
@@ -365,7 +365,7 @@ function summarizeAttachmentZoneKinds(houseAssembly: HouseAssemblyModel | null):
     .join(' | ');
 }
 
-function summarizeAttachmentZoneBlocks(compatibilityHouse: HouseModel | null): string {
+function summarizeAttachmentZoneBlocks(compatibilityHouse: ObjectWorkbenchCompatibilityHouseModel | null): string {
   const blocked = compatibilityHouse?.attachmentZoneDiagnostics.blocked ?? [];
   if (!blocked.length) return 'none';
   return Array.from(
@@ -399,7 +399,7 @@ function buildDiagnostics(input: {
   activeDeckInteraction: DeckInteractionCapability | null;
   activeDeckSupport: WorkbenchDeckSupportDiagnostic | null;
   activeOpening: ObjectWorkbenchOpeningInspectorModel | null;
-  compatibilityHouse: HouseModel | null;
+  compatibilityHouse: ObjectWorkbenchCompatibilityHouseModel | null;
   houseAssembly: HouseAssemblyModel | null;
   houseFormContext: ObjectWorkbenchHouseFormInspectorModel;
   pergolas: ObjectWorkbenchPergolaInspectorModel[];

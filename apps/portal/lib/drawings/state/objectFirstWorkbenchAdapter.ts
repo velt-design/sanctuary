@@ -15,17 +15,17 @@ import {
   normalizeObjectFirstWorkbenchDraftVNext,
 } from './objectFirstWorkbenchModel';
 import type {
-  HouseFirstDeckDraft,
-  HouseFirstMigrationWarning,
-  HouseFirstOpeningDraft,
-  HouseFirstPergolaDraft,
-  HouseFirstRoofDraft,
-  HouseFirstWorkbenchProjectModel,
-  HouseModel,
-  PergolaModel,
-} from './houseFirstWorkbenchModel';
+  ObjectWorkbenchCompatibilityDeckDraft,
+  ObjectWorkbenchCompatibilityMigrationWarning,
+  ObjectWorkbenchCompatibilityOpeningDraft,
+  ObjectWorkbenchCompatibilityPergolaDraft,
+  ObjectWorkbenchCompatibilityRoofDraft,
+  ObjectWorkbenchCompatibilityProjectModel,
+  ObjectWorkbenchCompatibilityHouseModel,
+  ObjectWorkbenchCompatibilityPergolaModel,
+} from './compat/objectWorkbenchCompatibilityModel';
 
-function buildRoofIntentFromCompatibilityHouse(house: HouseModel): HouseFormModel['roofIntent'] {
+function buildRoofIntentFromCompatibilityHouse(house: ObjectWorkbenchCompatibilityHouseModel): HouseFormModel['roofIntent'] {
   return {
     form: house.roof.form,
     material: house.roof.material,
@@ -43,7 +43,7 @@ function buildRoofIntentFromCompatibilityHouse(house: HouseModel): HouseFormMode
   };
 }
 
-function buildHouseFormFromCompatibilityHouse(house: HouseModel): HouseFormModel {
+function buildHouseFormFromCompatibilityHouse(house: ObjectWorkbenchCompatibilityHouseModel): HouseFormModel {
   return {
     id: house.id,
     label: house.label,
@@ -75,7 +75,7 @@ function buildHouseFormFromCompatibilityHouse(house: HouseModel): HouseFormModel
   };
 }
 
-function buildDeckObjects(house: HouseModel | null): DeckObjectModel[] {
+function buildDeckObjects(house: ObjectWorkbenchCompatibilityHouseModel | null): DeckObjectModel[] {
   return (house?.decks ?? []).map((deck) => ({
     id: deck.id,
     label: deck.name,
@@ -97,7 +97,7 @@ function buildDeckObjects(house: HouseModel | null): DeckObjectModel[] {
   }));
 }
 
-function buildOpeningObjects(house: HouseModel | null): OpeningObjectModel[] {
+function buildOpeningObjects(house: ObjectWorkbenchCompatibilityHouseModel | null): OpeningObjectModel[] {
   return (house?.openings ?? []).map((opening) => ({
     id: opening.id,
     label: opening.label,
@@ -114,7 +114,7 @@ function buildOpeningObjects(house: HouseModel | null): OpeningObjectModel[] {
   }));
 }
 
-function buildPergolaObjects(pergolas: PergolaModel[]): PergolaObjectModel[] {
+function buildPergolaObjects(pergolas: ObjectWorkbenchCompatibilityPergolaModel[]): PergolaObjectModel[] {
   return pergolas.map((pergola) => ({
     id: pergola.id,
     label: pergola.label,
@@ -126,7 +126,7 @@ function buildPergolaObjects(pergolas: PergolaModel[]): PergolaObjectModel[] {
   }));
 }
 
-function formatWarning(warning: HouseFirstMigrationWarning): string {
+function formatWarning(warning: ObjectWorkbenchCompatibilityMigrationWarning): string {
   return warning.message;
 }
 
@@ -163,8 +163,8 @@ function buildHouseAssemblyDraftFromProject(
   };
 }
 
-export function buildObjectFirstDeckDraftsFromHouseFirstDrafts(
-  decks: HouseFirstDeckDraft[] | null | undefined,
+export function buildObjectFirstDeckDraftsFromCompatibilityDrafts(
+  decks: ObjectWorkbenchCompatibilityDeckDraft[] | null | undefined,
 ): ObjectFirstDeckDraft[] {
   return (decks ?? []).map((deck, index) => ({
     id: deck.id,
@@ -187,8 +187,14 @@ export function buildObjectFirstDeckDraftsFromHouseFirstDrafts(
   }));
 }
 
-export function buildObjectFirstOpeningDraftsFromHouseFirstDrafts(
-  openings: HouseFirstOpeningDraft[] | null | undefined,
+export function buildObjectFirstDeckDraftsFromHouseFirstDrafts(
+  decks: ObjectWorkbenchCompatibilityDeckDraft[] | null | undefined,
+): ObjectFirstDeckDraft[] {
+  return buildObjectFirstDeckDraftsFromCompatibilityDrafts(decks);
+}
+
+export function buildObjectFirstOpeningDraftsFromCompatibilityDrafts(
+  openings: ObjectWorkbenchCompatibilityOpeningDraft[] | null | undefined,
   sourceFormId: string | null = null,
 ): ObjectFirstOpeningDraft[] {
   return (openings ?? []).map((opening, index) => ({
@@ -207,9 +213,16 @@ export function buildObjectFirstOpeningDraftsFromHouseFirstDrafts(
   }));
 }
 
-export function buildObjectFirstPergolaDraftsFromHouseFirstDrafts(
-  pergolas: HouseFirstPergolaDraft[] | null | undefined,
-  compatibilityPergolas: PergolaModel[] = [],
+export function buildObjectFirstOpeningDraftsFromHouseFirstDrafts(
+  openings: ObjectWorkbenchCompatibilityOpeningDraft[] | null | undefined,
+  sourceFormId: string | null = null,
+): ObjectFirstOpeningDraft[] {
+  return buildObjectFirstOpeningDraftsFromCompatibilityDrafts(openings, sourceFormId);
+}
+
+export function buildObjectFirstPergolaDraftsFromCompatibilityDrafts(
+  pergolas: ObjectWorkbenchCompatibilityPergolaDraft[] | null | undefined,
+  compatibilityPergolas: ObjectWorkbenchCompatibilityPergolaModel[] = [],
 ): ObjectFirstPergolaDraft[] {
   const compatibilityById = new Map(compatibilityPergolas.map((pergola) => [pergola.id, pergola]));
   return (pergolas ?? []).map((pergola) => {
@@ -224,6 +237,13 @@ export function buildObjectFirstPergolaDraftsFromHouseFirstDrafts(
       strategy: compatibilityPergola?.attachment.strategy ?? null,
     };
   });
+}
+
+export function buildObjectFirstPergolaDraftsFromHouseFirstDrafts(
+  pergolas: ObjectWorkbenchCompatibilityPergolaDraft[] | null | undefined,
+  compatibilityPergolas: ObjectWorkbenchCompatibilityPergolaModel[] = [],
+): ObjectFirstPergolaDraft[] {
+  return buildObjectFirstPergolaDraftsFromCompatibilityDrafts(pergolas, compatibilityPergolas);
 }
 
 export function buildObjectFirstWorkbenchDraftFromProjectModel(
@@ -257,7 +277,7 @@ function buildPergolaModelsFromDrafts(pergolas: ObjectFirstPergolaDraft[]): Perg
 
 function buildHouseAssemblyFromDraft(
   draft: ObjectFirstHouseAssemblyDraft | null,
-  compatibilityHouse: HouseModel | null,
+  compatibilityHouse: ObjectWorkbenchCompatibilityHouseModel | null,
 ) {
   if (!draft) return null;
   return {
@@ -283,13 +303,13 @@ function buildHouseAssemblyFromDraft(
   };
 }
 
-export function buildHouseFirstCompatibilityDraftFromObjectFirstDraft(
+export function buildObjectWorkbenchCompatibilityDraftFromObjectFirstDraft(
   objectFirstDraft: Partial<ObjectFirstWorkbenchDraftVNext> | null | undefined,
 ): {
-  roof?: HouseFirstRoofDraft | null;
-  decks?: HouseFirstDeckDraft[] | null;
-  openings?: HouseFirstOpeningDraft[] | null;
-  pergolas?: HouseFirstPergolaDraft[] | null;
+  roof?: ObjectWorkbenchCompatibilityRoofDraft | null;
+  decks?: ObjectWorkbenchCompatibilityDeckDraft[] | null;
+  openings?: ObjectWorkbenchCompatibilityOpeningDraft[] | null;
+  pergolas?: ObjectWorkbenchCompatibilityPergolaDraft[] | null;
 } {
   const normalized = normalizeObjectFirstWorkbenchDraftVNext(objectFirstDraft);
   const houseForm = normalized.houseAssembly?.houseForms[0] ?? null;
@@ -346,8 +366,14 @@ export function buildHouseFirstCompatibilityDraftFromObjectFirstDraft(
   };
 }
 
+export function buildHouseFirstCompatibilityDraftFromObjectFirstDraft(
+  objectFirstDraft: Partial<ObjectFirstWorkbenchDraftVNext> | null | undefined,
+): ReturnType<typeof buildObjectWorkbenchCompatibilityDraftFromObjectFirstDraft> {
+  return buildObjectWorkbenchCompatibilityDraftFromObjectFirstDraft(objectFirstDraft);
+}
+
 export function buildObjectFirstWorkbenchProjectModel(input: {
-  compatibilityProjectModel: HouseFirstWorkbenchProjectModel;
+  compatibilityProjectModel: ObjectWorkbenchCompatibilityProjectModel;
   objectFirstDraft?: Partial<ObjectFirstWorkbenchDraftVNext> | null;
 }): ObjectFirstWorkbenchProjectModel {
   const house = input.compatibilityProjectModel.house;

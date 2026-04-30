@@ -165,7 +165,7 @@ export function useObjectWorkbenchActions({
       );
       const existingHouseForms = objectFirstDraft.houseAssembly?.houseForms ?? [];
       const terminalEndIds = new Set(
-        previewStore.persisted.compatibilityProjectModel.house?.roof.terminalEnds.map((end) => end.id) ?? [],
+        previewStore.persisted.compatibilityBridge.projectModel.house?.roof.terminalEnds.map((end) => end.id) ?? [],
       );
       return {
         ...objectFirstDraft,

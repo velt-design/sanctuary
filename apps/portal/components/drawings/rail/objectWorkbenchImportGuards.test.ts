@@ -11,6 +11,8 @@ const FLAT_COMPATIBILITY_DERIVED_READ_ROOTS = [
   path.join('apps', 'portal', 'lib', 'drawings', 'state'),
   path.join('apps', 'portal', 'lib', 'drawings', 'views', 'plan'),
 ];
+const STATE_SOURCE_ROOT = path.join('apps', 'portal', 'lib', 'drawings', 'state');
+const STATE_COMPAT_PATH_SEGMENT = `${path.sep}state${path.sep}compat${path.sep}`;
 const GEOMETRY_SOURCE_ROOT = path.join('apps', 'portal', 'lib', 'drawings', 'geometry');
 const GEOMETRY_COMPAT_PATH_SEGMENT = `${path.sep}geometry${path.sep}compat${path.sep}`;
 const ESTIMATES_SOURCE_ROOT = path.join('apps', 'portal', 'lib', 'estimates');
@@ -77,6 +79,11 @@ function toRepoRelativePath(absolutePath: string): string {
 
 function canReadCompatibilityBridge(relativePath: string): boolean {
   return ALLOWLISTED_COMPATIBILITY_BRIDGE_READERS.has(relativePath) || relativePath.includes(`${path.sep}compat${path.sep}`);
+}
+
+function canImportLegacyStateCompatibility(relativePath: string): boolean {
+  const basename = path.basename(relativePath);
+  return relativePath.includes(STATE_COMPAT_PATH_SEGMENT) || basename.startsWith('houseFirst');
 }
 
 describe('object workbench import guards', () => {
@@ -186,6 +193,21 @@ describe('object workbench import guards', () => {
         if (/from ['"][^'"]*\/geometry\/compat\//.test(source)) {
           violations.push(`${relativePath} imports geometry compatibility internals`);
         }
+      }
+    }
+
+    expect(violations).toEqual([]);
+  });
+
+  it('keeps canonical state files behind the object workbench compatibility facade', () => {
+    const violations: string[] = [];
+
+    for (const absolutePath of listSourceFiles(path.join(process.cwd(), STATE_SOURCE_ROOT), { includeTests: true })) {
+      const relativePath = toRepoRelativePath(absolutePath);
+      if (canImportLegacyStateCompatibility(relativePath)) continue;
+      const source = fs.readFileSync(absolutePath, 'utf8');
+      if (/from ['"][^'"]*houseFirstWorkbench(?:Model|Adapter)['"]/.test(source)) {
+        violations.push(`${relativePath} imports legacy state compatibility directly`);
       }
     }
 

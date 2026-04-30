@@ -3,7 +3,7 @@ import type {
   ObjectFirstOpeningHostResolution,
   ObjectFirstPergolaAttachmentResolution,
 } from './objectFirstDerivedHosting';
-import type { HouseFirstMigrationWarning, HouseModel, PergolaModel } from './houseFirstWorkbenchModel';
+import type { ObjectWorkbenchCompatibilityMigrationWarning, ObjectWorkbenchCompatibilityHouseModel, ObjectWorkbenchCompatibilityPergolaModel } from './compat/objectWorkbenchCompatibilityModel';
 import type { DrawingWorkbenchRailTab } from './drawingWorkbenchUiState';
 import type {
   OpeningObjectModel,
@@ -103,7 +103,7 @@ function formatCountLabel(count: number): string {
   return `${count} ${count === 1 ? 'object' : 'objects'}`;
 }
 
-function humanizePergolaFamily(family: PergolaModel['family']): string {
+function humanizePergolaFamily(family: ObjectWorkbenchCompatibilityPergolaModel['family']): string {
   switch (family) {
     case 'hip_corner':
       return 'Hip corner';
@@ -121,8 +121,8 @@ function humanizePergolaFamily(family: PergolaModel['family']): string {
 }
 
 function buildHouseFormEntries(
-  house: HouseModel | null,
-  warnings: HouseFirstMigrationWarning[],
+  house: ObjectWorkbenchCompatibilityHouseModel | null,
+  warnings: ObjectWorkbenchCompatibilityMigrationWarning[],
 ): DrawingWorkbenchRailObjectEntry[] {
   if (!house) return [];
   return [
@@ -141,7 +141,7 @@ function buildHouseFormEntries(
   ];
 }
 
-function buildDeckEntries(house: HouseModel | null): DrawingWorkbenchRailObjectEntry[] {
+function buildDeckEntries(house: ObjectWorkbenchCompatibilityHouseModel | null): DrawingWorkbenchRailObjectEntry[] {
   return (house?.decks ?? []).map((deck) => ({
     ref: {
       family: 'decks',
@@ -158,7 +158,7 @@ function buildDeckEntries(house: HouseModel | null): DrawingWorkbenchRailObjectE
 
 function buildOpeningEntries(input: {
   openings: OpeningObjectModel[];
-  compatibilityOpenings: HouseModel['openings'];
+  compatibilityOpenings: ObjectWorkbenchCompatibilityHouseModel['openings'];
   hostResolutions: Record<string, ObjectFirstOpeningHostResolution>;
 }): DrawingWorkbenchRailObjectEntry[] {
   const compatibilityById = new Map(input.compatibilityOpenings.map((opening) => [opening.id, opening]));
@@ -186,7 +186,7 @@ function buildOpeningEntries(input: {
 
 function resolvePergolaEntryStatus(input: {
   pergola: PergolaObjectModel;
-  compatibilityPergola: PergolaModel | null;
+  compatibilityPergola: ObjectWorkbenchCompatibilityPergolaModel | null;
   attachmentResolution: ObjectFirstPergolaAttachmentResolution | null;
   moduleStates: DrawingWorkbenchRailPergolaModuleState[];
 }): Pick<DrawingWorkbenchRailObjectEntry, 'status' | 'statusLabel'> {
@@ -223,7 +223,7 @@ function resolvePergolaEntryStatus(input: {
 
 function buildPergolaEntries(input: {
   pergolas: PergolaObjectModel[];
-  compatibilityPergolas: PergolaModel[];
+  compatibilityPergolas: ObjectWorkbenchCompatibilityPergolaModel[];
   attachmentResolutions: Record<string, ObjectFirstPergolaAttachmentResolution>;
   modules: DrawingWorkbenchRailPergolaModuleState[];
 }): DrawingWorkbenchRailObjectEntry[] {
@@ -288,13 +288,13 @@ export function buildDrawingWorkbenchRailModel(input: {
   activeRailTab: DrawingWorkbenchRailTab;
   activeObjectFamily: WorkbenchObjectFamily;
   activeObjectRef: WorkbenchObjectRef;
-  house: HouseModel | null;
+  house: ObjectWorkbenchCompatibilityHouseModel | null;
   openings: OpeningObjectModel[];
   openingHostResolutions: Record<string, ObjectFirstOpeningHostResolution>;
   pergolas: PergolaObjectModel[];
-  compatibilityPergolas: PergolaModel[];
+  compatibilityPergolas: ObjectWorkbenchCompatibilityPergolaModel[];
   pergolaAttachmentResolutions: Record<string, ObjectFirstPergolaAttachmentResolution>;
-  warnings: HouseFirstMigrationWarning[];
+  warnings: ObjectWorkbenchCompatibilityMigrationWarning[];
   modules: DrawingWorkbenchRailPergolaModuleState[];
 }): DrawingWorkbenchRailModel {
   const objectLists: Record<WorkbenchObjectFamily, DrawingWorkbenchRailObjectEntry[]> = {
