@@ -3,10 +3,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import DrawingWorkbench from '@/components/drawings/workbench/DrawingWorkbench';
 import type { Geometry3DViewportState } from '@/components/drawings/viewports/Geometry3DViewport';
+import type { ObjectWorkbenchGeometryPreviewState } from '@/lib/drawings/geometry/buildWorkbenchGeometryPreview';
 import {
   buildObjectWorkbenchGeometryEditState,
 } from '@/lib/drawings/geometry/geometryEditAdapter';
-import { buildObjectWorkbenchGeometryPreview } from '@/lib/drawings/geometry/buildWorkbenchGeometryPreview';
 import { buildDrawingWorkbenchStore } from '@/lib/drawings/state/drawingWorkbenchStore';
 import {
   areDrawingWorkbenchObjectSelectionStatesEqual,
@@ -110,8 +110,12 @@ export default function DesignWorkbenchEstimateClient({
         snapshot: estimate.calculatorSnapshot,
         draft: drawingDraft,
         ui,
+        geometryIdentity: {
+          projectId: estimate.projectId,
+          estimateId: estimate.id,
+        },
       }),
-    [drawingDraft, estimate.calculatorSnapshot, ui],
+    [drawingDraft, estimate.calculatorSnapshot, estimate.id, estimate.projectId, ui],
   );
 
   useEffect(() => {
@@ -243,25 +247,11 @@ export default function DesignWorkbenchEstimateClient({
       isPergolaTabActive,
     ],
   );
-  const geometryPreview = useMemo(
-    () =>
-      buildObjectWorkbenchGeometryPreview({
-        projectId: estimate.projectId,
-        estimateId: estimate.id,
-        snapshot: estimate.calculatorSnapshot,
-        draft: drawingDraft,
-        moduleIndex: store.derived.activeModuleIndex,
-        objectWorkbenchProjectModel: store.persisted.projectModel,
-      }),
-    [
-      drawingDraft,
-      estimate.calculatorSnapshot,
-      estimate.id,
-      estimate.projectId,
-      store.derived.activeModuleIndex,
-      store.persisted.projectModel,
-    ],
-  );
+  const geometryPreview: ObjectWorkbenchGeometryPreviewState =
+    store.derived.activeSolution?.geometryPreview ?? {
+      kind: 'error',
+      message: 'No active 3D geometry preview is available.',
+    };
   const modelViewportSurfaceKey = `${objectWorkbenchDisplayFamily}:${store.derived.activeModuleIndex}:${store.ui.activeView}`;
   const geometryViewportSurfaceKey = `${objectWorkbenchDisplayFamily}:${store.derived.activeModuleIndex}`;
   const viewportPergolaId =

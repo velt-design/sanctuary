@@ -3,14 +3,11 @@ import type { ModulePlanModel, ModuleSectionModel } from '@/app/staff/calculator
 import type { GeometryPlanViewModel } from '@sp/geometry';
 import { buildAssemblyModel } from '@/lib/drawings/assembly/buildAssemblyModel';
 import type { DrawingAssemblyModel } from '@/lib/drawings/assembly/types';
-import { coerceHiddenWorkbenchGableBaseline } from '@/lib/drawings/geometry/hiddenWorkbenchGableBaseline';
-import {
-  deriveObjectWorkbenchGeometry,
-  type ObjectWorkbenchPergolaRenderSource,
-  type ObjectWorkbenchPergolaRenderStatus,
+import type {
+  ObjectWorkbenchPergolaRenderSource,
+  ObjectWorkbenchPergolaRenderStatus,
 } from '@/lib/drawings/geometry/deriveWorkbenchGeometry';
 import { buildObjectWorkbenchGeometryContext } from '@/lib/drawings/geometry/objectWorkbenchGeometryContext';
-import { resolveWorkbenchGeometryModule } from '@/lib/drawings/geometry/resolveWorkbenchGeometryModule';
 import { buildPlanViewModel, type PlanViewModel } from '@/lib/drawings/views/plan/buildPlanViewModel';
 import { buildEstimateDrawingModules, type EstimateDrawingModule } from '@/lib/estimates/moduleDrawing';
 import { mergeEstimateDrawingDraftIntoSnapshot, type EstimateDrawingDraft } from '@/lib/estimates/drawingEdits';
@@ -40,6 +37,12 @@ import {
   type ObjectWorkbenchInspectorFacade,
 } from './objectWorkbenchInspectorModel';
 import { buildObjectWorkbenchStatusFacade } from './objectWorkbenchStatusModel';
+import {
+  buildWorkbenchSolvedModel,
+  type WorkbenchGeometryIdentity,
+  type WorkbenchSolvedModel,
+  type WorkbenchSolvedModule,
+} from './workbenchSolvedModel';
 import type {
   HouseAssemblyModel,
   HouseFormModel,
@@ -59,6 +62,7 @@ export type DrawingWorkbenchModuleEntry = {
   planRenderStatus: ObjectWorkbenchPergolaRenderStatus;
   planModel: ModulePlanModel | null;
   sectionModel: ModuleSectionModel | null;
+  solution: WorkbenchSolvedModule;
 };
 
 export type WorkbenchDeckInteractionDiagnostic = DeckInteractionCapability;
@@ -74,6 +78,8 @@ export type DrawingWorkbenchStore = {
   derived: {
     moduleCount: number;
     activeModuleIndex: number;
+    solvedModel: WorkbenchSolvedModel;
+    activeSolution: WorkbenchSolvedModule | null;
     activeModule: DrawingWorkbenchModuleEntry | null;
     activeAssemblyModel: DrawingAssemblyModel | null;
     activePlanViewModel: PlanViewModel | null;
@@ -117,6 +123,7 @@ export function buildDrawingWorkbenchStore(input: {
   ui: DrawingWorkbenchUiState;
   ignoreModuleResults?: boolean;
   moduleLabels?: string[];
+  geometryIdentity?: WorkbenchGeometryIdentity | null;
 }): DrawingWorkbenchStore {
   const effectiveSnapshot = mergeEstimateDrawingDraftIntoSnapshot(input.snapshot, input.draft);
   const drawingModules = buildEstimateDrawingModules(effectiveSnapshot, {
@@ -158,50 +165,30 @@ export function buildDrawingWorkbenchStore(input: {
     projectModel,
     ignoreModuleResults: input.ignoreModuleResults,
   });
-  const modules = drawingModules.map((drawingModule, index) => {
-    const label = input.moduleLabels?.[index] ?? drawingModule.label;
-    const geometryModule = coerceHiddenWorkbenchGableBaseline(drawingModule.input);
-    const resolved = resolveWorkbenchGeometryModule({
-      snapshot: input.snapshot,
-      draft: input.draft,
-      moduleIndex: index,
-      ignoreModuleResults: input.ignoreModuleResults,
-    });
-    const resolvedDrawingModule: EstimateDrawingModule = {
-      ...drawingModule,
-      result: resolved.ok ? resolved.moduleResult : null,
-    };
-    const derivation = resolved.ok
-      ? deriveObjectWorkbenchGeometry({
-          projectId: 'hidden-workbench-project',
-          estimateId: 'hidden-workbench-estimate',
-          moduleId: drawingModule.id,
-          module: geometryModule,
-          result: resolved.moduleResult,
-          objectWorkbenchGeometryContext,
-          fallbackPlanModel: resolvedDrawingModule.planModel,
-          fallbackSectionModel: resolvedDrawingModule.sectionModel,
-        })
-      : null;
-    const planModel =
-      derivation?.kind === 'geometry'
-        ? derivation.planModel
-        : derivation?.kind === 'legacy_unsupported_family'
-          ? derivation.planModel
-          : null;
-    const sectionModel =
-      derivation?.kind === 'geometry'
-        ? derivation.sectionModel
-        : derivation?.kind === 'legacy_unsupported_family'
-          ? derivation.sectionModel
-          : null;
-    const geometryPlanViewModel = derivation?.kind === 'geometry' ? derivation.geometryPlan : null;
-    const planRenderSource = derivation?.renderSource ?? 'legacy';
-    const planRenderStatus = derivation?.renderStatus ?? 'invalid_geometry';
+  const solvedModel = buildWorkbenchSolvedModel({
+    snapshot: input.snapshot,
+    draft: input.draft,
+    ignoreModuleResults: input.ignoreModuleResults,
+    moduleLabels: input.moduleLabels,
+    activeModuleIndex: ui.activeModuleIndex,
+    geometryIdentity: input.geometryIdentity,
+    projectModel,
+    drawingModules,
+    objectWorkbenchGeometryContext,
+  });
+  const modules = solvedModel.modules.map((solution) => {
+    const label = solution.label;
+    const geometryModule = solution.moduleInput;
+    const resolvedDrawingModule: EstimateDrawingModule = solution.drawingModule;
+    const planModel = solution.planModel;
+    const sectionModel = solution.sectionModel;
+    const geometryPlanViewModel = solution.geometryPlan;
+    const planRenderSource = solution.renderSource;
+    const planRenderStatus = solution.renderStatus;
     const assemblyModel = buildAssemblyModel({
-      id: drawingModule.id,
+      id: solution.id,
       label,
-      moduleIndex: index,
+      moduleIndex: solution.index,
       moduleInput: geometryModule,
       moduleResult: resolvedDrawingModule.result,
       planModel,
@@ -209,12 +196,12 @@ export function buildDrawingWorkbenchStore(input: {
     });
 
     return {
-      id: drawingModule.id,
+      id: solution.id,
       label,
       drawingModule: resolvedDrawingModule,
       assemblyModel,
       planViewModel: buildPlanViewModel({
-        moduleId: drawingModule.id,
+        moduleId: solution.id,
         moduleLabel: label,
         planModel,
         geometryPlan: geometryPlanViewModel,
@@ -240,10 +227,12 @@ export function buildDrawingWorkbenchStore(input: {
       planRenderStatus,
       planModel,
       sectionModel,
+      solution,
     };
   });
 
   const activeModule = modules[ui.activeModuleIndex] ?? null;
+  const activeSolution = solvedModel.activeModule;
   const activePergola =
     objectFirstPergolas.find((pergola) => pergola.id === compatibilitySelection.activePergolaId) ??
     objectFirstPergolas.find((pergola) => pergola.id === activeModule?.drawingModule.input.pergolaId) ??
@@ -339,6 +328,8 @@ export function buildDrawingWorkbenchStore(input: {
     derived: {
       moduleCount: modules.length,
       activeModuleIndex: ui.activeModuleIndex,
+      solvedModel,
+      activeSolution,
       activeModule,
       activeAssemblyModel: activeModule?.assemblyModel ?? null,
       activePlanViewModel: activeModule?.planViewModel ?? null,

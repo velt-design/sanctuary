@@ -301,6 +301,17 @@ describe('buildWorkbenchGeometryPreview', () => {
 
     expect(preview.kind).toBe('ready');
     if (preview.kind !== 'ready') return;
+    const store = buildDrawingWorkbenchStore({
+      snapshot: fixture.snapshot,
+      ui: createDrawingWorkbenchUiState(),
+      geometryIdentity: {
+        projectId: 'proj_preview',
+        estimateId: fixture.estimate.id,
+        designRequestId: fixture.request.id,
+      },
+    });
+
+    expect(preview).toEqual(store.derived.activeSolution?.geometryPreview);
     expect(preview.previewMode).toBe('snapshot_validated');
     expect(preview.resultSource).toBe('snapshot');
     expect(preview.config.family).toBe('mono');

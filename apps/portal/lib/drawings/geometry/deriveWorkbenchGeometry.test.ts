@@ -62,10 +62,18 @@ describe('deriveWorkbenchGeometry', () => {
           activeView: 'plan',
           viewportMode: 'model',
         }),
+        geometryIdentity: {
+          projectId: 'proj_shared',
+          estimateId: fixture.estimate.id,
+          designRequestId: fixture.request.id,
+        },
       });
 
       expect(preview.config).toEqual(derivation.config);
       expect(preview.assembly).toEqual(derivation.assembly);
+      expect(store.derived.activeSolution?.config).toEqual(derivation.config);
+      expect(store.derived.activeSolution?.assembly).toEqual(derivation.assembly);
+      expect(store.derived.activeSolution?.geometryPreview).toEqual(preview);
       expect(store.persisted.modules[0]?.geometryPlanViewModel).toEqual(derivation.geometryPlan);
       expect(store.persisted.modules[0]?.planRenderSource).toBe('geometry');
       expect(store.persisted.modules[0]?.planRenderStatus).toBe('geometry_ready');

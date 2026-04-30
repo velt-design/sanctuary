@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import DrawingWorkbench from '@/components/drawings/workbench/DrawingWorkbench';
 import type { Geometry3DViewportState } from '@/components/drawings/viewports/Geometry3DViewport';
-import { buildObjectWorkbenchGeometryPreview } from '@/lib/drawings/geometry/buildWorkbenchGeometryPreview';
+import type { ObjectWorkbenchGeometryPreviewState } from '@/lib/drawings/geometry/buildWorkbenchGeometryPreview';
 import { buildDrawingWorkbenchStore } from '@/lib/drawings/state/drawingWorkbenchStore';
 import {
   createDrawingWorkbenchUiState,
@@ -66,8 +66,13 @@ export default function DesignWorkbenchFixtureClient({
         draft: fixture.draft,
         ui,
         moduleLabels: fixture.moduleLabels,
+        geometryIdentity: {
+          projectId: `fixture-${fixture.slug}`,
+          estimateId: fixture.estimate.id,
+          designRequestId: fixture.request.id,
+        },
       }),
-    [fixture.draft, fixture.moduleLabels, fixture.snapshot, ui],
+    [fixture.draft, fixture.estimate.id, fixture.moduleLabels, fixture.request.id, fixture.slug, fixture.snapshot, ui],
   );
   useEffect(() => {
     setModelViewportTransformsByKey({});
@@ -93,27 +98,11 @@ export default function DesignWorkbenchFixtureClient({
       }),
     [activeModule?.drawingModule.input, fixture.estimate.createdAt, fixture.estimate.versionLabel, projectName, siteAddress, store.derived.activeModuleLabel, store.ui.activeView],
   );
-  const geometryPreview = useMemo(
-    () =>
-      buildObjectWorkbenchGeometryPreview({
-        projectId: `fixture-${fixture.slug}`,
-        estimateId: fixture.estimate.id,
-        designRequestId: fixture.request.id,
-        snapshot: fixture.snapshot,
-        draft: fixture.draft,
-        moduleIndex: store.derived.activeModuleIndex,
-        objectWorkbenchProjectModel: store.persisted.projectModel,
-      }),
-    [
-      fixture.draft,
-      fixture.estimate.id,
-      fixture.request.id,
-      fixture.slug,
-      fixture.snapshot,
-      store.derived.activeModuleIndex,
-      store.persisted.projectModel,
-    ],
-  );
+  const geometryPreview: ObjectWorkbenchGeometryPreviewState =
+    store.derived.activeSolution?.geometryPreview ?? {
+      kind: 'error',
+      message: 'No active 3D geometry preview is available.',
+    };
   const activeSelectionFamily =
     store.ui.activeRailTab === 'diagnostics' ? store.ui.activeObjectFamily : store.ui.activeRailTab;
   const canonicalWorkbenchDisplayMode = activeSelectionFamily === 'pergolas' ? 'pergolas' : 'house';

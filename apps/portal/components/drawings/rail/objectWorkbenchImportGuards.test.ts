@@ -79,6 +79,8 @@ const PERSISTED_HOUSE_FIRST_DRAFT_USAGE =
   /\b[A-Za-z_$][\w$]*\.houseFirst\b|\bhouseFirst\s*:/;
 const OBJECT_FIRST_TO_COMPATIBILITY_DRAFT_BUILDER =
   /\bbuildObjectWorkbenchCompatibilityDraftFromObjectFirstDraft\b/;
+const ACTIVE_WORKBENCH_PREVIEW_BUILDER =
+  /\bbuildObjectWorkbenchGeometryPreview\b/;
 const LEGACY_RENDERER_BOUNDARY_NAMES =
   /\b(?:HouseFirstPlanShapeDragStartMeta|HouseFirstObjectPreviewOverlay|houseFirstPlanOverlay|houseFirstPreviewOverlay|activeHouseFirstCustomEdgeId|hoveredHouseFirstDeckId|onHouseFirstShapeSelect|onHouseFirstDeckHoverChange|onHouseFirstShapeDragStart|onHouseFirstCustomEdgeSelect|onHouseFirstDimensionActivate)\b/;
 const REMOVED_PLAN_VIEW_MODEL_COMPATIBILITY_PROPS =
@@ -143,6 +145,7 @@ describe('object workbench import guards', () => {
         const readsPersistenceCompatibilityDraft = PERSISTED_HOUSE_FIRST_DRAFT_USAGE.test(source);
         const callsObjectFirstToCompatibilityDraftBuilder =
           OBJECT_FIRST_TO_COMPATIBILITY_DRAFT_BUILDER.test(source);
+        const callsActiveWorkbenchPreviewBuilder = ACTIVE_WORKBENCH_PREVIEW_BUILDER.test(source);
 
         if (importsHouseFirstModel && !ALLOWLISTED_COMPATIBILITY_FILES.has(relativePath)) {
           violations.push(`${relativePath} imports houseFirstWorkbenchModel`);
@@ -176,6 +179,12 @@ describe('object workbench import guards', () => {
         }
         if (callsObjectFirstToCompatibilityDraftBuilder && !relativePath.includes(`${path.sep}compat${path.sep}`)) {
           violations.push(`${relativePath} calls the object-first to compatibility draft builder outside compat`);
+        }
+        if (
+          callsActiveWorkbenchPreviewBuilder &&
+          relativePath.includes(path.normalize(path.join('projects', '[projectId]', 'design-workbench')))
+        ) {
+          violations.push(`${relativePath} rebuilds active 3D geometry outside the solved workbench model`);
         }
         if (source.includes('useHouseDraftPersistence')) {
           violations.push(`${relativePath} uses the legacy house draft persistence hook name`);

@@ -235,6 +235,20 @@ describe('buildDrawingWorkbenchStore', () => {
     expect(store.ui.activeModuleIndex).toBe(1);
     expect(store.ui.viewportTransform.zoom).toBe(6);
     expect(store.derived.activeModuleLabel).toBe('M2 - Pitched - 4.5m x 2.5m');
+    expect(store.derived.solvedModel.modules).toHaveLength(2);
+    expect(store.derived.activeSolution).toBe(store.derived.activeModule?.solution);
+    expect(store.derived.activeSolution?.id).toBe(store.derived.activeModule?.id);
+    expect(store.derived.activeSolution?.trust.status).toBe('geometry_ready');
+    expect(store.derived.activeSolution?.planModel).toBe(store.derived.activePlanModel);
+    expect(store.derived.activeSolution?.sectionModel).toBe(store.derived.activeSectionModel);
+    expect(store.derived.activeSolution?.geometryPlan).toBe(store.derived.activeModule?.geometryPlanViewModel);
+    expect(store.derived.activeSolution?.geometryPreview.kind).toBe('ready');
+    if (store.derived.activeSolution?.geometryPreview.kind !== 'ready') {
+      throw new Error('Expected ready solved geometry preview.');
+    }
+    expect(store.derived.activeSolution.geometryPreview.config).toBe(store.derived.activeSolution.config);
+    expect(store.derived.activeSolution.geometryPreview.assembly).toBe(store.derived.activeSolution.assembly);
+    expect(store.derived.activeSolution.geometryPreview.scene).toBe(store.derived.activeSolution.viewerScene);
     expect(store.derived.activeAssemblyModel?.roof.footprint.lengthA).toBeCloseTo(4.5);
     expect(store.derived.activePlanModel?.lengthA).toBeCloseTo(4.5);
     expect(store.derived.activePlanModel?.attachmentEdgeLengthM).toBeCloseTo(4.5);
@@ -311,12 +325,45 @@ describe('buildDrawingWorkbenchStore', () => {
     expect(store.persisted.modules[0]?.geometryPlanViewModel).not.toBeNull();
     expect(store.persisted.modules[0]?.planRenderSource).toBe('geometry');
     expect(store.persisted.modules[0]?.planRenderStatus).toBe('geometry_ready');
+    expect(store.derived.activeSolution?.trust.status).toBe('geometry_ready');
+    expect(store.derived.activeSolution?.renderStatus).toBe('geometry_ready');
+    expect(store.derived.activeSolution?.geometryPlan).toBe(store.persisted.modules[0]?.geometryPlanViewModel);
     expect(store.derived.activePlanModel).not.toBeNull();
     expect(store.derived.activePlanViewModel?.modelSpacePergola.renderSource).toBe('geometry');
     expect(store.derived.activePlanViewModel?.modelSpacePergola.renderStatus).toBe('geometry_ready');
     expect(store.derived.activePlanModel?.roofType).toBe('hip');
     expect(store.derived.activeSectionModel).not.toBeNull();
     expect(store.derived.status).toBe('ready');
+  });
+
+  it('exposes invalid solved-module trust when geometry cannot normalize', () => {
+    const fixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
+    if (!fixture) throw new Error('Missing mono-standard fixture.');
+    const snapshot = structuredClone(fixture.snapshot) as {
+      inputs?: { modules?: Array<Record<string, unknown>> };
+      outputs?: { pergolas?: Array<{ modules?: Array<Record<string, unknown>> }> };
+    };
+    if (!snapshot.inputs?.modules?.[0] || !snapshot.outputs?.pergolas?.[0]?.modules?.[0]) {
+      throw new Error('Expected fixture snapshot modules.');
+    }
+    snapshot.inputs.modules[0].lengthM = '';
+    snapshot.outputs.pergolas[0].modules[0].derived = {
+      ...(snapshot.outputs.pergolas[0].modules[0].derived ?? {}),
+      length_m: null,
+    };
+
+    const store = buildDrawingWorkbenchStore({
+      snapshot: snapshot as Record<string, unknown>,
+      ui: createDrawingWorkbenchUiState({
+        activeView: 'plan',
+      }),
+    });
+
+    expect(store.derived.activeSolution?.trust.status).toBe('invalid_geometry');
+    expect(store.derived.activeSolution?.renderStatus).toBe('invalid_geometry');
+    expect(store.derived.activeSolution?.geometryPreview.kind).toBe('error');
+    expect(store.derived.activePlanModel).toBeNull();
+    expect(store.derived.status).toBe('empty');
   });
 
   it('locally resolves stale pricing outputs so sheet models remain available', () => {
