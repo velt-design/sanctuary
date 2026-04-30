@@ -2,7 +2,7 @@ import type { EstimateDrawingDraft } from '@/lib/estimates/drawingEdits';
 import type { WorkbenchProjectModel } from '../../state/objectFirstWorkbenchModel';
 import { buildObjectWorkbenchGeometryContext } from './objectWorkbenchGeometryContext';
 import {
-  buildGeometryPreviewStateFromSolvedModule,
+  buildGeometryPreviewStateFromSolvedModel,
   buildWorkbenchSolvedModel,
   type GeometryPreviewState,
 } from '../../state/workbenchSolvedModel';
@@ -62,7 +62,7 @@ export function buildWorkbenchGeometryPreview(input: {
   });
 
   return attachCompatibilityPreviewMetadata(
-    buildGeometryPreviewStateFromSolvedModule(solvedModel.activeModule),
+    buildGeometryPreviewStateFromSolvedModel(solvedModel),
     geometryContext,
   );
 }

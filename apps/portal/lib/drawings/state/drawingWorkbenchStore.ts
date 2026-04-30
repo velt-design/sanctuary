@@ -126,6 +126,17 @@ export type DrawingWorkbenchStore = {
   };
 };
 
+function resolveSolvedModuleViewsStatus(input: {
+  activeView: DrawingWorkbenchUiState['activeView'];
+  solution: WorkbenchSolvedModule | null;
+}): ModuleViewsStatus {
+  if (!input.solution) return 'empty';
+  if (input.activeView === 'section') {
+    return input.solution.sectionModel ? 'ready' : 'empty';
+  }
+  return input.solution.planModel ? 'ready' : 'empty';
+}
+
 export function buildDrawingWorkbenchStore(input: {
   snapshot: Record<string, unknown> | null;
   draft?: EstimateDrawingDraft | null;
@@ -406,14 +417,10 @@ export function buildDrawingWorkbenchStore(input: {
       pergolaAttachmentResolutions,
       activePergolaAttachmentResolution,
       unresolvedPergolaAttachmentCount,
-      status:
-        ui.activeView === 'section'
-          ? activeModule?.sectionModel
-            ? 'ready'
-            : 'empty'
-          : activeModule?.planModel
-            ? 'ready'
-            : 'empty',
+      status: resolveSolvedModuleViewsStatus({
+        activeView: ui.activeView,
+        solution: activeSolution,
+      }),
     },
   };
 }

@@ -1,36 +1,48 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Sanctuary
 
-## Getting Started
+Sanctuary is a private npm workspace for the Sanctuary Pergolas marketing site, staff portal, and shared business packages.
 
-First, run the development server:
+## Workspace Map
+
+- `apps/marketing`: public Next.js marketing site on port `3000`.
+- `apps/portal`: staff portal Next.js app on port `3001`.
+- `packages/costing`: canonical costing engine and pricing config.
+- `packages/geometry`: canonical pergola and house geometry solvers.
+- `packages/quote-format`: shared quote formatting helpers.
+- `packages/theme`: shared theme tokens.
+- `supabase`: baseline SQL and ordered migrations.
+- `scripts`: maintenance, import, optimization, invite, and audit scripts.
+- `playwright`: authenticated portal browser and performance smoke tests.
+
+## Common Commands
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm run dev:marketing
+npm run dev:portal
+npm run build:marketing
+npm run build:portal
+npm run test
+npm run test:marketing
+npm run test:portal
+npm run test:portal:smoke
+npm run test:portal:performance
+npm run lint
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+The root `npm run dev`, `build`, and `start` commands only print the app-specific command to use.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Environment
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+At minimum, local portal and marketing work need:
 
-## Learn More
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY` for server-owned admin tooling, imports, and protected write flows.
 
-To learn more about Next.js, take a look at the following resources:
+Email, tracking, public URL, and Playwright variables are documented in `docs/environment-auth-supabase.md` and `docs/testing-and-qa.md`.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Docs
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Start with `AGENTS.md` for coding-agent guidance, then `docs/README.md` for the canonical docs index.
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+The docs are intentionally current-state references. Historical implementation plans and stale specs should not be reintroduced unless they are rewritten as current references or explicit decision records.

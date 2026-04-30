@@ -1,0 +1,85 @@
+# Running Jobs
+
+Running Jobs is the portal replacement for the active install spreadsheet.
+
+## Ownership
+
+- Page route: `/staff/projects/running-jobs`.
+- Redirect route: `/staff/running-jobs`.
+- Client adapter: `apps/portal/app/staff/projects/running-jobs/useRunningJobsSpreadsheetAdapter.tsx`.
+- Server/domain helpers: `apps/portal/lib/runningJobs`.
+- Staff APIs: `apps/portal/app/api/staff/v1/running-jobs`.
+- Legacy import script: `scripts/import-running-jobs-legacy.ts`.
+- Phase 1 schema migration: `supabase/migrations/20260315_000001_running_job_list_phase1.sql`.
+- Legacy import schema migration: `supabase/migrations/20260316_000001_running_job_legacy_import.sql`.
+
+## Data Sources
+
+Running Jobs combines three source types:
+
+- Manual running-job metadata.
+- Schedule-owned install state.
+- Estimate-derived project/spec fields.
+
+Keep these ownership boundaries explicit. Do not write estimate-derived fields from the spreadsheet.
+
+## Columns
+
+Column config lives in `apps/portal/lib/runningJobs/columns.ts`.
+
+Manual editable fields include client details, site visit rep, deposit/final payment dates, materials ordered, lights status, roofing ordered, and notes.
+
+Schedule-owned editable fields include estimated start, crew, completed, install days, and days/state that are backed by schedule APIs.
+
+Estimate-derived read-only fields include pergola type, blinds, size, colour, and roofing.
+
+## Write Behavior
+
+Read route:
+
+```text
+GET /api/staff/v1/running-jobs
+```
+
+Cell write route:
+
+```text
+POST /api/staff/v1/running-jobs/cell
+```
+
+Use the domain write helpers in `apps/portal/lib/runningJobs/writeOps.ts`. Schedule-owned writes should route through schedule-safe APIs/helpers rather than ad hoc table edits.
+
+## Legacy Import
+
+Legacy spreadsheet import is handled by:
+
+```bash
+npm run running-jobs:legacy-import -- path/to/workbook.xlsx
+```
+
+The import script requires Supabase URL and service-role env. Treat imported legacy rows as transitional data and keep matching logic in `apps/portal/lib/runningJobs/legacy.ts`.
+
+## Spreadsheet Behavior
+
+Running Jobs shares the spreadsheet shell with Design List. It should keep:
+
+- Frozen first column.
+- Stable widths and zoom behavior.
+- Optimistic edits with conflict handling.
+- Clear distinction between manual, schedule, and estimate fields.
+
+## Verification
+
+```bash
+npm run test:portal -- apps/portal/lib/runningJobs
+npm run test:portal -- apps/portal/app/staff/projects/running-jobs
+npm run test:portal
+```
+
+Manual checks:
+
+- Load `/staff/projects/running-jobs`.
+- Edit manual text/date/checkbox/status fields.
+- Edit supported schedule-owned fields and confirm schedule state remains consistent.
+- Confirm estimate-derived fields are read-only.
+- Refresh and confirm persisted values remain.

@@ -449,6 +449,10 @@ function buildDeckSupport(input: {
   });
 }
 
+function previewMessageFromWorkbenchMessage(message: string): string {
+  return message.replace('workbench geometry', '3D geometry preview');
+}
+
 function buildInvalidSolvedModule(input: {
   index: number;
   drawingModule: EstimateDrawingModule;
@@ -540,7 +544,7 @@ function buildSolvedModule(input: {
       resultSource: resolved.resultSource,
       draftTouchesGeometry: resolved.draftTouchesGeometry,
       message: resolved.message,
-      geometryPreviewMessage: resolved.message.replace('workbench geometry', '3D geometry preview'),
+      geometryPreviewMessage: previewMessageFromWorkbenchMessage(resolved.message),
       drawingResult: null,
     });
   }
@@ -671,6 +675,25 @@ function buildSolvedModule(input: {
   };
 }
 
+function resolveInactiveSolvedModelMessage(input: {
+  snapshot: Record<string, unknown> | null;
+  draft?: EstimateDrawingDraft | null;
+  ignoreModuleResults?: boolean;
+  activeModuleIndex?: number;
+  drawingModules?: EstimateDrawingModule[];
+}): string {
+  if (input.drawingModules?.length) {
+    return 'The selected module is not available for workbench geometry.';
+  }
+  const resolution = resolveWorkbenchGeometryModule({
+    snapshot: input.snapshot,
+    draft: input.draft,
+    moduleIndex: input.activeModuleIndex ?? 0,
+    ignoreModuleResults: input.ignoreModuleResults,
+  });
+  return resolution.ok ? 'No active workbench module is available.' : resolution.message;
+}
+
 export function buildWorkbenchSolvedModel(input: {
   snapshot: Record<string, unknown> | null;
   draft?: EstimateDrawingDraft | null;
@@ -711,6 +734,7 @@ export function buildWorkbenchSolvedModel(input: {
     }),
   );
   const activeModule = modules[input.activeModuleIndex ?? 0] ?? null;
+  const inactiveMessage = activeModule ? null : resolveInactiveSolvedModelMessage(input);
 
   return {
     projectModel,
@@ -721,7 +745,7 @@ export function buildWorkbenchSolvedModel(input: {
       buildTrustStatus({
         status: 'invalid_geometry',
         renderSource: 'none',
-        message: 'No active workbench module is available.',
+        message: inactiveMessage ?? 'No active workbench module is available.',
       }),
     geometryIdentity,
   };
@@ -732,4 +756,14 @@ export function buildGeometryPreviewStateFromSolvedModule(
   fallbackMessage = 'The selected module is not available for 3D geometry preview.',
 ): GeometryPreviewState {
   return module?.geometryPreview ?? { kind: 'error', message: fallbackMessage };
+}
+
+export function buildGeometryPreviewStateFromSolvedModel(
+  model: WorkbenchSolvedModel,
+  fallbackMessage = 'The selected module is not available for 3D geometry preview.',
+): GeometryPreviewState {
+  return buildGeometryPreviewStateFromSolvedModule(
+    model.activeModule,
+    model.trust.message ? previewMessageFromWorkbenchMessage(model.trust.message) : fallbackMessage,
+  );
 }

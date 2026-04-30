@@ -301,6 +301,38 @@ function makeStaleGableSnapshot(
 }
 
 describe('buildWorkbenchGeometryPreview', () => {
+  it('preserves the calculator-inputs error while delegating through the solved model', () => {
+    const preview = buildWorkbenchGeometryPreview({
+      projectId: 'proj_preview',
+      estimateId: 'est_preview',
+      designRequestId: null,
+      snapshot: null,
+      moduleIndex: 0,
+    });
+
+    expect(preview).toEqual({
+      kind: 'error',
+      message: 'Calculator inputs are not available for 3D geometry preview.',
+    });
+  });
+
+  it('preserves the selected-module error while delegating through the solved model', () => {
+    const fixture = requireFixture('mono-standard');
+
+    const preview = buildWorkbenchGeometryPreview({
+      projectId: 'proj_preview',
+      estimateId: fixture.estimate.id,
+      designRequestId: fixture.request.id,
+      snapshot: fixture.snapshot,
+      moduleIndex: 999,
+    });
+
+    expect(preview).toEqual({
+      kind: 'error',
+      message: 'The selected module is not available for 3D geometry preview.',
+    });
+  });
+
   it('returns ready + snapshot_validated for solved fixture snapshots', () => {
     const fixture = requireFixture('mono-standard');
 
