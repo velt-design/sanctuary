@@ -48,6 +48,23 @@ import type {
   ObjectWorkbenchPlanPresetDimensionAnnotation,
   PlanPoint,
 } from '@/lib/drawings/views/plan/objectWorkbenchPlanOverlay';
+import {
+  buildProjectionPlanRenderGraph,
+  topProjectionPlanLayer,
+  topProjectionRole,
+  topProjectionShapeIsCommittedBody,
+  topProjectionShapeVisible,
+  topProjectionShapeVisualOwner,
+  type ProjectionPlanLayer,
+} from '@/lib/drawings/views/plan/planRenderGraph';
+import {
+  mmPointToPlanSvg,
+  mmPolygonToPlanSvg,
+  topProjectionDirectionToPlanSvg,
+  topProjectionPointToPlanSvg,
+  topProjectionPolygonToPlanSvg,
+  topProjectionSvgPointToPlanPoint,
+} from '@/lib/drawings/views/plan/planCoordinateAdapter';
 import type { ObjectInteractionPreviewOverlay } from '@/lib/drawings/interactions/objectInteractionEngine';
 import type {
   ObjectWorkbenchPergolaRenderSource,
@@ -263,8 +280,6 @@ export type ModuleDrawingScaleState = {
   fits: boolean;
   suggestedScale: EstimateDrawingScale;
 };
-
-type ProjectionPlanLayer = 'committedBodies' | 'contextLines';
 
 export type ModuleDrawingScaleDiagnostic = {
   scale: EstimateDrawingScale;
@@ -1766,71 +1781,6 @@ function toPointsAttr(points: Point[]): string {
   return points.map((point) => `${point.x.toFixed(2)},${point.y.toFixed(2)}`).join(' ');
 }
 
-function mmPointToPlanSvg(point: Point2, baseX: number, baseY: number, scale: number): Point {
-  return {
-    x: baseX + (point.x / 1000) * scale,
-    y: baseY + (point.y / 1000) * scale,
-  };
-}
-
-function mmPolygonToPlanSvg(points: Point2[], baseX: number, baseY: number, scale: number): Point[] {
-  return points.map((point) => mmPointToPlanSvg(point, baseX, baseY, scale));
-}
-
-function topProjectionPointToPlanSvg(
-  point: Point2,
-  projection: GeometryTopProjectionViewModel,
-  baseX: number,
-  baseY: number,
-  scale: number,
-): Point {
-  const xMm =
-    projection.screenAxis.x === 'world_x_left' && projection.extents
-      ? projection.extents.minX + projection.extents.maxX - point.x
-      : point.x;
-  return mmPointToPlanSvg({ x: xMm, y: point.y }, baseX, baseY, scale);
-}
-
-function topProjectionSvgPointToPlanPoint(
-  point: Point,
-  projection: GeometryTopProjectionViewModel,
-  baseX: number,
-  baseY: number,
-  scale: number,
-): PlanPoint | null {
-  if (!Number.isFinite(scale) || scale <= 0) return null;
-  const displayedXmm = ((point.x - baseX) / scale) * 1000;
-  const displayedYmm = ((point.y - baseY) / scale) * 1000;
-  const worldXmm =
-    projection.screenAxis.x === 'world_x_left' && projection.extents
-      ? projection.extents.minX + projection.extents.maxX - displayedXmm
-      : displayedXmm;
-  if (!Number.isFinite(worldXmm) || !Number.isFinite(displayedYmm)) return null;
-  return {
-    x: worldXmm / 1000,
-    y: displayedYmm / 1000,
-  };
-}
-
-function topProjectionPolygonToPlanSvg(
-  points: Point2[],
-  projection: GeometryTopProjectionViewModel,
-  baseX: number,
-  baseY: number,
-  scale: number,
-): Point[] {
-  return points.map((point) => topProjectionPointToPlanSvg(point, projection, baseX, baseY, scale));
-}
-
-function topProjectionDirectionToPlanSvg(
-  direction: Point2,
-  projection: GeometryTopProjectionViewModel | null | undefined,
-): Point2 {
-  return projection?.screenAxis.x === 'world_x_left'
-    ? { x: -direction.x, y: direction.y }
-    : direction;
-}
-
 function buildPlanMemberFootprint(input: {
   member: GeometryPlanMember2D;
   baseX: number;
@@ -2028,66 +1978,6 @@ function planHouseLineClass(kind: NonNullable<ModulePlanModel['houseContext']>['
   return `${styles.modulePlanHouseLine} ${styles.modulePlanHouseWallSemantic}`;
 }
 
-function topProjectionShapeVisible(
-  shape: GeometryTopProjectionShape,
-  visibility: DrawingWorkbenchVisibilityState,
-): boolean {
-  const role = topProjectionRole(shape);
-  if (role === 'hidden_from_top') return false;
-  if (shape.family === 'pergola') return visibility.pergolas;
-  if (shape.family !== 'house') return true;
-  if (shape.kind === 'deck') return visibility.decks;
-  if (shape.kind === 'opening_marker' || shape.kind === 'opening_outline') return visibility.openings;
-  return visibility.house;
-}
-
-function topProjectionPlanLayer(shape: GeometryTopProjectionShape): ProjectionPlanLayer | null {
-  const role = topProjectionRole(shape);
-  if (role === 'hidden_from_top') return null;
-  if (role === 'context') {
-    if (shape.sourceType === 'reference_line' || shape.sourceType === 'house_line') return 'contextLines';
-    if (shape.family === 'house' && (shape.kind === 'opening_marker' || shape.kind === 'opening_outline' || shape.kind === 'attachment_target')) {
-      return 'contextLines';
-    }
-    return null;
-  }
-  if (shape.family === 'house') {
-    if (
-      (shape.sourceType === 'house_surface_solid' || shape.sourceType === 'house_surface') &&
-      (shape.kind === 'roof' || shape.kind === 'deck' || shape.kind === 'footprint')
-    ) {
-      return 'committedBodies';
-    }
-    if (shape.sourceType === 'house_line' || shape.sourceType === 'reference_line') return 'contextLines';
-    return null;
-  }
-  if (shape.family === 'reference') {
-    return shape.sourceType === 'reference_line' ? 'contextLines' : null;
-  }
-  if (shape.family === 'pergola') {
-    if (
-      shape.sourceType === 'roof_plane' ||
-      shape.sourceType === 'roof_cladding_panel' ||
-      shape.sourceType === 'member_prism'
-    ) {
-      return 'committedBodies';
-    }
-    return shape.sourceType === 'reference_line' ? 'contextLines' : null;
-  }
-  return null;
-}
-
-function topProjectionShapeIsCommittedBody(shape: GeometryTopProjectionShape): boolean {
-  return topProjectionPlanLayer(shape) === 'committedBodies';
-}
-
-function topProjectionRole(shape: GeometryTopProjectionShape): 'top_visible' | 'context' | 'hidden_from_top' {
-  const role = shape.metadata?.topProjectionRole;
-  return role === 'context' || role === 'hidden_from_top' || role === 'top_visible'
-    ? role
-    : 'top_visible';
-}
-
 function topProjectionShapeClass(shape: GeometryTopProjectionShape): string {
   if (shape.family === 'house') {
     if (shape.kind === 'deck') return `${styles.modulePlanHouseSurface} ${styles.modulePlanHouseDeck}`;
@@ -2116,33 +2006,6 @@ function topProjectionShapeClass(shape: GeometryTopProjectionShape): string {
 function topProjectionShapeClassForLayer(shape: GeometryTopProjectionShape, layer: ProjectionPlanLayer): string {
   if (layer === 'contextLines') return styles.modulePlanTopProjectionLine;
   return topProjectionShapeClass(shape);
-}
-
-function topProjectionShapeVisualOwner(shape: GeometryTopProjectionShape): string {
-  if (shape.family === 'house' && shape.kind === 'deck') return `deck:${shape.sourceId ?? shape.sourceObjectId ?? shape.id}`;
-  if (shape.family === 'house') return 'house';
-  if (shape.family === 'pergola') return `pergola:${shape.sourceObjectId ?? shape.sourceId ?? shape.id}`;
-  return `${shape.family}:${shape.sourceObjectId ?? shape.sourceId ?? shape.id}`;
-}
-
-function topProjectionShapeAllowedInProjectionOnlyModel(shape: GeometryTopProjectionShape): boolean {
-  if (topProjectionRole(shape) !== 'top_visible') return false;
-  if (shape.family === 'house') {
-    return shape.kind === 'roof' || shape.kind === 'deck' || shape.kind === 'footprint';
-  }
-  if (shape.family === 'pergola') {
-    return shape.kind === 'roof_plane' || shape.kind === 'roof_cladding';
-  }
-  return false;
-}
-
-function topProjectionContextLineAllowedInProjectionOnlyModel(shape: GeometryTopProjectionShape): boolean {
-  if (topProjectionRole(shape) !== 'context') return false;
-  if (shape.family !== 'house') return false;
-  if (shape.sourceType === 'house_line') {
-    return shape.kind === 'wall_segment' || shape.kind === 'attachment_target' || shape.kind === 'opening_outline';
-  }
-  return shape.kind === 'opening_marker';
 }
 
 function objectWorkbenchShapeVisualOwner(shape: Pick<ObjectWorkbenchPlanOverlay['shapes'][number], 'ownerKind' | 'ownerId'>): string {
