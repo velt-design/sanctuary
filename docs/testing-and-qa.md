@@ -24,6 +24,7 @@ npm run lint
 Focused guards:
 
 ```bash
+npm run docs:guard
 npm run text:mojibake
 npm run cache:forbid
 npm run brand:forbid
@@ -45,13 +46,11 @@ npm run emails:preview
 For docs-only changes, run these from the repo root:
 
 ```bash
-rg -n "/User[s]/|my[-]site|create[-]next[-]app|costing[-]baseline|\\.env\\.example" README.md AGENTS.md docs
-rg -n "[^\\x00-\\x7F]" README.md AGENTS.md docs
-rg -n "decision-log|agent-playbook|change-routing" AGENTS.md docs/README.md docs/agent-playbook.md docs/change-routing.md docs/decision-log.md
+npm run docs:guard
 npm run text:mojibake
 ```
 
-The first two `rg` commands should have no output. `rg` exits `1` when there are no matches; for those checks, empty output is the desired result.
+`npm run docs:guard` checks required agent-doc links, startup-path docs, stale placeholders, ASCII docs, and superseded redirect shape.
 
 ## Portal Browser Tests
 
@@ -132,5 +131,6 @@ Schedule Gantt:
 ## CI
 
 - Portal Quality runs portal Vitest, portal build, authenticated smoke, and portal performance timing.
+- Portal Quality runs `npm run docs:guard` before portal app checks.
 - Lighthouse Guardrails run mobile and desktop Lighthouse profiles.
 - Governance Monthly runs marketing tests, production dependency audit, and Lighthouse.

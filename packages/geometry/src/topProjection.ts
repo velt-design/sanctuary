@@ -15,7 +15,15 @@ import type {
 import { buildViewerSceneModel } from './viewer';
 
 const EPSILON_MM = 1e-6;
-const TOP_FACING_NORMAL_Z_MIN = 0.5;
+const TOP_VIEW_SURFACE_NORMAL_Z_MIN = 0.5;
+const TOP_VIEW_Z_MATCH_TOLERANCE_MM = 1;
+
+type TopProjectionRole = 'top_visible' | 'context' | 'hidden_from_top';
+
+type ObjectProjection = {
+  polygon: Polygon2;
+  role: TopProjectionRole;
+};
 
 export type BuildTopProjectionViewModelFromSceneOptions = {
   referenceShapes?: GeometryTopProjectionShape[];
@@ -99,14 +107,6 @@ function convexHull(points: Polygon2): Polygon2 | null {
   return cleanPolygon([...lower.slice(0, -1), ...upper.slice(0, -1)]);
 }
 
-function triangleNormalZ(a: Point3, b: Point3, c: Point3): number {
-  const abX = b.x - a.x;
-  const abY = b.y - a.y;
-  const acX = c.x - a.x;
-  const acY = c.y - a.y;
-  return abX * acY - abY * acX;
-}
-
 function triangleNormalizedNormalZ(a: Point3, b: Point3, c: Point3): number {
   const abX = b.x - a.x;
   const abY = b.y - a.y;
@@ -176,17 +176,38 @@ function chainBoundaryEdges(edges: Array<{ start: number; end: number }>): numbe
   return chains;
 }
 
-function topFacingPolygonFromRenderMesh(mesh: RenderMesh3D): Polygon2 | null {
+function faceMaxZ(mesh: RenderMesh3D, face: [number, number, number]): number {
+  return Math.max(...face.map((index) => mesh.vertices[index]?.z ?? Number.NEGATIVE_INFINITY));
+}
+
+function topViewPolygonFromRenderMesh(mesh: RenderMesh3D): Polygon2 | null {
+  const candidates = mesh.faces
+    .map((face) => {
+      const a = faceVertex(mesh, face[0]);
+      const b = faceVertex(mesh, face[1]);
+      const c = faceVertex(mesh, face[2]);
+      if (!a || !b || !c) return null;
+      const normalZ = Math.abs(triangleNormalizedNormalZ(a, b, c));
+      if (normalZ < TOP_VIEW_SURFACE_NORMAL_Z_MIN) return null;
+      return {
+        face,
+        maxZ: faceMaxZ(mesh, face),
+      };
+    })
+    .filter((candidate): candidate is { face: [number, number, number]; maxZ: number } =>
+      Boolean(candidate && Number.isFinite(candidate.maxZ)),
+    );
+  if (!candidates.length) return null;
+
+  const topMaxZ = Math.max(...candidates.map((candidate) => candidate.maxZ));
+  const selectedFaces = candidates
+    .filter((candidate) => topMaxZ - candidate.maxZ <= TOP_VIEW_Z_MATCH_TOLERANCE_MM)
+    .map((candidate) => candidate.face);
+  if (!selectedFaces.length) return null;
+
   const edgeCounts = new Map<string, { start: number; end: number; count: number }>();
 
-  for (const face of mesh.faces) {
-    const a = faceVertex(mesh, face[0]);
-    const b = faceVertex(mesh, face[1]);
-    const c = faceVertex(mesh, face[2]);
-    if (!a || !b || !c) continue;
-    if (triangleNormalZ(a, b, c) <= EPSILON_MM) continue;
-    if (triangleNormalizedNormalZ(a, b, c) < TOP_FACING_NORMAL_Z_MIN) continue;
-
+  for (const face of selectedFaces) {
     for (let index = 0; index < face.length; index += 1) {
       const start = face[index]!;
       const end = face[(index + 1) % face.length]!;
@@ -253,14 +274,43 @@ function memberPrismPolygon(object: Extract<ViewerSceneObject, { type: 'member_p
 }
 
 function polygonFromRenderMesh(mesh: RenderMesh3D, preferredBoundaryLength?: number | null): Polygon2 | null {
-  const topFacingPolygon = topFacingPolygonFromRenderMesh(mesh);
-  if (topFacingPolygon) return topFacingPolygon;
+  const topViewPolygon = topViewPolygonFromRenderMesh(mesh);
+  if (topViewPolygon) return topViewPolygon;
 
   if (preferredBoundaryLength && mesh.vertices.length >= preferredBoundaryLength) {
     const topBoundary = cleanPolygon(toPolygon2(mesh.vertices.slice(0, preferredBoundaryLength)));
     if (topBoundary) return topBoundary;
   }
   return convexHull(toPolygon2(mesh.vertices));
+}
+
+function projectionRoleForObject(object: ViewerSceneObject): TopProjectionRole {
+  if (object.type.startsWith('reference_')) return 'context';
+  if (object.type === 'house_surface_solid') {
+    if (object.kind === 'roof' || object.kind === 'deck') return 'top_visible';
+    return 'hidden_from_top';
+  }
+  if (object.type === 'house_surface') {
+    if (object.kind === 'roof' || object.kind === 'deck') return 'top_visible';
+    if (object.kind === 'opening_marker' || object.kind === 'attachment_zone' || object.kind === 'attachment_plane') return 'context';
+    return 'hidden_from_top';
+  }
+  if (object.type === 'house_line') {
+    if (object.kind === 'opening_outline' || object.kind === 'attachment_target') return 'context';
+    return 'top_visible';
+  }
+  if (object.type === 'house_roof_material' || object.type === 'house_linear_solid') return 'top_visible';
+  return 'top_visible';
+}
+
+function metadataWithTopProjectionRole(
+  metadata: GeometryMetadata | undefined,
+  role: TopProjectionRole,
+): GeometryMetadata {
+  return {
+    ...(metadata ?? {}),
+    topProjectionRole: role,
+  };
 }
 
 function zStats(points: Point3[]): { zMin: number | null; zMax: number | null } {
@@ -346,43 +396,65 @@ function baseZOrder(input: { family: GeometryTopProjectionFamily; sourceType: Vi
   return 70;
 }
 
-function shapePolygonForObject(object: ViewerSceneObject): Polygon2 | null {
+function shapeProjectionForObject(object: ViewerSceneObject): ObjectProjection | null {
+  const role = projectionRoleForObject(object);
   switch (object.type) {
-    case 'member_prism':
-      return memberPrismPolygon(object);
+    case 'member_prism': {
+      const polygon = memberPrismPolygon(object);
+      return polygon ? { polygon, role } : null;
+    }
     case 'roof_plane':
     case 'roof_cladding_panel':
-    case 'reference_plane':
-      return cleanPolygon(toPolygon2(object.boundary));
-    case 'roof_flashing':
-      return convexHull(toPolygon2(object.wings.flatMap((wing) => wing.boundary)));
-    case 'house_roof_material':
-      return convexHull(toPolygon2(object.lines.flatMap((line) => [line.start, line.end])));
+    case 'reference_plane': {
+      const polygon = cleanPolygon(toPolygon2(object.boundary));
+      return polygon ? { polygon, role } : null;
+    }
+    case 'roof_flashing': {
+      const polygon = convexHull(toPolygon2(object.wings.flatMap((wing) => wing.boundary)));
+      return polygon ? { polygon, role } : null;
+    }
+    case 'house_roof_material': {
+      const polygon = convexHull(toPolygon2(object.lines.flatMap((line) => [line.start, line.end])));
+      return polygon ? { polygon, role } : null;
+    }
     case 'reference_line':
-    case 'house_line':
-      return linePolygon(object.line, object.kind === 'opening_outline' ? 30 : 45);
+    case 'house_line': {
+      const polygon = linePolygon(object.line, object.kind === 'opening_outline' ? 30 : 45);
+      return polygon ? { polygon, role } : null;
+    }
     case 'house_surface':
       if (object.boundary.length < 2) return null;
-      return cleanPolygon(toPolygon2(object.boundary)) ?? linePolygon(
+      {
+        const polygon = cleanPolygon(toPolygon2(object.boundary)) ?? linePolygon(
         { start: object.boundary[0]!, end: object.boundary[1] ?? object.boundary[0]! },
         object.kind === 'opening_marker' ? 120 : 45,
       );
-    case 'house_surface_solid':
-      return object.renderMesh
+        return polygon ? { polygon, role } : null;
+      }
+    case 'house_surface_solid': {
+      const semanticTopBoundary =
+        object.kind === 'roof' || object.kind === 'deck'
+          ? cleanPolygon(toPolygon2(object.boundary))
+          : null;
+      const polygon = semanticTopBoundary ?? (object.renderMesh
         ? polygonFromRenderMesh(object.renderMesh, object.boundary.length)
-        : cleanPolygon(toPolygon2(object.boundary));
-    case 'house_linear_solid':
-      return object.renderMesh
+        : cleanPolygon(toPolygon2(object.boundary)));
+      return polygon ? { polygon, role } : null;
+    }
+    case 'house_linear_solid': {
+      const polygon = object.renderMesh
         ? polygonFromRenderMesh(object.renderMesh)
         : linePolygon(object.centerline, Math.max(object.profileWidthMm, object.profileDepthMm, 45));
+      return polygon ? { polygon, role } : null;
+    }
     default:
       return null;
   }
 }
 
 function buildShapeFromObject(object: ViewerSceneObject): GeometryTopProjectionShape | null {
-  const polygon = shapePolygonForObject(object);
-  if (!polygon) return null;
+  const projection = shapeProjectionForObject(object);
+  if (!projection) return null;
   const family = familyForObject(object);
   const kind = kindForObject(object);
   const stats = zStats(objectPoints(object));
@@ -394,11 +466,11 @@ function buildShapeFromObject(object: ViewerSceneObject): GeometryTopProjectionS
     sourceType: object.type,
     family,
     kind,
-    polygon,
+    polygon: projection.polygon,
     zOrder: Number((baseZOrder({ family, sourceType: object.type, kind }) + (stats.zMax ?? 0) / 100000).toFixed(6)),
     zMin: stats.zMin,
     zMax: stats.zMax,
-    metadata: object.metadata,
+    metadata: metadataWithTopProjectionRole(object.metadata, projection.role),
   };
 }
 
@@ -417,12 +489,14 @@ function buildReferenceShapes(assembly: Assembly3D): GeometryTopProjectionShape[
     zOrder: 0,
     zMin: 0,
     zMax: 0,
-    metadata: assembly.house.model?.metadata as GeometryMetadata | undefined,
+    metadata: metadataWithTopProjectionRole(assembly.house.model?.metadata as GeometryMetadata | undefined, 'context'),
   }];
 }
 
 function shapeExtents(shapes: GeometryTopProjectionShape[]): GeometryTopProjectionViewModel['extents'] {
-  const points = shapes.flatMap((shape) => shape.polygon);
+  const points = shapes
+    .filter((shape) => shape.metadata?.topProjectionRole !== 'hidden_from_top')
+    .flatMap((shape) => shape.polygon);
   if (!points.length) return null;
   const minX = Math.min(...points.map((point) => point.x));
   const minY = Math.min(...points.map((point) => point.y));

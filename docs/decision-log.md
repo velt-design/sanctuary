@@ -28,7 +28,7 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. Use 
 | 2026-05-01 | Projects/Estimates | Promoted | Core project/contact/estimate workflows need a canonical doc before future behavior changes. |
 | 2026-05-01 | Docs/Testing | Promoted | Keep broad repo command guidance in `docs/testing-and-qa.md`; link to it instead of duplicating command blocks. |
 | 2026-05-01 | Parallel Work | Promoted | Use universal parallel-work guardrails for concurrent lanes across apps, packages, docs, and workbench migration. |
-| 2026-05-01 | Geometry Top Projection | Promoted | Mesh-backed top projection must derive from upward-facing mesh faces, not render-mesh vertex order. |
+| 2026-05-01 | Geometry Top Projection | Promoted | Mesh-backed top projection must follow the 3D Top camera visibility contract, not render-mesh order or face winding. |
 | 2026-05-01 | Quotes/Invoices/Job Packs | Promoted | High-risk side-effect workflows need a canonical doc before future behavior changes. |
 | 2026-05-01 | Docs | Promoted | Read the agent playbook for non-trivial portal work; promote durable lessons from this log into the playbook. |
 | 2026-05-01 | Docs | Promoted | Do not delete active guardrail docs without confirming usage or replacing the rule. |
@@ -170,11 +170,11 @@ Area: Geometry Top Projection
 
 Status: Promoted
 
-Decision or mistake: mesh-backed house solids in the top projection used to trust render-mesh vertex-ring order, which could select an underside or bottom ring when the plan needed the visible top surface.
+Decision or mistake: mesh-backed house solids in the top projection used to trust render-mesh vertex-ring order and later face normals, which could still select or render lower envelope geometry when the plan needed the same visible top view as the 3D Top camera.
 
 Why it mattered: model-space plan could look aligned to a bottom-up view of the 3D model even while sharing the same scene instance.
 
-Current guardrail: top projection must derive house solid polygons from upward-facing mesh faces first, and only use boundary or convex-hull fallback when no top-facing mesh surface can be derived.
+Current guardrail: top projection must follow the 3D Top camera convention. Roof and deck solids use semantic top boundaries; other mesh-backed solids use the highest non-vertical projected surface without trusting winding; lower envelope geometry must carry `topProjectionRole: hidden_from_top` and be filtered from normal Model Space rendering.
 
 Promoted to: `docs/costing-and-geometry.md`, `docs/design-workbench-architecture.md`, `docs/decision-log.md`.
 

@@ -60,7 +60,7 @@ For marketing-only or shared-package-only tasks, use the parts that affect porta
 ## Verification
 
 - Choose tests proportional to risk and blast radius.
-- For docs-only work, run the docs-only checks in `docs/testing-and-qa.md`.
+- For docs-only work, run `npm run docs:guard` and `npm run text:mojibake`.
 - For focused portal logic, prefer the closest unit/integration test first, then broaden if shared behavior changed.
 - For portal UI-heavy work, use Playwright or browser/manual checks where the change affects layout, interaction, routing, auth, or persisted state.
 - For schedule work, consider `npm run schedule:bundle-budget`, smoke/performance checks, and manual drag/drop or Gantt checks when relevant.

@@ -91,4 +91,5 @@ Use these globs as routing hints. They do not replace source inspection.
 - Link to the owner doc instead of repeating full rules in every related doc.
 - Prefer short current-state updates over new planning docs.
 - Use `docs/decision-log.md` for lessons and this doc for durable routing rules.
+- Run `npm run docs:guard` after changing agent docs, redirects, or canonical doc links.
 - If a new doc mostly duplicates an existing owner doc, merge the useful details into the owner doc and do not keep both.

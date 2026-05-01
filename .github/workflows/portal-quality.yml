@@ -28,6 +28,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Agent docs guard
+        run: npm run docs:guard
+
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
 
@@ -89,11 +92,11 @@ jobs:
             '| Route | Shell visible | Shell budget | Content visible | Content budget | Interaction | Interaction budget | Pass |',
             '| --- | ---: | ---: | ---: | ---: | ---: | ---: | :---: |',
             ...routes.map((route) => {
-              const shellBudget = typeof route.shellVisibleMsMax === 'number' && route.shellVisibleMsMax > 0 ? `${route.shellVisibleMsMax}ms` : '—';
+              const shellBudget = typeof route.shellVisibleMsMax === 'number' && route.shellVisibleMsMax > 0 ? `${route.shellVisibleMsMax}ms` : 'n/a';
               const contentBudget =
-                typeof route.contentVisibleMsMax === 'number' && route.contentVisibleMsMax > 0 ? `${route.contentVisibleMsMax}ms` : '—';
-              const interaction = typeof route.interactionMs === 'number' ? `${route.interactionMs}ms` : '—';
-              const interactionBudget = typeof route.interactionMsMax === 'number' ? `${route.interactionMsMax}ms` : '—';
+                typeof route.contentVisibleMsMax === 'number' && route.contentVisibleMsMax > 0 ? `${route.contentVisibleMsMax}ms` : 'n/a';
+              const interaction = typeof route.interactionMs === 'number' ? `${route.interactionMs}ms` : 'n/a';
+              const interactionBudget = typeof route.interactionMsMax === 'number' ? `${route.interactionMsMax}ms` : 'n/a';
               const label = route.interactionLabel ? `${route.route} (${route.interactionLabel})` : route.route;
               return `| ${label} | ${route.shellVisibleMs}ms | ${shellBudget} | ${route.contentVisibleMs}ms | ${contentBudget} | ${interaction} | ${interactionBudget} | ${route.withinBudget ? 'PASS' : 'FAIL'} |`;
             }),

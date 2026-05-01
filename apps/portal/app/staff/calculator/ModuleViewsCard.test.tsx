@@ -207,6 +207,29 @@ function makeTopProjectionFixture(): GeometryTopProjectionViewModel {
         zOrder: 10,
         zMin: 2400,
         zMax: 3100,
+        metadata: {
+          topProjectionRole: 'top_visible',
+        },
+      },
+      {
+        id: 'top-projection-hidden-wall',
+        sourceObjectId: 'scene-house-wall',
+        sourceId: 'solved-house-wall',
+        sourceType: 'house_surface_solid',
+        family: 'house',
+        kind: 'wall',
+        polygon: [
+          { x: -4000, y: -5000 },
+          { x: -3000, y: -5000 },
+          { x: -3000, y: -4500 },
+          { x: -4000, y: -4500 },
+        ],
+        zOrder: 11,
+        zMin: 0,
+        zMax: 2400,
+        metadata: {
+          topProjectionRole: 'hidden_from_top',
+        },
       },
       {
         id: 'top-projection-pergola-roof',
@@ -224,6 +247,9 @@ function makeTopProjectionFixture(): GeometryTopProjectionViewModel {
         zOrder: 50,
         zMin: 2400,
         zMax: 2600,
+        metadata: {
+          topProjectionRole: 'top_visible',
+        },
       },
     ],
     extents: {
@@ -660,6 +686,12 @@ describe('ModuleViewsCard', () => {
 
     expect(markup).toContain('data-top-projection-source-object-id="scene-pergola-roof"');
     expect(markup).toContain('data-top-projection-source-type="roof_plane"');
+    expect(markup).toContain('data-top-projection-role="top_visible"');
+    expect(markup).toContain('data-top-projection-z-min="2400"');
+    expect(markup).toContain('data-top-projection-z-max="2600"');
+    expect(markup).toContain('data-top-projection-screen-axis="world_x_right_world_y_down"');
+    expect(markup).not.toContain('data-plan-top-projection-shape="top-projection-hidden-wall"');
+    expect(markup).not.toContain('data-top-projection-role="hidden_from_top"');
     expect(markup).toContain('data-pergola-shape-hit-source="top_projection"');
     expect(hitPoints).toEqual(projectedRoofPoints);
   });

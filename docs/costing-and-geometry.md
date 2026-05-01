@@ -37,7 +37,7 @@ apps/marketing/app/api/enquiry/route.ts
 
 Canonical geometry solving lives in `packages/geometry`.
 
-Top projection is scene-first: `buildTopProjectionViewModelFromScene()` projects the same `ViewerSceneModel` used by 3D into world-XY plan shapes. Mesh-backed house solids are projected from their upward-facing top mesh surface, not from render-mesh vertex order, so plan output matches the 3D top view rather than an underside ring. The assembly helper `buildTopProjectionViewModel()` remains available as a compatibility wrapper that builds the viewer scene, adds assembly reference shapes, and then calls the scene-first projection path.
+Top projection is scene-first: `buildTopProjectionViewModelFromScene()` projects the same `ViewerSceneModel` used by 3D into world-XY plan shapes. Mesh-backed house solids use the world `+Z` top-view contract, not render-mesh vertex order or face winding. Normal Model Space rendering uses each shape's `metadata.topProjectionRole` so hidden lower envelope geometry cannot dominate the plan. The assembly helper `buildTopProjectionViewModel()` remains available as a compatibility wrapper that builds the viewer scene, adds assembly reference shapes, and then calls the scene-first projection path.
 
 Portal drawing code adapts package output into workbench, plan, section, sheet, and preview state under:
 
@@ -48,7 +48,7 @@ Compatibility paths must remain explicit. If a view uses fallback or compatibili
 
 ## Top Projection Contract
 
-Mesh-backed top projection must derive house solid polygons from upward-facing mesh faces first. Render-mesh vertex order is not a reliable source of the visible top surface. Boundary or convex-hull fallback is allowed only when no top-facing mesh surface can be derived, and tests should make that fallback visible.
+Mesh-backed top projection must derive normal plan geometry from the 3D Top camera convention: world `+Z` looking down, screen X as world `+X`, and screen Y as world `+Y` downward. Roof and deck solids use their semantic top boundaries. Other mesh-backed solids use the highest non-vertical projected surface without trusting face winding. Lower envelope/context geometry must be classified with `topProjectionRole` and hidden from normal Model Space rendering unless it is intentional context.
 
 ## Roof Length And Span
 

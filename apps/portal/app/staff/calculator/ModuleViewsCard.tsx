@@ -1983,11 +1983,20 @@ function topProjectionShapeVisible(
   shape: GeometryTopProjectionShape,
   visibility: DrawingWorkbenchVisibilityState,
 ): boolean {
+  const role = topProjectionRole(shape);
+  if (role === 'hidden_from_top') return false;
   if (shape.family === 'pergola') return visibility.pergolas;
   if (shape.family !== 'house') return true;
   if (shape.kind === 'deck') return visibility.decks;
   if (shape.kind === 'opening_marker' || shape.kind === 'opening_outline') return visibility.openings;
   return visibility.house;
+}
+
+function topProjectionRole(shape: GeometryTopProjectionShape): 'top_visible' | 'context' | 'hidden_from_top' {
+  const role = shape.metadata?.topProjectionRole;
+  return role === 'context' || role === 'hidden_from_top' || role === 'top_visible'
+    ? role
+    : 'top_visible';
 }
 
 function topProjectionShapeClass(shape: GeometryTopProjectionShape): string {
@@ -5653,6 +5662,14 @@ function PlanSvg({
                 data-top-projection-source-type={shape.sourceType}
                 data-top-projection-family={shape.family}
                 data-top-projection-kind={shape.kind}
+                data-top-projection-role={topProjectionRole(shape)}
+                data-top-projection-z-min={shape.zMin ?? ''}
+                data-top-projection-z-max={shape.zMax ?? ''}
+                data-top-projection-screen-axis={
+                  modelSpaceTopProjection
+                    ? `${modelSpaceTopProjection.screenAxis.x}_${modelSpaceTopProjection.screenAxis.y}`
+                    : undefined
+                }
                 data-house-plan-surface={shape.family === 'house' && shape.kind !== 'gutter' && shape.kind !== 'roof_feature' ? shape.kind : undefined}
                 data-house-plan-line={shape.family === 'house' && (shape.kind === 'gutter' || shape.kind === 'roof_feature' || shape.kind === 'attachment_target') ? shape.kind : undefined}
                 data-plan-primary-fill={shape.family === 'pergola' && shape.kind === 'roof_plane' ? 'true' : undefined}

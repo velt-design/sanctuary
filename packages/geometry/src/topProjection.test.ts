@@ -5,6 +5,7 @@ import {
   buildViewerSceneModel,
   solveAssembly3D,
   type GeometryConfig,
+  type HouseSurfaceSolidKind,
   type HouseAttachmentStrategy,
   type Point2,
   type Polygon3,
@@ -113,7 +114,7 @@ function normalizedPointSet(points: Point2[]): string[] {
 
 function makeSceneWithHouseSolid(input: {
   id: string;
-  kind: "deck" | "roof";
+  kind: HouseSurfaceSolidKind;
   boundary: Polygon3;
   renderMesh: RenderMesh3D;
 }): ViewerSceneModel {
@@ -170,6 +171,7 @@ describe("buildTopProjectionViewModel", () => {
       family: "pergola",
       kind: "roof_plane",
       sourceId: roofObject.sourceId,
+      metadata: expect.objectContaining({ topProjectionRole: "top_visible" }),
     });
     expect(normalizedPointSet(roofShape?.polygon ?? [])).toEqual(
       normalizedPointSet(roofObject.boundary.map(toPoint2)),
@@ -187,10 +189,10 @@ describe("buildTopProjectionViewModel", () => {
       family: "house",
       kind: "deck",
       sourceId: deckObject.sourceId,
-      metadata: expect.objectContaining({ sourceId: "deck-main" }),
+      metadata: expect.objectContaining({ sourceId: "deck-main", topProjectionRole: "top_visible" }),
     });
     expect(normalizedPointSet(deckShape?.polygon ?? [])).toEqual(
-      normalizedPointSet(deckObject.renderMesh.vertices.slice(deckObject.boundary.length).map(toPoint2)),
+      normalizedPointSet(deckObject.boundary.map(toPoint2)),
     );
 
     const memberObject = sceneObjects.find((object) => object.type === "member_prism" && object.role === "rafter");
@@ -217,7 +219,7 @@ describe("buildTopProjectionViewModel", () => {
       family: "house",
       kind: "opening_marker",
       sourceId: openingObject.sourceId,
-      metadata: expect.objectContaining({ openingId: "opening-main" }),
+      metadata: expect.objectContaining({ openingId: "opening-main", topProjectionRole: "context" }),
     });
     const openingXs = [...new Set((openingShape?.polygon ?? []).map((point) => Number(point.x.toFixed(3))))].sort();
     const openingYs = (openingShape?.polygon ?? []).map((point) => point.y);
@@ -280,11 +282,12 @@ describe("buildTopProjectionViewModel", () => {
       zMax: 1200,
       metadata: {
         source: "scene-only",
+        topProjectionRole: "context",
       },
     });
   });
 
-  it("projects mesh-backed vertical solids from the top-visible face instead of the first mesh ring", () => {
+  it("projects roof and deck solids from the semantic top boundary instead of mesh ring order", () => {
     const bottomRing: Polygon3 = [
       { x: 40, y: 25, z: 0 },
       { x: 1040, y: 25, z: 0 },
@@ -306,8 +309,8 @@ describe("buildTopProjectionViewModel", () => {
         faces: [
           [0, 2, 1],
           [0, 3, 2],
-          [4, 5, 6],
-          [4, 6, 7],
+          [4, 6, 5],
+          [4, 7, 6],
           [0, 1, 5],
           [0, 5, 4],
           [1, 2, 6],
@@ -326,9 +329,10 @@ describe("buildTopProjectionViewModel", () => {
 
     expect(normalizedPointSet(deckShape?.polygon ?? [])).toEqual(normalizedPointSet(topRing.map(toPoint2)));
     expect(normalizedPointSet(deckShape?.polygon ?? [])).not.toEqual(normalizedPointSet(bottomRing.map(toPoint2)));
+    expect(deckShape?.metadata).toMatchObject({ topProjectionRole: "top_visible" });
   });
 
-  it("projects sloped roof solids from upward-facing roof mesh faces instead of the underside", () => {
+  it("projects sloped roof solids from the semantic roof top boundary instead of the underside", () => {
     const bottomRing: Polygon3 = [
       { x: 60, y: 40, z: 2300 },
       { x: 1260, y: 40, z: 2300 },
@@ -370,5 +374,125 @@ describe("buildTopProjectionViewModel", () => {
 
     expect(normalizedPointSet(roofShape?.polygon ?? [])).toEqual(normalizedPointSet(roofRing.map(toPoint2)));
     expect(normalizedPointSet(roofShape?.polygon ?? [])).not.toEqual(normalizedPointSet(bottomRing.map(toPoint2)));
+    expect(roofShape?.metadata).toMatchObject({ topProjectionRole: "top_visible" });
+  });
+
+  it("projects other mesh-backed solids from the highest non-vertical surface without trusting winding", () => {
+    const bottomRing: Polygon3 = [
+      { x: 20, y: 10, z: 100 },
+      { x: 820, y: 10, z: 100 },
+      { x: 820, y: 150, z: 100 },
+      { x: 20, y: 150, z: 100 },
+    ];
+    const topRing: Polygon3 = [
+      { x: 0, y: 0, z: 220 },
+      { x: 800, y: 0, z: 220 },
+      { x: 800, y: 120, z: 220 },
+      { x: 0, y: 120, z: 220 },
+    ];
+    const scene: ViewerSceneModel = {
+      layers: [
+        {
+          id: "house-linear-solids",
+          label: "House Linear Solids",
+          visibleByDefault: true,
+          objects: [
+            {
+              id: "gutter-top-visible",
+              type: "house_linear_solid",
+              sourceId: "gutter-top-visible",
+              kind: "gutter",
+              centerline: {
+                start: { x: 0, y: 60, z: 160 },
+                end: { x: 800, y: 60, z: 160 },
+              },
+              localFrame: {
+                origin: { x: 0, y: 60, z: 160 },
+                xAxis: { x: 1, y: 0, z: 0 },
+                yAxis: { x: 0, y: 1, z: 0 },
+                zAxis: { x: 0, y: 0, z: 1 },
+              },
+              profileWidthMm: 120,
+              profileDepthMm: 120,
+              renderMesh: {
+                vertices: [...bottomRing, ...topRing],
+                faces: [
+                  [0, 2, 1],
+                  [0, 3, 2],
+                  [4, 6, 5],
+                  [4, 7, 6],
+                  [0, 1, 5],
+                  [0, 5, 4],
+                  [1, 2, 6],
+                  [1, 6, 5],
+                  [2, 3, 7],
+                  [2, 7, 6],
+                  [3, 0, 4],
+                  [3, 4, 7],
+                ],
+              },
+            },
+          ],
+        },
+      ],
+    };
+
+    const gutterShape = buildTopProjectionViewModelFromScene(scene).shapes.find(
+      (shape) => shape.sourceObjectId === "gutter-top-visible",
+    );
+
+    expect(normalizedPointSet(gutterShape?.polygon ?? [])).toEqual(normalizedPointSet(topRing.map(toPoint2)));
+    expect(normalizedPointSet(gutterShape?.polygon ?? [])).not.toEqual(normalizedPointSet(bottomRing.map(toPoint2)));
+    expect(gutterShape?.metadata).toMatchObject({ topProjectionRole: "top_visible" });
+  });
+
+  it("classifies lower house envelope solids as hidden from the normal top view", () => {
+    const wallRing: Polygon3 = [
+      { x: 0, y: -100, z: 0 },
+      { x: 1200, y: -100, z: 0 },
+      { x: 1200, y: 0, z: 2400 },
+      { x: 0, y: 0, z: 2400 },
+    ];
+    const roofRing: Polygon3 = [
+      { x: 0, y: -900, z: 2600 },
+      { x: 1200, y: -900, z: 2600 },
+      { x: 1200, y: 100, z: 2600 },
+      { x: 0, y: 100, z: 2600 },
+    ];
+    const scene = {
+      layers: [
+        ...makeSceneWithHouseSolid({
+          id: "wall-hidden-from-top",
+          kind: "wall",
+          boundary: wallRing,
+          renderMesh: {
+            vertices: wallRing,
+            faces: [[0, 1, 2], [0, 2, 3]],
+          },
+        }).layers,
+        ...makeSceneWithHouseSolid({
+          id: "roof-visible-from-top",
+          kind: "roof",
+          boundary: roofRing,
+          renderMesh: {
+            vertices: roofRing,
+            faces: [[0, 1, 2], [0, 2, 3]],
+          },
+        }).layers,
+      ],
+    };
+
+    const projection = buildTopProjectionViewModelFromScene(scene);
+    const wallShape = projection.shapes.find((shape) => shape.sourceObjectId === "wall-hidden-from-top");
+    const roofShape = projection.shapes.find((shape) => shape.sourceObjectId === "roof-visible-from-top");
+
+    expect(wallShape?.metadata).toMatchObject({ topProjectionRole: "hidden_from_top" });
+    expect(roofShape?.metadata).toMatchObject({ topProjectionRole: "top_visible" });
+    expect(projection.extents).toMatchObject({
+      minX: 0,
+      minY: -900,
+      maxX: 1200,
+      maxY: 100,
+    });
   });
 });
