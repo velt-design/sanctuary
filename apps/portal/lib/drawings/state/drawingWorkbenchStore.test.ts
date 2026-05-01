@@ -265,6 +265,7 @@ describe('buildDrawingWorkbenchStore', () => {
     expect(store.derived.activeSolution.geometryPreview.config).toBe(store.derived.activeSolution.config);
     expect(store.derived.activeSolution.geometryPreview.assembly).toBe(store.derived.activeSolution.assembly);
     expect(store.derived.activeSolution.geometryPreview.scene).toBe(store.derived.activeSolution.viewerScene);
+    expect(store.derived.activeSolution.geometryPreview.topProjection).toBe(store.derived.activeSolution.geometryTopProjection);
     expect(store.derived.activeAssemblyModel?.roof.footprint.lengthA).toBeCloseTo(4.5);
     expect(store.derived.activePlanModel?.lengthA).toBeCloseTo(4.5);
     expect(store.derived.activePlanModel?.attachmentEdgeLengthM).toBeCloseTo(4.5);
@@ -347,6 +348,7 @@ describe('buildDrawingWorkbenchStore', () => {
     expect(store.derived.activeTrustGate.warningIssues).toContain('approximate');
     expect(store.derived.exportReadiness.canExport).toBe(true);
     expect(store.derived.activeSolution?.geometryPlan).toBe(store.persisted.modules[0]?.geometryPlanViewModel);
+    expect(store.derived.activeSolution?.geometryTopProjection).toBe(store.persisted.modules[0]?.geometryTopProjectionViewModel);
     expect(store.derived.activePlanModel).not.toBeNull();
     expect(store.derived.activePlanViewModel?.modelSpacePergola.renderSource).toBe('geometry');
     expect(store.derived.activePlanViewModel?.modelSpacePergola.renderStatus).toBe('geometry_ready');

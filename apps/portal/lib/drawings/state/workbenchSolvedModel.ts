@@ -1,4 +1,5 @@
 import {
+  buildTopProjectionViewModelFromScene,
   buildViewerSceneModel,
   type Assembly3D,
   type GeometryConfig,
@@ -377,6 +378,15 @@ function buildViewerSceneFromSolvedGeometry(input: {
   );
 }
 
+function buildTopProjectionFromSolvedScene(input: {
+  scene: ViewerSceneModel;
+  fallbackTopProjection: GeometryTopProjectionViewModel;
+}): GeometryTopProjectionViewModel {
+  return buildTopProjectionViewModelFromScene(input.scene, {
+    referenceShapes: input.fallbackTopProjection.shapes.filter((shape) => shape.sourceType === 'house_reference'),
+  });
+}
+
 function uniqueIssues(issues: WorkbenchTrustStatusKind[]): WorkbenchTrustStatusKind[] {
   return Array.from(new Set(issues));
 }
@@ -718,6 +728,10 @@ function buildSolvedModule(input: {
     assembly: derivation.assembly,
     geometryContext: input.geometryContext,
   });
+  const geometryTopProjection = buildTopProjectionFromSolvedScene({
+    scene,
+    fallbackTopProjection: derivation.geometryTopProjection,
+  });
 
   return {
     index: input.index,
@@ -739,7 +753,7 @@ function buildSolvedModule(input: {
     assembly: derivation.assembly,
     geometryPlan: derivation.geometryPlan,
     geometrySection: derivation.geometrySection,
-    geometryTopProjection: derivation.geometryTopProjection,
+    geometryTopProjection,
     validation,
     viewerScene: scene,
     geometryPreview: {
@@ -750,7 +764,7 @@ function buildSolvedModule(input: {
       assembly: derivation.assembly,
       validation,
       scene,
-      topProjection: derivation.geometryTopProjection,
+      topProjection: geometryTopProjection,
       deckSupport,
     },
     deckSupport,

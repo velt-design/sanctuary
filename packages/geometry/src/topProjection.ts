@@ -9,11 +9,16 @@ import type {
   Point3,
   Polygon2,
   RenderMesh3D,
+  ViewerSceneModel,
   ViewerSceneObject,
 } from './contracts';
 import { buildViewerSceneModel } from './viewer';
 
 const EPSILON_MM = 1e-6;
+
+export type BuildTopProjectionViewModelFromSceneOptions = {
+  referenceShapes?: GeometryTopProjectionShape[];
+};
 
 function toPoint2(point: { x: number; y: number }): Point2 {
   return {
@@ -313,10 +318,12 @@ function shapeExtents(shapes: GeometryTopProjectionShape[]): GeometryTopProjecti
   };
 }
 
-export function buildTopProjectionViewModel(assembly: Assembly3D): GeometryTopProjectionViewModel {
-  const scene = buildViewerSceneModel(assembly);
+export function buildTopProjectionViewModelFromScene(
+  scene: ViewerSceneModel,
+  options: BuildTopProjectionViewModelFromSceneOptions = {},
+): GeometryTopProjectionViewModel {
   const shapes = [
-    ...buildReferenceShapes(assembly),
+    ...(options.referenceShapes ?? []),
     ...scene.layers.flatMap((layer) => layer.objects.map(buildShapeFromObject).filter((shape): shape is GeometryTopProjectionShape => Boolean(shape))),
   ].sort((left, right) => left.zOrder - right.zOrder || left.id.localeCompare(right.id));
 
@@ -329,4 +336,10 @@ export function buildTopProjectionViewModel(assembly: Assembly3D): GeometryTopPr
     shapes,
     extents: shapeExtents(shapes),
   };
+}
+
+export function buildTopProjectionViewModel(assembly: Assembly3D): GeometryTopProjectionViewModel {
+  return buildTopProjectionViewModelFromScene(buildViewerSceneModel(assembly), {
+    referenceShapes: buildReferenceShapes(assembly),
+  });
 }

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildTopProjectionViewModelFromScene,
   buildTopProjectionViewModel,
   buildViewerSceneModel,
   solveAssembly3D,
@@ -130,6 +131,11 @@ describe("buildTopProjectionViewModel", () => {
     const scene = buildViewerSceneModel(assembly);
     const sceneObjects = scene.layers.flatMap((layer) => layer.objects);
     const projection = buildTopProjectionViewModel(assembly);
+    const sceneProjection = buildTopProjectionViewModelFromScene(scene, {
+      referenceShapes: projection.shapes.filter((shape) => shape.sourceType === "house_reference"),
+    });
+
+    expect(sceneProjection).toEqual(projection);
 
     const roofObject = sceneObjects.find((object) => object.type === "roof_plane");
     if (!roofObject || roofObject.type !== "roof_plane") throw new Error("Expected roof plane object.");
@@ -206,5 +212,53 @@ describe("buildTopProjectionViewModel", () => {
     });
     expect(projection.extents?.widthMm).toBeGreaterThan(0);
     expect(projection.extents?.heightMm).toBeGreaterThan(0);
+  });
+
+  it("projects objects that exist only in the supplied viewer scene", () => {
+    const fixture = requireSupportedFixture("mono_attached_soffit_away_standard");
+    const solved = solveAssembly3D(addHouseModelContext(fixture.config));
+    if (!solved.ok) throw new Error(solved.error);
+
+    const scene = buildViewerSceneModel(solved.value);
+    const sceneOnlyObject = {
+      id: "scene-only-attachment-edge",
+      type: "reference_line" as const,
+      sourceId: "scene-only-source",
+      kind: "attachment_edge" as const,
+      line: {
+        start: { x: -1000, y: -200, z: 1200 },
+        end: { x: -250, y: -200, z: 1200 },
+      },
+      metadata: {
+        source: "scene-only",
+      },
+    };
+    const sceneProjection = buildTopProjectionViewModelFromScene({
+      ...scene,
+      layers: [
+        ...scene.layers,
+        {
+          id: "scene-only",
+          label: "Scene Only",
+          visibleByDefault: true,
+          objects: [sceneOnlyObject],
+        },
+      ],
+    });
+
+    expect(buildTopProjectionViewModel(solved.value).shapes.find((shape) => shape.sourceObjectId === sceneOnlyObject.id)).toBeUndefined();
+    expect(sceneProjection.shapes.find((shape) => shape.sourceObjectId === sceneOnlyObject.id)).toMatchObject({
+      id: "reference_line:scene-only-attachment-edge",
+      sourceObjectId: sceneOnlyObject.id,
+      sourceId: "scene-only-source",
+      sourceType: "reference_line",
+      family: "reference",
+      kind: "attachment_edge",
+      zMin: 1200,
+      zMax: 1200,
+      metadata: {
+        source: "scene-only",
+      },
+    });
   });
 });

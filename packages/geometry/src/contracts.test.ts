@@ -601,6 +601,7 @@ describe('@sp/geometry contracts', () => {
     expect(typeof geometryModule.validateGeometrySolve).toBe('function');
     expect(typeof geometryModule.buildViewerSceneModel).toBe('function');
     expect(typeof geometryModule.buildTopProjectionViewModel).toBe('function');
+    expect(typeof geometryModule.buildTopProjectionViewModelFromScene).toBe('function');
     expect(typeof geometryModule.buildPlanViewModel).toBe('function');
     expect(typeof geometryModule.buildSectionViewModel).toBe('function');
   });

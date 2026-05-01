@@ -11,6 +11,10 @@ export type { SolveAssembly3DErrorCode, SolveAssembly3DResult } from './solve.ty
 export { validateGeometrySolve } from './validate';
 export type { ValidateGeometrySolveInput } from './validate';
 export { buildViewerSceneModel } from './viewer';
-export { buildTopProjectionViewModel } from './topProjection';
+export {
+  buildTopProjectionViewModel,
+  buildTopProjectionViewModelFromScene,
+} from './topProjection';
+export type { BuildTopProjectionViewModelFromSceneOptions } from './topProjection';
 export { buildPlanViewModel } from './plan';
 export { buildSectionViewModel } from './section';
