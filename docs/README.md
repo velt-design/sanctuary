@@ -8,9 +8,10 @@ These docs are current-state references and active guardrails for coding agents.
 2. `agent-playbook.md`: active protocol for non-trivial portal work.
 3. `decision-log.md`: indexed lessons from past mistakes; scan relevant entries before risky work.
 4. `change-routing.md`: path ownership, doc update triggers, and common task cards.
-5. `architecture.md`: workspace structure, app/package ownership, CI.
-6. `platform-workflow.md`: business workflow from lead to install completion.
-7. The feature doc for the area you are changing.
+5. `portal-production-readiness.md`: active tracker for production-grade portal status, blockers, priorities, and parallel lanes.
+6. `architecture.md`: workspace structure and app/package ownership.
+7. `platform-workflow.md`: business workflow from lead to install completion.
+8. The feature doc for the area you are changing.
 
 ## Canonical Reference Docs
 
@@ -18,6 +19,7 @@ These docs are current-state references and active guardrails for coding agents.
 | --- | --- | --- |
 | `agent-playbook.md` | Active protocol | You are doing non-trivial portal implementation, investigation, bugfix, or verification work. |
 | `change-routing.md` | Active protocol | You need path ownership, doc update triggers, common task cards, or docs bloat control before editing. |
+| `portal-production-readiness.md` | Active tracker | You need current portal production-readiness status, quality gates, blockers, priorities, or parallel work lanes. |
 | `architecture.md` | Current | You need the repo map, app/package boundaries, or CI/script overview. |
 | `platform-workflow.md` | Current | You need to understand lead, project, estimate, quote, invoice, design, schedule, or running-job flow. |
 | `environment-auth-supabase.md` | Current | You need env vars, Supabase auth, role access, migrations, or schema readiness. |

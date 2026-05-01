@@ -1,10 +1,77 @@
 'use client';
 
-import type { Dispatch, SetStateAction } from 'react';
-import Modal from '@/components/ui/modal/Modal';
+import { useEffect, useMemo, useRef, type Dispatch, type ReactNode, type SetStateAction } from 'react';
+import { createPortal } from 'react-dom';
+import { lockDocumentScroll, unlockDocumentScroll } from '@/components/ui/scrollLock';
 import type { ScheduleItem } from '@/lib/types/scheduling';
 import { addDaysYmd, isYmd as isYmdDate } from '@/lib/scheduling/date';
 import styles from './schedule.module.css';
+
+type ScheduleModalProps = {
+  open: boolean;
+  onClose: () => void;
+  children: ReactNode;
+  ariaLabel: string;
+  maxWidthPx?: number;
+};
+
+function Modal({ open, onClose, children, ariaLabel, maxWidthPx = 720 }: ScheduleModalProps) {
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  const onCloseRef = useRef(onClose);
+  const portalRoot = typeof document === 'undefined' ? null : document.body;
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
+  useEffect(() => {
+    if (!open || typeof window === 'undefined') return;
+
+    lockDocumentScroll();
+    const previousFocus = document.activeElement as HTMLElement | null;
+    const focusTimer = window.setTimeout(() => panelRef.current?.focus({ preventScroll: true }), 0);
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      event.preventDefault();
+      onCloseRef.current();
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+
+    return () => {
+      window.clearTimeout(focusTimer);
+      window.removeEventListener('keydown', onKeyDown);
+      unlockDocumentScroll();
+      previousFocus?.focus?.({ preventScroll: true });
+    };
+  }, [open]);
+
+  const panelStyle = useMemo(() => ({ maxWidth: maxWidthPx }), [maxWidthPx]);
+
+  if (!open || !portalRoot) return null;
+
+  return createPortal(
+    <div
+      className={styles.modalOverlay}
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+    >
+      <div
+        ref={panelRef}
+        className={styles.modalPanel}
+        role="dialog"
+        aria-modal="true"
+        aria-label={ariaLabel}
+        tabIndex={-1}
+        style={panelStyle}
+      >
+        {children}
+      </div>
+    </div>,
+    portalRoot,
+  );
+}
 
 function parsePositiveInt(value: string): number | null {
   const n = Number.parseInt(value.trim(), 10);

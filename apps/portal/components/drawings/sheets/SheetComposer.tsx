@@ -3,6 +3,7 @@
 import type { ModuleViewsStatus, ModuleViewsTab } from '@/app/staff/calculator/ModuleViewsCard';
 import type { ModulePlanModel, ModuleSectionModel } from '@/app/staff/calculator/moduleViews';
 import EstimateDrawingSheet from '@/components/estimates/EstimateDrawingSheet';
+import type { PlanViewModel } from '@/lib/drawings/views/plan/buildPlanViewModel';
 import type { EstimateDrawingField, EstimateDrawingFootprintEdit } from '@/lib/estimates/drawingEdits';
 import type { EstimateDrawingSheetMeta } from '@/lib/estimates/drawingSheet';
 
@@ -12,6 +13,7 @@ export type SheetComposerDocument = {
   status: ModuleViewsStatus;
   planModel?: ModulePlanModel | null;
   sectionModel?: ModuleSectionModel | null;
+  planViewModel?: PlanViewModel | null;
   meta: EstimateDrawingSheetMeta;
   editableFields?: EstimateDrawingField[];
   showDebugOverlays?: boolean;
@@ -32,6 +34,7 @@ export default function SheetComposer({ document }: { document: SheetComposerDoc
       status={document.status}
       planModel={document.planModel}
       sectionModel={document.sectionModel}
+      planViewModel={document.planViewModel}
       meta={document.meta}
       editableFields={document.editableFields}
       showDebugOverlays={document.showDebugOverlays}

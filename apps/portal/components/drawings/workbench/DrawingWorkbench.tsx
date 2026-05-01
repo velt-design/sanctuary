@@ -212,6 +212,7 @@ export default function DrawingWorkbench({
             status={status}
             planModel={planModel}
             sectionModel={sectionModel}
+            planViewModel={planViewModel}
             meta={meta}
             editableFields={editableFields}
             showDebugOverlays={showDebugOverlays}

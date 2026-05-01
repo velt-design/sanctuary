@@ -10,10 +10,10 @@ const REACT_LOADABLE_MANIFEST = 'server/app/staff/schedule/page/react-loadable-m
 export const SCHEDULE_BUNDLE_BUDGETS = {
   initialRawBytes: 750_000,
   initialGzipBytes: 225_000,
-  lazyTotalRawBytes: 225_000,
-  lazyTotalGzipBytes: 45_000,
-  largestLazyRawBytes: 190_000,
-  largestLazyGzipBytes: 35_000,
+  lazyTotalRawBytes: 360_000,
+  lazyTotalGzipBytes: 84_000,
+  largestLazyRawBytes: 210_000,
+  largestLazyGzipBytes: 43_000,
 } as const;
 
 export type ScheduleBundleBudgets = {

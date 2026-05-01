@@ -18,6 +18,7 @@ For marketing-only or shared-package-only tasks, use the parts that affect porta
 - Read `AGENTS.md`, `docs/README.md`, this playbook, and the smallest relevant canonical doc.
 - Scan `docs/decision-log.md` for entries matching the feature area, source-of-truth boundary, or risk pattern.
 - Use `docs/change-routing.md` to map changed paths to owner docs, doc update triggers, and common task cards.
+- For production-readiness, quality-gate, hardening, or parallel-lane work, read and update `docs/portal-production-readiness.md`.
 - For parallel lanes, cross-app work, or workbench migration and compatibility work, read `docs/parallel-work-guardrails.md` before editing. `docs/design-workbench-parallel-migration-rules.md` is a historical redirect only.
 - Use `rg` and `rg --files` to find owner files, tests, routes, APIs, docs, and old compatibility paths.
 - Identify the owning layer before editing: package, domain library, API/RPC route, local-first adapter, component, or page.
@@ -90,6 +91,7 @@ Use `docs/testing-and-qa.md` for the canonical command catalog. Use the feature 
 | Area | Read First | Extra Guardrail |
 | --- | --- | --- |
 | Path ownership and doc triggers | `docs/change-routing.md` | Use the trigger matrix before non-trivial edits and update only the owner docs that actually changed. |
+| Portal production readiness | `docs/portal-production-readiness.md` | Keep current status, blockers, highest-leverage tasks, and parallel lanes up to date as readiness work lands. |
 | Parallel or cross-app work | `docs/parallel-work-guardrails.md` | Declare lanes, owners, shared contracts, tests, docs, and integration dependencies. |
 | Design workbench | `docs/design-workbench-architecture.md` | Read the design workbench overlay in `docs/parallel-work-guardrails.md` before migration or compatibility edits. |
 | Drawing domain libraries | `apps/portal/lib/drawings/README.md` | Keep geometry/package boundaries explicit. |

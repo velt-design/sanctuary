@@ -37,6 +37,7 @@ The active workbench is object-first:
 - Geometry, plan, 3D, section, and sheet views should consume solved/derived models rather than each inventing shape truth.
 - The solved module's 3D scene and model-space top projection are paired: the projection is generated from the same `ViewerSceneModel` handed to the 3D viewport, with assembly reference shapes carried forward explicitly.
 - Geometry-ready model-space plan fitting uses `geometryTopProjection.extents`; legacy `ModulePlanModel` dimensions are a fallback path, not the source of scene fit.
+- Geometry-ready plan rendering is projection-first in both Model Space and Sheet View. Top projection owns committed house, deck, and pergola bodies; object-workbench overlays provide interaction hit targets, previews, handles, and dimensions without drawing duplicate committed bodies.
 - Compatibility or legacy fallback state must stay named and visible in tests or status models, and must not become active geometry truth.
 
 ## Rail Notes

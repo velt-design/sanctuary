@@ -263,6 +263,37 @@ function makeTopProjectionFixture(): GeometryTopProjectionViewModel {
   };
 }
 
+function makeTopProjectionFixtureWithDeck(): GeometryTopProjectionViewModel {
+  const base = makeTopProjectionFixture();
+  return {
+    ...base,
+    shapes: [
+      ...base.shapes,
+      {
+        id: 'top-projection-house-deck',
+        sourceObjectId: 'scene-house-deck',
+        sourceId: 'deck-1',
+        sourceType: 'house_surface_solid',
+        family: 'house',
+        kind: 'deck',
+        polygon: [
+          { x: 0, y: 0 },
+          { x: 6000, y: 0 },
+          { x: 6000, y: 3000 },
+          { x: 0, y: 3000 },
+        ],
+        zOrder: 20,
+        zMin: 0,
+        zMax: 250,
+        metadata: {
+          sourceId: 'deck-1',
+          topProjectionRole: 'top_visible',
+        },
+      },
+    ],
+  };
+}
+
 function makeFootprintEditor(overrides: Partial<{
   isEditing: boolean;
   isContextHovered: boolean;
@@ -659,6 +690,9 @@ describe('ModuleViewsCard', () => {
     expect(extractSvgStringAttribute(svgTag, 'data-top-projection-hidden-count')).toBe('1');
     expect(extractSvgStringAttribute(svgTag, 'data-top-projection-rendered-count')).toBe('2');
     expect(extractSvgStringAttribute(svgTag, 'data-top-projection-hidden-rendered-count')).toBe('0');
+    expect(extractSvgStringAttribute(svgTag, 'data-plan-committed-top-projection-body-count')).toBe('2');
+    expect(extractSvgStringAttribute(svgTag, 'data-plan-object-overlay-body-count')).toBe('0');
+    expect(extractSvgStringAttribute(svgTag, 'data-plan-duplicate-visual-body-count')).toBe('0');
     expect(worldBox.x).toBeLessThanOrEqual(focusBox.x);
     expect(worldBox.y).toBeLessThanOrEqual(focusBox.y);
     expect(worldBox.x + worldBox.width).toBeGreaterThanOrEqual(focusBox.x + focusBox.width);
@@ -700,6 +734,66 @@ describe('ModuleViewsCard', () => {
     expect(markup).not.toContain('data-top-projection-role="hidden_from_top"');
     expect(markup).toContain('data-pergola-shape-hit-source="top_projection"');
     expect(hitPoints).toEqual(projectedRoofPoints);
+  });
+
+  it('uses top projection bodies as the single committed visual source while keeping object hits aligned', () => {
+    const drawing = makeDrawingModule();
+    const objectWorkbenchPlanOverlay: ObjectWorkbenchPlanOverlay = {
+      housePolygonSource: 'geometry_projection',
+      shapes: [
+        {
+          ownerKind: 'deck',
+          ownerId: 'deck-1',
+          polygon: [
+            { x: 0, y: 0 },
+            { x: 6, y: 0 },
+            { x: 6, y: 3 },
+            { x: 0, y: 3 },
+          ],
+          detailSegments: [],
+          selected: true,
+          custom: false,
+          muted: false,
+          invalid: false,
+          invalidMessage: null,
+          deckInteraction: null,
+          openingInteraction: null,
+          deckDragEligibility: null,
+          openingDragEligibility: null,
+          source: 'geometry',
+          geometrySourceId: 'house_surface_solid:deck-1',
+          renderStatus: 'geometry_ready',
+        },
+      ],
+      presetAnnotations: [],
+      customEdgeCandidates: [],
+    };
+    const markup = renderToStaticMarkup(
+      <ModuleDrawingRenderer
+        view="plan"
+        status="ready"
+        planModel={drawing.planModel}
+        sectionModel={drawing.sectionModel}
+        presentation="model"
+        modelSpacePergolaGeometry={makeGeometryPlanFixture()}
+        modelSpaceTopProjection={makeTopProjectionFixtureWithDeck()}
+        modelSpacePergolaRenderSource="geometry"
+        modelSpacePergolaRenderStatus="geometry_ready"
+        objectWorkbenchPlanOverlay={objectWorkbenchPlanOverlay}
+      />,
+    );
+
+    const svgTag = extractSvgTag(markup, 'Module plan view');
+    const projectedDeckPoints = extractPolygonPoints(markup, 'data-plan-top-projection-shape', 'top-projection-house-deck');
+    const deckHitPoints = extractPolygonPoints(markup, 'data-object-workbench-shape-hit', 'deck:deck-1');
+
+    expect(markup).toContain('data-plan-top-projection-shape="top-projection-house-deck"');
+    expect(markup).toContain('data-object-workbench-shape="deck:deck-1"');
+    expect(markup).toContain('data-object-workbench-shape-visual="false"');
+    expect(markup).toContain('data-object-workbench-shape-hit="deck:deck-1"');
+    expect(deckHitPoints).toEqual(projectedDeckPoints);
+    expect(extractSvgStringAttribute(svgTag, 'data-plan-object-overlay-body-count')).toBe('0');
+    expect(extractSvgStringAttribute(svgTag, 'data-plan-duplicate-visual-body-count')).toBe('0');
   });
 
   it('does not render legacy-looking model-space plan geometry when solved geometry is unsupported', () => {

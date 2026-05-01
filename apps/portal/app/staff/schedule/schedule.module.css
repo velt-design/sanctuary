@@ -139,6 +139,31 @@
   cursor: not-allowed;
 }
 
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 5000;
+  display: grid;
+  place-items: center;
+  padding: var(--portal-space-4);
+  background: rgba(var(--portal-text-rgb), 0.56);
+  backdrop-filter: blur(6px);
+}
+
+.modalPanel {
+  width: 100%;
+  max-height: calc(100vh - 2rem);
+  overflow: auto;
+  border: 1px solid rgba(var(--portal-text-rgb), 0.15);
+  border-radius: var(--portal-radius-lg);
+  background: rgba(var(--portal-bg-elevated-rgb), 0.98);
+  box-shadow: var(--portal-shadow-dialog);
+}
+
+.modalPanel:focus {
+  outline: none;
+}
+
 .issues {
   margin: 0;
   border: 1px solid rgba(185, 28, 28, 0.22);

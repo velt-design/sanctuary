@@ -12,6 +12,7 @@ import {
 } from '@/app/staff/calculator/ModuleViewsCard';
 import type { ModuleViewsStatus, ModuleViewsTab } from '@/app/staff/calculator/ModuleViewsCard';
 import type { ModulePlanModel, ModuleSectionModel } from '@/app/staff/calculator/moduleViews';
+import type { PlanViewModel } from '@/lib/drawings/views/plan/buildPlanViewModel';
 import drawingStyles from '@/app/staff/calculator/CalculatorGrid.module.css';
 import { PORTAL_COMPANY_PROFILE } from '@/lib/company/profile';
 import {
@@ -51,6 +52,7 @@ type EstimateDrawingSheetProps = {
   status: ModuleViewsStatus;
   planModel?: ModulePlanModel | null;
   sectionModel?: ModuleSectionModel | null;
+  planViewModel?: PlanViewModel | null;
   meta: EstimateDrawingSheetMeta;
   editableFields?: EstimateDrawingField[];
   showDebugOverlays?: boolean;
@@ -274,6 +276,7 @@ export default function EstimateDrawingSheet({
   status,
   planModel,
   sectionModel,
+  planViewModel,
   meta,
   editableFields = [],
   showDebugOverlays = false,
@@ -318,6 +321,12 @@ export default function EstimateDrawingSheet({
       }).fits,
   }));
   const currentScale = selectedScales[view];
+  const sheetGeometryReady =
+    view === 'plan' &&
+    planViewModel?.modelSpacePergola.renderSource === 'geometry' &&
+    planViewModel.modelSpacePergola.renderStatus === 'geometry_ready' &&
+    Boolean(planViewModel.modelSpacePergola.geometryPlan) &&
+    Boolean(planViewModel.modelSpacePergola.geometryTopProjection);
   const currentScaleState = resolveModuleDrawingScaleState({
     view,
     requestedScale: currentScale,
@@ -1006,6 +1015,10 @@ export default function EstimateDrawingSheet({
                   showDebugOverlays={showDebugOverlays}
                   footprintEditor={footprintEditor}
                   sheetPlanInteraction={sheetPlanInteraction}
+                  modelSpacePergolaGeometry={sheetGeometryReady ? planViewModel?.modelSpacePergola.geometryPlan ?? null : null}
+                  modelSpaceTopProjection={sheetGeometryReady ? planViewModel?.modelSpacePergola.geometryTopProjection ?? null : null}
+                  modelSpacePergolaRenderSource={sheetGeometryReady ? planViewModel?.modelSpacePergola.renderSource : undefined}
+                  modelSpacePergolaRenderStatus={sheetGeometryReady ? planViewModel?.modelSpacePergola.renderStatus : undefined}
                 />
                 {footprintError ? (
                   <div className={styles.sheetInteractionError} role="status" aria-live="polite">

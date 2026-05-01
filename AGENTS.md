@@ -8,11 +8,12 @@ This repo is optimized for coding agents. Read this file first, then follow link
 2. Read `docs/agent-playbook.md` for non-trivial portal work.
 3. Scan `docs/decision-log.md` for matching areas, risks, or past mistakes.
 4. For non-trivial changes, use `docs/change-routing.md` to identify owner docs, path ownership, and doc update triggers.
-5. Read the smallest relevant current-state doc in `docs/`.
-6. Prefer `rg` and `rg --files` for repo discovery.
-7. Keep changes scoped to the requested surface.
-8. Do not revert user changes or unrelated worktree changes.
-9. If the task changes portal behavior, data flow, source-of-truth boundaries, test strategy, or known risks, update the relevant doc in the same pass.
+5. For production-readiness, quality-gate, hardening, or parallel-lane work, read `docs/portal-production-readiness.md`.
+6. Read the smallest relevant current-state doc in `docs/`.
+7. Prefer `rg` and `rg --files` for repo discovery.
+8. Keep changes scoped to the requested surface.
+9. Do not revert user changes or unrelated worktree changes.
+10. If the task changes portal behavior, data flow, source-of-truth boundaries, test strategy, or known risks, update the relevant doc in the same pass.
 
 ## Repo Map
 
@@ -59,6 +60,7 @@ Use `docs/testing-and-qa.md` as the canonical command source. Feature docs may l
 
 - `docs/agent-playbook.md`: active protocol for non-trivial portal work.
 - `docs/change-routing.md`: path ownership, doc update triggers, common task cards, and docs bloat control.
+- `docs/portal-production-readiness.md`: active tracker for production-grade portal status, quality gates, blockers, priorities, and parallel lanes.
 - `docs/architecture.md`: repo structure and boundaries.
 - `docs/platform-workflow.md`: business workflow across marketing and portal.
 - `docs/environment-auth-supabase.md`: env, auth, roles, schema readiness.

@@ -1771,13 +1771,6 @@ function mmPointToPlanSvg(point: Point2, baseX: number, baseY: number, scale: nu
   };
 }
 
-function mmLineToPlanSvg(line: Line2, baseX: number, baseY: number, scale: number): { start: Point; end: Point } {
-  return {
-    start: mmPointToPlanSvg(line.start, baseX, baseY, scale),
-    end: mmPointToPlanSvg(line.end, baseX, baseY, scale),
-  };
-}
-
 function mmPolygonToPlanSvg(points: Point2[], baseX: number, baseY: number, scale: number): Point[] {
   return points.map((point) => mmPointToPlanSvg(point, baseX, baseY, scale));
 }
@@ -1804,6 +1797,15 @@ function topProjectionPolygonToPlanSvg(
   scale: number,
 ): Point[] {
   return points.map((point) => topProjectionPointToPlanSvg(point, projection, baseX, baseY, scale));
+}
+
+function topProjectionDirectionToPlanSvg(
+  direction: Point2,
+  projection: GeometryTopProjectionViewModel | null | undefined,
+): Point2 {
+  return projection?.screenAxis.x === 'world_x_left'
+    ? { x: -direction.x, y: direction.y }
+    : direction;
 }
 
 function buildPlanMemberFootprint(input: {
@@ -3084,6 +3086,7 @@ function renderObjectWorkbenchDimension(
 
 function renderObjectWorkbenchPlanOverlay(input: {
   shapes: Array<ObjectWorkbenchPlanOverlay['shapes'][number] & { points: Point[] }>;
+  renderCommittedBodies?: boolean;
   previewShape: {
     ownerKind: 'deck' | 'opening';
     ownerId: string;
@@ -3127,6 +3130,7 @@ function renderObjectWorkbenchPlanOverlay(input: {
 }) {
   const {
     shapes,
+    renderCommittedBodies = true,
     previewShape,
     customEdgeCandidates,
     presetAnnotations,
@@ -3159,36 +3163,39 @@ function renderObjectWorkbenchPlanOverlay(input: {
             const detailSegments = shape.detailSegments ?? [];
             return (
             <g key={`house-first-shape-${shape.ownerKind}-${shape.ownerId}`}>
-              <polygon
-                points={toPointsAttr(shape.points)}
-                data-object-workbench-shape={`${shape.ownerKind}:${shape.ownerId}`}
-                data-house-first-shape={`${shape.ownerKind}:${shape.ownerId}`}
-                data-object-workbench-shape-muted={shape.muted ? 'true' : 'false'}
-                data-house-first-shape-muted={shape.muted ? 'true' : 'false'}
-                data-object-workbench-shape-invalid={shape.invalid ? 'true' : 'false'}
-                data-house-first-shape-invalid={shape.invalid ? 'true' : 'false'}
-                data-object-workbench-shape-preview-suppressed={previewSuppressed ? 'true' : 'false'}
-                data-house-first-shape-preview-suppressed={previewSuppressed ? 'true' : 'false'}
-                data-object-workbench-shape-hovered={
-                  shape.ownerKind === 'deck' && hoveredDeckId === shape.ownerId ? 'true' : 'false'
-                }
-                data-house-first-shape-hovered={
-                  shape.ownerKind === 'deck' && hoveredDeckId === shape.ownerId ? 'true' : 'false'
-                }
-                className={[
-                  shape.ownerKind === 'deck' || shape.ownerKind === 'opening'
-                    ? styles.moduleHouseFirstDeckShape
-                    : styles.moduleHouseFirstFootprintShape,
-                  shape.muted ? styles.moduleHouseFirstShapeMuted : '',
-                  shape.invalid ? styles.moduleHouseFirstShapeInvalid : '',
-                  shape.selected ? styles.moduleHouseFirstShapeSelected : '',
-                  shape.ownerKind === 'deck' && hoveredDeckId === shape.ownerId ? styles.moduleHouseFirstShapeHovered : '',
-                  previewSuppressed ? styles.moduleHouseFirstShapePreviewSuppressed : '',
-                ]
-                  .filter(Boolean)
-                  .join(' ')}
-              />
-              {previewSuppressed ? null : detailSegments.map((segment, index) => (
+              {renderCommittedBodies ? (
+                <polygon
+                  points={toPointsAttr(shape.points)}
+                  data-object-workbench-shape={`${shape.ownerKind}:${shape.ownerId}`}
+                  data-house-first-shape={`${shape.ownerKind}:${shape.ownerId}`}
+                  data-object-workbench-shape-visual="true"
+                  data-object-workbench-shape-muted={shape.muted ? 'true' : 'false'}
+                  data-house-first-shape-muted={shape.muted ? 'true' : 'false'}
+                  data-object-workbench-shape-invalid={shape.invalid ? 'true' : 'false'}
+                  data-house-first-shape-invalid={shape.invalid ? 'true' : 'false'}
+                  data-object-workbench-shape-preview-suppressed={previewSuppressed ? 'true' : 'false'}
+                  data-house-first-shape-preview-suppressed={previewSuppressed ? 'true' : 'false'}
+                  data-object-workbench-shape-hovered={
+                    shape.ownerKind === 'deck' && hoveredDeckId === shape.ownerId ? 'true' : 'false'
+                  }
+                  data-house-first-shape-hovered={
+                    shape.ownerKind === 'deck' && hoveredDeckId === shape.ownerId ? 'true' : 'false'
+                  }
+                  className={[
+                    shape.ownerKind === 'deck' || shape.ownerKind === 'opening'
+                      ? styles.moduleHouseFirstDeckShape
+                      : styles.moduleHouseFirstFootprintShape,
+                    shape.muted ? styles.moduleHouseFirstShapeMuted : '',
+                    shape.invalid ? styles.moduleHouseFirstShapeInvalid : '',
+                    shape.selected ? styles.moduleHouseFirstShapeSelected : '',
+                    shape.ownerKind === 'deck' && hoveredDeckId === shape.ownerId ? styles.moduleHouseFirstShapeHovered : '',
+                    previewSuppressed ? styles.moduleHouseFirstShapePreviewSuppressed : '',
+                  ]
+                    .filter(Boolean)
+                    .join(' ')}
+                />
+              ) : null}
+              {!renderCommittedBodies || previewSuppressed ? null : detailSegments.map((segment, index) => (
                 <line
                   key={`house-first-shape-detail-${shape.ownerKind}-${shape.ownerId}-${index + 1}`}
                   x1={segment.start.x}
@@ -3200,6 +3207,21 @@ function renderObjectWorkbenchPlanOverlay(input: {
               ))}
               <polygon
                 points={toPointsAttr(shape.points)}
+                data-object-workbench-shape={!renderCommittedBodies ? `${shape.ownerKind}:${shape.ownerId}` : undefined}
+                data-house-first-shape={!renderCommittedBodies ? `${shape.ownerKind}:${shape.ownerId}` : undefined}
+                data-object-workbench-shape-visual={!renderCommittedBodies ? 'false' : undefined}
+                data-object-workbench-shape-muted={!renderCommittedBodies ? (shape.muted ? 'true' : 'false') : undefined}
+                data-house-first-shape-muted={!renderCommittedBodies ? (shape.muted ? 'true' : 'false') : undefined}
+                data-object-workbench-shape-invalid={!renderCommittedBodies ? (shape.invalid ? 'true' : 'false') : undefined}
+                data-house-first-shape-invalid={!renderCommittedBodies ? (shape.invalid ? 'true' : 'false') : undefined}
+                data-object-workbench-shape-preview-suppressed={!renderCommittedBodies ? (previewSuppressed ? 'true' : 'false') : undefined}
+                data-house-first-shape-preview-suppressed={!renderCommittedBodies ? (previewSuppressed ? 'true' : 'false') : undefined}
+                data-object-workbench-shape-hovered={
+                  !renderCommittedBodies && shape.ownerKind === 'deck' && hoveredDeckId === shape.ownerId ? 'true' : undefined
+                }
+                data-house-first-shape-hovered={
+                  !renderCommittedBodies && shape.ownerKind === 'deck' && hoveredDeckId === shape.ownerId ? 'true' : undefined
+                }
                 data-object-workbench-shape-hit={`${shape.ownerKind}:${shape.ownerId}`}
                 data-house-first-shape-hit={`${shape.ownerKind}:${shape.ownerId}`}
                 data-object-workbench-shape-hit-preview-suppressed={previewSuppressed ? 'true' : 'false'}
@@ -4783,6 +4805,7 @@ function PlanSvg({
   const effectiveShowDebugOverlays = showDebugOverlays ?? presentation === 'sheet';
   const isSheet = presentation === 'sheet';
   const isModel = presentation === 'model';
+  const exposesPlanProjectionDiagnostics = isModel || isSheet;
   const familyVisibility = visibility ?? {
     house: true,
     pergolas: true,
@@ -4791,13 +4814,13 @@ function PlanSvg({
   };
   const showPergolaGeometry = familyVisibility.pergolas;
   const isModelHouseDisplay = presentation === 'model' && displayMode === 'house';
-  const useTopProjectionBackedModel =
-    presentation === 'model' &&
+  const useTopProjectionBackedPlan =
+    (presentation === 'model' || presentation === 'sheet') &&
     modelSpacePergolaRenderSource === 'geometry' &&
     modelSpacePergolaRenderStatus === 'geometry_ready' &&
     Boolean(modelSpaceTopProjection);
-  const rawSemanticPlanHouseSurfaces = useTopProjectionBackedModel ? [] : model.houseContext?.surfaces ?? [];
-  const rawSemanticPlanHouseLines = useTopProjectionBackedModel ? [] : model.houseContext?.lines ?? [];
+  const rawSemanticPlanHouseSurfaces = useTopProjectionBackedPlan ? [] : model.houseContext?.surfaces ?? [];
+  const rawSemanticPlanHouseLines = useTopProjectionBackedPlan ? [] : model.houseContext?.lines ?? [];
   const rawObjectWorkbenchOverlayShapes = presentation === 'model' ? objectWorkbenchPlanOverlay?.shapes ?? [] : [];
   const rawObjectWorkbenchPresetAnnotations = presentation === 'model' ? objectWorkbenchPlanOverlay?.presetAnnotations ?? [] : [];
   const rawObjectWorkbenchCustomEdgeCandidates = presentation === 'model' ? objectWorkbenchPlanOverlay?.customEdgeCandidates ?? [] : [];
@@ -4822,7 +4845,7 @@ function PlanSvg({
   const modelSpaceLayout = isModel
     ? resolvePlanModelSpaceLayout(model, footprintEditor, {
         displayMode,
-        topProjection: useTopProjectionBackedModel ? modelSpaceTopProjection : null,
+        topProjection: useTopProjectionBackedPlan ? modelSpaceTopProjection : null,
       })
     : null;
   const layout = sheetLayout ?? modelSpaceLayout ?? resolvePlanFitBox(total.widthM, total.heightM, presentation, isHipCorner);
@@ -4854,6 +4877,19 @@ function PlanSvg({
     modelSpacePergolaRenderSource === 'geometry' &&
     modelSpacePergolaRenderStatus === 'geometry_ready' &&
     Boolean(modelSpacePergolaGeometry);
+  const hasGeometryBackedPergolaPlan =
+    (presentation === 'model' || presentation === 'sheet') &&
+    modelSpacePergolaRenderSource === 'geometry' &&
+    modelSpacePergolaRenderStatus === 'geometry_ready' &&
+    Boolean(modelSpacePergolaGeometry);
+  const geometryPointProjector =
+    useTopProjectionBackedPlan && modelSpaceTopProjection
+      ? (point: Point2) => topProjectionPointToPlanSvg(point, modelSpaceTopProjection, x, y, scale)
+      : (point: Point2) => mmPointToPlanSvg(point, x, y, scale);
+  const geometryLineProjector = (line: Line2) => ({
+    start: geometryPointProjector(line.start),
+    end: geometryPointProjector(line.end),
+  });
   const geometryOutlinePoints =
     useGeometryBackedPergola && modelSpacePergolaGeometry
       ? mmPolygonToPlanSvg(modelSpacePergolaGeometry.outline, x, y, scale)
@@ -4922,19 +4958,19 @@ function PlanSvg({
         }))
       : [];
   const geometryAttachmentEdge =
-    useGeometryBackedPergola && modelSpacePergolaGeometry?.attachmentEdge
-      ? mmLineToPlanSvg(modelSpacePergolaGeometry.attachmentEdge, x, y, scale)
+    hasGeometryBackedPergolaPlan && modelSpacePergolaGeometry?.attachmentEdge
+      ? geometryLineProjector(modelSpacePergolaGeometry.attachmentEdge)
       : null;
   const geometryFallAnchor =
-    useGeometryBackedPergola && modelSpacePergolaGeometry?.anchors.fall
+    hasGeometryBackedPergolaPlan && modelSpacePergolaGeometry?.anchors.fall
       ? {
-          point: mmPointToPlanSvg(modelSpacePergolaGeometry.anchors.fall.point, x, y, scale),
-          direction: modelSpacePergolaGeometry.anchors.fall.direction,
+          point: geometryPointProjector(modelSpacePergolaGeometry.anchors.fall.point),
+          direction: topProjectionDirectionToPlanSvg(modelSpacePergolaGeometry.anchors.fall.direction, useTopProjectionBackedPlan ? modelSpaceTopProjection : null),
           dual: modelSpacePergolaGeometry.anchors.fall.dual,
         }
       : null;
   const topProjectionShapes =
-    useTopProjectionBackedModel && modelSpaceTopProjection
+    useTopProjectionBackedPlan && modelSpaceTopProjection
       ? modelSpaceTopProjection.shapes
           .filter((shape) => topProjectionShapeVisible(shape, familyVisibility))
           .map((shape) => ({
@@ -4942,7 +4978,7 @@ function PlanSvg({
             points: topProjectionPolygonToPlanSvg(shape.polygon, modelSpaceTopProjection, x, y, scale),
           }))
       : [];
-  const topProjectionAllShapes = useTopProjectionBackedModel && modelSpaceTopProjection ? modelSpaceTopProjection.shapes : [];
+  const topProjectionAllShapes = useTopProjectionBackedPlan && modelSpaceTopProjection ? modelSpaceTopProjection.shapes : [];
   const topProjectionTopVisibleCount = topProjectionAllShapes.filter((shape) => topProjectionRole(shape) === 'top_visible').length;
   const topProjectionContextCount = topProjectionAllShapes.filter((shape) => topProjectionRole(shape) === 'context').length;
   const topProjectionHiddenCount = topProjectionAllShapes.filter((shape) => topProjectionRole(shape) === 'hidden_from_top').length;
@@ -4951,18 +4987,18 @@ function PlanSvg({
     ? `${modelSpaceTopProjection.screenAxis.x}_${modelSpaceTopProjection.screenAxis.y}`
     : null;
   const topProjectionParityStatus =
-    useTopProjectionBackedModel && modelSpaceTopProjection
+    useTopProjectionBackedPlan && modelSpaceTopProjection
       ? topProjectionScreenAxis === 'world_x_left_world_y_down' && topProjectionHiddenRenderedCount === 0
         ? 'pass'
         : 'fail'
       : null;
   const topProjectionPergolaHitPoints =
-    useTopProjectionBackedModel
+    useTopProjectionBackedPlan
       ? topProjectionShapes
           .filter(({ shape }) => shape.family === 'pergola' && (shape.kind === 'roof_plane' || shape.kind === 'roof_cladding'))
           .sort((left, right) => polygonAreaAbs(right.points) - polygonAreaAbs(left.points))[0]?.points ?? []
       : [];
-  const canRenderPergolaPlanGeometry = showPergolaGeometry && (!isModel || useGeometryBackedPergola || useTopProjectionBackedModel);
+  const canRenderPergolaPlanGeometry = showPergolaGeometry && (!isModel || useGeometryBackedPergola || useTopProjectionBackedPlan);
 
   const aW = model.lengthA * scale;
   const aH = model.spanA * scale;
@@ -5078,6 +5114,17 @@ function PlanSvg({
       : { x: 0, y: 0, width: 120, height: 90 };
   const planHousePointProjector = (point: Point) =>
     planHousePointToSvg(point, x, y, scale);
+  const objectWorkbenchPointProjector =
+    useTopProjectionBackedPlan && modelSpaceTopProjection
+      ? (point: Point) =>
+          topProjectionPointToPlanSvg(
+            { x: point.x * 1000, y: point.y * 1000 },
+            modelSpaceTopProjection,
+            x,
+            y,
+            scale,
+          )
+      : planHousePointProjector;
   const visibleRawObjectWorkbenchOverlayShapes = rawObjectWorkbenchOverlayShapes.filter((shape) => {
     switch (shape.ownerKind) {
       case 'footprint':
@@ -5121,27 +5168,30 @@ function PlanSvg({
     presentation === 'model'
       ? visibleRawObjectWorkbenchOverlayShapes.map((shape) => ({
           ...shape,
-          points: shape.polygon.map((point) => planHousePointProjector(point)),
+          points: shape.polygon.map((point) => objectWorkbenchPointProjector(point)),
           detailSegments: (shape.detailSegments ?? []).map((segment) => ({
-            start: planHousePointProjector(segment.start),
-            end: planHousePointProjector(segment.end),
+            start: objectWorkbenchPointProjector(segment.start),
+            end: objectWorkbenchPointProjector(segment.end),
           })),
           deckInteraction: shape.deckInteraction
             ? {
                 ...shape.deckInteraction,
-                hostEdgeStart: planHousePointProjector(shape.deckInteraction.hostEdgeStart),
-                hostEdgeEnd: planHousePointProjector(shape.deckInteraction.hostEdgeEnd),
+                hostEdgeStart: objectWorkbenchPointProjector(shape.deckInteraction.hostEdgeStart),
+                hostEdgeEnd: objectWorkbenchPointProjector(shape.deckInteraction.hostEdgeEnd),
               }
             : null,
           openingInteraction: shape.openingInteraction
             ? {
                 ...shape.openingInteraction,
-                hostEdgeStart: planHousePointProjector(shape.openingInteraction.hostEdgeStart),
-                hostEdgeEnd: planHousePointProjector(shape.openingInteraction.hostEdgeEnd),
+                hostEdgeStart: objectWorkbenchPointProjector(shape.openingInteraction.hostEdgeStart),
+                hostEdgeEnd: objectWorkbenchPointProjector(shape.openingInteraction.hostEdgeEnd),
               }
             : null,
         }))
       : [];
+  const renderObjectWorkbenchCommittedBodies = !useTopProjectionBackedPlan;
+  const objectWorkbenchRenderedBodyCount = renderObjectWorkbenchCommittedBodies ? objectWorkbenchOverlayShapes.length : 0;
+  const duplicateCommittedBodyCount = useTopProjectionBackedPlan ? objectWorkbenchRenderedBodyCount : 0;
   const objectWorkbenchPresetAnnotations =
     presentation === 'model'
       ? rawObjectWorkbenchPresetAnnotations
@@ -5159,10 +5209,10 @@ function PlanSvg({
           })
           .map((annotation) => ({
           ...annotation,
-          witnessStart: planHousePointProjector(annotation.witnessStart),
-          witnessEnd: planHousePointProjector(annotation.witnessEnd),
-          lineStart: planHousePointProjector(annotation.lineStart),
-          lineEnd: planHousePointProjector(annotation.lineEnd),
+          witnessStart: objectWorkbenchPointProjector(annotation.witnessStart),
+          witnessEnd: objectWorkbenchPointProjector(annotation.witnessEnd),
+          lineStart: objectWorkbenchPointProjector(annotation.lineStart),
+          lineEnd: objectWorkbenchPointProjector(annotation.lineEnd),
         }))
       : [];
   const objectWorkbenchCustomEdgeCandidates =
@@ -5171,10 +5221,10 @@ function PlanSvg({
           .filter((annotation) => annotation.ownerKind === 'footprint' ? familyVisibility.house : familyVisibility.decks)
           .map((annotation) => ({
           ...annotation,
-          witnessStart: planHousePointProjector(annotation.witnessStart),
-          witnessEnd: planHousePointProjector(annotation.witnessEnd),
-          lineStart: planHousePointProjector(annotation.lineStart),
-          lineEnd: planHousePointProjector(annotation.lineEnd),
+          witnessStart: objectWorkbenchPointProjector(annotation.witnessStart),
+          witnessEnd: objectWorkbenchPointProjector(annotation.witnessEnd),
+          lineStart: objectWorkbenchPointProjector(annotation.lineStart),
+          lineEnd: objectWorkbenchPointProjector(annotation.lineEnd),
         }))
       : [];
   const objectWorkbenchPreviewShape =
@@ -5182,27 +5232,27 @@ function PlanSvg({
       ? {
           ownerKind: rawObjectWorkbenchPreviewShape.ownerKind,
           ownerId: rawObjectWorkbenchPreviewShape.ownerId,
-          points: rawObjectWorkbenchPreviewShape.polygon.map((point) => planHousePointProjector(point)),
+          points: rawObjectWorkbenchPreviewShape.polygon.map((point) => objectWorkbenchPointProjector(point)),
           bodyState: rawObjectWorkbenchPreviewShape.bodyState,
           anchorPoint: rawObjectWorkbenchPreviewShape.anchorPoint
-            ? planHousePointProjector(rawObjectWorkbenchPreviewShape.anchorPoint)
+            ? objectWorkbenchPointProjector(rawObjectWorkbenchPreviewShape.anchorPoint)
             : null,
           lockedCornerPoint: rawObjectWorkbenchPreviewShape.lockedCornerPoint
-            ? planHousePointProjector(rawObjectWorkbenchPreviewShape.lockedCornerPoint)
+            ? objectWorkbenchPointProjector(rawObjectWorkbenchPreviewShape.lockedCornerPoint)
             : null,
           endCatchPoint: rawObjectWorkbenchPreviewShape.endCatchPoint
-            ? planHousePointProjector(rawObjectWorkbenchPreviewShape.endCatchPoint)
+            ? objectWorkbenchPointProjector(rawObjectWorkbenchPreviewShape.endCatchPoint)
             : null,
           referenceGuide: rawObjectWorkbenchPreviewShape.referenceGuide
             ? {
-                start: planHousePointProjector(rawObjectWorkbenchPreviewShape.referenceGuide.start),
-                end: planHousePointProjector(rawObjectWorkbenchPreviewShape.referenceGuide.end),
+                start: objectWorkbenchPointProjector(rawObjectWorkbenchPreviewShape.referenceGuide.start),
+                end: objectWorkbenchPointProjector(rawObjectWorkbenchPreviewShape.referenceGuide.end),
                 state: rawObjectWorkbenchPreviewShape.referenceGuide.state,
               }
             : null,
           targetHighlights: rawObjectWorkbenchPreviewShape.targetHighlights.map((targetHighlight) => ({
-            start: planHousePointProjector(targetHighlight.start),
-            end: planHousePointProjector(targetHighlight.end),
+            start: objectWorkbenchPointProjector(targetHighlight.start),
+            end: objectWorkbenchPointProjector(targetHighlight.end),
             state: targetHighlight.state,
           })),
         }
@@ -5359,6 +5409,9 @@ function PlanSvg({
     (isModelFootprintEditor &&
       (Boolean(footprintEditor?.isContextHovered) || Boolean(footprintEditor?.hoveredHandleId) || Boolean(footprintEditor?.activeHandleId)));
   const showHouseLabel = showHouseFootprint && !showFootprintControls && !isSheetFootprintEditor && !isModelFootprintEditor;
+  const renderLegacyHouseContext =
+    showHouseFootprint &&
+    (!useTopProjectionBackedPlan || Boolean(footprintEditor?.isEditing) || customPolygonOverrideActive || isDrawOutlineDraftOpen);
   const isMergedHouseModelDisplay = isModel && displayMode === 'house';
   const allowPergolaModelEditing = !isSheet && canRenderPergolaPlanGeometry && !isMergedHouseModelDisplay;
   const showPinnedSheetPrimaryDimensions = isSheet && !isHipCorner;
@@ -5549,15 +5602,18 @@ function PlanSvg({
         data-model-space-view-box={modelSpaceLayout?.viewBoxValue}
         data-model-space-world-box={modelSpaceLayout?.worldBoxValue}
         data-model-space-focus-box={modelSpaceLayout?.focusBoxValue}
-        data-plan-render-source={isModel ? modelSpacePergolaRenderSource : 'legacy'}
-        data-plan-render-status={isModel ? modelSpacePergolaRenderStatus : 'legacy_unsupported_family'}
-        data-top-projection-parity-status={isModel && topProjectionParityStatus ? topProjectionParityStatus : undefined}
-        data-top-projection-screen-axis={isModel ? topProjectionScreenAxis ?? undefined : undefined}
-        data-top-projection-top-visible-count={isModel && modelSpaceTopProjection ? topProjectionTopVisibleCount : undefined}
-        data-top-projection-context-count={isModel && modelSpaceTopProjection ? topProjectionContextCount : undefined}
-        data-top-projection-hidden-count={isModel && modelSpaceTopProjection ? topProjectionHiddenCount : undefined}
-        data-top-projection-rendered-count={isModel && modelSpaceTopProjection ? topProjectionShapes.length : undefined}
-        data-top-projection-hidden-rendered-count={isModel && modelSpaceTopProjection ? topProjectionHiddenRenderedCount : undefined}
+        data-plan-render-source={exposesPlanProjectionDiagnostics ? modelSpacePergolaRenderSource : 'legacy'}
+        data-plan-render-status={exposesPlanProjectionDiagnostics ? modelSpacePergolaRenderStatus : 'legacy_unsupported_family'}
+        data-top-projection-parity-status={exposesPlanProjectionDiagnostics && topProjectionParityStatus ? topProjectionParityStatus : undefined}
+        data-top-projection-screen-axis={exposesPlanProjectionDiagnostics ? topProjectionScreenAxis ?? undefined : undefined}
+        data-top-projection-top-visible-count={exposesPlanProjectionDiagnostics && modelSpaceTopProjection ? topProjectionTopVisibleCount : undefined}
+        data-top-projection-context-count={exposesPlanProjectionDiagnostics && modelSpaceTopProjection ? topProjectionContextCount : undefined}
+        data-top-projection-hidden-count={exposesPlanProjectionDiagnostics && modelSpaceTopProjection ? topProjectionHiddenCount : undefined}
+        data-top-projection-rendered-count={exposesPlanProjectionDiagnostics && modelSpaceTopProjection ? topProjectionShapes.length : undefined}
+        data-top-projection-hidden-rendered-count={exposesPlanProjectionDiagnostics && modelSpaceTopProjection ? topProjectionHiddenRenderedCount : undefined}
+        data-plan-committed-top-projection-body-count={exposesPlanProjectionDiagnostics && modelSpaceTopProjection ? topProjectionShapes.length : undefined}
+        data-plan-object-overlay-body-count={exposesPlanProjectionDiagnostics ? objectWorkbenchRenderedBodyCount : undefined}
+        data-plan-duplicate-visual-body-count={exposesPlanProjectionDiagnostics ? duplicateCommittedBodyCount : undefined}
         role="img"
         aria-label="Module plan view"
         ref={handlePlanSvgRef}
@@ -5653,7 +5709,7 @@ function PlanSvg({
                 />
               ))
             : null}
-          {showHouseFootprint && !hasSemanticPlanHouseContext ? (
+          {renderLegacyHouseContext && !hasSemanticPlanHouseContext ? (
             <polygon
               points={toPointsAttr(effectiveHousePolygon)}
               fill={`url(#${hatchId})`}
@@ -5677,10 +5733,10 @@ function PlanSvg({
             </text>
           ) : null}
         </g>
-        {model.houseConnectionType === 'facade' && !hasSemanticPlanHouseContext ? (
+        {model.houseConnectionType === 'facade' && !hasSemanticPlanHouseContext && !useTopProjectionBackedPlan ? (
           <line x1={footprintFrame.start.x} y1={footprintFrame.start.y} x2={footprintFrame.end.x} y2={footprintFrame.end.y} className={styles.modulePlanHouseWall} />
         ) : null}
-        {model.houseConnectionType === 'fascia' && !hasSemanticPlanHouseContext ? (
+        {model.houseConnectionType === 'fascia' && !hasSemanticPlanHouseContext && !useTopProjectionBackedPlan ? (
           <>
             <line x1={footprintFrame.start.x} y1={footprintFrame.start.y} x2={footprintFrame.end.x} y2={footprintFrame.end.y} className={styles.modulePlanHouseWall} />
             <line
@@ -5693,7 +5749,7 @@ function PlanSvg({
           </>
         ) : null}
 
-        {useTopProjectionBackedModel
+        {useTopProjectionBackedPlan
           ? topProjectionShapes
               .filter(({ shape }) => !(shape.family === 'house' && shape.kind === 'footprint' && (hideHouseFootprint || customPolygonOverrideActive)))
               .map(({ shape, points }) => (
@@ -5727,7 +5783,7 @@ function PlanSvg({
             ))
           : null}
 
-        {useTopProjectionBackedModel && showPergolaGeometry && geometryAttachmentEdge ? (
+        {useTopProjectionBackedPlan && showPergolaGeometry && geometryAttachmentEdge ? (
           <line
             x1={geometryAttachmentEdge.start.x}
             y1={geometryAttachmentEdge.start.y}
@@ -5738,7 +5794,7 @@ function PlanSvg({
             data-house-plan-line="attachment_target"
           />
         ) : null}
-        {useTopProjectionBackedModel && showPergolaGeometry && geometryFallAnchor ? (
+        {useTopProjectionBackedPlan && showPergolaGeometry && geometryFallAnchor ? (
           (() => {
             const fallLineLength = Math.max(4.8, scale * 0.72);
             const halfLength = geometryFallAnchor.dual ? fallLineLength / 2 : fallLineLength * 0.35;
@@ -5795,7 +5851,7 @@ function PlanSvg({
           })()
         ) : null}
 
-        {canRenderPergolaPlanGeometry && !useTopProjectionBackedModel ? (
+        {canRenderPergolaPlanGeometry && !useTopProjectionBackedPlan ? (
           useGeometryBackedPergola ? (
             <>
               <polygon
@@ -6034,6 +6090,7 @@ function PlanSvg({
 
         {renderObjectWorkbenchPlanOverlay({
           shapes: objectWorkbenchOverlayShapes,
+          renderCommittedBodies: renderObjectWorkbenchCommittedBodies,
           previewShape: objectWorkbenchPreviewShape,
           customEdgeCandidates: objectWorkbenchCustomEdgeCandidates,
           presetAnnotations: objectWorkbenchPresetAnnotations,
@@ -6049,7 +6106,7 @@ function PlanSvg({
         {showPergolaSelectionHitTarget && currentPergolaId ? (
           <polygon
             points={toPointsAttr(
-              useTopProjectionBackedModel && topProjectionPergolaHitPoints.length > 0
+              useTopProjectionBackedPlan && topProjectionPergolaHitPoints.length > 0
                 ? topProjectionPergolaHitPoints
                 : useGeometryBackedPergola && geometryOutlinePoints.length > 0
                   ? geometryOutlinePoints
@@ -6057,14 +6114,14 @@ function PlanSvg({
             )}
             className={styles.modulePergolaContextHit}
             data-pergola-shape-hit={currentPergolaId}
-            data-pergola-shape-hit-source={useTopProjectionBackedModel ? 'top_projection' : useGeometryBackedPergola ? 'geometry' : 'legacy'}
+            data-pergola-shape-hit-source={useTopProjectionBackedPlan ? 'top_projection' : useGeometryBackedPergola ? 'geometry' : 'legacy'}
             onClick={() => onPergolaSelect?.(currentPergolaId)}
           />
         ) : null}
 
         {showPergolaHoverTarget ? (
           <polygon
-            points={toPointsAttr(primaryPoints)}
+            points={toPointsAttr(useTopProjectionBackedPlan && topProjectionPergolaHitPoints.length > 0 ? topProjectionPergolaHitPoints : primaryPoints)}
             className={styles.modulePergolaContextHit}
             data-sheet-hover-target="pergola"
             onPointerEnter={() => sheetPlanInteraction?.onPergolaHoverChange?.(true)}

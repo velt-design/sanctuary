@@ -367,7 +367,7 @@ describe('DrawingWorkbench', () => {
     expect(markup).not.toContain('Rotate +90');
   });
 
-  it('passes house-form display family to model space without changing sheet view, while showing pergolas by default', () => {
+  it('passes the solved top projection to sheet and model plan views while showing pergolas by default', () => {
     const drawing = makeDrawingModule();
     const meta = buildEstimateDrawingSheetMeta({
       moduleLabel: 'M1 - Pitched - 6m x 3m - Acrylic',
@@ -419,8 +419,12 @@ describe('DrawingWorkbench', () => {
 
     expect(sheetMarkup).toContain('aria-label="Plan view A3 drawing sheet"');
     expect(sheetMarkup).toContain('data-plan-primary-fill="true"');
+    expect(sheetMarkup).toContain('data-top-projection-screen-axis="world_x_left_world_y_down"');
+    expect(sheetMarkup).toContain('data-plan-duplicate-visual-body-count="0"');
     expect(modelMarkup).toContain('aria-label="Plan model space viewport"');
     expect(modelMarkup).toContain('data-plan-primary-fill="true"');
+    expect(modelMarkup).toContain('data-top-projection-screen-axis="world_x_left_world_y_down"');
+    expect(modelMarkup).toContain('data-plan-duplicate-visual-body-count="0"');
   });
 
   it('passes family visibility to model space so pergolas can be hidden without changing sheet output', () => {

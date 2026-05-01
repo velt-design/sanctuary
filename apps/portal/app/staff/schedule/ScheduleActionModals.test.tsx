@@ -3,10 +3,6 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import ScheduleActionModals, { type ScheduleActionModalsProps, type ScheduleModalState } from './ScheduleActionModals';
 import { renderIntoDocument } from '../../../../../test/reactHarness';
 
-vi.mock('@/components/ui/modal/Modal', () => ({
-  default: ({ open, children, ariaLabel }: any) => (open ? <div role="dialog" aria-label={ariaLabel}>{children}</div> : null),
-}));
-
 function buildState(overrides: Partial<ScheduleModalState> = {}): ScheduleModalState {
   return {
     quickEdit: null,
@@ -63,9 +59,9 @@ describe('ScheduleActionModals', () => {
     );
 
     const rendered = renderIntoDocument(<ScheduleActionModals {...props} />);
-    const saveButton = Array.from(rendered.container.querySelectorAll('button')).find((node) => node.textContent === 'Save') as HTMLButtonElement;
+    const saveButton = Array.from(document.body.querySelectorAll('button')).find((node) => node.textContent === 'Save') as HTMLButtonElement;
 
-    expect(rendered.container.textContent).toContain('Quick edit');
+    expect(document.body.textContent).toContain('Quick edit');
 
     act(() => {
       saveButton.click();
@@ -93,7 +89,7 @@ describe('ScheduleActionModals', () => {
     );
 
     const rendered = renderIntoDocument(<ScheduleActionModals {...props} />);
-    const confirmButton = Array.from(rendered.container.querySelectorAll('button')).find((node) => node.textContent === 'Confirm') as HTMLButtonElement;
+    const confirmButton = Array.from(document.body.querySelectorAll('button')).find((node) => node.textContent === 'Confirm') as HTMLButtonElement;
 
     expect(confirmButton.disabled).toBe(true);
 
@@ -115,10 +111,10 @@ describe('ScheduleActionModals', () => {
     );
 
     const rendered = renderIntoDocument(<ScheduleActionModals {...props} />);
-    const pullForwardButton = Array.from(rendered.container.querySelectorAll('button')).find((node) => node.textContent === 'Pull forward') as HTMLButtonElement;
+    const pullForwardButton = Array.from(document.body.querySelectorAll('button')).find((node) => node.textContent === 'Pull forward') as HTMLButtonElement;
 
-    expect(rendered.container.textContent).toContain('Alpha Deck');
-    expect(rendered.container.textContent).toContain('Crew Bravo pulls forward by 2 days');
+    expect(document.body.textContent).toContain('Alpha Deck');
+    expect(document.body.textContent).toContain('Crew Bravo pulls forward by 2 days');
 
     act(() => {
       pullForwardButton.click();
