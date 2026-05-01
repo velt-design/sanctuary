@@ -7,7 +7,7 @@ import {
   inferDeckPresetRectFromOutline,
   resolveDeckPresetGeometry,
   sanitizeDeckPresetRect,
-} from './houseFirstDeckPresets';
+} from './objectWorkbenchDeckGeometry';
 
 const HOUSE_POLYGON = [
   { alongM: '0', depthM: '0' },
@@ -27,7 +27,7 @@ const U_HOUSE_POLYGON = [
   { alongM: '0', depthM: '6' },
 ];
 
-describe('houseFirstDeckPresets', () => {
+describe('objectWorkbenchDeckGeometry', () => {
   it('builds a deck reference house polygon with footprint offset and setback baked in', () => {
     expect(
       buildDeckReferenceHousePolygon({

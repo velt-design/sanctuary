@@ -1086,7 +1086,7 @@ export default function RoofStudiesSection({
                   src={card.compactMedia.src}
                   alt={card.compactMedia.alt}
                   fill
-                  quality={95}
+                  quality={75}
                   sizes={
                     isCompactHighlights
                       ? '(min-width: 1024px) 980px, 88vw'

@@ -18,6 +18,7 @@ Portal staff manage contacts and projects in `apps/portal`.
 - Project routes: `/staff/projects`, `/staff/projects/new`, `/staff/projects/[projectId]`.
 - Project pipeline stages are defined in `apps/portal/lib/projects/pipelineDefinition.ts`.
 - Stage tasks mix manual checks and action links, for example booking a site visit or generating an estimate.
+- Canonical doc: `projects-contacts-estimates-calculator.md`.
 
 ## Estimate Flow
 
@@ -28,6 +29,7 @@ Staff create estimates from the calculator and project estimate tabs.
 - Estimate APIs live under `apps/portal/app/api/projects/[projectId]/estimates` and `apps/portal/app/api/estimates/[estimateId]`.
 - Estimate snapshots carry calculator inputs, derived costing output, and drawing state.
 - Sent, accepted, or declined quote versions lock the related estimate.
+- Canonical doc: `projects-contacts-estimates-calculator.md`.
 
 ## Quote And Invoice Flow
 

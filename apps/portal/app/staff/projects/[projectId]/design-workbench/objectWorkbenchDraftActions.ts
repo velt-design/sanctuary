@@ -17,7 +17,7 @@ import {
   resolveDeckHostEdgeFrame,
   resolveDeckPresetGeometry,
   sanitizeDeckPresetRect,
-} from '@/lib/drawings/state/houseFirstDeckPresets';
+} from '@/lib/drawings/state/objectWorkbenchDeckGeometry';
 import type {
   DerivedAttachmentZoneModel,
   DerivedWallModel,

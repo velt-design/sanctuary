@@ -27,6 +27,153 @@
 .kicker{font-size:13px;letter-spacing:.12em;color:#777;text-transform:uppercase;margin-bottom:8px}
 /* Offset main page content by the fixed header height so nothing sits under it */
 .homepage main{ margin-top: var(--headerH, var(--navH)); }
+
+.home-hero{
+  position:relative;
+  width:100vw;
+  height:clamp(620px, calc(100dvh - var(--headerH, var(--navH)) - 52px), 940px);
+  margin-left:calc(50% - 50vw);
+  overflow:hidden;
+  display:flex;
+  align-items:flex-end;
+  color:var(--pageWhite);
+  background:#111;
+}
+.home-hero__image{
+  object-fit:cover;
+  object-position:center 52%;
+}
+.home-hero__shade{
+  position:absolute;
+  inset:0;
+  z-index:1;
+  background:
+    linear-gradient(90deg, rgba(0,0,0,.72) 0%, rgba(0,0,0,.48) 42%, rgba(0,0,0,.16) 78%, rgba(0,0,0,.24) 100%),
+    linear-gradient(0deg, rgba(0,0,0,.48) 0%, rgba(0,0,0,0) 48%);
+}
+.home-hero__inner{
+  position:relative;
+  z-index:2;
+  width:min(88vw,1288px);
+  margin:0 auto;
+  padding-bottom:clamp(52px,10vh,118px);
+}
+.home-hero__eyebrow{
+  margin:0 0 16px;
+  font-size:12px;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+  color:rgba(255,255,255,.78);
+}
+.home-hero__title{
+  max-width:10.8em;
+  margin:0;
+  font-size:clamp(44px,6.4vw,96px);
+  line-height:.96;
+  font-weight:500;
+  letter-spacing:0;
+  text-wrap:balance;
+}
+.home-hero__copy{
+  max-width:590px;
+  margin:22px 0 0;
+  font-size:clamp(16px,1.4vw,20px);
+  line-height:1.55;
+  color:rgba(255,255,255,.86);
+}
+.home-hero__actions{
+  display:flex;
+  flex-wrap:wrap;
+  gap:12px;
+  margin-top:28px;
+}
+.home-hero__cta{
+  display:inline-flex;
+  min-height:44px;
+  align-items:center;
+  justify-content:center;
+  padding:12px 18px;
+  border:1px solid rgba(255,255,255,.72);
+  color:var(--pageWhite);
+  font-size:12px;
+  font-weight:700;
+  letter-spacing:.1em;
+  line-height:1;
+  text-transform:uppercase;
+  transition:background-color .22s ease,border-color .22s ease,color .22s ease;
+}
+.home-hero__cta--primary{
+  border-color:var(--accentRed);
+  background:var(--accentRed);
+}
+.home-hero__cta--secondary{
+  background:rgba(0,0,0,.2);
+}
+@media (hover:hover){
+  .home-hero__cta--primary:hover{background:#6F332F;border-color:#6F332F}
+  .home-hero__cta--secondary:hover{background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.92)}
+}
+
+.home-proof{
+  width:100vw;
+  margin-left:calc(50% - 50vw);
+  border-top:var(--bw) solid var(--border);
+  border-bottom:var(--bw) solid var(--border);
+  background:var(--bg);
+}
+.home-proof__inner{
+  display:grid;
+  grid-template-columns:repeat(5,minmax(0,1fr));
+  gap:0;
+  padding-block:clamp(16px,2.4vw,28px);
+}
+.home-proof__item{
+  display:flex;
+  min-height:42px;
+  align-items:center;
+  justify-content:center;
+  padding:0 14px;
+  border-right:var(--bw) solid var(--border);
+  color:var(--fg);
+  font-size:clamp(12px,1.15vw,15px);
+  line-height:1.25;
+  letter-spacing:.08em;
+  text-align:center;
+  text-transform:uppercase;
+}
+.home-proof__item:last-child{border-right:0}
+
+@media (max-width:960px){
+  .home-hero{
+    height:clamp(600px, calc(100dvh - var(--headerH, var(--navH)) - 36px), 780px);
+    align-items:flex-end;
+  }
+  .home-hero__image{object-position:center top}
+  .home-hero__shade{
+    background:
+      linear-gradient(180deg, rgba(0,0,0,.18) 0%, rgba(0,0,0,.18) 35%, rgba(0,0,0,.78) 100%),
+      linear-gradient(90deg, rgba(0,0,0,.48), rgba(0,0,0,.1));
+  }
+  .home-hero__inner{padding-bottom:clamp(104px,15vh,132px)}
+  .home-hero__title{font-size:clamp(38px,12vw,62px)}
+  .home-hero__copy{max-width:34ch}
+  .home-hero__actions{gap:10px}
+  .home-hero__cta{flex:1 1 148px}
+  .home-proof__inner{grid-template-columns:1fr 1fr;padding-block:0}
+  .home-proof__item{
+    min-height:58px;
+    border-right:var(--bw) solid var(--border);
+    border-bottom:var(--bw) solid var(--border);
+    font-size:12px;
+  }
+  .home-proof__item:nth-child(2n){border-right:0}
+  .home-proof__item:last-child{
+    grid-column:1 / -1;
+    border-right:0;
+    border-bottom:0;
+  }
+}
+
 /* Size the hero to the visible viewport minus the measured header height */
 .hero{height:calc(100dvh - var(--headerH, var(--navH)));padding-block:var(--g);position:relative}
 /* Remove top padding so the hero (right image) sits flush to the header line */
@@ -155,7 +302,8 @@
 
 /* Increase space below products before warranty band */
 #products{
-  padding-bottom: calc(1.25 * var(--g) * 3);
+  padding-top: clamp(32px,5vh,64px);
+  padding-bottom: clamp(72px,10vh,128px);
 }
 
 .tile{display:flex;flex-direction:column;min-height:0;cursor:pointer}
@@ -174,7 +322,7 @@
 }
 
 /* Match product page tile styling within the homepage products section */
-#products .tile .m{ height:clamp(420px,72dvh,1000px); }
+#products .tile .m{ height:clamp(360px,58dvh,720px); background:#DDE0E3; }
 #products .tile .k{ margin:12px 0 6px 0; }
 #products .tile .t{ font-size:18px; }
 
@@ -356,6 +504,43 @@
 /* Products heading band (mirrors process header style) */
 .products-head .process-head__inner{ width:100%; }
 .products-head .process-head__title{ font-size: clamp(20px, 2.6vw, 32px); font-weight: 500; margin: 0; color:#2B2B2B; text-transform: uppercase; letter-spacing: .08em; text-align:center; }
+.products-head--editorial{
+  height:auto;
+  align-items:flex-start;
+  padding-block:clamp(54px,8vh,104px);
+}
+#products .tile .product-image--base{object-position:center 56%}
+#products .tile .product-image--hover{object-position:center}
+.products-head__inner{
+  width:100%;
+  max-width:1400px;
+  margin:0 auto;
+  padding-inline:var(--g);
+}
+.products-head__eyebrow{
+  margin:0;
+  color:var(--muted);
+  font-size:12px;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+}
+.products-head__headline{
+  max-width:23ch;
+  margin:12px 0 0;
+  color:var(--fg);
+  font-size:clamp(32px,4.4vw,60px);
+  line-height:1.03;
+  font-weight:600;
+  letter-spacing:0;
+  text-wrap:balance;
+}
+.products-head__copy{
+  max-width:64ch;
+  margin:18px 0 0;
+  color:var(--muted);
+  font-size:17px;
+  line-height:1.62;
+}
 
 /* Warranty & Support statement band */
 .warranty-support{

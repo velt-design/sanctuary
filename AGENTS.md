@@ -61,6 +61,7 @@ Use `docs/testing-and-qa.md` as the canonical command source. Feature docs may l
 - `docs/platform-workflow.md`: business workflow across marketing and portal.
 - `docs/environment-auth-supabase.md`: env, auth, roles, schema readiness.
 - `docs/testing-and-qa.md`: test commands, Playwright, manual QA.
+- `docs/projects-contacts-estimates-calculator.md`: contacts, projects, project snapshots, calculator estimates, estimate locks, and local-first estimate mutations.
 - `docs/quotes-invoices-job-packs.md`: quote, invoice, public-token, PDF/email, and job-pack side effects.
 - `docs/parallel-work-guardrails.md`: canonical active guardrails for parallel work across apps, packages, docs, and workbench migration lanes. The old `docs/design-workbench-parallel-migration-rules.md` path is a redirect only.
 - `docs/costing-and-geometry.md`: costing and geometry semantics.

@@ -13,7 +13,7 @@ export default function AcrylicSection() {
       image={{
         src: '/images/dairy-flat-hero.jpg',
         alt: 'Acrylic roof over an outdoor dining area',
-        quality: 48,
+        quality: 50,
       }}
       characteristics={[
         {

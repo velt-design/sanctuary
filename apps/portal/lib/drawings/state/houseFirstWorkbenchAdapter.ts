@@ -65,7 +65,7 @@ import {
   parseDeckLocalPolygon,
   resolveDeckPresetGeometry,
   resolveDeckHostEdgeFrame,
-} from './houseFirstDeckPresets';
+} from './objectWorkbenchDeckGeometry';
 
 type HouseFirstWorkbenchDraftCarrier = EstimateDrawingDraft & {
   houseFirst?: {

@@ -6,15 +6,29 @@ import type {
 import type {
   DeckAttachmentMode,
   DeckFloatingPresetRect,
+  DeckShape,
   DeckPresetRect,
-  HouseFirstDeckDraft,
-} from './houseFirstWorkbenchModel';
+} from './objectFirstWorkbenchModel';
 
 type AttachmentSide = NonNullable<CalculatorModuleInputs['attachmentSide']>;
 
 type LocalPolygonPoint = {
   alongM: number;
   depthM: number;
+};
+
+type DeckGeometryDraft = {
+  id?: string | null;
+  shape?: DeckShape | null;
+  hostEdgeId?: string | null;
+  primaryHostEdgeId?: string | null;
+  secondaryHostEdgeId?: string | null;
+  cornerVertexId?: string | null;
+  attachmentMode?: DeckAttachmentMode | null;
+  isAttached?: boolean | null;
+  presetRect?: Partial<DeckPresetRect> | null;
+  floatingRect?: Partial<DeckFloatingPresetRect> | null;
+  outline?: CalculatorHouseFootprintPolygonPoint[] | null;
 };
 
 type DeckHostEdgeFrame = {
@@ -93,15 +107,15 @@ function normalizeDeckAttachmentMode(input: {
   return 'floating';
 }
 
-function normalizeDeckPrimaryHostEdgeId(deck: HouseFirstDeckDraft): string | null {
+function normalizeDeckPrimaryHostEdgeId(deck: DeckGeometryDraft): string | null {
   return deck.primaryHostEdgeId ?? deck.hostEdgeId ?? null;
 }
 
-function normalizeDeckSecondaryHostEdgeId(deck: HouseFirstDeckDraft): string | null {
+function normalizeDeckSecondaryHostEdgeId(deck: DeckGeometryDraft): string | null {
   return deck.secondaryHostEdgeId ?? null;
 }
 
-function normalizeDeckCornerVertexId(deck: HouseFirstDeckDraft): string | null {
+function normalizeDeckCornerVertexId(deck: DeckGeometryDraft): string | null {
   return deck.cornerVertexId ?? null;
 }
 
@@ -764,7 +778,7 @@ export function inferDeckFloatingPresetRectFromOutline(input: {
 }
 
 export function resolveDeckPresetGeometry(input: {
-  deck: HouseFirstDeckDraft;
+  deck: DeckGeometryDraft;
   housePolygon: CalculatorHouseFootprintPolygonPoint[] | null | undefined;
 }): {
   hostEdgeId: AttachmentSide | string | null;

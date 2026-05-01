@@ -9,7 +9,7 @@ import {
   translateFootprintEditToGeometryIntent as translateFootprintEditToObjectWorkbenchGeometryIntent,
   type GeometryEditApplyResult,
   type GeometryEditIntent,
-} from './compat/geometryEditAdapter';
+} from './objectWorkbenchGeometryEditAdapterCore';
 
 export {
   applyObjectWorkbenchGeometryEditIntent,
@@ -31,7 +31,7 @@ export type {
   GeometryEditStateResult as ObjectWorkbenchGeometryEditStateResult,
   GeometryHouseConfigKey as ObjectWorkbenchGeometryHouseConfigKey,
   SanctuaryPergolaFamily as ObjectWorkbenchPergolaFamily,
-} from './compat/geometryEditAdapter';
+} from './objectWorkbenchGeometryEditAdapterCore';
 
 export function buildObjectWorkbenchPergolaPatchFromGeometryIntent(
   intent: GeometryEditIntent,

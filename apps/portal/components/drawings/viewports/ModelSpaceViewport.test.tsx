@@ -14,7 +14,7 @@ import {
 import { buildAssemblyModel } from '@/lib/drawings/assembly/buildAssemblyModel';
 import { buildPlanViewModel } from '@/lib/drawings/views/plan/buildPlanViewModel';
 import type { ObjectWorkbenchPlanOverlayInput } from '@/lib/drawings/views/plan/objectWorkbenchPlanOverlay';
-import { resolveDeckHostEdgeFrame, resolveDeckPresetGeometry } from '@/lib/drawings/state/houseFirstDeckPresets';
+import { resolveDeckHostEdgeFrame, resolveDeckPresetGeometry } from '@/lib/drawings/state/objectWorkbenchDeckGeometry';
 import type { DeckInteractionTelemetry } from '@/app/staff/projects/[projectId]/design-workbench/objectWorkbenchClientTypes';
 import type {
   ObjectWorkbenchDisplayFamily,

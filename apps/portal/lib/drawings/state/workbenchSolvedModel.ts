@@ -23,7 +23,7 @@ import {
 } from '@/lib/drawings/geometry/resolveWorkbenchGeometryModule';
 import { buildEstimateDrawingModules, type EstimateDrawingModule } from '@/lib/estimates/moduleDrawing';
 import { mergeEstimateDrawingDraftIntoSnapshot, type EstimateDrawingDraft } from '@/lib/estimates/drawingEdits';
-import type { CalculatorModuleInputs } from '@/lib/types/calculator';
+import type { CalculatorHouseAttachmentStrategy, CalculatorModuleInputs } from '@/lib/types/calculator';
 import {
   buildWorkbenchDeckSupportDiagnostic,
   resolveWorkbenchDeckSupportActiveSide,
@@ -235,6 +235,83 @@ function annotateSceneHostEdgeSides(
   };
 }
 
+type AttachmentZoneKind = 'wall' | 'soffit' | 'fascia' | 'roof_edge';
+type AttachmentBlockReason = 'side_openings_block_wall' | 'side_openings_block_roof_zone';
+
+function resolveAttachmentStrategyZoneKinds(
+  strategy: CalculatorHouseAttachmentStrategy | null,
+): AttachmentZoneKind[] {
+  if (strategy === 'none') return [];
+  const kinds = new Set<AttachmentZoneKind>();
+  if (strategy === 'facade_ledger' || strategy === 'post_supported_tieback' || strategy === null) {
+    kinds.add('wall');
+  }
+  if (strategy === 'soffit_brackets' || strategy === 'post_supported_tieback' || strategy === null) {
+    kinds.add('soffit');
+  }
+  if (strategy === 'fascia_under_gutter' || strategy === null) {
+    kinds.add('fascia');
+  }
+  if (strategy === 'fascia_under_gutter') {
+    kinds.add('roof_edge');
+  }
+  return Array.from(kinds);
+}
+
+function isAttachmentSide(value: unknown): value is AttachmentSide {
+  return value === 'rear' || value === 'front' || value === 'left' || value === 'right';
+}
+
+function openingBlocksAttachmentZone(opening: WorkbenchProjectModel['openings'][number]): boolean {
+  return opening.validation?.status !== 'invalid';
+}
+
+function openingBlocksRoofAttachmentZone(opening: WorkbenchProjectModel['openings'][number]): boolean {
+  return openingBlocksAttachmentZone(opening) && (opening.kind === 'slider' || opening.kind === 'stacker');
+}
+
+function resolveOpeningAttachmentSide(input: {
+  projectModel: WorkbenchProjectModel;
+  opening: WorkbenchProjectModel['openings'][number];
+}): AttachmentSide | null {
+  if (isAttachmentSide(input.opening.wallId)) return input.opening.wallId;
+  const envelope = input.projectModel.houseAssembly?.derivedEnvelope ?? null;
+  const zones = envelope?.attachmentZones ?? [];
+  const zone = zones.find((candidate) =>
+    (input.opening.hostEdgeId && candidate.hostEdgeId === input.opening.hostEdgeId) ||
+    (input.opening.hostWallId && candidate.hostWallId === input.opening.hostWallId),
+  );
+  return zone?.side ?? null;
+}
+
+function resolveAttachmentZoneBlockedReasons(
+  projectModel: WorkbenchProjectModel | null | undefined,
+): string {
+  if (!projectModel?.houseAssembly) return 'none';
+  const houseForm = projectModel.houseAssembly.houseForms[0] ?? null;
+  const candidateKinds = resolveAttachmentStrategyZoneKinds(houseForm?.attachmentStrategy ?? null);
+  if (!candidateKinds.length) return 'none';
+
+  const blocked = new Set<string>();
+  for (const opening of projectModel.openings) {
+    const side = resolveOpeningAttachmentSide({ projectModel, opening });
+    if (!side) continue;
+    for (const kind of candidateKinds) {
+      const reason: AttachmentBlockReason | null =
+        kind === 'wall' && openingBlocksAttachmentZone(opening)
+          ? 'side_openings_block_wall'
+          : kind !== 'wall' && openingBlocksRoofAttachmentZone(opening)
+            ? 'side_openings_block_roof_zone'
+            : null;
+      if (reason) {
+        blocked.add(`${side}:${kind}:${reason}`);
+      }
+    }
+  }
+
+  return blocked.size ? Array.from(blocked).join(',') : 'none';
+}
+
 function annotateSceneAttachmentZoneMetadata(
   scene: ViewerSceneModel,
   geometryContext: ObjectWorkbenchGeometryContext,
@@ -259,7 +336,7 @@ function annotateSceneAttachmentZoneMetadata(
       houseAttachmentZoneKinds: zones.length
         ? zones.map((zone) => `${zone.side}:${zone.kind}`).join(',')
         : 'none',
-      houseAttachmentZoneBlockedReasons: 'none',
+      houseAttachmentZoneBlockedReasons: resolveAttachmentZoneBlockedReasons(projectModel),
       pergolaResolvedAttachmentZoneCount: resolvedPergolaAttachmentZoneCount,
       pergolaUnresolvedAttachmentZoneCount: unresolvedPergolaAttachmentZoneCount,
     },

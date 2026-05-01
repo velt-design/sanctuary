@@ -37,8 +37,8 @@ import {
   coerceHiddenWorkbenchGableBaseline,
   isHiddenWorkbenchGableEndFramesModeSupported,
   resolveHiddenWorkbenchGableHouseEdgeGutter,
-} from '../hiddenWorkbenchGableBaseline';
-import { solveActiveGeometryModuleResult } from '../solveActiveGeometryModuleResult';
+} from './hiddenWorkbenchGableBaseline';
+import { solveActiveGeometryModuleResult } from './solveActiveGeometryModuleResult';
 import { normalizeGeometryConfig, type AttachmentSide, type GeometryConfig } from '@sp/geometry';
 
 export type SanctuaryPergolaFamily = 'mono' | 'gable' | 'box' | 'hip' | 'hip_corner';

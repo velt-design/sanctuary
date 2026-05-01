@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, type CSSProperties } from 'react';
 import Link from 'next/link';
 import SpReveal from '@/components/SpReveal';
 import RoofComparisonSection from '@/components/explore/RoofComparisonSection';
@@ -25,7 +25,7 @@ export type HomePageContent = {
   featuredProjects: HomeProjectCard[];
 };
 
-const MATERIALS_COPY_STYLE: React.CSSProperties = {
+const MATERIALS_COPY_STYLE: CSSProperties = {
   width: 'min(88vw, 1288px)',
   marginInline: 'auto',
 };
@@ -150,7 +150,7 @@ export default function HomePageClient({
               '--sp-gutter': 'clamp(16px, 2.8vw, 40px)',
               '--sp-fit-nudge': '2px',
               '--sp-top-nudge': '-6px',
-            } as React.CSSProperties
+            } as CSSProperties
           }
         />
 
