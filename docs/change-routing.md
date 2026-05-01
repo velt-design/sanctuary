@@ -37,6 +37,8 @@ Use it for non-trivial portal work, cross-app work, schema/API changes, side eff
 
 Use these globs as routing hints. They do not replace source inspection.
 
+If a path pattern is intentionally kept for a legacy or future surface and does not match current repo paths, say `legacy` or `future` in the row note so `npm run docs:guard` can distinguish intentional routing coverage from stale drift.
+
 | Paths | Read First | Notes |
 | --- | --- | --- |
 | `apps/portal/app/api/staff/v1/schedule/**`, `apps/portal/app/staff/schedule/**`, `apps/portal/lib/scheduling/**`, `apps/portal/lib/repo/schedule*` | `docs/schedule.md` | Keep Schedule V2 writes behind API/RPC commands and preserve readiness/fallback posture. |

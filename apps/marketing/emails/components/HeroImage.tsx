@@ -5,7 +5,7 @@ export const ENQUIRY_HERO_IMAGE_URL = 'https://www.sanctuarypergolas.co.nz/image
 
 export function HeroImage() {
   return (
-    <Section style={{ margin: '0 0 18px' }}>
+    <Section style={{ margin: '0 0 24px' }}>
       <Img
         src={ENQUIRY_HERO_IMAGE_URL}
         alt="Gable pergola by Sanctuary Pergolas"

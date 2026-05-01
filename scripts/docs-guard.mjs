@@ -45,6 +45,20 @@ const STALE_PATTERNS = [
 const REDIRECT_DOC = 'docs/design-workbench-parallel-migration-rules.md';
 const REDIRECT_CANONICAL = 'docs/parallel-work-guardrails.md';
 const READINESS_DOC = 'docs/portal-production-readiness.md';
+const CHANGE_ROUTING_DOC = 'docs/change-routing.md';
+const DECISION_LOG_DOC = 'docs/decision-log.md';
+const VALID_DECISION_STATUSES = new Set(['Active', 'Promoted', 'Superseded']);
+
+const REPO_WALK_SKIP_DIRS = new Set([
+  '.git',
+  '.next',
+  'artifacts',
+  'coverage',
+  'dist',
+  'node_modules',
+  'playwright-report',
+  'test-results',
+]);
 
 function toPosix(value) {
   return value.split(path.sep).join('/');
@@ -75,6 +89,22 @@ function walkFiles(relPath) {
   return results;
 }
 
+function walkRepoPaths(relPath = '.') {
+  const absPath = path.join(ROOT, relPath);
+  const results = [];
+  for (const entry of fs.readdirSync(absPath, { withFileTypes: true })) {
+    if (REPO_WALK_SKIP_DIRS.has(entry.name)) continue;
+
+    const child = relPath === '.' ? entry.name : path.join(relPath, entry.name);
+    const normalized = toPosix(child);
+    results.push(normalized);
+    if (entry.isDirectory()) {
+      results.push(...walkRepoPaths(child));
+    }
+  }
+  return results;
+}
+
 function docTextFiles() {
   const files = [];
   for (const root of DOC_TEXT_ROOTS) {
@@ -84,6 +114,21 @@ function docTextFiles() {
     }
   }
   return files;
+}
+
+function commandTextFiles() {
+  const files = [...docTextFiles()];
+  if (exists('.github')) {
+    for (const file of walkFiles('.github')) {
+      if (file.endsWith('.yml') || file.endsWith('.yaml')) files.push(file);
+    }
+  }
+  if (exists('scripts')) {
+    for (const file of walkFiles('scripts')) {
+      if (/\.(cjs|js|mjs|ts|tsx)$/.test(file)) files.push(file);
+    }
+  }
+  return [...new Set(files)];
 }
 
 function lineAndColumnAt(text, index) {
@@ -145,6 +190,92 @@ function dateFromYmd(year, month, day) {
   return parsed;
 }
 
+function packageScripts() {
+  const packageJson = JSON.parse(readText('package.json'));
+  return new Set(Object.keys(packageJson.scripts || {}));
+}
+
+function markdownTableRows(text, heading, nextHeadingPattern = /^## /m) {
+  const headingIndex = text.indexOf(`## ${heading}`);
+  if (headingIndex === -1) return [];
+
+  const afterHeading = text.slice(headingIndex + heading.length + 3);
+  const nextHeading = afterHeading.search(nextHeadingPattern);
+  const section = nextHeading === -1 ? afterHeading : afterHeading.slice(0, nextHeading);
+  return section
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line.startsWith('|') && !/^\|\s*-+/.test(line))
+    .map((line) => line.slice(1, -1).split('|').map((cell) => cell.trim()));
+}
+
+function extractBacktickValues(text) {
+  return [...text.matchAll(/`([^`]+)`/g)].map((match) => match[1]);
+}
+
+function decisionLogEntries(text) {
+  const headingPattern = /^### (\d{4}-\d{2}-\d{2}) - (.+?) - (.+)$/gm;
+  const headings = [...text.matchAll(headingPattern)];
+  return headings.map((heading, index) => {
+    const bodyStart = heading.index + heading[0].length;
+    const bodyEnd = index + 1 < headings.length ? headings[index + 1].index : text.length;
+    const body = text.slice(bodyStart, bodyEnd);
+    return {
+      date: heading[1],
+      area: heading[2],
+      title: heading[3],
+      line: lineAndColumnAt(text, heading.index).line,
+      body,
+    };
+  });
+}
+
+function entryField(entry, field) {
+  const escaped = field.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const match = entry.body.match(new RegExp(`^${escaped}:\\s*(.*)$`, 'm'));
+  return match ? match[1].trim() : null;
+}
+
+function increment(map, key) {
+  map.set(key, (map.get(key) || 0) + 1);
+}
+
+function globToRegExp(pattern) {
+  let source = '^';
+  for (let i = 0; i < pattern.length; i += 1) {
+    const char = pattern[i];
+    if (char === '*') {
+      if (pattern[i + 1] === '*') {
+        source += '.*';
+        i += 1;
+      } else {
+        source += '[^/]*';
+      }
+    } else {
+      source += char.replace(/[.+^${}()|[\]\\]/g, '\\$&');
+    }
+  }
+  return new RegExp(`${source}$`);
+}
+
+function pathPatternMatches(pattern, repoPaths) {
+  if (!pattern.includes('*')) return repoPaths.has(pattern);
+  const re = globToRegExp(pattern);
+  for (const repoPath of repoPaths) {
+    if (re.test(repoPath)) return true;
+  }
+  return false;
+}
+
+function isDocPath(value) {
+  return (
+    value === 'AGENTS.md' ||
+    value === 'README.md' ||
+    value.startsWith('docs/') ||
+    value.endsWith('/README.md')
+  );
+}
+
 const failures = [];
 
 function fail(message) {
@@ -169,6 +300,19 @@ for (const doc of STARTUP_DOCS) {
   if (!includesPath(docsIndex, doc)) fail(`docs/README.md startup path is missing ${doc}`);
   if (doc !== 'docs/agent-playbook.md' && !includesPath(playbook, doc)) {
     fail(`docs/agent-playbook.md startup path is missing ${doc}`);
+  }
+}
+
+const scripts = packageScripts();
+for (const file of commandTextFiles()) {
+  const text = readText(file);
+  const commandPattern = /\bnpm\s+run\s+([A-Za-z0-9:_-]+)/g;
+  for (const match of text.matchAll(commandPattern)) {
+    const script = match[1];
+    if (!scripts.has(script)) {
+      const pos = lineAndColumnAt(text, match.index);
+      fail(`${file}:${pos.line}:${pos.col} documents missing package script: npm run ${script}`);
+    }
   }
 }
 
@@ -200,6 +344,108 @@ for (const file of docTextFiles()) {
     if (code === 9 || code === 10 || code === 13 || (code >= 32 && code <= 126)) continue;
     const pos = lineAndColumnAt(text, i);
     fail(`${file}:${pos.line}:${pos.col} contains non-ASCII character U+${code.toString(16).toUpperCase().padStart(4, '0')}`);
+  }
+}
+
+if (!exists(DECISION_LOG_DOC)) {
+  fail(`Missing decision log: ${DECISION_LOG_DOC}`);
+} else {
+  const decisionText = readText(DECISION_LOG_DOC);
+  const indexRows = markdownTableRows(decisionText, 'Index')
+    .filter((row) => row.length >= 4 && row[0] !== 'Date')
+    .map((row) => ({
+      date: row[0],
+      area: row[1],
+      status: row[2],
+      guardrail: row[3],
+    }));
+  const entries = decisionLogEntries(decisionText);
+  const indexCounts = new Map();
+  const entryCounts = new Map();
+
+  for (const row of indexRows) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(row.date)) {
+      fail(`${DECISION_LOG_DOC} index row has invalid date: ${row.date}`);
+    }
+    if (!VALID_DECISION_STATUSES.has(row.status)) {
+      fail(`${DECISION_LOG_DOC} index row for ${row.date} / ${row.area} has invalid status: ${row.status}`);
+    }
+    if (!row.guardrail) {
+      fail(`${DECISION_LOG_DOC} index row for ${row.date} / ${row.area} is missing a guardrail summary`);
+    }
+    increment(indexCounts, `${row.date}|${row.area}|${row.status}`);
+  }
+
+  const requiredFields = [
+    'Area',
+    'Status',
+    'Decision or mistake',
+    'Why it mattered',
+    'Current guardrail',
+    'Promoted to',
+    'Related docs/tests',
+  ];
+  for (const entry of entries) {
+    const status = entryField(entry, 'Status');
+    for (const field of requiredFields) {
+      const value = entryField(entry, field);
+      if (value === null || value.length === 0) {
+        fail(`${DECISION_LOG_DOC}:${entry.line} entry "${entry.date} - ${entry.area} - ${entry.title}" is missing field: ${field}`);
+      }
+    }
+    if (status && !VALID_DECISION_STATUSES.has(status)) {
+      fail(`${DECISION_LOG_DOC}:${entry.line} entry "${entry.date} - ${entry.area} - ${entry.title}" has invalid status: ${status}`);
+    }
+    if (status) increment(entryCounts, `${entry.date}|${entry.area}|${status}`);
+
+    const promotedTo = entryField(entry, 'Promoted to');
+    if (promotedTo && promotedTo !== 'None') {
+      const promotedPaths = extractBacktickValues(promotedTo).filter(isDocPath);
+      if (promotedPaths.length === 0) {
+        fail(`${DECISION_LOG_DOC}:${entry.line} promoted entry "${entry.date} - ${entry.area} - ${entry.title}" must list promoted doc paths or None`);
+      }
+      for (const promotedPath of promotedPaths) {
+        if (!exists(promotedPath)) {
+          fail(`${DECISION_LOG_DOC}:${entry.line} promoted entry references missing doc: ${promotedPath}`);
+        }
+      }
+    }
+  }
+
+  for (const [key, count] of indexCounts) {
+    if (entryCounts.get(key) !== count) {
+      fail(`${DECISION_LOG_DOC} index count does not match entries for ${key}: index=${count}, entries=${entryCounts.get(key) || 0}`);
+    }
+  }
+  for (const [key, count] of entryCounts) {
+    if (indexCounts.get(key) !== count) {
+      fail(`${DECISION_LOG_DOC} entries count does not match index for ${key}: entries=${count}, index=${indexCounts.get(key) || 0}`);
+    }
+  }
+}
+
+if (!exists(CHANGE_ROUTING_DOC)) {
+  fail(`Missing change routing doc: ${CHANGE_ROUTING_DOC}`);
+} else {
+  const repoPaths = new Set(walkRepoPaths());
+  const routingText = readText(CHANGE_ROUTING_DOC);
+  const rows = markdownTableRows(routingText, 'Path Ownership Map', /^## Common Task Cards/m)
+    .filter((row) => row.length >= 3 && row[0] !== 'Paths');
+  for (const row of rows) {
+    const [pathsCell, readFirstCell, notesCell] = row;
+    const readFirstDocs = extractBacktickValues(readFirstCell).filter(isDocPath);
+    for (const docPath of readFirstDocs) {
+      if (!exists(docPath)) {
+        fail(`${CHANGE_ROUTING_DOC} path ownership row references missing owner doc: ${docPath}`);
+      }
+    }
+
+    const allowsUnmatchedPattern = /\b(legacy|future)\b/i.test(notesCell);
+    for (const pattern of extractBacktickValues(pathsCell)) {
+      if (!pathPatternMatches(pattern, repoPaths) && !allowsUnmatchedPattern) {
+        fail(`${CHANGE_ROUTING_DOC} path ownership pattern matches no repo paths: ${pattern}`);
+      }
+    }
   }
 }
 

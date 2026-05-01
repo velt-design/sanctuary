@@ -24,12 +24,16 @@ export function CustomerCommercialEmail(props: ResidentialOrCommercial & { callW
     <EmailLayout preview="Your indicative commercial range and next steps from Sanctuary Pergolas.">
       <HeroImage />
 
-      <Text style={{ margin: '0 0 10px', fontSize: 22, lineHeight: 1.25, fontWeight: 700 }}>
-        Thanks {props.name}, we&apos;ve received your commercial pergola enquiry.
+      <Text style={{ margin: '0 0 12px', fontSize: 24, lineHeight: 1.22, fontWeight: 700 }}>
+        Your commercial pergola enquiry has been received
       </Text>
 
-      <Text style={{ margin: '0 0 12px', fontSize: 14, color: THEME.muted, lineHeight: 1.6 }}>
-        One of our team will review your enquiry and be in touch shortly to talk through the best options
+      <Text style={{ margin: '0 0 10px', fontSize: 14, color: THEME.text, lineHeight: 1.65 }}>
+        Thanks {props.name}. Based on the details you shared, we&apos;ve prepared an initial installed
+        investment range for your project.
+      </Text>
+      <Text style={{ margin: '0 0 4px', fontSize: 13, color: THEME.muted, lineHeight: 1.65 }}>
+        One of our team will review your enquiry and be in touch shortly to talk through the best approach
         for your space.
       </Text>
 
@@ -42,7 +46,7 @@ export function CustomerCommercialEmail(props: ResidentialOrCommercial & { callW
       <NextSteps />
 
       <Summary
-        title="Your request"
+        title="Project details received"
         rows={[
           { label: 'Area', value: props.suburb },
           {
@@ -56,17 +60,11 @@ export function CustomerCommercialEmail(props: ResidentialOrCommercial & { callW
         ]}
       />
 
-      <Text style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 600 }}>
-        To keep things moving
+      <Text style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 700 }}>
+        Helpful next details
       </Text>
-      <Text style={{ margin: '0 0 4px', fontSize: 13, lineHeight: 1.6 }}>
-        1) Reply with the site address (or nearest cross-street)
-      </Text>
-      <Text style={{ margin: '0 0 4px', fontSize: 13, lineHeight: 1.6 }}>
-        2) Any restricted work hours / access constraints
-      </Text>
-      <Text style={{ margin: 0, fontSize: 13, lineHeight: 1.6 }}>
-        3) Deadline or preferred install window
+      <Text style={{ margin: 0, fontSize: 13, color: THEME.muted, lineHeight: 1.65 }}>
+        If you have photos, plans, or a preferred timeframe, simply reply to this email and send them through.
       </Text>
 
       <Text style={{ margin: '14px 0 0', fontSize: 12, color: THEME.muted, lineHeight: 1.6 }}>

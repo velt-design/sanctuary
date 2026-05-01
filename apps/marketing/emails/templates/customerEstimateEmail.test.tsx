@@ -1,7 +1,9 @@
 import { render } from '@react-email/render';
 import { describe, expect, it } from 'vitest';
 import { customerEstimateSubject } from '../../lib/sharedEmails';
+import { EMAIL_LOGO_URL } from '../components/EmailLayout';
 import { ENQUIRY_HERO_IMAGE_URL } from '../components/HeroImage';
+import { INVESTMENT_PANEL_BACKGROUND } from '../components/InvestmentPanel';
 import type { ResidentialOrCommercial } from '../types';
 import { CustomerCommercialEmail } from './customerCommercial';
 import { CustomerResidentialEmail } from './customerResidential';
@@ -51,11 +53,20 @@ describe('customer estimate autoresponder emails', () => {
     });
 
     expect(html).toContain(ENQUIRY_HERO_IMAGE_URL);
-    expect(text).toContain("Thanks Alex Morgan, we've received your pergola enquiry.");
+    expect(html).toContain(EMAIL_LOGO_URL);
+    expect(html).toContain(INVESTMENT_PANEL_BACKGROUND);
+    expect(text).toContain('Outdoor living, designed around your home.');
+    expect(text).toContain('Your pergola enquiry has been received');
+    expect(text).toContain("Thanks Alex Morgan. Based on the details you shared, we've prepared an initial installed investment range for your project.");
     expect(text).toContain('Indicative installed investment');
     expect(text).toContain('$27,500 - $31,500');
     expect(text).toContain('Blinds add-on');
     expect(text).toContain('What happens next');
+    expect(text).toContain('Review');
+    expect(text).toContain('Consultation');
+    expect(text).toContain('Next step');
+    expect(text).toContain('Project details received');
+    expect(text).toContain('Helpful next details');
     expect(text).not.toContain('within 30 minutes');
   });
 
@@ -64,7 +75,7 @@ describe('customer estimate autoresponder emails', () => {
       plainText: true,
     });
 
-    expect(text).toContain("Thanks Alex Morgan, we've received your commercial pergola enquiry.");
+    expect(text).toContain('Your commercial pergola enquiry has been received');
     expect(text).toContain('$52,500 - $60,500');
     expect(text).not.toContain('Blinds add-on');
     expect(text).not.toContain('within 30 minutes');

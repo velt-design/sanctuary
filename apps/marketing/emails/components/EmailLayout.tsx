@@ -4,12 +4,15 @@ import {
   Container,
   Head,
   Html,
+  Img,
   Preview,
   Section,
   Text,
   Hr,
 } from '@react-email/components';
 import { THEME } from '../theme';
+
+export const EMAIL_LOGO_URL = 'https://www.sanctuarypergolas.co.nz/images/email-logo.png';
 
 export function EmailLayout(props: { preview: string; children: React.ReactNode }) {
   return (
@@ -28,28 +31,40 @@ export function EmailLayout(props: { preview: string; children: React.ReactNode 
         >
           <Section
             style={{
-              padding: '18px 18px 14px',
+              padding: '24px 18px 18px',
               backgroundColor: THEME.card,
               border: `1px solid ${THEME.border}`,
             }}
           >
+            <Img
+              src={EMAIL_LOGO_URL}
+              alt="Sanctuary Pergolas"
+              width="56"
+              height="56"
+              style={{
+                display: 'block',
+                width: 56,
+                height: 56,
+                margin: '0 0 12px',
+                border: 0,
+              }}
+            />
             <Text
               style={{
-                margin: 0,
+                margin: '0 0 18px',
                 fontSize: 13,
-                letterSpacing: '0.14em',
-                textTransform: 'uppercase',
-                color: THEME.text,
+                lineHeight: 1.55,
+                color: THEME.muted,
               }}
             >
-              Sanctuary Pergolas
+              Outdoor living, designed around your home.
             </Text>
 
-            <Hr style={{ borderColor: THEME.border, margin: '14px 0' }} />
+            <Hr style={{ borderColor: THEME.border, margin: '0 0 22px' }} />
 
             {props.children}
 
-            <Hr style={{ borderColor: THEME.border, margin: '18px 0' }} />
+            <Hr style={{ borderColor: THEME.border, margin: '24px 0 18px' }} />
 
             <Text style={{ margin: 0, fontSize: 12, color: THEME.muted, lineHeight: 1.6 }}>
               Phone: +64 9 634 9482

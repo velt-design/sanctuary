@@ -2,68 +2,73 @@ import * as React from 'react';
 import { Section, Text } from '@react-email/components';
 import { THEME } from '../theme';
 
+export const INVESTMENT_PANEL_BACKGROUND = '#20211D';
+
 export function InvestmentPanel(props: {
   baseRange: string;
   blindsRange?: string;
   note: string;
 }) {
   return (
-    <Section
-      style={{
-        margin: '14px 0 18px',
-        padding: '18px 18px 16px',
-        backgroundColor: '#111111',
-        border: '1px solid #111111',
-      }}
-    >
-      <Text
+    <>
+      <Section
         style={{
-          margin: '0 0 8px',
-          fontSize: 12,
-          color: '#D6D6D6',
-          textTransform: 'uppercase',
-          letterSpacing: '0.08em',
-          fontWeight: 600,
+          margin: '18px 0 10px',
+          padding: '24px 24px 22px',
+          backgroundColor: INVESTMENT_PANEL_BACKGROUND,
+          border: '1px solid #2D2F29',
         }}
       >
-        Indicative installed investment
-      </Text>
-
-      <Text
-        style={{
-          margin: '0 0 4px',
-          fontSize: 30,
-          lineHeight: 1.18,
-          fontWeight: 700,
-          color: '#FFFFFF',
-        }}
-      >
-        {props.baseRange}
-      </Text>
-      <Text style={{ margin: '0 0 14px', fontSize: 13, color: '#D6D6D6', lineHeight: 1.5 }}>
-        Pergola structure, installed, incl. GST
-      </Text>
-
-      {props.blindsRange ? (
-        <Section
+        <Text
           style={{
-            margin: '0 0 14px',
-            padding: '12px 0 0',
-            borderTop: '1px solid #333333',
+            margin: '0 0 10px',
+            fontSize: 11,
+            color: '#C8C5BA',
+            textTransform: 'uppercase',
+            letterSpacing: '0.1em',
+            fontWeight: 600,
+            lineHeight: 1.5,
           }}
         >
-          <Text style={{ margin: '0 0 4px', fontSize: 12, color: '#D6D6D6', lineHeight: 1.5 }}>
-            Blinds add-on
-          </Text>
-          <Text style={{ margin: 0, fontSize: 18, fontWeight: 700, color: '#FFFFFF', lineHeight: 1.35 }}>
-            {props.blindsRange}
-          </Text>
-        </Section>
-      ) : null}
+          Indicative installed investment
+        </Text>
 
-      <Text style={{ margin: 0, fontSize: 12, color: THEME.border, lineHeight: 1.55 }}>
+        <Text
+          style={{
+            margin: '0 0 6px',
+            fontSize: 32,
+            lineHeight: 1.15,
+            fontWeight: 600,
+            color: '#FFFFFF',
+          }}
+        >
+          {props.baseRange}
+        </Text>
+        <Text style={{ margin: '0 0 18px', fontSize: 13, color: '#DCD8CC', lineHeight: 1.55 }}>
+          Pergola structure, installed, incl. GST
+        </Text>
+
+        {props.blindsRange ? (
+          <Section
+            style={{
+              margin: 0,
+              padding: '16px 0 0',
+              borderTop: '1px solid #45463E',
+            }}
+          >
+            <Text style={{ margin: '0 0 5px', fontSize: 12, color: '#C8C5BA', lineHeight: 1.5 }}>
+              Blinds add-on
+            </Text>
+            <Text style={{ margin: 0, fontSize: 19, fontWeight: 600, color: '#FFFFFF', lineHeight: 1.35 }}>
+              {props.blindsRange}
+            </Text>
+          </Section>
+        ) : null}
+      </Section>
+
+      <Text style={{ margin: '0 0 22px', fontSize: 12, color: THEME.muted, lineHeight: 1.65 }}>
         {props.note}
       </Text>
-    </Section>
+    </>
   );
 }
