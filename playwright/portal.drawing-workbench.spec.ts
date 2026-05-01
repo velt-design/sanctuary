@@ -159,6 +159,27 @@ async function expectContained3DCanvas(page: Page) {
   await expect(viewport).not.toContainText(/NaN|Infinity/);
 }
 
+async function expectTopProjectionPlanParity(page: Page) {
+  const modelViewport = page.getByLabel('Plan model space viewport');
+  const planSvg = modelViewport.locator('svg[data-model-space-svg="plan"]').first();
+
+  await expect(modelViewport).toBeVisible({ timeout: 30_000 });
+  await expect(planSvg).toBeVisible();
+  await expect(planSvg).toHaveAttribute('data-top-projection-parity-status', 'pass');
+  await expect(planSvg).toHaveAttribute('data-top-projection-screen-axis', 'world_x_right_world_y_down');
+  await expect(planSvg).toHaveAttribute('data-top-projection-hidden-rendered-count', '0');
+  await expect(modelViewport.locator('[data-top-projection-role="hidden_from_top"]')).toHaveCount(0);
+  await expect
+    .poll(async () => Number(await planSvg.getAttribute('data-top-projection-top-visible-count')))
+    .toBeGreaterThan(0);
+  await expect
+    .poll(async () => Number(await planSvg.getAttribute('data-top-projection-rendered-count')))
+    .toBeGreaterThan(0);
+
+  const screenshot = await modelViewport.screenshot();
+  expect(screenshot.byteLength).toBeGreaterThan(10_000);
+}
+
 async function openFixtureDrawingWorkbench(page: Page, fixtureSlug: string) {
   await page.goto(`/staff/projects/fixture-roof/design-workbench?fixture=${fixtureSlug}`);
   const workbench = page.getByRole('region', { name: 'Drawing workbench' });
@@ -182,10 +203,16 @@ test('drawing workbench screenshot U hipped roof fixture renders valid topology'
   await page.setViewportSize({ width: 1680, height: 1050 });
   await openFixtureDrawingWorkbench(page, 'gable-u-hipped-screenshot');
 
+  await page.getByRole('tab', { name: 'Model Space' }).click();
+  await page.getByRole('tab', { name: 'Plan' }).click();
+  await expectTopProjectionPlanParity(page);
+
   await page.getByRole('tab', { name: '3D View' }).click();
+  await page.getByRole('button', { name: 'Top' }).click();
   await expectContained3DCanvas(page);
 
   const diagnostics = page.getByTestId('geometry-3d-viewport-diagnostics');
+  await expect(diagnostics).toHaveAttribute('data-top-view-screen-axis', 'world_x_right_world_y_down');
   await expect(diagnostics).toHaveAttribute('data-house-roof-qa-status', 'valid');
   await expect(diagnostics).toHaveAttribute('data-house-roof-topology-valley-count', '2');
   await expect(diagnostics).toHaveAttribute('data-house-roof-topology-disconnected-source-face-count', '0');
@@ -573,7 +600,11 @@ test('drawing workbench draw outline fixture places the first point at the landi
   expect(pageErrors, `Unexpected runtime errors: ${pageErrors.join(' | ')}`).toEqual([]);
 });
 
-test('drawing workbench model-space smoke', async ({ page }) => {
+test('drawing workbench model-space smoke', async ({ page }, testInfo) => {
+  if (testInfo.project.name === 'portal-fixture' && !process.env.PORTAL_DRAWING_URL?.trim()) {
+    test.skip(true, 'Auth-backed project discovery is covered by the portal-chromium project.');
+  }
+
   const pageErrors: string[] = [];
   page.on('pageerror', (error) => {
     pageErrors.push(error.message);

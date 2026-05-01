@@ -851,10 +851,14 @@ body.homepage main .container{
   align-items:flex-start;
 }
 
+.homepage .home-projects-section__controls--desktop{
+  margin-top:clamp(18px,2.4vw,30px);
+}
+
 .homepage .home-projects-section__track{
   width:100vw;
   margin-left:calc(50% - 50vw);
-  margin-top:clamp(30px,4vw,54px);
+  margin-top:clamp(12px,1.8vw,22px);
   scroll-padding-inline:max(6vw,calc((100vw - 1288px) / 2));
 }
 
@@ -908,6 +912,10 @@ body.homepage main .container{
 .homepage .roof-studies--editorial .roof-studies__track{
   gap:clamp(14px,1.8vw,24px);
   padding-bottom:var(--home-section-y) !important;
+}
+
+.homepage .roof-studies--editorial .roof-studies__controls--mobile{
+  display:none;
 }
 
 .homepage .roof-studies--editorial .roof-studies__card{
@@ -1174,9 +1182,20 @@ body.homepage main .container{
   .homepage .home-projects-section__head{
     flex-direction:column;
   }
+  .homepage .home-projects-section__track{
+    margin-top:clamp(28px,4vh,42px);
+  }
   .homepage .home-projects-section__card,
   .homepage .roof-studies--editorial .roof-studies__card{
     height:clamp(360px,58vh,500px) !important;
+  }
+  .homepage .roof-studies--editorial .roof-studies__track{
+    padding-bottom:clamp(16px,3vh,28px) !important;
+  }
+  .homepage .roof-studies--editorial .roof-studies__controls--mobile{
+    display:flex;
+    margin-top:0;
+    margin-bottom:var(--home-section-y);
   }
   .homepage .roof-comparison--editorial .roof-comparison__surface{
     border-top:0;

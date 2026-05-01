@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildTopProjectionParityReport,
   buildTopProjectionViewModelFromScene,
   buildTopProjectionViewModel,
   buildViewerSceneModel,
   solveAssembly3D,
   type GeometryConfig,
+  type GeometryTopProjectionViewModel,
   type HouseSurfaceSolidKind,
   type HouseAttachmentStrategy,
   type Point2,
@@ -494,5 +496,142 @@ describe("buildTopProjectionViewModel", () => {
       maxX: 1200,
       maxY: 100,
     });
+  });
+});
+
+describe("buildTopProjectionParityReport", () => {
+  it("passes when a scene-first projection matches the 3D top-view contract", () => {
+    const fixture = requireSupportedFixture("mono_attached_soffit_away_standard");
+    const solved = solveAssembly3D(addHouseModelContext(fixture.config));
+    if (!solved.ok) throw new Error(solved.error);
+
+    const scene = buildViewerSceneModel(solved.value);
+    const projection = buildTopProjectionViewModel(solved.value);
+    const report = buildTopProjectionParityReport(scene, projection, {
+      renderedShapeIds: projection.shapes
+        .filter((shape) => shape.metadata?.topProjectionRole !== "hidden_from_top")
+        .map((shape) => shape.id),
+    });
+
+    expect(report).toMatchObject({
+      status: "pass",
+      screenAxis: "world_x_right_world_y_down",
+    });
+    expect(report.topVisibleShapeCount).toBeGreaterThan(0);
+    expect(report.issues).toEqual([]);
+  });
+
+  it("reports screen-axis mismatches", () => {
+    const fixture = requireSupportedFixture("mono_attached_soffit_away_standard");
+    const solved = solveAssembly3D(addHouseModelContext(fixture.config));
+    if (!solved.ok) throw new Error(solved.error);
+
+    const scene = buildViewerSceneModel(solved.value);
+    const projection: GeometryTopProjectionViewModel = {
+      ...buildTopProjectionViewModel(solved.value),
+      screenAxis: {
+        x: "world_x_right",
+        y: "world_y_down".replace("down", "up") as "world_y_down",
+      },
+    };
+    const report = buildTopProjectionParityReport(scene, projection);
+
+    expect(report.status).toBe("fail");
+    expect(report.issues).toContainEqual(expect.objectContaining({ code: "screen_axis_mismatch" }));
+  });
+
+  it("reports missing top-visible scene objects", () => {
+    const scene = makeSceneWithHouseSolid({
+      id: "roof-missing-projection",
+      kind: "roof",
+      boundary: [
+        { x: 0, y: 0, z: 100 },
+        { x: 100, y: 0, z: 100 },
+        { x: 100, y: 100, z: 100 },
+        { x: 0, y: 100, z: 100 },
+      ],
+      renderMesh: {
+        vertices: [
+          { x: 0, y: 0, z: 100 },
+          { x: 100, y: 0, z: 100 },
+          { x: 100, y: 100, z: 100 },
+          { x: 0, y: 100, z: 100 },
+        ],
+        faces: [[0, 1, 2], [0, 2, 3]],
+      },
+    });
+    const projection: GeometryTopProjectionViewModel = {
+      coordinateSpace: "world_xy_mm",
+      screenAxis: { x: "world_x_right", y: "world_y_down" },
+      shapes: [],
+      extents: null,
+    };
+    const report = buildTopProjectionParityReport(scene, projection);
+
+    expect(report.status).toBe("fail");
+    expect(report.issues).toContainEqual(
+      expect.objectContaining({
+        code: "missing_top_visible_shape",
+        sourceObjectId: "roof-missing-projection",
+      }),
+    );
+  });
+
+  it("reports hidden shapes in extents and hidden rendered shapes", () => {
+    const wallRing: Polygon3 = [
+      { x: -500, y: -500, z: 0 },
+      { x: 1500, y: -500, z: 0 },
+      { x: 1500, y: 0, z: 2400 },
+      { x: -500, y: 0, z: 2400 },
+    ];
+    const roofRing: Polygon3 = [
+      { x: 0, y: 0, z: 2600 },
+      { x: 1000, y: 0, z: 2600 },
+      { x: 1000, y: 1000, z: 2600 },
+      { x: 0, y: 1000, z: 2600 },
+    ];
+    const scene: ViewerSceneModel = {
+      layers: [
+        ...makeSceneWithHouseSolid({
+          id: "wall-hidden-for-parity",
+          kind: "wall",
+          boundary: wallRing,
+          renderMesh: { vertices: wallRing, faces: [[0, 1, 2], [0, 2, 3]] },
+        }).layers,
+        ...makeSceneWithHouseSolid({
+          id: "roof-visible-for-parity",
+          kind: "roof",
+          boundary: roofRing,
+          renderMesh: { vertices: roofRing, faces: [[0, 1, 2], [0, 2, 3]] },
+        }).layers,
+      ],
+    };
+    const projection = buildTopProjectionViewModelFromScene(scene);
+    const wallShape = projection.shapes.find((shape) => shape.sourceObjectId === "wall-hidden-for-parity");
+    if (!wallShape) throw new Error("Expected hidden wall projection shape.");
+    const projectionWithHiddenExtents: GeometryTopProjectionViewModel = {
+      ...projection,
+      extents: {
+        minX: -500,
+        minY: -500,
+        maxX: 1500,
+        maxY: 1000,
+        widthMm: 2000,
+        heightMm: 1500,
+      },
+    };
+
+    const report = buildTopProjectionParityReport(scene, projectionWithHiddenExtents, {
+      renderedShapeIds: [wallShape.id],
+    });
+
+    expect(report.status).toBe("fail");
+    expect(report.issues).toContainEqual(expect.objectContaining({ code: "hidden_shape_in_extents" }));
+    expect(report.issues).toContainEqual(
+      expect.objectContaining({
+        code: "hidden_shape_rendered",
+        shapeId: wallShape.id,
+      }),
+    );
   });
 });

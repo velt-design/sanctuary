@@ -29,6 +29,34 @@ export type BuildTopProjectionViewModelFromSceneOptions = {
   referenceShapes?: GeometryTopProjectionShape[];
 };
 
+export type TopProjectionParityIssueCode =
+  | 'screen_axis_mismatch'
+  | 'missing_top_visible_shape'
+  | 'extra_top_visible_shape'
+  | 'hidden_shape_in_extents'
+  | 'hidden_shape_rendered';
+
+export type TopProjectionParityIssue = {
+  code: TopProjectionParityIssueCode;
+  message: string;
+  shapeId?: string;
+  sourceObjectId?: string;
+};
+
+export type BuildTopProjectionParityReportOptions = {
+  renderedShapeIds?: string[];
+};
+
+export type TopProjectionParityReport = {
+  status: 'pass' | 'fail';
+  screenAxis: string;
+  topVisibleShapeCount: number;
+  contextShapeCount: number;
+  hiddenShapeCount: number;
+  renderedShapeCount: number;
+  issues: TopProjectionParityIssue[];
+};
+
 function toPoint2(point: { x: number; y: number }): Point2 {
   return {
     x: Number(point.x.toFixed(6)),
@@ -258,7 +286,30 @@ function memberPrismPolygon(object: Extract<ViewerSceneObject, { type: 'member_p
   const dx = centerline.end.x - centerline.start.x;
   const dy = centerline.end.y - centerline.start.y;
   const length = Math.hypot(dx, dy);
-  if (length <= EPSILON_MM) return null;
+  if (length <= EPSILON_MM) {
+    const frameYAxis = object.localFrame.yAxis;
+    const frameZAxis = object.localFrame.zAxis;
+    const yMagnitude = Math.hypot(frameYAxis.x, frameYAxis.y);
+    const zMagnitude = Math.hypot(frameZAxis.x, frameZAxis.y);
+    const yAxis = yMagnitude > EPSILON_MM
+      ? { x: frameYAxis.x / yMagnitude, y: frameYAxis.y / yMagnitude }
+      : { x: 1, y: 0 };
+    const zAxis = zMagnitude > EPSILON_MM
+      ? { x: frameZAxis.x / zMagnitude, y: frameZAxis.y / zMagnitude }
+      : { x: -yAxis.y, y: yAxis.x };
+    const center = {
+      x: (centerline.start.x + centerline.end.x) / 2,
+      y: (centerline.start.y + centerline.end.y) / 2,
+    };
+    const halfWidth = widthMm / 2;
+    const halfDepth = Math.max(object.profile.depthMm, 1) / 2;
+    return cleanPolygon([
+      toPoint2({ x: center.x + yAxis.x * halfWidth + zAxis.x * halfDepth, y: center.y + yAxis.y * halfWidth + zAxis.y * halfDepth }),
+      toPoint2({ x: center.x - yAxis.x * halfWidth + zAxis.x * halfDepth, y: center.y - yAxis.y * halfWidth + zAxis.y * halfDepth }),
+      toPoint2({ x: center.x - yAxis.x * halfWidth - zAxis.x * halfDepth, y: center.y - yAxis.y * halfWidth - zAxis.y * halfDepth }),
+      toPoint2({ x: center.x + yAxis.x * halfWidth - zAxis.x * halfDepth, y: center.y + yAxis.y * halfWidth - zAxis.y * halfDepth }),
+    ]);
+  }
 
   const frameYAxis = object.localFrame.yAxis;
   const frameMagnitude = Math.hypot(frameYAxis.x, frameYAxis.y);
@@ -311,6 +362,13 @@ function metadataWithTopProjectionRole(
     ...(metadata ?? {}),
     topProjectionRole: role,
   };
+}
+
+function topProjectionRoleForShape(shape: GeometryTopProjectionShape): TopProjectionRole {
+  const role = shape.metadata?.topProjectionRole;
+  return role === 'context' || role === 'hidden_from_top' || role === 'top_visible'
+    ? role
+    : 'top_visible';
 }
 
 function zStats(points: Point3[]): { zMin: number | null; zMax: number | null } {
@@ -509,6 +567,109 @@ function shapeExtents(shapes: GeometryTopProjectionShape[]): GeometryTopProjecti
     maxY: Number(maxY.toFixed(6)),
     widthMm: Number((maxX - minX).toFixed(6)),
     heightMm: Number((maxY - minY).toFixed(6)),
+  };
+}
+
+function topProjectionScreenAxisString(projection: GeometryTopProjectionViewModel): string {
+  return `${projection.screenAxis.x}_${projection.screenAxis.y}`;
+}
+
+function extentsEqual(
+  left: GeometryTopProjectionViewModel['extents'],
+  right: GeometryTopProjectionViewModel['extents'],
+): boolean {
+  if (left === null || right === null) return left === right;
+  return (
+    Math.abs(left.minX - right.minX) <= EPSILON_MM &&
+    Math.abs(left.minY - right.minY) <= EPSILON_MM &&
+    Math.abs(left.maxX - right.maxX) <= EPSILON_MM &&
+    Math.abs(left.maxY - right.maxY) <= EPSILON_MM &&
+    Math.abs(left.widthMm - right.widthMm) <= EPSILON_MM &&
+    Math.abs(left.heightMm - right.heightMm) <= EPSILON_MM
+  );
+}
+
+export function buildTopProjectionParityReport(
+  scene: ViewerSceneModel,
+  projection: GeometryTopProjectionViewModel,
+  options: BuildTopProjectionParityReportOptions = {},
+): TopProjectionParityReport {
+  const issues: TopProjectionParityIssue[] = [];
+  const sceneObjectIds = new Set(scene.layers.flatMap((layer) => layer.objects.map((object) => object.id)));
+  const expectedTopVisibleObjectIds = new Set(
+    scene.layers.flatMap((layer) =>
+      layer.objects
+        .filter((object) => projectionRoleForObject(object) === 'top_visible')
+        .map((object) => object.id),
+    ),
+  );
+  const shapeIds = new Set(projection.shapes.map((shape) => shape.id));
+  const topVisibleShapes = projection.shapes.filter((shape) => topProjectionRoleForShape(shape) === 'top_visible');
+  const contextShapes = projection.shapes.filter((shape) => topProjectionRoleForShape(shape) === 'context');
+  const hiddenShapes = projection.shapes.filter((shape) => topProjectionRoleForShape(shape) === 'hidden_from_top');
+
+  const screenAxis = topProjectionScreenAxisString(projection);
+  if (screenAxis !== 'world_x_right_world_y_down') {
+    issues.push({
+      code: 'screen_axis_mismatch',
+      message: `Expected top projection screen axis world_x_right_world_y_down, received ${screenAxis}.`,
+    });
+  }
+
+  for (const shape of topVisibleShapes) {
+    if (!sceneObjectIds.has(shape.sourceObjectId)) {
+      issues.push({
+        code: 'extra_top_visible_shape',
+        message: `Top-visible projection shape ${shape.id} does not map to a viewer scene object.`,
+        shapeId: shape.id,
+        sourceObjectId: shape.sourceObjectId,
+      });
+    }
+  }
+
+  const projectedTopVisibleObjectIds = new Set(
+    topVisibleShapes
+      .filter((shape) => sceneObjectIds.has(shape.sourceObjectId))
+      .map((shape) => shape.sourceObjectId),
+  );
+  for (const objectId of expectedTopVisibleObjectIds) {
+    if (!projectedTopVisibleObjectIds.has(objectId)) {
+      issues.push({
+        code: 'missing_top_visible_shape',
+        message: `Viewer scene object ${objectId} is top-visible but has no top-visible projection shape.`,
+        sourceObjectId: objectId,
+      });
+    }
+  }
+
+  const visibleExtents = shapeExtents(projection.shapes);
+  if (!extentsEqual(visibleExtents, projection.extents)) {
+    issues.push({
+      code: 'hidden_shape_in_extents',
+      message: 'Top projection extents include hidden-from-top geometry.',
+    });
+  }
+
+  for (const shapeId of options.renderedShapeIds ?? []) {
+    const shape = projection.shapes.find((candidate) => candidate.id === shapeId);
+    if (shape && topProjectionRoleForShape(shape) === 'hidden_from_top') {
+      issues.push({
+        code: 'hidden_shape_rendered',
+        message: `Hidden-from-top projection shape ${shape.id} was rendered in the normal plan.`,
+        shapeId: shape.id,
+        sourceObjectId: shape.sourceObjectId,
+      });
+    }
+  }
+
+  return {
+    status: issues.length === 0 ? 'pass' : 'fail',
+    screenAxis,
+    topVisibleShapeCount: topVisibleShapes.length,
+    contextShapeCount: contextShapes.length,
+    hiddenShapeCount: hiddenShapes.length,
+    renderedShapeCount: options.renderedShapeIds?.filter((shapeId) => shapeIds.has(shapeId)).length ?? 0,
+    issues,
   };
 }
 

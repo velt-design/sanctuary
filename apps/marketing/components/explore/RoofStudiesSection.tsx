@@ -1333,6 +1333,17 @@ export default function RoofStudiesSection({
           );
         })}
       </div>
+
+      {variant === 'editorial' ? (
+        <div className="roof-studies__controls roof-studies__controls--mobile mx-auto flex w-[min(88vw,1288px)] items-center justify-end gap-2 lg:hidden">
+          <LineGlyphButton aria-label="Previous roof shape" onClick={() => scrollHighlights(-1)} disabled={isHighlightsWidthTransitioning}>
+            <IconChevronLeft />
+          </LineGlyphButton>
+          <LineGlyphButton aria-label="Next roof shape" onClick={() => scrollHighlights(1)} disabled={isHighlightsWidthTransitioning}>
+            <IconChevronRight />
+          </LineGlyphButton>
+        </div>
+      ) : null}
     </section>
   );
 }

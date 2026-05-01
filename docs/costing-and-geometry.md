@@ -50,6 +50,8 @@ Compatibility paths must remain explicit. If a view uses fallback or compatibili
 
 Mesh-backed top projection must derive normal plan geometry from the 3D Top camera convention: world `+Z` looking down, screen X as world `+X`, and screen Y as world `+Y` downward. Roof and deck solids use their semantic top boundaries. Other mesh-backed solids use the highest non-vertical projected surface without trusting face winding. Lower envelope/context geometry must be classified with `topProjectionRole` and hidden from normal Model Space rendering unless it is intentional context.
 
+Plan/3D accuracy work must also keep the top-view parity gate green. `buildTopProjectionParityReport()` verifies the scene/projection object contract, screen axis, hidden-shape extents, and rendered hidden-shape diagnostics. The portal drawing browser gate checks the fixture workbench's Model Space Plan diagnostics against the 3D Top viewport convention.
+
 ## Roof Length And Span
 
 - Roof Length: dimension parallel to the ridge or gutter.

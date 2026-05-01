@@ -12,9 +12,16 @@ export { validateGeometrySolve } from './validate';
 export type { ValidateGeometrySolveInput } from './validate';
 export { buildViewerSceneModel } from './viewer';
 export {
+  buildTopProjectionParityReport,
   buildTopProjectionViewModel,
   buildTopProjectionViewModelFromScene,
 } from './topProjection';
-export type { BuildTopProjectionViewModelFromSceneOptions } from './topProjection';
+export type {
+  BuildTopProjectionParityReportOptions,
+  BuildTopProjectionViewModelFromSceneOptions,
+  TopProjectionParityIssue,
+  TopProjectionParityIssueCode,
+  TopProjectionParityReport,
+} from './topProjection';
 export { buildPlanViewModel } from './plan';
 export { buildSectionViewModel } from './section';

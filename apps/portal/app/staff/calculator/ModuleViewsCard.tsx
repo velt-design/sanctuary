@@ -4918,6 +4918,20 @@ function PlanSvg({
             points: mmPolygonToPlanSvg(shape.polygon, x, y, scale),
           }))
       : [];
+  const topProjectionAllShapes = useTopProjectionBackedModel && modelSpaceTopProjection ? modelSpaceTopProjection.shapes : [];
+  const topProjectionTopVisibleCount = topProjectionAllShapes.filter((shape) => topProjectionRole(shape) === 'top_visible').length;
+  const topProjectionContextCount = topProjectionAllShapes.filter((shape) => topProjectionRole(shape) === 'context').length;
+  const topProjectionHiddenCount = topProjectionAllShapes.filter((shape) => topProjectionRole(shape) === 'hidden_from_top').length;
+  const topProjectionHiddenRenderedCount = topProjectionShapes.filter(({ shape }) => topProjectionRole(shape) === 'hidden_from_top').length;
+  const topProjectionScreenAxis = modelSpaceTopProjection
+    ? `${modelSpaceTopProjection.screenAxis.x}_${modelSpaceTopProjection.screenAxis.y}`
+    : null;
+  const topProjectionParityStatus =
+    useTopProjectionBackedModel && modelSpaceTopProjection
+      ? topProjectionScreenAxis === 'world_x_right_world_y_down' && topProjectionHiddenRenderedCount === 0
+        ? 'pass'
+        : 'fail'
+      : null;
   const topProjectionPergolaHitPoints =
     useTopProjectionBackedModel
       ? topProjectionShapes
@@ -5513,6 +5527,13 @@ function PlanSvg({
         data-model-space-focus-box={modelSpaceLayout?.focusBoxValue}
         data-plan-render-source={isModel ? modelSpacePergolaRenderSource : 'legacy'}
         data-plan-render-status={isModel ? modelSpacePergolaRenderStatus : 'legacy_unsupported_family'}
+        data-top-projection-parity-status={isModel && topProjectionParityStatus ? topProjectionParityStatus : undefined}
+        data-top-projection-screen-axis={isModel ? topProjectionScreenAxis ?? undefined : undefined}
+        data-top-projection-top-visible-count={isModel && modelSpaceTopProjection ? topProjectionTopVisibleCount : undefined}
+        data-top-projection-context-count={isModel && modelSpaceTopProjection ? topProjectionContextCount : undefined}
+        data-top-projection-hidden-count={isModel && modelSpaceTopProjection ? topProjectionHiddenCount : undefined}
+        data-top-projection-rendered-count={isModel && modelSpaceTopProjection ? topProjectionShapes.length : undefined}
+        data-top-projection-hidden-rendered-count={isModel && modelSpaceTopProjection ? topProjectionHiddenRenderedCount : undefined}
         role="img"
         aria-label="Module plan view"
         ref={handlePlanSvgRef}

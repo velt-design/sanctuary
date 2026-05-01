@@ -40,8 +40,8 @@
     "audit:lighthouse": "npm run audit:lighthouse:mobile && npm run audit:lighthouse:desktop",
     "audit:security": "npm audit --omit=dev",
     "audit:governance": "npm run test:marketing && npm run audit:security && npm run audit:lighthouse",
-    "test:portal:browser": "playwright test playwright/portal.drawing-workbench.spec.ts --project=portal-chromium",
-    "test:portal:browser:headed": "playwright test playwright/portal.drawing-workbench.spec.ts --project=portal-chromium --headed",
+    "test:portal:browser": "playwright test playwright/portal.drawing-workbench.spec.ts --project=portal-fixture",
+    "test:portal:browser:headed": "playwright test playwright/portal.drawing-workbench.spec.ts --project=portal-fixture --headed",
     "test:portal:browser:auth": "playwright test playwright/portal.auth.setup.ts --project=setup"
   },
   "dependencies": {

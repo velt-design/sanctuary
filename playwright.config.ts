@@ -43,5 +43,12 @@ export default defineConfig({
       },
       dependencies: ['setup'],
     },
+    {
+      name: 'portal-fixture',
+      testMatch: /portal\.drawing-workbench\.spec\.ts/,
+      use: {
+        ...devices['Desktop Chrome'],
+      },
+    },
   ],
 });

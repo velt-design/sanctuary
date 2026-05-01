@@ -87,29 +87,31 @@ export default function HomeProjectsSection({
               A selection of recent residential and commercial installs, each tuned to site, roof form, and how the space is actually used.
             </p>
           </div>
-
-          {projects.length > 1 ? (
-            <div className="home-projects-section__controls hidden items-center gap-2 md:flex" aria-label="Projects carousel controls">
-              <button
-                type="button"
-                onClick={() => scrollByCard(-1)}
-                aria-label="Previous project"
-                className="inline-flex h-10 w-10 items-center justify-center border border-page bg-card text-ink transition-colors hover:bg-page focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/35"
-              >
-                <IconChevronLeft />
-              </button>
-              <button
-                type="button"
-                onClick={() => scrollByCard(1)}
-                aria-label="Next project"
-                className="inline-flex h-10 w-10 items-center justify-center border border-page bg-card text-ink transition-colors hover:bg-page focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/35"
-              >
-                <IconChevronRight />
-              </button>
-            </div>
-          ) : null}
         </div>
       </div>
+
+      {projects.length > 1 ? (
+        <div className="home-projects-section__inner mx-auto w-[min(88vw,1288px)]">
+          <div className="home-projects-section__controls home-projects-section__controls--desktop hidden items-center justify-end gap-2 md:flex" aria-label="Projects carousel controls">
+            <button
+              type="button"
+              onClick={() => scrollByCard(-1)}
+              aria-label="Previous project"
+              className="inline-flex h-10 w-10 items-center justify-center border border-page bg-card text-ink transition-colors hover:bg-page focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/35"
+            >
+              <IconChevronLeft />
+            </button>
+            <button
+              type="button"
+              onClick={() => scrollByCard(1)}
+              aria-label="Next project"
+              className="inline-flex h-10 w-10 items-center justify-center border border-page bg-card text-ink transition-colors hover:bg-page focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/35"
+            >
+              <IconChevronRight />
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       <div ref={trackRef} className="home-projects-section__track mt-8 overflow-x-auto pb-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
         <div className="home-projects-section__rail flex snap-x snap-mandatory gap-4 md:gap-6">

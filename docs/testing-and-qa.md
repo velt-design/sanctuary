@@ -84,7 +84,9 @@ The drawing browser gate uses the hidden fixture workbench route:
 /staff/projects/fixture-roof/design-workbench?fixture=mono-standard
 ```
 
-Fixture mode is read-only. It opens the standard Mono workbench fixture, enters Model Space Plan, verifies viewport diagnostics and gesture state, captures a nonblank plan screenshot, and confirms no page runtime errors. The authenticated browser suite also opens the 3D fixture route and verifies finite, nonblank solved geometry from the same workbench fixture path.
+Fixture mode is read-only. It opens the standard Mono workbench fixture, enters Model Space Plan, verifies viewport diagnostics and gesture state, captures a nonblank plan screenshot, and confirms no page runtime errors. The authenticated browser suite also opens the 3D fixture route and verifies finite, nonblank solved geometry from the same workbench fixture path. For plan/3D accuracy, the browser gate checks the screenshot-style hipped fixture's Model Space Plan top-projection parity diagnostics before switching to 3D Top view and asserting the same screen-axis convention.
+
+`npm run test:portal:browser` uses the no-auth `portal-fixture` Playwright project so fixture parity can run without project data or staff credentials. Run `npm run test:portal:browser:auth` first when you need the auth-backed `portal-chromium` project or project-list discovery smoke.
 
 ## Schedule QA Gate
 

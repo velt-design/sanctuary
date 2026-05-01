@@ -174,7 +174,7 @@ Decision or mistake: mesh-backed house solids in the top projection used to trus
 
 Why it mattered: model-space plan could look aligned to a bottom-up view of the 3D model even while sharing the same scene instance.
 
-Current guardrail: top projection must follow the 3D Top camera convention. Roof and deck solids use semantic top boundaries; other mesh-backed solids use the highest non-vertical projected surface without trusting winding; lower envelope geometry must carry `topProjectionRole: hidden_from_top` and be filtered from normal Model Space rendering.
+Current guardrail: top projection must follow the 3D Top camera convention. Roof and deck solids use semantic top boundaries; other mesh-backed solids use the highest non-vertical projected surface without trusting winding; lower envelope geometry must carry `topProjectionRole: hidden_from_top` and be filtered from normal Model Space rendering. Plan/3D accuracy changes must keep the top-view parity helper and fixture browser gate green.
 
 Promoted to: `docs/costing-and-geometry.md`, `docs/design-workbench-architecture.md`, `docs/decision-log.md`.
 
