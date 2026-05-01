@@ -37,7 +37,7 @@ export default function MaterialSection({
               alt={image.alt}
               fill
               sizes="(max-width: 960px) 100vw, (max-width: 1400px) 52vw, 640px"
-              quality={image.quality ?? 52}
+              quality={image.quality ?? 50}
               className="object-cover"
             />
           </div>

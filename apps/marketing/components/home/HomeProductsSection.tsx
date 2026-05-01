@@ -17,9 +17,15 @@ export default function HomeProductsSection({
 
   return (
     <>
-      <section className="products-head" aria-label="Products heading">
-        <div className="container process-head__inner">
-          <h2 className="process-head__title">Products</h2>
+      <section className="products-head products-head--editorial" aria-labelledby="home-products-heading">
+        <div className="container products-head__inner">
+          <p className="products-head__eyebrow">Pergola styles</p>
+          <h2 id="home-products-heading" className="products-head__headline">
+            Choose the roof form that fits the way your home opens outdoors.
+          </h2>
+          <p className="products-head__copy">
+            Use these model studies to compare shape, proportion, and silhouette before diving into the full range.
+          </p>
         </div>
       </section>
 

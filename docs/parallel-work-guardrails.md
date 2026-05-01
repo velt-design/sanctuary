@@ -2,6 +2,8 @@
 
 Status: Active guardrail.
 
+This is the canonical active home for parallel-work and design workbench migration guardrails. It supersedes the historical `docs/design-workbench-parallel-migration-rules.md` path, which is kept only as a redirect for discovery.
+
 Related docs:
 
 - [`docs/agent-playbook.md`](./agent-playbook.md)

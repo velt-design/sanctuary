@@ -17,7 +17,7 @@ For marketing-only or shared-package-only tasks, use the parts that affect porta
 - Run `git status --short`; identify unrelated worktree changes and leave them untouched.
 - Read `AGENTS.md`, `docs/README.md`, this playbook, and the smallest relevant canonical doc.
 - Scan `docs/decision-log.md` for entries matching the feature area, source-of-truth boundary, or risk pattern.
-- For parallel lanes, cross-app work, or workbench migration and compatibility work, read `docs/parallel-work-guardrails.md` before editing.
+- For parallel lanes, cross-app work, or workbench migration and compatibility work, read `docs/parallel-work-guardrails.md` before editing. `docs/design-workbench-parallel-migration-rules.md` is a historical redirect only.
 - Use `rg` and `rg --files` to find owner files, tests, routes, APIs, docs, and old compatibility paths.
 - Identify the owning layer before editing: package, domain library, API/RPC route, local-first adapter, component, or page.
 - Make the change at the smallest owning layer that actually owns the behavior.
@@ -102,6 +102,7 @@ Use `docs/testing-and-qa.md` for the canonical command catalog. Use the feature 
 ## Anti-Patterns
 
 - Deleting active guardrail docs without confirming usage or replacing them with an equivalent rule.
+- Recreating a superseded guardrail path as a second active rule set instead of keeping one canonical active doc.
 - Adding long future-plan docs when a small current-state update would keep agents more accurate.
 - Repeating package source-of-truth logic inside portal code.
 - Adding direct browser Supabase reads for staff/admin data.

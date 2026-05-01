@@ -256,9 +256,9 @@ export default function HomeProcessSection({
 
 export function HomeProcessCtaBar() {
   return (
-    <Link href="/contact" className="process-cta-bar" aria-label="Contact us">
+    <Link href="/contact" className="process-cta-bar" aria-label="Quick estimate">
       <div className="container process-cta-bar__inner">
-        Contact us
+        Quick Estimate
       </div>
     </Link>
   );

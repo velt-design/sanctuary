@@ -31,6 +31,10 @@ These docs are current-state references and active guardrails for coding agents.
 | `schedule.md` | Current | You are touching `/staff/schedule`, Schedule V2 APIs, Gantt, Board, Site Visits, or legacy fallback. |
 | `security-privacy-quality.md` | Current | You are touching tracking, consent, CSP, Lighthouse, audits, or quality gates. |
 
+## Superseded Redirects
+
+- `design-workbench-parallel-migration-rules.md`: historical discovery path only. The active workbench migration rules live in `parallel-work-guardrails.md`.
+
 ## Local READMEs
 
 - `apps/portal/components/drawings/README.md`: drawing UI component boundaries.
@@ -45,6 +49,7 @@ These docs are current-state references and active guardrails for coding agents.
 - Scan `decision-log.md` for relevant areas before non-trivial or risky portal work.
 - Add reusable lessons to `decision-log.md` when a bug, regression, or correction reveals a guardrail future agents should know.
 - Do not delete active guardrail docs just because they are not pure current-state references.
+- Active guardrail docs may be broadened or superseded only when an equivalent active rule remains discoverable from the old path or the docs index.
 - Keep docs ASCII unless a file already intentionally uses another character set.
 - Prefer current paths and commands over prose about old migrations or past plans.
 - Link to repo-relative paths in plain backticks. Avoid local absolute links.
