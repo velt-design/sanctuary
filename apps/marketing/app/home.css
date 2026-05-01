@@ -843,6 +843,7 @@ body.homepage main .container{
 
 .homepage .home-projects-section{
   padding-block:var(--home-section-y);
+  border-top:0;
   border-color:var(--home-line);
 }
 
@@ -1050,6 +1051,10 @@ body.homepage main .container{
   letter-spacing:0;
   text-align:left;
   text-transform:none;
+}
+
+.homepage .process-head{
+  border-top:0;
 }
 
 .homepage #process{
