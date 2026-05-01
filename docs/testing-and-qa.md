@@ -22,6 +22,28 @@ npm run typecheck
 npm run lint
 ```
 
+Portal readiness sweeps:
+
+```bash
+npm run portal:doctor:quick
+npm run portal:doctor
+```
+
+`portal:doctor:quick` runs docs guard, mojibake check, typecheck, lint, and portal Vitest. `portal:doctor` adds portal build, schedule bundle budget, drawing browser smoke, authenticated smoke, route performance, and production security audit.
+
+Focused portal commands:
+
+```bash
+npm run test:portal:api
+npm run test:portal:schedule
+npm run test:portal:workbench
+npm run test:portal:projects
+npm run test:portal:quotes
+npm run test:portal:shell
+```
+
+Use focused commands while iterating in one domain, then run `npm run portal:doctor:quick` before handing work back. Use `npm run portal:doctor` for a broad local pre-merge readiness sweep when Playwright auth/env and audit expectations are ready.
+
 Focused guards:
 
 ```bash
@@ -139,7 +161,6 @@ This doc remains the canonical command catalog. When readiness work changes comm
 
 ## CI
 
-- Portal Quality runs repository typecheck, portal Vitest, portal build, authenticated smoke, and portal performance timing.
-- Portal Quality runs `npm run docs:guard` before portal app checks.
+- Portal Quality runs docs guard, repository typecheck, lint, portal Vitest, portal build, schedule bundle budget, fixture browser smoke, authenticated smoke, and portal performance timing.
 - Lighthouse Guardrails run mobile and desktop Lighthouse profiles.
 - Governance Monthly runs marketing tests, production dependency audit, and Lighthouse.

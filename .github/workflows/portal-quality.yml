@@ -34,6 +34,9 @@ jobs:
       - name: Repository typecheck
         run: npm run typecheck
 
+      - name: Repository lint
+        run: npm run lint
+
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
 
@@ -42,6 +45,12 @@ jobs:
 
       - name: Portal production build
         run: npm run build:portal
+
+      - name: Schedule bundle budget
+        run: npm run schedule:bundle-budget
+
+      - name: Portal fixture browser smoke
+        run: npm run test:portal:browser
 
       - name: Portal authenticated smoke suite
         run: npm run test:portal:smoke

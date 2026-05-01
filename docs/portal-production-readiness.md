@@ -64,6 +64,8 @@ This snapshot records the most recent known production-readiness state from the 
 
 ### Quality Gates
 
+- [ ] `npm run portal:doctor:quick` passes for routine local readiness.
+- [ ] `npm run portal:doctor` passes for broad pre-merge readiness when Playwright auth/env and audit expectations are ready.
 - [ ] `npm run typecheck` passes.
 - [ ] `npm run docs:guard` passes.
 - [ ] `npm run text:mojibake` passes.
@@ -199,6 +201,7 @@ When updating this tracker:
 
 ### 2026-05-01
 
+- Added the portal speed tooling command plan: focused portal test scripts, `portal:doctor:quick`, `portal:doctor`, and matching CI/doc routing.
 - Created this tracker to coordinate portal production-readiness work.
 - Initial review identified quality gates as the highest leverage priority before broad feature expansion.
 - Known review findings to re-verify: portal tests failing, lint guard failing, schedule bundle budget failing, and production audit reporting vulnerabilities.
