@@ -9,6 +9,7 @@ Public enquiries start in `apps/marketing`.
 - Primary public flows: `/contact`, `/start`, `/start/explore`.
 - API routes persist enquiries and send notifications through Supabase and Resend-backed helpers.
 - Tracking and consent behavior is documented in `security-privacy-quality.md`.
+- Automation, email outbox, autoresponder, and audit behavior is documented in `automation-email-audit.md`.
 
 ## Contact And Project Creation
 
@@ -87,3 +88,12 @@ Admin-only surfaces include access management, imports, crews, costs, and priceb
 - Admin routes: `apps/portal/app/admin`.
 - Pricebook route: `/pricebook`.
 - Admin API helpers enforce `admin` role via `requireAdminSession` or `requireAdminContext`.
+
+## Automation, Email, And Audit
+
+Automation supports project actions, follow-ups, project tasks, email outbox records, and audit events.
+
+- Automation runner: `apps/portal/lib/automation/AutomationRunner.ts`.
+- Email/outbox and audit tables: `email_templates`, `email_outbox`, `audit_events`, `tasks`, `followup_plans`, and `followup_tasks`.
+- Canonical doc: `automation-email-audit.md`.
+- Quote/invoice email side effects remain owned by `quotes-invoices-job-packs.md`.

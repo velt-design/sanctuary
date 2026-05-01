@@ -46,6 +46,10 @@ Portal drawing code adapts package output into workbench, plan, section, sheet, 
 
 Compatibility paths must remain explicit. If a view uses fallback or compatibility-derived data, make that visible in naming, status, or tests.
 
+## Top Projection Contract
+
+Mesh-backed top projection must derive house solid polygons from upward-facing mesh faces first. Render-mesh vertex order is not a reliable source of the visible top surface. Boundary or convex-hull fallback is allowed only when no top-facing mesh surface can be derived, and tests should make that fallback visible.
+
 ## Roof Length And Span
 
 - Roof Length: dimension parallel to the ridge or gutter.
@@ -95,5 +99,6 @@ For geometry changes:
 
 ```bash
 npm run test -- packages/geometry
+npm run test -- packages/geometry/src/topProjection.test.ts packages/geometry/src/contracts.test.ts
 npm run test:portal:browser
 ```

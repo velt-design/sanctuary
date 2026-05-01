@@ -17,6 +17,7 @@ For marketing-only or shared-package-only tasks, use the parts that affect porta
 - Run `git status --short`; identify unrelated worktree changes and leave them untouched.
 - Read `AGENTS.md`, `docs/README.md`, this playbook, and the smallest relevant canonical doc.
 - Scan `docs/decision-log.md` for entries matching the feature area, source-of-truth boundary, or risk pattern.
+- Use `docs/change-routing.md` to map changed paths to owner docs, doc update triggers, and common task cards.
 - For parallel lanes, cross-app work, or workbench migration and compatibility work, read `docs/parallel-work-guardrails.md` before editing. `docs/design-workbench-parallel-migration-rules.md` is a historical redirect only.
 - Use `rg` and `rg --files` to find owner files, tests, routes, APIs, docs, and old compatibility paths.
 - Identify the owning layer before editing: package, domain library, API/RPC route, local-first adapter, component, or page.
@@ -51,6 +52,7 @@ For marketing-only or shared-package-only tasks, use the parts that affect porta
 - When changing portal behavior, data flow, source-of-truth boundaries, test strategy, or known risks, check the relevant canonical doc in the same task.
 - If the doc is stale, update it in the same PR unless the user explicitly scoped docs out.
 - Prefer small current-state updates to existing canonical docs over new long planning docs.
+- Keep one canonical owner doc for each behavior and link to it instead of duplicating full rules across many docs.
 - Do not delete active guardrail docs just because they are not pure current-state references.
 - If a correction, bug, or regression reveals a reusable lesson, add it to `docs/decision-log.md` first.
 - Promote a lesson from the decision log into this playbook only when it is durable, repeatable, and useful as a future checklist rule.
@@ -87,6 +89,7 @@ Use `docs/testing-and-qa.md` for the canonical command catalog. Use the feature 
 
 | Area | Read First | Extra Guardrail |
 | --- | --- | --- |
+| Path ownership and doc triggers | `docs/change-routing.md` | Use the trigger matrix before non-trivial edits and update only the owner docs that actually changed. |
 | Parallel or cross-app work | `docs/parallel-work-guardrails.md` | Declare lanes, owners, shared contracts, tests, docs, and integration dependencies. |
 | Design workbench | `docs/design-workbench-architecture.md` | Read the design workbench overlay in `docs/parallel-work-guardrails.md` before migration or compatibility edits. |
 | Drawing domain libraries | `apps/portal/lib/drawings/README.md` | Keep geometry/package boundaries explicit. |
@@ -94,6 +97,7 @@ Use `docs/testing-and-qa.md` for the canonical command catalog. Use the feature 
 | Contacts, projects, estimates, calculator | `docs/projects-contacts-estimates-calculator.md` | Preserve project snapshot, pipeline, estimate lock, and local-first mutation boundaries. |
 | Staff/admin/public-token APIs | `docs/staff-api-auth-contracts.md` | Use the right auth helper, Supabase client boundary, diagnostics pattern, and side-effect owner. |
 | Supabase tables, RPCs, migrations, RLS, grants | `docs/supabase-schema-map.md` | Confirm the owner doc, primary write path, primary read path, access boundary, and migration source before editing. |
+| Automation, email, audit, follow-ups | `docs/automation-email-audit.md` | Preserve idempotency, outbox visibility, server-owned sends, and audit records. |
 | Local-first estimates/quotes | `docs/local-first-sync.md` | Preserve queue, lock, alias, and conflict behavior. |
 | Quotes, invoices, job packs | `docs/quotes-invoices-job-packs.md` | Verify side effects, token boundaries, PDFs, emails, and generated artifacts. |
 | Schedule | `docs/schedule.md` | Preserve Schedule V2 API/RPC command boundaries and legacy fallback posture. |

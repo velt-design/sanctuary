@@ -7,20 +7,23 @@ These docs are current-state references and active guardrails for coding agents.
 1. `../AGENTS.md`: root agent guide and repo boundaries.
 2. `agent-playbook.md`: active protocol for non-trivial portal work.
 3. `decision-log.md`: indexed lessons from past mistakes; scan relevant entries before risky work.
-4. `architecture.md`: workspace structure, app/package ownership, CI.
-5. `platform-workflow.md`: business workflow from lead to install completion.
-6. The feature doc for the area you are changing.
+4. `change-routing.md`: path ownership, doc update triggers, and common task cards.
+5. `architecture.md`: workspace structure, app/package ownership, CI.
+6. `platform-workflow.md`: business workflow from lead to install completion.
+7. The feature doc for the area you are changing.
 
 ## Canonical Reference Docs
 
 | Doc | Status | Use When |
 | --- | --- | --- |
 | `agent-playbook.md` | Active protocol | You are doing non-trivial portal implementation, investigation, bugfix, or verification work. |
+| `change-routing.md` | Active protocol | You need path ownership, doc update triggers, common task cards, or docs bloat control before editing. |
 | `architecture.md` | Current | You need the repo map, app/package boundaries, or CI/script overview. |
 | `platform-workflow.md` | Current | You need to understand lead, project, estimate, quote, invoice, design, schedule, or running-job flow. |
 | `environment-auth-supabase.md` | Current | You need env vars, Supabase auth, role access, migrations, or schema readiness. |
 | `supabase-schema-map.md` | Current | You are touching Supabase tables, RPCs, migrations, RLS/grants, route write paths, or schema ownership. |
 | `staff-api-auth-contracts.md` | Current | You are touching staff/admin/public-token API routes, route auth helpers, Supabase client boundaries, diagnostics, or response conventions. |
+| `automation-email-audit.md` | Current | You are touching automation events, project tasks, follow-ups, email outbox, email previews, audit events, or marketing enquiry email side effects. |
 | `testing-and-qa.md` | Current | You need the canonical command catalog, Playwright auth, smoke checks, performance checks, or manual QA gates. |
 | `projects-contacts-estimates-calculator.md` | Current | You are touching contacts, projects, project snapshots/tasks, calculator estimates, estimate locks, or local-first estimate mutations. |
 | `quotes-invoices-job-packs.md` | Current | You are touching quote, invoice, public-token, PDF/email, file-artifact, or job-pack side effects. |
@@ -50,6 +53,7 @@ These docs are current-state references and active guardrails for coding agents.
 - When changing portal behavior, data flow, source-of-truth boundaries, test strategy, or known risks, update the relevant canonical doc in the same task unless docs are explicitly out of scope.
 - Prefer small current-state doc updates over new long planning docs.
 - Scan `decision-log.md` for relevant areas before non-trivial or risky portal work.
+- Use `change-routing.md` to decide which owner docs need updates instead of guessing from file names alone.
 - Add reusable lessons to `decision-log.md` when a bug, regression, or correction reveals a guardrail future agents should know.
 - Do not delete active guardrail docs just because they are not pure current-state references.
 - Active guardrail docs may be broadened or superseded only when an equivalent active rule remains discoverable from the old path or the docs index.
@@ -58,3 +62,4 @@ These docs are current-state references and active guardrails for coding agents.
 - Link to repo-relative paths in plain backticks. Avoid local absolute links.
 - Remove docs when they are absorbed into canonical references.
 - If a doc lists commands, keep them runnable from the repo root unless it states otherwise.
+- Keep one canonical owner doc for each behavior; link to it instead of repeating the full rule set across many docs.

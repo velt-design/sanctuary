@@ -176,7 +176,7 @@ Migration source:
 
 ## Marketing, Automation, And Supporting Tables
 
-Owner docs: `docs/platform-workflow.md`, `docs/security-privacy-quality.md`, `docs/projects-contacts-estimates-calculator.md`, and `docs/staff-api-auth-contracts.md`.
+Owner docs: `docs/automation-email-audit.md`, `docs/platform-workflow.md`, `docs/security-privacy-quality.md`, `docs/projects-contacts-estimates-calculator.md`, and `docs/staff-api-auth-contracts.md`.
 
 Tables/RPCs:
 

@@ -1,6 +1,6 @@
 # Design Workbench Architecture
 
-The design workbench is the portal drawing and model-editing surface for estimate-backed designs. It is moving around an object-first project model while still preserving explicit compatibility boundaries for estimate snapshots and legacy module drawing data.
+The design workbench is the portal drawing and model-editing surface for estimate-backed designs. The active workbench migration is sealed around an object-first project model and solved geometry spine. Compatibility remains only as explicit legacy estimate snapshot import/export support and named fallback boundaries.
 
 ## Primary Paths
 
@@ -30,14 +30,14 @@ The design workbench is the portal drawing and model-editing surface for estimat
 
 ## Object-First Model
 
-The current direction is object-first:
+The active workbench is object-first:
 
 - House forms, decks, openings, and pergolas are modeled as explicit objects.
 - Hosted objects resolve against derived house/building behavior.
 - Geometry, plan, 3D, section, and sheet views should consume solved/derived models rather than each inventing shape truth.
 - The solved module's 3D scene and model-space top projection are paired: the projection is generated from the same `ViewerSceneModel` handed to the 3D viewport, with assembly reference shapes carried forward explicitly.
 - Geometry-ready model-space plan fitting uses `geometryTopProjection.extents`; legacy `ModulePlanModel` dimensions are a fallback path, not the source of scene fit.
-- Compatibility or legacy fallback state must stay named and visible in tests or status models.
+- Compatibility or legacy fallback state must stay named and visible in tests or status models, and must not become active geometry truth.
 
 ## Rail Notes
 

@@ -47,7 +47,7 @@ For docs-only changes, run these from the repo root:
 ```bash
 rg -n "/User[s]/|my[-]site|create[-]next[-]app|costing[-]baseline|\\.env\\.example" README.md AGENTS.md docs
 rg -n "[^\\x00-\\x7F]" README.md AGENTS.md docs
-rg -n "decision-log|agent-playbook" AGENTS.md docs/README.md docs/agent-playbook.md docs/decision-log.md
+rg -n "decision-log|agent-playbook|change-routing" AGENTS.md docs/README.md docs/agent-playbook.md docs/change-routing.md docs/decision-log.md
 npm run text:mojibake
 ```
 
@@ -79,13 +79,13 @@ The auth setup saves local state to `playwright/.auth/portal-staff.json`, which 
 
 ## Drawing Fixture Route
 
-The drawing smoke uses:
+The drawing browser gate uses the hidden fixture workbench route:
 
 ```text
 /staff/projects/fixture-roof/design-workbench?fixture=mono-standard
 ```
 
-It opens the standard Mono workbench fixture, enters Model Space Plan, switches the house footprint mode to Draw outline, checks diagnostics and pan behavior, creates a three-point draft, and stops before polygon commit.
+Fixture mode is read-only. It opens the standard Mono workbench fixture, enters Model Space Plan, verifies viewport diagnostics and gesture state, captures a nonblank plan screenshot, and confirms no page runtime errors. The authenticated browser suite also opens the 3D fixture route and verifies finite, nonblank solved geometry from the same workbench fixture path.
 
 ## Schedule QA Gate
 

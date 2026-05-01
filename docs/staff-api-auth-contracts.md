@@ -68,6 +68,7 @@ Use `apps/portal/lib/api/routeDiagnostics.ts` when a route needs request IDs, se
 - Design List APIs: `docs/design-list.md`.
 - Running Jobs APIs: `docs/running-jobs.md`.
 - Schedule, site visits, readiness, and Schedule V2 command routes: `docs/schedule.md`.
+- Automation events, project tasks, follow-ups, email previews, and audit routes: `docs/automation-email-audit.md`.
 - Tracking, consent, CSP reports, Lighthouse, and audit routes: `docs/security-privacy-quality.md`.
 - Auth, role setup, Supabase env, RLS, and migration readiness: `docs/environment-auth-supabase.md`.
 

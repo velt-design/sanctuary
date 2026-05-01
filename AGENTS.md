@@ -7,11 +7,12 @@ This repo is optimized for coding agents. Read this file first, then follow link
 1. Check `git status --short` before editing.
 2. Read `docs/agent-playbook.md` for non-trivial portal work.
 3. Scan `docs/decision-log.md` for matching areas, risks, or past mistakes.
-4. Read the smallest relevant current-state doc in `docs/`.
-5. Prefer `rg` and `rg --files` for repo discovery.
-6. Keep changes scoped to the requested surface.
-7. Do not revert user changes or unrelated worktree changes.
-8. If the task changes portal behavior, data flow, source-of-truth boundaries, test strategy, or known risks, update the relevant doc in the same pass.
+4. For non-trivial changes, use `docs/change-routing.md` to identify owner docs, path ownership, and doc update triggers.
+5. Read the smallest relevant current-state doc in `docs/`.
+6. Prefer `rg` and `rg --files` for repo discovery.
+7. Keep changes scoped to the requested surface.
+8. Do not revert user changes or unrelated worktree changes.
+9. If the task changes portal behavior, data flow, source-of-truth boundaries, test strategy, or known risks, update the relevant doc in the same pass.
 
 ## Repo Map
 
@@ -57,11 +58,13 @@ Use `docs/testing-and-qa.md` as the canonical command source. Feature docs may l
 ## Canonical Docs
 
 - `docs/agent-playbook.md`: active protocol for non-trivial portal work.
+- `docs/change-routing.md`: path ownership, doc update triggers, common task cards, and docs bloat control.
 - `docs/architecture.md`: repo structure and boundaries.
 - `docs/platform-workflow.md`: business workflow across marketing and portal.
 - `docs/environment-auth-supabase.md`: env, auth, roles, schema readiness.
 - `docs/supabase-schema-map.md`: table/RPC ownership, write paths, access boundaries, and migration sources.
 - `docs/staff-api-auth-contracts.md`: staff/admin/public-token route auth, Supabase client boundaries, diagnostics, and response conventions.
+- `docs/automation-email-audit.md`: automation events, project tasks, follow-ups, email outbox, email previews, and audit side effects.
 - `docs/testing-and-qa.md`: test commands, Playwright, manual QA.
 - `docs/projects-contacts-estimates-calculator.md`: contacts, projects, project snapshots, calculator estimates, estimate locks, and local-first estimate mutations.
 - `docs/quotes-invoices-job-packs.md`: quote, invoice, public-token, PDF/email, and job-pack side effects.

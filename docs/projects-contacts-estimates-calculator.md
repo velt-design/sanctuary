@@ -101,6 +101,7 @@ Server-authoritative actions stay server-owned:
 - Local-first queue mechanics, aliases, and conflict recovery: `docs/local-first-sync.md`.
 - Staff route auth, diagnostics, and Supabase client boundaries: `docs/staff-api-auth-contracts.md`.
 - Supabase table/RPC ownership and migration routing: `docs/supabase-schema-map.md`.
+- Automation events, project tasks, follow-ups, email outbox, and audit behavior: `docs/automation-email-audit.md`.
 - Costing and geometry source-of-truth rules: `docs/costing-and-geometry.md`.
 - Schedule and site visit behavior: `docs/schedule.md`.
 

@@ -22,17 +22,51 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. Use 
 | Date | Area | Status | Guardrail |
 | --- | --- | --- | --- |
 | 2026-05-01 | Supabase Schema | Promoted | Schema-affecting work needs a table/RPC ownership map before future behavior changes. |
+| 2026-05-01 | Agent Routing | Promoted | Non-trivial changes need a path ownership and doc-trigger map before editing. |
+| 2026-05-01 | Automation/Email/Audit | Promoted | Automation, email outbox, audit, tasks, and follow-ups need a canonical side-effect doc. |
 | 2026-05-01 | API/Auth | Promoted | Staff/admin/public-token route changes need a route contract doc before future behavior changes. |
 | 2026-05-01 | Projects/Estimates | Promoted | Core project/contact/estimate workflows need a canonical doc before future behavior changes. |
 | 2026-05-01 | Docs/Testing | Promoted | Keep broad repo command guidance in `docs/testing-and-qa.md`; link to it instead of duplicating command blocks. |
 | 2026-05-01 | Parallel Work | Promoted | Use universal parallel-work guardrails for concurrent lanes across apps, packages, docs, and workbench migration. |
-| 2026-05-01 | Geometry Top Projection | Active | Mesh-backed top projection must derive from upward-facing mesh faces, not render-mesh vertex order. |
+| 2026-05-01 | Geometry Top Projection | Promoted | Mesh-backed top projection must derive from upward-facing mesh faces, not render-mesh vertex order. |
 | 2026-05-01 | Quotes/Invoices/Job Packs | Promoted | High-risk side-effect workflows need a canonical doc before future behavior changes. |
 | 2026-05-01 | Docs | Promoted | Read the agent playbook for non-trivial portal work; promote durable lessons from this log into the playbook. |
 | 2026-05-01 | Docs | Promoted | Do not delete active guardrail docs without confirming usage or replacing the rule. |
 | 2026-05-01 | Docs | Promoted | Distinguish current-state references from active operating rules. |
 
 ## Entries
+
+### 2026-05-01 - Agent Routing - Change Routing Map
+
+Area: Agent Routing
+
+Status: Promoted
+
+Decision or mistake: agent docs had the right learning loop, but future agents still had to infer which paths mapped to which owner docs and when docs needed updates.
+
+Why it mattered: ambiguity causes extra repo scans, wrong-layer edits, duplicate docs, and missed documentation updates after behavior changes.
+
+Current guardrail: before non-trivial portal work, use `docs/change-routing.md` to map changed paths to owner docs, doc update triggers, common task cards, and docs bloat rules.
+
+Promoted to: `docs/change-routing.md`, `docs/agent-playbook.md`, `docs/README.md`, `AGENTS.md`.
+
+Related docs/tests: `docs/change-routing.md`, `docs/testing-and-qa.md`, `npm run text:mojibake`.
+
+### 2026-05-01 - Automation/Email/Audit - Side-Effect Owner Doc
+
+Area: Automation/Email/Audit
+
+Status: Promoted
+
+Decision or mistake: automation events, email outbox, audit rows, project tasks, follow-ups, and marketing enquiry email behavior were visible in schema and code but did not have a focused owner doc.
+
+Why it mattered: future side-effect changes can duplicate emails, miss idempotency keys, hide failures from staff, bypass audit records, or expand direct browser writes.
+
+Current guardrail: before changing automation, email outbox, audit, follow-up, task, site-visit notification, or marketing enquiry email behavior, read `docs/automation-email-audit.md` and verify idempotency, outbox visibility, server-owned sends, and audit records.
+
+Promoted to: `docs/automation-email-audit.md`, `docs/change-routing.md`, `docs/agent-playbook.md`, `docs/README.md`, `AGENTS.md`.
+
+Related docs/tests: `docs/automation-email-audit.md`, `docs/supabase-schema-map.md`, `docs/security-privacy-quality.md`, `docs/testing-and-qa.md`.
 
 ### 2026-05-01 - Supabase Schema - Ownership Map
 
@@ -134,7 +168,7 @@ Related docs/tests: `docs/quotes-invoices-job-packs.md`, `docs/platform-workflow
 
 Area: Geometry Top Projection
 
-Status: Active
+Status: Promoted
 
 Decision or mistake: mesh-backed house solids in the top projection used to trust render-mesh vertex-ring order, which could select an underside or bottom ring when the plan needed the visible top surface.
 
@@ -142,7 +176,7 @@ Why it mattered: model-space plan could look aligned to a bottom-up view of the 
 
 Current guardrail: top projection must derive house solid polygons from upward-facing mesh faces first, and only use boundary or convex-hull fallback when no top-facing mesh surface can be derived.
 
-Promoted to: None
+Promoted to: `docs/costing-and-geometry.md`, `docs/design-workbench-architecture.md`, `docs/decision-log.md`.
 
 Related docs/tests: `docs/costing-and-geometry.md`, `packages/geometry/src/topProjection.test.ts`, `npm run test -- packages/geometry/src/topProjection.test.ts packages/geometry/src/contracts.test.ts`.
 

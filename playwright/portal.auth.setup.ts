@@ -13,8 +13,8 @@ setup('authenticate portal admin session', async ({ page }) => {
   await page.goto('/login');
   await expect(page.getByRole('heading', { name: 'Staff Login' })).toBeVisible();
 
-  await page.getByLabel('Email').fill(email);
-  await page.getByLabel('Password').fill(password);
+  await page.getByRole('textbox', { name: 'Email' }).fill(email);
+  await page.getByRole('textbox', { name: 'Password' }).fill(password);
   await page.getByRole('button', { name: /sign in/i }).click();
 
   await page.waitForURL((url) => !url.pathname.startsWith('/login'), { timeout: 60_000 });

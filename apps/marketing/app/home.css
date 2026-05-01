@@ -925,9 +925,30 @@ body.homepage main .container{
 }
 
 .homepage .roof-comparison--editorial{
+  position:relative;
   padding-block:0;
   border-bottom:0;
   background:var(--home-editorial-bg) !important;
+}
+
+.homepage .roof-comparison--editorial::before,
+.homepage .roof-comparison--editorial::after{
+  content:"";
+  position:absolute;
+  left:50%;
+  width:100vw;
+  height:var(--bw);
+  background:var(--home-line);
+  transform:translateX(-50%);
+  pointer-events:none;
+}
+
+.homepage .roof-comparison--editorial::before{
+  top:0;
+}
+
+.homepage .roof-comparison--editorial::after{
+  bottom:0;
 }
 
 .homepage .roof-comparison--editorial .roof-comparison__inner{

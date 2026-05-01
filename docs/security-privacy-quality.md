@@ -27,6 +27,7 @@ When adding or removing tracking, update this table and the privacy behavior.
 - Keep service-role Supabase access server-only.
 - Use portal auth helpers for staff/admin API routes.
 - Keep public quote and invoice flows token-bound.
+- Keep automation, email outbox, and audit side effects aligned with `docs/automation-email-audit.md`.
 - Run production dependency audits for governance checks.
 - Preserve CSP reporting and review unexpected report volume.
 
