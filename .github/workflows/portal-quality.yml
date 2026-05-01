@@ -31,6 +31,9 @@ jobs:
       - name: Agent docs guard
         run: npm run docs:guard
 
+      - name: Repository typecheck
+        run: npm run typecheck
+
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
 

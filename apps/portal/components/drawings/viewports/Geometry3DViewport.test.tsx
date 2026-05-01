@@ -999,7 +999,7 @@ describe("Geometry3DViewport", () => {
       rendered.container
         .querySelector('[data-testid="geometry-3d-viewport-diagnostics"]')
         ?.getAttribute("data-top-view-screen-axis"),
-    ).toBe("world_x_right_world_y_down");
+    ).toBe("world_x_left_world_y_down");
 
     clickButtonByText(rendered.container, "Iso");
     expect(rendered.container.textContent).toContain("Iso");

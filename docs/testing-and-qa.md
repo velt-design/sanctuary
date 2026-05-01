@@ -18,6 +18,7 @@ npm run test:marketing
 npm run test:portal
 npm run build:marketing
 npm run build:portal
+npm run typecheck
 npm run lint
 ```
 
@@ -143,7 +144,7 @@ Schedule Gantt:
 
 ## CI
 
-- Portal Quality runs portal Vitest, portal build, authenticated smoke, and portal performance timing.
+- Portal Quality runs repository typecheck, portal Vitest, portal build, authenticated smoke, and portal performance timing.
 - Portal Quality runs `npm run docs:guard` before portal app checks.
 - Lighthouse Guardrails run mobile and desktop Lighthouse profiles.
 - Governance Monthly runs marketing tests, production dependency audit, and Lighthouse.

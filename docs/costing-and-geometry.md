@@ -37,7 +37,7 @@ apps/marketing/app/api/enquiry/route.ts
 
 Canonical geometry solving lives in `packages/geometry`.
 
-Top projection is scene-first: `buildTopProjectionViewModelFromScene()` projects the same `ViewerSceneModel` used by 3D into world-XY plan shapes. Mesh-backed house solids use the world `+Z` top-view contract, not render-mesh vertex order or face winding. Normal Model Space rendering uses each shape's `metadata.topProjectionRole` so hidden lower envelope geometry cannot dominate the plan. The assembly helper `buildTopProjectionViewModel()` remains available as a compatibility wrapper that builds the viewer scene, adds assembly reference shapes, and then calls the scene-first projection path.
+Top projection is scene-first: `buildTopProjectionViewModelFromScene()` projects the same `ViewerSceneModel` used by 3D into world-XY plan shapes. Mesh-backed house solids use the world `+Z` top-view contract, not render-mesh vertex order or face winding. The 3D Top camera sits above the model with screen X as world `-X` and screen Y down as world `+Y`; Model Space mirrors top-projection X coordinates to match that actual camera view. Normal Model Space rendering uses each shape's `metadata.topProjectionRole` so hidden lower envelope geometry cannot dominate the plan. The assembly helper `buildTopProjectionViewModel()` remains available as a compatibility wrapper that builds the viewer scene, adds assembly reference shapes, and then calls the scene-first projection path.
 
 Portal drawing code adapts package output into workbench, plan, section, sheet, and preview state under:
 
@@ -48,7 +48,7 @@ Compatibility paths must remain explicit. If a view uses fallback or compatibili
 
 ## Top Projection Contract
 
-Mesh-backed top projection must derive normal plan geometry from the 3D Top camera convention: world `+Z` looking down, screen X as world `+X`, and screen Y as world `+Y` downward. Roof and deck solids use their semantic top boundaries. Other mesh-backed solids use the highest non-vertical projected surface without trusting face winding. Lower envelope/context geometry must be classified with `topProjectionRole` and hidden from normal Model Space rendering unless it is intentional context.
+Mesh-backed top projection must derive normal plan geometry from the 3D Top camera convention: world `+Z` looking down, screen X as world `-X`, and screen Y as world `+Y` downward. Roof and deck solids use their semantic top boundaries. Other mesh-backed solids use the highest non-vertical projected surface without trusting face winding. Lower envelope/context geometry must be classified with `topProjectionRole` and hidden from normal Model Space rendering unless it is intentional context.
 
 Plan/3D accuracy work must also keep the top-view parity gate green. `buildTopProjectionParityReport()` verifies the scene/projection object contract, screen axis, hidden-shape extents, and rendered hidden-shape diagnostics. The portal drawing browser gate checks the fixture workbench's Model Space Plan diagnostics against the 3D Top viewport convention.
 

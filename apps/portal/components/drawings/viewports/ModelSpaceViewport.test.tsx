@@ -466,7 +466,7 @@ function makeTopProjectionFromGeometryPlan(geometryPlan: GeometryPlanViewModel):
   return {
     coordinateSpace: 'world_xy_mm',
     screenAxis: {
-      x: 'world_x_right',
+      x: 'world_x_left',
       y: 'world_y_down',
     },
     shapes,
@@ -1860,7 +1860,7 @@ describe('ModelSpaceViewport', () => {
           { x: -1.8, y: 3 },
         ]),
         axis: 'x' as const,
-        comparison: 'less' as const,
+        comparison: 'greater' as const,
       },
     ];
 
@@ -1899,7 +1899,11 @@ describe('ModelSpaceViewport', () => {
       if (testCase.axis === 'x') {
         const houseCentroid = polygonCentroidX(houseSurface);
         const pergolaCentroid = polygonCentroidX(pergolaFill);
-        expect(houseCentroid).toBeLessThan(pergolaCentroid);
+        if (testCase.comparison === 'less') {
+          expect(houseCentroid).toBeLessThan(pergolaCentroid);
+        } else {
+          expect(houseCentroid).toBeGreaterThan(pergolaCentroid);
+        }
       } else {
         const houseCentroid = polygonCentroidY(houseSurface);
         const pergolaCentroid = polygonCentroidY(pergolaFill);

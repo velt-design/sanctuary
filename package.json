@@ -22,6 +22,7 @@
     "text:mojibake": "node scripts/check-mojibake.mjs",
     "schedule:bundle-budget": "tsx scripts/check-schedule-bundle-budget.ts",
     "lint": "npm run docs:guard && npm run cache:forbid && npm run brand:forbid && npm run text:mojibake && eslint .",
+    "typecheck": "tsc -p apps/marketing/tsconfig.json --noEmit --incremental false && tsc -p apps/portal/tsconfig.json --noEmit --incremental false && tsc -p packages/costing/tsconfig.typecheck.json --noEmit --incremental false && tsc -p packages/geometry/tsconfig.typecheck.json --noEmit --incremental false && tsc -p packages/quote-format/tsconfig.typecheck.json --noEmit --incremental false && tsc -p packages/theme/tsconfig.typecheck.json --noEmit --incremental false",
     "test": "vitest run",
     "test:marketing": "vitest run apps/marketing",
     "test:portal": "vitest run apps/portal",

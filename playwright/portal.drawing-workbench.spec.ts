@@ -166,7 +166,7 @@ async function expectTopProjectionPlanParity(page: Page) {
   await expect(modelViewport).toBeVisible({ timeout: 30_000 });
   await expect(planSvg).toBeVisible();
   await expect(planSvg).toHaveAttribute('data-top-projection-parity-status', 'pass');
-  await expect(planSvg).toHaveAttribute('data-top-projection-screen-axis', 'world_x_right_world_y_down');
+  await expect(planSvg).toHaveAttribute('data-top-projection-screen-axis', 'world_x_left_world_y_down');
   await expect(planSvg).toHaveAttribute('data-top-projection-hidden-rendered-count', '0');
   await expect(modelViewport.locator('[data-top-projection-role="hidden_from_top"]')).toHaveCount(0);
   await expect
@@ -212,7 +212,7 @@ test('drawing workbench screenshot U hipped roof fixture renders valid topology'
   await expectContained3DCanvas(page);
 
   const diagnostics = page.getByTestId('geometry-3d-viewport-diagnostics');
-  await expect(diagnostics).toHaveAttribute('data-top-view-screen-axis', 'world_x_right_world_y_down');
+  await expect(diagnostics).toHaveAttribute('data-top-view-screen-axis', 'world_x_left_world_y_down');
   await expect(diagnostics).toHaveAttribute('data-house-roof-qa-status', 'valid');
   await expect(diagnostics).toHaveAttribute('data-house-roof-topology-valley-count', '2');
   await expect(diagnostics).toHaveAttribute('data-house-roof-topology-disconnected-source-face-count', '0');

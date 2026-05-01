@@ -187,7 +187,7 @@ function makeTopProjectionFixture(): GeometryTopProjectionViewModel {
   return {
     coordinateSpace: 'world_xy_mm',
     screenAxis: {
-      x: 'world_x_right',
+      x: 'world_x_left',
       y: 'world_y_down',
     },
     shapes: [
@@ -654,7 +654,7 @@ describe('ModuleViewsCard', () => {
     expectRectCloseTo(focusBox, { x: -12, y: -32.4, width: 96, height: 77.4 });
     expectRectCloseTo(viewBox, focusBox);
     expect(extractSvgStringAttribute(svgTag, 'data-top-projection-parity-status')).toBe('pass');
-    expect(extractSvgStringAttribute(svgTag, 'data-top-projection-screen-axis')).toBe('world_x_right_world_y_down');
+    expect(extractSvgStringAttribute(svgTag, 'data-top-projection-screen-axis')).toBe('world_x_left_world_y_down');
     expect(extractSvgStringAttribute(svgTag, 'data-top-projection-top-visible-count')).toBe('2');
     expect(extractSvgStringAttribute(svgTag, 'data-top-projection-hidden-count')).toBe('1');
     expect(extractSvgStringAttribute(svgTag, 'data-top-projection-rendered-count')).toBe('2');
@@ -695,7 +695,7 @@ describe('ModuleViewsCard', () => {
     expect(markup).toContain('data-top-projection-role="top_visible"');
     expect(markup).toContain('data-top-projection-z-min="2400"');
     expect(markup).toContain('data-top-projection-z-max="2600"');
-    expect(markup).toContain('data-top-projection-screen-axis="world_x_right_world_y_down"');
+    expect(markup).toContain('data-top-projection-screen-axis="world_x_left_world_y_down"');
     expect(markup).not.toContain('data-plan-top-projection-shape="top-projection-hidden-wall"');
     expect(markup).not.toContain('data-top-projection-role="hidden_from_top"');
     expect(markup).toContain('data-pergola-shape-hit-source="top_projection"');

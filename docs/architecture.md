@@ -47,7 +47,7 @@ Shared packages own business logic that must not be forked into apps. If app cod
 
 ## CI
 
-- `.github/workflows/portal-quality.yml`: portal Vitest, portal build, authenticated smoke, and performance report.
+- `.github/workflows/portal-quality.yml`: repository typecheck, portal Vitest, portal build, authenticated smoke, and performance report.
 - `.github/workflows/lighthouse.yml`: scheduled and PR Lighthouse guardrails for marketing.
 - `.github/workflows/governance-monthly.yml`: marketing tests, production dependency audit, Lighthouse mobile and desktop.
 
