@@ -378,6 +378,7 @@ body.header-flip .site-header {
 /* === Page transitions (content only; headers fixed) === */
 .page-viewport{ position: relative; }
 .page-layer{ will-change: transform, opacity; }
+.route-loading-shell{ min-height: 100dvh; }
 
 /* 2) Mobile: slow page content transitions to 1s */
 @media (max-width: 960px){

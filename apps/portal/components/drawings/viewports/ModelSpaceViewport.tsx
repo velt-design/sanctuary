@@ -3305,9 +3305,9 @@ export default function ModelSpaceViewport({
       if (visuallyMatches) {
         return {
           matches: true,
-          source: settledDeckShape.source === 'top_projection_committed'
+          source: (settledDeckShape.source === 'top_projection_committed'
             ? 'top_projection_committed'
-            : 'semantic_projection',
+            : 'semantic_projection') as DeckSettleMatchSource,
           projectionStatus: 'matched' as DeckProjectionSettleStatus,
         };
       }
@@ -3324,12 +3324,12 @@ export default function ModelSpaceViewport({
       }
       return {
         matches: false,
-        source: deckDragSettleState.releasePlacement === 'floating'
+        source: (deckDragSettleState.releasePlacement === 'floating'
           ? 'floating_projection_pending'
-          : 'none',
-        projectionStatus: deckDragSettleState.releasePlacement === 'floating'
+          : 'none') as DeckSettleMatchSource,
+        projectionStatus: (deckDragSettleState.releasePlacement === 'floating'
           ? 'pending'
-          : 'none',
+          : 'none') as DeckProjectionSettleStatus,
       };
     },
     [deckDragSettleState, settledDeckShape],

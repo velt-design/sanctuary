@@ -1,11 +1,7 @@
 // app/template.tsx
 'use client';
 import { usePathname } from 'next/navigation';
-import dynamic from 'next/dynamic';
-
-const AnimatedRouteTemplate = dynamic(() => import('@/components/AnimatedRouteTemplate'), {
-  loading: () => null,
-});
+import AnimatedRouteTemplate from '@/components/AnimatedRouteTemplate';
 
 export default function Template({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();

@@ -4972,37 +4972,13 @@ function PlanSvg({
           }))
       : [];
   const useProjectionOnlyModelSpacePlan = isModel && useTopProjectionBackedPlan;
-  const planRenderGraph = topProjectionShapes.reduce<{
-    committedBodies: Array<(typeof topProjectionShapes)[number] & { layer: ProjectionPlanLayer }>;
-    contextLines: Array<(typeof topProjectionShapes)[number] & { layer: ProjectionPlanLayer }>;
-    suppressed: Array<(typeof topProjectionShapes)[number]>;
-  }>(
-    (graph, item) => {
-      const layer = topProjectionPlanLayer(item.shape);
-      if (layer === 'committedBodies') {
-        graph.committedBodies.push({ ...item, layer });
-      } else if (layer === 'contextLines') {
-        graph.contextLines.push({ ...item, layer });
-      } else {
-        graph.suppressed.push(item);
-      }
-      return graph;
-    },
-    { committedBodies: [], contextLines: [], suppressed: [] },
-  );
-  const hasHouseRoofCommittedBody = planRenderGraph.committedBodies.some(
-    ({ shape }) => shape.family === 'house' && shape.kind === 'roof',
-  );
-  const committedTopProjectionBodies = planRenderGraph.committedBodies.filter(
-    ({ shape }) =>
-      !(hasHouseRoofCommittedBody && shape.family === 'house' && shape.kind === 'footprint') &&
-      (!useProjectionOnlyModelSpacePlan || topProjectionShapeAllowedInProjectionOnlyModel(shape)),
-  );
+  const planRenderGraph = buildProjectionPlanRenderGraph(topProjectionShapes, {
+    projectionOnlyModelSpace: useProjectionOnlyModelSpacePlan,
+  });
+  const committedTopProjectionBodies = planRenderGraph.committedBodies;
   const suppressedTopProjectionOwnershipBodyCount =
-    planRenderGraph.committedBodies.length - committedTopProjectionBodies.length;
-  const renderedTopProjectionContextLines = useProjectionOnlyModelSpacePlan
-    ? planRenderGraph.contextLines.filter(({ shape }) => topProjectionContextLineAllowedInProjectionOnlyModel(shape))
-    : planRenderGraph.contextLines;
+    planRenderGraph.suppressed.filter(({ shape }) => topProjectionShapeIsCommittedBody(shape)).length;
+  const renderedTopProjectionContextLines = planRenderGraph.contextLines;
   const renderedTopProjectionShapes = [
     ...committedTopProjectionBodies,
     ...renderedTopProjectionContextLines,

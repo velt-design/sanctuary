@@ -1,4 +1,5 @@
-// Keep global route fallback inert to avoid full-viewport swaps on initial load.
+// Keep the global route fallback visually quiet, but reserve page space so the
+// shared footer cannot jump into view before the next route has streamed in.
 export default function Loading() {
-  return null;
+  return <main className="route-loading-shell" aria-hidden="true" />;
 }
