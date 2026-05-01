@@ -282,7 +282,7 @@ type ModelSpaceGesture =
 
 type ModelSpacePinchSource = 'none' | 'touch-pointer' | 'wheel' | 'webkit-gesture';
 
-const MIN_MODEL_ZOOM = 0.25;
+const MIN_MODEL_ZOOM = 0.01;
 const MAX_MODEL_ZOOM = 4;
 const FIT_VIEW_MARGIN_PX = 24;
 const DRAW_POPOVER_MARGIN_PX = 12;

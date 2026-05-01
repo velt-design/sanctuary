@@ -1200,6 +1200,38 @@ body.homepage main .container{
   .homepage .roof-comparison--editorial .roof-comparison__surface{
     border-top:0;
   }
+  .homepage .roof-comparison--editorial .roof-comparison__layout{
+    display:flex;
+    flex-direction:column;
+    gap:0;
+  }
+  .homepage .roof-comparison--editorial .roof-comparison__content{
+    display:contents;
+  }
+  .homepage .roof-comparison--editorial .roof-comparison__heading{
+    order:1;
+  }
+  .homepage .roof-comparison--editorial .roof-comparison__meters{
+    order:2;
+    margin-top:clamp(30px,4vh,42px);
+  }
+  .homepage .roof-comparison--editorial .roof-comparison__copy{
+    order:3;
+    margin-top:clamp(28px,4vh,38px);
+  }
+  .homepage .roof-comparison--editorial .roof-comparison__media-wrap{
+    order:4;
+    width:100%;
+    max-width:none;
+    margin-top:clamp(34px,5vh,48px);
+  }
+  .homepage .roof-comparison--editorial .roof-comparison__toggle-wrap{
+    order:5;
+    margin-top:clamp(18px,3vh,26px);
+  }
+  .homepage .roof-comparison--editorial .roof-comparison__toggle{
+    max-width:none;
+  }
   .homepage .home-section__title,
   .homepage .home-projects-section__title,
   .homepage .roof-studies--editorial .roof-studies__title,

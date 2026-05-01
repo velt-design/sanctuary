@@ -1698,7 +1698,7 @@ function expectedFitForTargetRect(input: {
   scrollerHeight: number;
   target: { x: number; y: number; width: number; height: number };
 }): { zoom: number; panX: number; panY: number } {
-  const zoom = Math.min(Math.max(Math.min((input.scrollerWidth - 48) / input.target.width, (input.scrollerHeight - 48) / input.target.height), 0.25), 4);
+  const zoom = Math.min(Math.max(Math.min((input.scrollerWidth - 48) / input.target.width, (input.scrollerHeight - 48) / input.target.height), 0.01), 4);
   return {
     zoom,
     panX: input.scrollerWidth / 2 - (input.target.x + input.target.width / 2) * zoom,
@@ -2716,7 +2716,7 @@ describe('ModelSpaceViewport', () => {
     expect(initialFit?.zoom).toBeCloseTo(expectedFit.zoom, 3);
     expect(initialFit?.panX).toBeCloseTo(expectedFit.panX, 3);
     expect(initialFit?.panY).toBeCloseTo(expectedFit.panY, 3);
-    expect(initialFit?.zoom).toBeGreaterThan(0.25);
+    expect(initialFit?.zoom).toBeGreaterThan(0.01);
 
     onViewportTransformChange.mockClear();
     clickButtonByText(rendered.container, 'Fit view');
