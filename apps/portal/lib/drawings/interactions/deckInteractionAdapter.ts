@@ -55,6 +55,21 @@ export type DeckObjectPatchCommit = {
   patch: ObjectWorkbenchDeckPatch;
 };
 
+export type DeckCommitTransformSource =
+  | 'none'
+  | 'legacy_plan'
+  | 'same_frame'
+  | 'top_projection_to_object_frame'
+  | 'missing_frame';
+
+export type DeckCommitTransformDiagnostics = {
+  renderFrameId: string | null;
+  commitFrameId: string | null;
+  renderCoordinateSpace: DeckDragSession['dragCoordinateSpace'] | 'unknown';
+  commitCoordinateSpace: 'object_frame_m' | 'legacy_plan_m' | 'unknown';
+  transformSource: DeckCommitTransformSource;
+};
+
 export type DeckDragSession = ObjectInteractionSessionBase & {
   deckId: string;
   objectRef: DeckObjectRef;
@@ -586,6 +601,57 @@ function mapDeckPreviewPolygonThroughCommitFrame(input: {
       commitFrame: frames.commitFrame,
     }),
   );
+}
+
+function isProjectionBackedDeckSession(session: DeckDragSession): boolean {
+  return session.dragSource === 'top_projection_committed' ||
+    session.dragCoordinateSpace === 'top_projection_world_m';
+}
+
+export function resolveDeckCommitTransformDiagnostics(input: {
+  session: DeckDragSession;
+  preview: DeckPreviewState;
+}): DeckCommitTransformDiagnostics {
+  const projectionBacked = isProjectionBackedDeckSession(input.session);
+  const frames = resolveDeckPreviewRenderCommitFrames(input);
+  if (!projectionBacked) {
+    return {
+      renderFrameId: frames?.renderFrame.sourceEdgeId ?? null,
+      commitFrameId: frames?.commitFrame.sourceEdgeId ?? null,
+      renderCoordinateSpace: input.session.dragCoordinateSpace ?? 'unknown',
+      commitCoordinateSpace: 'legacy_plan_m',
+      transformSource: 'legacy_plan',
+    };
+  }
+  return {
+    renderFrameId: frames?.renderFrame.sourceEdgeId ?? null,
+    commitFrameId: frames?.commitFrame.sourceEdgeId ?? null,
+    renderCoordinateSpace: input.session.dragCoordinateSpace ?? 'unknown',
+    commitCoordinateSpace: frames ? 'object_frame_m' : 'unknown',
+    transformSource: !frames
+      ? 'missing_frame'
+      : frames.renderFrame === frames.commitFrame
+        ? 'same_frame'
+        : 'top_projection_to_object_frame',
+  };
+}
+
+function mapDeckPreviewPolygonToCommitSpaceStrict(input: {
+  session: DeckDragSession;
+  preview: DeckPreviewState;
+}): PlanPoint[] {
+  const projectionBacked = isProjectionBackedDeckSession(input.session);
+  const frameMappedPolygon = mapDeckPreviewPolygonThroughCommitFrame(input);
+  if (projectionBacked) {
+    if (!frameMappedPolygon) {
+      throw new Error('Deck projection commit frame is unavailable.');
+    }
+    return frameMappedPolygon;
+  }
+  if (input.session.interaction.kind === 'preset_rect' && input.preview.releasePlacement === 'floating') {
+    return input.preview.polygon;
+  }
+  return mapPreviewPolygonToCommitSpace(input);
 }
 
 function inferFloatingRectFromPlanPolygon(input: {
@@ -1739,10 +1805,7 @@ export function buildDeckCommitPatch(input: {
     interaction: input.session.interaction,
     renderEdgeId: input.preview.witnessEdgeId,
   });
-  const commitSpacePreviewPolygon =
-    input.session.interaction.kind === 'preset_rect' && input.preview.releasePlacement === 'floating'
-      ? input.preview.polygon
-      : mapPreviewPolygonToCommitSpace(input);
+  const commitSpacePreviewPolygon = mapDeckPreviewPolygonToCommitSpaceStrict(input);
   if (input.session.interaction.kind === 'custom_outline') {
     return {
       hostEdgeId: commitWitnessFrame?.sourceEdgeId ?? input.preview.witnessEdgeId,

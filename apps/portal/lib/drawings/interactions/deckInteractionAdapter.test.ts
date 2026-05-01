@@ -10,6 +10,7 @@ import {
   buildDeckCommitPatch,
   buildDeckDragSession,
   buildDeckObjectPatchCommit,
+  resolveDeckCommitTransformDiagnostics,
   resolveDeckPreviewState,
 } from './deckInteractionAdapter';
 

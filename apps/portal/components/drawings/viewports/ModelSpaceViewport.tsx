@@ -41,9 +41,11 @@ import {
   buildDeckInteractionViewState,
   buildDeckObjectPatchCommit,
   resolveDeckPreviewState,
+  resolveDeckCommitTransformDiagnostics,
   type DeckReleaseState,
   type DeckDragSession,
   type DeckPreviewState,
+  type DeckCommitTransformDiagnostics,
 } from '@/lib/drawings/interactions/deckInteractionAdapter';
 import {
   buildOpeningDragSession,
@@ -228,6 +230,7 @@ type DeckDragSettleState = {
   commitSource: DeckReleaseCommitSource;
   settleMatchSource: DeckSettleMatchSource;
   projectionSettleStatus: DeckProjectionSettleStatus;
+  commitTransform: DeckCommitTransformDiagnostics;
 };
 
 type DeckReleaseFeedbackState = {
@@ -241,6 +244,7 @@ type DeckReleaseFeedbackState = {
   commitSource: DeckReleaseCommitSource;
   settleMatchSource: DeckSettleMatchSource;
   projectionSettleStatus: DeckProjectionSettleStatus;
+  commitTransform: DeckCommitTransformDiagnostics;
 };
 
 type DeckDragPinnedScrollTarget = {
@@ -2950,6 +2954,10 @@ export default function ModelSpaceViewport({
         session: activeDeckDragSession,
         preview,
       });
+      const commitTransform = resolveDeckCommitTransformDiagnostics({
+        session: activeDeckDragSession,
+        preview,
+      });
       deckDragPhaseRef.current = 'settling';
       setDeckDragPhase('settling');
       setDeckDragSettleState({
@@ -2967,6 +2975,7 @@ export default function ModelSpaceViewport({
         commitSource,
         settleMatchSource: 'none',
         projectionSettleStatus: 'pending',
+        commitTransform,
       });
       let result: { ok: boolean; error?: string };
       try {
@@ -2980,8 +2989,11 @@ export default function ModelSpaceViewport({
             commit.patch,
           ),
         );
-      } catch {
-        result = { ok: false, error: 'Unable to update the deck position.' };
+      } catch (error) {
+        result = {
+          ok: false,
+          error: error instanceof Error ? error.message : 'Unable to update the deck position.',
+        };
       }
       const releaseError = result.ok ? null : result.error ?? 'Unable to update the deck position.';
       setFieldError(result.ok ? null : releaseError);
@@ -3550,6 +3562,7 @@ export default function ModelSpaceViewport({
       commitSource: deckDragSettleState.commitSource,
       settleMatchSource: outcome === 'failed' ? deckDragSettleState.settleMatchSource : deckSettleMatch.source,
       projectionSettleStatus: outcome === 'failed' ? 'failed' : deckSettleMatch.projectionStatus,
+      commitTransform: deckDragSettleState.commitTransform,
       expiresAtMs:
         Date.now() +
         (outcome === 'committed' ? DECK_RELEASE_SUCCESS_FEEDBACK_MS : DECK_RELEASE_FAILURE_FEEDBACK_MS),
@@ -4086,6 +4099,27 @@ export default function ModelSpaceViewport({
         data-deck-drag-coordinate-space={deckDragSession?.dragCoordinateSpace ?? 'none'}
         data-deck-preview-source={deckPreviewState ? deckDragSession?.dragSource ?? 'none' : 'none'}
         data-deck-commit-source={deckDragSettleState?.commitSource ?? deckReleaseFeedbackState?.commitSource ?? 'none'}
+        data-deck-render-frame-id={
+          deckDragSettleState?.commitTransform.renderFrameId ?? deckReleaseFeedbackState?.commitTransform.renderFrameId ?? ''
+        }
+        data-deck-commit-frame-id={
+          deckDragSettleState?.commitTransform.commitFrameId ?? deckReleaseFeedbackState?.commitTransform.commitFrameId ?? ''
+        }
+        data-deck-render-coordinate-space={
+          deckDragSettleState?.commitTransform.renderCoordinateSpace ??
+          deckReleaseFeedbackState?.commitTransform.renderCoordinateSpace ??
+          'none'
+        }
+        data-deck-commit-coordinate-space={
+          deckDragSettleState?.commitTransform.commitCoordinateSpace ??
+          deckReleaseFeedbackState?.commitTransform.commitCoordinateSpace ??
+          'none'
+        }
+        data-deck-commit-transform-source={
+          deckDragSettleState?.commitTransform.transformSource ??
+          deckReleaseFeedbackState?.commitTransform.transformSource ??
+          'none'
+        }
         data-object-workbench-deck-snap-state={deckInteractionTelemetry.snapState}
         data-house-first-deck-snap-state={deckInteractionTelemetry.snapState}
         data-object-workbench-deck-attachment-mode={deckInteractionTelemetry.attachmentMode ?? 'floating'}
