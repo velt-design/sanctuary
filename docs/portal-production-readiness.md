@@ -2,7 +2,7 @@
 
 Status: Active evolving tracker.
 
-Last updated: 2026-05-01.
+Last updated: 2026-05-02.
 
 Purpose: keep agents and maintainers aligned on the path to a first-class, production-grade internal portal. This doc is the dashboard for current readiness, blockers, priorities, parallel lanes, and next actions. Detailed behavior rules stay in the canonical docs linked below.
 
@@ -43,7 +43,7 @@ Do not duplicate detailed rules from canonical docs here. Link to them, then kee
 
 ## Current Readiness Snapshot
 
-This snapshot records the most recent known production-readiness state from the portal review on 2026-05-01. Re-run the listed commands before treating any item as current after new work lands.
+This snapshot records the most recent known production-readiness state from the portal review on 2026-05-01. Re-run the listed commands before treating any item as current after new work lands. If a row is older than the current work, treat it as a last known signal, not live truth, until the relevant command or manual check is repeated.
 
 | Area | Status | Last Known Signal | Next Action |
 | --- | --- | --- | --- |

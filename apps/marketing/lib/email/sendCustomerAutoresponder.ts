@@ -3,6 +3,7 @@ import { render } from '@react-email/render';
 import type { ReactElement } from 'react';
 import { getCallWindowText } from '@/emails/utils/callWindow';
 import type { EnquiryPayload, Professional, ResidentialOrCommercial } from '@/emails/types';
+import { customerEstimateSubject } from '@/lib/sharedEmails';
 
 import { CustomerResidentialEmail } from '@/emails/templates/customerResidential';
 import { CustomerCommercialEmail } from '@/emails/templates/customerCommercial';
@@ -18,7 +19,7 @@ function buildCustomerEmail(enquiry: EnquiryPayload, callWindowText: string): {
 } {
   if (enquiry.enquiryType === 'residential') {
     return {
-      subject: 'Your pergola enquiry - estimate and next steps',
+      subject: customerEstimateSubject(enquiry.name, 'residential'),
       emailElement: CustomerResidentialEmail({
         ...(enquiry as ResidentialOrCommercial),
         callWindowText,
@@ -28,7 +29,7 @@ function buildCustomerEmail(enquiry: EnquiryPayload, callWindowText: string): {
 
   if (enquiry.enquiryType === 'commercial') {
     return {
-      subject: 'Commercial enquiry received - estimate and next steps',
+      subject: customerEstimateSubject(enquiry.name, 'commercial'),
       emailElement: CustomerCommercialEmail({
         ...(enquiry as ResidentialOrCommercial),
         callWindowText,

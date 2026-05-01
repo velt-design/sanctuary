@@ -48,18 +48,10 @@ import type {
   PlanPoint,
 } from '@/lib/drawings/views/plan/objectWorkbenchPlanOverlay';
 import {
-  buildProjectionPlanRenderGraph,
-  topProjectionPlanLayer,
-  topProjectionRole,
-  topProjectionShapeIsCommittedBody,
-  topProjectionShapeVisible,
-} from '@/lib/drawings/views/plan/planRenderGraph';
-import {
   mmPointToPlanSvg,
   mmPolygonToPlanSvg,
   topProjectionDirectionToPlanSvg,
   topProjectionPointToPlanSvg,
-  topProjectionPolygonToPlanSvg,
   topProjectionSvgPointToPlanPoint,
 } from '@/lib/drawings/views/plan/planCoordinateAdapter';
 import {
@@ -73,6 +65,7 @@ import type {
   ObjectWorkbenchPergolaRenderSource,
   ObjectWorkbenchPergolaRenderStatus,
 } from '@/lib/drawings/geometry/deriveWorkbenchGeometry';
+import { buildPlanSvgPresentationModel } from './ModulePlanSvgPresentationModel';
 
 export type ModuleViewsTab = 'plan' | 'section';
 export type ModuleViewsStatus = 'loading' | 'ready' | 'error' | 'empty';
@@ -924,17 +917,6 @@ function boundsFromPoints(points: Point[], pad = 0): AnnotatedBounds {
   const xs = points.map((point) => point.x);
   const ys = points.map((point) => point.y);
   return createBounds(Math.min(...xs) - pad, Math.min(...ys) - pad, Math.max(...xs) + pad, Math.max(...ys) + pad);
-}
-
-function polygonAreaAbs(points: Point[]): number {
-  if (points.length < 3) return 0;
-  let area = 0;
-  for (let index = 0; index < points.length; index += 1) {
-    const current = points[index]!;
-    const next = points[(index + 1) % points.length]!;
-    area += current.x * next.y - next.x * current.y;
-  }
-  return Math.abs(area / 2);
 }
 
 function unionBounds(bounds: Array<AnnotatedBounds | null | undefined>): AnnotatedBounds {
@@ -4395,71 +4377,7 @@ function PlanSvg({
           dual: modelSpacePergolaGeometry.anchors.fall.dual,
         }
       : null;
-  const topProjectionShapes =
-    useTopProjectionBackedPlan && modelSpaceTopProjection
-      ? modelSpaceTopProjection.shapes
-          .filter((shape) => topProjectionShapeVisible(shape, familyVisibility))
-          .map((shape) => ({
-            shape,
-            points: topProjectionPolygonToPlanSvg(shape.polygon, modelSpaceTopProjection, x, y, scale),
-          }))
-      : [];
   const useProjectionOnlyModelSpacePlan = isModel && useTopProjectionBackedPlan;
-  const planRenderGraph = buildProjectionPlanRenderGraph(topProjectionShapes, {
-    projectionOnlyModelSpace: useProjectionOnlyModelSpacePlan,
-  });
-  const committedTopProjectionBodies = planRenderGraph.committedBodies;
-  const suppressedTopProjectionOwnershipBodyCount =
-    planRenderGraph.suppressed.filter(({ shape }) => topProjectionShapeIsCommittedBody(shape)).length;
-  const renderedTopProjectionContextLines = planRenderGraph.contextLines;
-  const renderedTopProjectionShapes = [
-    ...committedTopProjectionBodies,
-    ...renderedTopProjectionContextLines,
-  ];
-  const suppressedTopProjectionContextBodyCount = topProjectionShapes.filter(
-    ({ shape }) => topProjectionRole(shape) === 'context' && topProjectionPlanLayer(shape) === null,
-  ).length;
-  const suppressedTopProjectionTopVisibleBodyCount = topProjectionShapes.filter(
-    ({ shape }) => topProjectionRole(shape) === 'top_visible' && topProjectionPlanLayer(shape) === null,
-  ).length + suppressedTopProjectionOwnershipBodyCount;
-  const topProjectionAllShapes = useTopProjectionBackedPlan && modelSpaceTopProjection ? modelSpaceTopProjection.shapes : [];
-  const topProjectionTopVisibleCount = topProjectionAllShapes.filter((shape) => topProjectionRole(shape) === 'top_visible').length;
-  const topProjectionContextCount = topProjectionAllShapes.filter((shape) => topProjectionRole(shape) === 'context').length;
-  const topProjectionHiddenCount = topProjectionAllShapes.filter((shape) => topProjectionRole(shape) === 'hidden_from_top').length;
-  const topProjectionHiddenRenderedCount = renderedTopProjectionShapes.filter(({ shape }) => topProjectionRole(shape) === 'hidden_from_top').length;
-  const renderedTopProjectionContextBodyCount = renderedTopProjectionShapes.filter(
-    ({ shape }) => topProjectionRole(shape) === 'context' && topProjectionShapeIsCommittedBody(shape),
-  ).length;
-  const renderedTopProjectionContextLineCount = renderedTopProjectionShapes.filter(
-    ({ shape }) => topProjectionPlanLayer(shape) === 'contextLines',
-  ).length;
-  const renderedTopProjectionWallDetailCount = renderedTopProjectionShapes.filter(
-    ({ shape }) =>
-      shape.sourceType === 'house_line' &&
-      shape.kind === 'wall_segment' &&
-      shape.metadata?.planDetailRole === 'wall_edge',
-  ).length;
-  const committedTopProjectionBodyCount = renderedTopProjectionShapes.filter(({ shape }) =>
-    topProjectionShapeIsCommittedBody(shape),
-  ).length;
-  const committedTopProjectionObjectIds = new Set(
-    committedTopProjectionBodies.map(({ shape }) => `${shape.family}:${shape.kind}:${shape.sourceId ?? shape.sourceObjectId}`),
-  );
-  const topProjectionScreenAxis = modelSpaceTopProjection
-    ? `${modelSpaceTopProjection.screenAxis.x}_${modelSpaceTopProjection.screenAxis.y}`
-    : null;
-  const topProjectionParityStatus =
-    useTopProjectionBackedPlan && modelSpaceTopProjection
-      ? topProjectionScreenAxis === 'world_x_left_world_y_down' && topProjectionHiddenRenderedCount === 0
-        ? 'pass'
-        : 'fail'
-      : null;
-  const topProjectionPergolaHitPoints =
-    useTopProjectionBackedPlan
-      ? topProjectionShapes
-          .filter(({ shape }) => shape.family === 'pergola' && (shape.kind === 'roof_plane' || shape.kind === 'roof_cladding'))
-          .sort((left, right) => polygonAreaAbs(right.points) - polygonAreaAbs(left.points))[0]?.points ?? []
-      : [];
   const canRenderPergolaPlanGeometry = showPergolaGeometry && (!isModel || useGeometryBackedPergola || useTopProjectionBackedPlan);
 
   const aW = model.lengthA * scale;
@@ -4576,46 +4494,33 @@ function PlanSvg({
       : { x: 0, y: 0, width: 120, height: 90 };
   const planHousePointProjector = (point: Point) =>
     planHousePointToSvg(point, x, y, scale);
-  const objectWorkbenchPointProjector =
-    useTopProjectionBackedPlan && modelSpaceTopProjection
-      ? (point: Point) =>
-          topProjectionPointToPlanSvg(
-            { x: point.x * 1000, y: point.y * 1000 },
-            modelSpaceTopProjection,
-            x,
-            y,
-            scale,
-          )
-      : planHousePointProjector;
-  const visibleRawObjectWorkbenchOverlayShapesAllSources = rawObjectWorkbenchOverlayShapes.filter((shape) => {
-    switch (shape.ownerKind) {
-      case 'footprint':
-        return familyVisibility.house;
-      case 'deck':
-        return familyVisibility.decks;
-      case 'opening':
-        return familyVisibility.openings;
-      default:
-        return true;
-    }
+  const planPresentation = buildPlanSvgPresentationModel({
+    isModel,
+    useTopProjectionBackedPlan,
+    useProjectionOnlyModelSpacePlan,
+    modelSpaceTopProjection: modelSpaceTopProjection ?? null,
+    familyVisibility,
+    baseX: x,
+    baseY: y,
+    scale,
+    rawObjectWorkbenchOverlayShapes,
+    rawObjectWorkbenchPresetAnnotations,
+    rawObjectWorkbenchCustomEdgeCandidates,
+    rawObjectWorkbenchPreviewShape,
   });
-  const visibleRawObjectWorkbenchOverlayShapes = visibleRawObjectWorkbenchOverlayShapesAllSources.filter(
-    (shape) => !useProjectionOnlyModelSpacePlan || shape.source === 'top_projection_committed',
-  );
-  const selectedDeckSnapFrameSource =
-    rawObjectWorkbenchOverlayShapes.find((shape) => shape.ownerKind === 'deck' && shape.selected)?.deckInteraction?.snapFrameSource ?? null;
-  const projectionCommittedOverlayOwnerKeys = new Set(
-    visibleRawObjectWorkbenchOverlayShapes
-      .filter((shape) => shape.source === 'top_projection_committed')
-      .map((shape) => `${shape.ownerKind}:${shape.ownerId}`),
-  );
-  const visibleObjectWorkbenchDeckIds = new Set(
-    visibleRawObjectWorkbenchOverlayShapes
-      .filter((shape) => shape.ownerKind === 'deck')
-      .map((shape) => shape.ownerId),
-  );
+  const {
+    renderedTopProjectionShapes,
+    topProjectionPergolaHitPoints,
+    visibleObjectWorkbenchDeckIds,
+    objectWorkbenchOverlayShapes,
+    renderObjectWorkbenchCommittedBodies,
+    objectWorkbenchPresetAnnotations,
+    objectWorkbenchCustomEdgeCandidates,
+    objectWorkbenchPreviewShape,
+    diagnostics: planPresentationDiagnostics,
+  } = planPresentation;
   const selectedOpeningHostEdgeId =
-    visibleRawObjectWorkbenchOverlayShapes.find((shape) => shape.ownerKind === 'opening' && shape.selected)?.openingInteraction?.hostEdgeId ?? null;
+    objectWorkbenchOverlayShapes.find((shape) => shape.ownerKind === 'opening' && shape.selected)?.openingInteraction?.hostEdgeId ?? null;
   const toneHouseRoofContext = Boolean(selectedOpeningHostEdgeId);
   const semanticPlanHouseSurfaces = rawSemanticPlanHouseSurfaces
     .filter((surface) => {
@@ -4636,133 +4541,6 @@ function PlanSvg({
     end: planHousePointProjector(line.line.end),
     emphasized: selectedOpeningHostEdgeId !== null && line.metadata?.sourceEdgeId === selectedOpeningHostEdgeId,
   }));
-  const objectWorkbenchOverlayShapes =
-    presentation === 'model'
-      ? visibleRawObjectWorkbenchOverlayShapes.map((shape) => ({
-          ...shape,
-          points: shape.polygon.map((point) => objectWorkbenchPointProjector(point)),
-          detailSegments: (shape.detailSegments ?? []).map((segment) => ({
-            start: objectWorkbenchPointProjector(segment.start),
-            end: objectWorkbenchPointProjector(segment.end),
-          })),
-          deckInteraction: shape.deckInteraction,
-          deckInteractionSvg: shape.deckInteraction
-            ? {
-                ...shape.deckInteraction,
-                hostEdgeStart: objectWorkbenchPointProjector(shape.deckInteraction.hostEdgeStart),
-                hostEdgeEnd: objectWorkbenchPointProjector(shape.deckInteraction.hostEdgeEnd),
-              }
-            : null,
-          openingInteraction: shape.openingInteraction
-            ? {
-                ...shape.openingInteraction,
-                hostEdgeStart: objectWorkbenchPointProjector(shape.openingInteraction.hostEdgeStart),
-                hostEdgeEnd: objectWorkbenchPointProjector(shape.openingInteraction.hostEdgeEnd),
-              }
-            : null,
-        }))
-      : [];
-  const renderObjectWorkbenchCommittedBodies = !useTopProjectionBackedPlan;
-  const objectWorkbenchRenderedBodyCount = renderObjectWorkbenchCommittedBodies ? objectWorkbenchOverlayShapes.length : 0;
-  const objectWorkbenchVisibleBodyOverlayShapes = renderObjectWorkbenchCommittedBodies
-    ? objectWorkbenchOverlayShapes
-    : objectWorkbenchOverlayShapes.filter((shape) => shape.selected);
-  const countVisibleOverlayBodiesBySource = (source: ObjectWorkbenchPlanOverlay['shapes'][number]['source']) =>
-    objectWorkbenchVisibleBodyOverlayShapes.filter((shape) => shape.source === source).length;
-  const visibleLegacyPlanOverlayBodyCount = countVisibleOverlayBodiesBySource('geometry');
-  const visibleGeometryFallbackOverlayBodyCount =
-    countVisibleOverlayBodiesBySource('geometry_derived') + countVisibleOverlayBodiesBySource('geometry_plan_fallback');
-  const visibleTopProjectionContextOverlayBodyCount = countVisibleOverlayBodiesBySource('top_projection_context');
-  const visibleTopProjectionCommittedOverlayBodyCount = countVisibleOverlayBodiesBySource('top_projection_committed');
-  const wrongSourceVisibleOverlayBodyCount = useTopProjectionBackedPlan
-    ? visibleLegacyPlanOverlayBodyCount + visibleGeometryFallbackOverlayBodyCount + visibleTopProjectionContextOverlayBodyCount
-    : 0;
-  const duplicateCommittedBodyCount = useTopProjectionBackedPlan
-    ? objectWorkbenchRenderedBodyCount + renderedTopProjectionContextBodyCount + wrongSourceVisibleOverlayBodyCount
-    : 0;
-  const duplicateSemanticOwnerCount = duplicateCommittedBodyCount;
-  const objectWorkbenchPresetAnnotations =
-    presentation === 'model'
-      ? rawObjectWorkbenchPresetAnnotations
-          .filter((annotation) => {
-            if (
-              useProjectionOnlyModelSpacePlan &&
-              !projectionCommittedOverlayOwnerKeys.has(`${annotation.ownerKind}:${annotation.ownerId}`)
-            ) {
-              return false;
-            }
-            switch (annotation.ownerKind) {
-              case 'footprint':
-                return familyVisibility.house;
-              case 'deck':
-                return familyVisibility.decks;
-              case 'opening':
-                return familyVisibility.openings;
-              default:
-                return true;
-            }
-          })
-          .map((annotation) => ({
-          ...annotation,
-          witnessStart: objectWorkbenchPointProjector(annotation.witnessStart),
-          witnessEnd: objectWorkbenchPointProjector(annotation.witnessEnd),
-          lineStart: objectWorkbenchPointProjector(annotation.lineStart),
-          lineEnd: objectWorkbenchPointProjector(annotation.lineEnd),
-        }))
-      : [];
-  const objectWorkbenchCustomEdgeCandidates =
-    presentation === 'model'
-      ? rawObjectWorkbenchCustomEdgeCandidates
-          .filter((annotation) => {
-            if (
-              useProjectionOnlyModelSpacePlan &&
-              !projectionCommittedOverlayOwnerKeys.has(`${annotation.ownerKind}:${annotation.ownerId}`)
-            ) {
-              return false;
-            }
-            return annotation.ownerKind === 'footprint' ? familyVisibility.house : familyVisibility.decks;
-          })
-          .map((annotation) => ({
-          ...annotation,
-          witnessStart: objectWorkbenchPointProjector(annotation.witnessStart),
-          witnessEnd: objectWorkbenchPointProjector(annotation.witnessEnd),
-          lineStart: objectWorkbenchPointProjector(annotation.lineStart),
-          lineEnd: objectWorkbenchPointProjector(annotation.lineEnd),
-        }))
-      : [];
-  const objectWorkbenchPreviewShape =
-    presentation === 'model' &&
-    rawObjectWorkbenchPreviewShape &&
-    (!useProjectionOnlyModelSpacePlan ||
-      projectionCommittedOverlayOwnerKeys.has(`${rawObjectWorkbenchPreviewShape.ownerKind}:${rawObjectWorkbenchPreviewShape.ownerId}`))
-      ? {
-          ownerKind: rawObjectWorkbenchPreviewShape.ownerKind,
-          ownerId: rawObjectWorkbenchPreviewShape.ownerId,
-          points: rawObjectWorkbenchPreviewShape.polygon.map((point) => objectWorkbenchPointProjector(point)),
-          bodyState: rawObjectWorkbenchPreviewShape.bodyState,
-          anchorPoint: rawObjectWorkbenchPreviewShape.anchorPoint
-            ? objectWorkbenchPointProjector(rawObjectWorkbenchPreviewShape.anchorPoint)
-            : null,
-          lockedCornerPoint: rawObjectWorkbenchPreviewShape.lockedCornerPoint
-            ? objectWorkbenchPointProjector(rawObjectWorkbenchPreviewShape.lockedCornerPoint)
-            : null,
-          endCatchPoint: rawObjectWorkbenchPreviewShape.endCatchPoint
-            ? objectWorkbenchPointProjector(rawObjectWorkbenchPreviewShape.endCatchPoint)
-            : null,
-          referenceGuide: rawObjectWorkbenchPreviewShape.referenceGuide
-            ? {
-                start: objectWorkbenchPointProjector(rawObjectWorkbenchPreviewShape.referenceGuide.start),
-                end: objectWorkbenchPointProjector(rawObjectWorkbenchPreviewShape.referenceGuide.end),
-                state: rawObjectWorkbenchPreviewShape.referenceGuide.state,
-              }
-            : null,
-          targetHighlights: rawObjectWorkbenchPreviewShape.targetHighlights.map((targetHighlight) => ({
-            start: objectWorkbenchPointProjector(targetHighlight.start),
-            end: objectWorkbenchPointProjector(targetHighlight.end),
-            state: targetHighlight.state,
-          })),
-        }
-      : null;
   const hasSemanticPlanHouseContext =
     familyVisibility.house &&
     !customPolygonOverrideActive &&
@@ -5121,34 +4899,34 @@ function PlanSvg({
         overflow={isModel ? 'visible' : undefined}
         style={modelSvgStyle}
         data-model-space-svg={isModel ? 'plan' : undefined}
-        data-model-space-render-contract={isModel ? (useProjectionOnlyModelSpacePlan ? 'top_projection_only' : 'legacy_or_fallback') : undefined}
+        data-model-space-render-contract={isModel ? planPresentationDiagnostics.renderContract : undefined}
         data-model-space-view-box={modelSpaceLayout?.viewBoxValue}
         data-model-space-world-box={modelSpaceLayout?.worldBoxValue}
         data-model-space-focus-box={modelSpaceLayout?.focusBoxValue}
         data-plan-render-source={exposesPlanProjectionDiagnostics ? modelSpacePergolaRenderSource : 'legacy'}
         data-plan-render-status={exposesPlanProjectionDiagnostics ? modelSpacePergolaRenderStatus : 'legacy_unsupported_family'}
-        data-top-projection-parity-status={exposesPlanProjectionDiagnostics && topProjectionParityStatus ? topProjectionParityStatus : undefined}
-        data-top-projection-screen-axis={exposesPlanProjectionDiagnostics ? topProjectionScreenAxis ?? undefined : undefined}
-        data-top-projection-top-visible-count={exposesPlanProjectionDiagnostics && modelSpaceTopProjection ? topProjectionTopVisibleCount : undefined}
-        data-top-projection-context-count={exposesPlanProjectionDiagnostics && modelSpaceTopProjection ? topProjectionContextCount : undefined}
-        data-top-projection-hidden-count={exposesPlanProjectionDiagnostics && modelSpaceTopProjection ? topProjectionHiddenCount : undefined}
-        data-top-projection-rendered-count={exposesPlanProjectionDiagnostics && modelSpaceTopProjection ? renderedTopProjectionShapes.length : undefined}
-        data-top-projection-hidden-rendered-count={exposesPlanProjectionDiagnostics && modelSpaceTopProjection ? topProjectionHiddenRenderedCount : undefined}
-        data-plan-rendered-context-line-count={exposesPlanProjectionDiagnostics && modelSpaceTopProjection ? renderedTopProjectionContextLineCount : undefined}
-        data-plan-wall-detail-count={exposesPlanProjectionDiagnostics && modelSpaceTopProjection ? renderedTopProjectionWallDetailCount : undefined}
-        data-plan-deck-snap-frame-source={exposesPlanProjectionDiagnostics ? selectedDeckSnapFrameSource ?? undefined : undefined}
-        data-plan-committed-top-projection-body-count={exposesPlanProjectionDiagnostics && modelSpaceTopProjection ? committedTopProjectionBodyCount : undefined}
-        data-plan-committed-top-projection-object-count={exposesPlanProjectionDiagnostics && modelSpaceTopProjection ? committedTopProjectionObjectIds.size : undefined}
-        data-plan-object-overlay-body-count={exposesPlanProjectionDiagnostics ? objectWorkbenchRenderedBodyCount : undefined}
-        data-plan-visible-legacy-overlay-body-count={exposesPlanProjectionDiagnostics ? visibleLegacyPlanOverlayBodyCount : undefined}
-        data-plan-visible-geometry-fallback-overlay-body-count={exposesPlanProjectionDiagnostics ? visibleGeometryFallbackOverlayBodyCount : undefined}
-        data-plan-visible-top-projection-context-overlay-body-count={exposesPlanProjectionDiagnostics ? visibleTopProjectionContextOverlayBodyCount : undefined}
-        data-plan-visible-top-projection-committed-overlay-body-count={exposesPlanProjectionDiagnostics ? visibleTopProjectionCommittedOverlayBodyCount : undefined}
-        data-plan-rendered-context-body-count={exposesPlanProjectionDiagnostics && modelSpaceTopProjection ? renderedTopProjectionContextBodyCount : undefined}
-        data-plan-suppressed-context-body-count={exposesPlanProjectionDiagnostics && modelSpaceTopProjection ? suppressedTopProjectionContextBodyCount : undefined}
-        data-plan-suppressed-top-visible-body-count={exposesPlanProjectionDiagnostics && modelSpaceTopProjection ? suppressedTopProjectionTopVisibleBodyCount : undefined}
-        data-plan-duplicate-visual-body-count={exposesPlanProjectionDiagnostics ? duplicateCommittedBodyCount : undefined}
-        data-plan-duplicate-semantic-owner-count={exposesPlanProjectionDiagnostics ? duplicateSemanticOwnerCount : undefined}
+        data-top-projection-parity-status={exposesPlanProjectionDiagnostics && planPresentationDiagnostics.topProjectionParityStatus ? planPresentationDiagnostics.topProjectionParityStatus : undefined}
+        data-top-projection-screen-axis={exposesPlanProjectionDiagnostics ? planPresentationDiagnostics.topProjectionScreenAxis ?? undefined : undefined}
+        data-top-projection-top-visible-count={exposesPlanProjectionDiagnostics && modelSpaceTopProjection ? planPresentationDiagnostics.topProjectionTopVisibleCount : undefined}
+        data-top-projection-context-count={exposesPlanProjectionDiagnostics && modelSpaceTopProjection ? planPresentationDiagnostics.topProjectionContextCount : undefined}
+        data-top-projection-hidden-count={exposesPlanProjectionDiagnostics && modelSpaceTopProjection ? planPresentationDiagnostics.topProjectionHiddenCount : undefined}
+        data-top-projection-rendered-count={exposesPlanProjectionDiagnostics && modelSpaceTopProjection ? planPresentationDiagnostics.topProjectionRenderedCount : undefined}
+        data-top-projection-hidden-rendered-count={exposesPlanProjectionDiagnostics && modelSpaceTopProjection ? planPresentationDiagnostics.topProjectionHiddenRenderedCount : undefined}
+        data-plan-rendered-context-line-count={exposesPlanProjectionDiagnostics && modelSpaceTopProjection ? planPresentationDiagnostics.renderedTopProjectionContextLineCount : undefined}
+        data-plan-wall-detail-count={exposesPlanProjectionDiagnostics && modelSpaceTopProjection ? planPresentationDiagnostics.renderedTopProjectionWallDetailCount : undefined}
+        data-plan-deck-snap-frame-source={exposesPlanProjectionDiagnostics ? planPresentationDiagnostics.selectedDeckSnapFrameSource ?? undefined : undefined}
+        data-plan-committed-top-projection-body-count={exposesPlanProjectionDiagnostics && modelSpaceTopProjection ? planPresentationDiagnostics.committedTopProjectionBodyCount : undefined}
+        data-plan-committed-top-projection-object-count={exposesPlanProjectionDiagnostics && modelSpaceTopProjection ? planPresentationDiagnostics.committedTopProjectionObjectCount : undefined}
+        data-plan-object-overlay-body-count={exposesPlanProjectionDiagnostics ? planPresentationDiagnostics.objectWorkbenchRenderedBodyCount : undefined}
+        data-plan-visible-legacy-overlay-body-count={exposesPlanProjectionDiagnostics ? planPresentationDiagnostics.visibleLegacyPlanOverlayBodyCount : undefined}
+        data-plan-visible-geometry-fallback-overlay-body-count={exposesPlanProjectionDiagnostics ? planPresentationDiagnostics.visibleGeometryFallbackOverlayBodyCount : undefined}
+        data-plan-visible-top-projection-context-overlay-body-count={exposesPlanProjectionDiagnostics ? planPresentationDiagnostics.visibleTopProjectionContextOverlayBodyCount : undefined}
+        data-plan-visible-top-projection-committed-overlay-body-count={exposesPlanProjectionDiagnostics ? planPresentationDiagnostics.visibleTopProjectionCommittedOverlayBodyCount : undefined}
+        data-plan-rendered-context-body-count={exposesPlanProjectionDiagnostics && modelSpaceTopProjection ? planPresentationDiagnostics.renderedTopProjectionContextBodyCount : undefined}
+        data-plan-suppressed-context-body-count={exposesPlanProjectionDiagnostics && modelSpaceTopProjection ? planPresentationDiagnostics.suppressedTopProjectionContextBodyCount : undefined}
+        data-plan-suppressed-top-visible-body-count={exposesPlanProjectionDiagnostics && modelSpaceTopProjection ? planPresentationDiagnostics.suppressedTopProjectionTopVisibleBodyCount : undefined}
+        data-plan-duplicate-visual-body-count={exposesPlanProjectionDiagnostics ? planPresentationDiagnostics.duplicateCommittedBodyCount : undefined}
+        data-plan-duplicate-semantic-owner-count={exposesPlanProjectionDiagnostics ? planPresentationDiagnostics.duplicateSemanticOwnerCount : undefined}
         role="img"
         aria-label="Module plan view"
         ref={handlePlanSvgRef}

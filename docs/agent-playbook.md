@@ -16,6 +16,7 @@ For marketing-only or shared-package-only tasks, use the parts that affect porta
 
 - Run `git status --short`; identify unrelated worktree changes and leave them untouched.
 - Read `AGENTS.md`, `docs/README.md`, this playbook, and the smallest relevant canonical doc.
+- For dense owner docs, read the smallest relevant section first, then follow links only when the touched path crosses that boundary.
 - Scan `docs/decision-log.md` for entries matching the feature area, source-of-truth boundary, or risk pattern.
 - Use `docs/change-routing.md` to map changed paths to owner docs, doc update triggers, and common task cards.
 - For production-readiness, quality-gate, hardening, or parallel-lane work, read and update `docs/portal-production-readiness.md`.

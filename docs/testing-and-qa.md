@@ -78,7 +78,7 @@ npm run docs:guard
 npm run text:mojibake
 ```
 
-`npm run docs:guard` checks required agent-doc links, startup-path docs, stale placeholders, ASCII docs, and superseded redirect shape.
+`npm run docs:guard` checks required agent-doc links, startup-path docs, local Markdown link targets, portal readiness metadata, stale placeholders, ASCII docs, and superseded redirect shape.
 
 ## Portal Browser Tests
 

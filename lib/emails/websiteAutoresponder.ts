@@ -23,10 +23,20 @@ export function isWebsiteAutoresponderTemplateId(value: string): value is Websit
   );
 }
 
-function subjectFor(templateId: WebsiteAutoresponderTemplateId): string {
-  if (templateId === EMAIL_WEBSITE_AUTORESPONDER_COM_V1) return 'Commercial enquiry received - estimate and next steps';
+export function customerEstimateSubject(name: unknown, enquiryType: 'residential' | 'commercial') {
+  const trimmedName = typeof name === 'string' ? name.trim() : '';
+  const prefix = trimmedName ? `${trimmedName}, ` : '';
+  return enquiryType === 'commercial'
+    ? `${prefix}your commercial pergola estimate is ready`
+    : `${prefix}your Sanctuary Pergolas estimate is ready`;
+}
+
+function subjectFor(templateId: WebsiteAutoresponderTemplateId, variables: Record<string, unknown>): string {
+  if (templateId === EMAIL_WEBSITE_AUTORESPONDER_COM_V1) {
+    return customerEstimateSubject(variables.name, 'commercial');
+  }
   if (templateId === EMAIL_WEBSITE_AUTORESPONDER_PRO_V1) return 'Professional enquiry received - next steps';
-  return 'Your pergola enquiry - estimate and next steps';
+  return customerEstimateSubject(variables.name, 'residential');
 }
 
 function asDate(value: unknown): Date | null {
@@ -48,7 +58,7 @@ export async function renderWebsiteAutoresponder(
       ? variables.callWindowText.trim()
       : getCallWindowText(submittedAt);
 
-  const subject = subjectFor(templateId);
+  const subject = subjectFor(templateId, variables);
 
   let reactEmail: ReactElement;
   if (templateId === EMAIL_WEBSITE_AUTORESPONDER_RES_V1) {

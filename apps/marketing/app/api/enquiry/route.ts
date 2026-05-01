@@ -23,6 +23,7 @@ import {
   EMAIL_WEBSITE_AUTORESPONDER_RES_V1,
   EMAIL_WEBSITE_AUTORESPONDER_COM_V1,
   EMAIL_WEBSITE_AUTORESPONDER_PRO_V1,
+  customerEstimateSubject,
 } from '@/lib/sharedEmails';
 import { getCallWindowText } from '@/emails/utils/callWindow';
 import type { EnquiryPayload, Professional, ResidentialOrCommercial } from '@/emails/types';
@@ -982,10 +983,10 @@ export async function POST(req: Request) {
 
       const subject =
         enquiryType === 'commercial'
-          ? 'Commercial enquiry received - estimate and next steps'
+          ? customerEstimateSubject(name, 'commercial')
           : enquiryType === 'professional'
             ? 'Professional enquiry received - next steps'
-            : 'Your pergola enquiry - estimate and next steps';
+            : customerEstimateSubject(name, 'residential');
 
       const emailType =
         enquiryType === 'professional' ? 'WEBSITE_PROFESSIONAL_AUTORESPONDER' : 'WEBSITE_ESTIMATE_AUTORESPONDER';

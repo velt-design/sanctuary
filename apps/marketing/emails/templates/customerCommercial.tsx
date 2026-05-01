@@ -1,45 +1,45 @@
 import * as React from 'react';
 import { Text } from '@react-email/components';
 import { EmailLayout } from '../components/EmailLayout';
-import { EstimateCard } from '../components/EstimateCard';
+import { HeroImage } from '../components/HeroImage';
+import { InvestmentPanel } from '../components/InvestmentPanel';
+import { NextSteps } from '../components/NextSteps';
 import { Summary } from '../components/Summary';
 import { THEME } from '../theme';
 import { formatNZD } from '../utils/money';
 import type { ResidentialOrCommercial } from '../types';
 
 export function CustomerCommercialEmail(props: ResidentialOrCommercial & { callWindowText: string }) {
-  const baseLine = `Base pergola structure: from ${formatNZD(props.baseRange.lowIncGst)} to ${formatNZD(
+  const baseRange = `${formatNZD(props.baseRange.lowIncGst)} - ${formatNZD(
     props.baseRange.highIncGst,
-  )} (incl. GST)`;
-  const lines = [baseLine];
-
-  if (props.blindsSelected && props.blindsRange) {
-    lines.push(
-      `Blinds (separate): from ${formatNZD(props.blindsRange.lowIncGst)} to ${formatNZD(
-        props.blindsRange.highIncGst,
-      )} (incl. GST)`,
-    );
-  }
+  )}`;
+  const blindsRange =
+    props.blindsSelected && props.blindsRange
+      ? `${formatNZD(props.blindsRange.lowIncGst)} - ${formatNZD(props.blindsRange.highIncGst)}`
+      : undefined;
 
   const addonsText = props.addons?.length ? props.addons.join(', ') : '-';
 
   return (
-    <EmailLayout preview="Commercial enquiry received - we'll call shortly.">
-      <Text style={{ margin: '0 0 10px', fontSize: 18, fontWeight: 600 }}>
-        Commercial enquiry received
+    <EmailLayout preview="Your indicative commercial range and next steps from Sanctuary Pergolas.">
+      <HeroImage />
+
+      <Text style={{ margin: '0 0 10px', fontSize: 22, lineHeight: 1.25, fontWeight: 700 }}>
+        Thanks {props.name}, we&apos;ve received your commercial pergola enquiry.
       </Text>
 
-      <Text style={{ margin: '0 0 12px', fontSize: 13, color: THEME.muted, lineHeight: 1.6 }}>
-        Hi {props.name}, thanks for your enquiry. We'll call you on{' '}
-        <span style={{ color: THEME.text, fontWeight: 600 }}>{props.phone}</span> {props.callWindowText} to
-        confirm access/constraints and the fastest path to a firm price.
+      <Text style={{ margin: '0 0 12px', fontSize: 14, color: THEME.muted, lineHeight: 1.6 }}>
+        One of our team will review your enquiry and be in touch shortly to talk through the best options
+        for your space.
       </Text>
 
-      <EstimateCard
-        title="Indicative investment range (installed, incl. GST)"
-        lines={lines}
+      <InvestmentPanel
+        baseRange={baseRange}
+        blindsRange={blindsRange}
         note="The lower figure reflects a base structure under standard assumptions (normal access, standard fixings/colour, fascia connection). Final pricing is confirmed after a quick check of site conditions and connection details."
       />
+
+      <NextSteps />
 
       <Summary
         title="Your request"

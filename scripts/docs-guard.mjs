@@ -44,6 +44,7 @@ const STALE_PATTERNS = [
 
 const REDIRECT_DOC = 'docs/design-workbench-parallel-migration-rules.md';
 const REDIRECT_CANONICAL = 'docs/parallel-work-guardrails.md';
+const READINESS_DOC = 'docs/portal-production-readiness.md';
 
 function toPosix(value) {
   return value.split(path.sep).join('/');
@@ -103,6 +104,47 @@ function includesPath(text, relPath) {
   return text.includes(relPath) || text.includes(relPath.replace(/^docs\//, ''));
 }
 
+function normalizeMarkdownHref(rawHref) {
+  const trimmed = rawHref.trim();
+  if (!trimmed) return '';
+
+  if (trimmed.startsWith('<')) {
+    const end = trimmed.indexOf('>');
+    return end === -1 ? trimmed : trimmed.slice(1, end);
+  }
+
+  const whitespace = trimmed.search(/\s/);
+  return whitespace === -1 ? trimmed : trimmed.slice(0, whitespace);
+}
+
+function shouldCheckMarkdownHref(href) {
+  if (!href || href.startsWith('#')) return false;
+  if (/^[a-z][a-z0-9+.-]*:/i.test(href)) return false;
+  return true;
+}
+
+function withoutAnchorOrQuery(href) {
+  return href.split('#')[0].split('?')[0];
+}
+
+function localMarkdownLinkTarget(file, href) {
+  const target = withoutAnchorOrQuery(href);
+  if (!target) return null;
+  return toPosix(path.normalize(path.join(path.dirname(file), target)));
+}
+
+function dateFromYmd(year, month, day) {
+  const parsed = new Date(Number(year), Number(month) - 1, Number(day));
+  if (
+    parsed.getFullYear() !== Number(year) ||
+    parsed.getMonth() !== Number(month) - 1 ||
+    parsed.getDate() !== Number(day)
+  ) {
+    return null;
+  }
+  return parsed;
+}
+
 const failures = [];
 
 function fail(message) {
@@ -133,6 +175,18 @@ for (const doc of STARTUP_DOCS) {
 for (const file of docTextFiles()) {
   const text = readText(file);
 
+  const markdownLinkPattern = /!?\[[^\]]*\]\(([^)\n]+)\)/g;
+  for (const match of text.matchAll(markdownLinkPattern)) {
+    const href = normalizeMarkdownHref(match[1]);
+    if (!shouldCheckMarkdownHref(href)) continue;
+
+    const target = localMarkdownLinkTarget(file, href);
+    if (target && !exists(target)) {
+      const pos = lineAndColumnAt(text, match.index);
+      fail(`${file}:${pos.line}:${pos.col} links to missing local target: ${href}`);
+    }
+  }
+
   for (const pattern of STALE_PATTERNS) {
     pattern.re.lastIndex = 0;
     for (const match of text.matchAll(pattern.re)) {
@@ -146,6 +200,28 @@ for (const file of docTextFiles()) {
     if (code === 9 || code === 10 || code === 13 || (code >= 32 && code <= 126)) continue;
     const pos = lineAndColumnAt(text, i);
     fail(`${file}:${pos.line}:${pos.col} contains non-ASCII character U+${code.toString(16).toUpperCase().padStart(4, '0')}`);
+  }
+}
+
+if (!exists(READINESS_DOC)) {
+  fail(`Missing readiness tracker: ${READINESS_DOC}`);
+} else {
+  const readinessText = readText(READINESS_DOC);
+  const match = readinessText.match(/^Last updated: (\d{4})-(\d{2})-(\d{2})\.?$/m);
+  if (!match) {
+    fail(`${READINESS_DOC} must contain a Last updated line in YYYY-MM-DD format`);
+  } else {
+    const [, year, month, day] = match;
+    const trackerDate = dateFromYmd(year, month, day);
+    if (!trackerDate) {
+      fail(`${READINESS_DOC} has an invalid Last updated date: ${year}-${month}-${day}`);
+    } else {
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      if (trackerDate > today) {
+        fail(`${READINESS_DOC} has a future Last updated date: ${year}-${month}-${day}`);
+      }
+    }
   }
 }
 
