@@ -4,7 +4,8 @@ export type InteractionToolPointer = {
   pointerId: number;
   clientX: number;
   clientY: number;
-  planPoint: PlanPoint;
+  svgPoint: PlanPoint;
+  planPoint?: PlanPoint | null;
 };
 
 export type InteractionToolDiagnostics = {
