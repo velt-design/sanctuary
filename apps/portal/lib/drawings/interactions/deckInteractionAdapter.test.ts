@@ -1143,6 +1143,8 @@ describe('deckInteractionAdapter', () => {
       deckDepthM: 1,
       placement: 'floating',
       attachmentMode: 'floating',
+      dragSource: 'top_projection_committed',
+      dragCoordinateSpace: 'top_projection_world_m',
     });
 
     const preview = resolveDeckPreviewState({
@@ -1153,15 +1155,80 @@ describe('deckInteractionAdapter', () => {
       previousPreviewState: null,
     });
     const patch = buildDeckCommitPatch({ session, preview });
+    const diagnostics = resolveDeckCommitTransformDiagnostics({ session, preview });
 
     expect(preview.releasePlacement).toBe('floating');
     expect(patch.primaryHostEdgeId).toBeNull();
     expect(patch.floatingRect).toEqual({
+      centerAlongM: '4',
+      centerDepthM: '-2',
+      widthM: '2',
+      depthM: '1',
+    });
+    expect(patch.floatingRect).not.toEqual({
       centerAlongM: '14',
       centerDepthM: '18',
       widthM: '2',
       depthM: '1',
     });
+    expect(diagnostics).toMatchObject({
+      renderFrameId: 'footprint-edge-1',
+      commitFrameId: 'footprint-edge-1',
+      renderCoordinateSpace: 'top_projection_world_m',
+      commitCoordinateSpace: 'object_frame_m',
+      transformSource: 'top_projection_to_object_frame',
+    });
+  });
+
+  it('blocks projection-backed floating commits when no object commit frame can be matched', () => {
+    const projectedRearFrame = makeFrame({
+      ...realRearFrame,
+      spanStartM: 10,
+      spanEndM: 16,
+      edgeCoordinateM: 20,
+      hostEdgeStart: { x: 10, y: 20 },
+      hostEdgeEnd: { x: 16, y: 20 },
+      sourceEdgeId: 'projected-edge',
+    });
+    const incompatibleCommitFrame = makeFrame({
+      ...realLeftFrame,
+      sourceEdgeId: 'object-left-edge',
+    });
+    const polygon = rectOnFrame({
+      frame: projectedRearFrame,
+      deckWidthM: 2,
+      deckDepthM: 1,
+      centerOffsetM: 1,
+      referenceEdgeGapM: 1.5,
+    });
+    const session = makeSession({
+      polygon,
+      startDragPlanPoint: pointOnFrame(projectedRearFrame, 14, 2),
+      frames: [projectedRearFrame],
+      commitFrames: [incompatibleCommitFrame],
+      renderedCenter: polygonCenter(polygon),
+      deckWidthM: 2,
+      deckDepthM: 1,
+      placement: 'floating',
+      attachmentMode: 'floating',
+      dragSource: 'top_projection_committed',
+      dragCoordinateSpace: 'top_projection_world_m',
+    });
+
+    const preview = resolveDeckPreviewState({
+      session,
+      nextSvgX: session.startSvgX,
+      nextSvgY: session.startSvgY,
+      nextDragPlanPoint: session.startDragPlanPoint,
+      previousPreviewState: null,
+    });
+
+    expect(resolveDeckCommitTransformDiagnostics({ session, preview })).toMatchObject({
+      renderFrameId: 'projected-edge',
+      commitFrameId: null,
+      transformSource: 'missing_frame',
+    });
+    expect(() => buildDeckCommitPatch({ session, preview })).toThrow('Deck projection commit frame is unavailable.');
   });
 
   it('can hand off live from the current snapped wall to the adjacent wall without detaching first', () => {

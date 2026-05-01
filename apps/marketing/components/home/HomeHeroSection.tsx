@@ -9,8 +9,8 @@ export default function HomeHeroSection({ blurDataUrl }: HeroSectionProps) {
   return (
     <section className="home-hero" id="top" aria-labelledby="home-hero-heading">
       <Image
-        src="/images/project-dairy-flat-01.jpg"
-        alt="Gable pergola extending a Dairy Flat home beside a pool"
+        src="/images/riverhead-gable-01.jpg"
+        alt="Riverhead gable pergola with timber ceiling overlooking a green landscape and pool"
         fill
         loading="eager"
         fetchPriority="high"

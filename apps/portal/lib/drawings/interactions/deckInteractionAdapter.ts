@@ -613,24 +613,35 @@ export function resolveDeckCommitTransformDiagnostics(input: {
   preview: DeckPreviewState;
 }): DeckCommitTransformDiagnostics {
   const projectionBacked = isProjectionBackedDeckSession(input.session);
-  const frames = resolveDeckPreviewRenderCommitFrames(input);
+  const renderEdgeId = resolveDeckPreviewRenderEdgeId({ preview: input.preview });
+  const renderFrame =
+    findDeckReferenceFrameById(input.session.interaction.referenceFrames, renderEdgeId) ??
+    input.session.interaction.referenceFrames[0] ??
+    null;
+  const commitFrame = renderFrame
+    ? resolveDeckCommitReferenceFrame({
+        interaction: input.session.interaction,
+        renderEdgeId: renderFrame.sourceEdgeId,
+        referencePoint: input.preview.previewAnchor,
+      })
+    : null;
   if (!projectionBacked) {
     return {
-      renderFrameId: frames?.renderFrame.sourceEdgeId ?? null,
-      commitFrameId: frames?.commitFrame.sourceEdgeId ?? null,
+      renderFrameId: renderFrame?.sourceEdgeId ?? null,
+      commitFrameId: commitFrame?.sourceEdgeId ?? null,
       renderCoordinateSpace: input.session.dragCoordinateSpace ?? 'unknown',
       commitCoordinateSpace: 'legacy_plan_m',
       transformSource: 'legacy_plan',
     };
   }
   return {
-    renderFrameId: frames?.renderFrame.sourceEdgeId ?? null,
-    commitFrameId: frames?.commitFrame.sourceEdgeId ?? null,
+    renderFrameId: renderFrame?.sourceEdgeId ?? null,
+    commitFrameId: commitFrame?.sourceEdgeId ?? null,
     renderCoordinateSpace: input.session.dragCoordinateSpace ?? 'unknown',
-    commitCoordinateSpace: frames ? 'object_frame_m' : 'unknown',
-    transformSource: !frames
+    commitCoordinateSpace: renderFrame && commitFrame ? 'object_frame_m' : 'unknown',
+    transformSource: !renderFrame || !commitFrame
       ? 'missing_frame'
-      : frames.renderFrame === frames.commitFrame
+      : renderFrame === commitFrame
         ? 'same_frame'
         : 'top_projection_to_object_frame',
   };

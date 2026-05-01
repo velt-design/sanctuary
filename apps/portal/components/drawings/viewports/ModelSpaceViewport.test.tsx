@@ -6732,6 +6732,10 @@ describe('ModelSpaceViewport', () => {
     expect(scroller.dataset.objectWorkbenchDeckReleaseCommitSource).toBe('floating_rect_from_projection_preview');
     expect(scroller.dataset.objectWorkbenchDeckSettleMatchSource).toBe('floating_projection_pending');
     expect(scroller.dataset.objectWorkbenchDeckProjectionSettleStatus).toBe('pending');
+    expect(scroller.dataset.deckRenderCoordinateSpace).toBe('top_projection_world_m');
+    expect(scroller.dataset.deckCommitCoordinateSpace).toBe('object_frame_m');
+    expect(scroller.dataset.deckCommitTransformSource).not.toBe('legacy_plan');
+    expect(scroller.dataset.deckCommitTransformSource).not.toBe('missing_frame');
     expect(rendered.container.querySelector('[data-testid="deck-telemetry-release-outcome"]')?.textContent).toBe(
       'committed',
     );
