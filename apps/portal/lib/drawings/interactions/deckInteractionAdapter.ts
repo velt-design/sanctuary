@@ -232,6 +232,23 @@ function deckReferenceFramesAreCompatibleForCommit(input: {
   );
 }
 
+function deckReferenceFramesShareCommitIdentity(input: {
+  renderFrame: ObjectWorkbenchPlanDeckReferenceFrame;
+  commitFrame: ObjectWorkbenchPlanDeckReferenceFrame;
+}): boolean {
+  if (input.renderFrame.axis !== input.commitFrame.axis) return false;
+  if (input.renderFrame.hostEdgeId !== input.commitFrame.hostEdgeId) return false;
+  if (input.renderFrame.outwardDirection !== input.commitFrame.outwardDirection) return false;
+  const alongDot =
+    input.renderFrame.alongUnitX * input.commitFrame.alongUnitX +
+    input.renderFrame.alongUnitY * input.commitFrame.alongUnitY;
+  const outwardDot =
+    input.renderFrame.outwardUnitX * input.commitFrame.outwardUnitX +
+    input.renderFrame.outwardUnitY * input.commitFrame.outwardUnitY;
+  return Math.abs(alongDot) >= DECK_COMMIT_FRAME_VECTOR_DOT_TOLERANCE &&
+    outwardDot >= DECK_COMMIT_FRAME_VECTOR_DOT_TOLERANCE;
+}
+
 function deckReferenceFramePointSpanDistance(input: {
   frame: ObjectWorkbenchPlanDeckReferenceFrame;
   point: PlanPoint;
@@ -253,6 +270,15 @@ function resolveDeckCommitReferenceFrame(input: {
   const exactCommitFrame = findDeckReferenceFrameById(commitFrames, input.renderEdgeId);
   const renderFrame = findDeckReferenceFrameById(input.interaction.referenceFrames, input.renderEdgeId);
   if (!renderFrame) return exactCommitFrame;
+  if (
+    exactCommitFrame &&
+    deckReferenceFramesShareCommitIdentity({
+      renderFrame,
+      commitFrame: exactCommitFrame,
+    })
+  ) {
+    return exactCommitFrame;
+  }
 
   const compatibleCommitFrames = commitFrames.filter((commitFrame) =>
     deckReferenceFramesAreCompatibleForCommit({
@@ -467,6 +493,98 @@ function projectPolygonToDeckReferenceFrame(input: {
   };
 }
 
+function deckReferenceFrameMidpoint(frame: ObjectWorkbenchPlanDeckReferenceFrame): number {
+  return (frame.spanStartM + frame.spanEndM) / 2;
+}
+
+function deckReferenceFrameAlongDirectionSign(input: {
+  renderFrame: ObjectWorkbenchPlanDeckReferenceFrame;
+  commitFrame: ObjectWorkbenchPlanDeckReferenceFrame;
+}): -1 | 1 {
+  const alongDot =
+    input.renderFrame.alongUnitX * input.commitFrame.alongUnitX +
+    input.renderFrame.alongUnitY * input.commitFrame.alongUnitY;
+  return alongDot < 0 ? -1 : 1;
+}
+
+function mapDeckFrameAlongFromRenderToCommit(input: {
+  renderFrame: ObjectWorkbenchPlanDeckReferenceFrame;
+  commitFrame: ObjectWorkbenchPlanDeckReferenceFrame;
+  renderAlongM: number;
+}): number {
+  const renderCenterOffsetM = input.renderAlongM - deckReferenceFrameMidpoint(input.renderFrame);
+  return (
+    deckReferenceFrameMidpoint(input.commitFrame) +
+    renderCenterOffsetM *
+      deckReferenceFrameAlongDirectionSign({
+        renderFrame: input.renderFrame,
+        commitFrame: input.commitFrame,
+      })
+  );
+}
+
+function mapDeckPointFromRenderFrameToCommitFrame(input: {
+  point: PlanPoint;
+  renderFrame: ObjectWorkbenchPlanDeckReferenceFrame;
+  commitFrame: ObjectWorkbenchPlanDeckReferenceFrame;
+}): PlanPoint {
+  const projection = projectPointToDeckReferenceFrame(input.point, input.renderFrame);
+  return buildPlanPointOnDeckReferenceFrame({
+    frame: input.commitFrame,
+    alongM: mapDeckFrameAlongFromRenderToCommit({
+      renderFrame: input.renderFrame,
+      commitFrame: input.commitFrame,
+      renderAlongM: projection.alongM,
+    }),
+    outwardM: projection.outwardM,
+  });
+}
+
+function resolveDeckPreviewRenderEdgeId(input: {
+  preview: DeckPreviewState;
+}): string | null {
+  return input.preview.releasePlacement === 'snapped'
+    ? input.preview.primaryHostEdgeId ?? input.preview.placementEdgeId ?? input.preview.witnessEdgeId
+    : input.preview.witnessEdgeId;
+}
+
+function resolveDeckPreviewRenderCommitFrames(input: {
+  session: DeckDragSession;
+  preview: DeckPreviewState;
+}): {
+  renderFrame: ObjectWorkbenchPlanDeckReferenceFrame;
+  commitFrame: ObjectWorkbenchPlanDeckReferenceFrame;
+} | null {
+  const renderEdgeId = resolveDeckPreviewRenderEdgeId({ preview: input.preview });
+  const renderFrame =
+    findDeckReferenceFrameById(input.session.interaction.referenceFrames, renderEdgeId) ??
+    input.session.interaction.referenceFrames[0] ??
+    null;
+  if (!renderFrame) return null;
+  const commitFrame = resolveDeckCommitReferenceFrame({
+    interaction: input.session.interaction,
+    renderEdgeId: renderFrame.sourceEdgeId,
+    referencePoint: input.preview.previewAnchor,
+  });
+  return commitFrame ? { renderFrame, commitFrame } : null;
+}
+
+function mapDeckPreviewPolygonThroughCommitFrame(input: {
+  session: DeckDragSession;
+  preview: DeckPreviewState;
+}): PlanPoint[] | null {
+  const frames = resolveDeckPreviewRenderCommitFrames(input);
+  if (!frames) return null;
+  if (frames.renderFrame === frames.commitFrame) return input.preview.polygon;
+  return input.preview.polygon.map((point) =>
+    mapDeckPointFromRenderFrameToCommitFrame({
+      point,
+      renderFrame: frames.renderFrame,
+      commitFrame: frames.commitFrame,
+    }),
+  );
+}
+
 function inferFloatingRectFromPlanPolygon(input: {
   polygon: PlanPoint[];
   attachmentSide: AttachmentSide;
@@ -514,6 +632,22 @@ function mapPreviewPolygonToCommitSpace(input: {
   preview: DeckPreviewState;
 }): PlanPoint[] {
   const commitStartPolygon = input.session.interaction.commitStartPolygon;
+  const frameMappedPolygon = mapDeckPreviewPolygonThroughCommitFrame(input);
+  if (
+    frameMappedPolygon &&
+    (!commitStartPolygon ||
+      (() => {
+        const frames = resolveDeckPreviewRenderCommitFrames(input);
+        return frames
+          ? !deckReferenceFramesAreCompatibleForCommit({
+              renderFrame: frames.renderFrame,
+              commitFrame: frames.commitFrame,
+            })
+          : false;
+      })())
+  ) {
+    return frameMappedPolygon;
+  }
   if (!commitStartPolygon || commitStartPolygon.length !== input.session.startPolygon.length) {
     return input.preview.polygon;
   }
@@ -653,9 +787,23 @@ function resolveDeckCommitCenterOffset(input: {
     renderEdgeId: previewEdgeId,
     referencePoint: previewCenter,
   });
-  if (commitFrame && previewCenter) {
+  if (
+    commitFrame &&
+    previewCenter &&
+    deckReferenceFramesAreCompatibleForCommit({
+      renderFrame,
+      commitFrame,
+    })
+  ) {
     const commitProjection = projectPointToDeckReferenceFrame(previewCenter, commitFrame);
-    return commitProjection.alongM - ((commitFrame.spanStartM + commitFrame.spanEndM) / 2);
+    return commitProjection.alongM - deckReferenceFrameMidpoint(commitFrame);
+  }
+  if (commitFrame) {
+    const sign = deckReferenceFrameAlongDirectionSign({
+      renderFrame,
+      commitFrame,
+    });
+    return renderCenterOffsetM * sign;
   }
 
   return renderCenterOffsetM;

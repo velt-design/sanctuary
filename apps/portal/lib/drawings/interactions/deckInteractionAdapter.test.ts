@@ -916,6 +916,96 @@ describe('deckInteractionAdapter', () => {
     expect((patch.presetRect as { centerOffsetM: string }).centerOffsetM).toBe('-1.6');
   });
 
+  it('commits a snapped projection-backed deck through the matching object frame instead of projected world coordinates', () => {
+    const projectedRearFrame = makeFrame({
+      ...realRearFrame,
+      spanStartM: 10,
+      spanEndM: 16,
+      edgeCoordinateM: 20,
+      hostEdgeStart: { x: 10, y: 20 },
+      hostEdgeEnd: { x: 16, y: 20 },
+    });
+    const polygon = rectOnFrame({
+      frame: projectedRearFrame,
+      deckWidthM: 2,
+      deckDepthM: 1,
+      centerOffsetM: 1,
+      referenceEdgeGapM: 0,
+    });
+    const session = makeSession({
+      polygon,
+      startDragPlanPoint: pointOnFrame(projectedRearFrame, 14, 0.5),
+      frames: [projectedRearFrame],
+      commitFrames: [realRearFrame],
+      renderedCenter: polygonCenter(polygon),
+      deckWidthM: 2,
+      deckDepthM: 1,
+      placement: 'snapped',
+      attachmentMode: 'single_edge',
+    });
+
+    const preview = resolveDeckPreviewState({
+      session,
+      nextSvgX: session.startSvgX,
+      nextSvgY: session.startSvgY,
+      nextDragPlanPoint: session.startDragPlanPoint,
+      previousPreviewState: null,
+    });
+    const patch = buildDeckCommitPatch({ session, preview });
+
+    expect(preview.releasePlacement).toBe('snapped');
+    expect(preview.primaryHostEdgeId).toBe('footprint-edge-1');
+    expect(patch.primaryHostEdgeId).toBe('footprint-edge-1');
+    expect((patch.presetRect as { centerOffsetM: string }).centerOffsetM).toBe('1');
+  });
+
+  it('commits a floating projection-backed deck by mapping the preview polygon into object frame space', () => {
+    const projectedRearFrame = makeFrame({
+      ...realRearFrame,
+      spanStartM: 10,
+      spanEndM: 16,
+      edgeCoordinateM: 20,
+      hostEdgeStart: { x: 10, y: 20 },
+      hostEdgeEnd: { x: 16, y: 20 },
+    });
+    const polygon = rectOnFrame({
+      frame: projectedRearFrame,
+      deckWidthM: 2,
+      deckDepthM: 1,
+      centerOffsetM: 1,
+      referenceEdgeGapM: 1.5,
+    });
+    const session = makeSession({
+      polygon,
+      startDragPlanPoint: pointOnFrame(projectedRearFrame, 14, 2),
+      frames: [projectedRearFrame],
+      commitFrames: [realRearFrame],
+      renderedCenter: polygonCenter(polygon),
+      deckWidthM: 2,
+      deckDepthM: 1,
+      placement: 'floating',
+      attachmentMode: 'floating',
+    });
+
+    const preview = resolveDeckPreviewState({
+      session,
+      nextSvgX: session.startSvgX,
+      nextSvgY: session.startSvgY,
+      nextDragPlanPoint: session.startDragPlanPoint,
+      previousPreviewState: null,
+    });
+    const patch = buildDeckCommitPatch({ session, preview });
+
+    expect(preview.releasePlacement).toBe('floating');
+    expect(patch.primaryHostEdgeId).toBeNull();
+    expect(patch.floatingRect).toEqual({
+      centerAlongM: '4',
+      centerDepthM: '-2',
+      widthM: '2',
+      depthM: '1',
+    });
+  });
+
   it('can hand off live from the current snapped wall to the adjacent wall without detaching first', () => {
     const polygon = [
       { x: 0, y: 0 },

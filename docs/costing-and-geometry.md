@@ -14,6 +14,24 @@ import { calculateCostV1, calculateJobCostV1, loadCostingConfigV1 } from '@sp/co
 
 Lint blocks legacy costing engine/config copies in app paths. If you need a costing behavior change, update `packages/costing` and then update call sites.
 
+## Commercial Spine
+
+The future commercial flow is shadow-only until an explicit integration task wires it into estimate or quote persistence:
+
+```text
+object-first design intent
+  -> solved geometry
+  -> quantity takeoff
+  -> costing
+```
+
+- Design intent is the authored truth: house forms, pergolas, decks, openings, attachments, and options.
+- Solved geometry is the physical truth: dimensions, planes, members, host zones, validation, and trust.
+- Quantity takeoff is the bridge between physical geometry and commercial pricing.
+- Costing remains the commercial truth for materials, install/labour, overheads, accessories, BOM, and quote breakdowns.
+
+`packages/costing/src/commercial` exports the first shadow contract (`CommercialDesignInputV1`) and the calculator field-ownership map. Existing `CostInputsV1`, `SiteInputsV1`, and `calculateSiteCostV1` remain the live pricing path. Do not make saved estimates, quote totals, public outputs, or job-pack pricing consume the commercial spine until a later task explicitly changes that rollout boundary.
+
 ## Portal Cost Overrides
 
 Portal applies database overrides on top of `loadCostingConfigV1()`.

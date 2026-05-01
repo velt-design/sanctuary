@@ -233,6 +233,7 @@ type GeometryPlanLookup = {
   deckSurfaces: Map<string, GeometryResolvedPlanPolygon>;
   openingPolygons: Map<string, GeometryResolvedPlanPolygon>;
   referenceFrames: ObjectWorkbenchPlanDeckReferenceFrame[];
+  commitReferenceFrames: ObjectWorkbenchPlanDeckReferenceFrame[];
   openingFrames: Map<string, GeometryOpeningFrame>;
 };
 
@@ -461,6 +462,64 @@ function frameSideFromOutward(input: {
   return input.outward.x < 0 ? 'left' : 'right';
 }
 
+function buildDeckReferenceFrameFromSegment(input: {
+  sourceEdgeId: string;
+  start: PlanPoint;
+  end: PlanPoint;
+  footprint: readonly PlanPoint[];
+}): ObjectWorkbenchPlanDeckReferenceFrame | null {
+  const dx = input.end.x - input.start.x;
+  const dy = input.end.y - input.start.y;
+  const horizontal = Math.abs(dy) <= ZERO_DIMENSION_EPSILON_M;
+  const vertical = Math.abs(dx) <= ZERO_DIMENSION_EPSILON_M;
+  if (!horizontal && !vertical) return null;
+  const hostSpanM = Math.hypot(dx, dy);
+  if (hostSpanM <= ZERO_DIMENSION_EPSILON_M) return null;
+  const outward = resolveOutwardUnit({
+    start: input.start,
+    end: input.end,
+    footprint: input.footprint,
+  });
+  const spanStartM = horizontal ? Math.min(input.start.x, input.end.x) : Math.min(input.start.y, input.end.y);
+  const spanEndM = horizontal ? Math.max(input.start.x, input.end.x) : Math.max(input.start.y, input.end.y);
+  return {
+    hostEdgeId: frameSideFromOutward({ horizontal, outward }),
+    sourceEdgeId: input.sourceEdgeId,
+    axis: horizontal ? 'along' : 'depth',
+    spanStartM,
+    spanEndM,
+    edgeCoordinateM: horizontal ? input.start.y : input.start.x,
+    outwardDirection: horizontal ? (outward.y < 0 ? -1 : 1) : (outward.x < 0 ? -1 : 1),
+    hostEdgeStart: horizontal
+      ? { x: spanStartM, y: input.start.y }
+      : { x: input.start.x, y: spanStartM },
+    hostEdgeEnd: horizontal
+      ? { x: spanEndM, y: input.start.y }
+      : { x: input.start.x, y: spanEndM },
+    alongUnitX: horizontal ? 1 : 0,
+    alongUnitY: horizontal ? 0 : 1,
+    outwardUnitX: outward.x,
+    outwardUnitY: outward.y,
+  };
+}
+
+function buildDeckReferenceFramesFromPolygon(
+  polygon: readonly PlanPoint[],
+): ObjectWorkbenchPlanDeckReferenceFrame[] {
+  if (polygon.length < 3) return [];
+  return polygon.flatMap((start, index) => {
+    const end = polygon[(index + 1) % polygon.length];
+    if (!end) return [];
+    const frame = buildDeckReferenceFrameFromSegment({
+      sourceEdgeId: `footprint-edge-${index + 1}`,
+      start,
+      end,
+      footprint: polygon,
+    });
+    return frame ? [frame] : [];
+  });
+}
+
 function buildGeometryLookup(
   geometryPlan: GeometryPlanViewModel,
   geometryTopProjection?: GeometryTopProjectionViewModel | null,
@@ -487,7 +546,7 @@ function buildGeometryLookup(
     });
   }
 
-  const referenceFrames: ObjectWorkbenchPlanDeckReferenceFrame[] = [];
+  const geometryReferenceFrames: ObjectWorkbenchPlanDeckReferenceFrame[] = [];
   const openingFrames = new Map<string, GeometryOpeningFrame>();
   if (referenceFootprint?.polygon.length) {
     for (const planLine of geometryPlan.house.lines ?? []) {
@@ -496,58 +555,34 @@ function buildGeometryLookup(
       const sourceEdgeId = normalizeSourceId(metadataString(planLine.metadata, 'sourceEdgeId') ?? planLine.id);
       if (!sourceEdgeId) continue;
       const line = lineToMetres(planLine.line);
-      const dx = line.end.x - line.start.x;
-      const dy = line.end.y - line.start.y;
-      const hostSpanM = Math.hypot(dx, dy);
-      if (hostSpanM <= ZERO_DIMENSION_EPSILON_M) continue;
-      const alongUnitX = dx / hostSpanM;
-      const alongUnitY = dy / hostSpanM;
-      const outward = resolveOutwardUnit({
+      const deckFrame = buildDeckReferenceFrameFromSegment({
+        sourceEdgeId,
         start: line.start,
         end: line.end,
         footprint: referenceFootprint.polygon,
       });
-      const frame: GeometryOpeningFrame = {
+      if (!deckFrame) continue;
+      const openingFrame: GeometryOpeningFrame = {
         hostEdgeId: sourceEdgeId,
         hostEdgeStart: line.start,
         hostEdgeEnd: line.end,
-        hostSpanM,
-        alongUnitX,
-        alongUnitY,
-        outwardUnitX: outward.x,
-        outwardUnitY: outward.y,
+        hostSpanM: deckFrame.spanEndM - deckFrame.spanStartM,
+        alongUnitX: deckFrame.alongUnitX,
+        alongUnitY: deckFrame.alongUnitY,
+        outwardUnitX: deckFrame.outwardUnitX,
+        outwardUnitY: deckFrame.outwardUnitY,
       };
-      openingFrames.set(sourceEdgeId, frame);
+      openingFrames.set(sourceEdgeId, openingFrame);
 
-      const horizontal = Math.abs(dy) <= ZERO_DIMENSION_EPSILON_M;
-      const vertical = Math.abs(dx) <= ZERO_DIMENSION_EPSILON_M;
-      if (!horizontal && !vertical) continue;
-      const spanStartM = horizontal ? Math.min(line.start.x, line.end.x) : Math.min(line.start.y, line.end.y);
-      const spanEndM = horizontal ? Math.max(line.start.x, line.end.x) : Math.max(line.start.y, line.end.y);
-      const edgeCoordinateM = horizontal ? line.start.y : line.start.x;
-      const frameAlongUnitX = horizontal ? 1 : 0;
-      const frameAlongUnitY = horizontal ? 0 : 1;
-      referenceFrames.push({
-        hostEdgeId: frameSideFromOutward({ horizontal, outward }),
-        sourceEdgeId,
-        axis: horizontal ? 'along' : 'depth',
-        spanStartM,
-        spanEndM,
-        edgeCoordinateM,
-        outwardDirection: horizontal ? (outward.y < 0 ? -1 : 1) : (outward.x < 0 ? -1 : 1),
-        hostEdgeStart: horizontal
-          ? { x: spanStartM, y: line.start.y }
-          : { x: line.start.x, y: spanStartM },
-        hostEdgeEnd: horizontal
-          ? { x: spanEndM, y: line.start.y }
-          : { x: line.start.x, y: spanEndM },
-        alongUnitX: frameAlongUnitX,
-        alongUnitY: frameAlongUnitY,
-        outwardUnitX: outward.x,
-        outwardUnitY: outward.y,
-      });
+      geometryReferenceFrames.push(deckFrame);
     }
   }
+  const projectionReferenceFrames =
+    footprint?.source === 'top_projection_committed'
+      ? buildDeckReferenceFramesFromPolygon(footprint.polygon)
+      : [];
+  const referenceFrames = projectionReferenceFrames.length ? projectionReferenceFrames : geometryReferenceFrames;
+  const commitReferenceFrames = geometryReferenceFrames.length ? geometryReferenceFrames : referenceFrames;
 
   return {
     footprint,
@@ -555,6 +590,7 @@ function buildGeometryLookup(
     deckSurfaces,
     openingPolygons: topProjectionLookup.openingPolygons,
     referenceFrames,
+    commitReferenceFrames,
     openingFrames,
   };
 }
@@ -887,7 +923,7 @@ function buildDeckInteraction(input: {
     renderedCenter: polygonCenter(input.polygon),
     commitStartPolygon: resolveDeckCommitStartPolygon(input.deck),
     referenceFrames: [...input.lookup.referenceFrames],
-    commitReferenceFrames: [...input.lookup.referenceFrames],
+    commitReferenceFrames: [...input.lookup.commitReferenceFrames],
     crossEdgeReference: null,
   };
 }
