@@ -99,6 +99,7 @@ export default function ProjectDetailContent({
   ].filter(item => item.value);
 
   const TitleTag = titleAs;
+  const detailGallery = project.gallery.filter(image => image.src !== project.heroImage.src);
 
   return (
     <article
@@ -117,7 +118,8 @@ export default function ProjectDetailContent({
             src={heroSlides[activeSlide]?.src || project.heroImage.src}
             alt={heroSlides[activeSlide]?.alt || project.heroImage.alt}
             fill
-            priority={variant === 'standalone'}
+            priority
+            fetchPriority="high"
             sizes="(max-width: 720px) 100vw, (max-width: 1280px) 66vw, 900px"
             style={{ objectFit: 'cover' }}
           />
@@ -128,10 +130,10 @@ export default function ProjectDetailContent({
               </div>
               <div className="project-hero__nav" aria-label="Project gallery navigation">
                 <button type="button" onClick={goPrev} aria-label="Previous image">
-                  <span aria-hidden>‹</span>
+                  <span aria-hidden>&lt;</span>
                 </button>
                 <button type="button" onClick={goNext} aria-label="Next image">
-                  <span aria-hidden>›</span>
+                  <span aria-hidden>&gt;</span>
                 </button>
               </div>
             </>
@@ -194,9 +196,9 @@ export default function ProjectDetailContent({
           </section>
         ) : null}
 
-        {project.gallery.length ? (
+        {detailGallery.length ? (
           <section className="project-detail__gallery" aria-label="Gallery">
-            {project.gallery.map(image => (
+            {detailGallery.map(image => (
               <figure key={image.src}>
                 <Image
                   src={image.src}
@@ -223,7 +225,7 @@ export default function ProjectDetailContent({
                   <>
                     <span className="project-detail__related-kicker">{related.region}</span>
                     <span className="project-detail__related-title">{related.title}</span>
-                    <span className="project-detail__related-meta">{related.type} · {related.roof}</span>
+                    <span className="project-detail__related-meta">{related.type} - {related.roof}</span>
                   </>
                 );
 

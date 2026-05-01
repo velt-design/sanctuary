@@ -85,19 +85,19 @@ export default function HomePageClient({
         <HomeProjectsSection
           projects={featuredProjects}
           seeMoreHref="/projects"
-          seeMoreLabel="View all projects"
+          seeMoreLabel="View projects"
           className="home-projects"
         />
 
-        <RoofStudiesSection />
+        <RoofStudiesSection variant="editorial" />
 
-        <section className="bg-page py-[clamp(28px,6vh,88px)]">
-          <div style={MATERIALS_COPY_STYLE}>
-            <p className="text-[12px] uppercase tracking-[0.12em] text-muted">Materials</p>
-            <h2 className="mt-3 max-w-[24ch] text-balance text-[clamp(32px,4.4vw,62px)] font-semibold leading-[1.05] tracking-[-0.02em] text-ink">
+        <section className="home-section home-section--materials bg-page py-[clamp(28px,6vh,88px)]">
+          <div className="home-section__inner" style={MATERIALS_COPY_STYLE}>
+            <p className="home-section__eyebrow text-[12px] uppercase tracking-[0.12em] text-muted">Materials</p>
+            <h2 className="home-section__title mt-3 max-w-[24ch] text-balance text-[clamp(32px,4.4vw,62px)] font-semibold leading-[1.05] tracking-[-0.02em] text-ink">
               Bright and open, or cool and shaded - dial it in with materials.
             </h2>
-            <p className="mt-6 max-w-[76ch] text-[17px] leading-[1.66] text-muted">
+            <p className="home-section__copy mt-6 max-w-[76ch] text-[17px] leading-[1.66] text-muted">
               Material choice sets the tone for the entire pergola - how light moves through it, how warm it feels, how much upkeep it asks for, and how it will age over time.{` `}
               <span className="text-ink">Acrylic keeps spaces bright and open. Timber adds warmth and texture. Combination systems balance both.</span>{` `}
               Aluminium stays crisp and architectural, with colour options that sit quietly alongside your exterior palette.
@@ -105,7 +105,7 @@ export default function HomePageClient({
           </div>
         </section>
 
-        <RoofComparisonSection />
+        <RoofComparisonSection variant="editorial" />
 
         <section aria-label="Quick estimate" className="bg-page home-mid-cta">
           <div className="mx-auto flex min-h-[92px] w-[min(88vw,1288px)] items-center justify-center py-5">
@@ -120,12 +120,12 @@ export default function HomePageClient({
 
         <section
           aria-labelledby="materials-compare-heading"
-          className="bg-page py-[clamp(48px,7vh,96px)]"
+          className="home-section home-section--materials-compare bg-page py-[clamp(48px,7vh,96px)]"
         >
-          <div className="mx-auto w-[min(88vw,1288px)]">
+          <div className="home-section__inner mx-auto w-[min(88vw,1288px)]">
             <p
               id="materials-compare-heading"
-              className="text-[12px] uppercase tracking-[0.12em] text-muted"
+              className="home-section__eyebrow text-[12px] uppercase tracking-[0.12em] text-muted"
             >
               Material comparison
             </p>

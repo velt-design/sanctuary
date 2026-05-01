@@ -71,7 +71,7 @@ export default function ProjectsCarouselMobile({
     const dx = state.lastX - state.startX;
     const dy = state.lastY - state.startY;
     const distance = Math.hypot(dx, dy);
-    const TAP_THRESHOLD = 14; // px – small jitter allowed
+    const TAP_THRESHOLD = 14; // px - small jitter allowed
     // If movement exceeds threshold, treat as swipe/scroll, not a tap
     state.isDragging = distance > TAP_THRESHOLD;
     state.active = false;
@@ -183,7 +183,7 @@ export default function ProjectsCarouselMobile({
             className="projects-mobile-card"
             data-project-card
             data-project-slug={project.slug}
-            aria-label={`${project.title} – ${project.location}`}
+            aria-label={`${project.title} - ${project.location}`}
             onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
@@ -231,10 +231,10 @@ export default function ProjectsCarouselMobile({
       {projects.length > 1 && showNav !== false && (
         <div className="projects-mobile-carousel__nav" aria-label="Scroll projects">
           <button type="button" onClick={() => scrollByCard(-1)} aria-label="Previous project">
-            <span aria-hidden>‹</span>
+            <span aria-hidden>&lt;</span>
           </button>
           <button type="button" onClick={() => scrollByCard(1)} aria-label="Next project">
-            <span aria-hidden>›</span>
+            <span aria-hidden>&gt;</span>
           </button>
         </div>
       )}

@@ -744,3 +744,411 @@ details[open] .accordion__icon::before{ transform: translate(-50%, -50%) rotate(
 }
 
 /* Roofing options: legacy styles removed in favor of Tailwind-based two-column layout */
+
+/* Current architectural-editorial homepage system */
+body.homepage{
+  --home-inner:min(88vw,1288px);
+  --home-section-y:clamp(58px,8.5vh,118px);
+  --home-section-y-tight:clamp(42px,6.2vh,82px);
+  --home-title:clamp(30px,4vw,56px);
+  --home-title-sm:clamp(28px,3.2vw,42px);
+  --home-copy:clamp(15px,1.2vw,17px);
+  --home-muted:#666c72;
+  --home-line:#d4d8dd;
+}
+
+body.homepage main .container{
+  width:var(--home-inner);
+  max-width:1288px;
+  padding-inline:0;
+  margin-inline:auto;
+}
+
+.homepage .home-section{
+  border-bottom:var(--bw) solid var(--home-line);
+  padding-block:var(--home-section-y);
+}
+
+.homepage .home-section__inner{
+  width:var(--home-inner) !important;
+  max-width:1288px;
+}
+
+.homepage .home-section__eyebrow,
+.homepage .home-projects-section__eyebrow,
+.homepage .roof-studies--editorial .roof-studies__eyebrow,
+.homepage .roof-comparison--editorial .roof-comparison__eyebrow,
+.homepage .products-head__eyebrow{
+  color:var(--home-muted);
+  font-size:12px;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+}
+
+.homepage .home-section__title,
+.homepage .home-projects-section__title,
+.homepage .roof-studies--editorial .roof-studies__title,
+.homepage .roof-comparison--editorial .roof-comparison__title,
+.homepage .products-head__headline{
+  color:var(--fg);
+  font-size:var(--home-title-sm);
+  font-weight:560;
+  line-height:1.06;
+  letter-spacing:0;
+  text-wrap:balance;
+}
+
+.homepage .home-section__copy,
+.homepage .home-projects-section__intro,
+.homepage .roof-studies--editorial .roof-studies__intro,
+.homepage .products-head__copy{
+  max-width:68ch;
+  color:var(--home-muted);
+  font-size:var(--home-copy);
+  line-height:1.68;
+}
+
+.homepage .home-hero__title{
+  font-weight:560;
+}
+
+.homepage .home-hero__cta,
+.homepage .home-mid-cta a,
+.homepage .process-cta-bar__inner{
+  min-height:44px;
+  border-radius:0;
+  font-size:12px;
+  font-weight:700;
+  letter-spacing:.1em;
+  text-transform:uppercase;
+}
+
+.homepage .home-proof{
+  background:#f1f2f3;
+  border-color:var(--home-line);
+}
+
+.homepage .home-proof__inner{
+  padding-block:clamp(14px,2vw,22px);
+}
+
+.homepage .home-proof__item{
+  min-height:48px;
+  border-color:var(--home-line);
+  color:#202326;
+  font-size:clamp(11px,1vw,13px);
+  letter-spacing:.1em;
+}
+
+.homepage .home-projects-section{
+  padding-block:var(--home-section-y);
+  border-color:var(--home-line);
+}
+
+.homepage .home-projects-section__head{
+  align-items:flex-start;
+}
+
+.homepage .home-projects-section__track{
+  margin-top:clamp(30px,4vw,54px);
+}
+
+.homepage .home-projects-section__rail{
+  gap:clamp(14px,1.8vw,24px);
+}
+
+.homepage .home-projects-section__card{
+  height:clamp(360px,56vh,540px);
+  width:min(84vw,560px);
+  border-color:var(--home-line);
+  background:#e2e5e8;
+}
+
+.homepage .home-projects-section__card img{
+  filter:saturate(.96) contrast(.98);
+}
+
+.homepage .home-projects-section__card--more{
+  width:min(70vw,360px);
+  background:#151719 !important;
+}
+
+.homepage .home-projects-section__card--more > div:first-child{
+  background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(0,0,0,.18));
+}
+
+.homepage .home-projects-section__controls button,
+.homepage .roof-studies--editorial .ui-line-glyph-btn{
+  width:42px;
+  height:42px;
+  border:var(--bw) solid var(--home-line);
+  background:transparent;
+  color:var(--fg);
+}
+
+.homepage .roof-studies--editorial{
+  border-top:0;
+  border-bottom:var(--bw) solid var(--home-line);
+}
+
+.homepage .roof-studies--editorial .roof-studies__head{
+  width:var(--home-inner);
+  max-width:1288px;
+  padding-block:var(--home-section-y-tight);
+}
+
+.homepage .roof-studies--editorial .roof-studies__track{
+  gap:clamp(14px,1.8vw,24px);
+  padding-bottom:var(--home-section-y) !important;
+}
+
+.homepage .roof-studies--editorial .roof-studies__card{
+  height:clamp(430px,58vh,620px) !important;
+  border-color:var(--home-line);
+  background:#e2e5e8;
+  box-shadow:none;
+}
+
+.homepage .roof-studies--editorial .roof-studies__card:hover{
+  transform:none;
+}
+
+.homepage .roof-studies--editorial .roof-studies__overlay{
+  padding:clamp(18px,2.6vw,34px);
+}
+
+.homepage .roof-comparison--editorial{
+  padding-block:0;
+  border-bottom:var(--bw) solid var(--home-line);
+}
+
+.homepage .roof-comparison--editorial .roof-comparison__inner{
+  width:var(--home-inner);
+  max-width:1288px;
+  padding-inline:0;
+}
+
+.homepage .roof-comparison--editorial .roof-comparison__surface{
+  border-left:0;
+  border-right:0;
+  border-color:var(--home-line);
+  background:transparent;
+  padding:var(--home-section-y-tight) 0;
+}
+
+.homepage .roof-comparison--editorial .roof-comparison__toggle{
+  max-width:520px;
+  background:#eef0f2;
+  border-color:var(--home-line);
+}
+
+.homepage .roof-comparison--editorial .roof-comparison__toggle-button{
+  height:46px;
+  font-size:12px;
+}
+
+.homepage .roof-comparison--editorial .roof-comparison__meters{
+  margin-top:clamp(34px,4vw,52px);
+}
+
+.homepage .roof-comparison--editorial .roof-comparison__meter-label{
+  color:#202326;
+  font-size:13px;
+  letter-spacing:.08em;
+}
+
+.homepage .roof-comparison--editorial .roof-comparison__copy{
+  max-width:62ch;
+  margin-inline:0;
+  text-align:left;
+  color:var(--home-muted);
+}
+
+.homepage .roof-comparison--editorial .roof-comparison__media{
+  background:#e2e5e8;
+}
+
+.homepage .home-mid-cta{
+  border-bottom:var(--bw) solid var(--home-line);
+}
+
+.homepage .home-mid-cta > div{
+  min-height:clamp(86px,11vh,128px);
+}
+
+.homepage .home-section--materials{
+  padding-block:var(--home-section-y-tight);
+}
+
+.homepage .home-section--materials-compare{
+  padding-block:var(--home-section-y-tight);
+}
+
+.homepage .products-head--editorial,
+.homepage .process-head,
+.homepage .warranty-support__head{
+  height:auto;
+  align-items:flex-start;
+  padding-block:var(--home-section-y-tight);
+  border-color:var(--home-line);
+}
+
+.homepage .products-head__inner{
+  width:var(--home-inner);
+  max-width:1288px;
+  padding-inline:0;
+}
+
+.homepage .process-head__inner{
+  width:var(--home-inner);
+  max-width:1288px;
+  margin-inline:auto;
+  padding-inline:0;
+}
+
+.homepage .process-head__title{
+  color:var(--fg);
+  font-size:var(--home-title-sm);
+  font-weight:560;
+  line-height:1.06;
+  letter-spacing:0;
+  text-align:left;
+  text-transform:none;
+}
+
+.homepage #process{
+  padding-top:0;
+}
+
+.homepage #process .big-num{
+  color:#2b2f33;
+  opacity:.78;
+}
+
+.homepage #process .col-num::after,
+.homepage #process .step-rail__line{
+  background:var(--home-line);
+}
+
+.homepage #process .step-title{
+  color:#777d83;
+  font-weight:500;
+}
+
+.homepage #process .step-card.is-active .step-title,
+.homepage #process .step-card.is-active .step-desc{
+  color:var(--fg);
+}
+
+.homepage .products-head--editorial{
+  border-top:var(--bw) solid var(--home-line);
+  border-bottom:0;
+}
+
+.homepage #products{
+  padding-top:0;
+  padding-bottom:var(--home-section-y);
+}
+
+.homepage #products .products-grid{
+  margin-top:0;
+  gap:clamp(14px,1.8vw,24px);
+}
+
+.homepage #products .tile .m{
+  height:clamp(300px,48vh,580px);
+  background:#dfe3e7;
+}
+
+.homepage #products .tile .t{
+  border-bottom-color:var(--home-line);
+  font-weight:500;
+}
+
+@media (hover:hover) and (min-width:1024px){
+  .homepage #products .tile .m:hover,
+  .homepage #products .tile:focus-visible .m{
+    transform:translateY(-2px);
+    box-shadow:none;
+  }
+  .homepage #products .tile .m:hover .product-image--base,
+  .homepage #products .tile:focus-visible .product-image--base{
+    opacity:0;
+    transform:scale(.99) translateX(-2%);
+  }
+  .homepage #products .tile .m:hover .product-image--hover,
+  .homepage #products .tile:focus-visible .product-image--hover{
+    opacity:1;
+    transform:scale(1.025) translateX(0);
+  }
+}
+
+.homepage .warranty-support{
+  margin-bottom:0;
+  border-color:var(--home-line);
+}
+
+.homepage .warranty-support__inner{
+  width:var(--home-inner);
+  max-width:760px;
+  padding:0 0 var(--home-section-y);
+  text-align:left;
+}
+
+.homepage .warranty-support__body{
+  color:var(--home-muted);
+  font-size:var(--home-copy);
+  line-height:1.72;
+}
+
+.homepage .process-cta-bar{
+  background:var(--accentRed);
+}
+
+.homepage .process-cta-bar__inner{
+  min-height:56px;
+  justify-content:center;
+  padding-block:0;
+}
+
+@media (max-width:960px){
+  body.homepage{
+    --home-inner:calc(100vw - 46px);
+    --home-section-y:clamp(46px,7vh,76px);
+    --home-section-y-tight:clamp(36px,6vh,58px);
+  }
+  body.homepage main .container{
+    width:var(--home-inner);
+  }
+  .homepage .home-hero__inner{
+    width:var(--home-inner);
+    padding-bottom:clamp(118px,17vh,150px);
+  }
+  .homepage .home-proof__inner{
+    width:100%;
+  }
+  .homepage .home-proof__item{
+    min-height:58px;
+  }
+  .homepage .home-projects-section__head{
+    flex-direction:column;
+  }
+  .homepage .home-projects-section__card,
+  .homepage .roof-studies--editorial .roof-studies__card{
+    height:clamp(360px,58vh,500px) !important;
+  }
+  .homepage .roof-comparison--editorial .roof-comparison__surface{
+    border-top:0;
+  }
+  .homepage .home-section__title,
+  .homepage .home-projects-section__title,
+  .homepage .roof-studies--editorial .roof-studies__title,
+  .homepage .roof-comparison--editorial .roof-comparison__title,
+  .homepage .products-head__headline,
+  .homepage .process-head__title{
+    font-size:clamp(28px,8vw,40px);
+  }
+  .homepage #products .tile .m{
+    height:clamp(220px,36vh,360px);
+  }
+}

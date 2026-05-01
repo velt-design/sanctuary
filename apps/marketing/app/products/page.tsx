@@ -42,9 +42,10 @@ export default function ProductsIndex() {
           </p>
         </header>
         <div className="products-grid">
-          {items.map((it) => {
+          {items.map((it, index) => {
             const { primary, hover } = imagePairFor(it.href);
             const slug = it.href.split('/').pop() || '';
+            const eagerImage = index === 0;
             return (
               <Link key={it.href} href={it.href} className={`tile${slug === 'hip' ? ' tile--hip' : ''}`}>
                 <div className="m">
@@ -56,7 +57,8 @@ export default function ProductsIndex() {
                       sizes="(max-width: 1280px) 33vw, (max-width: 1024px) 50vw, 25vw"
                       className="product-image product-image--base"
                       style={{ objectFit: 'cover' }}
-                      priority={false}
+                      loading={eagerImage ? 'eager' : 'lazy'}
+                      fetchPriority={eagerImage ? 'high' : 'auto'}
                     />
                     <Image
                       src={hover}
@@ -65,7 +67,7 @@ export default function ProductsIndex() {
                       sizes="(max-width: 1280px) 33vw, (max-width: 1024px) 50vw, 25vw"
                       className="product-image product-image--hover"
                       style={{ objectFit: 'cover' }}
-                      priority={false}
+                      loading="lazy"
                     />
                   </div>
                 </div>

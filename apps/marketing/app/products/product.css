@@ -14,17 +14,21 @@
 /* Products index grid */
 .products-index{min-height:calc(100dvh - var(--navH-fix, var(--navH)) - var(--subH, 0px) - var(--bw));
   margin-top:calc(var(--navH-fix, var(--navH)) + var(--subH, 0px) + var(--bw));
-  /* Tighter gap below the subheader so the grid starts closer */
-  padding:calc(var(--g) * .45) 0 var(--g) 0}
+  padding:clamp(28px,4vw,58px) 0 clamp(54px,7vw,96px) 0}
 .products-index .products-grid{display:grid; gap:var(--g); grid-template-columns:repeat(2, minmax(0,1fr))}
 /* Desktop: show 4 across from 1024px and up */
 @media (min-width:1024px){.products-index .products-grid{grid-template-columns:repeat(4, minmax(0,1fr))}}
 @media (max-width:720px){.products-index .products-grid{grid-template-columns:1fr}}
 /* Desktop/default: restore original tall tile height */
-.products-index .tile .m{ height:clamp(420px,72dvh,1000px); }
+.products-index .tile .m{ height:clamp(360px,64dvh,820px); background:#dfe3e7; }
 .products-index .tile .k{margin:12px 0 6px 0}
 /* Reduce inherited top margin from home grid on the products page */
 .products-index .container > .products-grid{ margin-top: calc(var(--g) * 0.25); }
+.products-index .container{ width:min(88vw,1288px); max-width:1288px; padding-inline:0; }
+.products-index__head{ max-width:68ch; margin-bottom:clamp(28px,4vw,52px); }
+.products-index .product-kicker{ color:#666c72; letter-spacing:.14em; }
+.products-index .product-title{ font-size:clamp(32px,4vw,56px); line-height:1.06; font-weight:560; letter-spacing:0; margin-bottom:14px; }
+.products-index .product-desc{ max-width:66ch; color:#666c72; font-size:clamp(15px,1.2vw,17px); line-height:1.68; }
 .tile-card{display:flex; flex-direction:column; border:var(--bw) solid var(--border); border-radius:10px; overflow:hidden; background:var(--panel); color:inherit; text-decoration:none}
 .tile-media{aspect-ratio: 4/3; background:linear-gradient(180deg, #E9EAEC, #F7F8F9); border-bottom:var(--bw) solid var(--border)}
 .tile-body{padding:12px 14px}
@@ -79,27 +83,27 @@
 @media (hover:hover) and (min-width:1024px){
   /* Pointer: only hovering the image box animates */
   .products-index .tile .m:hover{
-    transform:translateY(-6px) rotateX(3deg) rotateY(-3deg);
-    box-shadow:0 18px 40px rgba(0,0,0,.22);
+    transform:translateY(-2px);
+    box-shadow:none;
   }
   .products-index .tile .m:hover .product-image--base{
     opacity:0;
-    transform:scale(.96) translateX(-6%);
+    transform:scale(.99) translateX(-2%);
   }
   .products-index .tile .m:hover .product-image--hover{
     opacity:1;
-    transform:scale(1.08) translateX(0);
+    transform:scale(1.025) translateX(0);
   }
   /* Hip tile: invert parallax direction so the hover image moves in from the left
      and the base render drifts slightly right instead of left. */
   .products-index .tile--hip .m:hover .product-image--base{
-    transform:scale(.96) translateX(6%);
+    transform:scale(.99) translateX(2%);
   }
   .products-index .tile--hip .product-image--hover{
-    transform:scale(1.05) translateX(-14%);
+    transform:scale(1.015) translateX(-6%);
   }
   .products-index .tile--hip .m:hover .product-image--hover{
-    transform:scale(1.08) translateX(0);
+    transform:scale(1.025) translateX(0);
   }
 }
 /* Reset global tile zoom so only the parallax swap runs here */
@@ -115,16 +119,16 @@
 
 /* Keyboard focus: keep image box as cue; text stays flat */
 .products-index .tile:focus-visible .m{
-  transform:translateY(-6px) rotateX(3deg) rotateY(-3deg);
-  box-shadow:0 18px 40px rgba(0,0,0,.22);
+  transform:translateY(-2px);
+  box-shadow:none;
 }
 .products-index .tile:focus-visible .product-image--base{
   opacity:0;
-  transform:scale(.96) translateX(-6%);
+  transform:scale(.99) translateX(-2%);
 }
 .products-index .tile:focus-visible .product-image--hover{
   opacity:1;
-  transform:scale(1.08) translateX(0);
+  transform:scale(1.025) translateX(0);
 }
 /* Subtle focus indication on title text without any box/3D effect */
 .products-index .tile:focus-visible .t{

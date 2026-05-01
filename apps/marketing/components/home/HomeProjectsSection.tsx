@@ -68,27 +68,28 @@ export default function HomeProjectsSection({
     <section
       aria-labelledby="projects-home-heading"
       className={cn(
+        'home-projects-section',
         'border-y border-page bg-page py-[clamp(56px,8vh,112px)] [border-top-width:var(--bw)] [border-bottom-width:var(--bw)]',
         className
       )}
     >
       <div className="mx-auto w-[min(88vw,1288px)]">
-        <div className="flex items-end justify-between gap-6">
-          <div className="max-w-[60ch]">
-            <p className="text-[12px] uppercase tracking-[0.12em] text-muted">Projects</p>
+        <div className="home-projects-section__head flex items-end justify-between gap-6">
+          <div className="home-projects-section__copy max-w-[60ch]">
+            <p className="home-projects-section__eyebrow text-[12px] uppercase tracking-[0.12em] text-muted">Projects</p>
             <h2
               id="projects-home-heading"
-              className="mt-2 text-balance text-[clamp(28px,3.2vw,42px)] font-semibold leading-[1.08] tracking-[-0.015em] text-ink"
+              className="home-projects-section__title mt-2 text-balance text-[clamp(28px,3.2vw,42px)] font-semibold leading-[1.08] tracking-[-0.015em] text-ink"
             >
               Built environments, resolved in detail.
             </h2>
-            <p className="mt-3 text-[16px] leading-[1.6] text-muted">
+            <p className="home-projects-section__intro mt-3 text-[16px] leading-[1.6] text-muted">
               A selection of recent residential and commercial installs, each tuned to site, roof form, and how the space is actually used.
             </p>
           </div>
 
           {projects.length > 1 ? (
-            <div className="hidden items-center gap-2 md:flex" aria-label="Projects carousel controls">
+            <div className="home-projects-section__controls hidden items-center gap-2 md:flex" aria-label="Projects carousel controls">
               <button
                 type="button"
                 onClick={() => scrollByCard(-1)}
@@ -109,14 +110,14 @@ export default function HomeProjectsSection({
           ) : null}
         </div>
 
-        <div ref={trackRef} className="mt-8 overflow-x-auto pb-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-          <div className="flex snap-x snap-mandatory gap-4 md:gap-6">
+        <div ref={trackRef} className="home-projects-section__track mt-8 overflow-x-auto pb-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+          <div className="home-projects-section__rail flex snap-x snap-mandatory gap-4 md:gap-6">
             {projects.map((project) => (
               <Link
                 key={project.slug}
                 href={`/projects?slug=${project.slug}`}
                 data-home-project-card="true"
-                className="group relative h-[clamp(345px,60vh,470px)] w-[min(86vw,560px)] shrink-0 snap-start overflow-hidden border border-page bg-card [border-width:var(--bw)]"
+                className="home-projects-section__card group relative h-[clamp(345px,60vh,470px)] w-[min(86vw,560px)] shrink-0 snap-start overflow-hidden border border-page bg-card [border-width:var(--bw)]"
                 aria-label={`${project.title} - ${project.location}`}
               >
                 <Image
@@ -146,7 +147,7 @@ export default function HomeProjectsSection({
 
             <Link
               href={seeMoreHref}
-              className="group relative h-[clamp(345px,60vh,470px)] w-[min(70vw,420px)] shrink-0 snap-start overflow-hidden border border-page bg-[var(--accentRed)] [border-width:var(--bw)]"
+              className="home-projects-section__card home-projects-section__card--more group relative h-[clamp(345px,60vh,470px)] w-[min(70vw,420px)] shrink-0 snap-start overflow-hidden border border-page bg-[var(--accentRed)] [border-width:var(--bw)]"
               aria-label={seeMoreLabel}
             >
               <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0.04),rgba(0,0,0,0.24))]" />
@@ -164,7 +165,7 @@ export default function HomeProjectsSection({
         </div>
 
         {projects.length > 1 ? (
-          <div className="mt-4 flex items-center justify-end gap-2 md:hidden" aria-label="Projects carousel controls">
+          <div className="home-projects-section__controls home-projects-section__controls--mobile mt-4 flex items-center justify-end gap-2 md:hidden" aria-label="Projects carousel controls">
             <button
               type="button"
               onClick={() => scrollByCard(-1)}

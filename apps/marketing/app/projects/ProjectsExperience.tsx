@@ -235,7 +235,7 @@ export default function ProjectsExperience({ projects, initialSlugFromUrl = '' }
                     >
                       <span className="projects-list__title">{project.title}</span>
                       <span className="projects-list__location">{project.location}</span>
-                      <span className="projects-list__tag">{project.type} · {project.roof}</span>
+                      <span className="projects-list__tag">{project.type} - {project.roof}</span>
                     </button>
                   );
                 })

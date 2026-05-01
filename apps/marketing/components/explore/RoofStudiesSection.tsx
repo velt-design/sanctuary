@@ -50,6 +50,7 @@ export type RoofShapeSelectedPayload = {
 type RoofStudiesSectionProps = {
   debug?: boolean;
   className?: string;
+  variant?: 'default' | 'editorial';
   onShapeSelected?: (payload: RoofShapeSelectedPayload) => void;
   onRequestScrollToNext?: (behavior: ScrollBehavior) => void;
 };
@@ -326,6 +327,7 @@ function IconClose() {
 export default function RoofStudiesSection({
   debug,
   className,
+  variant = 'default',
   onShapeSelected,
   onRequestScrollToNext,
 }: RoofStudiesSectionProps) {
@@ -980,22 +982,29 @@ export default function RoofStudiesSection({
   return (
     <section
       data-roof-studies-root="true"
-      className={cn('border-b border-page bg-page [border-bottom-width:var(--bw)]', className, debug && 'outline outline-1 outline-cyan-500/30')}
+      data-roof-studies-variant={variant}
+      className={cn(
+        'roof-studies',
+        variant === 'editorial' && 'roof-studies--editorial',
+        'border-b border-page bg-page [border-bottom-width:var(--bw)]',
+        className,
+        debug && 'outline outline-1 outline-cyan-500/30'
+      )}
     >
-      <Container className="py-16 md:py-20">
+      <Container className={cn('roof-studies__head py-16 md:py-20', variant === 'editorial' && 'py-0 md:py-0')}>
         <div className="flex flex-wrap items-end justify-between gap-4">
-          <div className="max-w-[68ch]">
-            <p className="text-[12px] uppercase tracking-[0.12em] text-muted">Style</p>
-            <h2 className="mt-2 text-[clamp(28px,3.2vw,42px)] font-semibold leading-[1.08] tracking-[-0.015em] text-ink">
+          <div className="roof-studies__copy max-w-[68ch]">
+            <p className="roof-studies__eyebrow text-[12px] uppercase tracking-[0.12em] text-muted">Style</p>
+            <h2 className="roof-studies__title mt-2 text-[clamp(28px,3.2vw,42px)] font-semibold leading-[1.08] tracking-[-0.015em] text-ink">
               Sanctuary roof shape studies.
             </h2>
-            <p className="mt-3 text-[16px] leading-[1.6] text-muted">
+            <p className="roof-studies__intro mt-3 text-[16px] leading-[1.6] text-muted">
               Review pitched, gable, hip and box perimeter forms in motion before locking in your shape direction.
             </p>
           </div>
 
           {isDesktopHighlights && isHighlightsExpanded ? (
-            <div className="hidden items-center gap-2 lg:flex">
+            <div className="roof-studies__controls hidden items-center gap-2 lg:flex">
               <LineGlyphButton aria-label="Previous roof shape" onClick={() => scrollHighlights(-1)} disabled={isHighlightsWidthTransitioning}>
                 <IconChevronLeft />
               </LineGlyphButton>
@@ -1013,6 +1022,7 @@ export default function RoofStudiesSection({
       <div
         ref={highlightsTrackRef}
         className={cn(
+          'roof-studies__track',
           'flex gap-4 pb-16 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:gap-6 md:pb-20',
           isCompactHighlights ? 'overflow-hidden snap-none' : 'overflow-x-auto',
           !isCompactHighlights && !isHighlightsWidthTransitioning && 'snap-x snap-mandatory',
@@ -1027,7 +1037,7 @@ export default function RoofStudiesSection({
           transition: 'none',
         }}
       >
-        {HIGHLIGHT_CARDS.map((card) => {
+        {HIGHLIGHT_CARDS.map((card, cardIndex) => {
           const selected = card.id === selectedHighlightId;
           const textTone = card.tone ?? 'light';
           const shouldRenderExpandedVideo = isDesktopExpandedHighlights;
@@ -1059,6 +1069,7 @@ export default function RoofStudiesSection({
               data-highlight-card
               data-highlight-card-id={card.id}
               className={cn(
+                'roof-studies__card',
                 'group relative h-[640px] shrink-0 overflow-hidden border border-page bg-card text-left [border-width:var(--bw)]',
                 isCompactHighlights && 'motion-safe:transition-transform motion-safe:hover:-translate-y-[2px]',
                 !isCompactHighlights && 'snap-center'
@@ -1087,6 +1098,8 @@ export default function RoofStudiesSection({
                   alt={card.compactMedia.alt}
                   fill
                   quality={75}
+                  loading={cardIndex < 2 ? 'eager' : 'lazy'}
+                  fetchPriority={cardIndex < 2 ? 'high' : 'auto'}
                   sizes={
                     isCompactHighlights
                       ? '(min-width: 1024px) 980px, 88vw'
@@ -1152,7 +1165,7 @@ export default function RoofStudiesSection({
               />
 
               <div
-                className={cn('pointer-events-none absolute inset-x-0 bottom-0 z-20 p-5 md:p-8', textTone === 'dark' ? 'text-ink' : 'text-white')}
+                className={cn('roof-studies__overlay pointer-events-none absolute inset-x-0 bottom-0 z-20 p-5 md:p-8', textTone === 'dark' ? 'text-ink' : 'text-white')}
                 data-roof-overlay="true"
                 data-roof-overlay-card-id={card.id}
               >

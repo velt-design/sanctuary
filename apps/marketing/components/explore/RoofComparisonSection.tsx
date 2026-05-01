@@ -136,9 +136,10 @@ function useIsMobileViewport(maxWidth = 1023) {
 type RoofComparisonSectionProps = {
   debug?: boolean;
   className?: string;
+  variant?: 'default' | 'editorial';
 };
 
-export default function RoofComparisonSection({ debug, className }: RoofComparisonSectionProps) {
+export default function RoofComparisonSection({ debug, className, variant = 'default' }: RoofComparisonSectionProps) {
   const sectionRef = React.useRef<HTMLElement | null>(null);
   const [selected, setSelected] = React.useState<RoofTypeFitId>('acrylic');
   const [isSwapping, setIsSwapping] = React.useState(false);
@@ -221,10 +222,16 @@ export default function RoofComparisonSection({ debug, className }: RoofComparis
   return (
     <section
       ref={sectionRef}
-      className={cn('bg-page py-8 md:py-14', className, debug && 'outline outline-1 outline-sky-500/30')}
+      data-roof-comparison-variant={variant}
+      className={cn(
+        'roof-comparison bg-page py-8 md:py-14',
+        variant === 'editorial' && 'roof-comparison--editorial',
+        className,
+        debug && 'outline outline-1 outline-sky-500/30'
+      )}
     >
-      <div className="mx-auto w-full max-w-[1610px] px-4 md:px-6">
-        <div className="ui-line-surface relative overflow-hidden border-card bg-card p-[18px] md:p-6 lg:min-h-[clamp(380px,34vw,500px)]">
+      <div className="roof-comparison__inner mx-auto w-full max-w-[1610px] px-4 md:px-6">
+        <div className="roof-comparison__surface ui-line-surface relative overflow-hidden border-card bg-card p-[18px] md:p-6 lg:min-h-[clamp(380px,34vw,500px)]">
             <span
               aria-hidden="true"
               className="pointer-events-none absolute left-[calc(100%-clamp(360px,28vw,480px)-20px)] top-[72px] hidden w-px bg-page lg:block lg:bottom-[calc(100%-clamp(360px,28vw,480px)-24px)]"
@@ -233,8 +240,8 @@ export default function RoofComparisonSection({ debug, className }: RoofComparis
             <div className="grid items-start gap-8 lg:grid-cols-[1fr_auto] lg:gap-10">
               <div className="min-w-0 pb-3">
                 <div>
-                  <p className="text-[12px] uppercase tracking-[0.12em] text-muted">Roof response</p>
-                  <h3 className="mt-[10px] text-balance text-[clamp(26px,3.1vw,44px)] font-semibold leading-[1.06] tracking-[-0.018em] text-ink">
+                  <p className="roof-comparison__eyebrow text-[12px] uppercase tracking-[0.12em] text-muted">Roof response</p>
+                  <h3 className="roof-comparison__title mt-[10px] text-balance text-[clamp(26px,3.1vw,44px)] font-semibold leading-[1.06] tracking-[-0.018em] text-ink">
                     Compare how each roof type performs.
                   </h3>
                 </div>
@@ -243,7 +250,7 @@ export default function RoofComparisonSection({ debug, className }: RoofComparis
                   <div
                     role="group"
                     aria-label="Roof type selector"
-                    className="relative grid grid-cols-3 overflow-hidden border border-page bg-[#e6e9ec] [border-width:var(--bw)]"
+                    className="roof-comparison__toggle relative grid grid-cols-3 overflow-hidden border border-page bg-[#e6e9ec] [border-width:var(--bw)]"
                   >
                     <span
                       aria-hidden="true"
@@ -265,6 +272,7 @@ export default function RoofComparisonSection({ debug, className }: RoofComparis
                           onClick={() => setSelected(option)}
                           aria-pressed={isSelected}
                           className={cn(
+                            'roof-comparison__toggle-button',
                             'relative z-10 h-[51px] px-3 text-center text-[13px] font-medium uppercase tracking-[0.07em]',
                             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/35 focus-visible:ring-inset',
                             index < ROOF_TYPE_FIT_OPTIONS.length - 1 && 'border-r border-page/60 [border-right-width:var(--bw)]',
@@ -281,6 +289,7 @@ export default function RoofComparisonSection({ debug, className }: RoofComparis
 
                 <div
                   className={cn(
+                    'roof-comparison__meters',
                     'mt-[56px] space-y-5',
                     !prefersReducedMotion && 'transition-opacity duration-200 ease-out',
                     !prefersReducedMotion && isSwapping && 'opacity-90'
@@ -290,8 +299,8 @@ export default function RoofComparisonSection({ debug, className }: RoofComparis
                     const level = selectedConfig.meters[row.key];
                     const fillPercent = (level / 5) * 100;
                     return (
-                      <div key={row.key} className="grid grid-cols-1 gap-y-[14px] sm:grid-cols-[minmax(180px,220px)_minmax(0,1fr)] sm:items-center sm:gap-x-3 sm:gap-y-0">
-                        <span className="text-[14px] font-medium uppercase tracking-[0.05em] text-ink md:text-[15px]">{row.label}</span>
+                      <div key={row.key} className="roof-comparison__meter-row grid grid-cols-1 gap-y-[14px] sm:grid-cols-[minmax(180px,220px)_minmax(0,1fr)] sm:items-center sm:gap-x-3 sm:gap-y-0">
+                        <span className="roof-comparison__meter-label text-[14px] font-medium uppercase tracking-[0.05em] text-ink md:text-[15px]">{row.label}</span>
 
                         <div role="img" aria-label={`${row.label}: ${level} of 5`} className="w-full">
                           <div className="relative h-[7px] md:h-[8px]">
@@ -333,11 +342,11 @@ export default function RoofComparisonSection({ debug, className }: RoofComparis
                   })}
                 </div>
 
-                <p className="mt-10 text-center text-[16px] leading-[1.45] text-muted/75 md:text-[17px]">{selectedCopy}</p>
+                <p className="roof-comparison__copy mt-10 text-center text-[16px] leading-[1.45] text-muted/75 md:text-[17px]">{selectedCopy}</p>
               </div>
 
               <div className="mx-auto min-w-0 w-full max-w-[420px] self-start lg:mx-0 lg:w-[clamp(360px,28vw,480px)] lg:max-w-none">
-                <div className="relative aspect-square w-full overflow-hidden bg-[#eceff2]">
+                <div className="roof-comparison__media relative aspect-square w-full overflow-hidden bg-[#eceff2]">
                   {selectedPosterSrc ? (
                     <Image
                       src={selectedPosterSrc}
