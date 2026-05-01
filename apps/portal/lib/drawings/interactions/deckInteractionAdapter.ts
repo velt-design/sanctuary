@@ -1723,7 +1723,10 @@ export function buildDeckCommitPatch(input: {
     interaction: input.session.interaction,
     renderEdgeId: input.preview.witnessEdgeId,
   });
-  const commitSpacePreviewPolygon = mapPreviewPolygonToCommitSpace(input);
+  const commitSpacePreviewPolygon =
+    input.session.interaction.kind === 'preset_rect' && input.preview.releasePlacement === 'floating'
+      ? input.preview.polygon
+      : mapPreviewPolygonToCommitSpace(input);
   if (input.session.interaction.kind === 'custom_outline') {
     return {
       hostEdgeId: commitWitnessFrame?.sourceEdgeId ?? input.preview.witnessEdgeId,

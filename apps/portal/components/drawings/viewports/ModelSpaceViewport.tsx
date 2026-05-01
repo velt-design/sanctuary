@@ -201,6 +201,18 @@ type DeckSvgInteraction = Extract<ObjectWorkbenchPlanShapeDragStartMeta, { owner
 
 type DeckDragPhase = ObjectInteractionPhase;
 
+type DeckReleaseCommitSource =
+  | 'none'
+  | 'custom_outline'
+  | 'snapped_frame_commit'
+  | 'floating_rect_from_projection_preview';
+type DeckSettleMatchSource =
+  | 'none'
+  | 'top_projection_committed'
+  | 'semantic_projection'
+  | 'floating_projection_pending';
+type DeckProjectionSettleStatus = 'none' | 'matched' | 'pending' | 'failed';
+
 type DeckDragSettleState = {
   deckId: string;
   previewState: DeckPreviewState;
@@ -213,6 +225,9 @@ type DeckDragSettleState = {
   matchedCommittedGeometry: boolean;
   stableMatchFrameCount: number;
   releaseError: string | null;
+  commitSource: DeckReleaseCommitSource;
+  settleMatchSource: DeckSettleMatchSource;
+  projectionSettleStatus: DeckProjectionSettleStatus;
 };
 
 type DeckReleaseFeedbackState = {
@@ -223,6 +238,9 @@ type DeckReleaseFeedbackState = {
   releaseError: string | null;
   previewState: DeckPreviewState | null;
   expiresAtMs: number;
+  commitSource: DeckReleaseCommitSource;
+  settleMatchSource: DeckSettleMatchSource;
+  projectionSettleStatus: DeckProjectionSettleStatus;
 };
 
 type DeckDragPinnedScrollTarget = {
@@ -438,6 +456,16 @@ function deckShapeSemanticallyMatchesPreview(input: {
     ? Math.max(toleranceM, 1)
     : toleranceM;
   return pointsApproximatelyEqual(interaction.renderedCenter, previewCenter, centerToleranceM);
+}
+
+function resolveDeckReleaseCommitSource(input: {
+  session: DeckDragSession;
+  preview: DeckPreviewState;
+}): DeckReleaseCommitSource {
+  if (input.session.interaction.kind === 'custom_outline') return 'custom_outline';
+  return input.preview.releasePlacement === 'floating'
+    ? 'floating_rect_from_projection_preview'
+    : 'snapped_frame_commit';
 }
 
 function clampValue(value: number, min: number, max: number): number {
@@ -2908,6 +2936,10 @@ export default function ModelSpaceViewport({
         return;
       }
       const commitStartedAtMs = Date.now();
+      const commitSource = resolveDeckReleaseCommitSource({
+        session: activeDeckDragSession,
+        preview,
+      });
       deckDragPhaseRef.current = 'settling';
       setDeckDragPhase('settling');
       setDeckDragSettleState({
@@ -2922,6 +2954,9 @@ export default function ModelSpaceViewport({
         matchedCommittedGeometry: false,
         stableMatchFrameCount: 0,
         releaseError: null,
+        commitSource,
+        settleMatchSource: 'none',
+        projectionSettleStatus: 'pending',
       });
       let result: { ok: boolean; error?: string };
       try {
@@ -2950,6 +2985,7 @@ export default function ModelSpaceViewport({
               settleVisualState: result.ok ? 'reconciling' : 'failed',
               resolvedSuccess: result.ok,
               releaseError,
+              projectionSettleStatus: result.ok ? current.projectionSettleStatus : 'failed',
             }
           : current,
       );

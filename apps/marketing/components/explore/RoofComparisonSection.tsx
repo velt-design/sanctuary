@@ -237,16 +237,16 @@ export default function RoofComparisonSection({ debug, className, variant = 'def
               className="pointer-events-none absolute left-[calc(100%-clamp(360px,28vw,480px)-20px)] top-[72px] hidden w-px bg-page lg:block lg:bottom-[calc(100%-clamp(360px,28vw,480px)-24px)]"
             />
 
-            <div className="grid items-start gap-8 lg:grid-cols-[1fr_auto] lg:gap-10">
-              <div className="min-w-0 pb-3">
-                <div>
+            <div className="roof-comparison__layout grid items-start gap-8 lg:grid-cols-[1fr_auto] lg:gap-10">
+              <div className="roof-comparison__content min-w-0 pb-3">
+                <div className="roof-comparison__heading">
                   <p className="roof-comparison__eyebrow text-[12px] uppercase tracking-[0.12em] text-muted">Roof response</p>
                   <h3 className="roof-comparison__title mt-[10px] text-balance text-[clamp(26px,3.1vw,44px)] font-semibold leading-[1.06] tracking-[-0.018em] text-ink">
                     Compare how each roof type performs.
                   </h3>
                 </div>
 
-                <div className="mt-[44px] lg:mt-12">
+                <div className="roof-comparison__toggle-wrap mt-[44px] lg:mt-12">
                   <div
                     role="group"
                     aria-label="Roof type selector"
@@ -345,7 +345,7 @@ export default function RoofComparisonSection({ debug, className, variant = 'def
                 <p className="roof-comparison__copy mt-10 text-center text-[16px] leading-[1.45] text-muted/75 md:text-[17px]">{selectedCopy}</p>
               </div>
 
-              <div className="mx-auto min-w-0 w-full max-w-[420px] self-start lg:mx-0 lg:w-[clamp(360px,28vw,480px)] lg:max-w-none">
+              <div className="roof-comparison__media-wrap mx-auto min-w-0 w-full max-w-[420px] self-start lg:mx-0 lg:w-[clamp(360px,28vw,480px)] lg:max-w-none">
                 <div className="roof-comparison__media relative aspect-square w-full overflow-hidden bg-[#eceff2]">
                   {selectedPosterSrc ? (
                     <Image
