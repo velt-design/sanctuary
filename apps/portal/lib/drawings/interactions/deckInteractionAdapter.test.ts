@@ -28,6 +28,10 @@ function makeInteraction(input: {
   primaryHostEdgeId?: string | null;
   commitFrames?: ObjectWorkbenchPlanDeckReferenceFrame[];
   commitStartPolygon?: PlanPoint[] | null;
+  dragPolygon?: PlanPoint[];
+  dragCenter?: PlanPoint;
+  dragSource?: ObjectWorkbenchPlanDeckInteraction['dragSource'];
+  dragCoordinateSpace?: ObjectWorkbenchPlanDeckInteraction['dragCoordinateSpace'];
 }): ObjectWorkbenchPlanDeckInteraction {
   const primaryFrame = input.frames[0]!;
   return {
@@ -55,6 +59,10 @@ function makeInteraction(input: {
     minCenterOffsetM: -20,
     maxCenterOffsetM: 20,
     renderedCenter: input.renderedCenter,
+    dragPolygon: input.dragPolygon ?? input.polygon,
+    dragCenter: input.dragCenter ?? input.renderedCenter,
+    dragCoordinateSpace: input.dragCoordinateSpace ?? 'legacy_plan_m',
+    dragSource: input.dragSource ?? 'geometry',
     commitStartPolygon: input.commitStartPolygon ?? null,
     referenceFrames: input.frames,
     commitReferenceFrames: input.commitFrames ?? input.frames,
@@ -73,6 +81,10 @@ function makeSession(input: {
   attachmentMode?: 'floating' | 'single_edge' | 'corner_dual_edge';
   commitFrames?: ObjectWorkbenchPlanDeckReferenceFrame[];
   commitStartPolygon?: PlanPoint[] | null;
+  dragPolygon?: PlanPoint[];
+  dragCenter?: PlanPoint;
+  dragSource?: ObjectWorkbenchPlanDeckInteraction['dragSource'];
+  dragCoordinateSpace?: ObjectWorkbenchPlanDeckInteraction['dragCoordinateSpace'];
 }) {
   const overlayShape = {
     ownerKind: 'deck',
@@ -94,11 +106,15 @@ function makeSession(input: {
       attachmentMode: input.attachmentMode,
       commitFrames: input.commitFrames,
       commitStartPolygon: input.commitStartPolygon,
+      dragPolygon: input.dragPolygon,
+      dragCenter: input.dragCenter,
+      dragSource: input.dragSource,
+      dragCoordinateSpace: input.dragCoordinateSpace,
     }),
     openingInteraction: null,
     deckDragEligibility: { eligible: true, reason: 'Drag deck' },
     openingDragEligibility: null,
-    source: 'geometry',
+    source: input.dragSource ?? 'geometry',
     geometrySourceId: 'deck-1',
     renderStatus: 'geometry_ready',
   } satisfies ObjectWorkbenchPlanShapeOverlay;
@@ -276,6 +292,107 @@ describe('deckInteractionAdapter', () => {
     alongUnitY: 1,
     outwardUnitX: -1,
     outwardUnitY: 0,
+  });
+
+  it('uses the projection committed drag polygon instead of the legacy overlay polygon', () => {
+    const legacyPolygon = [
+      { x: -20, y: -20 },
+      { x: -16, y: -20 },
+      { x: -16, y: -18 },
+      { x: -20, y: -18 },
+    ];
+    const projectedPolygon = [
+      { x: 1, y: 1 },
+      { x: 5, y: 1 },
+      { x: 5, y: 3 },
+      { x: 1, y: 3 },
+    ];
+    const session = makeSession({
+      polygon: legacyPolygon,
+      dragPolygon: projectedPolygon,
+      dragCenter: { x: 3, y: 2 },
+      dragSource: 'top_projection_committed',
+      dragCoordinateSpace: 'top_projection_world_m',
+      startDragPlanPoint: { x: 3, y: 2 },
+      frames: [rearFrame],
+      renderedCenter: { x: -18, y: -19 },
+      deckWidthM: 4,
+      deckDepthM: 2,
+      placement: 'floating',
+      attachmentMode: 'floating',
+    });
+    const preview = resolveDeckPreviewState({
+      session,
+      nextSvgX: session.startSvgX,
+      nextSvgY: session.startSvgY,
+      nextDragPlanPoint: { x: 4, y: 1.5 },
+      previousPreviewState: null,
+    });
+
+    expect(session.dragSource).toBe('top_projection_committed');
+    expect(session.pointerResolverSource).toBe('top_projection_inverse');
+    expect(session.startPolygon).toEqual(projectedPolygon);
+    expect(session.startCenter).toEqual({ x: 3, y: 2 });
+    expect(preview.polygon).toEqual([
+      { x: 2, y: 0.5 },
+      { x: 6, y: 0.5 },
+      { x: 6, y: 2.5 },
+      { x: 2, y: 2.5 },
+    ]);
+  });
+
+  it('does not start a projection-backed deck drag without a projection point resolver', () => {
+    const polygon = [
+      { x: 1, y: 1 },
+      { x: 5, y: 1 },
+      { x: 5, y: 3 },
+      { x: 1, y: 3 },
+    ];
+    const overlayShape = {
+      ownerKind: 'deck',
+      ownerId: 'deck-1',
+      polygon,
+      detailSegments: [],
+      selected: true,
+      custom: false,
+      muted: false,
+      invalid: false,
+      invalidMessage: null,
+      deckInteraction: makeInteraction({
+        polygon,
+        frames: [rearFrame],
+        deckWidthM: 4,
+        deckDepthM: 2,
+        renderedCenter: { x: 3, y: 2 },
+        placement: 'floating',
+        attachmentMode: 'floating',
+        dragSource: 'top_projection_committed',
+        dragCoordinateSpace: 'top_projection_world_m',
+      }),
+      openingInteraction: null,
+      deckDragEligibility: { eligible: true, reason: 'Drag deck' },
+      openingDragEligibility: null,
+      source: 'top_projection_committed',
+      geometrySourceId: 'deck-1',
+      renderStatus: 'geometry_ready',
+    } satisfies ObjectWorkbenchPlanShapeOverlay;
+
+    expect(
+      buildDeckDragSession({
+        pointerId: 1,
+        clientX: 0,
+        clientY: 0,
+        startSvgX: 0,
+        startSvgY: 0,
+        startDragPlanPoint: null,
+        deckId: 'deck-1',
+        overlayShape,
+        svgInteraction: {
+          hostEdgeStart: rearFrame.hostEdgeStart,
+          hostEdgeEnd: rearFrame.hostEdgeEnd,
+        },
+      }),
+    ).toBeNull();
   });
 
   it.each([

@@ -23,7 +23,7 @@ import type {
 
 type AttachmentSide = 'rear' | 'front' | 'left' | 'right';
 type DeckAttachmentMode = 'floating' | 'single_edge' | 'corner_dual_edge';
-type OverlayRenderSource =
+export type OverlayRenderSource =
   | 'geometry'
   | 'geometry_derived'
   | 'geometry_plan_fallback'
@@ -103,6 +103,10 @@ export type ObjectWorkbenchPlanDeckInteraction = {
   minCenterOffsetM: number;
   maxCenterOffsetM: number;
   renderedCenter: PlanPoint;
+  dragPolygon: PlanPoint[];
+  dragCenter: PlanPoint;
+  dragCoordinateSpace: 'top_projection_world_m' | 'legacy_plan_m';
+  dragSource: OverlayRenderSource;
   commitStartPolygon: PlanPoint[] | null;
   referenceFrames: ObjectWorkbenchPlanDeckReferenceFrame[];
   commitReferenceFrames: ObjectWorkbenchPlanDeckReferenceFrame[];
@@ -925,6 +929,7 @@ function findOpeningFrame(
 function buildDeckInteraction(input: {
   deck: DeckObjectModel;
   polygon: PlanPoint[];
+  source: OverlayRenderSource;
   lookup: GeometryPlanLookup;
   houseAttachmentSide: AttachmentSide;
 }): ObjectWorkbenchPlanDeckInteraction | null {
@@ -999,6 +1004,10 @@ function buildDeckInteraction(input: {
     minCenterOffsetM: placement === 'snapped' ? Number.NEGATIVE_INFINITY : -availableHalfSpanM,
     maxCenterOffsetM: placement === 'snapped' ? Number.POSITIVE_INFINITY : availableHalfSpanM,
     renderedCenter: polygonCenter(input.polygon),
+    dragPolygon: input.polygon,
+    dragCenter: polygonCenter(input.polygon),
+    dragCoordinateSpace: input.source === 'top_projection_committed' ? 'top_projection_world_m' : 'legacy_plan_m',
+    dragSource: input.source,
     commitStartPolygon: resolveDeckCommitStartPolygon(input.deck),
     referenceFrames: [...input.lookup.referenceFrames],
     commitReferenceFrames: [...input.lookup.commitReferenceFrames],
@@ -1566,6 +1575,7 @@ export function buildObjectWorkbenchPlanOverlay(input: ObjectWorkbenchPlanOverla
     const deckInteraction = buildDeckInteraction({
       deck,
       polygon: resolved.polygon,
+      source: resolved.source,
       lookup,
       houseAttachmentSide,
     });

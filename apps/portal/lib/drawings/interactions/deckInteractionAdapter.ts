@@ -69,6 +69,9 @@ export type DeckDragSession = ObjectInteractionSessionBase & {
   heldCornerIndex: number;
   grabbedPointAlongOffsetFromCenterM: number;
   grabbedPointDepthFromNearEdgeM: number;
+  dragSource: ObjectWorkbenchPlanDeckInteraction['dragSource'];
+  dragCoordinateSpace: ObjectWorkbenchPlanDeckInteraction['dragCoordinateSpace'];
+  pointerResolverSource: 'top_projection_inverse' | 'legacy_plan_resolver' | 'svg_fallback';
   interaction: ObjectWorkbenchPlanDeckInteraction;
   svgInteraction: DeckSvgInteraction;
 };
@@ -1159,12 +1162,18 @@ export function buildDeckDragSession(input: {
   svgInteraction: DeckSvgInteraction;
 }): DeckDragSession | null {
   if (!input.overlayShape.deckInteraction) return null;
-  const grabbedPlanPoint = input.startDragPlanPoint ?? input.overlayShape.deckInteraction.renderedCenter;
+  const interaction = input.overlayShape.deckInteraction;
+  const requiresProjectionResolver =
+    interaction.dragSource === 'top_projection_committed' ||
+    interaction.dragCoordinateSpace === 'top_projection_world_m';
+  if (requiresProjectionResolver && !input.startDragPlanPoint) return null;
+  const dragPolygon = interaction.dragPolygon.length ? interaction.dragPolygon : input.overlayShape.polygon;
+  const dragCenter = interaction.dragCenter ?? interaction.renderedCenter;
+  const grabbedPlanPoint = input.startDragPlanPoint ?? dragCenter;
   const heldCornerIndex = resolveNearestDeckCornerIndex({
-    polygon: input.overlayShape.polygon,
+    polygon: dragPolygon,
     point: grabbedPlanPoint,
   });
-  const interaction = input.overlayShape.deckInteraction;
   const activeFrame =
     findDeckReferenceFrameById(
       interaction.referenceFrames,
@@ -1177,7 +1186,7 @@ export function buildDeckDragSession(input: {
       ? resolveDeckGrabPointAnchor({
           frame: activeFrame,
           grabbedPlanPoint,
-          polygon: input.overlayShape.polygon,
+          polygon: dragPolygon,
           fallbackReferenceEdgeGapM: interaction.placement === 'snapped' ? 0 : interaction.referenceEdgeGapM,
         })
       : null;
@@ -1195,13 +1204,20 @@ export function buildDeckDragSession(input: {
     startSvgY: input.startSvgY,
     startDragPlanPoint: input.startDragPlanPoint,
     grabbedPlanPoint,
-    startCenter: interaction.renderedCenter,
-    startPolygon: input.overlayShape.polygon,
+    startCenter: dragCenter,
+    startPolygon: dragPolygon,
     startWidthM: interaction.deckWidthM,
     startDepthM: interaction.deckDepthM,
     heldCornerIndex,
     grabbedPointAlongOffsetFromCenterM: grabbedPointAnchor?.alongOffsetFromCenterM ?? 0,
     grabbedPointDepthFromNearEdgeM: grabbedPointAnchor?.depthFromNearEdgeM ?? 0,
+    dragSource: interaction.dragSource,
+    dragCoordinateSpace: interaction.dragCoordinateSpace,
+    pointerResolverSource: input.startDragPlanPoint
+      ? requiresProjectionResolver
+        ? 'top_projection_inverse'
+        : 'legacy_plan_resolver'
+      : 'svg_fallback',
     interaction,
     svgInteraction: input.svgInteraction,
   };

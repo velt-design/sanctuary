@@ -1467,10 +1467,6 @@ export default function ModelSpaceViewport({
       if (!svg) return;
       const startPoint = clientPointToSvg(svg, event.clientX, event.clientY);
       if (!startPoint) return;
-      const startDragPlanPoint =
-        deckDragPointResolverRef.current?.(event.clientX, event.clientY) ??
-        planPointResolverRef.current?.(event.clientX, event.clientY) ??
-        null;
       if (meta.ownerKind === 'deck') {
         if (!onCommitDeckDimension) return;
         if (deckDragPhaseRef.current === 'settling' || deckDragSessionRef.current) {
@@ -1480,8 +1476,17 @@ export default function ModelSpaceViewport({
           meta.overlayShape ??
           planViewModel?.objectWorkbenchOverlay?.shapes.find(
             (shape) => shape.ownerKind === 'deck' && shape.ownerId === meta.ownerId,
-          );
+        );
         if (!overlayShape?.deckInteraction) return;
+        const projectionBackedDeckDrag =
+          overlayShape.deckInteraction.dragSource === 'top_projection_committed' ||
+          overlayShape.deckInteraction.dragCoordinateSpace === 'top_projection_world_m';
+        const startDragPlanPoint = projectionBackedDeckDrag
+          ? deckDragPointResolverRef.current?.(event.clientX, event.clientY) ?? null
+          : deckDragPointResolverRef.current?.(event.clientX, event.clientY) ??
+            planPointResolverRef.current?.(event.clientX, event.clientY) ??
+            null;
+        if (projectionBackedDeckDrag && !startDragPlanPoint) return;
 
         closeObjectWorkbenchDimensionEditor();
         setFieldError(null);
@@ -2895,13 +2900,18 @@ export default function ModelSpaceViewport({
       if (!svg) return;
       const nextPoint = clientPointToSvg(svg, event.clientX, event.clientY);
       if (!nextPoint) return;
-      const resolvedNextDragPlanPoint =
-        deckDragPointResolverRef.current?.(event.clientX, event.clientY) ??
-        planPointResolverRef.current?.(event.clientX, event.clientY) ??
-        null;
+      const projectionBackedDeckDrag =
+        activeDeckDragSession.dragSource === 'top_projection_committed' ||
+        activeDeckDragSession.dragCoordinateSpace === 'top_projection_world_m';
+      const resolvedNextDragPlanPoint = projectionBackedDeckDrag
+        ? deckDragPointResolverRef.current?.(event.clientX, event.clientY) ?? null
+        : deckDragPointResolverRef.current?.(event.clientX, event.clientY) ??
+          planPointResolverRef.current?.(event.clientX, event.clientY) ??
+          null;
       const nextDragPlanPoint =
         resolvedNextDragPlanPoint ??
         (activeDeckDragSession.startDragPlanPoint ? lastResolvedDeckDragPlanPointRef.current : null);
+      if (projectionBackedDeckDrag && !nextDragPlanPoint) return;
       if (resolvedNextDragPlanPoint) {
         lastResolvedDeckDragPlanPointRef.current = resolvedNextDragPlanPoint;
       }
@@ -4071,6 +4081,11 @@ export default function ModelSpaceViewport({
         data-object-workbench-deck-projection-settle-status={
           deckDragSettleState?.projectionSettleStatus ?? deckReleaseFeedbackState?.projectionSettleStatus ?? 'none'
         }
+        data-deck-drag-source={deckDragSession?.dragSource ?? 'none'}
+        data-deck-pointer-resolver-source={deckDragSession?.pointerResolverSource ?? 'none'}
+        data-deck-drag-coordinate-space={deckDragSession?.dragCoordinateSpace ?? 'none'}
+        data-deck-preview-source={deckPreviewState ? deckDragSession?.dragSource ?? 'none' : 'none'}
+        data-deck-commit-source={deckDragSettleState?.commitSource ?? deckReleaseFeedbackState?.commitSource ?? 'none'}
         data-object-workbench-deck-snap-state={deckInteractionTelemetry.snapState}
         data-house-first-deck-snap-state={deckInteractionTelemetry.snapState}
         data-object-workbench-deck-attachment-mode={deckInteractionTelemetry.attachmentMode ?? 'floating'}

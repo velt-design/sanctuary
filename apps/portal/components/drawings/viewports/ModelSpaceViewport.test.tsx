@@ -5479,7 +5479,8 @@ describe('ModelSpaceViewport', () => {
 
       const svg = rendered.container.querySelector('svg[aria-label="Module plan view"]') as SVGSVGElement | null;
       const deckHit = rendered.container.querySelector('[data-object-workbench-shape-hit="deck:deck-1"]');
-      if (!svg || !deckHit) throw new Error('Missing plan viewport nodes.');
+      const scroller = rendered.container.querySelector('[data-model-space-scroller]') as HTMLElement | null;
+      if (!svg || !deckHit || !scroller) throw new Error('Missing plan viewport nodes.');
       installProjectedSvgPointMock(svg);
 
       const startX = polygonCentroidX(deckHit);
@@ -5497,6 +5498,10 @@ describe('ModelSpaceViewport', () => {
         x: polygonCentroidX(previewShape),
         y: polygonCentroidY(previewShape),
       };
+      expect(scroller.dataset.deckDragSource).toBe('top_projection_committed');
+      expect(scroller.dataset.deckPointerResolverSource).toBe('top_projection_inverse');
+      expect(scroller.dataset.deckDragCoordinateSpace).toBe('top_projection_world_m');
+      expect(scroller.dataset.deckPreviewSource).toBe('top_projection_committed');
       dispatchPointer(window, 'pointerup', {
         pointerId: 723,
         button: 0,

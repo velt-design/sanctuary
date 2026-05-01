@@ -3186,7 +3186,13 @@ function renderObjectWorkbenchDimension(
 }
 
 function renderObjectWorkbenchPlanOverlay(input: {
-  shapes: Array<ObjectWorkbenchPlanOverlay['shapes'][number] & { points: Point[] }>;
+  shapes: Array<ObjectWorkbenchPlanOverlay['shapes'][number] & {
+    points: Point[];
+    deckInteractionSvg?: (ObjectWorkbenchPlanDeckInteraction & {
+      hostEdgeStart: Point;
+      hostEdgeEnd: Point;
+    }) | null;
+  }>;
   renderCommittedBodies?: boolean;
   previewShape: {
     ownerKind: 'deck' | 'opening';
@@ -3410,11 +3416,7 @@ function renderObjectWorkbenchPlanOverlay(input: {
                         ownerKind: 'deck',
                         ownerId: shape.ownerId,
                         overlayShape: shape,
-                        deckInteraction: {
-                          ...shape.deckInteraction,
-                          hostEdgeStart: shape.deckInteraction.hostEdgeStart,
-                          hostEdgeEnd: shape.deckInteraction.hostEdgeEnd,
-                        },
+                        deckInteraction: shape.deckInteractionSvg ?? shape.deckInteraction,
                       },
                       {
                         pointerId: event.pointerId,
@@ -5371,7 +5373,8 @@ function PlanSvg({
             start: objectWorkbenchPointProjector(segment.start),
             end: objectWorkbenchPointProjector(segment.end),
           })),
-          deckInteraction: shape.deckInteraction
+          deckInteraction: shape.deckInteraction,
+          deckInteractionSvg: shape.deckInteraction
             ? {
                 ...shape.deckInteraction,
                 hostEdgeStart: objectWorkbenchPointProjector(shape.deckInteraction.hostEdgeStart),
