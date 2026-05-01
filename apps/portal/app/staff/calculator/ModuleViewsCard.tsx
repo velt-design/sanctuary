@@ -1789,6 +1789,27 @@ function topProjectionPointToPlanSvg(
   return mmPointToPlanSvg({ x: xMm, y: point.y }, baseX, baseY, scale);
 }
 
+function topProjectionSvgPointToPlanPoint(
+  point: Point,
+  projection: GeometryTopProjectionViewModel,
+  baseX: number,
+  baseY: number,
+  scale: number,
+): PlanPoint | null {
+  if (!Number.isFinite(scale) || scale <= 0) return null;
+  const displayedXmm = ((point.x - baseX) / scale) * 1000;
+  const displayedYmm = ((point.y - baseY) / scale) * 1000;
+  const worldXmm =
+    projection.screenAxis.x === 'world_x_left' && projection.extents
+      ? projection.extents.minX + projection.extents.maxX - displayedXmm
+      : displayedXmm;
+  if (!Number.isFinite(worldXmm) || !Number.isFinite(displayedYmm)) return null;
+  return {
+    x: worldXmm / 1000,
+    y: displayedYmm / 1000,
+  };
+}
+
 function topProjectionPolygonToPlanSvg(
   points: Point2[],
   projection: GeometryTopProjectionViewModel,
@@ -2016,6 +2037,21 @@ function topProjectionShapeVisible(
   if (shape.kind === 'deck') return visibility.decks;
   if (shape.kind === 'opening_marker' || shape.kind === 'opening_outline') return visibility.openings;
   return visibility.house;
+}
+
+function topProjectionShapeRenderedInNormalPlan(shape: GeometryTopProjectionShape): boolean {
+  const role = topProjectionRole(shape);
+  if (role === 'hidden_from_top') return false;
+  if (role === 'top_visible') return true;
+  if (shape.sourceType === 'reference_line') return true;
+  return (
+    shape.family === 'house' &&
+    (shape.kind === 'opening_marker' || shape.kind === 'opening_outline' || shape.kind === 'attachment_target')
+  );
+}
+
+function topProjectionShapeIsCommittedBody(shape: GeometryTopProjectionShape): boolean {
+  return topProjectionRole(shape) === 'top_visible' && shape.sourceType !== 'reference_line' && shape.sourceType !== 'house_line';
 }
 
 function topProjectionRole(shape: GeometryTopProjectionShape): 'top_visible' | 'context' | 'hidden_from_top' {
@@ -4978,11 +5014,23 @@ function PlanSvg({
             points: topProjectionPolygonToPlanSvg(shape.polygon, modelSpaceTopProjection, x, y, scale),
           }))
       : [];
+  const renderedTopProjectionShapes = topProjectionShapes.filter(({ shape }) =>
+    topProjectionShapeRenderedInNormalPlan(shape),
+  );
+  const suppressedTopProjectionContextBodyCount = topProjectionShapes.filter(
+    ({ shape }) => topProjectionRole(shape) === 'context' && !topProjectionShapeRenderedInNormalPlan(shape),
+  ).length;
   const topProjectionAllShapes = useTopProjectionBackedPlan && modelSpaceTopProjection ? modelSpaceTopProjection.shapes : [];
   const topProjectionTopVisibleCount = topProjectionAllShapes.filter((shape) => topProjectionRole(shape) === 'top_visible').length;
   const topProjectionContextCount = topProjectionAllShapes.filter((shape) => topProjectionRole(shape) === 'context').length;
   const topProjectionHiddenCount = topProjectionAllShapes.filter((shape) => topProjectionRole(shape) === 'hidden_from_top').length;
-  const topProjectionHiddenRenderedCount = topProjectionShapes.filter(({ shape }) => topProjectionRole(shape) === 'hidden_from_top').length;
+  const topProjectionHiddenRenderedCount = renderedTopProjectionShapes.filter(({ shape }) => topProjectionRole(shape) === 'hidden_from_top').length;
+  const renderedTopProjectionContextBodyCount = renderedTopProjectionShapes.filter(
+    ({ shape }) => topProjectionRole(shape) === 'context' && topProjectionShapeIsCommittedBody(shape),
+  ).length;
+  const committedTopProjectionBodyCount = renderedTopProjectionShapes.filter(({ shape }) =>
+    topProjectionShapeIsCommittedBody(shape),
+  ).length;
   const topProjectionScreenAxis = modelSpaceTopProjection
     ? `${modelSpaceTopProjection.screenAxis.x}_${modelSpaceTopProjection.screenAxis.y}`
     : null;
@@ -5191,7 +5239,9 @@ function PlanSvg({
       : [];
   const renderObjectWorkbenchCommittedBodies = !useTopProjectionBackedPlan;
   const objectWorkbenchRenderedBodyCount = renderObjectWorkbenchCommittedBodies ? objectWorkbenchOverlayShapes.length : 0;
-  const duplicateCommittedBodyCount = useTopProjectionBackedPlan ? objectWorkbenchRenderedBodyCount : 0;
+  const duplicateCommittedBodyCount = useTopProjectionBackedPlan
+    ? objectWorkbenchRenderedBodyCount + renderedTopProjectionContextBodyCount
+    : 0;
   const objectWorkbenchPresetAnnotations =
     presentation === 'model'
       ? rawObjectWorkbenchPresetAnnotations
@@ -5517,22 +5567,37 @@ function PlanSvg({
       y: projectedY,
     };
   };
+  const resolveDeckDragPlanClientPoint = (svg: SVGSVGElement, clientX: number, clientY: number): PlanPoint | null => {
+    const ctm = svg.getScreenCTM();
+    if (!ctm || !Number.isFinite(scale) || scale <= 0) return null;
+    const svgPoint = svg.createSVGPoint();
+    svgPoint.x = clientX;
+    svgPoint.y = clientY;
+    const rootPoint = svgPoint.matrixTransform(ctm.inverse());
+    const unrotatedPoint = rotatePointQuarterTurns(rootPoint, rotationFrame.center, -rotationFrame.turns);
+    return useTopProjectionBackedPlan && modelSpaceTopProjection
+      ? topProjectionSvgPointToPlanPoint(unrotatedPoint, modelSpaceTopProjection, x, y, scale)
+      : resolveRawPlanClientPoint(svg, clientX, clientY);
+  };
   const planSvgRef = useRef<SVGSVGElement | null>(null);
   const footprintEditorRef = useRef(footprintEditor);
   const planInteractionRef = useRef(planInteraction);
   const resolvePlanClientPointRef = useRef(resolvePlanClientPoint);
   const resolveRawPlanClientPointRef = useRef(resolveRawPlanClientPoint);
+  const resolveDeckDragPlanClientPointRef = useRef(resolveDeckDragPlanClientPoint);
 
   useEffect(() => {
     footprintEditorRef.current = footprintEditor;
     planInteractionRef.current = planInteraction;
     resolvePlanClientPointRef.current = resolvePlanClientPoint;
     resolveRawPlanClientPointRef.current = resolveRawPlanClientPoint;
+    resolveDeckDragPlanClientPointRef.current = resolveDeckDragPlanClientPoint;
   }, [
     footprintEditor,
     planInteraction,
     resolvePlanClientPoint,
     resolveRawPlanClientPoint,
+    resolveDeckDragPlanClientPoint,
   ]);
 
   const syncPlanSvgBridge = useCallback((node: SVGSVGElement | null) => {
@@ -5547,7 +5612,7 @@ function PlanSvg({
       node ? (clientX, clientY) => resolveRawPlanClientPointRef.current(node, clientX, clientY) : null,
     );
     currentPlanInteraction?.onDeckDragPointResolverChange?.(
-      node ? (clientX, clientY) => resolveRawPlanClientPointRef.current(node, clientX, clientY) : null,
+      node ? (clientX, clientY) => resolveDeckDragPlanClientPointRef.current(node, clientX, clientY) : null,
     );
   }, []);
 
@@ -5566,7 +5631,7 @@ function PlanSvg({
 
   useEffect(() => {
     syncPlanSvgBridge(planSvgRef.current);
-  }, [syncPlanSvgBridge, footprintEditor, planInteraction, resolvePlanClientPoint, resolveRawPlanClientPoint]);
+  }, [syncPlanSvgBridge, footprintEditor, planInteraction, resolvePlanClientPoint, resolveRawPlanClientPoint, resolveDeckDragPlanClientPoint]);
 
   const resolvePlanSvgPointerPoint = (event: ReactPointerEvent<SVGSVGElement>): ModuleFootprintCanvasPoint | null =>
     resolvePlanClientPoint(event.currentTarget, event.clientX, event.clientY);
@@ -5609,10 +5674,12 @@ function PlanSvg({
         data-top-projection-top-visible-count={exposesPlanProjectionDiagnostics && modelSpaceTopProjection ? topProjectionTopVisibleCount : undefined}
         data-top-projection-context-count={exposesPlanProjectionDiagnostics && modelSpaceTopProjection ? topProjectionContextCount : undefined}
         data-top-projection-hidden-count={exposesPlanProjectionDiagnostics && modelSpaceTopProjection ? topProjectionHiddenCount : undefined}
-        data-top-projection-rendered-count={exposesPlanProjectionDiagnostics && modelSpaceTopProjection ? topProjectionShapes.length : undefined}
+        data-top-projection-rendered-count={exposesPlanProjectionDiagnostics && modelSpaceTopProjection ? renderedTopProjectionShapes.length : undefined}
         data-top-projection-hidden-rendered-count={exposesPlanProjectionDiagnostics && modelSpaceTopProjection ? topProjectionHiddenRenderedCount : undefined}
-        data-plan-committed-top-projection-body-count={exposesPlanProjectionDiagnostics && modelSpaceTopProjection ? topProjectionShapes.length : undefined}
+        data-plan-committed-top-projection-body-count={exposesPlanProjectionDiagnostics && modelSpaceTopProjection ? committedTopProjectionBodyCount : undefined}
         data-plan-object-overlay-body-count={exposesPlanProjectionDiagnostics ? objectWorkbenchRenderedBodyCount : undefined}
+        data-plan-rendered-context-body-count={exposesPlanProjectionDiagnostics && modelSpaceTopProjection ? renderedTopProjectionContextBodyCount : undefined}
+        data-plan-suppressed-context-body-count={exposesPlanProjectionDiagnostics && modelSpaceTopProjection ? suppressedTopProjectionContextBodyCount : undefined}
         data-plan-duplicate-visual-body-count={exposesPlanProjectionDiagnostics ? duplicateCommittedBodyCount : undefined}
         role="img"
         aria-label="Module plan view"
@@ -5750,7 +5817,7 @@ function PlanSvg({
         ) : null}
 
         {useTopProjectionBackedPlan
-          ? topProjectionShapes
+          ? renderedTopProjectionShapes
               .filter(({ shape }) => !(shape.family === 'house' && shape.kind === 'footprint' && (hideHouseFootprint || customPolygonOverrideActive)))
               .map(({ shape, points }) => (
               <polygon

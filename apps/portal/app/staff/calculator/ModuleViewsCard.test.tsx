@@ -212,6 +212,26 @@ function makeTopProjectionFixture(): GeometryTopProjectionViewModel {
         },
       },
       {
+        id: 'top-projection-context-footprint',
+        sourceObjectId: 'house-footprint',
+        sourceId: 'house-footprint',
+        sourceType: 'house_reference',
+        family: 'house',
+        kind: 'footprint',
+        polygon: [
+          { x: -1500, y: -2600 },
+          { x: 7000, y: -2600 },
+          { x: 7000, y: 400 },
+          { x: -1500, y: 400 },
+        ],
+        zOrder: 0,
+        zMin: 0,
+        zMax: 0,
+        metadata: {
+          topProjectionRole: 'context',
+        },
+      },
+      {
         id: 'top-projection-hidden-wall',
         sourceObjectId: 'scene-house-wall',
         sourceId: 'solved-house-wall',
@@ -687,10 +707,13 @@ describe('ModuleViewsCard', () => {
     expect(extractSvgStringAttribute(svgTag, 'data-top-projection-parity-status')).toBe('pass');
     expect(extractSvgStringAttribute(svgTag, 'data-top-projection-screen-axis')).toBe('world_x_left_world_y_down');
     expect(extractSvgStringAttribute(svgTag, 'data-top-projection-top-visible-count')).toBe('2');
+    expect(extractSvgStringAttribute(svgTag, 'data-top-projection-context-count')).toBe('1');
     expect(extractSvgStringAttribute(svgTag, 'data-top-projection-hidden-count')).toBe('1');
     expect(extractSvgStringAttribute(svgTag, 'data-top-projection-rendered-count')).toBe('2');
     expect(extractSvgStringAttribute(svgTag, 'data-top-projection-hidden-rendered-count')).toBe('0');
     expect(extractSvgStringAttribute(svgTag, 'data-plan-committed-top-projection-body-count')).toBe('2');
+    expect(extractSvgStringAttribute(svgTag, 'data-plan-rendered-context-body-count')).toBe('0');
+    expect(extractSvgStringAttribute(svgTag, 'data-plan-suppressed-context-body-count')).toBe('1');
     expect(extractSvgStringAttribute(svgTag, 'data-plan-object-overlay-body-count')).toBe('0');
     expect(extractSvgStringAttribute(svgTag, 'data-plan-duplicate-visual-body-count')).toBe('0');
     expect(worldBox.x).toBeLessThanOrEqual(focusBox.x);
@@ -730,6 +753,7 @@ describe('ModuleViewsCard', () => {
     expect(markup).toContain('data-top-projection-z-min="2400"');
     expect(markup).toContain('data-top-projection-z-max="2600"');
     expect(markup).toContain('data-top-projection-screen-axis="world_x_left_world_y_down"');
+    expect(markup).not.toContain('data-plan-top-projection-shape="top-projection-context-footprint"');
     expect(markup).not.toContain('data-plan-top-projection-shape="top-projection-hidden-wall"');
     expect(markup).not.toContain('data-top-projection-role="hidden_from_top"');
     expect(markup).toContain('data-pergola-shape-hit-source="top_projection"');
@@ -788,10 +812,13 @@ describe('ModuleViewsCard', () => {
     const deckHitPoints = extractPolygonPoints(markup, 'data-object-workbench-shape-hit', 'deck:deck-1');
 
     expect(markup).toContain('data-plan-top-projection-shape="top-projection-house-deck"');
+    expect(markup).not.toContain('data-plan-top-projection-shape="top-projection-context-footprint"');
     expect(markup).toContain('data-object-workbench-shape="deck:deck-1"');
     expect(markup).toContain('data-object-workbench-shape-visual="false"');
     expect(markup).toContain('data-object-workbench-shape-hit="deck:deck-1"');
     expect(deckHitPoints).toEqual(projectedDeckPoints);
+    expect(extractSvgStringAttribute(svgTag, 'data-plan-rendered-context-body-count')).toBe('0');
+    expect(extractSvgStringAttribute(svgTag, 'data-plan-suppressed-context-body-count')).toBe('1');
     expect(extractSvgStringAttribute(svgTag, 'data-plan-object-overlay-body-count')).toBe('0');
     expect(extractSvgStringAttribute(svgTag, 'data-plan-duplicate-visual-body-count')).toBe('0');
   });

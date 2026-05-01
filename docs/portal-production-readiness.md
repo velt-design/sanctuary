@@ -52,7 +52,7 @@ This snapshot records the most recent known production-readiness state from the 
 | Schedule bundle budget | Red | `npm run schedule:bundle-budget` was over lazy raw/gzip budgets during review. | Profile schedule chunks and restore the budget. |
 | Production security audit | Red | `npm audit --omit=dev` reported production vulnerabilities during review. | Remediate, document accepted residual risk only if unavoidable. |
 | Portal build | Unknown | Not re-run as part of this tracker creation. | Run `npm run build:portal`. |
-| Typecheck | Unknown | `npm run typecheck` is listed in docs; current result not verified in this pass. | Run `npm run typecheck` and keep it in CI. |
+| Typecheck | Red | `npm run portal:doctor:quick` stopped at `npm run typecheck` with `ModelSpaceViewport.test.tsx(1902,13)` TS2367 during tooling verification. | Fix the test type comparison and re-run `npm run portal:doctor:quick`. |
 | Browser smoke | Unknown | Auth, drawing, and performance browser gates exist. Current result not verified in this pass. | Run relevant Playwright gates after unit/build health is restored. |
 | Docs and routing | Green | Canonical docs, agent playbook, change routing, and decision log are present. | Keep this tracker and owner docs current. |
 | Local-first flows | Yellow | Strong primitives exist; production readiness depends on workflow smoke and visible failure states. | Verify pending, failed, retry, conflict, and lock states in changed flows. |
@@ -202,6 +202,7 @@ When updating this tracker:
 ### 2026-05-01
 
 - Added the portal speed tooling command plan: focused portal test scripts, `portal:doctor:quick`, `portal:doctor`, and matching CI/doc routing.
+- Verification note: `npm run portal:doctor:quick` currently stops at typecheck on `apps/portal/components/drawings/viewports/ModelSpaceViewport.test.tsx(1902,13)` with TS2367.
 - Created this tracker to coordinate portal production-readiness work.
 - Initial review identified quality gates as the highest leverage priority before broad feature expansion.
 - Known review findings to re-verify: portal tests failing, lint guard failing, schedule bundle budget failing, and production audit reporting vulnerabilities.

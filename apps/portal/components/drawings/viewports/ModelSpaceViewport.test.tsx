@@ -4898,7 +4898,7 @@ describe('ModelSpaceViewport', () => {
     );
     expect(committedDeckAfter).not.toBe('');
     expect(releasePreviewPoints).not.toBe('');
-    expect(rendered.container.querySelector('[data-testid="deck-center-offset"]')?.textContent).toBe('-25');
+    expect(rendered.container.querySelector('[data-testid="deck-center-offset"]')?.textContent).toBe('25');
     expect(scroller.dataset.objectWorkbenchDeckDragActive).toBe('false');
     expect(rendered.container.querySelector('[aria-label="Deck interaction hint"]')?.textContent).toContain('Position updated');
     await act(async () => {
@@ -5438,7 +5438,82 @@ describe('ModelSpaceViewport', () => {
 
     expect(Number.isFinite(draggedDownPreviewY)).toBe(true);
     expect(Number.isFinite(draggedUpPreviewY)).toBe(true);
-    expect(draggedDownPreviewY).not.toBe(draggedUpPreviewY);
+    expect(draggedDownPreviewY).toBeGreaterThan(draggedUpPreviewY);
+  });
+
+  it('maps top-projection deck drag right and up to the same screen directions', async () => {
+    const renderDraggedPreviewCentroid = async (pointerMove: { x: number; y: number }) => {
+      const deck = makeHouseFirstDeck({
+        isAttached: false,
+        presetType: 'rect_detached',
+        presetRect: {
+          widthM: '4',
+          depthM: '3',
+          centerOffsetM: '0',
+          detachedGapM: '0.6',
+        },
+      });
+      const baseHouse = makeHouseFirstHouse();
+      const resolvedDeck = resolveDeckPresetGeometry({
+        deck: deck as any,
+        housePolygon: baseHouse.footprint.polygon,
+      });
+      const rendered = renderIntoDocument(
+        <HouseFirstViewportHarness
+          initialSelection={{ kind: 'deck', targetId: 'deck-1' }}
+          objectWorkbenchDisplayFamily="house_forms"
+          initialHouse={makeHouseFirstHouse({
+            decks: [
+              {
+                ...deck,
+                hostEdgeId: resolvedDeck.hostEdgeId,
+                floatingRect: resolvedDeck.floatingRect,
+                presetRect: resolvedDeck.presetRect,
+                outline: resolvedDeck.outline,
+              },
+            ],
+          })}
+        />,
+      );
+
+      const svg = rendered.container.querySelector('svg[aria-label="Module plan view"]') as SVGSVGElement | null;
+      const deckHit = rendered.container.querySelector('[data-object-workbench-shape-hit="deck:deck-1"]');
+      if (!svg || !deckHit) throw new Error('Missing plan viewport nodes.');
+      installProjectedSvgPointMock(svg);
+
+      const startX = polygonCentroidX(deckHit);
+      const startY = polygonCentroidY(deckHit);
+      dispatchPointer(deckHit, 'pointerdown', { pointerId: 723, button: 0, clientX: 50, clientY: 50 });
+      dispatchPointer(window, 'pointermove', {
+        pointerId: 723,
+        button: 0,
+        buttons: 1,
+        clientX: pointerMove.x,
+        clientY: pointerMove.y,
+      });
+      const previewShape = rendered.container.querySelector('[data-object-workbench-preview-shape="deck-1"]');
+      const preview = {
+        x: polygonCentroidX(previewShape),
+        y: polygonCentroidY(previewShape),
+      };
+      dispatchPointer(window, 'pointerup', {
+        pointerId: 723,
+        button: 0,
+        clientX: pointerMove.x,
+        clientY: pointerMove.y,
+      });
+      await act(async () => {
+        await Promise.resolve();
+      });
+      rendered.unmount();
+      return { startX, startY, preview };
+    };
+
+    const draggedRight = await renderDraggedPreviewCentroid({ x: 5000, y: 50 });
+    const draggedUp = await renderDraggedPreviewCentroid({ x: 50, y: -5000 });
+
+    expect(draggedRight.preview.x).toBeGreaterThan(draggedRight.startX);
+    expect(draggedUp.preview.y).toBeLessThan(draggedUp.startY);
   });
 
   it('keeps pergola and house plan geometry fixed while only the deck preview moves in merged house mode', async () => {
@@ -6413,7 +6488,7 @@ describe('ModelSpaceViewport', () => {
     const committedDeckBefore = polygonPointsAttr(rendered.container.querySelector('[data-object-workbench-shape="deck:deck-1"]'));
 
     dispatchPointer(deckHit, 'pointerdown', { pointerId: 224, button: 0, clientX: 50, clientY: 50 });
-    dispatchPointer(window, 'pointermove', { pointerId: 224, button: 0, buttons: 1, clientX: 110, clientY: 50 });
+    dispatchPointer(window, 'pointermove', { pointerId: 224, button: 0, buttons: 1, clientX: -10, clientY: 50 });
 
     expect(scroller.dataset.objectWorkbenchDeckPlacementState).toBe('snap-available');
     expect(scroller.dataset.objectWorkbenchDeckAffordanceState).toBe('snap-available');
@@ -6421,7 +6496,7 @@ describe('ModelSpaceViewport', () => {
     expect(scroller.dataset.objectWorkbenchDeckSnapState).toBe('snap-available');
     expect(rendered.container.querySelector('[data-object-workbench-preview-body-state="snap-available"]')).not.toBeNull();
 
-    dispatchPointer(window, 'pointerup', { pointerId: 224, button: 0, clientX: 110, clientY: 50 });
+    dispatchPointer(window, 'pointerup', { pointerId: 224, button: 0, clientX: -10, clientY: 50 });
     await act(async () => {
       await Promise.resolve();
     });
