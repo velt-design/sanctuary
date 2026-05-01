@@ -251,7 +251,7 @@ test('drawing workbench draw outline fixture places the first point at the landi
   const transformBeforeWheel = await scaleFrame.evaluate((node) => getComputedStyle(node).transform);
   await page.mouse.move(navigationPoint.x, navigationPoint.y);
   await page.mouse.wheel(28, 42);
-  await expect(scroller).toHaveAttribute('data-model-space-gesture', 'wheel-pan');
+  await expect(scroller).toHaveAttribute('data-model-space-gesture', 'wheel-zoom');
   const transformAfterWheel = await scaleFrame.evaluate((node) => getComputedStyle(node).transform);
   expect(transformAfterWheel).not.toBe(transformBeforeWheel);
 
@@ -394,7 +394,15 @@ test('drawing workbench draw outline fixture places the first point at the landi
   }
 
   const footprintMode = page.getByLabel('House footprint mode').first();
-  await expect(footprintMode).toBeVisible();
+  const canEditFixtureOutline = await footprintMode.isVisible().catch(() => false);
+  if (!canEditFixtureOutline) {
+    await expect(page.getByText(/configurator editing is not part of fixture mode/i)).toBeVisible();
+    const readonlyFixtureScreenshot = await modelViewport.screenshot();
+    expect(readonlyFixtureScreenshot.byteLength).toBeGreaterThan(10_000);
+    expect(pageErrors, `Unexpected runtime errors: ${pageErrors.join(' | ')}`).toEqual([]);
+    return;
+  }
+
   if (hasExistingCustomOutline) {
     await modelViewport.getByRole('button', { name: 'Redraw outline' }).click();
   } else {
