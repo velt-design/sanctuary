@@ -2118,6 +2118,29 @@ function topProjectionShapeClassForLayer(shape: GeometryTopProjectionShape, laye
   return topProjectionShapeClass(shape);
 }
 
+function topProjectionShapeVisualOwner(shape: GeometryTopProjectionShape): string {
+  if (shape.family === 'house' && shape.kind === 'deck') return `deck:${shape.sourceId ?? shape.sourceObjectId ?? shape.id}`;
+  if (shape.family === 'house') return 'house';
+  if (shape.family === 'pergola') return `pergola:${shape.sourceObjectId ?? shape.sourceId ?? shape.id}`;
+  return `${shape.family}:${shape.sourceObjectId ?? shape.sourceId ?? shape.id}`;
+}
+
+function topProjectionShapeAllowedInProjectionOnlyModel(shape: GeometryTopProjectionShape): boolean {
+  if (topProjectionRole(shape) !== 'top_visible') return false;
+  if (shape.family === 'house') {
+    return shape.kind === 'roof' || shape.kind === 'deck' || shape.kind === 'footprint';
+  }
+  if (shape.family === 'pergola') {
+    return shape.kind === 'roof_plane' || shape.kind === 'roof_cladding';
+  }
+  return false;
+}
+
+function objectWorkbenchShapeVisualOwner(shape: Pick<ObjectWorkbenchPlanOverlay['shapes'][number], 'ownerKind' | 'ownerId'>): string {
+  if (shape.ownerKind === 'footprint') return 'house';
+  return `${shape.ownerKind}:${shape.ownerId}`;
+}
+
 function sectionHouseSurfaceClass(kind: NonNullable<ModuleSectionModel['houseContext']>['surfaces'][number]['kind']): string {
   if (kind === 'roof') return `${styles.moduleSectionHouseSurface} ${styles.moduleSectionHouseRoof}`;
   if (kind === 'soffit') return `${styles.moduleSectionHouseSurface} ${styles.moduleSectionHouseSoffit}`;
@@ -3237,6 +3260,9 @@ function renderObjectWorkbenchPlanOverlay(input: {
                   points={toPointsAttr(shape.points)}
                   data-object-workbench-shape={`${shape.ownerKind}:${shape.ownerId}`}
                   data-house-first-shape={`${shape.ownerKind}:${shape.ownerId}`}
+                  data-plan-coordinate-space="model_svg"
+                  data-plan-render-source={shape.source}
+                  data-plan-visual-owner={objectWorkbenchShapeVisualOwner(shape)}
                   data-object-workbench-shape-visual="true"
                   data-object-workbench-shape-muted={shape.muted ? 'true' : 'false'}
                   data-house-first-shape-muted={shape.muted ? 'true' : 'false'}
@@ -3268,6 +3294,9 @@ function renderObjectWorkbenchPlanOverlay(input: {
                 <polygon
                   points={toPointsAttr(shape.points)}
                   data-plan-layer="selectionOutlines"
+                  data-plan-coordinate-space="model_svg"
+                  data-plan-render-source={shape.source}
+                  data-plan-visual-owner={objectWorkbenchShapeVisualOwner(shape)}
                   data-object-workbench-selection-outline={`${shape.ownerKind}:${shape.ownerId}`}
                   data-house-first-selection-outline={`${shape.ownerKind}:${shape.ownerId}`}
                   className={styles.moduleHouseFirstSelectionOutline}
@@ -3288,6 +3317,9 @@ function renderObjectWorkbenchPlanOverlay(input: {
                 data-object-workbench-shape={!renderCommittedBodies ? `${shape.ownerKind}:${shape.ownerId}` : undefined}
                 data-house-first-shape={!renderCommittedBodies ? `${shape.ownerKind}:${shape.ownerId}` : undefined}
                 data-plan-layer="hitTargets"
+                data-plan-coordinate-space="model_svg"
+                data-plan-render-source={shape.source}
+                data-plan-visual-owner={objectWorkbenchShapeVisualOwner(shape)}
                 data-object-workbench-shape-visual={!renderCommittedBodies ? 'false' : undefined}
                 data-object-workbench-shape-muted={!renderCommittedBodies ? (shape.muted ? 'true' : 'false') : undefined}
                 data-house-first-shape-muted={!renderCommittedBodies ? (shape.muted ? 'true' : 'false') : undefined}
@@ -5065,6 +5097,7 @@ function PlanSvg({
             points: topProjectionPolygonToPlanSvg(shape.polygon, modelSpaceTopProjection, x, y, scale),
           }))
       : [];
+  const useProjectionOnlyModelSpacePlan = isModel && useTopProjectionBackedPlan;
   const planRenderGraph = topProjectionShapes.reduce<{
     committedBodies: Array<(typeof topProjectionShapes)[number] & { layer: ProjectionPlanLayer }>;
     contextLines: Array<(typeof topProjectionShapes)[number] & { layer: ProjectionPlanLayer }>;
@@ -5087,11 +5120,16 @@ function PlanSvg({
     ({ shape }) => shape.family === 'house' && shape.kind === 'roof',
   );
   const committedTopProjectionBodies = planRenderGraph.committedBodies.filter(
-    ({ shape }) => !(hasHouseRoofCommittedBody && shape.family === 'house' && shape.kind === 'footprint'),
+    ({ shape }) =>
+      !(hasHouseRoofCommittedBody && shape.family === 'house' && shape.kind === 'footprint') &&
+      (!useProjectionOnlyModelSpacePlan || topProjectionShapeAllowedInProjectionOnlyModel(shape)),
   );
   const suppressedTopProjectionOwnershipBodyCount =
     planRenderGraph.committedBodies.length - committedTopProjectionBodies.length;
-  const renderedTopProjectionShapes = [...committedTopProjectionBodies, ...planRenderGraph.contextLines];
+  const renderedTopProjectionShapes = [
+    ...committedTopProjectionBodies,
+    ...(useProjectionOnlyModelSpacePlan ? [] : planRenderGraph.contextLines),
+  ];
   const suppressedTopProjectionContextBodyCount = topProjectionShapes.filter(
     ({ shape }) => topProjectionRole(shape) === 'context' && topProjectionPlanLayer(shape) === null,
   ).length;
@@ -5254,7 +5292,7 @@ function PlanSvg({
             scale,
           )
       : planHousePointProjector;
-  const visibleRawObjectWorkbenchOverlayShapes = rawObjectWorkbenchOverlayShapes.filter((shape) => {
+  const visibleRawObjectWorkbenchOverlayShapesAllSources = rawObjectWorkbenchOverlayShapes.filter((shape) => {
     switch (shape.ownerKind) {
       case 'footprint':
         return familyVisibility.house;
@@ -5266,6 +5304,14 @@ function PlanSvg({
         return true;
     }
   });
+  const visibleRawObjectWorkbenchOverlayShapes = visibleRawObjectWorkbenchOverlayShapesAllSources.filter(
+    (shape) => !useProjectionOnlyModelSpacePlan || shape.source === 'top_projection_committed',
+  );
+  const projectionCommittedOverlayOwnerKeys = new Set(
+    visibleRawObjectWorkbenchOverlayShapes
+      .filter((shape) => shape.source === 'top_projection_committed')
+      .map((shape) => `${shape.ownerKind}:${shape.ownerId}`),
+  );
   const visibleObjectWorkbenchDeckIds = new Set(
     visibleRawObjectWorkbenchOverlayShapes
       .filter((shape) => shape.ownerKind === 'deck')
@@ -5320,13 +5366,33 @@ function PlanSvg({
       : [];
   const renderObjectWorkbenchCommittedBodies = !useTopProjectionBackedPlan;
   const objectWorkbenchRenderedBodyCount = renderObjectWorkbenchCommittedBodies ? objectWorkbenchOverlayShapes.length : 0;
-  const duplicateCommittedBodyCount = useTopProjectionBackedPlan
-    ? objectWorkbenchRenderedBodyCount + renderedTopProjectionContextBodyCount
+  const objectWorkbenchVisibleBodyOverlayShapes = renderObjectWorkbenchCommittedBodies
+    ? objectWorkbenchOverlayShapes
+    : objectWorkbenchOverlayShapes.filter((shape) => shape.selected);
+  const countVisibleOverlayBodiesBySource = (source: ObjectWorkbenchPlanOverlay['shapes'][number]['source']) =>
+    objectWorkbenchVisibleBodyOverlayShapes.filter((shape) => shape.source === source).length;
+  const visibleLegacyPlanOverlayBodyCount = countVisibleOverlayBodiesBySource('geometry');
+  const visibleGeometryFallbackOverlayBodyCount =
+    countVisibleOverlayBodiesBySource('geometry_derived') + countVisibleOverlayBodiesBySource('geometry_plan_fallback');
+  const visibleTopProjectionContextOverlayBodyCount = countVisibleOverlayBodiesBySource('top_projection_context');
+  const visibleTopProjectionCommittedOverlayBodyCount = countVisibleOverlayBodiesBySource('top_projection_committed');
+  const wrongSourceVisibleOverlayBodyCount = useTopProjectionBackedPlan
+    ? visibleLegacyPlanOverlayBodyCount + visibleGeometryFallbackOverlayBodyCount + visibleTopProjectionContextOverlayBodyCount
     : 0;
+  const duplicateCommittedBodyCount = useTopProjectionBackedPlan
+    ? objectWorkbenchRenderedBodyCount + renderedTopProjectionContextBodyCount + wrongSourceVisibleOverlayBodyCount
+    : 0;
+  const duplicateSemanticOwnerCount = duplicateCommittedBodyCount;
   const objectWorkbenchPresetAnnotations =
     presentation === 'model'
       ? rawObjectWorkbenchPresetAnnotations
           .filter((annotation) => {
+            if (
+              useProjectionOnlyModelSpacePlan &&
+              !projectionCommittedOverlayOwnerKeys.has(`${annotation.ownerKind}:${annotation.ownerId}`)
+            ) {
+              return false;
+            }
             switch (annotation.ownerKind) {
               case 'footprint':
                 return familyVisibility.house;
@@ -5349,7 +5415,15 @@ function PlanSvg({
   const objectWorkbenchCustomEdgeCandidates =
     presentation === 'model'
       ? rawObjectWorkbenchCustomEdgeCandidates
-          .filter((annotation) => annotation.ownerKind === 'footprint' ? familyVisibility.house : familyVisibility.decks)
+          .filter((annotation) => {
+            if (
+              useProjectionOnlyModelSpacePlan &&
+              !projectionCommittedOverlayOwnerKeys.has(`${annotation.ownerKind}:${annotation.ownerId}`)
+            ) {
+              return false;
+            }
+            return annotation.ownerKind === 'footprint' ? familyVisibility.house : familyVisibility.decks;
+          })
           .map((annotation) => ({
           ...annotation,
           witnessStart: objectWorkbenchPointProjector(annotation.witnessStart),
@@ -5359,7 +5433,10 @@ function PlanSvg({
         }))
       : [];
   const objectWorkbenchPreviewShape =
-    presentation === 'model' && rawObjectWorkbenchPreviewShape
+    presentation === 'model' &&
+    rawObjectWorkbenchPreviewShape &&
+    (!useProjectionOnlyModelSpacePlan ||
+      projectionCommittedOverlayOwnerKeys.has(`${rawObjectWorkbenchPreviewShape.ownerKind}:${rawObjectWorkbenchPreviewShape.ownerId}`))
       ? {
           ownerKind: rawObjectWorkbenchPreviewShape.ownerKind,
           ownerId: rawObjectWorkbenchPreviewShape.ownerId,
@@ -5542,11 +5619,12 @@ function PlanSvg({
   const showHouseLabel = showHouseFootprint && !showFootprintControls && !isSheetFootprintEditor && !isModelFootprintEditor;
   const renderLegacyHouseContext =
     showHouseFootprint &&
-    (!useTopProjectionBackedPlan || Boolean(footprintEditor?.isEditing) || customPolygonOverrideActive || isDrawOutlineDraftOpen);
+    (!useTopProjectionBackedPlan ||
+      (!useProjectionOnlyModelSpacePlan && (Boolean(footprintEditor?.isEditing) || customPolygonOverrideActive || isDrawOutlineDraftOpen)));
   const isMergedHouseModelDisplay = isModel && displayMode === 'house';
-  const allowPergolaModelEditing = !isSheet && canRenderPergolaPlanGeometry && !isMergedHouseModelDisplay;
+  const allowPergolaModelEditing = !isSheet && canRenderPergolaPlanGeometry && !isMergedHouseModelDisplay && !useProjectionOnlyModelSpacePlan;
   const showPinnedSheetPrimaryDimensions = isSheet && !isHipCorner;
-  const showModelPrimaryDimensions = !isSheet && canRenderPergolaPlanGeometry;
+  const showModelPrimaryDimensions = !isSheet && canRenderPergolaPlanGeometry && !useProjectionOnlyModelSpacePlan;
   const showModelSecondaryAnnotations = !isSheet && !isModel;
   const showPlanResizeHandles = isModel && allowPergolaModelEditing && Boolean(planInteraction?.available) && !isHipCorner;
   const primaryDimensionSwap = showPinnedSheetPrimaryDimensions && rotationFrame.turns % 2 !== 0;
@@ -5745,6 +5823,7 @@ function PlanSvg({
         overflow={isModel ? 'visible' : undefined}
         style={modelSvgStyle}
         data-model-space-svg={isModel ? 'plan' : undefined}
+        data-model-space-render-contract={isModel ? (useProjectionOnlyModelSpacePlan ? 'top_projection_only' : 'legacy_or_fallback') : undefined}
         data-model-space-view-box={modelSpaceLayout?.viewBoxValue}
         data-model-space-world-box={modelSpaceLayout?.worldBoxValue}
         data-model-space-focus-box={modelSpaceLayout?.focusBoxValue}
@@ -5760,10 +5839,15 @@ function PlanSvg({
         data-plan-committed-top-projection-body-count={exposesPlanProjectionDiagnostics && modelSpaceTopProjection ? committedTopProjectionBodyCount : undefined}
         data-plan-committed-top-projection-object-count={exposesPlanProjectionDiagnostics && modelSpaceTopProjection ? committedTopProjectionObjectIds.size : undefined}
         data-plan-object-overlay-body-count={exposesPlanProjectionDiagnostics ? objectWorkbenchRenderedBodyCount : undefined}
+        data-plan-visible-legacy-overlay-body-count={exposesPlanProjectionDiagnostics ? visibleLegacyPlanOverlayBodyCount : undefined}
+        data-plan-visible-geometry-fallback-overlay-body-count={exposesPlanProjectionDiagnostics ? visibleGeometryFallbackOverlayBodyCount : undefined}
+        data-plan-visible-top-projection-context-overlay-body-count={exposesPlanProjectionDiagnostics ? visibleTopProjectionContextOverlayBodyCount : undefined}
+        data-plan-visible-top-projection-committed-overlay-body-count={exposesPlanProjectionDiagnostics ? visibleTopProjectionCommittedOverlayBodyCount : undefined}
         data-plan-rendered-context-body-count={exposesPlanProjectionDiagnostics && modelSpaceTopProjection ? renderedTopProjectionContextBodyCount : undefined}
         data-plan-suppressed-context-body-count={exposesPlanProjectionDiagnostics && modelSpaceTopProjection ? suppressedTopProjectionContextBodyCount : undefined}
         data-plan-suppressed-top-visible-body-count={exposesPlanProjectionDiagnostics && modelSpaceTopProjection ? suppressedTopProjectionTopVisibleBodyCount : undefined}
         data-plan-duplicate-visual-body-count={exposesPlanProjectionDiagnostics ? duplicateCommittedBodyCount : undefined}
+        data-plan-duplicate-semantic-owner-count={exposesPlanProjectionDiagnostics ? duplicateSemanticOwnerCount : undefined}
         role="img"
         aria-label="Module plan view"
         ref={handlePlanSvgRef}
@@ -5908,6 +5992,9 @@ function PlanSvg({
                 points={toPointsAttr(points)}
                 className={topProjectionShapeClassForLayer(shape, layer)}
                 data-plan-layer={layer}
+                data-plan-coordinate-space="top_projection_screen"
+                data-plan-render-source={layer === 'committedBodies' ? 'top_projection_committed' : 'top_projection_context'}
+                data-plan-visual-owner={topProjectionShapeVisualOwner(shape)}
                 data-plan-top-projection-shape={shape.id}
                 data-top-projection-source-object-id={shape.sourceObjectId}
                 data-top-projection-source-id={shape.sourceId ?? ''}
@@ -5934,7 +6021,7 @@ function PlanSvg({
             ))
           : null}
 
-        {useTopProjectionBackedPlan && showPergolaGeometry && geometryAttachmentEdge ? (
+        {useTopProjectionBackedPlan && !useProjectionOnlyModelSpacePlan && showPergolaGeometry && geometryAttachmentEdge ? (
           <line
             x1={geometryAttachmentEdge.start.x}
             y1={geometryAttachmentEdge.start.y}
@@ -5945,7 +6032,7 @@ function PlanSvg({
             data-house-plan-line="attachment_target"
           />
         ) : null}
-        {useTopProjectionBackedPlan && showPergolaGeometry && geometryFallAnchor ? (
+        {useTopProjectionBackedPlan && !useProjectionOnlyModelSpacePlan && showPergolaGeometry && geometryFallAnchor ? (
           (() => {
             const fallLineLength = Math.max(4.8, scale * 0.72);
             const halfLength = geometryFallAnchor.dual ? fallLineLength / 2 : fallLineLength * 0.35;

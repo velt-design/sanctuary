@@ -23,7 +23,12 @@ import type {
 
 type AttachmentSide = 'rear' | 'front' | 'left' | 'right';
 type DeckAttachmentMode = 'floating' | 'single_edge' | 'corner_dual_edge';
-type OverlayRenderSource = 'geometry' | 'geometry_derived';
+type OverlayRenderSource =
+  | 'geometry'
+  | 'geometry_derived'
+  | 'geometry_plan_fallback'
+  | 'top_projection_committed'
+  | 'top_projection_context';
 
 export type PlanPoint = {
   x: number;
@@ -45,6 +50,7 @@ type GeometryPlanLine = NonNullable<GeometryPlanViewModel['house']['lines']>[num
 type GeometryResolvedPlanPolygon = {
   id: string;
   polygon: PlanPoint[];
+  source: OverlayRenderSource;
 };
 
 export type ObjectWorkbenchPlanHousePolygonSource =
@@ -217,6 +223,12 @@ type GeometryPlanLookup = {
   footprint: {
     id: string;
     polygon: PlanPoint[];
+    source: OverlayRenderSource;
+  } | null;
+  referenceFootprint: {
+    id: string;
+    polygon: PlanPoint[];
+    source: OverlayRenderSource;
   } | null;
   deckSurfaces: Map<string, GeometryResolvedPlanPolygon>;
   openingPolygons: Map<string, GeometryResolvedPlanPolygon>;
@@ -286,6 +298,13 @@ function topProjectionPolygonToMetres(shape: GeometryTopProjectionShape): PlanPo
   return polygonToMetres(shape.polygon);
 }
 
+function topProjectionRole(shape: GeometryTopProjectionShape): 'top_visible' | 'context' | 'hidden_from_top' {
+  const role = shape.metadata?.topProjectionRole;
+  return role === 'context' || role === 'hidden_from_top' || role === 'top_visible'
+    ? role
+    : 'top_visible';
+}
+
 function topProjectionMetadataString(shape: GeometryTopProjectionShape, key: string): string | null {
   return metadataString(shape.metadata, key);
 }
@@ -296,13 +315,15 @@ function topProjectionShapeOwnerId(shape: GeometryTopProjectionShape): string {
 
 function buildTopProjectionLookup(
   topProjection: GeometryTopProjectionViewModel | null | undefined,
-): Pick<GeometryPlanLookup, 'footprint' | 'deckSurfaces' | 'openingPolygons'> {
+): Pick<GeometryPlanLookup, 'footprint' | 'referenceFootprint' | 'deckSurfaces' | 'openingPolygons'> {
   const deckSurfaces = new Map<string, GeometryResolvedPlanPolygon>();
   const openingPolygons = new Map<string, GeometryResolvedPlanPolygon>();
   let footprint: GeometryResolvedPlanPolygon | null = null;
+  let referenceFootprint: GeometryResolvedPlanPolygon | null = null;
   if (!topProjection) {
     return {
       footprint,
+      referenceFootprint,
       deckSurfaces,
       openingPolygons,
     };
@@ -313,18 +334,34 @@ function buildTopProjectionLookup(
     if (shape.family !== 'house') continue;
     const polygon = topProjectionPolygonToMetres(shape);
     if (polygon.length < 3) continue;
-    if (shape.kind === 'footprint' && !footprint) {
+    const role = topProjectionRole(shape);
+    if (shape.kind === 'footprint' && !referenceFootprint) {
+      referenceFootprint = {
+        id: shape.id,
+        polygon,
+        source: role === 'top_visible' ? 'top_projection_committed' : 'top_projection_context',
+      };
+      if (role !== 'top_visible') continue;
+    }
+    if (
+      role === 'top_visible' &&
+      (shape.sourceType === 'house_surface_solid' || shape.sourceType === 'house_surface') &&
+      (shape.kind === 'roof' || shape.kind === 'footprint') &&
+      (!footprint || shape.kind === 'roof')
+    ) {
       footprint = {
         id: shape.id,
         polygon,
+        source: 'top_projection_committed',
       };
       continue;
     }
-    if (shape.kind === 'deck') {
+    if (shape.kind === 'deck' && role === 'top_visible') {
       const deckId = topProjectionMetadataString(shape, 'sourceId') ?? topProjectionShapeOwnerId(shape);
       deckSurfaces.set(deckId, {
         id: shape.id,
         polygon,
+        source: 'top_projection_committed',
       });
       continue;
     }
@@ -333,12 +370,14 @@ function buildTopProjectionLookup(
       openingPolygons.set(openingId, {
         id: shape.id,
         polygon,
+        source: role === 'top_visible' ? 'top_projection_committed' : 'top_projection_context',
       });
     }
   }
 
   return {
     footprint,
+    referenceFootprint,
     deckSurfaces,
     openingPolygons,
   };
@@ -428,12 +467,15 @@ function buildGeometryLookup(
 ): GeometryPlanLookup {
   const topProjectionLookup = buildTopProjectionLookup(geometryTopProjection);
   const footprintSurface = (geometryPlan.house.surfaces ?? []).find((surface) => surface.kind === 'footprint') ?? null;
-  const footprint = topProjectionLookup.footprint ?? (footprintSurface
+  const geometryFootprint = footprintSurface
     ? {
         id: footprintSurface.id,
         polygon: polygonToMetres(footprintSurface.boundary),
+        source: 'geometry_plan_fallback' as const,
       }
-    : null);
+    : null;
+  const footprint = topProjectionLookup.footprint ?? geometryFootprint;
+  const referenceFootprint = topProjectionLookup.referenceFootprint ?? geometryFootprint;
   const deckSurfaces = new Map<string, GeometryResolvedPlanPolygon>(topProjectionLookup.deckSurfaces);
   for (const surface of geometryPlan.house.surfaces ?? []) {
     if (surface.kind !== 'deck') continue;
@@ -441,12 +483,13 @@ function buildGeometryLookup(
     deckSurfaces.set(surface.id, {
       id: surface.id,
       polygon: polygonToMetres(surface.boundary),
+      source: 'geometry_plan_fallback',
     });
   }
 
   const referenceFrames: ObjectWorkbenchPlanDeckReferenceFrame[] = [];
   const openingFrames = new Map<string, GeometryOpeningFrame>();
-  if (footprint?.polygon.length) {
+  if (referenceFootprint?.polygon.length) {
     for (const planLine of geometryPlan.house.lines ?? []) {
       if (planLine.kind !== 'wall_segment') continue;
       if (metadataString(planLine.metadata, 'houseWallMode') === 'open_gable_frame') continue;
@@ -462,7 +505,7 @@ function buildGeometryLookup(
       const outward = resolveOutwardUnit({
         start: line.start,
         end: line.end,
-        footprint: footprint.polygon,
+        footprint: referenceFootprint.polygon,
       });
       const frame: GeometryOpeningFrame = {
         hostEdgeId: sourceEdgeId,
@@ -508,6 +551,7 @@ function buildGeometryLookup(
 
   return {
     footprint,
+    referenceFootprint,
     deckSurfaces,
     openingPolygons: topProjectionLookup.openingPolygons,
     referenceFrames,
@@ -635,7 +679,7 @@ function resolveDeckPolygon(input: {
     return {
       polygon: geometryDeckSurface.polygon,
       geometrySourceId: geometryDeckSurface.id,
-      source: 'geometry',
+      source: geometryDeckSurface.source,
     };
   }
 
@@ -648,7 +692,7 @@ function resolveDeckPolygon(input: {
       return {
         polygon: customPolygon,
         geometrySourceId: input.deck.id,
-        source: 'custom_saved',
+        source: 'geometry_derived',
       };
     }
   }
@@ -1385,7 +1429,7 @@ export function buildObjectWorkbenchPlanOverlay(input: ObjectWorkbenchPlanOverla
       ownerId: houseForm?.id ?? footprint.id,
       polygon: footprint.polygon,
       detailSegments: [],
-      selected: input.selection.kind === 'footprint',
+      selected: input.selection.kind === 'footprint' || input.selection.kind === 'house',
       custom: houseForm?.footprint.mode === 'custom_polygon',
       muted: input.selection.kind === 'deck',
       invalid: false,
@@ -1394,7 +1438,7 @@ export function buildObjectWorkbenchPlanOverlay(input: ObjectWorkbenchPlanOverla
       openingInteraction: null,
       deckDragEligibility: null,
       openingDragEligibility: null,
-      source: 'geometry',
+      source: footprint.source,
       geometrySourceId: footprint.id,
       renderStatus: 'geometry_ready',
     },
@@ -1486,7 +1530,7 @@ export function buildObjectWorkbenchPlanOverlay(input: ObjectWorkbenchPlanOverla
           ? 'Drag the selected opening along the host wall, or click dimensions to edit.'
           : 'This opening needs a resolvable host wall before drag is available.',
       },
-      source: geometryOpeningPolygon ? 'geometry' : 'geometry_derived',
+      source: geometryOpeningPolygon?.source ?? 'geometry_derived',
       geometrySourceId: geometryOpeningPolygon?.id ?? openingFrame.hostEdgeId,
       renderStatus: 'geometry_ready',
     });

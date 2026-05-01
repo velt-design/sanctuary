@@ -3207,16 +3207,22 @@ export default function ModelSpaceViewport({
   const selectedDeckShape = useMemo(
     () =>
       objectWorkbenchPlanOverlay?.shapes.find(
-        (shape) => shape.ownerKind === 'deck' && shape.selected,
+        (shape) =>
+          shape.ownerKind === 'deck' &&
+          shape.selected &&
+          (!hasGeometryReadyPlan || shape.source === 'top_projection_committed'),
       ) ?? null,
-    [objectWorkbenchPlanOverlay],
+    [hasGeometryReadyPlan, objectWorkbenchPlanOverlay],
   );
   const selectedOpeningShape = useMemo(
     () =>
       objectWorkbenchPlanOverlay?.shapes.find(
-        (shape) => shape.ownerKind === 'opening' && shape.selected,
+        (shape) =>
+          shape.ownerKind === 'opening' &&
+          shape.selected &&
+          (!hasGeometryReadyPlan || shape.source === 'top_projection_committed'),
       ) ?? null,
-    [objectWorkbenchPlanOverlay],
+    [hasGeometryReadyPlan, objectWorkbenchPlanOverlay],
   );
   const settledDeckShape = useMemo(
     () =>

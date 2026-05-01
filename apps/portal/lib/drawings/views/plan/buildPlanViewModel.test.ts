@@ -243,6 +243,29 @@ function makeGeometryTopProjection(): GeometryTopProjectionViewModel {
         zOrder: 0,
         zMin: 0,
         zMax: 0,
+        metadata: {
+          topProjectionRole: 'context',
+        },
+      },
+      {
+        id: 'house_surface_solid:house-roof-top',
+        sourceObjectId: 'house-roof-top',
+        sourceId: 'house-roof-top',
+        sourceType: 'house_surface_solid',
+        family: 'house',
+        kind: 'roof',
+        polygon: [
+          { x: 400, y: -1800 },
+          { x: 6800, y: -1800 },
+          { x: 6800, y: -200 },
+          { x: 400, y: -200 },
+        ],
+        zOrder: 20,
+        zMin: 2400,
+        zMax: 3200,
+        metadata: {
+          topProjectionRole: 'top_visible',
+        },
       },
       {
         id: 'house_surface_solid:house-solid-deck-1',
@@ -393,13 +416,13 @@ describe('buildPlanViewModel', () => {
       expect.objectContaining({
         ownerKind: 'footprint',
         ownerId: 'house-main',
-        geometrySourceId: 'house_reference:solved-footprint-projection',
-        source: 'geometry',
+        geometrySourceId: 'house_surface_solid:house-roof-top',
+        source: 'top_projection_committed',
         polygon: [
-          { x: 0, y: -2.1 },
-          { x: 7.2, y: -2.1 },
-          { x: 7.2, y: 0 },
-          { x: 0, y: 0 },
+          { x: 0.4, y: -1.8 },
+          { x: 6.8, y: -1.8 },
+          { x: 6.8, y: -0.2 },
+          { x: 0.4, y: -0.2 },
         ],
       }),
     );
@@ -408,7 +431,7 @@ describe('buildPlanViewModel', () => {
         ownerKind: 'deck',
         ownerId: 'deck-1',
         geometrySourceId: 'house_surface_solid:house-solid-deck-1',
-        source: 'geometry',
+        source: 'top_projection_committed',
         selected: true,
         polygon: [
           { x: 1.2, y: 0.65 },
@@ -423,7 +446,7 @@ describe('buildPlanViewModel', () => {
         ownerKind: 'opening',
         ownerId: 'opening-1',
         geometrySourceId: 'house_surface:opening-1-marker',
-        source: 'geometry',
+        source: 'top_projection_committed',
         polygon: [
           { x: 2.1, y: 0 },
           { x: 3.3, y: 0 },

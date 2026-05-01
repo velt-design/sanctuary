@@ -1745,14 +1745,18 @@ describe('ModelSpaceViewport', () => {
     expect(markup).toContain('data-draw-outline-redraw-active="false"');
     expect(markup).not.toContain('aria-label="Draw outline status"');
     expect(markup).toContain('Fit view');
-    expect(markup).toContain('data-plan-resize-handle-hit="plan:lengthA"');
-    expect(markup).toContain('data-plan-resize-handle-hit="plan:spanA"');
-    expect(markup).toContain('data-editable-field-id="plan:lengthA"');
-    expect(markup).toContain('data-editable-field-id="plan:spanA"');
+    expect(markup).toContain('data-model-space-render-contract="top_projection_only"');
+    expect(markup).toContain('data-plan-primary-fill="true"');
+    expect(markup).toContain('data-plan-duplicate-semantic-owner-count="0"');
+    expect(markup).not.toContain('data-plan-resize-handle-hit="plan:lengthA"');
+    expect(markup).not.toContain('data-plan-resize-handle-hit="plan:spanA"');
+    expect(markup).not.toContain('data-editable-field-id="plan:lengthA"');
+    expect(markup).not.toContain('data-editable-field-id="plan:spanA"');
     expect(markup).not.toContain('data-footprint-edge=');
     expect(markup).not.toContain('data-footprint-resize-edge-hit=');
     expect(markup).toContain('data-house-plan-surface="footprint"');
-    expect(markup).toContain('data-house-plan-line="attachment_target"');
+    expect(markup).toContain('data-plan-render-source="top_projection_committed"');
+    expect(markup).not.toContain('data-house-plan-line="attachment_target"');
     expect(markup).not.toContain('Live plan viewport');
     expect(markup).not.toContain('House footprint mode');
     expect(markup).not.toContain('House footprint');
@@ -1822,7 +1826,7 @@ describe('ModelSpaceViewport', () => {
     expect(markup).toContain('data-plan-primary-fill="true"');
     expect(markup).not.toContain('data-editable-field-id="plan:lengthA"');
     expect(markup).not.toContain('data-plan-resize-handle-hit=');
-    expect(markup).toContain('modulePlanRafter');
+    expect(markup).not.toContain('modulePlanRafter');
     expect(markup).not.toContain('data-sheet-hover-target="pergola"');
   });
 
@@ -2023,7 +2027,7 @@ describe('ModelSpaceViewport', () => {
     rendered.unmount();
   });
 
-  it('renders model-space pergolas from the geometry-backed plan payload instead of legacy rafter reconstruction', () => {
+  it('renders model-space pergolas from top projection bodies instead of legacy rafter reconstruction', () => {
     const drawing = makeDrawingModule();
     const geometryPlan = makeGeometryPlanFixture();
     const legacyPlanModel: ModulePlanModel = {
@@ -2058,15 +2062,17 @@ describe('ModelSpaceViewport', () => {
 
     expect(markup).toContain('data-plan-render-source="geometry"');
     expect(markup).toContain('data-plan-render-status="geometry_ready"');
+    expect(markup).toContain('data-model-space-render-contract="top_projection_only"');
     expect(markup).toContain('data-plan-primary-fill="true"');
-    expect(markup).toContain('data-plan-member-id="rafter-a"');
-    expect(markup).toContain('data-plan-member-id="rafter-b"');
-    expect(markup).toContain('data-plan-member-id="joiner-run-1"');
-    expect(markup).toContain('data-plan-member-centerline-mm="800,220,800,2840"');
-    expect(markup).toContain('data-plan-member-centerline-mm="2100,220,2100,2840"');
-    expect(markup).toContain('data-plan-member-centerline-mm="4500,220,4500,2840"');
-    expect(markup).toContain('data-plan-attachment-edge="geometry"');
-    expect(markup).toContain('data-plan-fall-direction="0,1"');
+    expect(markup).not.toContain('data-plan-member-id="rafter-a"');
+    expect(markup).not.toContain('data-plan-member-id="rafter-b"');
+    expect(markup).not.toContain('data-plan-member-id="joiner-run-1"');
+    expect(markup).not.toContain('data-plan-member-centerline-mm="800,220,800,2840"');
+    expect(markup).not.toContain('data-plan-member-centerline-mm="2100,220,2100,2840"');
+    expect(markup).not.toContain('data-plan-member-centerline-mm="4500,220,4500,2840"');
+    expect(markup).not.toContain('data-plan-attachment-edge="geometry"');
+    expect(markup).not.toContain('data-plan-fall-direction="0,1"');
+    expect(markup).not.toContain('data-plan-primary-dim=');
   });
 
   it('keeps geometry-backed model-space pergola plans unrotated by sheet quarter-turns', () => {
@@ -2291,9 +2297,9 @@ describe('ModelSpaceViewport', () => {
 
     const scroller = rendered.container.querySelector('[data-model-space-scroller]') as HTMLElement | null;
     if (!scroller) throw new Error('Missing model-space scroller.');
-    const resizeHit = rendered.container.querySelector('[data-plan-resize-handle-hit="plan:lengthA"]') as SVGElement | null;
-    if (!resizeHit) throw new Error('Missing plan resize hit target.');
-    dispatchWheel(resizeHit, { ctrlKey: true, deltaY: -120, clientX: 100, clientY: 80 });
+    const projectionBody = rendered.container.querySelector('[data-plan-primary-fill="true"]') as SVGElement | null;
+    if (!projectionBody) throw new Error('Missing projection body target.');
+    dispatchWheel(projectionBody, { ctrlKey: true, deltaY: -120, clientX: 100, clientY: 80 });
 
     const next = onViewportTransformChange.mock.calls.at(-1)?.[0];
     expect(next?.zoom).toBeGreaterThan(viewportTransform.zoom);
@@ -2327,9 +2333,9 @@ describe('ModelSpaceViewport', () => {
 
     const scroller = rendered.container.querySelector('[data-model-space-scroller]') as HTMLElement | null;
     if (!scroller) throw new Error('Missing model-space scroller.');
-    const resizeHit = rendered.container.querySelector('[data-plan-resize-handle-hit="plan:lengthA"]') as SVGElement | null;
-    if (!resizeHit) throw new Error('Missing plan resize hit target.');
-    dispatchWheel(resizeHit, { deltaX: 12, deltaY: 30, clientX: 100, clientY: 80 });
+    const projectionBody = rendered.container.querySelector('[data-plan-primary-fill="true"]') as SVGElement | null;
+    if (!projectionBody) throw new Error('Missing projection body target.');
+    dispatchWheel(projectionBody, { deltaX: 12, deltaY: 30, clientX: 100, clientY: 80 });
 
     const next = onViewportTransformChange.mock.calls.at(-1)?.[0];
     expect(next?.zoom).toBeLessThan(viewportTransform.zoom);
@@ -2388,16 +2394,16 @@ describe('ModelSpaceViewport', () => {
     );
     onViewportTransformChange.mockClear();
 
-    const resizeHit = rendered.container.querySelector('[data-plan-resize-handle-hit="plan:lengthA"]') as SVGElement | null;
-    if (!resizeHit) throw new Error('Missing plan resize hit target.');
-    dispatchGesture(resizeHit, 'gesturestart', { clientX: 120, clientY: 80 });
+    const projectionBody = rendered.container.querySelector('[data-plan-primary-fill="true"]') as SVGElement | null;
+    if (!projectionBody) throw new Error('Missing projection body target.');
+    dispatchGesture(projectionBody, 'gesturestart', { clientX: 120, clientY: 80 });
     expect(getDrawOutlineDiagnostics(rendered.container)).toMatchObject({
       modelSpaceGesture: 'trackpad-pinch',
       modelSpacePinchActive: 'true',
       modelSpacePinchSource: 'webkit-gesture',
     });
 
-    dispatchGesture(resizeHit, 'gesturechange', { scale: 1.5, clientX: 120, clientY: 80 });
+    dispatchGesture(projectionBody, 'gesturechange', { scale: 1.5, clientX: 120, clientY: 80 });
     expect(onViewportTransformChange).toHaveBeenCalledWith(
       expect.objectContaining({
         zoom: 1.5,
@@ -2406,7 +2412,7 @@ describe('ModelSpaceViewport', () => {
       }),
     );
 
-    dispatchGesture(resizeHit, 'gestureend', { clientX: 120, clientY: 80 });
+    dispatchGesture(projectionBody, 'gestureend', { clientX: 120, clientY: 80 });
     expect(getDrawOutlineDiagnostics(rendered.container)).toMatchObject({
       modelSpaceGesture: 'idle',
       modelSpacePinchActive: 'false',
@@ -2526,14 +2532,14 @@ describe('ModelSpaceViewport', () => {
     const svg = rendered.container.querySelector('svg[data-model-space-svg="plan"]') as SVGSVGElement | null;
     if (!svg) throw new Error('Missing model-space SVG.');
     installSvgPointMock(svg);
-    const resizeHit = rendered.container.querySelector('[data-plan-resize-handle-hit="plan:lengthA"]') as SVGElement | null;
-    if (!resizeHit) throw new Error('Missing plan resize hit target.');
-    dispatchTouchPointer(resizeHit, 'pointerdown', { pointerId: 21, button: 0, clientX: 100, clientY: 100 });
+    const projectionBody = rendered.container.querySelector('[data-plan-primary-fill="true"]') as SVGElement | null;
+    if (!projectionBody) throw new Error('Missing projection body target.');
+    dispatchTouchPointer(projectionBody, 'pointerdown', { pointerId: 21, button: 0, clientX: 100, clientY: 100 });
     expect(getDrawOutlineDiagnostics(rendered.container)).toMatchObject({
       modelSpaceActiveTouchCount: '1',
       modelSpacePinchActive: 'false',
     });
-    dispatchTouchPointer(resizeHit, 'pointerdown', { pointerId: 22, button: 0, clientX: 200, clientY: 100 });
+    dispatchTouchPointer(projectionBody, 'pointerdown', { pointerId: 22, button: 0, clientX: 200, clientY: 100 });
     expect(getDrawOutlineDiagnostics(rendered.container)).toMatchObject({
       modelSpaceGesture: 'pinch-zoom',
       modelSpaceActiveTouchCount: '2',
@@ -2570,14 +2576,15 @@ describe('ModelSpaceViewport', () => {
     rendered.unmount();
   });
 
-  it('keeps one-touch plan resize drag working on edit hit targets', () => {
+  it('suppresses one-touch legacy plan resize hit targets in projection-only model space', () => {
     const drawing = makeDrawingModule();
+    const planModel = makePlanModelWithHouseContext();
     const onCommitField = vi.fn(() => ({ ok: true }));
     const rendered = renderIntoDocument(
       <TestModelSpaceViewport
         view="plan"
         status="ready"
-        planModel={makePlanModelWithHouseContext()}
+        planModel={planModel}
         sectionModel={drawing.sectionModel}
         viewportTransform={createDrawingWorkbenchUiState().viewportTransform}
         onViewportTransformChange={() => undefined}
@@ -2589,15 +2596,11 @@ describe('ModelSpaceViewport', () => {
 
     const svg = rendered.container.querySelector('svg[data-model-space-svg="plan"]') as SVGSVGElement | null;
     if (!svg) throw new Error('Missing model-space SVG.');
-    installSvgPointMock(svg);
     const resizeHit = rendered.container.querySelector('[data-plan-resize-handle-hit="plan:lengthA"]') as SVGElement | null;
-    if (!resizeHit) throw new Error('Missing plan resize hit target.');
+    expect(svg.getAttribute('data-model-space-render-contract')).toBe('top_projection_only');
+    expect(resizeHit).toBeNull();
 
-    dispatchTouchPointer(resizeHit, 'pointerdown', { pointerId: 25, button: 0, clientX: 45, clientY: 28 });
-    dispatchTouchPointer(window, 'pointermove', { pointerId: 25, button: 0, clientX: 65, clientY: 28 });
-    dispatchTouchPointer(window, 'pointerup', { pointerId: 25, button: 0, clientX: 65, clientY: 28 });
-
-    expect(onCommitField).toHaveBeenCalledWith(expect.objectContaining({ id: 'plan:lengthA' }), expect.any(String));
+    expect(onCommitField).not.toHaveBeenCalled();
     expect(getDrawOutlineDiagnostics(rendered.container)).toMatchObject({
       modelSpaceActiveTouchCount: '0',
       modelSpacePinchActive: 'false',
@@ -3885,29 +3888,26 @@ describe('ModelSpaceViewport', () => {
     rendered.unmount();
   });
 
-  it('right-drags a selected house-first opening hit target to pan instead of starting opening drag', async () => {
+  it('suppresses selected house-first opening hit targets in projection-only model space', async () => {
     const house = makeHouseFirstHouse({
       openings: [makeHouseFirstOpening()],
     });
     const rendered = renderIntoDocument(
-      <HouseFirstViewportHarness initialHouse={house} initialSelection={{ kind: 'opening', targetId: 'opening-1' }} />,
+      <HouseFirstViewportHarness
+        initialHouse={house}
+        initialSelection={{ kind: 'opening', targetId: 'opening-1' }}
+      />,
     );
 
     const svg = rendered.container.querySelector('svg[aria-label="Module plan view"]') as SVGSVGElement | null;
     const openingHit = rendered.container.querySelector('[data-object-workbench-shape-hit="opening:opening-1"]');
     const scroller = rendered.container.querySelector('[data-model-space-scroller]') as HTMLElement | null;
-    if (!svg || !openingHit || !scroller) throw new Error('Missing plan viewport nodes.');
-    installSvgPointMock(svg);
-
-    dispatchPointer(openingHit, 'pointerdown', { pointerId: 62, button: 2, clientX: 50, clientY: 50 });
-    expect(scroller.dataset.modelSpaceGesture).toBe('mouse-pan');
-
-    dispatchPointer(window, 'pointermove', { pointerId: 62, button: 2, buttons: 2, clientX: 250, clientY: 50 });
+    if (!svg || !scroller) throw new Error('Missing plan viewport nodes.');
+    expect(svg.getAttribute('data-model-space-render-contract')).toBe('top_projection_only');
+    expect(openingHit).toBeNull();
+    expect(scroller.dataset.objectWorkbenchSelectedOpeningDragEligible).toBe('false');
     expect(scroller.dataset.objectWorkbenchOpeningDragActive).toBe('false');
     expect(rendered.container.querySelector('[data-object-workbench-preview-shape="opening-1"]')).toBeNull();
-
-    dispatchPointer(window, 'pointerup', { pointerId: 62, button: 2, clientX: 250, clientY: 50 });
-    expect(scroller.dataset.modelSpaceGesture).toBe('idle');
     expect(rendered.container.querySelector('[data-testid="opening-offset"]')?.textContent).toBe('0.6');
 
     rendered.unmount();
@@ -4446,55 +4446,40 @@ describe('ModelSpaceViewport', () => {
     rendered.unmount();
   });
 
-  it('drags a selected house-first window along its host wall in model space', async () => {
+  it('does not render selected house-first window drag geometry in projection-only model space', async () => {
     const house = makeHouseFirstHouse({
       openings: [makeHouseFirstOpening()],
     });
     const rendered = renderIntoDocument(
-      <HouseFirstViewportHarness initialHouse={house} initialSelection={{ kind: 'opening', targetId: 'opening-1' }} />,
+      <HouseFirstViewportHarness
+        initialHouse={house}
+        initialSelection={{ kind: 'opening', targetId: 'opening-1' }}
+      />,
     );
 
     const svg = rendered.container.querySelector('svg[aria-label="Module plan view"]') as SVGSVGElement | null;
     const openingHit = rendered.container.querySelector('[data-object-workbench-shape-hit="opening:opening-1"]');
     const scroller = rendered.container.querySelector('[data-model-space-scroller]') as HTMLElement | null;
-    if (!svg || !openingHit || !scroller) throw new Error('Missing plan viewport nodes.');
-    installSvgPointMock(svg);
-
-    expect(rendered.container.querySelector('[data-editable-field-id="opening-1:offsetAlongWallM"]')).not.toBeNull();
-    expect(scroller.dataset.objectWorkbenchSelectedOpeningDragEligible).toBe('true');
-    expect(scroller.dataset.objectWorkbenchOpeningDragPhase).toBe('selected');
+    if (!svg || !scroller) throw new Error('Missing plan viewport nodes.');
+    expect(svg.getAttribute('data-model-space-render-contract')).toBe('top_projection_only');
+    expect(openingHit).toBeNull();
+    expect(rendered.container.querySelector('[data-editable-field-id="opening-1:offsetAlongWallM"]')).toBeNull();
+    expect(scroller.dataset.objectWorkbenchSelectedOpeningDragEligible).toBe('false');
+    expect(scroller.dataset.objectWorkbenchOpeningDragPhase).toBe('idle');
     expect(scroller.dataset.objectWorkbenchOpeningPlacementState).toBe('none');
     expect(scroller.dataset.objectWorkbenchOpeningAffordanceState).toBe('idle');
     expect(scroller.dataset.objectWorkbenchOpeningReferenceGuideState).toBe('none');
-
-    dispatchPointer(openingHit, 'pointerdown', { pointerId: 61, button: 0, clientX: 50, clientY: 50 });
-    dispatchPointer(window, 'pointermove', { pointerId: 61, button: 0, buttons: 1, clientX: 250, clientY: 50 });
-
-    expect(scroller.dataset.objectWorkbenchOpeningDragActive).toBe('true');
-    expect(scroller.dataset.objectWorkbenchOpeningDragPhase).toBe('dragging');
-    expect(scroller.dataset.objectWorkbenchOpeningPlacementState).toBe('floating');
-    expect(scroller.dataset.objectWorkbenchOpeningAffordanceState).toBe('floating');
-    expect(scroller.dataset.objectWorkbenchOpeningReferenceGuideState).toBe('none');
-    expect(scroller.dataset.objectWorkbenchOpeningHighlightTargetId).not.toBe('');
-    expect(rendered.container.querySelector('[data-object-workbench-preview-shape="opening-1"]')).not.toBeNull();
-    expect(rendered.container.querySelector('[data-object-workbench-preview-owner-kind="opening"]')).not.toBeNull();
-    expect(rendered.container.querySelector('[data-object-workbench-preview-body-state="floating"]')).not.toBeNull();
-    expect(rendered.container.querySelector('[data-object-workbench-reference-guide]')).toBeNull();
-
-    dispatchPointer(window, 'pointerup', { pointerId: 61, button: 0, clientX: 250, clientY: 50 });
-    await act(async () => {
-      await Promise.resolve();
-    });
-
-    expect(scroller.dataset.objectWorkbenchOpeningDragActive).toBe('false');
-    expect(scroller.dataset.objectWorkbenchOpeningDragPhase).toBe('selected');
+    expect(scroller.dataset.objectWorkbenchOpeningHighlightTargetId).toBe('');
     expect(rendered.container.querySelector('[data-object-workbench-preview-shape="opening-1"]')).toBeNull();
-    expect(rendered.container.querySelector('[data-testid="opening-offset"]')?.textContent).not.toBe('0.6');
+    expect(rendered.container.querySelector('[data-object-workbench-preview-owner-kind="opening"]')).toBeNull();
+    expect(rendered.container.querySelector('[data-object-workbench-preview-body-state="floating"]')).toBeNull();
+    expect(rendered.container.querySelector('[data-object-workbench-reference-guide]')).toBeNull();
+    expect(rendered.container.querySelector('[data-testid="opening-offset"]')?.textContent).toBe('0.6');
 
     rendered.unmount();
   });
 
-  it('drags a selected house-first hinged door along its host wall in model space', async () => {
+  it('does not render selected house-first hinged door drag geometry in projection-only model space', async () => {
     const house = makeHouseFirstHouse({
       openings: [
         makeHouseFirstOpening({
@@ -4508,37 +4493,29 @@ describe('ModelSpaceViewport', () => {
       ],
     });
     const rendered = renderIntoDocument(
-      <HouseFirstViewportHarness initialHouse={house} initialSelection={{ kind: 'opening', targetId: 'opening-1' }} />,
+      <HouseFirstViewportHarness
+        initialHouse={house}
+        initialSelection={{ kind: 'opening', targetId: 'opening-1' }}
+      />,
     );
 
     const svg = rendered.container.querySelector('svg[aria-label="Module plan view"]') as SVGSVGElement | null;
     const openingHit = rendered.container.querySelector('[data-object-workbench-shape-hit="opening:opening-1"]');
     const scroller = rendered.container.querySelector('[data-model-space-scroller]') as HTMLElement | null;
-    if (!svg || !openingHit || !scroller) throw new Error('Missing plan viewport nodes.');
-    installSvgPointMock(svg);
+    if (!svg || !scroller) throw new Error('Missing plan viewport nodes.');
 
-    expect(rendered.container.querySelector('[data-editable-field-id="opening-1:offsetAlongWallM"]')).not.toBeNull();
-    expect(scroller.dataset.objectWorkbenchSelectedOpeningDragEligible).toBe('true');
-
-    dispatchPointer(openingHit, 'pointerdown', { pointerId: 71, button: 0, clientX: 50, clientY: 50 });
-    dispatchPointer(window, 'pointermove', { pointerId: 71, button: 0, buttons: 1, clientX: 250, clientY: 50 });
-
-    expect(scroller.dataset.objectWorkbenchOpeningDragActive).toBe('true');
-    expect(rendered.container.querySelector('[data-object-workbench-preview-shape="opening-1"]')).not.toBeNull();
-
-    dispatchPointer(window, 'pointerup', { pointerId: 71, button: 0, clientX: 250, clientY: 50 });
-    await act(async () => {
-      await Promise.resolve();
-    });
-
+    expect(svg.getAttribute('data-model-space-render-contract')).toBe('top_projection_only');
+    expect(openingHit).toBeNull();
+    expect(rendered.container.querySelector('[data-editable-field-id="opening-1:offsetAlongWallM"]')).toBeNull();
+    expect(scroller.dataset.objectWorkbenchSelectedOpeningDragEligible).toBe('false');
     expect(scroller.dataset.objectWorkbenchOpeningDragActive).toBe('false');
     expect(rendered.container.querySelector('[data-object-workbench-preview-shape="opening-1"]')).toBeNull();
-    expect(rendered.container.querySelector('[data-testid="opening-offset"]')?.textContent).not.toBe('0.6');
+    expect(rendered.container.querySelector('[data-testid="opening-offset"]')?.textContent).toBe('0.6');
 
     rendered.unmount();
   });
 
-  it('drags a selected house-first stacker along its host wall in model space', async () => {
+  it('does not render selected house-first stacker drag geometry in projection-only model space', async () => {
     const house = makeHouseFirstHouse({
       openings: [
         makeHouseFirstOpening({
@@ -4552,37 +4529,29 @@ describe('ModelSpaceViewport', () => {
       ],
     });
     const rendered = renderIntoDocument(
-      <HouseFirstViewportHarness initialHouse={house} initialSelection={{ kind: 'opening', targetId: 'opening-1' }} />,
+      <HouseFirstViewportHarness
+        initialHouse={house}
+        initialSelection={{ kind: 'opening', targetId: 'opening-1' }}
+      />,
     );
 
     const svg = rendered.container.querySelector('svg[aria-label="Module plan view"]') as SVGSVGElement | null;
     const openingHit = rendered.container.querySelector('[data-object-workbench-shape-hit="opening:opening-1"]');
     const scroller = rendered.container.querySelector('[data-model-space-scroller]') as HTMLElement | null;
-    if (!svg || !openingHit || !scroller) throw new Error('Missing plan viewport nodes.');
-    installSvgPointMock(svg);
+    if (!svg || !scroller) throw new Error('Missing plan viewport nodes.');
 
-    expect(rendered.container.querySelector('[data-editable-field-id="opening-1:offsetAlongWallM"]')).not.toBeNull();
-    expect(scroller.dataset.objectWorkbenchSelectedOpeningDragEligible).toBe('true');
-
-    dispatchPointer(openingHit, 'pointerdown', { pointerId: 72, button: 0, clientX: 50, clientY: 50 });
-    dispatchPointer(window, 'pointermove', { pointerId: 72, button: 0, buttons: 1, clientX: 250, clientY: 50 });
-
-    expect(scroller.dataset.objectWorkbenchOpeningDragActive).toBe('true');
-    expect(rendered.container.querySelector('[data-object-workbench-preview-shape="opening-1"]')).not.toBeNull();
-
-    dispatchPointer(window, 'pointerup', { pointerId: 72, button: 0, clientX: 250, clientY: 50 });
-    await act(async () => {
-      await Promise.resolve();
-    });
-
+    expect(svg.getAttribute('data-model-space-render-contract')).toBe('top_projection_only');
+    expect(openingHit).toBeNull();
+    expect(rendered.container.querySelector('[data-editable-field-id="opening-1:offsetAlongWallM"]')).toBeNull();
+    expect(scroller.dataset.objectWorkbenchSelectedOpeningDragEligible).toBe('false');
     expect(scroller.dataset.objectWorkbenchOpeningDragActive).toBe('false');
     expect(rendered.container.querySelector('[data-object-workbench-preview-shape="opening-1"]')).toBeNull();
-    expect(rendered.container.querySelector('[data-testid="opening-offset"]')?.textContent).not.toBe('0.6');
+    expect(rendered.container.querySelector('[data-testid="opening-offset"]')?.textContent).toBe('0.6');
 
     rendered.unmount();
   });
 
-  it('keeps unresolved house-first openings selectable but blocks drag until a host wall resolves', async () => {
+  it('keeps unresolved house-first openings out of projection-only drag overlays', async () => {
     const house = makeHouseFirstHouse({
       openings: [
         makeHouseFirstOpening({
@@ -4605,8 +4574,9 @@ describe('ModelSpaceViewport', () => {
     if (!scroller) throw new Error('Missing model-space scroller.');
 
     expect(scroller.dataset.objectWorkbenchSelectedOpeningDragEligible).toBe('false');
-    expect(scroller.dataset.objectWorkbenchSelectedOpeningDragReason).toContain('resolvable host wall');
-    expect(scroller.dataset.objectWorkbenchOpeningDragPhase).toBe('selected');
+    expect(scroller.dataset.objectWorkbenchSelectedOpeningDragReason).toBe('');
+    expect(scroller.dataset.objectWorkbenchOpeningDragPhase).toBe('idle');
+    expect(rendered.container.querySelector('[data-object-workbench-shape-hit="opening:opening-1"]')).toBeNull();
     expect(rendered.container.querySelector('[data-object-workbench-preview-shape="opening-1"]')).toBeNull();
 
     rendered.unmount();

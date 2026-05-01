@@ -724,6 +724,7 @@ describe('ModuleViewsCard', () => {
 
     expectRectCloseTo(focusBox, { x: -12, y: -32.4, width: 96, height: 77.4 });
     expectRectCloseTo(viewBox, focusBox);
+    expect(extractSvgStringAttribute(svgTag, 'data-model-space-render-contract')).toBe('top_projection_only');
     expect(extractSvgStringAttribute(svgTag, 'data-top-projection-parity-status')).toBe('pass');
     expect(extractSvgStringAttribute(svgTag, 'data-top-projection-screen-axis')).toBe('world_x_left_world_y_down');
     expect(extractSvgStringAttribute(svgTag, 'data-top-projection-top-visible-count')).toBe('3');
@@ -738,6 +739,11 @@ describe('ModuleViewsCard', () => {
     expect(extractSvgStringAttribute(svgTag, 'data-plan-suppressed-top-visible-body-count')).toBe('1');
     expect(extractSvgStringAttribute(svgTag, 'data-plan-object-overlay-body-count')).toBe('0');
     expect(extractSvgStringAttribute(svgTag, 'data-plan-duplicate-visual-body-count')).toBe('0');
+    expect(extractSvgStringAttribute(svgTag, 'data-plan-duplicate-semantic-owner-count')).toBe('0');
+    expect(markup).not.toContain('data-plan-layer="contextLines"');
+    expect(markup).not.toContain('data-plan-attachment-edge="geometry"');
+    expect(markup).not.toContain('data-plan-fall-direction=');
+    expect(markup).not.toContain('data-plan-primary-dim=');
     expect(worldBox.x).toBeLessThanOrEqual(focusBox.x);
     expect(worldBox.y).toBeLessThanOrEqual(focusBox.y);
     expect(worldBox.x + worldBox.width).toBeGreaterThanOrEqual(focusBox.x + focusBox.width);
@@ -807,7 +813,7 @@ describe('ModuleViewsCard', () => {
           openingInteraction: null,
           deckDragEligibility: null,
           openingDragEligibility: null,
-          source: 'geometry',
+          source: 'top_projection_committed',
           geometrySourceId: 'house_surface_solid:deck-1',
           renderStatus: 'geometry_ready',
         },
@@ -847,7 +853,139 @@ describe('ModuleViewsCard', () => {
     expect(extractSvgStringAttribute(svgTag, 'data-plan-rendered-context-body-count')).toBe('0');
     expect(extractSvgStringAttribute(svgTag, 'data-plan-suppressed-context-body-count')).toBe('1');
     expect(extractSvgStringAttribute(svgTag, 'data-plan-object-overlay-body-count')).toBe('0');
+    expect(extractSvgStringAttribute(svgTag, 'data-plan-visible-legacy-overlay-body-count')).toBe('0');
+    expect(extractSvgStringAttribute(svgTag, 'data-plan-visible-geometry-fallback-overlay-body-count')).toBe('0');
+    expect(extractSvgStringAttribute(svgTag, 'data-plan-visible-top-projection-context-overlay-body-count')).toBe('0');
+    expect(extractSvgStringAttribute(svgTag, 'data-plan-visible-top-projection-committed-overlay-body-count')).toBe('1');
     expect(extractSvgStringAttribute(svgTag, 'data-plan-duplicate-visual-body-count')).toBe('0');
+    expect(extractSvgStringAttribute(svgTag, 'data-plan-duplicate-semantic-owner-count')).toBe('0');
+  });
+
+  it('drops stale geometry-derived selected deck overlays in projection-only model space', () => {
+    const drawing = makeDrawingModule();
+    const objectWorkbenchPlanOverlay: ObjectWorkbenchPlanOverlay = {
+      housePolygonSource: 'geometry_projection',
+      shapes: [
+        {
+          ownerKind: 'deck',
+          ownerId: 'deck-1',
+          polygon: [
+            { x: 12, y: 8 },
+            { x: 18, y: 8 },
+            { x: 18, y: 11 },
+            { x: 12, y: 11 },
+          ],
+          detailSegments: [],
+          selected: true,
+          custom: false,
+          muted: false,
+          invalid: false,
+          invalidMessage: null,
+          deckInteraction: null,
+          openingInteraction: null,
+          deckDragEligibility: null,
+          openingDragEligibility: null,
+          source: 'geometry_derived',
+          geometrySourceId: 'stale-floating-deck',
+          renderStatus: 'geometry_ready',
+        },
+      ],
+      presetAnnotations: [],
+      customEdgeCandidates: [],
+    };
+    const markup = renderToStaticMarkup(
+      <ModuleDrawingRenderer
+        view="plan"
+        status="ready"
+        planModel={drawing.planModel}
+        sectionModel={drawing.sectionModel}
+        presentation="model"
+        modelSpacePergolaGeometry={makeGeometryPlanFixture()}
+        modelSpaceTopProjection={makeTopProjectionFixtureWithDeck()}
+        modelSpacePergolaRenderSource="geometry"
+        modelSpacePergolaRenderStatus="geometry_ready"
+        objectWorkbenchPlanOverlay={objectWorkbenchPlanOverlay}
+      />,
+    );
+
+    const svgTag = extractSvgTag(markup, 'Module plan view');
+    const projectedDeckPoints = extractPolygonPoints(markup, 'data-plan-top-projection-shape', 'top-projection-house-deck');
+    const staleDeckHitPoints = extractPolygonPoints(markup, 'data-object-workbench-shape-hit', 'deck:deck-1');
+
+    expect(projectedDeckPoints.length).toBeGreaterThan(0);
+    expect(staleDeckHitPoints).toEqual([]);
+    expect(markup).not.toContain('stale-floating-deck');
+    expect(markup).not.toContain('data-plan-render-source="geometry_derived"');
+    expect(extractSvgStringAttribute(svgTag, 'data-model-space-render-contract')).toBe('top_projection_only');
+    expect(extractSvgStringAttribute(svgTag, 'data-plan-visible-geometry-fallback-overlay-body-count')).toBe('0');
+    expect(extractSvgStringAttribute(svgTag, 'data-plan-duplicate-visual-body-count')).toBe('0');
+    expect(extractSvgStringAttribute(svgTag, 'data-plan-duplicate-semantic-owner-count')).toBe('0');
+  });
+
+  it('keeps selected house overlays on the committed top projection body instead of the reference footprint', () => {
+    const drawing = makeDrawingModule();
+    const objectWorkbenchPlanOverlay: ObjectWorkbenchPlanOverlay = {
+      housePolygonSource: 'geometry_projection',
+      shapes: [
+        {
+          ownerKind: 'footprint',
+          ownerId: 'house-main',
+          polygon: [
+            { x: -0.5, y: -2.2 },
+            { x: 6.5, y: -2.2 },
+            { x: 6.5, y: 0 },
+            { x: -0.5, y: 0 },
+          ],
+          detailSegments: [],
+          selected: true,
+          custom: false,
+          muted: false,
+          invalid: false,
+          invalidMessage: null,
+          deckInteraction: null,
+          openingInteraction: null,
+          deckDragEligibility: null,
+          openingDragEligibility: null,
+          source: 'top_projection_committed',
+          geometrySourceId: 'top-projection-house-roof',
+          renderStatus: 'geometry_ready',
+        },
+      ],
+      presetAnnotations: [],
+      customEdgeCandidates: [],
+    };
+    const markup = renderToStaticMarkup(
+      <ModuleDrawingRenderer
+        view="plan"
+        status="ready"
+        planModel={drawing.planModel}
+        sectionModel={drawing.sectionModel}
+        presentation="model"
+        modelSpacePergolaGeometry={makeGeometryPlanFixture()}
+        modelSpaceTopProjection={makeTopProjectionFixture()}
+        modelSpacePergolaRenderSource="geometry"
+        modelSpacePergolaRenderStatus="geometry_ready"
+        objectWorkbenchPlanOverlay={objectWorkbenchPlanOverlay}
+      />,
+    );
+
+    const svgTag = extractSvgTag(markup, 'Module plan view');
+    const projectedHousePoints = extractPolygonPoints(markup, 'data-plan-top-projection-shape', 'top-projection-house-roof');
+    const houseSelectionPoints = extractPolygonPoints(markup, 'data-object-workbench-selection-outline', 'footprint:house-main');
+    const houseHitPoints = extractPolygonPoints(markup, 'data-object-workbench-shape-hit', 'footprint:house-main');
+    const mirroredReferencePoints = extractPolygonPoints(markup, 'data-plan-top-projection-shape', 'top-projection-context-footprint');
+
+    expect(markup).toContain('data-plan-render-source="top_projection_committed"');
+    expect(markup).toContain('data-plan-visual-owner="house"');
+    expect(mirroredReferencePoints).toEqual([]);
+    expect(houseSelectionPoints).toEqual(projectedHousePoints);
+    expect(houseHitPoints).toEqual(projectedHousePoints);
+    expect(extractSvgStringAttribute(svgTag, 'data-plan-visible-legacy-overlay-body-count')).toBe('0');
+    expect(extractSvgStringAttribute(svgTag, 'data-plan-visible-geometry-fallback-overlay-body-count')).toBe('0');
+    expect(extractSvgStringAttribute(svgTag, 'data-plan-visible-top-projection-context-overlay-body-count')).toBe('0');
+    expect(extractSvgStringAttribute(svgTag, 'data-plan-visible-top-projection-committed-overlay-body-count')).toBe('1');
+    expect(extractSvgStringAttribute(svgTag, 'data-plan-duplicate-visual-body-count')).toBe('0');
+    expect(extractSvgStringAttribute(svgTag, 'data-plan-duplicate-semantic-owner-count')).toBe('0');
   });
 
   it('does not render legacy-looking model-space plan geometry when solved geometry is unsupported', () => {
