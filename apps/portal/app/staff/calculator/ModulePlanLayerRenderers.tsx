@@ -79,23 +79,27 @@ export type ObjectWorkbenchPreviewShape = {
   endCatchPoint: ModulePlanLayerPoint | null;
 } | null;
 
+export type ObjectWorkbenchCustomEdgeAnnotation = ObjectWorkbenchPlanCustomEdgeCandidate & {
+  witnessStart: ModulePlanLayerPoint;
+  witnessEnd: ModulePlanLayerPoint;
+  lineStart: ModulePlanLayerPoint;
+  lineEnd: ModulePlanLayerPoint;
+};
+
+export type ObjectWorkbenchPresetDimensionAnnotation = ObjectWorkbenchPlanPresetDimensionAnnotation & {
+  witnessStart: ModulePlanLayerPoint;
+  witnessEnd: ModulePlanLayerPoint;
+  lineStart: ModulePlanLayerPoint;
+  lineEnd: ModulePlanLayerPoint;
+};
+
 export type ObjectWorkbenchDimensionAnnotation =
-  | (ObjectWorkbenchPlanCustomEdgeCandidate & {
-      witnessStart: ModulePlanLayerPoint;
-      witnessEnd: ModulePlanLayerPoint;
-      lineStart: ModulePlanLayerPoint;
-      lineEnd: ModulePlanLayerPoint;
-    })
-  | (ObjectWorkbenchPlanPresetDimensionAnnotation & {
-      witnessStart: ModulePlanLayerPoint;
-      witnessEnd: ModulePlanLayerPoint;
-      lineStart: ModulePlanLayerPoint;
-      lineEnd: ModulePlanLayerPoint;
-    });
+  | ObjectWorkbenchCustomEdgeAnnotation
+  | ObjectWorkbenchPresetDimensionAnnotation;
 
 export type ObjectWorkbenchDimensionLayerRendererProps = {
-  presetAnnotations: ObjectWorkbenchDimensionAnnotation[];
-  customEdgeCandidates: ObjectWorkbenchDimensionAnnotation[];
+  presetAnnotations: ObjectWorkbenchPresetDimensionAnnotation[];
+  customEdgeCandidates: ObjectWorkbenchCustomEdgeAnnotation[];
   activeCustomEdgeId: string | null;
   previewShape: ObjectWorkbenchPreviewShape;
   onCustomEdgeSelect?: (target: { ownerKind: 'footprint' | 'deck'; ownerId: string; edgeIndex: number }) => void;

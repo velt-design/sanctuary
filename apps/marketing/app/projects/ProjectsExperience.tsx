@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import type { Project } from '@/data/projects';
 import ProjectDetailContent from './ProjectDetailContent';
@@ -35,14 +36,12 @@ export default function ProjectsExperience({ projects, initialSlugFromUrl = '' }
   }, [initialSlug]);
 
   useEffect(() => {
-    const mq = window.matchMedia('(max-width: 720px)');
-    const setFromQuery = (event?: MediaQueryList | MediaQueryListEvent) => {
-      const match = event?.matches ?? mq.matches;
-      setIsMobileList(match);
+    const setFromViewport = () => {
+      setIsMobileList(window.innerWidth <= 720);
     };
-    setFromQuery(mq);
-    mq.addEventListener('change', setFromQuery);
-    return () => mq.removeEventListener('change', setFromQuery);
+    setFromViewport();
+    window.addEventListener('resize', setFromViewport);
+    return () => window.removeEventListener('resize', setFromViewport);
   }, []);
 
   // Lock root page scroll on desktop projects view so only the
@@ -178,8 +177,8 @@ export default function ProjectsExperience({ projects, initialSlugFromUrl = '' }
     });
   }, [filteredProjects, router, selectedProject]);
 
-  if (isMobileList) {
-    return (
+  return (
+    <>
       <main className="projects-experience projects-experience--mobile" aria-label="Projects">
         <header className="projects-mobile__header">
           <p className="projects-mobile__eyebrow">Projects</p>
@@ -193,77 +192,93 @@ export default function ProjectsExperience({ projects, initialSlugFromUrl = '' }
           initialSlug={selectedSlug}
         />
       </main>
-    );
-  }
 
-  return (
-    <main className="projects-experience" aria-label="Projects">
-      <h1 className="visually-hidden">Pergola projects and case studies</h1>
-      <div className="projects-layout">
-        <aside className="projects-rail" aria-label="Select a project">
-          <div className="projects-rail__inner">
-            <div className="projects-rail__header">
-              <p className="projects-rail__eyebrow">Projects</p>
-              <h2 className="projects-rail__title">{selectedProject?.title || 'Select a project'}</h2>
-              {selectedProject?.location ? (
-                <p className="projects-rail__meta">{selectedProject.location}</p>
-              ) : null}
+      <main className="projects-experience" aria-label="Projects">
+        <h1 className="visually-hidden">Pergola projects and case studies</h1>
+        <div className="projects-layout">
+          <aside className="projects-rail" aria-label="Select a project">
+            <div className="projects-rail__inner">
+              <div className="projects-rail__header">
+                <p className="projects-rail__eyebrow">Projects</p>
+                <h2 className="projects-rail__title">{selectedProject?.title || 'Select a project'}</h2>
+                {selectedProject?.location ? (
+                  <p className="projects-rail__meta">{selectedProject.location}</p>
+                ) : null}
+                {selectedProject ? (
+                  <div className="projects-rail__summary" aria-label="Selected project summary">
+                    <span>{filteredProjects.length} projects</span>
+                    <span>{selectedProject.type} / {selectedProject.roof}</span>
+                  </div>
+                ) : null}
+              </div>
+              <div
+                className="projects-list"
+                role="listbox"
+                tabIndex={0}
+                aria-label="Projects list"
+                aria-activedescendant={selectedSlug ? `project-option-${selectedSlug}` : undefined}
+                onKeyDown={handleListKeyDown}
+              >
+                {filteredProjects.length ? (
+                  filteredProjects.map(project => {
+                    const isActive = project.slug === selectedSlug;
+                    return (
+                      <button
+                        key={project.slug}
+                        id={`project-option-${project.slug}`}
+                        ref={element => {
+                          optionRefs.current[project.slug] = element;
+                        }}
+                        type="button"
+                        className={cx('projects-list__item', isActive && 'is-active')}
+                        role="option"
+                        aria-selected={isActive}
+                        onClick={() => handleItemClick(project.slug)}
+                      >
+                        <span className="projects-list__thumb" aria-hidden="true">
+                          <Image
+                            src={project.heroImage.src}
+                            alt=""
+                            fill
+                            sizes="72px"
+                            loading="lazy"
+                            className="projects-list__thumb-image"
+                          />
+                        </span>
+                        <span className="projects-list__copy">
+                          <span className="projects-list__title">{project.title}</span>
+                          <span className="projects-list__location">{project.location}</span>
+                          <span className="projects-list__tag">{project.type} / {project.roof}</span>
+                        </span>
+                      </button>
+                    );
+                  })
+                ) : (
+                  <div className="projects-list__empty">
+                    <p>No projects available.</p>
+                  </div>
+                )}
+              </div>
             </div>
-            <div
-              className="projects-list"
-              role="listbox"
-              tabIndex={0}
-              aria-label="Projects list"
-              aria-activedescendant={selectedSlug ? `project-option-${selectedSlug}` : undefined}
-              onKeyDown={handleListKeyDown}
-            >
-              {filteredProjects.length ? (
-                filteredProjects.map(project => {
-                  const isActive = project.slug === selectedSlug;
-                  return (
-                    <button
-                      key={project.slug}
-                      id={`project-option-${project.slug}`}
-                      ref={element => {
-                        optionRefs.current[project.slug] = element;
-                      }}
-                      type="button"
-                      className={cx('projects-list__item', isActive && 'is-active')}
-                      role="option"
-                      aria-selected={isActive}
-                      onClick={() => handleItemClick(project.slug)}
-                    >
-                      <span className="projects-list__title">{project.title}</span>
-                      <span className="projects-list__location">{project.location}</span>
-                      <span className="projects-list__tag">{project.type} - {project.roof}</span>
-                    </button>
-                  );
-                })
-              ) : (
-                <div className="projects-list__empty">
-                  <p>No projects available.</p>
-                </div>
-              )}
-            </div>
-          </div>
-        </aside>
-        <section className="projects-detail" ref={detailRef} aria-live="polite">
-          {isMobileList ? (
-            <div className="projects-detail__mobile-note">
-              <p>Select a project card to open the full detail page.</p>
-            </div>
-          ) : (
-            <ProjectDetailContent
-              project={selectedProject}
-              isLoading={detailLoading}
-              relatedProjects={relatedProjects}
-              onSelectRelated={slug => setSlug(slug, { scrollIntoView: true })}
-              relationMode="inline"
-              variant="embedded"
-            />
-          )}
-        </section>
-      </div>
-    </main>
+          </aside>
+          <section className="projects-detail" ref={detailRef} aria-live="polite">
+            {isMobileList ? (
+              <div className="projects-detail__mobile-note">
+                <p>Select a project card to open the full detail page.</p>
+              </div>
+            ) : (
+              <ProjectDetailContent
+                project={selectedProject}
+                isLoading={detailLoading}
+                relatedProjects={relatedProjects}
+                onSelectRelated={slug => setSlug(slug, { scrollIntoView: true })}
+                relationMode="inline"
+                variant="embedded"
+              />
+            )}
+          </section>
+        </div>
+      </main>
+    </>
   );
 }

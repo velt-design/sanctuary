@@ -83,13 +83,6 @@ export default function ProjectDetailContent({
     );
   }
 
-  const factList = [
-    { label: 'Type', value: project.type },
-    { label: 'Roof', value: project.roof },
-    { label: 'Year', value: project.year },
-    { label: 'Region', value: project.region },
-  ];
-
   const dimensionList = [
     { label: 'Width', value: project.stats.width },
     { label: 'Depth', value: project.stats.depth },
@@ -141,21 +134,29 @@ export default function ProjectDetailContent({
         </div>
       </div>
       <div className="project-detail__body">
-        <p className="project-detail__location">{project.location}</p>
-        <TitleTag className="project-detail__title">{project.title}</TitleTag>
-        <p className="project-detail__blurb">{project.blurb}</p>
-
-        <dl className="project-detail__stats">
-          {factList.map(fact => (
-            <div key={fact.label}>
-              <dt>{fact.label}</dt>
-              <dd>{fact.value}</dd>
+        <header className="project-detail__intro">
+          <div className="project-detail__intro-copy">
+            <p className="project-detail__location">{project.location}</p>
+            <TitleTag className="project-detail__title">{project.title}</TitleTag>
+            <p className="project-detail__blurb">{project.blurb}</p>
+          </div>
+          <dl className="project-detail__quick-facts" aria-label="Project summary">
+            <div>
+              <dt>Type</dt>
+              <dd>{project.type}</dd>
             </div>
-          ))}
-        </dl>
-
-        {dimensionList.length ? (
-          <dl className="project-detail__dimensions">
+            <div>
+              <dt>Roof</dt>
+              <dd>{project.roof}</dd>
+            </div>
+            <div>
+              <dt>Year</dt>
+              <dd>{project.year}</dd>
+            </div>
+            <div>
+              <dt>Region</dt>
+              <dd>{project.region}</dd>
+            </div>
             {dimensionList.map(dim => (
               <div key={dim.label}>
                 <dt>{dim.label}</dt>
@@ -163,7 +164,7 @@ export default function ProjectDetailContent({
               </div>
             ))}
           </dl>
-        ) : null}
+        </header>
 
         {project.tags.length ? (
           <div className="project-detail__tags" aria-label="Project tags">

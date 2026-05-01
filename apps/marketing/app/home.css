@@ -48,8 +48,8 @@
   inset:0;
   z-index:1;
   background:
-    linear-gradient(90deg, rgba(0,0,0,.428) 0%, rgba(0,0,0,.286) 42%, rgba(0,0,0,.095) 78%, rgba(0,0,0,.143) 100%),
-    linear-gradient(0deg, rgba(0,0,0,.286) 0%, rgba(0,0,0,0) 48%);
+    linear-gradient(90deg, rgba(0,0,0,.385) 0%, rgba(0,0,0,.257) 42%, rgba(0,0,0,.086) 78%, rgba(0,0,0,.129) 100%),
+    linear-gradient(0deg, rgba(0,0,0,.257) 0%, rgba(0,0,0,0) 48%);
 }
 .home-hero__inner{
   position:relative;
@@ -151,8 +151,8 @@
   .home-hero__image{object-position:center 28%}
   .home-hero__shade{
     background:
-      linear-gradient(180deg, rgba(0,0,0,.107) 0%, rgba(0,0,0,.107) 35%, rgba(0,0,0,.464) 100%),
-      linear-gradient(90deg, rgba(0,0,0,.286), rgba(0,0,0,.06));
+      linear-gradient(180deg, rgba(0,0,0,.096) 0%, rgba(0,0,0,.096) 35%, rgba(0,0,0,.418) 100%),
+      linear-gradient(90deg, rgba(0,0,0,.257), rgba(0,0,0,.054));
   }
   .home-hero__inner{padding-bottom:clamp(58px,8.5vh,82px)}
   .home-hero__title{font-size:clamp(36px,10.8vw,56px)}
