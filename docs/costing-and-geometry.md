@@ -34,6 +34,8 @@ object-first design intent
 
 `apps/portal/lib/estimates/commercialDesignPayload.ts` is the first portal-side shadow adapter. It converts current calculator inputs, plus an optional existing `SiteOutputV1`, into `CommercialDesignInputV1` for future comparison work. It is callable-only: it must not write saved estimate outputs, change quote totals, or replace the live `calculateSiteCostV1` path until a later explicit integration task.
 
+`apps/portal/lib/drawings/commercialDesignPayload.ts` is the workbench-side shadow adapter. It converts `WorkbenchSolvedModel` plus explicit site commercial fields into `CommercialDesignInputV1` with `source: 'workbench_solved'`. It consumes solved geometry and quantity hooks only; it must not mutate geometry, persist commercial payloads, or replace live pricing until a later explicit integration task.
+
 ## Portal Cost Overrides
 
 Portal applies database overrides on top of `loadCostingConfigV1()`.
