@@ -36,26 +36,30 @@ import {
   type DeckInteractionTelemetry,
 } from '@/lib/drawings/interactions/deckInteractionContract';
 import {
-  buildDeckDragSession,
   buildDeckInteractionTelemetry,
   buildDeckInteractionViewState,
-  buildDeckObjectPatchCommit,
-  resolveDeckPreviewState,
-  resolveDeckCommitTransformDiagnostics,
   type DeckReleaseState,
   type DeckDragSession,
   type DeckPreviewState,
   type DeckCommitTransformDiagnostics,
 } from '@/lib/drawings/interactions/deckInteractionAdapter';
 import {
-  buildOpeningDragSession,
   buildOpeningInteractionTelemetry,
   buildOpeningInteractionViewState,
-  buildOpeningObjectPatchCommit,
-  resolveOpeningPreviewState,
   type OpeningDragSession,
   type OpeningPreviewState,
 } from '@/lib/drawings/interactions/openingInteractionAdapter';
+import {
+  releaseDeckMoveTool,
+  startDeckMoveTool,
+  moveDeckMoveTool,
+  type DeckReleaseCommitSource,
+} from '@/lib/drawings/interactions/deckMoveToolController';
+import {
+  releaseOpeningMoveTool,
+  startOpeningMoveTool,
+  moveOpeningMoveTool,
+} from '@/lib/drawings/interactions/openingMoveToolController';
 import {
   OBJECT_DRAG_INTENT_THRESHOLD_PX,
   resolveObjectInteractionMove,
@@ -203,11 +207,6 @@ type DeckSvgInteraction = Extract<ObjectWorkbenchPlanShapeDragStartMeta, { owner
 
 type DeckDragPhase = ObjectInteractionPhase;
 
-type DeckReleaseCommitSource =
-  | 'none'
-  | 'custom_outline'
-  | 'snapped_frame_commit'
-  | 'floating_rect_from_projection_preview';
 type DeckSettleMatchSource =
   | 'none'
   | 'top_projection_committed'
@@ -460,16 +459,6 @@ function deckShapeSemanticallyMatchesPreview(input: {
     ? Math.max(toleranceM, 1)
     : toleranceM;
   return pointsApproximatelyEqual(interaction.renderedCenter, previewCenter, centerToleranceM);
-}
-
-function resolveDeckReleaseCommitSource(input: {
-  session: DeckDragSession;
-  preview: DeckPreviewState;
-}): DeckReleaseCommitSource {
-  if (input.session.interaction.kind === 'custom_outline') return 'custom_outline';
-  return input.preview.releasePlacement === 'floating'
-    ? 'floating_rect_from_projection_preview'
-    : 'snapped_frame_commit';
 }
 
 function clampValue(value: number, min: number, max: number): number {
@@ -1500,18 +1489,22 @@ export default function ModelSpaceViewport({
         setOpeningPreviewState(null);
         setDeckDragSettleState(null);
         setDeckPreviewState(null);
-        const nextDeckDragSession = buildDeckDragSession({
-          pointerId: event.pointerId,
-          clientX: event.clientX,
-          clientY: event.clientY,
-          startSvgX: startPoint.x,
-          startSvgY: startPoint.y,
-          startDragPlanPoint,
-          deckId: meta.ownerId,
-          overlayShape,
-          svgInteraction: meta.deckInteraction,
-        });
-        if (!nextDeckDragSession) return;
+        const deckMoveStart = startDeckMoveTool(
+          {
+            deckId: meta.ownerId,
+            overlayShape,
+            svgInteraction: meta.deckInteraction,
+          },
+          {
+            pointerId: event.pointerId,
+            clientX: event.clientX,
+            clientY: event.clientY,
+            svgPoint: startPoint,
+            planPoint: startDragPlanPoint,
+          },
+        );
+        if (!deckMoveStart.ok) return;
+        const nextDeckDragSession = deckMoveStart.session;
         deckDragPhaseRef.current = 'drag-intent';
         deckDragSessionRef.current = nextDeckDragSession;
         setDeckDragPhase('drag-intent');
@@ -1538,16 +1531,22 @@ export default function ModelSpaceViewport({
       setDeckReleaseFeedbackState(null);
       resetDeckDragInteraction();
       setOpeningPreviewState(null);
-      const nextOpeningDragSession = buildOpeningDragSession({
-        pointerId: event.pointerId,
-        startSvgX: startPoint.x,
-        startSvgY: startPoint.y,
-        openingId: meta.ownerId,
-        overlayShape,
-        svgInteraction: meta.openingInteraction,
-      });
-      if (!nextOpeningDragSession) return;
-      setOpeningDragSession(nextOpeningDragSession);
+      const openingMoveStart = startOpeningMoveTool(
+        {
+          openingId: meta.ownerId,
+          overlayShape,
+          svgInteraction: meta.openingInteraction,
+        },
+        {
+          pointerId: event.pointerId,
+          clientX: event.clientX,
+          clientY: event.clientY,
+          svgPoint: startPoint,
+          planPoint: null,
+        },
+      );
+      if (!openingMoveStart.ok) return;
+      setOpeningDragSession(openingMoveStart.session);
     },
     [
       closeObjectWorkbenchDimensionEditor,
@@ -2919,11 +2918,15 @@ export default function ModelSpaceViewport({
       if (resolvedNextDragPlanPoint) {
         lastResolvedDeckDragPlanPointRef.current = resolvedNextDragPlanPoint;
       }
-      const preview = resolveDeckPreviewState({
+      const preview = moveDeckMoveTool({
         session: activeDeckDragSession,
-        nextSvgX: nextPoint.x,
-        nextSvgY: nextPoint.y,
-        nextDragPlanPoint,
+        pointer: {
+          pointerId: event.pointerId,
+          clientX: event.clientX,
+          clientY: event.clientY,
+          svgPoint: nextPoint,
+          planPoint: nextDragPlanPoint,
+        },
         previousPreviewState: deckPreviewStateRef.current,
       });
       setDeckPreviewState(preview);
@@ -2950,14 +2953,12 @@ export default function ModelSpaceViewport({
         return;
       }
       const commitStartedAtMs = Date.now();
-      const commitSource = resolveDeckReleaseCommitSource({
+      const deckMoveRelease = releaseDeckMoveTool({
         session: activeDeckDragSession,
         preview,
       });
-      const commitTransform = resolveDeckCommitTransformDiagnostics({
-        session: activeDeckDragSession,
-        preview,
-      });
+      const commitSource = deckMoveRelease.commitSource;
+      const commitTransform = deckMoveRelease.commitTransform;
       deckDragPhaseRef.current = 'settling';
       setDeckDragPhase('settling');
       setDeckDragSettleState({
@@ -2979,14 +2980,10 @@ export default function ModelSpaceViewport({
       });
       let result: { ok: boolean; error?: string };
       try {
-        const commit = buildDeckObjectPatchCommit({
-          session: activeDeckDragSession,
-          preview,
-        });
         result = await resolveCommitResult(
           onCommitDeckDimension(
-            commit.target.objectId,
-            commit.patch,
+            deckMoveRelease.target.objectId,
+            deckMoveRelease.patch,
           ),
         );
       } catch (error) {
@@ -3038,10 +3035,15 @@ export default function ModelSpaceViewport({
       if (!svg) return;
       const nextPoint = clientPointToSvg(svg, event.clientX, event.clientY);
       if (!nextPoint) return;
-      const preview = resolveOpeningPreviewState({
+      const preview = moveOpeningMoveTool({
         session: openingDragSession,
-        nextSvgX: nextPoint.x,
-        nextSvgY: nextPoint.y,
+        pointer: {
+          pointerId: event.pointerId,
+          clientX: event.clientX,
+          clientY: event.clientY,
+          svgPoint: nextPoint,
+          planPoint: null,
+        },
       });
       setOpeningPreviewState(preview);
     };
@@ -3053,7 +3055,7 @@ export default function ModelSpaceViewport({
       setOpeningPreviewState(null);
       if (!preview) return;
 
-      const commit = buildOpeningObjectPatchCommit({
+      const commit = releaseOpeningMoveTool({
         session: openingDragSession,
         preview,
       });

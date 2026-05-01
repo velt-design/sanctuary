@@ -72,6 +72,7 @@ Shared vocabulary for direct manipulation:
 `objectInteractionEngine` owns shared pointer and drag lifecycle behavior. Object-family adapters own hit targets, drag eligibility, previews, snap rules, commit payloads, validation, and hint text.
 
 Deck dragging is the first concrete adapter pattern. Opening adapters also exist and should follow the same contract style.
+Model Space object move lifecycles are routed through interaction controllers for deck and opening movement. `ModelSpaceViewport` resolves DOM/client/SVG/projection pointers, pointer capture, scroll anchoring, and persistence callbacks; the controllers own start, move preview, release intent, and commit diagnostics.
 
 ## Drawing Persistence
 
