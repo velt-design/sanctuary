@@ -43,6 +43,13 @@ let mockRendererDispose: ReturnType<typeof vi.fn> | null = null;
 let mockRendererResetState: ReturnType<typeof vi.fn> | null = null;
 let mockRendererClearDepth: ReturnType<typeof vi.fn> | null = null;
 
+const originalConsoleError = console.error.bind(console);
+vi.spyOn(console, "error").mockImplementation((...args) => {
+  const message = String(args[0] ?? "");
+  if (message.includes("is using incorrect casing")) return;
+  originalConsoleError(...args);
+});
+
 vi.mock("@react-three/fiber", () => ({
   Canvas: ({
     children,

@@ -11,6 +11,7 @@ import { parseAssemblyMemberProfile } from './profiles';
 const GUTTER_ASSET_PATH = path.resolve(process.cwd(), 'packages/geometry/assets/profiles/mono/sp-gutter.dxf');
 const JOINER_ASSET_PATH = path.resolve(process.cwd(), 'packages/geometry/assets/profiles/mono/sp-joiners.dxf');
 const GENERATED_ASSET_MODULE_PATH = path.resolve(process.cwd(), 'packages/geometry/src/generated/profileAssets.ts');
+const normalizeLineEndings = (value: string) => value.replace(/\r\n/g, '\n');
 const OLD_PROXY_OUTLINE = [
   { x: -50, y: -75 },
   { x: 50, y: -75 },
@@ -208,7 +209,9 @@ describe('profile asset DXF normalization', () => {
     expect(parsedJoiners.sectionVoids).toBeNull();
     expect(GENERATED_PROFILE_ASSETS.sp_gutter).toEqual(parsedGutter);
     expect(GENERATED_PROFILE_ASSETS.sp_joiners).toEqual(parsedJoiners);
-    expect(fs.readFileSync(GENERATED_ASSET_MODULE_PATH, 'utf8')).toBe(generated);
+    expect(normalizeLineEndings(fs.readFileSync(GENERATED_ASSET_MODULE_PATH, 'utf8'))).toBe(
+      normalizeLineEndings(generated),
+    );
   });
 
   it('uses the generated gutter asset as the runtime source for the SP gutter profile', () => {

@@ -5,7 +5,7 @@ import { getSanctuaryGeometryWorkbenchFixture } from '@/lib/drawings/sanctuaryWo
 import { installDomGeometryMock, renderIntoDocument } from '../../../../../../../test/reactHarness';
 
 vi.mock('@react-three/fiber', () => ({
-  Canvas: ({ children }: { children?: unknown }) => <div data-testid="geometry-3d-canvas">{children as any}</div>,
+  Canvas: () => <div data-testid="geometry-3d-canvas" />,
 }));
 
 vi.mock('@react-three/drei', () => ({

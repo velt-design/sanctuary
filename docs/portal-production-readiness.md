@@ -49,11 +49,11 @@ This snapshot records the most recent known production-readiness state from the 
 | --- | --- | --- | --- |
 | Portal tests | Green | `npm run portal:doctor:quick` completed `npm run test:portal`: 172 files and 1077 tests passed. | Keep using focused portal scripts during feature work and quick doctor for routine readiness. |
 | Lint and guards | Green | `npm run portal:doctor:quick` completed `npm run lint`, including docs guard, cache guard, brand guard, mojibake, and ESLint. | Keep lint in quick doctor and portal PR CI. |
-| Schedule bundle budget | Red | `npm run schedule:bundle-budget` was over lazy raw/gzip budgets during review. | Profile schedule chunks and restore the budget. |
+| Schedule bundle budget | Green | `npm run schedule:bundle-budget` passed after a fresh portal build: 588.8 KiB initial raw, 169.1 KiB initial gzip, 333.2 KiB lazy raw, 78.3 KiB lazy gzip. | Keep the budget in portal CI and re-run after schedule chunk changes. |
 | Production security audit | Green | `npm audit --omit=dev` reported 0 vulnerabilities during blocker review. | Keep audit visible through `portal:doctor` and governance checks. |
-| Portal build | Unknown | Not re-run as part of this tracker creation. | Run `npm run build:portal`. |
+| Portal build | Yellow | `npm run build:portal` passed, but Turbopack reported an unexpected NFT trace through `apps/portal/app/api/quotes/preview-pdf/route.ts` -> `apps/portal/lib/quotes/pdf.ts` -> `apps/portal/next.config.ts`. | Keep build green and investigate quote PDF font/image asset tracing so the warning is removed. |
 | Typecheck | Green | `npm run typecheck` passed after the `ModelSpaceViewport.test.tsx` placement-case typing fix; `npm run portal:doctor:quick` also completed typecheck. | Keep typecheck in quick doctor and CI. |
-| Browser smoke | Unknown | Fixture browser smoke can run without auth; local authenticated smoke needs `PORTAL_TEST_EMAIL` and `PORTAL_TEST_PASSWORD`, which were missing during blocker review. | Run `npm run test:portal:browser`; run auth/performance smoke when staff test credentials are configured. |
+| Browser smoke | Yellow | Fixture smoke now treats disabled or auth-gated fixture routes as missing coverage instead of silently skipping. Local authenticated smoke still needs `PORTAL_TEST_EMAIL` and `PORTAL_TEST_PASSWORD`. | Re-run `npm run test:portal:browser`; run auth/performance smoke when staff test credentials are configured. |
 | Docs and routing | Green | Canonical docs, agent playbook, change routing, and decision log are present. | Keep this tracker and owner docs current. |
 | Local-first flows | Yellow | Strong primitives exist; production readiness depends on workflow smoke and visible failure states. | Verify pending, failed, retry, conflict, and lock states in changed flows. |
 | Quote/invoice/job-pack side effects | Yellow | Domain docs and tests exist; production readiness depends on token/email/PDF/job-pack smoke. | Run focused tests plus manual public-token and side-effect QA. |
@@ -71,11 +71,11 @@ This snapshot records the most recent known production-readiness state from the 
 - [x] `npm run text:mojibake` passes.
 - [x] `npm run lint` passes.
 - [x] `npm run test:portal` passes.
-- [ ] `npm run build:portal` passes.
-- [ ] `npm run schedule:bundle-budget` passes after a fresh portal build.
+- [x] `npm run build:portal` passes.
+- [x] `npm run schedule:bundle-budget` passes after a fresh portal build.
 - [x] `npm run audit:security` has no unresolved high or critical production vulnerabilities.
 - [ ] `npm run test:portal:smoke` passes for authenticated portal routing.
-- [ ] `npm run test:portal:browser` passes for drawing/workbench browser smoke.
+- [ ] `npm run test:portal:browser` passes for drawing/workbench browser smoke without silent full-suite skips.
 - [ ] `npm run test:portal:performance` passes route timing budgets.
 
 ### Critical Staff Workflows
@@ -133,13 +133,14 @@ This snapshot records the most recent known production-readiness state from the 
 
 Keep this ordered list current as work lands.
 
-1. Restore remaining quality gates: portal build, schedule bundle budget, fixture browser smoke, authenticated smoke, and performance smoke.
+1. Restore remaining browser quality gates: fixture browser smoke, authenticated smoke, and performance smoke.
 2. Fix server-client and env isolation drift in contacts/projects/project snapshot tests.
-3. Restore schedule bundle budget and keep Board, Gantt, and Site Visits split by workflow.
-4. Fix design workbench behavior drift and keep browser fixture gates meaningful.
-5. Verify quote, invoice, public-token, PDF/email, and job-pack side effects end to end.
-6. Add or confirm CI enforcement for typecheck, docs guard, portal tests, portal build, authenticated smoke, route performance, and security audit expectations.
-7. Decompose the largest portal files after gates are green, one owner surface at a time.
+3. Investigate the portal build NFT warning in quote PDF font/image asset tracing.
+4. Keep Board, Gantt, and Site Visits split by workflow as schedule work continues.
+5. Fix design workbench behavior drift and keep browser fixture gates meaningful.
+6. Verify quote, invoice, public-token, PDF/email, and job-pack side effects end to end.
+7. Add or confirm CI enforcement for typecheck, docs guard, portal tests, portal build, authenticated smoke, route performance, and security audit expectations.
+8. Decompose the largest portal files after gates are green, one owner surface at a time.
 
 ## Parallel Work Lanes
 
@@ -202,6 +203,7 @@ When updating this tracker:
 ### 2026-05-01
 
 - Added the portal speed tooling command plan: focused portal test scripts, `portal:doctor:quick`, `portal:doctor`, and matching CI/doc routing.
+- Easy health pass updated current gate status: typecheck, lint, docs guards, portal tests, portal build, schedule bundle budget, and production audit are green locally; portal build remains Yellow because of the Turbopack/NFT quote PDF tracing warning; fixture browser smoke now fails loudly when fixture coverage cannot run instead of silently skipping.
 - Cleared the quick-doctor typecheck blocker by typing the semantic placement cases in `apps/portal/components/drawings/viewports/ModelSpaceViewport.test.tsx`; `npm run typecheck` passed.
 - `npm run portal:doctor:quick` passed when captured to a log: docs guard, mojibake, typecheck, lint, and `npm run test:portal` all completed; portal tests reported 172 files and 1077 tests passed.
 - `npm audit --omit=dev` reported 0 vulnerabilities. Full local authenticated smoke still needs `PORTAL_TEST_EMAIL` and `PORTAL_TEST_PASSWORD`; fixture browser smoke can run without auth.

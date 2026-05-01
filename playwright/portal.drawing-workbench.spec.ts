@@ -191,10 +191,10 @@ async function openFixtureDrawingWorkbench(page: Page, fixtureSlug: string) {
     login.waitFor({ state: 'visible', timeout: 30_000 }).then(() => 'login' as const),
   ]).catch(() => null);
   if (routeState === 'unavailable') {
-    test.skip(true, 'Fixture workbench route is not enabled in this portal environment.');
+    throw new Error('Fixture workbench route is not enabled in this portal environment; browser smoke coverage did not run.');
   }
   if (routeState === 'login') {
-    test.skip(true, 'Fixture workbench route requires staff auth in this portal environment.');
+    throw new Error('Fixture workbench route requires staff auth in this portal environment; browser smoke coverage did not run.');
   }
   await expect(workbench).toBeVisible({ timeout: 30_000 });
 }

@@ -3106,6 +3106,7 @@ function renderObjectWorkbenchDimension(
       data-object-workbench-dimension-emphasis={emphasis}
       data-house-first-plan-dimension={annotation.id}
       data-house-first-dimension-emphasis={emphasis}
+      data-plan-layer="dimensions"
     >
       <line
         x1={annotation.witnessStart.x}
@@ -3263,6 +3264,15 @@ function renderObjectWorkbenchPlanOverlay(input: {
                     .join(' ')}
                 />
               ) : null}
+              {!renderCommittedBodies && shape.selected ? (
+                <polygon
+                  points={toPointsAttr(shape.points)}
+                  data-plan-layer="selectionOutlines"
+                  data-object-workbench-selection-outline={`${shape.ownerKind}:${shape.ownerId}`}
+                  data-house-first-selection-outline={`${shape.ownerKind}:${shape.ownerId}`}
+                  className={styles.moduleHouseFirstSelectionOutline}
+                />
+              ) : null}
               {!renderCommittedBodies || previewSuppressed ? null : detailSegments.map((segment, index) => (
                 <line
                   key={`house-first-shape-detail-${shape.ownerKind}-${shape.ownerId}-${index + 1}`}
@@ -3277,6 +3287,7 @@ function renderObjectWorkbenchPlanOverlay(input: {
                 points={toPointsAttr(shape.points)}
                 data-object-workbench-shape={!renderCommittedBodies ? `${shape.ownerKind}:${shape.ownerId}` : undefined}
                 data-house-first-shape={!renderCommittedBodies ? `${shape.ownerKind}:${shape.ownerId}` : undefined}
+                data-plan-layer="hitTargets"
                 data-object-workbench-shape-visual={!renderCommittedBodies ? 'false' : undefined}
                 data-object-workbench-shape-muted={!renderCommittedBodies ? (shape.muted ? 'true' : 'false') : undefined}
                 data-house-first-shape-muted={!renderCommittedBodies ? (shape.muted ? 'true' : 'false') : undefined}
@@ -3452,6 +3463,7 @@ function renderObjectWorkbenchPlanOverlay(input: {
               y2={previewShape.referenceGuide.end.y}
               data-object-workbench-reference-guide={previewShape.referenceGuide.state}
               data-house-first-reference-guide={previewShape.referenceGuide.state}
+              data-plan-layer="dragPreview"
               className={
                 previewShape.referenceGuide.state === 'snap-lane'
                   ? `${styles.moduleHouseFirstPreviewGuide} ${styles.moduleHouseFirstPreviewGuideSnapLane}`
@@ -3468,6 +3480,7 @@ function renderObjectWorkbenchPlanOverlay(input: {
               y2={targetHighlight.end.y}
               data-object-workbench-snap-target={targetHighlight.state}
               data-house-first-snap-target={targetHighlight.state}
+              data-plan-layer="dragPreview"
               className={
                 targetHighlight.state === 'snapped'
                   ? `${styles.moduleHouseFirstSnapTarget} ${styles.moduleHouseFirstSnapTargetSnapped}`
@@ -3484,6 +3497,7 @@ function renderObjectWorkbenchPlanOverlay(input: {
               r={0.92}
               data-object-workbench-preview-corner-lock={previewShape.bodyState}
               data-house-first-preview-corner-lock={previewShape.bodyState}
+              data-plan-layer="dragPreview"
               className={styles.moduleHouseFirstPreviewCornerLock}
             />
           ) : null}
@@ -3494,6 +3508,7 @@ function renderObjectWorkbenchPlanOverlay(input: {
               r={0.82}
               data-object-workbench-preview-end-catch={previewShape.bodyState}
               data-house-first-preview-end-catch={previewShape.bodyState}
+              data-plan-layer="dragPreview"
               className={styles.moduleHouseFirstPreviewEndCatch}
             />
           ) : null}
@@ -3504,6 +3519,7 @@ function renderObjectWorkbenchPlanOverlay(input: {
               data-house-first-preview-shape={previewShape.ownerId}
               data-object-workbench-preview-body-state={previewShape.bodyState}
               data-house-first-preview-body-state={previewShape.bodyState}
+              data-plan-layer="dragPreview"
               className={[
                 styles.moduleHouseFirstPreviewShape,
                 previewShape.bodyState === 'snap-available'
@@ -3525,6 +3541,7 @@ function renderObjectWorkbenchPlanOverlay(input: {
               r={1.05}
               data-object-workbench-preview-anchor={previewShape.bodyState}
               data-house-first-preview-anchor={previewShape.bodyState}
+              data-plan-layer="dragPreview"
               className={
                 previewShape.bodyState === 'blocked'
                   ? `${styles.moduleHouseFirstPreviewAnchor} ${styles.moduleHouseFirstPreviewAnchorBlocked}`
@@ -3546,6 +3563,7 @@ function renderObjectWorkbenchPlanOverlay(input: {
                 y2={annotation.witnessEnd.y}
                 data-object-workbench-custom-edge={annotation.id}
                 data-house-first-custom-edge={annotation.id}
+                data-plan-layer="selectionOutlines"
                 className={
                   annotation.id === activeCustomEdgeId
                     ? `${styles.moduleHouseFirstCustomEdge} ${styles.moduleHouseFirstCustomEdgeActive}`
@@ -3559,6 +3577,7 @@ function renderObjectWorkbenchPlanOverlay(input: {
                 y2={annotation.witnessEnd.y}
                 data-object-workbench-custom-edge-hit={annotation.id}
                 data-house-first-custom-edge-hit={annotation.id}
+                data-plan-layer="hitTargets"
                 className={styles.moduleHouseFirstCustomEdgeHit}
                 onClick={() =>
                   onCustomEdgeSelect?.({
@@ -5046,11 +5065,30 @@ function PlanSvg({
             points: topProjectionPolygonToPlanSvg(shape.polygon, modelSpaceTopProjection, x, y, scale),
           }))
       : [];
-  const renderedTopProjectionShapes = topProjectionShapes.filter(({ shape }) =>
-    topProjectionShapeRenderedInNormalPlan(shape),
+  const planRenderGraph = topProjectionShapes.reduce<{
+    committedBodies: Array<(typeof topProjectionShapes)[number] & { layer: ProjectionPlanLayer }>;
+    contextLines: Array<(typeof topProjectionShapes)[number] & { layer: ProjectionPlanLayer }>;
+    suppressed: Array<(typeof topProjectionShapes)[number]>;
+  }>(
+    (graph, item) => {
+      const layer = topProjectionPlanLayer(item.shape);
+      if (layer === 'committedBodies') {
+        graph.committedBodies.push({ ...item, layer });
+      } else if (layer === 'contextLines') {
+        graph.contextLines.push({ ...item, layer });
+      } else {
+        graph.suppressed.push(item);
+      }
+      return graph;
+    },
+    { committedBodies: [], contextLines: [], suppressed: [] },
   );
+  const renderedTopProjectionShapes = [...planRenderGraph.committedBodies, ...planRenderGraph.contextLines];
   const suppressedTopProjectionContextBodyCount = topProjectionShapes.filter(
-    ({ shape }) => topProjectionRole(shape) === 'context' && !topProjectionShapeRenderedInNormalPlan(shape),
+    ({ shape }) => topProjectionRole(shape) === 'context' && topProjectionPlanLayer(shape) === null,
+  ).length;
+  const suppressedTopProjectionTopVisibleBodyCount = topProjectionShapes.filter(
+    ({ shape }) => topProjectionRole(shape) === 'top_visible' && topProjectionPlanLayer(shape) === null,
   ).length;
   const topProjectionAllShapes = useTopProjectionBackedPlan && modelSpaceTopProjection ? modelSpaceTopProjection.shapes : [];
   const topProjectionTopVisibleCount = topProjectionAllShapes.filter((shape) => topProjectionRole(shape) === 'top_visible').length;
@@ -5063,6 +5101,9 @@ function PlanSvg({
   const committedTopProjectionBodyCount = renderedTopProjectionShapes.filter(({ shape }) =>
     topProjectionShapeIsCommittedBody(shape),
   ).length;
+  const committedTopProjectionObjectIds = new Set(
+    planRenderGraph.committedBodies.map(({ shape }) => `${shape.family}:${shape.kind}:${shape.sourceId ?? shape.sourceObjectId}`),
+  );
   const topProjectionScreenAxis = modelSpaceTopProjection
     ? `${modelSpaceTopProjection.screenAxis.x}_${modelSpaceTopProjection.screenAxis.y}`
     : null;
@@ -5709,9 +5750,11 @@ function PlanSvg({
         data-top-projection-rendered-count={exposesPlanProjectionDiagnostics && modelSpaceTopProjection ? renderedTopProjectionShapes.length : undefined}
         data-top-projection-hidden-rendered-count={exposesPlanProjectionDiagnostics && modelSpaceTopProjection ? topProjectionHiddenRenderedCount : undefined}
         data-plan-committed-top-projection-body-count={exposesPlanProjectionDiagnostics && modelSpaceTopProjection ? committedTopProjectionBodyCount : undefined}
+        data-plan-committed-top-projection-object-count={exposesPlanProjectionDiagnostics && modelSpaceTopProjection ? committedTopProjectionObjectIds.size : undefined}
         data-plan-object-overlay-body-count={exposesPlanProjectionDiagnostics ? objectWorkbenchRenderedBodyCount : undefined}
         data-plan-rendered-context-body-count={exposesPlanProjectionDiagnostics && modelSpaceTopProjection ? renderedTopProjectionContextBodyCount : undefined}
         data-plan-suppressed-context-body-count={exposesPlanProjectionDiagnostics && modelSpaceTopProjection ? suppressedTopProjectionContextBodyCount : undefined}
+        data-plan-suppressed-top-visible-body-count={exposesPlanProjectionDiagnostics && modelSpaceTopProjection ? suppressedTopProjectionTopVisibleBodyCount : undefined}
         data-plan-duplicate-visual-body-count={exposesPlanProjectionDiagnostics ? duplicateCommittedBodyCount : undefined}
         role="img"
         aria-label="Module plan view"
@@ -5851,11 +5894,12 @@ function PlanSvg({
         {useTopProjectionBackedPlan
           ? renderedTopProjectionShapes
               .filter(({ shape }) => !(shape.family === 'house' && shape.kind === 'footprint' && (hideHouseFootprint || customPolygonOverrideActive)))
-              .map(({ shape, points }) => (
+              .map(({ shape, points, layer }) => (
               <polygon
                 key={shape.id}
                 points={toPointsAttr(points)}
-                className={topProjectionShapeClass(shape)}
+                className={topProjectionShapeClassForLayer(shape, layer)}
+                data-plan-layer={layer}
                 data-plan-top-projection-shape={shape.id}
                 data-top-projection-source-object-id={shape.sourceObjectId}
                 data-top-projection-source-id={shape.sourceId ?? ''}

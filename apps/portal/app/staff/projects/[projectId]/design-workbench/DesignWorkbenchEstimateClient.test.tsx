@@ -27,6 +27,13 @@ import {
 import type { ObjectWorkbenchCompatibilityOpeningDraft } from '@/lib/drawings/state/compat/objectWorkbenchCompatibilityModel';
 import { dispatchPointer, installDomGeometryMock, renderIntoDocument } from '../../../../../../../test/reactHarness';
 
+const originalConsoleError = console.error.bind(console);
+vi.spyOn(console, 'error').mockImplementation((...args) => {
+  const message = String(args[0] ?? '');
+  if (message.includes('is using incorrect casing')) return;
+  originalConsoleError(...args);
+});
+
 vi.mock('@react-three/fiber', () => ({
   Canvas: ({ children }: { children?: unknown }) => <div data-testid="geometry-3d-canvas">{children as any}</div>,
 }));

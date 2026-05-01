@@ -232,6 +232,26 @@ function makeTopProjectionFixture(): GeometryTopProjectionViewModel {
         },
       },
       {
+        id: 'top-projection-house-roof-material',
+        sourceObjectId: 'scene-house-roof-material',
+        sourceId: 'solved-house-roof-material',
+        sourceType: 'house_roof_material',
+        family: 'house',
+        kind: 'house_roof_material',
+        polygon: [
+          { x: -500, y: -2200 },
+          { x: 6500, y: -2200 },
+          { x: 6500, y: 0 },
+          { x: -500, y: 0 },
+        ],
+        zOrder: 12,
+        zMin: 2400,
+        zMax: 3100,
+        metadata: {
+          topProjectionRole: 'top_visible',
+        },
+      },
+      {
         id: 'top-projection-hidden-wall',
         sourceObjectId: 'scene-house-wall',
         sourceId: 'solved-house-wall',
@@ -712,8 +732,10 @@ describe('ModuleViewsCard', () => {
     expect(extractSvgStringAttribute(svgTag, 'data-top-projection-rendered-count')).toBe('2');
     expect(extractSvgStringAttribute(svgTag, 'data-top-projection-hidden-rendered-count')).toBe('0');
     expect(extractSvgStringAttribute(svgTag, 'data-plan-committed-top-projection-body-count')).toBe('2');
+    expect(extractSvgStringAttribute(svgTag, 'data-plan-committed-top-projection-object-count')).toBe('2');
     expect(extractSvgStringAttribute(svgTag, 'data-plan-rendered-context-body-count')).toBe('0');
     expect(extractSvgStringAttribute(svgTag, 'data-plan-suppressed-context-body-count')).toBe('1');
+    expect(extractSvgStringAttribute(svgTag, 'data-plan-suppressed-top-visible-body-count')).toBe('1');
     expect(extractSvgStringAttribute(svgTag, 'data-plan-object-overlay-body-count')).toBe('0');
     expect(extractSvgStringAttribute(svgTag, 'data-plan-duplicate-visual-body-count')).toBe('0');
     expect(worldBox.x).toBeLessThanOrEqual(focusBox.x);
@@ -753,6 +775,7 @@ describe('ModuleViewsCard', () => {
     expect(markup).toContain('data-top-projection-z-min="2400"');
     expect(markup).toContain('data-top-projection-z-max="2600"');
     expect(markup).toContain('data-top-projection-screen-axis="world_x_left_world_y_down"');
+    expect(markup).not.toContain('data-plan-top-projection-shape="top-projection-house-roof-material"');
     expect(markup).not.toContain('data-plan-top-projection-shape="top-projection-context-footprint"');
     expect(markup).not.toContain('data-plan-top-projection-shape="top-projection-hidden-wall"');
     expect(markup).not.toContain('data-top-projection-role="hidden_from_top"');
@@ -812,10 +835,14 @@ describe('ModuleViewsCard', () => {
     const deckHitPoints = extractPolygonPoints(markup, 'data-object-workbench-shape-hit', 'deck:deck-1');
 
     expect(markup).toContain('data-plan-top-projection-shape="top-projection-house-deck"');
+    expect(markup).not.toContain('data-plan-top-projection-shape="top-projection-house-roof-material"');
     expect(markup).not.toContain('data-plan-top-projection-shape="top-projection-context-footprint"');
     expect(markup).toContain('data-object-workbench-shape="deck:deck-1"');
     expect(markup).toContain('data-object-workbench-shape-visual="false"');
     expect(markup).toContain('data-object-workbench-shape-hit="deck:deck-1"');
+    expect(markup).toContain('data-plan-layer="committedBodies"');
+    expect(markup).toContain('data-plan-layer="hitTargets"');
+    expect(markup).toContain('data-plan-layer="selectionOutlines"');
     expect(deckHitPoints).toEqual(projectedDeckPoints);
     expect(extractSvgStringAttribute(svgTag, 'data-plan-rendered-context-body-count')).toBe('0');
     expect(extractSvgStringAttribute(svgTag, 'data-plan-suppressed-context-body-count')).toBe('1');
