@@ -68,9 +68,9 @@
 .home-hero__title{
   max-width:10.8em;
   margin:0;
-  font-size:clamp(44px,6.4vw,96px);
+  font-size:clamp(42px,5.9vw,90px);
   line-height:.96;
-  font-weight:500;
+  font-weight:430;
   letter-spacing:0;
   text-wrap:balance;
 }
@@ -155,7 +155,7 @@
       linear-gradient(90deg, rgba(0,0,0,.336), rgba(0,0,0,.07));
   }
   .home-hero__inner{padding-bottom:clamp(104px,15vh,132px)}
-  .home-hero__title{font-size:clamp(38px,12vw,62px)}
+  .home-hero__title{font-size:clamp(36px,10.8vw,56px)}
   .home-hero__copy{max-width:34ch}
   .home-hero__actions{gap:10px}
   .home-hero__cta{flex:1 1 148px}
@@ -810,7 +810,7 @@ body.homepage main .container{
 }
 
 .homepage .home-hero__title{
-  font-weight:560;
+  font-weight:430;
 }
 
 .homepage .home-hero__cta,
