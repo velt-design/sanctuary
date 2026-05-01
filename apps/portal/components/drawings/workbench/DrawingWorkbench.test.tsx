@@ -2,9 +2,11 @@ import { act, useState } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import type { CostOutputV1 } from '@sp/costing';
+import type { GeometryPlanViewModel, GeometryTopProjectionViewModel } from '@sp/geometry';
 import type { CalculatorModuleInputs } from '@/lib/types/calculator';
 import { buildEstimateDrawingModules } from '@/lib/estimates/moduleDrawing';
 import { buildEstimateDrawingSheetMeta } from '@/lib/estimates/drawingSheet';
+import { buildPlanViewModel, type PlanViewModel } from '@/lib/drawings/views/plan/buildPlanViewModel';
 import { createDrawingWorkbenchUiState } from '@/lib/drawings/state/drawingWorkbenchUiState';
 import type { DrawingWorkbenchViewportMode } from '@/lib/drawings/state/drawingWorkbenchUiState';
 import {
@@ -114,6 +116,131 @@ function makeCustomPolygonPlanModel() {
   };
 }
 
+function makeGeometryPlanFixture(): GeometryPlanViewModel {
+  return {
+    family: 'mono',
+    connectionType: 'soffit',
+    roofForm: {
+      mono: true,
+      gable: false,
+      box: false,
+    },
+    outline: [
+      { x: 0, y: 0 },
+      { x: 6000, y: 0 },
+      { x: 6000, y: 3000 },
+      { x: 0, y: 3000 },
+    ],
+    attachmentEdge: {
+      start: { x: 0, y: 0 },
+      end: { x: 6000, y: 0 },
+    },
+    house: {
+      footprint: null,
+      fasciaLine: null,
+      roofEdgeLine: null,
+      wallReferenceLine: null,
+      surfaces: [],
+      lines: [],
+    },
+    members: {
+      posts: [],
+      beams: [],
+      ledgers: [],
+      rafters: [],
+      gutters: [],
+      ridge: [],
+      joiners: [],
+    },
+    surfaces: {
+      roofPlanes: [
+        {
+          id: 'roof-plane-main',
+          kind: 'roof_plane',
+          boundary: [
+            { x: 0, y: 0 },
+            { x: 6000, y: 0 },
+            { x: 6000, y: 3000 },
+            { x: 0, y: 3000 },
+          ],
+        },
+      ],
+      roofCladding: [],
+    },
+    anchors: {
+      primarySize: {
+        length: { start: { x: 0, y: 0 }, end: { x: 6000, y: 0 } },
+        projection: { start: { x: 0, y: 0 }, end: { x: 0, y: 3000 } },
+      },
+      fall: null,
+      rafterSpacing: null,
+      ridgeLine: null,
+      attachmentSide: null,
+    },
+    extents: {
+      minX: 0,
+      minY: 0,
+      maxX: 6000,
+      maxY: 3000,
+      lengthMm: 6000,
+      projectionMm: 3000,
+    },
+  } as unknown as GeometryPlanViewModel;
+}
+
+function makeTopProjectionFixture(): GeometryTopProjectionViewModel {
+  return {
+    coordinateSpace: 'world_xy_mm',
+    screenAxis: {
+      x: 'world_x_left',
+      y: 'world_y_down',
+    },
+    shapes: [
+      {
+        id: 'roof_plane:roof-plane-main',
+        sourceObjectId: 'scene-roof-plane-main',
+        sourceId: 'roof-plane-main',
+        sourceType: 'roof_plane',
+        family: 'pergola',
+        kind: 'roof_plane',
+        polygon: [
+          { x: 0, y: 0 },
+          { x: 6000, y: 0 },
+          { x: 6000, y: 3000 },
+          { x: 0, y: 3000 },
+        ],
+        zOrder: 60,
+        zMin: 2400,
+        zMax: 2600,
+        metadata: { topProjectionRole: 'top_visible' },
+      },
+    ],
+    extents: {
+      minX: 0,
+      minY: 0,
+      maxX: 6000,
+      maxY: 3000,
+      widthMm: 6000,
+      heightMm: 3000,
+    },
+  } as unknown as GeometryTopProjectionViewModel;
+}
+
+function makeReadyPlanViewModel(planModel = makeDrawingModule().planModel ?? null): PlanViewModel {
+  const viewModel = buildPlanViewModel({
+    moduleId: 'module-1',
+    moduleLabel: 'M1 - Pitched - 6m x 3m - Acrylic',
+    planModel,
+    geometryPlan: makeGeometryPlanFixture(),
+    geometryTopProjection: makeTopProjectionFixture(),
+    pergolaRenderSource: 'geometry',
+    pergolaRenderStatus: 'geometry_ready',
+    canEditHouseFootprint: true,
+  });
+  if (!viewModel) throw new Error('Expected ready plan view model fixture');
+  return viewModel;
+}
+
 function makeTrustGate(status: WorkbenchTrustStatusKind, issues: WorkbenchTrustStatusKind[] = []) {
   return resolveWorkbenchTrustGate({
     status,
@@ -171,6 +298,7 @@ describe('DrawingWorkbench', () => {
         onViewportModeChange={() => undefined}
         status="ready"
         planModel={drawing.planModel}
+        planViewModel={makeReadyPlanViewModel(drawing.planModel)}
         sectionModel={drawing.sectionModel}
         modelViewportTransform={createDrawingWorkbenchUiState().viewportTransform}
         onModelViewportTransformChange={() => undefined}
@@ -222,6 +350,7 @@ describe('DrawingWorkbench', () => {
         onViewportModeChange={() => undefined}
         status="ready"
         planModel={drawing.planModel}
+        planViewModel={makeReadyPlanViewModel(drawing.planModel)}
         sectionModel={drawing.sectionModel}
         modelViewportTransform={createDrawingWorkbenchUiState().viewportTransform}
         onModelViewportTransformChange={() => undefined}
@@ -258,6 +387,7 @@ describe('DrawingWorkbench', () => {
         onViewportModeChange={() => undefined}
         status="ready"
         planModel={drawing.planModel}
+        planViewModel={makeReadyPlanViewModel(drawing.planModel)}
         sectionModel={drawing.sectionModel}
         modelViewportTransform={createDrawingWorkbenchUiState().viewportTransform}
         onModelViewportTransformChange={() => undefined}
@@ -278,6 +408,7 @@ describe('DrawingWorkbench', () => {
         onViewportModeChange={() => undefined}
         status="ready"
         planModel={drawing.planModel}
+        planViewModel={makeReadyPlanViewModel(drawing.planModel)}
         sectionModel={drawing.sectionModel}
         modelViewportTransform={createDrawingWorkbenchUiState().viewportTransform}
         onModelViewportTransformChange={() => undefined}
@@ -318,6 +449,7 @@ describe('DrawingWorkbench', () => {
         onViewportModeChange={() => undefined}
         status="ready"
         planModel={drawing.planModel}
+        planViewModel={makeReadyPlanViewModel(drawing.planModel)}
         sectionModel={drawing.sectionModel}
         modelViewportTransform={createDrawingWorkbenchUiState().viewportTransform}
         onModelViewportTransformChange={() => undefined}
@@ -363,6 +495,7 @@ describe('DrawingWorkbench', () => {
   it('does not restart a consumed custom-footprint outline request after switching to 3D view and back', async () => {
     function Harness() {
       const drawing = makeDrawingModule();
+      const planModel = makeCustomPolygonPlanModel();
       const meta = buildEstimateDrawingSheetMeta({
         moduleLabel: 'M1 - Pitched - 6m x 3m - Acrylic',
         view: 'plan',
@@ -392,7 +525,8 @@ describe('DrawingWorkbench', () => {
             availableViewportModes={['model', 'geometry3d']}
             onViewportModeChange={setViewportMode}
             status="ready"
-            planModel={makeCustomPolygonPlanModel()}
+            planModel={planModel}
+            planViewModel={makeReadyPlanViewModel(planModel)}
             sectionModel={drawing.sectionModel}
             modelViewportTransform={createDrawingWorkbenchUiState().viewportTransform}
             onModelViewportTransformChange={() => undefined}

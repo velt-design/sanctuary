@@ -110,7 +110,7 @@
   background:rgba(0,0,0,.2);
 }
 @media (hover:hover){
-  .home-hero__cta--primary:hover{background:#6F332F;border-color:#6F332F}
+  .home-hero__cta--primary:hover{background:var(--color-brand);border-color:var(--color-brand)}
   .home-hero__cta--secondary:hover{background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.92)}
 }
 

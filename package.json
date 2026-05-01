@@ -59,12 +59,12 @@
     "bcryptjs": "^3.0.3",
     "framer-motion": "^12.23.12",
     "idb-keyval": "^6.2.2",
-    "next": "^16.0.7",
+    "next": "^16.2.4",
     "next-auth": "^4.24.13",
     "pdf-lib": "^1.17.1",
     "react": "19.1.0",
     "react-dom": "19.1.0",
-    "resend": "^6.9.1",
+    "resend": "^6.12.2",
     "three": "^0.183.2"
   },
   "devDependencies": {
@@ -76,7 +76,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9.33.0",
-    "eslint-config-next": "^16.0.7",
+    "eslint-config-next": "^16.2.4",
     "jsdom": "^27.4.0",
     "sharp": "^0.33.5",
     "tailwindcss": "^4",
@@ -84,5 +84,10 @@
     "typescript": "^5",
     "vitest": "^4.0.16",
     "xlsx": "^0.18.5"
+  },
+  "overrides": {
+    "postcss": "8.5.10",
+    "uuid": "14.0.0",
+    "svix": "1.92.2"
   }
 }

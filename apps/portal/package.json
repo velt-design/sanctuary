@@ -25,15 +25,15 @@
     "@tanstack/react-query": "^5.90.20",
     "@tanstack/react-query-persist-client": "^5.90.22",
     "framer-motion": "^12.23.12",
-    "handlebars": "^4.7.8",
+    "handlebars": "^4.7.9",
     "idb-keyval": "^6.2.2",
     "lucide-react": "^0.563.0",
-    "next": "^16.0.7",
+    "next": "^16.2.4",
     "pdf-lib": "^1.17.1",
     "pdfjs-dist": "^5.5.207",
     "react": "19.1.0",
     "react-dom": "19.1.0",
-    "resend": "^6.9.1",
+    "resend": "^6.12.2",
     "three": "^0.183.2",
     "three-stdlib": "^2.36.1"
   },
@@ -46,11 +46,15 @@
     "@types/react-dom": "^19",
     "baseline-browser-mapping": "^2.9.19",
     "eslint": "^9.33.0",
-    "eslint-config-next": "^16.0.7",
+    "eslint-config-next": "^16.2.4",
     "jsdom": "^27.4.0",
     "sharp": "^0.33.5",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^4.0.16"
+  },
+  "overrides": {
+    "postcss": "8.5.10",
+    "svix": "1.92.2"
   }
 }

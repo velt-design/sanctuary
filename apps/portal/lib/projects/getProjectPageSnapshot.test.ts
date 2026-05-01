@@ -13,6 +13,12 @@ vi.mock('@/lib/supabaseClient', () => ({
   },
 }));
 
+vi.mock('@/lib/supabase/serverClient', () => ({
+  getSupabaseServerAuth: vi.fn(async () => ({
+    from: fromMock,
+  })),
+}));
+
 vi.mock('@/lib/api/routeDiagnostics', () => ({
   logPortalServerError,
 }));

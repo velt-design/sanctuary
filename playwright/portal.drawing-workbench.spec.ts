@@ -184,12 +184,17 @@ async function openFixtureDrawingWorkbench(page: Page, fixtureSlug: string) {
   await page.goto(`/staff/projects/fixture-roof/design-workbench?fixture=${fixtureSlug}`);
   const workbench = page.getByRole('region', { name: 'Drawing workbench' });
   const unavailable = page.getByText(/Project unavailable|This page could not be found|404|not found/i).first();
+  const login = page.getByRole('heading', { name: 'Staff Login' }).first();
   const routeState = await Promise.race([
     workbench.waitFor({ state: 'visible', timeout: 30_000 }).then(() => 'workbench' as const),
     unavailable.waitFor({ state: 'visible', timeout: 30_000 }).then(() => 'unavailable' as const),
+    login.waitFor({ state: 'visible', timeout: 30_000 }).then(() => 'login' as const),
   ]).catch(() => null);
   if (routeState === 'unavailable') {
     test.skip(true, 'Fixture workbench route is not enabled in this portal environment.');
+  }
+  if (routeState === 'login') {
+    test.skip(true, 'Fixture workbench route requires staff auth in this portal environment.');
   }
   await expect(workbench).toBeVisible({ timeout: 30_000 });
 }

@@ -17,6 +17,12 @@ vi.mock('@/lib/supabaseClient', () => ({
   },
 }));
 
+vi.mock('@/lib/supabase/serverClient', () => ({
+  getSupabaseServerAuth: vi.fn(async () => ({
+    from: (...args: unknown[]) => fromMock(...args),
+  })),
+}));
+
 describe('PATCH /api/contacts/[contactId]', () => {
   beforeEach(() => {
     vi.resetModules();

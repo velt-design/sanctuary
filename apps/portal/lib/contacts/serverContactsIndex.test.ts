@@ -11,6 +11,12 @@ vi.mock('@/lib/supabaseClient', () => ({
   },
 }));
 
+vi.mock('@/lib/supabase/serverClient', () => ({
+  getSupabaseServerAuth: vi.fn(async () => ({
+    from: fromMock,
+  })),
+}));
+
 function createQuery(result: { data: any; error: any }) {
   const query: any = {
     select: vi.fn(() => query),
