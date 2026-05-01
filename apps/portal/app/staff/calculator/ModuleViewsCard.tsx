@@ -2033,7 +2033,7 @@ function topProjectionShapeVisible(
   visibility: DrawingWorkbenchVisibilityState,
 ): boolean {
   const role = topProjectionRole(shape);
-  if (role === 'hidden_from_top') return null;
+  if (role === 'hidden_from_top') return false;
   if (shape.family === 'pergola') return visibility.pergolas;
   if (shape.family !== 'house') return true;
   if (shape.kind === 'deck') return visibility.decks;
@@ -2043,7 +2043,7 @@ function topProjectionShapeVisible(
 
 function topProjectionPlanLayer(shape: GeometryTopProjectionShape): ProjectionPlanLayer | null {
   const role = topProjectionRole(shape);
-  if (role === 'hidden_from_top') return false;
+  if (role === 'hidden_from_top') return null;
   if (role === 'context') {
     if (shape.sourceType === 'reference_line' || shape.sourceType === 'house_line') return 'contextLines';
     if (shape.family === 'house' && (shape.kind === 'opening_marker' || shape.kind === 'opening_outline' || shape.kind === 'attachment_target')) {
@@ -2054,7 +2054,7 @@ function topProjectionPlanLayer(shape: GeometryTopProjectionShape): ProjectionPl
   if (shape.family === 'house') {
     if (
       (shape.sourceType === 'house_surface_solid' || shape.sourceType === 'house_surface') &&
-      (shape.kind === 'roof' || shape.kind === 'deck')
+      (shape.kind === 'roof' || shape.kind === 'deck' || shape.kind === 'footprint')
     ) {
       return 'committedBodies';
     }
@@ -5083,13 +5083,21 @@ function PlanSvg({
     },
     { committedBodies: [], contextLines: [], suppressed: [] },
   );
-  const renderedTopProjectionShapes = [...planRenderGraph.committedBodies, ...planRenderGraph.contextLines];
+  const hasHouseRoofCommittedBody = planRenderGraph.committedBodies.some(
+    ({ shape }) => shape.family === 'house' && shape.kind === 'roof',
+  );
+  const committedTopProjectionBodies = planRenderGraph.committedBodies.filter(
+    ({ shape }) => !(hasHouseRoofCommittedBody && shape.family === 'house' && shape.kind === 'footprint'),
+  );
+  const suppressedTopProjectionOwnershipBodyCount =
+    planRenderGraph.committedBodies.length - committedTopProjectionBodies.length;
+  const renderedTopProjectionShapes = [...committedTopProjectionBodies, ...planRenderGraph.contextLines];
   const suppressedTopProjectionContextBodyCount = topProjectionShapes.filter(
     ({ shape }) => topProjectionRole(shape) === 'context' && topProjectionPlanLayer(shape) === null,
   ).length;
   const suppressedTopProjectionTopVisibleBodyCount = topProjectionShapes.filter(
     ({ shape }) => topProjectionRole(shape) === 'top_visible' && topProjectionPlanLayer(shape) === null,
-  ).length;
+  ).length + suppressedTopProjectionOwnershipBodyCount;
   const topProjectionAllShapes = useTopProjectionBackedPlan && modelSpaceTopProjection ? modelSpaceTopProjection.shapes : [];
   const topProjectionTopVisibleCount = topProjectionAllShapes.filter((shape) => topProjectionRole(shape) === 'top_visible').length;
   const topProjectionContextCount = topProjectionAllShapes.filter((shape) => topProjectionRole(shape) === 'context').length;
@@ -5102,7 +5110,7 @@ function PlanSvg({
     topProjectionShapeIsCommittedBody(shape),
   ).length;
   const committedTopProjectionObjectIds = new Set(
-    planRenderGraph.committedBodies.map(({ shape }) => `${shape.family}:${shape.kind}:${shape.sourceId ?? shape.sourceObjectId}`),
+    committedTopProjectionBodies.map(({ shape }) => `${shape.family}:${shape.kind}:${shape.sourceId ?? shape.sourceObjectId}`),
   );
   const topProjectionScreenAxis = modelSpaceTopProjection
     ? `${modelSpaceTopProjection.screenAxis.x}_${modelSpaceTopProjection.screenAxis.y}`

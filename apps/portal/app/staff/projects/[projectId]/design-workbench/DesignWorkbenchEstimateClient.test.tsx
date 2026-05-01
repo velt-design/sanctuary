@@ -30,7 +30,14 @@ import { dispatchPointer, installDomGeometryMock, renderIntoDocument } from '../
 const originalConsoleError = console.error.bind(console);
 vi.spyOn(console, 'error').mockImplementation((...args) => {
   const message = String(args[0] ?? '');
-  if (message.includes('is using incorrect casing')) return;
+  if (
+    message.includes('is using incorrect casing') ||
+    message.includes('is unrecognized in this browser') ||
+    message.includes('React does not recognize') ||
+    message.includes('Received `%s` for a non-boolean attribute')
+  ) {
+    return;
+  }
   originalConsoleError(...args);
 });
 

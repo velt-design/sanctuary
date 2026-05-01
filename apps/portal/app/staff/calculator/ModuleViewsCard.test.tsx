@@ -726,7 +726,7 @@ describe('ModuleViewsCard', () => {
     expectRectCloseTo(viewBox, focusBox);
     expect(extractSvgStringAttribute(svgTag, 'data-top-projection-parity-status')).toBe('pass');
     expect(extractSvgStringAttribute(svgTag, 'data-top-projection-screen-axis')).toBe('world_x_left_world_y_down');
-    expect(extractSvgStringAttribute(svgTag, 'data-top-projection-top-visible-count')).toBe('2');
+    expect(extractSvgStringAttribute(svgTag, 'data-top-projection-top-visible-count')).toBe('3');
     expect(extractSvgStringAttribute(svgTag, 'data-top-projection-context-count')).toBe('1');
     expect(extractSvgStringAttribute(svgTag, 'data-top-projection-hidden-count')).toBe('1');
     expect(extractSvgStringAttribute(svgTag, 'data-top-projection-rendered-count')).toBe('2');

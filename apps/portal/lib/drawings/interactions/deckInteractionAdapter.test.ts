@@ -27,6 +27,7 @@ function makeInteraction(input: {
   attachmentMode?: 'floating' | 'single_edge' | 'corner_dual_edge';
   primaryHostEdgeId?: string | null;
   commitFrames?: ObjectWorkbenchPlanDeckReferenceFrame[];
+  commitStartPolygon?: PlanPoint[] | null;
 }): ObjectWorkbenchPlanDeckInteraction {
   const primaryFrame = input.frames[0]!;
   return {
@@ -54,6 +55,7 @@ function makeInteraction(input: {
     minCenterOffsetM: -20,
     maxCenterOffsetM: 20,
     renderedCenter: input.renderedCenter,
+    commitStartPolygon: input.commitStartPolygon ?? null,
     referenceFrames: input.frames,
     commitReferenceFrames: input.commitFrames ?? input.frames,
     crossEdgeReference: null,
@@ -70,6 +72,7 @@ function makeSession(input: {
   placement?: 'snapped' | 'floating';
   attachmentMode?: 'floating' | 'single_edge' | 'corner_dual_edge';
   commitFrames?: ObjectWorkbenchPlanDeckReferenceFrame[];
+  commitStartPolygon?: PlanPoint[] | null;
 }) {
   const overlayShape = {
     ownerKind: 'deck',
@@ -90,6 +93,7 @@ function makeSession(input: {
       placement: input.placement,
       attachmentMode: input.attachmentMode,
       commitFrames: input.commitFrames,
+      commitStartPolygon: input.commitStartPolygon,
     }),
     openingInteraction: null,
     deckDragEligibility: { eligible: true, reason: 'Drag deck' },
@@ -327,6 +331,49 @@ describe('deckInteractionAdapter', () => {
     expect(commit).toEqual({
       target: { family: 'decks', objectId: 'deck-1' },
       patch,
+    });
+  });
+
+  it('maps floating release previews back into the object commit polygon space', () => {
+    const renderedPolygon = [
+      { x: 0, y: -4 },
+      { x: 8, y: -4 },
+      { x: 8, y: 0 },
+      { x: 0, y: 0 },
+    ];
+    const commitStartPolygon = [
+      { x: 0, y: -2 },
+      { x: 4, y: -2 },
+      { x: 4, y: 0 },
+      { x: 0, y: 0 },
+    ];
+    const session = makeSession({
+      polygon: renderedPolygon,
+      startDragPlanPoint: { x: 4, y: -2 },
+      frames: [realRearFrame],
+      renderedCenter: { x: 4, y: -2 },
+      deckWidthM: 4,
+      deckDepthM: 2,
+      placement: 'floating',
+      attachmentMode: 'floating',
+      commitStartPolygon,
+    });
+
+    const preview = resolveDeckPreviewState({
+      session,
+      nextSvgX: session.startSvgX,
+      nextSvgY: session.startSvgY,
+      nextDragPlanPoint: { x: 6, y: -4 },
+      previousPreviewState: null,
+    });
+    const patch = buildDeckCommitPatch({ session, preview });
+
+    expect(preview.releasePlacement).toBe('floating');
+    expect(patch.floatingRect).toEqual({
+      centerAlongM: '3',
+      centerDepthM: '-2',
+      widthM: '4',
+      depthM: '2',
     });
   });
 

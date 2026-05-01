@@ -96,6 +96,7 @@ export type ObjectWorkbenchPlanDeckInteraction = {
   minCenterOffsetM: number;
   maxCenterOffsetM: number;
   renderedCenter: PlanPoint;
+  commitStartPolygon: PlanPoint[] | null;
   referenceFrames: ObjectWorkbenchPlanDeckReferenceFrame[];
   commitReferenceFrames: ObjectWorkbenchPlanDeckReferenceFrame[];
   crossEdgeReference: ObjectWorkbenchPlanDeckCrossEdgeReference | null;
@@ -638,6 +639,20 @@ function resolveDeckPolygon(input: {
     };
   }
 
+  if (input.deck.shape === 'custom') {
+    const customPolygon = parseLocalPolygon(input.deck.outline).map((point) => ({
+      x: point.alongM,
+      y: point.depthM,
+    }));
+    if (customPolygon.length >= 3) {
+      return {
+        polygon: customPolygon,
+        geometrySourceId: input.deck.id,
+        source: 'custom_saved',
+      };
+    }
+  }
+
   if (input.deck.floatingRect) {
     const centerAlongM = parseMetres(input.deck.floatingRect.centerAlongM, Number.NaN);
     const centerDepthM = parseMetres(input.deck.floatingRect.centerDepthM, Number.NaN);
@@ -689,6 +704,40 @@ function resolveDeckPolygon(input: {
     geometrySourceId: frame.sourceEdgeId,
     source: 'geometry_derived',
   };
+}
+
+function resolveDeckCommitStartPolygon(deck: DeckObjectModel): PlanPoint[] | null {
+  if (deck.shape === 'custom') {
+    const polygon = parseLocalPolygon(deck.outline).map((point) => ({
+      x: point.alongM,
+      y: point.depthM,
+    }));
+    return polygon.length >= 3 ? polygon : null;
+  }
+
+  if (!deck.floatingRect) return null;
+  const centerAlongM = parseMetres(deck.floatingRect.centerAlongM, Number.NaN);
+  const centerDepthM = parseMetres(deck.floatingRect.centerDepthM, Number.NaN);
+  const widthM = parseMetres(deck.floatingRect.widthM, Number.NaN);
+  const depthM = parseMetres(deck.floatingRect.depthM, Number.NaN);
+  if (
+    !Number.isFinite(centerAlongM) ||
+    !Number.isFinite(centerDepthM) ||
+    !Number.isFinite(widthM) ||
+    !Number.isFinite(depthM) ||
+    widthM <= 0 ||
+    depthM <= 0
+  ) {
+    return null;
+  }
+  const halfWidthM = widthM / 2;
+  const halfDepthM = depthM / 2;
+  return [
+    { x: centerAlongM - halfWidthM, y: centerDepthM - halfDepthM },
+    { x: centerAlongM + halfWidthM, y: centerDepthM - halfDepthM },
+    { x: centerAlongM + halfWidthM, y: centerDepthM + halfDepthM },
+    { x: centerAlongM - halfWidthM, y: centerDepthM + halfDepthM },
+  ];
 }
 
 function geometryOpeningFrameFromDeckFrame(frame: ObjectWorkbenchPlanDeckReferenceFrame): GeometryOpeningFrame {
@@ -792,6 +841,7 @@ function buildDeckInteraction(input: {
     minCenterOffsetM: placement === 'snapped' ? Number.NEGATIVE_INFINITY : -availableHalfSpanM,
     maxCenterOffsetM: placement === 'snapped' ? Number.POSITIVE_INFINITY : availableHalfSpanM,
     renderedCenter: polygonCenter(input.polygon),
+    commitStartPolygon: resolveDeckCommitStartPolygon(input.deck),
     referenceFrames: [...input.lookup.referenceFrames],
     commitReferenceFrames: [...input.lookup.referenceFrames],
     crossEdgeReference: null,

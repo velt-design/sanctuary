@@ -39,6 +39,8 @@ Canonical geometry solving lives in `packages/geometry`.
 
 Top projection is scene-first: `buildTopProjectionViewModelFromScene()` projects the same `ViewerSceneModel` used by 3D into world-XY plan shapes. Mesh-backed house solids use the world `+Z` top-view contract, not render-mesh vertex order or face winding. The 3D Top camera sits above the model with screen X as world `-X` and screen Y down as world `+Y`; plan renderers mirror top-projection X coordinates to match that actual camera view and invert that same transform for deck drag coordinates. Geometry-ready Model Space and Sheet View use top projection as the single committed visual body source; object-workbench overlays remain for transparent hit targets, previews, handles, and dimensions. Normal plan rendering uses each shape's `metadata.topProjectionRole` so hidden lower envelope geometry and context/reference bodies cannot dominate or duplicate the plan. The assembly helper `buildTopProjectionViewModel()` remains available as a compatibility wrapper that builds the viewer scene, adds assembly reference shapes, and then calls the scene-first projection path.
 
+Geometry-ready plan rendering is governed by a plan render graph. Its visible body layer is `committedBodies`; interaction state is limited to `hitTargets`, `selectionOutlines`, `dimensions`, and `dragPreview`. A selected deck or house must not cause a second filled body to appear from object-workbench or context geometry. Deck drag release is a round-trip contract: preview, commit payload, and rebuilt settled geometry are compared in canonical object plan metres, and projection-backed plans report a failed settle instead of hiding a mismatch with a visual jump.
+
 Portal drawing code adapts package output into workbench, plan, section, sheet, and preview state under:
 
 - `apps/portal/lib/drawings`
@@ -50,7 +52,7 @@ Compatibility paths must remain explicit. If a view uses fallback or compatibili
 
 Mesh-backed top projection must derive normal plan geometry from the 3D Top camera convention: world `+Z` looking down, screen X as world `-X`, and screen Y as world `+Y` downward. Roof and deck solids use their semantic top boundaries. Other mesh-backed solids use the highest non-vertical projected surface without trusting face winding. Lower envelope/context geometry must be classified with `topProjectionRole` and hidden from normal Model Space rendering unless it is intentional context.
 
-Plan/3D accuracy work must also keep the top-view parity gate green. `buildTopProjectionParityReport()` verifies the scene/projection object contract, screen axis, hidden-shape extents, and rendered hidden-shape diagnostics. The portal drawing browser gate checks the fixture workbench's plan diagnostics against the 3D Top viewport convention. Projection-backed plans expose duplicate-body and context-body diagnostics; duplicate visual and rendered context body counts must remain `0`.
+Plan/3D accuracy work must also keep the top-view parity gate green. `buildTopProjectionParityReport()` verifies the scene/projection object contract, screen axis, hidden-shape extents, and rendered hidden-shape diagnostics. The portal drawing browser gate checks the fixture workbench's plan diagnostics against the 3D Top viewport convention. Projection-backed plans expose duplicate-body, context-body, render-layer, and deck-settle diagnostics; duplicate visual and rendered context body counts must remain `0`, and one semantic object may not own more than one visible body layer.
 
 ## Roof Length And Span
 

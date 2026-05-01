@@ -423,11 +423,11 @@ function serializeDeckOutlineFromPlanPolygon(input: {
   polygon: PlanPoint[];
   attachmentSide: AttachmentSide;
 }): CalculatorHouseFootprintPolygonPoint[] {
+  void input.attachmentSide;
   return input.polygon.map((point) => {
-    const localPoint = planPointToDeckLocal(point, input.attachmentSide);
     return {
-      alongM: formatDeckPresetValue(localPoint.alongM),
-      depthM: formatDeckPresetValue(localPoint.depthM),
+      alongM: formatDeckPresetValue(point.x),
+      depthM: formatDeckPresetValue(point.y),
     };
   });
 }
@@ -476,10 +476,10 @@ function inferFloatingRectFromPlanPolygon(input: {
   widthM: string;
   depthM: string;
 } | null {
+  void input.attachmentSide;
   if (!input.polygon.length) return null;
-  const localPolygon = input.polygon.map((point) => planPointToDeckLocal(point, input.attachmentSide));
-  const alongValues = localPolygon.map((point) => point.alongM);
-  const depthValues = localPolygon.map((point) => point.depthM);
+  const alongValues = input.polygon.map((point) => point.x);
+  const depthValues = input.polygon.map((point) => point.y);
   const minAlongM = Math.min(...alongValues);
   const maxAlongM = Math.max(...alongValues);
   const minDepthM = Math.min(...depthValues);
@@ -492,6 +492,45 @@ function inferFloatingRectFromPlanPolygon(input: {
     widthM: formatDeckPresetValue(Math.max(0, maxAlongM - minAlongM)),
     depthM: formatDeckPresetValue(Math.max(0, maxDepthM - minDepthM)),
   };
+}
+
+function planPolygonBounds(polygon: readonly PlanPoint[]): {
+  minX: number;
+  maxX: number;
+  minY: number;
+  maxY: number;
+} | null {
+  if (!polygon.length) return null;
+  return {
+    minX: Math.min(...polygon.map((point) => point.x)),
+    maxX: Math.max(...polygon.map((point) => point.x)),
+    minY: Math.min(...polygon.map((point) => point.y)),
+    maxY: Math.max(...polygon.map((point) => point.y)),
+  };
+}
+
+function mapPreviewPolygonToCommitSpace(input: {
+  session: DeckDragSession;
+  preview: DeckPreviewState;
+}): PlanPoint[] {
+  const commitStartPolygon = input.session.interaction.commitStartPolygon;
+  if (!commitStartPolygon || commitStartPolygon.length !== input.session.startPolygon.length) {
+    return input.preview.polygon;
+  }
+  const renderedBounds = planPolygonBounds(input.session.startPolygon);
+  const commitBounds = planPolygonBounds(commitStartPolygon);
+  if (!renderedBounds || !commitBounds) return input.preview.polygon;
+  const renderedWidth = renderedBounds.maxX - renderedBounds.minX;
+  const renderedHeight = renderedBounds.maxY - renderedBounds.minY;
+  const commitWidth = commitBounds.maxX - commitBounds.minX;
+  const commitHeight = commitBounds.maxY - commitBounds.minY;
+  const scaleX = Math.abs(renderedWidth) > 1e-6 ? commitWidth / renderedWidth : 1;
+  const scaleY = Math.abs(renderedHeight) > 1e-6 ? commitHeight / renderedHeight : 1;
+  if (![scaleX, scaleY].every(Number.isFinite)) return input.preview.polygon;
+  return input.preview.polygon.map((point) => ({
+    x: commitBounds.minX + (point.x - renderedBounds.minX) * scaleX,
+    y: commitBounds.minY + (point.y - renderedBounds.minY) * scaleY,
+  }));
 }
 
 function clampPresetDeckCenterOffset(input: {
@@ -1536,6 +1575,7 @@ export function buildDeckCommitPatch(input: {
     interaction: input.session.interaction,
     renderEdgeId: input.preview.witnessEdgeId,
   });
+  const commitSpacePreviewPolygon = mapPreviewPolygonToCommitSpace(input);
   if (input.session.interaction.kind === 'custom_outline') {
     return {
       hostEdgeId: commitWitnessFrame?.sourceEdgeId ?? input.preview.witnessEdgeId,
@@ -1545,7 +1585,7 @@ export function buildDeckCommitPatch(input: {
       cornerVertexId: null,
       isAttached: false,
       outline: serializeDeckOutlineFromPlanPolygon({
-        polygon: input.preview.polygon,
+        polygon: commitSpacePreviewPolygon,
         attachmentSide: input.session.interaction.houseAttachmentSide,
       }),
     };
@@ -1586,7 +1626,7 @@ export function buildDeckCommitPatch(input: {
   const floatingRect =
     input.preview.releasePlacement === 'floating'
       ? inferFloatingRectFromPlanPolygon({
-          polygon: input.preview.polygon,
+          polygon: commitSpacePreviewPolygon,
           attachmentSide: input.session.interaction.houseAttachmentSide,
         })
       : null;

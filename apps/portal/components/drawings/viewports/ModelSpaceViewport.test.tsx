@@ -6019,7 +6019,7 @@ describe('ModelSpaceViewport', () => {
     rendered.unmount();
   });
 
-  it('releases the deck settle lock on deadline when viewport drift never stabilizes after a successful commit', async () => {
+  it('releases the deck settle lock once canonical geometry matches even when viewport drift never stabilizes', async () => {
     const deck = makeHouseFirstDeck({
       isAttached: false,
       presetType: 'rect_detached',
@@ -6085,21 +6085,14 @@ describe('ModelSpaceViewport', () => {
     expect(getDrawOutlineDiagnostics(rendered.container).houseFirstDeckDragLocked).toBe('false');
     expect(rendered.container.querySelector('[data-object-workbench-preview-shape="deck-1"]')).not.toBeNull();
 
-    await flushAnimationFrame();
-    expect(getDrawOutlineDiagnostics(rendered.container).houseFirstDeckDragLocked).toBe('false');
-    expect(rendered.container.querySelector('[data-object-workbench-preview-shape="deck-1"]')).not.toBeNull();
-
-    await act(async () => {
-      await new Promise<void>((resolve) => {
-        window.setTimeout(() => resolve(), 560);
-      });
-    });
-    await flushAnimationFrame();
+    await waitForObjectWorkbenchDeckSettleComplete(rendered.container, 80);
 
     expect(getDrawOutlineDiagnostics(rendered.container).houseFirstDeckDragLocked).toBe('false');
     expect(rendered.container.querySelector('[data-object-workbench-preview-shape="deck-1"]')).toBeNull();
 
-    rendered.unmount();
+    await act(async () => {
+      rendered.unmount();
+    });
   });
 
   it('allows an immediate second deck drag right after the first release settles visually', async () => {
@@ -6578,7 +6571,7 @@ describe('ModelSpaceViewport', () => {
     rendered.unmount();
   });
 
-  it('unlocks a snapped deck release on the settle deadline when committed geometry still differs', async () => {
+  it('fails a geometry-backed snapped deck release when committed geometry still differs at the settle deadline', async () => {
     const deck = makeHouseFirstDeck({
       isAttached: false,
       presetType: 'rect_detached',
@@ -6646,12 +6639,16 @@ describe('ModelSpaceViewport', () => {
 
     expect(scroller.dataset.objectWorkbenchDeckDragActive).toBe('false');
     expect(scroller.dataset.objectWorkbenchDeckDragLocked).toBe('false');
-    expect(rendered.container.querySelector('[data-object-workbench-preview-shape="deck-1"]')).toBeNull();
+    expect(scroller.dataset.objectWorkbenchDeckSettleRequiresCanonicalMatch).toBe('true');
+    expect(rendered.container.querySelector('[data-object-workbench-preview-shape="deck-1"]')).not.toBeNull();
     expect(
       normalizePolygonPointSet(polygonPointsAttr(rendered.container.querySelector('[data-object-workbench-shape="deck:deck-1"]'))),
     ).not.toBe(normalizePolygonPointSet(releasePreviewPoints));
+    expect(rendered.container.querySelector('[data-testid="deck-telemetry-release-outcome"]')?.textContent).toBe(
+      'failed',
+    );
     expect(rendered.container.querySelector('[data-testid="deck-telemetry-settle-visual"]')?.textContent).toBe(
-      'complete',
+      'failed',
     );
 
     const zoomBefore = getViewportTransformSnapshot(rendered.container).zoom;

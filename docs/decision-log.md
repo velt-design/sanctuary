@@ -31,12 +31,29 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. Use 
 | 2026-05-01 | Geometry Top Projection | Promoted | Mesh-backed top projection must follow the 3D Top camera visibility contract, not render-mesh order or face winding. |
 | 2026-05-01 | Plan Rendering | Promoted | Geometry-ready plan views must use top projection as the single committed visual body source. |
 | 2026-05-01 | Plan Rendering | Promoted | Projection-backed plans must suppress context/reference bodies as normal visuals and invert the projection transform for deck drag coordinates. |
+| 2026-05-01 | Plan Rendering | Promoted | Geometry-ready plan selection and drag must use render-graph layer ownership and canonical preview/commit/rebuild round trips. |
 | 2026-05-01 | Quotes/Invoices/Job Packs | Promoted | High-risk side-effect workflows need a canonical doc before future behavior changes. |
 | 2026-05-01 | Docs | Promoted | Read the agent playbook for non-trivial portal work; promote durable lessons from this log into the playbook. |
 | 2026-05-01 | Docs | Promoted | Do not delete active guardrail docs without confirming usage or replacing the rule. |
 | 2026-05-01 | Docs | Promoted | Distinguish current-state references from active operating rules. |
 
 ## Entries
+
+### 2026-05-01 - Plan Rendering - Layer Ownership And Drag Round Trip
+
+Area: Plan Rendering
+
+Status: Promoted
+
+Decision or mistake: geometry-ready plan mode still allowed top projection, object-workbench overlays, selection state, preview state, and commit rebuild geometry to draw or persist bodies through different coordinate contracts.
+
+Why it mattered: selected decks could reintroduce a second house/deck body, and deck release could jump because the preview and persisted commit were not compared in the same canonical object plan space.
+
+Current guardrail: geometry-ready normal visuals must flow through the plan render graph and only draw filled/stroked bodies from `committedBodies`. Selection may add transparent hit targets, outlines, handles, dimensions, and previews only. Deck drag preview, release commit payload, and rebuilt settled geometry must round-trip through canonical object plan metres, with projection-backed settle failures surfaced instead of silently snapping.
+
+Promoted to: `docs/design-workbench-architecture.md`, `docs/costing-and-geometry.md`.
+
+Related docs/tests: `apps/portal/app/staff/calculator/ModuleViewsCard.test.tsx`, `apps/portal/components/drawings/viewports/ModelSpaceViewport.test.tsx`, `apps/portal/lib/drawings/interactions/deckInteractionAdapter.test.ts`, `docs/design-workbench-architecture.md`, `docs/costing-and-geometry.md`.
 
 ### 2026-05-01 - Agent Routing - Change Routing Map
 

@@ -275,7 +275,6 @@ const WHEEL_PAGE_DELTA_PX = 240;
 const WHEEL_ZOOM_SENSITIVITY = 0.0036;
 const WHEEL_GESTURE_IDLE_MS = 600;
 const DECK_SETTLE_MATCH_TOLERANCE_M = 0.1;
-const DECK_SETTLE_SEMANTIC_MATCH_TOLERANCE_M = 0.025;
 const DECK_SETTLE_MAX_WAIT_MS = 500;
 const DECK_SETTLE_MATCH_STABLE_FRAMES = 1;
 const DECK_RELEASE_CLICK_SUPPRESSION_MS = 400;
@@ -391,10 +390,7 @@ function deckShapeSemanticallyMatchesPreview(input: {
   toleranceM?: number;
 }): boolean {
   if (!input.shape?.deckInteraction) return false;
-  const toleranceM = Math.min(
-    input.toleranceM ?? DECK_SETTLE_MATCH_TOLERANCE_M,
-    DECK_SETTLE_SEMANTIC_MATCH_TOLERANCE_M,
-  );
+  const toleranceM = input.toleranceM ?? DECK_SETTLE_MATCH_TOLERANCE_M;
   const interaction = input.shape.deckInteraction;
   if (interaction.placement !== input.preview.releasePlacement) return false;
   if (input.preview.releasePlacement === 'snapped') {
@@ -908,11 +904,11 @@ function serializeDeckOutlineFromPlanPolygon(input: {
   polygon: PlanPoint[];
   attachmentSide: AttachmentSide;
 }): CalculatorHouseFootprintPolygonPoint[] {
+  void input.attachmentSide;
   return input.polygon.map((point) => {
-    const localPoint = planPointToDeckLocal(point, input.attachmentSide);
     return {
-      alongM: formatDeckPresetValue(localPoint.alongM),
-      depthM: formatDeckPresetValue(localPoint.depthM),
+      alongM: formatDeckPresetValue(point.x),
+      depthM: formatDeckPresetValue(point.y),
     };
   });
 }
@@ -923,20 +919,13 @@ function translateDeckOutlineByPlanDelta(input: {
   deltaX: number;
   deltaY: number;
 }): CalculatorHouseFootprintPolygonPoint[] {
+  void input.attachmentSide;
   return input.polygon.map((point) => {
     const alongM = Number(point.alongM);
     const depthM = Number(point.depthM);
-    const planPoint = deckLocalPointToPlanPoint({ alongM, depthM }, input.attachmentSide);
-    const nextLocalPoint = planPointToDeckLocal(
-      {
-        x: planPoint.x + input.deltaX,
-        y: planPoint.y + input.deltaY,
-      },
-      input.attachmentSide,
-    );
     return {
-      alongM: formatDeckPresetValue(nextLocalPoint.alongM),
-      depthM: formatDeckPresetValue(nextLocalPoint.depthM),
+      alongM: formatDeckPresetValue(alongM + input.deltaX),
+      depthM: formatDeckPresetValue(depthM + input.deltaY),
     };
   });
 }
@@ -950,10 +939,10 @@ function inferFloatingRectFromPlanPolygon(input: {
   widthM: string;
   depthM: string;
 } | null {
+  void input.attachmentSide;
   if (!input.polygon.length) return null;
-  const localPolygon = input.polygon.map((point) => planPointToDeckLocal(point, input.attachmentSide));
-  const alongValues = localPolygon.map((point) => point.alongM);
-  const depthValues = localPolygon.map((point) => point.depthM);
+  const alongValues = input.polygon.map((point) => point.x);
+  const depthValues = input.polygon.map((point) => point.y);
   const minAlongM = Math.min(...alongValues);
   const maxAlongM = Math.max(...alongValues);
   const minDepthM = Math.min(...depthValues);
@@ -979,11 +968,11 @@ function buildFloatingRectFromPlanCenter(input: {
   widthM: string;
   depthM: string;
 } | null {
+  void input.attachmentSide;
   if (!Number.isFinite(input.widthM) || !Number.isFinite(input.depthM)) return null;
-  const localCenter = planPointToDeckLocal(input.center, input.attachmentSide);
   return {
-    centerAlongM: formatDeckPresetValue(localCenter.alongM),
-    centerDepthM: formatDeckPresetValue(localCenter.depthM),
+    centerAlongM: formatDeckPresetValue(input.center.x),
+    centerDepthM: formatDeckPresetValue(input.center.y),
     widthM: formatDeckPresetValue(input.widthM),
     depthM: formatDeckPresetValue(input.depthM),
   };
@@ -3238,6 +3227,7 @@ export default function ModelSpaceViewport({
         : null,
     [deckDragSettleState, objectWorkbenchPlanOverlay],
   );
+  const requiresCanonicalDeckSettleMatch = objectWorkbenchPlanOverlay?.housePolygonSource === 'geometry_projection';
   const settledDeckShapeMatchesPreview = useMemo(
     () => {
       if (!deckDragSettleState || !settledDeckShape) return false;
@@ -3528,7 +3518,25 @@ export default function ModelSpaceViewport({
           const settledPreviewConfirmed =
             matchedAndStable && deckDragSettleState.stableMatchFrameCount >= DECK_SETTLE_MATCH_STABLE_FRAMES;
           const deadlineCanUnlock = Date.now() >= settleDeadlineMs;
-          if (settledPreviewConfirmed || deadlineCanUnlock) {
+          if (settledPreviewConfirmed) {
+            finalizeSuccess();
+            return;
+          }
+          if (deadlineCanUnlock && requiresCanonicalDeckSettleMatch) {
+            setDeckDragSettleState((current) =>
+              current && current.deckId === deckDragSettleState.deckId
+                ? {
+                    ...current,
+                    releaseOutcome: 'failed',
+                    settleVisualState: 'failed',
+                    resolvedSuccess: false,
+                    releaseError: 'Deck release preview did not match rebuilt plan geometry.',
+                  }
+                : current,
+            );
+            return;
+          }
+          if (deadlineCanUnlock) {
             finalizeSuccess();
             return;
           }
@@ -3553,6 +3561,7 @@ export default function ModelSpaceViewport({
     isDeckDragViewportAnchorStable,
     measureDeckDragViewportAnchorDrift,
     restoreDeckDragPinnedScrollTargets,
+    requiresCanonicalDeckSettleMatch,
     settledDeckShapeMatchesPreview,
   ]);
 
@@ -3950,6 +3959,10 @@ export default function ModelSpaceViewport({
         data-house-first-deck-release-placement={deckInteractionViewState.releasePlacement ?? 'none'}
         data-object-workbench-deck-settle-visual-state={deckInteractionViewState.settleVisualState ?? 'none'}
         data-house-first-deck-settle-visual-state={deckInteractionViewState.settleVisualState ?? 'none'}
+        data-object-workbench-deck-settle-requires-canonical-match={requiresCanonicalDeckSettleMatch ? 'true' : 'false'}
+        data-object-workbench-deck-settle-canonical-match={
+          deckDragSettleState ? (settledDeckShapeMatchesPreview ? 'true' : 'false') : 'none'
+        }
         data-object-workbench-deck-snap-state={deckInteractionTelemetry.snapState}
         data-house-first-deck-snap-state={deckInteractionTelemetry.snapState}
         data-object-workbench-deck-attachment-mode={deckInteractionTelemetry.attachmentMode ?? 'floating'}

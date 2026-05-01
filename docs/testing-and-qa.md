@@ -26,10 +26,14 @@ Portal readiness sweeps:
 
 ```bash
 npm run portal:doctor:quick
+npm run portal:doctor:quick:log
 npm run portal:doctor
+npm run portal:doctor:log
 ```
 
 `portal:doctor:quick` runs docs guard, mojibake check, typecheck, lint, and portal Vitest. `portal:doctor` adds portal build, schedule bundle budget, drawing browser smoke, authenticated smoke, route performance, and production security audit.
+
+Use the `:log` variants when running noisy gates through an AI agent or chat tool. They run the same root npm scripts, write full stdout/stderr to an OS temp log, and print only the command, log path, duration, exit code, and a compact pass/fail summary. On failure they also print the last 120 log lines.
 
 Focused portal commands:
 
@@ -40,6 +44,7 @@ npm run test:portal:workbench
 npm run test:portal:projects
 npm run test:portal:quotes
 npm run test:portal:shell
+npm run test:portal:log
 ```
 
 Use focused commands while iterating in one domain, then run `npm run portal:doctor:quick` before handing work back. Use `npm run portal:doctor` for a broad local pre-merge readiness sweep when Playwright auth/env and audit expectations are ready.
