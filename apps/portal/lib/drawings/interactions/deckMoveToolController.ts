@@ -7,9 +7,11 @@ import type {
 import type { InteractionToolDiagnostics, InteractionToolPointer } from './interactionToolController';
 import {
   buildDeckDragSession,
+  buildDeckCommitCoordinateTrace,
   buildDeckObjectPatchCommit,
   resolveDeckCommitTransformDiagnostics,
   resolveDeckPreviewState,
+  type DeckCommitCoordinateTrace,
   type DeckCommitTransformDiagnostics,
   type DeckDragSession,
   type DeckObjectRef,
@@ -48,6 +50,7 @@ export type DeckMoveReleaseResult = {
   commitSource: DeckReleaseCommitSource;
   commitCoordinateSpace: DeckCommitTransformDiagnostics['commitCoordinateSpace'];
   commitTransform: DeckCommitTransformDiagnostics;
+  coordinateTrace: DeckCommitCoordinateTrace;
   diagnostics: InteractionToolDiagnostics;
 };
 
@@ -162,6 +165,7 @@ export function releaseDeckMoveTool(input: {
   preview: DeckPreviewState;
 }): DeckMoveReleaseResult {
   const commit = buildDeckObjectPatchCommit(input);
+  const coordinateTrace = buildDeckCommitCoordinateTrace(input);
   const commitTransform = resolveDeckCommitTransformDiagnostics(input);
   const commitSource = resolveDeckMoveCommitSource(input);
 
@@ -173,6 +177,7 @@ export function releaseDeckMoveTool(input: {
     commitSource,
     commitCoordinateSpace: commitTransform.commitCoordinateSpace,
     commitTransform,
+    coordinateTrace,
     diagnostics: buildDiagnostics({
       status: 'committed',
       source: input.session.dragSource,

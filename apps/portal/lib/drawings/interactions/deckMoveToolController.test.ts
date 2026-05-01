@@ -241,6 +241,9 @@ describe('deckMoveToolController', () => {
     expect(release.patch).toEqual(adapterCommit.patch);
     expect(release.commitSource).toBe('floating_rect_from_projection_preview');
     expect(release.commitCoordinateSpace).toBe(release.commitTransform.commitCoordinateSpace);
+    expect(release.coordinateTrace.patch).toEqual(adapterCommit.patch);
+    expect(release.coordinateTrace.transform).toEqual(release.commitTransform);
+    expect(release.coordinateTrace.releasePolygon).toEqual(preview.polygon);
   });
 
   it('blocks projection-backed drag start when the projection point is missing', () => {
