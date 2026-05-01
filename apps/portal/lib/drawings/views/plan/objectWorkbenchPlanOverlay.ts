@@ -1,5 +1,6 @@
 import {
   buildCustomHouseFootprintPolygon,
+  buildHouseFootprintPresetSideLocalPoints,
   type Assembly3D,
   type GeometryMetadata,
   type GeometryPlanViewModel,
@@ -15,6 +16,7 @@ import type {
   HouseFormModel,
   OpeningObjectModel,
 } from '@/lib/drawings/state/objectFirstWorkbenchModel';
+import { buildDeckReferenceHousePolygon } from '@/lib/drawings/state/objectWorkbenchDeckGeometry';
 import type { ObjectWorkbenchStatusFacade } from '@/lib/drawings/state/objectWorkbenchStatusModel';
 import type {
   WorkbenchPergolaRenderSource,
@@ -61,7 +63,7 @@ export type ObjectWorkbenchPlanHousePolygonSource =
 export type ObjectWorkbenchPlanDeckReferenceFrame = {
   hostEdgeId: AttachmentSide;
   sourceEdgeId: string;
-  frameSource?: 'top_projection_wall_edge' | 'top_projection_body' | 'geometry_plan';
+  frameSource?: 'top_projection_wall_edge' | 'top_projection_body' | 'geometry_plan' | 'object_frame';
   axis: 'along' | 'depth';
   spanStartM: number;
   spanEndM: number;
@@ -574,6 +576,7 @@ function buildDeckReferenceFrameFromSegment(input: {
 
 function buildDeckReferenceFramesFromPolygon(
   polygon: readonly PlanPoint[],
+  frameSource: ObjectWorkbenchPlanDeckReferenceFrame['frameSource'] = 'top_projection_body',
 ): ObjectWorkbenchPlanDeckReferenceFrame[] {
   if (polygon.length < 3) return [];
   return polygon.flatMap((start, index) => {
@@ -584,7 +587,7 @@ function buildDeckReferenceFramesFromPolygon(
       start,
       end,
       footprint: polygon,
-      frameSource: 'top_projection_body',
+      frameSource,
     });
     return frame ? [frame] : [];
   });
@@ -593,6 +596,7 @@ function buildDeckReferenceFramesFromPolygon(
 function buildGeometryLookup(
   geometryPlan: GeometryPlanViewModel,
   geometryTopProjection?: GeometryTopProjectionViewModel | null,
+  objectCommitFootprint?: readonly PlanPoint[] | null,
 ): GeometryPlanLookup {
   const topProjectionLookup = buildTopProjectionLookup(geometryTopProjection);
   const footprintSurface = (geometryPlan.house.surfaces ?? []).find((surface) => surface.kind === 'footprint') ?? null;
@@ -652,12 +656,19 @@ function buildGeometryLookup(
     footprint?.source === 'top_projection_committed'
       ? buildDeckReferenceFramesFromPolygon(footprint.polygon)
       : [];
+  const objectCommitReferenceFrames = objectCommitFootprint?.length
+    ? buildDeckReferenceFramesFromPolygon(objectCommitFootprint, 'object_frame')
+    : [];
   const referenceFrames = topProjectionLookup.wallEdgeFrames.length
     ? topProjectionLookup.wallEdgeFrames
     : projectionReferenceFrames.length
       ? projectionReferenceFrames
       : geometryReferenceFrames;
-  const commitReferenceFrames = geometryReferenceFrames.length ? geometryReferenceFrames : referenceFrames;
+  const commitReferenceFrames = objectCommitReferenceFrames.length
+    ? objectCommitReferenceFrames
+    : geometryReferenceFrames.length
+      ? geometryReferenceFrames
+      : referenceFrames;
   const snapFrameSource = topProjectionLookup.wallEdgeFrames.length
     ? 'top_projection_wall_edge'
     : projectionReferenceFrames.length
@@ -675,6 +686,36 @@ function buildGeometryLookup(
     snapFrameSource,
     openingFrames,
   };
+}
+
+function buildHouseFormDeckCommitFootprint(input: {
+  houseForm: HouseFormModel | null;
+  moduleLengthM?: string | null;
+  moduleProjectionM?: string | null;
+}): PlanPoint[] {
+  if (!input.houseForm) return [];
+  const localPolygon =
+    input.houseForm.footprint.mode === 'custom_polygon' && input.houseForm.footprint.polygon.length
+      ? input.houseForm.footprint.polygon
+      : buildHouseFootprintPresetSideLocalPoints({
+          pergolaWidthMm: Math.round((Number(input.moduleLengthM) || 6) * 1000),
+          pergolaDepthMm: Math.round((Number(input.moduleProjectionM) || 3) * 1000),
+          preset: input.houseForm.footprint.preset,
+          params: input.houseForm.footprint.params,
+          attachmentSide: input.houseForm.footprint.attachmentSide,
+        }).map((point) => ({
+          alongM: String(point.alongM),
+          depthM: String(point.depthM),
+        }));
+  return parseLocalPolygon(
+    buildDeckReferenceHousePolygon({
+      housePolygon: localPolygon,
+      footprintParams: input.houseForm.footprint.params,
+    }),
+  ).map((point) => ({
+    x: point.alongM,
+    y: point.depthM,
+  }));
 }
 
 function findFrameByEdgeId(
@@ -1542,10 +1583,18 @@ export function buildObjectWorkbenchPlanOverlay(input: ObjectWorkbenchPlanOverla
   const geometryPlan = input.geometryPlan;
   if (!geometryPlan) return null;
 
-  const lookup = buildGeometryLookup(geometryPlan, input.geometryTopProjection);
+  const houseForm = input.houseForm ?? input.houseAssembly?.houseForms[0] ?? null;
+  const lookup = buildGeometryLookup(
+    geometryPlan,
+    input.geometryTopProjection,
+    buildHouseFormDeckCommitFootprint({
+      houseForm,
+      moduleLengthM: input.moduleLengthM,
+      moduleProjectionM: input.moduleProjectionM,
+    }),
+  );
   const footprint = lookup.footprint;
   if (!footprint?.polygon.length) return null;
-  const houseForm = input.houseForm ?? input.houseAssembly?.houseForms[0] ?? null;
   const houseAttachmentSide = houseForm?.footprint.attachmentSide ?? 'rear';
   const shapes: ObjectWorkbenchPlanShapeOverlay[] = [
     {

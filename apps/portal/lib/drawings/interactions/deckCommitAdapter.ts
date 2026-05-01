@@ -18,6 +18,7 @@ export type DeckCommitTransformSource =
   | 'legacy_plan'
   | 'same_frame'
   | 'top_projection_to_object_frame'
+  | 'top_projection_to_object_start_polygon'
   | 'missing_frame';
 
 export type DeckCommitTransformDiagnostics = {
@@ -405,6 +406,28 @@ function mapDeckPreviewPolygonThroughCommitFrame(input: {
   );
 }
 
+function mapDeckPreviewPolygonThroughCommitStartPolygon(input: {
+  session: DeckDragSession;
+  preview: DeckPreviewState;
+}): PlanPoint[] | null {
+  const commitStartPolygon = input.session.interaction.commitStartPolygon;
+  if (!commitStartPolygon || commitStartPolygon.length !== input.session.startPolygon.length) return null;
+  const renderedBounds = planPolygonBounds(input.session.startPolygon);
+  const commitBounds = planPolygonBounds(commitStartPolygon);
+  if (!renderedBounds || !commitBounds) return null;
+  const renderedWidth = renderedBounds.maxX - renderedBounds.minX;
+  const renderedHeight = renderedBounds.maxY - renderedBounds.minY;
+  const commitWidth = commitBounds.maxX - commitBounds.minX;
+  const commitHeight = commitBounds.maxY - commitBounds.minY;
+  const scaleX = Math.abs(renderedWidth) > 1e-6 ? commitWidth / renderedWidth : 1;
+  const scaleY = Math.abs(renderedHeight) > 1e-6 ? commitHeight / renderedHeight : 1;
+  if (![scaleX, scaleY].every(Number.isFinite)) return null;
+  return input.preview.polygon.map((point) => ({
+    x: commitBounds.minX + (point.x - renderedBounds.minX) * scaleX,
+    y: commitBounds.minY + (point.y - renderedBounds.minY) * scaleY,
+  }));
+}
+
 function isProjectionBackedDeckSession(session: DeckDragSession): boolean {
   return session.dragSource === 'top_projection_committed' ||
     session.dragCoordinateSpace === 'top_projection_world_m';
@@ -415,6 +438,10 @@ export function resolveDeckCommitTransformDiagnostics(input: {
   preview: DeckPreviewState;
 }): DeckCommitTransformDiagnostics {
   const projectionBacked = isProjectionBackedDeckSession(input.session);
+  const floatingStartPolygonTransform =
+    projectionBacked &&
+    input.preview.releasePlacement === 'floating' &&
+    Boolean(mapDeckPreviewPolygonThroughCommitStartPolygon(input));
   const renderEdgeId = resolveDeckPreviewRenderEdgeId({ preview: input.preview });
   const renderFrame =
     findDeckReferenceFrameById(input.session.interaction.referenceFrames, renderEdgeId) ??
@@ -440,8 +467,10 @@ export function resolveDeckCommitTransformDiagnostics(input: {
     renderFrameId: renderFrame?.sourceEdgeId ?? null,
     commitFrameId: commitFrame?.sourceEdgeId ?? null,
     renderCoordinateSpace: input.session.dragCoordinateSpace ?? 'unknown',
-    commitCoordinateSpace: renderFrame && commitFrame ? 'object_frame_m' : 'unknown',
-    transformSource: !renderFrame || !commitFrame
+    commitCoordinateSpace: floatingStartPolygonTransform || (renderFrame && commitFrame) ? 'object_frame_m' : 'unknown',
+    transformSource: floatingStartPolygonTransform
+      ? 'top_projection_to_object_start_polygon'
+      : !renderFrame || !commitFrame
       ? 'missing_frame'
       : renderFrame === commitFrame
         ? 'same_frame'
@@ -509,6 +538,13 @@ function mapDeckPreviewPolygonToCommitSpaceStrict(input: {
   preview: DeckPreviewState;
 }): PlanPoint[] {
   const projectionBacked = isProjectionBackedDeckSession(input.session);
+  const startPolygonMappedFloatingPolygon =
+    projectionBacked && input.preview.releasePlacement === 'floating'
+      ? mapDeckPreviewPolygonThroughCommitStartPolygon(input)
+      : null;
+  if (startPolygonMappedFloatingPolygon) {
+    return startPolygonMappedFloatingPolygon;
+  }
   const frameMappedPolygon = mapDeckPreviewPolygonThroughCommitFrame(input);
   if (projectionBacked) {
     if (!frameMappedPolygon) {

@@ -5697,7 +5697,9 @@ describe('ModelSpaceViewport', () => {
     expect(scroller.dataset.deckTracePreviewToCommitDeltaY).not.toBe('');
     expect(scroller.dataset.deckTraceReleaseToRebuiltDeltaX).not.toBe('');
     expect(scroller.dataset.deckTraceReleaseToRebuiltDeltaY).not.toBe('');
-    expect(scroller.dataset.deckTraceStatus).toBe('drift');
+    expect(scroller.dataset.deckTraceReleaseToRebuiltDeltaX).toBe('0');
+    expect(scroller.dataset.deckTraceReleaseToRebuiltDeltaY).toBe('0');
+    expect(scroller.dataset.deckTraceStatus).toBe('matched');
 
     rendered.unmount();
   });

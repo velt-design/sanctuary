@@ -13,6 +13,7 @@ import type {
   ObjectWorkbenchPlanShapeOverlay,
   PlanPoint,
 } from '@/lib/drawings/views/plan/objectWorkbenchPlanOverlay';
+import { buildDeckReleaseRebuildParityReport } from './deckReleaseParity';
 
 export type DeckSettleMatchSource =
   | 'none'
@@ -179,16 +180,6 @@ function resolvePolygonCenter(polygon: readonly PlanPoint[]): PlanPoint | null {
   };
 }
 
-function resolveCentroidDelta(from: readonly PlanPoint[], to: readonly PlanPoint[] | null): PlanPoint | null {
-  const fromCenter = resolvePolygonCenter(from);
-  const toCenter = to ? resolvePolygonCenter(to) : null;
-  if (!fromCenter || !toCenter) return null;
-  return {
-    x: toCenter.x - fromCenter.x,
-    y: toCenter.y - fromCenter.y,
-  };
-}
-
 function resolveRebuiltProjectionPolygon(
   shape: ObjectWorkbenchPlanShapeOverlay | null,
 ): PlanPoint[] | null {
@@ -199,10 +190,12 @@ function updateDeckCoordinateTraceWithRebuiltProjection(input: {
   trace: DeckCommitCoordinateTrace;
   rebuiltProjectionPolygon: PlanPoint[] | null;
 }): DeckCommitCoordinateTrace {
-  const releaseToRebuilt = resolveCentroidDelta(
-    input.trace.releasePolygon,
-    input.rebuiltProjectionPolygon,
-  );
+  const parity = buildDeckReleaseRebuildParityReport({
+    coordinateTrace: input.trace,
+    rebuiltProjectionPolygon: input.rebuiltProjectionPolygon,
+    toleranceM: DECK_SETTLE_MATCH_TOLERANCE_M,
+  });
+  const releaseToRebuilt = parity.centroidDeltaM.releaseToRebuilt;
   const currentDelta = input.trace.centroidDeltaM.releaseToRebuilt;
   const currentHasRebuiltProjection = Boolean(input.trace.rebuiltProjectionPolygon);
   const nextHasRebuiltProjection = Boolean(input.rebuiltProjectionPolygon);

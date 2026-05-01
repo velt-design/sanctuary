@@ -17,6 +17,7 @@ import {
   resolveDeckSettleMatch,
   type DeckDragSettleState,
 } from './deckReleaseSettlementController';
+import { buildDeckReleaseRebuildParityReport } from './deckReleaseParity';
 
 const polygon: PlanPoint[] = [
   { x: 1, y: 0 },
@@ -201,6 +202,42 @@ function makeDeckShape(overrides: Partial<ObjectWorkbenchPlanShapeOverlay> = {})
 }
 
 describe('deckReleaseSettlementController', () => {
+  it('reports release-to-rebuilt parity from the coordinate trace', () => {
+    const trace = makeCoordinateTrace(makePreview());
+
+    expect(buildDeckReleaseRebuildParityReport({ coordinateTrace: trace })).toMatchObject({
+      status: 'pending',
+      rebuiltProjectionPolygon: null,
+      centroidDeltaM: {
+        releaseToRebuilt: null,
+      },
+    });
+
+    expect(
+      buildDeckReleaseRebuildParityReport({
+        coordinateTrace: trace,
+        rebuiltProjectionPolygon: polygon,
+      }),
+    ).toMatchObject({
+      status: 'matched',
+      centroidDeltaM: {
+        releaseToRebuilt: { x: 0, y: 0 },
+      },
+    });
+
+    expect(
+      buildDeckReleaseRebuildParityReport({
+        coordinateTrace: trace,
+        rebuiltProjectionPolygon: polygon.map((point) => ({ ...point, y: point.y + 0.5 })),
+      }),
+    ).toMatchObject({
+      status: 'drift',
+      centroidDeltaM: {
+        releaseToRebuilt: { x: 0, y: 0.5 },
+      },
+    });
+  });
+
   it('preserves the coordinate trace while release settle is pending', () => {
     const preview = makePreview();
     const trace = makeCoordinateTrace(preview);
