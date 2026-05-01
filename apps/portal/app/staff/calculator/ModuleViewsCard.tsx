@@ -1782,6 +1782,30 @@ function mmPolygonToPlanSvg(points: Point2[], baseX: number, baseY: number, scal
   return points.map((point) => mmPointToPlanSvg(point, baseX, baseY, scale));
 }
 
+function topProjectionPointToPlanSvg(
+  point: Point2,
+  projection: GeometryTopProjectionViewModel,
+  baseX: number,
+  baseY: number,
+  scale: number,
+): Point {
+  const xMm =
+    projection.screenAxis.x === 'world_x_left' && projection.extents
+      ? projection.extents.minX + projection.extents.maxX - point.x
+      : point.x;
+  return mmPointToPlanSvg({ x: xMm, y: point.y }, baseX, baseY, scale);
+}
+
+function topProjectionPolygonToPlanSvg(
+  points: Point2[],
+  projection: GeometryTopProjectionViewModel,
+  baseX: number,
+  baseY: number,
+  scale: number,
+): Point[] {
+  return points.map((point) => topProjectionPointToPlanSvg(point, projection, baseX, baseY, scale));
+}
+
 function buildPlanMemberFootprint(input: {
   member: GeometryPlanMember2D;
   baseX: number;
@@ -4915,7 +4939,7 @@ function PlanSvg({
           .filter((shape) => topProjectionShapeVisible(shape, familyVisibility))
           .map((shape) => ({
             shape,
-            points: mmPolygonToPlanSvg(shape.polygon, x, y, scale),
+            points: topProjectionPolygonToPlanSvg(shape.polygon, modelSpaceTopProjection, x, y, scale),
           }))
       : [];
   const topProjectionAllShapes = useTopProjectionBackedModel && modelSpaceTopProjection ? modelSpaceTopProjection.shapes : [];
@@ -4928,7 +4952,7 @@ function PlanSvg({
     : null;
   const topProjectionParityStatus =
     useTopProjectionBackedModel && modelSpaceTopProjection
-      ? topProjectionScreenAxis === 'world_x_right_world_y_down' && topProjectionHiddenRenderedCount === 0
+      ? topProjectionScreenAxis === 'world_x_left_world_y_down' && topProjectionHiddenRenderedCount === 0
         ? 'pass'
         : 'fail'
       : null;

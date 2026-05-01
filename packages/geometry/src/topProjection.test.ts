@@ -233,7 +233,7 @@ describe("buildTopProjectionViewModel", () => {
 
     expect(projection.coordinateSpace).toBe("world_xy_mm");
     expect(projection.screenAxis).toEqual({
-      x: "world_x_right",
+      x: "world_x_left",
       y: "world_y_down",
     });
     expect(projection.extents?.widthMm).toBeGreaterThan(0);
@@ -515,7 +515,7 @@ describe("buildTopProjectionParityReport", () => {
 
     expect(report).toMatchObject({
       status: "pass",
-      screenAxis: "world_x_right_world_y_down",
+      screenAxis: "world_x_left_world_y_down",
     });
     expect(report.topVisibleShapeCount).toBeGreaterThan(0);
     expect(report.issues).toEqual([]);
@@ -562,7 +562,7 @@ describe("buildTopProjectionParityReport", () => {
     });
     const projection: GeometryTopProjectionViewModel = {
       coordinateSpace: "world_xy_mm",
-      screenAxis: { x: "world_x_right", y: "world_y_down" },
+      screenAxis: { x: "world_x_left", y: "world_y_down" },
       shapes: [],
       extents: null,
     };

@@ -130,6 +130,17 @@ Schedule Gantt:
 - Drag or resize bars only through supported interactions.
 - Toggle crew collapse and range options.
 
+## Portal Production Readiness
+
+- Env readiness: required Supabase, auth, public URL, email, and `PORTAL_TEST_*` variables are present for the target environment.
+- Supabase migrations applied: ordered `supabase/migrations/` are applied, including current Schedule V2 command/repair migrations.
+- Schedule readiness 200: `GET /api/staff/v1/schedule/readiness` returns `200`.
+- Auth smoke: `npm run test:portal:browser:auth` and `npm run test:portal:smoke` pass against the target base URL.
+- Quote/invoice token smoke: valid public quote and invoice links load, while missing, invalid, expired, void, or declined states stay unavailable.
+- Audit clean: `npm run audit:security` has no unresolved high or critical production vulnerabilities.
+- Bundle budget clean: `npm run build:portal` then `npm run schedule:bundle-budget` pass.
+- Browser smoke clean: `npm run test:portal:browser` and `npm run test:portal:performance` pass, with required manual Board, Gantt, and Site Visits checks completed.
+
 ## CI
 
 - Portal Quality runs portal Vitest, portal build, authenticated smoke, and portal performance timing.

@@ -998,7 +998,7 @@ export type GeometryTopProjectionShape = {
 export type GeometryTopProjectionViewModel = {
   coordinateSpace: "world_xy_mm";
   screenAxis: {
-    x: "world_x_right";
+    x: "world_x_right" | "world_x_left";
     y: "world_y_down";
   };
   shapes: GeometryTopProjectionShape[];

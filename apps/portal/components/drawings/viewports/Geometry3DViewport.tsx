@@ -4660,7 +4660,7 @@ export default function Geometry3DViewport({
           data-house-opening-rendered-marker-count={String(houseOpeningDiagnostics.renderedMarkerCount)}
           data-house-opening-skipped-invalid-count={String(houseOpeningDiagnostics.skippedInvalidCount)}
           data-house-opening-unresolved-valid-count={String(houseOpeningDiagnostics.unresolvedValidCount)}
-          data-top-view-screen-axis={cameraState.viewPreset === "top" ? "world_x_right_world_y_down" : ""}
+          data-top-view-screen-axis={cameraState.viewPreset === "top" ? "world_x_left_world_y_down" : ""}
           data-clipping-enabled={String(sectionCut.enabled)}
           data-selected-object-id={selectedObjectId ?? ""}
           data-shell-width={String(rectDiagnostic.shellWidth)}

@@ -609,10 +609,10 @@ export function buildTopProjectionParityReport(
   const hiddenShapes = projection.shapes.filter((shape) => topProjectionRoleForShape(shape) === 'hidden_from_top');
 
   const screenAxis = topProjectionScreenAxisString(projection);
-  if (screenAxis !== 'world_x_right_world_y_down') {
+  if (screenAxis !== 'world_x_left_world_y_down') {
     issues.push({
       code: 'screen_axis_mismatch',
-      message: `Expected top projection screen axis world_x_right_world_y_down, received ${screenAxis}.`,
+      message: `Expected top projection screen axis world_x_left_world_y_down, received ${screenAxis}.`,
     });
   }
 
@@ -685,7 +685,7 @@ export function buildTopProjectionViewModelFromScene(
   return {
     coordinateSpace: 'world_xy_mm',
     screenAxis: {
-      x: 'world_x_right',
+      x: 'world_x_left',
       y: 'world_y_down',
     },
     shapes,
