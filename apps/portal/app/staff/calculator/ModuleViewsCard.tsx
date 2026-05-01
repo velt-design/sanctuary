@@ -264,6 +264,8 @@ export type ModuleDrawingScaleState = {
   suggestedScale: EstimateDrawingScale;
 };
 
+type ProjectionPlanLayer = 'committedBodies' | 'contextLines';
+
 export type ModuleDrawingScaleDiagnostic = {
   scale: EstimateDrawingScale;
   fits: boolean;
@@ -2031,7 +2033,7 @@ function topProjectionShapeVisible(
   visibility: DrawingWorkbenchVisibilityState,
 ): boolean {
   const role = topProjectionRole(shape);
-  if (role === 'hidden_from_top') return false;
+  if (role === 'hidden_from_top') return null;
   if (shape.family === 'pergola') return visibility.pergolas;
   if (shape.family !== 'house') return true;
   if (shape.kind === 'deck') return visibility.decks;
@@ -2039,19 +2041,44 @@ function topProjectionShapeVisible(
   return visibility.house;
 }
 
-function topProjectionShapeRenderedInNormalPlan(shape: GeometryTopProjectionShape): boolean {
+function topProjectionPlanLayer(shape: GeometryTopProjectionShape): ProjectionPlanLayer | null {
   const role = topProjectionRole(shape);
   if (role === 'hidden_from_top') return false;
-  if (role === 'top_visible') return true;
-  if (shape.sourceType === 'reference_line') return true;
-  return (
-    shape.family === 'house' &&
-    (shape.kind === 'opening_marker' || shape.kind === 'opening_outline' || shape.kind === 'attachment_target')
-  );
+  if (role === 'context') {
+    if (shape.sourceType === 'reference_line' || shape.sourceType === 'house_line') return 'contextLines';
+    if (shape.family === 'house' && (shape.kind === 'opening_marker' || shape.kind === 'opening_outline' || shape.kind === 'attachment_target')) {
+      return 'contextLines';
+    }
+    return null;
+  }
+  if (shape.family === 'house') {
+    if (
+      (shape.sourceType === 'house_surface_solid' || shape.sourceType === 'house_surface') &&
+      (shape.kind === 'roof' || shape.kind === 'deck')
+    ) {
+      return 'committedBodies';
+    }
+    if (shape.sourceType === 'house_line' || shape.sourceType === 'reference_line') return 'contextLines';
+    return null;
+  }
+  if (shape.family === 'reference') {
+    return shape.sourceType === 'reference_line' ? 'contextLines' : null;
+  }
+  if (shape.family === 'pergola') {
+    if (
+      shape.sourceType === 'roof_plane' ||
+      shape.sourceType === 'roof_cladding_panel' ||
+      shape.sourceType === 'member_prism'
+    ) {
+      return 'committedBodies';
+    }
+    return shape.sourceType === 'reference_line' ? 'contextLines' : null;
+  }
+  return null;
 }
 
 function topProjectionShapeIsCommittedBody(shape: GeometryTopProjectionShape): boolean {
-  return topProjectionRole(shape) === 'top_visible' && shape.sourceType !== 'reference_line' && shape.sourceType !== 'house_line';
+  return topProjectionPlanLayer(shape) === 'committedBodies';
 }
 
 function topProjectionRole(shape: GeometryTopProjectionShape): 'top_visible' | 'context' | 'hidden_from_top' {
@@ -2084,6 +2111,11 @@ function topProjectionShapeClass(shape: GeometryTopProjectionShape): string {
     return styles.modulePlanPrimaryZone;
   }
   return styles.modulePlanPrimaryZone;
+}
+
+function topProjectionShapeClassForLayer(shape: GeometryTopProjectionShape, layer: ProjectionPlanLayer): string {
+  if (layer === 'contextLines') return styles.modulePlanTopProjectionLine;
+  return topProjectionShapeClass(shape);
 }
 
 function sectionHouseSurfaceClass(kind: NonNullable<ModuleSectionModel['houseContext']>['surfaces'][number]['kind']): string {

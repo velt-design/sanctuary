@@ -3055,6 +3055,15 @@
   stroke-width: var(--mv-line-major-width);
 }
 
+.moduleHouseFirstSelectionOutline {
+  fill: none;
+  stroke: rgba(var(--accentRgb), 0.92);
+  stroke-width: var(--mv-line-major-width);
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
 .moduleHouseFirstShapePreviewSuppressed {
   opacity: 0;
   pointer-events: none;
