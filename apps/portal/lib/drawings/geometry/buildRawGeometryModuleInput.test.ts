@@ -11,11 +11,13 @@ import {
 import { makeHouseFirstDeckSupportProjectFixture } from '@/lib/drawings/state/houseFirstWorkbenchFixtures';
 import { buildEstimateDrawingDraftFromSnapshot, type EstimateDrawingDraft } from '@/lib/estimates/drawingEdits';
 import {
+  buildObjectFirstWorkbenchDraftFromProjectModel,
+} from '@/lib/drawings/state/objectFirstWorkbenchAdapter';
+import {
   buildObjectFirstDeckDraftsFromCompatibilityDrafts,
   buildObjectFirstOpeningDraftsFromCompatibilityDrafts,
-  buildObjectFirstWorkbenchDraftFromProjectModel,
   buildObjectFirstWorkbenchProjectModel,
-} from '@/lib/drawings/state/objectFirstWorkbenchAdapter';
+} from '@/lib/drawings/state/legacyObjectFirstCompatibilityAdapter';
 import { buildObjectWorkbenchGeometryContext } from './objectWorkbenchGeometryContext';
 import { buildRawGeometryModuleInput } from './buildRawGeometryModuleInput';
 import type { CalculatorModuleInputs } from '@/lib/types/calculator';

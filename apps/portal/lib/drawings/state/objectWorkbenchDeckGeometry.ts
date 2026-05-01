@@ -19,15 +19,17 @@ type LocalPolygonPoint = {
 
 type DeckGeometryDraft = {
   id?: string | null;
+  name?: string | null;
   shape?: DeckShape | null;
+  presetType?: string | null;
   hostEdgeId?: string | null;
   primaryHostEdgeId?: string | null;
   secondaryHostEdgeId?: string | null;
   cornerVertexId?: string | null;
   attachmentMode?: DeckAttachmentMode | null;
   isAttached?: boolean | null;
-  presetRect?: Partial<DeckPresetRect> | null;
-  floatingRect?: Partial<DeckFloatingPresetRect> | null;
+  presetRect?: DeckPresetRect | null;
+  floatingRect?: DeckFloatingPresetRect | null;
   outline?: CalculatorHouseFootprintPolygonPoint[] | null;
 };
 

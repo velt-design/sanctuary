@@ -91,6 +91,7 @@ Use `docs/testing-and-qa.md` for the canonical command catalog. Use the feature 
 | Drawing domain libraries | `apps/portal/lib/drawings/README.md` | Keep geometry/package boundaries explicit. |
 | Drawing UI components | `apps/portal/components/drawings/README.md` | Keep component state aligned with object-first persistence. |
 | Contacts, projects, estimates, calculator | `docs/projects-contacts-estimates-calculator.md` | Preserve project snapshot, pipeline, estimate lock, and local-first mutation boundaries. |
+| Staff/admin/public-token APIs | `docs/staff-api-auth-contracts.md` | Use the right auth helper, Supabase client boundary, diagnostics pattern, and side-effect owner. |
 | Local-first estimates/quotes | `docs/local-first-sync.md` | Preserve queue, lock, alias, and conflict behavior. |
 | Quotes, invoices, job packs | `docs/quotes-invoices-job-packs.md` | Verify side effects, token boundaries, PDFs, emails, and generated artifacts. |
 | Schedule | `docs/schedule.md` | Preserve Schedule V2 API/RPC command boundaries and legacy fallback posture. |

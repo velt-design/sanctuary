@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { buildEstimateDrawingModules } from '@/lib/estimates/moduleDrawing';
 import { getSanctuaryGeometryWorkbenchFixture } from '@/lib/drawings/sanctuaryWorkbenchFixtures';
 import { buildObjectWorkbenchCompatibilityProjectModel } from '@/lib/drawings/state/compat/objectWorkbenchCompatibilityModel';
-import { buildObjectFirstWorkbenchProjectModel } from '@/lib/drawings/state/objectFirstWorkbenchAdapter';
+import { buildObjectFirstWorkbenchProjectModel } from '@/lib/drawings/state/legacyObjectFirstCompatibilityAdapter';
 import { buildDrawingWorkbenchStore } from '@/lib/drawings/state/drawingWorkbenchStore';
 import { createDrawingWorkbenchUiState } from '@/lib/drawings/state/drawingWorkbenchUiState';
 import { buildWorkbenchGeometryPreview } from './buildWorkbenchGeometryPreview';

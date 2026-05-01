@@ -11,6 +11,7 @@ This doc is the current-state reference for the core staff portal workflow befor
 - Contact APIs: `apps/portal/app/api/contacts`.
 - Project APIs: `apps/portal/app/api/projects` and action routes under `apps/portal/app/api/staff/v1/projects`.
 - Estimate APIs: `apps/portal/app/api/projects/[projectId]/estimates` and `apps/portal/app/api/estimates/[estimateId]`.
+- Route/auth contracts: `docs/staff-api-auth-contracts.md`.
 - Project domain helpers: `apps/portal/lib/projects`.
 - Estimate domain helpers: `apps/portal/lib/estimates`.
 - Local-first mutation keys and cache helpers: `apps/portal/lib/localFirst/portalEntities.ts` and `apps/portal/components/sync/LocalFirstPortalMutations.tsx`.
@@ -96,6 +97,7 @@ Server-authoritative actions stay server-owned:
 - Design request list behavior: `docs/design-list.md`.
 - Drawing workbench object-first and geometry behavior: `docs/design-workbench-architecture.md`.
 - Local-first queue mechanics, aliases, and conflict recovery: `docs/local-first-sync.md`.
+- Staff route auth, diagnostics, and Supabase client boundaries: `docs/staff-api-auth-contracts.md`.
 - Costing and geometry source-of-truth rules: `docs/costing-and-geometry.md`.
 - Schedule and site visit behavior: `docs/schedule.md`.
 

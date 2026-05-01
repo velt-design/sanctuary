@@ -19,6 +19,7 @@ These docs are current-state references and active guardrails for coding agents.
 | `architecture.md` | Current | You need the repo map, app/package boundaries, or CI/script overview. |
 | `platform-workflow.md` | Current | You need to understand lead, project, estimate, quote, invoice, design, schedule, or running-job flow. |
 | `environment-auth-supabase.md` | Current | You need env vars, Supabase auth, role access, migrations, or schema readiness. |
+| `staff-api-auth-contracts.md` | Current | You are touching staff/admin/public-token API routes, route auth helpers, Supabase client boundaries, diagnostics, or response conventions. |
 | `testing-and-qa.md` | Current | You need the canonical command catalog, Playwright auth, smoke checks, performance checks, or manual QA gates. |
 | `projects-contacts-estimates-calculator.md` | Current | You are touching contacts, projects, project snapshots/tasks, calculator estimates, estimate locks, or local-first estimate mutations. |
 | `quotes-invoices-job-packs.md` | Current | You are touching quote, invoice, public-token, PDF/email, file-artifact, or job-pack side effects. |

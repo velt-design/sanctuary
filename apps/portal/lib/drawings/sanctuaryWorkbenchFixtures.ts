@@ -10,8 +10,10 @@ import {
 import { buildObjectWorkbenchCompatibilityProjectModel } from './state/compat/objectWorkbenchCompatibilityModel';
 import {
   buildObjectFirstWorkbenchDraftFromProjectModel,
-  buildObjectFirstWorkbenchProjectModel,
 } from './state/objectFirstWorkbenchAdapter';
+import {
+  buildObjectFirstWorkbenchProjectModel,
+} from './state/legacyObjectFirstCompatibilityAdapter';
 import type { HouseFormRoofIntentModel } from './state/objectFirstWorkbenchModel';
 import type { SanctuaryGeometryWorkbenchFixture } from './sanctuaryWorkbenchFixtures.types';
 

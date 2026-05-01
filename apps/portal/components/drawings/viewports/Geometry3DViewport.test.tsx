@@ -22,9 +22,11 @@ import { applyObjectWorkbenchGeometryEditIntent } from "@/lib/drawings/geometry/
 import { buildDrawingWorkbenchStore } from "@/lib/drawings/state/drawingWorkbenchStore";
 import { createDrawingWorkbenchUiState } from "@/lib/drawings/state/drawingWorkbenchUiState";
 import {
-  buildObjectFirstDeckDraftsFromCompatibilityDrafts,
   buildObjectFirstWorkbenchDraftFromProjectModel,
 } from "@/lib/drawings/state/objectFirstWorkbenchAdapter";
+import {
+  buildObjectFirstDeckDraftsFromCompatibilityDrafts,
+} from "@/lib/drawings/state/legacyObjectFirstCompatibilityAdapter";
 import Geometry3DViewport, {
   buildClippedBoxGeometry,
   buildClippedProfileExtrusionGeometry,

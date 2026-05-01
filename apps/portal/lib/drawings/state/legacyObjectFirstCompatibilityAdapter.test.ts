@@ -6,12 +6,14 @@ import {
   type ObjectWorkbenchCompatibilityProjectModel,
 } from './compat/objectWorkbenchCompatibilityModel';
 import {
+  buildObjectFirstWorkbenchDraftFromProjectModel,
+} from './objectFirstWorkbenchAdapter';
+import {
   buildObjectFirstDeckDraftsFromCompatibilityDrafts,
   buildObjectFirstOpeningDraftsFromCompatibilityDrafts,
   buildObjectFirstPergolaDraftsFromCompatibilityDrafts,
-  buildObjectFirstWorkbenchDraftFromProjectModel,
   buildObjectFirstWorkbenchProjectModel,
-} from './objectFirstWorkbenchAdapter';
+} from './legacyObjectFirstCompatibilityAdapter';
 
 function loadFixtureProject(slug = 'mono-standard'): ObjectWorkbenchCompatibilityProjectModel {
   const fixture = getSanctuaryGeometryWorkbenchFixture(slug);

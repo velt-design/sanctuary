@@ -7,9 +7,11 @@ import { createDrawingWorkbenchUiState, type DrawingWorkbenchRailTab } from '@/l
 import type { HouseFormRoofIntentModel, WorkbenchObjectRef } from '@/lib/drawings/state/objectFirstWorkbenchModel';
 import type { ObjectWorkbenchCompatibilityDraft } from '@/lib/drawings/state/compat/objectWorkbenchCompatibilityModel';
 import {
-  buildObjectFirstOpeningDraftsFromCompatibilityDrafts,
   buildObjectFirstWorkbenchDraftFromProjectModel,
 } from '@/lib/drawings/state/objectFirstWorkbenchAdapter';
+import {
+  buildObjectFirstOpeningDraftsFromCompatibilityDrafts,
+} from '@/lib/drawings/state/legacyObjectFirstCompatibilityAdapter';
 import ObjectWorkbenchRail from './ObjectWorkbenchRail';
 
 function buildRailProps(input?: {

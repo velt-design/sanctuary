@@ -4,7 +4,7 @@ import {
   resolveOpeningPanelCount,
 } from '../houseFirstWorkbenchModel';
 import type { EstimateDrawingDraft } from '@/lib/estimates/drawingEdits';
-import { buildObjectWorkbenchCompatibilityDraftFromObjectFirstDraft } from '../objectFirstWorkbenchAdapter';
+import { buildObjectWorkbenchCompatibilityDraftFromObjectFirstDraft } from '../legacyObjectFirstCompatibilityAdapter';
 import type {
   DeckAttachmentMode,
   DeckElevationMode,

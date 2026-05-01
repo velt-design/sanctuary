@@ -43,6 +43,7 @@ The portal uses Supabase Auth plus `public.portal_users`.
 - Staff APIs should call `requireStaffSession` or `requireStaffContext`.
 - Admin APIs should call `requireAdminSession` or `requireAdminContext`.
 - Browser auth state is provided by `apps/portal/components/auth/PortalAuthProvider.tsx`.
+- Route helper selection, diagnostics, response conventions, and public token route boundaries are documented in `docs/staff-api-auth-contracts.md`.
 
 If a user can sign in but sees no portal data, check that they have a `portal_users` row.
 
@@ -80,6 +81,8 @@ Use `SUPABASE_SERVICE_ROLE_KEY` only in server-owned flows:
 - Server-side operations that intentionally bypass RLS.
 
 Do not expose service-role access to client components.
+
+For route-level service-role and auth-bound Supabase client boundaries, see `docs/staff-api-auth-contracts.md`.
 
 ## RLS And Permissions
 

@@ -22,6 +22,8 @@ export function buildWorkbenchGeometryPreview(input: {
   objectWorkbenchProjectModel?: WorkbenchProjectModel | null;
 }): GeometryPreviewState {
   const geometryContext = buildObjectWorkbenchGeometryContext({
+    snapshot: input.snapshot,
+    draft: input.draft,
     projectModel: input.objectWorkbenchProjectModel,
   });
   const solvedModel = buildWorkbenchSolvedModel({

@@ -22,9 +22,11 @@ import type {
   ObjectWorkbenchCompatibilityRoofDraft,
 } from '@/lib/drawings/state/compat/objectWorkbenchCompatibilityModel';
 import {
-  buildObjectFirstOpeningDraftsFromCompatibilityDrafts,
   buildObjectFirstWorkbenchDraftFromProjectModel,
 } from '@/lib/drawings/state/objectFirstWorkbenchAdapter';
+import {
+  buildObjectFirstOpeningDraftsFromCompatibilityDrafts,
+} from '@/lib/drawings/state/legacyObjectFirstCompatibilityAdapter';
 import { applyGeometryEditIntent } from './geometryEditAdapter';
 import { buildWorkbenchGeometryPreview } from './buildWorkbenchGeometryPreview';
 

@@ -19,9 +19,11 @@ import { buildDrawingWorkbenchStore } from '@/lib/drawings/state/drawingWorkbenc
 import { createDrawingWorkbenchUiState } from '@/lib/drawings/state/drawingWorkbenchUiState';
 import { normalizeHouseFootprintParams } from '@/lib/types/calculator';
 import {
-  buildObjectFirstOpeningDraftsFromCompatibilityDrafts,
   buildObjectFirstWorkbenchDraftFromProjectModel,
 } from '@/lib/drawings/state/objectFirstWorkbenchAdapter';
+import {
+  buildObjectFirstOpeningDraftsFromCompatibilityDrafts,
+} from '@/lib/drawings/state/legacyObjectFirstCompatibilityAdapter';
 import type { ObjectWorkbenchCompatibilityOpeningDraft } from '@/lib/drawings/state/compat/objectWorkbenchCompatibilityModel';
 import { dispatchPointer, installDomGeometryMock, renderIntoDocument } from '../../../../../../../test/reactHarness';
 

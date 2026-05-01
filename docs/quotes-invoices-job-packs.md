@@ -12,6 +12,7 @@ This doc is the current-state reference for quote, invoice, public-token, PDF/em
 - Job-pack domain helpers: `apps/portal/lib/jobPacks` and output helpers in `apps/portal/lib/outputs`.
 - Public quote and invoice viewers: `apps/marketing/app/quote/[quoteId]` and `apps/marketing/app/invoice/[invoiceId]`.
 - Public token helpers: `apps/marketing/lib/quotes/publicQuote.ts` and `apps/marketing/lib/invoices/publicInvoice.ts`.
+- Route/auth contracts: `docs/staff-api-auth-contracts.md`.
 
 Important tables and artifacts:
 

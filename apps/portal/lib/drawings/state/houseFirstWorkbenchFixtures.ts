@@ -11,8 +11,10 @@ import type {
 import { buildObjectWorkbenchCompatibilityProjectModel } from './compat/objectWorkbenchCompatibilityModel';
 import {
   buildObjectFirstWorkbenchDraftFromProjectModel,
-  buildObjectFirstWorkbenchProjectModel,
 } from './objectFirstWorkbenchAdapter';
+import {
+  buildObjectFirstWorkbenchProjectModel,
+} from './legacyObjectFirstCompatibilityAdapter';
 
 const FIXTURE_WALLS = [
   {

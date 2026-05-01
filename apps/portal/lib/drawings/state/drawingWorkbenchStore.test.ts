@@ -12,12 +12,14 @@ import {
   normalizeDrawingWorkbenchUiState,
 } from './drawingWorkbenchUiState';
 import { makeHouseFirstDeckSupportSnapshotFixture } from './houseFirstWorkbenchFixtures';
-import type { ObjectWorkbenchCompatibilityDraft } from './compat/objectWorkbenchCompatibilityModel';
 import {
-  buildObjectFirstDeckDraftsFromCompatibilityDrafts,
-  buildObjectFirstOpeningDraftsFromCompatibilityDrafts,
   buildObjectFirstWorkbenchDraftFromProjectModel,
 } from './objectFirstWorkbenchAdapter';
+import {
+  type ObjectWorkbenchCompatibilityDraft,
+  buildObjectFirstDeckDraftsFromCompatibilityDrafts,
+  buildObjectFirstOpeningDraftsFromCompatibilityDrafts,
+} from './legacyObjectFirstCompatibilityAdapter';
 import type { EstimateDrawingDraft } from '@/lib/estimates/drawingEdits';
 import { makeObjectFirstWorkbenchProjectFixture } from './objectFirstWorkbenchFixtures';
 

@@ -53,6 +53,8 @@ const OBJECT_WORKBENCH_GEOMETRY_PUBLIC_BOUNDARY_FILES = [
   path.join('apps', 'portal', 'lib', 'drawings', 'geometry', 'buildRawGeometryModuleInput.ts'),
   path.join('apps', 'portal', 'lib', 'drawings', 'geometry', 'buildWorkbenchGeometryPreview.ts'),
   path.join('apps', 'portal', 'lib', 'drawings', 'geometry', 'deriveWorkbenchGeometry.ts'),
+  path.join('apps', 'portal', 'lib', 'drawings', 'geometry', 'geometryEditAdapter.ts'),
+  path.join('apps', 'portal', 'lib', 'drawings', 'geometry', 'objectWorkbenchGeometryEditAdapterCore.ts'),
   path.join('apps', 'portal', 'lib', 'drawings', 'geometry', 'objectWorkbenchGeometryContext.ts'),
 ];
 const OBJECT_WORKBENCH_GEOMETRY_EDIT_ADAPTER_FILE = path.join(
@@ -61,8 +63,7 @@ const OBJECT_WORKBENCH_GEOMETRY_EDIT_ADAPTER_FILE = path.join(
   'lib',
   'drawings',
   'geometry',
-  'compat',
-  'geometryEditAdapter.ts',
+  'objectWorkbenchGeometryEditAdapterCore.ts',
 );
 const OBJECT_WORKBENCH_RAIL_INSPECTOR_STATE_BOUNDARY_FILES = [
   path.join('apps', 'portal', 'lib', 'drawings', 'state', 'drawingWorkbenchStore.ts'),
@@ -94,6 +95,11 @@ const LEGACY_RENDERER_BOUNDARY_NAMES =
 const REMOVED_PLAN_VIEW_MODEL_COMPATIBILITY_PROPS =
   /\b(?:objectWorkbenchCompatibilityHouse|objectWorkbenchCompatibilitySelection)\b/;
 const ALLOWLISTED_COMPATIBILITY_FILES = new Set<string>();
+const LEGACY_STATE_COMPATIBILITY_ADAPTER_FILES = new Set([
+  path.normalize(path.join('apps', 'portal', 'lib', 'drawings', 'state', 'legacyEstimateSnapshotAdapter.ts')),
+  path.normalize(path.join('apps', 'portal', 'lib', 'drawings', 'state', 'legacyObjectFirstCompatibilityAdapter.ts')),
+  path.normalize(path.join('apps', 'portal', 'lib', 'drawings', 'state', 'legacyObjectFirstCompatibilityAdapter.test.ts')),
+]);
 const ALLOWLISTED_CONFIGURATOR_FILES = new Set([
   path.normalize(path.join('apps', 'portal', 'components', 'drawings', 'rail', 'ConfiguratorRail.tsx')),
 ]);
@@ -119,7 +125,11 @@ function toRepoRelativePath(absolutePath: string): string {
 
 function canImportLegacyStateCompatibility(relativePath: string): boolean {
   const basename = path.basename(relativePath);
-  return relativePath.includes(STATE_COMPAT_PATH_SEGMENT) || basename.startsWith('houseFirst');
+  return (
+    relativePath.includes(STATE_COMPAT_PATH_SEGMENT) ||
+    LEGACY_STATE_COMPATIBILITY_ADAPTER_FILES.has(relativePath) ||
+    basename.startsWith('houseFirst')
+  );
 }
 
 function isLegacyPersistenceCompatibilityZone(relativePath: string): boolean {
@@ -127,6 +137,7 @@ function isLegacyPersistenceCompatibilityZone(relativePath: string): boolean {
   return (
     relativePath.includes(STATE_COMPAT_PATH_SEGMENT) ||
     relativePath.includes(GEOMETRY_COMPAT_PATH_SEGMENT) ||
+    LEGACY_STATE_COMPATIBILITY_ADAPTER_FILES.has(relativePath) ||
     basename.startsWith('houseFirst') ||
     relativePath.endsWith(path.normalize(path.join('apps', 'portal', 'lib', 'estimates', 'drawingEdits.ts')))
   );
@@ -336,6 +347,9 @@ describe('object workbench import guards', () => {
 
     for (const relativeBoundaryPath of OBJECT_WORKBENCH_GEOMETRY_PUBLIC_BOUNDARY_FILES.map((filePath) => path.normalize(filePath))) {
       const source = fs.readFileSync(path.join(process.cwd(), relativeBoundaryPath), 'utf8');
+      if (/from ['"][^'"]*(?:\/compat\/|\.\/compat\/|\.\.\/compat\/)/.test(source)) {
+        violations.push(`${relativeBoundaryPath} imports geometry compatibility internals from a public geometry facade`);
+      }
       if (/from ['"][^'"]*(?:houseFirstWorkbench(?:Model|Adapter)|state\/compat\/objectWorkbenchCompatibilityModel)['"]/.test(source)) {
         violations.push(`${relativeBoundaryPath} imports compatibility state directly from a public geometry facade`);
       }
@@ -378,6 +392,9 @@ describe('object workbench import guards', () => {
       const source = fs.readFileSync(absolutePath, 'utf8');
       if (/from ['"][^'"]*houseFirstWorkbench(?:Model|Adapter)['"]/.test(source)) {
         violations.push(`${relativePath} imports legacy state compatibility directly`);
+      }
+      if (/from ['"][^'"]*(?:state\/compat\/|\.\/compat\/|\.\.\/compat\/)/.test(source)) {
+        violations.push(`${relativePath} imports state compatibility internals directly`);
       }
     }
 

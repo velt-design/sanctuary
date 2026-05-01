@@ -1,8 +1,10 @@
 import type { EstimateDrawingDraft } from '@/lib/estimates/drawingEdits';
 import { buildObjectWorkbenchCompatibilityProjectModel } from './compat/objectWorkbenchCompatibilityModel';
 import {
-  buildObjectFirstWorkbenchDraftFromProjectModel,
   buildObjectFirstWorkbenchProjectModel,
+} from './legacyObjectFirstCompatibilityAdapter';
+import {
+  buildObjectFirstWorkbenchDraftFromProjectModel,
 } from './objectFirstWorkbenchAdapter';
 import type {
   ObjectFirstWorkbenchDraftVNext,

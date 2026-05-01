@@ -1,5 +1,6 @@
 import type { EstimateDrawingDraft } from '@/lib/estimates/drawingEdits';
 import type { WorkbenchProjectModel } from '@/lib/drawings/state/objectFirstWorkbenchModel';
+import { buildObjectFirstWorkbenchProjectModelFromLegacyEstimateSnapshot } from '@/lib/drawings/state/legacyEstimateSnapshotAdapter';
 
 export type ObjectWorkbenchGeometryContext = {
   projectModel: WorkbenchProjectModel | null;
@@ -11,11 +12,23 @@ export function buildObjectWorkbenchGeometryContext(input: {
   projectModel?: WorkbenchProjectModel | null;
   ignoreModuleResults?: boolean;
 }): ObjectWorkbenchGeometryContext {
-  void input.snapshot;
-  void input.draft;
-  void input.ignoreModuleResults;
+  if (input.projectModel !== undefined) {
+    return {
+      projectModel: input.projectModel ?? null,
+    };
+  }
+
+  if (input.snapshot !== undefined || input.draft !== undefined) {
+    return {
+      projectModel: buildObjectFirstWorkbenchProjectModelFromLegacyEstimateSnapshot({
+        snapshot: input.snapshot ?? null,
+        draft: input.draft,
+        ignoreModuleResults: input.ignoreModuleResults,
+      }),
+    };
+  }
 
   return {
-    projectModel: input.projectModel ?? null,
+    projectModel: null,
   };
 }

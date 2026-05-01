@@ -1,7 +1,7 @@
 import type { CostOutputV1 } from '@sp/costing';
 import type { ModulePlanModel, ModuleSectionModel } from '@/app/staff/calculator/moduleViews';
 import type { HouseModel } from '@/lib/drawings/state/houseFirstWorkbenchModel';
-import { buildObjectFirstWorkbenchProjectModel } from '@/lib/drawings/state/objectFirstWorkbenchAdapter';
+import { buildObjectFirstWorkbenchProjectModel } from '@/lib/drawings/state/legacyObjectFirstCompatibilityAdapter';
 import type { WorkbenchProjectModel } from '@/lib/drawings/state/objectFirstWorkbenchModel';
 import type { CalculatorModuleInputs } from '@/lib/types/calculator';
 import {
