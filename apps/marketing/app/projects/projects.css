@@ -242,6 +242,7 @@
   padding:10px 12px;
   background:var(--pageWhite,#fff);
 }
+.project-detail__quick-facts div:last-child:nth-child(odd){grid-column:1 / -1}
 .project-detail__quick-facts dt{margin:0 0 4px;font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted,#666)}
 .project-detail__quick-facts dd{margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px;font-weight:650;color:var(--fg,#111)}
 .project-detail__stats, .project-detail__dimensions{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px;border:var(--bw) solid var(--border);border-radius:0;padding:12px;background:var(--bg)}
