@@ -10,7 +10,6 @@ import type { AttachmentSide } from '@sp/costing';
 import type {
   GeometryPlanMember2D,
   GeometryPlanSurface2D,
-  GeometryTopProjectionShape,
   GeometryTopProjectionViewModel,
   GeometryPlanViewModel,
   Line2,
@@ -54,8 +53,6 @@ import {
   topProjectionRole,
   topProjectionShapeIsCommittedBody,
   topProjectionShapeVisible,
-  topProjectionShapeVisualOwner,
-  type ProjectionPlanLayer,
 } from '@/lib/drawings/views/plan/planRenderGraph';
 import {
   mmPointToPlanSvg,
@@ -65,6 +62,11 @@ import {
   topProjectionPolygonToPlanSvg,
   topProjectionSvgPointToPlanPoint,
 } from '@/lib/drawings/views/plan/planCoordinateAdapter';
+import {
+  ObjectWorkbenchDimensionLayerRenderer,
+  ObjectWorkbenchOverlayLayerRenderer,
+  TopProjectionLayerRenderer,
+} from './ModulePlanLayerRenderers';
 import type { ObjectInteractionPreviewOverlay } from '@/lib/drawings/interactions/objectInteractionEngine';
 import type {
   ObjectWorkbenchPergolaRenderSource,
@@ -5851,55 +5853,14 @@ function PlanSvg({
           </>
         ) : null}
 
-        {useTopProjectionBackedPlan
-          ? renderedTopProjectionShapes
-              .filter(({ shape }) => !(shape.family === 'house' && shape.kind === 'footprint' && (hideHouseFootprint || customPolygonOverrideActive)))
-              .map(({ shape, points, layer }) => (
-              <polygon
-                key={shape.id}
-                points={toPointsAttr(points)}
-                className={topProjectionShapeClassForLayer(shape, layer)}
-                data-plan-layer={layer}
-                data-plan-coordinate-space="top_projection_screen"
-                data-plan-render-source={layer === 'committedBodies' ? 'top_projection_committed' : 'top_projection_context'}
-                data-plan-visual-owner={topProjectionShapeVisualOwner(shape)}
-                data-plan-top-projection-shape={shape.id}
-                data-top-projection-source-object-id={shape.sourceObjectId}
-                data-top-projection-source-id={shape.sourceId ?? ''}
-                data-top-projection-source-type={shape.sourceType}
-                data-top-projection-family={shape.family}
-                data-top-projection-kind={shape.kind}
-                data-top-projection-role={topProjectionRole(shape)}
-                data-top-projection-z-min={shape.zMin ?? ''}
-                data-top-projection-z-max={shape.zMax ?? ''}
-                data-top-projection-screen-axis={
-                  modelSpaceTopProjection
-                    ? `${modelSpaceTopProjection.screenAxis.x}_${modelSpaceTopProjection.screenAxis.y}`
-                    : undefined
-                }
-                data-house-plan-surface={
-                  shape.family === 'house' &&
-                  shape.kind !== 'gutter' &&
-                  shape.kind !== 'roof_feature' &&
-                  shape.kind !== 'attachment_target' &&
-                  shape.kind !== 'wall_segment'
-                    ? shape.kind
-                    : undefined
-                }
-                data-house-plan-line={shape.family === 'house' && (shape.kind === 'gutter' || shape.kind === 'roof_feature' || shape.kind === 'attachment_target' || shape.kind === 'wall_segment') ? shape.kind : undefined}
-                data-plan-detail-role={typeof shape.metadata?.planDetailRole === 'string' ? shape.metadata.planDetailRole : undefined}
-                data-plan-snap-role={typeof shape.metadata?.snapRole === 'string' ? shape.metadata.snapRole : undefined}
-                data-plan-source-edge-id={typeof shape.metadata?.sourceEdgeId === 'string' ? shape.metadata.sourceEdgeId : undefined}
-                data-plan-source-wall-id={typeof shape.metadata?.sourceWallId === 'string' ? shape.metadata.sourceWallId : undefined}
-                data-plan-primary-fill={shape.family === 'pergola' && shape.kind === 'roof_plane' ? 'true' : undefined}
-                data-plan-geometry-surface={shape.family === 'pergola' && (shape.kind === 'roof_plane' || shape.kind === 'roof_cladding') ? shape.kind : undefined}
-                data-plan-surface-id={shape.family === 'pergola' && (shape.kind === 'roof_plane' || shape.kind === 'roof_cladding') ? shape.sourceId ?? shape.sourceObjectId : undefined}
-                data-plan-member-id={shape.family === 'pergola' && shape.kind !== 'roof_plane' && shape.kind !== 'roof_cladding' ? shape.sourceId ?? shape.sourceObjectId : undefined}
-                data-plan-member-role={shape.family === 'pergola' && shape.kind !== 'roof_plane' && shape.kind !== 'roof_cladding' ? shape.kind : undefined}
-                data-plan-member-centerline-mm={typeof shape.metadata?.centerlineMm === 'string' ? shape.metadata.centerlineMm : undefined}
-              />
-            ))
-          : null}
+        {useTopProjectionBackedPlan ? (
+          <TopProjectionLayerRenderer
+            shapes={renderedTopProjectionShapes}
+            projection={modelSpaceTopProjection}
+            hideHouseFootprint={hideHouseFootprint}
+            customPolygonOverrideActive={customPolygonOverrideActive}
+          />
+        ) : null}
 
         {useTopProjectionBackedPlan && !useProjectionOnlyModelSpacePlan && showPergolaGeometry && geometryAttachmentEdge ? (
           <line

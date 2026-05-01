@@ -18,6 +18,7 @@ import JsonLd from '@/components/JsonLd';
 import PortalMode from '@/components/PortalMode';
 import HeaderVisibilityGate from '@/components/HeaderVisibilityGate';
 import ConsentBanner from '@/components/ConsentBanner';
+import RouteProgress from '@/components/RouteProgress';
 import { ConsentProvider } from '@/components/ConsentProvider';
 import { BRAND_ACCENT_HEX, BRAND_ACCENT_RGB_CSV } from '@sp/theme';
 
@@ -111,6 +112,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <WebVitals />
           <FooterHeaderSync />
           <ScrollReset />
+          <Suspense fallback={null}>
+            <RouteProgress />
+          </Suspense>
           <HeaderVisibilityGate>
             <Header />
           </HeaderVisibilityGate>

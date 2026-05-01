@@ -379,9 +379,39 @@ body.header-flip .site-header {
 .page-viewport{ position: relative; }
 .page-layer{ will-change: transform, opacity; }
 .route-loading-shell{ min-height: 100dvh; }
+.route-progress{
+  position:fixed;
+  top:0;
+  left:0;
+  z-index:6000;
+  width:100%;
+  height:2px;
+  pointer-events:none;
+  background:linear-gradient(90deg, var(--sp-accent, #A8192E), #111);
+  opacity:0;
+  transform-origin:left center;
+  transition:transform .36s cubic-bezier(.22,.61,.36,1), opacity .24s ease;
+  will-change:transform, opacity;
+}
+.route-progress--loading,
+.route-progress--complete{
+  opacity:.9;
+}
+.route-progress--complete{
+  transition-duration:.18s, .24s;
+}
+body.portal-mode .route-progress{
+  display:none;
+}
 
 /* 2) Mobile: slow page content transitions to 1s */
 @media (max-width: 960px){
+}
+
+@media (prefers-reduced-motion: reduce){
+  .route-progress{
+    transition:none;
+  }
 }
 
 /* === Projects page intro === */

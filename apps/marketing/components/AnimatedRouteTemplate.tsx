@@ -1,15 +1,19 @@
 'use client';
 
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion, useReducedMotion, type Transition } from 'framer-motion';
 
 export default function AnimatedRouteTemplate({ children, routeKey }: { children: React.ReactNode; routeKey: string }) {
+  const reducedMotion = useReducedMotion();
+  const enterTransition: Transition = reducedMotion ? { duration: 0 } : { duration: 0.28, ease: [0.22, 1, 0.36, 1] };
+  const exitTransition: Transition = reducedMotion ? { duration: 0 } : { duration: 0.16, ease: [0.4, 0, 1, 1] };
+
   return (
     <AnimatePresence mode="wait" initial={false}>
       <motion.main
         key={routeKey}
-        initial={{ opacity: 0, y: 8, scale: 0.995 }}
-        animate={{ opacity: 1, y: 0, scale: 1, transition: { duration: 0.35, ease: [0.22, 1, 0.36, 1] } }}
-        exit={{ opacity: 0, y: -8, scale: 0.995, transition: { duration: 0.25, ease: [0.4, 0, 1, 1] } }}
+        initial={reducedMotion ? false : { opacity: 0.96 }}
+        animate={{ opacity: 1, transition: enterTransition }}
+        exit={{ opacity: reducedMotion ? 1 : 0.96, transition: exitTransition }}
       >
         {children}
       </motion.main>
