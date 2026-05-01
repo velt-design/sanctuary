@@ -26,6 +26,7 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. Use 
 | 2026-05-01 | Projects/Estimates | Promoted | Core project/contact/estimate workflows need a canonical doc before future behavior changes. |
 | 2026-05-01 | Docs/Testing | Promoted | Keep broad repo command guidance in `docs/testing-and-qa.md`; link to it instead of duplicating command blocks. |
 | 2026-05-01 | Parallel Work | Promoted | Use universal parallel-work guardrails for concurrent lanes across apps, packages, docs, and workbench migration. |
+| 2026-05-01 | Geometry Top Projection | Active | Mesh-backed top projection must derive from upward-facing mesh faces, not render-mesh vertex order. |
 | 2026-05-01 | Quotes/Invoices/Job Packs | Promoted | High-risk side-effect workflows need a canonical doc before future behavior changes. |
 | 2026-05-01 | Docs | Promoted | Read the agent playbook for non-trivial portal work; promote durable lessons from this log into the playbook. |
 | 2026-05-01 | Docs | Promoted | Do not delete active guardrail docs without confirming usage or replacing the rule. |
@@ -128,6 +129,22 @@ Current guardrail: before changing these flows, read `docs/quotes-invoices-job-p
 Promoted to: `docs/quotes-invoices-job-packs.md`, `docs/agent-playbook.md`, `docs/README.md`, `AGENTS.md`.
 
 Related docs/tests: `docs/quotes-invoices-job-packs.md`, `docs/platform-workflow.md`, `docs/testing-and-qa.md`.
+
+### 2026-05-01 - Geometry Top Projection - Top Surface Contract
+
+Area: Geometry Top Projection
+
+Status: Active
+
+Decision or mistake: mesh-backed house solids in the top projection used to trust render-mesh vertex-ring order, which could select an underside or bottom ring when the plan needed the visible top surface.
+
+Why it mattered: model-space plan could look aligned to a bottom-up view of the 3D model even while sharing the same scene instance.
+
+Current guardrail: top projection must derive house solid polygons from upward-facing mesh faces first, and only use boundary or convex-hull fallback when no top-facing mesh surface can be derived.
+
+Promoted to: None
+
+Related docs/tests: `docs/costing-and-geometry.md`, `packages/geometry/src/topProjection.test.ts`, `npm run test -- packages/geometry/src/topProjection.test.ts packages/geometry/src/contracts.test.ts`.
 
 ### 2026-05-01 - Docs - Agent Playbook
 

@@ -37,7 +37,7 @@ apps/marketing/app/api/enquiry/route.ts
 
 Canonical geometry solving lives in `packages/geometry`.
 
-Top projection is scene-first: `buildTopProjectionViewModelFromScene()` projects the same `ViewerSceneModel` used by 3D into world-XY plan shapes. The assembly helper `buildTopProjectionViewModel()` remains available as a compatibility wrapper that builds the viewer scene, adds assembly reference shapes, and then calls the scene-first projection path.
+Top projection is scene-first: `buildTopProjectionViewModelFromScene()` projects the same `ViewerSceneModel` used by 3D into world-XY plan shapes. Mesh-backed house solids are projected from their upward-facing top mesh surface, not from render-mesh vertex order, so plan output matches the 3D top view rather than an underside ring. The assembly helper `buildTopProjectionViewModel()` remains available as a compatibility wrapper that builds the viewer scene, adds assembly reference shapes, and then calls the scene-first projection path.
 
 Portal drawing code adapts package output into workbench, plan, section, sheet, and preview state under:
 

@@ -15,6 +15,7 @@ import type {
 import { buildViewerSceneModel } from './viewer';
 
 const EPSILON_MM = 1e-6;
+const TOP_FACING_NORMAL_Z_MIN = 0.5;
 
 export type BuildTopProjectionViewModelFromSceneOptions = {
   referenceShapes?: GeometryTopProjectionShape[];
@@ -98,6 +99,122 @@ function convexHull(points: Polygon2): Polygon2 | null {
   return cleanPolygon([...lower.slice(0, -1), ...upper.slice(0, -1)]);
 }
 
+function triangleNormalZ(a: Point3, b: Point3, c: Point3): number {
+  const abX = b.x - a.x;
+  const abY = b.y - a.y;
+  const acX = c.x - a.x;
+  const acY = c.y - a.y;
+  return abX * acY - abY * acX;
+}
+
+function triangleNormalizedNormalZ(a: Point3, b: Point3, c: Point3): number {
+  const abX = b.x - a.x;
+  const abY = b.y - a.y;
+  const abZ = b.z - a.z;
+  const acX = c.x - a.x;
+  const acY = c.y - a.y;
+  const acZ = c.z - a.z;
+  const normalX = abY * acZ - abZ * acY;
+  const normalY = abZ * acX - abX * acZ;
+  const normalZ = abX * acY - abY * acX;
+  const length = Math.hypot(normalX, normalY, normalZ);
+  return length > EPSILON_MM ? normalZ / length : 0;
+}
+
+function faceVertex(mesh: RenderMesh3D, index: number): Point3 | null {
+  return Number.isInteger(index) && index >= 0 && index < mesh.vertices.length
+    ? mesh.vertices[index] ?? null
+    : null;
+}
+
+function meshEdgeKey(startIndex: number, endIndex: number): string {
+  return startIndex < endIndex ? `${startIndex}:${endIndex}` : `${endIndex}:${startIndex}`;
+}
+
+function chainBoundaryEdges(edges: Array<{ start: number; end: number }>): number[][] {
+  const unused = new Set(edges.map((_, index) => index));
+  const chains: number[][] = [];
+
+  while (unused.size) {
+    const firstEdgeIndex = unused.values().next().value as number;
+    const firstEdge = edges[firstEdgeIndex]!;
+    unused.delete(firstEdgeIndex);
+    const chain = [firstEdge.start, firstEdge.end];
+
+    while (chain.length <= edges.length + 1) {
+      const start = chain[0]!;
+      const end = chain[chain.length - 1]!;
+      if (end === start) break;
+
+      let nextEdgeIndex: number | null = null;
+      let nextPoint: number | null = null;
+      for (const edgeIndex of unused) {
+        const edge = edges[edgeIndex]!;
+        if (edge.start === end) {
+          nextEdgeIndex = edgeIndex;
+          nextPoint = edge.end;
+          break;
+        }
+        if (edge.end === end) {
+          nextEdgeIndex = edgeIndex;
+          nextPoint = edge.start;
+          break;
+        }
+      }
+
+      if (nextEdgeIndex === null || nextPoint === null) break;
+      unused.delete(nextEdgeIndex);
+      chain.push(nextPoint);
+    }
+
+    if (chain[0] === chain[chain.length - 1]) {
+      chain.pop();
+    }
+    chains.push(chain);
+  }
+
+  return chains;
+}
+
+function topFacingPolygonFromRenderMesh(mesh: RenderMesh3D): Polygon2 | null {
+  const edgeCounts = new Map<string, { start: number; end: number; count: number }>();
+
+  for (const face of mesh.faces) {
+    const a = faceVertex(mesh, face[0]);
+    const b = faceVertex(mesh, face[1]);
+    const c = faceVertex(mesh, face[2]);
+    if (!a || !b || !c) continue;
+    if (triangleNormalZ(a, b, c) <= EPSILON_MM) continue;
+    if (triangleNormalizedNormalZ(a, b, c) < TOP_FACING_NORMAL_Z_MIN) continue;
+
+    for (let index = 0; index < face.length; index += 1) {
+      const start = face[index]!;
+      const end = face[(index + 1) % face.length]!;
+      const key = meshEdgeKey(start, end);
+      const existing = edgeCounts.get(key);
+      if (existing) {
+        existing.count += 1;
+      } else {
+        edgeCounts.set(key, { start, end, count: 1 });
+      }
+    }
+  }
+
+  const boundaryEdges = [...edgeCounts.values()]
+    .filter((edge) => edge.count === 1)
+    .map(({ start, end }) => ({ start, end }));
+  if (boundaryEdges.length < 3) return null;
+
+  const polygons = chainBoundaryEdges(boundaryEdges)
+    .map((chain) => cleanPolygon(chain.map((index) => toPoint2(mesh.vertices[index]!))))
+    .filter((polygon): polygon is Polygon2 => Boolean(polygon));
+  if (!polygons.length) return null;
+
+  return polygons.reduce((largest, polygon) =>
+    Math.abs(polygonArea(polygon)) > Math.abs(polygonArea(largest)) ? polygon : largest,
+  );
+}
+
 function linePolygon(line: Line3, widthMm: number): Polygon2 | null {
   const dx = line.end.x - line.start.x;
   const dy = line.end.y - line.start.y;
@@ -136,6 +253,9 @@ function memberPrismPolygon(object: Extract<ViewerSceneObject, { type: 'member_p
 }
 
 function polygonFromRenderMesh(mesh: RenderMesh3D, preferredBoundaryLength?: number | null): Polygon2 | null {
+  const topFacingPolygon = topFacingPolygonFromRenderMesh(mesh);
+  if (topFacingPolygon) return topFacingPolygon;
+
   if (preferredBoundaryLength && mesh.vertices.length >= preferredBoundaryLength) {
     const topBoundary = cleanPolygon(toPolygon2(mesh.vertices.slice(0, preferredBoundaryLength)));
     if (topBoundary) return topBoundary;

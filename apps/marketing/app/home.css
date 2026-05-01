@@ -851,16 +851,22 @@ body.homepage main .container{
 }
 
 .homepage .home-projects-section__track{
+  width:100vw;
+  margin-left:calc(50% - 50vw);
   margin-top:clamp(30px,4vw,54px);
+  scroll-padding-inline:max(6vw,calc((100vw - 1288px) / 2));
 }
 
 .homepage .home-projects-section__rail{
+  width:max-content;
+  min-width:100%;
   gap:clamp(14px,1.8vw,24px);
+  padding-inline:max(6vw,calc((100vw - 1288px) / 2));
 }
 
 .homepage .home-projects-section__card{
   height:clamp(360px,56vh,540px);
-  width:min(84vw,560px);
+  width:min(72vw,560px);
   border-color:var(--home-line);
   background:#e2e5e8;
 }
@@ -870,7 +876,7 @@ body.homepage main .container{
 }
 
 .homepage .home-projects-section__card--more{
-  width:min(70vw,360px);
+  width:min(58vw,360px);
   background:#151719 !important;
 }
 

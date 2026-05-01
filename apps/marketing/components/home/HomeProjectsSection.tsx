@@ -73,7 +73,7 @@ export default function HomeProjectsSection({
         className
       )}
     >
-      <div className="mx-auto w-[min(88vw,1288px)]">
+      <div className="home-projects-section__inner mx-auto w-[min(88vw,1288px)]">
         <div className="home-projects-section__head flex items-end justify-between gap-6">
           <div className="home-projects-section__copy max-w-[60ch]">
             <p className="home-projects-section__eyebrow text-[12px] uppercase tracking-[0.12em] text-muted">Projects</p>
@@ -109,61 +109,63 @@ export default function HomeProjectsSection({
             </div>
           ) : null}
         </div>
+      </div>
 
-        <div ref={trackRef} className="home-projects-section__track mt-8 overflow-x-auto pb-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-          <div className="home-projects-section__rail flex snap-x snap-mandatory gap-4 md:gap-6">
-            {projects.map((project) => (
-              <Link
-                key={project.slug}
-                href={`/projects?slug=${project.slug}`}
-                data-home-project-card="true"
-                className="home-projects-section__card group relative h-[clamp(345px,60vh,470px)] w-[min(86vw,560px)] shrink-0 snap-start overflow-hidden border border-page bg-card [border-width:var(--bw)]"
-                aria-label={`${project.title} - ${project.location}`}
-              >
-                <Image
-                  src={project.heroImage.src}
-                  alt={project.heroImage.alt}
-                  fill
-                  sizes="(max-width: 768px) 86vw, (max-width: 1440px) 38vw, 560px"
-                  quality={60}
-                  className="object-cover transition-transform duration-700 ease-[cubic-bezier(0.22,0.61,0.36,1)] group-hover:scale-[1.04]"
-                />
-                <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
-
-                <div className="absolute inset-x-0 bottom-0 z-10 p-4 text-white md:p-6">
-                  <p className="text-[11px] uppercase tracking-[0.12em] text-white/80">Projects</p>
-                  <h3 className="mt-2 text-[clamp(24px,2.6vw,34px)] font-semibold leading-[1.1] tracking-[-0.015em]">
-                    {project.title}
-                  </h3>
-                  {project.location ? (
-                    <p className="mt-2 max-w-[44ch] text-[15px] leading-[1.55] text-white/88">{project.location}</p>
-                  ) : null}
-                  <span className="mt-3 inline-flex border border-white/70 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.08em]">
-                    View project
-                  </span>
-                </div>
-              </Link>
-            ))}
-
+      <div ref={trackRef} className="home-projects-section__track mt-8 overflow-x-auto pb-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+        <div className="home-projects-section__rail flex snap-x snap-mandatory gap-4 md:gap-6">
+          {projects.map((project) => (
             <Link
-              href={seeMoreHref}
-              className="home-projects-section__card home-projects-section__card--more group relative h-[clamp(345px,60vh,470px)] w-[min(70vw,420px)] shrink-0 snap-start overflow-hidden border border-page bg-[var(--accentRed)] [border-width:var(--bw)]"
-              aria-label={seeMoreLabel}
+              key={project.slug}
+              href={`/projects?slug=${project.slug}`}
+              data-home-project-card="true"
+              className="home-projects-section__card group relative h-[clamp(345px,60vh,470px)] w-[min(86vw,560px)] shrink-0 snap-start overflow-hidden border border-page bg-card [border-width:var(--bw)]"
+              aria-label={`${project.title} - ${project.location}`}
             >
-              <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0.04),rgba(0,0,0,0.24))]" />
-              <div className="relative z-10 flex h-full flex-col justify-end p-5 text-white md:p-6">
-                <p className="text-[11px] uppercase tracking-[0.12em] text-white/82">Projects</p>
-                <h3 className="mt-2 text-[clamp(22px,2.4vw,32px)] font-semibold leading-[1.1] tracking-[-0.015em]">
-                  {seeMoreLabel}
+              <Image
+                src={project.heroImage.src}
+                alt={project.heroImage.alt}
+                fill
+                sizes="(max-width: 768px) 82vw, 560px"
+                quality={60}
+                className="object-cover transition-transform duration-700 ease-[cubic-bezier(0.22,0.61,0.36,1)] group-hover:scale-[1.04]"
+              />
+              <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+
+              <div className="absolute inset-x-0 bottom-0 z-10 p-4 text-white md:p-6">
+                <p className="text-[11px] uppercase tracking-[0.12em] text-white/80">Projects</p>
+                <h3 className="mt-2 text-[clamp(24px,2.6vw,34px)] font-semibold leading-[1.1] tracking-[-0.015em]">
+                  {project.title}
                 </h3>
+                {project.location ? (
+                  <p className="mt-2 max-w-[44ch] text-[15px] leading-[1.55] text-white/88">{project.location}</p>
+                ) : null}
                 <span className="mt-3 inline-flex border border-white/70 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.08em]">
-                  Browse all
+                  View project
                 </span>
               </div>
             </Link>
-          </div>
-        </div>
+          ))}
 
+          <Link
+            href={seeMoreHref}
+            className="home-projects-section__card home-projects-section__card--more group relative h-[clamp(345px,60vh,470px)] w-[min(70vw,420px)] shrink-0 snap-start overflow-hidden border border-page bg-[var(--accentRed)] [border-width:var(--bw)]"
+            aria-label={seeMoreLabel}
+          >
+            <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0.04),rgba(0,0,0,0.24))]" />
+            <div className="relative z-10 flex h-full flex-col justify-end p-5 text-white md:p-6">
+              <p className="text-[11px] uppercase tracking-[0.12em] text-white/82">Projects</p>
+              <h3 className="mt-2 text-[clamp(22px,2.4vw,32px)] font-semibold leading-[1.1] tracking-[-0.015em]">
+                {seeMoreLabel}
+              </h3>
+              <span className="mt-3 inline-flex border border-white/70 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.08em]">
+                Browse all
+              </span>
+            </div>
+          </Link>
+        </div>
+      </div>
+
+      <div className="home-projects-section__inner mx-auto w-[min(88vw,1288px)]">
         {projects.length > 1 ? (
           <div className="home-projects-section__controls home-projects-section__controls--mobile mt-4 flex items-center justify-end gap-2 md:hidden" aria-label="Projects carousel controls">
             <button

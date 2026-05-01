@@ -8,6 +8,8 @@ import {
   type HouseAttachmentStrategy,
   type Point2,
   type Polygon3,
+  type RenderMesh3D,
+  type ViewerSceneModel,
 } from "@sp/geometry";
 import { getGeometryFixtureCase } from "./fixtures";
 
@@ -109,6 +111,40 @@ function normalizedPointSet(points: Point2[]): string[] {
     .sort();
 }
 
+function makeSceneWithHouseSolid(input: {
+  id: string;
+  kind: "deck" | "roof";
+  boundary: Polygon3;
+  renderMesh: RenderMesh3D;
+}): ViewerSceneModel {
+  return {
+    layers: [
+      {
+        id: "house-solids",
+        label: "House Solids",
+        visibleByDefault: true,
+        objects: [
+          {
+            id: input.id,
+            type: "house_surface_solid",
+            sourceId: input.id,
+            kind: input.kind,
+            boundary: input.boundary,
+            plane: {
+              origin: input.boundary[0] ?? { x: 0, y: 0, z: 0 },
+              xAxis: { x: 1, y: 0, z: 0 },
+              yAxis: { x: 0, y: 1, z: 0 },
+              normal: { x: 0, y: 0, z: 1 },
+            },
+            thicknessMm: 100,
+            renderMesh: input.renderMesh,
+          },
+        ],
+      },
+    ],
+  };
+}
+
 describe("buildTopProjectionViewModel", () => {
   it("projects viewer scene roof, deck, member, and opening shapes into world XY", () => {
     const fixture = requireSupportedFixture("mono_attached_soffit_away_standard");
@@ -116,17 +152,6 @@ describe("buildTopProjectionViewModel", () => {
     if (!solved.ok) throw new Error(solved.error);
 
     const assembly = structuredClone(solved.value);
-    const deckSolid = assembly.house.model?.solids?.surfaceSolids.find((solid) => solid.kind === "deck");
-    if (!deckSolid?.renderMesh) throw new Error("Expected solved deck render mesh.");
-    const boundaryLength = deckSolid.boundary.length;
-    deckSolid.renderMesh.vertices = deckSolid.renderMesh.vertices.map((vertex, index) =>
-      index < boundaryLength
-        ? {
-            ...vertex,
-            x: vertex.x + 37,
-          }
-        : vertex,
-    );
 
     const scene = buildViewerSceneModel(assembly);
     const sceneObjects = scene.layers.flatMap((layer) => layer.objects);
@@ -165,10 +190,7 @@ describe("buildTopProjectionViewModel", () => {
       metadata: expect.objectContaining({ sourceId: "deck-main" }),
     });
     expect(normalizedPointSet(deckShape?.polygon ?? [])).toEqual(
-      normalizedPointSet(deckObject.renderMesh.vertices.slice(0, deckObject.boundary.length).map(toPoint2)),
-    );
-    expect(normalizedPointSet(deckShape?.polygon ?? [])).not.toEqual(
-      normalizedPointSet(deckObject.boundary.map(toPoint2)),
+      normalizedPointSet(deckObject.renderMesh.vertices.slice(deckObject.boundary.length).map(toPoint2)),
     );
 
     const memberObject = sceneObjects.find((object) => object.type === "member_prism" && object.role === "rafter");
@@ -260,5 +282,93 @@ describe("buildTopProjectionViewModel", () => {
         source: "scene-only",
       },
     });
+  });
+
+  it("projects mesh-backed vertical solids from the top-visible face instead of the first mesh ring", () => {
+    const bottomRing: Polygon3 = [
+      { x: 40, y: 25, z: 0 },
+      { x: 1040, y: 25, z: 0 },
+      { x: 1040, y: 525, z: 0 },
+      { x: 40, y: 525, z: 0 },
+    ];
+    const topRing: Polygon3 = [
+      { x: 0, y: 0, z: 140 },
+      { x: 1000, y: 0, z: 140 },
+      { x: 1000, y: 500, z: 140 },
+      { x: 0, y: 500, z: 140 },
+    ];
+    const scene = makeSceneWithHouseSolid({
+      id: "deck-top-visible",
+      kind: "deck",
+      boundary: topRing,
+      renderMesh: {
+        vertices: [...bottomRing, ...topRing],
+        faces: [
+          [0, 2, 1],
+          [0, 3, 2],
+          [4, 5, 6],
+          [4, 6, 7],
+          [0, 1, 5],
+          [0, 5, 4],
+          [1, 2, 6],
+          [1, 6, 5],
+          [2, 3, 7],
+          [2, 7, 6],
+          [3, 0, 4],
+          [3, 4, 7],
+        ],
+      },
+    });
+
+    const deckShape = buildTopProjectionViewModelFromScene(scene).shapes.find(
+      (shape) => shape.sourceObjectId === "deck-top-visible",
+    );
+
+    expect(normalizedPointSet(deckShape?.polygon ?? [])).toEqual(normalizedPointSet(topRing.map(toPoint2)));
+    expect(normalizedPointSet(deckShape?.polygon ?? [])).not.toEqual(normalizedPointSet(bottomRing.map(toPoint2)));
+  });
+
+  it("projects sloped roof solids from upward-facing roof mesh faces instead of the underside", () => {
+    const bottomRing: Polygon3 = [
+      { x: 60, y: 40, z: 2300 },
+      { x: 1260, y: 40, z: 2300 },
+      { x: 1260, y: 760, z: 2240 },
+      { x: 60, y: 760, z: 2240 },
+    ];
+    const roofRing: Polygon3 = [
+      { x: 0, y: 0, z: 2500 },
+      { x: 1200, y: 0, z: 2500 },
+      { x: 1200, y: 700, z: 2420 },
+      { x: 0, y: 700, z: 2420 },
+    ];
+    const scene = makeSceneWithHouseSolid({
+      id: "roof-top-visible",
+      kind: "roof",
+      boundary: roofRing,
+      renderMesh: {
+        vertices: [...bottomRing, ...roofRing],
+        faces: [
+          [0, 2, 1],
+          [0, 3, 2],
+          [4, 5, 6],
+          [4, 6, 7],
+          [0, 1, 5],
+          [0, 5, 4],
+          [1, 2, 6],
+          [1, 6, 5],
+          [2, 3, 7],
+          [2, 7, 6],
+          [3, 0, 4],
+          [3, 4, 7],
+        ],
+      },
+    });
+
+    const roofShape = buildTopProjectionViewModelFromScene(scene).shapes.find(
+      (shape) => shape.sourceObjectId === "roof-top-visible",
+    );
+
+    expect(normalizedPointSet(roofShape?.polygon ?? [])).toEqual(normalizedPointSet(roofRing.map(toPoint2)));
+    expect(normalizedPointSet(roofShape?.polygon ?? [])).not.toEqual(normalizedPointSet(bottomRing.map(toPoint2)));
   });
 });
