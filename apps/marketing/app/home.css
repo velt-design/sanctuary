@@ -41,7 +41,7 @@
 }
 .home-hero__image{
   object-fit:cover;
-  object-position:center 52%;
+  object-position:center 34%;
 }
 .home-hero__shade{
   position:absolute;
@@ -148,7 +148,7 @@
     height:clamp(600px, calc(100dvh - var(--headerH, var(--navH)) - 36px), 780px);
     align-items:flex-end;
   }
-  .home-hero__image{object-position:center top}
+  .home-hero__image{object-position:center 28%}
   .home-hero__shade{
     background:
       linear-gradient(180deg, rgba(0,0,0,.18) 0%, rgba(0,0,0,.18) 35%, rgba(0,0,0,.78) 100%),
