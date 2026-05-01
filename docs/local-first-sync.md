@@ -55,6 +55,8 @@ Server-authoritative actions include:
 - Admin access and cost configuration writes.
 - Public token flows.
 
+For table/RPC ownership, write paths, access boundaries, and migration sources used by these server actions, see `docs/supabase-schema-map.md`.
+
 ## Current Surfaces
 
 - Calculator estimate create/update.

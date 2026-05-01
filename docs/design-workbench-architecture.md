@@ -35,6 +35,8 @@ The current direction is object-first:
 - House forms, decks, openings, and pergolas are modeled as explicit objects.
 - Hosted objects resolve against derived house/building behavior.
 - Geometry, plan, 3D, section, and sheet views should consume solved/derived models rather than each inventing shape truth.
+- The solved module's 3D scene and model-space top projection are paired: the projection is generated from the same `ViewerSceneModel` handed to the 3D viewport, with assembly reference shapes carried forward explicitly.
+- Geometry-ready model-space plan fitting uses `geometryTopProjection.extents`; legacy `ModulePlanModel` dimensions are a fallback path, not the source of scene fit.
 - Compatibility or legacy fallback state must stay named and visible in tests or status models.
 
 ## Rail Notes

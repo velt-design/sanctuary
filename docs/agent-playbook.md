@@ -25,6 +25,7 @@ For marketing-only or shared-package-only tasks, use the parts that affect porta
   - Costing logic and base config live in `packages/costing`.
   - Geometry solving and assets live in `packages/geometry` or explicit portal drawing adapters.
   - Auth, roles, env, schema readiness, and migrations are governed by `docs/environment-auth-supabase.md`.
+  - Supabase table/RPC ownership, write paths, and migration sources are governed by `docs/supabase-schema-map.md`.
   - Working copies, mutation queues, aliases, and conflicts are governed by `docs/local-first-sync.md`.
   - Schedule V2 behavior is governed by `docs/schedule.md`.
   - Tracking, consent, CSP, audits, and quality gates are governed by `docs/security-privacy-quality.md`.
@@ -92,6 +93,7 @@ Use `docs/testing-and-qa.md` for the canonical command catalog. Use the feature 
 | Drawing UI components | `apps/portal/components/drawings/README.md` | Keep component state aligned with object-first persistence. |
 | Contacts, projects, estimates, calculator | `docs/projects-contacts-estimates-calculator.md` | Preserve project snapshot, pipeline, estimate lock, and local-first mutation boundaries. |
 | Staff/admin/public-token APIs | `docs/staff-api-auth-contracts.md` | Use the right auth helper, Supabase client boundary, diagnostics pattern, and side-effect owner. |
+| Supabase tables, RPCs, migrations, RLS, grants | `docs/supabase-schema-map.md` | Confirm the owner doc, primary write path, primary read path, access boundary, and migration source before editing. |
 | Local-first estimates/quotes | `docs/local-first-sync.md` | Preserve queue, lock, alias, and conflict behavior. |
 | Quotes, invoices, job packs | `docs/quotes-invoices-job-packs.md` | Verify side effects, token boundaries, PDFs, emails, and generated artifacts. |
 | Schedule | `docs/schedule.md` | Preserve Schedule V2 API/RPC command boundaries and legacy fallback posture. |

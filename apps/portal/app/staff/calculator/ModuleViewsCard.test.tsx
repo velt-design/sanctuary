@@ -604,6 +604,35 @@ describe('ModuleViewsCard', () => {
     expect(markup).not.toContain('data-debug-crop=');
   });
 
+  it('sizes geometry-ready plan model space from top projection extents', () => {
+    const drawing = makeDrawingModule();
+    const markup = renderToStaticMarkup(
+      <ModuleDrawingRenderer
+        view="plan"
+        status="ready"
+        planModel={drawing.planModel}
+        sectionModel={drawing.sectionModel}
+        presentation="model"
+        modelSpacePergolaGeometry={makeGeometryPlanFixture()}
+        modelSpaceTopProjection={makeTopProjectionFixture()}
+        modelSpacePergolaRenderSource="geometry"
+        modelSpacePergolaRenderStatus="geometry_ready"
+      />,
+    );
+
+    const svgTag = extractSvgTag(markup, 'Module plan view');
+    const viewBox = parseSvgRect(extractSvgStringAttribute(svgTag, 'data-model-space-view-box'));
+    const focusBox = parseSvgRect(extractSvgStringAttribute(svgTag, 'data-model-space-focus-box'));
+    const worldBox = parseSvgRect(extractSvgStringAttribute(svgTag, 'data-model-space-world-box'));
+
+    expectRectCloseTo(focusBox, { x: -12, y: -32.4, width: 96, height: 77.4 });
+    expectRectCloseTo(viewBox, focusBox);
+    expect(worldBox.x).toBeLessThanOrEqual(focusBox.x);
+    expect(worldBox.y).toBeLessThanOrEqual(focusBox.y);
+    expect(worldBox.x + worldBox.width).toBeGreaterThanOrEqual(focusBox.x + focusBox.width);
+    expect(worldBox.y + worldBox.height).toBeGreaterThanOrEqual(focusBox.y + focusBox.height);
+  });
+
   it('renders model-space pergola visuals and hit targets from the top projection', () => {
     const drawing = makeDrawingModule();
     const markup = renderToStaticMarkup(

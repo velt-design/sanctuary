@@ -1004,6 +1004,20 @@ function FocusTarget({ rect }: { rect: SheetRect }) {
   );
 }
 
+function topProjectionExtentsToModelSpaceBounds(
+  topProjection: GeometryTopProjectionViewModel | null | undefined,
+  scale: number,
+): AnnotatedBounds | null {
+  const extents = topProjection?.extents;
+  if (!extents || extents.widthMm <= 0 || extents.heightMm <= 0) return null;
+  return createBounds(
+    (extents.minX / 1000) * scale,
+    (extents.minY / 1000) * scale,
+    (extents.maxX / 1000) * scale,
+    (extents.maxY / 1000) * scale,
+  );
+}
+
 function resolveBoundsPlacement(bounds: AnnotatedBounds, fitArea: SheetFitArea, verticalBias: number): LayoutOffset {
   const slackX = Math.max(0, fitArea.width - getBoundsWidth(bounds));
   const slackY = Math.max(0, fitArea.height - getBoundsHeight(bounds));
@@ -4237,13 +4251,14 @@ function resolvePlanModelSpaceLayout(
   >,
   options?: {
     displayMode?: ModuleDrawingDisplayMode;
+    topProjection?: GeometryTopProjectionViewModel | null;
   },
 ): ResolvedModelSpaceLayout {
   const frame = getPlanModelSpaceFrame(model.roofType === 'hip_corner');
   const scale = MODEL_SPACE_UNITS_PER_METRE;
   const x = 0;
   const y = 0;
-  const annotatedBounds = measurePlanAnnotatedBounds({
+  const legacyAnnotatedBounds = measurePlanAnnotatedBounds({
     model,
     x,
     y,
@@ -4253,13 +4268,18 @@ function resolvePlanModelSpaceLayout(
     frame,
     footprintEditor,
   });
-  const focusBounds = measurePlanModelSpaceFocusBounds({
+  const legacyFocusBounds = measurePlanModelSpaceFocusBounds({
     model,
     x,
     y,
     scale,
     displayMode: options?.displayMode,
   });
+  const topProjectionFocusBounds = topProjectionExtentsToModelSpaceBounds(options?.topProjection, scale);
+  const focusBounds = topProjectionFocusBounds ?? legacyFocusBounds;
+  const annotatedBounds = topProjectionFocusBounds
+    ? unionBounds([legacyAnnotatedBounds, topProjectionFocusBounds])
+    : legacyAnnotatedBounds;
   const svgMetrics = resolveModelSpaceSvgMetrics(focusBounds);
   const focusMetrics = resolveModelSpaceFocusMetrics(focusBounds);
   const worldMetrics = resolveModelSpaceWorldMetrics(annotatedBounds);
@@ -4768,7 +4788,8 @@ function PlanSvg({
   const sheetLayout = isSheet ? resolvePlanSheetLayout({ model, drawingScale, viewportMm: sheetViewportMm }) : null;
   const modelSpaceLayout = isModel
     ? resolvePlanModelSpaceLayout(model, footprintEditor, {
-      displayMode,
+        displayMode,
+        topProjection: useTopProjectionBackedModel ? modelSpaceTopProjection : null,
       })
     : null;
   const layout = sheetLayout ?? modelSpaceLayout ?? resolvePlanFitBox(total.widthM, total.heightM, presentation, isHipCorner);

@@ -62,6 +62,8 @@ Without `--password`, Supabase sends an invite email. With `--password`, the use
 
 Apply ordered migrations in `supabase/migrations/` for current portal behavior. Legacy baseline SQL files in `supabase/` are snapshots and should not be treated as the preferred migration path.
 
+Use `docs/supabase-schema-map.md` to confirm table/RPC ownership, write paths, access boundaries, and migration sources before schema-affecting changes.
+
 Schedule V2 currently depends on migrations through the Schedule V2 RPC command migrations and later repair migrations. After deploy, confirm:
 
 ```bash
@@ -94,6 +96,7 @@ When adding tables:
 - Enable or explicitly document RLS.
 - Grant only required roles.
 - Add server/API access through the appropriate helper.
+- Update `docs/supabase-schema-map.md` and the owning feature doc.
 
 ## Troubleshooting
 

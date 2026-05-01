@@ -11,6 +11,7 @@ Schedule V2 owns install planning and site visits in the staff portal.
 - Legacy and V2 repos: `apps/portal/lib/repo/scheduleRepo.ts` and `apps/portal/lib/repo/scheduleV2Repo.ts`.
 - Staff APIs: `apps/portal/app/api/staff/v1/schedule`.
 - Readiness route: `GET /api/staff/v1/schedule/readiness`.
+- Schema ownership map: `docs/supabase-schema-map.md`.
 
 ## Views
 

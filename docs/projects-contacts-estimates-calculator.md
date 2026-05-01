@@ -18,6 +18,8 @@ This doc is the current-state reference for the core staff portal workflow befor
 
 Important tables include `contacts`, `projects`, `project_task_checks`, `estimates`, `quote_versions`, `quote_send_logs`, `site_visit_events`, `schedule_items`, `deposit_invoices`, and `job_pack_generations`.
 
+For table/RPC ownership, write paths, access boundaries, and migration sources, see `docs/supabase-schema-map.md`.
+
 ## Contact And Project Flow
 
 Contacts and projects are staff-owned portal records. Marketing lead capture can create upstream enquiry data, but staff workflow state belongs in the portal.
@@ -98,6 +100,7 @@ Server-authoritative actions stay server-owned:
 - Drawing workbench object-first and geometry behavior: `docs/design-workbench-architecture.md`.
 - Local-first queue mechanics, aliases, and conflict recovery: `docs/local-first-sync.md`.
 - Staff route auth, diagnostics, and Supabase client boundaries: `docs/staff-api-auth-contracts.md`.
+- Supabase table/RPC ownership and migration routing: `docs/supabase-schema-map.md`.
 - Costing and geometry source-of-truth rules: `docs/costing-and-geometry.md`.
 - Schedule and site visit behavior: `docs/schedule.md`.
 

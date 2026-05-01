@@ -36,7 +36,7 @@ Do not add ad hoc session checks to new staff/admin routes when a helper already
 - Service-role keys must never reach client components, browser bundles, public props, logs, or generated documents.
 - When adding tables, pair route changes with ordered forward migrations, RLS/grants, and the relevant feature doc.
 
-Use `docs/environment-auth-supabase.md` for environment setup, role concepts, and migration readiness.
+Use `docs/supabase-schema-map.md` for table/RPC ownership, write paths, access boundaries, and migration sources. Use `docs/environment-auth-supabase.md` for environment setup, role concepts, and migration readiness.
 
 ## Public Token Routes
 

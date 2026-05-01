@@ -1152,3 +1152,217 @@ body.homepage main .container{
     height:clamp(220px,36vh,360px);
   }
 }
+
+/* Lower-homepage polish: keep the interaction, quiet the scale. */
+.homepage .roof-comparison--editorial .roof-comparison__surface{
+  padding-bottom:clamp(54px,7vh,92px);
+}
+
+.homepage .home-mid-cta{
+  background:#f1f2f3;
+  border-top:0;
+}
+
+.homepage .home-mid-cta > div{
+  min-height:clamp(72px,9vh,104px);
+}
+
+.homepage .home-mid-cta a{
+  min-width:168px;
+  min-height:42px;
+  font-size:12px !important;
+}
+
+.homepage #process{
+  --numWindowH:42vh;
+  --numPadTop:clamp(42px,6vh,76px);
+  --numPadBottom:clamp(34px,5vh,64px);
+  width:var(--home-inner);
+  max-width:1288px;
+  margin-inline:auto;
+}
+
+.homepage #process .process-wrap.process-3col{
+  grid-template-columns:minmax(150px,.65fr) minmax(340px,1.35fr) minmax(320px,1.1fr);
+  gap:clamp(22px,3vw,44px);
+  min-height:clamp(720px,118vh,1080px);
+}
+
+.homepage #process .col-num{
+  padding-inline:0 clamp(20px,2.5vw,36px);
+}
+
+.homepage #process .col-steps,
+.homepage #process .col-copy{
+  padding-top:var(--numPadTop);
+  padding-bottom:var(--numPadBottom);
+  padding-inline:clamp(10px,1.4vw,20px);
+}
+
+.homepage #process .col-copy{
+  padding-left:clamp(24px,3vw,48px);
+}
+
+.homepage #process .big-num{
+  color:#151719;
+  font-size:clamp(96px,14vw,210px);
+  font-weight:420;
+  opacity:.32;
+}
+
+.homepage #process .steps-grid{
+  gap:clamp(38px,6.4vh,72px);
+  padding-top:0;
+  padding-bottom:0;
+}
+
+.homepage #process .step-title{
+  font-size:clamp(18px,1.7vw,24px);
+  line-height:1.16;
+  transform:none;
+}
+
+.homepage #process .step-desc{
+  max-width:34ch;
+  margin-inline:auto;
+  color:#7b8187;
+  font-size:14px;
+  line-height:1.45;
+}
+
+.homepage #process .step-card.is-active .step-title{
+  transform:scale(1.04);
+}
+
+.homepage #process .col-copy .copy-panel{
+  max-width:34ch;
+}
+
+.homepage #process .col-copy .copy-panel p{
+  font-size:clamp(17px,1.55vw,21px);
+  line-height:1.62;
+  text-align:left;
+}
+
+.homepage .sp-reveal{
+  border-top:var(--bw) solid var(--home-line);
+}
+
+.homepage .products-head--editorial{
+  padding-top:clamp(64px,9vh,124px);
+}
+
+.homepage #products{
+  padding-bottom:clamp(92px,13vh,156px);
+}
+
+.homepage .warranty-support{
+  display:grid;
+  grid-template-columns:minmax(0,.82fr) minmax(0,1.18fr);
+  column-gap:clamp(44px,6vw,104px);
+  width:100vw;
+  margin-left:calc(50% - 50vw);
+  padding:clamp(70px,9vh,118px) max(calc((100vw - 1288px) / 2), 6vw);
+  background:#eef0f2;
+  border-top:var(--bw) solid var(--home-line);
+  border-bottom:var(--bw) solid var(--home-line);
+}
+
+.homepage .warranty-support__head,
+.homepage .warranty-support__inner{
+  width:auto;
+  max-width:none;
+  padding:0;
+  margin:0;
+  border:0;
+}
+
+.homepage .warranty-support__head{
+  align-items:flex-start;
+}
+
+.homepage .warranty-support__inner{
+  align-self:start;
+}
+
+.homepage .warranty-support__body{
+  max-width:64ch;
+  margin:0;
+}
+
+.homepage .process-cta-bar{
+  position:relative;
+  background:#4e5a48;
+  border-bottom:1px solid rgba(255,255,255,.08);
+}
+
+.homepage .process-cta-bar__inner{
+  min-height:clamp(64px,8vh,82px);
+  justify-content:center;
+  color:#fff;
+}
+
+body.homepage footer{
+  min-height:clamp(520px,72dvh,760px) !important;
+  border-top:0;
+}
+
+@media (max-width:960px){
+  .homepage #process .process-mobile{
+    padding-top:0;
+    padding-bottom:var(--home-section-y);
+  }
+
+  .homepage #process .process-mobile__item{
+    padding:16px 0;
+    border-color:var(--home-line);
+  }
+
+  .homepage #process .process-mobile__summary-main{
+    grid-template-columns:34px 1fr 34px;
+    column-gap:10px;
+  }
+
+  .homepage #process .process-mobile__num{
+    width:34px;
+    height:34px;
+    color:#767c82;
+    font-size:20px;
+  }
+
+  .homepage #process .process-mobile__title,
+  .homepage #process .process-mobile__desc{
+    text-align:left;
+  }
+
+  .homepage #process .process-mobile__title{
+    font-size:18px;
+  }
+
+  .homepage #process .process-mobile__panel{
+    padding:22px 0 6px 44px;
+  }
+
+  .homepage #process .process-mobile__copy{
+    max-width:34ch;
+    color:#40464c;
+    text-align:left;
+  }
+
+  .homepage .warranty-support{
+    display:block;
+    padding:var(--home-section-y) var(--g);
+  }
+
+  .homepage .warranty-support__inner{
+    margin-top:24px;
+  }
+
+  .homepage .process-cta-bar__inner{
+    min-height:62px;
+  }
+
+  body.homepage footer{
+    min-height:clamp(520px,74dvh,700px) !important;
+  }
+}

@@ -21,6 +21,8 @@ Important tables and artifacts:
 - `file_artifacts` for generated PDFs and attached design PDFs.
 - `job_pack_generations` and `job_pack_sheet_overrides`.
 
+For table/RPC ownership, write paths, access boundaries, and migration sources, see `docs/supabase-schema-map.md`.
+
 ## Quote Lifecycle
 
 - Draft quote versions can be edited, refreshed from estimates, previewed, revised, and regenerated.

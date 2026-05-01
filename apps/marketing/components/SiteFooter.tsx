@@ -81,7 +81,7 @@ export default function SiteFooter() {
           <div className="mt-auto space-y-1 text-sm md:text-lg leading-relaxed">
             <p className="font-semibold md:text-xl tracking-[0.18em] uppercase text-[#f5f6f7]/80">Warehouse</p>
             <p>71G Montgomerie Road</p>
-            <p>Māngere, Auckland 2022</p>
+            <p>Mangere, Auckland 2022</p>
             <p>New Zealand</p>
           </div>
         </div>

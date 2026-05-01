@@ -9,6 +9,7 @@ The Design List is the portal replacement for the old operational design spreads
 - Server/domain helpers: `apps/portal/lib/designPackages`.
 - Staff APIs: `apps/portal/app/api/staff/v1/design-packages`.
 - Schema migration: `supabase/migrations/20260317_000001_design_package_requests.sql`.
+- Schema ownership map: `docs/supabase-schema-map.md`.
 
 The route and internal module names still use `design-packages`, but the user-facing page name is Design List.
 

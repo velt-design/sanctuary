@@ -21,6 +21,7 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. Use 
 
 | Date | Area | Status | Guardrail |
 | --- | --- | --- | --- |
+| 2026-05-01 | Supabase Schema | Promoted | Schema-affecting work needs a table/RPC ownership map before future behavior changes. |
 | 2026-05-01 | API/Auth | Promoted | Staff/admin/public-token route changes need a route contract doc before future behavior changes. |
 | 2026-05-01 | Projects/Estimates | Promoted | Core project/contact/estimate workflows need a canonical doc before future behavior changes. |
 | 2026-05-01 | Docs/Testing | Promoted | Keep broad repo command guidance in `docs/testing-and-qa.md`; link to it instead of duplicating command blocks. |
@@ -31,6 +32,22 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. Use 
 | 2026-05-01 | Docs | Promoted | Distinguish current-state references from active operating rules. |
 
 ## Entries
+
+### 2026-05-01 - Supabase Schema - Ownership Map
+
+Area: Supabase Schema
+
+Status: Promoted
+
+Decision or mistake: active tables and RPCs were spread across migrations, route helpers, server helpers, and feature docs without one ownership map.
+
+Why it mattered: future schema changes can bypass workflow owners, add direct browser writes, skip RLS/grants, or mutate public-token and Schedule V2 tables through the wrong boundary.
+
+Current guardrail: before changing tables, RPCs, migrations, RLS, grants, or route Supabase access, read `docs/supabase-schema-map.md` and verify the owner doc, primary write path, primary read path, access boundary, migration source, and focused verification path.
+
+Promoted to: `docs/supabase-schema-map.md`, `docs/agent-playbook.md`, `docs/README.md`, `AGENTS.md`.
+
+Related docs/tests: `docs/supabase-schema-map.md`, `docs/environment-auth-supabase.md`, `docs/staff-api-auth-contracts.md`, `docs/testing-and-qa.md`.
 
 ### 2026-05-01 - API/Auth - Route Contract Doc
 

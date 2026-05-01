@@ -12,6 +12,7 @@ Running Jobs is the portal replacement for the active install spreadsheet.
 - Legacy import script: `scripts/import-running-jobs-legacy.ts`.
 - Phase 1 schema migration: `supabase/migrations/20260315_000001_running_job_list_phase1.sql`.
 - Legacy import schema migration: `supabase/migrations/20260316_000001_running_job_legacy_import.sql`.
+- Schema ownership map: `docs/supabase-schema-map.md`.
 
 ## Data Sources
 

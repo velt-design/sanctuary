@@ -60,6 +60,7 @@ Use `docs/testing-and-qa.md` as the canonical command source. Feature docs may l
 - `docs/architecture.md`: repo structure and boundaries.
 - `docs/platform-workflow.md`: business workflow across marketing and portal.
 - `docs/environment-auth-supabase.md`: env, auth, roles, schema readiness.
+- `docs/supabase-schema-map.md`: table/RPC ownership, write paths, access boundaries, and migration sources.
 - `docs/staff-api-auth-contracts.md`: staff/admin/public-token route auth, Supabase client boundaries, diagnostics, and response conventions.
 - `docs/testing-and-qa.md`: test commands, Playwright, manual QA.
 - `docs/projects-contacts-estimates-calculator.md`: contacts, projects, project snapshots, calculator estimates, estimate locks, and local-first estimate mutations.

@@ -1970,7 +1970,7 @@ describe('ModelSpaceViewport', () => {
     rendered.unmount();
   });
 
-  it('expands model-space focus and world bounds to the true house coordinates in house mode', () => {
+  it('keeps projection-led focus while world bounds include true house coordinates in house mode', () => {
     const drawing = makeDrawingModule();
     const planModel = makePlanModelWithLargeHouseContext();
     const geometryPlan = makeGeometryPlanFixture();
@@ -2006,8 +2006,8 @@ describe('ModelSpaceViewport', () => {
 
     expect(worldBox.x).toBeLessThan(-700);
     expect(worldBox.y).toBeLessThan(-500);
-    expect(focusBox.y).toBeLessThan(-500);
-    expect(focusBox.height).toBeGreaterThan(600);
+    expect(focusBox.y).toBeGreaterThan(worldBox.y);
+    expect(focusBox.height).toBeLessThan(worldBox.height);
 
     rendered.unmount();
   });
