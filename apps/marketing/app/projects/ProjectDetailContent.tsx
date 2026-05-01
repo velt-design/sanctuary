@@ -215,9 +215,20 @@ export default function ProjectDetailContent({
               {relatedProjects.map(related => {
                 const body = (
                   <>
-                    <span className="project-detail__related-kicker">{related.region}</span>
-                    <span className="project-detail__related-title">{related.title}</span>
-                    <span className="project-detail__related-meta">{related.type} - {related.roof}</span>
+                    <span className="project-detail__related-image">
+                      <Image
+                        src={related.heroImage.src}
+                        alt={related.heroImage.alt}
+                        fill
+                        loading="lazy"
+                        sizes="(max-width: 720px) 100vw, (max-width: 1280px) 42vw, 460px"
+                      />
+                    </span>
+                    <span className="project-detail__related-copy">
+                      <span className="project-detail__related-kicker">{related.region}</span>
+                      <span className="project-detail__related-title">{related.title}</span>
+                      <span className="project-detail__related-meta">{related.type} / {related.roof}</span>
+                    </span>
                   </>
                 );
 

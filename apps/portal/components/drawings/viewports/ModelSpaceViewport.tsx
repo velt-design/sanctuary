@@ -41,7 +41,6 @@ import {
   type DeckReleaseState,
   type DeckDragSession,
   type DeckPreviewState,
-  type DeckCommitTransformDiagnostics,
 } from '@/lib/drawings/interactions/deckInteractionAdapter';
 import {
   buildOpeningInteractionTelemetry,
@@ -53,8 +52,16 @@ import {
   releaseDeckMoveTool,
   startDeckMoveTool,
   moveDeckMoveTool,
-  type DeckReleaseCommitSource,
 } from '@/lib/drawings/interactions/deckMoveToolController';
+import {
+  advanceDeckReleaseSettleState,
+  createDeckReleaseSettleState,
+  resolveDeckCommitSettleState,
+  resolveDeckReleasePreview,
+  resolveDeckSettleMatch,
+  type DeckDragSettleState,
+  type DeckReleaseFeedbackState,
+} from '@/lib/drawings/interactions/deckReleaseSettlementController';
 import {
   releaseOpeningMoveTool,
   startOpeningMoveTool,
@@ -65,8 +72,6 @@ import {
   resolveObjectInteractionMove,
   setObjectInteractionPhase,
   type ObjectInteractionPhase,
-  type ObjectInteractionReleaseOutcome,
-  type ObjectInteractionSettleVisualState,
   type ObjectInteractionViewState,
 } from '@/lib/drawings/interactions/objectInteractionEngine';
 import type {
@@ -207,45 +212,6 @@ type DeckSvgInteraction = Extract<ObjectWorkbenchPlanShapeDragStartMeta, { owner
 
 type DeckDragPhase = ObjectInteractionPhase;
 
-type DeckSettleMatchSource =
-  | 'none'
-  | 'top_projection_committed'
-  | 'semantic_projection'
-  | 'floating_projection_pending';
-type DeckProjectionSettleStatus = 'none' | 'matched' | 'pending' | 'failed';
-
-type DeckDragSettleState = {
-  deckId: string;
-  previewState: DeckPreviewState;
-  commitStartedAtMs: number;
-  commitResolvedAtMs: number | null;
-  releasePlacement: 'snapped' | 'floating';
-  releaseOutcome: Exclude<ObjectInteractionReleaseOutcome, 'none'>;
-  settleVisualState: ObjectInteractionSettleVisualState;
-  resolvedSuccess: boolean | null;
-  matchedCommittedGeometry: boolean;
-  stableMatchFrameCount: number;
-  releaseError: string | null;
-  commitSource: DeckReleaseCommitSource;
-  settleMatchSource: DeckSettleMatchSource;
-  projectionSettleStatus: DeckProjectionSettleStatus;
-  commitTransform: DeckCommitTransformDiagnostics;
-};
-
-type DeckReleaseFeedbackState = {
-  deckId: string;
-  releaseOutcome: Extract<ObjectInteractionReleaseOutcome, 'committed' | 'failed'>;
-  releasePlacement: 'snapped' | 'floating' | null;
-  settleVisualState: Extract<ObjectInteractionSettleVisualState, 'complete' | 'failed'>;
-  releaseError: string | null;
-  previewState: DeckPreviewState | null;
-  expiresAtMs: number;
-  commitSource: DeckReleaseCommitSource;
-  settleMatchSource: DeckSettleMatchSource;
-  projectionSettleStatus: DeckProjectionSettleStatus;
-  commitTransform: DeckCommitTransformDiagnostics;
-};
-
 type DeckDragPinnedScrollTarget = {
   node: HTMLElement;
   scrollTop: number;
@@ -295,170 +261,11 @@ const WHEEL_LINE_DELTA_PX = 16;
 const WHEEL_PAGE_DELTA_PX = 240;
 const WHEEL_ZOOM_SENSITIVITY = 0.0036;
 const WHEEL_GESTURE_IDLE_MS = 600;
-const DECK_SETTLE_MATCH_TOLERANCE_M = 0.1;
-const DECK_SETTLE_MAX_WAIT_MS = 500;
-const DECK_SETTLE_MATCH_STABLE_FRAMES = 1;
 const DECK_RELEASE_CLICK_SUPPRESSION_MS = 400;
-const DECK_RELEASE_SUCCESS_FEEDBACK_MS = 180;
-const DECK_RELEASE_FAILURE_FEEDBACK_MS = 1400;
 const DECK_VIEWPORT_STABILITY_TOLERANCE_PX = 0.5;
 
 function clampZoom(value: number): number {
   return Math.min(Math.max(value, MIN_MODEL_ZOOM), MAX_MODEL_ZOOM);
-}
-
-function pointsApproximatelyEqual(left: PlanPoint, right: PlanPoint, toleranceM = DECK_SETTLE_MATCH_TOLERANCE_M): boolean {
-  return Math.hypot(left.x - right.x, left.y - right.y) <= toleranceM;
-}
-
-function polygonsApproximatelyEqual(
-  left: readonly PlanPoint[],
-  right: readonly PlanPoint[],
-  toleranceM = DECK_SETTLE_MATCH_TOLERANCE_M,
-): boolean {
-  if (!left.length || !right.length) return false;
-  if (left.length !== right.length) return false;
-  const remaining = [...right];
-  for (const point of left) {
-    const matchIndex = remaining.findIndex((candidate) => pointsApproximatelyEqual(point, candidate, toleranceM));
-    if (matchIndex < 0) return false;
-    remaining.splice(matchIndex, 1);
-  }
-  return remaining.length === 0;
-}
-
-function resolvePolygonBounds(points: readonly PlanPoint[]): { minX: number; maxX: number; minY: number; maxY: number } | null {
-  if (!points.length) return null;
-  let minX = points[0]!.x;
-  let maxX = points[0]!.x;
-  let minY = points[0]!.y;
-  let maxY = points[0]!.y;
-  for (const point of points) {
-    minX = Math.min(minX, point.x);
-    maxX = Math.max(maxX, point.x);
-    minY = Math.min(minY, point.y);
-    maxY = Math.max(maxY, point.y);
-  }
-  return { minX, maxX, minY, maxY };
-}
-
-function polygonsVisuallyMatch(
-  left: readonly PlanPoint[],
-  right: readonly PlanPoint[],
-  toleranceM = DECK_SETTLE_MATCH_TOLERANCE_M,
-): boolean {
-  if (polygonsApproximatelyEqual(left, right, toleranceM)) return true;
-  const leftBounds = resolvePolygonBounds(left);
-  const rightBounds = resolvePolygonBounds(right);
-  if (!leftBounds || !rightBounds) return false;
-  return (
-    Math.abs(leftBounds.minX - rightBounds.minX) <= toleranceM &&
-    Math.abs(leftBounds.maxX - rightBounds.maxX) <= toleranceM &&
-    Math.abs(leftBounds.minY - rightBounds.minY) <= toleranceM &&
-    Math.abs(leftBounds.maxY - rightBounds.maxY) <= toleranceM
-  );
-}
-
-function findDeckReferenceFrameById(
-  frames: readonly ObjectWorkbenchPlanDeckReferenceFrame[],
-  edgeId: string | null | undefined,
-): ObjectWorkbenchPlanDeckReferenceFrame | null {
-  if (!edgeId) return null;
-  return frames.find((frame) => frame.sourceEdgeId === edgeId) ?? null;
-}
-
-function projectPointToDeckReferenceFrame(
-  point: PlanPoint,
-  frame: ObjectWorkbenchPlanDeckReferenceFrame,
-): { alongM: number; outwardM: number } {
-  const relative = {
-    x: point.x - frame.hostEdgeStart.x,
-    y: point.y - frame.hostEdgeStart.y,
-  };
-  return {
-    alongM: relative.x * frame.alongUnitX + relative.y * frame.alongUnitY + frame.spanStartM,
-    outwardM: relative.x * frame.outwardUnitX + relative.y * frame.outwardUnitY,
-  };
-}
-
-function projectPolygonToDeckReferenceFrame(input: {
-  polygon: readonly PlanPoint[];
-  frame: ObjectWorkbenchPlanDeckReferenceFrame;
-}): {
-  nearGapM: number;
-  centerOffsetM: number;
-} | null {
-  if (!input.polygon.length) return null;
-  const projections = input.polygon.map((point) => projectPointToDeckReferenceFrame(point, input.frame));
-  const alongValues = projections.map((projection) => projection.alongM);
-  const outwardValues = projections.map((projection) => projection.outwardM);
-  const alongMinM = Math.min(...alongValues);
-  const alongMaxM = Math.max(...alongValues);
-  const outwardMinM = Math.min(...outwardValues);
-  const frameMidpointM = (input.frame.spanStartM + input.frame.spanEndM) / 2;
-  return {
-    nearGapM: Math.max(0, outwardMinM),
-    centerOffsetM: ((alongMinM + alongMaxM) / 2) - frameMidpointM,
-  };
-}
-
-function deckShapeSemanticallyMatchesPreview(input: {
-  shape: {
-    polygon: PlanPoint[];
-    deckInteraction: ObjectWorkbenchPlanShapeOverlay['deckInteraction'];
-  } | null;
-  preview: DeckPreviewState;
-  toleranceM?: number;
-}): boolean {
-  if (!input.shape?.deckInteraction) return false;
-  const toleranceM = input.toleranceM ?? DECK_SETTLE_MATCH_TOLERANCE_M;
-  const interaction = input.shape.deckInteraction;
-  if (interaction.placement !== input.preview.releasePlacement) return false;
-  if (input.preview.releasePlacement === 'snapped') {
-    if (interaction.attachmentMode !== input.preview.attachmentMode) return false;
-    const interactionSnapEdgeId =
-      interaction.primaryHostEdgeId ?? interaction.placementEdgeId ?? interaction.witnessEdgeId;
-    const previewSnapEdgeId =
-      input.preview.primaryHostEdgeId ?? input.preview.placementEdgeId ?? input.preview.witnessEdgeId;
-    if (input.preview.attachmentMode === 'corner_dual_edge') {
-      if (interactionSnapEdgeId !== previewSnapEdgeId) return false;
-      if (interaction.secondaryHostEdgeId !== input.preview.secondaryHostEdgeId) return false;
-      if (interaction.cornerVertexId !== input.preview.cornerVertexId) return false;
-    } else if (interactionSnapEdgeId !== previewSnapEdgeId) {
-      return false;
-    }
-  } else if (interaction.witnessEdgeId !== input.preview.witnessEdgeId) {
-    return false;
-  }
-
-  const comparisonFrame =
-    findDeckReferenceFrameById(
-      interaction.referenceFrames,
-      input.preview.releasePlacement === 'snapped'
-        ? input.preview.primaryHostEdgeId ?? input.preview.placementEdgeId ?? interaction.placementEdgeId
-        : input.preview.witnessEdgeId ?? interaction.witnessEdgeId,
-    ) ?? interaction.referenceFrames[0] ?? null;
-  if (!comparisonFrame) return false;
-
-  const previewProjection = projectPolygonToDeckReferenceFrame({
-    polygon: input.preview.polygon,
-    frame: comparisonFrame,
-  });
-  if (!previewProjection) return false;
-
-  if (Math.abs(interaction.centerOffsetM - previewProjection.centerOffsetM) > toleranceM) return false;
-
-  const expectedGapM = input.preview.releasePlacement === 'snapped' ? 0 : previewProjection.nearGapM;
-  if (Math.abs(interaction.referenceEdgeGapM - expectedGapM) > toleranceM) return false;
-  if (input.preview.releasePlacement === 'snapped' && input.preview.attachmentMode !== 'corner_dual_edge') {
-    return true;
-  }
-
-  const previewCenter = resolvePolygonCenter(input.preview.polygon) ?? input.preview.previewAnchor;
-  const centerToleranceM = input.preview.releasePlacement === 'floating'
-    ? Math.max(toleranceM, 1)
-    : toleranceM;
-  return pointsApproximatelyEqual(interaction.renderedCenter, previewCenter, centerToleranceM);
 }
 
 function clampValue(value: number, min: number, max: number): number {
@@ -873,19 +680,12 @@ function translatePolygon(
   }));
 }
 
-function resolvePolygonCenter(polygon: PlanPoint[]): PlanPoint {
-  if (!polygon.length) return { x: 0, y: 0 };
-  const sum = polygon.reduce(
-    (accumulator, point) => ({
-      x: accumulator.x + point.x,
-      y: accumulator.y + point.y,
-    }),
-    { x: 0, y: 0 },
-  );
-  return {
-    x: sum.x / polygon.length,
-    y: sum.y / polygon.length,
-  };
+function findDeckReferenceFrameById(
+  frames: readonly ObjectWorkbenchPlanDeckReferenceFrame[],
+  edgeId: string | null | undefined,
+): ObjectWorkbenchPlanDeckReferenceFrame | null {
+  if (!edgeId) return null;
+  return frames.find((frame) => frame.sourceEdgeId === edgeId) ?? null;
 }
 
 function planPointToDeckLocal(point: PlanPoint, attachmentSide: AttachmentSide): {
@@ -2961,23 +2761,13 @@ export default function ModelSpaceViewport({
       const commitTransform = deckMoveRelease.commitTransform;
       deckDragPhaseRef.current = 'settling';
       setDeckDragPhase('settling');
-      setDeckDragSettleState({
+      setDeckDragSettleState(createDeckReleaseSettleState({
         deckId: activeDeckDragSession.deckId,
         previewState: preview,
         commitStartedAtMs,
-        commitResolvedAtMs: null,
-        releasePlacement: preview.releasePlacement,
-        releaseOutcome: 'pending',
-        settleVisualState: 'holding-preview',
-        resolvedSuccess: null,
-        matchedCommittedGeometry: false,
-        stableMatchFrameCount: 0,
-        releaseError: null,
         commitSource,
-        settleMatchSource: 'none',
-        projectionSettleStatus: 'pending',
         commitTransform,
-      });
+      }));
       let result: { ok: boolean; error?: string };
       try {
         result = await resolveCommitResult(
@@ -2997,15 +2787,12 @@ export default function ModelSpaceViewport({
       if (result.ok) setFootprintError(null);
       setDeckDragSettleState((current) =>
         current && current.deckId === activeDeckDragSession.deckId
-          ? {
-              ...current,
-              commitResolvedAtMs: Date.now(),
-              releaseOutcome: result.ok ? 'committed' : 'failed',
-              settleVisualState: result.ok ? 'reconciling' : 'failed',
-              resolvedSuccess: result.ok,
-              releaseError,
-              projectionSettleStatus: result.ok ? current.projectionSettleStatus : 'failed',
-            }
+          ? resolveDeckCommitSettleState({
+              state: current,
+              ok: result.ok,
+              error: releaseError,
+              resolvedAtMs: Date.now(),
+            })
           : current,
       );
     };
@@ -3295,45 +3082,10 @@ export default function ModelSpaceViewport({
   );
   const requiresCanonicalDeckSettleMatch = objectWorkbenchPlanOverlay?.housePolygonSource === 'geometry_projection';
   const deckSettleMatch = useMemo(
-    () => {
-      if (!deckDragSettleState || !settledDeckShape) {
-        return {
-          matches: false,
-          source: 'none' as DeckSettleMatchSource,
-          projectionStatus: 'none' as DeckProjectionSettleStatus,
-        };
-      }
-      const visuallyMatches = polygonsVisuallyMatch(settledDeckShape.polygon, deckDragSettleState.previewState.polygon);
-      if (visuallyMatches) {
-        return {
-          matches: true,
-          source: (settledDeckShape.source === 'top_projection_committed'
-            ? 'top_projection_committed'
-            : 'semantic_projection') as DeckSettleMatchSource,
-          projectionStatus: 'matched' as DeckProjectionSettleStatus,
-        };
-      }
-      const semanticallyMatches = deckShapeSemanticallyMatchesPreview({
-        shape: settledDeckShape,
-        preview: deckDragSettleState.previewState,
-      });
-      if (semanticallyMatches) {
-        return {
-          matches: true,
-          source: 'semantic_projection' as DeckSettleMatchSource,
-          projectionStatus: 'matched' as DeckProjectionSettleStatus,
-        };
-      }
-      return {
-        matches: false,
-        source: (deckDragSettleState.releasePlacement === 'floating'
-          ? 'floating_projection_pending'
-          : 'none') as DeckSettleMatchSource,
-        projectionStatus: (deckDragSettleState.releasePlacement === 'floating'
-          ? 'pending'
-          : 'none') as DeckProjectionSettleStatus,
-      };
-    },
+    () => resolveDeckSettleMatch({
+      settleState: deckDragSettleState,
+      settledDeckShape,
+    }),
     [deckDragSettleState, settledDeckShape],
   );
   const settledDeckShapeMatchesPreview = deckSettleMatch.matches;
@@ -3464,16 +3216,11 @@ export default function ModelSpaceViewport({
     ],
   );
   const activeDeckPreviewState = useMemo(() => {
-    if (deckDragSettleState) {
-      if (deckDragSettleState.settleVisualState === 'complete') {
-        return null;
-      }
-      return deckDragSettleState.previewState;
-    }
-    if (deckReleaseFeedbackState?.releaseOutcome === 'failed') {
-      return deckReleaseFeedbackState.previewState;
-    }
-    return deckPreviewState;
+    return resolveDeckReleasePreview({
+      settleState: deckDragSettleState,
+      previewState: deckPreviewState,
+      feedbackState: deckReleaseFeedbackState,
+    });
   }, [deckDragSettleState, deckPreviewState, deckReleaseFeedbackState]);
   const objectWorkbenchPreviewOverlay = useMemo<ObjectWorkbenchPreviewOverlay | null>(
     () => {
@@ -3551,118 +3298,38 @@ export default function ModelSpaceViewport({
 
     let cancelled = false;
     let finalizeAnimationFrameId: number | null = null;
-    const buildReleaseFeedback = (
-      outcome: Extract<ObjectInteractionReleaseOutcome, 'committed' | 'failed'>,
-      settleVisualState: Extract<ObjectInteractionSettleVisualState, 'complete' | 'failed'>,
-    ): DeckReleaseFeedbackState => ({
-      deckId: deckDragSettleState.deckId,
-      releaseOutcome: outcome,
-      releasePlacement: deckDragSettleState.releasePlacement,
-      settleVisualState,
-      releaseError: deckDragSettleState.releaseError,
-      previewState: deckDragSettleState.previewState,
-      commitSource: deckDragSettleState.commitSource,
-      settleMatchSource: outcome === 'failed' ? deckDragSettleState.settleMatchSource : deckSettleMatch.source,
-      projectionSettleStatus: outcome === 'failed' ? 'failed' : deckSettleMatch.projectionStatus,
-      commitTransform: deckDragSettleState.commitTransform,
-      expiresAtMs:
-        Date.now() +
-        (outcome === 'committed' ? DECK_RELEASE_SUCCESS_FEEDBACK_MS : DECK_RELEASE_FAILURE_FEEDBACK_MS),
-    });
-
-    const finalizeSuccess = () => {
-      cancelled = true;
-      finalizeDeckDragSettlement(buildReleaseFeedback('committed', 'complete'), { suppressClick: false });
-    };
-
-    const finalizeFailure = () => {
-      cancelled = true;
-      finalizeDeckDragSettlement(buildReleaseFeedback('failed', 'failed'));
-    };
 
     const observeSettlement = () => {
       finalizeAnimationFrameId = window.requestAnimationFrame(() => {
         if (cancelled) return;
-        if (deckDragSettleState.releaseOutcome === 'pending') {
-          restoreDeckDragPinnedScrollTargets();
-        }
         const drift = measureDeckDragViewportAnchorDrift();
         const viewportStable = isDeckDragViewportAnchorStable(drift);
-        const committedReleaseReady =
-          deckDragSettleState.releaseOutcome === 'committed' && deckDragSettleState.commitResolvedAtMs !== null;
-        const matchedAndStable = settledDeckShapeMatchesPreview && (committedReleaseReady || viewportStable);
-        if (!matchedAndStable) {
-          if (
-            deckDragSettleState.stableMatchFrameCount > 0 ||
-            deckDragSettleState.matchedCommittedGeometry ||
-            deckDragSettleState.settleMatchSource !== deckSettleMatch.source ||
-            deckDragSettleState.projectionSettleStatus !== deckSettleMatch.projectionStatus
-          ) {
-            setDeckDragSettleState((current) =>
-              current && current.deckId === deckDragSettleState.deckId
-                ? {
-                    ...current,
-                    matchedCommittedGeometry: false,
-                    stableMatchFrameCount: 0,
-                    settleMatchSource: deckSettleMatch.source,
-                    projectionSettleStatus: deckSettleMatch.projectionStatus,
-                  }
-                : current,
-            );
-          }
-        } else if (deckDragSettleState.stableMatchFrameCount < DECK_SETTLE_MATCH_STABLE_FRAMES) {
+        const advancement = advanceDeckReleaseSettleState({
+          state: deckDragSettleState,
+          match: deckSettleMatch,
+          viewportStable,
+          requiresCanonicalMatch: requiresCanonicalDeckSettleMatch,
+          nowMs: Date.now(),
+        });
+        if (advancement.restorePinnedScrollTargets) {
+          restoreDeckDragPinnedScrollTargets();
+        }
+        if (advancement.state !== deckDragSettleState) {
           setDeckDragSettleState((current) =>
             current && current.deckId === deckDragSettleState.deckId
-              ? {
-                  ...current,
-                  matchedCommittedGeometry: true,
-                  stableMatchFrameCount: Math.min(
-                    current.stableMatchFrameCount + 1,
-                    DECK_SETTLE_MATCH_STABLE_FRAMES,
-                  ),
-                  settleMatchSource: deckSettleMatch.source,
-                  projectionSettleStatus: deckSettleMatch.projectionStatus,
-                }
+              ? advancement.state
               : current,
           );
         }
-        if (deckDragSettleState.releaseOutcome === 'failed') {
-          finalizeFailure();
+        if (advancement.finalizeOutcome === 'failed' && advancement.releaseFeedback) {
+          cancelled = true;
+          finalizeDeckDragSettlement(advancement.releaseFeedback);
           return;
         }
-        if (deckDragSettleState.releaseOutcome === 'committed' && deckDragSettleState.commitResolvedAtMs !== null) {
-          const settleDeadlineMs = deckDragSettleState.commitResolvedAtMs + DECK_SETTLE_MAX_WAIT_MS;
-          const settledPreviewConfirmed =
-            matchedAndStable && deckDragSettleState.stableMatchFrameCount >= DECK_SETTLE_MATCH_STABLE_FRAMES;
-          const deadlineCanUnlock = Date.now() >= settleDeadlineMs;
-          if (settledPreviewConfirmed) {
-            finalizeSuccess();
-            return;
-          }
-          if (
-            deadlineCanUnlock &&
-            requiresCanonicalDeckSettleMatch &&
-            deckDragSettleState.releasePlacement !== 'floating'
-          ) {
-            setDeckDragSettleState((current) =>
-              current && current.deckId === deckDragSettleState.deckId
-                ? {
-                    ...current,
-                    releaseOutcome: 'failed',
-                    settleVisualState: 'failed',
-                    resolvedSuccess: false,
-                    settleMatchSource: deckSettleMatch.source,
-                    projectionSettleStatus: 'failed',
-                    releaseError: 'Deck release preview did not match rebuilt plan geometry.',
-                  }
-                : current,
-            );
-            return;
-          }
-          if (deadlineCanUnlock) {
-            finalizeSuccess();
-            return;
-          }
+        if (advancement.finalizeOutcome === 'committed' && advancement.releaseFeedback) {
+          cancelled = true;
+          finalizeDeckDragSettlement(advancement.releaseFeedback, { suppressClick: false });
+          return;
         }
         observeSettlement();
       });
@@ -3686,7 +3353,6 @@ export default function ModelSpaceViewport({
     measureDeckDragViewportAnchorDrift,
     restoreDeckDragPinnedScrollTargets,
     requiresCanonicalDeckSettleMatch,
-    settledDeckShapeMatchesPreview,
   ]);
 
   useEffect(() => {
