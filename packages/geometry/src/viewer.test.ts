@@ -259,6 +259,7 @@ describe("buildViewerSceneModel", () => {
         "house_surface_solid:soffit",
         "house_surface_solid:fascia",
         "house_linear_solid:gutter",
+        "house_line:wall_segment",
         "house_line:roof_feature",
         "house_line:attachment_target",
       ]),
@@ -285,11 +286,20 @@ describe("buildViewerSceneModel", () => {
       (object): object is Extract<ViewerSceneObject, { type: "house_linear_solid" }> =>
         object.type === "house_linear_solid" && object.kind === "gutter",
     );
+    const wallEdge = objects.find(
+      (object): object is Extract<ViewerSceneObject, { type: "house_line" }> =>
+        object.type === "house_line" && object.kind === "wall_segment",
+    );
     expect(wallSolid?.renderMesh?.vertices).toHaveLength(8);
     expect(roofSolid?.renderMesh?.vertices.length).toBeGreaterThanOrEqual(6);
     expect(roofSolid?.renderMesh?.faces.length).toBeGreaterThan(0);
     expect(soffitSolid?.renderMesh?.vertices).toHaveLength(8);
     expect(gutterSolid?.renderMesh?.vertices).toHaveLength(8);
+    expect(wallEdge?.metadata).toMatchObject({
+      planDetailRole: "wall_edge",
+      snapRole: "deck_host_edge",
+    });
+    expect(wallEdge?.metadata?.sourceEdgeId).toEqual(expect.stringMatching(/^footprint-edge-/));
 
     const houseRoofFlashing = roofFlashingLayer?.objects.find(
       (object) =>

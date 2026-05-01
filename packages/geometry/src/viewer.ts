@@ -691,6 +691,24 @@ function buildHouseModelObjects(
     (model.solids?.linearSolids.length ?? 0) > 0;
   const skipRoofSolids = !houseRoofQaIsValid(model);
 
+  for (const wall of model.wallSegments) {
+    if (wall.metadata?.houseWallMode === "open_gable_frame") continue;
+    const object = buildHouseLineObject({
+      id: `${wall.id}-edge`,
+      sourceId: wall.sourceEdgeId ?? wall.id,
+      kind: "wall_segment",
+      line: wall.line,
+      metadata: {
+        ...wall.metadata,
+        sourceEdgeId: wall.sourceEdgeId ?? null,
+        sourceWallId: wall.id,
+        planDetailRole: "wall_edge",
+        snapRole: "deck_host_edge",
+      },
+    });
+    if (object) objects.push(object);
+  }
+
   if (hasSolids) {
     for (const solid of model.solids?.surfaceSolids ?? []) {
       if (solid.kind === "roof" && skipRoofSolids) continue;

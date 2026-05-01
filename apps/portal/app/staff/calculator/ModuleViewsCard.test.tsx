@@ -232,6 +232,31 @@ function makeTopProjectionFixture(): GeometryTopProjectionViewModel {
         },
       },
       {
+        id: 'top-projection-wall-edge-front',
+        sourceObjectId: 'scene-house-wall-front-edge',
+        sourceId: 'footprint-edge-front',
+        sourceType: 'house_line',
+        family: 'house',
+        kind: 'wall_segment',
+        polygon: [
+          { x: -500, y: -15 },
+          { x: 6500, y: -15 },
+          { x: 6500, y: 15 },
+          { x: -500, y: 15 },
+        ],
+        zOrder: 11,
+        zMin: 0,
+        zMax: 0,
+        metadata: {
+          sourceEdgeId: 'footprint-edge-front',
+          sourceWallId: 'house-wall-front',
+          hostEdgeSide: 'front',
+          planDetailRole: 'wall_edge',
+          snapRole: 'deck_host_edge',
+          topProjectionRole: 'context',
+        },
+      },
+      {
         id: 'top-projection-house-roof-material',
         sourceObjectId: 'scene-house-roof-material',
         sourceId: 'solved-house-roof-material',
@@ -728,10 +753,12 @@ describe('ModuleViewsCard', () => {
     expect(extractSvgStringAttribute(svgTag, 'data-top-projection-parity-status')).toBe('pass');
     expect(extractSvgStringAttribute(svgTag, 'data-top-projection-screen-axis')).toBe('world_x_left_world_y_down');
     expect(extractSvgStringAttribute(svgTag, 'data-top-projection-top-visible-count')).toBe('3');
-    expect(extractSvgStringAttribute(svgTag, 'data-top-projection-context-count')).toBe('1');
+    expect(extractSvgStringAttribute(svgTag, 'data-top-projection-context-count')).toBe('2');
     expect(extractSvgStringAttribute(svgTag, 'data-top-projection-hidden-count')).toBe('1');
-    expect(extractSvgStringAttribute(svgTag, 'data-top-projection-rendered-count')).toBe('2');
+    expect(extractSvgStringAttribute(svgTag, 'data-top-projection-rendered-count')).toBe('3');
     expect(extractSvgStringAttribute(svgTag, 'data-top-projection-hidden-rendered-count')).toBe('0');
+    expect(extractSvgStringAttribute(svgTag, 'data-plan-rendered-context-line-count')).toBe('1');
+    expect(extractSvgStringAttribute(svgTag, 'data-plan-wall-detail-count')).toBe('1');
     expect(extractSvgStringAttribute(svgTag, 'data-plan-committed-top-projection-body-count')).toBe('2');
     expect(extractSvgStringAttribute(svgTag, 'data-plan-committed-top-projection-object-count')).toBe('2');
     expect(extractSvgStringAttribute(svgTag, 'data-plan-rendered-context-body-count')).toBe('0');
@@ -740,7 +767,13 @@ describe('ModuleViewsCard', () => {
     expect(extractSvgStringAttribute(svgTag, 'data-plan-object-overlay-body-count')).toBe('0');
     expect(extractSvgStringAttribute(svgTag, 'data-plan-duplicate-visual-body-count')).toBe('0');
     expect(extractSvgStringAttribute(svgTag, 'data-plan-duplicate-semantic-owner-count')).toBe('0');
-    expect(markup).not.toContain('data-plan-layer="contextLines"');
+    expect(markup).toContain('data-plan-layer="contextLines"');
+    expect(markup).toContain('data-house-plan-line="wall_segment"');
+    expect(markup).toContain('data-plan-detail-role="wall_edge"');
+    expect(markup).toContain('data-plan-snap-role="deck_host_edge"');
+    expect(markup).toContain('data-plan-source-edge-id="footprint-edge-front"');
+    expect(markup).toContain('data-plan-source-wall-id="house-wall-front"');
+    expect(markup).not.toContain('data-plan-top-projection-shape="top-projection-context-footprint"');
     expect(markup).not.toContain('data-plan-attachment-edge="geometry"');
     expect(markup).not.toContain('data-plan-fall-direction=');
     expect(markup).not.toContain('data-plan-primary-dim=');

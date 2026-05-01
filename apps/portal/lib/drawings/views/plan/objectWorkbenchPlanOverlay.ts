@@ -61,6 +61,7 @@ export type ObjectWorkbenchPlanHousePolygonSource =
 export type ObjectWorkbenchPlanDeckReferenceFrame = {
   hostEdgeId: AttachmentSide;
   sourceEdgeId: string;
+  frameSource?: 'top_projection_wall_edge' | 'top_projection_body' | 'geometry_plan';
   axis: 'along' | 'depth';
   spanStartM: number;
   spanEndM: number;
@@ -105,6 +106,7 @@ export type ObjectWorkbenchPlanDeckInteraction = {
   commitStartPolygon: PlanPoint[] | null;
   referenceFrames: ObjectWorkbenchPlanDeckReferenceFrame[];
   commitReferenceFrames: ObjectWorkbenchPlanDeckReferenceFrame[];
+  snapFrameSource?: 'top_projection_wall_edge' | 'top_projection_body' | 'geometry_plan';
   crossEdgeReference: ObjectWorkbenchPlanDeckCrossEdgeReference | null;
 };
 
@@ -232,8 +234,10 @@ type GeometryPlanLookup = {
   } | null;
   deckSurfaces: Map<string, GeometryResolvedPlanPolygon>;
   openingPolygons: Map<string, GeometryResolvedPlanPolygon>;
+  wallEdgeFrames: ObjectWorkbenchPlanDeckReferenceFrame[];
   referenceFrames: ObjectWorkbenchPlanDeckReferenceFrame[];
   commitReferenceFrames: ObjectWorkbenchPlanDeckReferenceFrame[];
+  snapFrameSource: 'top_projection_wall_edge' | 'top_projection_body' | 'geometry_plan';
   openingFrames: Map<string, GeometryOpeningFrame>;
 };
 
@@ -314,11 +318,37 @@ function topProjectionShapeOwnerId(shape: GeometryTopProjectionShape): string {
   return shape.sourceId ?? shape.sourceObjectId ?? shape.id;
 }
 
+function lineSegmentFromProjectionPolygon(polygon: readonly PlanPoint[]): { start: PlanPoint; end: PlanPoint } | null {
+  if (polygon.length < 4) return null;
+  let best: { startIndex: number; endIndex: number; distance: number } | null = null;
+  for (let index = 0; index < polygon.length; index += 1) {
+    const nextIndex = (index + 1) % polygon.length;
+    const start = polygon[index]!;
+    const end = polygon[nextIndex]!;
+    const distance = Math.hypot(end.x - start.x, end.y - start.y);
+    if (!best || distance > best.distance) {
+      best = { startIndex: index, endIndex: nextIndex, distance };
+    }
+  }
+  if (!best || best.distance <= ZERO_DIMENSION_EPSILON_M) return null;
+  const oppositeStartIndex = (best.startIndex + 3) % polygon.length;
+  const oppositeEndIndex = (best.endIndex + 1) % polygon.length;
+  const start = midpoint(polygon[best.startIndex]!, polygon[oppositeStartIndex]!);
+  const end = midpoint(polygon[best.endIndex]!, polygon[oppositeEndIndex]!);
+  return Math.hypot(end.x - start.x, end.y - start.y) > ZERO_DIMENSION_EPSILON_M ? { start, end } : null;
+}
+
 function buildTopProjectionLookup(
   topProjection: GeometryTopProjectionViewModel | null | undefined,
-): Pick<GeometryPlanLookup, 'footprint' | 'referenceFootprint' | 'deckSurfaces' | 'openingPolygons'> {
+): Pick<GeometryPlanLookup, 'footprint' | 'referenceFootprint' | 'deckSurfaces' | 'openingPolygons' | 'wallEdgeFrames'> {
   const deckSurfaces = new Map<string, GeometryResolvedPlanPolygon>();
   const openingPolygons = new Map<string, GeometryResolvedPlanPolygon>();
+  const wallEdgeCandidates: Array<{
+    sourceEdgeId: string;
+    start: PlanPoint;
+    end: PlanPoint;
+  }> = [];
+  const wallEdgeFrames: ObjectWorkbenchPlanDeckReferenceFrame[] = [];
   let footprint: GeometryResolvedPlanPolygon | null = null;
   let referenceFootprint: GeometryResolvedPlanPolygon | null = null;
   if (!topProjection) {
@@ -327,6 +357,7 @@ function buildTopProjectionLookup(
       referenceFootprint,
       deckSurfaces,
       openingPolygons,
+      wallEdgeFrames,
     };
   }
 
@@ -366,6 +397,23 @@ function buildTopProjectionLookup(
       });
       continue;
     }
+    if (
+      role === 'context' &&
+      shape.sourceType === 'house_line' &&
+      shape.kind === 'wall_segment' &&
+      shape.metadata?.planDetailRole === 'wall_edge'
+    ) {
+      const sourceEdgeId = normalizeSourceId(topProjectionMetadataString(shape, 'sourceEdgeId') ?? shape.sourceId);
+      const segment = sourceEdgeId ? lineSegmentFromProjectionPolygon(polygon) : null;
+      if (sourceEdgeId && segment) {
+        wallEdgeCandidates.push({
+          sourceEdgeId,
+          start: segment.start,
+          end: segment.end,
+        });
+      }
+      continue;
+    }
     if (shape.kind === 'opening_marker') {
       const openingId = topProjectionMetadataString(shape, 'openingId') ?? topProjectionShapeOwnerId(shape);
       openingPolygons.set(openingId, {
@@ -376,11 +424,26 @@ function buildTopProjectionLookup(
     }
   }
 
+  const frameFootprint = referenceFootprint?.polygon ?? footprint?.polygon ?? null;
+  if (frameFootprint) {
+    for (const candidate of wallEdgeCandidates) {
+      const frame = buildDeckReferenceFrameFromSegment({
+        sourceEdgeId: candidate.sourceEdgeId,
+        start: candidate.start,
+        end: candidate.end,
+        footprint: frameFootprint,
+        frameSource: 'top_projection_wall_edge',
+      });
+      if (frame) wallEdgeFrames.push(frame);
+    }
+  }
+
   return {
     footprint,
     referenceFootprint,
     deckSurfaces,
     openingPolygons,
+    wallEdgeFrames,
   };
 }
 
@@ -467,6 +530,7 @@ function buildDeckReferenceFrameFromSegment(input: {
   start: PlanPoint;
   end: PlanPoint;
   footprint: readonly PlanPoint[];
+  frameSource?: ObjectWorkbenchPlanDeckReferenceFrame['frameSource'];
 }): ObjectWorkbenchPlanDeckReferenceFrame | null {
   const dx = input.end.x - input.start.x;
   const dy = input.end.y - input.start.y;
@@ -485,6 +549,7 @@ function buildDeckReferenceFrameFromSegment(input: {
   return {
     hostEdgeId: frameSideFromOutward({ horizontal, outward }),
     sourceEdgeId: input.sourceEdgeId,
+    frameSource: input.frameSource,
     axis: horizontal ? 'along' : 'depth',
     spanStartM,
     spanEndM,
@@ -515,6 +580,7 @@ function buildDeckReferenceFramesFromPolygon(
       start,
       end,
       footprint: polygon,
+      frameSource: 'top_projection_body',
     });
     return frame ? [frame] : [];
   });
@@ -560,6 +626,7 @@ function buildGeometryLookup(
         start: line.start,
         end: line.end,
         footprint: referenceFootprint.polygon,
+        frameSource: 'geometry_plan',
       });
       if (!deckFrame) continue;
       const openingFrame: GeometryOpeningFrame = {
@@ -581,16 +648,27 @@ function buildGeometryLookup(
     footprint?.source === 'top_projection_committed'
       ? buildDeckReferenceFramesFromPolygon(footprint.polygon)
       : [];
-  const referenceFrames = projectionReferenceFrames.length ? projectionReferenceFrames : geometryReferenceFrames;
+  const referenceFrames = topProjectionLookup.wallEdgeFrames.length
+    ? topProjectionLookup.wallEdgeFrames
+    : projectionReferenceFrames.length
+      ? projectionReferenceFrames
+      : geometryReferenceFrames;
   const commitReferenceFrames = geometryReferenceFrames.length ? geometryReferenceFrames : referenceFrames;
+  const snapFrameSource = topProjectionLookup.wallEdgeFrames.length
+    ? 'top_projection_wall_edge'
+    : projectionReferenceFrames.length
+      ? 'top_projection_body'
+      : 'geometry_plan';
 
   return {
     footprint,
     referenceFootprint,
     deckSurfaces,
     openingPolygons: topProjectionLookup.openingPolygons,
+    wallEdgeFrames: topProjectionLookup.wallEdgeFrames,
     referenceFrames,
     commitReferenceFrames,
+    snapFrameSource,
     openingFrames,
   };
 }
@@ -924,6 +1002,7 @@ function buildDeckInteraction(input: {
     commitStartPolygon: resolveDeckCommitStartPolygon(input.deck),
     referenceFrames: [...input.lookup.referenceFrames],
     commitReferenceFrames: [...input.lookup.commitReferenceFrames],
+    snapFrameSource: input.lookup.snapFrameSource,
     crossEdgeReference: null,
   };
 }

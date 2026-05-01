@@ -1152,6 +1152,7 @@ export type ViewerSceneHouseSurfaceKind =
   | "attachment_plane";
 export type ViewerSceneHouseLineKind =
   | "gutter"
+  | "wall_segment"
   | "roof_outline"
   | "roof_feature"
   | "opening_outline"

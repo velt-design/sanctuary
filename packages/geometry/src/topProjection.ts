@@ -347,7 +347,7 @@ function projectionRoleForObject(object: ViewerSceneObject): TopProjectionRole {
     return 'hidden_from_top';
   }
   if (object.type === 'house_line') {
-    if (object.kind === 'opening_outline' || object.kind === 'attachment_target') return 'context';
+    if (object.kind === 'wall_segment' || object.kind === 'opening_outline' || object.kind === 'attachment_target') return 'context';
     return 'top_visible';
   }
   if (object.type === 'house_roof_material' || object.type === 'house_linear_solid') return 'top_visible';
@@ -438,6 +438,7 @@ function baseZOrder(input: { family: GeometryTopProjectionFamily; sourceType: Vi
   if (input.family === 'reference') return 5;
   if (input.family === 'house') {
     if (input.kind === 'wall') return 10;
+    if (input.kind === 'wall_segment') return 11;
     if (input.kind === 'footprint') return 12;
     if (input.kind === 'soffit' || input.kind === 'fascia' || input.kind === 'attachment_zone') return 20;
     if (input.kind === 'roof' || input.kind === 'house_roof_material') return 30;
@@ -553,7 +554,11 @@ function buildReferenceShapes(assembly: Assembly3D): GeometryTopProjectionShape[
 
 function shapeExtents(shapes: GeometryTopProjectionShape[]): GeometryTopProjectionViewModel['extents'] {
   const points = shapes
-    .filter((shape) => shape.metadata?.topProjectionRole !== 'hidden_from_top')
+    .filter((shape) => {
+      if (shape.metadata?.topProjectionRole === 'hidden_from_top') return false;
+      if (shape.sourceType === 'house_line' || shape.sourceType === 'reference_line') return false;
+      return true;
+    })
     .flatMap((shape) => shape.polygon);
   if (!points.length) return null;
   const minX = Math.min(...points.map((point) => point.x));

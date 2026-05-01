@@ -289,6 +289,78 @@ describe("buildTopProjectionViewModel", () => {
     });
   });
 
+  it("projects scene-backed wall edges as context detail without expanding top-view extents", () => {
+    const scene: ViewerSceneModel = {
+      layers: [
+        {
+          id: "house-detail",
+          label: "House Detail",
+          visibleByDefault: true,
+          objects: [
+            {
+              id: "roof-body",
+              type: "house_surface_solid",
+              sourceId: "roof-body",
+              kind: "roof",
+              boundary: [
+                { x: 0, y: 0, z: 2600 },
+                { x: 1000, y: 0, z: 2600 },
+                { x: 1000, y: 500, z: 2600 },
+                { x: 0, y: 500, z: 2600 },
+              ],
+              plane: {
+                origin: { x: 0, y: 0, z: 2600 },
+                xAxis: { x: 1, y: 0, z: 0 },
+                yAxis: { x: 0, y: 1, z: 0 },
+                normal: { x: 0, y: 0, z: 1 },
+              },
+              thicknessMm: 120,
+            },
+            {
+              id: "wall-edge-front",
+              type: "house_line",
+              sourceId: "footprint-edge-3",
+              kind: "wall_segment",
+              line: {
+                start: { x: -2000, y: 900, z: 0 },
+                end: { x: -1000, y: 900, z: 0 },
+              },
+              metadata: {
+                sourceEdgeId: "footprint-edge-3",
+                sourceWallId: "house-wall-3",
+                planDetailRole: "wall_edge",
+                snapRole: "deck_host_edge",
+              },
+            },
+          ],
+        },
+      ],
+    };
+
+    const projection = buildTopProjectionViewModelFromScene(scene);
+    const wallShape = projection.shapes.find((shape) => shape.sourceObjectId === "wall-edge-front");
+
+    expect(wallShape).toMatchObject({
+      sourceType: "house_line",
+      family: "house",
+      kind: "wall_segment",
+      sourceId: "footprint-edge-3",
+      metadata: expect.objectContaining({
+        sourceEdgeId: "footprint-edge-3",
+        sourceWallId: "house-wall-3",
+        planDetailRole: "wall_edge",
+        snapRole: "deck_host_edge",
+        topProjectionRole: "context",
+      }),
+    });
+    expect(projection.extents).toMatchObject({
+      minX: 0,
+      minY: 0,
+      maxX: 1000,
+      maxY: 500,
+    });
+  });
+
   it("projects roof and deck solids from the semantic top boundary instead of mesh ring order", () => {
     const bottomRing: Polygon3 = [
       { x: 40, y: 25, z: 0 },

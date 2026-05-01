@@ -268,6 +268,31 @@ function makeGeometryTopProjection(): GeometryTopProjectionViewModel {
         },
       },
       {
+        id: 'house_line:wall-rear-line-projection',
+        sourceObjectId: 'wall-rear-line',
+        sourceId: 'rear-edge',
+        sourceType: 'house_line',
+        family: 'house',
+        kind: 'wall_segment',
+        polygon: [
+          { x: 0, y: -15 },
+          { x: 7000, y: -15 },
+          { x: 7000, y: 15 },
+          { x: 0, y: 15 },
+        ],
+        zOrder: 21,
+        zMin: 0,
+        zMax: 0,
+        metadata: {
+          sourceEdgeId: 'rear-edge',
+          sourceWallId: 'wall-rear',
+          hostEdgeSide: 'rear',
+          planDetailRole: 'wall_edge',
+          snapRole: 'deck_host_edge',
+          topProjectionRole: 'context',
+        },
+      },
+      {
         id: 'house_surface_solid:house-solid-deck-1',
         sourceObjectId: 'house-solid-deck-1',
         sourceId: 'house-solid-deck-1',
@@ -439,6 +464,13 @@ describe('buildPlanViewModel', () => {
           { x: 4.4, y: 2.65 },
           { x: 1.2, y: 2.65 },
         ],
+      }),
+    );
+    expect(deck?.deckInteraction?.snapFrameSource).toBe('top_projection_wall_edge');
+    expect(deck?.deckInteraction?.referenceFrames[0]).toEqual(
+      expect.objectContaining({
+        sourceEdgeId: 'rear-edge',
+        frameSource: 'top_projection_wall_edge',
       }),
     );
     expect(opening).toEqual(

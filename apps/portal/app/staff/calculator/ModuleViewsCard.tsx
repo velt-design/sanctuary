@@ -2098,7 +2098,7 @@ function topProjectionShapeClass(shape: GeometryTopProjectionShape): string {
     if (shape.kind === 'soffit') return planHouseSurfaceClass('soffit');
     if (shape.kind === 'fascia') return planHouseSurfaceClass('fascia');
     if (shape.kind === 'attachment_zone') return planHouseSurfaceClass('attachment_zone');
-    if (shape.kind === 'gutter' || shape.kind === 'roof_feature') {
+    if (shape.kind === 'gutter' || shape.kind === 'roof_feature' || shape.kind === 'wall_segment') {
       return `${styles.modulePlanHouseSurface} ${styles.modulePlanTopProjectionLine}`;
     }
     return `${styles.modulePlanHouseSurface} ${styles.modulePlanHouseFootprint} ${styles.modulePlanTopProjectionReference}`;
@@ -2134,6 +2134,15 @@ function topProjectionShapeAllowedInProjectionOnlyModel(shape: GeometryTopProjec
     return shape.kind === 'roof_plane' || shape.kind === 'roof_cladding';
   }
   return false;
+}
+
+function topProjectionContextLineAllowedInProjectionOnlyModel(shape: GeometryTopProjectionShape): boolean {
+  if (topProjectionRole(shape) !== 'context') return false;
+  if (shape.family !== 'house') return false;
+  if (shape.sourceType === 'house_line') {
+    return shape.kind === 'wall_segment' || shape.kind === 'attachment_target' || shape.kind === 'opening_outline';
+  }
+  return shape.kind === 'opening_marker';
 }
 
 function objectWorkbenchShapeVisualOwner(shape: Pick<ObjectWorkbenchPlanOverlay['shapes'][number], 'ownerKind' | 'ownerId'>): string {
@@ -5126,9 +5135,12 @@ function PlanSvg({
   );
   const suppressedTopProjectionOwnershipBodyCount =
     planRenderGraph.committedBodies.length - committedTopProjectionBodies.length;
+  const renderedTopProjectionContextLines = useProjectionOnlyModelSpacePlan
+    ? planRenderGraph.contextLines.filter(({ shape }) => topProjectionContextLineAllowedInProjectionOnlyModel(shape))
+    : planRenderGraph.contextLines;
   const renderedTopProjectionShapes = [
     ...committedTopProjectionBodies,
-    ...(useProjectionOnlyModelSpacePlan ? [] : planRenderGraph.contextLines),
+    ...renderedTopProjectionContextLines,
   ];
   const suppressedTopProjectionContextBodyCount = topProjectionShapes.filter(
     ({ shape }) => topProjectionRole(shape) === 'context' && topProjectionPlanLayer(shape) === null,
@@ -5143,6 +5155,15 @@ function PlanSvg({
   const topProjectionHiddenRenderedCount = renderedTopProjectionShapes.filter(({ shape }) => topProjectionRole(shape) === 'hidden_from_top').length;
   const renderedTopProjectionContextBodyCount = renderedTopProjectionShapes.filter(
     ({ shape }) => topProjectionRole(shape) === 'context' && topProjectionShapeIsCommittedBody(shape),
+  ).length;
+  const renderedTopProjectionContextLineCount = renderedTopProjectionShapes.filter(
+    ({ shape }) => topProjectionPlanLayer(shape) === 'contextLines',
+  ).length;
+  const renderedTopProjectionWallDetailCount = renderedTopProjectionShapes.filter(
+    ({ shape }) =>
+      shape.sourceType === 'house_line' &&
+      shape.kind === 'wall_segment' &&
+      shape.metadata?.planDetailRole === 'wall_edge',
   ).length;
   const committedTopProjectionBodyCount = renderedTopProjectionShapes.filter(({ shape }) =>
     topProjectionShapeIsCommittedBody(shape),
@@ -5307,6 +5328,8 @@ function PlanSvg({
   const visibleRawObjectWorkbenchOverlayShapes = visibleRawObjectWorkbenchOverlayShapesAllSources.filter(
     (shape) => !useProjectionOnlyModelSpacePlan || shape.source === 'top_projection_committed',
   );
+  const selectedDeckSnapFrameSource =
+    rawObjectWorkbenchOverlayShapes.find((shape) => shape.ownerKind === 'deck' && shape.selected)?.deckInteraction?.snapFrameSource ?? null;
   const projectionCommittedOverlayOwnerKeys = new Set(
     visibleRawObjectWorkbenchOverlayShapes
       .filter((shape) => shape.source === 'top_projection_committed')
@@ -5836,6 +5859,9 @@ function PlanSvg({
         data-top-projection-hidden-count={exposesPlanProjectionDiagnostics && modelSpaceTopProjection ? topProjectionHiddenCount : undefined}
         data-top-projection-rendered-count={exposesPlanProjectionDiagnostics && modelSpaceTopProjection ? renderedTopProjectionShapes.length : undefined}
         data-top-projection-hidden-rendered-count={exposesPlanProjectionDiagnostics && modelSpaceTopProjection ? topProjectionHiddenRenderedCount : undefined}
+        data-plan-rendered-context-line-count={exposesPlanProjectionDiagnostics && modelSpaceTopProjection ? renderedTopProjectionContextLineCount : undefined}
+        data-plan-wall-detail-count={exposesPlanProjectionDiagnostics && modelSpaceTopProjection ? renderedTopProjectionWallDetailCount : undefined}
+        data-plan-deck-snap-frame-source={exposesPlanProjectionDiagnostics ? selectedDeckSnapFrameSource ?? undefined : undefined}
         data-plan-committed-top-projection-body-count={exposesPlanProjectionDiagnostics && modelSpaceTopProjection ? committedTopProjectionBodyCount : undefined}
         data-plan-committed-top-projection-object-count={exposesPlanProjectionDiagnostics && modelSpaceTopProjection ? committedTopProjectionObjectIds.size : undefined}
         data-plan-object-overlay-body-count={exposesPlanProjectionDiagnostics ? objectWorkbenchRenderedBodyCount : undefined}
@@ -6009,8 +6035,20 @@ function PlanSvg({
                     ? `${modelSpaceTopProjection.screenAxis.x}_${modelSpaceTopProjection.screenAxis.y}`
                     : undefined
                 }
-                data-house-plan-surface={shape.family === 'house' && shape.kind !== 'gutter' && shape.kind !== 'roof_feature' ? shape.kind : undefined}
-                data-house-plan-line={shape.family === 'house' && (shape.kind === 'gutter' || shape.kind === 'roof_feature' || shape.kind === 'attachment_target') ? shape.kind : undefined}
+                data-house-plan-surface={
+                  shape.family === 'house' &&
+                  shape.kind !== 'gutter' &&
+                  shape.kind !== 'roof_feature' &&
+                  shape.kind !== 'attachment_target' &&
+                  shape.kind !== 'wall_segment'
+                    ? shape.kind
+                    : undefined
+                }
+                data-house-plan-line={shape.family === 'house' && (shape.kind === 'gutter' || shape.kind === 'roof_feature' || shape.kind === 'attachment_target' || shape.kind === 'wall_segment') ? shape.kind : undefined}
+                data-plan-detail-role={typeof shape.metadata?.planDetailRole === 'string' ? shape.metadata.planDetailRole : undefined}
+                data-plan-snap-role={typeof shape.metadata?.snapRole === 'string' ? shape.metadata.snapRole : undefined}
+                data-plan-source-edge-id={typeof shape.metadata?.sourceEdgeId === 'string' ? shape.metadata.sourceEdgeId : undefined}
+                data-plan-source-wall-id={typeof shape.metadata?.sourceWallId === 'string' ? shape.metadata.sourceWallId : undefined}
                 data-plan-primary-fill={shape.family === 'pergola' && shape.kind === 'roof_plane' ? 'true' : undefined}
                 data-plan-geometry-surface={shape.family === 'pergola' && (shape.kind === 'roof_plane' || shape.kind === 'roof_cladding') ? shape.kind : undefined}
                 data-plan-surface-id={shape.family === 'pergola' && (shape.kind === 'roof_plane' || shape.kind === 'roof_cladding') ? shape.sourceId ?? shape.sourceObjectId : undefined}

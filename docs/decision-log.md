@@ -35,12 +35,29 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. Use 
 | 2026-05-01 | Plan Rendering | Promoted | Projection-backed overlays must bind visible selection/hit geometry to committed top-projection polygons, not reference footprints. |
 | 2026-05-01 | Plan Rendering | Promoted | Geometry-ready Model Space is a hard top-projection-only render path; legacy/context/reference/opening overlays stay out of normal visuals. |
 | 2026-05-01 | Deck Interaction | Promoted | Projection-backed deck snapping must use top-projection frames live and object frames only at the commit boundary. |
+| 2026-05-01 | Plan Detail | Promoted | Geometry-ready plan detail and deck snap edges must come from scene-backed projected wall segments, not legacy footprint overlays or roof outlines. |
 | 2026-05-01 | Quotes/Invoices/Job Packs | Promoted | High-risk side-effect workflows need a canonical doc before future behavior changes. |
 | 2026-05-01 | Docs | Promoted | Read the agent playbook for non-trivial portal work; promote durable lessons from this log into the playbook. |
 | 2026-05-01 | Docs | Promoted | Do not delete active guardrail docs without confirming usage or replacing the rule. |
 | 2026-05-01 | Docs | Promoted | Distinguish current-state references from active operating rules. |
 
 ## Entries
+
+### 2026-05-01 - Plan Detail - Scene-Backed Wall Edges
+
+Area: Plan Detail
+
+Status: Promoted
+
+Decision or mistake: After Model Space became projection-only, plan detail still needed to return without reintroducing legacy/reference overlays or using roof outlines as deck host edges.
+
+Why it mattered: users need accurate wall edges for snapping and readable plans, but detail must remain tied to the same 3D scene as the top-view bodies.
+
+Current guardrail: solved house wall segments emit `house_line:wall_segment` scene objects. Top projection renders them as context detail with `planDetailRole: wall_edge` and `snapRole: deck_host_edge`; they do not drive extents or committed body counts. Projection-backed deck snapping should prefer these wall-edge frames, with committed body frames only as fallback.
+
+Promoted to: `docs/design-workbench-architecture.md`.
+
+Related docs/tests: `packages/geometry/src/viewer.test.ts`, `packages/geometry/src/topProjection.test.ts`, `apps/portal/app/staff/calculator/ModuleViewsCard.test.tsx`, `apps/portal/lib/drawings/views/plan/buildPlanViewModel.test.ts`.
 
 ### 2026-05-01 - Plan Rendering - Model Space Hard Projection Cut
 
