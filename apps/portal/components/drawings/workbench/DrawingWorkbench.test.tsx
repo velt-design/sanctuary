@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import type { CostOutputV1 } from '@sp/costing';
 import type { GeometryPlanViewModel, GeometryTopProjectionViewModel } from '@sp/geometry';
+import type { ModuleViewsTab } from '@/app/staff/calculator/ModuleViewsCard';
 import type { CalculatorModuleInputs } from '@/lib/types/calculator';
 import { buildEstimateDrawingModules } from '@/lib/estimates/moduleDrawing';
 import { buildEstimateDrawingSheetMeta } from '@/lib/estimates/drawingSheet';
@@ -329,6 +330,52 @@ describe('DrawingWorkbench', () => {
     expect(warnMarkup).toContain('Warning: Approximate');
     expect(blockMarkup).toContain('data-workbench-trust-status="block"');
     expect(blockMarkup).toContain('Blocked: Unresolved host');
+  });
+
+  it('keeps chrome callbacks wired through the extracted shell', () => {
+    const drawing = makeDrawingModule();
+    const meta = buildEstimateDrawingSheetMeta({
+      moduleLabel: 'M1 - Pitched - 6m x 3m - Acrylic',
+      view: 'plan',
+    });
+    const viewChanges: ModuleViewsTab[] = [];
+    const viewportChanges: DrawingWorkbenchViewportMode[] = [];
+
+    const rendered = renderIntoDocument(
+      <DrawingWorkbench
+        moduleLabel="M1 - Pitched - 6m x 3m - Acrylic"
+        modules={[{ id: 'module-1', label: 'M1 - Pitched - 6m x 3m - Acrylic' }]}
+        activeModuleIndex={0}
+        onActiveModuleIndexChange={() => undefined}
+        view="plan"
+        onViewChange={(next) => viewChanges.push(next)}
+        viewportMode="sheet"
+        availableViewportModes={['sheet', 'model', 'geometry3d']}
+        onViewportModeChange={(next) => viewportChanges.push(next)}
+        status="ready"
+        planModel={drawing.planModel}
+        sectionModel={drawing.sectionModel}
+        modelViewportTransform={createDrawingWorkbenchUiState().viewportTransform}
+        onModelViewportTransformChange={() => undefined}
+        meta={meta}
+      />,
+    );
+
+    const clickByText = (text: string) => {
+      const button = Array.from(rendered.container.querySelectorAll('button')).find((candidate) => candidate.textContent === text);
+      if (!(button instanceof HTMLButtonElement)) throw new Error(`Missing button: ${text}`);
+      act(() => {
+        button.click();
+      });
+    };
+
+    clickByText('Section');
+    clickByText('Model Space');
+
+    expect(viewChanges).toEqual(['section']);
+    expect(viewportChanges).toEqual(['model']);
+
+    rendered.unmount();
   });
 
   it('renders the model-space viewport without sheet furniture when model mode is active', () => {

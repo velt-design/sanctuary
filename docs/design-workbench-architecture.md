@@ -13,7 +13,7 @@ The design workbench is the portal drawing and model-editing surface for estimat
 
 ## Component Layers
 
-- `workbench`: top-level shell, viewport mode switching, save/status surfaces.
+- `workbench`: top-level shell, viewport mode switching, save/status surfaces, and the only component-layer host that composes viewport branches.
 - `viewports`: Model Space, Sheet View, 3D, Draw Outline interaction.
 - `rail`: configurator and object-workbench inspector rails.
 - `sheets`: A3 sheet composition.
@@ -51,6 +51,8 @@ The active workbench is object-first:
 ## Rail Notes
 
 `ObjectWorkbenchRail` is the canonical hidden workbench rail. `ConfiguratorRail` remains for estimates-tab compatibility.
+
+Rail state flows through route/store selection contracts. Rail components do not import viewport modules, and viewport components do not import rail modules; route clients and the workbench shell are the composition boundary that places the lanes together.
 
 House Forms expose preset footprints and roof forms: flat, mono, gable, and hipped. Preset changes should keep roof-form intent available across attachment-side rotations. Unsupported custom topology should preserve selected intent while surfacing blocking diagnostics rather than silently approximating geometry.
 

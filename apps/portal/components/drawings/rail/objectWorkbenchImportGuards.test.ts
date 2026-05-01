@@ -49,6 +49,12 @@ const OBJECT_WORKBENCH_RENDERER_TEST_FILES = [
   path.join('apps', 'portal', 'app', 'staff', 'calculator', 'ModuleViewsCard.test.tsx'),
   path.join('apps', 'portal', 'components', 'drawings', 'viewports', 'ModelSpaceViewport.test.tsx'),
 ];
+const RAIL_SOURCE_ROOT = path.join('apps', 'portal', 'components', 'drawings', 'rail');
+const VIEWPORT_SOURCE_ROOT = path.join('apps', 'portal', 'components', 'drawings', 'viewports');
+const WORKBENCH_COMPOSITION_BOUNDARY_FILES = new Set([
+  path.normalize(path.join('apps', 'portal', 'components', 'drawings', 'workbench', 'DrawingWorkbench.tsx')),
+  path.normalize(path.join('apps', 'portal', 'components', 'drawings', 'workbench', 'WorkbenchViewportHost.tsx')),
+]);
 const OBJECT_WORKBENCH_GEOMETRY_PUBLIC_BOUNDARY_FILES = [
   path.join('apps', 'portal', 'lib', 'drawings', 'geometry', 'buildRawGeometryModuleInput.ts'),
   path.join('apps', 'portal', 'lib', 'drawings', 'geometry', 'buildWorkbenchGeometryPreview.ts'),
@@ -144,6 +150,38 @@ function isLegacyPersistenceCompatibilityZone(relativePath: string): boolean {
 }
 
 describe('object workbench import guards', () => {
+  it('keeps rail and viewport composition behind the workbench shell boundary', () => {
+    const violations: string[] = [];
+
+    for (const absolutePath of listSourceFiles(path.join(process.cwd(), RAIL_SOURCE_ROOT))) {
+      const relativePath = toRepoRelativePath(absolutePath);
+      const source = fs.readFileSync(absolutePath, 'utf8');
+      if (/from ['"][^'"]*(?:@\/components\/drawings\/viewports|\.\.\/viewports|\.\/viewports)/.test(source)) {
+        violations.push(`${relativePath} imports viewport modules from rail`);
+      }
+    }
+
+    for (const absolutePath of listSourceFiles(path.join(process.cwd(), VIEWPORT_SOURCE_ROOT))) {
+      const relativePath = toRepoRelativePath(absolutePath);
+      const source = fs.readFileSync(absolutePath, 'utf8');
+      if (/from ['"][^'"]*(?:@\/components\/drawings\/rail|\.\.\/rail|\.\/rail)/.test(source)) {
+        violations.push(`${relativePath} imports rail modules from viewport`);
+      }
+    }
+
+    for (const absolutePath of listSourceFiles(path.join(process.cwd(), path.join('apps', 'portal', 'components', 'drawings', 'workbench')))) {
+      const relativePath = toRepoRelativePath(absolutePath);
+      const source = fs.readFileSync(absolutePath, 'utf8');
+      const importsViewport = /from ['"][^'"]*(?:@\/components\/drawings\/viewports|\.\.\/viewports|\.\/viewports)/.test(source);
+      const importsRail = /from ['"][^'"]*(?:@\/components\/drawings\/rail|\.\.\/rail|\.\/rail)/.test(source);
+      if ((importsViewport || importsRail) && !WORKBENCH_COMPOSITION_BOUNDARY_FILES.has(relativePath)) {
+        violations.push(`${relativePath} composes rail or viewport modules outside the shell boundary`);
+      }
+    }
+
+    expect(violations).toEqual([]);
+  });
+
   it('keeps canonical rail and hidden-route UI off compatibility-only imports', () => {
     const violations: string[] = [];
 

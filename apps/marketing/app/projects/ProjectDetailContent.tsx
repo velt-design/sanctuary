@@ -83,10 +83,17 @@ export default function ProjectDetailContent({
     );
   }
 
-  const dimensionList = [
-    { label: 'Width', value: project.stats.width },
-    { label: 'Depth', value: project.stats.depth },
-    { label: 'Height', value: project.stats.height },
+  const dimensionSummary = [
+    project.stats.width ? `${project.stats.width} W` : '',
+    project.stats.depth ? `${project.stats.depth} D` : '',
+    project.stats.height ? `${project.stats.height} H` : '',
+  ].filter(Boolean).join(' / ');
+
+  const specList = [
+    { label: 'Project', value: `${project.type} / ${project.roof}` },
+    { label: 'Year', value: project.year },
+    { label: 'Region', value: project.region },
+    { label: 'Dimensions', value: dimensionSummary },
     { label: 'Area', value: project.stats.area },
     { label: 'Pitch', value: project.stats.pitch },
   ].filter(item => item.value);
@@ -141,26 +148,10 @@ export default function ProjectDetailContent({
             <p className="project-detail__blurb">{project.blurb}</p>
           </div>
           <dl className="project-detail__quick-facts" aria-label="Project summary">
-            <div>
-              <dt>Type</dt>
-              <dd>{project.type}</dd>
-            </div>
-            <div>
-              <dt>Roof</dt>
-              <dd>{project.roof}</dd>
-            </div>
-            <div>
-              <dt>Year</dt>
-              <dd>{project.year}</dd>
-            </div>
-            <div>
-              <dt>Region</dt>
-              <dd>{project.region}</dd>
-            </div>
-            {dimensionList.map(dim => (
-              <div key={dim.label}>
-                <dt>{dim.label}</dt>
-                <dd>{dim.value}</dd>
+            {specList.map(spec => (
+              <div key={spec.label}>
+                <dt>{spec.label}</dt>
+                <dd>{spec.value}</dd>
               </div>
             ))}
           </dl>
