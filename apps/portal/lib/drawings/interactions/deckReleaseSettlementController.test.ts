@@ -4,7 +4,11 @@ import type {
   ObjectWorkbenchPlanShapeOverlay,
   PlanPoint,
 } from '@/lib/drawings/views/plan/objectWorkbenchPlanOverlay';
-import type { DeckCommitTransformDiagnostics, DeckPreviewState } from './deckInteractionAdapter';
+import type {
+  DeckCommitCoordinateTrace,
+  DeckCommitTransformDiagnostics,
+  DeckPreviewState,
+} from './deckInteractionAdapter';
 import {
   advanceDeckReleaseSettleState,
   createDeckReleaseSettleState,
@@ -91,6 +95,29 @@ function makePreview(overrides: Partial<DeckPreviewState> = {}): DeckPreviewStat
   };
 }
 
+function makeCoordinateTrace(preview: DeckPreviewState): DeckCommitCoordinateTrace {
+  return {
+    dragStartPolygon: preview.polygon,
+    previewPolygon: preview.polygon,
+    releasePolygon: preview.polygon,
+    commitSpacePolygon: preview.polygon,
+    rebuiltProjectionPolygon: null,
+    patch: {
+      hostEdgeId: preview.witnessEdgeId,
+      attachmentMode: preview.attachmentMode,
+      primaryHostEdgeId: preview.primaryHostEdgeId,
+      secondaryHostEdgeId: preview.secondaryHostEdgeId,
+      cornerVertexId: preview.cornerVertexId,
+      isAttached: preview.releasePlacement === 'snapped',
+    },
+    transform: commitTransform,
+    centroidDeltaM: {
+      previewToCommit: { x: 0, y: 0 },
+      releaseToRebuilt: null,
+    },
+  };
+}
+
 function makeSettlingState(
   overrides: Partial<DeckDragSettleState> = {},
 ): DeckDragSettleState {
@@ -104,6 +131,7 @@ function makeSettlingState(
         ? 'floating_rect_from_projection_preview'
         : 'snapped_frame_commit',
       commitTransform,
+      coordinateTrace: makeCoordinateTrace(preview),
     }),
     ...overrides,
   };
@@ -173,6 +201,23 @@ function makeDeckShape(overrides: Partial<ObjectWorkbenchPlanShapeOverlay> = {})
 }
 
 describe('deckReleaseSettlementController', () => {
+  it('preserves the coordinate trace while release settle is pending', () => {
+    const preview = makePreview();
+    const trace = makeCoordinateTrace(preview);
+    const state = createDeckReleaseSettleState({
+      deckId: preview.deckId,
+      previewState: preview,
+      commitStartedAtMs: 900,
+      commitSource: 'snapped_frame_commit',
+      commitTransform,
+      coordinateTrace: trace,
+    });
+
+    expect(state.coordinateTrace).toBe(trace);
+    expect(state.coordinateTrace.transform).toBe(commitTransform);
+    expect(state.coordinateTrace.centroidDeltaM.releaseToRebuilt).toBeNull();
+  });
+
   it('keeps a committed snapped release frozen until rebuilt top-projection geometry is stable', () => {
     const state = makeCommittedState();
     const match = resolveDeckSettleMatch({
@@ -191,6 +236,8 @@ describe('deckReleaseSettlementController', () => {
     expect(firstFrame.finalizeOutcome).toBeNull();
     expect(firstFrame.releaseFeedback).toBeNull();
     expect(firstFrame.state.stableMatchFrameCount).toBe(1);
+    expect(firstFrame.state.coordinateTrace.rebuiltProjectionPolygon).toEqual(polygon);
+    expect(firstFrame.state.coordinateTrace.centroidDeltaM.releaseToRebuilt).toEqual({ x: 0, y: 0 });
     expect(resolveDeckReleasePreview({
       settleState: firstFrame.state,
       previewState: null,
@@ -214,14 +261,16 @@ describe('deckReleaseSettlementController', () => {
       settleMatchSource: 'top_projection_committed',
       projectionSettleStatus: 'matched',
     });
+    expect(secondFrame.releaseFeedback?.coordinateTrace.centroidDeltaM.releaseToRebuilt).toEqual({ x: 0, y: 0 });
   });
 
   it('fails a snapped release after the canonical settle deadline when rebuilt geometry differs', () => {
     const state = makeCommittedState();
+    const shiftedPolygon = polygon.map((point) => ({ x: point.x + 10, y: point.y }));
     const match = resolveDeckSettleMatch({
       settleState: state,
       settledDeckShape: makeDeckShape({
-        polygon: polygon.map((point) => ({ x: point.x + 10, y: point.y })),
+        polygon: shiftedPolygon,
       }),
     });
 
@@ -241,6 +290,8 @@ describe('deckReleaseSettlementController', () => {
       releaseError: 'Deck release preview did not match rebuilt plan geometry.',
       projectionSettleStatus: 'failed',
     });
+    expect(deadline.state.coordinateTrace.rebuiltProjectionPolygon).toEqual(shiftedPolygon);
+    expect(deadline.state.coordinateTrace.centroidDeltaM.releaseToRebuilt).toEqual({ x: 10, y: 0 });
 
     const failed = advanceDeckReleaseSettleState({
       state: deadline.state,
@@ -256,6 +307,7 @@ describe('deckReleaseSettlementController', () => {
       settleVisualState: 'failed',
       projectionSettleStatus: 'failed',
     });
+    expect(failed.releaseFeedback?.coordinateTrace.centroidDeltaM.releaseToRebuilt).toEqual({ x: 10, y: 0 });
   });
 
   it('lets a floating release complete when the top-projection deck body is still pending', () => {
@@ -315,6 +367,7 @@ describe('deckReleaseSettlementController', () => {
       settleMatchSource: 'none' as const,
       projectionSettleStatus: 'failed' as const,
       commitTransform,
+      coordinateTrace: makeCoordinateTrace(makePreview()),
     };
 
     expect(resolveDeckReleasePreview({

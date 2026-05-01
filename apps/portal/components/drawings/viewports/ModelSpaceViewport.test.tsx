@@ -5651,7 +5651,8 @@ describe('ModelSpaceViewport', () => {
     const svg = rendered.container.querySelector('svg[aria-label="Module plan view"]') as SVGSVGElement | null;
     const deckHit = rendered.container.querySelector('[data-object-workbench-shape-hit="deck:deck-1"]');
     const deckShape = rendered.container.querySelector('[data-object-workbench-shape="deck:deck-1"]');
-    if (!svg || !deckHit || !deckShape) {
+    const scroller = rendered.container.querySelector('[data-model-space-scroller]') as HTMLElement | null;
+    if (!svg || !deckHit || !deckShape || !scroller) {
       throw new Error('Missing merged house-mode deck nodes.');
     }
     installProjectedSvgPointMock(svg);
@@ -5689,6 +5690,14 @@ describe('ModelSpaceViewport', () => {
     expect(committedOutlineAlongAfter).toBe(committedOutlineAlongBefore);
     expect(committedOutlineDepthAfter).not.toBe(committedOutlineDepthBefore);
     expect(rendered.container.querySelector('[data-object-workbench-preview-shape="deck-1"]')).toBeNull();
+    expect(scroller.dataset.deckTraceRenderCoordinateSpace).toBe('top_projection_world_m');
+    expect(scroller.dataset.deckTraceCommitCoordinateSpace).toBe('object_frame_m');
+    expect(scroller.dataset.deckTraceTransformSource).not.toBe('legacy_plan');
+    expect(scroller.dataset.deckTracePreviewToCommitDeltaX).not.toBe('');
+    expect(scroller.dataset.deckTracePreviewToCommitDeltaY).not.toBe('');
+    expect(scroller.dataset.deckTraceReleaseToRebuiltDeltaX).not.toBe('');
+    expect(scroller.dataset.deckTraceReleaseToRebuiltDeltaY).not.toBe('');
+    expect(scroller.dataset.deckTraceStatus).toBe('drift');
 
     rendered.unmount();
   });
@@ -6736,6 +6745,14 @@ describe('ModelSpaceViewport', () => {
     expect(scroller.dataset.deckCommitCoordinateSpace).toBe('object_frame_m');
     expect(scroller.dataset.deckCommitTransformSource).not.toBe('legacy_plan');
     expect(scroller.dataset.deckCommitTransformSource).not.toBe('missing_frame');
+    expect(scroller.dataset.deckTraceRenderCoordinateSpace).toBe('top_projection_world_m');
+    expect(scroller.dataset.deckTraceCommitCoordinateSpace).toBe('object_frame_m');
+    expect(scroller.dataset.deckTraceTransformSource).not.toBe('legacy_plan');
+    expect(scroller.dataset.deckTracePreviewToCommitDeltaX).not.toBe('');
+    expect(scroller.dataset.deckTracePreviewToCommitDeltaY).not.toBe('');
+    expect(scroller.dataset.deckTraceReleaseToRebuiltDeltaX).not.toBe('');
+    expect(scroller.dataset.deckTraceReleaseToRebuiltDeltaY).not.toBe('');
+    expect(scroller.dataset.deckTraceStatus).toBe('drift');
     expect(rendered.container.querySelector('[data-testid="deck-telemetry-release-outcome"]')?.textContent).toBe(
       'committed',
     );

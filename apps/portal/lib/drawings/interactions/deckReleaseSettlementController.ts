@@ -1,4 +1,5 @@
 import type {
+  DeckCommitCoordinateTrace,
   DeckCommitTransformDiagnostics,
   DeckPreviewState,
 } from './deckInteractionAdapter';
@@ -37,6 +38,7 @@ export type DeckDragSettleState = {
   settleMatchSource: DeckSettleMatchSource;
   projectionSettleStatus: DeckProjectionSettleStatus;
   commitTransform: DeckCommitTransformDiagnostics;
+  coordinateTrace: DeckCommitCoordinateTrace;
 };
 
 export type DeckReleaseFeedbackState = {
@@ -51,12 +53,14 @@ export type DeckReleaseFeedbackState = {
   settleMatchSource: DeckSettleMatchSource;
   projectionSettleStatus: DeckProjectionSettleStatus;
   commitTransform: DeckCommitTransformDiagnostics;
+  coordinateTrace: DeckCommitCoordinateTrace;
 };
 
 export type DeckSettleMatch = {
   matches: boolean;
   source: DeckSettleMatchSource;
   projectionStatus: DeckProjectionSettleStatus;
+  rebuiltProjectionPolygon: PlanPoint[] | null;
 };
 
 export const DECK_SETTLE_MATCH_TOLERANCE_M = 0.1;
@@ -175,6 +179,53 @@ function resolvePolygonCenter(polygon: readonly PlanPoint[]): PlanPoint | null {
   };
 }
 
+function resolveCentroidDelta(from: readonly PlanPoint[], to: readonly PlanPoint[] | null): PlanPoint | null {
+  const fromCenter = resolvePolygonCenter(from);
+  const toCenter = to ? resolvePolygonCenter(to) : null;
+  if (!fromCenter || !toCenter) return null;
+  return {
+    x: toCenter.x - fromCenter.x,
+    y: toCenter.y - fromCenter.y,
+  };
+}
+
+function resolveRebuiltProjectionPolygon(
+  shape: ObjectWorkbenchPlanShapeOverlay | null,
+): PlanPoint[] | null {
+  return shape?.source === 'top_projection_committed' ? shape.polygon : null;
+}
+
+function updateDeckCoordinateTraceWithRebuiltProjection(input: {
+  trace: DeckCommitCoordinateTrace;
+  rebuiltProjectionPolygon: PlanPoint[] | null;
+}): DeckCommitCoordinateTrace {
+  const releaseToRebuilt = resolveCentroidDelta(
+    input.trace.releasePolygon,
+    input.rebuiltProjectionPolygon,
+  );
+  const currentDelta = input.trace.centroidDeltaM.releaseToRebuilt;
+  const currentHasRebuiltProjection = Boolean(input.trace.rebuiltProjectionPolygon);
+  const nextHasRebuiltProjection = Boolean(input.rebuiltProjectionPolygon);
+  if (
+    currentHasRebuiltProjection === nextHasRebuiltProjection &&
+    ((!currentDelta && !releaseToRebuilt) ||
+      (currentDelta &&
+        releaseToRebuilt &&
+        currentDelta.x === releaseToRebuilt.x &&
+        currentDelta.y === releaseToRebuilt.y))
+  ) {
+    return input.trace;
+  }
+  return {
+    ...input.trace,
+    rebuiltProjectionPolygon: input.rebuiltProjectionPolygon,
+    centroidDeltaM: {
+      ...input.trace.centroidDeltaM,
+      releaseToRebuilt,
+    },
+  };
+}
+
 function deckShapeSemanticallyMatchesPreview(input: {
   shape: {
     polygon: PlanPoint[];
@@ -240,6 +291,7 @@ export function createDeckReleaseSettleState(input: {
   commitStartedAtMs: number;
   commitSource: DeckReleaseCommitSource;
   commitTransform: DeckCommitTransformDiagnostics;
+  coordinateTrace: DeckCommitCoordinateTrace;
 }): DeckDragSettleState {
   return {
     deckId: input.deckId,
@@ -257,6 +309,7 @@ export function createDeckReleaseSettleState(input: {
     settleMatchSource: 'none',
     projectionSettleStatus: 'pending',
     commitTransform: input.commitTransform,
+    coordinateTrace: input.coordinateTrace,
   };
 }
 
@@ -287,8 +340,10 @@ export function resolveDeckSettleMatch(input: {
       matches: false,
       source: 'none',
       projectionStatus: 'none',
+      rebuiltProjectionPolygon: null,
     };
   }
+  const rebuiltProjectionPolygon = resolveRebuiltProjectionPolygon(input.settledDeckShape);
   const visuallyMatches = polygonsVisuallyMatch(
     input.settledDeckShape.polygon,
     input.settleState.previewState.polygon,
@@ -300,6 +355,7 @@ export function resolveDeckSettleMatch(input: {
         ? 'top_projection_committed'
         : 'semantic_projection',
       projectionStatus: 'matched',
+      rebuiltProjectionPolygon,
     };
   }
   const semanticallyMatches = deckShapeSemanticallyMatchesPreview({
@@ -311,12 +367,14 @@ export function resolveDeckSettleMatch(input: {
       matches: true,
       source: 'semantic_projection',
       projectionStatus: 'matched',
+      rebuiltProjectionPolygon,
     };
   }
   return {
     matches: false,
     source: input.settleState.releasePlacement === 'floating' ? 'floating_projection_pending' : 'none',
     projectionStatus: input.settleState.releasePlacement === 'floating' ? 'pending' : 'none',
+    rebuiltProjectionPolygon,
   };
 }
 
@@ -338,6 +396,7 @@ export function buildDeckReleaseFeedback(input: {
     settleMatchSource: input.outcome === 'failed' ? input.state.settleMatchSource : input.match.source,
     projectionSettleStatus: input.outcome === 'failed' ? 'failed' : input.match.projectionStatus,
     commitTransform: input.state.commitTransform,
+    coordinateTrace: input.state.coordinateTrace,
     expiresAtMs:
       input.nowMs +
       (input.outcome === 'committed' ? DECK_RELEASE_SUCCESS_FEEDBACK_MS : DECK_RELEASE_FAILURE_FEEDBACK_MS),
@@ -362,6 +421,16 @@ export function advanceDeckReleaseSettleState(input: {
     input.state.releaseOutcome === 'committed' && input.state.commitResolvedAtMs !== null;
   const matchedAndStable = input.match.matches && (committedReleaseReady || input.viewportStable);
   let nextState = input.state;
+  const coordinateTrace = updateDeckCoordinateTraceWithRebuiltProjection({
+    trace: input.state.coordinateTrace,
+    rebuiltProjectionPolygon: input.match.rebuiltProjectionPolygon,
+  });
+  if (coordinateTrace !== input.state.coordinateTrace) {
+    nextState = {
+      ...nextState,
+      coordinateTrace,
+    };
+  }
 
   if (!matchedAndStable) {
     if (
@@ -371,7 +440,7 @@ export function advanceDeckReleaseSettleState(input: {
       input.state.projectionSettleStatus !== input.match.projectionStatus
     ) {
       nextState = {
-        ...input.state,
+        ...nextState,
         matchedCommittedGeometry: false,
         stableMatchFrameCount: 0,
         settleMatchSource: input.match.source,
@@ -380,7 +449,7 @@ export function advanceDeckReleaseSettleState(input: {
     }
   } else if (input.state.stableMatchFrameCount < DECK_SETTLE_MATCH_STABLE_FRAMES) {
     nextState = {
-      ...input.state,
+      ...nextState,
       matchedCommittedGeometry: true,
       stableMatchFrameCount: Math.min(
         input.state.stableMatchFrameCount + 1,
@@ -395,7 +464,7 @@ export function advanceDeckReleaseSettleState(input: {
     return {
       state: nextState,
       releaseFeedback: buildDeckReleaseFeedback({
-        state: input.state,
+        state: nextState,
         match: input.match,
         outcome: 'failed',
         settleVisualState: 'failed',
@@ -415,7 +484,7 @@ export function advanceDeckReleaseSettleState(input: {
       return {
         state: nextState,
         releaseFeedback: buildDeckReleaseFeedback({
-          state: input.state,
+          state: nextState,
           match: input.match,
           outcome: 'committed',
           settleVisualState: 'complete',
@@ -427,8 +496,8 @@ export function advanceDeckReleaseSettleState(input: {
     }
     if (deadlineCanUnlock && input.requiresCanonicalMatch && input.state.releasePlacement !== 'floating') {
       return {
-        state: {
-          ...nextState,
+          state: {
+            ...nextState,
           releaseOutcome: 'failed',
           settleVisualState: 'failed',
           resolvedSuccess: false,
@@ -445,7 +514,7 @@ export function advanceDeckReleaseSettleState(input: {
       return {
         state: nextState,
         releaseFeedback: buildDeckReleaseFeedback({
-          state: input.state,
+          state: nextState,
           match: input.match,
           outcome: 'committed',
           settleVisualState: 'complete',

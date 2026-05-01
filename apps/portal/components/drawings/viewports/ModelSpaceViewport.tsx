@@ -2767,6 +2767,7 @@ export default function ModelSpaceViewport({
         commitStartedAtMs,
         commitSource,
         commitTransform,
+        coordinateTrace: deckMoveRelease.coordinateTrace,
       }));
       let result: { ok: boolean; error?: string };
       try {
@@ -3222,6 +3223,19 @@ export default function ModelSpaceViewport({
       feedbackState: deckReleaseFeedbackState,
     });
   }, [deckDragSettleState, deckPreviewState, deckReleaseFeedbackState]);
+  const activeDeckCoordinateTrace =
+    deckDragSettleState?.coordinateTrace ?? deckReleaseFeedbackState?.coordinateTrace ?? null;
+  const deckTracePreviewToCommitDelta = activeDeckCoordinateTrace?.centroidDeltaM.previewToCommit ?? null;
+  const deckTraceReleaseToRebuiltDelta = activeDeckCoordinateTrace?.centroidDeltaM.releaseToRebuilt ?? null;
+  const deckTraceStatus = !activeDeckCoordinateTrace
+    ? 'none'
+    : !activeDeckCoordinateTrace.rebuiltProjectionPolygon
+      ? 'pending'
+      : !deckTraceReleaseToRebuiltDelta
+        ? 'pending'
+        : Math.hypot(deckTraceReleaseToRebuiltDelta.x, deckTraceReleaseToRebuiltDelta.y) <= 0.1
+          ? 'matched'
+          : 'drift';
   const objectWorkbenchPreviewOverlay = useMemo<ObjectWorkbenchPreviewOverlay | null>(
     () => {
       if (deckDragPhase === 'drag-intent' && deckDragSession) {
@@ -3788,6 +3802,28 @@ export default function ModelSpaceViewport({
           deckReleaseFeedbackState?.commitTransform.transformSource ??
           'none'
         }
+        data-deck-trace-render-coordinate-space={
+          activeDeckCoordinateTrace?.transform.renderCoordinateSpace ?? 'none'
+        }
+        data-deck-trace-commit-coordinate-space={
+          activeDeckCoordinateTrace?.transform.commitCoordinateSpace ?? 'none'
+        }
+        data-deck-trace-transform-source={
+          activeDeckCoordinateTrace?.transform.transformSource ?? 'none'
+        }
+        data-deck-trace-preview-to-commit-delta-x={
+          deckTracePreviewToCommitDelta ? formatHouseFootprintParamValue(deckTracePreviewToCommitDelta.x) : ''
+        }
+        data-deck-trace-preview-to-commit-delta-y={
+          deckTracePreviewToCommitDelta ? formatHouseFootprintParamValue(deckTracePreviewToCommitDelta.y) : ''
+        }
+        data-deck-trace-release-to-rebuilt-delta-x={
+          deckTraceReleaseToRebuiltDelta ? formatHouseFootprintParamValue(deckTraceReleaseToRebuiltDelta.x) : ''
+        }
+        data-deck-trace-release-to-rebuilt-delta-y={
+          deckTraceReleaseToRebuiltDelta ? formatHouseFootprintParamValue(deckTraceReleaseToRebuiltDelta.y) : ''
+        }
+        data-deck-trace-status={deckTraceStatus}
         data-object-workbench-deck-snap-state={deckInteractionTelemetry.snapState}
         data-house-first-deck-snap-state={deckInteractionTelemetry.snapState}
         data-object-workbench-deck-attachment-mode={deckInteractionTelemetry.attachmentMode ?? 'floating'}
