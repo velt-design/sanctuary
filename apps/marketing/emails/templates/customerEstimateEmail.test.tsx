@@ -1,7 +1,6 @@
 import { render } from '@react-email/render';
 import { describe, expect, it } from 'vitest';
 import { customerEstimateSubject } from '../../lib/sharedEmails';
-import { EMAIL_LOGO_URL } from '../components/EmailLayout';
 import { ENQUIRY_HERO_IMAGE_URL } from '../components/HeroImage';
 import { INVESTMENT_PANEL_BACKGROUND } from '../components/InvestmentPanel';
 import type { ResidentialOrCommercial } from '../types';
@@ -53,8 +52,9 @@ describe('customer estimate autoresponder emails', () => {
     });
 
     expect(html).toContain(ENQUIRY_HERO_IMAGE_URL);
-    expect(html).toContain(EMAIL_LOGO_URL);
+    expect(html).not.toContain('email-logo.png');
     expect(html).toContain(INVESTMENT_PANEL_BACKGROUND);
+    expect(text).toContain('SANCTUARY PERGOLAS');
     expect(text).toContain('Outdoor living, designed around your home.');
     expect(text).toContain('Your pergola enquiry has been received');
     expect(text).toContain("Thanks Alex Morgan. Based on the details you shared, we've prepared an initial installed investment range for your project.");

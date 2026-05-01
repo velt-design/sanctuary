@@ -39,6 +39,8 @@ Before taking non-trivial portal production-readiness work:
 
 When work changes readiness status, blockers, priorities, verification commands, parallel lanes, or newly discovered risks, update this doc in the same pass. Prefer updating existing rows and checklist items over adding long new sections.
 
+Use `npm run docs:readiness` for an advisory summary of tracker age, at-risk rows, and unchecked checklist counts. The report makes stale readiness visible, but it does not replace rerunning the listed commands or manual checks.
+
 Do not duplicate detailed rules from canonical docs here. Link to them, then keep this doc focused on current readiness state, next actions, and coordination.
 
 ## Current Readiness Snapshot

@@ -37,6 +37,10 @@ jobs:
         continue-on-error: true
         run: npm run docs:impact
 
+      - name: Readiness aging report
+        continue-on-error: true
+        run: npm run docs:readiness
+
       - name: Repository typecheck
         run: npm run typecheck
 
