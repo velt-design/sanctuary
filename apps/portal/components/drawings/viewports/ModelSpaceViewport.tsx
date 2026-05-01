@@ -3270,20 +3270,49 @@ export default function ModelSpaceViewport({
     [deckDragSettleState, objectWorkbenchPlanOverlay],
   );
   const requiresCanonicalDeckSettleMatch = objectWorkbenchPlanOverlay?.housePolygonSource === 'geometry_projection';
-  const settledDeckShapeMatchesPreview = useMemo(
+  const deckSettleMatch = useMemo(
     () => {
-      if (!deckDragSettleState || !settledDeckShape) return false;
+      if (!deckDragSettleState || !settledDeckShape) {
+        return {
+          matches: false,
+          source: 'none' as DeckSettleMatchSource,
+          projectionStatus: 'none' as DeckProjectionSettleStatus,
+        };
+      }
       const visuallyMatches = polygonsVisuallyMatch(settledDeckShape.polygon, deckDragSettleState.previewState.polygon);
-      return (
-        visuallyMatches ||
-        deckShapeSemanticallyMatchesPreview({
-          shape: settledDeckShape,
-          preview: deckDragSettleState.previewState,
-        })
-      );
+      if (visuallyMatches) {
+        return {
+          matches: true,
+          source: settledDeckShape.source === 'top_projection_committed'
+            ? 'top_projection_committed'
+            : 'semantic_projection',
+          projectionStatus: 'matched' as DeckProjectionSettleStatus,
+        };
+      }
+      const semanticallyMatches = deckShapeSemanticallyMatchesPreview({
+        shape: settledDeckShape,
+        preview: deckDragSettleState.previewState,
+      });
+      if (semanticallyMatches) {
+        return {
+          matches: true,
+          source: 'semantic_projection' as DeckSettleMatchSource,
+          projectionStatus: 'matched' as DeckProjectionSettleStatus,
+        };
+      }
+      return {
+        matches: false,
+        source: deckDragSettleState.releasePlacement === 'floating'
+          ? 'floating_projection_pending'
+          : 'none',
+        projectionStatus: deckDragSettleState.releasePlacement === 'floating'
+          ? 'pending'
+          : 'none',
+      };
     },
     [deckDragSettleState, settledDeckShape],
   );
+  const settledDeckShapeMatchesPreview = deckSettleMatch.matches;
   const selectedDeckRelationshipDimensionsAvailable = useMemo(
     () =>
       selectedDeckShape
@@ -3394,10 +3423,15 @@ export default function ModelSpaceViewport({
             }
           : null,
         previewState: deckPreviewState,
+        releaseCommitSource: deckDragSettleState?.commitSource ?? deckReleaseFeedbackState?.commitSource ?? 'none',
+        settleMatchSource: deckDragSettleState?.settleMatchSource ?? deckReleaseFeedbackState?.settleMatchSource ?? 'none',
+        projectionSettleStatus: deckDragSettleState?.projectionSettleStatus ?? deckReleaseFeedbackState?.projectionSettleStatus ?? 'none',
       }),
     [
+      deckDragSettleState,
       deckInteractionViewState,
       deckPreviewState,
+      deckReleaseFeedbackState,
       hoveredDeckId,
       objectWorkbenchPlanOverlay?.housePolygonSource,
       selectedDeckCapability,
@@ -3503,6 +3537,9 @@ export default function ModelSpaceViewport({
       settleVisualState,
       releaseError: deckDragSettleState.releaseError,
       previewState: deckDragSettleState.previewState,
+      commitSource: deckDragSettleState.commitSource,
+      settleMatchSource: outcome === 'failed' ? deckDragSettleState.settleMatchSource : deckSettleMatch.source,
+      projectionSettleStatus: outcome === 'failed' ? 'failed' : deckSettleMatch.projectionStatus,
       expiresAtMs:
         Date.now() +
         (outcome === 'committed' ? DECK_RELEASE_SUCCESS_FEEDBACK_MS : DECK_RELEASE_FAILURE_FEEDBACK_MS),
@@ -3530,10 +3567,21 @@ export default function ModelSpaceViewport({
           deckDragSettleState.releaseOutcome === 'committed' && deckDragSettleState.commitResolvedAtMs !== null;
         const matchedAndStable = settledDeckShapeMatchesPreview && (committedReleaseReady || viewportStable);
         if (!matchedAndStable) {
-          if (deckDragSettleState.stableMatchFrameCount > 0 || deckDragSettleState.matchedCommittedGeometry) {
+          if (
+            deckDragSettleState.stableMatchFrameCount > 0 ||
+            deckDragSettleState.matchedCommittedGeometry ||
+            deckDragSettleState.settleMatchSource !== deckSettleMatch.source ||
+            deckDragSettleState.projectionSettleStatus !== deckSettleMatch.projectionStatus
+          ) {
             setDeckDragSettleState((current) =>
               current && current.deckId === deckDragSettleState.deckId
-                ? { ...current, matchedCommittedGeometry: false, stableMatchFrameCount: 0 }
+                ? {
+                    ...current,
+                    matchedCommittedGeometry: false,
+                    stableMatchFrameCount: 0,
+                    settleMatchSource: deckSettleMatch.source,
+                    projectionSettleStatus: deckSettleMatch.projectionStatus,
+                  }
                 : current,
             );
           }
@@ -3547,6 +3595,8 @@ export default function ModelSpaceViewport({
                     current.stableMatchFrameCount + 1,
                     DECK_SETTLE_MATCH_STABLE_FRAMES,
                   ),
+                  settleMatchSource: deckSettleMatch.source,
+                  projectionSettleStatus: deckSettleMatch.projectionStatus,
                 }
               : current,
           );
@@ -3564,7 +3614,11 @@ export default function ModelSpaceViewport({
             finalizeSuccess();
             return;
           }
-          if (deadlineCanUnlock && requiresCanonicalDeckSettleMatch) {
+          if (
+            deadlineCanUnlock &&
+            requiresCanonicalDeckSettleMatch &&
+            deckDragSettleState.releasePlacement !== 'floating'
+          ) {
             setDeckDragSettleState((current) =>
               current && current.deckId === deckDragSettleState.deckId
                 ? {
@@ -3572,6 +3626,8 @@ export default function ModelSpaceViewport({
                     releaseOutcome: 'failed',
                     settleVisualState: 'failed',
                     resolvedSuccess: false,
+                    settleMatchSource: deckSettleMatch.source,
+                    projectionSettleStatus: 'failed',
                     releaseError: 'Deck release preview did not match rebuilt plan geometry.',
                   }
                 : current,
@@ -3599,6 +3655,7 @@ export default function ModelSpaceViewport({
     deckDragPhase,
     deckDragSession,
     deckDragSettleState,
+    deckSettleMatch,
     finalizeDeckDragSettlement,
     isDeckDragViewportAnchorStable,
     measureDeckDragViewportAnchorDrift,
@@ -4004,6 +4061,15 @@ export default function ModelSpaceViewport({
         data-object-workbench-deck-settle-requires-canonical-match={requiresCanonicalDeckSettleMatch ? 'true' : 'false'}
         data-object-workbench-deck-settle-canonical-match={
           deckDragSettleState ? (settledDeckShapeMatchesPreview ? 'true' : 'false') : 'none'
+        }
+        data-object-workbench-deck-release-commit-source={
+          deckDragSettleState?.commitSource ?? deckReleaseFeedbackState?.commitSource ?? 'none'
+        }
+        data-object-workbench-deck-settle-match-source={
+          deckDragSettleState?.settleMatchSource ?? deckReleaseFeedbackState?.settleMatchSource ?? 'none'
+        }
+        data-object-workbench-deck-projection-settle-status={
+          deckDragSettleState?.projectionSettleStatus ?? deckReleaseFeedbackState?.projectionSettleStatus ?? 'none'
         }
         data-object-workbench-deck-snap-state={deckInteractionTelemetry.snapState}
         data-house-first-deck-snap-state={deckInteractionTelemetry.snapState}

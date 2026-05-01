@@ -1843,6 +1843,9 @@ export function buildDeckInteractionTelemetry(input: {
       }
     | null;
   previewState: DeckPreviewState | null;
+  releaseCommitSource?: DeckInteractionTelemetry['releaseCommitSource'];
+  settleMatchSource?: DeckInteractionTelemetry['settleMatchSource'];
+  projectionSettleStatus?: DeckInteractionTelemetry['projectionSettleStatus'];
 }): DeckInteractionTelemetry {
   const capability = input.capability;
   const sharedTelemetry = buildObjectInteractionTelemetry({
@@ -1885,6 +1888,9 @@ export function buildDeckInteractionTelemetry(input: {
     releaseOutcome: input.viewState.releaseOutcome,
     releasePlacement: input.viewState.releasePlacement,
     settleVisualState: input.viewState.settleVisualState,
+    releaseCommitSource: input.releaseCommitSource,
+    settleMatchSource: input.settleMatchSource,
+    projectionSettleStatus: input.projectionSettleStatus,
     snapState:
       input.viewState.placementState === 'none'
         ? 'idle'

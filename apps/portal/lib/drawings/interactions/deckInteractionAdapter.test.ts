@@ -334,7 +334,7 @@ describe('deckInteractionAdapter', () => {
     });
   });
 
-  it('maps floating release previews back into the object commit polygon space', () => {
+  it('persists floating release previews directly as absolute plan rectangles', () => {
     const renderedPolygon = [
       { x: 0, y: -4 },
       { x: 8, y: -4 },
@@ -370,10 +370,50 @@ describe('deckInteractionAdapter', () => {
 
     expect(preview.releasePlacement).toBe('floating');
     expect(patch.floatingRect).toEqual({
-      centerAlongM: '3',
-      centerDepthM: '-2',
-      widthM: '4',
-      depthM: '2',
+      centerAlongM: '6',
+      centerDepthM: '-4',
+      widthM: '8',
+      depthM: '4',
+    });
+  });
+
+  it('treats a preset deck dragged far from every wall as a valid floating release', () => {
+    const polygon = rectOnFrame({
+      frame: rearFrame,
+      deckWidthM: 2,
+      deckDepthM: 1,
+      centerOffsetM: 0,
+      referenceEdgeGapM: 0,
+    });
+    const session = makeSession({
+      polygon,
+      startDragPlanPoint: { x: 2, y: 0.5 },
+      frames: [rearFrame],
+      renderedCenter: polygonCenter(polygon),
+      deckWidthM: 2,
+      deckDepthM: 1,
+      placement: 'snapped',
+      attachmentMode: 'single_edge',
+    });
+
+    const preview = resolveDeckPreviewState({
+      session,
+      nextSvgX: session.startSvgX,
+      nextSvgY: session.startSvgY + 8,
+      nextDragPlanPoint: { x: 2, y: 8.5 },
+      previousPreviewState: null,
+    });
+    const patch = buildDeckCommitPatch({ session, preview });
+
+    expect(preview.releasePlacement).toBe('floating');
+    expect(preview.snapEligible).toBe(false);
+    expect(patch.isAttached).toBe(false);
+    expect(patch.primaryHostEdgeId).toBeNull();
+    expect(patch.floatingRect).toEqual({
+      centerAlongM: '2',
+      centerDepthM: '8.5',
+      widthM: '2',
+      depthM: '1',
     });
   });
 
@@ -959,7 +999,7 @@ describe('deckInteractionAdapter', () => {
     expect((patch.presetRect as { centerOffsetM: string }).centerOffsetM).toBe('1');
   });
 
-  it('commits a floating projection-backed deck by mapping the preview polygon into object frame space', () => {
+  it('commits a floating projection-backed deck from the released projection preview without bounds remapping', () => {
     const projectedRearFrame = makeFrame({
       ...realRearFrame,
       spanStartM: 10,
@@ -999,8 +1039,8 @@ describe('deckInteractionAdapter', () => {
     expect(preview.releasePlacement).toBe('floating');
     expect(patch.primaryHostEdgeId).toBeNull();
     expect(patch.floatingRect).toEqual({
-      centerAlongM: '4',
-      centerDepthM: '-2',
+      centerAlongM: '14',
+      centerDepthM: '18',
       widthM: '2',
       depthM: '1',
     });

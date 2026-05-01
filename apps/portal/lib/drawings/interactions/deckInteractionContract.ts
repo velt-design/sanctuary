@@ -67,6 +67,9 @@ export type DeckInteractionTelemetry = ObjectInteractionTelemetry<'deck'> & {
   releaseOutcome: ObjectInteractionReleaseOutcome;
   releasePlacement: ObjectInteractionReleasePlacement | null;
   settleVisualState: ObjectInteractionSettleVisualState | null;
+  releaseCommitSource?: 'none' | 'custom_outline' | 'snapped_frame_commit' | 'floating_rect_from_projection_preview';
+  settleMatchSource?: 'none' | 'top_projection_committed' | 'semantic_projection' | 'floating_projection_pending';
+  projectionSettleStatus?: 'none' | 'matched' | 'pending' | 'failed';
   snapState: 'idle' | 'floating' | 'snap-available' | 'snapped' | 'blocked';
   snapMessage: string | null;
   interactionState: DeckInteractionState;

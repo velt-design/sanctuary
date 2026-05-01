@@ -913,9 +913,11 @@ function makeHouseFirstOpening(overrides: Partial<WallOpeningModel> = {}): WallO
 function makeObjectWorkbenchOverlayInputFromHouse(input: {
   drawing: ReturnType<typeof makeDrawingModule>;
   house: HouseModel;
+  geometryHouse?: HouseModel;
   planModel: ModulePlanModel;
   selection: ObjectWorkbenchViewportTargetSelection;
 }): ObjectWorkbenchPlanOverlayInput {
+  const geometryHouse = input.geometryHouse ?? input.house;
   const houseForm = {
     id: input.house.id,
     label: input.house.label,
@@ -1015,8 +1017,8 @@ function makeObjectWorkbenchOverlayInputFromHouse(input: {
     selection: input.selection,
     moduleLengthM: input.drawing.input.lengthM,
     moduleProjectionM: input.drawing.input.projectionM,
-    geometryPlan: makeGeometryPlanFromPlanModel(input.planModel, input.house),
-    geometryTopProjection: makeTopProjectionFromGeometryPlan(makeGeometryPlanFromPlanModel(input.planModel, input.house)),
+    geometryPlan: makeGeometryPlanFromPlanModel(input.planModel, geometryHouse),
+    geometryTopProjection: makeTopProjectionFromGeometryPlan(makeGeometryPlanFromPlanModel(input.planModel, geometryHouse)),
     status: {
       houseForm: {
         lowConfidence: input.house.lowConfidence,
@@ -1114,6 +1116,7 @@ type HouseFirstViewportHarnessProps = {
   enablePlanEditing?: boolean;
   delayDeckCommit?: boolean;
   forceDeckCommitMismatch?: boolean;
+  freezeProjectionAfterDeckCommit?: boolean;
   wrapInScrollableAncestor?: boolean;
   onDeckInteractionTelemetryChange?: (telemetry: DeckInteractionTelemetry) => void;
   onDeckCommit?: (deckId: string, patch: Partial<DeckModel>) => void;
@@ -1129,6 +1132,7 @@ function HouseFirstViewportHarness({
   enablePlanEditing = true,
   delayDeckCommit = false,
   forceDeckCommitMismatch = false,
+  freezeProjectionAfterDeckCommit = false,
   wrapInScrollableAncestor = false,
   onDeckInteractionTelemetryChange,
   onDeckCommit,
@@ -1141,6 +1145,7 @@ function HouseFirstViewportHarness({
   const [selection, setSelection] = useState<ObjectWorkbenchViewportTargetSelection>(initialSelection);
   const [viewportTransform, setViewportTransform] = useState(createDrawingWorkbenchUiState().viewportTransform);
   const [pendingDeckCommit, setPendingDeckCommit] = useState<null | (() => void)>(null);
+  const [initialProjectionHouse] = useState(initialHouse);
   const [deckTelemetry, setDeckTelemetry] = useState<{
     hoveredDeckId: string | null;
     housePolygonSource: string | null;
@@ -1151,6 +1156,9 @@ function HouseFirstViewportHarness({
     releaseOutcome: string;
     releasePlacement: string | null;
     settleVisualState: string | null;
+    releaseCommitSource: string | null;
+    settleMatchSource: string | null;
+    projectionSettleStatus: string | null;
     affordanceState: string;
     referenceGuideState: string;
     snapState: string;
@@ -1158,6 +1166,8 @@ function HouseFirstViewportHarness({
   } | null>(null);
   const planModel = makePlanModelWithHouseContext();
   const geometryPlan = makeGeometryPlanFromPlanModel(planModel, house);
+  const projectionHouse = freezeProjectionAfterDeckCommit ? initialProjectionHouse : house;
+  const projectionGeometryPlan = makeGeometryPlanFromPlanModel(planModel, projectionHouse);
 
   const viewport = (
     <TestModelSpaceViewport
@@ -1172,13 +1182,14 @@ function HouseFirstViewportHarness({
         moduleLabel: 'Module 1',
         planModel,
         geometryPlan,
-        geometryTopProjection: makeTopProjectionFromGeometryPlan(geometryPlan),
+        geometryTopProjection: makeTopProjectionFromGeometryPlan(projectionGeometryPlan),
         pergolaRenderSource: 'geometry',
         pergolaRenderStatus: 'geometry_ready',
         canEditHouseFootprint: true,
         objectWorkbenchOverlayInput: makeObjectWorkbenchOverlayInputFromHouse({
           drawing,
           house,
+          geometryHouse: projectionHouse,
           planModel,
           selection,
         }),
@@ -1324,6 +1335,9 @@ function HouseFirstViewportHarness({
           releaseOutcome: telemetry.releaseOutcome,
           releasePlacement: telemetry.releasePlacement,
           settleVisualState: telemetry.settleVisualState,
+          releaseCommitSource: telemetry.releaseCommitSource ?? null,
+          settleMatchSource: telemetry.settleMatchSource ?? null,
+          projectionSettleStatus: telemetry.projectionSettleStatus ?? null,
           affordanceState: telemetry.affordanceState,
           referenceGuideState: telemetry.referenceGuideState,
           snapState: telemetry.snapState,
@@ -1356,6 +1370,9 @@ function HouseFirstViewportHarness({
       <div data-testid="deck-telemetry-release-outcome">{deckTelemetry?.releaseOutcome ?? 'none'}</div>
       <div data-testid="deck-telemetry-release-placement">{deckTelemetry?.releasePlacement ?? 'none'}</div>
       <div data-testid="deck-telemetry-settle-visual">{deckTelemetry?.settleVisualState ?? 'none'}</div>
+      <div data-testid="deck-telemetry-commit-source">{deckTelemetry?.releaseCommitSource ?? 'none'}</div>
+      <div data-testid="deck-telemetry-settle-source">{deckTelemetry?.settleMatchSource ?? 'none'}</div>
+      <div data-testid="deck-telemetry-projection-settle">{deckTelemetry?.projectionSettleStatus ?? 'none'}</div>
       <div data-testid="deck-telemetry-hovered">{deckTelemetry?.hoveredDeckId ?? 'none'}</div>
       <div data-testid="deck-telemetry-affordance">{deckTelemetry?.affordanceState ?? 'idle'}</div>
       <div data-testid="deck-telemetry-guide">{deckTelemetry?.referenceGuideState ?? 'none'}</div>
@@ -4935,6 +4952,13 @@ describe('ModelSpaceViewport', () => {
     expect(rendered.container.querySelector('[data-testid="deck-floating-center-along"]')?.textContent).not.toBe('');
     expect(rendered.container.querySelector('[data-testid="deck-floating-center-depth"]')?.textContent).not.toBe('');
     expect(rendered.container.querySelector('[aria-label="Deck interaction hint"]')?.textContent).toContain('Position updated');
+    expect(rendered.container.querySelector('[data-testid="deck-telemetry-release-outcome"]')?.textContent).toBe('committed');
+    expect(rendered.container.querySelector('[data-testid="deck-telemetry-release-placement"]')?.textContent).toBe(
+      'floating',
+    );
+    expect(rendered.container.querySelector('[data-testid="deck-telemetry-commit-source"]')?.textContent).toBe(
+      'floating_rect_from_projection_preview',
+    );
     rendered.unmount();
   });
 
@@ -6632,6 +6656,93 @@ describe('ModelSpaceViewport', () => {
       await Promise.resolve();
     });
     expect(scroller.dataset.objectWorkbenchSelectedDeckId).toBe('');
+
+    rendered.unmount();
+  });
+
+  it('does not fail a floating release when the top-projection deck body is stale at the settle deadline', async () => {
+    const deck = makeHouseFirstDeck();
+    const baseHouse = makeHouseFirstHouse();
+    const resolvedDeck = resolveDeckPresetGeometry({
+      deck: deck as any,
+      housePolygon: baseHouse.footprint.polygon,
+    });
+    const rendered = renderIntoDocument(
+      <HouseFirstViewportHarness
+        initialSelection={{ kind: 'deck', targetId: 'deck-1' }}
+        initialHouse={makeHouseFirstHouse({
+          decks: [
+            {
+              ...deck,
+              hostEdgeId: resolvedDeck.hostEdgeId,
+              floatingRect: resolvedDeck.floatingRect,
+              presetRect: resolvedDeck.presetRect,
+              outline: resolvedDeck.outline,
+            },
+          ],
+        })}
+        freezeProjectionAfterDeckCommit
+      />,
+    );
+
+    const svg = rendered.container.querySelector('svg[aria-label="Module plan view"]') as SVGSVGElement | null;
+    const deckHit = rendered.container.querySelector('[data-object-workbench-shape-hit="deck:deck-1"]');
+    const scroller = rendered.container.querySelector('[data-model-space-scroller]') as HTMLElement | null;
+    if (!svg || !deckHit || !scroller) throw new Error('Missing plan viewport nodes.');
+    installProjectedSvgPointMock(svg, { xScale: 0.05, yScale: 0.05, xOffset: 0, yOffset: 0 });
+
+    dispatchPointer(deckHit, 'pointerdown', { pointerId: 425, button: 0, clientX: 50, clientY: 50 });
+    dispatchPointer(window, 'pointermove', { pointerId: 425, button: 0, buttons: 1, clientX: 50, clientY: -4000 });
+
+    expect(scroller.dataset.objectWorkbenchDeckPlacementState).toBe('floating');
+    expect(scroller.dataset.objectWorkbenchDeckSnapState).toBe('floating');
+    const releasePreviewPoints = polygonPointsAttr(
+      rendered.container.querySelector('[data-object-workbench-preview-shape="deck-1"]'),
+    );
+
+    dispatchPointer(window, 'pointerup', { pointerId: 425, button: 0, clientX: 50, clientY: -4000 });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(rendered.container.querySelector('[data-testid="deck-telemetry-release-outcome"]')?.textContent).toBe(
+      'committed',
+    );
+    expect(rendered.container.querySelector('[data-testid="deck-telemetry-release-placement"]')?.textContent).toBe(
+      'floating',
+    );
+    expect(rendered.container.querySelector('[data-testid="deck-telemetry-commit-source"]')?.textContent).toBe(
+      'floating_rect_from_projection_preview',
+    );
+
+    await act(async () => {
+      await new Promise<void>((resolve) => {
+        window.setTimeout(() => resolve(), 560);
+      });
+    });
+    await flushAnimationFrame();
+
+    expect(scroller.dataset.objectWorkbenchDeckDragActive).toBe('false');
+    expect(scroller.dataset.objectWorkbenchDeckDragLocked).toBe('false');
+    expect(scroller.dataset.objectWorkbenchDeckSettleRequiresCanonicalMatch).toBe('true');
+    expect(scroller.dataset.objectWorkbenchDeckReleaseCommitSource).toBe('floating_rect_from_projection_preview');
+    expect(scroller.dataset.objectWorkbenchDeckSettleMatchSource).toBe('floating_projection_pending');
+    expect(scroller.dataset.objectWorkbenchDeckProjectionSettleStatus).toBe('pending');
+    expect(rendered.container.querySelector('[data-testid="deck-telemetry-release-outcome"]')?.textContent).toBe(
+      'committed',
+    );
+    expect(rendered.container.querySelector('[data-testid="deck-telemetry-settle-visual"]')?.textContent).toBe(
+      'complete',
+    );
+    expect(rendered.container.querySelector('[aria-label="Deck interaction hint"]')?.textContent).toContain(
+      'Position updated',
+    );
+    expect(rendered.container.querySelector('[aria-label="Deck interaction hint"]')?.textContent).not.toContain(
+      "Couldn't move deck",
+    );
+    expect(releasePreviewPoints).not.toBe('');
+    expect(rendered.container.querySelector('[data-testid="deck-is-attached"]')?.textContent).toBe('false');
+    expect(rendered.container.querySelector('[data-testid="deck-floating-center-along"]')?.textContent).not.toBe('');
+    expect(rendered.container.querySelector('[data-testid="deck-floating-center-depth"]')?.textContent).not.toBe('');
 
     rendered.unmount();
   });
