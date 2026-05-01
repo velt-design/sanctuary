@@ -47,13 +47,13 @@ This snapshot records the most recent known production-readiness state from the 
 
 | Area | Status | Last Known Signal | Next Action |
 | --- | --- | --- | --- |
-| Portal tests | Red | `npm run test:portal` had 8 failed files and 14 failed tests during review. | Re-run, fix current failures, then update this row. |
-| Lint and guards | Red | `npm run lint` was blocked by brand-token guard failures during review. | Re-run `npm run lint`; replace legacy literals or update this row if already fixed. |
+| Portal tests | Green | `npm run portal:doctor:quick` completed `npm run test:portal`: 172 files and 1077 tests passed. | Keep using focused portal scripts during feature work and quick doctor for routine readiness. |
+| Lint and guards | Green | `npm run portal:doctor:quick` completed `npm run lint`, including docs guard, cache guard, brand guard, mojibake, and ESLint. | Keep lint in quick doctor and portal PR CI. |
 | Schedule bundle budget | Red | `npm run schedule:bundle-budget` was over lazy raw/gzip budgets during review. | Profile schedule chunks and restore the budget. |
-| Production security audit | Red | `npm audit --omit=dev` reported production vulnerabilities during review. | Remediate, document accepted residual risk only if unavoidable. |
+| Production security audit | Green | `npm audit --omit=dev` reported 0 vulnerabilities during blocker review. | Keep audit visible through `portal:doctor` and governance checks. |
 | Portal build | Unknown | Not re-run as part of this tracker creation. | Run `npm run build:portal`. |
-| Typecheck | Red | `npm run portal:doctor:quick` stopped at `npm run typecheck` with `ModelSpaceViewport.test.tsx(1902,13)` TS2367 during tooling verification. | Fix the test type comparison and re-run `npm run portal:doctor:quick`. |
-| Browser smoke | Unknown | Auth, drawing, and performance browser gates exist. Current result not verified in this pass. | Run relevant Playwright gates after unit/build health is restored. |
+| Typecheck | Green | `npm run typecheck` passed after the `ModelSpaceViewport.test.tsx` placement-case typing fix; `npm run portal:doctor:quick` also completed typecheck. | Keep typecheck in quick doctor and CI. |
+| Browser smoke | Unknown | Fixture browser smoke can run without auth; local authenticated smoke needs `PORTAL_TEST_EMAIL` and `PORTAL_TEST_PASSWORD`, which were missing during blocker review. | Run `npm run test:portal:browser`; run auth/performance smoke when staff test credentials are configured. |
 | Docs and routing | Green | Canonical docs, agent playbook, change routing, and decision log are present. | Keep this tracker and owner docs current. |
 | Local-first flows | Yellow | Strong primitives exist; production readiness depends on workflow smoke and visible failure states. | Verify pending, failed, retry, conflict, and lock states in changed flows. |
 | Quote/invoice/job-pack side effects | Yellow | Domain docs and tests exist; production readiness depends on token/email/PDF/job-pack smoke. | Run focused tests plus manual public-token and side-effect QA. |
@@ -64,16 +64,16 @@ This snapshot records the most recent known production-readiness state from the 
 
 ### Quality Gates
 
-- [ ] `npm run portal:doctor:quick` passes for routine local readiness.
+- [x] `npm run portal:doctor:quick` passes for routine local readiness.
 - [ ] `npm run portal:doctor` passes for broad pre-merge readiness when Playwright auth/env and audit expectations are ready.
-- [ ] `npm run typecheck` passes.
-- [ ] `npm run docs:guard` passes.
-- [ ] `npm run text:mojibake` passes.
-- [ ] `npm run lint` passes.
-- [ ] `npm run test:portal` passes.
+- [x] `npm run typecheck` passes.
+- [x] `npm run docs:guard` passes.
+- [x] `npm run text:mojibake` passes.
+- [x] `npm run lint` passes.
+- [x] `npm run test:portal` passes.
 - [ ] `npm run build:portal` passes.
 - [ ] `npm run schedule:bundle-budget` passes after a fresh portal build.
-- [ ] `npm run audit:security` has no unresolved high or critical production vulnerabilities.
+- [x] `npm run audit:security` has no unresolved high or critical production vulnerabilities.
 - [ ] `npm run test:portal:smoke` passes for authenticated portal routing.
 - [ ] `npm run test:portal:browser` passes for drawing/workbench browser smoke.
 - [ ] `npm run test:portal:performance` passes route timing budgets.
@@ -133,7 +133,7 @@ This snapshot records the most recent known production-readiness state from the 
 
 Keep this ordered list current as work lands.
 
-1. Restore green quality gates: portal tests, lint, typecheck, portal build, schedule bundle budget, and production audit.
+1. Restore remaining quality gates: portal build, schedule bundle budget, fixture browser smoke, authenticated smoke, and performance smoke.
 2. Fix server-client and env isolation drift in contacts/projects/project snapshot tests.
 3. Restore schedule bundle budget and keep Board, Gantt, and Site Visits split by workflow.
 4. Fix design workbench behavior drift and keep browser fixture gates meaningful.
@@ -202,7 +202,9 @@ When updating this tracker:
 ### 2026-05-01
 
 - Added the portal speed tooling command plan: focused portal test scripts, `portal:doctor:quick`, `portal:doctor`, and matching CI/doc routing.
-- Verification note: `npm run portal:doctor:quick` currently stops at typecheck on `apps/portal/components/drawings/viewports/ModelSpaceViewport.test.tsx(1902,13)` with TS2367.
+- Cleared the quick-doctor typecheck blocker by typing the semantic placement cases in `apps/portal/components/drawings/viewports/ModelSpaceViewport.test.tsx`; `npm run typecheck` passed.
+- `npm run portal:doctor:quick` passed when captured to a log: docs guard, mojibake, typecheck, lint, and `npm run test:portal` all completed; portal tests reported 172 files and 1077 tests passed.
+- `npm audit --omit=dev` reported 0 vulnerabilities. Full local authenticated smoke still needs `PORTAL_TEST_EMAIL` and `PORTAL_TEST_PASSWORD`; fixture browser smoke can run without auth.
 - Created this tracker to coordinate portal production-readiness work.
 - Initial review identified quality gates as the highest leverage priority before broad feature expansion.
 - Known review findings to re-verify: portal tests failing, lint guard failing, schedule bundle budget failing, and production audit reporting vulnerabilities.

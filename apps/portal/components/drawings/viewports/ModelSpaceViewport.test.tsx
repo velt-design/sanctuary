@@ -1828,7 +1828,14 @@ describe('ModelSpaceViewport', () => {
 
   it('keeps house-mode semantic house placement aligned with geometry-backed pergolas for rear, front, and side contexts', () => {
     const drawing = makeDrawingModule();
-    const cases = [
+    type PlacementCase = {
+      label: string;
+      planModel: ModulePlanModel;
+      axis: 'x' | 'y';
+      comparison: 'less' | 'greater';
+    };
+
+    const cases: PlacementCase[] = [
       {
         label: 'rear',
         planModel: makePlanModelWithSemanticHouseBoundary([
@@ -1837,8 +1844,8 @@ describe('ModelSpaceViewport', () => {
           { x: 6, y: 0 },
           { x: 0, y: 0 },
         ]),
-        axis: 'y' as const,
-        comparison: 'less' as const,
+        axis: 'y',
+        comparison: 'less',
       },
       {
         label: 'front',
@@ -1848,8 +1855,8 @@ describe('ModelSpaceViewport', () => {
           { x: 6, y: 4.8 },
           { x: 0, y: 4.8 },
         ]),
-        axis: 'y' as const,
-        comparison: 'greater' as const,
+        axis: 'y',
+        comparison: 'greater',
       },
       {
         label: 'side',
@@ -1859,8 +1866,8 @@ describe('ModelSpaceViewport', () => {
           { x: 0, y: 3 },
           { x: -1.8, y: 3 },
         ]),
-        axis: 'x' as const,
-        comparison: 'greater' as const,
+        axis: 'x',
+        comparison: 'greater',
       },
     ];
 
