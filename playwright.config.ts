@@ -25,13 +25,13 @@ export default defineConfig({
   webServer: process.env.PORTAL_BASE_URL
     ? undefined
     : {
-        command: 'npm run dev:portal',
+        command: `npm --prefix apps/portal run dev:playwright -- -p ${port}`,
         env: {
           ENABLE_SANCTUARY_GEOMETRY_WORKBENCH: '1',
           ENABLE_SANCTUARY_GEOMETRY_WORKBENCH_FIXTURES: '1',
         },
         url: baseURL,
-        reuseExistingServer: !process.env.CI,
+        reuseExistingServer: false,
         timeout: 180_000,
       },
   projects: [

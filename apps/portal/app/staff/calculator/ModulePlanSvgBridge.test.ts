@@ -24,9 +24,15 @@ const projection: GeometryTopProjectionViewModel = {
 
 const footprintParams: ModulePlanModel['houseFootprintParams'] = {
   widthM: '6',
-  depthM: '3',
   offsetXM: '0',
   setbackM: '0',
+  bandDepthM: '1.8',
+  returnRunM: '2.4',
+  recessWidthM: '2.4',
+  recessDepthM: '1.2',
+  leftLegRunM: '2.4',
+  rightLegRunM: '2.4',
+  sideRunM: '2.4',
 };
 
 function svgWithIdentityClientTransform(): SVGSVGElement {
@@ -59,7 +65,7 @@ function resolvers(input?: Partial<Parameters<typeof createPlanSvgPointResolvers
     attachmentSide: 'rear',
     lengthA: 6,
     spanA: 3,
-    houseFootprintPreset: 'rectangle',
+    houseFootprintPreset: 'straight',
     houseFootprintParams: footprintParams,
     isHipCorner: false,
     useTopProjectionBackedPlan: false,
@@ -80,7 +86,7 @@ describe('ModulePlanSvgBridge', () => {
         attachmentSide: 'rear',
         lengthA: 6,
         spanA: 3,
-        houseFootprintPreset: 'rectangle',
+        houseFootprintPreset: 'straight',
         houseFootprintParams: footprintParams,
       }),
     ).toMatchObject({
@@ -155,7 +161,7 @@ describe('ModulePlanSvgBridge', () => {
 
     expect(footprintSvgMount).toHaveBeenCalledWith(node);
     expect(planSvgMount).toHaveBeenCalledWith(node);
-    expect(onCanvasPointResolverChange.mock.calls[0]?.[0](20, -10)).toMatchObject({ alongM: '2', depthM: '1' });
+    expect(onCanvasPointResolverChange.mock.calls[0]?.[0](25, 2.5)).toMatchObject({ alongM: '2', depthM: '1' });
     expect(onPlanPointResolverChange.mock.calls[0]?.[0](30, 35)).toEqual({ x: 4, y: 3 });
     expect(onDeckDragPointResolverChange.mock.calls[0]?.[0](30, 35)).toEqual({ x: 4, y: 3 });
 

@@ -197,6 +197,7 @@ async function openFixtureDrawingWorkbench(page: Page, fixtureSlug: string) {
     throw new Error('Fixture workbench route requires staff auth in this portal environment; browser smoke coverage did not run.');
   }
   await expect(workbench).toBeVisible({ timeout: 30_000 });
+  await expect(page.locator('[data-fixture-workbench-hydrated="true"]').first()).toBeVisible({ timeout: 30_000 });
 }
 
 test('drawing workbench screenshot U hipped roof fixture renders valid topology', async ({ page }) => {

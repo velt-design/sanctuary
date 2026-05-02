@@ -52,6 +52,7 @@ export default function DesignWorkbenchFixtureClient({
   siteAddress,
   backHref,
 }: DesignWorkbenchFixtureClientProps) {
+  const [hasHydrated, setHasHydrated] = useState(false);
   const [ui, setUi] = useState(() => createDrawingWorkbenchUiState({ viewportMode: 'geometry3d' }));
   const [modelViewportTransformsByKey, setModelViewportTransformsByKey] = useState<
     Record<string, DrawingWorkbenchViewportTransform>
@@ -78,6 +79,9 @@ export default function DesignWorkbenchFixtureClient({
     setModelViewportTransformsByKey({});
     setGeometryViewportStatesByKey({});
   }, [fixture.slug]);
+  useEffect(() => {
+    setHasHydrated(true);
+  }, []);
   const modules = store.persisted.modules.map((module) => ({
     id: module.id,
     label: module.label,
@@ -156,7 +160,7 @@ export default function DesignWorkbenchFixtureClient({
   }
 
   return (
-    <div className={styles.shell}>
+    <div className={styles.shell} data-fixture-workbench-hydrated={hasHydrated ? 'true' : 'false'}>
       <aside className={styles.configuratorColumn}>
         <div className={styles.configuratorScroll}>
           {modules.length > 1 ? (
