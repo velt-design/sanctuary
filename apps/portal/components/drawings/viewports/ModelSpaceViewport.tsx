@@ -69,6 +69,29 @@ import {
 } from '@/lib/drawings/interactions/openingMoveToolController';
 import { resolvePlanDimensionEditIntent } from '@/lib/drawings/interactions/planDimensionEditController';
 import {
+  armDrawOutlineDistanceLockController,
+  cancelDrawOutlineController,
+  closeDrawOutlineController,
+  hoverDrawOutlineCanvasPoint,
+  selectDrawOutlineCanvasPoint,
+  startDrawOutlineController,
+  startDrawOutlinePointerSession,
+  undoDrawOutlineController,
+  type DrawOutlinePointerSession,
+} from '@/lib/drawings/interactions/drawOutlineToolController';
+import {
+  buildFootprintAttachmentSideIntent,
+  buildFootprintModeIntent,
+  buildFootprintPresetIntent,
+  buildFootprintRotateIntent,
+  resolveFootprintEdgeAddIntent,
+  resolveFootprintHandleDragIntent,
+  resolveFootprintVertexDeleteIntent,
+  resolveFootprintVertexDragIntent,
+  type FootprintDragControllerState,
+  type FootprintVertexDragControllerState,
+} from '@/lib/drawings/interactions/footprintEditController';
+import {
   OBJECT_DRAG_INTENT_THRESHOLD_PX,
   resolveObjectInteractionMove,
   setObjectInteractionPhase,
@@ -89,7 +112,6 @@ import type {
 import type { WorkbenchObjectRef } from '@/lib/drawings/state/objectFirstWorkbenchModel';
 import {
   normalizeHouseFootprintParams,
-  type CalculatorHouseFootprintParams,
   type CalculatorHouseFootprintPolygonPoint,
 } from '@/lib/types/calculator';
 import { moduleDrawingThemeCssVariables } from '@/lib/theme/moduleDrawing';
@@ -107,37 +129,21 @@ import {
   resolveObjectInteractionPreviewTargetState,
 } from './objectInteractionPresenter';
 import styles from './ModelSpaceViewport.module.css';
-import { CLOSE_START_TOLERANCE_M, MIN_OUTLINE_SEGMENT_M, distanceBetweenOutlinePoints } from './drawOutlineToolGeometry';
 import {
-  cancelDrawOutlineTool,
   createInactiveDrawOutlineState,
   deriveDrawOutlineViewModel,
-  finishSuccessfulDrawOutlineCommit,
-  hoverDrawOutlinePoint,
   isDrawOutlineActive,
-  prepareDrawOutlineClose,
-  selectDrawOutlinePoint,
-  armDrawOutlineDistanceLock,
   setDrawOutlineDistanceDraft,
-  startDrawOutlineTool,
-  undoDrawOutline,
-  type DrawOutlinePoint,
   type DrawOutlineToolState,
   type DrawOutlineTransitionResult,
 } from './drawOutlineToolState';
 
-type FootprintDragSession = HouseFootprintEditorDragMeta & {
+type FootprintDragSession = HouseFootprintEditorDragMeta & FootprintDragControllerState & {
   pointerId: number;
-  startSvgX: number;
-  startSvgY: number;
-  startParams: CalculatorHouseFootprintParams;
 };
 
-type FootprintVertexDragSession = HouseFootprintVertexDragMeta & {
+type FootprintVertexDragSession = HouseFootprintVertexDragMeta & FootprintVertexDragControllerState & {
   pointerId: number;
-  startSvgX: number;
-  startSvgY: number;
-  startPolygon: NonNullable<Required<ModulePlanModel>['houseFootprintPolygon']>;
 };
 
 type PlanFieldDragSession = ModulePlanResizeDragMeta & {
@@ -185,16 +191,6 @@ type NativeGestureEvent = Event & {
   scale?: number;
   clientX?: number;
   clientY?: number;
-};
-
-type DrawOutlinePointerSession = {
-  pointerId: number;
-  startClientX: number;
-  startClientY: number;
-  startPanX: number;
-  startPanY: number;
-  startPoint: ModuleFootprintCanvasPoint;
-  hasPanned: boolean;
 };
 
 type DrawPopoverPosition = {
@@ -425,33 +421,6 @@ function formatHouseFootprintParamValue(value: number): string {
   return value.toFixed(3).replace(/\.?0+$/, '') || '0';
 }
 
-function parseHouseFootprintParamValue(value: string | undefined, fallback: number): number {
-  const parsed = Number.parseFloat(value ?? '');
-  return Number.isFinite(parsed) ? parsed : fallback;
-}
-
-function snapHouseFootprintValue(value: number): number {
-  return Math.round(value * 1000) / 1000;
-}
-
-function parsePolygonMetres(value: string | undefined): number {
-  const parsed = Number.parseFloat(value ?? '');
-  return Number.isFinite(parsed) ? parsed : 0;
-}
-
-function formatPolygonMetres(value: number): string {
-  return formatHouseFootprintParamValue(snapHouseFootprintValue(value));
-}
-
-function buildCanvasPointFromOutlinePoint(point: DrawOutlinePoint): ModuleFootprintCanvasPoint {
-  return {
-    alongM: formatPolygonMetres(point.alongM),
-    depthM: formatPolygonMetres(point.depthM),
-    numericAlongM: point.alongM,
-    numericDepthM: point.depthM,
-  };
-}
-
 function isScrollableOverflowValue(value: string): boolean {
   return value === 'auto' || value === 'scroll' || value === 'overlay';
 }
@@ -478,101 +447,6 @@ function collectScrollableAncestors(node: HTMLElement | null): HTMLElement[] {
     scrollTargets.push(scrollingElement);
   }
   return scrollTargets;
-}
-
-function parseDrawOutlineCanvasPoint(rawPoint: ModuleFootprintCanvasPoint): DrawOutlinePoint | null {
-  const point = {
-    alongM: parsePolygonMetres(rawPoint.alongM),
-    depthM: parsePolygonMetres(rawPoint.depthM),
-  };
-  return Number.isFinite(point.alongM) && Number.isFinite(point.depthM) ? point : null;
-}
-
-function constrainOutlinePointToWorldAxes(start: DrawOutlinePoint, point: DrawOutlinePoint): DrawOutlinePoint {
-  const deltaAlongM = point.alongM - start.alongM;
-  const deltaDepthM = point.depthM - start.depthM;
-  return Math.abs(deltaAlongM) >= Math.abs(deltaDepthM)
-    ? { alongM: point.alongM, depthM: start.depthM }
-    : { alongM: start.alongM, depthM: point.depthM };
-}
-
-function resolveDrawOutlinePreviewPoint(input: {
-  rawPoint: ModuleFootprintCanvasPoint;
-  state: DrawOutlineToolState;
-  shiftKey: boolean;
-}): ModuleFootprintCanvasPoint | null {
-  if (!isDrawOutlineActive(input.state)) {
-    return input.rawPoint;
-  }
-
-  const parsedPoint = parseDrawOutlineCanvasPoint(input.rawPoint);
-  if (!parsedPoint) return null;
-
-  const confirmedPoints = input.state.points;
-  if (!confirmedPoints.length) {
-    return buildCanvasPointFromOutlinePoint(parsedPoint);
-  }
-
-  if (confirmedPoints.length >= 3) {
-    const firstPoint = confirmedPoints[0];
-    if (firstPoint && distanceBetweenOutlinePoints(firstPoint, parsedPoint) <= CLOSE_START_TOLERANCE_M) {
-      return buildCanvasPointFromOutlinePoint(firstPoint);
-    }
-  }
-
-  const startPoint = confirmedPoints[confirmedPoints.length - 1]!;
-  let resolvedPoint = input.shiftKey ? constrainOutlinePointToWorldAxes(startPoint, parsedPoint) : parsedPoint;
-  const lockedDistanceM = Number.parseFloat(input.state.lockedDistanceDraft ?? '');
-
-  if (Number.isFinite(lockedDistanceM) && lockedDistanceM >= MIN_OUTLINE_SEGMENT_M) {
-    const deltaAlongM = resolvedPoint.alongM - startPoint.alongM;
-    const deltaDepthM = resolvedPoint.depthM - startPoint.depthM;
-    if (Math.abs(deltaAlongM) <= 1e-9 && Math.abs(deltaDepthM) <= 1e-9) {
-      return null;
-    }
-    if (input.shiftKey) {
-      if (Math.abs(deltaAlongM) >= Math.abs(deltaDepthM)) {
-        resolvedPoint = {
-          alongM: startPoint.alongM + Math.sign(deltaAlongM || 1) * lockedDistanceM,
-          depthM: startPoint.depthM,
-        };
-      } else {
-        resolvedPoint = {
-          alongM: startPoint.alongM,
-          depthM: startPoint.depthM + Math.sign(deltaDepthM || 1) * lockedDistanceM,
-        };
-      }
-    } else {
-      const distanceM = Math.hypot(deltaAlongM, deltaDepthM);
-      if (distanceM < 1e-9) return null;
-      const scale = lockedDistanceM / distanceM;
-      resolvedPoint = {
-        alongM: startPoint.alongM + deltaAlongM * scale,
-        depthM: startPoint.depthM + deltaDepthM * scale,
-      };
-    }
-  }
-
-  return buildCanvasPointFromOutlinePoint(resolvedPoint);
-}
-
-function moveCustomPolygonVertex(
-  polygon: NonNullable<Required<ModulePlanModel>['houseFootprintPolygon']>,
-  vertexIndex: number,
-  nextAlongM: number,
-  nextDepthM: number,
-): NonNullable<Required<ModulePlanModel>['houseFootprintPolygon']> {
-  const points = polygon.map((point) => ({
-    alongM: parsePolygonMetres(point.alongM),
-    depthM: parsePolygonMetres(point.depthM),
-  }));
-  if (points.length < 3 || vertexIndex < 0 || vertexIndex >= points.length) return polygon;
-  points[vertexIndex] = { alongM: nextAlongM, depthM: nextDepthM };
-
-  return points.map((point) => ({
-    alongM: formatPolygonMetres(point.alongM),
-    depthM: formatPolygonMetres(point.depthM),
-  }));
 }
 
 function formatDrawingFieldValue(value: number): string {
@@ -1429,7 +1303,8 @@ export default function ModelSpaceViewport({
       setDrawOutlinePointerSession(null);
       setDrawOutlineState(createInactiveDrawOutlineState());
       setFootprintError(null);
-      await commitFootprintEdit({ type: 'preset', preset });
+      const intent = buildFootprintPresetIntent(preset);
+      if (intent.kind === 'footprint_edit') await commitFootprintEdit(intent.edit);
     },
     [commitFootprintEdit],
   );
@@ -1443,7 +1318,7 @@ export default function ModelSpaceViewport({
     setDrawOutlineLandingPoint(null);
     drawOutlinePointerSessionRef.current = null;
     setDrawOutlinePointerSession(null);
-    applyDrawOutlineTransition(startDrawOutlineTool());
+    applyDrawOutlineTransition(startDrawOutlineController());
   }, [applyDrawOutlineTransition]);
 
   useEffect(() => {
@@ -1460,7 +1335,7 @@ export default function ModelSpaceViewport({
 
   useEffect(() => {
     if (view === 'plan' || !isDrawOutlineActive(drawOutlineState)) return;
-    applyDrawOutlineTransition(cancelDrawOutlineTool());
+    applyDrawOutlineTransition(cancelDrawOutlineController());
   }, [applyDrawOutlineTransition, drawOutlineState, view]);
 
   const handleFootprintModeSelect = useCallback(
@@ -1474,12 +1349,13 @@ export default function ModelSpaceViewport({
       setDrawOutlineLandingPoint(null);
       drawOutlinePointerSessionRef.current = null;
       setDrawOutlinePointerSession(null);
-      if (mode === 'custom_polygon') {
+      const intent = buildFootprintModeIntent(mode);
+      if (intent.kind === 'start_draw_outline') {
         startDrawOutlineSession();
         return;
       }
       setDrawOutlineState(createInactiveDrawOutlineState());
-      await commitFootprintEdit({ type: 'mode', mode });
+      if (intent.kind === 'footprint_edit') await commitFootprintEdit(intent.edit);
     },
     [commitFootprintEdit, startDrawOutlineSession],
   );
@@ -1497,7 +1373,8 @@ export default function ModelSpaceViewport({
       setDrawOutlinePointerSession(null);
       setDrawOutlineState(createInactiveDrawOutlineState());
       setFootprintError(null);
-      await commitFootprintEdit({ type: 'rotate', delta });
+      const intent = buildFootprintRotateIntent(delta);
+      if (intent.kind === 'footprint_edit') await commitFootprintEdit(intent.edit);
     },
     [commitFootprintEdit],
   );
@@ -1515,7 +1392,8 @@ export default function ModelSpaceViewport({
       setDrawOutlinePointerSession(null);
       setDrawOutlineState(createInactiveDrawOutlineState());
       setFootprintError(null);
-      await commitFootprintEdit({ type: 'attachment_side', side });
+      const intent = buildFootprintAttachmentSideIntent(side);
+      if (intent.kind === 'footprint_edit') await commitFootprintEdit(intent.edit);
     },
     [commitFootprintEdit],
   );
@@ -1568,17 +1446,11 @@ export default function ModelSpaceViewport({
   const handleFootprintEdgeAdd = useCallback(
     async (edgeIndex: number) => {
       if (!canEditFootprint || !planModel || (planModel.houseFootprintMode ?? 'preset') !== 'custom_polygon') return;
-      const polygon = planModel.houseFootprintPolygon ?? [];
-      if (polygon.length < 3) return;
-      const start = polygon[edgeIndex];
-      const end = polygon[(edgeIndex + 1) % polygon.length];
-      if (!start || !end) return;
-      const next = [...polygon];
-      next.splice(edgeIndex + 1, 0, {
-        alongM: formatPolygonMetres((parsePolygonMetres(start.alongM) + parsePolygonMetres(end.alongM)) / 2),
-        depthM: formatPolygonMetres((parsePolygonMetres(start.depthM) + parsePolygonMetres(end.depthM)) / 2),
+      const intent = resolveFootprintEdgeAddIntent({
+        polygon: planModel.houseFootprintPolygon ?? [],
+        edgeIndex,
       });
-      await commitFootprintEdit({ type: 'polygon', polygon: next });
+      if (intent.kind === 'footprint_edit') await commitFootprintEdit(intent.edit);
     },
     [canEditFootprint, commitFootprintEdit, planModel],
   );
@@ -1586,19 +1458,24 @@ export default function ModelSpaceViewport({
   const handleFootprintVertexDelete = useCallback(
     async (vertexIndex: number) => {
       if (!canEditFootprint || !planModel || (planModel.houseFootprintMode ?? 'preset') !== 'custom_polygon') return;
-      const polygon = planModel.houseFootprintPolygon ?? [];
-      if (polygon.length <= 3 || vertexIndex < 0 || vertexIndex >= polygon.length) return;
-      await commitFootprintEdit({ type: 'polygon', polygon: polygon.filter((_, index) => index !== vertexIndex) });
+      const intent = resolveFootprintVertexDeleteIntent({
+        polygon: planModel.houseFootprintPolygon ?? [],
+        vertexIndex,
+      });
+      if (intent.kind === 'footprint_edit') await commitFootprintEdit(intent.edit);
     },
     [canEditFootprint, commitFootprintEdit, planModel],
   );
 
   const handleDrawOutlinePointSelect = useCallback(
     (rawPoint: ModuleFootprintCanvasPoint) => {
-      const point = parseDrawOutlineCanvasPoint(rawPoint);
-      if (!point) return;
-      setDrawOutlineLandingPoint(rawPoint);
-      applyDrawOutlineTransition(selectDrawOutlinePoint(drawOutlineState, point));
+      const result = selectDrawOutlineCanvasPoint({
+        state: drawOutlineState,
+        rawPoint,
+      });
+      if (!result.transition) return;
+      setDrawOutlineLandingPoint(result.landingPoint);
+      applyDrawOutlineTransition(result.transition);
     },
     [applyDrawOutlineTransition, drawOutlineState],
   );
@@ -1608,72 +1485,61 @@ export default function ModelSpaceViewport({
       rawPoint: ModuleFootprintCanvasPoint,
       event: { pointerId: number; clientX: number; clientY: number; shiftKey: boolean },
     ) => {
-      if (!Number.isFinite(rawPoint.numericAlongM) || !Number.isFinite(rawPoint.numericDepthM)) return;
-      const resolvedPoint = resolveDrawOutlinePreviewPoint({
+      const result = startDrawOutlinePointerSession({
         rawPoint,
         state: drawOutlineState,
         shiftKey: event.shiftKey,
-      });
-      if (!resolvedPoint) return;
-      const nextSession = {
         pointerId: event.pointerId,
-        startClientX: event.clientX,
-        startClientY: event.clientY,
+        clientX: event.clientX,
+        clientY: event.clientY,
         startPanX: viewportTransform.panX,
         startPanY: viewportTransform.panY,
-        startPoint: resolvedPoint,
-        hasPanned: false,
-      };
-      setDrawOutlineLandingPoint(resolvedPoint);
-      drawOutlinePointerSessionRef.current = nextSession;
-      setDrawOutlinePointerSession(nextSession);
+      });
+      if (!result.session) return;
+      setDrawOutlineLandingPoint(result.landingPoint);
+      drawOutlinePointerSessionRef.current = result.session;
+      setDrawOutlinePointerSession(result.session);
     },
     [drawOutlineState, viewportTransform.panX, viewportTransform.panY],
   );
 
   const handleDrawOutlineUndo = useCallback(() => {
-    applyDrawOutlineTransition(undoDrawOutline(drawOutlineState));
+    applyDrawOutlineTransition(undoDrawOutlineController(drawOutlineState));
   }, [applyDrawOutlineTransition, drawOutlineState]);
 
   const handleDrawOutlineCancel = useCallback(() => {
-    applyDrawOutlineTransition(cancelDrawOutlineTool());
+    applyDrawOutlineTransition(cancelDrawOutlineController());
   }, [applyDrawOutlineTransition]);
 
   const handleDrawOutlineClose = useCallback(async () => {
-    const closeResult = prepareDrawOutlineClose(drawOutlineState);
+    const closeResult = closeDrawOutlineController({
+      state: drawOutlineState,
+      mode: deckOutlineMode ? 'deck_custom_outline' : 'house_footprint',
+    });
     if (!closeResult.ok) {
       if (closeResult.error) setFootprintError(closeResult.error);
       return;
     }
     const result =
-      deckOutlineMode && onCommitCustomPolygon
-        ? await resolveCommitResult(onCommitCustomPolygon(closeResult.polygon))
-        : await commitFootprintEdit({ type: 'custom_polygon', polygon: closeResult.polygon });
+      closeResult.commitIntent.kind === 'custom_polygon_commit' && onCommitCustomPolygon
+        ? await resolveCommitResult(onCommitCustomPolygon(closeResult.commitIntent.polygon))
+        : closeResult.commitIntent.kind === 'footprint_edit'
+          ? await commitFootprintEdit(closeResult.commitIntent.edit)
+          : { ok: false, error: 'Unable to close the custom outline.' };
     if (result.ok) {
-      applyDrawOutlineTransition(finishSuccessfulDrawOutlineCommit());
+      applyDrawOutlineTransition(closeResult.transition);
     }
   }, [applyDrawOutlineTransition, commitFootprintEdit, deckOutlineMode, drawOutlineState, onCommitCustomPolygon]);
 
   const handleDrawOutlinePointHover = useCallback(
     (rawPoint: ModuleFootprintCanvasPoint | null, shiftKey = false) => {
-      if (!rawPoint) {
-        setDrawOutlineLandingPoint(null);
-        applyDrawOutlineTransition(hoverDrawOutlinePoint(drawOutlineState, null));
-        return;
-      }
-      const resolvedPoint = resolveDrawOutlinePreviewPoint({
-        rawPoint,
+      const result = hoverDrawOutlineCanvasPoint({
         state: drawOutlineState,
+        rawPoint,
         shiftKey,
       });
-      const point = resolvedPoint ? parseDrawOutlineCanvasPoint(resolvedPoint) : null;
-      if (!resolvedPoint || !point) {
-        setDrawOutlineLandingPoint(null);
-        applyDrawOutlineTransition(hoverDrawOutlinePoint(drawOutlineState, null));
-        return;
-      }
-      setDrawOutlineLandingPoint(resolvedPoint);
-      applyDrawOutlineTransition(hoverDrawOutlinePoint(drawOutlineState, point));
+      setDrawOutlineLandingPoint(result.landingPoint);
+      applyDrawOutlineTransition(result.transition);
     },
     [applyDrawOutlineTransition, drawOutlineState],
   );
@@ -1707,7 +1573,12 @@ export default function ModelSpaceViewport({
     userAdjustedViewportRef.current = true;
     drawOutlinePointerSessionRef.current = null;
     setDrawOutlinePointerSession(null);
-    setDrawOutlineState((current) => hoverDrawOutlinePoint(current, null).state);
+    setDrawOutlineState((current) =>
+      hoverDrawOutlineCanvasPoint({
+        state: current,
+        rawPoint: null,
+      }).transition.state,
+    );
     setPinchZoomActive(true);
     setPinchSource('touch-pointer');
     setViewportNavigationGesture('pinch-zoom');
@@ -1957,7 +1828,12 @@ export default function ModelSpaceViewport({
         };
         drawOutlinePointerSessionRef.current = nextSession;
         setDrawOutlinePointerSession(nextSession);
-        setDrawOutlineState((current) => hoverDrawOutlinePoint(current, null).state);
+        setDrawOutlineState((current) =>
+          hoverDrawOutlineCanvasPoint({
+            state: current,
+            rawPoint: null,
+          }).transition.state,
+        );
       }
     };
 
@@ -2076,55 +1952,11 @@ export default function ModelSpaceViewport({
       if (!svg) return;
       const nextPoint = clientPointToSvg(svg, event.clientX, event.clientY);
       if (!nextPoint) return;
-
-      const deltaSvgX = nextPoint.x - footprintDragSession.startSvgX;
-      const deltaSvgY = nextPoint.y - footprintDragSession.startSvgY;
-      const deltaUnits = deltaSvgX * footprintDragSession.axisX + deltaSvgY * footprintDragSession.axisY;
-      const deltaM = (deltaUnits / Math.max(footprintDragSession.scale, 0.001)) * footprintDragSession.deltaMultiplier;
-      const minValueM = footprintDragSession.minValueM;
-      const maxValueM = Math.max(minValueM, footprintDragSession.maxValueM);
-      const startParams = footprintDragSession.startParams;
-
-      let key: keyof CalculatorHouseFootprintParams = 'bandDepthM';
-      let nextValue = parseHouseFootprintParamValue(startParams.bandDepthM, 1.8) + deltaM;
-
-      switch (footprintDragSession.handleId) {
-        case 'returnRun':
-          key = 'returnRunM';
-          nextValue = parseHouseFootprintParamValue(startParams.returnRunM, 2.4) + deltaM;
-          break;
-        case 'recessWidth':
-          key = 'recessWidthM';
-          nextValue = parseHouseFootprintParamValue(startParams.recessWidthM, 2.4) + deltaM;
-          break;
-        case 'recessDepth':
-          key = 'recessDepthM';
-          nextValue = parseHouseFootprintParamValue(startParams.recessDepthM, 1.2) + deltaM;
-          break;
-        case 'leftLegRun':
-          key = 'leftLegRunM';
-          nextValue = parseHouseFootprintParamValue(startParams.leftLegRunM, 2.4) + deltaM;
-          break;
-        case 'rightLegRun':
-          key = 'rightLegRunM';
-          nextValue = parseHouseFootprintParamValue(startParams.rightLegRunM, 2.4) + deltaM;
-          break;
-        case 'sideRun':
-          key = 'sideRunM';
-          nextValue = parseHouseFootprintParamValue(startParams.sideRunM, 2.4) + deltaM;
-          break;
-        case 'bandDepth':
-        default:
-          key = 'bandDepthM';
-          nextValue = parseHouseFootprintParamValue(startParams.bandDepthM, 1.8) + deltaM;
-          break;
-      }
-
-      void commitFootprintEdit({
-        type: 'param',
-        key,
-        value: formatHouseFootprintParamValue(snapHouseFootprintValue(Math.min(Math.max(nextValue, minValueM), maxValueM))),
+      const intent = resolveFootprintHandleDragIntent({
+        session: footprintDragSession,
+        nextSvgPoint: nextPoint,
       });
+      if (intent.kind === 'footprint_edit') void commitFootprintEdit(intent.edit);
     };
 
     const handlePointerEnd = (event: PointerEvent) => {
@@ -2156,24 +1988,11 @@ export default function ModelSpaceViewport({
       if (!svg) return;
       const nextPoint = clientPointToSvg(svg, event.clientX, event.clientY);
       if (!nextPoint) return;
-
-      const deltaSvgX = nextPoint.x - footprintVertexDragSession.startSvgX;
-      const deltaSvgY = nextPoint.y - footprintVertexDragSession.startSvgY;
-      const deltaAlongM =
-        (deltaSvgX * footprintVertexDragSession.alongAxisX + deltaSvgY * footprintVertexDragSession.alongAxisY) /
-        Math.max(footprintVertexDragSession.scale, 0.001);
-      const deltaDepthM =
-        (deltaSvgX * footprintVertexDragSession.depthAxisX + deltaSvgY * footprintVertexDragSession.depthAxisY) /
-        Math.max(footprintVertexDragSession.scale, 0.001);
-      const startPoint = footprintVertexDragSession.startPolygon[footprintVertexDragSession.vertexIndex];
-      if (!startPoint) return;
-      const nextPolygon = moveCustomPolygonVertex(
-        footprintVertexDragSession.startPolygon,
-        footprintVertexDragSession.vertexIndex,
-        snapHouseFootprintValue(parsePolygonMetres(startPoint.alongM) + deltaAlongM),
-        snapHouseFootprintValue(parsePolygonMetres(startPoint.depthM) + deltaDepthM),
-      );
-      void commitFootprintEdit({ type: 'polygon', polygon: nextPolygon });
+      const intent = resolveFootprintVertexDragIntent({
+        session: footprintVertexDragSession,
+        nextSvgPoint: nextPoint,
+      });
+      if (intent.kind === 'footprint_edit') void commitFootprintEdit(intent.edit);
     };
 
     const handlePointerEnd = (event: PointerEvent) => {
@@ -2438,7 +2257,7 @@ export default function ModelSpaceViewport({
         if (event.key === 'Enter') {
           if (!activeState.distanceDraft) return;
           event.preventDefault();
-          const result = armDrawOutlineDistanceLock(drawOutlineState);
+          const result = armDrawOutlineDistanceLockController(drawOutlineState);
           if (result.error) {
             setFootprintError(result.error);
             return;

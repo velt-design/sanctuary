@@ -52,6 +52,7 @@ For marketing-only or shared-package-only tasks, use the parts that affect porta
 
 - Treat docs as part of the implementation surface.
 - When changing portal behavior, data flow, source-of-truth boundaries, test strategy, or known risks, check the relevant canonical doc in the same task.
+- Use `docs/change-routing.md` to name the owner docs considered when a changed path maps to docs ownership.
 - If the doc is stale, update it in the same PR unless the user explicitly scoped docs out.
 - Prefer small current-state updates to existing canonical docs over new long planning docs.
 - Keep one canonical owner doc for each behavior and link to it instead of duplicating full rules across many docs.
@@ -77,7 +78,8 @@ Use `docs/testing-and-qa.md` for the canonical command catalog. Use the feature 
 
 - Summarize what changed and where.
 - List verification commands run and their result.
-- Mention docs updated, or explicitly say docs were unchanged because behavior and guardrails did not change.
+- Mention docs updated, or explicitly say docs were unchanged because behavior, source-of-truth boundaries, test strategy, and guardrails did not change.
+- For behavior paths covered by `docs/change-routing.md`, mention the owner docs considered and the `npm run docs:impact` result.
 - Call out residual risk, assumptions, or checks not run.
 - Mention unrelated worktree changes only when they were present and intentionally left untouched.
 

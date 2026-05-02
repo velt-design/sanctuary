@@ -2,6 +2,8 @@
 
 This is a private npm workspace with two Next.js apps and shared packages. Treat app code as integration code and packages as reusable business/domain source of truth.
 
+For the north-star structure this repo is converging toward, read `docs/target-architecture.md`. This doc describes the current workspace shape and active ownership boundaries.
+
 ## Workspace Shape
 
 - `apps/marketing`: public marketing site, enquiry form, public quote and invoice viewers, email templates, analytics runtime routes, consent handling, SEO.
