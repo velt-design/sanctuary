@@ -243,6 +243,7 @@ export default function ProjectsExperience({ projects, initialSlugFromUrl = '' }
                             sizes="72px"
                             loading="lazy"
                             className="projects-list__thumb-image"
+                            style={{ objectPosition: project.heroImage.objectPosition || 'center' }}
                           />
                         </span>
                         <span className="projects-list__copy">

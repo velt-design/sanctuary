@@ -100,6 +100,7 @@ export default function ProjectDetailContent({
 
   const TitleTag = titleAs;
   const detailGallery = project.gallery.filter(image => image.src !== project.heroImage.src);
+  const activeHeroSlide = heroSlides[activeSlide] || project.heroImage;
 
   return (
     <article
@@ -114,14 +115,14 @@ export default function ProjectDetailContent({
       >
         <div className="project-detail__media">
           <Image
-            key={heroSlides[activeSlide]?.src}
-            src={heroSlides[activeSlide]?.src || project.heroImage.src}
-            alt={heroSlides[activeSlide]?.alt || project.heroImage.alt}
+            key={activeHeroSlide.src}
+            src={activeHeroSlide.src}
+            alt={activeHeroSlide.alt}
             fill
             priority
             fetchPriority="high"
-            sizes="(max-width: 720px) 100vw, (max-width: 1280px) 66vw, 900px"
-            style={{ objectFit: 'cover' }}
+            sizes="(max-width: 720px) 100vw, (max-width: 1280px) 70vw, 1200px"
+            style={{ objectFit: 'cover', objectPosition: activeHeroSlide.objectPosition || 'center' }}
           />
           {totalSlides > 1 && (
             <>
@@ -198,7 +199,7 @@ export default function ProjectDetailContent({
                   fill
                   loading="lazy"
                   sizes="(max-width: 720px) 100vw, (max-width: 1280px) 30vw, 360px"
-                  style={{ objectFit: 'cover' }}
+                  style={{ objectFit: 'cover', objectPosition: image.objectPosition || 'center' }}
                 />
               </figure>
             ))}
@@ -222,6 +223,7 @@ export default function ProjectDetailContent({
                         fill
                         loading="lazy"
                         sizes="(max-width: 720px) 100vw, (max-width: 1280px) 42vw, 460px"
+                        style={{ objectFit: 'cover', objectPosition: related.heroImage.objectPosition || 'center' }}
                       />
                     </span>
                     <span className="project-detail__related-copy">

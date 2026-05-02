@@ -1,5 +1,5 @@
 // data/projects.ts
-export type Image = { src: string; alt: string; fallbackJpg?: string; w?: number; h?: number };
+export type Image = { src: string; alt: string; fallbackJpg?: string; w?: number; h?: number; objectPosition?: string };
 
 export type ProjectStats = {
   width?: string;
@@ -46,35 +46,43 @@ const baseProjects: Project[] = [
     heroImage: {
       src: '/images/project-warkworth-outdoor-room-01.jpg',
       alt: 'Freestanding matte black gable outdoor room beside a Warkworth home',
+      objectPosition: '50% 34%',
     },
     gallery: [
       {
-        src: '/images/project-warkworth-outdoor-room-01.jpg',
-        alt: 'Exterior gable view of the freestanding Warkworth outdoor room',
-      },
-      {
         src: '/images/project-warkworth-outdoor-room-02.jpg',
         alt: 'Interior outdoor room with cedar ceiling, pendant lighting and lounge seating',
+        objectPosition: '50% 42%',
       },
       {
         src: '/images/project-warkworth-outdoor-room-03.jpg',
         alt: 'Fireplace and lounge area beneath the Warkworth gable outdoor room',
+        objectPosition: '48% 44%',
       },
       {
         src: '/images/project-warkworth-outdoor-room-04.jpg',
         alt: 'Clear acrylic roof glazing and cedar ceiling detail in the Warkworth outdoor room',
+        objectPosition: '46% 43%',
       },
       {
         src: '/images/project-warkworth-outdoor-room-05.jpg',
         alt: 'Garden-side exterior view with the fireplace chimney and matte black roof',
+        objectPosition: '56% 42%',
+      },
+      {
+        src: '/images/project-warkworth-outdoor-room-01.jpg',
+        alt: 'Exterior gable view of the freestanding Warkworth outdoor room',
+        objectPosition: '50% 34%',
       },
       {
         src: '/images/project-warkworth-outdoor-room-06.jpg',
         alt: 'Side entry and deck view into the Warkworth outdoor room',
+        objectPosition: '50% 44%',
       },
       {
         src: '/images/project-warkworth-outdoor-room-07.jpg',
         alt: 'Exterior view of the Warkworth outdoor room with screens and planting',
+        objectPosition: '50% 45%',
       },
     ],
     blurb:

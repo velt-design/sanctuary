@@ -197,7 +197,7 @@ export default function ProjectsCarouselMobile({
                 fill
                 priority={index === 0}
                 sizes="(max-width: 720px) 100vw, 480px"
-                style={{ objectFit: 'cover' }}
+                style={{ objectFit: 'cover', objectPosition: project.heroImage.objectPosition || 'center' }}
               />
             </div>
             <div className="projects-mobile-card__panel">

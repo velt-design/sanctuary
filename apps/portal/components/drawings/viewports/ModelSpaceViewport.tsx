@@ -114,6 +114,11 @@ import {
   type ModelSpaceWebKitGestureSession,
 } from '@/lib/drawings/interactions/modelSpaceNavigationController';
 import {
+  resolvePlanFieldResizeDrag,
+  startPlanFieldResizeDrag,
+  type PlanFieldResizeDragSession,
+} from '@/lib/drawings/interactions/planFieldResizeController';
+import {
   OBJECT_DRAG_INTENT_THRESHOLD_PX,
   resolveObjectInteractionMove,
   setObjectInteractionPhase,
@@ -166,14 +171,6 @@ type FootprintDragSession = HouseFootprintEditorDragMeta & FootprintDragControll
 
 type FootprintVertexDragSession = HouseFootprintVertexDragMeta & FootprintVertexDragControllerState & {
   pointerId: number;
-};
-
-type PlanFieldDragSession = ModulePlanResizeDragMeta & {
-  pointerId: number;
-  startSvgX: number;
-  startSvgY: number;
-  startValueM: number;
-  field: EstimateDrawingField;
 };
 
 type PanDragSession = ModelSpacePanSession;
@@ -391,10 +388,6 @@ function collectScrollableAncestors(node: HTMLElement | null): HTMLElement[] {
   return scrollTargets;
 }
 
-function formatDrawingFieldValue(value: number): string {
-  return value.toFixed(3).replace(/\.?0+$/, '') || '0';
-}
-
 function clientPointToSvg(svg: SVGSVGElement, clientX: number, clientY: number): { x: number; y: number } | null {
   const point = svg.createSVGPoint();
   point.x = clientX;
@@ -527,7 +520,7 @@ export default function ModelSpaceViewport({
   const [panDragSession, setPanDragSession] = useState<PanDragSession | null>(null);
   const [planHoveredResizeFieldId, setPlanHoveredResizeFieldId] = useState<ModulePlanResizeFieldId | null>(null);
   const [planActiveResizeFieldId, setPlanActiveResizeFieldId] = useState<ModulePlanResizeFieldId | null>(null);
-  const [planFieldDragSession, setPlanFieldDragSession] = useState<PlanFieldDragSession | null>(null);
+  const [planFieldDragSession, setPlanFieldDragSession] = useState<PlanFieldResizeDragSession | null>(null);
   const [objectWorkbenchActiveCustomEdgeId, setObjectWorkbenchActiveCustomEdgeId] = useState<string | null>(null);
   const [objectWorkbenchDimensionEditor, setObjectWorkbenchDimensionEditor] = useState<ObjectWorkbenchDimensionEditorState | null>(null);
   const [objectWorkbenchDimensionPopoverPosition, setObjectWorkbenchDimensionPopoverPosition] = useState<DrawPopoverPosition | null>(null);
@@ -1699,29 +1692,26 @@ export default function ModelSpaceViewport({
 
   const handlePlanFieldDragStart = useCallback(
     (meta: ModulePlanResizeDragMeta, event: { pointerId: number; clientX: number; clientY: number }) => {
-      if (!canEditPlanDimensions || !planModel) return;
-      const field = editableFieldMap.get(meta.fieldId);
-      if (!field) return;
       const svg = footprintSvgRef.current;
       if (!svg) return;
       const startPoint = clientPointToSvg(svg, event.clientX, event.clientY);
       if (!startPoint) return;
 
-      const fallbackValue = meta.fieldId === 'plan:lengthA' ? planModel.lengthA : planModel.spanA;
-      const startValueM = Number.parseFloat(field.rawValue);
+      const start = startPlanFieldResizeDrag({
+        available: canEditPlanDimensions,
+        planModel,
+        editableFieldMap,
+        meta,
+        pointerId: event.pointerId,
+        startSvgPoint: startPoint,
+      });
+      if (!start.ok) return;
 
       setFootprintError(null);
       setFieldError(null);
       setPlanActiveResizeFieldId(meta.fieldId);
       setPlanHoveredResizeFieldId(meta.fieldId);
-      setPlanFieldDragSession({
-        ...meta,
-        pointerId: event.pointerId,
-        startSvgX: startPoint.x,
-        startSvgY: startPoint.y,
-        startValueM: Number.isFinite(startValueM) ? startValueM : fallbackValue,
-        field,
-      });
+      setPlanFieldDragSession(start.session);
     },
     [canEditPlanDimensions, editableFieldMap, planModel],
   );
@@ -1940,16 +1930,11 @@ export default function ModelSpaceViewport({
       const nextPoint = clientPointToSvg(svg, event.clientX, event.clientY);
       if (!nextPoint) return;
 
-      const deltaSvgX = nextPoint.x - planFieldDragSession.startSvgX;
-      const deltaSvgY = nextPoint.y - planFieldDragSession.startSvgY;
-      const deltaUnits = deltaSvgX * planFieldDragSession.axisX + deltaSvgY * planFieldDragSession.axisY;
-      const deltaM = (deltaUnits / Math.max(planFieldDragSession.scale, 0.001)) * planFieldDragSession.deltaMultiplier;
-      const unclampedValueM = planFieldDragSession.startValueM + deltaM;
-      const nextValueM = Number.isFinite(planFieldDragSession.maxValueM)
-        ? Math.min(Math.max(unclampedValueM, planFieldDragSession.minValueM), planFieldDragSession.maxValueM)
-        : Math.max(unclampedValueM, planFieldDragSession.minValueM);
-
-      void commitFieldEdit(planFieldDragSession.field, formatDrawingFieldValue(nextValueM));
+      const intent = resolvePlanFieldResizeDrag({
+        session: planFieldDragSession,
+        nextSvgPoint: nextPoint,
+      });
+      if (intent.kind === 'field_commit') void commitFieldEdit(intent.field, intent.nextValue);
     };
 
     const handlePointerEnd = (event: PointerEvent) => {

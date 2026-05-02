@@ -9,7 +9,7 @@ export type HomeProjectCard = {
   slug: string;
   title: string;
   location: string;
-  heroImage: { src: string; alt: string };
+  heroImage: { src: string; alt: string; objectPosition?: string };
 };
 
 type HomeProjectsSectionProps = {
@@ -130,6 +130,7 @@ export default function HomeProjectsSection({
                 sizes="(max-width: 768px) 82vw, 560px"
                 quality={60}
                 className="object-cover transition-transform duration-700 ease-[cubic-bezier(0.22,0.61,0.36,1)] group-hover:scale-[1.04]"
+                style={{ objectPosition: project.heroImage.objectPosition || 'center' }}
               />
               <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
 
