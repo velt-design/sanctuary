@@ -77,6 +77,7 @@ export function buildPlanSvgPresentationModel(input: {
   rawObjectWorkbenchPresetAnnotations: ObjectWorkbenchPlanPresetDimensionAnnotation[];
   rawObjectWorkbenchCustomEdgeCandidates: ObjectWorkbenchPlanCustomEdgeCandidate[];
   rawObjectWorkbenchPreviewShape: ObjectInteractionPreviewOverlay<PlanPoint> | null;
+  enableProjectionOnlyModelInteractions?: boolean;
 }): PlanSvgPresentationModel {
   const projectObjectWorkbenchPoint =
     input.useTopProjectionBackedPlan && input.modelSpaceTopProjection
@@ -135,13 +136,15 @@ export function buildPlanSvgPresentationModel(input: {
     }
   });
   const visibleRawObjectWorkbenchOverlayShapes = visibleRawObjectWorkbenchOverlayShapesAllSources.filter(
-    (shape) => !input.useProjectionOnlyModelSpacePlan || shape.source === 'top_projection_committed',
+    (shape) =>
+      !input.useProjectionOnlyModelSpacePlan ||
+      shape.source === 'top_projection_committed' ||
+      input.enableProjectionOnlyModelInteractions,
   );
   const selectedDeckSnapFrameSource =
     input.rawObjectWorkbenchOverlayShapes.find((shape) => shape.ownerKind === 'deck' && shape.selected)?.deckInteraction?.snapFrameSource ?? null;
-  const projectionCommittedOverlayOwnerKeys = new Set(
+  const projectionInteractionOverlayOwnerKeys = new Set(
     visibleRawObjectWorkbenchOverlayShapes
-      .filter((shape) => shape.source === 'top_projection_committed')
       .map((shape) => `${shape.ownerKind}:${shape.ownerId}`),
   );
   const visibleObjectWorkbenchDeckIds = new Set(
@@ -199,7 +202,7 @@ export function buildPlanSvgPresentationModel(input: {
           .filter((annotation) => {
             if (
               input.useProjectionOnlyModelSpacePlan &&
-              !projectionCommittedOverlayOwnerKeys.has(`${annotation.ownerKind}:${annotation.ownerId}`)
+              !projectionInteractionOverlayOwnerKeys.has(`${annotation.ownerKind}:${annotation.ownerId}`)
             ) {
               return false;
             }
@@ -228,7 +231,7 @@ export function buildPlanSvgPresentationModel(input: {
           .filter((annotation) => {
             if (
               input.useProjectionOnlyModelSpacePlan &&
-              !projectionCommittedOverlayOwnerKeys.has(`${annotation.ownerKind}:${annotation.ownerId}`)
+              !projectionInteractionOverlayOwnerKeys.has(`${annotation.ownerKind}:${annotation.ownerId}`)
             ) {
               return false;
             }
@@ -246,7 +249,7 @@ export function buildPlanSvgPresentationModel(input: {
     input.isModel &&
     input.rawObjectWorkbenchPreviewShape &&
     (!input.useProjectionOnlyModelSpacePlan ||
-      projectionCommittedOverlayOwnerKeys.has(`${input.rawObjectWorkbenchPreviewShape.ownerKind}:${input.rawObjectWorkbenchPreviewShape.ownerId}`))
+      projectionInteractionOverlayOwnerKeys.has(`${input.rawObjectWorkbenchPreviewShape.ownerKind}:${input.rawObjectWorkbenchPreviewShape.ownerId}`))
       ? {
           ownerKind: input.rawObjectWorkbenchPreviewShape.ownerKind,
           ownerId: input.rawObjectWorkbenchPreviewShape.ownerId,

@@ -17,6 +17,7 @@ import {
   type DrawingWorkbenchViewportTransform,
 } from '@/lib/drawings/state/drawingWorkbenchUiState';
 import {
+  buildEstimateDrawingDraftFromSnapshot,
   buildEstimateDrawingSheetMetaOverrides,
   deriveEstimateDrawingEditableFields,
 } from '@/lib/estimates/drawingEdits';
@@ -103,19 +104,24 @@ export default function DesignWorkbenchEstimateClient({
     estimateId: estimate.id,
     snapshot: estimate.calculatorSnapshot,
   });
+  const snapshotDrawingDraft = useMemo(
+    () => buildEstimateDrawingDraftFromSnapshot(estimate.calculatorSnapshot),
+    [estimate.calculatorSnapshot],
+  );
+  const effectiveDrawingDraft = drawingDraft ?? snapshotDrawingDraft;
 
   const store = useMemo(
     () =>
       buildDrawingWorkbenchStore({
         snapshot: estimate.calculatorSnapshot,
-        draft: drawingDraft,
+        draft: effectiveDrawingDraft,
         ui,
         geometryIdentity: {
           projectId: estimate.projectId,
           estimateId: estimate.id,
         },
       }),
-    [drawingDraft, estimate.calculatorSnapshot, estimate.id, estimate.projectId, ui],
+    [effectiveDrawingDraft, estimate.calculatorSnapshot, estimate.id, estimate.projectId, ui],
   );
 
   useEffect(() => {
@@ -178,20 +184,20 @@ export default function DesignWorkbenchEstimateClient({
   const geometryEditState = useMemo(() => {
     const result = buildObjectWorkbenchGeometryEditState({
       snapshot: estimate.calculatorSnapshot,
-      draft: drawingDraft,
+      draft: effectiveDrawingDraft,
       moduleIndex: store.derived.activeModuleIndex,
     });
     return result.ok ? result.value : null;
-  }, [drawingDraft, estimate.calculatorSnapshot, store.derived.activeModuleIndex]);
+  }, [effectiveDrawingDraft, estimate.calculatorSnapshot, store.derived.activeModuleIndex]);
   const supportsSanctuaryEditing = Boolean(geometryEditState);
   const drawingMetaOverrides = useMemo(
     () =>
       buildEstimateDrawingSheetMetaOverrides({
         moduleLabel: store.derived.activeModuleLabel,
         moduleIndex: store.derived.activeModuleIndex,
-        draft: drawingDraft,
+        draft: effectiveDrawingDraft,
       }),
-    [drawingDraft, store.derived.activeModuleIndex, store.derived.activeModuleLabel],
+    [effectiveDrawingDraft, store.derived.activeModuleIndex, store.derived.activeModuleLabel],
   );
   const meta = useMemo(
     () =>
@@ -225,10 +231,10 @@ export default function DesignWorkbenchEstimateClient({
   const isPergolaTabActive = store.ui.activeRailTab === 'pergolas';
   const drawingEditableFields = useMemo(
     () =>
-      !drawingDraft || isLocked || !supportsSanctuaryEditing || !isPergolaTabActive
+      !effectiveDrawingDraft || isLocked || !supportsSanctuaryEditing || !isPergolaTabActive
         ? []
         : deriveEstimateDrawingEditableFields({
-            draft: drawingDraft,
+            draft: effectiveDrawingDraft,
             moduleIndex: store.derived.activeModuleIndex,
             moduleLabel: store.derived.activeModuleLabel,
             view: store.ui.activeView,
@@ -236,7 +242,7 @@ export default function DesignWorkbenchEstimateClient({
             sectionModel: store.derived.activeSectionModel,
           }),
     [
-      drawingDraft,
+      effectiveDrawingDraft,
       isLocked,
       store.derived.activeModuleIndex,
       store.derived.activeModuleLabel,
@@ -259,10 +265,14 @@ export default function DesignWorkbenchEstimateClient({
     activeModuleInput?.pergolaId ??
     store.derived.objectWorkbench.pergolas[0]?.id ??
     null;
+  const viewportDefaultHouseFormId =
+    store.derived.activeHouseForm?.id ?? store.derived.houseForms[0]?.id ?? null;
   const viewportActiveObjectRef =
     store.ui.activeObjectRef.family === 'pergolas'
-      ? store.ui.activeObjectRef
-      : { family: 'pergolas' as const, objectId: viewportPergolaId };
+      ? { family: 'pergolas' as const, objectId: store.ui.activeObjectRef.objectId ?? viewportPergolaId }
+      : store.ui.activeObjectRef.family === 'house_forms'
+        ? { family: 'house_forms' as const, objectId: store.ui.activeObjectRef.objectId ?? viewportDefaultHouseFormId }
+        : store.ui.activeObjectRef;
   const activeModelViewportTransform =
     modelViewportTransformsByKey[modelViewportSurfaceKey] ?? DEFAULT_MODEL_VIEWPORT_TRANSFORM;
   const activeGeometryViewportState =
@@ -318,7 +328,7 @@ export default function DesignWorkbenchEstimateClient({
   });
   const objectWorkbenchActions = useObjectWorkbenchActions({
     activeModuleInput,
-    drawingDraft,
+    drawingDraft: effectiveDrawingDraft,
     drawOutlineTarget,
     persistDrawingDraftLocally,
     setDrawOutlineTarget,
@@ -431,6 +441,8 @@ export default function DesignWorkbenchEstimateClient({
           planViewModel={store.derived.activePlanViewModel}
           geometryPreview={geometryPreview}
           activeObjectRef={viewportActiveObjectRef}
+          pergolaTargetId={viewportPergolaId}
+          enableProjectionOnlyModelInteractions
           modelViewportKey={modelViewportSurfaceKey}
           modelViewportTransform={activeModelViewportTransform}
           modelViewportAutoFitOnReady={shouldAutoFitModelViewport}

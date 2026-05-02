@@ -415,6 +415,8 @@ export default function ModelSpaceViewport({
   sectionModel,
   planViewModel,
   activeObjectRef,
+  pergolaTargetId,
+  enableProjectionOnlyModelInteractions = false,
   drawOutlineRequestId,
   drawOutlineMode,
   drawOutlineSeedPolygon,
@@ -443,6 +445,8 @@ export default function ModelSpaceViewport({
   sectionModel?: ModuleSectionModel | null;
   planViewModel?: PlanViewModel | null;
   activeObjectRef?: WorkbenchObjectRef | null;
+  pergolaTargetId?: string | null;
+  enableProjectionOnlyModelInteractions?: boolean;
   drawOutlineRequestId?: number;
   drawOutlineMode?: 'footprint' | 'deck' | null;
   drawOutlineSeedPolygon?: CalculatorHouseFootprintPolygonPoint[] | null;
@@ -479,7 +483,7 @@ export default function ModelSpaceViewport({
   onDeckInteractionTelemetryChange?: (telemetry: DeckInteractionTelemetry) => void;
 }) {
   const workbenchDisplayMode = objectWorkbenchDisplayFamily === 'house_forms' ? 'house' : 'pergolas';
-  const activePergolaId = activeObjectRef?.family === 'pergolas' ? activeObjectRef.objectId : null;
+  const activePergolaId = activeObjectRef?.family === 'pergolas' ? activeObjectRef.objectId : pergolaTargetId ?? null;
   const scrollerRef = useRef<HTMLDivElement | null>(null);
   const scaleFrameRef = useRef<HTMLDivElement | null>(null);
   const drawPopoverRef = useRef<HTMLDivElement | null>(null);
@@ -3299,6 +3303,7 @@ export default function ModelSpaceViewport({
                 displayMode={workbenchDisplayMode}
                 visibility={visibility}
                 currentPergolaId={activePergolaId}
+                enableProjectionOnlyModelInteractions={enableProjectionOnlyModelInteractions}
                 interactiveFields={showPlanViewport ? modelInteractiveFields : undefined}
                 footprintEditor={showPlanViewport ? footprintEditor : undefined}
                 planInteraction={showPlanViewport ? planInteraction : undefined}

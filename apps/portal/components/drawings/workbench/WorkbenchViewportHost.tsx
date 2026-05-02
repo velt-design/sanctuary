@@ -38,6 +38,8 @@ export type WorkbenchViewportHostProps = {
   planViewModel?: PlanViewModel | null;
   geometryPreview?: ObjectWorkbenchGeometryPreviewState | null;
   activeObjectRef?: WorkbenchObjectRef | null;
+  pergolaTargetId?: string | null;
+  enableProjectionOnlyModelInteractions?: boolean;
   modelViewportKey?: string;
   modelViewportTransform: DrawingWorkbenchViewportTransform;
   modelViewportAutoFitOnReady?: boolean;
@@ -97,6 +99,8 @@ export default function WorkbenchViewportHost({
   planViewModel,
   geometryPreview,
   activeObjectRef,
+  pergolaTargetId,
+  enableProjectionOnlyModelInteractions,
   modelViewportKey,
   modelViewportTransform,
   modelViewportAutoFitOnReady = true,
@@ -150,6 +154,8 @@ export default function WorkbenchViewportHost({
           sectionModel={sectionModel}
           planViewModel={planViewModel}
           activeObjectRef={activeObjectRef}
+          pergolaTargetId={pergolaTargetId}
+          enableProjectionOnlyModelInteractions={enableProjectionOnlyModelInteractions}
           drawOutlineRequestId={drawOutlineRequestId}
           drawOutlineMode={drawOutlineMode}
           drawOutlineSeedPolygon={drawOutlineSeedPolygon}

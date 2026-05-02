@@ -45,6 +45,8 @@ type DrawingWorkbenchProps = {
   planViewModel?: PlanViewModel | null;
   geometryPreview?: ObjectWorkbenchGeometryPreviewState | null;
   activeObjectRef?: WorkbenchObjectRef | null;
+  pergolaTargetId?: string | null;
+  enableProjectionOnlyModelInteractions?: boolean;
   modelViewportKey?: string;
   modelViewportTransform: DrawingWorkbenchViewportTransform;
   modelViewportAutoFitOnReady?: boolean;
@@ -111,6 +113,8 @@ export default function DrawingWorkbench({
   planViewModel,
   geometryPreview,
   activeObjectRef,
+  pergolaTargetId,
+  enableProjectionOnlyModelInteractions,
   modelViewportKey,
   modelViewportTransform,
   modelViewportAutoFitOnReady = true,
@@ -166,6 +170,8 @@ export default function DrawingWorkbench({
         planViewModel={planViewModel}
         geometryPreview={geometryPreview}
         activeObjectRef={activeObjectRef}
+        pergolaTargetId={pergolaTargetId}
+        enableProjectionOnlyModelInteractions={enableProjectionOnlyModelInteractions}
         modelViewportKey={modelViewportKey}
         modelViewportTransform={modelViewportTransform}
         modelViewportAutoFitOnReady={modelViewportAutoFitOnReady}

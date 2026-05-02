@@ -8,12 +8,13 @@
       "ownerArea": "Portal calculator and estimate workflow",
       "pathPatterns": [
         "apps/portal/app/staff/calculator/CalculatorGridClient.tsx",
+        "apps/portal/app/staff/calculator/ModuleDrawingRenderer.tsx",
         "apps/portal/app/staff/calculator/ModuleViewsCard.tsx",
         "apps/portal/app/staff/calculator/ModuleViewsCard.test.tsx",
         "apps/portal/app/staff/calculator/moduleViews.ts"
       ],
-      "whyLarge": "Calculator UI, module view orchestration, estimate state, and presentation helpers are still concentrated in a few client files.",
-      "nextSafeExtraction": "Extract cohesive view-model builders, module-panel components, and estimate interaction adapters before adding new calculator workflow branches.",
+      "whyLarge": "Calculator UI, module drawing surfaces, estimate state, and presentation helpers are still concentrated in a few client files.",
+      "nextSafeExtraction": "Move PlanSvg, SectionSvg, footprint presentation, and annotation rendering out of ModuleDrawingRenderer before adding new drawing surface branches.",
       "focusedTests": [
         "npm run test:portal:projects",
         "targeted calculator/component tests",
