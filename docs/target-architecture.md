@@ -62,6 +62,8 @@ Do not delete compatibility paths blindly. First prove the path is unused, updat
 
 The first root-compatibility visibility gate is `npm run root:compat`, with `npm run root:compat:changed` for handoffs that touch root compatibility files. These reports are advisory and exist to make root growth visible before it becomes normal.
 
+The first aggregate architecture handoff check is `npm run architecture:changed`. It runs the changed-file file decomposition, root compatibility, browser Supabase, and service-role Supabase reports together without making them part of lint.
+
 ## Data Access Target
 
 Staff workflow UI should not read or write Supabase tables directly.

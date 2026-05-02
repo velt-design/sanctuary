@@ -129,6 +129,7 @@ This snapshot records the most recent known production-readiness state from the 
 ### Maintainability
 
 - [ ] Large files have an owner and a decomposition plan before major feature work continues in them.
+- [ ] `npm run architecture:changed` is included in non-trivial portal handoffs.
 - [ ] `npm run files:report` is reviewed before expanding warning or critical files.
 - [ ] `npm run files:changed` is included in handoffs that touch warning or critical files.
 - [ ] `npm run root:compat:changed` is included in handoffs that touch root compatibility paths before portal SaaS extraction work continues.
