@@ -6437,7 +6437,7 @@ describe('ModelSpaceViewport', () => {
     expect(rendered.container.querySelector('[data-testid="deck-is-attached"]')?.textContent).toBe('true');
     expect(rendered.container.querySelector('[data-testid="deck-host-edge"]')?.textContent).toBe('front');
     expect(rendered.container.querySelector('[data-testid="deck-primary-host-edge"]')?.textContent).toBe(
-      'footprint-edge-3',
+      'footprint-edge-1',
     );
     expect(rendered.container.querySelector('[data-testid="deck-floating-center-along"]')?.textContent).toBe('');
 

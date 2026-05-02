@@ -13,7 +13,7 @@ This is a private npm workspace with two Next.js apps and shared packages. Treat
 - `supabase`: SQL snapshots plus ordered migrations.
 - `scripts`: operational scripts for imports, invites, media optimization, audits, and generated geometry assets.
 - `playwright`: portal browser test harness.
-- `.github`: CI workflows for portal quality, Lighthouse, and governance.
+- `.github`: CI workflows for portal quality, docs health, Lighthouse, and governance.
 
 Root-level directories outside `apps` and `packages` are still active unless proven otherwise:
 
@@ -48,6 +48,7 @@ Shared packages own business logic that must not be forked into apps. If app cod
 ## CI
 
 - `.github/workflows/portal-quality.yml`: repository typecheck, portal Vitest, portal build, authenticated smoke, and performance report.
+- `.github/workflows/docs-health.yml`: scheduled and manual docs guard, mojibake, docs impact advisory, and readiness aging report.
 - `.github/workflows/lighthouse.yml`: scheduled and PR Lighthouse guardrails for marketing.
 - `.github/workflows/governance-monthly.yml`: marketing tests, production dependency audit, Lighthouse mobile and desktop.
 

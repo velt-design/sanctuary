@@ -175,5 +175,6 @@ This doc remains the canonical command catalog. When readiness work changes comm
 ## CI
 
 - Portal Quality runs docs guard, repository typecheck, lint, portal Vitest, portal build, schedule bundle budget, fixture browser smoke, authenticated smoke, and portal performance timing.
+- Docs Health runs weekly and on demand, with blocking docs guard and mojibake checks plus advisory docs impact and readiness reports.
 - Lighthouse Guardrails run mobile and desktop Lighthouse profiles.
 - Governance Monthly runs marketing tests, production dependency audit, and Lighthouse.

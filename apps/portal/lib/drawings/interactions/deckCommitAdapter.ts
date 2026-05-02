@@ -322,6 +322,20 @@ function mapDeckFrameAlongFromRenderToCommit(input: {
   commitFrame: ObjectWorkbenchPlanDeckReferenceFrame;
   renderAlongM: number;
 }): number {
+  const alongDot =
+    input.renderFrame.alongUnitX * input.commitFrame.alongUnitX +
+    input.renderFrame.alongUnitY * input.commitFrame.alongUnitY;
+  const sharesWorldAlongCoordinate =
+    input.renderFrame.axis === input.commitFrame.axis &&
+    Math.abs(input.renderFrame.edgeCoordinateM - input.commitFrame.edgeCoordinateM) <= 1e-6 &&
+    Math.abs(alongDot) >= DECK_COMMIT_FRAME_VECTOR_DOT_TOLERANCE;
+  if (sharesWorldAlongCoordinate) {
+    if (alongDot >= 0) return input.renderAlongM;
+    return (
+      deckReferenceFrameMidpoint(input.commitFrame) +
+      (deckReferenceFrameMidpoint(input.renderFrame) - input.renderAlongM)
+    );
+  }
   const renderCenterOffsetM = input.renderAlongM - deckReferenceFrameMidpoint(input.renderFrame);
   return (
     deckReferenceFrameMidpoint(input.commitFrame) +
@@ -629,6 +643,18 @@ function resolveDeckCommitCenterOffset(input: {
     renderEdgeId: previewEdgeId,
     referencePoint: previewCenter,
   });
+  const previewDerivedCenterOffsetM =
+    input.preview.anchorDerivedCenterOffsetM ?? input.preview.centerOffsetM;
+  if (commitFrame && renderFrame === commitFrame && Number.isFinite(previewDerivedCenterOffsetM)) {
+    return previewDerivedCenterOffsetM;
+  }
+  if (
+    isProjectionBackedDeckSession(input.session) &&
+    input.preview.releasePlacement === 'snapped' &&
+    Number.isFinite(previewDerivedCenterOffsetM)
+  ) {
+    return previewDerivedCenterOffsetM;
+  }
   const frameMappedPolygon = commitFrame ? mapDeckPreviewPolygonThroughCommitFrame(input) : null;
   const frameMappedProjection =
     frameMappedPolygon && commitFrame
