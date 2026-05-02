@@ -21,6 +21,7 @@ const SKIP_DIRS = new Set([
 const MAX_ROWS = Number.parseInt(process.env.FILES_REPORT_MAX_ROWS ?? '40', 10);
 const CHANGED_ONLY = process.argv.includes('--changed');
 const STRICT = process.argv.includes('--strict') || process.env.FILES_REPORT_STRICT === '1';
+const REGISTRY_PATH = 'scripts/file-decomposition-registry.json';
 
 const THRESHOLDS = {
   'component/page': { warning: 800, critical: 1200 },
@@ -28,15 +29,6 @@ const THRESHOLDS = {
   test: { warning: 1200, critical: 2500 },
   code: { warning: 700, critical: 1200 },
 };
-
-const HOTSPOTS = [
-  { pattern: /CalculatorGridClient|ModuleViewsCard/, label: 'calculator', registered: true },
-  { pattern: /drawings|ModelSpaceViewport|Geometry3DViewport|design-workbench/i, label: 'design workbench', registered: true },
-  { pattern: /^packages\/geometry\//, label: 'geometry package', registered: true },
-  { pattern: /staff\/schedule|ScheduleClient/, label: 'schedule', registered: true },
-  { pattern: /ProjectPage\/tabs\/(QuotesTab|EstimatesTab)/, label: 'project quote/estimate tabs', registered: true },
-  { pattern: /^apps\/marketing\/app\/start\//, label: 'marketing start', registered: true },
-];
 
 function toPosix(value) {
   return value.split(path.sep).join('/');
@@ -95,6 +87,76 @@ function codeFiles() {
   return walkFiles('.').map((file) => file.replace(/^\.\//, ''));
 }
 
+function globToRegExp(pattern) {
+  let source = '^';
+  for (let index = 0; index < pattern.length; index += 1) {
+    const char = pattern[index];
+    if (char === '*') {
+      if (pattern[index + 1] === '*') {
+        source += '.*';
+        index += 1;
+      } else {
+        source += '[^/]*';
+      }
+    } else {
+      source += char.replace(/[.+^${}()|[\]\\]/g, '\\$&');
+    }
+  }
+  return new RegExp(`${source}$`);
+}
+
+function readRegistry() {
+  const registryPath = path.join(ROOT, REGISTRY_PATH);
+  return JSON.parse(fs.readFileSync(registryPath, 'utf8'));
+}
+
+function validateString(value) {
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
+function validateStringArray(value) {
+  return Array.isArray(value) && value.length > 0 && value.every(validateString);
+}
+
+function validateRegistry(registry, allCodeFiles) {
+  const failures = [];
+  if (!registry || registry.version !== 1 || !Array.isArray(registry.entries)) {
+    failures.push(`${REGISTRY_PATH} must contain { "version": 1, "entries": [...] }`);
+    return { entries: [], failures };
+  }
+
+  const ids = new Set();
+  const validStatuses = new Set(['current', 'future', 'legacy']);
+  const entries = registry.entries.map((entry, index) => {
+    const location = `${REGISTRY_PATH} entry ${index + 1}`;
+    if (!validateString(entry.id)) failures.push(`${location} is missing id`);
+    if (ids.has(entry.id)) failures.push(`${location} duplicates id "${entry.id}"`);
+    if (validateString(entry.id)) ids.add(entry.id);
+    if (!validateString(entry.label)) failures.push(`${location} is missing label`);
+    if (!validStatuses.has(entry.status)) failures.push(`${location} must use status current, future, or legacy`);
+    if (!validateString(entry.ownerArea)) failures.push(`${location} is missing ownerArea`);
+    if (!validateStringArray(entry.pathPatterns)) failures.push(`${location} is missing non-empty pathPatterns`);
+    if (!validateString(entry.whyLarge)) failures.push(`${location} is missing whyLarge`);
+    if (!validateString(entry.nextSafeExtraction)) failures.push(`${location} is missing nextSafeExtraction`);
+    if (!validateStringArray(entry.focusedTests)) failures.push(`${location} is missing focusedTests`);
+
+    const compiledPatterns = validateStringArray(entry.pathPatterns)
+      ? entry.pathPatterns.map((pattern) => ({ pattern, matcher: globToRegExp(pattern) }))
+      : [];
+    const matchesCurrentFile = compiledPatterns.some(({ matcher }) => allCodeFiles.some((file) => matcher.test(file)));
+    if (entry.status === 'current' && !matchesCurrentFile) {
+      failures.push(`${location} has current pathPatterns that match no code files`);
+    }
+
+    return {
+      ...entry,
+      compiledPatterns,
+    };
+  });
+
+  return { entries, failures };
+}
+
 function changedFiles() {
   const tracked = runGit(['diff', '--name-only', '--diff-filter=ACMRTUXB', 'HEAD']);
   const untracked = runGit(['ls-files', '--others', '--exclude-standard']);
@@ -145,8 +207,8 @@ function bandFor(lines, thresholds) {
   return 'ok';
 }
 
-function hotspotFor(file) {
-  return HOTSPOTS.find((hotspot) => hotspot.pattern.test(file)) ?? null;
+function registryEntryFor(file, registryEntries) {
+  return registryEntries.find((entry) => entry.compiledPatterns.some(({ matcher }) => matcher.test(file))) ?? null;
 }
 
 function suggestedAction(row) {
@@ -193,7 +255,7 @@ function printTable(rows) {
   }
 }
 
-function buildRows(files) {
+function buildRows(files, registryEntries) {
   return files
     .map((file) => {
       const normalized = file.replace(/^\.\//, '');
@@ -202,7 +264,7 @@ function buildRows(files) {
       const headLines = CHANGED_ONLY ? headLineCount(normalized) : null;
       const delta = CHANGED_ONLY && headLines !== null ? lines - headLines : CHANGED_ONLY ? null : 0;
       const band = bandFor(lines, THRESHOLDS[category]);
-      const hotspot = hotspotFor(normalized);
+      const registryEntry = registryEntryFor(normalized, registryEntries);
       return {
         file: normalized,
         category,
@@ -210,8 +272,8 @@ function buildRows(files) {
         headLines,
         delta,
         band,
-        hotspot: hotspot?.label ?? '',
-        registered: Boolean(hotspot?.registered),
+        hotspot: registryEntry?.label ?? '',
+        registered: Boolean(registryEntry),
       };
     })
     .filter((row) => row.band !== 'ok' || CHANGED_ONLY)
@@ -259,10 +321,20 @@ function main() {
   const scanFiles = files
     .filter((file) => CODE_FILE_RE.test(file))
     .filter((file) => !isSkippedPath(file));
-  const rows = buildRows(scanFiles);
+  const allCodeFiles = codeFiles();
+  const registry = validateRegistry(readRegistry(), allCodeFiles);
+  if (registry.failures.length > 0) {
+    console.error('file-decomposition-report: registry validation failed');
+    for (const failure of registry.failures) {
+      console.error(`- ${failure}`);
+    }
+    process.exit(1);
+  }
+  const rows = buildRows(scanFiles, registry.entries);
 
   console.log(`file-decomposition-report: ${CHANGED_ONLY ? 'changed-file advisory report' : 'advisory report'}`);
   if (STRICT) console.log('Strict mode: enabled for changed critical files without a registered decomposition note.');
+  console.log(`Registry: ${REGISTRY_PATH} (${registry.entries.length} entries)`);
   console.log(`Scanned ${scanFiles.length} code files. Generated, vendor, public, and build outputs are skipped.`);
   console.log('Thresholds: component/page 800/1200, route/domain/package 700/1200, test 1200/2500 lines.');
   console.log('');

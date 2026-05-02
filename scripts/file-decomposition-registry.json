@@ -1,0 +1,109 @@
+{
+  "version": 1,
+  "entries": [
+    {
+      "id": "calculator",
+      "label": "calculator",
+      "status": "current",
+      "ownerArea": "Portal calculator and estimate workflow",
+      "pathPatterns": [
+        "apps/portal/app/staff/calculator/CalculatorGridClient.tsx",
+        "apps/portal/app/staff/calculator/ModuleViewsCard.tsx",
+        "apps/portal/app/staff/calculator/ModuleViewsCard.test.tsx",
+        "apps/portal/app/staff/calculator/moduleViews.ts"
+      ],
+      "whyLarge": "Calculator UI, module view orchestration, estimate state, and presentation helpers are still concentrated in a few client files.",
+      "nextSafeExtraction": "Extract cohesive view-model builders, module-panel components, and estimate interaction adapters before adding new calculator workflow branches.",
+      "focusedTests": [
+        "npm run test:portal:projects",
+        "targeted calculator/component tests",
+        "npm run typecheck"
+      ]
+    },
+    {
+      "id": "design-workbench",
+      "label": "design workbench",
+      "status": "current",
+      "ownerArea": "Drawing workbench UI and drawing domain adapters",
+      "pathPatterns": [
+        "apps/portal/components/drawings/**",
+        "apps/portal/lib/drawings/**",
+        "apps/portal/app/staff/projects/*/design-workbench/**",
+        "playwright/portal.drawing-workbench.spec.ts"
+      ],
+      "whyLarge": "Viewports, render graph wiring, interaction state, compatibility fallbacks, and browser gestures are still being separated.",
+      "nextSafeExtraction": "Move pure interaction math, render preparation, and compatibility adapters out of viewport presenters before adding new tools or overlays.",
+      "focusedTests": [
+        "npm run test:portal:workbench",
+        "drawing unit tests",
+        "browser fixture smoke when UI changes"
+      ]
+    },
+    {
+      "id": "geometry-package",
+      "label": "geometry package",
+      "status": "current",
+      "ownerArea": "packages/geometry physical model truth",
+      "pathPatterns": [
+        "packages/geometry/**"
+      ],
+      "whyLarge": "Solvers, house model contracts, projections, and fixtures are central package truth with broad consumers.",
+      "nextSafeExtraction": "Split solver phases, normalized model contracts, and projection helpers by physical responsibility while preserving public package exports.",
+      "focusedTests": [
+        "geometry package tests",
+        "affected portal drawing tests",
+        "npm run typecheck"
+      ]
+    },
+    {
+      "id": "schedule",
+      "label": "schedule",
+      "status": "current",
+      "ownerArea": "Portal schedule workflow",
+      "pathPatterns": [
+        "apps/portal/app/staff/schedule/**",
+        "apps/portal/lib/scheduling/**"
+      ],
+      "whyLarge": "Board, Gantt, Site Visits, readiness, and legacy fallback remain heavy interactive surfaces.",
+      "nextSafeExtraction": "Extract workflow-specific clients, query/view models, and command adapters before adding new schedule modes.",
+      "focusedTests": [
+        "npm run test:portal:schedule",
+        "npm run schedule:bundle-budget",
+        "focused route tests"
+      ]
+    },
+    {
+      "id": "quote-estimate-tabs",
+      "label": "project quote/estimate tabs",
+      "status": "current",
+      "ownerArea": "Project detail quote and estimate workflows",
+      "pathPatterns": [
+        "apps/portal/components/projects/ProjectPage/tabs/QuotesTab.tsx",
+        "apps/portal/components/projects/ProjectPage/tabs/EstimatesTab.tsx"
+      ],
+      "whyLarge": "Local-first state, locks, quote lifecycle, PDF/email side effects, and UI state sit close together.",
+      "nextSafeExtraction": "Move lifecycle policy, side-effect orchestration, and tab view models into named helpers before adding more inline tab behavior.",
+      "focusedTests": [
+        "npm run test:portal:projects",
+        "npm run test:portal:quotes",
+        "local-first tests"
+      ]
+    },
+    {
+      "id": "marketing-start",
+      "label": "marketing start",
+      "status": "current",
+      "ownerArea": "Public conversion and guided-start experience",
+      "pathPatterns": [
+        "apps/marketing/app/start/page.tsx"
+      ],
+      "whyLarge": "Page-level presentation, product selection, conversion copy, and interaction paths are concentrated in one public page.",
+      "nextSafeExtraction": "Extract section components, content data, and conversion state helpers before adding new campaign branches.",
+      "focusedTests": [
+        "npm run test:marketing",
+        "marketing build",
+        "Lighthouse checks when layout/performance changes"
+      ]
+    }
+  ]
+}

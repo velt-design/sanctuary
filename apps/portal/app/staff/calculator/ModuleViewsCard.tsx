@@ -4185,13 +4185,20 @@ function PlanSvg({
   };
   const showPergolaGeometry = familyVisibility.pergolas;
   const isModelHouseDisplay = presentation === 'model' && displayMode === 'house';
-  const useTopProjectionBackedPlan =
-    (presentation === 'model' || presentation === 'sheet') &&
-    modelSpacePergolaRenderSource === 'geometry' &&
-    modelSpacePergolaRenderStatus === 'geometry_ready' &&
-    Boolean(modelSpaceTopProjection);
-  const rawSemanticPlanHouseSurfaces = useTopProjectionBackedPlan ? [] : model.houseContext?.surfaces ?? [];
-  const rawSemanticPlanHouseLines = useTopProjectionBackedPlan ? [] : model.houseContext?.lines ?? [];
+  const geometryMode = resolvePlanSvgGeometryPresentationMode({
+    presentation,
+    showPergolaGeometry,
+    modelSpacePergolaRenderSource,
+    modelSpacePergolaRenderStatus,
+    modelSpaceTopProjection,
+    modelSpacePergolaGeometry,
+  });
+  const {
+    useTopProjectionBackedPlan,
+    useGeometryBackedPergola,
+    useProjectionOnlyModelSpacePlan,
+    canRenderPergolaPlanGeometry,
+  } = geometryMode;
   const rawObjectWorkbenchOverlayShapes = presentation === 'model' ? objectWorkbenchPlanOverlay?.shapes ?? [] : [];
   const rawObjectWorkbenchPresetAnnotations = presentation === 'model' ? objectWorkbenchPlanOverlay?.presetAnnotations ?? [] : [];
   const rawObjectWorkbenchCustomEdgeCandidates = presentation === 'model' ? objectWorkbenchPlanOverlay?.customEdgeCandidates ?? [] : [];
@@ -4243,105 +4250,6 @@ function PlanSvg({
   const y = rotationFrame.baseY;
   const planRotationTransform =
     rotationFrame.turns === 0 ? undefined : `rotate(${rotationFrame.turns * 90} ${rotationFrame.center.x} ${rotationFrame.center.y})`;
-  const useGeometryBackedPergola =
-    presentation === 'model' &&
-    modelSpacePergolaRenderSource === 'geometry' &&
-    modelSpacePergolaRenderStatus === 'geometry_ready' &&
-    Boolean(modelSpacePergolaGeometry);
-  const hasGeometryBackedPergolaPlan =
-    (presentation === 'model' || presentation === 'sheet') &&
-    modelSpacePergolaRenderSource === 'geometry' &&
-    modelSpacePergolaRenderStatus === 'geometry_ready' &&
-    Boolean(modelSpacePergolaGeometry);
-  const geometryPointProjector =
-    useTopProjectionBackedPlan && modelSpaceTopProjection
-      ? (point: Point2) => topProjectionPointToPlanSvg(point, modelSpaceTopProjection, x, y, scale)
-      : (point: Point2) => mmPointToPlanSvg(point, x, y, scale);
-  const geometryLineProjector = (line: Line2) => ({
-    start: geometryPointProjector(line.start),
-    end: geometryPointProjector(line.end),
-  });
-  const geometryOutlinePoints =
-    useGeometryBackedPergola && modelSpacePergolaGeometry
-      ? mmPolygonToPlanSvg(modelSpacePergolaGeometry.outline, x, y, scale)
-      : [];
-  const geometryRoofPlaneSurfaces =
-    useGeometryBackedPergola && modelSpacePergolaGeometry
-      ? modelSpacePergolaGeometry.surfaces.roofPlanes.map((surface) => ({
-          ...surface,
-          points: mmPolygonToPlanSvg(surface.boundary, x, y, scale),
-        }))
-      : [];
-  const geometryRoofCladdingSurfaces =
-    useGeometryBackedPergola && modelSpacePergolaGeometry
-      ? modelSpacePergolaGeometry.surfaces.roofCladding.map((surface) => ({
-          ...surface,
-          points: mmPolygonToPlanSvg(surface.boundary, x, y, scale),
-        }))
-      : [];
-  const geometryPergolaStripMembers =
-    useGeometryBackedPergola && modelSpacePergolaGeometry
-      ? [
-          ...modelSpacePergolaGeometry.members.posts.map((member) => ({
-            member,
-            footprint: buildPlanMemberFootprint({ member, baseX: x, baseY: y, scale }),
-            className: styles.modulePlanPrimaryZone,
-            outlineClassName: styles.modulePlanMemberEdge,
-          })),
-          ...modelSpacePergolaGeometry.members.beams.map((member) => ({
-            member,
-            footprint: buildPlanMemberFootprint({ member, baseX: x, baseY: y, scale }),
-            className: styles.modulePlanPrimaryZone,
-            outlineClassName: styles.modulePlanMemberEdge,
-          })),
-          ...modelSpacePergolaGeometry.members.ledgers.map((member) => ({
-            member,
-            footprint: buildPlanMemberFootprint({ member, baseX: x, baseY: y, scale }),
-            className: styles.modulePlanPrimaryZone,
-            outlineClassName: styles.modulePlanMemberEdge,
-          })),
-          ...modelSpacePergolaGeometry.members.gutters.map((member) => ({
-            member,
-            footprint: buildPlanMemberFootprint({ member, baseX: x, baseY: y, scale }),
-            className: styles.modulePlanPrimaryZone,
-            outlineClassName: styles.modulePlanMemberEdge,
-          })),
-          ...modelSpacePergolaGeometry.members.joiners.map((member) => ({
-            member,
-            footprint: buildPlanMemberFootprint({ member, baseX: x, baseY: y, scale }),
-            className: styles.modulePlanPrimaryZone,
-            outlineClassName: styles.modulePlanMemberEdge,
-          })),
-        ]
-      : [];
-  const geometryRafterMembers =
-    useGeometryBackedPergola && modelSpacePergolaGeometry
-      ? modelSpacePergolaGeometry.members.rafters.map((member) => ({
-          member,
-          footprint: buildPlanMemberFootprint({ member, baseX: x, baseY: y, scale }),
-        }))
-      : [];
-  const geometryRidgeMembers =
-    useGeometryBackedPergola && modelSpacePergolaGeometry
-      ? modelSpacePergolaGeometry.members.ridge.map((member) => ({
-          member,
-          footprint: buildPlanMemberFootprint({ member, baseX: x, baseY: y, scale }),
-        }))
-      : [];
-  const geometryAttachmentEdge =
-    hasGeometryBackedPergolaPlan && modelSpacePergolaGeometry?.attachmentEdge
-      ? geometryLineProjector(modelSpacePergolaGeometry.attachmentEdge)
-      : null;
-  const geometryFallAnchor =
-    hasGeometryBackedPergolaPlan && modelSpacePergolaGeometry?.anchors.fall
-      ? {
-          point: geometryPointProjector(modelSpacePergolaGeometry.anchors.fall.point),
-          direction: topProjectionDirectionToPlanSvg(modelSpacePergolaGeometry.anchors.fall.direction, useTopProjectionBackedPlan ? modelSpaceTopProjection : null),
-          dual: modelSpacePergolaGeometry.anchors.fall.dual,
-        }
-      : null;
-  const useProjectionOnlyModelSpacePlan = isModel && useTopProjectionBackedPlan;
-  const canRenderPergolaPlanGeometry = showPergolaGeometry && (!isModel || useGeometryBackedPergola || useTopProjectionBackedPlan);
 
   const aW = model.lengthA * scale;
   const aH = model.spanA * scale;
@@ -4455,8 +4363,6 @@ function PlanSvg({
     : isModel && modelSpaceLayout
       ? modelSpaceLayout.worldBox
       : { x: 0, y: 0, width: 120, height: 90 };
-  const planHousePointProjector = (point: Point) =>
-    planHousePointToSvg(point, x, y, scale);
   const planPresentation = buildPlanSvgPresentationModel({
     isModel,
     useTopProjectionBackedPlan,
@@ -4482,33 +4388,34 @@ function PlanSvg({
     objectWorkbenchPreviewShape,
     diagnostics: planPresentationDiagnostics,
   } = planPresentation;
-  const selectedOpeningHostEdgeId =
-    objectWorkbenchOverlayShapes.find((shape) => shape.ownerKind === 'opening' && shape.selected)?.openingInteraction?.hostEdgeId ?? null;
-  const toneHouseRoofContext = Boolean(selectedOpeningHostEdgeId);
-  const semanticPlanHouseSurfaces = rawSemanticPlanHouseSurfaces
-    .filter((surface) => {
-      if (surface.kind !== 'deck') return true;
-      if (!familyVisibility.decks) return false;
-      return !visibleObjectWorkbenchDeckIds.has(surface.id);
-    })
-    .map((surface) => ({
-      ...surface,
-      points: surface.boundary.map((point) => planHousePointProjector(point)),
-      toned:
-        toneHouseRoofContext &&
-        (surface.kind === 'roof' || surface.kind === 'soffit' || surface.kind === 'fascia' || surface.kind === 'attachment_zone'),
-    }));
-  const semanticPlanHouseLines = rawSemanticPlanHouseLines.map((line) => ({
-    ...line,
-    start: planHousePointProjector(line.line.start),
-    end: planHousePointProjector(line.line.end),
-    emphasized: selectedOpeningHostEdgeId !== null && line.metadata?.sourceEdgeId === selectedOpeningHostEdgeId,
-  }));
-  const hasSemanticPlanHouseContext =
-    familyVisibility.house &&
-    !customPolygonOverrideActive &&
-    !hideHouseFootprint &&
-    (semanticPlanHouseSurfaces.length > 0 || semanticPlanHouseLines.length > 0);
+  const geometryPresentation = buildPlanSvgGeometryPresentation({
+    model,
+    presentation,
+    mode: geometryMode,
+    modelSpaceTopProjection,
+    modelSpacePergolaGeometry,
+    familyVisibility,
+    objectWorkbenchOverlayShapes,
+    visibleObjectWorkbenchDeckIds,
+    customPolygonOverrideActive,
+    hideHouseFootprint,
+    baseX: x,
+    baseY: y,
+    scale,
+  });
+  const {
+    geometryOutlinePoints,
+    geometryRoofPlaneSurfaces,
+    geometryRoofCladdingSurfaces,
+    geometryPergolaStripMembers,
+    geometryRafterMembers,
+    geometryRidgeMembers,
+    geometryAttachmentEdge,
+    geometryFallAnchor,
+    semanticPlanHouseSurfaces,
+    semanticPlanHouseLines,
+    hasSemanticPlanHouseContext,
+  } = geometryPresentation;
 
   const rafterXsA = projectLinearPositions(model.rafterPositionsA, model.rafterEdgeLengthM, x, aW);
   const rafterXsB = projectLinearPositions(model.rafterPositionsB ?? null, model.lengthB, x, bW);
@@ -5129,15 +5036,15 @@ function PlanSvg({
                   data-plan-surface-id={surface.id}
                 />
               ))}
-              {geometryPergolaStripMembers.map(({ member, footprint, className, outlineClassName }) => (
+              {geometryPergolaStripMembers.map(({ member, footprint }) => (
                 <g
                   key={member.id}
                   data-plan-member-id={member.id}
                   data-plan-member-role={member.role}
                   data-plan-member-centerline-mm={`${member.centerline.start.x},${member.centerline.start.y},${member.centerline.end.x},${member.centerline.end.y}`}
                 >
-                  <polygon points={toPointsAttr(footprint)} className={className} />
-                  <polygon points={toPointsAttr(footprint)} className={outlineClassName} />
+                  <polygon points={toPointsAttr(footprint)} className={styles.modulePlanPrimaryZone} />
+                  <polygon points={toPointsAttr(footprint)} className={styles.modulePlanMemberEdge} />
                 </g>
               ))}
               {geometryRafterMembers.map(({ member, footprint }) => (

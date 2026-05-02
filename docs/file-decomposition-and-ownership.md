@@ -86,7 +86,9 @@ Current large-file work should treat these areas as decomposition candidates, no
 
 ## Decomposition Registry
 
-These entries are compact notes, not full migration plans. Update them when a touched critical file grows and the next safe split changes.
+The machine-readable registry lives in `scripts/file-decomposition-registry.json`. `npm run files:report`, `npm run files:changed`, and `npm run files:changed:strict` use that JSON file for hotspot labels and strict-mode registry coverage.
+
+The table below is a human summary, not the source the script reads. Update the JSON first when a touched critical file grows and the next safe split changes, then keep this summary aligned.
 
 | Hotspot | Owner Area | Why It Is Large | Next Safe Extraction | Focused Tests |
 | --- | --- | --- | --- | --- |
