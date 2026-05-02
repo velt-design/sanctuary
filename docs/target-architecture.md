@@ -84,6 +84,8 @@ Design List and Running Jobs spreadsheet edits go through their staff APIs and s
 
 Quote, invoice, PDF, email, public-token, generated-artifact, and job-pack side effects go through their owning server/domain helpers.
 
+The first browser data-access visibility gate is `npm run browser:supabase`, with `npm run browser:supabase:changed` for handoffs that touch browser-facing Supabase access. This report is advisory; `npm run cache:forbid` remains the narrower hard guard for invalid portal UI table access.
+
 ## Auth And Security Target
 
 Staff routes use staff auth helpers. Admin routes use admin auth helpers. Public quote and invoice routes are token-bound and hash-checked.

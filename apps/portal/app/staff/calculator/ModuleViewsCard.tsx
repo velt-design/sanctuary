@@ -44,9 +44,6 @@ import type {
   PlanPoint,
 } from '@/lib/drawings/views/plan/objectWorkbenchPlanOverlay';
 import {
-  topProjectionSvgPointToPlanPoint,
-} from '@/lib/drawings/views/plan/planCoordinateAdapter';
-import {
   ObjectWorkbenchDimensionLayerRenderer,
   ObjectWorkbenchOverlayLayerRenderer,
   ObjectWorkbenchPreviewLayerRenderer,
@@ -62,12 +59,20 @@ import {
   buildPlanSvgGeometryPresentation,
   resolvePlanSvgGeometryPresentationMode,
 } from './ModulePlanSvgGeometryPresentation';
+import {
+  createPlanSvgPointResolvers,
+  resolvePlanSvgPointerFootprintPoint,
+  syncPlanSvgInteractionBridge,
+  type PlanSvgFootprintCanvasPoint,
+  type PlanSvgFootprintCanvasPointResolver,
+} from './ModulePlanSvgBridge';
 
 export type ModuleViewsTab = 'plan' | 'section';
 export type ModuleViewsStatus = 'loading' | 'ready' | 'error' | 'empty';
 type ModuleDrawingPresentation = 'card' | 'minimal' | 'sheet' | 'model';
 export type ModuleDrawingDisplayMode = 'house' | 'pergolas';
 export type { HouseFootprintHandleId } from './moduleViews';
+export { resolvePlanSvgPointerFootprintPoint } from './ModulePlanSvgBridge';
 
 export type HouseFootprintEditorDragMeta = {
   handleId: HouseFootprintHandleId;
@@ -90,12 +95,7 @@ export type HouseFootprintVertexDragMeta = {
 
 export type ModuleFootprintEditorSurface = 'card' | 'sheet' | 'model';
 
-export type ModuleFootprintCanvasPoint = {
-  alongM: string;
-  depthM: string;
-  numericAlongM: number;
-  numericDepthM: number;
-};
+export type ModuleFootprintCanvasPoint = PlanSvgFootprintCanvasPoint;
 
 export type ModulePlanSheetInteractionProps = {
   isPergolaPopoverOpen?: boolean;
@@ -152,7 +152,7 @@ export type ObjectWorkbenchPreviewOverlay = ObjectInteractionPreviewOverlay<Plan
 export type HouseFirstPlanShapeDragStartMeta = ObjectWorkbenchPlanShapeDragStartMeta;
 export type HouseFirstObjectPreviewOverlay = ObjectWorkbenchPreviewOverlay;
 
-export type ModuleFootprintCanvasPointResolver = (clientX: number, clientY: number) => ModuleFootprintCanvasPoint | null;
+export type ModuleFootprintCanvasPointResolver = PlanSvgFootprintCanvasPointResolver;
 
 type GeometryConsistency = {
   level: 'ok' | 'warn';
@@ -2362,85 +2362,6 @@ function localFootprintDimensionsM(model: ModulePlanModel, attachmentSide: Attac
   };
 }
 
-export type PlanSvgPointerFootprintPointInput = {
-  rootPoint: { x: number; y: number };
-  rotationCenter: { x: number; y: number };
-  rotationTurns: number;
-  footprintRect: { x: number; y: number; width: number; height: number };
-  scale: number;
-  attachmentSide: AttachmentSide;
-  lengthA: number;
-  spanA: number;
-  houseFootprintPreset: ModulePlanModel['houseFootprintPreset'];
-  houseFootprintParams: ModulePlanModel['houseFootprintParams'];
-  isHipCorner?: boolean;
-};
-
-export type PlanSvgPointerFootprintPoint = {
-  formatted: {
-    alongM: string;
-    depthM: string;
-  };
-  numeric: {
-    alongM: number;
-    depthM: number;
-  };
-};
-
-function formatPlanPointerMetres(value: number): string {
-  return (Math.round(value * 1000) / 1000).toFixed(3).replace(/\.?0+$/, '') || '0';
-}
-
-export function resolvePlanSvgPointerFootprintPoint(input: PlanSvgPointerFootprintPointInput): PlanSvgPointerFootprintPoint | null {
-  if (
-    input.isHipCorner ||
-    !Number.isFinite(input.rootPoint.x) ||
-    !Number.isFinite(input.rootPoint.y) ||
-    !Number.isFinite(input.rotationCenter.x) ||
-    !Number.isFinite(input.rotationCenter.y) ||
-    !Number.isFinite(input.footprintRect.x) ||
-    !Number.isFinite(input.footprintRect.y) ||
-    !Number.isFinite(input.footprintRect.width) ||
-    !Number.isFinite(input.footprintRect.height) ||
-    !Number.isFinite(input.scale) ||
-    input.scale <= 0 ||
-    !Number.isFinite(input.lengthA) ||
-    !Number.isFinite(input.spanA)
-  ) {
-    return null;
-  }
-
-  const unrotatedPlanPoint = rotatePointQuarterTurns(input.rootPoint, input.rotationCenter, -input.rotationTurns);
-  const footprintCenter = actualPergolaCenter(input.footprintRect);
-  const localDims =
-    input.attachmentSide === 'left' || input.attachmentSide === 'right'
-      ? { widthM: input.spanA, depthM: input.lengthA }
-      : { widthM: input.lengthA, depthM: input.spanA };
-  const sideLocalPoint = rotatePointQuarterTurns(unrotatedPlanPoint, footprintCenter, -attachmentSideQuarterTurns(input.attachmentSide));
-  const localX = (sideLocalPoint.x - (footprintCenter.x - (localDims.widthM * input.scale) / 2)) / input.scale;
-  const localY = (sideLocalPoint.y - (footprintCenter.y - (localDims.depthM * input.scale) / 2)) / input.scale;
-  const localLayout = buildHouseFootprintLocalLayout({
-    pergolaWidthM: localDims.widthM,
-    pergolaDepthM: localDims.depthM,
-    preset: input.houseFootprintPreset,
-    params: input.houseFootprintParams,
-  });
-  const alongM = localX - localLayout.resolved.offsetXM;
-  const depthM = -localY - localLayout.resolved.setbackM;
-  if (!Number.isFinite(alongM) || !Number.isFinite(depthM)) return null;
-
-  return {
-    formatted: {
-      alongM: formatPlanPointerMetres(alongM),
-      depthM: formatPlanPointerMetres(depthM),
-    },
-    numeric: {
-      alongM,
-      depthM,
-    },
-  };
-}
-
 function mapLocalFootprintPointToPlan(input: {
   point: HouseFootprintPoint;
   rect: { x: number; y: number; width: number; height: number };
@@ -4627,63 +4548,23 @@ function PlanSvg({
       axisY: axisDy / axisLength,
     };
   });
-  const resolvePlanClientPoint = (svg: SVGSVGElement, clientX: number, clientY: number): ModuleFootprintCanvasPoint | null => {
-    const ctm = svg.getScreenCTM();
-    if (!ctm) return null;
-    const svgPoint = svg.createSVGPoint();
-    svgPoint.x = clientX;
-    svgPoint.y = clientY;
-    const rootPoint = svgPoint.matrixTransform(ctm.inverse());
-    const resolved = resolvePlanSvgPointerFootprintPoint({
-      rootPoint,
-      rotationCenter: rotationFrame.center,
-      rotationTurns: rotationFrame.turns,
-      footprintRect,
-      scale,
-      attachmentSide,
-      lengthA: model.lengthA,
-      spanA: model.spanA,
-      houseFootprintPreset: model.houseFootprintPreset,
-      houseFootprintParams: model.houseFootprintParams,
-      isHipCorner,
-    });
-    return resolved
-      ? {
-          alongM: resolved.formatted.alongM,
-          depthM: resolved.formatted.depthM,
-          numericAlongM: resolved.numeric.alongM,
-          numericDepthM: resolved.numeric.depthM,
-      }
-      : null;
-  };
-  const resolveRawPlanClientPoint = (svg: SVGSVGElement, clientX: number, clientY: number): PlanPoint | null => {
-    const ctm = svg.getScreenCTM();
-    if (!ctm || !Number.isFinite(scale) || scale <= 0) return null;
-    const svgPoint = svg.createSVGPoint();
-    svgPoint.x = clientX;
-    svgPoint.y = clientY;
-    const rootPoint = svgPoint.matrixTransform(ctm.inverse());
-    const unrotatedPoint = rotatePointQuarterTurns(rootPoint, rotationFrame.center, -rotationFrame.turns);
-    const projectedX = (unrotatedPoint.x - x) / scale;
-    const projectedY = (unrotatedPoint.y - y) / scale;
-    if (!Number.isFinite(projectedX) || !Number.isFinite(projectedY)) return null;
-    return {
-      x: projectedX,
-      y: projectedY,
-    };
-  };
-  const resolveDeckDragPlanClientPoint = (svg: SVGSVGElement, clientX: number, clientY: number): PlanPoint | null => {
-    const ctm = svg.getScreenCTM();
-    if (!ctm || !Number.isFinite(scale) || scale <= 0) return null;
-    const svgPoint = svg.createSVGPoint();
-    svgPoint.x = clientX;
-    svgPoint.y = clientY;
-    const rootPoint = svgPoint.matrixTransform(ctm.inverse());
-    const unrotatedPoint = rotatePointQuarterTurns(rootPoint, rotationFrame.center, -rotationFrame.turns);
-    return useTopProjectionBackedPlan && modelSpaceTopProjection
-      ? topProjectionSvgPointToPlanPoint(unrotatedPoint, modelSpaceTopProjection, x, y, scale)
-      : resolveRawPlanClientPoint(svg, clientX, clientY);
-  };
+  const planSvgPointResolvers = createPlanSvgPointResolvers({
+    origin: { x, y },
+    scale,
+    rotationFrame,
+    footprintRect,
+    attachmentSide,
+    lengthA: model.lengthA,
+    spanA: model.spanA,
+    houseFootprintPreset: model.houseFootprintPreset,
+    houseFootprintParams: model.houseFootprintParams,
+    isHipCorner,
+    useTopProjectionBackedPlan,
+    topProjection: modelSpaceTopProjection,
+  });
+  const resolvePlanClientPoint = planSvgPointResolvers.resolveFootprintCanvasPoint;
+  const resolveRawPlanClientPoint = planSvgPointResolvers.resolveRawPlanPoint;
+  const resolveDeckDragPlanClientPoint = planSvgPointResolvers.resolveDeckDragPlanPoint;
   const planSvgRef = useRef<SVGSVGElement | null>(null);
   const footprintEditorRef = useRef(footprintEditor);
   const planInteractionRef = useRef(planInteraction);
@@ -4706,19 +4587,16 @@ function PlanSvg({
   ]);
 
   const syncPlanSvgBridge = useCallback((node: SVGSVGElement | null) => {
-    const currentFootprintEditor = footprintEditorRef.current;
-    const currentPlanInteraction = planInteractionRef.current;
-    currentFootprintEditor?.onSvgMount?.(node);
-    currentPlanInteraction?.onSvgMount?.(node);
-    currentFootprintEditor?.onCanvasPointResolverChange?.(
-      node ? (clientX, clientY) => resolvePlanClientPointRef.current(node, clientX, clientY) : null,
-    );
-    currentPlanInteraction?.onPlanPointResolverChange?.(
-      node ? (clientX, clientY) => resolveRawPlanClientPointRef.current(node, clientX, clientY) : null,
-    );
-    currentPlanInteraction?.onDeckDragPointResolverChange?.(
-      node ? (clientX, clientY) => resolveDeckDragPlanClientPointRef.current(node, clientX, clientY) : null,
-    );
+    syncPlanSvgInteractionBridge({
+      node,
+      footprintEditor: footprintEditorRef.current,
+      planInteraction: planInteractionRef.current,
+      resolvers: {
+        resolveFootprintCanvasPoint: (svg, clientX, clientY) => resolvePlanClientPointRef.current(svg, clientX, clientY),
+        resolveRawPlanPoint: (svg, clientX, clientY) => resolveRawPlanClientPointRef.current(svg, clientX, clientY),
+        resolveDeckDragPlanPoint: (svg, clientX, clientY) => resolveDeckDragPlanClientPointRef.current(svg, clientX, clientY),
+      },
+    });
   }, []);
 
   const handlePlanSvgRef = useCallback((node: SVGSVGElement | null) => {

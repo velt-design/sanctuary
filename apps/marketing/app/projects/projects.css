@@ -463,8 +463,8 @@
   .projects-list{max-height:none}
   .projects-detail{border-left:none;padding-left:0;border-top:var(--bw) solid var(--border);padding-top:24px;height:auto;overflow:visible;display:block}
   .projects-detail .project-detail{overflow:visible;padding-right:0;padding-bottom:clamp(72px,10vw,120px)}
-  .project-detail__media{height:auto;aspect-ratio:16/10}
-  .project-detail--standalone .project-detail__media{height:auto;aspect-ratio:16/10}
+  .project-detail__media{height:auto;aspect-ratio:2/3}
+  .project-detail--standalone .project-detail__media{height:auto;aspect-ratio:2/3}
   .project-detail__quick-facts{grid-template-columns:repeat(3,minmax(0,1fr))}
   .project-detail__related-grid{grid-template-columns:1fr}
 }

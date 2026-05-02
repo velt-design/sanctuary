@@ -11,6 +11,8 @@ import {
 } from '@/lib/portalAccess';
 
 const PUBLIC_FILE = /\.(.*)$/;
+const FIXTURE_WORKBENCH_INTERNAL_PATH = '/qa/design-workbench-fixture';
+const FIXTURE_WORKBENCH_STAFF_PATH = '/staff/projects/fixture-roof/design-workbench';
 
 type CookieToSet = {
   name: string;
@@ -31,6 +33,22 @@ function requiredEnv(name: 'NEXT_PUBLIC_SUPABASE_URL' | 'NEXT_PUBLIC_SUPABASE_AN
 
 function isPortalPublicPath(path: string): boolean {
   return path === '/login' || path.startsWith('/login/') || path === '/access-status' || path.startsWith('/access-status/');
+}
+
+function areFixtureWorkbenchRoutesEnabled(): boolean {
+  return (
+    process.env.ENABLE_SANCTUARY_GEOMETRY_WORKBENCH?.trim() === '1' &&
+    process.env.ENABLE_SANCTUARY_GEOMETRY_WORKBENCH_FIXTURES?.trim() === '1'
+  );
+}
+
+function isFixtureWorkbenchInternalPath(path: string): boolean {
+  return path === FIXTURE_WORKBENCH_INTERNAL_PATH || path.startsWith(`${FIXTURE_WORKBENCH_INTERNAL_PATH}/`);
+}
+
+function isStaffFixtureWorkbenchRequest(req: NextRequest): boolean {
+  if (req.nextUrl.pathname !== FIXTURE_WORKBENCH_STAFF_PATH) return false;
+  return Boolean(req.nextUrl.searchParams.get('fixture')?.trim());
 }
 
 function isPortalProtectedPath(path: string): boolean {
@@ -161,6 +179,14 @@ export async function proxy(req: NextRequest) {
     PUBLIC_FILE.test(path)
   ) {
     return NextResponse.next();
+  }
+
+  if (isFixtureWorkbenchInternalPath(path)) {
+    return NextResponse.next();
+  }
+
+  if (isStaffFixtureWorkbenchRequest(req) && areFixtureWorkbenchRoutesEnabled()) {
+    return NextResponse.rewrite(withPathname(req, FIXTURE_WORKBENCH_INTERNAL_PATH));
   }
 
   const normalized = normalizePortalRoute(path);

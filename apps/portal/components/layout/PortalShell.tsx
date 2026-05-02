@@ -14,8 +14,24 @@ function cx(...classes: Array<string | false | null | undefined>): string {
   return classes.filter(Boolean).join(' ');
 }
 
-function isPublicRoutePath(pathname: string | null): boolean {
-  return Boolean(pathname && (pathname.startsWith('/login') || pathname.startsWith('/access-status')));
+function isFixtureWorkbenchRoutePath(
+  pathname: string | null,
+  searchParams: { get(name: string): string | null } | null,
+): boolean {
+  if (!pathname) return false;
+  if (pathname === '/qa/design-workbench-fixture' || pathname.startsWith('/qa/design-workbench-fixture/')) {
+    return true;
+  }
+  return pathname === '/staff/projects/fixture-roof/design-workbench' && Boolean(searchParams?.get('fixture')?.trim());
+}
+
+function isPublicRoutePath(pathname: string | null, searchParams: { get(name: string): string | null } | null): boolean {
+  return Boolean(
+    pathname &&
+      (pathname.startsWith('/login') ||
+        pathname.startsWith('/access-status') ||
+        isFixtureWorkbenchRoutePath(pathname, searchParams)),
+  );
 }
 
 export default function PortalShell({ children }: { children: React.ReactNode }) {
@@ -25,7 +41,7 @@ export default function PortalShell({ children }: { children: React.ReactNode })
   const { status, email, role } = usePortalSession();
   const hasMountedRef = useRef(false);
 
-  const isPublicRoute = isPublicRoutePath(pathname);
+  const isPublicRoute = isPublicRoutePath(pathname, searchParams);
   const isViewportLockedPath =
     typeof pathname === 'string' &&
     (pathname === '/schedule' ||

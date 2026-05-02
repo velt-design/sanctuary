@@ -26,6 +26,10 @@ export default defineConfig({
     ? undefined
     : {
         command: 'npm run dev:portal',
+        env: {
+          ENABLE_SANCTUARY_GEOMETRY_WORKBENCH: '1',
+          ENABLE_SANCTUARY_GEOMETRY_WORKBENCH_FIXTURES: '1',
+        },
         url: baseURL,
         reuseExistingServer: !process.env.CI,
         timeout: 180_000,

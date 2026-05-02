@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { NextRequest } from 'next/server';
 
 const createServerClientMock = vi.fn();
@@ -10,6 +10,9 @@ vi.mock('@supabase/ssr', () => ({
 }));
 
 import { proxy } from './proxy';
+
+const originalEnableWorkbenchFlag = process.env.ENABLE_SANCTUARY_GEOMETRY_WORKBENCH;
+const originalEnableFixtureFlag = process.env.ENABLE_SANCTUARY_GEOMETRY_WORKBENCH_FIXTURES;
 
 const mockSupabase = {
   auth: {
@@ -72,10 +75,26 @@ describe('portal proxy', () => {
   beforeEach(() => {
     process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://example.supabase.co';
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'anon-key';
+    delete process.env.ENABLE_SANCTUARY_GEOMETRY_WORKBENCH;
+    delete process.env.ENABLE_SANCTUARY_GEOMETRY_WORKBENCH_FIXTURES;
     createServerClientMock.mockReset();
     getUserMock.mockReset();
     maybeSingleMock.mockReset();
     createServerClientMock.mockReturnValue(mockSupabase);
+  });
+
+  afterEach(() => {
+    if (originalEnableWorkbenchFlag === undefined) {
+      delete process.env.ENABLE_SANCTUARY_GEOMETRY_WORKBENCH;
+    } else {
+      process.env.ENABLE_SANCTUARY_GEOMETRY_WORKBENCH = originalEnableWorkbenchFlag;
+    }
+
+    if (originalEnableFixtureFlag === undefined) {
+      delete process.env.ENABLE_SANCTUARY_GEOMETRY_WORKBENCH_FIXTURES;
+    } else {
+      process.env.ENABLE_SANCTUARY_GEOMETRY_WORKBENCH_FIXTURES = originalEnableFixtureFlag;
+    }
   });
 
   it.each([
@@ -109,6 +128,43 @@ describe('portal proxy', () => {
 
     expect(response.status).toBe(200);
     expect(response.headers.get('x-middleware-next')).toBe('1');
+  });
+
+  it('rewrites enabled fixture workbench smoke routes before staff auth', async () => {
+    process.env.ENABLE_SANCTUARY_GEOMETRY_WORKBENCH = '1';
+    process.env.ENABLE_SANCTUARY_GEOMETRY_WORKBENCH_FIXTURES = '1';
+
+    const response = await proxy(new NextRequest('https://example.com/staff/projects/fixture-roof/design-workbench?fixture=mono-standard'));
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get('x-middleware-rewrite')).toBe(
+      'https://example.com/qa/design-workbench-fixture?fixture=mono-standard',
+    );
+    expect(createServerClientMock).not.toHaveBeenCalled();
+  });
+
+  it('keeps the staff fixture workbench route protected when fixture flags are disabled', async () => {
+    setUnauthenticated();
+
+    const response = await proxy(new NextRequest('https://example.com/staff/projects/fixture-roof/design-workbench?fixture=mono-standard'));
+
+    expect(response.status).toBe(307);
+    expect(response.headers.get('location')).toBe(
+      'https://example.com/login?callbackUrl=%2Fstaff%2Fprojects%2Ffixture-roof%2Fdesign-workbench%3Ffixture%3Dmono-standard',
+    );
+  });
+
+  it('keeps non-fixture staff workbench routes protected', async () => {
+    process.env.ENABLE_SANCTUARY_GEOMETRY_WORKBENCH = '1';
+    process.env.ENABLE_SANCTUARY_GEOMETRY_WORKBENCH_FIXTURES = '1';
+    setUnauthenticated();
+
+    const response = await proxy(new NextRequest('https://example.com/staff/projects/fixture-roof/design-workbench'));
+
+    expect(response.status).toBe(307);
+    expect(response.headers.get('location')).toBe(
+      'https://example.com/login?callbackUrl=%2Fstaff%2Fprojects%2Ffixture-roof%2Fdesign-workbench',
+    );
   });
 
   it('rewrites clean aliases into staff routes for authenticated users', async () => {

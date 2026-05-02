@@ -28,6 +28,8 @@
     "files:changed:strict": "node scripts/file-decomposition-report.mjs --changed --strict",
     "root:compat": "node scripts/root-compatibility-report.mjs",
     "root:compat:changed": "node scripts/root-compatibility-report.mjs --changed",
+    "browser:supabase": "node scripts/browser-supabase-access-report.mjs",
+    "browser:supabase:changed": "node scripts/browser-supabase-access-report.mjs --changed",
     "text:mojibake": "node scripts/check-mojibake.mjs",
     "schedule:bundle-budget": "tsx scripts/check-schedule-bundle-budget.ts",
     "lint": "npm run docs:guard && npm run packages:guard && npm run cache:forbid && npm run brand:forbid && npm run text:mojibake && eslint .",

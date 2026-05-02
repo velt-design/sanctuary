@@ -17,7 +17,8 @@ This repo is optimized for coding agents. Read this file first, then follow link
 11. Do not revert user changes or unrelated worktree changes.
 12. Run `npm run files:changed` before handoff when the task touches warning or critical files.
 13. Run `npm run root:compat:changed` before handoff when the task touches root compatibility paths.
-14. If the task changes portal behavior, data flow, source-of-truth boundaries, test strategy, or known risks, update the relevant doc in the same pass.
+14. Run `npm run browser:supabase:changed` before handoff when the task touches browser Supabase access.
+15. If the task changes portal behavior, data flow, source-of-truth boundaries, test strategy, or known risks, update the relevant doc in the same pass.
 
 ## Repo Map
 

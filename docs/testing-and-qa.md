@@ -68,6 +68,8 @@ npm run files:report
 npm run files:changed
 npm run root:compat
 npm run root:compat:changed
+npm run browser:supabase
+npm run browser:supabase:changed
 npm run text:mojibake
 npm run packages:guard
 npm run cache:forbid
@@ -80,6 +82,8 @@ npm run schedule:bundle-budget
 `npm run files:report` is an advisory large-file ownership report. It highlights warning and critical files that should follow `docs/file-decomposition-and-ownership.md` before major feature expansion. `npm run files:changed` narrows that report to touched code files for agent handoffs, including line deltas from HEAD when available. `npm run files:changed:strict` exists for local experiments and later enforcement only. These are not part of `npm run lint` yet.
 
 `npm run root:compat` is an advisory report for root-level compatibility paths such as `components`, `lib`, `data`, `src`, and `styles`. `npm run root:compat:changed` narrows the report to touched root compatibility files for handoffs. These are not part of `npm run lint` yet.
+
+`npm run browser:supabase` is a broad advisory inventory of browser-facing Supabase access. `npm run browser:supabase:changed` narrows the report to touched files for handoffs. The narrower hard guard remains `npm run cache:forbid`, which is included in `npm run lint`.
 
 Operational commands:
 

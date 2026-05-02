@@ -107,6 +107,7 @@ This snapshot records the most recent known production-readiness state from the 
 - [ ] Public quote and invoice flows remain token-bound and hash-checked.
 - [ ] Service-role Supabase access is server-only and limited to documented owner flows.
 - [ ] Browser UI does not add direct table writes outside API, query, local-first, or approved spreadsheet adapters.
+- [ ] `npm run browser:supabase:changed` is included in handoffs that touch browser-facing Supabase access.
 - [ ] Schedule V2 writes go through staff API routes and `schedule_v2_*` RPC commands.
 - [ ] Quote, invoice, PDF, email, and job-pack side effects go through domain helpers.
 - [ ] Migrations are ordered forward migrations; old applied migrations are not edited without explicit direction.
