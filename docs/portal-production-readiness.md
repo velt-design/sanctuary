@@ -56,7 +56,7 @@ This snapshot records the most recent known production-readiness state from the 
 | Production security audit | Green | `npm audit --omit=dev` reported 0 vulnerabilities during blocker review. | Keep audit visible through `portal:doctor` and governance checks. |
 | Portal build | Yellow | `npm run build:portal` passed, but Turbopack reported an unexpected NFT trace through `apps/portal/app/api/quotes/preview-pdf/route.ts` -> `apps/portal/lib/quotes/pdf.ts` -> `apps/portal/next.config.ts`. | Keep build green and investigate quote PDF font/image asset tracing so the warning is removed. |
 | Typecheck | Green | `npm run typecheck` passed after the `ModelSpaceViewport.test.tsx` placement-case typing fix; `npm run portal:doctor:quick` also completed typecheck. | Keep typecheck in quick doctor and CI. |
-| Browser smoke | Yellow | `npm run test:portal:browser` passed locally: 2 fixture tests passed and the auth-backed project discovery smoke was skipped by design. Local authenticated smoke still needs `PORTAL_TEST_EMAIL` and `PORTAL_TEST_PASSWORD`. | Run auth/performance smoke when staff test credentials are configured. |
+| Browser smoke | Yellow | `npm run test:portal:browser` passed locally: 2 fixture tests passed. `npm run test:portal:smoke` and `npm run test:portal:performance` now fail fast before Playwright server startup when `PORTAL_TEST_EMAIL` or `PORTAL_TEST_PASSWORD` is missing. | Run auth/performance smoke when staff test credentials are configured. |
 | Docs and routing | Green | Canonical docs, agent playbook, change routing, and decision log are present. | Keep this tracker and owner docs current. |
 | File decomposition | Yellow | `docs/file-decomposition-and-ownership.md`, `npm run files:report`, and `npm run files:changed` make large-file hotspots visible, but enforcement is advisory while transitional files remain. | Use changed-file reporting before handoff when expanding large files; add strict enforcement later. |
 | Local-first flows | Yellow | Strong primitives exist; production readiness depends on workflow smoke and visible failure states. | Verify pending, failed, retry, conflict, and lock states in changed flows. |
@@ -130,6 +130,7 @@ This snapshot records the most recent known production-readiness state from the 
 
 - [ ] Large files have an owner and a decomposition plan before major feature work continues in them.
 - [ ] `npm run architecture:changed` is included in non-trivial portal handoffs.
+- [ ] Selective strict architecture checks are used for tooling PRs and later CI candidates without blocking legacy debt.
 - [ ] `npm run files:report` is reviewed before expanding warning or critical files.
 - [ ] `npm run files:changed` is included in handoffs that touch warning or critical files.
 - [ ] `npm run root:compat:changed` is included in handoffs that touch root compatibility paths before portal SaaS extraction work continues.
@@ -210,6 +211,11 @@ When updating this tracker:
 - Keep this file ASCII and link to repo-relative paths.
 
 ## Change Notes
+
+### 2026-05-02
+
+- Added `npm run portal:auth-env` and wired it into authenticated portal Playwright gates plus broad `portal:doctor` so missing `PORTAL_TEST_EMAIL` or `PORTAL_TEST_PASSWORD` fails before authenticated server startup. The no-auth drawing fixture gate remains independent through `npm run test:portal:browser`.
+- Local authenticated smoke and performance verification remain externally blocked until staff test credentials and a compatible portal database are available.
 
 ### 2026-05-01
 

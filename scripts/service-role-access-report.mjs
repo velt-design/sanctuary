@@ -4,6 +4,7 @@ import path from 'node:path';
 
 const ROOT = process.cwd();
 const CHANGED_ONLY = process.argv.includes('--changed');
+const STRICT = process.argv.includes('--strict');
 const MAX_ROWS = Number.parseInt(process.env.SERVICE_ROLE_REPORT_MAX_ROWS ?? '80', 10);
 const CODE_FILE_RE = /\.(cjs|cts|js|jsx|mjs|mts|ts|tsx)$/;
 const TEST_FILE_RE = /(?:^|\/)[^/]+\.(?:test|spec)\.[cm]?[jt]sx?$/;
@@ -124,6 +125,10 @@ function categoryFor(file, state) {
   return 'needs-review';
 }
 
+function isStrictAllowed(file) {
+  return isCompatibilityHelper(file) || isApprovedServerFlow(file);
+}
+
 function suggestedOwner(file, category) {
   if (category === 'compatibility-helper') return 'service-role helper boundary; keep server-only';
   if (file.startsWith('scripts/')) return 'operational script; document env and keep out of browser bundles';
@@ -178,6 +183,21 @@ function printRows(rows) {
   }
 }
 
+function maybeFailStrict(rows) {
+  if (!STRICT) return;
+
+  const failures = rows.filter((row) => row.state === 'new' && !row.strictAllowed);
+  if (failures.length === 0) return;
+
+  console.error('');
+  console.error('service-role-access-report: strict changed-file check failed');
+  console.error('New service-role access is blocked in strict mode unless it is an approved server-owned flow or compatibility helper. Prefer an auth-bound server client unless privileged access is explicitly required:');
+  for (const row of failures) {
+    console.error(`- ${row.file} (${row.signals.join(', ')}; suggested owner: ${row.owner})`);
+  }
+  process.exit(1);
+}
+
 function main() {
   const states = statusMap();
   const files = CHANGED_ONLY ? changedFiles() : SCAN_ROOTS.flatMap((root) => walkFiles(root));
@@ -192,6 +212,7 @@ function main() {
         state,
         signals,
         category,
+        strictAllowed: isStrictAllowed(file),
         owner: suggestedOwner(file, category),
       };
       return { ...row, action: actionFor(row) };
@@ -209,6 +230,7 @@ function main() {
     });
 
   console.log(`service-role-access-report: ${CHANGED_ONLY ? 'changed-file advisory report' : 'advisory report'}`);
+  if (STRICT) console.log('Strict mode: enabled for new service-role access outside approved server flows or compatibility helpers.');
   console.log('This is broader than the portal-only service-role allowlist test; it inventories service-role access but does not fail.');
   console.log('Supabase SQL migrations, tests, generated output, public assets, and build output are skipped.');
   console.log('');
@@ -235,6 +257,7 @@ function main() {
     console.log('');
     console.log('Handoff cue: if changed service-role access is listed, explain why privileged access is still required and why it is not client-reachable.');
   }
+  maybeFailStrict(rows);
 }
 
 main();

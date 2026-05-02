@@ -4,6 +4,7 @@ import path from 'node:path';
 
 const ROOT = process.cwd();
 const CHANGED_ONLY = process.argv.includes('--changed');
+const STRICT = process.argv.includes('--strict');
 const MAX_ROWS = Number.parseInt(process.env.BROWSER_SUPABASE_MAX_ROWS ?? '80', 10);
 const CODE_FILE_RE = /\.(cjs|cts|js|jsx|mjs|mts|ts|tsx)$/;
 const TEST_FILE_RE = /(?:^|\/)[^/]+\.(?:test|spec)\.[cm]?[jt]sx?$/;
@@ -133,6 +134,10 @@ function categoryFor(file, state, signals) {
   return 'legacy-direct';
 }
 
+function isStrictAllowed(file, signals) {
+  return isApprovedAdapterPath(file, signals);
+}
+
 function actionFor(row) {
   if (row.category === 'new-growth') {
     return 'strong advisory: move to staff API, query helper, local-first mutation, or approved adapter unless explicitly justified';
@@ -171,6 +176,21 @@ function printRows(rows) {
   }
 }
 
+function maybeFailStrict(rows) {
+  if (!STRICT) return;
+
+  const failures = rows.filter((row) => row.state === 'new' && !row.strictAllowed);
+  if (failures.length === 0) return;
+
+  console.error('');
+  console.error('browser-supabase-access-report: strict changed-file check failed');
+  console.error('New browser-facing Supabase access is blocked in strict mode unless it is an approved adapter. Use a staff API, query helper, local-first mutation, or approved adapter:');
+  for (const row of failures) {
+    console.error(`- ${row.file} (${row.signals.join(', ')}; suggested target: ${row.owner})`);
+  }
+  process.exit(1);
+}
+
 function main() {
   const states = statusMap();
   const files = CHANGED_ONLY ? changedFiles() : SCAN_ROOTS.flatMap((root) => walkFiles(root));
@@ -187,6 +207,7 @@ function main() {
         state,
         signals,
         category,
+        strictAllowed: isStrictAllowed(file, signals),
         owner: suggestedOwner(file, category),
       };
       return { ...row, action: actionFor(row) };
@@ -198,6 +219,7 @@ function main() {
     });
 
   console.log(`browser-supabase-access-report: ${CHANGED_ONLY ? 'changed-file advisory report' : 'advisory report'}`);
+  if (STRICT) console.log('Strict mode: enabled for new browser-facing Supabase access outside approved adapters.');
   console.log('This is broader than cache:forbid: it inventories browser-facing Supabase access but does not fail.');
   console.log('');
 
@@ -223,6 +245,7 @@ function main() {
     console.log('');
     console.log('Handoff cue: if changed browser Supabase access is listed, explain whether it was migrated, preserved, or intentionally deferred.');
   }
+  maybeFailStrict(rows);
 }
 
 main();

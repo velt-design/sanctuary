@@ -16,8 +16,9 @@ This repo is optimized for coding agents. Read this file first, then follow link
 10. Keep changes scoped to the requested surface.
 11. Do not revert user changes or unrelated worktree changes.
 12. Run `npm run architecture:changed` before handoff for non-trivial work.
-13. Run focused changed-file guards directly when you need a narrower report: `files:changed`, `root:compat:changed`, `browser:supabase:changed`, or `service-role:changed`.
-14. If the task changes portal behavior, data flow, source-of-truth boundaries, test strategy, or known risks, update the relevant doc in the same pass.
+13. Run `npm run architecture:changed:strict` only for architecture/tooling PRs or explicit strict verification; it is not a routine lint gate.
+14. Run focused changed-file guards directly when you need a narrower report: `files:changed`, `root:compat:changed`, `browser:supabase:changed`, or `service-role:changed`.
+15. If the task changes portal behavior, data flow, source-of-truth boundaries, test strategy, or known risks, update the relevant doc in the same pass.
 
 ## Repo Map
 

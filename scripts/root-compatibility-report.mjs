@@ -4,6 +4,7 @@ import path from 'node:path';
 
 const ROOT = process.cwd();
 const CHANGED_ONLY = process.argv.includes('--changed');
+const STRICT = process.argv.includes('--strict');
 const MAX_ROWS = Number.parseInt(process.env.ROOT_COMPAT_MAX_ROWS ?? '80', 10);
 
 const ROOT_COMPAT_DIRS = new Set(['app', 'components', 'data', 'lib', 'pages', 'src', 'styles']);
@@ -175,6 +176,21 @@ function printRows(rows) {
   }
 }
 
+function maybeFailStrict(rows) {
+  if (!STRICT) return;
+
+  const failures = rows.filter((row) => row.category === 'new-growth');
+  if (failures.length === 0) return;
+
+  console.error('');
+  console.error('root-compatibility-report: strict changed-file check failed');
+  console.error('New root compatibility files are blocked in strict mode. Move them into apps/marketing, apps/portal, or packages/*, or avoid creating the root file:');
+  for (const row of failures) {
+    console.error(`- ${row.file} (${row.type}, ${row.lines} lines; suggested owner: ${row.owner})`);
+  }
+  process.exit(1);
+}
+
 function main() {
   const states = statusMap();
   const files = CHANGED_ONLY
@@ -200,6 +216,7 @@ function main() {
     });
 
   console.log(`root-compatibility-report: ${CHANGED_ONLY ? 'changed-file advisory report' : 'advisory report'}`);
+  if (STRICT) console.log('Strict mode: enabled for new root compatibility files.');
   console.log('Root compatibility paths: app, components, data, lib, pages, src, styles.');
   console.log('Generated, workspace, docs, scripts, public, tmp, test output, and config-only files are skipped.');
   console.log('');
@@ -221,6 +238,7 @@ function main() {
     console.log('');
     console.log('Handoff cue: if root compatibility files are listed, explain why the root path was touched and why it was not moved to apps/* or packages/* in this task.');
   }
+  maybeFailStrict(rows);
 }
 
 main();

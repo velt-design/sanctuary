@@ -67,6 +67,7 @@ For marketing-only or shared-package-only tasks, use the parts that affect porta
 - For docs-only work, run `npm run docs:guard` and `npm run text:mojibake`.
 - For non-trivial portal or cross-area behavior changes, run `npm run docs:impact` to confirm owner-doc routing before handoff.
 - Run `npm run architecture:changed` before handoff for non-trivial work so changed-file architecture pressure is visible in one sweep.
+- Run `npm run architecture:changed:strict` only for architecture/tooling PRs or explicit strict verification; routine handoffs should use the advisory aggregate.
 - Run `npm run files:changed` before handoff when touched files are warning or critical size, and state whether decomposition was done, deferred, or not relevant.
 - Run `npm run root:compat:changed` before handoff when touched files live in root compatibility paths, and state why the behavior was not moved to `apps/*` or `packages/*`.
 - Run `npm run browser:supabase:changed` before handoff when touched files use browser-facing Supabase access, and state whether the access was migrated, preserved, or deferred.
@@ -106,7 +107,7 @@ Use `docs/testing-and-qa.md` for the canonical command catalog. Use the feature 
 | --- | --- | --- |
 | Path ownership and doc triggers | `docs/change-routing.md` | Use the trigger matrix before non-trivial edits and update only the owner docs that actually changed. |
 | Portal production readiness | `docs/portal-production-readiness.md` | Keep current status, blockers, highest-leverage tasks, and parallel lanes up to date as readiness work lands. |
-| Aggregate architecture handoff | `docs/target-architecture.md` | Run `npm run architecture:changed` before handoff for non-trivial work. |
+| Aggregate architecture handoff | `docs/target-architecture.md` | Run `npm run architecture:changed` before handoff for non-trivial work; reserve `architecture:changed:strict` for architecture/tooling PRs. |
 | File decomposition | `docs/file-decomposition-and-ownership.md` | Run `npm run files:changed` for touched warning or critical files and avoid adding unrelated responsibilities inline. |
 | Root compatibility | `docs/target-architecture.md` | Run `npm run root:compat:changed` when touching root compatibility paths and avoid growing root app behavior. |
 | Browser Supabase access | `docs/target-architecture.md`, `docs/staff-api-auth-contracts.md` | Run `npm run browser:supabase:changed` and prefer API/query/local-first layers over direct browser table access. |

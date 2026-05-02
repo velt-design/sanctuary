@@ -1,7 +1,6 @@
 import 'server-only';
 
 import { readFile } from 'node:fs/promises';
-import path from 'node:path';
 import { PDFDocument, rgb, type Color, type PDFImage } from 'pdf-lib';
 import {
   formatQuoteIntroText,
@@ -160,49 +159,49 @@ const FONT_FILES = {
 const HEADER_LOGO_FILE = 'sp_dark_icon.png';
 const WAREHOUSE_ADDRESS = '71G Montgomerie Road, Mangere, 2022, Auckland';
 
+const FONT_ASSET_URLS = {
+  [FONT_FILES.regular]: new URL('../../assets/fonts/Inter-Regular.ttf', import.meta.url),
+  [FONT_FILES.medium]: new URL('../../assets/fonts/Inter-Medium.ttf', import.meta.url),
+  [FONT_FILES.semibold]: new URL('../../assets/fonts/Inter-SemiBold.ttf', import.meta.url),
+} satisfies Record<string, URL>;
+
+const IMAGE_ASSET_URLS = {
+  [HEADER_LOGO_FILE]: new URL('../../public/images/sp_dark_icon.png', import.meta.url),
+} satisfies Record<string, URL>;
+
 const fontCache = new Map<string, Uint8Array>();
 const imageCache = new Map<string, Uint8Array | null>();
 
 async function readFontFile(filename: string): Promise<Uint8Array> {
   if (fontCache.has(filename)) return fontCache.get(filename)!;
-  const candidates = [
-    path.resolve(process.cwd(), 'assets', 'fonts', filename),
-    path.resolve(process.cwd(), 'apps', 'portal', 'assets', 'fonts', filename),
-  ];
+  const assetUrl = FONT_ASSET_URLS[filename];
+  if (!assetUrl) throw new Error(`Missing font asset mapping for ${filename}`);
 
-  let lastError: unknown = null;
-  for (const candidate of candidates) {
-    try {
-      const data = await readFile(candidate);
-      fontCache.set(filename, data);
-      return data;
-    } catch (err) {
-      lastError = err;
-    }
+  try {
+    const data = await readFile(assetUrl);
+    fontCache.set(filename, data);
+    return data;
+  } catch (err) {
+    throw new Error(`Missing font file ${filename}. Last error: ${String(err)}`);
   }
-
-  throw new Error(`Missing font file ${filename}. Last error: ${String(lastError)}`);
 }
 
 async function readImageFile(filename: string): Promise<Uint8Array | null> {
   if (imageCache.has(filename)) return imageCache.get(filename) ?? null;
-  const candidates = [
-    path.resolve(process.cwd(), 'public', 'images', filename),
-    path.resolve(process.cwd(), 'apps', 'portal', 'public', 'images', filename),
-  ];
-
-  for (const candidate of candidates) {
-    try {
-      const data = await readFile(candidate);
-      imageCache.set(filename, data);
-      return data;
-    } catch {
-      // Try the next candidate path.
-    }
+  const assetUrl = IMAGE_ASSET_URLS[filename];
+  if (!assetUrl) {
+    imageCache.set(filename, null);
+    return null;
   }
 
-  imageCache.set(filename, null);
-  return null;
+  try {
+    const data = await readFile(assetUrl);
+    imageCache.set(filename, data);
+    return data;
+  } catch {
+    imageCache.set(filename, null);
+    return null;
+  }
 }
 
 function formatMoneyFromCents(cents: number): string {

@@ -1,10 +1,11 @@
 import { spawnSync } from 'node:child_process';
 
+const STRICT = process.argv.includes('--strict');
 const CHECKS = [
-  { label: 'File decomposition pressure', script: 'files:changed' },
-  { label: 'Root compatibility growth', script: 'root:compat:changed' },
-  { label: 'Browser Supabase access', script: 'browser:supabase:changed' },
-  { label: 'Service-role Supabase access', script: 'service-role:changed' },
+  { label: 'File decomposition pressure', advisoryScript: 'files:changed', strictScript: 'files:changed:strict' },
+  { label: 'Root compatibility growth', advisoryScript: 'root:compat:changed', strictScript: 'root:compat:changed:strict' },
+  { label: 'Browser Supabase access', advisoryScript: 'browser:supabase:changed', strictScript: 'browser:supabase:changed:strict' },
+  { label: 'Service-role Supabase access', advisoryScript: 'service-role:changed', strictScript: 'service-role:changed:strict' },
 ];
 
 const npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm';
@@ -17,42 +18,43 @@ function printSection(label, script) {
 }
 
 function runCheck(check) {
-  printSection(check.label, check.script);
+  const script = STRICT ? check.strictScript : check.advisoryScript;
+  printSection(check.label, script);
   const result =
     process.platform === 'win32'
-      ? spawnSync(`npm run ${check.script}`, {
+      ? spawnSync(`npm run ${script}`, {
           cwd: process.cwd(),
           shell: true,
           stdio: 'inherit',
         })
-      : spawnSync(npmCommand, ['run', check.script], {
+      : spawnSync(npmCommand, ['run', script], {
           cwd: process.cwd(),
           stdio: 'inherit',
         });
 
   if (result.error) {
     console.error('');
-    console.error(`architecture-changed-report: failed to run npm run ${check.script}`);
+    console.error(`architecture-changed-report: failed to run npm run ${script}`);
     console.error(result.error.message);
     process.exit(1);
   }
 
   if (result.signal) {
     console.error('');
-    console.error(`architecture-changed-report: npm run ${check.script} terminated with ${result.signal}`);
+    console.error(`architecture-changed-report: npm run ${script} terminated with ${result.signal}`);
     process.exit(1);
   }
 
   if (result.status !== 0) {
     console.error('');
-    console.error(`architecture-changed-report: npm run ${check.script} failed with exit code ${result.status}`);
+    console.error(`architecture-changed-report: npm run ${script} failed with exit code ${result.status}`);
     process.exit(result.status ?? 1);
   }
 }
 
 function main() {
   console.log('architecture-changed-report: changed-file architecture handoff sweep');
-  console.log('This aggregate is advisory and is not part of npm run lint.');
+  console.log(STRICT ? 'Strict mode: enabled for selective new-growth checks.' : 'This aggregate is advisory and is not part of npm run lint.');
 
   for (const check of CHECKS) {
     runCheck(check);

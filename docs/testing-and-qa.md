@@ -65,14 +65,19 @@ npm run docs:impact
 npm run docs:navigation
 npm run docs:readiness
 npm run architecture:changed
+npm run architecture:changed:strict
 npm run files:report
 npm run files:changed
+npm run files:changed:strict
 npm run root:compat
 npm run root:compat:changed
+npm run root:compat:changed:strict
 npm run browser:supabase
 npm run browser:supabase:changed
+npm run browser:supabase:changed:strict
 npm run service-role:report
 npm run service-role:changed
+npm run service-role:changed:strict
 npm run text:mojibake
 npm run packages:guard
 npm run cache:forbid
@@ -84,13 +89,15 @@ npm run schedule:bundle-budget
 
 `npm run architecture:changed` is the recommended advisory handoff sweep for non-trivial work. It runs `files:changed`, `root:compat:changed`, `browser:supabase:changed`, and `service-role:changed` with section headers, while leaving each focused report as the canonical source of its own handoff cues. It is not part of `npm run lint`.
 
+`npm run architecture:changed:strict` is a local architecture/tooling check and future CI candidate. It runs the strict changed-file variants and currently blocks only selected new risky growth; it is not part of `npm run lint`.
+
 `npm run files:report` is an advisory large-file ownership report. It highlights warning and critical files that should follow `docs/file-decomposition-and-ownership.md` before major feature expansion. `npm run files:changed` narrows that report to touched code files for agent handoffs, including line deltas from HEAD when available. `npm run files:changed:strict` exists for local experiments and later enforcement only. These are not part of `npm run lint` yet.
 
-`npm run root:compat` is an advisory report for root-level compatibility paths such as `components`, `lib`, `data`, `src`, and `styles`. `npm run root:compat:changed` narrows the report to touched root compatibility files for handoffs. These are not part of `npm run lint` yet.
+`npm run root:compat` is an advisory report for root-level compatibility paths such as `components`, `lib`, `data`, `src`, and `styles`. `npm run root:compat:changed` narrows the report to touched root compatibility files for handoffs. `npm run root:compat:changed:strict` fails only for new root compatibility files. These are not part of `npm run lint` yet.
 
-`npm run browser:supabase` is a broad advisory inventory of browser-facing Supabase access. `npm run browser:supabase:changed` narrows the report to touched files for handoffs. The narrower hard guard remains `npm run cache:forbid`, which is included in `npm run lint`.
+`npm run browser:supabase` is a broad advisory inventory of browser-facing Supabase access. `npm run browser:supabase:changed` narrows the report to touched files for handoffs. `npm run browser:supabase:changed:strict` fails only for new browser Supabase access outside approved adapters. The narrower hard guard remains `npm run cache:forbid`, which is included in `npm run lint`.
 
-`npm run service-role:report` is a broad advisory inventory of service-role Supabase access across portal, marketing, root compatibility, and operational scripts. `npm run service-role:changed` narrows the report to touched files for handoffs. The narrower portal-only hard guard remains `apps/portal/lib/supabaseClient.boundaries.test.ts`.
+`npm run service-role:report` is a broad advisory inventory of service-role Supabase access across portal, marketing, root compatibility, and operational scripts. `npm run service-role:changed` narrows the report to touched files for handoffs. `npm run service-role:changed:strict` fails only for new service-role access outside approved server flows or compatibility helpers. The narrower portal-only hard guard remains `apps/portal/lib/supabaseClient.boundaries.test.ts`.
 
 Operational commands:
 
@@ -139,12 +146,15 @@ Optional env:
 Commands:
 
 ```bash
+npm run portal:auth-env
 npm run test:portal:browser:auth
 npm run test:portal:browser
 npm run test:portal:browser:headed
 npm run test:portal:smoke
 npm run test:portal:performance
 ```
+
+`npm run portal:auth-env` is the fail-fast credential preflight for authenticated portal browser gates. `npm run test:portal:smoke`, `npm run test:portal:performance`, `npm run test:portal:browser:auth`, and broad `npm run portal:doctor` run it before their authenticated Playwright server startup, so missing `PORTAL_TEST_EMAIL` or `PORTAL_TEST_PASSWORD` fails loudly instead of producing a skipped or late setup failure.
 
 The auth setup saves local state to `playwright/.auth/portal-staff.json`, which is ignored.
 
@@ -158,7 +168,7 @@ The drawing browser gate uses the hidden fixture workbench route:
 
 Fixture mode is read-only. It opens the standard Mono workbench fixture, enters Model Space Plan, verifies viewport diagnostics and gesture state, captures a nonblank plan screenshot, and confirms no page runtime errors. The authenticated browser suite also opens the 3D fixture route and verifies finite, nonblank solved geometry from the same workbench fixture path. For plan/3D accuracy, the browser gate checks the screenshot-style hipped fixture's Model Space Plan top-projection parity diagnostics before switching to 3D Top view and asserting the same screen-axis convention.
 
-`npm run test:portal:browser` uses the no-auth `portal-fixture` Playwright project so fixture parity can run without project data or staff credentials. Run `npm run test:portal:browser:auth` first when you need the auth-backed `portal-chromium` project or project-list discovery smoke.
+`npm run test:portal:browser` uses the no-auth `portal-fixture` Playwright project so fixture parity can run without project data or staff credentials. Run `npm run test:portal:browser:auth` first when you need the auth-backed `portal-chromium` setup state or project-list discovery smoke.
 
 When Playwright starts the portal dev server itself, it enables the geometry workbench fixture flags for this no-auth fixture gate. If `PORTAL_BASE_URL` points at an already-running portal server, that server must be started with the same fixture flags.
 
