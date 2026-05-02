@@ -58,7 +58,7 @@ This snapshot records the most recent known production-readiness state from the 
 | Typecheck | Green | `npm run typecheck` passed after the `ModelSpaceViewport.test.tsx` placement-case typing fix; `npm run portal:doctor:quick` also completed typecheck. | Keep typecheck in quick doctor and CI. |
 | Browser smoke | Yellow | Fixture smoke now treats disabled or auth-gated fixture routes as missing coverage instead of silently skipping. Local authenticated smoke still needs `PORTAL_TEST_EMAIL` and `PORTAL_TEST_PASSWORD`. | Re-run `npm run test:portal:browser`; run auth/performance smoke when staff test credentials are configured. |
 | Docs and routing | Green | Canonical docs, agent playbook, change routing, and decision log are present. | Keep this tracker and owner docs current. |
-| File decomposition | Yellow | `docs/file-decomposition-and-ownership.md` and `npm run files:report` make large-file hotspots visible, but enforcement is advisory while transitional files remain. | Use the report before expanding large files; add changed-file enforcement later. |
+| File decomposition | Yellow | `docs/file-decomposition-and-ownership.md`, `npm run files:report`, and `npm run files:changed` make large-file hotspots visible, but enforcement is advisory while transitional files remain. | Use changed-file reporting before handoff when expanding large files; add strict enforcement later. |
 | Local-first flows | Yellow | Strong primitives exist; production readiness depends on workflow smoke and visible failure states. | Verify pending, failed, retry, conflict, and lock states in changed flows. |
 | Quote/invoice/job-pack side effects | Yellow | Domain docs and tests exist; production readiness depends on token/email/PDF/job-pack smoke. | Run focused tests plus manual public-token and side-effect QA. |
 | Schedule workflow | Yellow | V2 API/RPC boundaries and tests exist; performance budget and readiness need confirmation. | Verify readiness route, Board/Gantt/Site Visits, and bundle budget. |
@@ -128,6 +128,7 @@ This snapshot records the most recent known production-readiness state from the 
 
 - [ ] Large files have an owner and a decomposition plan before major feature work continues in them.
 - [ ] `npm run files:report` is reviewed before expanding warning or critical files.
+- [ ] `npm run files:changed` is included in handoffs that touch warning or critical files.
 - [ ] Source-of-truth boundaries are preserved for costing, geometry, schedule, local-first, quotes, invoices, and job packs.
 - [ ] Compatibility and legacy fallback paths are isolated, named, and tested.
 - [ ] No new duplicate workflow rules are added in components when an owning domain helper or definition exists.
@@ -145,7 +146,7 @@ Keep this ordered list current as work lands.
 5. Fix design workbench behavior drift and keep browser fixture gates meaningful.
 6. Verify quote, invoice, public-token, PDF/email, and job-pack side effects end to end.
 7. Add or confirm CI enforcement for typecheck, docs guard, portal tests, portal build, authenticated smoke, route performance, and security audit expectations.
-8. Use `npm run files:report` to guide large-file decomposition after gates are green, one owner surface at a time.
+8. Use `npm run files:report` and `npm run files:changed` to guide large-file decomposition after gates are green, one owner surface at a time.
 
 ## Parallel Work Lanes
 

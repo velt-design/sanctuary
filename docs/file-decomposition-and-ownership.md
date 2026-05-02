@@ -57,6 +57,10 @@ The future SaaS split will be much easier if today's files already have clear ow
 
 Use `npm run files:report` for a visibility report. It is advisory and should not block handoff by itself.
 
+Use `npm run files:changed` before handoff when a task touches warning or critical files. It reports only changed code files, shows current lines, HEAD lines, and delta, and prints the handoff cue the final response should cover.
+
+Use `npm run files:changed:strict` only for local experiments and later enforcement. It is not part of lint or CI yet.
+
 Default bands:
 
 | Category | Warning | Critical |
@@ -80,6 +84,19 @@ Current large-file work should treat these areas as decomposition candidates, no
 - project estimate and quote tabs.
 - marketing start and public conversion pages.
 
+## Decomposition Registry
+
+These entries are compact notes, not full migration plans. Update them when a touched critical file grows and the next safe split changes.
+
+| Hotspot | Owner Area | Why It Is Large | Next Safe Extraction | Focused Tests |
+| --- | --- | --- | --- | --- |
+| Calculator | Portal calculator and estimate workflow | Calculator UI, module view orchestration, estimate state, and presentation helpers are still concentrated in a few client files. | Extract cohesive view-model builders, module-panel components, and estimate interaction adapters before adding new calculator workflow branches. | `npm run test:portal:projects`, targeted calculator/component tests, `npm run typecheck` |
+| Design workbench | Drawing workbench UI and drawing domain adapters | Viewports, render graph wiring, interaction state, compatibility fallbacks, and browser gestures are still being separated. | Move pure interaction math, render preparation, and compatibility adapters out of viewport presenters before adding new tools or overlays. | `npm run test:portal:workbench`, drawing unit tests, browser fixture smoke when UI changes |
+| Geometry package | `packages/geometry` physical model truth | Solvers, house model contracts, projections, and fixtures are central package truth with broad consumers. | Split solver phases, normalized model contracts, and projection helpers by physical responsibility while preserving public package exports. | geometry package tests, affected portal drawing tests, `npm run typecheck` |
+| Schedule | Portal schedule workflow | Board, Gantt, Site Visits, readiness, and legacy fallback remain heavy interactive surfaces. | Extract workflow-specific clients, query/view models, and command adapters before adding new schedule modes. | `npm run test:portal:schedule`, `npm run schedule:bundle-budget`, focused route tests |
+| Quote and estimate tabs | Project detail quote and estimate workflows | Local-first state, locks, quote lifecycle, PDF/email side effects, and UI state sit close together. | Move lifecycle policy, side-effect orchestration, and tab view models into named helpers before adding more inline tab behavior. | `npm run test:portal:projects`, `npm run test:portal:quotes`, local-first tests |
+| Marketing start | Public conversion and guided-start experience | Page-level presentation, product selection, conversion copy, and interaction paths are concentrated in one public page. | Extract section components, content data, and conversion state helpers before adding new campaign branches. | `npm run test:marketing`, marketing build, Lighthouse checks when layout/performance changes |
+
 ## Enforcement Direction
 
 This guardrail starts as documentation plus `npm run files:report`.
@@ -87,8 +104,7 @@ This guardrail starts as documentation plus `npm run files:report`.
 Later slices should tighten it in this order:
 
 1. Keep the advisory report visible in handoffs and readiness work.
-2. Add changed-file reporting so agents see when their own edits enlarge a warning or critical file.
-3. Add an allowlist for known transitional files, each with an owner doc and decomposition direction.
+2. Use `npm run files:changed` in handoffs so agents see when their own edits enlarge a warning or critical file.
+3. Use this registry as the initial allowlist for known transitional hotspots, each with owner area and decomposition direction.
 4. Make CI fail only for newly critical files or changed critical files without an explicit decomposition note.
 5. Retire allowlist entries as files are split by responsibility.
-

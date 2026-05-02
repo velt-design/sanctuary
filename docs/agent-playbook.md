@@ -23,6 +23,7 @@ For marketing-only or shared-package-only tasks, use the parts that affect porta
 - For parallel lanes, cross-app work, or workbench migration and compatibility work, read `docs/parallel-work-guardrails.md` before editing. `docs/design-workbench-parallel-migration-rules.md` is a historical redirect only.
 - Use `rg` and `rg --files` to find owner files, tests, routes, APIs, docs, and old compatibility paths.
 - Identify the owning layer before editing: package, domain library, API/RPC route, local-first adapter, component, or page.
+- Read `docs/file-decomposition-and-ownership.md` before expanding warning or critical files reported by `npm run files:changed`.
 - Make the change at the smallest owning layer that actually owns the behavior.
 - Name the source of truth before changing logic:
   - Costing logic and base config live in `packages/costing`.
@@ -65,6 +66,7 @@ For marketing-only or shared-package-only tasks, use the parts that affect porta
 - Choose tests proportional to risk and blast radius.
 - For docs-only work, run `npm run docs:guard` and `npm run text:mojibake`.
 - For non-trivial portal or cross-area behavior changes, run `npm run docs:impact` to confirm owner-doc routing before handoff.
+- Run `npm run files:changed` before handoff when touched files are warning or critical size, and state whether decomposition was done, deferred, or not relevant.
 - For focused portal logic, prefer the closest unit/integration test first, then broaden if shared behavior changed.
 - For portal UI-heavy work, use Playwright or browser/manual checks where the change affects layout, interaction, routing, auth, or persisted state.
 - For schedule work, consider `npm run schedule:bundle-budget`, smoke/performance checks, and manual drag/drop or Gantt checks when relevant.
@@ -80,6 +82,7 @@ Use `docs/testing-and-qa.md` for the canonical command catalog. Use the feature 
 - List verification commands run and their result.
 - Mention docs updated, or explicitly say docs were unchanged because behavior, source-of-truth boundaries, test strategy, and guardrails did not change.
 - For behavior paths covered by `docs/change-routing.md`, mention the owner docs considered and the `npm run docs:impact` result.
+- If `npm run files:changed` reported warning or critical files, mention the decomposition decision.
 - Call out residual risk, assumptions, or checks not run.
 - Mention unrelated worktree changes only when they were present and intentionally left untouched.
 
@@ -96,6 +99,7 @@ Use `docs/testing-and-qa.md` for the canonical command catalog. Use the feature 
 | --- | --- | --- |
 | Path ownership and doc triggers | `docs/change-routing.md` | Use the trigger matrix before non-trivial edits and update only the owner docs that actually changed. |
 | Portal production readiness | `docs/portal-production-readiness.md` | Keep current status, blockers, highest-leverage tasks, and parallel lanes up to date as readiness work lands. |
+| File decomposition | `docs/file-decomposition-and-ownership.md` | Run `npm run files:changed` for touched warning or critical files and avoid adding unrelated responsibilities inline. |
 | Parallel or cross-app work | `docs/parallel-work-guardrails.md` | Declare lanes, owners, shared contracts, tests, docs, and integration dependencies. |
 | Design workbench | `docs/design-workbench-architecture.md` | Read the design workbench overlay in `docs/parallel-work-guardrails.md` before migration or compatibility edits. |
 | Drawing domain libraries | `apps/portal/lib/drawings/README.md` | Keep geometry/package boundaries explicit. |

@@ -15,7 +15,8 @@ This repo is optimized for coding agents. Read this file first, then follow link
 9. Prefer `rg` and `rg --files` for repo discovery.
 10. Keep changes scoped to the requested surface.
 11. Do not revert user changes or unrelated worktree changes.
-12. If the task changes portal behavior, data flow, source-of-truth boundaries, test strategy, or known risks, update the relevant doc in the same pass.
+12. Run `npm run files:changed` before handoff when the task touches warning or critical files.
+13. If the task changes portal behavior, data flow, source-of-truth boundaries, test strategy, or known risks, update the relevant doc in the same pass.
 
 ## Repo Map
 

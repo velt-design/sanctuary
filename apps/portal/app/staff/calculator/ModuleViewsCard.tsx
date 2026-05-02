@@ -8,12 +8,8 @@ import {
 } from 'react';
 import type { AttachmentSide } from '@sp/costing';
 import type {
-  GeometryPlanMember2D,
-  GeometryPlanSurface2D,
   GeometryTopProjectionViewModel,
   GeometryPlanViewModel,
-  Line2,
-  Point2,
   Vector2,
 } from '@sp/geometry';
 import styles from './CalculatorGrid.module.css';
@@ -48,10 +44,6 @@ import type {
   PlanPoint,
 } from '@/lib/drawings/views/plan/objectWorkbenchPlanOverlay';
 import {
-  mmPointToPlanSvg,
-  mmPolygonToPlanSvg,
-  topProjectionDirectionToPlanSvg,
-  topProjectionPointToPlanSvg,
   topProjectionSvgPointToPlanPoint,
 } from '@/lib/drawings/views/plan/planCoordinateAdapter';
 import {
@@ -66,6 +58,10 @@ import type {
   ObjectWorkbenchPergolaRenderStatus,
 } from '@/lib/drawings/geometry/deriveWorkbenchGeometry';
 import { buildPlanSvgPresentationModel } from './ModulePlanSvgPresentationModel';
+import {
+  buildPlanSvgGeometryPresentation,
+  resolvePlanSvgGeometryPresentationMode,
+} from './ModulePlanSvgGeometryPresentation';
 
 export type ModuleViewsTab = 'plan' | 'section';
 export type ModuleViewsStatus = 'loading' | 'ready' | 'error' | 'empty';
@@ -1764,39 +1760,6 @@ function sectionSupportUndersideM(model: ModuleSectionModel): number {
 
 function toPointsAttr(points: Point[]): string {
   return points.map((point) => `${point.x.toFixed(2)},${point.y.toFixed(2)}`).join(' ');
-}
-
-function buildPlanMemberFootprint(input: {
-  member: GeometryPlanMember2D;
-  baseX: number;
-  baseY: number;
-  scale: number;
-}): Point[] {
-  const start = mmPointToPlanSvg(input.member.centerline.start, input.baseX, input.baseY, input.scale);
-  const end = mmPointToPlanSvg(input.member.centerline.end, input.baseX, input.baseY, input.scale);
-  const halfWidth = Math.max(0.15, (input.member.profile.widthMm / 1000) * input.scale / 2);
-  const dx = end.x - start.x;
-  const dy = end.y - start.y;
-  const length = Math.hypot(dx, dy);
-
-  if (length <= 0.001) {
-    const center = start;
-    return [
-      { x: center.x - halfWidth, y: center.y - halfWidth },
-      { x: center.x + halfWidth, y: center.y - halfWidth },
-      { x: center.x + halfWidth, y: center.y + halfWidth },
-      { x: center.x - halfWidth, y: center.y + halfWidth },
-    ];
-  }
-
-  const nx = -dy / length;
-  const ny = dx / length;
-  return [
-    { x: start.x + nx * halfWidth, y: start.y + ny * halfWidth },
-    { x: end.x + nx * halfWidth, y: end.y + ny * halfWidth },
-    { x: end.x - nx * halfWidth, y: end.y - ny * halfWidth },
-    { x: start.x - nx * halfWidth, y: start.y - ny * halfWidth },
-  ];
 }
 
 function geometryFallDirectionToCardinal(direction: Vector2): CardinalDirection {
