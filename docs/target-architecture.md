@@ -104,6 +104,14 @@ Portal drawing code may adapt `@sp/geometry` for workbench state, persistence, a
 
 Costing must come from `@sp/costing`. Marketing must not create a pricing fork. Portal overrides may layer database-owned overrides on top of package base config through documented portal helpers.
 
+## File Ownership Target
+
+Files should have one clear responsibility and one obvious owner. A production-ready workspace should not keep adding inline UI, persistence, domain policy, browser event math, and tests to the same module just because that is where the previous behavior lived.
+
+Use `docs/file-decomposition-and-ownership.md` before expanding large components, pages, route handlers, package files, domain modules, or tests. The target is not tiny files for their own sake; the target is cohesive modules that let agents make safe changes, run focused tests, and later separate the portal into a SaaS product without untangling hidden cross-app assumptions.
+
+When a touched file is already large, prefer extracting a named helper, controller, adapter, child component, view model, or package/domain function if the extraction is cohesive and low risk. If extraction is too risky for the task, keep the change narrow and note the decomposition direction in the handoff or owning doc.
+
 ## Migration Posture
 
 The repo is mid-migration. Compatibility paths, legacy fallbacks, and large transitional modules still exist.
@@ -143,8 +151,11 @@ Prefer adding or tightening:
 - browser Supabase access guards.
 - source-of-truth package tests.
 - docs impact and stale-link checks.
+- large-file decomposition reports and changed-file ownership checks.
 - focused browser/performance gates for heavy portal surfaces.
 
 The first package-boundary gate is `npm run packages:guard`, which checks app imports of local `@sp/*` packages against app manifests and Next transpilation config.
+
+The first large-file visibility gate is `npm run files:report`, which is advisory and reports files that need owner-aware decomposition before major feature expansion.
 
 Docs name the destination. Tests, lint, CI, and package boundaries should increasingly make the destination hard to miss.

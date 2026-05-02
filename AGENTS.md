@@ -10,11 +10,12 @@ This repo is optimized for coding agents. Read this file first, then follow link
 4. For non-trivial changes, use `docs/change-routing.md` to identify owner docs, path ownership, and doc update triggers.
 5. For production-readiness, quality-gate, hardening, or parallel-lane work, read `docs/portal-production-readiness.md`.
 6. Read `docs/target-architecture.md` when a change could expand app/package boundaries, root compatibility paths, data access patterns, or source-of-truth ownership.
-7. Read the smallest relevant current-state doc in `docs/`.
-8. Prefer `rg` and `rg --files` for repo discovery.
-9. Keep changes scoped to the requested surface.
-10. Do not revert user changes or unrelated worktree changes.
-11. If the task changes portal behavior, data flow, source-of-truth boundaries, test strategy, or known risks, update the relevant doc in the same pass.
+7. Read `docs/file-decomposition-and-ownership.md` before expanding a large component, route, package, domain module, or test.
+8. Read the smallest relevant current-state doc in `docs/`.
+9. Prefer `rg` and `rg --files` for repo discovery.
+10. Keep changes scoped to the requested surface.
+11. Do not revert user changes or unrelated worktree changes.
+12. If the task changes portal behavior, data flow, source-of-truth boundaries, test strategy, or known risks, update the relevant doc in the same pass.
 
 ## Repo Map
 
@@ -64,6 +65,7 @@ Use `docs/testing-and-qa.md` as the canonical command source. Feature docs may l
 - `docs/portal-production-readiness.md`: active tracker for production-grade portal status, quality gates, blockers, priorities, and parallel lanes.
 - `docs/architecture.md`: repo structure and boundaries.
 - `docs/target-architecture.md`: target workspace shape, north-star data path, and migration direction.
+- `docs/file-decomposition-and-ownership.md`: active guardrail for splitting large files by responsibility and keeping portal code SaaS-ready.
 - `docs/platform-workflow.md`: business workflow across marketing and portal.
 - `docs/environment-auth-supabase.md`: env, auth, roles, schema readiness.
 - `docs/supabase-schema-map.md`: table/RPC ownership, write paths, access boundaries, and migration sources.

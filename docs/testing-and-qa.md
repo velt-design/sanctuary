@@ -64,6 +64,7 @@ npm run docs:guard
 npm run docs:impact
 npm run docs:navigation
 npm run docs:readiness
+npm run files:report
 npm run text:mojibake
 npm run packages:guard
 npm run cache:forbid
@@ -72,6 +73,8 @@ npm run schedule:bundle-budget
 ```
 
 `npm run packages:guard` checks that app imports of local `@sp/*` workspace packages are declared in the app manifest and listed in Next `transpilePackages`. `npm run lint` includes this guard after `docs:guard`.
+
+`npm run files:report` is an advisory large-file ownership report. It highlights warning and critical files that should follow `docs/file-decomposition-and-ownership.md` before major feature expansion. It is not part of `npm run lint` yet.
 
 Operational commands:
 

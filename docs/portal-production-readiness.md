@@ -21,6 +21,7 @@ Production grade means:
 - Local-first flows show pending, failed, retry, conflict, and locked states clearly.
 - Compatibility and legacy fallback paths are named, visible, tested, and removed when no longer needed.
 - Large files and high-risk surfaces have clear ownership, small modules, and focused tests.
+- Large portal files follow `docs/file-decomposition-and-ownership.md` before major feature expansion so the portal remains SaaS-extractable.
 - Docs match the implementation and are updated as part of the work.
 
 ## How To Use This Doc
@@ -57,6 +58,7 @@ This snapshot records the most recent known production-readiness state from the 
 | Typecheck | Green | `npm run typecheck` passed after the `ModelSpaceViewport.test.tsx` placement-case typing fix; `npm run portal:doctor:quick` also completed typecheck. | Keep typecheck in quick doctor and CI. |
 | Browser smoke | Yellow | Fixture smoke now treats disabled or auth-gated fixture routes as missing coverage instead of silently skipping. Local authenticated smoke still needs `PORTAL_TEST_EMAIL` and `PORTAL_TEST_PASSWORD`. | Re-run `npm run test:portal:browser`; run auth/performance smoke when staff test credentials are configured. |
 | Docs and routing | Green | Canonical docs, agent playbook, change routing, and decision log are present. | Keep this tracker and owner docs current. |
+| File decomposition | Yellow | `docs/file-decomposition-and-ownership.md` and `npm run files:report` make large-file hotspots visible, but enforcement is advisory while transitional files remain. | Use the report before expanding large files; add changed-file enforcement later. |
 | Local-first flows | Yellow | Strong primitives exist; production readiness depends on workflow smoke and visible failure states. | Verify pending, failed, retry, conflict, and lock states in changed flows. |
 | Quote/invoice/job-pack side effects | Yellow | Domain docs and tests exist; production readiness depends on token/email/PDF/job-pack smoke. | Run focused tests plus manual public-token and side-effect QA. |
 | Schedule workflow | Yellow | V2 API/RPC boundaries and tests exist; performance budget and readiness need confirmation. | Verify readiness route, Board/Gantt/Site Visits, and bundle budget. |
@@ -125,6 +127,7 @@ This snapshot records the most recent known production-readiness state from the 
 ### Maintainability
 
 - [ ] Large files have an owner and a decomposition plan before major feature work continues in them.
+- [ ] `npm run files:report` is reviewed before expanding warning or critical files.
 - [ ] Source-of-truth boundaries are preserved for costing, geometry, schedule, local-first, quotes, invoices, and job packs.
 - [ ] Compatibility and legacy fallback paths are isolated, named, and tested.
 - [ ] No new duplicate workflow rules are added in components when an owning domain helper or definition exists.
@@ -142,7 +145,7 @@ Keep this ordered list current as work lands.
 5. Fix design workbench behavior drift and keep browser fixture gates meaningful.
 6. Verify quote, invoice, public-token, PDF/email, and job-pack side effects end to end.
 7. Add or confirm CI enforcement for typecheck, docs guard, portal tests, portal build, authenticated smoke, route performance, and security audit expectations.
-8. Decompose the largest portal files after gates are green, one owner surface at a time.
+8. Use `npm run files:report` to guide large-file decomposition after gates are green, one owner surface at a time.
 
 ## Parallel Work Lanes
 
@@ -158,7 +161,7 @@ Parallel work is encouraged when ownership is clear and file overlap is low. Rea
 | Quote/invoice/job packs | Quote/invoice/job-pack domain helpers, token routes, PDFs, email side effects. | Schedule performance, style isolation, docs updates. | Contacts/projects internals unless working on a documented handoff. |
 | Style isolation and portal shell | Shared layout, surface styles, PageHeader, portal shell tests. | Security/deps, contacts/projects, schedule. | Feature behavior and workflow-specific CSS unless required by isolation test. |
 | CI/typecheck/tooling | Scripts, workflows, typecheck, docs guard, command docs. | Most domain lanes. | Domain behavior changes unless a gate requires a small fix. |
-| Large-file decomposition | `CalculatorGridClient`, `ModuleViewsCard`, `ScheduleClient`, `Geometry3DViewport`, `ModelSpaceViewport`. | Only lanes that do not touch the same files. | Active feature fixes in the same large file. |
+| Large-file decomposition | `CalculatorGridClient`, `ModuleViewsCard`, `ScheduleClient`, `Geometry3DViewport`, `ModelSpaceViewport`, and files reported by `npm run files:report`. | Only lanes that do not touch the same files. | Active feature fixes in the same large file. |
 
 ## Canonical References
 
@@ -169,6 +172,7 @@ Use these docs as routing references. Do not copy their full rules into this tra
 | Agent protocol | `docs/agent-playbook.md` |
 | Path ownership and doc update triggers | `docs/change-routing.md` |
 | Repo and app boundaries | `docs/architecture.md` |
+| File decomposition and ownership | `docs/file-decomposition-and-ownership.md` |
 | Whole platform workflow | `docs/platform-workflow.md` |
 | Commands, QA gates, browser tests | `docs/testing-and-qa.md` |
 | Auth, env, Supabase setup | `docs/environment-auth-supabase.md` |
