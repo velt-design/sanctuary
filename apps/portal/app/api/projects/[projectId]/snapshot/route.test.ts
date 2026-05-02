@@ -1,13 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const requireStaffSession = vi.fn();
+const requireStaffContext = vi.fn();
 const getProjectPageSnapshot = vi.fn();
+const supabase = { from: vi.fn() };
 
 vi.mock('@/lib/api/staffApi', async () => {
   const actual = await vi.importActual<typeof import('@/lib/api/staffApi')>('@/lib/api/staffApi');
   return {
     ...actual,
-    requireStaffSession,
+    requireStaffContext,
   };
 });
 
@@ -18,9 +19,14 @@ vi.mock('@/lib/projects/getProjectPageSnapshot', () => ({
 describe('GET /api/projects/[projectId]/snapshot diagnostics', () => {
   beforeEach(() => {
     vi.resetModules();
-    requireStaffSession.mockReset();
+    requireStaffContext.mockReset();
     getProjectPageSnapshot.mockReset();
-    requireStaffSession.mockResolvedValue({ user: { email: 'ops@example.com' }, role: 'staff' });
+    supabase.from.mockReset();
+    requireStaffContext.mockResolvedValue({
+      ok: true,
+      session: { user: { email: 'ops@example.com' }, role: 'staff' },
+      supabase,
+    });
   });
 
   it('returns request-id and server-timing headers on success', async () => {
@@ -42,6 +48,15 @@ describe('GET /api/projects/[projectId]/snapshot diagnostics', () => {
     });
     expect(res.headers.get('x-portal-request-id')).toBe('req_snapshot_ok');
     expect(res.headers.get('server-timing')).toContain('total;dur=');
+    expect(getProjectPageSnapshot).toHaveBeenCalledWith(
+      'proj_1',
+      expect.objectContaining({
+        route: '/api/projects/[projectId]/snapshot',
+        method: 'GET',
+        requestId: 'req_snapshot_ok',
+      }),
+      supabase,
+    );
   });
 
   it('returns request-id and server-timing headers on failure', async () => {

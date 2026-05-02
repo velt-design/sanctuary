@@ -35,6 +35,7 @@ Contacts and projects are staff-owned portal records. Marketing lead capture can
 - Contact create/update routes write `contacts` and return mapped contact shapes.
 - Project create/detail routes write and read `projects`.
 - Project detail pages use `ProjectPageSnapshot` data from `apps/portal/lib/projects/getProjectPageSnapshot.ts`.
+- Contact writes and project snapshot reads run through auth-bound staff Supabase clients from the route context; tests should inject fake server clients instead of mocking the legacy compatibility client.
 - Project cache patching around creates/details lives with local-first helpers so lists and detail views stay coherent.
 - Staff/admin browser UI should use API, query, or local-first layers, not direct table writes.
 

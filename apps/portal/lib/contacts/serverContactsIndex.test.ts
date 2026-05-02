@@ -2,21 +2,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const fromMock = vi.fn();
 
-vi.mock('@/lib/supabaseClient', () => ({
-  supabaseServiceRole: {
-    from: fromMock,
-  },
-  supabaseServer: {
-    from: fromMock,
-  },
-}));
-
-vi.mock('@/lib/supabase/serverClient', () => ({
-  getSupabaseServerAuth: vi.fn(async () => ({
-    from: fromMock,
-  })),
-}));
-
 function createQuery(result: { data: any; error: any }) {
   const query: any = {
     select: vi.fn(() => query),
@@ -58,7 +43,7 @@ describe('loadContactsIndexData', () => {
     });
 
     const { loadContactsIndexData } = await import('./serverContactsIndex');
-    await expect(loadContactsIndexData()).resolves.toEqual([
+    await expect(loadContactsIndexData({ from: fromMock } as any)).resolves.toEqual([
       {
         id: 'ct_11111111-1111-4111-8111-111111111111',
         displayName: 'Alex',
@@ -86,6 +71,6 @@ describe('loadContactsIndexData', () => {
     });
 
     const { loadContactsIndexData } = await import('./serverContactsIndex');
-    await expect(loadContactsIndexData()).rejects.toBe(error);
+    await expect(loadContactsIndexData({ from: fromMock } as any)).rejects.toBe(error);
   });
 });

@@ -1,13 +1,13 @@
 import { createRouteDiagnostics } from '@/lib/api/routeDiagnostics';
-import { jsonError, jsonOk, parseJsonBody, requireStaffSession } from '@/lib/api/staffApi';
+import { jsonError, jsonOk, parseJsonBody, requireStaffContext } from '@/lib/api/staffApi';
 import { createContactWithRetry, isRecord, mapContact, readString } from './_shared';
 
 export const runtime = 'nodejs';
 
 export async function POST(req: Request) {
   const diagnostics = createRouteDiagnostics(req, '/api/contacts');
-  const session = await requireStaffSession();
-  if (!session) return jsonError('Unauthorized', 401, diagnostics);
+  const auth = await requireStaffContext(diagnostics);
+  if (!auth.ok) return auth.response;
 
   const parsed = await parseJsonBody(req);
   if (!parsed.ok) return jsonError(parsed.error, 400, diagnostics);
@@ -22,13 +22,16 @@ export async function POST(req: Request) {
   }
 
   const now = new Date().toISOString();
-  const createRes = await createContactWithRetry({
-    name: displayName,
-    email: email || null,
-    phone: phone || null,
-    created_at: now,
-    updated_at: now,
-  });
+  const createRes = await createContactWithRetry(
+    {
+      name: displayName,
+      email: email || null,
+      phone: phone || null,
+      created_at: now,
+      updated_at: now,
+    },
+    auth.supabase,
+  );
 
   if (createRes.error || !createRes.data) {
     const message = createRes.error?.message ?? 'Failed to create contact';

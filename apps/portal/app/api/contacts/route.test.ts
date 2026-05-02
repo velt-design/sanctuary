@@ -1,38 +1,33 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const requireStaffSession = vi.fn();
+const requireStaffContext = vi.fn();
 const fromMock = vi.fn();
 
 vi.mock('@/lib/api/staffApi', async () => {
   const actual = await vi.importActual<typeof import('@/lib/api/staffApi')>('@/lib/api/staffApi');
   return {
     ...actual,
-    requireStaffSession,
+    requireStaffContext,
   };
 });
-
-vi.mock('@/lib/supabaseClient', () => ({
-  supabaseServiceRole: {
-    from: (...args: unknown[]) => fromMock(...args),
-  },
-}));
-
-vi.mock('@/lib/supabase/serverClient', () => ({
-  getSupabaseServerAuth: vi.fn(async () => ({
-    from: (...args: unknown[]) => fromMock(...args),
-  })),
-}));
 
 describe('POST /api/contacts', () => {
   beforeEach(() => {
     vi.resetModules();
-    requireStaffSession.mockReset();
+    requireStaffContext.mockReset();
     fromMock.mockReset();
-    requireStaffSession.mockResolvedValue({ user: { email: 'ops@example.com' }, role: 'staff' });
+    requireStaffContext.mockResolvedValue({
+      ok: true,
+      session: { user: { email: 'ops@example.com' }, role: 'staff' },
+      supabase: { from: (...args: unknown[]) => fromMock(...args) },
+    });
   });
 
   it('returns 401 when no staff session exists', async () => {
-    requireStaffSession.mockResolvedValue(null);
+    requireStaffContext.mockResolvedValue({
+      ok: false,
+      response: Response.json({ error: 'Unauthorized' }, { status: 401 }),
+    });
 
     const mod = await import('./route');
     const res = await mod.POST(new Request('http://localhost/api/contacts'));

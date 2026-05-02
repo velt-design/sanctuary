@@ -9,6 +9,7 @@
       "pathPatterns": [
         "apps/portal/app/staff/calculator/CalculatorGridClient.tsx",
         "apps/portal/app/staff/calculator/ModuleDrawingRenderer.tsx",
+        "apps/portal/app/staff/calculator/ModuleDrawingSurfacePrimitives.tsx",
         "apps/portal/app/staff/calculator/ModulePlanSvg.tsx",
         "apps/portal/app/staff/calculator/ModuleSectionSvg.tsx",
         "apps/portal/app/staff/calculator/ModuleViewsCard.tsx",
@@ -16,7 +17,7 @@
         "apps/portal/app/staff/calculator/moduleViews.ts"
       ],
       "whyLarge": "Calculator UI, module drawing surfaces, estimate state, and presentation helpers are still concentrated in a few client files.",
-      "nextSafeExtraction": "Move shared footprint presentation, plan annotation rendering, debug primitives, and drawing layout helpers out of ModuleDrawingRenderer and ModulePlanSvg into dedicated calculator drawing modules before adding new drawing surface branches.",
+      "nextSafeExtraction": "Physically split ModuleDrawingSurfacePrimitives into true shared primitives, plan layout, footprint, annotation, and section implementation modules before adding new drawing surface branches.",
       "focusedTests": [
         "npm run test:portal:projects",
         "targeted calculator/component tests",

@@ -4,21 +4,6 @@ const fromMock = vi.fn();
 const logPortalServerError = vi.fn();
 const ensureInvoiceRetryScheduledFromLatestFailure = vi.fn();
 
-vi.mock('@/lib/supabaseClient', () => ({
-  supabaseServiceRole: {
-    from: fromMock,
-  },
-  supabaseServer: {
-    from: fromMock,
-  },
-}));
-
-vi.mock('@/lib/supabase/serverClient', () => ({
-  getSupabaseServerAuth: vi.fn(async () => ({
-    from: fromMock,
-  })),
-}));
-
 vi.mock('@/lib/api/routeDiagnostics', () => ({
   logPortalServerError,
 }));
@@ -93,12 +78,16 @@ describe('getProjectPageSnapshot', () => {
     });
 
     const { getProjectPageSnapshot } = await import('./getProjectPageSnapshot');
-    const snapshot = await getProjectPageSnapshot(`proj_${projectId}`, {
-      route: '/api/projects/[projectId]/snapshot',
-      method: 'GET',
-      requestId: 'req_snapshot_read_only',
-      startedAt: performance.now(),
-    });
+    const snapshot = await getProjectPageSnapshot(
+      `proj_${projectId}`,
+      {
+        route: '/api/projects/[projectId]/snapshot',
+        method: 'GET',
+        requestId: 'req_snapshot_read_only',
+        startedAt: performance.now(),
+      },
+      { from: fromMock } as any,
+    );
 
     expect(snapshot).toMatchObject({
       project: {
@@ -149,12 +138,16 @@ describe('getProjectPageSnapshot', () => {
     });
 
     const { getProjectPageSnapshot } = await import('./getProjectPageSnapshot');
-    const snapshot = await getProjectPageSnapshot(`proj_${projectId}`, {
-      route: '/api/projects/[projectId]/snapshot',
-      method: 'GET',
-      requestId: 'req_snapshot_subordinate_error',
-      startedAt: performance.now(),
-    });
+    const snapshot = await getProjectPageSnapshot(
+      `proj_${projectId}`,
+      {
+        route: '/api/projects/[projectId]/snapshot',
+        method: 'GET',
+        requestId: 'req_snapshot_subordinate_error',
+        startedAt: performance.now(),
+      },
+      { from: fromMock } as any,
+    );
 
     expect(snapshot?.project).toMatchObject({
       id: `proj_${projectId}`,

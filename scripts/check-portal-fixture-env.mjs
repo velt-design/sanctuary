@@ -81,32 +81,41 @@ function isPortAvailable(targetPort) {
 }
 
 function isPortalNextDevProcess(info) {
-  const commandLine = `${info?.commandLine ?? ''} ${info?.parentCommandLine ?? ''}`.toLowerCase();
-  return commandLine.includes('next') && commandLine.includes('dev') && (commandLine.includes(`-p ${DEFAULT_PORT}`) || commandLine.includes('apps/portal'));
+  const commandLine = `${info?.commandLine ?? ''} ${info?.parentCommandLine ?? ''}`
+    .toLowerCase()
+    .replace(/\s+/g, ' ');
+  return commandLine.includes('next') && commandLine.includes('dev');
 }
 
 async function checkLocalServerSlot() {
-  const available = await isPortAvailable(port);
-  if (available) {
-    console.log(`portal-fixture-env: ok (Playwright can start a fixture-enabled portal server on port ${port})`);
-    return;
+  const pid = listeningPid(port);
+  if (pid) {
+    const info = processInfo(pid);
+    const commandLine = info?.parentCommandLine || info?.commandLine || 'unknown command';
+    const displayPid = info?.pid ?? pid ?? 'unknown';
+    const processHint = isPortalNextDevProcess(info)
+      ? `Detected an existing portal Next dev server on port ${port} (PID ${displayPid}).`
+      : `Port ${port} is already in use (PID ${displayPid}).`;
+
+    fail([
+      processHint,
+      `Command: ${commandLine}`,
+      'The no-auth fixture browser gate needs Playwright to start the portal with fixture flags.',
+      'Stop the existing server manually, set PORTAL_PLAYWRIGHT_PORT to a free port with no portal Next dev server running, or set PORTAL_BASE_URL to a fixture-enabled portal server.',
+      'Required fixture flags: ENABLE_SANCTUARY_GEOMETRY_WORKBENCH=1 and ENABLE_SANCTUARY_GEOMETRY_WORKBENCH_FIXTURES=1.',
+    ]);
   }
 
-  const pid = listeningPid(port);
-  const info = processInfo(pid);
-  const commandLine = info?.parentCommandLine || info?.commandLine || 'unknown command';
-  const displayPid = info?.pid ?? pid ?? 'unknown';
-  const processHint = isPortalNextDevProcess(info)
-    ? `Detected an existing portal Next dev server on port ${port} (PID ${displayPid}).`
-    : `Port ${port} is already in use (PID ${displayPid}).`;
+  const available = await isPortAvailable(port);
+  if (!available) {
+    fail([
+      `Port ${port} is already in use, but the owning process could not be identified.`,
+      'The no-auth fixture browser gate needs Playwright to start the portal with fixture flags.',
+      'Stop the existing server manually, set PORTAL_PLAYWRIGHT_PORT to a free port, or set PORTAL_BASE_URL to a fixture-enabled portal server.',
+    ]);
+  }
 
-  fail([
-    processHint,
-    `Command: ${commandLine}`,
-    'The no-auth fixture browser gate needs Playwright to start the portal with fixture flags.',
-    'Stop the existing server manually, set PORTAL_PLAYWRIGHT_PORT to a free port with no portal Next dev server running, or set PORTAL_BASE_URL to a fixture-enabled portal server.',
-    'Required fixture flags: ENABLE_SANCTUARY_GEOMETRY_WORKBENCH=1 and ENABLE_SANCTUARY_GEOMETRY_WORKBENCH_FIXTURES=1.',
-  ]);
+  console.log(`portal-fixture-env: ok (Playwright can start a fixture-enabled portal server on port ${port})`);
 }
 
 async function checkRemoteFixtureServer(targetBaseUrl) {

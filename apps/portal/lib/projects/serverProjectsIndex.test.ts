@@ -2,18 +2,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const fromMock = vi.fn();
 
-vi.mock('@/lib/supabaseClient', () => ({
-  supabaseServiceRole: {
-    from: fromMock,
-  },
-}));
-
-vi.mock('@/lib/supabase/serverClient', () => ({
-  getSupabaseServerAuth: vi.fn(async () => ({
-    from: fromMock,
-  })),
-}));
-
 function createQuery(result: { data: any; error: any }) {
   const query: any = {
     select: vi.fn(() => query),
@@ -29,7 +17,7 @@ describe('loadProjectsIndexData', () => {
     fromMock.mockReset();
   });
 
-  it('loads projects and contacts through the explicit service-role client', async () => {
+  it('loads projects and contacts through an injected server client', async () => {
     fromMock.mockImplementation((table: string) => {
       if (table === 'projects') {
         return createQuery({
@@ -68,7 +56,7 @@ describe('loadProjectsIndexData', () => {
     });
 
     const { loadProjectsIndexData } = await import('./serverProjectsIndex');
-    await expect(loadProjectsIndexData()).resolves.toEqual({
+    await expect(loadProjectsIndexData({ from: fromMock } as any)).resolves.toEqual({
       projects: [
         expect.objectContaining({
           id: 'proj_11111111-1111-4111-8111-111111111111',
@@ -125,7 +113,7 @@ describe('loadProjectsIndexData', () => {
     });
 
     const { loadProjectsIndexData } = await import('./serverProjectsIndex');
-    const data = await loadProjectsIndexData();
+    const data = await loadProjectsIndexData({ from: fromMock } as any);
 
     expect(projectCall).toBe(2);
     expect(data.projects).toHaveLength(1);

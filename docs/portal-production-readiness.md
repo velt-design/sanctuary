@@ -50,7 +50,7 @@ This snapshot records the most recent known production-readiness state from the 
 
 | Area | Status | Last Known Signal | Next Action |
 | --- | --- | --- | --- |
-| Portal tests | Green | `npm run portal:doctor:quick` completed `npm run test:portal`: 172 files and 1077 tests passed. | Keep using focused portal scripts during feature work and quick doctor for routine readiness. |
+| Portal tests | Green | `npm run portal:doctor:quick` passed after contacts/projects server-client test isolation cleanup; focused `npm run test:portal:projects` passed with 40 files and 197 tests. | Keep using focused portal scripts during feature work and quick doctor for routine readiness. |
 | Lint and guards | Green | `npm run portal:doctor:quick` completed `npm run lint`, including docs guard, cache guard, brand guard, mojibake, and ESLint. | Keep lint in quick doctor and portal PR CI. |
 | Schedule bundle budget | Green | `npm run schedule:bundle-budget` passed after a fresh portal build: 588.8 KiB initial raw, 169.1 KiB initial gzip, 333.2 KiB lazy raw, 78.3 KiB lazy gzip. | Keep the budget in portal CI and re-run after schedule chunk changes. |
 | Production security audit | Green | `npm audit --omit=dev` reported 0 vulnerabilities during blocker review. | Keep audit visible through `portal:doctor` and governance checks. |
@@ -145,12 +145,11 @@ This snapshot records the most recent known production-readiness state from the 
 Keep this ordered list current as work lands.
 
 1. Restore remaining browser quality gates: authenticated smoke and performance smoke.
-2. Fix server-client and env isolation drift in contacts/projects/project snapshot tests.
-3. Keep Board, Gantt, and Site Visits split by workflow as schedule work continues.
-4. Fix design workbench behavior drift and keep browser fixture gates meaningful.
-5. Verify quote, invoice, public-token, PDF/email, and job-pack side effects end to end.
-6. Add or confirm CI enforcement for typecheck, docs guard, portal tests, portal build, authenticated smoke, route performance, and security audit expectations.
-7. Use `npm run files:report` and `npm run files:changed` to guide large-file decomposition after gates are green, one owner surface at a time.
+2. Keep Board, Gantt, and Site Visits split by workflow as schedule work continues.
+3. Fix design workbench behavior drift and keep browser fixture gates meaningful.
+4. Verify quote, invoice, public-token, PDF/email, and job-pack side effects end to end.
+5. Add or confirm CI enforcement for typecheck, docs guard, portal tests, portal build, authenticated smoke, route performance, and security audit expectations.
+6. Use `npm run files:report` and `npm run files:changed` to guide large-file decomposition after gates are green, one owner surface at a time.
 
 ## Parallel Work Lanes
 
@@ -217,6 +216,7 @@ When updating this tracker:
 - Added `npm run portal:auth-env` and wired it into authenticated portal Playwright gates plus broad `portal:doctor` so missing `PORTAL_TEST_EMAIL` or `PORTAL_TEST_PASSWORD` fails before authenticated server startup. The no-auth drawing fixture gate remains independent through `npm run test:portal:browser`.
 - Local authenticated smoke and performance verification remain externally blocked until staff test credentials and a compatible portal database are available.
 - Replaced quote PDF and job-pack PDF root/app asset probing with module-relative asset URLs. `npm run build:portal` passed with `Compiled successfully`, TypeScript completed, 55 static pages generated, and no Turbopack/NFT trace warnings.
+- Removed stale compatibility-client mocks from contacts/projects/project snapshot tests by routing contact writes and project snapshots through auth-bound staff Supabase clients. `npm run test:portal:projects` passed with 40 files and 197 tests; `npm run portal:doctor:quick` passed.
 
 ### 2026-05-01
 
