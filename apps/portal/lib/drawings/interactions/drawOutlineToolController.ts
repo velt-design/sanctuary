@@ -47,6 +47,35 @@ export type DrawOutlineCommitIntent =
       polygon: CalculatorHouseFootprintPolygonPoint[];
     };
 
+export type DrawOutlinePointerMoveResult =
+  | {
+      kind: 'noop';
+      gesture: 'click-candidate' | 'pan';
+      session: DrawOutlinePointerSession | null;
+      transition?: undefined;
+    }
+  | {
+      kind: 'session_update';
+      gesture: 'pan';
+      session: DrawOutlinePointerSession;
+      transition: DrawOutlineTransitionResult;
+    };
+
+export type DrawOutlinePointerEndResult =
+  | {
+      kind: 'noop';
+      session: DrawOutlinePointerSession | null;
+    }
+  | {
+      kind: 'select_point';
+      session: null;
+      point: DrawOutlineCanvasPoint;
+    }
+  | {
+      kind: 'cancel';
+      session: null;
+    };
+
 export type DrawOutlineCloseControllerResult =
   | {
       ok: true;
@@ -254,6 +283,62 @@ export function hoverDrawOutlineCanvasPoint(input: {
     landingPoint: resolvedPoint,
     transition: hoverDrawOutlinePoint(input.state, point),
   };
+}
+
+export function moveDrawOutlinePointerSession(input: {
+  session: DrawOutlinePointerSession | null;
+  state: DrawOutlineToolState;
+  pointerId: number;
+  clientX: number;
+  clientY: number;
+  panThresholdPx: number;
+}): DrawOutlinePointerMoveResult {
+  if (!input.session || input.pointerId !== input.session.pointerId) {
+    return { kind: 'noop', gesture: 'click-candidate', session: input.session };
+  }
+
+  const deltaX = input.clientX - input.session.startClientX;
+  const deltaY = input.clientY - input.session.startClientY;
+  const distance = Math.hypot(deltaX, deltaY);
+  if (distance < input.panThresholdPx && !input.session.hasPanned) {
+    return { kind: 'noop', gesture: 'click-candidate', session: input.session };
+  }
+
+  if (input.session.hasPanned) {
+    return { kind: 'noop', gesture: 'pan', session: input.session };
+  }
+
+  const nextSession = {
+    ...input.session,
+    hasPanned: true,
+  };
+  return {
+    kind: 'session_update',
+    gesture: 'pan',
+    session: nextSession,
+    transition: hoverDrawOutlineCanvasPoint({
+      state: input.state,
+      rawPoint: null,
+    }).transition,
+  };
+}
+
+export function endDrawOutlinePointerSession(input: {
+  session: DrawOutlinePointerSession | null;
+  pointerId: number;
+  eventType: 'pointerup' | 'pointercancel';
+}): DrawOutlinePointerEndResult {
+  if (!input.session || input.pointerId !== input.session.pointerId) {
+    return { kind: 'noop', session: input.session };
+  }
+  if (input.eventType === 'pointerup' && !input.session.hasPanned) {
+    return {
+      kind: 'select_point',
+      session: null,
+      point: input.session.startPoint,
+    };
+  }
+  return { kind: 'cancel', session: null };
 }
 
 export function closeDrawOutlineController(input: {

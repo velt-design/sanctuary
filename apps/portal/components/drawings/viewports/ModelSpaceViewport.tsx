@@ -72,7 +72,9 @@ import {
   armDrawOutlineDistanceLockController,
   cancelDrawOutlineController,
   closeDrawOutlineController,
+  endDrawOutlinePointerSession,
   hoverDrawOutlineCanvasPoint,
+  moveDrawOutlinePointerSession,
   selectDrawOutlineCanvasPoint,
   startDrawOutlineController,
   startDrawOutlinePointerSession,
@@ -1722,36 +1724,31 @@ export default function ModelSpaceViewport({
     if (!drawOutlineActiveForPointerListeners) return;
 
     const handlePointerMove = (event: PointerEvent) => {
-      const session = drawOutlinePointerSessionRef.current;
-      if (!session || event.pointerId !== session.pointerId) return;
-      const deltaX = event.clientX - session.startClientX;
-      const deltaY = event.clientY - session.startClientY;
-      const distance = Math.hypot(deltaX, deltaY);
-      if (distance < DRAW_OUTLINE_PAN_THRESHOLD_PX && !session.hasPanned) return;
-      if (!session.hasPanned) {
-        const nextSession = {
-          ...session,
-          hasPanned: true,
-        };
-        drawOutlinePointerSessionRef.current = nextSession;
-        setDrawOutlinePointerSession(nextSession);
-        setDrawOutlineState((current) =>
-          hoverDrawOutlineCanvasPoint({
-            state: current,
-            rawPoint: null,
-          }).transition.state,
-        );
+      const result = moveDrawOutlinePointerSession({
+        session: drawOutlinePointerSessionRef.current,
+        state: drawOutlineState,
+        pointerId: event.pointerId,
+        clientX: event.clientX,
+        clientY: event.clientY,
+        panThresholdPx: DRAW_OUTLINE_PAN_THRESHOLD_PX,
+      });
+      if (result.kind === 'session_update') {
+        drawOutlinePointerSessionRef.current = result.session;
+        setDrawOutlinePointerSession(result.session);
+        setDrawOutlineState(result.transition.state);
       }
     };
 
     const handlePointerEnd = (event: PointerEvent) => {
-      const latestSession = drawOutlinePointerSessionRef.current;
-      if (!latestSession || event.pointerId !== latestSession.pointerId) return;
-      const shouldSelect = event.type === 'pointerup' && !latestSession.hasPanned;
-      const startPoint = latestSession.startPoint;
+      const result = endDrawOutlinePointerSession({
+        session: drawOutlinePointerSessionRef.current,
+        pointerId: event.pointerId,
+        eventType: event.type === 'pointerup' ? 'pointerup' : 'pointercancel',
+      });
+      if (result.kind === 'noop') return;
       drawOutlinePointerSessionRef.current = null;
       setDrawOutlinePointerSession(null);
-      if (shouldSelect) handleDrawOutlinePointSelect(startPoint);
+      if (result.kind === 'select_point') handleDrawOutlinePointSelect(result.point);
     };
 
     window.addEventListener('pointermove', handlePointerMove);
@@ -1763,7 +1760,7 @@ export default function ModelSpaceViewport({
       window.removeEventListener('pointerup', handlePointerEnd);
       window.removeEventListener('pointercancel', handlePointerEnd);
     };
-  }, [drawOutlineActiveForPointerListeners, handleDrawOutlinePointSelect]);
+  }, [drawOutlineActiveForPointerListeners, drawOutlineState, handleDrawOutlinePointSelect]);
 
   useEffect(() => {
     if (activeTouchCount <= 0 || deckDragLocked) return;

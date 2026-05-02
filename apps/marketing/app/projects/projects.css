@@ -179,7 +179,7 @@
 .project-detail__media{
   position:relative;
   width:100%;
-  height:clamp(420px,60vh,720px);
+  height:clamp(520px,72vh,860px);
   border:none;
   border-radius:0;
   overflow:hidden;
@@ -324,7 +324,7 @@
 .project-detail__placeholder h2{margin:12px 0;font-size:20px}
 .project-detail__eyebrow{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#8b8f94;margin:0}
 .project-detail--standalone{max-width:1320px;margin:0 auto}
-.project-detail--standalone .project-detail__media{height:clamp(440px,64vh,760px)}
+.project-detail--standalone .project-detail__media{height:clamp(560px,76vh,900px)}
 .project-detail--empty{justify-content:center}
 .project-detail--skeleton .project-detail__media{animation:pulse 1.6s ease infinite}
 .project-detail--skeleton .project-detail__body > *{opacity:.6}
