@@ -2,6 +2,14 @@
 
 Use the smallest test that covers the risk. Run broader suites when touching shared workflow, portal shell, scheduling, local-first, Supabase access, or public lead/quote flows.
 
+## Read First
+
+- Use `## Common Commands` for routine repo, portal, focused, and operational scripts.
+- Use `## Docs-Only Checks` when changing docs, agent guidance, or docs tooling.
+- Use `## Portal Browser Tests` and `## Drawing Fixture Route` for Playwright/auth/drawing smoke expectations.
+- Use `## Schedule QA Gate` for Schedule V2 readiness and focused schedule checks.
+- Use `## CI` to confirm which workflows enforce or report each gate.
+
 ## Canonical Command Source
 
 Keep general repo command lists here. Other docs should link to this doc instead of duplicating broad command blocks. Feature docs may still list focused commands for their own verification gates.

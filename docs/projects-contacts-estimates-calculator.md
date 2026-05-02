@@ -2,6 +2,14 @@
 
 This doc is the current-state reference for the core staff portal workflow before quotes, design requests, schedule, running jobs, and job packs. Use it when touching contacts, projects, project snapshots/tasks, calculator estimates, estimate versions, estimate locks, or local-first estimate mutations.
 
+## Read First
+
+- Use `## Ownership` to route pages, APIs, helpers, tables, and local-first keys.
+- Use `## Contact And Project Flow` and `## Project Snapshot, Pipeline, And Tasks` for project workflow behavior.
+- Use `## Calculator And Estimate Versions` for estimate creation, versioning, summaries, and warnings.
+- Use `## Estimate Editability And Locks` and `## Local-First Mutations` for locks, queues, aliases, and conflicts.
+- Finish with `## Handoffs` and `## Verification` for downstream docs and focused tests.
+
 ## Ownership
 
 - Contact pages: `/staff/contacts`, `/staff/contacts/new`, `/staff/contacts/[contactId]`.

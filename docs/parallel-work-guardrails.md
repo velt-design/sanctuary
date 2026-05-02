@@ -15,6 +15,14 @@ Related docs:
 - [`docs/design-workbench-architecture.md`](./design-workbench-architecture.md)
 - [`docs/local-first-sync.md`](./local-first-sync.md)
 
+## Read First
+
+- Start with `## Purpose` to confirm this doc applies to parallel or cross-area work.
+- Use `## Agent Quick Gate` before editing to declare lane, source of truth, bridges, and tests.
+- Use `## Core Parallel Rules` for ownership, contract, bridge, and merge expectations.
+- Use `## Design Workbench Overlay` for drawing/workbench migration lanes.
+- Use `## Integration Rhythm` when coordinating handoffs or integration PRs.
+
 ## Purpose
 
 Use this document when multiple agents, branches, or PRs are changing the repo at the same time.

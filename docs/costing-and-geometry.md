@@ -2,6 +2,14 @@
 
 Costing and geometry are shared domain sources of truth. Do not copy their logic into app code.
 
+## Read First
+
+- Use `## Costing Source Of Truth` before changing pricing or costing imports.
+- Use `## Commercial Spine` and `## Portal Cost Overrides` for commercial shadow flow and override boundaries.
+- Use `## Geometry Source Of Truth` before changing geometry solvers or portal drawing adapters.
+- Use the projection and shape sections for top-projection, roof/span, gable, downslope, and acrylic rules.
+- Finish with `## Verification` for package and app checks.
+
 ## Costing Source Of Truth
 
 All costing logic and base config live in `packages/costing` and are imported through `@sp/costing`.

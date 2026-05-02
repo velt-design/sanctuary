@@ -6,6 +6,14 @@ This doc maps active Supabase tables and RPCs to the portal workflow that owns t
 
 Use this before changing schema, RLS, grants, route Supabase access, RPC commands, or table-backed workflow behavior.
 
+## Read First
+
+- Start with `## Global Rules` before changing schema, RLS, grants, RPCs, or Supabase clients.
+- Use the domain table sections to route changed tables/RPCs to owner docs and write paths.
+- Use `## Schedule, Site Visits, And Running Jobs` for Schedule V2 and running-job storage boundaries.
+- Use `## Marketing, Automation, And Supporting Tables` for enquiry, email, audit, and support tables.
+- Finish with `## Verification` to choose migration, access, and route checks.
+
 ## Global Rules
 
 - Apply ordered forward migrations from `supabase/migrations/`; do not edit old applied migrations without explicit instruction.
