@@ -67,6 +67,7 @@ import {
   startOpeningMoveTool,
   moveOpeningMoveTool,
 } from '@/lib/drawings/interactions/openingMoveToolController';
+import { resolvePlanDimensionEditIntent } from '@/lib/drawings/interactions/planDimensionEditController';
 import {
   OBJECT_DRAG_INTENT_THRESHOLD_PX,
   resolveObjectInteractionMove,
@@ -93,8 +94,6 @@ import {
 } from '@/lib/types/calculator';
 import { moduleDrawingThemeCssVariables } from '@/lib/theme/moduleDrawing';
 import {
-  resizeObjectWorkbenchCustomPolygonEdge,
-  type ObjectWorkbenchPlanDeckReferenceFrame,
   type ObjectWorkbenchPlanDeckInteraction,
   type ObjectWorkbenchPlanCustomEdgeCandidate,
   type ObjectWorkbenchPlanPresetDimensionAnnotation,
@@ -594,209 +593,6 @@ async function resolveCommitResult(
   action: Promise<{ ok: boolean; error?: string }> | { ok: boolean; error?: string },
 ): Promise<{ ok: boolean; error?: string }> {
   return await action;
-}
-
-function formatDeckPresetValue(value: number): string {
-  return value.toFixed(3).replace(/\.?0+$/, '') || '0';
-}
-
-function resolveDeckHostReferenceCenterOffset(input: {
-  annotation: ObjectWorkbenchPlanPresetDimensionAnnotation;
-  nextValue: string;
-}): { ok: true; centerOffsetM: string } | { ok: false; error: string } {
-  const interaction = input.annotation.deckInteraction;
-  const nextGapM = Number.parseFloat(input.nextValue);
-  if (!interaction) return { ok: false, error: 'Deck relationship metadata is unavailable.' };
-  if (!Number.isFinite(nextGapM) || nextGapM < 0) return { ok: false, error: 'Enter a non-negative offset.' };
-
-  const maxGapM = Math.max(0, interaction.hostSpanM - interaction.deckWidthM);
-  if (nextGapM > maxGapM + 1e-6) {
-    return { ok: false, error: 'Offset must stay within the host edge span.' };
-  }
-
-  const availableHalfSpanM = Math.max(0, (interaction.hostSpanM - interaction.deckWidthM) / 2);
-  const centerOffsetM =
-    input.annotation.fieldKey === 'hostStartGapM'
-      ? nextGapM - availableHalfSpanM
-      : input.annotation.fieldKey === 'hostEndGapM'
-        ? availableHalfSpanM - nextGapM
-        : Number.NaN;
-
-  if (!Number.isFinite(centerOffsetM)) {
-    return { ok: false, error: 'Unsupported deck relationship dimension.' };
-  }
-
-  return {
-    ok: true,
-    centerOffsetM: formatDeckPresetValue(clampValue(centerOffsetM, interaction.minCenterOffsetM, interaction.maxCenterOffsetM)),
-  };
-}
-
-function resolveDeckCrossEdgeCenterOffset(input: {
-  annotation: ObjectWorkbenchPlanPresetDimensionAnnotation;
-  nextValue: string;
-}): { ok: true; centerOffsetM: string } | { ok: false; error: string } {
-  const interaction = input.annotation.deckInteraction;
-  const nextGapM = Number.parseFloat(input.nextValue);
-  if (!interaction?.crossEdgeReference) return { ok: false, error: 'Deck witness metadata is unavailable.' };
-  if (!Number.isFinite(nextGapM) || nextGapM < 0) return { ok: false, error: 'Enter a non-negative gap.' };
-
-  const primaryFrame =
-    interaction.placementEdgeId
-      ? interaction.referenceFrames.find((frame) => frame.sourceEdgeId === interaction.placementEdgeId)
-      : interaction.referenceFrames.find((frame) => frame.sourceEdgeId === interaction.witnessEdgeId);
-  if (!primaryFrame) return { ok: false, error: 'Deck host metadata is unavailable.' };
-
-  const crossFrame = interaction.crossEdgeReference.frame;
-  const deckWidthM = interaction.deckWidthM;
-  let centerAlongM: number;
-
-  if (crossFrame.hostEdgeId === 'left') {
-    centerAlongM = crossFrame.edgeCoordinateM - nextGapM - deckWidthM / 2;
-  } else if (crossFrame.hostEdgeId === 'right') {
-    centerAlongM = crossFrame.edgeCoordinateM + nextGapM + deckWidthM / 2;
-  } else if (crossFrame.hostEdgeId === 'rear') {
-    centerAlongM = crossFrame.edgeCoordinateM - nextGapM - deckWidthM / 2;
-  } else {
-    centerAlongM = crossFrame.edgeCoordinateM + nextGapM + deckWidthM / 2;
-  }
-
-  const hostMidpointM = (primaryFrame.spanStartM + primaryFrame.spanEndM) / 2;
-  return {
-    ok: true,
-    centerOffsetM: formatDeckPresetValue(centerAlongM - hostMidpointM),
-  };
-}
-
-function translatePolygon(
-  polygon: PlanPoint[],
-  deltaX: number,
-  deltaY: number,
-): PlanPoint[] {
-  if (Math.abs(deltaX) <= 1e-6 && Math.abs(deltaY) <= 1e-6) return polygon;
-  return polygon.map((point) => ({
-    x: point.x + deltaX,
-    y: point.y + deltaY,
-  }));
-}
-
-function findDeckReferenceFrameById(
-  frames: readonly ObjectWorkbenchPlanDeckReferenceFrame[],
-  edgeId: string | null | undefined,
-): ObjectWorkbenchPlanDeckReferenceFrame | null {
-  if (!edgeId) return null;
-  return frames.find((frame) => frame.sourceEdgeId === edgeId) ?? null;
-}
-
-function planPointToDeckLocal(point: PlanPoint, attachmentSide: AttachmentSide): {
-  alongM: number;
-  depthM: number;
-} {
-  // Plan overlay deck polygons are rendered in a unit attachment frame with zero offset/setback.
-  if (attachmentSide === 'front') {
-    return { alongM: point.x, depthM: point.y - 1 };
-  }
-  if (attachmentSide === 'left') {
-    return { alongM: point.y, depthM: -point.x };
-  }
-  if (attachmentSide === 'right') {
-    return { alongM: point.y, depthM: point.x - 1 };
-  }
-  return { alongM: point.x, depthM: -point.y };
-}
-
-function deckLocalPointToPlanPoint(
-  point: { alongM: number; depthM: number },
-  attachmentSide: AttachmentSide,
-): PlanPoint {
-  if (attachmentSide === 'front') {
-    return { x: point.alongM, y: point.depthM + 1 };
-  }
-  if (attachmentSide === 'left') {
-    return { x: -point.depthM, y: point.alongM };
-  }
-  if (attachmentSide === 'right') {
-    return { x: point.depthM + 1, y: point.alongM };
-  }
-  return { x: point.alongM, y: -point.depthM };
-}
-
-function serializeDeckOutlineFromPlanPolygon(input: {
-  polygon: PlanPoint[];
-  attachmentSide: AttachmentSide;
-}): CalculatorHouseFootprintPolygonPoint[] {
-  void input.attachmentSide;
-  return input.polygon.map((point) => {
-    return {
-      alongM: formatDeckPresetValue(point.x),
-      depthM: formatDeckPresetValue(point.y),
-    };
-  });
-}
-
-function translateDeckOutlineByPlanDelta(input: {
-  polygon: CalculatorHouseFootprintPolygonPoint[];
-  attachmentSide: AttachmentSide;
-  deltaX: number;
-  deltaY: number;
-}): CalculatorHouseFootprintPolygonPoint[] {
-  void input.attachmentSide;
-  return input.polygon.map((point) => {
-    const alongM = Number(point.alongM);
-    const depthM = Number(point.depthM);
-    return {
-      alongM: formatDeckPresetValue(alongM + input.deltaX),
-      depthM: formatDeckPresetValue(depthM + input.deltaY),
-    };
-  });
-}
-
-function inferFloatingRectFromPlanPolygon(input: {
-  polygon: PlanPoint[];
-  attachmentSide: AttachmentSide;
-}): {
-  centerAlongM: string;
-  centerDepthM: string;
-  widthM: string;
-  depthM: string;
-} | null {
-  void input.attachmentSide;
-  if (!input.polygon.length) return null;
-  const alongValues = input.polygon.map((point) => point.x);
-  const depthValues = input.polygon.map((point) => point.y);
-  const minAlongM = Math.min(...alongValues);
-  const maxAlongM = Math.max(...alongValues);
-  const minDepthM = Math.min(...depthValues);
-  const maxDepthM = Math.max(...depthValues);
-  if (![minAlongM, maxAlongM, minDepthM, maxDepthM].every(Number.isFinite)) return null;
-
-  return {
-    centerAlongM: formatDeckPresetValue((minAlongM + maxAlongM) / 2),
-    centerDepthM: formatDeckPresetValue((minDepthM + maxDepthM) / 2),
-    widthM: formatDeckPresetValue(Math.max(0, maxAlongM - minAlongM)),
-    depthM: formatDeckPresetValue(Math.max(0, maxDepthM - minDepthM)),
-  };
-}
-
-function buildFloatingRectFromPlanCenter(input: {
-  center: PlanPoint;
-  attachmentSide: AttachmentSide;
-  widthM: number;
-  depthM: number;
-}): {
-  centerAlongM: string;
-  centerDepthM: string;
-  widthM: string;
-  depthM: string;
-} | null {
-  void input.attachmentSide;
-  if (!Number.isFinite(input.widthM) || !Number.isFinite(input.depthM)) return null;
-  return {
-    centerAlongM: formatDeckPresetValue(input.center.x),
-    centerDepthM: formatDeckPresetValue(input.center.y),
-    widthM: formatDeckPresetValue(input.widthM),
-    depthM: formatDeckPresetValue(input.depthM),
-  };
 }
 
 export default function ModelSpaceViewport({
@@ -1371,9 +1167,16 @@ export default function ModelSpaceViewport({
 
   const commitObjectWorkbenchDimensionEdit = useCallback(
     async (editor: ObjectWorkbenchDimensionEditorState): Promise<boolean> => {
-      const nextValue = editor.value.trim();
-      const annotation = editor.annotation;
       const houseFootprintDimensionCommit = onCommitHouseFormFootprintDimension ?? onCommitFootprintEdit;
+      const intent = resolvePlanDimensionEditIntent({
+        annotation: editor.annotation,
+        nextValue: editor.value,
+        customDeckLocalPolygon:
+          editor.annotation.targetKind === 'deck_host_edge_reference' &&
+          editor.annotation.deckInteraction?.kind === 'custom_outline'
+            ? findObjectWorkbenchCustomDeckLocalPolygon(editor.annotation.ownerId)
+            : null,
+      });
       let result:
         | {
             ok: boolean;
@@ -1381,271 +1184,26 @@ export default function ModelSpaceViewport({
           }
         | undefined;
 
-      if (annotation.targetKind === 'house_preset_param') {
+      if (intent.kind === 'house_footprint_edit') {
         result = houseFootprintDimensionCommit
           ? await resolveCommitResult(
-              houseFootprintDimensionCommit({
-                type: 'param',
-                key: annotation.fieldKey as keyof CalculatorHouseFootprintParams,
-                value: nextValue,
-              }),
+              houseFootprintDimensionCommit(intent.edit),
             )
           : { ok: false, error: 'House footprint dimensions are not editable in this view.' };
-      } else if (annotation.targetKind === 'house_custom_edge') {
-        const polygon = resizeObjectWorkbenchCustomPolygonEdge({
-          polygon: annotation.localPolygon,
-          edgeIndex: annotation.edgeIndex,
-          nextLengthM: nextValue,
-        });
-        result = polygon
-          ? houseFootprintDimensionCommit
-            ? await resolveCommitResult(
-                houseFootprintDimensionCommit({
-                  type: 'polygon',
-                  polygon,
-                }),
-              )
-            : { ok: false, error: 'House footprint dimensions are not editable in this view.' }
-          : { ok: false, error: 'Enter a positive edge length.' };
-      } else if (annotation.targetKind === 'deck_preset_param') {
-        const floatingRectPatch =
-          annotation.deckInteraction?.placement === 'floating' &&
-          (annotation.fieldKey === 'widthM' || annotation.fieldKey === 'depthM')
-            ? buildFloatingRectFromPlanCenter({
-                center: annotation.deckInteraction.renderedCenter,
-                attachmentSide: annotation.deckInteraction.houseAttachmentSide,
-                widthM:
-                  annotation.fieldKey === 'widthM'
-                    ? Number.parseFloat(nextValue)
-                    : annotation.deckInteraction.deckWidthM,
-                depthM:
-                  annotation.fieldKey === 'depthM'
-                    ? Number.parseFloat(nextValue)
-                    : annotation.deckInteraction.deckDepthM,
-              })
-            : null;
+      } else if (intent.kind === 'deck_patch') {
         result = onCommitDeckDimension
           ? await resolveCommitResult(
-              onCommitDeckDimension(annotation.ownerId, {
-                ...(floatingRectPatch ? { floatingRect: floatingRectPatch } : null),
-                presetRect: {
-                  [annotation.fieldKey]: nextValue,
-                } as NonNullable<ObjectWorkbenchDeckPatch['presetRect']>,
-              }),
+              onCommitDeckDimension(intent.deckId, intent.patch),
             )
           : { ok: false, error: 'Deck dimensions are not editable in this view.' };
-      } else if (annotation.targetKind === 'deck_custom_edge') {
-        const polygon = resizeObjectWorkbenchCustomPolygonEdge({
-          polygon: annotation.localPolygon,
-          edgeIndex: annotation.edgeIndex,
-          nextLengthM: nextValue,
-        });
-        result =
-          polygon && onCommitDeckDimension
-            ? await resolveCommitResult(
-                onCommitDeckDimension(annotation.ownerId, {
-                  shape: 'custom',
-                  outline: polygon,
-                }),
-              )
-            : { ok: false, error: polygon ? 'Deck dimensions are not editable in this view.' : 'Enter a positive edge length.' };
-      } else if (annotation.targetKind === 'deck_host_edge_reference') {
-        const interaction = annotation.deckInteraction;
-        const customLocalPolygon =
-          interaction?.kind === 'custom_outline'
-            ? findObjectWorkbenchCustomDeckLocalPolygon(annotation.ownerId)
-            : null;
-        const customRelationshipPatch =
-          interaction?.kind === 'custom_outline'
-            ? (() => {
-                if (!customLocalPolygon) {
-                  return { ok: false as const, error: 'Deck outline metadata is unavailable.' };
-                }
-                if (annotation.fieldKey === 'hostStartGapM' || annotation.fieldKey === 'hostEndGapM') {
-                  return { ok: false as const, error: 'Custom deck host-span dimensions are not editable in this view.' };
-                }
-                if (annotation.fieldKey === 'referenceEdgeGapM') {
-                  const nextGapM = Number.parseFloat(nextValue);
-                  if (!Number.isFinite(nextGapM) || nextGapM < 0) {
-                    return { ok: false as const, error: 'Enter a non-negative gap.' };
-                  }
-                  const primaryFrame = findDeckReferenceFrameById(interaction.referenceFrames, interaction.witnessEdgeId);
-                  if (!primaryFrame) {
-                    return { ok: false as const, error: 'Deck host metadata is unavailable.' };
-                  }
-                  const deltaGapM = nextGapM - interaction.referenceEdgeGapM;
-                  return {
-                    ok: true as const,
-                    outline: translateDeckOutlineByPlanDelta({
-                      polygon: customLocalPolygon,
-                      attachmentSide: interaction.houseAttachmentSide,
-                      deltaX: primaryFrame.outwardUnitX * deltaGapM,
-                      deltaY: primaryFrame.outwardUnitY * deltaGapM,
-                    }),
-                  };
-                }
-                if (annotation.fieldKey === 'crossEdgeGapM') {
-                  const nextGapM = Number.parseFloat(nextValue);
-                  if (!Number.isFinite(nextGapM) || nextGapM < 0) {
-                    return { ok: false as const, error: 'Enter a non-negative gap.' };
-                  }
-                  const crossFrame = interaction.crossEdgeReference?.frame;
-                  if (!crossFrame) {
-                    return { ok: false as const, error: 'Deck witness metadata is unavailable.' };
-                  }
-                  const currentGapM = Number.parseFloat(annotation.rawValue);
-                  const deltaGapM = nextGapM - (Number.isFinite(currentGapM) ? currentGapM : 0);
-                  return {
-                    ok: true as const,
-                    outline: translateDeckOutlineByPlanDelta({
-                      polygon: customLocalPolygon,
-                      attachmentSide: interaction.houseAttachmentSide,
-                      deltaX: crossFrame.outwardUnitX * deltaGapM,
-                      deltaY: crossFrame.outwardUnitY * deltaGapM,
-                    }),
-                  };
-                }
-                return { ok: false as const, error: 'Unsupported deck relationship dimension.' };
-              })()
-            : null;
-        const floatingRelationshipPatch = (() => {
-          if (!interaction || interaction.placement !== 'floating') return null;
-          if (interaction.kind === 'custom_outline') return null;
-          if (annotation.fieldKey === 'referenceEdgeGapM') {
-            const nextGapM = Number.parseFloat(nextValue);
-            if (!Number.isFinite(nextGapM) || nextGapM < 0) {
-              return { ok: false as const, error: 'Enter a non-negative gap.' };
-            }
-            const primaryFrame = findDeckReferenceFrameById(interaction.referenceFrames, interaction.witnessEdgeId);
-            if (!primaryFrame) {
-              return { ok: false as const, error: 'Deck host metadata is unavailable.' };
-            }
-            const deltaGapM = nextGapM - interaction.referenceEdgeGapM;
-            const nextCenter = {
-              x: interaction.renderedCenter.x + primaryFrame.outwardUnitX * deltaGapM,
-              y: interaction.renderedCenter.y + primaryFrame.outwardUnitY * deltaGapM,
-            };
-            const floatingRect = buildFloatingRectFromPlanCenter({
-              center: nextCenter,
-              attachmentSide: interaction.houseAttachmentSide,
-              widthM: interaction.deckWidthM,
-              depthM: interaction.deckDepthM,
-            });
-            if (!floatingRect) {
-              return { ok: false as const, error: 'Unable to update the floating deck position.' };
-            }
-            return {
-              ok: true as const,
-              floatingRect,
-            };
-          }
-          if (annotation.fieldKey === 'crossEdgeGapM') {
-            const nextGapM = Number.parseFloat(nextValue);
-            if (!Number.isFinite(nextGapM) || nextGapM < 0) {
-              return { ok: false as const, error: 'Enter a non-negative gap.' };
-            }
-            const crossFrame = interaction.crossEdgeReference?.frame;
-            if (!crossFrame) {
-              return { ok: false as const, error: 'Deck witness metadata is unavailable.' };
-            }
-            const currentGapM = Number.parseFloat(annotation.rawValue);
-            const deltaGapM = nextGapM - (Number.isFinite(currentGapM) ? currentGapM : 0);
-            const nextCenter = {
-              x: interaction.renderedCenter.x + crossFrame.outwardUnitX * deltaGapM,
-              y: interaction.renderedCenter.y + crossFrame.outwardUnitY * deltaGapM,
-            };
-            const floatingRect = buildFloatingRectFromPlanCenter({
-              center: nextCenter,
-              attachmentSide: interaction.houseAttachmentSide,
-              widthM: interaction.deckWidthM,
-              depthM: interaction.deckDepthM,
-            });
-            if (!floatingRect) {
-              return { ok: false as const, error: 'Unable to update the floating deck position.' };
-            }
-            return {
-              ok: true as const,
-              floatingRect,
-            };
-          }
-          return null;
-        })();
-        const resolvedRelationship =
-          annotation.fieldKey === 'hostStartGapM' || annotation.fieldKey === 'hostEndGapM'
-            ? resolveDeckHostReferenceCenterOffset({
-                annotation,
-                nextValue,
-              })
-            : annotation.fieldKey === 'crossEdgeGapM'
-              ? resolveDeckCrossEdgeCenterOffset({
-                  annotation,
-                  nextValue,
-                })
-              : annotation.fieldKey === 'referenceEdgeGapM'
-                ? { ok: true as const, centerOffsetM: '' }
-                : { ok: false as const, error: 'Unsupported deck relationship dimension.' };
-        result =
-          customRelationshipPatch
-            ? customRelationshipPatch.ok && onCommitDeckDimension
-              ? await resolveCommitResult(
-                  onCommitDeckDimension(annotation.ownerId, {
-                    hostEdgeId: interaction?.witnessEdgeId ?? null,
-                    isAttached: false,
-                    outline: customRelationshipPatch.outline,
-                  }),
-                )
-              : {
-                  ok: false,
-                  error:
-                    customRelationshipPatch.error ??
-                    'Deck dimensions are not editable in this view.',
-                }
-            : resolvedRelationship.ok &&
-              (!floatingRelationshipPatch || floatingRelationshipPatch.ok) &&
-              onCommitDeckDimension
-            ? await resolveCommitResult(
-                onCommitDeckDimension(annotation.ownerId, {
-                  ...(annotation.fieldKey === 'referenceEdgeGapM'
-                    ? {
-                        isAttached: false,
-                        // `rect_detached` remains the legacy persistence shape for PR1.
-                        presetType: 'rect_detached',
-                        ...(floatingRelationshipPatch && 'floatingRect' in floatingRelationshipPatch && floatingRelationshipPatch.floatingRect
-                          ? { floatingRect: floatingRelationshipPatch.floatingRect }
-                          : null),
-                        presetRect: {
-                          detachedGapM: nextValue,
-                        } as NonNullable<ObjectWorkbenchDeckPatch['presetRect']>,
-                      }
-                    : {
-                        ...(floatingRelationshipPatch && 'floatingRect' in floatingRelationshipPatch && floatingRelationshipPatch.floatingRect
-                          ? { floatingRect: floatingRelationshipPatch.floatingRect }
-                          : null),
-                        presetRect: {
-                          centerOffsetM: resolvedRelationship.centerOffsetM,
-                        } as NonNullable<ObjectWorkbenchDeckPatch['presetRect']>,
-                      }),
-                }),
-              )
-            : {
-                ok: false,
-                error:
-                  floatingRelationshipPatch && !floatingRelationshipPatch.ok
-                    ? floatingRelationshipPatch.error
-                    : resolvedRelationship.ok
-                    ? 'Deck dimensions are not editable in this view.'
-                    : resolvedRelationship.error,
-              };
-      } else if (annotation.targetKind === 'opening_param') {
+      } else if (intent.kind === 'opening_patch') {
         result = onCommitOpeningDimension
           ? await resolveCommitResult(
-              onCommitOpeningDimension(annotation.ownerId, {
-                [annotation.fieldKey]: nextValue,
-              } as ObjectWorkbenchOpeningPatch),
+              onCommitOpeningDimension(intent.openingId, intent.patch),
             )
           : { ok: false, error: 'Opening dimensions are not editable in this view.' };
       } else {
-        result = { ok: false, error: 'Unsupported dimension target.' };
+        result = { ok: false, error: intent.error };
       }
 
       if (!result?.ok) {

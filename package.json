@@ -20,6 +20,7 @@
     "brand:forbid": "node scripts/check-brand-accent-literals.mjs",
     "docs:guard": "node scripts/docs-guard.mjs",
     "docs:impact": "node scripts/docs-impact-check.mjs",
+    "docs:navigation": "node scripts/docs-navigation-report.mjs",
     "docs:readiness": "node scripts/readiness-report.mjs",
     "text:mojibake": "node scripts/check-mojibake.mjs",
     "schedule:bundle-budget": "tsx scripts/check-schedule-bundle-budget.ts",

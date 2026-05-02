@@ -54,6 +54,7 @@ Focused guards:
 ```bash
 npm run docs:guard
 npm run docs:impact
+npm run docs:navigation
 npm run docs:readiness
 npm run text:mojibake
 npm run cache:forbid
@@ -78,6 +79,7 @@ For docs-only changes, run these from the repo root:
 ```bash
 npm run docs:guard
 npm run docs:impact
+npm run docs:navigation
 npm run docs:readiness
 npm run text:mojibake
 ```
@@ -85,6 +87,8 @@ npm run text:mojibake
 `npm run docs:guard` checks required agent-doc links, startup-path docs, documented npm scripts, local Markdown link targets and anchors, decision-log structure, change-routing owner paths, portal readiness metadata, stale placeholders, ASCII docs, and superseded redirect shape.
 
 `npm run docs:impact` is an advisory check that maps changed behavior files through `docs/change-routing.md` and suggests owner docs when matching docs were not changed. It exits nonzero only when `DOCS_IMPACT_STRICT=1`.
+
+`npm run docs:navigation` is an advisory report for dense docs. It highlights long docs that may need a routing, index, or "read first" section.
 
 `npm run docs:readiness` is an advisory report for `docs/portal-production-readiness.md`. It summarizes tracker age, status counts, at-risk rows, and unchecked checklist counts, but it does not verify readiness by itself.
 
@@ -175,6 +179,6 @@ This doc remains the canonical command catalog. When readiness work changes comm
 ## CI
 
 - Portal Quality runs docs guard, repository typecheck, lint, portal Vitest, portal build, schedule bundle budget, fixture browser smoke, authenticated smoke, and portal performance timing.
-- Docs Health runs weekly and on demand, with blocking docs guard and mojibake checks plus advisory docs impact and readiness reports.
+- Docs Health runs weekly and on demand, with blocking docs guard and mojibake checks plus advisory docs impact, navigation, and readiness reports.
 - Lighthouse Guardrails run mobile and desktop Lighthouse profiles.
 - Governance Monthly runs marketing tests, production dependency audit, and Lighthouse.

@@ -38,3 +38,7 @@ jobs:
       - name: Readiness aging report
         continue-on-error: true
         run: npm run docs:readiness
+
+      - name: Docs navigation report
+        continue-on-error: true
+        run: npm run docs:navigation
