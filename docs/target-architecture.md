@@ -94,6 +94,8 @@ Service-role access is server-only and must stay allowlisted. Valid service-role
 
 Never expose raw tokens, token hashes, service-role keys, broad file access, or private artifacts to client components, browser bundles, generated documents, public payloads, or logs.
 
+The first service-role visibility gate is `npm run service-role:report`, with `npm run service-role:changed` for handoffs that touch service-role Supabase access. This report is advisory and broader than the portal-only service-role allowlist test.
+
 ## Package Boundary Target
 
 Apps should depend on packages through declared workspace dependencies and public package exports, not accidental TypeScript-only aliases.

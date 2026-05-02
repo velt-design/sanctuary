@@ -3,6 +3,7 @@ import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
   experimental: { externalDir: true },
+  allowedDevOrigins: ['127.0.0.1'],
   transpilePackages: ['@sp/costing', '@sp/geometry', '@sp/quote-format', '@sp/theme'],
   // Enforce TypeScript correctness during production builds.
   typescript: { ignoreBuildErrors: false },

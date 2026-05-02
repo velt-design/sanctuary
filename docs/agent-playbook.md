@@ -69,6 +69,7 @@ For marketing-only or shared-package-only tasks, use the parts that affect porta
 - Run `npm run files:changed` before handoff when touched files are warning or critical size, and state whether decomposition was done, deferred, or not relevant.
 - Run `npm run root:compat:changed` before handoff when touched files live in root compatibility paths, and state why the behavior was not moved to `apps/*` or `packages/*`.
 - Run `npm run browser:supabase:changed` before handoff when touched files use browser-facing Supabase access, and state whether the access was migrated, preserved, or deferred.
+- Run `npm run service-role:changed` before handoff when touched files use service-role Supabase access, and state why privileged access remains required.
 - For focused portal logic, prefer the closest unit/integration test first, then broaden if shared behavior changed.
 - For portal UI-heavy work, use Playwright or browser/manual checks where the change affects layout, interaction, routing, auth, or persisted state.
 - For schedule work, consider `npm run schedule:bundle-budget`, smoke/performance checks, and manual drag/drop or Gantt checks when relevant.
@@ -87,6 +88,7 @@ Use `docs/testing-and-qa.md` for the canonical command catalog. Use the feature 
 - If `npm run files:changed` reported warning or critical files, mention the decomposition decision.
 - If `npm run root:compat:changed` reported files, mention the root-compatibility decision.
 - If `npm run browser:supabase:changed` reported files, mention the browser data-access decision.
+- If `npm run service-role:changed` reported files, mention the service-role boundary decision.
 - Call out residual risk, assumptions, or checks not run.
 - Mention unrelated worktree changes only when they were present and intentionally left untouched.
 
@@ -106,6 +108,7 @@ Use `docs/testing-and-qa.md` for the canonical command catalog. Use the feature 
 | File decomposition | `docs/file-decomposition-and-ownership.md` | Run `npm run files:changed` for touched warning or critical files and avoid adding unrelated responsibilities inline. |
 | Root compatibility | `docs/target-architecture.md` | Run `npm run root:compat:changed` when touching root compatibility paths and avoid growing root app behavior. |
 | Browser Supabase access | `docs/target-architecture.md`, `docs/staff-api-auth-contracts.md` | Run `npm run browser:supabase:changed` and prefer API/query/local-first layers over direct browser table access. |
+| Service-role Supabase access | `docs/target-architecture.md`, `docs/environment-auth-supabase.md`, `docs/staff-api-auth-contracts.md` | Run `npm run service-role:changed` and keep privileged access server-only, owned, and documented. |
 | Parallel or cross-app work | `docs/parallel-work-guardrails.md` | Declare lanes, owners, shared contracts, tests, docs, and integration dependencies. |
 | Design workbench | `docs/design-workbench-architecture.md` | Read the design workbench overlay in `docs/parallel-work-guardrails.md` before migration or compatibility edits. |
 | Drawing domain libraries | `apps/portal/lib/drawings/README.md` | Keep geometry/package boundaries explicit. |

@@ -34,6 +34,7 @@ Do not add ad hoc session checks to new staff/admin routes when a helper already
 - Browser UI should use API routes, query helpers, or local-first mutation layers rather than direct table writes.
 - Service-role access is server-only. It is reserved for admin tooling, imports, public token flows, automation, and intentional RLS bypasses.
 - Service-role keys must never reach client components, browser bundles, public props, logs, or generated documents.
+- Run `npm run service-role:changed` before handoff when touching service-role access. `npm run service-role:report` is the broad advisory inventory; `apps/portal/lib/supabaseClient.boundaries.test.ts` is the narrower portal-only hard allowlist.
 - When adding tables, pair route changes with ordered forward migrations, RLS/grants, and the relevant feature doc.
 
 Use `docs/supabase-schema-map.md` for table/RPC ownership, write paths, access boundaries, and migration sources. Use `docs/environment-auth-supabase.md` for environment setup, role concepts, and migration readiness.

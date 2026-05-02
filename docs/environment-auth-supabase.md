@@ -84,6 +84,8 @@ Use `SUPABASE_SERVICE_ROLE_KEY` only in server-owned flows:
 
 Do not expose service-role access to client components.
 
+Use `npm run service-role:report` for the broad advisory inventory and `npm run service-role:changed` before handoff when touching service-role access. The portal still has a narrower hard allowlist test in `apps/portal/lib/supabaseClient.boundaries.test.ts`.
+
 For route-level service-role and auth-bound Supabase client boundaries, see `docs/staff-api-auth-contracts.md`.
 
 ## RLS And Permissions

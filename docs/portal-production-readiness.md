@@ -56,7 +56,7 @@ This snapshot records the most recent known production-readiness state from the 
 | Production security audit | Green | `npm audit --omit=dev` reported 0 vulnerabilities during blocker review. | Keep audit visible through `portal:doctor` and governance checks. |
 | Portal build | Yellow | `npm run build:portal` passed, but Turbopack reported an unexpected NFT trace through `apps/portal/app/api/quotes/preview-pdf/route.ts` -> `apps/portal/lib/quotes/pdf.ts` -> `apps/portal/next.config.ts`. | Keep build green and investigate quote PDF font/image asset tracing so the warning is removed. |
 | Typecheck | Green | `npm run typecheck` passed after the `ModelSpaceViewport.test.tsx` placement-case typing fix; `npm run portal:doctor:quick` also completed typecheck. | Keep typecheck in quick doctor and CI. |
-| Browser smoke | Yellow | Fixture smoke now treats disabled or auth-gated fixture routes as missing coverage instead of silently skipping. Local authenticated smoke still needs `PORTAL_TEST_EMAIL` and `PORTAL_TEST_PASSWORD`. | Re-run `npm run test:portal:browser`; run auth/performance smoke when staff test credentials are configured. |
+| Browser smoke | Yellow | `npm run test:portal:browser` passed locally: 2 fixture tests passed and the auth-backed project discovery smoke was skipped by design. Local authenticated smoke still needs `PORTAL_TEST_EMAIL` and `PORTAL_TEST_PASSWORD`. | Run auth/performance smoke when staff test credentials are configured. |
 | Docs and routing | Green | Canonical docs, agent playbook, change routing, and decision log are present. | Keep this tracker and owner docs current. |
 | File decomposition | Yellow | `docs/file-decomposition-and-ownership.md`, `npm run files:report`, and `npm run files:changed` make large-file hotspots visible, but enforcement is advisory while transitional files remain. | Use changed-file reporting before handoff when expanding large files; add strict enforcement later. |
 | Local-first flows | Yellow | Strong primitives exist; production readiness depends on workflow smoke and visible failure states. | Verify pending, failed, retry, conflict, and lock states in changed flows. |
@@ -79,7 +79,7 @@ This snapshot records the most recent known production-readiness state from the 
 - [x] `npm run schedule:bundle-budget` passes after a fresh portal build.
 - [x] `npm run audit:security` has no unresolved high or critical production vulnerabilities.
 - [ ] `npm run test:portal:smoke` passes for authenticated portal routing.
-- [ ] `npm run test:portal:browser` passes for drawing/workbench browser smoke without silent full-suite skips.
+- [x] `npm run test:portal:browser` passes for drawing/workbench browser smoke without silent full-suite skips.
 - [ ] `npm run test:portal:performance` passes route timing budgets.
 
 ### Critical Staff Workflows
@@ -106,6 +106,7 @@ This snapshot records the most recent known production-readiness state from the 
 - [ ] Admin APIs use `requireAdminSession` or `requireAdminContext`.
 - [ ] Public quote and invoice flows remain token-bound and hash-checked.
 - [ ] Service-role Supabase access is server-only and limited to documented owner flows.
+- [ ] `npm run service-role:changed` is included in handoffs that touch service-role Supabase access.
 - [ ] Browser UI does not add direct table writes outside API, query, local-first, or approved spreadsheet adapters.
 - [ ] `npm run browser:supabase:changed` is included in handoffs that touch browser-facing Supabase access.
 - [ ] Schedule V2 writes go through staff API routes and `schedule_v2_*` RPC commands.
@@ -141,7 +142,7 @@ This snapshot records the most recent known production-readiness state from the 
 
 Keep this ordered list current as work lands.
 
-1. Restore remaining browser quality gates: fixture browser smoke, authenticated smoke, and performance smoke.
+1. Restore remaining browser quality gates: authenticated smoke and performance smoke.
 2. Fix server-client and env isolation drift in contacts/projects/project snapshot tests.
 3. Investigate the portal build NFT warning in quote PDF font/image asset tracing.
 4. Keep Board, Gantt, and Site Visits split by workflow as schedule work continues.
@@ -211,6 +212,7 @@ When updating this tracker:
 
 ### 2026-05-01
 
+- Restored the no-auth drawing fixture browser gate: `npm run test:portal:browser` passed locally with 2 fixture tests passing and the auth-backed project discovery smoke skipped by design. The remaining browser-gate work is authenticated smoke and performance smoke with staff test credentials.
 - Added the portal speed tooling command plan: focused portal test scripts, `portal:doctor:quick`, `portal:doctor`, and matching CI/doc routing.
 - Added logged gate variants for agent-friendly verification: `portal:doctor:quick:log`, `portal:doctor:log`, and `test:portal:log` run the same source-of-truth commands while keeping noisy stdout/stderr in OS temp logs.
 - Easy health pass updated current gate status: typecheck, lint, docs guards, portal tests, portal build, schedule bundle budget, and production audit are green locally; portal build remains Yellow because of the Turbopack/NFT quote PDF tracing warning; fixture browser smoke now fails loudly when fixture coverage cannot run instead of silently skipping.
