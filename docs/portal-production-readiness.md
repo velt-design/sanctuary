@@ -129,6 +129,7 @@ This snapshot records the most recent known production-readiness state from the 
 - [ ] Large files have an owner and a decomposition plan before major feature work continues in them.
 - [ ] `npm run files:report` is reviewed before expanding warning or critical files.
 - [ ] `npm run files:changed` is included in handoffs that touch warning or critical files.
+- [ ] `npm run root:compat:changed` is included in handoffs that touch root compatibility paths before portal SaaS extraction work continues.
 - [ ] Source-of-truth boundaries are preserved for costing, geometry, schedule, local-first, quotes, invoices, and job packs.
 - [ ] Compatibility and legacy fallback paths are isolated, named, and tested.
 - [ ] No new duplicate workflow rules are added in components when an owning domain helper or definition exists.

@@ -161,12 +161,13 @@ const baseProjects: Project[] = [
     heroImage: {
       src: '/images/project-tamaki-dr-01.jpg',
       alt: 'Pitched pergola at Lilliput Mini Golf on Tamaki Drive',
+      objectPosition: '50% 42%',
     },
     gallery: [
-      { src: '/images/project-tamaki-dr-01.jpg', alt: 'Pitched pergola framing the mini golf clubhouse' },
-      { src: '/images/project-tamaki-dr-02.jpg', alt: 'Pergola structure sitting over mini golf seating' },
-      { src: '/images/project-tamaki-dr-03.jpg', alt: 'View along the Tamaki Drive mini golf pergola' },
-      { src: '/images/project-tamaki-dr-04.jpg', alt: 'Detail of steel and aluminium connections at Lilliput Mini Golf' },
+      { src: '/images/project-tamaki-dr-01.jpg', alt: 'Pitched pergola framing the mini golf clubhouse', objectPosition: '50% 42%' },
+      { src: '/images/project-tamaki-dr-02.jpg', alt: 'Pergola structure sitting over mini golf seating', objectPosition: '50% 48%' },
+      { src: '/images/project-tamaki-dr-03.jpg', alt: 'View along the Tamaki Drive mini golf pergola', objectPosition: '50% 45%' },
+      { src: '/images/project-tamaki-dr-04.jpg', alt: 'Detail of steel and aluminium connections at Lilliput Mini Golf', objectPosition: '50% 50%' },
     ],
     blurb:
       'Budget-balanced pitched pergola in Slate Blue Matt, installed as part of a mini golf course renovation on Tamaki Drive.',
@@ -240,11 +241,11 @@ const baseProjects: Project[] = [
     type: 'Residential',
     roof: 'Perimeter',
     year: '2025',
-    heroImage: { src: '/images/project-waiheke-01.jpg', alt: 'Perimeter roof looking over a coastal Waiheke deck' },
+    heroImage: { src: '/images/project-waiheke-01.jpg', alt: 'Perimeter roof looking over a coastal Waiheke deck', objectPosition: '50% 48%' },
     gallery: [
-      { src: '/images/project-waiheke-04.jpg', alt: 'Detail of perimeter beam and roof junction' },
-      { src: '/images/project-waiheke-03.jpg', alt: 'Daytime view of the pergola over the deck' },
-      { src: '/images/project-waiheke-01.jpg', alt: 'Perimeter frame with coastal planting' },
+      { src: '/images/project-waiheke-04.jpg', alt: 'Detail of perimeter beam and roof junction', objectPosition: '50% 42%' },
+      { src: '/images/project-waiheke-03.jpg', alt: 'Daytime view of the pergola over the deck', objectPosition: '50% 48%' },
+      { src: '/images/project-waiheke-01.jpg', alt: 'Perimeter frame with coastal planting', objectPosition: '50% 48%' },
     ],
     blurb: 'Box-perimeter pergola extending a coastal deck, with the roof fall concealed behind a clean perimeter beam line.',
     description: [
@@ -316,12 +317,12 @@ const baseProjects: Project[] = [
     type: 'Commercial',
     roof: 'Gable',
     year: '2024',
-    heroImage: { src: '/images/project-goodhome-01.jpg', alt: 'Covered hospitality courtyard with perimeter pergola' },
+    heroImage: { src: '/images/project-goodhome-01.jpg', alt: 'Covered hospitality courtyard with perimeter pergola', objectPosition: '50% 48%' },
     gallery: [
-      { src: '/images/project-goodhome-01.jpg', alt: 'Twilight crowd under the pergola' },
-      { src: '/images/project-goodhome-02.jpg', alt: 'Cafe blinds closing the courtyard edge' },
-      { src: '/images/project-goodhome-03.jpg', alt: 'Detail of structural column and planter' },
-      { src: '/images/project-goodhome-04.jpg', alt: 'Lighting wash across the roof panels' },
+      { src: '/images/project-goodhome-01.jpg', alt: 'Twilight crowd under the pergola', objectPosition: '50% 48%' },
+      { src: '/images/project-goodhome-02.jpg', alt: 'Cafe blinds closing the courtyard edge', objectPosition: '50% 50%' },
+      { src: '/images/project-goodhome-03.jpg', alt: 'Detail of structural column and planter', objectPosition: '50% 52%' },
+      { src: '/images/project-goodhome-04.jpg', alt: 'Lighting wash across the roof panels', objectPosition: '50% 44%' },
     ],
     blurb: 'Two-zone perimeter roof matching the villa-style facade, extending the restaurant into a covered front courtyard.',
     description: [
@@ -392,11 +393,11 @@ const baseProjects: Project[] = [
     type: 'Commercial',
     roof: 'Pitched',
     year: '2024',
-    heroImage: { src: '/images/project-kiwi-rail-02.jpg', alt: 'Steel pergola shelter at a rail facility' },
+    heroImage: { src: '/images/project-kiwi-rail-02.jpg', alt: 'Steel pergola shelter at a rail facility', objectPosition: '50% 50%' },
     gallery: [
-      { src: '/images/project-kiwi-rail-01.jpg', alt: 'Wide shot of platform canopy structure' },
-      { src: '/images/project-kiwi-rail-02.jpg', alt: 'Night lighting along rail canopy' },
-      { src: '/images/project-kiwi-rail-03.jpg', alt: 'Detail of structural connection' },
+      { src: '/images/project-kiwi-rail-01.jpg', alt: 'Wide shot of platform canopy structure', objectPosition: '50% 48%' },
+      { src: '/images/project-kiwi-rail-02.jpg', alt: 'Night lighting along rail canopy', objectPosition: '50% 50%' },
+      { src: '/images/project-kiwi-rail-03.jpg', alt: 'Detail of structural connection', objectPosition: '50% 50%' },
     ],
     blurb: 'Aluminium and acrylic canopy creating a dry, well-lit link between key circulation routes at the head office.',
     description: [
@@ -467,12 +468,9 @@ const baseProjects: Project[] = [
     type: 'Residential',
     roof: 'Pitched',
     year: '2025',
-    heroImage: { src: '/images/project-tindalls-bay.jpg', alt: 'Coastal pavilion overlooking Tindalls Bay' },
+    heroImage: { src: '/images/project-tindalls-bay.jpg', alt: 'Coastal pavilion overlooking Tindalls Bay', objectPosition: '50% 42%' },
     gallery: [
-      { src: '/images/hero-2.jpg', alt: 'Side view of the pavilion and deck' },
-      { src: '/images/project-tindalls-bay.jpg', alt: 'Coastal pavilion overlooking Tindalls Bay' },
-      { src: '/images/product-pitched-01.jpg', alt: 'Pitched pergola product detail' },
-      { src: '/images/hero-1.jpg', alt: 'Coastal pergola overlooking the bay' },
+      { src: '/images/project-tindalls-bay.jpg', alt: 'Coastal pavilion overlooking Tindalls Bay', objectPosition: '50% 42%' },
     ],
     blurb: 'Layered patio and carport cover combining insulated panels, acrylic roofing and battens to keep spaces bright but protected.',
     description: [
@@ -543,10 +541,10 @@ const baseProjects: Project[] = [
     type: 'Commercial',
     roof: 'Gable',
     year: '2020',
-    heroImage: { src: '/images/project-atelier-shu-01.jpg', alt: 'Sheltered outdoor area at Atelier Shu Cafe in Newmarket' },
+    heroImage: { src: '/images/project-atelier-shu-01.jpg', alt: 'Sheltered outdoor area at Atelier Shu Cafe in Newmarket', objectPosition: '50% 44%' },
     gallery: [
-      { src: '/images/project-atelier-shu-03.jpg', alt: 'Detail view of the Atelier Shu canopy' },
-      { src: '/images/project-atelier-shu-01.jpg', alt: 'External view of the cafe canopy' },
+      { src: '/images/project-atelier-shu-03.jpg', alt: 'Detail view of the Atelier Shu canopy', objectPosition: '50% 48%' },
+      { src: '/images/project-atelier-shu-01.jpg', alt: 'External view of the cafe canopy', objectPosition: '50% 44%' },
     ],
     blurb: 'Aluminium gable canopy with dark-tint acrylic roofing, adding a sheltered outdoor zone to a specialty dessert cafe.',
     description: [
@@ -617,10 +615,10 @@ const baseProjects: Project[] = [
     type: 'Residential',
     roof: 'Hip',
     year: '2024',
-    heroImage: { src: '/images/project-waitakere-ranges-01.jpg', alt: 'Hip roof pergola in the Waitakere bush' },
+    heroImage: { src: '/images/project-waitakere-ranges-01.jpg', alt: 'Hip roof pergola in the Waitakere bush', objectPosition: '50% 48%' },
     gallery: [
-      { src: '/images/project-waitakere-ranges-01.jpg', alt: 'Lanai with bush backdrop' },
-      { src: '/images/project-waitakere-ranges-02.jpg', alt: 'Night view with fireplace' },
+      { src: '/images/project-waitakere-ranges-01.jpg', alt: 'Lanai with bush backdrop', objectPosition: '50% 48%' },
+      { src: '/images/project-waitakere-ranges-02.jpg', alt: 'Night view with fireplace', objectPosition: '50% 50%' },
     ],
     blurb: 'Hipped courtyard pergola with opal acrylic roofing, blending a fresh structure into a Tuscan-style home.',
     description: [
@@ -681,6 +679,7 @@ const baseProjects: Project[] = [
         ],
       },
     ],
+    related: ['warkworth-outdoor-room', 'waiheke-coastal-louvre', 'tindalls-bay-pavilion'],
   },
   {
     slug: 'velskov-forest',
@@ -693,11 +692,12 @@ const baseProjects: Project[] = [
     heroImage: {
       src: '/images/project-velskov-01.jpg',
       alt: 'Pitched pergola in the middle of native forest at Velskov',
+      objectPosition: '50% 48%',
     },
     gallery: [
-      { src: '/images/project-velskov-01.jpg', alt: 'Pergola structure sitting within the native forest at Velskov' },
-      { src: '/images/project-velskov-02.jpg', alt: 'Side view of the Velskov pergola surrounded by bush' },
-      { src: '/images/project-velskov-03.jpg', alt: 'Detail of the pergola in the Velskov forest farm' },
+      { src: '/images/project-velskov-01.jpg', alt: 'Pergola structure sitting within the native forest at Velskov', objectPosition: '50% 48%' },
+      { src: '/images/project-velskov-02.jpg', alt: 'Side view of the Velskov pergola surrounded by bush', objectPosition: '50% 48%' },
+      { src: '/images/project-velskov-03.jpg', alt: 'Detail of the pergola in the Velskov forest farm', objectPosition: '50% 50%' },
     ],
     blurb:
       'Shallow-pitch commercial pergola set in the middle of a native forest farm, providing sheltered space without competing with the canopy.',
@@ -726,10 +726,10 @@ const baseProjects: Project[] = [
     type: 'Residential',
     roof: 'Gable',
     year: '2024',
-    heroImage: { src: '/images/project-st-heliers-01.jpg', alt: 'Pergola at a St Heliers townhouse' },
+    heroImage: { src: '/images/project-st-heliers-01.jpg', alt: 'Pergola at a St Heliers townhouse', objectPosition: '50% 50%' },
     gallery: [
-      { src: '/images/project-st-heliers-01.jpg', alt: 'Pergola at a St Heliers townhouse' },
-      { src: '/images/project-st-heliers-02.jpg', alt: 'Side view of the townhouse pergola' },
+      { src: '/images/project-st-heliers-01.jpg', alt: 'Pergola at a St Heliers townhouse', objectPosition: '50% 50%' },
+      { src: '/images/project-st-heliers-02.jpg', alt: 'Side view of the townhouse pergola', objectPosition: '50% 50%' },
     ],
     blurb: 'Open gable extension with opal acrylic roofing and custom aluminium gable framing for a strong street-front presence.',
     description: [
@@ -744,6 +744,7 @@ const baseProjects: Project[] = [
     },
     tags: ['Residential', 'Gable', 'Opal acrylic', 'Aluminium'],
     sections: [],
+    related: ['dairy-flat-estate', 'warkworth-outdoor-room', 'waiheke-coastal-louvre'],
   },
   {
     slug: 'dairy-flat-estate',
@@ -753,12 +754,11 @@ const baseProjects: Project[] = [
     type: 'Residential',
     roof: 'Gable',
     year: '2025',
-    heroImage: { src: '/images/project-dairy-flat-01.jpg', alt: 'Pergola at a Dairy Flat estate' },
+    heroImage: { src: '/images/project-dairy-flat-01.jpg', alt: 'Pergola at a Dairy Flat estate', objectPosition: '50% 48%' },
     gallery: [
-      { src: '/images/project-dairy-flat-01.jpg', alt: 'Pergola at a Dairy Flat estate' },
-      { src: '/images/project-dairy-flat-03.jpg', alt: 'Side view of the Dairy Flat pergola' },
-      { src: '/images/project-dairy-flat-02.jpg', alt: 'Detail of the pergola framing at Dairy Flat' },
-      { src: '/images/product-gable-02.jpg', alt: 'Gable pergola product detail' },
+      { src: '/images/project-dairy-flat-01.jpg', alt: 'Pergola at a Dairy Flat estate', objectPosition: '50% 48%' },
+      { src: '/images/project-dairy-flat-03.jpg', alt: 'Side view of the Dairy Flat pergola', objectPosition: '50% 44%' },
+      { src: '/images/project-dairy-flat-02.jpg', alt: 'Detail of the pergola framing at Dairy Flat', objectPosition: '50% 42%' },
     ],
     blurb: 'Gable extension following the house roofline in aluminium and acrylic to keep the outdoor room bright and sheltered.',
     description: [
@@ -773,6 +773,7 @@ const baseProjects: Project[] = [
     },
     tags: ['Residential', 'Gable'],
     sections: [],
+    related: ['warkworth-outdoor-room', 'st-heliers-townhouse', 'waiheke-coastal-louvre'],
   },
 ];
 

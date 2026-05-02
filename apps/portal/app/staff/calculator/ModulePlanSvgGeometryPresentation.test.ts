@@ -73,7 +73,7 @@ function planModel(): ModulePlanModel {
         },
       ],
     },
-  } as ModulePlanModel;
+  } as unknown as ModulePlanModel;
 }
 
 function geometryPlan(): GeometryPlanViewModel {
@@ -149,7 +149,7 @@ function geometryPlan(): GeometryPlanViewModel {
         dual: false,
       },
     },
-  } as GeometryPlanViewModel;
+  } as unknown as GeometryPlanViewModel;
 }
 
 function selectedOpeningOverlay(): ObjectWorkbenchOverlayShape {
@@ -176,7 +176,7 @@ function selectedOpeningOverlay(): ObjectWorkbenchOverlayShape {
     source: 'top_projection_committed',
     geometrySourceId: 'opening-1',
     renderStatus: 'geometry_ready',
-  };
+  } as unknown as ObjectWorkbenchOverlayShape;
 }
 
 function build(input?: {

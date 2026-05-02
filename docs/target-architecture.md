@@ -60,6 +60,8 @@ Target rule:
 
 Do not delete compatibility paths blindly. First prove the path is unused, update references, and keep docs/tests aligned.
 
+The first root-compatibility visibility gate is `npm run root:compat`, with `npm run root:compat:changed` for handoffs that touch root compatibility files. These reports are advisory and exist to make root growth visible before it becomes normal.
+
 ## Data Access Target
 
 Staff workflow UI should not read or write Supabase tables directly.
@@ -152,6 +154,7 @@ Prefer adding or tightening:
 - source-of-truth package tests.
 - docs impact and stale-link checks.
 - large-file decomposition reports and changed-file ownership checks.
+- root compatibility growth reports.
 - focused browser/performance gates for heavy portal surfaces.
 
 The first package-boundary gate is `npm run packages:guard`, which checks app imports of local `@sp/*` packages against app manifests and Next transpilation config.

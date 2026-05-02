@@ -190,7 +190,10 @@ export default function ProjectDetailContent({
         ) : null}
 
         {detailGallery.length ? (
-          <section className="project-detail__gallery" aria-label="Gallery">
+          <section
+            className={cx('project-detail__gallery', detailGallery.length === 1 && 'project-detail__gallery--single')}
+            aria-label="Gallery"
+          >
             {detailGallery.map(image => (
               <figure key={image.src}>
                 <Image
