@@ -136,6 +136,10 @@ function deckReferenceFramesAreCompatibleForCommit(input: {
   if (Math.abs(alongDot) < DECK_COMMIT_FRAME_VECTOR_DOT_TOLERANCE) return false;
   if (outwardDot < DECK_COMMIT_FRAME_VECTOR_DOT_TOLERANCE) return false;
 
+  if (input.commitFrame.frameSource === 'object_frame' && input.renderFrame.frameSource !== 'object_frame') {
+    return true;
+  }
+
   const directEndpointDistance =
     pointDistance(input.renderFrame.hostEdgeStart, input.commitFrame.hostEdgeStart) +
     pointDistance(input.renderFrame.hostEdgeEnd, input.commitFrame.hostEdgeEnd);
@@ -243,7 +247,9 @@ function resolveDeckCommitReferenceFrame(input: {
     null;
   if (
     bestGeometryMatch &&
-    (containingCommitFrames.length > 0 || bestGeometryMatch.score <= DECK_COMMIT_FRAME_MATCH_TOLERANCE_M)
+    (containingCommitFrames.length > 0 ||
+      bestGeometryMatch.commitFrame.frameSource === 'object_frame' ||
+      bestGeometryMatch.score <= DECK_COMMIT_FRAME_MATCH_TOLERANCE_M)
   ) {
     return bestGeometryMatch.commitFrame;
   }
@@ -623,6 +629,17 @@ function resolveDeckCommitCenterOffset(input: {
     renderEdgeId: previewEdgeId,
     referencePoint: previewCenter,
   });
+  const frameMappedPolygon = commitFrame ? mapDeckPreviewPolygonThroughCommitFrame(input) : null;
+  const frameMappedProjection =
+    frameMappedPolygon && commitFrame
+      ? projectPolygonToDeckReferenceFrame({
+          polygon: frameMappedPolygon,
+          frame: commitFrame,
+        })
+      : null;
+  if (frameMappedProjection) {
+    return frameMappedProjection.centerOffsetM;
+  }
   if (
     commitFrame &&
     previewCenter &&

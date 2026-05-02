@@ -163,7 +163,7 @@ function normalizeMarkdownHref(rawHref) {
 }
 
 function shouldCheckMarkdownHref(href) {
-  if (!href || href.startsWith('#')) return false;
+  if (!href) return false;
   if (/^[a-z][a-z0-9+.-]*:/i.test(href)) return false;
   return true;
 }
@@ -172,10 +172,49 @@ function withoutAnchorOrQuery(href) {
   return href.split('#')[0].split('?')[0];
 }
 
+function anchorFromHref(href) {
+  const hashIndex = href.indexOf('#');
+  if (hashIndex === -1) return '';
+  return href.slice(hashIndex + 1).split('?')[0];
+}
+
 function localMarkdownLinkTarget(file, href) {
   const target = withoutAnchorOrQuery(href);
-  if (!target) return null;
+  if (!target) return file;
   return toPosix(path.normalize(path.join(path.dirname(file), target)));
+}
+
+function stripInlineMarkdown(value) {
+  return value
+    .replace(/<[^>]+>/g, '')
+    .replace(/!\[([^\]]*)\]\([^)]+\)/g, '$1')
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+    .replace(/[`*_~]/g, '')
+    .trim();
+}
+
+function githubHeadingSlug(value) {
+  return stripInlineMarkdown(value)
+    .toLowerCase()
+    .replace(/&[a-z0-9#]+;/gi, '')
+    .replace(/[^\w\s-]/g, '')
+    .trim()
+    .replace(/\s+/g, '-');
+}
+
+function markdownAnchors(text) {
+  const anchors = new Set();
+  const counts = new Map();
+  const headingPattern = /^(#{1,6})\s+(.+?)\s*#*\s*$/gm;
+  for (const match of text.matchAll(headingPattern)) {
+    const baseSlug = githubHeadingSlug(match[2]);
+    if (!baseSlug) continue;
+
+    const count = counts.get(baseSlug) || 0;
+    counts.set(baseSlug, count + 1);
+    anchors.add(count === 0 ? baseSlug : `${baseSlug}-${count}`);
+  }
+  return anchors;
 }
 
 function dateFromYmd(year, month, day) {
@@ -282,6 +321,16 @@ function fail(message) {
   failures.push(message);
 }
 
+const docFiles = docTextFiles();
+const markdownAnchorCache = new Map();
+
+function anchorsForMarkdownFile(file) {
+  if (!markdownAnchorCache.has(file)) {
+    markdownAnchorCache.set(file, markdownAnchors(readText(file)));
+  }
+  return markdownAnchorCache.get(file);
+}
+
 for (const doc of REQUIRED_DOCS) {
   if (!exists(doc)) fail(`Missing required agent doc: ${doc}`);
 }
@@ -316,7 +365,7 @@ for (const file of commandTextFiles()) {
   }
 }
 
-for (const file of docTextFiles()) {
+for (const file of docFiles) {
   const text = readText(file);
 
   const markdownLinkPattern = /!?\[[^\]]*\]\(([^)\n]+)\)/g;
@@ -328,6 +377,16 @@ for (const file of docTextFiles()) {
     if (target && !exists(target)) {
       const pos = lineAndColumnAt(text, match.index);
       fail(`${file}:${pos.line}:${pos.col} links to missing local target: ${href}`);
+      continue;
+    }
+
+    const anchor = anchorFromHref(href);
+    if (target && anchor && target.endsWith('.md')) {
+      const anchors = anchorsForMarkdownFile(target);
+      if (!anchors.has(decodeURIComponent(anchor))) {
+        const pos = lineAndColumnAt(text, match.index);
+        fail(`${file}:${pos.line}:${pos.col} links to missing Markdown anchor: ${href}`);
+      }
     }
   }
 
