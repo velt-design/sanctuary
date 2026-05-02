@@ -1,7 +1,6 @@
 import 'server-only';
 
 import { readFile } from 'node:fs/promises';
-import path from 'node:path';
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFImage, type PDFPage } from 'pdf-lib';
 import { PORTAL_COMPANY_PROFILE } from '@/lib/company/profile';
 import {
@@ -124,21 +123,24 @@ function wrapText(text: string, font: PDFFont, size: number, maxWidth: number): 
   return lines.length ? lines : [''];
 }
 
-async function readLogoBytes(filename: string): Promise<Uint8Array | null> {
-  const candidates = [
-    path.resolve(process.cwd(), 'public', filename),
-    path.resolve(process.cwd(), 'apps', 'portal', 'public', filename),
-  ];
-
-  for (const candidate of candidates) {
-    try {
-      return await readFile(candidate);
-    } catch {
-      // Try next path.
-    }
+function logoAssetUrl(filename: string): URL | null {
+  switch (filename) {
+    case 'logo-sanctuary.png':
+      return new URL('../../public/logo-sanctuary.png', import.meta.url);
+    default:
+      return null;
   }
+}
 
-  return null;
+async function readLogoBytes(filename: string): Promise<Uint8Array | null> {
+  const assetUrl = logoAssetUrl(filename);
+  if (!assetUrl) return null;
+
+  try {
+    return await readFile(assetUrl);
+  } catch {
+    return null;
+  }
 }
 
 async function buildInitialState(pdf: PDFDocument): Promise<RenderState> {

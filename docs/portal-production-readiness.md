@@ -54,9 +54,9 @@ This snapshot records the most recent known production-readiness state from the 
 | Lint and guards | Green | `npm run portal:doctor:quick` completed `npm run lint`, including docs guard, cache guard, brand guard, mojibake, and ESLint. | Keep lint in quick doctor and portal PR CI. |
 | Schedule bundle budget | Green | `npm run schedule:bundle-budget` passed after a fresh portal build: 588.8 KiB initial raw, 169.1 KiB initial gzip, 333.2 KiB lazy raw, 78.3 KiB lazy gzip. | Keep the budget in portal CI and re-run after schedule chunk changes. |
 | Production security audit | Green | `npm audit --omit=dev` reported 0 vulnerabilities during blocker review. | Keep audit visible through `portal:doctor` and governance checks. |
-| Portal build | Yellow | `npm run build:portal` passed, but Turbopack reported an unexpected NFT trace through `apps/portal/app/api/quotes/preview-pdf/route.ts` -> `apps/portal/lib/quotes/pdf.ts` -> `apps/portal/next.config.ts`. | Keep build green and investigate quote PDF font/image asset tracing so the warning is removed. |
+| Portal build | Green | `npm run build:portal` passed with `Compiled successfully`, TypeScript completed, 55 static pages generated, and no Turbopack/NFT trace warnings after module-relative PDF asset URL loading. | Keep build in portal CI and re-run after quote, invoice, PDF, job-pack, or Next config changes. |
 | Typecheck | Green | `npm run typecheck` passed after the `ModelSpaceViewport.test.tsx` placement-case typing fix; `npm run portal:doctor:quick` also completed typecheck. | Keep typecheck in quick doctor and CI. |
-| Browser smoke | Yellow | `npm run test:portal:browser` passed locally: 2 fixture tests passed. `npm run test:portal:smoke` and `npm run test:portal:performance` now fail fast before Playwright server startup when `PORTAL_TEST_EMAIL` or `PORTAL_TEST_PASSWORD` is missing. | Run auth/performance smoke when staff test credentials are configured. |
+| Browser smoke | Yellow | `npm run test:portal:browser` passed locally: 2 fixture tests passed. Fixture smoke now fails fast when a normal portal dev server blocks the fixture server or `PORTAL_BASE_URL` is not fixture-enabled; authenticated smoke/performance fail fast when staff credentials are missing. | Run auth/performance smoke when staff test credentials are configured. |
 | Docs and routing | Green | Canonical docs, agent playbook, change routing, and decision log are present. | Keep this tracker and owner docs current. |
 | File decomposition | Yellow | `docs/file-decomposition-and-ownership.md`, `npm run files:report`, and `npm run files:changed` make large-file hotspots visible, but enforcement is advisory while transitional files remain. | Use changed-file reporting before handoff when expanding large files; add strict enforcement later. |
 | Local-first flows | Yellow | Strong primitives exist; production readiness depends on workflow smoke and visible failure states. | Verify pending, failed, retry, conflict, and lock states in changed flows. |
@@ -146,12 +146,11 @@ Keep this ordered list current as work lands.
 
 1. Restore remaining browser quality gates: authenticated smoke and performance smoke.
 2. Fix server-client and env isolation drift in contacts/projects/project snapshot tests.
-3. Investigate the portal build NFT warning in quote PDF font/image asset tracing.
-4. Keep Board, Gantt, and Site Visits split by workflow as schedule work continues.
-5. Fix design workbench behavior drift and keep browser fixture gates meaningful.
-6. Verify quote, invoice, public-token, PDF/email, and job-pack side effects end to end.
-7. Add or confirm CI enforcement for typecheck, docs guard, portal tests, portal build, authenticated smoke, route performance, and security audit expectations.
-8. Use `npm run files:report` and `npm run files:changed` to guide large-file decomposition after gates are green, one owner surface at a time.
+3. Keep Board, Gantt, and Site Visits split by workflow as schedule work continues.
+4. Fix design workbench behavior drift and keep browser fixture gates meaningful.
+5. Verify quote, invoice, public-token, PDF/email, and job-pack side effects end to end.
+6. Add or confirm CI enforcement for typecheck, docs guard, portal tests, portal build, authenticated smoke, route performance, and security audit expectations.
+7. Use `npm run files:report` and `npm run files:changed` to guide large-file decomposition after gates are green, one owner surface at a time.
 
 ## Parallel Work Lanes
 
@@ -214,8 +213,10 @@ When updating this tracker:
 
 ### 2026-05-02
 
+- Added `npm run portal:fixture-env` and wired it into the no-auth drawing fixture gates so a normal portal dev server or auth-gated `PORTAL_BASE_URL` fails before Playwright startup. The preflight is non-destructive and does not stop existing dev servers.
 - Added `npm run portal:auth-env` and wired it into authenticated portal Playwright gates plus broad `portal:doctor` so missing `PORTAL_TEST_EMAIL` or `PORTAL_TEST_PASSWORD` fails before authenticated server startup. The no-auth drawing fixture gate remains independent through `npm run test:portal:browser`.
 - Local authenticated smoke and performance verification remain externally blocked until staff test credentials and a compatible portal database are available.
+- Replaced quote PDF and job-pack PDF root/app asset probing with module-relative asset URLs. `npm run build:portal` passed with `Compiled successfully`, TypeScript completed, 55 static pages generated, and no Turbopack/NFT trace warnings.
 
 ### 2026-05-01
 

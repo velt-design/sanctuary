@@ -147,6 +147,7 @@ Commands:
 
 ```bash
 npm run portal:auth-env
+npm run portal:fixture-env
 npm run test:portal:browser:auth
 npm run test:portal:browser
 npm run test:portal:browser:headed
@@ -155,6 +156,8 @@ npm run test:portal:performance
 ```
 
 `npm run portal:auth-env` is the fail-fast credential preflight for authenticated portal browser gates. `npm run test:portal:smoke`, `npm run test:portal:performance`, `npm run test:portal:browser:auth`, and broad `npm run portal:doctor` run it before their authenticated Playwright server startup, so missing `PORTAL_TEST_EMAIL` or `PORTAL_TEST_PASSWORD` fails loudly instead of producing a skipped or late setup failure.
+
+`npm run portal:fixture-env` is the fail-fast server-readiness preflight for the no-auth drawing fixture gate. `npm run test:portal:browser`, `npm run test:portal:browser:headed`, and the browser segment of `npm run test:portal:workbench` run it before Playwright starts. It catches a normal portal dev server already occupying the Playwright port and catches `PORTAL_BASE_URL` targets that redirect the fixture route to auth.
 
 The auth setup saves local state to `playwright/.auth/portal-staff.json`, which is ignored.
 
@@ -170,7 +173,7 @@ Fixture mode is read-only. It opens the standard Mono workbench fixture, enters 
 
 `npm run test:portal:browser` uses the no-auth `portal-fixture` Playwright project so fixture parity can run without project data or staff credentials. Run `npm run test:portal:browser:auth` first when you need the auth-backed `portal-chromium` setup state or project-list discovery smoke.
 
-When Playwright starts the portal dev server itself, it enables the geometry workbench fixture flags for this no-auth fixture gate. If `PORTAL_BASE_URL` points at an already-running portal server, that server must be started with the same fixture flags.
+When Playwright starts the portal dev server itself, it enables the geometry workbench fixture flags for this no-auth fixture gate. If `PORTAL_BASE_URL` points at an already-running portal server, that server must be started with the same fixture flags. If a normal portal dev server is already running on the Playwright port, stop it manually or use a fixture-enabled `PORTAL_BASE_URL`; the preflight does not terminate processes.
 
 ## Schedule QA Gate
 

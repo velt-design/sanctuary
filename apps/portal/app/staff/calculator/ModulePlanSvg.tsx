@@ -33,56 +33,64 @@ import {
 } from './ModulePlanSvgGeometryPresentation';
 import { createPlanSvgPointResolvers, syncPlanSvgInteractionBridge } from './ModulePlanSvgBridge';
 import {
-  ArrowHead,
   DebugOutline,
   FocusTarget,
-  HOUSE_FOOTPRINT_PRESET_OPTIONS,
   TickDimension,
-  attachmentFrameForRect,
   boundsFromPoints,
+  clamp,
+  formatMetres,
+  geometryFallDirectionToCardinal,
+  memberSizeM,
+  rectToPoints,
+  rotatePointQuarterTurns,
+  rotatePointsQuarterTurns,
+  toPointsAttr,
+  type Point,
+} from './ModuleDrawingSurfacePrimitives';
+import {
+  HOUSE_FOOTPRINT_PRESET_OPTIONS,
+  canEditHouseFootprintPlan,
+  footprintLabelPoint,
+  resolveFootprintCanvasLayout,
+} from './ModulePlanFootprintPresentation';
+import {
+  ArrowHead,
   buildPlanFallAnnotationSpec,
   buildPlanInternalAngleAnnotationSpec,
   buildPlanRafterSpacingAnnotationSpec,
+} from './ModulePlanAnnotations';
+import {
+  attachmentFrameForRect,
   buildSheetDebugMetrics,
-  canEditHouseFootprintPlan,
-  clamp,
-  footprintLabelPoint,
-  formatMetres,
-  geometryFallDirectionToCardinal,
   getPlanRealExtents,
   getPlanSheetFrame,
   getSheetDrawingField,
   hasFullLengthPlanRidge,
   hipCornerInnerPoints,
   interiorPlanRafterXs,
-  memberSizeM,
   planHouseLineClass,
   planHouseSurfaceClass,
   planRotationTurnsForPresentation,
   pointOnAttachmentFrame,
   projectLinearPositions,
-  rectToPoints,
-  resolveFootprintCanvasLayout,
   resolvePlanFitBox,
   resolvePlanModelSpaceLayout,
   resolvePlanRotationFrame,
   resolvePlanSheetLayout,
-  rotatePointQuarterTurns,
-  rotatePointsQuarterTurns,
-  toPointsAttr,
-  type ModuleDrawingDisplayMode,
-  type ModuleDrawingInteractiveFieldMap,
-  type ModuleDrawingPresentation,
-  type ModuleDrawingScaleDiagnostic,
-  type ModuleDrawingScaleState,
-  type ModuleFootprintCanvasPoint,
-  type ModuleFootprintEditorProps,
-  type ModulePlanInteractionProps,
-  type ModulePlanSheetInteractionProps,
-  type ObjectWorkbenchPlanShapeDragStartMeta,
-  type ObjectWorkbenchPreviewOverlay,
-  type Point,
-} from './ModuleDrawingRenderer';
+} from './ModulePlanLayoutPresentation';
+import type {
+  ModuleDrawingDisplayMode,
+  ModuleDrawingInteractiveFieldMap,
+  ModuleDrawingPresentation,
+  ModuleDrawingScaleDiagnostic,
+  ModuleDrawingScaleState,
+  ModuleFootprintCanvasPoint,
+  ModuleFootprintEditorProps,
+  ModulePlanInteractionProps,
+  ModulePlanSheetInteractionProps,
+  ObjectWorkbenchPlanShapeDragStartMeta,
+  ObjectWorkbenchPreviewOverlay,
+} from './ModuleDrawingContracts';
 
 export function PlanSvg({
   model,
@@ -1925,3 +1933,4 @@ export function PlanSvg({
     </>
   );
 }
+

@@ -10,6 +10,11 @@ import {
   clamp,
   formatMetres,
   memberSizeM,
+  segmentDownNormal,
+  toPointsAttr,
+  type Point,
+} from './ModuleDrawingSurfacePrimitives';
+import {
   resolveSectionFitFrame,
   resolveSectionModelSpaceLayout,
   resolveSectionSheetLayout,
@@ -29,14 +34,13 @@ import {
   sectionSupportBeamWidthM,
   sectionSupportUndersideM,
   sectionSupportXFromHouseM,
-  segmentDownNormal,
-  toPointsAttr,
-  type ModuleDrawingInteractiveFieldMap,
-  type ModuleDrawingPresentation,
-  type ModuleDrawingScaleDiagnostic,
-  type ModuleDrawingScaleState,
-  type Point,
-} from './ModuleDrawingRenderer';
+} from './ModuleSectionPresentation';
+import type {
+  ModuleDrawingInteractiveFieldMap,
+  ModuleDrawingPresentation,
+  ModuleDrawingScaleDiagnostic,
+  ModuleDrawingScaleState,
+} from './ModuleDrawingContracts';
 
 export function SectionSvg({
   model,
@@ -615,3 +619,4 @@ export function SectionSvg({
     </svg>
   );
 }
+

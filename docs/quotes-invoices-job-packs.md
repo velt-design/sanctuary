@@ -21,6 +21,8 @@ Important tables and artifacts:
 - `file_artifacts` for generated PDFs and attached design PDFs.
 - `job_pack_generations` and `job_pack_sheet_overrides`.
 
+Portal PDF generators load owned static assets through module-relative URLs under `apps/portal/assets` and `apps/portal/public`. Do not reintroduce root or app fallback probing for fonts or logos; quote fonts should fail with a clear missing-font error, while header logos remain optional and resilient.
+
 For table/RPC ownership, write paths, access boundaries, and migration sources, see `docs/supabase-schema-map.md`.
 
 ## Quote Lifecycle
