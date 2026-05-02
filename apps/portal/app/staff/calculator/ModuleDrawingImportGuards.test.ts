@@ -17,4 +17,19 @@ describe('calculator drawing surface import guards', () => {
   it('keeps ModuleDrawingRenderer off the broad helper module', () => {
     expect(readCalculatorFile('ModuleDrawingRenderer.tsx')).not.toContain("from './ModuleDrawingSurfacePrimitives'");
   });
+
+  it('keeps shared drawing primitives below owner presentation modules', () => {
+    const primitives = readCalculatorFile('ModuleDrawingSurfacePrimitives.tsx');
+    [
+      "from './ModuleDrawingRenderer'",
+      "from './ModulePlanLayoutPresentation'",
+      "from './ModulePlanFootprintPresentation'",
+      "from './ModulePlanAnnotations'",
+      "from './ModuleSectionPresentation'",
+      "from './ModuleDrawingScalePresentation'",
+      "from './ModuleDrawingDiagnostics'",
+    ].forEach((forbiddenImport) => {
+      expect(primitives).not.toContain(forbiddenImport);
+    });
+  });
 });

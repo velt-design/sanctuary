@@ -147,6 +147,7 @@ Commands:
 
 ```bash
 npm run portal:auth-env
+npm run portal:auth-runtime
 npm run portal:fixture-env
 npm run test:portal:browser:auth
 npm run test:portal:browser
@@ -155,7 +156,9 @@ npm run test:portal:smoke
 npm run test:portal:performance
 ```
 
-`npm run portal:auth-env` is the fail-fast credential preflight for authenticated portal browser gates. `npm run test:portal:smoke`, `npm run test:portal:performance`, `npm run test:portal:browser:auth`, and broad `npm run portal:doctor` run it before their authenticated Playwright server startup, so missing `PORTAL_TEST_EMAIL` or `PORTAL_TEST_PASSWORD` fails loudly instead of producing a skipped or late setup failure.
+`npm run portal:auth-env` is the cheap fail-fast credential preflight for authenticated portal browser gates. It checks that `PORTAL_TEST_EMAIL` and `PORTAL_TEST_PASSWORD` are set before Playwright starts, so missing credentials fail loudly instead of producing a skipped or late setup failure.
+
+`npm run portal:auth-runtime` is the authenticated runtime-readiness preflight for smoke and performance gates. It runs after `portal:auth-env`, signs in through the existing Playwright setup flow, verifies the session is not redirected to `/login` or `/access-status`, checks dashboard/projects/contacts/schedule shell access, confirms schedule readiness, and requires at least one project visible to the test account. `npm run test:portal:smoke`, `npm run test:portal:performance`, and broad `npm run portal:doctor` run it before their deeper authenticated assertions.
 
 `npm run portal:fixture-env` is the fail-fast server-readiness preflight for the no-auth drawing fixture gate. `npm run test:portal:browser`, `npm run test:portal:browser:headed`, and the browser segment of `npm run test:portal:workbench` run it before Playwright starts. It catches a normal portal dev server already occupying the Playwright port and catches `PORTAL_BASE_URL` targets that redirect the fixture route to auth.
 

@@ -39,7 +39,6 @@ import {
   boundsFromPoints,
   clamp,
   formatMetres,
-  geometryFallDirectionToCardinal,
   memberSizeM,
   rectToPoints,
   rotatePointQuarterTurns,
@@ -58,6 +57,7 @@ import {
   buildPlanFallAnnotationSpec,
   buildPlanInternalAngleAnnotationSpec,
   buildPlanRafterSpacingAnnotationSpec,
+  geometryFallDirectionToCardinal,
 } from './ModulePlanAnnotations';
 import {
   attachmentFrameForRect,

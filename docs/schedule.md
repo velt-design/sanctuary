@@ -75,6 +75,15 @@ npm run test:portal:performance
 
 ## Verification
 
+Current local gate signal from 2026-05-03:
+
+```bash
+npm run test:portal:schedule
+npm run schedule:bundle-budget
+```
+
+The schedule test gate passed with 38 files and 215 tests, including the readiness route, V2 API/RPC command routes, Board/Gantt/Site Visits client coverage, and legacy fallback isolation. The bundle budget passed at 589.0 KiB initial raw, 169.1 KiB initial gzip, 333.2 KiB lazy raw, and 78.3 KiB lazy gzip.
+
 Focused tests:
 
 ```bash

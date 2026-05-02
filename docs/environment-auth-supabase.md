@@ -47,6 +47,12 @@ The portal uses Supabase Auth plus `public.portal_users`.
 
 If a user can sign in but sees no portal data, check that they have a `portal_users` row.
 
+## Authenticated Browser Test Account
+
+Authenticated Playwright smoke and performance gates use `PORTAL_TEST_EMAIL` and `PORTAL_TEST_PASSWORD`. The test account must have an active `staff` or `admin` portal role, a compatible migrated portal schema, Schedule V2 readiness returning `200` with `ok: true`, and at least one visible project so project-list and route-performance coverage can run.
+
+Use `npm run portal:auth-env` to check credential presence and `npm run portal:auth-runtime` to check the role, session, schedule readiness, and minimum dataset before running deeper authenticated browser gates.
+
 ## Creating Portal Users
 
 Use the invite script from the repo root:
