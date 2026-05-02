@@ -65,10 +65,13 @@ npm run docs:impact
 npm run docs:navigation
 npm run docs:readiness
 npm run text:mojibake
+npm run packages:guard
 npm run cache:forbid
 npm run brand:forbid
 npm run schedule:bundle-budget
 ```
+
+`npm run packages:guard` checks that app imports of local `@sp/*` workspace packages are declared in the app manifest and listed in Next `transpilePackages`. `npm run lint` includes this guard after `docs:guard`.
 
 Operational commands:
 

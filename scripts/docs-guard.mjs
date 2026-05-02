@@ -8,6 +8,7 @@ const REQUIRED_DOCS = [
   'docs/change-routing.md',
   'docs/decision-log.md',
   'docs/architecture.md',
+  'docs/target-architecture.md',
   'docs/platform-workflow.md',
   'docs/environment-auth-supabase.md',
   'docs/supabase-schema-map.md',

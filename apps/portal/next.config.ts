@@ -3,7 +3,7 @@ import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
   experimental: { externalDir: true },
-  transpilePackages: ['@sp/costing', '@sp/quote-format'],
+  transpilePackages: ['@sp/costing', '@sp/geometry', '@sp/quote-format', '@sp/theme'],
   // Enforce TypeScript correctness during production builds.
   typescript: { ignoreBuildErrors: false },
   // Allow monorepo package resolution for workspace packages.

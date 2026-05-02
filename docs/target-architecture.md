@@ -145,4 +145,6 @@ Prefer adding or tightening:
 - docs impact and stale-link checks.
 - focused browser/performance gates for heavy portal surfaces.
 
+The first package-boundary gate is `npm run packages:guard`, which checks app imports of local `@sp/*` packages against app manifests and Next transpilation config.
+
 Docs name the destination. Tests, lint, CI, and package boundaries should increasingly make the destination hard to miss.

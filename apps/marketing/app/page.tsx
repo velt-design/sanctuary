@@ -66,6 +66,7 @@ const copyTexts: HomePageContent['copyTexts'] = [
 ];
 
 const featuredProjectSlugs = [
+  'warkworth-outdoor-room',
   'dairy-flat-estate',
   'tindalls-bay-pavilion',
   'velskov-forest',

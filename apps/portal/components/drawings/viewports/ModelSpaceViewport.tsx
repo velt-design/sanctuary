@@ -92,6 +92,28 @@ import {
   type FootprintVertexDragControllerState,
 } from '@/lib/drawings/interactions/footprintEditController';
 import {
+  WHEEL_GESTURE_IDLE_MS,
+  clampModelSpaceZoom,
+  createModelSpacePinchSession,
+  createModelSpaceWebKitGestureSession,
+  resolveModelSpaceFitView,
+  resolveModelSpacePanMove,
+  resolveModelSpacePinchMove,
+  resolveModelSpaceWebKitGestureChange,
+  resolveModelSpaceWheelZoom,
+  resolveModelSpaceZoomButton,
+  resolveTouchDistance,
+  resolveTouchMidpoint,
+  resolveTouchPointerPair,
+  type ModelSpaceGesture,
+  type ModelSpacePanSession,
+  type ModelSpacePinchSession,
+  type ModelSpacePinchSource,
+  type ModelSpaceRect,
+  type ModelSpaceTouchPointerSnapshot,
+  type ModelSpaceWebKitGestureSession,
+} from '@/lib/drawings/interactions/modelSpaceNavigationController';
+import {
   OBJECT_DRAG_INTENT_THRESHOLD_PX,
   resolveObjectInteractionMove,
   setObjectInteractionPhase,
@@ -154,38 +176,13 @@ type PlanFieldDragSession = ModulePlanResizeDragMeta & {
   field: EstimateDrawingField;
 };
 
-type PanDragSession = {
-  pointerId: number;
-  startClientX: number;
-  startClientY: number;
-  startPanX: number;
-  startPanY: number;
-};
+type PanDragSession = ModelSpacePanSession;
 
-type TouchPointerSnapshot = {
-  pointerId: number;
-  clientX: number;
-  clientY: number;
-};
+type TouchPointerSnapshot = ModelSpaceTouchPointerSnapshot;
 
-type PinchZoomSession = {
-  firstPointerId: number;
-  secondPointerId: number;
-  startMidpointX: number;
-  startMidpointY: number;
-  startDistance: number;
-  startZoom: number;
-  startPanX: number;
-  startPanY: number;
-};
+type PinchZoomSession = ModelSpacePinchSession;
 
-type WebKitGestureSession = {
-  startAnchorX: number;
-  startAnchorY: number;
-  startZoom: number;
-  startPanX: number;
-  startPanY: number;
-};
+type WebKitGestureSession = ModelSpaceWebKitGestureSession;
 
 type NativeGestureEvent = Event & {
   scale?: number;
@@ -228,39 +225,14 @@ type DeckDragViewportAnchorDrift = {
   height: number;
 };
 
-type ModelSpaceRect = {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-};
-
-type ModelSpaceGesture =
-  | 'idle'
-  | 'mouse-pan'
-  | 'wheel-pan'
-  | 'wheel-zoom'
-  | 'pinch-zoom'
-  | 'trackpad-pinch'
-  | 'draw-click-candidate';
-
-type ModelSpacePinchSource = 'none' | 'touch-pointer' | 'wheel' | 'webkit-gesture';
-
-const MIN_MODEL_ZOOM = 0.01;
-const MAX_MODEL_ZOOM = 4;
-const FIT_VIEW_MARGIN_PX = 24;
 const DRAW_POPOVER_MARGIN_PX = 12;
 const DRAW_POPOVER_GAP_PX = 14;
 const DRAW_OUTLINE_PAN_THRESHOLD_PX = 5;
-const WHEEL_LINE_DELTA_PX = 16;
-const WHEEL_PAGE_DELTA_PX = 240;
-const WHEEL_ZOOM_SENSITIVITY = 0.0036;
-const WHEEL_GESTURE_IDLE_MS = 600;
 const DECK_RELEASE_CLICK_SUPPRESSION_MS = 400;
 const DECK_VIEWPORT_STABILITY_TOLERANCE_PX = 0.5;
 
 function clampZoom(value: number): number {
-  return Math.min(Math.max(value, MIN_MODEL_ZOOM), MAX_MODEL_ZOOM);
+  return clampModelSpaceZoom(value);
 }
 
 function clampValue(value: number, min: number, max: number): number {
@@ -313,36 +285,6 @@ function isViewportMousePanIgnoredTarget(target: EventTarget | null): boolean {
 
 function isSecondaryMouseButton(event: Pick<PointerEvent, 'button'> | Pick<ReactPointerEvent<Element>, 'button'>): boolean {
   return event.button === 2;
-}
-
-function normalizeWheelDeltaPixels(event: Pick<WheelEvent<Element>, 'deltaMode' | 'deltaX' | 'deltaY'>): {
-  deltaX: number;
-  deltaY: number;
-} {
-  const multiplier = event.deltaMode === 1 ? WHEEL_LINE_DELTA_PX : event.deltaMode === 2 ? WHEEL_PAGE_DELTA_PX : 1;
-  return {
-    deltaX: event.deltaX * multiplier,
-    deltaY: event.deltaY * multiplier,
-  };
-}
-
-function resolveTouchMidpoint(first: TouchPointerSnapshot, second: TouchPointerSnapshot): { x: number; y: number } {
-  return {
-    x: (first.clientX + second.clientX) / 2,
-    y: (first.clientY + second.clientY) / 2,
-  };
-}
-
-function resolveTouchDistance(first: TouchPointerSnapshot, second: TouchPointerSnapshot): number {
-  return Math.hypot(second.clientX - first.clientX, second.clientY - first.clientY);
-}
-
-function resolveTouchPointerPair(pointers: Map<number, TouchPointerSnapshot>): [TouchPointerSnapshot, TouchPointerSnapshot] | null {
-  if (pointers.size !== 2) return null;
-  const pair = Array.from(pointers.values());
-  const first = pair[0];
-  const second = pair[1];
-  return first && second ? [first, second] : null;
 }
 
 function parseModelSpaceRect(value: string | null | undefined): ModelSpaceRect | null {
@@ -1122,6 +1064,21 @@ export default function ModelSpaceViewport({
     [onViewportTransformChange, viewportTransform.panX, viewportTransform.panY, zoom],
   );
 
+  const navigationState = useMemo(
+    () => ({
+      transform: {
+        zoom,
+        panX: viewportTransform.panX,
+        panY: viewportTransform.panY,
+      },
+      zoom,
+      gesture: viewportNavigationGesture,
+      pinchSource,
+      deckDragLocked,
+    }),
+    [deckDragLocked, pinchSource, viewportNavigationGesture, viewportTransform.panX, viewportTransform.panY, zoom],
+  );
+
   const markTransientViewportGesture = useCallback((gesture: 'wheel-pan' | 'wheel-zoom', source: ModelSpacePinchSource = 'none') => {
     setViewportNavigationGesture(gesture);
     setPinchSource(source);
@@ -1163,37 +1120,17 @@ export default function ModelSpaceViewport({
     };
   }, []);
 
-  const applyAnchoredViewportZoom = useCallback(
-    (input: {
-      nextZoom: number;
-      startZoom: number;
-      startPanX: number;
-      startPanY: number;
-      startAnchorX: number;
-      startAnchorY: number;
-      currentAnchorX: number;
-      currentAnchorY: number;
-    }) => {
-      const nextZoom = clampZoom(input.nextZoom);
-      const safeStartZoom = Math.max(input.startZoom, 0.001);
-      const contentAnchorX = (input.startAnchorX - input.startPanX) / safeStartZoom;
-      const contentAnchorY = (input.startAnchorY - input.startPanY) / safeStartZoom;
-      updateViewportTransform({
-        zoom: nextZoom,
-        panX: input.currentAnchorX - contentAnchorX * nextZoom,
-        panY: input.currentAnchorY - contentAnchorY * nextZoom,
-      });
-    },
-    [updateViewportTransform],
-  );
-
   const handleZoomChange = useCallback(
     (delta: number) => {
-      if (deckDragLocked) return;
+      const result = resolveModelSpaceZoomButton({
+        state: navigationState,
+        delta,
+      });
+      if (!result.transform) return;
       userAdjustedViewportRef.current = true;
-      updateViewportTransform({ zoom: clampZoom(zoom + delta) });
+      updateViewportTransform(result.transform);
     },
-    [deckDragLocked, updateViewportTransform, zoom],
+    [navigationState, updateViewportTransform],
   );
 
   const measureFitViewTransform = useCallback((): DrawingWorkbenchViewportTransform | null => {
@@ -1219,15 +1156,17 @@ export default function ModelSpaceViewport({
     const targetRect = focusRect ?? svgRect ?? frameFallback;
     if (!targetRect) return null;
 
-    const availableWidth = Math.max(1, scrollerWidth - FIT_VIEW_MARGIN_PX * 2);
-    const availableHeight = Math.max(1, scrollerHeight - FIT_VIEW_MARGIN_PX * 2);
-    const nextZoom = clampZoom(Math.min(availableWidth / targetRect.width, availableHeight / targetRect.height));
-    return {
-      zoom: nextZoom,
-      panX: scrollerWidth / 2 - (targetRect.x + targetRect.width / 2) * nextZoom,
-      panY: scrollerHeight / 2 - (targetRect.y + targetRect.height / 2) * nextZoom,
-    };
-  }, [zoom]);
+    return resolveModelSpaceFitView({
+      state: navigationState,
+      measurements: {
+        scrollerWidth,
+        scrollerHeight,
+        focusRect,
+        svgRect,
+        frameRect: frameFallback,
+      },
+    }).transform;
+  }, [navigationState, zoom]);
 
   const fitViewportToContent = useCallback((): boolean => {
     if (deckDragLocked) return false;
@@ -1259,35 +1198,26 @@ export default function ModelSpaceViewport({
         return;
       }
       if (isViewportNavigationControlTarget(event.target)) return;
-      const delta = normalizeWheelDeltaPixels(event);
-      if (delta.deltaX === 0 && delta.deltaY === 0) return;
-      event.preventDefault();
-      userAdjustedViewportRef.current = true;
       const anchor = resolveViewportAnchor(event.clientX, event.clientY);
       if (!anchor) return;
-      const zoomDelta = Math.abs(delta.deltaY) >= Math.abs(delta.deltaX) ? delta.deltaY : delta.deltaX;
-      const nextZoom = clampZoom(zoom * Math.exp(-zoomDelta * WHEEL_ZOOM_SENSITIVITY));
-      if (nextZoom === zoom) return;
-      markTransientViewportGesture('wheel-zoom', 'wheel');
-      applyAnchoredViewportZoom({
-        nextZoom,
-        startZoom: zoom,
-        startPanX: viewportTransform.panX,
-        startPanY: viewportTransform.panY,
-        startAnchorX: anchor.x,
-        startAnchorY: anchor.y,
-        currentAnchorX: anchor.x,
-        currentAnchorY: anchor.y,
+      const result = resolveModelSpaceWheelZoom({
+        state: navigationState,
+        deltaMode: event.deltaMode,
+        deltaX: event.deltaX,
+        deltaY: event.deltaY,
+        anchor,
       });
+      if (!result.transform) return;
+      event.preventDefault();
+      userAdjustedViewportRef.current = true;
+      markTransientViewportGesture('wheel-zoom', 'wheel');
+      updateViewportTransform(result.transform);
     },
     [
-      applyAnchoredViewportZoom,
       markTransientViewportGesture,
+      navigationState,
       resolveViewportAnchor,
       updateViewportTransform,
-      viewportTransform.panX,
-      viewportTransform.panY,
-      zoom,
       deckDragLocked,
     ],
   );
@@ -1558,18 +1488,14 @@ export default function ModelSpaceViewport({
     const midpoint = pair ? resolveTouchMidpoint(pair[0], pair[1]) : null;
     const anchor = midpoint ? resolveViewportAnchor(midpoint.x, midpoint.y) : null;
     if (!pair || !anchor) return;
-    const distance = resolveTouchDistance(pair[0], pair[1]);
-    if (distance <= 0) return;
-    pinchZoomSessionRef.current = {
-      firstPointerId: pair[0].pointerId,
-      secondPointerId: pair[1].pointerId,
-      startMidpointX: anchor.x,
-      startMidpointY: anchor.y,
-      startDistance: distance,
-      startZoom: zoom,
-      startPanX: viewportTransform.panX,
-      startPanY: viewportTransform.panY,
-    };
+    const session = createModelSpacePinchSession({
+      first: pair[0],
+      second: pair[1],
+      anchor,
+      state: navigationState,
+    });
+    if (!session) return;
+    pinchZoomSessionRef.current = session;
     userAdjustedViewportRef.current = true;
     drawOutlinePointerSessionRef.current = null;
     setDrawOutlinePointerSession(null);
@@ -1582,7 +1508,7 @@ export default function ModelSpaceViewport({
     setPinchZoomActive(true);
     setPinchSource('touch-pointer');
     setViewportNavigationGesture('pinch-zoom');
-  }, [resolveViewportAnchor, viewportTransform.panX, viewportTransform.panY, zoom]);
+  }, [navigationState, resolveViewportAnchor]);
 
   const handleScrollerPointerDownCapture = useCallback(
     (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -1710,13 +1636,10 @@ export default function ModelSpaceViewport({
       event.preventDefault();
       clearTouchNavigation();
       clearViewportEditSessions();
-      webKitGestureSessionRef.current = {
-        startAnchorX: anchor.x,
-        startAnchorY: anchor.y,
-        startZoom: zoom,
-        startPanX: viewportTransform.panX,
-        startPanY: viewportTransform.panY,
-      };
+      webKitGestureSessionRef.current = createModelSpaceWebKitGestureSession({
+        anchor,
+        state: navigationState,
+      });
       userAdjustedViewportRef.current = true;
       setPinchZoomActive(true);
       setPinchSource('webkit-gesture');
@@ -1734,16 +1657,12 @@ export default function ModelSpaceViewport({
       const scale = Number((event as NativeGestureEvent).scale ?? 1);
       if (!Number.isFinite(scale) || scale <= 0) return;
       event.preventDefault();
-      applyAnchoredViewportZoom({
-        nextZoom: session.startZoom * scale,
-        startZoom: session.startZoom,
-        startPanX: session.startPanX,
-        startPanY: session.startPanY,
-        startAnchorX: session.startAnchorX,
-        startAnchorY: session.startAnchorY,
-        currentAnchorX: session.startAnchorX,
-        currentAnchorY: session.startAnchorY,
+      const result = resolveModelSpaceWebKitGestureChange({
+        state: navigationState,
+        session,
+        scale,
       });
+      if (result.transform) updateViewportTransform(result.transform);
     };
 
     const handleGestureEnd = () => {
@@ -1762,15 +1681,13 @@ export default function ModelSpaceViewport({
       scroller.removeEventListener('gesturecancel', handleGestureEnd);
     };
   }, [
-    applyAnchoredViewportZoom,
     clearTouchNavigation,
     clearViewportEditSessions,
     clearWebKitGestureNavigation,
     deckDragLocked,
+    navigationState,
     resolveViewportAnchorFromGestureEvent,
-    viewportTransform.panX,
-    viewportTransform.panY,
-    zoom,
+    updateViewportTransform,
   ]);
 
   useEffect(() => {
@@ -1881,16 +1798,14 @@ export default function ModelSpaceViewport({
       const anchor = resolveViewportAnchor(midpoint.x, midpoint.y);
       if (!anchor) return;
       event.preventDefault();
-      applyAnchoredViewportZoom({
-        nextZoom: session.startZoom * (distance / Math.max(session.startDistance, 0.001)),
-        startZoom: session.startZoom,
-        startPanX: session.startPanX,
-        startPanY: session.startPanY,
-        startAnchorX: session.startMidpointX,
-        startAnchorY: session.startMidpointY,
-        currentAnchorX: anchor.x,
-        currentAnchorY: anchor.y,
+      const result = resolveModelSpacePinchMove({
+        state: navigationState,
+        session,
+        first,
+        second,
+        currentAnchor: anchor,
       });
+      if (result.transform) updateViewportTransform(result.transform);
     };
 
     const handlePointerEnd = (event: PointerEvent) => {
@@ -1913,17 +1828,20 @@ export default function ModelSpaceViewport({
       window.removeEventListener('pointerup', handlePointerEnd);
       window.removeEventListener('pointercancel', handlePointerEnd);
     };
-  }, [activeTouchCount, applyAnchoredViewportZoom, clearTouchNavigation, deckDragLocked, resolveViewportAnchor]);
+  }, [activeTouchCount, clearTouchNavigation, deckDragLocked, navigationState, resolveViewportAnchor, updateViewportTransform]);
 
   useEffect(() => {
     if (!panDragSession || deckDragLocked) return;
 
     const handlePointerMove = (event: PointerEvent) => {
       if (event.pointerId !== panDragSession.pointerId) return;
-      updateViewportTransform({
-        panX: panDragSession.startPanX + event.clientX - panDragSession.startClientX,
-        panY: panDragSession.startPanY + event.clientY - panDragSession.startClientY,
+      const result = resolveModelSpacePanMove({
+        state: navigationState,
+        session: panDragSession,
+        clientX: event.clientX,
+        clientY: event.clientY,
       });
+      if (result.transform) updateViewportTransform(result.transform);
     };
 
     const handlePointerEnd = (event: PointerEvent) => {
@@ -1941,7 +1859,7 @@ export default function ModelSpaceViewport({
       window.removeEventListener('pointerup', handlePointerEnd);
       window.removeEventListener('pointercancel', handlePointerEnd);
     };
-  }, [deckDragLocked, panDragSession, updateViewportTransform]);
+  }, [deckDragLocked, navigationState, panDragSession, updateViewportTransform]);
 
   useEffect(() => {
     if (!footprintDragSession || !onCommitFootprintEdit) return;

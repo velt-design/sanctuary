@@ -36,6 +36,113 @@ export type Project = {
 
 const baseProjects: Project[] = [
   {
+    slug: 'warkworth-outdoor-room',
+    title: 'Warkworth Outdoor Room',
+    location: 'Warkworth, Auckland',
+    region: 'North Auckland',
+    type: 'Residential',
+    roof: 'Gable',
+    year: '2025',
+    heroImage: {
+      src: '/images/project-warkworth-outdoor-room-01.jpg',
+      alt: 'Freestanding matte black gable outdoor room beside a Warkworth home',
+    },
+    gallery: [
+      {
+        src: '/images/project-warkworth-outdoor-room-01.jpg',
+        alt: 'Exterior gable view of the freestanding Warkworth outdoor room',
+      },
+      {
+        src: '/images/project-warkworth-outdoor-room-02.jpg',
+        alt: 'Interior outdoor room with cedar ceiling, pendant lighting and lounge seating',
+      },
+      {
+        src: '/images/project-warkworth-outdoor-room-03.jpg',
+        alt: 'Fireplace and lounge area beneath the Warkworth gable outdoor room',
+      },
+      {
+        src: '/images/project-warkworth-outdoor-room-04.jpg',
+        alt: 'Clear acrylic roof glazing and cedar ceiling detail in the Warkworth outdoor room',
+      },
+      {
+        src: '/images/project-warkworth-outdoor-room-05.jpg',
+        alt: 'Garden-side exterior view with the fireplace chimney and matte black roof',
+      },
+      {
+        src: '/images/project-warkworth-outdoor-room-06.jpg',
+        alt: 'Side entry and deck view into the Warkworth outdoor room',
+      },
+      {
+        src: '/images/project-warkworth-outdoor-room-07.jpg',
+        alt: 'Exterior view of the Warkworth outdoor room with screens and planting',
+      },
+    ],
+    blurb:
+      'Freestanding gable outdoor room beside the house, with a new deck, fireplace, clear acrylic glazing, cedar ceiling and matte black Colorsteel finish.',
+    description: [
+      'The brief for this Warkworth home was to create a proper outdoor room beside the house: sheltered enough to use often, open enough to stay connected to the garden, and detailed so it felt like a permanent part of the property.',
+      'We built a freestanding gable structure beside the home rather than relying on the existing house for support. The matte black frame and COLORSTEEL FlaxPod Matte roof give the room a crisp architectural profile, while clear acrylic glazing through the roof and gable ends keeps daylight moving through the space.',
+      'Completed in November 2025, the project also included a new deck and fireplace, turning the covered area into a complete outdoor living space. Warm cedar tongue-and-groove lining, pendant lighting and recessed lights finish the room for dining, lounging and year-round entertaining.',
+    ],
+    stats: {
+      width: '5.0 m',
+      depth: '6.0 m',
+      height: '4.1 m',
+      area: '30.0 m²',
+      pitch: '30°',
+    },
+    tags: ['Residential', 'Gable', 'Outdoor room', 'Matte black', 'Clear acrylic', 'Cedar ceiling', 'Fireplace'],
+    sections: [
+      {
+        title: 'Design brief',
+        paragraphs: [
+          'The clients wanted more than a deck cover. The goal was to create an outdoor room beside the house, with enough enclosure and comfort to support everyday use while still feeling open to the surrounding garden.',
+          'A freestanding gable form gave the space height, symmetry and independence from the existing house structure. It also allowed the new deck and fireplace to be planned as part of one complete outdoor living area.',
+        ],
+        bullets: [
+          'Create a sheltered outdoor room beside the house',
+          'Keep the space bright with clear acrylic glazing',
+          'Integrate the new deck, fireplace and lighting into the overall layout',
+        ],
+      },
+      {
+        title: 'Structure & finish',
+        paragraphs: [
+          'The structure combines aluminium and steel framing with a matte black finish. Engineering PS1 was provided for the project, giving the freestanding frame the right structural basis for the site and roof form.',
+        ],
+        bullets: [
+          'Freestanding aluminium and steel gable structure',
+          'COLORSTEEL FlaxPod Matte roofing',
+          'Dulux Duralloy Solid Black - Matt, 9159041M frame colour reference',
+          'Engineering PS1 provided',
+        ],
+      },
+      {
+        title: 'Roof, glazing & ceiling',
+        paragraphs: [
+          'The gable roof uses corrugated Colorsteel with clear acrylic glazing to bring natural light into the outdoor room. A cedar tongue-and-groove ceiling lining softens the underside and gives the space a warm interior feel.',
+        ],
+        bullets: [
+          'Clear acrylic roof and gable glazing',
+          'Cedar tongue-and-groove ceiling lining',
+          'Matte black flashings and frame details',
+        ],
+      },
+      {
+        title: 'Outdoor room details',
+        paragraphs: [
+          'The new fireplace, deck and lighting complete the space as a room rather than a simple shelter. Electrical lighting was installed by a registered electrician, with feature pendants and downlights creating a warm evening setting.',
+        ],
+        bullets: [
+          'New deck built with the outdoor room',
+          'New fireplace and chimney integrated beside the covered area',
+          'Lighting installed by a registered electrician',
+        ],
+      },
+    ],
+    related: ['dairy-flat-estate', 'st-heliers-townhouse', 'tindalls-bay-pavilion'],
+  },
+  {
     slug: 'devonport-gable-lightwell',
     title: 'Lilliput Mini Golf',
     location: '3 Tamaki Drive, Parnell, Auckland',
@@ -662,6 +769,7 @@ const baseProjects: Project[] = [
 ];
 
 const projectOrder: string[] = [
+  'warkworth-outdoor-room',    // Warkworth Outdoor Room
   'devonport-gable-lightwell', // Lilliput Mini Golf
   'velskov-forest',            // Velskov Forest
   'tindalls-bay-pavilion',     // Tindalls Bay - Patio & Carport

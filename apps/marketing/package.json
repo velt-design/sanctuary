@@ -17,6 +17,7 @@
     "@react-email/render": "^2.0.4",
     "@sp/costing": "0.0.0",
     "@sp/quote-format": "0.0.0",
+    "@sp/theme": "0.0.0",
     "@supabase/supabase-js": "^2.90.1",
     "bcryptjs": "^3.0.3",
     "framer-motion": "^12.23.12",
