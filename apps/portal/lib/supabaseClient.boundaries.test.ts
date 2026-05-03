@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
@@ -32,6 +32,7 @@ function readTrackedFile(relativePath: string): string {
 
 function portalRuntimeFiles(): string[] {
   return trackedFiles().filter((relativePath) => {
+    if (!existsSync(path.join(process.cwd(), relativePath))) return false;
     if (!relativePath.startsWith('apps/portal/app/') && !relativePath.startsWith('apps/portal/lib/')) return false;
     if (relativePath.includes('/vendor/')) return false;
     if (relativePath.includes('.test.')) return false;

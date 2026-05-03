@@ -14,7 +14,7 @@ const FLAT_COMPATIBILITY_DERIVED_READ_ROOTS = [
 const STATE_SOURCE_ROOT = path.join('apps', 'portal', 'lib', 'drawings', 'state');
 const STATE_COMPAT_PATH_SEGMENT = `${path.sep}state${path.sep}compat${path.sep}`;
 const GEOMETRY_SOURCE_ROOT = path.join('apps', 'portal', 'lib', 'drawings', 'geometry');
-const GEOMETRY_COMPAT_PATH_SEGMENT = `${path.sep}geometry${path.sep}compat${path.sep}`;
+const GEOMETRY_COMPAT_ROOT = path.join(GEOMETRY_SOURCE_ROOT, 'compat');
 const ESTIMATES_SOURCE_ROOT = path.join('apps', 'portal', 'lib', 'estimates');
 const ESTIMATES_COMPAT_PATH_SEGMENT = `${path.sep}estimates${path.sep}compat${path.sep}`;
 const OBJECT_WORKBENCH_GEOMETRY_UI_ROOTS = [
@@ -142,7 +142,6 @@ function isLegacyPersistenceCompatibilityZone(relativePath: string): boolean {
   const basename = path.basename(relativePath);
   return (
     relativePath.includes(STATE_COMPAT_PATH_SEGMENT) ||
-    relativePath.includes(GEOMETRY_COMPAT_PATH_SEGMENT) ||
     LEGACY_STATE_COMPATIBILITY_ADAPTER_FILES.has(relativePath) ||
     basename.startsWith('houseFirst') ||
     relativePath.endsWith(path.normalize(path.join('apps', 'portal', 'lib', 'estimates', 'drawingEdits.ts')))
@@ -493,15 +492,18 @@ describe('object workbench import guards', () => {
     expect(violations).toEqual([]);
   });
 
-  it('keeps geometry compatibility imports behind the explicit compat namespace', () => {
+  it('keeps the retired geometry compatibility namespace absent', () => {
+    expect(fs.existsSync(path.join(process.cwd(), GEOMETRY_COMPAT_ROOT))).toBe(false);
+  });
+
+  it('keeps geometry compatibility imports off active geometry files', () => {
     const violations: string[] = [];
 
     for (const absolutePath of listSourceFiles(path.join(process.cwd(), GEOMETRY_SOURCE_ROOT))) {
       const relativePath = toRepoRelativePath(absolutePath);
-      if (relativePath.includes(GEOMETRY_COMPAT_PATH_SEGMENT)) continue;
       const source = fs.readFileSync(absolutePath, 'utf8');
       if (/from ['"][^'"]*houseFirstWorkbench(?:Model|Adapter)['"]/.test(source)) {
-        violations.push(`${relativePath} imports house-first workbench state outside geometry compat`);
+        violations.push(`${relativePath} imports house-first workbench state`);
       }
     }
 
@@ -525,7 +527,7 @@ describe('object workbench import guards', () => {
       for (const absolutePath of listSourceFiles(path.join(process.cwd(), root), { includeTests: true })) {
         const relativePath = toRepoRelativePath(absolutePath);
         const source = fs.readFileSync(absolutePath, 'utf8');
-        if (/from ['"][^'"]*\/geometry\/compat\//.test(source)) {
+        if (/from ['"][^'"]*[/\\]geometry[/\\]compat[/\\]/.test(source)) {
           violations.push(`${relativePath} imports geometry compatibility internals`);
         }
       }

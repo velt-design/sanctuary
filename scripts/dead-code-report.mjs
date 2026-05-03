@@ -156,25 +156,40 @@ function issueItems(issue, key) {
   return Array.isArray(issue?.[key]) ? issue[key] : [];
 }
 
+function unusedFileRow(file, registryEntries) {
+  const normalized = normalizeFile(file);
+  const registry = registryEntryFor(normalized, registryEntries);
+  return {
+    file: normalized,
+    issue: 'unused-file',
+    detail: 'file is not reached from configured entrypoints',
+    classification: classificationFor(registry, 'unused-file', normalized),
+    registered: Boolean(registry),
+    owner: registry?.ownerArea ?? 'unowned',
+    proof: registry?.proofCommand ?? 'search references and run focused owner tests',
+    action: registry?.retirementAction ?? 'prove unused, then delete or wire into the owning app/package',
+  };
+}
+
 function rowsFromKnip(payload, registryEntries) {
   const rows = [];
+  const unusedFiles = new Set();
   for (const file of Array.isArray(payload.files) ? payload.files : []) {
     const normalized = normalizeFile(file);
-    const registry = registryEntryFor(normalized, registryEntries);
-    rows.push({
-      file: normalized,
-      issue: 'unused-file',
-      detail: 'file is not reached from configured entrypoints',
-      classification: classificationFor(registry, 'unused-file', normalized),
-      registered: Boolean(registry),
-      owner: registry?.ownerArea ?? 'unowned',
-      proof: registry?.proofCommand ?? 'search references and run focused owner tests',
-      action: registry?.retirementAction ?? 'prove unused, then delete or wire into the owning app/package',
-    });
+    if (!normalized || unusedFiles.has(normalized)) continue;
+    unusedFiles.add(normalized);
+    rows.push(unusedFileRow(normalized, registryEntries));
   }
 
   for (const issue of Array.isArray(payload.issues) ? payload.issues : []) {
     const file = normalizeFile(issue.file);
+    for (const item of issueItems(issue, 'files')) {
+      const normalized = normalizeFile(item.name || item.file || item.path || item);
+      if (!normalized || unusedFiles.has(normalized)) continue;
+      unusedFiles.add(normalized);
+      rows.push(unusedFileRow(normalized, registryEntries));
+    }
+
     for (const key of ['dependencies', 'devDependencies', 'optionalPeerDependencies', 'unlisted', 'binaries', 'unresolved', 'exports', 'types', 'duplicates']) {
       for (const item of issueItems(issue, key)) {
         const detail = item.name || item.member || item.symbol || item.type || 'unnamed finding';

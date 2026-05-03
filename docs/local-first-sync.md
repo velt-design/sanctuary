@@ -24,6 +24,8 @@ Current portal local-first mutations:
 
 Add new mutation keys in `portalEntities.ts` and register a handler in `LocalFirstPortalMutations.tsx`.
 
+The `workbench_solved` pricing rollout prep does not add a mutation key and does not change estimate create/update request bodies. If future source metadata is added for live pricing, it must preserve provisional estimate aliases, queued dependent quote/design-request actions, retry visibility, `ESTIMATE_LOCKED` conflicts, and server-authoritative estimate persistence.
+
 ## Working Copies
 
 Working copies are local drafts scoped by stable entity keys. They allow UI to preserve unsaved or not-yet-synced work across route changes and reloads.

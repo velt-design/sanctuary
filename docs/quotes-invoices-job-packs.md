@@ -36,6 +36,12 @@ For table/RPC ownership, write paths, access boundaries, and migration sources, 
 
 Do not update quote status or tokens with ad hoc table writes. Use the quote domain helpers and staff/public routes.
 
+## Pricing Source Boundary
+
+Quote, public quote, invoice, and job-pack pricing remains unchanged during `workbench_solved` rollout prep. Draft quotes still build from the saved estimate/quote-version boundary, public outputs still render token-scoped quote state, deposit invoices still derive from quote versions, and job packs still require an eligible quote version plus estimate version.
+
+Do not make these side-effect flows consume `workbench_solved` commercial payloads until a later explicit rollout task changes saved estimate or quote-version pricing and verifies rollback to `calculator_live`.
+
 ## Invoice Lifecycle
 
 - Deposit invoices are created from sent or accepted quote versions.

@@ -22,7 +22,7 @@ The design workbench is the portal drawing and model-editing surface for estimat
 ## Domain Layers
 
 - `state`: workbench store, UI state, object-first model, compatibility adapters, status/inspector models.
-- `geometry`: package input builders, preview derivation, compatibility geometry adapters.
+- `geometry`: package input builders, preview derivation, object-first geometry context, and geometry edit adapters.
 - `interactions`: shared object interaction engine plus family adapters.
 - `assembly`: semantic assembly builders and geometry contracts.
 - `views`: plan/section/elevation view-model builders.
@@ -76,7 +76,7 @@ Migration should proceed in this order:
 4. Invert remaining compatibility dependencies where geometry consumes costing-derived output; geometry should produce physical facts and costing should consume them.
 5. Roll saved estimate or quote pricing to the workbench-solved commercial path only through an explicit rollout task after parity is stable, then retire compatibility layers in small, tested passes.
 
-Compatibility models may support fallback, migration, or diagnostics. They must not become normal geometry-ready paths, hidden commercial inputs, or long-term takeoff owners.
+Compatibility models may support fallback, migration, or diagnostics. They must not become normal geometry-ready paths, hidden commercial inputs, or long-term takeoff owners. The old `apps/portal/lib/drawings/geometry/compat/` namespace is retired; legacy estimate snapshot compatibility remains in state adapters and explicit fallback boundaries.
 
 ## Rail Notes
 

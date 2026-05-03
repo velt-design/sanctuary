@@ -65,6 +65,14 @@ The calculator produces estimate snapshots. Estimate rows are versioned per proj
 
 Costing logic must remain in `packages/costing`; estimate code should persist and summarize costing output, not fork the costing engine.
 
+## Estimate Pricing Rollout Boundary
+
+Live estimate pricing still comes from calculator snapshots. The rollout-prep contract in `apps/portal/lib/estimates/pricingRollout.ts` names the current live source as `calculator_live` and describes when a future `workbench_solved` source could be enabled, but it is not wired into estimate create/update persistence.
+
+`workbench_solved` may become live only after all readiness gates pass: ready workbench trust with no blocking diagnostics, owned geometry-derived quantity takeoff, stable `calculator_compat` versus `workbench_solved` parity reports, explicit estimate source-of-record metadata, preserved estimate locks, preserved local-first queue/alias/conflict behavior, preserved quote/invoice/job-pack pricing boundaries, and an explicit rollback switch back to `calculator_live`.
+
+Failed readiness must block rollout. Do not add hidden fallback behavior that silently prices from calculator while reporting `workbench_solved`.
+
 ## Estimate Editability And Locks
 
 Estimate editability is derived from related quote versions and send logs.

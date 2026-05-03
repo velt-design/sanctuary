@@ -223,7 +223,6 @@ Compatibility code must stay behind explicit compatibility boundaries.
 Allowed compatibility locations:
 
 - `apps/portal/lib/drawings/state/compat/`
-- `apps/portal/lib/drawings/geometry/compat/`
 - explicitly named migration adapters
 - tests that deliberately prove compatibility behavior
 
