@@ -54,7 +54,7 @@ export type PublicDepositInvoice = {
   quotePdfFileId: string | null;
 };
 
-export type PublicDepositInvoiceLookupResult = {
+type PublicDepositInvoiceLookupResult = {
   invoice: PublicDepositInvoice | null;
   reason?: 'invalid' | 'expired' | 'void';
 };

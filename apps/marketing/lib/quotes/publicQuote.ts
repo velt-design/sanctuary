@@ -5,14 +5,14 @@ import { hashAcceptToken } from '@/lib/quotes/acceptToken';
 import { getServiceSupabase } from '@/lib/supabaseService';
 import { ensureDepositInvoiceForAcceptedQuote } from '../../../portal/lib/invoices/server';
 
-export type PublicQuoteLineItem = {
+type PublicQuoteLineItem = {
   id: string;
   description: string;
   qty: number;
   lineTotalIncGstCents: number;
 };
 
-export type PublicQuoteAttachment = {
+type PublicQuoteAttachment = {
   id: string;
   label: string;
   href: string;
@@ -39,16 +39,16 @@ export type PublicQuote = {
   attachments: PublicQuoteAttachment[];
 };
 
-export type PublicQuoteLookupResult = {
+type PublicQuoteLookupResult = {
   quote: PublicQuote | null;
   reason?: 'invalid' | 'expired';
 };
 
-export type AcceptPublicQuoteResult =
+type AcceptPublicQuoteResult =
   | { ok: true; alreadyAccepted: boolean }
   | { ok: false; code: 'invalid' | 'expired' | 'invalid_status' | 'server'; message: string };
 
-export type PublicQuoteAttachmentDownloadResult =
+type PublicQuoteAttachmentDownloadResult =
   | { ok: true; filename: string; contentType: string; bytes: Uint8Array }
   | { ok: false; code: 'invalid' | 'not_found'; message: string };
 

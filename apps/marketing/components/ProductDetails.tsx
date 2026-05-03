@@ -3,7 +3,7 @@
 import React from "react";
 import Image from "next/image";
 
-export type FAQ = { q: string; a: string };
+type FAQ = { q: string; a: string };
 
 export type ProductContent = {
   overview: string;

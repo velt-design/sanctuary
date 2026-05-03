@@ -23,6 +23,8 @@
     "docs:impact": "node scripts/docs-impact-check.mjs",
     "docs:navigation": "node scripts/docs-navigation-report.mjs",
     "docs:readiness": "node scripts/readiness-report.mjs",
+    "repo:health": "node scripts/repo-health-trends.mjs",
+    "repo:health:update": "node scripts/repo-health-trends.mjs --update",
     "architecture:changed": "node scripts/architecture-changed-report.mjs",
     "architecture:changed:strict": "node scripts/architecture-changed-report.mjs --strict",
     "dead-code:report": "node scripts/dead-code-report.mjs",

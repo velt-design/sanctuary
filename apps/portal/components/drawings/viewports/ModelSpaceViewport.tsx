@@ -603,6 +603,18 @@ export default function ModelSpaceViewport({
     planViewModel.modelSpacePergola.renderStatus === 'geometry_ready' &&
     Boolean(planViewModel.modelSpacePergola.geometryPlan) &&
     Boolean(planViewModel.modelSpacePergola.geometryTopProjection);
+  const modelSpaceDrawingSurfaceGeometry =
+    drawingSurfaceGeometry || !hasGeometryReadyPlan
+      ? drawingSurfaceGeometry
+      : {
+          source: 'solved_geometry' as const,
+          planModel: planModel ?? null,
+          planViewModel: planViewModel ?? null,
+          geometryPlan: planViewModel.modelSpacePergola.geometryPlan ?? null,
+          geometryTopProjection: planViewModel.modelSpacePergola.geometryTopProjection ?? null,
+          sectionModel: sectionModel ?? null,
+          geometrySection: null,
+        };
   const showPlanViewport = view === 'plan' && Boolean(planModel) && hasGeometryReadyPlan;
   const showSectionViewport = view === 'section' && Boolean(sectionModel) && !showHouseSectionPlaceholder;
   const showDrawingViewport = showPlanViewport || showSectionViewport;
@@ -3300,7 +3312,7 @@ export default function ModelSpaceViewport({
               <ModuleDrawingRenderer
                 view={view}
                 status={status}
-                drawingSurfaceGeometry={drawingSurfaceGeometry}
+                drawingSurfaceGeometry={modelSpaceDrawingSurfaceGeometry}
                 planModel={planModel}
                 sectionModel={sectionModel}
                 presentation="model"

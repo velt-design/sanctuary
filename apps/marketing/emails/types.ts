@@ -1,14 +1,14 @@
-export type EnquiryType = 'residential' | 'commercial' | 'professional';
+type EnquiryType = 'residential' | 'commercial' | 'professional';
 
-export type PergolaStyle = 'Pitched' | 'Gable' | 'Hip' | 'Perimeter' | string;
-export type RoofOption = 'Acrylic' | 'Timber' | 'Both' | 'Not selected' | string;
+type PergolaStyle = 'Pitched' | 'Gable' | 'Hip' | 'Perimeter' | string;
+type RoofOption = 'Acrylic' | 'Timber' | 'Both' | 'Not selected' | string;
 
-export interface MoneyRange {
+interface MoneyRange {
   lowIncGst: number;
   highIncGst: number;
 }
 
-export interface EnquiryBase {
+interface EnquiryBase {
   leadId: string;
   submittedAt: Date;
 

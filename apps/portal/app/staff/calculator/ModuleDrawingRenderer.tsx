@@ -86,17 +86,11 @@ export function ModuleDrawingRenderer({
   const effectiveSectionModel = drawingSurfaceGeometry?.sectionModel ?? sectionModel ?? null;
   const hasSolvedDrawingSurfaceGeometry = drawingSurfaceGeometry?.source === 'solved_geometry';
   const effectiveGeometrySection = hasSolvedDrawingSurfaceGeometry ? drawingSurfaceGeometry?.geometrySection ?? null : null;
-  const effectiveModelSpacePergolaGeometry =
-    hasSolvedDrawingSurfaceGeometry ? drawingSurfaceGeometry.geometryPlan : null;
-  const effectiveModelSpaceTopProjection =
-    hasSolvedDrawingSurfaceGeometry ? drawingSurfaceGeometry.geometryTopProjection : null;
-  const effectiveModelSpacePergolaRenderSource = drawingSurfaceGeometry
-    ? hasSolvedDrawingSurfaceGeometry
-      ? 'geometry'
-      : 'legacy'
-    : undefined;
-  const effectiveModelSpacePergolaRenderStatus = drawingSurfaceGeometry
-    ? hasSolvedDrawingSurfaceGeometry && effectiveModelSpacePergolaGeometry && effectiveModelSpaceTopProjection
+  const effectiveModelSpacePergolaGeometry = hasSolvedDrawingSurfaceGeometry ? drawingSurfaceGeometry.geometryPlan : null;
+  const effectiveModelSpaceTopProjection = hasSolvedDrawingSurfaceGeometry ? drawingSurfaceGeometry.geometryTopProjection : null;
+  const effectiveModelSpacePergolaRenderSource = hasSolvedDrawingSurfaceGeometry ? 'geometry' : undefined;
+  const effectiveModelSpacePergolaRenderStatus = hasSolvedDrawingSurfaceGeometry
+    ? effectiveModelSpacePergolaGeometry && effectiveModelSpaceTopProjection
       ? 'geometry_ready'
       : 'invalid_geometry'
     : undefined;

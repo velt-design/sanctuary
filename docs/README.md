@@ -23,6 +23,7 @@ These docs are current-state references and active guardrails for coding agents.
 | `agent-playbook.md` | Active protocol | You are doing non-trivial portal implementation, investigation, bugfix, or verification work. |
 | `change-routing.md` | Active protocol | You need path ownership, doc update triggers, common task cards, or docs bloat control before editing. |
 | `portal-production-readiness.md` | Active tracker | You need current portal production-readiness status, quality gates, blockers, priorities, or parallel work lanes. |
+| `repo-health-trends.md` | Advisory dashboard | You are choosing cleanup lanes, reviewing repo health pressure, or checking whether cleanup metrics are trending better or worse. |
 | `architecture.md` | Current | You need the repo map, app/package boundaries, or CI/script overview. |
 | `target-architecture.md` | Target contract | You need the north-star structure, target area map, target data path, or migration direction before expanding an area. |
 | `file-decomposition-and-ownership.md` | Active guardrail | You are expanding or refactoring a large component, route, domain module, package file, page, or test. |
