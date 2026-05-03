@@ -80,9 +80,9 @@ npm run test:portal -- apps/portal/lib/jobPacks
 npm run test:portal -- apps/portal/app/api/quotes
 ```
 
-Run `npm run portal:side-effects` first for the mechanical baseline. It runs the quote/invoice/job-pack focused tests and the portal build, without authenticated browser flows, database seeding, or real email delivery. The build step requires no active portal dev server holding `.next/lock`; stop `dev:portal` before running the full gate. Use the narrower commands when iterating inside one owner area.
+Run `npm run portal:side-effects` first for the mechanical baseline. It runs the quote/invoice/job-pack focused tests and the portal build, without authenticated browser flows, database seeding, or real email delivery. The build step runs `npm run portal:build-env` first, so an active portal dev server or Next build lock fails early with a non-destructive manual-stop instruction. Use the narrower commands when iterating inside one owner area.
 
-Current local signal from 2026-05-03: `npm run test:portal:quotes` passed with 8 files and 32 tests. `npm run portal:side-effects` reran those tests successfully, then stopped before build because an active local portal dev server held the Next build lock.
+Current local signal from 2026-05-03: `npm run portal:side-effects` passed with 8 quote/invoice/job-pack test files and 32 tests, then `npm run build:portal` completed with `Compiled successfully`, TypeScript, and 55 static pages generated.
 
 Manual or browser checks should cover:
 

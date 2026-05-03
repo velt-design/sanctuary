@@ -37,10 +37,13 @@ npm run portal:doctor:quick
 npm run portal:doctor:quick:log
 npm run portal:doctor
 npm run portal:doctor:log
+npm run portal:build-env
 npm run portal:side-effects
 ```
 
 `portal:doctor:quick` runs docs guard, mojibake check, typecheck, lint, and portal Vitest. `portal:doctor` adds portal build, schedule bundle budget, drawing browser smoke, authenticated smoke, route performance, and production security audit.
+
+`portal:build-env` is the fail-fast preflight for portal build-dependent gates. `npm run build:portal`, `npm run portal:side-effects`, and broad `npm run portal:doctor` run it before `next build` so an active portal dev server or Next build lock prints a clear manual-stop instruction instead of failing deep in the build.
 
 `portal:side-effects` is the focused quote, invoice, public-token, PDF/email, and job-pack readiness gate. It runs `npm run test:portal:quotes` and then `npm run build:portal` because generated PDF and job-pack asset loading is build-sensitive.
 
