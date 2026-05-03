@@ -9,6 +9,10 @@ import type {
 } from '@/lib/drawings/geometry/deriveWorkbenchGeometry';
 import { buildObjectWorkbenchGeometryContext } from '@/lib/drawings/geometry/objectWorkbenchGeometryContext';
 import { buildPlanViewModel, type PlanViewModel } from '@/lib/drawings/views/plan/buildPlanViewModel';
+import {
+  buildWorkbenchDrawingSurfaceGeometry,
+  type WorkbenchDrawingSurfaceGeometry,
+} from '@/lib/drawings/views/workbenchDrawingSurfaceGeometry';
 import { buildEstimateDrawingModules, type EstimateDrawingModule } from '@/lib/estimates/moduleDrawing';
 import { mergeEstimateDrawingDraftIntoSnapshot, type EstimateDrawingDraft } from '@/lib/estimates/drawingEdits';
 import type { DeckInteractionCapability } from '@/lib/drawings/interactions/deckInteractionContract';
@@ -62,6 +66,7 @@ type DrawingWorkbenchModuleEntry = {
   drawingModule: EstimateDrawingModule;
   assemblyModel: DrawingAssemblyModel;
   planViewModel: PlanViewModel | null;
+  drawingSurfaceGeometry: WorkbenchDrawingSurfaceGeometry;
   geometryPlanViewModel: GeometryPlanViewModel | null;
   geometryTopProjectionViewModel: GeometryTopProjectionViewModel | null;
   viewportGeometry: WorkbenchViewportGeometry;
@@ -94,6 +99,7 @@ export type DrawingWorkbenchStore = {
     activeModule: DrawingWorkbenchModuleEntry | null;
     activeAssemblyModel: DrawingAssemblyModel | null;
     activePlanViewModel: PlanViewModel | null;
+    activeDrawingSurfaceGeometry: WorkbenchDrawingSurfaceGeometry | null;
     activeViewportGeometry: WorkbenchViewportGeometry | null;
     activePlanModel: ModulePlanModel | null;
     activeSectionModel: ModuleSectionModel | null;
@@ -215,41 +221,47 @@ export function buildDrawingWorkbenchStore(input: {
       planModel,
       sectionModel,
     });
+    const planViewModel = buildPlanViewModel({
+      moduleId: solution.id,
+      moduleLabel: label,
+      planModel,
+      geometryArtifact: solution.geometryArtifact,
+      geometryPlan: geometryPlanViewModel,
+      geometryTopProjection: geometryTopProjectionViewModel,
+      geometryAssembly: solution.assembly,
+      pergolaRenderSource: planRenderSource,
+      pergolaRenderStatus: planRenderStatus,
+      canEditHouseFootprint: assemblyModel.capabilities.canEditHouseFootprint,
+      objectWorkbenchOverlayInput: ui.activeRailTab !== 'pergolas'
+        ? {
+            houseAssembly: projectModel.houseAssembly,
+            houseForm: overlayHouseForm,
+            decks: objectFirstDecks,
+            openings: objectFirstOpenings,
+            selection: compatibilitySelection.activeHouseSelection,
+            geometryPlan: geometryPlanViewModel,
+            geometryTopProjection: geometryTopProjectionViewModel,
+            geometryAssembly: solution.assembly,
+            geometryRenderSource: planRenderSource,
+            geometryRenderStatus: planRenderStatus,
+            moduleLengthM: geometryModule.lengthM,
+            moduleProjectionM: geometryModule.projectionM,
+            status: objectWorkbenchOverlayStatus,
+          }
+        : null,
+    });
+    const drawingSurfaceGeometry = buildWorkbenchDrawingSurfaceGeometry({
+      viewportGeometry,
+      planViewModel,
+    });
 
     return {
       id: solution.id,
       label,
       drawingModule: resolvedDrawingModule,
       assemblyModel,
-      planViewModel: buildPlanViewModel({
-        moduleId: solution.id,
-        moduleLabel: label,
-        planModel,
-        geometryArtifact: solution.geometryArtifact,
-        geometryPlan: geometryPlanViewModel,
-        geometryTopProjection: geometryTopProjectionViewModel,
-        geometryAssembly: solution.assembly,
-        pergolaRenderSource: planRenderSource,
-        pergolaRenderStatus: planRenderStatus,
-        canEditHouseFootprint: assemblyModel.capabilities.canEditHouseFootprint,
-        objectWorkbenchOverlayInput: ui.activeRailTab !== 'pergolas'
-          ? {
-              houseAssembly: projectModel.houseAssembly,
-              houseForm: overlayHouseForm,
-              decks: objectFirstDecks,
-              openings: objectFirstOpenings,
-              selection: compatibilitySelection.activeHouseSelection,
-              geometryPlan: geometryPlanViewModel,
-              geometryTopProjection: geometryTopProjectionViewModel,
-              geometryAssembly: solution.assembly,
-              geometryRenderSource: planRenderSource,
-              geometryRenderStatus: planRenderStatus,
-              moduleLengthM: geometryModule.lengthM,
-              moduleProjectionM: geometryModule.projectionM,
-              status: objectWorkbenchOverlayStatus,
-            }
-          : null,
-      }),
+      planViewModel,
+      drawingSurfaceGeometry,
       geometryPlanViewModel,
       geometryTopProjectionViewModel,
       viewportGeometry,
@@ -397,9 +409,10 @@ export function buildDrawingWorkbenchStore(input: {
       activeModule,
       activeAssemblyModel: activeModule?.assemblyModel ?? null,
       activePlanViewModel: activeModule?.planViewModel ?? null,
+      activeDrawingSurfaceGeometry: activeModule?.drawingSurfaceGeometry ?? null,
       activeViewportGeometry: activeModule?.viewportGeometry ?? null,
-      activePlanModel: activeModule?.viewportGeometry.legacyFallback.planModel ?? null,
-      activeSectionModel: activeModule?.viewportGeometry.legacyFallback.sectionModel ?? null,
+      activePlanModel: activeModule?.drawingSurfaceGeometry.planModel ?? null,
+      activeSectionModel: activeModule?.drawingSurfaceGeometry.sectionModel ?? null,
       activeModuleLabel: activeModule?.label ?? 'Module',
       houseAssembly: projectModel.houseAssembly,
       houseForms,

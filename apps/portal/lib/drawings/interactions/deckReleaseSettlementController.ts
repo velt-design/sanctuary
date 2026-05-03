@@ -15,13 +15,13 @@ import type {
 } from '@/lib/drawings/views/plan/objectWorkbenchPlanOverlay';
 import { buildDeckReleaseRebuildParityReport } from './deckReleaseParity';
 
-export type DeckSettleMatchSource =
+type DeckSettleMatchSource =
   | 'none'
   | 'top_projection_committed'
   | 'semantic_projection'
   | 'floating_projection_pending';
 
-export type DeckProjectionSettleStatus = 'none' | 'matched' | 'pending' | 'failed';
+type DeckProjectionSettleStatus = 'none' | 'matched' | 'pending' | 'failed';
 
 export type DeckDragSettleState = {
   deckId: string;
@@ -57,18 +57,18 @@ export type DeckReleaseFeedbackState = {
   coordinateTrace: DeckCommitCoordinateTrace;
 };
 
-export type DeckSettleMatch = {
+type DeckSettleMatch = {
   matches: boolean;
   source: DeckSettleMatchSource;
   projectionStatus: DeckProjectionSettleStatus;
   rebuiltProjectionPolygon: PlanPoint[] | null;
 };
 
-export const DECK_SETTLE_MATCH_TOLERANCE_M = 0.1;
-export const DECK_SETTLE_MAX_WAIT_MS = 500;
-export const DECK_SETTLE_MATCH_STABLE_FRAMES = 1;
-export const DECK_RELEASE_SUCCESS_FEEDBACK_MS = 180;
-export const DECK_RELEASE_FAILURE_FEEDBACK_MS = 1400;
+const DECK_SETTLE_MATCH_TOLERANCE_M = 0.1;
+const DECK_SETTLE_MAX_WAIT_MS = 500;
+const DECK_SETTLE_MATCH_STABLE_FRAMES = 1;
+const DECK_RELEASE_SUCCESS_FEEDBACK_MS = 180;
+const DECK_RELEASE_FAILURE_FEEDBACK_MS = 1400;
 
 function pointsApproximatelyEqual(left: PlanPoint, right: PlanPoint, toleranceM = DECK_SETTLE_MATCH_TOLERANCE_M): boolean {
   return Math.hypot(left.x - right.x, left.y - right.y) <= toleranceM;
@@ -371,7 +371,7 @@ export function resolveDeckSettleMatch(input: {
   };
 }
 
-export function buildDeckReleaseFeedback(input: {
+function buildDeckReleaseFeedback(input: {
   state: DeckDragSettleState;
   match: DeckSettleMatch;
   outcome: Extract<ObjectInteractionReleaseOutcome, 'committed' | 'failed'>;
@@ -396,7 +396,7 @@ export function buildDeckReleaseFeedback(input: {
   };
 }
 
-export type DeckSettleAdvanceResult = {
+type DeckSettleAdvanceResult = {
   state: DeckDragSettleState;
   releaseFeedback: DeckReleaseFeedbackState | null;
   finalizeOutcome: Extract<ObjectInteractionReleaseOutcome, 'committed' | 'failed'> | null;

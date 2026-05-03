@@ -3,6 +3,7 @@
 import type { ModuleViewsStatus, ModuleViewsTab } from '@/app/staff/calculator/ModuleViewsCard';
 import type { ModulePlanModel, ModuleSectionModel } from '@/app/staff/calculator/moduleViews';
 import type { PlanViewModel } from '@/lib/drawings/views/plan/buildPlanViewModel';
+import type { WorkbenchDrawingSurfaceGeometry } from '@/lib/drawings/views/workbenchDrawingSurfaceGeometry';
 import type { EstimateDrawingField, EstimateDrawingFootprintEdit } from '@/lib/estimates/drawingEdits';
 import type { EstimateDrawingSheetMeta } from '@/lib/estimates/drawingSheet';
 import SheetComposer, { type SheetComposerDocument } from '@/components/drawings/sheets/SheetComposer';
@@ -12,6 +13,7 @@ export default function SheetViewport({
   moduleLabel,
   view,
   status,
+  drawingSurfaceGeometry,
   planModel,
   sectionModel,
   planViewModel,
@@ -24,6 +26,7 @@ export default function SheetViewport({
   moduleLabel: string;
   view: ModuleViewsTab;
   status: ModuleViewsStatus;
+  drawingSurfaceGeometry?: WorkbenchDrawingSurfaceGeometry | null;
   planModel?: ModulePlanModel | null;
   sectionModel?: ModuleSectionModel | null;
   planViewModel?: PlanViewModel | null;
@@ -42,6 +45,7 @@ export default function SheetViewport({
     moduleLabel,
     view,
     status,
+    drawingSurfaceGeometry,
     planModel,
     sectionModel,
     planViewModel,

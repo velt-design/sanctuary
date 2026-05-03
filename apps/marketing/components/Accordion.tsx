@@ -2,13 +2,13 @@
 
 import React, { useEffect, useId, useRef, useState, forwardRef, useImperativeHandle } from "react";
 
-export type AccordionItem = {
+type AccordionItem = {
   title: string;
   content: React.ReactNode;
   defaultOpen?: boolean;
 };
 
-export type AccordionRowHandle = {
+type AccordionRowHandle = {
   open: () => void;
   close: () => void;
   isOpen: () => boolean;

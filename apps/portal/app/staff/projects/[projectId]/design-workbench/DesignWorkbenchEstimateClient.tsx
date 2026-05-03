@@ -437,6 +437,7 @@ export default function DesignWorkbenchEstimateClient({
           status={store.derived.status}
           trustGate={store.derived.activeTrustGate}
           viewportGeometry={store.derived.activeViewportGeometry}
+          drawingSurfaceGeometry={store.derived.activeDrawingSurfaceGeometry}
           planViewModel={store.derived.activePlanViewModel}
           activeObjectRef={viewportActiveObjectRef}
           pergolaTargetId={viewportPergolaId}

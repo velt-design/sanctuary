@@ -13,6 +13,7 @@ import {
 import type { ModuleViewsStatus, ModuleViewsTab } from '@/app/staff/calculator/ModuleViewsCard';
 import type { ModulePlanModel, ModuleSectionModel } from '@/app/staff/calculator/moduleViews';
 import type { PlanViewModel } from '@/lib/drawings/views/plan/buildPlanViewModel';
+import type { WorkbenchDrawingSurfaceGeometry } from '@/lib/drawings/views/workbenchDrawingSurfaceGeometry';
 import drawingStyles from '@/app/staff/calculator/CalculatorGrid.module.css';
 import { PORTAL_COMPANY_PROFILE } from '@/lib/company/profile';
 import {
@@ -50,6 +51,7 @@ type EstimateDrawingSheetProps = {
   moduleLabel: string;
   view: ModuleViewsTab;
   status: ModuleViewsStatus;
+  drawingSurfaceGeometry?: WorkbenchDrawingSurfaceGeometry | null;
   planModel?: ModulePlanModel | null;
   sectionModel?: ModuleSectionModel | null;
   planViewModel?: PlanViewModel | null;
@@ -274,6 +276,7 @@ export default function EstimateDrawingSheet({
   moduleLabel,
   view,
   status,
+  drawingSurfaceGeometry,
   planModel,
   sectionModel,
   planViewModel,
@@ -283,11 +286,16 @@ export default function EstimateDrawingSheet({
   onCommitField,
   onCommitFootprintEdit,
 }: EstimateDrawingSheetProps) {
+  const surfacePlanModel = drawingSurfaceGeometry?.planModel ?? planModel ?? null;
+  const surfaceSectionModel = drawingSurfaceGeometry?.sectionModel ?? sectionModel ?? null;
+  const surfacePlanViewModel = drawingSurfaceGeometry?.planViewModel ?? planViewModel ?? null;
   const sheetViewportRef = useRef<HTMLDivElement | null>(null);
   const editorInputRef = useRef<HTMLInputElement | HTMLTextAreaElement | null>(null);
   const footprintSvgRef = useRef<SVGSVGElement | null>(null);
   const [availableWidthPx, setAvailableWidthPx] = useState(0);
-  const [selectedScales, setSelectedScales] = useState<EstimateDrawingSheetScaleState>(() => buildScaleState(planModel, sectionModel));
+  const [selectedScales, setSelectedScales] = useState<EstimateDrawingSheetScaleState>(() =>
+    buildScaleState(surfacePlanModel, surfaceSectionModel),
+  );
   const [activeEditor, setActiveEditor] = useState<ActiveDrawingEditor | null>(null);
   const [editorSaving, setEditorSaving] = useState(false);
   const [interactionOwner, setInteractionOwner] = useState<SheetPlanInteractionOwner>('idle');
@@ -304,7 +312,7 @@ export default function EstimateDrawingSheet({
   const titleField = editableFieldMap.get('meta:title') ?? null;
   const noteField = editableFieldMap.get('meta:note') ?? null;
   const clientFacingModuleLabel = stripClientFacingModulePrefix(meta.moduleTitle);
-  const legendItems = buildLegendItems(view, planModel, sectionModel);
+  const legendItems = buildLegendItems(view, surfacePlanModel, surfaceSectionModel);
   const noteLines = splitNoteLines(meta.note);
   const moduleInfoRows = meta.moduleInfoRows.filter((row) => row.label.trim() && row.value.trim());
   const scaleOptions = getEstimateDrawingScaleOptions(view).map((option) => ({
@@ -315,23 +323,22 @@ export default function EstimateDrawingSheet({
       !resolveModuleDrawingScaleState({
         view,
         requestedScale: option,
-        planModel,
-        sectionModel,
+        planModel: surfacePlanModel,
+        sectionModel: surfaceSectionModel,
         viewportMm: SHEET_VIEWPORT_MM,
       }).fits,
   }));
   const currentScale = selectedScales[view];
   const sheetGeometryReady =
     view === 'plan' &&
-    planViewModel?.modelSpacePergola.renderSource === 'geometry' &&
-    planViewModel.modelSpacePergola.renderStatus === 'geometry_ready' &&
-    Boolean(planViewModel.modelSpacePergola.geometryPlan) &&
-    Boolean(planViewModel.modelSpacePergola.geometryTopProjection);
+    drawingSurfaceGeometry?.source === 'solved_geometry' &&
+    Boolean(drawingSurfaceGeometry.geometryPlan) &&
+    Boolean(drawingSurfaceGeometry.geometryTopProjection);
   const currentScaleState = resolveModuleDrawingScaleState({
     view,
     requestedScale: currentScale,
-    planModel,
-    sectionModel,
+    planModel: surfacePlanModel,
+    sectionModel: surfaceSectionModel,
     viewportMm: SHEET_VIEWPORT_MM,
   });
   const scaleDisplay = formatEstimateDrawingScale(currentScaleState.appliedScale);
@@ -357,8 +364,8 @@ export default function EstimateDrawingSheet({
   const editableFieldStateKey = useMemo(() => fieldSignature(editableFields), [editableFields]);
   const activeField = activeEditor ? editableFieldMap.get(activeEditor.fieldId) ?? null : null;
   const overlayEditor = activeEditor?.mode === 'overlay' && activeEditor.rect ? activeEditor : null;
-  const canEditFootprint = view === 'plan' && Boolean(planModel) && Boolean(onCommitFootprintEdit) && canEditHouseFootprintPlan(planModel);
-  const canRotatePlan = view === 'plan' && Boolean(planModel) && Boolean(onCommitFootprintEdit) && planModel?.roofType !== 'hip_corner';
+  const canEditFootprint = view === 'plan' && Boolean(surfacePlanModel) && Boolean(onCommitFootprintEdit) && canEditHouseFootprintPlan(surfacePlanModel);
+  const canRotatePlan = view === 'plan' && Boolean(surfacePlanModel) && Boolean(onCommitFootprintEdit) && surfacePlanModel?.roofType !== 'hip_corner';
   const showHousePopover = canEditFootprint && (interactionOwner === 'house_fill' || interactionOwner === 'house_popover');
   const showHouseControls =
     canEditFootprint &&
@@ -418,34 +425,34 @@ export default function EstimateDrawingSheet({
     () =>
       [
         moduleLabel,
-        planModel?.roofType ?? '-',
-        planModel?.lengthA ?? '-',
-        planModel?.spanA ?? '-',
-        planModel?.lengthB ?? '-',
-        planModel?.spanB ?? '-',
-        sectionModel?.sectionKind ?? '-',
-        sectionModel?.spanA ?? '-',
-        sectionModel?.leftEdgeHeightM ?? '-',
-        sectionModel?.rightEdgeHeightM ?? '-',
-        sectionModel?.ridgeHeightM ?? '-',
+        surfacePlanModel?.roofType ?? '-',
+        surfacePlanModel?.lengthA ?? '-',
+        surfacePlanModel?.spanA ?? '-',
+        surfacePlanModel?.lengthB ?? '-',
+        surfacePlanModel?.spanB ?? '-',
+        surfaceSectionModel?.sectionKind ?? '-',
+        surfaceSectionModel?.spanA ?? '-',
+        surfaceSectionModel?.leftEdgeHeightM ?? '-',
+        surfaceSectionModel?.rightEdgeHeightM ?? '-',
+        surfaceSectionModel?.ridgeHeightM ?? '-',
       ].join('|'),
     [
       moduleLabel,
-      planModel?.roofType,
-      planModel?.lengthA,
-      planModel?.spanA,
-      planModel?.lengthB,
-      planModel?.spanB,
-      sectionModel?.sectionKind,
-      sectionModel?.spanA,
-      sectionModel?.leftEdgeHeightM,
-      sectionModel?.rightEdgeHeightM,
-      sectionModel?.ridgeHeightM,
+      surfacePlanModel?.roofType,
+      surfacePlanModel?.lengthA,
+      surfacePlanModel?.spanA,
+      surfacePlanModel?.lengthB,
+      surfacePlanModel?.spanB,
+      surfaceSectionModel?.sectionKind,
+      surfaceSectionModel?.spanA,
+      surfaceSectionModel?.leftEdgeHeightM,
+      surfaceSectionModel?.rightEdgeHeightM,
+      surfaceSectionModel?.ridgeHeightM,
     ],
   );
 
   useEffect(() => {
-    setSelectedScales(buildScaleState(planModel, sectionModel));
+    setSelectedScales(buildScaleState(surfacePlanModel, surfaceSectionModel));
   }, [scaleResetKey]);
 
   useEffect(() => {
@@ -658,7 +665,7 @@ export default function EstimateDrawingSheet({
 
   const handleFootprintDragStart = useCallback(
     (meta: HouseFootprintEditorDragMeta, event: { pointerId: number; clientX: number; clientY: number }) => {
-      if (!canEditFootprint || !planModel) return;
+      if (!canEditFootprint || !surfacePlanModel) return;
       const svg = footprintSvgRef.current;
       if (!svg) return;
       const startPoint = clientPointToSvg(svg, event.clientX, event.clientY);
@@ -676,10 +683,10 @@ export default function EstimateDrawingSheet({
         pointerId: event.pointerId,
         startSvgX: startPoint.x,
         startSvgY: startPoint.y,
-        startParams: normalizeHouseFootprintParams(planModel.houseFootprintParams),
+        startParams: normalizeHouseFootprintParams(surfacePlanModel.houseFootprintParams),
       });
     },
-    [canEditFootprint, clearInteractionHideTimer, planModel, syncInteractionOwnerFromHoverState],
+    [canEditFootprint, clearInteractionHideTimer, surfacePlanModel, syncInteractionOwnerFromHoverState],
   );
 
   useEffect(() => {
@@ -895,6 +902,7 @@ export default function EstimateDrawingSheet({
         className={styles.sheetViewport}
         style={viewportStyle}
         data-native-selection-suppressed="true"
+        data-drawing-surface-source={drawingSurfaceGeometry?.source}
       >
         <div className={styles.sheetStage}>
           <section className={styles.sheetPaper} style={moduleDrawingThemeCssVariables('sheet')} aria-label={`${viewLabel} A3 drawing sheet`}>
@@ -1006,8 +1014,9 @@ export default function EstimateDrawingSheet({
                   key={view}
                   view={view}
                   status={status}
-                  planModel={planModel}
-                  sectionModel={sectionModel}
+                  drawingSurfaceGeometry={drawingSurfaceGeometry}
+                  planModel={surfacePlanModel}
+                  sectionModel={surfaceSectionModel}
                   presentation="sheet"
                   drawingScale={currentScale}
                   sheetViewportMm={SHEET_VIEWPORT_MM}
@@ -1015,10 +1024,10 @@ export default function EstimateDrawingSheet({
                   showDebugOverlays={showDebugOverlays}
                   footprintEditor={footprintEditor}
                   sheetPlanInteraction={sheetPlanInteraction}
-                  modelSpacePergolaGeometry={sheetGeometryReady ? planViewModel?.modelSpacePergola.geometryPlan ?? null : null}
-                  modelSpaceTopProjection={sheetGeometryReady ? planViewModel?.modelSpacePergola.geometryTopProjection ?? null : null}
-                  modelSpacePergolaRenderSource={sheetGeometryReady ? planViewModel?.modelSpacePergola.renderSource : undefined}
-                  modelSpacePergolaRenderStatus={sheetGeometryReady ? planViewModel?.modelSpacePergola.renderStatus : undefined}
+                  modelSpacePergolaGeometry={sheetGeometryReady ? drawingSurfaceGeometry?.geometryPlan ?? null : null}
+                  modelSpaceTopProjection={sheetGeometryReady ? drawingSurfaceGeometry?.geometryTopProjection ?? null : null}
+                  modelSpacePergolaRenderSource={sheetGeometryReady ? surfacePlanViewModel?.modelSpacePergola.renderSource : undefined}
+                  modelSpacePergolaRenderStatus={sheetGeometryReady ? surfacePlanViewModel?.modelSpacePergola.renderStatus : undefined}
                 />
                 {footprintError ? (
                   <div className={styles.sheetInteractionError} role="status" aria-live="polite">

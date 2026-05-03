@@ -1,6 +1,6 @@
 export const CONSENT_STORAGE_KEY = 'sp_consent_v1';
 export const CONSENT_UPDATED_EVENT = 'sp-consent-updated';
-export const CONSENT_SCHEMA_VERSION = 1 as const;
+const CONSENT_SCHEMA_VERSION = 1 as const;
 
 export type ConsentPreferences = {
   analytics: boolean;
@@ -11,9 +11,9 @@ export type ConsentPreferences = {
 
 export type ConsentUpdate = Pick<ConsentPreferences, 'analytics' | 'marketing'>;
 
-export type GtagConsentValue = 'granted' | 'denied';
+type GtagConsentValue = 'granted' | 'denied';
 
-export type GtagConsentModeParams = {
+type GtagConsentModeParams = {
   analytics_storage: GtagConsentValue;
   ad_storage: GtagConsentValue;
   ad_user_data: GtagConsentValue;
@@ -56,7 +56,7 @@ export function createStoredConsent(update: ConsentUpdate): ConsentPreferences {
   };
 }
 
-export function normalizeConsent(value: unknown): ConsentPreferences | null {
+function normalizeConsent(value: unknown): ConsentPreferences | null {
   if (!isRecord(value)) return null;
 
   const analytics = normalizeBoolean(value.analytics);

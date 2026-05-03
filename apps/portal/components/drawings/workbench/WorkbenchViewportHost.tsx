@@ -10,6 +10,10 @@ import type {
   DrawingWorkbenchVisibilityState,
 } from '@/lib/drawings/state/drawingWorkbenchUiState';
 import type { WorkbenchViewportGeometry } from '@/lib/drawings/state/workbenchSolvedModel';
+import {
+  buildWorkbenchDrawingSurfaceGeometry,
+  type WorkbenchDrawingSurfaceGeometry,
+} from '@/lib/drawings/views/workbenchDrawingSurfaceGeometry';
 import type { WorkbenchObjectRef } from '@/lib/drawings/state/objectFirstWorkbenchModel';
 import type {
   ObjectWorkbenchDeckPatch,
@@ -35,6 +39,7 @@ export type WorkbenchViewportHostProps = {
   visibility?: DrawingWorkbenchVisibilityState;
   status: ModuleViewsStatus;
   viewportGeometry?: WorkbenchViewportGeometry | null;
+  drawingSurfaceGeometry?: WorkbenchDrawingSurfaceGeometry | null;
   planModel?: ModulePlanModel | null;
   sectionModel?: ModuleSectionModel | null;
   planViewModel?: PlanViewModel | null;
@@ -97,6 +102,7 @@ export default function WorkbenchViewportHost({
   visibility,
   status,
   viewportGeometry,
+  drawingSurfaceGeometry,
   planModel,
   sectionModel,
   planViewModel,
@@ -131,8 +137,14 @@ export default function WorkbenchViewportHost({
   onCommitOpeningDimension,
   onDeckInteractionTelemetryChange,
 }: WorkbenchViewportHostProps) {
-  const routedPlanModel = viewportGeometry?.legacyFallback.planModel ?? planModel ?? null;
-  const routedSectionModel = viewportGeometry?.legacyFallback.sectionModel ?? sectionModel ?? null;
+  const routedDrawingSurfaceGeometry =
+    drawingSurfaceGeometry ??
+    buildWorkbenchDrawingSurfaceGeometry({
+      viewportGeometry: viewportGeometry ?? null,
+      planViewModel: planViewModel ?? null,
+    });
+  const routedPlanModel = routedDrawingSurfaceGeometry.planModel ?? planModel ?? null;
+  const routedSectionModel = routedDrawingSurfaceGeometry.sectionModel ?? sectionModel ?? null;
   const routedGeometryPreview = viewportGeometry?.preview ?? geometryPreview ?? null;
 
   return (
@@ -142,6 +154,7 @@ export default function WorkbenchViewportHost({
           moduleLabel={moduleLabel}
           view={view}
           status={status}
+          drawingSurfaceGeometry={routedDrawingSurfaceGeometry}
           planModel={routedPlanModel}
           sectionModel={routedSectionModel}
           planViewModel={planViewModel}

@@ -178,6 +178,17 @@ import {
   type CalculatorDraftSessionSnapshot,
   type InfillPresetKey,
 } from './calculatorInputs';
+import {
+  buildCalculatorEstimateCreateRedirect,
+  buildCalculatorEstimateUpdateRedirect,
+  designRequestTierFromTotal,
+  formatDesignRequestTierLabel,
+  getCalculatorProjectSnapshotError,
+  getCalculatorSaveBlockerError,
+  getCalculatorSaveInitialError,
+  resolveCalculatorEstimateTarget,
+  resolveCalculatorSaveMode,
+} from './calculatorSaveWorkflow';
 
 type FieldSchemaItem = {
   id: string;
@@ -216,20 +227,6 @@ type HouseFootprintDragSession = HouseFootprintEditorDragMeta & {
   startSvgY: number;
   startParams: CalculatorHouseFootprintParams;
 };
-
-function designRequestTierFromTotal(totalIncGst: number | null | undefined): DesignRequestPriorityTier {
-  if (typeof totalIncGst !== 'number' || !Number.isFinite(totalIncGst)) return 'UNPRICED';
-  if (totalIncGst < 12_000) return 'TIER_4';
-  if (totalIncGst < 24_000) return 'TIER_3';
-  if (totalIncGst < 48_000) return 'TIER_2';
-  return 'TIER_1';
-}
-
-function formatDesignRequestTierLabel(value: DesignRequestPriorityTier): string {
-  if (value === 'UNPRICED') return 'Unpriced';
-  const suffix = value.split('_').at(-1) ?? '';
-  return `Tier ${suffix}`;
-}
 
 function formatMoney(n: number): string {
   if (!Number.isFinite(n)) return '$0.00';
@@ -3175,36 +3172,39 @@ export default function CalculatorGridClient({
       createDesignRequest?: { priorityTier: DesignRequestPriorityTier } | null;
       saveMode?: EstimateSaveMode;
     } = {}) => {
-      const effectiveSaveMode: EstimateSaveMode = saveMode ?? (isEditingDesign ? 'preserve_current' : 'reprice_latest');
+      const effectiveSaveMode = resolveCalculatorSaveMode({
+        requestedSaveMode: saveMode,
+        isEditingDesign,
+      });
       setGenerateError(null);
 
       const fail = (msg: string) => {
         setGenerateError(msg);
         toast.error(msg);
       };
-      const actionLabel = effectiveSaveMode === 'reprice_latest' ? 'repricing' : 'saving';
 
-      if (!projectId) {
-        fail('Select a project first.');
+      const projectForSave = project;
+      const initialError = getCalculatorSaveInitialError({
+        projectId,
+        hasProject: Boolean(projectForSave),
+        saveMode: effectiveSaveMode,
+        hasCalculatedResult: Boolean(result),
+      });
+      if (initialError) {
+        fail(initialError);
         return;
       }
-      if (!project) {
-        fail('Project not found.');
-        return;
-      }
-      if (effectiveSaveMode === 'reprice_latest' && !result) {
-        fail('No calculated result yet.');
-        return;
-      }
+      if (!projectForSave) return;
 
       setIsGenerating(true);
       try {
-        if (hasStatusBlockers) {
-          fail(`Resolve blockers in Quote Status before ${actionLabel}.`);
-          return;
-        }
-        if (effectiveSaveMode === 'reprice_latest' && criticalUiWarnings.length > 0) {
-          fail(`Resolve critical warnings before ${actionLabel}.`);
+        const blockerError = getCalculatorSaveBlockerError({
+          saveMode: effectiveSaveMode,
+          hasStatusBlockers,
+          criticalWarningCount: criticalUiWarnings.length,
+        });
+        if (blockerError) {
+          fail(blockerError);
           return;
         }
 
@@ -3222,13 +3222,14 @@ export default function CalculatorGridClient({
         const cachedEstimateMetas =
           queryClient.getQueryData<EstimateMeta[]>(qk.estimates.metaByProject(hostKey, projectId)) ??
           (await queryClient.fetchQuery(estimateMetasByProjectQueryOptions(hostKey, projectId)));
-        const activeDraftEstimateId =
-          cachedEstimateMetas.find((estimate) => estimate.isActiveDraft)?.id ??
-          activeDraftEstimateMeta?.id ??
-          '';
-        const estimateIdToUpdate = activeEditEstimateId || activeDraftEstimateId;
-        const resolvedEditEstimateId = estimateIdToUpdate ? resolveLocalFirstId(estimateIdToUpdate) : null;
-        const canonicalEditEstimateId = resolvedEditEstimateId || estimateIdToUpdate;
+        const estimateTarget = resolveCalculatorEstimateTarget({
+          activeEditEstimateId,
+          activeDraftEstimateMetaId: activeDraftEstimateMeta?.id,
+          estimateMetas: cachedEstimateMetas,
+          resolveEstimateId: resolveLocalFirstId,
+        });
+        const { estimateIdToUpdate } = estimateTarget;
+        const canonicalEditEstimateId = estimateTarget.canonicalEditEstimateId ?? '';
         const currentEstimate =
           canonicalEditEstimateId
             ? loadedEstimateDetailRef.current ??
@@ -3306,9 +3307,7 @@ export default function CalculatorGridClient({
               ? 'Design saved locally. Pricing was preserved. Use Reprice to latest to refresh costs.'
               : 'Design saved locally. Syncing in the background.',
           );
-          router.push(
-            `/staff/projects/${encodeURIComponent(projectId)}?tab=estimates&estimateId=${encodeURIComponent(canonicalEditEstimateId)}`,
-          );
+          router.push(buildCalculatorEstimateUpdateRedirect(projectId, canonicalEditEstimateId));
           return;
         }
 
@@ -3325,18 +3324,19 @@ export default function CalculatorGridClient({
 
         const [meta, contact] = await Promise.all([
           getCostingMeta(),
-          project.contactId ? getContact(project.contactId) : Promise.resolve(null),
+          projectForSave.contactId ? getContact(projectForSave.contactId) : Promise.resolve(null),
         ]);
-        if (!contact) {
-          fail('Project is missing a contact (open the project and select/create one).');
-          return;
-        }
 
-        const projectNameSnapshot = project.projectName ?? project.name ?? values.projectName;
-        if (!projectNameSnapshot.trim()) {
-          fail('Project name is missing.');
+        const projectNameSnapshot = projectForSave.projectName ?? projectForSave.name ?? values.projectName;
+        const snapshotError = getCalculatorProjectSnapshotError({
+          hasContact: Boolean(contact),
+          projectNameSnapshot,
+        });
+        if (snapshotError) {
+          fail(snapshotError);
           return;
         }
+        const contactSnapshot = contact!;
 
         const estimatePayload: PortalEstimatePayload = buildEstimatePayloadFromSiteCosting({
           basePayload: {
@@ -3344,20 +3344,20 @@ export default function CalculatorGridClient({
             inputs: values as unknown as Record<string, unknown>,
             derived: activeResultModule.derived as unknown as Record<string, unknown>,
             projectSnapshot: {
-              ...project,
-              updatedAt: project.updatedAt ?? project.createdAt,
+              ...projectForSave,
+              updatedAt: projectForSave.updatedAt ?? projectForSave.createdAt,
             } as unknown as Record<string, unknown>,
             snapshot: {
               contact: {
-                displayName: contact.displayName,
-                email: contact.email,
-                phone: contact.phone,
+                displayName: contactSnapshot.displayName,
+                email: contactSnapshot.email,
+                phone: contactSnapshot.phone,
               },
               project: {
                 projectName: projectNameSnapshot,
-                region: project.region,
-                siteAddress: project.siteAddress ?? project.address,
-                quoteRef: project.quoteRef,
+                region: projectForSave.region,
+                siteAddress: projectForSave.siteAddress ?? projectForSave.address,
+                quoteRef: projectForSave.quoteRef,
               },
             } as Record<string, unknown>,
             outputs: {},
@@ -3410,9 +3410,7 @@ export default function CalculatorGridClient({
           setConfirmOpen(false);
           await clearCalculatorDraft();
           toast.success('Design repriced locally. Syncing in the background.');
-          router.push(
-            `/staff/projects/${encodeURIComponent(projectId)}?tab=estimates&estimateId=${encodeURIComponent(canonicalEditEstimateId)}`,
-          );
+          router.push(buildCalculatorEstimateUpdateRedirect(projectId, canonicalEditEstimateId));
           return;
         }
 
@@ -3453,7 +3451,7 @@ export default function CalculatorGridClient({
             ? 'Design saved locally. Syncing design and drafting request in the background.'
             : 'Design saved locally. Syncing in the background.',
         );
-        router.push(`/staff/projects/${encodeURIComponent(projectId)}?tab=estimates`);
+        router.push(buildCalculatorEstimateCreateRedirect(projectId));
       } catch (err) {
         const msg = err instanceof Error ? err.message : isEditingDesign ? 'Failed to save design' : 'Failed to save design';
         setGenerateError(msg);

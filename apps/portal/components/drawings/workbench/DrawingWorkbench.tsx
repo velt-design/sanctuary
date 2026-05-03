@@ -3,6 +3,7 @@
 import type { ModuleViewsStatus, ModuleViewsTab } from '@/app/staff/calculator/ModuleViewsCard';
 import type { ModulePlanModel, ModuleSectionModel } from '@/app/staff/calculator/moduleViews';
 import type { PlanViewModel } from '@/lib/drawings/views/plan/buildPlanViewModel';
+import type { WorkbenchDrawingSurfaceGeometry } from '@/lib/drawings/views/workbenchDrawingSurfaceGeometry';
 import type { ObjectWorkbenchGeometryPreviewState } from '@/lib/drawings/geometry/buildWorkbenchGeometryPreview';
 import type { EstimateDrawingField, EstimateDrawingFootprintEdit } from '@/lib/estimates/drawingEdits';
 import type { EstimateDrawingSheetMeta } from '@/lib/estimates/drawingSheet';
@@ -44,6 +45,7 @@ type DrawingWorkbenchProps = {
   status: ModuleViewsStatus;
   trustGate?: WorkbenchTrustGateModel | null;
   viewportGeometry?: WorkbenchViewportGeometry | null;
+  drawingSurfaceGeometry?: WorkbenchDrawingSurfaceGeometry | null;
   planModel?: ModulePlanModel | null;
   sectionModel?: ModuleSectionModel | null;
   planViewModel?: PlanViewModel | null;
@@ -113,6 +115,7 @@ export default function DrawingWorkbench({
   status,
   trustGate,
   viewportGeometry,
+  drawingSurfaceGeometry,
   planModel,
   sectionModel,
   planViewModel,
@@ -171,6 +174,7 @@ export default function DrawingWorkbench({
         visibility={visibility}
         status={status}
         viewportGeometry={viewportGeometry}
+        drawingSurfaceGeometry={drawingSurfaceGeometry}
         planModel={planModel}
         sectionModel={sectionModel}
         planViewModel={planViewModel}
