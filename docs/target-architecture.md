@@ -229,7 +229,7 @@ How to use this map: pick the target area before editing, treat `Forbidden short
 - Allowed paths: route viewport and sheet data through named bundles; keep compatibility fallback boxed, visible, and tested; commit object-first edits through owning handlers; derive physical takeoff from solved geometry before passing commercial inputs to costing.
 - Forbidden shortcuts: legacy visible geometry truth, loose per-view preview props, hidden fallback activation, calculator geometry forks, app-local physical takeoff policy, costing-driven geometry solves, or persistence changes from render helpers.
 - Primary gates: `npm run test:portal:workbench`, `npm run test:portal:browser`, focused drawing state/view/interaction tests, and manual edit/save/reload QA.
-- Next direction: finish routing geometry-ready views through `WorkbenchSolvedGeometryArtifact`, move physical takeoff toward `packages/geometry`, and use commercial parity reports before any live pricing switch.
+- Next direction: finish routing geometry-ready views and takeoff consumers through `WorkbenchSolvedGeometryArtifact`, keep package-owned takeoff derived from the same solved `Assembly3D` as plan/section/top projection/viewer scene, and stabilize commercial parity reports before any live pricing switch.
 - Canonical docs: `docs/design-workbench-architecture.md`, `docs/costing-and-geometry.md`, `docs/parallel-work-guardrails.md`.
 
 ### Design List And Running Jobs

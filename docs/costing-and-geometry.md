@@ -47,7 +47,7 @@ Workbench must not own pricing policy. Costing must not solve geometry. Portal m
 
 `apps/portal/lib/estimates/commercialDesignPayload.ts` is the first portal-side shadow adapter. It converts current calculator inputs, plus an optional existing `SiteOutputV1`, into `CommercialDesignInputV1` for future comparison work. It is callable-only: it must not write saved estimate outputs, change quote totals, or replace the live `calculateSiteCostV1` path until a later explicit integration task.
 
-`apps/portal/lib/drawings/commercialDesignPayload.ts` is the workbench-side shadow adapter. It converts `WorkbenchSolvedModel` plus explicit site commercial fields into `CommercialDesignInputV1` with `source: 'workbench_solved'`. It consumes solved geometry and quantity hooks only; it must not mutate geometry, persist commercial payloads, own physical takeoff policy long term, or replace live pricing until a later explicit integration task.
+`apps/portal/lib/drawings/commercialDesignPayload.ts` is the workbench-side shadow adapter. It converts `WorkbenchSolvedModel` plus explicit site commercial fields into `CommercialDesignInputV1` with `source: 'workbench_solved'`. It consumes `WorkbenchSolvedGeometryArtifact.quantityTakeoff`, whose `GeometryQuantityTakeoff` is built by `@sp/geometry` from the solved `Assembly3D`; low-level `QuantityHook` values remain compatibility data inside that geometry-owned takeoff. The adapter must not mutate geometry, persist commercial payloads, own physical takeoff policy, or replace live pricing until a later explicit integration task.
 
 `compareCommercialDesignInputsV1()` in `@sp/costing` compares two commercial payloads and returns a structured parity report. These reports are shadow-only comparison signal for adapter and geometry alignment; they must not drive pricing, persistence, customer-facing quote totals, or job-pack output until a later explicit integration task.
 
@@ -78,7 +78,7 @@ Canonical geometry solving lives in `packages/geometry`. There is one physical g
 object-first design intent
   -> solved geometry
   -> viewer scene / top projection / section / sheet / snap / detail / interaction views
-  -> physical quantity takeoff hooks
+  -> geometry-owned physical quantity takeoff
 ```
 
 Portal workbench runtime packages this solved output as `WorkbenchSolvedGeometryArtifact`. Geometry-ready consumers should read scene, top projection, plan, section, validation, and trust/status metadata through that artifact first; loose plan/top-projection fields are compatibility aliases while legacy `ModulePlanModel` and sheet geometry remain fallback/presentation data.

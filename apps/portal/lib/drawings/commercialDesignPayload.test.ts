@@ -28,6 +28,14 @@ type SnapshotWithCalculatorInputs = Record<string, unknown> & {
   outputs: SiteOutputV1;
 };
 
+const PARITY_CRITICAL_FIXTURE_SLUGS = [
+  'mono-standard',
+  'gable-standard',
+  'box-standard',
+  'gable-u-hipped-screenshot',
+  'mono-join-screenshot',
+] as const;
+
 function makeModule(overrides: Partial<CalculatorModuleInputs> = {}): CalculatorModuleInputs {
   const base: Partial<CalculatorModuleInputs> = {
     pergolaId: 'pergola-1',
@@ -314,7 +322,11 @@ describe('workbench commercialDesignPayload', () => {
   });
 
   it('keeps baked fixture commercial parity comparable for geometry-first QA gates', () => {
-    for (const fixture of listSanctuaryGeometryWorkbenchFixtures()) {
+    const fixtureBySlug = new Map(listSanctuaryGeometryWorkbenchFixtures().map((fixture) => [fixture.slug, fixture]));
+
+    for (const slug of PARITY_CRITICAL_FIXTURE_SLUGS) {
+      const fixture = fixtureBySlug.get(slug);
+      if (!fixture) throw new Error(`Missing parity-critical workbench fixture: ${slug}.`);
       const snapshot = cloneFixtureSnapshot(fixture.snapshot);
       const calculatorCommercial = buildCommercialDesignInputFromCalculatorInputs({
         inputs: snapshot.inputs,
@@ -354,6 +366,7 @@ describe('workbench commercialDesignPayload', () => {
       const workbenchModule = requireCommercialModule(workbenchCommercial);
       expect(workbenchModule.trustStatus, fixture.slug).toBe('ready');
       expect(workbenchModule.designIntent).toMatchObject({
+        pergolaStyle: calculatorModule.designIntent.pergolaStyle,
         roofMaterial: calculatorModule.designIntent.roofMaterial,
         roofType: calculatorModule.designIntent.roofType,
         attachmentSide: calculatorModule.designIntent.attachmentSide,
