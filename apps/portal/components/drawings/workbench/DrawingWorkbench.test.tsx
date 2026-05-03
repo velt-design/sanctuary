@@ -191,11 +191,13 @@ function makeGeometryPlanFixture(): GeometryPlanViewModel {
   } as unknown as GeometryPlanViewModel;
 }
 
-function makeTopProjectionFixture(): GeometryTopProjectionViewModel {
+function makeTopProjectionFixture(
+  screenAxisX: GeometryTopProjectionViewModel['screenAxis']['x'] = 'world_x_left',
+): GeometryTopProjectionViewModel {
   return {
     coordinateSpace: 'world_xy_mm',
     screenAxis: {
-      x: 'world_x_left',
+      x: screenAxisX,
       y: 'world_y_down',
     },
     shapes: [
@@ -229,13 +231,17 @@ function makeTopProjectionFixture(): GeometryTopProjectionViewModel {
   } as unknown as GeometryTopProjectionViewModel;
 }
 
-function makeReadyPlanViewModel(planModel = makeDrawingModule().planModel ?? null): PlanViewModel {
+function makeReadyPlanViewModel(
+  planModel = makeDrawingModule().planModel ?? null,
+  geometryPlan = makeGeometryPlanFixture(),
+  geometryTopProjection = makeTopProjectionFixture(),
+): PlanViewModel {
   const viewModel = buildPlanViewModel({
     moduleId: 'module-1',
     moduleLabel: 'M1 - Pitched - 6m x 3m - Acrylic',
     planModel,
-    geometryPlan: makeGeometryPlanFixture(),
-    geometryTopProjection: makeTopProjectionFixture(),
+    geometryPlan,
+    geometryTopProjection,
     pergolaRenderSource: 'geometry',
     pergolaRenderStatus: 'geometry_ready',
     canEditHouseFootprint: true,
@@ -489,6 +495,95 @@ describe('DrawingWorkbench', () => {
     expect(modelMarkup).toContain('data-plan-primary-fill="true"');
     expect(modelMarkup).toContain('data-top-projection-screen-axis="world_x_left_world_y_down"');
     expect(modelMarkup).toContain('data-plan-duplicate-visual-body-count="0"');
+  });
+
+  it('keeps solved drawing-surface geometry ahead of loose model-space plan view geometry', () => {
+    const drawing = makeDrawingModule();
+    const drawingSurfaceGeometry = makeSolvedDrawingSurfaceGeometry(drawing);
+    const conflictingPlanViewModel = makeReadyPlanViewModel(
+      drawing.planModel,
+      makeGeometryPlanFixture(),
+      makeTopProjectionFixture('world_x_right'),
+    );
+    const meta = buildEstimateDrawingSheetMeta({
+      moduleLabel: 'M1 - Pitched - 6m x 3m - Acrylic',
+      view: 'plan',
+    });
+
+    const markup = renderToStaticMarkup(
+      <DrawingWorkbench
+        moduleLabel="M1 - Pitched - 6m x 3m - Acrylic"
+        modules={[{ id: 'module-1', label: 'M1 - Pitched - 6m x 3m - Acrylic' }]}
+        activeModuleIndex={0}
+        onActiveModuleIndexChange={() => undefined}
+        view="plan"
+        onViewChange={() => undefined}
+        viewportMode="model"
+        objectWorkbenchDisplayFamily="house_forms"
+        onViewportModeChange={() => undefined}
+        status="ready"
+        drawingSurfaceGeometry={drawingSurfaceGeometry}
+        planModel={drawing.planModel}
+        planViewModel={conflictingPlanViewModel}
+        sectionModel={drawing.sectionModel}
+        modelViewportTransform={createDrawingWorkbenchUiState().viewportTransform}
+        onModelViewportTransformChange={() => undefined}
+        meta={meta}
+      />,
+    );
+
+    expect(markup).toContain('data-drawing-surface-source="solved_geometry"');
+    expect(markup).toContain('data-top-projection-screen-axis="world_x_left_world_y_down"');
+    expect(markup).not.toContain('data-top-projection-screen-axis="world_x_right_world_y_down"');
+  });
+
+  it('does not revive loose model-space geometry when the drawing surface is a legacy fallback', () => {
+    const drawing = makeDrawingModule();
+    const loosePlanViewModel = makeReadyPlanViewModel(
+      drawing.planModel,
+      makeGeometryPlanFixture(),
+      makeTopProjectionFixture('world_x_right'),
+    );
+    const drawingSurfaceGeometry: WorkbenchDrawingSurfaceGeometry = {
+      source: 'legacy_fallback',
+      planModel: drawing.planModel ?? null,
+      planViewModel: loosePlanViewModel,
+      geometryPlan: null,
+      geometryTopProjection: null,
+      sectionModel: drawing.sectionModel ?? null,
+      geometrySection: null,
+    };
+    const meta = buildEstimateDrawingSheetMeta({
+      moduleLabel: 'M1 - Pitched - 6m x 3m - Acrylic',
+      view: 'plan',
+    });
+
+    const markup = renderToStaticMarkup(
+      <DrawingWorkbench
+        moduleLabel="M1 - Pitched - 6m x 3m - Acrylic"
+        modules={[{ id: 'module-1', label: 'M1 - Pitched - 6m x 3m - Acrylic' }]}
+        activeModuleIndex={0}
+        onActiveModuleIndexChange={() => undefined}
+        view="plan"
+        onViewChange={() => undefined}
+        viewportMode="model"
+        objectWorkbenchDisplayFamily="house_forms"
+        onViewportModeChange={() => undefined}
+        status="ready"
+        drawingSurfaceGeometry={drawingSurfaceGeometry}
+        planModel={drawing.planModel}
+        planViewModel={loosePlanViewModel}
+        sectionModel={drawing.sectionModel}
+        modelViewportTransform={createDrawingWorkbenchUiState().viewportTransform}
+        onModelViewportTransformChange={() => undefined}
+        meta={meta}
+      />,
+    );
+
+    expect(markup).toContain('data-drawing-surface-source="legacy_fallback"');
+    expect(markup).toContain('data-plan-render-source="legacy"');
+    expect(markup).toContain('data-plan-render-status="invalid_geometry"');
+    expect(markup).not.toContain('data-top-projection-screen-axis=');
   });
 
   it('passes family visibility to model space so pergolas can be hidden without changing sheet output', () => {

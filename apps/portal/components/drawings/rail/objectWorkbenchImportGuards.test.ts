@@ -207,6 +207,10 @@ describe('object workbench import guards', () => {
       path.join(process.cwd(), path.normalize(path.join('apps', 'portal', 'components', 'estimates', 'EstimateDrawingSheet.tsx'))),
       'utf8',
     );
+    const moduleDrawingRendererSource = fs.readFileSync(
+      path.join(process.cwd(), path.normalize(path.join('apps', 'portal', 'app', 'staff', 'calculator', 'ModuleDrawingRenderer.tsx'))),
+      'utf8',
+    );
 
     expect(shellSource).toContain('viewportGeometry?: WorkbenchViewportGeometry | null');
     expect(shellSource).toContain('viewportGeometry={viewportGeometry}');
@@ -220,6 +224,14 @@ describe('object workbench import guards', () => {
     expect(sheetViewportSource).toContain('drawingSurfaceGeometry?: WorkbenchDrawingSurfaceGeometry | null');
     expect(estimateSheetSource).toContain('drawingSurfaceGeometry?: WorkbenchDrawingSurfaceGeometry | null');
     expect(estimateSheetSource).toContain('data-drawing-surface-source');
+    expect(moduleDrawingRendererSource).toContain("drawingSurfaceGeometry?.source === 'solved_geometry'");
+    expect(moduleDrawingRendererSource).toContain('data-drawing-surface-source');
+    expect(moduleDrawingRendererSource).not.toContain(
+      "modelSpacePergolaGeometry ?? (drawingSurfaceGeometry?.source === 'solved_geometry'",
+    );
+    expect(moduleDrawingRendererSource).not.toContain(
+      "modelSpaceTopProjection ?? (drawingSurfaceGeometry?.source === 'solved_geometry'",
+    );
 
     for (const relativePath of [hiddenWorkbenchClientPath, fixtureClientPath, projectEstimateTabPath]) {
       const source = fs.readFileSync(path.join(process.cwd(), relativePath), 'utf8');

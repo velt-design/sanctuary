@@ -9,9 +9,6 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@dnd-kit/core": "^6.3.1",
-    "@dnd-kit/sortable": "^10.0.0",
-    "@dnd-kit/utilities": "^3.2.2",
     "@radix-ui/react-dialog": "^1.1.15",
     "@react-email/components": "^1.0.6",
     "@react-email/render": "^2.0.4",
@@ -19,15 +16,11 @@
     "@sp/quote-format": "0.0.0",
     "@sp/theme": "0.0.0",
     "@supabase/supabase-js": "^2.90.1",
-    "bcryptjs": "^3.0.3",
     "framer-motion": "^12.23.12",
-    "handlebars": "^4.7.9",
     "next": "^16.2.4",
-    "pdf-lib": "^1.17.1",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "resend": "^6.12.2",
-    "swr": "^2.3.4",
     "web-vitals": "^5.1.0"
   },
   "devDependencies": {
