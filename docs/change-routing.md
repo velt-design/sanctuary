@@ -9,6 +9,7 @@ Use it for non-trivial portal work, cross-app work, schema/API changes, side eff
 ## Operating Rule
 
 - Start with the path or behavior being changed.
+- For broad or ambiguous work, first identify the matching target-area lane in `docs/target-architecture.md`, then use this routing doc for owner docs and verification.
 - Find the owning feature doc and source-of-truth layer before editing.
 - Update docs in the same task when behavior, data flow, source-of-truth boundaries, tests, or known risks change.
 - Add a `docs/decision-log.md` entry when a bug, regression, user correction, or near miss teaches a reusable guardrail.

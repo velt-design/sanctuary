@@ -118,7 +118,7 @@ function makeGeometrySectionFixture(overrides: Partial<GeometrySectionViewModel>
       pitch: {
         point: { x: 1500, y: 2600 },
         degrees: 5,
-        fallDirection: 'away_from_house',
+        fallDirection: 'negativeY',
       },
     },
     metrics: {

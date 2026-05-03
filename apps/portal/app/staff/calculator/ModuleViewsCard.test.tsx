@@ -431,7 +431,7 @@ function makeGeometrySectionFixture(): GeometrySectionViewModel {
       pitch: {
         point: { x: 1500, y: 2600 },
         degrees: 5,
-        fallDirection: 'away_from_house',
+        fallDirection: 'negativeY',
       },
     },
     metrics: {
@@ -854,6 +854,57 @@ describe('ModuleViewsCard', () => {
     expect(markup).toContain('data-debug-crop="outer-section"');
     expect(markup).toContain('data-debug-crop="fit-section"');
     expect(markup).toContain('data-debug-crop="bounds-section"');
+  });
+
+  it('renders workbench section sheets from solved geometry when artifact section is available', () => {
+    const drawing = makeDrawingModule();
+    const markup = renderToStaticMarkup(
+      <ModuleDrawingRenderer
+        view="section"
+        status="ready"
+        drawingSurfaceGeometry={{
+          source: 'solved_geometry',
+          planModel: drawing.planModel,
+          planViewModel: null,
+          geometryPlan: makeGeometryPlanFixture(),
+          geometryTopProjection: makeTopProjectionFixture(),
+          sectionModel: drawing.sectionModel,
+          geometrySection: makeGeometrySectionFixture(),
+        }}
+        planModel={drawing.planModel}
+        sectionModel={drawing.sectionModel}
+        presentation="sheet"
+      />,
+    );
+
+    expect(markup).toContain('data-section-render-source="solved_geometry"');
+    expect(markup).toContain('data-section-geometry-source="geometry_section_view_model"');
+    expect(markup).toContain('data-section-member-role="rafter"');
+    expect(markup).toContain('data-house-section-line="attachment_target"');
+    expect(markup).not.toContain('data-section-geometry-source="legacy_module_section_model"');
+  });
+
+  it('keeps legacy section rendering as fallback when no artifact section is available', () => {
+    const drawing = makeDrawingModule();
+    const markup = renderToStaticMarkup(
+      <ModuleDrawingRenderer
+        view="section"
+        status="ready"
+        drawingSurfaceGeometry={{
+          source: 'legacy_fallback',
+          planModel: drawing.planModel,
+          planViewModel: null,
+          geometryPlan: null,
+          geometryTopProjection: null,
+          sectionModel: drawing.sectionModel,
+          geometrySection: null,
+        }}
+        presentation="sheet"
+      />,
+    );
+
+    expect(markup).toContain('data-section-render-source="legacy_fallback"');
+    expect(markup).toContain('data-section-geometry-source="legacy_module_section_model"');
   });
 
   it('renders plan model space with a content-sized SVG viewport', () => {

@@ -233,6 +233,8 @@ describe('object workbench import guards', () => {
     expect(estimateSheetSource).toContain('drawingSurfaceGeometry?: WorkbenchDrawingSurfaceGeometry | null');
     expect(estimateSheetSource).toContain('data-drawing-surface-source');
     expect(moduleDrawingRendererSource).toContain("drawingSurfaceGeometry?.source === 'solved_geometry'");
+    expect(moduleDrawingRendererSource).toContain('drawingSurfaceGeometry?.geometrySection');
+    expect(moduleDrawingRendererSource).toContain('geometrySection={effectiveGeometrySection}');
     expect(moduleDrawingRendererSource).toContain('data-drawing-surface-source');
     expect(moduleDrawingContractsSource).not.toContain('modelSpacePergolaGeometry?:');
     expect(moduleDrawingContractsSource).not.toContain('modelSpaceTopProjection?:');
