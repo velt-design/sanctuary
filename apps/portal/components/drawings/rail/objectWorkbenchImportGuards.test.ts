@@ -226,10 +226,16 @@ describe('object workbench import guards', () => {
     expect(viewportHostSource).toContain('viewportGeometry?.preview');
     expect(viewportHostSource).toContain('buildWorkbenchDrawingSurfaceGeometry');
     expect(viewportHostSource).toContain('drawingSurfaceGeometry?: WorkbenchDrawingSurfaceGeometry | null');
-    expect(viewportHostSource).toContain('routedDrawingSurfaceGeometry.planModel');
-    expect(viewportHostSource).toContain('routedDrawingSurfaceGeometry.sectionModel');
     expect(viewportHostSource).toContain('drawingSurfaceGeometry={routedDrawingSurfaceGeometry}');
+    expect(shellSource).not.toContain('planModel?:');
+    expect(shellSource).not.toContain('sectionModel?:');
+    expect(shellSource).not.toContain('geometryPreview?:');
+    expect(viewportHostSource).not.toContain('planModel?:');
+    expect(viewportHostSource).not.toContain('sectionModel?:');
+    expect(viewportHostSource).not.toContain('geometryPreview?:');
     expect(sheetViewportSource).toContain('drawingSurfaceGeometry?: WorkbenchDrawingSurfaceGeometry | null');
+    expect(sheetViewportSource).not.toContain('planModel?:');
+    expect(sheetViewportSource).not.toContain('sectionModel?:');
     expect(estimateSheetSource).toContain('drawingSurfaceGeometry?: WorkbenchDrawingSurfaceGeometry | null');
     expect(estimateSheetSource).toContain('data-drawing-surface-source');
     expect(moduleDrawingRendererSource).toContain("drawingSurfaceGeometry?.source === 'solved_geometry'");
@@ -244,6 +250,7 @@ describe('object workbench import guards', () => {
     expect(modelSpaceViewportSource).not.toMatch(/<ModuleDrawingRenderer[\s\S]*?modelSpaceTopProjection=/);
     expect(modelSpaceViewportSource).not.toMatch(/<ModuleDrawingRenderer[\s\S]*?modelSpacePergolaRenderSource=/);
     expect(modelSpaceViewportSource).not.toMatch(/<ModuleDrawingRenderer[\s\S]*?modelSpacePergolaRenderStatus=/);
+    expect(modelSpaceViewportSource).not.toContain("source: 'solved_geometry' as const");
     expect(estimateSheetSource).not.toMatch(/<ModuleDrawingRenderer[\s\S]*?modelSpacePergolaGeometry=/);
     expect(estimateSheetSource).not.toMatch(/<ModuleDrawingRenderer[\s\S]*?modelSpaceTopProjection=/);
     expect(estimateSheetSource).not.toMatch(/<ModuleDrawingRenderer[\s\S]*?modelSpacePergolaRenderSource=/);
@@ -260,6 +267,8 @@ describe('object workbench import guards', () => {
       expect(source).toContain('viewportGeometry={');
       expect(source).toContain('drawingSurfaceGeometry={');
       expect(source).not.toMatch(/<DrawingWorkbench[\s\S]*?geometryPreview=/);
+      expect(source).not.toMatch(/<DrawingWorkbench[\s\S]*?planModel=/);
+      expect(source).not.toMatch(/<DrawingWorkbench[\s\S]*?sectionModel=/);
     }
   });
 

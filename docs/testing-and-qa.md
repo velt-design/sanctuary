@@ -191,7 +191,7 @@ The drawing browser gate uses the hidden fixture workbench route:
 /staff/projects/fixture-roof/design-workbench?fixture=mono-standard
 ```
 
-Fixture mode is read-only. It opens the standard Mono workbench fixture, enters Model Space Plan, verifies viewport diagnostics and gesture state, captures a nonblank plan screenshot, and confirms no page runtime errors. The authenticated browser suite also opens the 3D fixture route and verifies finite, nonblank solved geometry from the same workbench fixture path. For plan/3D accuracy, the browser gate checks the screenshot-style hipped fixture's Model Space Plan top-projection parity diagnostics before switching to 3D Top view and asserting the same screen-axis convention.
+Fixture mode is read-only. It opens the standard Mono workbench fixture, enters Model Space Plan, verifies viewport diagnostics and gesture state, captures a nonblank plan screenshot, and confirms no page runtime errors. The no-auth fixture gate also checks gable, box, mono-join, and screenshot-style hipped fixtures for nonblank Model Space Plan, 3D containment, finite diagnostics, top-projection parity, and the 3D Top screen-axis convention. The authenticated browser suite can still open a project-backed drawing route when staff credentials and data are available.
 
 `npm run test:portal:browser` uses the no-auth `portal-fixture` Playwright project so fixture parity can run without project data or staff credentials. Run `npm run test:portal:browser:auth` first when you need the auth-backed `portal-chromium` setup state or project-list discovery smoke.
 
@@ -223,6 +223,15 @@ Projects:
 - Open `/staff/projects` across desktop and mobile widths.
 - Confirm filters wrap without clipped text.
 - Toggle follow-up due and confirm the list updates without layout jitter.
+
+Design Workbench authenticated edit/save/reload:
+
+- Use a staff test account and a reversible draft estimate/design with safe fixture-like data.
+- Open `/staff/projects`, select the project, open the Designs tab, and open the drawing workbench.
+- Confirm Model Space Plan, Sheet View, and 3D View are nonblank, finite, and do not show legacy fallback or unavailable text.
+- Make one reversible object-first edit such as a small roof pitch, attachment side, deck position, opening position, or house form parameter change.
+- Save the workbench, wait for the saved/clean state, reload the page, and confirm the edited value, Model Space Plan, Sheet View, and 3D View persist.
+- Restore the original value, save again, reload again, and confirm the project returns to its starting state.
 
 Schedule Board:
 

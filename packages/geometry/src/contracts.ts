@@ -837,6 +837,116 @@ export type QuantityHook = {
   unit: string;
 };
 
+export type GeometryQuantityTakeoffDiagnostic = {
+  code: string;
+  message: string;
+};
+
+export type GeometryQuantityTakeoffDimensionSet = {
+  length: number;
+  projection: number;
+};
+
+export type GeometryQuantityTakeoffRoofPlane = {
+  id: string;
+  label?: string;
+  areaMm2: number;
+  areaM2: number;
+  metadata?: GeometryMetadata;
+};
+
+export type GeometryQuantityTakeoffRoofPlanes = {
+  count: number;
+  totalAreaMm2: number;
+  totalAreaM2: number;
+  items: GeometryQuantityTakeoffRoofPlane[];
+};
+
+export type GeometryQuantityTakeoffMemberBucket = {
+  role: AssemblyMemberRole;
+  count: number;
+  totalLengthMm: number;
+  totalLengthM: number;
+  averageLengthMm: number | null;
+  averageLengthM: number | null;
+  firstProfile: AssemblyMemberProfile | null;
+  profileKeys: string[];
+};
+
+export type GeometryQuantityTakeoffMembers = {
+  totalCount: number;
+  totalLengthMm: number;
+  totalLengthM: number;
+  byRole: Record<AssemblyMemberRole, GeometryQuantityTakeoffMemberBucket>;
+};
+
+export type GeometryQuantityTakeoffBeams = {
+  ledgerLengthMm: number | null;
+  ledgerLengthM: number | null;
+  supportBeamLengthMm: number | null;
+  supportBeamLengthM: number | null;
+  ridgeLengthMm: number | null;
+  ridgeLengthM: number | null;
+  tieBeamLengthMm: number | null;
+  tieBeamLengthM: number | null;
+  totalBeamLengthMm: number | null;
+  totalBeamLengthM: number | null;
+};
+
+export type GeometryQuantityTakeoffGutters = {
+  ourGutterLengthMm: number | null;
+  ourGutterLengthM: number | null;
+  houseGutterLengthMm: number | null;
+  houseGutterLengthM: number | null;
+  totalLengthMm: number | null;
+  totalLengthM: number | null;
+};
+
+export type GeometryQuantityTakeoffRoofCladdingMaterial = {
+  material: RoofCladdingMaterial;
+  panelCount: number;
+  areaMm2: number;
+  areaM2: number;
+};
+
+export type GeometryQuantityTakeoffRoofCladding = {
+  panelCount: number;
+  totalAreaMm2: number;
+  totalAreaM2: number;
+  acrylicAreaMm2: number | null;
+  acrylicAreaM2: number | null;
+  byMaterial: GeometryQuantityTakeoffRoofCladdingMaterial[];
+};
+
+export type GeometryQuantityTakeoffJoiners = {
+  count: number;
+  totalLengthMm: number;
+  totalLengthM: number;
+  averageLengthMm: number | null;
+  averageLengthM: number | null;
+};
+
+/**
+ * Structured physical takeoff derived from Assembly3D.
+ * This is geometry-owned physical truth only; pricing and BOM policy live in costing.
+ */
+export type GeometryQuantityTakeoff = {
+  family: PergolaFamily;
+  primaryDimensionsMm: GeometryQuantityTakeoffDimensionSet | null;
+  primaryDimensionsM: GeometryQuantityTakeoffDimensionSet | null;
+  secondaryDimensionsMm: GeometryQuantityTakeoffDimensionSet | null;
+  secondaryDimensionsM: GeometryQuantityTakeoffDimensionSet | null;
+  roofPlanes: GeometryQuantityTakeoffRoofPlanes;
+  members: GeometryQuantityTakeoffMembers;
+  beams: GeometryQuantityTakeoffBeams;
+  gutters: GeometryQuantityTakeoffGutters;
+  roofCladding: GeometryQuantityTakeoffRoofCladding;
+  joiners: GeometryQuantityTakeoffJoiners;
+  quantityHooks: QuantityHook[];
+  quantityHookMap: Record<string, number>;
+  diagnostics: GeometryQuantityTakeoffDiagnostic[];
+};
+
 /**
  * Canonical structural 3D output. This is the only geometry truth.
  */

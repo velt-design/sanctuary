@@ -25,3 +25,4 @@ export type {
 } from './topProjection';
 export { buildPlanViewModel } from './plan';
 export { buildSectionViewModel } from './section';
+export { buildAssemblyQuantityTakeoff } from './takeoff';

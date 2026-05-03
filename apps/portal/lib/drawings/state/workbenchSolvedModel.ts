@@ -1,9 +1,11 @@
 import {
+  buildAssemblyQuantityTakeoff,
   buildTopProjectionViewModelFromScene,
   buildViewerSceneModel,
   type Assembly3D,
   type GeometryConfig,
   type GeometryPlanViewModel,
+  type GeometryQuantityTakeoff,
   type GeometrySectionViewModel,
   type GeometryTopProjectionViewModel,
   type GeometryValidationReport,
@@ -113,6 +115,7 @@ export type WorkbenchSolvedGeometryArtifact = {
   assembly: Assembly3D;
   plan: GeometryPlanViewModel;
   section: GeometrySectionViewModel;
+  quantityTakeoff: GeometryQuantityTakeoff;
   topProjection: GeometryTopProjectionViewModel;
   viewerScene: ViewerSceneModel;
   validation: GeometryValidationReport;
@@ -810,6 +813,7 @@ function buildSolvedModule(input: {
     assembly: derivation.assembly,
     geometryContext: input.geometryContext,
   });
+  const quantityTakeoff = buildAssemblyQuantityTakeoff(derivation.assembly);
   const geometryTopProjection = buildTopProjectionFromSolvedScene({
     scene,
     fallbackTopProjection: derivation.geometryTopProjection,
@@ -829,6 +833,7 @@ function buildSolvedModule(input: {
     assembly: derivation.assembly,
     plan: derivation.geometryPlan,
     section: derivation.geometrySection,
+    quantityTakeoff,
     topProjection: geometryTopProjection,
     viewerScene: scene,
     validation,

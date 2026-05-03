@@ -268,6 +268,43 @@ test('drawing workbench screenshot U hipped roof fixture renders valid topology'
   expect(pageErrors, `Unexpected runtime errors: ${pageErrors.join(' | ')}`).toEqual([]);
 });
 
+for (const fixtureSlug of ['gable-standard', 'box-standard', 'mono-join-screenshot'] as const) {
+  test(`drawing workbench ${fixtureSlug} fixture keeps plan and 3D smoke trustworthy`, async ({ page }) => {
+    const pageErrors: string[] = [];
+    page.on('pageerror', (error) => {
+      pageErrors.push(error.message);
+    });
+
+    await page.setViewportSize({ width: 1680, height: 1050 });
+    await openFixtureDrawingWorkbench(page, fixtureSlug);
+
+    const workbench = page.getByRole('region', { name: 'Drawing workbench' });
+    await expect(workbench).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Staff Login' })).toHaveCount(0);
+    await expect(page.getByText(/Project unavailable|This page could not be found|404|not found/i)).toHaveCount(0);
+    await expect(page.getByText(/No plan or section drawing is available|fixture route is not enabled|requires staff auth/i)).toHaveCount(0);
+
+    await page.getByRole('tab', { name: 'Model Space' }).click();
+    await page.getByRole('tab', { name: 'Plan' }).click();
+    await expectTopProjectionPlanParity(page);
+
+    await page.getByRole('tab', { name: '3D View' }).click();
+    await page.getByRole('button', { name: 'Top' }).click();
+    await expectContained3DCanvas(page);
+
+    const diagnostics = page.getByTestId('geometry-3d-viewport-diagnostics');
+    await expect(diagnostics).toHaveAttribute('data-finite-bounds', 'true');
+    await expect(diagnostics).toHaveAttribute('data-top-view-screen-axis', 'world_x_left_world_y_down');
+
+    const shell = page.getByTestId('geometry-3d-canvas-shell');
+    const screenshot = await shell.screenshot();
+    expect(screenshot.byteLength).toBeGreaterThan(10_000);
+    await expect(workbench).not.toContainText(/legacy fallback|unsupported geometry fallback|Project unavailable|Staff Login/i);
+
+    expect(pageErrors, `Unexpected runtime errors: ${pageErrors.join(' | ')}`).toEqual([]);
+  });
+}
+
 test('drawing workbench draw outline fixture places the first point at the landing marker', async ({ page }) => {
   const pageErrors: string[] = [];
   page.on('pageerror', (error) => {

@@ -25,6 +25,18 @@ export type CommercialParityDifferenceV1 = {
   severity: 'warning' | 'blocking';
   category: CommercialParityDifferenceCategoryV1;
   tolerance?: number;
+  location?: {
+    pathSegments: string[];
+    fieldPath: string;
+    pergolaId?: string;
+    moduleKey?: string;
+    sourceModuleIndex?: number;
+  };
+  numericDrift?: {
+    delta: number;
+    absoluteDelta: number;
+    tolerance: number;
+  };
 };
 
 export type CommercialParityToleranceCategoryV1 =
@@ -62,6 +74,21 @@ export type CommercialParityReportV1 = {
   };
   differences: CommercialParityDifferenceV1[];
   diagnostics: CommercialDiagnosticV1[];
+  summary?: {
+    byCategory: Partial<Record<CommercialParityDifferenceCategoryV1, number>>;
+    bySeverity: Partial<Record<CommercialParityDifferenceV1['severity'], number>>;
+    byModule: Record<
+      string,
+      {
+        pergolaId: string;
+        moduleKey: string;
+        sourceModuleIndex?: number;
+        differences: number;
+        blockingDifferences: number;
+        warningDifferences: number;
+      }
+    >;
+  };
 };
 
 type DifferenceDraft = Omit<CommercialParityDifferenceV1, 'severity'> & {
@@ -108,6 +135,7 @@ function addDifference(context: CompareContext, difference: DifferenceDraft): vo
   context.differences.push({
     ...difference,
     severity: difference.severity ?? 'warning',
+    location: difference.location ?? locationForPath(difference.path),
   });
 }
 
@@ -143,6 +171,14 @@ function compareNumeric(
     return;
   }
   if (input.left == null && input.right == null) return;
+  const numericDrift =
+    isNumeric(input.left) && isNumeric(input.right)
+      ? {
+          delta: input.right - input.left,
+          absoluteDelta: Math.abs(input.right - input.left),
+          tolerance,
+        }
+      : undefined;
   addDifference(context, {
     path: input.path,
     label: input.label,
@@ -150,8 +186,37 @@ function compareNumeric(
     right: input.right,
     category: input.category,
     tolerance,
+    numericDrift,
     severity: input.severity,
   });
+}
+
+function parseSourceModuleIndex(moduleKey: string | undefined): number | undefined {
+  if (!moduleKey?.startsWith('source:')) return undefined;
+  const parsed = Number.parseInt(moduleKey.slice('source:'.length), 10);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+function locationForPath(path: string): CommercialParityDifferenceV1['location'] {
+  const pathSegments = path.split('.').filter(Boolean);
+  const pergolaIndex = pathSegments.indexOf('pergolas');
+  const modulesIndex = pathSegments.indexOf('modules');
+  const pergolaId = pergolaIndex >= 0 ? pathSegments[pergolaIndex + 1] : undefined;
+  const moduleKey = modulesIndex >= 0 ? pathSegments[modulesIndex + 1] : undefined;
+  const sourceModuleIndex = parseSourceModuleIndex(moduleKey);
+  const fieldSegments = moduleKey
+    ? pathSegments.slice(modulesIndex + 2)
+    : pergolaId
+      ? pathSegments.slice(pergolaIndex + 2)
+      : pathSegments;
+
+  return {
+    pathSegments,
+    fieldPath: fieldSegments.join('.'),
+    ...(pergolaId ? { pergolaId } : null),
+    ...(moduleKey ? { moduleKey } : null),
+    ...(sourceModuleIndex != null ? { sourceModuleIndex } : null),
+  };
 }
 
 function keyForModule(module: CommercialModuleInputV1): string {
@@ -434,6 +499,46 @@ function collectDiagnostics(left: CommercialDesignInputV1, right: CommercialDesi
   ];
 }
 
+function emptyCategorySummary(): Partial<Record<CommercialParityDifferenceCategoryV1, number>> {
+  return {};
+}
+
+function emptySeveritySummary(): Partial<Record<CommercialParityDifferenceV1['severity'], number>> {
+  return {};
+}
+
+function buildSummary(differences: CommercialParityDifferenceV1[]): NonNullable<CommercialParityReportV1['summary']> {
+  const byCategory = emptyCategorySummary();
+  const bySeverity = emptySeveritySummary();
+  const byModule: NonNullable<CommercialParityReportV1['summary']>['byModule'] = {};
+
+  for (const difference of differences) {
+    byCategory[difference.category] = (byCategory[difference.category] ?? 0) + 1;
+    bySeverity[difference.severity] = (bySeverity[difference.severity] ?? 0) + 1;
+
+    const location = difference.location;
+    if (!location?.pergolaId || !location.moduleKey) continue;
+    const key = `${location.pergolaId}/${location.moduleKey}`;
+    const moduleSummary = byModule[key] ?? {
+      pergolaId: location.pergolaId,
+      moduleKey: location.moduleKey,
+      ...(location.sourceModuleIndex != null ? { sourceModuleIndex: location.sourceModuleIndex } : null),
+      differences: 0,
+      blockingDifferences: 0,
+      warningDifferences: 0,
+    };
+    moduleSummary.differences += 1;
+    if (difference.severity === 'blocking') {
+      moduleSummary.blockingDifferences += 1;
+    } else {
+      moduleSummary.warningDifferences += 1;
+    }
+    byModule[key] = moduleSummary;
+  }
+
+  return { byCategory, bySeverity, byModule };
+}
+
 export function compareCommercialDesignInputsV1(
   left: CommercialDesignInputV1,
   right: CommercialDesignInputV1,
@@ -554,5 +659,6 @@ export function compareCommercialDesignInputsV1(
     },
     differences: context.differences,
     diagnostics: collectDiagnostics(left, right),
+    summary: buildSummary(context.differences),
   };
 }

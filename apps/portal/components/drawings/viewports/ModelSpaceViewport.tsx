@@ -28,9 +28,14 @@ import {
   type ModuleViewsStatus,
   type ModuleViewsTab,
 } from '@/app/staff/calculator/ModuleViewsCard';
-import type { HouseFootprintHandleId, ModulePlanModel, ModuleSectionModel } from '@/app/staff/calculator/moduleViews';
+import type { HouseFootprintHandleId, ModulePlanModel } from '@/app/staff/calculator/moduleViews';
 import type { PlanViewModel } from '@/lib/drawings/views/plan/buildPlanViewModel';
 import type { WorkbenchDrawingSurfaceGeometry } from '@/lib/drawings/views/workbenchDrawingSurfaceGeometry';
+import { resolveModelSpaceSurfaceReadiness } from '@/lib/drawings/views/modelSpaceSurfaceReadiness';
+import {
+  isProjectionBackedDeckDrag,
+  resolveDeckDragPlanPoint,
+} from '@/lib/drawings/interactions/deckDragPointResolver';
 import {
   buildDeckInteractionCapabilityFromSelection,
   type DeckInteractionCapability,
@@ -412,8 +417,6 @@ export default function ModelSpaceViewport({
   objectWorkbenchDisplayFamily = 'pergolas',
   visibility,
   status,
-  planModel,
-  sectionModel,
   planViewModel,
   drawingSurfaceGeometry,
   activeObjectRef,
@@ -443,8 +446,6 @@ export default function ModelSpaceViewport({
   objectWorkbenchDisplayFamily?: ObjectWorkbenchDisplayFamily;
   visibility?: DrawingWorkbenchVisibilityState;
   status: ModuleViewsStatus;
-  planModel?: ModulePlanModel | null;
-  sectionModel?: ModuleSectionModel | null;
   planViewModel?: PlanViewModel | null;
   drawingSurfaceGeometry?: WorkbenchDrawingSurfaceGeometry | null;
   activeObjectRef?: WorkbenchObjectRef | null;
@@ -587,37 +588,26 @@ export default function ModelSpaceViewport({
     }
     return next;
   }, [editableFieldMap]);
+  const surfaceReadiness = resolveModelSpaceSurfaceReadiness({
+    view,
+    drawingSurfaceGeometry,
+  });
+  const planModel = surfaceReadiness.planModel;
+  const sectionModel = surfaceReadiness.sectionModel;
   const canEditFootprint = view === 'plan' && Boolean(planModel) && Boolean(onCommitFootprintEdit) && canEditHouseFootprintPlan(planModel);
   const canCommitCustomPolygon = view === 'plan' && Boolean(planModel) && Boolean(onCommitCustomPolygon);
   const deckOutlineMode = drawOutlineMode === 'deck';
   const canRotatePlan = view === 'plan' && Boolean(planModel) && Boolean(onCommitFootprintEdit) && planModel?.roofType !== 'hip_corner';
   const canEditPlanDimensions =
     view === 'plan' &&
-    Boolean(planModel) &&
-    Boolean(onCommitField) &&
-    (editableFieldMap.has('plan:lengthA') || editableFieldMap.has('plan:spanA'));
+      Boolean(planModel) &&
+      Boolean(onCommitField) &&
+      (editableFieldMap.has('plan:lengthA') || editableFieldMap.has('plan:spanA'));
   const showHouseSectionPlaceholder = workbenchDisplayMode === 'house' && view === 'section';
-  const hasGeometryReadyPlan =
-    view === 'plan' &&
-    planViewModel?.modelSpacePergola.renderSource === 'geometry' &&
-    planViewModel.modelSpacePergola.renderStatus === 'geometry_ready' &&
-    Boolean(planViewModel.modelSpacePergola.geometryPlan) &&
-    Boolean(planViewModel.modelSpacePergola.geometryTopProjection);
-  const modelSpaceDrawingSurfaceGeometry =
-    drawingSurfaceGeometry || !hasGeometryReadyPlan
-      ? drawingSurfaceGeometry
-      : {
-          source: 'solved_geometry' as const,
-          planModel: planModel ?? null,
-          planViewModel: planViewModel ?? null,
-          geometryPlan: planViewModel.modelSpacePergola.geometryPlan ?? null,
-          geometryTopProjection: planViewModel.modelSpacePergola.geometryTopProjection ?? null,
-          sectionModel: sectionModel ?? null,
-          geometrySection: null,
-        };
+  const hasGeometryReadyPlan = surfaceReadiness.hasGeometryReadyPlan;
   const showPlanViewport = view === 'plan' && Boolean(planModel) && hasGeometryReadyPlan;
-  const showSectionViewport = view === 'section' && Boolean(sectionModel) && !showHouseSectionPlaceholder;
-  const showDrawingViewport = showPlanViewport || showSectionViewport;
+  const showSectionViewport = surfaceReadiness.hasDrawableSection && !showHouseSectionPlaceholder;
+  const showDrawingViewport = surfaceReadiness.showDrawingViewport && !showHouseSectionPlaceholder;
   const modelSpaceAutoFitReady = showDrawingViewport;
   const modelSpaceAutoFitKey = `${fitViewKey}:${modelSpaceAutoFitReady ? 'ready' : 'empty'}`;
   const interactionError = fieldError ?? footprintError;
@@ -897,14 +887,14 @@ export default function ModelSpaceViewport({
             (shape) => shape.ownerKind === 'deck' && shape.ownerId === meta.ownerId,
         );
         if (!overlayShape?.deckInteraction) return;
-        const projectionBackedDeckDrag =
-          overlayShape.deckInteraction.dragSource === 'top_projection_committed' ||
-          overlayShape.deckInteraction.dragCoordinateSpace === 'top_projection_world_m';
-        const startDragPlanPoint = projectionBackedDeckDrag
-          ? deckDragPointResolverRef.current?.(event.clientX, event.clientY) ?? null
-          : deckDragPointResolverRef.current?.(event.clientX, event.clientY) ??
-            planPointResolverRef.current?.(event.clientX, event.clientY) ??
-            null;
+        const projectionBackedDeckDrag = isProjectionBackedDeckDrag(overlayShape.deckInteraction);
+        const startDragPlanPoint = resolveDeckDragPlanPoint({
+          clientX: event.clientX,
+          clientY: event.clientY,
+          projectionBackedDeckDrag,
+          deckDragPointResolver: deckDragPointResolverRef.current,
+          legacyPlanPointResolver: planPointResolverRef.current,
+        });
         if (projectionBackedDeckDrag && !startDragPlanPoint) return;
 
         closeObjectWorkbenchDimensionEditor();
@@ -1999,14 +1989,14 @@ export default function ModelSpaceViewport({
       if (!svg) return;
       const nextPoint = clientPointToSvg(svg, event.clientX, event.clientY);
       if (!nextPoint) return;
-      const projectionBackedDeckDrag =
-        activeDeckDragSession.dragSource === 'top_projection_committed' ||
-        activeDeckDragSession.dragCoordinateSpace === 'top_projection_world_m';
-      const resolvedNextDragPlanPoint = projectionBackedDeckDrag
-        ? deckDragPointResolverRef.current?.(event.clientX, event.clientY) ?? null
-        : deckDragPointResolverRef.current?.(event.clientX, event.clientY) ??
-          planPointResolverRef.current?.(event.clientX, event.clientY) ??
-          null;
+      const projectionBackedDeckDrag = isProjectionBackedDeckDrag(activeDeckDragSession);
+      const resolvedNextDragPlanPoint = resolveDeckDragPlanPoint({
+        clientX: event.clientX,
+        clientY: event.clientY,
+        projectionBackedDeckDrag,
+        deckDragPointResolver: deckDragPointResolverRef.current,
+        legacyPlanPointResolver: planPointResolverRef.current,
+      });
       const nextDragPlanPoint =
         resolvedNextDragPlanPoint ??
         (activeDeckDragSession.startDragPlanPoint ? lastResolvedDeckDragPlanPointRef.current : null);
@@ -3013,6 +3003,7 @@ export default function ModelSpaceViewport({
       <div
         ref={scrollerRef}
         data-model-space-scroller
+        data-drawing-surface-source={drawingSurfaceGeometry?.source ?? 'missing'}
         data-draw-outline-active={drawOutlineViewModel.isActive ? 'true' : 'false'}
         data-draw-outline-state={drawOutlineDiagnosticState}
         data-draw-outline-point-count={drawOutlineConfirmedPointCount}
@@ -3312,7 +3303,7 @@ export default function ModelSpaceViewport({
               <ModuleDrawingRenderer
                 view={view}
                 status={status}
-                drawingSurfaceGeometry={modelSpaceDrawingSurfaceGeometry}
+                drawingSurfaceGeometry={drawingSurfaceGeometry}
                 planModel={planModel}
                 sectionModel={sectionModel}
                 presentation="model"

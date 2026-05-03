@@ -14,6 +14,24 @@ Geometry has one physical truth. Object-first design intent resolves into a sing
 
 In the portal workbench, that runtime boundary is the `WorkbenchSolvedGeometryArtifact`: one named bundle for the solved assembly, viewer scene, top projection, plan, section, validation, and trust/status metadata. Legacy calculator plan/section models and loose view fields are compatibility or fallback aliases around that artifact, not another geometry owner.
 
+Workbench and costing integration should converge on three explicit truths:
+
+- Portal/workbench owns authored design intent and workflow state: house forms, pergolas, decks, openings, attachments, options, staff edits, persistence, and status.
+- `packages/geometry` owns physical truth: solved assembly, derived views, validation, interaction geometry, and physical quantity/takeoff hooks.
+- `packages/costing` owns commercial truth: pricing, BOM, labour/install, overheads, quote breakdowns, and commercial comparison rules.
+
+The target data path is:
+
+```text
+object-first design intent
+  -> @sp/geometry solved physical model
+  -> geometry-derived quantity takeoff
+  -> @sp/costing commercial input and pricing
+  -> estimates / quotes / invoices / job packs
+```
+
+Workbench must not own pricing policy. Costing must not solve geometry. Portal may orchestrate, adapt, persist, and show status, but it must not duplicate package truth. `CommercialDesignInputV1` is allowed as the costing boundary and migration comparison contract, not as a parallel geometry model.
+
 ## Target Workspace Shape
 
 `apps/marketing` owns public customer-facing experiences:
@@ -36,11 +54,11 @@ Portal may adapt package output for UI and persistence. It must not fork package
 `packages/costing` owns commercial truth:
 
 - costing engine behavior, base config, material/BOM logic, install/labour logic, overheads, accessories, and pricing semantics.
-- commercial design input contracts and comparison helpers.
+- commercial design input contracts, pricing adapters, and comparison helpers.
 
 `packages/geometry` owns physical geometry truth:
 
-- geometry solving, validation, normalization, one solved physical geometry spine, top projection, section/plan/viewer models derived from that spine, house/deck/opening/roof physical contracts, and generated profile assets.
+- geometry solving, validation, normalization, one solved physical geometry spine, physical quantity/takeoff hooks, top projection, section/plan/viewer models derived from that spine, house/deck/opening/roof physical contracts, and generated profile assets.
 
 `packages/quote-format` owns shared customer-facing quote wording and formatting.
 
@@ -162,12 +180,12 @@ How to use this map: pick the target area before editing, treat `Forbidden short
 ### Calculator, Estimates, And Costing
 
 - Lane label: `calculator-estimates`.
-- North star: calculator UI orchestrates estimates, while `@sp/costing` owns commercial truth and estimate persistence remains explicit.
-- Source of truth: `packages/costing`, portal calculator helpers, estimate domain helpers, and staff estimate APIs.
-- Allowed paths: extract pure calculator inputs, save-readiness, view models, and orchestration helpers without changing mutation keys or costing payloads.
-- Forbidden shortcuts: copied costing rules in apps, hidden estimate persistence changes, direct browser Supabase writes, or calculator-driven quote side effects outside owning routes.
+- North star: calculator UI orchestrates estimates while live pricing remains explicit; future workbench pricing flows consume geometry-derived commercial input through `@sp/costing`.
+- Source of truth: `packages/costing`, commercial input contracts, portal calculator helpers, estimate domain helpers, and staff estimate APIs.
+- Allowed paths: extract pure calculator inputs, save-readiness, view models, commercial parity adapters, and orchestration helpers without changing mutation keys or live costing payloads.
+- Forbidden shortcuts: copied costing rules in apps, hidden estimate persistence changes, direct browser Supabase writes, calculator-driven quote side effects outside owning routes, or making `CommercialDesignInputV1` a competing geometry model.
 - Primary gates: `npx vitest run apps/portal/app/staff/calculator`, `npm run test:portal:projects`, `npm run typecheck`, and costing package tests when package behavior changes.
-- Next direction: continue decomposing large calculator files by cohesive owners such as save orchestration, draft/session state, and remaining editor view models.
+- Next direction: keep current live pricing stable while building parity between `calculator_compat` and `workbench_solved`, then switch saved estimates or quote totals only through an explicit rollout task.
 - Canonical docs: `docs/projects-contacts-estimates-calculator.md`, `docs/costing-and-geometry.md`, `docs/file-decomposition-and-ownership.md`.
 
 ### Local-First Sync
@@ -206,12 +224,12 @@ How to use this map: pick the target area before editing, treat `Forbidden short
 ### Design Workbench, Drawing State, And Geometry
 
 - Lane label: `workbench-geometry`.
-- North star: object-first design intent resolves into one solved geometry spine; every drawing, sheet, 3D, top-projection, section, and interaction surface is a view or adapter.
+- North star: object-first design intent resolves into one solved geometry spine; every drawing, sheet, 3D, top-projection, section, interaction surface, and physical takeoff is a view or adapter.
 - Source of truth: `packages/geometry`, `WorkbenchSolvedGeometryArtifact`, `WorkbenchViewportGeometry`, `WorkbenchDrawingSurfaceGeometry`, drawing state helpers, and workbench persistence adapters.
-- Allowed paths: route viewport and sheet data through named bundles; keep compatibility fallback boxed, visible, and tested; commit object-first edits through owning handlers.
-- Forbidden shortcuts: legacy visible geometry truth, loose per-view preview props, hidden fallback activation, calculator geometry forks, or persistence changes from render helpers.
+- Allowed paths: route viewport and sheet data through named bundles; keep compatibility fallback boxed, visible, and tested; commit object-first edits through owning handlers; derive physical takeoff from solved geometry before passing commercial inputs to costing.
+- Forbidden shortcuts: legacy visible geometry truth, loose per-view preview props, hidden fallback activation, calculator geometry forks, app-local physical takeoff policy, costing-driven geometry solves, or persistence changes from render helpers.
 - Primary gates: `npm run test:portal:workbench`, `npm run test:portal:browser`, focused drawing state/view/interaction tests, and manual edit/save/reload QA.
-- Next direction: keep shrinking compatibility drift while extracting cohesive interaction, viewport, and drawing-surface owners from large workbench files.
+- Next direction: finish routing geometry-ready views through `WorkbenchSolvedGeometryArtifact`, move physical takeoff toward `packages/geometry`, and use commercial parity reports before any live pricing switch.
 - Canonical docs: `docs/design-workbench-architecture.md`, `docs/costing-and-geometry.md`, `docs/parallel-work-guardrails.md`.
 
 ### Design List And Running Jobs

@@ -251,14 +251,26 @@ function makeReadyPlanViewModel(
 }
 
 function makeSolvedDrawingSurfaceGeometry(drawing: ReturnType<typeof makeDrawingModule>): WorkbenchDrawingSurfaceGeometry {
+  const geometryPlan = makeGeometryPlanFixture();
+  const geometryTopProjection = makeTopProjectionFixture();
+  const geometrySection = {} as WorkbenchDrawingSurfaceGeometry['geometrySection'];
   return {
     source: 'solved_geometry',
+    artifact: {
+      plan: geometryPlan,
+      topProjection: geometryTopProjection,
+      section: geometrySection,
+    } as WorkbenchDrawingSurfaceGeometry['artifact'],
+    legacyFallback: {
+      planModel: drawing.planModel ?? null,
+      sectionModel: drawing.sectionModel ?? null,
+    },
     planModel: drawing.planModel ?? null,
     planViewModel: makeReadyPlanViewModel(drawing.planModel),
-    geometryPlan: makeGeometryPlanFixture(),
-    geometryTopProjection: makeTopProjectionFixture(),
+    geometryPlan,
+    geometryTopProjection,
     sectionModel: drawing.sectionModel ?? null,
-    geometrySection: {} as WorkbenchDrawingSurfaceGeometry['geometrySection'],
+    geometrySection,
   };
 }
 
@@ -277,6 +289,7 @@ function renderWorkbenchWithTrust(status: WorkbenchTrustStatusKind, issues: Work
     moduleLabel: 'M1 - Pitched - 6m x 3m - Acrylic',
     view: 'plan',
   });
+  const drawingSurfaceGeometry = makeSolvedDrawingSurfaceGeometry(drawing);
 
   return renderToStaticMarkup(
     <DrawingWorkbench
@@ -290,8 +303,8 @@ function renderWorkbenchWithTrust(status: WorkbenchTrustStatusKind, issues: Work
       onViewportModeChange={() => undefined}
       status="ready"
       trustGate={makeTrustGate(status, issues)}
-      planModel={drawing.planModel}
-      sectionModel={drawing.sectionModel}
+      drawingSurfaceGeometry={drawingSurfaceGeometry}
+      planViewModel={drawingSurfaceGeometry.planViewModel}
       modelViewportTransform={createDrawingWorkbenchUiState().viewportTransform}
       onModelViewportTransformChange={() => undefined}
       meta={meta}
@@ -306,6 +319,7 @@ describe('DrawingWorkbench', () => {
       moduleLabel: 'M1 - Pitched - 6m x 3m - Acrylic',
       view: 'plan',
     });
+    const drawingSurfaceGeometry = makeSolvedDrawingSurfaceGeometry(drawing);
 
     const markup = renderToStaticMarkup(
       <DrawingWorkbench
@@ -318,9 +332,8 @@ describe('DrawingWorkbench', () => {
         viewportMode="sheet"
         onViewportModeChange={() => undefined}
         status="ready"
-        planModel={drawing.planModel}
-        planViewModel={makeReadyPlanViewModel(drawing.planModel)}
-        sectionModel={drawing.sectionModel}
+        drawingSurfaceGeometry={drawingSurfaceGeometry}
+        planViewModel={drawingSurfaceGeometry.planViewModel}
         modelViewportTransform={createDrawingWorkbenchUiState().viewportTransform}
         onModelViewportTransformChange={() => undefined}
         meta={meta}
@@ -360,6 +373,7 @@ describe('DrawingWorkbench', () => {
     });
     const viewChanges: ModuleViewsTab[] = [];
     const viewportChanges: DrawingWorkbenchViewportMode[] = [];
+    const drawingSurfaceGeometry = makeSolvedDrawingSurfaceGeometry(drawing);
 
     const rendered = renderIntoDocument(
       <DrawingWorkbench
@@ -373,8 +387,8 @@ describe('DrawingWorkbench', () => {
         availableViewportModes={['sheet', 'model', 'geometry3d']}
         onViewportModeChange={(next) => viewportChanges.push(next)}
         status="ready"
-        planModel={drawing.planModel}
-        sectionModel={drawing.sectionModel}
+        drawingSurfaceGeometry={drawingSurfaceGeometry}
+        planViewModel={drawingSurfaceGeometry.planViewModel}
         modelViewportTransform={createDrawingWorkbenchUiState().viewportTransform}
         onModelViewportTransformChange={() => undefined}
         meta={meta}
@@ -404,6 +418,7 @@ describe('DrawingWorkbench', () => {
       moduleLabel: 'M1 - Pitched - 6m x 3m - Acrylic',
       view: 'plan',
     });
+    const drawingSurfaceGeometry = makeSolvedDrawingSurfaceGeometry(drawing);
 
     const markup = renderToStaticMarkup(
       <DrawingWorkbench
@@ -416,9 +431,8 @@ describe('DrawingWorkbench', () => {
         viewportMode="model"
         onViewportModeChange={() => undefined}
         status="ready"
-        planModel={drawing.planModel}
-        planViewModel={makeReadyPlanViewModel(drawing.planModel)}
-        sectionModel={drawing.sectionModel}
+        drawingSurfaceGeometry={drawingSurfaceGeometry}
+        planViewModel={drawingSurfaceGeometry.planViewModel}
         modelViewportTransform={createDrawingWorkbenchUiState().viewportTransform}
         onModelViewportTransformChange={() => undefined}
         meta={meta}
@@ -455,9 +469,7 @@ describe('DrawingWorkbench', () => {
         onViewportModeChange={() => undefined}
         status="ready"
         drawingSurfaceGeometry={drawingSurfaceGeometry}
-        planModel={drawing.planModel}
         planViewModel={drawingSurfaceGeometry.planViewModel}
-        sectionModel={drawing.sectionModel}
         modelViewportTransform={createDrawingWorkbenchUiState().viewportTransform}
         onModelViewportTransformChange={() => undefined}
         meta={meta}
@@ -477,9 +489,7 @@ describe('DrawingWorkbench', () => {
         onViewportModeChange={() => undefined}
         status="ready"
         drawingSurfaceGeometry={drawingSurfaceGeometry}
-        planModel={drawing.planModel}
         planViewModel={drawingSurfaceGeometry.planViewModel}
-        sectionModel={drawing.sectionModel}
         modelViewportTransform={createDrawingWorkbenchUiState().viewportTransform}
         onModelViewportTransformChange={() => undefined}
         meta={meta}
@@ -523,9 +533,7 @@ describe('DrawingWorkbench', () => {
         onViewportModeChange={() => undefined}
         status="ready"
         drawingSurfaceGeometry={drawingSurfaceGeometry}
-        planModel={drawing.planModel}
         planViewModel={conflictingPlanViewModel}
-        sectionModel={drawing.sectionModel}
         modelViewportTransform={createDrawingWorkbenchUiState().viewportTransform}
         onModelViewportTransformChange={() => undefined}
         meta={meta}
@@ -546,6 +554,11 @@ describe('DrawingWorkbench', () => {
     );
     const drawingSurfaceGeometry: WorkbenchDrawingSurfaceGeometry = {
       source: 'legacy_fallback',
+      artifact: null,
+      legacyFallback: {
+        planModel: drawing.planModel ?? null,
+        sectionModel: drawing.sectionModel ?? null,
+      },
       planModel: drawing.planModel ?? null,
       planViewModel: loosePlanViewModel,
       geometryPlan: null,
@@ -571,9 +584,7 @@ describe('DrawingWorkbench', () => {
         onViewportModeChange={() => undefined}
         status="ready"
         drawingSurfaceGeometry={drawingSurfaceGeometry}
-        planModel={drawing.planModel}
         planViewModel={loosePlanViewModel}
-        sectionModel={drawing.sectionModel}
         modelViewportTransform={createDrawingWorkbenchUiState().viewportTransform}
         onModelViewportTransformChange={() => undefined}
         meta={meta}
@@ -581,8 +592,7 @@ describe('DrawingWorkbench', () => {
     );
 
     expect(markup).toContain('data-drawing-surface-source="legacy_fallback"');
-    expect(markup).toContain('data-plan-render-source="legacy"');
-    expect(markup).toContain('data-plan-render-status="invalid_geometry"');
+    expect(markup).toContain('Waiting for valid model-space geometry.');
     expect(markup).not.toContain('data-top-projection-screen-axis=');
   });
 
@@ -592,6 +602,7 @@ describe('DrawingWorkbench', () => {
       moduleLabel: 'M1 - Pitched - 6m x 3m - Acrylic',
       view: 'plan',
     });
+    const drawingSurfaceGeometry = makeSolvedDrawingSurfaceGeometry(drawing);
 
     const hiddenMarkup = renderToStaticMarkup(
       <DrawingWorkbench
@@ -611,9 +622,8 @@ describe('DrawingWorkbench', () => {
         }}
         onViewportModeChange={() => undefined}
         status="ready"
-        planModel={drawing.planModel}
-        planViewModel={makeReadyPlanViewModel(drawing.planModel)}
-        sectionModel={drawing.sectionModel}
+        drawingSurfaceGeometry={drawingSurfaceGeometry}
+        planViewModel={drawingSurfaceGeometry.planViewModel}
         modelViewportTransform={createDrawingWorkbenchUiState().viewportTransform}
         onModelViewportTransformChange={() => undefined}
         meta={meta}
@@ -630,6 +640,7 @@ describe('DrawingWorkbench', () => {
       moduleLabel: 'M1 - Pitched - 6m x 3m - Acrylic',
       view: 'plan',
     });
+    const drawingSurfaceGeometry = makeSolvedDrawingSurfaceGeometry(drawing);
 
     const markup = renderToStaticMarkup(
       <DrawingWorkbench
@@ -643,8 +654,8 @@ describe('DrawingWorkbench', () => {
         availableViewportModes={['sheet', 'model', 'geometry3d']}
         onViewportModeChange={() => undefined}
         status="ready"
-        planModel={drawing.planModel}
-        sectionModel={drawing.sectionModel}
+        drawingSurfaceGeometry={drawingSurfaceGeometry}
+        planViewModel={drawingSurfaceGeometry.planViewModel}
         modelViewportTransform={createDrawingWorkbenchUiState().viewportTransform}
         onModelViewportTransformChange={() => undefined}
         meta={meta}
@@ -685,10 +696,6 @@ describe('DrawingWorkbench', () => {
         onViewportModeChange={() => undefined}
         status="ready"
         viewportGeometry={viewportGeometry}
-        geometryPreview={{
-          kind: 'error',
-          message: 'Loose compatibility preview lost.',
-        }}
         modelViewportTransform={createDrawingWorkbenchUiState().viewportTransform}
         onModelViewportTransformChange={() => undefined}
         meta={meta}
@@ -696,7 +703,6 @@ describe('DrawingWorkbench', () => {
     );
 
     expect(markup).toContain('Artifact viewport preview wins.');
-    expect(markup).not.toContain('Loose compatibility preview lost.');
   });
 
   it('routes sheet drawing through the artifact-first drawing surface contract', () => {
@@ -739,6 +745,16 @@ describe('DrawingWorkbench', () => {
         moduleLabel: 'M1 - Pitched - 6m x 3m - Acrylic',
         view: 'plan',
       });
+      const planViewModel = makeReadyPlanViewModel(planModel);
+      const drawingSurfaceGeometry: WorkbenchDrawingSurfaceGeometry = {
+        ...makeSolvedDrawingSurfaceGeometry(drawing),
+        legacyFallback: {
+          planModel,
+          sectionModel: drawing.sectionModel ?? null,
+        },
+        planModel,
+        planViewModel,
+      };
       const [viewportMode, setViewportMode] = useState<DrawingWorkbenchViewportMode>('model');
       const [drawOutlineRequestId, setDrawOutlineRequestId] = useState(0);
 
@@ -764,9 +780,8 @@ describe('DrawingWorkbench', () => {
             availableViewportModes={['model', 'geometry3d']}
             onViewportModeChange={setViewportMode}
             status="ready"
-            planModel={planModel}
-            planViewModel={makeReadyPlanViewModel(planModel)}
-            sectionModel={drawing.sectionModel}
+            drawingSurfaceGeometry={drawingSurfaceGeometry}
+            planViewModel={planViewModel}
             modelViewportTransform={createDrawingWorkbenchUiState().viewportTransform}
             onModelViewportTransformChange={() => undefined}
             meta={meta}

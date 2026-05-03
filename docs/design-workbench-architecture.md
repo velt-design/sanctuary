@@ -42,7 +42,7 @@ The active workbench is object-first:
 - The solved module's 3D scene and model-space top projection are paired: the projection is generated from the same `ViewerSceneModel` handed to the 3D viewport, with assembly reference shapes carried forward explicitly.
 - The scene also carries plan-detail lines for real house wall segments. These project as context lines with wall/snap metadata, do not drive plan extents, and are the preferred live deck host-edge snap source.
 - Geometry-ready model-space plan fitting uses `geometryTopProjection.extents`; legacy `ModulePlanModel` dimensions are a fallback path, not the source of scene fit.
-- `apps/portal/lib/drawings/commercialDesignPayload.ts` is a callable-only shadow adapter from `WorkbenchSolvedModel` to the commercial spine. It reads solved geometry and quantity hooks for future comparison work, but it does not drive workbench rendering, persistence, quote totals, or live pricing.
+- `apps/portal/lib/drawings/commercialDesignPayload.ts` is a callable-only shadow adapter from `WorkbenchSolvedModel` to the commercial boundary. It reads solved geometry and quantity hooks for future comparison work, but it does not drive workbench rendering, persistence, quote totals, or live pricing.
 - Geometry-ready Model Space is a projection-only surface. Its normal body rendering consumes only top-projection committed bodies that match the 3D Top view; it does not execute legacy pergola plan geometry, semantic house context bodies, legacy footprint bodies, model primary dimensions, fall labels, or context/reference projection bodies. Sheet View and unsupported geometry fallback keep their existing legacy paths.
 - Geometry-ready plan mode uses an internal plan render graph with explicit layer ownership: `committedBodies`, `contextLines`, `hitTargets`, `selectionOutlines`, `dimensions`, `dragPreview`, and `debug`. Normal visible body rendering may only consume `committedBodies`; selecting an object may add outlines, hit targets, handles, and dimensions, but must not add another filled house/deck/pergola body.
 - Plan coordinate transforms are owned by the plan view layer, not by React render branches. The `PlanCoordinateAdapter` contract is the traceable boundary for projection-to-SVG and SVG-to-projection conversions; Model Space pointer tools should consume this adapter rather than duplicating top-projection math in components.
@@ -53,6 +53,30 @@ The active workbench is object-first:
 - Calculator-era drawing surfaces are presenters and compatibility shells. `ModulePlanModel`, legacy sheet plan geometry, semantic house context, and object-workbench overlay polygons may support fallback rendering, explicit edit/reference math, migration, or diagnostics, but they must not be treated as active geometry when solved geometry is available.
 - Compatibility or legacy fallback state must stay named and visible in tests or status models, and must not become active geometry truth.
 - Workbench guard tests enforce that Sheet and Model Space do not pass loose model-space geometry props into `ModuleDrawingRenderer`; renderer geometry must enter through `WorkbenchDrawingSurfaceGeometry`.
+
+## Geometry And Costing Migration Roadmap
+
+The full migration target is:
+
+```text
+object-first design intent
+  -> @sp/geometry solved physical model
+  -> geometry-derived quantity takeoff
+  -> @sp/costing commercial input and pricing
+  -> estimates / quotes / invoices / job packs
+```
+
+Workbench must not own pricing policy, and costing must not solve geometry. Portal may orchestrate, adapt, persist, and show status, but it must not duplicate package truth. `CommercialDesignInputV1` is allowed as the costing boundary and parity harness, not as a parallel geometry model.
+
+Migration should proceed in this order:
+
+1. Finish routing all geometry-ready plan, 3D, sheet, section, interaction, and status consumers through `WorkbenchSolvedGeometryArtifact`.
+2. Move physical quantity takeoff out of portal shadow adapter code and toward `packages/geometry` contracts derived from `Assembly3D` and quantity hooks.
+3. Dual-produce `calculator_compat` and `workbench_solved` commercial payloads and compare them with `compareCommercialDesignInputsV1()` across fixtures and representative estimate snapshots.
+4. Invert remaining compatibility dependencies where geometry consumes costing-derived output; geometry should produce physical facts and costing should consume them.
+5. Roll saved estimate or quote pricing to the workbench-solved commercial path only through an explicit rollout task after parity is stable, then retire compatibility layers in small, tested passes.
+
+Compatibility models may support fallback, migration, or diagnostics. They must not become normal geometry-ready paths, hidden commercial inputs, or long-term takeoff owners.
 
 ## Rail Notes
 
@@ -109,6 +133,8 @@ npm run test:portal:browser
 
 Latest local signal: on 2026-05-03, `npm run test:portal:workbench` passed with 55 Vitest files and 568 tests, then 3 no-auth fixture browser tests passed and the auth-backed smoke stayed skipped by design.
 
-`npm run test:portal:browser` covers no-auth fixture rendering for nonblank Model Space Plan, 3D containment, top-projection parity, and object-first/fallback visibility. It should fail if the fixture route redirects to login, becomes unavailable, silently renders hidden top-projection bodies, or shows user-facing legacy fallback failure text.
+`npm run test:portal:browser` covers no-auth fixture rendering for nonblank Model Space Plan, 3D containment, top-projection parity, and object-first/fallback visibility across the mono, gable, box, mono-join, and screenshot-style hipped fixture shapes. It should fail if the fixture route redirects to login, becomes unavailable, silently renders hidden top-projection bodies, or shows user-facing legacy fallback failure text.
+
+`apps/portal/lib/drawings/commercialDesignPayload.test.ts` dual-produces `calculator_compat` and `workbench_solved` commercial payloads across the baked workbench fixtures and fails on missing comparable structures, blocking parity differences, or drift in parity-critical authored dimensions, material, roof type, attachment side, pitch, roof plane count, and primary takeoff dimensions. This is comparison signal only; it must not switch live estimate, quote, invoice, job-pack, or public pricing to `workbench_solved`.
 
 For 3D or drawing UI work, use Playwright screenshots or visual checks in addition to unit tests. Authenticated edit/save/reload, high-risk visual QA, and persisted staff project checks remain release checks until safe staff data is configured locally or in CI.

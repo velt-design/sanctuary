@@ -91,6 +91,8 @@ function makeResult(params: {
   acrylicRequiredDownslopeM?: number;
   joinerPieceLengthM?: number;
   joinerRunsTotal?: number;
+  roofPlaneCount?: number;
+  roofSurfaceAreaM2?: number;
   rafterHouseAllowanceM?: number;
   rafterFarAllowanceM?: number;
   acrylicAreaM2?: number;
@@ -125,6 +127,12 @@ function makeResult(params: {
       acrylic_required_downslope_m: params.acrylicRequiredDownslopeM ?? null,
       joiner_piece_length_m: params.joinerPieceLengthM ?? null,
       joiner_runs_total: params.joinerRunsTotal ?? null,
+      roof_plane_count: params.roofPlaneCount ?? 1,
+      roof_surface_area_m2: params.roofSurfaceAreaM2 ?? null,
+      roof_planes: Array.from({ length: params.roofPlaneCount ?? 1 }, (_, index) => ({
+        id: `fixture-roof-plane-${index + 1}`,
+        roof_area_m2: params.roofSurfaceAreaM2 == null ? null : params.roofSurfaceAreaM2 / (params.roofPlaneCount ?? 1),
+      })),
       rafter_house_allowance_m: params.rafterHouseAllowanceM ?? null,
       rafter_far_allowance_m: params.rafterFarAllowanceM ?? null,
       acrylic_area_m2: params.acrylicAreaM2 ?? null,
@@ -240,6 +248,8 @@ function makeScreenshotStyleUSnapshot(): Record<string, unknown> {
       gutterType: 'SP Gutter',
       rafterCount: 10,
       rafterSpacingMm: 556,
+      roofPlaneCount: 2,
+      roofSurfaceAreaM2: 26.604,
       ridgeBeamProfileUsed: '50x150',
     }),
     'Gable U Hipped Screenshot',
@@ -308,6 +318,8 @@ const FIXTURES: SanctuaryGeometryWorkbenchFixture[] = [
         acrylicRequiredDownslopeM: 2.88088653699854,
         joinerPieceLengthM: 2.88088653699854,
         joinerRunsTotal: 11,
+        roofPlaneCount: 1,
+        roofSurfaceAreaM2: 18.06875707578025,
         rafterHouseAllowanceM: 0.05,
         rafterFarAllowanceM: 0.1,
         acrylicAreaM2: 18.06875707578025,
@@ -351,6 +363,8 @@ const FIXTURES: SanctuaryGeometryWorkbenchFixture[] = [
         gutterType: 'SP Gutter',
         rafterCount: 12,
         rafterSpacingMm: 590,
+        roofPlaneCount: 2,
+        roofSurfaceAreaM2: 28.691,
         ridgeBeamProfileUsed: '50x150',
       }),
       'Gable Standard',
@@ -396,6 +410,8 @@ const FIXTURES: SanctuaryGeometryWorkbenchFixture[] = [
         boxPerimeterBeamProfileUsed: '50x300',
         rafterCount: 10,
         rafterSpacingMm: 611,
+        roofPlaneCount: 1,
+        roofSurfaceAreaM2: 19.276,
         boxEffectiveRunM: 3.3,
         boxRiseMm: 173,
         boxMaxFallMm: 200,

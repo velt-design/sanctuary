@@ -66,6 +66,7 @@ This snapshot records the most recent known production-readiness state from the 
 | Quote/invoice/job-pack side effects | Green | `npm run portal:side-effects` passed: 8 quote/invoice/job-pack test files and 32 tests passed, then `npm run build:portal` completed with `Compiled successfully`, TypeScript, and 55 static pages generated. | Keep manual public-token and side-effect QA in release checks with a compatible portal environment. |
 | Schedule workflow | Green | `npm run test:portal:schedule` passed with 38 files and 215 tests, covering Schedule V2 APIs, readiness, Board/Gantt/Site Visits client paths, command boundaries, and legacy fallback isolation. | Keep live readiness and manual Board/Gantt/Site Visit checks in release QA with staff credentials and a migrated database. |
 | Design workbench | Green | `npm run test:portal:workbench` passed: 55 Vitest files and 568 tests passed across drawing UI, drawing state/geometry, workbench route/client coverage, drawing-surface geometry helper coverage, and estimate sheet drawing coverage; then browser fixture coverage passed with 3 no-auth fixture tests and 1 auth-backed smoke skipped by design. | Keep manual edit/save/reload and high-risk visual QA in release checks with authenticated staff data while continuing to reduce named compatibility surface. |
+| Geometry/costing migration | Yellow | The workbench has a solved geometry artifact and shadow `workbench_solved` commercial payload coverage. Baked fixture parity now compares `calculator_compat` and `workbench_solved` for mono, gable, box, mono-join, and screenshot-style hipped fixture shapes; live estimate and quote pricing still use the calculator costing path. | Keep the commercial path shadow-only, expand parity to representative saved estimate snapshots, move physical takeoff toward `packages/geometry`, and retire compatibility only after manual workbench QA and parity are stable. |
 
 ## Production-Grade Checklist
 
@@ -143,7 +144,9 @@ This snapshot records the most recent known production-readiness state from the 
 - [ ] `npm run dead-code:changed:strict` is used for local cleanup/tooling verification when new unused files should be blocked without blocking legacy debt.
 - [x] Portal Quality runs `npm run dead-code:changed` as a PR-aware advisory report against base/head changes.
 - [ ] Source-of-truth boundaries are preserved for costing, geometry, schedule, local-first, quotes, invoices, and job packs.
+- [ ] Geometry/costing migration preserves the target path: object-first design intent -> `@sp/geometry` solved physical model -> geometry-derived quantity takeoff -> `@sp/costing` commercial input and pricing -> estimates, quotes, invoices, and job packs.
 - [ ] Compatibility and legacy fallback paths are isolated, named, and tested.
+- [ ] Commercial parity coverage compares `calculator_compat` and `workbench_solved` before live estimate or quote pricing consumes the workbench-solved path.
 - [ ] No new duplicate workflow rules are added in components when an owning domain helper or definition exists.
 - [ ] New tests land at the owning layer first, then broaden only when blast radius requires it.
 - [ ] Docs are updated when behavior, data flow, source-of-truth boundaries, test strategy, or known risks change.
@@ -154,7 +157,8 @@ Keep this ordered list current as work lands.
 
 1. Restore remaining browser quality gates: authenticated smoke and performance smoke.
 2. Keep manual quote/invoice/public-token/job-pack, Schedule V2, and Design Workbench edit/save/reload QA visible in release checks with staff credentials and compatible data.
-3. Use `npm run files:report` and `npm run files:changed` to guide large-file decomposition after gates are green, one owner surface at a time.
+3. Advance the geometry/costing migration without switching live pricing: move physical takeoff toward `packages/geometry`, compare `calculator_compat` and `workbench_solved`, and keep compatibility retirement explicit.
+4. Use `npm run files:report` and `npm run files:changed` to guide large-file decomposition after gates are green, one owner surface at a time.
 
 ## Parallel Work Lanes
 
@@ -167,6 +171,7 @@ Parallel work is encouraged when ownership is clear and file overlap is low. Rea
 | Contacts/projects env boundary | Contact APIs, contact/project server data helpers, project snapshot tests. | Schedule, workbench, style isolation, security/deps. | Quote/invoice side-effect helpers unless failure crosses that boundary. |
 | Schedule performance | `/staff/schedule`, schedule queries, schedule CSS, route timing, bundle split. | Contacts/projects, workbench, security/deps. | Design workbench, quote/invoice, unrelated portal shell. |
 | Design workbench | `apps/portal/components/drawings`, `apps/portal/lib/drawings`, workbench fixture/browser gates. | Contacts/projects, schedule, security/deps. | Calculator or costing files unless needed by explicit geometry contract. |
+| Geometry/costing migration | `packages/geometry`, `packages/costing/src/commercial`, commercial parity adapters, and docs for the target boundary. | Design workbench, calculator decomposition, docs tracker updates. | Live estimate/quote pricing, public outputs, or job-pack pricing unless an explicit rollout task is in scope. |
 | Quote/invoice/job packs | Quote/invoice/job-pack domain helpers, token routes, PDFs, email side effects. | Schedule performance, style isolation, docs updates. | Contacts/projects internals unless working on a documented handoff. |
 | Style isolation and portal shell | Shared layout, surface styles, PageHeader, portal shell tests. | Security/deps, contacts/projects, schedule. | Feature behavior and workflow-specific CSS unless required by isolation test. |
 | CI/typecheck/tooling | Scripts, workflows, typecheck, docs guard, command docs. | Most domain lanes. | Domain behavior changes unless a gate requires a small fix. |
@@ -218,6 +223,7 @@ When updating this tracker:
 
 ### 2026-05-03
 
+- Added Fixture And QA Gates coverage for the geometry-first workbench path: baked fixture commercial parity now dual-produces `calculator_compat` and `workbench_solved` payloads for mono, gable, box, mono-join, and screenshot-style hipped fixtures, and the no-auth browser spec now has a compact plan/3D smoke matrix for the parity-critical fixture shapes. `npx vitest run apps/portal/lib/drawings/sanctuaryWorkbenchFixtures.test.ts apps/portal/lib/drawings/commercialDesignPayload.test.ts` passed with 9 tests. The full `npm run test:portal:workbench` attempt currently fails in drawing-surface guard/fallback tests from dirty outside-lane work before it reaches the browser segment; direct local browser verification is also blocked by an existing normal portal dev server on port 3001 that auth-gates fixture routes.
 - Started the file-decomposition lane with the largest calculator hotspot by extracting pure calculator input/default/normalization helpers from `CalculatorGridClient.tsx` into focused calculator helper modules. `npx vitest run apps/portal/app/staff/calculator` passed with 11 files and 114 tests; the later typecheck restoration pass cleared the unrelated marketing public-token route-test mock drift.
 - Continued calculator decomposition by extracting pure save-readiness helpers, estimate-target resolution, redirect builders, and design-request tier labelling into `calculatorSaveWorkflow.ts`. `CalculatorGridClient.tsx` is down to 7065 lines from 7067 at HEAD; `npx vitest run apps/portal/app/staff/calculator` passed with 12 files and 120 tests, and `npm run test:portal:projects` passed with 40 files and 205 tests. A later Workbench drawing-surface pass restored the broad `typecheck` and `test:portal:log` gates.
 - Restored the typecheck gate after public-token test contract drift: focused marketing and portal `tsc --noEmit --incremental false` checks passed, `npm run typecheck` passed, marketing public-token route tests passed with 4 files and 21 tests, and focused workbench solved-model/plan-view tests passed with 2 files and 5 tests.

@@ -10,9 +10,9 @@ import {
   type CommercialTrustStatusV1,
   type RoofType,
 } from '@sp/costing';
-import type { Assembly3D, AssemblyMember3D, QuantityHook, RoofPlane3D } from '@sp/geometry';
+import type { Assembly3D, AssemblyMemberProfile, GeometryQuantityTakeoff } from '@sp/geometry';
 import { DEFAULT_CALCULATOR_ATTACHMENT_SIDE, normalizeAttachmentSide } from '@/lib/types/calculator';
-import type { CalculatorInputs, CalculatorModuleInputs } from '@/lib/types/calculator';
+import type { CalculatorModuleInputs } from '@/lib/types/calculator';
 import type {
   WorkbenchSolvedModel,
   WorkbenchSolvedModule,
@@ -60,64 +60,17 @@ function intOrNull(value: unknown): number | null {
   return Number.isFinite(parsed) ? Math.max(0, Math.round(parsed)) : null;
 }
 
-function mmToM(value: unknown): number | null {
-  const mm = nonNegativeNumberOrNull(value);
-  return mm == null ? null : mm / 1000;
+function lineLengthM(line: NonNullable<Assembly3D['attachmentEdge']>): number {
+  const dx = line.end.x - line.start.x;
+  const dy = line.end.y - line.start.y;
+  const dz = line.end.z - line.start.z;
+  return Math.sqrt(dx * dx + dy * dy + dz * dz) / 1000;
 }
 
-function distanceMm(member: AssemblyMember3D): number {
-  const dx = member.centerline.end.x - member.centerline.start.x;
-  const dy = member.centerline.end.y - member.centerline.start.y;
-  const dz = member.centerline.end.z - member.centerline.start.z;
-  return Math.sqrt(dx * dx + dy * dy + dz * dz);
-}
-
-function polygonAreaM2(boundary: RoofPlane3D['boundary']): number | null {
-  if (!Array.isArray(boundary) || boundary.length < 3) return null;
-  let x = 0;
-  let y = 0;
-  let z = 0;
-  for (let index = 0; index < boundary.length; index += 1) {
-    const current = boundary[index]!;
-    const next = boundary[(index + 1) % boundary.length]!;
-    x += current.y * next.z - current.z * next.y;
-    y += current.z * next.x - current.x * next.z;
-    z += current.x * next.y - current.y * next.x;
-  }
-  const areaMm2 = 0.5 * Math.sqrt(x * x + y * y + z * z);
-  return Number.isFinite(areaMm2) ? areaMm2 / 1_000_000 : null;
-}
-
-function profileLabel(member: AssemblyMember3D | null | undefined): string | null {
-  if (!member) return null;
-  if (member.profile.profileKey) return member.profile.profileKey;
-  return `${member.profile.depthMm}x${member.profile.widthMm}`;
-}
-
-function hooksByKey(hooks: QuantityHook[] | null | undefined): Map<string, QuantityHook> {
-  return new Map((hooks ?? []).map((hook) => [hook.key, hook]));
-}
-
-function hookQuantity(hooks: Map<string, QuantityHook>, keys: string[]): number | null {
-  for (const key of keys) {
-    const quantity = nonNegativeNumberOrNull(hooks.get(key)?.quantity);
-    if (quantity != null) return quantity;
-  }
-  return null;
-}
-
-function hookMmToM(hooks: Map<string, QuantityHook>, keys: string[]): number | null {
-  return mmToM(hookQuantity(hooks, keys));
-}
-
-function sumMemberLengthM(assembly: Assembly3D | null | undefined, role: AssemblyMember3D['role']): number | null {
-  const members = (assembly?.members ?? []).filter((member) => member.role === role);
-  if (!members.length) return null;
-  return members.reduce((sum, member) => sum + distanceMm(member), 0) / 1000;
-}
-
-function firstMember(assembly: Assembly3D | null | undefined, role: AssemblyMember3D['role']): AssemblyMember3D | null {
-  return assembly?.members.find((member) => member.role === role) ?? null;
+function profileLabel(profile: AssemblyMemberProfile | null | undefined): string | null {
+  if (!profile) return null;
+  if (profile.profileKey) return profile.profileKey;
+  return `${profile.depthMm}x${profile.widthMm}`;
 }
 
 function trustStatusForModule(module: WorkbenchSolvedModule): CommercialTrustStatusV1 {
@@ -217,87 +170,70 @@ function buildSolvedGeometry(module: WorkbenchSolvedModule): CommercialSolvedGeo
         : null,
     roofPlaneCount: assembly ? assembly.roofPlanes.length : null,
     attachmentLengthM: assembly?.attachmentEdge
-      ? distanceMm({
-          id: 'attachment-edge',
-          role: 'ledger',
-          centerline: assembly.attachmentEdge,
-          profile: { shape: 'rectangular', widthMm: 0, depthMm: 0 },
-          localFrame: assembly.datum,
-        })
-        / 1000
+      ? lineLengthM(assembly.attachmentEdge)
       : null,
     warnings: diagnosticsForModule(module).map((diagnostic) => diagnostic.message),
   };
 }
 
-function buildRoofPlanes(assembly: Assembly3D | null): NonNullable<CommercialQuantityTakeoffV1['roofPlanes']> {
-  return (assembly?.roofPlanes ?? []).map((plane, index) => ({
+function buildRoofPlanes(takeoff: GeometryQuantityTakeoff | null): NonNullable<CommercialQuantityTakeoffV1['roofPlanes']> {
+  return (takeoff?.roofPlanes.items ?? []).map((plane, index) => ({
     id: plane.id || `roof-plane-${index + 1}`,
-    label: typeof plane.metadata?.label === 'string' ? plane.metadata.label : undefined,
-    areaM2: polygonAreaM2(plane.boundary),
+    label: plane.label,
+    areaM2: plane.areaM2,
     rafterLengthM: null,
     bayCount: null,
   }));
 }
 
 function buildQuantityTakeoff(module: WorkbenchSolvedModule): CommercialQuantityTakeoffV1 {
-  const assembly = module.assembly;
-  const hooks = hooksByKey(assembly?.quantityHooks);
-  const primaryDimensions = assembly?.semantics.primaryDimensionsMm;
-  const post = firstMember(assembly, 'post');
-  const rafter = firstMember(assembly, 'rafter');
-  const ledger = firstMember(assembly, 'ledger');
-  const beam = firstMember(assembly, 'beam');
-  const ridge = firstMember(assembly, 'ridge');
-  const roofAreas = buildRoofPlanes(assembly).map((plane) => plane.areaM2 ?? 0);
-  const roofAreaM2 = roofAreas.length ? roofAreas.reduce((sum, area) => sum + area, 0) : null;
+  const takeoff = module.geometryArtifact?.quantityTakeoff ?? null;
+  const posts = takeoff?.members.byRole.post ?? null;
+  const rafters = takeoff?.members.byRole.rafter ?? null;
+  const ledgers = takeoff?.members.byRole.ledger ?? null;
+  const beams = takeoff?.members.byRole.beam ?? null;
+  const ridges = takeoff?.members.byRole.ridge ?? null;
   const flashingTotalM = sumFlashingRows(module.moduleInput);
 
   return {
     primaryDimensions: {
-      lengthM: primaryDimensions ? primaryDimensions.length / 1000 : nonNegativeNumberOrNull(module.moduleInput.lengthM),
-      projectionM: primaryDimensions ? primaryDimensions.projection / 1000 : nonNegativeNumberOrNull(module.moduleInput.projectionM),
-      roofAreaM2,
+      lengthM: takeoff?.primaryDimensionsM?.length ?? nonNegativeNumberOrNull(module.moduleInput.lengthM),
+      projectionM: takeoff?.primaryDimensionsM?.projection ?? nonNegativeNumberOrNull(module.moduleInput.projectionM),
+      roofAreaM2: takeoff?.roofPlanes.totalAreaM2 ?? null,
     },
-    roofPlanes: buildRoofPlanes(assembly),
+    roofPlanes: buildRoofPlanes(takeoff),
     posts: {
-      count: intOrNull(hookQuantity(hooks, ['posts.count']) ?? module.moduleInput.postCount),
-      cutHeightM: hookMmToM(hooks, ['posts.total_length_mm']) && intOrNull(hookQuantity(hooks, ['posts.count']))
-        ? (hookMmToM(hooks, ['posts.total_length_mm']) ?? 0) / (intOrNull(hookQuantity(hooks, ['posts.count'])) ?? 1)
-        : nonNegativeNumberOrNull(module.moduleInput.postCutHeightM),
-      profile: profileLabel(post),
+      count: posts?.count ?? intOrNull(module.moduleInput.postCount),
+      cutHeightM: posts?.averageLengthM ?? nonNegativeNumberOrNull(module.moduleInput.postCutHeightM),
+      profile: profileLabel(posts?.firstProfile),
     },
     rafters: {
-      count: intOrNull(hookQuantity(hooks, ['rafters.count'])),
+      count: rafters?.count ?? null,
       spacingMm: null,
-      cutLengthM: hookMmToM(hooks, ['rafters.total_length_mm']) && intOrNull(hookQuantity(hooks, ['rafters.count']))
-        ? (hookMmToM(hooks, ['rafters.total_length_mm']) ?? 0) / (intOrNull(hookQuantity(hooks, ['rafters.count'])) ?? 1)
-        : sumMemberLengthM(assembly, 'rafter'),
-      profile: profileLabel(rafter),
+      cutLengthM: rafters?.averageLengthM ?? null,
+      profile: profileLabel(rafters?.firstProfile),
     },
     beams: {
-      ledgerLengthM: hookMmToM(hooks, ['ledger.length_mm']),
-      frontBeamLengthM: hookMmToM(hooks, ['support_beam.length_mm', 'support_beams.total_length_mm', 'box_perimeter_beams.total_length_mm'])
-        ?? sumMemberLengthM(assembly, 'beam'),
-      ridgeLengthM: hookMmToM(hooks, ['ridge.length_mm']) ?? sumMemberLengthM(assembly, 'ridge'),
-      tieBeamLengthM: hookMmToM(hooks, ['tie_beams.total_length_mm']),
-      ledgerProfile: profileLabel(ledger),
-      frontBeamProfile: profileLabel(beam),
-      ridgeProfile: profileLabel(ridge),
+      ledgerLengthM: takeoff?.beams.ledgerLengthM ?? null,
+      frontBeamLengthM: takeoff?.beams.supportBeamLengthM ?? takeoff?.beams.totalBeamLengthM ?? null,
+      ridgeLengthM: takeoff?.beams.ridgeLengthM ?? null,
+      tieBeamLengthM: takeoff?.beams.tieBeamLengthM ?? null,
+      ledgerProfile: profileLabel(ledgers?.firstProfile),
+      frontBeamProfile: profileLabel(beams?.firstProfile),
+      ridgeProfile: profileLabel(ridges?.firstProfile),
     },
     gutters: {
-      ourGutterLengthM: hookMmToM(hooks, ['outer_gutter.length_mm', 'gutter.length_mm', 'gutters.total_length_mm'])
-        ?? sumMemberLengthM(assembly, 'gutter'),
-      houseGutterLengthM: hookMmToM(hooks, ['house_gutter.length_mm']),
+      ourGutterLengthM: takeoff?.gutters.ourGutterLengthM ?? null,
+      houseGutterLengthM: takeoff?.gutters.houseGutterLengthM ?? null,
       downpipeCount: intOrNull(module.moduleInput.downpipeCount),
       downpipeJoinCount: intOrNull(module.moduleInput.downpipeJoinCount),
       downpipeElbowCount: intOrNull(module.moduleInput.downpipeElbowCount),
     },
     roofCladding: {
-      acrylicAreaM2: assembly?.roofCladdingPanels.length ? roofAreaM2 : null,
+      acrylicAreaM2: takeoff?.roofCladding.acrylicAreaM2 ?? null,
       timberAreaM2: null,
       sheetCount: null,
-      joinerRuns: intOrNull(hookQuantity(hooks, ['joiners.count'])),
+      joinerRuns: takeoff?.joiners.count ?? null,
     },
     flashings: {
       totalLengthM: flashingTotalM,

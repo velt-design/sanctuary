@@ -1,8 +1,6 @@
 'use client';
 
 import type { ModuleViewsStatus, ModuleViewsTab } from '@/app/staff/calculator/ModuleViewsCard';
-import type { ModulePlanModel, ModuleSectionModel } from '@/app/staff/calculator/moduleViews';
-import type { ObjectWorkbenchGeometryPreviewState } from '@/lib/drawings/geometry/buildWorkbenchGeometryPreview';
 import type { DeckInteractionTelemetry } from '@/lib/drawings/interactions/deckInteractionContract';
 import type {
   DrawingWorkbenchViewportMode,
@@ -40,10 +38,7 @@ type WorkbenchViewportHostProps = {
   status: ModuleViewsStatus;
   viewportGeometry?: WorkbenchViewportGeometry | null;
   drawingSurfaceGeometry?: WorkbenchDrawingSurfaceGeometry | null;
-  planModel?: ModulePlanModel | null;
-  sectionModel?: ModuleSectionModel | null;
   planViewModel?: PlanViewModel | null;
-  geometryPreview?: ObjectWorkbenchGeometryPreviewState | null;
   activeObjectRef?: WorkbenchObjectRef | null;
   pergolaTargetId?: string | null;
   enableProjectionOnlyModelInteractions?: boolean;
@@ -103,10 +98,7 @@ export default function WorkbenchViewportHost({
   status,
   viewportGeometry,
   drawingSurfaceGeometry,
-  planModel,
-  sectionModel,
   planViewModel,
-  geometryPreview,
   activeObjectRef,
   pergolaTargetId,
   enableProjectionOnlyModelInteractions,
@@ -143,9 +135,7 @@ export default function WorkbenchViewportHost({
       viewportGeometry: viewportGeometry ?? null,
       planViewModel: planViewModel ?? null,
     });
-  const routedPlanModel = routedDrawingSurfaceGeometry.planModel ?? planModel ?? null;
-  const routedSectionModel = routedDrawingSurfaceGeometry.sectionModel ?? sectionModel ?? null;
-  const routedGeometryPreview = viewportGeometry?.preview ?? geometryPreview ?? null;
+  const routedGeometryPreview = viewportGeometry?.preview ?? null;
 
   return (
     <div className={styles.viewport}>
@@ -155,8 +145,6 @@ export default function WorkbenchViewportHost({
           view={view}
           status={status}
           drawingSurfaceGeometry={routedDrawingSurfaceGeometry}
-          planModel={routedPlanModel}
-          sectionModel={routedSectionModel}
           planViewModel={planViewModel}
           meta={meta}
           editableFields={editableFields}
@@ -170,8 +158,6 @@ export default function WorkbenchViewportHost({
           objectWorkbenchDisplayFamily={objectWorkbenchDisplayFamily}
           visibility={visibility}
           status={status}
-          planModel={routedPlanModel}
-          sectionModel={routedSectionModel}
           planViewModel={planViewModel}
           drawingSurfaceGeometry={routedDrawingSurfaceGeometry}
           activeObjectRef={activeObjectRef}

@@ -145,6 +145,11 @@ describe('compareCommercialDesignInputsV1', () => {
       modulesCompared: 1,
       differences: 0,
     });
+    expect(report.summary).toEqual({
+      byCategory: {},
+      bySeverity: {},
+      byModule: {},
+    });
   });
 
   it('compares calculator and workbench sources without treating source difference as drift', () => {
@@ -194,6 +199,54 @@ describe('compareCommercialDesignInputsV1', () => {
       ]),
     );
     expect(report.counts.warningDifferences).toBeGreaterThanOrEqual(4);
+    expect(report.summary?.byCategory).toMatchObject({
+      site_commercial: 1,
+      trust: 1,
+      design_intent: 1,
+      quantity_takeoff: 1,
+    });
+    expect(report.summary?.bySeverity.warning).toBeGreaterThanOrEqual(4);
+    expect(report.summary?.byModule['pergola-1/source:0']).toMatchObject({
+      pergolaId: 'pergola-1',
+      moduleKey: 'source:0',
+      sourceModuleIndex: 0,
+      differences: 3,
+      warningDifferences: 3,
+      blockingDifferences: 0,
+    });
+  });
+
+  it('adds location and numeric drift metadata to differences', () => {
+    const left = makeInput();
+    const right = cloneInput(left);
+    right.pergolas[0]!.modules[0]!.solvedGeometry.primaryDimensionsM!.length = 6.05;
+
+    const report = compareCommercialDesignInputsV1(left, right);
+    const difference = report.differences.find(
+      (item) => item.path === 'pergolas.pergola-1.modules.source:0.solvedGeometry.primaryDimensionsM.length',
+    );
+
+    expect(report.status).toBe('drift');
+    expect(difference).toMatchObject({
+      category: 'solved_geometry',
+      tolerance: 0.02,
+      location: {
+        pathSegments: ['pergolas', 'pergola-1', 'modules', 'source:0', 'solvedGeometry', 'primaryDimensionsM', 'length'],
+        fieldPath: 'solvedGeometry.primaryDimensionsM.length',
+        pergolaId: 'pergola-1',
+        moduleKey: 'source:0',
+        sourceModuleIndex: 0,
+      },
+    });
+    expect(difference?.numericDrift?.delta).toBeCloseTo(0.05, 6);
+    expect(difference?.numericDrift?.absoluteDelta).toBeCloseTo(0.05, 6);
+    expect(difference?.numericDrift?.tolerance).toBe(0.02);
+    expect(report.summary?.byCategory.solved_geometry).toBe(1);
+    expect(report.summary?.bySeverity.warning).toBe(1);
+    expect(report.summary?.byModule['pergola-1/source:0']).toMatchObject({
+      differences: 1,
+      warningDifferences: 1,
+    });
   });
 
   it('reports missing pergolas and modules as blocking structure differences', () => {

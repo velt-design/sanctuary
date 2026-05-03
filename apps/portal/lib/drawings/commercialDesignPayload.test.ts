@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import type { CostOutputV1 } from '@sp/costing';
-import type { CalculatorModuleInputs } from '@/lib/types/calculator';
+import {
+  compareCommercialDesignInputsV1,
+  type CommercialModuleInputV1,
+  type CostOutputV1,
+  type SiteOutputV1,
+} from '@sp/costing';
+import { listSanctuaryGeometryWorkbenchFixtures } from '@/lib/drawings/sanctuaryWorkbenchFixtures';
+import { buildCommercialDesignInputFromCalculatorInputs } from '@/lib/estimates/commercialDesignPayload';
+import type { CalculatorInputs, CalculatorModuleInputs } from '@/lib/types/calculator';
 import { buildWorkbenchSolvedModel, type WorkbenchSolvedModel, type WorkbenchSolvedModule } from './state/workbenchSolvedModel';
 import {
   buildCommercialDesignInputFromWorkbenchSolvedModel,
@@ -15,6 +22,11 @@ const SITE_COMMERCIAL = {
   extrasAllowanceExGst: 45,
   quoteDiscountPct: 5,
 } as const;
+
+type SnapshotWithCalculatorInputs = Record<string, unknown> & {
+  inputs: CalculatorInputs;
+  outputs: SiteOutputV1;
+};
 
 function makeModule(overrides: Partial<CalculatorModuleInputs> = {}): CalculatorModuleInputs {
   const base: Partial<CalculatorModuleInputs> = {
@@ -147,6 +159,29 @@ function requireModule(model: WorkbenchSolvedModel, index = 0): WorkbenchSolvedM
   return module;
 }
 
+function cloneFixtureSnapshot(snapshot: Record<string, unknown>): SnapshotWithCalculatorInputs {
+  const cloned = structuredClone(snapshot) as Partial<SnapshotWithCalculatorInputs>;
+  if (!cloned.inputs?.modules?.length) {
+    throw new Error('Fixture snapshot is missing calculator inputs.');
+  }
+  if (!cloned.outputs?.pergolas?.length) {
+    throw new Error('Fixture snapshot is missing calculator outputs.');
+  }
+  return cloned as SnapshotWithCalculatorInputs;
+}
+
+function requireCommercialModule(input: { pergolas: Array<{ modules: CommercialModuleInputV1[] }> }): CommercialModuleInputV1 {
+  const module = input.pergolas[0]?.modules[0];
+  if (!module) throw new Error('Expected comparable commercial module.');
+  return module;
+}
+
+function expectCloseOrEqual(left: number | null | undefined, right: number | null | undefined, label: string): void {
+  expect(left, `${label} left`).not.toBeNull();
+  expect(right, `${label} right`).not.toBeNull();
+  expect(left ?? Number.NaN, label).toBeCloseTo(right ?? Number.NaN, 3);
+}
+
 describe('workbench commercialDesignPayload', () => {
   it('builds a workbench-solved commercial payload with explicit site commercial fields and identity', () => {
     const solvedModel = makeSolvedModel();
@@ -276,5 +311,77 @@ describe('workbench commercialDesignPayload', () => {
     ]);
     expect(commercial.pergolas[0]?.modules.map((module) => module.sourceModuleIndex)).toEqual([0]);
     expect(commercial.pergolas[1]?.modules.map((module) => module.sourceModuleIndex)).toEqual([1]);
+  });
+
+  it('keeps baked fixture commercial parity comparable for geometry-first QA gates', () => {
+    for (const fixture of listSanctuaryGeometryWorkbenchFixtures()) {
+      const snapshot = cloneFixtureSnapshot(fixture.snapshot);
+      const calculatorCommercial = buildCommercialDesignInputFromCalculatorInputs({
+        inputs: snapshot.inputs,
+        siteResult: snapshot.outputs,
+        identity: {
+          projectId: 'fixture-roof',
+          estimateId: fixture.estimate.id,
+          designRequestId: fixture.request.id,
+        },
+      });
+      const solvedModel = buildWorkbenchSolvedModel({
+        snapshot,
+        draft: fixture.draft,
+        moduleLabels: fixture.moduleLabels,
+        geometryIdentity: {
+          projectId: 'fixture-roof',
+          estimateId: fixture.estimate.id,
+          designRequestId: fixture.request.id,
+        },
+      });
+      const workbenchCommercial = buildCommercialDesignInputFromWorkbenchSolvedModel({
+        solvedModel,
+        siteCommercial: calculatorCommercial.siteCommercial,
+      });
+
+      const report = compareCommercialDesignInputsV1(calculatorCommercial, workbenchCommercial, {
+        labelLeft: `${fixture.slug}:calculator_compat`,
+        labelRight: `${fixture.slug}:workbench_solved`,
+      });
+
+      expect(report.counts.pergolasCompared, fixture.slug).toBeGreaterThan(0);
+      expect(report.counts.modulesCompared, fixture.slug).toBeGreaterThan(0);
+      expect(report.counts.blockingDifferences, `${fixture.slug} blocking differences`).toBe(0);
+      expect(report.differences.filter((difference) => difference.category === 'structure'), fixture.slug).toEqual([]);
+
+      const calculatorModule = requireCommercialModule(calculatorCommercial);
+      const workbenchModule = requireCommercialModule(workbenchCommercial);
+      expect(workbenchModule.trustStatus, fixture.slug).toBe('ready');
+      expect(workbenchModule.designIntent).toMatchObject({
+        roofMaterial: calculatorModule.designIntent.roofMaterial,
+        roofType: calculatorModule.designIntent.roofType,
+        attachmentSide: calculatorModule.designIntent.attachmentSide,
+        roofPitchDeg: calculatorModule.designIntent.roofPitchDeg,
+      });
+      expectCloseOrEqual(
+        workbenchModule.designIntent.dimensions.lengthM,
+        calculatorModule.designIntent.dimensions.lengthM,
+        `${fixture.slug} authored length`,
+      );
+      expectCloseOrEqual(
+        workbenchModule.designIntent.dimensions.projectionM,
+        calculatorModule.designIntent.dimensions.projectionM,
+        `${fixture.slug} authored projection`,
+      );
+      expect(workbenchModule.solvedGeometry.roofPlaneCount, `${fixture.slug} roof planes`).toBe(
+        calculatorModule.solvedGeometry.roofPlaneCount,
+      );
+      expectCloseOrEqual(
+        workbenchModule.quantityTakeoff.primaryDimensions?.lengthM,
+        calculatorModule.quantityTakeoff.primaryDimensions?.lengthM,
+        `${fixture.slug} takeoff length`,
+      );
+      expectCloseOrEqual(
+        workbenchModule.quantityTakeoff.primaryDimensions?.projectionM,
+        calculatorModule.quantityTakeoff.primaryDimensions?.projectionM,
+        `${fixture.slug} takeoff projection`,
+      );
+    }
   });
 });

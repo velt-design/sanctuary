@@ -13,6 +13,7 @@ import {
 } from '@/lib/drawings/state/drawingWorkbenchUiState';
 import { buildAssemblyModel } from '@/lib/drawings/assembly/buildAssemblyModel';
 import { buildPlanViewModel } from '@/lib/drawings/views/plan/buildPlanViewModel';
+import type { WorkbenchDrawingSurfaceGeometry } from '@/lib/drawings/views/workbenchDrawingSurfaceGeometry';
 import type { ObjectWorkbenchPlanOverlayInput } from '@/lib/drawings/views/plan/objectWorkbenchPlanOverlay';
 import { resolveDeckHostEdgeFrame, resolveDeckPresetGeometry } from '@/lib/drawings/state/objectWorkbenchDeckGeometry';
 import type { DeckInteractionTelemetry } from '@/app/staff/projects/[projectId]/design-workbench/objectWorkbenchClientTypes';
@@ -483,22 +484,75 @@ function makeTopProjectionFromGeometryPlan(geometryPlan: GeometryPlanViewModel):
   };
 }
 
-function TestModelSpaceViewport(props: ComponentProps<typeof ModelSpaceViewport>) {
+type TestModelSpaceViewportProps = ComponentProps<typeof ModelSpaceViewport> & {
+  planModel?: ModulePlanModel | null;
+  sectionModel?: ReturnType<typeof makeDrawingModule>['sectionModel'] | null;
+};
+
+function TestModelSpaceViewport(props: TestModelSpaceViewportProps) {
+  const {
+    planModel,
+    sectionModel,
+    drawingSurfaceGeometry,
+    ...viewportProps
+  } = props;
   const planViewModel =
     props.planViewModel ??
-    (props.view === 'plan' && props.planModel
+    (props.view === 'plan' && planModel
       ? buildPlanViewModel({
           moduleId: 'module-1',
           moduleLabel: 'Module 1',
-          planModel: props.planModel,
-          geometryPlan: makeGeometryPlanFromPlanModel(props.planModel),
-          geometryTopProjection: makeTopProjectionFromGeometryPlan(makeGeometryPlanFromPlanModel(props.planModel)),
+          planModel,
+          geometryPlan: makeGeometryPlanFromPlanModel(planModel),
+          geometryTopProjection: makeTopProjectionFromGeometryPlan(makeGeometryPlanFromPlanModel(planModel)),
           pergolaRenderSource: 'geometry',
           pergolaRenderStatus: 'geometry_ready',
           canEditHouseFootprint: Boolean(props.onCommitFootprintEdit),
         })
       : props.planViewModel);
-  return <ModelSpaceViewport {...props} planViewModel={planViewModel} />;
+  const surfaceGeometry: WorkbenchDrawingSurfaceGeometry | null =
+    drawingSurfaceGeometry ??
+    (props.view === 'plan' && planModel
+      ? {
+          source: 'solved_geometry',
+          artifact: {
+            plan: makeGeometryPlanFromPlanModel(planModel),
+            topProjection: makeTopProjectionFromGeometryPlan(makeGeometryPlanFromPlanModel(planModel)),
+          } as WorkbenchDrawingSurfaceGeometry['artifact'],
+          legacyFallback: {
+            planModel,
+            sectionModel: sectionModel ?? null,
+          },
+          planModel,
+          planViewModel: planViewModel ?? null,
+          geometryPlan: makeGeometryPlanFromPlanModel(planModel),
+          geometryTopProjection: makeTopProjectionFromGeometryPlan(makeGeometryPlanFromPlanModel(planModel)),
+          sectionModel: sectionModel ?? null,
+          geometrySection: null,
+        }
+      : sectionModel
+        ? {
+            source: 'legacy_fallback',
+            artifact: null,
+            legacyFallback: {
+              planModel: planModel ?? null,
+              sectionModel,
+            },
+            planModel: planModel ?? null,
+            planViewModel: planViewModel ?? null,
+            geometryPlan: null,
+            geometryTopProjection: null,
+            sectionModel,
+            geometrySection: null,
+          }
+        : null);
+  return (
+    <ModelSpaceViewport
+      {...viewportProps}
+      drawingSurfaceGeometry={surfaceGeometry}
+      planViewModel={planViewModel}
+    />
+  );
 }
 
 function makePlanEditableFields(): EstimateDrawingField[] {

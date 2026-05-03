@@ -605,6 +605,7 @@ describe('@sp/geometry contracts', () => {
     expect(typeof geometryModule.buildTopProjectionParityReport).toBe('function');
     expect(typeof geometryModule.buildPlanViewModel).toBe('function');
     expect(typeof geometryModule.buildSectionViewModel).toBe('function');
+    expect(typeof geometryModule.buildAssemblyQuantityTakeoff).toBe('function');
   });
 
   it('supports mono, gable, and box V1 configs using the new 3D-first geometry contract', () => {
@@ -642,6 +643,7 @@ describe('@sp/geometry contracts', () => {
       .join('\n');
 
     expect(sourceFiles).not.toContain('apps/portal');
+    expect(sourceFiles).not.toContain('@sp/costing');
     expect(sourceFiles).not.toContain("from 'react'");
     expect(sourceFiles).not.toContain('ModulePlanModel');
     expect(sourceFiles).not.toContain('ModuleSectionModel');

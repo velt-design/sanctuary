@@ -4,7 +4,10 @@ import type {
   GeometryTopProjectionViewModel,
 } from '@sp/geometry';
 import type { ModulePlanModel, ModuleSectionModel } from '@/app/staff/calculator/moduleViews';
-import type { WorkbenchViewportGeometry } from '@/lib/drawings/state/workbenchSolvedModel';
+import type {
+  WorkbenchSolvedGeometryArtifact,
+  WorkbenchViewportGeometry,
+} from '@/lib/drawings/state/workbenchSolvedModel';
 import type { PlanViewModel } from './plan/buildPlanViewModel';
 
 type WorkbenchDrawingSurfaceGeometrySource =
@@ -14,6 +17,11 @@ type WorkbenchDrawingSurfaceGeometrySource =
 
 export type WorkbenchDrawingSurfaceGeometry = {
   source: WorkbenchDrawingSurfaceGeometrySource;
+  artifact: WorkbenchSolvedGeometryArtifact | null;
+  legacyFallback: {
+    planModel: ModulePlanModel | null;
+    sectionModel: ModuleSectionModel | null;
+  };
   planModel: ModulePlanModel | null;
   planViewModel: PlanViewModel | null;
   geometryPlan: GeometryPlanViewModel | null;
@@ -35,6 +43,8 @@ export function buildWorkbenchDrawingSurfaceGeometry(input: {
   if (artifact) {
     return {
       source: 'solved_geometry',
+      artifact,
+      legacyFallback: fallback,
       planModel: fallback.planModel,
       planViewModel: input.planViewModel,
       geometryPlan: artifact.plan,
@@ -47,6 +57,8 @@ export function buildWorkbenchDrawingSurfaceGeometry(input: {
   if (fallback.planModel || fallback.sectionModel) {
     return {
       source: 'legacy_fallback',
+      artifact: null,
+      legacyFallback: fallback,
       planModel: fallback.planModel,
       planViewModel: input.planViewModel,
       geometryPlan: null,
@@ -58,6 +70,8 @@ export function buildWorkbenchDrawingSurfaceGeometry(input: {
 
   return {
     source: 'unavailable',
+    artifact: null,
+    legacyFallback: fallback,
     planModel: null,
     planViewModel: input.planViewModel,
     geometryPlan: null,

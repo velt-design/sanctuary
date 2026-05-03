@@ -1,7 +1,6 @@
 'use client';
 
 import type { ModuleViewsStatus, ModuleViewsTab } from '@/app/staff/calculator/ModuleViewsCard';
-import type { ModulePlanModel, ModuleSectionModel } from '@/app/staff/calculator/moduleViews';
 import EstimateDrawingSheet from '@/components/estimates/EstimateDrawingSheet';
 import type { PlanViewModel } from '@/lib/drawings/views/plan/buildPlanViewModel';
 import type { WorkbenchDrawingSurfaceGeometry } from '@/lib/drawings/views/workbenchDrawingSurfaceGeometry';
@@ -13,8 +12,6 @@ export type SheetComposerDocument = {
   view: ModuleViewsTab;
   status: ModuleViewsStatus;
   drawingSurfaceGeometry?: WorkbenchDrawingSurfaceGeometry | null;
-  planModel?: ModulePlanModel | null;
-  sectionModel?: ModuleSectionModel | null;
   planViewModel?: PlanViewModel | null;
   meta: EstimateDrawingSheetMeta;
   editableFields?: EstimateDrawingField[];
@@ -35,8 +32,6 @@ export default function SheetComposer({ document }: { document: SheetComposerDoc
       view={document.view}
       status={document.status}
       drawingSurfaceGeometry={document.drawingSurfaceGeometry}
-      planModel={document.planModel}
-      sectionModel={document.sectionModel}
       planViewModel={document.planViewModel}
       meta={document.meta}
       editableFields={document.editableFields}

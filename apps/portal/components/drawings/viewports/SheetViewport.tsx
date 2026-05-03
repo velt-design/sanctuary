@@ -1,7 +1,6 @@
 'use client';
 
 import type { ModuleViewsStatus, ModuleViewsTab } from '@/app/staff/calculator/ModuleViewsCard';
-import type { ModulePlanModel, ModuleSectionModel } from '@/app/staff/calculator/moduleViews';
 import type { PlanViewModel } from '@/lib/drawings/views/plan/buildPlanViewModel';
 import type { WorkbenchDrawingSurfaceGeometry } from '@/lib/drawings/views/workbenchDrawingSurfaceGeometry';
 import type { EstimateDrawingField, EstimateDrawingFootprintEdit } from '@/lib/estimates/drawingEdits';
@@ -14,8 +13,6 @@ export default function SheetViewport({
   view,
   status,
   drawingSurfaceGeometry,
-  planModel,
-  sectionModel,
   planViewModel,
   meta,
   editableFields,
@@ -27,8 +24,6 @@ export default function SheetViewport({
   view: ModuleViewsTab;
   status: ModuleViewsStatus;
   drawingSurfaceGeometry?: WorkbenchDrawingSurfaceGeometry | null;
-  planModel?: ModulePlanModel | null;
-  sectionModel?: ModuleSectionModel | null;
   planViewModel?: PlanViewModel | null;
   meta: EstimateDrawingSheetMeta;
   editableFields?: EstimateDrawingField[];
@@ -46,8 +41,6 @@ export default function SheetViewport({
     view,
     status,
     drawingSurfaceGeometry,
-    planModel,
-    sectionModel,
     planViewModel,
     meta,
     editableFields,

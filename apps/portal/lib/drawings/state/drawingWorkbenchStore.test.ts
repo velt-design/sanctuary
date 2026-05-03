@@ -263,6 +263,11 @@ describe('buildDrawingWorkbenchStore', () => {
     expect(store.derived.activeViewportGeometry?.legacyFallback.sectionModel).toBe(store.derived.activeSectionModel);
     expect(store.derived.activeDrawingSurfaceGeometry).toBe(store.derived.activeModule?.drawingSurfaceGeometry);
     expect(store.derived.activeDrawingSurfaceGeometry?.source).toBe('solved_geometry');
+    expect(store.derived.activeDrawingSurfaceGeometry?.artifact).toBe(store.derived.activeViewportGeometry?.artifact);
+    expect(store.derived.activeDrawingSurfaceGeometry?.legacyFallback).toEqual({
+      planModel: store.derived.activePlanModel,
+      sectionModel: store.derived.activeSectionModel,
+    });
     expect(store.derived.activeDrawingSurfaceGeometry?.planModel).toBe(store.derived.activePlanModel);
     expect(store.derived.activeDrawingSurfaceGeometry?.sectionModel).toBe(store.derived.activeSectionModel);
     expect(store.derived.activeSolution?.geometryPlan).toBe(store.derived.activeModule?.geometryPlanViewModel);
@@ -486,6 +491,11 @@ describe('buildDrawingWorkbenchStore', () => {
     expect(store.derived.activeViewportGeometry?.legacyFallback.planModel).toBe(store.derived.activePlanModel);
     expect(store.derived.activeViewportGeometry?.legacyFallback.sectionModel).toBe(store.derived.activeSectionModel);
     expect(store.derived.activeDrawingSurfaceGeometry?.source).toBe('legacy_fallback');
+    expect(store.derived.activeDrawingSurfaceGeometry?.artifact).toBeNull();
+    expect(store.derived.activeDrawingSurfaceGeometry?.legacyFallback).toEqual({
+      planModel: store.derived.activePlanModel,
+      sectionModel: store.derived.activeSectionModel,
+    });
     expect(store.derived.activeDrawingSurfaceGeometry?.planModel).toBe(store.derived.activePlanModel);
     expect(store.derived.activeDrawingSurfaceGeometry?.sectionModel).toBe(store.derived.activeSectionModel);
     expect(store.derived.activeDrawingSurfaceGeometry?.geometryPlan).toBeNull();

@@ -51,6 +51,12 @@ describe('buildWorkbenchDrawingSurfaceGeometry', () => {
       planViewModel,
     });
 
+    expect(surface.artifact).toBeTruthy();
+    expect(surface.artifact?.plan).toBe(geometryPlan);
+    expect(surface.legacyFallback).toEqual({
+      planModel,
+      sectionModel,
+    });
     expect(surface).toMatchObject({
       source: 'solved_geometry',
       planModel,
@@ -75,6 +81,11 @@ describe('buildWorkbenchDrawingSurfaceGeometry', () => {
 
     expect(surface).toMatchObject({
       source: 'legacy_fallback',
+      artifact: null,
+      legacyFallback: {
+        planModel,
+        sectionModel,
+      },
       planModel,
       planViewModel,
       geometryPlan: null,
@@ -92,6 +103,11 @@ describe('buildWorkbenchDrawingSurfaceGeometry', () => {
 
     expect(surface).toMatchObject({
       source: 'unavailable',
+      artifact: null,
+      legacyFallback: {
+        planModel: null,
+        sectionModel: null,
+      },
       planModel: null,
       planViewModel,
       geometryPlan: null,

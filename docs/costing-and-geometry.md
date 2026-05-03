@@ -5,7 +5,7 @@ Costing and geometry are shared domain sources of truth. Do not copy their logic
 ## Read First
 
 - Use `## Costing Source Of Truth` before changing pricing or costing imports.
-- Use `## Commercial Spine` and `## Portal Cost Overrides` for commercial shadow flow and override boundaries.
+- Use `## Commercial Boundary And Migration Harness` and `## Portal Cost Overrides` for commercial shadow flow and override boundaries.
 - Use `## Geometry Source Of Truth` before changing geometry solvers or portal drawing adapters.
 - Use the projection and shape sections for top-projection, roof/span, gable, downslope, and acrylic rules.
 - Finish with `## Verification` for package and app checks.
@@ -22,27 +22,32 @@ import { calculateCostV1, calculateJobCostV1, loadCostingConfigV1 } from '@sp/co
 
 Lint blocks legacy costing engine/config copies in app paths. If you need a costing behavior change, update `packages/costing` and then update call sites.
 
-## Commercial Spine
+## Commercial Boundary And Migration Harness
 
-The future commercial flow is shadow-only until an explicit integration task wires it into estimate or quote persistence:
+The future commercial flow is geometry-first, but it remains shadow-only until an explicit integration task wires it into estimate or quote persistence:
 
 ```text
 object-first design intent
-  -> solved geometry
-  -> quantity takeoff
-  -> costing
+  -> @sp/geometry solved physical model
+  -> geometry-derived quantity takeoff
+  -> @sp/costing commercial input and pricing
+  -> estimates / quotes / invoices / job packs
 ```
 
 - Design intent is the authored truth: house forms, pergolas, decks, openings, attachments, and options.
-- Solved geometry is the physical truth: dimensions, planes, members, host zones, validation, and trust.
-- Quantity takeoff is the bridge between physical geometry and commercial pricing.
-- Costing remains the commercial truth for materials, install/labour, overheads, accessories, BOM, and quote breakdowns.
+- Solved geometry is the physical truth: dimensions, planes, members, host zones, validation, interaction geometry, and trust.
+- Geometry-derived quantity takeoff is the bridge between physical geometry and commercial pricing.
+- Costing remains the commercial truth for materials, install/labour, overheads, accessories, BOM, quote breakdowns, and commercial comparison rules.
 
-`packages/costing/src/commercial` exports the first shadow contract (`CommercialDesignInputV1`) and the calculator field-ownership map. Existing `CostInputsV1`, `SiteInputsV1`, and `calculateSiteCostV1` remain the live pricing path. Do not make saved estimates, quote totals, public outputs, or job-pack pricing consume the commercial spine until a later task explicitly changes that rollout boundary.
+`CommercialDesignInputV1` is the costing-facing boundary and migration comparison contract. It is downstream of solved geometry and site/commercial options; it must not become a parallel geometry model. Existing `CostInputsV1`, `SiteInputsV1`, and `calculateSiteCostV1` remain the live pricing path until parity reports are stable and a later task explicitly changes that rollout boundary.
+
+Workbench must not own pricing policy. Costing must not solve geometry. Portal may orchestrate, adapt, persist, and show status, but it must not duplicate package truth. Compatibility models may support fallback, migration, or diagnostics, but they must not become normal geometry-ready paths.
+
+`packages/costing/src/commercial` exports the first shadow contract (`CommercialDesignInputV1`) and the calculator field-ownership map. Do not make saved estimates, quote totals, public outputs, or job-pack pricing consume the commercial boundary until an explicit rollout task lands.
 
 `apps/portal/lib/estimates/commercialDesignPayload.ts` is the first portal-side shadow adapter. It converts current calculator inputs, plus an optional existing `SiteOutputV1`, into `CommercialDesignInputV1` for future comparison work. It is callable-only: it must not write saved estimate outputs, change quote totals, or replace the live `calculateSiteCostV1` path until a later explicit integration task.
 
-`apps/portal/lib/drawings/commercialDesignPayload.ts` is the workbench-side shadow adapter. It converts `WorkbenchSolvedModel` plus explicit site commercial fields into `CommercialDesignInputV1` with `source: 'workbench_solved'`. It consumes solved geometry and quantity hooks only; it must not mutate geometry, persist commercial payloads, or replace live pricing until a later explicit integration task.
+`apps/portal/lib/drawings/commercialDesignPayload.ts` is the workbench-side shadow adapter. It converts `WorkbenchSolvedModel` plus explicit site commercial fields into `CommercialDesignInputV1` with `source: 'workbench_solved'`. It consumes solved geometry and quantity hooks only; it must not mutate geometry, persist commercial payloads, own physical takeoff policy long term, or replace live pricing until a later explicit integration task.
 
 `compareCommercialDesignInputsV1()` in `@sp/costing` compares two commercial payloads and returns a structured parity report. These reports are shadow-only comparison signal for adapter and geometry alignment; they must not drive pricing, persistence, customer-facing quote totals, or job-pack output until a later explicit integration task.
 
@@ -73,6 +78,7 @@ Canonical geometry solving lives in `packages/geometry`. There is one physical g
 object-first design intent
   -> solved geometry
   -> viewer scene / top projection / section / sheet / snap / detail / interaction views
+  -> physical quantity takeoff hooks
 ```
 
 Portal workbench runtime packages this solved output as `WorkbenchSolvedGeometryArtifact`. Geometry-ready consumers should read scene, top projection, plan, section, validation, and trust/status metadata through that artifact first; loose plan/top-projection fields are compatibility aliases while legacy `ModulePlanModel` and sheet geometry remain fallback/presentation data.
@@ -82,6 +88,8 @@ Workbench viewport routing packages those view inputs as `WorkbenchViewportGeome
 Sheet and Model Space routing packages drawing inputs as `WorkbenchDrawingSurfaceGeometry`. When solved geometry is ready, this surface contract points at the artifact plan, top projection, and section first; legacy `ModulePlanModel`/`ModuleSectionModel` values remain compatibility presenters or explicit fallback when the artifact is unavailable. `ModuleDrawingRenderer` consumes this drawing-surface contract instead of accepting loose model-space geometry props; lower SVG presenters may still receive prepared render inputs internally. Section View has a geometry-native presentation path for the artifact's `GeometrySectionViewModel`, so geometry-ready section rendering is a view of the solved geometry spine rather than a calculator-era section model fork.
 
 Top projection, wall edges, section cuts, sheet plans, dimensions, snap frames, hit targets, and interaction frames must be generated from the same solved geometry. App-local calculator plan models, object-workbench overlays, and sheet renderers may adapt or present that geometry, but they must not own separate view-specific geometry that can drift from 3D or from saved object intent.
+
+Physical takeoff should also be derived from the solved geometry spine. Portal shadow adapters may read geometry quantities during migration, but long-term takeoff policy belongs with package-owned geometry contracts, not app-local drawing or pricing code.
 
 Top projection is scene-first: `buildTopProjectionViewModelFromScene()` projects the same `ViewerSceneModel` used by 3D into world-XY plan shapes. Mesh-backed house solids use the world `+Z` top-view contract, not render-mesh vertex order or face winding. The 3D Top camera sits above the model with screen X as world `-X` and screen Y down as world `+Y`; plan renderers mirror top-projection X coordinates to match that actual camera view and invert that same transform for deck drag coordinates. Geometry-ready Model Space is a projection-only surface: top projection is the single committed visual body source, and legacy/context/reference/opening overlays cannot draw normal Model Space bodies or draggable visible geometry. Sheet View and unsupported geometry fallback keep legacy paths. Normal projection rendering uses each shape's `metadata.topProjectionRole` so hidden lower envelope geometry and context/reference bodies cannot dominate or duplicate the plan. The assembly helper `buildTopProjectionViewModel()` remains available as a compatibility wrapper that builds the viewer scene, adds assembly reference shapes, and then calls the scene-first projection path.
 

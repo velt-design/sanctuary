@@ -1,10 +1,8 @@
 'use client';
 
 import type { ModuleViewsStatus, ModuleViewsTab } from '@/app/staff/calculator/ModuleViewsCard';
-import type { ModulePlanModel, ModuleSectionModel } from '@/app/staff/calculator/moduleViews';
 import type { PlanViewModel } from '@/lib/drawings/views/plan/buildPlanViewModel';
 import type { WorkbenchDrawingSurfaceGeometry } from '@/lib/drawings/views/workbenchDrawingSurfaceGeometry';
-import type { ObjectWorkbenchGeometryPreviewState } from '@/lib/drawings/geometry/buildWorkbenchGeometryPreview';
 import type { EstimateDrawingField, EstimateDrawingFootprintEdit } from '@/lib/estimates/drawingEdits';
 import type { EstimateDrawingSheetMeta } from '@/lib/estimates/drawingSheet';
 import type { DeckInteractionTelemetry } from '@/lib/drawings/interactions/deckInteractionContract';
@@ -46,10 +44,7 @@ type DrawingWorkbenchProps = {
   trustGate?: WorkbenchTrustGateModel | null;
   viewportGeometry?: WorkbenchViewportGeometry | null;
   drawingSurfaceGeometry?: WorkbenchDrawingSurfaceGeometry | null;
-  planModel?: ModulePlanModel | null;
-  sectionModel?: ModuleSectionModel | null;
   planViewModel?: PlanViewModel | null;
-  geometryPreview?: ObjectWorkbenchGeometryPreviewState | null;
   activeObjectRef?: WorkbenchObjectRef | null;
   pergolaTargetId?: string | null;
   enableProjectionOnlyModelInteractions?: boolean;
@@ -116,10 +111,7 @@ export default function DrawingWorkbench({
   trustGate,
   viewportGeometry,
   drawingSurfaceGeometry,
-  planModel,
-  sectionModel,
   planViewModel,
-  geometryPreview,
   activeObjectRef,
   pergolaTargetId,
   enableProjectionOnlyModelInteractions,
@@ -175,10 +167,7 @@ export default function DrawingWorkbench({
         status={status}
         viewportGeometry={viewportGeometry}
         drawingSurfaceGeometry={drawingSurfaceGeometry}
-        planModel={planModel}
-        sectionModel={sectionModel}
         planViewModel={planViewModel}
-        geometryPreview={geometryPreview}
         activeObjectRef={activeObjectRef}
         pergolaTargetId={pergolaTargetId}
         enableProjectionOnlyModelInteractions={enableProjectionOnlyModelInteractions}
