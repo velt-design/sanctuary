@@ -78,7 +78,7 @@ export type WorkbenchTrustStatus = {
   message: string | null;
 };
 
-export type WorkbenchTrustGateAction = 'pass' | 'warn' | 'block';
+type WorkbenchTrustGateAction = 'pass' | 'warn' | 'block';
 
 export type WorkbenchTrustGateModel = {
   status: WorkbenchTrustGateAction;
@@ -98,6 +98,26 @@ export type WorkbenchGeometryIdentity = {
   designRequestId?: string | null;
 };
 
+type WorkbenchSolvedGeometryArtifactFallback =
+  | null
+  | 'legacy_unsupported_family'
+  | 'invalid_geometry';
+
+export type WorkbenchSolvedGeometryArtifact = {
+  source: 'solved_geometry';
+  fallback: WorkbenchSolvedGeometryArtifactFallback;
+  config: GeometryConfig;
+  assembly: Assembly3D;
+  plan: GeometryPlanViewModel;
+  section: GeometrySectionViewModel;
+  topProjection: GeometryTopProjectionViewModel;
+  viewerScene: ViewerSceneModel;
+  validation: GeometryValidationReport;
+  trust: WorkbenchTrustStatus;
+  renderSource: ObjectWorkbenchPergolaRenderSource;
+  renderStatus: ObjectWorkbenchPergolaRenderStatus;
+};
+
 export type WorkbenchSolvedModule = {
   index: number;
   id: string;
@@ -110,6 +130,7 @@ export type WorkbenchSolvedModule = {
   trust: WorkbenchTrustStatus;
   renderSource: ObjectWorkbenchPergolaRenderSource;
   renderStatus: ObjectWorkbenchPergolaRenderStatus;
+  geometryArtifact: WorkbenchSolvedGeometryArtifact | null;
   config: GeometryConfig | null;
   assembly: Assembly3D | null;
   geometryPlan: GeometryPlanViewModel | null;
@@ -578,6 +599,7 @@ function buildInvalidSolvedModule(input: {
     }),
     renderSource: 'legacy',
     renderStatus: 'invalid_geometry',
+    geometryArtifact: null,
     config: null,
     assembly: null,
     geometryPlan: null,
@@ -682,6 +704,7 @@ function buildSolvedModule(input: {
       }),
       renderSource: derivation.renderSource,
       renderStatus: derivation.renderStatus,
+      geometryArtifact: null,
       config: null,
       assembly: null,
       geometryPlan: null,
@@ -732,6 +755,25 @@ function buildSolvedModule(input: {
     scene,
     fallbackTopProjection: derivation.geometryTopProjection,
   });
+  const trust = buildTrustStatus({
+    status: 'geometry_ready',
+    issues: collectGeometryTrustIssues(input.geometryContext),
+    renderSource: 'geometry',
+  });
+  const geometryArtifact: WorkbenchSolvedGeometryArtifact = {
+    source: 'solved_geometry',
+    fallback: null,
+    config: derivation.config,
+    assembly: derivation.assembly,
+    plan: derivation.geometryPlan,
+    section: derivation.geometrySection,
+    topProjection: geometryTopProjection,
+    viewerScene: scene,
+    validation,
+    trust,
+    renderSource: derivation.renderSource,
+    renderStatus: derivation.renderStatus,
+  };
 
   return {
     index: input.index,
@@ -742,29 +784,26 @@ function buildSolvedModule(input: {
     previewMode,
     resultSource: resolved.resultSource,
     draftTouchesGeometry: resolved.draftTouchesGeometry,
-    trust: buildTrustStatus({
-      status: 'geometry_ready',
-      issues: collectGeometryTrustIssues(input.geometryContext),
-      renderSource: 'geometry',
-    }),
-    renderSource: derivation.renderSource,
-    renderStatus: derivation.renderStatus,
-    config: derivation.config,
-    assembly: derivation.assembly,
-    geometryPlan: derivation.geometryPlan,
-    geometrySection: derivation.geometrySection,
-    geometryTopProjection,
-    validation,
-    viewerScene: scene,
+    trust,
+    renderSource: geometryArtifact.renderSource,
+    renderStatus: geometryArtifact.renderStatus,
+    geometryArtifact,
+    config: geometryArtifact.config,
+    assembly: geometryArtifact.assembly,
+    geometryPlan: geometryArtifact.plan,
+    geometrySection: geometryArtifact.section,
+    geometryTopProjection: geometryArtifact.topProjection,
+    validation: geometryArtifact.validation,
+    viewerScene: geometryArtifact.viewerScene,
     geometryPreview: {
       kind: 'ready',
       previewMode,
       resultSource: resolved.resultSource,
-      config: derivation.config,
-      assembly: derivation.assembly,
-      validation,
-      scene,
-      topProjection: geometryTopProjection,
+      config: geometryArtifact.config,
+      assembly: geometryArtifact.assembly,
+      validation: geometryArtifact.validation,
+      scene: geometryArtifact.viewerScene,
+      topProjection: geometryArtifact.topProjection,
       deckSupport,
     },
     deckSupport,
@@ -849,7 +888,7 @@ export function buildWorkbenchSolvedModel(input: {
   };
 }
 
-export function buildGeometryPreviewStateFromSolvedModule(
+function buildGeometryPreviewStateFromSolvedModule(
   module: WorkbenchSolvedModule | null,
   fallbackMessage = 'The selected module is not available for 3D geometry preview.',
 ): GeometryPreviewState {

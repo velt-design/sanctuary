@@ -6671,9 +6671,7 @@ describe('ModelSpaceViewport', () => {
     const footprintHit = rendered.container.querySelector('[data-object-workbench-shape-hit^="footprint:"]');
     if (!footprintHit) throw new Error('Missing footprint hit target.');
     clickElement(footprintHit);
-    await act(async () => {
-      await Promise.resolve();
-    });
+    await flushAnimationFrame();
     expect(scroller.dataset.objectWorkbenchSelectedDeckId).toBe('');
 
     rendered.unmount();

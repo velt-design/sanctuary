@@ -23,6 +23,8 @@ Keep deletion PRs small. A good retirement change removes one cohesive surface, 
 
 `npm run dead-code:changed` narrows the same report to files touched in the local dirty worktree, or to PR base/head comparison when `ARCHITECTURE_CHANGED_BASE` and `ARCHITECTURE_CHANGED_HEAD` are set.
 
+`npm run architecture:changed` includes `dead-code:changed` for routine non-trivial handoffs, after worktree ownership and before the other architecture changed-file reports. Use the focused `dead-code:changed` command directly for deletion, dependency, or cleanup work that needs the dedicated Knip summary.
+
 Classifications:
 
 | Classification | Meaning | Default Action |
@@ -59,8 +61,9 @@ Do not delete active guardrail docs, ordered migrations, public package exports,
 
 Start advisory:
 
-1. Run `npm run dead-code:changed` in handoffs when adding, deleting, or touching files that Knip reports.
+1. Run `npm run architecture:changed` for routine non-trivial handoffs so dead-code pressure appears with the other architecture guardrails.
 2. Run `npm run dead-code:report` during cleanup and readiness work.
-3. Let Portal Quality publish PR-aware advisory output.
-4. After the registry is calibrated, add strict mode only for newly added unused files or exports.
-5. Use small cleanup PRs to delete proven candidates and retire registry entries.
+3. Run `npm run dead-code:changed` directly for deletion, dependency, or cleanup work.
+4. Let Portal Quality publish PR-aware advisory output.
+5. After the registry is calibrated, add strict mode only for newly added unused files or exports.
+6. Use small cleanup PRs to delete proven candidates and retire registry entries.

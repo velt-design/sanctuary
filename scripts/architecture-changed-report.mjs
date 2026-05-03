@@ -7,6 +7,7 @@ import {
 const STRICT = process.argv.includes('--strict');
 const CHECKS = [
   { label: 'Worktree ownership', advisoryScript: 'worktree:changed' },
+  { label: 'Dead-code pressure', advisoryScript: 'dead-code:changed' },
   { label: 'File decomposition pressure', advisoryScript: 'files:changed', strictScript: 'files:changed:strict' },
   { label: 'Root compatibility growth', advisoryScript: 'root:compat:changed', strictScript: 'root:compat:changed:strict' },
   { label: 'Browser Supabase access', advisoryScript: 'browser:supabase:changed', strictScript: 'browser:supabase:changed:strict' },

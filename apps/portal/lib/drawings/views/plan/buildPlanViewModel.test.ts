@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { ModulePlanModel } from '@/app/staff/calculator/moduleViews';
 import type { GeometryPlanViewModel, GeometryTopProjectionViewModel } from '@sp/geometry';
+import type { WorkbenchSolvedGeometryArtifact } from '@/lib/drawings/state/workbenchSolvedModel';
 import type {
   DeckObjectModel,
   HouseAssemblyModel,
@@ -344,6 +345,31 @@ function makeGeometryTopProjection(): GeometryTopProjectionViewModel {
   };
 }
 
+function makeGeometryArtifact(
+  overrides: Partial<WorkbenchSolvedGeometryArtifact> = {},
+): WorkbenchSolvedGeometryArtifact {
+  return {
+    source: 'solved_geometry',
+    fallback: null,
+    config: {} as WorkbenchSolvedGeometryArtifact['config'],
+    assembly: { id: 'artifact-assembly' } as unknown as WorkbenchSolvedGeometryArtifact['assembly'],
+    plan: makeGeometryPlan(),
+    section: {} as WorkbenchSolvedGeometryArtifact['section'],
+    topProjection: makeGeometryTopProjection(),
+    viewerScene: { layers: [] } as unknown as WorkbenchSolvedGeometryArtifact['viewerScene'],
+    validation: {} as WorkbenchSolvedGeometryArtifact['validation'],
+    trust: {
+      status: 'geometry_ready',
+      issues: [],
+      renderSource: 'geometry',
+      message: null,
+    },
+    renderSource: 'geometry',
+    renderStatus: 'geometry_ready',
+    ...overrides,
+  };
+}
+
 function makeDeck(): DeckObjectModel {
   return {
     id: 'deck-1',
@@ -419,6 +445,39 @@ function makeObjectWorkbenchOverlayInput(
 }
 
 describe('buildPlanViewModel', () => {
+  it('prefers the solved geometry artifact over loose compatibility geometry fields', () => {
+    const artifactPlan = makeGeometryPlan();
+    const artifactTopProjection = makeGeometryTopProjection();
+    const artifact = makeGeometryArtifact({
+      plan: artifactPlan,
+      topProjection: artifactTopProjection,
+    });
+    const loosePlan = makeGeometryPlan();
+    const looseTopProjection = makeGeometryTopProjection();
+    const viewModel = buildPlanViewModel({
+      moduleId: 'module-1',
+      moduleLabel: 'Module 1',
+      planModel: makePlanModelWithHouseContext(),
+      geometryArtifact: artifact,
+      geometryPlan: loosePlan,
+      geometryTopProjection: looseTopProjection,
+      geometryAssembly: { id: 'loose-assembly' } as unknown as WorkbenchSolvedGeometryArtifact['assembly'],
+      pergolaRenderSource: 'legacy',
+      pergolaRenderStatus: 'legacy_unsupported_family',
+    });
+
+    expect(viewModel?.modelSpacePergola.geometryPlan).toBe(artifactPlan);
+    expect(viewModel?.modelSpacePergola.geometryTopProjection).toBe(artifactTopProjection);
+    expect(viewModel?.modelSpacePergola.geometryAssembly).toBe(artifact.assembly);
+    expect(viewModel?.modelSpacePergola.renderSource).toBe('geometry');
+    expect(viewModel?.modelSpacePergola.renderStatus).toBe('geometry_ready');
+    expect(viewModel?.modelSpacePergola.geometryArtifactDiagnostics).toEqual({
+      source: 'solved_geometry',
+      fallback: null,
+      topProjectionFromViewerSceneArtifact: true,
+    });
+  });
+
   it('builds model-space overlay shapes from solved geometry rather than compatibility plan context', () => {
     const planModel = makePlanModelWithHouseContext();
     const geometryPlan = makeGeometryPlan();

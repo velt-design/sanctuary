@@ -51,7 +51,7 @@ This snapshot records the most recent known production-readiness state from the 
 
 | Area | Status | Last Known Signal | Next Action |
 | --- | --- | --- | --- |
-| Portal tests | Green | `npm run portal:doctor:quick` passed after contacts/projects server-client test isolation cleanup; focused `npm run test:portal:projects` passed with 40 files and 197 tests. | Keep using focused portal scripts during feature work and quick doctor for routine readiness. |
+| Portal tests | Green | `npm run test:portal:log` passed on 2026-05-03 after stabilizing the workbench snapped-deck settle assertion: broad portal Vitest reported 193 files and 1203 tests passing. | Keep using focused portal scripts during feature work and quick doctor for routine readiness. |
 | Lint and guards | Green | `npm run portal:doctor:quick` completed `npm run lint`, including docs guard, cache guard, brand guard, mojibake, and ESLint. | Keep lint in quick doctor and portal PR CI. |
 | Schedule bundle budget | Green | `npm run schedule:bundle-budget` passed: 589.0 KiB initial raw, 169.1 KiB initial gzip, 333.2 KiB lazy raw, 78.3 KiB lazy gzip. | Keep the budget in portal CI and re-run after schedule chunk changes. |
 | Production security audit | Green | `npm audit --omit=dev` reported 0 vulnerabilities during blocker review. Portal Quality now runs `npm run audit:security` as a blocking pull-request gate, with Governance Monthly retaining the broader audit sweep. | Keep audit visible through `portal:doctor`, Portal Quality, and governance checks. |
@@ -65,7 +65,7 @@ This snapshot records the most recent known production-readiness state from the 
 | Local-first flows | Yellow | Focused local-first gate passed with 12 files and 67 tests: store/queue aliases, retries, conflicts, estimate editability, estimate API lock behavior, and `LocalFirstPortalMutations` handler coverage for estimate/quote aliases, retry, and conflict states. | Keep manual pending, failed, retry, conflict, and lock-state browser QA open until valid staff credentials and compatible project data exist. |
 | Quote/invoice/job-pack side effects | Green | `npm run portal:side-effects` passed: 8 quote/invoice/job-pack test files and 32 tests passed, then `npm run build:portal` completed with `Compiled successfully`, TypeScript, and 55 static pages generated. | Keep manual public-token and side-effect QA in release checks with a compatible portal environment. |
 | Schedule workflow | Green | `npm run test:portal:schedule` passed with 38 files and 215 tests, covering Schedule V2 APIs, readiness, Board/Gantt/Site Visits client paths, command boundaries, and legacy fallback isolation. | Keep live readiness and manual Board/Gantt/Site Visit checks in release QA with staff credentials and a migrated database. |
-| Design workbench | Green | `npm run test:portal:workbench` passed: 53 Vitest files and 557 tests passed across drawing UI, drawing state/geometry, workbench route/client coverage, and estimate sheet drawing coverage; then browser fixture coverage passed with 3 no-auth fixture tests and 1 auth-backed smoke skipped by design. | Keep manual edit/save/reload and high-risk visual QA in release checks with authenticated staff data while continuing to reduce named compatibility surface. |
+| Design workbench | Green | `npm run test:portal:workbench` passed: 54 Vitest files and 562 tests passed across drawing UI, drawing state/geometry, workbench route/client coverage, and estimate sheet drawing coverage; then browser fixture coverage passed with 3 no-auth fixture tests and 1 auth-backed smoke skipped by design. | Keep manual edit/save/reload and high-risk visual QA in release checks with authenticated staff data while continuing to reduce named compatibility surface. |
 
 ## Production-Grade Checklist
 
@@ -133,13 +133,13 @@ This snapshot records the most recent known production-readiness state from the 
 
 - [ ] Large files have an owner and a decomposition plan before major feature work continues in them.
 - [ ] Parallel or dirty-tree work uses `npm run worktree:status` with `WORKTREE_OWNER_PATTERNS` before editing and `npm run architecture:changed` before handoff.
-- [ ] `npm run architecture:changed` is included in non-trivial portal handoffs.
+- [ ] `npm run architecture:changed` is included in non-trivial portal handoffs, including worktree ownership, dead-code changed reporting, and changed-file architecture checks.
 - [x] Portal Quality runs `npm run architecture:changed` as a PR-aware advisory report against base/head changes.
 - [ ] Selective strict architecture checks are used for tooling PRs and later CI candidates without blocking legacy debt.
 - [ ] `npm run files:report` is reviewed before expanding warning or critical files.
 - [ ] `npm run files:changed` is included in handoffs that touch warning or critical files.
 - [ ] `npm run root:compat:changed` is included in handoffs that touch root compatibility paths before portal SaaS extraction work continues.
-- [ ] `npm run dead-code:changed` is included in handoffs that add, delete, or touch files flagged by dead-code reporting.
+- [ ] `npm run dead-code:changed` is used directly for focused deletion, dependency, or cleanup work that needs the dedicated dead-code report.
 - [x] Portal Quality runs `npm run dead-code:changed` as a PR-aware advisory report against base/head changes.
 - [ ] Source-of-truth boundaries are preserved for costing, geometry, schedule, local-first, quotes, invoices, and job packs.
 - [ ] Compatibility and legacy fallback paths are isolated, named, and tested.
@@ -231,7 +231,8 @@ When updating this tracker:
 - Confirmed the Schedule V2 local readiness gate: `npm run test:portal:schedule` passed with 38 files and 215 tests, including readiness route, Board/Gantt/Site Visits client coverage, Schedule V2 API/RPC command boundaries, and legacy fallback isolation.
 - Re-ran `npm run schedule:bundle-budget`; it passed at 589.0 KiB initial raw, 169.1 KiB initial gzip, 333.2 KiB lazy raw, and 78.3 KiB lazy gzip. Live route performance and authenticated smoke remain blocked until staff credentials and a compatible migrated database are available.
 - Verified the local security/data-boundary lane: `npm run audit:security`, `npm run browser:supabase`, `npm run service-role:report`, `npm run root:compat`, `npm run architecture:changed`, `npx vitest run apps/portal/lib/supabaseClient.boundaries.test.ts`, `npm run test:portal -- apps/portal/lib/api apps/portal/app/api`, `npm run test:portal:quotes`, `npm run test:portal:schedule`, and `npm run test:marketing` passed. Added marketing public-token route and hash-boundary coverage for missing, invalid, expired, declined/void, accepted, attachment unavailable, and PDF unavailable states.
-- Hardened the local-first workflow readiness gate. The focused `npx vitest run apps/portal/lib/localFirst apps/portal/components/sync/LocalFirstPortalMutations.test.tsx apps/portal/lib/estimates apps/portal/app/api/estimates` pass covered 12 files and 67 tests, including new handler assertions for provisional-id retry, durable alias registration, locked estimate/quote conflicts, design-request terminal conflicts, and estimate-notes validation conflicts. The broader `npm run test:portal -- ...` form still prepends all of `apps/portal` and currently surfaces an unrelated Design Workbench `ModelSpaceViewport.test.tsx` failure outside this lane.
+- Hardened the local-first workflow readiness gate. The focused `npx vitest run apps/portal/lib/localFirst apps/portal/components/sync/LocalFirstPortalMutations.test.tsx apps/portal/lib/estimates apps/portal/app/api/estimates` pass covered 12 files and 67 tests, including new handler assertions for provisional-id retry, durable alias registration, locked estimate/quote conflicts, design-request terminal conflicts, and estimate-notes validation conflicts. The broader `npm run test:portal -- ...` form prepends all of `apps/portal`; it initially exposed the unrelated Design Workbench `ModelSpaceViewport.test.tsx` timing failure fixed in the next note.
+- Restored the broad portal Vitest gate by waiting for the workbench snapped-deck selection diagnostic to settle after a failure-feedback canvas click under full-suite load. `npm run test:portal:log` passed with 193 files and 1203 tests, and `npm run test:portal:workbench` passed with 54 Vitest files, 562 tests, and the no-auth fixture browser smoke at 3 passed / 1 skipped by design.
 
 ### 2026-05-02
 

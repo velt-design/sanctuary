@@ -150,6 +150,19 @@ function isLegacyPersistenceCompatibilityZone(relativePath: string): boolean {
 }
 
 describe('object workbench import guards', () => {
+  it('keeps active plan view construction on the solved geometry artifact contract', () => {
+    const planViewBuilderPath = path.normalize(
+      path.join('apps', 'portal', 'lib', 'drawings', 'views', 'plan', 'buildPlanViewModel.ts'),
+    );
+    const source = fs.readFileSync(path.join(process.cwd(), planViewBuilderPath), 'utf8');
+
+    expect(source).toContain('geometryArtifact?: WorkbenchSolvedGeometryArtifact | null');
+    expect(source).toContain('geometryArtifact?.plan');
+    expect(source).toContain('geometryArtifact?.topProjection');
+    expect(source).toContain('geometryArtifact?.assembly');
+    expect(source).toContain('topProjectionFromViewerSceneArtifact');
+  });
+
   it('keeps rail and viewport composition behind the workbench shell boundary', () => {
     const violations: string[] = [];
 

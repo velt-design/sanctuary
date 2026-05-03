@@ -100,9 +100,9 @@ npm run schedule:bundle-budget
 
 `npm run worktree:status` is an advisory ownership report for dirty worktrees and parallel lanes. Use `WORKTREE_OWNER_PATTERNS` with comma-separated path globs to declare the current task's owned paths. `npm run worktree:changed` is the focused handoff form. Files reported as outside-lane should not be edited, formatted, reverted, or cleaned up by the current task. These commands are not part of `npm run lint`.
 
-`npm run architecture:changed` is the recommended advisory handoff sweep for non-trivial work. It runs `worktree:changed` first, then `files:changed`, `root:compat:changed`, `browser:supabase:changed`, and `service-role:changed` with section headers, while leaving each focused report as the canonical source of its own handoff cues. It is not part of `npm run lint`.
+`npm run architecture:changed` is the recommended advisory handoff sweep for non-trivial work. It runs `worktree:changed` first, then `dead-code:changed`, `files:changed`, `root:compat:changed`, `browser:supabase:changed`, and `service-role:changed` with section headers, while leaving each focused report as the canonical source of its own handoff cues. It is not part of `npm run lint`.
 
-`npm run architecture:changed:strict` is a local architecture/tooling check and future CI candidate. It runs the strict changed-file variants and currently blocks only selected new risky growth; it does not run a worktree ownership strict check yet and is not part of `npm run lint`.
+`npm run architecture:changed:strict` is a local architecture/tooling check and future CI candidate. It runs the strict changed-file variants and currently blocks only selected new risky growth; it does not run worktree ownership or dead-code strict checks yet and is not part of `npm run lint`.
 
 Changed-file architecture reports use the dirty worktree against `HEAD` by default. When `ARCHITECTURE_CHANGED_BASE` and `ARCHITECTURE_CHANGED_HEAD` are set, they compare those refs instead; Portal Quality uses that mode on pull requests so the advisory report sees PR base-to-head changes even though the CI checkout is clean. Strict mode is CI-ready with the same env vars, but remains unwired until new-growth enforcement is intentionally enabled.
 

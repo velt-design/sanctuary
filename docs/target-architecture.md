@@ -12,6 +12,8 @@ Agents should not need archaeology to make the right architectural move. A new b
 
 Geometry has one physical truth. Object-first design intent resolves into a single solved geometry spine owned by `packages/geometry`; plan, 3D, sheet, section, detail, snap, dimension, and interaction surfaces are views or adapters of that solved geometry. UI code may render, annotate, filter, select, or commit edits against that spine, but it must not invent a separate per-view geometry that can drift from the solved model.
 
+In the portal workbench, that runtime boundary is the `WorkbenchSolvedGeometryArtifact`: one named bundle for the solved assembly, viewer scene, top projection, plan, section, validation, and trust/status metadata. Legacy calculator plan/section models and loose view fields are compatibility or fallback aliases around that artifact, not another geometry owner.
+
 ## Target Workspace Shape
 
 `apps/marketing` owns public customer-facing experiences:

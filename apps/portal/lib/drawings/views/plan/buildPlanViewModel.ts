@@ -10,13 +10,21 @@ import type {
   WorkbenchPergolaRenderSource,
   WorkbenchPergolaRenderStatus,
 } from '@/lib/drawings/geometry/deriveWorkbenchGeometry';
+import type { WorkbenchSolvedGeometryArtifact } from '@/lib/drawings/state/workbenchSolvedModel';
 
-export type ModelSpacePergolaViewModel = {
+type PlanGeometryArtifactDiagnostics = {
+  source: WorkbenchSolvedGeometryArtifact['source'] | 'compatibility_fields' | null;
+  fallback: WorkbenchSolvedGeometryArtifact['fallback'] | null;
+  topProjectionFromViewerSceneArtifact: boolean | null;
+};
+
+type ModelSpacePergolaViewModel = {
   geometryPlan: GeometryPlanViewModel | null;
   geometryTopProjection: GeometryTopProjectionViewModel | null;
   geometryAssembly: Assembly3D | null;
   renderSource: WorkbenchPergolaRenderSource;
   renderStatus: WorkbenchPergolaRenderStatus;
+  geometryArtifactDiagnostics: PlanGeometryArtifactDiagnostics;
 };
 
 export type PlanViewModel = {
@@ -61,6 +69,7 @@ type PlanViewModelSource =
       moduleId: string;
       moduleLabel: string;
       planModel: ModulePlanModel | null;
+      geometryArtifact?: WorkbenchSolvedGeometryArtifact | null;
       geometryPlan?: GeometryPlanViewModel | null;
       geometryTopProjection?: GeometryTopProjectionViewModel | null;
       geometryAssembly?: Assembly3D | null;
@@ -83,23 +92,45 @@ export function buildPlanViewModel(source: PlanViewModelSource | null): PlanView
   const canEditHouseFootprint = isDrawingAssemblyModel(source)
     ? source.capabilities.canEditHouseFootprint
     : Boolean(source.canEditHouseFootprint);
-  const geometryPlan = !isDrawingAssemblyModel(source) ? source.geometryPlan ?? null : null;
-  const geometryTopProjection = !isDrawingAssemblyModel(source) ? source.geometryTopProjection ?? null : null;
-  const geometryAssembly = !isDrawingAssemblyModel(source) ? source.geometryAssembly ?? null : null;
+  const geometryArtifact = !isDrawingAssemblyModel(source) ? source.geometryArtifact ?? null : null;
+  const geometryPlan = !isDrawingAssemblyModel(source)
+    ? geometryArtifact?.plan ?? source.geometryPlan ?? null
+    : null;
+  const geometryTopProjection = !isDrawingAssemblyModel(source)
+    ? geometryArtifact?.topProjection ?? source.geometryTopProjection ?? null
+    : null;
+  const geometryAssembly = !isDrawingAssemblyModel(source)
+    ? geometryArtifact?.assembly ?? source.geometryAssembly ?? null
+    : null;
   const renderSource =
-    !isDrawingAssemblyModel(source) && source.pergolaRenderSource
+    geometryArtifact?.renderSource ??
+    (!isDrawingAssemblyModel(source) && source.pergolaRenderSource
       ? source.pergolaRenderSource
       : geometryPlan
         ? 'geometry'
-        : 'legacy';
+        : 'legacy');
   const renderStatus =
-    !isDrawingAssemblyModel(source) && source.pergolaRenderStatus
+    geometryArtifact?.renderStatus ??
+    (!isDrawingAssemblyModel(source) && source.pergolaRenderStatus
       ? source.pergolaRenderStatus
       : geometryPlan
         ? 'geometry_ready'
         : planModel
           ? 'legacy_unsupported_family'
-          : 'invalid_geometry';
+          : 'invalid_geometry');
+  const geometryArtifactDiagnostics: PlanGeometryArtifactDiagnostics = geometryArtifact
+    ? {
+        source: geometryArtifact.source,
+        fallback: geometryArtifact.fallback,
+        topProjectionFromViewerSceneArtifact:
+          geometryTopProjection === geometryArtifact.topProjection &&
+          Boolean(geometryArtifact.viewerScene),
+      }
+    : {
+        source: geometryPlan || geometryTopProjection || geometryAssembly ? 'compatibility_fields' : null,
+        fallback: null,
+        topProjectionFromViewerSceneArtifact: null,
+      };
 
   return {
     moduleId,
@@ -138,6 +169,7 @@ export function buildPlanViewModel(source: PlanViewModelSource | null): PlanView
       geometryAssembly,
       renderSource,
       renderStatus,
+      geometryArtifactDiagnostics,
     },
     objectWorkbenchOverlay:
       !isDrawingAssemblyModel(source) && source.objectWorkbenchOverlayInput
@@ -145,7 +177,7 @@ export function buildPlanViewModel(source: PlanViewModelSource | null): PlanView
             ...source.objectWorkbenchOverlayInput,
             geometryPlan,
             geometryTopProjection,
-            geometryAssembly: source.geometryAssembly ?? source.objectWorkbenchOverlayInput.geometryAssembly ?? null,
+            geometryAssembly: geometryAssembly ?? source.objectWorkbenchOverlayInput.geometryAssembly ?? null,
             geometryRenderSource: renderSource,
             geometryRenderStatus: renderStatus,
           })

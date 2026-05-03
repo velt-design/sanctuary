@@ -55,7 +55,7 @@ import type {
   WorkbenchProjectModel,
 } from './objectFirstWorkbenchModel';
 
-export type DrawingWorkbenchModuleEntry = {
+type DrawingWorkbenchModuleEntry = {
   id: string;
   label: string;
   drawingModule: EstimateDrawingModule;
@@ -70,7 +70,7 @@ export type DrawingWorkbenchModuleEntry = {
   solution: WorkbenchSolvedModule;
 };
 
-export type WorkbenchDeckInteractionDiagnostic = DeckInteractionCapability;
+type WorkbenchDeckInteractionDiagnostic = DeckInteractionCapability;
 
 export type DrawingWorkbenchStore = {
   persisted: {
@@ -221,6 +221,7 @@ export function buildDrawingWorkbenchStore(input: {
         moduleId: solution.id,
         moduleLabel: label,
         planModel,
+        geometryArtifact: solution.geometryArtifact,
         geometryPlan: geometryPlanViewModel,
         geometryTopProjection: geometryTopProjectionViewModel,
         geometryAssembly: solution.assembly,

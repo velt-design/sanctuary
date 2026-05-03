@@ -17,8 +17,8 @@ This repo is optimized for coding agents. Read this file first, then follow link
 11. Keep changes scoped to the requested surface.
 12. Do not revert user changes or unrelated worktree changes.
 13. For parallel or dirty-tree work, run `npm run worktree:status`; use `WORKTREE_OWNER_PATTERNS` to declare owned paths when the task has a clear lane.
-14. Run `npm run architecture:changed` before handoff for non-trivial work; it includes the handoff-time worktree ownership report.
-15. Run `npm run dead-code:changed` before handoff when adding, deleting, or touching files that dead-code reporting flags.
+14. Run `npm run architecture:changed` before handoff for non-trivial work; it includes handoff-time worktree ownership and dead-code changed reporting.
+15. Run `npm run dead-code:changed` directly before handoff when doing deletion, dependency, or cleanup work that needs the focused dead-code report.
 16. Run `npm run architecture:changed:strict` only for architecture/tooling PRs or explicit strict verification; it is not a routine lint gate.
 17. Run focused changed-file guards directly when you need a narrower report: `files:changed`, `root:compat:changed`, `browser:supabase:changed`, or `service-role:changed`.
 18. If the task changes portal behavior, data flow, source-of-truth boundaries, test strategy, or known risks, update the relevant doc in the same pass.

@@ -258,6 +258,15 @@ describe('buildDrawingWorkbenchStore', () => {
     expect(store.derived.activeSolution?.planModel).toBe(store.derived.activePlanModel);
     expect(store.derived.activeSolution?.sectionModel).toBe(store.derived.activeSectionModel);
     expect(store.derived.activeSolution?.geometryPlan).toBe(store.derived.activeModule?.geometryPlanViewModel);
+    expect(store.derived.activeSolution?.geometryArtifact?.plan).toBe(store.derived.activeSolution?.geometryPlan);
+    expect(store.derived.activeSolution?.geometryArtifact?.topProjection).toBe(
+      store.derived.activeSolution?.geometryTopProjection,
+    );
+    expect(store.derived.activePlanViewModel?.modelSpacePergola.geometryArtifactDiagnostics).toEqual({
+      source: 'solved_geometry',
+      fallback: null,
+      topProjectionFromViewerSceneArtifact: true,
+    });
     expect(store.derived.activeSolution?.geometryPreview.kind).toBe('ready');
     if (store.derived.activeSolution?.geometryPreview.kind !== 'ready') {
       throw new Error('Expected ready solved geometry preview.');
