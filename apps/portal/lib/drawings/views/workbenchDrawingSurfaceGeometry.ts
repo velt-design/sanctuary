@@ -7,7 +7,7 @@ import type { ModulePlanModel, ModuleSectionModel } from '@/app/staff/calculator
 import type { WorkbenchViewportGeometry } from '@/lib/drawings/state/workbenchSolvedModel';
 import type { PlanViewModel } from './plan/buildPlanViewModel';
 
-export type WorkbenchDrawingSurfaceGeometrySource =
+type WorkbenchDrawingSurfaceGeometrySource =
   | 'solved_geometry'
   | 'legacy_fallback'
   | 'unavailable';

@@ -331,9 +331,22 @@ export default function EstimateDrawingSheet({
   const currentScale = selectedScales[view];
   const sheetGeometryReady =
     view === 'plan' &&
-    drawingSurfaceGeometry?.source === 'solved_geometry' &&
-    Boolean(drawingSurfaceGeometry.geometryPlan) &&
-    Boolean(drawingSurfaceGeometry.geometryTopProjection);
+    ((drawingSurfaceGeometry?.source === 'solved_geometry' &&
+      Boolean(drawingSurfaceGeometry.geometryPlan) &&
+      Boolean(drawingSurfaceGeometry.geometryTopProjection)) ||
+      (!drawingSurfaceGeometry &&
+        surfacePlanViewModel?.modelSpacePergola.renderSource === 'geometry' &&
+        surfacePlanViewModel.modelSpacePergola.renderStatus === 'geometry_ready' &&
+        Boolean(surfacePlanViewModel.modelSpacePergola.geometryPlan) &&
+        Boolean(surfacePlanViewModel.modelSpacePergola.geometryTopProjection)));
+  const sheetGeometryPlan =
+    drawingSurfaceGeometry?.source === 'solved_geometry'
+      ? drawingSurfaceGeometry.geometryPlan
+      : surfacePlanViewModel?.modelSpacePergola.geometryPlan ?? null;
+  const sheetGeometryTopProjection =
+    drawingSurfaceGeometry?.source === 'solved_geometry'
+      ? drawingSurfaceGeometry.geometryTopProjection
+      : surfacePlanViewModel?.modelSpacePergola.geometryTopProjection ?? null;
   const currentScaleState = resolveModuleDrawingScaleState({
     view,
     requestedScale: currentScale,
@@ -1024,8 +1037,8 @@ export default function EstimateDrawingSheet({
                   showDebugOverlays={showDebugOverlays}
                   footprintEditor={footprintEditor}
                   sheetPlanInteraction={sheetPlanInteraction}
-                  modelSpacePergolaGeometry={sheetGeometryReady ? drawingSurfaceGeometry?.geometryPlan ?? null : null}
-                  modelSpaceTopProjection={sheetGeometryReady ? drawingSurfaceGeometry?.geometryTopProjection ?? null : null}
+                  modelSpacePergolaGeometry={sheetGeometryReady ? sheetGeometryPlan : null}
+                  modelSpaceTopProjection={sheetGeometryReady ? sheetGeometryTopProjection : null}
                   modelSpacePergolaRenderSource={sheetGeometryReady ? surfacePlanViewModel?.modelSpacePergola.renderSource : undefined}
                   modelSpacePergolaRenderStatus={sheetGeometryReady ? surfacePlanViewModel?.modelSpacePergola.renderStatus : undefined}
                 />

@@ -8,6 +8,7 @@ import type { CalculatorModuleInputs } from '@/lib/types/calculator';
 import { buildEstimateDrawingModules } from '@/lib/estimates/moduleDrawing';
 import { buildEstimateDrawingSheetMeta } from '@/lib/estimates/drawingSheet';
 import { buildPlanViewModel, type PlanViewModel } from '@/lib/drawings/views/plan/buildPlanViewModel';
+import type { WorkbenchDrawingSurfaceGeometry } from '@/lib/drawings/views/workbenchDrawingSurfaceGeometry';
 import { createDrawingWorkbenchUiState } from '@/lib/drawings/state/drawingWorkbenchUiState';
 import type { DrawingWorkbenchViewportMode } from '@/lib/drawings/state/drawingWorkbenchUiState';
 import {
@@ -243,6 +244,18 @@ function makeReadyPlanViewModel(planModel = makeDrawingModule().planModel ?? nul
   return viewModel;
 }
 
+function makeSolvedDrawingSurfaceGeometry(drawing: ReturnType<typeof makeDrawingModule>): WorkbenchDrawingSurfaceGeometry {
+  return {
+    source: 'solved_geometry',
+    planModel: drawing.planModel ?? null,
+    planViewModel: makeReadyPlanViewModel(drawing.planModel),
+    geometryPlan: makeGeometryPlanFixture(),
+    geometryTopProjection: makeTopProjectionFixture(),
+    sectionModel: drawing.sectionModel ?? null,
+    geometrySection: {} as WorkbenchDrawingSurfaceGeometry['geometrySection'],
+  };
+}
+
 function makeTrustGate(status: WorkbenchTrustStatusKind, issues: WorkbenchTrustStatusKind[] = []) {
   return resolveWorkbenchTrustGate({
     status,
@@ -417,6 +430,7 @@ describe('DrawingWorkbench', () => {
 
   it('passes the solved top projection to sheet and model plan views while showing pergolas by default', () => {
     const drawing = makeDrawingModule();
+    const drawingSurfaceGeometry = makeSolvedDrawingSurfaceGeometry(drawing);
     const meta = buildEstimateDrawingSheetMeta({
       moduleLabel: 'M1 - Pitched - 6m x 3m - Acrylic',
       view: 'plan',
@@ -434,8 +448,9 @@ describe('DrawingWorkbench', () => {
         objectWorkbenchDisplayFamily="house_forms"
         onViewportModeChange={() => undefined}
         status="ready"
+        drawingSurfaceGeometry={drawingSurfaceGeometry}
         planModel={drawing.planModel}
-        planViewModel={makeReadyPlanViewModel(drawing.planModel)}
+        planViewModel={drawingSurfaceGeometry.planViewModel}
         sectionModel={drawing.sectionModel}
         modelViewportTransform={createDrawingWorkbenchUiState().viewportTransform}
         onModelViewportTransformChange={() => undefined}
@@ -455,8 +470,9 @@ describe('DrawingWorkbench', () => {
         objectWorkbenchDisplayFamily="house_forms"
         onViewportModeChange={() => undefined}
         status="ready"
+        drawingSurfaceGeometry={drawingSurfaceGeometry}
         planModel={drawing.planModel}
-        planViewModel={makeReadyPlanViewModel(drawing.planModel)}
+        planViewModel={drawingSurfaceGeometry.planViewModel}
         sectionModel={drawing.sectionModel}
         modelViewportTransform={createDrawingWorkbenchUiState().viewportTransform}
         onModelViewportTransformChange={() => undefined}
@@ -586,6 +602,38 @@ describe('DrawingWorkbench', () => {
 
     expect(markup).toContain('Artifact viewport preview wins.');
     expect(markup).not.toContain('Loose compatibility preview lost.');
+  });
+
+  it('routes sheet drawing through the artifact-first drawing surface contract', () => {
+    const drawing = makeDrawingModule();
+    const meta = buildEstimateDrawingSheetMeta({
+      moduleLabel: 'M1 - Pitched - 6m x 3m - Acrylic',
+      view: 'plan',
+    });
+    const drawingSurfaceGeometry = makeSolvedDrawingSurfaceGeometry(drawing);
+
+    const markup = renderToStaticMarkup(
+      <DrawingWorkbench
+        moduleLabel="M1 - Pitched - 6m x 3m - Acrylic"
+        modules={[{ id: 'module-1', label: 'M1 - Pitched - 6m x 3m - Acrylic' }]}
+        activeModuleIndex={0}
+        onActiveModuleIndexChange={() => undefined}
+        view="plan"
+        onViewChange={() => undefined}
+        viewportMode="sheet"
+        availableViewportModes={['sheet', 'model', 'geometry3d']}
+        onViewportModeChange={() => undefined}
+        status="ready"
+        drawingSurfaceGeometry={drawingSurfaceGeometry}
+        modelViewportTransform={createDrawingWorkbenchUiState().viewportTransform}
+        onModelViewportTransformChange={() => undefined}
+        meta={meta}
+      />,
+    );
+
+    expect(markup).toContain('data-drawing-surface-source="solved_geometry"');
+    expect(markup).toContain('data-plan-render-source="geometry"');
+    expect(markup).toContain('data-top-projection-screen-axis="world_x_left_world_y_down"');
   });
 
   it('does not restart a consumed custom-footprint outline request after switching to 3D view and back', async () => {

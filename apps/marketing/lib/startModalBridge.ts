@@ -1,4 +1,4 @@
-export const START_MODAL_OPEN_CLASS = 'start-modal-open';
+const START_MODAL_OPEN_CLASS = 'start-modal-open';
 export const START_MODAL_VISIBILITY_EVENT = 'start-modal-visibility-change';
 
 export type StartModalVisibilityDetail = {

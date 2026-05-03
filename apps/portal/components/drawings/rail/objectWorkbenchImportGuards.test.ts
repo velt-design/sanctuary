@@ -199,16 +199,32 @@ describe('object workbench import guards', () => {
     );
     const shellSource = fs.readFileSync(path.join(process.cwd(), shellPath), 'utf8');
     const viewportHostSource = fs.readFileSync(path.join(process.cwd(), viewportHostPath), 'utf8');
+    const sheetViewportSource = fs.readFileSync(
+      path.join(process.cwd(), path.normalize(path.join('apps', 'portal', 'components', 'drawings', 'viewports', 'SheetViewport.tsx'))),
+      'utf8',
+    );
+    const estimateSheetSource = fs.readFileSync(
+      path.join(process.cwd(), path.normalize(path.join('apps', 'portal', 'components', 'estimates', 'EstimateDrawingSheet.tsx'))),
+      'utf8',
+    );
 
     expect(shellSource).toContain('viewportGeometry?: WorkbenchViewportGeometry | null');
     expect(shellSource).toContain('viewportGeometry={viewportGeometry}');
     expect(viewportHostSource).toContain('viewportGeometry?: WorkbenchViewportGeometry | null');
     expect(viewportHostSource).toContain('viewportGeometry?.preview');
-    expect(viewportHostSource).toContain('viewportGeometry?.legacyFallback.planModel');
+    expect(viewportHostSource).toContain('buildWorkbenchDrawingSurfaceGeometry');
+    expect(viewportHostSource).toContain('drawingSurfaceGeometry?: WorkbenchDrawingSurfaceGeometry | null');
+    expect(viewportHostSource).toContain('routedDrawingSurfaceGeometry.planModel');
+    expect(viewportHostSource).toContain('routedDrawingSurfaceGeometry.sectionModel');
+    expect(viewportHostSource).toContain('drawingSurfaceGeometry={routedDrawingSurfaceGeometry}');
+    expect(sheetViewportSource).toContain('drawingSurfaceGeometry?: WorkbenchDrawingSurfaceGeometry | null');
+    expect(estimateSheetSource).toContain('drawingSurfaceGeometry?: WorkbenchDrawingSurfaceGeometry | null');
+    expect(estimateSheetSource).toContain('data-drawing-surface-source');
 
     for (const relativePath of [hiddenWorkbenchClientPath, fixtureClientPath, projectEstimateTabPath]) {
       const source = fs.readFileSync(path.join(process.cwd(), relativePath), 'utf8');
       expect(source).toContain('viewportGeometry={');
+      expect(source).toContain('drawingSurfaceGeometry={');
       expect(source).not.toMatch(/<DrawingWorkbench[\s\S]*?geometryPreview=/);
     }
   });

@@ -30,7 +30,7 @@ import ModelSpaceViewport from '@/components/drawings/viewports/ModelSpaceViewpo
 import SheetViewport from '@/components/drawings/viewports/SheetViewport';
 import styles from './DrawingWorkbench.module.css';
 
-export type WorkbenchViewportHostProps = {
+type WorkbenchViewportHostProps = {
   moduleLabel: string;
   activeModuleIndex: number;
   view: ModuleViewsTab;
@@ -173,6 +173,7 @@ export default function WorkbenchViewportHost({
           planModel={routedPlanModel}
           sectionModel={routedSectionModel}
           planViewModel={planViewModel}
+          drawingSurfaceGeometry={routedDrawingSurfaceGeometry}
           activeObjectRef={activeObjectRef}
           pergolaTargetId={pergolaTargetId}
           enableProjectionOnlyModelInteractions={enableProjectionOnlyModelInteractions}

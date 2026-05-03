@@ -1,4 +1,4 @@
-export type ProductImagePair = {
+type ProductImagePair = {
   primary: string;
   hover: string;
 };

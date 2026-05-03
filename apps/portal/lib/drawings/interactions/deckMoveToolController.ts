@@ -2,7 +2,6 @@ import type { ObjectWorkbenchDeckPatch } from '@/lib/drawings/state/objectWorkbe
 import type {
   ObjectWorkbenchPlanDeckInteraction,
   ObjectWorkbenchPlanShapeOverlay,
-  PlanPoint,
 } from '@/lib/drawings/views/plan/objectWorkbenchPlanOverlay';
 import type { InteractionToolDiagnostics, InteractionToolPointer } from './interactionToolController';
 import {
@@ -19,13 +18,13 @@ import {
   type DeckSvgInteraction,
 } from './deckInteractionAdapter';
 
-export type DeckMoveStartInput = {
+type DeckMoveStartInput = {
   deckId: string;
   overlayShape: ObjectWorkbenchPlanShapeOverlay;
   svgInteraction: DeckSvgInteraction;
 };
 
-export type DeckMoveStartResult =
+type DeckMoveStartResult =
   | {
       ok: true;
       session: DeckDragSession;
@@ -42,7 +41,7 @@ export type DeckReleaseCommitSource =
   | 'snapped_frame_commit'
   | 'floating_rect_from_projection_preview';
 
-export type DeckMoveReleaseResult = {
+type DeckMoveReleaseResult = {
   target: DeckObjectRef;
   patch: ObjectWorkbenchDeckPatch;
   preview: DeckPreviewState;
@@ -150,7 +149,7 @@ export function moveDeckMoveTool(input: {
   });
 }
 
-export function resolveDeckMoveCommitSource(input: {
+function resolveDeckMoveCommitSource(input: {
   session: DeckDragSession;
   preview: DeckPreviewState;
 }): DeckReleaseCommitSource {
@@ -183,24 +182,5 @@ export function releaseDeckMoveTool(input: {
       source: input.session.dragSource,
       coordinateSpace: input.session.dragCoordinateSpace,
     }),
-  };
-}
-
-export function cancelDeckMoveTool(session: DeckDragSession | null): InteractionToolDiagnostics {
-  return buildDiagnostics({
-    status: session ? 'idle' : 'blocked',
-    source: session?.dragSource ?? 'none',
-    coordinateSpace: session?.dragCoordinateSpace ?? 'unknown',
-    message: session ? null : 'No active deck drag session.',
-  });
-}
-
-export function translateDeckPointerForTest(point: PlanPoint): InteractionToolPointer {
-  return {
-    pointerId: 1,
-    clientX: point.x,
-    clientY: point.y,
-    svgPoint: point,
-    planPoint: point,
   };
 }

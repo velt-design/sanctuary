@@ -10,6 +10,7 @@ import type {
   PlanPoint,
 } from '@/lib/drawings/views/plan/objectWorkbenchPlanOverlay';
 import type { ObjectInteractionPreviewOverlay } from '@/lib/drawings/interactions/objectInteractionEngine';
+import type { WorkbenchDrawingSurfaceGeometry } from '@/lib/drawings/views/workbenchDrawingSurfaceGeometry';
 import type {
   ObjectWorkbenchPergolaRenderSource,
   ObjectWorkbenchPergolaRenderStatus,
@@ -22,7 +23,7 @@ import type {
   PlanSvgFootprintCanvasPointResolver,
 } from './ModulePlanSvgBridge';
 
-export type Point = { x: number; y: number };
+type Point = { x: number; y: number };
 
 export type ModuleViewsTab = 'plan' | 'section';
 export type ModuleViewsStatus = 'loading' | 'ready' | 'error' | 'empty';
@@ -48,7 +49,7 @@ export type HouseFootprintVertexDragMeta = {
   scale: number;
 };
 
-export type ModuleFootprintEditorSurface = 'card' | 'sheet' | 'model';
+type ModuleFootprintEditorSurface = 'card' | 'sheet' | 'model';
 export type ModuleFootprintCanvasPoint = PlanSvgFootprintCanvasPoint;
 
 export type ModulePlanSheetInteractionProps = {
@@ -103,8 +104,6 @@ export type ObjectWorkbenchPlanShapeDragStartMeta =
     };
 
 export type ObjectWorkbenchPreviewOverlay = ObjectInteractionPreviewOverlay<PlanPoint>;
-export type HouseFirstPlanShapeDragStartMeta = ObjectWorkbenchPlanShapeDragStartMeta;
-export type HouseFirstObjectPreviewOverlay = ObjectWorkbenchPreviewOverlay;
 export type ModuleFootprintCanvasPointResolver = PlanSvgFootprintCanvasPointResolver;
 
 export type GeometryConsistency = {
@@ -189,6 +188,7 @@ export type ModuleDrawingRendererProps = {
   view: ModuleViewsTab;
   status: ModuleViewsStatus;
   statusDetail?: string;
+  drawingSurfaceGeometry?: WorkbenchDrawingSurfaceGeometry | null;
   planModel?: ModulePlanModel | null;
   sectionModel?: ModuleSectionModel | null;
   presentation?: ModuleDrawingPresentation;

@@ -36,6 +36,7 @@ The active workbench is object-first:
 - Hosted objects resolve against derived house/building behavior.
 - Object-first design intent resolves into one solved geometry artifact. In portal runtime state this contract is named `WorkbenchSolvedGeometryArtifact` and is exposed on `WorkbenchSolvedModule.geometryArtifact`; legacy `geometryPlan`, `geometryTopProjection`, `viewerScene`, `planModel`, and `sectionModel` fields are compatibility aliases or fallback/presentation metadata, not peer geometry truth.
 - Workbench shell and viewport routing use `WorkbenchViewportGeometry`: `artifact` carries the canonical solved geometry, `legacyFallback` boxes calculator-era `ModulePlanModel`/`ModuleSectionModel` presenters, and `preview` is derived from the artifact when geometry is ready. Route clients and `WorkbenchViewportHost` should pass this bundle instead of fanning out loose scene/projection/preview fields.
+- Sheet and Model Space drawing surfaces receive `WorkbenchDrawingSurfaceGeometry` from the same routing lane. Geometry-ready surfaces use artifact-derived plan, top projection, and section inputs first; calculator-era plan/section models remain boxed compatibility presenters and explicit fallback data. `buildWorkbenchDrawingSurfaceGeometry` is the named helper that turns the viewport bundle into the sheet/read-model contract, including explicit `solved_geometry`, `legacy_fallback`, and `unavailable` sources.
 - Geometry-ready plan, 3D, sheet, section, snap frames, hit targets, dimensions, annotations, and interaction previews are derived views of that artifact, not independent geometric truths.
 - Geometry, plan, 3D, section, and sheet views should consume the solved geometry spine rather than each inventing shape truth.
 - The solved module's 3D scene and model-space top projection are paired: the projection is generated from the same `ViewerSceneModel` handed to the 3D viewport, with assembly reference shapes carried forward explicitly.
@@ -105,7 +106,7 @@ npm run test:portal -- apps/portal/components/drawings
 npm run test:portal:browser
 ```
 
-Latest local signal: on 2026-05-03, `npm run test:portal:workbench` passed with 53 Vitest files and 557 tests, then 3 no-auth fixture browser tests passed and the auth-backed smoke stayed skipped by design.
+Latest local signal: on 2026-05-03, `npm run test:portal:workbench` passed with 55 Vitest files and 568 tests, then 3 no-auth fixture browser tests passed and the auth-backed smoke stayed skipped by design.
 
 `npm run test:portal:browser` covers no-auth fixture rendering for nonblank Model Space Plan, 3D containment, top-projection parity, and object-first/fallback visibility. It should fail if the fixture route redirects to login, becomes unavailable, silently renders hidden top-projection bodies, or shows user-facing legacy fallback failure text.
 

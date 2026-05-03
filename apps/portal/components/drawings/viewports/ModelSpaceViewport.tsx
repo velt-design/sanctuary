@@ -30,6 +30,7 @@ import {
 } from '@/app/staff/calculator/ModuleViewsCard';
 import type { HouseFootprintHandleId, ModulePlanModel, ModuleSectionModel } from '@/app/staff/calculator/moduleViews';
 import type { PlanViewModel } from '@/lib/drawings/views/plan/buildPlanViewModel';
+import type { WorkbenchDrawingSurfaceGeometry } from '@/lib/drawings/views/workbenchDrawingSurfaceGeometry';
 import {
   buildDeckInteractionCapabilityFromSelection,
   type DeckInteractionCapability,
@@ -414,6 +415,7 @@ export default function ModelSpaceViewport({
   planModel,
   sectionModel,
   planViewModel,
+  drawingSurfaceGeometry,
   activeObjectRef,
   pergolaTargetId,
   enableProjectionOnlyModelInteractions = false,
@@ -444,6 +446,7 @@ export default function ModelSpaceViewport({
   planModel?: ModulePlanModel | null;
   sectionModel?: ModuleSectionModel | null;
   planViewModel?: PlanViewModel | null;
+  drawingSurfaceGeometry?: WorkbenchDrawingSurfaceGeometry | null;
   activeObjectRef?: WorkbenchObjectRef | null;
   pergolaTargetId?: string | null;
   enableProjectionOnlyModelInteractions?: boolean;
@@ -3297,6 +3300,7 @@ export default function ModelSpaceViewport({
               <ModuleDrawingRenderer
                 view={view}
                 status={status}
+                drawingSurfaceGeometry={drawingSurfaceGeometry}
                 planModel={planModel}
                 sectionModel={sectionModel}
                 presentation="model"

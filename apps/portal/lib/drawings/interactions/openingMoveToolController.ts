@@ -11,13 +11,13 @@ import {
   type OpeningSvgInteraction,
 } from './openingInteractionAdapter';
 
-export type OpeningMoveStartInput = {
+type OpeningMoveStartInput = {
   openingId: string;
   overlayShape: ObjectWorkbenchPlanShapeOverlay;
   svgInteraction: OpeningSvgInteraction;
 };
 
-export type OpeningMoveStartResult =
+type OpeningMoveStartResult =
   | {
       ok: true;
       session: OpeningDragSession;
@@ -28,7 +28,7 @@ export type OpeningMoveStartResult =
       diagnostics: InteractionToolDiagnostics;
     };
 
-export type OpeningMoveReleaseResult = {
+type OpeningMoveReleaseResult = {
   target: OpeningObjectRef;
   patch: ObjectWorkbenchOpeningPatch;
   preview: OpeningPreviewState;
@@ -109,11 +109,4 @@ export function releaseOpeningMoveTool(input: {
     commitCoordinateSpace: 'legacy_plan_m',
     diagnostics: buildDiagnostics({ status: 'committed' }),
   };
-}
-
-export function cancelOpeningMoveTool(session: OpeningDragSession | null): InteractionToolDiagnostics {
-  return buildDiagnostics({
-    status: session ? 'idle' : 'blocked',
-    message: session ? null : 'No active opening drag session.',
-  });
 }
