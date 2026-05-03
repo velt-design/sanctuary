@@ -1,4 +1,4 @@
-export function shouldBlockNativeSelection(target: EventTarget | null): boolean {
+function shouldBlockNativeSelection(target: EventTarget | null): boolean {
   if (!(target instanceof Element)) return true;
   return !target.closest(
     [

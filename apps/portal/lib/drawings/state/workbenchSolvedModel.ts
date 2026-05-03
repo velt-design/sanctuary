@@ -108,7 +108,7 @@ export type WorkbenchSolvedGeometryArtifact = {
   fallback: WorkbenchSolvedGeometryArtifactFallback;
   previewMode: GeometryPreviewMode;
   resultSource: WorkbenchGeometryResultSource;
-  deckSupport: WorkbenchDeckSupportDiagnostic | null;
+  deckSupport: WorkbenchDeckSupportDiagnostic;
   config: GeometryConfig;
   assembly: Assembly3D;
   plan: GeometryPlanViewModel;

@@ -46,7 +46,7 @@ describe('public invoice PDF route', () => {
   it('serves token-bound invoice PDFs with private no-store caching', async () => {
     loadPublicDepositInvoicePdfByTokenMock.mockResolvedValueOnce({
       filename: 'invoice-"123".pdf',
-      content: new Uint8Array([37, 80, 68, 70]).buffer,
+      content: Buffer.from([37, 80, 68, 70]),
     });
 
     const response = await GET(getRequest(), context(' invoice-123 '));

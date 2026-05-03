@@ -1,4 +1,4 @@
-export const siteUrl = 'https://www.sanctuarypergolas.co.nz';
+const siteUrl = 'https://www.sanctuarypergolas.co.nz';
 
 export function absoluteUrl(path: string): string {
   try {

@@ -12,7 +12,7 @@ const VIEW_OPTIONS: Array<{ id: ModuleViewsTab; label: string }> = [
   { id: 'section', label: 'Section' },
 ];
 
-export type WorkbenchChromeProps = {
+type WorkbenchChromeProps = {
   view: ModuleViewsTab;
   onViewChange: (view: ModuleViewsTab) => void;
   viewportMode: DrawingWorkbenchViewportMode;

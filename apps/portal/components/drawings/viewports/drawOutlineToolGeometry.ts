@@ -26,11 +26,11 @@ export function formatOutlineNumber(value: number): string {
   return (Math.round(value * 1000) / 1000).toFixed(3).replace(/\.?0+$/, '') || '0';
 }
 
-export function snapOutlineMetres(value: number): number {
+function snapOutlineMetres(value: number): number {
   return Math.round(value * 1000) / 1000;
 }
 
-export function formatOutlineMetres(value: number): string {
+function formatOutlineMetres(value: number): string {
   return snapOutlineMetres(value).toFixed(3).replace(/\.?0+$/, '') || '0';
 }
 

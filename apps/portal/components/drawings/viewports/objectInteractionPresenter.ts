@@ -5,7 +5,7 @@ import type {
   ObjectInteractionViewState,
 } from '@/lib/drawings/interactions/objectInteractionEngine';
 
-export type ObjectInteractionHudModel = {
+type ObjectInteractionHudModel = {
   visible: boolean;
   tone: 'ready' | 'snapped' | 'blocked';
   label: string | null;
@@ -48,7 +48,7 @@ export function resolveObjectInteractionPreviewTargetState(
   return 'preview';
 }
 
-export function resolveObjectInteractionPreviewBodyState(
+function resolveObjectInteractionPreviewBodyState(
   viewState: ObjectInteractionViewState | null,
 ): ObjectInteractionPreviewBodyState {
   if (viewState?.affordanceState === 'grabbed') return 'grabbed';

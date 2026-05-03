@@ -1,7 +1,7 @@
 import { distanceBetweenOutlinePoints, MIN_OUTLINE_SEGMENT_M } from './drawOutlineToolGeometry';
 import type { DrawOutlinePoint } from './drawOutlineToolState';
 
-export type DrawOutlineValidationIssueCode =
+type DrawOutlineValidationIssueCode =
   | 'too-few-points'
   | 'non-finite-point'
   | 'duplicate-adjacent-point'
@@ -18,7 +18,7 @@ export type DrawOutlineValidationIssue = {
   minPointCount?: number;
 };
 
-export type DrawOutlineValidationResult = { ok: true } | { ok: false; issue: DrawOutlineValidationIssue };
+type DrawOutlineValidationResult = { ok: true } | { ok: false; issue: DrawOutlineValidationIssue };
 
 const MIN_OUTLINE_POINT_COUNT = 3;
 

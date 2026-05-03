@@ -147,11 +147,11 @@ type MeasurementState = {
   lastEditedSlot: "a" | "b";
 };
 
-export type GeometryCameraPreset = "iso" | "front" | "right" | "top" | "custom";
+type GeometryCameraPreset = "iso" | "front" | "right" | "top" | "custom";
 
-export type GeometryCameraFocusMode = "scene" | "selection" | "manual";
+type GeometryCameraFocusMode = "scene" | "selection" | "manual";
 
-export type GeometryCameraState = {
+type GeometryCameraState = {
   position: Point3;
   target: Point3;
   distanceMm: number;

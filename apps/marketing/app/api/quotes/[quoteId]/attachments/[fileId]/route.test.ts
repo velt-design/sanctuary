@@ -69,7 +69,7 @@ describe('public quote attachment route', () => {
   it('serves token-scoped PDF attachments with private no-store caching and safe filenames', async () => {
     downloadPublicQuoteAttachmentByTokenMock.mockResolvedValueOnce({
       ok: true,
-      bytes: new Uint8Array([37, 80, 68, 70]).buffer,
+      bytes: new Uint8Array([37, 80, 68, 70]),
       contentType: 'application/pdf',
       filename: 'quote/"unsafe".pdf',
     });

@@ -35,7 +35,7 @@ describe('public quote accept route', () => {
   });
 
   it('redirects accepted tokens without exposing token material outside the query string flow', async () => {
-    acceptPublicQuoteByTokenMock.mockResolvedValueOnce({ ok: true });
+    acceptPublicQuoteByTokenMock.mockResolvedValueOnce({ ok: true, alreadyAccepted: false });
 
     const response = await POST(postRequest('public-token'), context(' quote-123 '));
 

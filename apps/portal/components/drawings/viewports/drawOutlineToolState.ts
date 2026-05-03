@@ -11,8 +11,6 @@ import {
 } from './drawOutlineToolGeometry';
 import { validateDrawOutlinePoints, type DrawOutlineValidationIssue } from './drawOutlineToolValidation';
 
-export { outlinePointsToPolygon } from './drawOutlineToolGeometry';
-
 export type DrawOutlinePoint = {
   alongM: number;
   depthM: number;
@@ -23,25 +21,25 @@ export type DrawOutlinePolygonPoint = {
   depthM: string;
 };
 
-export type DrawOutlineAngleMode = 'relative' | 'absolute';
+type DrawOutlineAngleMode = 'relative' | 'absolute';
 
-export type DrawOutlinePreviewSource = 'none' | 'hover' | 'locked-distance';
+type DrawOutlinePreviewSource = 'none' | 'hover' | 'locked-distance';
 
-export type DrawOutlineActiveStatus =
+type DrawOutlineActiveStatus =
   | 'first-point'
   | 'placing'
   | 'locked-distance'
   | 'close-ready'
   | 'close-hovered';
 
-export type DrawOutlineDiagnosticState = 'inactive' | DrawOutlineActiveStatus | 'error';
+type DrawOutlineDiagnosticState = 'inactive' | DrawOutlineActiveStatus | 'error';
 
 export type DrawOutlineHoverPoint = {
   point: DrawOutlinePoint;
   closeHovered: boolean;
 };
 
-export type DrawOutlineInactiveState = {
+type DrawOutlineInactiveState = {
   kind: 'inactive';
 };
 
@@ -65,7 +63,7 @@ export type DrawOutlineTransitionResult = {
   error?: string | null;
 };
 
-export type DrawOutlineCloseResult =
+type DrawOutlineCloseResult =
   | {
       ok: true;
       state: DrawOutlineToolState;
@@ -78,7 +76,7 @@ export type DrawOutlineCloseResult =
       validationIssue?: DrawOutlineValidationIssue;
     };
 
-export type DrawOutlineViewModel = {
+type DrawOutlineViewModel = {
   activeState: DrawOutlineActiveToolState | null;
   isActive: boolean;
   pendingPoint: DrawOutlinePoint | null;

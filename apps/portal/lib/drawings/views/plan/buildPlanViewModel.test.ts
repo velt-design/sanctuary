@@ -351,6 +351,9 @@ function makeGeometryArtifact(
   return {
     source: 'solved_geometry',
     fallback: null,
+    previewMode: 'snapshot_validated',
+    resultSource: 'snapshot',
+    deckSupport: {} as WorkbenchSolvedGeometryArtifact['deckSupport'],
     config: {} as WorkbenchSolvedGeometryArtifact['config'],
     assembly: { id: 'artifact-assembly' } as unknown as WorkbenchSolvedGeometryArtifact['assembly'],
     plan: makeGeometryPlan(),

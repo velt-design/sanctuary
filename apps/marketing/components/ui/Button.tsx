@@ -15,32 +15,7 @@ const SIZE = {
   lg: 'h-12 px-6 text-sm md:text-base',
 } as const;
 
-export type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
-  variant?: keyof typeof VARIANT;
-  size?: keyof typeof SIZE;
-};
-
-export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ variant = 'solid', size = 'md', className, ...props }, ref) => {
-    return (
-      <button
-        ref={ref}
-        className={cn(
-          'inline-flex items-center justify-center gap-2 rounded-full font-medium uppercase tracking-[0.08em]',
-          'transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/40',
-          'disabled:pointer-events-none disabled:opacity-50',
-          VARIANT[variant],
-          SIZE[size],
-          className
-        )}
-        {...props}
-      />
-    );
-  }
-);
-Button.displayName = 'Button';
-
-export type ButtonLinkProps = React.ComponentPropsWithoutRef<typeof Link> & {
+type ButtonLinkProps = React.ComponentPropsWithoutRef<typeof Link> & {
   variant?: keyof typeof VARIANT;
   size?: keyof typeof SIZE;
 };

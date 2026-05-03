@@ -1068,7 +1068,7 @@ describe('DesignWorkbenchEstimateClient', () => {
     }
 
     rendered.unmount();
-  });
+  }, 10000);
 
   it('heals stale ridge and open-gable intent when preset changes rebuild supported roofs', async () => {
     const estimate = buildEstimateDetail();

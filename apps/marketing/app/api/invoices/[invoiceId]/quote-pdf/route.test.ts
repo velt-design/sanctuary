@@ -46,7 +46,7 @@ describe('public invoice source quote PDF route', () => {
   it('serves token-bound source quote PDFs with private no-store caching and safe filenames', async () => {
     loadPublicSourceQuotePdfByInvoiceTokenMock.mockResolvedValueOnce({
       filename: 'quote/"unsafe".pdf',
-      content: new Uint8Array([37, 80, 68, 70]).buffer,
+      content: Buffer.from([37, 80, 68, 70]),
     });
 
     const response = await GET(getRequest(), context(' invoice-123 '));
