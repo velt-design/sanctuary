@@ -659,6 +659,9 @@ describe('@sp/geometry contracts', () => {
       expect.objectContaining({
         id: 'mono-roof',
         rafterCount: 0,
+        rafterBayCount: 0,
+        rafterAverageSpacingMm: null,
+        rafterAverageSpacingM: null,
         claddingPanelCount: 0,
         joinerCount: 0,
       }),
@@ -666,6 +669,52 @@ describe('@sp/geometry contracts', () => {
     expect(takeoff.roofCladding.items).toEqual([]);
     expect(takeoff.gutters.items).toEqual([]);
     expect(takeoff.joiners.items).toEqual([]);
+    expect(takeoff.flashings).toEqual({
+      count: 0,
+      totalLengthMm: 0,
+      totalLengthM: 0,
+      totalSurfaceAreaMm2: 0,
+      totalSurfaceAreaM2: 0,
+      items: [],
+      byGirthMm: {},
+    });
+
+    const takeoffWithFlashing = geometryModule.buildAssemblyQuantityTakeoff({
+      ...monoAssembly,
+      roofFlashings: [
+        {
+          id: 'apron-flashing',
+          thicknessMm: 1,
+          wings: [
+            {
+              id: 'apron-flashing-roof-wing',
+              boundary: [
+                { x: 0, y: 0, z: 2801 },
+                { x: 6000, y: 0, z: 2801 },
+                { x: 6000, y: 150, z: 2788 },
+                { x: 0, y: 150, z: 2788 },
+              ],
+              plane: monoAssembly.roofPlanes[0]!.plane,
+            },
+          ],
+          metadata: {
+            girthMm: 300,
+            runLengthMm: 6000,
+          },
+        },
+      ],
+    });
+    expect(takeoffWithFlashing.flashings.items[0]).toEqual(
+      expect.objectContaining({
+        id: 'apron-flashing',
+        lengthMm: 6000,
+        lengthM: 6,
+        girthMm: 300,
+        thicknessMm: 1,
+        wingCount: 1,
+        surfaceAreaMm2: expect.any(Number),
+      }),
+    );
   });
 
   it('keeps the canonical package runtime free of portal and surface concerns', () => {

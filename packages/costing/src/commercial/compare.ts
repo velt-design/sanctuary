@@ -24,6 +24,13 @@ export type CommercialParityDriftOriginV1 =
   | 'physical_takeoff'
   | 'commercial_mapping';
 
+export type CommercialParityOriginDetailV1 = {
+  origin: CommercialParityDriftOriginV1;
+  sourceCategory: CommercialParityDifferenceCategoryV1;
+  fieldPath: string;
+  explanation: string;
+};
+
 export type CommercialParityDifferenceV1 = {
   path: string;
   label: string;
@@ -32,6 +39,7 @@ export type CommercialParityDifferenceV1 = {
   severity: 'warning' | 'blocking';
   category: CommercialParityDifferenceCategoryV1;
   driftOrigin: CommercialParityDriftOriginV1;
+  originDetail: CommercialParityOriginDetailV1;
   tolerance?: number;
   location?: {
     pathSegments: string[];
@@ -100,9 +108,10 @@ export type CommercialParityReportV1 = {
   };
 };
 
-type DifferenceDraft = Omit<CommercialParityDifferenceV1, 'severity' | 'driftOrigin'> & {
+type DifferenceDraft = Omit<CommercialParityDifferenceV1, 'severity' | 'driftOrigin' | 'originDetail'> & {
   severity?: CommercialParityDifferenceV1['severity'];
   driftOrigin?: CommercialParityDifferenceV1['driftOrigin'];
+  originDetail?: CommercialParityDifferenceV1['originDetail'];
 };
 
 type CompareContext = {
@@ -160,12 +169,60 @@ function driftOriginForCategory(category: CommercialParityDifferenceCategoryV1):
   }
 }
 
+function originExplanation(input: {
+  origin: CommercialParityDriftOriginV1;
+  category: CommercialParityDifferenceCategoryV1;
+  fieldPath: string;
+}): string {
+  const field = input.fieldPath || 'root';
+  switch (input.origin) {
+    case 'authored_intent':
+      return `Authored intent mismatch at ${field}.`;
+    case 'solved_geometry':
+      return `Solved geometry mismatch at ${field}.`;
+    case 'physical_takeoff':
+      return `Physical takeoff mismatch at ${field}.`;
+    case 'commercial_mapping':
+      return `Commercial mapping mismatch at ${field}.`;
+    default:
+      return `${input.category} mismatch at ${field}.`;
+  }
+}
+
+function originDetailForDifference(input: {
+  category: CommercialParityDifferenceCategoryV1;
+  driftOrigin: CommercialParityDriftOriginV1;
+  location: NonNullable<CommercialParityDifferenceV1['location']>;
+}): CommercialParityOriginDetailV1 {
+  const fieldPath = input.location.fieldPath || input.location.pathSegments.join('.');
+  return {
+    origin: input.driftOrigin,
+    sourceCategory: input.category,
+    fieldPath,
+    explanation: originExplanation({
+      origin: input.driftOrigin,
+      category: input.category,
+      fieldPath,
+    }),
+  };
+}
+
 function addDifference(context: CompareContext, difference: DifferenceDraft): void {
+  const severity = difference.severity ?? 'warning';
+  const driftOrigin = difference.driftOrigin ?? driftOriginForCategory(difference.category);
+  const location = difference.location ?? locationForPath(difference.path);
   context.differences.push({
     ...difference,
-    severity: difference.severity ?? 'warning',
-    driftOrigin: difference.driftOrigin ?? driftOriginForCategory(difference.category),
-    location: difference.location ?? locationForPath(difference.path),
+    severity,
+    driftOrigin,
+    location,
+    originDetail:
+      difference.originDetail ??
+      originDetailForDifference({
+        category: difference.category,
+        driftOrigin,
+        location,
+      }),
   });
 }
 

@@ -1,4 +1,5 @@
 import { summarizeCalculatorSnapshot } from './summarize';
+import type { EstimatePricingSourceSaveContext } from './pricingRollout';
 
 type AnyRecord = Record<string, unknown>;
 
@@ -25,6 +26,7 @@ type EstimatePayloadParams = {
   createdAt?: string | null;
   updatedAt?: string | null;
   internalNotes?: string | null;
+  pricingSourceContext?: EstimatePricingSourceSaveContext | null;
 };
 
 function isRecord(value: unknown): value is AnyRecord {
@@ -155,6 +157,11 @@ export function buildEstimateDbPayload(params: EstimatePayloadParams): Record<st
   if (typeof params.createdAt === 'string') payload.created_at = params.createdAt;
   if (typeof params.updatedAt === 'string') payload.updated_at = params.updatedAt;
   if (typeof params.internalNotes === 'string' || params.internalNotes === null) payload.internal_notes = params.internalNotes;
+  if (params.pricingSourceContext) {
+    payload.pricing_source = params.pricingSourceContext.pricingSource;
+    payload.pricing_source_metadata = params.pricingSourceContext.pricingSourceMetadata;
+    payload.commercial_design_input = params.pricingSourceContext.commercialDesignInput;
+  }
 
   return payload;
 }

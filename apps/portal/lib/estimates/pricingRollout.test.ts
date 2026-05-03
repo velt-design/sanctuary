@@ -1,8 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
   ESTIMATE_CURRENT_LIVE_PRICING_SOURCE,
+  ESTIMATE_PRICING_SOURCE_BLOCKED_CODE,
+  ESTIMATE_PRICING_SOURCE_GATE_VERSION,
   ESTIMATE_WORKBENCH_SOLVED_PRICING_SOURCE,
   evaluateWorkbenchSolvedPricingReadiness,
+  normalizeRequestedEstimatePricingSource,
+  resolveEstimatePricingSourceForSave,
   type EstimateLivePricingSource,
   type EstimateQuantityTakeoffReadinessSource,
   type EstimateWorkbenchSolvedReadinessGate,
@@ -10,6 +14,7 @@ import {
   type EstimateWorkbenchSolvedReadinessInput,
   type EstimateWorkbenchSolvedReadinessReport,
 } from './pricingRollout';
+import { buildEstimateDbPayload } from './persistence';
 import type { CommercialDesignInputV1, CommercialModuleInputV1, CommercialParityReportV1 } from '@sp/costing';
 
 function makeModule(overrides: Partial<CommercialModuleInputV1> = {}): CommercialModuleInputV1 {
@@ -102,6 +107,7 @@ function makeParityReport(overrides: Partial<CommercialParityReportV1> = {}): Co
     diagnostics: [],
     summary: {
       byCategory: {},
+      byDriftOrigin: {},
       bySeverity: {},
       byModule: {},
     },
@@ -124,6 +130,79 @@ function makeReadinessInput(overrides: Partial<EstimateWorkbenchSolvedReadinessI
 }
 
 describe('workbench solved pricing rollout readiness', () => {
+  it('defaults unset or invalid requested source values to calculator_live', () => {
+    expect(normalizeRequestedEstimatePricingSource(null)).toEqual({
+      raw: null,
+      requestedPricingSource: 'calculator_live',
+      defaultedReason: 'unset',
+    });
+    expect(normalizeRequestedEstimatePricingSource('')).toEqual({
+      raw: null,
+      requestedPricingSource: 'calculator_live',
+      defaultedReason: 'unset',
+    });
+    expect(normalizeRequestedEstimatePricingSource('workbench')).toEqual({
+      raw: 'workbench',
+      requestedPricingSource: 'calculator_live',
+      defaultedReason: 'invalid',
+    });
+  });
+
+  it('builds compact calculator_live source metadata for estimate saves', () => {
+    const resolved = resolveEstimatePricingSourceForSave({
+      actor: 'ops@example.com',
+      selectedAt: '2026-05-04T00:00:00.000Z',
+      requestedSourceRaw: 'calculator_live',
+    });
+
+    expect(resolved.ok).toBe(true);
+    if (!resolved.ok) throw new Error('expected source to resolve');
+    expect(resolved.context.pricingSource).toBe('calculator_live');
+    expect(resolved.context.commercialDesignInput).toBeNull();
+    expect(resolved.context.pricingSourceMetadata).toMatchObject({
+      gateVersion: ESTIMATE_PRICING_SOURCE_GATE_VERSION,
+      requestedSource: 'calculator_live',
+      selectedSource: 'calculator_live',
+      selectedBy: 'ops@example.com',
+      rollbackProvenance: 'explicit_calculator_live',
+      commercialInputSchemaVersion: null,
+      commercialInputHash: null,
+      parityReportHash: null,
+      blockingGateCodes: [],
+    });
+
+    const payload = buildEstimateDbPayload({
+      status: 'draft',
+      inputs: { schemaVersion: 'v2' },
+      outputs: { totals: { cost_ex_gst: 0, cost_inc_gst: 0 } },
+      pricingSourceContext: resolved.context,
+    });
+
+    expect(payload.pricing_source).toBe('calculator_live');
+    expect(payload.pricing_source_metadata).toEqual(resolved.context.pricingSourceMetadata);
+    expect(payload.commercial_design_input).toBeNull();
+    expect(payload.outputs).not.toHaveProperty('pricingSource');
+    expect(payload.outputs).not.toHaveProperty('commercialDesignInput');
+  });
+
+  it('blocks requested workbench_solved saves without returning a calculator fallback', () => {
+    const resolved = resolveEstimatePricingSourceForSave({
+      actor: 'ops@example.com',
+      selectedAt: '2026-05-04T00:00:00.000Z',
+      requestedSourceRaw: 'workbench_solved',
+    });
+
+    expect(resolved.ok).toBe(false);
+    if (resolved.ok) throw new Error('expected source to block');
+    expect(resolved.code).toBe(ESTIMATE_PRICING_SOURCE_BLOCKED_CODE);
+    expect(resolved.status).toBe(409);
+    expect(resolved.readinessReport.fallbackPricingSource).toBeNull();
+    expect(resolved.readinessReport.blockingGateCodes).toEqual(
+      expect.arrayContaining(['workbench_solved_ready', 'quantity_takeoff_owned', 'commercial_parity_stable']),
+    );
+    expect(resolved.metadata.selectedSource).toBe('workbench_solved');
+  });
+
   it('keeps calculator live as the current pricing source', () => {
     const currentSource: EstimateLivePricingSource = ESTIMATE_CURRENT_LIVE_PRICING_SOURCE;
     const requestedSource: EstimateLivePricingSource = ESTIMATE_WORKBENCH_SOLVED_PRICING_SOURCE;

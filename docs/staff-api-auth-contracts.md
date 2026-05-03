@@ -61,6 +61,7 @@ Use `apps/portal/lib/api/routeDiagnostics.ts` when a route needs request IDs, se
 - Use `logPortalServerError()` or `logPortalServerWarn()` for route-owned server logs.
 - Keep response bodies stable and small: success payloads should return the resource or `{ ok: true }`; errors should return `{ error: string }` plus documented extra fields such as conflict codes.
 - Validate JSON with `parseJsonBody()` before reading request payload fields.
+- Estimate persistence may return `409 ESTIMATE_PRICING_SOURCE_BLOCKED` with a compact readiness report when the server-owned pricing source flag requests `workbench_solved` before all gates pass; routes must leave estimate rows unchanged in that state.
 
 ## Route Ownership
 

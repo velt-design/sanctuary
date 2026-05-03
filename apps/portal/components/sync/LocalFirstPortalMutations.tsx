@@ -29,6 +29,14 @@ function isEstimateConflict(error: unknown): error is ApiError {
   return error instanceof ApiError && error.status === 409;
 }
 
+function isEstimateBlockedConflict(error: unknown): error is ApiError {
+  return (
+    isEstimateConflict(error) &&
+    typeof (error.body as any)?.code === 'string' &&
+    ((error.body as any).code === 'ESTIMATE_LOCKED' || (error.body as any).code === 'ESTIMATE_PRICING_SOURCE_BLOCKED')
+  );
+}
+
 function isValidationConflict(error: unknown): error is ApiError {
   return error instanceof ApiError && (error.status === 400 || error.status === 403 || error.status === 409 || error.status === 423);
 }
@@ -46,53 +54,64 @@ export default function LocalFirstPortalMutations() {
       PORTAL_LOCAL_FIRST_MUTATIONS.estimateCreate,
       async (item) => {
         const payload = item.payload as PortalEstimateCreateMutationPayload;
-        const res = await apiJson<{ estimate: EstimateDetail }>(
-          `/api/projects/${encodeURIComponent(payload.projectId)}/estimates`,
-          {
-            method: 'POST',
-            body: JSON.stringify({
-              calculator_snapshot: {
-                inputs: payload.estimatePayload.inputs,
-                outputs: {
-                  ...payload.estimatePayload.outputs,
-                  derived: payload.estimatePayload.derived ?? {},
-                  projectSnapshot: payload.estimatePayload.projectSnapshot ?? null,
-                  snapshot: payload.estimatePayload.snapshot ?? null,
-                  configVersions: payload.estimatePayload.configVersions ?? null,
+        try {
+          const res = await apiJson<{ estimate: EstimateDetail }>(
+            `/api/projects/${encodeURIComponent(payload.projectId)}/estimates`,
+            {
+              method: 'POST',
+              body: JSON.stringify({
+                calculator_snapshot: {
+                  inputs: payload.estimatePayload.inputs,
+                  outputs: {
+                    ...payload.estimatePayload.outputs,
+                    derived: payload.estimatePayload.derived ?? {},
+                    projectSnapshot: payload.estimatePayload.projectSnapshot ?? null,
+                    snapshot: payload.estimatePayload.snapshot ?? null,
+                    configVersions: payload.estimatePayload.configVersions ?? null,
+                  },
                 },
-              },
-            }),
-            skipSaveTracking: true,
-          },
-        );
+              }),
+              skipSaveTracking: true,
+            },
+          );
 
-        if (!res.estimate) throw new Error('Estimate not created');
-        replaceEstimateDetailCache(queryClient, hostKey, payload.projectId, payload.localEstimateId, res.estimate);
-        await registerLocalFirstIdAlias(payload.localEstimateId, res.estimate.id);
+          if (!res.estimate) throw new Error('Estimate not created');
+          replaceEstimateDetailCache(queryClient, hostKey, payload.projectId, payload.localEstimateId, res.estimate);
+          await registerLocalFirstIdAlias(payload.localEstimateId, res.estimate.id);
 
-        if (payload.createDesignRequest) {
-          const designRequestPayload: PortalDesignRequestCreateMutationPayload = {
-            projectId: payload.projectId,
-            estimateId: res.estimate.id,
-            requestSource: payload.createDesignRequest.requestSource,
-            priorityTier: payload.createDesignRequest.priorityTier,
-          };
-          await enqueueAndProcessLocalFirstMutation({
-            entityKey: buildDesignRequestEntityKey(payload.projectId, res.estimate.id),
-            mutationKey: PORTAL_LOCAL_FIRST_MUTATIONS.designRequestCreate,
-            payload: designRequestPayload,
+          if (payload.createDesignRequest) {
+            const designRequestPayload: PortalDesignRequestCreateMutationPayload = {
+              projectId: payload.projectId,
+              estimateId: res.estimate.id,
+              requestSource: payload.createDesignRequest.requestSource,
+              priorityTier: payload.createDesignRequest.priorityTier,
+            };
+            await enqueueAndProcessLocalFirstMutation({
+              entityKey: buildDesignRequestEntityKey(payload.projectId, res.estimate.id),
+              mutationKey: PORTAL_LOCAL_FIRST_MUTATIONS.designRequestCreate,
+              payload: designRequestPayload,
+            });
+          }
+
+          void invalidateProjectReadCaches(queryClient, hostKey, payload.projectId, {
+            includeEstimates: true,
+            includeProjectDetail: false,
           });
+
+          return {
+            kind: 'success',
+            clearWorkingCopy: true,
+          } as const;
+        } catch (error) {
+          if (isEstimateBlockedConflict(error)) {
+            return {
+              kind: 'conflict',
+              message: error.message,
+              serverSnapshot: error.body,
+            } as const;
+          }
+          throw error;
         }
-
-        void invalidateProjectReadCaches(queryClient, hostKey, payload.projectId, {
-          includeEstimates: true,
-          includeProjectDetail: false,
-        });
-
-        return {
-          kind: 'success',
-          clearWorkingCopy: true,
-        } as const;
       },
     );
 
@@ -132,11 +151,7 @@ export default function LocalFirstPortalMutations() {
             clearWorkingCopy: true,
           } as const;
         } catch (error) {
-          if (
-            isEstimateConflict(error) &&
-            typeof (error.body as any)?.code === 'string' &&
-            (error.body as any).code === 'ESTIMATE_LOCKED'
-          ) {
+          if (isEstimateBlockedConflict(error)) {
             return {
               kind: 'conflict',
               message: error.message,

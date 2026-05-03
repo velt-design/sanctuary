@@ -101,8 +101,8 @@ export type DrawingWorkbenchStore = {
     activePlanViewModel: PlanViewModel | null;
     activeDrawingSurfaceGeometry: WorkbenchDrawingSurfaceGeometry | null;
     activeViewportGeometry: WorkbenchViewportGeometry | null;
-    activePlanModel: ModulePlanModel | null;
-    activeSectionModel: ModuleSectionModel | null;
+    activeLegacyPlanModel: ModulePlanModel | null;
+    activeLegacySectionModel: ModuleSectionModel | null;
     activeModuleLabel: string;
     houseAssembly: HouseAssemblyModel | null;
     houseForms: HouseFormModel[];
@@ -415,8 +415,8 @@ export function buildDrawingWorkbenchStore(input: {
       activePlanViewModel: activeModule?.planViewModel ?? null,
       activeDrawingSurfaceGeometry: activeModule?.drawingSurfaceGeometry ?? null,
       activeViewportGeometry: activeModule?.viewportGeometry ?? null,
-      activePlanModel: activeModule?.drawingSurfaceGeometry.planModel ?? null,
-      activeSectionModel: activeModule?.drawingSurfaceGeometry.sectionModel ?? null,
+      activeLegacyPlanModel: activeModule?.drawingSurfaceGeometry.legacyPlanModel ?? null,
+      activeLegacySectionModel: activeModule?.drawingSurfaceGeometry.legacySectionModel ?? null,
       activeModuleLabel: activeModule?.label ?? 'Module',
       houseAssembly: projectModel.houseAssembly,
       houseForms,

@@ -504,11 +504,11 @@ function makeSolvedDrawingSurfaceGeometry(
       planModel: drawing.planModel ?? null,
       sectionModel: drawing.sectionModel ?? null,
     },
-    planModel: drawing.planModel ?? null,
+    legacyPlanModel: drawing.planModel ?? null,
     planViewModel: null,
     geometryPlan,
     geometryTopProjection,
-    sectionModel: drawing.sectionModel ?? null,
+    legacySectionModel: drawing.sectionModel ?? null,
     geometrySection: null,
   };
 }
@@ -524,11 +524,11 @@ function makeLegacyDrawingSurfaceGeometry(drawing: {
       planModel: drawing.planModel ?? null,
       sectionModel: drawing.sectionModel ?? null,
     },
-    planModel: drawing.planModel ?? null,
+    legacyPlanModel: drawing.planModel ?? null,
     planViewModel: null,
     geometryPlan: null,
     geometryTopProjection: null,
-    sectionModel: drawing.sectionModel ?? null,
+    legacySectionModel: drawing.sectionModel ?? null,
     geometrySection: null,
   };
 }
@@ -872,7 +872,6 @@ describe('ModuleViewsCard', () => {
   });
 
   it('renders workbench section sheets from solved geometry when artifact section is available', () => {
-    const drawing = makeDrawingModule();
     const markup = renderToStaticMarkup(
       <ModuleDrawingRenderer
         view="section"
@@ -885,18 +884,16 @@ describe('ModuleViewsCard', () => {
             section: makeGeometrySectionFixture(),
           } as WorkbenchDrawingSurfaceGeometry['artifact'],
           legacyFallback: {
-            planModel: drawing.planModel,
-            sectionModel: drawing.sectionModel,
+            planModel: null,
+            sectionModel: null,
           },
-          planModel: drawing.planModel,
+          legacyPlanModel: null,
           planViewModel: null,
           geometryPlan: makeGeometryPlanFixture(),
           geometryTopProjection: makeTopProjectionFixture(),
-          sectionModel: drawing.sectionModel,
+          legacySectionModel: null,
           geometrySection: makeGeometrySectionFixture(),
         }}
-        planModel={drawing.planModel}
-        sectionModel={drawing.sectionModel}
         presentation="sheet"
       />,
     );
@@ -906,6 +903,33 @@ describe('ModuleViewsCard', () => {
     expect(markup).toContain('data-section-member-role="rafter"');
     expect(markup).toContain('data-house-section-line="attachment_target"');
     expect(markup).not.toContain('data-section-geometry-source="legacy_module_section_model"');
+  });
+
+  it('renders solved plan model space without a legacy plan presenter', () => {
+    const markup = renderToStaticMarkup(
+      <ModuleDrawingRenderer
+        view="plan"
+        status="ready"
+        presentation="model"
+        drawingSurfaceGeometry={makeSolvedDrawingSurfaceGeometry({
+          planModel: null,
+          sectionModel: null,
+        })}
+      />,
+    );
+
+    const svgTag = extractSvgTag(markup, 'Module plan view');
+
+    expect(markup).toContain('data-drawing-surface-source="solved_geometry"');
+    expect(svgTag).toContain('data-plan-render-source="geometry"');
+    expect(svgTag).toContain('data-plan-render-status="geometry_ready"');
+    expect(svgTag).toContain('data-model-space-render-contract="top_projection_only"');
+    expect(markup).toContain('data-plan-top-projection-shape=');
+    expect(markup).toContain('data-plan-primary-dim="bottom"');
+    expect(markup).toContain('data-plan-primary-dim="left"');
+    expect(svgTag).toContain('data-plan-visible-legacy-overlay-body-count="0"');
+    expect(markup).not.toContain('Waiting for valid inputs');
+    expect(markup).not.toContain('data-plan-render-source="geometry_derived"');
   });
 
   it('keeps legacy section rendering as fallback when no artifact section is available', () => {
@@ -921,11 +945,11 @@ describe('ModuleViewsCard', () => {
             planModel: drawing.planModel,
             sectionModel: drawing.sectionModel,
           },
-          planModel: drawing.planModel,
+          legacyPlanModel: drawing.planModel,
           planViewModel: null,
           geometryPlan: null,
           geometryTopProjection: null,
-          sectionModel: drawing.sectionModel,
+          legacySectionModel: drawing.sectionModel,
           geometrySection: null,
         }}
         presentation="sheet"

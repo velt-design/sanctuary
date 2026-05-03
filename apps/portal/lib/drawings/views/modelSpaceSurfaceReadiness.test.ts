@@ -2,11 +2,11 @@ import { describe, expect, it } from 'vitest';
 import type { WorkbenchDrawingSurfaceGeometry } from './workbenchDrawingSurfaceGeometry';
 import { resolveModelSpaceSurfaceReadiness } from './modelSpaceSurfaceReadiness';
 
-const planModel = { view: 'plan-model' } as WorkbenchDrawingSurfaceGeometry['planModel'];
-const sectionModel = { view: 'section-model' } as WorkbenchDrawingSurfaceGeometry['sectionModel'];
-const geometryPlan = { view: 'geometry-plan' } as WorkbenchDrawingSurfaceGeometry['geometryPlan'];
-const geometryTopProjection = { view: 'geometry-top-projection' } as WorkbenchDrawingSurfaceGeometry['geometryTopProjection'];
-const geometrySection = { view: 'geometry-section' } as WorkbenchDrawingSurfaceGeometry['geometrySection'];
+const planModel = { view: 'plan-model' } as unknown as WorkbenchDrawingSurfaceGeometry['legacyPlanModel'];
+const sectionModel = { view: 'section-model' } as unknown as WorkbenchDrawingSurfaceGeometry['legacySectionModel'];
+const geometryPlan = { view: 'geometry-plan' } as unknown as WorkbenchDrawingSurfaceGeometry['geometryPlan'];
+const geometryTopProjection = { view: 'geometry-top-projection' } as unknown as WorkbenchDrawingSurfaceGeometry['geometryTopProjection'];
+const geometrySection = { view: 'geometry-section' } as unknown as WorkbenchDrawingSurfaceGeometry['geometrySection'];
 
 function makeSurface(overrides: Partial<WorkbenchDrawingSurfaceGeometry>): WorkbenchDrawingSurfaceGeometry {
   return {
@@ -16,11 +16,11 @@ function makeSurface(overrides: Partial<WorkbenchDrawingSurfaceGeometry>): Workb
       planModel: null,
       sectionModel: null,
     },
-    planModel: null,
+    legacyPlanModel: null,
     planViewModel: null,
     geometryPlan: null,
     geometryTopProjection: null,
-    sectionModel: null,
+    legacySectionModel: null,
     geometrySection: null,
     ...overrides,
   };
@@ -40,7 +40,7 @@ describe('resolveModelSpaceSurfaceReadiness', () => {
           planModel,
           sectionModel: null,
         },
-        planModel,
+        legacyPlanModel: planModel,
         geometryPlan,
         geometryTopProjection,
       }),
@@ -79,7 +79,7 @@ describe('resolveModelSpaceSurfaceReadiness', () => {
           planModel,
           sectionModel: null,
         },
-        planModel,
+        legacyPlanModel: planModel,
       }),
     });
 
@@ -110,7 +110,7 @@ describe('resolveModelSpaceSurfaceReadiness', () => {
             planModel: null,
             sectionModel,
           },
-          sectionModel,
+          legacySectionModel: sectionModel,
         }),
       }).hasDrawableSection,
     ).toBe(true);

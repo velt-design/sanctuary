@@ -863,10 +863,13 @@ export type GeometryQuantityTakeoffRoofPlane = {
   areaMm2: number;
   areaM2: number;
   rafterCount: number;
+  rafterBayCount: number;
   rafterTotalLengthMm: number;
   rafterTotalLengthM: number;
   rafterAverageLengthMm: number | null;
   rafterAverageLengthM: number | null;
+  rafterAverageSpacingMm: number | null;
+  rafterAverageSpacingM: number | null;
   claddingPanelCount: number;
   claddingAreaMm2: number;
   claddingAreaM2: number;
@@ -970,6 +973,38 @@ export type GeometryQuantityTakeoffJoiners = {
   items: GeometryQuantityTakeoffMemberItem[];
 };
 
+export type GeometryQuantityTakeoffFlashingItem = {
+  id: string;
+  lengthMm: number;
+  lengthM: number;
+  girthMm: number | null;
+  thicknessMm: number;
+  wingCount: number;
+  surfaceAreaMm2: number;
+  surfaceAreaM2: number;
+  metadata?: GeometryMetadata;
+};
+
+export type GeometryQuantityTakeoffFlashingGirthBucket = {
+  girthMm: number | null;
+  count: number;
+  totalLengthMm: number;
+  totalLengthM: number;
+  totalSurfaceAreaMm2: number;
+  totalSurfaceAreaM2: number;
+  items: GeometryQuantityTakeoffFlashingItem[];
+};
+
+export type GeometryQuantityTakeoffFlashings = {
+  count: number;
+  totalLengthMm: number;
+  totalLengthM: number;
+  totalSurfaceAreaMm2: number;
+  totalSurfaceAreaM2: number;
+  items: GeometryQuantityTakeoffFlashingItem[];
+  byGirthMm: Record<string, GeometryQuantityTakeoffFlashingGirthBucket>;
+};
+
 /**
  * Structured physical takeoff derived from Assembly3D.
  * This is geometry-owned physical truth only; pricing and BOM policy live in costing.
@@ -986,6 +1021,7 @@ export type GeometryQuantityTakeoff = {
   gutters: GeometryQuantityTakeoffGutters;
   roofCladding: GeometryQuantityTakeoffRoofCladding;
   joiners: GeometryQuantityTakeoffJoiners;
+  flashings: GeometryQuantityTakeoffFlashings;
   quantityHooks: QuantityHook[];
   quantityHookMap: Record<string, number>;
   diagnostics: GeometryQuantityTakeoffDiagnostic[];

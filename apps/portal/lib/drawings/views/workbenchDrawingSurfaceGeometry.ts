@@ -22,11 +22,11 @@ export type WorkbenchDrawingSurfaceGeometry = {
     planModel: ModulePlanModel | null;
     sectionModel: ModuleSectionModel | null;
   };
-  planModel: ModulePlanModel | null;
+  legacyPlanModel: ModulePlanModel | null;
   planViewModel: PlanViewModel | null;
   geometryPlan: GeometryPlanViewModel | null;
   geometryTopProjection: GeometryTopProjectionViewModel | null;
-  sectionModel: ModuleSectionModel | null;
+  legacySectionModel: ModuleSectionModel | null;
   geometrySection: GeometrySectionViewModel | null;
 };
 
@@ -45,11 +45,11 @@ export function buildWorkbenchDrawingSurfaceGeometry(input: {
       source: 'solved_geometry',
       artifact,
       legacyFallback: fallback,
-      planModel: fallback.planModel,
+      legacyPlanModel: fallback.planModel,
       planViewModel: input.planViewModel,
       geometryPlan: artifact.plan,
       geometryTopProjection: artifact.topProjection,
-      sectionModel: fallback.sectionModel,
+      legacySectionModel: fallback.sectionModel,
       geometrySection: artifact.section,
     };
   }
@@ -59,11 +59,11 @@ export function buildWorkbenchDrawingSurfaceGeometry(input: {
       source: 'legacy_fallback',
       artifact: null,
       legacyFallback: fallback,
-      planModel: fallback.planModel,
+      legacyPlanModel: fallback.planModel,
       planViewModel: input.planViewModel,
       geometryPlan: null,
       geometryTopProjection: null,
-      sectionModel: fallback.sectionModel,
+      legacySectionModel: fallback.sectionModel,
       geometrySection: null,
     };
   }
@@ -72,11 +72,11 @@ export function buildWorkbenchDrawingSurfaceGeometry(input: {
     source: 'unavailable',
     artifact: null,
     legacyFallback: fallback,
-    planModel: null,
+    legacyPlanModel: null,
     planViewModel: input.planViewModel,
     geometryPlan: null,
     geometryTopProjection: null,
-    sectionModel: null,
+    legacySectionModel: null,
     geometrySection: null,
   };
 }

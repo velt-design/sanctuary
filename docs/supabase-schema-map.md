@@ -44,7 +44,7 @@ Primary write path:
 - Estimate create/update routes under `apps/portal/app/api/projects/[projectId]/estimates` and `apps/portal/app/api/estimates/[estimateId]`, usually reached through local-first mutation handlers.
 - Project task action routes and project snapshot action routes under `apps/portal/app/api/staff/v1/projects`.
 - Portal user creation through auth/admin helpers and invite/admin tooling, not general staff UI table writes.
-- Future estimate pricing source fields must be added by ordered forward migration only. Planned fields are `estimates.pricing_source`, `estimates.pricing_source_metadata`, and nullable `estimates.commercial_design_input`; estimate write routes remain the only normal staff path for populating them.
+- Estimate pricing source fields were added by ordered forward migration: `estimates.pricing_source`, `estimates.pricing_source_metadata`, and nullable `estimates.commercial_design_input`; estimate write routes remain the only normal staff path for populating them.
 
 Primary read path:
 

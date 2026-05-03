@@ -181,8 +181,8 @@ function buildRoofPlanes(takeoff: GeometryQuantityTakeoff | null): NonNullable<C
     id: plane.id || `roof-plane-${index + 1}`,
     label: plane.label,
     areaM2: plane.areaM2,
-    rafterLengthM: null,
-    bayCount: null,
+    rafterLengthM: plane.rafterAverageLengthM,
+    bayCount: Math.max(0, plane.rafterCount - 1),
   }));
 }
 

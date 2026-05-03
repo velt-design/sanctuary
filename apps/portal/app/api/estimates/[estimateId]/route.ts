@@ -3,6 +3,7 @@ import { jsonError, jsonOk, parseJsonBody, requireStaffContext } from '@/lib/api
 import { missingColumnFromError } from '@/lib/api/siteVisitsServer';
 import { estimateFlowStateFor, loadProjectEstimateFlowMaps } from '@/lib/estimates/flow';
 import { buildEstimateDbPayload } from '@/lib/estimates/persistence';
+import { logEstimatePricingSourceAudit, resolveEstimatePricingSourceForSave } from '@/lib/estimates/pricingRollout';
 import { buildVersionLabelMap, extractVersionNumber, loadEstimateEditability, mapEstimateDetail } from '@/lib/estimates/server';
 import { uuidFromAppId } from '@/lib/supabase/mappers';
 import { NextResponse } from 'next/server';
@@ -26,6 +27,10 @@ function parseEstimateUpdate(value: unknown): AnyRecord | null {
   return isRecord(value) ? value : null;
 }
 
+function isEstimatePricingSourceColumn(column: string): boolean {
+  return column === 'pricing_source' || column === 'pricing_source_metadata' || column === 'commercial_design_input';
+}
+
 function estimateLockedResponse(editability: Awaited<ReturnType<typeof loadEstimateEditability>>) {
   return NextResponse.json(
     {
@@ -47,6 +52,7 @@ async function updateEstimateWithRetry(supabase: SupabaseClient, estimateUuid: s
 
     const missing = missingColumnFromError(res.error);
     if (missing && missing in payload) {
+      if (payload.pricing_source === 'workbench_solved' && isEstimatePricingSourceColumn(missing)) return res;
       delete payload[missing];
       if (!Object.keys(payload).length) return { data: null, error: null };
       continue;
@@ -140,6 +146,28 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ estimateId: s
       return jsonError('estimate_update.outputs must be an object', 400);
     }
 
+    const actor = typeof auth.session.user?.email === 'string' ? auth.session.user.email.trim() : null;
+    const actorUserId = typeof auth.session.user?.id === 'string' ? auth.session.user.id : null;
+    const sourceGate = resolveEstimatePricingSourceForSave({ actor, selectedAt: now });
+    if (!sourceGate.ok) {
+      await logEstimatePricingSourceAudit(supabase, {
+        projectUuid: typeof res.data.project_id === 'string' ? res.data.project_id : null,
+        estimateUuid,
+        type: 'estimate.pricing_source_blocked',
+        actor: actorUserId ?? actor,
+        payload: {
+          requestedSource: sourceGate.normalizedRequest.requestedPricingSource,
+          requestedSourceRaw: sourceGate.normalizedRequest.raw,
+          blockingGateCodes: sourceGate.readinessReport.blockingGateCodes,
+          gateVersion: sourceGate.metadata.gateVersion,
+        },
+      });
+      return jsonError(sourceGate.message, sourceGate.status, null, {
+        code: sourceGate.code,
+        readinessReport: sourceGate.readinessReport,
+      });
+    }
+
     const existingOutputs = isRecord(res.data.outputs) ? res.data.outputs : {};
     const currentVersion = extractVersionNumber(res.data);
 
@@ -156,6 +184,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ estimateId: s
         version: currentVersion,
         updatedAt: now,
         internalNotes: internalNotes !== null ? internalNotes || null : parseNote(res.data.internal_notes),
+        pricingSourceContext: sourceGate.context,
       }),
     );
   }
@@ -170,6 +199,23 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ estimateId: s
   if (updateRes.error) return jsonError(updateRes.error.message ?? 'Failed to update estimate', 500);
 
   const row = updateRes.data ?? res.data;
+  if (estimateUpdate) {
+    const actor = typeof auth.session.user?.email === 'string' ? auth.session.user.email.trim() : null;
+    const actorUserId = typeof auth.session.user?.id === 'string' ? auth.session.user.id : null;
+    const source = typeof patch.pricing_source === 'string' ? patch.pricing_source : 'calculator_live';
+    await logEstimatePricingSourceAudit(supabase, {
+      projectUuid: typeof row?.project_id === 'string' ? row.project_id : null,
+      estimateUuid,
+      type: 'estimate.pricing_source_saved',
+      actor: actorUserId ?? actor,
+      payload: {
+        source,
+        requestedSource: isRecord(patch.pricing_source_metadata) ? patch.pricing_source_metadata.requestedSource : source,
+        requestedSourceRaw: isRecord(patch.pricing_source_metadata) ? patch.pricing_source_metadata.requestedSourceRaw : null,
+        gateVersion: isRecord(patch.pricing_source_metadata) ? patch.pricing_source_metadata.gateVersion : null,
+      },
+    });
+  }
   const syncedQuoteVersionIds: string[] = [];
   const label = await resolveVersionLabel(supabase, row);
   const flowMaps = await loadProjectEstimateFlowMaps(String(row?.project_id ?? ''));

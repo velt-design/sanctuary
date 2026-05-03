@@ -3,12 +3,17 @@ import { jsonError, jsonOk, parseJsonBody, requireStaffContext } from '@/lib/api
 import { missingColumnFromError } from '@/lib/api/siteVisitsServer';
 import { estimateFlowStateFor, loadProjectEstimateFlowMaps } from '@/lib/estimates/flow';
 import { buildEstimateDbPayload } from '@/lib/estimates/persistence';
+import { logEstimatePricingSourceAudit, resolveEstimatePricingSourceForSave } from '@/lib/estimates/pricingRollout';
 import { buildVersionLabelMap, calculatorSnapshotFromRow, extractVersionNumber, mapEstimateDetail, mapEstimateMeta } from '@/lib/estimates/server';
 import { isRecord, uuidFromAppId } from '@/lib/supabase/mappers';
 
 export const runtime = 'nodejs';
 
 type AnyRecord = Record<string, unknown>;
+
+function isEstimatePricingSourceColumn(column: string): boolean {
+  return column === 'pricing_source' || column === 'pricing_source_metadata' || column === 'commercial_design_input';
+}
 
 async function insertEstimateWithRetry(supabase: SupabaseClient, payload: Record<string, any>) {
   const working: Record<string, any> = { ...payload };
@@ -19,6 +24,7 @@ async function insertEstimateWithRetry(supabase: SupabaseClient, payload: Record
 
     const missing = missingColumnFromError(res.error);
     if (missing && missing in working) {
+      if (working.pricing_source === 'workbench_solved' && isEstimatePricingSourceColumn(missing)) return res;
       delete working[missing];
       continue;
     }
@@ -117,6 +123,26 @@ export async function POST(req: Request, ctx: { params: Promise<{ projectId: str
   const inputs = isRecord(snapshot.inputs) ? (snapshot.inputs as AnyRecord) : {};
   const outputs = isRecord(snapshot.outputs) ? (snapshot.outputs as AnyRecord) : {};
   const createdBy = typeof auth.session.user?.email === 'string' ? auth.session.user.email.trim() : null;
+  const actorUserId = typeof auth.session.user?.id === 'string' ? auth.session.user.id : null;
+
+  const sourceGate = resolveEstimatePricingSourceForSave({ actor: createdBy });
+  if (!sourceGate.ok) {
+    await logEstimatePricingSourceAudit(supabase, {
+      projectUuid,
+      type: 'estimate.pricing_source_blocked',
+      actor: actorUserId ?? createdBy,
+      payload: {
+        requestedSource: sourceGate.normalizedRequest.requestedPricingSource,
+        requestedSourceRaw: sourceGate.normalizedRequest.raw,
+        blockingGateCodes: sourceGate.readinessReport.blockingGateCodes,
+        gateVersion: sourceGate.metadata.gateVersion,
+      },
+    });
+    return jsonError(sourceGate.message, sourceGate.status, null, {
+      code: sourceGate.code,
+      readinessReport: sourceGate.readinessReport,
+    });
+  }
 
   const payload: Record<string, any> = {
     project_id: projectUuid,
@@ -130,6 +156,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ projectId: str
       configVersions: outputs.configVersions,
       version: nextVersion,
       createdBy,
+      pricingSourceContext: sourceGate.context,
     }),
   };
 
@@ -139,6 +166,18 @@ export async function POST(req: Request, ctx: { params: Promise<{ projectId: str
   }
 
   const row = insertRes.data;
+  await logEstimatePricingSourceAudit(supabase, {
+    projectUuid,
+    estimateUuid: String(row?.id ?? ''),
+    type: 'estimate.pricing_source_saved',
+    actor: actorUserId ?? createdBy,
+    payload: {
+      source: sourceGate.context.pricingSource,
+      requestedSource: sourceGate.normalizedRequest.requestedPricingSource,
+      requestedSourceRaw: sourceGate.normalizedRequest.raw,
+      gateVersion: sourceGate.context.pricingSourceMetadata.gateVersion,
+    },
+  });
   const label = versionLabels.get(String(row?.id ?? '')) ?? `V${nextVersion}`;
   const flowMaps = await loadProjectEstimateFlowMaps(projectUuid);
   const estimate = mapEstimateDetail(

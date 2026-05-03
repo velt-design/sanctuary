@@ -255,21 +255,21 @@ describe('buildDrawingWorkbenchStore', () => {
     expect(store.derived.activeTrustGate.warningIssues).toContain('approximate');
     expect(store.derived.exportReadiness.canExport).toBe(true);
     expect(store.derived.reviewReadiness.canReview).toBe(true);
-    expect(store.derived.activeSolution?.planModel).toBe(store.derived.activePlanModel);
-    expect(store.derived.activeSolution?.sectionModel).toBe(store.derived.activeSectionModel);
+    expect(store.derived.activeSolution?.planModel).toBe(store.derived.activeLegacyPlanModel);
+    expect(store.derived.activeSolution?.sectionModel).toBe(store.derived.activeLegacySectionModel);
     expect(store.derived.activeViewportGeometry).toBe(store.derived.activeSolution?.viewportGeometry);
     expect(store.derived.activeViewportGeometry?.artifact).toBe(store.derived.activeSolution?.geometryArtifact);
-    expect(store.derived.activeViewportGeometry?.legacyFallback.planModel).toBe(store.derived.activePlanModel);
-    expect(store.derived.activeViewportGeometry?.legacyFallback.sectionModel).toBe(store.derived.activeSectionModel);
+    expect(store.derived.activeViewportGeometry?.legacyFallback.planModel).toBe(store.derived.activeLegacyPlanModel);
+    expect(store.derived.activeViewportGeometry?.legacyFallback.sectionModel).toBe(store.derived.activeLegacySectionModel);
     expect(store.derived.activeDrawingSurfaceGeometry).toBe(store.derived.activeModule?.drawingSurfaceGeometry);
     expect(store.derived.activeDrawingSurfaceGeometry?.source).toBe('solved_geometry');
     expect(store.derived.activeDrawingSurfaceGeometry?.artifact).toBe(store.derived.activeViewportGeometry?.artifact);
     expect(store.derived.activeDrawingSurfaceGeometry?.legacyFallback).toEqual({
-      planModel: store.derived.activePlanModel,
-      sectionModel: store.derived.activeSectionModel,
+      planModel: store.derived.activeLegacyPlanModel,
+      sectionModel: store.derived.activeLegacySectionModel,
     });
-    expect(store.derived.activeDrawingSurfaceGeometry?.planModel).toBe(store.derived.activePlanModel);
-    expect(store.derived.activeDrawingSurfaceGeometry?.sectionModel).toBe(store.derived.activeSectionModel);
+    expect(store.derived.activeDrawingSurfaceGeometry?.legacyPlanModel).toBe(store.derived.activeLegacyPlanModel);
+    expect(store.derived.activeDrawingSurfaceGeometry?.legacySectionModel).toBe(store.derived.activeLegacySectionModel);
     expect(store.derived.activeSolution?.geometryPlan).toBe(store.derived.activeModule?.geometryPlanViewModel);
     expect(store.derived.activeSolution?.geometryArtifact?.plan).toBe(store.derived.activeSolution?.geometryPlan);
     expect(store.derived.activeSolution?.geometryArtifact?.topProjection).toBe(
@@ -311,11 +311,11 @@ describe('buildDrawingWorkbenchStore', () => {
       store.derived.activeSolution.geometryArtifact?.topProjection,
     );
     expect(store.derived.activeAssemblyModel?.roof.footprint.lengthA).toBeCloseTo(4.5);
-    expect(store.derived.activePlanModel?.lengthA).toBeCloseTo(4.5);
-    expect(store.derived.activePlanModel?.attachmentEdgeLengthM).toBeCloseTo(4.5);
-    expect(store.derived.activeSectionModel?.spanA).toBeCloseTo(2.5);
-    expect(store.derived.activeSectionModel?.leftEdgeHeightM).toBeCloseTo(2.4);
-    expect(store.derived.activeSectionModel?.rightEdgeHeightM).toBeCloseTo(2.1);
+    expect(store.derived.activeLegacyPlanModel?.lengthA).toBeCloseTo(4.5);
+    expect(store.derived.activeLegacyPlanModel?.attachmentEdgeLengthM).toBeCloseTo(4.5);
+    expect(store.derived.activeLegacySectionModel?.spanA).toBeCloseTo(2.5);
+    expect(store.derived.activeLegacySectionModel?.leftEdgeHeightM).toBeCloseTo(2.4);
+    expect(store.derived.activeLegacySectionModel?.rightEdgeHeightM).toBeCloseTo(2.1);
     expect(store.derived.activePlanViewModel?.annotations.suppressDocumentAnnotationsInModelSpace).toBe(true);
     expect(store.persisted.projectModel.houseAssembly?.id).toBe('assembly-main');
     expect(store.persisted.projectModel.houseAssembly?.houseForms[0]?.id).toBe('house-main');
@@ -393,11 +393,11 @@ describe('buildDrawingWorkbenchStore', () => {
     expect(store.derived.exportReadiness.canExport).toBe(true);
     expect(store.derived.activeSolution?.geometryPlan).toBe(store.persisted.modules[0]?.geometryPlanViewModel);
     expect(store.derived.activeSolution?.geometryTopProjection).toBe(store.persisted.modules[0]?.geometryTopProjectionViewModel);
-    expect(store.derived.activePlanModel).not.toBeNull();
+    expect(store.derived.activeLegacyPlanModel).not.toBeNull();
     expect(store.derived.activePlanViewModel?.modelSpacePergola.renderSource).toBe('geometry');
     expect(store.derived.activePlanViewModel?.modelSpacePergola.renderStatus).toBe('geometry_ready');
-    expect(store.derived.activePlanModel?.roofType).toBe('hip');
-    expect(store.derived.activeSectionModel).not.toBeNull();
+    expect(store.derived.activeLegacyPlanModel?.roofType).toBe('hip');
+    expect(store.derived.activeLegacySectionModel).not.toBeNull();
     expect(store.derived.status).toBe('ready');
   });
 
@@ -438,7 +438,7 @@ describe('buildDrawingWorkbenchStore', () => {
     expect(store.derived.activeViewportGeometry?.preview.kind).toBe('error');
     expect(store.derived.activeViewportGeometry?.legacyFallback.planModel).toBeNull();
     expect(store.derived.activeDrawingSurfaceGeometry?.source).toBe('unavailable');
-    expect(store.derived.activePlanModel).toBeNull();
+    expect(store.derived.activeLegacyPlanModel).toBeNull();
     expect(store.derived.status).toBe('empty');
   });
 
@@ -484,20 +484,20 @@ describe('buildDrawingWorkbenchStore', () => {
       canReview: true,
       label: 'Warning: Legacy fallback',
     });
-    expect(store.derived.activePlanModel).not.toBeNull();
-    expect(store.derived.activeSectionModel).not.toBeNull();
+    expect(store.derived.activeLegacyPlanModel).not.toBeNull();
+    expect(store.derived.activeLegacySectionModel).not.toBeNull();
     expect(store.derived.activeViewportGeometry?.artifact).toBeNull();
     expect(store.derived.activeViewportGeometry?.preview.kind).toBe('unsupported');
-    expect(store.derived.activeViewportGeometry?.legacyFallback.planModel).toBe(store.derived.activePlanModel);
-    expect(store.derived.activeViewportGeometry?.legacyFallback.sectionModel).toBe(store.derived.activeSectionModel);
+    expect(store.derived.activeViewportGeometry?.legacyFallback.planModel).toBe(store.derived.activeLegacyPlanModel);
+    expect(store.derived.activeViewportGeometry?.legacyFallback.sectionModel).toBe(store.derived.activeLegacySectionModel);
     expect(store.derived.activeDrawingSurfaceGeometry?.source).toBe('legacy_fallback');
     expect(store.derived.activeDrawingSurfaceGeometry?.artifact).toBeNull();
     expect(store.derived.activeDrawingSurfaceGeometry?.legacyFallback).toEqual({
-      planModel: store.derived.activePlanModel,
-      sectionModel: store.derived.activeSectionModel,
+      planModel: store.derived.activeLegacyPlanModel,
+      sectionModel: store.derived.activeLegacySectionModel,
     });
-    expect(store.derived.activeDrawingSurfaceGeometry?.planModel).toBe(store.derived.activePlanModel);
-    expect(store.derived.activeDrawingSurfaceGeometry?.sectionModel).toBe(store.derived.activeSectionModel);
+    expect(store.derived.activeDrawingSurfaceGeometry?.legacyPlanModel).toBe(store.derived.activeLegacyPlanModel);
+    expect(store.derived.activeDrawingSurfaceGeometry?.legacySectionModel).toBe(store.derived.activeLegacySectionModel);
     expect(store.derived.activeDrawingSurfaceGeometry?.geometryPlan).toBeNull();
     expect(store.derived.railModel.objectLists.pergolas[0]).toMatchObject({
       status: 'approximate',
@@ -570,8 +570,8 @@ describe('buildDrawingWorkbenchStore', () => {
 
     expect(store.derived.status).toBe('ready');
     expect(store.persisted.modules[0]?.drawingModule.result?.derived.length_m).toBeCloseTo(8.4);
-    expect(store.derived.activePlanModel?.lengthA).toBeCloseTo(8.4);
-    expect(store.derived.activeSectionModel).not.toBeNull();
+    expect(store.derived.activeLegacyPlanModel?.lengthA).toBeCloseTo(8.4);
+    expect(store.derived.activeLegacySectionModel).not.toBeNull();
   });
 
   it('builds 2D models from locally resolved draft geometry instead of stale snapshot outputs', () => {
@@ -593,8 +593,8 @@ describe('buildDrawingWorkbenchStore', () => {
     expect(store.derived.status).toBe('ready');
     expect(store.persisted.modules[0]?.drawingModule.input.lengthM).toBe('6.4');
     expect(store.persisted.modules[0]?.drawingModule.result?.derived.length_m).toBeCloseTo(6.4);
-    expect(store.derived.activePlanModel?.lengthA).toBeCloseTo(6.4);
-    expect(store.derived.activeSectionModel?.pitchDeg).toBeCloseTo(10);
+    expect(store.derived.activeLegacyPlanModel?.lengthA).toBeCloseTo(6.4);
+    expect(store.derived.activeLegacySectionModel?.pitchDeg).toBeCloseTo(10);
   });
 
   it('builds sheet models from explicit attached gable no-frame snapshots while constraining gutters', () => {
@@ -606,8 +606,8 @@ describe('buildDrawingWorkbenchStore', () => {
     });
 
     expect(store.derived.status).toBe('ready');
-    expect(store.derived.activePlanModel?.roofType).toBe('gable');
-    expect(store.derived.activeSectionModel?.roofType).toBe('gable');
+    expect(store.derived.activeLegacyPlanModel?.roofType).toBe('gable');
+    expect(store.derived.activeLegacySectionModel?.roofType).toBe('gable');
     expect(store.derived.activeAssemblyModel?.moduleInput.gableEndFramesMode).toBe('none');
     expect(store.derived.activeAssemblyModel?.moduleInput.gableHouseEdgeGutter).toBe('house');
     expect(store.derived.activeAssemblyModel?.moduleInput.gableOuterEdgeGutter).toBe('our');
@@ -622,8 +622,8 @@ describe('buildDrawingWorkbenchStore', () => {
     });
 
     expect(store.derived.status).toBe('ready');
-    expect(store.derived.activePlanModel?.roofType).toBe('gable');
-    expect(store.derived.activeSectionModel?.roofType).toBe('gable');
+    expect(store.derived.activeLegacyPlanModel?.roofType).toBe('gable');
+    expect(store.derived.activeLegacySectionModel?.roofType).toBe('gable');
     expect(store.derived.activeAssemblyModel?.moduleInput.gableEndFramesMode).toBe('none');
     expect(store.derived.activeAssemblyModel?.moduleInput.gableHouseEdgeGutter).toBe('our');
     expect(store.derived.activeAssemblyModel?.moduleInput.gableOuterEdgeGutter).toBe('our');

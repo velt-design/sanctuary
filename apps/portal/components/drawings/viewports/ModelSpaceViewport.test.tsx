@@ -523,11 +523,11 @@ function TestModelSpaceViewport(props: TestModelSpaceViewportProps) {
             planModel,
             sectionModel: sectionModel ?? null,
           },
-          planModel,
+          legacyPlanModel: planModel,
           planViewModel: planViewModel ?? null,
           geometryPlan: makeGeometryPlanFromPlanModel(planModel),
           geometryTopProjection: makeTopProjectionFromGeometryPlan(makeGeometryPlanFromPlanModel(planModel)),
-          sectionModel: sectionModel ?? null,
+          legacySectionModel: sectionModel ?? null,
           geometrySection: null,
         }
       : sectionModel
@@ -538,11 +538,11 @@ function TestModelSpaceViewport(props: TestModelSpaceViewportProps) {
               planModel: planModel ?? null,
               sectionModel,
             },
-            planModel: planModel ?? null,
+            legacyPlanModel: planModel ?? null,
             planViewModel: planViewModel ?? null,
             geometryPlan: null,
             geometryTopProjection: null,
-            sectionModel,
+            legacySectionModel: sectionModel,
             geometrySection: null,
           }
         : null);
@@ -1833,6 +1833,64 @@ describe('ModelSpaceViewport', () => {
     expect(markup).not.toContain('House footprint');
     expect(markup).not.toContain('House type');
     expect(markup).not.toContain('Rotate -90');
+  });
+
+  it('renders top-projection model space when solved geometry has no legacy plan fallback', () => {
+    const drawing = makeDrawingModule();
+    const geometryPlan = makeGeometryPlanFromPlanModel(drawing.planModel!);
+    const geometryTopProjection = makeTopProjectionFromGeometryPlan(geometryPlan);
+    const markup = renderToStaticMarkup(
+      <TestModelSpaceViewport
+        view="plan"
+        status="ready"
+        drawingSurfaceGeometry={{
+          source: 'solved_geometry',
+          artifact: {
+            plan: geometryPlan,
+            topProjection: geometryTopProjection,
+          } as WorkbenchDrawingSurfaceGeometry['artifact'],
+          legacyFallback: {
+            planModel: null,
+            sectionModel: null,
+          },
+          legacyPlanModel: null,
+          planViewModel: buildPlanViewModel({
+            moduleId: drawing.id,
+            moduleLabel: 'Module 1',
+            planModel: null,
+            geometryPlan,
+            geometryTopProjection,
+            pergolaRenderSource: 'geometry',
+            pergolaRenderStatus: 'geometry_ready',
+          }),
+          geometryPlan,
+          geometryTopProjection,
+          legacySectionModel: null,
+          geometrySection: null,
+        }}
+        planViewModel={buildPlanViewModel({
+          moduleId: drawing.id,
+          moduleLabel: 'Module 1',
+          planModel: null,
+          geometryPlan,
+          geometryTopProjection,
+          pergolaRenderSource: 'geometry',
+          pergolaRenderStatus: 'geometry_ready',
+        })}
+        viewportTransform={createDrawingWorkbenchUiState().viewportTransform}
+        onViewportTransformChange={() => undefined}
+        editableFields={makePlanEditableFields()}
+        onCommitField={() => ({ ok: true })}
+      />,
+    );
+
+    expect(markup).toContain('data-drawing-surface-source="solved_geometry"');
+    expect(markup).toContain('data-model-space-render-contract="top_projection_only"');
+    expect(markup).toContain('data-plan-render-source="geometry"');
+    expect(markup).toContain('data-plan-top-projection-shape=');
+    expect(markup).toContain('data-plan-primary-dim="bottom"');
+    expect(markup).not.toContain('Waiting for valid inputs');
+    expect(markup).not.toContain('data-plan-visible-legacy-overlay-body-count="1"');
   });
 
   it('renders house-first plan overlays alongside pergola graphics in house display mode by default', () => {

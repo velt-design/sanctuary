@@ -59,13 +59,35 @@ describe('buildWorkbenchDrawingSurfaceGeometry', () => {
     });
     expect(surface).toMatchObject({
       source: 'solved_geometry',
-      planModel,
+      legacyPlanModel: planModel,
       planViewModel,
       geometryPlan,
       geometryTopProjection,
-      sectionModel,
+      legacySectionModel: sectionModel,
       geometrySection,
     });
+  });
+
+  it('routes solved geometry without requiring legacy plan or section presenters', () => {
+    const surface = buildWorkbenchDrawingSurfaceGeometry({
+      viewportGeometry: makeViewportGeometry({
+        artifact: {
+          plan: geometryPlan,
+          topProjection: geometryTopProjection,
+          section: geometrySection,
+        } as WorkbenchViewportGeometry['artifact'],
+      }),
+      planViewModel,
+    });
+
+    expect(surface.source).toBe('solved_geometry');
+    expect(surface.legacyPlanModel).toBeNull();
+    expect(surface.legacySectionModel).toBeNull();
+    expect(surface.geometryPlan).toBe(geometryPlan);
+    expect(surface.geometryTopProjection).toBe(geometryTopProjection);
+    expect(surface.geometrySection).toBe(geometrySection);
+    expect('planModel' in surface).toBe(false);
+    expect('sectionModel' in surface).toBe(false);
   });
 
   it('routes fallback-only geometry as a named legacy fallback surface', () => {
@@ -86,11 +108,11 @@ describe('buildWorkbenchDrawingSurfaceGeometry', () => {
         planModel,
         sectionModel,
       },
-      planModel,
+      legacyPlanModel: planModel,
       planViewModel,
       geometryPlan: null,
       geometryTopProjection: null,
-      sectionModel,
+      legacySectionModel: sectionModel,
       geometrySection: null,
     });
   });
@@ -108,11 +130,11 @@ describe('buildWorkbenchDrawingSurfaceGeometry', () => {
         planModel: null,
         sectionModel: null,
       },
-      planModel: null,
+      legacyPlanModel: null,
       planViewModel,
       geometryPlan: null,
       geometryTopProjection: null,
-      sectionModel: null,
+      legacySectionModel: null,
       geometrySection: null,
     });
   });

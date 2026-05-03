@@ -286,15 +286,15 @@ export default function EstimateDrawingSheet({
   onCommitField,
   onCommitFootprintEdit,
 }: EstimateDrawingSheetProps) {
-  const surfacePlanModel = drawingSurfaceGeometry?.planModel ?? planModel ?? null;
-  const surfaceSectionModel = drawingSurfaceGeometry?.sectionModel ?? sectionModel ?? null;
+  const legacyPlanModel = drawingSurfaceGeometry?.legacyPlanModel ?? planModel ?? null;
+  const legacySectionModel = drawingSurfaceGeometry?.legacySectionModel ?? sectionModel ?? null;
   void planViewModel;
   const sheetViewportRef = useRef<HTMLDivElement | null>(null);
   const editorInputRef = useRef<HTMLInputElement | HTMLTextAreaElement | null>(null);
   const footprintSvgRef = useRef<SVGSVGElement | null>(null);
   const [availableWidthPx, setAvailableWidthPx] = useState(0);
   const [selectedScales, setSelectedScales] = useState<EstimateDrawingSheetScaleState>(() =>
-    buildScaleState(surfacePlanModel, surfaceSectionModel),
+    buildScaleState(legacyPlanModel, legacySectionModel),
   );
   const [activeEditor, setActiveEditor] = useState<ActiveDrawingEditor | null>(null);
   const [editorSaving, setEditorSaving] = useState(false);
@@ -312,7 +312,7 @@ export default function EstimateDrawingSheet({
   const titleField = editableFieldMap.get('meta:title') ?? null;
   const noteField = editableFieldMap.get('meta:note') ?? null;
   const clientFacingModuleLabel = stripClientFacingModulePrefix(meta.moduleTitle);
-  const legendItems = buildLegendItems(view, surfacePlanModel, surfaceSectionModel);
+  const legendItems = buildLegendItems(view, legacyPlanModel, legacySectionModel);
   const noteLines = splitNoteLines(meta.note);
   const moduleInfoRows = meta.moduleInfoRows.filter((row) => row.label.trim() && row.value.trim());
   const scaleOptions = getEstimateDrawingScaleOptions(view).map((option) => ({
@@ -323,8 +323,8 @@ export default function EstimateDrawingSheet({
       !resolveModuleDrawingScaleState({
         view,
         requestedScale: option,
-        planModel: surfacePlanModel,
-        sectionModel: surfaceSectionModel,
+        planModel: legacyPlanModel,
+        sectionModel: legacySectionModel,
         viewportMm: SHEET_VIEWPORT_MM,
       }).fits,
   }));
@@ -332,8 +332,8 @@ export default function EstimateDrawingSheet({
   const currentScaleState = resolveModuleDrawingScaleState({
     view,
     requestedScale: currentScale,
-    planModel: surfacePlanModel,
-    sectionModel: surfaceSectionModel,
+    planModel: legacyPlanModel,
+    sectionModel: legacySectionModel,
     viewportMm: SHEET_VIEWPORT_MM,
   });
   const scaleDisplay = formatEstimateDrawingScale(currentScaleState.appliedScale);
@@ -359,8 +359,8 @@ export default function EstimateDrawingSheet({
   const editableFieldStateKey = useMemo(() => fieldSignature(editableFields), [editableFields]);
   const activeField = activeEditor ? editableFieldMap.get(activeEditor.fieldId) ?? null : null;
   const overlayEditor = activeEditor?.mode === 'overlay' && activeEditor.rect ? activeEditor : null;
-  const canEditFootprint = view === 'plan' && Boolean(surfacePlanModel) && Boolean(onCommitFootprintEdit) && canEditHouseFootprintPlan(surfacePlanModel);
-  const canRotatePlan = view === 'plan' && Boolean(surfacePlanModel) && Boolean(onCommitFootprintEdit) && surfacePlanModel?.roofType !== 'hip_corner';
+  const canEditFootprint = view === 'plan' && Boolean(legacyPlanModel) && Boolean(onCommitFootprintEdit) && canEditHouseFootprintPlan(legacyPlanModel);
+  const canRotatePlan = view === 'plan' && Boolean(legacyPlanModel) && Boolean(onCommitFootprintEdit) && legacyPlanModel?.roofType !== 'hip_corner';
   const showHousePopover = canEditFootprint && (interactionOwner === 'house_fill' || interactionOwner === 'house_popover');
   const showHouseControls =
     canEditFootprint &&
@@ -420,34 +420,34 @@ export default function EstimateDrawingSheet({
     () =>
       [
         moduleLabel,
-        surfacePlanModel?.roofType ?? '-',
-        surfacePlanModel?.lengthA ?? '-',
-        surfacePlanModel?.spanA ?? '-',
-        surfacePlanModel?.lengthB ?? '-',
-        surfacePlanModel?.spanB ?? '-',
-        surfaceSectionModel?.sectionKind ?? '-',
-        surfaceSectionModel?.spanA ?? '-',
-        surfaceSectionModel?.leftEdgeHeightM ?? '-',
-        surfaceSectionModel?.rightEdgeHeightM ?? '-',
-        surfaceSectionModel?.ridgeHeightM ?? '-',
+        legacyPlanModel?.roofType ?? '-',
+        legacyPlanModel?.lengthA ?? '-',
+        legacyPlanModel?.spanA ?? '-',
+        legacyPlanModel?.lengthB ?? '-',
+        legacyPlanModel?.spanB ?? '-',
+        legacySectionModel?.sectionKind ?? '-',
+        legacySectionModel?.spanA ?? '-',
+        legacySectionModel?.leftEdgeHeightM ?? '-',
+        legacySectionModel?.rightEdgeHeightM ?? '-',
+        legacySectionModel?.ridgeHeightM ?? '-',
       ].join('|'),
     [
       moduleLabel,
-      surfacePlanModel?.roofType,
-      surfacePlanModel?.lengthA,
-      surfacePlanModel?.spanA,
-      surfacePlanModel?.lengthB,
-      surfacePlanModel?.spanB,
-      surfaceSectionModel?.sectionKind,
-      surfaceSectionModel?.spanA,
-      surfaceSectionModel?.leftEdgeHeightM,
-      surfaceSectionModel?.rightEdgeHeightM,
-      surfaceSectionModel?.ridgeHeightM,
+      legacyPlanModel?.roofType,
+      legacyPlanModel?.lengthA,
+      legacyPlanModel?.spanA,
+      legacyPlanModel?.lengthB,
+      legacyPlanModel?.spanB,
+      legacySectionModel?.sectionKind,
+      legacySectionModel?.spanA,
+      legacySectionModel?.leftEdgeHeightM,
+      legacySectionModel?.rightEdgeHeightM,
+      legacySectionModel?.ridgeHeightM,
     ],
   );
 
   useEffect(() => {
-    setSelectedScales(buildScaleState(surfacePlanModel, surfaceSectionModel));
+    setSelectedScales(buildScaleState(legacyPlanModel, legacySectionModel));
   }, [scaleResetKey]);
 
   useEffect(() => {
@@ -660,7 +660,7 @@ export default function EstimateDrawingSheet({
 
   const handleFootprintDragStart = useCallback(
     (meta: HouseFootprintEditorDragMeta, event: { pointerId: number; clientX: number; clientY: number }) => {
-      if (!canEditFootprint || !surfacePlanModel) return;
+      if (!canEditFootprint || !legacyPlanModel) return;
       const svg = footprintSvgRef.current;
       if (!svg) return;
       const startPoint = clientPointToSvg(svg, event.clientX, event.clientY);
@@ -678,10 +678,10 @@ export default function EstimateDrawingSheet({
         pointerId: event.pointerId,
         startSvgX: startPoint.x,
         startSvgY: startPoint.y,
-        startParams: normalizeHouseFootprintParams(surfacePlanModel.houseFootprintParams),
+        startParams: normalizeHouseFootprintParams(legacyPlanModel.houseFootprintParams),
       });
     },
-    [canEditFootprint, clearInteractionHideTimer, surfacePlanModel, syncInteractionOwnerFromHoverState],
+    [canEditFootprint, clearInteractionHideTimer, legacyPlanModel, syncInteractionOwnerFromHoverState],
   );
 
   useEffect(() => {
@@ -1010,8 +1010,8 @@ export default function EstimateDrawingSheet({
                   view={view}
                   status={status}
                   drawingSurfaceGeometry={drawingSurfaceGeometry}
-                  planModel={surfacePlanModel}
-                  sectionModel={surfaceSectionModel}
+                  planModel={legacyPlanModel}
+                  sectionModel={legacySectionModel}
                   presentation="sheet"
                   drawingScale={currentScale}
                   sheetViewportMm={SHEET_VIEWPORT_MM}

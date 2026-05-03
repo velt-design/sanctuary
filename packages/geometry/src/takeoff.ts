@@ -6,6 +6,8 @@ import type {
   GeometryQuantityTakeoff,
   GeometryQuantityTakeoffDiagnostic,
   GeometryQuantityTakeoffDimensionSet,
+  GeometryQuantityTakeoffFlashingGirthBucket,
+  GeometryQuantityTakeoffFlashingItem,
   GeometryQuantityTakeoffMemberBucket,
   GeometryQuantityTakeoffMemberItem,
   GeometryQuantityTakeoffRoofCladdingMaterial,
@@ -130,6 +132,11 @@ function metadataString(metadata: Assembly3D["members"][number]["metadata"], key
   return typeof value === "string" || typeof value === "number" ? String(value) : null;
 }
 
+function metadataNumber(metadata: Assembly3D["members"][number]["metadata"], key: string): number | null {
+  const value = metadata?.[key];
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
 function resolveRoofPlaneId(
   assembly: Assembly3D,
   metadata: Assembly3D["members"][number]["metadata"],
@@ -229,6 +236,107 @@ function averageItemLengthMm(items: GeometryQuantityTakeoffMemberItem[]): number
     : null;
 }
 
+function memberCenterX(member: AssemblyMember3D): number {
+  return (member.centerline.start.x + member.centerline.end.x) / 2;
+}
+
+function averageRafterSpacingMm(
+  rafters: GeometryQuantityTakeoffMemberItem[],
+  rafterCenterXById: Map<string, number>,
+): number | null {
+  if (rafters.length < 2) return null;
+  const positions = rafters
+    .map((rafter) => rafterCenterXById.get(rafter.id))
+    .filter((position): position is number => typeof position === "number" && Number.isFinite(position))
+    .sort((a, b) => a - b);
+  if (positions.length < 2) return null;
+  const spacings = positions.slice(1).map((position, index) => Math.abs(position - positions[index]!));
+  return round(spacings.reduce((sum, spacing) => sum + spacing, 0) / spacings.length, 6);
+}
+
+function flashingBoundaryEdgeLengths(
+  flashing: NonNullable<Assembly3D["roofFlashings"]>[number],
+): number[] {
+  return flashing.wings.flatMap((wing) => {
+    if (wing.boundary.length < 2) return [];
+    return wing.boundary.map((point, index) =>
+      lineLength({
+        start: point,
+        end: wing.boundary[(index + 1) % wing.boundary.length]!,
+      }),
+    );
+  });
+}
+
+function flashingLengthMm(
+  flashing: NonNullable<Assembly3D["roofFlashings"]>[number],
+): number {
+  const metadataRunLengthMm = metadataNumber(flashing.metadata, "runLengthMm");
+  if (metadataRunLengthMm != null && metadataRunLengthMm > 0) return round(metadataRunLengthMm);
+
+  const dominantEdgeLengthMm = Math.max(0, ...flashingBoundaryEdgeLengths(flashing));
+  return round(dominantEdgeLengthMm);
+}
+
+function buildFlashingItems(
+  assembly: Assembly3D,
+  diagnostics: GeometryQuantityTakeoffDiagnostic[],
+): GeometryQuantityTakeoffFlashingItem[] {
+  return [...(assembly.roofFlashings ?? [])]
+    .map((flashing) => {
+      const lengthMm = flashingLengthMm(flashing);
+      const surfaceAreaMm2 = round(
+        flashing.wings.reduce((sum, wing) => sum + polygonArea(wing.boundary), 0),
+      );
+      if (lengthMm <= 0) {
+        diagnostics.push({
+          code: "takeoff_flashing_length_unresolved",
+          message: `roof flashing ${flashing.id} does not expose a positive physical run length.`,
+        });
+      }
+      return {
+        id: flashing.id,
+        lengthMm,
+        lengthM: round(lengthMm / 1000),
+        girthMm: metadataNumber(flashing.metadata, "girthMm"),
+        thicknessMm: flashing.thicknessMm,
+        wingCount: flashing.wings.length,
+        surfaceAreaMm2,
+        surfaceAreaM2: mm2ToM2(surfaceAreaMm2),
+        metadata: flashing.metadata,
+      };
+    })
+    .sort((a, b) => a.id.localeCompare(b.id));
+}
+
+function buildFlashingsByGirth(
+  items: GeometryQuantityTakeoffFlashingItem[],
+): Record<string, GeometryQuantityTakeoffFlashingGirthBucket> {
+  const groups = new Map<string, GeometryQuantityTakeoffFlashingGirthBucket>();
+
+  for (const item of items) {
+    const key = item.girthMm == null ? "unknown" : String(item.girthMm);
+    const existing = groups.get(key) ?? {
+      girthMm: item.girthMm,
+      count: 0,
+      totalLengthMm: 0,
+      totalLengthM: 0,
+      totalSurfaceAreaMm2: 0,
+      totalSurfaceAreaM2: 0,
+      items: [],
+    };
+    existing.count += 1;
+    existing.totalLengthMm = round(existing.totalLengthMm + item.lengthMm);
+    existing.totalLengthM = mmToM(existing.totalLengthMm) ?? 0;
+    existing.totalSurfaceAreaMm2 = round(existing.totalSurfaceAreaMm2 + item.surfaceAreaMm2);
+    existing.totalSurfaceAreaM2 = mm2ToM2(existing.totalSurfaceAreaMm2);
+    existing.items = [...existing.items, item];
+    groups.set(key, existing);
+  }
+
+  return Object.fromEntries(Array.from(groups.entries()).sort(([a], [b]) => a.localeCompare(b)));
+}
+
 export function buildAssemblyQuantityTakeoff(assembly: Assembly3D): GeometryQuantityTakeoff {
   const diagnostics: GeometryQuantityTakeoffDiagnostic[] = [];
   const quantityHooks = sortQuantityHooks(assembly.quantityHooks);
@@ -246,6 +354,11 @@ export function buildAssemblyQuantityTakeoff(assembly: Assembly3D): GeometryQuan
   ) as Record<AssemblyMemberRole, GeometryQuantityTakeoffMemberBucket>;
   const memberItems = sortMemberItems(Object.values(membersByRole).flatMap((bucket) => bucket.items));
   const roofCladdingItems = buildRoofCladdingItems(assembly, diagnostics);
+  const rafterCenterXById = new Map(
+    assembly.members
+      .filter((member) => member.role === "rafter")
+      .map((member) => [member.id, memberCenterX(member)]),
+  );
   const rafterRoofPlaneIds = new Map(
     membersByRole.rafter.items.map((item) => [
       item.id,
@@ -269,6 +382,7 @@ export function buildAssemblyQuantityTakeoff(assembly: Assembly3D): GeometryQuan
       const joinerTotalLengthMm = round(joiners.reduce((sum, item) => sum + item.lengthMm, 0));
       const claddingAreaMm2 = round(claddingPanels.reduce((sum, panel) => sum + panel.areaMm2, 0));
       const rafterAverageLengthMm = averageItemLengthMm(rafters);
+      const rafterAverageSpacingMm = averageRafterSpacingMm(rafters, rafterCenterXById);
       const joinerAverageLengthMm = averageItemLengthMm(joiners);
       return {
         id: plane.id,
@@ -276,10 +390,13 @@ export function buildAssemblyQuantityTakeoff(assembly: Assembly3D): GeometryQuan
         areaMm2,
         areaM2: mm2ToM2(areaMm2),
         rafterCount: rafters.length,
+        rafterBayCount: Math.max(0, rafters.length - 1),
         rafterTotalLengthMm,
         rafterTotalLengthM: mmToM(rafterTotalLengthMm) ?? 0,
         rafterAverageLengthMm,
         rafterAverageLengthM: mmToM(rafterAverageLengthMm),
+        rafterAverageSpacingMm,
+        rafterAverageSpacingM: mmToM(rafterAverageSpacingMm),
         claddingPanelCount: claddingPanels.length,
         claddingAreaMm2,
         claddingAreaM2: mm2ToM2(claddingAreaMm2),
@@ -337,6 +454,13 @@ export function buildAssemblyQuantityTakeoff(assembly: Assembly3D): GeometryQuan
   );
   const acrylicCladding = roofCladdingByMaterial.find((material) => material.material === "acrylic");
   const joiners = membersByRole.joiner;
+  const flashingItems = buildFlashingItems(assembly, diagnostics);
+  const totalFlashingLengthMm = round(
+    flashingItems.reduce((sum, flashing) => sum + flashing.lengthMm, 0),
+  );
+  const totalFlashingSurfaceAreaMm2 = round(
+    flashingItems.reduce((sum, flashing) => sum + flashing.surfaceAreaMm2, 0),
+  );
 
   const totalMemberLengthMm = round(
     MEMBER_ROLES.reduce((sum, role) => sum + membersByRole[role].totalLengthMm, 0),
@@ -404,6 +528,15 @@ export function buildAssemblyQuantityTakeoff(assembly: Assembly3D): GeometryQuan
       averageLengthMm: joiners.averageLengthMm,
       averageLengthM: joiners.averageLengthM,
       items: joiners.items,
+    },
+    flashings: {
+      count: flashingItems.length,
+      totalLengthMm: totalFlashingLengthMm,
+      totalLengthM: round(totalFlashingLengthMm / 1000),
+      totalSurfaceAreaMm2: totalFlashingSurfaceAreaMm2,
+      totalSurfaceAreaM2: mm2ToM2(totalFlashingSurfaceAreaMm2),
+      items: flashingItems,
+      byGirthMm: buildFlashingsByGirth(flashingItems),
     },
     quantityHooks,
     quantityHookMap: buildQuantityHookMap(quantityHooks),

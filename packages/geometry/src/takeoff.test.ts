@@ -67,6 +67,14 @@ function hookQuantity(assembly: Assembly3D, key: string): number {
   return hook.quantity;
 }
 
+function flashingSurfaceAreaMm2(assembly: Assembly3D): number {
+  return (assembly.roofFlashings ?? []).reduce(
+    (sum, flashing) =>
+      sum + flashing.wings.reduce((wingSum, wing) => wingSum + polygonArea(wing.boundary), 0),
+    0,
+  );
+}
+
 describe("buildAssemblyQuantityTakeoff", () => {
   it("derives coherent physical takeoff for every supported geometry fixture", () => {
     for (const fixture of listGeometryFixtureCases().filter((candidate) => candidate.kind === "supported")) {
@@ -81,6 +89,21 @@ describe("buildAssemblyQuantityTakeoff", () => {
       expect(takeoff.roofPlanes.count, fixture.id).toBe(assembly.roofPlanes.length);
       expect(takeoff.roofPlanes.items, fixture.id).toHaveLength(assembly.roofPlanes.length);
       expect(takeoff.members.items, fixture.id).toHaveLength(assembly.members.length);
+      expect(takeoff.flashings.count, fixture.id).toBe(assembly.roofFlashings?.length ?? 0);
+      expect(takeoff.flashings.items, fixture.id).toHaveLength(assembly.roofFlashings?.length ?? 0);
+      expect(takeoff.flashings.totalSurfaceAreaMm2, fixture.id).toBeCloseTo(flashingSurfaceAreaMm2(assembly), 3);
+      for (const roofPlane of takeoff.roofPlanes.items) {
+        expect(roofPlane.rafterBayCount, `${fixture.id} ${roofPlane.id}`).toBe(
+          Math.max(0, roofPlane.rafterCount - 1),
+        );
+        if (roofPlane.rafterCount > 1) {
+          expect(roofPlane.rafterAverageSpacingMm, `${fixture.id} ${roofPlane.id}`).toBeGreaterThan(0);
+          expect(roofPlane.rafterAverageSpacingM, `${fixture.id} ${roofPlane.id}`).toBeGreaterThan(0);
+        } else {
+          expect(roofPlane.rafterAverageSpacingMm, `${fixture.id} ${roofPlane.id}`).toBeNull();
+          expect(roofPlane.rafterAverageSpacingM, `${fixture.id} ${roofPlane.id}`).toBeNull();
+        }
+      }
       expect(takeoff.quantityHooks, fixture.id).toEqual([...assembly.quantityHooks].sort((a, b) => a.key.localeCompare(b.key)));
       expect(takeoff.diagnostics, fixture.id).toEqual([]);
     }
@@ -107,6 +130,9 @@ describe("buildAssemblyQuantityTakeoff", () => {
       expect.objectContaining({
         id: assembly.roofPlanes[0]?.id,
         rafterCount: assembly.members.filter((member) => member.role === "rafter").length,
+        rafterBayCount: assembly.members.filter((member) => member.role === "rafter").length - 1,
+        rafterAverageSpacingMm: 600,
+        rafterAverageSpacingM: 0.6,
         claddingPanelCount: assembly.roofCladdingPanels.length,
         joinerCount: assembly.members.filter((member) => member.role === "joiner").length,
       }),
@@ -143,6 +169,49 @@ describe("buildAssemblyQuantityTakeoff", () => {
     expect(takeoff.diagnostics).toEqual([]);
   });
 
+  it("derives gable acrylic ridge flashing physical takeoff from Assembly3D roof flashings", () => {
+    const assembly = solve(
+      makeGableConfig({
+        roof: {
+          material: "acrylic",
+        },
+        roofCovering: {
+          kind: "acrylic",
+        },
+      }),
+    );
+    const takeoff = buildAssemblyQuantityTakeoff(assembly);
+    const ridgeFlashing = assembly.roofFlashings?.find((flashing) => flashing.id === "ridge-flashing");
+
+    expect(ridgeFlashing).toBeDefined();
+    expect(takeoff.flashings.count).toBe(1);
+    expect(takeoff.flashings.items).toEqual([
+      expect.objectContaining({
+        id: "ridge-flashing",
+        lengthMm: ridgeFlashing?.metadata?.runLengthMm,
+        lengthM: 6.55,
+        girthMm: 300,
+        thicknessMm: 1,
+        wingCount: 2,
+        surfaceAreaMm2: expect.any(Number),
+        surfaceAreaM2: expect.any(Number),
+      }),
+    ]);
+    expect(takeoff.flashings.totalLengthMm).toBe(ridgeFlashing?.metadata?.runLengthMm);
+    expect(takeoff.flashings.totalLengthM).toBe(6.55);
+    expect(takeoff.flashings.totalSurfaceAreaMm2).toBeCloseTo(flashingSurfaceAreaMm2(assembly), 3);
+    expect(takeoff.flashings.byGirthMm["300"]).toEqual(
+      expect.objectContaining({
+        girthMm: 300,
+        count: 1,
+        totalLengthMm: ridgeFlashing?.metadata?.runLengthMm,
+        totalLengthM: 6.55,
+      }),
+    );
+    expect(takeoff.quantityHooks).toEqual([...assembly.quantityHooks].sort((a, b) => a.key.localeCompare(b.key)));
+    expect(takeoff.diagnostics).toEqual([]);
+  });
+
   it("derives gable and hip physical takeoff from their solved assemblies", () => {
     const gable = supportedAssembly("gable_attached_standard");
     const hip = solve(makeGableConfig({ family: "hip" }));
@@ -157,6 +226,9 @@ describe("buildAssemblyQuantityTakeoff", () => {
       expect(takeoff.roofPlanes.count).toBe(2);
       expect(takeoff.roofPlanes.items).toHaveLength(2);
       expect(takeoff.roofPlanes.items.map((plane) => plane.rafterCount)).toEqual([12, 12]);
+      expect(takeoff.roofPlanes.items.map((plane) => plane.rafterBayCount)).toEqual([11, 11]);
+      expect(takeoff.roofPlanes.items.map((plane) => plane.rafterAverageSpacingMm)).toEqual([590.909091, 590.909091]);
+      expect(takeoff.roofPlanes.items.map((plane) => plane.rafterAverageSpacingM)).toEqual([0.590909, 0.590909]);
       expect(takeoff.roofPlanes.items.every((plane) => plane.rafterTotalLengthMm > 0)).toBe(true);
       expect(takeoff.members.byRole.ridge.totalLengthMm).toBeGreaterThan(0);
       expect(takeoff.beams.tieBeamLengthMm).toBeCloseTo(expectedTieLengthMm, 3);

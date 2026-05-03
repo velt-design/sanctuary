@@ -235,6 +235,73 @@ describe('compareCommercialDesignInputsV1', () => {
     });
   });
 
+  it('adds originDetail diagnostics for each parity drift origin', () => {
+    const left = makeInput();
+    const right = cloneInput(left);
+    right.siteCommercial.access = 'hard';
+    right.pergolas[0]!.modules[0]!.designIntent.attachmentSide = 'left';
+    right.pergolas[0]!.modules[0]!.solvedGeometry.roofPlaneCount = 2;
+    right.pergolas[0]!.modules[0]!.quantityTakeoff.roofPlanes![0]!.bayCount = 11;
+    right.pergolas[0]!.modules[0]!.options = {
+      overrides: { ledgerProfile: '200x50' },
+    };
+    left.pergolas[0]!.modules[0]!.options = {
+      overrides: { ledgerProfile: '150x50' },
+    };
+
+    const report = compareCommercialDesignInputsV1(left, right);
+
+    expect(report.differences).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          path: 'siteCommercial.access',
+          originDetail: {
+            origin: 'commercial_mapping',
+            sourceCategory: 'site_commercial',
+            fieldPath: 'siteCommercial.access',
+            explanation: 'Commercial mapping mismatch at siteCommercial.access.',
+          },
+        }),
+        expect.objectContaining({
+          path: 'pergolas.pergola-1.modules.source:0.designIntent.attachmentSide',
+          originDetail: {
+            origin: 'authored_intent',
+            sourceCategory: 'design_intent',
+            fieldPath: 'designIntent.attachmentSide',
+            explanation: 'Authored intent mismatch at designIntent.attachmentSide.',
+          },
+        }),
+        expect.objectContaining({
+          path: 'pergolas.pergola-1.modules.source:0.solvedGeometry.roofPlaneCount',
+          originDetail: {
+            origin: 'solved_geometry',
+            sourceCategory: 'solved_geometry',
+            fieldPath: 'solvedGeometry.roofPlaneCount',
+            explanation: 'Solved geometry mismatch at solvedGeometry.roofPlaneCount.',
+          },
+        }),
+        expect.objectContaining({
+          path: 'pergolas.pergola-1.modules.source:0.quantityTakeoff.roofPlanes.0.bayCount',
+          originDetail: {
+            origin: 'physical_takeoff',
+            sourceCategory: 'quantity_takeoff',
+            fieldPath: 'quantityTakeoff.roofPlanes.0.bayCount',
+            explanation: 'Physical takeoff mismatch at quantityTakeoff.roofPlanes.0.bayCount.',
+          },
+        }),
+        expect.objectContaining({
+          path: 'pergolas.pergola-1.modules.source:0.options.overrides.ledgerProfile',
+          originDetail: {
+            origin: 'commercial_mapping',
+            sourceCategory: 'commercial_option',
+            fieldPath: 'options.overrides.ledgerProfile',
+            explanation: 'Commercial mapping mismatch at options.overrides.ledgerProfile.',
+          },
+        }),
+      ]),
+    );
+  });
+
   it('adds location and numeric drift metadata to differences', () => {
     const left = makeInput();
     const right = cloneInput(left);
@@ -256,6 +323,12 @@ describe('compareCommercialDesignInputsV1', () => {
         pergolaId: 'pergola-1',
         moduleKey: 'source:0',
         sourceModuleIndex: 0,
+      },
+      originDetail: {
+        origin: 'solved_geometry',
+        sourceCategory: 'solved_geometry',
+        fieldPath: 'solvedGeometry.primaryDimensionsM.length',
+        explanation: 'Solved geometry mismatch at solvedGeometry.primaryDimensionsM.length.',
       },
     });
     expect(difference?.numericDrift?.delta).toBeCloseTo(0.05, 6);

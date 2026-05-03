@@ -3,6 +3,7 @@ import {
   calculateSiteCostV1,
   compareCommercialDesignInputsV1,
   type CommercialModuleInputV1,
+  type CommercialTrustStatusV1,
   type CostOutputV1,
   type SiteOutputV1,
 } from '@sp/costing';
@@ -28,6 +29,23 @@ const SITE_COMMERCIAL = {
 type SnapshotWithCalculatorInputs = Record<string, unknown> & {
   inputs: CalculatorInputs;
   outputs: SiteOutputV1;
+};
+
+type SavedEstimateSnapshotCase = {
+  slug: string;
+  purpose: string;
+  expectedModuleCount: number;
+  expectedTrustStatuses: CommercialTrustStatusV1[];
+  expectedModules: Array<{
+    lengthM: number;
+    projectionM: number;
+    secondaryLengthM?: number | null;
+    secondaryProjectionM?: number | null;
+    roofPlaneCount: number;
+  }>;
+  inputs: CalculatorInputs;
+  outputs: SiteOutputV1;
+  snapshot: SnapshotWithCalculatorInputs;
 };
 
 const DRIFT_ORIGINS = new Set([
@@ -153,17 +171,16 @@ function makeSnapshot(input?: {
 
 function makeSavedEstimateSnapshotCase(input: {
   slug: string;
+  purpose: string;
   projectName: string;
   quoteRef: string;
   modules: CalculatorModuleInputs[];
   pergolas?: Array<{ id: string; label: string }>;
   inputOverrides?: Partial<CalculatorInputs>;
-}): {
-  slug: string;
-  inputs: CalculatorInputs;
-  outputs: SiteOutputV1;
-  snapshot: SnapshotWithCalculatorInputs;
-} {
+  expectedModuleCount: number;
+  expectedTrustStatuses: CommercialTrustStatusV1[];
+  expectedModules: SavedEstimateSnapshotCase['expectedModules'];
+}): SavedEstimateSnapshotCase {
   const inputs: CalculatorInputs = {
     schemaVersion: 'v2',
     projectName: input.projectName,
@@ -182,6 +199,10 @@ function makeSavedEstimateSnapshotCase(input: {
   const outputs = calculateSiteCostV1(buildSiteInputsFromCalculatorInputs(inputs));
   return {
     slug: input.slug,
+    purpose: input.purpose,
+    expectedModuleCount: input.expectedModuleCount,
+    expectedTrustStatuses: input.expectedTrustStatuses,
+    expectedModules: input.expectedModules,
     inputs,
     outputs,
     snapshot: {
@@ -191,10 +212,11 @@ function makeSavedEstimateSnapshotCase(input: {
   };
 }
 
-function representativeSavedEstimateSnapshots(): Array<ReturnType<typeof makeSavedEstimateSnapshotCase>> {
+function representativeSavedEstimateSnapshots(): SavedEstimateSnapshotCase[] {
   return [
     makeSavedEstimateSnapshotCase({
       slug: 'saved-mono-acrylic-commercial-options',
+      purpose: 'Single mono acrylic snapshot with commercial options, powdercoat, flashings, and estimate-scoped blinds.',
       projectName: 'Saved Mono Acrylic',
       quoteRef: 'Q-SAVED-MONO',
       modules: [
@@ -223,6 +245,15 @@ function representativeSavedEstimateSnapshots(): Array<ReturnType<typeof makeSav
           },
         }),
       ],
+      expectedModuleCount: 1,
+      expectedTrustStatuses: ['ready'],
+      expectedModules: [
+        {
+          lengthM: 6.2,
+          projectionM: 3.4,
+          roofPlaneCount: 1,
+        },
+      ],
       inputOverrides: {
         blinds: {
           items: [
@@ -241,6 +272,7 @@ function representativeSavedEstimateSnapshots(): Array<ReturnType<typeof makeSav
     }),
     makeSavedEstimateSnapshotCase({
       slug: 'saved-gable-mixed',
+      purpose: 'Single gable mixed-roof snapshot that exercises two roof planes and mixed acrylic bay options.',
       projectName: 'Saved Gable Mixed',
       quoteRef: 'Q-SAVED-GABLE',
       modules: [
@@ -257,6 +289,15 @@ function representativeSavedEstimateSnapshots(): Array<ReturnType<typeof makeSav
           mixedAcrylicBaysB: '1',
         }),
       ],
+      expectedModuleCount: 1,
+      expectedTrustStatuses: ['ready'],
+      expectedModules: [
+        {
+          lengthM: 6.5,
+          projectionM: 4,
+          roofPlaneCount: 2,
+        },
+      ],
       inputOverrides: {
         travelExGst: '42',
         extrasAllowanceExGst: '180',
@@ -265,6 +306,7 @@ function representativeSavedEstimateSnapshots(): Array<ReturnType<typeof makeSav
     }),
     makeSavedEstimateSnapshotCase({
       slug: 'saved-multi-module',
+      purpose: 'Multi-module snapshot that keeps pergola grouping and mixed trust allowances explicit.',
       projectName: 'Saved Multi Module',
       quoteRef: 'Q-SAVED-MULTI',
       pergolas: [{ id: 'pergola-1', label: 'Main' }],
@@ -287,11 +329,88 @@ function representativeSavedEstimateSnapshots(): Array<ReturnType<typeof makeSav
           boxPerimeterEnabled: true,
         }),
       ],
+      expectedModuleCount: 2,
+      expectedTrustStatuses: ['approximate', 'approximate'],
+      expectedModules: [
+        {
+          lengthM: 5.8,
+          projectionM: 3,
+          roofPlaneCount: 1,
+        },
+        {
+          lengthM: 4.2,
+          projectionM: 2.8,
+          roofPlaneCount: 1,
+        },
+      ],
       inputOverrides: {
         access: 'hard',
         height: 'two_storey',
         jobType: 'commercial',
       },
+    }),
+    makeSavedEstimateSnapshotCase({
+      slug: 'saved-box-perimeter-timber',
+      purpose: 'Single box-perimeter timber snapshot for box support and takeoff mapping parity.',
+      projectName: 'Saved Box Timber',
+      quoteRef: 'Q-SAVED-BOX',
+      modules: [
+        makeModule({
+          pergolaStyle: 'pitched',
+          boxPerimeterEnabled: true,
+          internalRoofType: 'pitched',
+          roofMaterial: 'timber',
+          lengthM: '5.5',
+          projectionM: '3.5',
+          roofPitchDeg: '3',
+          fallDistanceMm: '40',
+          postCount: '3',
+          downpipeCount: '1',
+          overrides: {
+            boxPerimeterBeamProfile: '300x50',
+            rafterProfile: '80x50',
+          },
+        }),
+      ],
+      expectedModuleCount: 1,
+      expectedTrustStatuses: ['ready'],
+      expectedModules: [
+        {
+          lengthM: 5.5,
+          projectionM: 3.5,
+          roofPlaneCount: 1,
+        },
+      ],
+    }),
+    makeSavedEstimateSnapshotCase({
+      slug: 'saved-hip-corner-secondary-dimensions',
+      purpose: 'Single hip-corner snapshot for secondary authored dimensions and multi-plane takeoff parity.',
+      projectName: 'Saved Hip Corner',
+      quoteRef: 'Q-SAVED-HIP-CORNER',
+      modules: [
+        makeModule({
+          pergolaStyle: 'hip_corner',
+          roofMaterial: 'timber',
+          lengthM: '6',
+          projectionM: '3',
+          hipCornerLengthBM: '4',
+          hipCornerProjectionBM: '2',
+          roofPitchDeg: '5',
+          postCount: '3',
+          downpipeCount: '1',
+        }),
+      ],
+      expectedModuleCount: 1,
+      expectedTrustStatuses: ['ready'],
+      expectedModules: [
+        {
+          lengthM: 6,
+          projectionM: 3,
+          secondaryLengthM: 4,
+          secondaryProjectionM: 2,
+          roofPlaneCount: 2,
+        },
+      ],
     }),
   ];
 }
@@ -336,6 +455,18 @@ function expectCloseOrEqual(left: number | null | undefined, right: number | nul
   expect(left ?? Number.NaN, label).toBeCloseTo(right ?? Number.NaN, 3);
 }
 
+function expectFiniteNumber(value: number | null | undefined, label: string): number {
+  expect(typeof value, label).toBe('number');
+  expect(Number.isFinite(value), label).toBe(true);
+  return value as number;
+}
+
+function expectPositiveNumber(value: number | null | undefined, label: string): number {
+  const number = expectFiniteNumber(value, label);
+  expect(number, label).toBeGreaterThan(0);
+  return number;
+}
+
 describe('workbench commercialDesignPayload', () => {
   it('builds a workbench-solved commercial payload with explicit site commercial fields and identity', () => {
     const solvedModel = makeSolvedModel();
@@ -376,11 +507,15 @@ describe('workbench commercialDesignPayload', () => {
     expect(module?.solvedGeometry.roofPlaneCount).toBe(1);
     expect(module?.quantityTakeoff.primaryDimensions?.roofAreaM2 ?? 0).toBeGreaterThan(0);
     expect(module?.quantityTakeoff.roofPlanes).toHaveLength(1);
+    expectPositiveNumber(module?.quantityTakeoff.roofPlanes?.[0]?.areaM2, 'mono roof plane area');
+    expectPositiveNumber(module?.quantityTakeoff.roofPlanes?.[0]?.rafterLengthM, 'mono roof plane rafter length');
+    expectFiniteNumber(module?.quantityTakeoff.roofPlanes?.[0]?.bayCount, 'mono roof plane bay count');
     expect(module?.quantityTakeoff.posts?.count).toBe(2);
     expect(module?.quantityTakeoff.rafters?.count ?? 0).toBeGreaterThan(0);
     expect(module?.quantityTakeoff.beams?.ledgerLengthM).toBe(6);
     expect(module?.quantityTakeoff.gutters?.ourGutterLengthM ?? 0).toBeGreaterThan(0);
     expect(module?.quantityTakeoff.gutters?.downpipeCount).toBe(2);
+    expectFiniteNumber(module?.quantityTakeoff.roofCladding?.joinerRuns, 'mono joiner runs');
     expect(module?.quantityTakeoff.flashings?.totalLengthM).toBe(1.5);
     expect(module?.options.overrides).toEqual({ ledgerProfile: '150x50', rafterProfile: '100x50' });
   });
@@ -494,6 +629,7 @@ describe('workbench commercialDesignPayload', () => {
         solvedModel,
         siteCommercial: calculatorCommercial.siteCommercial,
       });
+      const solvedModule = requireModule(solvedModel);
 
       const report = compareCommercialDesignInputsV1(calculatorCommercial, workbenchCommercial, {
         labelLeft: `${fixture.slug}:calculator_compat`,
@@ -536,6 +672,25 @@ describe('workbench commercialDesignPayload', () => {
         expected.projectionM,
         `${fixture.slug} takeoff projection`,
       );
+      expectPositiveNumber(
+        workbenchModule.quantityTakeoff.primaryDimensions?.roofAreaM2,
+        `${fixture.slug} takeoff roof area`,
+      );
+      expect(workbenchModule.quantityTakeoff.roofPlanes, `${fixture.slug} roof plane rows`).toHaveLength(expected.roofPlaneCount);
+      expectPositiveNumber(workbenchModule.quantityTakeoff.posts?.count, `${fixture.slug} post count`);
+      expectPositiveNumber(workbenchModule.quantityTakeoff.rafters?.count, `${fixture.slug} rafter count`);
+      expectPositiveNumber(workbenchModule.quantityTakeoff.beams?.ledgerLengthM, `${fixture.slug} ledger length`);
+      expectPositiveNumber(workbenchModule.quantityTakeoff.beams?.frontBeamLengthM, `${fixture.slug} front beam length`);
+      expectPositiveNumber(workbenchModule.quantityTakeoff.gutters?.ourGutterLengthM, `${fixture.slug} gutter length`);
+      expectFiniteNumber(workbenchModule.quantityTakeoff.roofCladding?.joinerRuns, `${fixture.slug} joiner runs`);
+      for (const [index, plane] of (workbenchModule.quantityTakeoff.roofPlanes ?? []).entries()) {
+        expectPositiveNumber(plane.areaM2, `${fixture.slug} roof plane ${index + 1} area`);
+        const geometryPlane = solvedModule.geometryArtifact?.quantityTakeoff.roofPlanes.items[index];
+        if ((geometryPlane?.rafterCount ?? 0) > 0) {
+          expectPositiveNumber(plane.rafterLengthM, `${fixture.slug} roof plane ${index + 1} rafter length`);
+          expectFiniteNumber(plane.bayCount, `${fixture.slug} roof plane ${index + 1} bay count`);
+        }
+      }
     }
   });
 
@@ -566,19 +721,71 @@ describe('workbench commercialDesignPayload', () => {
       });
 
       const warningDifferences = report.differences.filter((difference) => difference.severity === 'warning');
+      expect(saved.purpose.trim().length, `${saved.slug} purpose`).toBeGreaterThan(0);
+      expect(saved.expectedModuleCount, `${saved.slug} explicit expected module count`).toBe(saved.inputs.modules.length);
       expect(report.counts.pergolasCompared, saved.slug).toBe(calculatorCommercial.pergolas.length);
-      expect(report.counts.modulesCompared, saved.slug).toBe(saved.inputs.modules.length);
+      expect(report.counts.modulesCompared, saved.slug).toBe(saved.expectedModuleCount);
       expect(report.counts.blockingDifferences, `${saved.slug} blocking differences`).toBe(0);
       expect(report.differences.filter((difference) => difference.category === 'structure'), saved.slug).toEqual([]);
-      const workbenchTrustStatuses = workbenchCommercial.pergolas
+      const workbenchModules = workbenchCommercial.pergolas
         .flatMap((pergola) => pergola.modules)
-        .map((module) => module.trustStatus);
-      if (saved.inputs.modules.length === 1) {
-        expect(workbenchTrustStatuses, saved.slug).toEqual(['ready']);
-      } else {
-        expect(workbenchTrustStatuses.every((status) => status === 'ready' || status === 'approximate'), saved.slug).toBe(true);
+        .sort((left, right) => (left.sourceModuleIndex ?? 0) - (right.sourceModuleIndex ?? 0));
+      expect(workbenchModules.map((module) => module.trustStatus), `${saved.slug} trust allowance`).toEqual(
+        saved.expectedTrustStatuses,
+      );
+      expect(workbenchModules, `${saved.slug} module count`).toHaveLength(saved.expectedModuleCount);
+      for (const [index, expected] of saved.expectedModules.entries()) {
+        const module = workbenchModules[index];
+        expect(module, `${saved.slug} expected module ${index + 1}`).toBeDefined();
+        expectCloseOrEqual(module?.designIntent.dimensions?.lengthM, expected.lengthM, `${saved.slug} module ${index + 1} authored length`);
+        expectCloseOrEqual(
+          module?.designIntent.dimensions?.projectionM,
+          expected.projectionM,
+          `${saved.slug} module ${index + 1} authored projection`,
+        );
+        if (expected.secondaryLengthM != null || expected.secondaryProjectionM != null) {
+          expectCloseOrEqual(
+            module?.designIntent.dimensions?.secondaryLengthM,
+            expected.secondaryLengthM,
+            `${saved.slug} module ${index + 1} authored secondary length`,
+          );
+          expectCloseOrEqual(
+            module?.designIntent.dimensions?.secondaryProjectionM,
+            expected.secondaryProjectionM,
+            `${saved.slug} module ${index + 1} authored secondary projection`,
+          );
+        }
+        expect(module?.solvedGeometry.roofPlaneCount, `${saved.slug} module ${index + 1} roof planes`).toBe(
+          expected.roofPlaneCount,
+        );
+        expectCloseOrEqual(
+          module?.quantityTakeoff.primaryDimensions?.lengthM,
+          expected.lengthM,
+          `${saved.slug} module ${index + 1} takeoff length`,
+        );
+        expectCloseOrEqual(
+          module?.quantityTakeoff.primaryDimensions?.projectionM,
+          expected.projectionM,
+          `${saved.slug} module ${index + 1} takeoff projection`,
+        );
+        expectPositiveNumber(module?.quantityTakeoff.primaryDimensions?.roofAreaM2, `${saved.slug} module ${index + 1} roof area`);
+        expect(module?.quantityTakeoff.roofPlanes, `${saved.slug} module ${index + 1} roof plane rows`).toHaveLength(
+          expected.roofPlaneCount,
+        );
+        for (const [planeIndex, plane] of (module?.quantityTakeoff.roofPlanes ?? []).entries()) {
+          expectPositiveNumber(plane.areaM2, `${saved.slug} module ${index + 1} roof plane ${planeIndex + 1} area`);
+          expectPositiveNumber(
+            plane.rafterLengthM,
+            `${saved.slug} module ${index + 1} roof plane ${planeIndex + 1} rafter length`,
+          );
+          expectFiniteNumber(plane.bayCount, `${saved.slug} module ${index + 1} roof plane ${planeIndex + 1} bay count`);
+        }
       }
       expect(report.differences.every((difference) => DRIFT_ORIGINS.has(difference.driftOrigin)), saved.slug).toBe(true);
+      expect(
+        report.differences.every((difference) => difference.originDetail.origin === difference.driftOrigin),
+        saved.slug,
+      ).toBe(true);
       expect(
         warningDifferences.every((difference) => typeof report.summary?.byDriftOrigin[difference.driftOrigin] === 'number'),
         saved.slug,

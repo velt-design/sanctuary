@@ -67,7 +67,7 @@ Costing logic must remain in `packages/costing`; estimate code should persist an
 
 ## Estimate Pricing Rollout Boundary
 
-Live estimate pricing still comes from calculator snapshots. The rollout-prep contract in `apps/portal/lib/estimates/pricingRollout.ts` names the current live source as `calculator_live` and describes when a future `workbench_solved` source could be enabled, but it is not wired into estimate create/update persistence.
+Live estimate pricing still comes from calculator snapshots. The rollout-prep contract in `apps/portal/lib/estimates/pricingRollout.ts` names the current live source as `calculator_live` and is wired at estimate create/update/duplicate persistence so saved rows record server-owned source metadata.
 
 `workbench_solved` may become live only after all readiness gates pass: ready workbench trust with no blocking diagnostics, owned geometry-derived quantity takeoff, stable `calculator_compat` versus `workbench_solved` parity reports, explicit estimate source-of-record metadata, preserved estimate locks, preserved local-first queue/alias/conflict behavior, preserved quote/invoice/job-pack pricing boundaries, and an explicit rollback switch back to `calculator_live`.
 
@@ -76,10 +76,10 @@ Failed readiness must block rollout. Do not add hidden fallback behavior that si
 The future live switch must be server-owned and default-safe:
 
 - Use a server-only requested-source flag such as `PORTAL_ESTIMATE_PRICING_SOURCE=calculator_live|workbench_solved`; unset or invalid values must behave as `calculator_live`.
-- When the requested source is `workbench_solved`, estimate create/update must evaluate the full readiness report before changing saved pricing. Any failed gate returns a visible blocked response with gate codes and leaves the estimate row unchanged.
+- When the requested source is `workbench_solved`, estimate create/update/duplicate must evaluate the full readiness report before changing saved pricing. Any failed gate returns `409 ESTIMATE_PRICING_SOURCE_BLOCKED` with gate codes and leaves estimate rows unchanged.
 - `calculator_live` rollback is the same explicit flag switch back to calculator pricing. Rollback affects new estimate saves and future quote refreshes only; it must not mutate existing estimates, sent quote versions, public outputs, invoices, PDFs, or job-pack generations.
 
-Future persistence changes must use ordered forward migrations. Do not edit baseline SQL or old applied migrations. The planned estimate source-of-record fields are:
+Persistence changes must use ordered forward migrations. Do not edit baseline SQL or old applied migrations. The estimate source-of-record fields are:
 
 - `estimates.pricing_source`: `calculator_live` or `workbench_solved`.
 - `estimates.pricing_source_metadata`: compact JSONB with gate version, selected time and actor, requested source, commercial input schema version, quantity takeoff source, trust summary, commercial input hash, parity report hash/version, and rollback provenance.

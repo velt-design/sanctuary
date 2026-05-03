@@ -265,11 +265,11 @@ function makeSolvedDrawingSurfaceGeometry(drawing: ReturnType<typeof makeDrawing
       planModel: drawing.planModel ?? null,
       sectionModel: drawing.sectionModel ?? null,
     },
-    planModel: drawing.planModel ?? null,
+    legacyPlanModel: drawing.planModel ?? null,
     planViewModel: makeReadyPlanViewModel(drawing.planModel),
     geometryPlan,
     geometryTopProjection,
-    sectionModel: drawing.sectionModel ?? null,
+    legacySectionModel: drawing.sectionModel ?? null,
     geometrySection,
   };
 }
@@ -559,11 +559,11 @@ describe('DrawingWorkbench', () => {
         planModel: drawing.planModel ?? null,
         sectionModel: drawing.sectionModel ?? null,
       },
-      planModel: drawing.planModel ?? null,
+      legacyPlanModel: drawing.planModel ?? null,
       planViewModel: loosePlanViewModel,
       geometryPlan: null,
       geometryTopProjection: null,
-      sectionModel: drawing.sectionModel ?? null,
+      legacySectionModel: drawing.sectionModel ?? null,
       geometrySection: null,
     };
     const meta = buildEstimateDrawingSheetMeta({
@@ -706,12 +706,14 @@ describe('DrawingWorkbench', () => {
   });
 
   it('routes sheet drawing through the artifact-first drawing surface contract', () => {
-    const drawing = makeDrawingModule();
     const meta = buildEstimateDrawingSheetMeta({
       moduleLabel: 'M1 - Pitched - 6m x 3m - Acrylic',
       view: 'plan',
     });
-    const drawingSurfaceGeometry = makeSolvedDrawingSurfaceGeometry(drawing);
+    const drawingSurfaceGeometry = makeSolvedDrawingSurfaceGeometry({
+      planModel: null,
+      sectionModel: null,
+    });
 
     const markup = renderToStaticMarkup(
       <DrawingWorkbench
@@ -734,7 +736,9 @@ describe('DrawingWorkbench', () => {
 
     expect(markup).toContain('data-drawing-surface-source="solved_geometry"');
     expect(markup).toContain('data-plan-render-source="geometry"');
+    expect(markup).toContain('data-plan-primary-dim="bottom"');
     expect(markup).toContain('data-top-projection-screen-axis="world_x_left_world_y_down"');
+    expect(markup).not.toContain('Waiting for valid inputs');
   });
 
   it('does not restart a consumed custom-footprint outline request after switching to 3D view and back', async () => {
@@ -752,7 +756,7 @@ describe('DrawingWorkbench', () => {
           planModel,
           sectionModel: drawing.sectionModel ?? null,
         },
-        planModel,
+        legacyPlanModel: planModel,
         planViewModel,
       };
       const [viewportMode, setViewportMode] = useState<DrawingWorkbenchViewportMode>('model');

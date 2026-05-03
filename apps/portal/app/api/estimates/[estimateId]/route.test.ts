@@ -5,6 +5,8 @@ const parseJsonBody = vi.fn();
 const loadProjectEstimateFlowMaps = vi.fn();
 const loadEstimateEditability = vi.fn();
 const buildEstimateDbPayload = vi.fn();
+const resolveEstimatePricingSourceForSave = vi.fn();
+const logEstimatePricingSourceAudit = vi.fn();
 const buildVersionLabelMap = vi.fn();
 const extractVersionNumber = vi.fn();
 const mapEstimateDetail = vi.fn();
@@ -14,7 +16,8 @@ const estimateUpdateSingle = vi.fn();
 const estimateOrder = vi.fn();
 
 vi.mock('@/lib/api/staffApi', () => ({
-  jsonError: (error: string, status: number) => new Response(JSON.stringify({ error }), { status, headers: { 'content-type': 'application/json' } }),
+  jsonError: (error: string, status: number, _diagnostics?: unknown, extra?: Record<string, unknown>) =>
+    new Response(JSON.stringify({ error, ...(extra ?? {}) }), { status, headers: { 'content-type': 'application/json' } }),
   jsonOk: (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } }),
   parseJsonBody,
   requireStaffContext,
@@ -31,6 +34,11 @@ vi.mock('@/lib/estimates/flow', () => ({
 
 vi.mock('@/lib/estimates/persistence', () => ({
   buildEstimateDbPayload,
+}));
+
+vi.mock('@/lib/estimates/pricingRollout', () => ({
+  logEstimatePricingSourceAudit,
+  resolveEstimatePricingSourceForSave,
 }));
 
 vi.mock('@/lib/estimates/server', () => ({
@@ -52,16 +60,29 @@ describe('PATCH /api/estimates/[estimateId]', () => {
     loadProjectEstimateFlowMaps.mockReset();
     loadEstimateEditability.mockReset();
     buildEstimateDbPayload.mockReset();
+    resolveEstimatePricingSourceForSave.mockReset();
+    logEstimatePricingSourceAudit.mockReset();
     buildVersionLabelMap.mockReset();
     extractVersionNumber.mockReset();
     mapEstimateDetail.mockReset();
     estimateMaybeSingle.mockReset();
     estimateUpdateSingle.mockReset();
     estimateOrder.mockReset();
+    resolveEstimatePricingSourceForSave.mockReturnValue({
+      ok: true,
+      context: {
+        pricingSource: 'calculator_live',
+        pricingSourceMetadata: { gateVersion: 'estimate_pricing_rollout_prep_v1' },
+        commercialDesignInput: null,
+      },
+      normalizedRequest: { requestedPricingSource: 'calculator_live', raw: null },
+      readinessReport: null,
+    });
+    logEstimatePricingSourceAudit.mockResolvedValue(true);
 
     requireStaffContext.mockResolvedValue({
       ok: true,
-      session: { user: { email: 'ops@example.com' }, role: 'staff' },
+      session: { user: { id: 'user-1', email: 'ops@example.com' }, role: 'staff' },
       supabase: {
         from: (table: string) => {
           if (table !== 'estimates') throw new Error(`Unexpected table ${table}`);
@@ -135,9 +156,109 @@ describe('PATCH /api/estimates/[estimateId]', () => {
     });
 
     expect(res.status).toBe(200);
+    expect(buildEstimateDbPayload).toHaveBeenCalledWith(
+      expect.objectContaining({
+        pricingSourceContext: expect.objectContaining({ pricingSource: 'calculator_live' }),
+      }),
+    );
+    expect(logEstimatePricingSourceAudit).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        type: 'estimate.pricing_source_saved',
+        estimateUuid: 'estimate-uuid',
+      }),
+    );
     await expect(res.json()).resolves.toEqual({
       estimate: { id: 'est_1', projectId: 'proj_1' },
       syncedQuoteVersionIds: [],
     });
+  });
+
+  it('blocks workbench_solved pricing without updating the estimate row', async () => {
+    parseJsonBody.mockResolvedValue({
+      ok: true,
+      body: {
+        estimate_update: {
+          status: 'draft',
+          inputs: { schemaVersion: 'v2' },
+          outputs: { totals: { cost_ex_gst: 0, cost_inc_gst: 0 } },
+        },
+      },
+    });
+    resolveEstimatePricingSourceForSave.mockReturnValue({
+      ok: false,
+      code: 'ESTIMATE_PRICING_SOURCE_BLOCKED',
+      message: 'Workbench solved estimate pricing is not ready to save.',
+      status: 409,
+      normalizedRequest: { requestedPricingSource: 'workbench_solved', raw: 'workbench_solved' },
+      readinessReport: { blockingGateCodes: ['workbench_solved_ready'], fallbackPricingSource: null },
+      metadata: { gateVersion: 'estimate_pricing_rollout_prep_v1' },
+    });
+
+    estimateMaybeSingle.mockResolvedValueOnce({
+      data: {
+        id: 'estimate-uuid',
+        project_id: 'project-uuid',
+        status: 'draft',
+        outputs: {},
+        internal_notes: null,
+      },
+      error: null,
+    });
+    loadEstimateEditability.mockResolvedValue({ isLocked: false });
+
+    const mod = await import('./route');
+    const res = await mod.PATCH(new Request('http://localhost/api/estimates/est_1', { method: 'PATCH' }), {
+      params: Promise.resolve({ estimateId: 'est_1' }),
+    });
+
+    expect(res.status).toBe(409);
+    expect(estimateUpdateSingle).not.toHaveBeenCalled();
+    expect(buildEstimateDbPayload).not.toHaveBeenCalled();
+    expect(logEstimatePricingSourceAudit).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        type: 'estimate.pricing_source_blocked',
+        estimateUuid: 'estimate-uuid',
+      }),
+    );
+    await expect(res.json()).resolves.toMatchObject({
+      code: 'ESTIMATE_PRICING_SOURCE_BLOCKED',
+      readinessReport: { blockingGateCodes: ['workbench_solved_ready'] },
+    });
+  });
+
+  it('keeps estimate locks ahead of pricing source evaluation', async () => {
+    parseJsonBody.mockResolvedValue({
+      ok: true,
+      body: {
+        estimate_update: {
+          status: 'draft',
+          inputs: { schemaVersion: 'v2' },
+          outputs: { totals: { cost_ex_gst: 0, cost_inc_gst: 0 } },
+        },
+      },
+    });
+    estimateMaybeSingle.mockResolvedValueOnce({
+      data: {
+        id: 'estimate-uuid',
+        project_id: 'project-uuid',
+        status: 'draft',
+        outputs: {},
+        internal_notes: null,
+      },
+      error: null,
+    });
+    loadEstimateEditability.mockResolvedValue({ isLocked: true, lockReason: 'quote_sent' });
+
+    const mod = await import('./route');
+    const res = await mod.PATCH(new Request('http://localhost/api/estimates/est_1', { method: 'PATCH' }), {
+      params: Promise.resolve({ estimateId: 'est_1' }),
+    });
+
+    expect(res.status).toBe(409);
+    expect(resolveEstimatePricingSourceForSave).not.toHaveBeenCalled();
+    expect(estimateUpdateSingle).not.toHaveBeenCalled();
+    await expect(res.json()).resolves.toMatchObject({ code: 'ESTIMATE_LOCKED' });
   });
 });

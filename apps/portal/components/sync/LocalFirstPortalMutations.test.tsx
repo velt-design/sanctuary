@@ -198,6 +198,28 @@ describe('LocalFirstPortalMutations', () => {
     unmount();
   });
 
+  it('keeps blocked workbench pricing estimate updates as visible conflicts', async () => {
+    const body = { code: 'ESTIMATE_PRICING_SOURCE_BLOCKED', readinessReport: { blockingGateCodes: ['workbench_solved_ready'] } };
+    mocks.resolveLocalFirstId.mockReturnValueOnce('estimate-1');
+    mocks.apiJson.mockRejectedValueOnce(apiError('Workbench solved estimate pricing is not ready to save.', 409, body));
+    const { handler, unmount } = renderAndGetHandler('portal.estimate.update');
+
+    const result = await handler({
+      payload: {
+        estimateId: 'estimate-1',
+        estimatePayload: { status: 'draft', inputs: {}, outputs: {} },
+      },
+    });
+
+    expect(result).toEqual({
+      kind: 'conflict',
+      message: 'Workbench solved estimate pricing is not ready to save.',
+      serverSnapshot: body,
+    });
+    expect(mocks.apiJson).toHaveBeenCalledWith('/api/estimates/estimate-1', expect.objectContaining({ method: 'PATCH' }));
+    unmount();
+  });
+
   it('aliases created estimates and queues dependent design requests with the durable estimate id', async () => {
     mocks.apiJson.mockResolvedValueOnce({ estimate: minimalEstimateDetail({ id: 'estimate-9' }) });
     const { handler, unmount } = renderAndGetHandler('portal.estimate.create');
@@ -226,6 +248,33 @@ describe('LocalFirstPortalMutations', () => {
         priorityTier: 'standard',
       },
     });
+    unmount();
+  });
+
+  it('keeps blocked workbench pricing estimate creates visible without aliasing or dependent actions', async () => {
+    const body = { code: 'ESTIMATE_PRICING_SOURCE_BLOCKED', readinessReport: { blockingGateCodes: ['commercial_parity_stable'] } };
+    mocks.apiJson.mockRejectedValueOnce(apiError('Workbench solved estimate pricing is not ready to save.', 409, body));
+    const { handler, unmount } = renderAndGetHandler('portal.estimate.create');
+
+    const result = await handler({
+      payload: {
+        localEstimateId: 'local-estimate:blocked',
+        projectId: 'project-1',
+        estimatePayload: { status: 'draft', inputs: {}, outputs: {} },
+        createDesignRequest: {
+          requestSource: 'estimate_flow',
+          priorityTier: 'standard',
+        },
+      },
+    });
+
+    expect(result).toEqual({
+      kind: 'conflict',
+      message: 'Workbench solved estimate pricing is not ready to save.',
+      serverSnapshot: body,
+    });
+    expect(mocks.registerLocalFirstIdAlias).not.toHaveBeenCalled();
+    expect(mocks.enqueueAndProcessLocalFirstMutation).not.toHaveBeenCalled();
     unmount();
   });
 
