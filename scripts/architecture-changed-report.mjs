@@ -1,4 +1,8 @@
 import { spawnSync } from 'node:child_process';
+import {
+  changedModeDescription,
+  HAS_ARCHITECTURE_COMPARE,
+} from './changed-file-utils.mjs';
 
 const STRICT = process.argv.includes('--strict');
 const CHECKS = [
@@ -55,6 +59,10 @@ function runCheck(check) {
 function main() {
   console.log('architecture-changed-report: changed-file architecture handoff sweep');
   console.log(STRICT ? 'Strict mode: enabled for selective new-growth checks.' : 'This aggregate is advisory and is not part of npm run lint.');
+  console.log(`Changed source: ${changedModeDescription()}`);
+  if (HAS_ARCHITECTURE_COMPARE) {
+    console.log('Base/head comparison mode is enabled by ARCHITECTURE_CHANGED_BASE and ARCHITECTURE_CHANGED_HEAD.');
+  }
 
   for (const check of CHECKS) {
     runCheck(check);

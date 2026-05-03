@@ -1,6 +1,12 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { execFileSync } from 'node:child_process';
+import {
+  changedFilesFromGit,
+  changedModeDescription,
+  HAS_ARCHITECTURE_COMPARE,
+  previousFileText,
+  toPosix,
+} from './changed-file-utils.mjs';
 
 const ROOT = process.cwd();
 const CODE_FILE_RE = /\.(cjs|cts|js|jsx|mjs|mts|ts|tsx)$/;
@@ -22,6 +28,7 @@ const MAX_ROWS = Number.parseInt(process.env.FILES_REPORT_MAX_ROWS ?? '40', 10);
 const CHANGED_ONLY = process.argv.includes('--changed');
 const STRICT = process.argv.includes('--strict') || process.env.FILES_REPORT_STRICT === '1';
 const REGISTRY_PATH = 'scripts/file-decomposition-registry.json';
+const PREVIOUS_LINES_LABEL = HAS_ARCHITECTURE_COMPARE ? 'BASE' : 'HEAD';
 
 const THRESHOLDS = {
   'component/page': { warning: 800, critical: 1200 },
@@ -29,37 +36,6 @@ const THRESHOLDS = {
   test: { warning: 1200, critical: 2500 },
   code: { warning: 700, critical: 1200 },
 };
-
-function toPosix(value) {
-  return value.split(path.sep).join('/');
-}
-
-function runGit(args) {
-  try {
-    return execFileSync('git', args, {
-      cwd: ROOT,
-      encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'ignore'],
-    })
-      .split(/\r?\n/)
-      .map((line) => line.trim())
-      .filter(Boolean);
-  } catch {
-    return [];
-  }
-}
-
-function gitText(args) {
-  try {
-    return execFileSync('git', args, {
-      cwd: ROOT,
-      encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'ignore'],
-    });
-  } catch {
-    return null;
-  }
-}
 
 function walkFiles(relDir) {
   const absDir = path.join(ROOT, relDir);
@@ -158,12 +134,9 @@ function validateRegistry(registry, allCodeFiles) {
 }
 
 function changedFiles() {
-  const tracked = runGit(['diff', '--name-only', '--diff-filter=ACMRTUXB', 'HEAD']);
-  const untracked = runGit(['ls-files', '--others', '--exclude-standard']);
-  return [...new Set([...tracked, ...untracked].map(toPosix))]
-    .filter((file) => CODE_FILE_RE.test(file))
-    .filter((file) => !isSkippedPath(file))
-    .filter((file) => fs.existsSync(path.join(ROOT, file)));
+  return changedFilesFromGit({
+    filter: (file) => CODE_FILE_RE.test(file) && !isSkippedPath(file),
+  });
 }
 
 function countLines(text) {
@@ -176,7 +149,7 @@ function lineCount(relPath) {
 }
 
 function headLineCount(relPath) {
-  const output = gitText(['show', `HEAD:${relPath}`]);
+  const output = previousFileText(relPath);
   if (output === null) return null;
   return countLines(output);
 }
@@ -236,13 +209,13 @@ function printTable(rows) {
   const widths = {
     band: Math.max('Band'.length, ...rows.map((row) => row.band.length)),
     lines: Math.max('Lines'.length, ...rows.map((row) => String(row.lines).length)),
-    headLines: CHANGED_ONLY ? Math.max('HEAD'.length, ...rows.map((row) => String(row.headLines ?? '-').length)) : 0,
+    headLines: CHANGED_ONLY ? Math.max(PREVIOUS_LINES_LABEL.length, ...rows.map((row) => String(row.headLines ?? '-').length)) : 0,
     delta: CHANGED_ONLY ? Math.max('Delta'.length, ...rows.map((row) => formatDelta(row.delta).length)) : 0,
     category: Math.max('Category'.length, ...rows.map((row) => row.category.length)),
     hotspot: Math.max('Hotspot'.length, ...rows.map((row) => row.hotspot.length)),
   };
 
-  const changedColumns = CHANGED_ONLY ? `  ${pad('HEAD', widths.headLines)}  ${pad('Delta', widths.delta)}` : '';
+  const changedColumns = CHANGED_ONLY ? `  ${pad(PREVIOUS_LINES_LABEL, widths.headLines)}  ${pad('Delta', widths.delta)}` : '';
   console.log(`${pad('Band', widths.band)}  ${pad('Lines', widths.lines)}${changedColumns}  ${pad('Category', widths.category)}  ${pad('Hotspot', widths.hotspot)}  File`);
   console.log(`${'-'.repeat(widths.band)}  ${'-'.repeat(widths.lines)}${CHANGED_ONLY ? `  ${'-'.repeat(widths.headLines)}  ${'-'.repeat(widths.delta)}` : ''}  ${'-'.repeat(widths.category)}  ${'-'.repeat(widths.hotspot)}  ${'-'.repeat(40)}`);
 
@@ -334,6 +307,7 @@ function main() {
 
   console.log(`file-decomposition-report: ${CHANGED_ONLY ? 'changed-file advisory report' : 'advisory report'}`);
   if (STRICT) console.log('Strict mode: enabled for changed critical files without a registered decomposition note.');
+  if (CHANGED_ONLY) console.log(`Changed source: ${changedModeDescription()}`);
   console.log(`Registry: ${REGISTRY_PATH} (${registry.entries.length} entries)`);
   console.log(`Scanned ${scanFiles.length} code files. Generated, vendor, public, and build outputs are skipped.`);
   console.log('Thresholds: component/page 800/1200, route/domain/package 700/1200, test 1200/2500 lines.');

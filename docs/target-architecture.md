@@ -64,7 +64,9 @@ The first root-compatibility visibility gate is `npm run root:compat`, with `npm
 
 The first aggregate architecture handoff check is `npm run architecture:changed`. It runs the changed-file file decomposition, root compatibility, browser Supabase, and service-role Supabase reports together without making them part of lint.
 
-The first selective strict aggregate is `npm run architecture:changed:strict`. It is for architecture/tooling PRs and future CI experiments, and currently blocks only selected new risky growth rather than legacy debt.
+Locally, changed-file checks read the dirty worktree against `HEAD`. In CI, `ARCHITECTURE_CHANGED_BASE` and `ARCHITECTURE_CHANGED_HEAD` make the same reports compare PR base to head, so a clean checkout still produces useful architecture handoff output.
+
+The first selective strict aggregate is `npm run architecture:changed:strict`. It is for architecture/tooling PRs and future CI experiments, and currently blocks only selected new risky growth rather than legacy debt. Strict mode is base/head aware but remains outside CI until advisory reports have proved accurate.
 
 ## Data Access Target
 
@@ -163,6 +165,7 @@ Prefer adding or tightening:
 - docs impact and stale-link checks.
 - large-file decomposition reports and changed-file ownership checks.
 - root compatibility growth reports.
+- PR-aware architecture changed reports.
 - focused browser/performance gates for heavy portal surfaces.
 
 The first package-boundary gate is `npm run packages:guard`, which checks app imports of local `@sp/*` packages against app manifests and Next transpilation config.

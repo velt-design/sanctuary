@@ -384,8 +384,10 @@ function makeOpening(): OpeningObjectModel {
   };
 }
 
-function makeObjectWorkbenchOverlayInput(geometryPlan: GeometryPlanViewModel): ObjectWorkbenchPlanOverlayInput {
-  const houseForm = makeHouseForm();
+function makeObjectWorkbenchOverlayInput(
+  geometryPlan: GeometryPlanViewModel,
+  houseForm: HouseFormModel = makeHouseForm(),
+): ObjectWorkbenchPlanOverlayInput {
   return {
     houseAssembly: makeHouseAssembly(houseForm),
     houseForm,
@@ -485,6 +487,53 @@ describe('buildPlanViewModel', () => {
           { x: 3.3, y: -0.14 },
           { x: 2.1, y: -0.14 },
         ],
+      }),
+    );
+  });
+
+  it('builds deck commit frames from the persisted house polygon instead of preset fallback params', () => {
+    const planModel = makePlanModelWithHouseContext();
+    const geometryPlan = makeGeometryPlan();
+    const geometryTopProjection = makeGeometryTopProjection();
+    const houseForm = {
+      ...makeHouseForm(),
+      footprint: {
+        ...makeHouseForm().footprint,
+        params: {
+          ...makeHouseForm().footprint.params,
+          bandDepthM: '1.8',
+        },
+        polygon: [
+          { alongM: '0', depthM: '0' },
+          { alongM: '6', depthM: '0' },
+          { alongM: '6', depthM: '2.4' },
+          { alongM: '0', depthM: '2.4' },
+        ],
+      },
+    } satisfies HouseFormModel;
+    const viewModel = buildPlanViewModel({
+      moduleId: 'module-1',
+      moduleLabel: 'Module 1',
+      planModel,
+      geometryPlan,
+      geometryTopProjection,
+      canEditHouseFootprint: true,
+      objectWorkbenchOverlayInput: makeObjectWorkbenchOverlayInput(geometryPlan, houseForm),
+    });
+
+    const deck = viewModel?.objectWorkbenchOverlay?.shapes.find((shape) => shape.ownerKind === 'deck');
+    const commitFrames = deck?.deckInteraction?.commitReferenceFrames ?? [];
+    expect(commitFrames.find((frame) => frame.hostEdgeId === 'right')).toEqual(
+      expect.objectContaining({
+        sourceEdgeId: 'footprint-edge-2',
+        spanStartM: 0,
+        spanEndM: 2.4,
+      }),
+    );
+    expect(commitFrames.find((frame) => frame.hostEdgeId === 'front')).toEqual(
+      expect.objectContaining({
+        sourceEdgeId: 'footprint-edge-3',
+        edgeCoordinateM: 2.4,
       }),
     );
   });

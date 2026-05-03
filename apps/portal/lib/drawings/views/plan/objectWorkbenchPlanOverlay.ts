@@ -694,19 +694,19 @@ function buildHouseFormDeckCommitFootprint(input: {
   moduleProjectionM?: string | null;
 }): PlanPoint[] {
   if (!input.houseForm) return [];
-  const localPolygon =
-    input.houseForm.footprint.mode === 'custom_polygon' && input.houseForm.footprint.polygon.length
-      ? input.houseForm.footprint.polygon
-      : buildHouseFootprintPresetSideLocalPoints({
-          pergolaWidthMm: Math.round((Number(input.moduleLengthM) || 6) * 1000),
-          pergolaDepthMm: Math.round((Number(input.moduleProjectionM) || 3) * 1000),
-          preset: input.houseForm.footprint.preset,
-          params: input.houseForm.footprint.params,
-          attachmentSide: input.houseForm.footprint.attachmentSide,
-        }).map((point) => ({
-          alongM: String(point.alongM),
-          depthM: String(point.depthM),
-        }));
+  const persistedPolygon = parseLocalPolygon(input.houseForm.footprint.polygon);
+  const localPolygon = persistedPolygon.length >= 3
+    ? input.houseForm.footprint.polygon
+    : buildHouseFootprintPresetSideLocalPoints({
+        pergolaWidthMm: Math.round((Number(input.moduleLengthM) || 6) * 1000),
+        pergolaDepthMm: Math.round((Number(input.moduleProjectionM) || 3) * 1000),
+        preset: input.houseForm.footprint.preset,
+        params: input.houseForm.footprint.params,
+        attachmentSide: input.houseForm.footprint.attachmentSide,
+      }).map((point) => ({
+        alongM: String(point.alongM),
+        depthM: String(point.depthM),
+      }));
   return parseLocalPolygon(
     buildDeckReferenceHousePolygon({
       housePolygon: localPolygon,

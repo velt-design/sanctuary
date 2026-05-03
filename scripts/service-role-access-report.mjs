@@ -1,6 +1,11 @@
-import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
+import {
+  changedFilesFromGit,
+  changedModeDescription,
+  changedStatusMap,
+  toPosix,
+} from './changed-file-utils.mjs';
 
 const ROOT = process.cwd();
 const CHANGED_ONLY = process.argv.includes('--changed');
@@ -28,25 +33,6 @@ const SIGNALS = [
   },
 ];
 
-function toPosix(value) {
-  return value.split(path.sep).join('/');
-}
-
-function runGit(args) {
-  try {
-    return execFileSync('git', args, {
-      cwd: ROOT,
-      encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'ignore'],
-    })
-      .split(/\r?\n/)
-      .map((line) => line.trim())
-      .filter(Boolean);
-  } catch {
-    return [];
-  }
-}
-
 function walkFiles(relDir) {
   const absDir = path.join(ROOT, relDir);
   const results = [];
@@ -71,22 +57,15 @@ function shouldConsiderFile(file) {
 }
 
 function changedFiles() {
-  const tracked = runGit(['diff', '--name-only', '--diff-filter=ACMRTUXB', 'HEAD']);
-  const untracked = runGit(['ls-files', '--others', '--exclude-standard']);
-  return [...new Set([...tracked, ...untracked].map(toPosix))]
-    .filter(shouldConsiderFile)
-    .filter((file) => SCAN_ROOTS.some((root) => file === root || file.startsWith(`${root}/`)))
-    .filter((file) => fs.existsSync(path.join(ROOT, file)));
+  return changedFilesFromGit({
+    filter: (file) =>
+      shouldConsiderFile(file) &&
+      SCAN_ROOTS.some((root) => file === root || file.startsWith(`${root}/`)),
+  });
 }
 
 function statusMap() {
-  const map = new Map();
-  for (const line of runGit(['status', '--short'])) {
-    const rawPath = line.slice(3).trim();
-    const file = toPosix(rawPath.includes(' -> ') ? rawPath.split(' -> ').at(-1) : rawPath);
-    map.set(file, line.slice(0, 2).trim() === '??' ? 'new' : 'modified');
-  }
-  return map;
+  return changedStatusMap();
 }
 
 function read(file) {
@@ -231,6 +210,7 @@ function main() {
 
   console.log(`service-role-access-report: ${CHANGED_ONLY ? 'changed-file advisory report' : 'advisory report'}`);
   if (STRICT) console.log('Strict mode: enabled for new service-role access outside approved server flows or compatibility helpers.');
+  if (CHANGED_ONLY) console.log(`Changed source: ${changedModeDescription()}`);
   console.log('This is broader than the portal-only service-role allowlist test; it inventories service-role access but does not fail.');
   console.log('Supabase SQL migrations, tests, generated output, public assets, and build output are skipped.');
   console.log('');

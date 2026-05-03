@@ -5699,6 +5699,7 @@ describe('ModelSpaceViewport', () => {
     expect(scroller.dataset.deckTracePreviewToCommitDeltaY).not.toBe('');
     expect(scroller.dataset.deckTraceReleaseToRebuiltDeltaX).not.toBe('');
     expect(scroller.dataset.deckTraceReleaseToRebuiltDeltaY).not.toBe('');
+    expect(scroller.dataset.deckTraceTransformSource).toBe('top_projection_to_object_frame');
     expect(scroller.dataset.deckTraceReleaseToRebuiltDeltaX).toBe('0');
     expect(scroller.dataset.deckTraceReleaseToRebuiltDeltaY).toBe('0');
     expect(scroller.dataset.deckTraceStatus).toBe('matched');
@@ -6439,7 +6440,7 @@ describe('ModelSpaceViewport', () => {
     expect(rendered.container.querySelector('[data-testid="deck-is-attached"]')?.textContent).toBe('true');
     expect(rendered.container.querySelector('[data-testid="deck-host-edge"]')?.textContent).toBe('front');
     expect(rendered.container.querySelector('[data-testid="deck-primary-host-edge"]')?.textContent).toBe(
-      'footprint-edge-1',
+      'footprint-edge-3',
     );
     expect(rendered.container.querySelector('[data-testid="deck-floating-center-along"]')?.textContent).toBe('');
 

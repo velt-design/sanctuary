@@ -1,6 +1,11 @@
-import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
+import {
+  changedFilesFromGit,
+  changedModeDescription,
+  changedStatusMap,
+  toPosix,
+} from './changed-file-utils.mjs';
 
 const ROOT = process.cwd();
 const CHANGED_ONLY = process.argv.includes('--changed');
@@ -31,25 +36,6 @@ const SKIP_DIRS = new Set([
 const CONFIG_FILE_RE =
   /(^|\/)(eslint\.config\.mjs|next\.config\.[cm]?[jt]s|package(-lock)?\.json|playwright\.config\.ts|postcss\.config\.mjs|tsconfig(\..*)?\.json|vitest\.config\.ts)$/;
 
-function toPosix(value) {
-  return value.split(path.sep).join('/');
-}
-
-function runGit(args) {
-  try {
-    return execFileSync('git', args, {
-      cwd: ROOT,
-      encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'ignore'],
-    })
-      .split(/\r?\n/)
-      .map((line) => line.trim())
-      .filter(Boolean);
-  } catch {
-    return [];
-  }
-}
-
 function walkFiles(relDir) {
   const absDir = path.join(ROOT, relDir);
   if (!fs.existsSync(absDir)) return [];
@@ -74,22 +60,13 @@ function isRootCompatPath(file) {
 }
 
 function changedFiles() {
-  const tracked = runGit(['diff', '--name-only', '--diff-filter=ACMRTUXB', 'HEAD']);
-  const untracked = runGit(['ls-files', '--others', '--exclude-standard']);
-  return [...new Set([...tracked, ...untracked].map(toPosix))]
-    .filter((file) => isRootCompatPath(file))
-    .filter((file) => fs.existsSync(path.join(ROOT, file)));
+  return changedFilesFromGit({
+    filter: isRootCompatPath,
+  });
 }
 
 function statusMap() {
-  const map = new Map();
-  for (const line of runGit(['status', '--short'])) {
-    const status = line.slice(0, 2).trim() || 'modified';
-    const rawPath = line.slice(3).trim();
-    const file = toPosix(rawPath.includes(' -> ') ? rawPath.split(' -> ').at(-1) : rawPath);
-    map.set(file, status === '??' ? 'new' : 'modified');
-  }
-  return map;
+  return changedStatusMap();
 }
 
 function lineCount(file) {
@@ -217,6 +194,7 @@ function main() {
 
   console.log(`root-compatibility-report: ${CHANGED_ONLY ? 'changed-file advisory report' : 'advisory report'}`);
   if (STRICT) console.log('Strict mode: enabled for new root compatibility files.');
+  if (CHANGED_ONLY) console.log(`Changed source: ${changedModeDescription()}`);
   console.log('Root compatibility paths: app, components, data, lib, pages, src, styles.');
   console.log('Generated, workspace, docs, scripts, public, tmp, test output, and config-only files are skipped.');
   console.log('');

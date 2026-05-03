@@ -130,6 +130,7 @@ This snapshot records the most recent known production-readiness state from the 
 
 - [ ] Large files have an owner and a decomposition plan before major feature work continues in them.
 - [ ] `npm run architecture:changed` is included in non-trivial portal handoffs.
+- [x] Portal Quality runs `npm run architecture:changed` as a PR-aware advisory report against base/head changes.
 - [ ] Selective strict architecture checks are used for tooling PRs and later CI candidates without blocking legacy debt.
 - [ ] `npm run files:report` is reviewed before expanding warning or critical files.
 - [ ] `npm run files:changed` is included in handoffs that touch warning or critical files.
@@ -215,6 +216,7 @@ When updating this tracker:
 - Extended `npm run test:portal:browser` with a no-auth mono fixture assertion for object-first workbench visibility, finite 3D diagnostics, top-projection parity, and absence of user-facing fallback/login/unavailable states.
 - Locked projection-backed deck commits to the named `top_projection_to_object_frame` transform, removed stale `commitStartPolygon` bounds remapping, and persisted deck width/depth so rebuilt snapped outlines match the released projection diagnostics.
 - Verified the full Design Workbench gate: `npm run test:portal:workbench` passed with 53 Vitest files and 557 tests, then browser fixture coverage passed with 3 no-auth fixture tests and 1 auth-backed smoke skipped by design.
+- Added PR-aware architecture changed reporting to Portal Quality as an advisory base/head comparison, while keeping selective strict architecture checks out of CI until new-growth enforcement is intentionally enabled.
 - Confirmed Portal Quality CI enforcement: docs guard, typecheck, lint, portal Vitest, portal build, schedule bundle budget, production security audit, fixture browser smoke, and authenticated smoke are blocking; Portal Performance Report keeps authenticated route timing blocking and now writes auth-runtime prerequisites to the GitHub step summary.
 - Verified the full quote/invoice/job-pack side-effects gate after stopping the local portal dev server that held the Next build lock: `npm run portal:side-effects` passed with 8 test files and 32 tests, then `npm run build:portal` completed with `Compiled successfully`, TypeScript, and 55 static pages generated.
 - Confirmed the Schedule V2 local readiness gate: `npm run test:portal:schedule` passed with 38 files and 215 tests, including readiness route, Board/Gantt/Site Visits client coverage, Schedule V2 API/RPC command boundaries, and legacy fallback isolation.

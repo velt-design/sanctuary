@@ -41,6 +41,16 @@ jobs:
         continue-on-error: true
         run: npm run docs:readiness
 
+      - name: Architecture changed advisory
+        if: github.event_name == 'pull_request'
+        continue-on-error: true
+        env:
+          ARCHITECTURE_CHANGED_BASE: origin/${{ github.base_ref }}
+          ARCHITECTURE_CHANGED_HEAD: HEAD
+        run: |
+          git fetch origin "${{ github.base_ref }}" --depth=1 || true
+          npm run architecture:changed
+
       - name: Repository typecheck
         run: npm run typecheck
 
@@ -79,11 +89,11 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Portal authenticated smoke suite
-        id: portal-auth-smoke
+        id: portal_auth_smoke
         run: npm run test:portal:smoke
 
       - name: Authenticated smoke failure guidance
-        if: ${{ failure() && steps.portal-auth-smoke.outcome == 'failure' }}
+        if: ${{ failure() && steps.portal_auth_smoke.outcome == 'failure' }}
         run: |
           {
             echo
@@ -131,11 +141,11 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Capture portal route timings
-        id: portal-performance
+        id: portal_performance
         run: npm run test:portal:performance
 
       - name: Portal performance failure guidance
-        if: ${{ failure() && steps.portal-performance.outcome == 'failure' }}
+        if: ${{ failure() && steps.portal_performance.outcome == 'failure' }}
         run: |
           {
             echo
