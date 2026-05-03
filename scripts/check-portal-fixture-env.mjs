@@ -2,10 +2,12 @@ import { execFileSync } from 'node:child_process';
 import net from 'node:net';
 
 const ROOT = process.cwd();
-const DEFAULT_PORT = 3001;
+const DEFAULT_PORT = 3011;
 const port = Number.parseInt(process.env.PORTAL_PLAYWRIGHT_PORT ?? String(DEFAULT_PORT), 10);
 const baseUrl = process.env.PORTAL_BASE_URL?.trim() || '';
 const fixturePath = '/staff/projects/fixture-roof/design-workbench?fixture=mono-standard';
+const requiredFixtureFlags =
+  'Required fixture flags: ENABLE_SANCTUARY_GEOMETRY_WORKBENCH=1 and ENABLE_SANCTUARY_GEOMETRY_WORKBENCH_FIXTURES=1.';
 
 function fail(lines) {
   console.error('Portal fixture browser gate preflight failed.');
@@ -100,9 +102,10 @@ async function checkLocalServerSlot() {
     fail([
       processHint,
       `Command: ${commandLine}`,
-      'The no-auth fixture browser gate needs Playwright to start the portal with fixture flags.',
-      'Stop the existing server manually, set PORTAL_PLAYWRIGHT_PORT to a free port with no portal Next dev server running, or set PORTAL_BASE_URL to a fixture-enabled portal server.',
-      'Required fixture flags: ENABLE_SANCTUARY_GEOMETRY_WORKBENCH=1 and ENABLE_SANCTUARY_GEOMETRY_WORKBENCH_FIXTURES=1.',
+      `The no-auth fixture browser gate starts a separate fixture-enabled portal on port ${DEFAULT_PORT} by default.`,
+      'A normal npm run dev:portal server can stay on port 3001.',
+      'Set PORTAL_PLAYWRIGHT_PORT to a free fixture port, or set PORTAL_BASE_URL to an already-running fixture-enabled portal server.',
+      requiredFixtureFlags,
     ]);
   }
 
@@ -110,8 +113,10 @@ async function checkLocalServerSlot() {
   if (!available) {
     fail([
       `Port ${port} is already in use, but the owning process could not be identified.`,
-      'The no-auth fixture browser gate needs Playwright to start the portal with fixture flags.',
-      'Stop the existing server manually, set PORTAL_PLAYWRIGHT_PORT to a free port, or set PORTAL_BASE_URL to a fixture-enabled portal server.',
+      `The no-auth fixture browser gate starts a separate fixture-enabled portal on port ${DEFAULT_PORT} by default.`,
+      'A normal npm run dev:portal server can stay on port 3001.',
+      'Set PORTAL_PLAYWRIGHT_PORT to a free fixture port, or set PORTAL_BASE_URL to an already-running fixture-enabled portal server.',
+      requiredFixtureFlags,
     ]);
   }
 
@@ -130,7 +135,8 @@ async function checkRemoteFixtureServer(targetBaseUrl) {
     fail([
       `Could not reach PORTAL_BASE_URL fixture route: ${url.toString()}`,
       `Original error: ${String(error)}`,
-      'Start a fixture-enabled portal server or unset PORTAL_BASE_URL so Playwright can start one.',
+      'Start a fixture-enabled portal server at PORTAL_BASE_URL, or unset PORTAL_BASE_URL so Playwright can start one.',
+      requiredFixtureFlags,
     ]);
   }
 
@@ -139,7 +145,8 @@ async function checkRemoteFixtureServer(targetBaseUrl) {
     fail([
       `PORTAL_BASE_URL redirects the fixture route to ${location || 'an auth route'}.`,
       'Fixture flags are missing or this server is auth-gating fixtures.',
-      'Use npm run test:portal:browser without a normal dev server running, or start the target server with ENABLE_SANCTUARY_GEOMETRY_WORKBENCH=1 and ENABLE_SANCTUARY_GEOMETRY_WORKBENCH_FIXTURES=1.',
+      'Unset PORTAL_BASE_URL so Playwright can start an isolated fixture server, or point PORTAL_BASE_URL at a fixture-enabled server.',
+      requiredFixtureFlags,
     ]);
   }
 
@@ -148,7 +155,8 @@ async function checkRemoteFixtureServer(targetBaseUrl) {
     fail([
       `PORTAL_BASE_URL did not expose the no-auth fixture route (${response.status} ${response.statusText}).`,
       'Fixture flags are missing or this server is auth-gating fixtures.',
-      'Use npm run test:portal:browser without a normal dev server running, or start the target server with ENABLE_SANCTUARY_GEOMETRY_WORKBENCH=1 and ENABLE_SANCTUARY_GEOMETRY_WORKBENCH_FIXTURES=1.',
+      'Unset PORTAL_BASE_URL so Playwright can start an isolated fixture server, or point PORTAL_BASE_URL at a fixture-enabled server.',
+      requiredFixtureFlags,
     ]);
   }
 

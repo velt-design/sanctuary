@@ -159,7 +159,8 @@ Required env:
 
 Optional env:
 
-- `PORTAL_BASE_URL`, defaults to `http://127.0.0.1:3001` when the portal harness starts locally.
+- `PORTAL_PLAYWRIGHT_PORT`, defaults to `3011` when the portal harness starts locally.
+- `PORTAL_BASE_URL`, disables local harness startup and points browser gates at an already-running portal.
 - `PORTAL_DRAWING_URL`, points the drawing smoke at a known project/design page.
 
 Commands:
@@ -197,7 +198,18 @@ The parity-critical baked fixture list is owned by `apps/portal/lib/drawings/san
 
 `npm run test:portal:browser` uses the no-auth `portal-fixture` Playwright project so fixture parity can run without project data or staff credentials. Run `npm run test:portal:browser:auth` first when you need the auth-backed `portal-chromium` setup state or project-list discovery smoke.
 
-When Playwright starts the portal dev server itself, it enables the geometry workbench fixture flags for this no-auth fixture gate. If `PORTAL_BASE_URL` points at an already-running portal server, that server must be started with the same fixture flags. If a normal portal dev server is already running on the Playwright port, stop it manually or use a fixture-enabled `PORTAL_BASE_URL`; the preflight does not terminate processes.
+When Playwright starts the portal dev server itself, it enables the geometry workbench fixture flags for this no-auth fixture gate and uses isolated Next dev output so a normal `npm run dev:portal` server can keep running on port `3001`. The fixture harness defaults to `http://127.0.0.1:3011`; if that port is occupied, choose another fixture port:
+
+```powershell
+$env:PORTAL_PLAYWRIGHT_PORT='3021'; npm run test:portal:browser; Remove-Item Env:\PORTAL_PLAYWRIGHT_PORT
+```
+
+If `PORTAL_BASE_URL` points at an already-running portal server, that server must be started with the same fixture flags. The preflight does not terminate processes or weaken auth checks:
+
+```powershell
+$env:ENABLE_SANCTUARY_GEOMETRY_WORKBENCH='1'; $env:ENABLE_SANCTUARY_GEOMETRY_WORKBENCH_FIXTURES='1'; $env:PORTAL_PLAYWRIGHT_DIST_DIR='.next/playwright-fixture-manual'; npm --prefix apps/portal run dev:playwright -- -p 3021
+$env:PORTAL_BASE_URL='http://127.0.0.1:3021'; npm run test:portal:browser; Remove-Item Env:\PORTAL_BASE_URL
+```
 
 ## Schedule QA Gate
 

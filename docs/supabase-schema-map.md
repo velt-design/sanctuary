@@ -86,10 +86,12 @@ Primary write path:
 
 - Staff quote routes under `apps/portal/app/api/quotes` and `apps/portal/app/api/staff/v1/quotes`.
 - Quote domain helpers under `apps/portal/lib/quotes`.
+- Quote-version pricing source metadata is nullable, not backfilled, and copied only by quote domain helpers from the saved estimate metadata boundary when quote line items are created, refreshed, or revised.
 - Invoice domain helpers under `apps/portal/lib/invoices`.
 - Email and artifact helpers under `apps/portal/lib/emails`, `apps/portal/lib/outputs`, and quote/invoice/job-pack server helpers.
 - Public accept/decline and public invoice actions through token-bound marketing routes only after server-side token validation.
-- Future quote-version pricing source metadata must be copied by quote domain helpers when line items are created, refreshed, or revised. Public token routes and generated artifacts should continue to read quote-version totals and line items, not raw commercial payloads.
+- Public token routes and generated artifacts should continue to read quote-version totals and line items, not raw commercial payloads.
+- `quote_versions.pricing_source` and `quote_versions.pricing_source_metadata` store compact provenance only. Raw `estimates.commercial_design_input` must not be copied into quote versions, public token routes, invoices, PDFs, emails, or job-pack outputs.
 
 Primary read path:
 
@@ -107,7 +109,7 @@ Access rule:
 
 Migration source:
 
-- Quote and invoice migrations under `supabase/migrations/20260209_*`, `20260216_*`, `20260220_*`, `20260314_*`, `20260318_000002_job_pack_sheet_overrides.sql`, `20260320_000001_job_pack_generations.sql`, `20260321_000001_job_pack_generations_schema_reload.sql`, and `20260408_000001_portal_security_hardening.sql`.
+- Quote and invoice migrations under `supabase/migrations/20260209_*`, `20260216_*`, `20260220_*`, `20260314_*`, `20260318_000002_job_pack_sheet_overrides.sql`, `20260320_000001_job_pack_generations.sql`, `20260321_000001_job_pack_generations_schema_reload.sql`, `20260408_000001_portal_security_hardening.sql`, and quote-version source metadata migration `20260504_000002_quote_version_pricing_source_metadata.sql`.
 - `supabase/portal_schema.sql` is a legacy baseline/snapshot reference for these tables.
 
 ## Schedule, Site Visits, And Running Jobs

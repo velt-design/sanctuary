@@ -148,6 +148,49 @@ describe('workbench solved pricing rollout readiness', () => {
     });
   });
 
+  it('resolves unset, blank, and invalid save requests to calculator_live with no commercial payload', () => {
+    const cases = [
+      { raw: null, requestedSourceRaw: null, defaultedReason: 'unset' },
+      { raw: null, requestedSourceRaw: '', defaultedReason: 'unset' },
+      { raw: 'workbench', requestedSourceRaw: 'workbench', defaultedReason: 'invalid' },
+    ] as const;
+
+    for (const entry of cases) {
+      const resolved = resolveEstimatePricingSourceForSave({
+        actor: 'ops@example.com',
+        selectedAt: '2026-05-04T00:00:00.000Z',
+        requestedSourceRaw: entry.requestedSourceRaw,
+      });
+
+      expect(resolved.ok).toBe(true);
+      if (!resolved.ok) throw new Error('expected source to resolve');
+      expect(resolved.context.pricingSource).toBe('calculator_live');
+      expect(resolved.context.commercialDesignInput).toBeNull();
+      expect(resolved.context.pricingSourceMetadata).toMatchObject({
+        requestedSource: 'calculator_live',
+        requestedSourceRaw: entry.raw,
+        selectedSource: 'calculator_live',
+        defaultedReason: entry.defaultedReason,
+        commercialInputSchemaVersion: null,
+        quantityTakeoffSource: null,
+        trustSummary: null,
+        blockingGateCodes: [],
+      });
+
+      const payload = buildEstimateDbPayload({
+        status: 'draft',
+        inputs: { schemaVersion: 'v2' },
+        outputs: { totals: { cost_ex_gst: 0, cost_inc_gst: 0 } },
+        pricingSourceContext: resolved.context,
+      });
+
+      expect(payload.pricing_source).toBe('calculator_live');
+      expect(payload.commercial_design_input).toBeNull();
+      expect(payload.outputs).not.toHaveProperty('pricingSource');
+      expect(payload.outputs).not.toHaveProperty('commercialDesignInput');
+    }
+  });
+
   it('builds compact calculator_live source metadata for estimate saves', () => {
     const resolved = resolveEstimatePricingSourceForSave({
       actor: 'ops@example.com',
@@ -196,11 +239,39 @@ describe('workbench solved pricing rollout readiness', () => {
     if (resolved.ok) throw new Error('expected source to block');
     expect(resolved.code).toBe(ESTIMATE_PRICING_SOURCE_BLOCKED_CODE);
     expect(resolved.status).toBe(409);
+    expect((resolved as any).context).toBeUndefined();
     expect(resolved.readinessReport.fallbackPricingSource).toBeNull();
     expect(resolved.readinessReport.blockingGateCodes).toEqual(
       expect.arrayContaining(['workbench_solved_ready', 'quantity_takeoff_owned', 'commercial_parity_stable']),
     );
     expect(resolved.metadata.selectedSource).toBe('workbench_solved');
+  });
+
+  it('persists commercial design input only for an eligible workbench_solved save context', () => {
+    const readiness = makeReadinessInput();
+    const resolved = resolveEstimatePricingSourceForSave({
+      actor: 'ops@example.com',
+      selectedAt: '2026-05-04T00:00:00.000Z',
+      requestedSourceRaw: 'workbench_solved',
+      readiness,
+    });
+
+    expect(resolved.ok).toBe(true);
+    if (!resolved.ok) throw new Error('expected source to resolve');
+    expect(resolved.context.pricingSource).toBe('workbench_solved');
+    expect(resolved.context.commercialDesignInput).toBe(readiness.workbenchCommercialInput);
+
+    const payload = buildEstimateDbPayload({
+      status: 'draft',
+      inputs: { schemaVersion: 'v2' },
+      outputs: { totals: { cost_ex_gst: 0, cost_inc_gst: 0 } },
+      pricingSourceContext: resolved.context,
+    });
+
+    expect(payload.pricing_source).toBe('workbench_solved');
+    expect(payload.commercial_design_input).toBe(readiness.workbenchCommercialInput);
+    expect(payload.outputs).not.toHaveProperty('pricingSource');
+    expect(payload.outputs).not.toHaveProperty('commercialDesignInput');
   });
 
   it('keeps calculator live as the current pricing source', () => {

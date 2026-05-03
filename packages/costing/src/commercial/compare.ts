@@ -469,14 +469,18 @@ function compareTakeoff(
     ['posts.count', 'Post count', 'count'],
     ['posts.cutHeightM', 'Post cut height', 'length_m'],
     ['rafters.count', 'Rafter count', 'count'],
+    ['rafters.bayCount', 'Rafter bay count', 'count'],
     ['rafters.spacingMm', 'Rafter spacing', 'number'],
     ['rafters.cutLengthM', 'Rafter cut length', 'length_m'],
+    ['rafters.totalLengthM', 'Rafter total length', 'length_m'],
     ['beams.ledgerLengthM', 'Ledger length', 'length_m'],
     ['beams.frontBeamLengthM', 'Front beam length', 'length_m'],
     ['beams.ridgeLengthM', 'Ridge length', 'length_m'],
     ['beams.tieBeamLengthM', 'Tie beam length', 'length_m'],
+    ['beams.totalBeamLengthM', 'Total beam length', 'length_m'],
     ['gutters.ourGutterLengthM', 'Our gutter length', 'length_m'],
     ['gutters.houseGutterLengthM', 'House gutter length', 'length_m'],
+    ['gutters.totalLengthM', 'Total gutter length', 'length_m'],
     ['gutters.downpipeCount', 'Downpipe count', 'count'],
     ['gutters.downpipeJoinCount', 'Downpipe join count', 'count'],
     ['gutters.downpipeElbowCount', 'Downpipe elbow count', 'count'],
@@ -484,7 +488,14 @@ function compareTakeoff(
     ['roofCladding.timberAreaM2', 'Timber area', 'area_m2'],
     ['roofCladding.sheetCount', 'Sheet count', 'count'],
     ['roofCladding.joinerRuns', 'Joiner runs', 'count'],
+    ['roofCladding.panelCount', 'Roof cladding panel count', 'count'],
+    ['roofCladding.totalAreaM2', 'Roof cladding total area', 'area_m2'],
+    ['joiners.count', 'Joiner count', 'count'],
+    ['joiners.totalLengthM', 'Joiner total length', 'length_m'],
+    ['joiners.averageLengthM', 'Joiner average length', 'length_m'],
     ['flashings.totalLengthM', 'Flashing total length', 'length_m'],
+    ['flashings.count', 'Flashing count', 'count'],
+    ['flashings.surfaceAreaM2', 'Flashing surface area', 'area_m2'],
     ['infills.itemCount', 'Infill item count', 'count'],
     ['infills.sheetAreaM2', 'Infill sheet area', 'area_m2'],
     ['infills.stripPanelCount', 'Infill strip panel count', 'count'],
@@ -525,12 +536,68 @@ function compareTakeoff(
       toleranceCategory: 'length_m',
     });
     compareNumeric(context, {
+      path: `${planePath}.rafterCount`,
+      label: `Roof plane ${index + 1} rafter count`,
+      left: leftPlane?.rafterCount,
+      right: rightPlane?.rafterCount,
+      category: 'quantity_takeoff',
+      toleranceCategory: 'count',
+    });
+    compareNumeric(context, {
+      path: `${planePath}.rafterSpacingMm`,
+      label: `Roof plane ${index + 1} rafter spacing`,
+      left: leftPlane?.rafterSpacingMm,
+      right: rightPlane?.rafterSpacingMm,
+      category: 'quantity_takeoff',
+      toleranceCategory: 'number',
+    });
+    compareNumeric(context, {
+      path: `${planePath}.rafterTotalLengthM`,
+      label: `Roof plane ${index + 1} rafter total length`,
+      left: leftPlane?.rafterTotalLengthM,
+      right: rightPlane?.rafterTotalLengthM,
+      category: 'quantity_takeoff',
+      toleranceCategory: 'length_m',
+    });
+    compareNumeric(context, {
       path: `${planePath}.bayCount`,
       label: `Roof plane ${index + 1} bay count`,
       left: leftPlane?.bayCount,
       right: rightPlane?.bayCount,
       category: 'quantity_takeoff',
       toleranceCategory: 'count',
+    });
+    compareNumeric(context, {
+      path: `${planePath}.claddingAreaM2`,
+      label: `Roof plane ${index + 1} cladding area`,
+      left: leftPlane?.claddingAreaM2,
+      right: rightPlane?.claddingAreaM2,
+      category: 'quantity_takeoff',
+      toleranceCategory: 'area_m2',
+    });
+    compareNumeric(context, {
+      path: `${planePath}.claddingPanelCount`,
+      label: `Roof plane ${index + 1} cladding panel count`,
+      left: leftPlane?.claddingPanelCount,
+      right: rightPlane?.claddingPanelCount,
+      category: 'quantity_takeoff',
+      toleranceCategory: 'count',
+    });
+    compareNumeric(context, {
+      path: `${planePath}.joinerCount`,
+      label: `Roof plane ${index + 1} joiner count`,
+      left: leftPlane?.joinerCount,
+      right: rightPlane?.joinerCount,
+      category: 'quantity_takeoff',
+      toleranceCategory: 'count',
+    });
+    compareNumeric(context, {
+      path: `${planePath}.joinerTotalLengthM`,
+      label: `Roof plane ${index + 1} joiner total length`,
+      left: leftPlane?.joinerTotalLengthM,
+      right: rightPlane?.joinerTotalLengthM,
+      category: 'quantity_takeoff',
+      toleranceCategory: 'length_m',
     });
   }
 
@@ -551,12 +618,30 @@ function compareTakeoff(
     });
   }
 
+  const flashingGirthKeys = Array.from(
+    new Set([
+      ...Object.keys(l.flashings?.byGirthM ?? {}),
+      ...Object.keys(r.flashings?.byGirthM ?? {}),
+    ]),
+  ).sort();
+  for (const girth of flashingGirthKeys) {
+    compareNumeric(context, {
+      path: `${path}.quantityTakeoff.flashings.byGirthM.${girth}`,
+      label: `Flashing girth ${girth}`,
+      left: l.flashings?.byGirthM?.[girth],
+      right: r.flashings?.byGirthM?.[girth],
+      category: 'quantity_takeoff',
+      toleranceCategory: 'length_m',
+    });
+  }
+
   const exactFields = [
     ['posts.profile', 'Post profile'],
     ['rafters.profile', 'Rafter profile'],
     ['beams.ledgerProfile', 'Ledger profile'],
     ['beams.frontBeamProfile', 'Front beam profile'],
     ['beams.ridgeProfile', 'Ridge profile'],
+    ['joiners.profile', 'Joiner profile'],
   ] as const;
   for (const [field, label] of exactFields) {
     compareExact(context, {

@@ -131,10 +131,13 @@ describe("buildAssemblyQuantityTakeoff", () => {
         id: assembly.roofPlanes[0]?.id,
         rafterCount: assembly.members.filter((member) => member.role === "rafter").length,
         rafterBayCount: assembly.members.filter((member) => member.role === "rafter").length - 1,
+        rafterTotalLengthM: takeoff.members.byRole.rafter.totalLengthM,
         rafterAverageSpacingMm: 600,
         rafterAverageSpacingM: 0.6,
         claddingPanelCount: assembly.roofCladdingPanels.length,
+        claddingAreaM2: takeoff.roofCladding.totalAreaM2,
         joinerCount: assembly.members.filter((member) => member.role === "joiner").length,
+        joinerTotalLengthM: takeoff.joiners.totalLengthM,
       }),
     );
     expect(takeoff.roofCladding.panelCount).toBe(assembly.roofCladdingPanels.length);
@@ -163,7 +166,11 @@ describe("buildAssemblyQuantityTakeoff", () => {
       0,
     );
     expect(takeoff.joiners.count).toBe(assembly.members.filter((member) => member.role === "joiner").length);
+    expect(takeoff.joiners.totalLengthM).toBe(takeoff.members.byRole.joiner.totalLengthM);
+    expect(takeoff.joiners.averageLengthM).toBe(takeoff.members.byRole.joiner.averageLengthM);
     expect(takeoff.joiners.items).toHaveLength(takeoff.joiners.count);
+    expect(takeoff.beams.totalBeamLengthM).toBe(takeoff.members.byRole.beam.totalLengthM);
+    expect(takeoff.gutters.totalLengthM).toBe(takeoff.members.byRole.gutter.totalLengthM);
     expect(takeoff.gutters.items).toHaveLength(takeoff.members.byRole.gutter.count);
     expect(takeoff.quantityHooks).toEqual([...assembly.quantityHooks].sort((a, b) => a.key.localeCompare(b.key)));
     expect(takeoff.diagnostics).toEqual([]);

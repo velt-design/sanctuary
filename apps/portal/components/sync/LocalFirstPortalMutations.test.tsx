@@ -195,6 +195,9 @@ describe('LocalFirstPortalMutations', () => {
       serverSnapshot: body,
     });
     expect(mocks.apiJson).toHaveBeenCalledWith('/api/estimates/estimate-1', expect.objectContaining({ method: 'PATCH' }));
+    expect(mocks.invalidateProjectReadCaches).not.toHaveBeenCalled();
+    expect(mocks.queryClient.invalidateQueries).not.toHaveBeenCalled();
+    expect(mocks.queryClient.setQueryData).not.toHaveBeenCalled();
     unmount();
   });
 
@@ -217,6 +220,9 @@ describe('LocalFirstPortalMutations', () => {
       serverSnapshot: body,
     });
     expect(mocks.apiJson).toHaveBeenCalledWith('/api/estimates/estimate-1', expect.objectContaining({ method: 'PATCH' }));
+    expect(mocks.invalidateProjectReadCaches).not.toHaveBeenCalled();
+    expect(mocks.queryClient.invalidateQueries).not.toHaveBeenCalled();
+    expect(mocks.queryClient.setQueryData).not.toHaveBeenCalled();
     unmount();
   });
 
@@ -275,6 +281,8 @@ describe('LocalFirstPortalMutations', () => {
     });
     expect(mocks.registerLocalFirstIdAlias).not.toHaveBeenCalled();
     expect(mocks.enqueueAndProcessLocalFirstMutation).not.toHaveBeenCalled();
+    expect(mocks.invalidateProjectReadCaches).not.toHaveBeenCalled();
+    expect(mocks.queryClient.setQueryData).not.toHaveBeenCalled();
     unmount();
   });
 

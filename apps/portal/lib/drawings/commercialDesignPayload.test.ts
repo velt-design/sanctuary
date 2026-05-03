@@ -495,6 +495,8 @@ describe('workbench commercialDesignPayload', () => {
       siteCommercial: SITE_COMMERCIAL,
     });
     const module = commercial.pergolas[0]?.modules[0];
+    const geometryTakeoff = requireModule(solvedModel).geometryArtifact?.quantityTakeoff;
+    const geometryPlane = geometryTakeoff?.roofPlanes.items[0];
 
     expect(module?.trustStatus).toBe('ready');
     expect(module?.designIntent).toMatchObject({
@@ -510,13 +512,39 @@ describe('workbench commercialDesignPayload', () => {
     expectPositiveNumber(module?.quantityTakeoff.roofPlanes?.[0]?.areaM2, 'mono roof plane area');
     expectPositiveNumber(module?.quantityTakeoff.roofPlanes?.[0]?.rafterLengthM, 'mono roof plane rafter length');
     expectFiniteNumber(module?.quantityTakeoff.roofPlanes?.[0]?.bayCount, 'mono roof plane bay count');
+    expect(module?.quantityTakeoff.roofPlanes?.[0]).toMatchObject({
+      rafterCount: geometryPlane?.rafterCount,
+      rafterSpacingMm: geometryPlane?.rafterAverageSpacingMm,
+      rafterTotalLengthM: geometryPlane?.rafterTotalLengthM,
+      claddingAreaM2: geometryPlane?.claddingAreaM2,
+      claddingPanelCount: geometryPlane?.claddingPanelCount,
+      joinerCount: geometryPlane?.joinerCount,
+      joinerTotalLengthM: geometryPlane?.joinerTotalLengthM,
+    });
     expect(module?.quantityTakeoff.posts?.count).toBe(2);
     expect(module?.quantityTakeoff.rafters?.count ?? 0).toBeGreaterThan(0);
+    expect(module?.quantityTakeoff.rafters?.bayCount).toBe(geometryPlane?.rafterBayCount);
+    expect(module?.quantityTakeoff.rafters?.spacingMm).toBe(geometryPlane?.rafterAverageSpacingMm);
+    expect(module?.quantityTakeoff.rafters?.totalLengthM).toBe(geometryTakeoff?.members.byRole.rafter.totalLengthM);
     expect(module?.quantityTakeoff.beams?.ledgerLengthM).toBe(6);
+    expect(module?.quantityTakeoff.beams?.totalBeamLengthM).toBe(geometryTakeoff?.beams.totalBeamLengthM);
     expect(module?.quantityTakeoff.gutters?.ourGutterLengthM ?? 0).toBeGreaterThan(0);
+    expect(module?.quantityTakeoff.gutters?.totalLengthM).toBe(geometryTakeoff?.gutters.totalLengthM);
     expect(module?.quantityTakeoff.gutters?.downpipeCount).toBe(2);
     expectFiniteNumber(module?.quantityTakeoff.roofCladding?.joinerRuns, 'mono joiner runs');
-    expect(module?.quantityTakeoff.flashings?.totalLengthM).toBe(1.5);
+    expect(module?.quantityTakeoff.roofCladding?.panelCount).toBe(geometryTakeoff?.roofCladding.panelCount);
+    expect(module?.quantityTakeoff.roofCladding?.totalAreaM2).toBe(geometryTakeoff?.roofCladding.totalAreaM2);
+    expect(module?.quantityTakeoff.joiners).toMatchObject({
+      count: geometryTakeoff?.joiners.count,
+      totalLengthM: geometryTakeoff?.joiners.totalLengthM,
+      averageLengthM: geometryTakeoff?.joiners.averageLengthM,
+    });
+    expect(module?.quantityTakeoff.flashings).toMatchObject({
+      totalLengthM: geometryTakeoff?.flashings.totalLengthM,
+      count: geometryTakeoff?.flashings.count,
+      surfaceAreaM2: geometryTakeoff?.flashings.totalSurfaceAreaM2,
+    });
+    expect(module?.options.flashings).toEqual(makeModule().flashings);
     expect(module?.options.overrides).toEqual({ ledgerProfile: '150x50', rafterProfile: '100x50' });
   });
 
@@ -686,11 +714,38 @@ describe('workbench commercialDesignPayload', () => {
       for (const [index, plane] of (workbenchModule.quantityTakeoff.roofPlanes ?? []).entries()) {
         expectPositiveNumber(plane.areaM2, `${fixture.slug} roof plane ${index + 1} area`);
         const geometryPlane = solvedModule.geometryArtifact?.quantityTakeoff.roofPlanes.items[index];
+        expect(plane.rafterCount, `${fixture.slug} roof plane ${index + 1} rafter count`).toBe(geometryPlane?.rafterCount);
+        expect(plane.rafterSpacingMm, `${fixture.slug} roof plane ${index + 1} rafter spacing`).toBe(
+          geometryPlane?.rafterAverageSpacingMm,
+        );
+        expect(plane.rafterTotalLengthM, `${fixture.slug} roof plane ${index + 1} rafter total length`).toBe(
+          geometryPlane?.rafterTotalLengthM,
+        );
+        expect(plane.claddingAreaM2, `${fixture.slug} roof plane ${index + 1} cladding area`).toBe(geometryPlane?.claddingAreaM2);
+        expect(plane.claddingPanelCount, `${fixture.slug} roof plane ${index + 1} cladding panels`).toBe(
+          geometryPlane?.claddingPanelCount,
+        );
+        expect(plane.joinerCount, `${fixture.slug} roof plane ${index + 1} joiner count`).toBe(geometryPlane?.joinerCount);
+        expect(plane.joinerTotalLengthM, `${fixture.slug} roof plane ${index + 1} joiner total length`).toBe(
+          geometryPlane?.joinerTotalLengthM,
+        );
         if ((geometryPlane?.rafterCount ?? 0) > 0) {
           expectPositiveNumber(plane.rafterLengthM, `${fixture.slug} roof plane ${index + 1} rafter length`);
           expectFiniteNumber(plane.bayCount, `${fixture.slug} roof plane ${index + 1} bay count`);
         }
       }
+      expect(workbenchModule.quantityTakeoff.roofCladding?.panelCount, `${fixture.slug} cladding panel count`).toBe(
+        solvedModule.geometryArtifact?.quantityTakeoff.roofCladding.panelCount,
+      );
+      expect(workbenchModule.quantityTakeoff.roofCladding?.totalAreaM2, `${fixture.slug} cladding total area`).toBe(
+        solvedModule.geometryArtifact?.quantityTakeoff.roofCladding.totalAreaM2,
+      );
+      expect(workbenchModule.quantityTakeoff.joiners?.count, `${fixture.slug} joiner count`).toBe(
+        solvedModule.geometryArtifact?.quantityTakeoff.joiners.count,
+      );
+      expect(workbenchModule.quantityTakeoff.flashings?.count, `${fixture.slug} physical flashing count`).toBe(
+        solvedModule.geometryArtifact?.quantityTakeoff.flashings.count,
+      );
     }
   });
 
@@ -730,12 +785,15 @@ describe('workbench commercialDesignPayload', () => {
       const workbenchModules = workbenchCommercial.pergolas
         .flatMap((pergola) => pergola.modules)
         .sort((left, right) => (left.sourceModuleIndex ?? 0) - (right.sourceModuleIndex ?? 0));
+      const solvedModules = [...solvedModel.modules].sort((left, right) => left.index - right.index);
       expect(workbenchModules.map((module) => module.trustStatus), `${saved.slug} trust allowance`).toEqual(
         saved.expectedTrustStatuses,
       );
       expect(workbenchModules, `${saved.slug} module count`).toHaveLength(saved.expectedModuleCount);
       for (const [index, expected] of saved.expectedModules.entries()) {
         const module = workbenchModules[index];
+        const solvedModule = solvedModules[index];
+        const geometryTakeoff = solvedModule?.geometryArtifact?.quantityTakeoff;
         expect(module, `${saved.slug} expected module ${index + 1}`).toBeDefined();
         expectCloseOrEqual(module?.designIntent.dimensions?.lengthM, expected.lengthM, `${saved.slug} module ${index + 1} authored length`);
         expectCloseOrEqual(
@@ -773,13 +831,38 @@ describe('workbench commercialDesignPayload', () => {
           expected.roofPlaneCount,
         );
         for (const [planeIndex, plane] of (module?.quantityTakeoff.roofPlanes ?? []).entries()) {
+          const geometryPlane = geometryTakeoff?.roofPlanes.items[planeIndex];
           expectPositiveNumber(plane.areaM2, `${saved.slug} module ${index + 1} roof plane ${planeIndex + 1} area`);
+          expect(plane.rafterCount, `${saved.slug} module ${index + 1} roof plane ${planeIndex + 1} rafter count`).toBe(
+            geometryPlane?.rafterCount,
+          );
+          expect(plane.rafterSpacingMm, `${saved.slug} module ${index + 1} roof plane ${planeIndex + 1} rafter spacing`).toBe(
+            geometryPlane?.rafterAverageSpacingMm,
+          );
+          expect(plane.claddingPanelCount, `${saved.slug} module ${index + 1} roof plane ${planeIndex + 1} cladding panels`).toBe(
+            geometryPlane?.claddingPanelCount,
+          );
+          expect(plane.joinerCount, `${saved.slug} module ${index + 1} roof plane ${planeIndex + 1} joiner count`).toBe(
+            geometryPlane?.joinerCount,
+          );
           expectPositiveNumber(
             plane.rafterLengthM,
             `${saved.slug} module ${index + 1} roof plane ${planeIndex + 1} rafter length`,
           );
           expectFiniteNumber(plane.bayCount, `${saved.slug} module ${index + 1} roof plane ${planeIndex + 1} bay count`);
         }
+        expect(module?.quantityTakeoff.rafters?.totalLengthM, `${saved.slug} module ${index + 1} rafter total`).toBe(
+          geometryTakeoff?.members.byRole.rafter.totalLengthM,
+        );
+        expect(module?.quantityTakeoff.roofCladding?.panelCount, `${saved.slug} module ${index + 1} cladding panels`).toBe(
+          geometryTakeoff?.roofCladding.panelCount,
+        );
+        expect(module?.quantityTakeoff.joiners?.count, `${saved.slug} module ${index + 1} joiner count`).toBe(
+          geometryTakeoff?.joiners.count,
+        );
+        expect(module?.quantityTakeoff.flashings?.count, `${saved.slug} module ${index + 1} flashing count`).toBe(
+          geometryTakeoff?.flashings.count,
+        );
       }
       expect(report.differences.every((difference) => DRIFT_ORIGINS.has(difference.driftOrigin)), saved.slug).toBe(true);
       expect(

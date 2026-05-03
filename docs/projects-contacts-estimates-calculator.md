@@ -77,7 +77,7 @@ The future live switch must be server-owned and default-safe:
 
 - Use a server-only requested-source flag such as `PORTAL_ESTIMATE_PRICING_SOURCE=calculator_live|workbench_solved`; unset or invalid values must behave as `calculator_live`.
 - When the requested source is `workbench_solved`, estimate create/update/duplicate must evaluate the full readiness report before changing saved pricing. Any failed gate returns `409 ESTIMATE_PRICING_SOURCE_BLOCKED` with gate codes and leaves estimate rows unchanged.
-- `calculator_live` rollback is the same explicit flag switch back to calculator pricing. Rollback affects new estimate saves and future quote refreshes only; it must not mutate existing estimates, sent quote versions, public outputs, invoices, PDFs, or job-pack generations.
+- `calculator_live` rollback is the same explicit flag switch back to calculator pricing. Rollback affects new estimate saves and future draft quote refreshes only through the quote domain helpers; it must not mutate existing estimates, sent quote versions, public outputs, invoices, PDFs, or job-pack generations.
 
 Persistence changes must use ordered forward migrations. Do not edit baseline SQL or old applied migrations. The estimate source-of-record fields are:
 

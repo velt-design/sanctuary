@@ -170,6 +170,17 @@ function buildSolvedGeometry(module: CalculatorModuleInputs, moduleResult?: Cost
   };
 }
 
+function productOrNull(left: number | null, right: number | null): number | null {
+  if (left == null || right == null) return null;
+  return left * right;
+}
+
+function sumNumbersOrNull(values: Array<number | null>): number | null {
+  const finiteValues = values.filter((value): value is number => typeof value === 'number' && Number.isFinite(value));
+  if (!finiteValues.length) return null;
+  return finiteValues.reduce((sum, value) => sum + value, 0);
+}
+
 function buildRoofPlanes(moduleResult?: CostOutputV1 | null): NonNullable<CommercialQuantityTakeoffV1['roofPlanes']> {
   const planes = moduleResult?.derived?.roof_planes;
   if (!Array.isArray(planes)) return [];
@@ -177,8 +188,21 @@ function buildRoofPlanes(moduleResult?: CostOutputV1 | null): NonNullable<Commer
     id: typeof plane.id === 'string' && plane.id.trim() ? plane.id : `roof-plane-${index + 1}`,
     label: typeof plane.label === 'string' && plane.label.trim() ? plane.label : undefined,
     areaM2: nonNegativeNumberOrNull(plane.roof_area_m2),
+    rafterCount: intOrNull(plane.bay_count) == null ? null : (intOrNull(plane.bay_count) ?? 0) + 1,
     rafterLengthM: nonNegativeNumberOrNull(plane.rafter_length_m),
+    rafterSpacingMm: nonNegativeNumberOrNull(moduleResult?.derived?.rafter_spacing_mm),
+    rafterTotalLengthM: productOrNull(
+      intOrNull(plane.bay_count) == null ? null : (intOrNull(plane.bay_count) ?? 0) + 1,
+      nonNegativeNumberOrNull(plane.rafter_length_m),
+    ),
     bayCount: intOrNull(plane.bay_count),
+    claddingAreaM2: nonNegativeNumberOrNull(plane.roof_area_m2),
+    claddingPanelCount: null,
+    joinerCount: intOrNull(plane.bay_count) == null ? null : (intOrNull(plane.bay_count) ?? 0) + 1,
+    joinerTotalLengthM: productOrNull(
+      intOrNull(plane.bay_count) == null ? null : (intOrNull(plane.bay_count) ?? 0) + 1,
+      nonNegativeNumberOrNull(moduleResult?.derived?.joiner_piece_length_m),
+    ),
   }));
 }
 
@@ -204,8 +228,10 @@ function buildQuantityTakeoff(args: {
     },
     rafters: {
       count: intOrNull(derived?.rafter_count),
+      bayCount: intOrNull(derived?.bay_count),
       spacingMm: nonNegativeNumberOrNull(derived?.rafter_spacing_mm),
       cutLengthM: nonNegativeNumberOrNull(derived?.rafter_cut_length_m),
+      totalLengthM: nonNegativeNumberOrNull(derived?.total_installed_rafter_length_m),
       profile: typeof normalized?.rafter_profile === 'string' ? normalized.rafter_profile : null,
     },
     beams: {
@@ -213,6 +239,7 @@ function buildQuantityTakeoff(args: {
       frontBeamLengthM: nonNegativeNumberOrNull(derived?.front_beam_length_m),
       ridgeLengthM: nonNegativeNumberOrNull(derived?.ridge_length_m),
       tieBeamLengthM: nonNegativeNumberOrNull(derived?.tie_beam_length_m),
+      totalBeamLengthM: nonNegativeNumberOrNull(derived?.front_beam_length_m),
       ledgerProfile: typeof derived?.ledger_profile_used === 'string' ? derived.ledger_profile_used : null,
       frontBeamProfile: typeof derived?.front_beam_profile_used === 'string' ? derived.front_beam_profile_used : null,
       ridgeProfile: typeof derived?.ridge_beam_profile_used === 'string' ? derived.ridge_beam_profile_used : null,
@@ -220,6 +247,12 @@ function buildQuantityTakeoff(args: {
     gutters: {
       ourGutterLengthM: nonNegativeNumberOrNull(derived?.our_gutter_length_m),
       houseGutterLengthM: nonNegativeNumberOrNull(derived?.house_gutter_length_m),
+      totalLengthM:
+        nonNegativeNumberOrNull(derived?.gutter_length_m) ??
+        sumNumbersOrNull([
+          nonNegativeNumberOrNull(derived?.our_gutter_length_m),
+          nonNegativeNumberOrNull(derived?.house_gutter_length_m),
+        ]),
       downpipeCount: intOrNull(normalized?.downpipe_count ?? args.module.downpipeCount),
       downpipeJoinCount: intOrNull(normalized?.downpipe_join_count ?? args.module.downpipeJoinCount),
       downpipeElbowCount: intOrNull(normalized?.downpipe_elbow_count ?? args.module.downpipeElbowCount),
@@ -229,9 +262,26 @@ function buildQuantityTakeoff(args: {
       timberAreaM2: nonNegativeNumberOrNull(derived?.timber_area_m2),
       sheetCount: intOrNull(normalized?.acrylic_sheet_count),
       joinerRuns: intOrNull(derived?.joiner_runs_total),
+      panelCount: null,
+      totalAreaM2:
+        sumNumbersOrNull([
+          nonNegativeNumberOrNull(derived?.acrylic_area_m2),
+          nonNegativeNumberOrNull(derived?.timber_area_m2),
+        ]) ?? nonNegativeNumberOrNull(derived?.roof_surface_area_m2),
+    },
+    joiners: {
+      count: intOrNull(derived?.joiner_runs_total),
+      totalLengthM: productOrNull(
+        intOrNull(derived?.joiner_runs_total),
+        nonNegativeNumberOrNull(derived?.joiner_piece_length_m),
+      ),
+      averageLengthM: nonNegativeNumberOrNull(derived?.joiner_piece_length_m),
+      profile: null,
     },
     flashings: {
       totalLengthM: nonNegativeNumberOrNull(derived?.flashing_total_m ?? normalized?.flashings?.total_length_m),
+      count: intOrNull(derived?.flashing_startup_count),
+      surfaceAreaM2: null,
       byBandM: {
         '0-200': nonNegativeNumberOrNull(derived?.flashing_0_200_total_m ?? normalized?.flashings?.totals_m_by_band?.['0-200']) ?? 0,
         '201-300':

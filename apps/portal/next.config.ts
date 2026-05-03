@@ -1,7 +1,10 @@
 import path from 'node:path';
 import type { NextConfig } from 'next';
 
+const playwrightDistDir = process.env.PORTAL_PLAYWRIGHT_DIST_DIR?.trim();
+
 const nextConfig: NextConfig = {
+  ...(playwrightDistDir ? { distDir: playwrightDistDir } : {}),
   experimental: { externalDir: true },
   allowedDevOrigins: ['127.0.0.1'],
   transpilePackages: ['@sp/costing', '@sp/geometry', '@sp/quote-format', '@sp/theme'],

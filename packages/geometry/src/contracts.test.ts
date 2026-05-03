@@ -660,12 +660,18 @@ describe('@sp/geometry contracts', () => {
         id: 'mono-roof',
         rafterCount: 0,
         rafterBayCount: 0,
+        rafterTotalLengthM: 0,
         rafterAverageSpacingMm: null,
         rafterAverageSpacingM: null,
         claddingPanelCount: 0,
+        claddingAreaM2: 0,
         joinerCount: 0,
+        joinerTotalLengthM: 0,
       }),
     );
+    expect(takeoff.beams.totalBeamLengthM).toBeNull();
+    expect(takeoff.gutters.totalLengthM).toBeNull();
+    expect(takeoff.roofCladding.totalAreaM2).toBe(0);
     expect(takeoff.roofCladding.items).toEqual([]);
     expect(takeoff.gutters.items).toEqual([]);
     expect(takeoff.joiners.items).toEqual([]);

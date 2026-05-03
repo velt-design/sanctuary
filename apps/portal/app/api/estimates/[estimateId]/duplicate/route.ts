@@ -2,7 +2,7 @@ import { jsonError, jsonOk, requireStaffContext } from '@/lib/api/staffApi';
 import { missingColumnFromError } from '@/lib/api/siteVisitsServer';
 import { buildEstimateDbPayload } from '@/lib/estimates/persistence';
 import { logEstimatePricingSourceAudit, resolveEstimatePricingSourceForSave } from '@/lib/estimates/pricingRollout';
-import { buildVersionLabelMap, calculatorSnapshotFromRow, mapEstimateDetail } from '@/lib/estimates/server';
+import { buildVersionLabelMap, calculatorSnapshotFromRow, loadEstimateEditability, mapEstimateDetail } from '@/lib/estimates/server';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { isRecord, uuidFromAppId } from '@/lib/supabase/mappers';
 
@@ -12,6 +12,13 @@ type AnyRecord = Record<string, unknown>;
 
 function isEstimatePricingSourceColumn(column: string): boolean {
   return column === 'pricing_source' || column === 'pricing_source_metadata' || column === 'commercial_design_input';
+}
+
+function estimateLockedResponse(editability: Awaited<ReturnType<typeof loadEstimateEditability>>) {
+  return jsonError('Estimate is locked because it has been sent with a quote and can no longer be edited.', 409, null, {
+    code: 'ESTIMATE_LOCKED',
+    editability,
+  });
 }
 
 async function insertEstimateWithRetry(supabase: SupabaseClient, payload: Record<string, any>) {
@@ -54,6 +61,9 @@ export async function POST(_req: Request, ctx: { params: Promise<{ estimateId: s
   const source = res.data;
   const projectUuid = String(source?.project_id ?? '');
   if (!projectUuid) return jsonError('Estimate project missing', 500);
+
+  const editability = await loadEstimateEditability(estimateUuid);
+  if (editability.isLocked) return estimateLockedResponse(editability);
 
   const existing = await supabase
     .from('estimates')

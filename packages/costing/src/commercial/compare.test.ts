@@ -52,14 +52,29 @@ function makeModule(overrides: Partial<CommercialModuleInputV1> = {}): Commercia
         projectionM: 3,
         roofAreaM2: 18,
       },
-      roofPlanes: [{ id: 'plane-1', areaM2: 18, bayCount: 10, rafterLengthM: 3 }],
+      roofPlanes: [
+        {
+          id: 'plane-1',
+          areaM2: 18,
+          bayCount: 10,
+          rafterCount: 11,
+          rafterLengthM: 3,
+          rafterSpacingMm: 600,
+          rafterTotalLengthM: 33,
+          claddingAreaM2: 18,
+          claddingPanelCount: 4,
+          joinerCount: 11,
+          joinerTotalLengthM: 33,
+        },
+      ],
       posts: { count: 2, cutHeightM: 2.4, profile: '90x90' },
-      rafters: { count: 11, spacingMm: 600, cutLengthM: 3, profile: '100x50' },
+      rafters: { count: 11, bayCount: 10, spacingMm: 600, cutLengthM: 3, totalLengthM: 33, profile: '100x50' },
       beams: {
         ledgerLengthM: 6,
         frontBeamLengthM: 6,
         ridgeLengthM: null,
         tieBeamLengthM: null,
+        totalBeamLengthM: 6,
         ledgerProfile: '150x50',
         frontBeamProfile: '150x50',
         ridgeProfile: null,
@@ -67,6 +82,7 @@ function makeModule(overrides: Partial<CommercialModuleInputV1> = {}): Commercia
       gutters: {
         ourGutterLengthM: 6,
         houseGutterLengthM: 0,
+        totalLengthM: 6,
         downpipeCount: 2,
         downpipeJoinCount: 1,
         downpipeElbowCount: 3,
@@ -76,10 +92,21 @@ function makeModule(overrides: Partial<CommercialModuleInputV1> = {}): Commercia
         timberAreaM2: 0,
         sheetCount: 4,
         joinerRuns: 11,
+        panelCount: 4,
+        totalAreaM2: 18,
+      },
+      joiners: {
+        count: 11,
+        totalLengthM: 33,
+        averageLengthM: 3,
+        profile: 'acrylic_joiner',
       },
       flashings: {
         totalLengthM: 1.5,
+        count: 1,
+        surfaceAreaM2: 0.45,
         byBandM: { '201-300': 1.5 },
+        byGirthM: { '300': 1.5 },
       },
       infills: {
         itemCount: 0,
@@ -427,12 +454,29 @@ describe('compareCommercialDesignInputsV1', () => {
     right.pergolas[0]!.modules[0]!.designIntent.dimensions!.secondaryLengthM = 2.1;
     right.pergolas[0]!.modules[0]!.designIntent.dimensions!.secondaryProjectionM = 1.6;
     right.pergolas[0]!.modules[0]!.quantityTakeoff.roofPlanes![0]!.areaM2 = 18.5;
+    right.pergolas[0]!.modules[0]!.quantityTakeoff.roofPlanes![0]!.rafterCount = 12;
+    right.pergolas[0]!.modules[0]!.quantityTakeoff.roofPlanes![0]!.rafterSpacingMm = 590;
+    right.pergolas[0]!.modules[0]!.quantityTakeoff.roofPlanes![0]!.rafterTotalLengthM = 42;
     right.pergolas[0]!.modules[0]!.quantityTakeoff.roofPlanes![0]!.rafterLengthM = 3.5;
     right.pergolas[0]!.modules[0]!.quantityTakeoff.roofPlanes![0]!.bayCount = 11;
+    right.pergolas[0]!.modules[0]!.quantityTakeoff.roofPlanes![0]!.claddingPanelCount = 5;
+    right.pergolas[0]!.modules[0]!.quantityTakeoff.roofPlanes![0]!.joinerCount = 12;
+    right.pergolas[0]!.modules[0]!.quantityTakeoff.rafters!.totalLengthM = 42;
+    right.pergolas[0]!.modules[0]!.quantityTakeoff.beams!.totalBeamLengthM = 7;
+    right.pergolas[0]!.modules[0]!.quantityTakeoff.gutters!.totalLengthM = 7;
+    right.pergolas[0]!.modules[0]!.quantityTakeoff.roofCladding!.panelCount = 5;
+    right.pergolas[0]!.modules[0]!.quantityTakeoff.roofCladding!.totalAreaM2 = 18.5;
+    right.pergolas[0]!.modules[0]!.quantityTakeoff.joiners!.count = 12;
+    right.pergolas[0]!.modules[0]!.quantityTakeoff.joiners!.totalLengthM = 42;
     right.pergolas[0]!.modules[0]!.quantityTakeoff.flashings!.byBandM = {
       '201-300': 1,
       '301-400': 0.5,
     };
+    right.pergolas[0]!.modules[0]!.quantityTakeoff.flashings!.byGirthM = {
+      '300': 1,
+      '400': 0.5,
+    };
+    right.pergolas[0]!.modules[0]!.quantityTakeoff.flashings!.surfaceAreaM2 = 0.6;
     right.pergolas[0]!.modules[0]!.options = {
       overrides: { ledgerProfile: '200x50' },
       powdercoat: {
@@ -456,8 +500,58 @@ describe('compareCommercialDesignInputsV1', () => {
           driftOrigin: 'physical_takeoff',
         }),
         expect.objectContaining({
+          path: 'pergolas.pergola-1.modules.source:0.quantityTakeoff.roofPlanes.0.rafterCount',
+          driftOrigin: 'physical_takeoff',
+        }),
+        expect.objectContaining({
+          path: 'pergolas.pergola-1.modules.source:0.quantityTakeoff.roofPlanes.0.claddingPanelCount',
+          driftOrigin: 'physical_takeoff',
+        }),
+        expect.objectContaining({
+          path: 'pergolas.pergola-1.modules.source:0.quantityTakeoff.rafters.totalLengthM',
+          originDetail: expect.objectContaining({
+            fieldPath: 'quantityTakeoff.rafters.totalLengthM',
+          }),
+        }),
+        expect.objectContaining({
+          path: 'pergolas.pergola-1.modules.source:0.quantityTakeoff.beams.totalBeamLengthM',
+          originDetail: expect.objectContaining({
+            fieldPath: 'quantityTakeoff.beams.totalBeamLengthM',
+          }),
+        }),
+        expect.objectContaining({
+          path: 'pergolas.pergola-1.modules.source:0.quantityTakeoff.gutters.totalLengthM',
+          originDetail: expect.objectContaining({
+            fieldPath: 'quantityTakeoff.gutters.totalLengthM',
+          }),
+        }),
+        expect.objectContaining({
+          path: 'pergolas.pergola-1.modules.source:0.quantityTakeoff.roofCladding.totalAreaM2',
+          originDetail: expect.objectContaining({
+            fieldPath: 'quantityTakeoff.roofCladding.totalAreaM2',
+          }),
+        }),
+        expect.objectContaining({
+          path: 'pergolas.pergola-1.modules.source:0.quantityTakeoff.joiners.totalLengthM',
+          originDetail: expect.objectContaining({
+            fieldPath: 'quantityTakeoff.joiners.totalLengthM',
+          }),
+        }),
+        expect.objectContaining({
           path: 'pergolas.pergola-1.modules.source:0.quantityTakeoff.flashings.byBandM.301-400',
           driftOrigin: 'physical_takeoff',
+        }),
+        expect.objectContaining({
+          path: 'pergolas.pergola-1.modules.source:0.quantityTakeoff.flashings.byGirthM.400',
+          originDetail: expect.objectContaining({
+            fieldPath: 'quantityTakeoff.flashings.byGirthM.400',
+          }),
+        }),
+        expect.objectContaining({
+          path: 'pergolas.pergola-1.modules.source:0.quantityTakeoff.flashings.surfaceAreaM2',
+          originDetail: expect.objectContaining({
+            fieldPath: 'quantityTakeoff.flashings.surfaceAreaM2',
+          }),
         }),
         expect.objectContaining({
           path: 'pergolas.pergola-1.modules.source:0.options.powdercoat.isCustom',

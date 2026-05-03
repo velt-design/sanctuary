@@ -58,7 +58,9 @@
     "**/*.tsx",
     "next-env.d.ts",
     ".next/types/**/*.ts",
-    ".next/dev/types/**/*.ts"
+    ".next/dev/types/**/*.ts",
+    ".next/playwright-fixture/types/**/*.ts",
+    ".next/playwright-fixture/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules"

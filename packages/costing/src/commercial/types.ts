@@ -95,8 +95,15 @@ export type CommercialQuantityTakeoffV1 = {
     id: string;
     label?: string;
     areaM2?: number | null;
+    rafterCount?: number | null;
     rafterLengthM?: number | null;
+    rafterSpacingMm?: number | null;
+    rafterTotalLengthM?: number | null;
     bayCount?: number | null;
+    claddingAreaM2?: number | null;
+    claddingPanelCount?: number | null;
+    joinerCount?: number | null;
+    joinerTotalLengthM?: number | null;
   }>;
   posts?: {
     count?: number | null;
@@ -105,8 +112,10 @@ export type CommercialQuantityTakeoffV1 = {
   };
   rafters?: {
     count?: number | null;
+    bayCount?: number | null;
     spacingMm?: number | null;
     cutLengthM?: number | null;
+    totalLengthM?: number | null;
     profile?: string | null;
   };
   beams?: {
@@ -114,6 +123,7 @@ export type CommercialQuantityTakeoffV1 = {
     frontBeamLengthM?: number | null;
     ridgeLengthM?: number | null;
     tieBeamLengthM?: number | null;
+    totalBeamLengthM?: number | null;
     ledgerProfile?: string | null;
     frontBeamProfile?: string | null;
     ridgeProfile?: string | null;
@@ -121,6 +131,7 @@ export type CommercialQuantityTakeoffV1 = {
   gutters?: {
     ourGutterLengthM?: number | null;
     houseGutterLengthM?: number | null;
+    totalLengthM?: number | null;
     downpipeCount?: number | null;
     downpipeJoinCount?: number | null;
     downpipeElbowCount?: number | null;
@@ -130,10 +141,21 @@ export type CommercialQuantityTakeoffV1 = {
     timberAreaM2?: number | null;
     sheetCount?: number | null;
     joinerRuns?: number | null;
+    panelCount?: number | null;
+    totalAreaM2?: number | null;
+  };
+  joiners?: {
+    count?: number | null;
+    totalLengthM?: number | null;
+    averageLengthM?: number | null;
+    profile?: string | null;
   };
   flashings?: {
     totalLengthM?: number | null;
+    count?: number | null;
+    surfaceAreaM2?: number | null;
     byBandM?: Record<string, number>;
+    byGirthM?: Record<string, number>;
   };
   infills?: {
     itemCount?: number | null;

@@ -133,16 +133,6 @@ function sanitizeOverrides(overrides: CalculatorModuleInputs['overrides']): Reco
   return entries.length ? Object.fromEntries(entries) : undefined;
 }
 
-function sumFlashingRows(module: CalculatorModuleInputs): number | null {
-  const rows = module.flashings?.rows;
-  if (!Array.isArray(rows) || rows.length === 0) return null;
-  const total = rows.reduce((sum, row) => {
-    const length = nonNegativeNumberOrNull(row.lengthM);
-    return length == null ? sum : sum + length;
-  }, 0);
-  return total > 0 ? total : null;
-}
-
 function buildSolvedGeometry(module: WorkbenchSolvedModule): CommercialSolvedGeometryV1 {
   const assembly = module.assembly;
   return {
@@ -181,9 +171,37 @@ function buildRoofPlanes(takeoff: GeometryQuantityTakeoff | null): NonNullable<C
     id: plane.id || `roof-plane-${index + 1}`,
     label: plane.label,
     areaM2: plane.areaM2,
+    rafterCount: plane.rafterCount,
     rafterLengthM: plane.rafterAverageLengthM,
-    bayCount: Math.max(0, plane.rafterCount - 1),
+    rafterSpacingMm: plane.rafterAverageSpacingMm,
+    rafterTotalLengthM: plane.rafterTotalLengthM,
+    bayCount: plane.rafterBayCount,
+    claddingAreaM2: plane.claddingAreaM2,
+    claddingPanelCount: plane.claddingPanelCount,
+    joinerCount: plane.joinerCount,
+    joinerTotalLengthM: plane.joinerTotalLengthM,
   }));
+}
+
+function averageRoofPlaneRafterSpacingMm(takeoff: GeometryQuantityTakeoff | null): number | null {
+  const spacings = (takeoff?.roofPlanes.items ?? [])
+    .map((plane) => plane.rafterAverageSpacingMm)
+    .filter((spacing): spacing is number => typeof spacing === 'number' && Number.isFinite(spacing));
+  if (!spacings.length) return null;
+  return spacings.reduce((sum, spacing) => sum + spacing, 0) / spacings.length;
+}
+
+function roofPlaneBayCount(takeoff: GeometryQuantityTakeoff | null): number | null {
+  if (!takeoff) return null;
+  return takeoff.roofPlanes.items.reduce((sum, plane) => sum + plane.rafterBayCount, 0);
+}
+
+function buildFlashingByGirthM(takeoff: GeometryQuantityTakeoff | null): Record<string, number> | undefined {
+  const entries = Object.entries(takeoff?.flashings.byGirthMm ?? {}).map(([girthMm, bucket]) => [
+    girthMm,
+    bucket.totalLengthM,
+  ]);
+  return entries.length ? Object.fromEntries(entries) : undefined;
 }
 
 function buildQuantityTakeoff(module: WorkbenchSolvedModule): CommercialQuantityTakeoffV1 {
@@ -193,7 +211,7 @@ function buildQuantityTakeoff(module: WorkbenchSolvedModule): CommercialQuantity
   const ledgers = takeoff?.members.byRole.ledger ?? null;
   const beams = takeoff?.members.byRole.beam ?? null;
   const ridges = takeoff?.members.byRole.ridge ?? null;
-  const flashingTotalM = sumFlashingRows(module.moduleInput);
+  const joiners = takeoff?.joiners ?? null;
 
   return {
     primaryDimensions: {
@@ -209,8 +227,10 @@ function buildQuantityTakeoff(module: WorkbenchSolvedModule): CommercialQuantity
     },
     rafters: {
       count: rafters?.count ?? null,
-      spacingMm: null,
+      bayCount: roofPlaneBayCount(takeoff),
+      spacingMm: averageRoofPlaneRafterSpacingMm(takeoff),
       cutLengthM: rafters?.averageLengthM ?? null,
+      totalLengthM: rafters?.totalLengthM ?? null,
       profile: profileLabel(rafters?.firstProfile),
     },
     beams: {
@@ -218,6 +238,7 @@ function buildQuantityTakeoff(module: WorkbenchSolvedModule): CommercialQuantity
       frontBeamLengthM: takeoff?.beams.supportBeamLengthM ?? takeoff?.beams.totalBeamLengthM ?? null,
       ridgeLengthM: takeoff?.beams.ridgeLengthM ?? null,
       tieBeamLengthM: takeoff?.beams.tieBeamLengthM ?? null,
+      totalBeamLengthM: takeoff?.beams.totalBeamLengthM ?? null,
       ledgerProfile: profileLabel(ledgers?.firstProfile),
       frontBeamProfile: profileLabel(beams?.firstProfile),
       ridgeProfile: profileLabel(ridges?.firstProfile),
@@ -225,6 +246,7 @@ function buildQuantityTakeoff(module: WorkbenchSolvedModule): CommercialQuantity
     gutters: {
       ourGutterLengthM: takeoff?.gutters.ourGutterLengthM ?? null,
       houseGutterLengthM: takeoff?.gutters.houseGutterLengthM ?? null,
+      totalLengthM: takeoff?.gutters.totalLengthM ?? null,
       downpipeCount: intOrNull(module.moduleInput.downpipeCount),
       downpipeJoinCount: intOrNull(module.moduleInput.downpipeJoinCount),
       downpipeElbowCount: intOrNull(module.moduleInput.downpipeElbowCount),
@@ -234,10 +256,20 @@ function buildQuantityTakeoff(module: WorkbenchSolvedModule): CommercialQuantity
       timberAreaM2: null,
       sheetCount: null,
       joinerRuns: takeoff?.joiners.count ?? null,
+      panelCount: takeoff?.roofCladding.panelCount ?? null,
+      totalAreaM2: takeoff?.roofCladding.totalAreaM2 ?? null,
+    },
+    joiners: {
+      count: joiners?.count ?? null,
+      totalLengthM: joiners?.totalLengthM ?? null,
+      averageLengthM: joiners?.averageLengthM ?? null,
+      profile: profileLabel(joiners?.items[0]?.profile),
     },
     flashings: {
-      totalLengthM: flashingTotalM,
-      byBandM: flashingTotalM == null ? undefined : {},
+      totalLengthM: takeoff?.flashings.totalLengthM ?? null,
+      count: takeoff?.flashings.count ?? null,
+      surfaceAreaM2: takeoff?.flashings.totalSurfaceAreaM2 ?? null,
+      byGirthM: buildFlashingByGirthM(takeoff),
     },
     infills: {
       itemCount: intOrNull(module.moduleInput.infills?.items?.length),

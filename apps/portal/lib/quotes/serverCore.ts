@@ -13,6 +13,14 @@ import {
   normalizeDepositPercent,
 } from './defaults';
 import { buildQuoteLineItemsFromEstimate } from './mapping';
+import {
+  buildQuotePricingSourceCopyFromEstimate,
+  buildQuotePricingSourceCopyFromQuoteVersion,
+  protectedQuoteVersionRefreshReason,
+  quotePricingSourceAuditPayload,
+  quotePricingSourceDbColumns,
+  type QuotePricingSourceCopy,
+} from './pricingSource';
 import { buildQuoteRefreshPreview, type QuoteRefreshMode, type QuoteRefreshPreview } from './refresh';
 import { lineTotalCents, totalsFromLineItems } from './utils';
 import { generateQuotePdfBytes, quotePdfFilename } from './pdf';
@@ -25,6 +33,11 @@ import {
   type QuotePreviewBasePayload,
 } from './renderArtifacts';
 import { ensureDepositInvoiceForAcceptedQuote, voidOpenDepositInvoiceForQuote } from '../invoices/server';
+
+type QuoteSourceEstimate = Estimate & {
+  pricingSource: unknown;
+  pricingSourceMetadata: unknown;
+};
 
 export function nowIso(): string {
   return new Date().toISOString();
@@ -226,8 +239,12 @@ async function loadProjectCustomerName(projectUuid: string): Promise<string | nu
   return customerName || null;
 }
 
-async function loadEstimate(estimateUuid: string): Promise<Estimate | null> {
-  const res = await supabaseServiceRole.from('estimates').select('*').eq('id', estimateUuid).maybeSingle();
+async function loadEstimate(estimateUuid: string): Promise<QuoteSourceEstimate | null> {
+  const res = await supabaseServiceRole
+    .from('estimates')
+    .select('id, project_id, created_at, updated_at, status, inputs, outputs, warnings, pricing_source, pricing_source_metadata')
+    .eq('id', estimateUuid)
+    .maybeSingle();
   if (res.error || !res.data) return null;
 
   const row = res.data as any;
@@ -267,7 +284,9 @@ async function loadEstimate(estimateUuid: string): Promise<Estimate | null> {
       rules: '',
       manifest: '',
     },
-  } as Estimate;
+    pricingSource: row.pricing_source,
+    pricingSourceMetadata: row.pricing_source_metadata,
+  } as QuoteSourceEstimate;
 }
 
 async function ensureQuote(projectUuid: string, actor: string | null): Promise<{ id: string; quoteRef: string }> {
@@ -386,6 +405,29 @@ async function replaceQuoteLineItems(quoteVersionUuid: string, items: Omit<Quote
     if (missingTableError(insertRes.error)) throw schemaMissingError();
     throw new Error(errorMessage(insertRes.error, 'Failed to update line items'));
   }
+}
+
+async function assertQuoteVersionMutableDraftBoundary(quoteVersionUuid: string, status: unknown): Promise<void> {
+  if (protectedQuoteVersionRefreshReason({ status })) throw new Error('Quote is locked');
+
+  const [invoiceRes, jobPackRes] = await Promise.all([
+    supabaseServiceRole.from('deposit_invoices').select('id').eq('quote_version_id', quoteVersionUuid).limit(1).maybeSingle(),
+    supabaseServiceRole.from('job_pack_generations').select('id').eq('quote_version_id', quoteVersionUuid).limit(1).maybeSingle(),
+  ]);
+
+  if (invoiceRes.error && !missingTableError(invoiceRes.error)) {
+    throw new Error(errorMessage(invoiceRes.error, 'Failed to verify quote refresh boundary'));
+  }
+  if (jobPackRes.error && !missingTableError(jobPackRes.error)) {
+    throw new Error(errorMessage(jobPackRes.error, 'Failed to verify quote refresh boundary'));
+  }
+
+  const reason = protectedQuoteVersionRefreshReason({
+    status,
+    hasDepositInvoice: Boolean(invoiceRes.data),
+    hasJobPackGeneration: Boolean(jobPackRes.data),
+  });
+  if (reason) throw new Error('Quote is locked');
 }
 
 export async function listQuoteVersionsForProject(projectId: string): Promise<QuoteVersion[]> {
@@ -539,6 +581,13 @@ export async function createQuoteFromEstimate(projectId: string, estimateVersion
   const termsSource = extractEstimateText(estimate, ['termsText', 'terms_text', 'terms']) ?? DEFAULT_QUOTE_TERMS;
   const termsText = applyDepositPercentToTerms(termsSource, depositPercent);
   const customerName = await loadProjectCustomerName(projectUuid);
+  const pricingSourceCopy = buildQuotePricingSourceCopyFromEstimate({
+    estimate,
+    sourceEstimateVersionId: estimateUuid,
+    copiedAt: nowIso(),
+    copiedBy: actor,
+    copyReason: 'quote_created',
+  });
 
   const insertRes = await supabaseServiceRole
     .from('quote_versions')
@@ -556,6 +605,7 @@ export async function createQuoteFromEstimate(projectId: string, estimateVersion
       total_inc_gst_cents: totals.totalIncGstCents,
       total_ex_gst_cents: totals.totalExGstCents,
       gst_cents: totals.gstCents,
+      ...quotePricingSourceDbColumns(pricingSourceCopy),
     } as any)
     .select('*')
     .single();
@@ -584,7 +634,17 @@ export async function createQuoteFromEstimate(projectId: string, estimateVersion
   }
 
   await updateProjectStage(projectUuid, 'QUOTING', quoteVersionUuid);
-  await insertAuditEvent({ projectId: projectUuid, type: 'quote.created', payload: { quoteVersionId: quoteVersionUuid } });
+  await insertAuditEvent({
+    projectId: projectUuid,
+    type: 'quote.created',
+    payload: {
+      quoteVersionId: quoteVersionUuid,
+      estimateVersionId: estimateUuid,
+      copiedBy: actor,
+      copyReason: 'quote_created',
+      ...quotePricingSourceAuditPayload(pricingSourceCopy),
+    },
+  });
 
   let detail = await getQuoteVersionDetail(appIdFromUuid('qv', quoteVersionUuid));
   if (!detail) throw new Error('Failed to load quote version');
@@ -620,7 +680,7 @@ export async function updateDraftQuoteVersion(
     throw new Error(errorMessage(versionRes.error, 'Quote not found'));
   }
   if (!versionRes.data) throw new Error('Quote not found');
-  if (String(versionRes.data.status ?? '').toUpperCase() !== 'DRAFT') throw new Error('Quote is locked');
+  await assertQuoteVersionMutableDraftBoundary(quoteVersionUuid, versionRes.data.status);
 
   const lineItems = Array.isArray(patch.lineItems) ? patch.lineItems : [];
   const normalizedLineItems = normalizeDraftLineItems(lineItems);
@@ -702,7 +762,7 @@ export async function refreshDraftQuoteVersionFromEstimate(
     throw new Error(errorMessage(versionRes.error, 'Quote not found'));
   }
   if (!versionRes.data) throw new Error('Quote not found');
-  if (String(versionRes.data.status ?? '').toUpperCase() !== 'DRAFT') throw new Error('Quote is locked');
+  await assertQuoteVersionMutableDraftBoundary(quoteVersionUuid, versionRes.data.status);
 
   const currentDetail = await getQuoteVersionDetail(quoteVersionId);
   if (!currentDetail) throw new Error('Quote not found');
@@ -753,6 +813,13 @@ export async function refreshDraftQuoteVersionFromEstimate(
     })),
   );
   const totals = totalsFromNormalizedLineItems(normalizedLineItems);
+  const pricingSourceCopy = buildQuotePricingSourceCopyFromEstimate({
+    estimate,
+    sourceEstimateVersionId: estimateUuid,
+    copiedAt: nowIso(),
+    copiedBy: actor,
+    copyReason: 'quote_refreshed_from_estimate',
+  });
 
   const updatePayload: any = {
     source_estimate_version_id: estimateUuid,
@@ -763,6 +830,7 @@ export async function refreshDraftQuoteVersionFromEstimate(
     render_hash: null,
     preview_base_payload: null,
     preview_rendered_at: null,
+    ...quotePricingSourceDbColumns(pricingSourceCopy),
   };
 
   if (mode === 'full_rebuild') {
@@ -790,7 +858,14 @@ export async function refreshDraftQuoteVersionFromEstimate(
     await insertAuditEvent({
       projectId: projectUuid,
       type: 'quote.refreshed_from_estimate',
-      payload: { quoteVersionId: quoteVersionUuid, estimateVersionId: estimateUuid, mode },
+      payload: {
+        quoteVersionId: quoteVersionUuid,
+        estimateVersionId: estimateUuid,
+        mode,
+        copiedBy: actor,
+        copyReason: 'quote_refreshed_from_estimate',
+        ...quotePricingSourceAuditPayload(pricingSourceCopy),
+      },
     });
   }
 
@@ -935,25 +1010,49 @@ export async function reviseQuoteVersion(quoteVersionId: string, actor: string |
   const customerName = inheritedCustomerName || (await loadProjectCustomerName(String(projectRes.data.project_id ?? '')));
   const inheritedTermsText = typeof versionRes.data.terms_text === 'string' ? versionRes.data.terms_text : null;
   const termsText = inheritedTermsText ? applyDepositPercentToTerms(inheritedTermsText, inheritedDepositPercent) : null;
+  const sourceEstimateUuid = String(versionRes.data.source_estimate_version_id ?? '');
+  const copiedAt = nowIso();
+  let pricingSourceCopy: QuotePricingSourceCopy | null = buildQuotePricingSourceCopyFromQuoteVersion({
+    quoteVersion: versionRes.data as any,
+    copiedAt,
+    copiedBy: actor,
+    copyReason: 'quote_revised',
+    revisedFromQuoteVersionId: quoteVersionUuid,
+  });
+  if (!pricingSourceCopy && sourceEstimateUuid) {
+    const sourceEstimate = await loadEstimate(sourceEstimateUuid);
+    if (sourceEstimate) {
+      pricingSourceCopy = buildQuotePricingSourceCopyFromEstimate({
+        estimate: sourceEstimate,
+        sourceEstimateVersionId: sourceEstimateUuid,
+        copiedAt,
+        copiedBy: actor,
+        copyReason: 'quote_revised',
+      });
+    }
+  }
+
+  const insertPayload: any = {
+    quote_id: quoteUuid,
+    version_number: nextVersion,
+    status: 'DRAFT',
+    source_estimate_version_id: versionRes.data.source_estimate_version_id,
+    revised_from_quote_version_id: quoteVersionUuid,
+    created_by: actor,
+    reference: versionRes.data.reference ?? null,
+    customer_name: customerName,
+    intro_text: versionRes.data.intro_text ?? null,
+    terms_text: termsText,
+    deposit_percent: inheritedDepositPercent,
+    total_inc_gst_cents: totals.totalIncGstCents,
+    total_ex_gst_cents: totals.totalExGstCents,
+    gst_cents: totals.gstCents,
+    ...(pricingSourceCopy ? quotePricingSourceDbColumns(pricingSourceCopy) : {}),
+  };
 
   const insertRes = await supabaseServiceRole
     .from('quote_versions')
-    .insert({
-      quote_id: quoteUuid,
-      version_number: nextVersion,
-      status: 'DRAFT',
-      source_estimate_version_id: versionRes.data.source_estimate_version_id,
-      revised_from_quote_version_id: quoteVersionUuid,
-      created_by: actor,
-      reference: versionRes.data.reference ?? null,
-      customer_name: customerName,
-      intro_text: versionRes.data.intro_text ?? null,
-      terms_text: termsText,
-      deposit_percent: inheritedDepositPercent,
-      total_inc_gst_cents: totals.totalIncGstCents,
-      total_ex_gst_cents: totals.totalExGstCents,
-      gst_cents: totals.gstCents,
-    } as any)
+    .insert(insertPayload)
     .select('*')
     .single();
   if (insertRes.error || !insertRes.data) {
@@ -980,7 +1079,18 @@ export async function reviseQuoteVersion(quoteVersionId: string, actor: string |
 
   const projectUuid = String(projectRes.data.project_id ?? '');
   if (projectUuid) {
-    await insertAuditEvent({ projectId: projectUuid, type: 'quote.revised', payload: { quoteVersionId: newQuoteVersionUuid, from: quoteVersionUuid } });
+    await insertAuditEvent({
+      projectId: projectUuid,
+      type: 'quote.revised',
+      payload: {
+        quoteVersionId: newQuoteVersionUuid,
+        from: quoteVersionUuid,
+        estimateVersionId: sourceEstimateUuid || null,
+        copiedBy: actor,
+        copyReason: 'quote_revised',
+        ...(pricingSourceCopy ? quotePricingSourceAuditPayload(pricingSourceCopy) : {}),
+      },
+    });
   }
 
   let detail = await getQuoteVersionDetail(appIdFromUuid('qv', newQuoteVersionUuid));

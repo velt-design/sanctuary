@@ -61,7 +61,7 @@ The email preview route renders an outbox row by template ID and variables. It u
 - Template IDs must be stable because outbox rows use them for previews and auditability.
 - If a route sends an email immediately, also make the outbox/audit state clear enough for staff to understand what happened.
 - Site visit notification changes must stay aligned with `docs/schedule.md` and `docs/projects-contacts-estimates-calculator.md`.
-- Pricing rollout audit events must be compact and server-owned. Estimate saves and blocked `workbench_solved` readiness attempts record source, requested source, gate version, blocking codes, IDs, and actor/request metadata. Future quote version create/refresh/revision events that copy pricing source metadata should follow the same compact pattern. Do not store raw public tokens, service-role details, or oversized commercial payloads.
+- Pricing rollout audit events must be compact and server-owned. Estimate saves and blocked `workbench_solved` readiness attempts record source, requested source, gate version, blocking codes, IDs, and actor/request metadata. Quote version create/refresh/revision events that copy pricing source metadata record quote version IDs, estimate IDs, copied source, source metadata hash, actor, and copy reason. Do not store raw public tokens, service-role details, or oversized commercial payloads.
 
 ## Common Tasks
 
