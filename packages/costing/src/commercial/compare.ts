@@ -15,7 +15,14 @@ export type CommercialParityDifferenceCategoryV1 =
   | 'site_commercial'
   | 'design_intent'
   | 'solved_geometry'
-  | 'quantity_takeoff';
+  | 'quantity_takeoff'
+  | 'commercial_option';
+
+export type CommercialParityDriftOriginV1 =
+  | 'authored_intent'
+  | 'solved_geometry'
+  | 'physical_takeoff'
+  | 'commercial_mapping';
 
 export type CommercialParityDifferenceV1 = {
   path: string;
@@ -24,6 +31,7 @@ export type CommercialParityDifferenceV1 = {
   right: unknown;
   severity: 'warning' | 'blocking';
   category: CommercialParityDifferenceCategoryV1;
+  driftOrigin: CommercialParityDriftOriginV1;
   tolerance?: number;
   location?: {
     pathSegments: string[];
@@ -76,6 +84,7 @@ export type CommercialParityReportV1 = {
   diagnostics: CommercialDiagnosticV1[];
   summary?: {
     byCategory: Partial<Record<CommercialParityDifferenceCategoryV1, number>>;
+    byDriftOrigin: Partial<Record<CommercialParityDriftOriginV1, number>>;
     bySeverity: Partial<Record<CommercialParityDifferenceV1['severity'], number>>;
     byModule: Record<
       string,
@@ -91,8 +100,9 @@ export type CommercialParityReportV1 = {
   };
 };
 
-type DifferenceDraft = Omit<CommercialParityDifferenceV1, 'severity'> & {
+type DifferenceDraft = Omit<CommercialParityDifferenceV1, 'severity' | 'driftOrigin'> & {
   severity?: CommercialParityDifferenceV1['severity'];
+  driftOrigin?: CommercialParityDifferenceV1['driftOrigin'];
 };
 
 type CompareContext = {
@@ -131,10 +141,30 @@ function toleranceFor(
   return DEFAULT_TOLERANCES[category];
 }
 
+function driftOriginForCategory(category: CommercialParityDifferenceCategoryV1): CommercialParityDriftOriginV1 {
+  switch (category) {
+    case 'design_intent':
+      return 'authored_intent';
+    case 'trust':
+    case 'solved_geometry':
+      return 'solved_geometry';
+    case 'quantity_takeoff':
+      return 'physical_takeoff';
+    case 'schema':
+    case 'structure':
+    case 'site_commercial':
+    case 'commercial_option':
+      return 'commercial_mapping';
+    default:
+      return 'commercial_mapping';
+  }
+}
+
 function addDifference(context: CompareContext, difference: DifferenceDraft): void {
   context.differences.push({
     ...difference,
     severity: difference.severity ?? 'warning',
+    driftOrigin: difference.driftOrigin ?? driftOriginForCategory(difference.category),
     location: difference.location ?? locationForPath(difference.path),
   });
 }
@@ -298,6 +328,22 @@ function compareDesignIntent(
     category: 'design_intent',
     toleranceCategory: 'length_m',
   });
+  compareNumeric(context, {
+    path: `${path}.designIntent.dimensions.secondaryLengthM`,
+    label: 'Authored secondary length',
+    left: l.dimensions?.secondaryLengthM,
+    right: r.dimensions?.secondaryLengthM,
+    category: 'design_intent',
+    toleranceCategory: 'length_m',
+  });
+  compareNumeric(context, {
+    path: `${path}.designIntent.dimensions.secondaryProjectionM`,
+    label: 'Authored secondary projection',
+    left: l.dimensions?.secondaryProjectionM,
+    right: r.dimensions?.secondaryProjectionM,
+    category: 'design_intent',
+    toleranceCategory: 'length_m',
+  });
 }
 
 function compareSolvedGeometry(
@@ -400,6 +446,54 @@ function compareTakeoff(
     });
   }
 
+  const roofPlaneCount = Math.max(l.roofPlanes?.length ?? 0, r.roofPlanes?.length ?? 0);
+  for (let index = 0; index < roofPlaneCount; index += 1) {
+    const leftPlane = l.roofPlanes?.[index];
+    const rightPlane = r.roofPlanes?.[index];
+    const planePath = `${path}.quantityTakeoff.roofPlanes.${index}`;
+    compareNumeric(context, {
+      path: `${planePath}.areaM2`,
+      label: `Roof plane ${index + 1} area`,
+      left: leftPlane?.areaM2,
+      right: rightPlane?.areaM2,
+      category: 'quantity_takeoff',
+      toleranceCategory: 'area_m2',
+    });
+    compareNumeric(context, {
+      path: `${planePath}.rafterLengthM`,
+      label: `Roof plane ${index + 1} rafter length`,
+      left: leftPlane?.rafterLengthM,
+      right: rightPlane?.rafterLengthM,
+      category: 'quantity_takeoff',
+      toleranceCategory: 'length_m',
+    });
+    compareNumeric(context, {
+      path: `${planePath}.bayCount`,
+      label: `Roof plane ${index + 1} bay count`,
+      left: leftPlane?.bayCount,
+      right: rightPlane?.bayCount,
+      category: 'quantity_takeoff',
+      toleranceCategory: 'count',
+    });
+  }
+
+  const flashingBandKeys = Array.from(
+    new Set([
+      ...Object.keys(l.flashings?.byBandM ?? {}),
+      ...Object.keys(r.flashings?.byBandM ?? {}),
+    ]),
+  ).sort();
+  for (const band of flashingBandKeys) {
+    compareNumeric(context, {
+      path: `${path}.quantityTakeoff.flashings.byBandM.${band}`,
+      label: `Flashing band ${band}`,
+      left: l.flashings?.byBandM?.[band],
+      right: r.flashings?.byBandM?.[band],
+      category: 'quantity_takeoff',
+      toleranceCategory: 'length_m',
+    });
+  }
+
   const exactFields = [
     ['posts.profile', 'Post profile'],
     ['rafters.profile', 'Rafter profile'],
@@ -414,6 +508,47 @@ function compareTakeoff(
       left: valueAt(l, field),
       right: valueAt(r, field),
       category: 'quantity_takeoff',
+    });
+  }
+}
+
+function compareOptions(
+  context: CompareContext,
+  path: string,
+  left: CommercialModuleInputV1,
+  right: CommercialModuleInputV1,
+): void {
+  const l = left.options;
+  const r = right.options;
+  const powdercoatFields = [
+    ['powdercoat.standardColour', 'Powdercoat standard colour'],
+    ['powdercoat.isCustom', 'Powdercoat custom flag'],
+    ['powdercoat.customColour', 'Powdercoat custom colour'],
+  ] as const;
+
+  for (const [field, label] of powdercoatFields) {
+    compareExact(context, {
+      path: `${path}.options.${field}`,
+      label,
+      left: valueAt(l, field),
+      right: valueAt(r, field),
+      category: 'commercial_option',
+    });
+  }
+
+  const overrideKeys = Array.from(
+    new Set([
+      ...Object.keys(l.overrides ?? {}),
+      ...Object.keys(r.overrides ?? {}),
+    ]),
+  ).sort();
+  for (const key of overrideKeys) {
+    compareExact(context, {
+      path: `${path}.options.overrides.${key}`,
+      label: `Override ${key}`,
+      left: l.overrides?.[key],
+      right: r.overrides?.[key],
+      category: 'commercial_option',
     });
   }
 }
@@ -490,6 +625,7 @@ function compareModule(
   compareDesignIntent(context, path, input.left, input.right);
   compareSolvedGeometry(context, path, input.left, input.right);
   compareTakeoff(context, path, input.left, input.right);
+  compareOptions(context, path, input.left, input.right);
 }
 
 function collectDiagnostics(left: CommercialDesignInputV1, right: CommercialDesignInputV1): CommercialDiagnosticV1[] {
@@ -503,17 +639,23 @@ function emptyCategorySummary(): Partial<Record<CommercialParityDifferenceCatego
   return {};
 }
 
+function emptyDriftOriginSummary(): Partial<Record<CommercialParityDriftOriginV1, number>> {
+  return {};
+}
+
 function emptySeveritySummary(): Partial<Record<CommercialParityDifferenceV1['severity'], number>> {
   return {};
 }
 
 function buildSummary(differences: CommercialParityDifferenceV1[]): NonNullable<CommercialParityReportV1['summary']> {
   const byCategory = emptyCategorySummary();
+  const byDriftOrigin = emptyDriftOriginSummary();
   const bySeverity = emptySeveritySummary();
   const byModule: NonNullable<CommercialParityReportV1['summary']>['byModule'] = {};
 
   for (const difference of differences) {
     byCategory[difference.category] = (byCategory[difference.category] ?? 0) + 1;
+    byDriftOrigin[difference.driftOrigin] = (byDriftOrigin[difference.driftOrigin] ?? 0) + 1;
     bySeverity[difference.severity] = (bySeverity[difference.severity] ?? 0) + 1;
 
     const location = difference.location;
@@ -536,7 +678,7 @@ function buildSummary(differences: CommercialParityDifferenceV1[]): NonNullable<
     byModule[key] = moduleSummary;
   }
 
-  return { byCategory, bySeverity, byModule };
+  return { byCategory, byDriftOrigin, bySeverity, byModule };
 }
 
 export function compareCommercialDesignInputsV1(

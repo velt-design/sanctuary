@@ -144,6 +144,68 @@ describe('commercialDesignPayload', () => {
     expect(commercial.pergolas[1]?.modules.map((module) => module.sourceModuleIndex)).toEqual([0]);
   });
 
+  it('maps calculator_compat modules from the same SiteOutputV1 order as live costing', () => {
+    const inputs = makeInputs({
+      pergolas: [
+        { id: 'pergola-1', label: 'Main' },
+        { id: 'pergola-2', label: 'Pool' },
+      ],
+      modules: [
+        makeModule({ pergolaId: 'pergola-2', lengthM: '5', projectionM: '3.5' }),
+        makeModule({ pergolaId: 'missing-pergola', lengthM: '7', projectionM: '4.5' }),
+        makeModule({ pergolaId: 'pergola-2', lengthM: '9', projectionM: '5.5' }),
+      ],
+    });
+    const siteInputs = buildSiteInputsFromCalculatorInputs(inputs);
+    const siteResult = calculateSiteCostV1(siteInputs);
+
+    expect(siteInputs.pergolas.map((pergola) => ({ id: pergola.id, moduleCount: pergola.modules.length }))).toEqual([
+      { id: 'pergola-1', moduleCount: 1 },
+      { id: 'pergola-2', moduleCount: 2 },
+    ]);
+
+    const commercial = buildCommercialDesignInputFromCalculatorInputs({ inputs, siteResult });
+
+    const mainModule = commercial.pergolas[0]?.modules[0];
+    const poolModules = commercial.pergolas[1]?.modules ?? [];
+    expect(commercial.source).toBe('calculator_compat');
+    expect(mainModule?.sourceModuleIndex).toBe(1);
+    expect(poolModules.map((module) => module.sourceModuleIndex)).toEqual([0, 2]);
+    expect(mainModule?.solvedGeometry.primaryDimensionsM).toEqual({
+      length: siteResult.pergolas[0]!.modules[0]!.derived.length_m,
+      projection: siteResult.pergolas[0]!.modules[0]!.derived.projection_m,
+    });
+    expect(poolModules[0]?.solvedGeometry.primaryDimensionsM).toEqual({
+      length: siteResult.pergolas[1]!.modules[0]!.derived.length_m,
+      projection: siteResult.pergolas[1]!.modules[0]!.derived.projection_m,
+    });
+    expect(poolModules[1]?.solvedGeometry.primaryDimensionsM).toEqual({
+      length: siteResult.pergolas[1]!.modules[1]!.derived.length_m,
+      projection: siteResult.pergolas[1]!.modules[1]!.derived.projection_m,
+    });
+  });
+
+  it('keeps missing calculator results as shadow diagnostics instead of live pricing data', () => {
+    const commercial = buildCommercialDesignInputFromCalculatorInputs({ inputs: makeInputs() });
+    const module = commercial.pergolas[0]?.modules[0];
+
+    expect(commercial.source).toBe('calculator_compat');
+    expect(commercial.trustStatus).toBe('approximate');
+    expect(module?.solvedGeometry).toMatchObject({
+      status: 'blocked',
+      geometrySource: 'calculator_compat',
+      warnings: ['Calculator costing result was not supplied; solved geometry and takeoff are incomplete.'],
+    });
+    expect(module?.diagnostics).toContainEqual(
+      expect.objectContaining({
+        code: 'calculator_result_missing',
+        severity: 'warning',
+      }),
+    );
+    expect(JSON.stringify(commercial)).not.toContain('workbench_solved');
+    expect(JSON.stringify(commercial)).not.toContain('cost_inc_gst');
+  });
+
   it('uses existing costing results to fill solved geometry and stable takeoff buckets', () => {
     const inputs = makeInputs({
       modules: [
@@ -226,6 +288,51 @@ describe('commercialDesignPayload', () => {
       blindCount: 1,
       accessoryCount: 0,
       notes: ['Calculator blinds are estimate-scoped and are not prorated to modules.'],
+    });
+  });
+
+  it('preserves commercial mapping fields used by parity diagnostics', () => {
+    const inputs = makeInputs({
+      access: 'hard',
+      height: 'two_storey',
+      jobType: 'commercial',
+      travelExGst: '88.5',
+      extrasAllowanceExGst: '120',
+      quoteDiscountPct: '3.5',
+      modules: [
+        makeModule({
+          powdercoatStandardColour: 'Black',
+          powdercoatIsCustom: true,
+          powdercoatCustomColour: 'Monument',
+          overrides: {
+            ledgerProfile: '150x50',
+            rafterProfile: '100x50',
+            frontBeamProfile: '200x50',
+          },
+        }),
+      ],
+    });
+
+    const commercial = buildCommercialDesignInputFromCalculatorInputs({ inputs });
+    const module = commercial.pergolas[0]?.modules[0];
+
+    expect(commercial.siteCommercial).toEqual({
+      jobType: 'commercial',
+      access: 'hard',
+      height: 'two_storey',
+      travelExGst: 88.5,
+      extrasAllowanceExGst: 120,
+      quoteDiscountPct: 3.5,
+    });
+    expect(module?.options.overrides).toEqual({
+      ledgerProfile: '150x50',
+      rafterProfile: '100x50',
+      frontBeamProfile: '200x50',
+    });
+    expect(module?.options.powdercoat).toEqual({
+      standardColour: 'Black',
+      isCustom: true,
+      customColour: 'Monument',
     });
   });
 

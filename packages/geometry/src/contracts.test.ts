@@ -634,6 +634,40 @@ describe('@sp/geometry contracts', () => {
     expect(viewerScene.layers[0]?.objects[0]?.type).toBe('member_prism');
   });
 
+  it('exposes structured physical takeoff details from the public package export', () => {
+    const takeoff = geometryModule.buildAssemblyQuantityTakeoff(monoAssembly);
+
+    expect(takeoff.members.items).toEqual([
+      expect.objectContaining({
+        id: 'ledger',
+        role: 'ledger',
+        lengthMm: 6000,
+        lengthM: 6,
+        profileKey: '50x150',
+      }),
+      expect.objectContaining({
+        id: 'post-1',
+        role: 'post',
+        lengthMm: 2400,
+        lengthM: 2.4,
+        profileKey: '90x90',
+      }),
+    ]);
+    expect(takeoff.members.byRole.ledger.items[0]?.id).toBe('ledger');
+    expect(takeoff.beams.ledgerItems[0]?.id).toBe('ledger');
+    expect(takeoff.roofPlanes.items[0]).toEqual(
+      expect.objectContaining({
+        id: 'mono-roof',
+        rafterCount: 0,
+        claddingPanelCount: 0,
+        joinerCount: 0,
+      }),
+    );
+    expect(takeoff.roofCladding.items).toEqual([]);
+    expect(takeoff.gutters.items).toEqual([]);
+    expect(takeoff.joiners.items).toEqual([]);
+  });
+
   it('keeps the canonical package runtime free of portal and surface concerns', () => {
     const sourceDir = path.resolve(__dirname);
     const sourceFiles = fs

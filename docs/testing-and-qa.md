@@ -193,6 +193,8 @@ The drawing browser gate uses the hidden fixture workbench route:
 
 Fixture mode is read-only. It opens the standard Mono workbench fixture, enters Model Space Plan, verifies viewport diagnostics and gesture state, captures a nonblank plan screenshot, and confirms no page runtime errors. The no-auth fixture gate also checks gable, box, mono-join, and screenshot-style hipped fixtures for nonblank Model Space Plan, 3D containment, finite diagnostics, top-projection parity, and the 3D Top screen-axis convention. The authenticated browser suite can still open a project-backed drawing route when staff credentials and data are available.
 
+The parity-critical baked fixture list is owned by `apps/portal/lib/drawings/sanctuaryWorkbenchFixtures.ts` through fixture-only QA metadata. Keep fixture names explicit, add representative saved estimate snapshots to the commercial parity harness or the fixture registry when a checked-in corpus exists, and treat commercial parity as shadow comparison signal only.
+
 `npm run test:portal:browser` uses the no-auth `portal-fixture` Playwright project so fixture parity can run without project data or staff credentials. Run `npm run test:portal:browser:auth` first when you need the auth-backed `portal-chromium` setup state or project-list discovery smoke.
 
 When Playwright starts the portal dev server itself, it enables the geometry workbench fixture flags for this no-auth fixture gate. If `PORTAL_BASE_URL` points at an already-running portal server, that server must be started with the same fixture flags. If a normal portal dev server is already running on the Playwright port, stop it manually or use a fixture-enabled `PORTAL_BASE_URL`; the preflight does not terminate processes.

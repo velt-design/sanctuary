@@ -296,6 +296,22 @@ const FIXTURES: SanctuaryGeometryWorkbenchFixture[] = [
   {
     slug: 'mono-standard',
     label: 'Mono Standard',
+    qa: {
+      source: 'baked_workbench_fixture',
+      purpose: 'Baseline attached mono acrylic fixture for calculator/workbench parity.',
+      parityCritical: true,
+      shapeFamily: 'mono',
+      houseRoofForm: 'hipped',
+      expectedModule: {
+        lengthM: 6,
+        projectionM: 3,
+        roofMaterial: 'acrylic',
+        attachmentSide: 'rear',
+        roofPitchDeg: 5,
+        roofType: 'pitched',
+        roofPlaneCount: 1,
+      },
+    },
     snapshot: makeSnapshot(
       makeModule({
         pergolaStyle: 'pitched',
@@ -343,6 +359,22 @@ const FIXTURES: SanctuaryGeometryWorkbenchFixture[] = [
   {
     slug: 'gable-standard',
     label: 'Gable Standard',
+    qa: {
+      source: 'baked_workbench_fixture',
+      purpose: 'Baseline attached gable fixture with installed end-frame defaults.',
+      parityCritical: true,
+      shapeFamily: 'gable',
+      houseRoofForm: 'hipped',
+      expectedModule: {
+        lengthM: 6.5,
+        projectionM: 4,
+        roofMaterial: 'mixed',
+        attachmentSide: 'rear',
+        roofPitchDeg: 25,
+        roofType: 'gable',
+        roofPlaneCount: 2,
+      },
+    },
     snapshot: makeSnapshot(
       makeModule({
         pergolaStyle: 'gable',
@@ -386,6 +418,22 @@ const FIXTURES: SanctuaryGeometryWorkbenchFixture[] = [
   {
     slug: 'box-standard',
     label: 'Box Standard',
+    qa: {
+      source: 'baked_workbench_fixture',
+      purpose: 'Baseline attached box-perimeter fixture for geometry takeoff parity.',
+      parityCritical: true,
+      shapeFamily: 'box',
+      houseRoofForm: 'hipped',
+      expectedModule: {
+        lengthM: 5.5,
+        projectionM: 3.5,
+        roofMaterial: 'timber',
+        attachmentSide: 'rear',
+        roofPitchDeg: 3,
+        roofType: 'pitched',
+        roofPlaneCount: 1,
+      },
+    },
     snapshot: makeSnapshot(
       makeModule({
         pergolaStyle: 'pitched',
@@ -435,6 +483,22 @@ const FIXTURES: SanctuaryGeometryWorkbenchFixture[] = [
   {
     slug: 'gable-u-hipped-screenshot',
     label: 'Gable U Hipped Screenshot',
+    qa: {
+      source: 'baked_workbench_fixture',
+      purpose: 'Screenshot-style U footprint with authored hipped house roof topology.',
+      parityCritical: true,
+      shapeFamily: 'gable',
+      houseRoofForm: 'hipped',
+      expectedModule: {
+        lengthM: 5,
+        projectionM: 5,
+        roofMaterial: 'acrylic',
+        attachmentSide: 'front',
+        roofPitchDeg: 20,
+        roofType: 'gable',
+        roofPlaneCount: 2,
+      },
+    },
     ...makeGableUHippedScreenshotFixtureSource(),
     moduleLabels: ['M1 - Gable U Hipped Screenshot - 5m x 5m - Acrylic'],
     estimate: {
@@ -453,6 +517,22 @@ const FIXTURES: SanctuaryGeometryWorkbenchFixture[] = [
   {
     slug: 'mono-join-screenshot',
     label: 'Mono Join Screenshot',
+    qa: {
+      source: 'baked_workbench_fixture',
+      purpose: 'Screenshot-style U footprint with mono house roof join cleanup coverage.',
+      parityCritical: true,
+      shapeFamily: 'gable',
+      houseRoofForm: 'mono',
+      expectedModule: {
+        lengthM: 5,
+        projectionM: 5,
+        roofMaterial: 'acrylic',
+        attachmentSide: 'front',
+        roofPitchDeg: 20,
+        roofType: 'gable',
+        roofPlaneCount: 2,
+      },
+    },
     ...makeMonoJoinScreenshotFixtureSource(),
     moduleLabels: ['M1 - Mono Join Screenshot - 5m x 5m - Trapezoidal 5 Rib'],
     estimate: {
@@ -472,6 +552,10 @@ const FIXTURES: SanctuaryGeometryWorkbenchFixture[] = [
 
 export function listSanctuaryGeometryWorkbenchFixtures(): SanctuaryGeometryWorkbenchFixture[] {
   return FIXTURES.slice();
+}
+
+export function listParityCriticalSanctuaryGeometryWorkbenchFixtures(): SanctuaryGeometryWorkbenchFixture[] {
+  return FIXTURES.filter((fixture) => fixture.qa.parityCritical);
 }
 
 export function getSanctuaryGeometryWorkbenchFixture(slug: string): SanctuaryGeometryWorkbenchFixture | null {

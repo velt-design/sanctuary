@@ -147,6 +147,7 @@ describe('compareCommercialDesignInputsV1', () => {
     });
     expect(report.summary).toEqual({
       byCategory: {},
+      byDriftOrigin: {},
       bySeverity: {},
       byModule: {},
     });
@@ -193,9 +194,21 @@ describe('compareCommercialDesignInputsV1', () => {
     expect(report.differences).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ path: 'siteCommercial.access', category: 'site_commercial' }),
-        expect.objectContaining({ path: 'pergolas.pergola-1.modules.source:0.trustStatus', category: 'trust' }),
-        expect.objectContaining({ path: 'pergolas.pergola-1.modules.source:0.designIntent.roofMaterial', category: 'design_intent' }),
-        expect.objectContaining({ path: 'pergolas.pergola-1.modules.source:0.quantityTakeoff.posts.count', category: 'quantity_takeoff' }),
+        expect.objectContaining({
+          path: 'pergolas.pergola-1.modules.source:0.trustStatus',
+          category: 'trust',
+          driftOrigin: 'solved_geometry',
+        }),
+        expect.objectContaining({
+          path: 'pergolas.pergola-1.modules.source:0.designIntent.roofMaterial',
+          category: 'design_intent',
+          driftOrigin: 'authored_intent',
+        }),
+        expect.objectContaining({
+          path: 'pergolas.pergola-1.modules.source:0.quantityTakeoff.posts.count',
+          category: 'quantity_takeoff',
+          driftOrigin: 'physical_takeoff',
+        }),
       ]),
     );
     expect(report.counts.warningDifferences).toBeGreaterThanOrEqual(4);
@@ -204,6 +217,12 @@ describe('compareCommercialDesignInputsV1', () => {
       trust: 1,
       design_intent: 1,
       quantity_takeoff: 1,
+    });
+    expect(report.summary?.byDriftOrigin).toMatchObject({
+      commercial_mapping: 1,
+      solved_geometry: 1,
+      authored_intent: 1,
+      physical_takeoff: 1,
     });
     expect(report.summary?.bySeverity.warning).toBeGreaterThanOrEqual(4);
     expect(report.summary?.byModule['pergola-1/source:0']).toMatchObject({
@@ -229,6 +248,7 @@ describe('compareCommercialDesignInputsV1', () => {
     expect(report.status).toBe('drift');
     expect(difference).toMatchObject({
       category: 'solved_geometry',
+      driftOrigin: 'solved_geometry',
       tolerance: 0.02,
       location: {
         pathSegments: ['pergolas', 'pergola-1', 'modules', 'source:0', 'solvedGeometry', 'primaryDimensionsM', 'length'],
@@ -242,6 +262,7 @@ describe('compareCommercialDesignInputsV1', () => {
     expect(difference?.numericDrift?.absoluteDelta).toBeCloseTo(0.05, 6);
     expect(difference?.numericDrift?.tolerance).toBe(0.02);
     expect(report.summary?.byCategory.solved_geometry).toBe(1);
+    expect(report.summary?.byDriftOrigin.solved_geometry).toBe(1);
     expect(report.summary?.bySeverity.warning).toBe(1);
     expect(report.summary?.byModule['pergola-1/source:0']).toMatchObject({
       differences: 1,
@@ -310,6 +331,78 @@ describe('compareCommercialDesignInputsV1', () => {
     expect(defaultReport.status).toBe('drift');
     expect(overriddenByCategory.status).toBe('match');
     expect(overriddenByPath.status).toBe('match');
+  });
+
+  it('classifies expanded parity drift for secondary dimensions, takeoff rows, flashings, and options', () => {
+    const left = makeInput();
+    left.pergolas[0]!.modules[0]!.designIntent.dimensions!.secondaryLengthM = 2;
+    left.pergolas[0]!.modules[0]!.designIntent.dimensions!.secondaryProjectionM = 1.5;
+    left.pergolas[0]!.modules[0]!.quantityTakeoff.roofPlanes![0]!.rafterLengthM = 3.2;
+    left.pergolas[0]!.modules[0]!.quantityTakeoff.flashings!.byBandM = {
+      '201-300': 1.5,
+    };
+    left.pergolas[0]!.modules[0]!.options = {
+      overrides: { ledgerProfile: '150x50' },
+      powdercoat: {
+        standardColour: 'White',
+        isCustom: false,
+        customColour: null,
+      },
+    };
+
+    const right = cloneInput(left);
+    right.pergolas[0]!.modules[0]!.designIntent.dimensions!.secondaryLengthM = 2.1;
+    right.pergolas[0]!.modules[0]!.designIntent.dimensions!.secondaryProjectionM = 1.6;
+    right.pergolas[0]!.modules[0]!.quantityTakeoff.roofPlanes![0]!.areaM2 = 18.5;
+    right.pergolas[0]!.modules[0]!.quantityTakeoff.roofPlanes![0]!.rafterLengthM = 3.5;
+    right.pergolas[0]!.modules[0]!.quantityTakeoff.roofPlanes![0]!.bayCount = 11;
+    right.pergolas[0]!.modules[0]!.quantityTakeoff.flashings!.byBandM = {
+      '201-300': 1,
+      '301-400': 0.5,
+    };
+    right.pergolas[0]!.modules[0]!.options = {
+      overrides: { ledgerProfile: '200x50' },
+      powdercoat: {
+        standardColour: 'Black',
+        isCustom: true,
+        customColour: 'Monument',
+      },
+    };
+
+    const report = compareCommercialDesignInputsV1(left, right);
+
+    expect(report.status).toBe('drift');
+    expect(report.differences).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          path: 'pergolas.pergola-1.modules.source:0.designIntent.dimensions.secondaryLengthM',
+          driftOrigin: 'authored_intent',
+        }),
+        expect.objectContaining({
+          path: 'pergolas.pergola-1.modules.source:0.quantityTakeoff.roofPlanes.0.areaM2',
+          driftOrigin: 'physical_takeoff',
+        }),
+        expect.objectContaining({
+          path: 'pergolas.pergola-1.modules.source:0.quantityTakeoff.flashings.byBandM.301-400',
+          driftOrigin: 'physical_takeoff',
+        }),
+        expect.objectContaining({
+          path: 'pergolas.pergola-1.modules.source:0.options.powdercoat.isCustom',
+          category: 'commercial_option',
+          driftOrigin: 'commercial_mapping',
+        }),
+        expect.objectContaining({
+          path: 'pergolas.pergola-1.modules.source:0.options.overrides.ledgerProfile',
+          category: 'commercial_option',
+          driftOrigin: 'commercial_mapping',
+        }),
+      ]),
+    );
+    expect(report.summary?.byDriftOrigin).toMatchObject({
+      authored_intent: 2,
+      physical_takeoff: expect.any(Number),
+      commercial_mapping: expect.any(Number),
+    });
   });
 
   it('exports the report type from @sp/costing', () => {

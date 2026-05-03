@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { calculateSiteCostV1 } from '@sp/costing';
 import type { CalculatorInputs } from '@/lib/types/calculator';
 import { ESTIMATE_DRAWING_OVERRIDES_OUTPUT_KEY } from './drawingEdits';
 import {
@@ -149,6 +150,43 @@ describe('costingPayload', () => {
     expect(payload.outputs.totals).toEqual(siteResult.totals);
     expect(payload.derived).toEqual({ length_m: 7, projection_m: 7 });
     expect(payload.outputs[ESTIMATE_PRICING_SYNC_STATE_OUTPUT_KEY]).toBe('current');
+  });
+
+  it('persists the live calculateSiteCostV1 result without commercial rollout fields', () => {
+    const inputs = makeInputs();
+    const siteInputs = buildSiteInputsFromCalculatorInputs(inputs);
+    const siteResult = calculateSiteCostV1(siteInputs);
+
+    const payload = buildEstimatePayloadFromSiteCosting({
+      basePayload: {
+        status: 'draft',
+        inputs: inputs as unknown as Record<string, unknown>,
+        derived: { preserved: true },
+        projectSnapshot: { id: 'project-1' },
+        snapshot: { project: { projectName: 'Millwater' } },
+        outputs: {
+          [ESTIMATE_DRAWING_OVERRIDES_OUTPUT_KEY]: { noteOverride: 'Keep drawing note' },
+        },
+        configVersions: { manifest: 'abc' },
+      },
+      inputs,
+      siteResult,
+      moduleIndex: 0,
+    });
+
+    expect(payload.outputs.materials).toEqual(siteResult.materials);
+    expect(payload.outputs.install).toEqual(siteResult.install);
+    expect(payload.outputs.overhead).toEqual(siteResult.overhead);
+    expect(payload.outputs.totals).toEqual(siteResult.totals);
+    expect(payload.outputs.pergolas).toEqual(siteResult.pergolas);
+    expect(payload.outputs.siteShared).toEqual(siteResult.shared);
+    expect(payload.outputs.shared).toEqual(siteResult.shared);
+    expect(payload.outputs[ESTIMATE_DRAWING_OVERRIDES_OUTPUT_KEY]).toEqual({ noteOverride: 'Keep drawing note' });
+    expect(payload.outputs[ESTIMATE_PRICING_SYNC_STATE_OUTPUT_KEY]).toBe('current');
+    expect(payload.outputs).not.toHaveProperty('pricingSource');
+    expect(payload.outputs).not.toHaveProperty('commercialDesignInput');
+    expect(JSON.stringify(payload)).not.toContain('workbench_solved');
+    expect(JSON.stringify(payload)).not.toContain('calculator_compat');
   });
 
   it('normalises site warnings into a saveable warning array', () => {

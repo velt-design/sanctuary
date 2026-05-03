@@ -49,7 +49,7 @@ Workbench must not own pricing policy. Costing must not solve geometry. Portal m
 
 `apps/portal/lib/drawings/commercialDesignPayload.ts` is the workbench-side shadow adapter. It converts `WorkbenchSolvedModel` plus explicit site commercial fields into `CommercialDesignInputV1` with `source: 'workbench_solved'`. It consumes `WorkbenchSolvedGeometryArtifact.quantityTakeoff`, whose `GeometryQuantityTakeoff` is built by `@sp/geometry` from the solved `Assembly3D`; low-level `QuantityHook` values remain compatibility data inside that geometry-owned takeoff. The adapter must not mutate geometry, persist commercial payloads, own physical takeoff policy, or replace live pricing until a later explicit integration task.
 
-`compareCommercialDesignInputsV1()` in `@sp/costing` compares two commercial payloads and returns a structured parity report. These reports are shadow-only comparison signal for adapter and geometry alignment; they must not drive pricing, persistence, customer-facing quote totals, or job-pack output until a later explicit integration task.
+`compareCommercialDesignInputsV1()` in `@sp/costing` compares two commercial payloads and returns a structured parity report. Difference diagnostics carry both the legacy comparison category and a drift origin: authored intent, solved geometry, physical takeoff, or commercial mapping. These reports are shadow-only comparison signal for adapter and geometry alignment; they must not drive pricing, persistence, customer-facing quote totals, or job-pack output until a later explicit integration task.
 
 ## Portal Cost Overrides
 

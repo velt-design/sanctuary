@@ -1,12 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import {
+  calculateSiteCostV1,
   compareCommercialDesignInputsV1,
   type CommercialModuleInputV1,
   type CostOutputV1,
   type SiteOutputV1,
 } from '@sp/costing';
-import { listSanctuaryGeometryWorkbenchFixtures } from '@/lib/drawings/sanctuaryWorkbenchFixtures';
+import { listParityCriticalSanctuaryGeometryWorkbenchFixtures } from '@/lib/drawings/sanctuaryWorkbenchFixtures';
 import { buildCommercialDesignInputFromCalculatorInputs } from '@/lib/estimates/commercialDesignPayload';
+import { buildSiteInputsFromCalculatorInputs } from '@/lib/estimates/costingPayload';
 import type { CalculatorInputs, CalculatorModuleInputs } from '@/lib/types/calculator';
 import { buildWorkbenchSolvedModel, type WorkbenchSolvedModel, type WorkbenchSolvedModule } from './state/workbenchSolvedModel';
 import {
@@ -28,13 +30,12 @@ type SnapshotWithCalculatorInputs = Record<string, unknown> & {
   outputs: SiteOutputV1;
 };
 
-const PARITY_CRITICAL_FIXTURE_SLUGS = [
-  'mono-standard',
-  'gable-standard',
-  'box-standard',
-  'gable-u-hipped-screenshot',
-  'mono-join-screenshot',
-] as const;
+const DRIFT_ORIGINS = new Set([
+  'authored_intent',
+  'solved_geometry',
+  'physical_takeoff',
+  'commercial_mapping',
+]);
 
 function makeModule(overrides: Partial<CalculatorModuleInputs> = {}): CalculatorModuleInputs {
   const base: Partial<CalculatorModuleInputs> = {
@@ -148,6 +149,151 @@ function makeSnapshot(input?: {
       pergolas: [{ id: 'pergola-1', modules: results }],
     },
   };
+}
+
+function makeSavedEstimateSnapshotCase(input: {
+  slug: string;
+  projectName: string;
+  quoteRef: string;
+  modules: CalculatorModuleInputs[];
+  pergolas?: Array<{ id: string; label: string }>;
+  inputOverrides?: Partial<CalculatorInputs>;
+}): {
+  slug: string;
+  inputs: CalculatorInputs;
+  outputs: SiteOutputV1;
+  snapshot: SnapshotWithCalculatorInputs;
+} {
+  const inputs: CalculatorInputs = {
+    schemaVersion: 'v2',
+    projectName: input.projectName,
+    quoteRef: input.quoteRef,
+    access: 'normal',
+    height: 'single_storey',
+    jobType: 'residential',
+    travelExGst: '18',
+    extrasAllowanceExGst: '95',
+    quoteDiscountPct: '4',
+    pergolas: input.pergolas ?? [{ id: 'pergola-1', label: 'Pergola 1' }],
+    modules: input.modules,
+    blinds: { items: [] },
+    ...input.inputOverrides,
+  };
+  const outputs = calculateSiteCostV1(buildSiteInputsFromCalculatorInputs(inputs));
+  return {
+    slug: input.slug,
+    inputs,
+    outputs,
+    snapshot: {
+      inputs,
+      outputs,
+    },
+  };
+}
+
+function representativeSavedEstimateSnapshots(): Array<ReturnType<typeof makeSavedEstimateSnapshotCase>> {
+  return [
+    makeSavedEstimateSnapshotCase({
+      slug: 'saved-mono-acrylic-commercial-options',
+      projectName: 'Saved Mono Acrylic',
+      quoteRef: 'Q-SAVED-MONO',
+      modules: [
+        makeModule({
+          pergolaStyle: 'pitched',
+          roofMaterial: 'acrylic',
+          extrusionColour: 'Black',
+          lengthM: '6.2',
+          projectionM: '3.4',
+          roofPitchDeg: '7',
+          postCount: '3',
+          downpipeCount: '1',
+          powdercoatStandardColour: 'Black',
+          powdercoatIsCustom: true,
+          powdercoatCustomColour: 'Monument',
+          flashings: {
+            rows: [
+              { id: 'flash-primary', kind: 'primary', band: '201-300', lengthM: '6.2', purpose: 'PRIMARY' },
+              { id: 'flash-extra', kind: 'extra', band: '301-400', lengthM: '1.1', purpose: 'CUSTOM' },
+            ],
+          },
+          overrides: {
+            ledgerProfile: '150x50',
+            rafterProfile: '100x50',
+            frontBeamProfile: '200x50',
+          },
+        }),
+      ],
+      inputOverrides: {
+        blinds: {
+          items: [
+            {
+              id: 'blind-1',
+              label: 'Front blind',
+              system: 'ZIPTRAK',
+              widthMm: '2400',
+              coverLengthMm: '2100',
+              fabric: 'MESH',
+              motorised: 'NONE',
+            },
+          ],
+        },
+      },
+    }),
+    makeSavedEstimateSnapshotCase({
+      slug: 'saved-gable-mixed',
+      projectName: 'Saved Gable Mixed',
+      quoteRef: 'Q-SAVED-GABLE',
+      modules: [
+        makeModule({
+          pergolaStyle: 'gable',
+          roofMaterial: 'mixed',
+          lengthM: '6.5',
+          projectionM: '4',
+          roofPitchDeg: '25',
+          postCutHeightM: '2.7',
+          gableEndFramesMode: 'outer_end_only',
+          mixedAcrylicBaysMain: '2',
+          mixedAcrylicBaysA: '1',
+          mixedAcrylicBaysB: '1',
+        }),
+      ],
+      inputOverrides: {
+        travelExGst: '42',
+        extrasAllowanceExGst: '180',
+        quoteDiscountPct: '2.5',
+      },
+    }),
+    makeSavedEstimateSnapshotCase({
+      slug: 'saved-multi-module',
+      projectName: 'Saved Multi Module',
+      quoteRef: 'Q-SAVED-MULTI',
+      pergolas: [{ id: 'pergola-1', label: 'Main' }],
+      modules: [
+        makeModule({
+          pergolaId: 'pergola-1',
+          pergolaStyle: 'pitched',
+          roofMaterial: 'acrylic',
+          lengthM: '5.8',
+          projectionM: '3',
+          roofPitchDeg: '5',
+        }),
+        makeModule({
+          pergolaId: 'pergola-1',
+          pergolaStyle: 'pitched',
+          roofMaterial: 'timber',
+          lengthM: '4.2',
+          projectionM: '2.8',
+          roofPitchDeg: '3',
+          boxPerimeterEnabled: true,
+        }),
+      ],
+      inputOverrides: {
+        access: 'hard',
+        height: 'two_storey',
+        jobType: 'commercial',
+      },
+    }),
+  ];
 }
 
 function makeSolvedModel(snapshot = makeSnapshot()): WorkbenchSolvedModel {
@@ -322,11 +468,8 @@ describe('workbench commercialDesignPayload', () => {
   });
 
   it('keeps baked fixture commercial parity comparable for geometry-first QA gates', () => {
-    const fixtureBySlug = new Map(listSanctuaryGeometryWorkbenchFixtures().map((fixture) => [fixture.slug, fixture]));
-
-    for (const slug of PARITY_CRITICAL_FIXTURE_SLUGS) {
-      const fixture = fixtureBySlug.get(slug);
-      if (!fixture) throw new Error(`Missing parity-critical workbench fixture: ${slug}.`);
+    for (const fixture of listParityCriticalSanctuaryGeometryWorkbenchFixtures()) {
+      const expected = fixture.qa.expectedModule;
       const snapshot = cloneFixtureSnapshot(fixture.snapshot);
       const calculatorCommercial = buildCommercialDesignInputFromCalculatorInputs({
         inputs: snapshot.inputs,
@@ -367,34 +510,79 @@ describe('workbench commercialDesignPayload', () => {
       expect(workbenchModule.trustStatus, fixture.slug).toBe('ready');
       expect(workbenchModule.designIntent).toMatchObject({
         pergolaStyle: calculatorModule.designIntent.pergolaStyle,
-        roofMaterial: calculatorModule.designIntent.roofMaterial,
-        roofType: calculatorModule.designIntent.roofType,
-        attachmentSide: calculatorModule.designIntent.attachmentSide,
-        roofPitchDeg: calculatorModule.designIntent.roofPitchDeg,
+        roofMaterial: expected.roofMaterial,
+        roofType: expected.roofType,
+        attachmentSide: expected.attachmentSide,
+        roofPitchDeg: expected.roofPitchDeg,
       });
       expectCloseOrEqual(
         workbenchModule.designIntent.dimensions.lengthM,
-        calculatorModule.designIntent.dimensions.lengthM,
+        expected.lengthM,
         `${fixture.slug} authored length`,
       );
       expectCloseOrEqual(
         workbenchModule.designIntent.dimensions.projectionM,
-        calculatorModule.designIntent.dimensions.projectionM,
+        expected.projectionM,
         `${fixture.slug} authored projection`,
       );
-      expect(workbenchModule.solvedGeometry.roofPlaneCount, `${fixture.slug} roof planes`).toBe(
-        calculatorModule.solvedGeometry.roofPlaneCount,
-      );
+      expect(workbenchModule.solvedGeometry.roofPlaneCount, `${fixture.slug} roof planes`).toBe(expected.roofPlaneCount);
       expectCloseOrEqual(
         workbenchModule.quantityTakeoff.primaryDimensions?.lengthM,
-        calculatorModule.quantityTakeoff.primaryDimensions?.lengthM,
+        expected.lengthM,
         `${fixture.slug} takeoff length`,
       );
       expectCloseOrEqual(
         workbenchModule.quantityTakeoff.primaryDimensions?.projectionM,
-        calculatorModule.quantityTakeoff.primaryDimensions?.projectionM,
+        expected.projectionM,
         `${fixture.slug} takeoff projection`,
       );
+    }
+  });
+
+  it('keeps representative saved estimate snapshots commercially comparable in shadow mode', () => {
+    for (const saved of representativeSavedEstimateSnapshots()) {
+      const identity = {
+        projectId: `project-${saved.slug}`,
+        estimateId: `estimate-${saved.slug}`,
+        designRequestId: `request-${saved.slug}`,
+      };
+      const calculatorCommercial = buildCommercialDesignInputFromCalculatorInputs({
+        inputs: saved.inputs,
+        siteResult: saved.outputs,
+        identity,
+      });
+      const solvedModel = buildWorkbenchSolvedModel({
+        snapshot: saved.snapshot,
+        geometryIdentity: identity,
+      });
+      const workbenchCommercial = buildCommercialDesignInputFromWorkbenchSolvedModel({
+        solvedModel,
+        siteCommercial: calculatorCommercial.siteCommercial,
+      });
+
+      const report = compareCommercialDesignInputsV1(calculatorCommercial, workbenchCommercial, {
+        labelLeft: `${saved.slug}:calculator_compat`,
+        labelRight: `${saved.slug}:workbench_solved`,
+      });
+
+      const warningDifferences = report.differences.filter((difference) => difference.severity === 'warning');
+      expect(report.counts.pergolasCompared, saved.slug).toBe(calculatorCommercial.pergolas.length);
+      expect(report.counts.modulesCompared, saved.slug).toBe(saved.inputs.modules.length);
+      expect(report.counts.blockingDifferences, `${saved.slug} blocking differences`).toBe(0);
+      expect(report.differences.filter((difference) => difference.category === 'structure'), saved.slug).toEqual([]);
+      const workbenchTrustStatuses = workbenchCommercial.pergolas
+        .flatMap((pergola) => pergola.modules)
+        .map((module) => module.trustStatus);
+      if (saved.inputs.modules.length === 1) {
+        expect(workbenchTrustStatuses, saved.slug).toEqual(['ready']);
+      } else {
+        expect(workbenchTrustStatuses.every((status) => status === 'ready' || status === 'approximate'), saved.slug).toBe(true);
+      }
+      expect(report.differences.every((difference) => DRIFT_ORIGINS.has(difference.driftOrigin)), saved.slug).toBe(true);
+      expect(
+        warningDifferences.every((difference) => typeof report.summary?.byDriftOrigin[difference.driftOrigin] === 'number'),
+        saved.slug,
+      ).toBe(true);
     }
   });
 });

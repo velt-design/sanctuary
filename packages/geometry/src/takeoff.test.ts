@@ -68,6 +68,24 @@ function hookQuantity(assembly: Assembly3D, key: string): number {
 }
 
 describe("buildAssemblyQuantityTakeoff", () => {
+  it("derives coherent physical takeoff for every supported geometry fixture", () => {
+    for (const fixture of listGeometryFixtureCases().filter((candidate) => candidate.kind === "supported")) {
+      const assembly = solve(fixture.config);
+      const takeoff = buildAssemblyQuantityTakeoff(assembly);
+
+      expect(takeoff.family, fixture.id).toBe(assembly.family);
+      expect(takeoff.primaryDimensionsMm, fixture.id).toEqual({
+        length: fixture.config.dimensions.lengthMm,
+        projection: fixture.config.dimensions.projectionMm,
+      });
+      expect(takeoff.roofPlanes.count, fixture.id).toBe(assembly.roofPlanes.length);
+      expect(takeoff.roofPlanes.items, fixture.id).toHaveLength(assembly.roofPlanes.length);
+      expect(takeoff.members.items, fixture.id).toHaveLength(assembly.members.length);
+      expect(takeoff.quantityHooks, fixture.id).toEqual([...assembly.quantityHooks].sort((a, b) => a.key.localeCompare(b.key)));
+      expect(takeoff.diagnostics, fixture.id).toEqual([]);
+    }
+  });
+
   it("derives mono acrylic physical takeoff from the solved assembly", () => {
     const assembly = supportedAssembly("mono_attached_soffit_away_standard");
     const takeoff = buildAssemblyQuantityTakeoff(assembly);
