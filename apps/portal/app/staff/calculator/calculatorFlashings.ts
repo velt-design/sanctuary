@@ -1,7 +1,19 @@
+import type { RoofType } from '@sp/costing';
 import type { CalculatorFlashingBand, CalculatorFlashingPurpose, CalculatorFlashingsState, CalculatorModuleInputs } from '@/lib/types/calculator';
-import { getRoofTypeForModule, toNumber } from './calculatorInputs';
 
 const FLASHING_AUTO_SYNC_TOLERANCE_M = 0.01;
+
+function toNumber(value: string): number {
+  if (value.trim() === '') return Number.NaN;
+  return Number.parseFloat(value);
+}
+
+function getRoofTypeForModule(module: CalculatorModuleInputs): RoofType {
+  if (module.pergolaStyle === 'gable') return 'gable';
+  if (module.pergolaStyle === 'hip') return 'hip';
+  if (module.pergolaStyle === 'hip_corner') return 'hip_corner';
+  return 'pitched';
+}
 
 export function normalizeFlashingBand(value: unknown): CalculatorFlashingBand {
   if (value === '201-300' || value === '301-400') return value;

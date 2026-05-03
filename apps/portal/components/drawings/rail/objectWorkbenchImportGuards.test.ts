@@ -163,6 +163,56 @@ describe('object workbench import guards', () => {
     expect(source).toContain('topProjectionFromViewerSceneArtifact');
   });
 
+  it('routes shell and viewport geometry through the viewport geometry bundle', () => {
+    const shellPath = path.normalize(
+      path.join('apps', 'portal', 'components', 'drawings', 'workbench', 'DrawingWorkbench.tsx'),
+    );
+    const viewportHostPath = path.normalize(
+      path.join('apps', 'portal', 'components', 'drawings', 'workbench', 'WorkbenchViewportHost.tsx'),
+    );
+    const hiddenWorkbenchClientPath = path.normalize(
+      path.join(
+        'apps',
+        'portal',
+        'app',
+        'staff',
+        'projects',
+        '[projectId]',
+        'design-workbench',
+        'DesignWorkbenchEstimateClient.tsx',
+      ),
+    );
+    const fixtureClientPath = path.normalize(
+      path.join(
+        'apps',
+        'portal',
+        'app',
+        'staff',
+        'projects',
+        '[projectId]',
+        'design-workbench',
+        'DesignWorkbenchFixtureClient.tsx',
+      ),
+    );
+    const projectEstimateTabPath = path.normalize(
+      path.join('apps', 'portal', 'components', 'projects', 'ProjectPage', 'tabs', 'EstimatesTab.tsx'),
+    );
+    const shellSource = fs.readFileSync(path.join(process.cwd(), shellPath), 'utf8');
+    const viewportHostSource = fs.readFileSync(path.join(process.cwd(), viewportHostPath), 'utf8');
+
+    expect(shellSource).toContain('viewportGeometry?: WorkbenchViewportGeometry | null');
+    expect(shellSource).toContain('viewportGeometry={viewportGeometry}');
+    expect(viewportHostSource).toContain('viewportGeometry?: WorkbenchViewportGeometry | null');
+    expect(viewportHostSource).toContain('viewportGeometry?.preview');
+    expect(viewportHostSource).toContain('viewportGeometry?.legacyFallback.planModel');
+
+    for (const relativePath of [hiddenWorkbenchClientPath, fixtureClientPath, projectEstimateTabPath]) {
+      const source = fs.readFileSync(path.join(process.cwd(), relativePath), 'utf8');
+      expect(source).toContain('viewportGeometry={');
+      expect(source).not.toMatch(/<DrawingWorkbench[\s\S]*?geometryPreview=/);
+    }
+  });
+
   it('keeps rail and viewport composition behind the workbench shell boundary', () => {
     const violations: string[] = [];
 

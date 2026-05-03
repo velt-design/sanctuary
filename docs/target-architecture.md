@@ -66,7 +66,7 @@ Do not delete compatibility paths blindly. First prove the path is unused, updat
 
 The first root-compatibility visibility gate is `npm run root:compat`, with `npm run root:compat:changed` for handoffs that touch root compatibility files. These reports are advisory and exist to make root growth visible before it becomes normal.
 
-The first aggregate architecture handoff check is `npm run architecture:changed`. It runs the changed-file file decomposition, root compatibility, browser Supabase, and service-role Supabase reports together without making them part of lint.
+The first aggregate architecture handoff check is `npm run architecture:changed`. It runs worktree ownership, dead-code changed reporting, file decomposition, root compatibility, browser Supabase, and service-role Supabase reports together without making them part of lint.
 
 Locally, changed-file checks read the dirty worktree against `HEAD`. In CI, `ARCHITECTURE_CHANGED_BASE` and `ARCHITECTURE_CHANGED_HEAD` make the same reports compare PR base to head, so a clean checkout still produces useful architecture handoff output.
 

@@ -254,7 +254,7 @@ export default function DesignWorkbenchEstimateClient({
     ],
   );
   const geometryPreview: ObjectWorkbenchGeometryPreviewState =
-    store.derived.activeSolution?.geometryPreview ?? {
+    store.derived.activeViewportGeometry?.preview ?? {
       kind: 'error',
       message: 'No active 3D geometry preview is available.',
     };

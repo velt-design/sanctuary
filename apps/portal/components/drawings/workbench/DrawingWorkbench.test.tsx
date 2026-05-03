@@ -13,6 +13,7 @@ import type { DrawingWorkbenchViewportMode } from '@/lib/drawings/state/drawingW
 import {
   resolveWorkbenchTrustGate,
   type WorkbenchTrustStatusKind,
+  type WorkbenchViewportGeometry,
 } from '@/lib/drawings/state/workbenchSolvedModel';
 import { renderIntoDocument } from '../../../../../test/reactHarness';
 import DrawingWorkbench from './DrawingWorkbench';
@@ -541,6 +542,50 @@ describe('DrawingWorkbench', () => {
     );
 
     expect(markup).toContain('3D View');
+  });
+
+  it('routes the 3D branch through viewport geometry before loose preview compatibility props', () => {
+    const meta = buildEstimateDrawingSheetMeta({
+      moduleLabel: 'M1 - Pitched - 6m x 3m - Acrylic',
+      view: 'plan',
+    });
+    const viewportGeometry = {
+      artifact: null,
+      legacyFallback: {
+        planModel: null,
+        sectionModel: null,
+      },
+      preview: {
+        kind: 'error',
+        message: 'Artifact viewport preview wins.',
+      },
+    } satisfies WorkbenchViewportGeometry;
+
+    const markup = renderToStaticMarkup(
+      <DrawingWorkbench
+        moduleLabel="M1 - Pitched - 6m x 3m - Acrylic"
+        modules={[{ id: 'module-1', label: 'M1 - Pitched - 6m x 3m - Acrylic' }]}
+        activeModuleIndex={0}
+        onActiveModuleIndexChange={() => undefined}
+        view="plan"
+        onViewChange={() => undefined}
+        viewportMode="geometry3d"
+        availableViewportModes={['sheet', 'model', 'geometry3d']}
+        onViewportModeChange={() => undefined}
+        status="ready"
+        viewportGeometry={viewportGeometry}
+        geometryPreview={{
+          kind: 'error',
+          message: 'Loose compatibility preview lost.',
+        }}
+        modelViewportTransform={createDrawingWorkbenchUiState().viewportTransform}
+        onModelViewportTransformChange={() => undefined}
+        meta={meta}
+      />,
+    );
+
+    expect(markup).toContain('Artifact viewport preview wins.');
+    expect(markup).not.toContain('Loose compatibility preview lost.');
   });
 
   it('does not restart a consumed custom-footprint outline request after switching to 3D view and back', async () => {
