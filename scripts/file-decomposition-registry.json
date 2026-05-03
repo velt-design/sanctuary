@@ -21,7 +21,7 @@
         "apps/portal/app/staff/calculator/moduleViews.ts"
       ],
       "whyLarge": "Calculator UI, module drawing surfaces, estimate state, and presentation helpers are still concentrated in a few client files.",
-      "nextSafeExtraction": "Split oversized plan and section presentation owners into smaller sheet/model-space/detail presenters before adding new drawing surface branches.",
+      "nextSafeExtraction": "Continue splitting oversized calculator drawing presentation owners by moving plan layout and annotation preparation into narrower model-space, sheet, and detail presenters before adding new drawing surface branches.",
       "focusedTests": [
         "npm run test:portal:projects",
         "targeted calculator/component tests",

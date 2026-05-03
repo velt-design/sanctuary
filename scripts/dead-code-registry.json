@@ -1,0 +1,102 @@
+{
+  "version": 1,
+  "entries": [
+    {
+      "id": "root-workspace-dependencies",
+      "category": "dynamic-reference",
+      "status": "current",
+      "ownerArea": "Root npm workspace dependency policy",
+      "pathPatterns": [
+        "package.json"
+      ],
+      "reason": "The root manifest owns shared workspace scripts and hoisted dependencies that can be consumed by app and package workspaces.",
+      "retirementAction": "Remove root dependencies only after checking descendant workspaces, package scripts, builds, and focused tests.",
+      "proofCommand": "npm run typecheck && npm run lint"
+    },
+    {
+      "id": "next-app-entrypoints",
+      "category": "intentional-entrypoint",
+      "status": "current",
+      "ownerArea": "Next app routing",
+      "pathPatterns": [
+        "apps/marketing/app/**/page.tsx",
+        "apps/marketing/app/**/layout.tsx",
+        "apps/marketing/app/**/route.ts",
+        "apps/portal/app/**/page.tsx",
+        "apps/portal/app/**/layout.tsx",
+        "apps/portal/app/**/route.ts"
+      ],
+      "reason": "Next App Router discovers these files by filesystem convention rather than normal imports.",
+      "retirementAction": "Do not delete unless the route is intentionally retired, linked routes are updated, and app tests or builds prove the removal.",
+      "proofCommand": "npm run build:marketing && npm run build:portal"
+    },
+    {
+      "id": "package-public-exports",
+      "category": "intentional-entrypoint",
+      "status": "current",
+      "ownerArea": "Workspace package public APIs",
+      "pathPatterns": [
+        "packages/costing/src/index.ts",
+        "packages/geometry/src/index.ts",
+        "packages/quote-format/src/index.ts",
+        "packages/theme/src/index.ts"
+      ],
+      "reason": "Package index files define public package contracts and may expose APIs used by package consumers or future app work.",
+      "retirementAction": "Remove exports only after confirming no app/package consumer, test, or documented public package contract needs them.",
+      "proofCommand": "npm run packages:guard && npm run typecheck"
+    },
+    {
+      "id": "playwright-entrypoints",
+      "category": "intentional-entrypoint",
+      "status": "current",
+      "ownerArea": "Portal browser gates",
+      "pathPatterns": [
+        "playwright/*.ts"
+      ],
+      "reason": "Playwright specs and setup files are invoked by Playwright projects and npm scripts rather than imported by source code.",
+      "retirementAction": "Delete only when the matching npm script, Playwright project, and testing docs are removed or rerouted.",
+      "proofCommand": "npm run test:portal:browser"
+    },
+    {
+      "id": "operational-scripts",
+      "category": "dynamic-reference",
+      "status": "current",
+      "ownerArea": "Operational tooling",
+      "pathPatterns": [
+        "scripts/*.js",
+        "scripts/*.mjs",
+        "scripts/*.ts"
+      ],
+      "reason": "Scripts are often invoked from package scripts, CI, docs, or manual operations rather than source imports.",
+      "retirementAction": "Retire a script only after checking package scripts, CI workflows, docs, and operational owner docs.",
+      "proofCommand": "npm run docs:guard"
+    },
+    {
+      "id": "root-compatibility-retirement",
+      "category": "legacy-retirement",
+      "status": "current",
+      "ownerArea": "Root compatibility migration",
+      "pathPatterns": [
+        "components/**",
+        "data/**",
+        "lib/**",
+        "styles/**"
+      ],
+      "reason": "Root compatibility paths are transitional surfaces while behavior moves into apps or packages.",
+      "retirementAction": "Move, replace, or delete one owner slice at a time after root compatibility reporting, search, and focused tests prove the path is no longer needed.",
+      "proofCommand": "npm run root:compat && npm run typecheck"
+    },
+    {
+      "id": "generated-geometry-assets",
+      "category": "dynamic-reference",
+      "status": "current",
+      "ownerArea": "Geometry generated profile assets",
+      "pathPatterns": [
+        "packages/geometry/src/generated/**"
+      ],
+      "reason": "Generated profile assets are produced by repo tooling and may be referenced through geometry package internals.",
+      "retirementAction": "Regenerate or remove only through the geometry asset generation workflow and package tests.",
+      "proofCommand": "npm run geometry:generate-profile-assets && npm run typecheck"
+    }
+  ]
+}

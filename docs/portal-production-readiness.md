@@ -22,6 +22,7 @@ Production grade means:
 - Compatibility and legacy fallback paths are named, visible, tested, and removed when no longer needed.
 - Large files and high-risk surfaces have clear ownership, small modules, and focused tests.
 - Large portal files follow `docs/file-decomposition-and-ownership.md` before major feature expansion so the portal remains SaaS-extractable.
+- Unused code, stale exports, and old dependencies follow `docs/code-retirement-and-bloat-control.md` so cleanup is systematic and proof-driven.
 - Docs match the implementation and are updated as part of the work.
 
 ## How To Use This Doc
@@ -56,9 +57,10 @@ This snapshot records the most recent known production-readiness state from the 
 | Production security audit | Green | `npm audit --omit=dev` reported 0 vulnerabilities during blocker review. Portal Quality now runs `npm run audit:security` as a blocking pull-request gate, with Governance Monthly retaining the broader audit sweep. | Keep audit visible through `portal:doctor`, Portal Quality, and governance checks. |
 | Portal build | Green | `npm run build:portal` passed with `Compiled successfully`, TypeScript completed, 55 static pages generated, and no Turbopack/NFT trace warnings after module-relative PDF asset URL loading. Build-dependent gates now run `npm run portal:build-env` first to catch active portal dev servers and Next build locks early. | Keep build in portal CI and re-run after quote, invoice, PDF, job-pack, or Next config changes. |
 | Typecheck | Green | `npm run typecheck` passed after the `ModelSpaceViewport.test.tsx` placement-case typing fix; `npm run portal:doctor:quick` also completed typecheck. | Keep typecheck in quick doctor and CI. |
-| Browser smoke | Yellow | `npm run test:portal:browser` passed inside `npm run test:portal:workbench`: 3 no-auth fixture tests passed and 1 auth-backed smoke skipped by design. Fixture smoke fails fast when a normal portal dev server blocks the fixture server or `PORTAL_BASE_URL` is not fixture-enabled; authenticated smoke/performance fail early on credential, role, schedule readiness, or minimum dataset issues. | Run auth/performance smoke when staff test credentials and a compatible portal database are configured. |
+| Browser smoke | Yellow | `npm run test:portal:browser` passed inside `npm run test:portal:workbench`: 3 no-auth fixture tests passed and 1 auth-backed smoke skipped by design. `npm run portal:auth-runtime` now reaches the login flow with the supplied temporary account, but Supabase auth returns `Invalid email or password` and the setup remains on `/login`; downstream authenticated smoke/performance stay blocked by valid staff test credentials. | Provision or reset a valid staff test account, then rerun auth-runtime, authenticated smoke, and performance. |
 | Docs and routing | Green | Canonical docs, agent playbook, change routing, and decision log are present. | Keep this tracker and owner docs current. |
 | File decomposition | Yellow | `docs/file-decomposition-and-ownership.md`, `npm run files:report`, and `npm run files:changed` make large-file hotspots visible, but enforcement is advisory while transitional files remain. | Use changed-file reporting before handoff when expanding large files; add strict enforcement later. |
+| Code retirement | Yellow | `docs/code-retirement-and-bloat-control.md`, `npm run dead-code:report`, and `npm run dead-code:changed` make unused files, exports, types, and dependencies visible. Portal Quality runs changed-file reporting as advisory only. | Calibrate the registry, delete proven candidates in small PRs, then add strict mode for new unused growth. |
 | Local-first flows | Yellow | Strong primitives exist; production readiness depends on workflow smoke and visible failure states. | Verify pending, failed, retry, conflict, and lock states in changed flows. |
 | Quote/invoice/job-pack side effects | Green | `npm run portal:side-effects` passed: 8 quote/invoice/job-pack test files and 32 tests passed, then `npm run build:portal` completed with `Compiled successfully`, TypeScript, and 55 static pages generated. | Keep manual public-token and side-effect QA in release checks with a compatible portal environment. |
 | Schedule workflow | Green | `npm run test:portal:schedule` passed with 38 files and 215 tests, covering Schedule V2 APIs, readiness, Board/Gantt/Site Visits client paths, command boundaries, and legacy fallback isolation. | Keep live readiness and manual Board/Gantt/Site Visit checks in release QA with staff credentials and a migrated database. |
@@ -135,6 +137,8 @@ This snapshot records the most recent known production-readiness state from the 
 - [ ] `npm run files:report` is reviewed before expanding warning or critical files.
 - [ ] `npm run files:changed` is included in handoffs that touch warning or critical files.
 - [ ] `npm run root:compat:changed` is included in handoffs that touch root compatibility paths before portal SaaS extraction work continues.
+- [ ] `npm run dead-code:changed` is included in handoffs that add, delete, or touch files flagged by dead-code reporting.
+- [x] Portal Quality runs `npm run dead-code:changed` as a PR-aware advisory report against base/head changes.
 - [ ] Source-of-truth boundaries are preserved for costing, geometry, schedule, local-first, quotes, invoices, and job packs.
 - [ ] Compatibility and legacy fallback paths are isolated, named, and tested.
 - [ ] No new duplicate workflow rules are added in components when an owning domain helper or definition exists.
@@ -175,6 +179,7 @@ Use these docs as routing references. Do not copy their full rules into this tra
 | Path ownership and doc update triggers | `docs/change-routing.md` |
 | Repo and app boundaries | `docs/architecture.md` |
 | File decomposition and ownership | `docs/file-decomposition-and-ownership.md` |
+| Code retirement and bloat control | `docs/code-retirement-and-bloat-control.md` |
 | Whole platform workflow | `docs/platform-workflow.md` |
 | Commands, QA gates, browser tests | `docs/testing-and-qa.md` |
 | Auth, env, Supabase setup | `docs/environment-auth-supabase.md` |
@@ -217,7 +222,9 @@ When updating this tracker:
 - Locked projection-backed deck commits to the named `top_projection_to_object_frame` transform, removed stale `commitStartPolygon` bounds remapping, and persisted deck width/depth so rebuilt snapped outlines match the released projection diagnostics.
 - Verified the full Design Workbench gate: `npm run test:portal:workbench` passed with 53 Vitest files and 557 tests, then browser fixture coverage passed with 3 no-auth fixture tests and 1 auth-backed smoke skipped by design.
 - Added PR-aware architecture changed reporting to Portal Quality as an advisory base/head comparison, while keeping selective strict architecture checks out of CI until new-growth enforcement is intentionally enabled.
+- Added Knip-backed dead-code reporting with `npm run dead-code:report` and PR-aware `npm run dead-code:changed` advisory output so unused files, exports, types, dependencies, and duplicates can be retired with proof instead of guesswork.
 - Confirmed Portal Quality CI enforcement: docs guard, typecheck, lint, portal Vitest, portal build, schedule bundle budget, production security audit, fixture browser smoke, and authenticated smoke are blocking; Portal Performance Report keeps authenticated route timing blocking and now writes auth-runtime prerequisites to the GitHub step summary.
+- Attempted authenticated runtime readiness with the supplied temporary account. `portal:auth-env` passed, but Playwright auth setup stayed on `/login` with the app-visible error `Invalid email or password`; authenticated smoke and performance remain Yellow until a valid staff test account exists. Auth setup now clears the password field before throwing so generated text snapshots do not retain the submitted password.
 - Verified the full quote/invoice/job-pack side-effects gate after stopping the local portal dev server that held the Next build lock: `npm run portal:side-effects` passed with 8 test files and 32 tests, then `npm run build:portal` completed with `Compiled successfully`, TypeScript, and 55 static pages generated.
 - Confirmed the Schedule V2 local readiness gate: `npm run test:portal:schedule` passed with 38 files and 215 tests, including readiness route, Board/Gantt/Site Visits client coverage, Schedule V2 API/RPC command boundaries, and legacy fallback isolation.
 - Re-ran `npm run schedule:bundle-budget`; it passed at 589.0 KiB initial raw, 169.1 KiB initial gzip, 333.2 KiB lazy raw, and 78.3 KiB lazy gzip. Live route performance and authenticated smoke remain blocked until staff credentials and a compatible migrated database are available.

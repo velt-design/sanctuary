@@ -73,6 +73,8 @@ npm run docs:navigation
 npm run docs:readiness
 npm run architecture:changed
 npm run architecture:changed:strict
+npm run dead-code:report
+npm run dead-code:changed
 npm run files:report
 npm run files:changed
 npm run files:changed:strict
@@ -99,6 +101,8 @@ npm run schedule:bundle-budget
 `npm run architecture:changed:strict` is a local architecture/tooling check and future CI candidate. It runs the strict changed-file variants and currently blocks only selected new risky growth; it is not part of `npm run lint`.
 
 Changed-file architecture reports use the dirty worktree against `HEAD` by default. When `ARCHITECTURE_CHANGED_BASE` and `ARCHITECTURE_CHANGED_HEAD` are set, they compare those refs instead; Portal Quality uses that mode on pull requests so the advisory report sees PR base-to-head changes even though the CI checkout is clean. Strict mode is CI-ready with the same env vars, but remains unwired until new-growth enforcement is intentionally enabled.
+
+`npm run dead-code:report` is an advisory unused-code and dependency report powered by Knip and explained by `docs/code-retirement-and-bloat-control.md`. It reports unused files, exports, types, dependencies, unlisted dependencies, and duplicate dependency declarations. `npm run dead-code:changed` narrows the same report to touched files for handoffs and uses the same dirty-worktree or PR base/head changed-file source as the architecture reports. These commands are not part of `npm run lint`; do not delete code from this report without search, owner-doc review, and focused tests.
 
 `npm run files:report` is an advisory large-file ownership report. It highlights warning and critical files that should follow `docs/file-decomposition-and-ownership.md` before major feature expansion. `npm run files:changed` narrows that report to touched code files for agent handoffs, including line deltas from HEAD when available. `npm run files:changed:strict` exists for local experiments and later enforcement only. These are not part of `npm run lint` yet.
 
@@ -237,7 +241,7 @@ This doc remains the canonical command catalog. When readiness work changes comm
 
 ## CI
 
-- Portal Quality runs docs guard, architecture changed advisory reporting, repository typecheck, lint, portal Vitest, portal build, schedule bundle budget, production security audit, fixture browser smoke, and authenticated smoke. Authenticated smoke is blocking and writes the required credential, role, schedule-readiness, and project-data prerequisites to the GitHub step summary.
+- Portal Quality runs docs guard, architecture changed advisory reporting, dead-code changed advisory reporting, repository typecheck, lint, portal Vitest, portal build, schedule bundle budget, production security audit, fixture browser smoke, and authenticated smoke. Authenticated smoke is blocking and writes the required credential, role, schedule-readiness, and project-data prerequisites to the GitHub step summary.
 - Portal Performance Report runs authenticated route timing as a separate blocking job and uploads `portal-route-timings` when generated. It also writes the authenticated runtime prerequisites to the GitHub step summary before timing routes.
 - Docs Health runs weekly and on demand, with blocking docs guard and mojibake checks plus advisory docs impact, navigation, and readiness reports.
 - Lighthouse Guardrails run mobile and desktop Lighthouse profiles.

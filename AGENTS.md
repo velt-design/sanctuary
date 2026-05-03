@@ -11,14 +11,16 @@ This repo is optimized for coding agents. Read this file first, then follow link
 5. For production-readiness, quality-gate, hardening, or parallel-lane work, read `docs/portal-production-readiness.md`.
 6. Read `docs/target-architecture.md` when a change could expand app/package boundaries, root compatibility paths, data access patterns, or source-of-truth ownership.
 7. Read `docs/file-decomposition-and-ownership.md` before expanding a large component, route, package, domain module, or test.
-8. Read the smallest relevant current-state doc in `docs/`.
-9. Prefer `rg` and `rg --files` for repo discovery.
-10. Keep changes scoped to the requested surface.
-11. Do not revert user changes or unrelated worktree changes.
-12. Run `npm run architecture:changed` before handoff for non-trivial work.
-13. Run `npm run architecture:changed:strict` only for architecture/tooling PRs or explicit strict verification; it is not a routine lint gate.
-14. Run focused changed-file guards directly when you need a narrower report: `files:changed`, `root:compat:changed`, `browser:supabase:changed`, or `service-role:changed`.
-15. If the task changes portal behavior, data flow, source-of-truth boundaries, test strategy, or known risks, update the relevant doc in the same pass.
+8. Read `docs/code-retirement-and-bloat-control.md` before deleting code, removing dependencies, or retiring legacy compatibility paths.
+9. Read the smallest relevant current-state doc in `docs/`.
+10. Prefer `rg` and `rg --files` for repo discovery.
+11. Keep changes scoped to the requested surface.
+12. Do not revert user changes or unrelated worktree changes.
+13. Run `npm run architecture:changed` before handoff for non-trivial work.
+14. Run `npm run dead-code:changed` before handoff when adding, deleting, or touching files that dead-code reporting flags.
+15. Run `npm run architecture:changed:strict` only for architecture/tooling PRs or explicit strict verification; it is not a routine lint gate.
+16. Run focused changed-file guards directly when you need a narrower report: `files:changed`, `root:compat:changed`, `browser:supabase:changed`, or `service-role:changed`.
+17. If the task changes portal behavior, data flow, source-of-truth boundaries, test strategy, or known risks, update the relevant doc in the same pass.
 
 ## Repo Map
 
@@ -69,6 +71,7 @@ Use `docs/testing-and-qa.md` as the canonical command source. Feature docs may l
 - `docs/architecture.md`: repo structure and boundaries.
 - `docs/target-architecture.md`: target workspace shape, north-star data path, and migration direction.
 - `docs/file-decomposition-and-ownership.md`: active guardrail for splitting large files by responsibility and keeping portal code SaaS-ready.
+- `docs/code-retirement-and-bloat-control.md`: active guardrail for unused code, dependency cleanup, and safe legacy retirement.
 - `docs/platform-workflow.md`: business workflow across marketing and portal.
 - `docs/environment-auth-supabase.md`: env, auth, roles, schema readiness.
 - `docs/supabase-schema-map.md`: table/RPC ownership, write paths, access boundaries, and migration sources.

@@ -124,6 +124,14 @@ Use `docs/file-decomposition-and-ownership.md` before expanding large components
 
 When a touched file is already large, prefer extracting a named helper, controller, adapter, child component, view model, or package/domain function if the extraction is cohesive and low risk. If extraction is too risky for the task, keep the change narrow and note the decomposition direction in the handoff or owning doc.
 
+## Code Retirement Target
+
+Stale code should not become permanent architecture. Use `docs/code-retirement-and-bloat-control.md` before deleting code, removing dependencies, or retiring compatibility paths.
+
+The first dead-code visibility gate is `npm run dead-code:report`, with `npm run dead-code:changed` for handoffs that touch files Knip reports. These reports are advisory. They identify unused files, exports, types, dependencies, unlisted dependencies, and duplicate declarations, but deletion still requires owner-doc review, reference search, and focused tests.
+
+Registry-backed findings live in `scripts/dead-code-registry.json`. A registry entry is a retirement or proof note, not a place to hide bloat.
+
 ## Migration Posture
 
 The repo is mid-migration. Compatibility paths, legacy fallbacks, and large transitional modules still exist.
@@ -166,6 +174,7 @@ Prefer adding or tightening:
 - large-file decomposition reports and changed-file ownership checks.
 - root compatibility growth reports.
 - PR-aware architecture changed reports.
+- dead-code and dependency retirement reports.
 - focused browser/performance gates for heavy portal surfaces.
 
 The first package-boundary gate is `npm run packages:guard`, which checks app imports of local `@sp/*` packages against app manifests and Next transpilation config.

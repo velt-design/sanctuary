@@ -51,6 +51,16 @@ jobs:
           git fetch origin "${{ github.base_ref }}" --depth=1 || true
           npm run architecture:changed
 
+      - name: Dead code changed advisory
+        if: github.event_name == 'pull_request'
+        continue-on-error: true
+        env:
+          ARCHITECTURE_CHANGED_BASE: origin/${{ github.base_ref }}
+          ARCHITECTURE_CHANGED_HEAD: HEAD
+        run: |
+          git fetch origin "${{ github.base_ref }}" --depth=1 || true
+          npm run dead-code:changed
+
       - name: Repository typecheck
         run: npm run typecheck
 

@@ -1,43 +1,22 @@
 import type { PointerEventHandler } from 'react';
-import type { AttachmentSide } from '@sp/costing';
 import styles from './CalculatorGrid.module.css';
-import {
-  pointOnAttachmentFrame,
-  planHouseLineClass,
-  planHouseSurfaceClass,
-  type AttachmentFrame,
-} from './ModulePlanLayoutPresentation';
+import { planHouseLineClass, planHouseSurfaceClass } from './ModulePlanLayoutPresentation';
 import { toPointsAttr, type Point } from './ModuleDrawingSurfacePrimitives';
-
-type SemanticHouseSurface = {
-  id: string;
-  kind: string;
-  points: Point[];
-  toned?: boolean;
-};
-
-type SemanticHouseLine = {
-  id: string;
-  kind: string;
-  start: Point;
-  end: Point;
-  emphasized?: boolean;
-};
+import type {
+  ProjectedSemanticPlanHouseLine,
+  ProjectedSemanticPlanHouseSurface,
+} from './ModulePlanSvgGeometryPresentation';
 
 export type ModulePlanHouseLayerProps = {
-  attachmentSide: AttachmentSide;
   effectiveHousePolygon: Point[];
-  footprintFrame: AttachmentFrame;
   hasSemanticPlanHouseContext: boolean;
-  hideTopProjectionHouseContext: boolean;
-  houseConnectionType: string;
+  hatchId: string;
   houseLabel: Point;
   isSheetFootprintEditor: boolean;
   renderLegacyHouseContext: boolean;
-  semanticPlanHouseLines: SemanticHouseLine[];
-  semanticPlanHouseSurfaces: SemanticHouseSurface[];
+  semanticPlanHouseLines: ProjectedSemanticPlanHouseLine[];
+  semanticPlanHouseSurfaces: ProjectedSemanticPlanHouseSurface[];
   showFootprintControls: boolean;
-  showHouseFootprint: boolean;
   showHouseHoverState: boolean;
   showHouseHoverTarget: boolean;
   showHouseLabel: boolean;
@@ -46,17 +25,14 @@ export type ModulePlanHouseLayerProps = {
 
 export function ModulePlanHouseLayer({
   effectiveHousePolygon,
-  footprintFrame,
   hasSemanticPlanHouseContext,
-  hideTopProjectionHouseContext,
-  houseConnectionType,
+  hatchId,
   houseLabel,
   isSheetFootprintEditor,
   renderLegacyHouseContext,
   semanticPlanHouseLines,
   semanticPlanHouseSurfaces,
   showFootprintControls,
-  showHouseFootprint,
   showHouseHoverState,
   showHouseHoverTarget,
   showHouseLabel,
@@ -102,7 +78,7 @@ export function ModulePlanHouseLayer({
       {renderLegacyHouseContext && !hasSemanticPlanHouseContext ? (
         <polygon
           points={toPointsAttr(effectiveHousePolygon)}
-          fill="url(#house-hatch-placeholder)"
+          fill={`url(#${hatchId})`}
           className={`${styles.moduleHouseHatch} ${isSheetFootprintEditor ? styles.moduleHouseHatchSheetContext : ''} ${
             showHouseHoverState ? styles.moduleHouseHatchSheetHover : ''
           } ${showFootprintControls && isSheetFootprintEditor ? styles.moduleHouseHatchSheetEditing : ''}`}
@@ -121,21 +97,6 @@ export function ModulePlanHouseLayer({
         <text x={houseLabel.x} y={houseLabel.y} textAnchor="middle" dominantBaseline="middle" className={styles.moduleHouseLabel}>
           House side
         </text>
-      ) : null}
-      {houseConnectionType === 'facade' && !hasSemanticPlanHouseContext && !hideTopProjectionHouseContext ? (
-        <line x1={footprintFrame.start.x} y1={footprintFrame.start.y} x2={footprintFrame.end.x} y2={footprintFrame.end.y} className={styles.modulePlanHouseWall} />
-      ) : null}
-      {houseConnectionType === 'fascia' && !hasSemanticPlanHouseContext && !hideTopProjectionHouseContext ? (
-        <>
-          <line x1={footprintFrame.start.x} y1={footprintFrame.start.y} x2={footprintFrame.end.x} y2={footprintFrame.end.y} className={styles.modulePlanHouseWall} />
-          <line
-            x1={pointOnAttachmentFrame(footprintFrame, 0, -0.8).x}
-            y1={pointOnAttachmentFrame(footprintFrame, 0, -0.8).y}
-            x2={pointOnAttachmentFrame(footprintFrame, footprintFrame.length, -0.8).x}
-            y2={pointOnAttachmentFrame(footprintFrame, footprintFrame.length, -0.8).y}
-            className={styles.modulePlanFasciaBand}
-          />
-        </>
       ) : null}
     </>
   );

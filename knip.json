@@ -1,0 +1,103 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "entry": [
+    "eslint.config.mjs",
+    "next.config.{js,mjs,ts}",
+    "postcss.config.{js,mjs,ts}",
+    "playwright.config.ts",
+    "vitest.config.ts",
+    "scripts/**/*.{js,mjs,ts}",
+    "playwright/**/*.ts"
+  ],
+  "project": [
+    "apps/**/*.{js,jsx,ts,tsx}",
+    "packages/**/*.{js,jsx,ts,tsx}",
+    "components/**/*.{js,jsx,ts,tsx}",
+    "lib/**/*.{js,jsx,ts,tsx}",
+    "scripts/**/*.{js,mjs,ts,tsx}",
+    "playwright/**/*.ts",
+    "*.config.{js,mjs,ts}"
+  ],
+  "ignore": [
+    "**/.next/**",
+    "**/build/**",
+    "**/coverage/**",
+    "**/dist/**",
+    "**/node_modules/**",
+    "**/out/**",
+    "**/playwright-report/**",
+    "**/public/**",
+    "**/test-results/**",
+    "**/vendor/**",
+    "packages/geometry/src/generated/**"
+  ],
+  "ignoreFiles": [
+    "next-env.d.ts"
+  ],
+  "workspaces": {
+    "apps/marketing": {
+      "entry": [
+        "app/**/{page,layout,route,loading,error,not-found,global-error}.{js,jsx,ts,tsx}",
+        "next.config.ts",
+        "postcss.config.mjs"
+      ],
+      "project": [
+        "app/**/*.{js,jsx,ts,tsx}",
+        "components/**/*.{js,jsx,ts,tsx}",
+        "emails/**/*.{js,jsx,ts,tsx}",
+        "lib/**/*.{js,jsx,ts,tsx}"
+      ]
+    },
+    "apps/portal": {
+      "entry": [
+        "app/**/{page,layout,route,loading,error,not-found,global-error}.{js,jsx,ts,tsx}",
+        "next.config.ts",
+        "postcss.config.mjs"
+      ],
+      "project": [
+        "app/**/*.{js,jsx,ts,tsx}",
+        "components/**/*.{js,jsx,ts,tsx}",
+        "emails/**/*.{js,jsx,ts,tsx}",
+        "lib/**/*.{js,jsx,ts,tsx}"
+      ]
+    },
+    "packages/costing": {
+      "entry": [
+        "src/index.ts",
+        "src/**/*.test.ts"
+      ],
+      "project": [
+        "src/**/*.{ts,tsx}"
+      ]
+    },
+    "packages/geometry": {
+      "entry": [
+        "src/index.ts",
+        "src/**/*.test.ts"
+      ],
+      "project": [
+        "src/**/*.{ts,tsx}"
+      ],
+      "ignore": [
+        "src/generated/**"
+      ]
+    },
+    "packages/quote-format": {
+      "entry": [
+        "src/index.ts",
+        "src/**/*.test.ts"
+      ],
+      "project": [
+        "src/**/*.{ts,tsx}"
+      ]
+    },
+    "packages/theme": {
+      "entry": [
+        "src/index.ts"
+      ],
+      "project": [
+        "src/**/*.{ts,tsx}"
+      ]
+    }
+  }
+}

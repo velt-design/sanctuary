@@ -18,6 +18,27 @@ describe('calculator drawing surface import guards', () => {
     expect(readCalculatorFile('ModuleDrawingRenderer.tsx')).not.toContain("from './ModuleDrawingSurfacePrimitives'");
   });
 
+  it('keeps focused plan presenters below the PlanSvg composition boundary', () => {
+    [
+      'ModulePlanHouseLayer.tsx',
+      'ModulePlanPergolaLayer.tsx',
+      'ModulePlanDimensionLayer.tsx',
+      'ModulePlanFootprintEditLayer.tsx',
+      'ModulePlanPopoverLayer.tsx',
+    ].forEach((fileName) => {
+      const source = readCalculatorFile(fileName);
+      [
+        "from './ModuleDrawingRenderer'",
+        "from './ModulePlanSvg'",
+        "from '@/components/drawings/viewports",
+        "from '@/components/drawings/rail",
+        "from '@/lib/drawings/interactions",
+      ].forEach((forbiddenImport) => {
+        expect(source).not.toContain(forbiddenImport);
+      });
+    });
+  });
+
   it('keeps shared drawing primitives below owner presentation modules', () => {
     const primitives = readCalculatorFile('ModuleDrawingSurfacePrimitives.tsx');
     [

@@ -22,6 +22,7 @@ setup('authenticate portal admin session', async ({ page }) => {
   try {
     await page.waitForURL((url) => !url.pathname.startsWith('/login'), { timeout: 60_000 });
   } catch (error) {
+    await page.getByRole('textbox', { name: 'Password' }).fill('').catch(() => {});
     throw new Error(
       `Portal auth setup did not leave /login after submitting staff test credentials. Check PORTAL_TEST_EMAIL, PORTAL_TEST_PASSWORD, and the portal auth backend. Original error: ${String(error)}`
     );

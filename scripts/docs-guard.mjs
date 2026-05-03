@@ -10,6 +10,7 @@ const REQUIRED_DOCS = [
   'docs/architecture.md',
   'docs/target-architecture.md',
   'docs/file-decomposition-and-ownership.md',
+  'docs/code-retirement-and-bloat-control.md',
   'docs/platform-workflow.md',
   'docs/environment-auth-supabase.md',
   'docs/supabase-schema-map.md',
