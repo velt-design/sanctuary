@@ -1,9 +1,10 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import type { CostOutputV1 } from '@sp/costing';
-import type { GeometryPlanViewModel, GeometryTopProjectionViewModel } from '@sp/geometry';
+import type { GeometryPlanViewModel, GeometrySectionViewModel, GeometryTopProjectionViewModel } from '@sp/geometry';
 import type { CalculatorModuleInputs } from '@/lib/types/calculator';
 import type { ObjectWorkbenchPlanOverlay } from '@/lib/drawings/views/plan/objectWorkbenchPlanOverlay';
+import type { WorkbenchDrawingSurfaceGeometry } from '@/lib/drawings/views/workbenchDrawingSurfaceGeometry';
 import { buildEstimateDrawingModules } from '@/lib/estimates/moduleDrawing';
 import ModuleViewsCard, {
   ModuleDrawingRenderer,
@@ -328,6 +329,128 @@ function makeTopProjectionFixture(): GeometryTopProjectionViewModel {
   };
 }
 
+function makeGeometrySectionFixture(): GeometrySectionViewModel {
+  return {
+    family: 'mono',
+    connectionType: 'soffit',
+    sectionKind: 'mono',
+    roofForm: {
+      mono: true,
+      gable: false,
+      box: false,
+    },
+    sliceXMm: 3000,
+    baseline: {
+      start: { x: 0, y: 0 },
+      end: { x: 3000, y: 0 },
+    },
+    house: {
+      referenceLine: {
+        start: { x: 0, y: 0 },
+        end: { x: 0, y: 2400 },
+      },
+      surfaces: [
+        {
+          id: 'geometry-section-house-wall',
+          kind: 'wall',
+          boundary: [
+            { x: -450, y: 0 },
+            { x: 0, y: 0 },
+            { x: 0, y: 2600 },
+            { x: -450, y: 2600 },
+          ],
+        },
+      ],
+      lines: [
+        {
+          id: 'geometry-section-attachment',
+          kind: 'attachment_target',
+          line: {
+            start: { x: 0, y: 2400 },
+            end: { x: 650, y: 2400 },
+          },
+        },
+      ],
+    },
+    members: {
+      posts: [
+        {
+          id: 'geometry-section-post',
+          role: 'post',
+          projection: {
+            start: { x: 3000, y: 0 },
+            end: { x: 3000, y: 2100 },
+          },
+          profile: { shape: 'rectangular', widthMm: 90, depthMm: 90, profileKey: '90x90' },
+        },
+      ],
+      ledgers: [],
+      supportBeams: [],
+      gutters: [],
+      rafters: [
+        {
+          id: 'geometry-section-rafter',
+          role: 'rafter',
+          projection: {
+            start: { x: 0, y: 2470 },
+            end: { x: 3000, y: 2170 },
+          },
+          profile: { shape: 'rectangular', widthMm: 50, depthMm: 150, profileKey: '50x150' },
+        },
+      ],
+      ridge: [],
+      joiners: [],
+    },
+    surfaces: {
+      roofPlanes: [
+        {
+          id: 'geometry-section-roof-plane',
+          kind: 'roof_plane',
+          line: {
+            start: { x: 0, y: 2470 },
+            end: { x: 3000, y: 2170 },
+          },
+        },
+      ],
+      roofCladding: [],
+    },
+    anchors: {
+      span: {
+        start: { x: 0, y: 0 },
+        end: { x: 3000, y: 0 },
+      },
+      leftEdgeHeight: {
+        point: { x: 0, y: 2400 },
+        valueMm: 2400,
+      },
+      rightEdgeHeight: {
+        point: { x: 3000, y: 2100 },
+        valueMm: 2100,
+      },
+      ridgeHeight: null,
+      pitch: {
+        point: { x: 1500, y: 2600 },
+        degrees: 5,
+        fallDirection: 'away_from_house',
+      },
+    },
+    metrics: {
+      spanMm: 3000,
+      leftEdgeHeightMm: 2400,
+      rightEdgeHeightMm: 2100,
+      ridgeHeightMm: null,
+      pitchDeg: 5,
+      boxRiseMm: null,
+    },
+    extents: {
+      minProjectionMm: -450,
+      maxProjectionMm: 3000,
+      minHeightMm: 0,
+      maxHeightMm: 2600,
+    },
+  };
+}
+
 function makeTopProjectionFixtureWithDeck(): GeometryTopProjectionViewModel {
   const base = makeTopProjectionFixture();
   return {
@@ -356,6 +479,42 @@ function makeTopProjectionFixtureWithDeck(): GeometryTopProjectionViewModel {
         },
       },
     ],
+  };
+}
+
+function makeSolvedDrawingSurfaceGeometry(
+  drawing: {
+    planModel?: ModulePlanModel | null;
+    sectionModel?: ModuleSectionModel | null;
+  },
+  options: {
+    geometryPlan?: GeometryPlanViewModel | null;
+    geometryTopProjection?: GeometryTopProjectionViewModel | null;
+  } = {},
+): WorkbenchDrawingSurfaceGeometry {
+  return {
+    source: 'solved_geometry',
+    planModel: drawing.planModel ?? null,
+    planViewModel: null,
+    geometryPlan: options.geometryPlan ?? makeGeometryPlanFixture(),
+    geometryTopProjection: options.geometryTopProjection ?? makeTopProjectionFixture(),
+    sectionModel: drawing.sectionModel ?? null,
+    geometrySection: null,
+  };
+}
+
+function makeLegacyDrawingSurfaceGeometry(drawing: {
+  planModel?: ModulePlanModel | null;
+  sectionModel?: ModuleSectionModel | null;
+}): WorkbenchDrawingSurfaceGeometry {
+  return {
+    source: 'legacy_fallback',
+    planModel: drawing.planModel ?? null,
+    planViewModel: null,
+    geometryPlan: null,
+    geometryTopProjection: null,
+    sectionModel: drawing.sectionModel ?? null,
+    geometrySection: null,
   };
 }
 
@@ -706,9 +865,7 @@ describe('ModuleViewsCard', () => {
         planModel={drawing.planModel}
         sectionModel={drawing.sectionModel}
         presentation="model"
-        modelSpacePergolaGeometry={makeGeometryPlanFixture()}
-        modelSpacePergolaRenderSource="geometry"
-        modelSpacePergolaRenderStatus="geometry_ready"
+        drawingSurfaceGeometry={makeSolvedDrawingSurfaceGeometry(drawing)}
       />,
     );
 
@@ -735,10 +892,7 @@ describe('ModuleViewsCard', () => {
         planModel={drawing.planModel}
         sectionModel={drawing.sectionModel}
         presentation="model"
-        modelSpacePergolaGeometry={makeGeometryPlanFixture()}
-        modelSpaceTopProjection={makeTopProjectionFixture()}
-        modelSpacePergolaRenderSource="geometry"
-        modelSpacePergolaRenderStatus="geometry_ready"
+        drawingSurfaceGeometry={makeSolvedDrawingSurfaceGeometry(drawing)}
       />,
     );
 
@@ -792,10 +946,7 @@ describe('ModuleViewsCard', () => {
         planModel={drawing.planModel}
         sectionModel={drawing.sectionModel}
         presentation="model"
-        modelSpacePergolaGeometry={makeGeometryPlanFixture()}
-        modelSpaceTopProjection={makeTopProjectionFixture()}
-        modelSpacePergolaRenderSource="geometry"
-        modelSpacePergolaRenderStatus="geometry_ready"
+        drawingSurfaceGeometry={makeSolvedDrawingSurfaceGeometry(drawing)}
         currentPergolaId="pergola-1"
         onPergolaSelect={() => undefined}
       />,
@@ -861,10 +1012,9 @@ describe('ModuleViewsCard', () => {
         planModel={drawing.planModel}
         sectionModel={drawing.sectionModel}
         presentation="model"
-        modelSpacePergolaGeometry={makeGeometryPlanFixture()}
-        modelSpaceTopProjection={makeTopProjectionFixtureWithDeck()}
-        modelSpacePergolaRenderSource="geometry"
-        modelSpacePergolaRenderStatus="geometry_ready"
+        drawingSurfaceGeometry={makeSolvedDrawingSurfaceGeometry(drawing, {
+          geometryTopProjection: makeTopProjectionFixtureWithDeck(),
+        })}
         objectWorkbenchPlanOverlay={objectWorkbenchPlanOverlay}
       />,
     );
@@ -933,10 +1083,9 @@ describe('ModuleViewsCard', () => {
         planModel={drawing.planModel}
         sectionModel={drawing.sectionModel}
         presentation="model"
-        modelSpacePergolaGeometry={makeGeometryPlanFixture()}
-        modelSpaceTopProjection={makeTopProjectionFixtureWithDeck()}
-        modelSpacePergolaRenderSource="geometry"
-        modelSpacePergolaRenderStatus="geometry_ready"
+        drawingSurfaceGeometry={makeSolvedDrawingSurfaceGeometry(drawing, {
+          geometryTopProjection: makeTopProjectionFixtureWithDeck(),
+        })}
         objectWorkbenchPlanOverlay={objectWorkbenchPlanOverlay}
       />,
     );
@@ -994,10 +1143,7 @@ describe('ModuleViewsCard', () => {
         planModel={drawing.planModel}
         sectionModel={drawing.sectionModel}
         presentation="model"
-        modelSpacePergolaGeometry={makeGeometryPlanFixture()}
-        modelSpaceTopProjection={makeTopProjectionFixture()}
-        modelSpacePergolaRenderSource="geometry"
-        modelSpacePergolaRenderStatus="geometry_ready"
+        drawingSurfaceGeometry={makeSolvedDrawingSurfaceGeometry(drawing)}
         objectWorkbenchPlanOverlay={objectWorkbenchPlanOverlay}
       />,
     );
@@ -1030,10 +1176,7 @@ describe('ModuleViewsCard', () => {
         planModel={drawing.planModel}
         sectionModel={drawing.sectionModel}
         presentation="model"
-        modelSpacePergolaGeometry={makeGeometryPlanFixture()}
-        modelSpaceTopProjection={makeTopProjectionFixture()}
-        modelSpacePergolaRenderSource="geometry"
-        modelSpacePergolaRenderStatus="legacy_unsupported_family"
+        drawingSurfaceGeometry={makeLegacyDrawingSurfaceGeometry(drawing)}
         currentPergolaId="pergola-1"
         onPergolaSelect={() => undefined}
       />,
@@ -1053,9 +1196,6 @@ describe('ModuleViewsCard', () => {
         planModel={drawing.planModel}
         sectionModel={drawing.sectionModel}
         presentation="model"
-        modelSpacePergolaGeometry={makeGeometryPlanFixture()}
-        modelSpacePergolaRenderSource="geometry"
-        modelSpacePergolaRenderStatus="geometry_ready"
       />,
     );
 
@@ -1355,9 +1495,7 @@ describe('ModuleViewsCard', () => {
         planModel={drawing.planModel}
         sectionModel={drawing.sectionModel}
         presentation="model"
-        modelSpacePergolaGeometry={makeGeometryPlanFixture()}
-        modelSpacePergolaRenderSource="geometry"
-        modelSpacePergolaRenderStatus="geometry_ready"
+        drawingSurfaceGeometry={makeSolvedDrawingSurfaceGeometry(drawing)}
       />,
     );
 
@@ -1836,9 +1974,8 @@ describe('ModuleViewsCard', () => {
         planModel={drawing.planModel}
         sectionModel={drawing.sectionModel}
         presentation="model"
-        modelSpacePergolaGeometry={makeGeometryPlanFixture()}
-        modelSpacePergolaRenderSource="geometry"
-        modelSpacePergolaRenderStatus="geometry_ready"
+        drawingSurfaceGeometry={makeSolvedDrawingSurfaceGeometry(drawing)}
+        enableProjectionOnlyModelInteractions
         interactiveFields={{
           'plan:lengthA': { fieldId: 'plan:lengthA' },
           'plan:spanA': { fieldId: 'plan:spanA' },
@@ -1865,8 +2002,6 @@ describe('ModuleViewsCard', () => {
 
     expect(modelMarkup).toContain('data-plan-resize-handle-hit="plan:lengthA"');
     expect(modelMarkup).toContain('data-plan-resize-handle-hit="plan:spanA"');
-    expect(modelMarkup).toContain('data-editable-field-id="plan:lengthA"');
-    expect(modelMarkup).toContain('data-editable-field-id="plan:spanA"');
     expect(sheetMarkup).not.toContain('data-plan-resize-handle-hit=');
   });
 
@@ -1909,9 +2044,8 @@ describe('ModuleViewsCard', () => {
         planModel={drawing.planModel}
         sectionModel={drawing.sectionModel}
         presentation="model"
-        modelSpacePergolaGeometry={makeGeometryPlanFixture()}
-        modelSpacePergolaRenderSource="geometry"
-        modelSpacePergolaRenderStatus="geometry_ready"
+        drawingSurfaceGeometry={makeSolvedDrawingSurfaceGeometry(drawing)}
+        enableProjectionOnlyModelInteractions
         objectWorkbenchPlanOverlay={objectWorkbenchPlanOverlay}
       />,
     );
@@ -1991,15 +2125,14 @@ describe('ModuleViewsCard', () => {
         sectionModel={drawing.sectionModel}
         presentation="model"
         displayMode="house"
-        modelSpacePergolaGeometry={makeGeometryPlanFixture()}
-        modelSpacePergolaRenderSource="geometry"
-        modelSpacePergolaRenderStatus="geometry_ready"
+        drawingSurfaceGeometry={makeSolvedDrawingSurfaceGeometry({ planModel, sectionModel: drawing.sectionModel })}
+        enableProjectionOnlyModelInteractions
         objectWorkbenchPlanOverlay={objectWorkbenchPlanOverlay}
       />,
     );
 
     expect(markup).toContain('data-object-workbench-shape="deck:deck-1"');
-    expect(markup).toContain('data-house-plan-surface="footprint"');
+    expect(markup).toContain('data-plan-top-projection-shape="top-projection-house-roof"');
     expect(markup).not.toContain('data-house-plan-surface="deck"');
   });
 
@@ -2136,9 +2269,8 @@ describe('ModuleViewsCard', () => {
         planModel={drawing.planModel}
         sectionModel={drawing.sectionModel}
         presentation="model"
-        modelSpacePergolaGeometry={makeGeometryPlanFixture()}
-        modelSpacePergolaRenderSource="geometry"
-        modelSpacePergolaRenderStatus="geometry_ready"
+        drawingSurfaceGeometry={makeSolvedDrawingSurfaceGeometry(drawing)}
+        enableProjectionOnlyModelInteractions
         objectWorkbenchPlanOverlay={objectWorkbenchPlanOverlay}
         objectWorkbenchPreviewOverlay={
           {

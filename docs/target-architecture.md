@@ -120,6 +120,130 @@ Portal drawing code may adapt `@sp/geometry` for workbench state, persistence, a
 
 Costing must come from `@sp/costing`. Marketing must not create a pricing fork. Portal overrides may layer database-owned overrides on top of package base config through documented portal helpers.
 
+## Target Areas
+
+This map is the agent-facing routing layer between the broad north star above and the detailed current-state docs. Use it to pick an owner, data path, verification path, and next safe movement before expanding a domain.
+
+### Portal Quality Gates
+
+- North star: local and CI gates are truthful, repeatable, and explicit about external blockers.
+- Source of truth: `docs/portal-production-readiness.md`, `docs/testing-and-qa.md`, and Portal Quality workflows.
+- Allowed paths: update scripts, CI steps, readiness docs, and focused tests together when command behavior changes.
+- Forbidden shortcuts: silent skips, false-green auth gates, hidden credential requirements, or broad warning suppression.
+- Primary gates: `npm run portal:doctor`, `npm run portal:doctor:quick`, `npm run test:portal:log`, `npm run build:portal`, `npm run test:portal:browser`, authenticated smoke, and performance gates.
+- Next direction: keep separating blocking gates from advisory handoff reports while making auth/runtime prerequisites fail early and clearly.
+- Canonical docs: `docs/portal-production-readiness.md`, `docs/testing-and-qa.md`, `docs/security-privacy-quality.md`.
+
+### Auth, Staff/Admin Access, And Supabase Boundaries
+
+- North star: every staff, admin, service-role, browser, and public-token access path has one documented boundary.
+- Source of truth: staff/admin helpers, auth-bound server clients, service-role allowlisted helpers, and token-hash domain helpers.
+- Allowed paths: staff/admin APIs use auth helpers and auth-bound clients; public quote/invoice routes stay token-bound; service-role stays server-only and allowlisted.
+- Forbidden shortcuts: direct browser table writes, raw token exposure, client-visible service keys, unauthenticated staff bypasses, or implicit env-backed server clients where auth context is required.
+- Primary gates: `npm run audit:security`, `npm run browser:supabase`, `npm run service-role:report`, `npm run root:compat`, and Supabase boundary tests.
+- Next direction: keep moving route tests toward explicit staff/admin context injection and make new boundary growth visible in changed-file reports.
+- Canonical docs: `docs/staff-api-auth-contracts.md`, `docs/environment-auth-supabase.md`, `docs/security-privacy-quality.md`, `docs/supabase-schema-map.md`.
+
+### Contacts, Projects, Snapshots, And Staff Workflow Spine
+
+- North star: contacts, projects, snapshots, tasks, and pipeline state form the stable staff workflow spine for other portal surfaces.
+- Source of truth: portal staff APIs, auth-bound Supabase helpers, project snapshot read models, and project/task domain helpers.
+- Allowed paths: UI uses query/API/local-first layers; routes pass auth-bound clients into helpers; snapshots stay read models unless an owning mutation route changes state.
+- Forbidden shortcuts: browser table mutation, service-role fallback for normal staff workflow, snapshot writes from view code, or hidden schema fallback behavior.
+- Primary gates: `npm run test:portal:projects`, focused contact/project route tests, `npm run portal:doctor:quick`, and manual staff workflow QA.
+- Next direction: keep project snapshot ownership explicit and preserve request diagnostics while tightening manual login/contact/project checks once valid staff data exists.
+- Canonical docs: `docs/projects-contacts-estimates-calculator.md`, `docs/platform-workflow.md`, `docs/staff-api-auth-contracts.md`.
+
+### Calculator, Estimates, And Costing
+
+- North star: calculator UI orchestrates estimates, while `@sp/costing` owns commercial truth and estimate persistence remains explicit.
+- Source of truth: `packages/costing`, portal calculator helpers, estimate domain helpers, and staff estimate APIs.
+- Allowed paths: extract pure calculator inputs, save-readiness, view models, and orchestration helpers without changing mutation keys or costing payloads.
+- Forbidden shortcuts: copied costing rules in apps, hidden estimate persistence changes, direct browser Supabase writes, or calculator-driven quote side effects outside owning routes.
+- Primary gates: `npx vitest run apps/portal/app/staff/calculator`, `npm run test:portal:projects`, `npm run typecheck`, and costing package tests when package behavior changes.
+- Next direction: continue decomposing large calculator files by cohesive owners such as save orchestration, draft/session state, and remaining editor view models.
+- Canonical docs: `docs/projects-contacts-estimates-calculator.md`, `docs/costing-and-geometry.md`, `docs/file-decomposition-and-ownership.md`.
+
+### Local-First Sync
+
+- North star: local-first gives staff visible pending, retry, alias, conflict, discard, and locked-state UX without becoming final server authority.
+- Source of truth: local-first store, queue, portal mutation handlers, staff APIs, and server conflict/lock responses.
+- Allowed paths: browser UI enqueues approved mutation keys and reconciles durable IDs, aliases, retries, and conflicts through the local-first layer.
+- Forbidden shortcuts: putting server-authoritative side effects into local-first, silently retrying lock conflicts, bypassing staff APIs, or hiding failed/pending state.
+- Primary gates: local-first store/queue tests, `LocalFirstPortalMutations` tests, focused estimate/quote tab tests, and manual pending/failed/conflict QA.
+- Next direction: keep mutation keys stable and move workflow-specific conflict policy into named helpers before adding new local-first domains.
+- Canonical docs: `docs/local-first-sync.md`, `docs/projects-contacts-estimates-calculator.md`.
+
+### Quotes, Invoices, Public Tokens, PDFs, Emails, And Job Packs
+
+- North star: customer-facing side effects and money-state transitions are domain-owned, token-safe, and testable without real email or production data.
+- Source of truth: quote, invoice, public-token, PDF, email, file-artifact, and job-pack domain helpers plus their API routes.
+- Allowed paths: staff actions call owning server/domain helpers; public routes compare token hashes; generated artifacts and emails stay server-owned.
+- Forbidden shortcuts: raw token leaks, client-side side-effect ownership, service-role sprawl, public artifact access without token scope, or real delivery in tests.
+- Primary gates: `npm run portal:side-effects`, `npm run test:portal:quotes`, focused public-token route tests, `npm run build:portal`, and manual public-token QA.
+- Next direction: keep expanding side-effect boundary coverage and leave manual end-to-end public-token checks visible until safe seeded data exists.
+- Canonical docs: `docs/quotes-invoices-job-packs.md`, `docs/automation-email-audit.md`, `docs/security-privacy-quality.md`.
+
+### Schedule V2 And Site Visits
+
+- North star: schedule reads, commands, Board, Gantt, Site Visits, readiness, and legacy fallback remain separated by workflow.
+- Source of truth: Schedule V2 read models, staff schedule APIs, `schedule_v2_*` RPC commands, and schedule UI view models.
+- Allowed paths: UI reads through schedule APIs/read models and writes through staff API command routes backed by RPCs.
+- Forbidden shortcuts: ad hoc Supabase mutation from schedule UI, coupling legacy fallback into the normal client path, or weakening bundle/performance budgets.
+- Primary gates: `npm run test:portal:schedule`, readiness route tests, `npm run schedule:bundle-budget`, authenticated performance, and manual Board/Gantt/Site Visit QA.
+- Next direction: extract workflow-specific clients, query/view models, and command adapters before adding new schedule modes.
+- Canonical docs: `docs/schedule.md`, `docs/supabase-schema-map.md`, `docs/parallel-work-guardrails.md`.
+
+### Design Workbench, Drawing State, And Geometry
+
+- North star: object-first design intent resolves into one solved geometry spine; every drawing, sheet, 3D, top-projection, section, and interaction surface is a view or adapter.
+- Source of truth: `packages/geometry`, `WorkbenchSolvedGeometryArtifact`, `WorkbenchViewportGeometry`, `WorkbenchDrawingSurfaceGeometry`, drawing state helpers, and workbench persistence adapters.
+- Allowed paths: route viewport and sheet data through named bundles; keep compatibility fallback boxed, visible, and tested; commit object-first edits through owning handlers.
+- Forbidden shortcuts: legacy visible geometry truth, loose per-view preview props, hidden fallback activation, calculator geometry forks, or persistence changes from render helpers.
+- Primary gates: `npm run test:portal:workbench`, `npm run test:portal:browser`, focused drawing state/view/interaction tests, and manual edit/save/reload QA.
+- Next direction: keep shrinking compatibility drift while extracting cohesive interaction, viewport, and drawing-surface owners from large workbench files.
+- Canonical docs: `docs/design-workbench-architecture.md`, `docs/costing-and-geometry.md`, `docs/parallel-work-guardrails.md`.
+
+### Design List And Running Jobs
+
+- North star: spreadsheet-style operational surfaces share shell patterns, optimistic editing, and staff API write paths without inventing separate workflow rules.
+- Source of truth: Design List and Running Jobs staff APIs, spreadsheet shell components, optimistic edit helpers, and project/task/job read models.
+- Allowed paths: UI edits flow through staff APIs and shared spreadsheet patterns; cross-workflow effects stay in the owning domain route.
+- Forbidden shortcuts: direct browser Supabase writes, duplicated spreadsheet shells, hidden task/project mutations, or bypassing optimistic edit diagnostics.
+- Primary gates: focused Design List and Running Jobs tests, portal project tests where shared workflow state changes, and manual spreadsheet QA.
+- Next direction: keep extracting shared spreadsheet shell behavior and named optimistic edit helpers before adding new operational spreadsheet surfaces.
+- Canonical docs: `docs/design-list.md`, `docs/running-jobs.md`, `docs/platform-workflow.md`.
+
+### Marketing, Public Routes, Analytics, And Consent
+
+- North star: marketing owns public customer experiences, consent-aware analytics, conversion routes, and token-bound public quote/invoice views.
+- Source of truth: `apps/marketing`, public route helpers, consent/analytics helpers, and shared quote formatting.
+- Allowed paths: public flows use token-scoped APIs and safe shared packages; analytics respects consent and privacy docs.
+- Forbidden shortcuts: staff workflow state in marketing, portal secrets in public bundles, raw token logging, or duplicated pricing/costing behavior.
+- Primary gates: `npm run test:marketing`, public-token route tests, security/privacy checks, and docs guard for public route changes.
+- Next direction: keep public-token behavior hash-bound and consider a compact marketing owner doc only if public route rules outgrow existing references.
+- Canonical docs: `docs/security-privacy-quality.md`, `docs/platform-workflow.md`, `docs/quotes-invoices-job-packs.md`.
+
+### Packages And Source-Of-Truth Modules
+
+- North star: packages own reusable domain truth; apps orchestrate and adapt that truth for workflows and UI.
+- Source of truth: `packages/costing`, `packages/geometry`, `packages/quote-format`, `packages/theme`, and package public exports.
+- Allowed paths: behavior changes start in the owning package, then app adapters and integration tests are updated.
+- Forbidden shortcuts: TypeScript-only package aliases without declared dependencies, app-local forks of package rules, or private package internals used as stable APIs.
+- Primary gates: package tests, `npm run packages:guard`, app integration tests for changed adapters, and `npm run typecheck`.
+- Next direction: tighten package manifests, exports, and source-of-truth tests as package boundaries stabilize.
+- Canonical docs: `docs/architecture.md`, `docs/costing-and-geometry.md`, `docs/target-architecture.md`.
+
+### File Decomposition And Code Retirement
+
+- North star: large files, compatibility paths, stale exports, and old dependencies are reduced with proof, owner awareness, and focused tests.
+- Source of truth: decomposition registry, dead-code registry, changed-file reports, owner docs, and focused test signals.
+- Allowed paths: extract cohesive helpers/controllers/view models, document deferred splits, and delete only after reference search plus owner-doc review.
+- Forbidden shortcuts: broad rewrites during unrelated fixes, deleting compatibility without proof, hiding bloat in registries, or expanding critical files without a next split note.
+- Primary gates: `npm run files:report`, `npm run files:changed`, `npm run dead-code:report`, `npm run dead-code:changed`, and `npm run architecture:changed`.
+- Next direction: make strict checks progressively enforce new risky growth after reports are calibrated and false positives are understood.
+- Canonical docs: `docs/file-decomposition-and-ownership.md`, `docs/code-retirement-and-bloat-control.md`, `docs/portal-production-readiness.md`.
+
 ## File Ownership Target
 
 Files should have one clear responsibility and one obvious owner. A production-ready workspace should not keep adding inline UI, persistence, domain policy, browser event math, and tests to the same module just because that is where the previous behavior lived.

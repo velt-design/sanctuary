@@ -288,7 +288,7 @@ export default function EstimateDrawingSheet({
 }: EstimateDrawingSheetProps) {
   const surfacePlanModel = drawingSurfaceGeometry?.planModel ?? planModel ?? null;
   const surfaceSectionModel = drawingSurfaceGeometry?.sectionModel ?? sectionModel ?? null;
-  const surfacePlanViewModel = drawingSurfaceGeometry?.planViewModel ?? planViewModel ?? null;
+  void planViewModel;
   const sheetViewportRef = useRef<HTMLDivElement | null>(null);
   const editorInputRef = useRef<HTMLInputElement | HTMLTextAreaElement | null>(null);
   const footprintSvgRef = useRef<SVGSVGElement | null>(null);
@@ -329,24 +329,6 @@ export default function EstimateDrawingSheet({
       }).fits,
   }));
   const currentScale = selectedScales[view];
-  const sheetGeometryReady =
-    view === 'plan' &&
-    ((drawingSurfaceGeometry?.source === 'solved_geometry' &&
-      Boolean(drawingSurfaceGeometry.geometryPlan) &&
-      Boolean(drawingSurfaceGeometry.geometryTopProjection)) ||
-      (!drawingSurfaceGeometry &&
-        surfacePlanViewModel?.modelSpacePergola.renderSource === 'geometry' &&
-        surfacePlanViewModel.modelSpacePergola.renderStatus === 'geometry_ready' &&
-        Boolean(surfacePlanViewModel.modelSpacePergola.geometryPlan) &&
-        Boolean(surfacePlanViewModel.modelSpacePergola.geometryTopProjection)));
-  const sheetGeometryPlan =
-    drawingSurfaceGeometry?.source === 'solved_geometry'
-      ? drawingSurfaceGeometry.geometryPlan
-      : surfacePlanViewModel?.modelSpacePergola.geometryPlan ?? null;
-  const sheetGeometryTopProjection =
-    drawingSurfaceGeometry?.source === 'solved_geometry'
-      ? drawingSurfaceGeometry.geometryTopProjection
-      : surfacePlanViewModel?.modelSpacePergola.geometryTopProjection ?? null;
   const currentScaleState = resolveModuleDrawingScaleState({
     view,
     requestedScale: currentScale,
@@ -1037,10 +1019,6 @@ export default function EstimateDrawingSheet({
                   showDebugOverlays={showDebugOverlays}
                   footprintEditor={footprintEditor}
                   sheetPlanInteraction={sheetPlanInteraction}
-                  modelSpacePergolaGeometry={sheetGeometryReady ? sheetGeometryPlan : null}
-                  modelSpaceTopProjection={sheetGeometryReady ? sheetGeometryTopProjection : null}
-                  modelSpacePergolaRenderSource={sheetGeometryReady ? surfacePlanViewModel?.modelSpacePergola.renderSource : undefined}
-                  modelSpacePergolaRenderStatus={sheetGeometryReady ? surfacePlanViewModel?.modelSpacePergola.renderStatus : undefined}
                 />
                 {footprintError ? (
                   <div className={styles.sheetInteractionError} role="status" aria-live="polite">

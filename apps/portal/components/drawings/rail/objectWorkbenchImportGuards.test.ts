@@ -211,6 +211,14 @@ describe('object workbench import guards', () => {
       path.join(process.cwd(), path.normalize(path.join('apps', 'portal', 'app', 'staff', 'calculator', 'ModuleDrawingRenderer.tsx'))),
       'utf8',
     );
+    const moduleDrawingContractsSource = fs.readFileSync(
+      path.join(process.cwd(), path.normalize(path.join('apps', 'portal', 'app', 'staff', 'calculator', 'ModuleDrawingContracts.ts'))),
+      'utf8',
+    );
+    const modelSpaceViewportSource = fs.readFileSync(
+      path.join(process.cwd(), path.normalize(path.join('apps', 'portal', 'components', 'drawings', 'viewports', 'ModelSpaceViewport.tsx'))),
+      'utf8',
+    );
 
     expect(shellSource).toContain('viewportGeometry?: WorkbenchViewportGeometry | null');
     expect(shellSource).toContain('viewportGeometry={viewportGeometry}');
@@ -226,6 +234,18 @@ describe('object workbench import guards', () => {
     expect(estimateSheetSource).toContain('data-drawing-surface-source');
     expect(moduleDrawingRendererSource).toContain("drawingSurfaceGeometry?.source === 'solved_geometry'");
     expect(moduleDrawingRendererSource).toContain('data-drawing-surface-source');
+    expect(moduleDrawingContractsSource).not.toContain('modelSpacePergolaGeometry?:');
+    expect(moduleDrawingContractsSource).not.toContain('modelSpaceTopProjection?:');
+    expect(moduleDrawingContractsSource).not.toContain('modelSpacePergolaRenderSource?:');
+    expect(moduleDrawingContractsSource).not.toContain('modelSpacePergolaRenderStatus?:');
+    expect(modelSpaceViewportSource).not.toMatch(/<ModuleDrawingRenderer[\s\S]*?modelSpacePergolaGeometry=/);
+    expect(modelSpaceViewportSource).not.toMatch(/<ModuleDrawingRenderer[\s\S]*?modelSpaceTopProjection=/);
+    expect(modelSpaceViewportSource).not.toMatch(/<ModuleDrawingRenderer[\s\S]*?modelSpacePergolaRenderSource=/);
+    expect(modelSpaceViewportSource).not.toMatch(/<ModuleDrawingRenderer[\s\S]*?modelSpacePergolaRenderStatus=/);
+    expect(estimateSheetSource).not.toMatch(/<ModuleDrawingRenderer[\s\S]*?modelSpacePergolaGeometry=/);
+    expect(estimateSheetSource).not.toMatch(/<ModuleDrawingRenderer[\s\S]*?modelSpaceTopProjection=/);
+    expect(estimateSheetSource).not.toMatch(/<ModuleDrawingRenderer[\s\S]*?modelSpacePergolaRenderSource=/);
+    expect(estimateSheetSource).not.toMatch(/<ModuleDrawingRenderer[\s\S]*?modelSpacePergolaRenderStatus=/);
     expect(moduleDrawingRendererSource).not.toContain(
       "modelSpacePergolaGeometry ?? (drawingSurfaceGeometry?.source === 'solved_geometry'",
     );

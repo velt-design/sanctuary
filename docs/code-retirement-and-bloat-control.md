@@ -44,7 +44,7 @@ The report is advisory and is not part of `npm run lint`.
 
 The machine-readable registry lives in `scripts/dead-code-registry.json`.
 
-Use the registry when a finding is intentionally retained or deferred. Each entry must name the owner area, path patterns, reason, retirement action, and proof command. Do not add registry coverage to hide bloat; add it only when a path is a real entrypoint, dynamically referenced surface, generated artifact, or known legacy retirement lane.
+Use the registry when a finding is intentionally retained or deferred. Each entry must name the owner area, path patterns, reason, retirement action, and proof command. For dependency or export findings inside a shared file such as a package manifest, use `issueDetails` to cover only the exact reported symbols that are intentionally retained. Do not add registry coverage to hide bloat; add it only when a path is a real entrypoint, dynamically referenced surface, generated artifact, or known legacy retirement lane.
 
 Retire registry entries when the old surface is deleted or the dynamic entrypoint becomes statically obvious.
 

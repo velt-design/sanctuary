@@ -3314,10 +3314,6 @@ export default function ModelSpaceViewport({
                 objectWorkbenchPlanOverlay={showPlanViewport ? objectWorkbenchPlanOverlay : null}
                 objectWorkbenchPreviewOverlay={showPlanViewport ? objectWorkbenchPreviewOverlay : null}
                 hoveredObjectWorkbenchDeckId={showPlanViewport ? hoveredDeckId : null}
-                modelSpacePergolaGeometry={showPlanViewport ? planViewModel?.modelSpacePergola.geometryPlan ?? null : null}
-                modelSpaceTopProjection={showPlanViewport ? planViewModel?.modelSpacePergola.geometryTopProjection ?? null : null}
-                modelSpacePergolaRenderSource={showPlanViewport ? planViewModel?.modelSpacePergola.renderSource : undefined}
-                modelSpacePergolaRenderStatus={showPlanViewport ? planViewModel?.modelSpacePergola.renderStatus : undefined}
                 activeObjectWorkbenchCustomEdgeId={objectWorkbenchActiveCustomEdgeId}
                 onObjectWorkbenchShapeSelect={showPlanViewport ? handleObjectWorkbenchShapeSelect : undefined}
                 onObjectWorkbenchDeckHoverChange={showPlanViewport ? handleObjectWorkbenchDeckHoverChange : undefined}

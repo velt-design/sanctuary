@@ -1,5 +1,4 @@
 import type { AttachmentSide } from '@sp/costing';
-import type { GeometryPlanViewModel, GeometryTopProjectionViewModel } from '@sp/geometry';
 import type { DrawingWorkbenchVisibilityState } from '@/lib/drawings/state/drawingWorkbenchUiState';
 import type {
   ObjectWorkbenchPlanCustomEdgeCandidate,
@@ -11,10 +10,6 @@ import type {
 } from '@/lib/drawings/views/plan/objectWorkbenchPlanOverlay';
 import type { ObjectInteractionPreviewOverlay } from '@/lib/drawings/interactions/objectInteractionEngine';
 import type { WorkbenchDrawingSurfaceGeometry } from '@/lib/drawings/views/workbenchDrawingSurfaceGeometry';
-import type {
-  ObjectWorkbenchPergolaRenderSource,
-  ObjectWorkbenchPergolaRenderStatus,
-} from '@/lib/drawings/geometry/deriveWorkbenchGeometry';
 import type { DrawingSheetFitResult } from '@/lib/estimates/drawingSheetLayout';
 import type { EstimateDrawingScale } from '@/lib/estimates/drawingSheet';
 import type { HouseFootprintHandleId, ModulePlanModel, ModuleSectionModel } from './moduleViews';
@@ -220,8 +215,4 @@ export type ModuleDrawingRendererProps = {
     target: SVGTextElement,
   ) => void;
   objectWorkbenchPreviewOverlay?: ObjectWorkbenchPreviewOverlay | null;
-  modelSpacePergolaGeometry?: GeometryPlanViewModel | null;
-  modelSpaceTopProjection?: GeometryTopProjectionViewModel | null;
-  modelSpacePergolaRenderSource?: ObjectWorkbenchPergolaRenderSource;
-  modelSpacePergolaRenderStatus?: ObjectWorkbenchPergolaRenderStatus;
 };

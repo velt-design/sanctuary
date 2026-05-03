@@ -24,7 +24,7 @@ These docs are current-state references and active guardrails for coding agents.
 | `change-routing.md` | Active protocol | You need path ownership, doc update triggers, common task cards, or docs bloat control before editing. |
 | `portal-production-readiness.md` | Active tracker | You need current portal production-readiness status, quality gates, blockers, priorities, or parallel work lanes. |
 | `architecture.md` | Current | You need the repo map, app/package boundaries, or CI/script overview. |
-| `target-architecture.md` | Target contract | You need the north-star structure, target data path, or migration direction before expanding an area. |
+| `target-architecture.md` | Target contract | You need the north-star structure, target area map, target data path, or migration direction before expanding an area. |
 | `file-decomposition-and-ownership.md` | Active guardrail | You are expanding or refactoring a large component, route, domain module, package file, page, or test. |
 | `code-retirement-and-bloat-control.md` | Active guardrail | You are deleting code, removing dependencies, retiring old compatibility paths, or triaging unused-code reports. |
 | `platform-workflow.md` | Current | You need to understand lead, project, estimate, quote, invoice, design, schedule, or running-job flow. |

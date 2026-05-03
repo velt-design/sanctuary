@@ -81,41 +81,30 @@ export function ModuleDrawingRenderer({
   onObjectWorkbenchCustomEdgeSelect,
   onObjectWorkbenchDimensionActivate,
   objectWorkbenchPreviewOverlay,
-  modelSpacePergolaGeometry,
-  modelSpaceTopProjection,
-  modelSpacePergolaRenderSource,
-  modelSpacePergolaRenderStatus,
 }: ModuleDrawingRendererProps) {
   const effectivePlanModel = drawingSurfaceGeometry?.planModel ?? planModel ?? null;
   const effectiveSectionModel = drawingSurfaceGeometry?.sectionModel ?? sectionModel ?? null;
   const hasSolvedDrawingSurfaceGeometry = drawingSurfaceGeometry?.source === 'solved_geometry';
+  const effectiveGeometrySection = hasSolvedDrawingSurfaceGeometry ? drawingSurfaceGeometry?.geometrySection ?? null : null;
   const effectiveModelSpacePergolaGeometry =
-    drawingSurfaceGeometry
-      ? hasSolvedDrawingSurfaceGeometry
-        ? drawingSurfaceGeometry.geometryPlan
-        : null
-      : modelSpacePergolaGeometry ?? null;
+    hasSolvedDrawingSurfaceGeometry ? drawingSurfaceGeometry.geometryPlan : null;
   const effectiveModelSpaceTopProjection =
-    drawingSurfaceGeometry
-      ? hasSolvedDrawingSurfaceGeometry
-        ? drawingSurfaceGeometry.geometryTopProjection
-        : null
-      : modelSpaceTopProjection ?? null;
+    hasSolvedDrawingSurfaceGeometry ? drawingSurfaceGeometry.geometryTopProjection : null;
   const effectiveModelSpacePergolaRenderSource = drawingSurfaceGeometry
     ? hasSolvedDrawingSurfaceGeometry
       ? 'geometry'
       : 'legacy'
-    : modelSpacePergolaRenderSource;
+    : undefined;
   const effectiveModelSpacePergolaRenderStatus = drawingSurfaceGeometry
     ? hasSolvedDrawingSurfaceGeometry && effectiveModelSpacePergolaGeometry && effectiveModelSpaceTopProjection
       ? 'geometry_ready'
       : 'invalid_geometry'
-    : modelSpacePergolaRenderStatus;
+    : undefined;
   const effectiveShowDebugOverlays = showDebugOverlays ?? presentation === 'sheet';
   const isCompact = presentation !== 'card';
   const isModel = presentation === 'model';
   const showPlan = view === 'plan' && Boolean(effectivePlanModel);
-  const showSection = view === 'section' && Boolean(effectiveSectionModel);
+  const showSection = view === 'section' && (Boolean(effectiveGeometrySection) || Boolean(effectiveSectionModel));
   const planConsistency = effectivePlanModel ? checkPlanConsistency(effectivePlanModel) : null;
   const sectionConsistency = effectiveSectionModel ? checkSectionConsistency(effectiveSectionModel) : null;
   const sectionOverhangDisplayM = effectiveSectionModel ? sectionOverhangM(effectiveSectionModel) : 0;
@@ -281,12 +270,16 @@ export function ModuleDrawingRenderer({
             </>
           )}
         </div>
-      ) : showSection && effectiveSectionModel ? (
+      ) : showSection ? (
         <div className={`${styles.modulePlanFrame} ${isCompact ? styles.modulePlanFrameBare : ''} ${isModel ? styles.modulePlanFrameModel : ''}`}>
           {isCompact ? null : (
             <div className={styles.modulePlanSourceRow}>
-              <div className={effectiveSectionModel.dataSource === 'derived' ? styles.modulePlanSourceDerived : styles.modulePlanSourceFallback}>
-                {effectiveSectionModel.dataSource === 'derived' ? 'Derived' : 'Input fallback'}
+              <div className={hasSolvedDrawingSurfaceGeometry && effectiveGeometrySection ? styles.modulePlanSourceDerived : effectiveSectionModel?.dataSource === 'derived' ? styles.modulePlanSourceDerived : styles.modulePlanSourceFallback}>
+                {hasSolvedDrawingSurfaceGeometry && effectiveGeometrySection
+                  ? 'Solved geometry'
+                  : effectiveSectionModel?.dataSource === 'derived'
+                    ? 'Derived'
+                    : 'Input fallback'}
               </div>
               {sectionConsistency ? (
                 <div className={sectionConsistency.level === 'ok' ? styles.modulePlanConsistencyOk : styles.modulePlanConsistencyWarn}>
@@ -297,6 +290,7 @@ export function ModuleDrawingRenderer({
           )}
           <SectionSvg
             model={effectiveSectionModel}
+            geometrySection={effectiveGeometrySection}
             presentation={presentation}
             drawingScale={appliedDrawingScale}
             sheetViewportMm={sheetViewportMm}
@@ -305,7 +299,7 @@ export function ModuleDrawingRenderer({
             interactiveFields={interactiveFields}
             showDebugOverlays={effectiveShowDebugOverlays}
           />
-          {isCompact ? null : (
+          {isCompact || !effectiveSectionModel ? null : (
             <>
               <LegendRow
                 items={

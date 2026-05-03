@@ -61,6 +61,10 @@ function isStringArray(value) {
   return Array.isArray(value) && value.length > 0 && value.every(isNonEmptyString);
 }
 
+function optionalStringArray(value) {
+  return value === undefined || isStringArray(value);
+}
+
 function validateRegistry(registry, repoFiles) {
   const failures = [];
   if (!registry || registry.version !== 1 || !Array.isArray(registry.entries)) {
@@ -77,6 +81,7 @@ function validateRegistry(registry, repoFiles) {
     if (!VALID_STATUSES.has(entry.status)) failures.push(`${location} must use status current, future, or legacy`);
     if (!isNonEmptyString(entry.ownerArea)) failures.push(`${location} is missing ownerArea`);
     if (!isStringArray(entry.pathPatterns)) failures.push(`${location} is missing non-empty pathPatterns`);
+    if (!optionalStringArray(entry.issueDetails)) failures.push(`${location} issueDetails must be a non-empty string array when provided`);
     if (!isNonEmptyString(entry.reason)) failures.push(`${location} is missing reason`);
     if (!isNonEmptyString(entry.retirementAction)) failures.push(`${location} is missing retirementAction`);
     if (!isNonEmptyString(entry.proofCommand)) failures.push(`${location} is missing proofCommand`);
@@ -89,14 +94,21 @@ function validateRegistry(registry, repoFiles) {
       failures.push(`${location} has current pathPatterns that match no repo files`);
     }
 
-    return { ...entry, compiledPatterns };
+    return { ...entry, compiledPatterns, issueDetails: entry.issueDetails };
   });
 
   return { entries, failures };
 }
 
-function registryEntryFor(file, entries) {
-  return entries.find((entry) => entry.compiledPatterns.some(({ matcher }) => matcher.test(file))) ?? null;
+function registryEntryFor(file, entries, detail = null) {
+  return (
+    entries.find((entry) => {
+      const fileMatches = entry.compiledPatterns.some(({ matcher }) => matcher.test(file));
+      if (!fileMatches) return false;
+      if (!entry.issueDetails) return true;
+      return detail !== null && entry.issueDetails.includes(detail);
+    }) ?? null
+  );
 }
 
 function runKnipJson() {
@@ -165,11 +177,12 @@ function rowsFromKnip(payload, registryEntries) {
     const file = normalizeFile(issue.file);
     for (const key of ['dependencies', 'devDependencies', 'optionalPeerDependencies', 'unlisted', 'binaries', 'unresolved', 'exports', 'types', 'duplicates']) {
       for (const item of issueItems(issue, key)) {
-        const registry = registryEntryFor(file, registryEntries);
+        const detail = item.name || item.member || item.symbol || item.type || 'unnamed finding';
+        const registry = registryEntryFor(file, registryEntries, detail);
         rows.push({
           file,
           issue: key,
-          detail: item.name || item.member || item.symbol || item.type || 'unnamed finding',
+          detail,
           classification: classificationFor(registry, key, file),
           registered: Boolean(registry),
           owner: registry?.ownerArea ?? 'unowned',

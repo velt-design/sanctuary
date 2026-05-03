@@ -1,6 +1,7 @@
 import styles from './CalculatorGrid.module.css';
 import { DEFAULT_ESTIMATE_DRAWING_SCALE, type EstimateDrawingScale } from '@/lib/estimates/drawingSheet';
 import { getViewBoxUnitsPerMetreAtScale } from '@/lib/estimates/drawingSheetLayout';
+import type { GeometrySectionMember2D, GeometrySectionViewModel } from '@sp/geometry';
 import type { ModuleSectionModel } from './moduleViews';
 import {
   DebugOutline,
@@ -35,6 +36,10 @@ import {
   sectionSupportUndersideM,
   sectionSupportXFromHouseM,
 } from './ModuleSectionPresentation';
+import {
+  buildGeometrySectionPresentation,
+  type GeometrySectionPresentationModel,
+} from './ModuleGeometrySectionPresentation';
 import type {
   ModuleDrawingInteractiveFieldMap,
   ModuleDrawingPresentation,
@@ -44,6 +49,7 @@ import type {
 
 export function SectionSvg({
   model,
+  geometrySection,
   presentation = 'card',
   drawingScale = DEFAULT_ESTIMATE_DRAWING_SCALE,
   sheetViewportMm,
@@ -52,7 +58,8 @@ export function SectionSvg({
   interactiveFields,
   showDebugOverlays = false,
 }: {
-  model: ModuleSectionModel;
+  model?: ModuleSectionModel | null;
+  geometrySection?: GeometrySectionViewModel | null;
   presentation?: ModuleDrawingPresentation;
   drawingScale?: EstimateDrawingScale;
   sheetViewportMm?: { widthMm: number; heightMm: number };
@@ -61,6 +68,23 @@ export function SectionSvg({
   interactiveFields?: ModuleDrawingInteractiveFieldMap;
   showDebugOverlays?: boolean;
 }) {
+  if (geometrySection) {
+    return (
+      <GeometrySectionSvg
+        section={geometrySection}
+        presentation={presentation}
+        drawingScale={drawingScale}
+        sheetViewportMm={sheetViewportMm}
+        debugScaleState={debugScaleState}
+        scaleDiagnostics={scaleDiagnostics}
+        interactiveFields={interactiveFields}
+        showDebugOverlays={showDebugOverlays}
+      />
+    );
+  }
+
+  if (!model) return null;
+
   const isSheet = presentation === 'sheet';
   const isModel = presentation === 'model';
   const sectionSheetLayout = isSheet ? resolveSectionSheetLayout({ model, drawingScale, viewportMm: sheetViewportMm }) : null;
@@ -318,6 +342,8 @@ export function SectionSvg({
       data-model-space-view-box={modelSpaceLayout?.viewBoxValue}
       data-model-space-world-box={modelSpaceLayout?.worldBoxValue}
       data-model-space-focus-box={modelSpaceLayout?.focusBoxValue}
+      data-section-render-source="legacy_fallback"
+      data-section-geometry-source="legacy_module_section_model"
       role="img"
       aria-label="Module section view"
       className={`${styles.modulePlanSvg} ${presentation !== 'card' ? styles.modulePlanSvgBare : ''} ${
@@ -617,6 +643,257 @@ export function SectionSvg({
         </text>
       ) : null}
     </svg>
+  );
+}
+
+function geometrySectionMemberClass(role: GeometrySectionMember2D['role']): string {
+  if (role === 'post') return styles.moduleSectionPostPrimary;
+  if (role === 'rafter') return styles.moduleSectionRoofMember;
+  if (role === 'gutter') return styles.moduleSectionGutter;
+  if (role === 'ridge') return styles.moduleSectionRidgeBeam;
+  if (role === 'joiner') return styles.moduleSectionSecondaryMember;
+  if (role === 'ledger' || role === 'beam' || role === 'brace') return styles.moduleSectionPrimaryBeam;
+  return styles.moduleSectionMember;
+}
+
+function GeometrySectionSvg({
+  section,
+  presentation = 'card',
+  drawingScale,
+  sheetViewportMm,
+  debugScaleState,
+  scaleDiagnostics,
+  interactiveFields,
+  showDebugOverlays = false,
+}: {
+  section: GeometrySectionViewModel;
+  presentation?: ModuleDrawingPresentation;
+  drawingScale: EstimateDrawingScale;
+  sheetViewportMm?: { widthMm: number; heightMm: number };
+  debugScaleState?: ModuleDrawingScaleState | null;
+  scaleDiagnostics?: ModuleDrawingScaleDiagnostic[];
+  interactiveFields?: ModuleDrawingInteractiveFieldMap;
+  showDebugOverlays?: boolean;
+}) {
+  const isModel = presentation === 'model';
+  const sectionPresentation = buildGeometrySectionPresentation({
+    section,
+    presentation,
+    drawingScale,
+    sheetViewportMm,
+    debugScaleState,
+    scaleDiagnostics,
+  });
+  const modelSpaceLayout =
+    isModel && sectionPresentation.layout && 'viewBoxValue' in sectionPresentation.layout
+      ? sectionPresentation.layout
+      : null;
+  const pitchInteractiveField = interactiveFields?.['section:pitch'];
+
+  return (
+    <svg
+      viewBox={modelSpaceLayout?.viewBoxValue ?? '0 0 120 90'}
+      width={modelSpaceLayout?.svgWidthPx}
+      height={modelSpaceLayout?.svgHeightPx}
+      overflow={isModel ? 'visible' : undefined}
+      style={sectionPresentation.modelSvgStyle}
+      data-model-space-svg={isModel ? 'section' : undefined}
+      data-model-space-view-box={modelSpaceLayout?.viewBoxValue}
+      data-model-space-world-box={modelSpaceLayout?.worldBoxValue}
+      data-model-space-focus-box={modelSpaceLayout?.focusBoxValue}
+      data-section-render-source={sectionPresentation.source}
+      data-section-geometry-source="geometry_section_view_model"
+      role="img"
+      aria-label="Module section view"
+      className={`${styles.modulePlanSvg} ${presentation !== 'card' ? styles.modulePlanSvgBare : ''} ${
+        presentation === 'sheet' ? styles.modulePlanSvgSheet : ''
+      } ${isModel ? styles.modulePlanSvgModel : ''}`}
+    >
+      {modelSpaceLayout ? <FocusTarget rect={modelSpaceLayout.focusBox} /> : null}
+      {renderGeometrySectionDebug(sectionPresentation, showDebugOverlays)}
+
+      <rect
+        x={sectionPresentation.ground.leftX}
+        y={sectionPresentation.yGround + 1.3}
+        width={sectionPresentation.ground.rightX - sectionPresentation.ground.leftX}
+        height={8}
+        className={styles.moduleSectionGroundFill}
+      />
+      <line
+        x1={sectionPresentation.ground.leftX}
+        y1={sectionPresentation.yGround}
+        x2={sectionPresentation.ground.lineRightX}
+        y2={sectionPresentation.yGround}
+        className={styles.moduleSectionGround}
+      />
+
+      {sectionPresentation.houseSurfaces.map((surface) => (
+        <polygon
+          key={surface.id}
+          points={toPointsAttr(surface.points)}
+          className={sectionHouseSurfaceClass(surface.kind)}
+          data-house-section-surface={surface.kind}
+        />
+      ))}
+      {sectionPresentation.houseLines.map((line) => (
+        <line
+          key={line.id}
+          x1={line.start.x}
+          y1={line.start.y}
+          x2={line.end.x}
+          y2={line.end.y}
+          className={sectionHouseLineClass(line.kind)}
+          data-house-section-line={line.kind}
+        />
+      ))}
+      {sectionPresentation.roofLines.map((line) => (
+        <line
+          key={line.id}
+          x1={line.start.x}
+          y1={line.start.y}
+          x2={line.end.x}
+          y2={line.end.y}
+          className={styles.moduleSectionRoof}
+          data-section-roof-line="roof_plane"
+        />
+      ))}
+      {sectionPresentation.roofCladdingLines.map((line) => (
+        <line
+          key={line.id}
+          x1={line.start.x}
+          y1={line.start.y}
+          x2={line.end.x}
+          y2={line.end.y}
+          className={styles.moduleSectionBoxRoof}
+          data-section-roof-line="roof_cladding"
+        />
+      ))}
+      {sectionPresentation.members.map((member) => (
+        <line
+          key={member.id}
+          x1={member.start.x}
+          y1={member.start.y}
+          x2={member.end.x}
+          y2={member.end.y}
+          className={geometrySectionMemberClass(member.role)}
+          data-section-member-role={member.role}
+        />
+      ))}
+
+      <TickDimension
+        x1={sectionPresentation.dimensions.span.start.x}
+        y1={sectionPresentation.dimensions.span.start.y}
+        x2={sectionPresentation.dimensions.span.end.x}
+        y2={sectionPresentation.dimensions.span.end.y}
+        label={sectionPresentation.dimensions.span.label}
+        textY={sectionPresentation.dimensions.span.textY}
+        presentation={presentation}
+        interactiveField={interactiveFields?.['section:spanA']}
+      />
+
+      {sectionPresentation.dimensions.leftHeight ? (
+        <TickDimension
+          x1={sectionPresentation.dimensions.leftHeight.start.x}
+          y1={sectionPresentation.dimensions.leftHeight.start.y}
+          x2={sectionPresentation.dimensions.leftHeight.end.x}
+          y2={sectionPresentation.dimensions.leftHeight.end.y}
+          label={sectionPresentation.dimensions.leftHeight.label}
+          presentation={presentation}
+          interactiveField={interactiveFields?.['section:heightLeft']}
+        />
+      ) : null}
+      {sectionPresentation.dimensions.rightHeight ? (
+        <TickDimension
+          x1={sectionPresentation.dimensions.rightHeight.start.x}
+          y1={sectionPresentation.dimensions.rightHeight.start.y}
+          x2={sectionPresentation.dimensions.rightHeight.end.x}
+          y2={sectionPresentation.dimensions.rightHeight.end.y}
+          label={sectionPresentation.dimensions.rightHeight.label}
+          presentation={presentation}
+          interactiveField={interactiveFields?.['section:heightRight']}
+        />
+      ) : null}
+      {sectionPresentation.dimensions.ridgeHeight ? (
+        <TickDimension
+          x1={sectionPresentation.dimensions.ridgeHeight.start.x}
+          y1={sectionPresentation.dimensions.ridgeHeight.start.y}
+          x2={sectionPresentation.dimensions.ridgeHeight.end.x}
+          y2={sectionPresentation.dimensions.ridgeHeight.end.y}
+          label={sectionPresentation.dimensions.ridgeHeight.label}
+          presentation={presentation}
+        />
+      ) : null}
+      {sectionPresentation.dimensions.pitch ? (
+        <text
+          x={sectionPresentation.dimensions.pitch.point.x}
+          y={sectionPresentation.dimensions.pitch.point.y + 6.2}
+          textAnchor="middle"
+          className={pitchInteractiveField ? `${styles.moduleSectionPitchLabel} ${styles.moduleDimTextEditable}` : styles.moduleSectionPitchLabel}
+          data-editable-field-id={pitchInteractiveField?.fieldId}
+          tabIndex={pitchInteractiveField?.onActivate ? 0 : undefined}
+          onClick={pitchInteractiveField?.onActivate ? (event) => pitchInteractiveField.onActivate?.(pitchInteractiveField.fieldId, event.currentTarget) : undefined}
+          onKeyDown={
+            pitchInteractiveField?.onActivate
+              ? (event) => {
+                  if (event.key !== 'Enter' && event.key !== ' ') return;
+                  event.preventDefault();
+                  pitchInteractiveField.onActivate?.(pitchInteractiveField.fieldId, event.currentTarget as SVGTextElement);
+                }
+              : undefined
+          }
+        >
+          {sectionPresentation.dimensions.pitch.label}
+        </text>
+      ) : null}
+    </svg>
+  );
+}
+
+function renderGeometrySectionDebug(
+  sectionPresentation: GeometrySectionPresentationModel,
+  showDebugOverlays: boolean,
+) {
+  if (!showDebugOverlays) return null;
+  const { outerField, fitArea, annotatedBounds, debugMetrics } = sectionPresentation.outlines;
+
+  return (
+    <>
+      {outerField ? <DebugOutline rect={outerField} className={styles.moduleDebugCropOutline} marker="outer-section" /> : null}
+      {fitArea ? <DebugOutline rect={fitArea} className={styles.moduleDebugFitOutline} marker="fit-section" /> : null}
+      {annotatedBounds ? (
+        <DebugOutline
+          rect={{
+            x: annotatedBounds.minX,
+            y: annotatedBounds.minY,
+            width: annotatedBounds.maxX - annotatedBounds.minX,
+            height: annotatedBounds.maxY - annotatedBounds.minY,
+          }}
+          className={styles.moduleDebugBoundsOutline}
+          marker="bounds-section"
+        />
+      ) : null}
+      {debugMetrics && outerField ? (
+        <g className={styles.moduleDebugStats} aria-hidden="true">
+          <text x={outerField.x + 1.2} y={outerField.y + 1.6} className={styles.moduleDebugStatsText}>
+            {`req ${debugMetrics.requestedScaleLabel} -> ${debugMetrics.appliedScaleLabel}`}
+          </text>
+          <text x={outerField.x + 1.2} y={outerField.y + 3.1} className={styles.moduleDebugStatsText}>
+            {`bounds ${debugMetrics.boundsWidth.toFixed(1)} x ${debugMetrics.boundsHeight.toFixed(1)}`}
+          </text>
+          <text x={outerField.x + 1.2} y={outerField.y + 4.6} className={styles.moduleDebugStatsText}>
+            {`fit ${debugMetrics.fitWidth.toFixed(1)} x ${debugMetrics.fitHeight.toFixed(1)}`}
+          </text>
+          <text x={outerField.x + 1.2} y={outerField.y + 6.1} className={styles.moduleDebugStatsText}>
+            {`util ${Math.round(debugMetrics.utilizationX * 100)}% x  ${Math.round(debugMetrics.utilizationY * 100)}% y`}
+          </text>
+          {debugMetrics.candidateLines.map((line, idx) => (
+            <text key={`section-debug-scale-${line}`} x={outerField.x + 1.2} y={outerField.y + 7.6 + idx * 1.5} className={styles.moduleDebugStatsText}>
+              {line}
+            </text>
+          ))}
+        </g>
+      ) : null}
+    </>
   );
 }
 

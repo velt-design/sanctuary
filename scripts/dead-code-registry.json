@@ -14,6 +14,22 @@
       "proofCommand": "npm run typecheck && npm run lint"
     },
     {
+      "id": "marketing-build-tooling-dependencies",
+      "category": "dynamic-reference",
+      "status": "current",
+      "ownerArea": "Marketing build tooling",
+      "pathPatterns": [
+        "apps/marketing/package.json"
+      ],
+      "issueDetails": [
+        "sharp",
+        "tailwindcss"
+      ],
+      "reason": "Marketing keeps build-sensitive dependencies that static import analysis may not see: Tailwind is loaded through CSS/PostCSS, and sharp supports production Next image optimization.",
+      "retirementAction": "Remove only after checking marketing CSS/PostCSS config, Next image behavior, production build output, and focused marketing tests.",
+      "proofCommand": "npm run test:marketing && npm run build:marketing"
+    },
+    {
       "id": "next-app-entrypoints",
       "category": "intentional-entrypoint",
       "status": "current",
