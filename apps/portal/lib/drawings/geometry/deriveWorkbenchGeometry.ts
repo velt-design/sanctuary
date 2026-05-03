@@ -135,10 +135,3 @@ export function deriveWorkbenchGeometry(input: {
     }),
   };
 }
-
-export { deriveWorkbenchGeometry as deriveObjectWorkbenchGeometry };
-export type {
-  WorkbenchGeometryDerivation as ObjectWorkbenchGeometryDerivation,
-  WorkbenchPergolaRenderSource as ObjectWorkbenchPergolaRenderSource,
-  WorkbenchPergolaRenderStatus as ObjectWorkbenchPergolaRenderStatus,
-};

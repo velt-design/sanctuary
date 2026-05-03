@@ -16,8 +16,8 @@ import type {
   ObjectWorkbenchPlanPresetDimensionAnnotation,
 } from '@/lib/drawings/views/plan/objectWorkbenchPlanOverlay';
 import type {
-  ObjectWorkbenchPergolaRenderSource,
-  ObjectWorkbenchPergolaRenderStatus,
+  WorkbenchPergolaRenderSource,
+  WorkbenchPergolaRenderStatus,
 } from '@/lib/drawings/geometry/deriveWorkbenchGeometry';
 import type { ModulePlanModel } from './moduleViews';
 import {
@@ -157,8 +157,8 @@ export function PlanSvg({
   objectWorkbenchPreviewOverlay?: ObjectWorkbenchPreviewOverlay | null;
   modelSpacePergolaGeometry?: GeometryPlanViewModel | null;
   modelSpaceTopProjection?: GeometryTopProjectionViewModel | null;
-  modelSpacePergolaRenderSource?: ObjectWorkbenchPergolaRenderSource;
-  modelSpacePergolaRenderStatus?: ObjectWorkbenchPergolaRenderStatus;
+  modelSpacePergolaRenderSource?: WorkbenchPergolaRenderSource;
+  modelSpacePergolaRenderStatus?: WorkbenchPergolaRenderStatus;
 }) {
   const effectiveShowDebugOverlays = showDebugOverlays ?? presentation === 'sheet';
   const isSheet = presentation === 'sheet';

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import DrawingWorkbench from '@/components/drawings/workbench/DrawingWorkbench';
 import type { Geometry3DViewportState } from '@/components/drawings/viewports/Geometry3DViewport';
-import type { ObjectWorkbenchGeometryPreviewState } from '@/lib/drawings/geometry/buildWorkbenchGeometryPreview';
+import type { GeometryPreviewState } from '@/lib/drawings/geometry/buildWorkbenchGeometryPreview';
 import {
   buildObjectWorkbenchGeometryEditState,
 } from '@/lib/drawings/geometry/geometryEditAdapter';
@@ -253,7 +253,7 @@ export default function DesignWorkbenchEstimateClient({
       isPergolaTabActive,
     ],
   );
-  const geometryPreview: ObjectWorkbenchGeometryPreviewState =
+  const geometryPreview: GeometryPreviewState =
     store.derived.activeViewportGeometry?.preview ?? {
       kind: 'error',
       message: 'No active 3D geometry preview is available.',

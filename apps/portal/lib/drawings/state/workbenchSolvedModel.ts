@@ -14,9 +14,9 @@ import {
 } from '@sp/geometry';
 import type { ModulePlanModel, ModuleSectionModel } from '@/app/staff/calculator/moduleViews';
 import {
-  deriveObjectWorkbenchGeometry,
-  type ObjectWorkbenchPergolaRenderSource,
-  type ObjectWorkbenchPergolaRenderStatus,
+  deriveWorkbenchGeometry,
+  type WorkbenchPergolaRenderSource,
+  type WorkbenchPergolaRenderStatus,
 } from '@/lib/drawings/geometry/deriveWorkbenchGeometry';
 import { buildObjectWorkbenchGeometryContext, type ObjectWorkbenchGeometryContext } from '@/lib/drawings/geometry/objectWorkbenchGeometryContext';
 import { coerceHiddenWorkbenchGableBaseline } from '@/lib/drawings/geometry/hiddenWorkbenchGableBaseline';
@@ -76,7 +76,7 @@ export type WorkbenchTrustStatusKind =
 export type WorkbenchTrustStatus = {
   status: WorkbenchTrustStatusKind;
   issues: WorkbenchTrustStatusKind[];
-  renderSource: ObjectWorkbenchPergolaRenderSource | 'none';
+  renderSource: WorkbenchPergolaRenderSource | 'none';
   message: string | null;
 };
 
@@ -120,8 +120,8 @@ export type WorkbenchSolvedGeometryArtifact = {
   viewerScene: ViewerSceneModel;
   validation: GeometryValidationReport;
   trust: WorkbenchTrustStatus;
-  renderSource: ObjectWorkbenchPergolaRenderSource;
-  renderStatus: ObjectWorkbenchPergolaRenderStatus;
+  renderSource: WorkbenchPergolaRenderSource;
+  renderStatus: WorkbenchPergolaRenderStatus;
 };
 
 export type WorkbenchViewportGeometry = {
@@ -143,8 +143,8 @@ export type WorkbenchSolvedModule = {
   resultSource: WorkbenchGeometryResultSource;
   draftTouchesGeometry: boolean;
   trust: WorkbenchTrustStatus;
-  renderSource: ObjectWorkbenchPergolaRenderSource;
-  renderStatus: ObjectWorkbenchPergolaRenderStatus;
+  renderSource: WorkbenchPergolaRenderSource;
+  renderStatus: WorkbenchPergolaRenderStatus;
   geometryArtifact: WorkbenchSolvedGeometryArtifact | null;
   config: GeometryConfig | null;
   assembly: Assembly3D | null;
@@ -544,7 +544,7 @@ export function resolveWorkbenchTrustGate(trust: WorkbenchTrustStatus): Workbenc
 function buildTrustStatus(input: {
   status: WorkbenchTrustStatusKind;
   issues?: WorkbenchTrustStatusKind[];
-  renderSource: ObjectWorkbenchPergolaRenderSource | 'none';
+  renderSource: WorkbenchPergolaRenderSource | 'none';
   message?: string | null;
 }): WorkbenchTrustStatus {
   return {
@@ -727,7 +727,7 @@ function buildSolvedModule(input: {
     result: resolved.moduleResult,
   };
 
-  const derivation = deriveObjectWorkbenchGeometry({
+  const derivation = deriveWorkbenchGeometry({
     projectId: input.geometryIdentity.projectId,
     estimateId: input.geometryIdentity.estimateId,
     designRequestId: input.geometryIdentity.designRequestId,

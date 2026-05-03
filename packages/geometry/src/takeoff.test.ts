@@ -85,14 +85,42 @@ describe("buildAssemblyQuantityTakeoff", () => {
     expect(takeoff.primaryDimensionsMm).toEqual({ length: 6000, projection: 3000 });
     expect(takeoff.roofPlanes.count).toBe(assembly.roofPlanes.length);
     expect(takeoff.roofPlanes.totalAreaMm2).toBeCloseTo(expectedRoofAreaMm2, 3);
+    expect(takeoff.roofPlanes.items[0]).toEqual(
+      expect.objectContaining({
+        id: assembly.roofPlanes[0]?.id,
+        rafterCount: assembly.members.filter((member) => member.role === "rafter").length,
+        claddingPanelCount: assembly.roofCladdingPanels.length,
+        joinerCount: assembly.members.filter((member) => member.role === "joiner").length,
+      }),
+    );
     expect(takeoff.roofCladding.panelCount).toBe(assembly.roofCladdingPanels.length);
     expect(takeoff.roofCladding.totalAreaMm2).toBeCloseTo(expectedCladdingAreaMm2, 3);
+    expect(takeoff.roofCladding.items).toHaveLength(assembly.roofCladdingPanels.length);
+    expect(takeoff.roofCladding.items[0]).toEqual(
+      expect.objectContaining({
+        id: assembly.roofCladdingPanels[0]?.id,
+        material: "acrylic",
+        roofPlaneId: assembly.roofPlanes[0]?.id,
+        thicknessMm: assembly.roofCladdingPanels[0]?.thicknessMm,
+      }),
+    );
     expect(takeoff.members.byRole.post.count).toBe(hookQuantity(assembly, "posts.count"));
+    expect(takeoff.members.items).toHaveLength(assembly.members.length);
+    expect(takeoff.members.byRole.post.items).toHaveLength(takeoff.members.byRole.post.count);
+    expect(takeoff.members.byRole.post.items[0]).toEqual(
+      expect.objectContaining({
+        role: "post",
+        lengthMm: expect.any(Number),
+        profileKey: expect.any(String),
+      }),
+    );
     expect(takeoff.members.byRole.rafter.totalLengthMm).toBeCloseTo(
       hookQuantity(assembly, "rafters.total_length_mm"),
       0,
     );
     expect(takeoff.joiners.count).toBe(assembly.members.filter((member) => member.role === "joiner").length);
+    expect(takeoff.joiners.items).toHaveLength(takeoff.joiners.count);
+    expect(takeoff.gutters.items).toHaveLength(takeoff.members.byRole.gutter.count);
     expect(takeoff.quantityHooks).toEqual([...assembly.quantityHooks].sort((a, b) => a.key.localeCompare(b.key)));
     expect(takeoff.diagnostics).toEqual([]);
   });
@@ -110,6 +138,8 @@ describe("buildAssemblyQuantityTakeoff", () => {
       expect(takeoff.family).toBe(assembly.family);
       expect(takeoff.roofPlanes.count).toBe(2);
       expect(takeoff.roofPlanes.items).toHaveLength(2);
+      expect(takeoff.roofPlanes.items.map((plane) => plane.rafterCount)).toEqual([12, 12]);
+      expect(takeoff.roofPlanes.items.every((plane) => plane.rafterTotalLengthMm > 0)).toBe(true);
       expect(takeoff.members.byRole.ridge.totalLengthMm).toBeGreaterThan(0);
       expect(takeoff.beams.tieBeamLengthMm).toBeCloseTo(expectedTieLengthMm, 3);
       expect(takeoff.quantityHookMap["roof_planes.count"]).toBe(2);
@@ -125,9 +155,28 @@ describe("buildAssemblyQuantityTakeoff", () => {
       hookQuantity(assembly, "box_perimeter_beams.total_length_mm"),
       0,
     );
+    expect(takeoff.beams.supportBeamItems.map((member) => member.id)).toEqual([
+      "left-box-beam",
+      "outer-box-beam",
+      "right-box-beam",
+    ]);
     expect(takeoff.gutters.ourGutterLengthMm).toBeCloseTo(
       hookQuantity(assembly, "outer_gutter.length_mm"),
       0,
+    );
+    expect(takeoff.gutters.items).toEqual([
+      expect.objectContaining({
+        id: "outer-gutter",
+        role: "gutter",
+        lengthMm: expect.any(Number),
+      }),
+    ]);
+    expect(takeoff.roofPlanes.items[0]).toEqual(
+      expect.objectContaining({
+        rafterCount: 10,
+        claddingPanelCount: 0,
+        joinerCount: 0,
+      }),
     );
     expect(takeoff.members.byRole.post.count).toBe(3);
   });
@@ -144,6 +193,10 @@ describe("buildAssemblyQuantityTakeoff", () => {
     expect(takeoff.beams.supportBeamLengthMm).toBeCloseTo(
       hookQuantity(assembly, "support_beams.total_length_mm"),
       0,
+    );
+    expect(takeoff.members.byRole.rafter.items.length).toBeGreaterThan(0);
+    expect(takeoff.members.byRole.rafter.items.map((member) => member.metadata?.wing)).toEqual(
+      expect.arrayContaining(["A", "B"]),
     );
     expect(takeoff.gutters.ourGutterLengthMm).toBeCloseTo(
       hookQuantity(assembly, "gutters.total_length_mm"),

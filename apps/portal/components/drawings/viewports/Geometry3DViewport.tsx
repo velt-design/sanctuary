@@ -23,8 +23,8 @@ import type {
   ViewerSceneRoofPlaneObject,
 } from "@sp/geometry";
 import type {
-  ObjectWorkbenchGeometryPreviewMode,
-  ObjectWorkbenchGeometryPreviewState,
+  GeometryPreviewMode,
+  GeometryPreviewState,
 } from "@/lib/drawings/geometry/buildWorkbenchGeometryPreview";
 import type { DrawingWorkbenchVisibilityState } from "@/lib/drawings/state/drawingWorkbenchUiState";
 import type { ObjectWorkbenchDisplayFamily } from "@/lib/drawings/state/objectWorkbenchViewportTypes";
@@ -2032,7 +2032,7 @@ function houseRoofQaSummary(
   return rows;
 }
 
-function previewModeLabel(previewMode: ObjectWorkbenchGeometryPreviewMode): string {
+function previewModeLabel(previewMode: GeometryPreviewMode): string {
   if (previewMode === "snapshot_validated") return "Snapshot Validated";
   if (previewMode === "snapshot_local_resolved") return "Snapshot Resolved Locally";
   return "Draft Resolved Locally";
@@ -3467,7 +3467,7 @@ export default function Geometry3DViewport({
   viewportState,
   onViewportStateChange,
 }: {
-  geometryPreview?: ObjectWorkbenchGeometryPreviewState | null;
+  geometryPreview?: GeometryPreviewState | null;
   objectWorkbenchDisplayFamily?: ObjectWorkbenchDisplayFamily;
   visibility?: DrawingWorkbenchVisibilityState;
   viewportKey?: string;

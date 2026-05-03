@@ -554,5 +554,3 @@ export function buildRawGeometryModuleInput(input: {
     },
   };
 }
-
-export { buildRawGeometryModuleInput as buildObjectWorkbenchRawGeometryModuleInput };

@@ -6,7 +6,7 @@ import {
   labelForRoofFieldSource,
   labelForRoofGeometryKind,
 } from '@/components/drawings/rail/objectRailShared';
-import type { ObjectWorkbenchGeometryPreviewState } from '@/lib/drawings/geometry/buildWorkbenchGeometryPreview';
+import type { GeometryPreviewState } from '@/lib/drawings/geometry/buildWorkbenchGeometryPreview';
 import type {
   DrawingWorkbenchCompatibilitySelectionState,
   DrawingWorkbenchUiState,
@@ -18,7 +18,7 @@ type WorkbenchDiagnosticsPanelProps = {
   objectWorkbench: ObjectWorkbenchInspectorFacade;
   ui: DrawingWorkbenchUiState;
   compatibilitySelection: DrawingWorkbenchCompatibilitySelectionState;
-  geometryPreview: ObjectWorkbenchGeometryPreviewState;
+  geometryPreview: GeometryPreviewState;
 };
 
 function metadataString(metadata: Record<string, unknown> | undefined, key: string): string | null {

@@ -4,8 +4,8 @@ import type { GeometryPlanViewModel, GeometryTopProjectionViewModel } from '@sp/
 import { buildAssemblyModel } from '@/lib/drawings/assembly/buildAssemblyModel';
 import type { DrawingAssemblyModel } from '@/lib/drawings/assembly/types';
 import type {
-  ObjectWorkbenchPergolaRenderSource,
-  ObjectWorkbenchPergolaRenderStatus,
+  WorkbenchPergolaRenderSource,
+  WorkbenchPergolaRenderStatus,
 } from '@/lib/drawings/geometry/deriveWorkbenchGeometry';
 import { buildObjectWorkbenchGeometryContext } from '@/lib/drawings/geometry/objectWorkbenchGeometryContext';
 import { buildPlanViewModel, type PlanViewModel } from '@/lib/drawings/views/plan/buildPlanViewModel';
@@ -70,8 +70,8 @@ type DrawingWorkbenchModuleEntry = {
   geometryPlanViewModel: GeometryPlanViewModel | null;
   geometryTopProjectionViewModel: GeometryTopProjectionViewModel | null;
   viewportGeometry: WorkbenchViewportGeometry;
-  planRenderSource: ObjectWorkbenchPergolaRenderSource;
-  planRenderStatus: ObjectWorkbenchPergolaRenderStatus;
+  planRenderSource: WorkbenchPergolaRenderSource;
+  planRenderStatus: WorkbenchPergolaRenderStatus;
   planModel: ModulePlanModel | null;
   sectionModel: ModuleSectionModel | null;
   solution: WorkbenchSolvedModule;

@@ -41,11 +41,3 @@ export function buildWorkbenchGeometryPreview(input: {
 
   return buildGeometryPreviewStateFromSolvedModel(solvedModel);
 }
-
-export {
-  buildWorkbenchGeometryPreview as buildObjectWorkbenchGeometryPreview,
-};
-export type {
-  GeometryPreviewMode as ObjectWorkbenchGeometryPreviewMode,
-  GeometryPreviewState as ObjectWorkbenchGeometryPreviewState,
-} from '../state/workbenchSolvedModel';

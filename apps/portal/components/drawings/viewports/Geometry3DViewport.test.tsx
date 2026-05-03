@@ -16,7 +16,7 @@ import type {
   ViewerSceneObject,
 } from "@sp/geometry";
 import { getSanctuaryGeometryWorkbenchFixture } from "@/lib/drawings/sanctuaryWorkbenchFixtures";
-import { buildObjectWorkbenchGeometryPreview } from "@/lib/drawings/geometry/buildWorkbenchGeometryPreview";
+import { buildWorkbenchGeometryPreview } from "@/lib/drawings/geometry/buildWorkbenchGeometryPreview";
 import { buildEstimateDrawingDraftFromSnapshot } from "@/lib/estimates/drawingEdits";
 import { applyObjectWorkbenchGeometryEditIntent } from "@/lib/drawings/geometry/geometryEditAdapter";
 import { buildDrawingWorkbenchStore } from "@/lib/drawings/state/drawingWorkbenchStore";
@@ -597,7 +597,7 @@ function buildMovedHousePreview(input: {
     draft = result.draft;
   }
 
-  const geometryPreview = buildObjectWorkbenchGeometryPreview({
+  const geometryPreview = buildWorkbenchGeometryPreview({
     projectId: "proj_preview",
     estimateId: fixture.estimate.id,
     designRequestId: fixture.request.id,
@@ -616,7 +616,7 @@ function buildScreenshotStyleRoofPreview(
 ) {
   const fixture = requireFixture(slug);
 
-  return buildObjectWorkbenchGeometryPreview({
+  return buildWorkbenchGeometryPreview({
     projectId: "proj_preview",
     estimateId: fixture.estimate.id,
     designRequestId: fixture.request.id,
@@ -731,7 +731,7 @@ describe("Geometry3DViewport", () => {
 
   it("clips rectangular gable rafter tail geometry at the gutter inside face", () => {
     const fixture = requireFixture("gable-standard");
-    const geometryPreview = buildObjectWorkbenchGeometryPreview({
+    const geometryPreview = buildWorkbenchGeometryPreview({
       projectId: "proj_preview",
       estimateId: fixture.estimate.id,
       designRequestId: fixture.request.id,
@@ -825,7 +825,7 @@ describe("Geometry3DViewport", () => {
       return;
     }
 
-    const geometryPreview = buildObjectWorkbenchGeometryPreview({
+    const geometryPreview = buildWorkbenchGeometryPreview({
       projectId: "proj_preview",
       estimateId: fixture.estimate.id,
       designRequestId: fixture.request.id,
@@ -903,7 +903,7 @@ describe("Geometry3DViewport", () => {
 
   it("renders inspection controls, camera actions, and inspector updates for the 3D scene", async () => {
     const fixture = requireFixture("mono-standard");
-    const geometryPreview = buildObjectWorkbenchGeometryPreview({
+    const geometryPreview = buildWorkbenchGeometryPreview({
       projectId: "proj_preview",
       estimateId: fixture.estimate.id,
       designRequestId: fixture.request.id,
@@ -1281,7 +1281,7 @@ describe("Geometry3DViewport", () => {
 
   it("suppresses native selection on the 3D canvas shell without blocking workspace panel controls", async () => {
     const fixture = requireFixture("mono-standard");
-    const geometryPreview = buildObjectWorkbenchGeometryPreview({
+    const geometryPreview = buildWorkbenchGeometryPreview({
       projectId: "proj_preview",
       estimateId: fixture.estimate.id,
       designRequestId: fixture.request.id,
@@ -1338,7 +1338,7 @@ describe("Geometry3DViewport", () => {
 
   it("renders and inspects semantic house model scene objects", async () => {
     const fixture = requireFixture("mono-standard");
-    const geometryPreview = buildObjectWorkbenchGeometryPreview({
+    const geometryPreview = buildWorkbenchGeometryPreview({
       projectId: "proj_preview",
       estimateId: fixture.estimate.id,
       designRequestId: fixture.request.id,
@@ -1523,7 +1523,7 @@ describe("Geometry3DViewport", () => {
         },
       ]);
 
-    const geometryPreview = buildObjectWorkbenchGeometryPreview({
+    const geometryPreview = buildWorkbenchGeometryPreview({
       projectId: "proj_preview",
       estimateId: fixture.estimate.id,
       designRequestId: fixture.request.id,
@@ -1672,7 +1672,7 @@ describe("Geometry3DViewport", () => {
       draft = result.draft;
     }
 
-    const geometryPreview = buildObjectWorkbenchGeometryPreview({
+    const geometryPreview = buildWorkbenchGeometryPreview({
       projectId: "proj_preview",
       estimateId: fixture.estimate.id,
       designRequestId: fixture.request.id,
@@ -1993,7 +1993,7 @@ describe("Geometry3DViewport", () => {
 
   it("skips invalid semantic house objects without corrupting scene focus", async () => {
     const fixture = requireFixture("mono-standard");
-    const geometryPreview = buildObjectWorkbenchGeometryPreview({
+    const geometryPreview = buildWorkbenchGeometryPreview({
       projectId: "proj_preview",
       estimateId: fixture.estimate.id,
       designRequestId: fixture.request.id,
@@ -2146,7 +2146,7 @@ describe("Geometry3DViewport", () => {
       projection_m: null,
     };
 
-    const geometryPreview = buildObjectWorkbenchGeometryPreview({
+    const geometryPreview = buildWorkbenchGeometryPreview({
       projectId: "proj_preview",
       estimateId: fixture.estimate.id,
       snapshot,
@@ -2190,7 +2190,7 @@ describe("Geometry3DViewport", () => {
       return;
     }
 
-    const geometryPreview = buildObjectWorkbenchGeometryPreview({
+    const geometryPreview = buildWorkbenchGeometryPreview({
       projectId: "proj_preview",
       estimateId: fixture.estimate.id,
       designRequestId: fixture.request.id,

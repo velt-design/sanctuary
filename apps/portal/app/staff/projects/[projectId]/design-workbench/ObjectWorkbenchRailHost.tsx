@@ -2,7 +2,7 @@
 
 import { useCallback, type Dispatch, type SetStateAction } from 'react';
 import ObjectWorkbenchRail from '@/components/drawings/rail/ObjectWorkbenchRail';
-import type { ObjectWorkbenchGeometryPreviewState } from '@/lib/drawings/geometry/buildWorkbenchGeometryPreview';
+import type { GeometryPreviewState } from '@/lib/drawings/geometry/buildWorkbenchGeometryPreview';
 import type { ObjectWorkbenchGeometryEditState } from '@/lib/drawings/geometry/geometryEditAdapter';
 import type { DrawingWorkbenchStore } from '@/lib/drawings/state/drawingWorkbenchStore';
 import {
@@ -22,7 +22,7 @@ import WorkbenchDiagnosticsPanel from './WorkbenchDiagnosticsPanel';
 type ObjectWorkbenchRailHostProps = {
   activeModuleInput: CalculatorModuleInputs | null;
   geometryEditState: ObjectWorkbenchGeometryEditState | null;
-  geometryPreview: ObjectWorkbenchGeometryPreviewState;
+  geometryPreview: GeometryPreviewState;
   isLocked: boolean;
   objectSelectionActions: ObjectWorkbenchSelectionActions;
   objectWorkbenchActions: ObjectWorkbenchActions;

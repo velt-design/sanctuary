@@ -1,4 +1,4 @@
-import type { ObjectWorkbenchPergolaRenderStatus } from '@/lib/drawings/geometry/deriveWorkbenchGeometry';
+import type { WorkbenchPergolaRenderStatus } from '@/lib/drawings/geometry/deriveWorkbenchGeometry';
 import {
   labelForWorkbenchTrustStatus,
   type WorkbenchTrustStatus,
@@ -66,7 +66,7 @@ export type DrawingWorkbenchRailModel = {
 
 type DrawingWorkbenchRailPergolaModuleState = {
   pergolaId: string | null | undefined;
-  planRenderStatus: ObjectWorkbenchPergolaRenderStatus;
+  planRenderStatus: WorkbenchPergolaRenderStatus;
   trust: WorkbenchTrustStatus;
 };
 

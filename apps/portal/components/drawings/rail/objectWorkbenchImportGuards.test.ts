@@ -96,6 +96,8 @@ const OBJECT_FIRST_TO_COMPATIBILITY_DRAFT_BUILDER =
   /\bbuildObjectWorkbenchCompatibilityDraftFromObjectFirstDraft\b/;
 const ACTIVE_WORKBENCH_PREVIEW_BUILDER =
   /\bbuildObjectWorkbenchGeometryPreview\b/;
+const RETIRED_ACTIVE_GEOMETRY_ALIAS_NAMES =
+  /\b(?:buildObjectWorkbenchRawGeometryModuleInput|deriveObjectWorkbenchGeometry|ObjectWorkbenchGeometryDerivation|ObjectWorkbenchPergolaRenderSource|ObjectWorkbenchPergolaRenderStatus|buildObjectWorkbenchGeometryPreview|ObjectWorkbenchGeometryPreviewMode|ObjectWorkbenchGeometryPreviewState)\b/;
 const LEGACY_RENDERER_BOUNDARY_NAMES =
   /\b(?:HouseFirstPlanShapeDragStartMeta|HouseFirstObjectPreviewOverlay|houseFirstPlanOverlay|houseFirstPreviewOverlay|activeHouseFirstCustomEdgeId|hoveredHouseFirstDeckId|onHouseFirstShapeSelect|onHouseFirstDeckHoverChange|onHouseFirstShapeDragStart|onHouseFirstCustomEdgeSelect|onHouseFirstDimensionActivate)\b/;
 const REMOVED_PLAN_VIEW_MODEL_COMPATIBILITY_PROPS =
@@ -540,6 +542,33 @@ describe('object workbench import guards', () => {
     }
     if (/\bbuildHouseFirstWorkbenchProjectModel\b/.test(geometryEditAdapterSource)) {
       violations.push(`${geometryEditAdapterPath} calls buildHouseFirstWorkbenchProjectModel directly`);
+    }
+
+    expect(violations).toEqual([]);
+  });
+
+  it('keeps active geometry consumers on canonical geometry names', () => {
+    const violations: string[] = [];
+    const roots = [
+      path.join('apps', 'portal', 'lib', 'drawings', 'geometry'),
+      path.join('apps', 'portal', 'lib', 'drawings', 'state'),
+      path.join('apps', 'portal', 'components', 'drawings'),
+      path.join('apps', 'portal', 'app', 'staff', 'calculator'),
+      path.join('apps', 'portal', 'app', 'staff', 'projects', '[projectId]', 'design-workbench'),
+    ];
+    const guardPath = path.normalize(
+      path.join('apps', 'portal', 'components', 'drawings', 'rail', 'objectWorkbenchImportGuards.test.ts'),
+    );
+
+    for (const root of roots) {
+      for (const absolutePath of listSourceFiles(path.join(process.cwd(), root), { includeTests: true })) {
+        const relativePath = toRepoRelativePath(absolutePath);
+        if (relativePath === guardPath) continue;
+        const source = fs.readFileSync(absolutePath, 'utf8');
+        if (RETIRED_ACTIVE_GEOMETRY_ALIAS_NAMES.test(source)) {
+          violations.push(`${relativePath} uses a retired active geometry alias name`);
+        }
+      }
     }
 
     expect(violations).toEqual([]);

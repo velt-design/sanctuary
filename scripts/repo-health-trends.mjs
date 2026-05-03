@@ -6,10 +6,10 @@ const ROOT = process.cwd();
 const DASHBOARD_PATH = path.join(ROOT, 'docs', 'repo-health-trends.md');
 const UPDATE = process.argv.includes('--update');
 const HEADLINE_METRICS = [
-  ['Dead-code delete candidates', 'deadCodeDeleteCandidates'],
-  ['Critical files', 'criticalFiles'],
-  ['Root compatibility files', 'rootCompatFiles'],
-  ['Browser-direct Supabase files', 'browserDirectSupabase'],
+  ['Dead-code delete candidates', 'deadCodeDeleteCandidates', 'dead-code cleanup'],
+  ['Critical files', 'criticalFiles', 'large-file decomposition'],
+  ['Root compatibility files', 'rootCompatFiles', 'root compatibility retirement'],
+  ['Browser-direct Supabase files', 'browserDirectSupabase', 'browser data-access migration'],
 ];
 
 function runNpmScript(scriptName) {
@@ -164,28 +164,89 @@ function previousSnapshotFor(snapshot) {
     .at(-1) ?? null;
 }
 
+function baselineSnapshotFor(snapshot) {
+  return parseTrendRows()
+    .filter((row) => row.date <= snapshot.date)
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .at(0) ?? null;
+}
+
+function deltaValue(currentValue, previousValue) {
+  if (typeof previousValue !== 'number' || Number.isNaN(previousValue)) return null;
+  return currentValue - previousValue;
+}
+
 function formatDelta(currentValue, previousValue) {
-  if (typeof previousValue !== 'number' || Number.isNaN(previousValue)) return 'n/a';
-  const delta = currentValue - previousValue;
+  const delta = deltaValue(currentValue, previousValue);
+  if (delta === null) return 'n/a';
   if (delta === 0) return '0';
   return delta > 0 ? `+${delta}` : String(delta);
 }
 
-function printHeadline(snapshot, previousSnapshot) {
-  const valueWidth = Math.max('Current'.length, ...HEADLINE_METRICS.map(([, key]) => String(snapshot[key]).length));
-  const deltaWidth = Math.max('Delta'.length, ...HEADLINE_METRICS.map(([, key]) => formatDelta(snapshot[key], previousSnapshot?.[key]).length));
+function directionFor(currentValue, baselineValue) {
+  const delta = deltaValue(currentValue, baselineValue);
+  if (delta === null) return 'new';
+  if (delta < 0) return 'better';
+  if (delta > 0) return 'worse';
+  return 'flat';
+}
+
+function recommendedLane(snapshot, previousSnapshot, baselineSnapshot) {
+  const candidates = HEADLINE_METRICS.map(([label, key, lane]) => {
+    const previousDelta = deltaValue(snapshot[key], previousSnapshot?.[key]);
+    const baselineDelta = deltaValue(snapshot[key], baselineSnapshot?.[key]);
+    const score = Math.max(previousDelta ?? 0, baselineDelta ?? 0);
+    return { label, lane, score, previousDelta, baselineDelta };
+  }).filter((candidate) => candidate.score > 0);
+
+  if (candidates.length === 0) {
+    return 'Recommended next lane: no headline metric is worse than the available comparison snapshots; choose the current highest-priority cleanup lane manually.';
+  }
+
+  const worst = candidates.sort((a, b) => b.score - a.score || a.label.localeCompare(b.label))[0];
+  const reason =
+    worst.baselineDelta && worst.baselineDelta > 0
+      ? `${worst.label} is up ${worst.baselineDelta} from baseline`
+      : `${worst.label} is up ${worst.previousDelta} from the previous snapshot`;
+  return `Recommended next lane: ${worst.lane}, because ${reason}.`;
+}
+
+function printHeadline(snapshot, previousSnapshot, baselineSnapshot) {
+  const rows = HEADLINE_METRICS.map(([label, key]) => ({
+    label,
+    current: String(snapshot[key]),
+    previousDelta: formatDelta(snapshot[key], previousSnapshot?.[key]),
+    baselineDelta: formatDelta(snapshot[key], baselineSnapshot?.[key]),
+    direction: directionFor(snapshot[key], baselineSnapshot?.[key]),
+  }));
+  const widths = {
+    label: Math.max('Metric'.length, ...rows.map((row) => row.label.length)),
+    current: Math.max('Current'.length, ...rows.map((row) => row.current.length)),
+    previous: Math.max('Vs previous'.length, ...rows.map((row) => row.previousDelta.length)),
+    baseline: Math.max('Vs baseline'.length, ...rows.map((row) => row.baselineDelta.length)),
+    direction: Math.max('Direction'.length, ...rows.map((row) => row.direction.length)),
+  };
 
   console.log('Headline');
-  console.log(`Metric                           ${'Current'.padStart(valueWidth)}  ${'Delta'.padStart(deltaWidth)}`);
-  console.log(`-------------------------------  ${'-'.repeat(valueWidth)}  ${'-'.repeat(deltaWidth)}`);
-  for (const [label, key] of HEADLINE_METRICS) {
-    console.log(`${label.padEnd(31)}  ${String(snapshot[key]).padStart(valueWidth)}  ${formatDelta(snapshot[key], previousSnapshot?.[key]).padStart(deltaWidth)}`);
+  console.log(
+    `${'Metric'.padEnd(widths.label)}  ${'Current'.padStart(widths.current)}  ${'Vs previous'.padStart(widths.previous)}  ${'Vs baseline'.padStart(widths.baseline)}  ${'Direction'.padStart(widths.direction)}`,
+  );
+  console.log(
+    `${'-'.repeat(widths.label)}  ${'-'.repeat(widths.current)}  ${'-'.repeat(widths.previous)}  ${'-'.repeat(widths.baseline)}  ${'-'.repeat(widths.direction)}`,
+  );
+  for (const row of rows) {
+    console.log(
+      `${row.label.padEnd(widths.label)}  ${row.current.padStart(widths.current)}  ${row.previousDelta.padStart(widths.previous)}  ${row.baselineDelta.padStart(widths.baseline)}  ${row.direction.padStart(widths.direction)}`,
+    );
   }
+  console.log('');
+  console.log(recommendedLane(snapshot, previousSnapshot, baselineSnapshot));
   console.log('');
 }
 
 function printSnapshot(snapshot) {
   const previousSnapshot = previousSnapshotFor(snapshot);
+  const baselineSnapshot = baselineSnapshotFor(snapshot);
   const rows = metricRows(snapshot);
   const metricWidth = Math.max('Metric'.length, ...rows.map(([metric]) => metric.length));
   const valueWidth = Math.max('Value'.length, ...rows.map(([, value]) => String(value).length));
@@ -193,8 +254,9 @@ function printSnapshot(snapshot) {
   console.log('repo-health-trends: current advisory snapshot');
   console.log(`Date: ${snapshot.date}`);
   if (previousSnapshot) console.log(`Compared with: ${previousSnapshot.date}`);
+  if (baselineSnapshot) console.log(`Baseline: ${baselineSnapshot.date}`);
   console.log('');
-  printHeadline(snapshot, previousSnapshot);
+  printHeadline(snapshot, previousSnapshot, baselineSnapshot);
   console.log(`${'Metric'.padEnd(metricWidth)}  ${'Value'.padStart(valueWidth)}`);
   console.log(`${'-'.repeat(metricWidth)}  ${'-'.repeat(valueWidth)}`);
   for (const [metric, value] of rows) {

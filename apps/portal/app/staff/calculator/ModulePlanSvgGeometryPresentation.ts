@@ -9,8 +9,8 @@ import type {
 } from '@sp/geometry';
 import type { DrawingWorkbenchVisibilityState } from '@/lib/drawings/state/drawingWorkbenchUiState';
 import type {
-  ObjectWorkbenchPergolaRenderSource,
-  ObjectWorkbenchPergolaRenderStatus,
+  WorkbenchPergolaRenderSource,
+  WorkbenchPergolaRenderStatus,
 } from '@/lib/drawings/geometry/deriveWorkbenchGeometry';
 import {
   mmPointToPlanSvg,
@@ -87,8 +87,8 @@ export type PlanSvgGeometryPresentation = PlanSvgGeometryPresentationMode & {
 export function resolvePlanSvgGeometryPresentationMode(input: {
   presentation: 'card' | 'minimal' | 'sheet' | 'model';
   showPergolaGeometry: boolean;
-  modelSpacePergolaRenderSource: ObjectWorkbenchPergolaRenderSource;
-  modelSpacePergolaRenderStatus: ObjectWorkbenchPergolaRenderStatus;
+  modelSpacePergolaRenderSource: WorkbenchPergolaRenderSource;
+  modelSpacePergolaRenderStatus: WorkbenchPergolaRenderStatus;
   modelSpaceTopProjection?: GeometryTopProjectionViewModel | null;
   modelSpacePergolaGeometry?: GeometryPlanViewModel | null;
 }): PlanSvgGeometryPresentationMode {

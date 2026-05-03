@@ -847,11 +847,34 @@ export type GeometryQuantityTakeoffDimensionSet = {
   projection: number;
 };
 
+export type GeometryQuantityTakeoffMemberItem = {
+  id: string;
+  role: AssemblyMemberRole;
+  lengthMm: number;
+  lengthM: number;
+  profile: AssemblyMemberProfile;
+  profileKey: string;
+  metadata?: GeometryMetadata;
+};
+
 export type GeometryQuantityTakeoffRoofPlane = {
   id: string;
   label?: string;
   areaMm2: number;
   areaM2: number;
+  rafterCount: number;
+  rafterTotalLengthMm: number;
+  rafterTotalLengthM: number;
+  rafterAverageLengthMm: number | null;
+  rafterAverageLengthM: number | null;
+  claddingPanelCount: number;
+  claddingAreaMm2: number;
+  claddingAreaM2: number;
+  joinerCount: number;
+  joinerTotalLengthMm: number;
+  joinerTotalLengthM: number;
+  joinerAverageLengthMm: number | null;
+  joinerAverageLengthM: number | null;
   metadata?: GeometryMetadata;
 };
 
@@ -871,12 +894,14 @@ export type GeometryQuantityTakeoffMemberBucket = {
   averageLengthM: number | null;
   firstProfile: AssemblyMemberProfile | null;
   profileKeys: string[];
+  items: GeometryQuantityTakeoffMemberItem[];
 };
 
 export type GeometryQuantityTakeoffMembers = {
   totalCount: number;
   totalLengthMm: number;
   totalLengthM: number;
+  items: GeometryQuantityTakeoffMemberItem[];
   byRole: Record<AssemblyMemberRole, GeometryQuantityTakeoffMemberBucket>;
 };
 
@@ -891,6 +916,10 @@ export type GeometryQuantityTakeoffBeams = {
   tieBeamLengthM: number | null;
   totalBeamLengthMm: number | null;
   totalBeamLengthM: number | null;
+  ledgerItems: GeometryQuantityTakeoffMemberItem[];
+  supportBeamItems: GeometryQuantityTakeoffMemberItem[];
+  ridgeItems: GeometryQuantityTakeoffMemberItem[];
+  tieBeamItems: GeometryQuantityTakeoffMemberItem[];
 };
 
 export type GeometryQuantityTakeoffGutters = {
@@ -900,6 +929,9 @@ export type GeometryQuantityTakeoffGutters = {
   houseGutterLengthM: number | null;
   totalLengthMm: number | null;
   totalLengthM: number | null;
+  items: GeometryQuantityTakeoffMemberItem[];
+  ourItems: GeometryQuantityTakeoffMemberItem[];
+  houseItems: GeometryQuantityTakeoffMemberItem[];
 };
 
 export type GeometryQuantityTakeoffRoofCladdingMaterial = {
@@ -909,12 +941,23 @@ export type GeometryQuantityTakeoffRoofCladdingMaterial = {
   areaM2: number;
 };
 
+export type GeometryQuantityTakeoffRoofCladdingPanel = {
+  id: string;
+  material: RoofCladdingMaterial;
+  areaMm2: number;
+  areaM2: number;
+  thicknessMm: number;
+  roofPlaneId: string | null;
+  metadata?: GeometryMetadata;
+};
+
 export type GeometryQuantityTakeoffRoofCladding = {
   panelCount: number;
   totalAreaMm2: number;
   totalAreaM2: number;
   acrylicAreaMm2: number | null;
   acrylicAreaM2: number | null;
+  items: GeometryQuantityTakeoffRoofCladdingPanel[];
   byMaterial: GeometryQuantityTakeoffRoofCladdingMaterial[];
 };
 
@@ -924,6 +967,7 @@ export type GeometryQuantityTakeoffJoiners = {
   totalLengthM: number;
   averageLengthMm: number | null;
   averageLengthM: number | null;
+  items: GeometryQuantityTakeoffMemberItem[];
 };
 
 /**
