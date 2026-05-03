@@ -137,13 +137,17 @@ export type DrawingWorkbenchStore = {
 
 function resolveSolvedModuleViewsStatus(input: {
   activeView: DrawingWorkbenchUiState['activeView'];
-  solution: WorkbenchSolvedModule | null;
+  drawingSurfaceGeometry: WorkbenchDrawingSurfaceGeometry | null;
 }): ModuleViewsStatus {
-  if (!input.solution) return 'empty';
+  const surface = input.drawingSurfaceGeometry;
+  if (!surface) return 'empty';
+  const artifact = surface.source === 'solved_geometry' ? surface.artifact : null;
   if (input.activeView === 'section') {
-    return input.solution.sectionModel ? 'ready' : 'empty';
+    if (artifact?.section) return 'ready';
+    return surface.source === 'legacy_fallback' && surface.legacyFallback.sectionModel ? 'ready' : 'empty';
   }
-  return input.solution.planModel ? 'ready' : 'empty';
+  if (artifact?.plan && artifact.topProjection) return 'ready';
+  return surface.source === 'legacy_fallback' && surface.legacyFallback.planModel ? 'ready' : 'empty';
 }
 
 export function buildDrawingWorkbenchStore(input: {
@@ -443,7 +447,7 @@ export function buildDrawingWorkbenchStore(input: {
       unresolvedPergolaAttachmentCount,
       status: resolveSolvedModuleViewsStatus({
         activeView: ui.activeView,
-        solution: activeSolution,
+        drawingSurfaceGeometry: activeModule?.drawingSurfaceGeometry ?? null,
       }),
     },
   };

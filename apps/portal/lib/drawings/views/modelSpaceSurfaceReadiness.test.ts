@@ -48,7 +48,26 @@ describe('resolveModelSpaceSurfaceReadiness', () => {
 
     expect(readiness.hasGeometryReadyPlan).toBe(true);
     expect(readiness.showDrawingViewport).toBe(true);
-    expect(readiness.planModel).toBe(planModel);
+    expect(readiness.legacyPlanModel).toBe(planModel);
+  });
+
+  it('marks solved plan ready from the artifact even without a legacy plan fallback', () => {
+    const readiness = resolveModelSpaceSurfaceReadiness({
+      view: 'plan',
+      drawingSurfaceGeometry: makeSurface({
+        source: 'solved_geometry',
+        artifact: {
+          plan: geometryPlan,
+          topProjection: geometryTopProjection,
+        } as WorkbenchDrawingSurfaceGeometry['artifact'],
+        geometryPlan,
+        geometryTopProjection,
+      }),
+    });
+
+    expect(readiness.hasGeometryReadyPlan).toBe(true);
+    expect(readiness.showDrawingViewport).toBe(true);
+    expect(readiness.legacyPlanModel).toBeNull();
   });
 
   it('does not treat loose fallback presenters as geometry-ready plan input', () => {
@@ -74,7 +93,9 @@ describe('resolveModelSpaceSurfaceReadiness', () => {
         view: 'section',
         drawingSurfaceGeometry: makeSurface({
           source: 'solved_geometry',
-          artifact: {} as WorkbenchDrawingSurfaceGeometry['artifact'],
+          artifact: {
+            section: geometrySection,
+          } as WorkbenchDrawingSurfaceGeometry['artifact'],
           geometrySection,
         }),
       }).hasDrawableSection,

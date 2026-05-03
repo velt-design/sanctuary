@@ -42,6 +42,12 @@ Quote, public quote, invoice, and job-pack pricing remains unchanged during `wor
 
 Do not make these side-effect flows consume `workbench_solved` commercial payloads until a later explicit rollout task changes saved estimate or quote-version pricing and verifies rollback to `calculator_live`.
 
+When saved estimates eventually record a pricing source, quote versions should copy only compact source metadata from the source estimate when line items are created, refreshed, or revised. The copied record should identify the source (`calculator_live` or `workbench_solved`), metadata/hash versions, and enough provenance for audit/debugging; raw commercial payloads should stay out of public-token responses and generated customer artifacts unless a later explicit output task changes that boundary.
+
+Rollback from `workbench_solved` to `calculator_live` must not reprice or mutate sent, accepted, declined, invoiced, or job-pack-backed quote versions. Existing quote line items, totals, PDFs, send logs, public tokens, deposit invoices, file artifacts, and job-pack generations remain historical records. New draft quote refreshes may pick up the current saved estimate/quote-version boundary only through the quote domain helpers.
+
+Rollout audit events for quote creation, refresh, revision, and blocked source transitions should include quote version IDs, estimate IDs, source metadata hashes, actor/request metadata, and gate codes when relevant. Never place raw public tokens, accept token hashes, service-role details, or oversized commercial payloads in audit records, PDFs, email bodies, public props, or job-pack outputs.
+
 ## Invoice Lifecycle
 
 - Deposit invoices are created from sent or accepted quote versions.

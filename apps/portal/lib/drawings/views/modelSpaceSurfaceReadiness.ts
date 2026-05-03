@@ -3,8 +3,8 @@ import type { ModulePlanModel, ModuleSectionModel } from '@/app/staff/calculator
 import type { WorkbenchDrawingSurfaceGeometry } from './workbenchDrawingSurfaceGeometry';
 
 export type ModelSpaceSurfaceReadiness = {
-  planModel: ModulePlanModel | null;
-  sectionModel: ModuleSectionModel | null;
+  legacyPlanModel: ModulePlanModel | null;
+  legacySectionModel: ModuleSectionModel | null;
   hasGeometryReadyPlan: boolean;
   hasDrawableSection: boolean;
   showDrawingViewport: boolean;
@@ -15,22 +15,21 @@ export function resolveModelSpaceSurfaceReadiness(input: {
   drawingSurfaceGeometry: WorkbenchDrawingSurfaceGeometry | null | undefined;
 }): ModelSpaceSurfaceReadiness {
   const surface = input.drawingSurfaceGeometry ?? null;
-  const planModel = surface?.legacyFallback.planModel ?? null;
-  const sectionModel = surface?.legacyFallback.sectionModel ?? null;
+  const legacyPlanModel = surface?.legacyFallback.planModel ?? null;
+  const legacySectionModel = surface?.legacyFallback.sectionModel ?? null;
+  const artifact = surface?.source === 'solved_geometry' ? surface.artifact : null;
   const hasGeometryReadyPlan =
     input.view === 'plan' &&
-    surface?.source === 'solved_geometry' &&
-    Boolean(surface.artifact) &&
-    Boolean(surface.geometryPlan) &&
-    Boolean(surface.geometryTopProjection);
+    Boolean(artifact?.plan) &&
+    Boolean(artifact?.topProjection);
   const hasDrawableSection =
     input.view === 'section' &&
-    ((surface?.source === 'solved_geometry' && Boolean(surface.geometrySection)) ||
-      (surface?.source === 'legacy_fallback' && Boolean(sectionModel)));
+    (Boolean(artifact?.section) ||
+      (surface?.source === 'legacy_fallback' && Boolean(legacySectionModel)));
 
   return {
-    planModel,
-    sectionModel,
+    legacyPlanModel,
+    legacySectionModel,
     hasGeometryReadyPlan,
     hasDrawableSection,
     showDrawingViewport: hasGeometryReadyPlan || hasDrawableSection,

@@ -83,10 +83,22 @@ function isDrawingAssemblyModel(source: PlanViewModelSource): source is DrawingA
   return 'roof' in source && 'houseContext' in source && 'capabilities' in source;
 }
 
+function planPrimarySizeFromGeometry(
+  geometryPlan: GeometryPlanViewModel | null,
+  legacyPlanModel: ModulePlanModel | null,
+): PlanViewModel['primarySize'] {
+  return {
+    lengthA: geometryPlan ? geometryPlan.extents.lengthMm / 1000 : legacyPlanModel?.lengthA ?? null,
+    spanA: geometryPlan ? geometryPlan.extents.projectionMm / 1000 : legacyPlanModel?.spanA ?? null,
+    lengthB: legacyPlanModel?.lengthB ?? null,
+    spanB: legacyPlanModel?.spanB ?? null,
+  };
+}
+
 export function buildPlanViewModel(source: PlanViewModelSource | null): PlanViewModel | null {
   if (!source) return null;
 
-  const planModel = source.planModel;
+  const legacyPlanModel = source.planModel;
   const moduleId = isDrawingAssemblyModel(source) ? source.id : source.moduleId;
   const moduleLabel = isDrawingAssemblyModel(source) ? source.label : source.moduleLabel;
   const canEditHouseFootprint = isDrawingAssemblyModel(source)
@@ -115,7 +127,7 @@ export function buildPlanViewModel(source: PlanViewModelSource | null): PlanView
       ? source.pergolaRenderStatus
       : geometryPlan
         ? 'geometry_ready'
-        : planModel
+          : legacyPlanModel
           ? 'legacy_unsupported_family'
           : 'invalid_geometry');
   const geometryArtifactDiagnostics: PlanGeometryArtifactDiagnostics = geometryArtifact
@@ -135,28 +147,23 @@ export function buildPlanViewModel(source: PlanViewModelSource | null): PlanView
   return {
     moduleId,
     moduleLabel,
-    hasGeometry: Boolean(planModel),
-    roofType: planModel?.roofType ?? null,
-    pergolaStyle: planModel?.pergolaStyle ?? null,
-    rotationQuarterTurns: planModel?.drawingRotationQuarterTurns ?? 0,
-    primarySize: {
-      lengthA: planModel?.lengthA ?? null,
-      spanA: planModel?.spanA ?? null,
-      lengthB: planModel?.lengthB ?? null,
-      spanB: planModel?.spanB ?? null,
-    },
+    hasGeometry: Boolean(geometryArtifact?.plan ?? geometryPlan ?? legacyPlanModel),
+    roofType: legacyPlanModel?.roofType ?? null,
+    pergolaStyle: legacyPlanModel?.pergolaStyle ?? null,
+    rotationQuarterTurns: legacyPlanModel?.drawingRotationQuarterTurns ?? 0,
+    primarySize: planPrimarySizeFromGeometry(geometryArtifact?.plan ?? geometryPlan, legacyPlanModel),
     houseContext: {
-      visible: planModel?.houseConnectionType !== 'none' && planModel !== null,
-      attachmentSide: planModel?.attachmentSide ?? 'rear',
-      preset: planModel?.houseFootprintPreset ?? null,
-      supportsFootprints: Boolean(planModel?.supportsHouseFootprints),
-      editable: Boolean(planModel) && canEditHouseFootprint,
+      visible: legacyPlanModel?.houseConnectionType !== 'none' && legacyPlanModel !== null,
+      attachmentSide: legacyPlanModel?.attachmentSide ?? 'rear',
+      preset: legacyPlanModel?.houseFootprintPreset ?? null,
+      supportsFootprints: Boolean(legacyPlanModel?.supportsHouseFootprints),
+      editable: Boolean(legacyPlanModel) && canEditHouseFootprint,
     },
     structure: {
-      rafterCountA: planModel?.rafterCountA ?? null,
-      rafterSpacingA: planModel?.rafterSpacingA ?? null,
-      hasRidgeBeam: Boolean(planModel && planModel.ridgeBeamDepthM > 0 && planModel.ridgeBeamWidthM > 0),
-      soffitBracketCount: planModel?.soffitBracketPositionsA.length ?? 0,
+      rafterCountA: legacyPlanModel?.rafterCountA ?? null,
+      rafterSpacingA: legacyPlanModel?.rafterSpacingA ?? null,
+      hasRidgeBeam: Boolean(legacyPlanModel && legacyPlanModel.ridgeBeamDepthM > 0 && legacyPlanModel.ridgeBeamWidthM > 0),
+      soffitBracketCount: legacyPlanModel?.soffitBracketPositionsA.length ?? 0,
     },
     annotations: {
       keepTextUpright: true,
@@ -182,6 +189,6 @@ export function buildPlanViewModel(source: PlanViewModelSource | null): PlanView
             geometryRenderStatus: renderStatus,
           })
         : null,
-    planModel,
+    planModel: legacyPlanModel,
   };
 }

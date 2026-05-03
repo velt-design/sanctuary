@@ -44,6 +44,7 @@ Primary write path:
 - Estimate create/update routes under `apps/portal/app/api/projects/[projectId]/estimates` and `apps/portal/app/api/estimates/[estimateId]`, usually reached through local-first mutation handlers.
 - Project task action routes and project snapshot action routes under `apps/portal/app/api/staff/v1/projects`.
 - Portal user creation through auth/admin helpers and invite/admin tooling, not general staff UI table writes.
+- Future estimate pricing source fields must be added by ordered forward migration only. Planned fields are `estimates.pricing_source`, `estimates.pricing_source_metadata`, and nullable `estimates.commercial_design_input`; estimate write routes remain the only normal staff path for populating them.
 
 Primary read path:
 
@@ -88,6 +89,7 @@ Primary write path:
 - Invoice domain helpers under `apps/portal/lib/invoices`.
 - Email and artifact helpers under `apps/portal/lib/emails`, `apps/portal/lib/outputs`, and quote/invoice/job-pack server helpers.
 - Public accept/decline and public invoice actions through token-bound marketing routes only after server-side token validation.
+- Future quote-version pricing source metadata must be copied by quote domain helpers when line items are created, refreshed, or revised. Public token routes and generated artifacts should continue to read quote-version totals and line items, not raw commercial payloads.
 
 Primary read path:
 

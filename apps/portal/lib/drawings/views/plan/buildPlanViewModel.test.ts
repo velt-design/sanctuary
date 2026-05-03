@@ -474,11 +474,39 @@ describe('buildPlanViewModel', () => {
     expect(viewModel?.modelSpacePergola.geometryAssembly).toBe(artifact.assembly);
     expect(viewModel?.modelSpacePergola.renderSource).toBe('geometry');
     expect(viewModel?.modelSpacePergola.renderStatus).toBe('geometry_ready');
+    expect(viewModel?.hasGeometry).toBe(true);
+    expect(viewModel?.primarySize).toEqual({
+      lengthA: 7,
+      spanA: 5,
+      lengthB: null,
+      spanB: null,
+    });
     expect(viewModel?.modelSpacePergola.geometryArtifactDiagnostics).toEqual({
       source: 'solved_geometry',
       fallback: null,
       topProjectionFromViewerSceneArtifact: true,
     });
+  });
+
+  it('marks artifact-backed plans as geometry even without a legacy plan model', () => {
+    const viewModel = buildPlanViewModel({
+      moduleId: 'module-1',
+      moduleLabel: 'Module 1',
+      planModel: null,
+      geometryArtifact: makeGeometryArtifact(),
+      pergolaRenderSource: 'legacy',
+      pergolaRenderStatus: 'legacy_unsupported_family',
+    });
+
+    expect(viewModel?.hasGeometry).toBe(true);
+    expect(viewModel?.primarySize).toEqual({
+      lengthA: 7,
+      spanA: 5,
+      lengthB: null,
+      spanB: null,
+    });
+    expect(viewModel?.modelSpacePergola.renderStatus).toBe('geometry_ready');
+    expect(viewModel?.planModel).toBeNull();
   });
 
   it('builds model-space overlay shapes from solved geometry rather than compatibility plan context', () => {

@@ -183,9 +183,9 @@ How to use this map: pick the target area before editing, treat `Forbidden short
 - North star: calculator UI orchestrates estimates while live pricing remains explicit; future workbench pricing flows consume geometry-derived commercial input through `@sp/costing`.
 - Source of truth: `packages/costing`, commercial input contracts, portal calculator helpers, estimate domain helpers, and staff estimate APIs.
 - Allowed paths: extract pure calculator inputs, save-readiness, view models, commercial parity adapters, and orchestration helpers without changing mutation keys or live costing payloads.
-- Forbidden shortcuts: copied costing rules in apps, hidden estimate persistence changes, direct browser Supabase writes, calculator-driven quote side effects outside owning routes, or making `CommercialDesignInputV1` a competing geometry model.
+- Forbidden shortcuts: copied costing rules in apps, hidden estimate persistence changes, direct browser Supabase writes, browser-selected pricing source, calculator-driven quote side effects outside owning routes, or making `CommercialDesignInputV1` a competing geometry model.
 - Primary gates: `npx vitest run apps/portal/app/staff/calculator`, `npm run test:portal:projects`, `npm run typecheck`, and costing package tests when package behavior changes.
-- Next direction: keep current live pricing stable while building parity between `calculator_compat` and `workbench_solved`, then switch saved estimates or quote totals only through an explicit rollout task.
+- Next direction: keep current live pricing stable while building parity between `calculator_compat` and `workbench_solved`, then switch saved estimates only through a server-owned rollout gate with explicit source metadata, audit events, failed-gate blocking, and rollback to `calculator_live`. Quote totals change only after saved estimate or quote-version pricing is explicitly rolled forward.
 - Canonical docs: `docs/projects-contacts-estimates-calculator.md`, `docs/costing-and-geometry.md`, `docs/file-decomposition-and-ownership.md`.
 
 ### Local-First Sync
@@ -194,7 +194,7 @@ How to use this map: pick the target area before editing, treat `Forbidden short
 - North star: local-first gives staff visible pending, retry, alias, conflict, discard, and locked-state UX without becoming final server authority.
 - Source of truth: local-first store, queue, portal mutation handlers, staff APIs, and server conflict/lock responses.
 - Allowed paths: browser UI enqueues approved mutation keys and reconciles durable IDs, aliases, retries, and conflicts through the local-first layer.
-- Forbidden shortcuts: putting server-authoritative side effects into local-first, silently retrying lock conflicts, bypassing staff APIs, or hiding failed/pending state.
+- Forbidden shortcuts: putting server-authoritative side effects into local-first, silently retrying lock conflicts, bypassing staff APIs, hiding failed/pending state, or treating pricing-source selection as local browser authority.
 - Primary gates: local-first store/queue tests, `LocalFirstPortalMutations` tests, focused estimate/quote tab tests, and manual pending/failed/conflict QA.
 - Next direction: keep mutation keys stable and move workflow-specific conflict policy into named helpers before adding new mutation domains.
 - Canonical docs: `docs/local-first-sync.md`, `docs/projects-contacts-estimates-calculator.md`.

@@ -1,4 +1,3 @@
-import type { ModulePlanModel } from '@/app/staff/calculator/moduleViews';
 import type { EstimateDrawingField } from '@/lib/estimates/drawingEdits';
 
 export type PlanFieldResizeFieldId = 'plan:lengthA' | 'plan:spanA';
@@ -18,6 +17,11 @@ export type PlanFieldResizeSvgPoint = {
   y: number;
 };
 
+export type PlanFieldResizeDimensions = {
+  lengthA: number | null;
+  spanA: number | null;
+};
+
 export type PlanFieldResizeDragSession = PlanFieldResizeDragMeta & {
   pointerId: number;
   startSvgX: number;
@@ -33,7 +37,7 @@ export type PlanFieldResizeStartResult =
     }
   | {
       ok: false;
-      reason: 'editing_unavailable' | 'missing_plan_model' | 'missing_field';
+      reason: 'editing_unavailable' | 'missing_plan_dimensions' | 'missing_field';
     };
 
 export type PlanFieldResizeDragResult =
@@ -54,18 +58,20 @@ export function formatPlanFieldResizeValue(value: number): string {
 
 export function startPlanFieldResizeDrag(input: {
   available: boolean;
-  planModel?: Pick<ModulePlanModel, 'lengthA' | 'spanA'> | null;
+  geometryPlanDimensions?: PlanFieldResizeDimensions | null;
+  legacyPlanDimensions?: PlanFieldResizeDimensions | null;
   editableFieldMap: ReadonlyMap<string, EstimateDrawingField>;
   meta: PlanFieldResizeDragMeta;
   pointerId: number;
   startSvgPoint: PlanFieldResizeSvgPoint;
 }): PlanFieldResizeStartResult {
   if (!input.available) return { ok: false, reason: 'editing_unavailable' };
-  if (!input.planModel) return { ok: false, reason: 'missing_plan_model' };
+  const dimensions = input.geometryPlanDimensions ?? input.legacyPlanDimensions ?? null;
+  if (!dimensions) return { ok: false, reason: 'missing_plan_dimensions' };
   const field = input.editableFieldMap.get(input.meta.fieldId);
   if (!field) return { ok: false, reason: 'missing_field' };
 
-  const fallbackValue = input.meta.fieldId === 'plan:lengthA' ? input.planModel.lengthA : input.planModel.spanA;
+  const fallbackValue = input.meta.fieldId === 'plan:lengthA' ? dimensions.lengthA : dimensions.spanA;
   const startValueM = Number.parseFloat(field.rawValue);
 
   return {
@@ -75,7 +81,7 @@ export function startPlanFieldResizeDrag(input: {
       pointerId: input.pointerId,
       startSvgX: input.startSvgPoint.x,
       startSvgY: input.startSvgPoint.y,
-      startValueM: Number.isFinite(startValueM) ? startValueM : fallbackValue,
+      startValueM: Number.isFinite(startValueM) ? startValueM : fallbackValue ?? 0,
       field,
     },
   };

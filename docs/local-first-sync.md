@@ -26,6 +26,8 @@ Add new mutation keys in `portalEntities.ts` and register a handler in `LocalFir
 
 The `workbench_solved` pricing rollout prep does not add a mutation key and does not change estimate create/update request bodies. If future source metadata is added for live pricing, it must preserve provisional estimate aliases, queued dependent quote/design-request actions, retry visibility, `ESTIMATE_LOCKED` conflicts, and server-authoritative estimate persistence.
 
+Future `workbench_solved` enablement must stay a server-authoritative gate, not a browser-selected local-first mode. The local-first layer may surface the server readiness failure for the affected estimate, but it must not silently retry with `calculator_live`, rewrite the requested source, or mark a blocked save as synced. Dependent quote/design-request mutations should remain queued or conflicted according to the existing alias/conflict rules until the durable estimate save succeeds.
+
 ## Working Copies
 
 Working copies are local drafts scoped by stable entity keys. They allow UI to preserve unsaved or not-yet-synced work across route changes and reloads.
@@ -80,3 +82,5 @@ npm run test:portal
 Current local signal from 2026-05-03: `npx vitest run apps/portal/lib/localFirst apps/portal/components/sync/LocalFirstPortalMutations.test.tsx apps/portal/lib/estimates apps/portal/app/api/estimates` passed with 12 files and 67 tests. The gate covers store persistence, queue processing, provisional-ID retry, alias resolution, conflict/discard behavior, estimate lock handling, and portal mutation handlers for estimate create/update, design request create, quote create/update, and estimate notes update.
 
 Manually verify pending, failed, retry, and lock states for changed entity flows.
+
+Before enabling workbench-backed saved pricing, manual QA must include local-first estimate create/update under both `calculator_live` and blocked `workbench_solved`, retry after a transient failure, durable ID alias resolution, dependent quote/design-request queue release, and `ESTIMATE_LOCKED` conflict handling for sent, accepted, and declined quote-backed estimates.

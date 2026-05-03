@@ -73,6 +73,22 @@ Live estimate pricing still comes from calculator snapshots. The rollout-prep co
 
 Failed readiness must block rollout. Do not add hidden fallback behavior that silently prices from calculator while reporting `workbench_solved`.
 
+The future live switch must be server-owned and default-safe:
+
+- Use a server-only requested-source flag such as `PORTAL_ESTIMATE_PRICING_SOURCE=calculator_live|workbench_solved`; unset or invalid values must behave as `calculator_live`.
+- When the requested source is `workbench_solved`, estimate create/update must evaluate the full readiness report before changing saved pricing. Any failed gate returns a visible blocked response with gate codes and leaves the estimate row unchanged.
+- `calculator_live` rollback is the same explicit flag switch back to calculator pricing. Rollback affects new estimate saves and future quote refreshes only; it must not mutate existing estimates, sent quote versions, public outputs, invoices, PDFs, or job-pack generations.
+
+Future persistence changes must use ordered forward migrations. Do not edit baseline SQL or old applied migrations. The planned estimate source-of-record fields are:
+
+- `estimates.pricing_source`: `calculator_live` or `workbench_solved`.
+- `estimates.pricing_source_metadata`: compact JSONB with gate version, selected time and actor, requested source, commercial input schema version, quantity takeoff source, trust summary, commercial input hash, parity report hash/version, and rollback provenance.
+- `estimates.commercial_design_input`: nullable JSONB populated only when the saved estimate actually prices from the commercial boundary.
+
+Audit events must be server-owned and append-only. Log rollout source requested/enabled/disabled decisions, estimate saves with source metadata, and blocked `workbench_solved` attempts with gate codes. Audit payloads should include IDs, actor/request metadata, source, gate version, blocking codes, and hashes; they must not include raw public tokens, service-role details, or oversized commercial payloads.
+
+Before enabling `workbench_solved`, evidence must include automated gate coverage plus manual QA. Automated coverage should prove readiness gates, metadata persistence, no hidden fallback, `ESTIMATE_LOCKED` behavior, local-first alias/retry/conflict behavior, and downstream quote/invoice/job-pack boundary preservation. Manual QA should cover calculator-live create/update, blocked workbench diagnostics with no row mutation, ready workbench-backed save, quote/PDF/public quote/invoice/job-pack preservation from saved totals, locked estimate behavior under both flags, local-first pending/failed/retry states, and rollback to new calculator-live saves while existing workbench-backed records remain historical.
+
 ## Estimate Editability And Locks
 
 Estimate editability is derived from related quote versions and send logs.

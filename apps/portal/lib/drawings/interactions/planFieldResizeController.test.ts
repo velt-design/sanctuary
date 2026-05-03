@@ -1,18 +1,18 @@
 import { describe, expect, it } from 'vitest';
-import type { ModulePlanModel } from '@/app/staff/calculator/moduleViews';
 import type { EstimateDrawingField } from '@/lib/estimates/drawingEdits';
 import {
   formatPlanFieldResizeValue,
   resolvePlanFieldResizeDrag,
   startPlanFieldResizeDrag,
   type PlanFieldResizeDragMeta,
+  type PlanFieldResizeDimensions,
 } from './planFieldResizeController';
 
-function makePlanModel(input?: Partial<Pick<ModulePlanModel, 'lengthA' | 'spanA'>>): ModulePlanModel {
+function makePlanDimensions(input?: Partial<PlanFieldResizeDimensions>): PlanFieldResizeDimensions {
   return {
     lengthA: input?.lengthA ?? 6,
     spanA: input?.spanA ?? 3,
-  } as ModulePlanModel;
+  };
 }
 
 function makeField(id: string, rawValue = '5'): EstimateDrawingField {
@@ -49,7 +49,7 @@ describe('planFieldResizeController', () => {
 
     const length = startPlanFieldResizeDrag({
       available: true,
-      planModel: makePlanModel(),
+      geometryPlanDimensions: makePlanDimensions(),
       editableFieldMap: fields,
       meta: makeMeta({ fieldId: 'plan:lengthA' }),
       pointerId: 12,
@@ -57,7 +57,7 @@ describe('planFieldResizeController', () => {
     });
     const span = startPlanFieldResizeDrag({
       available: true,
-      planModel: makePlanModel(),
+      geometryPlanDimensions: makePlanDimensions(),
       editableFieldMap: fields,
       meta: makeMeta({ fieldId: 'plan:spanA' }),
       pointerId: 13,
@@ -79,7 +79,7 @@ describe('planFieldResizeController', () => {
     expect(
       startPlanFieldResizeDrag({
         available: false,
-        planModel: makePlanModel(),
+        geometryPlanDimensions: makePlanDimensions(),
         editableFieldMap: fields,
         meta: makeMeta(),
         pointerId: 1,
@@ -89,17 +89,18 @@ describe('planFieldResizeController', () => {
     expect(
       startPlanFieldResizeDrag({
         available: true,
-        planModel: null,
+        geometryPlanDimensions: null,
+        legacyPlanDimensions: null,
         editableFieldMap: fields,
         meta: makeMeta(),
         pointerId: 1,
         startSvgPoint: { x: 0, y: 0 },
       }),
-    ).toEqual({ ok: false, reason: 'missing_plan_model' });
+    ).toEqual({ ok: false, reason: 'missing_plan_dimensions' });
     expect(
       startPlanFieldResizeDrag({
         available: true,
-        planModel: makePlanModel(),
+        geometryPlanDimensions: makePlanDimensions(),
         editableFieldMap: new Map(),
         meta: makeMeta(),
         pointerId: 1,
@@ -108,10 +109,10 @@ describe('planFieldResizeController', () => {
     ).toEqual({ ok: false, reason: 'missing_field' });
   });
 
-  it('uses plan model dimensions when the editable field raw value is not numeric', () => {
+  it('uses geometry plan dimensions when the editable field raw value is not numeric', () => {
     const length = startPlanFieldResizeDrag({
       available: true,
-      planModel: makePlanModel({ lengthA: 8, spanA: 4 }),
+      geometryPlanDimensions: makePlanDimensions({ lengthA: 8, spanA: 4 }),
       editableFieldMap: new Map([['plan:lengthA', makeField('plan:lengthA', 'not-number')]]),
       meta: makeMeta({ fieldId: 'plan:lengthA' }),
       pointerId: 1,
@@ -119,7 +120,7 @@ describe('planFieldResizeController', () => {
     });
     const span = startPlanFieldResizeDrag({
       available: true,
-      planModel: makePlanModel({ lengthA: 8, spanA: 4 }),
+      geometryPlanDimensions: makePlanDimensions({ lengthA: 8, spanA: 4 }),
       editableFieldMap: new Map([['plan:spanA', makeField('plan:spanA', 'not-number')]]),
       meta: makeMeta({ fieldId: 'plan:spanA' }),
       pointerId: 1,
@@ -130,10 +131,23 @@ describe('planFieldResizeController', () => {
     expect(span.ok ? span.session.startValueM : null).toBe(4);
   });
 
+  it('uses explicitly named legacy dimensions only when geometry dimensions are unavailable', () => {
+    const start = startPlanFieldResizeDrag({
+      available: true,
+      legacyPlanDimensions: makePlanDimensions({ lengthA: 9, spanA: 2 }),
+      editableFieldMap: new Map([['plan:lengthA', makeField('plan:lengthA', 'not-number')]]),
+      meta: makeMeta({ fieldId: 'plan:lengthA' }),
+      pointerId: 1,
+      startSvgPoint: { x: 0, y: 0 },
+    });
+
+    expect(start.ok ? start.session.startValueM : null).toBe(9);
+  });
+
   it('converts SVG deltas through axes, scale, and multiplier', () => {
     const start = startPlanFieldResizeDrag({
       available: true,
-      planModel: makePlanModel(),
+      geometryPlanDimensions: makePlanDimensions(),
       editableFieldMap: new Map([['plan:lengthA', makeField('plan:lengthA', '5')]]),
       meta: makeMeta({ axisX: 0, axisY: 1, scale: 50, deltaMultiplier: -1 }),
       pointerId: 1,
@@ -153,7 +167,7 @@ describe('planFieldResizeController', () => {
   it('clamps to min and max resize values', () => {
     const start = startPlanFieldResizeDrag({
       available: true,
-      planModel: makePlanModel(),
+      geometryPlanDimensions: makePlanDimensions(),
       editableFieldMap: new Map([['plan:lengthA', makeField('plan:lengthA', '5')]]),
       meta: makeMeta({ minValueM: 3, maxValueM: 6 }),
       pointerId: 1,

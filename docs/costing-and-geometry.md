@@ -51,6 +51,10 @@ Workbench must not own pricing policy. Costing must not solve geometry. Portal m
 
 `compareCommercialDesignInputsV1()` in `@sp/costing` compares two commercial payloads and returns a structured parity report. Difference diagnostics carry both the legacy comparison category and a drift origin: authored intent, solved geometry, physical takeoff, or commercial mapping. These reports are shadow-only comparison signal for adapter and geometry alignment; they must not drive pricing, persistence, customer-facing quote totals, or job-pack output until a later explicit integration task.
 
+The live rollout gate for `workbench_solved` belongs at the estimate persistence boundary, not inside geometry, drawing, or costing packages. The gate must require ready workbench trust, no blocking commercial diagnostics, package-owned geometry quantity takeoff, stable `calculator_compat` versus `workbench_solved` parity reports, explicit estimate source metadata, preserved locks/local-first behavior, preserved downstream quote/invoice/job-pack boundaries, and an explicit rollback switch to `calculator_live`.
+
+The requested live source must be server-owned, defaulting to `calculator_live`. If `workbench_solved` is requested and any readiness gate fails, the save must fail visibly with the readiness report; do not price from calculator while claiming the saved source is `workbench_solved`.
+
 ## Portal Cost Overrides
 
 Portal applies database overrides on top of `loadCostingConfigV1()`.

@@ -592,20 +592,27 @@ export default function ModelSpaceViewport({
     view,
     drawingSurfaceGeometry,
   });
-  const planModel = surfaceReadiness.planModel;
-  const sectionModel = surfaceReadiness.sectionModel;
-  const canEditFootprint = view === 'plan' && Boolean(planModel) && Boolean(onCommitFootprintEdit) && canEditHouseFootprintPlan(planModel);
-  const canCommitCustomPolygon = view === 'plan' && Boolean(planModel) && Boolean(onCommitCustomPolygon);
+  const legacyPlanModel = surfaceReadiness.legacyPlanModel;
+  const legacySectionModel = surfaceReadiness.legacySectionModel;
+  const geometryPlanDimensions =
+    drawingSurfaceGeometry?.source === 'solved_geometry' && drawingSurfaceGeometry.artifact?.plan
+      ? {
+          lengthA: drawingSurfaceGeometry.artifact.plan.extents.lengthMm / 1000,
+          spanA: drawingSurfaceGeometry.artifact.plan.extents.projectionMm / 1000,
+        }
+      : null;
+  const canEditFootprint = view === 'plan' && Boolean(legacyPlanModel) && Boolean(onCommitFootprintEdit) && canEditHouseFootprintPlan(legacyPlanModel);
+  const canCommitCustomPolygon = view === 'plan' && Boolean(legacyPlanModel) && Boolean(onCommitCustomPolygon);
   const deckOutlineMode = drawOutlineMode === 'deck';
-  const canRotatePlan = view === 'plan' && Boolean(planModel) && Boolean(onCommitFootprintEdit) && planModel?.roofType !== 'hip_corner';
+  const canRotatePlan = view === 'plan' && Boolean(legacyPlanModel) && Boolean(onCommitFootprintEdit) && legacyPlanModel?.roofType !== 'hip_corner';
   const canEditPlanDimensions =
     view === 'plan' &&
-      Boolean(planModel) &&
+      Boolean(geometryPlanDimensions ?? legacyPlanModel) &&
       Boolean(onCommitField) &&
       (editableFieldMap.has('plan:lengthA') || editableFieldMap.has('plan:spanA'));
   const showHouseSectionPlaceholder = workbenchDisplayMode === 'house' && view === 'section';
   const hasGeometryReadyPlan = surfaceReadiness.hasGeometryReadyPlan;
-  const showPlanViewport = view === 'plan' && Boolean(planModel) && hasGeometryReadyPlan;
+  const showPlanViewport = view === 'plan' && hasGeometryReadyPlan;
   const showSectionViewport = surfaceReadiness.hasDrawableSection && !showHouseSectionPlaceholder;
   const showDrawingViewport = surfaceReadiness.showDrawingViewport && !showHouseSectionPlaceholder;
   const modelSpaceAutoFitReady = showDrawingViewport;
@@ -1334,7 +1341,7 @@ export default function ModelSpaceViewport({
 
   const handleFootprintDragStart = useCallback(
     (meta: HouseFootprintEditorDragMeta, event: { pointerId: number; clientX: number; clientY: number }) => {
-      if (!canEditFootprint || !planModel) return;
+      if (!canEditFootprint || !legacyPlanModel) return;
       const svg = footprintSvgRef.current;
       if (!svg) return;
       const startPoint = clientPointToSvg(svg, event.clientX, event.clientY);
@@ -1349,15 +1356,15 @@ export default function ModelSpaceViewport({
         pointerId: event.pointerId,
         startSvgX: startPoint.x,
         startSvgY: startPoint.y,
-        startParams: normalizeHouseFootprintParams(planModel.houseFootprintParams),
+        startParams: normalizeHouseFootprintParams(legacyPlanModel.houseFootprintParams),
       });
     },
-    [canEditFootprint, planModel],
+    [canEditFootprint, legacyPlanModel],
   );
 
   const handleFootprintVertexDragStart = useCallback(
     (meta: HouseFootprintVertexDragMeta, event: { pointerId: number; clientX: number; clientY: number }) => {
-      if (!canEditFootprint || !planModel || (planModel.houseFootprintMode ?? 'preset') !== 'custom_polygon') return;
+      if (!canEditFootprint || !legacyPlanModel || (legacyPlanModel.houseFootprintMode ?? 'preset') !== 'custom_polygon') return;
       const svg = footprintSvgRef.current;
       if (!svg) return;
       const startPoint = clientPointToSvg(svg, event.clientX, event.clientY);
@@ -1371,34 +1378,34 @@ export default function ModelSpaceViewport({
         pointerId: event.pointerId,
         startSvgX: startPoint.x,
         startSvgY: startPoint.y,
-        startPolygon: planModel.houseFootprintPolygon ?? [],
+        startPolygon: legacyPlanModel.houseFootprintPolygon ?? [],
       });
     },
-    [canEditFootprint, planModel],
+    [canEditFootprint, legacyPlanModel],
   );
 
   const handleFootprintEdgeAdd = useCallback(
     async (edgeIndex: number) => {
-      if (!canEditFootprint || !planModel || (planModel.houseFootprintMode ?? 'preset') !== 'custom_polygon') return;
+      if (!canEditFootprint || !legacyPlanModel || (legacyPlanModel.houseFootprintMode ?? 'preset') !== 'custom_polygon') return;
       const intent = resolveFootprintEdgeAddIntent({
-        polygon: planModel.houseFootprintPolygon ?? [],
+        polygon: legacyPlanModel.houseFootprintPolygon ?? [],
         edgeIndex,
       });
       if (intent.kind === 'footprint_edit') await commitFootprintEdit(intent.edit);
     },
-    [canEditFootprint, commitFootprintEdit, planModel],
+    [canEditFootprint, commitFootprintEdit, legacyPlanModel],
   );
 
   const handleFootprintVertexDelete = useCallback(
     async (vertexIndex: number) => {
-      if (!canEditFootprint || !planModel || (planModel.houseFootprintMode ?? 'preset') !== 'custom_polygon') return;
+      if (!canEditFootprint || !legacyPlanModel || (legacyPlanModel.houseFootprintMode ?? 'preset') !== 'custom_polygon') return;
       const intent = resolveFootprintVertexDeleteIntent({
-        polygon: planModel.houseFootprintPolygon ?? [],
+        polygon: legacyPlanModel.houseFootprintPolygon ?? [],
         vertexIndex,
       });
       if (intent.kind === 'footprint_edit') await commitFootprintEdit(intent.edit);
     },
-    [canEditFootprint, commitFootprintEdit, planModel],
+    [canEditFootprint, commitFootprintEdit, legacyPlanModel],
   );
 
   const handleDrawOutlinePointSelect = useCallback(
@@ -1710,7 +1717,8 @@ export default function ModelSpaceViewport({
 
       const start = startPlanFieldResizeDrag({
         available: canEditPlanDimensions,
-        planModel,
+        geometryPlanDimensions,
+        legacyPlanDimensions: legacyPlanModel,
         editableFieldMap,
         meta,
         pointerId: event.pointerId,
@@ -1724,7 +1732,7 @@ export default function ModelSpaceViewport({
       setPlanHoveredResizeFieldId(meta.fieldId);
       setPlanFieldDragSession(start.session);
     },
-    [canEditPlanDimensions, editableFieldMap, planModel],
+    [canEditPlanDimensions, editableFieldMap, geometryPlanDimensions, legacyPlanModel],
   );
 
   const drawOutlineActiveForPointerListeners = isDrawOutlineActive(drawOutlineState);
@@ -2261,14 +2269,14 @@ export default function ModelSpaceViewport({
   const showDrawOutlineDistanceHud = Boolean(activeDrawOutlineState && drawOutlineTypingDistanceDraft);
   const drawOutlineLockedDistanceDraft = drawOutlineViewModel.lockedDistanceDraft;
   const drawOutlinePreviewSource = drawOutlineViewModel.previewSource;
-  const isCustomPolygonFootprint = view === 'plan' && (planModel?.houseFootprintMode ?? 'preset') === 'custom_polygon';
-  const hasExistingCustomPolygon = isCustomPolygonFootprint && (planModel?.houseFootprintPolygon?.length ?? 0) >= 3;
+  const isCustomPolygonFootprint = view === 'plan' && (legacyPlanModel?.houseFootprintMode ?? 'preset') === 'custom_polygon';
+  const hasExistingCustomPolygon = isCustomPolygonFootprint && (legacyPlanModel?.houseFootprintPolygon?.length ?? 0) >= 3;
   const hasDeckSeedPolygon = deckOutlineMode && (drawOutlineSeedPolygon?.length ?? 0) >= 3;
   const canRedrawDrawOutline =
     ((canEditFootprint && hasExistingCustomPolygon) || (canCommitCustomPolygon && hasDeckSeedPolygon)) &&
     !drawOutlineViewModel.isActive;
   const drawOutlineRedrawActive = drawOutlineViewModel.isActive && (hasExistingCustomPolygon || hasDeckSeedPolygon);
-  const drawOutlineDraftSource = drawOutlineViewModel.isActive ? 'active-draft' : planModel?.houseConnectionType === 'none' ? 'none' : 'persisted';
+  const drawOutlineDraftSource = drawOutlineViewModel.isActive ? 'active-draft' : legacyPlanModel?.houseConnectionType === 'none' ? 'none' : 'persisted';
 
   const handleDrawOutlineRedraw = useCallback(() => {
     if (!canRedrawDrawOutline) return;
@@ -2950,13 +2958,13 @@ export default function ModelSpaceViewport({
   ]);
 
   useEffect(() => {
-    if (view === 'plan' && planModel) return;
+    if (view === 'plan' && hasGeometryReadyPlan) return;
     planPointResolverRef.current = null;
     deckDragPointResolverRef.current = null;
-  }, [planModel, view]);
+  }, [hasGeometryReadyPlan, view]);
 
   const planInteraction = useMemo<ModulePlanInteractionProps | undefined>(() => {
-    if (view !== 'plan' || !planModel) return undefined;
+    if (view !== 'plan' || !hasGeometryReadyPlan) return undefined;
     return {
       available: canEditPlanDimensions,
       hoveredResizeFieldId: planHoveredResizeFieldId,
@@ -2979,7 +2987,7 @@ export default function ModelSpaceViewport({
         footprintSvgRef.current = node;
       },
     };
-  }, [canEditPlanDimensions, handlePlanFieldDragStart, planActiveResizeFieldId, planHoveredResizeFieldId, planModel, view]);
+  }, [canEditPlanDimensions, handlePlanFieldDragStart, hasGeometryReadyPlan, planActiveResizeFieldId, planHoveredResizeFieldId, view]);
 
   const scaleFrameStyle = useMemo(
     () => ({
@@ -3304,8 +3312,8 @@ export default function ModelSpaceViewport({
                 view={view}
                 status={status}
                 drawingSurfaceGeometry={drawingSurfaceGeometry}
-                planModel={planModel}
-                sectionModel={sectionModel}
+                planModel={legacyPlanModel}
+                sectionModel={legacySectionModel}
                 presentation="model"
                 displayMode={workbenchDisplayMode}
                 visibility={visibility}
