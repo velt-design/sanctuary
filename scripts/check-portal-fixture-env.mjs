@@ -8,6 +8,30 @@ const baseUrl = process.env.PORTAL_BASE_URL?.trim() || '';
 const fixturePath = '/staff/projects/fixture-roof/design-workbench?fixture=mono-standard';
 const requiredFixtureFlags =
   'Required fixture flags: ENABLE_SANCTUARY_GEOMETRY_WORKBENCH=1 and ENABLE_SANCTUARY_GEOMETRY_WORKBENCH_FIXTURES=1.';
+const manualSecondServerHint =
+  'PORTAL_PLAYWRIGHT_DIST_DIR is only needed when you manually start a second Next dev server beside normal port 3001.';
+
+function localFixtureServerLines() {
+  const configuredPortLine =
+    port === DEFAULT_PORT
+      ? `The local Playwright-managed fixture server uses port ${DEFAULT_PORT} by default.`
+      : `PORTAL_PLAYWRIGHT_PORT is set to ${port}, so the local Playwright-managed fixture server will use that port.`;
+  return [
+    configuredPortLine,
+    'A normal npm run dev:portal server can stay on port 3001.',
+    'Choose another PORTAL_PLAYWRIGHT_PORT for the local fixture server, or set PORTAL_BASE_URL to an already-running fixture-enabled portal server.',
+    requiredFixtureFlags,
+  ];
+}
+
+function externalFixtureServerLines() {
+  return [
+    'PORTAL_BASE_URL puts the fixture gate in external-server mode; Playwright will not start its own portal server.',
+    'The external server must expose the fixture route without auth.',
+    requiredFixtureFlags,
+    manualSecondServerHint,
+  ];
+}
 
 function fail(lines) {
   console.error('Portal fixture browser gate preflight failed.');
@@ -102,10 +126,7 @@ async function checkLocalServerSlot() {
     fail([
       processHint,
       `Command: ${commandLine}`,
-      `The no-auth fixture browser gate starts a separate fixture-enabled portal on port ${DEFAULT_PORT} by default.`,
-      'A normal npm run dev:portal server can stay on port 3001.',
-      'Set PORTAL_PLAYWRIGHT_PORT to a free fixture port, or set PORTAL_BASE_URL to an already-running fixture-enabled portal server.',
-      requiredFixtureFlags,
+      ...localFixtureServerLines(),
     ]);
   }
 
@@ -113,10 +134,7 @@ async function checkLocalServerSlot() {
   if (!available) {
     fail([
       `Port ${port} is already in use, but the owning process could not be identified.`,
-      `The no-auth fixture browser gate starts a separate fixture-enabled portal on port ${DEFAULT_PORT} by default.`,
-      'A normal npm run dev:portal server can stay on port 3001.',
-      'Set PORTAL_PLAYWRIGHT_PORT to a free fixture port, or set PORTAL_BASE_URL to an already-running fixture-enabled portal server.',
-      requiredFixtureFlags,
+      ...localFixtureServerLines(),
     ]);
   }
 
@@ -135,8 +153,7 @@ async function checkRemoteFixtureServer(targetBaseUrl) {
     fail([
       `Could not reach PORTAL_BASE_URL fixture route: ${url.toString()}`,
       `Original error: ${String(error)}`,
-      'Start a fixture-enabled portal server at PORTAL_BASE_URL, or unset PORTAL_BASE_URL so Playwright can start one.',
-      requiredFixtureFlags,
+      ...externalFixtureServerLines(),
     ]);
   }
 
@@ -145,8 +162,7 @@ async function checkRemoteFixtureServer(targetBaseUrl) {
     fail([
       `PORTAL_BASE_URL redirects the fixture route to ${location || 'an auth route'}.`,
       'Fixture flags are missing or this server is auth-gating fixtures.',
-      'Unset PORTAL_BASE_URL so Playwright can start an isolated fixture server, or point PORTAL_BASE_URL at a fixture-enabled server.',
-      requiredFixtureFlags,
+      ...externalFixtureServerLines(),
     ]);
   }
 
@@ -155,8 +171,7 @@ async function checkRemoteFixtureServer(targetBaseUrl) {
     fail([
       `PORTAL_BASE_URL did not expose the no-auth fixture route (${response.status} ${response.statusText}).`,
       'Fixture flags are missing or this server is auth-gating fixtures.',
-      'Unset PORTAL_BASE_URL so Playwright can start an isolated fixture server, or point PORTAL_BASE_URL at a fixture-enabled server.',
-      requiredFixtureFlags,
+      ...externalFixtureServerLines(),
     ]);
   }
 

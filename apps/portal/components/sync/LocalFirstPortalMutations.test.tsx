@@ -194,6 +194,7 @@ describe('LocalFirstPortalMutations', () => {
       message: 'Estimate is locked',
       serverSnapshot: body,
     });
+    expect(result).not.toHaveProperty('clearWorkingCopy');
     expect(mocks.apiJson).toHaveBeenCalledWith('/api/estimates/estimate-1', expect.objectContaining({ method: 'PATCH' }));
     expect(mocks.invalidateProjectReadCaches).not.toHaveBeenCalled();
     expect(mocks.queryClient.invalidateQueries).not.toHaveBeenCalled();
@@ -219,6 +220,7 @@ describe('LocalFirstPortalMutations', () => {
       message: 'Workbench solved estimate pricing is not ready to save.',
       serverSnapshot: body,
     });
+    expect(result).not.toHaveProperty('clearWorkingCopy');
     expect(mocks.apiJson).toHaveBeenCalledWith('/api/estimates/estimate-1', expect.objectContaining({ method: 'PATCH' }));
     expect(mocks.invalidateProjectReadCaches).not.toHaveBeenCalled();
     expect(mocks.queryClient.invalidateQueries).not.toHaveBeenCalled();
@@ -279,6 +281,7 @@ describe('LocalFirstPortalMutations', () => {
       message: 'Workbench solved estimate pricing is not ready to save.',
       serverSnapshot: body,
     });
+    expect(result).not.toHaveProperty('clearWorkingCopy');
     expect(mocks.registerLocalFirstIdAlias).not.toHaveBeenCalled();
     expect(mocks.enqueueAndProcessLocalFirstMutation).not.toHaveBeenCalled();
     expect(mocks.invalidateProjectReadCaches).not.toHaveBeenCalled();

@@ -2,9 +2,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const requireStaffContext = vi.fn();
 const parseJsonBody = vi.fn();
+const missingColumnFromError = vi.fn();
 const loadProjectEstimateFlowMaps = vi.fn();
 const loadEstimateEditability = vi.fn();
 const buildEstimateDbPayload = vi.fn();
+const resolveEstimatePricingSourceForSave = vi.fn();
 const logEstimatePricingSourceAudit = vi.fn();
 const buildVersionLabelMap = vi.fn();
 const extractVersionNumber = vi.fn();
@@ -26,7 +28,7 @@ vi.mock('@/lib/api/staffApi', () => ({
 }));
 
 vi.mock('@/lib/api/siteVisitsServer', () => ({
-  missingColumnFromError: () => null,
+  missingColumnFromError,
 }));
 
 vi.mock('@/lib/estimates/flow', () => ({
@@ -40,9 +42,11 @@ vi.mock('@/lib/estimates/persistence', () => ({
 
 vi.mock('@/lib/estimates/pricingRollout', async () => {
   const actual = await vi.importActual<typeof import('@/lib/estimates/pricingRollout')>('@/lib/estimates/pricingRollout');
+  resolveEstimatePricingSourceForSave.mockImplementation((input) => actual.resolveEstimatePricingSourceForSave(input));
   return {
     ...actual,
     logEstimatePricingSourceAudit,
+    resolveEstimatePricingSourceForSave,
   };
 });
 
@@ -71,9 +75,11 @@ describe('PATCH /api/estimates/[estimateId]', () => {
     delete process.env.PORTAL_ESTIMATE_PRICING_SOURCE;
     requireStaffContext.mockReset();
     parseJsonBody.mockReset();
+    missingColumnFromError.mockReset();
     loadProjectEstimateFlowMaps.mockReset();
     loadEstimateEditability.mockReset();
     buildEstimateDbPayload.mockReset();
+    resolveEstimatePricingSourceForSave.mockClear();
     logEstimatePricingSourceAudit.mockReset();
     buildVersionLabelMap.mockReset();
     extractVersionNumber.mockReset();
@@ -82,7 +88,15 @@ describe('PATCH /api/estimates/[estimateId]', () => {
     estimateUpdate.mockReset();
     estimateUpdateSingle.mockReset();
     estimateOrder.mockReset();
+    missingColumnFromError.mockReturnValue(null);
     logEstimatePricingSourceAudit.mockResolvedValue(true);
+    estimateUpdate.mockImplementation(() => ({
+      eq: () => ({
+        select: () => ({
+          single: estimateUpdateSingle,
+        }),
+      }),
+    }));
     buildEstimateDbPayload.mockImplementation((params) => ({
       status: 'draft',
       inputs: params.inputs ?? {},
@@ -116,13 +130,7 @@ describe('PATCH /api/estimates/[estimateId]', () => {
               },
               order: estimateOrder,
             }),
-            update: estimateUpdate.mockImplementation(() => ({
-              eq: () => ({
-                select: () => ({
-                  single: estimateUpdateSingle,
-                }),
-              }),
-            })),
+            update: estimateUpdate,
           };
         },
       },
@@ -198,6 +206,12 @@ describe('PATCH /api/estimates/[estimateId]', () => {
       expect.objectContaining({
         type: 'estimate.pricing_source_saved',
         estimateUuid: 'estimate-uuid',
+        payload: expect.objectContaining({
+          source: 'calculator_live',
+          requestedSource: 'calculator_live',
+          requestedSourceRaw: null,
+          gateVersion: 'estimate_pricing_rollout_prep_v1',
+        }),
       }),
     );
     await expect(res.json()).resolves.toEqual({
@@ -258,6 +272,155 @@ describe('PATCH /api/estimates/[estimateId]', () => {
         commercial_design_input: null,
       }),
     );
+    expect(logEstimatePricingSourceAudit).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        type: 'estimate.pricing_source_saved',
+        estimateUuid: 'estimate-uuid',
+        payload: expect.objectContaining({
+          source: 'calculator_live',
+          requestedSource: 'calculator_live',
+          requestedSourceRaw: 'workbench',
+          gateVersion: 'estimate_pricing_rollout_prep_v1',
+        }),
+      }),
+    );
+  });
+
+  it('allows calculator_live update retry to drop missing pricing source columns without reporting workbench_solved', async () => {
+    parseJsonBody.mockResolvedValue({
+      ok: true,
+      body: {
+        estimate_update: {
+          status: 'draft',
+          inputs: { schemaVersion: 'v2' },
+          outputs: { totals: { cost_ex_gst: 0, cost_inc_gst: 0 } },
+        },
+      },
+    });
+
+    const existingRow = {
+      id: 'estimate-uuid',
+      project_id: 'project-uuid',
+      status: 'draft',
+      outputs: {},
+      internal_notes: null,
+    };
+    const updatedRow = {
+      ...existingRow,
+      updated_at: '2026-04-02T00:00:00.000Z',
+    };
+
+    estimateMaybeSingle.mockResolvedValueOnce({ data: existingRow, error: null });
+    const updatePayloads: Record<string, unknown>[] = [];
+    estimateUpdate.mockImplementation((payload) => {
+      updatePayloads.push({ ...payload });
+      return {
+        eq: () => ({
+          select: () => ({
+            single: estimateUpdateSingle,
+          }),
+        }),
+      };
+    });
+    missingColumnFromError.mockReturnValueOnce('pricing_source');
+    estimateUpdateSingle
+      .mockResolvedValueOnce({ data: null, error: { message: 'column pricing_source does not exist' } })
+      .mockResolvedValueOnce({ data: updatedRow, error: null });
+    estimateOrder.mockResolvedValue({ data: [updatedRow], error: null });
+    loadEstimateEditability.mockResolvedValue({ isLocked: false });
+    loadProjectEstimateFlowMaps.mockResolvedValue({ editabilityByEstimateId: new Map(), flowByEstimateId: new Map() });
+    buildVersionLabelMap.mockReturnValue(new Map([['estimate-uuid', 'V1']]));
+    extractVersionNumber.mockReturnValue(1);
+    mapEstimateDetail.mockReturnValue({ id: 'est_1', projectId: 'proj_1' });
+
+    const mod = await import('./route');
+    const res = await mod.PATCH(new Request('http://localhost/api/estimates/est_1', { method: 'PATCH' }), {
+      params: Promise.resolve({ estimateId: 'est_1' }),
+    });
+
+    expect(res.status).toBe(200);
+    expect(updatePayloads[0]).toMatchObject({
+      pricing_source: 'calculator_live',
+      pricing_source_metadata: expect.objectContaining({ selectedSource: 'calculator_live' }),
+      commercial_design_input: null,
+    });
+    expect(updatePayloads[1]).not.toHaveProperty('pricing_source');
+    expect(logEstimatePricingSourceAudit).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        payload: expect.objectContaining({
+          source: 'calculator_live',
+          requestedSource: 'calculator_live',
+        }),
+      }),
+    );
+  });
+
+  it('does not drop missing pricing source columns for an eligible workbench_solved update', async () => {
+    process.env.PORTAL_ESTIMATE_PRICING_SOURCE = 'workbench_solved';
+    parseJsonBody.mockResolvedValue({
+      ok: true,
+      body: {
+        estimate_update: {
+          status: 'draft',
+          inputs: { schemaVersion: 'v2' },
+          outputs: { totals: { cost_ex_gst: 0, cost_inc_gst: 0 } },
+        },
+      },
+    });
+
+    const existingRow = {
+      id: 'estimate-uuid',
+      project_id: 'project-uuid',
+      status: 'draft',
+      outputs: {},
+      internal_notes: null,
+    };
+    estimateMaybeSingle.mockResolvedValueOnce({ data: existingRow, error: null });
+    loadEstimateEditability.mockResolvedValue({ isLocked: false });
+    extractVersionNumber.mockReturnValue(1);
+    const metadata = {
+      gateVersion: 'estimate_pricing_rollout_prep_v1',
+      requestedSource: 'workbench_solved',
+      requestedSourceRaw: 'workbench_solved',
+      selectedSource: 'workbench_solved',
+      defaultedReason: null,
+    };
+    resolveEstimatePricingSourceForSave.mockReturnValueOnce({
+      ok: true,
+      context: {
+        pricingSource: 'workbench_solved',
+        pricingSourceMetadata: metadata,
+        commercialDesignInput: { schemaVersion: 'commercial_design_v1', source: 'workbench_solved' },
+      },
+      normalizedRequest: { requestedPricingSource: 'workbench_solved', raw: 'workbench_solved' },
+      readinessReport: { eligibleToEnable: true, blockingGateCodes: [], fallbackPricingSource: null },
+    });
+    missingColumnFromError.mockReturnValueOnce('commercial_design_input');
+    estimateUpdateSingle.mockResolvedValueOnce({
+      data: null,
+      error: { message: 'column commercial_design_input does not exist' },
+    });
+
+    const mod = await import('./route');
+    const res = await mod.PATCH(new Request('http://localhost/api/estimates/est_1', { method: 'PATCH' }), {
+      params: Promise.resolve({ estimateId: 'est_1' }),
+    });
+
+    expect(res.status).toBe(500);
+    expect(estimateUpdate).toHaveBeenCalledTimes(1);
+    expect(estimateUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        pricing_source: 'workbench_solved',
+        pricing_source_metadata: expect.objectContaining({ selectedSource: 'workbench_solved' }),
+        commercial_design_input: expect.objectContaining({ source: 'workbench_solved' }),
+      }),
+    );
+    expect(logEstimatePricingSourceAudit).not.toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ type: 'estimate.pricing_source_saved' }),
+    );
   });
 
   it('blocks workbench_solved pricing without updating the estimate row', async () => {
@@ -305,7 +468,11 @@ describe('PATCH /api/estimates/[estimateId]', () => {
         }),
       }),
     );
-    await expect(res.json()).resolves.toMatchObject({
+    const blockedAudit = logEstimatePricingSourceAudit.mock.calls.find(([, params]) => params.type === 'estimate.pricing_source_blocked');
+    expect(blockedAudit?.[1].payload).not.toHaveProperty('commercialDesignInput');
+    const body = await res.json();
+    expect(body).not.toHaveProperty('estimate');
+    expect(body).toMatchObject({
       code: 'ESTIMATE_PRICING_SOURCE_BLOCKED',
       readinessReport: {
         fallbackPricingSource: null,

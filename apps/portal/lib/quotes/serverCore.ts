@@ -245,7 +245,11 @@ async function loadEstimate(estimateUuid: string): Promise<QuoteSourceEstimate |
     .select('id, project_id, created_at, updated_at, status, inputs, outputs, warnings, pricing_source, pricing_source_metadata')
     .eq('id', estimateUuid)
     .maybeSingle();
-  if (res.error || !res.data) return null;
+  if (res.error) {
+    if (missingTableError(res.error)) throw schemaMissingError();
+    return null;
+  }
+  if (!res.data) return null;
 
   const row = res.data as any;
   return {

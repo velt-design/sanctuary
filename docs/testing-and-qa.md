@@ -207,8 +207,14 @@ $env:PORTAL_PLAYWRIGHT_PORT='3021'; npm run test:portal:browser; Remove-Item Env
 If `PORTAL_BASE_URL` points at an already-running portal server, that server must be started with the same fixture flags. The preflight does not terminate processes or weaken auth checks:
 
 ```powershell
+# Terminal A: start the manual fixture server. Use PORTAL_PLAYWRIGHT_DIST_DIR only when another portal Next dev server is already running from apps/portal.
 $env:ENABLE_SANCTUARY_GEOMETRY_WORKBENCH='1'; $env:ENABLE_SANCTUARY_GEOMETRY_WORKBENCH_FIXTURES='1'; $env:PORTAL_PLAYWRIGHT_DIST_DIR='.next/playwright-fixture-manual'; npm --prefix apps/portal run dev:playwright -- -p 3021
+
+# Terminal B: point the browser gate at that server.
 $env:PORTAL_BASE_URL='http://127.0.0.1:3021'; npm run test:portal:browser; Remove-Item Env:\PORTAL_BASE_URL
+
+# Terminal A after stopping the manual server.
+Remove-Item Env:\ENABLE_SANCTUARY_GEOMETRY_WORKBENCH; Remove-Item Env:\ENABLE_SANCTUARY_GEOMETRY_WORKBENCH_FIXTURES; Remove-Item Env:\PORTAL_PLAYWRIGHT_DIST_DIR
 ```
 
 ## Schedule QA Gate

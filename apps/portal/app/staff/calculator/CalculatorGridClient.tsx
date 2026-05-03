@@ -165,10 +165,6 @@ import { saveCalculatorEstimate } from './calculatorEstimateSave';
 import {
   INFILL_DELETE_UNDO_MS,
   INFILL_PRESETS,
-  INFILL_SHEET_MAX_RUN_M,
-  INFILL_SHEET_MAX_SHORT_SIDE_M,
-  INFILL_STRIP_MAX_RUN_M,
-  INFILL_STRIP_MAX_SHORT_SIDE_M,
   acrylicSourceLabel,
   estimateInfillUi,
   estimateRoofRafterSpacing,
@@ -180,6 +176,10 @@ import {
   parseInfillsForPayload,
   type InfillUiEstimate,
 } from './calculatorInfillUi';
+import {
+  buildCalculatorInfillSummary,
+  buildSelectedInfillSummaryCopy,
+} from './calculatorInfillSummary';
 
 type FieldSchemaItem = {
   id: string;
@@ -2806,76 +2806,21 @@ export default function CalculatorGridClient({
     return resolveInfillUiState(variant, roofRafterSpacingEstimate.spacingM, infillDraftById[selectedInfill.id])?.estimate ?? null;
   }, [infillDraftById, roofRafterSpacingEstimate.spacingM, selectedInfill]);
 
-  const infillTotals = useMemo(
-    () =>
-      infillsState.items.reduce(
-        (acc, entry) => {
-          const ui = infillUiById.get(entry.id);
-          if (!ui) return acc;
-          acc.panels += ui.estimate.panelCountTotal;
-          acc.mullions += ui.estimate.estimatedMullionsTotal;
-          return acc;
-        },
-        { panels: 0, mullions: 0 },
-      ),
+  const infillSummary = useMemo(
+    () => buildCalculatorInfillSummary(infillsState.items, infillUiById),
     [infillsState.items, infillUiById],
   );
-
-  const infillLocationCounts = useMemo(() => {
-    const counts: Record<InfillLineItem['location'], number> = {
-      front: 0,
-      house: 0,
-      side: 0,
-      gable_end: 0,
-      wall: 0,
-      custom: 0,
-    };
-    for (const item of infillsState.items) counts[item.location] += 1;
-    return counts;
-  }, [infillsState.items]);
-
-  const infillSystemSummary = useMemo(() => {
-    const hasSheets = infillsState.items.some((item) => (infillUiById.get(item.id)?.estimate.acrylicSourceUsed ?? 'sheet_panels') === 'sheet_panels');
-    const hasStrips = infillsState.items.some((item) => (infillUiById.get(item.id)?.estimate.acrylicSourceUsed ?? 'sheet_panels') === 'strip_620');
-    if (hasSheets && hasStrips) return 'Mixed systems';
-    if (hasStrips) return '620 strips';
-    if (hasSheets) return 'Sheet panels';
-    return 'Not configured';
-  }, [infillsState.items, infillUiById]);
-
-  const infillUsedSpacingSummary = useMemo(() => {
-    const usedSpacingValues = infillsState.items
-      .map((item) => infillUiById.get(item.id)?.estimate.maxCentreM)
-      .filter((value): value is number => typeof value === 'number' && Number.isFinite(value) && value > 0);
-    if (!usedSpacingValues.length) return '—';
-    const minSpacing = Math.min(...usedSpacingValues);
-    const maxSpacing = Math.max(...usedSpacingValues);
-    if (Math.abs(maxSpacing - minSpacing) <= 0.0001) return `${formatMaybeNumber(maxSpacing, 2)}m`;
-    return `${formatMaybeNumber(minSpacing, 2)}m to ${formatMaybeNumber(maxSpacing, 2)}m`;
-  }, [infillsState.items, infillUiById]);
-
-  const hasInfills = infillsState.items.length > 0;
-  const infillsSummaryLine1 = `${infillsState.items.length} infill${infillsState.items.length === 1 ? '' : 's'} added`;
-  const infillsSummaryLine2 = [
-    `Front ${infillLocationCounts.front}`,
-    `Side ${infillLocationCounts.side}`,
-    `Gable ${infillLocationCounts.gable_end}`,
-    infillLocationCounts.house > 0 ? `House ${infillLocationCounts.house}` : null,
-    infillLocationCounts.wall > 0 ? `Wall ${infillLocationCounts.wall}` : null,
-    infillLocationCounts.custom > 0 ? `Custom ${infillLocationCounts.custom}` : null,
-  ]
-    .filter(Boolean)
-    .join(' · ');
-  const infillsSummaryLine3 = hasInfills ? `System: ${infillSystemSummary} · Panels: ${infillTotals.panels} · Frames: ${infillTotals.mullions}` : null;
-  const infillsSummaryText = hasInfills ? infillsSummaryLine1 : 'No infills added yet';
-  const infillSummaryChips = [
-    { key: 'front', label: 'Front', count: infillLocationCounts.front, alwaysShow: true },
-    { key: 'side', label: 'Side', count: infillLocationCounts.side, alwaysShow: true },
-    { key: 'gable', label: 'Gable', count: infillLocationCounts.gable_end, alwaysShow: true },
-    { key: 'house', label: 'House', count: infillLocationCounts.house, alwaysShow: false },
-    { key: 'wall', label: 'Wall', count: infillLocationCounts.wall, alwaysShow: false },
-    { key: 'custom', label: 'Custom', count: infillLocationCounts.custom, alwaysShow: false },
-  ].filter((chip) => !hasInfills || chip.alwaysShow || chip.count > 0);
+  const {
+    totals: infillTotals,
+    systemSummary: infillSystemSummary,
+    usedSpacingSummary: infillUsedSpacingSummary,
+    hasInfills,
+    line1: infillsSummaryLine1,
+    line2: infillsSummaryLine2,
+    line3: infillsSummaryLine3,
+    text: infillsSummaryText,
+    chips: infillSummaryChips,
+  } = infillSummary;
 
   const selectedInfillDomIdBase = selectedInfill ? `infill-${selectedInfill.id}` : 'infill-none';
   const selectedRectShape = selectedInfill?.shape.type === 'rect' ? selectedInfill.shape : null;
@@ -2888,25 +2833,20 @@ export default function CalculatorGridClient({
   const selectedComputedWarnings = selectedInfillUi?.warnings ?? [];
   const selectedLastValidEstimate = selectedInfill ? lastValidInfillEstimateRef.current[selectedInfill.id] ?? null : null;
   const computedOrDraftDash = (value: string): string => (selectedInfillIsDraft ? 'Incomplete' : value);
-  const selectedDraftGhostLine =
-    selectedInfillIsDraft && selectedLastValidEstimate
-      ? `Last valid: ${selectedLastValidEstimate.panelCountEach} panels each, ${selectedLastValidEstimate.internalJoinerLinesEach} internal joiners, ${formatMaybeNumber(
-          selectedLastValidEstimate.sheetAreaEachM2,
-          2,
-        )}m2 area each.`
-      : null;
-  const infillRunConstraintLine = `Max run: ${formatMaybeNumber(INFILL_SHEET_MAX_RUN_M, 2)}m (sheet), ${formatMaybeNumber(INFILL_STRIP_MAX_RUN_M, 2)}m (strips).`;
-  const infillSpacingConstraintLine = `Max bay spacing: ${formatMaybeNumber(INFILL_SHEET_MAX_SHORT_SIDE_M, 2)}m (sheet), ${formatMaybeNumber(
-    INFILL_STRIP_MAX_SHORT_SIDE_M,
-    2,
-  )}m (strips).`;
-  const selectedAutoSwitchInlineHint =
-    selectedInfillEstimate?.acrylicSourceAutoSwitched && selectedInfillEstimate
-      ? `Will auto-switch to ${acrylicSourceLabel(selectedInfillEstimate.acrylicSourceUsed)} because run ${formatMaybeNumber(
-          selectedInfillEstimate.runSideM,
-          2,
-        )}m exceeds ${formatMaybeNumber(maxRunForAcrylicSource(selectedInfillEstimate.preferredAcrylicSource), 2)}m.`
-      : null;
+  const {
+    selectedDraftGhostLine,
+    infillRunConstraintLine,
+    infillSpacingConstraintLine,
+    selectedAutoSwitchInlineHint,
+  } = useMemo(
+    () =>
+      buildSelectedInfillSummaryCopy({
+        selectedInfillEstimate,
+        selectedInfillIsDraft,
+        selectedLastValidEstimate,
+      }),
+    [selectedInfillEstimate, selectedInfillIsDraft, selectedLastValidEstimate],
+  );
   const showInfillAdvancedSection = false;
   const getVisibleInfillSection = (section: InfillSectionId): InfillSectionId =>
     section === 'advanced' && !showInfillAdvancedSection ? 'basic' : section;
