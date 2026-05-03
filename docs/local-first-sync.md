@@ -75,4 +75,6 @@ npm run test:portal -- apps/portal/components/sync/LocalFirstPortalMutations.tes
 npm run test:portal
 ```
 
+Current local signal from 2026-05-03: `npx vitest run apps/portal/lib/localFirst apps/portal/components/sync/LocalFirstPortalMutations.test.tsx apps/portal/lib/estimates apps/portal/app/api/estimates` passed with 12 files and 67 tests. The gate covers store persistence, queue processing, provisional-ID retry, alias resolution, conflict/discard behavior, estimate lock handling, and portal mutation handlers for estimate create/update, design request create, quote create/update, and estimate notes update.
+
 Manually verify pending, failed, retry, and lock states for changed entity flows.

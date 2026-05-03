@@ -81,6 +81,8 @@ $env:WORKTREE_OWNER_PATTERNS='apps/portal/app/staff/calculator/**,docs/**'; npm 
 
 Files reported as outside-lane are not cleanup opportunities. Leave them untouched and mention them only as unrelated worktree changes intentionally avoided.
 
+Use `npm run architecture:changed` as the preferred handoff sweep for parallel lanes. It runs `worktree:changed` first, then the changed-file architecture reports.
+
 If two lanes need the same file, type, API route, schema, or shared package export, pause and split the contract from the implementation. Land the contract first or nominate one lane as the owner.
 
 ### 2. Keep Boundaries Hard

@@ -6,6 +6,7 @@ import {
 
 const STRICT = process.argv.includes('--strict');
 const CHECKS = [
+  { label: 'Worktree ownership', advisoryScript: 'worktree:changed' },
   { label: 'File decomposition pressure', advisoryScript: 'files:changed', strictScript: 'files:changed:strict' },
   { label: 'Root compatibility growth', advisoryScript: 'root:compat:changed', strictScript: 'root:compat:changed:strict' },
   { label: 'Browser Supabase access', advisoryScript: 'browser:supabase:changed', strictScript: 'browser:supabase:changed:strict' },
@@ -22,6 +23,7 @@ function printSection(label, script) {
 }
 
 function runCheck(check) {
+  if (STRICT && !check.strictScript) return;
   const script = STRICT ? check.strictScript : check.advisoryScript;
   printSection(check.label, script);
   const result =
