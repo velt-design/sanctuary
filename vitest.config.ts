@@ -7,6 +7,8 @@ export default defineConfig({
       { find: /^@sp\/geometry\/(.*)$/, replacement: path.resolve(__dirname, 'packages/geometry/src') + '/$1.ts' },
       { find: '@sp/geometry', replacement: path.resolve(__dirname, 'packages/geometry/src/index.ts') },
       { find: '@sp/theme', replacement: path.resolve(__dirname, 'packages/theme/src/index.ts') },
+      { find: '@/lib/quotes/publicQuote', replacement: path.resolve(__dirname, 'test/shims/marketing-publicQuote.ts') },
+      { find: '@/lib/invoices/publicInvoice', replacement: path.resolve(__dirname, 'test/shims/marketing-publicInvoice.ts') },
       { find: /^@\/lib\/emails\/(.*)$/, replacement: path.resolve(__dirname, 'apps/portal/lib/emails') + '/$1' },
       { find: /^@\/lib\/projects\/(.*)$/, replacement: path.resolve(__dirname, 'apps/portal/lib/projects') + '/$1' },
       { find: /^@\/lib\/quotes\/(.*)$/, replacement: path.resolve(__dirname, 'apps/portal/lib/quotes') + '/$1' },

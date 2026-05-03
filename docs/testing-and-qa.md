@@ -71,6 +71,8 @@ npm run docs:guard
 npm run docs:impact
 npm run docs:navigation
 npm run docs:readiness
+npm run worktree:status
+npm run worktree:changed
 npm run architecture:changed
 npm run architecture:changed:strict
 npm run dead-code:report
@@ -95,6 +97,8 @@ npm run schedule:bundle-budget
 ```
 
 `npm run packages:guard` checks that app imports of local `@sp/*` workspace packages are declared in the app manifest and listed in Next `transpilePackages`. `npm run lint` includes this guard after `docs:guard`.
+
+`npm run worktree:status` is an advisory ownership report for dirty worktrees and parallel lanes. Use `WORKTREE_OWNER_PATTERNS` with comma-separated path globs to declare the current task's owned paths. `npm run worktree:changed` is the handoff form. Files reported as outside-lane should not be edited, formatted, reverted, or cleaned up by the current task. These commands are not part of `npm run lint`.
 
 `npm run architecture:changed` is the recommended advisory handoff sweep for non-trivial work. It runs `files:changed`, `root:compat:changed`, `browser:supabase:changed`, and `service-role:changed` with section headers, while leaving each focused report as the canonical source of its own handoff cues. It is not part of `npm run lint`.
 

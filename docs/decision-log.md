@@ -40,6 +40,7 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 | 2026-05-01 | Deck Interaction | Promoted | Floating deck releases are valid projection placements and must not be failed by snapped-settle geometry checks. |
 | 2026-05-01 | Deck Interaction | Promoted | Projection-backed deck drag sessions must use committed top-projection polygons for live drag math, not SVG-projected or legacy overlay objects. |
 | 2026-05-01 | Deck Interaction | Promoted | Projection-backed deck releases must map render-space previews through object commit frames before writing persisted deck fields. |
+| 2026-05-03 | Design Workbench Geometry | Promoted | There is one solved geometry spine; plan, 3D, sheet, section, detail, snap, and interaction surfaces are views of it. |
 | 2026-05-03 | Deck Interaction | Active | Projection-backed deck releases must not use `commitStartPolygon` bounds remapping; it can reintroduce stale overlay coordinates. |
 | 2026-05-01 | Quotes/Invoices/Job Packs | Promoted | High-risk side-effect workflows need a canonical doc before future behavior changes. |
 | 2026-05-01 | Docs | Promoted | Read the agent playbook for non-trivial portal work; promote durable lessons from this log into the playbook. |
@@ -47,6 +48,22 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 | 2026-05-01 | Docs | Promoted | Distinguish current-state references from active operating rules. |
 
 ## Entries
+
+### 2026-05-03 - Design Workbench Geometry - Single Solved Geometry Spine
+
+Area: Design Workbench Geometry
+
+Status: Promoted
+
+Decision or mistake: plan, 3D, sheet, object overlays, snap frames, and commit/rebuild paths were allowed to carry separate geometry models that each looked locally valid.
+
+Why it mattered: Model Space could be visually accurate to 3D while deck dragging or sheet output still jumped or drifted because another view-specific geometry quietly acted as truth.
+
+Current guardrail: object-first design intent resolves into one solved physical geometry artifact. Plan, 3D, sheet, section, wall/detail lines, snap frames, dimensions, hit targets, and interaction previews are derived views of that artifact. Calculator-era plan models, semantic house context, legacy sheet geometry, and object-workbench overlay polygons are fallback/reference/edit-support only unless explicitly derived from the solved geometry spine.
+
+Promoted to: `docs/target-architecture.md`, `docs/design-workbench-architecture.md`, `docs/costing-and-geometry.md`, `docs/parallel-work-guardrails.md`.
+
+Related docs/tests: `docs/design-workbench-architecture.md`, `docs/costing-and-geometry.md`, `docs/parallel-work-guardrails.md`, `npm run test:portal:workbench`, `npm run test:portal:browser`.
 
 ### 2026-05-01 - Design Workbench Architecture - Contract First Split
 

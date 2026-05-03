@@ -44,6 +44,9 @@ describe('calculator drawing surface import guards', () => {
     [
       "from './ModuleDrawingRenderer'",
       "from './ModulePlanLayoutPresentation'",
+      "from './ModulePlanGeometryPresentation'",
+      "from './ModulePlanSheetLayoutPresentation'",
+      "from './ModulePlanModelSpaceLayoutPresentation'",
       "from './ModulePlanFootprintPresentation'",
       "from './ModulePlanAnnotations'",
       "from './ModuleSectionPresentation'",
@@ -51,6 +54,34 @@ describe('calculator drawing surface import guards', () => {
       "from './ModuleDrawingDiagnostics'",
     ].forEach((forbiddenImport) => {
       expect(primitives).not.toContain(forbiddenImport);
+    });
+  });
+
+  it('keeps the plan layout facade thin and delegates to focused owners', () => {
+    const facade = readCalculatorFile('ModulePlanLayoutPresentation.ts');
+
+    expect(facade).toContain("export * from './ModulePlanGeometryPresentation'");
+    expect(facade).toContain("export * from './ModulePlanSheetLayoutPresentation'");
+    expect(facade).toContain("export * from './ModulePlanModelSpaceLayoutPresentation'");
+    expect(facade).not.toMatch(/\bexport function\b/);
+    expect(facade).not.toMatch(/\bfunction\b/);
+  });
+
+  it('keeps focused plan layout owners independent from renderer, viewport, rail, and interaction modules', () => {
+    [
+      'ModulePlanGeometryPresentation.ts',
+      'ModulePlanSheetLayoutPresentation.ts',
+      'ModulePlanModelSpaceLayoutPresentation.ts',
+    ].forEach((fileName) => {
+      const source = readCalculatorFile(fileName);
+      [
+        "from './ModuleDrawingRenderer'",
+        "from '@/components/drawings/viewports",
+        "from '@/components/drawings/rail",
+        "from '@/lib/drawings/interactions",
+      ].forEach((forbiddenImport) => {
+        expect(source).not.toContain(forbiddenImport);
+      });
     });
   });
 });

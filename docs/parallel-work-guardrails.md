@@ -36,12 +36,13 @@ Parallel work is allowed when lanes have clear ownership, shared contracts are e
 Before changing code in parallel with other work, confirm these gates:
 
 1. Lane declared: name the lane, owned files or modules, shared contracts touched, tests, docs, and integration dependencies.
-2. One source of truth: do not copy or reimplement logic owned by another app or package.
-3. Contract first: agree on API, type, schema, event, queue, token, or data-flow shape before broad behavior changes depend on it.
-4. Bridges are visible: compatibility adapters, legacy fallbacks, feature flags, and temporary duplicate paths must be explicit in names, state, tests, and docs.
-5. Small PRs, hard boundaries: avoid mixed-purpose PRs unless they are agreed integration PRs.
-6. Tests are merge gates: each lane must run focused tests and name any broader cross-lane checks required before merge.
-7. Docs move with behavior: update the canonical current-state doc or this guardrail when a change affects behavior, source-of-truth boundaries, tests, or known risks.
+2. Worktree checked: run `npm run worktree:status`; use `WORKTREE_OWNER_PATTERNS` to declare lane-owned paths when the tree is dirty or work is parallel.
+3. One source of truth: do not copy or reimplement logic owned by another app or package.
+4. Contract first: agree on API, type, schema, event, queue, token, or data-flow shape before broad behavior changes depend on it.
+5. Bridges are visible: compatibility adapters, legacy fallbacks, feature flags, and temporary duplicate paths must be explicit in names, state, tests, and docs.
+6. Small PRs, hard boundaries: avoid mixed-purpose PRs unless they are agreed integration PRs.
+7. Tests are merge gates: each lane must run focused tests and name any broader cross-lane checks required before merge.
+8. Docs move with behavior: update the canonical current-state doc or this guardrail when a change affects behavior, source-of-truth boundaries, tests, or known risks.
 
 ## Source Of Truth Rules
 
@@ -71,6 +72,14 @@ Every parallel PR or task should state:
 - tests to run
 - docs to update
 - integration dependencies on other lanes
+
+Use `WORKTREE_OWNER_PATTERNS` with comma-separated path globs when running `npm run worktree:status`, for example:
+
+```powershell
+$env:WORKTREE_OWNER_PATTERNS='apps/portal/app/staff/calculator/**,docs/**'; npm run worktree:status
+```
+
+Files reported as outside-lane are not cleanup opportunities. Leave them untouched and mention them only as unrelated worktree changes intentionally avoided.
 
 If two lanes need the same file, type, API route, schema, or shared package export, pause and split the contract from the implementation. Land the contract first or nominate one lane as the owner.
 
@@ -172,21 +181,21 @@ Use this overlay for parallel work that touches `apps/portal/lib/drawings`, `app
 
 A view may format, filter, annotate, or interact with geometry, but it may not invent geometry.
 
-Plan, 3D, section, and sheet must become different presentations of the same solved model. If a view still uses compatibility or legacy fallback during migration, that fallback must be explicit in state, naming, status, and tests.
+Plan, 3D, section, sheet, detail, snap, dimension, and interaction surfaces must be different views of one solved physical geometry artifact. They may not each own a separate geometry model. If a surface still uses compatibility or legacy fallback during migration, that fallback must be explicit in state, naming, status, and tests.
 
 The workbench migration goal remains:
 
 ```text
 object-first draft
-  -> solved workbench model
-  -> geometry plan / 3D scene / section / sheet / interactions / status
+  -> one solved geometry artifact
+  -> plan / 3D scene / section / sheet / details / snap frames / interactions / status
 ```
 
 ### Workbench Quick Gate
 
 Before changing workbench migration code, confirm:
 
-1. One solved truth: views may present geometry, but must not invent independent geometry.
+1. One solved truth: views may present geometry, but must not own independent geometry.
 2. Object-first authored state: edits persist through the object-first draft envelope.
 3. Compatibility quarantine: fallback or legacy paths stay in explicit compat adapters, bridge facades, or tests.
 4. No silent fallbacks: status must expose `geometry_ready`, `legacy_fallback`, `legacy_unsupported_family`, `invalid_geometry`, `unresolved_host`, or `approximate`.
@@ -197,7 +206,7 @@ Before changing workbench migration code, confirm:
 
 Parallel workbench lanes should stay narrow:
 
-- Solved model spine: make plan, 3D, section, sheet, interactions, and status consume one solved artifact.
+- Solved geometry spine: make plan, 3D, section, sheet, snap/detail views, interactions, and status consume one solved artifact.
 - HouseAssembly to geometry: move geometry input away from compatibility `HouseModel` and toward object-first assembly data.
 - Plan from geometry: make Model Space plan a top-down view of solved geometry, with object IDs matching solved geometry IDs.
 - Object-first interaction layer: target object IDs and solved geometry, then commit object-first patches.

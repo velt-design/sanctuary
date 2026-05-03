@@ -55,6 +55,7 @@ This snapshot records the most recent known production-readiness state from the 
 | Lint and guards | Green | `npm run portal:doctor:quick` completed `npm run lint`, including docs guard, cache guard, brand guard, mojibake, and ESLint. | Keep lint in quick doctor and portal PR CI. |
 | Schedule bundle budget | Green | `npm run schedule:bundle-budget` passed: 589.0 KiB initial raw, 169.1 KiB initial gzip, 333.2 KiB lazy raw, 78.3 KiB lazy gzip. | Keep the budget in portal CI and re-run after schedule chunk changes. |
 | Production security audit | Green | `npm audit --omit=dev` reported 0 vulnerabilities during blocker review. Portal Quality now runs `npm run audit:security` as a blocking pull-request gate, with Governance Monthly retaining the broader audit sweep. | Keep audit visible through `portal:doctor`, Portal Quality, and governance checks. |
+| Security and data boundaries | Green | Boundary sweep passed: `npm run audit:security`, `npm run browser:supabase`, `npm run service-role:report`, `npm run root:compat`, `npm run architecture:changed`, `npx vitest run apps/portal/lib/supabaseClient.boundaries.test.ts`, `npm run test:portal -- apps/portal/lib/api apps/portal/app/api`, `npm run test:portal:quotes`, `npm run test:portal:schedule`, and `npm run test:marketing`. Browser Supabase and service-role reports showed no new growth or changed violations; marketing public-token coverage now has 9 files and 37 tests passing. | Keep changed-file guards in handoffs; manual staff workflow and public-token browser QA still require valid credentials and compatible data. |
 | Portal build | Green | `npm run build:portal` passed with `Compiled successfully`, TypeScript completed, 55 static pages generated, and no Turbopack/NFT trace warnings after module-relative PDF asset URL loading. Build-dependent gates now run `npm run portal:build-env` first to catch active portal dev servers and Next build locks early. | Keep build in portal CI and re-run after quote, invoice, PDF, job-pack, or Next config changes. |
 | Typecheck | Green | `npm run typecheck` passed after the `ModelSpaceViewport.test.tsx` placement-case typing fix; `npm run portal:doctor:quick` also completed typecheck. | Keep typecheck in quick doctor and CI. |
 | Browser smoke | Yellow | `npm run test:portal:browser` passed inside `npm run test:portal:workbench`: 3 no-auth fixture tests passed and 1 auth-backed smoke skipped by design. `npm run portal:auth-runtime` now reaches the login flow with the supplied temporary account, but Supabase auth returns `Invalid email or password` and the setup remains on `/login`; downstream authenticated smoke/performance stay blocked by valid staff test credentials. | Provision or reset a valid staff test account, then rerun auth-runtime, authenticated smoke, and performance. |
@@ -106,13 +107,13 @@ This snapshot records the most recent known production-readiness state from the 
 
 - [ ] Staff APIs use `requireStaffSession` or `requireStaffContext`.
 - [ ] Admin APIs use `requireAdminSession` or `requireAdminContext`.
-- [ ] Public quote and invoice flows remain token-bound and hash-checked.
-- [ ] Service-role Supabase access is server-only and limited to documented owner flows.
+- [x] Public quote and invoice flows remain token-bound and hash-checked.
+- [x] Service-role Supabase access is server-only and limited to documented owner flows.
 - [ ] `npm run service-role:changed` is included in handoffs that touch service-role Supabase access.
 - [ ] Browser UI does not add direct table writes outside API, query, local-first, or approved spreadsheet adapters.
 - [ ] `npm run browser:supabase:changed` is included in handoffs that touch browser-facing Supabase access.
-- [ ] Schedule V2 writes go through staff API routes and `schedule_v2_*` RPC commands.
-- [ ] Quote, invoice, PDF, email, and job-pack side effects go through domain helpers.
+- [x] Schedule V2 writes go through staff API routes and `schedule_v2_*` RPC commands.
+- [x] Quote, invoice, PDF, email, and job-pack side effects go through domain helpers.
 - [ ] Migrations are ordered forward migrations; old applied migrations are not edited without explicit direction.
 - [ ] RLS and grants are documented for changed tables or RPCs.
 - [ ] Raw tokens, token hashes, service-role keys, and private artifact access do not reach client components, logs, PDFs, or public props.
@@ -131,6 +132,7 @@ This snapshot records the most recent known production-readiness state from the 
 ### Maintainability
 
 - [ ] Large files have an owner and a decomposition plan before major feature work continues in them.
+- [ ] Parallel or dirty-tree work uses `npm run worktree:status` with `WORKTREE_OWNER_PATTERNS` when ownership is clear.
 - [ ] `npm run architecture:changed` is included in non-trivial portal handoffs.
 - [x] Portal Quality runs `npm run architecture:changed` as a PR-aware advisory report against base/head changes.
 - [ ] Selective strict architecture checks are used for tooling PRs and later CI candidates without blocking legacy debt.
@@ -228,6 +230,7 @@ When updating this tracker:
 - Verified the full quote/invoice/job-pack side-effects gate after stopping the local portal dev server that held the Next build lock: `npm run portal:side-effects` passed with 8 test files and 32 tests, then `npm run build:portal` completed with `Compiled successfully`, TypeScript, and 55 static pages generated.
 - Confirmed the Schedule V2 local readiness gate: `npm run test:portal:schedule` passed with 38 files and 215 tests, including readiness route, Board/Gantt/Site Visits client coverage, Schedule V2 API/RPC command boundaries, and legacy fallback isolation.
 - Re-ran `npm run schedule:bundle-budget`; it passed at 589.0 KiB initial raw, 169.1 KiB initial gzip, 333.2 KiB lazy raw, and 78.3 KiB lazy gzip. Live route performance and authenticated smoke remain blocked until staff credentials and a compatible migrated database are available.
+- Verified the local security/data-boundary lane: `npm run audit:security`, `npm run browser:supabase`, `npm run service-role:report`, `npm run root:compat`, `npm run architecture:changed`, `npx vitest run apps/portal/lib/supabaseClient.boundaries.test.ts`, `npm run test:portal -- apps/portal/lib/api apps/portal/app/api`, `npm run test:portal:quotes`, `npm run test:portal:schedule`, and `npm run test:marketing` passed. Added marketing public-token route and hash-boundary coverage for missing, invalid, expired, declined/void, accepted, attachment unavailable, and PDF unavailable states.
 
 ### 2026-05-02
 

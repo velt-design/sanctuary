@@ -78,11 +78,12 @@ npm run test:portal -- apps/portal/lib/quotes
 npm run test:portal -- apps/portal/lib/emails/invoice.test.ts
 npm run test:portal -- apps/portal/lib/jobPacks
 npm run test:portal -- apps/portal/app/api/quotes
+npm run test:marketing
 ```
 
 Run `npm run portal:side-effects` first for the mechanical baseline. It runs the quote/invoice/job-pack focused tests and the portal build, without authenticated browser flows, database seeding, or real email delivery. The build step runs `npm run portal:build-env` first, so an active portal dev server or Next build lock fails early with a non-destructive manual-stop instruction. Use the narrower commands when iterating inside one owner area.
 
-Current local signal from 2026-05-03: `npm run portal:side-effects` passed with 8 quote/invoice/job-pack test files and 32 tests, then `npm run build:portal` completed with `Compiled successfully`, TypeScript, and 55 static pages generated.
+Current local signal from 2026-05-03: `npm run portal:side-effects` passed with 8 quote/invoice/job-pack test files and 32 tests, then `npm run build:portal` completed with `Compiled successfully`, TypeScript, and 55 static pages generated. `npm run test:marketing` also passed with 9 files and 37 tests, including public quote accept/attachment routes, public invoice/source quote PDF routes, and source guards that keep public token comparisons hash-bound.
 
 Manual or browser checks should cover:
 

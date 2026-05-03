@@ -67,7 +67,15 @@ apps/marketing/app/api/enquiry/route.ts
 
 ## Geometry Source Of Truth
 
-Canonical geometry solving lives in `packages/geometry`.
+Canonical geometry solving lives in `packages/geometry`. There is one physical geometry truth:
+
+```text
+object-first design intent
+  -> solved geometry
+  -> viewer scene / top projection / section / sheet / snap / detail / interaction views
+```
+
+Top projection, wall edges, section cuts, sheet plans, dimensions, snap frames, hit targets, and interaction frames must be generated from the same solved geometry. App-local calculator plan models, object-workbench overlays, and sheet renderers may adapt or present that geometry, but they must not own separate view-specific geometry that can drift from 3D or from saved object intent.
 
 Top projection is scene-first: `buildTopProjectionViewModelFromScene()` projects the same `ViewerSceneModel` used by 3D into world-XY plan shapes. Mesh-backed house solids use the world `+Z` top-view contract, not render-mesh vertex order or face winding. The 3D Top camera sits above the model with screen X as world `-X` and screen Y down as world `+Y`; plan renderers mirror top-projection X coordinates to match that actual camera view and invert that same transform for deck drag coordinates. Geometry-ready Model Space is a projection-only surface: top projection is the single committed visual body source, and legacy/context/reference/opening overlays cannot draw normal Model Space bodies or draggable visible geometry. Sheet View and unsupported geometry fallback keep legacy paths. Normal projection rendering uses each shape's `metadata.topProjectionRole` so hidden lower envelope geometry and context/reference bodies cannot dominate or duplicate the plan. The assembly helper `buildTopProjectionViewModel()` remains available as a compatibility wrapper that builds the viewer scene, adds assembly reference shapes, and then calls the scene-first projection path.
 
@@ -79,6 +87,8 @@ Portal drawing code adapts package output into workbench, plan, section, sheet, 
 - `apps/portal/components/drawings`
 
 Compatibility paths must remain explicit. If a view uses fallback or compatibility-derived data, make that visible in naming, status, or tests.
+
+Compatibility wrappers are non-canonical. They may translate legacy inputs into the solved geometry spine or provide explicit fallback views when solving is unavailable, but they must not become a second geometry source for normal geometry-ready workbench output.
 
 ## Top Projection Contract
 

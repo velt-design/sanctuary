@@ -10,6 +10,8 @@ This repo should be a clean two-app product workspace where apps orchestrate wor
 
 Agents should not need archaeology to make the right architectural move. A new behavior should have an obvious owner, an obvious data path, and an obvious verification path.
 
+Geometry has one physical truth. Object-first design intent resolves into a single solved geometry spine owned by `packages/geometry`; plan, 3D, sheet, section, detail, snap, dimension, and interaction surfaces are views or adapters of that solved geometry. UI code may render, annotate, filter, select, or commit edits against that spine, but it must not invent a separate per-view geometry that can drift from the solved model.
+
 ## Target Workspace Shape
 
 `apps/marketing` owns public customer-facing experiences:
@@ -36,7 +38,7 @@ Portal may adapt package output for UI and persistence. It must not fork package
 
 `packages/geometry` owns physical geometry truth:
 
-- geometry solving, validation, normalization, top projection, section/plan/viewer models, house/deck/opening/roof physical contracts, and generated profile assets.
+- geometry solving, validation, normalization, one solved physical geometry spine, top projection, section/plan/viewer models derived from that spine, house/deck/opening/roof physical contracts, and generated profile assets.
 
 `packages/quote-format` owns shared customer-facing quote wording and formatting.
 
@@ -112,7 +114,7 @@ When app code needs a domain behavior change:
 - update app adapters or call sites.
 - add or update package tests first, then app-level tests when integration behavior changes.
 
-Portal drawing code may adapt `@sp/geometry` for workbench state, persistence, and rendering, but geometry-ready plan/3D semantics belong in the package or explicit drawing adapters.
+Portal drawing code may adapt `@sp/geometry` for workbench state, persistence, and rendering, but geometry-ready plan, sheet, section, interaction, and 3D semantics must remain views of the same solved geometry. Calculator-era plan models, object overlays, and sheet renderers may be presentation, edit-support, or compatibility layers; they must not become competing geometry owners.
 
 Costing must come from `@sp/costing`. Marketing must not create a pricing fork. Portal overrides may layer database-owned overrides on top of package base config through documented portal helpers.
 
@@ -175,6 +177,7 @@ Prefer adding or tightening:
 - root compatibility growth reports.
 - PR-aware architecture changed reports.
 - dead-code and dependency retirement reports.
+- worktree ownership reports for parallel dirty-tree work.
 - focused browser/performance gates for heavy portal surfaces.
 
 The first package-boundary gate is `npm run packages:guard`, which checks app imports of local `@sp/*` packages against app manifests and Next transpilation config.
