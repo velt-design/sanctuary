@@ -43,6 +43,7 @@ import {
   type WorkbenchGeometryIdentity,
   type WorkbenchSolvedModel,
   type WorkbenchSolvedModule,
+  type WorkbenchViewportGeometry,
   type WorkbenchTrustGateModel,
   type WorkbenchTrustStatus,
   type WorkbenchTrustStatusKind,
@@ -63,6 +64,7 @@ type DrawingWorkbenchModuleEntry = {
   planViewModel: PlanViewModel | null;
   geometryPlanViewModel: GeometryPlanViewModel | null;
   geometryTopProjectionViewModel: GeometryTopProjectionViewModel | null;
+  viewportGeometry: WorkbenchViewportGeometry;
   planRenderSource: ObjectWorkbenchPergolaRenderSource;
   planRenderStatus: ObjectWorkbenchPergolaRenderStatus;
   planModel: ModulePlanModel | null;
@@ -92,6 +94,7 @@ export type DrawingWorkbenchStore = {
     activeModule: DrawingWorkbenchModuleEntry | null;
     activeAssemblyModel: DrawingAssemblyModel | null;
     activePlanViewModel: PlanViewModel | null;
+    activeViewportGeometry: WorkbenchViewportGeometry | null;
     activePlanModel: ModulePlanModel | null;
     activeSectionModel: ModuleSectionModel | null;
     activeModuleLabel: string;
@@ -198,6 +201,7 @@ export function buildDrawingWorkbenchStore(input: {
     const resolvedDrawingModule: EstimateDrawingModule = solution.drawingModule;
     const planModel = solution.planModel;
     const sectionModel = solution.sectionModel;
+    const viewportGeometry = solution.viewportGeometry;
     const geometryPlanViewModel = solution.geometryPlan;
     const geometryTopProjectionViewModel = solution.geometryTopProjection;
     const planRenderSource = solution.renderSource;
@@ -248,6 +252,7 @@ export function buildDrawingWorkbenchStore(input: {
       }),
       geometryPlanViewModel,
       geometryTopProjectionViewModel,
+      viewportGeometry,
       planRenderSource,
       planRenderStatus,
       planModel,
@@ -392,8 +397,9 @@ export function buildDrawingWorkbenchStore(input: {
       activeModule,
       activeAssemblyModel: activeModule?.assemblyModel ?? null,
       activePlanViewModel: activeModule?.planViewModel ?? null,
-      activePlanModel: activeModule?.planModel ?? null,
-      activeSectionModel: activeModule?.sectionModel ?? null,
+      activeViewportGeometry: activeModule?.viewportGeometry ?? null,
+      activePlanModel: activeModule?.viewportGeometry.legacyFallback.planModel ?? null,
+      activeSectionModel: activeModule?.viewportGeometry.legacyFallback.sectionModel ?? null,
       activeModuleLabel: activeModule?.label ?? 'Module',
       houseAssembly: projectModel.houseAssembly,
       houseForms,

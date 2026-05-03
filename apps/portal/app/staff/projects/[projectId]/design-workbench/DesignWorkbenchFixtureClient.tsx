@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import DrawingWorkbench from '@/components/drawings/workbench/DrawingWorkbench';
 import type { Geometry3DViewportState } from '@/components/drawings/viewports/Geometry3DViewport';
-import type { ObjectWorkbenchGeometryPreviewState } from '@/lib/drawings/geometry/buildWorkbenchGeometryPreview';
 import { buildDrawingWorkbenchStore } from '@/lib/drawings/state/drawingWorkbenchStore';
 import {
   createDrawingWorkbenchUiState,
@@ -102,11 +101,6 @@ export default function DesignWorkbenchFixtureClient({
       }),
     [activeModule?.drawingModule.input, fixture.estimate.createdAt, fixture.estimate.versionLabel, projectName, siteAddress, store.derived.activeModuleLabel, store.ui.activeView],
   );
-  const geometryPreview: ObjectWorkbenchGeometryPreviewState =
-    store.derived.activeSolution?.geometryPreview ?? {
-      kind: 'error',
-      message: 'No active 3D geometry preview is available.',
-    };
   const activeSelectionFamily =
     store.ui.activeRailTab === 'diagnostics' ? store.ui.activeObjectFamily : store.ui.activeRailTab;
   const canonicalWorkbenchDisplayMode = activeSelectionFamily === 'pergolas' ? 'pergolas' : 'house';
@@ -224,10 +218,8 @@ export default function DesignWorkbenchFixtureClient({
             }
             status={store.derived.status}
             trustGate={store.derived.activeTrustGate}
-            planModel={store.derived.activePlanModel}
-            sectionModel={store.derived.activeSectionModel}
+            viewportGeometry={store.derived.activeViewportGeometry}
             planViewModel={store.derived.activePlanViewModel}
-            geometryPreview={geometryPreview}
             modelViewportKey={modelViewportSurfaceKey}
             modelViewportTransform={activeModelViewportTransform}
             modelViewportAutoFitOnReady={shouldAutoFitModelViewport}

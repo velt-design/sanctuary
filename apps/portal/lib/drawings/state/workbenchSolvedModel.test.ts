@@ -26,6 +26,9 @@ describe('buildWorkbenchSolvedModel geometry artifact', () => {
 
     expect(artifact.source).toBe('solved_geometry');
     expect(artifact.fallback).toBeNull();
+    expect(artifact.previewMode).toBe(activeModule.previewMode);
+    expect(artifact.resultSource).toBe(activeModule.resultSource);
+    expect(artifact.deckSupport).toBe(activeModule.deckSupport);
     expect(artifact.renderSource).toBe(activeModule.renderSource);
     expect(artifact.renderStatus).toBe(activeModule.renderStatus);
     expect(artifact.trust).toBe(activeModule.trust);
@@ -45,6 +48,17 @@ describe('buildWorkbenchSolvedModel geometry artifact', () => {
     expect(activeModule.geometryPreview.validation).toBe(artifact.validation);
     expect(activeModule.geometryPreview.scene).toBe(artifact.viewerScene);
     expect(activeModule.geometryPreview.topProjection).toBe(artifact.topProjection);
+    expect(activeModule.viewportGeometry.artifact).toBe(artifact);
+    expect(activeModule.viewportGeometry.preview.kind).toBe('ready');
+    if (activeModule.viewportGeometry.preview.kind !== 'ready') {
+      throw new Error('Expected ready viewport preview.');
+    }
+    expect(activeModule.viewportGeometry.preview.assembly).toBe(artifact.assembly);
+    expect(activeModule.viewportGeometry.preview.scene).toBe(artifact.viewerScene);
+    expect(activeModule.viewportGeometry.preview.topProjection).toBe(artifact.topProjection);
+    expect(activeModule.viewportGeometry.preview.validation).toBe(artifact.validation);
+    expect(activeModule.viewportGeometry.legacyFallback.planModel).toBe(activeModule.planModel);
+    expect(activeModule.viewportGeometry.legacyFallback.sectionModel).toBe(activeModule.sectionModel);
   });
 
   it('keeps invalid geometry outside the solved artifact contract', () => {
@@ -67,6 +81,8 @@ describe('buildWorkbenchSolvedModel geometry artifact', () => {
 
     expect(solvedModel.activeModule?.trust.status).toBe('invalid_geometry');
     expect(solvedModel.activeModule?.geometryArtifact).toBeNull();
+    expect(solvedModel.activeModule?.viewportGeometry.artifact).toBeNull();
+    expect(solvedModel.activeModule?.viewportGeometry.preview.kind).toBe('error');
     expect(solvedModel.activeModule?.viewerScene).toBeNull();
     expect(solvedModel.activeModule?.geometryTopProjection).toBeNull();
   });

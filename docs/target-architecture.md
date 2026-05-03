@@ -70,7 +70,7 @@ The first aggregate architecture handoff check is `npm run architecture:changed`
 
 Locally, changed-file checks read the dirty worktree against `HEAD`. In CI, `ARCHITECTURE_CHANGED_BASE` and `ARCHITECTURE_CHANGED_HEAD` make the same reports compare PR base to head, so a clean checkout still produces useful architecture handoff output.
 
-The first selective strict aggregate is `npm run architecture:changed:strict`. It is for architecture/tooling PRs and future CI experiments, and currently blocks only selected new risky growth rather than legacy debt. Strict mode is base/head aware but remains outside CI until advisory reports have proved accurate.
+The first selective strict aggregate is `npm run architecture:changed:strict`. It is for architecture/tooling PRs and CI-visible advisory reporting, and currently blocks only selected new risky growth rather than legacy debt. It includes the new-unused-file dead-code strict gate. Portal Quality runs it as non-blocking PR advisory output until the strict signal has proved accurate enough to enforce.
 
 ## Data Access Target
 
@@ -132,7 +132,7 @@ When a touched file is already large, prefer extracting a named helper, controll
 
 Stale code should not become permanent architecture. Use `docs/code-retirement-and-bloat-control.md` before deleting code, removing dependencies, or retiring compatibility paths.
 
-The first dead-code visibility gate is `npm run dead-code:report`, with `npm run dead-code:changed` for handoffs that touch files Knip reports. These reports are advisory. They identify unused files, exports, types, dependencies, unlisted dependencies, and duplicate declarations, but deletion still requires owner-doc review, reference search, and focused tests.
+The first dead-code visibility gate is `npm run dead-code:report`, with `npm run dead-code:changed` for handoffs that touch files Knip reports. These reports are advisory. `npm run dead-code:changed:strict` blocks only newly added unused files without valid registry coverage; existing debt, modified transitional files, exports/types, and dependencies stay advisory. Deletion still requires owner-doc review, reference search, and focused tests.
 
 Registry-backed findings live in `scripts/dead-code-registry.json`. A registry entry is a retirement or proof note, not a place to hide bloat.
 

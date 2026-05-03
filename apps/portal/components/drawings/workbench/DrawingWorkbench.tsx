@@ -20,7 +20,10 @@ import type {
   ObjectWorkbenchViewportTargetSelection,
 } from '@/lib/drawings/state/objectWorkbenchViewportTypes';
 import type { WorkbenchObjectRef } from '@/lib/drawings/state/objectFirstWorkbenchModel';
-import type { WorkbenchTrustGateModel } from '@/lib/drawings/state/workbenchSolvedModel';
+import type {
+  WorkbenchTrustGateModel,
+  WorkbenchViewportGeometry,
+} from '@/lib/drawings/state/workbenchSolvedModel';
 import type { Geometry3DViewportState } from '@/components/drawings/viewports/Geometry3DViewport';
 import WorkbenchChrome from './WorkbenchChrome';
 import WorkbenchViewportHost from './WorkbenchViewportHost';
@@ -40,6 +43,7 @@ type DrawingWorkbenchProps = {
   availableViewportModes?: DrawingWorkbenchViewportMode[];
   status: ModuleViewsStatus;
   trustGate?: WorkbenchTrustGateModel | null;
+  viewportGeometry?: WorkbenchViewportGeometry | null;
   planModel?: ModulePlanModel | null;
   sectionModel?: ModuleSectionModel | null;
   planViewModel?: PlanViewModel | null;
@@ -108,6 +112,7 @@ export default function DrawingWorkbench({
   availableViewportModes,
   status,
   trustGate,
+  viewportGeometry,
   planModel,
   sectionModel,
   planViewModel,
@@ -165,6 +170,7 @@ export default function DrawingWorkbench({
         objectWorkbenchDisplayFamily={objectWorkbenchDisplayFamily}
         visibility={visibility}
         status={status}
+        viewportGeometry={viewportGeometry}
         planModel={planModel}
         sectionModel={sectionModel}
         planViewModel={planViewModel}

@@ -436,10 +436,8 @@ export default function DesignWorkbenchEstimateClient({
           }
           status={store.derived.status}
           trustGate={store.derived.activeTrustGate}
-          planModel={store.derived.activePlanModel}
-          sectionModel={store.derived.activeSectionModel}
+          viewportGeometry={store.derived.activeViewportGeometry}
           planViewModel={store.derived.activePlanViewModel}
-          geometryPreview={geometryPreview}
           activeObjectRef={viewportActiveObjectRef}
           pergolaTargetId={viewportPergolaId}
           enableProjectionOnlyModelInteractions

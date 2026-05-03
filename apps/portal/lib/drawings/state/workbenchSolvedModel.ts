@@ -106,6 +106,9 @@ type WorkbenchSolvedGeometryArtifactFallback =
 export type WorkbenchSolvedGeometryArtifact = {
   source: 'solved_geometry';
   fallback: WorkbenchSolvedGeometryArtifactFallback;
+  previewMode: GeometryPreviewMode;
+  resultSource: WorkbenchGeometryResultSource;
+  deckSupport: WorkbenchDeckSupportDiagnostic | null;
   config: GeometryConfig;
   assembly: Assembly3D;
   plan: GeometryPlanViewModel;
@@ -116,6 +119,15 @@ export type WorkbenchSolvedGeometryArtifact = {
   trust: WorkbenchTrustStatus;
   renderSource: ObjectWorkbenchPergolaRenderSource;
   renderStatus: ObjectWorkbenchPergolaRenderStatus;
+};
+
+export type WorkbenchViewportGeometry = {
+  artifact: WorkbenchSolvedGeometryArtifact | null;
+  legacyFallback: {
+    planModel: ModulePlanModel | null;
+    sectionModel: ModuleSectionModel | null;
+  };
+  preview: GeometryPreviewState;
 };
 
 export type WorkbenchSolvedModule = {
@@ -139,6 +151,7 @@ export type WorkbenchSolvedModule = {
   validation: GeometryValidationReport | null;
   viewerScene: ViewerSceneModel | null;
   geometryPreview: GeometryPreviewState;
+  viewportGeometry: WorkbenchViewportGeometry;
   deckSupport: WorkbenchDeckSupportDiagnostic | null;
   planModel: ModulePlanModel | null;
   sectionModel: ModuleSectionModel | null;
@@ -564,6 +577,38 @@ function previewMessageFromWorkbenchMessage(message: string): string {
   return message.replace('workbench geometry', '3D geometry preview');
 }
 
+function buildGeometryPreviewStateFromArtifact(
+  artifact: WorkbenchSolvedGeometryArtifact,
+): GeometryPreviewState {
+  return {
+    kind: 'ready',
+    previewMode: artifact.previewMode,
+    resultSource: artifact.resultSource,
+    config: artifact.config,
+    assembly: artifact.assembly,
+    validation: artifact.validation,
+    scene: artifact.viewerScene,
+    topProjection: artifact.topProjection,
+    deckSupport: artifact.deckSupport,
+  };
+}
+
+function buildWorkbenchViewportGeometry(input: {
+  artifact: WorkbenchSolvedGeometryArtifact | null;
+  planModel: ModulePlanModel | null;
+  sectionModel: ModuleSectionModel | null;
+  preview: GeometryPreviewState;
+}): WorkbenchViewportGeometry {
+  return {
+    artifact: input.artifact,
+    legacyFallback: {
+      planModel: input.planModel,
+      sectionModel: input.sectionModel,
+    },
+    preview: input.artifact ? buildGeometryPreviewStateFromArtifact(input.artifact) : input.preview,
+  };
+}
+
 function buildInvalidSolvedModule(input: {
   index: number;
   drawingModule: EstimateDrawingModule;
@@ -583,6 +628,18 @@ function buildInvalidSolvedModule(input: {
     result: input.drawingResult,
   };
   const previewKind = input.previewKind ?? 'error';
+  const geometryPreview: GeometryPreviewState =
+    previewKind === 'unsupported' && input.deckSupport
+      ? {
+          kind: 'unsupported',
+          previewMode: input.previewMode,
+          message: input.geometryPreviewMessage ?? input.message,
+          deckSupport: input.deckSupport,
+        }
+      : {
+          kind: 'error',
+          message: input.geometryPreviewMessage ?? input.message,
+        };
   return {
     index: input.index,
     id: input.drawingModule.id,
@@ -607,18 +664,13 @@ function buildInvalidSolvedModule(input: {
     geometryTopProjection: null,
     validation: null,
     viewerScene: null,
-    geometryPreview:
-      previewKind === 'unsupported' && input.deckSupport
-        ? {
-            kind: 'unsupported',
-            previewMode: input.previewMode,
-            message: input.geometryPreviewMessage ?? input.message,
-            deckSupport: input.deckSupport,
-          }
-        : {
-            kind: 'error',
-            message: input.geometryPreviewMessage ?? input.message,
-          },
+    geometryPreview,
+    viewportGeometry: buildWorkbenchViewportGeometry({
+      artifact: null,
+      planModel: null,
+      sectionModel: null,
+      preview: geometryPreview,
+    }),
     deckSupport: input.deckSupport ?? null,
     planModel: null,
     sectionModel: null,
@@ -687,6 +739,12 @@ function buildSolvedModule(input: {
   if (derivation.kind === 'legacy_unsupported_family') {
     const legacyIssues: WorkbenchTrustStatusKind[] =
       derivation.planModel || derivation.sectionModel ? ['legacy_fallback'] : [];
+    const geometryPreview: GeometryPreviewState = {
+      kind: 'unsupported',
+      previewMode,
+      message: derivation.message,
+      deckSupport,
+    };
     return {
       index: input.index,
       id: input.drawingModule.id,
@@ -712,12 +770,13 @@ function buildSolvedModule(input: {
       geometryTopProjection: null,
       validation: null,
       viewerScene: null,
-      geometryPreview: {
-        kind: 'unsupported',
-        previewMode,
-        message: derivation.message,
-        deckSupport,
-      },
+      geometryPreview,
+      viewportGeometry: buildWorkbenchViewportGeometry({
+        artifact: null,
+        planModel: derivation.planModel,
+        sectionModel: derivation.sectionModel,
+        preview: geometryPreview,
+      }),
       deckSupport,
       planModel: derivation.planModel,
       sectionModel: derivation.sectionModel,
@@ -763,6 +822,9 @@ function buildSolvedModule(input: {
   const geometryArtifact: WorkbenchSolvedGeometryArtifact = {
     source: 'solved_geometry',
     fallback: null,
+    previewMode,
+    resultSource: resolved.resultSource,
+    deckSupport,
     config: derivation.config,
     assembly: derivation.assembly,
     plan: derivation.geometryPlan,
@@ -774,6 +836,7 @@ function buildSolvedModule(input: {
     renderSource: derivation.renderSource,
     renderStatus: derivation.renderStatus,
   };
+  const geometryPreview = buildGeometryPreviewStateFromArtifact(geometryArtifact);
 
   return {
     index: input.index,
@@ -795,17 +858,13 @@ function buildSolvedModule(input: {
     geometryTopProjection: geometryArtifact.topProjection,
     validation: geometryArtifact.validation,
     viewerScene: geometryArtifact.viewerScene,
-    geometryPreview: {
-      kind: 'ready',
-      previewMode,
-      resultSource: resolved.resultSource,
-      config: geometryArtifact.config,
-      assembly: geometryArtifact.assembly,
-      validation: geometryArtifact.validation,
-      scene: geometryArtifact.viewerScene,
-      topProjection: geometryArtifact.topProjection,
-      deckSupport,
-    },
+    geometryPreview,
+    viewportGeometry: buildWorkbenchViewportGeometry({
+      artifact: geometryArtifact,
+      planModel: derivation.planModel,
+      sectionModel: derivation.sectionModel,
+      preview: geometryPreview,
+    }),
     deckSupport,
     planModel: derivation.planModel,
     sectionModel: derivation.sectionModel,
@@ -892,7 +951,7 @@ function buildGeometryPreviewStateFromSolvedModule(
   module: WorkbenchSolvedModule | null,
   fallbackMessage = 'The selected module is not available for 3D geometry preview.',
 ): GeometryPreviewState {
-  return module?.geometryPreview ?? { kind: 'error', message: fallbackMessage };
+  return module?.viewportGeometry.preview ?? { kind: 'error', message: fallbackMessage };
 }
 
 export function buildGeometryPreviewStateFromSolvedModel(

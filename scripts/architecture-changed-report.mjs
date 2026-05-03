@@ -13,6 +13,13 @@ const CHECKS = [
   { label: 'Browser Supabase access', advisoryScript: 'browser:supabase:changed', strictScript: 'browser:supabase:changed:strict' },
   { label: 'Service-role Supabase access', advisoryScript: 'service-role:changed', strictScript: 'service-role:changed:strict' },
 ];
+const STRICT_CHECKS = [
+  { label: 'File decomposition pressure', strictScript: 'files:changed:strict' },
+  { label: 'Dead-code pressure', strictScript: 'dead-code:changed:strict' },
+  { label: 'Root compatibility growth', strictScript: 'root:compat:changed:strict' },
+  { label: 'Browser Supabase access', strictScript: 'browser:supabase:changed:strict' },
+  { label: 'Service-role Supabase access', strictScript: 'service-role:changed:strict' },
+];
 
 const npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm';
 
@@ -67,7 +74,7 @@ function main() {
     console.log('Base/head comparison mode is enabled by ARCHITECTURE_CHANGED_BASE and ARCHITECTURE_CHANGED_HEAD.');
   }
 
-  for (const check of CHECKS) {
+  for (const check of STRICT ? STRICT_CHECKS : CHECKS) {
     runCheck(check);
   }
 

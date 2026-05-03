@@ -20,11 +20,11 @@
         "apps/portal/app/staff/calculator/ModuleViewsCard.test.tsx",
         "apps/portal/app/staff/calculator/moduleViews.ts"
       ],
-      "whyLarge": "Calculator UI, module drawing surfaces, estimate state, and presentation helpers are still concentrated in a few client files.",
-      "nextSafeExtraction": "Continue reducing shared drawing atoms and any remaining oversized PlanSvg/model-space presenters now that plan layout is split into shared geometry, sheet layout, and model-space layout owners.",
+      "whyLarge": "Calculator UI, module drawing surfaces, estimate state, and presentation helpers are still concentrated in a few client files, though pure calculator input defaults and normalization now live outside CalculatorGridClient.",
+      "nextSafeExtraction": "Continue extracting cohesive calculator owners: draft/session state, estimate save orchestration, and remaining infill/blind editor state should move before adding new calculator workflows.",
       "focusedTests": [
+        "npx vitest run apps/portal/app/staff/calculator",
         "npm run test:portal:projects",
-        "targeted calculator/component tests",
         "npm run typecheck"
       ]
     },

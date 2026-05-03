@@ -4,11 +4,13 @@ import path from 'node:path';
 import {
   changedFilesFromGit,
   changedModeDescription,
+  changedStatusMap,
   toPosix,
 } from './changed-file-utils.mjs';
 
 const ROOT = process.cwd();
 const CHANGED_ONLY = process.argv.includes('--changed');
+const STRICT = process.argv.includes('--strict');
 const MAX_ROWS = Number.parseInt(process.env.DEAD_CODE_MAX_ROWS ?? '80', 10);
 const REGISTRY_PATH = 'scripts/dead-code-registry.json';
 const VALID_CATEGORIES = new Set(['intentional-entrypoint', 'legacy-retirement', 'dynamic-reference']);
@@ -152,6 +154,7 @@ function rowsFromKnip(payload, registryEntries) {
       issue: 'unused-file',
       detail: 'file is not reached from configured entrypoints',
       classification: classificationFor(registry, 'unused-file', normalized),
+      registered: Boolean(registry),
       owner: registry?.ownerArea ?? 'unowned',
       proof: registry?.proofCommand ?? 'search references and run focused owner tests',
       action: registry?.retirementAction ?? 'prove unused, then delete or wire into the owning app/package',
@@ -168,6 +171,7 @@ function rowsFromKnip(payload, registryEntries) {
           issue: key,
           detail: item.name || item.member || item.symbol || item.type || 'unnamed finding',
           classification: classificationFor(registry, key, file),
+          registered: Boolean(registry),
           owner: registry?.ownerArea ?? 'unowned',
           proof: registry?.proofCommand ?? 'search references and run focused owner tests',
           action: registry?.retirementAction ?? actionForIssue(key),
@@ -214,6 +218,23 @@ function changedSet() {
 function filterChangedRows(rows) {
   const changed = changedSet();
   return rows.filter((row) => changed.has(row.file));
+}
+
+function maybeFailStrict(rows) {
+  if (!STRICT) return;
+
+  const statusMap = changedStatusMap();
+  const failures = rows.filter((row) => row.issue === 'unused-file' && statusMap.get(row.file) === 'new' && !row.registered);
+  if (failures.length === 0) return;
+
+  console.error('');
+  console.error('dead-code-report: strict changed-file check failed');
+  console.error('New unused files are blocked in strict mode unless they have valid dead-code registry coverage.');
+  console.error('Delete the file, wire it into the correct owner, or add registry coverage only for real dynamic or deferred use:');
+  for (const row of failures) {
+    console.error(`- ${row.file} (${row.detail})`);
+  }
+  process.exit(1);
 }
 
 function pad(value, width) {
@@ -266,6 +287,7 @@ function main() {
   const rows = CHANGED_ONLY ? filterChangedRows(allRows) : allRows;
 
   console.log(`dead-code-report: ${CHANGED_ONLY ? 'changed-file advisory report' : 'advisory report'}`);
+  if (STRICT) console.log('Strict mode: enabled for newly added unused files without registry coverage.');
   if (CHANGED_ONLY) console.log(`Changed source: ${changedModeDescription()}`);
   console.log(`Registry: ${REGISTRY_PATH} (${registry.entries.length} entries)`);
   console.log('Powered by Knip. This report is advisory and does not delete code.');
@@ -285,6 +307,7 @@ function main() {
     console.log('Handoff cue: if a touched or new file is listed, say whether it was deleted, wired into the owner, or intentionally deferred with registry coverage.');
   }
   console.log('Deletion rule: prove unused with static report, search, owner-doc review, and focused tests before removing code.');
+  maybeFailStrict(rows);
 }
 
 main();

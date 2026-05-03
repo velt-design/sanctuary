@@ -257,6 +257,10 @@ describe('buildDrawingWorkbenchStore', () => {
     expect(store.derived.reviewReadiness.canReview).toBe(true);
     expect(store.derived.activeSolution?.planModel).toBe(store.derived.activePlanModel);
     expect(store.derived.activeSolution?.sectionModel).toBe(store.derived.activeSectionModel);
+    expect(store.derived.activeViewportGeometry).toBe(store.derived.activeSolution?.viewportGeometry);
+    expect(store.derived.activeViewportGeometry?.artifact).toBe(store.derived.activeSolution?.geometryArtifact);
+    expect(store.derived.activeViewportGeometry?.legacyFallback.planModel).toBe(store.derived.activePlanModel);
+    expect(store.derived.activeViewportGeometry?.legacyFallback.sectionModel).toBe(store.derived.activeSectionModel);
     expect(store.derived.activeSolution?.geometryPlan).toBe(store.derived.activeModule?.geometryPlanViewModel);
     expect(store.derived.activeSolution?.geometryArtifact?.plan).toBe(store.derived.activeSolution?.geometryPlan);
     expect(store.derived.activeSolution?.geometryArtifact?.topProjection).toBe(
@@ -275,6 +279,19 @@ describe('buildDrawingWorkbenchStore', () => {
     expect(store.derived.activeSolution.geometryPreview.assembly).toBe(store.derived.activeSolution.assembly);
     expect(store.derived.activeSolution.geometryPreview.scene).toBe(store.derived.activeSolution.viewerScene);
     expect(store.derived.activeSolution.geometryPreview.topProjection).toBe(store.derived.activeSolution.geometryTopProjection);
+    expect(store.derived.activeViewportGeometry?.preview.kind).toBe('ready');
+    if (store.derived.activeViewportGeometry?.preview.kind !== 'ready') {
+      throw new Error('Expected ready viewport geometry preview.');
+    }
+    expect(store.derived.activeViewportGeometry.preview.assembly).toBe(
+      store.derived.activeSolution.geometryArtifact?.assembly,
+    );
+    expect(store.derived.activeViewportGeometry.preview.scene).toBe(
+      store.derived.activeSolution.geometryArtifact?.viewerScene,
+    );
+    expect(store.derived.activeViewportGeometry.preview.topProjection).toBe(
+      store.derived.activeSolution.geometryArtifact?.topProjection,
+    );
     expect(store.derived.activeAssemblyModel?.roof.footprint.lengthA).toBeCloseTo(4.5);
     expect(store.derived.activePlanModel?.lengthA).toBeCloseTo(4.5);
     expect(store.derived.activePlanModel?.attachmentEdgeLengthM).toBeCloseTo(4.5);
@@ -399,6 +416,9 @@ describe('buildDrawingWorkbenchStore', () => {
     });
     expect(store.derived.activeTrustGate.blockingIssues).toContain('invalid_geometry');
     expect(store.derived.activeSolution?.geometryPreview.kind).toBe('error');
+    expect(store.derived.activeViewportGeometry?.artifact).toBeNull();
+    expect(store.derived.activeViewportGeometry?.preview.kind).toBe('error');
+    expect(store.derived.activeViewportGeometry?.legacyFallback.planModel).toBeNull();
     expect(store.derived.activePlanModel).toBeNull();
     expect(store.derived.status).toBe('empty');
   });
@@ -447,6 +467,10 @@ describe('buildDrawingWorkbenchStore', () => {
     });
     expect(store.derived.activePlanModel).not.toBeNull();
     expect(store.derived.activeSectionModel).not.toBeNull();
+    expect(store.derived.activeViewportGeometry?.artifact).toBeNull();
+    expect(store.derived.activeViewportGeometry?.preview.kind).toBe('unsupported');
+    expect(store.derived.activeViewportGeometry?.legacyFallback.planModel).toBe(store.derived.activePlanModel);
+    expect(store.derived.activeViewportGeometry?.legacyFallback.sectionModel).toBe(store.derived.activeSectionModel);
     expect(store.derived.railModel.objectLists.pergolas[0]).toMatchObject({
       status: 'approximate',
       trustStatus: 'legacy_fallback',

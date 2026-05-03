@@ -25,6 +25,10 @@ Keep deletion PRs small. A good retirement change removes one cohesive surface, 
 
 `npm run architecture:changed` includes `dead-code:changed` for routine non-trivial handoffs, after worktree ownership and before the other architecture changed-file reports. Use the focused `dead-code:changed` command directly for deletion, dependency, or cleanup work that needs the dedicated Knip summary.
 
+`npm run dead-code:changed:strict` is the first bloat-prevention enforcement layer. It fails only when a newly added file is reported unused by Knip and has no valid registry coverage. Existing modified files, unused exports/types, dependency findings, and registered intentional, dynamic, or deferred entries remain advisory.
+
+Portal Quality runs the aggregate `npm run architecture:changed:strict` as non-blocking PR advisory output, so new-unused-file strict failures are visible in CI before they become blocking.
+
 Classifications:
 
 | Classification | Meaning | Default Action |
@@ -64,6 +68,7 @@ Start advisory:
 1. Run `npm run architecture:changed` for routine non-trivial handoffs so dead-code pressure appears with the other architecture guardrails.
 2. Run `npm run dead-code:report` during cleanup and readiness work.
 3. Run `npm run dead-code:changed` directly for deletion, dependency, or cleanup work.
-4. Let Portal Quality publish PR-aware advisory output.
-5. After the registry is calibrated, add strict mode only for newly added unused files or exports.
-6. Use small cleanup PRs to delete proven candidates and retire registry entries.
+4. Let Portal Quality publish PR-aware advisory and strict-advisory output.
+5. Use `npm run dead-code:changed:strict` locally to block newly added unused files without blocking legacy debt.
+6. Later, consider stricter coverage for newly added unused exports or dependencies only after the advisory signal is trusted.
+7. Use small cleanup PRs to delete proven candidates and retire registry entries.

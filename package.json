@@ -27,6 +27,7 @@
     "architecture:changed:strict": "node scripts/architecture-changed-report.mjs --strict",
     "dead-code:report": "node scripts/dead-code-report.mjs",
     "dead-code:changed": "node scripts/dead-code-report.mjs --changed",
+    "dead-code:changed:strict": "node scripts/dead-code-report.mjs --changed --strict",
     "worktree:status": "node scripts/worktree-ownership-report.mjs",
     "worktree:changed": "node scripts/worktree-ownership-report.mjs --changed",
     "files:report": "node scripts/file-decomposition-report.mjs",

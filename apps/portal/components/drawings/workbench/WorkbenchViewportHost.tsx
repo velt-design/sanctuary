@@ -9,6 +9,7 @@ import type {
   DrawingWorkbenchViewportTransform,
   DrawingWorkbenchVisibilityState,
 } from '@/lib/drawings/state/drawingWorkbenchUiState';
+import type { WorkbenchViewportGeometry } from '@/lib/drawings/state/workbenchSolvedModel';
 import type { WorkbenchObjectRef } from '@/lib/drawings/state/objectFirstWorkbenchModel';
 import type {
   ObjectWorkbenchDeckPatch,
@@ -33,6 +34,7 @@ export type WorkbenchViewportHostProps = {
   objectWorkbenchDisplayFamily?: ObjectWorkbenchDisplayFamily;
   visibility?: DrawingWorkbenchVisibilityState;
   status: ModuleViewsStatus;
+  viewportGeometry?: WorkbenchViewportGeometry | null;
   planModel?: ModulePlanModel | null;
   sectionModel?: ModuleSectionModel | null;
   planViewModel?: PlanViewModel | null;
@@ -94,6 +96,7 @@ export default function WorkbenchViewportHost({
   objectWorkbenchDisplayFamily = 'pergolas',
   visibility,
   status,
+  viewportGeometry,
   planModel,
   sectionModel,
   planViewModel,
@@ -128,6 +131,10 @@ export default function WorkbenchViewportHost({
   onCommitOpeningDimension,
   onDeckInteractionTelemetryChange,
 }: WorkbenchViewportHostProps) {
+  const routedPlanModel = viewportGeometry?.legacyFallback.planModel ?? planModel ?? null;
+  const routedSectionModel = viewportGeometry?.legacyFallback.sectionModel ?? sectionModel ?? null;
+  const routedGeometryPreview = viewportGeometry?.preview ?? geometryPreview ?? null;
+
   return (
     <div className={styles.viewport}>
       {viewportMode === 'sheet' ? (
@@ -135,8 +142,8 @@ export default function WorkbenchViewportHost({
           moduleLabel={moduleLabel}
           view={view}
           status={status}
-          planModel={planModel}
-          sectionModel={sectionModel}
+          planModel={routedPlanModel}
+          sectionModel={routedSectionModel}
           planViewModel={planViewModel}
           meta={meta}
           editableFields={editableFields}
@@ -150,8 +157,8 @@ export default function WorkbenchViewportHost({
           objectWorkbenchDisplayFamily={objectWorkbenchDisplayFamily}
           visibility={visibility}
           status={status}
-          planModel={planModel}
-          sectionModel={sectionModel}
+          planModel={routedPlanModel}
+          sectionModel={routedSectionModel}
           planViewModel={planViewModel}
           activeObjectRef={activeObjectRef}
           pergolaTargetId={pergolaTargetId}
@@ -178,7 +185,7 @@ export default function WorkbenchViewportHost({
         />
       ) : (
         <Geometry3DViewport
-          geometryPreview={geometryPreview}
+          geometryPreview={routedGeometryPreview}
           objectWorkbenchDisplayFamily={objectWorkbenchDisplayFamily}
           visibility={visibility}
           viewportKey={geometryViewportKey ?? `${objectWorkbenchDisplayFamily}:${activeModuleIndex}`}
