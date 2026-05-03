@@ -4,6 +4,7 @@ import path from 'node:path';
 
 const ROOT = process.cwd();
 const CHANGED_ONLY = process.argv.includes('--changed');
+const STRICT = process.argv.includes('--strict');
 const BASE_REF = process.env.WORKTREE_BASE_REF?.trim() || 'HEAD';
 const OWNER_PATTERNS = (process.env.WORKTREE_OWNER_PATTERNS || '')
   .split(',')
@@ -176,13 +177,58 @@ function printHandoffCue(rows) {
   }
 }
 
+function strictFailures(rows) {
+  const failures = [];
+  if (OWNER_PATTERNS.length === 0 && rows.length > 0) {
+    failures.push({
+      reason: 'missing-owner-patterns',
+      message: 'declare WORKTREE_OWNER_PATTERNS before running strict worktree verification',
+    });
+  }
+
+  for (const row of rows) {
+    if (row.category === 'outside-lane') {
+      failures.push({
+        reason: 'outside-lane',
+        file: row.file,
+        message: 'changed file is outside WORKTREE_OWNER_PATTERNS',
+      });
+    }
+    if (row.category === 'deleted-or-missing') {
+      failures.push({
+        reason: 'deleted-or-missing',
+        file: row.file,
+        message: 'deleted or missing path needs explicit owner confirmation',
+      });
+    }
+  }
+  return failures;
+}
+
+function printStrictFailures(failures) {
+  if (failures.length === 0) return;
+  console.log('');
+  console.log('Strict failure: worktree ownership requirements were not met.');
+  for (const failure of failures) {
+    const fileLabel = failure.file ? `${failure.file}: ` : '';
+    console.log(`- ${fileLabel}${failure.message}`);
+  }
+  console.log('Expected fix: declare the current lane with WORKTREE_OWNER_PATTERNS, move unrelated edits out of this handoff, or get explicit owner confirmation for deletions.');
+}
+
 function main() {
   const rows = changedRows();
 
-  console.log(`worktree-ownership-report: ${CHANGED_ONLY ? 'changed-file advisory report' : 'advisory report'}`);
+  if (STRICT && rows.length === 0) return;
+
+  console.log(
+    `worktree-ownership-report: ${CHANGED_ONLY ? 'changed-file' : 'full'} ${
+      STRICT ? 'strict report' : 'advisory report'
+    }`,
+  );
   console.log(`Base ref: ${BASE_REF}`);
   console.log(`Owner patterns: ${OWNER_PATTERNS.length > 0 ? OWNER_PATTERNS.join(', ') : 'none declared'}`);
-  console.log('This report is advisory and does not modify the worktree.');
+  console.log(STRICT ? 'Strict mode fails on undeclared lanes, outside-lane files, and deleted/missing paths.' : 'This report is advisory and does not modify the worktree.');
   console.log('');
 
   if (rows.length === 0) {
@@ -204,6 +250,12 @@ function main() {
   printRows(rows.slice(0, MAX_ROWS));
   console.log('');
   printHandoffCue(rows);
+
+  if (STRICT) {
+    const failures = strictFailures(rows);
+    printStrictFailures(failures);
+    if (failures.length > 0) process.exit(1);
+  }
 }
 
 main();

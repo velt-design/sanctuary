@@ -14,6 +14,7 @@ const CHECKS = [
   { label: 'Service-role Supabase access', advisoryScript: 'service-role:changed', strictScript: 'service-role:changed:strict' },
 ];
 const STRICT_CHECKS = [
+  { label: 'Worktree ownership', strictScript: 'worktree:changed:strict' },
   { label: 'File decomposition pressure', strictScript: 'files:changed:strict' },
   { label: 'Dead-code pressure', strictScript: 'dead-code:changed:strict' },
   { label: 'Root compatibility growth', strictScript: 'root:compat:changed:strict' },

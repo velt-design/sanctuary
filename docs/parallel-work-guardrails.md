@@ -83,6 +83,8 @@ Files reported as outside-lane are not cleanup opportunities. Leave them untouch
 
 Use `npm run architecture:changed` as the preferred handoff sweep for parallel lanes. It runs `worktree:changed` first, then the changed-file architecture reports.
 
+Use `npm run worktree:changed:strict` for local dirty-tree strict verification after declaring `WORKTREE_OWNER_PATTERNS`. Strict mode fails when a lane is undeclared, when changed files sit outside the declared patterns, or when deleted/missing paths need explicit owner confirmation. `npm run architecture:changed:strict` also starts with this strict ownership check, so declare the lane before running it in a dirty worktree.
+
 If two lanes need the same file, type, API route, schema, or shared package export, pause and split the contract from the implementation. Land the contract first or nominate one lane as the owner.
 
 ### 2. Keep Boundaries Hard

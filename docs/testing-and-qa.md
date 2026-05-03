@@ -73,6 +73,7 @@ npm run docs:navigation
 npm run docs:readiness
 npm run worktree:status
 npm run worktree:changed
+npm run worktree:changed:strict
 npm run architecture:changed
 npm run architecture:changed:strict
 npm run dead-code:report
@@ -99,11 +100,11 @@ npm run schedule:bundle-budget
 
 `npm run packages:guard` checks that app imports of local `@sp/*` workspace packages are declared in the app manifest and listed in Next `transpilePackages`. `npm run lint` includes this guard after `docs:guard`.
 
-`npm run worktree:status` is an advisory ownership report for dirty worktrees and parallel lanes. Use `WORKTREE_OWNER_PATTERNS` with comma-separated path globs to declare the current task's owned paths. `npm run worktree:changed` is the focused handoff form. Files reported as outside-lane should not be edited, formatted, reverted, or cleaned up by the current task. These commands are not part of `npm run lint`.
+`npm run worktree:status` is an advisory ownership report for dirty worktrees and parallel lanes. Use `WORKTREE_OWNER_PATTERNS` with comma-separated path globs to declare the current task's owned paths. `npm run worktree:changed` is the focused handoff form. `npm run worktree:changed:strict` fails when dirty files exist without declared owner patterns, when files are outside the declared lane, or when deleted/missing paths need explicit owner confirmation. These commands are not part of `npm run lint`.
 
 `npm run architecture:changed` is the recommended advisory handoff sweep for non-trivial work. It runs `worktree:changed` first, then `dead-code:changed`, `files:changed`, `root:compat:changed`, `browser:supabase:changed`, and `service-role:changed` with section headers, while leaving each focused report as the canonical source of its own handoff cues. It is not part of `npm run lint`.
 
-`npm run architecture:changed:strict` is an architecture/tooling check and CI-visible advisory. It runs the strict changed-file variants and currently blocks only selected new risky growth; it does not run worktree ownership and is not part of `npm run lint`. Strict mode includes `dead-code:changed:strict` after file decomposition strict reporting.
+`npm run architecture:changed:strict` is an architecture/tooling check and CI-visible advisory. It starts with `worktree:changed:strict`, then runs the strict changed-file variants that currently block only selected new risky growth. Declare `WORKTREE_OWNER_PATTERNS` before running it in a dirty local worktree. It is not part of `npm run lint`.
 
 Changed-file architecture reports use the dirty worktree against `HEAD` by default. When `ARCHITECTURE_CHANGED_BASE` and `ARCHITECTURE_CHANGED_HEAD` are set, they compare those refs instead; Portal Quality uses that mode on pull requests so the advisory and strict advisory reports see PR base-to-head changes even though the CI checkout is clean. Strict mode remains non-blocking until new-growth enforcement is intentionally enabled.
 

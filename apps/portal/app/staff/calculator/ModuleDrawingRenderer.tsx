@@ -88,10 +88,29 @@ export function ModuleDrawingRenderer({
 }: ModuleDrawingRendererProps) {
   const effectivePlanModel = drawingSurfaceGeometry?.planModel ?? planModel ?? null;
   const effectiveSectionModel = drawingSurfaceGeometry?.sectionModel ?? sectionModel ?? null;
+  const hasSolvedDrawingSurfaceGeometry = drawingSurfaceGeometry?.source === 'solved_geometry';
   const effectiveModelSpacePergolaGeometry =
-    modelSpacePergolaGeometry ?? (drawingSurfaceGeometry?.source === 'solved_geometry' ? drawingSurfaceGeometry.geometryPlan : null);
+    drawingSurfaceGeometry
+      ? hasSolvedDrawingSurfaceGeometry
+        ? drawingSurfaceGeometry.geometryPlan
+        : null
+      : modelSpacePergolaGeometry ?? null;
   const effectiveModelSpaceTopProjection =
-    modelSpaceTopProjection ?? (drawingSurfaceGeometry?.source === 'solved_geometry' ? drawingSurfaceGeometry.geometryTopProjection : null);
+    drawingSurfaceGeometry
+      ? hasSolvedDrawingSurfaceGeometry
+        ? drawingSurfaceGeometry.geometryTopProjection
+        : null
+      : modelSpaceTopProjection ?? null;
+  const effectiveModelSpacePergolaRenderSource = drawingSurfaceGeometry
+    ? hasSolvedDrawingSurfaceGeometry
+      ? 'geometry'
+      : 'legacy'
+    : modelSpacePergolaRenderSource;
+  const effectiveModelSpacePergolaRenderStatus = drawingSurfaceGeometry
+    ? hasSolvedDrawingSurfaceGeometry && effectiveModelSpacePergolaGeometry && effectiveModelSpaceTopProjection
+      ? 'geometry_ready'
+      : 'invalid_geometry'
+    : modelSpacePergolaRenderStatus;
   const effectiveShowDebugOverlays = showDebugOverlays ?? presentation === 'sheet';
   const isCompact = presentation !== 'card';
   const isModel = presentation === 'model';
@@ -223,8 +242,8 @@ export function ModuleDrawingRenderer({
               objectWorkbenchPreviewOverlay={objectWorkbenchPreviewOverlay}
               modelSpacePergolaGeometry={effectiveModelSpacePergolaGeometry}
               modelSpaceTopProjection={effectiveModelSpaceTopProjection}
-              modelSpacePergolaRenderSource={modelSpacePergolaRenderSource}
-              modelSpacePergolaRenderStatus={modelSpacePergolaRenderStatus}
+              modelSpacePergolaRenderSource={effectiveModelSpacePergolaRenderSource}
+              modelSpacePergolaRenderStatus={effectiveModelSpacePergolaRenderStatus}
             />
           </div>
           {isCompact ? null : (

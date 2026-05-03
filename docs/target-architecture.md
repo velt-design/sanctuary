@@ -70,7 +70,7 @@ The first aggregate architecture handoff check is `npm run architecture:changed`
 
 Locally, changed-file checks read the dirty worktree against `HEAD`. In CI, `ARCHITECTURE_CHANGED_BASE` and `ARCHITECTURE_CHANGED_HEAD` make the same reports compare PR base to head, so a clean checkout still produces useful architecture handoff output.
 
-The first selective strict aggregate is `npm run architecture:changed:strict`. It is for architecture/tooling PRs and CI-visible advisory reporting, and currently blocks only selected new risky growth rather than legacy debt. It includes the new-unused-file dead-code strict gate. Portal Quality runs it as non-blocking PR advisory output until the strict signal has proved accurate enough to enforce.
+The first selective strict aggregate is `npm run architecture:changed:strict`. It is for architecture/tooling PRs and CI-visible advisory reporting, and currently blocks undeclared dirty-tree lanes plus selected new risky growth rather than legacy debt. It includes `worktree:changed:strict` first and the new-unused-file dead-code strict gate. Portal Quality runs it as non-blocking PR advisory output until the strict signal has proved accurate enough to enforce.
 
 ## Data Access Target
 
@@ -179,7 +179,7 @@ Prefer adding or tightening:
 - root compatibility growth reports.
 - PR-aware architecture changed reports.
 - dead-code and dependency retirement reports.
-- worktree ownership reports for parallel dirty-tree work.
+- worktree ownership reports and strict local lane checks for parallel dirty-tree work.
 - focused browser/performance gates for heavy portal surfaces.
 
 The first package-boundary gate is `npm run packages:guard`, which checks app imports of local `@sp/*` packages against app manifests and Next transpilation config.

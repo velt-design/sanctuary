@@ -30,6 +30,7 @@
     "dead-code:changed:strict": "node scripts/dead-code-report.mjs --changed --strict",
     "worktree:status": "node scripts/worktree-ownership-report.mjs",
     "worktree:changed": "node scripts/worktree-ownership-report.mjs --changed",
+    "worktree:changed:strict": "node scripts/worktree-ownership-report.mjs --changed --strict",
     "files:report": "node scripts/file-decomposition-report.mjs",
     "files:changed": "node scripts/file-decomposition-report.mjs --changed",
     "files:changed:strict": "node scripts/file-decomposition-report.mjs --changed --strict",
