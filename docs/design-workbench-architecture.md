@@ -95,9 +95,14 @@ When changing persistence:
 ## Verification
 
 ```bash
+npm run test:portal:workbench
 npm run test:portal -- apps/portal/lib/drawings
 npm run test:portal -- apps/portal/components/drawings
 npm run test:portal:browser
 ```
 
-For 3D or drawing UI work, use Playwright screenshots or visual checks in addition to unit tests.
+Latest local signal: on 2026-05-03, `npm run test:portal:workbench` passed with 53 Vitest files and 557 tests, then 3 no-auth fixture browser tests passed and the auth-backed smoke stayed skipped by design.
+
+`npm run test:portal:browser` covers no-auth fixture rendering for nonblank Model Space Plan, 3D containment, top-projection parity, and object-first/fallback visibility. It should fail if the fixture route redirects to login, becomes unavailable, silently renders hidden top-projection bodies, or shows user-facing legacy fallback failure text.
+
+For 3D or drawing UI work, use Playwright screenshots or visual checks in addition to unit tests. Authenticated edit/save/reload, high-risk visual QA, and persisted staff project checks remain release checks until safe staff data is configured locally or in CI.

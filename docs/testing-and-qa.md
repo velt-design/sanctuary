@@ -235,7 +235,8 @@ This doc remains the canonical command catalog. When readiness work changes comm
 
 ## CI
 
-- Portal Quality runs docs guard, repository typecheck, lint, portal Vitest, portal build, schedule bundle budget, fixture browser smoke, authenticated smoke, and portal performance timing.
+- Portal Quality runs docs guard, repository typecheck, lint, portal Vitest, portal build, schedule bundle budget, production security audit, fixture browser smoke, and authenticated smoke. Authenticated smoke is blocking and writes the required credential, role, schedule-readiness, and project-data prerequisites to the GitHub step summary.
+- Portal Performance Report runs authenticated route timing as a separate blocking job and uploads `portal-route-timings` when generated. It also writes the authenticated runtime prerequisites to the GitHub step summary before timing routes.
 - Docs Health runs weekly and on demand, with blocking docs guard and mojibake checks plus advisory docs impact, navigation, and readiness reports.
 - Lighthouse Guardrails run mobile and desktop Lighthouse profiles.
-- Governance Monthly runs marketing tests, production dependency audit, and Lighthouse.
+- Governance Monthly still runs the broader marketing/governance sweep with marketing tests, production dependency audit, and Lighthouse.

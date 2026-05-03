@@ -5538,10 +5538,12 @@ describe('ModelSpaceViewport', () => {
       deck: deck as any,
       housePolygon: baseHouse.footprint.polygon,
     });
+    const commitSpy = vi.fn();
     const rendered = renderIntoDocument(
       <HouseFirstViewportHarness
         initialSelection={{ kind: 'deck', targetId: 'deck-1' }}
         objectWorkbenchDisplayFamily="house_forms"
+        onDeckCommit={commitSpy}
         visibility={{
           house: true,
           pergolas: true,

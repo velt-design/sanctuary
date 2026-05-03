@@ -59,11 +59,38 @@ jobs:
       - name: Schedule bundle budget
         run: npm run schedule:bundle-budget
 
+      - name: Production security audit
+        run: npm run audit:security
+
       - name: Portal fixture browser smoke
         run: npm run test:portal:browser
 
+      - name: Authenticated browser gate prerequisites
+        run: |
+          {
+            echo "## Authenticated Portal Gates"
+            echo
+            echo "The authenticated smoke gate is intentionally blocking. It requires:"
+            echo
+            echo "- PORTAL_TEST_EMAIL and PORTAL_TEST_PASSWORD repository secrets"
+            echo "- an active staff or admin portal role for the test account"
+            echo "- Schedule V2 readiness returning ok: true"
+            echo "- at least one project visible to the test account"
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Portal authenticated smoke suite
+        id: portal-auth-smoke
         run: npm run test:portal:smoke
+
+      - name: Authenticated smoke failure guidance
+        if: ${{ failure() && steps.portal-auth-smoke.outcome == 'failure' }}
+        run: |
+          {
+            echo
+            echo "### Authenticated Smoke Failure"
+            echo
+            echo "This gate must not silently skip. Confirm PORTAL_TEST_EMAIL and PORTAL_TEST_PASSWORD are configured, the test account has staff/admin access, schedule readiness is green, and seeded project data is visible."
+          } >> "$GITHUB_STEP_SUMMARY"
 
   portal-performance:
     name: Portal Performance Report
@@ -90,8 +117,32 @@ jobs:
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
 
+      - name: Performance gate prerequisites
+        run: |
+          {
+            echo "## Portal Performance Gate"
+            echo
+            echo "The route-performance gate is intentionally blocking. It runs the authenticated runtime preflight before timing routes and requires:"
+            echo
+            echo "- PORTAL_TEST_EMAIL and PORTAL_TEST_PASSWORD repository secrets"
+            echo "- an active staff or admin portal role for the test account"
+            echo "- Schedule V2 readiness returning ok: true"
+            echo "- at least one project visible to the test account"
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Capture portal route timings
+        id: portal-performance
         run: npm run test:portal:performance
+
+      - name: Portal performance failure guidance
+        if: ${{ failure() && steps.portal-performance.outcome == 'failure' }}
+        run: |
+          {
+            echo
+            echo "### Portal Performance Failure"
+            echo
+            echo "This gate must not silently skip. Confirm authenticated runtime prerequisites first, then inspect the route timing artifact if one was generated."
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Publish timing summary
         if: always()

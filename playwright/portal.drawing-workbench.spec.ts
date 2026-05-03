@@ -200,6 +200,39 @@ async function openFixtureDrawingWorkbench(page: Page, fixtureSlug: string) {
   await expect(page.locator('[data-fixture-workbench-hydrated="true"]').first()).toBeVisible({ timeout: 30_000 });
 }
 
+test('drawing workbench mono fixture stays on object-first geometry surfaces', async ({ page }) => {
+  const pageErrors: string[] = [];
+  page.on('pageerror', (error) => {
+    pageErrors.push(error.message);
+  });
+
+  await page.setViewportSize({ width: 1680, height: 1050 });
+  await openFixtureDrawingWorkbench(page, 'mono-standard');
+
+  const workbench = page.getByRole('region', { name: 'Drawing workbench' });
+  await expect(workbench).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Staff Login' })).toHaveCount(0);
+  await expect(page.getByText(/Project unavailable|This page could not be found|404|not found/i)).toHaveCount(0);
+  await expect(page.getByText(/No plan or section drawing is available|fixture route is not enabled|requires staff auth/i)).toHaveCount(0);
+
+  await page.getByRole('tab', { name: 'Model Space' }).click();
+  await page.getByRole('tab', { name: 'Plan' }).click();
+  await expectTopProjectionPlanParity(page);
+
+  const modelViewport = page.getByLabel('Plan model space viewport');
+  const planSvg = modelViewport.locator('svg[data-model-space-svg="plan"]').first();
+  await expect(planSvg).toHaveAttribute('data-top-projection-parity-status', 'pass');
+  await expect(planSvg).toHaveAttribute('data-top-projection-hidden-rendered-count', '0');
+  await expect(modelViewport.locator('[data-top-projection-role="hidden_from_top"]')).toHaveCount(0);
+
+  await page.getByRole('tab', { name: '3D View' }).click();
+  await expectContained3DCanvas(page);
+  await expect(page.getByTestId('geometry-3d-viewport-diagnostics')).toHaveAttribute('data-finite-bounds', 'true');
+  await expect(workbench).not.toContainText(/legacy fallback|unsupported geometry fallback|Project unavailable|Staff Login/i);
+
+  expect(pageErrors, `Unexpected runtime errors: ${pageErrors.join(' | ')}`).toEqual([]);
+});
+
 test('drawing workbench screenshot U hipped roof fixture renders valid topology', async ({ page }) => {
   const pageErrors: string[] = [];
   page.on('pageerror', (error) => {
