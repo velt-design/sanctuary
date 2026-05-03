@@ -495,12 +495,13 @@ describe('buildPlanViewModel', () => {
     const planModel = makePlanModelWithHouseContext();
     const geometryPlan = makeGeometryPlan();
     const geometryTopProjection = makeGeometryTopProjection();
+    const baseHouseForm = makeHouseForm();
     const houseForm = {
-      ...makeHouseForm(),
+      ...baseHouseForm,
       footprint: {
-        ...makeHouseForm().footprint,
+        ...baseHouseForm.footprint,
         params: {
-          ...makeHouseForm().footprint.params,
+          ...baseHouseForm.footprint.params,
           bandDepthM: '1.8',
         },
         polygon: [
