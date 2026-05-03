@@ -60,7 +60,7 @@ This snapshot records the most recent known production-readiness state from the 
 | Docs and routing | Green | Canonical docs, agent playbook, change routing, and decision log are present. | Keep this tracker and owner docs current. |
 | File decomposition | Yellow | `docs/file-decomposition-and-ownership.md`, `npm run files:report`, and `npm run files:changed` make large-file hotspots visible, but enforcement is advisory while transitional files remain. | Use changed-file reporting before handoff when expanding large files; add strict enforcement later. |
 | Local-first flows | Yellow | Strong primitives exist; production readiness depends on workflow smoke and visible failure states. | Verify pending, failed, retry, conflict, and lock states in changed flows. |
-| Quote/invoice/job-pack side effects | Yellow | Domain docs and tests exist; production readiness depends on token/email/PDF/job-pack smoke. | Run focused tests plus manual public-token and side-effect QA. |
+| Quote/invoice/job-pack side effects | Yellow | `npm run test:portal:quotes` passed with 8 files and 32 tests. `npm run portal:side-effects` reran those tests but its build step was blocked by an already-running portal dev server holding the Next build lock. | Stop any active portal dev server, rerun `npm run portal:side-effects`, then run manual public-token and side-effect QA with a compatible portal environment. |
 | Schedule workflow | Green | `npm run test:portal:schedule` passed with 38 files and 215 tests, covering Schedule V2 APIs, readiness, Board/Gantt/Site Visits client paths, command boundaries, and legacy fallback isolation. | Keep live readiness and manual Board/Gantt/Site Visit checks in release QA with staff credentials and a migrated database. |
 | Design workbench | Yellow | Object-first direction and compatibility guardrails exist; behavior drift was present in review failures. | Keep reducing compatibility surface and verify browser fixture gates. |
 
@@ -212,6 +212,8 @@ When updating this tracker:
 ### 2026-05-03
 
 - Added `npm run portal:auth-runtime` and wired it into authenticated smoke, performance, and broad `portal:doctor` so staff credentials, role access, schedule readiness, and minimum project data fail before deeper browser assertions.
+- Added `npm run portal:side-effects` as the focused quote, invoice, public-token, PDF/email, and job-pack readiness gate. It runs quote/invoice/job-pack focused tests plus the portal build without authenticated browser flows or real email delivery.
+- Verified the quote/invoice/job-pack focused tests: `npm run test:portal:quotes` passed with 8 files and 32 tests. `npm run portal:side-effects` reached the same passing tests, then stopped at `npm run build:portal` because a local `dev:portal` process was already holding the Next build lock.
 - Confirmed the Schedule V2 local readiness gate: `npm run test:portal:schedule` passed with 38 files and 215 tests, including readiness route, Board/Gantt/Site Visits client coverage, Schedule V2 API/RPC command boundaries, and legacy fallback isolation.
 - Re-ran `npm run schedule:bundle-budget`; it passed at 589.0 KiB initial raw, 169.1 KiB initial gzip, 333.2 KiB lazy raw, and 78.3 KiB lazy gzip. Live route performance and authenticated smoke remain blocked until staff credentials and a compatible migrated database are available.
 

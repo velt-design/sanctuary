@@ -37,9 +37,12 @@ npm run portal:doctor:quick
 npm run portal:doctor:quick:log
 npm run portal:doctor
 npm run portal:doctor:log
+npm run portal:side-effects
 ```
 
 `portal:doctor:quick` runs docs guard, mojibake check, typecheck, lint, and portal Vitest. `portal:doctor` adds portal build, schedule bundle budget, drawing browser smoke, authenticated smoke, route performance, and production security audit.
+
+`portal:side-effects` is the focused quote, invoice, public-token, PDF/email, and job-pack readiness gate. It runs `npm run test:portal:quotes` and then `npm run build:portal` because generated PDF and job-pack asset loading is build-sensitive.
 
 Use the `:log` variants when running noisy gates through an AI agent or chat tool. They run the same root npm scripts, write full stdout/stderr to an OS temp log, and print only the command, log path, duration, exit code, and a compact pass/fail summary. On failure they also print the last 120 log lines.
 
@@ -51,6 +54,7 @@ npm run test:portal:schedule
 npm run test:portal:workbench
 npm run test:portal:projects
 npm run test:portal:quotes
+npm run portal:side-effects
 npm run test:portal:shell
 npm run test:portal:log
 ```

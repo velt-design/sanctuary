@@ -471,6 +471,9 @@ const baseProjects: Project[] = [
     heroImage: { src: '/images/project-tindalls-bay.jpg', alt: 'Coastal pavilion overlooking Tindalls Bay', objectPosition: '50% 42%' },
     gallery: [
       { src: '/images/project-tindalls-bay.jpg', alt: 'Coastal pavilion overlooking Tindalls Bay', objectPosition: '50% 42%' },
+      { src: '/images/hero-2.jpg', alt: 'Side view of the Tindalls Bay patio and deck cover', objectPosition: '50% 48%' },
+      { src: '/images/product-pitched-01.jpg', alt: 'Pitched roof and timber batten detail at Tindalls Bay', objectPosition: '50% 50%' },
+      { src: '/images/hero-1.jpg', alt: 'Tindalls Bay pergola overlooking the coastal view', objectPosition: '50% 45%' },
     ],
     blurb: 'Layered patio and carport cover combining insulated panels, acrylic roofing and battens to keep spaces bright but protected.',
     description: [
