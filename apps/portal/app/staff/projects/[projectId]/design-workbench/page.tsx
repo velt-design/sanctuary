@@ -6,6 +6,7 @@ import DesignWorkbenchFixtureClient from './DesignWorkbenchFixtureClient';
 import { loadDesignWorkbenchRouteContext } from '@/lib/drawings/loadDesignWorkbenchRouteContext';
 import type { SanctuaryGeometryWorkbenchFixture } from '@/lib/drawings/sanctuaryWorkbenchFixtures.types';
 import { getSanctuaryGeometryWorkbenchFixture } from '@/lib/drawings/sanctuaryWorkbenchFixtures';
+import { buildWorkbenchFixturePricingReadiness } from '@/lib/drawings/workbenchFixturePricingReadiness';
 import { isSanctuaryGeometryWorkbenchEnabled, isSanctuaryGeometryWorkbenchFixturesEnabled } from '@/lib/drawings/workbenchFlags';
 import { loadProjectEstimateDetail } from '@/lib/estimates/loadProjectEstimateDetail';
 import { getProjectPageSnapshot } from '@/lib/projects/getProjectPageSnapshot';
@@ -126,12 +127,27 @@ export default async function DesignWorkbenchPage({
       );
     }
 
+    const pricingReadiness = buildWorkbenchFixturePricingReadiness(fixture, {
+      projectId: normalizedProjectId,
+    });
+
     return (
       <main
         className={styles.page}
         data-project-id={normalizedProjectId}
         data-workbench-context="fixture_ready"
         data-workbench-fixture={fixture.slug}
+        data-workbench-pricing-source={pricingReadiness.source}
+        data-workbench-pricing-trust-status={pricingReadiness.trustStatus}
+        data-workbench-pricing-readiness={pricingReadiness.readiness}
+        data-workbench-pricing-blocking-gates={pricingReadiness.blockingGateCodes.join(',')}
+        data-workbench-pricing-quantity-takeoff-source={pricingReadiness.quantityTakeoffSource}
+        data-workbench-pricing-parity-status={pricingReadiness.parity.status}
+        data-workbench-pricing-parity-pergolas-compared={pricingReadiness.parity.pergolasCompared}
+        data-workbench-pricing-parity-modules-compared={pricingReadiness.parity.modulesCompared}
+        data-workbench-pricing-parity-differences={pricingReadiness.parity.differences}
+        data-workbench-pricing-parity-blocking-differences={pricingReadiness.parity.blockingDifferences}
+        data-workbench-pricing-parity-warning-differences={pricingReadiness.parity.warningDifferences}
       >
         <section className={styles.surface}>
           <div className={styles.surfaceInner}>

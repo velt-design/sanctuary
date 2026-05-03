@@ -180,6 +180,15 @@ import {
   buildCalculatorInfillSummary,
   buildSelectedInfillSummaryCopy,
 } from './calculatorInfillSummary';
+import {
+  FLASHING_BAND_OPTIONS,
+  FLASHING_PURPOSE_OPTIONS,
+  buildFlashingDefaultsForModule,
+  calculateFlashingTotalLength,
+  calculateFlashingTotalsByBand,
+  isDuplicatePrimaryFlashingRow,
+  selectVisibleFlashingBands,
+} from './calculatorFlashingUi';
 
 type FieldSchemaItem = {
   id: string;
@@ -280,20 +289,6 @@ function inferStockLengthFromLabel(label: string): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-const FLASHING_EDGE_ALLOWANCE_M = 0.1;
-const FLASHING_DUPLICATE_TOLERANCE_M = 0.01;
-const FLASHING_BANDS: CalculatorFlashingBand[] = ['0-200', '201-300', '301-400'];
-const FLASHING_BAND_OPTIONS: FieldOption[] = [
-  { label: '0-200mm', value: '0-200' },
-  { label: '201-300mm', value: '201-300' },
-  { label: '301-400mm', value: '301-400' },
-];
-const FLASHING_PURPOSE_OPTIONS: FieldOption[] = [
-  { label: 'Head', value: 'HEAD' },
-  { label: 'Side', value: 'SIDE' },
-  { label: 'Apron', value: 'APRON' },
-  { label: 'Custom', value: 'CUSTOM' },
-];
 type UiMode = 'basic' | 'advanced';
 const UI_MODE_STORAGE_KEY = 'sanctuary-portal:calculator:uiMode:v1';
 const PREVIEW_SPLIT_STORAGE_KEY = 'sanctuary-portal:calculator:previewRightWidthPx:v1';
@@ -302,13 +297,6 @@ const PREVIEW_SPLIT_LEFT_MIN_PX = 640;
 const PREVIEW_SPLIT_RIGHT_MIN_PX = 360;
 const PREVIEW_SPLIT_RIGHT_DEFAULT_PX = 520;
 const PREVIEW_SPLIT_HANDLE_WIDTH_PX = 18;
-
-type FlashingDefaultUi = {
-  key: string;
-  label: string;
-  defaultBand: CalculatorFlashingBand;
-  lengthM: number;
-};
 
 type InfillDeletedState = {
   infill: InfillLineItem;
@@ -470,71 +458,6 @@ const POWDERCOAT_STANDARD_COLOURS = [
   'Gull Grey',
   'Titania',
 ];
-
-function buildFlashingDefaultsForModule(
-  module: CalculatorModuleInputs,
-  derived?: Partial<{
-    rafter_length_m: number;
-    timber_area_m2: number;
-    ledger_length_m: number;
-  }>,
-): FlashingDefaultUi[] {
-  const roofType = getRoofTypeForModule(module);
-  const projectionM = Number.isFinite(toNumber(module.projectionM)) ? Math.max(0, toNumber(module.projectionM)) : 0;
-  const roofLengthM = roofLengthForPrimaryFlashing(module);
-
-  const out: FlashingDefaultUi[] = [];
-  const addDefault = (key: string, label: string, defaultBand: CalculatorFlashingBand, lengthRaw: number) => {
-    const length = Number(lengthRaw);
-    if (!Number.isFinite(length) || length <= 0) return;
-    out.push({ key, label, defaultBand, lengthM: length });
-  };
-
-  if (roofType === 'pitched') {
-    addDefault('pitched_primary', 'Primary flashing', '201-300', roofLengthM);
-    if (module.invertedEnabled) {
-      addDefault('pitched_secondary', 'Secondary flashing', '201-300', roofLengthM);
-    }
-  } else if (roofType === 'gable' || roofType === 'low_gable') {
-    addDefault('gable_ridge', 'Ridge flashing', '301-400', roofLengthM);
-  } else if (roofType === 'hip') {
-    const ledgerLengthM =
-      typeof derived?.ledger_length_m === 'number' && Number.isFinite(derived.ledger_length_m) && derived.ledger_length_m > 0
-        ? derived.ledger_length_m
-        : roofLengthM;
-    addDefault('hip_ledger', 'Hip ledger flashing', '201-300', ledgerLengthM);
-  } else {
-    addDefault('roof_primary', 'Primary flashing', '201-300', roofLengthM);
-  }
-
-  const hasTimber =
-    module.roofMaterial === 'timber' ||
-    (module.roofMaterial === 'mixed' &&
-      (typeof derived?.timber_area_m2 === 'number' ? Number(derived.timber_area_m2) > 1e-6 : true));
-
-  if (!hasTimber) return out;
-
-  let slopeLengthM = typeof derived?.rafter_length_m === 'number' && Number.isFinite(derived.rafter_length_m) ? derived.rafter_length_m : NaN;
-  if (!Number.isFinite(slopeLengthM) || slopeLengthM <= 0) {
-    const pitchDeg = getPitchForModule(module);
-    const cos = Math.max(0.02, Math.cos((pitchDeg * Math.PI) / 180));
-    const runM = roofType === 'gable' || roofType === 'low_gable' || roofType === 'hip' ? projectionM / 2 : projectionM;
-    slopeLengthM = runM > 0 ? runM / cos : 0;
-  }
-  const edgeLengthM = Math.max(0, slopeLengthM + FLASHING_EDGE_ALLOWANCE_M);
-
-  if (roofType === 'pitched') {
-    addDefault('timber_edge_left', 'Timber edge rafter flashing (left)', '0-200', edgeLengthM);
-    addDefault('timber_edge_right', 'Timber edge rafter flashing (right)', '0-200', edgeLengthM);
-  } else if (roofType === 'gable' || roofType === 'low_gable') {
-    addDefault('timber_edge_a_left', 'Timber edge rafter flashing (A left)', '0-200', edgeLengthM);
-    addDefault('timber_edge_a_right', 'Timber edge rafter flashing (A right)', '0-200', edgeLengthM);
-    addDefault('timber_edge_b_left', 'Timber edge rafter flashing (B left)', '0-200', edgeLengthM);
-    addDefault('timber_edge_b_right', 'Timber edge rafter flashing (B right)', '0-200', edgeLengthM);
-  }
-
-  return out;
-}
 
 export default function CalculatorGridClient({
   email: emailProp,
@@ -3238,23 +3161,15 @@ export default function CalculatorGridClient({
     [flashingsState.rows],
   );
 
-  const flashingTotalsPreview = useMemo(() => {
-    const totals: Record<CalculatorFlashingBand, number> = { '0-200': 0, '201-300': 0, '301-400': 0 };
-    for (const row of flashingsState.rows) {
-      const length = toNumber(row.lengthM);
-      if (!Number.isFinite(length) || length <= 0) continue;
-      totals[normalizeFlashingBand(row.band)] += length;
-    }
-    return totals;
-  }, [flashingsState.rows]);
+  const flashingTotalsPreview = useMemo(() => calculateFlashingTotalsByBand(flashingsState.rows), [flashingsState.rows]);
 
   const flashingTotalLengthPreview = useMemo(
-    () => FLASHING_BANDS.reduce((sum, band) => sum + flashingTotalsPreview[band], 0),
+    () => calculateFlashingTotalLength(flashingTotalsPreview),
     [flashingTotalsPreview],
   );
 
   const flashingVisibleBands = useMemo(
-    () => FLASHING_BANDS.filter((band) => showAllFlashingBands || flashingTotalsPreview[band] > 0),
+    () => selectVisibleFlashingBands(flashingTotalsPreview, showAllFlashingBands),
     [showAllFlashingBands, flashingTotalsPreview],
   );
 
@@ -3280,15 +3195,7 @@ export default function CalculatorGridClient({
           const parsedLength = toNumber(row.lengthM);
           const invalidLength = !Number.isFinite(parsedLength) || parsedLength < 0;
           const zeroLength = Number.isFinite(parsedLength) && parsedLength === 0;
-          const primaryLength = toNumber(primaryFlashingRow.lengthM);
-          const duplicatePrimary =
-            !isPrimary &&
-            Number.isFinite(parsedLength) &&
-            parsedLength > 0 &&
-            Number.isFinite(primaryLength) &&
-            primaryLength > 0 &&
-            normalizeFlashingBand(row.band) === normalizeFlashingBand(primaryFlashingRow.band) &&
-            Math.abs(parsedLength - primaryLength) <= FLASHING_DUPLICATE_TOLERANCE_M;
+          const duplicatePrimary = isDuplicatePrimaryFlashingRow(row, primaryFlashingRow);
 
           return (
             <div key={row.id} className={isPrimary ? styles.flashingsRowPrimary : styles.flashingsRow}>
