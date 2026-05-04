@@ -2,7 +2,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import type { GeometryTopProjectionShape, GeometryTopProjectionViewModel } from '@sp/geometry';
 import type { WorkbenchSolvedGeometryArtifact } from '@/lib/drawings/state/workbenchSolvedModel';
-import ProjectionPlanViewport from './ProjectionPlanViewport';
+import ProjectionTopViewport from './ProjectionTopViewport';
 
 function shape(
   input: Partial<GeometryTopProjectionShape> & Pick<GeometryTopProjectionShape, 'id' | 'family' | 'kind' | 'sourceType'>,
@@ -28,12 +28,12 @@ function artifactWithProjection(shapes: GeometryTopProjectionShape[]): Workbench
   const topProjection: GeometryTopProjectionViewModel = {
     shapes,
     extents: {
-      minX: 0,
-      minY: 0,
+      minX: -2000,
+      minY: -1000,
       maxX: 7000,
       maxY: 4000,
-      widthMm: 7000,
-      heightMm: 4000,
+      widthMm: 9000,
+      heightMm: 5000,
     },
     screenAxis: { x: 'world_x_left', y: 'world_y_down' },
   };
@@ -46,10 +46,12 @@ function artifactWithProjection(shapes: GeometryTopProjectionShape[]): Workbench
   } as WorkbenchSolvedGeometryArtifact;
 }
 
-describe('ProjectionPlanViewport', () => {
-  it('renders geometry-ready model space as top-projection committed bodies only', () => {
+const viewportTransform = { zoom: 1, panX: 0, panY: 0 };
+
+describe('ProjectionTopViewport', () => {
+  it('renders normal visible bodies only from committed top-projection graph bodies', () => {
     const markup = renderToStaticMarkup(
-      <ProjectionPlanViewport
+      <ProjectionTopViewport
         artifact={artifactWithProjection([
           shape({
             id: 'pergola-roof-main',
@@ -88,26 +90,30 @@ describe('ProjectionPlanViewport', () => {
             metadata: { topProjectionRole: 'hidden_from_top' },
           }),
         ])}
+        viewportTransform={viewportTransform}
       />,
     );
 
+    expect(markup).toContain('data-projection-top-viewport="true"');
     expect(markup).toContain('data-model-space-render-contract="top_projection_only"');
-    expect(markup).toContain('data-plan-projection-native-surface="true"');
+    expect(markup).toContain('data-top-projection-screen-axis="world_x_left_world_y_down"');
+    expect(markup).toContain('data-model-space-world-box="-2000 -1000 9000 5000"');
+    expect(markup).toContain('data-model-space-focus-box="-2000 -1000 9000 5000"');
     expect(markup.match(/data-plan-layer="committedBodies"/g)).toHaveLength(2);
-    expect(markup.match(/data-plan-render-source="top_projection_committed"/g)).toHaveLength(2);
-    expect(markup.match(/data-plan-render-source="top_projection_context"/g)).toHaveLength(1);
+    expect(markup.match(/data-plan-layer="contextLines"/g)).toHaveLength(1);
+    expect(markup).toContain('data-plan-committed-top-projection-body-count="2"');
     expect(markup).toContain('data-plan-object-overlay-body-count="0"');
     expect(markup).toContain('data-plan-visible-legacy-overlay-body-count="0"');
     expect(markup).toContain('data-plan-visible-geometry-fallback-overlay-body-count="0"');
     expect(markup).toContain('data-plan-visible-top-projection-context-overlay-body-count="0"');
-    expect(markup).not.toContain('data-plan-layer="committedBodies" data-plan-coordinate-space="top_projection_screen" data-plan-render-source="top_projection_context"');
+    expect(markup).toContain('data-plan-duplicate-visual-body-count="0"');
     expect(markup).not.toContain('data-top-projection-family="reference" data-plan-layer="committedBodies"');
     expect(markup).not.toContain('data-top-projection-role="hidden_from_top" data-plan-layer="committedBodies"');
   });
 
-  it('renders selected projection overlay as outline and hit target without adding another filled body', () => {
+  it('renders selected objects as outlines and hit targets without adding duplicate filled geometry', () => {
     const markup = renderToStaticMarkup(
-      <ProjectionPlanViewport
+      <ProjectionTopViewport
         artifact={artifactWithProjection([
           shape({
             id: 'deck-main',
@@ -118,31 +124,8 @@ describe('ProjectionPlanViewport', () => {
             metadata: { topProjectionRole: 'top_visible' },
           }),
         ])}
-        objectWorkbenchPlanOverlay={{
-          shapes: [
-            {
-              ownerKind: 'deck',
-              ownerId: 'deck-1',
-              polygon: [
-                { x: 0, y: 0 },
-                { x: 1, y: 0 },
-                { x: 1, y: 1 },
-                { x: 0, y: 1 },
-              ],
-              source: 'top_projection_committed',
-              selected: true,
-              muted: false,
-              invalid: false,
-              invalidMessage: null,
-              deckInteraction: null,
-              openingInteraction: null,
-              deckDragEligibility: null,
-              openingDragEligibility: null,
-            },
-          ],
-          presetAnnotations: [],
-          customEdgeCandidates: [],
-        } as never}
+        activeObjectRef={{ family: 'decks', objectId: 'deck-1' }}
+        viewportTransform={viewportTransform}
       />,
     );
 
@@ -150,7 +133,7 @@ describe('ProjectionPlanViewport', () => {
     expect(markup).toContain('data-plan-layer="selectionOutlines"');
     expect(markup).toContain('data-plan-layer="hitTargets"');
     expect(markup).toContain('data-object-workbench-shape-visual="false"');
-    expect(markup).toContain('data-plan-visible-top-projection-committed-overlay-body-count="1"');
-    expect(markup).not.toContain('data-plan-visible-legacy-overlay-body-count="1"');
+    expect(markup).toContain('data-plan-visible-top-projection-committed-overlay-body-count="0"');
+    expect(markup).toContain('data-plan-duplicate-semantic-owner-count="0"');
   });
 });

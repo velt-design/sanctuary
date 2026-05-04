@@ -220,6 +220,10 @@ describe('object workbench import guards', () => {
       path.join(process.cwd(), path.normalize(path.join('apps', 'portal', 'components', 'drawings', 'viewports', 'ModelSpaceViewport.tsx'))),
       'utf8',
     );
+    const projectionTopViewportSource = fs.readFileSync(
+      path.join(process.cwd(), path.normalize(path.join('apps', 'portal', 'components', 'drawings', 'viewports', 'ProjectionTopViewport.tsx'))),
+      'utf8',
+    );
 
     expect(shellSource).toContain('viewportGeometry?: WorkbenchViewportGeometry | null');
     expect(shellSource).toContain('viewportGeometry={viewportGeometry}');
@@ -248,6 +252,13 @@ describe('object workbench import guards', () => {
     expect(moduleDrawingRendererSource).not.toContain('drawingSurfaceGeometry?.planModel');
     expect(moduleDrawingRendererSource).not.toContain('drawingSurfaceGeometry?.sectionModel');
     expect(moduleDrawingContractsSource).not.toContain('modelSpacePergolaGeometry?:');
+    expect(modelSpaceViewportSource).toContain("from '@/components/drawings/viewports/ProjectionTopViewport'");
+    expect(modelSpaceViewportSource).toContain('<ProjectionTopViewport');
+    expect(modelSpaceViewportSource).not.toContain('ProjectionPlanViewport');
+    expect(projectionTopViewportSource).toContain('artifact: WorkbenchSolvedGeometryArtifact');
+    expect(projectionTopViewportSource).not.toContain('ModulePlanModel');
+    expect(projectionTopViewportSource).not.toContain('legacyPlanModel');
+    expect(projectionTopViewportSource).not.toContain('objectWorkbenchPlanOverlay');
     expect(moduleDrawingContractsSource).not.toContain('modelSpaceTopProjection?:');
     expect(moduleDrawingContractsSource).not.toContain('modelSpacePergolaRenderSource?:');
     expect(moduleDrawingContractsSource).not.toContain('modelSpacePergolaRenderStatus?:');

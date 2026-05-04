@@ -2,10 +2,11 @@ import type { ModuleViewsTab } from '@/app/staff/calculator/ModuleViewsCard';
 import type { ModulePlanModel, ModuleSectionModel } from '@/app/staff/calculator/moduleViews';
 import type { WorkbenchDrawingSurfaceGeometry } from './workbenchDrawingSurfaceGeometry';
 
-export type ModelSpaceSurfaceReadiness = {
+type ModelSpaceSurfaceReadiness = {
   legacyPlanModel: ModulePlanModel | null;
   legacySectionModel: ModuleSectionModel | null;
   hasGeometryReadyPlan: boolean;
+  hasLegacyPlanFallback: boolean;
   hasDrawableSection: boolean;
   showDrawingViewport: boolean;
 };
@@ -22,6 +23,10 @@ export function resolveModelSpaceSurfaceReadiness(input: {
     input.view === 'plan' &&
     Boolean(artifact?.plan) &&
     Boolean(artifact?.topProjection);
+  const hasLegacyPlanFallback =
+    input.view === 'plan' &&
+    surface?.source === 'legacy_fallback' &&
+    Boolean(legacyPlanModel);
   const hasDrawableSection =
     input.view === 'section' &&
     (Boolean(artifact?.section) ||
@@ -31,7 +36,8 @@ export function resolveModelSpaceSurfaceReadiness(input: {
     legacyPlanModel,
     legacySectionModel,
     hasGeometryReadyPlan,
+    hasLegacyPlanFallback,
     hasDrawableSection,
-    showDrawingViewport: hasGeometryReadyPlan || hasDrawableSection,
+    showDrawingViewport: hasGeometryReadyPlan || hasLegacyPlanFallback || hasDrawableSection,
   };
 }

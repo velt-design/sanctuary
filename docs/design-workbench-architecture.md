@@ -2,6 +2,24 @@
 
 The design workbench is the portal drawing and model-editing surface for estimate-backed designs. The active workbench migration is sealed around an object-first project model and solved geometry spine. Compatibility remains only as explicit legacy estimate snapshot import/export support and named fallback boundaries.
 
+## Design Workbench North Star: Rhino-like Viewport System
+
+The Design Workbench has one object-first design intent model and one solved geometry artifact. Perspective, Top, Section, Sheet, and future elevation views are not separate geometry systems. They are cameras, projections, or presentations of the same solved scene.
+
+The 3D React viewport is not the source of truth. The source of truth is the object-first design intent plus `WorkbenchSolvedGeometryArtifact`, `viewerScene`, and `topProjection` generated from it.
+
+Model Space Top should behave like an orthographic top camera over the same solved scene. It may render through SVG for crisp plan linework, dimensions, and hit targets, but it must be mechanically derived from the shared solved model and `topProjection`; it must not maintain independent plan geometry.
+
+Interactions are object/world transforms:
+
+- viewport adapters convert pointer input into projection, world, and object coordinates.
+- selection targets object refs, not view-specific shapes.
+- transforms commit back to object design intent.
+- the solved artifact rebuilds.
+- every viewport updates from the same result.
+
+Legacy calculator-era plan geometry is fallback and compatibility only. It must not execute as normal visible body geometry in geometry-ready Model Space Plan.
+
 ## Primary Paths
 
 - Route: `/staff/projects/[projectId]/design-workbench`.

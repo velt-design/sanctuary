@@ -70,7 +70,7 @@ describe('resolveModelSpaceSurfaceReadiness', () => {
     expect(readiness.legacyPlanModel).toBeNull();
   });
 
-  it('does not treat loose fallback presenters as geometry-ready plan input', () => {
+  it('keeps explicit legacy fallback plan drawable without treating it as geometry-ready input', () => {
     const readiness = resolveModelSpaceSurfaceReadiness({
       view: 'plan',
       drawingSurfaceGeometry: makeSurface({
@@ -84,7 +84,8 @@ describe('resolveModelSpaceSurfaceReadiness', () => {
     });
 
     expect(readiness.hasGeometryReadyPlan).toBe(false);
-    expect(readiness.showDrawingViewport).toBe(false);
+    expect(readiness.hasLegacyPlanFallback).toBe(true);
+    expect(readiness.showDrawingViewport).toBe(true);
   });
 
   it('allows section drawing from solved section or explicit legacy fallback', () => {

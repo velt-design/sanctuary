@@ -321,6 +321,7 @@ export function ModuleDrawingRenderer({
   const effectiveShowDebugOverlays = showDebugOverlays ?? presentation === 'sheet';
   const isCompact = presentation !== 'card';
   const hasSolvedPlan =
+    !isModel &&
     hasSolvedDrawingSurfaceGeometry &&
     Boolean(effectiveModelSpacePergolaGeometry) &&
     Boolean(effectiveModelSpaceTopProjection);

@@ -145,7 +145,7 @@ import type {
   ObjectWorkbenchViewportTargetSelection,
 } from '@/lib/drawings/state/objectWorkbenchViewportTypes';
 import type { WorkbenchObjectRef } from '@/lib/drawings/state/objectFirstWorkbenchModel';
-import ProjectionPlanViewport from '@/components/drawings/plan/ProjectionPlanViewport';
+import ProjectionTopViewport from '@/components/drawings/viewports/ProjectionTopViewport';
 import {
   normalizeHouseFootprintParams,
   type CalculatorHouseFootprintPolygonPoint,
@@ -702,6 +702,15 @@ export default function ModelSpaceViewport({
           ? { kind: 'footprint', targetId: target.ownerId }
           : { kind: 'deck', targetId: target.ownerId },
       );
+    },
+    [closeObjectWorkbenchDimensionEditor, onSelectObjectWorkbenchTarget],
+  );
+
+  const handleProjectionTopObjectSelect = useCallback(
+    (selection: ObjectWorkbenchViewportTargetSelection) => {
+      closeObjectWorkbenchDimensionEditor();
+      setObjectWorkbenchActiveCustomEdgeId(null);
+      onSelectObjectWorkbenchTarget?.(selection);
     },
     [closeObjectWorkbenchDimensionEditor, onSelectObjectWorkbenchTarget],
   );
@@ -2350,7 +2359,9 @@ export default function ModelSpaceViewport({
   }, [drawOutlinePopoverAnchorPointCount, showDrawOutlineDistanceHud, viewportTransform.panX, viewportTransform.panY, zoom]);
 
   const objectWorkbenchPlanOverlay =
-    showPlanViewport && !drawOutlineViewModel.isActive ? planViewModel?.objectWorkbenchOverlay ?? null : null;
+    view === 'plan' && !hasGeometryReadyPlan && !drawOutlineViewModel.isActive
+      ? planViewModel?.objectWorkbenchOverlay ?? null
+      : null;
   const selectedDeckShape = useMemo(
     () =>
       objectWorkbenchPlanOverlay?.shapes.find(
@@ -3313,36 +3324,15 @@ export default function ModelSpaceViewport({
         <div ref={scaleFrameRef} data-model-space-scale-frame className={styles.scaleFrame} style={scaleFrameStyle}>
           <div className={styles.canvas}>
             {projectionPlanArtifact ? (
-              <ProjectionPlanViewport
+              <ProjectionTopViewport
                 artifact={projectionPlanArtifact}
                 visibility={visibility}
                 activeObjectRef={activeObjectRef}
-                objectWorkbenchPlanOverlay={objectWorkbenchPlanOverlay}
-                objectWorkbenchPreviewOverlay={objectWorkbenchPreviewOverlay}
-                legacyFootprintEditPlanModel={legacyPlanModel}
-                footprintEditor={footprintEditor}
-                pergolaTargetId={activePergolaId}
-                hoveredObjectWorkbenchDeckId={hoveredDeckId}
-                activeObjectWorkbenchCustomEdgeId={objectWorkbenchActiveCustomEdgeId}
-                onSelectObjectWorkbenchTarget={handleObjectWorkbenchShapeSelect}
+                viewportTransform={viewportTransform}
+                onViewportTransformChange={onViewportTransformChange}
+                onSelectObjectWorkbenchTarget={handleProjectionTopObjectSelect}
                 onSelectPergolaTarget={handlePergolaTargetSelect}
                 onClearWorkbenchSelection={handleWorkbenchCanvasSelect}
-                onObjectWorkbenchDeckHoverChange={handleObjectWorkbenchDeckHoverChange}
-                onObjectWorkbenchShapeDragStart={handleObjectWorkbenchShapeDragStart}
-                onObjectWorkbenchCustomEdgeSelect={handleObjectWorkbenchCustomEdgeSelect}
-                onObjectWorkbenchDimensionActivate={activateObjectWorkbenchDimensionEditor}
-                onSvgMount={(node) => {
-                  footprintSvgRef.current = node;
-                }}
-                onCanvasPointResolverChange={(resolver) => {
-                  drawOutlineCanvasPointResolverRef.current = resolver;
-                }}
-                onPlanPointResolverChange={(resolver) => {
-                  planPointResolverRef.current = resolver;
-                }}
-                onDeckDragPointResolverChange={(resolver) => {
-                  deckDragPointResolverRef.current = resolver;
-                }}
               />
             ) : showDrawingViewport ? (
               <ModuleDrawingRenderer
