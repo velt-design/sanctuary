@@ -203,6 +203,13 @@ function nearGapToFrame(polygon: PlanPoint[], frame: ObjectWorkbenchPlanDeckRefe
   );
 }
 
+function projectionWorldPointToMirroredSvg(point: PlanPoint, extents: { minX: number; maxX: number }): PlanPoint {
+  return {
+    x: extents.minX + extents.maxX - point.x,
+    y: point.y,
+  };
+}
+
 describe('deckInteractionAdapter', () => {
   const rearFrame = makeFrame({
     hostEdgeId: 'rear',
@@ -339,6 +346,89 @@ describe('deckInteractionAdapter', () => {
       { x: 6, y: 0.5 },
       { x: 6, y: 2.5 },
       { x: 2, y: 2.5 },
+    ]);
+  });
+
+  it('moves a projection-backed floating deck right on screen under mirrored top projection', () => {
+    const extents = { minX: 0, maxX: 10 };
+    const projectedPolygon = [
+      { x: 1, y: 1 },
+      { x: 5, y: 1 },
+      { x: 5, y: 3 },
+      { x: 1, y: 3 },
+    ];
+    const session = makeSession({
+      polygon: projectedPolygon,
+      dragSource: 'top_projection_committed',
+      dragCoordinateSpace: 'top_projection_world_m',
+      startDragPlanPoint: { x: 3, y: 2 },
+      frames: [rearFrame],
+      renderedCenter: { x: 3, y: 2 },
+      deckWidthM: 4,
+      deckDepthM: 2,
+      placement: 'floating',
+      attachmentMode: 'floating',
+    });
+    const startScreenCenter = projectionWorldPointToMirroredSvg(polygonCenter(session.startPolygon), extents);
+
+    const preview = resolveDeckPreviewState({
+      session,
+      nextSvgX: session.startSvgX + 1,
+      nextSvgY: session.startSvgY,
+      nextDragPlanPoint: { x: 2, y: 2 },
+      previousPreviewState: null,
+    });
+    const previewScreenCenter = projectionWorldPointToMirroredSvg(polygonCenter(preview.polygon), extents);
+
+    expect(preview.releasePlacement).toBe('floating');
+    expect(previewScreenCenter.x).toBeGreaterThan(startScreenCenter.x);
+    expect(previewScreenCenter.y).toBeCloseTo(startScreenCenter.y, 6);
+    expect(preview.polygon).toEqual([
+      { x: 0, y: 1 },
+      { x: 4, y: 1 },
+      { x: 4, y: 3 },
+      { x: 0, y: 3 },
+    ]);
+  });
+
+  it('normalizes an out-of-bounds projection drag start to the deck center without changing pointer delta', () => {
+    const projectedPolygon = [
+      { x: 1, y: 1 },
+      { x: 5, y: 1 },
+      { x: 5, y: 3 },
+      { x: 1, y: 3 },
+    ];
+    const session = makeSession({
+      polygon: projectedPolygon,
+      dragSource: 'top_projection_committed',
+      dragCoordinateSpace: 'top_projection_world_m',
+      startDragPlanPoint: { x: 8, y: 2 },
+      frames: [rearFrame],
+      renderedCenter: { x: 3, y: 2 },
+      deckWidthM: 4,
+      deckDepthM: 2,
+      placement: 'floating',
+      attachmentMode: 'floating',
+    });
+
+    const preview = resolveDeckPreviewState({
+      session,
+      nextSvgX: session.startSvgX + 1,
+      nextSvgY: session.startSvgY,
+      nextDragPlanPoint: { x: 7, y: 2 },
+      previousPreviewState: null,
+    });
+
+    expect(session.rawStartDragPlanPoint).toEqual({ x: 8, y: 2 });
+    expect(session.startDragPlanPoint).toEqual({ x: 3, y: 2 });
+    expect(session.grabbedPlanPoint).toEqual({ x: 3, y: 2 });
+    expect(session.dragPlanPointOffset).toEqual({ x: -5, y: 0 });
+    expect(preview.previewAnchor).toEqual({ x: 2, y: 2 });
+    expect(preview.polygon).toEqual([
+      { x: 0, y: 1 },
+      { x: 4, y: 1 },
+      { x: 4, y: 3 },
+      { x: 0, y: 3 },
     ]);
   });
 

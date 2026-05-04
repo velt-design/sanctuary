@@ -686,13 +686,6 @@ function resolveDeckCommitCenterOffset(input: {
   if (commitFrame && renderFrame === commitFrame && Number.isFinite(previewDerivedCenterOffsetM)) {
     return previewDerivedCenterOffsetM;
   }
-  if (
-    isProjectionBackedDeckSession(input.session) &&
-    input.preview.releasePlacement === 'snapped' &&
-    Number.isFinite(previewDerivedCenterOffsetM)
-  ) {
-    return previewDerivedCenterOffsetM;
-  }
   const frameMappedPolygon = commitFrame ? mapDeckPreviewPolygonThroughCommitFrame(input) : null;
   const frameMappedProjection =
     frameMappedPolygon && commitFrame

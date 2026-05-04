@@ -301,6 +301,31 @@ describe('deckCommitAdapter', () => {
     hostEdgeEnd: { x: 16, y: 20 },
   });
 
+  const objectRightFrame = makeFrame({
+    hostEdgeId: 'right',
+    sourceEdgeId: 'footprint-edge-2',
+    axis: 'depth',
+    spanStartM: 0,
+    spanEndM: 2.4,
+    edgeCoordinateM: 6,
+    outwardDirection: 1,
+    hostEdgeStart: { x: 6, y: 0 },
+    hostEdgeEnd: { x: 6, y: 2.4 },
+    alongUnitX: 0,
+    alongUnitY: 1,
+    outwardUnitX: 1,
+    outwardUnitY: 0,
+  });
+
+  const projectedRightFrame = makeFrame({
+    ...objectRightFrame,
+    frameSource: 'top_projection_wall_edge',
+    spanStartM: 0.25,
+    spanEndM: 2.65,
+    hostEdgeStart: { x: 6, y: 0.25 },
+    hostEdgeEnd: { x: 6, y: 2.65 },
+  });
+
   it('maps a projection floating preview into object commit space before persisting a floating rect', () => {
     const polygon = rectOnFrame({
       frame: projectedRearFrame,
@@ -352,6 +377,42 @@ describe('deckCommitAdapter', () => {
     });
     expect(trace.commitSpacePolygon).not.toEqual(trace.releasePolygon);
     expect(trace.centroidDeltaM.previewToCommit).toEqual({ x: -10, y: -20 });
+  });
+
+  it('maps snapped side-wall center offsets from render frame into object frame before persisting', () => {
+    const polygon = rectOnFrame({
+      frame: projectedRightFrame,
+      deckWidthM: 1.4,
+      deckDepthM: 2,
+      centerOffsetM: -0.25,
+      referenceEdgeGapM: 0,
+    });
+    const session = makeSession({
+      polygon,
+      startDragPlanPoint: polygonCenter(polygon),
+      frames: [projectedRightFrame],
+      commitFrames: [objectRightFrame],
+      renderedCenter: polygonCenter(polygon),
+      deckWidthM: 1.4,
+      deckDepthM: 2,
+      placement: 'snapped',
+      attachmentMode: 'single_edge',
+    });
+    const preview = resolveDeckPreviewState({
+      session,
+      nextSvgX: session.startSvgX,
+      nextSvgY: session.startSvgY,
+      nextDragPlanPoint: session.startDragPlanPoint,
+      previousPreviewState: null,
+    });
+    const patch = buildDeckCommitPatch({ session, preview });
+    const trace = buildDeckCommitCoordinateTrace({ session, preview });
+
+    expect(preview.releasePlacement).toBe('snapped');
+    expect(preview.primaryHostEdgeId).toBe('footprint-edge-2');
+    expect(patch.primaryHostEdgeId).toBe('footprint-edge-2');
+    expect(patch.presetRect?.centerOffsetM).toBe('0');
+    expect(trace.transform.transformSource).toBe('top_projection_to_object_frame');
   });
 
   it('ignores stale commit-start polygons when rebuilding a projection-backed floating release', () => {

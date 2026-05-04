@@ -67,7 +67,9 @@ export type DeckDragSession = ObjectInteractionSessionBase & {
   objectRef: DeckObjectRef;
   startSvgX: number;
   startSvgY: number;
+  rawStartDragPlanPoint: PlanPoint | null;
   startDragPlanPoint: PlanPoint | null;
+  dragPlanPointOffset: PlanPoint;
   grabbedPlanPoint: PlanPoint;
   startCenter: PlanPoint;
   startPolygon: PlanPoint[];
@@ -199,6 +201,62 @@ function pointWithinPolygonBounds(input: {
     input.point.y >= Math.min(...ys) - toleranceM &&
     input.point.y <= Math.max(...ys) + toleranceM
   );
+}
+
+function resolveDeckDragStartPlanPoint(input: {
+  rawStartDragPlanPoint: PlanPoint | null;
+  dragPolygon: PlanPoint[];
+  dragCenter: PlanPoint;
+}): {
+  startDragPlanPoint: PlanPoint | null;
+  dragPlanPointOffset: PlanPoint;
+  grabbedPlanPoint: PlanPoint;
+} {
+  const rawStartDragPlanPoint = input.rawStartDragPlanPoint;
+  if (!rawStartDragPlanPoint) {
+    return {
+      startDragPlanPoint: null,
+      dragPlanPointOffset: { x: 0, y: 0 },
+      grabbedPlanPoint: input.dragCenter,
+    };
+  }
+  const startDragPlanPoint = pointWithinPolygonBounds({
+    polygon: input.dragPolygon,
+    point: rawStartDragPlanPoint,
+  })
+    ? rawStartDragPlanPoint
+    : input.dragCenter;
+  return {
+    startDragPlanPoint,
+    dragPlanPointOffset: {
+      x: startDragPlanPoint.x - rawStartDragPlanPoint.x,
+      y: startDragPlanPoint.y - rawStartDragPlanPoint.y,
+    },
+    grabbedPlanPoint: startDragPlanPoint,
+  };
+}
+
+function resolveProjectionBackedDeckDragDelta(input: {
+  session: DeckDragSession;
+  nextDragPlanPoint: PlanPoint | null;
+  svgDx: number;
+  svgDy: number;
+  metresPerSvgUnit: number;
+}): PlanPoint {
+  if (input.session.startDragPlanPoint && input.nextDragPlanPoint) {
+    const normalizedNextDragPlanPoint = {
+      x: input.nextDragPlanPoint.x + input.session.dragPlanPointOffset.x,
+      y: input.nextDragPlanPoint.y + input.session.dragPlanPointOffset.y,
+    };
+    return {
+      x: normalizedNextDragPlanPoint.x - input.session.startDragPlanPoint.x,
+      y: normalizedNextDragPlanPoint.y - input.session.startDragPlanPoint.y,
+    };
+  }
+  return {
+    x: input.svgDx * input.metresPerSvgUnit,
+    y: input.svgDy * input.metresPerSvgUnit,
+  };
 }
 
 function resolveNearestPreviewCorner(input: {
@@ -741,10 +799,15 @@ export function buildDeckDragSession(input: {
   if (requiresProjectionResolver && !input.startDragPlanPoint) return null;
   const dragPolygon = interaction.dragPolygon.length ? interaction.dragPolygon : input.overlayShape.polygon;
   const dragCenter = interaction.dragCenter ?? interaction.renderedCenter;
-  const grabbedPlanPoint =
-    input.startDragPlanPoint && pointWithinPolygonBounds({ polygon: dragPolygon, point: input.startDragPlanPoint })
-      ? input.startDragPlanPoint
-      : dragCenter;
+  const {
+    startDragPlanPoint,
+    dragPlanPointOffset,
+    grabbedPlanPoint,
+  } = resolveDeckDragStartPlanPoint({
+    rawStartDragPlanPoint: input.startDragPlanPoint,
+    dragPolygon,
+    dragCenter,
+  });
   const heldCornerIndex = resolveNearestDeckCornerIndex({
     polygon: dragPolygon,
     point: grabbedPlanPoint,
@@ -777,7 +840,9 @@ export function buildDeckDragSession(input: {
     },
     startSvgX: input.startSvgX,
     startSvgY: input.startSvgY,
-    startDragPlanPoint: input.startDragPlanPoint,
+    rawStartDragPlanPoint: input.startDragPlanPoint,
+    startDragPlanPoint,
+    dragPlanPointOffset,
     grabbedPlanPoint,
     startCenter: dragCenter,
     startPolygon: dragPolygon,
@@ -811,14 +876,15 @@ export function resolveDeckPreviewState(input: {
   const interactionSvgDy = input.session.svgInteraction.hostEdgeEnd.y - input.session.svgInteraction.hostEdgeStart.y;
   const svgLength = Math.hypot(interactionSvgDx, interactionSvgDy);
   const metresPerSvgUnit = svgLength > 1e-6 ? input.session.interaction.hostSpanM / svgLength : 0;
-  const planDx =
-    input.session.startDragPlanPoint && input.nextDragPlanPoint
-      ? input.nextDragPlanPoint.x - input.session.startDragPlanPoint.x
-      : svgDx * metresPerSvgUnit;
-  const planDy =
-    input.session.startDragPlanPoint && input.nextDragPlanPoint
-      ? input.nextDragPlanPoint.y - input.session.startDragPlanPoint.y
-      : svgDy * metresPerSvgUnit;
+  const dragDelta = resolveProjectionBackedDeckDragDelta({
+    session: input.session,
+    nextDragPlanPoint: input.nextDragPlanPoint,
+    svgDx,
+    svgDy,
+    metresPerSvgUnit,
+  });
+  const planDx = dragDelta.x;
+  const planDy = dragDelta.y;
   const center = {
     x: input.session.startCenter.x + planDx,
     y: input.session.startCenter.y + planDy,

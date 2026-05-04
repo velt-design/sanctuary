@@ -347,6 +347,36 @@ describe('deckReleaseSettlementController', () => {
     expect(failed.releaseFeedback?.coordinateTrace.centroidDeltaM.releaseToRebuilt).toEqual({ x: 10, y: 0 });
   });
 
+  it('allows only narrow visual projection jitter while still rejecting larger snapped-release drift', () => {
+    const state = makeCommittedState();
+
+    expect(
+      resolveDeckSettleMatch({
+        settleState: state,
+        settledDeckShape: makeDeckShape({
+          polygon: polygon.map((point) => ({ x: point.x, y: point.y + 0.25 })),
+        }),
+      }),
+    ).toMatchObject({
+      matches: true,
+      source: 'top_projection_committed',
+      projectionStatus: 'matched',
+    });
+
+    expect(
+      resolveDeckSettleMatch({
+        settleState: state,
+        settledDeckShape: makeDeckShape({
+          polygon: polygon.map((point) => ({ x: point.x + 0.4, y: point.y })),
+        }),
+      }),
+    ).toMatchObject({
+      matches: false,
+      source: 'none',
+      projectionStatus: 'none',
+    });
+  });
+
   it('lets a floating release complete when the top-projection deck body is still pending', () => {
     const floatingPreview = makePreview({
       releasePlacement: 'floating',

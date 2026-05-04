@@ -64,8 +64,9 @@ type DeckSettleMatch = {
   rebuiltProjectionPolygon: PlanPoint[] | null;
 };
 
-// Projection-backed releases can rebuild through solver-derived top projection with small semantic offsets.
-const DECK_SETTLE_MATCH_TOLERANCE_M = 0.6;
+// Geometry parity stays tight; a separate visual tolerance handles known top-projection wall-line offsets.
+const DECK_SETTLE_MATCH_TOLERANCE_M = 0.1;
+const DECK_SETTLE_VISUAL_JITTER_TOLERANCE_M = 0.35;
 const DECK_SETTLE_MAX_WAIT_MS = 500;
 const DECK_SETTLE_MATCH_STABLE_FRAMES = 1;
 const DECK_RELEASE_SUCCESS_FEEDBACK_MS = 180;
@@ -268,15 +269,12 @@ function deckShapeSemanticallyMatchesPreview(input: {
 
   const expectedGapM = input.preview.releasePlacement === 'snapped' ? 0 : previewProjection.nearGapM;
   if (Math.abs(interaction.referenceEdgeGapM - expectedGapM) > toleranceM) return false;
-  if (input.preview.releasePlacement === 'snapped' && input.preview.attachmentMode !== 'corner_dual_edge') {
-    return true;
-  }
-
+  const settledCenter = resolvePolygonCenter(input.shape.polygon) ?? interaction.renderedCenter;
   const previewCenter = resolvePolygonCenter(input.preview.polygon) ?? input.preview.previewAnchor;
   const centerToleranceM = input.preview.releasePlacement === 'floating'
     ? Math.max(toleranceM, 1)
     : toleranceM;
-  return pointsApproximatelyEqual(interaction.renderedCenter, previewCenter, centerToleranceM);
+  return pointsApproximatelyEqual(settledCenter, previewCenter, centerToleranceM);
 }
 
 export function createDeckReleaseSettleState(input: {
@@ -341,6 +339,7 @@ export function resolveDeckSettleMatch(input: {
   const visuallyMatches = polygonsVisuallyMatch(
     input.settledDeckShape.polygon,
     input.settleState.previewState.polygon,
+    DECK_SETTLE_VISUAL_JITTER_TOLERANCE_M,
   );
   if (visuallyMatches) {
     return {
@@ -352,9 +351,25 @@ export function resolveDeckSettleMatch(input: {
       rebuiltProjectionPolygon,
     };
   }
+  const previewCenter = resolvePolygonCenter(input.settleState.previewState.polygon);
+  const settledCenter = resolvePolygonCenter(input.settledDeckShape.polygon);
+  if (
+    input.settleState.releasePlacement === 'snapped' &&
+    previewCenter &&
+    settledCenter &&
+    pointsApproximatelyEqual(previewCenter, settledCenter, DECK_SETTLE_VISUAL_JITTER_TOLERANCE_M)
+  ) {
+    return {
+      matches: true,
+      source: 'semantic_projection',
+      projectionStatus: 'matched',
+      rebuiltProjectionPolygon,
+    };
+  }
   const semanticallyMatches = deckShapeSemanticallyMatchesPreview({
     shape: input.settledDeckShape,
     preview: input.settleState.previewState,
+    toleranceM: DECK_SETTLE_VISUAL_JITTER_TOLERANCE_M,
   });
   if (semanticallyMatches) {
     return {

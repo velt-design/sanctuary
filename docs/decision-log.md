@@ -42,6 +42,7 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 | 2026-05-01 | Deck Interaction | Promoted | Projection-backed deck releases must map render-space previews through object commit frames before writing persisted deck fields. |
 | 2026-05-03 | Design Workbench Geometry | Promoted | There is one solved geometry spine; plan, 3D, sheet, section, detail, snap, and interaction surfaces are views of it. |
 | 2026-05-03 | Deck Interaction | Active | Projection-backed deck releases must not use `commitStartPolygon` bounds remapping; it can reintroduce stale overlay coordinates. |
+| 2026-05-04 | Deck Interaction | Active | Projection-backed drag deltas must normalize the pointer anchor, and snapped commits must map render-frame offsets into object-frame offsets before settle. |
 | 2026-05-01 | Quotes/Invoices/Job Packs | Promoted | High-risk side-effect workflows need a canonical doc before future behavior changes. |
 | 2026-05-01 | Docs | Promoted | Read the agent playbook for non-trivial portal work; promote durable lessons from this log into the playbook. |
 | 2026-05-01 | Docs | Promoted | Do not delete active guardrail docs without confirming usage or replacing the rule. |
@@ -112,6 +113,22 @@ Current guardrail: projection-backed releases must map through matched render/ob
 Promoted to: None
 
 Related docs/tests: `apps/portal/lib/drawings/interactions/deckCommitAdapter.test.ts`, `apps/portal/components/drawings/viewports/ModelSpaceViewport.test.tsx`.
+
+### 2026-05-04 - Deck Interaction - Projection Drag Anchor And Commit Offset Parity
+
+Area: Deck Interaction
+
+Status: Active
+
+Decision or mistake: projection-backed deck drag normalized the grabbed point to the deck center when the pointer resolver landed outside the committed polygon, but preview deltas and snapped commit offsets could still use the raw pointer or render-frame center offset.
+
+Why it mattered: a screen-right drag could feel like it moved through the wrong frame, and a side-wall snap could settle with a projection/object-frame offset instead of the released preview.
+
+Current guardrail: projection-backed drag sessions must use one normalized start anchor for grabbed-point and delta math, preserving raw resolver points only as diagnostics. Snapped commits must map center offsets through the matched render/object frames before persistence, and settle matching may allow only narrow top-projection visual jitter while still rejecting larger rebuilt-geometry drift.
+
+Promoted to: None
+
+Related docs/tests: `apps/portal/lib/drawings/interactions/deckInteractionAdapter.test.ts`, `apps/portal/lib/drawings/interactions/deckCommitAdapter.test.ts`, `apps/portal/lib/drawings/interactions/deckReleaseSettlementController.test.ts`, `apps/portal/components/drawings/viewports/ModelSpaceViewport.test.tsx`.
 
 ### 2026-05-01 - Deck Interaction - Projection-Native Drag Session
 
