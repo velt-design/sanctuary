@@ -15,8 +15,21 @@ import {
   type CalculatorInputs,
 } from '@/lib/types/calculator';
 import { buildCommercialDesignInputFromCalculatorInputs } from './commercialDesignPayload';
+import type {
+  EstimateLivePricingSource,
+  EstimatePricingSourceDefaultReason,
+  EstimatePricingSourceMetadata,
+  EstimatePricingSourceSaveContext,
+  EstimateQuantityTakeoffReadinessSource,
+  EstimateWorkbenchSolvedReadinessGateCode,
+} from './pricingSourceTypes';
 
-export type EstimateLivePricingSource = 'calculator_live' | 'workbench_solved';
+export type {
+  EstimateLivePricingSource,
+  EstimatePricingSourceSaveContext,
+  EstimateQuantityTakeoffReadinessSource,
+  EstimateWorkbenchSolvedReadinessGateCode,
+} from './pricingSourceTypes';
 
 export const ESTIMATE_CURRENT_LIVE_PRICING_SOURCE = 'calculator_live' as const;
 export const ESTIMATE_WORKBENCH_SOLVED_PRICING_SOURCE = 'workbench_solved' as const;
@@ -24,22 +37,6 @@ export const ESTIMATE_PRICING_SOURCE_BLOCKED_CODE = 'ESTIMATE_PRICING_SOURCE_BLO
 export const ESTIMATE_PRICING_SOURCE_GATE_VERSION = 'estimate_pricing_rollout_prep_v1';
 export const ESTIMATE_COMMERCIAL_PARITY_REPORT_VERSION = 'commercial_parity_v1';
 const ESTIMATE_PRICING_SOURCE_ENV = 'PORTAL_ESTIMATE_PRICING_SOURCE';
-
-export type EstimateQuantityTakeoffReadinessSource =
-  | 'package_geometry'
-  | 'solved_geometry_spine'
-  | 'app_local_shadow'
-  | 'unknown';
-
-export type EstimateWorkbenchSolvedReadinessGateCode =
-  | 'workbench_solved_ready'
-  | 'quantity_takeoff_owned'
-  | 'commercial_parity_stable'
-  | 'estimate_persistence_source_explicit'
-  | 'estimate_lock_boundary_preserved'
-  | 'local_first_boundary_preserved'
-  | 'downstream_pricing_boundary_preserved'
-  | 'rollback_to_calculator_live_confirmed';
 
 export type EstimateWorkbenchSolvedReadinessGate = {
   code: EstimateWorkbenchSolvedReadinessGateCode;
@@ -68,39 +65,10 @@ export type EstimateWorkbenchSolvedReadinessReport = {
   blockingGateCodes: EstimateWorkbenchSolvedReadinessGateCode[];
 };
 
-type EstimatePricingSourceDefaultReason = 'unset' | 'invalid' | null;
-
 type NormalizedEstimatePricingSourceRequest = {
   raw: string | null;
   requestedPricingSource: EstimateLivePricingSource;
   defaultedReason: EstimatePricingSourceDefaultReason;
-};
-
-type EstimatePricingSourceMetadata = {
-  gateVersion: typeof ESTIMATE_PRICING_SOURCE_GATE_VERSION;
-  requestedSource: EstimateLivePricingSource;
-  requestedSourceRaw: string | null;
-  selectedSource: EstimateLivePricingSource;
-  selectedAt: string;
-  selectedBy: string | null;
-  defaultedReason: EstimatePricingSourceDefaultReason;
-  rollbackProvenance: 'default_calculator_live' | 'explicit_calculator_live' | null;
-  commercialInputSchemaVersion: string | null;
-  quantityTakeoffSource: EstimateQuantityTakeoffReadinessSource | null;
-  trustSummary: {
-    status: string | null;
-    blockingDiagnostics: number;
-  } | null;
-  commercialInputHash: string | null;
-  parityReportHash: string | null;
-  parityReportVersion: string | null;
-  blockingGateCodes: EstimateWorkbenchSolvedReadinessGateCode[];
-};
-
-export type EstimatePricingSourceSaveContext = {
-  pricingSource: EstimateLivePricingSource;
-  pricingSourceMetadata: EstimatePricingSourceMetadata;
-  commercialDesignInput: CommercialDesignInputV1 | null;
 };
 
 type EstimatePricingSourceGateInput = {

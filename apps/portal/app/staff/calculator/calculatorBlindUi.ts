@@ -87,6 +87,7 @@ export function buildCalculatorBlindsUi(items: BlindLineItem[]): CalculatorBlind
     const hasErrors = errors.length > 0;
     const statusMessage = statusMessageForErrors(errors);
     const isPriceable = priced ? priced.errors.length === 0 : false;
+    const statusTone: BlindStatusTone = hasErrors && !isMissingDims ? 'error' : 'helper';
     return {
       item,
       pricing: priced,
@@ -96,7 +97,7 @@ export function buildCalculatorBlindsUi(items: BlindLineItem[]): CalculatorBlind
       isPriceable,
       showStatus: Boolean(statusMessage),
       statusMessage,
-      statusTone: hasErrors && !isMissingDims ? 'error' : 'helper',
+      statusTone,
       totalExLabel: isPriceable ? formatCents(priced?.blindSellExCents ?? 0) : '—',
       totalIncLabel: isPriceable ? formatCents(priced?.blindSellIncCents ?? 0) : '—',
     };

@@ -284,7 +284,7 @@ function parseSourceModuleIndex(moduleKey: string | undefined): number | undefin
   return Number.isFinite(parsed) ? parsed : undefined;
 }
 
-function locationForPath(path: string): CommercialParityDifferenceV1['location'] {
+function locationForPath(path: string): NonNullable<CommercialParityDifferenceV1['location']> {
   const pathSegments = path.split('.').filter(Boolean);
   const pergolaIndex = pathSegments.indexOf('pergolas');
   const modulesIndex = pathSegments.indexOf('modules');

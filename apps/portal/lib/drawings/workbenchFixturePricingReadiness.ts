@@ -89,6 +89,9 @@ export function buildWorkbenchFixturePricingReadiness(
     downstreamPricingBoundaryPreserved: true,
     rollbackToCalculatorLiveConfirmed: true,
   });
+  if (workbenchCommercialInput.source !== 'workbench_solved') {
+    throw new Error(`Workbench fixture ${fixture.slug} produced non-workbench commercial input.`);
+  }
 
   return {
     source: workbenchCommercialInput.source,
