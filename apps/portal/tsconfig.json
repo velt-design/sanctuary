@@ -60,7 +60,9 @@
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts",
     ".next/playwright-fixture/types/**/*.ts",
-    ".next/playwright-fixture/dev/types/**/*.ts"
+    ".next/playwright-fixture/dev/types/**/*.ts",
+    ".next/playwright-fixture-readiness/types/**/*.ts",
+    ".next/playwright-fixture-readiness/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules"

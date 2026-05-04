@@ -74,6 +74,14 @@ describe('DesignWorkbenchFixturePage', () => {
     expect(markup).toContain('data-project-id="fixture-roof"');
     expect(markup).toContain('data-workbench-context="fixture_ready"');
     expect(markup).toContain('data-workbench-fixture="mono-standard"');
+    expect(markup).toContain('data-workbench-pricing-source="workbench_solved"');
+    expect(markup).toContain('data-workbench-pricing-trust-status="ready"');
+    expect(markup).toContain('data-workbench-pricing-readiness="eligible"');
+    expect(markup).toContain('data-workbench-pricing-blocking-gates=""');
+    expect(markup).toContain('data-workbench-pricing-quantity-takeoff-source="solved_geometry_spine"');
+    expect(markup).toContain('data-workbench-pricing-parity-pergolas-compared="1"');
+    expect(markup).toContain('data-workbench-pricing-parity-modules-compared="1"');
+    expect(markup).toContain('data-workbench-pricing-parity-blocking-differences="0"');
     expect(getProjectPageSnapshotMock).not.toHaveBeenCalled();
   });
 
@@ -90,6 +98,8 @@ describe('DesignWorkbenchFixturePage', () => {
     expect(markup).toContain('Unknown fixture slug: not-real');
     expect(markup).toContain('data-workbench-context="invalid_fixture"');
     expect(markup).not.toContain('Drawing workbench');
+    expect(markup).not.toContain('data-workbench-pricing-source');
+    expect(markup).not.toContain('data-workbench-pricing-readiness');
     expect(getProjectPageSnapshotMock).not.toHaveBeenCalled();
   });
 });

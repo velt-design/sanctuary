@@ -180,6 +180,31 @@ async function expectTopProjectionPlanParity(page: Page) {
   expect(screenshot.byteLength).toBeGreaterThan(10_000);
 }
 
+async function expectWorkbenchSolvedPricingReadiness(page: Page, fixtureSlug: string) {
+  const route = page.locator(`main[data-workbench-context="fixture_ready"][data-workbench-fixture="${fixtureSlug}"]`).first();
+
+  await expect(route).toBeVisible();
+  await expect(route).toHaveAttribute('data-workbench-pricing-source', 'workbench_solved');
+  await expect(route).toHaveAttribute('data-workbench-pricing-trust-status', 'ready');
+  await expect(route).toHaveAttribute('data-workbench-pricing-readiness', 'eligible');
+  await expect(route).toHaveAttribute('data-workbench-pricing-blocking-gates', '');
+  await expect(route).toHaveAttribute('data-workbench-pricing-quantity-takeoff-source', 'solved_geometry_spine');
+  await expect(route).toHaveAttribute('data-workbench-pricing-parity-status', /match|drift/);
+  await expect
+    .poll(async () => Number(await route.getAttribute('data-workbench-pricing-parity-pergolas-compared')))
+    .toBeGreaterThan(0);
+  await expect
+    .poll(async () => Number(await route.getAttribute('data-workbench-pricing-parity-modules-compared')))
+    .toBeGreaterThan(0);
+  await expect(route).toHaveAttribute('data-workbench-pricing-parity-blocking-differences', '0');
+  await expect
+    .poll(async () => Number(await route.getAttribute('data-workbench-pricing-parity-differences')))
+    .toBeGreaterThanOrEqual(0);
+  await expect
+    .poll(async () => Number(await route.getAttribute('data-workbench-pricing-parity-warning-differences')))
+    .toBeGreaterThanOrEqual(0);
+}
+
 async function openFixtureDrawingWorkbench(page: Page, fixtureSlug: string) {
   await page.goto(`/staff/projects/fixture-roof/design-workbench?fixture=${fixtureSlug}`);
   const workbench = page.getByRole('region', { name: 'Drawing workbench' });
@@ -208,6 +233,7 @@ test('drawing workbench mono fixture stays on object-first geometry surfaces', a
 
   await page.setViewportSize({ width: 1680, height: 1050 });
   await openFixtureDrawingWorkbench(page, 'mono-standard');
+  await expectWorkbenchSolvedPricingReadiness(page, 'mono-standard');
 
   const workbench = page.getByRole('region', { name: 'Drawing workbench' });
   await expect(workbench).toBeVisible();
@@ -241,6 +267,7 @@ test('drawing workbench screenshot U hipped roof fixture renders valid topology'
 
   await page.setViewportSize({ width: 1680, height: 1050 });
   await openFixtureDrawingWorkbench(page, 'gable-u-hipped-screenshot');
+  await expectWorkbenchSolvedPricingReadiness(page, 'gable-u-hipped-screenshot');
 
   await page.getByRole('tab', { name: 'Model Space' }).click();
   await page.getByRole('tab', { name: 'Plan' }).click();
@@ -277,6 +304,7 @@ for (const fixtureSlug of ['gable-standard', 'box-standard', 'mono-join-screensh
 
     await page.setViewportSize({ width: 1680, height: 1050 });
     await openFixtureDrawingWorkbench(page, fixtureSlug);
+    await expectWorkbenchSolvedPricingReadiness(page, fixtureSlug);
 
     const workbench = page.getByRole('region', { name: 'Drawing workbench' });
     await expect(workbench).toBeVisible();
@@ -304,6 +332,18 @@ for (const fixtureSlug of ['gable-standard', 'box-standard', 'mono-join-screensh
     expect(pageErrors, `Unexpected runtime errors: ${pageErrors.join(' | ')}`).toEqual([]);
   });
 }
+
+test('drawing workbench fixture route rejects unknown fixtures without ready pricing diagnostics', async ({ page }) => {
+  await page.goto('/staff/projects/fixture-roof/design-workbench?fixture=not-real');
+
+  const invalidFixture = page.locator('main[data-workbench-context="invalid_fixture"][data-workbench-fixture="not-real"]').first();
+  await expect(invalidFixture).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText('Route state: Invalid Fixture')).toBeVisible();
+  await expect(page.getByText('Unknown fixture slug: not-real')).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Drawing workbench' })).toHaveCount(0);
+  await expect(page.locator('[data-workbench-pricing-source]')).toHaveCount(0);
+  await expect(page.locator('[data-workbench-pricing-readiness]')).toHaveCount(0);
+});
 
 test('drawing workbench draw outline fixture places the first point at the landing marker', async ({ page }) => {
   const pageErrors: string[] = [];

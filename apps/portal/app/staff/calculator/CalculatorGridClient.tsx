@@ -71,13 +71,7 @@ import { useInfillClipboard } from './useInfillClipboard';
 import { useInfillHotkeys } from './useInfillHotkeys';
 import { trackInfillEvent } from './infillTelemetry';
 import { buildImpactDiff, type ImpactDiff } from './diff';
-import {
-  priceAllBlinds,
-  type BlindLineItemInput,
-  type BlindPricingResult,
-} from '@/lib/costing/blinds';
 import { buildAddonsTotals, computeDisplayTotals } from './calcTotals';
-import { mapEngineLevel, mapInfillSeverity, type UiWarning } from './warnings';
 import {
   applyAcrylicVariantToInfillPayload,
   buildModulePayloadWithInfills,
@@ -189,6 +183,18 @@ import {
   isDuplicatePrimaryFlashingRow,
   selectVisibleFlashingBands,
 } from './calculatorFlashingUi';
+import {
+  BLIND_FABRIC_OPTIONS,
+  BLIND_SYSTEM_OPTIONS,
+  buildCalculatorBlindsUi,
+} from './calculatorBlindUi';
+import {
+  buildCalculatorQuoteStatusUi,
+  buildCalculatorUiWarnings,
+  groupCalculatorUiWarnings,
+  resolveGenerateDesignPreflight,
+  type CalculatorQuoteStatusActionKey,
+} from './calculatorQuoteStatusUi';
 
 type FieldSchemaItem = {
   id: string;
@@ -231,11 +237,6 @@ type HouseFootprintDragSession = HouseFootprintEditorDragMeta & {
 function formatMoney(n: number): string {
   if (!Number.isFinite(n)) return '$0.00';
   return `$${n.toFixed(2)}`;
-}
-
-function formatCents(cents?: number): string {
-  if (typeof cents !== 'number' || !Number.isFinite(cents)) return '$0.00';
-  return `$${(cents / 100).toFixed(2)}`;
 }
 
 function formatMaybeMoney(n: number | undefined): string {
@@ -2161,25 +2162,8 @@ export default function CalculatorGridClient({
     [selectedExplainLine],
   );
 
-  const blindInputs = useMemo<BlindLineItemInput[]>(
-    () =>
-      blindsState.items.map((item) => ({
-        id: item.id,
-        label: item.label,
-        system: item.system as BlindSystemInput,
-        widthMm: Number.isFinite(toNumber(item.widthMm)) ? toNumber(item.widthMm) : null,
-        coverLengthMm: Number.isFinite(toNumber(item.coverLengthMm)) ? toNumber(item.coverLengthMm) : null,
-        fabric: item.fabric as BlindFabricInput,
-        motorised: item.motorised === 'YES' ? true : null,
-      })),
-    [blindsState],
-  );
-
-  const blindsPricing = useMemo<BlindPricingResult>(() => priceAllBlinds(blindInputs), [blindInputs]);
-  const blindsTotals = blindsPricing.totals;
-  const blindsTotalEx = blindsTotals ? blindsTotals.totalExCents / 100 : 0;
-  const blindsTotalInc = blindsTotals ? blindsTotals.totalIncCents / 100 : 0;
-  const addonsTotals = buildAddonsTotals(blindsTotalEx, blindsTotalInc);
+  const blindsUi = useMemo(() => buildCalculatorBlindsUi(blindsState.items), [blindsState.items]);
+  const addonsTotals = buildAddonsTotals(blindsUi.totalEx, blindsUi.totalInc);
   const { coreEx: coreTotalEx, coreInc: coreTotalInc } = computeDisplayTotals(totalEx, totalInc, addonsTotals);
   const engineWarningsRaw = useMemo(() => (result ? deriveSiteResultWarnings(result) : []), [result]);
 
@@ -2288,31 +2272,11 @@ export default function CalculatorGridClient({
   const gableGutterOptions =
     activeModule.houseConnectionType === 'none' ? [GABLE_GUTTER_OPTIONS[1]] : GABLE_GUTTER_OPTIONS;
 
-  const blindItemPricing = blindsPricing.items;
-
   const blindsListContent = (
     <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 12 }}>
-      {blindsState.items.map((item, idx) => {
-        const pricing = blindItemPricing.find((p) => p.id === item.id);
-        const errors = pricing?.errors ?? [];
-        const hasErrors = errors.length > 0;
-        const isMissingDims = errors.some((err) => err.toLowerCase().includes('enter width'));
-        const widthTooLarge = errors.some((err) => err.toLowerCase().includes('max width'));
-        const lengthTooLarge = errors.some((err) => err.toLowerCase().includes('max cover length'));
-        const statusMessage = isMissingDims
-          ? 'Enter dimensions to price this blind.'
-          : widthTooLarge
-            ? 'Add another blind and split widths manually.'
-            : lengthTooLarge
-              ? 'Manual quote required.'
-              : hasErrors
-                ? errors[0]
-                : '';
-        const statusClassName = hasErrors && !isMissingDims ? styles.error : styles.helper;
-        const showStatus = Boolean(statusMessage);
-        const isPriceable = pricing ? pricing.errors.length === 0 : false;
-        const totalExLabel = isPriceable ? formatCents(pricing?.blindSellExCents ?? 0) : '—';
-        const totalIncLabel = isPriceable ? formatCents(pricing?.blindSellIncCents ?? 0) : '—';
+      {blindsUi.rows.map((row, idx) => {
+        const item = row.item;
+        const statusClassName = row.statusTone === 'error' ? styles.error : styles.helper;
         const domIdBase = `${blindFieldPrefix}-blind-${idx + 1}`;
         return (
           <div key={item.id} className={styles.previewCard} style={{ padding: 12 }}>
@@ -2351,10 +2315,7 @@ export default function CalculatorGridClient({
                 type="select"
                 value={item.system}
                 onChange={(v) => setBlindItem(item.id, { system: v as BlindSystemInput })}
-                options={[
-                  { label: 'Ziptrak', value: 'ZIPTRAK' },
-                  { label: 'Omni', value: 'OMNI' },
-                ]}
+                options={BLIND_SYSTEM_OPTIONS}
               />
               <FieldTile
                 id={`${domIdBase}-width`}
@@ -2376,12 +2337,7 @@ export default function CalculatorGridClient({
                 type="select"
                 value={item.fabric}
                 onChange={(v) => setBlindItem(item.id, { fabric: v as BlindFabricInput })}
-                options={[
-                  { label: 'Mesh', value: 'MESH' },
-                  { label: 'PVC', value: 'PVC' },
-                  { label: 'Fine mesh', value: 'FINE_MESH' },
-                  { label: 'None (Mesh)', value: 'NONE' },
-                ]}
+                options={BLIND_FABRIC_OPTIONS}
               />
               <FieldTile
                 id={`${domIdBase}-motor`}
@@ -2390,10 +2346,10 @@ export default function CalculatorGridClient({
                 value={item.motorised === 'YES'}
                 onChange={(v) => setBlindItem(item.id, { motorised: v ? 'YES' : 'NONE' })}
               />
-              <FieldTile id={`${domIdBase}-total-ex`} label="Blind total (ex‑GST)" type="readOnly" value={totalExLabel} />
-              <FieldTile id={`${domIdBase}-total-inc`} label="Blind total (inc‑GST)" type="readOnly" value={totalIncLabel} />
+              <FieldTile id={`${domIdBase}-total-ex`} label="Blind total (ex‑GST)" type="readOnly" value={row.totalExLabel} />
+              <FieldTile id={`${domIdBase}-total-inc`} label="Blind total (inc‑GST)" type="readOnly" value={row.totalIncLabel} />
             </div>
-            {showStatus ? <div className={statusClassName}>{statusMessage}</div> : null}
+            {row.showStatus ? <div className={statusClassName}>{row.statusMessage}</div> : null}
           </div>
         );
       })}
@@ -2412,11 +2368,11 @@ export default function CalculatorGridClient({
       <div className={styles.previewCard} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
           <span>Blinds total (ex‑GST)</span>
-          <span>{formatCents(blindsTotals?.totalExCents ?? 0)}</span>
+          <span>{blindsUi.totalExLabel}</span>
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
           <span>Blinds total (inc‑GST)</span>
-          <span>{formatCents(blindsTotals?.totalIncCents ?? 0)}</span>
+          <span>{blindsUi.totalIncLabel}</span>
         </div>
         <div className={styles.helper}>Totals round to cents; pricing uses banded size lookup.</div>
       </div>
@@ -4291,7 +4247,7 @@ export default function CalculatorGridClient({
       label: 'Blinds',
       type: 'custom',
       content: blindsListContent,
-      helperText: `${blindsState.items.length} blind${blindsState.items.length === 1 ? '' : 's'} · totals update live`,
+      helperText: blindsUi.summaryText,
     },
     {
       id: 'infillsEditor',
