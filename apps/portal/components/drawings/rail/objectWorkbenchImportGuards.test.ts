@@ -220,8 +220,8 @@ describe('object workbench import guards', () => {
       path.join(process.cwd(), path.normalize(path.join('apps', 'portal', 'components', 'drawings', 'viewports', 'ModelSpaceViewport.tsx'))),
       'utf8',
     );
-    const projectionTopViewportSource = fs.readFileSync(
-      path.join(process.cwd(), path.normalize(path.join('apps', 'portal', 'components', 'drawings', 'viewports', 'ProjectionTopViewport.tsx'))),
+    const geometry3DViewportSource = fs.readFileSync(
+      path.join(process.cwd(), path.normalize(path.join('apps', 'portal', 'components', 'drawings', 'viewports', 'Geometry3DViewport.tsx'))),
       'utf8',
     );
 
@@ -252,13 +252,16 @@ describe('object workbench import guards', () => {
     expect(moduleDrawingRendererSource).not.toContain('drawingSurfaceGeometry?.planModel');
     expect(moduleDrawingRendererSource).not.toContain('drawingSurfaceGeometry?.sectionModel');
     expect(moduleDrawingContractsSource).not.toContain('modelSpacePergolaGeometry?:');
-    expect(modelSpaceViewportSource).toContain("from '@/components/drawings/viewports/ProjectionTopViewport'");
-    expect(modelSpaceViewportSource).toContain('<ProjectionTopViewport');
+    expect(modelSpaceViewportSource).toContain("from '@/components/drawings/viewports/Geometry3DViewport'");
+    expect(modelSpaceViewportSource).toContain('<Geometry3DViewport');
+    expect(modelSpaceViewportSource).toContain('lockedViewPreset="top"');
     expect(modelSpaceViewportSource).not.toContain('ProjectionPlanViewport');
-    expect(projectionTopViewportSource).toContain('artifact: WorkbenchSolvedGeometryArtifact');
-    expect(projectionTopViewportSource).not.toContain('ModulePlanModel');
-    expect(projectionTopViewportSource).not.toContain('legacyPlanModel');
-    expect(projectionTopViewportSource).not.toContain('objectWorkbenchPlanOverlay');
+    expect(modelSpaceViewportSource).not.toContain("from '@/components/drawings/viewports/ProjectionTopViewport'");
+    expect(modelSpaceViewportSource).not.toContain('<ProjectionTopViewport');
+    expect(geometry3DViewportSource).toContain('lockedViewPreset?: GeometryCameraPreset');
+    expect(geometry3DViewportSource).not.toContain('ModulePlanModel');
+    expect(geometry3DViewportSource).not.toContain('legacyPlanModel');
+    expect(geometry3DViewportSource).not.toContain('objectWorkbenchPlanOverlay');
     expect(moduleDrawingContractsSource).not.toContain('modelSpaceTopProjection?:');
     expect(moduleDrawingContractsSource).not.toContain('modelSpacePergolaRenderSource?:');
     expect(moduleDrawingContractsSource).not.toContain('modelSpacePergolaRenderStatus?:');

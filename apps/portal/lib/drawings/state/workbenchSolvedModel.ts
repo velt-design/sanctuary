@@ -580,7 +580,7 @@ function previewMessageFromWorkbenchMessage(message: string): string {
   return message.replace('workbench geometry', '3D geometry preview');
 }
 
-function buildGeometryPreviewStateFromArtifact(
+export function buildGeometryPreviewStateFromArtifact(
   artifact: WorkbenchSolvedGeometryArtifact,
 ): GeometryPreviewState {
   return {

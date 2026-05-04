@@ -5,14 +5,15 @@ import styles from './DrawingWorkbench.module.css';
 
 const VIEWPORT_MODE_LABELS: Record<DrawingWorkbenchViewportMode, string> = {
   sheet: 'Sheet View',
+  plan: 'Plan',
   model: 'Model Space',
-  geometry3d: '3D View',
+  geometry3d: '3D',
 };
 
 export default function ViewportModeSwitch({
   value,
   onChange,
-  availableModes = ['sheet', 'model'],
+  availableModes = ['sheet', 'geometry3d'],
 }: {
   value: DrawingWorkbenchViewportMode;
   onChange: (next: DrawingWorkbenchViewportMode) => void;

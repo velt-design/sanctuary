@@ -2,23 +2,28 @@
 
 The design workbench is the portal drawing and model-editing surface for estimate-backed designs. The active workbench migration is sealed around an object-first project model and solved geometry spine. Compatibility remains only as explicit legacy estimate snapshot import/export support and named fallback boundaries.
 
-## Design Workbench North Star: Rhino-like Viewport System
+## Design Workbench North Star: Read/Edit Split
 
-The Design Workbench has one object-first design intent model and one solved geometry artifact. Perspective, Top, Section, Sheet, and future elevation views are not separate geometry systems. They are cameras, projections, or presentations of the same solved scene.
+The Design Workbench has one object-first design intent model and one solved geometry artifact. Perspective, Top, Section, Sheet, and elevation views are not separate geometry systems. They are derived presentations of the same solved scene.
 
-The 3D React viewport is not the source of truth. The source of truth is the object-first design intent plus `WorkbenchSolvedGeometryArtifact`, `viewerScene`, and `topProjection` generated from it.
+The workbench has two render surfaces:
 
-Model Space Top should behave like an orthographic top camera over the same solved scene. It may render through SVG for crisp plan linework, dimensions, and hit targets, but it must be mechanically derived from the shared solved model and `topProjection`; it must not maintain independent plan geometry.
+- **`Geometry3DViewport`** — read-only 3D R3F scene graph. Camera presets (iso/top/front/right). Selecting an object writes into shared selection state; that is its only output. **No drag handlers, no gizmos, no commit paths.** Editing chrome must not appear in 3D, even temporarily.
+- **`PlanViewport`** — the 2D editor. Renders a clean plan drawing from `topProjection` plus overlays (dimensions, hit targets, selection halos, gizmos). All editing — tools, drag, snap, dimension edits, commits — lives here.
 
-Interactions are object/world transforms:
+`DesignViewport.tsx` is the host that mounts the right surface for the active mode (`Sheet | Plan | 3D`). It owns the typed selection seam (`selectionRouter.ts`) shared between 3D and Plan; it does not own editing chrome.
 
-- viewport adapters convert pointer input into projection, world, and object coordinates.
-- selection targets object refs, not view-specific shapes.
-- transforms commit back to object design intent.
-- the solved artifact rebuilds.
-- every viewport updates from the same result.
+Neither viewport is the source of truth. The source of truth is the object-first design intent plus `WorkbenchSolvedGeometryArtifact`, `viewerScene`, and `topProjection` generated from it.
 
-Legacy calculator-era plan geometry is fallback and compatibility only. It must not execute as normal visible body geometry in geometry-ready Model Space Plan.
+Interaction loop, all driven from PlanViewport:
+
+- pointer input is converted into plan-projection coordinates (mm) at the input edge.
+- selection targets typed object refs through `selectionRouter`, not view-specific shapes.
+- drag operates in plan-projection space; conversion to object-frame happens only at the commit boundary.
+- commits issue a `Command` through the command bus, mutating design intent.
+- the solved artifact rebuilds; both 3D and Plan re-render from the new artifact.
+
+Legacy calculator-era plan geometry is fallback and compatibility only. It must not execute as normal visible body geometry in any geometry-ready surface. Refer to `docs/decision-log.md` for the nine foundational contracts that govern editor growth (single-source intent, three-phase drag, plan-projection math, typed selection, isolated tool state machines, snap-as-a-service, Plan-only gizmos and overlays, mm everywhere, 3D-is-read-only).
 
 ## Primary Paths
 

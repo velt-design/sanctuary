@@ -251,7 +251,7 @@ test('drawing workbench mono fixture stays on object-first geometry surfaces', a
   await expect(planSvg).toHaveAttribute('data-top-projection-hidden-rendered-count', '0');
   await expect(modelViewport.locator('[data-top-projection-role="hidden_from_top"]')).toHaveCount(0);
 
-  await page.getByRole('tab', { name: '3D View' }).click();
+  await page.getByRole('tab', { name: '3D' }).click();
   await expectContained3DCanvas(page);
   await expect(page.getByTestId('geometry-3d-viewport-diagnostics')).toHaveAttribute('data-finite-bounds', 'true');
   await expect(workbench).not.toContainText(/legacy fallback|unsupported geometry fallback|Project unavailable|Staff Login/i);
@@ -281,7 +281,7 @@ test('drawing workbench ready workbench-solved U hipped roof fixture keeps rollo
   await page.getByRole('tab', { name: 'Plan' }).click();
   await expectTopProjectionPlanParity(page);
 
-  await page.getByRole('tab', { name: '3D View' }).click();
+  await page.getByRole('tab', { name: '3D' }).click();
   await page.getByRole('button', { name: 'Top' }).click();
   await expectContained3DCanvas(page);
 
@@ -325,7 +325,7 @@ for (const fixtureSlug of ['gable-standard', 'box-standard', 'mono-join-screensh
     await page.getByRole('tab', { name: 'Plan' }).click();
     await expectTopProjectionPlanParity(page);
 
-    await page.getByRole('tab', { name: '3D View' }).click();
+    await page.getByRole('tab', { name: '3D' }).click();
     await page.getByRole('button', { name: 'Top' }).click();
     await expectContained3DCanvas(page);
 
@@ -783,7 +783,7 @@ test('drawing workbench model-space smoke', async ({ page }, testInfo) => {
   expect(sectionToggleBackground).toBeTruthy();
   expect(configuratorActionBackground).toBeTruthy();
 
-  const geometry3dTab = page.getByRole('tab', { name: '3D View' });
+  const geometry3dTab = page.getByRole('tab', { name: '3D' });
   if (await geometry3dTab.isVisible().catch(() => false)) {
     await geometry3dTab.click();
     await expectContained3DCanvas(page);
@@ -801,7 +801,7 @@ test('drawing workbench model-space smoke', async ({ page }, testInfo) => {
   } else {
     test.info().annotations.push({
       type: 'note',
-      description: 'Selected embedded drawing workbench does not expose a 3D View tab.',
+      description: 'Selected embedded drawing workbench does not expose a 3D tab.',
     });
   }
 

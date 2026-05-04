@@ -346,8 +346,8 @@ describe('DrawingWorkbench', () => {
 
     expect(markup).toContain('aria-label="Drawing workbench"');
     expect(markup).toContain('Sheet View');
-    expect(markup).toContain('Model Space');
-    expect(markup).not.toContain('3D View');
+    expect(markup).not.toContain('Model Space');
+    expect(markup).toContain('>3D<');
     expect(markup).not.toContain('next landing zone');
     expect(markup).toContain('aria-label="Plan view A3 drawing sheet"');
     expect(markup).not.toContain('Sheet Preview');
@@ -667,7 +667,7 @@ describe('DrawingWorkbench', () => {
       />,
     );
 
-    expect(markup).toContain('3D View');
+    expect(markup).toContain('>3D<');
   });
 
   it('routes the 3D branch through viewport geometry before loose preview compatibility props', () => {

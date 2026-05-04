@@ -48,7 +48,7 @@ describe('DesignWorkbenchFixtureClient', () => {
 
     expect(rendered.container.textContent).toContain('Sheet View');
     expect(rendered.container.textContent).toContain('Model Space');
-    expect(rendered.container.textContent).toContain('3D View');
+    expect(rendered.container.textContent).toContain('3D');
     expect(rendered.container.textContent).toContain('Back to Project');
     expect(rendered.container.textContent).toContain('Fixture Preview');
     expect(rendered.container.textContent).not.toContain('Rotate +90');

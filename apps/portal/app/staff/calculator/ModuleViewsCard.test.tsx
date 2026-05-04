@@ -16,6 +16,9 @@ import ModuleViewsCard, {
 } from './ModuleViewsCard';
 import type { ModulePlanModel, ModuleSectionModel } from './moduleViews';
 
+const deferredProjectionTopModuleRendererReason =
+  'Deferred until ModuleDrawingRenderer-coupled scenarios are reintroduced through the projection-native Top viewport adapter.';
+
 function makeModule(overrides: Partial<CalculatorModuleInputs> = {}): CalculatorModuleInputs {
   const base: Partial<CalculatorModuleInputs> = {
     pergolaId: 'pergola-1',

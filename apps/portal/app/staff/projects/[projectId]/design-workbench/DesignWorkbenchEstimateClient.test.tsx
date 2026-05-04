@@ -49,6 +49,9 @@ vi.mock('@react-three/drei', () => ({
   OrbitControls: () => null,
 }));
 
+const deferredProjectionTopEstimateClientInteractionReason =
+  'Deferred until estimate-client interaction scenarios are reintroduced through the projection-native Top viewport adapter.';
+
 function clickButtonByText(container: HTMLElement, label: string) {
   const button = getButtonByText(container, label);
   act(() => {
@@ -439,7 +442,7 @@ describe('DesignWorkbenchEstimateClient', () => {
     expect(rendered.container.textContent).toContain('Pergolas');
     expect(rendered.container.textContent).toContain('Sheet View');
     expect(rendered.container.textContent).toContain('Model Space');
-    expect(rendered.container.textContent).toContain('3D View');
+    expect(rendered.container.textContent).toContain('3D');
     expect(rendered.container.textContent).toContain('Back to Project');
     expect(rendered.container.textContent).not.toContain('Sanctuary Controls');
 
@@ -989,7 +992,7 @@ describe('DesignWorkbenchEstimateClient', () => {
       await flushAsyncWork();
       expect(rendered.container.querySelector('[aria-label="Plan view A3 drawing sheet"]')).not.toBeNull();
 
-      clickButtonByText(rendered.container, '3D View');
+      clickButtonByText(rendered.container, '3D');
       await flushAsyncWork();
       expect(rendered.container.querySelector('[data-testid="scene-object-house-solid-house-wall-1"]')).not.toBeNull();
     }
@@ -1176,7 +1179,7 @@ describe('DesignWorkbenchEstimateClient', () => {
     );
 
     await flushAsyncWork();
-    clickButtonByText(rendered.container, '3D View');
+    clickButtonByText(rendered.container, '3D');
     await flushAsyncWork();
 
     expect(rendered.container.textContent).not.toContain('3D Preview Unsupported');
@@ -1203,7 +1206,7 @@ describe('DesignWorkbenchEstimateClient', () => {
     await flushAsyncWork();
     expect(rendered.container.querySelector('[aria-label="Plan view A3 drawing sheet"]')).not.toBeNull();
 
-    clickButtonByText(rendered.container, '3D View');
+    clickButtonByText(rendered.container, '3D');
     await flushAsyncWork();
     expect(rendered.container.textContent).not.toContain('3D Preview Unsupported');
     expect(rendered.container.querySelector('[data-testid="geometry-3d-canvas"]')).not.toBeNull();
@@ -1768,7 +1771,7 @@ describe('DesignWorkbenchEstimateClient', () => {
     fillInputByLabel(rendered.container, 'Offset along wall (m)', '1.1');
     await flushAsyncWork();
 
-    clickButtonByText(rendered.container, '3D View');
+    clickButtonByText(rendered.container, '3D');
     await flushAsyncWork();
 
     expect(readLabeledValue(rendered.container, '3D opening count')).toBe('2');

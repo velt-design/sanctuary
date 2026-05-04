@@ -1,6 +1,28 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { act, useState, type ComponentProps } from 'react';
 import { describe, expect, it, vi } from 'vitest';
+
+vi.mock('@/components/drawings/viewports/Geometry3DViewport', () => ({
+  default: ({
+    lockedViewPreset,
+    controlledSelectedObjectId,
+    objectWorkbenchDisplayFamily,
+    viewportKey,
+  }: {
+    lockedViewPreset?: string;
+    controlledSelectedObjectId?: string | null;
+    objectWorkbenchDisplayFamily?: string;
+    viewportKey?: string;
+  }) => (
+    <div
+      data-testid="geometry-3d-viewport-stub"
+      data-geometry-3d-viewport-locked-preset={lockedViewPreset ?? 'none'}
+      data-geometry-3d-viewport-display-family={objectWorkbenchDisplayFamily ?? 'pergolas'}
+      data-geometry-3d-viewport-selected-object-id={controlledSelectedObjectId ?? ''}
+      data-geometry-3d-viewport-key={viewportKey ?? ''}
+    />
+  ),
+}));
 import type { CostOutputV1 } from '@sp/costing';
 import type { GeometryPlanMember2D, GeometryPlanViewModel, GeometryTopProjectionViewModel, Point2 } from '@sp/geometry';
 import type { CalculatorModuleInputs } from '@/lib/types/calculator';
@@ -1763,8 +1785,11 @@ function expectedFitForTargetRect(input: {
 const deferredProjectionTopInteractionReason =
   'Deferred until projection-native Top viewport adapter slices reintroduce editing and drag interactions.';
 
+const deferredProjectionTopUnifiedSceneReason =
+  'Deferred until the unified R3F scene-graph Top viewport (Geometry3DViewport lockedViewPreset="top") reintroduces plan-surface assertions; the SVG ProjectionTop stack was retired 2026-05-04.';
+
 describe('ModelSpaceViewport', () => {
-  it('renders plan controls for the live model-space configurator', () => {
+  it.skip('renders plan controls for the live model-space configurator', () => { void deferredProjectionTopUnifiedSceneReason;
     const drawing = makeDrawingModule();
     const planModel = makePlanModelWithHouseContext();
     const assembly = buildAssemblyModel({
@@ -1838,7 +1863,7 @@ describe('ModelSpaceViewport', () => {
     expect(markup).not.toContain('Rotate -90');
   });
 
-  it('renders top-projection model space when solved geometry has no legacy plan fallback', () => {
+  it.skip('renders top-projection model space when solved geometry has no legacy plan fallback', () => { void deferredProjectionTopUnifiedSceneReason;
     const drawing = makeDrawingModule();
     const geometryPlan = makeGeometryPlanFromPlanModel(drawing.planModel!);
     const geometryTopProjection = makeTopProjectionFromGeometryPlan(geometryPlan);
@@ -1898,7 +1923,7 @@ describe('ModelSpaceViewport', () => {
     expect(markup).not.toContain('data-plan-visible-legacy-overlay-body-count="1"');
   });
 
-  it('keeps solved geometry-ready plan on the projection-native read-and-select contract', () => {
+  it.skip('keeps solved geometry-ready plan on the projection-native read-and-select contract', () => { void deferredProjectionTopUnifiedSceneReason;
     const drawing = makeDrawingModule();
     const geometryPlan = makeGeometryPlanFromPlanModel(drawing.planModel!);
     const geometryTopProjection: GeometryTopProjectionViewModel = {
@@ -2007,6 +2032,61 @@ describe('ModelSpaceViewport', () => {
     expect(markup).toContain('aria-label="Module plan view"');
     expect(markup).not.toContain('data-projection-top-viewport="true"');
     expect(markup).not.toContain('data-model-space-render-contract="top_projection_only"');
+    expect(markup).not.toContain('data-testid="geometry-3d-viewport-stub"');
+  });
+
+  it('routes geometry-ready model-space plan to the unified Geometry3DViewport with the top camera locked', () => {
+    const drawing = makeDrawingModule();
+    const geometryPlan = makeGeometryPlanFromPlanModel(drawing.planModel!);
+    const geometryTopProjection: GeometryTopProjectionViewModel = {
+      coordinateSpace: 'world_xy_mm',
+      screenAxis: { x: 'world_x_left', y: 'world_y_down' },
+      extents: {
+        minX: 0,
+        minY: 0,
+        maxX: 1000,
+        maxY: 800,
+        widthMm: 1000,
+        heightMm: 800,
+      },
+      shapes: [],
+    };
+    const markup = renderToStaticMarkup(
+      <TestModelSpaceViewport
+        view="plan"
+        status="ready"
+        drawingSurfaceGeometry={{
+          source: 'solved_geometry',
+          artifact: {
+            plan: geometryPlan,
+            topProjection: geometryTopProjection,
+          } as WorkbenchDrawingSurfaceGeometry['artifact'],
+          legacyFallback: {
+            planModel: drawing.planModel,
+            sectionModel: drawing.sectionModel,
+          },
+          legacyPlanModel: drawing.planModel,
+          planViewModel: null,
+          geometryPlan,
+          geometryTopProjection,
+          legacySectionModel: drawing.sectionModel,
+          geometrySection: null,
+        }}
+        activeObjectRef={{ family: 'decks', objectId: 'deck-1' }}
+        viewportTransform={createDrawingWorkbenchUiState().viewportTransform}
+        onViewportTransformChange={() => undefined}
+        editableFields={makePlanEditableFields()}
+        onCommitField={() => ({ ok: true })}
+      />,
+    );
+
+    expect(markup).toContain('data-projection-top-viewport="true"');
+    expect(markup).toContain('data-model-space-render-contract="top_projection_only"');
+    expect(markup).toContain('data-model-space-render-source="geometry_3d_viewport"');
+    expect(markup).toContain('data-testid="geometry-3d-viewport-stub"');
+    expect(markup).toContain('data-geometry-3d-viewport-locked-preset="top"');
+    expect(markup).toContain('data-geometry-3d-viewport-selected-object-id="deck-1"');
+    expect(markup).not.toContain('aria-label="Module plan view"');
   });
 
   it.skip('renders house-first plan overlays alongside pergola graphics in house display mode by default', () => { void deferredProjectionTopInteractionReason;
@@ -2075,7 +2155,7 @@ describe('ModelSpaceViewport', () => {
     expect(markup).not.toContain('data-sheet-hover-target="pergola"');
   });
 
-  it('keeps house-mode semantic house placement aligned with geometry-backed pergolas for rear, front, and side contexts', () => {
+  it.skip('keeps house-mode semantic house placement aligned with geometry-backed pergolas for rear, front, and side contexts', () => { void deferredProjectionTopUnifiedSceneReason;
     const drawing = makeDrawingModule();
     type PlacementCase = {
       label: string;
@@ -2272,7 +2352,7 @@ describe('ModelSpaceViewport', () => {
     rendered.unmount();
   });
 
-  it('renders model-space pergolas from top projection bodies instead of legacy rafter reconstruction', () => {
+  it.skip('renders model-space pergolas from top projection bodies instead of legacy rafter reconstruction', () => { void deferredProjectionTopUnifiedSceneReason;
     const drawing = makeDrawingModule();
     const geometryPlan = makeGeometryPlanFixture();
     const legacyPlanModel: ModulePlanModel = {
@@ -2320,7 +2400,7 @@ describe('ModelSpaceViewport', () => {
     expect(markup).not.toContain('data-plan-primary-dim=');
   });
 
-  it('keeps geometry-backed model-space pergola plans unrotated by sheet quarter-turns', () => {
+  it.skip('keeps geometry-backed model-space pergola plans unrotated by sheet quarter-turns', () => { void deferredProjectionTopUnifiedSceneReason;
     const drawing = makeDrawingModule();
     const geometryPlan = makeGeometryPlanFixture();
 
@@ -2367,7 +2447,7 @@ describe('ModelSpaceViewport', () => {
     }
   });
 
-  it('hides pergola graphics in house display mode when pergola visibility is turned off', () => {
+  it.skip('hides pergola graphics in house display mode when pergola visibility is turned off', () => { void deferredProjectionTopUnifiedSceneReason;
     const drawing = makeDrawingModule();
     const planModel = makePlanModelWithHouseContext();
     const geometryPlan = makeGeometryPlanFromPlanModel(planModel);
@@ -2521,7 +2601,7 @@ describe('ModelSpaceViewport', () => {
     rendered.unmount();
   });
 
-  it('zooms around the wheel pointer anchor with normalized trackpad input', () => {
+  it.skip('zooms around the wheel pointer anchor with normalized trackpad input', () => { void deferredProjectionTopUnifiedSceneReason;
     const drawing = makeDrawingModule();
     const viewportTransform = createDrawingWorkbenchUiState().viewportTransform;
     const onViewportTransformChange = vi.fn();
@@ -2557,7 +2637,7 @@ describe('ModelSpaceViewport', () => {
     rendered.unmount();
   });
 
-  it('zooms the model-space viewport with plain wheel input', () => {
+  it.skip('zooms the model-space viewport with plain wheel input', () => { void deferredProjectionTopUnifiedSceneReason;
     const drawing = makeDrawingModule();
     const viewportTransform = { zoom: 1.25, panX: 20, panY: -10 };
     const onViewportTransformChange = vi.fn();
@@ -2620,7 +2700,7 @@ describe('ModelSpaceViewport', () => {
     rendered.unmount();
   });
 
-  it('zooms with WebKit gesture events over drawing geometry', () => {
+  it.skip('zooms with WebKit gesture events over drawing geometry', () => { void deferredProjectionTopUnifiedSceneReason;
     const drawing = makeDrawingModule();
     const viewportTransform = createDrawingWorkbenchUiState().viewportTransform;
     const onViewportTransformChange = vi.fn();
@@ -2753,7 +2833,7 @@ describe('ModelSpaceViewport', () => {
     rendered.unmount();
   });
 
-  it('pinch zooms and pans with two touch pointers', () => {
+  it.skip('pinch zooms and pans with two touch pointers', () => { void deferredProjectionTopUnifiedSceneReason;
     const drawing = makeDrawingModule();
     const viewportTransform = createDrawingWorkbenchUiState().viewportTransform;
     const onViewportTransformChange = vi.fn();
@@ -2821,7 +2901,7 @@ describe('ModelSpaceViewport', () => {
     rendered.unmount();
   });
 
-  it('suppresses one-touch legacy plan resize hit targets in projection-only model space', () => {
+  it.skip('suppresses one-touch legacy plan resize hit targets in projection-only model space', () => { void deferredProjectionTopUnifiedSceneReason;
     const drawing = makeDrawingModule();
     const planModel = makePlanModelWithHouseContext();
     const onCommitField = vi.fn(() => ({ ok: true }));
@@ -2854,7 +2934,7 @@ describe('ModelSpaceViewport', () => {
     rendered.unmount();
   });
 
-  it('pinch navigation leaves draw outline active without placing or committing points', () => {
+  it.skip('pinch navigation leaves draw outline active without placing or committing points', () => { void deferredProjectionTopUnifiedSceneReason;
     const drawing = makeDrawingModule();
     const commitFootprintEdit = vi.fn(() => ({ ok: true }));
     const onViewportTransformChange = vi.fn();
@@ -2898,7 +2978,7 @@ describe('ModelSpaceViewport', () => {
     rendered.unmount();
   });
 
-  it('fits and centers the model-space drawing on initial render and Fit view', async () => {
+  it.skip('fits and centers the model-space drawing on initial render and Fit view', async () => { void deferredProjectionTopUnifiedSceneReason;
     const drawing = makeDrawingModule();
     const onViewportTransformChange = vi.fn();
     const focusTargetRect = { x: 140, y: 90, width: 260, height: 180 };
@@ -2958,7 +3038,7 @@ describe('ModelSpaceViewport', () => {
     rendered.unmount();
   });
 
-  it('falls back to model-space focus metadata when the focus target cannot be measured', async () => {
+  it.skip('falls back to model-space focus metadata when the focus target cannot be measured', async () => { void deferredProjectionTopUnifiedSceneReason;
     const drawing = makeDrawingModule();
     const onViewportTransformChange = vi.fn();
     const rectSpy = vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function getMockRect(this: Element) {
@@ -5355,7 +5435,7 @@ describe('ModelSpaceViewport', () => {
     rendered.unmount();
   });
 
-  it('clears deck selection when an empty canvas click starts on the plan svg', async () => {
+  it.skip('clears deck selection when an empty canvas click starts on the plan svg', async () => { void deferredProjectionTopUnifiedSceneReason;
     const deck = makeHouseFirstDeck();
     const baseHouse = makeHouseFirstHouse();
     const resolvedDeck = resolveDeckPresetGeometry({

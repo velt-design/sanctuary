@@ -1,7 +1,7 @@
 import type { ModuleViewsTab } from '@/app/staff/calculator/ModuleViewsCard';
 import type { WorkbenchObjectFamily, WorkbenchObjectRef } from './objectFirstWorkbenchModel';
 
-export type DrawingWorkbenchViewportMode = 'sheet' | 'model' | 'geometry3d';
+export type DrawingWorkbenchViewportMode = 'sheet' | 'plan' | 'model' | 'geometry3d';
 
 export type WorkbenchMode = 'house' | 'pergolas';
 

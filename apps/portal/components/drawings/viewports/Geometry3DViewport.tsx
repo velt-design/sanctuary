@@ -3466,6 +3466,9 @@ export default function Geometry3DViewport({
   viewportKey = "geometry3d",
   viewportState,
   onViewportStateChange,
+  lockedViewPreset,
+  controlledSelectedObjectId,
+  onSelectedObjectChange,
 }: {
   geometryPreview?: GeometryPreviewState | null;
   objectWorkbenchDisplayFamily?: ObjectWorkbenchDisplayFamily;
@@ -3473,13 +3476,28 @@ export default function Geometry3DViewport({
   viewportKey?: string;
   viewportState?: Geometry3DViewportState | null;
   onViewportStateChange?: (next: Geometry3DViewportState) => void;
+  lockedViewPreset?: GeometryCameraPreset;
+  controlledSelectedObjectId?: string | null;
+  onSelectedObjectChange?: (objectId: string | null) => void;
 }) {
   const displayMode = objectWorkbenchDisplayFamily === "house_forms" ? "house" : "pergolas";
   const [panelOpen, setPanelOpen] = useState(false);
   const [layerVisibility, setLayerVisibility] = useState<
     Record<string, boolean>
   >({});
-  const [selectedObjectId, setSelectedObjectId] = useState<string | null>(null);
+  const [selectedObjectId, setSelectedObjectId] = useState<string | null>(
+    controlledSelectedObjectId ?? null,
+  );
+  useEffect(() => {
+    if (controlledSelectedObjectId === undefined) return;
+    setSelectedObjectId((current) =>
+      current === controlledSelectedObjectId ? current : controlledSelectedObjectId,
+    );
+  }, [controlledSelectedObjectId]);
+  useEffect(() => {
+    if (!onSelectedObjectChange) return;
+    onSelectedObjectChange(selectedObjectId);
+  }, [onSelectedObjectChange, selectedObjectId]);
   const [sectionCut, setSectionCut] = useState<SectionCutState>({
     enabled: false,
     positionMm: 0,
@@ -3504,7 +3522,7 @@ export default function Geometry3DViewport({
       buildPresetCameraState({
         target: { x: 0, y: 0, z: 500 },
         distanceMm: fitDistanceForSize(2000),
-        viewPreset: "iso",
+        viewPreset: lockedViewPreset && lockedViewPreset !== "custom" ? lockedViewPreset : "iso",
         focusMode: "scene",
       }),
   );
@@ -4099,7 +4117,7 @@ export default function Geometry3DViewport({
         className={styles.state}
         aria-label="3D geometry viewport unavailable"
       >
-        <h3 className={styles.stateTitle}>3D View Unavailable</h3>
+        <h3 className={styles.stateTitle}>3D Unavailable</h3>
         <p className={styles.stateText}>
           This workbench context did not provide a geometry preview.
         </p>
@@ -4145,7 +4163,7 @@ export default function Geometry3DViewport({
         className={styles.state}
         aria-label="3D geometry viewport unavailable"
       >
-        <h3 className={styles.stateTitle}>3D View Unavailable</h3>
+        <h3 className={styles.stateTitle}>3D Unavailable</h3>
         <p className={styles.stateText}>
           This workbench context did not provide a renderable geometry scene.
         </p>
@@ -4803,7 +4821,7 @@ export default function Geometry3DViewport({
             ref={handleControlsRef}
             makeDefault
             enablePan
-            enableRotate
+            enableRotate={lockedViewPreset !== "top"}
             enableZoom
             target={[
               cameraState.target.x,
@@ -4828,10 +4846,16 @@ export default function Geometry3DViewport({
             mouseButtons={{
               LEFT: ORBIT_MOUSE_DISABLED,
               MIDDLE: THREE.MOUSE.DOLLY,
-              RIGHT: THREE.MOUSE.ROTATE,
+              RIGHT:
+                lockedViewPreset === "top"
+                  ? THREE.MOUSE.PAN
+                  : THREE.MOUSE.ROTATE,
             }}
             touches={{
-              ONE: THREE.TOUCH.ROTATE,
+              ONE:
+                lockedViewPreset === "top"
+                  ? THREE.TOUCH.PAN
+                  : THREE.TOUCH.ROTATE,
               TWO: THREE.TOUCH.DOLLY_PAN,
             }}
             onEnd={() => {
@@ -4869,7 +4893,10 @@ export default function Geometry3DViewport({
                 position: nextPosition,
                 target: nextTarget,
                 distanceMm: camera.position.distanceTo(controls.target),
-                viewPreset: "custom",
+                viewPreset:
+                  lockedViewPreset && lockedViewPreset !== "custom"
+                    ? lockedViewPreset
+                    : "custom",
                 focusMode: nextFocusMode,
               });
             }}

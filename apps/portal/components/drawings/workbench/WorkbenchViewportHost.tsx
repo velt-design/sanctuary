@@ -23,7 +23,9 @@ import type { PlanViewModel } from '@/lib/drawings/views/plan/buildPlanViewModel
 import type { EstimateDrawingField, EstimateDrawingFootprintEdit } from '@/lib/estimates/drawingEdits';
 import type { EstimateDrawingSheetMeta } from '@/lib/estimates/drawingSheet';
 import type { CalculatorHouseFootprintPolygonPoint } from '@/lib/types/calculator';
-import Geometry3DViewport, { type Geometry3DViewportState } from '@/components/drawings/viewports/Geometry3DViewport';
+import { type Geometry3DViewportState } from '@/components/drawings/viewports/Geometry3DViewport';
+import DesignViewport from '@/components/drawings/viewports/DesignViewport';
+import PlanViewport from '@/components/drawings/viewports/PlanViewport/PlanViewport';
 import ModelSpaceViewport from '@/components/drawings/viewports/ModelSpaceViewport';
 import SheetViewport from '@/components/drawings/viewports/SheetViewport';
 import styles from './DrawingWorkbench.module.css';
@@ -152,6 +154,18 @@ export default function WorkbenchViewportHost({
           onCommitField={onCommitField}
           onCommitFootprintEdit={onCommitFootprintEdit}
         />
+      ) : viewportMode === 'plan' ? (
+        <PlanViewport
+          artifact={routedDrawingSurfaceGeometry?.artifact ?? null}
+          objectWorkbenchDisplayFamily={objectWorkbenchDisplayFamily}
+          visibility={visibility}
+          activeObjectRef={activeObjectRef}
+          viewportTransform={modelViewportTransform}
+          onViewportTransformChange={onModelViewportTransformChange}
+          onSelectObjectWorkbenchTarget={onSelectObjectWorkbenchTarget}
+          onSelectPergolaTarget={onSelectPergolaTarget}
+          onClearWorkbenchSelection={onClearWorkbenchSelection}
+        />
       ) : viewportMode === 'model' ? (
         <ModelSpaceViewport
           view={view}
@@ -184,13 +198,17 @@ export default function WorkbenchViewportHost({
           onDeckInteractionTelemetryChange={onDeckInteractionTelemetryChange}
         />
       ) : (
-        <Geometry3DViewport
+        <DesignViewport
           geometryPreview={routedGeometryPreview}
           objectWorkbenchDisplayFamily={objectWorkbenchDisplayFamily}
           visibility={visibility}
           viewportKey={geometryViewportKey ?? `${objectWorkbenchDisplayFamily}:${activeModuleIndex}`}
           viewportState={geometryViewportState}
           onViewportStateChange={onGeometryViewportStateChange}
+          selectedObjectId={activeObjectRef?.objectId}
+          onSelectObjectWorkbenchTarget={onSelectObjectWorkbenchTarget}
+          onSelectPergolaTarget={onSelectPergolaTarget}
+          onClearWorkbenchSelection={onClearWorkbenchSelection}
         />
       )}
     </div>

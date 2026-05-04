@@ -145,7 +145,12 @@ import type {
   ObjectWorkbenchViewportTargetSelection,
 } from '@/lib/drawings/state/objectWorkbenchViewportTypes';
 import type { WorkbenchObjectRef } from '@/lib/drawings/state/objectFirstWorkbenchModel';
-import ProjectionTopViewport from '@/components/drawings/viewports/ProjectionTopViewport';
+import Geometry3DViewport from '@/components/drawings/viewports/Geometry3DViewport';
+import {
+  defaultPrefixClassifier,
+  routeSelectedObject,
+} from '@/components/drawings/viewports/selection/selectionRouter';
+import { buildGeometryPreviewStateFromArtifact } from '@/lib/drawings/state/workbenchSolvedModel';
 import {
   normalizeHouseFootprintParams,
   type CalculatorHouseFootprintPolygonPoint,
@@ -706,13 +711,34 @@ export default function ModelSpaceViewport({
     [closeObjectWorkbenchDimensionEditor, onSelectObjectWorkbenchTarget],
   );
 
-  const handleProjectionTopObjectSelect = useCallback(
-    (selection: ObjectWorkbenchViewportTargetSelection) => {
+  const handleGeometry3DTopSelectedObjectChange = useCallback(
+    (objectId: string | null) => {
       closeObjectWorkbenchDimensionEditor();
       setObjectWorkbenchActiveCustomEdgeId(null);
-      onSelectObjectWorkbenchTarget?.(selection);
+      const target = routeSelectedObject(objectId, defaultPrefixClassifier);
+      switch (target.kind) {
+        case 'none':
+          onClearWorkbenchSelection?.();
+          return;
+        case 'pergola':
+          onSelectPergolaTarget?.(target.pergolaId);
+          return;
+        case 'workbench':
+          onSelectObjectWorkbenchTarget?.({
+            kind: target.targetKind,
+            targetId: target.targetId,
+          });
+          return;
+        case 'unhandled':
+          return;
+      }
     },
-    [closeObjectWorkbenchDimensionEditor, onSelectObjectWorkbenchTarget],
+    [
+      closeObjectWorkbenchDimensionEditor,
+      onClearWorkbenchSelection,
+      onSelectObjectWorkbenchTarget,
+      onSelectPergolaTarget,
+    ],
   );
 
   const handlePergolaTargetSelect = useCallback(
@@ -3321,20 +3347,30 @@ export default function ModelSpaceViewport({
           </div>
         ) : null}
 
+        {projectionPlanArtifact ? (
+          <div
+            className={styles.geometryThreeViewportSurface}
+            data-projection-top-viewport="true"
+            data-model-space-render-contract="top_projection_only"
+            data-model-space-render-source="geometry_3d_viewport"
+          >
+            <Geometry3DViewport
+              geometryPreview={buildGeometryPreviewStateFromArtifact(projectionPlanArtifact)}
+              objectWorkbenchDisplayFamily={
+                activeObjectRef?.family === 'house_forms' ? 'house_forms' : 'pergolas'
+              }
+              visibility={visibility}
+              viewportKey={`model-space-top:${activePergolaId ?? 'none'}`}
+              lockedViewPreset="top"
+              controlledSelectedObjectId={activeObjectRef?.objectId ?? null}
+              onSelectedObjectChange={handleGeometry3DTopSelectedObjectChange}
+            />
+          </div>
+        ) : null}
+
         <div ref={scaleFrameRef} data-model-space-scale-frame className={styles.scaleFrame} style={scaleFrameStyle}>
           <div className={styles.canvas}>
-            {projectionPlanArtifact ? (
-              <ProjectionTopViewport
-                artifact={projectionPlanArtifact}
-                visibility={visibility}
-                activeObjectRef={activeObjectRef}
-                viewportTransform={viewportTransform}
-                onViewportTransformChange={onViewportTransformChange}
-                onSelectObjectWorkbenchTarget={handleProjectionTopObjectSelect}
-                onSelectPergolaTarget={handlePergolaTargetSelect}
-                onClearWorkbenchSelection={handleWorkbenchCanvasSelect}
-              />
-            ) : showDrawingViewport ? (
+            {projectionPlanArtifact ? null : showDrawingViewport ? (
               <ModuleDrawingRenderer
                 view={view}
                 status={status}

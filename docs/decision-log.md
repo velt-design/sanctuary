@@ -43,6 +43,9 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 | 2026-05-03 | Design Workbench Geometry | Promoted | There is one solved geometry spine; plan, 3D, sheet, section, detail, snap, and interaction surfaces are views of it. |
 | 2026-05-03 | Deck Interaction | Active | Projection-backed deck releases must not use `commitStartPolygon` bounds remapping; it can reintroduce stale overlay coordinates. |
 | 2026-05-04 | Deck Interaction | Active | Projection-backed drag deltas must normalize the pointer anchor, and snapped commits must map render-frame offsets into object-frame offsets before settle. |
+| 2026-05-04 | Plan Rendering | Active | Geometry-ready Model Space Top renders through `Geometry3DViewport lockedViewPreset="top"` on the same R3F scene as Perspective; the SVG `ProjectionTopViewport` stack is retired. |
+| 2026-05-04 | Design Workbench Architecture | Active | Workbench has two render surfaces: a read-only 3D viewport (`Geometry3DViewport`) and a 2D `PlanViewport` (the editor). Plan replaces "Model Space" in the mode switch (`Sheet | Plan | 3D`); all editing, tools, and gizmos live in PlanViewport. |
+| 2026-05-04 | Design Workbench Architecture | Active | Nine foundational contracts govern the read/edit split (single-source intent, three-phase drag, plan-projection math, typed selection, isolated tool state machines, snap-as-a-service, gizmos+overlays Plan-only, mm everywhere, 3D is read-only). |
 | 2026-05-01 | Quotes/Invoices/Job Packs | Promoted | High-risk side-effect workflows need a canonical doc before future behavior changes. |
 | 2026-05-01 | Docs | Promoted | Read the agent playbook for non-trivial portal work; promote durable lessons from this log into the playbook. |
 | 2026-05-01 | Docs | Promoted | Do not delete active guardrail docs without confirming usage or replacing the rule. |
@@ -113,6 +116,22 @@ Current guardrail: projection-backed releases must map through matched render/ob
 Promoted to: None
 
 Related docs/tests: `apps/portal/lib/drawings/interactions/deckCommitAdapter.test.ts`, `apps/portal/components/drawings/viewports/ModelSpaceViewport.test.tsx`.
+
+### 2026-05-04 - Plan Rendering - Unified Scene Graph Top Viewport
+
+Area: Plan Rendering
+
+Status: Active
+
+Decision or mistake: an SVG-based `ProjectionTopViewport` stack (`ProjectionTopViewport.tsx`, `ProjectionTopSvg.tsx`, `ProjectionTopLayers.tsx`, `ProjectionTopHitTargets.tsx`, `ProjectionTopDimensions.tsx`, `ProjectionTopInteractionAdapter.ts`) was running as a parallel renderer for geometry-ready Model Space Plan, reading `topProjection` and producing its own SVG body/hit-target tree alongside the R3F 3D viewport.
+
+Why it mattered: it violated the Rhino-like north star (one scene graph, multiple cameras). Two renderers reading the same artifact via different code paths drift; selection, dimensions, and interaction logic had to be re-implemented per surface.
+
+Current guardrail: geometry-ready Model Space Plan renders through `Geometry3DViewport` with `lockedViewPreset="top"` (orthographic top camera, rotation locked, right-drag pan, wheel zoom). Selection comes from the shared scene's R3F raycaster. The SVG ProjectionTop stack is deleted; `topProjection` remains only for Sheet drawings and parity diagnostics. Future Front/Right/Section viewports should follow the same pattern: same scene graph, different `lockedViewPreset`.
+
+Promoted to: None
+
+Related docs/tests: `apps/portal/components/drawings/viewports/Geometry3DViewport.tsx`, `apps/portal/components/drawings/viewports/ModelSpaceViewport.tsx`, `apps/portal/components/drawings/rail/objectWorkbenchImportGuards.test.ts`.
 
 ### 2026-05-04 - Deck Interaction - Projection Drag Anchor And Commit Offset Parity
 
@@ -465,3 +484,54 @@ Current guardrail: docs may be either `Current` references or `Active guardrail`
 Promoted to: `docs/README.md`, `AGENTS.md`, `docs/agent-playbook.md`.
 
 Related docs/tests: `docs/README.md`, `AGENTS.md`, `docs/decision-log.md`.
+
+### 2026-05-04 - Design Workbench Architecture - Read Edit Split: Plan Editor And 3D Viewer
+
+Area: Design Workbench Architecture
+
+Status: Active
+
+Decision or mistake: the workbench had three viewport modes (`sheet`, `model`, `geometry3d`). The earlier plan was to collapse to a single canonical 3D editor where movement, gizmos, and tools all lived inside the R3F scene graph. That plan was revised: 3D editing inside R3F has too many ways for screen↔world coordinate math to leak into command paths, and overlays/gizmos in 3D fight orthographic camera presets when users want a clean drawing.
+
+Why it mattered: this is the load-bearing architectural decision for every subsequent interaction feature. Picking the wrong surface for editing means the entire tool/snap/gizmo tree gets built against the wrong coordinate space.
+
+Current guardrail: the workbench has two render surfaces, both derived from the same solved geometry artifact:
+
+- **`Geometry3DViewport`** (read-only): the R3F scene graph. Camera presets, selection highlights for visual reference. **No drag handlers, no gizmos, no commit paths.** Selecting an object in 3D writes into shared selection state — that is the only output 3D produces.
+- **`PlanViewport`** (the editor): a 2D SVG/Canvas surface that consumes the same artifact (typically `topProjection` for committed polygon plan, plus the scene graph for snap targets and dimensions). **All editing lives here:** tools, gizmos, drag, snap, dimension overlays, hit targets.
+
+The viewport mode switch becomes `Sheet | Plan | 3D`. The `'model'` mode and `ModelSpaceViewport.tsx` remain in the type union and codebase only until their non-3D responsibilities migrate into `PlanViewport`. Once `PlanViewport` is functional, the `'model'` mode is removed.
+
+`DesignViewport.tsx` is the host that mounts the right surface for the active mode. It owns the typed selection seam (`selectionRouter.ts`) shared between 3D and Plan, but does not own editing chrome itself.
+
+New workbench interaction code lives under `apps/portal/components/drawings/viewports/PlanViewport/{canvas,tools,interactions,gizmos,overlays}/` and `apps/portal/lib/drawings/commands/` — never inside `ModelSpaceViewport`, never inside `Geometry3DViewport`, never inside `DesignViewport`.
+
+Promoted to: None
+
+Related docs/tests: `docs/design-workbench-architecture.md`, `apps/portal/components/drawings/viewports/DesignViewport.tsx`, `apps/portal/components/drawings/viewports/PlanViewport/`, `apps/portal/components/drawings/workbench/ViewportModeSwitch.tsx`.
+
+### 2026-05-04 - Design Workbench Architecture - Nine Contracts For The Read Edit Split
+
+Area: Design Workbench Architecture
+
+Status: Active
+
+Decision or mistake: as PlanViewport accretes tools, gizmos, snap, and dimension code, prior workbench experience shows it is easy to lose seam discipline — interactions mutate state directly, drag math leaks pixel/screen coordinates into commit paths, scene objects get classified by string-matching ids, and editing chrome bleeds into the read-only 3D surface. Each of these is a category of bug we have already paid for at least once.
+
+Why it mattered: future workbench work expects a large volume of interaction code. Cementing the right invariants up-front — before tools and commands are written — makes growth safe; retrofitting them later is expensive and tends to be skipped.
+
+Current guardrail: every interactive feature added to PlanViewport (and the read-only 3D viewport) must obey nine contracts.
+
+1. **Single source of truth.** Design intent is the only writable state. `WorkbenchSolvedGeometryArtifact`, `viewerScene`, and `topProjection` are derived. Tools never mutate intent directly; they issue a `Command` through the command bus.
+2. **Three-phase drag.** Every transformative gesture implements `begin → update → commit`. `begin` snapshots state. `update` mutates a preview overlay only. `commit` issues a Command. Cancel reverts to the `begin` snapshot.
+3. **Plan-projection math.** Drag deltas live in plan-projection coordinates (mm). Object-frame conversions happen at the commit boundary, never at the input edge. Screen↔plan conversion happens only at the pointer edge. The deck-projection drift class of bugs traces back to violating this rule.
+4. **Typed selection.** `selectionRouter.ts` returns a discriminated `WorkbenchSelectionTarget` union shared by both 3D and Plan. No substring matching on scene object ids. Unhandled object families fall through to a typed `unhandled` case that is logged, not silently dropped.
+5. **Tools are isolated state machines.** Only the active tool sees pointer events. `ToolDispatcher` owns tool activation and routes events. Switching tools cancels in-flight gestures. Tools live exclusively in PlanViewport.
+6. **Snap is a service, not per-tool.** Tools query `snapEngine.query(point, context)` and receive a ranked list. They do not reimplement nearest-edge/midpoint/intersection logic per tool. The snap engine lives in PlanViewport.
+7. **Gizmos and overlays are Plan-only and owned by tools.** Translation, rotation, and edge-drag handles are rendered above the selection by the active tool inside PlanViewport. 3D never renders editing chrome — it only renders solved geometry plus a passive selection highlight.
+8. **mm everywhere.** Every container that takes a numeric position, size, or delta types it as `Mm`. Pixel and screen units are confined to the pointer edge and never enter command payloads.
+9. **3D is read-only.** `Geometry3DViewport` has no drag handlers, no gizmos, no commit paths. Selecting an object in 3D writes into shared selection state — that is the only output 3D produces. Editing chrome must not be added to the 3D surface, even temporarily.
+
+Promoted to: None
+
+Related docs/tests: `docs/design-workbench-architecture.md`, `apps/portal/components/drawings/viewports/PlanViewport/`, `apps/portal/components/drawings/viewports/Geometry3DViewport.tsx`, `apps/portal/components/drawings/viewports/selection/selectionRouter.ts`, `apps/portal/lib/drawings/commands/`.

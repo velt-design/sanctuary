@@ -209,7 +209,7 @@ export default function DesignWorkbenchFixtureClient({
               }))
             }
             viewportMode={store.ui.viewportMode}
-            availableViewportModes={['sheet', 'model', 'geometry3d']}
+            availableViewportModes={['sheet', 'plan', 'model', 'geometry3d']}
             onViewportModeChange={(viewportMode) =>
               setUi((current) => ({
                 ...current,
