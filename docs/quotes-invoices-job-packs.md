@@ -48,6 +48,14 @@ Rollback from `workbench_solved` to `calculator_live` must not reprice or mutate
 
 Rollout audit events for quote creation, refresh, revision, and blocked source transitions should include quote version IDs, estimate IDs, source metadata hashes, actor/request metadata, and gate codes when relevant. Never place raw public tokens, accept token hashes, service-role details, or oversized commercial payloads in audit records, PDFs, email bodies, public props, or job-pack outputs.
 
+Before enabling or rolling back `workbench_solved`, run downstream immutability checks:
+
+- Compare row counts and stable IDs before and after the operation for `quote_versions`, `quote_line_items`, `quote_send_logs`, `deposit_invoices`, `deposit_invoice_send_logs`, `file_artifacts`, `job_pack_generations`, and `job_pack_sheet_overrides`.
+- Confirm historical quote totals, invoice totals, generated artifact IDs, public token hashes, send-log IDs, and job-pack generation IDs did not change.
+- Confirm raw `commercial_design_input` is absent from quote versions, public-token responses, PDFs, emails, invoice payloads, and job-pack outputs.
+- Confirm rollback to `calculator_live` does not reprice or mutate sent, accepted, declined, invoiced, or job-pack-backed quote versions.
+- Confirm only new draft quote refreshes may copy compact pricing source metadata from the current saved estimate boundary.
+
 ## Invoice Lifecycle
 
 - Deposit invoices are created from sent or accepted quote versions.

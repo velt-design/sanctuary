@@ -49,7 +49,6 @@ import { useToast } from '@/components/ui/toast/ToastProvider';
 import Modal from '@/components/ui/modal/Modal';
 import { usePortalSession } from '@/components/auth/PortalAuthProvider';
 import RoofOrientationDiagram from './RoofOrientationDiagram';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import ConfirmDialog from './ConfirmDialog';
 import InfillPreview from './InfillPreview';
 import InfillActionsMenu from './InfillActionsMenu';
@@ -150,20 +149,17 @@ import {
   toNonNegativeInt,
   toNumber,
   type CalculatorDraftSessionSnapshot,
+  type InfillPresetKey,
 } from './calculatorInputs';
 import {
   designRequestTierFromTotal,
-  formatDesignRequestTierLabel,
 } from './calculatorSaveWorkflow';
 import { saveCalculatorEstimate } from './calculatorEstimateSave';
 import {
   INFILL_DELETE_UNDO_MS,
   INFILL_PRESETS,
   acrylicSourceLabel,
-  estimateInfillUi,
   estimateRoofRafterSpacing,
-  formatInfillShapeSummary,
-  infillStatusLabel,
   locationLabel,
   maxCentreForAcrylicSource,
   maxRunForAcrylicSource,
@@ -195,6 +191,13 @@ import {
   resolveGenerateDesignPreflight,
   type CalculatorQuoteStatusActionKey,
 } from './calculatorQuoteStatusUi';
+import {
+  CalculatorInfillRail,
+  CalculatorInfillTile,
+  InfillAddButton,
+  InfillPresetMenu,
+} from './CalculatorInfillOverview';
+import CalculatorSaveDialogs, { type CalculatorIssue, type SaveDialogSummary } from './CalculatorSaveDialogs';
 
 type FieldSchemaItem = {
   id: string;
@@ -2517,77 +2520,55 @@ export default function CalculatorGridClient({
     };
   }, [activeModulePayload, engineError, infillsOpen, isCalculating, moduleBaseline, readyToCalculate, selectedInfill?.id]);
 
-  const engineUiWarnings: UiWarning[] = (engineWarningsRaw ?? []).map((warning, index) => ({
-    id: `engine-${index}`,
-    severity: mapEngineLevel(warning.level),
-    message: warning.message,
-    source: 'engine',
-  }));
-  const infillUiWarningsAll: UiWarning[] = infillsState.items.flatMap((item, index) => {
-    const ui = infillUiById.get(item.id);
-    const label = item.label?.trim() || `Infill ${index + 1}`;
-    const warnings = ui?.warnings ?? [];
-    return warnings.map((warning) => ({
-      id: `infill-${item.id}-${warning.id}`,
-      severity: mapInfillSeverity(warning.severity),
-      message: `${label}: ${warning.message}`,
-      source: 'infill' as const,
-      infillId: item.id,
-      warning,
-    }));
-  });
-  const uiWarnings = [...engineUiWarnings, ...infillUiWarningsAll];
-  const criticalUiWarnings = uiWarnings.filter((warning) => warning.severity === 'critical');
-  const reviewUiWarnings = uiWarnings.filter((warning) => warning.severity === 'review');
-  const infoUiWarnings = uiWarnings.filter((warning) => warning.severity === 'info');
-  const warningsCount = uiWarnings.length;
-
-  const anyInfillDraft = infillsState.items.some((item) => infillUiById.get(item.id)?.status === 'draft');
+  const uiWarnings = useMemo(
+    () =>
+      buildCalculatorUiWarnings({
+        engineWarnings: engineWarningsRaw,
+        infillItems: infillsState.items,
+        infillUiById,
+      }),
+    [engineWarningsRaw, infillUiById, infillsState.items],
+  );
+  const {
+    criticalUiWarnings,
+    reviewUiWarnings,
+    infoUiWarnings,
+    warningsCount,
+    warningsHelperText,
+  } = useMemo(() => groupCalculatorUiWarnings(uiWarnings), [uiWarnings]);
   const projectHasContact = Boolean((project as { contactId?: string | null } | null)?.contactId);
-  const statusItems: StatusItem[] = [
-    {
-      id: 'project',
-      label: 'Project selected',
-      level: projectId && project ? 'ok' : 'block',
-      detail: projectId ? (project ? 'Attached' : 'Not found') : 'Select a project',
-      actionLabel: !projectId ? 'Select' : undefined,
-      onAction: !projectId ? () => toast.error('Use Projects in the header to select/create one.') : undefined,
+  const quoteStatusUi = useMemo(
+    () =>
+      buildCalculatorQuoteStatusUi({
+        projectId,
+        hasProject: Boolean(project),
+        projectHasContact,
+        hasModuleErrors,
+        engineError,
+        hasResult: Boolean(result),
+        isCalculating,
+        infillItems: infillsState.items,
+        infillUiById,
+      }),
+    [engineError, hasModuleErrors, infillUiById, infillsState.items, isCalculating, project, projectHasContact, projectId, result],
+  );
+  const statusActionHandlers: Record<CalculatorQuoteStatusActionKey, () => void> = {
+    selectProject: () => toast.error('Use Projects in the header to select/create one.'),
+    openProject: () => {
+      if (projectId) router.push(`/staff/projects/${encodeURIComponent(projectId)}`);
     },
-    {
-      id: 'contact',
-      label: 'Project contact',
-      level: project && projectHasContact ? 'ok' : project ? 'block' : 'review',
-      detail: project ? (projectHasContact ? 'OK' : 'Missing contact on project') : '—',
-      actionLabel: project && !projectHasContact ? 'Open project' : undefined,
-      onAction:
-        project && !projectHasContact && projectId
-          ? () => router.push(`/staff/projects/${encodeURIComponent(projectId)}`)
-          : undefined,
-    },
-    {
-      id: 'inputs',
-      label: 'Inputs valid',
-      level: hasModuleErrors ? 'block' : 'ok',
-      detail: hasModuleErrors ? 'Fix validation errors' : 'OK',
-      actionLabel: hasModuleErrors ? 'View errors' : undefined,
-      onAction: hasModuleErrors ? () => setIssuesOpen(true) : undefined,
-    },
-    {
-      id: 'engine',
-      label: 'Engine ready',
-      level: engineError || !result || isCalculating ? 'block' : 'ok',
-      detail: engineError ? engineError : isCalculating ? 'Calculating...' : result ? 'Live' : 'Waiting',
-    },
-    {
-      id: 'infills',
-      label: 'Infills complete',
-      level: anyInfillDraft ? 'block' : 'ok',
-      detail: anyInfillDraft ? 'Finish required infill shape fields' : 'OK',
-      actionLabel: anyInfillDraft ? 'Open infills' : undefined,
-      onAction: anyInfillDraft ? () => setInfillsOpen(true) : undefined,
-    },
-  ];
-  const hasStatusBlockers = statusItems.some((item) => item.level === 'block');
+    openIssues: () => setIssuesOpen(true),
+    openInfills: () => setInfillsOpen(true),
+  };
+  const statusItems: StatusItem[] = quoteStatusUi.items.map((item) => ({
+    id: item.id,
+    label: item.label,
+    level: item.level,
+    detail: item.detail,
+    actionLabel: item.actionLabel,
+    onAction: item.actionKey ? statusActionHandlers[item.actionKey] : undefined,
+  }));
+  const hasStatusBlockers = quoteStatusUi.hasStatusBlockers;
 
   const saveDesign = useCallback(
     async ({
@@ -2926,190 +2907,33 @@ export default function CalculatorGridClient({
 
   const infillPresetCards = INFILL_PRESETS.filter((preset) => preset.key !== 'custom');
 
-  const renderAddInfillButton = (label: string, compact = false, openModal = false) => (
-    <button
-      type="button"
-      className={compact ? styles.infillSecondaryButtonCompact : styles.infillSecondaryButton}
-      onClick={() => {
-        addInfillPreset('custom');
-        if (openModal) setInfillsOpen(true);
-      }}
-    >
-      {label}
-    </button>
-  );
+  const addCustomInfillFromOverview = (openModal = false) => {
+    addInfillPreset('custom');
+    if (openModal) setInfillsOpen(true);
+  };
 
-  const renderInfillPresetMenu = (label: string, compact = false, openModal = false) => (
-    <DropdownMenu modal={false}>
-      <DropdownMenuTrigger asChild>
-        <button type="button" className={compact ? styles.infillSecondaryButtonCompact : styles.infillSecondaryButton}>
-          {label}
-        </button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" sideOffset={6} className={styles.infillPresetMenu}>
-        {infillPresetCards.map((preset) => (
-          <DropdownMenuItem
-            key={preset.key}
-            onSelect={() => {
-              addInfillPreset(preset.key);
-              if (openModal) setInfillsOpen(true);
-            }}
-          >
-            {preset.label}
-          </DropdownMenuItem>
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
+  const addInfillPresetFromOverview = (preset: InfillPresetKey, openModal = false) => {
+    addInfillPreset(preset);
+    if (openModal) setInfillsOpen(true);
+  };
+
+  const setInfillRowRef = (id: string, node: HTMLButtonElement | null) => {
+    if (node) infillRowRefs.current.set(id, node);
+    else infillRowRefs.current.delete(id);
+  };
 
   const infillsTileContent = (
-    <div className={styles.infillTileContent}>
-      <div className={styles.infillTileBody}>
-        <div className={styles.infillTileStatus}>{hasInfills ? infillsSummaryLine1 : 'No infills added yet'}</div>
-        <p className={styles.infillTileDescription}>
-          {hasInfills
-            ? 'Review configured infills, add new ones, or adjust the panel layout for this module.'
-            : 'Add infills to close exposed sides or gable ends for more shelter and weather protection.'}
-        </p>
-        <div className={styles.infillTilePillRow}>
-          {infillSummaryChips.map((chip) => (
-            <span key={chip.key} className={styles.infillChip}>
-              {chip.label} {chip.count}
-            </span>
-          ))}
-        </div>
-        {hasInfills ? (
-          <div className={styles.infillTileMetricRow}>
-            <div className={styles.infillTileMetric}>
-              <span className={styles.infillTileMetricLabel}>System</span>
-              <strong>{infillSystemSummary}</strong>
-            </div>
-            <div className={styles.infillTileMetric}>
-              <span className={styles.infillTileMetricLabel}>Panels</span>
-              <strong>{infillTotals.panels}</strong>
-            </div>
-            <div className={styles.infillTileMetric}>
-              <span className={styles.infillTileMetricLabel}>Frames</span>
-              <strong>{infillTotals.mullions}</strong>
-            </div>
-          </div>
-        ) : null}
-      </div>
-      <div className={styles.infillTileActions}>
-        {hasInfills ? (
-          <>
-            <button type="button" className={styles.infillPrimaryButton} onClick={() => setInfillsOpen(true)}>
-              Edit infills
-            </button>
-            {renderAddInfillButton('Add infill', false, true)}
-            {renderInfillPresetMenu('Presets')}
-          </>
-        ) : (
-          <>
-            <button
-              type="button"
-              className={styles.infillPrimaryButton}
-              onClick={() => {
-                addInfillPreset('custom');
-                setInfillsOpen(true);
-              }}
-            >
-              Add infill
-            </button>
-            {renderInfillPresetMenu('Use preset', false, true)}
-            <button type="button" className={styles.infillSecondaryButton} onClick={() => setInfillsOpen(true)}>
-              Edit infills
-            </button>
-          </>
-        )}
-      </div>
-    </div>
-  );
-
-  const infillListRows = (
-    <div ref={infillListContainerRef} className={styles.infillListRows}>
-      {infillsState.items.map((item, idx) => {
-        const uiState = infillUiById.get(item.id) ?? null;
-        const estimate = uiState?.estimate ?? estimateInfillUi(item, roofRafterSpacingEstimate.spacingM);
-        const title = item.label?.trim() ? item.label.trim() : `Infill ${idx + 1}`;
-        const isSelected = selectedInfill?.id === item.id;
-        const acrylicChipLabel = acrylicSourceLabel(estimate.acrylicSourceUsed);
-        const canMoveUp = idx > 0;
-        const canMoveDown = idx < infillsState.items.length - 1;
-        const status = uiState?.status ?? 'valid';
-        const statusLabel = infillStatusLabel(status);
-        const statusClassName =
-          status === 'draft'
-            ? `${styles.infillChip} ${styles.infillChipWarning}`
-            : `${styles.infillChip} ${styles.infillChipSuccess}`;
-        const rowDetailLine =
-          estimate.estimatedMullionsTotal > 0 ? `Panels ${estimate.panelCountTotal} | Frames ${estimate.estimatedMullionsTotal}` : `Panels ${estimate.panelCountTotal}`;
-        return (
-          <div key={item.id} className={`${styles.infillRow} ${isSelected ? styles.infillRowActive : ''}`.trim()}>
-            <button
-              ref={(node) => {
-                if (node) infillRowRefs.current.set(item.id, node);
-                else infillRowRefs.current.delete(item.id);
-              }}
-              type="button"
-              className={styles.infillRowSelect}
-              onClick={() => setSelectedInfillId(item.id)}
-              onKeyDown={(event) => {
-                if (event.key === 'ArrowUp') {
-                  event.preventDefault();
-                  const prevId = infillsState.items[idx - 1]?.id;
-                  if (prevId) setSelectedInfillId(prevId);
-                  return;
-                }
-                if (event.key === 'ArrowDown') {
-                  event.preventDefault();
-                  const nextId = infillsState.items[idx + 1]?.id;
-                  if (nextId) setSelectedInfillId(nextId);
-                  return;
-                }
-                if (event.key === 'Enter') {
-                  event.preventDefault();
-                  focusInfillPrimaryField(item.id);
-                }
-              }}
-              aria-pressed={isSelected}
-            >
-              <div className={styles.infillRowTitle}>
-                <span>{title}</span>
-                <div className={styles.infillChipRow}>
-                  <span className={styles.infillChip}>{locationLabel(item.location)}</span>
-                  <span className={styles.infillChip}>{acrylicChipLabel}</span>
-                  <span className={statusClassName}>{statusLabel}</span>
-                  {estimate.acrylicSourceAutoSwitched ? <span className={`${styles.infillChip} ${styles.infillChipWarning}`}>Auto-switched</span> : null}
-                </div>
-              </div>
-              <div className={styles.infillRowMeta}>{`Span ${formatInfillShapeSummary(item.shape)}${estimate.qty > 1 ? ` | Qty ${estimate.qty}` : ''}`}</div>
-              <div className={styles.infillRowMeta}>{rowDetailLine}</div>
-            </button>
-            <div className={styles.infillRowControls}>
-              <button
-                type="button"
-                className={styles.infillRowMoveButton}
-                onClick={() => moveInfill(item.id, -1)}
-                disabled={!canMoveUp}
-                aria-label={`Move ${title} up`}
-              >
-                ↑
-              </button>
-              <button
-                type="button"
-                className={styles.infillRowMoveButton}
-                onClick={() => moveInfill(item.id, 1)}
-                disabled={!canMoveDown}
-                aria-label={`Move ${title} down`}
-              >
-                ↓
-              </button>
-            </div>
-          </div>
-        );
-      })}
-    </div>
+    <CalculatorInfillTile
+      hasInfills={hasInfills}
+      summaryLine1={infillsSummaryLine1}
+      summaryChips={infillSummaryChips}
+      systemSummary={infillSystemSummary}
+      totals={infillTotals}
+      presets={infillPresetCards}
+      onAddCustom={addCustomInfillFromOverview}
+      onAddPreset={addInfillPresetFromOverview}
+      onOpenInfills={() => setInfillsOpen(true)}
+    />
   );
 
   const flashingExtraRows = useMemo(
@@ -4323,14 +4147,7 @@ export default function CalculatorGridClient({
       label: 'Warnings',
       type: 'readOnly',
       value: result ? String(warningsCount) : '—',
-      helperText:
-        warningsCount && criticalUiWarnings.length
-          ? `Critical: ${criticalUiWarnings.length} (blocks design save)`
-          : warningsCount && reviewUiWarnings.length
-            ? `Review: ${reviewUiWarnings.length} (ack required)`
-            : warningsCount
-              ? `Info: ${infoUiWarnings.length}`
-              : undefined,
+      helperText: warningsHelperText,
     },
     {
       id: 'generate-estimate',
@@ -4340,35 +4157,22 @@ export default function CalculatorGridClient({
       onAction: async () => {
         setGenerateError(null);
 
-        if (!projectId) {
-          setGenerateError('Select a project first (use Projects in the header).');
+        const preflight = resolveGenerateDesignPreflight({
+          projectId,
+          hasProject: Boolean(project),
+          readyToCalculate,
+          hasStatusBlockers,
+          isCalculating,
+          isEditingDesign,
+          engineError,
+          hasResult: Boolean(result),
+          warningCount: warningsCount,
+        });
+        if (preflight.kind === 'error') {
+          setGenerateError(preflight.message);
           return;
         }
-        if (!project) {
-          setGenerateError('Project not found.');
-          return;
-        }
-        if (!readyToCalculate) {
-          setGenerateError('Fix validation errors before saving design.');
-          return;
-        }
-        if (hasStatusBlockers) {
-          setGenerateError('Resolve blockers in Quote Status before saving design.');
-          return;
-        }
-        if (isCalculating && !isEditingDesign) {
-          setGenerateError('Please wait for calculation to finish.');
-          return;
-        }
-        if (engineError && !isEditingDesign) {
-          setGenerateError('Fix cost engine error before saving design.');
-          return;
-        }
-        if (!result && !isEditingDesign) {
-          setGenerateError('No calculated result yet.');
-          return;
-        }
-        if (uiWarnings.length === 0 && !isEditingDesign) {
+        if (preflight.kind === 'save') {
           await saveDesign();
           return;
         }
@@ -4597,6 +4401,38 @@ export default function CalculatorGridClient({
       event.preventDefault();
       setPreviewRightWidthPx(previewRightWidthMaxPx);
     }
+  };
+
+  const saveDialogSummary: SaveDialogSummary = {
+    modules: String(values.modules.length),
+    activeModule: `Module ${activeModuleIndex + 1}: ${activeModule.pergolaStyle}${activeModule.boxPerimeterEnabled ? ' + box perimeter' : ''}`,
+    roofSize:
+      activeModule.pergolaStyle === 'hip_corner'
+        ? `A: ${activeModule.lengthM}×${activeModule.projectionM}m, B: ${activeModule.hipCornerLengthBM}×${activeModule.hipCornerProjectionBM}m`
+        : `${activeModule.lengthM}m × ${activeModule.projectionM}m`,
+    roofMaterial: activeModule.roofMaterial,
+    roofPitch:
+      typeof derivedPitchUsed === 'number'
+        ? `${derivedPitchUsed.toFixed(0)}°`
+        : activeModule.roofPitchDeg.trim()
+          ? `${activeModule.roofPitchDeg}°`
+          : '—',
+    materialsEx: formatMaybeMoney(materialsEx),
+    installEx: formatMaybeMoney(installEx),
+    overheadEx: formatMaybeMoney(overheadEx),
+    coreTotalEx: formatMaybeMoney(coreTotalEx),
+    blindsEx: formatMaybeMoney(addonsTotals.blinds.ex),
+  };
+
+  const closeSaveConfirmDialog = () => {
+    setConfirmOpen(false);
+    setGenerateError(null);
+  };
+
+  const handleIssueDialogClick = (issue: CalculatorIssue) => {
+    pendingIssueFocusRef.current = { moduleIndex: issue.moduleIndex, fieldId: issue.fieldId };
+    setActiveModuleIndex(issue.moduleIndex);
+    setIssuesOpen(false);
   };
 
   return (
@@ -4968,33 +4804,24 @@ export default function CalculatorGridClient({
             </div>
 
             <div className={styles.infillDrawerBody}>
-              <aside className={styles.infillRail} aria-label="Infill list">
-                <div className={styles.infillRailHeader}>
-                  <div className={styles.infillRailHeaderActions}>
-                    {renderAddInfillButton('Add infill', true)}
-                    {renderInfillPresetMenu('Presets', true)}
-                  </div>
-                </div>
-
-                <div className={styles.infillRailList}>
-                  {infillsState.items.length ? (
-                    infillListRows
-                  ) : (
-                    <div className={styles.infillListEmpty}>
-                      <strong className={styles.infillListEmptyTitle}>No infills added yet</strong>
-                      <p>Add infills to close exposed sides or gable ends for more shelter and weather protection.</p>
-                      <p>Use the buttons above to add your first infill or start from a preset.</p>
-                    </div>
-                  )}
-                </div>
-
-                <div className={styles.infillRailFooter}>
-                  <strong>{hasInfills ? 'Module infill summary' : 'Ready to add infills'}</strong>
-                  <p>{infillsSummaryLine1}</p>
-                  <p>{infillsSummaryLine2}</p>
-                  {infillsSummaryLine3 ? <p>{infillsSummaryLine3}</p> : <p>Add infills to improve shelter and weather protection on exposed sides.</p>}
-                </div>
-              </aside>
+              <CalculatorInfillRail
+                items={infillsState.items}
+                selectedInfillId={selectedInfill?.id ?? null}
+                uiById={infillUiById}
+                rafterSpacingM={roofRafterSpacingEstimate.spacingM}
+                listRef={infillListContainerRef}
+                summaryLine1={infillsSummaryLine1}
+                summaryLine2={infillsSummaryLine2}
+                summaryLine3={infillsSummaryLine3}
+                hasInfills={hasInfills}
+                presets={infillPresetCards}
+                onAddCustom={addCustomInfillFromOverview}
+                onAddPreset={addInfillPresetFromOverview}
+                onSelectInfill={setSelectedInfillId}
+                onFocusPrimaryField={focusInfillPrimaryField}
+                onMoveInfill={moveInfill}
+                onRowRef={setInfillRowRef}
+              />
 
               <section className={styles.infillEditor} aria-label="Selected infill editor">
                 {selectedInfill && selectedInfillEstimate && selectedInfillValidation ? (
@@ -5020,7 +4847,7 @@ export default function CalculatorGridClient({
                         </select>
                       </div>
                       <div className={styles.infillEditorActions}>
-                        {renderAddInfillButton('Add infill')}
+                        <InfillAddButton label="Add infill" onAddCustom={addCustomInfillFromOverview} />
                         <button
                           type="button"
                           className={`${styles.infillIconButton} ${styles.infillSummaryToggleButton}`}
@@ -5762,7 +5589,7 @@ export default function CalculatorGridClient({
                     <strong className={styles.infillEditorEmptyTitle}>Select an infill to edit it</strong>
                     <p>Pick one from the list, or add a new infill to this module.</p>
                     <div className={styles.infillEditorActions}>
-                      {renderInfillPresetMenu('Presets')}
+                      <InfillPresetMenu label="Presets" presets={infillPresetCards} onAddPreset={addInfillPresetFromOverview} />
                       <button type="button" className={styles.infillSecondaryButton} onClick={() => addInfillPreset('custom')}>
                         Add custom infill
                       </button>
@@ -5815,304 +5642,45 @@ export default function CalculatorGridClient({
         </>
       ) : null}
 
-      {issuesOpen ? (
-	        <Modal
-	          open
-	          ariaLabel="Validation issues"
-	          onClose={() => setIssuesOpen(false)}
-	          overlayClassName={styles.modalOverlay}
-	          panelClassName={styles.modal}
-	          maxWidthPx={720}
-	        >
-	          <div className={styles.modalHeader}>
-	            <div>
-	              <h2 className={styles.modalTitle}>Issues</h2>
-	              <p className={styles.modalSubtitle}>Click an item to jump to the missing field.</p>
-	            </div>
-	            <button type="button" className={styles.modalClose} onClick={() => setIssuesOpen(false)}>
-	              Close
-	            </button>
-	          </div>
-
-	          <div className={styles.modalBody}>
-	            <section className={styles.modalSection} aria-label="Validation errors">
-	              <h3 className={styles.modalSectionTitle}>Errors</h3>
-	              {issues.length ? (
-	                <ul className={styles.issuesList}>
-	                  {issues.map((issue) => (
-	                    <li key={`${issue.moduleIndex}-${issue.fieldId}`}>
-	                      <button
-	                        type="button"
-	                        className={styles.issueRow}
-	                        onClick={() => {
-	                          pendingIssueFocusRef.current = { moduleIndex: issue.moduleIndex, fieldId: issue.fieldId };
-	                          setActiveModuleIndex(issue.moduleIndex);
-	                          setIssuesOpen(false);
-	                        }}
-	                      >
-	                        <div className={styles.issueMain}>
-	                          <div className={styles.issueTitle}>{`Module ${issue.moduleIndex + 1} · ${issue.label}`}</div>
-	                          <div className={styles.issueMessage}>{issue.message}</div>
-	                        </div>
-	                        <span className={styles.issueJump}>Jump</span>
-	                      </button>
-	                    </li>
-	                  ))}
-	                </ul>
-	              ) : (
-	                <p className={styles.modalNote}>No validation errors.</p>
-	              )}
-	            </section>
-	          </div>
-	        </Modal>
-	      ) : null}
-
-	      {confirmOpen ? (
-	        <Modal
-	          open
-	          ariaLabel={isEditingDesign ? 'Save design confirmation' : 'Save design confirmation'}
-	          onClose={() => {
-	            setConfirmOpen(false);
-	            setGenerateError(null);
-	          }}
-	          overlayClassName={styles.modalOverlay}
-	          panelClassName={styles.modal}
-	          maxWidthPx={720}
-	        >
-	          <div className={styles.modalHeader}>
-	            <div>
-	              <h2 className={styles.modalTitle}>{isEditingDesign ? 'Save design' : 'Save design'}</h2>
-	              <p className={styles.modalSubtitle}>
-                  {isEditingDesign
-                    ? 'Save design keeps this estimate on its current pricing. Use Reprice to latest to refresh costs under the active costing config.'
-                    : 'This will save the current design draft for this project.'}
-                </p>
-	            </div>
-	            <button
-	              type="button"
-	              className={styles.modalClose}
-	              onClick={() => {
-	                setConfirmOpen(false);
-	                setGenerateError(null);
-	              }}
-	            >
-	              Close
-	            </button>
-	          </div>
-
-            <div className={styles.modalBody}>
-              <section className={styles.modalSection} aria-label="Inputs summary">
-                <h3 className={styles.modalSectionTitle}>Inputs</h3>
-                <div className={styles.modalGrid}>
-                  <div>
-                    <div className={styles.modalKey}>Modules</div>
-                    <div className={styles.modalVal}>{values.modules.length}</div>
-                  </div>
-                  <div>
-                    <div className={styles.modalKey}>Active module</div>
-                    <div className={styles.modalVal}>
-                      {`Module ${activeModuleIndex + 1}: ${activeModule.pergolaStyle}`}
-                      {activeModule.boxPerimeterEnabled ? ' + box perimeter' : ''}
-                    </div>
-                  </div>
-                  <div>
-                    <div className={styles.modalKey}>Roof length / roof span</div>
-                    <div className={styles.modalVal}>
-                      {activeModule.pergolaStyle === 'hip_corner'
-                        ? `A: ${activeModule.lengthM}×${activeModule.projectionM}m, B: ${activeModule.hipCornerLengthBM}×${activeModule.hipCornerProjectionBM}m`
-                        : `${activeModule.lengthM}m × ${activeModule.projectionM}m`}
-                    </div>
-                  </div>
-                  <div>
-                    <div className={styles.modalKey}>Roof material</div>
-                    <div className={styles.modalVal}>{activeModule.roofMaterial}</div>
-                  </div>
-                  <div>
-                    <div className={styles.modalKey}>Roof pitch</div>
-                    <div className={styles.modalVal}>
-                      {typeof derivedPitchUsed === 'number'
-                        ? `${derivedPitchUsed.toFixed(0)}°`
-                        : activeModule.roofPitchDeg.trim()
-                          ? `${activeModule.roofPitchDeg}°`
-                          : '—'}
-                    </div>
-                  </div>
-                </div>
-              </section>
-
-              <section className={styles.modalSection} aria-label="Outputs summary">
-                <h3 className={styles.modalSectionTitle}>{isEditingDesign ? 'Latest pricing preview' : 'Outputs'}</h3>
-                <div className={styles.modalGrid}>
-                  <div>
-                    <div className={styles.modalKey}>Materials (ex‑GST)</div>
-                    <div className={styles.modalVal}>{formatMaybeMoney(materialsEx)}</div>
-                  </div>
-                  <div>
-                    <div className={styles.modalKey}>Install payout (ex‑GST)</div>
-                    <div className={styles.modalVal}>{formatMaybeMoney(installEx)}</div>
-                  </div>
-                  <div>
-                    <div className={styles.modalKey}>Overhead (ex‑GST)</div>
-                    <div className={styles.modalVal}>{formatMaybeMoney(overheadEx)}</div>
-                  </div>
-                  <div>
-                    <div className={styles.modalKey}>Total (ex‑GST)</div>
-                    <div className={styles.modalVal}>{formatMaybeMoney(coreTotalEx)}</div>
-                  </div>
-                  <div>
-                    <div className={styles.modalKey}>Blinds (ex‑GST)</div>
-                    <div className={styles.modalVal}>{formatMaybeMoney(addonsTotals.blinds.ex)}</div>
-                  </div>
-                </div>
-              </section>
-
-              <section className={styles.modalSection} aria-label="Warnings">
-                <h3 className={styles.modalSectionTitle}>Warnings</h3>
-                {uiWarnings.length ? (
-                  <>
-                    {criticalUiWarnings.length ? (
-                      <>
-                        <div className={styles.modalKey} style={{ marginBottom: 6, color: 'rgb(185, 28, 28)' }}>
-                          Critical (blocks saving)
-                        </div>
-                        <ul className={styles.modalWarnings}>
-                          {criticalUiWarnings.map((warning) => (
-                            <li key={warning.id}>{warning.message}</li>
-                          ))}
-                        </ul>
-                      </>
-                    ) : null}
-                    {reviewUiWarnings.length ? (
-                      <>
-                        <div className={styles.modalKey} style={{ marginTop: 10, marginBottom: 6 }}>
-                          Review (acknowledge to continue)
-                        </div>
-                        <ul className={styles.modalWarnings}>
-                          {reviewUiWarnings.map((warning) => (
-                            <li key={warning.id}>{warning.message}</li>
-                          ))}
-                        </ul>
-                      </>
-                    ) : null}
-                    {infoUiWarnings.length ? (
-                      <>
-                        <div className={styles.modalKey} style={{ marginTop: 10, marginBottom: 6 }}>
-                          Info
-                        </div>
-                        <ul className={styles.modalWarnings}>
-                          {infoUiWarnings.map((warning) => (
-                            <li key={warning.id}>{warning.message}</li>
-                          ))}
-                        </ul>
-                      </>
-                    ) : null}
-                  </>
-                ) : (
-                  <p className={styles.modalNote}>No warnings for this design.</p>
-                )}
-              </section>
-
-              {reviewUiWarnings.length ? (
-                <label className={styles.modalCheckboxRow}>
-                  <input
-                    type="checkbox"
-                    checked={confirmAcknowledgeWarnings}
-                    onChange={(e) => setConfirmAcknowledgeWarnings(e.target.checked)}
-                  />
-                  <span>I acknowledge the review warnings</span>
-                </label>
-              ) : null}
-
-              <label className={styles.modalCheckboxRow}>
-                <input type="checkbox" checked={confirmReady} onChange={(e) => setConfirmReady(e.target.checked)} />
-                <span>{isEditingDesign ? 'I confirm this design is ready to save' : 'I confirm this design is ready to save'}</span>
-              </label>
-
-              {!isEditingDesign ? (
-                <>
-                  <label className={styles.modalCheckboxRow}>
-                    <input
-                      type="checkbox"
-                      checked={confirmRequestDesign}
-                      onChange={(e) => {
-                        const checked = e.target.checked;
-                        setConfirmRequestDesign(checked);
-                        if (checked) setConfirmRequestDesignPriority(suggestedDesignRequestTier);
-                      }}
-                    />
-                    <span>Request drafting after saving this design</span>
-                  </label>
-
-                  {confirmRequestDesign ? (
-                    <div className={styles.modalField}>
-                      <label htmlFor="calculatorDesignRequestPriority">Priority tier</label>
-                      <select
-                        id="calculatorDesignRequestPriority"
-                        className={styles.modalSelect}
-                        value={confirmRequestDesignPriority}
-                        onChange={(event) => setConfirmRequestDesignPriority(event.target.value as DesignRequestPriorityTier)}
-                      >
-                        {(['TIER_1', 'TIER_2', 'TIER_3', 'TIER_4', 'UNPRICED'] as const).map((tier) => (
-                          <option key={tier} value={tier}>
-                            {formatDesignRequestTierLabel(tier)}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  ) : null}
-                </>
-              ) : null}
-
-              {generateError ? <p className={styles.modalError}>{generateError}</p> : null}
-            </div>
-
-            <div className={styles.modalFooter}>
-              <button
-                type="button"
-                className={styles.modalButtonSecondary}
-                onClick={() => {
-                  setConfirmOpen(false);
-                  setGenerateError(null);
-                }}
-                disabled={isGenerating}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                className={styles.modalButtonPrimary}
-                disabled={
-                  hasStatusBlockers ||
-                  !confirmReady ||
-                  isGenerating
-                }
-                onClick={() => void saveDesign({
-                  createDesignRequest: confirmRequestDesign ? { priorityTier: confirmRequestDesignPriority } : null,
-                  saveMode: isEditingDesign ? 'preserve_current' : 'reprice_latest',
-                })}
-              >
-                {isEditingDesign ? 'Save design' : 'Save design'}
-              </button>
-              {isEditingDesign ? (
-                <button
-                  type="button"
-                  className={styles.modalButtonSecondary}
-                  disabled={
-                    criticalUiWarnings.length > 0 ||
-                    hasStatusBlockers ||
-                    !confirmReady ||
-                    (reviewUiWarnings.length > 0 && !confirmAcknowledgeWarnings) ||
-                    !result ||
-                    isGenerating
-                  }
-                  onClick={() => void saveDesign({ saveMode: 'reprice_latest' })}
-                >
-                  Reprice to latest
-                </button>
-              ) : null}
-            </div>
-	        </Modal>
-	      ) : null}
+      <CalculatorSaveDialogs
+        issuesOpen={issuesOpen}
+        issues={issues}
+        onCloseIssues={() => setIssuesOpen(false)}
+        onIssueClick={handleIssueDialogClick}
+        confirmOpen={confirmOpen}
+        onCloseConfirm={closeSaveConfirmDialog}
+        saveConfirmation={{
+          isEditingDesign,
+          summary: saveDialogSummary,
+          warnings: {
+            uiWarnings,
+            criticalUiWarnings,
+            reviewUiWarnings,
+            infoUiWarnings,
+          },
+          confirmReady,
+          confirmAcknowledgeWarnings,
+          confirmRequestDesign,
+          confirmRequestDesignPriority,
+          generateError,
+          isGenerating,
+          hasStatusBlockers,
+          hasResult: Boolean(result),
+          onConfirmReadyChange: setConfirmReady,
+          onConfirmAcknowledgeWarningsChange: setConfirmAcknowledgeWarnings,
+          onConfirmRequestDesignChange: (checked) => {
+            setConfirmRequestDesign(checked);
+            if (checked) setConfirmRequestDesignPriority(suggestedDesignRequestTier);
+          },
+          onConfirmRequestDesignPriorityChange: setConfirmRequestDesignPriority,
+          onSave: () =>
+            void saveDesign({
+              createDesignRequest: confirmRequestDesign ? { priorityTier: confirmRequestDesignPriority } : null,
+              saveMode: isEditingDesign ? 'preserve_current' : 'reprice_latest',
+            }),
+          onRepriceLatest: () => void saveDesign({ saveMode: 'reprice_latest' }),
+        }}
+      />
     </main>
   );
 }

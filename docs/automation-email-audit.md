@@ -62,6 +62,10 @@ The email preview route renders an outbox row by template ID and variables. It u
 - If a route sends an email immediately, also make the outbox/audit state clear enough for staff to understand what happened.
 - Site visit notification changes must stay aligned with `docs/schedule.md` and `docs/projects-contacts-estimates-calculator.md`.
 - Pricing rollout audit events must be compact and server-owned. Estimate saves and blocked `workbench_solved` readiness attempts record source, requested source, gate version, blocking codes, IDs, and actor/request metadata. Quote version create/refresh/revision events that copy pricing source metadata record quote version IDs, estimate IDs, copied source, source metadata hash, actor, and copy reason. Do not store raw public tokens, service-role details, or oversized commercial payloads.
+- Required pricing rollout event types are `estimate.pricing_source_saved`, `estimate.pricing_source_blocked`, and quote metadata-copy events when the rollout implementation creates or refreshes quote-version source metadata.
+- Pricing rollout audit payloads include estimate or quote IDs, actor/request metadata, requested source, selected source, gate version, blocking gate codes, commercial input hash, parity report hash/version, and rollback provenance.
+- Pricing rollout audit payloads must exclude raw public tokens, token hashes, service-role details, raw commercial payloads, generated PDF contents, and email body token URLs.
+- Post-enable audit checks must verify blocked attempts have no paired estimate mutation, successful `workbench_solved` saves have source metadata, and rollback saves show `rollbackProvenance: explicit_calculator_live`.
 
 ## Common Tasks
 

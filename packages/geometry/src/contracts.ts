@@ -864,6 +864,10 @@ export type GeometryQuantityTakeoffRoofPlane = {
   areaM2: number;
   rafterCount: number;
   rafterBayCount: number;
+  rafterProjectedRunMm: number | null;
+  rafterProjectedRunM: number | null;
+  rafterCutLengthMm: number | null;
+  rafterCutLengthM: number | null;
   rafterTotalLengthMm: number;
   rafterTotalLengthM: number;
   rafterAverageLengthMm: number | null;
@@ -873,9 +877,13 @@ export type GeometryQuantityTakeoffRoofPlane = {
   claddingPanelCount: number;
   claddingAreaMm2: number;
   claddingAreaM2: number;
+  claddingDownslopeLengthMm: number | null;
+  claddingDownslopeLengthM: number | null;
   joinerCount: number;
   joinerTotalLengthMm: number;
   joinerTotalLengthM: number;
+  joinerTargetLengthMm: number | null;
+  joinerTargetLengthM: number | null;
   joinerAverageLengthMm: number | null;
   joinerAverageLengthM: number | null;
   metadata?: GeometryMetadata;
@@ -949,6 +957,10 @@ export type GeometryQuantityTakeoffRoofCladdingPanel = {
   material: RoofCladdingMaterial;
   areaMm2: number;
   areaM2: number;
+  downslopeLengthMm: number;
+  downslopeLengthM: number;
+  projectedRunMm: number;
+  projectedRunM: number;
   thicknessMm: number;
   roofPlaneId: string | null;
   metadata?: GeometryMetadata;
@@ -958,10 +970,31 @@ export type GeometryQuantityTakeoffRoofCladding = {
   panelCount: number;
   totalAreaMm2: number;
   totalAreaM2: number;
+  effectiveRunMm: number | null;
+  effectiveRunM: number | null;
+  averageDownslopeLengthMm: number | null;
+  averageDownslopeLengthM: number | null;
+  acrylicRequiredDownslopeMm: number | null;
+  acrylicRequiredDownslopeM: number | null;
   acrylicAreaMm2: number | null;
   acrylicAreaM2: number | null;
   items: GeometryQuantityTakeoffRoofCladdingPanel[];
   byMaterial: GeometryQuantityTakeoffRoofCladdingMaterial[];
+};
+
+export type GeometryQuantityTakeoffRafters = {
+  count: number;
+  totalLengthMm: number;
+  totalLengthM: number;
+  averageLengthMm: number | null;
+  averageLengthM: number | null;
+  averageProjectedRunMm: number | null;
+  averageProjectedRunM: number | null;
+  averageCutLengthMm: number | null;
+  averageCutLengthM: number | null;
+  effectiveRunMm: number | null;
+  effectiveRunM: number | null;
+  items: GeometryQuantityTakeoffMemberItem[];
 };
 
 export type GeometryQuantityTakeoffJoiners = {
@@ -1017,6 +1050,7 @@ export type GeometryQuantityTakeoff = {
   secondaryDimensionsM: GeometryQuantityTakeoffDimensionSet | null;
   roofPlanes: GeometryQuantityTakeoffRoofPlanes;
   members: GeometryQuantityTakeoffMembers;
+  rafters: GeometryQuantityTakeoffRafters;
   beams: GeometryQuantityTakeoffBeams;
   gutters: GeometryQuantityTakeoffGutters;
   roofCladding: GeometryQuantityTakeoffRoofCladding;

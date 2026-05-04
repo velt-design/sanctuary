@@ -196,6 +196,13 @@ describe('LocalFirstPortalMutations', () => {
     });
     expect(result).not.toHaveProperty('clearWorkingCopy');
     expect(mocks.apiJson).toHaveBeenCalledWith('/api/estimates/estimate-1', expect.objectContaining({ method: 'PATCH' }));
+    const updateBody = JSON.parse(mocks.apiJson.mock.calls[0]?.[1]?.body as string);
+    expect(updateBody).toEqual({
+      estimate_update: { status: 'draft', inputs: {}, outputs: {} },
+    });
+    expect(JSON.stringify(updateBody)).not.toContain('pricing_source');
+    expect(JSON.stringify(updateBody)).not.toContain('workbench_solved');
+    expect(JSON.stringify(updateBody)).not.toContain('readiness');
     expect(mocks.invalidateProjectReadCaches).not.toHaveBeenCalled();
     expect(mocks.queryClient.invalidateQueries).not.toHaveBeenCalled();
     expect(mocks.queryClient.setQueryData).not.toHaveBeenCalled();
@@ -284,6 +291,21 @@ describe('LocalFirstPortalMutations', () => {
     expect(result).not.toHaveProperty('clearWorkingCopy');
     expect(mocks.registerLocalFirstIdAlias).not.toHaveBeenCalled();
     expect(mocks.enqueueAndProcessLocalFirstMutation).not.toHaveBeenCalled();
+    const createBody = JSON.parse(mocks.apiJson.mock.calls[0]?.[1]?.body as string);
+    expect(createBody).toEqual({
+      calculator_snapshot: {
+        inputs: {},
+        outputs: {
+          derived: {},
+          projectSnapshot: null,
+          snapshot: null,
+          configVersions: null,
+        },
+      },
+    });
+    expect(JSON.stringify(createBody)).not.toContain('pricing_source');
+    expect(JSON.stringify(createBody)).not.toContain('workbench_solved');
+    expect(JSON.stringify(createBody)).not.toContain('readiness');
     expect(mocks.invalidateProjectReadCaches).not.toHaveBeenCalled();
     expect(mocks.queryClient.setQueryData).not.toHaveBeenCalled();
     unmount();

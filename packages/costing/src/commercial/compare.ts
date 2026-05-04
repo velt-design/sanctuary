@@ -471,6 +471,8 @@ function compareTakeoff(
     ['rafters.count', 'Rafter count', 'count'],
     ['rafters.bayCount', 'Rafter bay count', 'count'],
     ['rafters.spacingMm', 'Rafter spacing', 'number'],
+    ['rafters.effectiveRunM', 'Rafter effective run', 'length_m'],
+    ['rafters.projectedRunM', 'Rafter projected run', 'length_m'],
     ['rafters.cutLengthM', 'Rafter cut length', 'length_m'],
     ['rafters.totalLengthM', 'Rafter total length', 'length_m'],
     ['beams.ledgerLengthM', 'Ledger length', 'length_m'],
@@ -487,6 +489,9 @@ function compareTakeoff(
     ['roofCladding.acrylicAreaM2', 'Acrylic area', 'area_m2'],
     ['roofCladding.timberAreaM2', 'Timber area', 'area_m2'],
     ['roofCladding.sheetCount', 'Sheet count', 'count'],
+    ['roofCladding.effectiveRunM', 'Roof cladding effective run', 'length_m'],
+    ['roofCladding.acrylicRequiredDownslopeM', 'Acrylic required downslope', 'length_m'],
+    ['roofCladding.averageDownslopeLengthM', 'Roof cladding average downslope', 'length_m'],
     ['roofCladding.joinerRuns', 'Joiner runs', 'count'],
     ['roofCladding.panelCount', 'Roof cladding panel count', 'count'],
     ['roofCladding.totalAreaM2', 'Roof cladding total area', 'area_m2'],
@@ -536,6 +541,22 @@ function compareTakeoff(
       toleranceCategory: 'length_m',
     });
     compareNumeric(context, {
+      path: `${planePath}.rafterProjectedRunM`,
+      label: `Roof plane ${index + 1} rafter projected run`,
+      left: leftPlane?.rafterProjectedRunM,
+      right: rightPlane?.rafterProjectedRunM,
+      category: 'quantity_takeoff',
+      toleranceCategory: 'length_m',
+    });
+    compareNumeric(context, {
+      path: `${planePath}.rafterCutLengthM`,
+      label: `Roof plane ${index + 1} rafter cut length`,
+      left: leftPlane?.rafterCutLengthM,
+      right: rightPlane?.rafterCutLengthM,
+      category: 'quantity_takeoff',
+      toleranceCategory: 'length_m',
+    });
+    compareNumeric(context, {
       path: `${planePath}.rafterCount`,
       label: `Roof plane ${index + 1} rafter count`,
       left: leftPlane?.rafterCount,
@@ -576,6 +597,14 @@ function compareTakeoff(
       toleranceCategory: 'area_m2',
     });
     compareNumeric(context, {
+      path: `${planePath}.claddingDownslopeLengthM`,
+      label: `Roof plane ${index + 1} cladding downslope length`,
+      left: leftPlane?.claddingDownslopeLengthM,
+      right: rightPlane?.claddingDownslopeLengthM,
+      category: 'quantity_takeoff',
+      toleranceCategory: 'length_m',
+    });
+    compareNumeric(context, {
       path: `${planePath}.claddingPanelCount`,
       label: `Roof plane ${index + 1} cladding panel count`,
       left: leftPlane?.claddingPanelCount,
@@ -596,6 +625,14 @@ function compareTakeoff(
       label: `Roof plane ${index + 1} joiner total length`,
       left: leftPlane?.joinerTotalLengthM,
       right: rightPlane?.joinerTotalLengthM,
+      category: 'quantity_takeoff',
+      toleranceCategory: 'length_m',
+    });
+    compareNumeric(context, {
+      path: `${planePath}.joinerTargetLengthM`,
+      label: `Roof plane ${index + 1} joiner target length`,
+      left: leftPlane?.joinerTargetLengthM,
+      right: rightPlane?.joinerTargetLengthM,
       category: 'quantity_takeoff',
       toleranceCategory: 'length_m',
     });

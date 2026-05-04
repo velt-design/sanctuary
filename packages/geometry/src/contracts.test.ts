@@ -660,18 +660,43 @@ describe('@sp/geometry contracts', () => {
         id: 'mono-roof',
         rafterCount: 0,
         rafterBayCount: 0,
+        rafterProjectedRunMm: null,
+        rafterProjectedRunM: null,
+        rafterCutLengthMm: null,
+        rafterCutLengthM: null,
         rafterTotalLengthM: 0,
         rafterAverageSpacingMm: null,
         rafterAverageSpacingM: null,
         claddingPanelCount: 0,
         claddingAreaM2: 0,
+        claddingDownslopeLengthMm: null,
+        claddingDownslopeLengthM: null,
         joinerCount: 0,
+        joinerTargetLengthMm: null,
+        joinerTargetLengthM: null,
         joinerTotalLengthM: 0,
       }),
     );
+    expect(takeoff.rafters).toEqual({
+      count: 0,
+      totalLengthMm: 0,
+      totalLengthM: 0,
+      averageLengthMm: null,
+      averageLengthM: null,
+      averageProjectedRunMm: null,
+      averageProjectedRunM: null,
+      averageCutLengthMm: null,
+      averageCutLengthM: null,
+      effectiveRunMm: null,
+      effectiveRunM: null,
+      items: [],
+    });
     expect(takeoff.beams.totalBeamLengthM).toBeNull();
     expect(takeoff.gutters.totalLengthM).toBeNull();
     expect(takeoff.roofCladding.totalAreaM2).toBe(0);
+    expect(takeoff.roofCladding.effectiveRunM).toBeNull();
+    expect(takeoff.roofCladding.averageDownslopeLengthM).toBeNull();
+    expect(takeoff.roofCladding.acrylicRequiredDownslopeM).toBeNull();
     expect(takeoff.roofCladding.items).toEqual([]);
     expect(takeoff.gutters.items).toEqual([]);
     expect(takeoff.joiners.items).toEqual([]);

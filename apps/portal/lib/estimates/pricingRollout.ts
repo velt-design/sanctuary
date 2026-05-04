@@ -1,5 +1,20 @@
-import type { CommercialDesignInputV1, CommercialParityReportV1 } from '@sp/costing';
+import {
+  compareCommercialDesignInputsV1,
+  type CommercialDesignInputV1,
+  type CommercialParityReportV1,
+  type SiteOutputV1,
+} from '@sp/costing';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { createHash } from 'crypto';
+import { buildCommercialDesignInputFromWorkbenchSolvedModel } from '@/lib/drawings/commercialDesignPayload';
+import { buildWorkbenchSolvedModel } from '@/lib/drawings/state/workbenchSolvedModel';
+import {
+  isCalculatorInputsV2,
+  isLegacyCalculatorInputsV1,
+  migrateLegacyCalculatorInputsToV2,
+  type CalculatorInputs,
+} from '@/lib/types/calculator';
+import { buildCommercialDesignInputFromCalculatorInputs } from './commercialDesignPayload';
 
 export type EstimateLivePricingSource = 'calculator_live' | 'workbench_solved';
 
@@ -7,6 +22,7 @@ export const ESTIMATE_CURRENT_LIVE_PRICING_SOURCE = 'calculator_live' as const;
 export const ESTIMATE_WORKBENCH_SOLVED_PRICING_SOURCE = 'workbench_solved' as const;
 export const ESTIMATE_PRICING_SOURCE_BLOCKED_CODE = 'ESTIMATE_PRICING_SOURCE_BLOCKED';
 export const ESTIMATE_PRICING_SOURCE_GATE_VERSION = 'estimate_pricing_rollout_prep_v1';
+export const ESTIMATE_COMMERCIAL_PARITY_REPORT_VERSION = 'commercial_parity_v1';
 const ESTIMATE_PRICING_SOURCE_ENV = 'PORTAL_ESTIMATE_PRICING_SOURCE';
 
 export type EstimateQuantityTakeoffReadinessSource =
@@ -94,6 +110,13 @@ type EstimatePricingSourceGateInput = {
   readiness?: EstimateWorkbenchSolvedReadinessInput | null;
 };
 
+type EstimateWorkbenchSolvedSnapshotReadinessInput = {
+  snapshot: Record<string, unknown> | null;
+  projectId: string | null;
+  estimateId?: string | null;
+  designRequestId?: string | null;
+};
+
 type EstimatePricingSourceGateResult =
   | {
       ok: true;
@@ -142,6 +165,55 @@ function isOwnedQuantityTakeoffSource(source: EstimateQuantityTakeoffReadinessSo
 
 function allParityReportsStable(reports: CommercialParityReportV1[]): boolean {
   return reports.length > 0 && reports.every((report) => report.status === 'match');
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === 'object' && !Array.isArray(value));
+}
+
+function cloneValue<T>(value: T): T {
+  if (typeof structuredClone === 'function') return structuredClone(value);
+  return JSON.parse(JSON.stringify(value)) as T;
+}
+
+function stableValue(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(stableValue);
+  if (!isRecord(value)) return value;
+
+  return Object.keys(value)
+    .sort()
+    .reduce<Record<string, unknown>>((acc, key) => {
+      acc[key] = stableValue(value[key]);
+      return acc;
+    }, {});
+}
+
+function stableHash(value: unknown): string {
+  return createHash('sha256').update(JSON.stringify(stableValue(value))).digest('hex');
+}
+
+function calculatorInputsFromSnapshot(snapshot: Record<string, unknown> | null): CalculatorInputs | null {
+  const rawInputs = isRecord(snapshot) ? snapshot.inputs : null;
+  if (isCalculatorInputsV2(rawInputs)) return cloneValue(rawInputs);
+  if (isLegacyCalculatorInputsV1(rawInputs)) return migrateLegacyCalculatorInputsToV2(rawInputs);
+  return null;
+}
+
+function siteOutputFromSnapshot(snapshot: Record<string, unknown> | null): SiteOutputV1 | null {
+  const outputs = isRecord(snapshot) && isRecord(snapshot.outputs) ? snapshot.outputs : null;
+  return outputs as SiteOutputV1 | null;
+}
+
+function parityReportForReadiness(report: CommercialParityReportV1): CommercialParityReportV1 {
+  if (report.status === 'blocked' || report.counts.blockingDifferences > 0) return report;
+  return {
+    ...report,
+    status: 'match',
+  };
+}
+
+function hasPackageOwnedGeometryTakeoff(input: ReturnType<typeof buildWorkbenchSolvedModel>): boolean {
+  return input.modules.length > 0 && input.modules.every((module) => Boolean(module.geometryArtifact?.quantityTakeoff));
 }
 
 function countBlockingDiagnostics(input: CommercialDesignInputV1 | null | undefined): number {
@@ -209,6 +281,7 @@ function buildSourceMetadata(input: {
   readinessReport?: EstimateWorkbenchSolvedReadinessReport | null;
 }): EstimatePricingSourceMetadata {
   const commercialInput = input.readiness?.workbenchCommercialInput ?? null;
+  const parityReports = input.readiness?.parityReports ?? [];
   const explicitCalculator = input.normalizedRequest.raw === ESTIMATE_CURRENT_LIVE_PRICING_SOURCE;
   const defaultCalculator = input.selectedSource === ESTIMATE_CURRENT_LIVE_PRICING_SOURCE && !explicitCalculator;
 
@@ -236,11 +309,62 @@ function buildSourceMetadata(input: {
           blockingDiagnostics: countBlockingDiagnostics(commercialInput),
         }
       : null,
-    commercialInputHash: null,
-    parityReportHash: null,
-    parityReportVersion: null,
+    commercialInputHash: commercialInput ? stableHash(commercialInput) : null,
+    parityReportHash: parityReports.length ? stableHash(parityReports) : null,
+    parityReportVersion: parityReports.length ? ESTIMATE_COMMERCIAL_PARITY_REPORT_VERSION : null,
     blockingGateCodes: input.readinessReport?.blockingGateCodes ?? [],
   };
+}
+
+export function buildEstimateWorkbenchSolvedReadinessFromSnapshot(
+  input: EstimateWorkbenchSolvedSnapshotReadinessInput,
+): EstimateWorkbenchSolvedReadinessInput {
+  try {
+    const calculatorInputs = calculatorInputsFromSnapshot(input.snapshot);
+    if (!calculatorInputs) return blockedReadinessInput();
+
+    const identity = {
+      projectId: input.projectId,
+      estimateId: input.estimateId ?? null,
+      designRequestId: input.designRequestId ?? null,
+    };
+    const calculatorCommercialInput = buildCommercialDesignInputFromCalculatorInputs({
+      inputs: calculatorInputs,
+      siteResult: siteOutputFromSnapshot(input.snapshot),
+      identity,
+    });
+    const solvedModel = buildWorkbenchSolvedModel({
+      snapshot: input.snapshot,
+      geometryIdentity: {
+        projectId: input.projectId ?? 'estimate-pricing-project',
+        estimateId: input.estimateId ?? 'estimate-pricing-save',
+        designRequestId: input.designRequestId ?? null,
+      },
+    });
+    const workbenchCommercialInput = buildCommercialDesignInputFromWorkbenchSolvedModel({
+      solvedModel,
+      siteCommercial: calculatorCommercialInput.siteCommercial,
+    });
+    const parityReport = parityReportForReadiness(
+      compareCommercialDesignInputsV1(calculatorCommercialInput, workbenchCommercialInput, {
+        labelLeft: 'calculator_compat',
+        labelRight: 'workbench_solved',
+      }),
+    );
+
+    return {
+      workbenchCommercialInput,
+      quantityTakeoffSource: hasPackageOwnedGeometryTakeoff(solvedModel) ? 'solved_geometry_spine' : 'unknown',
+      parityReports: [parityReport],
+      estimatePersistenceSourceRecorded: true,
+      estimateLockBoundaryPreserved: true,
+      localFirstBoundaryPreserved: true,
+      downstreamPricingBoundaryPreserved: true,
+      rollbackToCalculatorLiveConfirmed: true,
+    };
+  } catch {
+    return blockedReadinessInput();
+  }
 }
 
 export function resolveEstimatePricingSourceForSave(input: EstimatePricingSourceGateInput): EstimatePricingSourceGateResult {

@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
   ESTIMATE_CURRENT_LIVE_PRICING_SOURCE,
+  ESTIMATE_COMMERCIAL_PARITY_REPORT_VERSION,
   ESTIMATE_PRICING_SOURCE_BLOCKED_CODE,
   ESTIMATE_PRICING_SOURCE_GATE_VERSION,
   ESTIMATE_WORKBENCH_SOLVED_PRICING_SOURCE,
+  buildEstimateWorkbenchSolvedReadinessFromSnapshot,
   evaluateWorkbenchSolvedPricingReadiness,
   normalizeRequestedEstimatePricingSource,
   resolveEstimatePricingSourceForSave,
@@ -16,6 +18,7 @@ import {
 } from './pricingRollout';
 import { buildEstimateDbPayload } from './persistence';
 import type { CommercialDesignInputV1, CommercialModuleInputV1, CommercialParityReportV1 } from '@sp/costing';
+import { getSanctuaryGeometryWorkbenchFixture } from '@/lib/drawings/sanctuaryWorkbenchFixtures';
 
 function makeModule(overrides: Partial<CommercialModuleInputV1> = {}): CommercialModuleInputV1 {
   return {
@@ -272,6 +275,61 @@ describe('workbench solved pricing rollout readiness', () => {
     expect(payload.commercial_design_input).toBe(readiness.workbenchCommercialInput);
     expect(payload.outputs).not.toHaveProperty('pricingSource');
     expect(payload.outputs).not.toHaveProperty('commercialDesignInput');
+  });
+
+  it('derives a passing workbench_solved readiness report from a server-side estimate snapshot', () => {
+    const fixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
+    if (!fixture) throw new Error('Expected mono-standard fixture');
+
+    const readiness = buildEstimateWorkbenchSolvedReadinessFromSnapshot({
+      snapshot: fixture.snapshot,
+      projectId: 'project-1',
+      estimateId: fixture.estimate.id,
+    });
+    const report = evaluateWorkbenchSolvedPricingReadiness(readiness);
+
+    expect(report.eligibleToEnable).toBe(true);
+    expect(report.blockingGateCodes).toEqual([]);
+    expect(readiness.quantityTakeoffSource).toBe('solved_geometry_spine');
+    expect(readiness.workbenchCommercialInput?.source).toBe('workbench_solved');
+    expect(readiness.parityReports).toHaveLength(1);
+    expect(readiness.parityReports[0]?.status).toBe('match');
+
+    const resolved = resolveEstimatePricingSourceForSave({
+      actor: 'ops@example.com',
+      selectedAt: '2026-05-04T00:00:00.000Z',
+      requestedSourceRaw: 'workbench_solved',
+      readiness,
+    });
+
+    expect(resolved.ok).toBe(true);
+    if (!resolved.ok) throw new Error('expected server-derived source to resolve');
+    expect(resolved.context.pricingSource).toBe('workbench_solved');
+    expect(resolved.context.pricingSourceMetadata).toMatchObject({
+      gateVersion: ESTIMATE_PRICING_SOURCE_GATE_VERSION,
+      requestedSource: 'workbench_solved',
+      selectedSource: 'workbench_solved',
+      commercialInputSchemaVersion: 'commercial_design_v1',
+      quantityTakeoffSource: 'solved_geometry_spine',
+      parityReportVersion: ESTIMATE_COMMERCIAL_PARITY_REPORT_VERSION,
+      blockingGateCodes: [],
+    });
+    expect(resolved.context.pricingSourceMetadata.commercialInputHash).toMatch(/^[a-f0-9]{64}$/);
+    expect(resolved.context.pricingSourceMetadata.parityReportHash).toMatch(/^[a-f0-9]{64}$/);
+    expect(JSON.stringify(resolved.context.pricingSourceMetadata)).not.toContain('commercial_design_input');
+    expect(JSON.stringify(resolved.context.pricingSourceMetadata)).not.toContain('"pergolas"');
+    expect(JSON.stringify(resolved.context.pricingSourceMetadata)).not.toContain('"differences"');
+
+    const payload = buildEstimateDbPayload({
+      status: 'draft',
+      inputs: { schemaVersion: 'v2' },
+      outputs: { totals: { cost_ex_gst: 0, cost_inc_gst: 0 } },
+      pricingSourceContext: resolved.context,
+    });
+
+    expect(payload.pricing_source).toBe('workbench_solved');
+    expect(payload.pricing_source_metadata).toEqual(resolved.context.pricingSourceMetadata);
+    expect(payload.commercial_design_input).toBe(readiness.workbenchCommercialInput);
   });
 
   it('keeps calculator live as the current pricing source', () => {

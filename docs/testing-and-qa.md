@@ -198,6 +198,11 @@ The parity-critical baked fixture list is owned by `apps/portal/lib/drawings/san
 
 `npm run test:portal:browser` uses the no-auth `portal-fixture` Playwright project so fixture parity can run without project data or staff credentials. Run `npm run test:portal:browser:auth` first when you need the auth-backed `portal-chromium` setup state or project-list discovery smoke.
 
+Skipped browser cases are intentional and should stay explained in the test output:
+
+- In the `portal-fixture` project, the auth-backed project discovery smoke is skipped unless `PORTAL_DRAWING_URL` is set; that project-backed coverage belongs to `portal-chromium`.
+- In authenticated project-backed runs, a selected project with no drawing geometry may skip the browser feel pass; this is data-dependent and should not hide fixture-route coverage.
+
 When Playwright starts the portal dev server itself, it enables the geometry workbench fixture flags for this no-auth fixture gate and uses isolated Next dev output so a normal `npm run dev:portal` server can keep running on port `3001`. The fixture harness defaults to `http://127.0.0.1:3011`; if that port is occupied, choose another fixture port:
 
 ```powershell
@@ -252,6 +257,15 @@ Design Workbench authenticated edit/save/reload:
 - Make one reversible object-first edit such as a small roof pitch, attachment side, deck position, opening position, or house form parameter change.
 - Save the workbench, wait for the saved/clean state, reload the page, and confirm the edited value, Model Space Plan, Sheet View, and 3D View persist.
 - Restore the original value, save again, reload again, and confirm the project returns to its starting state.
+
+Pricing Source Rollout:
+
+- `calculator_live` save: leave `PORTAL_ESTIMATE_PRICING_SOURCE` unset or set it to `calculator_live`, save a reversible estimate, and confirm `estimates.pricing_source` plus compact metadata record calculator live while `commercial_design_input` stays null and no downstream public output exposes a commercial payload.
+- Blocked `workbench_solved` save: set `PORTAL_ESTIMATE_PRICING_SOURCE=workbench_solved` against a not-ready or blocked workbench case, attempt an estimate save, and confirm `409 ESTIMATE_PRICING_SOURCE_BLOCKED`, visible conflict/failure state, no estimate row mutation, and no hidden calculator fallback.
+- Ready `workbench_solved` save once enabled: use a safe ready fixture-like project, save, reload, and confirm `pricing_source=workbench_solved`, compact metadata is present, `commercial_design_input` is stored only on the estimate row, and normal edit/reload behavior still works.
+- Quote refresh preserving metadata: refresh a draft quote from the estimate and confirm line items and totals come from the saved estimate boundary while compact source metadata copies to the quote version.
+- Rollback to `calculator_live`: switch the env back to `calculator_live`, save a new estimate or refresh a future draft quote only through domain helpers, and confirm historical workbench-backed estimates, quote versions, PDFs, public tokens, invoices, and job packs are not repriced.
+- Public quote/PDF/invoice/job-pack preservation: verify public quote pages, generated quote PDFs, invoice creation/PDF, and job-pack generation preserve historical quote-version totals and never expose raw `commercial_design_input`.
 
 Schedule Board:
 

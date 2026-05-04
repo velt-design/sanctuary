@@ -3,7 +3,13 @@ import { jsonError, jsonOk, parseJsonBody, requireStaffContext } from '@/lib/api
 import { missingColumnFromError } from '@/lib/api/siteVisitsServer';
 import { estimateFlowStateFor, loadProjectEstimateFlowMaps } from '@/lib/estimates/flow';
 import { buildEstimateDbPayload } from '@/lib/estimates/persistence';
-import { logEstimatePricingSourceAudit, resolveEstimatePricingSourceForSave } from '@/lib/estimates/pricingRollout';
+import {
+  ESTIMATE_WORKBENCH_SOLVED_PRICING_SOURCE,
+  buildEstimateWorkbenchSolvedReadinessFromSnapshot,
+  logEstimatePricingSourceAudit,
+  normalizeRequestedEstimatePricingSource,
+  resolveEstimatePricingSourceForSave,
+} from '@/lib/estimates/pricingRollout';
 import { buildVersionLabelMap, extractVersionNumber, loadEstimateEditability, mapEstimateDetail } from '@/lib/estimates/server';
 import { uuidFromAppId } from '@/lib/supabase/mappers';
 import { NextResponse } from 'next/server';
@@ -148,7 +154,31 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ estimateId: s
 
     const actor = typeof auth.session.user?.email === 'string' ? auth.session.user.email.trim() : null;
     const actorUserId = typeof auth.session.user?.id === 'string' ? auth.session.user.id : null;
-    const sourceGate = resolveEstimatePricingSourceForSave({ actor, selectedAt: now });
+    const existingOutputs = isRecord(res.data.outputs) ? res.data.outputs : {};
+    const candidateOutputs = {
+      ...estimateUpdate.outputs,
+      derived: estimateUpdate.derived ?? existingOutputs.derived,
+      projectSnapshot: estimateUpdate.projectSnapshot ?? existingOutputs.projectSnapshot,
+      snapshot: estimateUpdate.snapshot ?? existingOutputs.snapshot,
+      configVersions: estimateUpdate.configVersions ?? existingOutputs.configVersions,
+    };
+    const sourceRequest = normalizeRequestedEstimatePricingSource();
+    const sourceGate = resolveEstimatePricingSourceForSave({
+      actor,
+      selectedAt: now,
+      requestedSourceRaw: sourceRequest.raw,
+      readiness:
+        sourceRequest.requestedPricingSource === ESTIMATE_WORKBENCH_SOLVED_PRICING_SOURCE
+          ? buildEstimateWorkbenchSolvedReadinessFromSnapshot({
+              snapshot: {
+                inputs: estimateUpdate.inputs,
+                outputs: candidateOutputs,
+              },
+              projectId: typeof res.data.project_id === 'string' ? res.data.project_id : null,
+              estimateId: estimateUuid,
+            })
+          : null,
+    });
     if (!sourceGate.ok) {
       await logEstimatePricingSourceAudit(supabase, {
         projectUuid: typeof res.data.project_id === 'string' ? res.data.project_id : null,
@@ -168,7 +198,6 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ estimateId: s
       });
     }
 
-    const existingOutputs = isRecord(res.data.outputs) ? res.data.outputs : {};
     const currentVersion = extractVersionNumber(res.data);
 
     Object.assign(

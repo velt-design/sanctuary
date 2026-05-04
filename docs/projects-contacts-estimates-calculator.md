@@ -76,8 +76,17 @@ Failed readiness must block rollout. Do not add hidden fallback behavior that si
 The future live switch must be server-owned and default-safe:
 
 - Use a server-only requested-source flag such as `PORTAL_ESTIMATE_PRICING_SOURCE=calculator_live|workbench_solved`; unset or invalid values must behave as `calculator_live`.
-- When the requested source is `workbench_solved`, estimate create/update/duplicate must evaluate the full readiness report before changing saved pricing. Any failed gate returns `409 ESTIMATE_PRICING_SOURCE_BLOCKED` with gate codes and leaves estimate rows unchanged.
-- `calculator_live` rollback is the same explicit flag switch back to calculator pricing. Rollback affects new estimate saves and future draft quote refreshes only through the quote domain helpers; it must not mutate existing estimates, sent quote versions, public outputs, invoices, PDFs, or job-pack generations.
+- When the requested source is `workbench_solved`, estimate create/update/duplicate must derive the readiness report on the server from the estimate snapshot, calculator compatibility payload, solved workbench commercial payload, geometry-owned takeoff, and parity report before changing saved pricing. Any failed gate returns `409 ESTIMATE_PRICING_SOURCE_BLOCKED` with gate codes, logs a compact audit event, and leaves estimate rows unchanged.
+- The browser must not send or override `pricing_source`, readiness, source metadata, or commercial payloads. `commercial_design_input` is saved only for an eligible server-derived `workbench_solved` save; calculator-live, unset, invalid, or blocked source attempts keep it null.
+- `calculator_live` rollback is the same explicit flag switch back to calculator pricing. Rollback affects new estimate saves and future draft quote refreshes only through the quote domain helpers; it must not mutate existing estimates, sent quote versions, public outputs, invoices, PDFs, job-pack generations, or audit rows.
+
+Operational rollback must be explicit:
+
+- Set the server config back to `PORTAL_ESTIMATE_PRICING_SOURCE=calculator_live`; do not rely on hidden fallback or browser-selected source changes.
+- Redeploy or restart the portal process that reads the server config before running verification.
+- Run a calculator-live estimate create/update smoke and confirm the new or updated row records `pricing_source: calculator_live`, `pricing_source_metadata.selectedSource: calculator_live`, and `pricing_source_metadata.rollbackProvenance: explicit_calculator_live`.
+- Confirm existing `workbench_solved` estimates keep their historical source metadata and are not rewritten by rollback.
+- Confirm the next draft quote refresh uses only the saved estimate/quote-version boundary through quote domain helpers.
 
 Persistence changes must use ordered forward migrations. Do not edit baseline SQL or old applied migrations. The estimate source-of-record fields are:
 

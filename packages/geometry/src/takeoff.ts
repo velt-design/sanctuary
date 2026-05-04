@@ -10,8 +10,10 @@ import type {
   GeometryQuantityTakeoffFlashingItem,
   GeometryQuantityTakeoffMemberBucket,
   GeometryQuantityTakeoffMemberItem,
+  GeometryQuantityTakeoffRafters,
   GeometryQuantityTakeoffRoofCladdingMaterial,
   GeometryQuantityTakeoffRoofCladdingPanel,
+  Line3,
   QuantityHook,
   RoofCladdingMaterial,
 } from "./contracts";
@@ -82,6 +84,12 @@ function buildMemberItem(member: AssemblyMember3D): GeometryQuantityTakeoffMembe
   };
 }
 
+function lineProjectedRun(line: Line3): number {
+  const dx = line.end.x - line.start.x;
+  const dy = line.end.y - line.start.y;
+  return round(Math.sqrt(dx * dx + dy * dy), 6);
+}
+
 function sortQuantityHooks(hooks: QuantityHook[]): QuantityHook[] {
   return [...hooks]
     .map((hook) => ({ ...hook }))
@@ -137,6 +145,16 @@ function metadataNumber(metadata: Assembly3D["members"][number]["metadata"], key
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
+function averageNumbers(values: Array<number | null | undefined>): number | null {
+  const finiteValues = values.filter((value): value is number => typeof value === "number" && Number.isFinite(value));
+  return finiteValues.length ? round(finiteValues.reduce((sum, value) => sum + value, 0) / finiteValues.length, 6) : null;
+}
+
+function maxNumbers(values: Array<number | null | undefined>): number | null {
+  const finiteValues = values.filter((value): value is number => typeof value === "number" && Number.isFinite(value));
+  return finiteValues.length ? round(Math.max(...finiteValues), 6) : null;
+}
+
 function resolveRoofPlaneId(
   assembly: Assembly3D,
   metadata: Assembly3D["members"][number]["metadata"],
@@ -183,11 +201,29 @@ function buildRoofCladdingItems(
   return [...assembly.roofCladdingPanels]
     .map((panel) => {
       const areaMm2 = round(polygonArea(panel.boundary));
+      const edgeLines = panel.boundary.length < 2
+        ? []
+        : panel.boundary.map((point, index) => ({
+            start: point,
+            end: panel.boundary[(index + 1) % panel.boundary.length]!,
+          }));
+      const downslopeLengthMm = round(
+        metadataNumber(panel.metadata, "downslopeLengthMm") ??
+          Math.max(0, ...edgeLines.map((edge) => lineLength(edge))),
+      );
+      const projectedRunMm = round(
+        metadataNumber(panel.metadata, "projectedRunMm") ??
+          Math.max(0, ...edgeLines.map((edge) => lineProjectedRun(edge))),
+      );
       return {
         id: panel.id,
         material: panel.material,
         areaMm2,
         areaM2: mm2ToM2(areaMm2),
+        downslopeLengthMm,
+        downslopeLengthM: round(downslopeLengthMm / 1000),
+        projectedRunMm,
+        projectedRunM: round(projectedRunMm / 1000),
         thicknessMm: panel.thicknessMm,
         roofPlaneId: resolveRoofPlaneId(
           assembly,
@@ -234,6 +270,31 @@ function averageItemLengthMm(items: GeometryQuantityTakeoffMemberItem[]): number
   return items.length
     ? round(items.reduce((sum, item) => sum + item.lengthMm, 0) / items.length, 6)
     : null;
+}
+
+function averageProjectedRunMm(members: AssemblyMember3D[]): number | null {
+  return averageNumbers(members.map((member) => lineProjectedRun(member.centerline)));
+}
+
+function buildRafterTakeoff(
+  rafterBucket: GeometryQuantityTakeoffMemberBucket,
+  rafterMembers: AssemblyMember3D[],
+): GeometryQuantityTakeoffRafters {
+  const averageProjectedRun = averageProjectedRunMm(rafterMembers);
+  return {
+    count: rafterBucket.count,
+    totalLengthMm: rafterBucket.totalLengthMm,
+    totalLengthM: rafterBucket.totalLengthM,
+    averageLengthMm: rafterBucket.averageLengthMm,
+    averageLengthM: rafterBucket.averageLengthM,
+    averageProjectedRunMm: averageProjectedRun,
+    averageProjectedRunM: mmToM(averageProjectedRun),
+    averageCutLengthMm: rafterBucket.averageLengthMm,
+    averageCutLengthM: rafterBucket.averageLengthM,
+    effectiveRunMm: averageProjectedRun,
+    effectiveRunM: mmToM(averageProjectedRun),
+    items: rafterBucket.items,
+  };
 }
 
 function memberCenterX(member: AssemblyMember3D): number {
@@ -375,22 +436,32 @@ export function buildAssemblyQuantityTakeoff(assembly: Assembly3D): GeometryQuan
   const roofPlaneItems = [...assembly.roofPlanes]
     .map((plane) => {
       const areaMm2 = round(polygonArea(plane.boundary));
-      const rafters = membersByRole.rafter.items.filter((item) => rafterRoofPlaneIds.get(item.id) === plane.id);
+      const rafterItems = membersByRole.rafter.items.filter((item) => rafterRoofPlaneIds.get(item.id) === plane.id);
+      const rafterMembers = assembly.members.filter((member) => member.role === "rafter" && rafterRoofPlaneIds.get(member.id) === plane.id);
       const joiners = membersByRole.joiner.items.filter((item) => joinerRoofPlaneIds.get(item.id) === plane.id);
       const claddingPanels = roofCladdingItems.filter((panel) => panel.roofPlaneId === plane.id);
-      const rafterTotalLengthMm = round(rafters.reduce((sum, item) => sum + item.lengthMm, 0));
+      const rafterTotalLengthMm = round(rafterItems.reduce((sum, item) => sum + item.lengthMm, 0));
       const joinerTotalLengthMm = round(joiners.reduce((sum, item) => sum + item.lengthMm, 0));
       const claddingAreaMm2 = round(claddingPanels.reduce((sum, panel) => sum + panel.areaMm2, 0));
-      const rafterAverageLengthMm = averageItemLengthMm(rafters);
-      const rafterAverageSpacingMm = averageRafterSpacingMm(rafters, rafterCenterXById);
+      const rafterAverageLengthMm = averageItemLengthMm(rafterItems);
+      const rafterAverageSpacingMm = averageRafterSpacingMm(rafterItems, rafterCenterXById);
+      const rafterProjectedRunMm = averageProjectedRunMm(rafterMembers);
       const joinerAverageLengthMm = averageItemLengthMm(joiners);
+      const joinerTargetLengthMm = averageNumbers(
+        joiners.map((item) => metadataNumber(item.metadata, "targetRunLengthMm") ?? item.lengthMm),
+      );
+      const claddingDownslopeLengthMm = averageNumbers(claddingPanels.map((panel) => panel.downslopeLengthMm));
       return {
         id: plane.id,
         label: typeof plane.metadata?.label === "string" ? plane.metadata.label : undefined,
         areaMm2,
         areaM2: mm2ToM2(areaMm2),
-        rafterCount: rafters.length,
-        rafterBayCount: Math.max(0, rafters.length - 1),
+        rafterCount: rafterItems.length,
+        rafterBayCount: Math.max(0, rafterItems.length - 1),
+        rafterProjectedRunMm,
+        rafterProjectedRunM: mmToM(rafterProjectedRunMm),
+        rafterCutLengthMm: rafterAverageLengthMm,
+        rafterCutLengthM: mmToM(rafterAverageLengthMm),
         rafterTotalLengthMm,
         rafterTotalLengthM: mmToM(rafterTotalLengthMm) ?? 0,
         rafterAverageLengthMm,
@@ -400,9 +471,13 @@ export function buildAssemblyQuantityTakeoff(assembly: Assembly3D): GeometryQuan
         claddingPanelCount: claddingPanels.length,
         claddingAreaMm2,
         claddingAreaM2: mm2ToM2(claddingAreaMm2),
+        claddingDownslopeLengthMm,
+        claddingDownslopeLengthM: mmToM(claddingDownslopeLengthMm),
         joinerCount: joiners.length,
         joinerTotalLengthMm,
         joinerTotalLengthM: mmToM(joinerTotalLengthMm) ?? 0,
+        joinerTargetLengthMm,
+        joinerTargetLengthM: mmToM(joinerTargetLengthMm),
         joinerAverageLengthMm,
         joinerAverageLengthM: mmToM(joinerAverageLengthMm),
         metadata: plane.metadata,
@@ -453,7 +528,15 @@ export function buildAssemblyQuantityTakeoff(assembly: Assembly3D): GeometryQuan
     roofCladdingByMaterial.reduce((sum, material) => sum + material.areaMm2, 0),
   );
   const acrylicCladding = roofCladdingByMaterial.find((material) => material.material === "acrylic");
+  const acrylicPanels = roofCladdingItems.filter((panel) => panel.material === "acrylic");
+  const roofCladdingEffectiveRunMm = maxNumbers(roofCladdingItems.map((panel) => panel.projectedRunMm));
+  const roofCladdingAverageDownslopeLengthMm = averageNumbers(roofCladdingItems.map((panel) => panel.downslopeLengthMm));
+  const acrylicRequiredDownslopeMm = maxNumbers(acrylicPanels.map((panel) => panel.downslopeLengthMm));
   const joiners = membersByRole.joiner;
+  const rafters = buildRafterTakeoff(
+    membersByRole.rafter,
+    assembly.members.filter((member) => member.role === "rafter"),
+  );
   const flashingItems = buildFlashingItems(assembly, diagnostics);
   const totalFlashingLengthMm = round(
     flashingItems.reduce((sum, flashing) => sum + flashing.lengthMm, 0),
@@ -485,6 +568,7 @@ export function buildAssemblyQuantityTakeoff(assembly: Assembly3D): GeometryQuan
       items: memberItems,
       byRole: membersByRole,
     },
+    rafters,
     beams: {
       ledgerLengthMm,
       ledgerLengthM: mmToM(ledgerLengthMm),
@@ -516,6 +600,12 @@ export function buildAssemblyQuantityTakeoff(assembly: Assembly3D): GeometryQuan
       panelCount: assembly.roofCladdingPanels.length,
       totalAreaMm2: roofCladdingAreaMm2,
       totalAreaM2: mm2ToM2(roofCladdingAreaMm2),
+      effectiveRunMm: roofCladdingEffectiveRunMm,
+      effectiveRunM: mmToM(roofCladdingEffectiveRunMm),
+      averageDownslopeLengthMm: roofCladdingAverageDownslopeLengthMm,
+      averageDownslopeLengthM: mmToM(roofCladdingAverageDownslopeLengthMm),
+      acrylicRequiredDownslopeMm,
+      acrylicRequiredDownslopeM: mmToM(acrylicRequiredDownslopeMm),
       acrylicAreaMm2: acrylicCladding?.areaMm2 ?? null,
       acrylicAreaM2: acrylicCladding?.areaM2 ?? null,
       items: roofCladdingItems,

@@ -1,7 +1,13 @@
 import { jsonError, jsonOk, requireStaffContext } from '@/lib/api/staffApi';
 import { missingColumnFromError } from '@/lib/api/siteVisitsServer';
 import { buildEstimateDbPayload } from '@/lib/estimates/persistence';
-import { logEstimatePricingSourceAudit, resolveEstimatePricingSourceForSave } from '@/lib/estimates/pricingRollout';
+import {
+  ESTIMATE_WORKBENCH_SOLVED_PRICING_SOURCE,
+  buildEstimateWorkbenchSolvedReadinessFromSnapshot,
+  logEstimatePricingSourceAudit,
+  normalizeRequestedEstimatePricingSource,
+  resolveEstimatePricingSourceForSave,
+} from '@/lib/estimates/pricingRollout';
 import { buildVersionLabelMap, calculatorSnapshotFromRow, loadEstimateEditability, mapEstimateDetail } from '@/lib/estimates/server';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { isRecord, uuidFromAppId } from '@/lib/supabase/mappers';
@@ -94,7 +100,22 @@ export async function POST(_req: Request, ctx: { params: Promise<{ estimateId: s
 
   const createdBy = typeof auth.session.user?.email === 'string' ? auth.session.user.email.trim() : null;
   const actorUserId = typeof auth.session.user?.id === 'string' ? auth.session.user.id : null;
-  const sourceGate = resolveEstimatePricingSourceForSave({ actor: createdBy });
+  const sourceRequest = normalizeRequestedEstimatePricingSource();
+  const sourceGate = resolveEstimatePricingSourceForSave({
+    actor: createdBy,
+    requestedSourceRaw: sourceRequest.raw,
+    readiness:
+      sourceRequest.requestedPricingSource === ESTIMATE_WORKBENCH_SOLVED_PRICING_SOURCE
+        ? buildEstimateWorkbenchSolvedReadinessFromSnapshot({
+            snapshot: {
+              inputs,
+              outputs: outputsWithVersion,
+            },
+            projectId: projectUuid,
+            estimateId: estimateUuid,
+          })
+        : null,
+  });
   if (!sourceGate.ok) {
     await logEstimatePricingSourceAudit(supabase, {
       projectUuid,

@@ -67,6 +67,12 @@ function hookQuantity(assembly: Assembly3D, key: string): number {
   return hook.quantity;
 }
 
+function projectedRunMm(member: Assembly3D["members"][number]): number {
+  const dx = member.centerline.end.x - member.centerline.start.x;
+  const dy = member.centerline.end.y - member.centerline.start.y;
+  return Math.sqrt(dx * dx + dy * dy);
+}
+
 function flashingSurfaceAreaMm2(assembly: Assembly3D): number {
   return (assembly.roofFlashings ?? []).reduce(
     (sum, flashing) =>
@@ -97,12 +103,32 @@ describe("buildAssemblyQuantityTakeoff", () => {
           Math.max(0, roofPlane.rafterCount - 1),
         );
         if (roofPlane.rafterCount > 1) {
+          expect(roofPlane.rafterProjectedRunMm, `${fixture.id} ${roofPlane.id}`).toBeGreaterThan(0);
+          expect(roofPlane.rafterProjectedRunM, `${fixture.id} ${roofPlane.id}`).toBeGreaterThan(0);
+          expect(roofPlane.rafterCutLengthMm, `${fixture.id} ${roofPlane.id}`).toBeGreaterThan(0);
+          expect(roofPlane.rafterCutLengthM, `${fixture.id} ${roofPlane.id}`).toBeGreaterThan(0);
           expect(roofPlane.rafterAverageSpacingMm, `${fixture.id} ${roofPlane.id}`).toBeGreaterThan(0);
           expect(roofPlane.rafterAverageSpacingM, `${fixture.id} ${roofPlane.id}`).toBeGreaterThan(0);
         } else {
           expect(roofPlane.rafterAverageSpacingMm, `${fixture.id} ${roofPlane.id}`).toBeNull();
           expect(roofPlane.rafterAverageSpacingM, `${fixture.id} ${roofPlane.id}`).toBeNull();
         }
+        if (roofPlane.claddingPanelCount > 0) {
+          expect(roofPlane.claddingDownslopeLengthMm, `${fixture.id} ${roofPlane.id}`).toBeGreaterThan(0);
+          expect(roofPlane.claddingDownslopeLengthM, `${fixture.id} ${roofPlane.id}`).toBeGreaterThan(0);
+        } else {
+          expect(roofPlane.claddingDownslopeLengthMm, `${fixture.id} ${roofPlane.id}`).toBeNull();
+          expect(roofPlane.claddingDownslopeLengthM, `${fixture.id} ${roofPlane.id}`).toBeNull();
+        }
+      }
+      if (takeoff.roofCladding.panelCount > 0) {
+        expect(takeoff.roofCladding.effectiveRunMm, fixture.id).toBeGreaterThan(0);
+        expect(takeoff.roofCladding.averageDownslopeLengthMm, fixture.id).toBeGreaterThan(0);
+        expect(takeoff.roofCladding.acrylicRequiredDownslopeMm, fixture.id).toBeGreaterThan(0);
+      } else {
+        expect(takeoff.roofCladding.effectiveRunMm, fixture.id).toBeNull();
+        expect(takeoff.roofCladding.averageDownslopeLengthMm, fixture.id).toBeNull();
+        expect(takeoff.roofCladding.acrylicRequiredDownslopeMm, fixture.id).toBeNull();
       }
       expect(takeoff.quantityHooks, fixture.id).toEqual([...assembly.quantityHooks].sort((a, b) => a.key.localeCompare(b.key)));
       expect(takeoff.diagnostics, fixture.id).toEqual([]);
@@ -131,12 +157,16 @@ describe("buildAssemblyQuantityTakeoff", () => {
         id: assembly.roofPlanes[0]?.id,
         rafterCount: assembly.members.filter((member) => member.role === "rafter").length,
         rafterBayCount: assembly.members.filter((member) => member.role === "rafter").length - 1,
+        rafterProjectedRunM: takeoff.rafters.averageProjectedRunM,
+        rafterCutLengthM: takeoff.roofPlanes.items[0]?.rafterAverageLengthM,
         rafterTotalLengthM: takeoff.members.byRole.rafter.totalLengthM,
         rafterAverageSpacingMm: 600,
         rafterAverageSpacingM: 0.6,
         claddingPanelCount: assembly.roofCladdingPanels.length,
         claddingAreaM2: takeoff.roofCladding.totalAreaM2,
+        claddingDownslopeLengthM: takeoff.roofCladding.averageDownslopeLengthM,
         joinerCount: assembly.members.filter((member) => member.role === "joiner").length,
+        joinerTargetLengthM: takeoff.joiners.averageLengthM,
         joinerTotalLengthM: takeoff.joiners.totalLengthM,
       }),
     );
@@ -148,7 +178,26 @@ describe("buildAssemblyQuantityTakeoff", () => {
         id: assembly.roofCladdingPanels[0]?.id,
         material: "acrylic",
         roofPlaneId: assembly.roofPlanes[0]?.id,
+        downslopeLengthM: expect.any(Number),
+        projectedRunM: expect.any(Number),
         thicknessMm: assembly.roofCladdingPanels[0]?.thicknessMm,
+      }),
+    );
+    expect(takeoff.rafters).toEqual(
+      expect.objectContaining({
+        count: takeoff.members.byRole.rafter.count,
+        totalLengthM: takeoff.members.byRole.rafter.totalLengthM,
+        averageCutLengthM: takeoff.members.byRole.rafter.averageLengthM,
+        averageProjectedRunM: takeoff.roofPlanes.items[0]?.rafterProjectedRunM,
+        effectiveRunM: takeoff.roofPlanes.items[0]?.rafterProjectedRunM,
+      }),
+    );
+    expect(takeoff.rafters.averageProjectedRunM).toBeGreaterThan(0);
+    expect(takeoff.roofCladding).toEqual(
+      expect.objectContaining({
+        effectiveRunM: takeoff.roofCladding.items[0]?.projectedRunM,
+        acrylicRequiredDownslopeM: takeoff.roofCladding.items[0]?.downslopeLengthM,
+        averageDownslopeLengthM: takeoff.roofPlanes.items[0]?.claddingDownslopeLengthM,
       }),
     );
     expect(takeoff.members.byRole.post.count).toBe(hookQuantity(assembly, "posts.count"));
@@ -234,9 +283,18 @@ describe("buildAssemblyQuantityTakeoff", () => {
       expect(takeoff.roofPlanes.items).toHaveLength(2);
       expect(takeoff.roofPlanes.items.map((plane) => plane.rafterCount)).toEqual([12, 12]);
       expect(takeoff.roofPlanes.items.map((plane) => plane.rafterBayCount)).toEqual([11, 11]);
+      expect(takeoff.roofPlanes.items.every((plane) => (plane.rafterProjectedRunM ?? 0) > 0)).toBe(true);
+      expect(takeoff.roofPlanes.items.every((plane) => plane.rafterCutLengthM === plane.rafterAverageLengthM)).toBe(true);
       expect(takeoff.roofPlanes.items.map((plane) => plane.rafterAverageSpacingMm)).toEqual([590.909091, 590.909091]);
       expect(takeoff.roofPlanes.items.map((plane) => plane.rafterAverageSpacingM)).toEqual([0.590909, 0.590909]);
       expect(takeoff.roofPlanes.items.every((plane) => plane.rafterTotalLengthMm > 0)).toBe(true);
+      expect(takeoff.rafters.averageProjectedRunMm).toBeCloseTo(
+        assembly.members
+          .filter((member) => member.role === "rafter")
+          .reduce((sum, member) => sum + projectedRunMm(member), 0) /
+          assembly.members.filter((member) => member.role === "rafter").length,
+        3,
+      );
       expect(takeoff.members.byRole.ridge.totalLengthMm).toBeGreaterThan(0);
       expect(takeoff.beams.tieBeamLengthMm).toBeCloseTo(expectedTieLengthMm, 3);
       expect(takeoff.quantityHookMap["roof_planes.count"]).toBe(2);
@@ -271,10 +329,15 @@ describe("buildAssemblyQuantityTakeoff", () => {
     expect(takeoff.roofPlanes.items[0]).toEqual(
       expect.objectContaining({
         rafterCount: 10,
+        rafterProjectedRunM: 3.3,
+        rafterCutLengthM: expect.any(Number),
         claddingPanelCount: 0,
+        claddingDownslopeLengthM: null,
         joinerCount: 0,
       }),
     );
+    expect(takeoff.rafters.effectiveRunM).toBe(3.3);
+    expect(takeoff.roofCladding.effectiveRunM).toBeNull();
     expect(takeoff.members.byRole.post.count).toBe(3);
   });
 

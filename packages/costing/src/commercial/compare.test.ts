@@ -58,17 +58,30 @@ function makeModule(overrides: Partial<CommercialModuleInputV1> = {}): Commercia
           areaM2: 18,
           bayCount: 10,
           rafterCount: 11,
+          rafterProjectedRunM: 2.85,
+          rafterCutLengthM: 3,
           rafterLengthM: 3,
           rafterSpacingMm: 600,
           rafterTotalLengthM: 33,
           claddingAreaM2: 18,
+          claddingDownslopeLengthM: 2.88,
           claddingPanelCount: 4,
           joinerCount: 11,
+          joinerTargetLengthM: 2.88,
           joinerTotalLengthM: 33,
         },
       ],
       posts: { count: 2, cutHeightM: 2.4, profile: '90x90' },
-      rafters: { count: 11, bayCount: 10, spacingMm: 600, cutLengthM: 3, totalLengthM: 33, profile: '100x50' },
+      rafters: {
+        count: 11,
+        bayCount: 10,
+        spacingMm: 600,
+        effectiveRunM: 2.85,
+        projectedRunM: 2.85,
+        cutLengthM: 3,
+        totalLengthM: 33,
+        profile: '100x50',
+      },
       beams: {
         ledgerLengthM: 6,
         frontBeamLengthM: 6,
@@ -91,6 +104,9 @@ function makeModule(overrides: Partial<CommercialModuleInputV1> = {}): Commercia
         acrylicAreaM2: 18,
         timberAreaM2: 0,
         sheetCount: 4,
+        effectiveRunM: 2.85,
+        acrylicRequiredDownslopeM: 2.88,
+        averageDownslopeLengthM: 2.88,
         joinerRuns: 11,
         panelCount: 4,
         totalAreaM2: 18,
@@ -454,16 +470,25 @@ describe('compareCommercialDesignInputsV1', () => {
     right.pergolas[0]!.modules[0]!.designIntent.dimensions!.secondaryLengthM = 2.1;
     right.pergolas[0]!.modules[0]!.designIntent.dimensions!.secondaryProjectionM = 1.6;
     right.pergolas[0]!.modules[0]!.quantityTakeoff.roofPlanes![0]!.areaM2 = 18.5;
+    right.pergolas[0]!.modules[0]!.quantityTakeoff.roofPlanes![0]!.rafterProjectedRunM = 2.9;
+    right.pergolas[0]!.modules[0]!.quantityTakeoff.roofPlanes![0]!.rafterCutLengthM = 3.5;
     right.pergolas[0]!.modules[0]!.quantityTakeoff.roofPlanes![0]!.rafterCount = 12;
     right.pergolas[0]!.modules[0]!.quantityTakeoff.roofPlanes![0]!.rafterSpacingMm = 590;
     right.pergolas[0]!.modules[0]!.quantityTakeoff.roofPlanes![0]!.rafterTotalLengthM = 42;
     right.pergolas[0]!.modules[0]!.quantityTakeoff.roofPlanes![0]!.rafterLengthM = 3.5;
     right.pergolas[0]!.modules[0]!.quantityTakeoff.roofPlanes![0]!.bayCount = 11;
+    right.pergolas[0]!.modules[0]!.quantityTakeoff.roofPlanes![0]!.claddingDownslopeLengthM = 3.1;
     right.pergolas[0]!.modules[0]!.quantityTakeoff.roofPlanes![0]!.claddingPanelCount = 5;
     right.pergolas[0]!.modules[0]!.quantityTakeoff.roofPlanes![0]!.joinerCount = 12;
+    right.pergolas[0]!.modules[0]!.quantityTakeoff.roofPlanes![0]!.joinerTargetLengthM = 3.1;
     right.pergolas[0]!.modules[0]!.quantityTakeoff.rafters!.totalLengthM = 42;
+    right.pergolas[0]!.modules[0]!.quantityTakeoff.rafters!.effectiveRunM = 2.9;
+    right.pergolas[0]!.modules[0]!.quantityTakeoff.rafters!.projectedRunM = 2.9;
     right.pergolas[0]!.modules[0]!.quantityTakeoff.beams!.totalBeamLengthM = 7;
     right.pergolas[0]!.modules[0]!.quantityTakeoff.gutters!.totalLengthM = 7;
+    right.pergolas[0]!.modules[0]!.quantityTakeoff.roofCladding!.effectiveRunM = 2.9;
+    right.pergolas[0]!.modules[0]!.quantityTakeoff.roofCladding!.acrylicRequiredDownslopeM = 3.1;
+    right.pergolas[0]!.modules[0]!.quantityTakeoff.roofCladding!.averageDownslopeLengthM = 3.1;
     right.pergolas[0]!.modules[0]!.quantityTakeoff.roofCladding!.panelCount = 5;
     right.pergolas[0]!.modules[0]!.quantityTakeoff.roofCladding!.totalAreaM2 = 18.5;
     right.pergolas[0]!.modules[0]!.quantityTakeoff.joiners!.count = 12;
@@ -500,12 +525,34 @@ describe('compareCommercialDesignInputsV1', () => {
           driftOrigin: 'physical_takeoff',
         }),
         expect.objectContaining({
+          path: 'pergolas.pergola-1.modules.source:0.quantityTakeoff.roofPlanes.0.rafterProjectedRunM',
+          driftOrigin: 'physical_takeoff',
+        }),
+        expect.objectContaining({
+          path: 'pergolas.pergola-1.modules.source:0.quantityTakeoff.roofPlanes.0.rafterCutLengthM',
+          driftOrigin: 'physical_takeoff',
+        }),
+        expect.objectContaining({
           path: 'pergolas.pergola-1.modules.source:0.quantityTakeoff.roofPlanes.0.rafterCount',
+          driftOrigin: 'physical_takeoff',
+        }),
+        expect.objectContaining({
+          path: 'pergolas.pergola-1.modules.source:0.quantityTakeoff.roofPlanes.0.claddingDownslopeLengthM',
           driftOrigin: 'physical_takeoff',
         }),
         expect.objectContaining({
           path: 'pergolas.pergola-1.modules.source:0.quantityTakeoff.roofPlanes.0.claddingPanelCount',
           driftOrigin: 'physical_takeoff',
+        }),
+        expect.objectContaining({
+          path: 'pergolas.pergola-1.modules.source:0.quantityTakeoff.roofPlanes.0.joinerTargetLengthM',
+          driftOrigin: 'physical_takeoff',
+        }),
+        expect.objectContaining({
+          path: 'pergolas.pergola-1.modules.source:0.quantityTakeoff.rafters.effectiveRunM',
+          originDetail: expect.objectContaining({
+            fieldPath: 'quantityTakeoff.rafters.effectiveRunM',
+          }),
         }),
         expect.objectContaining({
           path: 'pergolas.pergola-1.modules.source:0.quantityTakeoff.rafters.totalLengthM',
@@ -529,6 +576,12 @@ describe('compareCommercialDesignInputsV1', () => {
           path: 'pergolas.pergola-1.modules.source:0.quantityTakeoff.roofCladding.totalAreaM2',
           originDetail: expect.objectContaining({
             fieldPath: 'quantityTakeoff.roofCladding.totalAreaM2',
+          }),
+        }),
+        expect.objectContaining({
+          path: 'pergolas.pergola-1.modules.source:0.quantityTakeoff.roofCladding.acrylicRequiredDownslopeM',
+          originDetail: expect.objectContaining({
+            fieldPath: 'quantityTakeoff.roofCladding.acrylicRequiredDownslopeM',
           }),
         }),
         expect.objectContaining({

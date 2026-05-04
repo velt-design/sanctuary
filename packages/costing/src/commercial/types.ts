@@ -95,14 +95,18 @@ export type CommercialQuantityTakeoffV1 = {
     id: string;
     label?: string;
     areaM2?: number | null;
+    rafterProjectedRunM?: number | null;
+    rafterCutLengthM?: number | null;
     rafterCount?: number | null;
     rafterLengthM?: number | null;
     rafterSpacingMm?: number | null;
     rafterTotalLengthM?: number | null;
     bayCount?: number | null;
     claddingAreaM2?: number | null;
+    claddingDownslopeLengthM?: number | null;
     claddingPanelCount?: number | null;
     joinerCount?: number | null;
+    joinerTargetLengthM?: number | null;
     joinerTotalLengthM?: number | null;
   }>;
   posts?: {
@@ -114,6 +118,8 @@ export type CommercialQuantityTakeoffV1 = {
     count?: number | null;
     bayCount?: number | null;
     spacingMm?: number | null;
+    effectiveRunM?: number | null;
+    projectedRunM?: number | null;
     cutLengthM?: number | null;
     totalLengthM?: number | null;
     profile?: string | null;
@@ -140,6 +146,9 @@ export type CommercialQuantityTakeoffV1 = {
     acrylicAreaM2?: number | null;
     timberAreaM2?: number | null;
     sheetCount?: number | null;
+    effectiveRunM?: number | null;
+    acrylicRequiredDownslopeM?: number | null;
+    averageDownslopeLengthM?: number | null;
     joinerRuns?: number | null;
     panelCount?: number | null;
     totalAreaM2?: number | null;
