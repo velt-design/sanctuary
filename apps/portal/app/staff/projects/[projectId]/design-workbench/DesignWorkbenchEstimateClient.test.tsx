@@ -482,8 +482,9 @@ describe('DesignWorkbenchEstimateClient', () => {
 
     expect(rendered.container.querySelector('[aria-label="Plan model space viewport"]')).not.toBeNull();
     expect(rendered.container.textContent).toContain('Fit view');
-    expect(rendered.container.querySelector('[data-plan-resize-handle-hit="plan:lengthA"]')).not.toBeNull();
-    expect(rendered.container.querySelector('[data-plan-resize-handle-hit="plan:spanA"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[data-model-space-render-contract="top_projection_only"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[data-plan-resize-handle-hit="plan:lengthA"]')).toBeNull();
+    expect(rendered.container.querySelector('[data-plan-resize-handle-hit="plan:spanA"]')).toBeNull();
 
     clickButtonByText(rendered.container, 'Section');
     await flushAsyncWork();
@@ -2016,7 +2017,7 @@ describe('DesignWorkbenchEstimateClient', () => {
     rendered.unmount();
   });
 
-  it('updates and clears the local working copy from model-space primary-size drag handles', async () => {
+  it('keeps geometry-ready model space free of legacy primary-size drag handles', async () => {
     const estimate = buildEstimateDetail();
     const entityKey = buildEstimateDrawingDraftEntityKey(estimate.id);
 
@@ -2030,31 +2031,9 @@ describe('DesignWorkbenchEstimateClient', () => {
     clickButtonByText(rendered.container, 'Model Space');
     await flushAsyncWork();
 
-    const lengthHandle = rendered.container.querySelector('[data-plan-resize-handle-hit="plan:lengthA"]');
-    if (!lengthHandle) throw new Error('Missing model-space length handle');
-
-    dispatchPointer(lengthHandle, 'pointerdown', { pointerId: 7, clientX: 0, clientY: 0 });
-    dispatchPointer(window, 'pointermove', { pointerId: 7, clientX: 15.333, clientY: 0 });
-    dispatchPointer(window, 'pointerup', { pointerId: 7, clientX: 15.333, clientY: 0 });
-    await flushAsyncWork();
-
-    const firstDraftLength = Number.parseFloat(getLocalFirstWorkingCopy<any>(entityKey)?.data.inputs.modules[0]?.lengthM ?? '');
-    expect(firstDraftLength).toBeGreaterThan(6);
-
-    const currentLengthHandle = rendered.container.querySelector('[data-plan-resize-handle-hit="plan:lengthA"]');
-    if (!currentLengthHandle) throw new Error('Missing updated model-space length handle');
-    const handleWidth = Math.abs(
-      Number.parseFloat(currentLengthHandle.getAttribute('x2') ?? '0') -
-        Number.parseFloat(currentLengthHandle.getAttribute('x1') ?? '0'),
-    );
-    const currentScale = handleWidth / (firstDraftLength * 0.44);
-    const returnToSnapshotDelta = (6 - firstDraftLength) * currentScale;
-
-    dispatchPointer(currentLengthHandle, 'pointerdown', { pointerId: 8, clientX: 0, clientY: 0 });
-    dispatchPointer(window, 'pointermove', { pointerId: 8, clientX: returnToSnapshotDelta, clientY: 0 });
-    dispatchPointer(window, 'pointerup', { pointerId: 8, clientX: returnToSnapshotDelta, clientY: 0 });
-    await flushAsyncWork();
-
+    expect(rendered.container.querySelector('[data-model-space-render-contract="top_projection_only"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[data-plan-resize-handle-hit="plan:lengthA"]')).toBeNull();
+    expect(rendered.container.querySelector('[data-plan-resize-handle-hit="plan:spanA"]')).toBeNull();
     expect(getLocalFirstWorkingCopy(entityKey)).toBeNull();
     rendered.unmount();
   });

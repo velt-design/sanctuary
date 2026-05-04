@@ -14,6 +14,8 @@ Geometry has one physical truth. Object-first design intent resolves into a sing
 
 In the portal workbench, that runtime boundary is the `WorkbenchSolvedGeometryArtifact`: one named bundle for the solved assembly, viewer scene, top projection, plan, section, validation, and trust/status metadata. Legacy calculator plan/section models and loose view fields are compatibility or fallback aliases around that artifact, not another geometry owner.
 
+Interactive behavior should converge on one runtime owner too. Every movable or selectable workbench object should participate through a shared interaction layer keyed by stable object IDs and solved-geometry references. That layer owns pointer-session lifecycle, hover/selection/drag vocabulary, preview and blocked-state evaluation, object-to-object snap/relationship resolution, and the commit boundary back into object-first patches. Object-family adapters own the rules that differ per family: affordances, valid hosts, clearance/collision policy, movement constraints, and patch generation. Viewports may host and present this layer, but they must not fork object-to-object interaction policy inline.
+
 Workbench and costing integration should converge on three explicit truths:
 
 - Portal/workbench owns authored design intent and workflow state: house forms, pergolas, decks, openings, attachments, options, staff edits, persistence, and status.
@@ -224,12 +226,12 @@ How to use this map: pick the target area before editing, treat `Forbidden short
 ### Design Workbench, Drawing State, And Geometry
 
 - Lane label: `workbench-geometry`.
-- North star: object-first design intent resolves into one solved geometry spine; every drawing, sheet, 3D, top-projection, section, interaction surface, and physical takeoff is a view or adapter.
+- North star: object-first design intent resolves into one solved geometry spine; every drawing, sheet, 3D, top-projection, section, interaction surface, and physical takeoff is a view or adapter. Every authored object is also a first-class interactive object that moves and relates to other objects through one shared interaction layer rather than per-object viewport branches.
 - Source of truth: `packages/geometry`, `WorkbenchSolvedGeometryArtifact`, `WorkbenchViewportGeometry`, `WorkbenchDrawingSurfaceGeometry`, drawing state helpers, and workbench persistence adapters.
-- Allowed paths: route viewport and sheet data through named bundles; keep compatibility fallback boxed, visible, and tested; commit object-first edits through owning handlers; derive physical takeoff from solved geometry before passing commercial inputs to costing.
+- Allowed paths: route viewport and sheet data through named bundles; keep compatibility fallback boxed, visible, and tested; route direct-manipulation sessions through the shared interaction layer and family adapters; commit object-first edits through owning handlers; derive physical takeoff from solved geometry before passing commercial inputs to costing.
 - Forbidden shortcuts: legacy visible geometry truth, loose per-view preview props, hidden fallback activation, calculator geometry forks, app-local physical takeoff policy, costing-driven geometry solves, or persistence changes from render helpers.
 - Primary gates: `npm run test:portal:workbench`, `npm run test:portal:browser`, focused drawing state/view/interaction tests, and manual edit/save/reload QA.
-- Next direction: finish routing geometry-ready views and takeoff consumers through `WorkbenchSolvedGeometryArtifact`, keep package-owned takeoff derived from the same solved `Assembly3D` as plan/section/top projection/viewer scene, and stabilize commercial parity reports before any live pricing switch.
+- Next direction: finish routing geometry-ready views and takeoff consumers through `WorkbenchSolvedGeometryArtifact`; generalize the shared interaction layer so new object families join by adapter instead of new viewport-only drag logic; keep package-owned takeoff derived from the same solved `Assembly3D` as plan/section/top projection/viewer scene; and stabilize commercial parity reports before any live pricing switch.
 - Canonical docs: `docs/design-workbench-architecture.md`, `docs/costing-and-geometry.md`, `docs/parallel-work-guardrails.md`.
 
 ### Design List And Running Jobs

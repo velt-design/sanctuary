@@ -145,6 +145,7 @@ import type {
   ObjectWorkbenchViewportTargetSelection,
 } from '@/lib/drawings/state/objectWorkbenchViewportTypes';
 import type { WorkbenchObjectRef } from '@/lib/drawings/state/objectFirstWorkbenchModel';
+import ProjectionPlanViewport from '@/components/drawings/plan/ProjectionPlanViewport';
 import {
   normalizeHouseFootprintParams,
   type CalculatorHouseFootprintPolygonPoint,
@@ -612,6 +613,10 @@ export default function ModelSpaceViewport({
       (editableFieldMap.has('plan:lengthA') || editableFieldMap.has('plan:spanA'));
   const showHouseSectionPlaceholder = workbenchDisplayMode === 'house' && view === 'section';
   const hasGeometryReadyPlan = surfaceReadiness.hasGeometryReadyPlan;
+  const projectionPlanArtifact =
+    view === 'plan' && drawingSurfaceGeometry?.source === 'solved_geometry' && hasGeometryReadyPlan
+      ? drawingSurfaceGeometry.artifact
+      : null;
   const showPlanViewport = view === 'plan' && hasGeometryReadyPlan;
   const showSectionViewport = surfaceReadiness.hasDrawableSection && !showHouseSectionPlaceholder;
   const showDrawingViewport = surfaceReadiness.showDrawingViewport && !showHouseSectionPlaceholder;
@@ -3307,7 +3312,39 @@ export default function ModelSpaceViewport({
 
         <div ref={scaleFrameRef} data-model-space-scale-frame className={styles.scaleFrame} style={scaleFrameStyle}>
           <div className={styles.canvas}>
-            {showDrawingViewport ? (
+            {projectionPlanArtifact ? (
+              <ProjectionPlanViewport
+                artifact={projectionPlanArtifact}
+                visibility={visibility}
+                activeObjectRef={activeObjectRef}
+                objectWorkbenchPlanOverlay={objectWorkbenchPlanOverlay}
+                objectWorkbenchPreviewOverlay={objectWorkbenchPreviewOverlay}
+                legacyFootprintEditPlanModel={legacyPlanModel}
+                footprintEditor={footprintEditor}
+                pergolaTargetId={activePergolaId}
+                hoveredObjectWorkbenchDeckId={hoveredDeckId}
+                activeObjectWorkbenchCustomEdgeId={objectWorkbenchActiveCustomEdgeId}
+                onSelectObjectWorkbenchTarget={handleObjectWorkbenchShapeSelect}
+                onSelectPergolaTarget={handlePergolaTargetSelect}
+                onClearWorkbenchSelection={handleWorkbenchCanvasSelect}
+                onObjectWorkbenchDeckHoverChange={handleObjectWorkbenchDeckHoverChange}
+                onObjectWorkbenchShapeDragStart={handleObjectWorkbenchShapeDragStart}
+                onObjectWorkbenchCustomEdgeSelect={handleObjectWorkbenchCustomEdgeSelect}
+                onObjectWorkbenchDimensionActivate={activateObjectWorkbenchDimensionEditor}
+                onSvgMount={(node) => {
+                  footprintSvgRef.current = node;
+                }}
+                onCanvasPointResolverChange={(resolver) => {
+                  drawOutlineCanvasPointResolverRef.current = resolver;
+                }}
+                onPlanPointResolverChange={(resolver) => {
+                  planPointResolverRef.current = resolver;
+                }}
+                onDeckDragPointResolverChange={(resolver) => {
+                  deckDragPointResolverRef.current = resolver;
+                }}
+              />
+            ) : showDrawingViewport ? (
               <ModuleDrawingRenderer
                 view={view}
                 status={status}

@@ -71,6 +71,11 @@ describe('planRenderGraph', () => {
 
     expect(graph.committedBodies.map((item) => item.marker)).toEqual(['roof', 'deck']);
     expect(graph.contextLines.map((item) => item.marker)).toEqual(['wall']);
+    expect(graph.hitTargets).toEqual([]);
+    expect(graph.selectionOutlines).toEqual([]);
+    expect(graph.dimensions).toEqual([]);
+    expect(graph.dragPreview).toEqual([]);
+    expect(graph.debug).toEqual([]);
     expect(graph.suppressed.map((item) => item.marker)).toEqual(['reference', 'footprint']);
   });
 

@@ -304,9 +304,11 @@ export function ModuleDrawingRenderer({
   onObjectWorkbenchDimensionActivate,
   objectWorkbenchPreviewOverlay,
 }: ModuleDrawingRendererProps) {
-  const effectivePlanModel = drawingSurfaceGeometry?.legacyPlanModel ?? planModel ?? null;
-  const effectiveSectionModel = drawingSurfaceGeometry?.legacySectionModel ?? sectionModel ?? null;
   const hasSolvedDrawingSurfaceGeometry = drawingSurfaceGeometry?.source === 'solved_geometry';
+  const isModel = presentation === 'model';
+  const effectivePlanModel =
+    hasSolvedDrawingSurfaceGeometry && isModel ? null : drawingSurfaceGeometry?.legacyPlanModel ?? planModel ?? null;
+  const effectiveSectionModel = drawingSurfaceGeometry?.legacySectionModel ?? sectionModel ?? null;
   const effectiveGeometrySection = hasSolvedDrawingSurfaceGeometry ? drawingSurfaceGeometry?.geometrySection ?? null : null;
   const effectiveModelSpacePergolaGeometry = hasSolvedDrawingSurfaceGeometry ? drawingSurfaceGeometry.geometryPlan : null;
   const effectiveModelSpaceTopProjection = hasSolvedDrawingSurfaceGeometry ? drawingSurfaceGeometry.geometryTopProjection : null;
@@ -318,7 +320,6 @@ export function ModuleDrawingRenderer({
     : undefined;
   const effectiveShowDebugOverlays = showDebugOverlays ?? presentation === 'sheet';
   const isCompact = presentation !== 'card';
-  const isModel = presentation === 'model';
   const hasSolvedPlan =
     hasSolvedDrawingSurfaceGeometry &&
     Boolean(effectiveModelSpacePergolaGeometry) &&

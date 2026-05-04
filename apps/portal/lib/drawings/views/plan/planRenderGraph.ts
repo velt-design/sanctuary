@@ -1,7 +1,14 @@
 import type { GeometryTopProjectionShape } from '@sp/geometry';
 import type { DrawingWorkbenchVisibilityState } from '@/lib/drawings/state/drawingWorkbenchUiState';
 
-export type ProjectionPlanLayer = 'committedBodies' | 'contextLines';
+export type ProjectionPlanLayer =
+  | 'committedBodies'
+  | 'contextLines'
+  | 'hitTargets'
+  | 'selectionOutlines'
+  | 'dimensions'
+  | 'dragPreview'
+  | 'debug';
 
 export type TopProjectionRole = 'top_visible' | 'context' | 'hidden_from_top';
 
@@ -12,6 +19,11 @@ export type ProjectionPlanGraphItem<TItem extends { shape: GeometryTopProjection
 export type ProjectionPlanRenderGraph<TItem extends { shape: GeometryTopProjectionShape }> = {
   committedBodies: Array<ProjectionPlanGraphItem<TItem>>;
   contextLines: Array<ProjectionPlanGraphItem<TItem>>;
+  hitTargets: Array<ProjectionPlanGraphItem<TItem>>;
+  selectionOutlines: Array<ProjectionPlanGraphItem<TItem>>;
+  dimensions: Array<ProjectionPlanGraphItem<TItem>>;
+  dragPreview: Array<ProjectionPlanGraphItem<TItem>>;
+  debug: Array<ProjectionPlanGraphItem<TItem>>;
   suppressed: TItem[];
 };
 
@@ -120,7 +132,16 @@ export function buildProjectionPlanRenderGraph<TItem extends { shape: GeometryTo
       }
       return graph;
     },
-    { committedBodies: [], contextLines: [], suppressed: [] },
+    {
+      committedBodies: [],
+      contextLines: [],
+      hitTargets: [],
+      selectionOutlines: [],
+      dimensions: [],
+      dragPreview: [],
+      debug: [],
+      suppressed: [],
+    },
   );
   const hasHouseRoofCommittedBody = baseGraph.committedBodies.some(
     ({ shape }) => shape.family === 'house' && shape.kind === 'roof',
@@ -136,6 +157,11 @@ export function buildProjectionPlanRenderGraph<TItem extends { shape: GeometryTo
   return {
     committedBodies,
     contextLines,
+    hitTargets: [],
+    selectionOutlines: [],
+    dimensions: [],
+    dragPreview: [],
+    debug: [],
     suppressed: [
       ...baseGraph.suppressed,
       ...baseGraph.committedBodies.filter((item) => !committedBodies.includes(item)),

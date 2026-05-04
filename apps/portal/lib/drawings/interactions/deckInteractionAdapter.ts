@@ -184,6 +184,23 @@ function resolvePolygonPointByIndex(polygon: PlanPoint[], index: number): PlanPo
   return polygon[((index % polygon.length) + polygon.length) % polygon.length]!;
 }
 
+function pointWithinPolygonBounds(input: {
+  polygon: readonly PlanPoint[];
+  point: PlanPoint;
+  toleranceM?: number;
+}): boolean {
+  if (!input.polygon.length) return false;
+  const toleranceM = input.toleranceM ?? 0.25;
+  const xs = input.polygon.map((point) => point.x);
+  const ys = input.polygon.map((point) => point.y);
+  return (
+    input.point.x >= Math.min(...xs) - toleranceM &&
+    input.point.x <= Math.max(...xs) + toleranceM &&
+    input.point.y >= Math.min(...ys) - toleranceM &&
+    input.point.y <= Math.max(...ys) + toleranceM
+  );
+}
+
 function resolveNearestPreviewCorner(input: {
   polygon: PlanPoint[];
   point: PlanPoint;
@@ -724,7 +741,10 @@ export function buildDeckDragSession(input: {
   if (requiresProjectionResolver && !input.startDragPlanPoint) return null;
   const dragPolygon = interaction.dragPolygon.length ? interaction.dragPolygon : input.overlayShape.polygon;
   const dragCenter = interaction.dragCenter ?? interaction.renderedCenter;
-  const grabbedPlanPoint = input.startDragPlanPoint ?? dragCenter;
+  const grabbedPlanPoint =
+    input.startDragPlanPoint && pointWithinPolygonBounds({ polygon: dragPolygon, point: input.startDragPlanPoint })
+      ? input.startDragPlanPoint
+      : dragCenter;
   const heldCornerIndex = resolveNearestDeckCornerIndex({
     polygon: dragPolygon,
     point: grabbedPlanPoint,

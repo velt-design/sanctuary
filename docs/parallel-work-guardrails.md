@@ -213,7 +213,7 @@ Parallel workbench lanes should stay narrow:
 - Solved geometry spine: make plan, 3D, section, sheet, snap/detail views, interactions, and status consume one solved artifact.
 - HouseAssembly to geometry: move geometry input away from compatibility `HouseModel` and toward object-first assembly data.
 - Plan from geometry: make Model Space plan a top-down view of solved geometry, with object IDs matching solved geometry IDs.
-- Object-first interaction layer: target object IDs and solved geometry, then commit object-first patches.
+- Object-first interaction layer: route every movable object through one shared interaction engine keyed by object IDs and solved geometry, then commit object-first patches through family adapters instead of viewport-specific drag branches.
 - Accuracy and trust gate: make untrusted fallback, invalid, approximate, and unresolved states visible and enforceable.
 
 ### Workbench Compatibility Quarantine
@@ -247,6 +247,7 @@ Treat these contracts as shared lane boundaries:
 - object-first geometry context
 - geometry-derived plan overlay
 - object hit-target model
+- shared interaction session contract
 - object-first edit/commit patch model
 - workbench trust/status model
 

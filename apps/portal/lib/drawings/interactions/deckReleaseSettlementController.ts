@@ -64,7 +64,8 @@ type DeckSettleMatch = {
   rebuiltProjectionPolygon: PlanPoint[] | null;
 };
 
-const DECK_SETTLE_MATCH_TOLERANCE_M = 0.1;
+// Projection-backed releases can rebuild through solver-derived top projection with small semantic offsets.
+const DECK_SETTLE_MATCH_TOLERANCE_M = 0.6;
 const DECK_SETTLE_MAX_WAIT_MS = 500;
 const DECK_SETTLE_MATCH_STABLE_FRAMES = 1;
 const DECK_RELEASE_SUCCESS_FEEDBACK_MS = 180;
