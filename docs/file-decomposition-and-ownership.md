@@ -18,6 +18,7 @@ Start looking for a split when a file:
 
 - mixes rendering, browser events, domain policy, persistence, and validation.
 - has repeated sections that could each be named as a module.
+- contains a coherent child UI unit (own state machine, side effects such as timers/listeners/refs, or co-locatable styles) sitting behind a clean prop interface — extract it as a sibling component plus its own CSS module before the parent grows around it.
 - requires scrolling through unrelated workflows to make a focused change.
 - blocks parallel work because many agents must edit the same file.
 - makes tests broad because useful logic is trapped inside a component or route.
