@@ -12,7 +12,7 @@ Large files are not automatically wrong, but they are risk markers. Do not keep 
 
 If a safe extraction would make the task too risky, keep the behavior change small and record the decomposition direction in the handoff or the owning doc.
 
-When extracting a helper or module as part of a decomposition pass, copy the body byte-for-byte. Do not rename, retype, or "tidy" while moving — behaviour-preserving improvements belong in a separate PR with their own tests. Behavioural drift in pure helpers is invisible to typecheck and often invisible to existing call-site tests. See `docs/decision-log.md` (2026-05-06) for the failure mode.
+When extracting a helper or module as part of a decomposition pass, copy the body byte-for-byte. Do not rename, retype, or "tidy" while moving -- behaviour-preserving improvements belong in a separate PR with their own tests. Behavioural drift in pure helpers is invisible to typecheck and often invisible to existing call-site tests. See `docs/decision-log.md` (2026-05-06) for the failure mode.
 
 ## Split Triggers
 
@@ -20,7 +20,7 @@ Start looking for a split when a file:
 
 - mixes rendering, browser events, domain policy, persistence, and validation.
 - has repeated sections that could each be named as a module.
-- contains a coherent child UI unit (own state machine, side effects such as timers/listeners/refs, or co-locatable styles) sitting behind a clean prop interface — extract it as a sibling component plus its own CSS module before the parent grows around it.
+- contains a coherent child UI unit (own state machine, side effects such as timers/listeners/refs, or co-locatable styles) sitting behind a clean prop interface -- extract it as a sibling component plus its own CSS module before the parent grows around it.
 - requires scrolling through unrelated workflows to make a focused change.
 - blocks parallel work because many agents must edit the same file.
 - makes tests broad because useful logic is trapped inside a component or route.

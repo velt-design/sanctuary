@@ -51,6 +51,6 @@ If no headline metric is worse than the available comparison snapshots, choose t
 
 ## Automated Drift Warning
 
-A weekly read-only check at `.github/workflows/repo-health-drift.yml` runs `npm run repo:health` against the live tree and the most recent dated snapshot above. If any headline metric reports `worse`, the workflow fails with a "drift advisory" so cumulative incremental changes between manual snapshots become visible. The workflow never updates the snapshot table — it only reads it. Cron is Monday 09:00 UTC; manual runs are available via `workflow_dispatch`.
+A weekly read-only check at `.github/workflows/repo-health-drift.yml` runs `npm run repo:health` against the live tree and the most recent dated snapshot above. If any headline metric reports `worse`, the workflow fails with a "drift advisory" so cumulative incremental changes between manual snapshots become visible. The workflow never updates the snapshot table -- it only reads it. Cron is Monday 09:00 UTC; manual runs are available via `workflow_dispatch`.
 
 To clear a drift advisory: pick the recommended cleanup lane, do the work, then run `npm run repo:health:update` locally to record the new dated baseline.
