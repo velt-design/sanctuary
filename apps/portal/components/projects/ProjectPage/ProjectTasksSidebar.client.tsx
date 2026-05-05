@@ -13,13 +13,30 @@ import { apiJson } from '@/lib/repo/apiClient';
 import { invalidateProjectReadCaches } from '@/lib/queries/projectCache';
 import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
 import { patchProjectTasksSnapshot } from '@/lib/localFirst/portalEntities';
+import { useToast } from '@/components/ui/toast/ToastProvider';
 
 type TaskItem = ProjectPageSnapshot['tasks']['items'][number];
 
+type TaskMutationResponse = {
+  ok?: boolean;
+  taskKey?: string;
+  completed?: boolean;
+  stageMoved?: { fromStage: string; toStage: string };
+};
+
 const AUTO_ADVANCE_MANUAL_TASKS = new Set(['confirm_schedule', 'invoice_paid']);
+
+const STAGE_MOVED_MESSAGES: Record<string, string> = {
+  invoice_paid: 'Deposit received. Project moved to Deposit.',
+  confirm_schedule: 'Schedule confirmed. Project moved to Scheduled.',
+};
 
 function isCompleted(task: TaskItem): boolean {
   return Boolean(task.isDone);
+}
+
+function isOpenTask(task: TaskItem): boolean {
+  return !task.isDone && !task.isLocked;
 }
 
 export default function ProjectTasksSidebarClient({
@@ -30,8 +47,8 @@ export default function ProjectTasksSidebarClient({
   tasks: ProjectPageSnapshot['tasks'];
 }) {
   const queryClient = useQueryClient();
+  const toast = useToast();
   const hostKey = supabaseHostFromUrl(supabaseRuntimeUrl()) || 'unknown';
-  const [view, setView] = useState<'todo' | 'completed'>('todo');
   const [error, setError] = useState<string | null>(null);
   const [items, setItems] = useState<TaskItem[]>(tasks.items);
   const [pendingTaskSaves, setPendingTaskSaves] = useState(0);
@@ -72,17 +89,12 @@ export default function ProjectTasksSidebarClient({
     setSiteVisitTierError(null);
   }, [projectId, tasks.stage]);
 
-  const { todoTasks, completedTasks } = useMemo(() => {
-    const todo = items.filter((t) => !isCompleted(t));
-    const completed = items.filter((t) => isCompleted(t));
-    return { todoTasks: todo, completedTasks: completed };
-  }, [items]);
-
-  const visibleTasks = view === 'completed' ? completedTasks : todoTasks;
+  const openTasks = useMemo(() => items.filter(isOpenTask), [items]);
+  const visibleTasks = items;
 
   useEffect(() => {
     if (!canShowStageModal) return;
-    const openCount = todoTasks.length;
+    const openCount = openTasks.length;
     const prev = lastOpenCount.current;
     lastOpenCount.current = openCount;
 
@@ -108,7 +120,7 @@ export default function ProjectTasksSidebarClient({
       setStageModalOpen(true);
       setStageModalError(null);
     }
-  }, [canShowStageModal, projectId, tasks.stage, todoTasks.length]);
+  }, [canShowStageModal, projectId, tasks.stage, openTasks.length]);
 
   useEffect(() => {
     if (stageModalOpen) return;
@@ -160,7 +172,7 @@ export default function ProjectTasksSidebarClient({
     );
     setItems(nextItems);
     patchProjectTasksSnapshot(queryClient, hostKey, projectId, nextItems);
-    const nextOpenCount = nextItems.filter((item) => !isCompleted(item)).length;
+    const nextOpenCount = nextItems.filter(isOpenTask).length;
     const shouldOpenStageModal = completed && nextOpenCount === 0 && !isAutoAdvanceCompletion && canShowStageModal;
 
     if (shouldOpenStageModal) {
@@ -173,13 +185,16 @@ export default function ProjectTasksSidebarClient({
 
     try {
       setPendingTaskSaves((count) => count + 1);
-      await apiJson(`/api/projects/${encodeURIComponent(projectId)}/tasks`, {
+      const response = await apiJson<TaskMutationResponse>(`/api/projects/${encodeURIComponent(projectId)}/tasks`, {
         method: 'POST',
         body: JSON.stringify({
           taskKey,
           completed,
         }),
       });
+      if (completed && response?.stageMoved && STAGE_MOVED_MESSAGES[taskKey]) {
+        toast.success(STAGE_MOVED_MESSAGES[taskKey]);
+      }
       void invalidateProjectReadCaches(queryClient, hostKey, projectId, {
         includeProjectDetail: false,
         includeProjectsList: false,
@@ -347,26 +362,7 @@ export default function ProjectTasksSidebarClient({
       <section className={legacy.section} aria-label="Tasks">
         <div className={legacy.sectionHeader}>
           <h2 className={legacy.sectionTitle}>Tasks</h2>
-          <div className={legacy.tabsPill} role="tablist" aria-label="Task status">
-            <button
-              type="button"
-              role="tab"
-              aria-selected={view === 'todo'}
-              className={`${legacy.tabButton} ${view === 'todo' ? legacy.tabButtonActive : ''}`}
-              onClick={() => setView('todo')}
-            >
-              To do ({todoTasks.length})
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={view === 'completed'}
-              className={`${legacy.tabButton} ${view === 'completed' ? legacy.tabButtonActive : ''}`}
-              onClick={() => setView('completed')}
-            >
-              Completed ({completedTasks.length})
-            </button>
-          </div>
+          <span className={legacy.muted}>{openTasks.length} open</span>
         </div>
         <div className={legacy.sectionBody}>
           <p className={legacy.muted}>Stage: {stageLabel}</p>
@@ -378,21 +374,27 @@ export default function ProjectTasksSidebarClient({
               {visibleTasks.map((task) => {
                 const isManual = task.kind === 'manual';
                 const isDone = isCompleted(task);
+                const isLocked = Boolean(task.isLocked) && !isDone;
+                const isInteractive = isManual && !isLocked;
                 const toggleNext = () => toggleManualTask(task.key, !(task.isManualDone ?? task.isDone));
                 const handleRowClick = (event: MouseEvent<HTMLDivElement>) => {
                   const target = event.target as HTMLElement | null;
                   if (target?.closest('input,button,a')) return;
+                  if (!isInteractive) return;
                   toggleNext();
                 };
+                const rowStyle = isLocked ? { opacity: 0.6 } : undefined;
                 return (
                   <div
                     key={task.key}
                     className={legacy.taskRow}
-                    role={isManual ? 'button' : undefined}
-                    tabIndex={isManual ? 0 : undefined}
-                    onClick={isManual ? handleRowClick : undefined}
+                    style={rowStyle}
+                    aria-disabled={isLocked || undefined}
+                    role={isInteractive ? 'button' : undefined}
+                    tabIndex={isInteractive ? 0 : undefined}
+                    onClick={isInteractive ? handleRowClick : undefined}
                     onKeyDown={
-                      isManual
+                      isInteractive
                         ? (event) => {
                             if (event.key === 'Enter' || event.key === ' ') {
                               event.preventDefault();
@@ -402,7 +404,7 @@ export default function ProjectTasksSidebarClient({
                         : undefined
                     }
                   >
-                    {isManual ? (
+                    {isManual && !isLocked ? (
                       <label className={`${legacy.checkboxRow} ${legacy.taskLabel}`}>
                         <input
                           type="checkbox"
@@ -420,12 +422,12 @@ export default function ProjectTasksSidebarClient({
                     )}
 
                     <div className={legacy.rowActions}>
-                      {isManual ? (
-                        <span className={`${legacy.statusPill} ${isDone ? legacy.statusPillPaid : legacy.statusPillDraft}`}>
-                          {isDone ? 'Done' : 'To do'}
-                        </span>
-                      ) : isDone ? (
+                      {isDone ? (
                         <span className={`${legacy.statusPill} ${legacy.statusPillPaid}`}>Done</span>
+                      ) : isLocked ? (
+                        <span className={`${legacy.statusPill} ${legacy.statusPillDraft}`}>Pending</span>
+                      ) : isManual ? (
+                        <span className={`${legacy.statusPill} ${legacy.statusPillDraft}`}>To do</span>
                       ) : task.cta ? (
                         <Link
                           className={legacy.button}
@@ -443,9 +445,7 @@ export default function ProjectTasksSidebarClient({
               })}
             </div>
           ) : (
-            <p className={legacy.note}>
-              {view === 'completed' ? 'No completed tasks.' : 'No open tasks for this stage.'}
-            </p>
+            <p className={legacy.note}>No tasks for this stage.</p>
           )}
         </div>
       </section>

@@ -441,9 +441,11 @@ describe('DesignWorkbenchEstimateClient', () => {
     expect(rendered.container.textContent).toContain('Diagnostics');
     expect(rendered.container.textContent).toContain('Pergolas');
     expect(rendered.container.textContent).toContain('Sheet View');
-    expect(rendered.container.textContent).toContain('Model Space');
+    expect(rendered.container.textContent).toContain('Plan');
     expect(rendered.container.textContent).toContain('3D');
     expect(rendered.container.textContent).toContain('Back to Project');
+    expect(rendered.container.textContent).not.toContain('Model Space');
+    expect(rendered.container.textContent).not.toContain('3D View');
     expect(rendered.container.textContent).not.toContain('Sanctuary Controls');
 
     expect(rendered.container.textContent).toContain('Workspace panel');
@@ -480,7 +482,7 @@ describe('DesignWorkbenchEstimateClient', () => {
     expect(rendered.container.textContent).toContain('Measurement');
     expect(rendered.container.textContent).toContain('Enable measurement');
 
-    clickButtonByText(rendered.container, 'Model Space');
+    clickButtonByText(rendered.container, 'Plan');
     await flushAsyncWork();
 
     expect(rendered.container.querySelector('[aria-label="Plan model space viewport"]')).not.toBeNull();
@@ -488,12 +490,6 @@ describe('DesignWorkbenchEstimateClient', () => {
     expect(rendered.container.querySelector('[data-model-space-render-contract="top_projection_only"]')).not.toBeNull();
     expect(rendered.container.querySelector('[data-plan-resize-handle-hit="plan:lengthA"]')).toBeNull();
     expect(rendered.container.querySelector('[data-plan-resize-handle-hit="plan:spanA"]')).toBeNull();
-
-    clickButtonByText(rendered.container, 'Section');
-    await flushAsyncWork();
-
-    expect(rendered.container.querySelector('[aria-label="Section model space viewport"]')).not.toBeNull();
-    expect(rendered.container.querySelector('[aria-label="Module section view"]')).not.toBeNull();
 
     clickButtonByText(rendered.container, 'Diagnostics');
     await flushAsyncWork();
@@ -591,7 +587,7 @@ describe('DesignWorkbenchEstimateClient', () => {
     );
 
     await flushAsyncWork();
-    clickButtonByText(rendered.container, 'Model Space');
+    clickButtonByText(rendered.container, 'Plan');
     await flushAsyncWork();
     clickButtonByText(rendered.container, 'Diagnostics');
     await flushAsyncWork();
@@ -667,7 +663,7 @@ describe('DesignWorkbenchEstimateClient', () => {
     expect(rendered.container.textContent).toContain('not supported for native editing yet');
     expect(rendered.container.textContent).not.toContain('Pergola family');
 
-    clickButtonByText(rendered.container, 'Model Space');
+    clickButtonByText(rendered.container, 'Plan');
     expect(rendered.container.querySelector('[data-plan-resize-handle-hit="plan:lengthA"]')).toBeNull();
     rendered.unmount();
   });
@@ -697,7 +693,7 @@ describe('DesignWorkbenchEstimateClient', () => {
     expect(rendered.container.textContent).toContain('Locked by quote send.');
     expect(footprintSelect?.disabled).toBe(true);
 
-    clickButtonByText(rendered.container, 'Model Space');
+    clickButtonByText(rendered.container, 'Plan');
     expect(rendered.container.querySelector('[data-plan-resize-handle-hit="plan:lengthA"]')).toBeNull();
     rendered.unmount();
   });
@@ -984,7 +980,7 @@ describe('DesignWorkbenchEstimateClient', () => {
         expect(rendered.container.querySelector('[aria-label="Side run (m)"]')).not.toBeNull();
       }
 
-      clickButtonByText(rendered.container, 'Model Space');
+      clickButtonByText(rendered.container, 'Plan');
       await flushAsyncWork();
       expect(rendered.container.querySelector('[data-object-workbench-shape-hit="footprint:house-main"]')).not.toBeNull();
 
@@ -1198,7 +1194,7 @@ describe('DesignWorkbenchEstimateClient', () => {
     expect(Number(viewportDiagnostics?.getAttribute('data-house-roof-solid-expected-count') ?? '0')).toBeGreaterThan(0);
     expect(Number(viewportDiagnostics?.getAttribute('data-house-roof-solid-rendered-count') ?? '0')).toBeGreaterThan(0);
 
-    clickButtonByText(rendered.container, 'Model Space');
+    clickButtonByText(rendered.container, 'Plan');
     await flushAsyncWork();
     expect(rendered.container.querySelector('[data-object-workbench-shape-hit="footprint:house-main"]')).not.toBeNull();
 
@@ -1532,7 +1528,7 @@ describe('DesignWorkbenchEstimateClient', () => {
     expect(readLabeledValue(rendered.container, 'Deck host-edge resolvable')).toBe('Yes');
     expect(readLabeledValue(rendered.container, 'Deck relationship dims')).toBe('Yes');
 
-    clickButtonByText(rendered.container, 'Model Space');
+    clickButtonByText(rendered.container, 'Plan');
     await flushAsyncWork();
 
     expect(readLabeledValue(rendered.container, 'Model-space house polygon')).toBeNull();
@@ -1579,7 +1575,7 @@ describe('DesignWorkbenchEstimateClient', () => {
     await flushAsyncWork();
     clickButtonByText(rendered.container, 'Add deck');
     await flushAsyncWork();
-    clickButtonByText(rendered.container, 'Model Space');
+    clickButtonByText(rendered.container, 'Plan');
     await flushAsyncWork();
 
     expect(readLabeledValue(rendered.container, 'Model-space snap state')).toBeNull();
@@ -1609,7 +1605,7 @@ describe('DesignWorkbenchEstimateClient', () => {
     await flushAsyncWork();
     clickButtonByText(rendered.container, 'Add deck');
     await flushAsyncWork();
-    clickButtonByText(rendered.container, 'Model Space');
+    clickButtonByText(rendered.container, 'Plan');
     await flushAsyncWork();
 
     const deckShape = rendered.container.querySelector('[data-object-workbench-shape-hit="deck:deck-1"]');
@@ -1638,7 +1634,7 @@ describe('DesignWorkbenchEstimateClient', () => {
     await flushAsyncWork();
     clickButtonByText(rendered.container, 'Add deck');
     await flushAsyncWork();
-    clickButtonByText(rendered.container, 'Model Space');
+    clickButtonByText(rendered.container, 'Plan');
     await flushAsyncWork();
 
     const deckShape = rendered.container.querySelector('[data-object-workbench-shape-hit="deck:deck-1"]');
@@ -1683,7 +1679,7 @@ describe('DesignWorkbenchEstimateClient', () => {
     expect(readLabeledValue(rendered.container, 'Slider openings')).toBe('0');
     expect(readLabeledValue(rendered.container, 'Selected opening id')).toBe('opening-1');
 
-    clickButtonByText(rendered.container, 'Model Space');
+    clickButtonByText(rendered.container, 'Plan');
     await flushAsyncWork();
 
     const openingShape = rendered.container.querySelector('[data-object-workbench-shape-hit="opening:opening-1"]');
@@ -1944,7 +1940,7 @@ describe('DesignWorkbenchEstimateClient', () => {
     await flushAsyncWork();
     clickButtonByText(rendered.container, 'House Forms');
     await flushAsyncWork();
-    clickButtonByText(rendered.container, 'Model Space');
+    clickButtonByText(rendered.container, 'Plan');
     await flushAsyncWork();
 
     const openingShape = rendered.container.querySelector('[data-object-workbench-shape-hit="opening:opening-1"]');
@@ -2031,7 +2027,7 @@ describe('DesignWorkbenchEstimateClient', () => {
     await flushAsyncWork();
     clickButtonByText(rendered.container, 'Pergolas');
     await flushAsyncWork();
-    clickButtonByText(rendered.container, 'Model Space');
+    clickButtonByText(rendered.container, 'Plan');
     await flushAsyncWork();
 
     expect(rendered.container.querySelector('[data-model-space-render-contract="top_projection_only"]')).not.toBeNull();

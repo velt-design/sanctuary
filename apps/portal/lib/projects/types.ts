@@ -8,6 +8,7 @@ export type ProjectTaskItem = {
   kind: TaskKind;
   isDone: boolean;
   isManualDone?: boolean;
+  isLocked?: boolean;
   cta?: { label: string; href: string };
 };
 

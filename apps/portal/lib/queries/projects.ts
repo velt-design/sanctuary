@@ -13,13 +13,15 @@ async function fetchProjectPageSnapshot(projectId: string): Promise<ProjectPageS
   return apiJson<ProjectPageSnapshotResponse>(`/api/projects/${encodeURIComponent(projectId)}/snapshot`);
 }
 
-export const projectsListQueryOptions = (host: string) =>
-  queryOptions({
-    queryKey: qk.projects.list(host),
-    queryFn: listProjects,
+export const projectsListQueryOptions = (host: string, options?: { includeArchived?: boolean }) => {
+  const scope = options?.includeArchived ? 'all' : 'active';
+  return queryOptions({
+    queryKey: qk.projects.list(host, scope),
+    queryFn: () => listProjects({ includeArchived: scope === 'all' }),
     staleTime: THIRTY_MINUTES,
     gcTime: ONE_DAY,
   });
+};
 
 export const projectDetailQueryOptions = (host: string, projectId: string) =>
   queryOptions({

@@ -109,6 +109,8 @@ export async function POST(req: Request, ctx: { params: Promise<{ projectId: str
     }
   }
 
+  let stageMoved: { fromStage: string; toStage: string } | null = null;
+
   if (definition.key === 'invoice_paid' && completed) {
     const prev = await supabase.from('projects').select('id, pipeline_stage').eq('id', projectUuid).single();
     if (prev.error || !prev.data) return jsonError('Project not found', 404);
@@ -122,6 +124,8 @@ export async function POST(req: Request, ctx: { params: Promise<{ projectId: str
         .select('id, pipeline_stage')
         .single();
       if (updateRes.error) return jsonError(updateRes.error.message ?? 'Failed to update project stage', 500);
+
+      stageMoved = { fromStage: 'SENT', toStage: 'DEPOSIT' };
 
       await automationRunner.runEvent({
         type: 'pipeline.stage_changed',
@@ -152,6 +156,8 @@ export async function POST(req: Request, ctx: { params: Promise<{ projectId: str
         .select('id, pipeline_stage')
         .single();
       if (updateRes.error) return jsonError(updateRes.error.message ?? 'Failed to update project stage', 500);
+
+      stageMoved = { fromStage: 'DEPOSIT', toStage: 'SCHEDULED' };
 
       await automationRunner.runEvent({
         type: 'pipeline.stage_changed',
@@ -188,5 +194,5 @@ export async function POST(req: Request, ctx: { params: Promise<{ projectId: str
     }
   }
 
-  return jsonOk({ ok: true, taskKey: definition.key, completed });
+  return jsonOk({ ok: true, taskKey: definition.key, completed, ...(stageMoved ? { stageMoved } : null) });
 }

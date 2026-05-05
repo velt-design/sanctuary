@@ -241,7 +241,6 @@ test('drawing workbench mono fixture stays on object-first geometry surfaces', a
   await expect(page.getByText(/Project unavailable|This page could not be found|404|not found/i)).toHaveCount(0);
   await expect(page.getByText(/No plan or section drawing is available|fixture route is not enabled|requires staff auth/i)).toHaveCount(0);
 
-  await page.getByRole('tab', { name: 'Model Space' }).click();
   await page.getByRole('tab', { name: 'Plan' }).click();
   await expectTopProjectionPlanParity(page);
 
@@ -277,7 +276,6 @@ test('drawing workbench ready workbench-solved U hipped roof fixture keeps rollo
   await expect(page.getByText(/Project unavailable|This page could not be found|404|not found/i)).toHaveCount(0);
   await expect(page.getByText(/No plan or section drawing is available|fixture route is not enabled|requires staff auth/i)).toHaveCount(0);
 
-  await page.getByRole('tab', { name: 'Model Space' }).click();
   await page.getByRole('tab', { name: 'Plan' }).click();
   await expectTopProjectionPlanParity(page);
 
@@ -321,7 +319,6 @@ for (const fixtureSlug of ['gable-standard', 'box-standard', 'mono-join-screensh
     await expect(page.getByText(/Project unavailable|This page could not be found|404|not found/i)).toHaveCount(0);
     await expect(page.getByText(/No plan or section drawing is available|fixture route is not enabled|requires staff auth/i)).toHaveCount(0);
 
-    await page.getByRole('tab', { name: 'Model Space' }).click();
     await page.getByRole('tab', { name: 'Plan' }).click();
     await expectTopProjectionPlanParity(page);
 
@@ -363,7 +360,6 @@ test('drawing workbench draw outline fixture places the first point at the landi
   await page.setViewportSize({ width: 1680, height: 1050 });
   await openFixtureDrawingWorkbench(page, 'mono-standard');
 
-  await page.getByRole('tab', { name: 'Model Space' }).click();
   await page.getByRole('tab', { name: 'Plan' }).click();
 
   const modelViewport = page.getByLabel('Plan model space viewport');
@@ -746,7 +742,7 @@ test('drawing workbench model-space smoke', async ({ page }, testInfo) => {
   await expect(page.getByRole('region', { name: 'Drawing workbench' })).toBeVisible({ timeout: 30_000 });
   const appliedMovedHouseContext = await maybeApplyMovedHouse3DContext(page);
 
-  await page.getByRole('tab', { name: 'Model Space' }).click();
+  await page.getByRole('tab', { name: 'Plan' }).click();
   await expect(page.getByLabel('Plan model space viewport')).toBeVisible();
 
   if (await page.getByRole('button', { name: 'Zoom in' }).isVisible().catch(() => false)) {
@@ -778,9 +774,9 @@ test('drawing workbench model-space smoke', async ({ page }, testInfo) => {
     })
     .toBe('auto');
 
-  const sectionToggleBackground = await page.getByRole('tab', { name: 'Section' }).evaluate((node) => getComputedStyle(node).backgroundColor);
+  const planToggleBackground = await page.getByRole('tab', { name: 'Plan' }).evaluate((node) => getComputedStyle(node).backgroundColor);
   const configuratorActionBackground = await page.getByRole('button', { name: 'Open full calculator' }).evaluate((node) => getComputedStyle(node).backgroundColor);
-  expect(sectionToggleBackground).toBeTruthy();
+  expect(planToggleBackground).toBeTruthy();
   expect(configuratorActionBackground).toBeTruthy();
 
   const geometry3dTab = page.getByRole('tab', { name: '3D' });

@@ -1,7 +1,6 @@
 import type { ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import ProjectsIndexClient from './ProjectsIndexClient';
-import { formatPortalDateTime } from '@/lib/format/portalDateTime';
 import type { Contact } from '@/lib/types/contact';
 import type { Project } from '@/lib/types/project';
 import { qk } from '@/lib/queries/keys';
@@ -67,6 +66,7 @@ const initialProjects: Project[] = [
     contactId: 'ct_1',
     projectName: 'Deck Build',
     region: 'North',
+    siteAddress: '12 Beach Road',
     status: 'SENT',
     nextActionDate: '2026-04-03',
   },
@@ -77,7 +77,7 @@ const initialContacts: Contact[] = [
     id: 'ct_1',
     displayName: 'Alex Mason',
     email: 'alex@example.com',
-    phone: '',
+    phone: '021 123 4567',
     createdAt: '2026-04-03T00:00:00.000Z',
     updatedAt: '2026-04-03T00:00:00.000Z',
   },
@@ -108,14 +108,14 @@ describe('ProjectsIndexClient', () => {
       <ProjectsIndexClient
         initialProjects={initialProjects}
         initialContacts={initialContacts}
-        initialFilters={{ query: 'deck', statusFilter: 'SENT', dueFilter: 'today' }}
+        initialFilters={{ query: 'deck', statusFilter: 'SENT', dueFilter: 'today', archiveFilter: 'active' }}
         initialTodayYmd="2026-04-03"
       />,
     );
 
     expect(useQueryMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        queryKey: qk.projects.list('host'),
+        queryKey: qk.projects.list('host', 'active'),
         initialData: initialProjects,
       }),
     );
@@ -127,7 +127,29 @@ describe('ProjectsIndexClient', () => {
     );
     expect((rendered.container.querySelector('#projectSearch') as HTMLInputElement | null)?.value).toBe('deck');
     expect(rendered.container.textContent).toContain('Deck Build');
-    expect(rendered.container.textContent).toContain(formatPortalDateTime('2026-04-03T01:00:00.000Z'));
+    expect(rendered.container.textContent).toContain('021 123 4567');
+    expect(rendered.container.textContent).toContain('12 Beach Road');
+
+    const headers = Array.from(rendered.container.querySelectorAll('th')).map((th) => th.textContent ?? '');
+    expect(headers).toEqual(['Name', 'Client', 'Phone', 'Address', 'Status', 'Actions']);
+
+    rendered.unmount();
+  });
+
+  it('exposes an Active/Archived/All archive filter', () => {
+    const rendered = renderIntoDocument(
+      <ProjectsIndexClient
+        initialProjects={initialProjects}
+        initialContacts={initialContacts}
+        initialFilters={{ query: '', statusFilter: 'all', dueFilter: 'all', archiveFilter: 'active' }}
+        initialTodayYmd="2026-04-03"
+      />,
+    );
+
+    const select = rendered.container.querySelector('#projectArchiveFilter') as HTMLSelectElement | null;
+    expect(select).not.toBeNull();
+    const options = Array.from(select?.querySelectorAll('option') ?? []).map((opt) => opt.value);
+    expect(options).toEqual(['active', 'archived', 'all']);
 
     rendered.unmount();
   });

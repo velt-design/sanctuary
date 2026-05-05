@@ -340,14 +340,19 @@ describe('DrawingWorkbench', () => {
         modelViewportTransform={createDrawingWorkbenchUiState().viewportTransform}
         onModelViewportTransformChange={() => undefined}
         meta={meta}
+        backHref="/staff/projects/proj_1"
         onCommitFootprintEdit={() => ({ ok: true })}
       />,
     );
 
     expect(markup).toContain('aria-label="Drawing workbench"');
     expect(markup).toContain('Sheet View');
-    expect(markup).not.toContain('Model Space');
+    expect(markup).toContain('>Plan<');
     expect(markup).toContain('>3D<');
+    expect(markup).toContain('Back to Project');
+    expect(markup).not.toContain('Model Space');
+    expect(markup).not.toContain('3D View');
+    expect(markup).not.toContain('>Section<');
     expect(markup).not.toContain('next landing zone');
     expect(markup).toContain('aria-label="Plan view A3 drawing sheet"');
     expect(markup).not.toContain('Sheet Preview');
@@ -355,13 +360,15 @@ describe('DrawingWorkbench', () => {
     expect(markup).not.toContain('Drawing Workbench</');
   });
 
-  it('renders pass, warning, and block trust badges in the workbench toolbar', () => {
+  it('renders pass, warning, and block trust badges outside the primary toolbar', () => {
     const passMarkup = renderWorkbenchWithTrust('geometry_ready');
     const warnMarkup = renderWorkbenchWithTrust('geometry_ready', ['approximate']);
     const blockMarkup = renderWorkbenchWithTrust('geometry_ready', ['unresolved_host']);
 
     expect(passMarkup).toContain('data-workbench-trust-status="pass"');
     expect(passMarkup).toContain('Geometry ready');
+    expect(passMarkup).toContain('data-workbench-status-bar="true"');
+    expect(passMarkup).not.toMatch(/data-workbench-primary-nav="true"[^>]*>[^<]*data-workbench-trust-status/);
     expect(warnMarkup).toContain('data-workbench-trust-status="warn"');
     expect(warnMarkup).toContain('Warning: Approximate');
     expect(blockMarkup).toContain('data-workbench-trust-status="block"');
@@ -406,10 +413,9 @@ describe('DrawingWorkbench', () => {
       });
     };
 
-    clickByText('Section');
-    clickByText('Model Space');
+    clickByText('Plan');
 
-    expect(viewChanges).toEqual(['section']);
+    expect(viewChanges).toEqual(['plan']);
     expect(viewportChanges).toEqual(['model']);
 
     rendered.unmount();
@@ -638,7 +644,7 @@ describe('DrawingWorkbench', () => {
     expect(hiddenMarkup).not.toContain('data-plan-primary-fill="true"');
   });
 
-  it('exposes the hidden 3D viewport mode only when explicitly enabled', () => {
+  it('always exposes the 3D primary nav button', () => {
     const drawing = makeDrawingModule();
     const meta = buildEstimateDrawingSheetMeta({
       moduleLabel: 'M1 - Pitched - 6m x 3m - Acrylic',
@@ -655,7 +661,6 @@ describe('DrawingWorkbench', () => {
         view="plan"
         onViewChange={() => undefined}
         viewportMode="sheet"
-        availableViewportModes={['sheet', 'model', 'geometry3d']}
         onViewportModeChange={() => undefined}
         status="ready"
         drawingSurfaceGeometry={drawingSurfaceGeometry}
@@ -668,6 +673,7 @@ describe('DrawingWorkbench', () => {
     );
 
     expect(markup).toContain('>3D<');
+    expect(markup).toContain('data-workbench-nav-id="geometry3d"');
   });
 
   it('routes the 3D branch through viewport geometry before loose preview compatibility props', () => {

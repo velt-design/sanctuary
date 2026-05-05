@@ -6,6 +6,7 @@ function createQuery(result: { data: any; error: any }) {
   const query: any = {
     select: vi.fn(() => query),
     is: vi.fn(() => query),
+    not: vi.fn(() => query),
     order: vi.fn(() => Promise.resolve(result)),
   };
   return query;
@@ -77,6 +78,51 @@ describe('loadProjectsIndexData', () => {
         },
       ],
     });
+  });
+
+  it('queries archived-only projects when archiveFilter is "archived"', async () => {
+    const projectsQuery = createQuery({
+      data: [
+        {
+          id: '11111111-1111-4111-8111-111111111111',
+          name: 'Archived Build',
+          created_at: '2026-04-05T00:00:00.000Z',
+          updated_at: '2026-04-06T00:00:00.000Z',
+          pipeline_stage: 'NEW',
+          archived_at: '2026-05-01T00:00:00.000Z',
+        },
+      ],
+      error: null,
+    });
+
+    fromMock.mockImplementation((table: string) => {
+      if (table === 'projects') return projectsQuery;
+      if (table === 'contacts') return createQuery({ data: [], error: null });
+      throw new Error(`Unexpected table ${table}`);
+    });
+
+    const { loadProjectsIndexData } = await import('./serverProjectsIndex');
+    const result = await loadProjectsIndexData({ from: fromMock } as any, { archiveFilter: 'archived' });
+
+    expect(projectsQuery.not).toHaveBeenCalledWith('archived_at', 'is', null);
+    expect(projectsQuery.is).not.toHaveBeenCalled();
+    expect(result.projects[0]?.isArchived).toBe(true);
+  });
+
+  it('drops the archived_at filter when archiveFilter is "all"', async () => {
+    const projectsQuery = createQuery({ data: [], error: null });
+
+    fromMock.mockImplementation((table: string) => {
+      if (table === 'projects') return projectsQuery;
+      if (table === 'contacts') return createQuery({ data: [], error: null });
+      throw new Error(`Unexpected table ${table}`);
+    });
+
+    const { loadProjectsIndexData } = await import('./serverProjectsIndex');
+    await loadProjectsIndexData({ from: fromMock } as any, { archiveFilter: 'all' });
+
+    expect(projectsQuery.is).not.toHaveBeenCalled();
+    expect(projectsQuery.not).not.toHaveBeenCalled();
   });
 
   it('keeps the archived_at fallback query behavior unchanged', async () => {

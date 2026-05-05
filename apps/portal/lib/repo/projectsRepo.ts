@@ -138,9 +138,12 @@ async function updateWithUnknownColumnRetry(uuid: string, payloadIn: Record<stri
   return { data: null, error: res.error };
 }
 
-export async function listProjects(): Promise<Project[]> {
+export async function listProjects(options?: { includeArchived?: boolean }): Promise<Project[]> {
   const supabase = getSupabaseBrowser();
-  const { data, error } = await supabase.from('projects').select('*').is('archived_at', null).order('created_at', { ascending: false });
+  const includeArchived = Boolean(options?.includeArchived);
+  let query = supabase.from('projects').select('*');
+  if (!includeArchived) query = query.is('archived_at', null);
+  const { data, error } = await query.order('created_at', { ascending: false });
   if (error) throw wrapError('projects', error);
   const projects = (Array.isArray(data) ? data : []).map(projectFromRow);
   return projects.slice().sort((a, b) => b.createdAt.localeCompare(a.createdAt));

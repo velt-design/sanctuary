@@ -81,14 +81,34 @@ function mapProjectRow(row: Record<string, unknown>): Project {
   };
 }
 
-export async function loadProjectsIndexData(supabase?: SupabaseClient): Promise<{
+export type LoadProjectsIndexOptions = {
+  archiveFilter?: 'active' | 'archived' | 'all';
+};
+
+export async function loadProjectsIndexData(
+  supabase?: SupabaseClient,
+  options?: LoadProjectsIndexOptions,
+): Promise<{
   projects: Project[];
   contacts: Contact[];
 }> {
   const client = supabase ?? (await getSupabaseServerAuth());
-  let projectsRes = await client.from('projects').select('*').is('archived_at', null).order('created_at', { ascending: false });
+  const archiveFilter = options?.archiveFilter ?? 'active';
+
+  const buildProjectsQuery = () => {
+    const base = client.from('projects').select('*');
+    if (archiveFilter === 'active') return base.is('archived_at', null).order('created_at', { ascending: false });
+    if (archiveFilter === 'archived') return base.not('archived_at', 'is', null).order('created_at', { ascending: false });
+    return base.order('created_at', { ascending: false });
+  };
+
+  let projectsRes = await buildProjectsQuery();
   if (projectsRes.error && missingColumnFromError(projectsRes.error) === 'archived_at') {
-    projectsRes = await client.from('projects').select('*').order('created_at', { ascending: false });
+    projectsRes =
+      archiveFilter === 'archived'
+        ? // archived_at column is absent, so no archived projects can exist.
+          ({ data: [], error: null } as unknown as typeof projectsRes)
+        : await client.from('projects').select('*').order('created_at', { ascending: false });
   }
   if (projectsRes.error) throw projectsRes.error;
 

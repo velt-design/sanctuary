@@ -11,7 +11,9 @@ export default async function StaffProjectsPage({
 }) {
   const resolvedSearchParams = await searchParams;
   const initialFilters = parseProjectsIndexFilters(resolvedSearchParams ?? {});
-  const { projects, contacts } = await loadProjectsIndexData();
+  const { projects, contacts } = await loadProjectsIndexData(undefined, {
+    archiveFilter: initialFilters.archiveFilter,
+  });
 
   return (
     <ProjectsIndexClient

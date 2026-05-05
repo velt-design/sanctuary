@@ -171,6 +171,7 @@ export type ResolvedTaskItem = {
   kind: TaskKind;
   isDone: boolean;
   isManualDone?: boolean;
+  isLocked?: boolean;
   cta?: { label: string; href: string };
 };
 
@@ -241,30 +242,32 @@ export function resolveStageTasks(
   manualCompleted: Set<TaskKey>,
 ): ResolvedTaskItem[] {
   const stageTasks = STAGE_TASKS[stage] ?? [];
-  return stageTasks
-    .filter((task) => (task.when ? task.when(ctx) : true))
-    .map((task) => {
-      const cta = task.action ? task.action(ctx) : undefined;
-      if (task.kind === 'manual') {
-        const isDone = manualCompleted.has(task.key);
-        return {
-          key: task.key,
-          label: task.label,
-          kind: task.kind,
-          isDone,
-          isManualDone: isDone,
-          ...(cta ? { cta } : null),
-        };
-      }
-      const isDone = typeof task.done === 'function' ? task.done(ctx) : false;
+  return stageTasks.map((task) => {
+    const isLocked = task.when ? !task.when(ctx) : false;
+
+    if (task.kind === 'manual') {
+      const isDone = manualCompleted.has(task.key);
       return {
         key: task.key,
         label: task.label,
         kind: task.kind,
         isDone,
-        ...(cta ? { cta } : null),
+        isManualDone: isDone,
+        ...(isLocked && !isDone ? { isLocked: true } : null),
       };
-    });
+    }
+
+    const isDone = typeof task.done === 'function' ? task.done(ctx) : false;
+    const cta = !isLocked && !isDone && task.action ? task.action(ctx) : undefined;
+    return {
+      key: task.key,
+      label: task.label,
+      kind: task.kind,
+      isDone,
+      ...(cta ? { cta } : null),
+      ...(isLocked && !isDone ? { isLocked: true } : null),
+    };
+  });
 }
 
 export function stageKeyToStatus(stage: PipelineStageKey): Uppercase<PipelineStageKey> {

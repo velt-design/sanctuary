@@ -99,7 +99,7 @@ export async function invalidateProjectReadCaches(
   await Promise.allSettled([
     queryClient.invalidateQueries({ queryKey: qk.projects.snapshot(host, projectId) }),
     includeProjectDetail ? queryClient.invalidateQueries({ queryKey: qk.projects.detail(host, projectId) }) : Promise.resolve(),
-    includeProjectsList ? queryClient.invalidateQueries({ queryKey: qk.projects.list(host) }) : Promise.resolve(),
+    includeProjectsList ? queryClient.invalidateQueries({ queryKey: qk.projects.listPrefix(host) }) : Promise.resolve(),
     opts?.includeQuotes ? queryClient.invalidateQueries({ queryKey: qk.quotes.versionsByProject(host, projectId) }) : Promise.resolve(),
     opts?.includeEstimates ? queryClient.invalidateQueries({ queryKey: qk.estimates.metaByProject(host, projectId) }) : Promise.resolve(),
   ]);

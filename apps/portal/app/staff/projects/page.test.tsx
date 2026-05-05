@@ -12,13 +12,14 @@ vi.mock('@/lib/projects/serverProjectsIndex', () => ({
 vi.mock('./ProjectsIndexClient', () => ({
   default: (props: {
     initialProjects: Array<{ projectName?: string; name?: string }>;
-    initialFilters: { query: string; statusFilter: string; dueFilter: string };
+    initialFilters: { query: string; statusFilter: string; dueFilter: string; archiveFilter: string };
   }) => (
     <div
       data-testid="projects-index"
       data-query={props.initialFilters.query}
       data-status={props.initialFilters.statusFilter}
       data-due={props.initialFilters.dueFilter}
+      data-archive={props.initialFilters.archiveFilter}
     >
       {props.initialProjects.map((project) => project.projectName ?? project.name ?? '').join(',')}
     </div>
@@ -37,10 +38,23 @@ describe('StaffProjectsPage', () => {
     })) as ReactElement;
     const markup = renderToStaticMarkup(ui);
 
-    expect(loadProjectsIndexDataMock).toHaveBeenCalled();
+    expect(loadProjectsIndexDataMock).toHaveBeenCalledWith(undefined, { archiveFilter: 'active' });
     expect(markup).toContain('data-query="deck"');
     expect(markup).toContain('data-status="SENT"');
     expect(markup).toContain('data-due="today"');
+    expect(markup).toContain('data-archive="active"');
     expect(markup).toContain('Deck Build');
+  });
+
+  it('forwards the archive filter to the server loader', async () => {
+    loadProjectsIndexDataMock.mockResolvedValue({ projects: [], contacts: [] });
+
+    const ui = (await StaffProjectsPage({
+      searchParams: Promise.resolve({ archive: 'archived' }),
+    })) as ReactElement;
+    const markup = renderToStaticMarkup(ui);
+
+    expect(loadProjectsIndexDataMock).toHaveBeenCalledWith(undefined, { archiveFilter: 'archived' });
+    expect(markup).toContain('data-archive="archived"');
   });
 });

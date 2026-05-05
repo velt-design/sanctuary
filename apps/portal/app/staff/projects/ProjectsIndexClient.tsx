@@ -5,15 +5,15 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Contact } from '@/lib/types/contact';
 import type { Project } from '@/lib/types/project';
-import { PROJECT_STATUS_ORDER, nextActionTypeLabel, projectStatusLabel } from '@/lib/types/project';
+import { PROJECT_STATUS_ORDER, projectStatusLabel } from '@/lib/types/project';
 import styles from './projects.module.css';
 import PageHeader from '@/components/layout/PageHeader';
 import HeaderActions from '@/components/layout/HeaderActions';
 import { useToast } from '@/components/ui/toast/ToastProvider';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { formatPortalDateTime } from '@/lib/format/portalDateTime';
 import { contactsListQueryOptions } from '@/lib/queries/contacts';
 import { projectPageSnapshotQueryOptions, projectsListQueryOptions } from '@/lib/queries/projects';
+import { qk } from '@/lib/queries/keys';
 import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
 import Modal from '@/components/ui/modal/Modal';
 import { usePortalSession } from '@/components/auth/PortalAuthProvider';
@@ -22,7 +22,7 @@ import {
   buildContactsById,
   filterProjectsForIndex,
   parseProjectsIndexFilters,
-  toYmd,
+  type ArchiveFilter,
   type ProjectsIndexFilters,
 } from './projectIndexFilters';
 
@@ -52,17 +52,20 @@ export default function ProjectsIndexClient({
   const [query, setQuery] = useState(initialFilters.query);
   const [statusFilter, setStatusFilter] = useState<Project['status'] | 'all'>(initialFilters.statusFilter);
   const [dueFilter, setDueFilter] = useState<'all' | 'due' | 'overdue' | 'today'>(initialFilters.dueFilter);
+  const [archiveFilter, setArchiveFilter] = useState<ArchiveFilter>(initialFilters.archiveFilter);
   const [deleteTarget, setDeleteTarget] = useState<Project | null>(null);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [deleteReason, setDeleteReason] = useState('');
   const [isDeleteBusy, setIsDeleteBusy] = useState(false);
+  const [archiveBusyId, setArchiveBusyId] = useState<string | null>(null);
 
   const host = useMemo(() => supabaseHostFromUrl(supabaseRuntimeUrl()) || 'unknown', []);
   const queryClient = useQueryClient();
   const prefetchedSnapshotsRef = useRef(new Set<string>());
 
+  const includeArchived = archiveFilter !== 'active';
   const { data: projectsData, error: projectsError } = useQuery({
-    ...projectsListQueryOptions(host),
+    ...projectsListQueryOptions(host, { includeArchived }),
     initialData: initialProjects,
   });
   const { data: contactsData, error: contactsError } = useQuery({
@@ -78,6 +81,7 @@ export default function ProjectsIndexClient({
     setStatusFilter(nextFilters.statusFilter);
     setQuery(nextFilters.query);
     setDueFilter(nextFilters.dueFilter);
+    setArchiveFilter(nextFilters.archiveFilter);
   }, [searchParams]);
 
   useEffect(() => {
@@ -120,10 +124,11 @@ export default function ProjectsIndexClient({
         query,
         statusFilter,
         dueFilter,
+        archiveFilter,
       },
       initialTodayYmd,
     );
-  }, [contactsById, dueFilter, initialTodayYmd, projects, query, statusFilter]);
+  }, [archiveFilter, contactsById, dueFilter, initialTodayYmd, projects, query, statusFilter]);
 
   const prefetchProjectSnapshot = (projectId: string) => {
     const token = `${host}:${projectId}`;
@@ -144,6 +149,33 @@ export default function ProjectsIndexClient({
     setDeleteTarget(null);
     setDeleteConfirmText('');
     setDeleteReason('');
+  };
+
+  const toggleArchive = async (project: Project) => {
+    if (archiveBusyId) return;
+    const willArchive = !project.isArchived;
+    setArchiveBusyId(project.id);
+    try {
+      const res = await fetch(`/api/projects/${encodeURIComponent(project.id)}/details`, {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          project: { archivedAt: willArchive ? new Date().toISOString() : null },
+        }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        const msg = typeof body?.error === 'string' ? body.error : willArchive ? 'Failed to archive project' : 'Failed to unarchive project';
+        throw new Error(msg);
+      }
+      toast.success(willArchive ? 'Project archived.' : 'Project restored.');
+      await queryClient.invalidateQueries({ queryKey: qk.projects.listPrefix(host) });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to update archive state';
+      toast.error(msg);
+    } finally {
+      setArchiveBusyId(null);
+    }
   };
 
   const requiredDeleteText = deleteTarget ? requiredDeleteConfirmation(deleteTarget.id, deleteTarget.status ?? 'NEW') : '';
@@ -180,7 +212,7 @@ export default function ProjectsIndexClient({
                   id="projectSearch"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Name, client, address…"
+                  placeholder="Name, client, phone, address…"
                 />
               </div>
 
@@ -193,6 +225,19 @@ export default function ProjectsIndexClient({
                       {projectStatusLabel(status)}
                     </option>
                   ))}
+                </select>
+              </div>
+
+              <div className={styles.field}>
+                <label htmlFor="projectArchiveFilter">Archive</label>
+                <select
+                  id="projectArchiveFilter"
+                  value={archiveFilter}
+                  onChange={(e) => setArchiveFilter(e.target.value as ArchiveFilter)}
+                >
+                  <option value="active">Active</option>
+                  <option value="archived">Archived</option>
+                  <option value="all">All</option>
                 </select>
               </div>
 
@@ -232,19 +277,19 @@ export default function ProjectsIndexClient({
                     <tr>
                       <th>Name</th>
                       <th>Client</th>
-                      <th>Region</th>
+                      <th>Phone</th>
+                      <th>Address</th>
                       <th>Status</th>
-                      <th>Next action</th>
-                      <th>Last activity</th>
-                      <th />
+                      <th>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {filteredProjects.map((p) => {
-                      const nextActionDate = toYmd(p.nextActionDate ?? p.followUpDate) ?? '';
-                      const due = nextActionDate ? nextActionDate <= initialTodayYmd : false;
-                      const overdue = nextActionDate ? nextActionDate < initialTodayYmd : false;
-                      const lastActivity = p.activity?.[0]?.createdAt ?? p.updatedAt ?? p.createdAt;
+                      const contact = p.contactId ? contactsById.get(p.contactId) : null;
+                      const clientLabel = contact?.displayName ?? p.clientName ?? '—';
+                      const phoneLabel = contact?.phone || (p as { phone?: string }).phone || '—';
+                      const addressLabel = p.siteAddress ?? p.address ?? '—';
+                      const isArchiveBusy = archiveBusyId === p.id;
                       return (
                         <tr
                           key={p.id}
@@ -261,13 +306,9 @@ export default function ProjectsIndexClient({
                           }}
                         >
                           <td>{p.projectName ?? p.name ?? '—'}</td>
-                          <td className={styles.muted}>
-                            {(() => {
-                              const contact = p.contactId ? contactsById.get(p.contactId) : null;
-                              return contact?.displayName ?? p.clientName ?? '—';
-                            })()}
-                          </td>
-                          <td className={styles.muted}>{p.region ?? '—'}</td>
+                          <td className={styles.muted}>{clientLabel}</td>
+                          <td className={styles.muted}>{phoneLabel}</td>
+                          <td className={styles.muted}>{addressLabel}</td>
                           <td>
                             <span className={styles.statusPill}>{projectStatusLabel(p.status ?? 'NEW')}</span>
                             {p.isLost ? (
@@ -281,16 +322,6 @@ export default function ProjectsIndexClient({
                               </span>
                             ) : null}
                           </td>
-                          <td className={styles.muted}>
-                            {nextActionDate || '—'}
-                            {p.nextActionType ? (
-                              <span className={styles.muted} style={{ marginLeft: 8, fontSize: 12 }}>
-                                {nextActionTypeLabel(p.nextActionType as any)}
-                              </span>
-                            ) : null}{' '}
-                            {due ? <span className={styles.dueBadge}>{overdue ? 'Overdue' : 'Due today'}</span> : null}
-                          </td>
-                          <td className={styles.muted}>{formatPortalDateTime(lastActivity)}</td>
                           <td>
                             <div className={styles.rowActions}>
                               <Link
@@ -300,6 +331,24 @@ export default function ProjectsIndexClient({
                               >
                                 Open
                               </Link>
+                              <button
+                                type="button"
+                                className={styles.link}
+                                disabled={isArchiveBusy}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  void toggleArchive(p);
+                                }}
+                                onKeyDown={(e) => e.stopPropagation()}
+                              >
+                                {isArchiveBusy
+                                  ? p.isArchived
+                                    ? 'Restoring…'
+                                    : 'Archiving…'
+                                  : p.isArchived
+                                    ? 'Unarchive'
+                                    : 'Archive'}
+                              </button>
                               {isAdmin ? (
                                 <button
                                   type="button"
@@ -400,7 +449,7 @@ export default function ProjectsIndexClient({
                     setDeleteTarget(null);
                     setDeleteConfirmText('');
                     setDeleteReason('');
-                    await queryClient.invalidateQueries({ queryKey: projectsListQueryOptions(host).queryKey });
+                    await queryClient.invalidateQueries({ queryKey: qk.projects.listPrefix(host) });
                   } catch (err) {
                     const msg = err instanceof Error ? err.message : 'Failed to delete project';
                     toast.error(msg);

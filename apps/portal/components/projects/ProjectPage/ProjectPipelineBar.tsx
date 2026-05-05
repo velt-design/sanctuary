@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import type { ProjectStage } from '@/lib/projects/types';
 import { PIPELINE_STAGES, PIPELINE_STAGE_LABELS, stageKeyToStatus } from '@/lib/projects/pipelineDefinition';
 import { correctProjectStage } from '@/lib/repo/projectsRepo';
@@ -17,6 +17,16 @@ type StageConfirmState = {
   next: ProjectStage;
   label: string;
 };
+
+const STAGE_ORDER = PIPELINE_STAGES.map((item) => item.key);
+const DEPOSIT_INDEX = STAGE_ORDER.indexOf('deposit');
+
+function requiresConfirmation(currentStage: ProjectStage, nextStage: ProjectStage): boolean {
+  const currentIdx = STAGE_ORDER.indexOf(currentStage);
+  const nextIdx = STAGE_ORDER.indexOf(nextStage);
+  if (currentIdx === -1 || nextIdx === -1) return true;
+  return currentIdx >= DEPOSIT_INDEX || nextIdx >= DEPOSIT_INDEX;
+}
 
 export default function ProjectPipelineBar({
   projectId,
@@ -38,26 +48,70 @@ export default function ProjectPipelineBar({
   const [reason, setReason] = useState('');
   const [busy, setBusy] = useState(false);
 
-  const stageOrder = useMemo(() => PIPELINE_STAGES.map((item) => item.key), []);
-  const currentIndex = stageOrder.indexOf(stage);
-  const nextIndex = confirm ? stageOrder.indexOf(confirm.next) : -1;
+  const currentIndex = STAGE_ORDER.indexOf(stage);
+  const nextIndex = confirm ? STAGE_ORDER.indexOf(confirm.next) : -1;
   const rollback = Boolean(confirm && currentIndex !== -1 && nextIndex !== -1 && nextIndex < currentIndex);
   const currentLabel = PIPELINE_STAGE_LABELS[stage] ?? String(stage);
+
+  const applyCorrection = useCallback(
+    async (nextStage: ProjectStage, label: string, reasonText: string | null) => {
+      try {
+        const result = await correctProjectStage(projectId, stageKeyToStatus(nextStage), {
+          reason: reasonText,
+        });
+        if (result.rollback) {
+          toast.success(`Stage corrected to ${label}. Reset ${result.resetManualTaskCount} manual checkmark(s).`);
+        } else {
+          toast.success(`Stage corrected to ${label}.`);
+        }
+        patchProjectSnapshot(queryClient, hostKey, projectId, (current) => {
+          if (!current) return current;
+          return {
+            ...current,
+            generatedAt: new Date().toISOString(),
+            snapshot: {
+              ...current.snapshot,
+              project: { ...current.snapshot.project, stage: nextStage },
+              pipeline: { stage: nextStage },
+              tasks: { ...current.snapshot.tasks, stage: nextStage },
+            },
+          };
+        });
+        patchProjectListItem(queryClient, hostKey, projectId, (project) => ({
+          ...project,
+          status: stageKeyToStatus(nextStage),
+        }));
+        void invalidateProjectReadCaches(queryClient, hostKey, projectId);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Failed to correct stage';
+        toast.error(msg);
+        throw err;
+      }
+    },
+    [hostKey, projectId, queryClient, toast],
+  );
+
+  const handleRequestChange = useCallback(
+    (next: ProjectStage, label: string) => {
+      if (busy) return;
+      if (!requiresConfirmation(stage, next)) {
+        setBusy(true);
+        void applyCorrection(next, label, null).finally(() => setBusy(false));
+        return;
+      }
+      setConfirm({ next, label });
+      setConfirmText('');
+      setReason('');
+    },
+    [applyCorrection, busy, stage],
+  );
 
   const pipeline = (
     <LegacyChevronPipeline
       stage={stage}
       compact={compact}
       disabled={busy}
-      onRequestChange={
-        isAdmin
-          ? (next, label) => {
-              setConfirm({ next, label });
-              setConfirmText('');
-              setReason('');
-            }
-          : undefined
-      }
+      onRequestChange={isAdmin ? handleRequestChange : undefined}
     />
   );
 
@@ -95,44 +149,16 @@ export default function ProjectPipelineBar({
                 onClick={() => {
                   if (busy || !confirm) return;
                   setBusy(true);
-                  void (async () => {
-                    try {
-                      const result = await correctProjectStage(projectId, stageKeyToStatus(confirm.next), {
-                        reason: reason.trim() || null,
-                      });
-                      if (result.rollback) {
-                        toast.success(`Stage corrected to ${confirm.label}. Reset ${result.resetManualTaskCount} manual checkmark(s).`);
-                      } else {
-                        toast.success(`Stage corrected to ${confirm.label}.`);
-                      }
-                      patchProjectSnapshot(queryClient, hostKey, projectId, (current) => {
-                        if (!current) return current;
-                        return {
-                          ...current,
-                          generatedAt: new Date().toISOString(),
-                          snapshot: {
-                            ...current.snapshot,
-                            project: { ...current.snapshot.project, stage: confirm.next },
-                            pipeline: { stage: confirm.next },
-                            tasks: { ...current.snapshot.tasks, stage: confirm.next },
-                          },
-                        };
-                      });
-                      patchProjectListItem(queryClient, hostKey, projectId, (project) => ({
-                        ...project,
-                        status: stageKeyToStatus(confirm.next),
-                      }));
+                  void applyCorrection(confirm.next, confirm.label, reason.trim() || null)
+                    .then(() => {
                       setConfirm(null);
                       setConfirmText('');
                       setReason('');
-                      void invalidateProjectReadCaches(queryClient, hostKey, projectId);
-                    } catch (err) {
-                      const msg = err instanceof Error ? err.message : 'Failed to correct stage';
-                      toast.error(msg);
-                    } finally {
-                      setBusy(false);
-                    }
-                  })();
+                    })
+                    .catch(() => {
+                      // toast surfaced inside applyCorrection; keep modal open for retry
+                    })
+                    .finally(() => setBusy(false));
                 }}
               >
                 {busy ? 'Applying...' : `Move to ${confirm.label}`}

@@ -47,9 +47,11 @@ describe('DesignWorkbenchFixtureClient', () => {
     );
 
     expect(rendered.container.textContent).toContain('Sheet View');
-    expect(rendered.container.textContent).toContain('Model Space');
+    expect(rendered.container.textContent).toContain('Plan');
     expect(rendered.container.textContent).toContain('3D');
     expect(rendered.container.textContent).toContain('Back to Project');
+    expect(rendered.container.textContent).not.toContain('Model Space');
+    expect(rendered.container.textContent).not.toContain('3D View');
     expect(rendered.container.textContent).toContain('Fixture Preview');
     expect(rendered.container.textContent).not.toContain('Rotate +90');
 
@@ -64,7 +66,7 @@ describe('DesignWorkbenchFixtureClient', () => {
     expect(rendered.container.textContent).toContain('Measurement');
     expect(rendered.container.textContent).toContain('Enable measurement');
 
-    clickButtonByText(rendered.container, 'Model Space');
+    clickButtonByText(rendered.container, 'Plan');
     await act(async () => {
       await Promise.resolve();
     });
@@ -72,14 +74,6 @@ describe('DesignWorkbenchFixtureClient', () => {
     expect(rendered.container.querySelector('[aria-label="Plan model space viewport"]')).not.toBeNull();
     expect(rendered.container.textContent).toContain('Fit view');
     expect(rendered.container.textContent).not.toContain('Rotate +90');
-
-    clickButtonByText(rendered.container, 'Section');
-    await act(async () => {
-      await Promise.resolve();
-    });
-
-    expect(rendered.container.querySelector('[aria-label="Section model space viewport"]')).not.toBeNull();
-    expect(rendered.container.querySelector('[aria-label="Module section view"]')).not.toBeNull();
 
     rendered.unmount();
   });

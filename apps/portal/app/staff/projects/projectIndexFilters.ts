@@ -4,11 +4,13 @@ import { portalTodayYmd } from '@/lib/format/portalDateTime';
 import { normalizeProjectStatus } from '@/lib/types/project';
 
 export type DueFilter = 'all' | 'due' | 'overdue' | 'today';
+export type ArchiveFilter = 'active' | 'archived' | 'all';
 
 export type ProjectsIndexFilters = {
   query: string;
   statusFilter: Project['status'] | 'all';
   dueFilter: DueFilter;
+  archiveFilter: ArchiveFilter;
 };
 
 type SearchParamSource = URLSearchParams | Record<string, string | string[] | undefined>;
@@ -34,11 +36,16 @@ export function todayYmd(now: Date | string | number = new Date()): string {
   return portalTodayYmd(now);
 }
 
+export function normalizePhone(value: string | null | undefined): string {
+  return (value ?? '').replace(/\D+/g, '');
+}
+
 export function parseProjectsIndexFilters(searchParams: SearchParamSource): ProjectsIndexFilters {
   const statusParam = readParam(searchParams, 'status').trim();
   const query = readParam(searchParams, 'q').trim();
   const dueParam = readParam(searchParams, 'due').trim().toLowerCase();
   const dueFlag = readParam(searchParams, 'nextActionDue').trim().toLowerCase();
+  const archiveParam = readParam(searchParams, 'archive').trim().toLowerCase();
 
   const statusFilter =
     !statusParam || statusParam.toLowerCase() === 'all'
@@ -52,10 +59,14 @@ export function parseProjectsIndexFilters(searchParams: SearchParamSource): Proj
     dueFilter = 'due';
   }
 
+  const archiveFilter: ArchiveFilter =
+    archiveParam === 'archived' || archiveParam === 'all' ? archiveParam : 'active';
+
   return {
     query,
     statusFilter,
     dueFilter,
+    archiveFilter,
   };
 }
 
@@ -71,9 +82,15 @@ export function filterProjectsForIndex(
   filters: ProjectsIndexFilters,
   nowYmd: string,
 ): Project[] {
-  const needle = filters.query.trim().toLowerCase();
+  const rawNeedle = filters.query.trim();
+  const needle = rawNeedle.toLowerCase();
+  const phoneNeedle = normalizePhone(rawNeedle);
 
   return projects.filter((project) => {
+    const isArchived = Boolean(project.isArchived);
+    if (filters.archiveFilter === 'active' && isArchived) return false;
+    if (filters.archiveFilter === 'archived' && !isArchived) return false;
+
     if (filters.statusFilter !== 'all' && (project.status ?? 'NEW') !== filters.statusFilter) return false;
 
     const nextAction = toYmd(project.nextActionDate ?? project.followUpDate);
@@ -87,11 +104,15 @@ export function filterProjectsForIndex(
     if (!needle) return true;
 
     const contact = project.contactId ? contactsById.get(project.contactId) : null;
+    const contactPhone = contact?.phone ?? '';
+    const projectPhone = (project as { phone?: string }).phone ?? '';
     const haystack = [
       project.projectName ?? project.name ?? '',
       project.clientName ?? '',
       contact?.displayName ?? '',
       contact?.email ?? '',
+      contactPhone,
+      projectPhone,
       project.region ?? '',
       project.siteAddress ?? project.address ?? '',
       project.quoteRef ?? '',
@@ -99,6 +120,13 @@ export function filterProjectsForIndex(
       .join(' ')
       .toLowerCase();
 
-    return haystack.includes(needle);
+    if (haystack.includes(needle)) return true;
+
+    if (phoneNeedle.length >= 3) {
+      const phoneHaystack = `${normalizePhone(contactPhone)} ${normalizePhone(projectPhone)}`;
+      if (phoneHaystack.includes(phoneNeedle)) return true;
+    }
+
+    return false;
   });
 }
