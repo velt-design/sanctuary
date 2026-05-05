@@ -5,7 +5,10 @@ import {
   DEFAULT_DIMENSION_OFFSET_MM,
   buildEdgeDimensions,
   buildSelectionDimensions,
+  buildSliceDimensions,
+  extractAxisSlices,
   formatDimensionLengthMm,
+  isRectilinearPolygon,
   resolvePlanDimensionGeometry,
   type PlanDimension,
 } from './planDimension';
@@ -225,31 +228,109 @@ describe('buildSelectionDimensions', () => {
       ],
     };
 
-    it('emits per-edge dims when a primary edit polygon is found', () => {
+    it('emits slice dims for a rectilinear primary edit polygon', () => {
       const dims = buildSelectionDimensions([HOUSE_FOOTPRINT_RECT], 'house_forms');
-      expect(dims).toHaveLength(4);
-      for (let i = 0; i < 4; i += 1) {
-        expect(dims[i]?.id).toBe(`house-footprint:edge:${i}`);
-      }
+      expect(dims).toHaveLength(2);
+      expect(dims[0]?.id).toBe('house-footprint:slice:x:0-4000');
+      expect(dims[1]?.id).toBe('house-footprint:slice:y:0-3000');
     });
 
-    it('falls back to bounding-box dims when no primary kind is found in the selection', () => {
+    it('emits slice + total dims for a U-shape footprint (3 x-slices, 2 y-slices, 2 totals)', () => {
       const dims = buildSelectionDimensions(
         [
           {
-            id: 'house-wall',
+            id: 'u-house',
             family: 'house',
-            kind: 'wall_segment',
+            kind: 'footprint',
             polygon: [
               { x: 0, y: 0 },
-              { x: 1000, y: 0 },
-              { x: 1000, y: 100 },
-              { x: 0, y: 100 },
+              { x: 6000, y: 0 },
+              { x: 6000, y: 4000 },
+              { x: 4000, y: 4000 },
+              { x: 4000, y: 1500 },
+              { x: 2000, y: 1500 },
+              { x: 2000, y: 4000 },
+              { x: 0, y: 4000 },
             ],
           },
         ],
         'house_forms',
       );
+      const ids = dims.map((dim) => dim.id);
+      expect(ids).toEqual([
+        'u-house:slice:x:0-2000',
+        'u-house:slice:x:2000-4000',
+        'u-house:slice:x:4000-6000',
+        'u-house:total:x',
+        'u-house:slice:y:0-1500',
+        'u-house:slice:y:1500-4000',
+        'u-house:total:y',
+      ]);
+    });
+
+    it('falls back to per-edge dims for a non-rectilinear edit polygon', () => {
+      const rotatedTriangle = {
+        id: 'tri',
+        family: 'pergola',
+        kind: 'roof_plane',
+        polygon: [
+          { x: 0, y: 0 },
+          { x: 1000, y: 100 },
+          { x: 500, y: 800 },
+        ],
+      };
+      const dims = buildSelectionDimensions([rotatedTriangle], 'pergolas');
+      expect(dims.every((dim) => dim.id.startsWith('tri:edge:'))).toBe(true);
+      expect(dims).toHaveLength(3);
+    });
+
+    it('derives slice dims from merged halo vertices when no primary edit polygon exists', () => {
+      const dims = buildSelectionDimensions(
+        [
+          {
+            id: 'roof-1',
+            family: 'house',
+            kind: 'roof',
+            polygon: [
+              { x: 0, y: 0 },
+              { x: 2000, y: 0 },
+              { x: 1000, y: 1000 },
+            ],
+          },
+          {
+            id: 'roof-2',
+            family: 'house',
+            kind: 'roof',
+            polygon: [
+              { x: 2000, y: 0 },
+              { x: 4000, y: 0 },
+              { x: 3000, y: 1000 },
+            ],
+          },
+        ],
+        'house_forms',
+      );
+      const ids = dims.map((dim) => dim.id);
+      expect(ids).toContain('selection-merged:slice:x:0-1000');
+      expect(ids).toContain('selection-merged:slice:x:1000-2000');
+      expect(ids).toContain('selection-merged:slice:x:2000-3000');
+      expect(ids).toContain('selection-merged:slice:x:3000-4000');
+      expect(ids).toContain('selection-merged:total:x');
+    });
+
+    it('falls back to bounding-box dims when merged halo would produce too many slices', () => {
+      const noisyItems = Array.from({ length: 12 }).map((_, i) => ({
+        id: `noise-${i}`,
+        family: 'house',
+        kind: 'roof',
+        polygon: [
+          { x: i * 137, y: 0 },
+          { x: i * 137 + 100, y: 0 },
+          { x: i * 137 + 100, y: i * 91 + 50 },
+          { x: i * 137, y: i * 91 + 50 },
+        ],
+      }));
+      const dims = buildSelectionDimensions(noisyItems, 'house_forms');
       expect(dims.map((dim) => dim.id)).toEqual(['selection:width', 'selection:height']);
     });
 
@@ -271,7 +352,7 @@ describe('buildSelectionDimensions', () => {
         ],
         'house_forms',
       );
-      expect(dims.every((dim) => dim.id.startsWith('house-footprint:edge:'))).toBe(true);
+      expect(dims.every((dim) => dim.id.startsWith('house-footprint:'))).toBe(true);
     });
 
     it('accepts deck and landing kinds for the decks family', () => {
@@ -291,8 +372,9 @@ describe('buildSelectionDimensions', () => {
         ],
         'decks',
       );
-      expect(dims.length).toBe(4);
-      expect(dims[0]?.id).toBe('landing-floor:edge:0');
+      expect(dims).toHaveLength(2);
+      expect(dims[0]?.id).toBe('landing-floor:slice:x:0-1500');
+      expect(dims[1]?.id).toBe('landing-floor:slice:y:0-1500');
     });
   });
 });
@@ -375,5 +457,162 @@ describe('buildEdgeDimensions', () => {
       const dimRadius = Math.hypot(dimCenterX - centroid.x, dimCenterY - centroid.y);
       expect(dimRadius).toBeGreaterThan(edgeRadius);
     }
+  });
+});
+
+describe('isRectilinearPolygon', () => {
+  it('returns true for a basic axis-aligned rectangle', () => {
+    expect(
+      isRectilinearPolygon([
+        { x: 0, y: 0 },
+        { x: 1000, y: 0 },
+        { x: 1000, y: 500 },
+        { x: 0, y: 500 },
+      ]),
+    ).toBe(true);
+  });
+
+  it('returns true for an axis-aligned U-shape', () => {
+    expect(
+      isRectilinearPolygon([
+        { x: 0, y: 0 },
+        { x: 6000, y: 0 },
+        { x: 6000, y: 4000 },
+        { x: 4000, y: 4000 },
+        { x: 4000, y: 1500 },
+        { x: 2000, y: 1500 },
+        { x: 2000, y: 4000 },
+        { x: 0, y: 4000 },
+      ]),
+    ).toBe(true);
+  });
+
+  it('returns false for a polygon with a single diagonal edge', () => {
+    expect(
+      isRectilinearPolygon([
+        { x: 0, y: 0 },
+        { x: 1000, y: 0 },
+        { x: 1500, y: 800 },
+        { x: 0, y: 800 },
+      ]),
+    ).toBe(false);
+  });
+
+  it('returns false for a polygon with fewer than 3 vertices', () => {
+    expect(isRectilinearPolygon([{ x: 0, y: 0 }, { x: 100, y: 0 }])).toBe(false);
+  });
+
+  it('tolerates small angular noise within the default 5 degree threshold', () => {
+    expect(
+      isRectilinearPolygon([
+        { x: 0, y: 0 },
+        { x: 1000, y: 30 },
+        { x: 1000, y: 500 },
+        { x: 0, y: 500 },
+      ]),
+    ).toBe(true);
+  });
+});
+
+describe('extractAxisSlices', () => {
+  it('returns one x-slice and one y-slice for a rectangle', () => {
+    const { xSlices, ySlices } = extractAxisSlices([
+      { x: 0, y: 0 },
+      { x: 4000, y: 0 },
+      { x: 4000, y: 3000 },
+      { x: 0, y: 3000 },
+    ]);
+    expect(xSlices).toEqual([[0, 4000]]);
+    expect(ySlices).toEqual([[0, 3000]]);
+  });
+
+  it('returns 3 x-slices and 2 y-slices for the canonical U-shape', () => {
+    const { xSlices, ySlices } = extractAxisSlices([
+      { x: 0, y: 0 },
+      { x: 6000, y: 0 },
+      { x: 6000, y: 4000 },
+      { x: 4000, y: 4000 },
+      { x: 4000, y: 1500 },
+      { x: 2000, y: 1500 },
+      { x: 2000, y: 4000 },
+      { x: 0, y: 4000 },
+    ]);
+    expect(xSlices).toEqual([
+      [0, 2000],
+      [2000, 4000],
+      [4000, 6000],
+    ]);
+    expect(ySlices).toEqual([
+      [0, 1500],
+      [1500, 4000],
+    ]);
+  });
+});
+
+describe('buildSliceDimensions', () => {
+  const RECT = {
+    id: 'rect',
+    polygon: [
+      { x: 0, y: 0 },
+      { x: 4000, y: 0 },
+      { x: 4000, y: 3000 },
+      { x: 0, y: 3000 },
+    ],
+  };
+
+  it('emits one x-slice + one y-slice (no totals) for a single-slice rectangle', () => {
+    const dims = buildSliceDimensions(RECT);
+    expect(dims.map((dim) => dim.id)).toEqual(['rect:slice:x:0-4000', 'rect:slice:y:0-3000']);
+  });
+
+  it('emits totals only when there are 2+ slices on an axis', () => {
+    const dims = buildSliceDimensions({
+      id: 'u',
+      polygon: [
+        { x: 0, y: 0 },
+        { x: 6000, y: 0 },
+        { x: 6000, y: 4000 },
+        { x: 4000, y: 4000 },
+        { x: 4000, y: 1500 },
+        { x: 2000, y: 1500 },
+        { x: 2000, y: 4000 },
+        { x: 0, y: 4000 },
+      ],
+    });
+    expect(dims.find((dim) => dim.id === 'u:total:x')).toBeDefined();
+    expect(dims.find((dim) => dim.id === 'u:total:y')).toBeDefined();
+  });
+
+  it('places x-slice dim lines above the polygon and y-slice dim lines outside the left edge', () => {
+    const dims = buildSliceDimensions(RECT);
+    const xSlice = dims.find((dim) => dim.id === 'rect:slice:x:0-4000')!;
+    const ySlice = dims.find((dim) => dim.id === 'rect:slice:y:0-3000')!;
+    expect(xSlice.start.y).toBe(0);
+    expect(xSlice.offsetMm).toBeLessThan(0);
+    expect(ySlice.start.x).toBe(0);
+    expect(ySlice.offsetMm).toBeGreaterThan(0);
+  });
+
+  it('places the x-total dim further from the polygon than the x-slice chain', () => {
+    const dims = buildSliceDimensions({
+      id: 'u',
+      polygon: [
+        { x: 0, y: 0 },
+        { x: 6000, y: 0 },
+        { x: 6000, y: 4000 },
+        { x: 4000, y: 4000 },
+        { x: 4000, y: 1500 },
+        { x: 2000, y: 1500 },
+        { x: 2000, y: 4000 },
+        { x: 0, y: 4000 },
+      ],
+    });
+    const slice = dims.find((dim) => dim.id === 'u:slice:x:0-2000')!;
+    const total = dims.find((dim) => dim.id === 'u:total:x')!;
+    expect(Math.abs(total.offsetMm!)).toBeGreaterThan(Math.abs(slice.offsetMm!));
+  });
+
+  it('returns an empty list for an empty or degenerate polygon', () => {
+    expect(buildSliceDimensions({ id: 'empty', polygon: [] })).toEqual([]);
   });
 });
