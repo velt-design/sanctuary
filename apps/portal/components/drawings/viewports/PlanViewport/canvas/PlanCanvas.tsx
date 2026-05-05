@@ -75,8 +75,9 @@ export function PlanCanvas({
 
   const dispatchPlanPointer = useCallback(
     (kind: 'down' | 'move' | 'up', event: ReactPointerEvent<Element>, shape: Parameters<typeof dispatcher.dispatchPointerDown>[0]['shape']) => {
+      const target = event.currentTarget as SVGElement;
       const point = clientPointToPlanProjection(
-        event.currentTarget.ownerSVGElement ?? (event.currentTarget as unknown as SVGSVGElement),
+        target.ownerSVGElement ?? (target as unknown as SVGSVGElement),
         event.clientX,
         event.clientY,
         coordinateAdapter,
