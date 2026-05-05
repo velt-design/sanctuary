@@ -26,6 +26,7 @@ import type { CalculatorHouseFootprintPolygonPoint } from '@/lib/types/calculato
 import { type Geometry3DViewportState } from '@/components/drawings/viewports/Geometry3DViewport';
 import DesignViewport from '@/components/drawings/viewports/DesignViewport';
 import PlanViewport from '@/components/drawings/viewports/PlanViewport/PlanViewport';
+import { buildExtentsDimensions } from '@/components/drawings/viewports/PlanViewport/canvas/planDimension';
 import ModelSpaceViewport from '@/components/drawings/viewports/ModelSpaceViewport';
 import SheetViewport from '@/components/drawings/viewports/SheetViewport';
 import styles from './DrawingWorkbench.module.css';
@@ -160,6 +161,9 @@ export default function WorkbenchViewportHost({
           objectWorkbenchDisplayFamily={objectWorkbenchDisplayFamily}
           visibility={visibility}
           activeObjectRef={activeObjectRef}
+          dimensions={buildExtentsDimensions(
+            routedDrawingSurfaceGeometry?.artifact?.topProjection?.extents ?? null,
+          )}
           viewportTransform={modelViewportTransform}
           onViewportTransformChange={onModelViewportTransformChange}
           onSelectObjectWorkbenchTarget={onSelectObjectWorkbenchTarget}

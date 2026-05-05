@@ -21,7 +21,10 @@ import type { PlanSvgPoint } from '@/lib/drawings/views/plan/planCoordinateAdapt
 import { PlanCanvas } from './canvas/PlanCanvas';
 import { resolvePlanLayout } from './canvas/planLayout';
 import { activeObjectMatchesPlanShape } from './canvas/selectionMatch';
+import type { PlanDimension } from './canvas/planDimension';
 import type { PlanRenderItem } from './canvas/planRenderItem';
+
+export type { PlanDimension } from './canvas/planDimension';
 import { ToolDispatcherProvider } from './tools/ToolDispatcher';
 import { createSelectTool } from './tools/SelectTool';
 
@@ -37,6 +40,7 @@ export type PlanViewportProps = {
   objectWorkbenchDisplayFamily?: ObjectWorkbenchDisplayFamily;
   visibility?: DrawingWorkbenchVisibilityState;
   activeObjectRef?: WorkbenchObjectRef | null;
+  dimensions?: ReadonlyArray<PlanDimension>;
   viewportTransform: DrawingWorkbenchViewportTransform;
   onViewportTransformChange: (next: DrawingWorkbenchViewportTransform) => void;
   onSelectObjectWorkbenchTarget?: (selection: ObjectWorkbenchViewportTargetSelection) => void;
@@ -75,6 +79,7 @@ export default function PlanViewport({
   artifact,
   visibility = DEFAULT_VISIBILITY,
   activeObjectRef,
+  dimensions,
   viewportTransform,
   onViewportTransformChange,
   onSelectObjectWorkbenchTarget,
@@ -135,6 +140,7 @@ export default function PlanViewport({
           contextLines={renderModel.contextLines}
           detailLines={renderModel.detailLines}
           selectionHaloItems={renderModel.selectionHaloItems}
+          dimensions={dimensions}
           transform={viewportTransform}
           onTransformChange={onViewportTransformChange}
           screenAxisLabel={screenAxisLabel}

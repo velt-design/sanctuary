@@ -15,8 +15,10 @@ import { TranslationGizmo } from '../gizmos/TranslationGizmo';
 import { PlanCommittedBodyLayer } from './layers/PlanCommittedBodyLayer';
 import { PlanContextLineLayer } from './layers/PlanContextLineLayer';
 import { PlanDetailLayer } from './layers/PlanDetailLayer';
+import { PlanDimensionLayer } from './layers/PlanDimensionLayer';
 import { PlanHitTargetLayer } from './layers/PlanHitTargetLayer';
 import { PlanSelectionHaloLayer } from './layers/PlanSelectionHaloLayer';
+import type { PlanDimension } from './planDimension';
 import { planBoundsFromPolygon, planBoundsToSvgRect, type PlanBoundsMm } from './planLayout';
 import styles from './PlanCanvas.module.css';
 import type { PlanLayout } from './planLayout';
@@ -31,10 +33,13 @@ export type PlanCanvasProps = {
   contextLines: PlanRenderItem[];
   detailLines: PlanRenderItem[];
   selectionHaloItems: PlanRenderItem[];
+  dimensions?: ReadonlyArray<PlanDimension>;
   transform: DrawingWorkbenchViewportTransform;
   onTransformChange: (next: DrawingWorkbenchViewportTransform) => void;
   screenAxisLabel: string;
 };
+
+const EMPTY_DIMENSIONS: ReadonlyArray<PlanDimension> = [];
 
 function transformAttr(transform: DrawingWorkbenchViewportTransform): string {
   return `translate(${transform.panX} ${transform.panY}) scale(${transform.zoom})`;
@@ -65,6 +70,7 @@ export function PlanCanvas({
   contextLines,
   detailLines,
   selectionHaloItems,
+  dimensions = EMPTY_DIMENSIONS,
   transform,
   onTransformChange,
   screenAxisLabel,
@@ -151,6 +157,7 @@ export function PlanCanvas({
         data-plan-committed-body-count={committedBodies.length}
         data-plan-context-line-count={contextLines.length}
         data-plan-detail-line-count={detailLines.length}
+        data-plan-dimension-count={dimensions.length}
         data-plan-hover-shape-id={hoveredShape?.shapeId ?? ''}
         data-plan-hover-shape-kind={hoveredShape?.kind ?? ''}
         data-plan-active-tool-id={dispatcher.activeTool.id}
@@ -174,6 +181,7 @@ export function PlanCanvas({
             onShapeEnter={onShapeEnter}
             onShapeLeave={onShapeLeave}
           />
+          <PlanDimensionLayer dimensions={dimensions} coordinateAdapter={coordinateAdapter} />
           {gizmoBounds ? <TranslationGizmo bounds={gizmoBounds} handleSize={gizmoHandleSize} /> : null}
         </g>
       </svg>

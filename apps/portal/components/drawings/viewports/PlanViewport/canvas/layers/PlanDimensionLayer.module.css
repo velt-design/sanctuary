@@ -1,0 +1,26 @@
+.layer {
+  pointer-events: none;
+}
+
+.line {
+  stroke: rgba(40, 60, 90, 0.85);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.arrow {
+  fill: rgba(40, 60, 90, 0.85);
+  stroke: none;
+}
+
+.label {
+  fill: rgba(20, 30, 50, 0.95);
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  text-anchor: middle;
+  dominant-baseline: alphabetic;
+  paint-order: stroke fill;
+  stroke: rgba(255, 255, 255, 0.95);
+  stroke-width: 3px;
+}
