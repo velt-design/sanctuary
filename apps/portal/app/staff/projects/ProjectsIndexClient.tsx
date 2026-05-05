@@ -2,8 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent } from 'react';
-import { createPortal } from 'react-dom';
+import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import type { Contact } from '@/lib/types/contact';
 import type { Project, ProjectStatus } from '@/lib/types/project';
 import { PROJECT_STATUS_ORDER, projectStatusLabel } from '@/lib/types/project';
@@ -13,11 +12,8 @@ import HeaderActions from '@/components/layout/HeaderActions';
 import { useToast } from '@/components/ui/toast/ToastProvider';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { contactsListQueryOptions } from '@/lib/queries/contacts';
-import {
-  projectPageSnapshotQueryOptions,
-  projectTooltipSummaryQueryOptions,
-  projectsListQueryOptions,
-} from '@/lib/queries/projects';
+import { projectPageSnapshotQueryOptions, projectsListQueryOptions } from '@/lib/queries/projects';
+import { ProjectRowTooltip, useProjectRowTooltip } from './ProjectRowTooltip';
 import { qk } from '@/lib/queries/keys';
 import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
 import Modal from '@/components/ui/modal/Modal';
@@ -39,141 +35,6 @@ import {
   type ArchiveFilter,
   type ProjectsIndexFilters,
 } from './projectIndexFilters';
-
-const NZD_FORMATTER = new Intl.NumberFormat('en-NZ', {
-  style: 'currency',
-  currency: 'NZD',
-  maximumFractionDigits: 0,
-});
-
-function formatTotalCents(cents: number | null | undefined): string {
-  if (typeof cents !== 'number' || !Number.isFinite(cents) || cents <= 0) return '—';
-  return NZD_FORMATTER.format(cents / 100);
-}
-
-function ProjectRowTooltipBody({
-  host,
-  projectId,
-  fallbackClientName,
-}: {
-  host: string;
-  projectId: string;
-  fallbackClientName: string;
-}) {
-  const { data, isLoading, isError } = useQuery({
-    ...projectTooltipSummaryQueryOptions(host, projectId),
-  });
-
-  if (isLoading) {
-    return <div className={styles.tooltipBody}>Loading…</div>;
-  }
-  if (isError) {
-    return <div className={styles.tooltipBody}>Couldn’t load summary.</div>;
-  }
-
-  const clientLine = data?.clientName?.trim() || fallbackClientName.trim() || '—';
-  const styleLine = data?.roofStyleLabel ?? '—';
-  const materialLine = data?.materialLabel ?? '—';
-  const totalLine = formatTotalCents(data?.totalCents ?? null);
-
-  return (
-    <div className={styles.tooltipBody}>
-      <div className={styles.tooltipClient}>{clientLine}</div>
-      <div className={styles.tooltipLine}>{styleLine}</div>
-      <div className={styles.tooltipLine}>{materialLine}</div>
-      <div className={styles.tooltipPrice}>{totalLine}</div>
-    </div>
-  );
-}
-
-const TOOLTIP_OFFSET = 14;
-const TOOLTIP_VIEWPORT_PADDING = 8;
-
-function FloatingProjectTooltip({
-  host,
-  visibleInfo,
-  fallbackClientName,
-}: {
-  host: string;
-  visibleInfo: { projectId: string; x: number; y: number } | null;
-  fallbackClientName: string;
-}) {
-  const ref = useRef<HTMLDivElement | null>(null);
-  const lastPositionRef = useRef<{ x: number; y: number }>({
-    x: visibleInfo?.x ?? -9999,
-    y: visibleInfo?.y ?? -9999,
-  });
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-
-    let pending = false;
-    const place = (x: number, y: number) => {
-      const rect = el.getBoundingClientRect();
-      const vw = window.innerWidth;
-      const vh = window.innerHeight;
-      let left = x + TOOLTIP_OFFSET;
-      let top = y + TOOLTIP_OFFSET;
-      if (left + rect.width > vw - TOOLTIP_VIEWPORT_PADDING) {
-        left = Math.max(TOOLTIP_VIEWPORT_PADDING, x - TOOLTIP_OFFSET - rect.width);
-      }
-      if (top + rect.height > vh - TOOLTIP_VIEWPORT_PADDING) {
-        top = Math.max(TOOLTIP_VIEWPORT_PADDING, y - TOOLTIP_OFFSET - rect.height);
-      }
-      el.style.left = `${left}px`;
-      el.style.top = `${top}px`;
-    };
-
-    const onMove = (event: globalThis.MouseEvent) => {
-      lastPositionRef.current = { x: event.clientX, y: event.clientY };
-      if (pending) return;
-      pending = true;
-      requestAnimationFrame(() => {
-        pending = false;
-        place(lastPositionRef.current.x, lastPositionRef.current.y);
-      });
-    };
-
-    document.addEventListener('mousemove', onMove);
-    return () => {
-      document.removeEventListener('mousemove', onMove);
-    };
-  }, []);
-
-  useLayoutEffect(() => {
-    if (!visibleInfo) return;
-    lastPositionRef.current = { x: visibleInfo.x, y: visibleInfo.y };
-    const el = ref.current;
-    if (!el) return;
-    const rect = el.getBoundingClientRect();
-    const vw = window.innerWidth;
-    const vh = window.innerHeight;
-    let left = visibleInfo.x + TOOLTIP_OFFSET;
-    let top = visibleInfo.y + TOOLTIP_OFFSET;
-    if (left + rect.width > vw - TOOLTIP_VIEWPORT_PADDING) {
-      left = Math.max(TOOLTIP_VIEWPORT_PADDING, visibleInfo.x - TOOLTIP_OFFSET - rect.width);
-    }
-    if (top + rect.height > vh - TOOLTIP_VIEWPORT_PADDING) {
-      top = Math.max(TOOLTIP_VIEWPORT_PADDING, visibleInfo.y - TOOLTIP_OFFSET - rect.height);
-    }
-    el.style.left = `${left}px`;
-    el.style.top = `${top}px`;
-  }, [visibleInfo]);
-
-  const isVisible = Boolean(visibleInfo);
-  const className = isVisible
-    ? `${styles.floatingTooltip} ${styles.floatingTooltipVisible}`
-    : styles.floatingTooltip;
-
-  return (
-    <div ref={ref} className={className} role="tooltip" aria-hidden={!isVisible}>
-      {visibleInfo ? (
-        <ProjectRowTooltipBody host={host} projectId={visibleInfo.projectId} fallbackClientName={fallbackClientName} />
-      ) : null}
-    </div>
-  );
-}
 
 type EditableField = 'name' | 'phone' | 'address';
 type EditingState = { id: string; field: EditableField; value: string } | null;
@@ -216,11 +77,7 @@ export default function ProjectsIndexClient({
   const [deleteReason, setDeleteReason] = useState('');
   const [isDeleteBusy, setIsDeleteBusy] = useState(false);
   const [archiveBusyId, setArchiveBusyId] = useState<string | null>(null);
-  const [visibleInfo, setVisibleInfo] = useState<{ projectId: string; x: number; y: number } | null>(null);
-  const isWarmRef = useRef(false);
-  const showTimerRef = useRef<number | null>(null);
-  const hideTimerRef = useRef<number | null>(null);
-  const [isMounted, setIsMounted] = useState(false);
+  const { visibleInfo, onRowEnter: handleRowMouseEnter, onRowLeave: handleRowMouseLeave } = useProjectRowTooltip();
   const [editing, setEditing] = useState<EditingState>(null);
   const [savingCellKey, setSavingCellKey] = useState<string | null>(null);
   const [savingStatusId, setSavingStatusId] = useState<string | null>(null);
@@ -231,50 +88,6 @@ export default function ProjectsIndexClient({
 
   const host = useMemo(() => supabaseHostFromUrl(supabaseRuntimeUrl()) || 'unknown', []);
 
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      if (showTimerRef.current) window.clearTimeout(showTimerRef.current);
-      if (hideTimerRef.current) window.clearTimeout(hideTimerRef.current);
-    };
-  }, []);
-
-  const handleRowMouseEnter = useCallback((projectId: string, e: MouseEvent<HTMLTableRowElement>) => {
-    const info = { projectId, x: e.clientX, y: e.clientY };
-    if (hideTimerRef.current) {
-      window.clearTimeout(hideTimerRef.current);
-      hideTimerRef.current = null;
-    }
-    if (showTimerRef.current) {
-      window.clearTimeout(showTimerRef.current);
-      showTimerRef.current = null;
-    }
-    if (isWarmRef.current) {
-      setVisibleInfo(info);
-      return;
-    }
-    showTimerRef.current = window.setTimeout(() => {
-      showTimerRef.current = null;
-      isWarmRef.current = true;
-      setVisibleInfo(info);
-    }, 280);
-  }, []);
-
-  const handleRowMouseLeave = useCallback((_projectId: string) => {
-    if (showTimerRef.current) {
-      window.clearTimeout(showTimerRef.current);
-      showTimerRef.current = null;
-    }
-    if (hideTimerRef.current) window.clearTimeout(hideTimerRef.current);
-    hideTimerRef.current = window.setTimeout(() => {
-      hideTimerRef.current = null;
-      isWarmRef.current = false;
-      setVisibleInfo(null);
-    }, 140);
-  }, []);
   const queryClient = useQueryClient();
   const prefetchedSnapshotsRef = useRef(new Set<string>());
 
@@ -759,7 +572,7 @@ export default function ProjectsIndexClient({
                             prefetchProjectSnapshot(p.id);
                             handleRowMouseEnter(p.id, e);
                           }}
-                          onMouseLeave={() => handleRowMouseLeave(p.id)}
+                          onMouseLeave={() => handleRowMouseLeave()}
                           onFocus={() => prefetchProjectSnapshot(p.id)}
                           onKeyDown={(e) => {
                             if (e.key === 'Enter' || e.key === ' ') router.push(`/staff/projects/${encodeURIComponent(p.id)}`);
@@ -1033,16 +846,8 @@ export default function ProjectsIndexClient({
         </PipelineModal>
       ) : null}
 
-      {isMounted
-        ? createPortal(
-            <FloatingProjectTooltip
-              host={host}
-              visibleInfo={visibleInfo}
-              fallbackClientName={visibleFallback}
-            />,
-            document.body,
-          )
-        : null}
+      <ProjectRowTooltip host={host} visibleInfo={visibleInfo} fallbackClientName={visibleFallback} />
+
     </main>
   );
 }

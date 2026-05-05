@@ -1,0 +1,25 @@
+.gizmo {
+  pointer-events: none;
+}
+
+.outline {
+  stroke: rgba(47, 111, 150, 0.95);
+  stroke-width: 4;
+  stroke-dasharray: 12 8;
+  vector-effect: non-scaling-stroke;
+}
+
+.handle {
+  fill: rgba(255, 255, 255, 0.95);
+  stroke: rgba(47, 111, 150, 0.95);
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+  pointer-events: auto;
+  cursor: move;
+}
+
+.crosshair {
+  stroke: rgba(47, 111, 150, 0.6);
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+}
