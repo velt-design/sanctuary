@@ -11,7 +11,7 @@ type QuoteSendPayload = {
   personalNote?: string | null;
   bodyText?: string;
   bodyHtml?: string | null;
-  designPdf?: File | null;
+  attachments?: File[] | null;
 };
 
 type QuotePreviewPayload = {
@@ -34,8 +34,10 @@ async function parseJsonSafe(res: Response): Promise<unknown> {
   }
 }
 
-function hasDesignPdf(payload: QuoteSendPayload): payload is QuoteSendPayload & { designPdf: File } {
-  return typeof File !== 'undefined' && payload.designPdf instanceof File && payload.designPdf.size > 0;
+function hasAttachments(payload: QuoteSendPayload): payload is QuoteSendPayload & { attachments: File[] } {
+  if (typeof File === 'undefined') return false;
+  if (!Array.isArray(payload.attachments)) return false;
+  return payload.attachments.some((entry) => entry instanceof File && entry.size > 0);
 }
 
 function appendOptionalCsv(form: FormData, key: string, values: string[] | undefined): void {
@@ -45,7 +47,7 @@ function appendOptionalCsv(form: FormData, key: string, values: string[] | undef
 }
 
 async function postQuoteSendMultipart(path: string, payload: QuoteSendPayload): Promise<QuoteVersionDetail> {
-  if (!hasDesignPdf(payload)) throw new Error('Design PDF missing from multipart payload');
+  if (!hasAttachments(payload)) throw new Error('Attachments missing from multipart payload');
 
   const form = new FormData();
   form.append('to', payload.to.join(', '));
@@ -55,7 +57,11 @@ async function postQuoteSendMultipart(path: string, payload: QuoteSendPayload): 
   if (typeof payload.personalNote === 'string') form.append('personalNote', payload.personalNote);
   if (typeof payload.bodyText === 'string') form.append('bodyText', payload.bodyText);
   if (typeof payload.bodyHtml === 'string') form.append('bodyHtml', payload.bodyHtml);
-  form.append('design_pdf', payload.designPdf);
+  for (const file of payload.attachments) {
+    if (file instanceof File && file.size > 0) {
+      form.append('attachments', file, file.name);
+    }
+  }
 
   const res = await fetch(path, {
     method: 'POST',
@@ -156,10 +162,10 @@ export async function sendQuote(
   payload: QuoteSendPayload,
 ): Promise<QuoteVersionDetail> {
   const path = `/api/quotes/${encodeURIComponent(quoteVersionId)}/send`;
-  if (hasDesignPdf(payload)) {
+  if (hasAttachments(payload)) {
     return postQuoteSendMultipart(path, payload);
   }
-  const { designPdf: _designPdf, ...jsonPayload } = payload;
+  const { attachments: _attachments, ...jsonPayload } = payload;
   const res = await apiJson<{ quoteVersion: QuoteVersionDetail }>(`/api/quotes/${encodeURIComponent(quoteVersionId)}/send`, {
     method: 'POST',
     body: JSON.stringify(jsonPayload),
@@ -173,10 +179,10 @@ export async function resendQuote(
   payload: QuoteSendPayload,
 ): Promise<QuoteVersionDetail> {
   const path = `/api/quotes/${encodeURIComponent(quoteVersionId)}/resend`;
-  if (hasDesignPdf(payload)) {
+  if (hasAttachments(payload)) {
     return postQuoteSendMultipart(path, payload);
   }
-  const { designPdf: _designPdf, ...jsonPayload } = payload;
+  const { attachments: _attachments, ...jsonPayload } = payload;
   const res = await apiJson<{ quoteVersion: QuoteVersionDetail }>(`/api/quotes/${encodeURIComponent(quoteVersionId)}/resend`, {
     method: 'POST',
     body: JSON.stringify(jsonPayload),

@@ -2,7 +2,6 @@
 
 import {
   useCallback,
-  useMemo,
   type PointerEvent as ReactPointerEvent,
 } from 'react';
 import type { PlanCoordinateAdapter } from '@/lib/drawings/views/plan/planCoordinateAdapter';
@@ -11,7 +10,6 @@ import { clientPointToPlanProjection } from '../interactions/pointerToPlan';
 import { useHoveredShape } from '../interactions/useHoveredShape';
 import { usePanZoom } from '../interactions/usePanZoom';
 import { useToolDispatcher } from '../tools/ToolDispatcher';
-import { TranslationGizmo } from '../gizmos/TranslationGizmo';
 import { PlanCommittedBodyLayer } from './layers/PlanCommittedBodyLayer';
 import { PlanContextLineLayer } from './layers/PlanContextLineLayer';
 import { PlanDetailLayer } from './layers/PlanDetailLayer';
@@ -19,7 +17,6 @@ import { PlanDimensionLayer } from './layers/PlanDimensionLayer';
 import { PlanHitTargetLayer } from './layers/PlanHitTargetLayer';
 import { PlanSelectionHaloLayer } from './layers/PlanSelectionHaloLayer';
 import type { PlanDimension } from './planDimension';
-import { planBoundsFromPolygon, planBoundsToSvgRect, type PlanBoundsMm } from './planLayout';
 import styles from './PlanCanvas.module.css';
 import type { PlanLayout } from './planLayout';
 import type { PlanRenderItem } from './planRenderItem';
@@ -43,24 +40,6 @@ const EMPTY_DIMENSIONS: ReadonlyArray<PlanDimension> = [];
 
 function transformAttr(transform: DrawingWorkbenchViewportTransform): string {
   return `translate(${transform.panX} ${transform.panY}) scale(${transform.zoom})`;
-}
-
-function unionBounds(items: PlanRenderItem[]): PlanBoundsMm | null {
-  let merged: PlanBoundsMm | null = null;
-  for (const item of items) {
-    const polygon = item.shape.polygon;
-    const bounds = planBoundsFromPolygon(polygon);
-    if (!bounds) continue;
-    merged = merged
-      ? {
-          minX: Math.min(merged.minX, bounds.minX),
-          minY: Math.min(merged.minY, bounds.minY),
-          maxX: Math.max(merged.maxX, bounds.maxX),
-          maxY: Math.max(merged.maxY, bounds.maxY),
-        }
-      : bounds;
-  }
-  return merged;
 }
 
 export function PlanCanvas({
@@ -114,19 +93,6 @@ export function PlanCanvas({
   const handleFitView = useCallback(() => {
     onTransformChange(IDENTITY_TRANSFORM);
   }, [onTransformChange]);
-
-  const gizmoBounds = useMemo(() => {
-    const mmBounds = unionBounds(selectionHaloItems);
-    if (!mmBounds) return null;
-    const rect = planBoundsToSvgRect({ bounds: mmBounds, adapter: coordinateAdapter });
-    return {
-      minX: rect.x,
-      minY: rect.y,
-      maxX: rect.x + rect.width,
-      maxY: rect.y + rect.height,
-    };
-  }, [coordinateAdapter, selectionHaloItems]);
-  const gizmoHandleSize = layout.scale * 0.08;
 
   return (
     <div className={styles.canvasShell}>
@@ -183,7 +149,6 @@ export function PlanCanvas({
             onShapeLeave={onShapeLeave}
           />
           <PlanDimensionLayer dimensions={dimensions} coordinateAdapter={coordinateAdapter} />
-          {gizmoBounds ? <TranslationGizmo bounds={gizmoBounds} handleSize={gizmoHandleSize} /> : null}
         </g>
       </svg>
     </div>

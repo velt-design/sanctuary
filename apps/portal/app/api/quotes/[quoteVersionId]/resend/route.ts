@@ -2,9 +2,19 @@ import { jsonError, jsonOk, parseJsonBody, requireStaffSession } from '@/lib/api
 import { EmailProviderConfigError, resendQuote } from '@/lib/quotes/server';
 
 export const runtime = 'nodejs';
-const MAX_DESIGN_PDF_BYTES = 20 * 1024 * 1024;
 
-type DesignPdfUpload = {
+const MAX_ATTACHMENT_BYTES = 20 * 1024 * 1024;
+const MAX_ATTACHMENT_COUNT = 10;
+const ALLOWED_ATTACHMENT_EXTENSIONS = new Set(['.pdf', '.jpg', '.jpeg', '.png', '.webp']);
+const ALLOWED_ATTACHMENT_MIME_TYPES = new Set([
+  'application/pdf',
+  'image/jpeg',
+  'image/jpg',
+  'image/png',
+  'image/webp',
+]);
+
+type AttachmentUpload = {
   filename: string;
   contentType: string;
   content: Buffer;
@@ -30,15 +40,24 @@ function readFormRecipients(form: FormData, key: string): string[] {
     .filter(Boolean);
 }
 
-function isPdfUpload(file: File): boolean {
+function fileExtension(filename: string): string {
+  const trimmed = filename.trim().toLowerCase();
+  const idx = trimmed.lastIndexOf('.');
+  return idx >= 0 ? trimmed.slice(idx) : '';
+}
+
+function isAllowedUpload(file: File): boolean {
   const mime = file.type.trim().toLowerCase();
-  if (mime === 'application/pdf') return true;
-  return file.name.trim().toLowerCase().endsWith('.pdf');
+  if (ALLOWED_ATTACHMENT_MIME_TYPES.has(mime)) return true;
+  return ALLOWED_ATTACHMENT_EXTENSIONS.has(fileExtension(file.name));
 }
 
 async function parseSendPayload(
   req: Request,
-): Promise<{ ok: true; body: Record<string, unknown>; designPdf: DesignPdfUpload | null } | { ok: false; status: number; error: string }> {
+): Promise<
+  | { ok: true; body: Record<string, unknown>; attachments: AttachmentUpload[] }
+  | { ok: false; status: number; error: string }
+> {
   const contentType = (req.headers.get('content-type') ?? '').toLowerCase();
 
   if (contentType.includes('multipart/form-data')) {
@@ -49,19 +68,22 @@ async function parseSendPayload(
       return { ok: false, status: 400, error: 'Invalid multipart form body' };
     }
 
-    const upload = form.get('design_pdf');
-    let designPdf: DesignPdfUpload | null = null;
-    if (upload instanceof File && upload.size > 0) {
-      if (!isPdfUpload(upload)) {
-        return { ok: false, status: 400, error: 'Design document must be a PDF' };
+    const uploads = form.getAll('attachments').filter((entry): entry is File => entry instanceof File && entry.size > 0);
+    if (uploads.length > MAX_ATTACHMENT_COUNT) {
+      return { ok: false, status: 400, error: `A quote email can include at most ${MAX_ATTACHMENT_COUNT} attachments` };
+    }
+    const attachments: AttachmentUpload[] = [];
+    for (const upload of uploads) {
+      if (!isAllowedUpload(upload)) {
+        return { ok: false, status: 400, error: `Attachment "${upload.name}" must be a PDF, JPG, PNG, or WEBP` };
       }
-      if (upload.size > MAX_DESIGN_PDF_BYTES) {
-        return { ok: false, status: 400, error: 'Design document must be 20MB or smaller' };
+      if (upload.size > MAX_ATTACHMENT_BYTES) {
+        return { ok: false, status: 400, error: `Attachment "${upload.name}" must be 20MB or smaller` };
       }
-      const filename = upload.name.trim() || 'design-document.pdf';
-      const contentTypeValue = upload.type.trim() || 'application/pdf';
+      const filename = upload.name.trim() || `attachment-${attachments.length + 1}.bin`;
+      const contentTypeValue = upload.type.trim() || 'application/octet-stream';
       const content = Buffer.from(await upload.arrayBuffer());
-      designPdf = { filename, contentType: contentTypeValue, content };
+      attachments.push({ filename, contentType: contentTypeValue, content });
     }
 
     const body: Record<string, unknown> = {
@@ -75,12 +97,12 @@ async function parseSendPayload(
       bodyHtml: readFormText(form, 'bodyHtml'),
       body: readFormText(form, 'body'),
     };
-    return { ok: true, body, designPdf };
+    return { ok: true, body, attachments };
   }
 
   const parsed = await parseJsonBody(req);
   if (!parsed.ok) return { ok: false, status: 400, error: parsed.error };
-  return { ok: true, body: (parsed.body ?? {}) as Record<string, unknown>, designPdf: null };
+  return { ok: true, body: (parsed.body ?? {}) as Record<string, unknown>, attachments: [] };
 }
 
 export async function POST(req: Request, ctx: { params: Promise<{ quoteVersionId: string }> }) {
@@ -93,7 +115,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ quoteVersionId
 
   const parsed = await parseSendPayload(req);
   if (!parsed.ok) return jsonError(parsed.error, parsed.status);
-  const { body, designPdf } = parsed;
+  const { body, attachments } = parsed;
 
   const to = parseRecipients(body.to);
   if (!to.length) return jsonError('Recipient email is required', 400);
@@ -121,7 +143,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ quoteVersionId
         personalNote,
         bodyText: typeof body.bodyText === 'string' ? body.bodyText : undefined,
         bodyHtml: typeof body.bodyHtml === 'string' ? body.bodyHtml : null,
-        designPdf,
+        attachments,
       },
       actor,
     );

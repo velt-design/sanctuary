@@ -234,18 +234,32 @@ function defaultSubject(quoteRef: string): string {
   return `Your quote ${quoteRef}`;
 }
 
-const MAX_DESIGN_PDF_BYTES = 20 * 1024 * 1024;
+const MAX_ATTACHMENT_BYTES = 20 * 1024 * 1024;
+const MAX_ATTACHMENTS_TOTAL_BYTES = 35 * 1024 * 1024;
+const MAX_ATTACHMENT_COUNT = 10;
 const QUOTE_PREVIEW_DEBOUNCE_MS = 200;
+const ALLOWED_ATTACHMENT_EXTENSIONS = new Set(['.pdf', '.jpg', '.jpeg', '.png', '.webp']);
+const ALLOWED_ATTACHMENT_MIME_TYPES = new Set([
+  'application/pdf',
+  'image/jpeg',
+  'image/jpg',
+  'image/png',
+  'image/webp',
+]);
+const ATTACHMENT_INPUT_ACCEPT = '.pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp';
 
 type SendEditorMode = 'compose' | 'review';
 
-function validateDesignPdf(file: File): string | null {
-  if (file.size <= 0) return 'Design PDF is empty.';
-  if (file.size > MAX_DESIGN_PDF_BYTES) return 'Design PDF must be 20MB or smaller.';
+function validateAttachment(file: File): string | null {
+  if (file.size <= 0) return `Attachment "${file.name || 'file'}" is empty.`;
+  if (file.size > MAX_ATTACHMENT_BYTES) return `Attachment "${file.name || 'file'}" must be 20MB or smaller.`;
   const mime = file.type.trim().toLowerCase();
-  if (mime === 'application/pdf') return null;
-  if (file.name.trim().toLowerCase().endsWith('.pdf')) return null;
-  return 'Design document must be a PDF.';
+  if (ALLOWED_ATTACHMENT_MIME_TYPES.has(mime)) return null;
+  const lowerName = file.name.trim().toLowerCase();
+  const dot = lowerName.lastIndexOf('.');
+  const ext = dot >= 0 ? lowerName.slice(dot) : '';
+  if (ALLOWED_ATTACHMENT_EXTENSIONS.has(ext)) return null;
+  return `Attachment "${file.name || 'file'}" must be a PDF, JPG, PNG, or WEBP.`;
 }
 
 function formatFileSize(bytes: number): string {
@@ -379,7 +393,7 @@ export default function QuotesTab({
   const [sendTo, setSendTo] = useState('');
   const [sendSubject, setSendSubject] = useState('');
   const [sendPersonalNote, setSendPersonalNote] = useState('');
-  const [sendDesignPdf, setSendDesignPdf] = useState<File | null>(null);
+  const [sendAttachments, setSendAttachments] = useState<File[]>([]);
   const [sendEditorMode, setSendEditorMode] = useState<SendEditorMode>('compose');
   const [sendReviewPdfData, setSendReviewPdfData] = useState<Uint8Array | null>(null);
   const [sendReviewPdfLoading, setSendReviewPdfLoading] = useState(false);
@@ -924,7 +938,7 @@ export default function QuotesTab({
     setSendTo(to);
     setSendSubject(defaultSubject(quoteForModal.quoteRef));
     setSendPersonalNote(defaultPersonalNote());
-    setSendDesignPdf(null);
+    setSendAttachments([]);
     setSendEditorMode(editorMode);
     setSendReviewPdfData(null);
     setSendReviewPdfError(null);
@@ -935,7 +949,7 @@ export default function QuotesTab({
   }, [detail]);
 
   const closeSendModal = useCallback(() => {
-    setSendDesignPdf(null);
+    setSendAttachments([]);
     setSendEditorMode('compose');
     setSendReviewPdfData(null);
     setSendReviewPdfError(null);
@@ -1020,20 +1034,28 @@ export default function QuotesTab({
       toast.error('Subject is required.');
       return;
     }
-    if (sendDesignPdf) {
-      const designPdfError = validateDesignPdf(sendDesignPdf);
-      if (designPdfError) {
-        setSendError(designPdfError);
-        toast.error(designPdfError);
+    let totalBytes = 0;
+    for (const file of sendAttachments) {
+      const attachmentError = validateAttachment(file);
+      if (attachmentError) {
+        setSendError(attachmentError);
+        toast.error(attachmentError);
         return;
       }
+      totalBytes += file.size;
+    }
+    if (totalBytes > MAX_ATTACHMENTS_TOTAL_BYTES) {
+      const message = 'Combined attachment size must be 35MB or smaller.';
+      setSendError(message);
+      toast.error(message);
+      return;
     }
     setSendBusy(true);
     setSendError(null);
     try {
       const updated = sendMode === 'send'
-        ? await sendQuote(detail.id, { to, subject: sendSubject, personalNote: sendPersonalNote, designPdf: sendDesignPdf })
-        : await resendQuote(detail.id, { to, subject: sendSubject, personalNote: sendPersonalNote, designPdf: sendDesignPdf });
+        ? await sendQuote(detail.id, { to, subject: sendSubject, personalNote: sendPersonalNote, attachments: sendAttachments })
+        : await resendQuote(detail.id, { to, subject: sendSubject, personalNote: sendPersonalNote, attachments: sendAttachments });
       queryClient.setQueryData(qk.quotes.detail(hostKey, updated.id), updated);
       setDraftItems(updated.lineItems);
       setUnitInputDrafts({});
@@ -2174,36 +2196,70 @@ export default function QuotesTab({
                     rows={6}
                     placeholder="Optional custom note to include in the template."
                   />
-                  <label className={styles.metaLabel} htmlFor="sendDesignPdf">Design PDF (optional)</label>
+                  <label className={styles.metaLabel} htmlFor="sendAttachments">Attachments (optional)</label>
                   <input
-                    id="sendDesignPdf"
+                    id="sendAttachments"
                     className={styles.fileInput}
                     type="file"
-                    accept="application/pdf,.pdf"
+                    multiple
+                    accept={ATTACHMENT_INPUT_ACCEPT}
                     onChange={(event) => {
-                      const nextFile = event.currentTarget.files?.[0] ?? null;
-                      if (!nextFile) {
-                        setSendDesignPdf(null);
-                        setSendError(null);
-                        return;
+                      const picked = Array.from(event.currentTarget.files ?? []);
+                      event.currentTarget.value = '';
+                      if (!picked.length) return;
+                      const existing = sendAttachments;
+                      const next: File[] = [...existing];
+                      let runningTotal = existing.reduce((sum, f) => sum + f.size, 0);
+                      for (const file of picked) {
+                        if (next.length >= MAX_ATTACHMENT_COUNT) {
+                          const message = `A quote email can include at most ${MAX_ATTACHMENT_COUNT} attachments.`;
+                          setSendError(message);
+                          toast.error(message);
+                          break;
+                        }
+                        const validation = validateAttachment(file);
+                        if (validation) {
+                          setSendError(validation);
+                          toast.error(validation);
+                          continue;
+                        }
+                        if (runningTotal + file.size > MAX_ATTACHMENTS_TOTAL_BYTES) {
+                          const message = 'Combined attachment size must be 35MB or smaller.';
+                          setSendError(message);
+                          toast.error(message);
+                          break;
+                        }
+                        next.push(file);
+                        runningTotal += file.size;
                       }
-                      const validation = validateDesignPdf(nextFile);
-                      if (validation) {
-                        event.currentTarget.value = '';
-                        setSendDesignPdf(null);
-                        setSendError(validation);
-                        toast.error(validation);
-                        return;
-                      }
-                      setSendDesignPdf(nextFile);
-                      setSendError(null);
+                      setSendAttachments(next);
+                      if (next.length && !sendError) setSendError(null);
                     }}
                   />
+                  {sendAttachments.length ? (
+                    <ul className={styles.attachmentsList}>
+                      {sendAttachments.map((file, index) => (
+                        <li key={`${file.name}-${index}`} className={styles.attachmentRow}>
+                          <span className={styles.attachmentName}>
+                            {file.name}{' '}
+                            <span className={styles.attachmentSize}>({formatFileSize(file.size)})</span>
+                          </span>
+                          <button
+                            type="button"
+                            className={styles.attachmentRemove}
+                            onClick={() => {
+                              setSendAttachments((current) => current.filter((_, i) => i !== index));
+                            }}
+                          >
+                            Remove
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
                   <div className={styles.attachmentsHint}>
-                    Attachments: Quote PDF (auto attached).
-                    {sendDesignPdf
-                      ? ` Design PDF selected: ${sendDesignPdf.name} (${formatFileSize(sendDesignPdf.size)}).`
-                      : ' You can add one design PDF up to 20MB.'}
+                    Quote PDF is attached automatically. You can add up to {MAX_ATTACHMENT_COUNT} additional files
+                    (PDF, JPG, PNG, WEBP), 20MB each, 35MB total.
                   </div>
                   {sendError ? <div className={styles.errorText}>{sendError}</div> : null}
                 </div>
@@ -2228,7 +2284,7 @@ export default function QuotesTab({
                       <div className={styles.metaLabel}>Attachments</div>
                       <div className={styles.previewMetaValue}>
                         Quote PDF
-                        {sendDesignPdf ? `, ${sendDesignPdf.name}` : ''}
+                        {sendAttachments.length ? `, ${sendAttachments.map((file) => file.name).join(', ')}` : ''}
                       </div>
                     </div>
                   </div>

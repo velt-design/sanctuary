@@ -776,6 +776,55 @@
   color: var(--muted);
 }
 
+.attachmentsList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 6px 0 4px;
+  padding: 0;
+  list-style: none;
+}
+
+.attachmentRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 10px;
+  border: 1px solid rgba(var(--portal-text-rgb), 0.14);
+  border-radius: 8px;
+  background: rgba(var(--portal-text-rgb), 0.03);
+  font-size: 13px;
+}
+
+.attachmentName {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.attachmentSize {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.attachmentRemove {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  padding: 2px 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: rgb(185, 28, 28);
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.attachmentRemove:hover {
+  background: rgba(185, 28, 28, 0.08);
+  border-radius: 6px;
+}
+
 .errorText {
   font-size: 12px;
   color: rgb(185, 28, 28);
