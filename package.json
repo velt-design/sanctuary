@@ -85,7 +85,8 @@
     "test:portal:log": "node scripts/run-logged-command.mjs test:portal",
     "test:portal:browser": "npm run portal:fixture-env && playwright test playwright/portal.drawing-workbench.spec.ts --project=portal-fixture",
     "test:portal:browser:headed": "npm run portal:fixture-env && playwright test playwright/portal.drawing-workbench.spec.ts --project=portal-fixture --headed",
-    "test:portal:browser:auth": "npm run portal:auth-env && playwright test playwright/portal.auth.setup.ts --project=setup"
+    "test:portal:browser:auth": "npm run portal:auth-env && playwright test playwright/portal.auth.setup.ts --project=setup",
+    "prepare": "husky"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -119,6 +120,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9.33.0",
     "eslint-config-next": "^16.2.4",
+    "husky": "^9.1.7",
     "jsdom": "^27.4.0",
     "knip": "^6.11.0",
     "sharp": "^0.33.5",

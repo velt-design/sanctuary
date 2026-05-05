@@ -21,12 +21,14 @@ import type { PlanSvgPoint } from '@/lib/drawings/views/plan/planCoordinateAdapt
 import { PlanCanvas } from './canvas/PlanCanvas';
 import { resolvePlanLayout } from './canvas/planLayout';
 import { activeObjectMatchesPlanShape } from './canvas/selectionMatch';
-import type { PlanDimension } from './canvas/planDimension';
+import { buildSelectionDimensions, type PlanDimension } from './canvas/planDimension';
 import type { PlanRenderItem } from './canvas/planRenderItem';
-
-export type { PlanDimension } from './canvas/planDimension';
 import { ToolDispatcherProvider } from './tools/ToolDispatcher';
 import { createSelectTool } from './tools/SelectTool';
+
+export type { PlanDimension } from './canvas/planDimension';
+
+const EMPTY_DIMENSIONS: ReadonlyArray<PlanDimension> = [];
 
 const DEFAULT_VISIBILITY: DrawingWorkbenchVisibilityState = {
   house: true,
@@ -123,6 +125,21 @@ export default function PlanViewport({
     [onClearWorkbenchSelection, onSelectObjectWorkbenchTarget, onSelectPergolaTarget],
   );
 
+  const mergedDimensions = useMemo(() => {
+    const selectionDims = renderModel
+      ? buildSelectionDimensions(
+          renderModel.selectionHaloItems.map((item) => ({
+            id: item.shape.id,
+            polygon: item.shape.polygon,
+          })),
+        )
+      : [];
+    const provided = dimensions ?? EMPTY_DIMENSIONS;
+    if (selectionDims.length === 0) return provided;
+    if (provided.length === 0) return selectionDims;
+    return [...selectionDims, ...provided];
+  }, [dimensions, renderModel]);
+
   if (!projection || !renderModel) return <PlaceholderSurface />;
 
   const screenAxisLabel = `${projection.screenAxis.x}_${projection.screenAxis.y}`;
@@ -140,7 +157,7 @@ export default function PlanViewport({
           contextLines={renderModel.contextLines}
           detailLines={renderModel.detailLines}
           selectionHaloItems={renderModel.selectionHaloItems}
-          dimensions={dimensions}
+          dimensions={mergedDimensions}
           transform={viewportTransform}
           onTransformChange={onViewportTransformChange}
           screenAxisLabel={screenAxisLabel}

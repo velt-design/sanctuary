@@ -1,4 +1,5 @@
 import type { PlanCoordinateAdapter, PlanSvgPoint } from '@/lib/drawings/views/plan/planCoordinateAdapter';
+import { planBoundsFromPolygon } from './planLayout';
 
 export type PlanDimensionPoint = {
   x: number;
@@ -43,34 +44,35 @@ export function formatDimensionLengthMm(lengthMm: number): string {
   return `${Math.round(lengthMm)}`;
 }
 
-export type PlanDimensionExtentsInput = {
-  minX: number;
-  minY: number;
-  maxX: number;
-  maxY: number;
+export type PlanSelectionDimensionSource = {
+  id: string;
+  polygon: ReadonlyArray<PlanDimensionPoint>;
 };
 
-const EXTENTS_DIM_OFFSET_MM = -350;
+const SELECTION_DIM_OFFSET_MM = -350;
 
-export function buildExtentsDimensions(extents: PlanDimensionExtentsInput | null | undefined): PlanDimension[] {
-  if (!extents) return [];
-  const widthMm = extents.maxX - extents.minX;
-  const heightMm = extents.maxY - extents.minY;
-  if (widthMm <= 0 || heightMm <= 0) return [];
-  return [
-    {
-      id: 'extents-width',
-      start: { x: extents.minX, y: extents.minY },
-      end: { x: extents.maxX, y: extents.minY },
-      offsetMm: EXTENTS_DIM_OFFSET_MM,
-    },
-    {
-      id: 'extents-height',
-      start: { x: extents.minX, y: extents.maxY },
-      end: { x: extents.minX, y: extents.minY },
-      offsetMm: EXTENTS_DIM_OFFSET_MM,
-    },
-  ];
+export function buildSelectionDimensions(
+  items: ReadonlyArray<PlanSelectionDimensionSource>,
+): PlanDimension[] {
+  const dimensions: PlanDimension[] = [];
+  for (const item of items) {
+    const bounds = planBoundsFromPolygon(item.polygon as PlanDimensionPoint[]);
+    if (!bounds) continue;
+    if (bounds.maxX - bounds.minX <= 0 || bounds.maxY - bounds.minY <= 0) continue;
+    dimensions.push({
+      id: `${item.id}:width`,
+      start: { x: bounds.minX, y: bounds.minY },
+      end: { x: bounds.maxX, y: bounds.minY },
+      offsetMm: SELECTION_DIM_OFFSET_MM,
+    });
+    dimensions.push({
+      id: `${item.id}:height`,
+      start: { x: bounds.minX, y: bounds.maxY },
+      end: { x: bounds.minX, y: bounds.minY },
+      offsetMm: SELECTION_DIM_OFFSET_MM,
+    });
+  }
+  return dimensions;
 }
 
 export function resolvePlanDimensionGeometry(

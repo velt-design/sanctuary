@@ -3,6 +3,7 @@ import type { GeometryTopProjectionViewModel } from '@sp/geometry';
 import { buildTopProjectionPlanCoordinateAdapter } from '@/lib/drawings/views/plan/planCoordinateAdapter';
 import {
   DEFAULT_DIMENSION_OFFSET_MM,
+  buildSelectionDimensions,
   formatDimensionLengthMm,
   resolvePlanDimensionGeometry,
   type PlanDimension,
@@ -125,5 +126,72 @@ describe('resolvePlanDimensionGeometry', () => {
     const geometry = resolvePlanDimensionGeometry(upsideDown, adapter)!;
     expect(geometry.labelRotationDeg).toBeGreaterThanOrEqual(-90);
     expect(geometry.labelRotationDeg).toBeLessThanOrEqual(90);
+  });
+});
+
+describe('buildSelectionDimensions', () => {
+  it('returns an empty list when no items are selected', () => {
+    expect(buildSelectionDimensions([])).toEqual([]);
+  });
+
+  it('emits two dims (width + height) per selected item', () => {
+    const dims = buildSelectionDimensions([
+      {
+        id: 'pergola-1',
+        polygon: [
+          { x: 0, y: 0 },
+          { x: 4500, y: 0 },
+          { x: 4500, y: 8000 },
+          { x: 0, y: 8000 },
+        ],
+      },
+    ]);
+    expect(dims).toHaveLength(2);
+    expect(dims[0]?.id).toBe('pergola-1:width');
+    expect(dims[0]?.start).toEqual({ x: 0, y: 0 });
+    expect(dims[0]?.end).toEqual({ x: 4500, y: 0 });
+    expect(dims[1]?.id).toBe('pergola-1:height');
+    expect(dims[1]?.start).toEqual({ x: 0, y: 8000 });
+    expect(dims[1]?.end).toEqual({ x: 0, y: 0 });
+  });
+
+  it('skips items whose polygon has zero area', () => {
+    const dims = buildSelectionDimensions([
+      { id: 'degenerate', polygon: [{ x: 100, y: 100 }, { x: 100, y: 100 }] },
+      {
+        id: 'real',
+        polygon: [
+          { x: 0, y: 0 },
+          { x: 1000, y: 0 },
+          { x: 1000, y: 500 },
+          { x: 0, y: 500 },
+        ],
+      },
+    ]);
+    expect(dims.map((dim) => dim.id)).toEqual(['real:width', 'real:height']);
+  });
+
+  it('emits dims for multiple selected items independently', () => {
+    const dims = buildSelectionDimensions([
+      {
+        id: 'a',
+        polygon: [
+          { x: 0, y: 0 },
+          { x: 100, y: 0 },
+          { x: 100, y: 100 },
+          { x: 0, y: 100 },
+        ],
+      },
+      {
+        id: 'b',
+        polygon: [
+          { x: 1000, y: 1000 },
+          { x: 1500, y: 1000 },
+          { x: 1500, y: 1300 },
+          { x: 1000, y: 1300 },
+        ],
+      },
+    ]);
+    expect(dims.map((dim) => dim.id)).toEqual(['a:width', 'a:height', 'b:width', 'b:height']);
   });
 });

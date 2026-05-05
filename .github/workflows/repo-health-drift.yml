@@ -1,0 +1,72 @@
+name: Repo Health Drift
+
+on:
+  schedule:
+    # Monday 09:00 UTC ≈ 21:00 NZ Monday — early-warning cadence
+    # for incremental architectural drift.
+    - cron: "0 9 * * 1"
+  workflow_dispatch:
+
+# Read-only check. This workflow does NOT run `npm run repo:health:update`.
+# Snapshots in docs/repo-health-trends.md remain manual by design.
+
+jobs:
+  drift:
+    name: Repo Health Drift
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run repo health
+        id: health
+        run: |
+          set +e
+          OUTPUT=$(npm run --silent repo:health 2>&1)
+          STATUS=$?
+          set -e
+          echo "$OUTPUT"
+          {
+            echo "## Repo Health Drift Report"
+            echo
+            echo "Comparison: live tree vs. the most recent dated snapshot in \`docs/repo-health-trends.md\`."
+            echo
+            echo '```'
+            echo "$OUTPUT"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$STATUS" -ne 0 ]; then
+            echo "script_failed=true" >> "$GITHUB_OUTPUT"
+            exit "$STATUS"
+          fi
+          if echo "$OUTPUT" | grep -qE "\\bworse\\b"; then
+            echo "drift=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "drift=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Drift advisory
+        if: steps.health.outputs.drift == 'true'
+        run: |
+          {
+            echo
+            echo "**Drift advisory:** one or more headline metrics moved \`worse\` since the last dated snapshot."
+            echo
+            echo "Next steps:"
+            echo "- Pick the cleanup lane the script recommended in the report above."
+            echo "- After cleanup, run \`npm run repo:health:update\` locally to capture a new baseline."
+            echo "- A failing run here means \"drift detected,\" not \"pipeline broken.\""
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit 1

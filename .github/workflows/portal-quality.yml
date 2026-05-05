@@ -61,6 +61,15 @@ jobs:
           git fetch origin "${{ github.base_ref }}" --depth=1 || true
           npm run architecture:changed:strict
 
+      - name: Files decomposition strict gate
+        if: github.event_name == 'pull_request'
+        env:
+          ARCHITECTURE_CHANGED_BASE: origin/${{ github.base_ref }}
+          ARCHITECTURE_CHANGED_HEAD: HEAD
+        run: |
+          git fetch origin "${{ github.base_ref }}" --depth=1 || true
+          npm run files:changed:strict
+
       - name: Dead code changed advisory
         if: github.event_name == 'pull_request'
         continue-on-error: true
