@@ -160,7 +160,9 @@ describe("buildTopProjectionViewModel", () => {
     const sceneObjects = scene.layers.flatMap((layer) => layer.objects);
     const projection = buildTopProjectionViewModel(assembly);
     const sceneProjection = buildTopProjectionViewModelFromScene(scene, {
-      referenceShapes: projection.shapes.filter((shape) => shape.sourceType === "house_reference"),
+      referenceShapes: projection.shapes.filter(
+        (shape) => shape.sourceType === "house_reference" || shape.sourceType === "pergola_reference",
+      ),
     });
 
     expect(sceneProjection).toEqual(projection);

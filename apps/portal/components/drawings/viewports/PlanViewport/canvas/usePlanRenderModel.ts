@@ -68,7 +68,12 @@ export function usePlanRenderModel({
     const activeFamily = (activeObjectRef?.family ?? null) as ActiveObjectFamily | null;
     const primary = activeFamily
       ? pickPrimaryEditCandidate(
-          matchedItems.map((item) => ({ ...item, polygon: item.shape.polygon, kind: item.shape.kind })),
+          matchedItems.map((item) => ({
+            ...item,
+            polygon: item.shape.polygon,
+            kind: item.shape.kind,
+            isCanonicalOutline: item.shape.metadata?.isCanonicalOutline === true,
+          })),
           activeFamily,
         )
       : null;

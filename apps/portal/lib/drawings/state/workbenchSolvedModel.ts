@@ -420,7 +420,9 @@ function buildTopProjectionFromSolvedScene(input: {
   fallbackTopProjection: GeometryTopProjectionViewModel;
 }): GeometryTopProjectionViewModel {
   return buildTopProjectionViewModelFromScene(input.scene, {
-    referenceShapes: input.fallbackTopProjection.shapes.filter((shape) => shape.sourceType === 'house_reference'),
+    referenceShapes: input.fallbackTopProjection.shapes.filter(
+      (shape) => shape.sourceType === 'house_reference' || shape.sourceType === 'pergola_reference',
+    ),
   });
 }
 

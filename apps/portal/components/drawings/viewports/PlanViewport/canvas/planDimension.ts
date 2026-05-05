@@ -49,6 +49,7 @@ export type PlanSelectionDimensionSource = {
   polygon: ReadonlyArray<PlanDimensionPoint>;
   family?: string;
   kind?: string;
+  isCanonicalOutline?: boolean;
 };
 
 export type ActiveObjectFamily = 'house_forms' | 'decks' | 'openings' | 'pergolas';
@@ -66,7 +67,7 @@ const PRIMARY_EDIT_KIND_BY_FAMILY: Record<ActiveObjectFamily, ReadonlyArray<stri
   house_forms: ['footprint'],
   decks: ['deck', 'landing'],
   openings: ['opening_outline', 'opening_marker'],
-  pergolas: ['roof_plane'],
+  pergolas: ['outline', 'roof_plane'],
 };
 
 function polygonAreaMm(points: ReadonlyArray<PlanDimensionPoint>): number {
@@ -91,14 +92,25 @@ function polygonCentroid(points: ReadonlyArray<PlanDimensionPoint>): PlanDimensi
   return { x: sumX / points.length, y: sumY / points.length };
 }
 
-export function pickPrimaryEditCandidate<T extends { polygon: ReadonlyArray<PlanDimensionPoint>; kind?: string }>(
-  items: ReadonlyArray<T>,
-  activeFamily: ActiveObjectFamily,
-): T | null {
+export function pickPrimaryEditCandidate<
+  T extends { polygon: ReadonlyArray<PlanDimensionPoint>; kind?: string; isCanonicalOutline?: boolean },
+>(items: ReadonlyArray<T>, activeFamily: ActiveObjectFamily): T | null {
+  const markedCandidates = items.filter((item) => item.isCanonicalOutline === true);
+  if (markedCandidates.length > 0) {
+    return pickLargestByArea(markedCandidates);
+  }
   const allowedKinds = PRIMARY_EDIT_KIND_BY_FAMILY[activeFamily];
   if (!allowedKinds) return null;
-  const candidates = items.filter((item) => item.kind !== undefined && allowedKinds.includes(item.kind));
-  if (candidates.length === 0) return null;
+  const kindCandidates = items.filter(
+    (item) => item.kind !== undefined && allowedKinds.includes(item.kind),
+  );
+  if (kindCandidates.length === 0) return null;
+  return pickLargestByArea(kindCandidates);
+}
+
+function pickLargestByArea<T extends { polygon: ReadonlyArray<PlanDimensionPoint> }>(
+  candidates: ReadonlyArray<T>,
+): T | null {
   let best: T | null = null;
   let bestArea = -Infinity;
   for (const candidate of candidates) {

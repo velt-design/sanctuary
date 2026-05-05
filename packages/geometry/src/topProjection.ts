@@ -512,7 +512,7 @@ function shapeProjectionForObject(object: ViewerSceneObject): ObjectProjection |
 }
 
 function isCanonicalOutlineForObject(object: ViewerSceneObject): boolean {
-  if (object.type === 'house_surface_solid' && (object.kind === 'deck' || object.kind === 'landing')) {
+  if (object.type === 'house_surface_solid' && object.kind === 'deck') {
     return true;
   }
   return false;

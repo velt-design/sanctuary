@@ -29,6 +29,7 @@ export function usePlanSelectionDimensions({
             polygon: item.shape.polygon,
             family: item.shape.family,
             kind: item.shape.kind,
+            isCanonicalOutline: item.shape.metadata?.isCanonicalOutline === true,
           })),
           activeFamily ?? null,
         )
