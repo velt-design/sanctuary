@@ -60,6 +60,9 @@ export function topProjectionPlanLayer(shape: GeometryTopProjectionShape): Proje
     return null;
   }
   if (shape.family === 'house') {
+    if (shape.sourceType === 'house_reference' && shape.kind === 'footprint') {
+      return 'committedBodies';
+    }
     if (
       (shape.sourceType === 'house_surface_solid' || shape.sourceType === 'house_surface') &&
       (shape.kind === 'roof' || shape.kind === 'deck' || shape.kind === 'footprint')

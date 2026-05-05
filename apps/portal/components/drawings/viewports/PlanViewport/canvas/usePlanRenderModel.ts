@@ -29,6 +29,11 @@ export type PlanRenderModel = {
   contextLines: PlanRenderItem[];
   detailLines: PlanRenderItem[];
   selectionHaloItems: PlanRenderItem[];
+  diagnostics: {
+    totalShapeCount: number;
+    sourceTypes: string[];
+    hasHouseReferenceFootprint: boolean;
+  };
 };
 
 export type UsePlanRenderModelInput = {
@@ -64,6 +69,15 @@ export function usePlanRenderModel({
     const selectionHaloItems = committedBodies.filter(({ shape }) =>
       activeObjectMatchesPlanShape(activeObjectRef, shape),
     );
-    return { layout, adapter, committedBodies, contextLines, detailLines, selectionHaloItems };
+    const sourceTypes = Array.from(new Set(projection.shapes.map((shape) => shape.sourceType)));
+    const hasHouseReferenceFootprint = projection.shapes.some(
+      (shape) => shape.sourceType === 'house_reference' && shape.kind === 'footprint',
+    );
+    const diagnostics = {
+      totalShapeCount: projection.shapes.length,
+      sourceTypes,
+      hasHouseReferenceFootprint,
+    };
+    return { layout, adapter, committedBodies, contextLines, detailLines, selectionHaloItems, diagnostics };
   }, [activeObjectRef, projection, visibility]);
 }

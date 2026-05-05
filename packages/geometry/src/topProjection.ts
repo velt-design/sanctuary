@@ -548,7 +548,7 @@ function buildReferenceShapes(assembly: Assembly3D): GeometryTopProjectionShape[
     zOrder: 0,
     zMin: 0,
     zMax: 0,
-    metadata: metadataWithTopProjectionRole(assembly.house.model?.metadata as GeometryMetadata | undefined, 'context'),
+    metadata: metadataWithTopProjectionRole(assembly.house.model?.metadata as GeometryMetadata | undefined, 'top_visible'),
   }];
 }
 
@@ -622,6 +622,7 @@ export function buildTopProjectionParityReport(
   }
 
   for (const shape of topVisibleShapes) {
+    if (shape.sourceType === 'house_reference') continue;
     if (!sceneObjectIds.has(shape.sourceObjectId)) {
       issues.push({
         code: 'extra_top_visible_shape',
@@ -634,7 +635,7 @@ export function buildTopProjectionParityReport(
 
   const projectedTopVisibleObjectIds = new Set(
     topVisibleShapes
-      .filter((shape) => sceneObjectIds.has(shape.sourceObjectId))
+      .filter((shape) => shape.sourceType !== 'house_reference' && sceneObjectIds.has(shape.sourceObjectId))
       .map((shape) => shape.sourceObjectId),
   );
   for (const objectId of expectedTopVisibleObjectIds) {
