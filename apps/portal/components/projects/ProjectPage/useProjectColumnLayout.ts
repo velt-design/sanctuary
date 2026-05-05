@@ -13,21 +13,21 @@ import {
   type PointerEventHandler,
 } from 'react';
 
-export const PROJECT_PAGE_LEFT_MIN_PX = 260;
-export const PROJECT_PAGE_LEFT_MAX_PX = 420;
-export const PROJECT_PAGE_LEFT_DEFAULT_PX = 280;
-export const PROJECT_PAGE_RIGHT_MIN_PX = 280;
-export const PROJECT_PAGE_RIGHT_MAX_PX = 420;
-export const PROJECT_PAGE_RIGHT_DEFAULT_PX = 320;
+const PROJECT_PAGE_LEFT_MIN_PX = 260;
+const PROJECT_PAGE_LEFT_MAX_PX = 420;
+const PROJECT_PAGE_LEFT_DEFAULT_PX = 280;
+const PROJECT_PAGE_RIGHT_MIN_PX = 280;
+const PROJECT_PAGE_RIGHT_MAX_PX = 420;
+const PROJECT_PAGE_RIGHT_DEFAULT_PX = 320;
 export const PROJECT_PAGE_CENTER_MIN_PX = 760;
 export const PROJECT_PAGE_HANDLE_WIDTH_PX = 18;
-export const PROJECT_PAGE_RESIZE_KEYBOARD_STEP_PX = 16;
-export const PROJECT_PAGE_COLLAPSE_OVERSHOOT_PX = 40;
+const PROJECT_PAGE_RESIZE_KEYBOARD_STEP_PX = 16;
+const PROJECT_PAGE_COLLAPSE_OVERSHOOT_PX = 40;
 export const PROJECT_PAGE_LAYOUT_STORAGE_KEY = 'sp.projectPage.columnLayout.v1';
-export const PROJECT_PAGE_DESKTOP_MIN_WIDTH_PX =
+const PROJECT_PAGE_DESKTOP_MIN_WIDTH_PX =
   PROJECT_PAGE_LEFT_MIN_PX + PROJECT_PAGE_RIGHT_MIN_PX + PROJECT_PAGE_CENTER_MIN_PX + PROJECT_PAGE_HANDLE_WIDTH_PX * 2;
 
-export type ProjectColumnLayout = {
+type ProjectColumnLayout = {
   leftWidthPx: number;
   rightWidthPx: number;
   leftCollapsed: boolean;
@@ -220,7 +220,7 @@ function resolveVisibleProjectColumnLayout(layout: ProjectColumnLayout, containe
   return clampExpandedPairToBudget(base, containerWidthPx);
 }
 
-export function clampStoredProjectColumnLayout(layout: ProjectColumnLayout, containerWidthPx: number): ProjectColumnLayout {
+function clampStoredProjectColumnLayout(layout: ProjectColumnLayout, containerWidthPx: number): ProjectColumnLayout {
   const base = normalizeProjectColumnLayout(layout);
   if (!isProjectPageDesktopWidth(containerWidthPx)) return base;
 
@@ -233,7 +233,7 @@ export function clampStoredProjectColumnLayout(layout: ProjectColumnLayout, cont
   };
 }
 
-export function clampActiveProjectColumnResize(
+function clampActiveProjectColumnResize(
   layout: ProjectColumnLayout,
   side: ResizeSide,
   containerWidthPx: number,

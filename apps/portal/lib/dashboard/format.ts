@@ -1,14 +1,7 @@
-export const NZ_TZ = 'Pacific/Auckland';
+const NZ_TZ = 'Pacific/Auckland';
 
 export function todayNzYYYYMMDD() {
   return new Date().toLocaleDateString('en-CA', { timeZone: NZ_TZ });
-}
-
-export function addDaysYYYYMMDD(yyyyMmDd: string, days: number) {
-  const [y, m, d] = yyyyMmDd.split('-').map(Number);
-  const dt = new Date(Date.UTC(y, m - 1, d));
-  dt.setUTCDate(dt.getUTCDate() + days);
-  return dt.toISOString().slice(0, 10);
 }
 
 export function humanDueLabel(dueYYYYMMDD?: string | null, todayYYYYMMDD?: string) {

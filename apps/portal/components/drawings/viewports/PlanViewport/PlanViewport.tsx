@@ -147,6 +147,8 @@ export default function PlanViewport({
   return (
     <div
       data-plan-viewport-host="true"
+      data-plan-active-object-family={activeObjectRef?.family ?? ''}
+      data-plan-active-object-id={activeObjectRef?.objectId ?? ''}
       style={{ width: '100%', height: '100%', overflow: 'hidden', display: 'block' }}
     >
       <ToolDispatcherProvider initialTool={selectTool}>

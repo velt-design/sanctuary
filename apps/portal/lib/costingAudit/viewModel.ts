@@ -5,7 +5,7 @@ import { isCalculatorInputsV2, isLegacyCalculatorInputsV1, migrateLegacyCalculat
 
 type AnyRecord = Record<string, unknown>;
 
-export type CostingAuditSummaryRow = {
+type CostingAuditSummaryRow = {
   id: string;
   section: string;
   metric: string;
@@ -14,7 +14,7 @@ export type CostingAuditSummaryRow = {
   notes?: string | null;
 };
 
-export type CostingAuditMaterialsRow = {
+type CostingAuditMaterialsRow = {
   line: number;
   itemId: string;
   label: string;
@@ -27,7 +27,7 @@ export type CostingAuditMaterialsRow = {
   source: string | null;
 };
 
-export type CostingAuditInstallRow = {
+type CostingAuditInstallRow = {
   actionId: string;
   category: string | null;
   label: string;
@@ -105,7 +105,7 @@ function collectSnapshotWarnings(snapshot: Record<string, unknown> | null): Warn
     .map((message: string) => ({ level: 'info', message }));
 }
 
-export function extractCalculatorInputsFromSnapshot(snapshot: Record<string, unknown> | null): CalculatorInputs | null {
+function extractCalculatorInputsFromSnapshot(snapshot: Record<string, unknown> | null): CalculatorInputs | null {
   const root = isRecord(snapshot?.calculator_snapshot) ? (snapshot?.calculator_snapshot as AnyRecord) : snapshot;
   const inputs = root?.inputs;
   if (isCalculatorInputsV2(inputs)) return inputs;

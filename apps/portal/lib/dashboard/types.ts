@@ -4,7 +4,7 @@ export type QueueMode = 'today' | 'next7' | 'alldue';
 
 export type ProjectStatus = CoreProjectStatus;
 
-export type AttentionKey =
+type AttentionKey =
   | 'overdue'
   | 'due_today'
   | 'unscheduled_estimates'
@@ -12,7 +12,7 @@ export type AttentionKey =
   | 'quotes_to_send'
   | 'email_failures';
 
-export type Severity = 'high' | 'medium' | 'low';
+type Severity = 'high' | 'medium' | 'low';
 
 export interface DashboardKpis {
   actionsDue: number; // today + overdue
@@ -40,7 +40,7 @@ export interface WorkQueueItem {
   lastActivityAt?: string | null; // ISO
 }
 
-export interface ScheduleStartingItem {
+interface ScheduleStartingItem {
   startDate: string; // YYYY-MM-DD
   crewName: string;
   projectId: string;
@@ -48,7 +48,7 @@ export interface ScheduleStartingItem {
   durationDays?: number | null;
 }
 
-export interface CrewAvailabilityItem {
+interface CrewAvailabilityItem {
   crewName: string;
   nextAvailableDate?: string | null; // YYYY-MM-DD
 }
@@ -60,7 +60,7 @@ export interface ScheduleSnapshot {
   hrefGantt: string;
 }
 
-export interface SiteVisitItem {
+interface SiteVisitItem {
   id: string;
   startsAt: string; // ISO
   projectId?: string | null;
@@ -79,7 +79,7 @@ export interface SiteVisitsSnapshot {
 
 export type PipelineCounts = Record<string, number>;
 
-export interface ActivityItem {
+interface ActivityItem {
   at: string; // ISO
   label: string; // "Quote sent"
   projectId?: string;

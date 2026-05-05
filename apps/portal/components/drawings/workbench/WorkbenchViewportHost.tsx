@@ -26,7 +26,6 @@ import type { CalculatorHouseFootprintPolygonPoint } from '@/lib/types/calculato
 import { type Geometry3DViewportState } from '@/components/drawings/viewports/Geometry3DViewport';
 import DesignViewport from '@/components/drawings/viewports/DesignViewport';
 import PlanViewport from '@/components/drawings/viewports/PlanViewport/PlanViewport';
-import ModelSpaceViewport from '@/components/drawings/viewports/ModelSpaceViewport';
 import SheetViewport from '@/components/drawings/viewports/SheetViewport';
 import styles from './DrawingWorkbench.module.css';
 
@@ -154,7 +153,7 @@ export default function WorkbenchViewportHost({
           onCommitField={onCommitField}
           onCommitFootprintEdit={onCommitFootprintEdit}
         />
-      ) : viewportMode === 'plan' ? (
+      ) : viewportMode === 'plan' || viewportMode === 'model' ? (
         <PlanViewport
           artifact={routedDrawingSurfaceGeometry?.artifact ?? null}
           objectWorkbenchDisplayFamily={objectWorkbenchDisplayFamily}
@@ -165,37 +164,6 @@ export default function WorkbenchViewportHost({
           onSelectObjectWorkbenchTarget={onSelectObjectWorkbenchTarget}
           onSelectPergolaTarget={onSelectPergolaTarget}
           onClearWorkbenchSelection={onClearWorkbenchSelection}
-        />
-      ) : viewportMode === 'model' ? (
-        <ModelSpaceViewport
-          view={view}
-          objectWorkbenchDisplayFamily={objectWorkbenchDisplayFamily}
-          visibility={visibility}
-          status={status}
-          planViewModel={planViewModel}
-          drawingSurfaceGeometry={routedDrawingSurfaceGeometry}
-          activeObjectRef={activeObjectRef}
-          pergolaTargetId={pergolaTargetId}
-          enableProjectionOnlyModelInteractions={enableProjectionOnlyModelInteractions}
-          drawOutlineRequestId={drawOutlineRequestId}
-          drawOutlineMode={drawOutlineMode}
-          drawOutlineSeedPolygon={drawOutlineSeedPolygon}
-          onConsumeDrawOutlineRequest={onDrawOutlineRequestConsumed}
-          fitViewKey={modelViewportKey ?? `${activeModuleIndex}:${view}`}
-          autoFitOnReady={modelViewportAutoFitOnReady}
-          viewportTransform={modelViewportTransform}
-          onViewportTransformChange={onModelViewportTransformChange}
-          editableFields={modelEditableFields}
-          onCommitField={onCommitModelField}
-          onCommitFootprintEdit={onCommitFootprintEdit}
-          onCommitCustomPolygon={onCommitCustomPolygon}
-          onSelectObjectWorkbenchTarget={onSelectObjectWorkbenchTarget}
-          onSelectPergolaTarget={onSelectPergolaTarget}
-          onClearWorkbenchSelection={onClearWorkbenchSelection}
-          onCommitHouseFormFootprintDimension={onCommitHouseFormFootprintDimension}
-          onCommitDeckDimension={onCommitDeckDimension}
-          onCommitOpeningDimension={onCommitOpeningDimension}
-          onDeckInteractionTelemetryChange={onDeckInteractionTelemetryChange}
         />
       ) : (
         <DesignViewport

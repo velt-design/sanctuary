@@ -13,11 +13,11 @@ import {
 import { isProjectPageDesktopWidth } from './useProjectColumnLayout';
 
 export const PROJECT_PAGE_HEADER_LAYOUT_STORAGE_KEY = 'sp.projectPage.headerLayout.v1';
-export const PROJECT_PAGE_HEADER_SNAP_STEP_PX = 32;
-export const PROJECT_PAGE_HEADER_SNAP_FULL_PX = 92;
+const PROJECT_PAGE_HEADER_SNAP_STEP_PX = 32;
+const PROJECT_PAGE_HEADER_SNAP_FULL_PX = 92;
 
-export type ProjectHeaderMode = 'expanded' | 'compact' | 'collapsed';
-export type ProjectHeaderOpenMode = Exclude<ProjectHeaderMode, 'collapsed'>;
+type ProjectHeaderMode = 'expanded' | 'compact' | 'collapsed';
+type ProjectHeaderOpenMode = Exclude<ProjectHeaderMode, 'collapsed'>;
 
 type ProjectHeaderLayout = {
   mode: ProjectHeaderMode;

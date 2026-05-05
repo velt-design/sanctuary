@@ -446,7 +446,7 @@ describe('DrawingWorkbench', () => {
       />,
     );
 
-    expect(markup).toContain('aria-label="Plan model space viewport"');
+    expect(markup).toContain('aria-label="Plan editor"');
     expect(markup).toContain('Fit view');
     expect(markup).not.toContain('Live configurator surface');
     expect(markup).not.toContain('A3 drawing sheet');
@@ -507,10 +507,10 @@ describe('DrawingWorkbench', () => {
     expect(sheetMarkup).toContain('data-plan-primary-fill="true"');
     expect(sheetMarkup).toContain('data-top-projection-screen-axis="world_x_left_world_y_down"');
     expect(sheetMarkup).toContain('data-plan-duplicate-visual-body-count="0"');
-    expect(modelMarkup).toContain('aria-label="Plan model space viewport"');
-    expect(modelMarkup).toContain('data-plan-primary-fill="true"');
-    expect(modelMarkup).toContain('data-top-projection-screen-axis="world_x_left_world_y_down"');
-    expect(modelMarkup).toContain('data-plan-duplicate-visual-body-count="0"');
+    expect(modelMarkup).toContain('aria-label="Plan editor"');
+    expect(modelMarkup).toContain('data-plan-render-source="geometry"');
+    expect(modelMarkup).toContain('data-plan-screen-axis="world_x_left_world_y_down"');
+    expect(modelMarkup).toContain('data-plan-shape-family="pergola"');
   });
 
   it('keeps solved drawing-surface geometry ahead of loose model-space plan view geometry', () => {
@@ -546,9 +546,9 @@ describe('DrawingWorkbench', () => {
       />,
     );
 
-    expect(markup).toContain('data-drawing-surface-source="solved_geometry"');
-    expect(markup).toContain('data-top-projection-screen-axis="world_x_left_world_y_down"');
-    expect(markup).not.toContain('data-top-projection-screen-axis="world_x_right_world_y_down"');
+    expect(markup).toContain('data-plan-render-source="geometry"');
+    expect(markup).toContain('data-plan-screen-axis="world_x_left_world_y_down"');
+    expect(markup).not.toContain('data-plan-screen-axis="world_x_right_world_y_down"');
   });
 
   it('keeps loose model-space geometry out while rendering explicit legacy fallback plan geometry', () => {
@@ -597,10 +597,9 @@ describe('DrawingWorkbench', () => {
       />,
     );
 
-    expect(markup).toContain('data-drawing-surface-source="legacy_fallback"');
-    expect(markup).toContain('data-model-space-render-contract="legacy_or_fallback"');
-    expect(markup).toContain('aria-label="Module plan view"');
-    expect(markup).not.toContain('data-top-projection-screen-axis=');
+    expect(markup).toContain('data-plan-render-status="no_artifact"');
+    expect(markup).toContain('Plan view unavailable');
+    expect(markup).not.toContain('data-plan-screen-axis=');
   });
 
   it('passes family visibility to model space so pergolas can be hidden without changing sheet output', () => {
@@ -637,8 +636,8 @@ describe('DrawingWorkbench', () => {
       />
     );
 
-    expect(hiddenMarkup).toContain('aria-label="Plan model space viewport"');
-    expect(hiddenMarkup).not.toContain('data-plan-primary-fill="true"');
+    expect(hiddenMarkup).toContain('aria-label="Plan editor"');
+    expect(hiddenMarkup).not.toContain('data-plan-shape-family="pergola"');
   });
 
   it('always exposes the 3D primary nav button', () => {

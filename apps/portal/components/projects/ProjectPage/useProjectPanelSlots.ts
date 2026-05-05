@@ -4,12 +4,12 @@ import { useCallback, useEffect, useState, type Dispatch, type SetStateAction } 
 import { arrayMove } from '@dnd-kit/sortable';
 
 export const PROJECT_PANEL_LAYOUT_STORAGE_KEY = 'sp.projectPage.panelSlots.v1';
-export const PROJECT_PANEL_IDS = ['details', 'tasks'] as const;
-export const PROJECT_PANEL_RAILS = ['left', 'right'] as const;
+const PROJECT_PANEL_IDS = ['details', 'tasks'] as const;
+const PROJECT_PANEL_RAILS = ['left', 'right'] as const;
 
 export type ProjectPanelId = (typeof PROJECT_PANEL_IDS)[number];
 export type ProjectPanelRail = (typeof PROJECT_PANEL_RAILS)[number];
-export type ProjectPanelSlots = Record<ProjectPanelRail, ProjectPanelId[]>;
+type ProjectPanelSlots = Record<ProjectPanelRail, ProjectPanelId[]>;
 
 const DEFAULT_PROJECT_PANEL_SLOTS: ProjectPanelSlots = {
   left: ['details'],

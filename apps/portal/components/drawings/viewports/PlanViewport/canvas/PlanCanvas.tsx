@@ -157,6 +157,7 @@ export function PlanCanvas({
         data-plan-committed-body-count={committedBodies.length}
         data-plan-context-line-count={contextLines.length}
         data-plan-detail-line-count={detailLines.length}
+        data-plan-selection-halo-count={selectionHaloItems.length}
         data-plan-dimension-count={dimensions.length}
         data-plan-hover-shape-id={hoveredShape?.shapeId ?? ''}
         data-plan-hover-shape-kind={hoveredShape?.kind ?? ''}
