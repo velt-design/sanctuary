@@ -3768,21 +3768,6 @@ export default function Geometry3DViewport({
     });
   }, [cameraState, persistCameraState]);
 
-  const setViewPreset = useCallback(
-    (viewPreset: Exclude<GeometryCameraPreset, "custom">) => {
-      persistCameraState({
-        ...cameraState,
-        position: positionFromDirection(
-          cameraState.target,
-          directionForPreset(viewPreset),
-          cameraState.distanceMm,
-        ),
-        viewPreset,
-      });
-    },
-    [cameraState, persistCameraState],
-  );
-
   const focusObjectById = useCallback(
     (id: string) => {
       const object = allObjects.find((entry) => entry.id === id) ?? null;
@@ -4212,33 +4197,6 @@ export default function Geometry3DViewport({
             >
               Fit to scene
             </button>
-            <button
-              type="button"
-              className={styles.resetButton}
-              onClick={() => focusSelection(selectedObject)}
-              disabled={!selectedObject}
-            >
-              Focus selection
-            </button>
-          </div>
-          <div className={styles.toolbarGroup}>
-            {cameraState.viewPreset === "custom" ? (
-              <span className={styles.activeToolbarButton}>Custom</span>
-            ) : null}
-            {(["iso", "front", "right", "top"] as const).map((preset) => (
-              <button
-                key={preset}
-                type="button"
-                className={
-                  cameraState.viewPreset === preset
-                    ? styles.activeToolbarButton
-                    : styles.resetButton
-                }
-                onClick={() => setViewPreset(preset)}
-              >
-                {formatCameraPreset(preset)}
-              </button>
-            ))}
           </div>
         </div>
 

@@ -16,7 +16,7 @@ type PrimaryNavItem = {
 
 const PRIMARY_NAV_ITEMS: PrimaryNavItem[] = [
   { id: 'sheet', label: 'Sheet View', viewportMode: 'sheet', view: 'plan' },
-  { id: 'plan', label: 'Plan', viewportMode: 'model', view: 'plan' },
+  { id: 'plan', label: 'Plan', viewportMode: 'plan', view: 'plan' },
   { id: 'geometry3d', label: '3D', viewportMode: 'geometry3d', view: null },
 ];
 

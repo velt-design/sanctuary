@@ -1,6 +1,6 @@
 'use client';
 
-import type { PointerEvent as ReactPointerEvent } from 'react';
+import { useCallback, type PointerEvent as ReactPointerEvent } from 'react';
 import type { DrawingWorkbenchViewportTransform } from '@/lib/drawings/state/drawingWorkbenchUiState';
 import { useHoveredShape } from '../interactions/useHoveredShape';
 import { usePanZoom } from '../interactions/usePanZoom';
@@ -10,15 +10,20 @@ import {
 } from '../interactions/useShapeSelection';
 import { PlanCommittedBodyLayer } from './layers/PlanCommittedBodyLayer';
 import { PlanContextLineLayer } from './layers/PlanContextLineLayer';
+import { PlanDetailLayer } from './layers/PlanDetailLayer';
 import { PlanHitTargetLayer } from './layers/PlanHitTargetLayer';
 import { PlanSelectionHaloLayer } from './layers/PlanSelectionHaloLayer';
+import styles from './PlanCanvas.module.css';
 import type { PlanLayout } from './planLayout';
 import type { PlanRenderItem } from './planRenderItem';
+
+const IDENTITY_TRANSFORM: DrawingWorkbenchViewportTransform = { zoom: 1, panX: 0, panY: 0 };
 
 export type PlanCanvasProps = {
   layout: PlanLayout;
   committedBodies: PlanRenderItem[];
   contextLines: PlanRenderItem[];
+  detailLines: PlanRenderItem[];
   selectionHaloItems: PlanRenderItem[];
   transform: DrawingWorkbenchViewportTransform;
   onTransformChange: (next: DrawingWorkbenchViewportTransform) => void;
@@ -34,6 +39,7 @@ export function PlanCanvas({
   layout,
   committedBodies,
   contextLines,
+  detailLines,
   selectionHaloItems,
   transform,
   onTransformChange,
@@ -50,12 +56,30 @@ export function PlanCanvas({
     clear();
   };
 
+  const handleFitView = useCallback(() => {
+    onTransformChange(IDENTITY_TRANSFORM);
+  }, [onTransformChange]);
+
   return (
+    <div className={styles.canvasShell}>
+      <div className={styles.toolbar} role="toolbar" aria-label="Plan canvas controls">
+        <button
+          type="button"
+          className={styles.toolbarButton}
+          onClick={handleFitView}
+          data-plan-canvas-action="fit-view"
+        >
+          Fit view
+        </button>
+      </div>
     <svg
+      ref={panZoom.wheelRef}
+      className={styles.canvasSvg}
       viewBox={layout.viewBox}
-      width={layout.width}
-      height={layout.height}
-      overflow="visible"
+      width="100%"
+      height="100%"
+      preserveAspectRatio="xMidYMid meet"
+      style={{ display: 'block' }}
       role="img"
       aria-label="Plan editor"
       data-plan-viewport="true"
@@ -64,6 +88,7 @@ export function PlanCanvas({
       data-plan-screen-axis={screenAxisLabel}
       data-plan-committed-body-count={committedBodies.length}
       data-plan-context-line-count={contextLines.length}
+      data-plan-detail-line-count={detailLines.length}
       data-plan-hover-shape-id={hoveredShape?.shapeId ?? ''}
       data-plan-hover-shape-kind={hoveredShape?.kind ?? ''}
       onPointerDown={(event) => {
@@ -73,12 +98,12 @@ export function PlanCanvas({
       onPointerMove={panZoom.onPointerMove}
       onPointerUp={panZoom.onPointerUp}
       onPointerCancel={panZoom.onPointerUp}
-      onWheel={panZoom.onWheel}
       onContextMenu={panZoom.onContextMenu}
     >
       <g transform={transformAttr(transform)} data-plan-transform="true">
         <PlanCommittedBodyLayer items={committedBodies} />
         <PlanContextLineLayer items={contextLines} />
+        <PlanDetailLayer items={detailLines} />
         <PlanSelectionHaloLayer items={selectionHaloItems} />
         <PlanHitTargetLayer
           items={committedBodies}
@@ -88,5 +113,6 @@ export function PlanCanvas({
         />
       </g>
     </svg>
+    </div>
   );
 }

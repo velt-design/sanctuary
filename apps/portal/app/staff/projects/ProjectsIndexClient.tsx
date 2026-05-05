@@ -2,9 +2,10 @@
 
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent } from 'react';
+import { createPortal } from 'react-dom';
 import type { Contact } from '@/lib/types/contact';
-import type { Project } from '@/lib/types/project';
+import type { Project, ProjectStatus } from '@/lib/types/project';
 import { PROJECT_STATUS_ORDER, projectStatusLabel } from '@/lib/types/project';
 import styles from './projects.module.css';
 import PageHeader from '@/components/layout/PageHeader';
@@ -12,12 +13,25 @@ import HeaderActions from '@/components/layout/HeaderActions';
 import { useToast } from '@/components/ui/toast/ToastProvider';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { contactsListQueryOptions } from '@/lib/queries/contacts';
-import { projectPageSnapshotQueryOptions, projectsListQueryOptions } from '@/lib/queries/projects';
+import {
+  projectPageSnapshotQueryOptions,
+  projectTooltipSummaryQueryOptions,
+  projectsListQueryOptions,
+} from '@/lib/queries/projects';
 import { qk } from '@/lib/queries/keys';
 import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
 import Modal from '@/components/ui/modal/Modal';
+import { PIPELINE_MODAL_ACTION_CLASSES, PipelineModal } from '@/components/ui/PipelineModal';
 import { usePortalSession } from '@/components/auth/PortalAuthProvider';
-import { deleteProject } from '@/lib/repo/projectsRepo';
+import { correctProjectStage, deleteProject } from '@/lib/repo/projectsRepo';
+import {
+  PIPELINE_STAGE_LABELS,
+  normalizePipelineStageKey,
+  requiresStageConfirmation,
+  stageKeyToStatus,
+  type PipelineStageKey,
+} from '@/lib/projects/pipelineDefinition';
+import { patchProjectListItem } from '@/lib/queries/projectCache';
 import {
   buildContactsById,
   filterProjectsForIndex,
@@ -25,6 +39,150 @@ import {
   type ArchiveFilter,
   type ProjectsIndexFilters,
 } from './projectIndexFilters';
+
+const NZD_FORMATTER = new Intl.NumberFormat('en-NZ', {
+  style: 'currency',
+  currency: 'NZD',
+  maximumFractionDigits: 0,
+});
+
+function formatTotalCents(cents: number | null | undefined): string {
+  if (typeof cents !== 'number' || !Number.isFinite(cents) || cents <= 0) return '—';
+  return NZD_FORMATTER.format(cents / 100);
+}
+
+function ProjectRowTooltipBody({
+  host,
+  projectId,
+  fallbackClientName,
+}: {
+  host: string;
+  projectId: string;
+  fallbackClientName: string;
+}) {
+  const { data, isLoading, isError } = useQuery({
+    ...projectTooltipSummaryQueryOptions(host, projectId),
+  });
+
+  if (isLoading) {
+    return <div className={styles.tooltipBody}>Loading…</div>;
+  }
+  if (isError) {
+    return <div className={styles.tooltipBody}>Couldn’t load summary.</div>;
+  }
+
+  const clientLine = data?.clientName?.trim() || fallbackClientName.trim() || '—';
+  const styleLine = data?.roofStyleLabel ?? '—';
+  const materialLine = data?.materialLabel ?? '—';
+  const totalLine = formatTotalCents(data?.totalCents ?? null);
+
+  return (
+    <div className={styles.tooltipBody}>
+      <div className={styles.tooltipClient}>{clientLine}</div>
+      <div className={styles.tooltipLine}>{styleLine}</div>
+      <div className={styles.tooltipLine}>{materialLine}</div>
+      <div className={styles.tooltipPrice}>{totalLine}</div>
+    </div>
+  );
+}
+
+const TOOLTIP_OFFSET = 14;
+const TOOLTIP_VIEWPORT_PADDING = 8;
+
+function FloatingProjectTooltip({
+  host,
+  visibleInfo,
+  fallbackClientName,
+}: {
+  host: string;
+  visibleInfo: { projectId: string; x: number; y: number } | null;
+  fallbackClientName: string;
+}) {
+  const ref = useRef<HTMLDivElement | null>(null);
+  const lastPositionRef = useRef<{ x: number; y: number }>({
+    x: visibleInfo?.x ?? -9999,
+    y: visibleInfo?.y ?? -9999,
+  });
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+
+    let pending = false;
+    const place = (x: number, y: number) => {
+      const rect = el.getBoundingClientRect();
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      let left = x + TOOLTIP_OFFSET;
+      let top = y + TOOLTIP_OFFSET;
+      if (left + rect.width > vw - TOOLTIP_VIEWPORT_PADDING) {
+        left = Math.max(TOOLTIP_VIEWPORT_PADDING, x - TOOLTIP_OFFSET - rect.width);
+      }
+      if (top + rect.height > vh - TOOLTIP_VIEWPORT_PADDING) {
+        top = Math.max(TOOLTIP_VIEWPORT_PADDING, y - TOOLTIP_OFFSET - rect.height);
+      }
+      el.style.left = `${left}px`;
+      el.style.top = `${top}px`;
+    };
+
+    const onMove = (event: globalThis.MouseEvent) => {
+      lastPositionRef.current = { x: event.clientX, y: event.clientY };
+      if (pending) return;
+      pending = true;
+      requestAnimationFrame(() => {
+        pending = false;
+        place(lastPositionRef.current.x, lastPositionRef.current.y);
+      });
+    };
+
+    document.addEventListener('mousemove', onMove);
+    return () => {
+      document.removeEventListener('mousemove', onMove);
+    };
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!visibleInfo) return;
+    lastPositionRef.current = { x: visibleInfo.x, y: visibleInfo.y };
+    const el = ref.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    let left = visibleInfo.x + TOOLTIP_OFFSET;
+    let top = visibleInfo.y + TOOLTIP_OFFSET;
+    if (left + rect.width > vw - TOOLTIP_VIEWPORT_PADDING) {
+      left = Math.max(TOOLTIP_VIEWPORT_PADDING, visibleInfo.x - TOOLTIP_OFFSET - rect.width);
+    }
+    if (top + rect.height > vh - TOOLTIP_VIEWPORT_PADDING) {
+      top = Math.max(TOOLTIP_VIEWPORT_PADDING, visibleInfo.y - TOOLTIP_OFFSET - rect.height);
+    }
+    el.style.left = `${left}px`;
+    el.style.top = `${top}px`;
+  }, [visibleInfo]);
+
+  const isVisible = Boolean(visibleInfo);
+  const className = isVisible
+    ? `${styles.floatingTooltip} ${styles.floatingTooltipVisible}`
+    : styles.floatingTooltip;
+
+  return (
+    <div ref={ref} className={className} role="tooltip" aria-hidden={!isVisible}>
+      {visibleInfo ? (
+        <ProjectRowTooltipBody host={host} projectId={visibleInfo.projectId} fallbackClientName={fallbackClientName} />
+      ) : null}
+    </div>
+  );
+}
+
+type EditableField = 'name' | 'phone' | 'address';
+type EditingState = { id: string; field: EditableField; value: string } | null;
+type StatusConfirmState = {
+  projectId: string;
+  current: PipelineStageKey;
+  next: PipelineStageKey;
+  label: string;
+} | null;
 
 const EXTRA_DELETE_CONFIRM_STAGES = new Set<Project['status']>(['DEPOSIT', 'SCHEDULED', 'COMPLETED', 'PAID']);
 
@@ -58,8 +216,65 @@ export default function ProjectsIndexClient({
   const [deleteReason, setDeleteReason] = useState('');
   const [isDeleteBusy, setIsDeleteBusy] = useState(false);
   const [archiveBusyId, setArchiveBusyId] = useState<string | null>(null);
+  const [visibleInfo, setVisibleInfo] = useState<{ projectId: string; x: number; y: number } | null>(null);
+  const isWarmRef = useRef(false);
+  const showTimerRef = useRef<number | null>(null);
+  const hideTimerRef = useRef<number | null>(null);
+  const [isMounted, setIsMounted] = useState(false);
+  const [editing, setEditing] = useState<EditingState>(null);
+  const [savingCellKey, setSavingCellKey] = useState<string | null>(null);
+  const [savingStatusId, setSavingStatusId] = useState<string | null>(null);
+  const [statusConfirm, setStatusConfirm] = useState<StatusConfirmState>(null);
+  const [statusConfirmText, setStatusConfirmText] = useState('');
+  const [statusReason, setStatusReason] = useState('');
+  const [statusBusy, setStatusBusy] = useState(false);
 
   const host = useMemo(() => supabaseHostFromUrl(supabaseRuntimeUrl()) || 'unknown', []);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (showTimerRef.current) window.clearTimeout(showTimerRef.current);
+      if (hideTimerRef.current) window.clearTimeout(hideTimerRef.current);
+    };
+  }, []);
+
+  const handleRowMouseEnter = useCallback((projectId: string, e: MouseEvent<HTMLTableRowElement>) => {
+    const info = { projectId, x: e.clientX, y: e.clientY };
+    if (hideTimerRef.current) {
+      window.clearTimeout(hideTimerRef.current);
+      hideTimerRef.current = null;
+    }
+    if (showTimerRef.current) {
+      window.clearTimeout(showTimerRef.current);
+      showTimerRef.current = null;
+    }
+    if (isWarmRef.current) {
+      setVisibleInfo(info);
+      return;
+    }
+    showTimerRef.current = window.setTimeout(() => {
+      showTimerRef.current = null;
+      isWarmRef.current = true;
+      setVisibleInfo(info);
+    }, 280);
+  }, []);
+
+  const handleRowMouseLeave = useCallback((_projectId: string) => {
+    if (showTimerRef.current) {
+      window.clearTimeout(showTimerRef.current);
+      showTimerRef.current = null;
+    }
+    if (hideTimerRef.current) window.clearTimeout(hideTimerRef.current);
+    hideTimerRef.current = window.setTimeout(() => {
+      hideTimerRef.current = null;
+      isWarmRef.current = false;
+      setVisibleInfo(null);
+    }, 140);
+  }, []);
   const queryClient = useQueryClient();
   const prefetchedSnapshotsRef = useRef(new Set<string>());
 
@@ -151,6 +366,184 @@ export default function ProjectsIndexClient({
     setDeleteReason('');
   };
 
+  const cellKey = (id: string, field: EditableField) => `${id}:${field}`;
+
+  const beginEdit = useCallback((project: Project, field: EditableField, currentValue: string) => {
+    if (savingCellKey) return;
+    setEditing({ id: project.id, field, value: currentValue });
+  }, [savingCellKey]);
+
+  const cancelEdit = useCallback(() => {
+    setEditing(null);
+  }, []);
+
+  const patchContactPhoneInCache = useCallback(
+    (contactId: string, nextPhone: string) => {
+      const queryKey = qk.contacts.list(host);
+      queryClient.setQueryData<Contact[] | undefined>(queryKey, (current) => {
+        if (!Array.isArray(current)) return current;
+        return current.map((c) => (c.id === contactId ? { ...c, phone: nextPhone } : c));
+      });
+    },
+    [host, queryClient],
+  );
+
+  const commitEdit = useCallback(async () => {
+    if (!editing) return;
+    const project = projects.find((p) => p.id === editing.id);
+    if (!project) {
+      setEditing(null);
+      return;
+    }
+
+    const trimmed = editing.value.trim();
+    const field = editing.field;
+    const projectId = editing.id;
+
+    if (field === 'name' && !trimmed) {
+      toast.error('Project name is required.');
+      return;
+    }
+
+    let originalValue = '';
+    if (field === 'name') originalValue = (project.projectName ?? project.name ?? '').trim();
+    else if (field === 'address') originalValue = (project.siteAddress ?? project.address ?? '').trim();
+    else if (field === 'phone') {
+      const contact = project.contactId ? contactsById.get(project.contactId) : null;
+      originalValue = (contact?.phone ?? (project as { phone?: string }).phone ?? '').trim();
+    }
+
+    if (trimmed === originalValue) {
+      setEditing(null);
+      return;
+    }
+
+    if (field === 'phone' && !project.contactId) {
+      toast.error('Add a contact to this project before editing the phone number.');
+      setEditing(null);
+      return;
+    }
+
+    const key = cellKey(projectId, field);
+    setSavingCellKey(key);
+
+    const body: Record<string, unknown> = {};
+    if (field === 'name') body.project = { projectName: trimmed };
+    else if (field === 'address') body.project = { siteAddress: trimmed };
+    else if (field === 'phone') body.contact = { phone: trimmed };
+
+    try {
+      const res = await fetch(`/api/projects/${encodeURIComponent(projectId)}/details`, {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => null);
+        const msg = typeof errBody?.error === 'string' ? errBody.error : 'Failed to save change.';
+        throw new Error(msg);
+      }
+
+      if (field === 'name') {
+        patchProjectListItem(queryClient, host, projectId, (p) => ({ ...p, projectName: trimmed, name: trimmed }));
+      } else if (field === 'address') {
+        patchProjectListItem(queryClient, host, projectId, (p) => ({ ...p, siteAddress: trimmed, address: trimmed }));
+      } else if (field === 'phone' && project.contactId) {
+        patchContactPhoneInCache(project.contactId, trimmed);
+      }
+
+      await queryClient.invalidateQueries({ queryKey: qk.projects.listPrefix(host) });
+      if (field === 'phone') {
+        await queryClient.invalidateQueries({ queryKey: qk.contacts.list(host) });
+      }
+      setEditing(null);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to save change.';
+      toast.error(msg);
+    } finally {
+      setSavingCellKey(null);
+    }
+  }, [contactsById, editing, host, patchContactPhoneInCache, projects, queryClient, toast]);
+
+  const handleEditKeyDown = useCallback(
+    (event: KeyboardEvent<HTMLInputElement>) => {
+      event.stopPropagation();
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        void commitEdit();
+      } else if (event.key === 'Escape') {
+        event.preventDefault();
+        cancelEdit();
+      }
+    },
+    [cancelEdit, commitEdit],
+  );
+
+  const applyStageCorrection = useCallback(
+    async (projectId: string, nextStage: PipelineStageKey, label: string, reasonText: string | null) => {
+      setSavingStatusId(projectId);
+      try {
+        const result = await correctProjectStage(projectId, stageKeyToStatus(nextStage), {
+          reason: reasonText,
+        });
+        if (result.rollback) {
+          toast.success(`Stage corrected to ${label}. Reset ${result.resetManualTaskCount} manual checkmark(s).`);
+        } else {
+          toast.success(`Stage corrected to ${label}.`);
+        }
+        patchProjectListItem(queryClient, host, projectId, (p) => ({
+          ...p,
+          status: stageKeyToStatus(nextStage),
+        }));
+        await queryClient.invalidateQueries({ queryKey: qk.projects.listPrefix(host) });
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Failed to update stage.';
+        toast.error(msg);
+        throw err;
+      } finally {
+        setSavingStatusId(null);
+      }
+    },
+    [host, queryClient, toast],
+  );
+
+  const handleStatusChange = useCallback(
+    (project: Project, rawNext: string) => {
+      const currentStage = normalizePipelineStageKey(project.status ?? 'NEW');
+      const nextStage = normalizePipelineStageKey(rawNext);
+      if (!currentStage || !nextStage || currentStage === nextStage) return;
+      const label = PIPELINE_STAGE_LABELS[nextStage] ?? rawNext;
+
+      if (!requiresStageConfirmation(currentStage, nextStage)) {
+        void applyStageCorrection(project.id, nextStage, label, null);
+        return;
+      }
+
+      setStatusConfirm({
+        projectId: project.id,
+        current: currentStage,
+        next: nextStage,
+        label,
+      });
+      setStatusConfirmText('');
+      setStatusReason('');
+    },
+    [applyStageCorrection],
+  );
+
+  const closeStatusConfirm = () => {
+    if (statusBusy) return;
+    setStatusConfirm(null);
+    setStatusConfirmText('');
+    setStatusReason('');
+  };
+
+  const isStatusRollback = Boolean(
+    statusConfirm &&
+      PROJECT_STATUS_ORDER.indexOf(stageKeyToStatus(statusConfirm.next) as ProjectStatus) <
+        PROJECT_STATUS_ORDER.indexOf(stageKeyToStatus(statusConfirm.current) as ProjectStatus),
+  );
+
   const toggleArchive = async (project: Project) => {
     if (archiveBusyId) return;
     const willArchive = !project.isArchived;
@@ -179,6 +572,14 @@ export default function ProjectsIndexClient({
   };
 
   const requiredDeleteText = deleteTarget ? requiredDeleteConfirmation(deleteTarget.id, deleteTarget.status ?? 'NEW') : '';
+
+  const visibleProject = visibleInfo ? filteredProjects.find((p) => p.id === visibleInfo.projectId) ?? null : null;
+  const visibleFallback = visibleProject
+    ? (() => {
+        const c = visibleProject.contactId ? contactsById.get(visibleProject.contactId) : null;
+        return c?.displayName ?? visibleProject.clientName ?? '';
+      })()
+    : '';
 
   return (
     <main className={styles.page}>
@@ -287,10 +688,65 @@ export default function ProjectsIndexClient({
                     {filteredProjects.map((p) => {
                       const contact = p.contactId ? contactsById.get(p.contactId) : null;
                       const clientLabel = contact?.displayName ?? p.clientName ?? '—';
-                      const phoneLabel = contact?.phone || (p as { phone?: string }).phone || '—';
-                      const addressLabel = p.siteAddress ?? p.address ?? '—';
+                      const nameValue = (p.projectName ?? p.name ?? '').trim();
+                      const phoneValue = (contact?.phone ?? (p as { phone?: string }).phone ?? '').trim();
+                      const addressValue = (p.siteAddress ?? p.address ?? '').trim();
                       const isArchiveBusy = archiveBusyId === p.id;
-                      return (
+                      const isStatusBusyRow = savingStatusId === p.id;
+                      const phoneEditable = Boolean(p.contactId);
+
+                      const renderEditable = (
+                        field: EditableField,
+                        currentValue: string,
+                        placeholder: string,
+                        editable: boolean,
+                      ) => {
+                        const key = cellKey(p.id, field);
+                        const isEditing = editing?.id === p.id && editing.field === field;
+                        const isSavingCell = savingCellKey === key;
+
+                        if (isEditing) {
+                          return (
+                            <input
+                              type={field === 'phone' ? 'tel' : 'text'}
+                              autoFocus
+                              size={1}
+                              className={styles.editableCellInput}
+                              value={editing.value}
+                              placeholder={placeholder}
+                              disabled={isSavingCell}
+                              onClick={(e) => e.stopPropagation()}
+                              onChange={(e) => setEditing({ id: p.id, field, value: e.target.value })}
+                              onBlur={() => {
+                                void commitEdit();
+                              }}
+                              onKeyDown={handleEditKeyDown}
+                            />
+                          );
+                        }
+
+                        if (!editable) {
+                          return <span className={styles.muted}>{currentValue || '—'}</span>;
+                        }
+
+                        return (
+                          <button
+                            type="button"
+                            className={styles.editableCell}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              beginEdit(p, field, currentValue);
+                            }}
+                            onKeyDown={(e) => e.stopPropagation()}
+                          >
+                            {isSavingCell ? 'Saving…' : currentValue || (
+                              <span className={styles.muted}>{placeholder}</span>
+                            )}
+                          </button>
+                        );
+                      };
+
+                      const rowEl = (
                         <tr
                           key={p.id}
                           className={styles.rowClickable}
@@ -299,18 +755,49 @@ export default function ProjectsIndexClient({
                             prefetchProjectSnapshot(p.id);
                             router.push(`/staff/projects/${encodeURIComponent(p.id)}`);
                           }}
-                          onMouseEnter={() => prefetchProjectSnapshot(p.id)}
+                          onMouseEnter={(e) => {
+                            prefetchProjectSnapshot(p.id);
+                            handleRowMouseEnter(p.id, e);
+                          }}
+                          onMouseLeave={() => handleRowMouseLeave(p.id)}
                           onFocus={() => prefetchProjectSnapshot(p.id)}
                           onKeyDown={(e) => {
                             if (e.key === 'Enter' || e.key === ' ') router.push(`/staff/projects/${encodeURIComponent(p.id)}`);
                           }}
                         >
-                          <td>{p.projectName ?? p.name ?? '—'}</td>
+                          <td>{renderEditable('name', nameValue, 'Project name', true)}</td>
                           <td className={styles.muted}>{clientLabel}</td>
-                          <td className={styles.muted}>{phoneLabel}</td>
-                          <td className={styles.muted}>{addressLabel}</td>
                           <td>
-                            <span className={styles.statusPill}>{projectStatusLabel(p.status ?? 'NEW')}</span>
+                            {renderEditable(
+                              'phone',
+                              phoneValue,
+                              phoneEditable ? 'Add phone' : 'No contact linked',
+                              phoneEditable,
+                            )}
+                          </td>
+                          <td>{renderEditable('address', addressValue, 'Add address', true)}</td>
+                          <td>
+                            {isAdmin ? (
+                              <select
+                                className={styles.inlineSelect}
+                                value={(p.status ?? 'NEW') as ProjectStatus}
+                                disabled={isStatusBusyRow}
+                                onClick={(e) => e.stopPropagation()}
+                                onKeyDown={(e) => e.stopPropagation()}
+                                onChange={(e) => {
+                                  e.stopPropagation();
+                                  handleStatusChange(p, e.target.value);
+                                }}
+                              >
+                                {PROJECT_STATUS_ORDER.map((status) => (
+                                  <option key={status} value={status}>
+                                    {projectStatusLabel(status)}
+                                  </option>
+                                ))}
+                              </select>
+                            ) : (
+                              <span className={styles.statusPill}>{projectStatusLabel(p.status ?? 'NEW')}</span>
+                            )}
                             {p.isLost ? (
                               <span className={styles.dueBadge} style={{ marginLeft: 8 }}>
                                 Lost
@@ -368,6 +855,8 @@ export default function ProjectsIndexClient({
                           </td>
                         </tr>
                       );
+
+                      return rowEl;
                     })}
                   </tbody>
                 </table>
@@ -464,6 +953,96 @@ export default function ProjectsIndexClient({
           </div>
         </Modal>
       ) : null}
+
+      {statusConfirm ? (
+        <PipelineModal
+          open
+          onOpenChange={(open) => {
+            if (!open) closeStatusConfirm();
+          }}
+          title="Correct stage (admin)"
+          description={`Correct from ${PIPELINE_STAGE_LABELS[statusConfirm.current]} to ${statusConfirm.label}.`}
+          actions={
+            <>
+              <button
+                type="button"
+                className={PIPELINE_MODAL_ACTION_CLASSES.primary}
+                disabled={statusBusy || (isStatusRollback && statusConfirmText.trim().toUpperCase() !== 'RESET')}
+                onClick={() => {
+                  if (!statusConfirm || statusBusy) return;
+                  setStatusBusy(true);
+                  void applyStageCorrection(
+                    statusConfirm.projectId,
+                    statusConfirm.next,
+                    statusConfirm.label,
+                    statusReason.trim() || null,
+                  )
+                    .then(() => {
+                      setStatusConfirm(null);
+                      setStatusConfirmText('');
+                      setStatusReason('');
+                    })
+                    .catch(() => {
+                      // toast surfaced by applyStageCorrection
+                    })
+                    .finally(() => setStatusBusy(false));
+                }}
+              >
+                {statusBusy ? 'Applying…' : `Move to ${statusConfirm.label}`}
+              </button>
+              <button
+                type="button"
+                className={PIPELINE_MODAL_ACTION_CLASSES.secondary}
+                disabled={statusBusy}
+                onClick={closeStatusConfirm}
+              >
+                Cancel
+              </button>
+            </>
+          }
+        >
+          <p className={styles.note}>Silent correction only: this does not trigger automations or customer comms.</p>
+
+          {isStatusRollback ? (
+            <>
+              <p className={styles.note} style={{ marginTop: 10 }}>
+                Rollback: manual task checkmarks from this stage and later stages will be reset.
+              </p>
+              <div className={styles.field} style={{ marginTop: 10 }}>
+                <label htmlFor="index-stage-confirm-text">Type RESET to confirm rollback</label>
+                <input
+                  id="index-stage-confirm-text"
+                  className={styles.inlineInput}
+                  value={statusConfirmText}
+                  onChange={(e) => setStatusConfirmText(e.target.value)}
+                  autoComplete="off"
+                />
+              </div>
+            </>
+          ) : null}
+
+          <div className={styles.field} style={{ marginTop: 10 }}>
+            <label htmlFor="index-stage-reason">Reason (optional)</label>
+            <input
+              id="index-stage-reason"
+              className={styles.inlineInput}
+              value={statusReason}
+              onChange={(e) => setStatusReason(e.target.value)}
+            />
+          </div>
+        </PipelineModal>
+      ) : null}
+
+      {isMounted
+        ? createPortal(
+            <FloatingProjectTooltip
+              host={host}
+              visibleInfo={visibleInfo}
+              fallbackClientName={visibleFallback}
+            />,
+            document.body,
+          )
+        : null}
     </main>
   );
 }

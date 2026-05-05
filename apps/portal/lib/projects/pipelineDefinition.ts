@@ -274,6 +274,20 @@ export function stageKeyToStatus(stage: PipelineStageKey): Uppercase<PipelineSta
   return stage.toUpperCase() as Uppercase<PipelineStageKey>;
 }
 
+const DEPOSIT_INDEX = PIPELINE_STAGES.findIndex((stage) => stage.key === 'deposit');
+
+/**
+ * Manual stage moves between {new, contacted, site_visit, quoting, sent} are silent;
+ * any move that touches deposit-or-later (forward or back) needs a confirmation prompt.
+ */
+export function requiresStageConfirmation(currentStage: PipelineStageKey, nextStage: PipelineStageKey): boolean {
+  const stageOrder = PIPELINE_STAGES.map((stage) => stage.key);
+  const currentIdx = stageOrder.indexOf(currentStage);
+  const nextIdx = stageOrder.indexOf(nextStage);
+  if (currentIdx === -1 || nextIdx === -1) return true;
+  return currentIdx >= DEPOSIT_INDEX || nextIdx >= DEPOSIT_INDEX;
+}
+
 export function toCanonicalStageCounts(input: Record<string, number> | null | undefined): PipelineStageCounts {
   const out: PipelineStageCounts = {};
 

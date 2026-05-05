@@ -7,6 +7,7 @@ import {
   type ModelSpacePanSession,
 } from '@/lib/drawings/interactions/modelSpaceNavigationController';
 import type { DrawingWorkbenchViewportTransform } from '@/lib/drawings/state/drawingWorkbenchUiState';
+import { clientPointToSvg } from './pointerToPlan';
 
 export type UsePanZoomInput = {
   transform: DrawingWorkbenchViewportTransform;
@@ -14,11 +15,19 @@ export type UsePanZoomInput = {
 };
 
 export type UsePanZoomOutput = {
-  onWheel: (event: React.WheelEvent<Element>) => void;
-  onPointerDown: (event: React.PointerEvent<Element>) => void;
-  onPointerMove: (event: React.PointerEvent<Element>) => void;
-  onPointerUp: (event: React.PointerEvent<Element>) => void;
-  onContextMenu: (event: React.MouseEvent<Element>) => void;
+  wheelRef: (node: SVGSVGElement | null) => void;
+  onPointerDown: (event: React.PointerEvent<SVGSVGElement>) => void;
+  onPointerMove: (event: React.PointerEvent<SVGSVGElement>) => void;
+  onPointerUp: (event: React.PointerEvent<SVGSVGElement>) => void;
+  onContextMenu: (event: React.MouseEvent<SVGSVGElement>) => void;
+};
+
+type PlanPanSession = {
+  pointerId: number;
+  startSvgX: number;
+  startSvgY: number;
+  startPanX: number;
+  startPanY: number;
 };
 
 export function resolveWheelZoomedTransform(input: {
@@ -67,81 +76,92 @@ export function resolvePannedTransform(input: {
 }
 
 export function usePanZoom({ transform, onTransformChange }: UsePanZoomInput): UsePanZoomOutput {
-  const sessionRef = useRef<ModelSpacePanSession | null>(null);
+  const sessionRef = useRef<PlanPanSession | null>(null);
   const transformRef = useRef(transform);
   transformRef.current = transform;
+  const onTransformChangeRef = useRef(onTransformChange);
+  onTransformChangeRef.current = onTransformChange;
+  const wheelCleanupRef = useRef<(() => void) | null>(null);
+  const svgRef = useRef<SVGSVGElement | null>(null);
 
-  const onWheel = useCallback(
-    (event: React.WheelEvent<Element>) => {
+  const wheelRef = useCallback((node: SVGSVGElement | null) => {
+    if (wheelCleanupRef.current) {
+      wheelCleanupRef.current();
+      wheelCleanupRef.current = null;
+    }
+    svgRef.current = node;
+    if (!node) return;
+    const handler = (event: WheelEvent) => {
+      const svg = svgRef.current;
+      if (!svg) return;
+      const anchor = clientPointToSvg(svg, event.clientX, event.clientY);
+      if (!anchor) return;
       const next = resolveWheelZoomedTransform({
         transform: transformRef.current,
         deltaMode: event.deltaMode,
         deltaX: event.deltaX,
         deltaY: event.deltaY,
-        anchor: { x: event.clientX, y: event.clientY },
+        anchor,
       });
       if (!next) return;
       event.preventDefault();
-      onTransformChange(next);
-    },
-    [onTransformChange],
-  );
+      onTransformChangeRef.current(next);
+    };
+    node.addEventListener('wheel', handler, { passive: false });
+    wheelCleanupRef.current = () => node.removeEventListener('wheel', handler);
+  }, []);
 
-  const onPointerDown = useCallback(
-    (event: React.PointerEvent<Element>) => {
-      if (event.button !== 2) return;
-      event.preventDefault();
-      const target = event.currentTarget;
-      if (target instanceof Element && typeof target.setPointerCapture === 'function') {
-        try {
-          target.setPointerCapture(event.pointerId);
-        } catch {
-          // pointer capture is best-effort; release-on-up still cleans up.
-        }
+  const onPointerDown = useCallback((event: React.PointerEvent<SVGSVGElement>) => {
+    if (event.button !== 2) return;
+    event.preventDefault();
+    const svg = svgRef.current ?? event.currentTarget;
+    const start = clientPointToSvg(svg, event.clientX, event.clientY);
+    if (!start) return;
+    if (typeof event.currentTarget.setPointerCapture === 'function') {
+      try {
+        event.currentTarget.setPointerCapture(event.pointerId);
+      } catch {
+        // pointer capture is best-effort; release-on-up still cleans up.
       }
-      sessionRef.current = {
-        pointerId: event.pointerId,
-        startClientX: event.clientX,
-        startClientY: event.clientY,
-        startPanX: transformRef.current.panX,
-        startPanY: transformRef.current.panY,
-      };
-    },
-    [],
-  );
+    }
+    sessionRef.current = {
+      pointerId: event.pointerId,
+      startSvgX: start.x,
+      startSvgY: start.y,
+      startPanX: transformRef.current.panX,
+      startPanY: transformRef.current.panY,
+    };
+  }, []);
 
-  const onPointerMove = useCallback(
-    (event: React.PointerEvent<Element>) => {
-      const session = sessionRef.current;
-      if (!session || session.pointerId !== event.pointerId) return;
-      const next = resolvePannedTransform({
-        transform: transformRef.current,
-        session,
-        clientX: event.clientX,
-        clientY: event.clientY,
-      });
-      onTransformChange(next);
-    },
-    [onTransformChange],
-  );
+  const onPointerMove = useCallback((event: React.PointerEvent<SVGSVGElement>) => {
+    const session = sessionRef.current;
+    if (!session || session.pointerId !== event.pointerId) return;
+    const svg = svgRef.current ?? event.currentTarget;
+    const current = clientPointToSvg(svg, event.clientX, event.clientY);
+    if (!current) return;
+    onTransformChangeRef.current({
+      ...transformRef.current,
+      panX: session.startPanX + current.x - session.startSvgX,
+      panY: session.startPanY + current.y - session.startSvgY,
+    });
+  }, []);
 
-  const onPointerUp = useCallback((event: React.PointerEvent<Element>) => {
+  const onPointerUp = useCallback((event: React.PointerEvent<SVGSVGElement>) => {
     const session = sessionRef.current;
     if (!session || session.pointerId !== event.pointerId) return;
     sessionRef.current = null;
-    const target = event.currentTarget;
-    if (target instanceof Element && typeof target.releasePointerCapture === 'function') {
+    if (typeof event.currentTarget.releasePointerCapture === 'function') {
       try {
-        target.releasePointerCapture(event.pointerId);
+        event.currentTarget.releasePointerCapture(event.pointerId);
       } catch {
         // ignore release errors after pointer is gone
       }
     }
   }, []);
 
-  const onContextMenu = useCallback((event: React.MouseEvent<Element>) => {
+  const onContextMenu = useCallback((event: React.MouseEvent<SVGSVGElement>) => {
     event.preventDefault();
   }, []);
 
-  return { onWheel, onPointerDown, onPointerMove, onPointerUp, onContextMenu };
+  return { wheelRef, onPointerDown, onPointerMove, onPointerUp, onContextMenu };
 }

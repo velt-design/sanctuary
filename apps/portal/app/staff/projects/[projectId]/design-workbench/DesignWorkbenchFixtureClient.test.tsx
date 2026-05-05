@@ -71,8 +71,8 @@ describe('DesignWorkbenchFixtureClient', () => {
       await Promise.resolve();
     });
 
-    expect(rendered.container.querySelector('[aria-label="Plan model space viewport"]')).not.toBeNull();
-    expect(rendered.container.textContent).toContain('Fit view');
+    expect(rendered.container.querySelector('[data-plan-viewport="true"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[aria-label="Plan editor"]')).not.toBeNull();
     expect(rendered.container.textContent).not.toContain('Rotate +90');
 
     rendered.unmount();

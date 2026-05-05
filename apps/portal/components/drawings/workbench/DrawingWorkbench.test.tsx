@@ -360,19 +360,16 @@ describe('DrawingWorkbench', () => {
     expect(markup).not.toContain('Drawing Workbench</');
   });
 
-  it('renders pass, warning, and block trust badges outside the primary toolbar', () => {
+  it('does not render trust badges in the workbench chrome', () => {
     const passMarkup = renderWorkbenchWithTrust('geometry_ready');
     const warnMarkup = renderWorkbenchWithTrust('geometry_ready', ['approximate']);
     const blockMarkup = renderWorkbenchWithTrust('geometry_ready', ['unresolved_host']);
 
-    expect(passMarkup).toContain('data-workbench-trust-status="pass"');
-    expect(passMarkup).toContain('Geometry ready');
-    expect(passMarkup).toContain('data-workbench-status-bar="true"');
-    expect(passMarkup).not.toMatch(/data-workbench-primary-nav="true"[^>]*>[^<]*data-workbench-trust-status/);
-    expect(warnMarkup).toContain('data-workbench-trust-status="warn"');
-    expect(warnMarkup).toContain('Warning: Approximate');
-    expect(blockMarkup).toContain('data-workbench-trust-status="block"');
-    expect(blockMarkup).toContain('Blocked: Unresolved host');
+    for (const markup of [passMarkup, warnMarkup, blockMarkup]) {
+      expect(markup).not.toContain('data-workbench-trust-status=');
+      expect(markup).not.toContain('data-workbench-status-bar=');
+      expect(markup).not.toContain('Warning: Approximate');
+    }
   });
 
   it('keeps chrome callbacks wired through the extracted shell', () => {
@@ -416,7 +413,7 @@ describe('DrawingWorkbench', () => {
     clickByText('Plan');
 
     expect(viewChanges).toEqual(['plan']);
-    expect(viewportChanges).toEqual(['model']);
+    expect(viewportChanges).toEqual(['plan']);
 
     rendered.unmount();
   });

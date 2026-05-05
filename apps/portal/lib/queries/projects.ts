@@ -4,6 +4,14 @@ import { getProject, listProjects, listProjectsForContact } from '@/lib/repo/pro
 import { apiJson } from '@/lib/repo/apiClient';
 import type { ProjectPageSnapshotResponse } from '@/lib/projects/types';
 
+export type ProjectTooltipSummary = {
+  clientName: string | null;
+  roofStyleLabel: 'Pitched' | 'Gable' | 'Hip' | 'Box' | 'Multiple Modules' | null;
+  materialLabel: 'Acrylic' | 'Timber' | 'Both' | null;
+  totalCents: number | null;
+  source: 'quote' | 'estimate' | 'none';
+};
+
 const ONE_DAY = 1000 * 60 * 60 * 24;
 const THIRTY_MINUTES = 1000 * 60 * 30;
 const TEN_MINUTES = 1000 * 60 * 10;
@@ -36,6 +44,15 @@ export const projectPageSnapshotQueryOptions = (host: string, projectId: string)
     queryKey: qk.projects.snapshot(host, projectId),
     queryFn: () => fetchProjectPageSnapshot(projectId),
     staleTime: FIVE_MINUTES,
+    gcTime: ONE_DAY,
+  });
+
+export const projectTooltipSummaryQueryOptions = (host: string, projectId: string) =>
+  queryOptions({
+    queryKey: qk.projects.tooltipSummary(host, projectId),
+    queryFn: () =>
+      apiJson<ProjectTooltipSummary>(`/api/staff/v1/projects/${encodeURIComponent(projectId)}/tooltip-summary`),
+    staleTime: TEN_MINUTES,
     gcTime: ONE_DAY,
   });
 

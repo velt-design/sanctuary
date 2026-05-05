@@ -146,13 +146,7 @@ export default function DrawingWorkbench({
   void modules;
   void onActiveModuleIndexChange;
   void availableViewportModes;
-
-  const trustBadgeClass =
-    trustGate?.status === 'block'
-      ? `${styles.trustBadge} ${styles.trustBadgeBlock}`
-      : trustGate?.status === 'warn'
-        ? `${styles.trustBadge} ${styles.trustBadgeWarn}`
-        : styles.trustBadge;
+  void trustGate;
 
   return (
     <section className={styles.workbench} aria-label="Drawing workbench">
@@ -163,23 +157,6 @@ export default function DrawingWorkbench({
         onViewportModeChange={onViewportModeChange}
         backHref={backHref}
       />
-      {trustGate ? (
-        <aside
-          className={styles.statusBar}
-          data-workbench-status-bar="true"
-          aria-label="Workbench status"
-        >
-          <span
-            className={trustBadgeClass}
-            data-workbench-trust-status={trustGate.status}
-            data-workbench-trust-kind={trustGate.trustStatus}
-            aria-label={`Workbench trust: ${trustGate.label}`}
-            title={trustGate.message ?? trustGate.label}
-          >
-            <span className={styles.trustBadgeLabel}>{trustGate.label}</span>
-          </span>
-        </aside>
-      ) : null}
       <WorkbenchViewportHost
         moduleLabel={moduleLabel}
         activeModuleIndex={activeModuleIndex}

@@ -54,8 +54,8 @@ function PlaceholderSurface() {
       data-plan-render-status="no_artifact"
       aria-label="Plan editor viewport"
       style={{
-        position: 'absolute',
-        inset: 0,
+        width: '100%',
+        height: '100%',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -96,15 +96,14 @@ export default function PlanViewport({
         shape,
         points: adapter.projectionPolygonToSvg(shape.polygon),
       }));
-    const renderGraph = buildProjectionPlanRenderGraph(visibleItems, {
-      projectionOnlyModelSpace: true,
-    });
+    const renderGraph = buildProjectionPlanRenderGraph(visibleItems);
     const committedBodies = renderGraph.committedBodies as PlanRenderItem[];
     const contextLines = renderGraph.contextLines as PlanRenderItem[];
+    const detailLines = renderGraph.detailLines as PlanRenderItem[];
     const selectionHaloItems = committedBodies.filter(({ shape }) =>
       activeObjectMatchesPlanShape(activeObjectRef, shape),
     );
-    return { layout, committedBodies, contextLines, selectionHaloItems };
+    return { layout, committedBodies, contextLines, detailLines, selectionHaloItems };
   }, [activeObjectRef, projection, visibility]);
 
   if (!projection || !renderModel) return <PlaceholderSurface />;
@@ -114,12 +113,13 @@ export default function PlanViewport({
   return (
     <div
       data-plan-viewport-host="true"
-      style={{ position: 'absolute', inset: 0, overflow: 'hidden', display: 'block' }}
+      style={{ width: '100%', height: '100%', overflow: 'hidden', display: 'block' }}
     >
       <PlanCanvas
         layout={renderModel.layout}
         committedBodies={renderModel.committedBodies}
         contextLines={renderModel.contextLines}
+        detailLines={renderModel.detailLines}
         selectionHaloItems={renderModel.selectionHaloItems}
         transform={viewportTransform}
         onTransformChange={onViewportTransformChange}

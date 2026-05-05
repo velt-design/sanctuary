@@ -258,7 +258,7 @@ export default function DesignWorkbenchEstimateClient({
       kind: 'error',
       message: 'No active 3D geometry preview is available.',
     };
-  const modelViewportSurfaceKey = `${objectWorkbenchDisplayFamily}:${store.derived.activeModuleIndex}:${store.ui.activeView}`;
+  const modelViewportSurfaceKey = `${store.derived.activeModuleIndex}:${store.ui.activeView}`;
   const geometryViewportSurfaceKey = `${objectWorkbenchDisplayFamily}:${store.derived.activeModuleIndex}`;
   const viewportPergolaId =
     store.derived.objectWorkbench.activePergola?.id ??

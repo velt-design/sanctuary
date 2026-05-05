@@ -2,7 +2,12 @@
 
 import { useCallback, useMemo, useState } from 'react';
 import type { ProjectStage } from '@/lib/projects/types';
-import { PIPELINE_STAGES, PIPELINE_STAGE_LABELS, stageKeyToStatus } from '@/lib/projects/pipelineDefinition';
+import {
+  PIPELINE_STAGES,
+  PIPELINE_STAGE_LABELS,
+  requiresStageConfirmation,
+  stageKeyToStatus,
+} from '@/lib/projects/pipelineDefinition';
 import { correctProjectStage } from '@/lib/repo/projectsRepo';
 import { usePortalSession } from '@/components/auth/PortalAuthProvider';
 import { useToast } from '@/components/ui/toast/ToastProvider';
@@ -19,14 +24,6 @@ type StageConfirmState = {
 };
 
 const STAGE_ORDER = PIPELINE_STAGES.map((item) => item.key);
-const DEPOSIT_INDEX = STAGE_ORDER.indexOf('deposit');
-
-function requiresConfirmation(currentStage: ProjectStage, nextStage: ProjectStage): boolean {
-  const currentIdx = STAGE_ORDER.indexOf(currentStage);
-  const nextIdx = STAGE_ORDER.indexOf(nextStage);
-  if (currentIdx === -1 || nextIdx === -1) return true;
-  return currentIdx >= DEPOSIT_INDEX || nextIdx >= DEPOSIT_INDEX;
-}
 
 export default function ProjectPipelineBar({
   projectId,
@@ -94,7 +91,7 @@ export default function ProjectPipelineBar({
   const handleRequestChange = useCallback(
     (next: ProjectStage, label: string) => {
       if (busy) return;
-      if (!requiresConfirmation(stage, next)) {
+      if (!requiresStageConfirmation(stage, next)) {
         setBusy(true);
         void applyCorrection(next, label, null).finally(() => setBusy(false));
         return;

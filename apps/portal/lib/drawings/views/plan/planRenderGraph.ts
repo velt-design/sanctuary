@@ -4,6 +4,7 @@ import type { DrawingWorkbenchVisibilityState } from '@/lib/drawings/state/drawi
 export type ProjectionPlanLayer =
   | 'committedBodies'
   | 'contextLines'
+  | 'detailLines'
   | 'hitTargets'
   | 'selectionOutlines'
   | 'dimensions'
@@ -19,6 +20,7 @@ export type ProjectionPlanGraphItem<TItem extends { shape: GeometryTopProjection
 export type ProjectionPlanRenderGraph<TItem extends { shape: GeometryTopProjectionShape }> = {
   committedBodies: Array<ProjectionPlanGraphItem<TItem>>;
   contextLines: Array<ProjectionPlanGraphItem<TItem>>;
+  detailLines: Array<ProjectionPlanGraphItem<TItem>>;
   hitTargets: Array<ProjectionPlanGraphItem<TItem>>;
   selectionOutlines: Array<ProjectionPlanGraphItem<TItem>>;
   dimensions: Array<ProjectionPlanGraphItem<TItem>>;
@@ -65,6 +67,16 @@ export function topProjectionPlanLayer(shape: GeometryTopProjectionShape): Proje
       return 'committedBodies';
     }
     if (shape.sourceType === 'house_line' || shape.sourceType === 'reference_line') return 'contextLines';
+    if (
+      (shape.sourceType === 'house_surface_solid' || shape.sourceType === 'house_surface') &&
+      (shape.kind === 'fascia' ||
+        shape.kind === 'soffit' ||
+        shape.kind === 'attachment_zone' ||
+        shape.kind === 'opening_marker' ||
+        shape.kind === 'opening_outline')
+    ) {
+      return 'detailLines';
+    }
     return null;
   }
   if (shape.family === 'reference') {
@@ -78,6 +90,7 @@ export function topProjectionPlanLayer(shape: GeometryTopProjectionShape): Proje
     ) {
       return 'committedBodies';
     }
+    if (shape.sourceType === 'roof_flashing') return 'detailLines';
     return shape.sourceType === 'reference_line' ? 'contextLines' : null;
   }
   return null;
@@ -127,6 +140,8 @@ export function buildProjectionPlanRenderGraph<TItem extends { shape: GeometryTo
         graph.committedBodies.push({ ...item, layer });
       } else if (layer === 'contextLines') {
         graph.contextLines.push({ ...item, layer });
+      } else if (layer === 'detailLines') {
+        graph.detailLines.push({ ...item, layer });
       } else {
         graph.suppressed.push(item);
       }
@@ -135,6 +150,7 @@ export function buildProjectionPlanRenderGraph<TItem extends { shape: GeometryTo
     {
       committedBodies: [],
       contextLines: [],
+      detailLines: [],
       hitTargets: [],
       selectionOutlines: [],
       dimensions: [],
@@ -154,9 +170,11 @@ export function buildProjectionPlanRenderGraph<TItem extends { shape: GeometryTo
   const contextLines = options?.projectionOnlyModelSpace
     ? baseGraph.contextLines.filter(({ shape }) => topProjectionContextLineAllowedInProjectionOnlyModel(shape))
     : baseGraph.contextLines;
+  const detailLines = options?.projectionOnlyModelSpace ? [] : baseGraph.detailLines;
   return {
     committedBodies,
     contextLines,
+    detailLines,
     hitTargets: [],
     selectionOutlines: [],
     dimensions: [],
@@ -166,6 +184,7 @@ export function buildProjectionPlanRenderGraph<TItem extends { shape: GeometryTo
       ...baseGraph.suppressed,
       ...baseGraph.committedBodies.filter((item) => !committedBodies.includes(item)),
       ...baseGraph.contextLines.filter((item) => !contextLines.includes(item)),
+      ...(options?.projectionOnlyModelSpace ? baseGraph.detailLines : []),
     ],
   };
 }

@@ -114,6 +114,130 @@
   box-shadow: 0 0 0 3px rgba(var(--accentRgb), 0.14);
 }
 
+.editableCell {
+  display: inline-block;
+  vertical-align: middle;
+  appearance: none;
+  background: transparent;
+  border: 1px dashed transparent;
+  border-radius: 6px;
+  color: inherit;
+  cursor: text;
+  font: inherit;
+  padding: 4px 6px;
+  margin: -4px -6px;
+  text-align: left;
+  max-width: calc(100% + 12px);
+}
+
+.editableCell:hover {
+  background: rgba(var(--portal-text-rgb), 0.04);
+  border-color: rgba(var(--portal-text-rgb), 0.22);
+}
+
+.editableCell:focus-visible {
+  outline: none;
+  border-color: var(--focus);
+  border-style: solid;
+  box-shadow: 0 0 0 2px rgba(var(--accentRgb), 0.18);
+}
+
+.editableCellInput {
+  display: inline-block;
+  vertical-align: middle;
+  appearance: none;
+  background: var(--portal-bg-surface);
+  border: 1px solid var(--focus);
+  border-radius: 6px;
+  box-sizing: border-box;
+  color: inherit;
+  font: inherit;
+  padding: 4px 6px;
+  margin: -4px -6px;
+  width: calc(100% + 12px);
+  min-width: 0;
+}
+
+.editableCellInput:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(var(--accentRgb), 0.18);
+}
+
+.inlineSelect {
+  appearance: none;
+  background: var(--portal-bg-surface);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.18);
+  border-radius: 999px;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 4px 24px 4px 10px;
+}
+
+.inlineSelect:focus-visible {
+  outline: none;
+  border-color: var(--focus);
+  box-shadow: 0 0 0 3px rgba(var(--accentRgb), 0.18);
+}
+
+.inlineSelect:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.floatingTooltip {
+  position: fixed;
+  left: -9999px;
+  top: -9999px;
+  z-index: 80;
+  pointer-events: none;
+  background: rgb(var(--portal-text-rgb));
+  border: 1px solid rgba(var(--portal-text-inverse-rgb), 0.16);
+  border-radius: 12px;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.32);
+  color: var(--portal-text-inverse);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: normal;
+  line-height: 1.4;
+  min-width: 180px;
+  max-width: 280px;
+  padding: 10px 14px;
+  text-transform: none;
+  opacity: 0;
+  transition: opacity 110ms ease-out;
+}
+
+.floatingTooltipVisible {
+  opacity: 1;
+}
+
+.tooltipBody {
+  display: grid;
+  gap: 4px;
+}
+
+.tooltipClient {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.tooltipLine {
+  opacity: 0.85;
+}
+
+.tooltipPrice {
+  margin-top: 6px;
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+}
+
 .modalOverlay {
   position: fixed;
   inset: 0;

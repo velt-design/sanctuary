@@ -485,9 +485,8 @@ describe('DesignWorkbenchEstimateClient', () => {
     clickButtonByText(rendered.container, 'Plan');
     await flushAsyncWork();
 
-    expect(rendered.container.querySelector('[aria-label="Plan model space viewport"]')).not.toBeNull();
-    expect(rendered.container.textContent).toContain('Fit view');
-    expect(rendered.container.querySelector('[data-model-space-render-contract="top_projection_only"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[data-plan-viewport="true"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[aria-label="Plan editor"]')).not.toBeNull();
     expect(rendered.container.querySelector('[data-plan-resize-handle-hit="plan:lengthA"]')).toBeNull();
     expect(rendered.container.querySelector('[data-plan-resize-handle-hit="plan:spanA"]')).toBeNull();
 
@@ -2030,7 +2029,7 @@ describe('DesignWorkbenchEstimateClient', () => {
     clickButtonByText(rendered.container, 'Plan');
     await flushAsyncWork();
 
-    expect(rendered.container.querySelector('[data-model-space-render-contract="top_projection_only"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[data-plan-viewport="true"]')).not.toBeNull();
     expect(rendered.container.querySelector('[data-plan-resize-handle-hit="plan:lengthA"]')).toBeNull();
     expect(rendered.container.querySelector('[data-plan-resize-handle-hit="plan:spanA"]')).toBeNull();
     expect(getLocalFirstWorkingCopy(entityKey)).toBeNull();
