@@ -228,14 +228,18 @@ describe('buildSelectionDimensions', () => {
       ],
     };
 
-    it('emits slice dims for a rectilinear primary edit polygon', () => {
+    it('emits slice dims for a rectilinear primary edit polygon (one chain per side)', () => {
       const dims = buildSelectionDimensions([HOUSE_FOOTPRINT_RECT], 'house_forms');
-      expect(dims).toHaveLength(2);
-      expect(dims[0]?.id).toBe('house-footprint:slice:x:0-4000');
-      expect(dims[1]?.id).toBe('house-footprint:slice:y:0-3000');
+      expect(dims).toHaveLength(4);
+      expect(dims.map((dim) => dim.id)).toEqual([
+        'house-footprint:slice:x:top:0-4000',
+        'house-footprint:slice:x:bottom:0-4000',
+        'house-footprint:slice:y:left:0-3000',
+        'house-footprint:slice:y:right:0-3000',
+      ]);
     });
 
-    it('emits slice + total dims for a U-shape footprint (3 x-slices, 2 y-slices, 2 totals)', () => {
+    it('emits slice + total dims on every side for a U-shape footprint', () => {
       const dims = buildSelectionDimensions(
         [
           {
@@ -258,13 +262,20 @@ describe('buildSelectionDimensions', () => {
       );
       const ids = dims.map((dim) => dim.id);
       expect(ids).toEqual([
-        'u-house:slice:x:0-2000',
-        'u-house:slice:x:2000-4000',
-        'u-house:slice:x:4000-6000',
-        'u-house:total:x',
-        'u-house:slice:y:0-1500',
-        'u-house:slice:y:1500-4000',
-        'u-house:total:y',
+        'u-house:slice:x:top:0-2000',
+        'u-house:slice:x:bottom:0-2000',
+        'u-house:slice:x:top:2000-4000',
+        'u-house:slice:x:bottom:2000-4000',
+        'u-house:slice:x:top:4000-6000',
+        'u-house:slice:x:bottom:4000-6000',
+        'u-house:total:x:top',
+        'u-house:total:x:bottom',
+        'u-house:slice:y:left:0-1500',
+        'u-house:slice:y:right:0-1500',
+        'u-house:slice:y:left:1500-4000',
+        'u-house:slice:y:right:1500-4000',
+        'u-house:total:y:left',
+        'u-house:total:y:right',
       ]);
     });
 
@@ -311,11 +322,13 @@ describe('buildSelectionDimensions', () => {
         'house_forms',
       );
       const ids = dims.map((dim) => dim.id);
-      expect(ids).toContain('selection-merged:slice:x:0-1000');
-      expect(ids).toContain('selection-merged:slice:x:1000-2000');
-      expect(ids).toContain('selection-merged:slice:x:2000-3000');
-      expect(ids).toContain('selection-merged:slice:x:3000-4000');
-      expect(ids).toContain('selection-merged:total:x');
+      expect(ids).toContain('selection-merged:slice:x:top:0-1000');
+      expect(ids).toContain('selection-merged:slice:x:top:1000-2000');
+      expect(ids).toContain('selection-merged:slice:x:top:2000-3000');
+      expect(ids).toContain('selection-merged:slice:x:top:3000-4000');
+      expect(ids).toContain('selection-merged:total:x:top');
+      expect(ids).toContain('selection-merged:slice:x:bottom:0-1000');
+      expect(ids).toContain('selection-merged:total:x:bottom');
     });
 
     it('falls back to bounding-box dims when merged halo would produce too many slices', () => {
@@ -372,9 +385,13 @@ describe('buildSelectionDimensions', () => {
         ],
         'decks',
       );
-      expect(dims).toHaveLength(2);
-      expect(dims[0]?.id).toBe('landing-floor:slice:x:0-1500');
-      expect(dims[1]?.id).toBe('landing-floor:slice:y:0-1500');
+      expect(dims).toHaveLength(4);
+      expect(dims.map((dim) => dim.id)).toEqual([
+        'landing-floor:slice:x:top:0-1500',
+        'landing-floor:slice:x:bottom:0-1500',
+        'landing-floor:slice:y:left:0-1500',
+        'landing-floor:slice:y:right:0-1500',
+      ]);
     });
   });
 });
@@ -560,12 +577,17 @@ describe('buildSliceDimensions', () => {
     ],
   };
 
-  it('emits one x-slice + one y-slice (no totals) for a single-slice rectangle', () => {
+  it('emits a slice chain on each side (4 dims, no totals) for a single-slice rectangle', () => {
     const dims = buildSliceDimensions(RECT);
-    expect(dims.map((dim) => dim.id)).toEqual(['rect:slice:x:0-4000', 'rect:slice:y:0-3000']);
+    expect(dims.map((dim) => dim.id)).toEqual([
+      'rect:slice:x:top:0-4000',
+      'rect:slice:x:bottom:0-4000',
+      'rect:slice:y:left:0-3000',
+      'rect:slice:y:right:0-3000',
+    ]);
   });
 
-  it('emits totals only when there are 2+ slices on an axis', () => {
+  it('emits totals on each side only when there are 2+ slices on an axis', () => {
     const dims = buildSliceDimensions({
       id: 'u',
       polygon: [
@@ -579,18 +601,24 @@ describe('buildSliceDimensions', () => {
         { x: 0, y: 4000 },
       ],
     });
-    expect(dims.find((dim) => dim.id === 'u:total:x')).toBeDefined();
-    expect(dims.find((dim) => dim.id === 'u:total:y')).toBeDefined();
+    expect(dims.find((dim) => dim.id === 'u:total:x:top')).toBeDefined();
+    expect(dims.find((dim) => dim.id === 'u:total:x:bottom')).toBeDefined();
+    expect(dims.find((dim) => dim.id === 'u:total:y:left')).toBeDefined();
+    expect(dims.find((dim) => dim.id === 'u:total:y:right')).toBeDefined();
   });
 
-  it('places x-slice dim lines above the polygon and y-slice dim lines outside the left edge', () => {
+  it('places top vs bottom and left vs right slice chains on opposite sides of the polygon', () => {
     const dims = buildSliceDimensions(RECT);
-    const xSlice = dims.find((dim) => dim.id === 'rect:slice:x:0-4000')!;
-    const ySlice = dims.find((dim) => dim.id === 'rect:slice:y:0-3000')!;
-    expect(xSlice.start.y).toBe(0);
-    expect(xSlice.offsetMm).toBeLessThan(0);
-    expect(ySlice.start.x).toBe(0);
-    expect(ySlice.offsetMm).toBeGreaterThan(0);
+    const xTop = dims.find((dim) => dim.id === 'rect:slice:x:top:0-4000')!;
+    const xBottom = dims.find((dim) => dim.id === 'rect:slice:x:bottom:0-4000')!;
+    const yLeft = dims.find((dim) => dim.id === 'rect:slice:y:left:0-3000')!;
+    const yRight = dims.find((dim) => dim.id === 'rect:slice:y:right:0-3000')!;
+    expect(xTop.start.y).toBe(0);
+    expect(xBottom.start.y).toBe(3000);
+    expect(yLeft.start.x).toBe(0);
+    expect(yRight.start.x).toBe(4000);
+    expect(Math.sign(xTop.offsetMm!)).not.toBe(Math.sign(xBottom.offsetMm!));
+    expect(Math.sign(yLeft.offsetMm!)).not.toBe(Math.sign(yRight.offsetMm!));
   });
 
   it('places the x-total dim further from the polygon than the x-slice chain', () => {
@@ -607,8 +635,8 @@ describe('buildSliceDimensions', () => {
         { x: 0, y: 4000 },
       ],
     });
-    const slice = dims.find((dim) => dim.id === 'u:slice:x:0-2000')!;
-    const total = dims.find((dim) => dim.id === 'u:total:x')!;
+    const slice = dims.find((dim) => dim.id === 'u:slice:x:top:0-2000')!;
+    const total = dims.find((dim) => dim.id === 'u:total:x:top')!;
     expect(Math.abs(total.offsetMm!)).toBeGreaterThan(Math.abs(slice.offsetMm!));
   });
 

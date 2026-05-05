@@ -167,7 +167,12 @@ export function buildProjectionPlanRenderGraph<TItem extends { shape: GeometryTo
   );
   const committedBodies = baseGraph.committedBodies.filter(
     ({ shape }) =>
-      !(hasHouseRoofCommittedBody && shape.family === 'house' && shape.kind === 'footprint') &&
+      !(
+        hasHouseRoofCommittedBody &&
+        shape.family === 'house' &&
+        shape.kind === 'footprint' &&
+        shape.sourceType !== 'house_reference'
+      ) &&
       (!options?.projectionOnlyModelSpace || topProjectionShapeAllowedInProjectionOnlyModel(shape)),
   );
   const contextLines = options?.projectionOnlyModelSpace

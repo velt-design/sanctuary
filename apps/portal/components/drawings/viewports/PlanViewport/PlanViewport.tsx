@@ -81,9 +81,6 @@ export default function PlanViewport({
       data-plan-viewport-host="true"
       data-plan-active-object-family={activeObjectRef?.family ?? ''}
       data-plan-active-object-id={activeObjectRef?.objectId ?? ''}
-      data-plan-debug-projection-shape-count={renderModel.diagnostics.totalShapeCount}
-      data-plan-debug-source-types={renderModel.diagnostics.sourceTypes.join(',')}
-      data-plan-debug-has-house-footprint={renderModel.diagnostics.hasHouseReferenceFootprint ? 'true' : 'false'}
       className={lineweightStyles.tokens}
       style={{ width: '100%', height: '100%', overflow: 'hidden', display: 'block' }}
     >
