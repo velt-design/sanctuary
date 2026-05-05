@@ -172,7 +172,16 @@ function makeHarness(overrides?: {
   const services = {
     clearWorkingCopy: vi.fn(async () => undefined),
     createLocalEstimateId: vi.fn(() => 'local-estimate:test'),
-    enqueueMutation: vi.fn(async () => undefined),
+    enqueueMutation: vi.fn(async ({ id, entityKey, mutationKey, payload }) => ({
+      id: id ?? 'queue-item:test',
+      entityKey,
+      mutationKey,
+      payload,
+      status: 'queued' as const,
+      enqueuedAt: '2026-04-01T00:00:00.000Z',
+      updatedAt: '2026-04-01T00:00:00.000Z',
+      attempts: 0,
+    })),
     fetchEstimateDetail: vi.fn(async () => null),
     getContact: vi.fn(async () => ({
       id: 'contact-1',
@@ -196,7 +205,11 @@ function makeHarness(overrides?: {
     })),
     resolveEstimateId: vi.fn((estimateId: string) => estimateId),
     upsertEstimateDetailCache: vi.fn(),
-    writeWorkingCopy: vi.fn(async () => undefined),
+    writeWorkingCopy: vi.fn(async ({ entityKey, data, updatedAt }) => ({
+      entityKey,
+      data,
+      updatedAt: updatedAt ?? '2026-04-01T00:00:00.000Z',
+    })),
     ...overrides?.services,
   } satisfies SaveCalculatorEstimateServices;
 

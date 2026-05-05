@@ -234,7 +234,7 @@ function representativeSavedEstimateSnapshots(): SavedEstimateSnapshotCase[] {
           powdercoatCustomColour: 'Monument',
           flashings: {
             rows: [
-              { id: 'flash-primary', kind: 'primary', band: '201-300', lengthM: '6.2', purpose: 'PRIMARY' },
+              { id: 'flash-primary', kind: 'primary', band: '201-300', lengthM: '6.2', purpose: 'CUSTOM' },
               { id: 'flash-extra', kind: 'extra', band: '301-400', lengthM: '1.1', purpose: 'CUSTOM' },
             ],
           },
@@ -693,12 +693,12 @@ describe('workbench commercialDesignPayload', () => {
         roofPitchDeg: expected.roofPitchDeg,
       });
       expectCloseOrEqual(
-        workbenchModule.designIntent.dimensions.lengthM,
+        workbenchModule.designIntent.dimensions?.lengthM,
         expected.lengthM,
         `${fixture.slug} authored length`,
       );
       expectCloseOrEqual(
-        workbenchModule.designIntent.dimensions.projectionM,
+        workbenchModule.designIntent.dimensions?.projectionM,
         expected.projectionM,
         `${fixture.slug} authored projection`,
       );

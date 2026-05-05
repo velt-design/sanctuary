@@ -6,7 +6,7 @@ import {
   CalculatorInfillTile,
   type InfillPresetCard,
 } from './CalculatorInfillOverview';
-import { estimateInfillUi } from './calculatorInfillUi';
+import { estimateInfillUi } from './infillCompute';
 
 const noop = () => undefined;
 

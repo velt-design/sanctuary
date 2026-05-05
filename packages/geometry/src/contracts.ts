@@ -1203,7 +1203,8 @@ export type GeometryTopProjectionFamily = "pergola" | "house" | "reference";
 
 export type GeometryTopProjectionSourceType =
   | ViewerSceneObject["type"]
-  | "house_reference";
+  | "house_reference"
+  | "pergola_reference";
 
 export type GeometryTopProjectionShape = {
   id: string;

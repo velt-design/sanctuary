@@ -86,6 +86,9 @@ export function topProjectionPlanLayer(shape: GeometryTopProjectionShape): Proje
     return shape.sourceType === 'reference_line' ? 'contextLines' : null;
   }
   if (shape.family === 'pergola') {
+    if (shape.sourceType === 'pergola_reference' && shape.kind === 'outline') {
+      return 'committedBodies';
+    }
     if (
       shape.sourceType === 'roof_plane' ||
       shape.sourceType === 'roof_cladding_panel' ||

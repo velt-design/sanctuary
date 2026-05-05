@@ -511,6 +511,13 @@ function shapeProjectionForObject(object: ViewerSceneObject): ObjectProjection |
   }
 }
 
+function isCanonicalOutlineForObject(object: ViewerSceneObject): boolean {
+  if (object.type === 'house_surface_solid' && (object.kind === 'deck' || object.kind === 'landing')) {
+    return true;
+  }
+  return false;
+}
+
 function buildShapeFromObject(object: ViewerSceneObject): GeometryTopProjectionShape | null {
   const projection = shapeProjectionForObject(object);
   if (!projection) return null;
@@ -518,6 +525,10 @@ function buildShapeFromObject(object: ViewerSceneObject): GeometryTopProjectionS
   const kind = kindForObject(object);
   const stats = zStats(objectPoints(object));
   const sourceId = 'sourceId' in object ? object.sourceId ?? null : null;
+  const baseMetadata = metadataWithTopProjectionRole(object.metadata, projection.role);
+  const metadata = isCanonicalOutlineForObject(object)
+    ? { ...baseMetadata, isCanonicalOutline: true }
+    : baseMetadata;
   return {
     id: `${object.type}:${object.id}`,
     sourceObjectId: object.id,
@@ -529,27 +540,55 @@ function buildShapeFromObject(object: ViewerSceneObject): GeometryTopProjectionS
     zOrder: Number((baseZOrder({ family, sourceType: object.type, kind }) + (stats.zMax ?? 0) / 100000).toFixed(6)),
     zMin: stats.zMin,
     zMax: stats.zMax,
-    metadata: metadataWithTopProjectionRole(object.metadata, projection.role),
+    metadata,
   };
 }
 
 function buildReferenceShapes(assembly: Assembly3D): GeometryTopProjectionShape[] {
-  const footprint = assembly.house.model?.footprint ?? assembly.house.footprint ?? null;
-  const polygon = footprint ? cleanPolygon(toPolygon2(footprint)) : null;
-  if (!polygon) return [];
-  return [{
-    id: 'house_reference:house-footprint',
-    sourceObjectId: 'house-footprint',
-    sourceId: 'house-footprint',
-    sourceType: 'house_reference',
-    family: 'house',
-    kind: 'footprint',
-    polygon,
-    zOrder: 0,
-    zMin: 0,
-    zMax: 0,
-    metadata: metadataWithTopProjectionRole(assembly.house.model?.metadata as GeometryMetadata | undefined, 'top_visible'),
-  }];
+  const shapes: GeometryTopProjectionShape[] = [];
+
+  const houseFootprint = assembly.house.model?.footprint ?? assembly.house.footprint ?? null;
+  const housePolygon = houseFootprint ? cleanPolygon(toPolygon2(houseFootprint)) : null;
+  if (housePolygon) {
+    shapes.push({
+      id: 'house_reference:house-footprint',
+      sourceObjectId: 'house-footprint',
+      sourceId: 'house-footprint',
+      sourceType: 'house_reference',
+      family: 'house',
+      kind: 'footprint',
+      polygon: housePolygon,
+      zOrder: 0,
+      zMin: 0,
+      zMax: 0,
+      metadata: {
+        ...metadataWithTopProjectionRole(assembly.house.model?.metadata as GeometryMetadata | undefined, 'top_visible'),
+        isCanonicalOutline: true,
+      },
+    });
+  }
+
+  const pergolaPolygon = assembly.outline.length >= 3 ? cleanPolygon(toPolygon2(assembly.outline)) : null;
+  if (pergolaPolygon) {
+    shapes.push({
+      id: 'pergola_reference:pergola-outline',
+      sourceObjectId: 'pergola-outline',
+      sourceId: 'pergola-outline',
+      sourceType: 'pergola_reference',
+      family: 'pergola',
+      kind: 'outline',
+      polygon: pergolaPolygon,
+      zOrder: 1,
+      zMin: 0,
+      zMax: 0,
+      metadata: {
+        ...metadataWithTopProjectionRole(undefined, 'top_visible'),
+        isCanonicalOutline: true,
+      },
+    });
+  }
+
+  return shapes;
 }
 
 function shapeExtents(shapes: GeometryTopProjectionShape[]): GeometryTopProjectionViewModel['extents'] {
@@ -622,7 +661,7 @@ export function buildTopProjectionParityReport(
   }
 
   for (const shape of topVisibleShapes) {
-    if (shape.sourceType === 'house_reference') continue;
+    if (shape.sourceType === 'house_reference' || shape.sourceType === 'pergola_reference') continue;
     if (!sceneObjectIds.has(shape.sourceObjectId)) {
       issues.push({
         code: 'extra_top_visible_shape',
@@ -635,7 +674,12 @@ export function buildTopProjectionParityReport(
 
   const projectedTopVisibleObjectIds = new Set(
     topVisibleShapes
-      .filter((shape) => shape.sourceType !== 'house_reference' && sceneObjectIds.has(shape.sourceObjectId))
+      .filter(
+        (shape) =>
+          shape.sourceType !== 'house_reference' &&
+          shape.sourceType !== 'pergola_reference' &&
+          sceneObjectIds.has(shape.sourceObjectId),
+      )
       .map((shape) => shape.sourceObjectId),
   );
   for (const objectId of expectedTopVisibleObjectIds) {

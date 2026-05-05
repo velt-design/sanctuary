@@ -358,6 +358,7 @@ function makeGeometryArtifact(
     assembly: { id: 'artifact-assembly' } as unknown as WorkbenchSolvedGeometryArtifact['assembly'],
     plan: makeGeometryPlan(),
     section: {} as WorkbenchSolvedGeometryArtifact['section'],
+    quantityTakeoff: {} as WorkbenchSolvedGeometryArtifact['quantityTakeoff'],
     topProjection: makeGeometryTopProjection(),
     viewerScene: { layers: [] } as unknown as WorkbenchSolvedGeometryArtifact['viewerScene'],
     validation: {} as WorkbenchSolvedGeometryArtifact['validation'],

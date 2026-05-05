@@ -717,6 +717,7 @@ describe('DrawingWorkbench', () => {
       view: 'plan',
     });
     const drawingSurfaceGeometry = makeSolvedDrawingSurfaceGeometry({
+      ...makeDrawingModule(),
       planModel: null,
       sectionModel: null,
     });
