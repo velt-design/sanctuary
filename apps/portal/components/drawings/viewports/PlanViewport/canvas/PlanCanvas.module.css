@@ -37,6 +37,3 @@
   outline-offset: 2px;
 }
 
-.canvasSvg [data-plan-layer="hitTargets"] polygon:hover {
-  fill: rgba(47, 111, 150, 0.08);
-}

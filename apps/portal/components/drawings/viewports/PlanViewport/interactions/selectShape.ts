@@ -1,4 +1,3 @@
-import { useCallback } from 'react';
 import type { GeometryTopProjectionShape } from '@sp/geometry';
 import {
   topProjectionShapeClassifier,
@@ -10,11 +9,6 @@ export type ShapeSelectionCallbacks = {
   onSelectObjectWorkbenchTarget?: (selection: ObjectWorkbenchViewportTargetSelection) => void;
   onSelectPergolaTarget?: (pergolaId: string) => void;
   onClearWorkbenchSelection?: () => void;
-};
-
-export type UseShapeSelectionOutput = {
-  select: (shape: GeometryTopProjectionShape) => void;
-  clear: () => void;
 };
 
 export function dispatchSelectionTarget(
@@ -44,29 +38,4 @@ export function selectShape(
   callbacks: ShapeSelectionCallbacks,
 ): void {
   dispatchSelectionTarget(topProjectionShapeClassifier(shape), callbacks);
-}
-
-export function useShapeSelection(callbacks: ShapeSelectionCallbacks): UseShapeSelectionOutput {
-  const {
-    onSelectObjectWorkbenchTarget,
-    onSelectPergolaTarget,
-    onClearWorkbenchSelection,
-  } = callbacks;
-
-  const select = useCallback(
-    (shape: GeometryTopProjectionShape) => {
-      selectShape(shape, {
-        onSelectObjectWorkbenchTarget,
-        onSelectPergolaTarget,
-        onClearWorkbenchSelection,
-      });
-    },
-    [onClearWorkbenchSelection, onSelectObjectWorkbenchTarget, onSelectPergolaTarget],
-  );
-
-  const clear = useCallback(() => {
-    onClearWorkbenchSelection?.();
-  }, [onClearWorkbenchSelection]);
-
-  return { select, clear };
 }

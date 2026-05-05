@@ -3,6 +3,7 @@ import type { GeometryTopProjectionViewModel } from '@sp/geometry';
 import { buildTopProjectionPlanCoordinateAdapter } from '@/lib/drawings/views/plan/planCoordinateAdapter';
 import {
   DEFAULT_DIMENSION_OFFSET_MM,
+  buildEdgeDimensions,
   buildSelectionDimensions,
   formatDimensionLengthMm,
   resolvePlanDimensionGeometry,
@@ -134,7 +135,7 @@ describe('buildSelectionDimensions', () => {
     expect(buildSelectionDimensions([])).toEqual([]);
   });
 
-  it('emits two dims (width + height) per selected item', () => {
+  it('emits one width + height pair around the bounding box of a single item', () => {
     const dims = buildSelectionDimensions([
       {
         id: 'pergola-1',
@@ -147,31 +148,15 @@ describe('buildSelectionDimensions', () => {
       },
     ]);
     expect(dims).toHaveLength(2);
-    expect(dims[0]?.id).toBe('pergola-1:width');
+    expect(dims[0]?.id).toBe('selection:width');
     expect(dims[0]?.start).toEqual({ x: 0, y: 0 });
     expect(dims[0]?.end).toEqual({ x: 4500, y: 0 });
-    expect(dims[1]?.id).toBe('pergola-1:height');
+    expect(dims[1]?.id).toBe('selection:height');
     expect(dims[1]?.start).toEqual({ x: 0, y: 8000 });
     expect(dims[1]?.end).toEqual({ x: 0, y: 0 });
   });
 
-  it('skips items whose polygon has zero area', () => {
-    const dims = buildSelectionDimensions([
-      { id: 'degenerate', polygon: [{ x: 100, y: 100 }, { x: 100, y: 100 }] },
-      {
-        id: 'real',
-        polygon: [
-          { x: 0, y: 0 },
-          { x: 1000, y: 0 },
-          { x: 1000, y: 500 },
-          { x: 0, y: 500 },
-        ],
-      },
-    ]);
-    expect(dims.map((dim) => dim.id)).toEqual(['real:width', 'real:height']);
-  });
-
-  it('emits dims for multiple selected items independently', () => {
+  it('unions multiple items into a single width + height pair around the merged bbox', () => {
     const dims = buildSelectionDimensions([
       {
         id: 'a',
@@ -192,6 +177,203 @@ describe('buildSelectionDimensions', () => {
         ],
       },
     ]);
-    expect(dims.map((dim) => dim.id)).toEqual(['a:width', 'a:height', 'b:width', 'b:height']);
+    expect(dims).toHaveLength(2);
+    expect(dims[0]?.id).toBe('selection:width');
+    expect(dims[0]?.start).toEqual({ x: 0, y: 0 });
+    expect(dims[0]?.end).toEqual({ x: 1500, y: 0 });
+    expect(dims[1]?.id).toBe('selection:height');
+    expect(dims[1]?.start).toEqual({ x: 0, y: 1300 });
+    expect(dims[1]?.end).toEqual({ x: 0, y: 0 });
+  });
+
+  it('ignores items whose polygon has no extent and unions the rest', () => {
+    const dims = buildSelectionDimensions([
+      { id: 'degenerate', polygon: [{ x: 100, y: 100 }, { x: 100, y: 100 }] },
+      {
+        id: 'real',
+        polygon: [
+          { x: 0, y: 0 },
+          { x: 1000, y: 0 },
+          { x: 1000, y: 500 },
+          { x: 0, y: 500 },
+        ],
+      },
+    ]);
+    expect(dims.map((dim) => dim.id)).toEqual(['selection:width', 'selection:height']);
+    expect(dims[0]?.end).toEqual({ x: 1000, y: 0 });
+  });
+
+  it('returns an empty list when the unioned bbox has zero extent', () => {
+    expect(
+      buildSelectionDimensions([
+        { id: 'a', polygon: [{ x: 100, y: 100 }, { x: 100, y: 100 }] },
+        { id: 'b', polygon: [{ x: 100, y: 100 }, { x: 100, y: 100 }] },
+      ]),
+    ).toEqual([]);
+  });
+
+  describe('with an active family', () => {
+    const HOUSE_FOOTPRINT_RECT = {
+      id: 'house-footprint',
+      family: 'house',
+      kind: 'footprint',
+      polygon: [
+        { x: 0, y: 0 },
+        { x: 4000, y: 0 },
+        { x: 4000, y: 3000 },
+        { x: 0, y: 3000 },
+      ],
+    };
+
+    it('emits per-edge dims when a primary edit polygon is found', () => {
+      const dims = buildSelectionDimensions([HOUSE_FOOTPRINT_RECT], 'house_forms');
+      expect(dims).toHaveLength(4);
+      for (let i = 0; i < 4; i += 1) {
+        expect(dims[i]?.id).toBe(`house-footprint:edge:${i}`);
+      }
+    });
+
+    it('falls back to bounding-box dims when no primary kind is found in the selection', () => {
+      const dims = buildSelectionDimensions(
+        [
+          {
+            id: 'house-wall',
+            family: 'house',
+            kind: 'wall_segment',
+            polygon: [
+              { x: 0, y: 0 },
+              { x: 1000, y: 0 },
+              { x: 1000, y: 100 },
+              { x: 0, y: 100 },
+            ],
+          },
+        ],
+        'house_forms',
+      );
+      expect(dims.map((dim) => dim.id)).toEqual(['selection:width', 'selection:height']);
+    });
+
+    it('picks the largest matching shape when multiple primary candidates are present', () => {
+      const dims = buildSelectionDimensions(
+        [
+          {
+            id: 'house-small',
+            family: 'house',
+            kind: 'footprint',
+            polygon: [
+              { x: 0, y: 0 },
+              { x: 100, y: 0 },
+              { x: 100, y: 100 },
+              { x: 0, y: 100 },
+            ],
+          },
+          HOUSE_FOOTPRINT_RECT,
+        ],
+        'house_forms',
+      );
+      expect(dims.every((dim) => dim.id.startsWith('house-footprint:edge:'))).toBe(true);
+    });
+
+    it('accepts deck and landing kinds for the decks family', () => {
+      const dims = buildSelectionDimensions(
+        [
+          {
+            id: 'landing-floor',
+            family: 'house',
+            kind: 'landing',
+            polygon: [
+              { x: 0, y: 0 },
+              { x: 1500, y: 0 },
+              { x: 1500, y: 1500 },
+              { x: 0, y: 1500 },
+            ],
+          },
+        ],
+        'decks',
+      );
+      expect(dims.length).toBe(4);
+      expect(dims[0]?.id).toBe('landing-floor:edge:0');
+    });
+  });
+});
+
+describe('buildEdgeDimensions', () => {
+  const RECT = {
+    id: 'rect',
+    polygon: [
+      { x: 0, y: 0 },
+      { x: 4000, y: 0 },
+      { x: 4000, y: 2000 },
+      { x: 0, y: 2000 },
+    ],
+  };
+
+  it('emits one dim per edge', () => {
+    const dims = buildEdgeDimensions(RECT);
+    expect(dims).toHaveLength(4);
+  });
+
+  it('uses sequential edge ids tied to the source id', () => {
+    const dims = buildEdgeDimensions(RECT);
+    expect(dims.map((dim) => dim.id)).toEqual([
+      'rect:edge:0',
+      'rect:edge:1',
+      'rect:edge:2',
+      'rect:edge:3',
+    ]);
+  });
+
+  it('returns an empty list for polygons with fewer than 3 vertices', () => {
+    expect(buildEdgeDimensions({ id: 'line', polygon: [{ x: 0, y: 0 }, { x: 100, y: 0 }] })).toEqual([]);
+  });
+
+  it('skips zero-length edges between duplicate vertices', () => {
+    const dims = buildEdgeDimensions({
+      id: 'has-dupe',
+      polygon: [
+        { x: 0, y: 0 },
+        { x: 0, y: 0 },
+        { x: 1000, y: 0 },
+        { x: 1000, y: 1000 },
+        { x: 0, y: 1000 },
+      ],
+    });
+    expect(dims).toHaveLength(4);
+  });
+
+  it('emits dims for every edge of a U-shape (8 edges total)', () => {
+    const dims = buildEdgeDimensions({
+      id: 'u',
+      polygon: [
+        { x: 0, y: 0 },
+        { x: 6000, y: 0 },
+        { x: 6000, y: 4000 },
+        { x: 4000, y: 4000 },
+        { x: 4000, y: 1500 },
+        { x: 2000, y: 1500 },
+        { x: 2000, y: 4000 },
+        { x: 0, y: 4000 },
+      ],
+    });
+    expect(dims).toHaveLength(8);
+  });
+
+  it('places every dim line further from the polygon centroid than the edge it labels', () => {
+    const dims = buildEdgeDimensions(RECT);
+    const centroid = { x: 2000, y: 1000 };
+    for (const dim of dims) {
+      const dx = dim.end.x - dim.start.x;
+      const dy = dim.end.y - dim.start.y;
+      const len = Math.hypot(dx, dy);
+      const nx = -dy / len;
+      const ny = dx / len;
+      const midX = (dim.start.x + dim.end.x) / 2;
+      const midY = (dim.start.y + dim.end.y) / 2;
+      const dimCenterX = midX + nx * dim.offsetMm!;
+      const dimCenterY = midY + ny * dim.offsetMm!;
+      const edgeRadius = Math.hypot(midX - centroid.x, midY - centroid.y);
+      const dimRadius = Math.hypot(dimCenterX - centroid.x, dimCenterY - centroid.y);
+      expect(dimRadius).toBeGreaterThan(edgeRadius);
+    }
   });
 });

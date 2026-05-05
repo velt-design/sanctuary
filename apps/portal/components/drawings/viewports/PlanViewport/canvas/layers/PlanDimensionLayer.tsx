@@ -1,6 +1,6 @@
 import type { PlanCoordinateAdapter, PlanSvgPoint } from '@/lib/drawings/views/plan/planCoordinateAdapter';
 import { resolvePlanDimensionGeometry, type PlanDimension } from '../planDimension';
-import styles from './PlanDimensionLayer.module.css';
+import styles from '../planLineweights.module.css';
 
 const ARROW_LENGTH_SVG = 6;
 const ARROW_HALF_WIDTH_SVG = 2.5;
@@ -35,7 +35,7 @@ function arrowPoints(tip: PlanSvgPoint, towards: PlanSvgPoint): string | null {
 
 export function PlanDimensionLayer({ dimensions, coordinateAdapter }: DimensionRenderProps) {
   return (
-    <g className={styles.layer} data-plan-layer="dimensions">
+    <g className={styles.dimensionLayer} data-plan-layer="dimensions">
       {dimensions.map((dimension) => {
         const geometry = resolvePlanDimensionGeometry(dimension, coordinateAdapter);
         if (!geometry) return null;
@@ -49,7 +49,7 @@ export function PlanDimensionLayer({ dimensions, coordinateAdapter }: DimensionR
             data-plan-dimension-length-mm={Math.round(geometry.lengthMm)}
           >
             <line
-              className={styles.line}
+              className={styles.dimensionLine}
               x1={geometry.extensionStart.from.x}
               y1={geometry.extensionStart.from.y}
               x2={geometry.extensionStart.to.x}
@@ -57,7 +57,7 @@ export function PlanDimensionLayer({ dimensions, coordinateAdapter }: DimensionR
               data-plan-dimension-part="extension-start"
             />
             <line
-              className={styles.line}
+              className={styles.dimensionLine}
               x1={geometry.extensionEnd.from.x}
               y1={geometry.extensionEnd.from.y}
               x2={geometry.extensionEnd.to.x}
@@ -65,7 +65,7 @@ export function PlanDimensionLayer({ dimensions, coordinateAdapter }: DimensionR
               data-plan-dimension-part="extension-end"
             />
             <line
-              className={styles.line}
+              className={styles.dimensionLine}
               x1={geometry.dimLine.from.x}
               y1={geometry.dimLine.from.y}
               x2={geometry.dimLine.to.x}
@@ -74,20 +74,20 @@ export function PlanDimensionLayer({ dimensions, coordinateAdapter }: DimensionR
             />
             {startArrow ? (
               <polygon
-                className={styles.arrow}
+                className={styles.dimensionArrow}
                 points={startArrow}
                 data-plan-dimension-part="arrow-start"
               />
             ) : null}
             {endArrow ? (
               <polygon
-                className={styles.arrow}
+                className={styles.dimensionArrow}
                 points={endArrow}
                 data-plan-dimension-part="arrow-end"
               />
             ) : null}
             <text
-              className={styles.label}
+              className={styles.dimensionLabel}
               x={geometry.labelAnchor.x}
               y={geometry.labelAnchor.y - LABEL_OFFSET_SVG}
               transform={labelTransform}

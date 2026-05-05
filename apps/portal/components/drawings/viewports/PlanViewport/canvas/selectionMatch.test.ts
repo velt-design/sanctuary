@@ -62,13 +62,36 @@ describe('activeObjectMatchesPlanShape', () => {
       ).toBe(false);
     });
 
-    it('does not match when the active ref has no id', () => {
+    it('matches any deck shape when the active ref has no specific id', () => {
       expect(
         activeObjectMatchesPlanShape(
           ref('decks', null),
           shape({ family: 'house', kind: 'deck', sourceObjectId: 'deck-7' }),
         ),
+      ).toBe(true);
+    });
+
+    it('does not match a deck shape tagged with a different deckId', () => {
+      expect(
+        activeObjectMatchesPlanShape(
+          ref('decks', 'deck-7'),
+          shape({
+            family: 'house',
+            kind: 'deck',
+            sourceObjectId: 'rendered-1',
+            metadata: { deckId: 'deck-other' },
+          }),
+        ),
       ).toBe(false);
+    });
+
+    it('falls back to matching any deck shape when the projection does not tag deckId', () => {
+      expect(
+        activeObjectMatchesPlanShape(
+          ref('decks', 'deck-7'),
+          shape({ family: 'house', kind: 'deck', sourceObjectId: 'untagged-deck' }),
+        ),
+      ).toBe(true);
     });
   });
 
@@ -97,6 +120,29 @@ describe('activeObjectMatchesPlanShape', () => {
         ),
       ).toBe(false);
     });
+
+    it('does not match an opening shape tagged with a different openingId', () => {
+      expect(
+        activeObjectMatchesPlanShape(
+          ref('openings', 'opening-3'),
+          shape({
+            family: 'house',
+            kind: 'opening_marker',
+            sourceObjectId: 'rendered-1',
+            metadata: { openingId: 'opening-other' },
+          }),
+        ),
+      ).toBe(false);
+    });
+
+    it('falls back to matching any opening shape when the projection does not tag openingId', () => {
+      expect(
+        activeObjectMatchesPlanShape(
+          ref('openings', 'opening-3'),
+          shape({ family: 'house', kind: 'opening_outline', sourceObjectId: 'untagged-opening' }),
+        ),
+      ).toBe(true);
+    });
   });
 
   describe('pergolas family', () => {
@@ -121,6 +167,38 @@ describe('activeObjectMatchesPlanShape', () => {
           shape({ family: 'house', kind: 'footprint', sourceObjectId: 'pergola-A' }),
         ),
       ).toBe(false);
+    });
+
+    it('does not match a pergola shape tagged with a different pergolaId', () => {
+      expect(
+        activeObjectMatchesPlanShape(
+          ref('pergolas', 'pergola-A'),
+          shape({
+            family: 'pergola',
+            kind: 'roof_plane',
+            sourceObjectId: 'rendered-1',
+            metadata: { pergolaId: 'pergola-B' },
+          }),
+        ),
+      ).toBe(false);
+    });
+
+    it('falls back to matching any pergola shape when the projection does not tag pergolaId', () => {
+      expect(
+        activeObjectMatchesPlanShape(
+          ref('pergolas', 'pergola-A'),
+          shape({ family: 'pergola', kind: 'rafter', sourceObjectId: 'untagged-rafter-1' }),
+        ),
+      ).toBe(true);
+    });
+
+    it('matches any pergola shape when the active ref has no specific id', () => {
+      expect(
+        activeObjectMatchesPlanShape(
+          ref('pergolas', null),
+          shape({ family: 'pergola', kind: 'roof_plane', sourceObjectId: 'rendered-1' }),
+        ),
+      ).toBe(true);
     });
   });
 

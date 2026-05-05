@@ -1,7 +1,7 @@
 import {
   selectShape,
   type ShapeSelectionCallbacks,
-} from '../interactions/useShapeSelection';
+} from '../interactions/selectShape';
 import type { Tool, ToolPointerEvent } from './Tool';
 
 export type SelectToolConfig = ShapeSelectionCallbacks;

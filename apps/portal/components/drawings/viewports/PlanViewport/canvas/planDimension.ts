@@ -47,32 +47,142 @@ export function formatDimensionLengthMm(lengthMm: number): string {
 export type PlanSelectionDimensionSource = {
   id: string;
   polygon: ReadonlyArray<PlanDimensionPoint>;
+  family?: string;
+  kind?: string;
 };
 
-const SELECTION_DIM_OFFSET_MM = -350;
+export type ActiveObjectFamily = 'house_forms' | 'decks' | 'openings' | 'pergolas';
 
-export function buildSelectionDimensions(
+const SELECTION_DIM_OFFSET_MM = -350;
+const EDGE_DIM_OFFSET_MM = 350;
+
+const PRIMARY_EDIT_KIND_BY_FAMILY: Record<ActiveObjectFamily, ReadonlyArray<string>> = {
+  house_forms: ['footprint'],
+  decks: ['deck', 'landing'],
+  openings: ['opening_outline', 'opening_marker'],
+  pergolas: ['roof_plane'],
+};
+
+function polygonAreaMm(points: ReadonlyArray<PlanDimensionPoint>): number {
+  if (points.length < 3) return 0;
+  let sum = 0;
+  for (let i = 0; i < points.length; i += 1) {
+    const a = points[i]!;
+    const b = points[(i + 1) % points.length]!;
+    sum += a.x * b.y - b.x * a.y;
+  }
+  return Math.abs(sum) / 2;
+}
+
+function polygonCentroid(points: ReadonlyArray<PlanDimensionPoint>): PlanDimensionPoint | null {
+  if (points.length === 0) return null;
+  let sumX = 0;
+  let sumY = 0;
+  for (const point of points) {
+    sumX += point.x;
+    sumY += point.y;
+  }
+  return { x: sumX / points.length, y: sumY / points.length };
+}
+
+function pickPrimaryEditPolygon(
+  items: ReadonlyArray<PlanSelectionDimensionSource>,
+  activeFamily: ActiveObjectFamily,
+): PlanSelectionDimensionSource | null {
+  const allowedKinds = PRIMARY_EDIT_KIND_BY_FAMILY[activeFamily];
+  if (!allowedKinds) return null;
+  const candidates = items.filter((item) => item.kind !== undefined && allowedKinds.includes(item.kind));
+  if (candidates.length === 0) return null;
+  let best: PlanSelectionDimensionSource | null = null;
+  let bestArea = -Infinity;
+  for (const candidate of candidates) {
+    const area = polygonAreaMm(candidate.polygon);
+    if (area > bestArea) {
+      best = candidate;
+      bestArea = area;
+    }
+  }
+  return best;
+}
+
+function buildBoundingBoxDimensions(
   items: ReadonlyArray<PlanSelectionDimensionSource>,
 ): PlanDimension[] {
-  const dimensions: PlanDimension[] = [];
+  let union: ReturnType<typeof planBoundsFromPolygon> = null;
   for (const item of items) {
     const bounds = planBoundsFromPolygon(item.polygon as PlanDimensionPoint[]);
     if (!bounds) continue;
-    if (bounds.maxX - bounds.minX <= 0 || bounds.maxY - bounds.minY <= 0) continue;
-    dimensions.push({
-      id: `${item.id}:width`,
-      start: { x: bounds.minX, y: bounds.minY },
-      end: { x: bounds.maxX, y: bounds.minY },
+    union = union
+      ? {
+          minX: Math.min(union.minX, bounds.minX),
+          minY: Math.min(union.minY, bounds.minY),
+          maxX: Math.max(union.maxX, bounds.maxX),
+          maxY: Math.max(union.maxY, bounds.maxY),
+        }
+      : bounds;
+  }
+  if (!union) return [];
+  if (union.maxX - union.minX <= 0 || union.maxY - union.minY <= 0) return [];
+  return [
+    {
+      id: 'selection:width',
+      start: { x: union.minX, y: union.minY },
+      end: { x: union.maxX, y: union.minY },
       offsetMm: SELECTION_DIM_OFFSET_MM,
-    });
-    dimensions.push({
-      id: `${item.id}:height`,
-      start: { x: bounds.minX, y: bounds.maxY },
-      end: { x: bounds.minX, y: bounds.minY },
+    },
+    {
+      id: 'selection:height',
+      start: { x: union.minX, y: union.maxY },
+      end: { x: union.minX, y: union.minY },
       offsetMm: SELECTION_DIM_OFFSET_MM,
+    },
+  ];
+}
+
+export function buildEdgeDimensions(
+  source: { id: string; polygon: ReadonlyArray<PlanDimensionPoint> },
+): PlanDimension[] {
+  const polygon = source.polygon;
+  if (polygon.length < 3) return [];
+  const centroid = polygonCentroid(polygon);
+  if (!centroid) return [];
+  const dimensions: PlanDimension[] = [];
+  for (let i = 0; i < polygon.length; i += 1) {
+    const start = polygon[i]!;
+    const end = polygon[(i + 1) % polygon.length]!;
+    const dx = end.x - start.x;
+    const dy = end.y - start.y;
+    if (Math.hypot(dx, dy) === 0) continue;
+    const midX = (start.x + end.x) / 2;
+    const midY = (start.y + end.y) / 2;
+    const naturalNormalX = -dy;
+    const naturalNormalY = dx;
+    const outwardX = midX - centroid.x;
+    const outwardY = midY - centroid.y;
+    const dot = naturalNormalX * outwardX + naturalNormalY * outwardY;
+    const offsetMm = dot >= 0 ? EDGE_DIM_OFFSET_MM : -EDGE_DIM_OFFSET_MM;
+    dimensions.push({
+      id: `${source.id}:edge:${i}`,
+      start: { x: start.x, y: start.y },
+      end: { x: end.x, y: end.y },
+      offsetMm,
     });
   }
   return dimensions;
+}
+
+export function buildSelectionDimensions(
+  items: ReadonlyArray<PlanSelectionDimensionSource>,
+  activeFamily?: ActiveObjectFamily | null,
+): PlanDimension[] {
+  if (activeFamily) {
+    const editPolygon = pickPrimaryEditPolygon(items, activeFamily);
+    if (editPolygon) {
+      const edgeDims = buildEdgeDimensions({ id: editPolygon.id, polygon: editPolygon.polygon });
+      if (edgeDims.length > 0) return edgeDims;
+    }
+  }
+  return buildBoundingBoxDimensions(items);
 }
 
 export function resolvePlanDimensionGeometry(

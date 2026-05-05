@@ -1,12 +1,6 @@
 'use client';
 
 import { useMemo } from 'react';
-import type { GeometryTopProjectionShape } from '@sp/geometry';
-import { buildTopProjectionPlanCoordinateAdapter } from '@/lib/drawings/views/plan/planCoordinateAdapter';
-import {
-  buildProjectionPlanRenderGraph,
-  topProjectionShapeVisible,
-} from '@/lib/drawings/views/plan/planRenderGraph';
 import type { WorkbenchSolvedGeometryArtifact } from '@/lib/drawings/state/workbenchSolvedModel';
 import type {
   DrawingWorkbenchViewportTransform,
@@ -17,19 +11,16 @@ import type {
   ObjectWorkbenchDisplayFamily,
   ObjectWorkbenchViewportTargetSelection,
 } from '@/lib/drawings/state/objectWorkbenchViewportTypes';
-import type { PlanSvgPoint } from '@/lib/drawings/views/plan/planCoordinateAdapter';
 import { PlanCanvas } from './canvas/PlanCanvas';
-import { resolvePlanLayout } from './canvas/planLayout';
-import { activeObjectMatchesPlanShape } from './canvas/selectionMatch';
-import { buildSelectionDimensions, type PlanDimension } from './canvas/planDimension';
-import type { PlanRenderItem } from './canvas/planRenderItem';
+import { usePlanRenderModel } from './canvas/usePlanRenderModel';
+import { usePlanSelectionDimensions } from './canvas/usePlanSelectionDimensions';
+import type { ActiveObjectFamily, PlanDimension } from './canvas/planDimension';
 import { ToolDispatcherProvider } from './tools/ToolDispatcher';
 import { createSelectTool } from './tools/SelectTool';
+import { PlanViewportPlaceholder } from './PlanViewportPlaceholder';
 import lineweightStyles from './canvas/planLineweights.module.css';
 
 export type { PlanDimension } from './canvas/planDimension';
-
-const EMPTY_DIMENSIONS: ReadonlyArray<PlanDimension> = [];
 
 const DEFAULT_VISIBILITY: DrawingWorkbenchVisibilityState = {
   house: true,
@@ -51,38 +42,11 @@ export type PlanViewportProps = {
   onClearWorkbenchSelection?: () => void;
 };
 
-type RawPlanItem = {
-  shape: GeometryTopProjectionShape;
-  points: PlanSvgPoint[];
-};
-
-function PlaceholderSurface() {
-  return (
-    <section
-      data-plan-viewport="true"
-      data-plan-render-status="no_artifact"
-      aria-label="Plan editor viewport"
-      style={{
-        width: '100%',
-        height: '100%',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: '#fafafa',
-        color: '#555',
-        fontSize: '0.9rem',
-      }}
-    >
-      <p data-plan-viewport-placeholder>Plan view unavailable: no solved geometry artifact.</p>
-    </section>
-  );
-}
-
 export default function PlanViewport({
   artifact,
   visibility = DEFAULT_VISIBILITY,
   activeObjectRef,
-  dimensions,
+  dimensions: providedDimensions,
   viewportTransform,
   onViewportTransformChange,
   onSelectObjectWorkbenchTarget,
@@ -90,31 +54,7 @@ export default function PlanViewport({
   onClearWorkbenchSelection,
 }: PlanViewportProps) {
   const projection = artifact?.topProjection ?? null;
-
-  const renderModel = useMemo(() => {
-    if (!projection) return null;
-    const layout = resolvePlanLayout(projection);
-    const adapter = buildTopProjectionPlanCoordinateAdapter({
-      projection,
-      baseX: layout.baseX,
-      baseY: layout.baseY,
-      scale: layout.scale,
-    });
-    const visibleItems: RawPlanItem[] = projection.shapes
-      .filter((shape) => topProjectionShapeVisible(shape, visibility))
-      .map((shape) => ({
-        shape,
-        points: adapter.projectionPolygonToSvg(shape.polygon),
-      }));
-    const renderGraph = buildProjectionPlanRenderGraph(visibleItems);
-    const committedBodies = renderGraph.committedBodies as PlanRenderItem[];
-    const contextLines = renderGraph.contextLines as PlanRenderItem[];
-    const detailLines = renderGraph.detailLines as PlanRenderItem[];
-    const selectionHaloItems = committedBodies.filter(({ shape }) =>
-      activeObjectMatchesPlanShape(activeObjectRef, shape),
-    );
-    return { layout, adapter, committedBodies, contextLines, detailLines, selectionHaloItems };
-  }, [activeObjectRef, projection, visibility]);
+  const renderModel = usePlanRenderModel({ projection, visibility, activeObjectRef });
 
   const selectTool = useMemo(
     () =>
@@ -126,22 +66,13 @@ export default function PlanViewport({
     [onClearWorkbenchSelection, onSelectObjectWorkbenchTarget, onSelectPergolaTarget],
   );
 
-  const mergedDimensions = useMemo(() => {
-    const selectionDims = renderModel
-      ? buildSelectionDimensions(
-          renderModel.selectionHaloItems.map((item) => ({
-            id: item.shape.id,
-            polygon: item.shape.polygon,
-          })),
-        )
-      : [];
-    const provided = dimensions ?? EMPTY_DIMENSIONS;
-    if (selectionDims.length === 0) return provided;
-    if (provided.length === 0) return selectionDims;
-    return [...selectionDims, ...provided];
-  }, [dimensions, renderModel]);
+  const mergedDimensions = usePlanSelectionDimensions({
+    selectionHaloItems: renderModel?.selectionHaloItems,
+    activeFamily: (activeObjectRef?.family ?? null) as ActiveObjectFamily | null,
+    providedDimensions,
+  });
 
-  if (!projection || !renderModel) return <PlaceholderSurface />;
+  if (!projection || !renderModel) return <PlanViewportPlaceholder />;
 
   const screenAxisLabel = `${projection.screenAxis.x}_${projection.screenAxis.y}`;
 

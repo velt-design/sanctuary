@@ -1,7 +1,7 @@
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import type { GeometryTopProjectionShape } from '@sp/geometry';
-import calcStyles from '@/app/staff/calculator/CalculatorGrid.module.css';
 import { topProjectionShapeClassifier } from '@/components/drawings/viewports/selection/selectionRouter';
+import lineweightStyles from '../planLineweights.module.css';
 import { svgPointsAttr, type PlanRenderItem } from '../planRenderItem';
 
 export type PlanHitTargetLayerProps = {
@@ -26,7 +26,7 @@ export function PlanHitTargetLayer({
         <polygon
           key={`plan-hit-${shape.id}`}
           points={svgPointsAttr(points)}
-          className={calcStyles.moduleHouseFirstShapeHit}
+          className={lineweightStyles.hitTarget}
           data-plan-hit-shape-id={shape.id}
           data-plan-shape-family={shape.family}
           data-plan-shape-kind={shape.kind}

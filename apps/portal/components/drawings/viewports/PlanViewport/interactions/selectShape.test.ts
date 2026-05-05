@@ -4,7 +4,7 @@ import {
   dispatchSelectionTarget,
   selectShape,
   type ShapeSelectionCallbacks,
-} from './useShapeSelection';
+} from './selectShape';
 
 function shape(overrides: Partial<GeometryTopProjectionShape>): GeometryTopProjectionShape {
   return {

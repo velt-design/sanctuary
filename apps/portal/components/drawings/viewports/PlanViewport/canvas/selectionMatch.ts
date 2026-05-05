@@ -23,20 +23,31 @@ export function activeObjectMatchesPlanShape(
   const objectId = activeObjectRef.objectId;
 
   switch (activeObjectRef.family) {
-    case 'decks':
-      return (
-        shape.family === 'house' &&
-        shape.kind === 'deck' &&
-        Boolean(objectId && identities.includes(objectId))
-      );
-    case 'openings':
-      return (
-        shape.family === 'house' &&
-        (shape.kind === 'opening_marker' || shape.kind === 'opening_outline') &&
-        Boolean(objectId && identities.includes(objectId))
-      );
-    case 'pergolas':
-      return shape.family === 'pergola' && Boolean(objectId && identities.includes(objectId));
+    case 'decks': {
+      if (shape.family !== 'house') return false;
+      if (shape.kind !== 'deck' && shape.kind !== 'landing') return false;
+      if (!objectId) return true;
+      const taggedDeckId = typeof shape.metadata?.deckId === 'string' ? shape.metadata.deckId : null;
+      if (taggedDeckId !== null) return taggedDeckId === objectId;
+      return true;
+    }
+    case 'openings': {
+      if (shape.family !== 'house') return false;
+      if (shape.kind !== 'opening_marker' && shape.kind !== 'opening_outline') return false;
+      if (!objectId) return true;
+      const taggedOpeningId =
+        typeof shape.metadata?.openingId === 'string' ? shape.metadata.openingId : null;
+      if (taggedOpeningId !== null) return taggedOpeningId === objectId;
+      return true;
+    }
+    case 'pergolas': {
+      if (shape.family !== 'pergola') return false;
+      if (!objectId) return true;
+      const taggedPergolaId =
+        typeof shape.metadata?.pergolaId === 'string' ? shape.metadata.pergolaId : null;
+      if (taggedPergolaId !== null) return taggedPergolaId === objectId;
+      return true;
+    }
     case 'house_forms': {
       if (shape.family !== 'house') return false;
       if (shape.kind === 'deck' || shape.kind === 'opening_marker' || shape.kind === 'opening_outline') return false;

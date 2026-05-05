@@ -137,6 +137,7 @@ export function ProjectRowTooltip({
   }, []);
 
   useEffect(() => {
+    if (!isMounted) return;
     const el = ref.current;
     if (!el) return;
     let pending = false;
@@ -168,7 +169,7 @@ export function ProjectRowTooltip({
     return () => {
       document.removeEventListener('mousemove', onMove);
     };
-  }, []);
+  }, [isMounted]);
 
   useLayoutEffect(() => {
     if (!visibleInfo) return;
