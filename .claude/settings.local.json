@@ -2,7 +2,13 @@
   "permissions": {
     "allow": [
       "Bash(npx vitest *)",
-      "Bash(npx eslint *)"
+      "Bash(npx eslint *)",
+      "Bash(where.exe bash *)",
+      "Bash(where.exe git *)",
+      "Read(//c/Program Files/Git/usr/bin/**)",
+      "Read(//c/Program Files/Git/bin/**)",
+      "PowerShell($userPath = [Environment]::GetEnvironmentVariable\\('PATH', 'User'\\); Write-Output \"--- CURRENT USER PATH ---\"; Write-Output $userPath; Write-Output \"--- LENGTH ---\"; Write-Output $userPath.Length; Write-Output \"--- CONTAINS Git\\\\usr\\\\bin? ---\"; if \\($userPath -match [regex]::Escape\\('C:\\\\Program Files\\\\Git\\\\usr\\\\bin'\\)\\) { Write-Output 'YES' } else { Write-Output 'NO' })",
+      "PowerShell($userPath = [Environment]::GetEnvironmentVariable\\('PATH', 'User'\\); $newEntry = 'C:\\\\Program Files\\\\Git\\\\usr\\\\bin'; if \\($userPath -match [regex]::Escape\\($newEntry\\)\\) { Write-Output 'Already present, no change.' } else { $separator = if \\($userPath.EndsWith\\(';'\\)\\) { '' } else { ';' }; $newPath = \"$userPath$separator$newEntry\"; [Environment]::SetEnvironmentVariable\\('PATH', $newPath, 'User'\\); Write-Output 'Appended.' }; Write-Output '--- NEW USER PATH ---'; Write-Output \\([Environment]::GetEnvironmentVariable\\('PATH', 'User'\\)\\))"
     ]
   }
 }
