@@ -22,6 +22,8 @@ import { PlanCanvas } from './canvas/PlanCanvas';
 import { resolvePlanLayout } from './canvas/planLayout';
 import { activeObjectMatchesPlanShape } from './canvas/selectionMatch';
 import type { PlanRenderItem } from './canvas/planRenderItem';
+import { ToolDispatcherProvider } from './tools/ToolDispatcher';
+import { createSelectTool } from './tools/SelectTool';
 
 const DEFAULT_VISIBILITY: DrawingWorkbenchVisibilityState = {
   house: true,
@@ -103,8 +105,18 @@ export default function PlanViewport({
     const selectionHaloItems = committedBodies.filter(({ shape }) =>
       activeObjectMatchesPlanShape(activeObjectRef, shape),
     );
-    return { layout, committedBodies, contextLines, detailLines, selectionHaloItems };
+    return { layout, adapter, committedBodies, contextLines, detailLines, selectionHaloItems };
   }, [activeObjectRef, projection, visibility]);
+
+  const selectTool = useMemo(
+    () =>
+      createSelectTool({
+        onSelectObjectWorkbenchTarget,
+        onSelectPergolaTarget,
+        onClearWorkbenchSelection,
+      }),
+    [onClearWorkbenchSelection, onSelectObjectWorkbenchTarget, onSelectPergolaTarget],
+  );
 
   if (!projection || !renderModel) return <PlaceholderSurface />;
 
@@ -115,21 +127,19 @@ export default function PlanViewport({
       data-plan-viewport-host="true"
       style={{ width: '100%', height: '100%', overflow: 'hidden', display: 'block' }}
     >
-      <PlanCanvas
-        layout={renderModel.layout}
-        committedBodies={renderModel.committedBodies}
-        contextLines={renderModel.contextLines}
-        detailLines={renderModel.detailLines}
-        selectionHaloItems={renderModel.selectionHaloItems}
-        transform={viewportTransform}
-        onTransformChange={onViewportTransformChange}
-        selectionCallbacks={{
-          onSelectObjectWorkbenchTarget,
-          onSelectPergolaTarget,
-          onClearWorkbenchSelection,
-        }}
-        screenAxisLabel={screenAxisLabel}
-      />
+      <ToolDispatcherProvider initialTool={selectTool}>
+        <PlanCanvas
+          layout={renderModel.layout}
+          coordinateAdapter={renderModel.adapter}
+          committedBodies={renderModel.committedBodies}
+          contextLines={renderModel.contextLines}
+          detailLines={renderModel.detailLines}
+          selectionHaloItems={renderModel.selectionHaloItems}
+          transform={viewportTransform}
+          onTransformChange={onViewportTransformChange}
+          screenAxisLabel={screenAxisLabel}
+        />
+      </ToolDispatcherProvider>
     </div>
   );
 }
