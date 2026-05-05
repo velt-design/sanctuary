@@ -11,10 +11,10 @@ export type TranslationGizmoBounds = {
 export type TranslationGizmoProps = {
   bounds: TranslationGizmoBounds;
   delta?: PlanPoint;
-  handleSizeMm?: number;
+  handleSize?: number;
 };
 
-const DEFAULT_HANDLE_SIZE_MM = 80;
+const DEFAULT_HANDLE_SIZE = 80;
 
 function offsetBounds(bounds: TranslationGizmoBounds, delta: PlanPoint): TranslationGizmoBounds {
   return {
@@ -43,14 +43,14 @@ function handlesFor(bounds: TranslationGizmoBounds): Array<{ id: string; x: numb
 export function TranslationGizmo({
   bounds,
   delta = { x: 0, y: 0 },
-  handleSizeMm = DEFAULT_HANDLE_SIZE_MM,
+  handleSize = DEFAULT_HANDLE_SIZE,
 }: TranslationGizmoProps) {
   const offset = offsetBounds(bounds, delta);
   const width = offset.maxX - offset.minX;
   const height = offset.maxY - offset.minY;
   const cx = (offset.minX + offset.maxX) / 2;
   const cy = (offset.minY + offset.maxY) / 2;
-  const handleHalf = handleSizeMm / 2;
+  const handleHalf = handleSize / 2;
 
   return (
     <g
@@ -88,8 +88,8 @@ export function TranslationGizmo({
           className={styles.handle}
           x={handle.x - handleHalf}
           y={handle.y - handleHalf}
-          width={handleSizeMm}
-          height={handleSizeMm}
+          width={handleSize}
+          height={handleSize}
           data-translation-gizmo-handle={handle.id}
         />
       ))}

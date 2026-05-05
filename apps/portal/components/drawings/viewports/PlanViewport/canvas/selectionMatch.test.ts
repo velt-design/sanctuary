@@ -125,13 +125,22 @@ describe('activeObjectMatchesPlanShape', () => {
   });
 
   describe('house_forms family', () => {
-    it('matches a non-deck/opening house shape when sourceType starts with house_', () => {
+    it('matches a house shape whose identity equals the active object id', () => {
       expect(
         activeObjectMatchesPlanShape(
           ref('house_forms', 'house-1'),
-          shape({ family: 'house', kind: 'footprint', sourceType: 'house_surface' }),
+          shape({ family: 'house', kind: 'footprint', sourceObjectId: 'house-1', sourceType: 'house_surface' }),
         ),
       ).toBe(true);
+    });
+
+    it('does not match other house shapes when the active id is set but identity differs', () => {
+      expect(
+        activeObjectMatchesPlanShape(
+          ref('house_forms', 'house-1'),
+          shape({ family: 'house', kind: 'footprint', sourceObjectId: 'house-2', sourceType: 'house_surface' }),
+        ),
+      ).toBe(false);
     });
 
     it('matches without a specific id when sourceType is house-derived', () => {

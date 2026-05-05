@@ -33,12 +33,21 @@ export function ToolDispatcherProvider({
   const [activeTool, setActiveTool] = useState<Tool>(initialTool);
   const activeToolRef = useRef(activeTool);
   activeToolRef.current = activeTool;
+  const initialToolRef = useRef(initialTool);
 
   useEffect(() => {
     return () => {
       activeToolRef.current.onCancel?.();
     };
   }, []);
+
+  useEffect(() => {
+    if (initialTool === initialToolRef.current) return;
+    initialToolRef.current = initialTool;
+    if (activeToolRef.current.id === initialTool.id && activeToolRef.current !== initialTool) {
+      setActiveTool(initialTool);
+    }
+  }, [initialTool]);
 
   const handleSetActiveTool = useCallback((tool: Tool) => {
     if (activeToolRef.current.id === tool.id) {

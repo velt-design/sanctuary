@@ -34,7 +34,7 @@ describe('TranslationGizmo', () => {
   });
 
   it('respects a custom handle size', () => {
-    const markup = svgWrap(<TranslationGizmo bounds={bounds} handleSizeMm={40} />);
+    const markup = svgWrap(<TranslationGizmo bounds={bounds} handleSize={40} />);
     expect(markup).toMatch(/width="40"[^>]*height="40"[^>]*data-translation-gizmo-handle="nw"/);
   });
 });

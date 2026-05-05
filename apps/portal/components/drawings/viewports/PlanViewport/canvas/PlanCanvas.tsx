@@ -17,7 +17,7 @@ import { PlanContextLineLayer } from './layers/PlanContextLineLayer';
 import { PlanDetailLayer } from './layers/PlanDetailLayer';
 import { PlanHitTargetLayer } from './layers/PlanHitTargetLayer';
 import { PlanSelectionHaloLayer } from './layers/PlanSelectionHaloLayer';
-import { planBoundsFromPolygon, type PlanBoundsMm } from './planLayout';
+import { planBoundsFromPolygon, planBoundsToSvgRect, type PlanBoundsMm } from './planLayout';
 import styles from './PlanCanvas.module.css';
 import type { PlanLayout } from './planLayout';
 import type { PlanRenderItem } from './planRenderItem';
@@ -82,10 +82,10 @@ export function PlanCanvas({
         event.clientY,
         coordinateAdapter,
       );
-      if (!point) return;
+      if (!point && shape) return;
       const payload = {
         shape,
-        point: { x: point.x * 1000, y: point.y * 1000 },
+        point: point ? { x: point.x * 1000, y: point.y * 1000 } : { x: 0, y: 0 },
         button: event.button,
         pointerId: event.pointerId,
       };
@@ -109,7 +109,18 @@ export function PlanCanvas({
     onTransformChange(IDENTITY_TRANSFORM);
   }, [onTransformChange]);
 
-  const gizmoBounds = useMemo(() => unionBounds(selectionHaloItems), [selectionHaloItems]);
+  const gizmoBounds = useMemo(() => {
+    const mmBounds = unionBounds(selectionHaloItems);
+    if (!mmBounds) return null;
+    const rect = planBoundsToSvgRect({ bounds: mmBounds, adapter: coordinateAdapter });
+    return {
+      minX: rect.x,
+      minY: rect.y,
+      maxX: rect.x + rect.width,
+      maxY: rect.y + rect.height,
+    };
+  }, [coordinateAdapter, selectionHaloItems]);
+  const gizmoHandleSize = layout.scale * 0.08;
 
   return (
     <div className={styles.canvasShell}>
@@ -163,7 +174,7 @@ export function PlanCanvas({
             onShapeEnter={onShapeEnter}
             onShapeLeave={onShapeLeave}
           />
-          {gizmoBounds ? <TranslationGizmo bounds={gizmoBounds} /> : null}
+          {gizmoBounds ? <TranslationGizmo bounds={gizmoBounds} handleSize={gizmoHandleSize} /> : null}
         </g>
       </svg>
     </div>

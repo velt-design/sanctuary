@@ -43,7 +43,7 @@ export function activeObjectMatchesPlanShape(
         shape.kind !== 'deck' &&
         shape.kind !== 'opening_marker' &&
         shape.kind !== 'opening_outline' &&
-        (!objectId || identities.includes(objectId) || shape.sourceType.startsWith('house_'))
+        (objectId ? identities.includes(objectId) : shape.sourceType.startsWith('house_'))
       );
     default:
       return false;
