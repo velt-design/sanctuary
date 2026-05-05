@@ -288,7 +288,7 @@ describe('buildSelectionDimensions', () => {
       expect(dims).toHaveLength(3);
     });
 
-    it('derives slice dims from merged halo vertices when no primary edit polygon exists', () => {
+    it('falls back to bounding-box dims when no primary edit polygon exists in the selection', () => {
       const dims = buildSelectionDimensions(
         [
           {
@@ -301,42 +301,9 @@ describe('buildSelectionDimensions', () => {
               { x: 1000, y: 1000 },
             ],
           },
-          {
-            id: 'roof-2',
-            family: 'house',
-            kind: 'roof',
-            polygon: [
-              { x: 2000, y: 0 },
-              { x: 4000, y: 0 },
-              { x: 3000, y: 1000 },
-            ],
-          },
         ],
         'house_forms',
       );
-      const ids = dims.map((dim) => dim.id);
-      expect(ids).toContain('selection-merged:slice:x:top:0-1000');
-      expect(ids).toContain('selection-merged:slice:x:top:1000-2000');
-      expect(ids).toContain('selection-merged:slice:x:top:2000-3000');
-      expect(ids).toContain('selection-merged:slice:x:top:3000-4000');
-      expect(ids).toContain('selection-merged:total:x:top');
-      expect(ids).toContain('selection-merged:slice:x:bottom:0-1000');
-      expect(ids).toContain('selection-merged:total:x:bottom');
-    });
-
-    it('falls back to bounding-box dims when merged halo would produce too many slices', () => {
-      const noisyItems = Array.from({ length: 12 }).map((_, i) => ({
-        id: `noise-${i}`,
-        family: 'house',
-        kind: 'roof',
-        polygon: [
-          { x: i * 137, y: 0 },
-          { x: i * 137 + 100, y: 0 },
-          { x: i * 137 + 100, y: i * 91 + 50 },
-          { x: i * 137, y: i * 91 + 50 },
-        ],
-      }));
-      const dims = buildSelectionDimensions(noisyItems, 'house_forms');
       expect(dims.map((dim) => dim.id)).toEqual(['selection:width', 'selection:height']);
     });
 

@@ -8,18 +8,18 @@ A polygon-first editor where each selectable object is one canonical outline pol
 
 ## Foundation contracts
 
-### Canonical outline per object (in progress)
+### Canonical outline per object
 
-Every selectable object must emit **exactly one** projection shape that IS its editable outline. Halo, slice dims, snap, and the future drag tool all read from there — no per-family lookup tables, no fallbacks, no compositing in the viewport.
+Every selectable object emits **exactly one** projection shape that IS its editable outline. Halo, slice dims, snap, and the future drag tool all read from there — no per-family lookup tables, no fallbacks, no compositing in the viewport.
 
 | Family | Outline source | Projection shape | Status |
 |--------|---------------|------------------|--------|
-| `house_forms` | `assembly.house.model.footprint` | `house_reference:<id>:outline` | ✅ shipped |
-| `decks` | `deck.boundary` | `house_surface_solid` (kind:'deck') | ✅ shipped |
-| `pergolas` | `assembly.outline` | `pergola_reference:<id>:outline` | ⏳ Phase 2 |
-| `openings` | derived from wall + opening props | `opening_reference:<id>:outline` | deferred |
+| `house_forms` | `assembly.house.model.footprint` | `house_reference:house-footprint` | ✅ |
+| `decks` | `deck.boundary` | `house_surface_solid` (kind:`'deck'`) | ✅ |
+| `pergolas` | `assembly.outline` | `pergola_reference:pergola-outline` | ✅ |
+| `openings` | derived from wall + opening props | `opening_reference:<id>:outline` | deferred — openings have no polygon in data today |
 
-When the marker convention lands, every outline shape will carry `metadata.isCanonicalOutline === true`. The picker (`pickPrimaryEditCandidate`) will prefer the marker over the legacy per-family kind list.
+Every outline shape carries `metadata.isCanonicalOutline === true`. The picker ([`pickPrimaryEditCandidate`](canvas/planDimension.ts)) prefers the marker; the per-family kind list ([`PRIMARY_EDIT_KIND_BY_FAMILY`](canvas/planDimension.ts)) is the legacy fallback for shapes that pre-date the marker convention.
 
 ### Selection scope
 
@@ -40,8 +40,8 @@ Layers consume semantic classes (`bodyHouseRoof`, `selectionHalo`, `dimensionLin
 - Slice dims are emitted **per side** (top / bottom / left / right) using only vertices that lie ON that side.
 - Each dim represents a real, draggable section of the polygon between two vertices.
 - Totals (full-width / full-height) only emit when a side has 2+ slices.
-- `buildEdgeDimensions` is the fallback for non-rectilinear polygons (rotated pergolas etc).
-- `buildBboxSliceDimensions` is the fallback for "vertex bag" sources (selections without a primary outline). To be deleted once the canonical-outline contract is universal.
+- `buildEdgeDimensions` is the fallback for non-rectilinear polygons (rotated outlines etc).
+- `buildBoundingBoxDimensions` is the last-resort fallback for selections that have no primary edit polygon (typical for pre-canonical-outline geometry — emits two bbox dims).
 
 ## File map
 
@@ -74,10 +74,6 @@ tools/
   ToolDispatcher.tsx          Active-tool dispatcher with cancel + re-init
   SelectTool.ts               Click-to-select, click-empty-to-clear
   MoveTool.ts                 Generic drag-translate tool (built, awaiting commit pipeline)
-
-gizmos/
-  TranslationGizmo.tsx        Bbox + handles overlay (orphaned — does not match the
-                              edge-drag editing model; kept for possible future use)
 ```
 
 ## Built but not yet wired
@@ -89,7 +85,6 @@ These are tested helpers waiting for their named consumer. Not dead code — sta
 | `interactions/snap/snapEngine.ts` | First snap-dependent feature (relation dims, dimension tool, move-with-snap) |
 | `tools/MoveTool.ts` | Commit-pipeline design lands (per-family `commitMove` callback) |
 | `interactions/dragLifecycle.ts` | Currently only used by `MoveTool`; widely useful for any drag tool |
-| `gizmos/TranslationGizmo.tsx` | Likely never — kept until a use case appears or the file is deleted |
 
 ## Rules
 

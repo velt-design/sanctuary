@@ -60,8 +60,6 @@ const SLICE_X_OFFSET_MM = -350;
 const SLICE_Y_OFFSET_MM = 350;
 const TOTAL_OFFSET_DELTA_MM = 350;
 const RECTILINEAR_TOLERANCE_DEG = 5;
-const MERGED_HALO_DEDUPE_TOLERANCE_MM = 1;
-const MERGED_HALO_MAX_SLICES_PER_AXIS = 8;
 
 const PRIMARY_EDIT_KIND_BY_FAMILY: Record<ActiveObjectFamily, ReadonlyArray<string>> = {
   house_forms: ['footprint'],
@@ -349,103 +347,6 @@ export function buildSliceDimensions(
   return dims;
 }
 
-function mergedHaloVertices(
-  items: ReadonlyArray<PlanSelectionDimensionSource>,
-): PlanDimensionPoint[] {
-  const points: PlanDimensionPoint[] = [];
-  for (const item of items) {
-    for (const point of item.polygon) {
-      points.push({ x: point.x, y: point.y });
-    }
-  }
-  return points;
-}
-
-function buildBboxSliceDimensions(
-  source: { id: string; polygon: ReadonlyArray<PlanDimensionPoint> },
-  toleranceMm: number,
-): PlanDimension[] {
-  const bounds = planBoundsFromPolygon(source.polygon as PlanDimensionPoint[]);
-  if (!bounds) return [];
-  const { xSlices, ySlices } = extractAxisSlices(source.polygon, toleranceMm);
-  if (xSlices.length === 0 && ySlices.length === 0) return [];
-  const dims: PlanDimension[] = [];
-  for (const [x0, x1] of xSlices) {
-    dims.push({
-      id: `${source.id}:slice:x:top:${Math.round(x0)}-${Math.round(x1)}`,
-      start: { x: x0, y: bounds.minY },
-      end: { x: x1, y: bounds.minY },
-      offsetMm: SLICE_X_OFFSET_MM,
-    });
-    dims.push({
-      id: `${source.id}:slice:x:bottom:${Math.round(x0)}-${Math.round(x1)}`,
-      start: { x: x0, y: bounds.maxY },
-      end: { x: x1, y: bounds.maxY },
-      offsetMm: -SLICE_X_OFFSET_MM,
-    });
-  }
-  if (xSlices.length > 1) {
-    dims.push({
-      id: `${source.id}:total:x:top`,
-      start: { x: bounds.minX, y: bounds.minY },
-      end: { x: bounds.maxX, y: bounds.minY },
-      offsetMm: SLICE_X_OFFSET_MM - TOTAL_OFFSET_DELTA_MM,
-    });
-    dims.push({
-      id: `${source.id}:total:x:bottom`,
-      start: { x: bounds.minX, y: bounds.maxY },
-      end: { x: bounds.maxX, y: bounds.maxY },
-      offsetMm: -SLICE_X_OFFSET_MM + TOTAL_OFFSET_DELTA_MM,
-    });
-  }
-  for (const [y0, y1] of ySlices) {
-    dims.push({
-      id: `${source.id}:slice:y:left:${Math.round(y0)}-${Math.round(y1)}`,
-      start: { x: bounds.minX, y: y0 },
-      end: { x: bounds.minX, y: y1 },
-      offsetMm: SLICE_Y_OFFSET_MM,
-    });
-    dims.push({
-      id: `${source.id}:slice:y:right:${Math.round(y0)}-${Math.round(y1)}`,
-      start: { x: bounds.maxX, y: y0 },
-      end: { x: bounds.maxX, y: y1 },
-      offsetMm: -SLICE_Y_OFFSET_MM,
-    });
-  }
-  if (ySlices.length > 1) {
-    dims.push({
-      id: `${source.id}:total:y:left`,
-      start: { x: bounds.minX, y: bounds.minY },
-      end: { x: bounds.minX, y: bounds.maxY },
-      offsetMm: SLICE_Y_OFFSET_MM + TOTAL_OFFSET_DELTA_MM,
-    });
-    dims.push({
-      id: `${source.id}:total:y:right`,
-      start: { x: bounds.maxX, y: bounds.minY },
-      end: { x: bounds.maxX, y: bounds.maxY },
-      offsetMm: -SLICE_Y_OFFSET_MM - TOTAL_OFFSET_DELTA_MM,
-    });
-  }
-  return dims;
-}
-
-function tryMergedHaloSliceDimensions(
-  items: ReadonlyArray<PlanSelectionDimensionSource>,
-): PlanDimension[] | null {
-  const polygon = mergedHaloVertices(items);
-  if (polygon.length === 0) return null;
-  const { xSlices, ySlices } = extractAxisSlices(polygon, MERGED_HALO_DEDUPE_TOLERANCE_MM);
-  if (xSlices.length === 0 && ySlices.length === 0) return null;
-  if (
-    xSlices.length > MERGED_HALO_MAX_SLICES_PER_AXIS ||
-    ySlices.length > MERGED_HALO_MAX_SLICES_PER_AXIS
-  ) {
-    return null;
-  }
-  const dims = buildBboxSliceDimensions({ id: 'selection-merged', polygon }, MERGED_HALO_DEDUPE_TOLERANCE_MM);
-  return dims.length > 0 ? dims : null;
-}
-
 export function buildSelectionDimensions(
   items: ReadonlyArray<PlanSelectionDimensionSource>,
   activeFamily?: ActiveObjectFamily | null,
@@ -460,8 +361,6 @@ export function buildSelectionDimensions(
       const edgeDims = buildEdgeDimensions({ id: editPolygon.id, polygon: editPolygon.polygon });
       if (edgeDims.length > 0) return edgeDims;
     }
-    const mergedDims = tryMergedHaloSliceDimensions(items);
-    if (mergedDims) return mergedDims;
   }
   return buildBoundingBoxDimensions(items);
 }
