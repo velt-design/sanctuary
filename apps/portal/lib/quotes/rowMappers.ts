@@ -2,6 +2,7 @@ import 'server-only';
 
 import { appIdFromUuid } from '@/lib/supabase/mappers';
 import { normalizeDepositPercent } from './defaults';
+import { nowIso } from './serverHelpers';
 import type { QuoteLineItem, QuoteSendLog, QuoteStatus, QuoteVersion } from './types';
 
 function toStatus(raw: unknown): QuoteStatus {
@@ -14,10 +15,6 @@ function safeStringArray(value: unknown): string[] {
   if (Array.isArray(value)) return value.map((v) => String(v ?? '').trim()).filter(Boolean);
   if (typeof value === 'string') return value.split(',').map((v) => v.trim()).filter(Boolean);
   return [];
-}
-
-function nowIso(): string {
-  return new Date().toISOString();
 }
 
 export function mapQuoteVersionRow(

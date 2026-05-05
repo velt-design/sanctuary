@@ -50,6 +50,7 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 | 2026-05-01 | Docs | Promoted | Read the agent playbook for non-trivial portal work; promote durable lessons from this log into the playbook. |
 | 2026-05-01 | Docs | Promoted | Do not delete active guardrail docs without confirming usage or replacing the rule. |
 | 2026-05-01 | Docs | Promoted | Distinguish current-state references from active operating rules. |
+| 2026-05-06 | Decomposition / Refactor Hygiene | Active | Extracting helpers during a decomposition refactor must be byte-for-byte; rewriting "while I'm there" introduces subtle behavioural drift that escapes typecheck. |
 
 ## Entries
 
@@ -535,3 +536,19 @@ Current guardrail: every interactive feature added to PlanViewport (and the read
 Promoted to: None
 
 Related docs/tests: `docs/design-workbench-architecture.md`, `apps/portal/components/drawings/viewports/PlanViewport/`, `apps/portal/components/drawings/viewports/Geometry3DViewport.tsx`, `apps/portal/components/drawings/viewports/selection/selectionRouter.ts`, `apps/portal/lib/drawings/commands/`.
+
+### 2026-05-06 - Decomposition / Refactor Hygiene - Copy Verbatim When Extracting
+
+Area: Decomposition / Refactor Hygiene
+
+Status: Active
+
+Decision or mistake: while extracting helpers from `apps/portal/lib/quotes/serverCore.ts` into a new `rowMappers.ts` module, two helpers (`toStatus`, `safeStringArray`) were re-implemented from memory rather than copied byte-for-byte. The replacements had subtly different validation logic — one accepted statuses the original rejected; the other lost a fallback branch. Caught at review before typecheck, but neither typecheck nor the existing call-site tests would have surfaced the drift because the changed behaviour only fires on edge-case inputs the existing tests do not exercise.
+
+Why it mattered: decomposition refactors look "mechanical" but rewrites slip in easily — "while I'm there" tidying is the standard way pure helpers acquire silent regressions. Because typecheck cannot see behavioural drift in pure helper bodies, and because callers' tests usually only cover the happy path of the refactored helper, this class of bug is invisible to local CI and tends to be discovered in production.
+
+Current guardrail: when extracting helpers as part of a decomposition pass, copy byte-for-byte from the source file. Do not rename, retype, or "tidy" the helper while moving it. Behaviour-preserving improvements belong in a separate PR with their own tests. If the helper has no direct test, add one in the new module before the next functional change.
+
+Promoted to: `docs/file-decomposition-and-ownership.md` (Operating Rule extraction-hygiene note)
+
+Related docs/tests: `docs/file-decomposition-and-ownership.md`, `apps/portal/lib/quotes/rowMappers.ts`, `apps/portal/lib/quotes/serverHelpers.ts`, `apps/portal/lib/quotes/serverLoaders.ts`

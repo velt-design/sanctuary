@@ -34,7 +34,7 @@ describe('quote pricing source output boundaries', () => {
   });
 
   it('loads estimate source metadata explicitly without selecting raw commercial design input', () => {
-    const source = readRepoFile('apps/portal/lib/quotes/serverCore.ts');
+    const source = readRepoFile('apps/portal/lib/quotes/serverLoaders.ts');
 
     expect(source).toContain(
       ".select('id, project_id, created_at, updated_at, status, inputs, outputs, warnings, pricing_source, pricing_source_metadata')",

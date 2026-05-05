@@ -12,6 +12,8 @@ Large files are not automatically wrong, but they are risk markers. Do not keep 
 
 If a safe extraction would make the task too risky, keep the behavior change small and record the decomposition direction in the handoff or the owning doc.
 
+When extracting a helper or module as part of a decomposition pass, copy the body byte-for-byte. Do not rename, retype, or "tidy" while moving — behaviour-preserving improvements belong in a separate PR with their own tests. Behavioural drift in pure helpers is invisible to typecheck and often invisible to existing call-site tests. See `docs/decision-log.md` (2026-05-06) for the failure mode.
+
 ## Split Triggers
 
 Start looking for a split when a file:
