@@ -40,6 +40,7 @@ If no headline metric is worse than the available comparison snapshots, choose t
 | Date | Dead-code delete candidates | Dead-code legacy retirement | Critical files | Warning files | Root compat files | Browser-direct Supabase |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | 2026-05-03 | 619 | 211 | 30 | 43 | 134 | 7 |
+| 2026-05-05 | 593 | 211 | 28 | 45 | 134 | 5 |
 
 ## Usage
 

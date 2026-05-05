@@ -1,6 +1,7 @@
 import type { GeometryTopProjectionShape } from '@sp/geometry';
 import type { ProjectionPlanLayer } from '@/lib/drawings/views/plan/planRenderGraph';
 import styles from '@/app/staff/calculator/CalculatorGrid.module.css';
+import lineweightStyles from './planLineweights.module.css';
 
 function houseSurfaceClass(
   kind: 'roof' | 'soffit' | 'fascia' | 'attachment_zone' | 'footprint',
@@ -58,4 +59,33 @@ export function planShapeClassForLayer(
 ): string {
   if (layer === 'contextLines') return styles.modulePlanTopProjectionLine;
   return planShapeClass(shape);
+}
+
+function houseCommittedBodyTokenClass(shape: GeometryTopProjectionShape): string {
+  if (shape.kind === 'deck') return lineweightStyles.bodyHouseDeck;
+  if (shape.kind === 'opening_marker' || shape.kind === 'opening_outline') {
+    return lineweightStyles.bodyHouseOpening;
+  }
+  if (shape.kind === 'roof' || shape.kind === 'house_roof_material') return lineweightStyles.bodyHouseRoof;
+  if (shape.kind === 'soffit') return lineweightStyles.bodyHouseSoffit;
+  if (shape.kind === 'fascia') return lineweightStyles.bodyHouseFascia;
+  if (shape.kind === 'attachment_zone') return lineweightStyles.bodyHouseAttachmentZone;
+  if (shape.kind === 'footprint') return lineweightStyles.bodyHouseFootprint;
+  if (shape.kind === 'gutter' || shape.kind === 'roof_feature' || shape.kind === 'wall_segment') {
+    return lineweightStyles.bodyHouseLine;
+  }
+  return lineweightStyles.bodyReference;
+}
+
+function pergolaCommittedBodyTokenClass(shape: GeometryTopProjectionShape): string {
+  if (shape.kind === 'roof_cladding') return lineweightStyles.bodyPergolaCladding;
+  if (shape.kind === 'rafter') return lineweightStyles.bodyPergolaRafter;
+  if (shape.kind === 'ridge') return lineweightStyles.bodyPergolaRidge;
+  return lineweightStyles.bodyPergolaRoof;
+}
+
+export function planCommittedBodyTokenClass(shape: GeometryTopProjectionShape): string {
+  if (shape.family === 'house') return houseCommittedBodyTokenClass(shape);
+  if (shape.family === 'reference') return lineweightStyles.bodyReference;
+  return pergolaCommittedBodyTokenClass(shape);
 }

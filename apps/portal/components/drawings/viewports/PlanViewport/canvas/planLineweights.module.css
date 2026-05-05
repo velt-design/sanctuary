@@ -1,0 +1,179 @@
+.tokens {
+  --plan-stroke-cut: #1a1a1a;
+  --plan-stroke-visible: #333333;
+  --plan-stroke-light: #888888;
+  --plan-stroke-hairline: #b8b8b8;
+
+  --plan-width-heavy: 2;
+  --plan-width-medium: 1;
+  --plan-width-light: 0.5;
+  --plan-width-hairline: 0.25;
+
+  --plan-fill-pergola-roof: rgba(20, 20, 20, 0.92);
+  --plan-fill-pergola-rafter: rgba(180, 180, 180, 0.55);
+  --plan-fill-pergola-cladding: rgba(220, 220, 220, 0.45);
+  --plan-fill-pergola-ridge: rgba(60, 60, 60, 0.85);
+
+  --plan-fill-house-deck: rgba(180, 200, 220, 0.55);
+  --plan-fill-house-roof: rgba(150, 130, 100, 0.45);
+  --plan-fill-house-soffit: rgba(220, 220, 220, 0.50);
+  --plan-fill-house-fascia: rgba(140, 100, 80, 0.55);
+  --plan-fill-house-attachment-zone: rgba(255, 200, 100, 0.30);
+  --plan-fill-house-footprint: rgba(245, 245, 245, 0.85);
+  --plan-fill-house-opening: rgba(80, 140, 200, 0.40);
+
+  --plan-fill-reference: transparent;
+
+  --plan-stroke-selection: #2f6f96;
+  --plan-fill-hover: rgba(47, 111, 150, 0.08);
+  --plan-stroke-dimension: #2a3a55;
+  --plan-fill-dimension-label: #14172e;
+  --plan-stroke-dimension-label-halo: rgba(255, 255, 255, 0.95);
+  --plan-stroke-snap: #ff6b00;
+  --plan-fill-snap: #ff6b00;
+}
+
+.strokeCut {
+  stroke: var(--plan-stroke-cut);
+  stroke-width: var(--plan-width-heavy);
+  vector-effect: non-scaling-stroke;
+}
+
+.strokeVisible {
+  stroke: var(--plan-stroke-visible);
+  stroke-width: var(--plan-width-medium);
+  vector-effect: non-scaling-stroke;
+}
+
+.strokeLight {
+  stroke: var(--plan-stroke-light);
+  stroke-width: var(--plan-width-light);
+  vector-effect: non-scaling-stroke;
+}
+
+.strokeHairline {
+  stroke: var(--plan-stroke-hairline);
+  stroke-width: var(--plan-width-hairline);
+  vector-effect: non-scaling-stroke;
+}
+
+.bodyPergolaRoof {
+  composes: strokeVisible;
+  fill: var(--plan-fill-pergola-roof);
+}
+
+.bodyPergolaRafter {
+  composes: strokeLight;
+  fill: var(--plan-fill-pergola-rafter);
+}
+
+.bodyPergolaCladding {
+  composes: strokeLight;
+  fill: var(--plan-fill-pergola-cladding);
+}
+
+.bodyPergolaRidge {
+  composes: strokeVisible;
+  fill: var(--plan-fill-pergola-ridge);
+}
+
+.bodyHouseDeck {
+  composes: strokeVisible;
+  fill: var(--plan-fill-house-deck);
+}
+
+.bodyHouseRoof {
+  composes: strokeVisible;
+  fill: var(--plan-fill-house-roof);
+}
+
+.bodyHouseSoffit {
+  composes: strokeLight;
+  fill: var(--plan-fill-house-soffit);
+}
+
+.bodyHouseFascia {
+  composes: strokeVisible;
+  fill: var(--plan-fill-house-fascia);
+}
+
+.bodyHouseAttachmentZone {
+  composes: strokeLight;
+  fill: var(--plan-fill-house-attachment-zone);
+}
+
+.bodyHouseFootprint {
+  composes: strokeCut;
+  fill: var(--plan-fill-house-footprint);
+}
+
+.bodyHouseOpening {
+  composes: strokeVisible;
+  fill: var(--plan-fill-house-opening);
+}
+
+.bodyHouseLine {
+  composes: strokeVisible;
+  fill: none;
+}
+
+.bodyReference {
+  composes: strokeHairline;
+  fill: var(--plan-fill-reference);
+}
+
+.contextLine {
+  composes: strokeLight;
+  fill: none;
+}
+
+.detailLine {
+  composes: strokeVisible;
+  fill: none;
+}
+
+.selectionHalo {
+  stroke: var(--plan-stroke-selection);
+  stroke-width: calc(var(--plan-width-medium) * 1.5);
+  stroke-dasharray: 6 3;
+  vector-effect: non-scaling-stroke;
+  fill: none;
+}
+
+.hitTarget {
+  fill: transparent;
+  stroke: none;
+  cursor: pointer;
+}
+
+.hitTarget:hover {
+  fill: var(--plan-fill-hover);
+}
+
+.dimensionLayer {
+  pointer-events: none;
+}
+
+.dimensionLine {
+  stroke: var(--plan-stroke-dimension);
+  stroke-width: var(--plan-width-light);
+  vector-effect: non-scaling-stroke;
+  fill: none;
+}
+
+.dimensionArrow {
+  fill: var(--plan-stroke-dimension);
+  stroke: none;
+}
+
+.dimensionLabel {
+  fill: var(--plan-fill-dimension-label);
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  text-anchor: middle;
+  dominant-baseline: alphabetic;
+  paint-order: stroke fill;
+  stroke: var(--plan-stroke-dimension-label-halo);
+  stroke-width: 3px;
+}

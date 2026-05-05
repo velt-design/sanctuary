@@ -25,6 +25,7 @@ import { buildSelectionDimensions, type PlanDimension } from './canvas/planDimen
 import type { PlanRenderItem } from './canvas/planRenderItem';
 import { ToolDispatcherProvider } from './tools/ToolDispatcher';
 import { createSelectTool } from './tools/SelectTool';
+import lineweightStyles from './canvas/planLineweights.module.css';
 
 export type { PlanDimension } from './canvas/planDimension';
 
@@ -149,6 +150,7 @@ export default function PlanViewport({
       data-plan-viewport-host="true"
       data-plan-active-object-family={activeObjectRef?.family ?? ''}
       data-plan-active-object-id={activeObjectRef?.objectId ?? ''}
+      className={lineweightStyles.tokens}
       style={{ width: '100%', height: '100%', overflow: 'hidden', display: 'block' }}
     >
       <ToolDispatcherProvider initialTool={selectTool}>

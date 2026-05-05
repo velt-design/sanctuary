@@ -134,13 +134,48 @@ describe('activeObjectMatchesPlanShape', () => {
       ).toBe(true);
     });
 
-    it('does not match other house shapes when the active id is set but identity differs', () => {
+    it('matches when shape.metadata.houseFormId equals the active object id', () => {
       expect(
         activeObjectMatchesPlanShape(
           ref('house_forms', 'house-1'),
-          shape({ family: 'house', kind: 'footprint', sourceObjectId: 'house-2', sourceType: 'house_surface' }),
+          shape({
+            family: 'house',
+            kind: 'footprint',
+            sourceObjectId: 'rendered-1',
+            sourceType: 'house_surface',
+            metadata: { houseFormId: 'house-1' },
+          }),
+        ),
+      ).toBe(true);
+    });
+
+    it('does not match a house shape tagged with a different houseFormId', () => {
+      expect(
+        activeObjectMatchesPlanShape(
+          ref('house_forms', 'house-1'),
+          shape({
+            family: 'house',
+            kind: 'footprint',
+            sourceObjectId: 'rendered-2',
+            sourceType: 'house_surface',
+            metadata: { houseFormId: 'house-2' },
+          }),
         ),
       ).toBe(false);
+    });
+
+    it('falls back to matching all house shapes when the projection does not tag houseFormId', () => {
+      expect(
+        activeObjectMatchesPlanShape(
+          ref('house_forms', 'house-main'),
+          shape({
+            family: 'house',
+            kind: 'wall_segment',
+            sourceObjectId: 'wall-7',
+            sourceType: 'house_surface',
+          }),
+        ),
+      ).toBe(true);
     });
 
     it('matches without a specific id when sourceType is house-derived', () => {

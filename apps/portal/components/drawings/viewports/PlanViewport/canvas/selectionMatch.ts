@@ -37,14 +37,16 @@ export function activeObjectMatchesPlanShape(
       );
     case 'pergolas':
       return shape.family === 'pergola' && Boolean(objectId && identities.includes(objectId));
-    case 'house_forms':
-      return (
-        shape.family === 'house' &&
-        shape.kind !== 'deck' &&
-        shape.kind !== 'opening_marker' &&
-        shape.kind !== 'opening_outline' &&
-        (objectId ? identities.includes(objectId) : shape.sourceType.startsWith('house_'))
-      );
+    case 'house_forms': {
+      if (shape.family !== 'house') return false;
+      if (shape.kind === 'deck' || shape.kind === 'opening_marker' || shape.kind === 'opening_outline') return false;
+      if (!objectId) return shape.sourceType.startsWith('house_');
+      const taggedHouseFormId =
+        typeof shape.metadata?.houseFormId === 'string' ? shape.metadata.houseFormId : null;
+      if (taggedHouseFormId !== null) return taggedHouseFormId === objectId;
+      if (identities.includes(objectId)) return true;
+      return shape.sourceType.startsWith('house_');
+    }
     default:
       return false;
   }
