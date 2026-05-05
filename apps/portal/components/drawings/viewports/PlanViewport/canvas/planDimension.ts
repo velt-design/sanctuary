@@ -91,15 +91,15 @@ function polygonCentroid(points: ReadonlyArray<PlanDimensionPoint>): PlanDimensi
   return { x: sumX / points.length, y: sumY / points.length };
 }
 
-function pickPrimaryEditPolygon(
-  items: ReadonlyArray<PlanSelectionDimensionSource>,
+export function pickPrimaryEditCandidate<T extends { polygon: ReadonlyArray<PlanDimensionPoint>; kind?: string }>(
+  items: ReadonlyArray<T>,
   activeFamily: ActiveObjectFamily,
-): PlanSelectionDimensionSource | null {
+): T | null {
   const allowedKinds = PRIMARY_EDIT_KIND_BY_FAMILY[activeFamily];
   if (!allowedKinds) return null;
   const candidates = items.filter((item) => item.kind !== undefined && allowedKinds.includes(item.kind));
   if (candidates.length === 0) return null;
-  let best: PlanSelectionDimensionSource | null = null;
+  let best: T | null = null;
   let bestArea = -Infinity;
   for (const candidate of candidates) {
     const area = polygonAreaMm(candidate.polygon);
@@ -109,6 +109,13 @@ function pickPrimaryEditPolygon(
     }
   }
   return best;
+}
+
+function pickPrimaryEditPolygon(
+  items: ReadonlyArray<PlanSelectionDimensionSource>,
+  activeFamily: ActiveObjectFamily,
+): PlanSelectionDimensionSource | null {
+  return pickPrimaryEditCandidate(items, activeFamily);
 }
 
 function buildBoundingBoxDimensions(
