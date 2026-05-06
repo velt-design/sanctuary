@@ -19,7 +19,7 @@ When extracting helpers as part of this decomposition pass, **copy the body byte
 | `perimeterEdges.ts` | House perimeter edge classification + builders: `classifyHousePerimeterEdges`, `buildHouseRoofPerimeterEdges`, `buildMonoAppendagePerimeterEdges`, `buildAppendagePerimeterEdges`, `roofPlaneTouchesPerimeterEdge`, `roofPlanePerimeterOverlapSegment`. | ✅ shipped |
 | `eave.ts` | Eave/fascia/soffit/gutter polygons: `isEavePackageEdge`, `buildPolygonGutterLines`, `buildPolygonGutterBoundaries`, `buildPolygonFasciaPolygons`, `buildPolygonSoffitPolygons`, `buildPerimeterOffsetStripFootprints`. | ✅ shipped |
 | `roofPlane.ts` | Roof plane primitives + height-at-XY math: `buildRoofPlane`, `roofPlaneHeightAtXY`, `roofPlaneEquationHeightAtXY`, `roofFeatureHeightAtXY`, `roofHeightAtXY`, plus `RoofSolidPlaneEquation` type, `roofSolidPlaneEquationFromPlane`, `roofSolidBottomPlaneEquation`, `pointOnRoofPolygonBoundary`, `pointInOrOnRoofPolygon`. | ✅ shipped |
-| `roofRectangleHipped.ts` | Rectangle-specific hipped roof: `buildRectangleRoofFeatures`, `buildRectangleHippedRoof`. | pending |
+| `roofRectangleHipped.ts` | Rectangle-specific hipped roof: `buildRectangleRoofFeatures`, `buildRectangleHippedRoof`. | ✅ shipped |
 | `roofJoined.ts` | Joined rectilinear roof topology (the largest section): wavefront regions, facets, features, hipped + gable variants. | pending |
 | `roofPrimary.ts` | Primary house roof orchestrator: `buildPrimaryHouseRoof` and per-form builders (`buildFlatHouseRoof`, `buildMonoHouseRoof`, etc). | pending |
 | `roofAppendages.ts` | Appendage band + support derivation + shared roof builder: `buildHouseRoofAppendageBand`, `buildSharedHouseRoof`, `deriveHouseRoofAppendageSupportFromPrimaryRoof`. | pending |
@@ -49,7 +49,7 @@ Order matters because some files depend on others. Recommended sequence:
 5. ✅ `walls.ts`
 6. ✅ `perimeterEdges.ts` (moved before `eave.ts` because eave consumes the perimeter type family)
 7. ✅ `eave.ts`
-8. `roofRectangleHipped.ts`
+8. ✅ `roofRectangleHipped.ts`
 9. `roofJoined.ts`
 10. `roofPrimary.ts`
 11. `roofAppendages.ts`
