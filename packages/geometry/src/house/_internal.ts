@@ -7,6 +7,7 @@ import type {
   RoofPlane3D,
   Vector3,
 } from '../contracts';
+import { crossProduct, lineLength } from '../math3d';
 
 export type RoofPoint2 = {
   x: number;
@@ -26,6 +27,49 @@ export type HouseRoofBuildResult = {
   roofFeatures: HouseRoofFeature3D[];
   terminalClosures?: BentSpineTerminalGableClosure[];
   metadata: GeometryMetadata;
+};
+
+export type HouseRoofPerimeterEdgeKind =
+  | 'drain_eave'
+  | 'weather_flashed_edge'
+  | 'house_apron_edge';
+
+export type HouseRoofPerimeterFlashingRole =
+  | 'high_side'
+  | 'rake'
+  | 'house_apron';
+
+export type HouseRoofPerimeterEdge = {
+  index: number;
+  sourceEdgeId: string;
+  edgeKind: HouseRoofPerimeterEdgeKind;
+  perimeterId: string;
+  perimeterPolygon: Polygon3;
+  wallStart: Point3;
+  wallEnd: Point3;
+  eaveStart: Point3;
+  eaveEnd: Point3;
+  roofStart: Point3;
+  roofEnd: Point3;
+  sourceRoofPlaneId?: string | null;
+  flashingRole?: HouseRoofPerimeterFlashingRole | null;
+};
+
+export type HouseRoofPerimeterPolygon = {
+  boundary: Polygon3;
+  sourceEdgeId: string;
+  edgeKind: HouseRoofPerimeterEdgeKind;
+  flashingRole?: HouseRoofPerimeterFlashingRole | null;
+  sourceRoofPlaneId?: string | null;
+  houseRoofSoffitMode?: 'horizontal' | 'sloped_underroof' | null;
+};
+
+export type HouseRoofPerimeterLine = {
+  line: Line3;
+  sourceEdgeId: string;
+  edgeKind: HouseRoofPerimeterEdgeKind;
+  sourceRoofPlaneId?: string | null;
+  flashingRole?: HouseRoofPerimeterFlashingRole | null;
 };
 
 export function point(x: number, y: number, z: number): Point3 {
@@ -222,6 +266,14 @@ export function finiteVectorLength(source: Vector3): number {
   return Math.hypot(source.x, source.y, source.z);
 }
 
+export function translatePointByVector(source: Point3, delta: Vector3): Point3 {
+  return point(source.x + delta.x, source.y + delta.y, source.z + delta.z);
+}
+
+export function negateVector(source: Vector3): Vector3 {
+  return { x: -source.x, y: -source.y, z: -source.z };
+}
+
 export function pointOnRoofSegment2D(candidate: Point3, start: Point3, end: Point3): boolean {
   const dx = end.x - start.x;
   const dy = end.y - start.y;
@@ -231,4 +283,46 @@ export function pointOnRoofSegment2D(candidate: Point3, start: Point3, end: Poin
   if (dot < -1e-2) return false;
   const lengthSq = dx * dx + dy * dy;
   return dot <= lengthSq + 1e-2;
+}
+
+export function edgeOutwardVector(polygon: Polygon3, index: number): Vector3 {
+  const start = polygon[index]!;
+  const end = polygon[(index + 1) % polygon.length]!;
+  const length = lineLength(line(start, end));
+  if (length <= 1e-6) return { x: 0, y: 0, z: 0 };
+  const unitX = (end.x - start.x) / length;
+  const unitY = (end.y - start.y) / length;
+  return signedAreaXY(polygon) >= 0
+    ? { x: unitY, y: -unitX, z: 0 }
+    : { x: -unitY, y: unitX, z: 0 };
+}
+
+export function miterCornerPoint(
+  previous: { start: Point3; end: Point3 },
+  current: { start: Point3; end: Point3 },
+): Point3 | null {
+  const intersection = lineIntersection2(previous.start, previous.end, current.start, current.end);
+  if (intersection) return point(intersection.x, intersection.y, 0);
+  return distanceSquared2(previous.end, current.start) <= 1e-6 ? current.start : null;
+}
+
+export function finiteRoofQaPoint(candidate: Point3): boolean {
+  return Number.isFinite(candidate.x) && Number.isFinite(candidate.y) && Number.isFinite(candidate.z);
+}
+
+export function polygonArea3D(points: Polygon3): number {
+  if (points.length < 3) return 0;
+  const areaVector = points.reduce<Vector3>(
+    (sum, current, index) => {
+      const next = points[(index + 1) % points.length]!;
+      const cross = crossProduct(current, next);
+      return {
+        x: sum.x + cross.x,
+        y: sum.y + cross.y,
+        z: sum.z + cross.z,
+      };
+    },
+    { x: 0, y: 0, z: 0 },
+  );
+  return finiteVectorLength(areaVector) / 2;
 }

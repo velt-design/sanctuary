@@ -12,13 +12,13 @@ When extracting helpers as part of this decomposition pass, **copy the body byte
 
 | File | Responsibility | Status |
 |------|----------------|--------|
-| `_internal.ts` | Foundational helpers shared across multiple split files: `point`, `line`, `boundingBox`, `axisRange`, `rectangleCornersFromBox`, `lineIntersectionT2D`, `lineIntersection2`, `signedAreaXY`, `pointInPolygon2D`, `distanceToSegment2D`, `polygonCentroid2D`, `uniqueSorted`, `finiteVectorLength`, `pointOnRoofSegment2D`, `RoofPoint2`, `BentSpineTerminalGableClosure`, `HouseRoofBuildResult`, `finiteNumber`, `positiveNumber`, `clamp`, `midpoint2`, `distanceSquared2`, `swap*Axes`, `reflect*AcrossX`. Internal to the house/ folder; not exported from the package. Will grow as further splits move shared helpers in (`planeFromBoundary`, etc.). | ✅ shipped |
-| `constants.ts` | `DEFAULT_*` numeric constants (eave height, roof pitch, soffit depth, fascia thickness, etc) plus `WORLD_Z`, `RIDGE_COLLAPSE_EPSILON_MM`, `ROOF_JOIN_EPSILON_MM`. Pure data, no functions. | ✅ shipped |
+| `_internal.ts` | Foundational helpers shared across multiple split files: `point`, `line`, `boundingBox`, `axisRange`, `rectangleCornersFromBox`, `lineIntersectionT2D`, `lineIntersection2`, `signedAreaXY`, `pointInPolygon2D`, `distanceToSegment2D`, `polygonCentroid2D`, `uniqueSorted`, `finiteVectorLength`, `translatePointByVector`, `negateVector`, `pointOnRoofSegment2D`, `edgeOutwardVector`, `miterCornerPoint`, `polygonArea3D`, `finiteRoofQaPoint`, `RoofPoint2`, `BentSpineTerminalGableClosure`, `HouseRoofBuildResult`, perimeter type family (`HouseRoofPerimeterEdge` etc.), `finiteNumber`, `positiveNumber`, `clamp`, `midpoint2`, `distanceSquared2`, `swap*Axes`, `reflect*AcrossX`. Internal to the house/ folder; not exported from the package. Will grow as further splits move shared helpers in (`planeFromBoundary`, etc.). | ✅ shipped |
+| `constants.ts` | `DEFAULT_*` numeric constants (eave height, roof pitch, soffit depth, fascia thickness, etc) plus `WORLD_Z`, `RIDGE_COLLAPSE_EPSILON_MM`, `ROOF_JOIN_EPSILON_MM`, `ROOF_JOIN_FEATURE_MIN_LENGTH_MM`, `ROOF_REGION_MIN_AREA_MM2`. Pure data, no functions. | ✅ shipped |
 | `footprintMath.ts` | Footprint polygon utilities: `isOrthogonalFootprint`, `offsetFootprintPolygon`, `clearanceToPolygon`, `findInteriorRoofNode`, `polygonLineInterval`, `closestPointOnLineSegment2D`, `isRectanglePolygon`. | ✅ shipped |
 | `walls.ts` | Wall segment construction: `buildWallTopProfile`, `wallBoundaryHasFlatTop`, `buildWallSegments`. | ✅ shipped |
-| `perimeterEdges.ts` | House perimeter edge classification + builders: `classifyHousePerimeterEdges`, `buildHouseRoofPerimeterEdges`, `buildAppendagePerimeterEdges`, etc. | pending |
-| `eave.ts` | Eave/fascia/soffit/gutter polygons: `buildPolygonGutterLines`, `buildPolygonGutterBoundaries`, `buildPolygonFasciaPolygons`, `buildPolygonSoffitPolygons`, `buildPerimeterOffsetStripFootprints`. | pending |
-| `roofPlane.ts` | Roof plane primitives + height-at-XY math: `buildRoofPlane`, `roofPlaneHeightAtXY`, `roofPlaneEquationHeightAtXY`, `roofFeatureHeightAtXY`, `roofHeightAtXY`, plus `RoofSolidPlaneEquation` type, `roofSolidPlaneEquationFromPlane`, `pointOnRoofPolygonBoundary`, `pointInOrOnRoofPolygon`. | ✅ shipped |
+| `perimeterEdges.ts` | House perimeter edge classification + builders: `classifyHousePerimeterEdges`, `buildHouseRoofPerimeterEdges`, `buildMonoAppendagePerimeterEdges`, `buildAppendagePerimeterEdges`, `roofPlaneTouchesPerimeterEdge`, `roofPlanePerimeterOverlapSegment`. | ✅ shipped |
+| `eave.ts` | Eave/fascia/soffit/gutter polygons: `isEavePackageEdge`, `buildPolygonGutterLines`, `buildPolygonGutterBoundaries`, `buildPolygonFasciaPolygons`, `buildPolygonSoffitPolygons`, `buildPerimeterOffsetStripFootprints`. | ✅ shipped |
+| `roofPlane.ts` | Roof plane primitives + height-at-XY math: `buildRoofPlane`, `roofPlaneHeightAtXY`, `roofPlaneEquationHeightAtXY`, `roofFeatureHeightAtXY`, `roofHeightAtXY`, plus `RoofSolidPlaneEquation` type, `roofSolidPlaneEquationFromPlane`, `roofSolidBottomPlaneEquation`, `pointOnRoofPolygonBoundary`, `pointInOrOnRoofPolygon`. | ✅ shipped |
 | `roofRectangleHipped.ts` | Rectangle-specific hipped roof: `buildRectangleRoofFeatures`, `buildRectangleHippedRoof`. | pending |
 | `roofJoined.ts` | Joined rectilinear roof topology (the largest section): wavefront regions, facets, features, hipped + gable variants. | pending |
 | `roofPrimary.ts` | Primary house roof orchestrator: `buildPrimaryHouseRoof` and per-form builders (`buildFlatHouseRoof`, `buildMonoHouseRoof`, etc). | pending |
@@ -47,8 +47,8 @@ Order matters because some files depend on others. Recommended sequence:
 3. ✅ `footprintMath.ts` (depends on `_internal.ts`)
 4. ✅ `roofPlane.ts` (moved before `walls.ts` because walls depends on `roofHeightAtXY`/`roofFeatureHeightAtXY`)
 5. ✅ `walls.ts`
-6. `eave.ts`
-7. `perimeterEdges.ts`
+6. ✅ `perimeterEdges.ts` (moved before `eave.ts` because eave consumes the perimeter type family)
+7. ✅ `eave.ts`
 8. `roofRectangleHipped.ts`
 9. `roofJoined.ts`
 10. `roofPrimary.ts`

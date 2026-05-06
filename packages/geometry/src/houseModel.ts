@@ -66,6 +66,8 @@ import {
   DEFAULT_WALL_SOLID_THICKNESS_MM,
   RIDGE_COLLAPSE_EPSILON_MM,
   ROOF_JOIN_EPSILON_MM,
+  ROOF_JOIN_FEATURE_MIN_LENGTH_MM,
+  ROOF_REGION_MIN_AREA_MM2,
   WORLD_Z,
 } from './house/constants';
 import {
@@ -90,11 +92,30 @@ import {
   signedAreaXY,
   swapPointAxes,
   swapVectorAxes,
+  edgeOutwardVector,
+  finiteRoofQaPoint,
+  miterCornerPoint,
+  negateVector,
+  polygonArea3D,
+  translatePointByVector,
   uniqueSorted,
   type BentSpineTerminalGableClosure,
   type HouseRoofBuildResult,
+  type HouseRoofPerimeterEdge,
+  type HouseRoofPerimeterEdgeKind,
+  type HouseRoofPerimeterFlashingRole,
+  type HouseRoofPerimeterLine,
+  type HouseRoofPerimeterPolygon,
   type RoofPoint2,
 } from './house/_internal';
+import {
+  buildAppendagePerimeterEdges,
+  buildHouseRoofPerimeterEdges,
+  buildMonoAppendagePerimeterEdges,
+  classifyHousePerimeterEdges,
+  roofPlanePerimeterOverlapSegment,
+  roofPlaneTouchesPerimeterEdge,
+} from './house/perimeterEdges';
 import { buildWallSegments, wallBoundaryHasFlatTop } from './house/walls';
 import {
   buildRoofPlane,
@@ -104,9 +125,18 @@ import {
   roofHeightAtXY,
   roofPlaneEquationHeightAtXY,
   roofPlaneHeightAtXY,
+  roofSolidBottomPlaneEquation,
   roofSolidPlaneEquationFromPlane,
   type RoofSolidPlaneEquation,
 } from './house/roofPlane';
+import {
+  buildPerimeterOffsetStripFootprints,
+  buildPolygonFasciaPolygons,
+  buildPolygonGutterBoundaries,
+  buildPolygonGutterLines,
+  buildPolygonSoffitPolygons,
+  isEavePackageEdge,
+} from './house/eave';
 import {
   closestPointOnLineSegment2D,
   clearanceToPolygon,
@@ -417,243 +447,6 @@ function samePoint3WithinTolerance(left: Point3, right: Point3, toleranceMm = 1e
   );
 }
 
-function pointOnSegment2D(candidate: Point3, start: Point3, end: Point3, toleranceMm = 1e-3): boolean {
-  const segment = { x: end.x - start.x, y: end.y - start.y };
-  const offset = { x: candidate.x - start.x, y: candidate.y - start.y };
-  const segmentLengthSq = segment.x * segment.x + segment.y * segment.y;
-  if (segmentLengthSq <= toleranceMm * toleranceMm) return false;
-  const cross = segment.x * offset.y - segment.y * offset.x;
-  if (Math.abs(cross) > toleranceMm * Math.sqrt(segmentLengthSq)) return false;
-  const projection = offset.x * segment.x + offset.y * segment.y;
-  return projection >= -toleranceMm && projection <= segmentLengthSq + toleranceMm;
-}
-
-function roofPlanePerimeterOverlapSegment(
-  roofPlane: RoofPlane3D,
-  edge: HouseRoofPerimeterEdge,
-): Line3 | null {
-  const edgeDirection = normalizeVector(subtractPoints(edge.roofEnd, edge.roofStart));
-  for (let index = 0; index < roofPlane.boundary.length; index += 1) {
-    const start = roofPlane.boundary[index]!;
-    const end = roofPlane.boundary[(index + 1) % roofPlane.boundary.length]!;
-    if (!pointOnSegment2D(start, edge.roofStart, edge.roofEnd)) continue;
-    if (!pointOnSegment2D(end, edge.roofStart, edge.roofEnd)) continue;
-    if (lineLength(line(start, end)) <= ROOF_JOIN_FEATURE_MIN_LENGTH_MM) continue;
-    const segmentDirection = normalizeVector(subtractPoints(end, start));
-    return dotProduct(segmentDirection, edgeDirection) >= 0
-      ? line(start, end)
-      : line(end, start);
-  }
-  return null;
-}
-
-function roofPlaneTouchesPerimeterEdge(roofPlane: RoofPlane3D, edge: HouseRoofPerimeterEdge): boolean {
-  return roofPlanePerimeterOverlapSegment(roofPlane, edge) !== null;
-}
-
-const DRAIN_EDGE_MIN_PROJECTION = 0.25;
-const DRAIN_EDGE_LOW_Z_TOLERANCE_MM = 1;
-
-function edgeDrainProjection(edge: HouseRoofPerimeterEdge, roofPlane: RoofPlane3D): number {
-  const outward = edgeOutwardVector(edge.perimeterPolygon, edge.index);
-  const fallAxisXY = normalizeVector({
-    x: roofPlane.fallVector.x,
-    y: roofPlane.fallVector.y,
-    z: 0,
-  });
-  if (finiteVectorLength(fallAxisXY) <= ROOF_JOIN_EPSILON_MM) return Number.NEGATIVE_INFINITY;
-  return dotProduct(fallAxisXY, outward);
-}
-
-function roofPlaneBoundaryMinZ(roofPlane: RoofPlane3D): number {
-  return roofPlane.boundary.reduce((selected, candidate) => Math.min(selected, candidate.z), Number.POSITIVE_INFINITY);
-}
-
-function roofPlaneOverlapIsLowDrainEdge(
-  edge: HouseRoofPerimeterEdge,
-  roofPlane: RoofPlane3D,
-  overlapSegment: Line3,
-): boolean {
-  const drainProjection = edgeDrainProjection(edge, roofPlane);
-  if (drainProjection < DRAIN_EDGE_MIN_PROJECTION) return false;
-  const minBoundaryZ = roofPlaneBoundaryMinZ(roofPlane);
-  return (
-    Math.abs(overlapSegment.start.z - minBoundaryZ) <= DRAIN_EDGE_LOW_Z_TOLERANCE_MM &&
-    Math.abs(overlapSegment.end.z - minBoundaryZ) <= DRAIN_EDGE_LOW_Z_TOLERANCE_MM
-  );
-}
-
-function classifyHousePerimeterEdges(input: {
-  edges: HouseRoofPerimeterEdge[];
-  joinSourceEdgeId?: string | null;
-  roofForm: HouseRoofForm;
-  roofPlanes: RoofPlane3D[];
-}): HouseRoofPerimeterEdge[] {
-  return input.edges.map((edge) => {
-    const adjacentRoofPlanes = input.roofPlanes.flatMap((roofPlane) => {
-      const overlapSegment = roofPlanePerimeterOverlapSegment(roofPlane, edge);
-      if (!overlapSegment) return [];
-      const drainProjection = edgeDrainProjection(edge, roofPlane);
-      return [{
-        roofPlane,
-        overlapSegment,
-        drainProjection,
-        lowDrainEdge: roofPlaneOverlapIsLowDrainEdge(edge, roofPlane, overlapSegment),
-      }];
-    });
-    const drainingAdjacentRoofPlanes = adjacentRoofPlanes.filter((candidate) => candidate.lowDrainEdge);
-    const primaryAdjacentRoofPlane =
-      (drainingAdjacentRoofPlanes.length > 0 ? drainingAdjacentRoofPlanes : adjacentRoofPlanes).length === 0
-        ? null
-        : (drainingAdjacentRoofPlanes.length > 0 ? drainingAdjacentRoofPlanes : adjacentRoofPlanes).reduce<{
-            roofPlane: RoofPlane3D;
-            drainProjection: number;
-          } | null>((selected, candidate) => {
-            if (!selected) return candidate;
-            if (drainingAdjacentRoofPlanes.length > 0) {
-              return candidate.drainProjection > selected.drainProjection ? candidate : selected;
-            }
-            return Math.abs(candidate.drainProjection) > Math.abs(selected.drainProjection)
-              ? candidate
-              : selected;
-          }, null);
-    const maxDrainProjection = adjacentRoofPlanes.reduce(
-      (selected, candidate) => Math.max(selected, candidate.drainProjection),
-      Number.NEGATIVE_INFINITY,
-    );
-    const minDrainProjection = adjacentRoofPlanes.reduce(
-      (selected, candidate) => Math.min(selected, candidate.drainProjection),
-      Number.POSITIVE_INFINITY,
-    );
-
-    if (edge.sourceEdgeId === input.joinSourceEdgeId) {
-      return {
-        ...edge,
-        edgeKind: 'house_apron_edge',
-        sourceRoofPlaneId: primaryAdjacentRoofPlane?.roofPlane.id ?? edge.sourceRoofPlaneId ?? null,
-        flashingRole: 'house_apron',
-      };
-    }
-    if (drainingAdjacentRoofPlanes.length > 0) {
-      return {
-        ...edge,
-        edgeKind: 'drain_eave',
-        sourceRoofPlaneId: primaryAdjacentRoofPlane?.roofPlane.id ?? edge.sourceRoofPlaneId ?? null,
-        flashingRole: null,
-      };
-    }
-    return {
-      ...edge,
-      edgeKind: 'weather_flashed_edge',
-      sourceRoofPlaneId: primaryAdjacentRoofPlane?.roofPlane.id ?? edge.sourceRoofPlaneId ?? null,
-      flashingRole:
-        input.roofForm === 'mono' && minDrainProjection <= -DRAIN_EDGE_MIN_PROJECTION
-          ? 'high_side'
-          : 'rake',
-    };
-  });
-}
-
-function buildHouseRoofPerimeterEdges(input: {
-  footprint: Polygon3;
-  eavePolygon: Polygon3;
-  roofForm: HouseRoofForm;
-  roofPlanes: RoofPlane3D[];
-  eaveHeightMm: number;
-  joinSourceEdgeId?: string | null;
-}): HouseRoofPerimeterEdge[] {
-  if (input.footprint.length !== input.eavePolygon.length) return [];
-
-  const monoRoofPlane = input.roofForm === 'mono' && input.roofPlanes.length > 0 ? input.roofPlanes[0]! : null;
-  const monoRoofPlaneEquation = monoRoofPlane
-    ? roofSolidPlaneEquationFromPlane(monoRoofPlane.plane)
-    : null;
-  const baseEdges = input.footprint.map((wallStart, index) => {
-    const wallEnd = input.footprint[(index + 1) % input.footprint.length]!;
-    const eaveStartXY = input.eavePolygon[index]!;
-    const eaveEndXY = input.eavePolygon[(index + 1) % input.eavePolygon.length]!;
-    const sourceEdgeId = `footprint-edge-${index + 1}`;
-    const roofStartZ =
-      monoRoofPlaneEquation
-        ? roofPlaneEquationHeightAtXY(monoRoofPlaneEquation, eaveStartXY.x, eaveStartXY.y) ?? input.eaveHeightMm
-        : input.eaveHeightMm;
-    const roofEndZ =
-      monoRoofPlaneEquation
-        ? roofPlaneEquationHeightAtXY(monoRoofPlaneEquation, eaveEndXY.x, eaveEndXY.y) ?? input.eaveHeightMm
-        : input.eaveHeightMm;
-    const roofStart = point(eaveStartXY.x, eaveStartXY.y, roofStartZ);
-    const roofEnd = point(eaveEndXY.x, eaveEndXY.y, roofEndZ);
-
-    return {
-      index,
-      sourceEdgeId,
-      edgeKind: 'drain_eave' as HouseRoofPerimeterEdgeKind,
-      perimeterId: 'house-main-roof',
-      perimeterPolygon: input.eavePolygon,
-      wallStart,
-      wallEnd,
-      eaveStart: roofStart,
-      eaveEnd: roofEnd,
-      roofStart,
-      roofEnd,
-      sourceRoofPlaneId: monoRoofPlane?.id ?? null,
-      flashingRole: null,
-    };
-  });
-
-  return classifyHousePerimeterEdges({
-    edges: baseEdges,
-    joinSourceEdgeId: input.joinSourceEdgeId ?? null,
-    roofForm: input.roofForm,
-    roofPlanes: input.roofPlanes,
-  });
-}
-
-function buildMonoAppendagePerimeterEdges(input: {
-  roofPlane: RoofPlane3D;
-}): HouseRoofPerimeterEdge[] {
-  const boundary = input.roofPlane.boundary;
-  if (boundary.length < 4) return [];
-
-  const baseEdges = boundary.map((roofStart, index) => {
-    const roofEnd = boundary[(index + 1) % boundary.length]!;
-    const oppositeStart = boundary[(index + 3) % boundary.length]!;
-    const oppositeEnd = boundary[(index + 2) % boundary.length]!;
-    return {
-      index,
-      sourceEdgeId: `${input.roofPlane.id}-edge-${index + 1}`,
-      edgeKind: 'drain_eave' as HouseRoofPerimeterEdgeKind,
-      perimeterId: input.roofPlane.id,
-      perimeterPolygon: boundary,
-      wallStart: oppositeStart,
-      wallEnd: oppositeEnd,
-      eaveStart: roofStart,
-      eaveEnd: roofEnd,
-      roofStart,
-      roofEnd,
-      sourceRoofPlaneId: input.roofPlane.id,
-      flashingRole: null,
-    };
-  });
-
-  return classifyHousePerimeterEdges({
-    edges: baseEdges,
-    joinSourceEdgeId: null,
-    roofForm: 'mono',
-    roofPlanes: [input.roofPlane],
-  });
-}
-
-function buildAppendagePerimeterEdges(input: {
-  roofPlanes: RoofPlane3D[];
-}): HouseRoofPerimeterEdge[] {
-  return input.roofPlanes.flatMap((roofPlane) =>
-    roofPlane.metadata?.roofGeometry === 'appendage_band'
-      ? buildMonoAppendagePerimeterEdges({ roofPlane })
-      : [],
-  );
-}
-
 function attachmentSideFromPerimeterEdge(edge: HouseRoofPerimeterEdge): AttachmentSide | null {
   const dx = edge.eaveEnd.x - edge.eaveStart.x;
   const dy = edge.eaveEnd.y - edge.eaveStart.y;
@@ -763,259 +556,6 @@ function buildAppendageSupportAnalysisFromPerimeterEdges(input: {
   };
 }
 
-function buildPerimeterOffsetStripFootprints(input: {
-  edges: HouseRoofPerimeterEdge[];
-  outerOffsetMm: number;
-  innerOffsetMm: number;
-}): HouseRoofPerimeterPolygon[] {
-  if (
-    input.edges.length === 0 ||
-    !Number.isFinite(input.outerOffsetMm) ||
-    !Number.isFinite(input.innerOffsetMm) ||
-    Math.abs(input.outerOffsetMm - input.innerOffsetMm) <= 1e-6
-  ) {
-    return [];
-  }
-
-  const edgesByPerimeter = new Map<string, HouseRoofPerimeterEdge[]>();
-  for (const edge of input.edges) {
-    const collection = edgesByPerimeter.get(edge.perimeterId) ?? [];
-    collection.push(edge);
-    edgesByPerimeter.set(edge.perimeterId, collection);
-  }
-
-  return [...edgesByPerimeter.values()].flatMap((group) => {
-    const orderedEdges = [...group].sort((a, b) => a.index - b.index);
-    const sourcePolygon = orderedEdges[0]?.perimeterPolygon;
-    if (!sourcePolygon || orderedEdges.length !== sourcePolygon.length) return [];
-
-    const exposedEdges = orderedEdges.filter((edge) => isEavePackageEdge(edge.edgeKind));
-    const exposedIndexes = new Set(exposedEdges.map((edge) => edge.index));
-    const shifted = orderedEdges.map((edge) => {
-      const outward = edgeOutwardVector(sourcePolygon, edge.index);
-      return {
-        edge,
-        outer: {
-          start: point(
-            edge.eaveStart.x + outward.x * input.outerOffsetMm,
-            edge.eaveStart.y + outward.y * input.outerOffsetMm,
-            0,
-          ),
-          end: point(
-            edge.eaveEnd.x + outward.x * input.outerOffsetMm,
-            edge.eaveEnd.y + outward.y * input.outerOffsetMm,
-            0,
-          ),
-        },
-        inner: {
-          start: point(
-            edge.eaveStart.x + outward.x * input.innerOffsetMm,
-            edge.eaveStart.y + outward.y * input.innerOffsetMm,
-            0,
-          ),
-          end: point(
-            edge.eaveEnd.x + outward.x * input.innerOffsetMm,
-            edge.eaveEnd.y + outward.y * input.innerOffsetMm,
-            0,
-          ),
-        },
-      };
-    });
-
-    return exposedEdges.flatMap((edge) => {
-      const current = shifted[edge.index]!;
-      const previousIndex = (edge.index - 1 + orderedEdges.length) % orderedEdges.length;
-      const nextIndex = (edge.index + 1) % orderedEdges.length;
-      const previous = shifted[previousIndex]!;
-      const next = shifted[nextIndex]!;
-      const sharesPreviousCorner = exposedIndexes.has(previousIndex);
-      const sharesNextCorner = exposedIndexes.has(nextIndex);
-
-      const outerStart = sharesPreviousCorner
-        ? miterCornerPoint(previous.outer, current.outer)
-        : current.outer.start;
-      const outerEnd = sharesNextCorner
-        ? miterCornerPoint(current.outer, next.outer)
-        : current.outer.end;
-      const innerEnd = sharesNextCorner
-        ? miterCornerPoint(current.inner, next.inner)
-        : current.inner.end;
-      const innerStart = sharesPreviousCorner
-        ? miterCornerPoint(previous.inner, current.inner)
-        : current.inner.start;
-
-      if (!outerStart || !outerEnd || !innerEnd || !innerStart) return [];
-
-      const boundary = [outerStart, outerEnd, innerEnd, innerStart];
-      if (
-        Math.abs(signedAreaXY(boundary)) <= 1e-6 ||
-        boundary.some(
-          (candidate, index) =>
-            lineLength(line(candidate, boundary[(index + 1) % boundary.length]!)) <= 1e-6,
-        )
-      ) {
-        return [];
-      }
-
-      return [{
-        boundary,
-        sourceEdgeId: edge.sourceEdgeId,
-        edgeKind: edge.edgeKind,
-        sourceRoofPlaneId: edge.sourceRoofPlaneId ?? null,
-        flashingRole: edge.flashingRole ?? null,
-      }];
-    });
-  });
-}
-
-function buildPolygonGutterLines(input: {
-  perimeterEdges: HouseRoofPerimeterEdge[];
-}): HouseRoofPerimeterLine[] {
-  return input.perimeterEdges.flatMap((edge) => {
-    if (!isEavePackageEdge(edge.edgeKind)) return [];
-    const gutterLine = line(edge.eaveStart, edge.eaveEnd);
-    if (lineLength(gutterLine) <= 1e-6) return [];
-    return [{
-      line: gutterLine,
-      sourceEdgeId: edge.sourceEdgeId,
-      edgeKind: edge.edgeKind,
-      sourceRoofPlaneId: edge.sourceRoofPlaneId ?? null,
-      flashingRole: edge.flashingRole ?? null,
-    }];
-  });
-}
-
-function buildPolygonGutterBoundaries(input: {
-  perimeterEdges: HouseRoofPerimeterEdge[];
-  gutterWidthMm: number;
-  gutterProjectionMm: number;
-}): HouseRoofPerimeterPolygon[] {
-  const edgeById = new Map(input.perimeterEdges.map((edge) => [edge.sourceEdgeId, edge]));
-  return buildPerimeterOffsetStripFootprints({
-    edges: input.perimeterEdges,
-    outerOffsetMm: input.gutterProjectionMm,
-    innerOffsetMm: input.gutterProjectionMm - input.gutterWidthMm,
-  }).flatMap((footprint) => {
-    const edge = edgeById.get(footprint.sourceEdgeId);
-    const topZ = edge?.eaveStart.z;
-    if (typeof topZ !== 'number' || !Number.isFinite(topZ)) return [];
-    return [{
-      ...footprint,
-      boundary: footprint.boundary.map((candidate) => point(candidate.x, candidate.y, topZ)),
-    }];
-  });
-}
-
-function buildPolygonFasciaPolygons(input: {
-  perimeterEdges: HouseRoofPerimeterEdge[];
-  fasciaHeightMm: number;
-}): HouseRoofPerimeterPolygon[] {
-  const polygons: HouseRoofPerimeterPolygon[] = [];
-  for (const edge of input.perimeterEdges) {
-    if (!isEavePackageEdge(edge.edgeKind)) continue;
-    const fascia = [
-      edge.eaveStart,
-      edge.eaveEnd,
-      point(edge.eaveEnd.x, edge.eaveEnd.y, edge.eaveEnd.z - input.fasciaHeightMm),
-      point(edge.eaveStart.x, edge.eaveStart.y, edge.eaveStart.z - input.fasciaHeightMm),
-    ];
-    if (lineLength(line(fascia[0]!, fascia[1]!)) > 1e-6) {
-      polygons.push({
-        boundary: fascia,
-        sourceEdgeId: edge.sourceEdgeId,
-        edgeKind: edge.edgeKind,
-        sourceRoofPlaneId: edge.sourceRoofPlaneId ?? null,
-        flashingRole: edge.flashingRole ?? null,
-      });
-    }
-  }
-  return polygons;
-}
-
-function buildPolygonSoffitPolygons(input: {
-  perimeterEdges: HouseRoofPerimeterEdge[];
-  roofForm: HouseRoofForm;
-  roofPlanes: RoofPlane3D[];
-}): HouseRoofPerimeterPolygon[] {
-  if (input.roofForm === 'mono') {
-    const roofPlaneById = new Map(input.roofPlanes.map((roofPlane) => [roofPlane.id, roofPlane]));
-    const polygons: HouseRoofPerimeterPolygon[] = [];
-
-    for (const edge of input.perimeterEdges) {
-      if (!isEavePackageEdge(edge.edgeKind)) continue;
-      const roofPlane =
-        (edge.sourceRoofPlaneId ? roofPlaneById.get(edge.sourceRoofPlaneId) : null) ??
-        (input.roofPlanes.length === 1 ? input.roofPlanes[0]! : null);
-      const bottomPlane = roofPlane
-        ? roofSolidBottomPlaneEquation(roofPlane.plane, DEFAULT_ROOF_SOLID_THICKNESS_MM)
-        : null;
-      if (!roofPlane || !bottomPlane) continue;
-
-      const soffit = [
-        point(
-          edge.eaveStart.x,
-          edge.eaveStart.y,
-          roofPlaneEquationHeightAtXY(bottomPlane, edge.eaveStart.x, edge.eaveStart.y) ?? Number.NaN,
-        ),
-        point(
-          edge.eaveEnd.x,
-          edge.eaveEnd.y,
-          roofPlaneEquationHeightAtXY(bottomPlane, edge.eaveEnd.x, edge.eaveEnd.y) ?? Number.NaN,
-        ),
-        point(
-          edge.wallEnd.x,
-          edge.wallEnd.y,
-          roofPlaneEquationHeightAtXY(bottomPlane, edge.wallEnd.x, edge.wallEnd.y) ?? Number.NaN,
-        ),
-        point(
-          edge.wallStart.x,
-          edge.wallStart.y,
-          roofPlaneEquationHeightAtXY(bottomPlane, edge.wallStart.x, edge.wallStart.y) ?? Number.NaN,
-        ),
-      ];
-      if (
-        soffit.every(finiteRoofQaPoint) &&
-        lineLength(line(soffit[0]!, soffit[1]!)) > 1e-6 &&
-        lineLength(line(soffit[1]!, soffit[2]!)) > 1e-6 &&
-        polygonArea3D(soffit) > ROOF_REGION_MIN_AREA_MM2
-      ) {
-        polygons.push({
-          boundary: soffit,
-          sourceEdgeId: edge.sourceEdgeId,
-          edgeKind: edge.edgeKind,
-          sourceRoofPlaneId: roofPlane.id,
-          flashingRole: edge.flashingRole ?? null,
-          houseRoofSoffitMode: 'sloped_underroof',
-        });
-      }
-    }
-
-    return polygons;
-  }
-
-  const polygons: HouseRoofPerimeterPolygon[] = [];
-  for (const edge of input.perimeterEdges) {
-    if (!isEavePackageEdge(edge.edgeKind)) continue;
-    const soffit = [
-      edge.eaveStart,
-      edge.eaveEnd,
-      point(edge.wallEnd.x, edge.wallEnd.y, edge.eaveEnd.z),
-      point(edge.wallStart.x, edge.wallStart.y, edge.eaveStart.z),
-    ];
-    if (lineLength(line(soffit[0]!, soffit[1]!)) > 1e-6 && lineLength(line(soffit[1]!, soffit[2]!)) > 1e-6) {
-      polygons.push({
-        boundary: soffit,
-        sourceEdgeId: edge.sourceEdgeId,
-        edgeKind: edge.edgeKind,
-        sourceRoofPlaneId: edge.sourceRoofPlaneId ?? null,
-        flashingRole: edge.flashingRole ?? null,
-        houseRoofSoffitMode: 'horizontal',
-      });
-    }
-  }
-  return polygons;
-}
-
 function vertexFeatureKind(polygon: Polygon3, index: number): HouseRoofFeatureKind {
   const area = signedAreaXY(polygon);
   const previous = polygon[(index - 1 + polygon.length) % polygon.length]!;
@@ -1076,49 +616,6 @@ type JoinedRoofFacetBuildResult = {
   metadata: GeometryMetadata;
 };
 
-type HouseRoofPerimeterEdgeKind =
-  | 'drain_eave'
-  | 'weather_flashed_edge'
-  | 'house_apron_edge';
-
-type HouseRoofPerimeterFlashingRole =
-  | 'high_side'
-  | 'rake'
-  | 'house_apron';
-
-type HouseRoofPerimeterEdge = {
-  index: number;
-  sourceEdgeId: string;
-  edgeKind: HouseRoofPerimeterEdgeKind;
-  perimeterId: string;
-  perimeterPolygon: Polygon3;
-  wallStart: Point3;
-  wallEnd: Point3;
-  eaveStart: Point3;
-  eaveEnd: Point3;
-  roofStart: Point3;
-  roofEnd: Point3;
-  sourceRoofPlaneId?: string | null;
-  flashingRole?: HouseRoofPerimeterFlashingRole | null;
-};
-
-type HouseRoofPerimeterPolygon = {
-  boundary: Polygon3;
-  sourceEdgeId: string;
-  edgeKind: HouseRoofPerimeterEdgeKind;
-  flashingRole?: HouseRoofPerimeterFlashingRole | null;
-  sourceRoofPlaneId?: string | null;
-  houseRoofSoffitMode?: 'horizontal' | 'sloped_underroof' | null;
-};
-
-type HouseRoofPerimeterLine = {
-  line: Line3;
-  sourceEdgeId: string;
-  edgeKind: HouseRoofPerimeterEdgeKind;
-  sourceRoofPlaneId?: string | null;
-  flashingRole?: HouseRoofPerimeterFlashingRole | null;
-};
-
 export type HouseRoofAppendageHostRun = {
   hostEdge: AttachmentSide;
   start: Point3;
@@ -1143,14 +640,8 @@ type HouseRoofQaResult = {
   failureReason: string | null;
 };
 
-const ROOF_JOIN_FEATURE_MIN_LENGTH_MM = 5;
-const ROOF_REGION_MIN_AREA_MM2 = 25;
 const ROOF_QA_AREA_TOLERANCE_MIN_MM2 = 100;
 const ROOF_QA_AREA_TOLERANCE_RATIO = 0.001;
-
-function isEavePackageEdge(edgeKind: HouseRoofPerimeterEdgeKind): boolean {
-  return edgeKind === 'drain_eave';
-}
 
 function isPerimeterFlashingEdge(edgeKind: HouseRoofPerimeterEdgeKind): boolean {
   return edgeKind === 'weather_flashed_edge' || edgeKind === 'house_apron_edge';
@@ -1173,10 +664,6 @@ type RoofRegionDissolveResult =
       reason: string;
       sourceRegionCount: number;
     };
-
-function finiteRoofQaPoint(candidate: Point3): boolean {
-  return Number.isFinite(candidate.x) && Number.isFinite(candidate.y) && Number.isFinite(candidate.z);
-}
 
 function finiteRoofQaVector(candidate: Vector3): boolean {
   return Number.isFinite(candidate.x) && Number.isFinite(candidate.y) && Number.isFinite(candidate.z);
@@ -4665,18 +4152,6 @@ function planeFromBoundary(boundary: Polygon3): Plane3 | null {
   return null;
 }
 
-function edgeOutwardVector(polygon: Polygon3, index: number): Vector3 {
-  const start = polygon[index]!;
-  const end = polygon[(index + 1) % polygon.length]!;
-  const length = lineLength(line(start, end));
-  if (length <= 1e-6) return { x: 0, y: 0, z: 0 };
-  const unitX = (end.x - start.x) / length;
-  const unitY = (end.y - start.y) / length;
-  return signedAreaXY(polygon) >= 0
-    ? { x: unitY, y: -unitX, z: 0 }
-    : { x: -unitY, y: unitX, z: 0 };
-}
-
 function renderMeshIsFinite(mesh: RenderMesh3D): boolean {
   return (
     mesh.vertices.length >= 6 &&
@@ -4726,15 +4201,6 @@ function boundaryZRange(boundary: Polygon3): { bottomZ: number; topZ: number } |
   return Number.isFinite(bottomZ) && Number.isFinite(topZ) && topZ - bottomZ > 1e-6
     ? { bottomZ, topZ }
     : null;
-}
-
-function miterCornerPoint(
-  previous: { start: Point3; end: Point3 },
-  current: { start: Point3; end: Point3 },
-): Point3 | null {
-  const intersection = lineIntersection2(previous.start, previous.end, current.start, current.end);
-  if (intersection) return point(intersection.x, intersection.y, 0);
-  return distanceSquared2(previous.end, current.start) <= 1e-6 ? current.start : null;
 }
 
 function buildMiteredStripFootprints(sourcePolygon: Polygon3, halfWidthMm: number): Polygon3[] | null {
@@ -4840,14 +4306,6 @@ type ProjectedRoofMeshPoint = {
   projected: { x: number; y: number };
 };
 
-function translatePointByVector(source: Point3, delta: Vector3): Point3 {
-  return point(source.x + delta.x, source.y + delta.y, source.z + delta.z);
-}
-
-function negateVector(source: Vector3): Vector3 {
-  return { x: -source.x, y: -source.y, z: -source.z };
-}
-
 function roofSolidPointKey(candidate: Point3): string {
   return [
     Math.round(candidate.x / ROOF_JOIN_EPSILON_MM),
@@ -4895,21 +4353,6 @@ function buildRoofSolidAdjacency(roofPlanes: RoofPlane3D[]): RoofSolidAdjacency 
   }
 
   return { edgeMap, invalidRoofPlaneIndexes };
-}
-
-function roofSolidBottomPlaneEquation(plane: Plane3, thicknessMm: number): RoofSolidPlaneEquation | null {
-  if (!Number.isFinite(thicknessMm) || thicknessMm <= 0) return null;
-  const planeEquation = roofSolidPlaneEquationFromPlane(plane);
-  if (!planeEquation) return null;
-  const downwardOffset = scaleVector(
-    planeEquation.normal,
-    planeEquation.normal.z >= 0 ? -thicknessMm : thicknessMm,
-  );
-  const bottomOrigin = translatePointByVector(plane.origin, downwardOffset);
-  return {
-    normal: planeEquation.normal,
-    constant: dotProduct(planeEquation.normal, bottomOrigin),
-  };
 }
 
 function intersectRoofSolidPlanes(
@@ -5398,23 +4841,6 @@ function buildRoofSolidRenderMesh(input: {
 
   const mesh = { vertices, faces };
   return renderMeshIsFinite(mesh) ? mesh : undefined;
-}
-
-function polygonArea3D(points: Polygon3): number {
-  if (points.length < 3) return 0;
-  const areaVector = points.reduce<Vector3>(
-    (sum, current, index) => {
-      const next = points[(index + 1) % points.length]!;
-      const cross = crossProduct(current, next);
-      return {
-        x: sum.x + cross.x,
-        y: sum.y + cross.y,
-        z: sum.z + cross.z,
-      };
-    },
-    { x: 0, y: 0, z: 0 },
-  );
-  return finiteVectorLength(areaVector) / 2;
 }
 
 function polygonAveragePoint3D(points: Polygon3): Point3 {

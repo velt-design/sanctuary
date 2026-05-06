@@ -1,5 +1,5 @@
 import type { Line3, Plane3, Point3, Polygon3, RoofPlane3D, Vector3 } from '../contracts';
-import { dotProduct, normalizeVector, planeFromPoints, subtractPoints } from '../math3d';
+import { dotProduct, normalizeVector, planeFromPoints, scaleVector, subtractPoints } from '../math3d';
 import { ROOF_JOIN_EPSILON_MM } from './constants';
 import {
   clamp,
@@ -7,6 +7,7 @@ import {
   point,
   pointInPolygon2D,
   pointOnRoofSegment2D,
+  translatePointByVector,
   type RoofPoint2,
 } from './_internal';
 
@@ -21,6 +22,21 @@ export function roofSolidPlaneEquationFromPlane(plane: Plane3): RoofSolidPlaneEq
   return {
     normal,
     constant: dotProduct(normal, plane.origin),
+  };
+}
+
+export function roofSolidBottomPlaneEquation(plane: Plane3, thicknessMm: number): RoofSolidPlaneEquation | null {
+  if (!Number.isFinite(thicknessMm) || thicknessMm <= 0) return null;
+  const planeEquation = roofSolidPlaneEquationFromPlane(plane);
+  if (!planeEquation) return null;
+  const downwardOffset = scaleVector(
+    planeEquation.normal,
+    planeEquation.normal.z >= 0 ? -thicknessMm : thicknessMm,
+  );
+  const bottomOrigin = translatePointByVector(plane.origin, downwardOffset);
+  return {
+    normal: planeEquation.normal,
+    constant: dotProduct(planeEquation.normal, bottomOrigin),
   };
 }
 
