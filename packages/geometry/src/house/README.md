@@ -25,7 +25,8 @@ When extracting helpers as part of this decomposition pass, **copy the body byte
 | `roofJoinedDissolve.ts` | Region-dissolve subsystem: split/intersect dissolve segments, polygonize boundary fragments, and the public `mergeAssignedRoofRegions`, `validateJoinedRoofRegionFootprint`, `sortJoinedRoofRegions`. | ✅ shipped |
 | `roofJoinedRegions.ts` | Eave-edge construction + roof-region assignment: `buildJoinedRoofEdges`, `roofHeightFromEdge`, `buildRectilinearRoofBaseRegions`, `splitRoofRegionsByPlaneIntersections`, `assignRoofRegion`. | ✅ shipped |
 | `roofJoinedFacets.ts` | Facet construction + feature classification: `buildJoinedRoofFacetFromRegion`, `buildJoinedRoofFacets`, `buildJoinedRoofFeatures`, `countJoinedRoofInternalEaveHeightSegments`, plus eave-vertex / segment helpers. | ✅ shipped |
-| `roofJoined.ts` | Remaining joined-roof topology: hipped + gable variants. | pending |
+| `roofJoinedHipped.ts` | Hipped joined-roof variant: `buildJoinedRectilinearHippedRoof`, plus topology helpers `ridgeGraphTerminalNodes`, `roofFeaturesAreAxisAligned`, `edgeLiesOnConvexHull`, `outwardNormalForEdge`. | ✅ shipped |
+| `roofJoined.ts` | Remaining joined-roof gable variants (legacy + bent-spine + main gable orchestrator + complex builder). | pending |
 | `roofPrimary.ts` | Primary house roof orchestrator: `buildPrimaryHouseRoof` and per-form builders (`buildFlatHouseRoof`, `buildMonoHouseRoof`, etc). | pending |
 | `roofAppendages.ts` | Appendage band + support derivation + shared roof builder: `buildHouseRoofAppendageBand`, `buildSharedHouseRoof`, `deriveHouseRoofAppendageSupportFromPrimaryRoof`. | pending |
 | `roofSolids.ts` | Render mesh + solid adjacency: `buildVerticalPrismRenderMesh`, `buildMiteredOffsetStripFootprints`, `buildRoofSolidAdjacency`, `buildRoofSolidBottomEdge`, `buildRoofSolidRenderMesh`. | pending |
@@ -60,7 +61,8 @@ Order matters because some files depend on others. Recommended sequence:
 11. ✅ `roofJoinedDissolve.ts` (region-dissolve subsystem extracted from joined-roof)
 12. ✅ `roofJoinedRegions.ts` (eave edges + region assignment subsystem)
 13. ✅ `roofJoinedFacets.ts` (facet construction + feature classification)
-14. `roofJoined.ts` (remaining hipped + gable variants)
+14. ✅ `roofJoinedHipped.ts` (hipped variant + topology helpers)
+15. `roofJoined.ts` (remaining gable variants + complex builder)
 10. `roofPrimary.ts`
 11. `roofAppendages.ts`
 12. `roofMaterial.ts`
