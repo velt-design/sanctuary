@@ -27,7 +27,7 @@ When extracting helpers as part of this decomposition pass, **copy the body byte
 | `roofJoinedFacets.ts` | Facet construction + feature classification: `buildJoinedRoofFacetFromRegion`, `buildJoinedRoofFacets`, `buildJoinedRoofFeatures`, `countJoinedRoofInternalEaveHeightSegments`, plus eave-vertex / segment helpers. | ✅ shipped |
 | `roofJoinedHipped.ts` | Hipped joined-roof variant: `buildJoinedRectilinearHippedRoof`, plus topology helpers `ridgeGraphTerminalNodes`, `roofFeaturesAreAxisAligned`, `edgeLiesOnConvexHull`, `outwardNormalForEdge`. | ✅ shipped |
 | `roofJoinedGableTerminals.ts` | Gable terminal subsystem: `deriveHouseFootprintOpenSide`, `intersectTerminalRayWithFootprint`, `deriveBentSpineTerminalIntersectionsX`, `buildBentSpineGableTerminalEndsX`, `deriveBentSpineTerminalGableClosures`, `applyBentSpineTerminalGableClosures`, plus the legacy + ray-detail helpers. | ✅ shipped |
-| `roofJoined.ts` | Remaining joined-roof gable builders (legacy + bent-spine + main gable orchestrator + complex builder + reflect/swap helpers). | pending |
+| `roofJoined.ts` | Joined gable + complex builders: `buildLegacyJoinedRectilinearGableRoof`, `buildBentSpineJoinedGableRoofX`, `buildJoinedRectilinearGableRoof`, `buildComplexFootprintRoof`, plus reflect/swap helpers (`reflectRoofBuildResultAcrossX`, `swapRoofBuildResultAxes`) and the public `deriveHouseGableTerminalEndsFromFootprint`. | ✅ shipped |
 | `roofPrimary.ts` | Primary house roof orchestrator: `buildPrimaryHouseRoof` and per-form builders (`buildFlatHouseRoof`, `buildMonoHouseRoof`, etc). | pending |
 | `roofAppendages.ts` | Appendage band + support derivation + shared roof builder: `buildHouseRoofAppendageBand`, `buildSharedHouseRoof`, `deriveHouseRoofAppendageSupportFromPrimaryRoof`. | pending |
 | `roofSolids.ts` | Render mesh + solid adjacency: `buildVerticalPrismRenderMesh`, `buildMiteredOffsetStripFootprints`, `buildRoofSolidAdjacency`, `buildRoofSolidBottomEdge`, `buildRoofSolidRenderMesh`. | pending |
@@ -64,7 +64,7 @@ Order matters because some files depend on others. Recommended sequence:
 13. ✅ `roofJoinedFacets.ts` (facet construction + feature classification)
 14. ✅ `roofJoinedHipped.ts` (hipped variant + topology helpers)
 15. ✅ `roofJoinedGableTerminals.ts` (gable terminal/bent-spine subsystem)
-16. `roofJoined.ts` (remaining gable builders + complex builder + reflect/swap helpers)
+16. ✅ `roofJoined.ts` (joined gable + complex builders + reflect/swap helpers) — joined-roof family complete
 10. `roofPrimary.ts`
 11. `roofAppendages.ts`
 12. `roofMaterial.ts`

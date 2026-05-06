@@ -3,12 +3,13 @@ import type {
   HouseRoofFeature3D,
   HouseRoofFeatureKind,
   Line3,
+  Plane3,
   Point3,
   Polygon3,
   RoofPlane3D,
   Vector3,
 } from '../contracts';
-import { crossProduct, lineLength } from '../math3d';
+import { crossProduct, lineLength, planeFromPoints } from '../math3d';
 
 export type RoofPoint2 = {
   x: number;
@@ -394,6 +395,22 @@ export function vertexFeatureKind(polygon: Polygon3, index: number): HouseRoofFe
   const nextVector = { x: next.x - current.x, y: next.y - current.y };
   const cross = prevVector.x * nextVector.y - prevVector.y * nextVector.x;
   return Math.sign(cross || 1) === Math.sign(area || 1) ? 'hip' : 'valley';
+}
+
+export function planeFromBoundary(boundary: Polygon3): Plane3 | null {
+  if (boundary.length < 3) return null;
+  for (let secondIndex = 1; secondIndex < boundary.length - 1; secondIndex += 1) {
+    const plane = planeFromPoints(boundary[0]!, boundary[secondIndex]!, boundary[secondIndex + 1]!);
+    if (
+      Number.isFinite(plane.normal.x) &&
+      Number.isFinite(plane.normal.y) &&
+      Number.isFinite(plane.normal.z) &&
+      Math.hypot(plane.normal.x, plane.normal.y, plane.normal.z) > 1e-6
+    ) {
+      return plane;
+    }
+  }
+  return null;
 }
 
 export function polygonArea3D(points: Polygon3): number {
