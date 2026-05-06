@@ -271,3 +271,54 @@ export function roofPointOnEaveBoundaryAtWrongHeight(candidate: Point3, eavePoly
     Math.abs(candidate.z - eaveHeightMm) > 1
   );
 }
+
+export function roofPoint2FromKey(key: string): RoofPoint2 {
+  const [x, y] = key.split(',').map(Number);
+  return { x: x ?? 0, y: y ?? 0 };
+}
+
+export function pointOnRoofSegment2(candidate: RoofPoint2, start: RoofPoint2, end: RoofPoint2): boolean {
+  const dx = end.x - start.x;
+  const dy = end.y - start.y;
+  const cross = (candidate.x - start.x) * dy - (candidate.y - start.y) * dx;
+  if (Math.abs(cross) > 1e-2) return false;
+  const dot = (candidate.x - start.x) * dx + (candidate.y - start.y) * dy;
+  if (dot < -1e-2) return false;
+  return dot <= dx * dx + dy * dy + 1e-2;
+}
+
+export function roofSegmentParam(start: RoofPoint2, end: RoofPoint2, candidate: RoofPoint2): number {
+  const dx = end.x - start.x;
+  const dy = end.y - start.y;
+  const lengthSq = dx * dx + dy * dy;
+  if (lengthSq <= ROOF_JOIN_EPSILON_MM * ROOF_JOIN_EPSILON_MM) return 0;
+  return ((candidate.x - start.x) * dx + (candidate.y - start.y) * dy) / lengthSq;
+}
+
+export function addRoofDissolveSplitPoint(points: RoofPoint2[], candidate: RoofPoint2): void {
+  if (!points.some((existing) => roofPointDistance2(existing, candidate) <= ROOF_JOIN_EPSILON_MM * ROOF_JOIN_EPSILON_MM)) {
+    points.push(candidate);
+  }
+}
+
+export function roofSegmentIntersectionPoint(
+  aStart: RoofPoint2,
+  aEnd: RoofPoint2,
+  bStart: RoofPoint2,
+  bEnd: RoofPoint2,
+): RoofPoint2 | null {
+  const aDx = aEnd.x - aStart.x;
+  const aDy = aEnd.y - aStart.y;
+  const bDx = bEnd.x - bStart.x;
+  const bDy = bEnd.y - bStart.y;
+  const denominator = aDx * bDy - aDy * bDx;
+  if (Math.abs(denominator) <= 1e-6) return null;
+  const t = ((bStart.x - aStart.x) * bDy - (bStart.y - aStart.y) * bDx) / denominator;
+  const u = ((bStart.x - aStart.x) * aDy - (bStart.y - aStart.y) * aDx) / denominator;
+  if (t < -ROOF_JOIN_EPSILON_MM || t > 1 + ROOF_JOIN_EPSILON_MM) return null;
+  if (u < -ROOF_JOIN_EPSILON_MM || u > 1 + ROOF_JOIN_EPSILON_MM) return null;
+  return {
+    x: aStart.x + aDx * clamp(t, 0, 1),
+    y: aStart.y + aDy * clamp(t, 0, 1),
+  };
+}

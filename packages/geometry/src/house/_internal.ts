@@ -1,6 +1,7 @@
 import type {
   GeometryMetadata,
   HouseRoofFeature3D,
+  HouseRoofFeatureKind,
   Line3,
   Point3,
   Polygon3,
@@ -70,6 +71,55 @@ export type HouseRoofPerimeterLine = {
   edgeKind: HouseRoofPerimeterEdgeKind;
   sourceRoofPlaneId?: string | null;
   flashingRole?: HouseRoofPerimeterFlashingRole | null;
+};
+
+export type JoinedRoofEdge = {
+  index: number;
+  id: string;
+  start: Point3;
+  end: Point3;
+  inwardNormal: { x: number; y: number };
+  lengthMm: number;
+  ridgeAxis: 'x' | 'y';
+};
+
+export type JoinedRoofRegion = {
+  edge: JoinedRoofEdge;
+  footprint: RoofPoint2[];
+};
+
+export type JoinedRoofWavefrontSegment = {
+  edge: JoinedRoofEdge;
+  start: RoofPoint2;
+  end: RoofPoint2;
+};
+
+export type JoinedRoofWavefrontLoop = {
+  segments: JoinedRoofWavefrontSegment[];
+};
+
+export type JoinedRoofWavefrontResult = {
+  regions: JoinedRoofRegion[];
+  metadata: GeometryMetadata;
+  failureReason: string | null;
+};
+
+export type JoinedRoofFacet = {
+  edge: JoinedRoofEdge;
+  footprint: RoofPoint2[];
+  boundary: Polygon3;
+};
+
+export type JoinedRoofFeatureDraft = {
+  kind: HouseRoofFeatureKind;
+  line: Line3;
+  sourceEdgeIds: string[];
+  roofFeatureSource: 'facet_adjacency' | 'reentrant_fallback';
+};
+
+export type JoinedRoofFacetBuildResult = {
+  facets: JoinedRoofFacet[];
+  metadata: GeometryMetadata;
 };
 
 export function point(x: number, y: number, z: number): Point3 {

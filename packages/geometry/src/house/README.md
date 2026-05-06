@@ -20,8 +20,9 @@ When extracting helpers as part of this decomposition pass, **copy the body byte
 | `eave.ts` | Eave/fascia/soffit/gutter polygons: `isEavePackageEdge`, `buildPolygonGutterLines`, `buildPolygonGutterBoundaries`, `buildPolygonFasciaPolygons`, `buildPolygonSoffitPolygons`, `buildPerimeterOffsetStripFootprints`. | ✅ shipped |
 | `roofPlane.ts` | Roof plane primitives + height-at-XY math: `buildRoofPlane`, `roofPlaneHeightAtXY`, `roofPlaneEquationHeightAtXY`, `roofFeatureHeightAtXY`, `roofHeightAtXY`, plus `RoofSolidPlaneEquation` type, `roofSolidPlaneEquationFromPlane`, `roofSolidBottomPlaneEquation`, `pointOnRoofPolygonBoundary`, `pointInOrOnRoofPolygon`. | ✅ shipped |
 | `roofRectangleHipped.ts` | Rectangle-specific hipped roof: `buildRectangleRoofFeatures`, `buildRectangleHippedRoof`. | ✅ shipped |
-| `roof2D.ts` | 2D polygon helpers used by joined-roof topology: `point2FromPoint3`, `roofPointDistance2`, `signedArea2D`, `cleanRoofPolygon2D`, `roofPoint3Key`, `roofPoint2Key`, `canonicalRoofSegmentKey`, `compareRoofPoints`, `orientRoofFeatureLine`, `clipRoofPolygonByScalar`, `roofPolygonArea`, `roofPolygonCentroid`, `segmentInsideRoofPolygon`, `roofSegmentOverlapLength2D`, `roofSegmentsProperlyIntersect2D`, `roofPolygonIsSimple`, `roofSegmentInsidePolygonStrict`, `roofRegionInsideEave`, `roofPointOnEaveBoundaryAtWrongHeight`. Foundational 2D layer for `roofJoined.ts`. | ✅ shipped |
-| `roofJoined.ts` | Joined rectilinear roof topology (the largest section): wavefront regions, facets, features, hipped + gable variants. | pending |
+| `roof2D.ts` | 2D polygon helpers used by joined-roof topology: `point2FromPoint3`, `roofPointDistance2`, `signedArea2D`, `cleanRoofPolygon2D`, `roofPoint3Key`, `roofPoint2Key`, `canonicalRoofSegmentKey`, `compareRoofPoints`, `orientRoofFeatureLine`, `clipRoofPolygonByScalar`, `roofPolygonArea`, `roofPolygonCentroid`, `segmentInsideRoofPolygon`, `roofSegmentOverlapLength2D`, `roofSegmentsProperlyIntersect2D`, `roofPolygonIsSimple`, `roofSegmentInsidePolygonStrict`, `roofRegionInsideEave`, `roofPointOnEaveBoundaryAtWrongHeight`, plus 2D segment helpers: `roofPoint2FromKey`, `pointOnRoofSegment2`, `roofSegmentParam`, `addRoofDissolveSplitPoint`, `roofSegmentIntersectionPoint`. Foundational 2D layer for joined-roof slices. | ✅ shipped |
+| `roofJoinedWavefront.ts` | Active rectilinear wavefront subsystem: vertex/loop/segment helpers, edge collapse + split distance computation, sweep regions, segment splitting, polygonization, loop advancement, and the public `buildJoinedRoofWavefrontRegions` entry point. | ✅ shipped |
+| `roofJoined.ts` | Remaining joined-roof topology: facets, features, hipped + gable variants. | pending |
 | `roofPrimary.ts` | Primary house roof orchestrator: `buildPrimaryHouseRoof` and per-form builders (`buildFlatHouseRoof`, `buildMonoHouseRoof`, etc). | pending |
 | `roofAppendages.ts` | Appendage band + support derivation + shared roof builder: `buildHouseRoofAppendageBand`, `buildSharedHouseRoof`, `deriveHouseRoofAppendageSupportFromPrimaryRoof`. | pending |
 | `roofSolids.ts` | Render mesh + solid adjacency: `buildVerticalPrismRenderMesh`, `buildMiteredOffsetStripFootprints`, `buildRoofSolidAdjacency`, `buildRoofSolidBottomEdge`, `buildRoofSolidRenderMesh`. | pending |
@@ -52,7 +53,8 @@ Order matters because some files depend on others. Recommended sequence:
 7. ✅ `eave.ts`
 8. ✅ `roofRectangleHipped.ts`
 9. ✅ `roof2D.ts` (intermediate helper file, prerequisite for `roofJoined.ts`)
-10. `roofJoined.ts`
+10. ✅ `roofJoinedWavefront.ts` (wavefront subsystem extracted from joined-roof)
+11. `roofJoined.ts` (remaining facets/features/hipped+gable)
 10. `roofPrimary.ts`
 11. `roofAppendages.ts`
 12. `roofMaterial.ts`
