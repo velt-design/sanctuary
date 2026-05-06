@@ -32,7 +32,7 @@ When extracting helpers as part of this decomposition pass, **copy the body byte
 | `roofPrimary.ts` | Per-form roof orchestrators: `buildPrimaryHouseRoof`, plus the per-form builders `buildFlatHouseRoof`, `buildMonoHouseRoof`, `buildRectangularGableRoof`, `buildGabledHouseRoof`, `buildHippedHouseRoof`, and the failure helper `invalidHouseRoof`. Wraps each result through `applyRoofQa`. | ✅ shipped |
 | `roofPrimary.ts` | Primary house roof orchestrator: `buildPrimaryHouseRoof` and per-form builders (`buildFlatHouseRoof`, `buildMonoHouseRoof`, etc). | pending |
 | `roofAppendages.ts` | Appendage band + support derivation + shared roof builder: `buildHouseRoofAppendageBand`, `buildSharedHouseRoof`, `deriveHouseRoofAppendageSupportFromPrimaryRoof`, plus `buildAppendageSupportAnalysisFromPerimeterEdges`, the `attachmentSideFromPerimeterEdge` helper, and the public types `HouseRoofAppendageHostRun` + `HouseRoofAppendageSupportAnalysis`. | ✅ shipped |
-| `roofSolids.ts` | Render mesh + solid adjacency: `buildVerticalPrismRenderMesh`, `buildMiteredOffsetStripFootprints`, `buildRoofSolidAdjacency`, `buildRoofSolidBottomEdge`, `buildRoofSolidRenderMesh`. | pending |
+| `roofSolids.ts` | Render mesh + solid adjacency: `buildVerticalPrismRenderMesh`, `boundaryZRange`, `buildMiteredStripFootprints`, `buildMiteredOffsetStripFootprints`, `buildRoofSolidAdjacency`, `buildRoofSolidBottomEdge`, `buildRoofSolidRenderMesh`, `polygonAveragePoint3D`, `cleanPolygon3D`, `clipPolygon3DByScalar`, `roofPlaneTopNormal`, plus polygon triangulation helpers and the `RoofSolid*` types. | ✅ shipped |
 | `roofFlashings.ts` | Roof feature + perimeter flashings: `buildHouseRoofFeatureFlashings`, `buildPerimeterFlashings`, related wing builders. | pending |
 | `roofMaterial.ts` | Roof material visuals: `buildHouseRoofMaterialVisualForPlane`, `buildHouseRoofMaterialVisuals`. | pending |
 | `decks.ts` | Deck composition: `buildHouseDecks`, `resolveHouseDeckBoundary`, `resolvePresetDeckBoundary`, `resolveDeckHostWallSegment`, related helpers. | pending |
@@ -70,6 +70,7 @@ Order matters because some files depend on others. Recommended sequence:
 17. ✅ `roofQa.ts` (roof QA validators — prerequisite for `roofPrimary.ts`)
 18. ✅ `roofPrimary.ts` (per-form roof orchestrators)
 19. ✅ `roofAppendages.ts` (appendage band + shared roof + support derivation)
+20. ✅ `roofSolids.ts` (render mesh + solid adjacency)
 10. `roofPrimary.ts`
 11. `roofAppendages.ts`
 12. `roofMaterial.ts`
