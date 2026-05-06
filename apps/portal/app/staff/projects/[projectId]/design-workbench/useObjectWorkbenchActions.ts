@@ -870,6 +870,37 @@ export function useObjectWorkbenchActions({
     [commitObjectWorkbenchPatch, store.derived.objectWorkbench.pergolas],
   );
 
+  /**
+   * Edge-drag dimension sync: write the pergola's `lengthM`/`projectionM` so a
+   * polygon edge drag resizes the pergola in place. Keeps the pergola at the
+   * world origin (no datum changes), matching the post-Slice-B-revert convention.
+   */
+  const commitSharedPergolaGeometry = useCallback(
+    async (
+      pergolaId: string,
+      geometry: { dimensions?: { lengthM?: string; projectionM?: string } },
+    ): Promise<CommitResult> => {
+      const currentPergola =
+        store.derived.objectWorkbench.pergolas.find((pergola) => pergola.id === pergolaId) ?? null;
+      if (!currentPergola) {
+        return { ok: false, error: 'This pergola is no longer available.' };
+      }
+      return commitObjectWorkbenchPatch({
+        target: { family: 'pergolas', objectId: pergolaId },
+        patch: {
+          geometry: {
+            ...(currentPergola.geometry ?? {}),
+            dimensions: {
+              ...(currentPergola.geometry?.dimensions ?? {}),
+              ...(geometry.dimensions ?? {}),
+            },
+          },
+        },
+      });
+    },
+    [commitObjectWorkbenchPatch, store.derived.objectWorkbench.pergolas],
+  );
+
   return {
     addSharedHouseDeck,
     addSharedHouseOpening,
@@ -883,6 +914,7 @@ export function useObjectWorkbenchActions({
     commitSharedPergolaAttachmentZone,
     commitSharedPergolaConnectionKind,
     commitSharedPergolaPosition,
+    commitSharedPergolaGeometry,
     commitSharedDeckCustomPolygon,
     commitSharedHouseDeckPatch,
     commitSharedHouseFootprintEdit,

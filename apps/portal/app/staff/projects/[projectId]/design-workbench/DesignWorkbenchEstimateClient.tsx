@@ -498,28 +498,87 @@ export default function DesignWorkbenchEstimateClient({
                     return;
                   }
                   if (commit.family === 'pergolas') {
-                    // Phase 2 free-floating-objects (Slice C): on first pergola edge-drag,
-                    // write a per-object world position derived from the dragged outline.
-                    // Origin = polygon[0] (mm); rotation = angle of polygon[0]→polygon[1].
-                    // This makes the pergola free-floating: it sits at the dragged location
-                    // and stops following house-footprint edits.
-                    const pergolaId =
-                      store.ui.activeObjectRef.family === 'pergolas'
+                    // Pergola edge-drag dimension sync (Slice D, option a). The pergola
+                    // sits at world origin (0,0) → (L, P) — until a UI surface dispatches
+                    // `commitSharedPergolaPosition`, only the +along (right) and +depth
+                    // (bottom) walls can grow. Drags of the left/top walls would extend
+                    // into negative world coords, which we can't represent without an
+                    // origin shift; we use max-only (no min subtraction) so those drags
+                    // become no-ops instead of jumping the opposite wall outward.
+                    //
+                    // Pergola dimensions are read by the geometry pipeline from
+                    // `module.lengthM`/`module.projectionM` — *not* from
+                    // `pergola.geometry.dimensions`. Route through `commitGeometryIntent`
+                    // so the module fields update and the next solve picks up the new
+                    // pergola size.
+                    if (commit.nextPolygon.length < 3) return;
+                    const currentLengthMm =
+                      Number(activeModuleInput?.lengthM) * 1000;
+                    const currentProjectionMm =
+                      Number(activeModuleInput?.projectionM) * 1000;
+                    let maxX = -Infinity;
+                    let maxY = -Infinity;
+                    for (const p of commit.nextPolygon) {
+                      if (p.x > maxX) maxX = p.x;
+                      if (p.y > maxY) maxY = p.y;
+                    }
+                    const nextLengthMm = Math.max(500, maxX);
+                    const nextProjectionMm = Math.max(500, maxY);
+                    const lengthChanged =
+                      !Number.isFinite(currentLengthMm) ||
+                      Math.abs(nextLengthMm - currentLengthMm) >= 1;
+                    const projectionChanged =
+                      !Number.isFinite(currentProjectionMm) ||
+                      Math.abs(nextProjectionMm - currentProjectionMm) >= 1;
+                    if (!lengthChanged && !projectionChanged) return;
+                    if (lengthChanged) {
+                      void objectWorkbenchActions.commitGeometryIntent({
+                        type: 'dimension',
+                        field: 'lengthM',
+                        value: (nextLengthMm / 1000).toString(),
+                      });
+                    }
+                    if (projectionChanged) {
+                      void objectWorkbenchActions.commitGeometryIntent({
+                        type: 'dimension',
+                        field: 'projectionM',
+                        value: (nextProjectionMm / 1000).toString(),
+                      });
+                    }
+                    return;
+                  }
+                  if (commit.family === 'decks') {
+                    // Deck edge-drag commit (Slice D). Decks store their outline in
+                    // side-local (alongM, depthM) coords, BUT the geometry decoder for
+                    // decks (`normalize.ts` `buildHouseModelConfig`) hardcodes the frame
+                    // to a 1m × 1m pergola with 0 offsets — separate from the house's
+                    // actual footprint frame. The encoder here must match: pergolaWidth
+                    // /Depth = 1000mm and `params: null` so default 0 offsets resolve.
+                    // Otherwise the round-trip misaligns and the deck appears not to
+                    // resize (the new outline decodes back to roughly the old world
+                    // position).
+                    const deckId =
+                      store.ui.activeObjectRef.family === 'decks'
                         ? store.ui.activeObjectRef.objectId
                         : null;
-                    const v0 = commit.nextPolygon[0];
-                    const v1 = commit.nextPolygon[1];
-                    if (!pergolaId || !v0 || !v1) return;
-                    const rotationRad = Math.atan2(v1.y - v0.y, v1.x - v0.x);
-                    const rotationDeg = (rotationRad * 180) / Math.PI;
-                    void objectWorkbenchActions.commitSharedPergolaPosition(pergolaId, {
-                      originXMm: v0.x,
-                      originYMm: v0.y,
-                      rotationDeg,
+                    if (!deckId || commit.nextPolygon.length < 3) return;
+                    const houseForm = store.derived.activeHouseForm;
+                    const sideLocalPoints = buildSideLocalPolygonFromWorld({
+                      worldPolygonMm: commit.nextPolygon,
+                      pergolaWidthMm: 1000,
+                      pergolaDepthMm: 1000,
+                      attachmentSide: houseForm?.footprint.attachmentSide ?? null,
+                      params: null,
+                    });
+                    void objectWorkbenchActions.commitSharedHouseDeckPatch(deckId, {
+                      shape: 'custom',
+                      outline: sideLocalPoints.map((p) => ({
+                        alongM: p.alongM.toString(),
+                        depthM: p.depthM.toString(),
+                      })),
                     });
                     return;
                   }
-                  // TODO(edge-drag): decks write to deck.boundary;
                   // openings deferred (no canonical polygon yet).
                   // eslint-disable-next-line no-console
                   console.warn('[edge-drag] outline edit not yet wired for family:', commit.family, commit);

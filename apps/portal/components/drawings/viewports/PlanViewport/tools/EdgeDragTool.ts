@@ -96,7 +96,11 @@ function buildPreview(session: DragSession, deltaMm: number): EdgeDragPreview {
 export function createEdgeDragTool(config: EdgeDragToolConfig): Tool {
   const tolerance = config.edgeHitToleranceMm ?? DEFAULT_EDGE_HIT_TOLERANCE_MM;
   let session: DragSession | null = null;
-  let lastHoverEdgeIndex: number | null = null;
+  // Cache the last published hover by content (outline, edge index, and the
+  // edge endpoints) — NOT just by edge index. After a commit the polygon
+  // coords for the same edgeIndex change, and an index-only dedup would leave
+  // the layer rendering stale endpoints.
+  let lastHoverKey: string | null = null;
 
   const clearSession = (): void => {
     session = null;
@@ -104,8 +108,8 @@ export function createEdgeDragTool(config: EdgeDragToolConfig): Tool {
   };
 
   const clearHover = (): void => {
-    if (lastHoverEdgeIndex !== null) {
-      lastHoverEdgeIndex = null;
+    if (lastHoverKey !== null) {
+      lastHoverKey = null;
       config.onHoverChange?.(null);
     }
   };
@@ -121,14 +125,15 @@ export function createEdgeDragTool(config: EdgeDragToolConfig): Tool {
       clearHover();
       return;
     }
-    if (lastHoverEdgeIndex === closest.edgeIndex) return;
-    lastHoverEdgeIndex = closest.edgeIndex;
     const a = outline.polygon[closest.edgeIndex];
     const b = outline.polygon[(closest.edgeIndex + 1) % outline.polygon.length];
     if (!a || !b) {
       clearHover();
       return;
     }
+    const nextKey = `${outline.id}|${closest.edgeIndex}|${a.x}|${a.y}|${b.x}|${b.y}`;
+    if (lastHoverKey === nextKey) return;
+    lastHoverKey = nextKey;
     config.onHoverChange?.({
       outlineId: outline.id,
       family: outline.family,
@@ -180,6 +185,10 @@ export function createEdgeDragTool(config: EdgeDragToolConfig): Tool {
       session = null;
       config.onPreviewChange?.(null);
       if (deltaMm !== 0) {
+        // The commit changes the active outline polygon. Drop the cached hover
+        // so the next pointermove republishes against fresh edges instead of
+        // re-using endpoints from the pre-commit polygon.
+        clearHover();
         config.onCommit?.({
           outlineId: finalSession.outline.id,
           family: finalSession.outline.family,

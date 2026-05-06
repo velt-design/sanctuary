@@ -114,12 +114,14 @@ Each family needs its own translation from `nextPolygon` into a workbench-state 
 
 | Family | Conversion | State mutation | Status |
 |--------|-----------|----------------|--------|
-| `house_forms` | mm `Point2[]` → `CalculatorHouseFootprintPolygonPoint[]` (`alongM = x / 1000`, `depthM = y / 1000`, both as strings) | `objectWorkbenchActions.commitSharedHouseFootprintEdit({ type: 'custom_polygon', polygon })` — sets `houseFootprintMode = 'custom_polygon'` and runs the full draft transaction (geometry re-solve cascades) | ✅ wired in `DesignWorkbenchEstimateClient` |
-| `decks` | mm `Point2[]` → deck-boundary patch | new action; closest existing analogue is `commitDeckDimension` (parametric), would need a polygon-direct variant | ⏳ next |
-| `pergolas` | mm `Point2[]` → pergola outline. Pergolas are currently parametric (lengthM/projectionM); a polygon-direct input may need to be added to the geometry config. | new action | ⏳ later |
+| `house_forms` | mm `Point2[]` → `CalculatorHouseFootprintPolygonPoint[]` via `buildSideLocalPolygonFromWorld` (proper inverse of the side-local→world transform; respects `attachmentSide` + `offsetXM`/`setbackM` so the house doesn't sign-flip on `rear`) | `objectWorkbenchActions.commitSharedHouseFootprintEdit({ type: 'custom_polygon', polygon })` — sets `houseFootprintMode = 'custom_polygon'` and runs the full draft transaction (geometry re-solve cascades) | ✅ wired in `DesignWorkbenchEstimateClient` |
+| `decks` | mm `Point2[]` → side-local `(alongM, depthM)` via the same `buildSideLocalPolygonFromWorld` helper as house_forms | `objectWorkbenchActions.commitSharedHouseDeckPatch(deckId, { shape: 'custom', outline: <encoded> })` | ✅ wired (Slice D) |
+| `pergolas` | mm `Point2[]` → bounding-box extents → `lengthM`/`projectionM`. **Dimension sync only** — pergola is pinned to world origin, so only the +along (right) and +depth (bottom) walls grow; left/top wall drags are silent no-ops | `objectWorkbenchActions.commitSharedPergolaGeometry(pergolaId, { dimensions: { lengthM, projectionM } })` | ✅ wired (Slice D, dim-sync only); free-floating placement blocked on Slice B redo (see [design-workbench-architecture.md → Multi-Pergola Constraint](../../../../../../../docs/design-workbench-architecture.md)) |
 | `openings` | n/a — openings have no polygon in data today | deferred | — |
 
-For unsupported families today, the handler `console.warn`s the captured commit so drag interactions are observable end-to-end. Implementing decks and pergolas is the next slice.
+The pergola entry above warrants a callout: `commitSharedPergolaPosition` exists as an action and the `position` field is plumbed end-to-end through `RawGeometryModuleInput` → `GeometryConfig`, but **no UI surface dispatches it** today. Position-driven placement is metadata-only until the datum-composition audit lands. See `docs/design-workbench-architecture.md` for the full migration plan.
+
+For unsupported families today, the handler `console.warn`s the captured commit so drag interactions are observable end-to-end.
 
 ## Rules
 
