@@ -14,9 +14,11 @@ import { PlanCommittedBodyLayer } from './layers/PlanCommittedBodyLayer';
 import { PlanContextLineLayer } from './layers/PlanContextLineLayer';
 import { PlanDetailLayer } from './layers/PlanDetailLayer';
 import { PlanDimensionLayer } from './layers/PlanDimensionLayer';
+import { PlanEdgeDragPreviewLayer } from './layers/PlanEdgeDragPreviewLayer';
 import { PlanHitTargetLayer } from './layers/PlanHitTargetLayer';
 import { PlanSelectionHaloLayer } from './layers/PlanSelectionHaloLayer';
 import type { PlanDimension } from './planDimension';
+import type { EdgeDragPreview } from '../tools/EdgeDragTool';
 import styles from './PlanCanvas.module.css';
 import type { PlanLayout } from './planLayout';
 import type { PlanRenderItem } from './planRenderItem';
@@ -31,6 +33,7 @@ export type PlanCanvasProps = {
   detailLines: PlanRenderItem[];
   selectionHaloItems: PlanRenderItem[];
   dimensions?: ReadonlyArray<PlanDimension>;
+  edgeDragPreview?: EdgeDragPreview | null;
   transform: DrawingWorkbenchViewportTransform;
   onTransformChange: (next: DrawingWorkbenchViewportTransform) => void;
   screenAxisLabel: string;
@@ -50,6 +53,7 @@ export function PlanCanvas({
   detailLines,
   selectionHaloItems,
   dimensions = EMPTY_DIMENSIONS,
+  edgeDragPreview = null,
   transform,
   onTransformChange,
   screenAxisLabel,
@@ -94,6 +98,22 @@ export function PlanCanvas({
     onTransformChange(IDENTITY_TRANSFORM);
   }, [onTransformChange]);
 
+  const handlePointerMove = useCallback(
+    (event: ReactPointerEvent<SVGSVGElement>) => {
+      dispatchPlanPointer('move', event, null);
+      panZoom.onPointerMove(event);
+    },
+    [dispatchPlanPointer, panZoom],
+  );
+
+  const handlePointerUp = useCallback(
+    (event: ReactPointerEvent<SVGSVGElement>) => {
+      dispatchPlanPointer('up', event, null);
+      panZoom.onPointerUp(event);
+    },
+    [dispatchPlanPointer, panZoom],
+  );
+
   return (
     <div className={styles.canvasShell}>
       <div className={styles.toolbar} role="toolbar" aria-label="Plan canvas controls">
@@ -132,9 +152,9 @@ export function PlanCanvas({
           handleEmptyPointerDown(event);
           panZoom.onPointerDown(event);
         }}
-        onPointerMove={panZoom.onPointerMove}
-        onPointerUp={panZoom.onPointerUp}
-        onPointerCancel={panZoom.onPointerUp}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerUp}
         onContextMenu={panZoom.onContextMenu}
       >
         <g transform={transformAttr(transform)} data-plan-transform="true">
@@ -149,6 +169,7 @@ export function PlanCanvas({
             onShapeLeave={onShapeLeave}
           />
           <PlanDimensionLayer dimensions={dimensions} coordinateAdapter={coordinateAdapter} />
+          <PlanEdgeDragPreviewLayer preview={edgeDragPreview} coordinateAdapter={coordinateAdapter} />
         </g>
       </svg>
     </div>

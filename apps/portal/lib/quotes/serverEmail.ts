@@ -26,8 +26,10 @@ import {
 } from './renderArtifacts';
 
 const REPLY_TO_EMAIL = 'info@sanctuarypergolas.co.nz';
-const MAX_ATTACHMENT_BYTES = 20 * 1024 * 1024;
-const MAX_ATTACHMENTS_TOTAL_BYTES = 35 * 1024 * 1024;
+// Capped at ~4 MB to fit under Vercel's 4.5 MB serverless function body limit.
+// Keep in sync with the API routes + QuotesTab.tsx.
+const MAX_ATTACHMENT_BYTES = 4 * 1024 * 1024;
+const MAX_ATTACHMENTS_TOTAL_BYTES = 4 * 1024 * 1024;
 const MAX_ATTACHMENT_COUNT = 10;
 
 const ALLOWED_ATTACHMENT_MIME_TYPES = new Set([
@@ -231,11 +233,11 @@ async function resolveExtraAttachments(params: {
       throw new Error(`Attachment "${filename}" is empty`);
     }
     if (att.content.length > MAX_ATTACHMENT_BYTES) {
-      throw new Error(`Attachment "${filename}" must be 20MB or smaller`);
+      throw new Error(`Attachment "${filename}" must be 4MB or smaller`);
     }
     totalBytes += att.content.length;
     if (totalBytes > MAX_ATTACHMENTS_TOTAL_BYTES) {
-      throw new Error('Combined attachment size must be 35MB or smaller');
+      throw new Error('Combined attachment size must be 4MB or smaller');
     }
 
     const artifact = await createFileArtifact({

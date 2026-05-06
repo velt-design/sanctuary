@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import type { WorkbenchSolvedGeometryArtifact } from '@/lib/drawings/state/workbenchSolvedModel';
 import type {
   DrawingWorkbenchViewportTransform,
@@ -14,9 +14,10 @@ import type {
 import { PlanCanvas } from './canvas/PlanCanvas';
 import { usePlanRenderModel } from './canvas/usePlanRenderModel';
 import { usePlanSelectionDimensions } from './canvas/usePlanSelectionDimensions';
-import type { ActiveObjectFamily, PlanDimension } from './canvas/planDimension';
+import { pickPrimaryEditCandidate, type ActiveObjectFamily, type PlanDimension } from './canvas/planDimension';
 import { ToolDispatcherProvider } from './tools/ToolDispatcher';
 import { createSelectTool } from './tools/SelectTool';
+import { createEdgeDragTool, type EdgeDragPreview } from './tools/EdgeDragTool';
 import { PlanViewportPlaceholder } from './PlanViewportPlaceholder';
 import lineweightStyles from './canvas/planLineweights.module.css';
 
@@ -55,6 +56,7 @@ export default function PlanViewport({
 }: PlanViewportProps) {
   const projection = artifact?.topProjection ?? null;
   const renderModel = usePlanRenderModel({ projection, visibility, activeObjectRef });
+  const [edgeDragPreview, setEdgeDragPreview] = useState<EdgeDragPreview | null>(null);
 
   const selectTool = useMemo(
     () =>
@@ -66,9 +68,38 @@ export default function PlanViewport({
     [onClearWorkbenchSelection, onSelectObjectWorkbenchTarget, onSelectPergolaTarget],
   );
 
+  const activeFamily = (activeObjectRef?.family ?? null) as ActiveObjectFamily | null;
+
+  const getActiveOutline = useCallback(() => {
+    if (!renderModel || !activeFamily) return null;
+    const candidate = pickPrimaryEditCandidate(
+      renderModel.selectionHaloItems.map((item) => ({
+        id: item.shape.id,
+        polygon: item.shape.polygon,
+        kind: item.shape.kind,
+        isCanonicalOutline: item.shape.metadata?.isCanonicalOutline === true,
+      })),
+      activeFamily,
+    );
+    if (!candidate) return null;
+    return { id: candidate.id, family: activeFamily, polygon: candidate.polygon };
+  }, [activeFamily, renderModel]);
+
+  const edgeDragTool = useMemo(
+    () =>
+      createEdgeDragTool({
+        getActiveOutline,
+        onPreviewChange: setEdgeDragPreview,
+      }),
+    [getActiveOutline],
+  );
+
+  const hasEditableOutline = Boolean(getActiveOutline());
+  const activeTool = hasEditableOutline ? edgeDragTool : selectTool;
+
   const mergedDimensions = usePlanSelectionDimensions({
     selectionHaloItems: renderModel?.selectionHaloItems,
-    activeFamily: (activeObjectRef?.family ?? null) as ActiveObjectFamily | null,
+    activeFamily,
     providedDimensions,
   });
 
@@ -84,7 +115,7 @@ export default function PlanViewport({
       className={lineweightStyles.tokens}
       style={{ width: '100%', height: '100%', overflow: 'hidden', display: 'block' }}
     >
-      <ToolDispatcherProvider initialTool={selectTool}>
+      <ToolDispatcherProvider initialTool={activeTool}>
         <PlanCanvas
           layout={renderModel.layout}
           coordinateAdapter={renderModel.adapter}
@@ -93,6 +124,7 @@ export default function PlanViewport({
           detailLines={renderModel.detailLines}
           selectionHaloItems={renderModel.selectionHaloItems}
           dimensions={mergedDimensions}
+          edgeDragPreview={edgeDragPreview}
           transform={viewportTransform}
           onTransformChange={onViewportTransformChange}
           screenAxisLabel={screenAxisLabel}

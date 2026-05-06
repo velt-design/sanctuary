@@ -3,7 +3,9 @@ import { EmailProviderConfigError, sendQuote } from '@/lib/quotes/server';
 
 export const runtime = 'nodejs';
 
-const MAX_ATTACHMENT_BYTES = 20 * 1024 * 1024;
+// Capped at ~4 MB to fit under Vercel's 4.5 MB serverless function body limit.
+// Keep in sync with QuotesTab.tsx + serverEmail.ts.
+const MAX_ATTACHMENT_BYTES = 4 * 1024 * 1024;
 const MAX_ATTACHMENT_COUNT = 10;
 const ALLOWED_ATTACHMENT_EXTENSIONS = new Set(['.pdf', '.jpg', '.jpeg', '.png', '.webp']);
 const ALLOWED_ATTACHMENT_MIME_TYPES = new Set([
@@ -78,7 +80,7 @@ async function parseSendPayload(
         return { ok: false, status: 400, error: `Attachment "${upload.name}" must be a PDF, JPG, PNG, or WEBP` };
       }
       if (upload.size > MAX_ATTACHMENT_BYTES) {
-        return { ok: false, status: 400, error: `Attachment "${upload.name}" must be 20MB or smaller` };
+        return { ok: false, status: 400, error: `Attachment "${upload.name}" must be 4MB or smaller` };
       }
       const filename = upload.name.trim() || `attachment-${attachments.length + 1}.bin`;
       const contentTypeValue = upload.type.trim() || 'application/octet-stream';

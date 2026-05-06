@@ -132,6 +132,15 @@
   fill: none;
 }
 
+.edgeDragPreview {
+  stroke: var(--plan-stroke-snap);
+  stroke-width: calc(var(--plan-width-medium) * 1.5);
+  stroke-dasharray: 4 2;
+  vector-effect: non-scaling-stroke;
+  fill: rgba(255, 107, 0, 0.06);
+  pointer-events: none;
+}
+
 .selectionHalo {
   stroke: var(--plan-stroke-selection);
   stroke-width: calc(var(--plan-width-medium) * 1.5);

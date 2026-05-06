@@ -234,8 +234,12 @@ function defaultSubject(quoteRef: string): string {
   return `Your quote ${quoteRef}`;
 }
 
-const MAX_ATTACHMENT_BYTES = 20 * 1024 * 1024;
-const MAX_ATTACHMENTS_TOTAL_BYTES = 35 * 1024 * 1024;
+// NOTE: capped at ~4 MB to fit under Vercel's 4.5 MB serverless function body
+// limit. To support larger attachments we need direct-to-Supabase-Storage uploads
+// (see decision-log.md / docs/quotes-invoices-job-packs.md). Keep these caps in
+// sync with the API route + serverEmail.ts.
+const MAX_ATTACHMENT_BYTES = 4 * 1024 * 1024;
+const MAX_ATTACHMENTS_TOTAL_BYTES = 4 * 1024 * 1024;
 const MAX_ATTACHMENT_COUNT = 10;
 const QUOTE_PREVIEW_DEBOUNCE_MS = 200;
 const ALLOWED_ATTACHMENT_EXTENSIONS = new Set(['.pdf', '.jpg', '.jpeg', '.png', '.webp']);
@@ -252,7 +256,7 @@ type SendEditorMode = 'compose' | 'review';
 
 function validateAttachment(file: File): string | null {
   if (file.size <= 0) return `Attachment "${file.name || 'file'}" is empty.`;
-  if (file.size > MAX_ATTACHMENT_BYTES) return `Attachment "${file.name || 'file'}" must be 20MB or smaller.`;
+  if (file.size > MAX_ATTACHMENT_BYTES) return `Attachment "${file.name || 'file'}" must be 4MB or smaller.`;
   const mime = file.type.trim().toLowerCase();
   if (ALLOWED_ATTACHMENT_MIME_TYPES.has(mime)) return null;
   const lowerName = file.name.trim().toLowerCase();
@@ -1045,7 +1049,7 @@ export default function QuotesTab({
       totalBytes += file.size;
     }
     if (totalBytes > MAX_ATTACHMENTS_TOTAL_BYTES) {
-      const message = 'Combined attachment size must be 35MB or smaller.';
+      const message = 'Combined attachment size must be 4MB or smaller.';
       setSendError(message);
       toast.error(message);
       return;
@@ -2224,7 +2228,7 @@ export default function QuotesTab({
                           continue;
                         }
                         if (runningTotal + file.size > MAX_ATTACHMENTS_TOTAL_BYTES) {
-                          const message = 'Combined attachment size must be 35MB or smaller.';
+                          const message = 'Combined attachment size must be 4MB or smaller.';
                           setSendError(message);
                           toast.error(message);
                           break;
@@ -2259,7 +2263,7 @@ export default function QuotesTab({
                   ) : null}
                   <div className={styles.attachmentsHint}>
                     Quote PDF is attached automatically. You can add up to {MAX_ATTACHMENT_COUNT} additional files
-                    (PDF, JPG, PNG, WEBP), 20MB each, 35MB total.
+                    (PDF, JPG, PNG, WEBP), 4MB combined. Larger files need to be hosted separately for now.
                   </div>
                   {sendError ? <div className={styles.errorText}>{sendError}</div> : null}
                 </div>
