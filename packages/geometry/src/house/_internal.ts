@@ -360,6 +360,17 @@ export function finiteRoofQaPoint(candidate: Point3): boolean {
   return Number.isFinite(candidate.x) && Number.isFinite(candidate.y) && Number.isFinite(candidate.z);
 }
 
+export function vertexFeatureKind(polygon: Polygon3, index: number): HouseRoofFeatureKind {
+  const area = signedAreaXY(polygon);
+  const previous = polygon[(index - 1 + polygon.length) % polygon.length]!;
+  const current = polygon[index]!;
+  const next = polygon[(index + 1) % polygon.length]!;
+  const prevVector = { x: current.x - previous.x, y: current.y - previous.y };
+  const nextVector = { x: next.x - current.x, y: next.y - current.y };
+  const cross = prevVector.x * nextVector.y - prevVector.y * nextVector.x;
+  return Math.sign(cross || 1) === Math.sign(area || 1) ? 'hip' : 'valley';
+}
+
 export function polygonArea3D(points: Polygon3): number {
   if (points.length < 3) return 0;
   const areaVector = points.reduce<Vector3>(
