@@ -111,12 +111,32 @@ export type HouseFormTransformModel = {
   rotationQuarterTurns: CalculatorDrawingRotationQuarterTurns;
 };
 
+/**
+ * World-space position of a house form. Origin is in mm, rotation in degrees
+ * around +Z. Mirrors `ObjectFirstPergolaPosition` for parity — the "every
+ * object is a first-class spatial entity" architecture means each object
+ * stores its own world transform, decoupled from any other object's frame.
+ *
+ * For backward compat, `position` is optional on `HouseFormFootprintModel`.
+ * When absent, the geometry pipeline falls back to the legacy pergola-anchored
+ * frame for `houseFootprintSideLocalToWorldPolygon`. When present, the polygon
+ * is decoded against a unit (1m × 1m) frame and the world position is applied
+ * post-decode, so the house is invariant to subsequent pergola resizes.
+ */
+export type HouseFormPosition = {
+  originXMm: string;
+  originYMm: string;
+  rotationDeg: string;
+};
+
 export type HouseFormFootprintModel = {
   mode: CalculatorHouseFootprintMode;
   preset: CalculatorHouseFootprintPreset;
   params: CalculatorHouseFootprintParams;
   polygon: CalculatorHouseFootprintPolygonPoint[];
   attachmentSide: NonNullable<CalculatorModuleInputs['attachmentSide']>;
+  /** Optional world-space position. See `HouseFormPosition` for details. */
+  position?: HouseFormPosition | null;
 };
 
 export type HouseFormRoofIntentModel = {

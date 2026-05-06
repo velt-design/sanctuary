@@ -413,12 +413,19 @@ function resolveOptionalAssemblyPosition(
   raw: RawGeometryModuleInput['position'],
 ): AssemblyPosition | null {
   if (!raw) return null;
-  const x = resolveOptionalMillimetres(raw.origin?.x);
-  const y = resolveOptionalMillimetres(raw.origin?.y);
-  const rotationDeg = resolveOptionalDegrees(raw.rotationDeg);
-  if (x === null || y === null) return null;
+  // Position origins are world-space coordinates and CAN BE NEGATIVE — a
+  // pergola can sit at world.x = -500. The previous use of
+  // `resolveOptionalMillimetres` (which calls `parseNonNegativeNumber`)
+  // silently rejected negative values, returning null and dropping the entire
+  // position. The visible symptom: dragging a pergola's left/top wall outward
+  // wrote a negative origin → position resolved to null → pergola stayed at
+  // world (0, 0) → user saw "drag doesn't always resize."
+  const xParsed = parseFiniteNumber(raw.origin?.x);
+  const yParsed = parseFiniteNumber(raw.origin?.y);
+  const rotationDeg = parseFiniteNumber(raw.rotationDeg);
+  if (xParsed === null || yParsed === null) return null;
   return {
-    origin: { x, y },
+    origin: { x: Math.round(xParsed), y: Math.round(yParsed) },
     rotationDeg: rotationDeg ?? 0,
   };
 }

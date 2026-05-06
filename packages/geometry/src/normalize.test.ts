@@ -1145,6 +1145,40 @@ describe('normalizeGeometryConfig', () => {
       if (result.ok) expect(result.value.position).toBeNull();
     });
 
+    it('preserves negative origin coordinates (regression)', () => {
+      // Position origins are world-space coords and CAN be negative — a
+      // pergola can sit at world.x = -500 because the user dragged its left
+      // wall outward. An earlier validator (`parseNonNegativeNumber`) silently
+      // rejected negatives, dropping the position to null and leaving the
+      // pergola at world (0, 0). The visible bug: "drag doesn't always resize
+      // — only works for +side wall drags." This test locks the fix.
+      const result = normalizeGeometryConfig(
+        makeRawInput({
+          position: { origin: { x: -500, y: -2000 }, rotationDeg: -45 },
+        }),
+      );
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.value.position).toEqual({
+        origin: { x: -500, y: -2000 },
+        rotationDeg: -45,
+      });
+    });
+
+    it('preserves negative origin coordinates passed as strings (regression)', () => {
+      const result = normalizeGeometryConfig(
+        makeRawInput({
+          position: { origin: { x: '-500', y: '-2000' }, rotationDeg: '-45' },
+        }),
+      );
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.value.position).toEqual({
+        origin: { x: -500, y: -2000 },
+        rotationDeg: -45,
+      });
+    });
+
     it('does not drive the datum when position is set — datum stays world-aligned', () => {
       // Slice B (composeDatumFromPosition) was reverted because consumers of
       // `assembly.outline` (e.g. PlanViewport's pergola_reference shape) read

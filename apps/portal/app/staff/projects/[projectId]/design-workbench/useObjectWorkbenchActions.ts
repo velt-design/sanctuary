@@ -838,13 +838,17 @@ export function useObjectWorkbenchActions({
   );
 
   /**
-   * Phase 2 free-floating-objects (Slice C): write a per-object world position
-   * onto the pergola. Once set, geometry treats the pergola as free-floating —
-   * it ignores the connection-driven datum and sits at this position regardless
-   * of subsequent house-footprint edits.
+   * Write a pergola's world `position` (origin + rotation) so it lives at a
+   * specific point in world space rather than world origin. The post-solve
+   * transform `applyAssemblyPosition3D` reads this and lifts the pergola's
+   * local-coord geometry into world coords; consumers (top projection, viewer
+   * scene, takeoff) see the world-positioned assembly with no further
+   * position-awareness needed.
    *
-   * Position values are millimetres (string-encoded for parity with the rest
-   * of the persisted draft).
+   * Pergola dimensions live on `module.lengthM`/`module.projectionM` — write
+   * those via `commitGeometryIntent({ type: 'dimension', ... })`. The two
+   * writes are separate transactions but settle in the same React render so
+   * a drag commit can call both back-to-back without a flicker.
    */
   const commitSharedPergolaPosition = useCallback(
     async (
@@ -870,37 +874,6 @@ export function useObjectWorkbenchActions({
     [commitObjectWorkbenchPatch, store.derived.objectWorkbench.pergolas],
   );
 
-  /**
-   * Edge-drag dimension sync: write the pergola's `lengthM`/`projectionM` so a
-   * polygon edge drag resizes the pergola in place. Keeps the pergola at the
-   * world origin (no datum changes), matching the post-Slice-B-revert convention.
-   */
-  const commitSharedPergolaGeometry = useCallback(
-    async (
-      pergolaId: string,
-      geometry: { dimensions?: { lengthM?: string; projectionM?: string } },
-    ): Promise<CommitResult> => {
-      const currentPergola =
-        store.derived.objectWorkbench.pergolas.find((pergola) => pergola.id === pergolaId) ?? null;
-      if (!currentPergola) {
-        return { ok: false, error: 'This pergola is no longer available.' };
-      }
-      return commitObjectWorkbenchPatch({
-        target: { family: 'pergolas', objectId: pergolaId },
-        patch: {
-          geometry: {
-            ...(currentPergola.geometry ?? {}),
-            dimensions: {
-              ...(currentPergola.geometry?.dimensions ?? {}),
-              ...(geometry.dimensions ?? {}),
-            },
-          },
-        },
-      });
-    },
-    [commitObjectWorkbenchPatch, store.derived.objectWorkbench.pergolas],
-  );
-
   return {
     addSharedHouseDeck,
     addSharedHouseOpening,
@@ -914,7 +887,6 @@ export function useObjectWorkbenchActions({
     commitSharedPergolaAttachmentZone,
     commitSharedPergolaConnectionKind,
     commitSharedPergolaPosition,
-    commitSharedPergolaGeometry,
     commitSharedDeckCustomPolygon,
     commitSharedHouseDeckPatch,
     commitSharedHouseFootprintEdit,

@@ -125,7 +125,8 @@ export default function PlanViewport({
     [getActiveOutline],
   );
 
-  const hasEditableOutline = renderModel !== null && activeFamily !== null && getActiveOutline() !== null;
+  const activeOutlineForRender = renderModel !== null && activeFamily !== null ? getActiveOutline() : null;
+  const hasEditableOutline = activeOutlineForRender !== null;
   const activeTool = hasEditableOutline ? edgeDragTool : selectTool;
 
   const mergedDimensions = usePlanSelectionDimensions({
@@ -157,6 +158,7 @@ export default function PlanViewport({
           dimensions={mergedDimensions}
           edgeDragPreview={edgeDragPreview}
           edgeDragHover={edgeDragHover}
+          activeOutlinePolygon={activeOutlineForRender?.polygon ?? null}
           transform={viewportTransform}
           onTransformChange={onViewportTransformChange}
           screenAxisLabel={screenAxisLabel}

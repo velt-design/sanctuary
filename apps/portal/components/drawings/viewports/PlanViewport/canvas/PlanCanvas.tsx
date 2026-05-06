@@ -2,7 +2,9 @@
 
 import {
   useCallback,
+  useEffect,
   useMemo,
+  useState,
   type PointerEvent as ReactPointerEvent,
 } from 'react';
 import type { PlanCoordinateAdapter } from '@/lib/drawings/views/plan/planCoordinateAdapter';
@@ -18,12 +20,14 @@ import { PlanDimensionLayer } from './layers/PlanDimensionLayer';
 import { PlanEdgeDragPreviewLayer } from './layers/PlanEdgeDragPreviewLayer';
 import { PlanEdgeHoverHighlightLayer } from './layers/PlanEdgeHoverHighlightLayer';
 import { PlanHitTargetLayer } from './layers/PlanHitTargetLayer';
+import { PlanHitTestDebugLayer } from './layers/PlanHitTestDebugLayer';
 import { PlanSelectionHaloLayer } from './layers/PlanSelectionHaloLayer';
 import type { PlanDimension } from './planDimension';
 import type { EdgeDragHover, EdgeDragPreview } from '../tools/EdgeDragTool';
 import styles from './PlanCanvas.module.css';
 import type { PlanLayout } from './planLayout';
 import { filterPlanHitTargets } from './planHitTargetFilter';
+import type { Point2 } from './polygonEdgeMath';
 import type { PlanRenderItem } from './planRenderItem';
 
 const IDENTITY_TRANSFORM: DrawingWorkbenchViewportTransform = { zoom: 1, panX: 0, panY: 0 };
@@ -38,6 +42,8 @@ export type PlanCanvasProps = {
   dimensions?: ReadonlyArray<PlanDimension>;
   edgeDragPreview?: EdgeDragPreview | null;
   edgeDragHover?: EdgeDragHover | null;
+  /** Active outline polygon used for hit-testing — passed in for the debug overlay. */
+  activeOutlinePolygon?: ReadonlyArray<Point2> | null;
   transform: DrawingWorkbenchViewportTransform;
   onTransformChange: (next: DrawingWorkbenchViewportTransform) => void;
   screenAxisLabel: string;
@@ -59,6 +65,7 @@ export function PlanCanvas({
   dimensions = EMPTY_DIMENSIONS,
   edgeDragPreview = null,
   edgeDragHover = null,
+  activeOutlinePolygon = null,
   transform,
   onTransformChange,
   screenAxisLabel,
@@ -67,6 +74,17 @@ export function PlanCanvas({
   const { hoveredShape, onShapeEnter, onShapeLeave } = useHoveredShape();
   const panZoom = usePanZoom({ transform, onTransformChange });
   const hitTargetItems = useMemo(() => filterPlanHitTargets(committedBodies), [committedBodies]);
+
+  // Diagnostic overlay — only rendered when `?debug=hit-test` is in the URL.
+  // Tracks cursor world coords via state so the overlay re-renders on each
+  // pointer move; production has zero cost (the early return below skips both
+  // the state update and the layer render).
+  const [debugEnabled, setDebugEnabled] = useState(false);
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    setDebugEnabled(new URLSearchParams(window.location.search).get('debug') === 'hit-test');
+  }, []);
+  const [cursorWorldMm, setCursorWorldMm] = useState<Point2 | null>(null);
 
   const dispatchPlanPointer = useCallback(
     (kind: 'down' | 'move' | 'up', event: ReactPointerEvent<Element>, shape: Parameters<typeof dispatcher.dispatchPointerDown>[0]['shape']) => {
@@ -108,8 +126,18 @@ export function PlanCanvas({
     (event: ReactPointerEvent<SVGSVGElement>) => {
       dispatchPlanPointer('move', event, null);
       panZoom.onPointerMove(event);
+      if (debugEnabled) {
+        const target = event.currentTarget as SVGElement;
+        const point = clientPointToPlanProjection(
+          target.ownerSVGElement ?? (target as unknown as SVGSVGElement),
+          event.clientX,
+          event.clientY,
+          coordinateAdapter,
+        );
+        setCursorWorldMm(point ? { x: point.x * 1000, y: point.y * 1000 } : null);
+      }
     },
-    [dispatchPlanPointer, panZoom],
+    [coordinateAdapter, debugEnabled, dispatchPlanPointer, panZoom],
   );
 
   const handlePointerUp = useCallback(
@@ -177,6 +205,13 @@ export function PlanCanvas({
           <PlanDimensionLayer dimensions={dimensions} coordinateAdapter={coordinateAdapter} />
           <PlanEdgeHoverHighlightLayer hover={edgeDragHover} coordinateAdapter={coordinateAdapter} />
           <PlanEdgeDragPreviewLayer preview={edgeDragPreview} coordinateAdapter={coordinateAdapter} />
+          <PlanHitTestDebugLayer
+            enabled={debugEnabled}
+            activeOutlinePolygon={activeOutlinePolygon}
+            cursorWorldMm={cursorWorldMm}
+            hover={edgeDragHover}
+            coordinateAdapter={coordinateAdapter}
+          />
         </g>
       </svg>
     </div>

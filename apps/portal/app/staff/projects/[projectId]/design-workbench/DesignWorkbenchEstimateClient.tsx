@@ -498,39 +498,68 @@ export default function DesignWorkbenchEstimateClient({
                     return;
                   }
                   if (commit.family === 'pergolas') {
-                    // Pergola edge-drag dimension sync (Slice D, option a). The pergola
-                    // sits at world origin (0,0) → (L, P) — until a UI surface dispatches
-                    // `commitSharedPergolaPosition`, only the +along (right) and +depth
-                    // (bottom) walls can grow. Drags of the left/top walls would extend
-                    // into negative world coords, which we can't represent without an
-                    // origin shift; we use max-only (no min subtraction) so those drags
-                    // become no-ops instead of jumping the opposite wall outward.
+                    // Pergola edge-drag (first-class spatial entity write). The pergola
+                    // owns its own world position (origin + rotation around +Z) and its
+                    // own dimensions (lengthM/projectionM). An edge drag axis-aligned to
+                    // the pergola's local frame may shift either:
+                    //   - position (when the user grabs a -along or -depth wall and pulls
+                    //     it outward, the pergola's anchor moves), or
+                    //   - dimensions (when the user grabs a +along or +depth wall, the
+                    //     pergola grows in that direction).
+                    // Or both, depending on the bounding box of `nextPolygon`.
                     //
-                    // Pergola dimensions are read by the geometry pipeline from
-                    // `module.lengthM`/`module.projectionM` — *not* from
-                    // `pergola.geometry.dimensions`. Route through `commitGeometryIntent`
-                    // so the module fields update and the next solve picks up the new
-                    // pergola size.
-                    if (commit.nextPolygon.length < 3) return;
-                    const currentLengthMm =
-                      Number(activeModuleInput?.lengthM) * 1000;
-                    const currentProjectionMm =
-                      Number(activeModuleInput?.projectionM) * 1000;
+                    // We compute the new pergola box as `bbox(nextPolygon)`; its `(min)`
+                    // becomes the new `position.origin` and its `(max - min)` becomes the
+                    // new `(lengthM, projectionM)`. Position writes go through
+                    // `commitSharedPergolaPosition`; dimensions go through
+                    // `commitGeometryIntent` (which updates the module fields the solver
+                    // reads). Two transactions, one render — no flicker.
+                    //
+                    // Rotation: not handled yet. Pergolas with non-zero rotation need
+                    // bbox-aware drag math that operates in the local frame; deferred
+                    // until a rotate gizmo lands.
+                    const pergolaId =
+                      store.ui.activeObjectRef.family === 'pergolas'
+                        ? store.ui.activeObjectRef.objectId
+                        : null;
+                    if (!pergolaId || commit.nextPolygon.length < 3) return;
+                    const pergola = store.derived.activeObjectFirstPergola;
+                    const currentOriginXMm = Number(pergola?.position?.originXMm ?? '0');
+                    const currentOriginYMm = Number(pergola?.position?.originYMm ?? '0');
+                    const currentRotationDeg = Number(pergola?.position?.rotationDeg ?? '0');
+                    const currentLengthMm = Number(activeModuleInput?.lengthM) * 1000;
+                    const currentProjectionMm = Number(activeModuleInput?.projectionM) * 1000;
+                    let minX = Infinity;
+                    let minY = Infinity;
                     let maxX = -Infinity;
                     let maxY = -Infinity;
                     for (const p of commit.nextPolygon) {
+                      if (p.x < minX) minX = p.x;
+                      if (p.y < minY) minY = p.y;
                       if (p.x > maxX) maxX = p.x;
                       if (p.y > maxY) maxY = p.y;
                     }
-                    const nextLengthMm = Math.max(500, maxX);
-                    const nextProjectionMm = Math.max(500, maxY);
+                    const nextOriginXMm = minX;
+                    const nextOriginYMm = minY;
+                    const nextLengthMm = Math.max(500, maxX - minX);
+                    const nextProjectionMm = Math.max(500, maxY - minY);
+                    const positionChanged =
+                      Math.abs(nextOriginXMm - currentOriginXMm) >= 1 ||
+                      Math.abs(nextOriginYMm - currentOriginYMm) >= 1;
                     const lengthChanged =
                       !Number.isFinite(currentLengthMm) ||
                       Math.abs(nextLengthMm - currentLengthMm) >= 1;
                     const projectionChanged =
                       !Number.isFinite(currentProjectionMm) ||
                       Math.abs(nextProjectionMm - currentProjectionMm) >= 1;
-                    if (!lengthChanged && !projectionChanged) return;
+                    if (!positionChanged && !lengthChanged && !projectionChanged) return;
+                    if (positionChanged) {
+                      void objectWorkbenchActions.commitSharedPergolaPosition(pergolaId, {
+                        originXMm: nextOriginXMm,
+                        originYMm: nextOriginYMm,
+                        rotationDeg: Number.isFinite(currentRotationDeg) ? currentRotationDeg : 0,
+                      });
+                    }
                     if (lengthChanged) {
                       void objectWorkbenchActions.commitGeometryIntent({
                         type: 'dimension',

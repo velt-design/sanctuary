@@ -420,6 +420,19 @@ export type RawGeometryModuleInput = {
     footprintPreset?: HouseFootprintPreset | null;
     footprintParams?: HouseFootprintParams | null;
     footprintPolygon?: HouseFootprintPolygonPointInput[] | null;
+    /**
+     * Optional world-space position for the house. When present, the geometry
+     * pipeline interprets `footprintPolygon` against a unit (1m × 1m) frame and
+     * applies this position post-decode — so the house is invariant to the
+     * pergola's dimensions. When absent, the legacy decoder uses the live
+     * pergola dimensions as the frame anchor (back-compat).
+     *
+     * Origin in mm; rotation in degrees around +Z.
+     */
+    position?: {
+      origin: { x: string | number; y: string | number };
+      rotationDeg?: string | number | null;
+    } | null;
     storeyMode?: HouseStoreyMode | null;
     wallConstruction?: HouseWallConstruction | null;
     roofForm?: HouseRoofForm | null;
