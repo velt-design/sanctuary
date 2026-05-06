@@ -590,27 +590,23 @@ export default function ProjectsIndexClient({
                           </td>
                           <td>{renderEditable('address', addressValue, 'Add address', true)}</td>
                           <td>
-                            {isAdmin ? (
-                              <select
-                                className={styles.inlineSelect}
-                                value={(p.status ?? 'NEW') as ProjectStatus}
-                                disabled={isStatusBusyRow}
-                                onClick={(e) => e.stopPropagation()}
-                                onKeyDown={(e) => e.stopPropagation()}
-                                onChange={(e) => {
-                                  e.stopPropagation();
-                                  handleStatusChange(p, e.target.value);
-                                }}
-                              >
-                                {PROJECT_STATUS_ORDER.map((status) => (
-                                  <option key={status} value={status}>
-                                    {projectStatusLabel(status)}
-                                  </option>
-                                ))}
-                              </select>
-                            ) : (
-                              <span className={styles.statusPill}>{projectStatusLabel(p.status ?? 'NEW')}</span>
-                            )}
+                            <select
+                              className={styles.inlineSelect}
+                              value={(p.status ?? 'NEW') as ProjectStatus}
+                              disabled={isStatusBusyRow}
+                              onClick={(e) => e.stopPropagation()}
+                              onKeyDown={(e) => e.stopPropagation()}
+                              onChange={(e) => {
+                                e.stopPropagation();
+                                handleStatusChange(p, e.target.value);
+                              }}
+                            >
+                              {PROJECT_STATUS_ORDER.map((status) => (
+                                <option key={status} value={status}>
+                                  {projectStatusLabel(status)}
+                                </option>
+                              ))}
+                            </select>
                             {p.isLost ? (
                               <span className={styles.dueBadge} style={{ marginLeft: 8 }}>
                                 Lost
@@ -773,7 +769,7 @@ export default function ProjectsIndexClient({
           onOpenChange={(open) => {
             if (!open) closeStatusConfirm();
           }}
-          title="Correct stage (admin)"
+          title="Correct stage"
           description={`Correct from ${PIPELINE_STAGE_LABELS[statusConfirm.current]} to ${statusConfirm.label}.`}
           actions={
             <>

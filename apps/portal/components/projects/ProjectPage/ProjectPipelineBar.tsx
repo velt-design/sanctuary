@@ -9,7 +9,6 @@ import {
   stageKeyToStatus,
 } from '@/lib/projects/pipelineDefinition';
 import { correctProjectStage } from '@/lib/repo/projectsRepo';
-import { usePortalSession } from '@/components/auth/PortalAuthProvider';
 import { useToast } from '@/components/ui/toast/ToastProvider';
 import { useQueryClient } from '@tanstack/react-query';
 import { PIPELINE_MODAL_ACTION_CLASSES, PipelineModal } from '@/components/ui/PipelineModal';
@@ -35,8 +34,6 @@ export default function ProjectPipelineBar({
   compact?: boolean;
 }) {
   const toast = useToast();
-  const { role } = usePortalSession();
-  const isAdmin = role === 'admin';
   const queryClient = useQueryClient();
   const hostKey = supabaseHostFromUrl(supabaseRuntimeUrl()) || 'unknown';
 
@@ -108,7 +105,7 @@ export default function ProjectPipelineBar({
       stage={stage}
       compact={compact}
       disabled={busy}
-      onRequestChange={isAdmin ? handleRequestChange : undefined}
+      onRequestChange={handleRequestChange}
     />
   );
 
@@ -135,7 +132,7 @@ export default function ProjectPipelineBar({
               setReason('');
             }
           }}
-          title="Correct stage (admin)"
+          title="Correct stage"
           description={`Correct from ${currentLabel} to ${confirm.label}.`}
           actions={
             <>

@@ -1,4 +1,4 @@
-import { jsonError, jsonOk, requireAdminContext } from '@/lib/api/adminApi';
+import { jsonError, jsonOk, requireStaffContext } from '@/lib/api/staffApi';
 import { PIPELINE_STAGES, STAGE_TASKS, type PipelineStageKey, type TaskKey } from '@/lib/projects/pipelineDefinition';
 import { uuidFromAppId } from '@/lib/supabase/mappers';
 
@@ -41,7 +41,7 @@ async function parseOptionalJson(req: Request): Promise<any> {
 }
 
 export async function POST(req: Request, ctx: { params: Promise<{ projectId: string }> }) {
-  const auth = await requireAdminContext();
+  const auth = await requireStaffContext();
   if (!auth.ok) return auth.response;
   const supabase = auth.supabase;
 
