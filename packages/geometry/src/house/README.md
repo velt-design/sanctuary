@@ -33,8 +33,8 @@ When extracting helpers as part of this decomposition pass, **copy the body byte
 | `roofPrimary.ts` | Primary house roof orchestrator: `buildPrimaryHouseRoof` and per-form builders (`buildFlatHouseRoof`, `buildMonoHouseRoof`, etc). | pending |
 | `roofAppendages.ts` | Appendage band + support derivation + shared roof builder: `buildHouseRoofAppendageBand`, `buildSharedHouseRoof`, `deriveHouseRoofAppendageSupportFromPrimaryRoof`, plus `buildAppendageSupportAnalysisFromPerimeterEdges`, the `attachmentSideFromPerimeterEdge` helper, and the public types `HouseRoofAppendageHostRun` + `HouseRoofAppendageSupportAnalysis`. | ✅ shipped |
 | `roofSolids.ts` | Render mesh + solid adjacency: `buildVerticalPrismRenderMesh`, `boundaryZRange`, `buildMiteredStripFootprints`, `buildMiteredOffsetStripFootprints`, `buildRoofSolidAdjacency`, `buildRoofSolidBottomEdge`, `buildRoofSolidRenderMesh`, `polygonAveragePoint3D`, `cleanPolygon3D`, `clipPolygon3DByScalar`, `roofPlaneTopNormal`, plus polygon triangulation helpers and the `RoofSolid*` types. | ✅ shipped |
-| `roofFlashings.ts` | Roof feature + perimeter flashings: `buildHouseRoofFeatureFlashings`, `buildPerimeterFlashings`, related wing builders. | pending |
-| `roofMaterial.ts` | Roof material visuals: `buildHouseRoofMaterialVisualForPlane`, `buildHouseRoofMaterialVisuals`. | pending |
+| `roofFlashings.ts` | Roof feature + perimeter flashings: `buildHouseRoofFeatureFlashings`, `buildPerimeterFlashings`, plus the wing builders (`buildHouseRoofFeatureFlashingWing`, `buildPerimeterRoofFlashingWing`, `buildPerimeterReturnFlashingWing`), `attachmentTargetPlane`, and `isPerimeterFlashingEdge`. | ✅ shipped |
+| `roofMaterial.ts` | Roof material visuals: `buildHouseRoofMaterialVisualForPlane`, `buildHouseRoofMaterialVisuals`, plus the projection / clipping helpers (`houseRoofMaterialSettings`, `clipHouseRoofMaterialLine`, `worldHouseRoofMaterialPoint`, etc.). | ✅ shipped |
 | `decks.ts` | Deck composition: `buildHouseDecks`, `resolveHouseDeckBoundary`, `resolvePresetDeckBoundary`, `resolveDeckHostWallSegment`, related helpers. | pending |
 | `openings.ts` | Opening composition: `buildHouseOpenings`. | ✅ shipped |
 | `roofFrames.ts` | Open-gable frame features + related: `buildOpenGableFrameFeatures`, `houseWallIsOpenGableFrame`. | pending |
@@ -71,6 +71,8 @@ Order matters because some files depend on others. Recommended sequence:
 18. ✅ `roofPrimary.ts` (per-form roof orchestrators)
 19. ✅ `roofAppendages.ts` (appendage band + shared roof + support derivation)
 20. ✅ `roofSolids.ts` (render mesh + solid adjacency)
+21. ✅ `roofFlashings.ts` (roof feature + perimeter flashings)
+22. ✅ `roofMaterial.ts` (roof material visuals)
 10. `roofPrimary.ts`
 11. `roofAppendages.ts`
 12. `roofMaterial.ts`
