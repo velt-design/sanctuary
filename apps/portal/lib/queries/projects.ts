@@ -9,7 +9,7 @@ export type ProjectTooltipSummary = {
   roofStyleLabel: 'Pitched' | 'Gable' | 'Hip' | 'Box' | 'Multiple Modules' | null;
   materialLabel: 'Acrylic' | 'Timber' | 'Both' | null;
   totalCents: number | null;
-  source: 'quote' | 'estimate' | 'none';
+  source: 'quote' | 'none';
 };
 
 const ONE_DAY = 1000 * 60 * 60 * 24;

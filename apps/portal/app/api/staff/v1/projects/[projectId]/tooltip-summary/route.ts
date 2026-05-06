@@ -72,55 +72,62 @@ export async function GET(_req: Request, ctx: { params: Promise<{ projectId: str
   }
 
   let totalCents: number | null = null;
-  let source: 'quote' | 'estimate' | 'none' = 'none';
+  let source: 'quote' | 'none' = 'none';
   let modules: unknown[] = [];
+  let quoteEstimateUuid: string | null = null;
 
-  const acceptedRes = await supabase
-    .from('quote_versions')
-    .select('id, total_inc_gst_cents, source_estimate_version_id, created_at, quotes!inner(project_id)')
-    .eq('status', 'ACCEPTED')
-    .eq('quotes.project_id', projectUuid)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  // Customer-facing price lives on quote_versions.total_inc_gst_cents only.
+  // Estimate.outputs.totals.cost_inc_gst is the cost, not the customer total —
+  // do not fall back to it for the tooltip's headline price.
+  // Cascade by status priority: accepted > sent > draft.
+  async function pickQuoteVersion(status: string) {
+    return supabase
+      .from('quote_versions')
+      .select('id, status, total_inc_gst_cents, source_estimate_version_id, created_at, quotes!inner(project_id)')
+      .eq('status', status)
+      .eq('quotes.project_id', projectUuid)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+  }
 
-  let acceptedEstimateUuid: string | null = null;
-  if (!acceptedRes.error && acceptedRes.data) {
-    const row = acceptedRes.data as { total_inc_gst_cents?: number | null; source_estimate_version_id?: string | null };
-    const cents = Number(row.total_inc_gst_cents ?? 0);
-    if (Number.isFinite(cents) && cents > 0) {
-      totalCents = Math.round(cents);
-      source = 'quote';
-    }
-    if (typeof row.source_estimate_version_id === 'string' && row.source_estimate_version_id) {
-      acceptedEstimateUuid = row.source_estimate_version_id;
+  for (const status of ['ACCEPTED', 'SENT', 'DRAFT']) {
+    const res = await pickQuoteVersion(status);
+    if (!res.error && res.data) {
+      const row = res.data as { total_inc_gst_cents?: number | null; source_estimate_version_id?: string | null };
+      const cents = Number(row.total_inc_gst_cents ?? 0);
+      if (Number.isFinite(cents) && cents > 0) {
+        totalCents = Math.round(cents);
+        source = 'quote';
+      }
+      if (typeof row.source_estimate_version_id === 'string' && row.source_estimate_version_id) {
+        quoteEstimateUuid = row.source_estimate_version_id;
+      }
+      break;
     }
   }
 
-  if (acceptedEstimateUuid) {
-    const estRes = await supabase.from('estimates').select('inputs').eq('id', acceptedEstimateUuid).maybeSingle();
+  if (quoteEstimateUuid) {
+    const estRes = await supabase.from('estimates').select('inputs').eq('id', quoteEstimateUuid).maybeSingle();
     if (!estRes.error && estRes.data) {
       modules = modulesFromEstimateRow(estRes.data);
     }
   }
 
+  // Modules-only fallback: if we don't have a quote-linked estimate, pull modules
+  // from the latest project estimate so the tooltip can still show roof style /
+  // material. We deliberately do NOT use this estimate to compute totalCents —
+  // estimates only carry cost, not the customer price.
   if (!modules.length) {
     const latestRes = await supabase
       .from('estimates')
-      .select('inputs, outputs, created_at')
+      .select('inputs, created_at')
       .eq('project_id', projectUuid)
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();
     if (!latestRes.error && latestRes.data) {
       modules = modulesFromEstimateRow(latestRes.data);
-      if (totalCents === null) {
-        const inc = Number(((latestRes.data as { outputs?: { totals?: { cost_inc_gst?: unknown } } }).outputs?.totals?.cost_inc_gst) ?? 0);
-        if (Number.isFinite(inc) && inc > 0) {
-          totalCents = Math.round(inc * 100);
-          source = 'estimate';
-        }
-      }
     }
   }
 
