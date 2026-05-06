@@ -480,8 +480,30 @@ export default function DesignWorkbenchEstimateClient({
                     });
                     return;
                   }
-                  // TODO(edge-drag): pergolas write nextPolygon to assembly outline source;
-                  // decks write to deck.boundary; openings deferred (no canonical polygon yet).
+                  if (commit.family === 'pergolas') {
+                    // Phase 2 free-floating-objects (Slice C): on first pergola edge-drag,
+                    // write a per-object world position derived from the dragged outline.
+                    // Origin = polygon[0] (mm); rotation = angle of polygon[0]→polygon[1].
+                    // This makes the pergola free-floating: it sits at the dragged location
+                    // and stops following house-footprint edits.
+                    const pergolaId =
+                      store.ui.activeObjectRef.family === 'pergolas'
+                        ? store.ui.activeObjectRef.objectId
+                        : null;
+                    const v0 = commit.nextPolygon[0];
+                    const v1 = commit.nextPolygon[1];
+                    if (!pergolaId || !v0 || !v1) return;
+                    const rotationRad = Math.atan2(v1.y - v0.y, v1.x - v0.x);
+                    const rotationDeg = (rotationRad * 180) / Math.PI;
+                    void objectWorkbenchActions.commitSharedPergolaPosition(pergolaId, {
+                      originXMm: v0.x,
+                      originYMm: v0.y,
+                      rotationDeg,
+                    });
+                    return;
+                  }
+                  // TODO(edge-drag): decks write to deck.boundary;
+                  // openings deferred (no canonical polygon yet).
                   // eslint-disable-next-line no-console
                   console.warn('[edge-drag] outline edit not yet wired for family:', commit.family, commit);
                 }

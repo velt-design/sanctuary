@@ -837,6 +837,39 @@ export function useObjectWorkbenchActions({
     [commitSharedHouseOpeningPatch],
   );
 
+  /**
+   * Phase 2 free-floating-objects (Slice C): write a per-object world position
+   * onto the pergola. Once set, geometry treats the pergola as free-floating —
+   * it ignores the connection-driven datum and sits at this position regardless
+   * of subsequent house-footprint edits.
+   *
+   * Position values are millimetres (string-encoded for parity with the rest
+   * of the persisted draft).
+   */
+  const commitSharedPergolaPosition = useCallback(
+    async (
+      pergolaId: string,
+      position: { originXMm: number; originYMm: number; rotationDeg: number },
+    ): Promise<CommitResult> => {
+      const currentPergola =
+        store.derived.objectWorkbench.pergolas.find((pergola) => pergola.id === pergolaId) ?? null;
+      if (!currentPergola) {
+        return { ok: false, error: 'This pergola is no longer available.' };
+      }
+      return commitObjectWorkbenchPatch({
+        target: { family: 'pergolas', objectId: pergolaId },
+        patch: {
+          position: {
+            originXMm: String(Math.round(position.originXMm)),
+            originYMm: String(Math.round(position.originYMm)),
+            rotationDeg: String(position.rotationDeg),
+          },
+        },
+      });
+    },
+    [commitObjectWorkbenchPatch, store.derived.objectWorkbench.pergolas],
+  );
+
   return {
     addSharedHouseDeck,
     addSharedHouseOpening,
@@ -849,6 +882,7 @@ export function useObjectWorkbenchActions({
     commitSharedPergolaAttachmentStrategy,
     commitSharedPergolaAttachmentZone,
     commitSharedPergolaConnectionKind,
+    commitSharedPergolaPosition,
     commitSharedDeckCustomPolygon,
     commitSharedHouseDeckPatch,
     commitSharedHouseFootprintEdit,

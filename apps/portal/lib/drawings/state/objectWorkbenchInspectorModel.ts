@@ -14,6 +14,7 @@ import type {
   ObjectFirstWorkbenchProjectModel,
   ObjectFirstPergolaConnectionKind,
   ObjectFirstPergolaGeometryDraft,
+  ObjectFirstPergolaPosition,
   OpeningObjectModel,
   PergolaObjectModel,
   WorkbenchObjectRef,
@@ -84,6 +85,9 @@ export type ObjectWorkbenchPergolaPatch = Partial<
 > & {
   connectionKind?: ObjectFirstPergolaConnectionKind | null;
   geometry?: ObjectFirstPergolaGeometryDraft | null;
+  /** Phase 2 free-floating-objects: setting `position` makes the pergola sit at
+   *  a fixed world location regardless of `connection.type` + house attachment. */
+  position?: ObjectFirstPergolaPosition | null;
 };
 
 export type {

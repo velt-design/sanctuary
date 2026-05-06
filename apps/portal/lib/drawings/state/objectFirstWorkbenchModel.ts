@@ -280,6 +280,22 @@ export type OpeningObjectModel = {
   } | null;
 };
 
+/**
+ * Per-object world position for a pergola. When set, geometry treats the pergola
+ * as free-floating: the datum origin + axes come from this field instead of
+ * being derived from `connection.type` + the house attachment edge.
+ *
+ * Phase 2 of the free-floating-objects migration. Stored as strings to match
+ * the rest of the persisted draft shape (the normalizer parses to numbers).
+ *
+ * See docs/design-workbench-architecture.md.
+ */
+export type ObjectFirstPergolaPosition = {
+  originXMm: string;
+  originYMm: string;
+  rotationDeg: string;
+};
+
 export type PergolaObjectModel = {
   id: string;
   label: string;
@@ -290,6 +306,7 @@ export type PergolaObjectModel = {
   side: NonNullable<CalculatorModuleInputs['attachmentSide']>;
   strategy: CalculatorHouseAttachmentStrategy | null;
   geometry?: ObjectFirstPergolaGeometryDraft | null;
+  position?: ObjectFirstPergolaPosition | null;
 };
 
 export type HouseAssemblyModel = {
@@ -388,6 +405,7 @@ export type ObjectFirstPergolaDraft = {
   side: NonNullable<CalculatorModuleInputs['attachmentSide']>;
   strategy: CalculatorHouseAttachmentStrategy | null;
   geometry?: ObjectFirstPergolaGeometryDraft | null;
+  position?: ObjectFirstPergolaPosition | null;
 };
 
 export type ObjectFirstPergolaConnectionKind = 'freestanding' | 'soffit' | 'fascia' | 'wall';
@@ -828,12 +846,27 @@ function normalizeObjectFirstPergolaGeometryDraft(
   return Object.keys(result).length ? result : null;
 }
 
+function normalizeObjectFirstPergolaPosition(
+  value: Partial<ObjectFirstPergolaPosition> | null | undefined,
+): ObjectFirstPergolaPosition | null {
+  if (!value) return null;
+  const originXMm = trimNullableString(value.originXMm);
+  const originYMm = trimNullableString(value.originYMm);
+  if (originXMm === null || originYMm === null) return null;
+  return {
+    originXMm,
+    originYMm,
+    rotationDeg: trimNullableString(value.rotationDeg) ?? '0',
+  };
+}
+
 export function normalizeObjectFirstPergolaDraft(
   value: Partial<ObjectFirstPergolaDraft> | null | undefined,
 ): ObjectFirstPergolaDraft | null {
   const id = normalizeStableId(value?.id);
   if (!id) return null;
   const geometry = normalizeObjectFirstPergolaGeometryDraft(value?.geometry);
+  const position = normalizeObjectFirstPergolaPosition(value?.position ?? null);
 
   return {
     id,
@@ -847,6 +880,7 @@ export function normalizeObjectFirstPergolaDraft(
     side: normalizeAttachmentSide(value?.side),
     strategy: isCalculatorHouseAttachmentStrategy(value?.strategy) ? value.strategy : null,
     ...(geometry ? { geometry } : null),
+    ...(position ? { position } : null),
   };
 }
 

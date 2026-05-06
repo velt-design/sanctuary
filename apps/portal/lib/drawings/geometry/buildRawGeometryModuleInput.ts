@@ -228,6 +228,25 @@ function isAttachmentSide(value: unknown): value is AttachmentSide {
   return value === 'rear' || value === 'front' || value === 'left' || value === 'right';
 }
 
+/**
+ * Map a pergola's per-object world position (Phase 2 free-floating-objects) to
+ * the geometry module input. When the pergola has a `position` set, geometry
+ * will treat it as free-floating and ignore the connection-driven datum. When
+ * unset, the field is null and geometry falls back to the existing rigid path.
+ */
+function resolvePergolaPosition(
+  pergola: PergolaObjectModel | null,
+): RawGeometryModuleInput['position'] {
+  if (!pergola?.position) return null;
+  return {
+    origin: {
+      x: pergola.position.originXMm,
+      y: pergola.position.originYMm,
+    },
+    rotationDeg: pergola.position.rotationDeg,
+  };
+}
+
 function resolvePergolaForModule(input: {
   projectModel: WorkbenchProjectModel;
   module: CalculatorModuleInputs;
@@ -445,6 +464,9 @@ export function buildRawGeometryModuleInput(input: {
   const projectModel = objectWorkbenchGeometryContext?.projectModel ?? null;
   const houseForm = selectHouseForm({ projectModel, module, moduleId });
   const roofIntent = houseForm?.roofIntent ?? null;
+  const pergola = projectModel
+    ? resolvePergolaForModule({ projectModel, module, moduleId })
+    : null;
 
   return {
     projectId,
@@ -477,6 +499,7 @@ export function buildRawGeometryModuleInput(input: {
       houseConnectionType: module.houseConnectionType,
       attachmentSide: resolveAttachmentSide(module),
     },
+    position: resolvePergolaPosition(pergola),
     supports: {
       postMode: 'standard',
       postCount: module.postCount,
