@@ -29,6 +29,7 @@ When extracting helpers as part of this decomposition pass, **copy the body byte
 | `roofJoinedGableTerminals.ts` | Gable terminal subsystem: `deriveHouseFootprintOpenSide`, `intersectTerminalRayWithFootprint`, `deriveBentSpineTerminalIntersectionsX`, `buildBentSpineGableTerminalEndsX`, `deriveBentSpineTerminalGableClosures`, `applyBentSpineTerminalGableClosures`, plus the legacy + ray-detail helpers. | ✅ shipped |
 | `roofJoined.ts` | Joined gable + complex builders: `buildLegacyJoinedRectilinearGableRoof`, `buildBentSpineJoinedGableRoofX`, `buildJoinedRectilinearGableRoof`, `buildComplexFootprintRoof`, plus reflect/swap helpers (`reflectRoofBuildResultAcrossX`, `swapRoofBuildResultAxes`) and the public `deriveHouseGableTerminalEndsFromFootprint`. | ✅ shipped |
 | `roofQa.ts` | Roof-validation subsystem: `applyRoofQa`, `validateHouseRoofQa`, plus internal helpers and `RoofQa*` types/constants. Validates roof plane finiteness, plan-area, eave-containment, and area parity. | ✅ shipped |
+| `roofPrimary.ts` | Per-form roof orchestrators: `buildPrimaryHouseRoof`, plus the per-form builders `buildFlatHouseRoof`, `buildMonoHouseRoof`, `buildRectangularGableRoof`, `buildGabledHouseRoof`, `buildHippedHouseRoof`, and the failure helper `invalidHouseRoof`. Wraps each result through `applyRoofQa`. | ✅ shipped |
 | `roofPrimary.ts` | Primary house roof orchestrator: `buildPrimaryHouseRoof` and per-form builders (`buildFlatHouseRoof`, `buildMonoHouseRoof`, etc). | pending |
 | `roofAppendages.ts` | Appendage band + support derivation + shared roof builder: `buildHouseRoofAppendageBand`, `buildSharedHouseRoof`, `deriveHouseRoofAppendageSupportFromPrimaryRoof`. | pending |
 | `roofSolids.ts` | Render mesh + solid adjacency: `buildVerticalPrismRenderMesh`, `buildMiteredOffsetStripFootprints`, `buildRoofSolidAdjacency`, `buildRoofSolidBottomEdge`, `buildRoofSolidRenderMesh`. | pending |
@@ -67,6 +68,7 @@ Order matters because some files depend on others. Recommended sequence:
 15. ✅ `roofJoinedGableTerminals.ts` (gable terminal/bent-spine subsystem)
 16. ✅ `roofJoined.ts` (joined gable + complex builders + reflect/swap helpers) — joined-roof family complete
 17. ✅ `roofQa.ts` (roof QA validators — prerequisite for `roofPrimary.ts`)
+18. ✅ `roofPrimary.ts` (per-form roof orchestrators)
 10. `roofPrimary.ts`
 11. `roofAppendages.ts`
 12. `roofMaterial.ts`
