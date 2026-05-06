@@ -101,12 +101,24 @@ export default function PlanViewport({
     return { id: candidate.id, family: af, polygon: candidate.polygon };
   }, []);
 
+  // Hold the SelectTool in a ref so EdgeDragTool's fall-through can hand off
+  // pointer-down events to it without forcing EdgeDragTool re-creation when
+  // the SelectTool callback identities change.
+  const selectToolRef = useRef(selectTool);
+  selectToolRef.current = selectTool;
+
   const edgeDragTool = useMemo(
     () =>
       createEdgeDragTool({
         getActiveOutline,
         onPreviewChange: setEdgeDragPreview,
         onCommit: (commit) => onCommitOutlineEditRef.current?.(commit),
+        // When a click misses the active outline's edges, hand the pointer event
+        // to the SelectTool so the user can switch selection by clicking on a
+        // different object in the plan view (matching left-nav behaviour).
+        onPointerDownFallthrough: (event) => {
+          selectToolRef.current.onPointerDown?.(event);
+        },
       }),
     [getActiveOutline],
   );

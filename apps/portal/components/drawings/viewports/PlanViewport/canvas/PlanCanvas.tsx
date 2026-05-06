@@ -2,6 +2,7 @@
 
 import {
   useCallback,
+  useMemo,
   type PointerEvent as ReactPointerEvent,
 } from 'react';
 import type { PlanCoordinateAdapter } from '@/lib/drawings/views/plan/planCoordinateAdapter';
@@ -21,6 +22,7 @@ import type { PlanDimension } from './planDimension';
 import type { EdgeDragPreview } from '../tools/EdgeDragTool';
 import styles from './PlanCanvas.module.css';
 import type { PlanLayout } from './planLayout';
+import { filterPlanHitTargets } from './planHitTargetFilter';
 import type { PlanRenderItem } from './planRenderItem';
 
 const IDENTITY_TRANSFORM: DrawingWorkbenchViewportTransform = { zoom: 1, panX: 0, panY: 0 };
@@ -61,6 +63,7 @@ export function PlanCanvas({
   const dispatcher = useToolDispatcher();
   const { hoveredShape, onShapeEnter, onShapeLeave } = useHoveredShape();
   const panZoom = usePanZoom({ transform, onTransformChange });
+  const hitTargetItems = useMemo(() => filterPlanHitTargets(committedBodies), [committedBodies]);
 
   const dispatchPlanPointer = useCallback(
     (kind: 'down' | 'move' | 'up', event: ReactPointerEvent<Element>, shape: Parameters<typeof dispatcher.dispatchPointerDown>[0]['shape']) => {
@@ -163,7 +166,7 @@ export function PlanCanvas({
           <PlanDetailLayer items={detailLines} />
           <PlanSelectionHaloLayer items={selectionHaloItems} />
           <PlanHitTargetLayer
-            items={committedBodies}
+            items={hitTargetItems}
             onShapePointerDown={(shape, event) => dispatchPlanPointer('down', event, shape)}
             onShapeEnter={onShapeEnter}
             onShapeLeave={onShapeLeave}

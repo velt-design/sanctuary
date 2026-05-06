@@ -1,4 +1,5 @@
 import type {
+  AssemblyPosition,
   AttachmentSide,
   AssemblyMemberProfile,
   BoxGutterMode,
@@ -408,6 +409,57 @@ function resolveOptionalCount(value: string | number | null | undefined): number
   return parseNonNegativeInteger(value);
 }
 
+function resolveOptionalAssemblyPosition(
+  raw: RawGeometryModuleInput['position'],
+): AssemblyPosition | null {
+  if (!raw) return null;
+  const x = resolveOptionalMillimetres(raw.origin?.x);
+  const y = resolveOptionalMillimetres(raw.origin?.y);
+  const rotationDeg = resolveOptionalDegrees(raw.rotationDeg);
+  if (x === null || y === null) return null;
+  return {
+    origin: { x, y },
+    rotationDeg: rotationDeg ?? 0,
+  };
+}
+
+/**
+ * Compose the pergola datum frame from an `AssemblyPosition`. This is the
+ * Phase 2 hook that makes a pergola free-floating: when `position` is set, the
+ * datum origin and axes come from `position.origin` + `position.rotationDeg`
+ * instead of the default world-aligned frame at the origin.
+ *
+ * Mathematical contract:
+ *   - origin = (position.origin.x, position.origin.y, 0)
+ *   - xAxis = world-X rotated by `rotationDeg` around +Z
+ *   - yAxis = world-Y rotated by `rotationDeg` around +Z
+ *   - zAxis = (0, 0, 1) — always world-up
+ *   - attachmentEdge endpoints are local pergola coords (0,0) → (length,0)
+ *     transformed by the same rotation + translation, so they stay valid in
+ *     world space.
+ */
+function composeDatumFromPosition(
+  position: AssemblyPosition,
+  pergolaLengthMm: number,
+): GeometryConfig['datum'] {
+  const radians = (position.rotationDeg * Math.PI) / 180;
+  const cos = Math.cos(radians);
+  const sin = Math.sin(radians);
+  const transform = (localX: number, localY: number) => ({
+    x: position.origin.x + cos * localX - sin * localY,
+    y: position.origin.y + sin * localX + cos * localY,
+    z: 0,
+  });
+  return {
+    origin: { x: position.origin.x, y: position.origin.y, z: 0 },
+    xAxis: { x: cos, y: sin, z: 0 },
+    yAxis: { x: -sin, y: cos, z: 0 },
+    zAxis: { x: 0, y: 0, z: 1 },
+    attachmentEdgeStart: transform(0, 0),
+    attachmentEdgeEnd: transform(pergolaLengthMm, 0),
+  };
+}
+
 function resolveFootprintPreset(value: HouseFootprintPreset | null | undefined): HouseFootprintPreset {
   if (
     value === 'l_left' ||
@@ -753,16 +805,22 @@ export function normalizeGeometryConfig(input: RawGeometryModuleInput): Normaliz
     { x: 0, y: 0, z: 1 },
   );
 
+  const position = resolveOptionalAssemblyPosition(input.position);
+  const datumFrame: GeometryConfig['datum'] = position
+    ? composeDatumFromPosition(position, length.value)
+    : {
+        ...datum,
+        attachmentEdgeStart: { x: 0, y: 0, z: 0 },
+        attachmentEdgeEnd: { x: length.value, y: 0, z: 0 },
+      };
+
   return ok({
     projectId: input.projectId,
     estimateId: input.estimateId,
     designRequestId: input.designRequestId ?? null,
     family,
-    datum: {
-      ...datum,
-      attachmentEdgeStart: { x: 0, y: 0, z: 0 },
-      attachmentEdgeEnd: { x: length.value, y: 0, z: 0 },
-    },
+    datum: datumFrame,
+    position,
     dimensions: {
       lengthMm: length.value,
       projectionMm: projection.value,

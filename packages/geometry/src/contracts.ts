@@ -80,6 +80,22 @@ export type DatumFrame3 = {
  */
 export type PergolaFamily = "mono" | "gable" | "box" | "hip" | "hip_corner";
 
+/**
+ * Pergola world-space position. When set, downstream consumers should prefer this
+ * over deriving placement from `connection.type` + house attachmentEdge.
+ *
+ * Phase 2 of the free-floating-objects migration introduces this field as a contract
+ * surface. Consumers (datum builder, snap engine) are wired in subsequent slices.
+ * See docs/design-workbench-architecture.md (section "Direction: Free-Floating
+ * Objects With Snap-Derived Connections").
+ */
+export type AssemblyPosition = {
+  /** World-space origin of the pergola on the ground plane (mm). */
+  origin: Point2;
+  /** Rotation around the +Z axis, in degrees. 0 = pergola length axis runs +X. */
+  rotationDeg: number;
+};
+
 export type RoofMaterial = "acrylic" | "insulated" | "timber" | "louvre";
 export type ConnectionType = "fascia" | "soffit" | "wall" | "freestanding";
 export type AttachmentSide = "left" | "right" | "rear" | "front";
@@ -354,6 +370,15 @@ export type RawGeometryModuleInput = {
     houseConnectionType: RawHouseConnectionType;
     attachmentSide?: AttachmentSide | null;
   };
+  /**
+   * Optional per-object world position. Phase 2 of the free-floating-objects
+   * migration. Currently passed through normalize and exposed on GeometryConfig
+   * but not yet consumed by solvers.
+   */
+  position?: {
+    origin?: { x?: string | number | null; y?: string | number | null } | null;
+    rotationDeg?: string | number | null;
+  } | null;
   supports: {
     postMode?: PostMode | null;
     postPositions?: Point3[] | null;
@@ -514,6 +539,13 @@ export type GeometryConfig = {
     attachmentEdgeStart: Point3;
     attachmentEdgeEnd: Point3;
   };
+  /**
+   * Optional per-object world position. When present, geometry consumers will
+   * eventually use this in preference to the connection-driven `datum`. Phase 2
+   * scaffolding — currently no solver consumes it; field is plumbed through
+   * normalize for downstream slices to wire up. See AssemblyPosition.
+   */
+  position?: AssemblyPosition | null;
   dimensions: {
     lengthMm: number;
     projectionMm: number;

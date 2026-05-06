@@ -35,6 +35,13 @@ export type EdgeDragToolConfig = {
   edgeHitToleranceMm?: number;
   onPreviewChange?: (preview: EdgeDragPreview | null) => void;
   onCommit?: (commit: EdgeDragCommit) => void;
+  /**
+   * Called when a pointer-down doesn't initiate an edge drag — either because
+   * there is no active outline or because the click is too far from any edge.
+   * The host wires this to the SelectTool so clicking on a different object in
+   * the plan view still routes to selection while EdgeDragTool is the active tool.
+   */
+  onPointerDownFallthrough?: (event: ToolPointerEvent) => void;
 };
 
 const DEFAULT_EDGE_HIT_TOLERANCE_MM = 500;
@@ -85,9 +92,15 @@ export function createEdgeDragTool(config: EdgeDragToolConfig): Tool {
     onPointerDown(event: ToolPointerEvent) {
       if (event.button !== 0) return;
       const outline = config.getActiveOutline();
-      if (!outline) return;
+      if (!outline) {
+        config.onPointerDownFallthrough?.(event);
+        return;
+      }
       const closest = findClosestPolygonEdge(outline.polygon, event.point);
-      if (!closest || closest.distanceMm > tolerance) return;
+      if (!closest || closest.distanceMm > tolerance) {
+        config.onPointerDownFallthrough?.(event);
+        return;
+      }
       session = {
         outline,
         edgeIndex: closest.edgeIndex,

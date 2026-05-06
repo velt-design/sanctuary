@@ -38,7 +38,7 @@ When extracting helpers as part of this decomposition pass, **copy the body byte
 | `decks.ts` | Deck composition: `buildHouseDecks`, `resolveHouseDeckBoundary`, `resolvePresetDeckBoundary`, `resolveDeckHostWallSegment`, plus the wall-side helpers `resolveOutwardUnit2D`, `attachmentSideFromWallLine`, `isAttachmentSide`. | ✅ shipped |
 | `openings.ts` | Opening composition: `buildHouseOpenings`. | ✅ shipped |
 | `roofFrames.ts` | Open-gable frame features + related: `buildOpenGableFrameFeatures`, `houseWallIsOpenGableFrame`. | ✅ shipped |
-| `envelopeSolids.ts` | Envelope-solid orchestrator: `buildHouseEnvelopeSolids` and its helpers. | pending |
+| `envelopeSolids.ts` | Envelope-solid orchestrator: `buildHouseEnvelopeSolids`, plus the mono-perimeter classification helpers. | ✅ shipped |
 | `attachment.ts` | Attachment target + zone boundary + semantic attachment edge: `buildAttachmentTarget`, `buildZoneBoundary`, `buildSemanticHouseAttachmentEdge`, `buildAttachmentAwareMonoEavePolygon`, `sourceEdgeIndexFromId`, plus the wall-segment / projection helpers. | ✅ shipped |
 
 After all splits land, `packages/geometry/src/houseModel.ts` becomes a slim orchestrator (~500 lines max) that composes the above:
@@ -76,6 +76,8 @@ Order matters because some files depend on others. Recommended sequence:
 23. ✅ `decks.ts` (deck composition)
 24. ✅ `roofFrames.ts` (open-gable frame features)
 25. ✅ `attachment.ts` (attachment target + zone boundary + semantic attachment edge)
+26. ✅ `envelopeSolids.ts` (envelope-solid orchestrator)
+27. **Final pass**: `houseModel.ts` is now ~690 lines — slim orchestrator + public entry points (`buildHouseModel3D`, `buildHouseReferenceGeometry`, `deriveHouseRoofAppendageSupportFromFootprint`).
 10. `roofPrimary.ts`
 11. `roofAppendages.ts`
 12. `roofMaterial.ts`

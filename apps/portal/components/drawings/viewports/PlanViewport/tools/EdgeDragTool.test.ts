@@ -133,4 +133,42 @@ describe('EdgeDragTool', () => {
     tool.onCancel!();
     expect(onPreviewChange).toHaveBeenCalledWith(null);
   });
+
+  describe('onPointerDownFallthrough', () => {
+    it('fires when there is no active outline', () => {
+      const onPointerDownFallthrough = vi.fn();
+      const tool = createEdgeDragTool({
+        getActiveOutline: () => null,
+        onPointerDownFallthrough,
+      });
+      const event = basicEvent({ x: 100, y: 100 });
+      tool.onPointerDown!(event);
+      expect(onPointerDownFallthrough).toHaveBeenCalledWith(event);
+    });
+
+    it('fires when the click is beyond the edge hit tolerance', () => {
+      const onPointerDownFallthrough = vi.fn();
+      const onPreviewChange = vi.fn();
+      const tool = createEdgeDragTool({
+        getActiveOutline: () => RECT_OUTLINE,
+        edgeHitToleranceMm: 50,
+        onPreviewChange,
+        onPointerDownFallthrough,
+      });
+      const event = basicEvent({ x: 4200, y: 1000 });
+      tool.onPointerDown!(event);
+      expect(onPreviewChange).not.toHaveBeenCalled();
+      expect(onPointerDownFallthrough).toHaveBeenCalledWith(event);
+    });
+
+    it('does NOT fire when the click is within tolerance and the drag starts', () => {
+      const onPointerDownFallthrough = vi.fn();
+      const tool = createEdgeDragTool({
+        getActiveOutline: () => RECT_OUTLINE,
+        onPointerDownFallthrough,
+      });
+      tool.onPointerDown!(basicEvent({ x: 4100, y: 1000 }));
+      expect(onPointerDownFallthrough).not.toHaveBeenCalled();
+    });
+  });
 });
