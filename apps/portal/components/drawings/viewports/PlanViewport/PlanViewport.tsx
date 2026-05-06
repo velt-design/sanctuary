@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import type { WorkbenchSolvedGeometryArtifact } from '@/lib/drawings/state/workbenchSolvedModel';
 import type {
   DrawingWorkbenchViewportTransform,
@@ -74,32 +74,44 @@ export default function PlanViewport({
 
   const activeFamily = (activeObjectRef?.family ?? null) as ActiveObjectFamily | null;
 
+  // Hold renderModel + activeFamily + onCommitOutlineEdit in refs so that the EdgeDragTool's
+  // captured callbacks always read the latest values without forcing the tool to be re-created
+  // on every parent render. Re-creating the tool mid-drag would tear down its session.
+  const renderModelRef = useRef(renderModel);
+  renderModelRef.current = renderModel;
+  const activeFamilyRef = useRef(activeFamily);
+  activeFamilyRef.current = activeFamily;
+  const onCommitOutlineEditRef = useRef(onCommitOutlineEdit);
+  onCommitOutlineEditRef.current = onCommitOutlineEdit;
+
   const getActiveOutline = useCallback(() => {
-    if (!renderModel || !activeFamily) return null;
+    const rm = renderModelRef.current;
+    const af = activeFamilyRef.current;
+    if (!rm || !af) return null;
     const candidate = pickPrimaryEditCandidate(
-      renderModel.selectionHaloItems.map((item) => ({
+      rm.selectionHaloItems.map((item) => ({
         id: item.shape.id,
         polygon: item.shape.polygon,
         kind: item.shape.kind,
         isCanonicalOutline: item.shape.metadata?.isCanonicalOutline === true,
       })),
-      activeFamily,
+      af,
     );
     if (!candidate) return null;
-    return { id: candidate.id, family: activeFamily, polygon: candidate.polygon };
-  }, [activeFamily, renderModel]);
+    return { id: candidate.id, family: af, polygon: candidate.polygon };
+  }, []);
 
   const edgeDragTool = useMemo(
     () =>
       createEdgeDragTool({
         getActiveOutline,
         onPreviewChange: setEdgeDragPreview,
-        onCommit: onCommitOutlineEdit,
+        onCommit: (commit) => onCommitOutlineEditRef.current?.(commit),
       }),
-    [getActiveOutline, onCommitOutlineEdit],
+    [getActiveOutline],
   );
 
-  const hasEditableOutline = Boolean(getActiveOutline());
+  const hasEditableOutline = renderModel !== null && activeFamily !== null && getActiveOutline() !== null;
   const activeTool = hasEditableOutline ? edgeDragTool : selectTool;
 
   const mergedDimensions = usePlanSelectionDimensions({

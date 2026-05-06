@@ -6,6 +6,10 @@ The 2D plan editor. All workbench interactions belong here. The 3D viewport is r
 
 A polygon-first editor where each selectable object is one canonical outline polygon. Click an object → see its dimensions broken into editable sections → drag an edge perpendicular to resize → geometry regenerates dependents (walls, roofs, fascia).
 
+The longer-arc direction is **free-floating objects with snap-derived connections**: pergolas, decks, and house forms each store their own world position; `connection.type` becomes an OUTPUT derived from spatial alignment rather than an INPUT that drives placement. Openings remain rigidly attached to walls. See [`docs/design-workbench-architecture.md`](../../../../../../docs/design-workbench-architecture.md) — section "Direction: Free-Floating Objects With Snap-Derived Connections" — for the full migration plan and rationale.
+
+Until that migration completes, dragging a house footprint edge will move attached pergolas/decks per the current rigid attachment rules. That is expected behaviour, not a regression.
+
 ## Foundation contracts
 
 ### Canonical outline per object

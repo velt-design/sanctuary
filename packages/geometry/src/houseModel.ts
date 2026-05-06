@@ -5,7 +5,6 @@ import type {
   GeometryMetadata,
   HouseDeck3D,
   HouseDeckConfig,
-  HouseOpening3D,
   HouseAttachmentStrategy,
   HouseAttachmentTarget3D,
   HouseModel3D,
@@ -45,6 +44,7 @@ import {
   subtractPoints,
 } from './math3d';
 import { buildHouseSideAttachmentLine } from './footprints';
+import { buildHouseOpenings } from './house/openings';
 
 const WORLD_Z: Vector3 = { x: 0, y: 0, z: 1 };
 const DEFAULT_EAVE_HEIGHT_MM = 2400;
@@ -6803,54 +6803,6 @@ function resolveHouseDeckBoundary(input: {
   const presetBoundary = resolvePresetDeckBoundary(input);
   if (presetBoundary?.length) return presetBoundary;
   return outline && outline.length >= 3 ? outline : null;
-}
-
-function buildHouseOpenings(input: {
-  openings: NonNullable<HouseModel3D['openings']>;
-}): HouseOpening3D[] {
-  return input.openings
-    .flatMap((opening): HouseOpening3D[] => {
-      if (!opening?.id) return [];
-      if (
-        !Number.isFinite(opening.widthMm) ||
-        !Number.isFinite(opening.heightMm) ||
-        !Number.isFinite(opening.sillHeightMm) ||
-        !Number.isFinite(opening.offsetAlongWallMm)
-      ) {
-        return [];
-      }
-      const kind =
-        opening.kind === 'hinged_door' ||
-        opening.kind === 'slider' ||
-        opening.kind === 'stacker' ||
-        opening.kind === 'window'
-          ? opening.kind
-          : 'window';
-      return [{
-        ...opening,
-        kind,
-        panelCount:
-          kind === 'slider'
-            ? opening.panelCount === 3 || opening.panelCount === 4
-              ? opening.panelCount
-              : 2
-            : null,
-        wallId:
-          opening.wallId === 'front' ||
-          opening.wallId === 'left' ||
-          opening.wallId === 'right'
-            ? opening.wallId
-            : 'rear',
-        hostEdgeId: typeof opening.hostEdgeId === 'string' ? opening.hostEdgeId.trim() || null : null,
-        widthMm: Math.max(0, Math.round(opening.widthMm)),
-        heightMm: Math.max(0, Math.round(opening.heightMm)),
-        sillHeightMm: Math.max(0, Math.round(opening.sillHeightMm)),
-        offsetAlongWallMm: Math.max(0, Math.round(opening.offsetAlongWallMm)),
-        validationStatus: opening.validationStatus === 'invalid' ? 'invalid' : 'valid',
-        validationCodes: opening.validationCodes ?? [],
-        validationMessage: opening.validationMessage ?? null,
-      }];
-    });
 }
 
 function houseWallIsOpenGableFrame(

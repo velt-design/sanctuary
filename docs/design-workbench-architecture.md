@@ -142,6 +142,31 @@ Footprint editing and draw-outline lifecycles are interaction-owned. `footprintE
 Model Space navigation math is interaction/view-domain owned. `modelSpaceNavigationController` owns zoom clamping, anchored zoom, fit-view transforms, mouse pan, touch pinch, WebKit gesture scale, wheel gesture classification, and deck-drag navigation lock decisions. `ModelSpaceViewport` keeps browser event registration, refs, active touch bookkeeping, pointer capture, scroll anchoring, and viewport transform persistence.
 Legacy plan field resize math is interaction-owned. `planFieldResizeController` owns editable field lookup, resize start value resolution, SVG delta-to-metres conversion, clamping, and drawing field value formatting for `plan:lengthA` and `plan:spanA`; `ModelSpaceViewport` keeps refs, pointer listeners, hover/active state, field errors, and `onCommitField` persistence calls.
 
+## Direction: Free-Floating Objects With Snap-Derived Connections
+
+The current geometry model is **pergola-centric and rigidly coupled**: `Assembly3D` IS the pergola, the house is a reference, and `connection.type` ('soffit' | 'fascia' | 'freestanding') is an INPUT that drives where the pergola is placed relative to the house. When the house footprint changes, every dependent object (pergola, deck) is recomputed to maintain its connection — which means dragging a wall drags the pergola with it, and certain footprint edits cause the pergola to rotate or flip.
+
+This was the right model when the only inputs were parametric (`lengthM`, `projectionM`, attachment-side dropdown). It is the wrong model once edits become spatial — drag a polygon edge, snap to another object, free-move a deck.
+
+The intended target model is:
+
+- **Per-object world positions.** Pergolas, decks, and house forms each store their own world position (origin + rotation). House change does not move the pergola unless the user drags it.
+- **Connection state is OUTPUT, not INPUT.** The system DERIVES the connection ('soffit' | 'fascia' | 'freestanding') from spatial relationships at solve time — "is the pergola edge aligned with a house wall?" — instead of being told the connection upfront. The cost engine still reads the same `connection.type`-shaped value; it just gets it from a derived field.
+- **Snap is the mechanism by which connections are formed and broken.** During edge-drag or move, the snap engine produces candidate alignments. On commit, an alignment becomes a soft snap (position-only) that breaks freely on the next drag, or a hard constraint that holds across re-solves until explicit detach. v1 should ship with soft snaps only.
+- **Openings remain rigidly attached to walls.** They do not have a meaningful "freestanding" state. Everything else is free-floating with optional snaps.
+
+The implementation order is:
+
+1. Split `packages/geometry/src/houseModel.ts` (~7700 lines) into focused per-concern files (`house/footprint.ts`, `house/walls.ts`, `house/eave.ts`, `house/roof.ts`, `house/decks.ts`, `house/openings.ts`, `house/solids.ts`). Pure refactor, no behavior change. This is a prerequisite — the existing house model is too large to safely refactor data shape inside.
+2. Introduce a per-object `position` field on pergola (and any other rigidly-positioned object). Geometry consumes `position` directly. `connection.type` becomes a derived field computed at solve time.
+3. Wire the existing `snapEngine.ts` (built but not yet consumed) into `EdgeDragTool` and a future move tool. Snap targets are other object outline edges.
+4. Update the cost engine to read the derived connection field. Should be transparent if the derived field shape matches the old `connection.type`.
+5. Add UI affordances: visual indicator for snapped edges, drag-to-detach gesture, inspector display of "snapped to wall A".
+
+This is a multi-slice migration across the geometry package, costing engine, persistence shape, and UI. Each phase should land independently with its own tests and a clear rollback boundary. Do not begin Phase 2 before Phase 1 is complete; do not assume the cost engine can absorb the change without explicit migration coverage.
+
+Until the migration completes, edge-drag of a house footprint will reposition attached pergolas/decks per the existing rigid rules. That is expected behaviour, not a regression.
+
 ## Drawing Persistence
 
 Design workbench persistence uses local-first working copies for estimate drawing drafts. Object-first data is stored inside the estimate drawing draft shape while compatibility loading remains explicit for older snapshots.

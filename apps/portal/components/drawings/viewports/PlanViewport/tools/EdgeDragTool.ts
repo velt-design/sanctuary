@@ -37,7 +37,7 @@ export type EdgeDragToolConfig = {
   onCommit?: (commit: EdgeDragCommit) => void;
 };
 
-const DEFAULT_EDGE_HIT_TOLERANCE_MM = 200;
+const DEFAULT_EDGE_HIT_TOLERANCE_MM = 500;
 
 type DragSession = {
   outline: EdgeDragOutline;
