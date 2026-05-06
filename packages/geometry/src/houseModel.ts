@@ -44,30 +44,80 @@ import {
   subtractPoints,
 } from './math3d';
 import { buildHouseSideAttachmentLine } from './footprints';
+import {
+  DEFAULT_DECK_SURFACE_THICKNESS_MM,
+  DEFAULT_EAVE_HEIGHT_MM,
+  DEFAULT_EAVE_OVERHANG_MM,
+  DEFAULT_FASCIA_HEIGHT_MM,
+  DEFAULT_FASCIA_SOLID_THICKNESS_MM,
+  DEFAULT_GUTTER_DEPTH_MM,
+  DEFAULT_GUTTER_PROJECTION_MM,
+  DEFAULT_GUTTER_WIDTH_MM,
+  DEFAULT_HOUSE_ROOF_FEATURE_FLASHING_GIRTH_MM,
+  DEFAULT_HOUSE_ROOF_FEATURE_FLASHING_SURFACE_OFFSET_MM,
+  DEFAULT_HOUSE_ROOF_FEATURE_FLASHING_THICKNESS_MM,
+  DEFAULT_HOUSE_ROOF_FEATURE_FLASHING_WING_MM,
+  DEFAULT_HOUSE_ROOF_MATERIAL,
+  DEFAULT_HOUSE_ROOF_MATERIAL_SURFACE_OFFSET_MM,
+  DEFAULT_ROOF_PITCH_DEG,
+  DEFAULT_ROOF_SOLID_THICKNESS_MM,
+  DEFAULT_SOFFIT_DEPTH_MM,
+  DEFAULT_SOFFIT_SOLID_THICKNESS_MM,
+  DEFAULT_WALL_SOLID_THICKNESS_MM,
+  RIDGE_COLLAPSE_EPSILON_MM,
+  ROOF_JOIN_EPSILON_MM,
+  WORLD_Z,
+} from './house/constants';
+import {
+  axisRange,
+  boundingBox,
+  clamp,
+  distanceSquared2,
+  finiteNumber,
+  finiteVectorLength,
+  line,
+  lineIntersection2,
+  lineIntersectionT2D,
+  midpoint2,
+  point,
+  pointInPolygon2D,
+  pointOnRoofSegment2D,
+  polygonCentroid2D,
+  positiveNumber,
+  rectangleCornersFromBox,
+  reflectPointAcrossX,
+  reflectVectorAcrossX,
+  signedAreaXY,
+  swapPointAxes,
+  swapVectorAxes,
+  uniqueSorted,
+  type BentSpineTerminalGableClosure,
+  type HouseRoofBuildResult,
+  type RoofPoint2,
+} from './house/_internal';
+import { buildWallSegments, wallBoundaryHasFlatTop } from './house/walls';
+import {
+  buildRoofPlane,
+  pointInOrOnRoofPolygon,
+  pointOnRoofPolygonBoundary,
+  roofFeatureHeightAtXY,
+  roofHeightAtXY,
+  roofPlaneEquationHeightAtXY,
+  roofPlaneHeightAtXY,
+  roofSolidPlaneEquationFromPlane,
+  type RoofSolidPlaneEquation,
+} from './house/roofPlane';
+import {
+  closestPointOnLineSegment2D,
+  clearanceToPolygon,
+  findInteriorRoofNode,
+  isOrthogonalFootprint,
+  isRectanglePolygon,
+  offsetFootprintPolygon,
+  polygonLineInterval,
+} from './house/footprintMath';
 import { buildHouseOpenings } from './house/openings';
 
-const WORLD_Z: Vector3 = { x: 0, y: 0, z: 1 };
-const DEFAULT_EAVE_HEIGHT_MM = 2400;
-const DEFAULT_ROOF_PITCH_DEG = 25;
-const DEFAULT_SOFFIT_DEPTH_MM = 450;
-const DEFAULT_FASCIA_HEIGHT_MM = 180;
-const DEFAULT_GUTTER_WIDTH_MM = 125;
-const DEFAULT_GUTTER_DEPTH_MM = 90;
-const DEFAULT_GUTTER_PROJECTION_MM = 125;
-const DEFAULT_EAVE_OVERHANG_MM = 450;
-const DEFAULT_WALL_SOLID_THICKNESS_MM = 90;
-const DEFAULT_ROOF_SOLID_THICKNESS_MM = 120;
-const DEFAULT_SOFFIT_SOLID_THICKNESS_MM = 10;
-const DEFAULT_FASCIA_SOLID_THICKNESS_MM = 18;
-const DEFAULT_HOUSE_ROOF_FEATURE_FLASHING_GIRTH_MM = 300;
-const DEFAULT_HOUSE_ROOF_FEATURE_FLASHING_WING_MM = 150;
-const DEFAULT_HOUSE_ROOF_FEATURE_FLASHING_THICKNESS_MM = 1;
-const DEFAULT_HOUSE_ROOF_FEATURE_FLASHING_SURFACE_OFFSET_MM =
-  DEFAULT_HOUSE_ROOF_FEATURE_FLASHING_THICKNESS_MM / 2;
-const DEFAULT_HOUSE_ROOF_MATERIAL: HouseRoofMaterial = 'corrugated_iron';
-const DEFAULT_HOUSE_ROOF_MATERIAL_SURFACE_OFFSET_MM = 2;
-const DEFAULT_DECK_SURFACE_THICKNESS_MM = 40;
-const RIDGE_COLLAPSE_EPSILON_MM = 1;
 
 type HouseGableTerminalEnd = {
   id: string;
@@ -81,554 +131,10 @@ type HouseGableTerminalIntersection = {
   point: Point3;
 };
 
-type BentSpineTerminalGableClosure = {
-  edgeIndex: number;
-  sourceEdgeId: string;
-  nodePoint: Point3;
-  point: Point3;
-  axis: 'x' | 'y';
-};
-
 type HouseFootprintOpenSide = {
   bridgeEdgeIndex: number;
   direction: { x: number; y: number };
 };
-
-function point(x: number, y: number, z: number): Point3 {
-  return { x, y, z };
-}
-
-function line(start: Point3, end: Point3): Line3 {
-  return { start, end };
-}
-
-function swapPointAxes(candidate: Point3): Point3 {
-  return { x: candidate.y, y: candidate.x, z: candidate.z };
-}
-
-function swapVectorAxes(candidate: Vector3): Vector3 {
-  return { x: candidate.y, y: candidate.x, z: candidate.z };
-}
-
-function reflectPointAcrossX(input: { candidate: Point3; centerX: number }): Point3 {
-  return {
-    x: input.centerX * 2 - input.candidate.x,
-    y: input.candidate.y,
-    z: input.candidate.z,
-  };
-}
-
-function reflectVectorAcrossX(candidate: Vector3): Vector3 {
-  return { x: -candidate.x, y: candidate.y, z: candidate.z };
-}
-
-function finiteNumber(value: number | null | undefined, fallback: number): number {
-  return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
-}
-
-function positiveNumber(value: number | null | undefined, fallback: number): number {
-  return Math.max(0, finiteNumber(value, fallback));
-}
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(Math.max(value, min), max);
-}
-
-function midpoint2(line3: Line3): { x: number; y: number } {
-  return {
-    x: (line3.start.x + line3.end.x) / 2,
-    y: (line3.start.y + line3.end.y) / 2,
-  };
-}
-
-function distanceSquared2(a: { x: number; y: number }, b: { x: number; y: number }): number {
-  return (a.x - b.x) ** 2 + (a.y - b.y) ** 2;
-}
-
-function boundingBox(footprint: Polygon3): {
-  minX: number;
-  maxX: number;
-  minY: number;
-  maxY: number;
-} {
-  return footprint.reduce(
-    (box, item) => ({
-      minX: Math.min(box.minX, item.x),
-      maxX: Math.max(box.maxX, item.x),
-      minY: Math.min(box.minY, item.y),
-      maxY: Math.max(box.maxY, item.y),
-    }),
-    {
-      minX: Number.POSITIVE_INFINITY,
-      maxX: Number.NEGATIVE_INFINITY,
-      minY: Number.POSITIVE_INFINITY,
-      maxY: Number.NEGATIVE_INFINITY,
-    },
-  );
-}
-
-function axisRange(
-  polygon: Polygon3,
-  axis: 'x' | 'y',
-): { min: number; max: number; span: number } {
-  const values = polygon.map((candidate) => (axis === 'x' ? candidate.x : candidate.y));
-  const min = Math.min(...values);
-  const max = Math.max(...values);
-  return { min, max, span: Math.max(0, max - min) };
-}
-
-function rectangleCornersFromBox(box: {
-  minX: number;
-  maxX: number;
-  minY: number;
-  maxY: number;
-}): { minXMinY: Point3; maxXMinY: Point3; maxXMaxY: Point3; minXMaxY: Point3 } {
-  return {
-    minXMinY: point(box.minX, box.minY, 0),
-    maxXMinY: point(box.maxX, box.minY, 0),
-    maxXMaxY: point(box.maxX, box.maxY, 0),
-    minXMaxY: point(box.minX, box.maxY, 0),
-  };
-}
-
-function lineIntersectionT2D(
-  start: Point3,
-  end: Point3,
-  otherStart: Point3,
-  otherEnd: Point3,
-): number | null {
-  const rX = end.x - start.x;
-  const rY = end.y - start.y;
-  const sX = otherEnd.x - otherStart.x;
-  const sY = otherEnd.y - otherStart.y;
-  const denominator = rX * sY - rY * sX;
-  if (Math.abs(denominator) <= 1e-6) return null;
-  const qpx = otherStart.x - start.x;
-  const qpy = otherStart.y - start.y;
-  const t = (qpx * sY - qpy * sX) / denominator;
-  const u = (qpx * rY - qpy * rX) / denominator;
-  if (t <= 1e-6 || t >= 1 - 1e-6 || u < -1e-6 || u > 1 + 1e-6) return null;
-  return t;
-}
-
-function roofPlaneHeightAtXY(roofPlane: RoofPlane3D, x: number, y: number): number | null {
-  if (!pointInOrOnRoofPolygon({ x, y }, roofPlane.boundary)) return null;
-  const planeEquation = roofSolidPlaneEquationFromPlane(roofPlane.plane);
-  if (!planeEquation || Math.abs(planeEquation.normal.z) <= 1e-6) return null;
-  return (
-    planeEquation.constant -
-    planeEquation.normal.x * x -
-    planeEquation.normal.y * y
-  ) / planeEquation.normal.z;
-}
-
-function roofPlaneEquationHeightAtXY(
-  planeEquation: RoofSolidPlaneEquation,
-  x: number,
-  y: number,
-): number | null {
-  if (Math.abs(planeEquation.normal.z) <= 1e-6) return null;
-  return (
-    planeEquation.constant -
-    planeEquation.normal.x * x -
-    planeEquation.normal.y * y
-  ) / planeEquation.normal.z;
-}
-
-function roofFeatureHeightAtXY(
-  feature: Line3,
-  x: number,
-  y: number,
-): number | null {
-  const dx = feature.end.x - feature.start.x;
-  const dy = feature.end.y - feature.start.y;
-  const lengthSq = dx * dx + dy * dy;
-  if (lengthSq <= 1e-6) return null;
-  if (!pointOnRoofSegment2D(point(x, y, 0), feature.start, feature.end)) return null;
-  const useX = Math.abs(dx) >= Math.abs(dy);
-  const denominator = useX ? dx : dy;
-  if (Math.abs(denominator) <= 1e-6) return null;
-  const t = useX ? (x - feature.start.x) / denominator : (y - feature.start.y) / denominator;
-  if (t < -1e-3 || t > 1 + 1e-3) return null;
-  return feature.start.z + (feature.end.z - feature.start.z) * clamp(t, 0, 1);
-}
-
-function roofHeightAtXY(input: {
-  x: number;
-  y: number;
-  roofPlanes: RoofPlane3D[];
-  fallbackZ: number;
-}): number {
-  let bestZ = Number.NEGATIVE_INFINITY;
-  for (const roofPlane of input.roofPlanes) {
-    const z = roofPlaneHeightAtXY(roofPlane, input.x, input.y);
-    if (z == null) continue;
-    bestZ = Math.max(bestZ, z);
-  }
-  return Number.isFinite(bestZ) ? bestZ : input.fallbackZ;
-}
-
-function buildWallTopProfile(input: {
-  start: Point3;
-  end: Point3;
-  roofPlanes: RoofPlane3D[];
-  roofFeatures: HouseRoofFeature3D[];
-  fallbackTopZ: number;
-  terminalClosurePoint?: Point3 | null;
-}): Point3[] {
-  const intersections = input.roofFeatures
-    .map((feature) =>
-      lineIntersectionT2D(
-        input.start,
-        input.end,
-        feature.line.start,
-        feature.line.end,
-      ),
-    )
-    .filter((value): value is number => value !== null)
-    .sort((left, right) => left - right);
-  const samples = [0, ...intersections, 1];
-  if (input.terminalClosurePoint) {
-    const dx = input.end.x - input.start.x;
-    const dy = input.end.y - input.start.y;
-    const lengthSq = dx * dx + dy * dy;
-    if (lengthSq > ROOF_JOIN_EPSILON_MM * ROOF_JOIN_EPSILON_MM) {
-      const ratio =
-        ((input.terminalClosurePoint.x - input.start.x) * dx +
-          (input.terminalClosurePoint.y - input.start.y) * dy) /
-        lengthSq;
-      if (ratio > 1e-6 && ratio < 1 - 1e-6) {
-        samples.push(ratio);
-        samples.sort((left, right) => left - right);
-      }
-    }
-  }
-
-  return samples
-    .filter((value, index, collection) => index === 0 || Math.abs(value - collection[index - 1]!) > 1e-6)
-    .map((t) => {
-    const x = input.start.x + (input.end.x - input.start.x) * t;
-    const y = input.start.y + (input.end.y - input.start.y) * t;
-    if (
-      input.terminalClosurePoint &&
-      Math.abs(input.terminalClosurePoint.x - x) <= 1e-6 &&
-      Math.abs(input.terminalClosurePoint.y - y) <= 1e-6
-    ) {
-      return input.terminalClosurePoint;
-    }
-    const featureZ = input.roofFeatures.reduce((selected, feature) => {
-      const z = roofFeatureHeightAtXY(feature.line, x, y);
-      return z == null ? selected : Math.max(selected, z);
-    }, Number.NEGATIVE_INFINITY);
-    return point(
-      x,
-      y,
-      Math.max(
-        input.fallbackTopZ,
-        Number.isFinite(featureZ) ? featureZ : Number.NEGATIVE_INFINITY,
-        roofHeightAtXY({
-          x,
-          y,
-          roofPlanes: input.roofPlanes,
-          fallbackZ: input.fallbackTopZ,
-        }),
-      ),
-    );
-    });
-}
-
-function wallBoundaryHasFlatTop(boundary: Polygon3): boolean {
-  if (boundary.length !== 4) return false;
-  return Math.abs(boundary[2]!.z - boundary[3]!.z) <= 1e-6;
-}
-
-function buildWallSegments(
-  footprint: Polygon3,
-  wallHeightMm: number,
-  roof?: HouseRoofBuildResult | null,
-): HouseWallSegment3D[] {
-  const segments: HouseWallSegment3D[] = [];
-  const terminalClosureBySourceEdgeId = new Map(
-    (roof?.terminalClosures ?? []).map((closure) => [closure.sourceEdgeId, closure]),
-  );
-
-  for (let index = 0; index < footprint.length; index += 1) {
-    const sourceStart = footprint[index]!;
-    const sourceEnd = footprint[(index + 1) % footprint.length]!;
-    const groundStart = point(sourceStart.x, sourceStart.y, 0);
-    const groundEnd = point(sourceEnd.x, sourceEnd.y, 0);
-    const edgeLine = line(groundStart, groundEnd);
-    if (lineLength(edgeLine) <= 0) continue;
-
-    const edgeId = `footprint-edge-${index + 1}`;
-    const xAxis = normalizeVector(subtractPoints(groundEnd, groundStart));
-    const plane = planeFromOriginAxes(groundStart, xAxis, WORLD_Z);
-    const roofForm = typeof roof?.metadata.roofForm === 'string' ? roof.metadata.roofForm : null;
-    const usesRoofAlignedTop =
-      (roofForm === 'mono' || roofForm === 'gable') && Boolean(roof?.roofPlanes.length);
-    const terminalClosure = terminalClosureBySourceEdgeId.get(edgeId) ?? null;
-    const topProfile =
-      usesRoofAlignedTop
-        ? buildWallTopProfile({
-            start: groundStart,
-            end: groundEnd,
-            roofPlanes: roof?.roofPlanes ?? [],
-            roofFeatures: roof?.roofFeatures ?? [],
-            fallbackTopZ: wallHeightMm,
-            terminalClosurePoint: terminalClosure?.point ?? null,
-          })
-        : [
-            point(groundStart.x, groundStart.y, wallHeightMm),
-            point(groundEnd.x, groundEnd.y, wallHeightMm),
-          ];
-    segments.push({
-      id: `house-wall-${segments.length + 1}`,
-      sourceEdgeId: edgeId,
-      line: edgeLine,
-      plane,
-      boundary: [groundStart, groundEnd, ...topProfile.slice().reverse()],
-      metadata:
-        terminalClosure
-          ? {
-              houseWallClosureKind: 'terminal_gable',
-              sourceRoofClosureEdgeId: terminalClosure.sourceEdgeId,
-            }
-          : undefined,
-    });
-  }
-
-  return segments;
-}
-
-function buildRoofPlane(input: {
-  id: string;
-  boundary: Polygon3;
-  highPoint: Point3;
-  lowPoint: Point3;
-  ridgeAxis: 'x' | 'y' | 'pyramid';
-  pitchDeg: number;
-  metadata?: Record<string, string | number | boolean | null>;
-}): RoofPlane3D {
-  return {
-    id: input.id,
-    boundary: input.boundary,
-    plane: planeFromPoints(input.boundary[0]!, input.boundary[1]!, input.boundary[2]!),
-    fallVector: normalizeVector(subtractPoints(input.lowPoint, input.highPoint)),
-    metadata: {
-      roofForm: 'hipped',
-      ridgeAxis: input.ridgeAxis,
-      pitchDeg: input.pitchDeg,
-      ...(input.metadata ?? {}),
-    },
-  };
-}
-
-function signedAreaXY(polygon: Polygon3): number {
-  return polygon.reduce((sum, current, index) => {
-    const next = polygon[(index + 1) % polygon.length]!;
-    return sum + current.x * next.y - next.x * current.y;
-  }, 0) / 2;
-}
-
-function isOrthogonalFootprint(polygon: Polygon3): boolean {
-  if (polygon.length < 4) return false;
-  for (let index = 0; index < polygon.length; index += 1) {
-    const current = polygon[index]!;
-    const next = polygon[(index + 1) % polygon.length]!;
-    if (lineLength(line(current, next)) <= 1e-6) return false;
-    if (Math.abs(current.x - next.x) > 1e-6 && Math.abs(current.y - next.y) > 1e-6) {
-      return false;
-    }
-  }
-  return Math.abs(signedAreaXY(polygon)) > 1e-6;
-}
-
-function lineIntersection2(
-  a1: Point3,
-  a2: Point3,
-  b1: Point3,
-  b2: Point3,
-): { x: number; y: number } | null {
-  const daX = a2.x - a1.x;
-  const daY = a2.y - a1.y;
-  const dbX = b2.x - b1.x;
-  const dbY = b2.y - b1.y;
-  const denominator = daX * dbY - daY * dbX;
-  if (Math.abs(denominator) <= 1e-6) return null;
-  const t = ((b1.x - a1.x) * dbY - (b1.y - a1.y) * dbX) / denominator;
-  return {
-    x: a1.x + daX * t,
-    y: a1.y + daY * t,
-  };
-}
-
-function offsetFootprintPolygon(footprint: Polygon3, offsetMm: number): Polygon3 | null {
-  if (!isOrthogonalFootprint(footprint)) return null;
-  const orientation = signedAreaXY(footprint) >= 0 ? 1 : -1;
-  const shiftedEdges = footprint.map((current, index) => {
-    const next = footprint[(index + 1) % footprint.length]!;
-    const length = lineLength(line(current, next));
-    const unitX = (next.x - current.x) / length;
-    const unitY = (next.y - current.y) / length;
-    const outward = orientation >= 0
-      ? { x: unitY, y: -unitX }
-      : { x: -unitY, y: unitX };
-    return {
-      start: point(current.x + outward.x * offsetMm, current.y + outward.y * offsetMm, 0),
-      end: point(next.x + outward.x * offsetMm, next.y + outward.y * offsetMm, 0),
-    };
-  });
-
-  const offset: Polygon3 = [];
-  for (let index = 0; index < shiftedEdges.length; index += 1) {
-    const previous = shiftedEdges[(index - 1 + shiftedEdges.length) % shiftedEdges.length]!;
-    const current = shiftedEdges[index]!;
-    const intersection = lineIntersection2(previous.start, previous.end, current.start, current.end);
-    offset.push(intersection ? point(intersection.x, intersection.y, 0) : current.start);
-  }
-  return offset.every((candidate) => Number.isFinite(candidate.x) && Number.isFinite(candidate.y)) ? offset : null;
-}
-
-function pointInPolygon2D(candidate: { x: number; y: number }, polygon: Polygon3): boolean {
-  let inside = false;
-  for (let index = 0, previousIndex = polygon.length - 1; index < polygon.length; previousIndex = index, index += 1) {
-    const current = polygon[index]!;
-    const previous = polygon[previousIndex]!;
-    const intersects =
-      current.y > candidate.y !== previous.y > candidate.y &&
-      candidate.x < ((previous.x - current.x) * (candidate.y - current.y)) / (previous.y - current.y || 1) + current.x;
-    if (intersects) inside = !inside;
-  }
-  return inside;
-}
-
-function distanceToSegment2D(candidate: { x: number; y: number }, start: Point3, end: Point3): number {
-  const dx = end.x - start.x;
-  const dy = end.y - start.y;
-  const lengthSq = dx * dx + dy * dy;
-  if (lengthSq <= 1e-6) return Math.hypot(candidate.x - start.x, candidate.y - start.y);
-  const ratio = clamp(((candidate.x - start.x) * dx + (candidate.y - start.y) * dy) / lengthSq, 0, 1);
-  const x = start.x + dx * ratio;
-  const y = start.y + dy * ratio;
-  return Math.hypot(candidate.x - x, candidate.y - y);
-}
-
-function clearanceToPolygon(candidate: { x: number; y: number }, polygon: Polygon3): number {
-  let clearance = Number.POSITIVE_INFINITY;
-  for (let index = 0; index < polygon.length; index += 1) {
-    clearance = Math.min(clearance, distanceToSegment2D(candidate, polygon[index]!, polygon[(index + 1) % polygon.length]!));
-  }
-  return clearance;
-}
-
-function polygonCentroid2D(polygon: Polygon3): { x: number; y: number } {
-  const area = signedAreaXY(polygon);
-  if (Math.abs(area) <= 1e-6) {
-    const box = boundingBox(polygon);
-    return { x: (box.minX + box.maxX) / 2, y: (box.minY + box.maxY) / 2 };
-  }
-  let cx = 0;
-  let cy = 0;
-  for (let index = 0; index < polygon.length; index += 1) {
-    const current = polygon[index]!;
-    const next = polygon[(index + 1) % polygon.length]!;
-    const cross = current.x * next.y - next.x * current.y;
-    cx += (current.x + next.x) * cross;
-    cy += (current.y + next.y) * cross;
-  }
-  const divisor = 6 * area;
-  return { x: cx / divisor, y: cy / divisor };
-}
-
-function uniqueSorted(values: number[]): number[] {
-  return [...new Set(values.map((value) => Number(value.toFixed(6))))].sort((a, b) => a - b);
-}
-
-function findInteriorRoofNode(polygon: Polygon3): { point: Point3; clearanceMm: number } {
-  const box = boundingBox(polygon);
-  const candidates: Array<{ x: number; y: number }> = [
-    { x: (box.minX + box.maxX) / 2, y: (box.minY + box.maxY) / 2 },
-    polygonCentroid2D(polygon),
-  ];
-  const xs = uniqueSorted([box.minX, box.maxX, ...polygon.map((candidate) => candidate.x)]);
-  const ys = uniqueSorted([box.minY, box.maxY, ...polygon.map((candidate) => candidate.y)]);
-  for (let xIndex = 0; xIndex < xs.length - 1; xIndex += 1) {
-    for (let yIndex = 0; yIndex < ys.length - 1; yIndex += 1) {
-      const x = (xs[xIndex]! + xs[xIndex + 1]!) / 2;
-      const y = (ys[yIndex]! + ys[yIndex + 1]!) / 2;
-      candidates.push({ x, y });
-    }
-  }
-
-  let selected = candidates[0]!;
-  let selectedClearance = -1;
-  for (const candidate of candidates) {
-    if (!pointInPolygon2D(candidate, polygon)) continue;
-    const clearance = clearanceToPolygon(candidate, polygon);
-    if (clearance > selectedClearance) {
-      selected = candidate;
-      selectedClearance = clearance;
-    }
-  }
-
-  if (selectedClearance <= 0) {
-    selectedClearance = Math.max(1, Math.min(box.maxX - box.minX, box.maxY - box.minY) / 4);
-  }
-  return { point: point(selected.x, selected.y, 0), clearanceMm: selectedClearance };
-}
-
-function polygonLineInterval(input: {
-  polygon: Polygon3;
-  axis: 'x' | 'y';
-  coordinate: number;
-  through: number;
-}): { min: number; max: number } | null {
-  const intersections: number[] = [];
-  for (let index = 0; index < input.polygon.length; index += 1) {
-    const start = input.polygon[index]!;
-    const end = input.polygon[(index + 1) % input.polygon.length]!;
-    if (input.axis === 'x') {
-      if (Math.abs(start.y - end.y) <= 1e-6) continue;
-      const minY = Math.min(start.y, end.y);
-      const maxY = Math.max(start.y, end.y);
-      if (input.coordinate <= minY || input.coordinate > maxY) continue;
-      intersections.push(start.x);
-    } else {
-      if (Math.abs(start.x - end.x) <= 1e-6) continue;
-      const minX = Math.min(start.x, end.x);
-      const maxX = Math.max(start.x, end.x);
-      if (input.coordinate <= minX || input.coordinate > maxX) continue;
-      intersections.push(start.y);
-    }
-  }
-  intersections.sort((a, b) => a - b);
-  for (let index = 0; index < intersections.length - 1; index += 2) {
-    const min = intersections[index]!;
-    const max = intersections[index + 1]!;
-    if (input.through >= min - 1e-6 && input.through <= max + 1e-6) {
-      return { min, max };
-    }
-  }
-  return null;
-}
-
-function closestPointOnLineSegment2D(candidate: Point3, source: Line3): Point3 {
-  const dx = source.end.x - source.start.x;
-  const dy = source.end.y - source.start.y;
-  const lengthSq = dx * dx + dy * dy;
-  if (lengthSq <= 1e-6) return source.start;
-  const ratio = clamp(((candidate.x - source.start.x) * dx + (candidate.y - source.start.y) * dy) / lengthSq, 0, 1);
-  return point(source.start.x + dx * ratio, source.start.y + dy * ratio, source.start.z + (source.end.z - source.start.z) * ratio);
-}
-
-function isRectanglePolygon(polygon: Polygon3): boolean {
-  if (polygon.length !== 4) return false;
-  const box = boundingBox(polygon);
-  return polygon.every((candidate) =>
-    (Math.abs(candidate.x - box.minX) <= 1e-6 || Math.abs(candidate.x - box.maxX) <= 1e-6) &&
-    (Math.abs(candidate.y - box.minY) <= 1e-6 || Math.abs(candidate.y - box.maxY) <= 1e-6),
-  );
-}
 
 function buildRectangleRoofFeatures(input: {
   minX: number;
@@ -1521,11 +1027,6 @@ function vertexFeatureKind(polygon: Polygon3, index: number): HouseRoofFeatureKi
   return Math.sign(cross || 1) === Math.sign(area || 1) ? 'hip' : 'valley';
 }
 
-type RoofPoint2 = {
-  x: number;
-  y: number;
-};
-
 type JoinedRoofEdge = {
   index: number;
   id: string;
@@ -1572,13 +1073,6 @@ type JoinedRoofFeatureDraft = {
 
 type JoinedRoofFacetBuildResult = {
   facets: JoinedRoofFacet[];
-  metadata: GeometryMetadata;
-};
-
-type HouseRoofBuildResult = {
-  roofPlanes: RoofPlane3D[];
-  roofFeatures: HouseRoofFeature3D[];
-  terminalClosures?: BentSpineTerminalGableClosure[];
   metadata: GeometryMetadata;
 };
 
@@ -1649,7 +1143,6 @@ type HouseRoofQaResult = {
   failureReason: string | null;
 };
 
-const ROOF_JOIN_EPSILON_MM = 1e-3;
 const ROOF_JOIN_FEATURE_MIN_LENGTH_MM = 5;
 const ROOF_REGION_MIN_AREA_MM2 = 25;
 const ROOF_QA_AREA_TOLERANCE_MIN_MM2 = 100;
@@ -1980,18 +1473,6 @@ function roofPolygonCentroid(polygon: RoofPoint2[]): RoofPoint2 {
     cy += (current.y + next.y) * cross;
   }
   return { x: cx / (6 * area), y: cy / (6 * area) };
-}
-
-function pointOnRoofPolygonBoundary(candidate: RoofPoint2, polygon: Polygon3): boolean {
-  const point3 = point(candidate.x, candidate.y, 0);
-  for (let index = 0; index < polygon.length; index += 1) {
-    if (pointOnRoofSegment2D(point3, polygon[index]!, polygon[(index + 1) % polygon.length]!)) return true;
-  }
-  return false;
-}
-
-function pointInOrOnRoofPolygon(candidate: RoofPoint2, polygon: Polygon3): boolean {
-  return pointInPolygon2D(candidate, polygon) || pointOnRoofPolygonBoundary(candidate, polygon);
 }
 
 function segmentInsideRoofPolygon(start: RoofPoint2, end: RoofPoint2, polygon: Polygon3): boolean {
@@ -3164,17 +2645,6 @@ function buildJoinedRoofFacets(input: {
       roofTopologyProjectionViolationCount: 0,
     },
   };
-}
-
-function pointOnRoofSegment2D(candidate: Point3, start: Point3, end: Point3): boolean {
-  const dx = end.x - start.x;
-  const dy = end.y - start.y;
-  const cross = (candidate.x - start.x) * dy - (candidate.y - start.y) * dx;
-  if (Math.abs(cross) > 1e-2) return false;
-  const dot = (candidate.x - start.x) * dx + (candidate.y - start.y) * dy;
-  if (dot < -1e-2) return false;
-  const lengthSq = dx * dx + dy * dy;
-  return dot <= lengthSq + 1e-2;
 }
 
 function roofFeatureTouchesPoint(feature: Line3, candidate: Point3): boolean {
@@ -5341,10 +4811,6 @@ function buildMiteredOffsetStripFootprints(
   return footprints;
 }
 
-type RoofSolidPlaneEquation = {
-  normal: Vector3;
-  constant: number;
-};
 
 type RoofSolidLine = {
   point: Point3;
@@ -5380,10 +4846,6 @@ function translatePointByVector(source: Point3, delta: Vector3): Point3 {
 
 function negateVector(source: Vector3): Vector3 {
   return { x: -source.x, y: -source.y, z: -source.z };
-}
-
-function finiteVectorLength(source: Vector3): number {
-  return Math.hypot(source.x, source.y, source.z);
 }
 
 function roofSolidPointKey(candidate: Point3): string {
@@ -5433,15 +4895,6 @@ function buildRoofSolidAdjacency(roofPlanes: RoofPlane3D[]): RoofSolidAdjacency 
   }
 
   return { edgeMap, invalidRoofPlaneIndexes };
-}
-
-function roofSolidPlaneEquationFromPlane(plane: Plane3): RoofSolidPlaneEquation | null {
-  const normal = normalizeVector(plane.normal);
-  if (finiteVectorLength(normal) <= ROOF_JOIN_EPSILON_MM) return null;
-  return {
-    normal,
-    constant: dotProduct(normal, plane.origin),
-  };
 }
 
 function roofSolidBottomPlaneEquation(plane: Plane3, thicknessMm: number): RoofSolidPlaneEquation | null {
