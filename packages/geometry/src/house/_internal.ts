@@ -360,6 +360,31 @@ export function finiteRoofQaPoint(candidate: Point3): boolean {
   return Number.isFinite(candidate.x) && Number.isFinite(candidate.y) && Number.isFinite(candidate.z);
 }
 
+export function samePoint3WithinTolerance(left: Point3, right: Point3, toleranceMm = 1e-3): boolean {
+  return (
+    Math.abs(left.x - right.x) <= toleranceMm &&
+    Math.abs(left.y - right.y) <= toleranceMm &&
+    Math.abs(left.z - right.z) <= toleranceMm
+  );
+}
+
+export type HouseGableTerminalEnd = {
+  id: string;
+  sourceEdgeId: string;
+  label: string;
+};
+
+export type HouseGableTerminalIntersection = {
+  edgeIndex: number;
+  nodePoint: Point3;
+  point: Point3;
+};
+
+export type HouseFootprintOpenSide = {
+  bridgeEdgeIndex: number;
+  direction: { x: number; y: number };
+};
+
 export function vertexFeatureKind(polygon: Polygon3, index: number): HouseRoofFeatureKind {
   const area = signedAreaXY(polygon);
   const previous = polygon[(index - 1 + polygon.length) % polygon.length]!;
