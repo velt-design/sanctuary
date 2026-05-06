@@ -30,10 +30,26 @@ export type EdgeDragCommit = {
   nextPolygon: ReadonlyArray<Point2>;
 };
 
+/**
+ * Hover state published by `EdgeDragTool` while no drag is active. The host
+ * uses this to render a highlighted edge so the user can see which edge will
+ * be grabbed before pressing. Cleared (set to null) when the pointer leaves
+ * the active outline's hit tolerance or once a drag begins.
+ */
+export type EdgeDragHover = {
+  outlineId: string;
+  family: ActiveObjectFamily;
+  edgeIndex: number;
+  edgeStart: Point2;
+  edgeEnd: Point2;
+  closestPoint: Point2;
+};
+
 export type EdgeDragToolConfig = {
   getActiveOutline: EdgeDragOutlineSource;
   edgeHitToleranceMm?: number;
   onPreviewChange?: (preview: EdgeDragPreview | null) => void;
+  onHoverChange?: (hover: EdgeDragHover | null) => void;
   onCommit?: (commit: EdgeDragCommit) => void;
   /**
    * Called when a pointer-down doesn't initiate an edge drag — either because
@@ -80,10 +96,47 @@ function buildPreview(session: DragSession, deltaMm: number): EdgeDragPreview {
 export function createEdgeDragTool(config: EdgeDragToolConfig): Tool {
   const tolerance = config.edgeHitToleranceMm ?? DEFAULT_EDGE_HIT_TOLERANCE_MM;
   let session: DragSession | null = null;
+  let lastHoverEdgeIndex: number | null = null;
 
   const clearSession = (): void => {
     session = null;
     config.onPreviewChange?.(null);
+  };
+
+  const clearHover = (): void => {
+    if (lastHoverEdgeIndex !== null) {
+      lastHoverEdgeIndex = null;
+      config.onHoverChange?.(null);
+    }
+  };
+
+  const updateHover = (event: ToolPointerEvent): void => {
+    const outline = config.getActiveOutline();
+    if (!outline) {
+      clearHover();
+      return;
+    }
+    const closest = findClosestPolygonEdge(outline.polygon, event.point);
+    if (!closest || closest.distanceMm > tolerance) {
+      clearHover();
+      return;
+    }
+    if (lastHoverEdgeIndex === closest.edgeIndex) return;
+    lastHoverEdgeIndex = closest.edgeIndex;
+    const a = outline.polygon[closest.edgeIndex];
+    const b = outline.polygon[(closest.edgeIndex + 1) % outline.polygon.length];
+    if (!a || !b) {
+      clearHover();
+      return;
+    }
+    config.onHoverChange?.({
+      outlineId: outline.id,
+      family: outline.family,
+      edgeIndex: closest.edgeIndex,
+      edgeStart: { x: a.x, y: a.y },
+      edgeEnd: { x: b.x, y: b.y },
+      closestPoint: closest.closestPoint,
+    });
   };
 
   return {
@@ -107,12 +160,17 @@ export function createEdgeDragTool(config: EdgeDragToolConfig): Tool {
         startPoint: { x: event.point.x, y: event.point.y },
         pointerId: event.pointerId,
       };
+      clearHover();
       config.onPreviewChange?.(buildPreview(session, 0));
     },
     onPointerMove(event: ToolPointerEvent) {
-      if (!session || session.pointerId !== event.pointerId) return;
-      const deltaMm = computeDeltaMm(session, event.point);
-      config.onPreviewChange?.(buildPreview(session, deltaMm));
+      if (session && session.pointerId === event.pointerId) {
+        const deltaMm = computeDeltaMm(session, event.point);
+        config.onPreviewChange?.(buildPreview(session, deltaMm));
+        return;
+      }
+      if (session) return;
+      updateHover(event);
     },
     onPointerUp(event: ToolPointerEvent) {
       if (!session || session.pointerId !== event.pointerId) return;
@@ -130,6 +188,7 @@ export function createEdgeDragTool(config: EdgeDragToolConfig): Tool {
       }
     },
     onCancel() {
+      clearHover();
       if (!session) return;
       clearSession();
     },

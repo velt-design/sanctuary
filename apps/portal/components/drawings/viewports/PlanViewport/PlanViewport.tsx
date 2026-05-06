@@ -17,9 +17,9 @@ import { usePlanSelectionDimensions } from './canvas/usePlanSelectionDimensions'
 import { pickPrimaryEditCandidate, type ActiveObjectFamily, type PlanDimension } from './canvas/planDimension';
 import { ToolDispatcherProvider } from './tools/ToolDispatcher';
 import { createSelectTool } from './tools/SelectTool';
-import { createEdgeDragTool, type EdgeDragCommit, type EdgeDragPreview } from './tools/EdgeDragTool';
+import { createEdgeDragTool, type EdgeDragCommit, type EdgeDragHover, type EdgeDragPreview } from './tools/EdgeDragTool';
 
-export type { EdgeDragCommit, EdgeDragPreview } from './tools/EdgeDragTool';
+export type { EdgeDragCommit, EdgeDragHover, EdgeDragPreview } from './tools/EdgeDragTool';
 import { PlanViewportPlaceholder } from './PlanViewportPlaceholder';
 import lineweightStyles from './canvas/planLineweights.module.css';
 
@@ -61,6 +61,7 @@ export default function PlanViewport({
   const projection = artifact?.topProjection ?? null;
   const renderModel = usePlanRenderModel({ projection, visibility, activeObjectRef });
   const [edgeDragPreview, setEdgeDragPreview] = useState<EdgeDragPreview | null>(null);
+  const [edgeDragHover, setEdgeDragHover] = useState<EdgeDragHover | null>(null);
 
   const selectTool = useMemo(
     () =>
@@ -112,6 +113,7 @@ export default function PlanViewport({
       createEdgeDragTool({
         getActiveOutline,
         onPreviewChange: setEdgeDragPreview,
+        onHoverChange: setEdgeDragHover,
         onCommit: (commit) => onCommitOutlineEditRef.current?.(commit),
         // When a click misses the active outline's edges, hand the pointer event
         // to the SelectTool so the user can switch selection by clicking on a
@@ -154,6 +156,7 @@ export default function PlanViewport({
           selectionHaloItems={renderModel.selectionHaloItems}
           dimensions={mergedDimensions}
           edgeDragPreview={edgeDragPreview}
+          edgeDragHover={edgeDragHover}
           transform={viewportTransform}
           onTransformChange={onViewportTransformChange}
           screenAxisLabel={screenAxisLabel}

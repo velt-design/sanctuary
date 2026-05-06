@@ -16,10 +16,11 @@ import { PlanContextLineLayer } from './layers/PlanContextLineLayer';
 import { PlanDetailLayer } from './layers/PlanDetailLayer';
 import { PlanDimensionLayer } from './layers/PlanDimensionLayer';
 import { PlanEdgeDragPreviewLayer } from './layers/PlanEdgeDragPreviewLayer';
+import { PlanEdgeHoverHighlightLayer } from './layers/PlanEdgeHoverHighlightLayer';
 import { PlanHitTargetLayer } from './layers/PlanHitTargetLayer';
 import { PlanSelectionHaloLayer } from './layers/PlanSelectionHaloLayer';
 import type { PlanDimension } from './planDimension';
-import type { EdgeDragPreview } from '../tools/EdgeDragTool';
+import type { EdgeDragHover, EdgeDragPreview } from '../tools/EdgeDragTool';
 import styles from './PlanCanvas.module.css';
 import type { PlanLayout } from './planLayout';
 import { filterPlanHitTargets } from './planHitTargetFilter';
@@ -36,6 +37,7 @@ export type PlanCanvasProps = {
   selectionHaloItems: PlanRenderItem[];
   dimensions?: ReadonlyArray<PlanDimension>;
   edgeDragPreview?: EdgeDragPreview | null;
+  edgeDragHover?: EdgeDragHover | null;
   transform: DrawingWorkbenchViewportTransform;
   onTransformChange: (next: DrawingWorkbenchViewportTransform) => void;
   screenAxisLabel: string;
@@ -56,6 +58,7 @@ export function PlanCanvas({
   selectionHaloItems,
   dimensions = EMPTY_DIMENSIONS,
   edgeDragPreview = null,
+  edgeDragHover = null,
   transform,
   onTransformChange,
   screenAxisLabel,
@@ -136,7 +139,7 @@ export function PlanCanvas({
         width="100%"
         height="100%"
         preserveAspectRatio="xMidYMid meet"
-        style={{ display: 'block' }}
+        style={{ display: 'block', cursor: dispatcher.activeTool.cursor ?? 'default' }}
         role="img"
         aria-label="Plan editor"
         data-plan-viewport="true"
@@ -172,6 +175,7 @@ export function PlanCanvas({
             onShapeLeave={onShapeLeave}
           />
           <PlanDimensionLayer dimensions={dimensions} coordinateAdapter={coordinateAdapter} />
+          <PlanEdgeHoverHighlightLayer hover={edgeDragHover} coordinateAdapter={coordinateAdapter} />
           <PlanEdgeDragPreviewLayer preview={edgeDragPreview} coordinateAdapter={coordinateAdapter} />
         </g>
       </svg>

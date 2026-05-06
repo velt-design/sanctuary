@@ -141,6 +141,23 @@
   pointer-events: none;
 }
 
+.edgeHoverHighlight {
+  stroke: var(--plan-stroke-snap);
+  stroke-width: calc(var(--plan-width-heavy) * 2);
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+  fill: none;
+  pointer-events: none;
+}
+
+.edgeHoverGrabDot {
+  stroke: var(--plan-stroke-snap);
+  stroke-width: var(--plan-width-medium);
+  vector-effect: non-scaling-stroke;
+  fill: #ffffff;
+  pointer-events: none;
+}
+
 .selectionHalo {
   stroke: var(--plan-stroke-selection);
   stroke-width: calc(var(--plan-width-medium) * 1.5);
