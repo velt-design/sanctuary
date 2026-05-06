@@ -25,7 +25,7 @@ import type { EstimateDrawingSheetMeta } from '@/lib/estimates/drawingSheet';
 import type { CalculatorHouseFootprintPolygonPoint } from '@/lib/types/calculator';
 import { type Geometry3DViewportState } from '@/components/drawings/viewports/Geometry3DViewport';
 import DesignViewport from '@/components/drawings/viewports/DesignViewport';
-import PlanViewport from '@/components/drawings/viewports/PlanViewport/PlanViewport';
+import PlanViewport, { type EdgeDragCommit } from '@/components/drawings/viewports/PlanViewport/PlanViewport';
 import SheetViewport from '@/components/drawings/viewports/SheetViewport';
 import styles from './DrawingWorkbench.module.css';
 
@@ -87,6 +87,7 @@ type WorkbenchViewportHostProps = {
     patch: ObjectWorkbenchOpeningPatch,
   ) => Promise<{ ok: boolean; error?: string }> | { ok: boolean; error?: string };
   onDeckInteractionTelemetryChange?: (telemetry: DeckInteractionTelemetry) => void;
+  onCommitOutlineEdit?: (commit: EdgeDragCommit) => void;
 };
 
 export default function WorkbenchViewportHost({
@@ -129,6 +130,7 @@ export default function WorkbenchViewportHost({
   onCommitDeckDimension,
   onCommitOpeningDimension,
   onDeckInteractionTelemetryChange,
+  onCommitOutlineEdit,
 }: WorkbenchViewportHostProps) {
   const routedDrawingSurfaceGeometry =
     drawingSurfaceGeometry ??
@@ -164,6 +166,7 @@ export default function WorkbenchViewportHost({
           onSelectObjectWorkbenchTarget={onSelectObjectWorkbenchTarget}
           onSelectPergolaTarget={onSelectPergolaTarget}
           onClearWorkbenchSelection={onClearWorkbenchSelection}
+          onCommitOutlineEdit={onCommitOutlineEdit}
         />
       ) : (
         <DesignViewport

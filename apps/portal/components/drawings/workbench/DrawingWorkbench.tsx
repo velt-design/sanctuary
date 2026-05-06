@@ -24,6 +24,7 @@ import type {
   WorkbenchViewportGeometry,
 } from '@/lib/drawings/state/workbenchSolvedModel';
 import type { Geometry3DViewportState } from '@/components/drawings/viewports/Geometry3DViewport';
+import type { EdgeDragCommit } from '@/components/drawings/viewports/PlanViewport/PlanViewport';
 import WorkbenchChrome from './WorkbenchChrome';
 import WorkbenchViewportHost from './WorkbenchViewportHost';
 import styles from './DrawingWorkbench.module.css';
@@ -93,6 +94,7 @@ type DrawingWorkbenchProps = {
     patch: ObjectWorkbenchOpeningPatch,
   ) => Promise<{ ok: boolean; error?: string }> | { ok: boolean; error?: string };
   onDeckInteractionTelemetryChange?: (telemetry: DeckInteractionTelemetry) => void;
+  onCommitOutlineEdit?: (commit: EdgeDragCommit) => void;
 };
 
 export default function DrawingWorkbench({
@@ -142,6 +144,7 @@ export default function DrawingWorkbench({
   onCommitDeckDimension,
   onCommitOpeningDimension,
   onDeckInteractionTelemetryChange,
+  onCommitOutlineEdit,
 }: DrawingWorkbenchProps) {
   void modules;
   void onActiveModuleIndexChange;
@@ -197,6 +200,7 @@ export default function DrawingWorkbench({
         onCommitDeckDimension={onCommitDeckDimension}
         onCommitOpeningDimension={onCommitOpeningDimension}
         onDeckInteractionTelemetryChange={onDeckInteractionTelemetryChange}
+        onCommitOutlineEdit={onCommitOutlineEdit}
       />
     </section>
   );

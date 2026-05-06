@@ -17,7 +17,9 @@ import { usePlanSelectionDimensions } from './canvas/usePlanSelectionDimensions'
 import { pickPrimaryEditCandidate, type ActiveObjectFamily, type PlanDimension } from './canvas/planDimension';
 import { ToolDispatcherProvider } from './tools/ToolDispatcher';
 import { createSelectTool } from './tools/SelectTool';
-import { createEdgeDragTool, type EdgeDragPreview } from './tools/EdgeDragTool';
+import { createEdgeDragTool, type EdgeDragCommit, type EdgeDragPreview } from './tools/EdgeDragTool';
+
+export type { EdgeDragCommit, EdgeDragPreview } from './tools/EdgeDragTool';
 import { PlanViewportPlaceholder } from './PlanViewportPlaceholder';
 import lineweightStyles from './canvas/planLineweights.module.css';
 
@@ -41,6 +43,7 @@ export type PlanViewportProps = {
   onSelectObjectWorkbenchTarget?: (selection: ObjectWorkbenchViewportTargetSelection) => void;
   onSelectPergolaTarget?: (pergolaId: string) => void;
   onClearWorkbenchSelection?: () => void;
+  onCommitOutlineEdit?: (commit: EdgeDragCommit) => void;
 };
 
 export default function PlanViewport({
@@ -53,6 +56,7 @@ export default function PlanViewport({
   onSelectObjectWorkbenchTarget,
   onSelectPergolaTarget,
   onClearWorkbenchSelection,
+  onCommitOutlineEdit,
 }: PlanViewportProps) {
   const projection = artifact?.topProjection ?? null;
   const renderModel = usePlanRenderModel({ projection, visibility, activeObjectRef });
@@ -90,8 +94,9 @@ export default function PlanViewport({
       createEdgeDragTool({
         getActiveOutline,
         onPreviewChange: setEdgeDragPreview,
+        onCommit: onCommitOutlineEdit,
       }),
-    [getActiveOutline],
+    [getActiveOutline, onCommitOutlineEdit],
   );
 
   const hasEditableOutline = Boolean(getActiveOutline());

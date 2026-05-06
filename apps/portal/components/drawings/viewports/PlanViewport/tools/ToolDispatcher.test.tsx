@@ -90,6 +90,26 @@ describe('ToolDispatcherProvider', () => {
     rendered.unmount();
   });
 
+  it('swaps to a new initialTool when the prop changes to a tool with a different id', () => {
+    const onCancelSelect = vi.fn();
+    const select = makeTool('select', { onCancel: onCancelSelect });
+    const edgeDrag = makeTool('edge-drag');
+    const rendered = renderIntoDocument(
+      <ToolDispatcherProvider initialTool={select}>
+        <Consumer />
+      </ToolDispatcherProvider>,
+    );
+    expect(rendered.container.querySelector('[data-active-tool-id]')?.getAttribute('data-active-tool-id')).toBe('select');
+    rendered.rerender(
+      <ToolDispatcherProvider initialTool={edgeDrag}>
+        <Consumer />
+      </ToolDispatcherProvider>,
+    );
+    expect(rendered.container.querySelector('[data-active-tool-id]')?.getAttribute('data-active-tool-id')).toBe('edge-drag');
+    expect(onCancelSelect).toHaveBeenCalledTimes(1);
+    rendered.unmount();
+  });
+
   it('cancels the active tool on unmount', () => {
     const onCancel = vi.fn();
     const tool = makeTool('select', { onCancel });

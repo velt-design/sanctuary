@@ -86,6 +86,37 @@ These are tested helpers waiting for their named consumer. Not dead code — sta
 | `tools/MoveTool.ts` | Commit-pipeline design lands (per-family `commitMove` callback) |
 | `interactions/dragLifecycle.ts` | Currently only used by `MoveTool`; widely useful for any drag tool |
 
+## EdgeDragTool and the outline-edit commit pipeline
+
+When an outline polygon is selected, `EdgeDragTool` becomes the active tool. Pointerdown near an edge captures it; drag perpendicular previews a translated polygon; release fires `onCommit({ outlineId, family, nextPolygon })`.
+
+### Commit contract
+
+The callback chain is:
+
+```
+EdgeDragTool.onCommit
+  → PlanViewport.onCommitOutlineEdit
+    → WorkbenchViewportHost.onCommitOutlineEdit
+      → DrawingWorkbench.onCommitOutlineEdit
+        → caller (e.g. DesignWorkbenchEstimateClient)
+```
+
+`EdgeDragCommit = { outlineId: string; family: ActiveObjectFamily; nextPolygon: ReadonlyArray<Point2> }` — the polygon is in projection mm coordinates.
+
+### Per-family handlers
+
+Each family needs its own translation from `nextPolygon` into a workbench-state mutation:
+
+| Family | Conversion | State mutation | Status |
+|--------|-----------|----------------|--------|
+| `house_forms` | mm `Point2[]` → `CalculatorHouseFootprintPolygonPoint[]` (`alongM = x / 1000`, `depthM = y / 1000`, both as strings) | `objectWorkbenchActions.commitSharedHouseFootprintEdit({ type: 'custom_polygon', polygon })` — sets `houseFootprintMode = 'custom_polygon'` and runs the full draft transaction (geometry re-solve cascades) | ✅ wired in `DesignWorkbenchEstimateClient` |
+| `decks` | mm `Point2[]` → deck-boundary patch | new action; closest existing analogue is `commitDeckDimension` (parametric), would need a polygon-direct variant | ⏳ next |
+| `pergolas` | mm `Point2[]` → pergola outline. Pergolas are currently parametric (lengthM/projectionM); a polygon-direct input may need to be added to the geometry config. | new action | ⏳ later |
+| `openings` | n/a — openings have no polygon in data today | deferred | — |
+
+For unsupported families today, the handler `console.warn`s the captured commit so drag interactions are observable end-to-end. Implementing decks and pergolas is the next slice.
+
 ## Rules
 
 - **Don't add a workaround in the viewport for missing geometry data.** If an object lacks a canonical outline, fix the geometry pipeline (in `packages/geometry/src/topProjection.ts`), don't compose one in the viewport.

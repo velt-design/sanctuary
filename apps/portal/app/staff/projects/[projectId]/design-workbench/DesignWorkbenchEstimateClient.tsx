@@ -467,6 +467,26 @@ export default function DesignWorkbenchEstimateClient({
           onCommitHouseFormFootprintDimension={!isLocked ? objectWorkbenchActions.commitHouseFormFootprintDimension : undefined}
           onCommitDeckDimension={!isLocked ? objectWorkbenchActions.commitDeckDimension : undefined}
           onCommitOpeningDimension={!isLocked ? objectWorkbenchActions.commitOpeningDimension : undefined}
+          onCommitOutlineEdit={
+            !isLocked
+              ? (commit) => {
+                  if (commit.family === 'house_forms') {
+                    void objectWorkbenchActions.commitSharedHouseFootprintEdit({
+                      type: 'custom_polygon',
+                      polygon: commit.nextPolygon.map((point) => ({
+                        alongM: (point.x / 1000).toString(),
+                        depthM: (point.y / 1000).toString(),
+                      })),
+                    });
+                    return;
+                  }
+                  // TODO(edge-drag): pergolas write nextPolygon to assembly outline source;
+                  // decks write to deck.boundary; openings deferred (no canonical polygon yet).
+                  // eslint-disable-next-line no-console
+                  console.warn('[edge-drag] outline edit not yet wired for family:', commit.family, commit);
+                }
+              : undefined
+          }
         />
         </div>
       </div>
