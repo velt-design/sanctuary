@@ -39,7 +39,7 @@ When extracting helpers as part of this decomposition pass, **copy the body byte
 | `openings.ts` | Opening composition: `buildHouseOpenings`. | ✅ shipped |
 | `roofFrames.ts` | Open-gable frame features + related: `buildOpenGableFrameFeatures`, `houseWallIsOpenGableFrame`. | ✅ shipped |
 | `envelopeSolids.ts` | Envelope-solid orchestrator: `buildHouseEnvelopeSolids` and its helpers. | pending |
-| `attachment.ts` | Attachment target + zone boundary + semantic attachment edge: `buildAttachmentTarget`, `buildZoneBoundary`, `buildSemanticHouseAttachmentEdge`, `buildAttachmentAwareMonoEavePolygon`. | pending |
+| `attachment.ts` | Attachment target + zone boundary + semantic attachment edge: `buildAttachmentTarget`, `buildZoneBoundary`, `buildSemanticHouseAttachmentEdge`, `buildAttachmentAwareMonoEavePolygon`, `sourceEdgeIndexFromId`, plus the wall-segment / projection helpers. | ✅ shipped |
 
 After all splits land, `packages/geometry/src/houseModel.ts` becomes a slim orchestrator (~500 lines max) that composes the above:
 
@@ -75,6 +75,7 @@ Order matters because some files depend on others. Recommended sequence:
 22. ✅ `roofMaterial.ts` (roof material visuals)
 23. ✅ `decks.ts` (deck composition)
 24. ✅ `roofFrames.ts` (open-gable frame features)
+25. ✅ `attachment.ts` (attachment target + zone boundary + semantic attachment edge)
 10. `roofPrimary.ts`
 11. `roofAppendages.ts`
 12. `roofMaterial.ts`
