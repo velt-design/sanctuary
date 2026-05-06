@@ -37,7 +37,7 @@ When extracting helpers as part of this decomposition pass, **copy the body byte
 | `roofMaterial.ts` | Roof material visuals: `buildHouseRoofMaterialVisualForPlane`, `buildHouseRoofMaterialVisuals`, plus the projection / clipping helpers (`houseRoofMaterialSettings`, `clipHouseRoofMaterialLine`, `worldHouseRoofMaterialPoint`, etc.). | ✅ shipped |
 | `decks.ts` | Deck composition: `buildHouseDecks`, `resolveHouseDeckBoundary`, `resolvePresetDeckBoundary`, `resolveDeckHostWallSegment`, plus the wall-side helpers `resolveOutwardUnit2D`, `attachmentSideFromWallLine`, `isAttachmentSide`. | ✅ shipped |
 | `openings.ts` | Opening composition: `buildHouseOpenings`. | ✅ shipped |
-| `roofFrames.ts` | Open-gable frame features + related: `buildOpenGableFrameFeatures`, `houseWallIsOpenGableFrame`. | pending |
+| `roofFrames.ts` | Open-gable frame features + related: `buildOpenGableFrameFeatures`, `houseWallIsOpenGableFrame`. | ✅ shipped |
 | `envelopeSolids.ts` | Envelope-solid orchestrator: `buildHouseEnvelopeSolids` and its helpers. | pending |
 | `attachment.ts` | Attachment target + zone boundary + semantic attachment edge: `buildAttachmentTarget`, `buildZoneBoundary`, `buildSemanticHouseAttachmentEdge`, `buildAttachmentAwareMonoEavePolygon`. | pending |
 
@@ -74,6 +74,7 @@ Order matters because some files depend on others. Recommended sequence:
 21. ✅ `roofFlashings.ts` (roof feature + perimeter flashings)
 22. ✅ `roofMaterial.ts` (roof material visuals)
 23. ✅ `decks.ts` (deck composition)
+24. ✅ `roofFrames.ts` (open-gable frame features)
 10. `roofPrimary.ts`
 11. `roofAppendages.ts`
 12. `roofMaterial.ts`
