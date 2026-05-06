@@ -35,7 +35,7 @@ When extracting helpers as part of this decomposition pass, **copy the body byte
 | `roofSolids.ts` | Render mesh + solid adjacency: `buildVerticalPrismRenderMesh`, `boundaryZRange`, `buildMiteredStripFootprints`, `buildMiteredOffsetStripFootprints`, `buildRoofSolidAdjacency`, `buildRoofSolidBottomEdge`, `buildRoofSolidRenderMesh`, `polygonAveragePoint3D`, `cleanPolygon3D`, `clipPolygon3DByScalar`, `roofPlaneTopNormal`, plus polygon triangulation helpers and the `RoofSolid*` types. | ✅ shipped |
 | `roofFlashings.ts` | Roof feature + perimeter flashings: `buildHouseRoofFeatureFlashings`, `buildPerimeterFlashings`, plus the wing builders (`buildHouseRoofFeatureFlashingWing`, `buildPerimeterRoofFlashingWing`, `buildPerimeterReturnFlashingWing`), `attachmentTargetPlane`, and `isPerimeterFlashingEdge`. | ✅ shipped |
 | `roofMaterial.ts` | Roof material visuals: `buildHouseRoofMaterialVisualForPlane`, `buildHouseRoofMaterialVisuals`, plus the projection / clipping helpers (`houseRoofMaterialSettings`, `clipHouseRoofMaterialLine`, `worldHouseRoofMaterialPoint`, etc.). | ✅ shipped |
-| `decks.ts` | Deck composition: `buildHouseDecks`, `resolveHouseDeckBoundary`, `resolvePresetDeckBoundary`, `resolveDeckHostWallSegment`, related helpers. | pending |
+| `decks.ts` | Deck composition: `buildHouseDecks`, `resolveHouseDeckBoundary`, `resolvePresetDeckBoundary`, `resolveDeckHostWallSegment`, plus the wall-side helpers `resolveOutwardUnit2D`, `attachmentSideFromWallLine`, `isAttachmentSide`. | ✅ shipped |
 | `openings.ts` | Opening composition: `buildHouseOpenings`. | ✅ shipped |
 | `roofFrames.ts` | Open-gable frame features + related: `buildOpenGableFrameFeatures`, `houseWallIsOpenGableFrame`. | pending |
 | `envelopeSolids.ts` | Envelope-solid orchestrator: `buildHouseEnvelopeSolids` and its helpers. | pending |
@@ -73,6 +73,7 @@ Order matters because some files depend on others. Recommended sequence:
 20. ✅ `roofSolids.ts` (render mesh + solid adjacency)
 21. ✅ `roofFlashings.ts` (roof feature + perimeter flashings)
 22. ✅ `roofMaterial.ts` (roof material visuals)
+23. ✅ `decks.ts` (deck composition)
 10. `roofPrimary.ts`
 11. `roofAppendages.ts`
 12. `roofMaterial.ts`
