@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { buildSideLocalPolygonFromWorld } from '@sp/geometry';
 import DrawingWorkbench from '@/components/drawings/workbench/DrawingWorkbench';
 import type { Geometry3DViewportState } from '@/components/drawings/viewports/Geometry3DViewport';
 import type { GeometryPreviewState } from '@/lib/drawings/geometry/buildWorkbenchGeometryPreview';
@@ -471,11 +472,27 @@ export default function DesignWorkbenchEstimateClient({
             !isLocked
               ? (commit) => {
                   if (commit.family === 'house_forms') {
+                    // The custom polygon is stored in side-local (alongM, depthM)
+                    // coords whose interpretation depends on the active pergola
+                    // dims + attachmentSide. Encoding raw world coords here would
+                    // sign-flip depth for the default 'rear' attachment and produce
+                    // a visible "house flips across the pergola axis" each commit.
+                    const houseForm = store.derived.activeHouseForm;
+                    const pergola = store.derived.activeObjectFirstPergola;
+                    const lengthM = Number(pergola?.geometry?.dimensions?.lengthM);
+                    const projectionM = Number(pergola?.geometry?.dimensions?.projectionM);
+                    const sideLocalPoints = buildSideLocalPolygonFromWorld({
+                      worldPolygonMm: commit.nextPolygon,
+                      pergolaWidthMm: Number.isFinite(lengthM) ? lengthM * 1000 : 6000,
+                      pergolaDepthMm: Number.isFinite(projectionM) ? projectionM * 1000 : 3000,
+                      attachmentSide: houseForm?.footprint.attachmentSide ?? null,
+                      params: houseForm?.footprint.params ?? null,
+                    });
                     void objectWorkbenchActions.commitSharedHouseFootprintEdit({
                       type: 'custom_polygon',
-                      polygon: commit.nextPolygon.map((point) => ({
-                        alongM: (point.x / 1000).toString(),
-                        depthM: (point.y / 1000).toString(),
+                      polygon: sideLocalPoints.map((p) => ({
+                        alongM: p.alongM.toString(),
+                        depthM: p.depthM.toString(),
                       })),
                     });
                     return;

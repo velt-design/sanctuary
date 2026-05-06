@@ -1145,54 +1145,16 @@ describe('normalizeGeometryConfig', () => {
       if (result.ok) expect(result.value.position).toBeNull();
     });
 
-    it('drives the datum origin + axes when position is set (slice B)', () => {
+    it('does not drive the datum when position is set — datum stays world-aligned', () => {
+      // Slice B (composeDatumFromPosition) was reverted because consumers of
+      // `assembly.outline` (e.g. PlanViewport's pergola_reference shape) read
+      // local pergola coords; rotating the datum without transforming those
+      // consumers caused visual misalignment after a house resize. `position`
+      // is currently pure metadata — plumbed through but not consumed for the
+      // datum frame. See docs/design-workbench-architecture.md for follow-up.
       const result = normalizeGeometryConfig(
-        makeRawInput({ position: { origin: { x: 1500, y: 2000 }, rotationDeg: 0 } }),
+        makeRawInput({ position: { origin: { x: 1500, y: 2000 }, rotationDeg: 45 } }),
       );
-      expect(result.ok).toBe(true);
-      if (!result.ok) return;
-      // Origin from position
-      expect(result.value.datum.origin).toEqual({ x: 1500, y: 2000, z: 0 });
-      // Rotation 0 → axes are world-aligned (use toBeCloseTo to avoid ±0 mismatch from sin(0))
-      expect(result.value.datum.xAxis.x).toBeCloseTo(1, 6);
-      expect(result.value.datum.xAxis.y).toBeCloseTo(0, 6);
-      expect(result.value.datum.yAxis.x).toBeCloseTo(0, 6);
-      expect(result.value.datum.yAxis.y).toBeCloseTo(1, 6);
-      expect(result.value.datum.zAxis).toEqual({ x: 0, y: 0, z: 1 });
-    });
-
-    it('rotates the datum axes by rotationDeg around +Z', () => {
-      const result = normalizeGeometryConfig(
-        makeRawInput({ position: { origin: { x: 0, y: 0 }, rotationDeg: 90 } }),
-      );
-      expect(result.ok).toBe(true);
-      if (!result.ok) return;
-      // 90° CCW: world-X → +Y, world-Y → -X
-      expect(result.value.datum.xAxis.x).toBeCloseTo(0, 6);
-      expect(result.value.datum.xAxis.y).toBeCloseTo(1, 6);
-      expect(result.value.datum.yAxis.x).toBeCloseTo(-1, 6);
-      expect(result.value.datum.yAxis.y).toBeCloseTo(0, 6);
-    });
-
-    it('transforms the attachmentEdge endpoints by position translation + rotation', () => {
-      const result = normalizeGeometryConfig(
-        makeRawInput({
-          dimensions: { lengthM: '6', projectionM: '3', hipCornerLengthBM: '0', hipCornerProjectionBM: '0' },
-          position: { origin: { x: 1000, y: 2000 }, rotationDeg: 90 },
-        }),
-      );
-      expect(result.ok).toBe(true);
-      if (!result.ok) return;
-      // Local (0,0) → world (1000, 2000)
-      expect(result.value.datum.attachmentEdgeStart.x).toBeCloseTo(1000, 6);
-      expect(result.value.datum.attachmentEdgeStart.y).toBeCloseTo(2000, 6);
-      // Local (6000, 0) rotated 90° → (0, 6000), translated → (1000, 8000)
-      expect(result.value.datum.attachmentEdgeEnd.x).toBeCloseTo(1000, 6);
-      expect(result.value.datum.attachmentEdgeEnd.y).toBeCloseTo(8000, 6);
-    });
-
-    it('falls back to the world-origin datum when position is null', () => {
-      const result = normalizeGeometryConfig(makeRawInput({}));
       expect(result.ok).toBe(true);
       if (!result.ok) return;
       expect(result.value.datum.origin).toEqual({ x: 0, y: 0, z: 0 });
@@ -1200,6 +1162,11 @@ describe('normalizeGeometryConfig', () => {
       // attachmentEdgeEnd.x === pergola length in mm (default 6000)
       expect(result.value.datum.attachmentEdgeEnd.x).toBe(6000);
       expect(result.value.datum.attachmentEdgeEnd.y).toBe(0);
+      // position itself is preserved on the config for downstream Phase 2 work
+      expect(result.value.position).toEqual({
+        origin: { x: 1500, y: 2000 },
+        rotationDeg: 45,
+      });
     });
   });
 });

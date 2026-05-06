@@ -304,6 +304,7 @@ describe('buildRawGeometryModuleInput', () => {
         boxRiseMm: null,
         boxMaxFallMm: null,
       },
+      position: null,
     });
   });
 

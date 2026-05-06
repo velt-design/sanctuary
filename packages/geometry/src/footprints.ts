@@ -225,6 +225,76 @@ export function houseFootprintSideLocalPointToWorld(input: {
   };
 }
 
+/**
+ * Inverse of `houseFootprintSideLocalPointToWorld`. Converts a world-space
+ * point (mm) into the side-local `(alongM, depthM)` frame so that drag-edit
+ * commits which capture pointer positions in world coords can write back
+ * polygon points that the next solve will interpret consistently.
+ *
+ * Without this inverse, the commit pipeline encodes raw world coords as
+ * side-local — which sign-flips depth for `attachmentSide='rear'` (the default)
+ * and produces a visible "house flips across the pergola axis" regression each
+ * time the user drags a wall.
+ */
+export function houseFootprintWorldPointToSideLocal(input: {
+  worldPointMm: Point2;
+  frame: HouseFootprintFrame;
+  resolved: ResolvedHouseFootprintParams;
+}): HouseFootprintSideLocalPoint {
+  const xM = input.worldPointMm.x / 1000;
+  const yM = input.worldPointMm.y / 1000;
+
+  if (input.frame.attachmentSide === 'front') {
+    return {
+      alongM: xM - input.resolved.offsetXM,
+      depthM: yM - input.frame.pergolaDepthM - input.resolved.setbackM,
+    };
+  }
+
+  if (input.frame.attachmentSide === 'left') {
+    return {
+      alongM: yM - input.resolved.offsetXM,
+      depthM: -input.resolved.setbackM - xM,
+    };
+  }
+
+  if (input.frame.attachmentSide === 'right') {
+    return {
+      alongM: yM - input.resolved.offsetXM,
+      depthM: xM - input.frame.pergolaWidthM - input.resolved.setbackM,
+    };
+  }
+
+  return {
+    alongM: xM - input.resolved.offsetXM,
+    depthM: -input.resolved.setbackM - yM,
+  };
+}
+
+/**
+ * High-level wrapper: convert a world-space polygon (mm) into the side-local
+ * polygon points that `buildCustomHouseFootprintPolygon` would round-trip to
+ * the same world coords. Use this when persisting a drag-edit commit so the
+ * polygon survives the next solve unchanged.
+ */
+export function buildSideLocalPolygonFromWorld(input: {
+  worldPolygonMm: ReadonlyArray<Point2>;
+  pergolaWidthMm: number;
+  pergolaDepthMm: number;
+  attachmentSide?: AttachmentSide | null;
+  params?: HouseFootprintParams | null;
+}): HouseFootprintSideLocalPoint[] {
+  const frame = resolveHouseFootprintFrame(input);
+  const resolved = resolveParams({
+    params: normalizeParams(input.params),
+    pergolaWidthM: frame.alongWidthM,
+    pergolaDepthM: frame.perpendicularDepthM,
+  });
+  return input.worldPolygonMm.map((worldPointMm) =>
+    houseFootprintWorldPointToSideLocal({ worldPointMm, frame, resolved }),
+  );
+}
+
 export function houseFootprintSideLocalToWorldPolygon(input: {
   points: HouseFootprintSideLocalPoint[];
   frame: HouseFootprintFrame;
