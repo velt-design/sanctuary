@@ -12,6 +12,7 @@ export { validateGeometrySolve } from './validate';
 export type { ValidateGeometrySolveInput } from './validate';
 export { buildViewerSceneModel } from './viewer';
 export {
+  buildProjectReferenceShapes,
   buildTopProjectionParityReport,
   buildTopProjectionViewModel,
   buildTopProjectionViewModelFromScene,
@@ -19,6 +20,8 @@ export {
 export type {
   BuildTopProjectionParityReportOptions,
   BuildTopProjectionViewModelFromSceneOptions,
+  ProjectPergolaEntry,
+  ReferenceShapeIdentifiers,
   TopProjectionParityIssue,
   TopProjectionParityIssueCode,
   TopProjectionParityReport,

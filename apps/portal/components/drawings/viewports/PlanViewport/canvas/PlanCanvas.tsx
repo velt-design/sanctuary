@@ -21,8 +21,10 @@ import { PlanEdgeDragPreviewLayer } from './layers/PlanEdgeDragPreviewLayer';
 import { PlanEdgeHoverHighlightLayer } from './layers/PlanEdgeHoverHighlightLayer';
 import { PlanHitTargetLayer } from './layers/PlanHitTargetLayer';
 import { PlanHitTestDebugLayer } from './layers/PlanHitTestDebugLayer';
+import { PlanProjectContextLayer } from './layers/PlanProjectContextLayer';
 import { PlanSelectionHaloLayer } from './layers/PlanSelectionHaloLayer';
 import { PlanSnapIndicatorLayer } from './layers/PlanSnapIndicatorLayer';
+import type { GeometryTopProjectionShape } from '@sp/geometry';
 import type { PlanDimension } from './planDimension';
 import type { EdgeDragHover, EdgeDragPreview } from '../tools/EdgeDragTool';
 import styles from './PlanCanvas.module.css';
@@ -43,6 +45,14 @@ export type PlanCanvasProps = {
   dimensions?: ReadonlyArray<PlanDimension>;
   edgeDragPreview?: EdgeDragPreview | null;
   edgeDragHover?: EdgeDragHover | null;
+  /**
+   * Faded outline shapes for non-active pergolas in the project (Step 5d).
+   * Sourced from `WorkbenchSolvedModel.projectReferenceShapes` filtered for
+   * the active pergola's outline + house reference (already rendered by the
+   * regular layers). Empty array (default) when the project has only one
+   * pergola or none.
+   */
+  projectContextShapes?: ReadonlyArray<GeometryTopProjectionShape>;
   /** Active outline polygon used for hit-testing — passed in for the debug overlay. */
   activeOutlinePolygon?: ReadonlyArray<Point2> | null;
   transform: DrawingWorkbenchViewportTransform;
@@ -51,6 +61,7 @@ export type PlanCanvasProps = {
 };
 
 const EMPTY_DIMENSIONS: ReadonlyArray<PlanDimension> = [];
+const EMPTY_PROJECT_CONTEXT_SHAPES: ReadonlyArray<GeometryTopProjectionShape> = [];
 
 function transformAttr(transform: DrawingWorkbenchViewportTransform): string {
   return `translate(${transform.panX} ${transform.panY}) scale(${transform.zoom})`;
@@ -66,6 +77,7 @@ export function PlanCanvas({
   dimensions = EMPTY_DIMENSIONS,
   edgeDragPreview = null,
   edgeDragHover = null,
+  projectContextShapes = EMPTY_PROJECT_CONTEXT_SHAPES,
   activeOutlinePolygon = null,
   transform,
   onTransformChange,
@@ -199,6 +211,10 @@ export function PlanCanvas({
         onContextMenu={panZoom.onContextMenu}
       >
         <g transform={transformAttr(transform)} data-plan-transform="true">
+          <PlanProjectContextLayer
+            shapes={projectContextShapes}
+            coordinateAdapter={coordinateAdapter}
+          />
           <PlanCommittedBodyLayer items={committedBodies} />
           <PlanContextLineLayer items={contextLines} />
           <PlanDetailLayer items={detailLines} />

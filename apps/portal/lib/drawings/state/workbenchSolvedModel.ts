@@ -1,5 +1,6 @@
 import {
   buildAssemblyQuantityTakeoff,
+  buildProjectReferenceShapes,
   buildTopProjectionViewModelFromScene,
   buildViewerSceneModel,
   type Assembly3D,
@@ -7,8 +8,10 @@ import {
   type GeometryPlanViewModel,
   type GeometryQuantityTakeoff,
   type GeometrySectionViewModel,
+  type GeometryTopProjectionShape,
   type GeometryTopProjectionViewModel,
   type GeometryValidationReport,
+  type ProjectPergolaEntry,
   type ViewerSceneModel,
   validateGeometrySolve,
 } from '@sp/geometry';
@@ -164,6 +167,16 @@ export type WorkbenchSolvedModel = {
   projectModel: WorkbenchProjectModel;
   modules: WorkbenchSolvedModule[];
   activeModule: WorkbenchSolvedModule | null;
+  /**
+   * Project-level reference shapes — one canonical `house_reference` plus one
+   * `pergola_reference` per pergola module. Step 5d Option A of the
+   * first-class spatial-entities migration: lets the canvas render outlines
+   * for non-active pergolas as a context overlay so multi-pergola scenes
+   * are visible at a glance. Active-module rendering still uses
+   * `module.geometryTopProjection`; the overlay only adds shapes for OTHER
+   * pergolas (filtered via `buildProjectContextOverlayShapes`).
+   */
+  projectReferenceShapes: GeometryTopProjectionShape[];
   trust: WorkbenchTrustStatus;
   geometryIdentity: Required<WorkbenchGeometryIdentity>;
 };
@@ -938,11 +951,13 @@ export function buildWorkbenchSolvedModel(input: {
   );
   const activeModule = modules[input.activeModuleIndex ?? 0] ?? null;
   const inactiveMessage = activeModule ? null : resolveInactiveSolvedModelMessage(input);
+  const projectReferenceShapes = buildProjectReferenceShapesFromModules(modules, projectModel);
 
   return {
     projectModel,
     modules,
     activeModule,
+    projectReferenceShapes,
     trust:
       activeModule?.trust ??
       buildTrustStatus({
@@ -952,6 +967,59 @@ export function buildWorkbenchSolvedModel(input: {
       }),
     geometryIdentity,
   };
+}
+
+/**
+ * Step 5d Option A: aggregate reference shapes for every pergola module's
+ * solved assembly. The pergola source id comes from
+ * `module.drawingModule.input.pergolaId` (or `pergola-${index+1}` fallback);
+ * the house source id comes from the project's first house form id (the
+ * workbench has at most one house form today, so any pergola's house data
+ * is canonical).
+ */
+function buildProjectReferenceShapesFromModules(
+  modules: WorkbenchSolvedModule[],
+  projectModel: WorkbenchProjectModel,
+): GeometryTopProjectionShape[] {
+  const entries: ProjectPergolaEntry[] = [];
+  for (let index = 0; index < modules.length; index += 1) {
+    const module = modules[index]!;
+    const assembly = module.assembly;
+    if (!assembly) continue;
+    const pergolaSourceId =
+      module.moduleInput.pergolaId ?? `pergola-${index + 1}`;
+    entries.push({ assembly, pergolaSourceId });
+  }
+  if (entries.length === 0) return [];
+  const houseSourceId = projectModel.houseAssembly?.houseForms[0]?.id ?? null;
+  return buildProjectReferenceShapes({
+    pergolas: entries,
+    houseSourceId,
+  });
+}
+
+/**
+ * Filter the project-level reference shapes for use as a context overlay
+ * alongside the active module's topProjection. Drops the active pergola's
+ * own outline (already rendered in full detail) and the house reference
+ * (likewise) so the overlay only adds shapes the active view doesn't
+ * already provide.
+ */
+export function buildProjectContextOverlayShapes(input: {
+  projectReferenceShapes: ReadonlyArray<GeometryTopProjectionShape>;
+  activePergolaSourceId: string | null;
+}): GeometryTopProjectionShape[] {
+  return input.projectReferenceShapes.filter((shape) => {
+    if (shape.sourceType === 'house_reference') return false;
+    if (
+      shape.sourceType === 'pergola_reference' &&
+      input.activePergolaSourceId &&
+      shape.sourceObjectId === input.activePergolaSourceId
+    ) {
+      return false;
+    }
+    return true;
+  });
 }
 
 function buildGeometryPreviewStateFromSolvedModule(

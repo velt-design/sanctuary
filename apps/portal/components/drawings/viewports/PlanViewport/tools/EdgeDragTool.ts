@@ -33,6 +33,8 @@ export type EdgeDragPreview = {
 export type EdgeDragCommit = {
   outlineId: string;
   family: ActiveObjectFamily;
+  /** Index in the original polygon of the edge that was dragged. */
+  edgeIndex: number;
   nextPolygon: ReadonlyArray<Point2>;
   /** When the drag ended on a snap, this carries the resolved snap result. */
   snap: EdgeSnapResult | null;
@@ -261,6 +263,7 @@ export function createEdgeDragTool(config: EdgeDragToolConfig): Tool {
         config.onCommit?.({
           outlineId: finalSession.outline.id,
           family: finalSession.outline.family,
+          edgeIndex: finalSession.edgeIndex,
           nextPolygon: preview.previewPolygon,
           snap,
         });

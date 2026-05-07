@@ -1,5 +1,6 @@
 'use client';
 
+import type { GeometryTopProjectionShape } from '@sp/geometry';
 import type { ModuleViewsStatus, ModuleViewsTab } from '@/app/staff/calculator/ModuleViewsCard';
 import type { PlanViewModel } from '@/lib/drawings/views/plan/buildPlanViewModel';
 import type { WorkbenchDrawingSurfaceGeometry } from '@/lib/drawings/views/workbenchDrawingSurfaceGeometry';
@@ -95,6 +96,8 @@ type DrawingWorkbenchProps = {
   ) => Promise<{ ok: boolean; error?: string }> | { ok: boolean; error?: string };
   onDeckInteractionTelemetryChange?: (telemetry: DeckInteractionTelemetry) => void;
   onCommitOutlineEdit?: (commit: EdgeDragCommit) => void;
+  /** Faded outline shapes for non-active pergolas (Step 5d Option A). */
+  projectContextShapes?: ReadonlyArray<GeometryTopProjectionShape>;
 };
 
 export default function DrawingWorkbench({
@@ -145,6 +148,7 @@ export default function DrawingWorkbench({
   onCommitOpeningDimension,
   onDeckInteractionTelemetryChange,
   onCommitOutlineEdit,
+  projectContextShapes,
 }: DrawingWorkbenchProps) {
   void modules;
   void onActiveModuleIndexChange;
@@ -201,6 +205,7 @@ export default function DrawingWorkbench({
         onCommitOpeningDimension={onCommitOpeningDimension}
         onDeckInteractionTelemetryChange={onDeckInteractionTelemetryChange}
         onCommitOutlineEdit={onCommitOutlineEdit}
+        projectContextShapes={projectContextShapes}
       />
     </section>
   );

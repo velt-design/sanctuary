@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildProjectReferenceShapes,
   buildTopProjectionParityReport,
   buildTopProjectionViewModelFromScene,
   buildTopProjectionViewModel,
@@ -570,6 +571,183 @@ describe("buildTopProjectionViewModel", () => {
       maxX: 1200,
       maxY: 100,
     });
+  });
+
+  describe("reference shape identifiers (step 5b)", () => {
+    // Step 5b of the first-class spatial-entities migration. The reference
+    // shapes a single `buildTopProjectionViewModel` call emits get
+    // disambiguated ids when the caller provides per-instance source ids.
+    // This is preparation for the project-level topProjection (Step 5c+)
+    // that aggregates multiple pergolas + house forms into one view —
+    // singleton ids would collide there.
+
+    it("emits singleton ids when no identifiers are provided (back-compat)", () => {
+      const fixture = requireSupportedFixture("mono_attached_soffit_away_standard");
+      const solved = solveAssembly3D(addHouseModelContext(fixture.config));
+      if (!solved.ok) throw new Error(solved.error);
+
+      const projection = buildTopProjectionViewModel(solved.value);
+      const houseRef = projection.shapes.find((shape) => shape.sourceType === "house_reference");
+      const pergolaRef = projection.shapes.find((shape) => shape.sourceType === "pergola_reference");
+
+      expect(houseRef?.id).toBe("house_reference:house-footprint");
+      expect(houseRef?.sourceId).toBe("house-footprint");
+      expect(pergolaRef?.id).toBe("pergola_reference:pergola-outline");
+      expect(pergolaRef?.sourceId).toBe("pergola-outline");
+    });
+
+    it("uses caller-provided pergolaSourceId in both id and sourceId fields", () => {
+      const fixture = requireSupportedFixture("mono_attached_soffit_away_standard");
+      const solved = solveAssembly3D(addHouseModelContext(fixture.config));
+      if (!solved.ok) throw new Error(solved.error);
+
+      const projection = buildTopProjectionViewModel(solved.value, {
+        referenceIdentifiers: { pergolaSourceId: "pergola-rear-deck" },
+      });
+      const pergolaRef = projection.shapes.find((shape) => shape.sourceType === "pergola_reference");
+
+      expect(pergolaRef?.id).toBe("pergola_reference:pergola-rear-deck");
+      expect(pergolaRef?.sourceId).toBe("pergola-rear-deck");
+      expect(pergolaRef?.sourceObjectId).toBe("pergola-rear-deck");
+    });
+
+    it("uses caller-provided houseSourceId in both id and sourceId fields", () => {
+      const fixture = requireSupportedFixture("mono_attached_soffit_away_standard");
+      const solved = solveAssembly3D(addHouseModelContext(fixture.config));
+      if (!solved.ok) throw new Error(solved.error);
+
+      const projection = buildTopProjectionViewModel(solved.value, {
+        referenceIdentifiers: { houseSourceId: "house-form-A" },
+      });
+      const houseRef = projection.shapes.find((shape) => shape.sourceType === "house_reference");
+
+      expect(houseRef?.id).toBe("house_reference:house-form-A");
+      expect(houseRef?.sourceId).toBe("house-form-A");
+      expect(houseRef?.sourceObjectId).toBe("house-form-A");
+    });
+
+    it("two calls with different identifiers produce non-colliding ids (the step 5b invariant)", () => {
+      const fixture = requireSupportedFixture("mono_attached_soffit_away_standard");
+      const solved = solveAssembly3D(addHouseModelContext(fixture.config));
+      if (!solved.ok) throw new Error(solved.error);
+
+      const projectionA = buildTopProjectionViewModel(solved.value, {
+        referenceIdentifiers: { pergolaSourceId: "pergola-1", houseSourceId: "house-form-A" },
+      });
+      const projectionB = buildTopProjectionViewModel(solved.value, {
+        referenceIdentifiers: { pergolaSourceId: "pergola-2", houseSourceId: "house-form-A" },
+      });
+
+      const refIdsA = projectionA.shapes
+        .filter(
+          (shape) => shape.sourceType === "house_reference" || shape.sourceType === "pergola_reference",
+        )
+        .map((shape) => shape.id);
+      const refIdsB = projectionB.shapes
+        .filter(
+          (shape) => shape.sourceType === "house_reference" || shape.sourceType === "pergola_reference",
+        )
+        .map((shape) => shape.id);
+
+      // The pergola id differs across calls; the house ref is shared.
+      expect(refIdsA).toContain("pergola_reference:pergola-1");
+      expect(refIdsB).toContain("pergola_reference:pergola-2");
+      expect(refIdsA).toContain("house_reference:house-form-A");
+      expect(refIdsB).toContain("house_reference:house-form-A");
+      // No id collision between pergola references.
+      const overlap = refIdsA.filter((id) => id.startsWith("pergola_reference:") && refIdsB.includes(id));
+      expect(overlap).toEqual([]);
+    });
+  });
+});
+
+describe("buildProjectReferenceShapes (step 5c)", () => {
+  // Project-level reference shape aggregation. The function emits one
+  // canonical `house_reference` (when any pergola carries house data) plus
+  // one `pergola_reference` per pergola entry, using the disambiguated ids
+  // 5b shipped. House dedupe across multiple pergolas keeps the canvas
+  // from rendering the same house outline N times.
+
+  function makeAssembly(): ReturnType<typeof solveAssembly3D> extends { value: infer V } ? V : never {
+    const fixture = requireSupportedFixture("mono_attached_soffit_away_standard");
+    const solved = solveAssembly3D(addHouseModelContext(fixture.config));
+    if (!solved.ok) throw new Error(solved.error);
+    return solved.value;
+  }
+
+  it("emits a single house_reference plus one pergola_reference per entry", () => {
+    const assembly = makeAssembly();
+    const shapes = buildProjectReferenceShapes({
+      pergolas: [
+        { assembly, pergolaSourceId: "pergola-1" },
+        { assembly, pergolaSourceId: "pergola-2" },
+        { assembly, pergolaSourceId: "pergola-3" },
+      ],
+      houseSourceId: "house-form-A",
+    });
+
+    const houseRefs = shapes.filter((shape) => shape.sourceType === "house_reference");
+    const pergolaRefs = shapes.filter((shape) => shape.sourceType === "pergola_reference");
+
+    // House dedupe — exactly one house_reference even with 3 pergolas.
+    expect(houseRefs).toHaveLength(1);
+    expect(houseRefs[0]?.id).toBe("house_reference:house-form-A");
+
+    // One pergola_reference per entry, with disambiguated ids.
+    expect(pergolaRefs).toHaveLength(3);
+    expect(pergolaRefs.map((shape) => shape.id)).toEqual([
+      "pergola_reference:pergola-1",
+      "pergola_reference:pergola-2",
+      "pergola_reference:pergola-3",
+    ]);
+  });
+
+  it("returns an empty array when there are no pergola entries", () => {
+    expect(
+      buildProjectReferenceShapes({ pergolas: [], houseSourceId: "house-form-A" }),
+    ).toEqual([]);
+  });
+
+  it("falls back to the legacy singleton house id when houseSourceId is omitted", () => {
+    const assembly = makeAssembly();
+    const shapes = buildProjectReferenceShapes({
+      pergolas: [{ assembly, pergolaSourceId: "pergola-1" }],
+    });
+    const houseRef = shapes.find((shape) => shape.sourceType === "house_reference");
+    expect(houseRef?.id).toBe("house_reference:house-footprint");
+    expect(houseRef?.sourceId).toBe("house-footprint");
+  });
+
+  it("preserves the canonical-outline metadata flag on every reference shape", () => {
+    const assembly = makeAssembly();
+    const shapes = buildProjectReferenceShapes({
+      pergolas: [
+        { assembly, pergolaSourceId: "pergola-1" },
+        { assembly, pergolaSourceId: "pergola-2" },
+      ],
+      houseSourceId: "house-form-A",
+    });
+    for (const shape of shapes) {
+      expect(shape.metadata?.isCanonicalOutline).toBe(true);
+    }
+  });
+
+  it("emits no house_reference when none of the assemblies carry house data", () => {
+    // Build a freestanding assembly (no house_footprint context).
+    const fixture = getGeometryFixtureCase("mono_freestanding_no_house");
+    if (fixture && fixture.kind === "supported") {
+      const solved = solveAssembly3D(fixture.config);
+      if (!solved.ok) return;
+      const assembly = solved.value;
+      // Skip if this fixture happens to have a house in its config.
+      if (assembly.house.model || assembly.house.footprint) return;
+      const shapes = buildProjectReferenceShapes({
+        pergolas: [{ assembly, pergolaSourceId: "pergola-1" }],
+        houseSourceId: "house-form-A",
+      });
+      const houseRefs = shapes.filter((shape) => shape.sourceType === "house_reference");
+      expect(houseRefs).toEqual([]);
+    }
   });
 });
 

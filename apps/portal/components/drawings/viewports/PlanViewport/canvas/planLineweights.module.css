@@ -122,6 +122,25 @@
   fill: var(--plan-fill-reference);
 }
 
+.projectContextOutline {
+  composes: strokeHairline;
+  stroke-dasharray: 4 3;
+  fill: rgba(120, 120, 130, 0.05);
+  pointer-events: none;
+}
+
+.projectContextLabel {
+  fill: var(--plan-stroke-light);
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 9px;
+  font-weight: 500;
+  text-anchor: middle;
+  paint-order: stroke fill;
+  stroke: rgba(255, 255, 255, 0.85);
+  stroke-width: 2.5px;
+  pointer-events: none;
+}
+
 .contextLine {
   composes: strokeLight;
   fill: none;

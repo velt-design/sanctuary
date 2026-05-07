@@ -1795,4 +1795,30 @@ describe('buildDrawingWorkbenchStore', () => {
       }),
     );
   });
+
+  it('exposes projectReferenceShapes on solvedModel for the plan-canvas overlay (step 5d Option A)', () => {
+    // The store now computes project-level reference shapes once per build —
+    // one canonical house_reference plus one pergola_reference per pergola
+    // module. The overlay layer in PlanCanvas filters this list to render
+    // outlines for non-active pergolas as a context overlay.
+    const fixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
+    if (!fixture) throw new Error('Missing mono-standard fixture.');
+
+    const store = buildDrawingWorkbenchStore({
+      snapshot: fixture.snapshot,
+      ui: createDrawingWorkbenchUiState({ activeView: 'plan' }),
+    });
+
+    const shapes = store.derived.solvedModel.projectReferenceShapes;
+    expect(shapes.length).toBeGreaterThan(0);
+    // At least one pergola_reference + at most one house_reference (dedupe).
+    const pergolaRefs = shapes.filter((shape) => shape.sourceType === 'pergola_reference');
+    const houseRefs = shapes.filter((shape) => shape.sourceType === 'house_reference');
+    expect(pergolaRefs.length).toBeGreaterThanOrEqual(1);
+    expect(houseRefs.length).toBeLessThanOrEqual(1);
+    // Reference shapes carry the canonical-outline metadata flag.
+    for (const shape of shapes) {
+      expect(shape.metadata?.isCanonicalOutline).toBe(true);
+    }
+  });
 });

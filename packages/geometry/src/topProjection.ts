@@ -544,16 +544,38 @@ function buildShapeFromObject(object: ViewerSceneObject): GeometryTopProjectionS
   };
 }
 
-function buildReferenceShapes(assembly: Assembly3D): GeometryTopProjectionShape[] {
+/**
+ * Per-instance identifiers for the reference shapes a single
+ * `buildTopProjectionViewModel` call emits. Step 5b of the first-class
+ * spatial-entities migration: when multiple pergolas / house forms
+ * eventually compose into a project-level topProjection (Step 5c+), each
+ * instance needs a stable, disambiguated id so the consumer can keep them
+ * apart. When omitted, the legacy singleton ids (`'house-footprint'` /
+ * `'pergola-outline'`) are emitted for back-compat.
+ */
+export type ReferenceShapeIdentifiers = {
+  /** Stable id for THIS pergola assembly's outline reference shape. */
+  pergolaSourceId?: string | null;
+  /** Stable id for THIS house assembly's footprint reference shape. */
+  houseSourceId?: string | null;
+};
+
+function buildReferenceShapes(
+  assembly: Assembly3D,
+  identifiers: ReferenceShapeIdentifiers = {},
+): GeometryTopProjectionShape[] {
   const shapes: GeometryTopProjectionShape[] = [];
+
+  const houseSourceId = identifiers.houseSourceId ?? 'house-footprint';
+  const pergolaSourceId = identifiers.pergolaSourceId ?? 'pergola-outline';
 
   const houseFootprint = assembly.house.model?.footprint ?? assembly.house.footprint ?? null;
   const housePolygon = houseFootprint ? cleanPolygon(toPolygon2(houseFootprint)) : null;
   if (housePolygon) {
     shapes.push({
-      id: 'house_reference:house-footprint',
-      sourceObjectId: 'house-footprint',
-      sourceId: 'house-footprint',
+      id: `house_reference:${houseSourceId}`,
+      sourceObjectId: houseSourceId,
+      sourceId: houseSourceId,
       sourceType: 'house_reference',
       family: 'house',
       kind: 'footprint',
@@ -571,9 +593,9 @@ function buildReferenceShapes(assembly: Assembly3D): GeometryTopProjectionShape[
   const pergolaPolygon = assembly.outline.length >= 3 ? cleanPolygon(toPolygon2(assembly.outline)) : null;
   if (pergolaPolygon) {
     shapes.push({
-      id: 'pergola_reference:pergola-outline',
-      sourceObjectId: 'pergola-outline',
-      sourceId: 'pergola-outline',
+      id: `pergola_reference:${pergolaSourceId}`,
+      sourceObjectId: pergolaSourceId,
+      sourceId: pergolaSourceId,
       sourceType: 'pergola_reference',
       family: 'pergola',
       kind: 'outline',
@@ -743,8 +765,65 @@ export function buildTopProjectionViewModelFromScene(
   };
 }
 
-export function buildTopProjectionViewModel(assembly: Assembly3D): GeometryTopProjectionViewModel {
+export function buildTopProjectionViewModel(
+  assembly: Assembly3D,
+  options: { referenceIdentifiers?: ReferenceShapeIdentifiers } = {},
+): GeometryTopProjectionViewModel {
   return buildTopProjectionViewModelFromScene(buildViewerSceneModel(assembly), {
-    referenceShapes: buildReferenceShapes(assembly),
+    referenceShapes: buildReferenceShapes(assembly, options.referenceIdentifiers),
   });
+}
+
+/**
+ * One pergola entry for a project-level topProjection. Each pergola provides
+ * its own assembly (the geometry source) plus a stable `pergolaSourceId` used
+ * to disambiguate the emitted reference shape's id from other pergolas in the
+ * same project.
+ */
+export type ProjectPergolaEntry = {
+  assembly: Assembly3D;
+  pergolaSourceId: string;
+};
+
+/**
+ * Build the project-level REFERENCE shapes — one canonical `house_reference`
+ * (when any pergola carries house data) plus one `pergola_reference` per
+ * pergola entry. Step 5c of the first-class spatial-entities migration.
+ *
+ * Why "reference shapes only" and not full per-pergola scene aggregation:
+ * each pergola's viewer scene includes interior objects (posts, beams,
+ * rafters) whose object ids collide across pergolas (e.g., both pergolas
+ * have a `post-0`). Aggregating full scenes requires pergola-prefixed
+ * object ids, which is a separate slice (Step 5d). Reference shapes are
+ * enough to render the visible outline of every pergola in one canvas —
+ * the per-pergola detail rendering stays at the module level for now.
+ *
+ * House dedupe: when multiple pergola entries are passed and they share the
+ * same house, only ONE house_reference is emitted (from the first entry
+ * that has house data). Caller-supplied `houseSourceId` is the canonical
+ * id for that single emission.
+ */
+export function buildProjectReferenceShapes(input: {
+  pergolas: ReadonlyArray<ProjectPergolaEntry>;
+  houseSourceId?: string | null;
+}): GeometryTopProjectionShape[] {
+  const out: GeometryTopProjectionShape[] = [];
+  const houseSourceId = input.houseSourceId ?? null;
+  let emittedHouse = false;
+
+  for (const entry of input.pergolas) {
+    const shapes = buildReferenceShapes(entry.assembly, {
+      pergolaSourceId: entry.pergolaSourceId,
+      houseSourceId: houseSourceId ?? undefined,
+    });
+    for (const shape of shapes) {
+      if (shape.sourceType === 'house_reference') {
+        if (emittedHouse) continue;
+        emittedHouse = true;
+      }
+      out.push(shape);
+    }
+  }
+
+  return out;
 }

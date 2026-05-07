@@ -1,5 +1,6 @@
 'use client';
 
+import type { GeometryTopProjectionShape } from '@sp/geometry';
 import type { ModuleViewsStatus, ModuleViewsTab } from '@/app/staff/calculator/ModuleViewsCard';
 import type { DeckInteractionTelemetry } from '@/lib/drawings/interactions/deckInteractionContract';
 import type {
@@ -88,6 +89,8 @@ type WorkbenchViewportHostProps = {
   ) => Promise<{ ok: boolean; error?: string }> | { ok: boolean; error?: string };
   onDeckInteractionTelemetryChange?: (telemetry: DeckInteractionTelemetry) => void;
   onCommitOutlineEdit?: (commit: EdgeDragCommit) => void;
+  /** Faded outline shapes for non-active pergolas (Step 5d Option A). */
+  projectContextShapes?: ReadonlyArray<GeometryTopProjectionShape>;
 };
 
 export default function WorkbenchViewportHost({
@@ -131,6 +134,7 @@ export default function WorkbenchViewportHost({
   onCommitOpeningDimension,
   onDeckInteractionTelemetryChange,
   onCommitOutlineEdit,
+  projectContextShapes,
 }: WorkbenchViewportHostProps) {
   const routedDrawingSurfaceGeometry =
     drawingSurfaceGeometry ??
@@ -161,6 +165,7 @@ export default function WorkbenchViewportHost({
           objectWorkbenchDisplayFamily={objectWorkbenchDisplayFamily}
           visibility={visibility}
           activeObjectRef={activeObjectRef}
+          projectContextShapes={projectContextShapes}
           viewportTransform={modelViewportTransform}
           onViewportTransformChange={onModelViewportTransformChange}
           onSelectObjectWorkbenchTarget={onSelectObjectWorkbenchTarget}

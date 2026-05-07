@@ -107,7 +107,10 @@ describe('EdgeDragTool', () => {
     const commit = onCommit.mock.calls[0]![0];
     expect(commit.outlineId).toBe('house-footprint');
     expect(commit.family).toBe('house_forms');
+    // Right edge of RECT_OUTLINE (x=4000) is index 1 in CCW polygon order.
+    expect(commit.edgeIndex).toBe(1);
     expect(commit.nextPolygon[1]).toEqual({ x: 4400, y: 0 });
+    expect(commit.snap).toBeNull();
     expect(onPreviewChange).toHaveBeenLastCalledWith(null);
   });
 
@@ -220,6 +223,11 @@ describe('EdgeDragTool', () => {
       tool.onPointerMove!(basicEvent({ x: 2000, y: 2550 }));
       tool.onPointerUp!(basicEvent({ x: 2000, y: 2550 }));
       const commit = onCommit.mock.calls[0]![0];
+      // Step 8 follow-up #3: edgeIndex on the commit lets the attachment
+      // record which polygon edge of MY pergola is snapped, so re-solves
+      // can recover alignment without re-querying the snap engine.
+      // Top edge of RECT_OUTLINE (y=2000) is index 2 in CCW polygon order.
+      expect(commit.edgeIndex).toBe(2);
       expect(commit.snap).not.toBeNull();
       expect(commit.snap.target.id).toBe('roof-eave-1');
       expect(commit.snap.target.edgeKind).toBe('roof_eave');

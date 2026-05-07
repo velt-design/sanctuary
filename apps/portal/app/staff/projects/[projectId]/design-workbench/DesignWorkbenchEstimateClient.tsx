@@ -9,6 +9,7 @@ import {
   buildObjectWorkbenchGeometryEditState,
 } from '@/lib/drawings/geometry/geometryEditAdapter';
 import { buildDrawingWorkbenchStore } from '@/lib/drawings/state/drawingWorkbenchStore';
+import { buildProjectContextOverlayShapes } from '@/lib/drawings/state/workbenchSolvedModel';
 import {
   areDrawingWorkbenchObjectSelectionStatesEqual,
   areDrawingWorkbenchVisibilityStatesEqual,
@@ -276,6 +277,22 @@ export default function DesignWorkbenchEstimateClient({
       : store.ui.activeObjectRef.family === 'house_forms'
         ? { family: 'house_forms' as const, objectId: store.ui.activeObjectRef.objectId ?? viewportDefaultHouseFormId }
         : store.ui.activeObjectRef;
+  // Step 5d Option A: faded outlines for OTHER pergolas in the project so
+  // multi-pergola scenes show every pergola's outline at a glance. The
+  // active module's full topProjection still drives detail rendering; the
+  // overlay only adds shapes the active artifact doesn't render
+  // (non-active pergola outlines), with the house reference filtered out
+  // since the active artifact already provides it.
+  const activePergolaSourceId =
+    store.derived.activeModule?.drawingModule.input.pergolaId ?? null;
+  const projectContextShapes = useMemo(
+    () =>
+      buildProjectContextOverlayShapes({
+        projectReferenceShapes: store.derived.solvedModel.projectReferenceShapes,
+        activePergolaSourceId,
+      }),
+    [store.derived.solvedModel.projectReferenceShapes, activePergolaSourceId],
+  );
   const activeModelViewportTransform =
     modelViewportTransformsByKey[modelViewportSurfaceKey] ?? DEFAULT_MODEL_VIEWPORT_TRANSFORM;
   const activeGeometryViewportState =
@@ -443,6 +460,7 @@ export default function DesignWorkbenchEstimateClient({
           drawingSurfaceGeometry={store.derived.activeDrawingSurfaceGeometry}
           planViewModel={store.derived.activePlanViewModel}
           activeObjectRef={viewportActiveObjectRef}
+          projectContextShapes={projectContextShapes}
           pergolaTargetId={viewportPergolaId}
           enableProjectionOnlyModelInteractions
           modelViewportKey={modelViewportSurfaceKey}
@@ -652,13 +670,11 @@ export default function DesignWorkbenchEstimateClient({
                           hostObjectId: commit.snap.target.sourceObjectId,
                           hostEdgeKind,
                           hostEdgeId: commit.snap.target.id,
-                          // EdgeDragTool's commit doesn't yet pass through
-                          // myEdgeIndex on the snap result; the dragged edge
-                          // is `commit.snap.target` aligned to one polygon
-                          // edge. Until the tool plumbs edgeIndex on the snap
-                          // result, fall back to 0 (re-solve will recover
-                          // alignment from edge geometry).
-                          myEdgeIndex: 0,
+                          // The dragged edge index — preserved on the
+                          // attachment so re-solves can recover alignment
+                          // (which polygon edge of MY pergola sits on the
+                          // host edge) without re-querying the snap engine.
+                          myEdgeIndex: commit.edgeIndex,
                         });
                       }
                     }

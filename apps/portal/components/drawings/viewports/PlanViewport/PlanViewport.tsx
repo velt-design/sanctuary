@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useMemo, useRef, useState } from 'react';
+import type { GeometryTopProjectionShape } from '@sp/geometry';
 import type { WorkbenchSolvedGeometryArtifact } from '@/lib/drawings/state/workbenchSolvedModel';
 import type {
   DrawingWorkbenchViewportTransform,
@@ -40,6 +41,13 @@ export type PlanViewportProps = {
   visibility?: DrawingWorkbenchVisibilityState;
   activeObjectRef?: WorkbenchObjectRef | null;
   dimensions?: ReadonlyArray<PlanDimension>;
+  /**
+   * Faded outlines for OTHER pergolas in the project (Step 5d). Filtered
+   * upstream to drop the active pergola's own outline + the house ref so
+   * the overlay only adds shapes the active artifact doesn't already
+   * render. Empty for single-pergola projects.
+   */
+  projectContextShapes?: ReadonlyArray<GeometryTopProjectionShape>;
   viewportTransform: DrawingWorkbenchViewportTransform;
   onViewportTransformChange: (next: DrawingWorkbenchViewportTransform) => void;
   onSelectObjectWorkbenchTarget?: (selection: ObjectWorkbenchViewportTargetSelection) => void;
@@ -53,6 +61,7 @@ export default function PlanViewport({
   visibility = DEFAULT_VISIBILITY,
   activeObjectRef,
   dimensions: providedDimensions,
+  projectContextShapes,
   viewportTransform,
   onViewportTransformChange,
   onSelectObjectWorkbenchTarget,
@@ -183,6 +192,7 @@ export default function PlanViewport({
           dimensions={mergedDimensions}
           edgeDragPreview={edgeDragPreview}
           edgeDragHover={edgeDragHover}
+          projectContextShapes={projectContextShapes}
           activeOutlinePolygon={activeOutlineForRender?.polygon ?? null}
           transform={viewportTransform}
           onTransformChange={onViewportTransformChange}
