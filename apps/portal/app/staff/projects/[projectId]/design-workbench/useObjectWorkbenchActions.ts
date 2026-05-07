@@ -16,6 +16,7 @@ import type { DrawingWorkbenchUiState } from '@/lib/drawings/state/drawingWorkbe
 import type {
   HouseFormRoofIntentModel,
   ObjectFirstWorkbenchDraftVNext,
+  PergolaAttachment,
   WorkbenchObjectRef,
 } from '@/lib/drawings/state/objectFirstWorkbenchModel';
 import {
@@ -874,6 +875,28 @@ export function useObjectWorkbenchActions({
     [commitObjectWorkbenchPatch, store.derived.objectWorkbench.pergolas],
   );
 
+  /**
+   * Step 8 of the first-class spatial-entities migration. Writes the
+   * snap-derived `PergolaAttachment` (host + spatialKind + method) onto the
+   * pergola draft. The pergola edge-drag handler calls this with the resolved
+   * snap from `commit.snap`. `null` clears the attachment (legacy fields
+   * become source of truth again).
+   */
+  const commitSharedPergolaAttachment = useCallback(
+    async (pergolaId: string, attachment: PergolaAttachment | null): Promise<CommitResult> => {
+      const currentPergola =
+        store.derived.objectWorkbench.pergolas.find((pergola) => pergola.id === pergolaId) ?? null;
+      if (!currentPergola) {
+        return { ok: false, error: 'This pergola is no longer available.' };
+      }
+      return commitObjectWorkbenchPatch({
+        target: { family: 'pergolas', objectId: pergolaId },
+        patch: { attachment },
+      });
+    },
+    [commitObjectWorkbenchPatch, store.derived.objectWorkbench.pergolas],
+  );
+
   return {
     addSharedHouseDeck,
     addSharedHouseOpening,
@@ -882,6 +905,7 @@ export function useObjectWorkbenchActions({
     commitGeometryIntent,
     commitHouseFormFootprintDimension,
     commitOpeningDimension,
+    commitSharedPergolaAttachment,
     commitSharedPergolaAttachmentEdge,
     commitSharedPergolaAttachmentStrategy,
     commitSharedPergolaAttachmentZone,

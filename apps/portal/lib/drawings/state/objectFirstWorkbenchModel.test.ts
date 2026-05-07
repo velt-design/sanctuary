@@ -5,7 +5,12 @@ import type {
   ObjectFirstWorkbenchProjectModel,
   Opening,
   Pergola,
+  PergolaAttachment,
   WorkbenchProjectModel,
+} from './objectFirstWorkbenchModel';
+import {
+  normalizeObjectFirstPergolaDraft,
+  normalizePergolaAttachment,
 } from './objectFirstWorkbenchModel';
 
 function makePolygon() {
@@ -334,5 +339,180 @@ describe('objectFirstWorkbenchModel contracts', () => {
 
     const legacyAliasProject: ObjectFirstWorkbenchProjectModel = project;
     expect(legacyAliasProject.houseAssembly?.houseForms).toEqual([]);
+  });
+});
+
+describe('normalizePergolaAttachment', () => {
+  // Step 8 of the first-class spatial-entities migration. Locks the
+  // invariants tied to spatialKind/method/host so malformed input from a
+  // future caller can't silently corrupt the persisted shape.
+
+  it('returns null when input is null/undefined', () => {
+    expect(normalizePergolaAttachment(null)).toBeNull();
+    expect(normalizePergolaAttachment(undefined)).toBeNull();
+  });
+
+  it('returns null when spatialKind is missing or invalid', () => {
+    expect(normalizePergolaAttachment({})).toBeNull();
+    expect(normalizePergolaAttachment({ spatialKind: 'bogus' as never })).toBeNull();
+  });
+
+  it('builds a freestanding attachment with no host and method=none', () => {
+    const result = normalizePergolaAttachment({
+      spatialKind: 'freestanding',
+      // Even if host is provided, freestanding strips it.
+      host: {
+        objectFamily: 'house_forms',
+        objectId: 'house-main',
+        edgeKind: 'wall',
+        edgeId: 'wall-1',
+        myEdgeIndex: 0,
+      },
+      method: 'fascia_under_gutter',
+    });
+    expect(result).toEqual({
+      spatialKind: 'freestanding',
+      host: null,
+      method: 'none',
+    });
+  });
+
+  it('coerces method to facade_ledger for spatialKind=wall', () => {
+    const result = normalizePergolaAttachment({
+      spatialKind: 'wall',
+      host: {
+        objectFamily: 'house_forms',
+        objectId: 'house-main',
+        edgeKind: 'wall',
+        edgeId: 'wall-1',
+        myEdgeIndex: 2,
+      },
+      method: 'fascia_under_gutter', // Wrong choice, gets coerced.
+    });
+    expect(result?.spatialKind).toBe('wall');
+    expect(result?.method).toBe('facade_ledger');
+    expect(result?.host?.edgeId).toBe('wall-1');
+  });
+
+  it('preserves user-picked method for spatialKind=roof_edge', () => {
+    const result = normalizePergolaAttachment({
+      spatialKind: 'roof_edge',
+      host: {
+        objectFamily: 'house_forms',
+        objectId: 'house-main',
+        edgeKind: 'roof_eave',
+        edgeId: 'roof-eave-edge-1',
+        myEdgeIndex: 2,
+      },
+      method: 'soffit_brackets',
+    });
+    expect(result?.method).toBe('soffit_brackets');
+  });
+
+  it('defaults spatialKind=roof_edge to fascia_under_gutter when method is missing or invalid', () => {
+    const result = normalizePergolaAttachment({
+      spatialKind: 'roof_edge',
+      host: {
+        objectFamily: 'house_forms',
+        objectId: 'house-main',
+        edgeKind: 'roof_eave',
+        edgeId: 'roof-eave-edge-1',
+        myEdgeIndex: 2,
+      },
+      // method omitted
+    });
+    expect(result?.method).toBe('fascia_under_gutter');
+  });
+
+  it('rejects spatialKind=roof_edge methods that belong to a different spatialKind', () => {
+    // facade_ledger is for spatialKind=wall, not roof_edge — should be coerced.
+    const result = normalizePergolaAttachment({
+      spatialKind: 'roof_edge',
+      host: {
+        objectFamily: 'house_forms',
+        objectId: 'house-main',
+        edgeKind: 'roof_eave',
+        edgeId: 'roof-eave-edge-1',
+        myEdgeIndex: 2,
+      },
+      method: 'facade_ledger',
+    });
+    expect(result?.method).toBe('fascia_under_gutter');
+  });
+
+  it('drops host when its fields are malformed', () => {
+    const result = normalizePergolaAttachment({
+      spatialKind: 'wall',
+      host: {
+        objectFamily: 'house_forms',
+        objectId: 'house-main',
+        edgeKind: 'wall',
+        edgeId: 'wall-1',
+        // myEdgeIndex omitted — invalid host
+      } as never,
+      method: 'facade_ledger',
+    });
+    expect(result?.host).toBeNull();
+    expect(result?.spatialKind).toBe('wall');
+  });
+});
+
+describe('normalizeObjectFirstPergolaDraft — attachment field', () => {
+  // Round-trip: a draft with attachment data flows through normalizer
+  // unchanged. A draft without attachment doesn't gain a phantom attachment
+  // field (so JSON-equality with baselines stays clean).
+
+  it('preserves attachment data through normalization', () => {
+    const attachment: PergolaAttachment = {
+      spatialKind: 'roof_edge',
+      host: {
+        objectFamily: 'house_forms',
+        objectId: 'house-main',
+        edgeKind: 'roof_eave',
+        edgeId: 'roof-eave-edge-1',
+        myEdgeIndex: 2,
+      },
+      method: 'fascia_under_gutter',
+    };
+    const draft = normalizeObjectFirstPergolaDraft({
+      id: 'pergola-1',
+      label: 'Pergola 1',
+      family: 'mono',
+      attachmentEdgeId: null,
+      attachmentZoneId: null,
+      side: 'rear',
+      strategy: null,
+      attachment,
+    });
+    expect(draft?.attachment).toEqual(attachment);
+  });
+
+  it('omits the attachment key entirely when input has none', () => {
+    const draft = normalizeObjectFirstPergolaDraft({
+      id: 'pergola-1',
+      label: 'Pergola 1',
+      family: 'mono',
+      attachmentEdgeId: null,
+      attachmentZoneId: null,
+      side: 'rear',
+      strategy: null,
+    });
+    expect(draft).toBeDefined();
+    expect('attachment' in (draft ?? {})).toBe(false);
+  });
+
+  it('omits attachment when input has it but malformed (rather than returning null draft)', () => {
+    const draft = normalizeObjectFirstPergolaDraft({
+      id: 'pergola-1',
+      label: 'Pergola 1',
+      family: 'mono',
+      attachmentEdgeId: null,
+      attachmentZoneId: null,
+      side: 'rear',
+      strategy: null,
+      attachment: { spatialKind: 'invalid' as never } as never,
+    });
+    expect(draft).toBeDefined();
+    expect('attachment' in (draft ?? {})).toBe(false);
   });
 });

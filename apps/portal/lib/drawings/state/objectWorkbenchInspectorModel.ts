@@ -16,6 +16,7 @@ import type {
   ObjectFirstPergolaGeometryDraft,
   ObjectFirstPergolaPosition,
   OpeningObjectModel,
+  PergolaAttachment,
   PergolaObjectModel,
   WorkbenchObjectRef,
 } from './objectFirstWorkbenchModel';
@@ -89,6 +90,10 @@ export type ObjectWorkbenchPergolaPatch = Partial<
   /** Phase 2 free-floating-objects: setting `position` makes the pergola sit at
    *  a fixed world location regardless of `connection.type` + house attachment. */
   position?: ObjectFirstPergolaPosition | null;
+  /** Step 8 snap-derived attachment data. Replaces the legacy connection.type +
+   *  attachmentSide + attachmentStrategy triple as the source of truth. See
+   *  `PergolaAttachment` for invariants. */
+  attachment?: PergolaAttachment | null;
 };
 
 export type {

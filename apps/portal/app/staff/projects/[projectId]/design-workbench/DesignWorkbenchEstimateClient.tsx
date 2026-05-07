@@ -22,6 +22,7 @@ import {
   buildEstimateDrawingSheetMetaOverrides,
   deriveEstimateDrawingEditableFields,
 } from '@/lib/estimates/drawingEdits';
+import { pergolaAttachmentFromSnap } from '@/lib/drawings/state/pergolaAttachment';
 import { buildEstimateDrawingModuleInfoRows, buildEstimateDrawingSheetMeta } from '@/lib/estimates/drawingSheet';
 import type { EstimateDetail } from '@/lib/estimates/types';
 import { type DrawOutlineTarget } from './objectWorkbenchClientTypes';
@@ -634,7 +635,7 @@ export default function DesignWorkbenchEstimateClient({
                     const projectionChanged =
                       !Number.isFinite(currentProjectionMm) ||
                       Math.abs(nextProjectionMm - currentProjectionMm) >= 1;
-                    if (!positionChanged && !lengthChanged && !projectionChanged) return;
+                    if (!positionChanged && !lengthChanged && !projectionChanged && !commit.snap) return;
                     if (positionChanged) {
                       void objectWorkbenchActions.commitSharedPergolaPosition(pergolaId, {
                         originXMm: nextOriginXMm,
@@ -655,6 +656,43 @@ export default function DesignWorkbenchEstimateClient({
                         field: 'projectionM',
                         value: (nextProjectionMm / 1000).toString(),
                       });
+                    }
+                    // Step 8 of the first-class spatial-entities migration:
+                    // when the drag ended on a snap, derive the canonical
+                    // `PergolaAttachment` from the snap target and persist
+                    // it. The snap engine surfaces only `wall` or `roof_eave`
+                    // host edge kinds today (per `buildHouseSnapTargets`);
+                    // both map to `host.objectFamily: 'house_forms'`. The
+                    // legacy `connection.type` enum is preserved as a
+                    // derived projection — see `connectionTypeFromAttachment`.
+                    //
+                    // No snap → leave the existing attachment unchanged. We
+                    // do NOT clear it to freestanding here, because the user
+                    // may have picked the attachment via the legacy panel
+                    // before snap formation lands as the primary path; the
+                    // explicit clear-to-freestanding path is a separate
+                    // inspector affordance (step 9).
+                    if (commit.snap) {
+                      const hostEdgeKind = commit.snap.target.edgeKind;
+                      if (hostEdgeKind === 'wall' || hostEdgeKind === 'roof_eave') {
+                        const attachment = pergolaAttachmentFromSnap({
+                          hostObjectFamily: 'house_forms',
+                          hostObjectId: commit.snap.target.sourceObjectId,
+                          hostEdgeKind,
+                          hostEdgeId: commit.snap.target.id,
+                          // EdgeDragTool's commit doesn't yet pass through
+                          // myEdgeIndex on the snap result; the dragged edge
+                          // is `commit.snap.target` aligned to one polygon
+                          // edge. Until the tool plumbs edgeIndex on the snap
+                          // result, fall back to 0 (re-solve will recover
+                          // alignment from edge geometry).
+                          myEdgeIndex: 0,
+                        });
+                        void objectWorkbenchActions.commitSharedPergolaAttachment(
+                          pergolaId,
+                          attachment,
+                        );
+                      }
                     }
                     return;
                   }

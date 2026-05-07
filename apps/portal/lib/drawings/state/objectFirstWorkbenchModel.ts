@@ -333,6 +333,64 @@ export type ObjectFirstPergolaPosition = {
   rotationDeg: string;
 };
 
+/** What sort of object the pergola is snapped to. */
+export type PergolaAttachmentSpatialKind = 'wall' | 'roof_edge' | 'pergola_outline' | 'freestanding';
+
+/**
+ * How the pergola physically connects, given its `spatialKind`. Only writable
+ * when `spatialKind === 'roof_edge'`; otherwise single-valued (derived).
+ */
+export type PergolaAttachmentMethod =
+  | 'facade_ledger'
+  | 'fascia_under_gutter'
+  | 'direct_to_soffit'
+  | 'soffit_brackets'
+  | 'none';
+
+/** Family of object the pergola is snapped to (future-proof for pergola arrays). */
+export type PergolaAttachmentHostFamily = 'house_forms' | 'pergolas';
+
+/**
+ * Resolved snap host. Derived from the snap engine's chosen target on the
+ * commit that formed this attachment. `myEdgeIndex` is which edge of the
+ * pergola's outline polygon is snapped — required so a re-solve can recover
+ * the alignment without re-running the snap query.
+ */
+export type PergolaAttachmentHost = {
+  objectFamily: PergolaAttachmentHostFamily;
+  objectId: string;
+  edgeKind: 'wall' | 'roof_eave' | 'pergola_outline';
+  edgeId: string;
+  myEdgeIndex: number;
+};
+
+/**
+ * Snap-derived pergola attachment. Step 8 of the first-class spatial-entities
+ * migration: this is the new source of truth for pergola-to-host connections,
+ * replacing the legacy `connection.type` + `attachmentSide` + `attachmentStrategy`
+ * triple. The legacy `connection.type` enum is preserved as a derived
+ * projection (see `connectionTypeFromAttachment` in `pergolaAttachment.ts`)
+ * so cost-engine reads stay unchanged.
+ *
+ * Invariants:
+ * - `spatialKind === 'freestanding'` ⇔ `host === null` and `method === 'none'`.
+ * - `spatialKind === 'wall'` ⇒ `method === 'facade_ledger'` (only valid choice).
+ * - `spatialKind === 'pergola_outline'` ⇒ `method === 'none'` (v1 shared edges
+ *   are coincident; bracket-to-pergola is a future feature).
+ * - `spatialKind === 'roof_edge'` ⇒ `method ∈ { fascia_under_gutter,
+ *   direct_to_soffit, soffit_brackets }` — the only spatialKind where the
+ *   inspector exposes a method picker.
+ *
+ * `attachmentSide` (rear/front/left/right) becomes a derived UI label,
+ * computed from the geometric relation between `host.edgeId` and the
+ * pergola's outline; it is no longer stored on the pergola.
+ */
+export type PergolaAttachment = {
+  host: PergolaAttachmentHost | null;
+  spatialKind: PergolaAttachmentSpatialKind;
+  method: PergolaAttachmentMethod;
+};
+
 export type PergolaObjectModel = {
   id: string;
   label: string;
@@ -344,6 +402,14 @@ export type PergolaObjectModel = {
   strategy: CalculatorHouseAttachmentStrategy | null;
   geometry?: ObjectFirstPergolaGeometryDraft | null;
   position?: ObjectFirstPergolaPosition | null;
+  /**
+   * Snap-derived attachment data. When present, this is the source of truth
+   * for the pergola's relationship to the host. When null/undefined, the
+   * legacy `connectionKind` + `side` + `strategy` fields drive solver behavior
+   * (back-compat). Lazy migration on first edit will fill this from the
+   * legacy fields.
+   */
+  attachment?: PergolaAttachment | null;
 };
 
 export type HouseAssemblyModel = {
@@ -445,6 +511,8 @@ export type ObjectFirstPergolaDraft = {
   strategy: CalculatorHouseAttachmentStrategy | null;
   geometry?: ObjectFirstPergolaGeometryDraft | null;
   position?: ObjectFirstPergolaPosition | null;
+  /** Snap-derived attachment data. See `PergolaAttachment` for invariants. */
+  attachment?: PergolaAttachment | null;
 };
 
 export type ObjectFirstPergolaConnectionKind = 'freestanding' | 'soffit' | 'fascia' | 'wall';
@@ -930,6 +998,107 @@ function normalizeObjectFirstPergolaPosition(
   };
 }
 
+const PERGOLA_ATTACHMENT_SPATIAL_KINDS: ReadonlySet<PergolaAttachmentSpatialKind> = new Set([
+  'wall',
+  'roof_edge',
+  'pergola_outline',
+  'freestanding',
+]);
+
+const PERGOLA_ATTACHMENT_METHODS: ReadonlySet<PergolaAttachmentMethod> = new Set([
+  'facade_ledger',
+  'fascia_under_gutter',
+  'direct_to_soffit',
+  'soffit_brackets',
+  'none',
+]);
+
+const PERGOLA_ATTACHMENT_HOST_FAMILIES: ReadonlySet<PergolaAttachmentHostFamily> = new Set([
+  'house_forms',
+  'pergolas',
+]);
+
+const PERGOLA_ATTACHMENT_HOST_EDGE_KINDS: ReadonlySet<PergolaAttachmentHost['edgeKind']> = new Set([
+  'wall',
+  'roof_eave',
+  'pergola_outline',
+]);
+
+function isPergolaAttachmentSpatialKind(value: unknown): value is PergolaAttachmentSpatialKind {
+  return typeof value === 'string' && PERGOLA_ATTACHMENT_SPATIAL_KINDS.has(value as PergolaAttachmentSpatialKind);
+}
+
+function isPergolaAttachmentMethod(value: unknown): value is PergolaAttachmentMethod {
+  return typeof value === 'string' && PERGOLA_ATTACHMENT_METHODS.has(value as PergolaAttachmentMethod);
+}
+
+function isPergolaAttachmentHostFamily(value: unknown): value is PergolaAttachmentHostFamily {
+  return typeof value === 'string' && PERGOLA_ATTACHMENT_HOST_FAMILIES.has(value as PergolaAttachmentHostFamily);
+}
+
+function isPergolaAttachmentHostEdgeKind(value: unknown): value is PergolaAttachmentHost['edgeKind'] {
+  return typeof value === 'string' && PERGOLA_ATTACHMENT_HOST_EDGE_KINDS.has(value as PergolaAttachmentHost['edgeKind']);
+}
+
+function normalizePergolaAttachmentHost(
+  value: Partial<PergolaAttachmentHost> | null | undefined,
+): PergolaAttachmentHost | null {
+  if (!value) return null;
+  const objectFamily = isPergolaAttachmentHostFamily(value.objectFamily) ? value.objectFamily : null;
+  const objectId = normalizeStableId(value.objectId);
+  const edgeKind = isPergolaAttachmentHostEdgeKind(value.edgeKind) ? value.edgeKind : null;
+  const edgeId = normalizeStableId(value.edgeId);
+  const myEdgeIndex =
+    typeof value.myEdgeIndex === 'number' && Number.isFinite(value.myEdgeIndex) && value.myEdgeIndex >= 0
+      ? Math.floor(value.myEdgeIndex)
+      : null;
+  if (!objectFamily || !objectId || !edgeKind || !edgeId || myEdgeIndex === null) return null;
+  return { objectFamily, objectId, edgeKind, edgeId, myEdgeIndex };
+}
+
+/**
+ * Normalize a `PergolaAttachment`, defending the invariants tied to
+ * spatialKind/method/host. If the input is malformed in a way that breaks the
+ * invariants (e.g. spatialKind=freestanding but host is set), prefer dropping
+ * the contradictory field rather than rejecting the whole attachment — the
+ * legacy fields will fill the gap.
+ */
+export function normalizePergolaAttachment(
+  value: Partial<PergolaAttachment> | null | undefined,
+): PergolaAttachment | null {
+  if (!value) return null;
+  const spatialKind = isPergolaAttachmentSpatialKind(value.spatialKind) ? value.spatialKind : null;
+  if (!spatialKind) return null;
+  const host = spatialKind === 'freestanding' ? null : normalizePergolaAttachmentHost(value.host ?? null);
+  // Method must be valid for the spatialKind. Coerce to the canonical method
+  // when there's only one valid choice; preserve user picks for roof_edge.
+  let method: PergolaAttachmentMethod;
+  const rawMethod = isPergolaAttachmentMethod(value.method) ? value.method : null;
+  switch (spatialKind) {
+    case 'freestanding':
+      method = 'none';
+      break;
+    case 'wall':
+      method = 'facade_ledger';
+      break;
+    case 'pergola_outline':
+      method = 'none';
+      break;
+    case 'roof_edge': {
+      const validRoofEdgeMethods: PergolaAttachmentMethod[] = [
+        'fascia_under_gutter',
+        'direct_to_soffit',
+        'soffit_brackets',
+      ];
+      method = rawMethod && validRoofEdgeMethods.includes(rawMethod) ? rawMethod : 'fascia_under_gutter';
+      break;
+    }
+    default:
+      method = 'none';
+  }
+  return { host, spatialKind, method };
+}
+
 export function normalizeObjectFirstPergolaDraft(
   value: Partial<ObjectFirstPergolaDraft> | null | undefined,
 ): ObjectFirstPergolaDraft | null {
@@ -937,6 +1106,7 @@ export function normalizeObjectFirstPergolaDraft(
   if (!id) return null;
   const geometry = normalizeObjectFirstPergolaGeometryDraft(value?.geometry);
   const position = normalizeObjectFirstPergolaPosition(value?.position ?? null);
+  const attachment = normalizePergolaAttachment(value?.attachment ?? null);
 
   return {
     id,
@@ -951,6 +1121,7 @@ export function normalizeObjectFirstPergolaDraft(
     strategy: isCalculatorHouseAttachmentStrategy(value?.strategy) ? value.strategy : null,
     ...(geometry ? { geometry } : null),
     ...(position ? { position } : null),
+    ...(attachment ? { attachment } : null),
   };
 }
 
