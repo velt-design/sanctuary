@@ -32,6 +32,11 @@ export function PlanHitTargetLayer({
           data-plan-shape-kind={shape.kind}
           data-plan-shape-target-kind={topProjectionShapeClassifier(shape).kind}
           onPointerDown={(event) => {
+            // Only swallow the primary button — that's what drives selection
+            // and edge-drag. Right-click (button 2) and middle-click (button 1)
+            // must bubble to the SVG root so `usePanZoom` can start a pan even
+            // when the pointer is over an object.
+            if (event.button !== 0) return;
             event.stopPropagation();
             onShapePointerDown(shape, event);
           }}

@@ -3,7 +3,7 @@ import { svgPointsAttr, type PlanRenderItem } from '../planRenderItem';
 
 export function PlanCommittedBodyLayer({ items }: { items: PlanRenderItem[] }) {
   return (
-    <g data-plan-layer="committedBodies">
+    <g data-plan-layer="committedBodies" pointerEvents="none">
       {items.map(({ shape, points }) => (
         <polygon
           key={shape.id}

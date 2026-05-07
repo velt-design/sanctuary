@@ -3,7 +3,7 @@ import { svgPointsAttr, type PlanRenderItem } from '../planRenderItem';
 
 export function PlanSelectionHaloLayer({ items }: { items: PlanRenderItem[] }) {
   return (
-    <g data-plan-layer="selectionHalo">
+    <g data-plan-layer="selectionHalo" pointerEvents="none">
       {items.map(({ shape, points }) => (
         <polygon
           key={`plan-selection-${shape.id}`}

@@ -3,7 +3,7 @@ import { svgPointsAttr, type PlanRenderItem } from '../planRenderItem';
 
 export function PlanContextLineLayer({ items }: { items: PlanRenderItem[] }) {
   return (
-    <g data-plan-layer="contextLines">
+    <g data-plan-layer="contextLines" pointerEvents="none">
       {items.map(({ shape, points }) => (
         <polygon
           key={shape.id}

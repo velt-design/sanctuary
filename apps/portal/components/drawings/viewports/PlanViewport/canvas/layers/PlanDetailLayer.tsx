@@ -3,7 +3,7 @@ import { svgPointsAttr, type PlanRenderItem } from '../planRenderItem';
 
 export function PlanDetailLayer({ items }: { items: PlanRenderItem[] }) {
   return (
-    <g data-plan-layer="detailLines">
+    <g data-plan-layer="detailLines" pointerEvents="none">
       {items.map(({ shape, points }) => (
         <polygon
           key={shape.id}
