@@ -306,7 +306,7 @@ function makeGeometryTopProjection(): GeometryTopProjectionViewModel {
           { x: 4400, y: 2650 },
           { x: 1200, y: 2650 },
         ],
-        zOrder: 42,
+        zOrder: 28,
         zMin: 0,
         zMax: 120,
         metadata: {

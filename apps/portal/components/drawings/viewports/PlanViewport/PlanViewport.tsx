@@ -20,6 +20,7 @@ import { ToolDispatcherProvider } from './tools/ToolDispatcher';
 import { createSelectTool } from './tools/SelectTool';
 import { createEdgeDragTool, type EdgeDragCommit, type EdgeDragHover, type EdgeDragPreview } from './tools/EdgeDragTool';
 import { buildHouseSnapTargets } from './interactions/snap/buildHouseSnapTargets';
+import { buildOtherPergolaSnapTargets } from './interactions/snap/buildOtherPergolaSnapTargets';
 import type { SnapLineTarget } from './interactions/snap/snapEngine';
 
 export type { EdgeDragCommit, EdgeDragHover, EdgeDragPreview } from './tools/EdgeDragTool';
@@ -113,25 +114,40 @@ export default function PlanViewport({
     return { id: candidate.id, family: af, polygon: candidate.polygon };
   }, []);
 
-  // Snap line targets — house wall edges + roof eaves projected to plan space.
-  // Read fresh on every drag-time consult (via the ref) so re-solves between
-  // pointer events surface up-to-date eaves/walls. Only pergola edits use
-  // snap in v1; deck/house drags pass an empty list to fall through to
-  // natural delta. (Wired here unconditionally — `EdgeDragTool` skips the
-  // snap path when `lineTargets.length === 0`.)
+  // Snap line targets — house wall edges + roof eaves + other pergolas'
+  // outline edges projected to plan space. Read fresh on every drag-time
+  // consult (via the ref) so re-solves between pointer events surface
+  // up-to-date targets. Only pergola edits use snap in v1; deck/house
+  // drags pass an empty list to fall through to natural delta. (Wired
+  // here unconditionally — `EdgeDragTool` skips the snap path when
+  // `lineTargets.length === 0`.)
   const houseModel = artifact?.assembly?.house?.model ?? null;
   const houseObjectId =
     artifact?.assembly?.house?.attachmentTarget?.metadata?.sourceFormId ?? 'house-main';
   const snapLineTargets = useMemo<SnapLineTarget[]>(() => {
-    // Snap is meaningful for pergola edge drags (house attachment formation).
-    // For house/deck drags the active object IS the house or deck, and
-    // matching against its own walls would create self-snaps. Skip those.
-    if (activeFamily !== 'pergolas') return [];
-    return buildHouseSnapTargets({
+    // Snap is meaningful for pergola edge drags (host attachment formation)
+    // and for deck edge drags (decks attach to walls and pergola outline
+    // edges). House drags are excluded because the house is itself a snap
+    // target source — matching against its own walls would create self-snaps.
+    //
+    // Per-family rules:
+    //   - pergolas: walls + roof eaves + OTHER pergolas' outline edges
+    //     (`projectContextShapes` is already filtered upstream to drop the
+    //      active pergola; eaves valid because pergolas attach at gutter)
+    //   - decks: walls (no eaves — decks sit at ground level) + ALL pergolas'
+    //     outline edges (`activePergolaSourceId` is null for non-pergola
+    //     active objects, so `projectContextShapes` includes every pergola)
+    if (activeFamily !== 'pergolas' && activeFamily !== 'decks') return [];
+    const houseTargets = buildHouseSnapTargets({
       houseModel,
       houseObjectId: typeof houseObjectId === 'string' ? houseObjectId : 'house-main',
+      kinds: activeFamily === 'pergolas' ? 'walls_and_eaves' : 'walls',
     });
-  }, [activeFamily, houseModel, houseObjectId]);
+    const pergolaTargets = projectContextShapes
+      ? buildOtherPergolaSnapTargets({ shapes: projectContextShapes })
+      : [];
+    return [...houseTargets, ...pergolaTargets];
+  }, [activeFamily, houseModel, houseObjectId, projectContextShapes]);
   const snapLineTargetsRef = useRef(snapLineTargets);
   snapLineTargetsRef.current = snapLineTargets;
 

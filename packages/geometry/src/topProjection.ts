@@ -337,6 +337,15 @@ function polygonFromRenderMesh(mesh: RenderMesh3D, preferredBoundaryLength?: num
 
 function projectionRoleForObject(object: ViewerSceneObject): TopProjectionRole {
   if (object.type.startsWith('reference_')) return 'context';
+  // House-model roof internals (hip/ridge/eave flashings, roof material
+  // visuals, etc.) are 3D-only details. Their 2D projections show up as
+  // thin diagonal polygons that clutter the plan view and duplicate the
+  // canonical roof outline + ridge/hip lines already emitted as
+  // `house_line` features. They're tagged with `metadata.source: 'house_model'`
+  // by the house-model builders so the same `roof_flashing` /
+  // `roof_cladding_panel` types remain top-visible when emitted from a
+  // pergola assembly. `house_roof_material` and `house_surface_solid` are
+  // checked first so their explicit rules still apply.
   if (object.type === 'house_surface_solid') {
     if (object.kind === 'roof' || object.kind === 'deck') return 'top_visible';
     return 'hidden_from_top';
@@ -351,6 +360,7 @@ function projectionRoleForObject(object: ViewerSceneObject): TopProjectionRole {
     return 'top_visible';
   }
   if (object.type === 'house_roof_material' || object.type === 'house_linear_solid') return 'top_visible';
+  if (object.metadata?.source === 'house_model') return 'hidden_from_top';
   return 'top_visible';
 }
 
@@ -408,6 +418,13 @@ function objectPoints(object: ViewerSceneObject): Point3[] {
 function familyForObject(object: ViewerSceneObject): GeometryTopProjectionFamily {
   if (object.type.startsWith('house_')) return 'house';
   if (object.type.startsWith('reference_')) return 'reference';
+  // Roof-internal types like `roof_flashing`, `roof_cladding_panel`, and
+  // `roof_plane` don't have a `house_` prefix even when they originate from
+  // the house model — `roofFlashingsForScene` merges house + pergola
+  // flashings into one list, so the family must be disambiguated by the
+  // `metadata.source: 'house_model'` marker the house-model builders set.
+  // Without this, pergola visibility toggle would hide house roof internals.
+  if (object.metadata?.source === 'house_model') return 'house';
   return 'pergola';
 }
 
@@ -441,9 +458,15 @@ function baseZOrder(input: { family: GeometryTopProjectionFamily; sourceType: Vi
     if (input.kind === 'wall_segment') return 11;
     if (input.kind === 'footprint') return 12;
     if (input.kind === 'soffit' || input.kind === 'fascia' || input.kind === 'attachment_zone') return 20;
+    // Deck sits BELOW the roof (and gutter/roof_feature) so an opaque roof
+    // fill visually "wraps" over the deck where they overlap in plan view.
+    // Hit-testing is unaffected — decks are real selection targets and
+    // decorative roof kinds are filtered out of the plan hit-target layer
+    // (see `planHitTargetFilter.ts`), so the deck stays clickable in the
+    // overlap region even though the roof is drawn on top of it.
+    if (input.kind === 'deck') return 28;
     if (input.kind === 'roof' || input.kind === 'house_roof_material') return 30;
     if (input.kind === 'gutter' || input.kind === 'roof_feature') return 36;
-    if (input.kind === 'deck') return 42;
     if (input.kind === 'opening_marker' || input.kind === 'opening_outline') return 48;
     return 25;
   }

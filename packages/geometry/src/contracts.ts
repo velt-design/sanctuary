@@ -1,10 +1,20 @@
 /**
  * Canonical Sanctuary geometry contracts.
  *
- * World-space coordinates are locked as:
- * - X = pergola length
- * - Y = projection away from the attachment edge
- * - Z = height
+ * Two coordinate spaces:
+ * - **Assembly-local** — the family solver writes here. Origin is at the
+ *   spatial entity's anchor (X = entity length axis, Y = entity projection
+ *   axis, Z = height); for a pergola that's the legacy "X = pergola
+ *   length, Y = projection away from the attachment edge".
+ * - **World** — reached by `applyAssemblyPosition3D`, which translates the
+ *   assembly by its `position.origin` and rotates by `position.rotationDeg`
+ *   around +Z. When `position` is null the transform is a no-op and the
+ *   assembly is rendered at world `(0, 0, 0)` (legacy single-pergola path).
+ *
+ * `Assembly3D` represents one spatial entity instance — projects may carry
+ * many (one per pergola today, with the canonical house referenced on
+ * each assembly's `house` field for legacy compat). See `Assembly3D` doc
+ * for the per-instance / per-project responsibility split.
  *
  * These types intentionally contain no SVG, sheet, or viewport concerns.
  * They are the executable boundary for the geometry-first runtime.
@@ -1153,7 +1163,32 @@ export type GeometryQuantityTakeoff = {
 };
 
 /**
- * Canonical structural 3D output. This is the only geometry truth.
+ * Canonical structural 3D output for one spatial entity instance. This is
+ * the geometry-owned source of truth.
+ *
+ * **Coordinate convention** — assembly-local: the family solver produces
+ * coords with `datum.origin` at world `(0, 0, 0)` (assembly's local
+ * origin). World space is reached by passing the assembly through
+ * `applyAssemblyPosition3D` with the entity's world `position` (origin in
+ * mm + rotation around +Z in degrees). When `position` is null the
+ * post-solve transform is a no-op and the assembly is rendered at world
+ * `(0, 0, 0)` — that's the legacy single-pergola path.
+ *
+ * **Plurality** — one project may carry many assemblies, one per spatial
+ * entity (every pergola gets its own). Today the workbench solves
+ * per-pergola module (`WorkbenchSolvedModule.assembly`), with the same
+ * canonical house carried on each assembly's `house` field for legacy
+ * compat. Step 5d's project-level reference shape aggregation
+ * (`buildProjectReferenceShapes`) is the first consumer that operates on
+ * the full list of assemblies; future slices retire the per-assembly
+ * `house` duplication once a true project-level house input lands.
+ *
+ * **House transform** — `applyAssemblyPosition3D` deliberately does NOT
+ * transform `assembly.house` (the house already lives in world coords and
+ * is shared across pergolas in the same project). Once the house has its
+ * own first-class `position` field consumed by the geometry pipeline, the
+ * house can be transformed by its own assembly entry instead of being a
+ * passenger on the pergola assembly.
  */
 export type Assembly3D = {
   family: PergolaFamily;

@@ -15,6 +15,10 @@ import type { SnapLineTarget } from './snapEngine';
  * - Wall segments → `edgeKind: 'wall'`, id `wall-${segment.id}`
  * - Drain eaves → `edgeKind: 'roof_eave'`, id reused from `eave.id`
  *
+ * `kinds` selects which subset to emit. Default `'walls_and_eaves'` is the
+ * pergola edge-drag case. Decks pass `'walls'` because they sit at ground
+ * level — snapping a deck edge to a gutter-height eave is meaningless.
+ *
  * Other perimeter-edge kinds (`weather_flashed_edge`, `house_apron_edge`)
  * are not pergola attachment targets in v1 and are filtered out at the
  * `HouseModel3D.roofEaves` build step. See `houseModel.ts`.
@@ -23,9 +27,11 @@ export function buildHouseSnapTargets(input: {
   houseModel: HouseModel3D | null | undefined;
   /** Stable id for the source house form / assembly. */
   houseObjectId: string;
+  kinds?: 'walls' | 'walls_and_eaves';
 }): SnapLineTarget[] {
   const model = input.houseModel;
   if (!model) return [];
+  const kinds = input.kinds ?? 'walls_and_eaves';
 
   const targets: SnapLineTarget[] = [];
 
@@ -39,14 +45,16 @@ export function buildHouseSnapTargets(input: {
     });
   }
 
-  for (const eave of model.roofEaves ?? []) {
-    targets.push({
-      id: eave.id,
-      sourceObjectId: input.houseObjectId,
-      edgeKind: 'roof_eave',
-      start: { x: eave.eaveLine.start.x, y: eave.eaveLine.start.y },
-      end: { x: eave.eaveLine.end.x, y: eave.eaveLine.end.y },
-    });
+  if (kinds === 'walls_and_eaves') {
+    for (const eave of model.roofEaves ?? []) {
+      targets.push({
+        id: eave.id,
+        sourceObjectId: input.houseObjectId,
+        edgeKind: 'roof_eave',
+        start: { x: eave.eaveLine.start.x, y: eave.eaveLine.start.y },
+        end: { x: eave.eaveLine.end.x, y: eave.eaveLine.end.y },
+      });
+    }
   }
 
   return targets;

@@ -243,6 +243,32 @@ describe("buildTopProjectionViewModel", () => {
     expect(projection.extents?.heightMm).toBeGreaterThan(0);
   });
 
+  it("classifies house-model roof flashings as family='house' and hides them from plan view", () => {
+    // House roof flashings (hip flashings, ridge flashings, etc.) are 3D-only
+    // details. Their 2D projections form thin diagonal polygons that clutter
+    // plan view and duplicate the canonical roof outline + ridge/hip lines
+    // already emitted as `house_line` features. They share the `roof_flashing`
+    // viewer object type with pergola roof flashings (which DO render in plan)
+    // so the disambiguation is on `metadata.source: 'house_model'`.
+    const fixture = requireSupportedFixture("mono_attached_soffit_away_standard");
+    const solved = solveAssembly3D(addHouseModelContext(fixture.config));
+    if (!solved.ok) throw new Error(solved.error);
+
+    const scene = buildViewerSceneModel(solved.value);
+    const flashingObjects = scene.layers
+      .flatMap((layer) => layer.objects)
+      .filter((object) => object.type === "roof_flashing" && object.metadata?.source === "house_model");
+    expect(flashingObjects.length).toBeGreaterThan(0);
+
+    const projection = buildTopProjectionViewModel(solved.value);
+    for (const flashing of flashingObjects) {
+      const shape = projection.shapes.find((candidate) => candidate.sourceObjectId === flashing.id);
+      if (!shape) throw new Error(`Expected projection shape for house flashing ${flashing.id}`);
+      expect(shape.family).toBe("house");
+      expect(shape.metadata?.topProjectionRole).toBe("hidden_from_top");
+    }
+  });
+
   it("projects objects that exist only in the supplied viewer scene", () => {
     const fixture = requireSupportedFixture("mono_attached_soffit_away_standard");
     const solved = solveAssembly3D(addHouseModelContext(fixture.config));

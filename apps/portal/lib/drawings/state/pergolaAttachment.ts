@@ -21,7 +21,8 @@ import type {
  * this helper is testable without pulling viewport plumbing.
  */
 
-export type AttachmentSnapInput = {
+// Module-internal: only `pergolaAttachmentFromSnap` uses this shape.
+type AttachmentSnapInput = {
   hostObjectFamily: 'house_forms' | 'pergolas';
   hostObjectId: string;
   hostEdgeKind: 'wall' | 'roof_eave' | 'pergola_outline';

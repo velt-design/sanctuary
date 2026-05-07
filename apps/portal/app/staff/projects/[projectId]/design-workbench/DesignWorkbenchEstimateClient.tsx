@@ -283,8 +283,16 @@ export default function DesignWorkbenchEstimateClient({
   // overlay only adds shapes the active artifact doesn't render
   // (non-active pergola outlines), with the house reference filtered out
   // since the active artifact already provides it.
+  //
+  // Active-pergola filter only applies when a pergola is the active object
+  // (avoids self-snap on the active pergola's own outline). When the active
+  // object is a deck or house, all pergolas should appear in the overlay
+  // and be available as snap targets — a deck attaching to its host pergola
+  // is the common case, not an exception.
   const activePergolaSourceId =
-    store.derived.activeModule?.drawingModule.input.pergolaId ?? null;
+    store.ui.activeObjectRef.family === 'pergolas'
+      ? store.derived.activeModule?.drawingModule.input.pergolaId ?? null
+      : null;
   const projectContextShapes = useMemo(
     () =>
       buildProjectContextOverlayShapes({
@@ -654,19 +662,26 @@ export default function DesignWorkbenchEstimateClient({
                     const projectionChanged =
                       !Number.isFinite(currentProjectionMm) ||
                       Math.abs(nextProjectionMm - currentProjectionMm) >= 1;
-                    // Build the atomic patch. The snap engine surfaces only `wall` or
-                    // `roof_eave` host edge kinds today (per `buildHouseSnapTargets`);
-                    // both map to `host.objectFamily: 'house_forms'`. The legacy
-                    // `connection.type` enum is preserved as a derived projection —
-                    // see `connectionTypeFromAttachment`. No snap → leave the
-                    // existing attachment unchanged (caller can clear via the
-                    // inspector if needed).
+                    // Build the atomic patch. The snap engine surfaces three host
+                    // edge kinds:
+                    //   - `wall` / `roof_eave` → host.objectFamily = 'house_forms'
+                    //   - `pergola_outline`    → host.objectFamily = 'pergolas'
+                    // The legacy `connection.type` enum is preserved as a derived
+                    // projection — see `connectionTypeFromAttachment`. No snap →
+                    // leave the existing attachment unchanged (caller can clear
+                    // via the inspector if needed).
                     let snapAttachment: PergolaAttachment | undefined = undefined;
                     if (commit.snap) {
                       const hostEdgeKind = commit.snap.target.edgeKind;
-                      if (hostEdgeKind === 'wall' || hostEdgeKind === 'roof_eave') {
+                      if (
+                        hostEdgeKind === 'wall' ||
+                        hostEdgeKind === 'roof_eave' ||
+                        hostEdgeKind === 'pergola_outline'
+                      ) {
+                        const hostObjectFamily =
+                          hostEdgeKind === 'pergola_outline' ? 'pergolas' : 'house_forms';
                         snapAttachment = pergolaAttachmentFromSnap({
-                          hostObjectFamily: 'house_forms',
+                          hostObjectFamily,
                           hostObjectId: commit.snap.target.sourceObjectId,
                           hostEdgeKind,
                           hostEdgeId: commit.snap.target.id,
