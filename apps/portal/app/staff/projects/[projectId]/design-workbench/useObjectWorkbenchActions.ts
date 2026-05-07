@@ -28,8 +28,7 @@ import {
 import type {
   ObjectWorkbenchDeckPatch,
   ObjectWorkbenchOpeningPatch,
-  ObjectWorkbenchPergolaAttachmentStrategy,
-  ObjectWorkbenchPergolaConnectionKind,
+  ObjectWorkbenchPergolaPatch,
 } from '@/lib/drawings/state/objectWorkbenchInspectorModel';
 import {
   applyEstimateDrawingFootprintEdit,
@@ -53,7 +52,6 @@ import {
   buildObjectFirstDraftWithDecks,
   buildObjectFirstDraftWithOpenings,
   buildObjectFirstDraftWithPergolas,
-  buildObjectWorkbenchPergolaZoneLookup,
   buildObjectWorkbenchRoofCommitDraft,
   mergeHouseFormRoofIntentAfterFootprintSync,
   nextObjectWorkbenchDeckId,
@@ -62,9 +60,7 @@ import {
   resolveCurrentObjectWorkbenchOpeningDrafts,
   resolveCurrentObjectWorkbenchPergolaDrafts,
   resolveDeckReferencePolygon,
-  resolveObjectWorkbenchPergolaZoneKind,
   resolvePreferredNewObjectWorkbenchOpeningHostWall,
-  resolvePreferredObjectWorkbenchPergolaZone,
   updateDraftObjectFirst,
   type ObjectWorkbenchDeckMutationInput,
   type ObjectWorkbenchDraftBuildResult,
@@ -97,8 +93,6 @@ type DeckMutationInput = ObjectWorkbenchDeckMutationInput;
 
 type OpeningMutationInput = ObjectWorkbenchOpeningMutationInput;
 
-type PergolaAttachmentKind = ObjectWorkbenchPergolaConnectionKind;
-type PergolaAttachmentStrategyValue = ObjectWorkbenchPergolaAttachmentStrategy;
 type DeckPatchCommit = Extract<ObjectWorkbenchObjectPatchCommit, { target: { family: 'decks' } }>;
 type OpeningPatchCommit = Extract<ObjectWorkbenchObjectPatchCommit, { target: { family: 'openings' } }>;
 type PergolaPatchCommit = Extract<ObjectWorkbenchObjectPatchCommit, { target: { family: 'pergolas' } }>;
@@ -683,117 +677,6 @@ export function useObjectWorkbenchActions({
     [clearSelectedObjectTarget, commitOpeningDraftMutation],
   );
 
-  const commitSharedPergolaConnectionKind = useCallback(
-    async (pergolaId: string, kind: PergolaAttachmentKind): Promise<CommitResult> => {
-      const currentPergola =
-        store.derived.objectWorkbench.pergolas.find((pergola) => pergola.id === pergolaId) ?? null;
-      if (!currentPergola) {
-        return { ok: false, error: 'This pergola is no longer available.' };
-      }
-      const nextZone =
-        kind === 'freestanding'
-          ? null
-          : resolvePreferredObjectWorkbenchPergolaZone({
-              houseAssembly: store.derived.houseAssembly,
-              currentPergola,
-              nextKind: kind,
-            });
-      return commitObjectWorkbenchPatch({
-        target: { family: 'pergolas', objectId: pergolaId },
-        patch: {
-          connectionKind: kind,
-          attachmentEdgeId: nextZone?.hostEdgeId ?? null,
-          attachmentZoneId: nextZone?.id ?? null,
-          ...(nextZone?.side ? { side: nextZone.side } : null),
-        },
-      });
-    },
-    [commitObjectWorkbenchPatch, store.derived.houseAssembly, store.derived.objectWorkbench.pergolas],
-  );
-
-  const commitSharedPergolaAttachmentEdge = useCallback(
-    async (pergolaId: string, edgeId: string): Promise<CommitResult> => {
-      const currentPergola =
-        store.derived.objectWorkbench.pergolas.find((pergola) => pergola.id === pergolaId) ?? null;
-      if (!currentPergola) {
-        return { ok: false, error: 'This pergola is no longer available.' };
-      }
-      if (currentPergola.connectionKind === 'freestanding') {
-        return {
-          ok: false,
-          error: 'Switch this pergola to an attached connection before selecting a host edge.',
-        };
-      }
-      const nextZone = resolvePreferredObjectWorkbenchPergolaZone({
-        houseAssembly: store.derived.houseAssembly,
-        currentPergola,
-        nextKind: currentPergola.connectionKind,
-        preferredEdgeId: edgeId,
-      });
-      if (!nextZone || nextZone.hostEdgeId !== edgeId) {
-        return {
-          ok: false,
-          error: 'The selected host edge does not expose a compatible derived attachment zone.',
-        };
-      }
-      return commitObjectWorkbenchPatch({
-        target: { family: 'pergolas', objectId: pergolaId },
-        patch: {
-          attachmentEdgeId: edgeId,
-          attachmentZoneId: nextZone.id,
-          side: nextZone.side,
-        },
-      });
-    },
-    [commitObjectWorkbenchPatch, store.derived.houseAssembly, store.derived.objectWorkbench.pergolas],
-  );
-
-  const commitSharedPergolaAttachmentZone = useCallback(
-    async (pergolaId: string, zoneId: string): Promise<CommitResult> => {
-      const currentPergola =
-        store.derived.objectWorkbench.pergolas.find((pergola) => pergola.id === pergolaId) ?? null;
-      if (!currentPergola) {
-        return { ok: false, error: 'This pergola is no longer available.' };
-      }
-      const zone = buildObjectWorkbenchPergolaZoneLookup(store.derived.houseAssembly).get(zoneId) ?? null;
-      if (!zone || zone.hostEdgeId === null) {
-        return {
-          ok: false,
-          error: 'The selected derived host zone is no longer available.',
-        };
-      }
-      if (currentPergola.connectionKind !== 'freestanding') {
-        const expectedKind = resolveObjectWorkbenchPergolaZoneKind(currentPergola.connectionKind);
-        if (zone.kind !== expectedKind) {
-          return {
-            ok: false,
-            error: 'The selected host zone does not match this pergola connection type.',
-          };
-        }
-      }
-      return commitObjectWorkbenchPatch({
-        target: { family: 'pergolas', objectId: pergolaId },
-        patch: {
-          attachmentEdgeId: zone.hostEdgeId,
-          attachmentZoneId: zone.id,
-          side: zone.side,
-        },
-      });
-    },
-    [commitObjectWorkbenchPatch, store.derived.houseAssembly, store.derived.objectWorkbench.pergolas],
-  );
-
-  const commitSharedPergolaAttachmentStrategy = useCallback(
-    async (pergolaId: string, strategy: PergolaAttachmentStrategyValue): Promise<CommitResult> =>
-      commitObjectWorkbenchPatch({
-        target: { family: 'pergolas', objectId: pergolaId },
-        patch: {
-          strategy: strategy === 'auto' ? null : strategy,
-        },
-      }),
-    [commitObjectWorkbenchPatch],
-  );
-
   const commitDrawingField = useCallback(
     async (field: EstimateDrawingField, nextValue: string): Promise<CommitResult> => {
       const intent = translateEstimateDrawingFieldToObjectWorkbenchGeometryIntent(field, nextValue);
@@ -839,48 +722,12 @@ export function useObjectWorkbenchActions({
   );
 
   /**
-   * Write a pergola's world `position` (origin + rotation) so it lives at a
-   * specific point in world space rather than world origin. The post-solve
-   * transform `applyAssemblyPosition3D` reads this and lifts the pergola's
-   * local-coord geometry into world coords; consumers (top projection, viewer
-   * scene, takeoff) see the world-positioned assembly with no further
-   * position-awareness needed.
-   *
-   * Pergola dimensions live on `module.lengthM`/`module.projectionM` — write
-   * those via `commitGeometryIntent({ type: 'dimension', ... })`. The two
-   * writes are separate transactions but settle in the same React render so
-   * a drag commit can call both back-to-back without a flicker.
-   */
-  const commitSharedPergolaPosition = useCallback(
-    async (
-      pergolaId: string,
-      position: { originXMm: number; originYMm: number; rotationDeg: number },
-    ): Promise<CommitResult> => {
-      const currentPergola =
-        store.derived.objectWorkbench.pergolas.find((pergola) => pergola.id === pergolaId) ?? null;
-      if (!currentPergola) {
-        return { ok: false, error: 'This pergola is no longer available.' };
-      }
-      return commitObjectWorkbenchPatch({
-        target: { family: 'pergolas', objectId: pergolaId },
-        patch: {
-          position: {
-            originXMm: String(Math.round(position.originXMm)),
-            originYMm: String(Math.round(position.originYMm)),
-            rotationDeg: String(position.rotationDeg),
-          },
-        },
-      });
-    },
-    [commitObjectWorkbenchPatch, store.derived.objectWorkbench.pergolas],
-  );
-
-  /**
    * Step 8 of the first-class spatial-entities migration. Writes the
    * snap-derived `PergolaAttachment` (host + spatialKind + method) onto the
-   * pergola draft. The pergola edge-drag handler calls this with the resolved
-   * snap from `commit.snap`. `null` clears the attachment (legacy fields
-   * become source of truth again).
+   * pergola draft. Used by the inspector's Attachment Method picker (a
+   * single-field write, no race risk). The pergola edge-drag handler uses
+   * the atomic `commitSharedPergolaEdgeDragResult` instead — see below for
+   * why.
    */
   const commitSharedPergolaAttachment = useCallback(
     async (pergolaId: string, attachment: PergolaAttachment | null): Promise<CommitResult> => {
@@ -897,6 +744,74 @@ export function useObjectWorkbenchActions({
     [commitObjectWorkbenchPatch, store.derived.objectWorkbench.pergolas],
   );
 
+  /**
+   * Atomic commit for the pergola edge-drag result. Combines `position`,
+   * `geometry.dimensions.{lengthM,projectionM}`, and `attachment` into a
+   * single pergola patch — one transaction, one persist, one re-render.
+   *
+   * Why atomic: each `commitObjectWorkbenchPatch` call clones the current
+   * draft, applies its patch, and persists. When the edge-drag handler
+   * fired four separate fire-and-forget commits in the same React tick,
+   * each clone read from the SAME pre-tick draft and the last persist won —
+   * which made the snap-release "jump back" because position+dimensions
+   * landed in one persist while the attachment write (which derives
+   * `connection.type` via Step 8 follow-up #1) landed in another, and the
+   * later persist dropped the earlier fields.
+   *
+   * Pass `null` (or omit) to skip a field. The mirror step inside
+   * `commitObjectWorkbenchPatch` propagates the dimension fields to the
+   * legacy module inputs the solver reads, so callers don't need a
+   * separate `commitGeometryIntent` write.
+   */
+  const commitSharedPergolaEdgeDragResult = useCallback(
+    async (
+      pergolaId: string,
+      fields: {
+        position?: { originXMm: number; originYMm: number; rotationDeg: number } | null;
+        lengthMm?: number | null;
+        projectionMm?: number | null;
+        attachment?: PergolaAttachment | null;
+      },
+    ): Promise<CommitResult> => {
+      const currentPergola =
+        store.derived.objectWorkbench.pergolas.find((pergola) => pergola.id === pergolaId) ?? null;
+      if (!currentPergola) {
+        return { ok: false, error: 'This pergola is no longer available.' };
+      }
+      const patch: ObjectWorkbenchPergolaPatch = {};
+      if (fields.position !== undefined) {
+        patch.position = fields.position
+          ? {
+              originXMm: String(Math.round(fields.position.originXMm)),
+              originYMm: String(Math.round(fields.position.originYMm)),
+              rotationDeg: String(fields.position.rotationDeg),
+            }
+          : null;
+      }
+      const dimensions: { lengthM?: string; projectionM?: string } = {};
+      if (fields.lengthMm != null) {
+        dimensions.lengthM = (fields.lengthMm / 1000).toString();
+      }
+      if (fields.projectionMm != null) {
+        dimensions.projectionM = (fields.projectionMm / 1000).toString();
+      }
+      if (Object.keys(dimensions).length) {
+        patch.geometry = { dimensions };
+      }
+      if (fields.attachment !== undefined) {
+        patch.attachment = fields.attachment;
+      }
+      if (Object.keys(patch).length === 0) {
+        return { ok: true };
+      }
+      return commitObjectWorkbenchPatch({
+        target: { family: 'pergolas', objectId: pergolaId },
+        patch,
+      });
+    },
+    [commitObjectWorkbenchPatch, store.derived.objectWorkbench.pergolas],
+  );
+
   return {
     addSharedHouseDeck,
     addSharedHouseOpening,
@@ -906,11 +821,7 @@ export function useObjectWorkbenchActions({
     commitHouseFormFootprintDimension,
     commitOpeningDimension,
     commitSharedPergolaAttachment,
-    commitSharedPergolaAttachmentEdge,
-    commitSharedPergolaAttachmentStrategy,
-    commitSharedPergolaAttachmentZone,
-    commitSharedPergolaConnectionKind,
-    commitSharedPergolaPosition,
+    commitSharedPergolaEdgeDragResult,
     commitSharedDeckCustomPolygon,
     commitSharedHouseDeckPatch,
     commitSharedHouseFootprintEdit,

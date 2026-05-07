@@ -628,4 +628,117 @@ describe('objectWorkbenchDraftActions', () => {
       });
     });
   });
+
+  describe('atomic edge-drag commit (step 8 follow-up #1 race fix)', () => {
+    // The pergola edge-drag commit handler used to fire up to 4 separate
+    // fire-and-forget patches (position / lengthM / projectionM / attachment)
+    // in the same React tick. Each patch cloned the pre-tick draft and
+    // last-persist-won, so the pergola visibly "jumped back to original size"
+    // on snap-release — the attachment write usually landed last and dropped
+    // the dimension/position writes.
+    //
+    // Fix: a single atomic patch covering position + geometry.dimensions +
+    // attachment goes through one transaction. This test locks the contract
+    // that one combined patch successfully merges all fields.
+
+    it('writes position, dimensions, and attachment in a single combined patch', () => {
+      const pergola: ObjectFirstPergolaDraft = {
+        id: 'pergola-1',
+        label: 'Pergola 1',
+        family: 'mono',
+        connectionKind: 'soffit',
+        attachmentEdgeId: 'footprint-edge-1',
+        attachmentZoneId: 'zone-1',
+        side: 'rear',
+        strategy: null,
+        position: { originXMm: '0', originYMm: '0', rotationDeg: '0' },
+        attachment: {
+          spatialKind: 'roof_edge',
+          host: null,
+          method: 'direct_to_soffit',
+        },
+      };
+
+      const next = applyObjectWorkbenchPergolaPatch({
+        currentPergolas: [pergola],
+        pergolaId: 'pergola-1',
+        patch: {
+          // The atomic edge-drag commit produces all of these in one patch.
+          position: { originXMm: '1500', originYMm: '-3000', rotationDeg: '0' },
+          geometry: {
+            dimensions: { lengthM: '7', projectionM: '4' },
+          },
+          attachment: {
+            spatialKind: 'wall',
+            host: {
+              objectFamily: 'house_forms',
+              objectId: 'house-main',
+              edgeKind: 'wall',
+              edgeId: 'wall-house-wall-1',
+              myEdgeIndex: 0,
+            },
+            method: 'facade_ledger',
+          },
+        },
+      });
+
+      expect(next[0]?.position).toEqual({
+        originXMm: '1500',
+        originYMm: '-3000',
+        rotationDeg: '0',
+      });
+      expect(next[0]?.geometry?.dimensions?.lengthM).toBe('7');
+      expect(next[0]?.geometry?.dimensions?.projectionM).toBe('4');
+      expect(next[0]?.attachment).toEqual({
+        spatialKind: 'wall',
+        host: {
+          objectFamily: 'house_forms',
+          objectId: 'house-main',
+          edgeKind: 'wall',
+          edgeId: 'wall-house-wall-1',
+          myEdgeIndex: 0,
+        },
+        method: 'facade_ledger',
+      });
+    });
+
+    it('preserves unchanged pergola fields when only some are in the combined patch', () => {
+      const pergola: ObjectFirstPergolaDraft = {
+        id: 'pergola-1',
+        label: 'Pergola 1',
+        family: 'gable',
+        connectionKind: 'fascia',
+        attachmentEdgeId: 'edge-1',
+        attachmentZoneId: 'zone-1',
+        side: 'rear',
+        strategy: 'fascia_under_gutter',
+      };
+
+      const next = applyObjectWorkbenchPergolaPatch({
+        currentPergolas: [pergola],
+        pergolaId: 'pergola-1',
+        // Patch only writes attachment — position/dimensions stay null/undefined.
+        patch: {
+          attachment: {
+            spatialKind: 'roof_edge',
+            host: {
+              objectFamily: 'house_forms',
+              objectId: 'house-main',
+              edgeKind: 'roof_eave',
+              edgeId: 'roof-eave-edge-1',
+              myEdgeIndex: 0,
+            },
+            method: 'soffit_brackets',
+          },
+        },
+      });
+
+      expect(next[0]?.attachment?.method).toBe('soffit_brackets');
+      // Legacy fields preserved.
+      expect(next[0]?.connectionKind).toBe('fascia');
+      expect(next[0]?.side).toBe('rear');
+      expect(next[0]?.attachmentEdgeId).toBe('edge-1');
+      expect(next[0]?.family).toBe('gable');
+    });
+  });
 });

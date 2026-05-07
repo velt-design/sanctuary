@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { type ModuleViewsTab } from '@/app/staff/calculator/ModuleViewsCard';
 import SanctuaryWorkbenchRail from '@/components/drawings/rail/SanctuaryWorkbenchRail';
 import { labelForAttachmentSideList } from '@/components/drawings/rail/objectRailShared';
@@ -8,20 +8,26 @@ import type {
   ObjectWorkbenchGeometryEditIntent,
   ObjectWorkbenchGeometryEditState,
 } from '@/lib/drawings/geometry/geometryEditAdapter';
-import type { HouseAssemblyModel } from '@/lib/drawings/state/objectFirstWorkbenchModel';
 import type {
-  ObjectWorkbenchPergolaAttachmentStrategy,
-  ObjectWorkbenchPergolaConnectionKind,
+  HouseAssemblyModel,
+  PergolaAttachment,
+  PergolaAttachmentMethod,
+} from '@/lib/drawings/state/objectFirstWorkbenchModel';
+import type {
   ObjectWorkbenchPergolaInspectorModel,
 } from '@/lib/drawings/state/objectWorkbenchInspectorModel';
-import type {
-  CalculatorModuleInputs,
-} from '@/lib/types/calculator';
+import {
+  PERGOLA_ATTACHMENT_METHOD_OPTIONS,
+  labelForPergolaAttachmentHostEdge,
+  labelForPergolaAttachmentHostZone,
+  labelForPergolaAttachmentMethod,
+  labelForPergolaAttachmentSpatialKind,
+  pergolaAttachmentMethodIsWritable,
+} from '@/lib/drawings/state/pergolaAttachmentLabels';
+import { pergolaAttachmentFromLegacyFields } from '@/lib/drawings/state/pergolaAttachment';
+import type { CalculatorModuleInputs } from '@/lib/types/calculator';
 import type { CommitResult } from './objectWorkbenchClientTypes';
 import styles from './DesignWorkbenchEstimateClient.module.css';
-
-type PergolaAttachmentKind = ObjectWorkbenchPergolaConnectionKind;
-type PergolaAttachmentStrategyValue = ObjectWorkbenchPergolaAttachmentStrategy;
 
 type PergolaInspectorModule = {
   id: string;
@@ -44,40 +50,34 @@ type PergolaInspectorProps = {
   onSelectPergolaByModule: (pergolaId: string | null) => void;
   onStartDrawOutline?: () => Promise<CommitResult> | CommitResult;
   onCommitGeometryEdit?: (intent: ObjectWorkbenchGeometryEditIntent) => Promise<CommitResult> | CommitResult;
-  onCommitConnectionKind?: (
+  /**
+   * Step 9 of the first-class spatial-entities migration. Method-only writes
+   * land here. Re-hosting (changing the host edge) is via drag-snap; the
+   * inspector no longer exposes a host-edge dropdown.
+   */
+  onCommitAttachment?: (
     pergolaId: string,
-    kind: PergolaAttachmentKind,
+    attachment: PergolaAttachment,
   ) => Promise<CommitResult> | CommitResult;
-  onCommitAttachmentStrategy?: (
-    pergolaId: string,
-    strategy: PergolaAttachmentStrategyValue,
-  ) => Promise<CommitResult> | CommitResult;
-  onCommitAttachmentEdge?: (pergolaId: string, edgeId: string) => Promise<CommitResult> | CommitResult;
-  onCommitAttachmentZone?: (pergolaId: string, zoneId: string) => Promise<CommitResult> | CommitResult;
 };
 
-const PERGOLA_CONNECTION_OPTIONS = [
-  { value: 'soffit', label: 'Soffit attached' },
-  { value: 'fascia', label: 'Fascia attached' },
-  { value: 'wall', label: 'Wall attached' },
-  { value: 'freestanding', label: 'Freestanding' },
-] as const;
-
-const PERGOLA_ATTACHMENT_STRATEGY_OPTIONS = [
-  { value: 'auto', label: 'Auto' },
-  { value: 'soffit_brackets', label: 'Soffit brackets' },
-  { value: 'fascia_under_gutter', label: 'Fascia under gutter' },
-  { value: 'facade_ledger', label: 'Facade ledger' },
-  { value: 'post_supported_tieback', label: 'Post supported tieback' },
-  { value: 'none', label: 'None' },
-] as const;
-
-function resolvePergolaZoneKind(
-  kind: PergolaAttachmentKind,
-): 'wall' | 'soffit' | 'fascia' | null {
-  if (kind === 'freestanding') return null;
-  if (kind === 'wall') return 'wall';
-  return kind;
+/**
+ * Resolve the attachment to render. Prefers the snap-derived
+ * `pergola.attachment`; falls back to a legacy-field projection when the
+ * pergola hasn't been migrated yet (Step 8 follow-up #2 lazy migration
+ * normally fires on first edit, so this fallback is mostly defensive — a
+ * legacy-only pergola the user hasn't touched still gets the right read).
+ */
+function resolveDisplayAttachment(
+  pergola: ObjectWorkbenchPergolaInspectorModel,
+): PergolaAttachment {
+  return (
+    pergola.attachment ??
+    pergolaAttachmentFromLegacyFields({
+      connectionKind: pergola.connectionKind,
+      strategy: pergola.strategy,
+    })
+  );
 }
 
 export default function PergolaInspector({
@@ -87,7 +87,7 @@ export default function PergolaInspector({
   activeModuleLabel,
   disabled = false,
   geometryState,
-  houseAssembly,
+  houseAssembly: _houseAssembly,
   modules,
   supportsSanctuaryEditing,
   view,
@@ -95,39 +95,10 @@ export default function PergolaInspector({
   onSelectPergolaByModule,
   onStartDrawOutline,
   onCommitGeometryEdit,
-  onCommitConnectionKind,
-  onCommitAttachmentStrategy,
-  onCommitAttachmentEdge,
-  onCommitAttachmentZone,
+  onCommitAttachment,
 }: PergolaInspectorProps) {
   const [pendingFieldId, setPendingFieldId] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-
-  const activePergolaZoneKind = activePergolaModel
-    ? resolvePergolaZoneKind(activePergolaModel.connectionKind)
-    : null;
-  const compatiblePergolaZones = useMemo(() => {
-    if (!activePergolaModel || !activePergolaZoneKind) return [];
-    return (houseAssembly?.derivedEnvelope?.attachmentZones ?? []).filter(
-      (zone) => zone.kind === activePergolaZoneKind,
-    );
-  }, [activePergolaModel, activePergolaZoneKind, houseAssembly?.derivedEnvelope?.attachmentZones]);
-  const compatiblePergolaEdges = useMemo(() => {
-    const allowedEdgeIds = new Set(
-      compatiblePergolaZones
-        .map((zone) => zone.hostEdgeId)
-        .filter((hostEdgeId): hostEdgeId is string => typeof hostEdgeId === 'string' && hostEdgeId.length > 0),
-    );
-    return (houseAssembly?.derivedEnvelope?.edges ?? []).filter((edge) => allowedEdgeIds.has(edge.id));
-  }, [compatiblePergolaZones, houseAssembly?.derivedEnvelope?.edges]);
-  const selectedPergolaEdgeOptionMissing = Boolean(
-    activePergolaModel?.attachmentEdgeId &&
-      !compatiblePergolaEdges.some((edge) => edge.id === activePergolaModel.attachmentEdgeId),
-  );
-  const selectedPergolaZoneOptionMissing = Boolean(
-    activePergolaModel?.attachmentZoneId &&
-      !compatiblePergolaZones.some((zone) => zone.id === activePergolaModel.attachmentZoneId),
-  );
 
   const runAttachmentAction = useCallback(
     async (
@@ -146,6 +117,27 @@ export default function PergolaInspector({
     [],
   );
 
+  const handleMethodChange = useCallback(
+    (newMethod: PergolaAttachmentMethod) => {
+      if (!activePergolaModel) return;
+      const current = resolveDisplayAttachment(activePergolaModel);
+      const next: PergolaAttachment = { ...current, method: newMethod };
+      void runAttachmentAction(
+        'pergola-attachment-method',
+        onCommitAttachment?.(activePergolaModel.id, next),
+        'Unable to update the pergola attachment method.',
+      );
+    },
+    [activePergolaModel, onCommitAttachment, runAttachmentAction],
+  );
+
+  const displayAttachment = activePergolaModel
+    ? resolveDisplayAttachment(activePergolaModel)
+    : null;
+  const methodIsWritable = displayAttachment
+    ? pergolaAttachmentMethodIsWritable(displayAttachment)
+    : false;
+
   return (
     <>
       <section className={styles.moduleSection}>
@@ -158,127 +150,69 @@ export default function PergolaInspector({
         </button>
       </section>
 
-      {activePergolaModel ? (
+      {activePergolaModel && displayAttachment ? (
         <section className={styles.moduleSection}>
           <p className={styles.moduleSectionTitle}>Host Attachment</p>
-          <label className={styles.moduleSectionTitle} htmlFor="pergola-connection-type">
-            Connection
-          </label>
-          <select
-            id="pergola-connection-type"
-            className={styles.moduleSelect}
-            aria-label="Pergola connection"
-            value={activePergolaModel.connectionKind}
-            disabled={disabled || pendingFieldId === 'pergola-connection'}
-            onChange={(event) =>
-              runAttachmentAction(
-                'pergola-connection',
-                onCommitConnectionKind?.(activePergolaModel.id, event.target.value as PergolaAttachmentKind),
-                'Unable to update the pergola connection.',
-              )
-            }
-          >
-            {PERGOLA_CONNECTION_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
+          <p className={styles.noticeText}>
+            Drag the pergola onto a wall or roof eave to change the host. Re-hosting is no longer
+            done via dropdown.
+          </p>
 
-          <label className={styles.moduleSectionTitle} htmlFor="pergola-attachment-strategy">
-            Attachment strategy
-          </label>
-          <select
-            id="pergola-attachment-strategy"
-            className={styles.moduleSelect}
-            aria-label="Pergola attachment strategy"
-            value={activePergolaModel.attachmentStrategy}
-            disabled={
-              disabled ||
-              activePergolaModel.connectionKind === 'freestanding' ||
-              pendingFieldId === 'pergola-strategy'
-            }
-            onChange={(event) =>
-              runAttachmentAction(
-                'pergola-strategy',
-                onCommitAttachmentStrategy?.(
-                  activePergolaModel.id,
-                  event.target.value as PergolaAttachmentStrategyValue,
-                ),
-                'Unable to update the pergola attachment strategy.',
-              )
-            }
-          >
-            {PERGOLA_ATTACHMENT_STRATEGY_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
+          <div className={styles.diagnosticsList}>
+            <div className={styles.diagnosticRow}>
+              <span className={styles.diagnosticLabel}>Connection</span>
+              <span className={styles.diagnosticValue}>
+                {labelForPergolaAttachmentSpatialKind(displayAttachment.spatialKind)}
+              </span>
+            </div>
+            <div className={styles.diagnosticRow}>
+              <span className={styles.diagnosticLabel}>Host edge</span>
+              <span className={styles.diagnosticValue}>
+                {labelForPergolaAttachmentHostEdge(displayAttachment)}
+              </span>
+            </div>
+            <div className={styles.diagnosticRow}>
+              <span className={styles.diagnosticLabel}>Host zone</span>
+              <span className={styles.diagnosticValue}>
+                {labelForPergolaAttachmentHostZone(displayAttachment)}
+              </span>
+            </div>
+            <div className={styles.diagnosticRow}>
+              <span className={styles.diagnosticLabel}>Attachment side</span>
+              <span className={styles.diagnosticValue}>
+                {labelForAttachmentSideList([activePergolaModel.side])}
+              </span>
+            </div>
+          </div>
 
-          <label className={styles.moduleSectionTitle} htmlFor="pergola-host-edge">
-            Host edge
-          </label>
-          <select
-            id="pergola-host-edge"
-            className={styles.moduleSelect}
-            aria-label="Pergola host edge"
-            value={activePergolaModel.attachmentEdgeId ?? ''}
-            disabled={
-              disabled ||
-              activePergolaModel.connectionKind === 'freestanding' ||
-              (!compatiblePergolaEdges.length && !selectedPergolaEdgeOptionMissing) ||
-              pendingFieldId === 'pergola-edge'
-            }
-            onChange={(event) =>
-              runAttachmentAction(
-                'pergola-edge',
-                onCommitAttachmentEdge?.(activePergolaModel.id, event.target.value),
-                'Unable to update the pergola host edge.',
-              )
-            }
-          >
-            {selectedPergolaEdgeOptionMissing && activePergolaModel.attachmentEdgeId ? (
-              <option value={activePergolaModel.attachmentEdgeId}>Unavailable saved edge</option>
-            ) : null}
-            {compatiblePergolaEdges.map((edge) => (
-              <option key={edge.id} value={edge.id}>
-                {edge.label}
-              </option>
-            ))}
-          </select>
-
-          <label className={styles.moduleSectionTitle} htmlFor="pergola-host-zone">
-            Host zone
-          </label>
-          <select
-            id="pergola-host-zone"
-            className={styles.moduleSelect}
-            aria-label="Pergola host zone"
-            value={activePergolaModel.attachmentZoneId ?? ''}
-            disabled={
-              disabled ||
-              activePergolaModel.connectionKind === 'freestanding' ||
-              (!compatiblePergolaZones.length && !selectedPergolaZoneOptionMissing) ||
-              pendingFieldId === 'pergola-zone'
-            }
-            onChange={(event) =>
-              runAttachmentAction(
-                'pergola-zone',
-                onCommitAttachmentZone?.(activePergolaModel.id, event.target.value),
-                'Unable to update the pergola host zone.',
-              )
-            }
-          >
-            {selectedPergolaZoneOptionMissing && activePergolaModel.attachmentZoneId ? (
-              <option value={activePergolaModel.attachmentZoneId}>Unavailable saved zone</option>
-            ) : null}
-            {compatiblePergolaZones.map((zone) => (
-              <option key={zone.id} value={zone.id}>
-                {zone.label}
-              </option>
-            ))}
-          </select>
+          {methodIsWritable ? (
+            <>
+              <label className={styles.moduleSectionTitle} htmlFor="pergola-attachment-method">
+                Attachment method
+              </label>
+              <select
+                id="pergola-attachment-method"
+                className={styles.moduleSelect}
+                aria-label="Pergola attachment method"
+                value={displayAttachment.method}
+                disabled={disabled || pendingFieldId === 'pergola-attachment-method'}
+                onChange={(event) => handleMethodChange(event.target.value as PergolaAttachmentMethod)}
+              >
+                {PERGOLA_ATTACHMENT_METHOD_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </>
+          ) : (
+            <div className={styles.diagnosticRow}>
+              <span className={styles.diagnosticLabel}>Method</span>
+              <span className={styles.diagnosticValue}>
+                {labelForPergolaAttachmentMethod(displayAttachment.method)}
+              </span>
+            </div>
+          )}
 
           <div className={styles.diagnosticsList}>
             <div className={styles.diagnosticRow}>
@@ -289,25 +223,14 @@ export default function PergolaInspector({
               <span className={styles.diagnosticLabel}>Resolution</span>
               <span className={styles.diagnosticValue}>{activePergolaModel.resolution.status}</span>
             </div>
-            <div className={styles.diagnosticRow}>
-              <span className={styles.diagnosticLabel}>Host side</span>
-              <span className={styles.diagnosticValue}>
-                {labelForAttachmentSideList([activePergolaModel.side])}
-              </span>
-            </div>
           </div>
 
           {activePergolaModel.resolution.message ? (
             <p className={styles.noticeText}>{activePergolaModel.resolution.message}</p>
           ) : null}
-          {fieldErrors['pergola-connection'] ? (
-            <p className={styles.noticeText}>{fieldErrors['pergola-connection']}</p>
+          {fieldErrors['pergola-attachment-method'] ? (
+            <p className={styles.noticeText}>{fieldErrors['pergola-attachment-method']}</p>
           ) : null}
-          {fieldErrors['pergola-strategy'] ? (
-            <p className={styles.noticeText}>{fieldErrors['pergola-strategy']}</p>
-          ) : null}
-          {fieldErrors['pergola-edge'] ? <p className={styles.noticeText}>{fieldErrors['pergola-edge']}</p> : null}
-          {fieldErrors['pergola-zone'] ? <p className={styles.noticeText}>{fieldErrors['pergola-zone']}</p> : null}
         </section>
       ) : null}
 

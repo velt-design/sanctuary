@@ -23,6 +23,7 @@ import {
   deriveEstimateDrawingEditableFields,
 } from '@/lib/estimates/drawingEdits';
 import { pergolaAttachmentFromSnap } from '@/lib/drawings/state/pergolaAttachment';
+import type { PergolaAttachment } from '@/lib/drawings/state/objectFirstWorkbenchModel';
 import { buildEstimateDrawingModuleInfoRows, buildEstimateDrawingSheetMeta } from '@/lib/estimates/drawingSheet';
 import type { EstimateDetail } from '@/lib/estimates/types';
 import { type DrawOutlineTarget } from './objectWorkbenchClientTypes';
@@ -582,21 +583,21 @@ export default function DesignWorkbenchEstimateClient({
                   }
                   if (commit.family === 'pergolas') {
                     // Pergola edge-drag (first-class spatial entity write). The pergola
-                    // owns its own world position (origin + rotation around +Z) and its
-                    // own dimensions (lengthM/projectionM). An edge drag axis-aligned to
-                    // the pergola's local frame may shift either:
-                    //   - position (when the user grabs a -along or -depth wall and pulls
-                    //     it outward, the pergola's anchor moves), or
-                    //   - dimensions (when the user grabs a +along or +depth wall, the
-                    //     pergola grows in that direction).
-                    // Or both, depending on the bounding box of `nextPolygon`.
+                    // owns its own world position (origin + rotation around +Z), its
+                    // own dimensions (lengthM/projectionM), and its own snap-derived
+                    // attachment shape. An edge drag computes `bbox(nextPolygon)`:
+                    //   - bbox.min becomes the new `position.origin`
+                    //   - (max - min) becomes the new (lengthM, projectionM)
+                    //   - When the drag ended on a snap, the snap target derives a
+                    //     `PergolaAttachment` (host + spatialKind + method).
                     //
-                    // We compute the new pergola box as `bbox(nextPolygon)`; its `(min)`
-                    // becomes the new `position.origin` and its `(max - min)` becomes the
-                    // new `(lengthM, projectionM)`. Position writes go through
-                    // `commitSharedPergolaPosition`; dimensions go through
-                    // `commitGeometryIntent` (which updates the module fields the solver
-                    // reads). Two transactions, one render — no flicker.
+                    // ALL THREE are written in a single atomic patch via
+                    // `commitSharedPergolaEdgeDragResult`. Earlier this handler fired
+                    // up to four fire-and-forget commits in the same React tick;
+                    // each cloned the pre-tick draft and the last persist won, which
+                    // dropped position/dimension writes when the attachment write
+                    // landed last (visible bug: pergola "jumps back to original size"
+                    // on snap-release). The atomic action eliminates that race.
                     //
                     // Rotation: not handled yet. Pergolas with non-zero rotation need
                     // bbox-aware drag math that operates in the local frame; deferred
@@ -635,47 +636,18 @@ export default function DesignWorkbenchEstimateClient({
                     const projectionChanged =
                       !Number.isFinite(currentProjectionMm) ||
                       Math.abs(nextProjectionMm - currentProjectionMm) >= 1;
-                    if (!positionChanged && !lengthChanged && !projectionChanged && !commit.snap) return;
-                    if (positionChanged) {
-                      void objectWorkbenchActions.commitSharedPergolaPosition(pergolaId, {
-                        originXMm: nextOriginXMm,
-                        originYMm: nextOriginYMm,
-                        rotationDeg: Number.isFinite(currentRotationDeg) ? currentRotationDeg : 0,
-                      });
-                    }
-                    if (lengthChanged) {
-                      void objectWorkbenchActions.commitGeometryIntent({
-                        type: 'dimension',
-                        field: 'lengthM',
-                        value: (nextLengthMm / 1000).toString(),
-                      });
-                    }
-                    if (projectionChanged) {
-                      void objectWorkbenchActions.commitGeometryIntent({
-                        type: 'dimension',
-                        field: 'projectionM',
-                        value: (nextProjectionMm / 1000).toString(),
-                      });
-                    }
-                    // Step 8 of the first-class spatial-entities migration:
-                    // when the drag ended on a snap, derive the canonical
-                    // `PergolaAttachment` from the snap target and persist
-                    // it. The snap engine surfaces only `wall` or `roof_eave`
-                    // host edge kinds today (per `buildHouseSnapTargets`);
-                    // both map to `host.objectFamily: 'house_forms'`. The
-                    // legacy `connection.type` enum is preserved as a
-                    // derived projection — see `connectionTypeFromAttachment`.
-                    //
-                    // No snap → leave the existing attachment unchanged. We
-                    // do NOT clear it to freestanding here, because the user
-                    // may have picked the attachment via the legacy panel
-                    // before snap formation lands as the primary path; the
-                    // explicit clear-to-freestanding path is a separate
-                    // inspector affordance (step 9).
+                    // Build the atomic patch. The snap engine surfaces only `wall` or
+                    // `roof_eave` host edge kinds today (per `buildHouseSnapTargets`);
+                    // both map to `host.objectFamily: 'house_forms'`. The legacy
+                    // `connection.type` enum is preserved as a derived projection —
+                    // see `connectionTypeFromAttachment`. No snap → leave the
+                    // existing attachment unchanged (caller can clear via the
+                    // inspector if needed).
+                    let snapAttachment: PergolaAttachment | undefined = undefined;
                     if (commit.snap) {
                       const hostEdgeKind = commit.snap.target.edgeKind;
                       if (hostEdgeKind === 'wall' || hostEdgeKind === 'roof_eave') {
-                        const attachment = pergolaAttachmentFromSnap({
+                        snapAttachment = pergolaAttachmentFromSnap({
                           hostObjectFamily: 'house_forms',
                           hostObjectId: commit.snap.target.sourceObjectId,
                           hostEdgeKind,
@@ -688,12 +660,32 @@ export default function DesignWorkbenchEstimateClient({
                           // alignment from edge geometry).
                           myEdgeIndex: 0,
                         });
-                        void objectWorkbenchActions.commitSharedPergolaAttachment(
-                          pergolaId,
-                          attachment,
-                        );
                       }
                     }
+                    if (
+                      !positionChanged &&
+                      !lengthChanged &&
+                      !projectionChanged &&
+                      !snapAttachment
+                    ) {
+                      return;
+                    }
+                    void objectWorkbenchActions.commitSharedPergolaEdgeDragResult(pergolaId, {
+                      ...(positionChanged
+                        ? {
+                            position: {
+                              originXMm: nextOriginXMm,
+                              originYMm: nextOriginYMm,
+                              rotationDeg: Number.isFinite(currentRotationDeg)
+                                ? currentRotationDeg
+                                : 0,
+                            },
+                          }
+                        : null),
+                      ...(lengthChanged ? { lengthMm: nextLengthMm } : null),
+                      ...(projectionChanged ? { projectionMm: nextProjectionMm } : null),
+                      ...(snapAttachment ? { attachment: snapAttachment } : null),
+                    });
                     return;
                   }
                   if (commit.family === 'decks') {

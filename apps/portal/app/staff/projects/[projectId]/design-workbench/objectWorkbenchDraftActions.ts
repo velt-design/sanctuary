@@ -19,7 +19,6 @@ import {
   sanitizeDeckPresetRect,
 } from '@/lib/drawings/state/objectWorkbenchDeckGeometry';
 import type {
-  DerivedAttachmentZoneModel,
   DerivedWallModel,
   HouseAssemblyModel,
   HouseFormModel,
@@ -39,7 +38,6 @@ import { pergolaAttachmentFromLegacyFields } from '@/lib/drawings/state/pergolaA
 import type {
   ObjectWorkbenchDeckPatch,
   ObjectWorkbenchOpeningPatch,
-  ObjectWorkbenchPergolaConnectionKind,
   ObjectWorkbenchPergolaInspectorModel,
   ObjectWorkbenchPergolaPatch,
 } from '@/lib/drawings/state/objectWorkbenchInspectorModel';
@@ -84,9 +82,6 @@ type OpeningHostWallOption = {
   hostEdgeId: string | null;
   spanM: number;
 };
-
-type PergolaAttachmentKind = ObjectWorkbenchPergolaConnectionKind;
-type PergolaDerivedAttachmentZoneOption = DerivedAttachmentZoneModel;
 
 export function resolveCurrentObjectWorkbenchDeckDrafts(
   objectFirstDraft: ObjectFirstWorkbenchDraftVNext,
@@ -291,56 +286,6 @@ export function resolvePreferredNewObjectWorkbenchOpeningHostWall(input: {
   return options[0] ?? null;
 }
 
-export function resolveObjectWorkbenchPergolaZoneKind(
-  kind: PergolaAttachmentKind,
-): PergolaDerivedAttachmentZoneOption['kind'] | null {
-  if (kind === 'freestanding') return null;
-  if (kind === 'wall') return 'wall';
-  return kind;
-}
-
-export function buildObjectWorkbenchPergolaZoneLookup(
-  houseAssembly: HouseAssemblyModel | null,
-): Map<string, PergolaDerivedAttachmentZoneOption> {
-  const byId = new Map<string, PergolaDerivedAttachmentZoneOption>();
-  for (const zone of houseAssembly?.derivedEnvelope?.attachmentZones ?? []) {
-    byId.set(zone.id, zone);
-  }
-  return byId;
-}
-
-function resolvePergolaZonesForKind(
-  houseAssembly: HouseAssemblyModel | null,
-  kind: PergolaAttachmentKind,
-): PergolaDerivedAttachmentZoneOption[] {
-  const zoneKind = resolveObjectWorkbenchPergolaZoneKind(kind);
-  if (!zoneKind) return [];
-  return (houseAssembly?.derivedEnvelope?.attachmentZones ?? []).filter((zone) => zone.kind === zoneKind);
-}
-
-export function resolvePreferredObjectWorkbenchPergolaZone(input: {
-  houseAssembly: HouseAssemblyModel | null;
-  currentPergola: Pick<ObjectWorkbenchPergolaInspectorModel, 'attachmentEdgeId' | 'attachmentZoneId' | 'side'>;
-  nextKind: PergolaAttachmentKind;
-  preferredEdgeId?: string | null;
-}): PergolaDerivedAttachmentZoneOption | null {
-  const candidateZones = resolvePergolaZonesForKind(input.houseAssembly, input.nextKind);
-  if (!candidateZones.length) return null;
-
-  const preferredEdgeId = input.preferredEdgeId ?? input.currentPergola.attachmentEdgeId ?? null;
-  if (preferredEdgeId) {
-    const edgeZone = candidateZones.find((zone) => zone.hostEdgeId === preferredEdgeId);
-    if (edgeZone) return edgeZone;
-  }
-
-  if (input.currentPergola.attachmentZoneId) {
-    const currentZone = candidateZones.find((zone) => zone.id === input.currentPergola.attachmentZoneId);
-    if (currentZone) return currentZone;
-  }
-
-  const sameSideZone = candidateZones.find((zone) => zone.side === input.currentPergola.side);
-  return sameSideZone ?? candidateZones[0] ?? null;
-}
 
 export function upsertObjectWorkbenchPergolaDrafts(
   currentPergolas: ObjectWorkbenchPergolaDraft[],

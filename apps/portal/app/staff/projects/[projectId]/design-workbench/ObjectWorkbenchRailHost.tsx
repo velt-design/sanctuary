@@ -152,10 +152,7 @@ export default function ObjectWorkbenchRailHost({
       onSelectPergolaByModule={handleCanonicalPergolaSelection}
       onStartDrawOutline={objectSelectionActions.startDrawOutlineEditor}
       onCommitGeometryEdit={!isLocked ? objectWorkbenchActions.commitGeometryIntent : undefined}
-      onCommitConnectionKind={!isLocked ? objectWorkbenchActions.commitSharedPergolaConnectionKind : undefined}
-      onCommitAttachmentStrategy={!isLocked ? objectWorkbenchActions.commitSharedPergolaAttachmentStrategy : undefined}
-      onCommitAttachmentEdge={!isLocked ? objectWorkbenchActions.commitSharedPergolaAttachmentEdge : undefined}
-      onCommitAttachmentZone={!isLocked ? objectWorkbenchActions.commitSharedPergolaAttachmentZone : undefined}
+      onCommitAttachment={!isLocked ? objectWorkbenchActions.commitSharedPergolaAttachment : undefined}
     />
   );
 

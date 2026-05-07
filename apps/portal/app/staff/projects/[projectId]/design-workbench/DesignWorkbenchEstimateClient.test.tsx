@@ -803,7 +803,13 @@ describe('DesignWorkbenchEstimateClient', () => {
     rendered.unmount();
   });
 
-  it('writes pergola attachment edits from object-first derived edge and zone options into compatibility drafts', async () => {
+  it('renders the derived attachment inspector and writes a method change through the snap-derived patch (step 9)', async () => {
+    // Step 9 of the first-class spatial-entities migration. The legacy 4-dropdown
+    // configurator (Connection / Strategy / Host Edge / Host Zone) is replaced
+    // with read-only derived labels plus a single writable Attachment Method
+    // picker — only enabled when `spatialKind === 'roof_edge'`. Re-hosting is
+    // via drag-snap, not a dropdown, so this test exercises ONLY the method
+    // change.
     const estimate = buildEstimateDetail();
     const entityKey = buildEstimateDrawingDraftEntityKey(estimate.id);
 
@@ -814,44 +820,31 @@ describe('DesignWorkbenchEstimateClient', () => {
     clickButtonByText(rendered.container, 'Pergolas');
     await flushAsyncWork();
 
-    changeSelectByLabel(rendered.container, 'Pergola connection', 'fascia');
+    // Legacy starting state is `connectionKind: 'soffit'` — the inspector's
+    // legacy-field fallback projects this to `spatialKind: 'roof_edge'` +
+    // `method: 'direct_to_soffit'`, so the method picker is visible.
+    expect(rendered.container.textContent).toContain('Roof edge');
+    expect(rendered.container.textContent).toContain('Drag the pergola onto a wall or roof eave');
+
+    // Old configurator labels MUST be gone.
+    expect(rendered.container.querySelector('[aria-label="Pergola connection"]')).toBeNull();
+    expect(rendered.container.querySelector('[aria-label="Pergola attachment strategy"]')).toBeNull();
+    expect(rendered.container.querySelector('[aria-label="Pergola host edge"]')).toBeNull();
+    expect(rendered.container.querySelector('[aria-label="Pergola host zone"]')).toBeNull();
+
+    // The single writable control is the method picker. Pick "Soffit brackets".
+    changeSelectByLabel(rendered.container, 'Pergola attachment method', 'soffit_brackets');
     await flushAsyncWork();
 
-    let workingCopy = getLocalFirstWorkingCopy<any>(entityKey)?.data;
-    expect(workingCopy?.inputs.modules[0]?.houseConnectionType).toBe('fascia');
-    expect(readObjectFirstPergolas(workingCopy)[0]?.attachmentZoneId).toContain('zone-fascia-');
-    expect(readObjectFirstPergolas(workingCopy)[0]?.attachmentEdgeId).toMatch(/^footprint-edge-\d+$/);
-    expect('houseFirst' in (workingCopy ?? {})).toBe(false);
-
-    const edgeSelect = rendered.container.querySelector('[aria-label="Pergola host edge"]') as HTMLSelectElement | null;
-    if (!edgeSelect) throw new Error('Missing pergola host edge select.');
-    const edgeOptions = Array.from(edgeSelect.options).map((option) => option.value).filter(Boolean);
-    const currentEdge = readObjectFirstPergolas(workingCopy)[0]?.attachmentEdgeId ?? null;
-    const nextEdge = edgeOptions.find((value) => value !== currentEdge) ?? edgeOptions[0];
-    if (!nextEdge) throw new Error('Expected at least one pergola host edge option.');
-
-    changeSelectByLabel(rendered.container, 'Pergola host edge', nextEdge);
-    await flushAsyncWork();
-
-    let pergolaDraft = readObjectFirstPergolas(getLocalFirstWorkingCopy<any>(entityKey)?.data)[0];
-    expect(pergolaDraft).toMatchObject({
-      id: 'pergola-1',
-      attachmentEdgeId: nextEdge,
+    const workingCopy = getLocalFirstWorkingCopy<any>(entityKey)?.data;
+    const pergolaDraft = readObjectFirstPergolas(workingCopy)[0];
+    expect(pergolaDraft?.attachment).toEqual({
+      spatialKind: 'roof_edge',
+      host: null,
+      method: 'soffit_brackets',
     });
-    expect(pergolaDraft?.attachmentZoneId).toContain(nextEdge);
-
-    const zoneSelect = rendered.container.querySelector('[aria-label="Pergola host zone"]') as HTMLSelectElement | null;
-    if (!zoneSelect) throw new Error('Missing pergola host zone select.');
-    const zoneOptions = Array.from(zoneSelect.options).map((option) => option.value).filter(Boolean);
-    const nextZone = zoneOptions.find((value) => value !== zoneSelect.value) ?? zoneOptions[0];
-    if (!nextZone) throw new Error('Expected at least one pergola host zone option.');
-
-    changeSelectByLabel(rendered.container, 'Pergola host zone', nextZone);
-    await flushAsyncWork();
-
-    pergolaDraft = readObjectFirstPergolas(getLocalFirstWorkingCopy<any>(entityKey)?.data)[0];
-    expect(pergolaDraft?.attachmentZoneId).toBe(nextZone);
-    expect(pergolaDraft?.attachmentEdgeId).toMatch(/^footprint-edge-\d+$/);
+    // Legacy fields preserved for back-compat readers (until step 8(c) retires them).
+    expect(pergolaDraft?.connectionKind).toBe('soffit');
 
     rendered.unmount();
   });
