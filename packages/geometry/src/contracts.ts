@@ -460,6 +460,17 @@ export type RawGeometryModuleInput = {
         detachedGapMm?: string | number | null;
       } | null;
       outline?: HouseFootprintPolygonPointInput[] | null;
+      /**
+       * Optional world-space position overlay (stage 4 of the
+       * first-class-spatial-entities migration). When set, the geometry
+       * pipeline applies this translation/rotation to the deck's outline
+       * post-decode so the deck stays put when the host's `attachmentSide`
+       * or pergola dimensions change.
+       */
+      position?: {
+        origin: { x: string | number; y: string | number };
+        rotationDeg?: string | number | null;
+      } | null;
       elevationMode?: HouseDeckElevationMode | null;
       levelOffsetMm?: string | number | null;
       topSurfaceElevationMm?: number | null;

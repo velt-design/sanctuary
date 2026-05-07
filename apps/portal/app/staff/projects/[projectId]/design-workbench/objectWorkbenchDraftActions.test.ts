@@ -216,6 +216,56 @@ describe('objectWorkbenchDraftActions', () => {
     });
   });
 
+  it('preserves deck position through edge-drag patch + normalization round-trip', () => {
+    // Mirrors the full EdgeDragTool → applyObjectWorkbenchDeckPatch → draft
+    // normalize flow for a deck. If `position` is dropped at any step the
+    // deck snaps back to its original world location on the next render
+    // because the decoder has nothing to translate the side-local outline by.
+    const deck: ObjectFirstDeckDraft = {
+      id: 'deck-1',
+      label: 'Deck 1',
+      kind: 'deck',
+      shape: 'preset',
+      presetType: 'rect_attached',
+      outline: [],
+      elevationMode: 'ground',
+      levelOffsetMm: '0',
+      hostEdgeId: 'rear',
+      attachmentMode: 'single_edge',
+      primaryHostEdgeId: 'rear',
+      secondaryHostEdgeId: null,
+      cornerVertexId: null,
+      isAttached: true,
+      surfaceMaterial: 'timber_decking',
+    };
+    const outline = [
+      { alongM: '0', depthM: '0' },
+      { alongM: '2.4', depthM: '0' },
+      { alongM: '2.4', depthM: '1.5' },
+      { alongM: '0', depthM: '1.5' },
+    ];
+    const position = {
+      originXMm: '1500',
+      originYMm: '-3000',
+      rotationDeg: '0',
+    } as const;
+
+    const patched = applyObjectWorkbenchDeckPatch({
+      currentDecks: [deck],
+      deckId: 'deck-1',
+      housePolygon: [],
+      patch: {
+        shape: 'custom',
+        outline,
+        position,
+      },
+    });
+
+    expect(patched[0]?.position).toEqual(position);
+    expect(patched[0]?.outline).toEqual(outline);
+    expect(patched[0]?.shape).toBe('custom');
+  });
+
   it('adds and patches openings with object-first host wall normalization', () => {
     const houseForm = makeHouseForm();
     const houseAssembly: HouseAssemblyModel = {

@@ -185,6 +185,75 @@ describe('buildObjectFirstWorkbenchProjectModel', () => {
     });
   });
 
+  it('preserves deck position from object-first draft through project model rebuild', () => {
+    // Mirrors the deck edge-drag commit flow: a draft deck with a `position`
+    // overlay must show up on the rebuilt project model so the geometry
+    // pipeline can apply it post-decode. If `buildDeckModelsFromDrafts` (or
+    // anything downstream) drops `position`, the deck snaps back to its
+    // original location on every render.
+    const fixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
+    if (!fixture) {
+      throw new Error('Missing mono-standard fixture.');
+    }
+    const draft = buildEstimateDrawingDraftFromSnapshot(fixture.snapshot);
+    if (!draft) {
+      throw new Error('Expected fixture draft.');
+    }
+    const baselineCompatibilityProject = buildObjectWorkbenchCompatibilityProjectModel({
+      snapshot: fixture.snapshot,
+      draft,
+    });
+    const baselineObjectFirstProject = buildObjectFirstWorkbenchProjectModel({
+      compatibilityProjectModel: baselineCompatibilityProject,
+    });
+    draft.objectFirst = buildObjectFirstWorkbenchDraftFromProjectModel(baselineObjectFirstProject);
+    draft.objectFirst.decks = [
+      {
+        id: 'deck-1',
+        label: 'Rear deck',
+        kind: 'deck',
+        shape: 'custom',
+        presetType: null,
+        outline: [
+          { alongM: '0', depthM: '0' },
+          { alongM: '2.4', depthM: '0' },
+          { alongM: '2.4', depthM: '1.5' },
+          { alongM: '0', depthM: '1.5' },
+        ],
+        position: {
+          originXMm: '1500',
+          originYMm: '-3000',
+          rotationDeg: '0',
+        },
+        elevationMode: 'ground',
+        levelOffsetMm: '0',
+        hostEdgeId: 'rear',
+        attachmentMode: 'floating',
+        primaryHostEdgeId: 'rear',
+        secondaryHostEdgeId: null,
+        cornerVertexId: null,
+        isAttached: false,
+        surfaceMaterial: 'timber_decking',
+      },
+    ];
+    const compatibilityProject = buildObjectWorkbenchCompatibilityProjectModel({
+      snapshot: fixture.snapshot,
+      draft,
+    });
+    const project = buildObjectFirstWorkbenchProjectModel({
+      compatibilityProjectModel: compatibilityProject,
+      objectFirstDraft: draft.objectFirst,
+    });
+
+    expect(project.decks[0]?.position).toEqual({
+      originXMm: '1500',
+      originYMm: '-3000',
+      rotationDeg: '0',
+    });
+    expect(project.decks[0]?.outline).toHaveLength(4);
+    expect(project.decks[0]?.shape).toBe('custom');
+  });
+
   it('preserves compatibility warning messages', () => {
     const compatibilityProject = loadFixtureProject('gable-standard');
     const warning = {

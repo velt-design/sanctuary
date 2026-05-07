@@ -51,6 +51,7 @@ export type ObjectWorkbenchDeckPatch = Partial<
     | 'primaryHostEdgeId'
     | 'secondaryHostEdgeId'
     | 'cornerVertexId'
+    | 'position'
   >
 >;
 

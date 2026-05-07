@@ -1379,4 +1379,275 @@ describe('normalizeGeometryConfig', () => {
       }
     });
   });
+
+  describe('deck first-class spatial entity (stage 4 decoupling)', () => {
+    // Decks store their outline in side-local `(alongM, depthM)` coords
+    // decoded against a hardcoded 1m × 1m unit frame. Today the unit-frame
+    // decoder still uses the host's `attachmentSide`, so changing the house's
+    // attachmentSide shifts the deck. With `deck.position` set, the deck is
+    // post-decode-translated independent of attachmentSide — invariant.
+
+    type DeckPositionInput = {
+      origin: { x: number; y: number };
+      rotationDeg: number;
+    } | null;
+
+    function makeDeckInput(opts: {
+      attachmentSide: 'rear' | 'front' | 'left' | 'right';
+      deckPosition: DeckPositionInput;
+    }) {
+      return makeRawInput({
+        connection: { houseConnectionType: 'soffit', attachmentSide: opts.attachmentSide },
+        houseContext: {
+          footprintMode: 'preset',
+          footprintPreset: 'straight',
+          footprintParams: {
+            widthM: '',
+            offsetXM: '0',
+            setbackM: '0',
+            bandDepthM: '1.8',
+            returnRunM: '2.4',
+            recessWidthM: '2.4',
+            recessDepthM: '1.2',
+            leftLegRunM: '2.4',
+            rightLegRunM: '2.4',
+            sideRunM: '2.4',
+          },
+          decks: [
+            {
+              id: 'deck-1',
+              name: 'Deck 1',
+              kind: 'deck',
+              shape: 'custom',
+              outline: [
+                { alongM: '0', depthM: '0' },
+                { alongM: '3', depthM: '0' },
+                { alongM: '3', depthM: '2' },
+                { alongM: '0', depthM: '2' },
+              ],
+              position: opts.deckPosition,
+              elevationMode: 'ground',
+              levelOffsetMm: '0',
+              hostEdgeId: null,
+              isAttached: false,
+              surfaceMaterial: 'timber_decking',
+            },
+          ],
+        },
+      });
+    }
+
+    it('LEGACY (no position): deck shifts when host attachmentSide changes — known coupling', () => {
+      const rear = normalizeGeometryConfig(makeDeckInput({ attachmentSide: 'rear', deckPosition: null }));
+      const front = normalizeGeometryConfig(makeDeckInput({ attachmentSide: 'front', deckPosition: null }));
+      expect(rear.ok).toBe(true);
+      expect(front.ok).toBe(true);
+      if (!rear.ok || !front.ok) return;
+      const rearDeck = rear.value.houseContext.model?.decks?.[0];
+      const frontDeck = front.value.houseContext.model?.decks?.[0];
+      expect(rearDeck?.outline).not.toBeNull();
+      expect(frontDeck?.outline).not.toBeNull();
+      // 'rear' decoder: world.y = -depth*1000. 'front' decoder: world.y = (1+depth)*1000.
+      // For the same polygon, they produce different world coords.
+      expect(rearDeck!.outline![0]!.y).not.toBeCloseTo(frontDeck!.outline![0]!.y, 6);
+    });
+
+    it('FIRST-CLASS (position set): deck position is applied post-decode (decoupled from attachmentSide drift)', () => {
+      // Same deck position (1500, 2500) applied for both attachment sides.
+      // The post-decode translation lifts each into world space; the
+      // *relative* offset between the two cases stays the same as the legacy
+      // decoder's offset, but adding a non-zero position predictably
+      // translates both — and a Move-tool flow that explicitly sets position
+      // at edit time can now make the deck stay put across pergola/host
+      // changes (the workbench commit handler does exactly this via
+      // bbox-based position writes).
+      const position: DeckPositionInput = { origin: { x: 1500, y: 2500 }, rotationDeg: 0 };
+      const rear = normalizeGeometryConfig(makeDeckInput({ attachmentSide: 'rear', deckPosition: position }));
+      expect(rear.ok).toBe(true);
+      if (!rear.ok) return;
+      const deck = rear.value.houseContext.model?.decks?.[0];
+      expect(deck?.outline).not.toBeNull();
+      // Vertex (alongM=0, depthM=0) for 'rear' → unit world (0, 0). Plus
+      // position (1500, 2500) → final world (1500, 2500).
+      expect(deck!.outline![0]!.x).toBeCloseTo(1500, 6);
+      expect(deck!.outline![0]!.y).toBeCloseTo(2500, 6);
+      // Vertex (alongM=3, depthM=0) → unit world (3000, 0) + position → (4500, 2500).
+      expect(deck!.outline![1]!.x).toBeCloseTo(4500, 6);
+      expect(deck!.outline![1]!.y).toBeCloseTo(2500, 6);
+    });
+
+    it('preserves negative deck position coords (parity with pergola fix)', () => {
+      const position: DeckPositionInput = { origin: { x: -1000, y: -500 }, rotationDeg: 0 };
+      const result = normalizeGeometryConfig(makeDeckInput({ attachmentSide: 'rear', deckPosition: position }));
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      const deck = result.value.houseContext.model?.decks?.[0];
+      expect(deck?.outline).not.toBeNull();
+      // Vertex (0, 0) for 'rear' → world (0, 0) + position (-1000, -500) → (-1000, -500).
+      expect(deck!.outline![0]!.x).toBeCloseTo(-1000, 6);
+      expect(deck!.outline![0]!.y).toBeCloseTo(-500, 6);
+    });
+
+    it("STAGE 4.5: standardized 'rear' frame — deck stays put when host attachmentSide changes", () => {
+      // The user-visible invariant: a deck with `position` set should NOT
+      // shift when the host's attachmentSide changes via the legacy
+      // configurator dropdown. The decoder uses 'rear' regardless of the
+      // host's value, so the deck's polygon interpretation is stable.
+
+      // First: edit a deck — bbox-min becomes position, polygon is encoded
+      // against 'rear' (mimicking the workbench commit handler).
+      function buildDeckInputForAttachment(attachmentSide: 'rear' | 'front' | 'left' | 'right') {
+        return makeRawInput({
+          connection: { houseConnectionType: 'soffit', attachmentSide },
+          houseContext: {
+            footprintMode: 'preset',
+            footprintPreset: 'straight',
+            footprintParams: {
+              widthM: '',
+              offsetXM: '0',
+              setbackM: '0',
+              bandDepthM: '1.8',
+              returnRunM: '2.4',
+              recessWidthM: '2.4',
+              recessDepthM: '1.2',
+              leftLegRunM: '2.4',
+              rightLegRunM: '2.4',
+              sideRunM: '2.4',
+            },
+            decks: [
+              {
+                id: 'deck-1',
+                name: 'Deck 1',
+                kind: 'deck',
+                shape: 'custom',
+                outline: [
+                  // Polygon encoded against 'rear' frame (positive depth → -y world).
+                  // For depthM=-2 (which represents a deck below the origin in
+                  // 'rear' frame: -depth*1000 = 2000 → world.y = +2000 for the
+                  // "below origin" intent), the deck spans y in [0, 2000].
+                  { alongM: '0', depthM: '0' },
+                  { alongM: '3', depthM: '0' },
+                  { alongM: '3', depthM: '-2' },
+                  { alongM: '0', depthM: '-2' },
+                ],
+                position: { origin: { x: 1000, y: 500 }, rotationDeg: 0 },
+                elevationMode: 'ground',
+                levelOffsetMm: '0',
+                hostEdgeId: null,
+                isAttached: false,
+                surfaceMaterial: 'timber_decking',
+              },
+            ],
+          },
+        });
+      }
+
+      const decoded = (attachmentSide: 'rear' | 'front' | 'left' | 'right') => {
+        const result = normalizeGeometryConfig(buildDeckInputForAttachment(attachmentSide));
+        expect(result.ok).toBe(true);
+        if (!result.ok) throw new Error('unexpected');
+        return result.value.houseContext.model?.decks?.[0]?.outline ?? null;
+      };
+
+      const rear = decoded('rear');
+      const front = decoded('front');
+      const left = decoded('left');
+      const right = decoded('right');
+
+      expect(rear).not.toBeNull();
+      expect(front).not.toBeNull();
+      expect(left).not.toBeNull();
+      expect(right).not.toBeNull();
+
+      // The architectural invariant: every vertex matches across all four
+      // attachment sides. Deck position is fully decoupled from host
+      // attachmentSide.
+      for (let idx = 0; idx < rear!.length; idx += 1) {
+        expect(rear![idx]!.x).toBeCloseTo(front![idx]!.x, 6);
+        expect(rear![idx]!.y).toBeCloseTo(front![idx]!.y, 6);
+        expect(rear![idx]!.x).toBeCloseTo(left![idx]!.x, 6);
+        expect(rear![idx]!.y).toBeCloseTo(left![idx]!.y, 6);
+        expect(rear![idx]!.x).toBeCloseTo(right![idx]!.x, 6);
+        expect(rear![idx]!.y).toBeCloseTo(right![idx]!.y, 6);
+      }
+    });
+
+    it("STAGE 4.5: full bbox round-trip — encoder/decoder agree on 'rear' frame", () => {
+      // Locks the workbench commit handler's contract: encode a polygon
+      // against 'rear' + position = bbox.min, decode against 'rear' + apply
+      // position = bbox.min, get back the original world polygon. This is
+      // what makes "drag deck edge → deck resizes" actually work.
+
+      // Simulating the user dragging the right edge of a deck: original deck
+      // at world (1000, 500)→(4000, 500)→(4000, 2500)→(1000, 2500) → drag
+      // right edge to x=5000.
+      const draggedWorldPolygon = [
+        { x: 1000, y: 500 },
+        { x: 5000, y: 500 },
+        { x: 5000, y: 2500 },
+        { x: 1000, y: 2500 },
+      ];
+
+      // Workbench commit handler: bbox.min = (1000, 500), shift polygon by
+      // -position so local coords are (0,0)-(4000,0)-(4000,2000)-(0,2000),
+      // then encode against 'rear' (alongM=x/1000, depthM=-y/1000).
+      const localWorldPolygon = draggedWorldPolygon.map((p) => ({
+        x: p.x - 1000,
+        y: p.y - 500,
+      }));
+      // Encoded polygon (mimicking buildSideLocalPolygonFromWorld for 'rear'):
+      const encodedSideLocal = localWorldPolygon.map((p) => ({
+        alongM: (p.x / 1000).toString(),
+        depthM: (-p.y / 1000).toString(),
+      }));
+
+      const result = normalizeGeometryConfig(
+        makeRawInput({
+          connection: { houseConnectionType: 'soffit', attachmentSide: 'rear' },
+          houseContext: {
+            footprintMode: 'preset',
+            footprintPreset: 'straight',
+            footprintParams: {
+              widthM: '',
+              offsetXM: '0',
+              setbackM: '0',
+              bandDepthM: '1.8',
+              returnRunM: '2.4',
+              recessWidthM: '2.4',
+              recessDepthM: '1.2',
+              leftLegRunM: '2.4',
+              rightLegRunM: '2.4',
+              sideRunM: '2.4',
+            },
+            decks: [
+              {
+                id: 'deck-1',
+                name: 'Deck 1',
+                kind: 'deck',
+                shape: 'custom',
+                outline: encodedSideLocal,
+                position: { origin: { x: 1000, y: 500 }, rotationDeg: 0 },
+                elevationMode: 'ground',
+                levelOffsetMm: '0',
+                hostEdgeId: null,
+                isAttached: false,
+                surfaceMaterial: 'timber_decking',
+              },
+            ],
+          },
+        }),
+      );
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      const deck = result.value.houseContext.model?.decks?.[0];
+      expect(deck?.outline).not.toBeNull();
+      const decoded = deck!.outline!;
+      // Round-trip: each decoded vertex matches the original dragged world polygon.
+      expect(decoded.length).toBe(draggedWorldPolygon.length);
+      for (let idx = 0; idx < decoded.length; idx += 1) {
+        expect(decoded[idx]!.x).toBeCloseTo(draggedWorldPolygon[idx]!.x, 6);
+        expect(decoded[idx]!.y).toBeCloseTo(draggedWorldPolygon[idx]!.y, 6);
+      }
+    });
+  });
 });

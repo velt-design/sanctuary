@@ -363,6 +363,12 @@ function mapDecks(
     presetType: deck.presetType,
     presetRect: mapDeckPresetRect(deck.presetRect ?? null),
     outline: deck.outline,
+    position: deck.position
+      ? {
+          origin: { x: deck.position.originXMm, y: deck.position.originYMm },
+          rotationDeg: deck.position.rotationDeg,
+        }
+      : null,
     elevationMode: deck.elevationMode,
     levelOffsetMm: resolveOptionalOverride(deck.levelOffsetMm) ?? '0',
     hostEdgeId: deck.hostEdgeId,

@@ -241,6 +241,21 @@ export type DerivedBuildingEnvelopeModel = {
   attachmentZones: DerivedAttachmentZoneModel[];
 };
 
+/**
+ * Deck world-space position overlay (stage 4 of the first-class-spatial-entities
+ * migration). When set, the geometry pipeline applies this translation +
+ * rotation to the deck's outline post-decode — independent of the house's
+ * attachmentSide. The legacy decoder still runs against the active attachment
+ * frame; `position` is an additive offset on top.
+ *
+ * Mirrors `HouseFormPosition` and `ObjectFirstPergolaPosition`.
+ */
+export type DeckPosition = {
+  originXMm: string;
+  originYMm: string;
+  rotationDeg: string;
+};
+
 export type DeckObjectModel = {
   id: string;
   label: string;
@@ -250,6 +265,8 @@ export type DeckObjectModel = {
   presetRect?: DeckPresetRect | null;
   floatingRect?: DeckFloatingPresetRect | null;
   outline: CalculatorHouseFootprintPolygonPoint[];
+  /** Optional world-space position overlay. See `DeckPosition`. */
+  position?: DeckPosition | null;
   elevationMode: DeckElevationMode;
   levelOffsetMm: string;
   isAttached: boolean;
@@ -389,6 +406,8 @@ export type ObjectFirstDeckDraft = {
   presetRect?: DeckPresetRect | null;
   floatingRect?: DeckFloatingPresetRect | null;
   outline: CalculatorHouseFootprintPolygonPoint[];
+  /** Optional world-space position overlay. See `DeckPosition` for details. */
+  position?: DeckPosition | null;
   elevationMode: DeckElevationMode;
   levelOffsetMm: string;
   isAttached: boolean;
@@ -739,12 +758,27 @@ export function normalizeObjectFirstHouseAssemblyDraft(
   };
 }
 
+function normalizeDeckPosition(
+  value: Partial<DeckPosition> | null | undefined,
+): DeckPosition | null {
+  if (!value) return null;
+  const originXMm = trimNullableString(value.originXMm);
+  const originYMm = trimNullableString(value.originYMm);
+  if (originXMm === null || originYMm === null) return null;
+  return {
+    originXMm,
+    originYMm,
+    rotationDeg: trimNullableString(value.rotationDeg) ?? '0',
+  };
+}
+
 export function normalizeObjectFirstDeckDraft(
   value: Partial<ObjectFirstDeckDraft> | null | undefined,
 ): ObjectFirstDeckDraft | null {
   const id = normalizeStableId(value?.id);
   if (!id) return null;
 
+  const position = normalizeDeckPosition(value?.position ?? null);
   return {
     id,
     label: trimNullableString(value?.label) ?? id,
@@ -758,6 +792,7 @@ export function normalizeObjectFirstDeckDraft(
       ? { floatingRect: normalizeObjectFirstDeckFloatingRect(value?.floatingRect) }
       : null),
     outline: normalizeHouseFootprintPolygon(value?.outline),
+    ...(position ? { position } : null),
     elevationMode: isDeckElevationMode(value?.elevationMode) ? value.elevationMode : 'ground',
     levelOffsetMm: trimNullableString(value?.levelOffsetMm) ?? '0',
     isAttached: typeof value?.isAttached === 'boolean' ? value.isAttached : true,

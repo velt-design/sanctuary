@@ -574,6 +574,96 @@ describe('buildDrawingWorkbenchStore', () => {
     expect(store.derived.activeLegacySectionModel).not.toBeNull();
   });
 
+  it('renders deck at world position from object-first draft (deck edge-drag end-to-end)', () => {
+    // End-to-end test for the deck edge-drag commit: dragging a deck edge
+    // produces a draft with shape='custom', a side-local outline, and a
+    // `position` overlay. The geometry pipeline must decode the outline
+    // and apply the position so the deck stays where it was dragged. If
+    // `position` is dropped at any layer the rendered deck snaps back.
+    const fixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
+    if (!fixture) throw new Error('Missing mono-standard fixture.');
+    const draft = buildEstimateDrawingDraftFromSnapshot(fixture.snapshot);
+    if (!draft) throw new Error('Expected drawing draft.');
+
+    const outline = [
+      { alongM: '0', depthM: '0' },
+      { alongM: '2.4', depthM: '0' },
+      { alongM: '2.4', depthM: '-1.5' },
+      { alongM: '0', depthM: '-1.5' },
+    ];
+    const positionXMm = 1500;
+    const positionYMm = -3000;
+
+    applyObjectFirstCompatibilityDraft({
+      snapshot: fixture.snapshot,
+      draft,
+      compatibility: {
+        decks: [
+          {
+            id: 'deck-edge-drag',
+            name: 'Edge-dragged deck',
+            kind: 'deck',
+            shape: 'custom',
+            presetType: null,
+            outline,
+            elevationMode: 'ground',
+            levelOffsetMm: '0',
+            hostEdgeId: 'rear',
+            isAttached: false,
+            surfaceMaterial: 'timber_decking',
+          },
+        ],
+      },
+    });
+    const deckDraft = draft.objectFirst!.decks.find((deck) => deck.id === 'deck-edge-drag');
+    if (!deckDraft) throw new Error('Expected deck-edge-drag draft.');
+    deckDraft.shape = 'custom';
+    deckDraft.outline = outline;
+    deckDraft.position = {
+      originXMm: String(positionXMm),
+      originYMm: String(positionYMm),
+      rotationDeg: '0',
+    };
+
+    const store = buildDrawingWorkbenchStore({
+      snapshot: fixture.snapshot,
+      draft,
+      ui: createDrawingWorkbenchUiState({
+        activeView: 'plan',
+      }),
+    });
+
+    const deckOnProject = store.persisted.projectModel.decks.find(
+      (deck) => deck.id === 'deck-edge-drag',
+    );
+    expect(deckOnProject?.position).toEqual({
+      originXMm: String(positionXMm),
+      originYMm: String(positionYMm),
+      rotationDeg: '0',
+    });
+    expect(deckOnProject?.shape).toBe('custom');
+
+    const moduleSolution = store.persisted.modules[0];
+    const topProjection = moduleSolution?.geometryTopProjectionViewModel ?? null;
+    expect(topProjection).not.toBeNull();
+    const deckShape = topProjection?.shapes.find(
+      (shape) =>
+        shape.family === 'house' &&
+        shape.kind === 'deck' &&
+        (shape.sourceId === 'deck-edge-drag' ||
+          shape.sourceObjectId === 'deck-edge-drag' ||
+          shape.metadata?.deckName === 'Edge-dragged deck'),
+    );
+    expect(deckShape).toBeDefined();
+    if (!deckShape) return;
+    const xs = deckShape.polygon.map((p) => p.x);
+    const ys = deckShape.polygon.map((p) => p.y);
+    expect(Math.min(...xs)).toBeCloseTo(positionXMm, 0);
+    expect(Math.max(...xs)).toBeCloseTo(positionXMm + 2400, 0);
+    expect(Math.min(...ys)).toBeCloseTo(positionYMm, 0);
+    expect(Math.max(...ys)).toBeCloseTo(positionYMm + 1500, 0);
+  });
+
   it('builds 2D models from locally resolved draft geometry instead of stale snapshot outputs', () => {
     const fixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
     if (!fixture) throw new Error('Missing mono-standard fixture.');

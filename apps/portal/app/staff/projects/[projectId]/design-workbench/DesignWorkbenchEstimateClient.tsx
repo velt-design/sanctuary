@@ -471,6 +471,19 @@ export default function DesignWorkbenchEstimateClient({
           onCommitOutlineEdit={
             !isLocked
               ? (commit) => {
+                  // Unconditional outer log so we can verify the commit is
+                  // even reaching this handler. Surfaces in any browser
+                  // console regardless of URL flags.
+                  // eslint-disable-next-line no-console
+                  console.log('[edge-drag] onCommitOutlineEdit fired', {
+                    family: commit.family,
+                    outlineId: commit.outlineId,
+                    nextPolygonLength: commit.nextPolygon.length,
+                    activeObject: {
+                      family: store.ui.activeObjectRef.family,
+                      objectId: store.ui.activeObjectRef.objectId,
+                    },
+                  });
                   if (commit.family === 'house_forms') {
                     // House edge-drag commit (stage 3.4 — house first-class spatial
                     // entity). The house owns its own world `position` and its
@@ -646,35 +659,114 @@ export default function DesignWorkbenchEstimateClient({
                     return;
                   }
                   if (commit.family === 'decks') {
-                    // Deck edge-drag commit (Slice D). Decks store their outline in
-                    // side-local (alongM, depthM) coords, BUT the geometry decoder for
-                    // decks (`normalize.ts` `buildHouseModelConfig`) hardcodes the frame
-                    // to a 1m × 1m pergola with 0 offsets — separate from the house's
-                    // actual footprint frame. The encoder here must match: pergolaWidth
-                    // /Depth = 1000mm and `params: null` so default 0 offsets resolve.
-                    // Otherwise the round-trip misaligns and the deck appears not to
-                    // resize (the new outline decodes back to roughly the old world
-                    // position).
-                    const deckId =
-                      store.ui.activeObjectRef.family === 'decks'
-                        ? store.ui.activeObjectRef.objectId
-                        : null;
-                    if (!deckId || commit.nextPolygon.length < 3) return;
-                    const houseForm = store.derived.activeHouseForm;
+                    // Deck edge-drag commit (stage 4 — deck first-class spatial
+                    // entity). The deck owns its own world `position` and its
+                    // outline is stored in side-local `(alongM, depthM)` coords
+                    // decoded against a unit (1m × 1m) frame. Position is
+                    // applied as a post-decode translation, decoupling the
+                    // deck from the host's `attachmentSide` and from pergola
+                    // dimensions.
+                    //
+                    // Bbox approach (parallel to pergola): `bbox.min(nextPolygon)`
+                    // becomes the new deck `position.origin`; the polygon is
+                    // shifted by `-position` and re-encoded against the unit
+                    // frame. Whether this is a first edit (position was null)
+                    // or a subsequent edit, the same logic produces the
+                    // canonical (position, polygon) pair.
+                    //
+                    // Resolve deckId from `commit.outlineId` (shape id =
+                    // `${type}:${id}` rather than `activeObjectRef`. The
+                    // active ref's `objectId` can be null mid-render (when the
+                    // ref normalizer can't yet match it against the current
+                    // deck list — e.g. right after the snapshot rehydrates) but
+                    // the EdgeDragTool always emits the shape it actually
+                    // dragged, so the outline is the source of truth.
+                    //
+                    // Outline id formats (any of these may appear depending on
+                    // which canonical-outline shape the picker chose):
+                    //   `house_surface:${deck.id}`       — top-projected surface
+                    //   `house_surface_solid:house-solid-${deck.id}` — solid prism
+                    // Match by checking deck.id as a suffix of outlineId; this
+                    // is robust against either prefix without fragile parsing.
+                    const projectModelDecks = store.persisted.projectModel.decks;
+                    const matchedDeck = projectModelDecks.find((deck) =>
+                      commit.outlineId.endsWith(`:${deck.id}`) ||
+                      commit.outlineId.endsWith(`-${deck.id}`),
+                    );
+                    const deckId = matchedDeck?.id ?? null;
+                    // eslint-disable-next-line no-console
+                    console.log('[deck-edge-drag] commit fired', {
+                      activeFamily: store.ui.activeObjectRef.family,
+                      activeObjectId: store.ui.activeObjectRef.objectId,
+                      outlineId: commit.outlineId,
+                      matchedDeckId: deckId,
+                      projectModelDeckIds: projectModelDecks.map((deck) => deck.id),
+                      nextPolygonLength: commit.nextPolygon.length,
+                    });
+                    if (!deckId || commit.nextPolygon.length < 3) {
+                      // eslint-disable-next-line no-console
+                      console.warn('[deck-edge-drag] bailed early', {
+                        reason: !deckId
+                          ? `outline ${commit.outlineId} did not match any deck in project model`
+                          : 'polygon < 3 vertices',
+                      });
+                      return;
+                    }
+                    let minX = Infinity;
+                    let minY = Infinity;
+                    let maxX = -Infinity;
+                    let maxY = -Infinity;
+                    for (const p of commit.nextPolygon) {
+                      if (p.x < minX) minX = p.x;
+                      if (p.y < minY) minY = p.y;
+                      if (p.x > maxX) maxX = p.x;
+                      if (p.y > maxY) maxY = p.y;
+                    }
+                    const positionXMm = minX;
+                    const positionYMm = minY;
+                    // Polygon coords relative to position (so unit-frame decode
+                    // + position == nextPolygon).
+                    const localWorldPolygon = commit.nextPolygon.map((p) => ({
+                      x: p.x - positionXMm,
+                      y: p.y - positionYMm,
+                    }));
+                    // Standardize on attachmentSide='rear' so the deck's polygon
+                    // is decoupled from the host's current attachmentSide.
+                    // Pairs with the same standardization in normalize.ts when
+                    // `deck.position` is set.
                     const sideLocalPoints = buildSideLocalPolygonFromWorld({
-                      worldPolygonMm: commit.nextPolygon,
+                      worldPolygonMm: localWorldPolygon,
                       pergolaWidthMm: 1000,
                       pergolaDepthMm: 1000,
-                      attachmentSide: houseForm?.footprint.attachmentSide ?? null,
+                      attachmentSide: 'rear',
                       params: null,
                     });
-                    void objectWorkbenchActions.commitSharedHouseDeckPatch(deckId, {
-                      shape: 'custom',
+                    const patch = {
+                      shape: 'custom' as const,
                       outline: sideLocalPoints.map((p) => ({
                         alongM: p.alongM.toString(),
                         depthM: p.depthM.toString(),
                       })),
+                      position: {
+                        originXMm: positionXMm.toString(),
+                        originYMm: positionYMm.toString(),
+                        rotationDeg: '0',
+                      },
+                    };
+                    // eslint-disable-next-line no-console
+                    console.log('[deck-edge-drag] dispatching patch', {
+                      deckId,
+                      bbox: { minX, minY, maxX, maxY },
+                      position: patch.position,
+                      outlineLength: patch.outline.length,
+                      outline: patch.outline,
                     });
+                    void objectWorkbenchActions
+                      .commitSharedHouseDeckPatch(deckId, patch)
+                      .then((result) => {
+                        // eslint-disable-next-line no-console
+                        console.log('[deck-edge-drag] commit result', result);
+                      });
                     return;
                   }
                   // openings deferred (no canonical polygon yet).

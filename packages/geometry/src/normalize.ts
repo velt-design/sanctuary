@@ -537,25 +537,44 @@ function buildHouseModelConfig(input: {
                   detachedGapMm: resolveOptionalMillimetres(deck.presetRect.detachedGapMm) ?? 0,
                 }
               : null,
-          outline:
-            outlinePoints.length >= 3
-              ? houseFootprintSideLocalToWorldPolygon({
-                  points: outlinePoints,
-                  frame: deckFrame,
-                  resolved: {
-                    widthM: 1,
-                    offsetXM: 0,
-                    setbackM: 0,
-                    bandDepthM: 1,
-                    returnRunM: 1,
-                    recessWidthM: 1,
-                    recessDepthM: 1,
-                    leftLegRunM: 1,
-                    rightLegRunM: 1,
-                    sideRunM: 1,
-                  },
+          outline: (() => {
+            if (outlinePoints.length < 3) return null;
+            const deckPosition = resolveOptionalAssemblyPosition(deck.position);
+            // Stage 4.5 — when the deck has a `position` set, decode against a
+            // standardized `'rear'` frame so the deck is decoupled from the
+            // host's current `attachmentSide`. Pairs with the same standardization
+            // in `DesignWorkbenchEstimateClient`'s deck commit handler — both
+            // sides use 'rear' so the round-trip is consistent.
+            //
+            // When `position` is null (legacy data, no edits yet), fall back to
+            // the host-attachmentSide-aware `deckFrame` for back-compat.
+            const decoderFrame = deckPosition
+              ? resolveHouseFootprintFrame({
+                  pergolaWidthMm: 1000,
+                  pergolaDepthMm: 1000,
+                  attachmentSide: 'rear',
                 })
-              : null,
+              : deckFrame;
+            const decoded = houseFootprintSideLocalToWorldPolygon({
+              points: outlinePoints,
+              frame: decoderFrame,
+              resolved: {
+                widthM: 1,
+                offsetXM: 0,
+                setbackM: 0,
+                bandDepthM: 1,
+                returnRunM: 1,
+                recessWidthM: 1,
+                recessDepthM: 1,
+                leftLegRunM: 1,
+                rightLegRunM: 1,
+                sideRunM: 1,
+              },
+            });
+            return deckPosition
+              ? applyPositionToPolygon3(decoded, deckPosition)
+              : decoded;
+          })(),
           elevationMode:
             deck.elevationMode === 'aligned_to_threshold' || deck.elevationMode === 'stepped'
               ? deck.elevationMode
