@@ -269,7 +269,17 @@ export type HouseModel = {
   attachmentZoneDiagnostics: HouseAttachmentZoneDiagnosticsModel;
 };
 
-export type PergolaAttachmentModel = {
+/**
+ * Legacy pergola attachment shape carried by the house-first compatibility
+ * model. Kept for the legacy estimate snapshot import path and the compat
+ * adapter chain. **Not** the canonical attachment shape — the snap-derived
+ * `PergolaAttachment` (in `objectFirstWorkbenchModel.ts`) is the source of
+ * truth for the post-Step-8 workbench. Module-internal: only `PergolaModel`
+ * structurally consumes it, so we don't need a named export. Renamed in
+ * cleanup pass to make the legacy role visible at the type level and avoid
+ * collision with the new shape.
+ */
+type PergolaAttachmentLegacyModel = {
   id: string;
   kind: 'freestanding' | 'soffit' | 'fascia' | 'wall';
   attachmentEdgeId: string | null;
@@ -290,7 +300,7 @@ export type PergolaModel = {
   confidence: HouseModelConfidence;
   sourceModuleIndexes: number[];
   sourceModuleIds: string[];
-  attachment: PergolaAttachmentModel;
+  attachment: PergolaAttachmentLegacyModel;
 };
 
 export type HouseFirstMigrationWarning = {
