@@ -489,4 +489,143 @@ describe('objectWorkbenchDraftActions', () => {
 
     expectNoStaleHouseFirst(nextDraft);
   });
+
+  describe('lazy attachment migration on first patch (step 8 follow-up #2)', () => {
+    // Legacy pergolas have `connectionKind` + `strategy` but no `attachment`.
+    // The first time any patch runs against a legacy-only pergola, the patch
+    // pipeline derives an `attachment` from the post-patch legacy fields and
+    // writes it through alongside the patch. One-time migration per pergola
+    // — subsequent patches see `currentPergola.attachment` already set and
+    // skip the derivation.
+
+    function makeLegacyPergola(
+      overrides: Partial<ObjectFirstPergolaDraft> = {},
+    ): ObjectFirstPergolaDraft {
+      return {
+        id: 'pergola-1',
+        label: 'Pergola 1',
+        family: 'mono',
+        connectionKind: 'soffit',
+        attachmentEdgeId: 'footprint-edge-1',
+        attachmentZoneId: 'zone-1',
+        side: 'rear',
+        strategy: null,
+        ...overrides,
+      };
+    }
+
+    it('writes attachment derived from connectionKind=soffit on the first patch', () => {
+      const next = applyObjectWorkbenchPergolaPatch({
+        currentPergolas: [makeLegacyPergola()],
+        pergolaId: 'pergola-1',
+        patch: { label: 'Renamed Pergola' },
+      });
+      expect(next[0]?.attachment).toEqual({
+        spatialKind: 'roof_edge',
+        host: null,
+        method: 'direct_to_soffit',
+      });
+      expect(next[0]?.label).toBe('Renamed Pergola');
+      // Legacy fields preserved alongside.
+      expect(next[0]?.connectionKind).toBe('soffit');
+    });
+
+    it('preserves a roof_edge strategy on the legacy field when deriving method', () => {
+      const next = applyObjectWorkbenchPergolaPatch({
+        currentPergolas: [makeLegacyPergola({ strategy: 'soffit_brackets' })],
+        pergolaId: 'pergola-1',
+        patch: { label: 'Edited' },
+      });
+      expect(next[0]?.attachment?.method).toBe('soffit_brackets');
+    });
+
+    it('derives from POST-patch state when the patch changes connectionKind', () => {
+      // User changes connection kind via legacy inspector path: patch.connectionKind
+      // = 'fascia'. The derivation must use the new kind (post-patch), not the
+      // stale current kind.
+      const next = applyObjectWorkbenchPergolaPatch({
+        currentPergolas: [makeLegacyPergola({ connectionKind: 'soffit' })],
+        pergolaId: 'pergola-1',
+        patch: { connectionKind: 'fascia' },
+      });
+      expect(next[0]?.attachment?.spatialKind).toBe('roof_edge');
+      expect(next[0]?.attachment?.method).toBe('fascia_under_gutter');
+      expect(next[0]?.connectionKind).toBe('fascia');
+    });
+
+    it('does not overwrite an existing attachment (one-time migration only)', () => {
+      const existingAttachment = {
+        spatialKind: 'wall' as const,
+        host: {
+          objectFamily: 'house_forms' as const,
+          objectId: 'house-main',
+          edgeKind: 'wall' as const,
+          edgeId: 'wall-house-wall-1',
+          myEdgeIndex: 0,
+        },
+        method: 'facade_ledger' as const,
+      };
+      const next = applyObjectWorkbenchPergolaPatch({
+        currentPergolas: [makeLegacyPergola({ attachment: existingAttachment })],
+        pergolaId: 'pergola-1',
+        // Even when the patch changes connectionKind to something
+        // contradictory, the existing attachment wins until it's explicitly
+        // patched. Caller is responsible for clearing attachment if they
+        // want the legacy fields to drive again.
+        patch: { connectionKind: 'wall' },
+      });
+      expect(next[0]?.attachment).toEqual(existingAttachment);
+    });
+
+    it('respects an explicit attachment in the patch (snap commit path)', () => {
+      // The pergola edge-drag handler writes attachment directly on snap.
+      // The lazy migration must not overwrite that explicit write.
+      const explicitAttachment = {
+        spatialKind: 'roof_edge' as const,
+        host: {
+          objectFamily: 'house_forms' as const,
+          objectId: 'house-main',
+          edgeKind: 'roof_eave' as const,
+          edgeId: 'roof-eave-edge-1',
+          myEdgeIndex: 0,
+        },
+        method: 'soffit_brackets' as const,
+      };
+      const next = applyObjectWorkbenchPergolaPatch({
+        currentPergolas: [makeLegacyPergola({ connectionKind: 'wall' })],
+        pergolaId: 'pergola-1',
+        patch: { attachment: explicitAttachment },
+      });
+      expect(next[0]?.attachment).toEqual(explicitAttachment);
+    });
+
+    it('clears attachment when patch sets it to null (caller wants legacy back)', () => {
+      const existingAttachment = {
+        spatialKind: 'roof_edge' as const,
+        host: null,
+        method: 'fascia_under_gutter' as const,
+      };
+      const next = applyObjectWorkbenchPergolaPatch({
+        currentPergolas: [makeLegacyPergola({ attachment: existingAttachment })],
+        pergolaId: 'pergola-1',
+        patch: { attachment: null },
+      });
+      expect(next[0]?.attachment).toBeNull();
+    });
+
+    it('writes a freestanding attachment for legacy connectionKind=freestanding', () => {
+      const next = applyObjectWorkbenchPergolaPatch({
+        currentPergolas: [
+          makeLegacyPergola({ connectionKind: 'freestanding', attachmentEdgeId: null, attachmentZoneId: null }),
+        ],
+        pergolaId: 'pergola-1',
+        patch: { label: 'Edited' },
+      });
+      expect(next[0]?.attachment).toEqual({
+        spatialKind: 'freestanding',
+        host: null,
+        method: 'none',
+      });
+    });
+  });
 });

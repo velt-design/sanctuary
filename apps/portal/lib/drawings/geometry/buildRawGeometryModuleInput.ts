@@ -7,6 +7,7 @@ import type {
   PergolaObjectModel,
   WorkbenchProjectModel,
 } from '@/lib/drawings/state/objectFirstWorkbenchModel';
+import { connectionTypeFromAttachment } from '@/lib/drawings/state/pergolaAttachment';
 import type { ObjectWorkbenchGeometryContext } from './objectWorkbenchGeometryContext';
 import {
   DEFAULT_CALCULATOR_ATTACHMENT_SIDE,
@@ -44,6 +45,29 @@ function resolveAttachmentSide(module: CalculatorModuleInputs): RawGeometryModul
   }
 
   return normalizeAttachmentSide(module.attachmentSide);
+}
+
+/**
+ * Step 8 of the first-class spatial-entities migration. When the pergola has
+ * a snap-derived `attachment` set, project it onto the broader
+ * `RawHouseConnectionType` the geometry input accepts. Otherwise fall back
+ * to the legacy `module.houseConnectionType` field. This is the boundary
+ * that makes the new attachment shape load-bearing for the cost engine
+ * without rewiring downstream consumers.
+ *
+ * Return type is the geometry input's `RawHouseConnectionType` (which
+ * includes `'wall'` and `'freestanding'`) — broader than costing's
+ * `HouseConnectionType` (`'soffit' | 'fascia' | 'facade' | 'none'`). The
+ * legacy fallback is narrower but assignable.
+ */
+function resolveHouseConnectionType(
+  module: CalculatorModuleInputs,
+  pergola: PergolaObjectModel | null,
+): RawGeometryModuleInput['connection']['houseConnectionType'] {
+  if (pergola?.attachment) {
+    return connectionTypeFromAttachment(pergola.attachment);
+  }
+  return module.houseConnectionType;
 }
 
 function resolveFootprintPreset(module: CalculatorModuleInputs): RawGeometryModuleInput['houseContext']['footprintPreset'] {
@@ -525,7 +549,7 @@ export function buildRawGeometryModuleInput(input: {
       farEdgeGutter: module.boxGutterFarEdge,
     },
     connection: {
-      houseConnectionType: module.houseConnectionType,
+      houseConnectionType: resolveHouseConnectionType(module, pergola),
       attachmentSide: resolveAttachmentSide(module),
     },
     position: resolvePergolaPosition(pergola),

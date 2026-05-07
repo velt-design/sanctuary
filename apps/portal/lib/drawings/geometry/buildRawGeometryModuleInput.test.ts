@@ -1040,4 +1040,114 @@ describe('buildRawGeometryModuleInput', () => {
     expect(source).not.toContain('ModuleSectionModel');
     expect(source).not.toContain('buildAssemblyModel');
   });
+
+  it('derives connection.houseConnectionType from snap-derived pergola.attachment when present (step 8 follow-up #1)', () => {
+    // The snap-derived `PergolaAttachment` becomes the source of truth for
+    // the cost engine's `houseConnectionType` reads. Verify the projection
+    // wins against a contradictory legacy `module.houseConnectionType`.
+    const fixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
+    if (!fixture) throw new Error('Missing mono-standard fixture.');
+    const draft = buildEstimateDrawingDraftFromSnapshot(fixture.snapshot);
+    if (!draft) throw new Error('Expected drawing draft.');
+
+    // Legacy field says soffit — the snap-derived attachment should override.
+    const moduleInput = makeModule({ houseConnectionType: 'soffit' });
+    const compatibilityProjectModel = buildObjectWorkbenchCompatibilityProjectModel({
+      snapshot: fixture.snapshot,
+      draft,
+    });
+    const baselineProject = buildObjectFirstWorkbenchProjectModel({ compatibilityProjectModel });
+    draft.objectFirst = buildObjectFirstWorkbenchDraftFromProjectModel(baselineProject);
+    const pergolaDraft = draft.objectFirst.pergolas[0];
+    if (!pergolaDraft) throw new Error('Expected at least one pergola draft.');
+    pergolaDraft.attachment = {
+      spatialKind: 'wall',
+      host: {
+        objectFamily: 'house_forms',
+        objectId: 'house-main',
+        edgeKind: 'wall',
+        edgeId: 'wall-house-wall-1',
+        myEdgeIndex: 0,
+      },
+      method: 'facade_ledger',
+    };
+
+    const projectModel = buildObjectFirstWorkbenchProjectModel({
+      compatibilityProjectModel,
+      objectFirstDraft: draft.objectFirst,
+    });
+    const context = buildObjectWorkbenchGeometryContext({
+      snapshot: fixture.snapshot,
+      draft,
+      projectModel,
+    });
+    const raw = buildRawGeometryModuleInput({
+      projectId: 'proj_1',
+      estimateId: 'est_1',
+      moduleId: pergolaDraft.id,
+      module: { ...moduleInput, pergolaId: pergolaDraft.id },
+      result: makeResult(),
+      objectWorkbenchGeometryContext: context,
+    });
+
+    // Snap-derived `wall` attachment overrides legacy `soffit`.
+    expect(raw.connection.houseConnectionType).toBe('wall');
+  });
+
+  it('falls back to legacy module.houseConnectionType when pergola.attachment is null (back-compat)', () => {
+    const raw = buildRawGeometryModuleInput({
+      projectId: 'proj_1',
+      estimateId: 'est_1',
+      moduleId: 'mod_1',
+      module: makeModule({ houseConnectionType: 'fascia' }),
+      result: makeResult(),
+    });
+    expect(raw.connection.houseConnectionType).toBe('fascia');
+  });
+
+  it('projects roof_edge attachment with method=direct_to_soffit onto legacy soffit', () => {
+    const fixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
+    if (!fixture) throw new Error('Missing mono-standard fixture.');
+    const draft = buildEstimateDrawingDraftFromSnapshot(fixture.snapshot);
+    if (!draft) throw new Error('Expected drawing draft.');
+    const compatibilityProjectModel = buildObjectWorkbenchCompatibilityProjectModel({
+      snapshot: fixture.snapshot,
+      draft,
+    });
+    const baselineProject = buildObjectFirstWorkbenchProjectModel({ compatibilityProjectModel });
+    draft.objectFirst = buildObjectFirstWorkbenchDraftFromProjectModel(baselineProject);
+    const pergolaDraft = draft.objectFirst.pergolas[0];
+    if (!pergolaDraft) throw new Error('Expected at least one pergola draft.');
+    pergolaDraft.attachment = {
+      spatialKind: 'roof_edge',
+      host: {
+        objectFamily: 'house_forms',
+        objectId: 'house-main',
+        edgeKind: 'roof_eave',
+        edgeId: 'roof-eave-edge-1',
+        myEdgeIndex: 0,
+      },
+      method: 'direct_to_soffit',
+    };
+
+    const projectModel = buildObjectFirstWorkbenchProjectModel({
+      compatibilityProjectModel,
+      objectFirstDraft: draft.objectFirst,
+    });
+    const context = buildObjectWorkbenchGeometryContext({
+      snapshot: fixture.snapshot,
+      draft,
+      projectModel,
+    });
+    const raw = buildRawGeometryModuleInput({
+      projectId: 'proj_1',
+      estimateId: 'est_1',
+      moduleId: pergolaDraft.id,
+      module: { ...makeModule({ houseConnectionType: 'fascia' }), pergolaId: pergolaDraft.id },
+      result: makeResult(),
+      objectWorkbenchGeometryContext: context,
+    });
+
+    expect(raw.connection.houseConnectionType).toBe('soffit');
+  });
 });

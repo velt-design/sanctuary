@@ -380,6 +380,15 @@ export type PergolaAttachmentHost = {
  * - `spatialKind === 'roof_edge'` ⇒ `method ∈ { fascia_under_gutter,
  *   direct_to_soffit, soffit_brackets }` — the only spatialKind where the
  *   inspector exposes a method picker.
+ * - For non-freestanding spatial kinds, `host` is normally a resolved
+ *   `PergolaAttachmentHost`. Step 8 follow-up #2 (lazy legacy migration)
+ *   permits `host === null` on non-freestanding when the attachment was
+ *   inferred from legacy `connectionKind` + `strategy` fields and the
+ *   absolute host edge id has not yet been resolved through a snap. The
+ *   geometry pipeline reads `spatialKind`/`method` regardless; `host` is
+ *   only load-bearing for re-snap recovery and the UI inspector's "host
+ *   edge" label, both of which fall back to legacy `attachmentEdgeId` when
+ *   `host` is null.
  *
  * `attachmentSide` (rear/front/left/right) becomes a derived UI label,
  * computed from the geometric relation between `host.edgeId` and the

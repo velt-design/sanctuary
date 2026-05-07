@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   connectionTypeFromAttachment,
   freestandingPergolaAttachment,
+  pergolaAttachmentFromLegacyFields,
   pergolaAttachmentFromSnap,
 } from './pergolaAttachment';
 
@@ -155,5 +156,103 @@ describe('connectionTypeFromAttachment — legacy enum projection', () => {
       myEdgeIndex: 0,
     });
     expect(connectionTypeFromAttachment(attachment)).toBe('freestanding');
+  });
+});
+
+describe('pergolaAttachmentFromLegacyFields — lazy migration', () => {
+  // Step 8 follow-up #2: legacy pergola data has `connectionKind` + `strategy`
+  // but no `attachment`. This helper graduates the legacy fields into the
+  // canonical shape with `host: null` (resolved to a real host on first
+  // snap). The geometry pipeline reads spatialKind/method directly so the
+  // null host doesn't break solver behavior — it just means the absolute
+  // host edge id isn't snap-resolved yet.
+
+  it('maps connectionKind=freestanding to a freestanding attachment', () => {
+    expect(pergolaAttachmentFromLegacyFields({ connectionKind: 'freestanding' })).toEqual({
+      spatialKind: 'freestanding',
+      host: null,
+      method: 'none',
+    });
+  });
+
+  it('treats null/undefined connectionKind as freestanding (safe default)', () => {
+    expect(pergolaAttachmentFromLegacyFields({ connectionKind: null })).toEqual(
+      freestandingPergolaAttachment(),
+    );
+    expect(pergolaAttachmentFromLegacyFields({})).toEqual(freestandingPergolaAttachment());
+  });
+
+  it('maps connectionKind=wall to spatialKind=wall + method=facade_ledger with null host', () => {
+    expect(
+      pergolaAttachmentFromLegacyFields({ connectionKind: 'wall' }),
+    ).toEqual({ spatialKind: 'wall', host: null, method: 'facade_ledger' });
+  });
+
+  it('maps connectionKind=fascia to spatialKind=roof_edge + method=fascia_under_gutter', () => {
+    expect(
+      pergolaAttachmentFromLegacyFields({ connectionKind: 'fascia' }),
+    ).toEqual({ spatialKind: 'roof_edge', host: null, method: 'fascia_under_gutter' });
+  });
+
+  it('maps connectionKind=soffit (no strategy) to method=direct_to_soffit', () => {
+    expect(
+      pergolaAttachmentFromLegacyFields({ connectionKind: 'soffit' }),
+    ).toEqual({ spatialKind: 'roof_edge', host: null, method: 'direct_to_soffit' });
+  });
+
+  it('preserves explicit roof_edge strategy when present (soffit_brackets)', () => {
+    expect(
+      pergolaAttachmentFromLegacyFields({
+        connectionKind: 'soffit',
+        strategy: 'soffit_brackets',
+      }),
+    ).toEqual({ spatialKind: 'roof_edge', host: null, method: 'soffit_brackets' });
+  });
+
+  it('preserves fascia_under_gutter strategy on soffit (legacy strategy was the picker for the new method)', () => {
+    expect(
+      pergolaAttachmentFromLegacyFields({
+        connectionKind: 'soffit',
+        strategy: 'fascia_under_gutter',
+      }),
+    ).toEqual({ spatialKind: 'roof_edge', host: null, method: 'fascia_under_gutter' });
+  });
+
+  it('ignores non-roof_edge strategies (facade_ledger / post_supported_tieback / none) when deriving method', () => {
+    // facade_ledger is for spatialKind=wall, post_supported_tieback isn't a
+    // roof_edge method. Both should fall through to the kind-based default.
+    expect(
+      pergolaAttachmentFromLegacyFields({
+        connectionKind: 'soffit',
+        strategy: 'facade_ledger',
+      }).method,
+    ).toBe('direct_to_soffit');
+    expect(
+      pergolaAttachmentFromLegacyFields({
+        connectionKind: 'soffit',
+        strategy: 'post_supported_tieback',
+      }).method,
+    ).toBe('direct_to_soffit');
+    expect(
+      pergolaAttachmentFromLegacyFields({
+        connectionKind: 'fascia',
+        strategy: 'none',
+      }).method,
+    ).toBe('fascia_under_gutter');
+  });
+
+  it('round-trips through connectionTypeFromAttachment for every legacy connection kind', () => {
+    expect(
+      connectionTypeFromAttachment(pergolaAttachmentFromLegacyFields({ connectionKind: 'wall' })),
+    ).toBe('wall');
+    expect(
+      connectionTypeFromAttachment(pergolaAttachmentFromLegacyFields({ connectionKind: 'fascia' })),
+    ).toBe('fascia');
+    expect(
+      connectionTypeFromAttachment(pergolaAttachmentFromLegacyFields({ connectionKind: 'soffit' })),
+    ).toBe('soffit');
+    expect(
+      connectionTypeFromAttachment(pergolaAttachmentFromLegacyFields({ connectionKind: 'freestanding' })),
+    ).toBe('freestanding');
   });
 });

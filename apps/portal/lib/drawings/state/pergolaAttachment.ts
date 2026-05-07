@@ -1,5 +1,7 @@
 import type { ConnectionType } from '@sp/geometry';
+import type { CalculatorHouseAttachmentStrategy } from '@/lib/types/calculator';
 import type {
+  ObjectFirstPergolaConnectionKind,
   PergolaAttachment,
   PergolaAttachmentHost,
   PergolaAttachmentMethod,
@@ -96,6 +98,50 @@ export function freestandingPergolaAttachment(): PergolaAttachment {
     host: null,
     method: 'none',
   };
+}
+
+/**
+ * Step 8 follow-up #2: lazy-migrate a legacy pergola's attachment fields
+ * (`connectionKind` + `strategy`) into the canonical `PergolaAttachment`
+ * shape. The legacy `attachmentEdgeId` is a footprint edge id (not the snap
+ * engine's `wall-${id}` / `roof-eave-${id}` format) so we do NOT synthesize a
+ * `host` from it — instead we leave `host: null`, signalling "spatial kind
+ * is known but absolute host edge has not yet been resolved through a snap"
+ * (per the relaxed PergolaAttachment invariants). The legacy
+ * `attachmentEdgeId` field stays alongside on the draft so downstream
+ * consumers that need the legacy edge id keep working until step 8(c).
+ *
+ * The pergola edge-drag handler upgrades the host from null to a resolved
+ * `PergolaAttachmentHost` whenever the user snaps to a wall or roof eave;
+ * until then, `host: null + spatialKind: 'wall'` (etc.) is the normal state
+ * for legacy-loaded pergolas.
+ */
+export function pergolaAttachmentFromLegacyFields(input: {
+  connectionKind?: ObjectFirstPergolaConnectionKind | null;
+  strategy?: CalculatorHouseAttachmentStrategy | null;
+}): PergolaAttachment {
+  const kind = input.connectionKind ?? null;
+  if (!kind || kind === 'freestanding') return freestandingPergolaAttachment();
+  if (kind === 'wall') {
+    return { spatialKind: 'wall', host: null, method: 'facade_ledger' };
+  }
+  // kind === 'soffit' | 'fascia' → roof_edge. Method derivation:
+  //   1. Explicit roof_edge strategy on the legacy field wins (the legacy
+  //      strategy was effectively the same picker the new method represents).
+  //   2. Otherwise: 'fascia' → 'fascia_under_gutter', 'soffit' → 'direct_to_soffit'.
+  const strategy = input.strategy ?? null;
+  let method: PergolaAttachmentMethod;
+  if (
+    strategy === 'soffit_brackets' ||
+    strategy === 'fascia_under_gutter'
+  ) {
+    method = strategy;
+  } else if (kind === 'fascia') {
+    method = 'fascia_under_gutter';
+  } else {
+    method = 'direct_to_soffit';
+  }
+  return { spatialKind: 'roof_edge', host: null, method };
 }
 
 /**

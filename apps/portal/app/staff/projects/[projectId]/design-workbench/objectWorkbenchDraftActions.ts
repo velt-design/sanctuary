@@ -29,11 +29,13 @@ import type {
   ObjectFirstOpeningDraft,
   ObjectFirstPergolaDraft,
   ObjectFirstWorkbenchDraftVNext,
+  PergolaAttachment,
 } from '@/lib/drawings/state/objectFirstWorkbenchModel';
 import {
   normalizeWallOpeningKind,
   resolveOpeningPanelCount,
 } from '@/lib/drawings/state/objectFirstWorkbenchModel';
+import { pergolaAttachmentFromLegacyFields } from '@/lib/drawings/state/pergolaAttachment';
 import type {
   ObjectWorkbenchDeckPatch,
   ObjectWorkbenchOpeningPatch,
@@ -418,6 +420,34 @@ function mergePergolaGeometryDraft(
   };
 }
 
+/**
+ * Step 8 follow-up #2 (lazy attachment migration). When a legacy pergola
+ * (no `attachment` set, but with `connectionKind` + optional `strategy`) is
+ * patched for any reason, derive a `PergolaAttachment` from the post-patch
+ * legacy fields and write it through alongside the patch. The migration is
+ * one-time per pergola: subsequent patches see `currentPergola.attachment`
+ * already set and skip derivation.
+ *
+ * Derivation reads from `{...currentPergola, ...patch}` so a patch that
+ * changes `connectionKind` (legacy inspector path) produces an attachment
+ * matching the new state, not the stale pre-patch state.
+ *
+ * Returns `undefined` (= no attachment in the merged patch) when the caller
+ * already supplied one, or when the pergola is fully snap-managed.
+ */
+function deriveLazyAttachmentForPergolaPatch(input: {
+  currentPergola: ObjectWorkbenchPergolaDraft | null;
+  patch: ObjectWorkbenchPergolaPatch;
+}): PergolaAttachment | undefined {
+  if (input.patch.attachment !== undefined) return undefined;
+  if (input.currentPergola?.attachment) return undefined;
+  const postPatch = { ...(input.currentPergola ?? {}), ...input.patch };
+  return pergolaAttachmentFromLegacyFields({
+    connectionKind: postPatch.connectionKind ?? null,
+    strategy: postPatch.strategy ?? null,
+  });
+}
+
 export function applyObjectWorkbenchPergolaPatch(input: {
   currentPergolas: ObjectWorkbenchPergolaDraft[];
   pergolaId: string;
@@ -425,6 +455,7 @@ export function applyObjectWorkbenchPergolaPatch(input: {
   fallbackPergola?: ObjectWorkbenchPergolaInspectorModel | ObjectFirstPergolaDraft | null;
 }): ObjectWorkbenchPergolaDraft[] {
   const currentPergola = input.currentPergolas.find((pergola) => pergola.id === input.pergolaId) ?? null;
+  const lazyAttachment = deriveLazyAttachmentForPergolaPatch({ currentPergola, patch: input.patch });
   return upsertObjectWorkbenchPergolaDrafts(
     input.currentPergolas,
     input.pergolaId,
@@ -433,6 +464,7 @@ export function applyObjectWorkbenchPergolaPatch(input: {
       ...(input.patch.geometry !== undefined
         ? { geometry: mergePergolaGeometryDraft(currentPergola?.geometry, input.patch.geometry) }
         : null),
+      ...(lazyAttachment ? { attachment: lazyAttachment } : null),
     },
     input.fallbackPergola,
   );
