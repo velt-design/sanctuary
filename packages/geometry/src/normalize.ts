@@ -409,6 +409,26 @@ function resolveOptionalCount(value: string | number | null | undefined): number
   return parseNonNegativeInteger(value);
 }
 
+/**
+ * Apply a world-space `AssemblyPosition` (translation + rotation around +Z)
+ * to a 3D polygon. Used by the house first-class spatial entity decoder to
+ * lift a unit-frame-decoded polygon into world space.
+ */
+function applyPositionToPolygon3(
+  polygon: GeometryConfig['houseContext']['footprint'],
+  position: AssemblyPosition,
+): GeometryConfig['houseContext']['footprint'] {
+  if (!polygon) return polygon;
+  const radians = (position.rotationDeg * Math.PI) / 180;
+  const cos = Math.cos(radians);
+  const sin = Math.sin(radians);
+  return polygon.map((point) => ({
+    x: position.origin.x + cos * point.x - sin * point.y,
+    y: position.origin.y + sin * point.x + cos * point.y,
+    z: point.z,
+  }));
+}
+
 function resolveOptionalAssemblyPosition(
   raw: RawGeometryModuleInput['position'],
 ): AssemblyPosition | null {
@@ -722,12 +742,22 @@ export function normalizeGeometryConfig(input: RawGeometryModuleInput): Normaliz
   const roofCoveringKind =
     (family === 'mono' || family === 'gable' || family === 'hip') && roof.material === 'acrylic' ? 'acrylic' : null;
   const footprintMode = resolveFootprintMode(input.houseContext.footprintMode);
+  // Resolve the house's first-class spatial position. When set (post-migration
+  // or after a house edge-drag), the custom polygon decodes against a unit
+  // (1m × 1m) frame and the position is applied as a world-space translation —
+  // making the house's world location independent of the pergola's
+  // dimensions. When null (legacy data, no edits yet), fall back to the
+  // pergola-anchored real frame for back-compat.
+  const housePosition = resolveOptionalAssemblyPosition(input.houseContext.position);
   let houseFootprint: GeometryConfig['houseContext']['footprint'] = null;
   if (connectionType !== 'freestanding') {
     if (footprintMode === 'custom_polygon') {
+      const useUnitFrame = housePosition !== null;
       const customFootprint = buildCustomHouseFootprintPolygon({
-        pergolaWidthMm: length.value,
-        pergolaDepthMm: projection.value,
+        // Unit frame removes the pergola-dim dependency from the spatial
+        // transform; the position field absorbs the offset.
+        pergolaWidthMm: useUnitFrame ? 1000 : length.value,
+        pergolaDepthMm: useUnitFrame ? 1000 : projection.value,
         polygon: input.houseContext.footprintPolygon,
         params: input.houseContext.footprintParams,
         attachmentSide,
@@ -735,8 +765,13 @@ export function normalizeGeometryConfig(input: RawGeometryModuleInput): Normaliz
       if (!customFootprint.ok) {
         return fail('invalid_numeric_input', customFootprint.error);
       }
-      houseFootprint = customFootprint.polygon;
+      houseFootprint = useUnitFrame
+        ? applyPositionToPolygon3(customFootprint.polygon, housePosition)
+        : customFootprint.polygon;
     } else {
+      // Preset polygons remain pergola-coupled until the user edits a wall
+      // (which converts to `custom_polygon` mode and triggers migration via
+      // `commitSharedHouseFootprintEdit`).
       houseFootprint = buildHouseFootprintPolygon({
         pergolaWidthMm: length.value,
         pergolaDepthMm: projection.value,
@@ -886,6 +921,7 @@ export function normalizeGeometryConfig(input: RawGeometryModuleInput): Normaliz
       footprint: houseFootprint,
       footprintMode: connectionType === 'freestanding' ? 'preset' : footprintMode,
       footprintPolygon: footprintMode === 'custom_polygon' ? input.houseContext.footprintPolygon ?? null : null,
+      position: housePosition,
       model: houseModel,
       attachmentStrategy: houseAttachmentStrategy,
     },

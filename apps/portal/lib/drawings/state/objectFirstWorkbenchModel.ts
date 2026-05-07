@@ -599,6 +599,20 @@ function normalizeHouseFormTransform(
   };
 }
 
+function normalizeHouseFormPosition(
+  value: Partial<HouseFormPosition> | null | undefined,
+): HouseFormPosition | null {
+  if (!value) return null;
+  const originXMm = trimNullableString(value.originXMm);
+  const originYMm = trimNullableString(value.originYMm);
+  if (originXMm === null || originYMm === null) return null;
+  return {
+    originXMm,
+    originYMm,
+    rotationDeg: trimNullableString(value.rotationDeg) ?? '0',
+  };
+}
+
 function normalizeHouseFormFootprint(
   value: Partial<HouseFormFootprintModel> | null | undefined,
 ): HouseFormFootprintModel {
@@ -608,6 +622,7 @@ function normalizeHouseFormFootprint(
     params: normalizeHouseFootprintParams(value?.params),
     polygon: normalizeHouseFootprintPolygon(value?.polygon),
     attachmentSide: normalizeAttachmentSide(value?.attachmentSide),
+    position: normalizeHouseFormPosition(value?.position ?? null),
   };
 }
 

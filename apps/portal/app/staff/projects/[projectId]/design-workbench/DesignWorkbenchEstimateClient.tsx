@@ -472,22 +472,91 @@ export default function DesignWorkbenchEstimateClient({
             !isLocked
               ? (commit) => {
                   if (commit.family === 'house_forms') {
-                    // The custom polygon is stored in side-local (alongM, depthM)
-                    // coords whose interpretation depends on the active pergola
-                    // dims + attachmentSide. Encoding raw world coords here would
-                    // sign-flip depth for the default 'rear' attachment and produce
-                    // a visible "house flips across the pergola axis" each commit.
+                    // House edge-drag commit (stage 3.4 — house first-class spatial
+                    // entity). The house owns its own world `position` and its
+                    // polygon is stored in side-local (alongM, depthM) coords
+                    // decoded against a unit (1m × 1m) frame. With this layout, the
+                    // house's world location is invariant to pergola dimensions.
+                    //
+                    // For un-migrated data (no `houseFootprintPosition` set), this
+                    // commit is also the migration trigger. We compute the
+                    // attachment-side-aware migration default (the offset that
+                    // would make a unit-frame decode match the legacy real-frame
+                    // decode for the current pergola dims), persist that as the
+                    // house position, and encode the new polygon against the unit
+                    // frame. After this commit, the house is fully decoupled.
+                    //
+                    // For migrated data (position already set), we encode against
+                    // the unit frame using the existing position; position stays
+                    // unchanged.
                     const houseForm = store.derived.activeHouseForm;
-                    const pergola = store.derived.activeObjectFirstPergola;
-                    const lengthM = Number(pergola?.geometry?.dimensions?.lengthM);
-                    const projectionM = Number(pergola?.geometry?.dimensions?.projectionM);
-                    const sideLocalPoints = buildSideLocalPolygonFromWorld({
-                      worldPolygonMm: commit.nextPolygon,
-                      pergolaWidthMm: Number.isFinite(lengthM) ? lengthM * 1000 : 6000,
-                      pergolaDepthMm: Number.isFinite(projectionM) ? projectionM * 1000 : 3000,
-                      attachmentSide: houseForm?.footprint.attachmentSide ?? null,
-                      params: houseForm?.footprint.params ?? null,
+                    const attachmentSide = houseForm?.footprint.attachmentSide ?? 'rear';
+                    const persistedPosition = activeModuleInput?.houseFootprintPosition ?? null;
+                    let positionXMm: number;
+                    let positionYMm: number;
+                    let positionRotationDeg: number;
+                    if (persistedPosition) {
+                      positionXMm = Number(persistedPosition.originXMm);
+                      positionYMm = Number(persistedPosition.originYMm);
+                      positionRotationDeg = Number(persistedPosition.rotationDeg);
+                    } else {
+                      // Migration default — see docs/design-workbench-architecture.md
+                      // §"House first-class entity" stage 3.3 for the math.
+                      const pergolaWidthM = Number(activeModuleInput?.lengthM);
+                      const pergolaDepthM = Number(activeModuleInput?.projectionM);
+                      const safeWidthM = Number.isFinite(pergolaWidthM) ? pergolaWidthM : 6;
+                      const safeDepthM = Number.isFinite(pergolaDepthM) ? pergolaDepthM : 3;
+                      switch (attachmentSide) {
+                        case 'front':
+                          positionXMm = 0;
+                          positionYMm = (safeDepthM - 1) * 1000;
+                          break;
+                        case 'right':
+                          positionXMm = (safeWidthM - 1) * 1000;
+                          positionYMm = 0;
+                          break;
+                        case 'rear':
+                        case 'left':
+                        default:
+                          positionXMm = 0;
+                          positionYMm = 0;
+                          break;
+                      }
+                      positionRotationDeg = 0;
+                    }
+                    // Subtract position from each world point, then encode against
+                    // the unit frame. Round-trip: unit_decoder(side_local) +
+                    // position == worldPolygonMm.
+                    const cos = Math.cos((positionRotationDeg * Math.PI) / 180);
+                    const sin = Math.sin((positionRotationDeg * Math.PI) / 180);
+                    const localWorldPolygon = commit.nextPolygon.map((p) => {
+                      const dx = p.x - positionXMm;
+                      const dy = p.y - positionYMm;
+                      // Inverse rotation (transpose).
+                      return {
+                        x: cos * dx + sin * dy,
+                        y: -sin * dx + cos * dy,
+                      };
                     });
+                    const sideLocalPoints = buildSideLocalPolygonFromWorld({
+                      worldPolygonMm: localWorldPolygon,
+                      pergolaWidthMm: 1000,
+                      pergolaDepthMm: 1000,
+                      attachmentSide,
+                      params: null,
+                    });
+                    if (!persistedPosition) {
+                      // First-edit migration — write position before polygon so
+                      // both land in the same draft transaction batch.
+                      void objectWorkbenchActions.commitSharedHouseFootprintEdit({
+                        type: 'position',
+                        position: {
+                          originXMm: positionXMm.toString(),
+                          originYMm: positionYMm.toString(),
+                          rotationDeg: positionRotationDeg.toString(),
+                        },
+                      });
+                    }
                     void objectWorkbenchActions.commitSharedHouseFootprintEdit({
                       type: 'custom_polygon',
                       polygon: sideLocalPoints.map((p) => ({

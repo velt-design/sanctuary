@@ -130,6 +130,21 @@ export type EstimateDrawingFootprintEdit =
   | {
       type: 'custom_polygon';
       polygon: CalculatorHouseFootprintPolygonPoint[];
+    }
+  | {
+      // House first-class spatial position write (stage 3.4 of the
+      // first-class-spatial-entities migration). When set, the geometry
+      // pipeline decodes the custom polygon against a unit frame and applies
+      // this position post-decode — making the house's world location
+      // invariant to pergola dimensions.
+      type: 'position';
+      position:
+        | {
+            originXMm: string;
+            originYMm: string;
+            rotationDeg: string;
+          }
+        | null;
     };
 
 export type EstimateDrawingModuleFieldEdit =
@@ -1106,6 +1121,21 @@ export function applyEstimateDrawingFootprintEdit(input: {
         if (!validation.ok) return validation;
         module.houseFootprintMode = 'custom_polygon' as CalculatorModuleInputs['houseFootprintMode'];
         module.houseFootprintPolygon = nextPolygon as CalculatorModuleInputs['houseFootprintPolygon'];
+      }
+      return { ok: true, draft: nextDraft };
+    case 'position':
+      {
+        // House first-class spatial position write. Setting `null` clears the
+        // position (reverts to legacy real-frame decoder).
+        if (input.edit.position === null) {
+          module.houseFootprintPosition = undefined;
+        } else {
+          module.houseFootprintPosition = {
+            originXMm: String(input.edit.position.originXMm),
+            originYMm: String(input.edit.position.originYMm),
+            rotationDeg: String(input.edit.position.rotationDeg),
+          };
+        }
       }
       return { ok: true, draft: nextDraft };
     default:

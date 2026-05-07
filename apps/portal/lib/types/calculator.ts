@@ -145,6 +145,18 @@ export function normalizeHouseFootprintParams(value: unknown): CalculatorHouseFo
   };
 }
 
+export function normalizeHouseFootprintPosition(
+  value: unknown,
+): NonNullable<CalculatorModuleInputs['houseFootprintPosition']> | null {
+  if (!value || typeof value !== 'object') return null;
+  const source = value as Partial<NonNullable<CalculatorModuleInputs['houseFootprintPosition']>>;
+  const originXMm = typeof source.originXMm === 'string' ? source.originXMm.trim() : '';
+  const originYMm = typeof source.originYMm === 'string' ? source.originYMm.trim() : '';
+  const rotationDeg = typeof source.rotationDeg === 'string' ? source.rotationDeg.trim() : '';
+  if (!originXMm || !originYMm) return null;
+  return { originXMm, originYMm, rotationDeg: rotationDeg || '0' };
+}
+
 export function normalizeHouseFootprintPolygon(value: unknown): CalculatorHouseFootprintPolygonPoint[] {
   if (!Array.isArray(value)) return [];
   return value
@@ -304,6 +316,21 @@ export type CalculatorModuleInputs = {
   houseFootprintPreset?: CalculatorHouseFootprintPreset;
   houseFootprintParams?: CalculatorHouseFootprintParams;
   houseFootprintPolygon?: CalculatorHouseFootprintPolygonPoint[];
+  /**
+   * House first-class spatial position (mm world origin + degrees rotation).
+   * When set, geometry decodes `houseFootprintPolygon` against a unit (1m × 1m)
+   * frame and applies this position post-decode — so the house is invariant
+   * to pergola dimensions. When absent, legacy real-frame decoder runs.
+   *
+   * Auto-populated on first house edge-drag commit (stage 3.4 of the
+   * first-class-spatial-entities migration). Stored as strings for parity
+   * with sibling persisted fields.
+   */
+  houseFootprintPosition?: {
+    originXMm: string;
+    originYMm: string;
+    rotationDeg: string;
+  };
   houseStoreyMode?: CalculatorHouseStoreyMode;
   houseRoofMaterial?: CalculatorHouseRoofMaterial;
   houseAttachmentStrategy?: CalculatorHouseAttachmentStrategy;

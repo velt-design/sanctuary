@@ -172,30 +172,133 @@ The audit below is the canonical to-do list for the migration. Each item names t
 | `packages/geometry/src/contracts.ts:1–11` (file header comment), `contracts.ts:1099–1124` (`Assembly3D` is singular) | Documentation and type both encode "the assembly = the pergola." | `Assembly3D` becomes "an instance of any spatial entity"; project state holds an array of assemblies, one per object. Header comment becomes "Assembly space: object-local. World space: post-`applyAssemblyPosition3D`." |
 | `apps/portal/lib/drawings/geometry/buildRawGeometryModuleInput.ts` (deck frame hardcode, `attachmentSide` plumbing) | Builds a `RawGeometryModuleInput` per pergola module; non-pergola objects are wrapped into the pergola's `houseContext` rather than being independent. | Drop the wrapping. Each object family has its own raw input shape with its own position + outline. The geometry pipeline iterates per object, not per pergola. |
 
+## Attachment Model: Snap-Derived Connections
+
+Each object owns its own world position (per the first-class spatial entity invariants). Connections between objects — which the cost engine reads to drive flashing, brackets, ledgers, etc. — are **derived from spatial alignment**, never set explicitly by the user. This section captures the data model and rule set the snap engine produces.
+
+### Spatial relationship vs. attachment method
+
+The legacy `connection.type` enum (`'soffit' | 'fascia' | 'wall' | 'freestanding'`) conflates two orthogonal axes. The first-class model splits them:
+
+- **Spatial relationship** — *where the pergola is snapped*. One of `'wall'`, `'roof_edge'`, `'pergola_outline'`, or `'freestanding'`. Derived from the snap target's edge kind.
+- **Attachment method** — *how it physically connects*, only meaningful when the spatial relationship has multiple valid methods. Driven by user choice, but with a domain conditional on the spatial relationship.
+
+| Spatial relationship | Valid methods | Source |
+|---|---|---|
+| `wall` | `facade_ledger` | Derived (only one valid method) |
+| `roof_edge` | `fascia_under_gutter`, `direct_to_soffit`, `soffit_brackets` | **User picks** in the inspector |
+| `pergola_outline` | `none` *(plus future: shared post / bracket-to-pergola)* | Derived |
+| `freestanding` | `none` | Derived (no host) |
+
+The legacy `connection.type` enum is preserved as a derived projection over `(spatialRelationship, method)` for the cost engine's existing reads — so internal changes don't ripple through pricing logic.
+
+### Attachment data shape
+
+Per-pergola, replacing `attachmentSide` + `connection.type` + `attachmentStrategy` flat fields:
+
+```ts
+type PergolaAttachment = {
+  // Derived from snap; null when the pergola is freestanding.
+  host: {
+    objectFamily: 'house_forms' | 'pergolas';  // future-proof for pergola-to-pergola
+    objectId: string;                           // e.g. house form id or pergola id
+    edgeKind: 'wall' | 'roof_eave' | 'pergola_outline';
+    edgeId: string;                             // absolute id of the host edge
+    myEdgeIndex: number;                        // which edge of MY polygon is snapped
+  } | null;
+  // Spatial relationship, derived from `host.edgeKind` (or 'freestanding' if host is null).
+  spatialKind: 'wall' | 'roof_edge' | 'pergola_outline' | 'freestanding';
+  // Attachment method. Only writable when `spatialKind === 'roof_edge'`; otherwise
+  // a single-valued derived label (`facade_ledger` / `none`).
+  method: 'facade_ledger' | 'fascia_under_gutter' | 'direct_to_soffit'
+        | 'soffit_brackets' | 'none';
+};
+```
+
+`attachmentSide` (`'rear' | 'front' | 'left' | 'right'`) becomes a **UI-only label**, derived from the geometric relation between `host.edgeId` and the pergola's outline. It is no longer stored.
+
+Decks follow the same shape (with the method field collapsed; decks only attach to walls):
+
+```ts
+type DeckAttachment = {
+  host: { objectFamily: 'house_forms'; objectId: string; edgeKind: 'wall'; edgeId: string; myEdgeIndex: number } | null;
+  spatialKind: 'wall' | 'freestanding';
+};
+```
+
+Openings remain rigidly attached to walls; their `wallId` becomes an absolute wall edge id, not a side enum.
+
+### Snap rule set
+
+The snap engine surfaces candidate alignments during edge-drag and move. On commit, the alignment that satisfies the rules (parallel within angular tolerance, midpoint within distance tolerance) becomes the host. The full v1 rule set:
+
+| Mover | Snap target | Resulting attachment |
+|---|---|---|
+| Pergola edge | House wall edge (any segment of the perimeter) | `spatialKind: 'wall'`, `method: 'facade_ledger'` |
+| Pergola edge | House roof eave | `spatialKind: 'roof_edge'`, `method` ← user picks |
+| Pergola edge | Other pergola outline edge | `spatialKind: 'pergola_outline'`, `method: 'none'` |
+| Pergola | (no candidate within tolerance) | `spatialKind: 'freestanding'`, `host: null` |
+| Deck edge | House wall edge | `spatialKind: 'wall'` |
+| Deck | (no candidate) | `spatialKind: 'freestanding'` |
+| Opening | Wall edge (rigid, no detach) | `wallId = edgeId` |
+
+v1 ships **soft snaps**: a snap holds while undisturbed but breaks freely on the next drag. Hard constraints (snaps that re-form across solves until explicit detach) are deferred.
+
+### Snap targets the geometry pipeline must expose
+
+For the snap engine to produce these results, the solved scene must surface, per object:
+
+- House form: each wall edge (already plumbed via plan-detail lines with `wall/snap` metadata). Each roof eave **needs to be added** as a snap target keyed by `(houseFormId, roofId, edgeId)`.
+- Pergola: the outline polygon edges (already in `assembly.outline`).
+- Deck: the boundary polygon edges (already in `assembly.house.decks[].outline`).
+
+Roof eaves today live as line metadata on `Assembly3D.house` (`fasciaLine`, `roofEdgeLine`) but as a back-reference to "the" house — single-pergola legacy. Each house form's roof eaves should be discoverable independent of any pergola.
+
+### Inspector UI: configurator → derived inspector
+
+The current `Host Attachment` panel has four explicit dropdowns: Connection, Attachment Strategy, Host Edge, Host Zone. In the first-class model this becomes:
+
+- **Connection** — read-only label showing `spatialKind` (`Wall` / `Roof edge` / `Pergola` / `Freestanding`).
+- **Host Edge** — read-only label showing `host.edgeId` resolved to a human-readable name (e.g. "House A — rear wall", "House A — front roof eave").
+- **Host Zone** — read-only label, derived from edge kind (e.g. "Wall facade", "Roof eave overhang").
+- **Attachment Method** — the only writable control; only enabled when `spatialKind === 'roof_edge'`. Options: `Fascia under gutter` / `Direct to soffit` / `Soffit brackets`.
+- **Attachment Side** — read-only label only ("rear" / "front" / etc.), derived from the host edge geometry.
+
+Selecting a different attachment method is a `commitObjectWorkbenchPatch` write to `pergola.attachment.method`. Changing the host edge is **not** done via dropdown — the user drags the pergola to a different snap target.
+
 ### Migration order (incremental, with integration tests at each step)
 
 1. ✅ **Pergola post-solve world transform** (shipped). `packages/geometry/src/applyAssemblyPosition.ts` lifts a solved pergola from local to world coords by its `position`. `solveAssembly3D` invokes it once after the family solver returns; legacy `position == null` case is a no-op so all 209 existing geometry tests pass unchanged. 8 unit tests cover the transform.
 2. ⏳ **UI dispatch for pergola position** — currently no surface writes `pergola.position`. Until this lands, the post-solve transform is dormant. Approach: extend `EdgeDragTool` so left/top wall drags write a `position` shift while right/bottom drags write a `lengthM`/`projectionM` grow; or add a Move tool that drags the pergola interior. Either way the data plumbing is already in place (`commitObjectWorkbenchPatch` accepts `patch.position` end-to-end).
-3. ⏳ **House first-class entity.** Staged migration. Each stage ships with tests and is independently revertable.
-   - **3.1 — Data plumbing (in progress).** Add `position?: HouseFormPosition` field to `HouseFormFootprintModel` and a parallel `position` field to `RawGeometryModuleInput.houseContext`. Both are optional, default null, and have no consumer yet. *Status:* types added 2026-05-07; safe additive change. No behavior change.
-   - **3.2 — Decoder branch.** When `houseContext.position` is set, `buildHouseModelConfig` uses a unit (1m × 1m) frame for `buildCustomHouseFootprintPolygon` and applies the position transform post-decode. When null, falls back to the legacy real-frame decoder. Backward-compatible: legacy data with no position set continues to render exactly as today.
-   - **3.3 — Migration on load.** When the project model is built from a legacy snapshot or draft, populate `house.position` from the current pergola dimensions using the migration math: `'rear'` and `'left'` get `(0, 0)`; `'front'` gets `(0, (pergolaDepthM - 1) × 1000)`; `'right'` gets `((pergolaWidthM - 1) × 1000, 0)`. Once populated, the house is now decoupled from the pergola — pergola resize will no longer shift the house. Snapshot persistence: store `houseFootprintPosition` as a new optional field on `CalculatorModuleInputs` (additive); legacy snapshots without it trigger the migration on load. Drafts persist position via the existing patch mechanism.
-   - **3.4 — Edge-drag commit.** Update the house edge-drag commit handler to encode the world polygon against the unit frame using the *current* `house.position`, then write the new polygon. Position can stay or be updated to `bbox(nextPolygon).min` if the user dragged the house bodily; for now the simpler "polygon coords absorb the change, position stays" behavior matches the current data model.
+3. ✅ **House first-class entity (shipped).** Staged migration, each stage with integration tests. House data shape: `module.houseFootprintPosition` (additive `CalculatorModuleInputs` field) carries the world-space origin/rotation; `houseFootprintPolygon` stays in the same `(alongM, depthM)` storage shape but is decoded against a unit (1m × 1m) frame when position is set, with the position applied post-decode.
+   - **3.1 — Data plumbing.** `HouseFormFootprintModel.position`, `RawGeometryModuleInput.houseContext.position`, `GeometryConfig.houseContext.position`, and `CalculatorModuleInputs.houseFootprintPosition` (snapshot-persisted) all defined and threaded through.
+   - **3.2 — Decoder branch.** `normalize.ts` `buildHouseModelConfig` checks `input.houseContext.position`: when set, calls `buildCustomHouseFootprintPolygon` with `pergolaWidthMm: 1000, pergolaDepthMm: 1000` (unit frame) and then applies the position via `applyPositionToPolygon3` (translation + rotation around +Z). When null, the legacy real-frame decoder runs unchanged. Custom polygons only — preset polygons remain pergola-coupled until the user edits a wall (which converts them to `custom_polygon` mode and triggers stage 3.4).
+   - **3.3 — Migration on first edit (lazy).** Legacy data has `houseFootprintPosition === undefined`; the geometry pipeline falls back to legacy decoder, preserving current behavior with no visual shift. The first house edge-drag commit triggers the migration: `DesignWorkbenchEstimateClient`'s `house_forms` commit handler computes the migration default from the current pergola dims at edit time using `'rear'/'left'`: `(0, 0)`, `'front'`: `(0, (pergolaDepthM − 1) × 1000)`, `'right'`: `((pergolaWidthM − 1) × 1000, 0)` — then writes the position through a new `'position'` `EstimateDrawingFootprintEdit` variant (persisted on `CalculatorModuleInputs.houseFootprintPosition` so it survives across snapshot reloads). After this commit, the house is fully decoupled and subsequent pergola resizes leave it alone.
+   - **3.4 — Edge-drag commit.** Same handler as the migration trigger: subtracts the current (or migration-default) position from each world point of `commit.nextPolygon`, encodes the result against the unit frame via `buildSideLocalPolygonFromWorld({ pergolaWidthMm: 1000, pergolaDepthMm: 1000, params: null, attachmentSide })`, then writes the encoded polygon. Position stays unchanged on subsequent edits — only the polygon coords absorb the drag delta. Rotation drag is deferred until a rotate gizmo lands.
 
-   **Why staged**: each step is mechanically simple but the four together touch ~8 files in lockstep, and a half-done migration introduces invisible drift (legacy data reads via one decoder, new data via the other, edge-drag commits don't match the migration). Better to land each stage with its own integration test than to attempt all four at once.
+   *Verification*: 4 integration tests in `packages/geometry/src/normalize.test.ts` lock the architectural invariants:
+   - Legacy decoder still shifts the house on pergola resize for non-`rear` attachment (known coupling).
+   - First-class decoder leaves the house untouched on pergola resize when position is set.
+   - The migration default produces unit-frame world coords identical to legacy real-frame coords (visually invisible migration).
+   - `'rear'` attachment is unit-frame-invariant by formula; migration default `(0, 0)` works out of the box.
 
-4. ⏳ **Deck first-class entity.** Same migration shape as the house: 4.1 add `position` field; 4.2 add decoder branch; 4.3 migrate on load; 4.4 edge-drag commit. The deck is already partially decoupled — the geometry decoder uses a hardcoded 1m × 1m frame at `normalize.ts:470-530`, so the deck's `(alongM, depthM)` polygon already behaves like unit-frame coords. The remaining coupling is `hostEdgeId: AttachmentSide` (a pergola-perspective concept on a non-pergola object); migrate to an absolute house-wall edge id.
+4. ⏳ **Deck first-class entity.** Same migration shape as the house: 4.1 add `position` field; 4.2 add decoder branch; 4.3 migrate on load; 4.4 edge-drag commit. The deck is already partially decoupled — the geometry decoder uses a hardcoded 1m × 1m frame at `normalize.ts:470-530`, so the deck's `(alongM, depthM)` polygon already behaves like unit-frame coords. The remaining coupling is `hostEdgeId: AttachmentSide` (a pergola-perspective concept on a non-pergola object); migrate to an absolute house-wall edge id (per the attachment-model snap rules above).
 5. ⏳ **Multi-active-object solve.** The solver pipeline iterates over all objects in the project (one or many pergolas, one house, many decks), each producing its own `Assembly3D` with its own position applied. The viewer scene + top projection accept a list of assemblies; the cost engine aggregates per object.
-6. ⏳ **Wire `snapEngine.ts`** into edge-drag and move tools. Snap targets become other objects' outline edges and walls.
-7. ⏳ **Derive `connection.type`** at solve time from spatial alignment. Cost engine continues to read the same shape; only the producer changes.
+6. ⏳ **Expose roof eaves as first-class snap targets.** Each house form's roof eaves become discoverable as `{ houseFormId, roofId, edgeId, edgeKind: 'roof_eave' }`, parallel to wall edges. Today they live on the pergola's `Assembly3D.house` (`fasciaLine`, `roofEdgeLine`) as a single-pergola back-reference. Move them to a per-house snap-target index that the snap engine consumes.
+7. ⏳ **Wire `snapEngine.ts`** into `EdgeDragTool` and a future Move tool. The snap engine consumes the snap-target index from step 6 plus other objects' outline edges. Output is the resolved `host` shape per the data model above. v1: soft snaps only.
+8. ⏳ **Migrate `connection.type` and `attachmentStrategy` to `attachment.{spatialKind, method, host}`.** The new fields become the source of truth, populated by snap commits. The legacy `connection.type` enum is kept as a derived projection so the cost engine reads through unchanged. `attachmentSide` becomes a derived UI label. Persisted shape: add `module.attachment` (or rename the existing fields) on `CalculatorModuleInputs`. Migrate on load by inferring from the legacy fields (back-compat) and writing back to the new shape on first user edit (parallel to stage 3.3's lazy house migration).
+9. ⏳ **Inspector UI redesign.** Replace the `Host Attachment` configurator panel with the derived inspector (Connection / Host Edge / Host Zone read-only; Attachment Method writable only when `spatialKind === 'roof_edge'`). The host-edge dropdown disappears — re-hosting is via drag, not picker.
+10. ⏳ **Pergola-to-pergola attachment.** Add `'pergola_outline'` as a snap target kind so pergola arrays (multiple pergolas sharing edges or posts) work. Cost engine implications (shared post counted once, etc.) deferred to a follow-up.
 
-Each step ships with an integration test that locks the new invariant (e.g. "pergola at position X renders at world X", "house with custom polygon stays put when pergola dims change", "deck stays put when pergola is moved or resized"). The tests are the architectural guardrails that prevent drift back to the pergola-centric model.
+Each step ships with an integration test that locks the new invariant (e.g. "pergola at position X renders at world X", "house with custom polygon stays put when pergola dims change", "deck stays put when pergola is moved or resized", "pergola dragged onto roof eave produces `spatialKind: 'roof_edge'` with method preserved across re-solves"). The tests are the architectural guardrails that prevent drift back to the pergola-centric or configurator-driven model.
 
 ### Until the migration completes
 
 - Edge-drag of a house footprint may visibly reposition attached pergolas/decks for non-`rear` attachment sides — that is expected behaviour given the legacy frame coupling, not a regression.
 - Pergola edge-drag of left/top walls is a silent no-op (would require negative world coords without `position` being wired). Will be fixed by step 2.
 - Adding a second pergola to a project will render both at world origin (overlapping) — blocked by step 5.
+- The `Host Attachment` panel remains a configurator, not an inspector — users still set Connection / Host Edge / Host Zone explicitly. Treat any data the user writes via that panel as a *legacy override* the snap-derived attachment will eventually replace.
+- `connection.type`, `attachmentStrategy`, and `attachmentSide` remain stored, single-axis fields. Code reading them should keep doing so until step 8 lands; new code should not introduce additional readers.
 
 ## Drawing Persistence
 

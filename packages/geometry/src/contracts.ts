@@ -651,6 +651,14 @@ export type GeometryConfig = {
     footprint?: Polygon3 | null;
     footprintMode?: HouseFootprintMode | null;
     footprintPolygon?: HouseFootprintPolygonPointInput[] | null;
+    /**
+     * House first-class spatial position. When set, geometry consumers treat
+     * the house's `footprintPolygon` as decoded against a unit (1m × 1m) frame
+     * with this position applied post-decode — so the house's world location
+     * is invariant to pergola dimensions. When null, the legacy real-frame
+     * decoder runs (back-compat).
+     */
+    position?: AssemblyPosition | null;
     model?: HouseModelConfig | null;
     attachmentStrategy?: HouseAttachmentStrategy | null;
   };

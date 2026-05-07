@@ -1203,4 +1203,180 @@ describe('normalizeGeometryConfig', () => {
       });
     });
   });
+
+  describe('house first-class spatial entity (stage 3 decoupling)', () => {
+    // The architectural invariant: when `houseContext.position` is set, the
+    // house's world-space footprint is INVARIANT to the pergola's dimensions.
+    // The legacy decoder coupled them via `houseFootprintSideLocalPointToWorld`
+    // (which used pergolaWidthM/pergolaDepthM as translation offsets for
+    // `front`/`right` attachment sides); position-aware decoding uses a unit
+    // frame and applies position post-decode, so resizing the pergola no
+    // longer shifts the house. These tests lock that invariant.
+
+    function makeFrontAttachmentInputWith(opts: {
+      pergolaWidthM: string;
+      pergolaDepthM: string;
+      housePosition: { originXMm: number; originYMm: number; rotationDeg: number } | null;
+    }) {
+      return makeRawInput({
+        connection: { houseConnectionType: 'soffit', attachmentSide: 'front' },
+        dimensions: {
+          lengthM: opts.pergolaWidthM,
+          projectionM: opts.pergolaDepthM,
+          hipCornerLengthBM: '0',
+          hipCornerProjectionBM: '0',
+        },
+        houseContext: {
+          footprintMode: 'custom_polygon',
+          footprintPreset: 'straight',
+          footprintParams: {
+            widthM: '',
+            offsetXM: '0',
+            setbackM: '0',
+            bandDepthM: '1.8',
+            returnRunM: '2.4',
+            recessWidthM: '2.4',
+            recessDepthM: '1.2',
+            leftLegRunM: '2.4',
+            rightLegRunM: '2.4',
+            sideRunM: '2.4',
+          },
+          footprintPolygon: [
+            { alongM: '0', depthM: '0' },
+            { alongM: '6', depthM: '0' },
+            { alongM: '6', depthM: '1.8' },
+            { alongM: '0', depthM: '1.8' },
+          ],
+          position: opts.housePosition
+            ? {
+                origin: { x: opts.housePosition.originXMm, y: opts.housePosition.originYMm },
+                rotationDeg: opts.housePosition.rotationDeg,
+              }
+            : null,
+        },
+      });
+    }
+
+    it('LEGACY (no position): house footprint shifts when pergola depth changes — known coupling', () => {
+      const result3m = normalizeGeometryConfig(
+        makeFrontAttachmentInputWith({ pergolaWidthM: '6', pergolaDepthM: '3', housePosition: null }),
+      );
+      const result4m = normalizeGeometryConfig(
+        makeFrontAttachmentInputWith({ pergolaWidthM: '6', pergolaDepthM: '4', housePosition: null }),
+      );
+      expect(result3m.ok).toBe(true);
+      expect(result4m.ok).toBe(true);
+      if (!result3m.ok || !result4m.ok) return;
+      const footprint3m = result3m.value.houseContext.footprint;
+      const footprint4m = result4m.value.houseContext.footprint;
+      expect(footprint3m).not.toBeNull();
+      expect(footprint4m).not.toBeNull();
+      // Legacy 'front' decoder bakes pergolaDepth into world.y → house shifts
+      // by 1000mm when pergolaDepth grows from 3 to 4.
+      expect(footprint3m![0]!.y).not.toBeCloseTo(footprint4m![0]!.y, 6);
+      expect(footprint4m![0]!.y - footprint3m![0]!.y).toBeCloseTo(1000, 6);
+    });
+
+    it('FIRST-CLASS (position set): house footprint stays put when pergola depth changes', () => {
+      // Position chosen as the migration default for 'front' at pergolaDepth=3:
+      // position.y = (pergolaDepthM - 1) × 1000 = 2000.
+      const housePosition = { originXMm: 0, originYMm: 2000, rotationDeg: 0 };
+      const result3m = normalizeGeometryConfig(
+        makeFrontAttachmentInputWith({ pergolaWidthM: '6', pergolaDepthM: '3', housePosition }),
+      );
+      const result4m = normalizeGeometryConfig(
+        makeFrontAttachmentInputWith({ pergolaWidthM: '6', pergolaDepthM: '4', housePosition }),
+      );
+      expect(result3m.ok).toBe(true);
+      expect(result4m.ok).toBe(true);
+      if (!result3m.ok || !result4m.ok) return;
+      const footprint3m = result3m.value.houseContext.footprint;
+      const footprint4m = result4m.value.houseContext.footprint;
+      expect(footprint3m).not.toBeNull();
+      expect(footprint4m).not.toBeNull();
+      // The architectural invariant: with position set, every vertex matches
+      // across pergola dim changes.
+      expect(footprint3m!.length).toBe(footprint4m!.length);
+      for (let idx = 0; idx < footprint3m!.length; idx += 1) {
+        expect(footprint3m![idx]!.x).toBeCloseTo(footprint4m![idx]!.x, 6);
+        expect(footprint3m![idx]!.y).toBeCloseTo(footprint4m![idx]!.y, 6);
+      }
+    });
+
+    it('migration math: position default makes unit-frame decode equal legacy real-frame decode', () => {
+      // For 'front' attachmentSide with pergolaDepth=3, the migration formula
+      // `position.y = (pergolaDepthM - 1) × 1000` produces a position such
+      // that unit-frame decode + position == legacy real-frame decode. This
+      // is what makes the auto-migration on first edit visually invisible.
+      const legacy = normalizeGeometryConfig(
+        makeFrontAttachmentInputWith({ pergolaWidthM: '6', pergolaDepthM: '3', housePosition: null }),
+      );
+      const migrated = normalizeGeometryConfig(
+        makeFrontAttachmentInputWith({
+          pergolaWidthM: '6',
+          pergolaDepthM: '3',
+          housePosition: { originXMm: 0, originYMm: 2000, rotationDeg: 0 },
+        }),
+      );
+      expect(legacy.ok).toBe(true);
+      expect(migrated.ok).toBe(true);
+      if (!legacy.ok || !migrated.ok) return;
+      const legacyFootprint = legacy.value.houseContext.footprint;
+      const migratedFootprint = migrated.value.houseContext.footprint;
+      expect(legacyFootprint).not.toBeNull();
+      expect(migratedFootprint).not.toBeNull();
+      expect(legacyFootprint!.length).toBe(migratedFootprint!.length);
+      for (let idx = 0; idx < legacyFootprint!.length; idx += 1) {
+        expect(legacyFootprint![idx]!.x).toBeCloseTo(migratedFootprint![idx]!.x, 6);
+        expect(legacyFootprint![idx]!.y).toBeCloseTo(migratedFootprint![idx]!.y, 6);
+      }
+    });
+
+    it("'rear' attachment is unit-frame-invariant — migration default (0, 0) preserves world coords", () => {
+      // The 'rear' decoder formula doesn't use pergolaWidthM/pergolaDepthM, so
+      // unit-frame decode == legacy decode regardless of pergola dims. The
+      // migration default for 'rear' is (0, 0).
+      type RearPosition = { origin: { x: number; y: number }; rotationDeg: number } | null;
+      const baseInput = (housePosition: RearPosition) =>
+        makeRawInput({
+          connection: { houseConnectionType: 'soffit', attachmentSide: 'rear' },
+          dimensions: { lengthM: '6', projectionM: '3', hipCornerLengthBM: '0', hipCornerProjectionBM: '0' },
+          houseContext: {
+            footprintMode: 'custom_polygon',
+            footprintPreset: 'straight',
+            footprintParams: {
+              widthM: '',
+              offsetXM: '0',
+              setbackM: '0',
+              bandDepthM: '1.8',
+              returnRunM: '2.4',
+              recessWidthM: '2.4',
+              recessDepthM: '1.2',
+              leftLegRunM: '2.4',
+              rightLegRunM: '2.4',
+              sideRunM: '2.4',
+            },
+            footprintPolygon: [
+              { alongM: '0', depthM: '0' },
+              { alongM: '6', depthM: '0' },
+              { alongM: '6', depthM: '1.8' },
+              { alongM: '0', depthM: '1.8' },
+            ],
+            position: housePosition,
+          },
+        });
+      const migrationDefault: RearPosition = { origin: { x: 0, y: 0 }, rotationDeg: 0 };
+      const legacy = normalizeGeometryConfig(baseInput(null));
+      const migrated = normalizeGeometryConfig(baseInput(migrationDefault));
+      expect(legacy.ok).toBe(true);
+      expect(migrated.ok).toBe(true);
+      if (!legacy.ok || !migrated.ok) return;
+      const legacyFootprint = legacy.value.houseContext.footprint!;
+      const migratedFootprint = migrated.value.houseContext.footprint!;
+      for (let idx = 0; idx < legacyFootprint.length; idx += 1) {
+        expect(legacyFootprint[idx]!.x).toBeCloseTo(migratedFootprint[idx]!.x, 6);
+        expect(legacyFootprint[idx]!.y).toBeCloseTo(migratedFootprint[idx]!.y, 6);
+      }
+    });
+  });
 });

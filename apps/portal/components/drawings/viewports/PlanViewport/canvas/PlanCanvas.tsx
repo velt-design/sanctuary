@@ -94,6 +94,11 @@ export function PlanCanvas({
         event.clientX,
         event.clientY,
         coordinateAdapter,
+        // Pass the live pan/zoom transform so the cursor coord lands in the
+        // same coord system as the rendered polygon `points`. Without this,
+        // any non-identity pan or zoom causes the cursor's world coord to
+        // drift away from the visible polygon edges (intermittent hover bug).
+        transform,
       );
       if (!point && shape) return;
       const payload = {
@@ -106,7 +111,7 @@ export function PlanCanvas({
       if (kind === 'move') dispatcher.dispatchPointerMove(payload);
       if (kind === 'up') dispatcher.dispatchPointerUp(payload);
     },
-    [coordinateAdapter, dispatcher],
+    [coordinateAdapter, dispatcher, transform],
   );
 
   const handleEmptyPointerDown = useCallback(
@@ -133,11 +138,12 @@ export function PlanCanvas({
           event.clientX,
           event.clientY,
           coordinateAdapter,
+          transform,
         );
         setCursorWorldMm(point ? { x: point.x * 1000, y: point.y * 1000 } : null);
       }
     },
-    [coordinateAdapter, debugEnabled, dispatchPlanPointer, panZoom],
+    [coordinateAdapter, debugEnabled, dispatchPlanPointer, panZoom, transform],
   );
 
   const handlePointerUp = useCallback(

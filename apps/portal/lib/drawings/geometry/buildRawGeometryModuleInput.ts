@@ -247,6 +247,29 @@ function resolvePergolaPosition(
   };
 }
 
+/**
+ * Map a house's first-class spatial `position` (stage 3 of the house
+ * decoupling migration) to the geometry module input. Read from
+ * `module.houseFootprintPosition` (CalculatorModuleInputs field, persists
+ * via the snapshot/draft pipeline). When set, geometry decodes the custom
+ * polygon against a unit frame and applies this position post-decode — so
+ * the house's world location is invariant to pergola dimensions. When null
+ * or empty, the legacy real-frame decoder runs (back-compat).
+ */
+function resolveHousePosition(
+  module: CalculatorModuleInputs,
+): RawGeometryModuleInput['houseContext']['position'] {
+  const position = module.houseFootprintPosition;
+  if (!position || !position.originXMm || !position.originYMm) return null;
+  return {
+    origin: {
+      x: position.originXMm,
+      y: position.originYMm,
+    },
+    rotationDeg: position.rotationDeg ?? '0',
+  };
+}
+
 function resolvePergolaForModule(input: {
   projectModel: WorkbenchProjectModel;
   module: CalculatorModuleInputs;
@@ -521,6 +544,7 @@ export function buildRawGeometryModuleInput(input: {
         houseForm && houseForm.footprint.polygon.length
           ? houseForm.footprint.polygon
           : resolveFootprintPolygon(module),
+      position: resolveHousePosition(module),
       storeyMode: houseForm?.storeyMode ?? module.houseStoreyMode ?? null,
       roofForm: roofIntent?.form ?? null,
       roofMaterial: roofIntent?.material ?? normalizeHouseRoofMaterial(module.houseRoofMaterial),
