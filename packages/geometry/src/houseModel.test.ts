@@ -1196,6 +1196,40 @@ describe('house model geometry builder', () => {
     expect(model.attachmentTarget?.line).toEqual(makeAttachmentEdge());
   });
 
+  it('exposes drain eaves as discoverable roof-eave snap targets', () => {
+    // Step 6 of the first-class spatial-entities migration. The snap engine
+    // (step 7) will consume `model.roofEaves` to surface roof-edge candidates
+    // for pergola attachment. Each drain-eave perimeter edge produces one
+    // descriptor with a stable id and the eave line at gutter height.
+    const model = buildHouseModel3D({
+      config: makeConfig(),
+      attachmentEdge: makeAttachmentEdge(),
+    });
+
+    expect(model).not.toBeNull();
+    if (!model) return;
+
+    const roofEaves = model.roofEaves ?? [];
+    expect(roofEaves.length).toBeGreaterThan(0);
+    for (const eave of roofEaves) {
+      expect(eave.id).toMatch(/^roof-eave-/);
+      expect(eave.edgeKind).toBe('drain_eave');
+      expect(eave.sourceEdgeId).toBeTruthy();
+      expect(typeof eave.eaveLine.start.x).toBe('number');
+      expect(typeof eave.eaveLine.end.x).toBe('number');
+      expect(typeof eave.eaveLine.start.z).toBe('number');
+    }
+    // Stable id format — the snap engine will round-trip through
+    // `host.edgeId` so id stability matters across re-solves.
+    const ids = new Set(roofEaves.map((eave) => eave.id));
+    expect(ids.size).toBe(roofEaves.length);
+    // Eaves live at gutter height (eaveHeightMm = 2400 in the fixture).
+    for (const eave of roofEaves) {
+      expect(eave.eaveLine.start.z).toBeCloseTo(2400, 1);
+      expect(eave.eaveLine.end.z).toBeCloseTo(2400, 1);
+    }
+  });
+
   it('uses house gutter projection as the rendered outside face offset', () => {
     const model = buildHouseModel3D({
       config: makeConfig({

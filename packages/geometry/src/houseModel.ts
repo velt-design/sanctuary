@@ -602,6 +602,21 @@ export function buildHouseModel3D(input: {
       })) ?? [],
   });
 
+  // Roof eave snap targets (step 6 of the first-class spatial-entities
+  // migration). One descriptor per drain-eave perimeter edge — these are the
+  // canonical snap lines for pergola `spatialKind: 'roof_edge'` attachments.
+  // Other perimeter-edge kinds (`weather_flashed_edge`, `house_apron_edge`)
+  // are not pergola attachment targets in v1, so they're filtered out here.
+  const roofEaves = allPerimeterEdges
+    .filter((edge) => edge.edgeKind === 'drain_eave')
+    .map((edge) => ({
+      id: `roof-eave-${edge.sourceEdgeId}`,
+      edgeKind: 'drain_eave' as const,
+      eaveLine: { start: edge.eaveStart, end: edge.eaveEnd },
+      sourceEdgeId: edge.sourceEdgeId,
+      sourceRoofPlaneId: edge.sourceRoofPlaneId ?? null,
+    }));
+
   return {
     footprint,
     wallSegments: displayWallSegments,
@@ -625,6 +640,7 @@ export function buildHouseModel3D(input: {
       gutterWidthMm,
       gutterDepthMm,
     }),
+    roofEaves,
     eave: {
       soffitDepthMm,
       fasciaHeightMm,

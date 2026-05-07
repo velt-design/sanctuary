@@ -860,6 +860,31 @@ export type HouseOpening3D = {
   metadata?: GeometryMetadata;
 };
 
+/**
+ * Roof eave snap target. One per drain-eave perimeter edge of a house roof.
+ * Step 6 of the first-class spatial-entities migration: roof eaves become
+ * discoverable as a list parallel to wall edges so the snap engine can
+ * surface them as candidates for pergola `spatialKind: 'roof_edge'`
+ * attachments. The eave line is the bottom of the roof on this side (where
+ * the gutter sits); the snap engine aligns pergola edges to this line and
+ * the user picks the attachment method (fascia / direct-to-soffit / soffit
+ * brackets) separately in the inspector.
+ *
+ * Coords are in world space (the house model is not transformed by
+ * `applyAssemblyPosition3D`; see `applyAssemblyPosition.ts` for why).
+ */
+export type HouseRoofEave3D = {
+  /** Stable id, scoped within the house model. Format: `roof-eave-${sourceEdgeId}`. */
+  id: string;
+  edgeKind: "drain_eave";
+  /** Line at eave height (gutter line) — the canonical snap line. */
+  eaveLine: Line3;
+  /** Footprint edge id this eave is derived from. */
+  sourceEdgeId: string;
+  /** Roof plane this eave belongs to, when known. */
+  sourceRoofPlaneId?: string | null;
+};
+
 export type HouseModel3D = {
   footprint: Polygon3;
   wallSegments: HouseWallSegment3D[];
@@ -872,6 +897,8 @@ export type HouseModel3D = {
   openings?: HouseOpening3D[] | null;
   solids?: HouseEnvelopeSolids3D | null;
   eave: HouseEaveGeometry3D;
+  /** Roof eave snap targets (drain eaves only). See `HouseRoofEave3D`. */
+  roofEaves?: HouseRoofEave3D[] | null;
   attachmentTarget?: HouseAttachmentTarget3D | null;
   metadata?: GeometryMetadata;
 };

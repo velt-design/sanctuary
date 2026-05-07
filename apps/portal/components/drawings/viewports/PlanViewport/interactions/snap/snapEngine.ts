@@ -3,18 +3,43 @@ import type { PlanPoint } from '../dragLifecycle';
 
 export type SnapKind = 'endpoint' | 'midpoint' | 'edge' | 'centroid';
 
+/**
+ * A line-shaped snap target — for edges that aren't a polygon boundary, like
+ * roof eaves at gutter height projected to plan space, or standalone wall
+ * segments that aren't part of a closed body. Step 7a of the first-class
+ * spatial-entities migration: `HouseModel3D.roofEaves` is the canonical input
+ * source for `edgeKind: 'roof_eave'` line targets.
+ */
+export type SnapLineTarget = {
+  /** Stable id (e.g. `roof-eave-${sourceEdgeId}`). */
+  id: string;
+  sourceObjectId: string;
+  /** Domain edge kind for downstream attachment routing — e.g. `'roof_eave'`, `'wall'`. */
+  edgeKind: string;
+  start: PlanPoint;
+  end: PlanPoint;
+};
+
 export type SnapTarget = {
   kind: SnapKind;
   point: PlanPoint;
   shapeId: string;
   sourceObjectId: string;
   edgeIndex?: number;
+  /**
+   * Domain edge kind (e.g. `'roof_eave'`, `'wall'`) when the candidate came
+   * from a `SnapLineTarget`. Undefined for polygon-derived candidates — the
+   * downstream consumer infers domain meaning from the shape's family/kind.
+   */
+  edgeKind?: string;
   priorityScore: number;
   distanceMm: number;
 };
 
 export type SnapEngineInput = {
   shapes: ReadonlyArray<GeometryTopProjectionShape>;
+  /** Optional standalone line snap targets (eaves, etc.). */
+  lineTargets?: ReadonlyArray<SnapLineTarget>;
   enabledKinds: ReadonlyArray<SnapKind>;
   toleranceMm: number;
 };
@@ -148,6 +173,70 @@ export function createSnapEngine(input: SnapEngineInput): SnapEngine {
               tolerance,
             );
           }
+        }
+      }
+      // Line snap targets — single-segment candidates with no centroid or
+      // wraparound. Endpoint and midpoint produce one candidate each;
+      // edge produces a perpendicular foot. `edgeKind` is preserved so
+      // downstream attachment routing can distinguish roof_eave from wall.
+      for (const target of input.lineTargets ?? []) {
+        if (enabled.has('endpoint')) {
+          pushIfWithin(
+            results,
+            {
+              kind: 'endpoint',
+              point: { x: target.start.x, y: target.start.y },
+              shapeId: target.id,
+              sourceObjectId: target.sourceObjectId,
+              edgeKind: target.edgeKind,
+            },
+            point,
+            tolerance,
+          );
+          pushIfWithin(
+            results,
+            {
+              kind: 'endpoint',
+              point: { x: target.end.x, y: target.end.y },
+              shapeId: target.id,
+              sourceObjectId: target.sourceObjectId,
+              edgeKind: target.edgeKind,
+            },
+            point,
+            tolerance,
+          );
+        }
+        if (enabled.has('midpoint')) {
+          pushIfWithin(
+            results,
+            {
+              kind: 'midpoint',
+              point: {
+                x: (target.start.x + target.end.x) / 2,
+                y: (target.start.y + target.end.y) / 2,
+              },
+              shapeId: target.id,
+              sourceObjectId: target.sourceObjectId,
+              edgeKind: target.edgeKind,
+            },
+            point,
+            tolerance,
+          );
+        }
+        if (enabled.has('edge')) {
+          const projected = closestPointOnSegment(point, target.start, target.end);
+          pushIfWithin(
+            results,
+            {
+              kind: 'edge',
+              point: projected,
+              shapeId: target.id,
+              sourceObjectId: target.sourceObjectId,
+              edgeKind: target.edgeKind,
+            },
+            point,
+            tolerance,
+          );
         }
       }
       results.sort(

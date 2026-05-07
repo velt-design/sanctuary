@@ -5,6 +5,8 @@ import {
   type Point2,
 } from '../canvas/polygonEdgeMath';
 import type { ActiveObjectFamily } from '../canvas/planDimension';
+import type { SnapLineTarget } from '../interactions/snap/snapEngine';
+import { resolveEdgeSnap, type EdgeSnapResult } from './resolveEdgeSnap';
 import type { Tool, ToolPointerEvent } from './Tool';
 
 export type EdgeDragOutline = {
@@ -15,6 +17,8 @@ export type EdgeDragOutline = {
 
 export type EdgeDragOutlineSource = () => EdgeDragOutline | null;
 
+export type EdgeDragSnapTargetSource = () => ReadonlyArray<SnapLineTarget>;
+
 export type EdgeDragPreview = {
   outlineId: string;
   family: ActiveObjectFamily;
@@ -22,12 +26,16 @@ export type EdgeDragPreview = {
   originalPolygon: ReadonlyArray<Point2>;
   previewPolygon: ReadonlyArray<Point2>;
   deltaMm: number;
+  /** Resolved snap when the dragged edge is parallel + close to a line target. */
+  snap: EdgeSnapResult | null;
 };
 
 export type EdgeDragCommit = {
   outlineId: string;
   family: ActiveObjectFamily;
   nextPolygon: ReadonlyArray<Point2>;
+  /** When the drag ended on a snap, this carries the resolved snap result. */
+  snap: EdgeSnapResult | null;
 };
 
 /**
@@ -48,6 +56,18 @@ export type EdgeDragHover = {
 export type EdgeDragToolConfig = {
   getActiveOutline: EdgeDragOutlineSource;
   edgeHitToleranceMm?: number;
+  /**
+   * Snap line target source — typically `buildHouseSnapTargets(houseModel)`
+   * for house wall + roof-eave candidates. Read fresh on every pointermove
+   * so re-solves between pointer events surface up-to-date targets. Omit
+   * for v1 deck/house edits where snap doesn't apply yet; pergola edge
+   * drags consume this for `wall` / `roof_edge` snap formation.
+   */
+  getSnapLineTargets?: EdgeDragSnapTargetSource;
+  /** Max correction distance (mm) before a candidate is rejected. Default 250mm. */
+  snapToleranceMm?: number;
+  /** Max angle (degrees) between the dragged edge and a parallel target. Default 5°. */
+  snapAngularToleranceDeg?: number;
   onPreviewChange?: (preview: EdgeDragPreview | null) => void;
   onHoverChange?: (hover: EdgeDragHover | null) => void;
   onCommit?: (commit: EdgeDragCommit) => void;
@@ -77,11 +97,44 @@ function computeDeltaMm(session: DragSession, currentPoint: Point2): number {
   return dx * normal.x + dy * normal.y;
 }
 
-function buildPreview(session: DragSession, deltaMm: number): EdgeDragPreview {
+type DragSessionWithSnapConfig = {
+  snapLineTargets: ReadonlyArray<SnapLineTarget>;
+  snapToleranceMm: number;
+  snapAngularToleranceDeg: number;
+};
+
+function resolveSnapForDrag(
+  session: DragSession,
+  naturalDeltaMm: number,
+  snapConfig: DragSessionWithSnapConfig,
+): EdgeSnapResult | null {
+  if (snapConfig.snapLineTargets.length === 0) return null;
+  const a = session.outline.polygon[session.edgeIndex];
+  const b = session.outline.polygon[(session.edgeIndex + 1) % session.outline.polygon.length];
+  if (!a || !b) return null;
+  const outwardNormal = polygonEdgeOutwardNormal(session.outline.polygon, session.edgeIndex);
+  if (!outwardNormal) return null;
+  return resolveEdgeSnap({
+    edgeStart: { x: a.x, y: a.y },
+    edgeEnd: { x: b.x, y: b.y },
+    outwardNormal,
+    naturalDeltaMm,
+    lineTargets: snapConfig.snapLineTargets,
+    toleranceMm: snapConfig.snapToleranceMm,
+    angularToleranceDeg: snapConfig.snapAngularToleranceDeg,
+  });
+}
+
+function buildPreview(
+  session: DragSession,
+  deltaMm: number,
+  snap: EdgeSnapResult | null,
+): EdgeDragPreview {
+  const effectiveDelta = snap ? snap.snapDeltaMm : deltaMm;
   const previewPolygon = applyEdgePerpendicularTranslation(
     session.outline.polygon,
     session.edgeIndex,
-    deltaMm,
+    effectiveDelta,
   );
   return {
     outlineId: session.outline.id,
@@ -89,12 +142,26 @@ function buildPreview(session: DragSession, deltaMm: number): EdgeDragPreview {
     edgeIndex: session.edgeIndex,
     originalPolygon: session.outline.polygon,
     previewPolygon,
-    deltaMm,
+    deltaMm: effectiveDelta,
+    snap,
   };
 }
 
+const DEFAULT_SNAP_TOLERANCE_MM = 250;
+const DEFAULT_SNAP_ANGULAR_TOLERANCE_DEG = 5;
+
 export function createEdgeDragTool(config: EdgeDragToolConfig): Tool {
   const tolerance = config.edgeHitToleranceMm ?? DEFAULT_EDGE_HIT_TOLERANCE_MM;
+  const snapToleranceMm = config.snapToleranceMm ?? DEFAULT_SNAP_TOLERANCE_MM;
+  const snapAngularToleranceDeg =
+    config.snapAngularToleranceDeg ?? DEFAULT_SNAP_ANGULAR_TOLERANCE_DEG;
+  // Read snap targets fresh on every consult — between pointer events the
+  // store may re-solve and the target list may refresh.
+  const readSnapConfig = (): DragSessionWithSnapConfig => ({
+    snapLineTargets: config.getSnapLineTargets?.() ?? [],
+    snapToleranceMm,
+    snapAngularToleranceDeg,
+  });
   let session: DragSession | null = null;
   // Cache the last published hover by content (outline, edge index, and the
   // edge endpoints) — NOT just by edge index. After a commit the polygon
@@ -166,12 +233,13 @@ export function createEdgeDragTool(config: EdgeDragToolConfig): Tool {
         pointerId: event.pointerId,
       };
       clearHover();
-      config.onPreviewChange?.(buildPreview(session, 0));
+      config.onPreviewChange?.(buildPreview(session, 0, null));
     },
     onPointerMove(event: ToolPointerEvent) {
       if (session && session.pointerId === event.pointerId) {
         const deltaMm = computeDeltaMm(session, event.point);
-        config.onPreviewChange?.(buildPreview(session, deltaMm));
+        const snap = resolveSnapForDrag(session, deltaMm, readSnapConfig());
+        config.onPreviewChange?.(buildPreview(session, deltaMm, snap));
         return;
       }
       if (session) return;
@@ -180,11 +248,12 @@ export function createEdgeDragTool(config: EdgeDragToolConfig): Tool {
     onPointerUp(event: ToolPointerEvent) {
       if (!session || session.pointerId !== event.pointerId) return;
       const finalSession = session;
-      const deltaMm = computeDeltaMm(finalSession, event.point);
-      const preview = buildPreview(finalSession, deltaMm);
+      const naturalDelta = computeDeltaMm(finalSession, event.point);
+      const snap = resolveSnapForDrag(finalSession, naturalDelta, readSnapConfig());
+      const preview = buildPreview(finalSession, naturalDelta, snap);
       session = null;
       config.onPreviewChange?.(null);
-      if (deltaMm !== 0) {
+      if (preview.deltaMm !== 0) {
         // The commit changes the active outline polygon. Drop the cached hover
         // so the next pointermove republishes against fresh edges instead of
         // re-using endpoints from the pre-commit polygon.
@@ -193,6 +262,7 @@ export function createEdgeDragTool(config: EdgeDragToolConfig): Tool {
           outlineId: finalSession.outline.id,
           family: finalSession.outline.family,
           nextPolygon: preview.previewPolygon,
+          snap,
         });
       }
     },

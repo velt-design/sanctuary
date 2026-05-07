@@ -158,6 +158,35 @@
   pointer-events: none;
 }
 
+.snapIndicatorLine {
+  stroke: var(--plan-stroke-snap);
+  stroke-width: calc(var(--plan-width-heavy) * 1.5);
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+  fill: none;
+  pointer-events: none;
+}
+
+.snapIndicatorMarker {
+  stroke: var(--plan-stroke-snap);
+  stroke-width: var(--plan-width-medium);
+  vector-effect: non-scaling-stroke;
+  fill: #ffffff;
+  pointer-events: none;
+}
+
+.snapIndicatorLabel {
+  fill: var(--plan-fill-snap);
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  text-anchor: middle;
+  paint-order: stroke fill;
+  stroke: rgba(255, 255, 255, 0.9);
+  stroke-width: 3px;
+  pointer-events: none;
+}
+
 .selectionHalo {
   stroke: var(--plan-stroke-selection);
   stroke-width: calc(var(--plan-width-medium) * 1.5);

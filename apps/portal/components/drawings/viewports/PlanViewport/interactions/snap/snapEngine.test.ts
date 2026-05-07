@@ -172,6 +172,144 @@ describe('createSnapEngine', () => {
   });
 });
 
+describe('createSnapEngine — line targets', () => {
+  // Step 7a of the first-class spatial-entities migration. Roof eaves and
+  // standalone wall edges aren't polygon boundaries, so they enter the engine
+  // as `SnapLineTarget`. The engine produces endpoint/midpoint/edge candidates
+  // for each line target and preserves `edgeKind` on the resulting SnapTarget
+  // so downstream attachment routing can distinguish `roof_eave` from `wall`.
+
+  it('produces endpoint candidates at both ends of a line target', () => {
+    const e = createSnapEngine({
+      shapes: [],
+      lineTargets: [
+        {
+          id: 'roof-eave-edge-1',
+          sourceObjectId: 'house-main',
+          edgeKind: 'roof_eave',
+          start: { x: 0, y: 0 },
+          end: { x: 1000, y: 0 },
+        },
+      ],
+      enabledKinds: ['endpoint'],
+      toleranceMm: 10,
+    });
+    const startMatch = e.query({ point: { x: 3, y: 4 } });
+    expect(startMatch[0]?.kind).toBe('endpoint');
+    expect(startMatch[0]?.point).toEqual({ x: 0, y: 0 });
+    expect(startMatch[0]?.edgeKind).toBe('roof_eave');
+    const endMatch = e.query({ point: { x: 1003, y: 4 } });
+    expect(endMatch[0]?.point).toEqual({ x: 1000, y: 0 });
+  });
+
+  it('produces an edge candidate via perpendicular foot on the line target', () => {
+    const e = createSnapEngine({
+      shapes: [],
+      lineTargets: [
+        {
+          id: 'roof-eave-edge-1',
+          sourceObjectId: 'house-main',
+          edgeKind: 'roof_eave',
+          start: { x: 0, y: 0 },
+          end: { x: 1000, y: 0 },
+        },
+      ],
+      enabledKinds: ['edge'],
+      toleranceMm: 10,
+    });
+    const targets = e.query({ point: { x: 500, y: 5 } });
+    expect(targets[0]?.kind).toBe('edge');
+    expect(targets[0]?.point).toEqual({ x: 500, y: 0 });
+    expect(targets[0]?.distanceMm).toBeCloseTo(5, 6);
+    expect(targets[0]?.edgeKind).toBe('roof_eave');
+  });
+
+  it('preserves edgeKind metadata so consumers can route by domain kind', () => {
+    const e = createSnapEngine({
+      shapes: [],
+      lineTargets: [
+        {
+          id: 'wall-1',
+          sourceObjectId: 'house-main',
+          edgeKind: 'wall',
+          start: { x: 0, y: 0 },
+          end: { x: 1000, y: 0 },
+        },
+        {
+          id: 'roof-eave-1',
+          sourceObjectId: 'house-main',
+          edgeKind: 'roof_eave',
+          start: { x: 0, y: 500 },
+          end: { x: 1000, y: 500 },
+        },
+      ],
+      enabledKinds: ['edge'],
+      toleranceMm: 10,
+    });
+    const wallMatch = e.query({ point: { x: 500, y: 5 } });
+    expect(wallMatch[0]?.edgeKind).toBe('wall');
+    const eaveMatch = e.query({ point: { x: 500, y: 495 } });
+    expect(eaveMatch[0]?.edgeKind).toBe('roof_eave');
+  });
+
+  it('mixes line-target candidates with polygon-shape candidates by priority', () => {
+    const e = createSnapEngine({
+      shapes: [
+        {
+          id: 'pergola',
+          sourceObjectId: 'pergola',
+          sourceId: 'pergola',
+          sourceType: 'pergola_reference',
+          family: 'pergola',
+          kind: 'outline',
+          polygon: [
+            { x: 0, y: 0 },
+            { x: 6000, y: 0 },
+            { x: 6000, y: 3000 },
+            { x: 0, y: 3000 },
+          ],
+          zOrder: 0,
+          zMin: null,
+          zMax: null,
+        },
+      ],
+      lineTargets: [
+        {
+          id: 'roof-eave-1',
+          sourceObjectId: 'house-main',
+          edgeKind: 'roof_eave',
+          start: { x: 0, y: 0 },
+          end: { x: 6000, y: 0 },
+        },
+      ],
+      enabledKinds: ['endpoint', 'edge'],
+      toleranceMm: 10,
+    });
+    const targets = e.query({ point: { x: 3, y: 4 } });
+    const endpoints = targets.filter((t) => t.kind === 'endpoint');
+    expect(endpoints.length).toBeGreaterThanOrEqual(2);
+    expect(endpoints[0]?.point).toEqual({ x: 0, y: 0 });
+  });
+
+  it('drops line-target candidates beyond tolerance', () => {
+    const e = createSnapEngine({
+      shapes: [],
+      lineTargets: [
+        {
+          id: 'roof-eave-1',
+          sourceObjectId: 'house-main',
+          edgeKind: 'roof_eave',
+          start: { x: 0, y: 0 },
+          end: { x: 1000, y: 0 },
+        },
+      ],
+      enabledKinds: ['endpoint', 'edge'],
+      toleranceMm: 1,
+    });
+    expect(e.query({ point: { x: 500, y: 50 } })).toHaveLength(0);
+  });
+});
+
 describe('bestSnapTarget', () => {
   it('returns null when no targets are present', () => {
     expect(bestSnapTarget([])).toBeNull();

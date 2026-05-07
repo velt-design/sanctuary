@@ -18,6 +18,8 @@ import { pickPrimaryEditCandidate, type ActiveObjectFamily, type PlanDimension }
 import { ToolDispatcherProvider } from './tools/ToolDispatcher';
 import { createSelectTool } from './tools/SelectTool';
 import { createEdgeDragTool, type EdgeDragCommit, type EdgeDragHover, type EdgeDragPreview } from './tools/EdgeDragTool';
+import { buildHouseSnapTargets } from './interactions/snap/buildHouseSnapTargets';
+import type { SnapLineTarget } from './interactions/snap/snapEngine';
 
 export type { EdgeDragCommit, EdgeDragHover, EdgeDragPreview } from './tools/EdgeDragTool';
 import { PlanViewportPlaceholder } from './PlanViewportPlaceholder';
@@ -102,6 +104,28 @@ export default function PlanViewport({
     return { id: candidate.id, family: af, polygon: candidate.polygon };
   }, []);
 
+  // Snap line targets — house wall edges + roof eaves projected to plan space.
+  // Read fresh on every drag-time consult (via the ref) so re-solves between
+  // pointer events surface up-to-date eaves/walls. Only pergola edits use
+  // snap in v1; deck/house drags pass an empty list to fall through to
+  // natural delta. (Wired here unconditionally — `EdgeDragTool` skips the
+  // snap path when `lineTargets.length === 0`.)
+  const houseModel = artifact?.assembly?.house?.model ?? null;
+  const houseObjectId =
+    artifact?.assembly?.house?.attachmentTarget?.metadata?.sourceFormId ?? 'house-main';
+  const snapLineTargets = useMemo<SnapLineTarget[]>(() => {
+    // Snap is meaningful for pergola edge drags (house attachment formation).
+    // For house/deck drags the active object IS the house or deck, and
+    // matching against its own walls would create self-snaps. Skip those.
+    if (activeFamily !== 'pergolas') return [];
+    return buildHouseSnapTargets({
+      houseModel,
+      houseObjectId: typeof houseObjectId === 'string' ? houseObjectId : 'house-main',
+    });
+  }, [activeFamily, houseModel, houseObjectId]);
+  const snapLineTargetsRef = useRef(snapLineTargets);
+  snapLineTargetsRef.current = snapLineTargets;
+
   // Hold the SelectTool in a ref so EdgeDragTool's fall-through can hand off
   // pointer-down events to it without forcing EdgeDragTool re-creation when
   // the SelectTool callback identities change.
@@ -112,6 +136,7 @@ export default function PlanViewport({
     () =>
       createEdgeDragTool({
         getActiveOutline,
+        getSnapLineTargets: () => snapLineTargetsRef.current,
         onPreviewChange: setEdgeDragPreview,
         onHoverChange: setEdgeDragHover,
         onCommit: (commit) => onCommitOutlineEditRef.current?.(commit),

@@ -22,6 +22,7 @@ import { PlanEdgeHoverHighlightLayer } from './layers/PlanEdgeHoverHighlightLaye
 import { PlanHitTargetLayer } from './layers/PlanHitTargetLayer';
 import { PlanHitTestDebugLayer } from './layers/PlanHitTestDebugLayer';
 import { PlanSelectionHaloLayer } from './layers/PlanSelectionHaloLayer';
+import { PlanSnapIndicatorLayer } from './layers/PlanSnapIndicatorLayer';
 import type { PlanDimension } from './planDimension';
 import type { EdgeDragHover, EdgeDragPreview } from '../tools/EdgeDragTool';
 import styles from './PlanCanvas.module.css';
@@ -211,6 +212,7 @@ export function PlanCanvas({
           <PlanDimensionLayer dimensions={dimensions} coordinateAdapter={coordinateAdapter} />
           <PlanEdgeHoverHighlightLayer hover={edgeDragHover} coordinateAdapter={coordinateAdapter} />
           <PlanEdgeDragPreviewLayer preview={edgeDragPreview} coordinateAdapter={coordinateAdapter} />
+          <PlanSnapIndicatorLayer preview={edgeDragPreview} coordinateAdapter={coordinateAdapter} />
           <PlanHitTestDebugLayer
             enabled={debugEnabled}
             activeOutlinePolygon={activeOutlinePolygon}
