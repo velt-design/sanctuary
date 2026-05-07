@@ -11,16 +11,20 @@ function fail(code: SolveAssembly3DErrorCode, error: string): SolveAssembly3DRes
 }
 
 /**
- * Apply the per-pergola world transform if `config.position` is set. Family
- * solvers emit pergola-local geometry — `applyAssemblyPosition3D` is the
- * single boundary that lifts that into world space so multi-pergola designs
- * place each pergola at its own origin/rotation. When `config.position` is
- * `null` (the legacy single-pergola-at-world-origin case), the call is a
+ * Apply the per-pergola world transform (and the per-house transform via
+ * `assembly.house.position`) if either is set. Family solvers emit
+ * pergola-local geometry, and post-milestone-12 the house may also be in
+ * house-local coords — `applyAssemblyPosition3D` is the single boundary
+ * that lifts both into world space. When neither is set the call is a
  * no-op and the assembly passes through unchanged.
+ *
+ * Note: we always call `applyAssemblyPosition3D` here so the house
+ * transform fires even when the pergola has no position (legacy data with
+ * an edited house but a default-positioned pergola).
  */
 function applyPositionIfSet(result: SolveAssembly3DResult, config: GeometryConfig): SolveAssembly3DResult {
-  if (!result.ok || !config.position) return result;
-  return { ok: true, value: applyAssemblyPosition3D(result.value, config.position) };
+  if (!result.ok) return result;
+  return { ok: true, value: applyAssemblyPosition3D(result.value, config.position ?? null) };
 }
 
 export function solveAssembly3D(config: GeometryConfig): SolveAssembly3DResult {

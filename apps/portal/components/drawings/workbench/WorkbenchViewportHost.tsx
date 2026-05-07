@@ -26,7 +26,7 @@ import type { EstimateDrawingSheetMeta } from '@/lib/estimates/drawingSheet';
 import type { CalculatorHouseFootprintPolygonPoint } from '@/lib/types/calculator';
 import { type Geometry3DViewportState } from '@/components/drawings/viewports/Geometry3DViewport';
 import DesignViewport from '@/components/drawings/viewports/DesignViewport';
-import PlanViewport, { type EdgeDragCommit } from '@/components/drawings/viewports/PlanViewport/PlanViewport';
+import PlanViewport, { type EdgeDragCommit, type MoveRequest } from '@/components/drawings/viewports/PlanViewport/PlanViewport';
 import SheetViewport from '@/components/drawings/viewports/SheetViewport';
 import styles from './DrawingWorkbench.module.css';
 
@@ -89,6 +89,7 @@ type WorkbenchViewportHostProps = {
   ) => Promise<{ ok: boolean; error?: string }> | { ok: boolean; error?: string };
   onDeckInteractionTelemetryChange?: (telemetry: DeckInteractionTelemetry) => void;
   onCommitOutlineEdit?: (commit: EdgeDragCommit) => void;
+  onCommitMove?: (request: MoveRequest) => void;
   /** Faded outline shapes for non-active pergolas (Step 5d Option A). */
   projectContextShapes?: ReadonlyArray<GeometryTopProjectionShape>;
 };
@@ -134,6 +135,7 @@ export default function WorkbenchViewportHost({
   onCommitOpeningDimension,
   onDeckInteractionTelemetryChange,
   onCommitOutlineEdit,
+  onCommitMove,
   projectContextShapes,
 }: WorkbenchViewportHostProps) {
   const routedDrawingSurfaceGeometry =
@@ -172,6 +174,7 @@ export default function WorkbenchViewportHost({
           onSelectPergolaTarget={onSelectPergolaTarget}
           onClearWorkbenchSelection={onClearWorkbenchSelection}
           onCommitOutlineEdit={onCommitOutlineEdit}
+          onCommitMove={onCommitMove}
         />
       ) : (
         <DesignViewport

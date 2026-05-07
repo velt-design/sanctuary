@@ -63,6 +63,46 @@ const REPO_WALK_SKIP_DIRS = new Set([
   'test-results',
 ]);
 
+// Curated allowlist of non-ASCII code points permitted in docs prose.
+// Kept narrow on purpose: invisible whitespace, BOMs, smart quotes, RTL
+// overrides, etc. are deliberately NOT allowed so that copy-paste hazards
+// and security-relevant glyphs still trip the gate. Add a code point here
+// only when you have a real need for it in docs prose.
+const ALLOWED_NON_ASCII_CODE_POINTS = new Set([
+  // Typography dashes and ellipsis
+  0x2013, // EN DASH
+  0x2014, // EM DASH
+  0x2026, // HORIZONTAL ELLIPSIS
+  // Math and comparison
+  0x00B1, // PLUS-MINUS SIGN
+  0x00D7, // MULTIPLICATION SIGN
+  0x00F7, // DIVISION SIGN
+  0x2212, // MINUS SIGN
+  0x2248, // ALMOST EQUAL TO
+  0x2260, // NOT EQUAL TO
+  0x2264, // LESS-THAN OR EQUAL TO
+  0x2265, // GREATER-THAN OR EQUAL TO
+  // Single arrows
+  0x2190, 0x2191, 0x2192, 0x2193, 0x2194, 0x2195,
+  // Double arrows
+  0x21D0, 0x21D1, 0x21D2, 0x21D3, 0x21D4, 0x21D5,
+  // Status / annotation glyphs (commonly used in tables and decision logs)
+  0x23F3, // HOURGLASS NOT DONE
+  0x26A0, // WARNING SIGN
+  0x274C, // CROSS MARK
+  0x2705, // WHITE HEAVY CHECK MARK
+  // Status circles
+  0x26AA, // MEDIUM WHITE CIRCLE
+  0x26AB, // MEDIUM BLACK CIRCLE
+  0x1F534, // LARGE RED CIRCLE
+  0x1F535, // LARGE BLUE CIRCLE
+  0x1F7E0, // LARGE ORANGE CIRCLE
+  0x1F7E1, // LARGE YELLOW CIRCLE
+  0x1F7E2, // LARGE GREEN CIRCLE
+  0x1F7E3, // LARGE PURPLE CIRCLE
+  0x1F7E4, // LARGE BROWN CIRCLE
+]);
+
 function toPosix(value) {
   return value.split(path.sep).join('/');
 }
@@ -401,11 +441,18 @@ for (const file of docFiles) {
     }
   }
 
-  for (let i = 0; i < text.length; i += 1) {
-    const code = text.charCodeAt(i);
-    if (code === 9 || code === 10 || code === 13 || (code >= 32 && code <= 126)) continue;
+  for (let i = 0; i < text.length; ) {
+    const code = text.codePointAt(i);
+    const charSize = code > 0xFFFF ? 2 : 1;
+    const isAsciiAllowed = code === 9 || code === 10 || code === 13 || (code >= 32 && code <= 126);
+    if (isAsciiAllowed || ALLOWED_NON_ASCII_CODE_POINTS.has(code)) {
+      i += charSize;
+      continue;
+    }
     const pos = lineAndColumnAt(text, i);
-    fail(`${file}:${pos.line}:${pos.col} contains non-ASCII character U+${code.toString(16).toUpperCase().padStart(4, '0')}`);
+    const hex = code.toString(16).toUpperCase().padStart(4, '0');
+    fail(`${file}:${pos.line}:${pos.col} contains non-ASCII character U+${hex} (add to ALLOWED_NON_ASCII_CODE_POINTS in scripts/docs-guard.mjs if intentional)`);
+    i += charSize;
   }
 }
 

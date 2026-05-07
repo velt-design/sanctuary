@@ -836,6 +836,66 @@ export default function DesignWorkbenchEstimateClient({
                 }
               : undefined
           }
+          onCommitMove={
+            !isLocked
+              ? (request) => {
+                  // Move tool commit (milestone 14). The tool emits
+                  // `request.delta` in plan-projection mm; we translate the
+                  // target's persisted `position.origin` by that delta and
+                  // write an atomic patch via the same action used for
+                  // edge-drag commits. Reading the current position from the
+                  // store at apply-time means undo (which calls back here
+                  // with negative delta) reads the post-apply position,
+                  // producing the original. The move command's `invert` is
+                  // wired in `MoveTool.createMoveCommand` to flip the delta.
+                  if (request.target.family === 'pergola') {
+                    const pergola = store.derived.objectWorkbench.pergolas.find(
+                      (p) => p.id === request.target.targetId,
+                    );
+                    if (!pergola) return;
+                    const currentX = Number(pergola.position?.originXMm ?? '0');
+                    const currentY = Number(pergola.position?.originYMm ?? '0');
+                    const currentRotation = Number(pergola.position?.rotationDeg ?? '0');
+                    void objectWorkbenchActions.commitSharedPergolaEdgeDragResult(
+                      request.target.targetId,
+                      {
+                        position: {
+                          originXMm: currentX + request.delta.x,
+                          originYMm: currentY + request.delta.y,
+                          rotationDeg: Number.isFinite(currentRotation) ? currentRotation : 0,
+                        },
+                      },
+                    );
+                    return;
+                  }
+                  if (request.target.family === 'deck') {
+                    const deck = store.persisted.projectModel.decks.find(
+                      (d) => d.id === request.target.targetId,
+                    );
+                    if (!deck) return;
+                    const currentX = Number(deck.position?.originXMm ?? '0');
+                    const currentY = Number(deck.position?.originYMm ?? '0');
+                    const currentRotation = Number(deck.position?.rotationDeg ?? '0');
+                    void objectWorkbenchActions.commitSharedHouseDeckPatch(
+                      request.target.targetId,
+                      {
+                        position: {
+                          originXMm: (currentX + request.delta.x).toString(),
+                          originYMm: (currentY + request.delta.y).toString(),
+                          rotationDeg: (Number.isFinite(currentRotation)
+                            ? currentRotation
+                            : 0
+                          ).toString(),
+                        },
+                      },
+                    );
+                    return;
+                  }
+                  // openings deferred — they're wall-anchored, not freely
+                  // positioned, so move-via-translate doesn't apply.
+                }
+              : undefined
+          }
         />
         </div>
       </div>

@@ -763,10 +763,12 @@ export function normalizeGeometryConfig(input: RawGeometryModuleInput): Normaliz
   const footprintMode = resolveFootprintMode(input.houseContext.footprintMode);
   // Resolve the house's first-class spatial position. When set (post-migration
   // or after a house edge-drag), the custom polygon decodes against a unit
-  // (1m × 1m) frame and the position is applied as a world-space translation —
-  // making the house's world location independent of the pergola's
-  // dimensions. When null (legacy data, no edits yet), fall back to the
-  // pergola-anchored real frame for back-compat.
+  // (1m × 1m) frame so the footprint is invariant to the pergola's dimensions.
+  // The world translation is applied at the boundary by `applyAssemblyPosition3D`
+  // (milestone 12) — every coord on `assembly.house` is house-local until
+  // then. When null (legacy data, no edits yet), fall back to the
+  // pergola-anchored real frame and pre-translate; `assembly.house.position`
+  // stays null and `applyAssemblyPosition3D` skips the house transform.
   const housePosition = resolveOptionalAssemblyPosition(input.houseContext.position);
   let houseFootprint: GeometryConfig['houseContext']['footprint'] = null;
   if (connectionType !== 'freestanding') {
@@ -784,9 +786,9 @@ export function normalizeGeometryConfig(input: RawGeometryModuleInput): Normaliz
       if (!customFootprint.ok) {
         return fail('invalid_numeric_input', customFootprint.error);
       }
-      houseFootprint = useUnitFrame
-        ? applyPositionToPolygon3(customFootprint.polygon, housePosition)
-        : customFootprint.polygon;
+      // House-local coords when `useUnitFrame` (position routes through the
+      // boundary); pergola-anchored real coords when not (legacy path).
+      houseFootprint = customFootprint.polygon;
     } else {
       // Preset polygons remain pergola-coupled until the user edits a wall
       // (which converts to `custom_polygon` mode and triggers migration via

@@ -215,6 +215,44 @@ describe('createMoveTool', () => {
     expect(bus.snapshot().canUndo).toBe(true);
   });
 
+  it('falls through to onPointerDownFallthrough when the click misses any movable shape', () => {
+    // Tool chain (EdgeDrag -> Move -> Select): MoveTool must hand off the
+    // click to the next tool when there's no shape under the cursor or the
+    // shape's family isn't accepted. Mirrors EdgeDragTool's pattern.
+    const fallthroughs: Array<{ shape: unknown; point: { x: number; y: number } }> = [];
+    const bus = createCommandBus();
+    const tool = createMoveTool({
+      acceptedFamilies: ['deck'],
+      commandBus: bus,
+      dragThresholdMm: 4,
+      commitMove: () => undefined,
+      onPointerDownFallthrough: (event) => {
+        fallthroughs.push({ shape: event.shape, point: event.point });
+      },
+    });
+    // No shape under cursor -> fallthrough fires.
+    tool.onPointerDown?.(event({ shape: null, point: { x: 100, y: 200 } }));
+    // Wrong family (pergola, when only deck is accepted) -> fallthrough fires.
+    tool.onPointerDown?.(event({ shape: pergolaShape('pergola-fall'), point: { x: 50, y: 50 } }));
+    expect(fallthroughs).toHaveLength(2);
+    expect(fallthroughs[0]?.point).toEqual({ x: 100, y: 200 });
+    expect(fallthroughs[1]?.point).toEqual({ x: 50, y: 50 });
+  });
+
+  it('does NOT call onPointerDownFallthrough for non-primary buttons (let them bubble for pan)', () => {
+    const fallthroughs: unknown[] = [];
+    const bus = createCommandBus();
+    const tool = createMoveTool({
+      acceptedFamilies: ['deck'],
+      commandBus: bus,
+      dragThresholdMm: 4,
+      commitMove: () => undefined,
+      onPointerDownFallthrough: (event) => fallthroughs.push(event),
+    });
+    tool.onPointerDown?.(event({ shape: deckShape('deck-r'), point: { x: 0, y: 0 }, button: 2 }));
+    expect(fallthroughs).toEqual([]);
+  });
+
   it('cancel clears any active session and the preview', () => {
     const { tool, commits, previews } = setup(['deck']);
     tool.onPointerDown?.(event({ shape: deckShape('deck-5'), point: { x: 0, y: 0 } }));

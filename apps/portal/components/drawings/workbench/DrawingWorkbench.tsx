@@ -25,7 +25,7 @@ import type {
   WorkbenchViewportGeometry,
 } from '@/lib/drawings/state/workbenchSolvedModel';
 import type { Geometry3DViewportState } from '@/components/drawings/viewports/Geometry3DViewport';
-import type { EdgeDragCommit } from '@/components/drawings/viewports/PlanViewport/PlanViewport';
+import type { EdgeDragCommit, MoveRequest } from '@/components/drawings/viewports/PlanViewport/PlanViewport';
 import WorkbenchChrome from './WorkbenchChrome';
 import WorkbenchViewportHost from './WorkbenchViewportHost';
 import styles from './DrawingWorkbench.module.css';
@@ -96,6 +96,7 @@ type DrawingWorkbenchProps = {
   ) => Promise<{ ok: boolean; error?: string }> | { ok: boolean; error?: string };
   onDeckInteractionTelemetryChange?: (telemetry: DeckInteractionTelemetry) => void;
   onCommitOutlineEdit?: (commit: EdgeDragCommit) => void;
+  onCommitMove?: (request: MoveRequest) => void;
   /** Faded outline shapes for non-active pergolas (Step 5d Option A). */
   projectContextShapes?: ReadonlyArray<GeometryTopProjectionShape>;
 };
@@ -148,6 +149,7 @@ export default function DrawingWorkbench({
   onCommitOpeningDimension,
   onDeckInteractionTelemetryChange,
   onCommitOutlineEdit,
+  onCommitMove,
   projectContextShapes,
 }: DrawingWorkbenchProps) {
   void modules;
@@ -205,6 +207,7 @@ export default function DrawingWorkbench({
         onCommitOpeningDimension={onCommitOpeningDimension}
         onDeckInteractionTelemetryChange={onDeckInteractionTelemetryChange}
         onCommitOutlineEdit={onCommitOutlineEdit}
+        onCommitMove={onCommitMove}
         projectContextShapes={projectContextShapes}
       />
     </section>

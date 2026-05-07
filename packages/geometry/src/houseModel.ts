@@ -671,6 +671,13 @@ export function buildHouseReferenceGeometry(input: {
   config: GeometryConfig;
   attachmentEdge: Line3 | null;
 }): HouseReferenceGeometry {
+  // House first-class spatial position (milestone 12). When set, every coord
+  // on the returned `HouseReferenceGeometry` is in house-local coords; the
+  // boundary (`applyAssemblyPosition3D`) consumes `position` and translates
+  // to world. When null, legacy world-coord path applies (footprint was
+  // pergola-anchored in `normalize.ts` and pre-translated implicitly).
+  const housePosition = input.config.houseContext.position ?? null;
+
   if (input.config.connection.type === 'freestanding') {
     return {
       wallPlane: null,
@@ -680,6 +687,7 @@ export function buildHouseReferenceGeometry(input: {
       footprint: input.config.houseContext.footprint ?? null,
       model: null,
       attachmentTarget: null,
+      position: housePosition,
     };
   }
 
@@ -701,5 +709,6 @@ export function buildHouseReferenceGeometry(input: {
     footprint: input.config.houseContext.footprint ?? null,
     model,
     attachmentTarget: model?.attachmentTarget ?? null,
+    position: housePosition,
   };
 }

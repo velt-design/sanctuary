@@ -37,13 +37,33 @@ export type MoveToolConfig = {
   commitMove: (request: MoveRequest) => void;
   invertMove?: (request: MoveRequest) => void;
   onPreviewChange?: (preview: MoveToolPreview | null) => void;
+  /**
+   * Called when a pointer-down doesn't initiate a move — either because there
+   * is no shape under the cursor or the shape's family is not accepted.
+   * Mirrors `EdgeDragTool.onPointerDownFallthrough` so the host can chain
+   * tools (EdgeDrag -> Move -> Select): each tool tries to claim the click;
+   * the rejected event bubbles to the next tool.
+   */
+  onPointerDownFallthrough?: (event: ToolPointerEvent) => void;
 };
 
 export function moveTargetFromShape(shape: GeometryTopProjectionShape): MoveTarget | null {
   const target = topProjectionShapeClassifier(shape);
   if (target.kind === 'pergola') return { family: 'pergola', targetId: target.pergolaId };
   if (target.kind === 'workbench') {
-    if (target.targetKind === 'deck') return { family: 'deck', targetId: target.targetId };
+    // For decks, the canonical-outline shape is the `house_surface_solid`
+    // prism (built by the geometry envelope), whose `sourceId` is the solid's
+    // own id (`house-solid-deck-1`), not the deck's id (`deck-1`). The
+    // builder copies the deck.id into `metadata.sourceId`. Prefer that when
+    // present so the move handler resolves the right object in the project
+    // model. The shorter `house_surface:deck-1` shape is also emitted but
+    // is z-ordered below the solid, so the solid is what actually catches
+    // pointerdowns.
+    if (target.targetKind === 'deck') {
+      const taggedSourceId =
+        typeof shape.metadata?.sourceId === 'string' ? shape.metadata.sourceId : null;
+      return { family: 'deck', targetId: taggedSourceId ?? target.targetId };
+    }
     if (target.targetKind === 'opening') return { family: 'opening', targetId: target.targetId };
   }
   return null;
@@ -96,10 +116,19 @@ export function createMoveTool(config: MoveToolConfig): Tool {
     id: 'move',
     cursor: 'move',
     onPointerDown(event: ToolPointerEvent) {
+      // Non-primary buttons (right-click for pan, middle-click) never start
+      // a move and never fall through — they bubble naturally to the SVG
+      // root where `usePanZoom` handles them. Matches EdgeDragTool's pattern.
       if (event.button !== 0) return;
-      if (!event.shape) return;
+      if (!event.shape) {
+        config.onPointerDownFallthrough?.(event);
+        return;
+      }
       const target = moveTargetFromShape(event.shape);
-      if (!target || !accepted.has(target.family)) return;
+      if (!target || !accepted.has(target.family)) {
+        config.onPointerDownFallthrough?.(event);
+        return;
+      }
       session = beginDrag({
         pointerId: event.pointerId,
         point: event.point,

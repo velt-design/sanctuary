@@ -880,8 +880,10 @@ export type HouseOpening3D = {
  * the user picks the attachment method (fascia / direct-to-soffit / soffit
  * brackets) separately in the inspector.
  *
- * Coords are in world space (the house model is not transformed by
- * `applyAssemblyPosition3D`; see `applyAssemblyPosition.ts` for why).
+ * Coords are in world space after `applyAssemblyPosition3D` runs at the
+ * boundary. When `assembly.house.position` is set the eave is in house-local
+ * coords until the boundary translates it (milestone 12); when null the
+ * legacy world-coord path applies.
  */
 export type HouseRoofEave3D = {
   /** Stable id, scoped within the house model. Format: `roof-eave-${sourceEdgeId}`. */
@@ -924,6 +926,20 @@ export type HouseReferenceGeometry = {
   footprint?: Polygon3 | null;
   model?: HouseModel3D | null;
   attachmentTarget?: HouseAttachmentTarget3D | null;
+  /**
+   * House first-class spatial position (milestone 12 of the spatial-entities
+   * migration). When set, every coord in this `HouseReferenceGeometry` is in
+   * **house-local** coords; `applyAssemblyPosition3D` reads this field and
+   * translates the house into world coords as part of the same boundary
+   * pass that translates the pergola. When null, the legacy world-coord
+   * path applies — the house is already in world coords (built from a
+   * pre-translated footprint) and `applyAssemblyPosition3D` skips it.
+   *
+   * Adding this field decouples house position from pergola position: a
+   * project can have multiple houses, or a single house at a non-default
+   * position, without depending on any pergola's frame.
+   */
+  position?: AssemblyPosition | null;
 };
 
 export type AssemblySupportCondition = {
@@ -1183,12 +1199,13 @@ export type GeometryQuantityTakeoff = {
  * the full list of assemblies; future slices retire the per-assembly
  * `house` duplication once a true project-level house input lands.
  *
- * **House transform** — `applyAssemblyPosition3D` deliberately does NOT
- * transform `assembly.house` (the house already lives in world coords and
- * is shared across pergolas in the same project). Once the house has its
- * own first-class `position` field consumed by the geometry pipeline, the
- * house can be transformed by its own assembly entry instead of being a
- * passenger on the pergola assembly.
+ * **House transform** — milestone 12 closed audit row 5: `assembly.house`
+ * carries its own `position` (independent of the pergola's `position`),
+ * and `applyAssemblyPosition3D` translates the house at the boundary using
+ * that position. When `assembly.house.position` is null the legacy world-
+ * coord path applies (the house was pre-translated in `normalize.ts`).
+ * The pergola transform and the house transform are independent: one can
+ * be set without the other, and neither affects the other's output.
  */
 export type Assembly3D = {
   family: PergolaFamily;

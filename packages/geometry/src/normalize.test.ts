@@ -1303,11 +1303,17 @@ describe('normalizeGeometryConfig', () => {
       }
     });
 
-    it('migration math: position default makes unit-frame decode equal legacy real-frame decode', () => {
+    it('migration math: position default makes unit-frame decode + boundary translation equal legacy real-frame decode', () => {
       // For 'front' attachmentSide with pergolaDepth=3, the migration formula
       // `position.y = (pergolaDepthM - 1) × 1000` produces a position such
       // that unit-frame decode + position == legacy real-frame decode. This
       // is what makes the auto-migration on first edit visually invisible.
+      //
+      // Milestone 12: the position is now applied at the boundary by
+      // `applyAssemblyPosition3D`, not at normalize time. So the migrated
+      // `houseContext.footprint` is in HOUSE-LOCAL coords; we apply the
+      // position manually here to compare against the legacy world coords.
+      const housePosition = { originXMm: 0, originYMm: 2000, rotationDeg: 0 };
       const legacy = normalizeGeometryConfig(
         makeFrontAttachmentInputWith({ pergolaWidthM: '6', pergolaDepthM: '3', housePosition: null }),
       );
@@ -1315,20 +1321,28 @@ describe('normalizeGeometryConfig', () => {
         makeFrontAttachmentInputWith({
           pergolaWidthM: '6',
           pergolaDepthM: '3',
-          housePosition: { originXMm: 0, originYMm: 2000, rotationDeg: 0 },
+          housePosition,
         }),
       );
       expect(legacy.ok).toBe(true);
       expect(migrated.ok).toBe(true);
       if (!legacy.ok || !migrated.ok) return;
       const legacyFootprint = legacy.value.houseContext.footprint;
-      const migratedFootprint = migrated.value.houseContext.footprint;
+      const migratedLocalFootprint = migrated.value.houseContext.footprint;
       expect(legacyFootprint).not.toBeNull();
-      expect(migratedFootprint).not.toBeNull();
-      expect(legacyFootprint!.length).toBe(migratedFootprint!.length);
+      expect(migratedLocalFootprint).not.toBeNull();
+      expect(legacyFootprint!.length).toBe(migratedLocalFootprint!.length);
+      // Apply the position translation to the local-coord footprint to get
+      // world coords (matches what `applyAssemblyPosition3D` does at the
+      // boundary).
+      const migratedWorldFootprint = migratedLocalFootprint!.map((point) => ({
+        x: point.x + housePosition.originXMm,
+        y: point.y + housePosition.originYMm,
+        z: point.z,
+      }));
       for (let idx = 0; idx < legacyFootprint!.length; idx += 1) {
-        expect(legacyFootprint![idx]!.x).toBeCloseTo(migratedFootprint![idx]!.x, 6);
-        expect(legacyFootprint![idx]!.y).toBeCloseTo(migratedFootprint![idx]!.y, 6);
+        expect(legacyFootprint![idx]!.x).toBeCloseTo(migratedWorldFootprint[idx]!.x, 6);
+        expect(legacyFootprint![idx]!.y).toBeCloseTo(migratedWorldFootprint[idx]!.y, 6);
       }
     });
 

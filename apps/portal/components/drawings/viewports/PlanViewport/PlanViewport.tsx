@@ -1,7 +1,8 @@
 'use client';
 
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { GeometryTopProjectionShape } from '@sp/geometry';
+import { createCommandBus } from '@/lib/drawings/commands/commandBus';
 import type { WorkbenchSolvedGeometryArtifact } from '@/lib/drawings/state/workbenchSolvedModel';
 import type {
   DrawingWorkbenchViewportTransform,
@@ -19,11 +20,14 @@ import { pickPrimaryEditCandidate, type ActiveObjectFamily, type PlanDimension }
 import { ToolDispatcherProvider } from './tools/ToolDispatcher';
 import { createSelectTool } from './tools/SelectTool';
 import { createEdgeDragTool, type EdgeDragCommit, type EdgeDragHover, type EdgeDragPreview } from './tools/EdgeDragTool';
+import { createMoveTool, type MoveRequest } from './tools/MoveTool';
+import type { Tool } from './tools/Tool';
 import { buildHouseSnapTargets } from './interactions/snap/buildHouseSnapTargets';
 import { buildOtherPergolaSnapTargets } from './interactions/snap/buildOtherPergolaSnapTargets';
 import type { SnapLineTarget } from './interactions/snap/snapEngine';
 
 export type { EdgeDragCommit, EdgeDragHover, EdgeDragPreview } from './tools/EdgeDragTool';
+export type { MoveRequest } from './tools/MoveTool';
 import { PlanViewportPlaceholder } from './PlanViewportPlaceholder';
 import lineweightStyles from './canvas/planLineweights.module.css';
 
@@ -55,6 +59,14 @@ export type PlanViewportProps = {
   onSelectPergolaTarget?: (pergolaId: string) => void;
   onClearWorkbenchSelection?: () => void;
   onCommitOutlineEdit?: (commit: EdgeDragCommit) => void;
+  /**
+   * Called when the move tool commits a translate. The handler reads the
+   * target's current `position.origin`, adds `request.delta`, and persists
+   * an atomic patch. Mirrors `onCommitOutlineEdit` for moves. The PlanViewport
+   * owns a `CommandBus` instance internally so move commands can be undone
+   * via Ctrl-Z while the viewport is focused.
+   */
+  onCommitMove?: (request: MoveRequest) => void;
 };
 
 export default function PlanViewport({
@@ -69,6 +81,7 @@ export default function PlanViewport({
   onSelectPergolaTarget,
   onClearWorkbenchSelection,
   onCommitOutlineEdit,
+  onCommitMove,
 }: PlanViewportProps) {
   const projection = artifact?.topProjection ?? null;
   const renderModel = usePlanRenderModel({ projection, visibility, activeObjectRef });
@@ -151,11 +164,53 @@ export default function PlanViewport({
   const snapLineTargetsRef = useRef(snapLineTargets);
   snapLineTargetsRef.current = snapLineTargets;
 
-  // Hold the SelectTool in a ref so EdgeDragTool's fall-through can hand off
-  // pointer-down events to it without forcing EdgeDragTool re-creation when
-  // the SelectTool callback identities change.
+  // CommandBus owns the undo/redo stack for moves originating in this
+  // viewport. Created once per PlanViewport instance. Edge-drag commits
+  // don't yet route through here (they're persisted directly via the
+  // commit handler chain) — extending undo to cover edge drags is a
+  // follow-up to milestone 14.
+  const commandBus = useMemo(() => createCommandBus(), []);
+
+  // Hold the SelectTool + onCommitMove in refs so the chained tools' captured
+  // callbacks always read the latest values without forcing tool re-creation
+  // on every parent render. Re-creating a tool mid-drag would tear down its
+  // session.
   const selectToolRef = useRef(selectTool);
   selectToolRef.current = selectTool;
+  const onCommitMoveRef = useRef(onCommitMove);
+  onCommitMoveRef.current = onCommitMove;
+
+  const moveTool = useMemo(
+    () =>
+      createMoveTool({
+        // Pergolas + decks are first-class spatial entities with their own
+        // `position.origin` (milestones 3 and 4). Openings are anchored to a
+        // wall edge (no free position) so they can't translate via this tool.
+        // House move requires more orchestration (audit row 5 / milestone 12);
+        // ship pergola + deck for now and add house-form move when the
+        // commit pipeline supports it.
+        acceptedFamilies: ['pergola', 'deck'],
+        commandBus,
+        // Threshold below which a click-without-drag is discarded (pixel-level
+        // jitter that shouldn't kick off a move). 5mm is roughly the same as
+        // EdgeDragTool's hit tolerance — feels equivalent to the user.
+        dragThresholdMm: 5,
+        commitMove: (request) => onCommitMoveRef.current?.(request),
+        // For moves, apply and invert use the same callback: positive delta
+        // for apply, negative for invert (the MoveTool's `createMoveCommand`
+        // builds the inverse request internally).
+        invertMove: (request) => onCommitMoveRef.current?.(request),
+        // When the click misses any movable target (empty area, decoration),
+        // hand off to SelectTool so selection still works.
+        onPointerDownFallthrough: (event) => {
+          selectToolRef.current.onPointerDown?.(event);
+        },
+      }),
+    [commandBus],
+  );
+
+  const moveToolRef = useRef(moveTool);
+  moveToolRef.current = moveTool;
 
   const edgeDragTool = useMemo(
     () =>
@@ -165,11 +220,12 @@ export default function PlanViewport({
         onPreviewChange: setEdgeDragPreview,
         onHoverChange: setEdgeDragHover,
         onCommit: (commit) => onCommitOutlineEditRef.current?.(commit),
-        // When a click misses the active outline's edges, hand the pointer event
-        // to the SelectTool so the user can switch selection by clicking on a
-        // different object in the plan view (matching left-nav behaviour).
+        // Tool chain: EdgeDrag -> Move -> Select. When a click misses the
+        // active outline's edges, try MoveTool (translate body); MoveTool in
+        // turn falls through to SelectTool when the click isn't on a movable
+        // target.
         onPointerDownFallthrough: (event) => {
-          selectToolRef.current.onPointerDown?.(event);
+          moveToolRef.current.onPointerDown?.(event);
         },
       }),
     [getActiveOutline],
@@ -177,7 +233,60 @@ export default function PlanViewport({
 
   const activeOutlineForRender = renderModel !== null && activeFamily !== null ? getActiveOutline() : null;
   const hasEditableOutline = activeOutlineForRender !== null;
-  const activeTool = hasEditableOutline ? edgeDragTool : selectTool;
+  // Composite tool: pointer-down enters the chain at EdgeDragTool (it falls
+  // through to MoveTool then SelectTool via `onPointerDownFallthrough`).
+  // Pointer-move and pointer-up fan out to BOTH EdgeDragTool and MoveTool —
+  // each tool guards its own session, so only the one that started a drag
+  // acts on these events. Without this fan-out, a move drag started via
+  // EdgeDragTool's fallthrough would never receive its updates (the
+  // dispatcher only routes to the single active tool, which is the entry
+  // tool, not the chained tool that took the click).
+  //
+  // Cursor switches with `hasEditableOutline` for visual feedback, but the
+  // tool id stays stable ('plan-tools') so `ToolDispatcher` doesn't cancel
+  // active sessions when the cursor changes mid-render.
+  const activeTool = useMemo<Tool>(
+    () => ({
+      id: 'plan-tools',
+      cursor: hasEditableOutline ? 'crosshair' : 'default',
+      onPointerDown: (event) => edgeDragTool.onPointerDown?.(event),
+      onPointerMove: (event) => {
+        edgeDragTool.onPointerMove?.(event);
+        moveTool.onPointerMove?.(event);
+      },
+      onPointerUp: (event) => {
+        edgeDragTool.onPointerUp?.(event);
+        moveTool.onPointerUp?.(event);
+      },
+      onCancel: () => {
+        edgeDragTool.onCancel?.();
+        moveTool.onCancel?.();
+      },
+    }),
+    [edgeDragTool, hasEditableOutline, moveTool],
+  );
+
+  // Ctrl-Z / Ctrl-Shift-Z keyboard shortcuts for the local CommandBus. Only
+  // handle when no input is focused (so typing in the inspector doesn't
+  // trigger an undo). Mac users: cmd-Z / cmd-shift-Z map to the same metaKey
+  // path.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handler = (event: KeyboardEvent) => {
+      const key = event.key.toLowerCase();
+      if (key !== 'z') return;
+      const target = event.target as HTMLElement | null;
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
+        return;
+      }
+      if (!event.ctrlKey && !event.metaKey) return;
+      event.preventDefault();
+      if (event.shiftKey) commandBus.redo();
+      else commandBus.undo();
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [commandBus]);
 
   const mergedDimensions = usePlanSelectionDimensions({
     selectionHaloItems: renderModel?.selectionHaloItems,

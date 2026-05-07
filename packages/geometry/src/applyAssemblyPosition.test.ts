@@ -82,12 +82,72 @@ describe('applyAssemblyPosition3D', () => {
     expect(result.outline[2]!.y).toBeCloseTo(8000, 6);
   });
 
-  it('does not transform the house reference geometry', () => {
+  it('does not transform the house reference geometry when assembly.house.position is null (legacy path)', () => {
     const assembly = makeBaseAssembly();
     const position: AssemblyPosition = { origin: { x: 1500, y: 2000 }, rotationDeg: 45 };
     const result = applyAssemblyPosition3D(assembly, position);
-    // house.footprint should be byte-equal — the helper must not touch it.
+    // House is in legacy world coords (no per-house position). The pergola
+    // transform must not touch it.
     expect(result.house.footprint).toBe(assembly.house.footprint);
+  });
+
+  it('transforms the house when assembly.house.position is set, independently of the pergola position', () => {
+    // Milestone 12: house is a first-class spatial entity with its own
+    // position routed through the boundary. The pergola transform doesn't
+    // affect the house, and vice versa — each is applied independently.
+    const assembly: Assembly3D = {
+      ...makeBaseAssembly(),
+      house: {
+        ...makeBaseAssembly().house,
+        // Footprint stored in HOUSE-LOCAL coords (origin at house bottom-left).
+        footprint: [
+          { x: 0, y: 0, z: 0 },
+          { x: 6000, y: 0, z: 0 },
+          { x: 6000, y: 1800, z: 0 },
+          { x: 0, y: 1800, z: 0 },
+        ],
+        position: { origin: { x: -1000, y: -1800 }, rotationDeg: 0 },
+      },
+    };
+    const pergolaPosition: AssemblyPosition = { origin: { x: 500, y: 0 }, rotationDeg: 0 };
+    const result = applyAssemblyPosition3D(assembly, pergolaPosition);
+    // Pergola translated by (500, 0).
+    expect(result.outline[0]!.x).toBeCloseTo(500, 6);
+    expect(result.outline[0]!.y).toBeCloseTo(0, 6);
+    // House translated by ITS OWN position (-1000, -1800), not the pergola's.
+    expect(result.house.footprint![0]!.x).toBeCloseTo(-1000, 6);
+    expect(result.house.footprint![0]!.y).toBeCloseTo(-1800, 6);
+    expect(result.house.footprint![2]!.x).toBeCloseTo(5000, 6);
+    expect(result.house.footprint![2]!.y).toBeCloseTo(0, 6);
+    // Position is consumed by the transform — null after the boundary call so
+    // a subsequent applyAssemblyPosition3D call doesn't double-translate.
+    expect(result.house.position).toBeNull();
+  });
+
+  it('applies house position even when pergola position is null', () => {
+    // The early-return must not skip the house transform when the pergola
+    // has no position but the house does.
+    const assembly: Assembly3D = {
+      ...makeBaseAssembly(),
+      house: {
+        ...makeBaseAssembly().house,
+        footprint: [
+          { x: 0, y: 0, z: 0 },
+          { x: 6000, y: 0, z: 0 },
+          { x: 6000, y: 1800, z: 0 },
+          { x: 0, y: 1800, z: 0 },
+        ],
+        position: { origin: { x: 250, y: 750 }, rotationDeg: 90 },
+      },
+    };
+    const result = applyAssemblyPosition3D(assembly, null);
+    // House local (0,0) rotated 90° = (0,0) → translated = (250, 750).
+    expect(result.house.footprint![0]!.x).toBeCloseTo(250, 6);
+    expect(result.house.footprint![0]!.y).toBeCloseTo(750, 6);
+    // House local (6000, 0) rotated 90° = (0, 6000) → translated = (250, 6750).
+    expect(result.house.footprint![1]!.x).toBeCloseTo(250, 6);
+    expect(result.house.footprint![1]!.y).toBeCloseTo(6750, 6);
+    expect(result.house.position).toBeNull();
   });
 
   it('updates the datum frame to reflect the new world position', () => {
@@ -128,5 +188,80 @@ describe('applyAssemblyPosition3D', () => {
       expect(result.outline[idx]!.y).toBeCloseTo(assembly.outline[idx]!.y, 6);
       expect(result.outline[idx]!.z).toBeCloseTo(assembly.outline[idx]!.z, 6);
     }
+  });
+
+  it('transforms house wall segments and roof eaves so snap targets land at world coords', () => {
+    // End-to-end snap-target invariant: when the house is at a non-zero
+    // position, the wall segments and roof eaves consumed by the snap engine
+    // (`buildHouseSnapTargets`) must end up at the correct world coords after
+    // the boundary runs. This locks the milestone-12 contract end-to-end.
+    const assembly: Assembly3D = {
+      ...makeBaseAssembly(),
+      house: {
+        ...makeBaseAssembly().house,
+        position: { origin: { x: 1000, y: 500 }, rotationDeg: 0 },
+        model: {
+          footprint: [
+            { x: 0, y: 0, z: 0 },
+            { x: 6000, y: 0, z: 0 },
+            { x: 6000, y: 1800, z: 0 },
+            { x: 0, y: 1800, z: 0 },
+          ],
+          wallSegments: [
+            {
+              id: 'house-wall-front',
+              line: { start: { x: 0, y: 0, z: 0 }, end: { x: 6000, y: 0, z: 0 } },
+              plane: {
+                origin: { x: 0, y: 0, z: 0 },
+                xAxis: { x: 1, y: 0, z: 0 },
+                yAxis: { x: 0, y: 0, z: 1 },
+                normal: { x: 0, y: -1, z: 0 },
+              },
+              boundary: [],
+            },
+          ],
+          roofPlanes: [],
+          roofEaves: [
+            {
+              id: 'roof-eave-front',
+              edgeKind: 'drain_eave',
+              eaveLine: { start: { x: -450, y: -450, z: 2400 }, end: { x: 6450, y: -450, z: 2400 } },
+              sourceEdgeId: 'edge-1',
+              sourceRoofPlaneId: 'roof-front',
+            },
+          ],
+          eave: {
+            soffitDepthMm: null,
+            fasciaHeightMm: null,
+            gutterWidthMm: null,
+            gutterDepthMm: null,
+            gutterProjectionMm: null,
+            eaveOverhangMm: null,
+            soffitPolygons: null,
+            fasciaPolygons: null,
+            gutterLines: null,
+            gutterBoundaries: null,
+          },
+        },
+      },
+    };
+    const result = applyAssemblyPosition3D(assembly, null);
+    // Wall segment line: local (0,0)→(6000,0), translated by (1000, 500) →
+    // world (1000, 500)→(7000, 500). This is what `buildHouseSnapTargets`
+    // surfaces as a `wall` snap line target.
+    const wall = result.house.model!.wallSegments[0]!;
+    expect(wall.line.start.x).toBeCloseTo(1000, 6);
+    expect(wall.line.start.y).toBeCloseTo(500, 6);
+    expect(wall.line.end.x).toBeCloseTo(7000, 6);
+    expect(wall.line.end.y).toBeCloseTo(500, 6);
+    // Roof eave: local (-450, -450, 2400)→(6450, -450, 2400), translated by
+    // (1000, 500) on XY (Z stays). This is what `buildHouseSnapTargets`
+    // surfaces as a `roof_eave` snap line target.
+    const eave = result.house.model!.roofEaves![0]!;
+    expect(eave.eaveLine.start.x).toBeCloseTo(550, 6);
+    expect(eave.eaveLine.start.y).toBeCloseTo(50, 6);
+    expect(eave.eaveLine.start.z).toBeCloseTo(2400, 6);
+    expect(eave.eaveLine.end.x).toBeCloseTo(7450, 6);
+    expect(eave.eaveLine.end.y).toBeCloseTo(50, 6);
   });
 });
