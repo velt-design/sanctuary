@@ -47,36 +47,22 @@ describe('planCommittedBodyTokenClass', () => {
       );
     });
 
-    it('maps a closed house_terminal_end (isOpen=false) to the closed marker style', () => {
+    it('keeps a hip-end facet on the standard roof style even when tagged with openGableEndId metadata', () => {
+      // Milestone 13: terminal-end click targets reuse the EXISTING
+      // hip facet (kind: 'roof') by tagging its metadata. The styling
+      // is intentionally identical to a non-toggleable hipped roof so
+      // the marker only reveals itself on hover via the hit-target
+      // layer's :hover affordance. The toggle vs selection split is
+      // resolved by the selection router, not the shape style.
       expect(
         planCommittedBodyTokenClass(
           shape({
             family: 'house',
-            kind: 'house_terminal_end',
+            kind: 'roof',
             metadata: { isOpen: false, openGableEndId: 'house-gable-end-x-2' },
           }),
         ),
-      ).toMatch(/bodyHouseTerminalEndClosed/);
-    });
-
-    it('maps an open house_terminal_end (isOpen=true) to the open marker style', () => {
-      expect(
-        planCommittedBodyTokenClass(
-          shape({
-            family: 'house',
-            kind: 'house_terminal_end',
-            metadata: { isOpen: true, openGableEndId: 'house-gable-end-x-2' },
-          }),
-        ),
-      ).toMatch(/bodyHouseTerminalEndOpen/);
-    });
-
-    it('treats a house_terminal_end without isOpen metadata as closed (defensive default)', () => {
-      // Older or test-built shapes may omit metadata. A missing flag
-      // should not blow up the styling pipeline -- default to closed.
-      expect(
-        planCommittedBodyTokenClass(shape({ family: 'house', kind: 'house_terminal_end' })),
-      ).toMatch(/bodyHouseTerminalEndClosed/);
+      ).toMatch(/bodyHouseRoof/);
     });
   });
 

@@ -8,10 +8,6 @@ export type HouseGableTerminalEnd = {
 
 export { deriveHouseGableTerminalEndsFromFootprint as deriveHouseGableTerminalEnds } from './houseModel';
 export {
-  deriveHouseTerminalEndMarkers,
-  type HouseTerminalEndMarker,
-} from './houseModel';
-export {
   deriveHouseRoofAppendageSupportFromFootprint as deriveHouseRoofAppendageSupport,
   type HouseRoofAppendageHostRun,
   type HouseRoofAppendageSupportAnalysis,

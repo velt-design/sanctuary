@@ -228,15 +228,18 @@ describe('selectionRouter', () => {
       ).toEqual({ kind: 'pergola', pergolaId: 'pergola-deck-cover-1' });
     });
 
-    it('classifies house_terminal_end shapes as a toggle action with metadata-resolved endId and isOpen', () => {
-      // Closed end -- the geometry emitter sets isOpen: false; clicking
-      // should propagate the same value so the dispatcher can invert.
+    it('classifies a hip facet roof shape carrying openGableEndId metadata as a toggle action', () => {
+      // Milestone 13: enrichHouseRoofShapesWithTerminalEnds tags the
+      // existing hip facet (kind: 'roof') with `openGableEndId` and
+      // `isOpen` metadata. Clicking it must dispatch the toggle action
+      // rather than select the roof. Other roof facets (without the
+      // metadata tag) keep their standard roof-selection routing.
       expect(
         topProjectionShapeClassifier(
           makeShape({
             family: 'house',
-            kind: 'house_terminal_end',
-            sourceId: 'house-gable-end-x-2',
+            kind: 'roof',
+            sourceObjectId: 'house-roof-edge-2',
             metadata: { openGableEndId: 'house-gable-end-x-2', isOpen: false },
           }),
         ),
@@ -246,13 +249,12 @@ describe('selectionRouter', () => {
         isOpen: false,
       });
 
-      // Open end -- isOpen: true; click closes it.
       expect(
         topProjectionShapeClassifier(
           makeShape({
             family: 'house',
-            kind: 'house_terminal_end',
-            sourceId: 'house-gable-end-x-4',
+            kind: 'roof',
+            sourceObjectId: 'house-roof-edge-4',
             metadata: { openGableEndId: 'house-gable-end-x-4', isOpen: true },
           }),
         ),
@@ -263,20 +265,18 @@ describe('selectionRouter', () => {
       });
     });
 
-    it('falls back to sourceId when openGableEndId metadata is missing on a house_terminal_end shape', () => {
+    it('keeps roof facets without openGableEndId metadata on the standard roof selection path', () => {
+      // Non-terminal hip facets (and the long along-ridge facets) don't
+      // toggle anything -- they should still select the roof as before.
       expect(
         topProjectionShapeClassifier(
           makeShape({
             family: 'house',
-            kind: 'house_terminal_end',
-            sourceId: 'house-gable-end-y-1',
+            kind: 'roof',
+            sourceObjectId: 'house-roof-min-y',
           }),
         ),
-      ).toEqual({
-        kind: 'house_terminal_end_toggle',
-        endId: 'house-gable-end-y-1',
-        isOpen: false,
-      });
+      ).toEqual({ kind: 'workbench', targetKind: 'roof', targetId: 'house-roof-min-y' });
     });
   });
 });

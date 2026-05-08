@@ -129,15 +129,18 @@ describe('dispatchSelectionTarget', () => {
   });
 });
 
-describe('selectShape end-to-end for house_terminal_end', () => {
-  it('routes a house/house_terminal_end shape with metadata to the toggle callback', () => {
+describe('selectShape end-to-end for terminal-end roof facets', () => {
+  it('routes a hip facet (kind=roof) with openGableEndId metadata to the toggle callback', () => {
+    // Milestone 13: the actual hip facet's roof shape is enriched
+    // with `openGableEndId` + `isOpen` metadata at top-projection
+    // build time. The selection router recognises that and dispatches
+    // the toggle instead of the regular workbench-roof selection.
     const callbacks = spies();
     selectShape(
       shape({
         family: 'house',
-        kind: 'house_terminal_end',
-        sourceObjectId: 'house-1',
-        sourceId: 'house-gable-end-x-2',
+        kind: 'roof',
+        sourceObjectId: 'house-roof-edge-2',
         metadata: { openGableEndId: 'house-gable-end-x-2', isOpen: false },
       }),
       callbacks,
@@ -146,5 +149,23 @@ describe('selectShape end-to-end for house_terminal_end', () => {
       'house-gable-end-x-2',
       false,
     );
+    expect(callbacks.onSelectObjectWorkbenchTarget).not.toHaveBeenCalled();
+  });
+
+  it('still routes a non-terminal-end roof facet to the workbench roof selection', () => {
+    const callbacks = spies();
+    selectShape(
+      shape({
+        family: 'house',
+        kind: 'roof',
+        sourceObjectId: 'house-roof-min-y',
+      }),
+      callbacks,
+    );
+    expect(callbacks.onSelectObjectWorkbenchTarget).toHaveBeenCalledWith({
+      kind: 'roof',
+      targetId: 'house-roof-min-y',
+    });
+    expect(callbacks.onToggleHouseTerminalEnd).not.toHaveBeenCalled();
   });
 });

@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import type { GeometryTopProjectionShape } from '@sp/geometry';
 import {
   buildProjectionPlanRenderGraph,
-  topProjectionPlanLayer,
   topProjectionShapeVisible,
   topProjectionShapeVisualOwner,
 } from './planRenderGraph';
@@ -110,54 +109,4 @@ describe('planRenderGraph', () => {
     })).toBe(false);
   });
 
-  it('routes house_terminal_end click-target shapes onto the committed-bodies layer', () => {
-    // Milestone 13: terminal-end markers (the inward-pointing hip
-    // triangles in plan view) need to render visibly so users can
-    // click them, AND need to be hit-testable -- the hit-target layer
-    // builds from committed bodies, so this routing is what makes the
-    // markers clickable end-to-end.
-    const closedMarker = shape({
-      id: 'house_terminal_end:house-1:house-gable-end-x-2',
-      sourceObjectId: 'house-1',
-      sourceId: 'house-gable-end-x-2',
-      family: 'house',
-      kind: 'house_terminal_end',
-      sourceType: 'house_reference',
-      metadata: {
-        topProjectionRole: 'top_visible',
-        openGableEndId: 'house-gable-end-x-2',
-        isOpen: false,
-      },
-    });
-    const openMarker = shape({
-      ...closedMarker,
-      id: 'house_terminal_end:house-1:house-gable-end-x-4',
-      sourceId: 'house-gable-end-x-4',
-      metadata: {
-        topProjectionRole: 'top_visible',
-        openGableEndId: 'house-gable-end-x-4',
-        isOpen: true,
-      },
-    });
-    expect(topProjectionPlanLayer(closedMarker)).toBe('committedBodies');
-    expect(topProjectionPlanLayer(openMarker)).toBe('committedBodies');
-    // Visibility tracks the house family toggle -- hiding the house
-    // also hides its terminal-end click targets.
-    expect(
-      topProjectionShapeVisible(closedMarker, {
-        house: false,
-        decks: true,
-        pergolas: true,
-        openings: true,
-      }),
-    ).toBe(false);
-    expect(
-      topProjectionShapeVisible(closedMarker, {
-        house: true,
-        decks: true,
-        pergolas: true,
-        openings: true,
-      }),
-    ).toBe(true);
-  });
 });

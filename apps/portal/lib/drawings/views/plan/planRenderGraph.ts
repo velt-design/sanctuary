@@ -63,15 +63,6 @@ export function topProjectionPlanLayer(shape: GeometryTopProjectionShape): Proje
     if (shape.sourceType === 'house_reference' && shape.kind === 'footprint') {
       return 'committedBodies';
     }
-    // Milestone 13 plan-view UX: terminal-end click target. The marker
-    // is a house_reference shape (emitted by buildReferenceShapes in
-    // packages/geometry/src/topProjection.ts) and renders as a body so
-    // it picks up the hit-target layer for clicks. Styling lives in
-    // shapeStyle.ts -- closed ends draw as a soft fill, open ends draw
-    // as a dashed outline.
-    if (shape.sourceType === 'house_reference' && shape.kind === 'house_terminal_end') {
-      return 'committedBodies';
-    }
     if (
       (shape.sourceType === 'house_surface_solid' || shape.sourceType === 'house_surface') &&
       (shape.kind === 'roof' || shape.kind === 'deck' || shape.kind === 'footprint')

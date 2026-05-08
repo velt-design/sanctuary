@@ -90,22 +90,25 @@ export function topProjectionShapeClassifier(
       return { kind: 'workbench', targetKind: 'attachment_zone', targetId };
     }
     if (shape.kind === 'roof') {
-      return { kind: 'workbench', targetKind: 'roof', targetId };
-    }
-    if (shape.kind === 'house_terminal_end') {
-      // The geometry emitter (`packages/geometry/src/topProjection.ts`)
-      // tags every terminal-end marker with `metadata.openGableEndId`
-      // and `metadata.isOpen`. Read both so the dispatcher can call the
-      // toggle with the inverted next-state -- if the end is currently
-      // open, clicking should close it, and vice versa. Falling back to
-      // shape.sourceId (set to the same end id) keeps tests that build
-      // synthetic shapes without metadata working.
-      const endId =
+      // Milestone 13 plan-view UX: a hip facet that corresponds to a
+      // terminal end of a hipped roof carries `metadata.openGableEndId`
+      // (added by `enrichHouseRoofShapesWithTerminalEnds` in
+      // `packages/geometry/src/topProjection.ts`). Clicking that
+      // specific roof facet should TOGGLE the end's open state rather
+      // than select the roof. All other roof facets fall through to
+      // the standard workbench roof selection.
+      const terminalEndId =
         typeof shape.metadata?.openGableEndId === 'string'
           ? shape.metadata.openGableEndId
-          : (shape.sourceId ?? shape.id);
-      const isOpen = shape.metadata?.isOpen === true;
-      return { kind: 'house_terminal_end_toggle', endId, isOpen };
+          : null;
+      if (terminalEndId) {
+        return {
+          kind: 'house_terminal_end_toggle',
+          endId: terminalEndId,
+          isOpen: shape.metadata?.isOpen === true,
+        };
+      }
+      return { kind: 'workbench', targetKind: 'roof', targetId };
     }
     return { kind: 'workbench', targetKind: 'house', targetId };
   }

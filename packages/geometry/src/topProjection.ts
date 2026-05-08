@@ -12,7 +12,7 @@ import type {
   ViewerSceneModel,
   ViewerSceneObject,
 } from './contracts';
-import { deriveHouseTerminalEndMarkers } from './houseModel';
+import { deriveHouseGableTerminalEndsFromFootprint } from './houseModel';
 import { buildViewerSceneModel } from './viewer';
 
 const EPSILON_MM = 1e-6;
@@ -28,6 +28,17 @@ type ObjectProjection = {
 
 export type BuildTopProjectionViewModelFromSceneOptions = {
   referenceShapes?: GeometryTopProjectionShape[];
+  /**
+   * Milestone 13: when supplied, hip-end facets that match a terminal
+   * end of the house's hipped roof are tagged with `openGableEndId`
+   * and `isOpen` metadata so the plan-view selection router can
+   * dispatch the per-end open-as-gable toggle. Both
+   * `buildTopProjectionViewModel` (the assembly-first entry) and the
+   * scene-first parity test in `topProjection.test.ts` need to apply
+   * the SAME enrichment to produce identical output -- passing the
+   * assembly here is what keeps that invariant.
+   */
+  terminalEndAssembly?: Assembly3D;
 };
 
 export type TopProjectionParityIssueCode =
@@ -634,82 +645,175 @@ function buildReferenceShapes(
     });
   }
 
-  // House terminal-end click targets (milestone 13, plan-view UX): one
-  // inward-pointing triangle per terminal end of a hipped roof. The
-  // shape carries `openGableEndId` + `isOpen` so the plan viewport can
-  // dispatch a toggle when the user clicks it. Emitted ONLY for hipped
-  // forms -- gable is migrated to hipped at normalize time, and flat /
-  // mono roofs have no terminal ends.
-  //
-  // `roofForm` and `openGableEndIds` come from `house.model.metadata`
-  // (config shadowed into metadata at solve time -- see `houseModel.ts`
-  // metadata assembly). The ridge axis is derived from the assembled
-  // roof planes' own `ridgeAxis` field rather than stored separately,
-  // so the canonical fixture hash stays stable when this emitter is
-  // added or removed.
+  return shapes;
+}
+
+/**
+ * Milestone 13 plan-view UX: tag each existing house roof facet that
+ * corresponds to a hipped roof's terminal end with the toggle metadata
+ * the selection router needs (`openGableEndId` + `isOpen`). The hip
+ * triangle ALREADY exists in the projection as a `kind: 'roof'` shape;
+ * enriching it in place avoids stacking a synthetic marker on top and
+ * keeps the visual identical to a non-toggleable hipped roof. Hover
+ * affordance comes from the existing `.hitTarget:hover` style on the
+ * plan canvas.
+ *
+ * Identification is by spatial overlap with the terminal end's eave
+ * segment rather than `metadata.sourceEdgeId`: the rectangular path
+ * (`buildRectangularRoof` in `house/roofRectangle.ts`) doesn't carry
+ * footprint edge ids on its hip caps, and adding them would change
+ * the canonical assembly hash. A hip cap projects to a triangle with
+ * one edge equal to its terminal eave segment -- we match by checking
+ * for two consecutive vertices that align (within tolerance) with a
+ * terminal end's eave start/end points.
+ *
+ * For OPEN ends, no facet exists (the wavefront removed it via the
+ * stationary-edge mechanism in session B). Nothing to enrich. The
+ * user re-closes from the inspector's open-end toggle list.
+ */
+const TERMINAL_END_MATCH_TOLERANCE_MM = 1;
+
+function enrichHouseRoofShapesWithTerminalEnds(
+  shapes: GeometryTopProjectionShape[],
+  assembly: Assembly3D,
+): GeometryTopProjectionShape[] {
   const houseModel = assembly.house.model;
   const houseMeta = houseModel?.metadata ?? null;
   const metaRoofForm = typeof houseMeta?.roofForm === 'string' ? houseMeta.roofForm : null;
   const metaOpenIdsCsv =
     typeof houseMeta?.openGableEndIds === 'string' ? houseMeta.openGableEndIds : '';
-  const metaOpenIds = metaOpenIdsCsv
-    ? metaOpenIdsCsv.split(',').map((value) => value.trim()).filter(Boolean)
-    : [];
+  const metaOpenIds = new Set(
+    metaOpenIdsCsv
+      ? metaOpenIdsCsv.split(',').map((value) => value.trim()).filter(Boolean)
+      : [],
+  );
   const dominantRidgeAxis: 'x' | 'y' | null = (() => {
-    // `ridgeAxis` is stored in each plane's metadata (set by
-    // `buildRoofPlane` in `house/roofPlane.ts`). Hipped roofs produce
-    // some planes with axis 'pyramid' (the corner facets in a square
-    // hipped) -- those don't carry a meaningful per-axis ridge, so we
-    // pick the first 'x' or 'y' plane as the dominant axis.
     for (const plane of houseModel?.roofPlanes ?? []) {
       const axis = plane.metadata?.ridgeAxis;
       if (axis === 'x' || axis === 'y') return axis;
     }
     return null;
   })();
-  // The post-solve roof metadata reports `roofForm` as the resolved
-  // visible form: 'hipped' (all caps closed), 'gable' (all caps open),
-  // or 'dutch_hip' (mixed). The user's chosen form is always 'hipped'
-  // after the milestone 13 normalize-time migration -- but the markers
-  // need to appear in all three resolved states so the user can keep
-  // toggling. So we emit for any of the three.
-  const metaRoofFormHasTerminalEnds =
+  const formHasTerminalEnds =
     metaRoofForm === 'hipped' || metaRoofForm === 'dutch_hip' || metaRoofForm === 'gable';
   if (
-    metaRoofFormHasTerminalEnds &&
-    houseModel?.footprint &&
-    (dominantRidgeAxis === 'x' || dominantRidgeAxis === 'y')
+    !formHasTerminalEnds ||
+    !houseModel?.footprint ||
+    (dominantRidgeAxis !== 'x' && dominantRidgeAxis !== 'y')
   ) {
-    const markers = deriveHouseTerminalEndMarkers({
-      footprint: houseModel.footprint,
-      ridgeAxis: dominantRidgeAxis,
-      openGableEndIds: metaOpenIds,
-    });
-    for (const marker of markers) {
-      const polygon = cleanPolygon(toPolygon2(marker.markerPolygon));
-      if (!polygon || polygon.length < 3) continue;
-      shapes.push({
-        id: `house_terminal_end:${houseSourceId}:${marker.endId}`,
-        sourceObjectId: houseSourceId,
-        sourceId: marker.endId,
-        sourceType: 'house_reference',
-        family: 'house',
-        kind: 'house_terminal_end',
-        polygon,
-        zOrder: 2,
-        zMin: 0,
-        zMax: 0,
-        metadata: {
-          ...metadataWithTopProjectionRole(undefined, 'top_visible'),
-          openGableEndId: marker.endId,
-          isOpen: marker.isOpen,
-          sourceFootprintEdgeIndex: marker.sourceFootprintEdgeIndex,
-        },
-      });
-    }
+    return shapes;
   }
-
-  return shapes;
+  const terminalEnds = deriveHouseGableTerminalEndsFromFootprint({
+    footprint: houseModel.footprint,
+    ridgeAxis: dominantRidgeAxis,
+  });
+  if (terminalEnds.length === 0) return shapes;
+  // Build per-terminal eave segment endpoints (in 2D world mm). The
+  // trailing N in `house-gable-end-{axis}-N` is the 1-based polygon
+  // edge index, which directly indexes the footprint.
+  type TerminalSegment = {
+    endId: string;
+    isOpen: boolean;
+    a: Point2;
+    b: Point2;
+  };
+  const segments: TerminalSegment[] = [];
+  for (const terminalEnd of terminalEnds) {
+    const trailing = terminalEnd.id.match(/-(\d+)$/);
+    if (!trailing) continue;
+    const edgeIndex = Number(trailing[1]) - 1;
+    if (
+      !Number.isFinite(edgeIndex) ||
+      edgeIndex < 0 ||
+      edgeIndex >= houseModel.footprint.length
+    ) {
+      continue;
+    }
+    const start = houseModel.footprint[edgeIndex]!;
+    const end = houseModel.footprint[(edgeIndex + 1) % houseModel.footprint.length]!;
+    segments.push({
+      endId: terminalEnd.id,
+      isOpen: metaOpenIds.has(terminalEnd.id),
+      a: { x: start.x, y: start.y },
+      b: { x: end.x, y: end.y },
+    });
+  }
+  if (segments.length === 0) return shapes;
+  // Test via point-in-polygon at an inward-shifted eave midpoint.
+  // The roof shape's polygon comes from a `house_surface_solid` prism
+  // that includes the eave overhang, so its polygon vertices don't
+  // align with the footprint edge endpoints. But ANY hip cap covering
+  // a terminal end contains the segment between the eave midpoint
+  // (just inside the footprint) and the apex. Probing slightly inward
+  // from the footprint midpoint reliably hits the hip cap and misses
+  // the long along-ridge facets (which are inboard of the eave).
+  const TERMINAL_END_INWARD_PROBE_MM = 100;
+  const probePoints = segments.map((segment) => {
+    const dx = segment.b.x - segment.a.x;
+    const dy = segment.b.y - segment.a.y;
+    const length = Math.hypot(dx, dy);
+    const midX = (segment.a.x + segment.b.x) / 2;
+    const midY = (segment.a.y + segment.b.y) / 2;
+    if (length === 0) return { ...segment, probe: { x: midX, y: midY } };
+    // Polygon centroid as the "inward" reference: rotate the edge
+    // vector 90 deg both ways, pick the rotation whose direction
+    // points from the edge midpoint toward the polygon centroid.
+    let centroidX = 0;
+    let centroidY = 0;
+    if (houseModel.footprint) {
+      for (const point of houseModel.footprint) {
+        centroidX += point.x;
+        centroidY += point.y;
+      }
+      centroidX /= houseModel.footprint.length;
+      centroidY /= houseModel.footprint.length;
+    }
+    const towardCentroidX = centroidX - midX;
+    const towardCentroidY = centroidY - midY;
+    const perpA = { x: -dy / length, y: dx / length };
+    const perpB = { x: dy / length, y: -dx / length };
+    const dotA = perpA.x * towardCentroidX + perpA.y * towardCentroidY;
+    const inward = dotA >= 0 ? perpA : perpB;
+    return {
+      ...segment,
+      probe: {
+        x: midX + inward.x * TERMINAL_END_INWARD_PROBE_MM,
+        y: midY + inward.y * TERMINAL_END_INWARD_PROBE_MM,
+      },
+    };
+  });
+  const pointInPolygon = (point: Point2, polygon: Polygon2): boolean => {
+    let inside = false;
+    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i, i += 1) {
+      const xi = polygon[i]!.x;
+      const yi = polygon[i]!.y;
+      const xj = polygon[j]!.x;
+      const yj = polygon[j]!.y;
+      const intersects = yi > point.y !== yj > point.y &&
+        point.x < ((xj - xi) * (point.y - yi)) / (yj - yi) + xi;
+      if (intersects) inside = !inside;
+    }
+    return inside;
+  };
+  return shapes.map((shape) => {
+    if (shape.family !== 'house' || shape.kind !== 'roof') return shape;
+    // Hip-cap facets project as triangles (3 vertices); the long
+    // along-ridge main slopes project as quads. Filtering to
+    // triangles keeps the inward-probe from accidentally matching a
+    // long slope when one end is open and the ridge runs all the way
+    // to that eave (see 'flags isOpen' test).
+    if (shape.polygon.length !== 3) return shape;
+    const matched = probePoints.find((entry) => pointInPolygon(entry.probe, shape.polygon));
+    if (!matched) return shape;
+    return {
+      ...shape,
+      metadata: {
+        ...(shape.metadata ?? {}),
+        openGableEndId: matched.endId,
+        isOpen: matched.isOpen,
+      },
+    };
+  });
 }
 
 function shapeExtents(shapes: GeometryTopProjectionShape[]): GeometryTopProjectionViewModel['extents'] {
@@ -848,10 +952,13 @@ export function buildTopProjectionViewModelFromScene(
   scene: ViewerSceneModel,
   options: BuildTopProjectionViewModelFromSceneOptions = {},
 ): GeometryTopProjectionViewModel {
-  const shapes = [
+  const baseShapes = [
     ...(options.referenceShapes ?? []),
     ...scene.layers.flatMap((layer) => layer.objects.map(buildShapeFromObject).filter((shape): shape is GeometryTopProjectionShape => Boolean(shape))),
   ].sort((left, right) => left.zOrder - right.zOrder || left.id.localeCompare(right.id));
+  const shapes = options.terminalEndAssembly
+    ? enrichHouseRoofShapesWithTerminalEnds(baseShapes, options.terminalEndAssembly)
+    : baseShapes;
 
   return {
     coordinateSpace: 'world_xy_mm',
@@ -870,6 +977,7 @@ export function buildTopProjectionViewModel(
 ): GeometryTopProjectionViewModel {
   return buildTopProjectionViewModelFromScene(buildViewerSceneModel(assembly), {
     referenceShapes: buildReferenceShapes(assembly, options.referenceIdentifiers),
+    terminalEndAssembly: assembly,
   });
 }
 

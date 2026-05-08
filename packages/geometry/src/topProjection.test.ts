@@ -164,6 +164,10 @@ describe("buildTopProjectionViewModel", () => {
       referenceShapes: projection.shapes.filter(
         (shape) => shape.sourceType === "house_reference" || shape.sourceType === "pergola_reference",
       ),
+      // Milestone 13: pass the assembly through so the scene-first
+      // path applies the same hip-end enrichment as the assembly-first
+      // path. Without this, the two diverge on hipped house fixtures.
+      terminalEndAssembly: assembly,
     });
 
     expect(sceneProjection).toEqual(projection);
@@ -914,14 +918,13 @@ describe("buildTopProjectionParityReport", () => {
   });
 });
 
-describe("house_terminal_end click-target shapes (milestone 13 plan-view UX)", () => {
-  // Smoke tests for the in-plan click target that toggles per-end
-  // Dutch-hip topology. Each hipped house-form emits one
-  // `kind: 'house_terminal_end'` shape per terminal end carrying the
-  // `openGableEndId` and `isOpen` metadata that the plan viewport will
-  // dispatch on click. Mono / flat roofs have no terminal ends -- this
-  // suite asserts that condition explicitly so the next slice (click
-  // wiring) doesn't have to defensively handle non-hipped roofs.
+describe("hip-end click target metadata on house roof shapes (milestone 13 plan-view UX)", () => {
+  // The plan-view click target reuses the EXISTING hip facet (kind:
+  // 'roof') by tagging it with `metadata.openGableEndId` + `isOpen`.
+  // No synthetic marker, no separate kind -- the hip triangle the
+  // user already sees becomes a hover-only click target via the
+  // `.hitTarget:hover` style. These tests pin the enrichment so the
+  // selection router has the metadata it needs to dispatch toggles.
   function buildHippedHouseConfig(input: {
     openGableEndIds?: string[];
   } = {}): GeometryConfig {
@@ -939,58 +942,61 @@ describe("house_terminal_end click-target shapes (milestone 13 plan-view UX)", (
     };
   }
 
-  it("emits one closed-end marker per terminal end of a rectangular hipped roof", () => {
+  function houseRoofShapesWithEndId(
+    projection: ReturnType<typeof buildTopProjectionViewModel>,
+  ) {
+    return projection.shapes.filter(
+      (shape) =>
+        shape.family === "house" &&
+        shape.kind === "roof" &&
+        typeof shape.metadata?.openGableEndId === "string",
+    );
+  }
+
+  it("tags every hip-end facet of a closed hipped roof with openGableEndId + isOpen=false", () => {
     const solved = solveAssembly3D(buildHippedHouseConfig());
     if (!solved.ok) throw new Error(solved.error);
 
     const projection = buildTopProjectionViewModel(solved.value);
-    const terminalShapes = projection.shapes.filter(
-      (shape) => shape.kind === "house_terminal_end",
-    );
-    expect(terminalShapes.length).toBeGreaterThanOrEqual(2);
-    for (const shape of terminalShapes) {
-      expect(shape.family).toBe("house");
-      expect(shape.sourceType).toBe("house_reference");
-      expect(typeof shape.metadata?.openGableEndId).toBe("string");
-      expect(typeof shape.metadata?.isOpen).toBe("boolean");
+    const tagged = houseRoofShapesWithEndId(projection);
+    expect(tagged.length).toBeGreaterThanOrEqual(2);
+    for (const shape of tagged) {
       expect(shape.metadata?.isOpen).toBe(false);
-      expect(shape.polygon.length).toBeGreaterThanOrEqual(3);
+      // Tag is additive: the enrichment never strips existing roof
+      // metadata (roofForm / pitchDeg / ridgeAxis) -- it just ADDS
+      // openGableEndId + isOpen.
+      expect(shape.metadata?.roofForm).toBe('hipped');
     }
-    // Distinct ids per terminal end -- the click handler will dispatch
-    // by shape id, so duplicates would route both clicks to the same
-    // openGableEndId.
-    const ids = new Set(terminalShapes.map((shape) => shape.id));
-    expect(ids.size).toBe(terminalShapes.length);
+    // Distinct end ids per tagged facet -- the toggle dispatches by
+    // openGableEndId, so duplicates would collapse two ends into one.
+    const endIds = new Set(tagged.map((shape) => shape.metadata?.openGableEndId));
+    expect(endIds.size).toBe(tagged.length);
   });
 
-  it("flags isOpen = true for any terminal end listed in openGableEndIds", () => {
+  it("flags isOpen = true on the hip facet whose end id is listed in openGableEndIds", () => {
     const solved = solveAssembly3D(
       buildHippedHouseConfig({ openGableEndIds: ["house-gable-end-x-2"] }),
     );
     if (!solved.ok) throw new Error(solved.error);
 
     const projection = buildTopProjectionViewModel(solved.value);
-    const opened = projection.shapes.find(
-      (shape) =>
-        shape.kind === "house_terminal_end" &&
-        shape.metadata?.openGableEndId === "house-gable-end-x-2",
+    const tagged = houseRoofShapesWithEndId(projection);
+    // Opening one end removes its hip facet (the wavefront leaves the
+    // edge stationary), so the open end's roof shape is GONE -- only
+    // the still-closed end remains tagged. The remaining one has
+    // isOpen=false. The "open" state is observable via the absence of
+    // the open end's roof shape, plus the OTHER end being still tagged.
+    const opened = tagged.find(
+      (shape) => shape.metadata?.openGableEndId === "house-gable-end-x-2",
     );
-    expect(opened).toBeDefined();
-    expect(opened?.metadata?.isOpen).toBe(true);
-
-    // Other terminal ends remain closed -- toggle is per-end, not global.
-    const others = projection.shapes.filter(
-      (shape) =>
-        shape.kind === "house_terminal_end" &&
-        shape.metadata?.openGableEndId !== "house-gable-end-x-2",
-    );
-    expect(others.length).toBeGreaterThan(0);
-    for (const shape of others) {
+    expect(opened).toBeUndefined();
+    expect(tagged.length).toBeGreaterThan(0);
+    for (const shape of tagged) {
       expect(shape.metadata?.isOpen).toBe(false);
     }
   });
 
-  it("emits no terminal-end markers for a mono house roof", () => {
+  it("does not tag any roof shape on a mono house roof (no terminal ends to enrich)", () => {
     const fixture = requireSupportedFixture("mono_attached_soffit_away_standard");
     const enriched = addHouseModelContext(fixture.config);
     const monoConfig: GeometryConfig = {
@@ -1008,9 +1014,6 @@ describe("house_terminal_end click-target shapes (milestone 13 plan-view UX)", (
     if (!solved.ok) throw new Error(solved.error);
 
     const projection = buildTopProjectionViewModel(solved.value);
-    const terminalShapes = projection.shapes.filter(
-      (shape) => shape.kind === "house_terminal_end",
-    );
-    expect(terminalShapes).toHaveLength(0);
+    expect(houseRoofShapesWithEndId(projection)).toHaveLength(0);
   });
 });

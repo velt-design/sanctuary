@@ -107,30 +107,6 @@
   fill: var(--plan-fill-house-footprint);
 }
 
-/*
- * Milestone 13 plan-view UX: hip-end click targets.
- * - Closed (default hipped end): semi-opaque fill + visible stroke so the
- *   triangle reads as a tap target sitting on top of the roof. Clicking
- *   converts the hip facet into an open gable wall.
- * - Open (toggled gable end): dashed outline, no fill -- visually signals
- *   "this end is now a gable wall, not a hip slope". Clicking again
- *   re-closes it back to a hip.
- * Both share a hover affordance via the hit-target layer (cursor:pointer
- * + faint hover fill).
- */
-.bodyHouseTerminalEndClosed {
-  composes: strokeVisible;
-  fill: rgba(255, 165, 60, 0.18);
-  stroke: #d97706;
-}
-
-.bodyHouseTerminalEndOpen {
-  composes: strokeVisible;
-  fill: none;
-  stroke: #d97706;
-  stroke-dasharray: 5 3;
-}
-
 .bodyHouseOpening {
   composes: strokeVisible;
   fill: var(--plan-fill-house-opening);
