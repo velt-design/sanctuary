@@ -432,6 +432,14 @@ function buildTopProjectionFromSolvedScene(input: {
   scene: ViewerSceneModel;
   fallbackTopProjection: GeometryTopProjectionViewModel;
   /**
+   * The solved assembly. Threaded through so `buildTopProjectionViewModelFromScene`
+   * can run the milestone-13 hip-end metadata enrichment on house roof
+   * facets -- without this, the plan-view click-to-toggle target
+   * doesn't get its `openGableEndId`/`isOpen` tags and the selection
+   * router falls back to the standard "select the roof" path.
+   */
+  assembly: Assembly3D;
+  /**
    * The pergola id this assembly belongs to. When set, every pergola-family
    * shape in the projection is tagged with `metadata.pergolaId` so consumers
    * (selection, move tool) can resolve the active pergola from any of its
@@ -450,6 +458,7 @@ function buildTopProjectionFromSolvedScene(input: {
     referenceShapes: input.fallbackTopProjection.shapes.filter(
       (shape) => shape.sourceType === 'house_reference' || shape.sourceType === 'pergola_reference',
     ),
+    terminalEndAssembly: input.assembly,
   });
   if (!input.pergolaId) return projection;
   const taggedPergolaId = input.pergolaId;
@@ -856,6 +865,7 @@ function buildSolvedModule(input: {
   const geometryTopProjection = buildTopProjectionFromSolvedScene({
     scene,
     fallbackTopProjection: derivation.geometryTopProjection,
+    assembly: derivation.assembly,
     pergolaId: moduleInput.pergolaId ?? null,
   });
   const trust = buildTrustStatus({
