@@ -12,6 +12,7 @@ import type {
   ViewerSceneModel,
   ViewerSceneObject,
 } from './contracts';
+import { deriveHouseTerminalEndMarkers } from './houseModel';
 import { buildViewerSceneModel } from './viewer';
 
 const EPSILON_MM = 1e-6;
@@ -631,6 +632,81 @@ function buildReferenceShapes(
         isCanonicalOutline: true,
       },
     });
+  }
+
+  // House terminal-end click targets (milestone 13, plan-view UX): one
+  // inward-pointing triangle per terminal end of a hipped roof. The
+  // shape carries `openGableEndId` + `isOpen` so the plan viewport can
+  // dispatch a toggle when the user clicks it. Emitted ONLY for hipped
+  // forms -- gable is migrated to hipped at normalize time, and flat /
+  // mono roofs have no terminal ends.
+  //
+  // `roofForm` and `openGableEndIds` come from `house.model.metadata`
+  // (config shadowed into metadata at solve time -- see `houseModel.ts`
+  // metadata assembly). The ridge axis is derived from the assembled
+  // roof planes' own `ridgeAxis` field rather than stored separately,
+  // so the canonical fixture hash stays stable when this emitter is
+  // added or removed.
+  const houseModel = assembly.house.model;
+  const houseMeta = houseModel?.metadata ?? null;
+  const metaRoofForm = typeof houseMeta?.roofForm === 'string' ? houseMeta.roofForm : null;
+  const metaOpenIdsCsv =
+    typeof houseMeta?.openGableEndIds === 'string' ? houseMeta.openGableEndIds : '';
+  const metaOpenIds = metaOpenIdsCsv
+    ? metaOpenIdsCsv.split(',').map((value) => value.trim()).filter(Boolean)
+    : [];
+  const dominantRidgeAxis: 'x' | 'y' | null = (() => {
+    // `ridgeAxis` is stored in each plane's metadata (set by
+    // `buildRoofPlane` in `house/roofPlane.ts`). Hipped roofs produce
+    // some planes with axis 'pyramid' (the corner facets in a square
+    // hipped) -- those don't carry a meaningful per-axis ridge, so we
+    // pick the first 'x' or 'y' plane as the dominant axis.
+    for (const plane of houseModel?.roofPlanes ?? []) {
+      const axis = plane.metadata?.ridgeAxis;
+      if (axis === 'x' || axis === 'y') return axis;
+    }
+    return null;
+  })();
+  // The post-solve roof metadata reports `roofForm` as the resolved
+  // visible form: 'hipped' (all caps closed), 'gable' (all caps open),
+  // or 'dutch_hip' (mixed). The user's chosen form is always 'hipped'
+  // after the milestone 13 normalize-time migration -- but the markers
+  // need to appear in all three resolved states so the user can keep
+  // toggling. So we emit for any of the three.
+  const metaRoofFormHasTerminalEnds =
+    metaRoofForm === 'hipped' || metaRoofForm === 'dutch_hip' || metaRoofForm === 'gable';
+  if (
+    metaRoofFormHasTerminalEnds &&
+    houseModel?.footprint &&
+    (dominantRidgeAxis === 'x' || dominantRidgeAxis === 'y')
+  ) {
+    const markers = deriveHouseTerminalEndMarkers({
+      footprint: houseModel.footprint,
+      ridgeAxis: dominantRidgeAxis,
+      openGableEndIds: metaOpenIds,
+    });
+    for (const marker of markers) {
+      const polygon = cleanPolygon(toPolygon2(marker.markerPolygon));
+      if (!polygon || polygon.length < 3) continue;
+      shapes.push({
+        id: `house_terminal_end:${houseSourceId}:${marker.endId}`,
+        sourceObjectId: houseSourceId,
+        sourceId: marker.endId,
+        sourceType: 'house_reference',
+        family: 'house',
+        kind: 'house_terminal_end',
+        polygon,
+        zOrder: 2,
+        zMin: 0,
+        zMax: 0,
+        metadata: {
+          ...metadataWithTopProjectionRole(undefined, 'top_visible'),
+          openGableEndId: marker.endId,
+          isOpen: marker.isOpen,
+          sourceFootprintEdgeIndex: marker.sourceFootprintEdgeIndex,
+        },
+      });
+    }
   }
 
   return shapes;

@@ -3,7 +3,9 @@ import type {
   HouseRoofFeature3D,
   HouseRoofRidgeAxis,
   Line3,
+  Point2,
   Point3,
+  Polygon2,
   Polygon3,
   RoofPlane3D,
 } from '../contracts';
@@ -484,6 +486,99 @@ export function deriveHouseGableTerminalEndsFromFootprint(input: {
     ...terminalEnd,
     id: terminalEnd.id.replace('house-gable-end-x-', 'house-gable-end-y-'),
   }));
+}
+
+/**
+ * One terminal-end click target in plan view: an isoceles triangle
+ * anchored on the eave edge, pointing inward (into the house). Used by
+ * `buildTopProjectionViewModel` to emit `kind: 'house_terminal_end'`
+ * shapes that the plan view can hit-test for the Dutch-hip toggle.
+ *
+ * The triangle is a synthetic marker, not the actual hip facet's plan
+ * footprint -- markers always exist for both open and closed states so
+ * the user can re-close an opened end. `isOpen` is metadata for the
+ * renderer to style closed (filled hip) vs open (gable) differently.
+ */
+export type HouseTerminalEndMarker = {
+  endId: string;
+  sourceFootprintEdgeIndex: number;
+  isOpen: boolean;
+  markerPolygon: Polygon2;
+  /** Eave midpoint (mm). Useful for label/anchor placement. */
+  eaveMidpoint: Point2;
+};
+
+const DEFAULT_TERMINAL_MARKER_HEIGHT_MM = 1500;
+const DEFAULT_TERMINAL_MARKER_HEIGHT_RATIO = 0.25;
+const TERMINAL_MARKER_AXIS_TOLERANCE_MM = 1e-6;
+
+/**
+ * Derive a clickable inward-pointing triangle for each terminal end of a
+ * hipped (or hipped-with-Dutch-hip) roof. Triangles are sized as the
+ * smaller of `markerHeightMm` (default 1500mm) and a quarter of the
+ * eave length so the marker scales with the house but never overpowers
+ * a small footprint.
+ *
+ * The terminal-end set comes from `deriveHouseGableTerminalEndsFromFootprint`,
+ * so id schemes match exactly. The trailing index in
+ * `house-gable-end-{axis}-N` is `(footprint edge index) + 1` for both
+ * axes (the joined Y wrapper preserves edge indexes through `swapPointAxes`).
+ */
+export function deriveHouseTerminalEndMarkers(input: {
+  footprint: Polygon3;
+  ridgeAxis: HouseRoofRidgeAxis;
+  openGableEndIds?: ReadonlyArray<string> | null;
+  markerHeightMm?: number;
+}): HouseTerminalEndMarker[] {
+  const terminals = deriveHouseGableTerminalEndsFromFootprint({
+    footprint: input.footprint,
+    ridgeAxis: input.ridgeAxis,
+  });
+  if (terminals.length === 0) return [];
+  const openSet = new Set(input.openGableEndIds ?? []);
+  const orientation = signedAreaXY(input.footprint) >= 0 ? 1 : -1;
+  const markerHeightCap = input.markerHeightMm ?? DEFAULT_TERMINAL_MARKER_HEIGHT_MM;
+
+  return terminals
+    .map((terminal) => {
+      const trailing = terminal.id.match(/-(\d+)$/);
+      if (!trailing) return null;
+      const edgeIndex = Number(trailing[1]) - 1;
+      if (!Number.isFinite(edgeIndex) || edgeIndex < 0 || edgeIndex >= input.footprint.length) {
+        return null;
+      }
+      const start = input.footprint[edgeIndex]!;
+      const end = input.footprint[(edgeIndex + 1) % input.footprint.length]!;
+      const dx = end.x - start.x;
+      const dy = end.y - start.y;
+      const length = Math.hypot(dx, dy);
+      if (length <= TERMINAL_MARKER_AXIS_TOLERANCE_MM) return null;
+      // Inward normal: rotate edge vector 90 deg toward the interior.
+      // For a CCW polygon (signedArea > 0) the interior is left of the
+      // edge -> rotate CCW: (-dy, dx). For CW, rotate the other way.
+      const inwardX = (-dy * orientation) / length;
+      const inwardY = (dx * orientation) / length;
+      const apexInset = Math.min(markerHeightCap, length * DEFAULT_TERMINAL_MARKER_HEIGHT_RATIO);
+      const midX = (start.x + end.x) / 2;
+      const midY = (start.y + end.y) / 2;
+      const apex: Point2 = {
+        x: midX + inwardX * apexInset,
+        y: midY + inwardY * apexInset,
+      };
+      const markerPolygon: Polygon2 = [
+        { x: start.x, y: start.y },
+        { x: end.x, y: end.y },
+        apex,
+      ];
+      return {
+        endId: terminal.id,
+        sourceFootprintEdgeIndex: edgeIndex,
+        isOpen: openSet.has(terminal.id),
+        markerPolygon,
+        eaveMidpoint: { x: midX, y: midY },
+      } satisfies HouseTerminalEndMarker;
+    })
+    .filter((marker): marker is HouseTerminalEndMarker => marker !== null);
 }
 
 export function buildJoinedRectilinearGableRoof(input: {

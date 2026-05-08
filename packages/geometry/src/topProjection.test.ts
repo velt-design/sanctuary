@@ -913,3 +913,104 @@ describe("buildTopProjectionParityReport", () => {
     );
   });
 });
+
+describe("house_terminal_end click-target shapes (milestone 13 plan-view UX)", () => {
+  // Smoke tests for the in-plan click target that toggles per-end
+  // Dutch-hip topology. Each hipped house-form emits one
+  // `kind: 'house_terminal_end'` shape per terminal end carrying the
+  // `openGableEndId` and `isOpen` metadata that the plan viewport will
+  // dispatch on click. Mono / flat roofs have no terminal ends -- this
+  // suite asserts that condition explicitly so the next slice (click
+  // wiring) doesn't have to defensively handle non-hipped roofs.
+  function buildHippedHouseConfig(input: {
+    openGableEndIds?: string[];
+  } = {}): GeometryConfig {
+    const fixture = requireSupportedFixture("mono_attached_soffit_away_standard");
+    const enriched = addHouseModelContext(fixture.config);
+    return {
+      ...enriched,
+      houseContext: {
+        ...enriched.houseContext,
+        model: {
+          ...enriched.houseContext.model!,
+          openGableEndIds: input.openGableEndIds ?? [],
+        },
+      },
+    };
+  }
+
+  it("emits one closed-end marker per terminal end of a rectangular hipped roof", () => {
+    const solved = solveAssembly3D(buildHippedHouseConfig());
+    if (!solved.ok) throw new Error(solved.error);
+
+    const projection = buildTopProjectionViewModel(solved.value);
+    const terminalShapes = projection.shapes.filter(
+      (shape) => shape.kind === "house_terminal_end",
+    );
+    expect(terminalShapes.length).toBeGreaterThanOrEqual(2);
+    for (const shape of terminalShapes) {
+      expect(shape.family).toBe("house");
+      expect(shape.sourceType).toBe("house_reference");
+      expect(typeof shape.metadata?.openGableEndId).toBe("string");
+      expect(typeof shape.metadata?.isOpen).toBe("boolean");
+      expect(shape.metadata?.isOpen).toBe(false);
+      expect(shape.polygon.length).toBeGreaterThanOrEqual(3);
+    }
+    // Distinct ids per terminal end -- the click handler will dispatch
+    // by shape id, so duplicates would route both clicks to the same
+    // openGableEndId.
+    const ids = new Set(terminalShapes.map((shape) => shape.id));
+    expect(ids.size).toBe(terminalShapes.length);
+  });
+
+  it("flags isOpen = true for any terminal end listed in openGableEndIds", () => {
+    const solved = solveAssembly3D(
+      buildHippedHouseConfig({ openGableEndIds: ["house-gable-end-x-2"] }),
+    );
+    if (!solved.ok) throw new Error(solved.error);
+
+    const projection = buildTopProjectionViewModel(solved.value);
+    const opened = projection.shapes.find(
+      (shape) =>
+        shape.kind === "house_terminal_end" &&
+        shape.metadata?.openGableEndId === "house-gable-end-x-2",
+    );
+    expect(opened).toBeDefined();
+    expect(opened?.metadata?.isOpen).toBe(true);
+
+    // Other terminal ends remain closed -- toggle is per-end, not global.
+    const others = projection.shapes.filter(
+      (shape) =>
+        shape.kind === "house_terminal_end" &&
+        shape.metadata?.openGableEndId !== "house-gable-end-x-2",
+    );
+    expect(others.length).toBeGreaterThan(0);
+    for (const shape of others) {
+      expect(shape.metadata?.isOpen).toBe(false);
+    }
+  });
+
+  it("emits no terminal-end markers for a mono house roof", () => {
+    const fixture = requireSupportedFixture("mono_attached_soffit_away_standard");
+    const enriched = addHouseModelContext(fixture.config);
+    const monoConfig: GeometryConfig = {
+      ...enriched,
+      houseContext: {
+        ...enriched.houseContext,
+        model: {
+          ...enriched.houseContext.model!,
+          roofForm: "mono",
+          roofPrimaryFallDirection: "negative_y",
+        },
+      },
+    };
+    const solved = solveAssembly3D(monoConfig);
+    if (!solved.ok) throw new Error(solved.error);
+
+    const projection = buildTopProjectionViewModel(solved.value);
+    const terminalShapes = projection.shapes.filter(
+      (shape) => shape.kind === "house_terminal_end",
+    );
+    expect(terminalShapes).toHaveLength(0);
+  });
+});
