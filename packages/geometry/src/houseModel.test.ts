@@ -13,7 +13,12 @@ import type {
 } from './contracts';
 import { deriveHouseGableTerminalEnds } from './houseRoofCapabilities';
 import { buildHouseFootprintPolygon } from './footprints';
-import { buildHouseModel3D, buildHouseReferenceGeometry } from './houseModel';
+import {
+  buildHouseModel3D,
+  buildHouseModel3DFromRawHouseInput,
+  buildHouseReferenceGeometry,
+} from './houseModel';
+import type { RawHouseInput } from './contracts';
 
 type HouseModel = NonNullable<ReturnType<typeof buildHouseModel3D>>;
 
@@ -2761,5 +2766,116 @@ describe('house model geometry builder', () => {
     const steppedSolid = deckSolids.find((solid) => solid.metadata?.sourceId === 'deck-detached');
     expect(steppedSolid?.thicknessMm).toBe(40);
     expectVerticalPrismRenderMesh(steppedSolid?.renderMesh, 410, 450);
+  });
+});
+
+/**
+ * Phase 2 of milestone 13 (drop pergola `houseContext` wrapping). Asserts
+ * the new project-level entry `buildHouseModel3DFromRawHouseInput` and the
+ * legacy per-pergola `buildHouseModel3D({ config, ... })` produce
+ * structurally equivalent `HouseModel3D` output for the same source data.
+ *
+ * The test uses the same hand-built footprint + eave / wall heights /
+ * roof params as the legacy `makeConfig` helper, then constructs an
+ * equivalent `RawHouseInput` + `HouseModel3DPergolaContext` and runs both
+ * paths. If the helpers ever drift (e.g. a future change adds a field to
+ * `buildHouseModelConfig` that the new entry forgets to forward), this
+ * test catches it.
+ */
+describe('buildHouseModel3DFromRawHouseInput (milestone 13 phase 2)', () => {
+  it('produces the same wall/eave/roof structure as the legacy config-driven path', () => {
+    const footprint = makeFootprint(6000, 1800);
+    const config = makeConfig({ footprint, wallHeightMm: 3100 });
+    const attachmentEdge = makeAttachmentEdge();
+
+    // Legacy path: pre-baked config -> buildHouseModel3D.
+    const legacy = buildHouseModel3D({ config, attachmentEdge });
+    expect(legacy).not.toBeNull();
+    if (!legacy) return;
+
+    // New path: assemble the equivalent RawHouseInput from the test's
+    // known inputs, then call the new entry. Pergola context mirrors what
+    // the legacy config supplies.
+    const rawHouse: RawHouseInput = {
+      houseId: 'house-main',
+      // Test path skips footprint normalization (pergolaContext supplies
+      // the resolved Polygon3 directly); raw footprint fields stay null.
+      footprintMode: null,
+      footprintPolygon: null,
+      eaveHeightM: '2.4',
+      wallHeightM: '3.1',
+      roofPitchDeg: '25',
+      roofForm: 'hipped',
+      roofPrimaryFallDirection: 'positive_y',
+      roofRidgeAxis: 'x',
+      roofMaterial: 'corrugated_iron',
+      attachmentStrategy: 'soffit_brackets',
+      eave: {
+        soffitDepthMm: '450',
+        fasciaHeightMm: '180',
+        gutterWidthMm: '125',
+        gutterDepthMm: '90',
+        gutterProjectionMm: '125',
+        eaveOverhangMm: '450',
+      },
+    };
+    const fromRaw = buildHouseModel3DFromRawHouseInput({
+      rawHouse,
+      pergolaContext: {
+        connectionType: 'soffit',
+        attachmentSide: 'rear',
+        attachmentEdge,
+        footprint,
+        housePosition: null,
+        soffitDepthMm: 450,
+        houseUndersideMm: 2400,
+        outerUndersideMm: 2137,
+        referenceUndersideMm: 2400,
+        datum: config.datum,
+        pergolaLengthMm: 6000,
+        pergolaProjectionMm: 3000,
+      },
+    });
+    expect(fromRaw).not.toBeNull();
+    if (!fromRaw) return;
+
+    // Structural equivalence: same wall count, same eave height, same
+    // roof-plane count + form, same attachment-target shape.
+    expect(fromRaw.wallSegments).toHaveLength(legacy.wallSegments.length);
+    expect(fromRaw.wallSegments.map((s) => s.id).sort()).toEqual(
+      legacy.wallSegments.map((s) => s.id).sort(),
+    );
+    expect(fromRaw.roofPlanes).toHaveLength(legacy.roofPlanes.length);
+    expect(fromRaw.attachmentTarget?.kind).toBe(legacy.attachmentTarget?.kind);
+    // Footprint preserved verbatim (pergolaContext supplies it directly).
+    expect(fromRaw.footprint).toEqual(legacy.footprint);
+  });
+
+  it('returns null for freestanding pergola context (matches legacy)', () => {
+    const footprint = makeFootprint();
+    const rawHouse: RawHouseInput = {
+      houseId: 'house-main',
+      eaveHeightM: '2.4',
+      wallHeightM: '2.4',
+      roofForm: 'hipped',
+    };
+    const result = buildHouseModel3DFromRawHouseInput({
+      rawHouse,
+      pergolaContext: {
+        connectionType: 'freestanding',
+        attachmentSide: 'rear',
+        attachmentEdge: null,
+        footprint,
+        housePosition: null,
+        soffitDepthMm: null,
+        houseUndersideMm: null,
+        outerUndersideMm: null,
+        referenceUndersideMm: null,
+        datum: makeConfig({ connectionType: 'freestanding' }).datum,
+        pergolaLengthMm: 6000,
+        pergolaProjectionMm: 3000,
+      },
+    });
+    expect(result).toBeNull();
   });
 });

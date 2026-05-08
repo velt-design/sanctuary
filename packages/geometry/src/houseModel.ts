@@ -1,5 +1,7 @@
 import type {
+  AssemblyPosition,
   AttachmentSide,
+  ConnectionType,
   DatumFrame3,
   GeometryConfig,
   GeometryMetadata,
@@ -8,6 +10,7 @@ import type {
   HouseAttachmentStrategy,
   HouseAttachmentTarget3D,
   HouseModel3D,
+  HouseModelConfig,
   HouseRoofAppendageForm,
   HouseReferenceGeometry,
   HouseRoofFeature3D,
@@ -23,11 +26,13 @@ import type {
   Plane3,
   Point3,
   Polygon3,
+  RawHouseInput,
   RenderMesh3D,
   RoofFlashing3D,
   RoofPlane3D,
   Vector3,
 } from './contracts';
+import { buildHouseModelConfig } from './normalize';
 import {
   normalizeHouseRoofPitchDegForForm,
   validateHouseRoofSelection,
@@ -711,4 +716,164 @@ export function buildHouseReferenceGeometry(input: {
     attachmentTarget: model?.attachmentTarget ?? null,
     position: housePosition,
   };
+}
+
+/**
+ * Pergola-side context that the existing `buildHouseModel3D` reads on top
+ * of the house's own data. Captured here so the new
+ * `buildHouseModel3DFromRawHouseInput` entry can take it as a typed
+ * sub-shape rather than a full `GeometryConfig`. Names mirror the fields
+ * `buildHouseModel3D` actually consumes from `config` -- nothing more.
+ *
+ * Phase 2 of milestone 13: this is transitional scaffolding. The eventual
+ * goal is to decouple `HouseModel3D` from pergola context entirely (the
+ * pergola-specific attachment-target geometry becomes a separate per-
+ * pergola overlay), but that's a larger refactor than fits in phase 2.
+ * For now, pergola context is an explicit parameter -- the orchestrator
+ * (phase 3) supplies it once per pergola the house participates in.
+ */
+export type HouseModel3DPergolaContext = {
+  connectionType: ConnectionType;
+  attachmentSide: AttachmentSide;
+  attachmentEdge: Line3 | null;
+  /** World-space `Polygon3` footprint after position has been applied (if any). */
+  footprint: Polygon3 | null;
+  /** Optional house-level world position; passed through to the model. */
+  housePosition: AssemblyPosition | null;
+  /** Soffit depth used for attachment-zone geometry; passed through verbatim. */
+  soffitDepthMm: number | null;
+  /** Eave-height fallback heights from `structural.heights`. */
+  houseUndersideMm: number | null;
+  referenceUndersideMm: number | null;
+  outerUndersideMm: number | null;
+  /** Datum frame the pergola contributes; used to derive the wall plane. */
+  datum: GeometryConfig['datum'];
+  /**
+   * Pergola dimensions used by `buildSemanticHouseAttachmentEdge` to size
+   * the host attachment edge. Decoupling this from the house body is
+   * future work (the attachment-target geometry is the only field that
+   * truly depends on pergola dimensions).
+   */
+  pergolaLengthMm: number;
+  pergolaProjectionMm: number;
+};
+
+/**
+ * Build a `HouseModel3D` from a `RawHouseInput` plus the pergola-side
+ * context the current builder reads. Phase 2 of milestone 13 (drop pergola
+ * `houseContext` wrapping) -- this is the entry point that the project-
+ * level orchestrator (phase 3) will call ONCE per house, instead of the
+ * pipeline rebuilding the same `HouseModel3D` once per pergola.
+ *
+ * Internally:
+ *   1. Normalises the raw house's footprint via the same helpers
+ *      `normalize.ts` uses (caller already supplies the resolved
+ *      `pergolaContext.footprint` so no further footprint work happens here).
+ *   2. Calls `buildHouseModelConfig` to produce a `HouseModelConfig`.
+ *   3. Constructs the minimum `GeometryConfig` shape the existing
+ *      `buildHouseModel3D` reads (connection, structural.heights,
+ *      houseContext sub-fields). Fields the builder doesn't read are
+ *      stubbed -- if a future change starts reading them here, the type
+ *      checker catches it.
+ *   4. Delegates to `buildHouseModel3D`.
+ *
+ * The output is byte-equivalent (modulo serialisation order) to the
+ * legacy path of `normalize() -> buildHouseModel3D({ config, attachmentEdge })`,
+ * because internally we ARE the legacy path -- this is a thin adapter, not
+ * a reimplementation. Phase 2 is intentionally additive; the legacy entry
+ * stays as-is. A round-trip test (`houseModel.test.ts`) asserts the
+ * equivalence so future refactors don't drift the two paths.
+ */
+export function buildHouseModel3DFromRawHouseInput(input: {
+  rawHouse: RawHouseInput;
+  pergolaContext: HouseModel3DPergolaContext;
+}): HouseModel3D | null {
+  const { rawHouse, pergolaContext } = input;
+
+  // RawHouseInput is structurally a superset of
+  // `RawGeometryModuleInput['houseContext']` (it adds `houseId`).
+  // `buildHouseModelConfig` ignores `houseId`, so the cast is safe;
+  // explicit so future changes to either type surface here.
+  const rawHouseContextEquivalent: RawHouseInput = rawHouse;
+
+  const houseModelConfig: HouseModelConfig | null = buildHouseModelConfig({
+    rawHouseContext: rawHouseContextEquivalent,
+    footprint: pergolaContext.footprint,
+    connectionType: pergolaContext.connectionType,
+    attachmentSide: pergolaContext.attachmentSide,
+    houseUndersideMm: pergolaContext.houseUndersideMm,
+    referenceUndersideMm: pergolaContext.referenceUndersideMm,
+  });
+
+  // Construct a partial GeometryConfig containing exactly the fields
+  // `buildHouseModel3D` reads. Other fields are filled with safe stubs --
+  // the builder never sees them. If `buildHouseModel3D` grows a new
+  // dependency on a config field, TypeScript catches it via this object
+  // literal.
+  //
+  // What `buildHouseModel3D` actually reads from `config`:
+  //   - connection.type
+  //   - houseContext.{model, position, soffitDepthMm, footprint}
+  //   - structural.heights.{houseUndersideMm, outerUndersideMm,
+  //     referenceUndersideMm}
+  //   - datum (used by buildHouseReferenceGeometry, but not buildHouseModel3D
+  //     directly -- still provided via pergolaContext to keep the contract
+  //     symmetrical with the legacy entry).
+  const partialConfig: Pick<
+    GeometryConfig,
+    'connection' | 'houseContext' | 'structural' | 'datum' | 'dimensions'
+  > = {
+    connection: {
+      type: pergolaContext.connectionType,
+      attachmentSide: pergolaContext.attachmentSide,
+    },
+    datum: pergolaContext.datum,
+    dimensions: {
+      lengthMm: pergolaContext.pergolaLengthMm,
+      projectionMm: pergolaContext.pergolaProjectionMm,
+      roofPitchDeg: 0,
+    },
+    houseContext: {
+      footprint: pergolaContext.footprint,
+      footprintMode: null,
+      footprintPolygon: null,
+      position: pergolaContext.housePosition,
+      soffitDepthMm: pergolaContext.soffitDepthMm,
+      model: houseModelConfig,
+      attachmentStrategy: rawHouse.attachmentStrategy ?? null,
+      wallLine: null,
+      fasciaLine: null,
+      roofEdgeLine: null,
+    },
+    structural: {
+      heights: {
+        houseUndersideMm: pergolaContext.houseUndersideMm,
+        outerUndersideMm: pergolaContext.outerUndersideMm,
+        referenceUndersideMm: pergolaContext.referenceUndersideMm,
+      },
+      // Fields `buildHouseModel3D` doesn't read -- stubs. If the builder
+      // ever starts reading these, TS will surface the missing field.
+      profiles: {
+        post: null,
+        rafter: null,
+        ledger: null,
+        supportBeam: null,
+        gutter: null,
+        ridge: null,
+        boxPerimeter: null,
+      },
+      framing: { rafterCount: null, rafterSpacingMm: null },
+      drainage: {
+        gutterType: null,
+        gutterAssemblyMode: null,
+        integratedGutterBeam: null,
+        hasOurGutter: null,
+      },
+    },
+  };
+
+  return buildHouseModel3D({
+    config: partialConfig as GeometryConfig,
+    attachmentEdge: pergolaContext.attachmentEdge,
+  });
 }

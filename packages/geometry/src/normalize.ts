@@ -469,7 +469,13 @@ function resolveFootprintMode(value: HouseFootprintMode | 'orthogonal_polygon' |
   return value === 'custom_polygon' || value === 'orthogonal_polygon' ? 'custom_polygon' : 'preset';
 }
 
-function buildHouseModelConfig(input: {
+/**
+ * Normalize the raw `houseContext` (or, post-milestone-13, a structurally
+ * equivalent `RawHouseInput`) into a `HouseModelConfig`. Exported so the
+ * project-level house orchestrator can call this once per project rather
+ * than going through the per-pergola `normalize.ts` entry.
+ */
+export function buildHouseModelConfig(input: {
   rawHouseContext: RawGeometryModuleInput['houseContext'];
   footprint: GeometryConfig['houseContext']['footprint'];
   connectionType: ConnectionType;
