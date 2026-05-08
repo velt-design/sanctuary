@@ -26,7 +26,15 @@ export function PlanHitTargetLayer({
         <polygon
           key={`plan-hit-${shape.id}`}
           points={svgPointsAttr(points)}
-          className={lineweightStyles.hitTarget}
+          className={
+            // Milestone 13: hip-end facets tagged with openGableEndId
+            // get a stronger hover affordance so users can find the
+            // toggle target. Untagged hit targets keep the subtle
+            // global hover.
+            shape.kind === 'roof' && typeof shape.metadata?.openGableEndId === 'string'
+              ? `${lineweightStyles.hitTarget} ${lineweightStyles.hitTargetTerminalEnd}`
+              : lineweightStyles.hitTarget
+          }
           data-plan-hit-shape-id={shape.id}
           data-plan-shape-family={shape.family}
           data-plan-shape-kind={shape.kind}

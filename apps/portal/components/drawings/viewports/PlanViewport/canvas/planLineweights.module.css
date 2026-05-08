@@ -250,6 +250,19 @@
   fill: var(--plan-fill-hover);
 }
 
+/*
+ * Milestone 13: hip-end click target gets a more visible hover
+ * affordance than the global hit-target hover. The hover fill +
+ * stroke makes it clear which hip can be opened/closed without
+ * permanently styling the roof.
+ */
+.hitTargetTerminalEnd:hover {
+  fill: rgba(47, 111, 150, 0.22);
+  stroke: var(--plan-stroke-selection);
+  stroke-width: var(--plan-width-medium);
+  vector-effect: non-scaling-stroke;
+}
+
 .dimensionLayer {
   pointer-events: none;
 }

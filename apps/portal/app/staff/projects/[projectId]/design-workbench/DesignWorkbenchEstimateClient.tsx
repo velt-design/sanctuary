@@ -515,7 +515,15 @@ export default function DesignWorkbenchEstimateClient({
                   // plan view share the same commit action so undo/redo
                   // and persistence work the same regardless of where
                   // the toggle was triggered.
-                  const houseForm = store.derived.activeHouseForm;
+                  //
+                  // Plan-view clicks happen INDEPENDENT of rail selection
+                  // -- the user might be on the Pergolas tab when they
+                  // click a hip triangle. Fall back to the first house
+                  // form so the toggle still targets the right entity.
+                  // (commitSharedHouseRoofDraft itself uses the same
+                  // fallback at useObjectWorkbenchActions.ts:143.)
+                  const houseForm =
+                    store.derived.activeHouseForm ?? store.derived.houseForms[0] ?? null;
                   if (!houseForm) return;
                   const currentRoof = houseForm.roofIntent;
                   const currentOpenIds = currentRoof.openGableEndIds ?? [];
