@@ -269,6 +269,14 @@ export function buildSharedHouseRoof(input: {
     dropMm?: number | null;
   } | null;
   attachmentSourceEdgeId?: string | null;
+  /**
+   * Terminal-end ids that should render as open gables instead of hipped
+   * slopes. Milestone 13 phase A: only the rectangular hipped path
+   * honours this; joined / L-shape hipped roofs treat it as a no-op
+   * until phase B lands. Empty/missing means all terminal ends are
+   * hipped (legacy behaviour).
+   */
+  openTerminalEndIds?: ReadonlyArray<string> | null;
 }): HouseRoofBuildResult {
   const roofSelectionValidation = validateHouseRoofSelection({
     roofForm: input.roofForm,
@@ -298,6 +306,7 @@ export function buildSharedHouseRoof(input: {
     roofForm: input.roofForm,
     roofPrimaryFallDirection: input.roofPrimaryFallDirection,
     roofRidgeAxis: input.roofRidgeAxis,
+    openTerminalEndIds: input.openTerminalEndIds ?? null,
   });
 
   if (!input.roofAppendage?.enabled || primary.metadata.roofQaStatus !== 'valid') {

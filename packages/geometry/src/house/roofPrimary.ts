@@ -21,6 +21,7 @@ import { buildRoofPlane } from './roofPlane';
 import { buildJoinedRectilinearHippedRoof } from './roofJoinedHipped';
 import { buildJoinedRectilinearGableRoof, buildLegacyJoinedRectilinearGableRoof } from './roofJoined';
 import { buildRectangleHippedRoof } from './roofRectangleHipped';
+import { buildRectangularRoof } from './roofRectangle';
 import { applyRoofQa } from './roofQa';
 
 export function invalidHouseRoof(input: {
@@ -344,6 +345,20 @@ export function buildHippedHouseRoof(input: {
   eavePolygon: Polygon3;
   eaveHeightMm: number;
   roofPitchDeg: number;
+  /**
+   * Ridge axis for the rectangular-hipped case. When omitted, derived
+   * from rectangle dimensions (legacy behaviour: ridge along the longer
+   * dimension). Required when `openTerminalEndIds` carries any id, so the
+   * unified builder can map ids to caps in the right axis convention.
+   */
+  ridgeAxis?: HouseRoofRidgeAxis;
+  /**
+   * Terminal-end ids (per `deriveHouseGableTerminalEndsFromFootprint`)
+   * that should render as open gables. Only honoured by the rectangular
+   * path in milestone 13 phase A; the joined / L-shape path ignores it
+   * until phase B. Empty/null = legacy fully-hipped output.
+   */
+  openTerminalEndIds?: ReadonlyArray<string> | null;
 }): HouseRoofBuildResult {
   const box = boundingBox(input.eavePolygon);
   if (!isOrthogonalFootprint(input.sourceFootprint)) {
@@ -356,10 +371,50 @@ export function buildHippedHouseRoof(input: {
     });
   }
   if (isRectanglePolygon(input.eavePolygon)) {
+    // Always derive the ridge axis from dimensions for the rectangular
+    // hipped path -- the legacy `buildRectangleHippedRoof` ignored any
+    // configured ridge axis and used `widthX >= widthY ? 'x' : 'y'`.
+    // Honouring the supplied `input.ridgeAxis` would silently change
+    // output for existing fixtures whose `config.roofRidgeAxis`
+    // disagrees with the dimension-derived axis.
+    const widthX = box.maxX - box.minX;
+    const widthY = box.maxY - box.minY;
+    const resolvedRidgeAxis: HouseRoofRidgeAxis = widthX >= widthY ? 'x' : 'y';
+    // Map openTerminalEndIds to per-end caps. Terminal-end ids follow
+    // the convention `house-gable-end-{x|y}-{1|2}` (1 = min-axis side,
+    // 2 = max-axis side) per `buildBentSpineGableTerminalEndsX`. For a
+    // simple rectangle there are exactly 2 terminal ends along the
+    // ridge axis; matching by suffix is sufficient.
+    const openIds = new Set(input.openTerminalEndIds ?? []);
+    const startCap: 'hipped' | 'open_gable' = openIds.has(`house-gable-end-${resolvedRidgeAxis}-1`)
+      ? 'open_gable'
+      : 'hipped';
+    const endCap: 'hipped' | 'open_gable' = openIds.has(`house-gable-end-${resolvedRidgeAxis}-2`)
+      ? 'open_gable'
+      : 'hipped';
     return applyRoofQa({
       roof: {
-        ...buildRectangleHippedRoof({ ...box, eaveHeightMm: input.eaveHeightMm, roofPitchDeg: input.roofPitchDeg }),
-        metadata: { roofForm: 'hipped', roofGeometry: 'rectangular_hipped', footprintFollowing: true },
+        ...buildRectangularRoof({
+          ...box,
+          eaveHeightMm: input.eaveHeightMm,
+          roofPitchDeg: input.roofPitchDeg,
+          ridgeAxis: resolvedRidgeAxis,
+          startCap,
+          endCap,
+        }),
+        metadata: {
+          // Form metadata reflects the resolved cap pair so downstream
+          // roof QA + visual code can distinguish hipped / gable /
+          // dutch_hip without re-deriving from the cap inputs.
+          roofForm:
+            startCap === 'hipped' && endCap === 'hipped'
+              ? 'hipped'
+              : startCap === 'open_gable' && endCap === 'open_gable'
+                ? 'gable'
+                : 'dutch_hip',
+          roofGeometry: 'rectangular_hipped',
+          footprintFollowing: true,
+        },
       },
       eavePolygon: input.eavePolygon,
     });
@@ -400,6 +455,14 @@ export function buildPrimaryHouseRoof(input: {
   roofForm: HouseRoofForm;
   roofPrimaryFallDirection: HouseRoofPrimaryFallDirection;
   roofRidgeAxis: HouseRoofRidgeAxis;
+  /**
+   * Per-terminal-end open-gable overlay (milestone 13 phase A).
+   * Only honoured for the rectangular hipped path right now; joined /
+   * L-shape paths treat it as a no-op until phase B lands. Open ends
+   * convert that hip slope into a vertical gable wall via the unified
+   * `buildRectangularRoof` builder.
+   */
+  openTerminalEndIds?: ReadonlyArray<string> | null;
 }): HouseRoofBuildResult {
   return input.roofForm === 'flat'
     ? buildFlatHouseRoof({
@@ -426,5 +489,7 @@ export function buildPrimaryHouseRoof(input: {
             eavePolygon: input.eavePolygon,
             eaveHeightMm: input.eaveHeightMm,
             roofPitchDeg: input.roofPitchDeg,
+            ridgeAxis: input.roofRidgeAxis,
+            openTerminalEndIds: input.openTerminalEndIds ?? null,
           });
 }

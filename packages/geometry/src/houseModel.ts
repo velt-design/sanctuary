@@ -408,6 +408,24 @@ export function buildHouseModel3D(input: {
     roofForm,
     attachmentSourceEdgeId: appendageJoinSourceEdgeId,
   });
+  // Resolve which terminal ends are open BEFORE building the roof, so
+  // the unified `buildRectangularRoof` (called inside the hipped path
+  // for rectangle footprints) can apply per-end caps. Filter to ids that
+  // actually exist for the resolved ridge axis -- ignoring stale ids
+  // from a different orientation. Honoured for both `gable` and
+  // `hipped` forms (milestone 13 phase A); `hipped` + ids = Dutch-hip.
+  const availableTerminalEnds = deriveHouseGableTerminalEndsFromFootprint({
+    footprint,
+    ridgeAxis: roofRidgeAxis,
+  });
+  const requestedOpenTerminalEndIds = new Set(
+    (roofForm === 'gable' || roofForm === 'hipped')
+      ? (model.openGableEndIds ?? []).filter((id) =>
+          availableTerminalEnds.some((terminalEnd) => terminalEnd.id === id),
+        )
+      : [],
+  );
+
   const roof = buildSharedHouseRoof({
     sourceFootprint: footprint,
     eavePolygon,
@@ -418,18 +436,11 @@ export function buildHouseModel3D(input: {
     roofRidgeAxis,
     roofAppendage: model.roofAppendage ?? null,
     attachmentSourceEdgeId: appendageJoinSourceEdgeId,
+    openTerminalEndIds: [...requestedOpenTerminalEndIds],
   });
   const wallSegments = buildWallSegments(footprint, wallHeightMm, roof);
-  const availableTerminalEnds = deriveHouseGableTerminalEndsFromFootprint({
-    footprint,
-    ridgeAxis: roofRidgeAxis,
-  });
   const openTerminalEndIds = new Set(
-    roofForm === 'gable' && roof.metadata.roofQaStatus === 'valid'
-      ? (model.openGableEndIds ?? []).filter((id) =>
-          availableTerminalEnds.some((terminalEnd) => terminalEnd.id === id),
-        )
-      : [],
+    roof.metadata.roofQaStatus === 'valid' ? requestedOpenTerminalEndIds : [],
   );
   const terminalEndBySourceEdgeId = new Map(
     availableTerminalEnds.map((terminalEnd) => [terminalEnd.sourceEdgeId, terminalEnd]),
