@@ -22,6 +22,17 @@ const DECORATIVE_HOUSE_KINDS: ReadonlySet<string> = new Set([
 
 export function isPlanHitTarget(item: PlanRenderItem): boolean {
   if (item.shape.family === 'house' && DECORATIVE_HOUSE_KINDS.has(item.shape.kind)) {
+    // Milestone 13 plan-view UX exception: a hip-end facet (kind:'roof')
+    // tagged with `metadata.openGableEndId` is a click target for the
+    // open-as-gable toggle, NOT pure decoration. Keep it in the
+    // hit-target layer so clicks dispatch to the toggle action and
+    // hover styling shows over the hip triangle.
+    if (
+      item.shape.kind === 'roof' &&
+      typeof item.shape.metadata?.openGableEndId === 'string'
+    ) {
+      return true;
+    }
     return false;
   }
   return true;

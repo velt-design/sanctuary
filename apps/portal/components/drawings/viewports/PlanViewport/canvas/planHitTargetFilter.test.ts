@@ -48,6 +48,23 @@ describe('planHitTargetFilter', () => {
     expect(isPlanHitTarget(makeItem('reference', 'guideline'))).toBe(true);
   });
 
+  it('keeps a hip-end roof facet tagged with openGableEndId metadata as a hit target', () => {
+    // Milestone 13: roof shapes are normally decorative, but when the
+    // top-projection enrichment tags a hip facet with openGableEndId
+    // it becomes a click target for the open-as-gable toggle. This
+    // exception is what makes the plan-view click + hover work.
+    const item = makeItem('house', 'roof', 'house-roof-min-x');
+    item.shape.metadata = { openGableEndId: 'house-gable-end-x-4', isOpen: false };
+    expect(isPlanHitTarget(item)).toBe(true);
+  });
+
+  it('still drops a hip-end roof facet without the openGableEndId tag', () => {
+    // Untagged roof facets (long along-ridge slopes, or roof shapes on
+    // a non-hipped form) should still fall through to the canonical
+    // house outline as before.
+    expect(isPlanHitTarget(makeItem('house', 'roof'))).toBe(false);
+  });
+
   it('filterPlanHitTargets removes only decorative house items', () => {
     const items = [
       makeItem('house', 'footprint'),
