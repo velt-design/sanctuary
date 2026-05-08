@@ -122,6 +122,17 @@
   fill: var(--plan-fill-reference);
 }
 
+/*
+ * Invisible body. Used by milestone-13 synthetic hover targets for
+ * OPENED hip ends -- the polygon exists for hit-testing but should
+ * not paint over the open-gable rendering. The hit-target layer above
+ * still shows .hitTargetTerminalEnd hover styling.
+ */
+.bodyTransparent {
+  fill: transparent;
+  stroke: none;
+}
+
 .projectContextOutline {
   composes: strokeHairline;
   stroke-dasharray: 4 3;

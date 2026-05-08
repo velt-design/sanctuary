@@ -795,7 +795,8 @@ function enrichHouseRoofShapesWithTerminalEnds(
     }
     return inside;
   };
-  return shapes.map((shape) => {
+  const matchedEndIds = new Set<string>();
+  const enrichedShapes = shapes.map((shape) => {
     if (shape.family !== 'house' || shape.kind !== 'roof') return shape;
     // Hip-cap facets project as triangles (3 vertices); the long
     // along-ridge main slopes project as quads. Filtering to
@@ -805,6 +806,7 @@ function enrichHouseRoofShapesWithTerminalEnds(
     if (shape.polygon.length !== 3) return shape;
     const matched = probePoints.find((entry) => pointInPolygon(entry.probe, shape.polygon));
     if (!matched) return shape;
+    matchedEndIds.add(matched.endId);
     return {
       ...shape,
       metadata: {
@@ -814,6 +816,85 @@ function enrichHouseRoofShapesWithTerminalEnds(
       },
     };
   });
+  // Synthetic hover targets for OPEN terminal ends. When a hip is
+  // toggled open, its actual roof facet is gone -- but the user needs
+  // a click target in the same place to re-close it. We synthesize a
+  // triangle the same shape and position the hip facet WOULD occupy
+  // if the end were closed, with `isOpen: true` metadata. The
+  // hit-target layer renders it with transparent fill so it's
+  // invisible until hovered (the hover style applies as usual).
+  //
+  // Polygon construction: walk inward from the eave midpoint by half
+  // the eave length to find the apex (the standard 45-deg hip
+  // projection). Eave corners are pushed outward by the configured
+  // overhang so the synthetic triangle visually matches the closed
+  // hip-cap polygon. Works for orthogonal footprints (rectangle,
+  // L-shape, U-shape); the apex distance heuristic (eave/2) is the
+  // exact answer for a rectangle's hip and a close approximation for
+  // joined-roof wings whose short dimension equals the terminal
+  // edge's length.
+  const eaveOverhangMm =
+    typeof houseModel.eave?.eaveOverhangMm === 'number' ? houseModel.eave.eaveOverhangMm : 0;
+  const syntheticOpenShapes: GeometryTopProjectionShape[] = [];
+  for (const segment of probePoints) {
+    if (!segment.isOpen) continue;
+    if (matchedEndIds.has(segment.endId)) continue;
+    const dx = segment.b.x - segment.a.x;
+    const dy = segment.b.y - segment.a.y;
+    const length = Math.hypot(dx, dy);
+    if (length <= 1e-6) continue;
+    let centroidX = 0;
+    let centroidY = 0;
+    for (const point of houseModel.footprint) {
+      centroidX += point.x;
+      centroidY += point.y;
+    }
+    centroidX /= houseModel.footprint.length;
+    centroidY /= houseModel.footprint.length;
+    const midX = (segment.a.x + segment.b.x) / 2;
+    const midY = (segment.a.y + segment.b.y) / 2;
+    const perpA = { x: -dy / length, y: dx / length };
+    const perpB = { x: dy / length, y: -dx / length };
+    const dotA = perpA.x * (centroidX - midX) + perpA.y * (centroidY - midY);
+    const inward = dotA >= 0 ? perpA : perpB;
+    const outward = { x: -inward.x, y: -inward.y };
+    const apexInset = length / 2;
+    const apex: Point2 = {
+      x: midX + inward.x * apexInset,
+      y: midY + inward.y * apexInset,
+    };
+    const eaveStart: Point2 = {
+      x: segment.a.x + outward.x * eaveOverhangMm,
+      y: segment.a.y + outward.y * eaveOverhangMm,
+    };
+    const eaveEnd: Point2 = {
+      x: segment.b.x + outward.x * eaveOverhangMm,
+      y: segment.b.y + outward.y * eaveOverhangMm,
+    };
+    syntheticOpenShapes.push({
+      id: `house_terminal_end_synthetic:${segment.endId}`,
+      sourceObjectId: segment.endId,
+      sourceId: segment.endId,
+      // Use the same sourceType as a real hip cap so the existing
+      // top-projection plan-layer routing puts it in committedBodies
+      // (and hence the hit-target build pass), without needing a
+      // bespoke layer rule.
+      sourceType: 'house_surface_solid',
+      family: 'house',
+      kind: 'roof',
+      polygon: [apex, eaveStart, eaveEnd],
+      zOrder: 2,
+      zMin: 0,
+      zMax: 0,
+      metadata: {
+        topProjectionRole: 'top_visible',
+        openGableEndId: segment.endId,
+        isOpen: true,
+      },
+    });
+  }
+  if (syntheticOpenShapes.length === 0) return enrichedShapes;
+  return [...enrichedShapes, ...syntheticOpenShapes];
 }
 
 function shapeExtents(shapes: GeometryTopProjectionShape[]): GeometryTopProjectionViewModel['extents'] {

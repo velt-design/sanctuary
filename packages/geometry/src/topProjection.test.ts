@@ -973,7 +973,7 @@ describe("hip-end click target metadata on house roof shapes (milestone 13 plan-
     expect(endIds.size).toBe(tagged.length);
   });
 
-  it("flags isOpen = true on the hip facet whose end id is listed in openGableEndIds", () => {
+  it("flags isOpen = true on a synthetic hip-cap shape when the end is opened (so the user can re-close it)", () => {
     const solved = solveAssembly3D(
       buildHippedHouseConfig({ openGableEndIds: ["house-gable-end-x-2"] }),
     );
@@ -981,19 +981,30 @@ describe("hip-end click target metadata on house roof shapes (milestone 13 plan-
 
     const projection = buildTopProjectionViewModel(solved.value);
     const tagged = houseRoofShapesWithEndId(projection);
-    // Opening one end removes its hip facet (the wavefront leaves the
-    // edge stationary), so the open end's roof shape is GONE -- only
-    // the still-closed end remains tagged. The remaining one has
-    // isOpen=false. The "open" state is observable via the absence of
-    // the open end's roof shape, plus the OTHER end being still tagged.
+    // The opened end's REAL hip facet is gone (the rectangle path
+    // skips emitting it when endCap === 'open_gable'). To keep the
+    // re-close click target available, the enrichment emits a
+    // SYNTHETIC hip-shape shape at the same position, tagged
+    // isOpen=true. The hit-target layer renders it as a hover-only
+    // affordance; the body layer paints it transparent.
     const opened = tagged.find(
       (shape) => shape.metadata?.openGableEndId === "house-gable-end-x-2",
     );
-    expect(opened).toBeUndefined();
-    expect(tagged.length).toBeGreaterThan(0);
-    for (const shape of tagged) {
-      expect(shape.metadata?.isOpen).toBe(false);
-    }
+    expect(opened).toBeDefined();
+    expect(opened?.metadata?.isOpen).toBe(true);
+    // The synthetic shape's id distinguishes it from real hip facets
+    // (real ids are `house_surface_solid:house-solid-house-roof-...`).
+    expect(opened?.id).toContain("house_terminal_end_synthetic");
+
+    // The other terminal end (still closed) remains tagged with
+    // isOpen=false, sourced from the real hip facet.
+    const stillClosed = tagged.find(
+      (shape) =>
+        shape.metadata?.openGableEndId !== "house-gable-end-x-2" &&
+        shape.metadata?.isOpen === false,
+    );
+    expect(stillClosed).toBeDefined();
+    expect(stillClosed?.id).not.toContain("house_terminal_end_synthetic");
   });
 
   it("does not tag any roof shape on a mono house roof (no terminal ends to enrich)", () => {

@@ -6,7 +6,17 @@ function houseCommittedBodyTokenClass(shape: GeometryTopProjectionShape): string
   if (shape.kind === 'opening_marker' || shape.kind === 'opening_outline') {
     return lineweightStyles.bodyHouseOpening;
   }
-  if (shape.kind === 'roof' || shape.kind === 'house_roof_material') return lineweightStyles.bodyHouseRoof;
+  if (shape.kind === 'roof' || shape.kind === 'house_roof_material') {
+    // Milestone 13 plan-view UX: a hip-end facet tagged isOpen=true is
+    // a synthetic hover target for an OPENED gable end. Render it
+    // transparent so the only visible marker is the .hitTargetTerminalEnd
+    // hover affordance from the hit-target layer above. The closed-end
+    // hip facets keep the standard roof body style.
+    if (shape.kind === 'roof' && shape.metadata?.isOpen === true) {
+      return lineweightStyles.bodyTransparent;
+    }
+    return lineweightStyles.bodyHouseRoof;
+  }
   if (shape.kind === 'soffit') return lineweightStyles.bodyHouseSoffit;
   if (shape.kind === 'fascia') return lineweightStyles.bodyHouseFascia;
   if (shape.kind === 'attachment_zone') return lineweightStyles.bodyHouseAttachmentZone;
