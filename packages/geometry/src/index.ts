@@ -8,6 +8,13 @@ export type {
 } from './normalize';
 export { solveAssembly3D } from './solve';
 export type { SolveAssembly3DErrorCode, SolveAssembly3DResult } from './solve.types';
+export { solveProject } from './solveProject';
+export type {
+  SolveProjectInput,
+  SolveProjectPergolaErrorCode,
+  SolveProjectPergolaResult,
+  SolveProjectResult,
+} from './solveProject';
 export { validateGeometrySolve } from './validate';
 export type { ValidateGeometrySolveInput } from './validate';
 export { buildViewerSceneModel } from './viewer';
