@@ -106,21 +106,21 @@ describe('createMoveCommand', () => {
   it('applies the request and inverts the delta on undo', () => {
     const log: MoveRequest[] = [];
     const command = createMoveCommand({
-      request: { target: { family: 'deck', targetId: 'deck-7' }, delta: { x: 100, y: 50 } },
+      request: { target: { family: 'deck', targetId: 'deck-7' }, delta: { x: 100, y: 50 }, snap: null },
       commitMove: (request) => log.push(request),
     });
     command.apply();
     command.invert().apply();
     expect(log).toEqual([
-      { target: { family: 'deck', targetId: 'deck-7' }, delta: { x: 100, y: 50 } },
-      { target: { family: 'deck', targetId: 'deck-7' }, delta: { x: -100, y: -50 } },
+      { target: { family: 'deck', targetId: 'deck-7' }, delta: { x: 100, y: 50 }, snap: null },
+      { target: { family: 'deck', targetId: 'deck-7' }, delta: { x: -100, y: -50 }, snap: null },
     ]);
   });
 
   it('builds a label including the family and target id', () => {
     expect(
       createMoveCommand({
-        request: { target: { family: 'opening', targetId: 'opening-3' }, delta: { x: 0, y: 0 } },
+        request: { target: { family: 'opening', targetId: 'opening-3' }, delta: { x: 0, y: 0 }, snap: null },
         commitMove: () => undefined,
       }).label,
     ).toBe('Move opening opening-3');
@@ -130,7 +130,7 @@ describe('createMoveCommand', () => {
     const apply: string[] = [];
     const invert: string[] = [];
     const cmd = createMoveCommand({
-      request: { target: { family: 'pergola', targetId: 'pergola-A' }, delta: { x: 5, y: 5 } },
+      request: { target: { family: 'pergola', targetId: 'pergola-A' }, delta: { x: 5, y: 5 }, snap: null },
       commitMove: ({ delta }) => apply.push(`${delta.x},${delta.y}`),
       invertMove: ({ delta }) => invert.push(`${delta.x},${delta.y}`),
     });
@@ -166,6 +166,7 @@ describe('createMoveTool', () => {
     expect(previews.at(-1)).toEqual({
       target: { family: 'deck', targetId: 'deck-1' },
       delta: { x: 0, y: 0 },
+      snap: null,
     });
   });
 
@@ -176,6 +177,7 @@ describe('createMoveTool', () => {
     expect(previews.at(-1)).toEqual({
       target: { family: 'deck', targetId: 'deck-2' },
       delta: { x: 30, y: -10 },
+      snap: null,
     });
   });
 
@@ -185,7 +187,7 @@ describe('createMoveTool', () => {
     tool.onPointerMove?.(event({ point: { x: 50, y: 0 } }));
     tool.onPointerUp?.(event({ point: { x: 50, y: 0 } }));
     expect(commits).toEqual([
-      { target: { family: 'deck', targetId: 'deck-3' }, delta: { x: 50, y: 0 } },
+      { target: { family: 'deck', targetId: 'deck-3' }, delta: { x: 50, y: 0 }, snap: null },
     ]);
     expect(bus.snapshot()).toMatchObject({ canUndo: true, lastApplied: 'Move deck deck-3' });
   });
@@ -213,8 +215,8 @@ describe('createMoveTool', () => {
     tool.onPointerDown?.(event({ shape: pergolaShape('pergola-A'), point: { x: 0, y: 0 } }));
     tool.onPointerUp?.(event({ point: { x: 0, y: 25 } }));
     expect(commits).toEqual([
-      { target: { family: 'opening', targetId: 'opening-2' }, delta: { x: 100, y: 0 } },
-      { target: { family: 'pergola', targetId: 'pergola-A' }, delta: { x: 0, y: 25 } },
+      { target: { family: 'opening', targetId: 'opening-2' }, delta: { x: 100, y: 0 }, snap: null },
+      { target: { family: 'pergola', targetId: 'pergola-A' }, delta: { x: 0, y: 25 }, snap: null },
     ]);
     expect(bus.snapshot().canUndo).toBe(true);
   });
@@ -278,6 +280,7 @@ describe('createMoveTool', () => {
     expect(previews.at(-1)).toEqual({
       target: { family: 'deck', targetId: 'deck-active' },
       delta: { x: 0, y: 0 },
+      snap: null,
     });
   });
 
@@ -317,8 +320,136 @@ describe('createMoveTool', () => {
     tool.onPointerUp?.(event({ point: { x: 20, y: 30 } }));
     expect(bus.undo()).toBe(true);
     expect(apply).toEqual([
-      { target: { family: 'deck', targetId: 'deck-6' }, delta: { x: 20, y: 30 } },
-      { target: { family: 'deck', targetId: 'deck-6' }, delta: { x: -20, y: -30 } },
+      { target: { family: 'deck', targetId: 'deck-6' }, delta: { x: 20, y: 30 }, snap: null },
+      { target: { family: 'deck', targetId: 'deck-6' }, delta: { x: -20, y: -30 }, snap: null },
     ]);
+  });
+
+  it('snaps a moving deck to a parallel wall and surfaces the snap on commit', () => {
+    // 4m x 2m deck rect at the origin. Wall sits 50mm to the right of the
+    // natural drag end position (the right edge would land at x=4200; wall
+    // is at x=4150, correction = 50mm, well within the 250mm tolerance).
+    // The committed delta should be the snap-corrected one (x=150, not 200);
+    // the same numbers should appear on the live preview for indicator rendering.
+    const deckPolygon = [
+      { x: 0, y: 0 },
+      { x: 4000, y: 0 },
+      { x: 4000, y: 2000 },
+      { x: 0, y: 2000 },
+    ];
+    const wall = {
+      id: 'wall-right',
+      sourceObjectId: 'house-1',
+      edgeKind: 'wall' as const,
+      start: { x: 4150, y: -1000 },
+      end: { x: 4150, y: 3000 },
+    };
+    const commits: MoveRequest[] = [];
+    const previews: Array<MoveToolPreview | null> = [];
+    const bus = createCommandBus();
+    const tool = createMoveTool({
+      canMoveTarget: (target) => target.family === 'deck',
+      commandBus: bus,
+      dragThresholdMm: 1,
+      commitMove: (request) => commits.push(request),
+      onPreviewChange: (preview) => previews.push(preview),
+      getSnapLineTargets: () => [wall],
+      getActiveMovePolygon: () => deckPolygon,
+    });
+    tool.onPointerDown?.(event({ shape: deckShape('deck-snap'), point: { x: 0, y: 0 } }));
+    tool.onPointerMove?.(event({ point: { x: 200, y: 0 } }));
+    // Live preview should already show the snapped delta + snap result.
+    const livePreview = previews.at(-1);
+    expect(livePreview?.delta).toEqual({ x: 150, y: 0 });
+    expect(livePreview?.snap?.edgeIndex).toBe(1); // right edge
+    expect(livePreview?.snap?.edgeSnap.target.id).toBe('wall-right');
+
+    tool.onPointerUp?.(event({ point: { x: 200, y: 0 } }));
+    expect(commits).toHaveLength(1);
+    expect(commits[0]?.delta).toEqual({ x: 150, y: 0 });
+    expect(commits[0]?.snap?.edgeSnap.target.id).toBe('wall-right');
+    // Preview cleared after commit.
+    expect(previews.at(-1)).toBeNull();
+  });
+
+  it('falls back to the natural delta when no snap targets are within tolerance', () => {
+    const deckPolygon = [
+      { x: 0, y: 0 },
+      { x: 4000, y: 0 },
+      { x: 4000, y: 2000 },
+      { x: 0, y: 2000 },
+    ];
+    const farWall = {
+      id: 'wall-far',
+      sourceObjectId: 'house-1',
+      edgeKind: 'wall' as const,
+      start: { x: 5000, y: -1000 },
+      end: { x: 5000, y: 3000 },
+    };
+    const commits: MoveRequest[] = [];
+    const bus = createCommandBus();
+    const tool = createMoveTool({
+      canMoveTarget: (target) => target.family === 'deck',
+      commandBus: bus,
+      dragThresholdMm: 1,
+      commitMove: (request) => commits.push(request),
+      getSnapLineTargets: () => [farWall],
+      getActiveMovePolygon: () => deckPolygon,
+    });
+    tool.onPointerDown?.(event({ shape: deckShape('deck-no-snap'), point: { x: 0, y: 0 } }));
+    tool.onPointerMove?.(event({ point: { x: 200, y: 0 } })); // right edge at 4200; wall at 5000; 800mm > 250mm tolerance
+    tool.onPointerUp?.(event({ point: { x: 200, y: 0 } }));
+    expect(commits[0]?.delta).toEqual({ x: 200, y: 0 });
+    expect(commits[0]?.snap).toBeNull();
+  });
+
+  it('host pre-filters snap targets by family rules (deck rejects roof_eave; pergola accepts it)', () => {
+    // The MoveTool itself doesn't filter by edge kind -- the host's
+    // `getSnapLineTargets` decides which kinds reach the tool. This test
+    // documents the contract: when the host passes only "wall" targets,
+    // a roof_eave-shaped target never enters the snap pool, so a deck
+    // dragged near a roof eave does NOT snap to it.
+    const deckPolygon = [
+      { x: 0, y: 0 },
+      { x: 4000, y: 0 },
+      { x: 4000, y: 2000 },
+      { x: 0, y: 2000 },
+    ];
+    type Target = {
+      id: string;
+      sourceObjectId: string;
+      edgeKind: 'wall' | 'roof_eave' | 'pergola_outline';
+      start: { x: number; y: number };
+      end: { x: number; y: number };
+    };
+    const eaveAllTargets: Target[] = [
+      {
+        id: 'eave-1',
+        sourceObjectId: 'house-1',
+        edgeKind: 'roof_eave',
+        start: { x: 4150, y: -1000 },
+        end: { x: 4150, y: 3000 },
+      },
+    ];
+    // Host filters out roof_eave for decks (matches PlanViewport's
+    // `kinds: 'walls'` for non-pergola active families).
+    const deckSnapTargets = eaveAllTargets.filter((t) => t.edgeKind === 'wall');
+
+    const commits: MoveRequest[] = [];
+    const bus = createCommandBus();
+    const tool = createMoveTool({
+      canMoveTarget: (target) => target.family === 'deck',
+      commandBus: bus,
+      dragThresholdMm: 1,
+      commitMove: (request) => commits.push(request),
+      getSnapLineTargets: () => deckSnapTargets,
+      getActiveMovePolygon: () => deckPolygon,
+    });
+    tool.onPointerDown?.(event({ shape: deckShape('deck-eave'), point: { x: 0, y: 0 } }));
+    tool.onPointerMove?.(event({ point: { x: 200, y: 0 } }));
+    tool.onPointerUp?.(event({ point: { x: 200, y: 0 } }));
+    // No snap (the only candidate was a roof_eave, filtered out at the host).
+    expect(commits[0]?.snap).toBeNull();
+    expect(commits[0]?.delta).toEqual({ x: 200, y: 0 });
   });
 });

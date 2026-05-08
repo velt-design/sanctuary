@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { GeometryTopProjectionShape } from '@sp/geometry';
 import { createCommandBus } from '@/lib/drawings/commands/commandBus';
+import { createReversibleCommand } from '@/lib/drawings/commands/createReversibleCommand';
 import { createEdgeDragTool, type EdgeDragOutline } from './EdgeDragTool';
 import { createMoveTool, type MoveRequest } from './MoveTool';
 import { createSelectTool } from './SelectTool';
@@ -108,7 +109,7 @@ describe('createPlanToolChain (integration)', () => {
     chain.onPointerMove?.(event({ point: { x: 2300, y: 1000 } }));
     chain.onPointerUp?.(event({ point: { x: 2300, y: 1000 } }));
     expect(moveCommits).toEqual([
-      { target: { family: 'pergola', targetId: 'pergola-1' }, delta: { x: 300, y: 0 } },
+      { target: { family: 'pergola', targetId: 'pergola-1' }, delta: { x: 300, y: 0 }, snap: null },
     ]);
     expect(bus.snapshot().canUndo).toBe(true);
   });
@@ -124,7 +125,7 @@ describe('createPlanToolChain (integration)', () => {
     chain.onPointerMove?.(event({ point: { x: 10100, y: 10050 } }));
     chain.onPointerUp?.(event({ point: { x: 10100, y: 10050 } }));
     expect(moveCommits).toEqual([
-      { target: { family: 'deck', targetId: 'deck-1' }, delta: { x: 100, y: 50 } },
+      { target: { family: 'deck', targetId: 'deck-1' }, delta: { x: 100, y: 50 }, snap: null },
     ]);
   });
 
@@ -145,9 +146,101 @@ describe('createPlanToolChain (integration)', () => {
     chain.onPointerUp?.(event({ point: { x: 2200, y: 1100 } }));
     expect(bus.undo()).toBe(true);
     expect(moveCommits).toEqual([
-      { target: { family: 'pergola', targetId: 'pergola-1' }, delta: { x: 200, y: 100 } },
-      { target: { family: 'pergola', targetId: 'pergola-1' }, delta: { x: -200, y: -100 } },
+      { target: { family: 'pergola', targetId: 'pergola-1' }, delta: { x: 200, y: 100 }, snap: null },
+      { target: { family: 'pergola', targetId: 'pergola-1' }, delta: { x: -200, y: -100 }, snap: null },
     ]);
+  });
+
+  it('routes an edge-drag commit through CommandBus when the onCommit callback returns a ReversibleCommandInput, and undo restores prior state', () => {
+    // Closes milestone 14: edge-drag commits land on the same CommandBus as
+    // moves, so Ctrl-Z covers resize and translate uniformly. The wiring
+    // mirrors `PlanViewport.tsx`: EdgeDragTool's `onCommit` invokes the host
+    // (here: a stubbed handler that snapshots pre-edit state), and the
+    // returned `ReversibleCommandInput` is pushed through the bus.
+    const moveCommits: MoveRequest[] = [];
+    const persistedDeck: { polygon: ReadonlyArray<{ x: number; y: number }> } = {
+      polygon: RECT_OUTLINE.polygon,
+    };
+    const bus = createCommandBus();
+
+    const selectTool = createSelectTool({});
+    const moveTool = createMoveTool({
+      canMoveTarget: () => true,
+      commandBus: bus,
+      dragThresholdMm: 5,
+      commitMove: (request) => moveCommits.push(request),
+      onPointerDownFallthrough: (event) => selectTool.onPointerDown?.(event),
+    });
+
+    const edgeDragTool = createEdgeDragTool({
+      getActiveOutline: () => RECT_OUTLINE,
+      onCommit: (commit) => {
+        // Capture the pre-edit polygon and the new polygon. Build a
+        // reversible command so undo restores the original.
+        const previousPolygon = persistedDeck.polygon;
+        const nextPolygon = commit.nextPolygon;
+        bus.apply(
+          createReversibleCommand({
+            label: 'Resize pergola',
+            apply: () => {
+              persistedDeck.polygon = nextPolygon;
+            },
+            invert: () => {
+              persistedDeck.polygon = previousPolygon;
+            },
+          }),
+        );
+      },
+      onPointerDownFallthrough: (event) => moveTool.onPointerDown?.(event),
+    });
+
+    const chain = createPlanToolChain({ edgeDragTool, moveTool });
+
+    // Drag the right edge outward by 500mm. EdgeDragTool commits.
+    chain.onPointerDown?.(event({ shape: deckShape('pergola-1', 'pergola'), point: { x: 4050, y: 1000 } }));
+    chain.onPointerMove?.(event({ point: { x: 4500, y: 1000 } }));
+    chain.onPointerUp?.(event({ point: { x: 4500, y: 1000 } }));
+
+    expect(persistedDeck.polygon).not.toBe(RECT_OUTLINE.polygon);
+    expect(bus.snapshot().canUndo).toBe(true);
+    expect(bus.snapshot().lastApplied).toBe('Resize pergola');
+
+    bus.undo();
+    expect(persistedDeck.polygon).toBe(RECT_OUTLINE.polygon);
+    expect(bus.snapshot().canUndo).toBe(false);
+    expect(bus.snapshot().canRedo).toBe(true);
+
+    bus.redo();
+    expect(persistedDeck.polygon).not.toBe(RECT_OUTLINE.polygon);
+  });
+
+  it('cancel mid-move discards the drag without firing onCommit (Esc behaviour)', () => {
+    // PlanViewport binds Escape -> activeTool.onCancel(). The chain's
+    // onCancel propagates to MoveTool, which clears its session. A
+    // subsequent pointer-up does NOT commit because the session is gone --
+    // so the host never receives a request and no patch is written. This
+    // is the contract the Esc keybind relies on.
+    const { chain, moveCommits, bus } = setup({ activeOutline: RECT_OUTLINE });
+    chain.onPointerDown?.(event({ shape: deckShape('pergola-1', 'pergola'), point: { x: 2000, y: 1000 } }));
+    chain.onPointerMove?.(event({ point: { x: 2300, y: 1000 } }));
+    // User presses Esc mid-drag.
+    chain.onCancel?.();
+    // Mouse-up arrives after Esc -- no commit, no command on the bus.
+    chain.onPointerUp?.(event({ point: { x: 2400, y: 1000 } }));
+    expect(moveCommits).toEqual([]);
+    expect(bus.snapshot().canUndo).toBe(false);
+  });
+
+  it('cancel mid-edge-drag discards the resize without firing onCommit', () => {
+    // Same contract for EdgeDragTool. A pointer-down on an edge starts a
+    // resize session; cancel clears it; pointer-up afterwards doesn't
+    // commit a polygon change.
+    const { chain, edgeCommits } = setup({ activeOutline: RECT_OUTLINE });
+    chain.onPointerDown?.(event({ shape: deckShape('pergola-1', 'pergola'), point: { x: 4050, y: 1000 } }));
+    chain.onPointerMove?.(event({ point: { x: 4500, y: 1000 } }));
+    chain.onCancel?.();
+    chain.onPointerUp?.(event({ point: { x: 4500, y: 1000 } }));
+    expect(edgeCommits).toEqual([]);
   });
 
   it('cancel propagates to both child tools so neither leaves a stale session', () => {

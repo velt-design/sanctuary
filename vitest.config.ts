@@ -31,5 +31,6 @@ export default defineConfig({
         url: 'http://localhost',
       },
     },
+    setupFiles: [path.resolve(__dirname, 'test/setup/jsdomSvgPolyfill.ts')],
   },
 });

@@ -11,17 +11,28 @@ const PLAN_SVG_UNITS_PER_METRE = 100;
  * conversion (which divides physical pixels by `viewBox/element` ratio)
  * does not compound.
  *
- * Why this exists: every commit that moves a shape can grow `extents`. SVG
- * `preserveAspectRatio="xMidYMid meet"` shrinks the rendered viewBox to
- * fit the element, so a larger viewBox means every physical pixel of
- * cursor movement covers more world distance. A few moves of a deck out
- * past the project bounds would amplify each subsequent drag's world
- * delta, creating an exponential drift toward the corner.
+ * What this prevents: SVG `preserveAspectRatio="xMidYMid meet"` shrinks the
+ * rendered viewBox to fit the element, so a larger viewBox means every
+ * physical pixel of cursor movement covers more world distance. If a shape
+ * ever drifted far past the project bounds, each subsequent drag's world
+ * delta would be amplified by the larger viewBox -- a compounding scale
+ * runaway. The cap bounds the cursor-to-world ratio at all times.
+ *
+ * Status: defense-in-depth, NOT load-bearing for the deck-drift bug we
+ * paid for in production. That bug's root cause was a `pointerCancel`
+ * event being treated as `pointerUp` at the React event boundary (footgun
+ * #5). With that fix in place, shapes don't drift in normal use. But: any
+ * future bug that lets `extents` grow unbounded would re-create the scale
+ * runaway here; the cap keeps that class of failure mode bounded.
  *
  * 50m comfortably encloses any realistic project (pergola + house + decks)
  * while preventing the feedback loop. Shapes that drift further than this
  * still render at their correct world coords; the user pans (via
  * `viewportTransform`) to see them and can undo the bad move via Ctrl-Z.
+ *
+ * Removing this cap is safe ONLY if you're confident no commit path can
+ * grow the extents unbounded. Since extents are derived from solved
+ * geometry, that's a global invariant -- prefer to keep the cap.
  *
  * See `docs/maintainability-principles.md` -- coordinate-system footguns.
  */

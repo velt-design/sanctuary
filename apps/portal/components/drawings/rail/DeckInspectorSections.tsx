@@ -351,6 +351,21 @@ export function buildDeckInspectorSections({
         }
       />
       <ActionButton
+        label="Reset position"
+        disabled={disabled}
+        onClick={() =>
+          void runAction(
+            `deck-reset-position-${activeDeck.id}`,
+            onCommitDeckPatch?.(activeDeck.id, {
+              position: null,
+              shape: 'preset',
+              presetType: activeDeck.isAttached ? 'rect_attached' : 'rect_detached',
+            }),
+            'Unable to reset the deck position.',
+          )
+        }
+      />
+      <ActionButton
         label="Remove deck"
         disabled={disabled}
         onClick={() =>
@@ -362,6 +377,11 @@ export function buildDeckInspectorSections({
         }
       />
     </div>,
+    <p key="deck-reset-hint" className={styles.fieldHint}>
+      Reset position clears the deck&apos;s world-space position and reverts the
+      shape to a default rectangle. Use it to recover a deck that has drifted
+      off-canvas; the deck record (name, kind, host edge, material) is preserved.
+    </p>,
   );
 
   return deckButtons;

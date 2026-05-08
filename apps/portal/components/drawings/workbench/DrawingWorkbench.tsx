@@ -99,6 +99,9 @@ type DrawingWorkbenchProps = {
   onCommitMove?: (request: MoveRequest) => void;
   /** Faded outline shapes for non-active pergolas (Step 5d Option A). */
   projectContextShapes?: ReadonlyArray<GeometryTopProjectionShape>;
+  /** Cross-viewport hover state (milestone 16). Pass-through to viewports. */
+  hoveredObjectRef?: WorkbenchObjectRef | null;
+  onHoverObjectChange?: (next: WorkbenchObjectRef | null) => void;
 };
 
 export default function DrawingWorkbench({
@@ -151,6 +154,8 @@ export default function DrawingWorkbench({
   onCommitOutlineEdit,
   onCommitMove,
   projectContextShapes,
+  hoveredObjectRef,
+  onHoverObjectChange,
 }: DrawingWorkbenchProps) {
   void modules;
   void onActiveModuleIndexChange;
@@ -209,6 +214,8 @@ export default function DrawingWorkbench({
         onCommitOutlineEdit={onCommitOutlineEdit}
         onCommitMove={onCommitMove}
         projectContextShapes={projectContextShapes}
+        hoveredObjectRef={hoveredObjectRef}
+        onHoverObjectChange={onHoverObjectChange}
       />
     </section>
   );

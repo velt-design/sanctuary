@@ -26,7 +26,8 @@ import {
   deriveEstimateDrawingEditableFields,
 } from '@/lib/estimates/drawingEdits';
 import { pergolaAttachmentFromSnap } from '@/lib/drawings/state/pergolaAttachment';
-import type { PergolaAttachment } from '@/lib/drawings/state/objectFirstWorkbenchModel';
+import type { PergolaAttachment, WorkbenchObjectRef } from '@/lib/drawings/state/objectFirstWorkbenchModel';
+import type { ObjectWorkbenchDeckPatch } from '@/lib/drawings/state/objectWorkbenchInspectorModel';
 import { buildEstimateDrawingModuleInfoRows, buildEstimateDrawingSheetMeta } from '@/lib/estimates/drawingSheet';
 import type { EstimateDetail } from '@/lib/estimates/types';
 import { type DrawOutlineTarget } from './objectWorkbenchClientTypes';
@@ -106,6 +107,13 @@ export default function DesignWorkbenchEstimateClient({
     kind: 'footprint',
     deckId: null,
   });
+  // Cross-viewport hover state (milestone 16). Driven by whichever viewport
+  // currently has the user's pointer; consumed by the other(s) to render a
+  // matching highlight. Local hover (data-plan-hover-shape-id, hit-target
+  // hover styling) stays viewport-internal -- this is purely for the cross-
+  // surface "show me where this object lives in the other view" affordance.
+  // Local state, not in the persisted UI state, since hover is transient.
+  const [hoveredObjectRef, setHoveredObjectRef] = useState<WorkbenchObjectRef | null>(null);
   const { drawingDraft, persistDrawingDraftLocally } = useObjectWorkbenchDraftPersistence({
     estimateId: estimate.id,
     snapshot: estimate.calculatorSnapshot,
@@ -471,6 +479,8 @@ export default function DesignWorkbenchEstimateClient({
           planViewModel={store.derived.activePlanViewModel}
           activeObjectRef={viewportActiveObjectRef}
           projectContextShapes={projectContextShapes}
+          hoveredObjectRef={hoveredObjectRef}
+          onHoverObjectChange={setHoveredObjectRef}
           pergolaTargetId={viewportPergolaId}
           enableProjectionOnlyModelInteractions
           modelViewportKey={modelViewportSurfaceKey}
@@ -501,19 +511,6 @@ export default function DesignWorkbenchEstimateClient({
           onCommitOutlineEdit={
             !isLocked
               ? (commit) => {
-                  // Unconditional outer log so we can verify the commit is
-                  // even reaching this handler. Surfaces in any browser
-                  // console regardless of URL flags.
-                  // eslint-disable-next-line no-console
-                  console.log('[edge-drag] onCommitOutlineEdit fired', {
-                    family: commit.family,
-                    outlineId: commit.outlineId,
-                    nextPolygonLength: commit.nextPolygon.length,
-                    activeObject: {
-                      family: store.ui.activeObjectRef.family,
-                      objectId: store.ui.activeObjectRef.objectId,
-                    },
-                  });
                   if (commit.family === 'house_forms') {
                     // House edge-drag commit (stage 3.4 — house first-class spatial
                     // entity). The house owns its own world `position` and its
@@ -703,7 +700,15 @@ export default function DesignWorkbenchEstimateClient({
                     ) {
                       return;
                     }
-                    void objectWorkbenchActions.commitSharedPergolaEdgeDragResult(pergolaId, {
+                    // Forward fields = the new state the edge-drag commits to.
+                    // Inverse fields = the captured pre-edit state. We pass
+                    // ALL fields in the inverse (not just changed ones) so the
+                    // restore is complete -- e.g. if the edit changed only
+                    // lengthMm + attachment, undo still re-applies the
+                    // original position to keep the pergola identical to
+                    // pre-edit state. The action no-ops when fields don't
+                    // differ, so passing extras is cheap.
+                    const forwardFields = {
                       ...(positionChanged
                         ? {
                             position: {
@@ -718,8 +723,37 @@ export default function DesignWorkbenchEstimateClient({
                       ...(lengthChanged ? { lengthMm: nextLengthMm } : null),
                       ...(projectionChanged ? { projectionMm: nextProjectionMm } : null),
                       ...(snapAttachment ? { attachment: snapAttachment } : null),
-                    });
-                    return;
+                    };
+                    const previousAttachment = pergola?.attachment ?? null;
+                    const inverseFields = {
+                      position: {
+                        originXMm: currentOriginXMm,
+                        originYMm: currentOriginYMm,
+                        rotationDeg: Number.isFinite(currentRotationDeg)
+                          ? currentRotationDeg
+                          : 0,
+                      },
+                      ...(Number.isFinite(currentLengthMm) ? { lengthMm: currentLengthMm } : null),
+                      ...(Number.isFinite(currentProjectionMm)
+                        ? { projectionMm: currentProjectionMm }
+                        : null),
+                      attachment: previousAttachment,
+                    };
+                    return {
+                      label: `Resize pergola ${pergolaId}`,
+                      apply: () => {
+                        void objectWorkbenchActions.commitSharedPergolaEdgeDragResult(
+                          pergolaId,
+                          forwardFields,
+                        );
+                      },
+                      invert: () => {
+                        void objectWorkbenchActions.commitSharedPergolaEdgeDragResult(
+                          pergolaId,
+                          inverseFields,
+                        );
+                      },
+                    };
                   }
                   if (commit.family === 'decks') {
                     // Deck edge-drag commit (stage 4 — deck first-class spatial
@@ -786,8 +820,35 @@ export default function DesignWorkbenchEstimateClient({
                       houseWorldPositionMm,
                     });
                     if (!patch) return;
-                    void objectWorkbenchActions.commitSharedHouseDeckPatch(deckId, patch);
-                    return;
+                    // Capture the pre-edit shape-defining fields so undo can
+                    // restore them. The forward patch always lands as
+                    // `shape: 'custom'` + outline + position; the inverse must
+                    // carry whatever the deck had before (preset, floating, or
+                    // a different custom outline). Including all candidates
+                    // keeps the inverse correct regardless of the prior shape
+                    // -- partial patches ignore irrelevant fields.
+                    const previousDeckPatch: ObjectWorkbenchDeckPatch = matchedDeck
+                      ? {
+                          shape: matchedDeck.shape,
+                          outline: matchedDeck.outline,
+                          position: matchedDeck.position ?? null,
+                          presetType: matchedDeck.presetType ?? null,
+                          presetRect: matchedDeck.presetRect ?? null,
+                          floatingRect: matchedDeck.floatingRect ?? null,
+                        }
+                      : { shape: 'custom', outline: [], position: null };
+                    return {
+                      label: `Resize deck ${deckId}`,
+                      apply: () => {
+                        void objectWorkbenchActions.commitSharedHouseDeckPatch(deckId, patch);
+                      },
+                      invert: () => {
+                        void objectWorkbenchActions.commitSharedHouseDeckPatch(
+                          deckId,
+                          previousDeckPatch,
+                        );
+                      },
+                    };
                   }
                   // openings deferred (no canonical polygon yet).
                   // eslint-disable-next-line no-console

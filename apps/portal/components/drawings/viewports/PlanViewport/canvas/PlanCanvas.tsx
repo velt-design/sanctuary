@@ -22,10 +22,14 @@ import { PlanEdgeDragPreviewLayer } from './layers/PlanEdgeDragPreviewLayer';
 import { PlanEdgeHoverHighlightLayer } from './layers/PlanEdgeHoverHighlightLayer';
 import { PlanHitTargetLayer } from './layers/PlanHitTargetLayer';
 import { PlanHitTestDebugLayer } from './layers/PlanHitTestDebugLayer';
+import { PlanHoverHaloLayer } from './layers/PlanHoverHaloLayer';
 import { PlanMovePreviewLayer } from './layers/PlanMovePreviewLayer';
 import { PlanProjectContextLayer } from './layers/PlanProjectContextLayer';
 import { PlanSelectionHaloLayer } from './layers/PlanSelectionHaloLayer';
-import { PlanSnapIndicatorLayer } from './layers/PlanSnapIndicatorLayer';
+import {
+  PlanMoveSnapIndicatorLayer,
+  PlanSnapIndicatorLayer,
+} from './layers/PlanSnapIndicatorLayer';
 import type { GeometryTopProjectionShape } from '@sp/geometry';
 import type { PlanDimension } from './planDimension';
 import type { EdgeDragHover, EdgeDragPreview } from '../tools/EdgeDragTool';
@@ -45,6 +49,20 @@ export type PlanCanvasProps = {
   contextLines: PlanRenderItem[];
   detailLines: PlanRenderItem[];
   selectionHaloItems: PlanRenderItem[];
+  /**
+   * Cross-viewport hover halo items. Empty when no external hover (e.g. 3D
+   * pointer-over) is active. Rendered as a lighter-weight outline than the
+   * selection halo so the active selection still reads as primary.
+   */
+  hoverHaloItems?: PlanRenderItem[];
+  /**
+   * Fires when the local pointer enters or leaves a top-projection shape.
+   * Receives the full shape on enter, `null` on leave. Used by PlanViewport
+   * to classify the shape into a `WorkbenchObjectRef` and emit cross-
+   * viewport hover state. Local hover styling (data attrs, hit-target hover)
+   * remains driven by `useHoveredShape` independently.
+   */
+  onHoverShape?: (shape: GeometryTopProjectionShape | null) => void;
   dimensions?: ReadonlyArray<PlanDimension>;
   edgeDragPreview?: EdgeDragPreview | null;
   edgeDragHover?: EdgeDragHover | null;
@@ -68,6 +86,7 @@ export type PlanCanvasProps = {
 
 const EMPTY_DIMENSIONS: ReadonlyArray<PlanDimension> = [];
 const EMPTY_PROJECT_CONTEXT_SHAPES: ReadonlyArray<GeometryTopProjectionShape> = [];
+const EMPTY_HOVER_HALO_ITEMS: PlanRenderItem[] = [];
 
 function transformAttr(transform: DrawingWorkbenchViewportTransform): string {
   return `translate(${transform.panX} ${transform.panY}) scale(${transform.zoom})`;
@@ -80,6 +99,8 @@ export function PlanCanvas({
   contextLines,
   detailLines,
   selectionHaloItems,
+  hoverHaloItems = EMPTY_HOVER_HALO_ITEMS,
+  onHoverShape,
   dimensions = EMPTY_DIMENSIONS,
   edgeDragPreview = null,
   edgeDragHover = null,
@@ -95,6 +116,26 @@ export function PlanCanvas({
   const { hoveredShape, onShapeEnter, onShapeLeave } = useHoveredShape();
   const panZoom = usePanZoom({ transform, onTransformChange });
   const hitTargetItems = useMemo(() => filterPlanHitTargets(committedBodies), [committedBodies]);
+
+  // Wrap the local hover handlers so we ALSO emit the full shape upward via
+  // `onHoverShape`. PlanViewport classifies it into a `WorkbenchObjectRef`
+  // and publishes cross-viewport hover state. Local hover styling
+  // (data-plan-hover-shape-id, hit-target hover) stays driven by the local
+  // `useHoveredShape` so we don't depend on the parent for visual feedback.
+  const handleShapeEnterWithEmit = useCallback(
+    (shape: GeometryTopProjectionShape) => {
+      onShapeEnter(shape);
+      onHoverShape?.(shape);
+    },
+    [onHoverShape, onShapeEnter],
+  );
+  const handleShapeLeaveWithEmit = useCallback(
+    (shapeId: string) => {
+      onShapeLeave(shapeId);
+      onHoverShape?.(null);
+    },
+    [onHoverShape, onShapeLeave],
+  );
 
   // Diagnostic overlay — only rendered when `?debug=hit-test` is in the URL.
   // Tracks cursor world coords via state so the overlay re-renders on each
@@ -259,11 +300,12 @@ export function PlanCanvas({
           <PlanContextLineLayer items={contextLines} />
           <PlanDetailLayer items={detailLines} />
           <PlanSelectionHaloLayer items={selectionHaloItems} />
+          <PlanHoverHaloLayer items={hoverHaloItems} />
           <PlanHitTargetLayer
             items={hitTargetItems}
             onShapePointerDown={(shape, event) => dispatchPlanPointer('down', event, shape)}
-            onShapeEnter={onShapeEnter}
-            onShapeLeave={onShapeLeave}
+            onShapeEnter={handleShapeEnterWithEmit}
+            onShapeLeave={handleShapeLeaveWithEmit}
           />
           <PlanDimensionLayer dimensions={dimensions} coordinateAdapter={coordinateAdapter} />
           <PlanEdgeHoverHighlightLayer hover={edgeDragHover} coordinateAdapter={coordinateAdapter} />
@@ -274,6 +316,11 @@ export function PlanCanvas({
             coordinateAdapter={coordinateAdapter}
           />
           <PlanSnapIndicatorLayer preview={edgeDragPreview} coordinateAdapter={coordinateAdapter} />
+          <PlanMoveSnapIndicatorLayer
+            preview={movePreview}
+            sourcePolygonMm={movePreviewSourcePolygon}
+            coordinateAdapter={coordinateAdapter}
+          />
           <PlanHitTestDebugLayer
             enabled={debugEnabled}
             activeOutlinePolygon={activeOutlinePolygon}

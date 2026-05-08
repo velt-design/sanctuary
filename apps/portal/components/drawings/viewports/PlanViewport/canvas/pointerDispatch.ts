@@ -38,11 +38,19 @@ export type PointerDispatchAction =
  * world-coord point) into a tool-dispatcher action. Encodes the contract
  * documented in `docs/maintainability-principles.md` footgun #5:
  *
- *   1. null point => skip (never invent (0, 0); the previous fallback
- *      poisoned MoveTool's session and produced the deck-runaway bug).
+ *   1. null point => skip (never invent (0, 0)). Status: defense-in-depth.
+ *      A previous version fell back to `point: { x: 0, y: 0 }` for events
+ *      without a shape, which would have poisoned MoveTool's session if
+ *      `clientPointToPlanProjection` ever returned null. In practice the
+ *      `pointerCancel` fix (separate handler, see footgun #5) was the
+ *      actual root cause of the deck-runaway bug; the null fallback wasn't
+ *      observed firing. But the contract -- "ToolPointerEvent.point is
+ *      always the true cursor world coord, never invented" -- is what the
+ *      whole tool layer relies on, so the skip-on-null behaviour stays.
  *   2. valid point on 'down' => dispatch + capture. Capture prevents the
  *      browser from firing pointerleave/pointercancel when the cursor
- *      crosses element boundaries during a drag.
+ *      crosses element boundaries during a drag. LOAD-BEARING -- without
+ *      this, real drags get cancelled and the active tool is torn down.
  *   3. valid point on 'move'/'up' => dispatch without capture (capture is
  *      already held from the down event; release happens automatically on
  *      pointerUp/pointerCancel at the browser layer).
@@ -50,7 +58,8 @@ export type PointerDispatchAction =
  * NOT handled here: pointerCancel events. They have different semantics
  * (cancel the active tool, never dispatch as up) and are routed through a
  * separate handler at the React layer. Sending a cancel event to this
- * function would dispatch it as a normal up -- exactly the bug we just fixed.
+ * function would dispatch it as a normal up -- exactly the bug that
+ * produced the deck-runaway. See `PlanCanvas.handlePointerCancel`.
  *
  * Pure for testability. Side effects (SVG measurement, capture API call,
  * dispatcher invocation) live at the React boundary in `PlanCanvas.tsx`.

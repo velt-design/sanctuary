@@ -92,6 +92,14 @@ type WorkbenchViewportHostProps = {
   onCommitMove?: (request: MoveRequest) => void;
   /** Faded outline shapes for non-active pergolas (Step 5d Option A). */
   projectContextShapes?: ReadonlyArray<GeometryTopProjectionShape>;
+  /**
+   * Cross-viewport hover state (milestone 16). PlanViewport emits via
+   * `onHoverObjectChange` when the local pointer enters a shape; the host
+   * threads it through to whichever viewport is currently rendered. Phase
+   * 1 wires the prop end-to-end without yet rendering hover styling in 3D.
+   */
+  hoveredObjectRef?: WorkbenchObjectRef | null;
+  onHoverObjectChange?: (next: WorkbenchObjectRef | null) => void;
 };
 
 export default function WorkbenchViewportHost({
@@ -137,6 +145,8 @@ export default function WorkbenchViewportHost({
   onCommitOutlineEdit,
   onCommitMove,
   projectContextShapes,
+  hoveredObjectRef,
+  onHoverObjectChange,
 }: WorkbenchViewportHostProps) {
   const routedDrawingSurfaceGeometry =
     drawingSurfaceGeometry ??
@@ -175,6 +185,8 @@ export default function WorkbenchViewportHost({
           onClearWorkbenchSelection={onClearWorkbenchSelection}
           onCommitOutlineEdit={onCommitOutlineEdit}
           onCommitMove={onCommitMove}
+          hoveredObjectRef={hoveredObjectRef}
+          onHoverObjectChange={onHoverObjectChange}
         />
       ) : (
         <DesignViewport
@@ -188,6 +200,7 @@ export default function WorkbenchViewportHost({
           onSelectObjectWorkbenchTarget={onSelectObjectWorkbenchTarget}
           onSelectPergolaTarget={onSelectPergolaTarget}
           onClearWorkbenchSelection={onClearWorkbenchSelection}
+          hoveredObjectId={hoveredObjectRef?.objectId ?? null}
         />
       )}
     </div>

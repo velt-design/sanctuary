@@ -30,18 +30,30 @@ export type PlanRenderModel = {
   contextLines: PlanRenderItem[];
   detailLines: PlanRenderItem[];
   selectionHaloItems: PlanRenderItem[];
+  /**
+   * Cross-viewport hover halo. Populated when an external surface (e.g. 3D
+   * viewport) reports a hovered object that maps to a shape in this plan
+   * projection. Empty for "no external hover" or when the hovered object is
+   * the active selection (the selection halo already highlights it; rendering
+   * both would double-paint). See `docs/design-workbench-architecture.md`
+   * milestone 16 for the hover-sync contract.
+   */
+  hoverHaloItems: PlanRenderItem[];
 };
 
 export type UsePlanRenderModelInput = {
   projection: GeometryTopProjectionViewModel | null;
   visibility: DrawingWorkbenchVisibilityState;
   activeObjectRef: WorkbenchObjectRef | null | undefined;
+  /** External hover state (e.g. driven by 3D viewport pointer-over). */
+  hoveredObjectRef?: WorkbenchObjectRef | null;
 };
 
 export function usePlanRenderModel({
   projection,
   visibility,
   activeObjectRef,
+  hoveredObjectRef,
 }: UsePlanRenderModelInput): PlanRenderModel | null {
   return useMemo(() => {
     if (!projection) return null;
@@ -80,6 +92,30 @@ export function usePlanRenderModel({
     const selectionHaloItems: PlanRenderItem[] = primary
       ? [{ shape: primary.shape, points: primary.points, layer: primary.layer }]
       : matchedItems;
-    return { layout, adapter, committedBodies, contextLines, detailLines, selectionHaloItems };
-  }, [activeObjectRef, projection, visibility]);
+    // Hover halo: same matching rule as selection, but driven by the
+    // external hover ref. Skip when the hovered object IS the active
+    // object (the selection halo already covers it; double-painting just
+    // muddies the visual). Skip when hover ref is the same family/objectId
+    // as the active object so we don't compete with selection styling.
+    const hoverIsActive =
+      hoveredObjectRef &&
+      activeObjectRef &&
+      hoveredObjectRef.family === activeObjectRef.family &&
+      hoveredObjectRef.objectId === activeObjectRef.objectId;
+    const hoverHaloItems: PlanRenderItem[] =
+      hoveredObjectRef && !hoverIsActive
+        ? committedBodies.filter(({ shape }) =>
+            activeObjectMatchesPlanShape(hoveredObjectRef, shape),
+          )
+        : [];
+    return {
+      layout,
+      adapter,
+      committedBodies,
+      contextLines,
+      detailLines,
+      selectionHaloItems,
+      hoverHaloItems,
+    };
+  }, [activeObjectRef, hoveredObjectRef, projection, visibility]);
 }

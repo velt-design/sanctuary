@@ -1,4 +1,4 @@
-import type { GeometryTopProjectionShape } from '@sp/geometry';
+import type { GeometryTopProjectionShape, Point2 } from '@sp/geometry';
 import {
   beginDrag,
   cancelDrag,
@@ -8,9 +8,11 @@ import {
   type DragSession,
   type PlanPoint,
 } from '../interactions/dragLifecycle';
+import type { SnapLineTarget } from '../interactions/snap/snapEngine';
 import { topProjectionShapeClassifier } from '@/components/drawings/viewports/selection/selectionRouter';
 import type { Command } from '@/lib/drawings/commands/command';
 import type { CommandBus } from '@/lib/drawings/commands/commandBus';
+import { resolveMoveSnap, type MoveSnapResult } from './resolveMoveSnap';
 import type { Tool, ToolPointerEvent } from './Tool';
 
 export type MoveTargetFamily = 'deck' | 'opening' | 'pergola';
@@ -23,11 +25,25 @@ export type MoveTarget = {
 export type MoveRequest = {
   target: MoveTarget;
   delta: PlanPoint;
+  /**
+   * Snap result when the drag ended on a snap. Surfaces the same
+   * `EdgeSnapResult` shape `EdgeDragTool` produces, but for the moving
+   * polygon's best-matching edge -- the host can derive an attachment
+   * (e.g. deck snapped to wall) from the snap target the same way it
+   * does for a resize. `null` when no snap held at release.
+   */
+  snap: MoveSnapResult | null;
 };
 
 export type MoveToolPreview = {
   target: MoveTarget;
   delta: PlanPoint;
+  /**
+   * Live snap state during drag. PlanSnapIndicatorLayer renders the
+   * indicator on the snapped target line; consumers that don't render
+   * snap visuals can ignore. `null` when no snap is currently active.
+   */
+  snap: MoveSnapResult | null;
 };
 
 export type MoveToolConfig = {
@@ -48,6 +64,28 @@ export type MoveToolConfig = {
   commitMove: (request: MoveRequest) => void;
   invertMove?: (request: MoveRequest) => void;
   onPreviewChange?: (preview: MoveToolPreview | null) => void;
+  /**
+   * Snap line target source -- typically the same one the EdgeDragTool
+   * consumes (`buildHouseSnapTargets` + other-pergola outline edges). Read
+   * fresh on every pointermove so re-solves between pointer events
+   * surface up-to-date targets. Pre-filtered by family at the host (decks
+   * skip roof eaves; pergolas keep them) -- the tool itself does not
+   * filter. Omit (or return empty) for "no snap"; the move tool falls
+   * back to the natural translation delta.
+   */
+  getSnapLineTargets?: () => ReadonlyArray<SnapLineTarget>;
+  /**
+   * Returns the polygon (world mm) of the object currently being moved,
+   * if any. Used to project translation onto each edge's outward normal
+   * for snap resolution. Without it, the move tool can't compute snap and
+   * just emits the natural delta. Same provider as `EdgeDragTool`'s
+   * `getActiveOutline.polygon` — keep them in sync at the host.
+   */
+  getActiveMovePolygon?: () => ReadonlyArray<Point2> | null;
+  /** Max snap correction distance (mm) before a candidate is rejected. Default: matches `resolveEdgeSnap`. */
+  snapToleranceMm?: number;
+  /** Max angle (degrees) between the polygon's edge and a parallel target. Default: matches `resolveEdgeSnap`. */
+  snapAngularToleranceDeg?: number;
   /**
    * Called when a pointer-down doesn't initiate a move (no shape under
    * cursor, or `canMoveTarget` returned false). Mirrors
@@ -76,6 +114,10 @@ export function createMoveCommand(input: {
   const inverseRequest: MoveRequest = {
     target: input.request.target,
     delta: { x: -input.request.delta.x, y: -input.request.delta.y },
+    // Inverse move never carries a snap result -- the snap was a hint
+    // for the forward attachment write; reverting puts the object back
+    // wherever it was, no host needed to consult a snap target.
+    snap: null,
   };
   const apply = input.commitMove;
   const invertApply = input.invertMove ?? input.commitMove;
@@ -94,6 +136,15 @@ export function createMoveCommand(input: {
 type DragContext = {
   target: MoveTarget;
   shape: GeometryTopProjectionShape;
+  /**
+   * Polygon at drag-start (world mm). Captured once on pointer-down so
+   * the snap math sees a stable shape -- if we re-read on every move the
+   * polygon would be the *previewed* (already snap-adjusted) one and
+   * snap convergence would oscillate. `null` means snap was not
+   * available at start (no polygon provider, no active outline) -- the
+   * move proceeds with no snap correction.
+   */
+  startPolygon: ReadonlyArray<Point2> | null;
 };
 
 export function createMoveTool(config: MoveToolConfig): Tool {
@@ -103,10 +154,44 @@ export function createMoveTool(config: MoveToolConfig): Tool {
     config.onPreviewChange?.(null);
   };
 
+  /**
+   * Resolve a snap from the current drag's natural delta against the
+   * captured start polygon and the host-supplied snap targets. Returns
+   * `{ adjustedDelta, snap }` where `snap` is `null` if no snap was
+   * found -- in that case `adjustedDelta` equals the natural delta.
+   * Centralised here so preview + commit produce the same numbers.
+   */
+  const resolveSnapForSession = (
+    current: DragSession<DragContext>,
+  ): { adjustedDelta: PlanPoint; snap: MoveSnapResult | null } => {
+    const startPolygon = current.context.startPolygon;
+    if (!startPolygon || startPolygon.length < 3) {
+      return { adjustedDelta: { ...current.delta }, snap: null };
+    }
+    const lineTargets = config.getSnapLineTargets?.() ?? [];
+    if (lineTargets.length === 0) {
+      return { adjustedDelta: { ...current.delta }, snap: null };
+    }
+    const snap = resolveMoveSnap({
+      originalPolygon: startPolygon,
+      naturalDeltaMm: { x: current.delta.x, y: current.delta.y },
+      lineTargets,
+      toleranceMm: config.snapToleranceMm,
+      angularToleranceDeg: config.snapAngularToleranceDeg,
+    });
+    if (!snap) return { adjustedDelta: { ...current.delta }, snap: null };
+    return {
+      adjustedDelta: { x: snap.adjustedDeltaMm.x, y: snap.adjustedDeltaMm.y },
+      snap,
+    };
+  };
+
   const publishPreview = (current: DragSession<DragContext>): void => {
+    const { adjustedDelta, snap } = resolveSnapForSession(current);
     config.onPreviewChange?.({
       target: current.context.target,
-      delta: { ...current.delta },
+      delta: adjustedDelta,
+      snap,
     });
   };
 
@@ -127,10 +212,11 @@ export function createMoveTool(config: MoveToolConfig): Tool {
         config.onPointerDownFallthrough?.(event);
         return;
       }
+      const startPolygon = config.getActiveMovePolygon?.() ?? null;
       session = beginDrag({
         pointerId: event.pointerId,
         point: event.point,
-        context: { target, shape: event.shape },
+        context: { target, shape: event.shape, startPolygon },
       });
       publishPreview(session);
     },
@@ -149,10 +235,14 @@ export function createMoveTool(config: MoveToolConfig): Tool {
         return;
       }
       const outcome = commitDrag(finished);
+      // Resolve snap one more time at release so the committed delta
+      // matches what the preview was showing on the last frame.
+      const { adjustedDelta, snap } = resolveSnapForSession(outcome.session);
       const command = createMoveCommand({
         request: {
           target: outcome.session.context.target,
-          delta: { ...outcome.session.delta },
+          delta: adjustedDelta,
+          snap,
         },
         commitMove: config.commitMove,
         invertMove: config.invertMove,

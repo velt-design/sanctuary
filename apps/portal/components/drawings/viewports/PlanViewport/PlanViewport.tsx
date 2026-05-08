@@ -2,7 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { GeometryTopProjectionShape } from '@sp/geometry';
+import { topProjectionShapeClassifier } from '@/components/drawings/viewports/selection/selectionRouter';
 import { createCommandBus } from '@/lib/drawings/commands/commandBus';
+import {
+  createReversibleCommand,
+  type ReversibleCommandInput,
+} from '@/lib/drawings/commands/createReversibleCommand';
 import type { WorkbenchSolvedGeometryArtifact } from '@/lib/drawings/state/workbenchSolvedModel';
 import type {
   DrawingWorkbenchViewportTransform,
@@ -58,7 +63,17 @@ export type PlanViewportProps = {
   onSelectObjectWorkbenchTarget?: (selection: ObjectWorkbenchViewportTargetSelection) => void;
   onSelectPergolaTarget?: (pergolaId: string) => void;
   onClearWorkbenchSelection?: () => void;
-  onCommitOutlineEdit?: (commit: EdgeDragCommit) => void;
+  /**
+   * Called when an edge drag commits. The host reads the new polygon, builds
+   * a patch, and either:
+   *   - returns a `ReversibleCommandInput` -- PlanViewport pushes it through
+   *     the internal CommandBus so Ctrl-Z covers the resize. The host MUST
+   *     snapshot pre-edit fields before computing the patch and pass them as
+   *     the `invert` callback so undo can restore them.
+   *   - returns `void` -- the host wrote the change directly (legacy
+   *     fire-and-forget); no undo entry is created.
+   */
+  onCommitOutlineEdit?: (commit: EdgeDragCommit) => ReversibleCommandInput | void;
   /**
    * Called when the move tool commits a translate. The handler reads the
    * target's current `position.origin`, adds `request.delta`, and persists
@@ -67,6 +82,23 @@ export type PlanViewportProps = {
    * via Ctrl-Z while the viewport is focused.
    */
   onCommitMove?: (request: MoveRequest) => void;
+  /**
+   * Cross-viewport hover state. When set (e.g. driven by 3D pointer-over),
+   * PlanViewport renders a hover halo on the matching shape so the user
+   * sees the same object highlighted across surfaces. Read-only from this
+   * viewport's perspective -- it doesn't mutate this state, only emits via
+   * `onHoverObjectChange` when its own pointer hovers a shape.
+   */
+  hoveredObjectRef?: WorkbenchObjectRef | null;
+  /**
+   * Called when the local pointer enters/leaves a top-projection shape in
+   * plan. The shape is classified via `topProjectionShapeClassifier` into a
+   * `WorkbenchObjectRef` (or `null` on leave) so consumers (e.g. 3D
+   * viewport) can highlight the same object. This is the "emit" half of the
+   * hover-sync contract documented in `docs/design-workbench-architecture.md`
+   * milestone 16.
+   */
+  onHoverObjectChange?: (next: WorkbenchObjectRef | null) => void;
 };
 
 export default function PlanViewport({
@@ -82,12 +114,60 @@ export default function PlanViewport({
   onClearWorkbenchSelection,
   onCommitOutlineEdit,
   onCommitMove,
+  hoveredObjectRef,
+  onHoverObjectChange,
 }: PlanViewportProps) {
   const projection = artifact?.topProjection ?? null;
-  const renderModel = usePlanRenderModel({ projection, visibility, activeObjectRef });
+  const renderModel = usePlanRenderModel({
+    projection,
+    visibility,
+    activeObjectRef,
+    hoveredObjectRef,
+  });
   const [edgeDragPreview, setEdgeDragPreview] = useState<EdgeDragPreview | null>(null);
   const [edgeDragHover, setEdgeDragHover] = useState<EdgeDragHover | null>(null);
   const [movePreview, setMovePreview] = useState<MoveToolPreview | null>(null);
+
+  // Translate a hovered top-projection shape into a `WorkbenchObjectRef` and
+  // emit upward. The classifier already encodes the deck/pergola/opening/
+  // house disambiguation rules; we just adapt the result shape to the
+  // ref-style envelope the rest of the workbench uses.
+  const onHoverObjectChangeRef = useRef(onHoverObjectChange);
+  onHoverObjectChangeRef.current = onHoverObjectChange;
+  const handleHoverShape = useCallback((shape: GeometryTopProjectionShape | null) => {
+    if (!shape) {
+      onHoverObjectChangeRef.current?.(null);
+      return;
+    }
+    const target = topProjectionShapeClassifier(shape);
+    if (target.kind === 'pergola') {
+      onHoverObjectChangeRef.current?.({ family: 'pergolas', objectId: target.pergolaId });
+      return;
+    }
+    if (target.kind === 'workbench') {
+      // Map the typed selection target's `targetKind` into the
+      // ref-style `family` enum the workbench shell uses. Roof / footprint /
+      // attachment_zone all live under the `house_forms` family.
+      const family: WorkbenchObjectRef['family'] | null =
+        target.targetKind === 'deck'
+          ? 'decks'
+          : target.targetKind === 'opening'
+          ? 'openings'
+          : target.targetKind === 'footprint' ||
+            target.targetKind === 'roof' ||
+            target.targetKind === 'house' ||
+            target.targetKind === 'attachment_zone'
+          ? 'house_forms'
+          : null;
+      if (!family) {
+        onHoverObjectChangeRef.current?.(null);
+        return;
+      }
+      onHoverObjectChangeRef.current?.({ family, objectId: target.targetId });
+      return;
+    }
+    onHoverObjectChangeRef.current?.(null);
+  }, []);
 
   const selectTool = useMemo(
     () =>
@@ -165,11 +245,12 @@ export default function PlanViewport({
   const snapLineTargetsRef = useRef(snapLineTargets);
   snapLineTargetsRef.current = snapLineTargets;
 
-  // CommandBus owns the undo/redo stack for moves originating in this
-  // viewport. Created once per PlanViewport instance. Edge-drag commits
-  // don't yet route through here (they're persisted directly via the
-  // commit handler chain) — extending undo to cover edge drags is a
-  // follow-up to milestone 14.
+  // CommandBus owns the undo/redo stack for edits originating in this
+  // viewport. Created once per PlanViewport instance. Both move commits
+  // (`MoveTool` -> `createMoveCommand`) and edge-drag commits (`onCommit`
+  // returning a `ReversibleCommandInput` from the host -> wrapped here via
+  // `createReversibleCommand`) land on the same bus, so Ctrl-Z covers
+  // resize and translate uniformly.
   const commandBus = useMemo(() => createCommandBus(), []);
 
   // Hold the SelectTool + onCommitMove + active-target in refs so the
@@ -222,13 +303,25 @@ export default function PlanViewport({
         // current delta. Without this wiring the user sees no visual
         // feedback until pointer-up commits the move.
         onPreviewChange: setMovePreview,
+        // Snap during move: same target source as edge-drag (pre-filtered
+        // per family at the host -- decks pass walls + other-pergola
+        // outlines, pergolas additionally pass roof eaves). MoveTool
+        // resolves the best snap across all polygon edges and applies the
+        // correction along that edge's outward normal -- the parallel-to-
+        // edge component of the natural drag is preserved so the user can
+        // slide along the snap line freely. See `tools/resolveMoveSnap.ts`.
+        getSnapLineTargets: () => snapLineTargetsRef.current,
+        getActiveMovePolygon: () => {
+          const outline = getActiveOutline();
+          return outline ? outline.polygon : null;
+        },
         // When the click misses any movable target (empty area, decoration,
         // or a non-active object), hand off to SelectTool.
         onPointerDownFallthrough: (event) => {
           selectToolRef.current.onPointerDown?.(event);
         },
       }),
-    [commandBus],
+    [commandBus, getActiveOutline],
   );
 
   const moveToolRef = useRef(moveTool);
@@ -241,7 +334,17 @@ export default function PlanViewport({
         getSnapLineTargets: () => snapLineTargetsRef.current,
         onPreviewChange: setEdgeDragPreview,
         onHoverChange: setEdgeDragHover,
-        onCommit: (commit) => onCommitOutlineEditRef.current?.(commit),
+        onCommit: (commit) => {
+          // The host's commit handler may return a `ReversibleCommandInput`
+          // describing the edit (with captured pre-edit fields) so we can
+          // route it through the local `commandBus` and Ctrl-Z covers the
+          // resize. Returning `void` keeps the legacy fire-and-forget shape
+          // (no undo entry).
+          const reversible = onCommitOutlineEditRef.current?.(commit);
+          if (reversible) {
+            commandBus.apply(createReversibleCommand(reversible));
+          }
+        },
         // Tool chain: EdgeDrag -> Move -> Select. When a click misses the
         // active outline's edges, try MoveTool (translate body); MoveTool in
         // turn falls through to SelectTool when the click isn't on a movable
@@ -250,7 +353,7 @@ export default function PlanViewport({
           moveToolRef.current.onPointerDown?.(event);
         },
       }),
-    [getActiveOutline],
+    [commandBus, getActiveOutline],
   );
 
   const activeOutlineForRender = renderModel !== null && activeFamily !== null ? getActiveOutline() : null;
@@ -265,19 +368,37 @@ export default function PlanViewport({
     [edgeDragTool, hasEditableOutline, moveTool],
   );
 
-  // Ctrl-Z / Ctrl-Shift-Z keyboard shortcuts for the local CommandBus. Only
-  // handle when no input is focused (so typing in the inspector doesn't
-  // trigger an undo). Mac users: cmd-Z / cmd-shift-Z map to the same metaKey
-  // path.
+  // Keyboard shortcuts for the local CommandBus + tool chain. Only handle
+  // when no input is focused (so typing in the inspector doesn't fire).
+  // Mac users: cmd-Z / cmd-shift-Z map via the same metaKey path.
+  //   Ctrl/Cmd-Z       => undo
+  //   Ctrl/Cmd-Shift-Z => redo
+  //   Esc              => cancel the active tool's drag (returns the
+  //                       object to its pre-drag position; nothing
+  //                       commits). Both `MoveTool.onCancel` and
+  //                       `EdgeDragTool.onCancel` clear their session +
+  //                       preview without firing the commit handler, so
+  //                       no patch reaches the store.
+  const activeToolRef = useRef(activeTool);
+  activeToolRef.current = activeTool;
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const handler = (event: KeyboardEvent) => {
-      const key = event.key.toLowerCase();
-      if (key !== 'z') return;
       const target = event.target as HTMLElement | null;
-      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
+      const isEditableTarget =
+        !!target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.isContentEditable);
+      if (isEditableTarget) return;
+      if (event.key === 'Escape' || event.key === 'Esc') {
+        // Esc never participates in browser shortcuts here; cancel the
+        // current drag (no-op when no drag is active).
+        activeToolRef.current.onCancel?.();
         return;
       }
+      const key = event.key.toLowerCase();
+      if (key !== 'z') return;
       if (!event.ctrlKey && !event.metaKey) return;
       event.preventDefault();
       if (event.shiftKey) commandBus.redo();
@@ -313,6 +434,8 @@ export default function PlanViewport({
           contextLines={renderModel.contextLines}
           detailLines={renderModel.detailLines}
           selectionHaloItems={renderModel.selectionHaloItems}
+          hoverHaloItems={renderModel.hoverHaloItems}
+          onHoverShape={handleHoverShape}
           dimensions={mergedDimensions}
           edgeDragPreview={edgeDragPreview}
           edgeDragHover={edgeDragHover}

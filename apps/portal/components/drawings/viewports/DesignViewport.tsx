@@ -29,6 +29,13 @@ export type DesignViewportProps = {
   onSelectObjectWorkbenchTarget?: (selection: ObjectWorkbenchViewportTargetSelection) => void;
   onSelectPergolaTarget?: (pergolaId: string) => void;
   onClearWorkbenchSelection?: () => void;
+  /**
+   * Cross-viewport hover state. Pass-through to Geometry3DViewport's
+   * `controlledHoveredObjectId`. Phase 1 (milestone 16) -- the prop is
+   * exposed end-to-end but the 3D viewport doesn't yet apply per-object
+   * hover styling. See PlanViewport's `hoveredObjectRef` for the emit half.
+   */
+  hoveredObjectId?: string | null;
 };
 
 export default function DesignViewport({
@@ -44,6 +51,7 @@ export default function DesignViewport({
   onSelectObjectWorkbenchTarget,
   onSelectPergolaTarget,
   onClearWorkbenchSelection,
+  hoveredObjectId,
 }: DesignViewportProps) {
   const lastDispatchedRef = useRef<string | null>(selectedObjectId ?? null);
 
@@ -89,6 +97,7 @@ export default function DesignViewport({
       lockedViewPreset={lockedViewPreset}
       controlledSelectedObjectId={selectedObjectId}
       onSelectedObjectChange={handleSelectedObjectChange}
+      controlledHoveredObjectId={hoveredObjectId}
     />
   );
 }

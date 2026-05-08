@@ -2863,14 +2863,28 @@ function HouseSurfaceSolidObject({
   object,
   color,
   selected,
+  hovered,
   onSelect,
+  onHoverEnter,
+  onHoverLeave,
   onFocus,
   clippingPlanes,
 }: {
   object: ViewerSceneHouseSurfaceSolidObject;
   color: string;
   selected: boolean;
+  /**
+   * Cross-viewport hover state (milestone 16). When true and `selected` is
+   * false, the deck renders a lighter highlight (boosted top opacity +
+   * outline emphasis) so the user sees the same deck "under interest" in
+   * 3D when their pointer is on the matching plan shape. We deliberately
+   * skip the highlight when `selected` -- the selection styling already
+   * dominates and adding hover on top would muddy the visual.
+   */
+  hovered: boolean;
   onSelect: (id: string) => void;
+  onHoverEnter: (id: string) => void;
+  onHoverLeave: (id: string) => void;
   onFocus: (id: string) => void;
   clippingPlanes: THREE.Plane[];
 }) {
@@ -2895,13 +2909,46 @@ function HouseSurfaceSolidObject({
   const materialSide =
     object.kind === "wall" ? THREE.FrontSide : THREE.DoubleSide;
   const isDeck = object.kind === "deck";
+  // 3D occlusion (milestone 16) is NOT yet shipped. The first attempt --
+  // walls + roofs writing to the depth buffer with `depthWrite: true` and
+  // `renderOrder: -1` so the deck floor inside the house bounds would be
+  // depth-test rejected -- was reverted because the same depth values
+  // also occluded pergola elements that should be visible through the
+  // semi-transparent walls (3D viewport went near-blank). A more targeted
+  // approach is needed: either polygon-clip the deck against the house
+  // footprint as a pre-process (no depth tricks) or a stencil pass on the
+  // house outline. Until one of those lands, leave the legacy transparent
+  // blend in place (depthWrite: false everywhere).
   const deckMaterial = isDeck ? resolveDeckMaterial(object) : null;
   const deckPalette = isDeck && deckMaterial ? resolveDeckPalette(deckMaterial) : null;
-  const deckMuted = isDeck && !selected;
-  const bodyOpacity = isDeck ? (selected ? 0.82 : 0.4) : opacity;
-  const topOpacity = isDeck ? (selected ? 0.98 : 0.74) : opacity;
-  const outlineOpacity = isDeck ? (selected ? 1 : 0.58) : 1;
-  const grooveOpacity = isDeck ? (selected ? 0.8 : 0.32) : 1;
+  // Hover boosts intermediate opacity values when not selected, so a deck
+  // hovered from an external surface (e.g. plan view) reads as "under
+  // interest" in 3D without competing with the selected styling. When
+  // `selected` is true, hover is ignored -- selection dominates.
+  const deckHoverActive = isDeck && hovered && !selected;
+  const deckMuted = isDeck && !selected && !hovered;
+  const bodyOpacity = isDeck
+    ? selected
+      ? 0.82
+      : deckHoverActive
+        ? 0.6
+        : 0.4
+    : opacity;
+  const topOpacity = isDeck
+    ? selected
+      ? 0.98
+      : deckHoverActive
+        ? 0.88
+        : 0.74
+    : opacity;
+  const outlineOpacity = isDeck
+    ? selected
+      ? 1
+      : deckHoverActive
+        ? 0.85
+        : 0.58
+    : 1;
+  const grooveOpacity = isDeck ? (selected ? 0.8 : deckHoverActive ? 0.55 : 0.32) : 1;
   const topBoundary = useMemo(() => {
     if (!isDeck) return [];
     return offsetPolygon(object.boundary, object.plane.normal, 1.5);
@@ -2941,6 +2988,18 @@ function HouseSurfaceSolidObject({
       onDoubleClick={(event) => {
         event.stopPropagation();
         onFocus(object.id);
+      }}
+      onPointerOver={(event) => {
+        // R3F bubbles pointer-over to ancestors. `stopPropagation` keeps the
+        // hover scoped to the deepest object under the cursor; without this,
+        // entering a deck from outside fires hover for every ancestor in the
+        // group tree. Mirrors the click/select pattern.
+        event.stopPropagation();
+        onHoverEnter(object.id);
+      }}
+      onPointerOut={(event) => {
+        event.stopPropagation();
+        onHoverLeave(object.id);
       }}
     >
       <mesh>
@@ -3100,14 +3159,28 @@ function SceneObjectNode({
   object,
   color,
   selected,
+  hovered,
   onSelect,
+  onHoverEnter,
+  onHoverLeave,
   onFocus,
   clippingPlanes,
 }: {
   object: ViewerSceneObject;
   color: string;
   selected: boolean;
+  /**
+   * True when the cross-viewport hover ref points at this object's id (or
+   * its workbench-level parent for grouped objects -- handled at the dispatch
+   * site). Per-renderer hover styling lives in the renderer component;
+   * milestone 16 phase 2 wires this for the deck renderer first.
+   */
+  hovered: boolean;
   onSelect: (id: string) => void;
+  /** R3F pointer-over: object's id was entered. Phase 2/3 of milestone 16. */
+  onHoverEnter: (id: string) => void;
+  /** R3F pointer-out: object's id was left. */
+  onHoverLeave: (id: string) => void;
   onFocus: (id: string) => void;
   clippingPlanes: THREE.Plane[];
 }) {
@@ -3190,7 +3263,10 @@ function SceneObjectNode({
         object={object}
         color={color}
         selected={selected}
+        hovered={hovered}
         onSelect={onSelect}
+        onHoverEnter={onHoverEnter}
+        onHoverLeave={onHoverLeave}
         onFocus={onFocus}
         clippingPlanes={clippingPlanes}
       />
@@ -3469,6 +3545,8 @@ export default function Geometry3DViewport({
   lockedViewPreset,
   controlledSelectedObjectId,
   onSelectedObjectChange,
+  controlledHoveredObjectId,
+  onHoveredObjectChange,
 }: {
   geometryPreview?: GeometryPreviewState | null;
   objectWorkbenchDisplayFamily?: ObjectWorkbenchDisplayFamily;
@@ -3479,6 +3557,26 @@ export default function Geometry3DViewport({
   lockedViewPreset?: GeometryCameraPreset;
   controlledSelectedObjectId?: string | null;
   onSelectedObjectChange?: (objectId: string | null) => void;
+  /**
+   * Cross-viewport hover state input. When set (e.g. driven by PlanViewport
+   * pointer-over), the 3D viewport SHOULD render a hover highlight on the
+   * matching object. Phase 1 (milestone 16) wires the prop end-to-end but
+   * does NOT yet apply per-object hover styling -- the per-renderer pass
+   * adding `hovered: boolean` alongside `selected: boolean` is a follow-up
+   * slice. Until then, the prop is exposed via a `data-hovered-object-id`
+   * attribute on the canvas root for telemetry/test visibility, and the
+   * downstream emit half lets PlanViewport receive 3D-driven hover.
+   */
+  controlledHoveredObjectId?: string | null;
+  /**
+   * Cross-viewport hover state output. Phase 1 placeholder: the 3D viewport
+   * does not yet emit hover events from raycaster/pointer-over (would require
+   * adding pointer events to ~50 object renderers). Once the per-renderer
+   * hover-render slice lands, this callback fires when the 3D pointer enters
+   * an object and `null` when it leaves -- mirroring `onSelectedObjectChange`
+   * but for hover. Plumbed now so consumers can adopt the contract early.
+   */
+  onHoveredObjectChange?: (objectId: string | null) => void;
 }) {
   const displayMode = objectWorkbenchDisplayFamily === "house_forms" ? "house" : "pergolas";
   const [panelOpen, setPanelOpen] = useState(false);
@@ -3498,6 +3596,26 @@ export default function Geometry3DViewport({
     if (!onSelectedObjectChange) return;
     onSelectedObjectChange(selectedObjectId);
   }, [onSelectedObjectChange, selectedObjectId]);
+
+  // Cross-viewport hover (milestone 16). The parent owns the hover ref via
+  // `controlledHoveredObjectId`; the 3D viewport publishes hover events from
+  // its raycaster (via `onHoveredObjectChange`) and renders highlight on the
+  // matching object. Unlike selection, hover has no local state -- the
+  // controlled prop IS the source of truth, so `setControlledHover...`-style
+  // reconciliation isn't needed.
+  const onHoveredObjectChangeRef = useRef(onHoveredObjectChange);
+  onHoveredObjectChangeRef.current = onHoveredObjectChange;
+  const handleObjectHoverEnter = useCallback((id: string) => {
+    onHoveredObjectChangeRef.current?.(id);
+  }, []);
+  const handleObjectHoverLeave = useCallback((id: string) => {
+    // Only clear if the leaving object is the one currently hovered. This
+    // matches `useHoveredShape`'s convention -- guards against stale leaves
+    // arriving after the pointer has already moved to a sibling.
+    onHoveredObjectChangeRef.current?.(null);
+    void id;
+  }, []);
+
   const [sectionCut, setSectionCut] = useState<SectionCutState>({
     enabled: false,
     positionMm: 0,
@@ -4639,6 +4757,7 @@ export default function Geometry3DViewport({
           data-top-view-screen-axis={cameraState.viewPreset === "top" ? "world_x_left_world_y_down" : ""}
           data-clipping-enabled={String(sectionCut.enabled)}
           data-selected-object-id={selectedObjectId ?? ""}
+          data-hovered-object-id={controlledHoveredObjectId ?? ""}
           data-shell-width={String(rectDiagnostic.shellWidth)}
           data-shell-height={String(rectDiagnostic.shellHeight)}
           data-canvas-width={String(rectDiagnostic.canvasWidth)}
@@ -4762,17 +4881,50 @@ export default function Geometry3DViewport({
           ) : null}
           {scene.layers.flatMap((layer) =>
             layerVisibility[layer.id] !== false
-              ? layer.objects.map((object) => (
-                  <SceneObjectNode
-                    key={object.id}
-                    object={object}
-                    color={LAYER_COLORS[layer.id] ?? "#6c7a86"}
-                    selected={selectedObjectId === object.id}
-                    onSelect={handleObjectSelect}
-                    onFocus={focusObjectById}
-                    clippingPlanes={clippingPlanes}
-                  />
-                ))
+              ? layer.objects.map((object) => {
+                  // Cross-viewport hover matching: scene objects carry both
+                  // a 3D-scene `id` ("house-solid-deck-1") and an optional
+                  // workbench-level source id ("deck-1") that lives EITHER
+                  // at `object.sourceId` (set on surfaces) OR
+                  // `object.metadata.sourceId` (set on solids built via
+                  // `house/envelopeSolids.ts`). PlanViewport emits the
+                  // workbench-level id (via `topProjectionShapeClassifier`);
+                  // the 3D side matches against either form so a plan hover
+                  // on "deck-1" highlights the matching scene prism without
+                  // the parent needing to know the prism naming scheme.
+                  // Selection still uses raw `id` because the existing
+                  // selection contract already produces 3D-scene ids on
+                  // click.
+                  const workbenchId =
+                    ("sourceId" in object && typeof object.sourceId === "string"
+                      ? object.sourceId
+                      : null) ??
+                    (typeof object.metadata?.sourceId === "string"
+                      ? object.metadata.sourceId
+                      : null);
+                  const hovered =
+                    controlledHoveredObjectId != null &&
+                    (controlledHoveredObjectId === object.id ||
+                      controlledHoveredObjectId === workbenchId);
+                  return (
+                    <SceneObjectNode
+                      key={object.id}
+                      object={object}
+                      color={LAYER_COLORS[layer.id] ?? "#6c7a86"}
+                      selected={selectedObjectId === object.id}
+                      hovered={hovered}
+                      onSelect={handleObjectSelect}
+                      onHoverEnter={() =>
+                        handleObjectHoverEnter(workbenchId ?? object.id)
+                      }
+                      onHoverLeave={() =>
+                        handleObjectHoverLeave(workbenchId ?? object.id)
+                      }
+                      onFocus={focusObjectById}
+                      clippingPlanes={clippingPlanes}
+                    />
+                  );
+                })
               : [],
           )}
           <OrbitControls

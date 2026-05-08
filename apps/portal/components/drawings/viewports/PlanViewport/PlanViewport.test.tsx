@@ -233,4 +233,130 @@ describe('PlanViewport', () => {
       rendered.unmount();
     });
   });
+
+  describe('cross-viewport hover (milestone 16, phase 1)', () => {
+    function deckArtifact(): WorkbenchSolvedGeometryArtifact {
+      return makeArtifact([
+        makeShape({
+          id: 'deck-9',
+          sourceObjectId: 'deck-9',
+          sourceType: 'house_surface_solid',
+          family: 'house',
+          kind: 'deck',
+        }),
+      ]);
+    }
+
+    it('emits onHoverObjectChange with a typed deck ref when the local pointer enters a deck hit-target', () => {
+      // The classifier (`topProjectionShapeClassifier`) maps a deck shape to
+      // `{ kind: 'workbench', targetKind: 'deck', targetId }`; PlanViewport
+      // adapts that to the ref envelope (`{ family: 'decks', objectId }`)
+      // the rest of the workbench uses. This is the emit half of the
+      // hover-sync contract documented in milestone 16.
+      const onHoverObjectChange = vi.fn();
+      const rendered = renderIntoDocument(
+        <PlanViewport
+          artifact={deckArtifact()}
+          viewportTransform={IDENTITY_TRANSFORM}
+          onViewportTransformChange={() => undefined}
+          onHoverObjectChange={onHoverObjectChange}
+        />,
+      );
+      const hitTarget = rendered.container.querySelector(
+        '[data-plan-hit-shape-id="deck-9"]',
+      );
+      expect(hitTarget).not.toBeNull();
+      dispatchPointer(hitTarget!, 'pointerover');
+      expect(onHoverObjectChange).toHaveBeenCalledWith({
+        family: 'decks',
+        objectId: 'deck-9',
+      });
+      rendered.unmount();
+    });
+
+    it('emits onHoverObjectChange(null) when the pointer leaves the hit-target', () => {
+      const onHoverObjectChange = vi.fn();
+      const rendered = renderIntoDocument(
+        <PlanViewport
+          artifact={deckArtifact()}
+          viewportTransform={IDENTITY_TRANSFORM}
+          onViewportTransformChange={() => undefined}
+          onHoverObjectChange={onHoverObjectChange}
+        />,
+      );
+      const hitTarget = rendered.container.querySelector(
+        '[data-plan-hit-shape-id="deck-9"]',
+      );
+      dispatchPointer(hitTarget!, 'pointerover');
+      onHoverObjectChange.mockClear();
+      dispatchPointer(hitTarget!, 'pointerout');
+      expect(onHoverObjectChange).toHaveBeenCalledWith(null);
+      rendered.unmount();
+    });
+
+    it('renders a hover halo for the matching shape when hoveredObjectRef is set externally', () => {
+      // External hover (e.g. driven by 3D pointer-over once the follow-up
+      // slice lands) -- PlanViewport reads the prop and surfaces a
+      // lower-intensity halo on the matching shape. Distinct from the
+      // selection halo so the active object still reads as primary.
+      const markup = renderToStaticMarkup(
+        <PlanViewport
+          artifact={deckArtifact()}
+          viewportTransform={IDENTITY_TRANSFORM}
+          onViewportTransformChange={() => undefined}
+          hoveredObjectRef={{ family: 'decks', objectId: 'deck-9' }}
+        />,
+      );
+      expect(markup).toContain('data-plan-hover-halo-shape-id="deck-9"');
+    });
+
+    it('suppresses the hover halo when the hovered ref equals the active selection (avoid double-paint)', () => {
+      const markup = renderToStaticMarkup(
+        <PlanViewport
+          artifact={deckArtifact()}
+          activeObjectRef={{ family: 'decks', objectId: 'deck-9' }}
+          hoveredObjectRef={{ family: 'decks', objectId: 'deck-9' }}
+          viewportTransform={IDENTITY_TRANSFORM}
+          onViewportTransformChange={() => undefined}
+        />,
+      );
+      expect(markup).toContain('data-plan-selection-shape-id="deck-9"');
+      expect(markup).not.toContain('data-plan-hover-halo-shape-id="deck-9"');
+    });
+
+    it('emits a pergola hover ref when the local pointer enters a pergola shape', () => {
+      const onHoverObjectChange = vi.fn();
+      const artifact = makeArtifact([
+        makeShape({
+          id: 'rendered-pergola-1',
+          sourceObjectId: 'rendered-pergola-1',
+          sourceType: 'roof_plane',
+          family: 'pergola',
+          kind: 'roof_plane',
+          metadata: { pergolaId: 'pergola-7' },
+        }),
+      ]);
+      const rendered = renderIntoDocument(
+        <PlanViewport
+          artifact={artifact}
+          viewportTransform={IDENTITY_TRANSFORM}
+          onViewportTransformChange={() => undefined}
+          onHoverObjectChange={onHoverObjectChange}
+        />,
+      );
+      const hitTarget = rendered.container.querySelector(
+        '[data-plan-hit-shape-id="rendered-pergola-1"]',
+      );
+      expect(hitTarget).not.toBeNull();
+      dispatchPointer(hitTarget!, 'pointerover');
+      // Classifier prefers `metadata.pergolaId` over `sourceObjectId`, so
+      // the emitted ref carries the workbench-level pergola id even though
+      // the shape itself was a roof_plane child object.
+      expect(onHoverObjectChange).toHaveBeenCalledWith({
+        family: 'pergolas',
+        objectId: 'pergola-7',
+      });
+      rendered.unmount();
+    });
+  });
 });

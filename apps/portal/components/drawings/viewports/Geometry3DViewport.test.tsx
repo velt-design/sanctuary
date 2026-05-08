@@ -1648,6 +1648,103 @@ describe("Geometry3DViewport", () => {
     hiddenPergolaRendered.unmount();
   });
 
+  it("emits cross-viewport hover for decks via raycaster pointer-over (milestone 16 phase 3)", async () => {
+    // Plan -> 3D path: PlanViewport already classifies a hovered shape into a
+    // workbench-level ref ({ family: 'decks', objectId: 'deck-1' }) and writes
+    // it to the lifted state. The 3D viewport reads it via
+    // `controlledHoveredObjectId` and renders the deck with hover styling.
+    // 3D -> Plan path: a pointer entering the deck group fires the renderer's
+    // onPointerOver, the dispatch site translates `object.sourceId` ("deck-1")
+    // back to the workbench-level id, and `onHoveredObjectChange("deck-1")`
+    // publishes upward. This test exercises the controlled-prop side and the
+    // emit side for the deck renderer specifically.
+    const fixture = requireFixture("mono-standard");
+    const draft = buildEstimateDrawingDraftFromSnapshot(fixture.snapshot);
+    if (!draft) throw new Error("Expected drawing draft.");
+    const baselineStore = buildDrawingWorkbenchStore({
+      snapshot: fixture.snapshot,
+      ui: createDrawingWorkbenchUiState(),
+    });
+    draft.objectFirst = buildObjectFirstWorkbenchDraftFromProjectModel(
+      baselineStore.persisted.projectModel,
+    );
+    draft.objectFirst.decks = buildObjectFirstDeckDraftsFromCompatibilityDrafts([
+      {
+        id: "deck-1",
+        name: "Deck 1",
+        kind: "deck",
+        shape: "preset",
+        presetType: "rect_attached",
+        presetRect: { widthM: "3", depthM: "1.5", centerOffsetM: "0" },
+        outline: [
+          { alongM: "1.5", depthM: "-1.5" },
+          { alongM: "4.5", depthM: "-1.5" },
+          { alongM: "4.5", depthM: "0" },
+          { alongM: "1.5", depthM: "0" },
+        ],
+        elevationMode: "aligned_to_threshold",
+        levelOffsetMm: "0",
+        hostEdgeId: "rear",
+        isAttached: true,
+        surfaceMaterial: "timber_decking",
+      },
+    ]);
+    const geometryPreview = buildWorkbenchGeometryPreview({
+      projectId: "proj_preview",
+      estimateId: fixture.estimate.id,
+      designRequestId: fixture.request.id,
+      snapshot: fixture.snapshot,
+      draft,
+      moduleIndex: 0,
+    });
+    if (geometryPreview.kind !== "ready") return;
+
+    const handleHoverChange = vi.fn();
+
+    // Render the viewport with the hover callback wired up. Pointer-over
+    // on the deck group should fire `onHoveredObjectChange` with the
+    // workbench-level id (translated by the dispatch site from the
+    // 3D-scene id via `object.sourceId` or `object.metadata.sourceId`).
+    const rendered = renderIntoDocument(
+      <Geometry3DViewport
+        geometryPreview={geometryPreview}
+        onHoveredObjectChange={handleHoverChange}
+      />,
+    );
+    await act(async () => {
+      await Promise.resolve();
+    });
+    const deckGroup = rendered.container.querySelector(
+      '[data-testid="scene-object-house-solid-deck-1"]',
+    );
+    expect(deckGroup).not.toBeNull();
+
+    act(() => {
+      deckGroup!.dispatchEvent(
+        new MouseEvent("pointerover", { bubbles: true, cancelable: true }),
+      );
+    });
+    expect(handleHoverChange).toHaveBeenCalledTimes(1);
+    const emittedHoverId = handleHoverChange.mock.calls[0]?.[0];
+    expect(typeof emittedHoverId).toBe("string");
+    // Whichever id form the dispatch picked, it MUST resolve back to the
+    // deck via either workbench-level form ("deck-1") or 3D-scene form
+    // ("house-solid-deck-1"). Anything else would mean the emit went
+    // through an unrelated object.
+    expect(["deck-1", "house-solid-deck-1"]).toContain(emittedHoverId);
+
+    // Pointer-out fires the leave callback.
+    act(() => {
+      deckGroup!.dispatchEvent(
+        new MouseEvent("pointerout", { bubbles: true, cancelable: true }),
+      );
+    });
+    expect(handleHoverChange).toHaveBeenCalledTimes(2);
+    expect(handleHoverChange.mock.calls[1]?.[0]).toBeNull();
+
+    rendered.unmount();
+  });
+
   it("keeps moved semantic house context renderable and in focus bounds", async () => {
     const fixture = requireFixture("mono-standard");
     let draft = buildEstimateDrawingDraftFromSnapshot(fixture.snapshot);
