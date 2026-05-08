@@ -5,6 +5,20 @@
   display: block;
 }
 
+.canvasSvg {
+  /*
+   * Reserve every pointer gesture for our own tools. Without this, the
+   * browser's default `touch-action: auto` lets it interpret horizontal
+   * drags as swipe-back, two-finger drags as pan/zoom, etc., firing
+   * `pointercancel` mid-drag. That cancel arrives with `clientX/Y == 0`
+   * and -- if the dispatcher treated it as a pointerUp -- committed the
+   * MoveTool's drag at a synthetic world coord deep in the corner,
+   * producing the deck-runaway bug. See `docs/maintainability-principles.md`
+   * coordinate-system footgun #5.
+   */
+  touch-action: none;
+}
+
 .toolbar {
   position: absolute;
   top: 12px;

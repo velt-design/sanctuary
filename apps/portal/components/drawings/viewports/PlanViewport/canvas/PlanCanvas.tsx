@@ -10,6 +10,7 @@ import {
 import type { PlanCoordinateAdapter } from '@/lib/drawings/views/plan/planCoordinateAdapter';
 import type { DrawingWorkbenchViewportTransform } from '@/lib/drawings/state/drawingWorkbenchUiState';
 import { clientPointToPlanProjection } from '../interactions/pointerToPlan';
+import { buildPointerDispatchAction } from './pointerDispatch';
 import { useHoveredShape } from '../interactions/useHoveredShape';
 import { usePanZoom } from '../interactions/usePanZoom';
 import { useToolDispatcher } from '../tools/ToolDispatcher';
@@ -21,12 +22,14 @@ import { PlanEdgeDragPreviewLayer } from './layers/PlanEdgeDragPreviewLayer';
 import { PlanEdgeHoverHighlightLayer } from './layers/PlanEdgeHoverHighlightLayer';
 import { PlanHitTargetLayer } from './layers/PlanHitTargetLayer';
 import { PlanHitTestDebugLayer } from './layers/PlanHitTestDebugLayer';
+import { PlanMovePreviewLayer } from './layers/PlanMovePreviewLayer';
 import { PlanProjectContextLayer } from './layers/PlanProjectContextLayer';
 import { PlanSelectionHaloLayer } from './layers/PlanSelectionHaloLayer';
 import { PlanSnapIndicatorLayer } from './layers/PlanSnapIndicatorLayer';
 import type { GeometryTopProjectionShape } from '@sp/geometry';
 import type { PlanDimension } from './planDimension';
 import type { EdgeDragHover, EdgeDragPreview } from '../tools/EdgeDragTool';
+import type { MoveToolPreview } from '../tools/MoveTool';
 import styles from './PlanCanvas.module.css';
 import type { PlanLayout } from './planLayout';
 import { filterPlanHitTargets } from './planHitTargetFilter';
@@ -45,6 +48,9 @@ export type PlanCanvasProps = {
   dimensions?: ReadonlyArray<PlanDimension>;
   edgeDragPreview?: EdgeDragPreview | null;
   edgeDragHover?: EdgeDragHover | null;
+  movePreview?: MoveToolPreview | null;
+  /** World-coord polygon (mm) of the object being moved; used by PlanMovePreviewLayer. */
+  movePreviewSourcePolygon?: ReadonlyArray<Point2> | null;
   /**
    * Faded outline shapes for non-active pergolas in the project (Step 5d).
    * Sourced from `WorkbenchSolvedModel.projectReferenceShapes` filtered for
@@ -77,6 +83,8 @@ export function PlanCanvas({
   dimensions = EMPTY_DIMENSIONS,
   edgeDragPreview = null,
   edgeDragHover = null,
+  movePreview = null,
+  movePreviewSourcePolygon = null,
   projectContextShapes = EMPTY_PROJECT_CONTEXT_SHAPES,
   activeOutlinePolygon = null,
   transform,
@@ -113,16 +121,29 @@ export function PlanCanvas({
         // drift away from the visible polygon edges (intermittent hover bug).
         transform,
       );
-      if (!point && shape) return;
-      const payload = {
+      // The decision tree (skip-on-null, scale to mm, capture-on-down) lives
+      // in the pure `buildPointerDispatchAction` helper so it can be tested
+      // without a DOM. See `docs/maintainability-principles.md` footgun #5
+      // for the contract.
+      const action = buildPointerDispatchAction({
+        kind,
+        point,
         shape,
-        point: point ? { x: point.x * 1000, y: point.y * 1000 } : { x: 0, y: 0 },
         button: event.button,
         pointerId: event.pointerId,
-      };
-      if (kind === 'down') dispatcher.dispatchPointerDown(payload);
-      if (kind === 'move') dispatcher.dispatchPointerMove(payload);
-      if (kind === 'up') dispatcher.dispatchPointerUp(payload);
+      });
+      if (action.type === 'skip') return;
+      if (action.capture && typeof event.currentTarget.setPointerCapture === 'function') {
+        try {
+          event.currentTarget.setPointerCapture(event.pointerId);
+        } catch {
+          // Capture is best-effort; older browsers / synthetic events may
+          // throw. Fall through and dispatch normally.
+        }
+      }
+      if (action.kind === 'down') dispatcher.dispatchPointerDown(action.payload);
+      if (action.kind === 'move') dispatcher.dispatchPointerMove(action.payload);
+      if (action.kind === 'up') dispatcher.dispatchPointerUp(action.payload);
     },
     [coordinateAdapter, dispatcher, transform],
   );
@@ -167,6 +188,25 @@ export function PlanCanvas({
     [dispatchPlanPointer, panZoom],
   );
 
+  const handlePointerCancel = useCallback(
+    (event: ReactPointerEvent<SVGSVGElement>) => {
+      // PointerCancel fires when the OS interrupts a gesture (palm rejection,
+      // focus loss, scroll/touch-action capture). The React event's clientX/Y
+      // is typically zeroed -- treating it as a pointerUp would dispatch a
+      // synthetic "release" at world coords derived from screen (0, 0), which
+      // for any non-trivial pan/zoom maps to a wildly off-canvas world point.
+      // The MoveTool would then commit `delta = bogusEnd - realStart`, jumping
+      // the deck by an amount roughly proportional to its on-screen distance
+      // from the page corner -- the runaway drift the user reported.
+      //
+      // Correct response: cancel any active tool session. The user's
+      // mid-cancellation drag is discarded; the deck stays where it was.
+      dispatcher.cancelActiveTool();
+      panZoom.onPointerUp(event);
+    },
+    [dispatcher, panZoom],
+  );
+
   return (
     <div className={styles.canvasShell}>
       <div className={styles.toolbar} role="toolbar" aria-label="Plan canvas controls">
@@ -207,7 +247,7 @@ export function PlanCanvas({
         }}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
-        onPointerCancel={handlePointerUp}
+        onPointerCancel={handlePointerCancel}
         onContextMenu={panZoom.onContextMenu}
       >
         <g transform={transformAttr(transform)} data-plan-transform="true">
@@ -228,6 +268,11 @@ export function PlanCanvas({
           <PlanDimensionLayer dimensions={dimensions} coordinateAdapter={coordinateAdapter} />
           <PlanEdgeHoverHighlightLayer hover={edgeDragHover} coordinateAdapter={coordinateAdapter} />
           <PlanEdgeDragPreviewLayer preview={edgeDragPreview} coordinateAdapter={coordinateAdapter} />
+          <PlanMovePreviewLayer
+            preview={movePreview}
+            sourcePolygonMm={movePreviewSourcePolygon}
+            coordinateAdapter={coordinateAdapter}
+          />
           <PlanSnapIndicatorLayer preview={edgeDragPreview} coordinateAdapter={coordinateAdapter} />
           <PlanHitTestDebugLayer
             enabled={debugEnabled}

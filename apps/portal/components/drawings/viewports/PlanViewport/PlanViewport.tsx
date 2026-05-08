@@ -20,8 +20,8 @@ import { pickPrimaryEditCandidate, type ActiveObjectFamily, type PlanDimension }
 import { ToolDispatcherProvider } from './tools/ToolDispatcher';
 import { createSelectTool } from './tools/SelectTool';
 import { createEdgeDragTool, type EdgeDragCommit, type EdgeDragHover, type EdgeDragPreview } from './tools/EdgeDragTool';
-import { createMoveTool, type MoveRequest } from './tools/MoveTool';
-import type { Tool } from './tools/Tool';
+import { createMoveTool, type MoveRequest, type MoveTarget, type MoveToolPreview } from './tools/MoveTool';
+import { createPlanToolChain } from './tools/createPlanToolChain';
 import { buildHouseSnapTargets } from './interactions/snap/buildHouseSnapTargets';
 import { buildOtherPergolaSnapTargets } from './interactions/snap/buildOtherPergolaSnapTargets';
 import type { SnapLineTarget } from './interactions/snap/snapEngine';
@@ -87,6 +87,7 @@ export default function PlanViewport({
   const renderModel = usePlanRenderModel({ projection, visibility, activeObjectRef });
   const [edgeDragPreview, setEdgeDragPreview] = useState<EdgeDragPreview | null>(null);
   const [edgeDragHover, setEdgeDragHover] = useState<EdgeDragHover | null>(null);
+  const [movePreview, setMovePreview] = useState<MoveToolPreview | null>(null);
 
   const selectTool = useMemo(
     () =>
@@ -171,25 +172,41 @@ export default function PlanViewport({
   // follow-up to milestone 14.
   const commandBus = useMemo(() => createCommandBus(), []);
 
-  // Hold the SelectTool + onCommitMove in refs so the chained tools' captured
-  // callbacks always read the latest values without forcing tool re-creation
-  // on every parent render. Re-creating a tool mid-drag would tear down its
-  // session.
+  // Hold the SelectTool + onCommitMove + active-target in refs so the
+  // chained tools' captured callbacks always read the latest values without
+  // forcing tool re-creation on every parent render. Re-creating a tool
+  // mid-drag would tear down its session.
   const selectToolRef = useRef(selectTool);
   selectToolRef.current = selectTool;
   const onCommitMoveRef = useRef(onCommitMove);
   onCommitMoveRef.current = onCommitMove;
+  const activeMoveTargetRef = useRef<MoveTarget | null>(null);
+  activeMoveTargetRef.current = (() => {
+    if (!activeObjectRef?.objectId) return null;
+    if (activeObjectRef.family === 'pergolas') {
+      return { family: 'pergola', targetId: activeObjectRef.objectId };
+    }
+    if (activeObjectRef.family === 'decks') {
+      return { family: 'deck', targetId: activeObjectRef.objectId };
+    }
+    // House and openings deferred — see canMoveTarget below for why.
+    return null;
+  })();
 
   const moveTool = useMemo(
     () =>
       createMoveTool({
-        // Pergolas + decks are first-class spatial entities with their own
-        // `position.origin` (milestones 3 and 4). Openings are anchored to a
-        // wall edge (no free position) so they can't translate via this tool.
-        // House move requires more orchestration (audit row 5 / milestone 12);
-        // ship pergola + deck for now and add house-form move when the
-        // commit pipeline supports it.
-        acceptedFamilies: ['pergola', 'deck'],
+        // The single predicate that decides whether a click should move
+        // something. Encodes both "is this family movable" (pergola + deck
+        // yes; opening is wall-anchored; house is gated on multi-house data
+        // model from milestone 13) AND "is this the active object"
+        // (standard CAD UX: first click selects, subsequent click + drag
+        // moves). Replaces the old acceptedFamilies + getActiveTarget pair.
+        canMoveTarget: (target) => {
+          const active = activeMoveTargetRef.current;
+          if (!active) return false;
+          return active.family === target.family && active.targetId === target.targetId;
+        },
         commandBus,
         // Threshold below which a click-without-drag is discarded (pixel-level
         // jitter that shouldn't kick off a move). 5mm is roughly the same as
@@ -200,8 +217,13 @@ export default function PlanViewport({
         // for apply, negative for invert (the MoveTool's `createMoveCommand`
         // builds the inverse request internally).
         invertMove: (request) => onCommitMoveRef.current?.(request),
-        // When the click misses any movable target (empty area, decoration),
-        // hand off to SelectTool so selection still works.
+        // Live preview during drag: PlanMovePreviewLayer reads this state
+        // and renders the active object's polygon translated by the
+        // current delta. Without this wiring the user sees no visual
+        // feedback until pointer-up commits the move.
+        onPreviewChange: setMovePreview,
+        // When the click misses any movable target (empty area, decoration,
+        // or a non-active object), hand off to SelectTool.
         onPointerDownFallthrough: (event) => {
           selectToolRef.current.onPointerDown?.(event);
         },
@@ -233,36 +255,13 @@ export default function PlanViewport({
 
   const activeOutlineForRender = renderModel !== null && activeFamily !== null ? getActiveOutline() : null;
   const hasEditableOutline = activeOutlineForRender !== null;
-  // Composite tool: pointer-down enters the chain at EdgeDragTool (it falls
-  // through to MoveTool then SelectTool via `onPointerDownFallthrough`).
-  // Pointer-move and pointer-up fan out to BOTH EdgeDragTool and MoveTool —
-  // each tool guards its own session, so only the one that started a drag
-  // acts on these events. Without this fan-out, a move drag started via
-  // EdgeDragTool's fallthrough would never receive its updates (the
-  // dispatcher only routes to the single active tool, which is the entry
-  // tool, not the chained tool that took the click).
-  //
-  // Cursor switches with `hasEditableOutline` for visual feedback, but the
-  // tool id stays stable ('plan-tools') so `ToolDispatcher` doesn't cancel
-  // active sessions when the cursor changes mid-render.
-  const activeTool = useMemo<Tool>(
-    () => ({
-      id: 'plan-tools',
-      cursor: hasEditableOutline ? 'crosshair' : 'default',
-      onPointerDown: (event) => edgeDragTool.onPointerDown?.(event),
-      onPointerMove: (event) => {
-        edgeDragTool.onPointerMove?.(event);
-        moveTool.onPointerMove?.(event);
-      },
-      onPointerUp: (event) => {
-        edgeDragTool.onPointerUp?.(event);
-        moveTool.onPointerUp?.(event);
-      },
-      onCancel: () => {
-        edgeDragTool.onCancel?.();
-        moveTool.onCancel?.();
-      },
-    }),
+  const activeTool = useMemo(
+    () =>
+      createPlanToolChain({
+        edgeDragTool,
+        moveTool,
+        cursor: hasEditableOutline ? 'crosshair' : 'default',
+      }),
     [edgeDragTool, hasEditableOutline, moveTool],
   );
 
@@ -317,6 +316,11 @@ export default function PlanViewport({
           dimensions={mergedDimensions}
           edgeDragPreview={edgeDragPreview}
           edgeDragHover={edgeDragHover}
+          movePreview={movePreview}
+          // The polygon to translate during a move preview. Use the active
+          // outline's polygon (the same shape the selection halo wraps)
+          // so the preview tracks what the user thinks they're moving.
+          movePreviewSourcePolygon={activeOutlineForRender?.polygon ?? null}
           projectContextShapes={projectContextShapes}
           activeOutlinePolygon={activeOutlineForRender?.polygon ?? null}
           transform={viewportTransform}

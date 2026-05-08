@@ -160,6 +160,15 @@
   pointer-events: none;
 }
 
+.movePreview {
+  stroke: var(--plan-stroke-selection);
+  stroke-width: calc(var(--plan-width-medium) * 1.5);
+  stroke-dasharray: 6 3;
+  vector-effect: non-scaling-stroke;
+  fill: rgba(47, 111, 150, 0.10);
+  pointer-events: none;
+}
+
 .edgeHoverHighlight {
   stroke: var(--plan-stroke-snap);
   stroke-width: calc(var(--plan-width-heavy) * 2);

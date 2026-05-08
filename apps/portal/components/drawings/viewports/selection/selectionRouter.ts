@@ -55,7 +55,21 @@ export function topProjectionShapeClassifier(
     return { kind: 'pergola', pergolaId };
   }
   if (shape.family === 'house') {
-    const targetId = shape.sourceId ?? shape.sourceObjectId ?? shape.id;
+    // For decks: the canonical-outline shape is the `house_surface_solid`
+    // prism whose `sourceId` is the solid's own id (`house-solid-deck-1`),
+    // not the deck's id (`deck-1`). The geometry builder copies the deck.id
+    // into `metadata.sourceId`. Prefer that when present so consumers
+    // (selection, move, edge-drag) all resolve to the same deck.id without
+    // each having to reinvent the lookup. Mirrors the pergola pattern
+    // above (which prefers `metadata.pergolaId`). See
+    // `docs/maintainability-principles.md` -- "workarounds belong at the
+    // source": every consumer that needed `metadata.sourceId` was a
+    // signal that the classifier was wrong.
+    const taggedDeckId =
+      shape.kind === 'deck' && typeof shape.metadata?.sourceId === 'string'
+        ? shape.metadata.sourceId
+        : null;
+    const targetId = taggedDeckId ?? shape.sourceId ?? shape.sourceObjectId ?? shape.id;
     if (shape.kind === 'deck') {
       return { kind: 'workbench', targetKind: 'deck', targetId };
     }

@@ -431,12 +431,36 @@ function buildViewerSceneFromSolvedGeometry(input: {
 function buildTopProjectionFromSolvedScene(input: {
   scene: ViewerSceneModel;
   fallbackTopProjection: GeometryTopProjectionViewModel;
+  /**
+   * The pergola id this assembly belongs to. When set, every pergola-family
+   * shape in the projection is tagged with `metadata.pergolaId` so consumers
+   * (selection, move tool) can resolve the active pergola from any of its
+   * member shapes (rafters, posts, beams) without relying on shape-id
+   * heuristics. Without this tag the classifier falls back to the member's
+   * own id, which breaks the move tool's active-target gate.
+   *
+   * Lifted out of the per-shape builder so the geometry package doesn't
+   * need to know about the workbench's pergola identity. Documented in
+   * `docs/maintainability-principles.md` -- "workarounds belong at the
+   * source": tag once at projection time instead of patching every consumer.
+   */
+  pergolaId?: string | null;
 }): GeometryTopProjectionViewModel {
-  return buildTopProjectionViewModelFromScene(input.scene, {
+  const projection = buildTopProjectionViewModelFromScene(input.scene, {
     referenceShapes: input.fallbackTopProjection.shapes.filter(
       (shape) => shape.sourceType === 'house_reference' || shape.sourceType === 'pergola_reference',
     ),
   });
+  if (!input.pergolaId) return projection;
+  const taggedPergolaId = input.pergolaId;
+  return {
+    ...projection,
+    shapes: projection.shapes.map((shape) =>
+      shape.family === 'pergola'
+        ? { ...shape, metadata: { ...(shape.metadata ?? {}), pergolaId: taggedPergolaId } }
+        : shape,
+    ),
+  };
 }
 
 function uniqueIssues(issues: WorkbenchTrustStatusKind[]): WorkbenchTrustStatusKind[] {
@@ -832,6 +856,7 @@ function buildSolvedModule(input: {
   const geometryTopProjection = buildTopProjectionFromSolvedScene({
     scene,
     fallbackTopProjection: derivation.geometryTopProjection,
+    pergolaId: moduleInput.pergolaId ?? null,
   });
   const trust = buildTrustStatus({
     status: 'geometry_ready',

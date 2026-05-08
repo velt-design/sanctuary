@@ -31,18 +31,29 @@ export type MoveToolPreview = {
 };
 
 export type MoveToolConfig = {
-  acceptedFamilies: ReadonlyArray<MoveTargetFamily>;
+  /**
+   * Single predicate that decides whether a click should start a move.
+   * Returns true when the host wants this target to be moved (e.g. it's
+   * the active object and the family is supported). Returning false sends
+   * the click through `onPointerDownFallthrough` to the next tool in the
+   * chain. Replaces the older split between `acceptedFamilies` and
+   * `getActiveTarget` -- both encoded the same conceptual decision and
+   * forced callers to coordinate two filters; one predicate keeps the
+   * intent in one place. See `docs/maintainability-principles.md` --
+   * "single config option per concept."
+   */
+  canMoveTarget: (target: MoveTarget) => boolean;
   commandBus: CommandBus;
   dragThresholdMm: number;
   commitMove: (request: MoveRequest) => void;
   invertMove?: (request: MoveRequest) => void;
   onPreviewChange?: (preview: MoveToolPreview | null) => void;
   /**
-   * Called when a pointer-down doesn't initiate a move — either because there
-   * is no shape under the cursor or the shape's family is not accepted.
-   * Mirrors `EdgeDragTool.onPointerDownFallthrough` so the host can chain
-   * tools (EdgeDrag -> Move -> Select): each tool tries to claim the click;
-   * the rejected event bubbles to the next tool.
+   * Called when a pointer-down doesn't initiate a move (no shape under
+   * cursor, or `canMoveTarget` returned false). Mirrors
+   * `EdgeDragTool.onPointerDownFallthrough` so the host can chain tools
+   * (EdgeDrag -> Move -> Select): each tool tries to claim the click; the
+   * rejected event bubbles to the next tool.
    */
   onPointerDownFallthrough?: (event: ToolPointerEvent) => void;
 };
@@ -51,19 +62,7 @@ export function moveTargetFromShape(shape: GeometryTopProjectionShape): MoveTarg
   const target = topProjectionShapeClassifier(shape);
   if (target.kind === 'pergola') return { family: 'pergola', targetId: target.pergolaId };
   if (target.kind === 'workbench') {
-    // For decks, the canonical-outline shape is the `house_surface_solid`
-    // prism (built by the geometry envelope), whose `sourceId` is the solid's
-    // own id (`house-solid-deck-1`), not the deck's id (`deck-1`). The
-    // builder copies the deck.id into `metadata.sourceId`. Prefer that when
-    // present so the move handler resolves the right object in the project
-    // model. The shorter `house_surface:deck-1` shape is also emitted but
-    // is z-ordered below the solid, so the solid is what actually catches
-    // pointerdowns.
-    if (target.targetKind === 'deck') {
-      const taggedSourceId =
-        typeof shape.metadata?.sourceId === 'string' ? shape.metadata.sourceId : null;
-      return { family: 'deck', targetId: taggedSourceId ?? target.targetId };
-    }
+    if (target.targetKind === 'deck') return { family: 'deck', targetId: target.targetId };
     if (target.targetKind === 'opening') return { family: 'opening', targetId: target.targetId };
   }
   return null;
@@ -98,7 +97,6 @@ type DragContext = {
 };
 
 export function createMoveTool(config: MoveToolConfig): Tool {
-  const accepted = new Set<MoveTargetFamily>(config.acceptedFamilies);
   let session: DragSession<DragContext> | null = null;
 
   const clearPreview = (): void => {
@@ -125,7 +123,7 @@ export function createMoveTool(config: MoveToolConfig): Tool {
         return;
       }
       const target = moveTargetFromShape(event.shape);
-      if (!target || !accepted.has(target.family)) {
+      if (!target || !config.canMoveTarget(target)) {
         config.onPointerDownFallthrough?.(event);
         return;
       }

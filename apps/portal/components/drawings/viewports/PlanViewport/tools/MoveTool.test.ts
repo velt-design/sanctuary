@@ -143,11 +143,15 @@ describe('createMoveCommand', () => {
 
 describe('createMoveTool', () => {
   function setup(acceptedFamilies: ReadonlyArray<MoveTargetFamily> = ['deck']) {
+    const accepted = new Set<MoveTargetFamily>(acceptedFamilies);
     const bus = createCommandBus();
     const commits: MoveRequest[] = [];
     const previews: Array<MoveToolPreview | null> = [];
     const tool = createMoveTool({
-      acceptedFamilies,
+      // The unified `canMoveTarget` predicate. The setup helper still takes
+      // `acceptedFamilies` for ergonomic test wiring; internally that's
+      // expressed as the single predicate the tool actually consumes.
+      canMoveTarget: (target) => accepted.has(target.family),
       commandBus: bus,
       dragThresholdMm: 4,
       commitMove: (request) => commits.push(request),
@@ -217,12 +221,12 @@ describe('createMoveTool', () => {
 
   it('falls through to onPointerDownFallthrough when the click misses any movable shape', () => {
     // Tool chain (EdgeDrag -> Move -> Select): MoveTool must hand off the
-    // click to the next tool when there's no shape under the cursor or the
-    // shape's family isn't accepted. Mirrors EdgeDragTool's pattern.
+    // click to the next tool when there's no shape under the cursor or
+    // canMoveTarget returns false. Mirrors EdgeDragTool's fallthrough pattern.
     const fallthroughs: Array<{ shape: unknown; point: { x: number; y: number } }> = [];
     const bus = createCommandBus();
     const tool = createMoveTool({
-      acceptedFamilies: ['deck'],
+      canMoveTarget: (target) => target.family === 'deck',
       commandBus: bus,
       dragThresholdMm: 4,
       commitMove: () => undefined,
@@ -239,11 +243,49 @@ describe('createMoveTool', () => {
     expect(fallthroughs[1]?.point).toEqual({ x: 50, y: 50 });
   });
 
+  it('falls through when canMoveTarget returns false for the click target (different object selected)', () => {
+    // Standard CAD UX: first click selects, subsequent click + drag moves.
+    // A click on a non-active object must fall through to SelectTool (so
+    // the user can select that object) rather than start a move on it.
+    // The host expresses this by returning false from canMoveTarget when
+    // the click target is not the active object.
+    const fallthroughs: Array<unknown> = [];
+    const bus = createCommandBus();
+    const tool = createMoveTool({
+      canMoveTarget: (target) =>
+        target.family === 'deck' && target.targetId === 'deck-active',
+      commandBus: bus,
+      dragThresholdMm: 4,
+      commitMove: () => undefined,
+      onPointerDownFallthrough: (event) => fallthroughs.push(event),
+    });
+    tool.onPointerDown?.(event({ shape: deckShape('deck-other'), point: { x: 0, y: 0 } }));
+    expect(fallthroughs).toHaveLength(1);
+  });
+
+  it('starts a drag when canMoveTarget returns true for the click target', () => {
+    const previews: Array<MoveToolPreview | null> = [];
+    const bus = createCommandBus();
+    const tool = createMoveTool({
+      canMoveTarget: (target) =>
+        target.family === 'deck' && target.targetId === 'deck-active',
+      commandBus: bus,
+      dragThresholdMm: 4,
+      commitMove: () => undefined,
+      onPreviewChange: (preview) => previews.push(preview),
+    });
+    tool.onPointerDown?.(event({ shape: deckShape('deck-active'), point: { x: 0, y: 0 } }));
+    expect(previews.at(-1)).toEqual({
+      target: { family: 'deck', targetId: 'deck-active' },
+      delta: { x: 0, y: 0 },
+    });
+  });
+
   it('does NOT call onPointerDownFallthrough for non-primary buttons (let them bubble for pan)', () => {
     const fallthroughs: unknown[] = [];
     const bus = createCommandBus();
     const tool = createMoveTool({
-      acceptedFamilies: ['deck'],
+      canMoveTarget: () => true,
       commandBus: bus,
       dragThresholdMm: 4,
       commitMove: () => undefined,
@@ -266,7 +308,7 @@ describe('createMoveTool', () => {
     const apply: MoveRequest[] = [];
     const bus = createCommandBus();
     const tool = createMoveTool({
-      acceptedFamilies: ['deck'],
+      canMoveTarget: (target) => target.family === 'deck',
       commandBus: bus,
       dragThresholdMm: 1,
       commitMove: (request) => apply.push(request),

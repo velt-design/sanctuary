@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { buildSideLocalPolygonFromWorld } from '@sp/geometry';
+import { buildDeckTransformPatch } from '@/lib/drawings/commits/commitDeckTransform';
+import { buildPergolaTransformPosition } from '@/lib/drawings/commits/commitPergolaTransform';
 import DrawingWorkbench from '@/components/drawings/workbench/DrawingWorkbench';
 import type { Geometry3DViewportState } from '@/components/drawings/viewports/Geometry3DViewport';
 import type { GeometryPreviewState } from '@/lib/drawings/geometry/buildWorkbenchGeometryPreview';
@@ -755,79 +757,36 @@ export default function DesignWorkbenchEstimateClient({
                       commit.outlineId.endsWith(`-${deck.id}`),
                     );
                     const deckId = matchedDeck?.id ?? null;
-                    // eslint-disable-next-line no-console
-                    console.log('[deck-edge-drag] commit fired', {
-                      activeFamily: store.ui.activeObjectRef.family,
-                      activeObjectId: store.ui.activeObjectRef.objectId,
-                      outlineId: commit.outlineId,
-                      matchedDeckId: deckId,
-                      projectModelDeckIds: projectModelDecks.map((deck) => deck.id),
-                      nextPolygonLength: commit.nextPolygon.length,
+                    if (!deckId || commit.nextPolygon.length < 3) return;
+                    // House world position is needed so `buildDeckTransformPatch`
+                    // can convert the world bbox.min into a house-local
+                    // `deck.position` (the geometry decoder applies
+                    // `deck.position + house.position`, so the persisted
+                    // value must be in house-local coords; otherwise each
+                    // commit would re-add house.position and the deck
+                    // would drift).
+                    //
+                    // Read from `activeModuleInput.houseFootprintPosition` —
+                    // the SAME field the geometry pipeline reads via
+                    // `buildRawGeometryModuleInput.resolveHousePosition` and
+                    // hands to `applyAssemblyPosition3D`. Reading from
+                    // `houseAssembly.houseForms[0].footprint.position`
+                    // (project-model) instead would risk a stale/diverged
+                    // value if the two fields ever desynced.
+                    const houseModulePosition = activeModuleInput?.houseFootprintPosition;
+                    const houseWorldPositionMm = houseModulePosition
+                      ? {
+                          x: Number(houseModulePosition.originXMm) || 0,
+                          y: Number(houseModulePosition.originYMm) || 0,
+                        }
+                      : null;
+                    const patch = buildDeckTransformPatch({
+                      worldPolygonMm: commit.nextPolygon,
+                      currentRotationDeg: matchedDeck?.position?.rotationDeg,
+                      houseWorldPositionMm,
                     });
-                    if (!deckId || commit.nextPolygon.length < 3) {
-                      // eslint-disable-next-line no-console
-                      console.warn('[deck-edge-drag] bailed early', {
-                        reason: !deckId
-                          ? `outline ${commit.outlineId} did not match any deck in project model`
-                          : 'polygon < 3 vertices',
-                      });
-                      return;
-                    }
-                    let minX = Infinity;
-                    let minY = Infinity;
-                    let maxX = -Infinity;
-                    let maxY = -Infinity;
-                    for (const p of commit.nextPolygon) {
-                      if (p.x < minX) minX = p.x;
-                      if (p.y < minY) minY = p.y;
-                      if (p.x > maxX) maxX = p.x;
-                      if (p.y > maxY) maxY = p.y;
-                    }
-                    const positionXMm = minX;
-                    const positionYMm = minY;
-                    // Polygon coords relative to position (so unit-frame decode
-                    // + position == nextPolygon).
-                    const localWorldPolygon = commit.nextPolygon.map((p) => ({
-                      x: p.x - positionXMm,
-                      y: p.y - positionYMm,
-                    }));
-                    // Standardize on attachmentSide='rear' so the deck's polygon
-                    // is decoupled from the host's current attachmentSide.
-                    // Pairs with the same standardization in normalize.ts when
-                    // `deck.position` is set.
-                    const sideLocalPoints = buildSideLocalPolygonFromWorld({
-                      worldPolygonMm: localWorldPolygon,
-                      pergolaWidthMm: 1000,
-                      pergolaDepthMm: 1000,
-                      attachmentSide: 'rear',
-                      params: null,
-                    });
-                    const patch = {
-                      shape: 'custom' as const,
-                      outline: sideLocalPoints.map((p) => ({
-                        alongM: p.alongM.toString(),
-                        depthM: p.depthM.toString(),
-                      })),
-                      position: {
-                        originXMm: positionXMm.toString(),
-                        originYMm: positionYMm.toString(),
-                        rotationDeg: '0',
-                      },
-                    };
-                    // eslint-disable-next-line no-console
-                    console.log('[deck-edge-drag] dispatching patch', {
-                      deckId,
-                      bbox: { minX, minY, maxX, maxY },
-                      position: patch.position,
-                      outlineLength: patch.outline.length,
-                      outline: patch.outline,
-                    });
-                    void objectWorkbenchActions
-                      .commitSharedHouseDeckPatch(deckId, patch)
-                      .then((result) => {
-                        // eslint-disable-next-line no-console
-                        console.log('[deck-edge-drag] commit result', result);
-                      });
+                    if (!patch) return;
+                    void objectWorkbenchActions.commitSharedHouseDeckPatch(deckId, patch);
                     return;
                   }
                   // openings deferred (no canonical polygon yet).
@@ -853,17 +812,13 @@ export default function DesignWorkbenchEstimateClient({
                       (p) => p.id === request.target.targetId,
                     );
                     if (!pergola) return;
-                    const currentX = Number(pergola.position?.originXMm ?? '0');
-                    const currentY = Number(pergola.position?.originYMm ?? '0');
-                    const currentRotation = Number(pergola.position?.rotationDeg ?? '0');
                     void objectWorkbenchActions.commitSharedPergolaEdgeDragResult(
                       request.target.targetId,
                       {
-                        position: {
-                          originXMm: currentX + request.delta.x,
-                          originYMm: currentY + request.delta.y,
-                          rotationDeg: Number.isFinite(currentRotation) ? currentRotation : 0,
-                        },
+                        position: buildPergolaTransformPosition({
+                          currentPosition: pergola.position,
+                          deltaMm: request.delta,
+                        }),
                       },
                     );
                     return;
@@ -873,21 +828,53 @@ export default function DesignWorkbenchEstimateClient({
                       (d) => d.id === request.target.targetId,
                     );
                     if (!deck) return;
-                    const currentX = Number(deck.position?.originXMm ?? '0');
-                    const currentY = Number(deck.position?.originYMm ?? '0');
-                    const currentRotation = Number(deck.position?.rotationDeg ?? '0');
+                    // Read the deck's CURRENT world polygon from the solved
+                    // artifact. This is the source of truth regardless of
+                    // whether the deck has been migrated to its first-class
+                    // `position + side-local outline` form yet — the
+                    // geometry pipeline always produces a world boundary.
+                    // Translating the world polygon by `request.delta` and
+                    // running it through `buildDeckTransformPatch` gives the
+                    // exact same atomic patch shape the edge-drag handler
+                    // writes; that's the point of the shared helper. Legacy
+                    // decks with `position == null` migrate cleanly on first
+                    // move instead of jumping to a tiny location because the
+                    // unit-frame decoder runs against a pergola-anchored
+                    // outline.
+                    const artifact = store.derived.activeViewportGeometry?.artifact;
+                    const deckSolid = artifact?.assembly?.house?.model?.decks?.find(
+                      (entry) => entry.id === request.target.targetId,
+                    );
+                    const worldBoundary = deckSolid?.boundary ?? null;
+                    if (!worldBoundary || worldBoundary.length < 3) return;
+                    const nextWorldPolygon = worldBoundary.map((p) => ({
+                      x: p.x + request.delta.x,
+                      y: p.y + request.delta.y,
+                    }));
+                    // See edge-drag handler above for why we pass house
+                    // world position here. Same fix, same reason: the
+                    // decoder adds `deck.position + house.position`, so
+                    // we must subtract house.position when going from
+                    // world coords to the persisted deck.position. We
+                    // read from `activeModuleInput.houseFootprintPosition`
+                    // because that's the exact field the geometry
+                    // pipeline consumes.
+                    const houseModulePosition = activeModuleInput?.houseFootprintPosition;
+                    const houseWorldPositionMm = houseModulePosition
+                      ? {
+                          x: Number(houseModulePosition.originXMm) || 0,
+                          y: Number(houseModulePosition.originYMm) || 0,
+                        }
+                      : null;
+                    const patch = buildDeckTransformPatch({
+                      worldPolygonMm: nextWorldPolygon,
+                      currentRotationDeg: deck.position?.rotationDeg,
+                      houseWorldPositionMm,
+                    });
+                    if (!patch) return;
                     void objectWorkbenchActions.commitSharedHouseDeckPatch(
                       request.target.targetId,
-                      {
-                        position: {
-                          originXMm: (currentX + request.delta.x).toString(),
-                          originYMm: (currentY + request.delta.y).toString(),
-                          rotationDeg: (Number.isFinite(currentRotation)
-                            ? currentRotation
-                            : 0
-                          ).toString(),
-                        },
-                      },
+                      patch,
                     );
                     return;
                   }
