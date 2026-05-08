@@ -2467,6 +2467,60 @@ describe('house model geometry builder', () => {
     expect(frameFeatures.every((feature) => feature.metadata?.gableEndId === openEndId)).toBe(true);
   });
 
+  it('honours canonical openGableEndIds on a rectangular hipped roof (regression for hardcoded -1/-2 cap mapping)', () => {
+    // The standard 6000x1800 footprint walked CCW has terminal-end ids
+    // `house-gable-end-x-2` (the max-x edge) and `house-gable-end-x-4`
+    // (the min-x edge) -- because `deriveHouseGableTerminalEnds`
+    // encodes the polygon edge index in the trailing number, NOT a
+    // sequential 1/2. Earlier versions of `buildHippedHouseRoof`
+    // hardcoded `-1`/`-2` suffixes, so opening the canonical id
+    // silently no-op'd. This test pins the canonical-id mapping for
+    // the rectangle path so the rail and plan-view click target both
+    // work.
+    const footprint = makeFootprint();
+    const terminalEnds = deriveHouseGableTerminalEnds({ footprint, ridgeAxis: 'x' });
+    // Sort order comes from `deriveLegacyHouseGableTerminalEndsX`,
+    // which sorts segments by midpoint.x asc -- the min-x edge (id -4)
+    // comes first.
+    expect(terminalEnds.map((end) => end.id)).toEqual([
+      'house-gable-end-x-4',
+      'house-gable-end-x-2',
+    ]);
+
+    const openMaxX = buildHouseModel3D({
+      config: makeConfig({
+        footprint,
+        roofForm: 'hipped',
+        roofRidgeAxis: 'x',
+        openGableEndIds: ['house-gable-end-x-2'],
+      }),
+      attachmentEdge: makeAttachmentEdge(),
+    });
+    expect(openMaxX?.metadata?.roofForm).toBe('dutch_hip');
+
+    const openMinX = buildHouseModel3D({
+      config: makeConfig({
+        footprint,
+        roofForm: 'hipped',
+        roofRidgeAxis: 'x',
+        openGableEndIds: ['house-gable-end-x-4'],
+      }),
+      attachmentEdge: makeAttachmentEdge(),
+    });
+    expect(openMinX?.metadata?.roofForm).toBe('dutch_hip');
+
+    const openBoth = buildHouseModel3D({
+      config: makeConfig({
+        footprint,
+        roofForm: 'hipped',
+        roofRidgeAxis: 'x',
+        openGableEndIds: ['house-gable-end-x-2', 'house-gable-end-x-4'],
+      }),
+      attachmentEdge: makeAttachmentEdge(),
+    });
+    expect(openBoth?.metadata?.roofForm).toBe('gable');
+  });
+
   it('blocks unsupported hipped topology instead of falling back to a bounding box roof', () => {
     const nonOrthogonal: Polygon3 = [
       { x: 0, y: -1800, z: 0 },

@@ -5,6 +5,13 @@ export type WorkbenchSelectionTarget =
   | { kind: 'none' }
   | { kind: 'pergola'; pergolaId: string }
   | { kind: 'workbench'; targetKind: DrawingWorkbenchGeometrySelectionKind; targetId: string }
+  // Click-as-action: clicking a house_terminal_end shape in plan view
+  // toggles whether that hip end renders as an open gable wall. This is
+  // an action target rather than a selection target -- the workbench
+  // shell mutates the house draft (openGableEndIds) and does NOT update
+  // the active selection. Kept on this union so the existing dispatcher
+  // can route it without a parallel pathway.
+  | { kind: 'house_terminal_end_toggle'; endId: string; isOpen: boolean }
   | { kind: 'unhandled'; objectId: string };
 
 export type SelectionClassifier = (objectId: string) => WorkbenchSelectionTarget;
@@ -84,6 +91,21 @@ export function topProjectionShapeClassifier(
     }
     if (shape.kind === 'roof') {
       return { kind: 'workbench', targetKind: 'roof', targetId };
+    }
+    if (shape.kind === 'house_terminal_end') {
+      // The geometry emitter (`packages/geometry/src/topProjection.ts`)
+      // tags every terminal-end marker with `metadata.openGableEndId`
+      // and `metadata.isOpen`. Read both so the dispatcher can call the
+      // toggle with the inverted next-state -- if the end is currently
+      // open, clicking should close it, and vice versa. Falling back to
+      // shape.sourceId (set to the same end id) keeps tests that build
+      // synthetic shapes without metadata working.
+      const endId =
+        typeof shape.metadata?.openGableEndId === 'string'
+          ? shape.metadata.openGableEndId
+          : (shape.sourceId ?? shape.id);
+      const isOpen = shape.metadata?.isOpen === true;
+      return { kind: 'house_terminal_end_toggle', endId, isOpen };
     }
     return { kind: 'workbench', targetKind: 'house', targetId };
   }

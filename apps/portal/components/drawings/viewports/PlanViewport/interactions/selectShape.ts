@@ -9,6 +9,11 @@ export type ShapeSelectionCallbacks = {
   onSelectObjectWorkbenchTarget?: (selection: ObjectWorkbenchViewportTargetSelection) => void;
   onSelectPergolaTarget?: (pergolaId: string) => void;
   onClearWorkbenchSelection?: () => void;
+  // Plan-view click on a house_terminal_end marker. The viewport passes
+  // through whatever the dispatcher resolved -- the workbench shell is
+  // responsible for actually inverting `isOpen` and committing the
+  // updated `openGableEndIds` to the house draft.
+  onToggleHouseTerminalEnd?: (endId: string, currentlyOpen: boolean) => void;
 };
 
 export function dispatchSelectionTarget(
@@ -24,6 +29,9 @@ export function dispatchSelectionTarget(
         kind: target.targetKind,
         targetId: target.targetId,
       });
+      return;
+    case 'house_terminal_end_toggle':
+      callbacks.onToggleHouseTerminalEnd?.(target.endId, target.isOpen);
       return;
     case 'none':
       callbacks.onClearWorkbenchSelection?.();

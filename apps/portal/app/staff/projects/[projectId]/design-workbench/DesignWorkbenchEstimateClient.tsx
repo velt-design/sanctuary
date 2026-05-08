@@ -505,6 +505,30 @@ export default function DesignWorkbenchEstimateClient({
           onSelectObjectWorkbenchTarget={!isLocked ? objectSelectionActions.selectObjectWorkbenchTarget : undefined}
           onSelectPergolaTarget={!isLocked ? objectSelectionActions.selectPergolaObject : undefined}
           onClearWorkbenchSelection={!isLocked ? objectSelectionActions.clearActiveWorkbenchSelection : undefined}
+          onToggleHouseTerminalEnd={
+            !isLocked
+              ? (endId, currentlyOpen) => {
+                  // Plan-view click on a hip-end marker. Mirror the rail's
+                  // open-end toggle in HouseFormRoofSections.tsx -- read
+                  // the active roof intent, invert membership of `endId`
+                  // in `openGableEndIds`, and commit. The rail and the
+                  // plan view share the same commit action so undo/redo
+                  // and persistence work the same regardless of where
+                  // the toggle was triggered.
+                  const houseForm = store.derived.activeHouseForm;
+                  if (!houseForm) return;
+                  const currentRoof = houseForm.roofIntent;
+                  const currentOpenIds = currentRoof.openGableEndIds ?? [];
+                  const nextOpenIds = currentlyOpen
+                    ? currentOpenIds.filter((id) => id !== endId)
+                    : [...currentOpenIds, endId];
+                  void objectWorkbenchActions.commitSharedHouseRoofDraft({
+                    ...currentRoof,
+                    openGableEndIds: nextOpenIds,
+                  });
+                }
+              : undefined
+          }
           onCommitHouseFormFootprintDimension={!isLocked ? objectWorkbenchActions.commitHouseFormFootprintDimension : undefined}
           onCommitDeckDimension={!isLocked ? objectWorkbenchActions.commitDeckDimension : undefined}
           onCommitOpeningDimension={!isLocked ? objectWorkbenchActions.commitOpeningDimension : undefined}

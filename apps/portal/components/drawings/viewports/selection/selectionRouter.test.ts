@@ -227,5 +227,56 @@ describe('selectionRouter', () => {
         ),
       ).toEqual({ kind: 'pergola', pergolaId: 'pergola-deck-cover-1' });
     });
+
+    it('classifies house_terminal_end shapes as a toggle action with metadata-resolved endId and isOpen', () => {
+      // Closed end -- the geometry emitter sets isOpen: false; clicking
+      // should propagate the same value so the dispatcher can invert.
+      expect(
+        topProjectionShapeClassifier(
+          makeShape({
+            family: 'house',
+            kind: 'house_terminal_end',
+            sourceId: 'house-gable-end-x-2',
+            metadata: { openGableEndId: 'house-gable-end-x-2', isOpen: false },
+          }),
+        ),
+      ).toEqual({
+        kind: 'house_terminal_end_toggle',
+        endId: 'house-gable-end-x-2',
+        isOpen: false,
+      });
+
+      // Open end -- isOpen: true; click closes it.
+      expect(
+        topProjectionShapeClassifier(
+          makeShape({
+            family: 'house',
+            kind: 'house_terminal_end',
+            sourceId: 'house-gable-end-x-4',
+            metadata: { openGableEndId: 'house-gable-end-x-4', isOpen: true },
+          }),
+        ),
+      ).toEqual({
+        kind: 'house_terminal_end_toggle',
+        endId: 'house-gable-end-x-4',
+        isOpen: true,
+      });
+    });
+
+    it('falls back to sourceId when openGableEndId metadata is missing on a house_terminal_end shape', () => {
+      expect(
+        topProjectionShapeClassifier(
+          makeShape({
+            family: 'house',
+            kind: 'house_terminal_end',
+            sourceId: 'house-gable-end-y-1',
+          }),
+        ),
+      ).toEqual({
+        kind: 'house_terminal_end_toggle',
+        endId: 'house-gable-end-y-1',
+        isOpen: false,
+      });
+    });
   });
 });

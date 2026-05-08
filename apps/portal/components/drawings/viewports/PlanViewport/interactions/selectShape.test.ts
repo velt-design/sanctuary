@@ -27,6 +27,7 @@ function spies(): Required<ShapeSelectionCallbacks> {
     onSelectObjectWorkbenchTarget: vi.fn(),
     onSelectPergolaTarget: vi.fn(),
     onClearWorkbenchSelection: vi.fn(),
+    onToggleHouseTerminalEnd: vi.fn(),
   };
 }
 
@@ -105,5 +106,45 @@ describe('dispatchSelectionTarget', () => {
     expect(callbacks.onSelectObjectWorkbenchTarget).not.toHaveBeenCalled();
     expect(callbacks.onSelectPergolaTarget).not.toHaveBeenCalled();
     expect(callbacks.onClearWorkbenchSelection).not.toHaveBeenCalled();
+    expect(callbacks.onToggleHouseTerminalEnd).not.toHaveBeenCalled();
+  });
+
+  it('routes house_terminal_end_toggle to onToggleHouseTerminalEnd with the resolved endId and isOpen', () => {
+    const callbacks = spies();
+    dispatchSelectionTarget(
+      { kind: 'house_terminal_end_toggle', endId: 'house-gable-end-x-2', isOpen: true },
+      callbacks,
+    );
+    expect(callbacks.onToggleHouseTerminalEnd).toHaveBeenCalledTimes(1);
+    expect(callbacks.onToggleHouseTerminalEnd).toHaveBeenCalledWith(
+      'house-gable-end-x-2',
+      true,
+    );
+    // The toggle action does NOT clear the selection or fire any of the
+    // selection-style callbacks -- mutating selection on every click on a
+    // hip end would be jarring (the user is editing the roof, not
+    // navigating).
+    expect(callbacks.onSelectObjectWorkbenchTarget).not.toHaveBeenCalled();
+    expect(callbacks.onClearWorkbenchSelection).not.toHaveBeenCalled();
+  });
+});
+
+describe('selectShape end-to-end for house_terminal_end', () => {
+  it('routes a house/house_terminal_end shape with metadata to the toggle callback', () => {
+    const callbacks = spies();
+    selectShape(
+      shape({
+        family: 'house',
+        kind: 'house_terminal_end',
+        sourceObjectId: 'house-1',
+        sourceId: 'house-gable-end-x-2',
+        metadata: { openGableEndId: 'house-gable-end-x-2', isOpen: false },
+      }),
+      callbacks,
+    );
+    expect(callbacks.onToggleHouseTerminalEnd).toHaveBeenCalledWith(
+      'house-gable-end-x-2',
+      false,
+    );
   });
 });

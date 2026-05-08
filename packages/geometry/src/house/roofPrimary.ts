@@ -384,18 +384,45 @@ export function buildHippedHouseRoof(input: {
     const widthX = box.maxX - box.minX;
     const widthY = box.maxY - box.minY;
     const resolvedRidgeAxis: HouseRoofRidgeAxis = widthX >= widthY ? 'x' : 'y';
-    // Map openTerminalEndIds to per-end caps. Terminal-end ids follow
-    // the convention `house-gable-end-{x|y}-{1|2}` (1 = min-axis side,
-    // 2 = max-axis side) per `buildBentSpineGableTerminalEndsX`. For a
-    // simple rectangle there are exactly 2 terminal ends along the
-    // ridge axis; matching by suffix is sufficient.
+    // Map openTerminalEndIds to per-end caps. Terminal-end ids encode
+    // the polygon's edge index (1-based) -- e.g. for a CCW footprint
+    // `[(0,-1800),(7200,-1800),(7200,0),(0,0)]` walked along ridge X
+    // the ids are `house-gable-end-x-2` and `house-gable-end-x-4`,
+    // NOT a sequential `-1`/`-2`. Derive the canonical id pair via
+    // `deriveHouseGableTerminalEndsFromFootprint`, then sort by their
+    // midpoint along the ridge axis so we know which end is "start"
+    // (min-axis side) vs "end" (max-axis side). This keeps the open
+    // toggle behaviour consistent with the inspector and the new
+    // plan-view click target -- both speak the same id scheme.
     const openIds = new Set(input.openTerminalEndIds ?? []);
-    const startCap: 'hipped' | 'open_gable' = openIds.has(`house-gable-end-${resolvedRidgeAxis}-1`)
-      ? 'open_gable'
-      : 'hipped';
-    const endCap: 'hipped' | 'open_gable' = openIds.has(`house-gable-end-${resolvedRidgeAxis}-2`)
-      ? 'open_gable'
-      : 'hipped';
+    const terminalEnds = deriveHouseGableTerminalEndsFromFootprint({
+      footprint: input.eavePolygon,
+      ridgeAxis: resolvedRidgeAxis,
+    });
+    const sortedEnds = [...terminalEnds]
+      .map((terminalEnd) => {
+        const trailing = terminalEnd.id.match(/-(\d+)$/);
+        const edgeIndex = trailing ? Number(trailing[1]) - 1 : null;
+        if (edgeIndex == null || edgeIndex < 0 || edgeIndex >= input.eavePolygon.length) {
+          return null;
+        }
+        const start = input.eavePolygon[edgeIndex]!;
+        const end = input.eavePolygon[(edgeIndex + 1) % input.eavePolygon.length]!;
+        const midOnRidge = resolvedRidgeAxis === 'x'
+          ? (start.x + end.x) / 2
+          : (start.y + end.y) / 2;
+        return { id: terminalEnd.id, midOnRidge };
+      })
+      .filter((entry): entry is { id: string; midOnRidge: number } => entry !== null)
+      .sort((left, right) => left.midOnRidge - right.midOnRidge);
+    const startEndId = sortedEnds[0]?.id ?? null;
+    const endEndId = sortedEnds[sortedEnds.length - 1]?.id ?? null;
+    const startCap: 'hipped' | 'open_gable' =
+      startEndId !== null && openIds.has(startEndId) ? 'open_gable' : 'hipped';
+    const endCap: 'hipped' | 'open_gable' =
+      endEndId !== null && endEndId !== startEndId && openIds.has(endEndId)
+        ? 'open_gable'
+        : 'hipped';
     return applyRoofQa({
       roof: {
         ...buildRectangularRoof({

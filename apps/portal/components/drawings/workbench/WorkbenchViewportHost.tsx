@@ -76,6 +76,7 @@ type WorkbenchViewportHostProps = {
   onSelectObjectWorkbenchTarget?: (selection: ObjectWorkbenchViewportTargetSelection) => void;
   onSelectPergolaTarget?: (pergolaId: string) => void;
   onClearWorkbenchSelection?: () => void;
+  onToggleHouseTerminalEnd?: (endId: string, currentlyOpen: boolean) => void;
   onCommitHouseFormFootprintDimension?: (
     edit: EstimateDrawingFootprintEdit,
   ) => Promise<{ ok: boolean; error?: string }> | { ok: boolean; error?: string };
@@ -138,6 +139,7 @@ export default function WorkbenchViewportHost({
   onSelectObjectWorkbenchTarget,
   onSelectPergolaTarget,
   onClearWorkbenchSelection,
+  onToggleHouseTerminalEnd,
   onCommitHouseFormFootprintDimension,
   onCommitDeckDimension,
   onCommitOpeningDimension,
@@ -183,6 +185,7 @@ export default function WorkbenchViewportHost({
           onSelectObjectWorkbenchTarget={onSelectObjectWorkbenchTarget}
           onSelectPergolaTarget={onSelectPergolaTarget}
           onClearWorkbenchSelection={onClearWorkbenchSelection}
+          onToggleHouseTerminalEnd={onToggleHouseTerminalEnd}
           onCommitOutlineEdit={onCommitOutlineEdit}
           onCommitMove={onCommitMove}
           hoveredObjectRef={hoveredObjectRef}

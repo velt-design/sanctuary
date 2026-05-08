@@ -64,6 +64,15 @@ export type PlanViewportProps = {
   onSelectPergolaTarget?: (pergolaId: string) => void;
   onClearWorkbenchSelection?: () => void;
   /**
+   * Click on a `house_terminal_end` marker (the inward-pointing hip
+   * triangle in plan view). The handler must invert `currentlyOpen`
+   * and commit the new `openGableEndIds` set on the active house draft.
+   * Defined alongside the selection callbacks because the click flows
+   * through the same SelectTool dispatch path -- the action variant
+   * just routes elsewhere instead of mutating the selection.
+   */
+  onToggleHouseTerminalEnd?: (endId: string, currentlyOpen: boolean) => void;
+  /**
    * Called when an edge drag commits. The host reads the new polygon, builds
    * a patch, and either:
    *   - returns a `ReversibleCommandInput` -- PlanViewport pushes it through
@@ -112,6 +121,7 @@ export default function PlanViewport({
   onSelectObjectWorkbenchTarget,
   onSelectPergolaTarget,
   onClearWorkbenchSelection,
+  onToggleHouseTerminalEnd,
   onCommitOutlineEdit,
   onCommitMove,
   hoveredObjectRef,
@@ -175,8 +185,14 @@ export default function PlanViewport({
         onSelectObjectWorkbenchTarget,
         onSelectPergolaTarget,
         onClearWorkbenchSelection,
+        onToggleHouseTerminalEnd,
       }),
-    [onClearWorkbenchSelection, onSelectObjectWorkbenchTarget, onSelectPergolaTarget],
+    [
+      onClearWorkbenchSelection,
+      onSelectObjectWorkbenchTarget,
+      onSelectPergolaTarget,
+      onToggleHouseTerminalEnd,
+    ],
   );
 
   const activeFamily = (activeObjectRef?.family ?? null) as ActiveObjectFamily | null;
