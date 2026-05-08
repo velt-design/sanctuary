@@ -1752,14 +1752,19 @@ function buildSharedHouse(
     ridgeAxis: sharedRidgeAxis,
   });
   const validTerminalEndIds = new Set(terminalEnds.map((end) => end.id));
-  const requestedOpenGableEndIds =
-    sharedRoofForm === 'gable'
-      ? normalizeRoofOpenGableEndIds(normalizedRoofDraft?.openGableEndIds)
-      : [];
-  const openGableEndIds =
-    sharedRoofForm === 'gable'
-      ? requestedOpenGableEndIds.filter((id) => validTerminalEndIds.has(id))
-      : [];
+  // Milestone 13: openGableEndIds applies to BOTH gable and hipped --
+  // sessions A/B made hipped honour per-end open toggles for the
+  // Dutch-hip feature. Without this, the plan-view click commits land
+  // in the working copy but the geometry rebuild silently discards
+  // them (the adapter is on the hot path between commit and solve).
+  const formAcceptsOpenGableEndIds =
+    sharedRoofForm === 'gable' || sharedRoofForm === 'hipped';
+  const requestedOpenGableEndIds = formAcceptsOpenGableEndIds
+    ? normalizeRoofOpenGableEndIds(normalizedRoofDraft?.openGableEndIds)
+    : [];
+  const openGableEndIds = formAcceptsOpenGableEndIds
+    ? requestedOpenGableEndIds.filter((id) => validTerminalEndIds.has(id))
+    : [];
   if (
     normalizedFootprintMode === 'custom_polygon' &&
     requestedOpenGableEndIds.length !== openGableEndIds.length
