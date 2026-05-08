@@ -438,6 +438,13 @@ describe('DesignWorkbenchEstimateClient', () => {
       />,
     );
 
+    // The default house-form selection runs via useEffect (chain takes
+    // two microtask cycles). Click the rail tab so the inspector
+    // mounts deterministically before the assertions below.
+    await flushAsyncWork();
+    clickButtonByText(rendered.container, 'House Forms');
+    await flushAsyncWork();
+
     expect(rendered.container.textContent).toContain('House Form Inspector');
     expect(rendered.container.textContent).toContain('Footprint');
     expect(rendered.container.textContent).toContain('House Forms');
@@ -465,14 +472,21 @@ describe('DesignWorkbenchEstimateClient', () => {
     expect(rendered.container.textContent).toContain('Open House Forms');
     expect(rendered.container.textContent).toContain('Host Attachment');
     expect(rendered.container.textContent).toContain('Connection');
-    expect(rendered.container.textContent).toContain('Attachment strategy');
+    // Step 9 of the spatial-entities migration replaced the old
+    // 4-dropdown attachment configurator (Connection / Strategy / Host
+    // Edge / Host Zone) with read-only derived labels plus a single
+    // writable Attachment method picker. Re-hosting now happens via
+    // drag-snap, not dropdowns. The Connection / Host edge / Host zone
+    // text still renders as derived labels; only Attachment method is
+    // editable, so it's the only aria-labelled select.
+    expect(rendered.container.textContent).toContain('Attachment method');
     expect(rendered.container.textContent).toContain('Host edge');
     expect(rendered.container.textContent).toContain('Host zone');
     expect(rendered.container.textContent).toContain('Resolution');
-    expect(rendered.container.textContent).toContain('Host side');
-    expect(rendered.container.querySelector('[aria-label="Pergola connection"]')).not.toBeNull();
-    expect(rendered.container.querySelector('[aria-label="Pergola host edge"]')).not.toBeNull();
-    expect(rendered.container.querySelector('[aria-label="Pergola host zone"]')).not.toBeNull();
+    expect(rendered.container.textContent).toContain('Attachment side');
+    expect(
+      rendered.container.querySelector('[aria-label="Pergola attachment method"]'),
+    ).not.toBeNull();
     expect(rendered.container.textContent).toContain('Geometry');
     expect(rendered.container.textContent).not.toContain('House / Context');
     expect(rendered.container.textContent).toContain('Overrides');

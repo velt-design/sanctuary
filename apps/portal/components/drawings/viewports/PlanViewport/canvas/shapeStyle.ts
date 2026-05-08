@@ -11,6 +11,15 @@ function houseCommittedBodyTokenClass(shape: GeometryTopProjectionShape): string
   if (shape.kind === 'fascia') return lineweightStyles.bodyHouseFascia;
   if (shape.kind === 'attachment_zone') return lineweightStyles.bodyHouseAttachmentZone;
   if (shape.kind === 'footprint') return lineweightStyles.bodyHouseFootprint;
+  if (shape.kind === 'house_terminal_end') {
+    // The geometry emitter (packages/geometry/src/topProjection.ts) tags
+    // every terminal-end marker with `metadata.isOpen`. Closed ends are
+    // hip slopes (filled triangle); open ends render as gable walls
+    // (dashed outline). The hit-target layer handles the click.
+    return shape.metadata?.isOpen === true
+      ? lineweightStyles.bodyHouseTerminalEndOpen
+      : lineweightStyles.bodyHouseTerminalEndClosed;
+  }
   if (shape.kind === 'gutter' || shape.kind === 'roof_feature' || shape.kind === 'wall_segment') {
     return lineweightStyles.bodyHouseLine;
   }

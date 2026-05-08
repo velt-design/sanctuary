@@ -46,6 +46,38 @@ describe('planCommittedBodyTokenClass', () => {
         /bodyReference/,
       );
     });
+
+    it('maps a closed house_terminal_end (isOpen=false) to the closed marker style', () => {
+      expect(
+        planCommittedBodyTokenClass(
+          shape({
+            family: 'house',
+            kind: 'house_terminal_end',
+            metadata: { isOpen: false, openGableEndId: 'house-gable-end-x-2' },
+          }),
+        ),
+      ).toMatch(/bodyHouseTerminalEndClosed/);
+    });
+
+    it('maps an open house_terminal_end (isOpen=true) to the open marker style', () => {
+      expect(
+        planCommittedBodyTokenClass(
+          shape({
+            family: 'house',
+            kind: 'house_terminal_end',
+            metadata: { isOpen: true, openGableEndId: 'house-gable-end-x-2' },
+          }),
+        ),
+      ).toMatch(/bodyHouseTerminalEndOpen/);
+    });
+
+    it('treats a house_terminal_end without isOpen metadata as closed (defensive default)', () => {
+      // Older or test-built shapes may omit metadata. A missing flag
+      // should not blow up the styling pipeline -- default to closed.
+      expect(
+        planCommittedBodyTokenClass(shape({ family: 'house', kind: 'house_terminal_end' })),
+      ).toMatch(/bodyHouseTerminalEndClosed/);
+    });
   });
 
   describe('pergola family', () => {
