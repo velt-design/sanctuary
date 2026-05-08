@@ -863,13 +863,20 @@ function enrichHouseRoofShapesWithTerminalEnds(
       x: midX + inward.x * apexInset,
       y: midY + inward.y * apexInset,
     };
+    // Eave overhang is applied PERPENDICULAR to the edge (outward) AND
+    // ALONG the edge in both directions -- the closed hip cap's
+    // polygon includes the corner overhangs that wrap around the
+    // adjacent walls. Without the along-edge extension, the synthetic
+    // is narrower at the eave than the real hip cap and misses clicks
+    // on the corner overhang region.
+    const alongEdgeUnit = { x: dx / length, y: dy / length };
     const eaveStart: Point2 = {
-      x: segment.a.x + outward.x * eaveOverhangMm,
-      y: segment.a.y + outward.y * eaveOverhangMm,
+      x: segment.a.x + outward.x * eaveOverhangMm - alongEdgeUnit.x * eaveOverhangMm,
+      y: segment.a.y + outward.y * eaveOverhangMm - alongEdgeUnit.y * eaveOverhangMm,
     };
     const eaveEnd: Point2 = {
-      x: segment.b.x + outward.x * eaveOverhangMm,
-      y: segment.b.y + outward.y * eaveOverhangMm,
+      x: segment.b.x + outward.x * eaveOverhangMm + alongEdgeUnit.x * eaveOverhangMm,
+      y: segment.b.y + outward.y * eaveOverhangMm + alongEdgeUnit.y * eaveOverhangMm,
     };
     syntheticOpenShapes.push({
       id: `house_terminal_end_synthetic:${segment.endId}`,
