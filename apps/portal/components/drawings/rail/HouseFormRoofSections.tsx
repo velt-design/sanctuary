@@ -162,11 +162,23 @@ export function buildHouseFormRoofSections({
     );
   }
 
-  if (roofDraft.form === 'gable' && canEditSelectedRoofForm) {
+  // Open-end toggles apply to both gable (legacy) and hipped roof forms.
+  // For hipped, opening an end converts that corner of the roof into a
+  // gable wall (the milestone-13 Dutch-hip feature). For gable (legacy),
+  // the toggle marks which gable faces render as open frames vs. solid
+  // walls. Geometry-side: sessions A and B made `openGableEndIds` apply
+  // to hipped roofs; the normalize-time migration converts saved gable
+  // forms to hipped so the picker only needs to expose hipped going
+  // forward (see `HOUSE_ROOF_FORM_ORDER`).
+  const showOpenEndControls =
+    canEditSelectedRoofForm && (roofDraft.form === 'gable' || roofDraft.form === 'hipped');
+  if (showOpenEndControls) {
     if (terminalEnds.length > 0) {
       fields.push(
-        <div key="gable-end-frames" className={styles.field}>
-          <span className={styles.fieldLabel}>Open gable ends</span>
+        <div key="open-end-toggles" className={styles.field}>
+          <span className={styles.fieldLabel}>
+            {roofDraft.form === 'hipped' ? 'Open hip ends as gables' : 'Open gable ends'}
+          </span>
           <div className={styles.buttonRow}>
             {terminalEnds.map((end) => (
               <ActionButton
@@ -174,7 +186,7 @@ export function buildHouseFormRoofSections({
                 label={`${end.isOpen ? 'Close' : 'Open'} ${end.label}`}
                 disabled={disabled}
                 onClick={() =>
-                  void runRoofCommit(`gable-end-${end.id}`, {
+                  void runRoofCommit(`open-end-${end.id}`, {
                     ...roofDraft,
                     openGableEndIds: end.isOpen
                       ? (roofDraft.openGableEndIds ?? []).filter((candidate) => candidate !== end.id)
@@ -185,14 +197,16 @@ export function buildHouseFormRoofSections({
             ))}
           </div>
           <span className={styles.fieldHint}>
-            Select which terminal gable faces render as open end frames.
+            {roofDraft.form === 'hipped'
+              ? 'Open a hip end to convert that corner of the roof into a gable wall. Click again to close.'
+              : 'Select which terminal gable faces render as open end frames.'}
           </span>
         </div>,
       );
     } else {
       fields.push(
-        <p key="gable-end-frames-empty" className={styles.fieldHint}>
-          No terminal gable ends are available for the current footprint.
+        <p key="open-end-toggles-empty" className={styles.fieldHint}>
+          No terminal ends are available for the current footprint.
         </p>,
       );
     }

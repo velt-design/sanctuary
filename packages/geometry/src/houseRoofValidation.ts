@@ -29,7 +29,17 @@ export type HouseRoofFormBehavior = {
   selectedFormFootprintRequirement: HouseRoofFootprintRequirement;
 };
 
-export const HOUSE_ROOF_FORM_ORDER: readonly HouseRoofForm[] = ['flat', 'mono', 'gable', 'hipped'];
+/**
+ * Picker-facing list of house roof forms. `'gable'` is intentionally
+ * excluded after milestone 13 -- the legacy gable form is migrated at
+ * normalize time to `'hipped'` with all terminal ends open (see
+ * `buildHouseModelConfig` in `normalize.ts`), so going forward all new
+ * houses pick `'hipped'` and use per-end open toggles to choose Dutch-hip
+ * or fully-open-gable topology. `HouseRoofForm` itself still includes
+ * `'gable'` so legacy saved data round-trips through storage unchanged
+ * until the type retirement step lands.
+ */
+export const HOUSE_ROOF_FORM_ORDER: readonly HouseRoofForm[] = ['flat', 'mono', 'hipped'];
 export const MIN_VISIBLE_HOUSE_ROOF_PITCH_DEG = 5;
 
 export const HOUSE_ROOF_FORM_BEHAVIORS: Record<HouseRoofForm, HouseRoofFormBehavior> = {

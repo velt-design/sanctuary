@@ -36,6 +36,7 @@ import {
   resolveHouseFootprintFrame,
 } from './footprints';
 import { normalizeHouseRoofPitchDegForForm } from './houseRoofValidation';
+import { deriveHouseGableTerminalEndsFromFootprint } from './house/roofJoined';
 import { makeDatumFrame } from './math3d';
 import { parseAssemblyMemberProfile } from './profiles';
 import {
@@ -493,7 +494,17 @@ export function buildHouseModelConfig(input: {
     input.houseUndersideMm ??
     DEFAULT_HOUSE_EAVE_HEIGHT_MM;
   const wallHeightMm = resolveOptionalMetresToMillimetres(input.rawHouseContext.wallHeightM) ?? eaveHeightMm;
-  const roofForm = resolveHouseRoofForm(input.rawHouseContext.roofForm);
+  // Milestone 13 session C: legacy `roofForm: 'gable'` data migrates to
+  // `'hipped'` + all-terminal-ends-open. Sessions A and B made hipped
+  // honour `openGableEndIds` for per-end topology, so a "fully open"
+  // hipped roof is geometrically identical to the legacy gable rectangle
+  // and produces the bent-spine joined gable for L-shapes via the same
+  // wavefront mechanism. The migration converts the FORM at normalize
+  // time so all downstream consumers see only the new model; the type
+  // narrowing of `HouseRoofForm` to drop `'gable'` is a separate slice
+  // (retiring the storage shape after the migration is verified live).
+  const rawRoofForm = resolveHouseRoofForm(input.rawHouseContext.roofForm);
+  const roofForm: HouseRoofForm = rawRoofForm === 'gable' ? 'hipped' : rawRoofForm;
   const roofPitchDeg = normalizeHouseRoofPitchDegForForm({
     roofForm,
     pitchDeg: resolveOptionalDegrees(input.rawHouseContext.roofPitchDeg),
@@ -677,7 +688,36 @@ export function buildHouseModelConfig(input: {
       input.rawHouseContext.roofPrimaryFallDirection,
     ),
     roofRidgeAxis: resolveHouseRoofRidgeAxis(input.rawHouseContext.roofRidgeAxis),
-    openGableEndIds: resolveHouseOpenGableEndIds(input.rawHouseContext.openGableEndIds),
+    openGableEndIds: (() => {
+      // Migration: when raw `roofForm` was `'gable'`, the form now lives
+      // as `'hipped'` with every terminal end open -- producing the
+      // identical roof topology via the unified Dutch-hip pipeline. We
+      // derive the full terminal-end set on demand from the resolved
+      // footprint + ridge axis, then merge with any existing
+      // `openGableEndIds` from storage so stored frame-tagging metadata
+      // is preserved.
+      const stored = resolveHouseOpenGableEndIds(input.rawHouseContext.openGableEndIds);
+      if (rawRoofForm !== 'gable' || !input.footprint) return stored;
+      const ridgeAxis = resolveHouseRoofRidgeAxis(input.rawHouseContext.roofRidgeAxis);
+      const xTerminals = deriveHouseGableTerminalEndsFromFootprint({
+        footprint: input.footprint,
+        ridgeAxis: 'x',
+      });
+      const yTerminals = deriveHouseGableTerminalEndsFromFootprint({
+        footprint: input.footprint,
+        ridgeAxis: 'y',
+      });
+      // Prefer the active ridge axis's terminals, falling back to the
+      // other axis's set if the active one is empty (defensive). Then
+      // union with stored ids so any orientation-flipped saved data
+      // doesn't drop entries.
+      const activeTerminals = ridgeAxis === 'x' ? xTerminals : yTerminals;
+      const fallbackTerminals = ridgeAxis === 'x' ? yTerminals : xTerminals;
+      const terminals = activeTerminals.length > 0 ? activeTerminals : fallbackTerminals;
+      const merged = new Set<string>(stored);
+      for (const t of terminals) merged.add(t.id);
+      return [...merged];
+    })(),
     roofAppendage: input.rawHouseContext.roofAppendage
       ? {
           enabled: Boolean(input.rawHouseContext.roofAppendage.enabled),

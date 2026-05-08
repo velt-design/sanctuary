@@ -272,8 +272,8 @@ describe('ObjectWorkbenchRail', () => {
     expect(markup).toContain('aria-label="Roof form"');
     expect(markup).toContain('value="flat"');
     expect(markup).toContain('value="mono"');
-    expect(markup).toContain('value="gable"');
     expect(markup).toContain('value="hipped"');
+    expect(markup).not.toContain('value="gable"');
     expect(markup).not.toContain('View-only for now');
     expect(markup).not.toContain('Roof pitch (deg)');
     expect(markup).toContain('aria-label="Roof material"');
