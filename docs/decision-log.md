@@ -53,6 +53,7 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 | 2026-05-06 | Decomposition / Refactor Hygiene | Active | Extracting helpers during a decomposition refactor must be byte-for-byte; rewriting "while I'm there" introduces subtle behavioural drift that escapes typecheck. |
 | 2026-05-08 | PlanViewport / Pointer Events | Active | Pointer-driven tools require `touch-action: none`, `setPointerCapture` on primary-button down, `pointerCancel` -> `cancelActiveTool` (not `pointerUp`), and a pure dispatch helper that NEVER invents coords on null. |
 | 2026-05-08 | Debugging Hygiene | Active | When live-runtime symptoms don't match any of the current hypotheses, instrument the boundary with logs before iterating fixes; root-cause from real data, not theory chains. |
+| 2026-05-08 | House Roof Topology | Active | "Click hip triangle to open as gable" needs a Dutch-hip / half-hip topology in the geometry pipeline -- hipped + `openGableEndIds` is currently a no-op (gated to gable form). Multi-session work: rectangle Dutch-hip first, joined Dutch-hip second, UI third. |
 
 ## Entries
 
@@ -591,3 +592,40 @@ Current guardrail: when a bug recurs after a "should have fixed it" change, stop
 Promoted to: None
 
 Related docs/tests: this session's chain of fixes in [PlanCanvas.tsx](../apps/portal/components/drawings/viewports/PlanViewport/canvas/PlanCanvas.tsx), [planLayout.ts](../apps/portal/components/drawings/viewports/PlanViewport/canvas/planLayout.ts), [commitDeckTransform.ts](../apps/portal/lib/drawings/commits/commitDeckTransform.ts).
+
+### 2026-05-08 - House Roof Topology - Dutch-Hip Migration Plan
+
+Area: House Roof Topology
+
+Status: Active
+
+Decision or mistake: user requested "click hip triangle in plan view to convert that corner of a hipped roof to a gable end" -- with the goal of retiring the standalone `gable` roof form and replacing it with `hipped` + per-end open/closed toggles. The data model already supports this (`HouseModelConfig.openGableEndIds`) and the inspector already populates `terminalEnds` for any roof form, but the geometry pipeline gates open-end honouring behind `roofForm === 'gable'` (`packages/geometry/src/houseModel.ts:428`). For hipped roofs, `openGableEndIds` is currently a no-op -- the roof topology is built assuming all terminal ends are closed.
+
+Why it mattered: properly opening one end of a hipped roof while keeping the others hipped is the "Dutch hip" / "half-hip" topology. The roof builder must remove the hip plane on the open end, extend the ridge to that end face, and adjust the trapezoidal main slopes to reach the new ridge endpoint. None of `roofRectangleHipped.ts`, `roofJoinedHipped.ts`, or `roofPrimary.ts` knows about partial conversion today. Lifting the gate alone produces inconsistent geometry (open-gable wall tag + hip plane drawn over it).
+
+Current guardrail: the migration is multi-session work. Sequence:
+
+1. **Session A (rectangle Dutch-hip):** extend `buildRectangleHippedRoof` ([packages/geometry/src/house/roofRectangleHipped.ts](../packages/geometry/src/house/roofRectangleHipped.ts)) to accept open-ridge-end information. Topology rules:
+   - Ridge axis = X (widthX >= widthY): terminal ends are at min-x and max-x. Each open end skips the corresponding `house-roof-{min,max}-x` plane, extends the ridge endpoint to the end face, and adjusts the `house-roof-{min,max}-y` plane corners. Skip the 2 hip features at that end's corners.
+   - Ridge axis = Y (widthY > widthX): mirror with X/Y swapped.
+   - Ridge axis = pyramid (square-ish): no terminal ends to open; ignore.
+   - Both ends open: equivalent to existing `gable` form; useful for the migration step (retire `gable` form).
+   - Plumb `openTerminalEndIds` through `buildHippedHouseRoof` -> `buildPrimaryHouseRoof` -> `buildSharedHouseRoof`.
+   - Tests: 0/1/2 ends open round-trip; QA still passes; matches `gable` form output when both open.
+
+2. **Session B (joined / L-shape Dutch-hip):** same treatment for `roofJoinedHipped.ts`. More terminal ends per project (each wing has its own ridge); each independently open-able. More test combinations.
+
+3. **Session C (UI plumbing):**
+   - Migrate at load: `roofForm: 'gable'` -> `roofForm: 'hipped'` + `openGableEndIds: [<all terminal ids>]` (visually identical post-session-B).
+   - Remove `'gable'` from `HOUSE_ROOF_FORM_ORDER` (keep type union for back-compat storage).
+   - Inspector: lift the `roofForm === 'gable'` gate in `HouseFormRoofSections.tsx:165` so terminal-end toggles show for hipped form too.
+   - Plan-view click target: emit terminal-end triangles as new top-projection shapes (`kind: 'house_terminal_end'`); on click, toggle id in `openGableEndIds` via `commitSharedHouseFormRoof` action.
+   - Hover affordance: cursor + light halo on hover.
+
+4. **Slice 2 follow-up (after slice 1 ships):** smart pergola-attachment prompt -- when a hip end is opened on a wall a pergola is attached to (or when a pergola is dragged onto an open-gable wall), prompt "convert pergola to gable form to match house gable height + pitch?" Auto-copies gable parameters.
+
+Terminal-end ID format: `house-gable-end-x-{N}` or `house-gable-end-y-{N}` (`packages/geometry/src/house/roofJoinedGableTerminals.ts:67`). The `sourceEdgeId` field on each terminal end maps it to a footprint edge index.
+
+Promoted to: None
+
+Related docs/tests: `packages/geometry/src/houseModel.ts` (gating at line 428), `packages/geometry/src/house/roofRectangleHipped.ts`, `packages/geometry/src/house/roofJoinedHipped.ts`, `packages/geometry/src/house/roofPrimary.ts`, `packages/geometry/src/house/roofJoinedGableTerminals.ts`, `apps/portal/components/drawings/rail/HouseFormRoofSections.tsx:165`, `apps/portal/lib/drawings/state/objectWorkbenchStatusModel.ts:336`.
