@@ -346,6 +346,128 @@ export type AssemblyMemberEndCut = {
 };
 
 /**
+ * Raw house-level input. Phase 1 of milestone 13 (drop pergola
+ * `houseContext` wrapping, audit row 9). Mirrors the content currently
+ * carried in `RawGeometryModuleInput.houseContext` but lifted to a
+ * project-level entity -- in a multi-pergola scene, ONE `RawHouseInput`
+ * describes the house and many `RawGeometryModuleInput`s reference it
+ * (rather than duplicating the same `houseContext` sub-tree N times).
+ *
+ * Intentionally additive at this stage: no consumer reads `RawHouseInput`
+ * yet. Phase 2 introduces a builder that produces `HouseModel3D` directly
+ * from this input; phase 3 wires solve orchestration so the house solves
+ * once per project; phase 4 migrates portal callers; phase 5 retires (or
+ * shrinks) the `houseContext` field on `RawGeometryModuleInput`.
+ *
+ * Field-for-field equivalent to today's `houseContext` shape so the
+ * migration is a structural lift, not a redesign.
+ */
+export type RawHouseInput = {
+  /**
+   * Stable project-scoped house id. In single-house projects this can be
+   * a fixed string (`'house-main'`). Multi-house projects use the
+   * project-model house-form id. Becomes the `sourceObjectId` on
+   * top-projection / 3D scene objects so consumers can disambiguate.
+   */
+  houseId: string;
+  footprintMode?: HouseFootprintMode | "orthogonal_polygon" | null;
+  footprintPreset?: HouseFootprintPreset | null;
+  footprintParams?: HouseFootprintParams | null;
+  footprintPolygon?: HouseFootprintPolygonPointInput[] | null;
+  /**
+   * Optional world-space position. Same semantics as
+   * `houseContext.position`: when present, `footprintPolygon` is decoded
+   * against a unit (1m × 1m) frame and this position applies post-decode
+   * (so the house's world location is invariant to pergola dimensions).
+   * When absent, the legacy real-frame decoder runs.
+   */
+  position?: {
+    origin: { x: string | number; y: string | number };
+    rotationDeg?: string | number | null;
+  } | null;
+  storeyMode?: HouseStoreyMode | null;
+  wallConstruction?: HouseWallConstruction | null;
+  roofForm?: HouseRoofForm | null;
+  roofMaterial?: HouseRoofMaterial | null;
+  roofPrimaryFallDirection?: HouseRoofPrimaryFallDirection | null;
+  roofRidgeAxis?: HouseRoofRidgeAxis | null;
+  openGableEndIds?: string[] | null;
+  roofAppendage?: {
+    enabled?: boolean | null;
+    form?: HouseRoofAppendageForm | null;
+    hostEdge?: AttachmentSide | null;
+    pitchDeg?: string | number | null;
+    dropMm?: string | number | null;
+  } | null;
+  decks?: Array<{
+    id: string;
+    name?: string | null;
+    kind?: HouseDeckKind | null;
+    shape?: HouseDeckShape | null;
+    presetType?: HouseDeckPresetType | null;
+    presetRect?: {
+      widthMm?: string | number | null;
+      depthMm?: string | number | null;
+      centerOffsetMm?: string | number | null;
+      detachedGapMm?: string | number | null;
+    } | null;
+    outline?: HouseFootprintPolygonPointInput[] | null;
+    position?: {
+      origin: { x: string | number; y: string | number };
+      rotationDeg?: string | number | null;
+    } | null;
+    elevationMode?: HouseDeckElevationMode | null;
+    levelOffsetMm?: string | number | null;
+    topSurfaceElevationMm?: number | null;
+    hostEdgeId?: string | null;
+    isAttached?: boolean | null;
+    surfaceMaterial?: HouseDeckSurfaceMaterial | null;
+    supportContext?: {
+      classification?: HouseDeckSupportClassification | null;
+      nearestHouseEdgeId?: string | null;
+      nearestHouseEdgeDistanceMm?: number | null;
+      attachmentContactLengthMm?: number | null;
+      warningCodes?: string[] | null;
+      warningMessages?: string[] | null;
+    } | null;
+    validation?: {
+      status?: "valid" | "invalid" | null;
+      codes?: string[] | null;
+      messages?: string[] | null;
+    } | null;
+  }> | null;
+  openings?: Array<{
+    id: string;
+    label?: string | null;
+    kind?: HouseOpeningKind | null;
+    panelCount?: 2 | 3 | 4 | string | number | null;
+    wallId?: AttachmentSide | null;
+    hostEdgeId?: string | null;
+    widthMm?: string | number | null;
+    heightMm?: string | number | null;
+    sillHeightMm?: string | number | null;
+    offsetAlongWallMm?: string | number | null;
+    validation?: {
+      status?: "valid" | "invalid" | null;
+      codes?: string[] | null;
+      message?: string | null;
+    } | null;
+  }> | null;
+  attachmentStrategy?: HouseAttachmentStrategy | null;
+  eaveHeightM?: string | number | null;
+  wallHeightM?: string | number | null;
+  roofPitchDeg?: string | number | null;
+  eave?: {
+    soffitDepthMm?: string | number | null;
+    fasciaHeightMm?: string | number | null;
+    gutterWidthMm?: string | number | null;
+    gutterDepthMm?: string | number | null;
+    gutterProjectionMm?: string | number | null;
+    eaveOverhangMm?: string | number | null;
+  } | null;
+};
+
+/**
  * Raw module-level input for package-owned normalization.
  * This stays portal-agnostic so callers adapt into it at the boundary.
  */
