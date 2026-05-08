@@ -19,7 +19,11 @@ import {
 } from './_internal';
 import { buildRoofPlane } from './roofPlane';
 import { buildJoinedRectilinearHippedRoof } from './roofJoinedHipped';
-import { buildJoinedRectilinearGableRoof, buildLegacyJoinedRectilinearGableRoof } from './roofJoined';
+import {
+  buildJoinedRectilinearGableRoof,
+  buildLegacyJoinedRectilinearGableRoof,
+  deriveHouseGableTerminalEndsFromFootprint,
+} from './roofJoined';
 import { buildRectangleHippedRoof } from './roofRectangleHipped';
 import { buildRectangularRoof } from './roofRectangle';
 import { applyRoofQa } from './roofQa';
@@ -420,7 +424,43 @@ export function buildHippedHouseRoof(input: {
     });
   }
 
-  const roof = buildJoinedRectilinearHippedRoof(input);
+  // Joined / L-shape path: translate `openTerminalEndIds` (workbench-
+  // level ids like `house-gable-end-x-3`) into footprint edge indexes
+  // and pass to the joined builder as the stationary set. The joined
+  // builder zeroes those edges' inward normals so the wavefront leaves
+  // them in place -- adjacent facets reach the eave on the open side
+  // (true Dutch hip). Milestone 13 session B.
+  const stationaryEdgeIndexes: number[] = [];
+  if (input.openTerminalEndIds && input.openTerminalEndIds.length > 0) {
+    // Terminal ends exist for both axes on an L-shape; collect from each
+    // and look up by id. The terminal-end function does the per-axis
+    // derivation; we only need it once per axis.
+    const xTerminals = deriveHouseGableTerminalEndsFromFootprint({
+      footprint: input.sourceFootprint,
+      ridgeAxis: 'x',
+    });
+    const yTerminals = deriveHouseGableTerminalEndsFromFootprint({
+      footprint: input.sourceFootprint,
+      ridgeAxis: 'y',
+    });
+    const terminalById = new Map<string, string>();
+    for (const t of [...xTerminals, ...yTerminals]) {
+      terminalById.set(t.id, t.sourceEdgeId);
+    }
+    for (const id of input.openTerminalEndIds) {
+      const sourceEdgeId = terminalById.get(id);
+      if (!sourceEdgeId) continue;
+      // sourceEdgeId is `footprint-edge-${index + 1}` -- parse the suffix.
+      const match = /^footprint-edge-(\d+)$/.exec(sourceEdgeId);
+      if (!match) continue;
+      const index = Number(match[1]) - 1;
+      if (Number.isFinite(index) && index >= 0) stationaryEdgeIndexes.push(index);
+    }
+  }
+  const roof = buildJoinedRectilinearHippedRoof({
+    ...input,
+    stationaryEdgeIndexes: stationaryEdgeIndexes.length > 0 ? stationaryEdgeIndexes : null,
+  });
   if (!roof.roofPlanes.length) {
     return invalidHouseRoof({
       eavePolygon: input.eavePolygon,

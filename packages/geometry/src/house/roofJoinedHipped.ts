@@ -17,6 +17,17 @@ export function buildJoinedRectilinearHippedRoof(input: {
   eavePolygon: Polygon3;
   eaveHeightMm: number;
   roofPitchDeg: number;
+  /**
+   * Footprint edge indexes (matching `JoinedRoofEdge.index` from
+   * `buildJoinedRoofEdges`) whose perimeter face should render as a
+   * vertical open-gable wall instead of a hipped slope. Milestone 13
+   * session B: implemented via velocity-zero edges in the wavefront --
+   * setting `inwardNormal = (0, 0)` causes the wavefront to leave that
+   * edge stationary while neighbours advance, so adjacent facets reach
+   * the eave on the open side and the gable wall fills the end face.
+   * Empty/missing means all edges advance normally (legacy hipped).
+   */
+  stationaryEdgeIndexes?: ReadonlyArray<number> | null;
 }): {
   roofPlanes: RoofPlane3D[];
   roofFeatures: HouseRoofFeature3D[];
@@ -33,6 +44,19 @@ export function buildJoinedRectilinearHippedRoof(input: {
     return { roofPlanes: [], roofFeatures: [] };
   }
   const edges = buildJoinedRoofEdges(eavePolygon);
+  // Apply Dutch-hip / open-gable overlay: edges in the stationary set
+  // get their inward normal zeroed so the wavefront leaves them in
+  // place. Vertices on either side of a stationary edge slide together
+  // along it under the moving neighbours' pressure, producing the
+  // classic "ridge extends to the eave on the open end" topology.
+  const stationaryIndexSet = new Set(input.stationaryEdgeIndexes ?? []);
+  if (stationaryIndexSet.size > 0) {
+    for (const edge of edges) {
+      if (stationaryIndexSet.has(edge.index)) {
+        edge.inwardNormal = { x: 0, y: 0 };
+      }
+    }
+  }
   const facetResult = buildJoinedRoofFacets({
     eavePolygon,
     edges,

@@ -164,6 +164,23 @@ export function splitRoofRegionsByPlaneIntersections(input: {
   return regions;
 }
 
+/**
+ * A "stationary" edge is one with zero inward normal -- used by the
+ * Dutch-hip / open-gable mechanism (milestone 13 session B) to mark a
+ * terminal-end edge as "this face is a vertical gable wall, no roof
+ * slope advances inward." For region-based facet assignment, stationary
+ * edges produce roof height = eave height everywhere, which would
+ * otherwise win every region's lowest-height comparison and assign all
+ * regions to the wall edge. Skipping them in candidate selection is the
+ * right semantic: a wall edge contributes no roof plane.
+ */
+function roofEdgeIsStationary(edge: JoinedRoofEdge): boolean {
+  return (
+    Math.abs(edge.inwardNormal.x) <= ROOF_JOIN_EPSILON_MM &&
+    Math.abs(edge.inwardNormal.y) <= ROOF_JOIN_EPSILON_MM
+  );
+}
+
 export function assignRoofRegion(input: {
   footprint: RoofPoint2[];
   edges: JoinedRoofEdge[];
@@ -173,6 +190,7 @@ export function assignRoofRegion(input: {
 }): JoinedRoofRegion | null {
   const centroid = roofPolygonCentroid(input.footprint);
   const candidates = input.edges
+    .filter((edge) => !roofEdgeIsStationary(edge))
     .filter((edge) => roofPlaneReachableFromEdge({ edge, candidate: centroid, eavePolygon: input.eavePolygon }))
     .map((edge) => ({
       edge,
