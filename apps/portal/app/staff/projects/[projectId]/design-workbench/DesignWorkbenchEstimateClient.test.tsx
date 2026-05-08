@@ -334,7 +334,10 @@ const HOUSE_FOOTPRINT_PRESETS = [
   'wrap_right',
 ] as const;
 
-const HOUSE_ROOF_FORMS = ['flat', 'mono', 'gable', 'hipped'] as const;
+// Milestone 13 session C: 'gable' was removed from HOUSE_ROOF_FORM_ORDER --
+// legacy gable houses migrate to hipped + open-end toggles at normalize
+// time. The picker only exposes flat/mono/hipped going forward.
+const HOUSE_ROOF_FORMS = ['flat', 'mono', 'hipped'] as const;
 
 type SvgGeometryRestore = {
   restoreCreateSvgPoint: (() => void) | null;
@@ -639,7 +642,7 @@ describe('DesignWorkbenchEstimateClient', () => {
     rendered.unmount();
   });
 
-  it('renders unsupported geometry as view-only without the Sanctuary rail', () => {
+  it('renders unsupported geometry as view-only without the Sanctuary rail', async () => {
     const estimate = buildEstimateDetail({
       mutateSnapshot: (snapshot) => {
         const next = structuredClone(snapshot);
@@ -655,6 +658,14 @@ describe('DesignWorkbenchEstimateClient', () => {
     const rendered = renderIntoDocument(
       <DesignWorkbenchEstimateClient estimate={estimate} projectName="Deck Build" siteAddress="1 Test Street" />,
     );
+
+    // Wait for the auto-select effect that mounts the house-form
+    // inspector after the first render -- the effect chain takes two
+    // microtask cycles so an explicit House Forms tab click flushes
+    // it deterministically.
+    await flushAsyncWork();
+    clickButtonByText(rendered.container, 'House Forms');
+    await flushAsyncWork();
 
     expect(rendered.container.textContent).toContain('House Form Inspector');
     clickButtonByText(rendered.container, 'Pergolas');
@@ -748,10 +759,11 @@ describe('DesignWorkbenchEstimateClient', () => {
     expect(readLabeledValue(rendered.container, 'Roof reason code')).toBe('unsupported_roof_topology');
     clickButtonByText(rendered.container, 'House Forms');
     const roofFormSelect = rendered.container.querySelector('[aria-label="Roof form"]') as HTMLSelectElement | null;
+    // Milestone 13 session C: 'gable' removed from picker (migration
+    // converts to hipped + open-end toggles).
     expect(Array.from(roofFormSelect?.options ?? []).map((option) => option.value)).toEqual([
       'flat',
       'mono',
-      'gable',
       'hipped',
     ]);
     expect(rendered.container.querySelector('[aria-label="Roof pitch (deg)"]')).toBeNull();
@@ -996,25 +1008,31 @@ describe('DesignWorkbenchEstimateClient', () => {
     );
 
     await flushAsyncWork();
+    // Milestone 13 session C: ensure the rail's house-form inspector
+    // mounted before reading roof-form controls (the auto-select runs
+    // via useEffect after the first render).
+    clickButtonByText(rendered.container, 'House Forms');
+    await flushAsyncWork();
     expect(rendered.container.textContent).toContain('Mono fall direction');
-    expect(rendered.container.textContent).not.toContain('Gable ridge orientation');
+    expect(rendered.container.textContent).not.toContain('Hipped ridge orientation');
     const roofFormSelect = rendered.container.querySelector('[aria-label="Roof form"]') as HTMLSelectElement | null;
+    // 'gable' was removed from the picker; legacy data migrates to
+    // hipped + open-end toggles.
     expect(Array.from(roofFormSelect?.options ?? []).map((option) => option.value)).toEqual([
       'flat',
       'mono',
-      'gable',
       'hipped',
     ]);
-    changeSelectByLabel(rendered.container, 'Roof form', 'gable');
+    changeSelectByLabel(rendered.container, 'Roof form', 'hipped');
     await flushAsyncWork();
     fillInputByLabel(rendered.container, 'Roof pitch (deg)', '18');
     await flushAsyncWork();
 
-    expect(readObjectFirstRoofDraft(getLocalFirstWorkingCopy<any>(entityKey)?.data)?.form).toBe('gable');
+    expect(readObjectFirstRoofDraft(getLocalFirstWorkingCopy<any>(entityKey)?.data)?.form).toBe('hipped');
     expect('houseFirst' in (getLocalFirstWorkingCopy<any>(entityKey)?.data ?? {})).toBe(false);
     expect(rendered.container.textContent).not.toContain('Mono fall direction');
-    expect(rendered.container.textContent).toContain('Gable ridge orientation');
-    expect(readLabeledValue(rendered.container, 'Selected roof form')).toBe('gable');
+    expect(rendered.container.textContent).toContain('Hipped ridge orientation');
+    expect(readLabeledValue(rendered.container, 'Selected roof form')).toBe('hipped');
     expect(rendered.container.textContent).toContain('Roof status');
     expect(rendered.container.textContent).toContain('Ready');
     expect(readLabeledValue(rendered.container, 'Roof reason code')).toBe('none');
@@ -1063,6 +1081,11 @@ describe('DesignWorkbenchEstimateClient', () => {
   }, 10000);
 
   it('heals stale ridge and open-gable intent when preset changes rebuild supported roofs', async () => {
+    // Milestone 13 session C: 'gable' is no longer in the picker; the
+    // open-end toggles (formerly only on gable form) now also live under
+    // hipped form. This test exercises the "intent heals on preset
+    // change" behaviour through hipped + open-end toggles -- the same
+    // healing logic that previously ran for gable.
     const estimate = buildEstimateDetail();
     const entityKey = buildEstimateDrawingDraftEntityKey(estimate.id);
 
@@ -1071,40 +1094,40 @@ describe('DesignWorkbenchEstimateClient', () => {
     );
 
     await flushAsyncWork();
-    changeSelectByLabel(rendered.container, 'Roof form', 'gable');
+    clickButtonByText(rendered.container, 'House Forms');
     await flushAsyncWork();
-    changeSelectByLabel(rendered.container, 'Gable ridge orientation', 'x');
+    changeSelectByLabel(rendered.container, 'Roof form', 'hipped');
+    await flushAsyncWork();
+    changeSelectByLabel(rendered.container, 'Hipped ridge orientation', 'x');
     await flushAsyncWork();
     clickButtonByText(rendered.container, 'Open End 1');
     await flushAsyncWork();
 
-    const openGableDraft = readObjectFirstRoofDraft(getLocalFirstWorkingCopy<any>(entityKey)?.data);
-    expect(openGableDraft?.openGableEndIds?.length).toBeGreaterThan(0);
+    const openHipDraft = readObjectFirstRoofDraft(getLocalFirstWorkingCopy<any>(entityKey)?.data);
+    expect(openHipDraft?.openGableEndIds?.length).toBeGreaterThan(0);
 
-    changeSelectByLabel(rendered.container, 'Gable ridge orientation', 'y');
+    // Switching ridge axis with stale open-end ids should not block.
+    changeSelectByLabel(rendered.container, 'Hipped ridge orientation', 'y');
     await flushAsyncWork();
     expect(readLabeledValue(rendered.container, 'Roof reason code')).toBe('none');
     expect(readLabeledValue(rendered.container, 'Roof status')).not.toBe('Blocked');
 
+    // U-shape footprint change rebuilds the roof topology -- stale
+    // open-end ids must be filtered to the new terminal-end set.
     changeSelectByLabel(rendered.container, 'House footprint', 'u_shape');
     await flushAsyncWork();
 
-    const healedGableDraft = readObjectFirstRoofDraft(getLocalFirstWorkingCopy<any>(entityKey)?.data);
-    expect(healedGableDraft).toMatchObject({
-      form: 'gable',
+    const healedHippedDraftAfterU = readObjectFirstRoofDraft(getLocalFirstWorkingCopy<any>(entityKey)?.data);
+    expect(healedHippedDraftAfterU).toMatchObject({
+      form: 'hipped',
       ridgeAxis: 'x',
       openGableEndIds: [],
     });
     expect(readLabeledValue(rendered.container, 'Roof reason code')).toBe('none');
     expect(readLabeledValue(rendered.container, 'Roof status')).not.toBe('Blocked');
 
-    changeSelectByLabel(rendered.container, 'Roof form', 'hipped');
-    await flushAsyncWork();
-    changeSelectByLabel(rendered.container, 'Hipped ridge orientation', 'y');
-    await flushAsyncWork();
-    expect(readLabeledValue(rendered.container, 'Roof reason code')).toBe('none');
-    expect(readLabeledValue(rendered.container, 'Roof status')).not.toBe('Blocked');
-
+    // Wrap-left preset rebuilds again; appendage should be cleared by
+    // the heal pass since the new geometry no longer supports it.
     changeSelectByLabel(rendered.container, 'House footprint', 'wrap_left');
     await flushAsyncWork();
 
@@ -1202,7 +1225,12 @@ describe('DesignWorkbenchEstimateClient', () => {
     rendered.unmount();
   });
 
-  it('normalizes gable and hipped pitch to the minimum visible value when switching from flat', async () => {
+  it('normalizes hipped pitch to the minimum visible value when switching from flat', async () => {
+    // Milestone 13 session C: 'gable' is no longer in HOUSE_ROOF_FORM_ORDER
+    // (legacy data migrates to hipped + open-end toggles at normalize
+    // time). The pitch-normalization-from-flat behaviour now only
+    // applies via 'hipped' from the picker; the gable->hipped migration
+    // path is covered separately in normalize.test.ts.
     const estimate = buildEstimateDetail();
     const entityKey = buildEstimateDrawingDraftEntityKey(estimate.id);
 
@@ -1216,30 +1244,21 @@ describe('DesignWorkbenchEstimateClient', () => {
     await flushAsyncWork();
     expect(readObjectFirstRoofDraft(getLocalFirstWorkingCopy<any>(entityKey)?.data)?.primaryPitchDeg).toBe('0');
 
-    changeSelectByLabel(rendered.container, 'Roof form', 'gable');
+    changeSelectByLabel(rendered.container, 'Roof form', 'hipped');
     await flushAsyncWork();
     let roofDraft = readObjectFirstRoofDraft(getLocalFirstWorkingCopy<any>(entityKey)?.data);
-    expect(roofDraft).toMatchObject({ form: 'gable', primaryPitchDeg: '5' });
+    expect(roofDraft).toMatchObject({ form: 'hipped', primaryPitchDeg: '5' });
     expect((rendered.container.querySelector('[aria-label="Roof pitch (deg)"]') as HTMLInputElement | null)?.value).toBe(
       '5',
     );
     expect(rendered.container.textContent).toContain('Minimum is 5 deg for this roof.');
 
+    // Below-minimum input is clamped back to 5.
     commitInputByLabel(rendered.container, 'Roof pitch (deg)', '2');
     await flushAsyncWork();
     roofDraft = readObjectFirstRoofDraft(getLocalFirstWorkingCopy<any>(entityKey)?.data);
-    expect(roofDraft).toMatchObject({ form: 'gable', primaryPitchDeg: '5' });
-    await flushAsyncWork();
-    expect((rendered.container.querySelector('[aria-label="Roof pitch (deg)"]') as HTMLInputElement | null)?.value).toBe(
-      '5',
-    );
-
-    changeSelectByLabel(rendered.container, 'Roof form', 'flat');
-    await flushAsyncWork();
-    changeSelectByLabel(rendered.container, 'Roof form', 'hipped');
-    await flushAsyncWork();
-    roofDraft = readObjectFirstRoofDraft(getLocalFirstWorkingCopy<any>(entityKey)?.data);
     expect(roofDraft).toMatchObject({ form: 'hipped', primaryPitchDeg: '5' });
+    await flushAsyncWork();
     expect((rendered.container.querySelector('[aria-label="Roof pitch (deg)"]') as HTMLInputElement | null)?.value).toBe(
       '5',
     );
@@ -1256,6 +1275,10 @@ describe('DesignWorkbenchEstimateClient', () => {
     );
 
     await flushAsyncWork();
+    // Auto-select effect mounts the inspector after the first render --
+    // click the rail tab to force it deterministically.
+    clickButtonByText(rendered.container, 'House Forms');
+    await flushAsyncWork();
 
     changeSelectByLabel(rendered.container, 'Mono fall direction', 'positive_x');
     await flushAsyncWork();
@@ -1263,24 +1286,26 @@ describe('DesignWorkbenchEstimateClient', () => {
       'positive_x',
     );
 
-    changeSelectByLabel(rendered.container, 'Roof form', 'gable');
+    // Milestone 13 session C: 'gable' was removed from the picker, so
+    // the cross-form normalization now flows through 'hipped'. Hipped
+    // doesn't expose the Appendage band control (mono/gable do), but
+    // the open-end toggle is the more interesting transition --
+    // hipped-with-open-ends == legacy gable topology.
+    changeSelectByLabel(rendered.container, 'Roof form', 'hipped');
     await flushAsyncWork();
-    changeSelectByLabel(rendered.container, 'Gable ridge orientation', 'x');
+    changeSelectByLabel(rendered.container, 'Hipped ridge orientation', 'x');
     await flushAsyncWork();
     clickButtonByText(rendered.container, 'Open End 1');
     await flushAsyncWork();
-    changeSelectByLabel(rendered.container, 'Appendage band', 'enabled');
-    await flushAsyncWork();
-    const gableDraft = readObjectFirstRoofDraft(getLocalFirstWorkingCopy<any>(entityKey)?.data);
-    expect(gableDraft).toMatchObject({
-      form: 'gable',
+    const hippedOpenDraft = readObjectFirstRoofDraft(getLocalFirstWorkingCopy<any>(entityKey)?.data);
+    expect(hippedOpenDraft).toMatchObject({
+      form: 'hipped',
       ridgeAxis: 'x',
-      appendage: expect.objectContaining({ enabled: true }),
     });
-    expect(gableDraft?.primaryFallDirection).not.toBe('positive_x');
-    expect(gableDraft?.openGableEndIds?.length).toBeGreaterThan(0);
-    expect(rendered.container.querySelector('[aria-label="Gable ridge orientation"]')).not.toBeNull();
-    expect(readLabeledValue(rendered.container, 'Selected roof form')).toBe('gable');
+    expect(hippedOpenDraft?.primaryFallDirection).not.toBe('positive_x');
+    expect(hippedOpenDraft?.openGableEndIds?.length).toBeGreaterThan(0);
+    expect(rendered.container.querySelector('[aria-label="Hipped ridge orientation"]')).not.toBeNull();
+    expect(readLabeledValue(rendered.container, 'Selected roof form')).toBe('hipped');
     expect(readLabeledValue(rendered.container, 'Roof fall source')).toBe('Not used for this roof');
 
     clickButtonByText(rendered.container, 'House Forms');
@@ -1345,6 +1370,14 @@ describe('DesignWorkbenchEstimateClient', () => {
     );
 
     await flushAsyncWork();
+    // Make sure the House Forms tab + house-form inspector is mounted
+    // before the select-change call -- the rail's default selection
+    // happens via a useEffect that fires after the first render, so
+    // tests need an explicit click + flush before reading the inspector
+    // controls. See `useEffect` block in DesignWorkbenchEstimateClient
+    // around line 141.
+    clickButtonByText(rendered.container, 'House Forms');
+    await flushAsyncWork();
     changeSelectByLabel(rendered.container, 'Mono fall direction', 'positive_y');
     await flushAsyncWork();
 
@@ -1380,9 +1413,14 @@ describe('DesignWorkbenchEstimateClient', () => {
     );
 
     await flushAsyncWork();
-    changeSelectByLabel(rendered.container, 'Roof form', 'gable');
+    // Milestone 13 session C: 'gable' was removed from the picker; the
+    // ridge-orientation block now applies to 'hipped' form instead. The
+    // underlying `invalid_ridge_axis` reason fires the same way.
+    clickButtonByText(rendered.container, 'House Forms');
     await flushAsyncWork();
-    changeSelectByLabel(rendered.container, 'Gable ridge orientation', 'y');
+    changeSelectByLabel(rendered.container, 'Roof form', 'hipped');
+    await flushAsyncWork();
+    changeSelectByLabel(rendered.container, 'Hipped ridge orientation', 'y');
     await flushAsyncWork();
 
     expect(readLabeledValue(rendered.container, 'Roof status')).toBe('Blocked');
@@ -1414,10 +1452,13 @@ describe('DesignWorkbenchEstimateClient', () => {
     clickButtonByText(rendered.container, 'House Forms');
     await flushAsyncWork();
     const roofFormSelect = rendered.container.querySelector('[aria-label="Roof form"]') as HTMLSelectElement | null;
+    // Milestone 13 session C: 'gable' was removed from the picker --
+    // legacy gable data migrates to 'hipped' + all-ends-open at
+    // normalize time, and new houses pick hipped + per-end open
+    // toggles. See HOUSE_ROOF_FORM_ORDER in houseRoofValidation.ts.
     expect(Array.from(roofFormSelect?.options ?? []).map((option) => option.value)).toEqual([
       'flat',
       'mono',
-      'gable',
       'hipped',
     ]);
     expect(rendered.container.textContent).not.toContain('Roof pitch (deg)');

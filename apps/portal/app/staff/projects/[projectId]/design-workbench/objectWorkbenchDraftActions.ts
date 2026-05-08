@@ -580,7 +580,12 @@ function normalizeSharedHouseRoofIntentForCommit(roof: HouseFormRoofIntentModel)
     primaryPitchDeg: behavior.controls.pitch ? pitchDeg : '0',
     primaryFallDirection: behavior.controls.primaryFallDirection ? roof.primaryFallDirection : 'negative_y',
     ridgeAxis: behavior.controls.ridgeAxis ? roof.ridgeAxis : 'x',
-    openGableEndIds: form === 'gable' ? roof.openGableEndIds ?? [] : [],
+    // Milestone 13: openGableEndIds applies to gable AND hipped forms
+    // (sessions A/B made hipped honour per-end open toggles for the
+    // Dutch-hip feature). Forms without terminal ends (flat, mono)
+    // still have the field cleared.
+    openGableEndIds:
+      form === 'gable' || form === 'hipped' ? roof.openGableEndIds ?? [] : [],
     appendage: behavior.controls.appendage
       ? roof.appendage
       : {
@@ -602,8 +607,10 @@ export function mergeHouseFormRoofIntentAfterFootprintSync(input: {
   const previewRoof = previewHouseForm.roofIntent;
   const form = existingRoof.form;
   const behavior = getHouseRoofFormBehavior(form);
+  // Milestone 13: openGableEndIds applies to gable AND hipped forms
+  // (sessions A/B made hipped honour per-end open toggles).
   const openGableEndIds =
-    form === 'gable'
+    form === 'gable' || form === 'hipped'
       ? existingRoof.openGableEndIds.filter((id) => terminalEndIds.has(id))
       : [];
 
