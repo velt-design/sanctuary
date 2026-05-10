@@ -32,7 +32,7 @@ type DrawOutlineActiveStatus =
   | 'close-ready'
   | 'close-hovered';
 
-type DrawOutlineDiagnosticState = 'inactive' | DrawOutlineActiveStatus | 'error';
+export type DrawOutlineDiagnosticState = 'inactive' | DrawOutlineActiveStatus | 'error';
 
 export type DrawOutlineHoverPoint = {
   point: DrawOutlinePoint;

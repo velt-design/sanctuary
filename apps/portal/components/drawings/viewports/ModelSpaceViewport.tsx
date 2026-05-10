@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as
 import type { AttachmentSide } from '@sp/costing';
 import {
   ModuleDrawingRenderer,
-  type HouseFirstPlanShapeDragStartMeta,
+  type ObjectWorkbenchPlanShapeDragStartMeta,
   type ModuleDrawingInteractiveFieldMap,
   type ModulePlanInteractionProps,
   type ModulePlanResizeDragMeta,
@@ -17,8 +17,8 @@ import {
   type ModuleFootprintEditorProps,
   type ModuleViewsStatus,
   type ModuleViewsTab,
-} from '@/app/(portal)/staff/calculator/ModuleViewsCard';
-import type { HouseFootprintHandleId, ModulePlanModel, ModuleSectionModel } from '@/app/(portal)/staff/calculator/moduleViews';
+} from '@/app/staff/calculator/ModuleViewsCard';
+import type { HouseFootprintHandleId, ModulePlanModel, ModuleSectionModel } from '@/app/staff/calculator/moduleViews';
 import type { PlanViewModel } from '@/lib/drawings/views/plan/buildPlanViewModel';
 import type { DrawingWorkbenchViewportTransform } from '@/lib/drawings/state/drawingWorkbenchUiState';
 import type { EstimateDrawingField, EstimateDrawingFootprintEdit } from '@/lib/estimates/drawingEdits';
@@ -35,12 +35,12 @@ import {
 } from '@/lib/types/calculator';
 import { moduleDrawingThemeCssVariables } from '@/lib/theme/moduleDrawing';
 import {
-  resizeCustomPolygonEdge,
-  type HouseFirstPlanDeckInteraction,
-  type HouseFirstPlanCustomEdgeCandidate,
-  type HouseFirstPlanPresetDimensionAnnotation,
+  resizeObjectWorkbenchCustomPolygonEdge,
+  type ObjectWorkbenchPlanDeckInteraction,
+  type ObjectWorkbenchPlanCustomEdgeCandidate,
+  type ObjectWorkbenchPlanPresetDimensionAnnotation,
   type PlanPoint,
-} from '@/lib/drawings/views/plan/houseFirstPlanOverlay';
+} from '@/lib/drawings/views/plan/objectWorkbenchPlanOverlay';
 import { blockNativeSelectionEvent } from './nativeSelection';
 import styles from './ModelSpaceViewport.module.css';
 import {
@@ -139,7 +139,7 @@ type DrawPopoverPosition = {
 };
 
 type HouseFirstDimensionEditorState = {
-  annotation: HouseFirstPlanPresetDimensionAnnotation | HouseFirstPlanCustomEdgeCandidate;
+  annotation: ObjectWorkbenchPlanPresetDimensionAnnotation | ObjectWorkbenchPlanCustomEdgeCandidate;
   value: string;
 };
 
@@ -150,8 +150,8 @@ type DeckDragSession = {
   startSvgY: number;
   startPolygon: PlanPoint[];
   startCenterOffsetM: number;
-  interaction: HouseFirstPlanDeckInteraction;
-  svgInteraction: HouseFirstPlanShapeDragStartMeta['deckInteraction'];
+  interaction: ObjectWorkbenchPlanDeckInteraction;
+  svgInteraction: Extract<ObjectWorkbenchPlanShapeDragStartMeta, { ownerKind: 'deck' }>['deckInteraction'];
 };
 
 type DeckPreviewState = {
@@ -430,7 +430,7 @@ function formatDeckPresetValue(value: number): string {
 }
 
 function resolveDeckHostReferenceCenterOffset(input: {
-  annotation: HouseFirstPlanPresetDimensionAnnotation;
+  annotation: ObjectWorkbenchPlanPresetDimensionAnnotation;
   nextValue: string;
 }): { ok: true; centerOffsetM: string } | { ok: false; error: string } {
   const interaction = input.annotation.deckInteraction;
@@ -461,7 +461,7 @@ function resolveDeckHostReferenceCenterOffset(input: {
   };
 }
 
-function translateDeckPolygon(polygon: PlanPoint[], interaction: HouseFirstPlanDeckInteraction, deltaOffsetM: number): PlanPoint[] {
+function translateDeckPolygon(polygon: PlanPoint[], interaction: ObjectWorkbenchPlanDeckInteraction, deltaOffsetM: number): PlanPoint[] {
   const dx = interaction.hostEdgeEnd.x - interaction.hostEdgeStart.x;
   const dy = interaction.hostEdgeEnd.y - interaction.hostEdgeStart.y;
   const length = Math.hypot(dx, dy);
@@ -707,7 +707,7 @@ export default function ModelSpaceViewport({
 
   const activateHouseFirstDimensionEditor = useCallback(
     (
-      annotation: HouseFirstPlanPresetDimensionAnnotation | HouseFirstPlanCustomEdgeCandidate,
+      annotation: ObjectWorkbenchPlanPresetDimensionAnnotation | ObjectWorkbenchPlanCustomEdgeCandidate,
       target: SVGTextElement,
     ) => {
       void target;
@@ -752,15 +752,16 @@ export default function ModelSpaceViewport({
 
   const handleHouseFirstShapeDragStart = useCallback(
     (
-      meta: HouseFirstPlanShapeDragStartMeta,
+      meta: ObjectWorkbenchPlanShapeDragStartMeta,
       event: { pointerId: number; clientX: number; clientY: number },
     ) => {
       if (!onCommitHouseFirstDeckDimension) return;
+      if (meta.ownerKind !== 'deck') return;
       const svg = footprintSvgRef.current;
       if (!svg) return;
       const startPoint = clientPointToSvg(svg, event.clientX, event.clientY);
       if (!startPoint) return;
-      const overlayShape = planViewModel?.houseFirst?.shapes.find(
+      const overlayShape = planViewModel?.objectWorkbenchOverlay?.shapes.find(
         (shape) => shape.ownerKind === 'deck' && shape.ownerId === meta.ownerId,
       );
       if (!overlayShape?.deckInteraction) return;
@@ -811,7 +812,7 @@ export default function ModelSpaceViewport({
             )
           : { ok: false, error: 'House footprint dimensions are not editable in this view.' };
       } else if (annotation.targetKind === 'house_custom_edge') {
-        const polygon = resizeCustomPolygonEdge({
+        const polygon = resizeObjectWorkbenchCustomPolygonEdge({
           polygon: annotation.localPolygon,
           edgeIndex: annotation.edgeIndex,
           nextLengthM: nextValue,
@@ -837,7 +838,7 @@ export default function ModelSpaceViewport({
             )
           : { ok: false, error: 'Deck dimensions are not editable in this view.' };
       } else if (annotation.targetKind === 'deck_custom_edge') {
-        const polygon = resizeCustomPolygonEdge({
+        const polygon = resizeObjectWorkbenchCustomPolygonEdge({
           polygon: annotation.localPolygon,
           edgeIndex: annotation.edgeIndex,
           nextLengthM: nextValue,
@@ -2088,8 +2089,8 @@ export default function ModelSpaceViewport({
     });
   }, [drawOutlinePopoverAnchorPointCount, drawOutlineViewModel.isActive, viewportTransform.panX, viewportTransform.panY, zoom]);
 
-  const houseFirstPlanOverlay =
-    view === 'plan' && !drawOutlineViewModel.isActive ? planViewModel?.houseFirst ?? null : null;
+  const objectWorkbenchPlanOverlay =
+    view === 'plan' && !drawOutlineViewModel.isActive ? planViewModel?.objectWorkbenchOverlay ?? null : null;
   const houseFirstPreviewOverlay = useMemo(
     () =>
       deckPreviewState && deckDragSession
@@ -2107,35 +2108,35 @@ export default function ModelSpaceViewport({
   );
   const selectedDeckShape = useMemo(
     () =>
-      houseFirstPlanOverlay?.shapes.find(
+      objectWorkbenchPlanOverlay?.shapes.find(
         (shape) => shape.ownerKind === 'deck' && shape.selected,
       ) ?? null,
-    [houseFirstPlanOverlay],
+    [objectWorkbenchPlanOverlay],
   );
   const selectedDeckRelationshipDimensionsAvailable = useMemo(
     () =>
       selectedDeckShape
-        ? (houseFirstPlanOverlay?.presetAnnotations ?? []).some(
+        ? (objectWorkbenchPlanOverlay?.presetAnnotations ?? []).some(
             (annotation) =>
               annotation.ownerKind === 'deck' &&
               annotation.ownerId === selectedDeckShape.ownerId &&
               annotation.targetKind === 'deck_host_edge_reference',
           )
         : false,
-    [houseFirstPlanOverlay, selectedDeckShape],
+    [objectWorkbenchPlanOverlay, selectedDeckShape],
   );
   const selectedDeckType = useMemo<DeckInteractionTelemetry['selectedDeckType']>(() => {
     if (!selectedDeckShape) return 'none';
     if (selectedDeckShape.custom) return 'custom_outline';
     if (selectedDeckShape.deckInteraction) return 'attached_preset_rect';
-    const hasDetachedGapAnnotation = (houseFirstPlanOverlay?.presetAnnotations ?? []).some(
+    const hasDetachedGapAnnotation = (objectWorkbenchPlanOverlay?.presetAnnotations ?? []).some(
       (annotation) =>
         annotation.ownerKind === 'deck' &&
         annotation.ownerId === selectedDeckShape.ownerId &&
         annotation.fieldKey === 'detachedGapM',
     );
     return hasDetachedGapAnnotation ? 'detached_preset_rect' : 'preset_unresolved';
-  }, [houseFirstPlanOverlay, selectedDeckShape]);
+  }, [objectWorkbenchPlanOverlay, selectedDeckShape]);
 
   useEffect(() => {
     if (!selectedDeckShape?.deckDragEligibility) {
@@ -2159,7 +2160,7 @@ export default function ModelSpaceViewport({
   useEffect(() => {
     onDeckInteractionTelemetryChange?.({
       selectedDeckId: selectedDeckShape?.ownerId ?? null,
-      housePolygonSource: houseFirstPlanOverlay?.housePolygonSource ?? null,
+      housePolygonSource: objectWorkbenchPlanOverlay?.housePolygonSource ?? null,
       selectedDeckType,
       dragEligible: selectedDeckShape?.deckDragEligibility?.eligible ?? false,
       dragReason: selectedDeckShape?.deckDragEligibility?.reason ?? null,
@@ -2175,7 +2176,7 @@ export default function ModelSpaceViewport({
     });
   }, [
     deckPreviewState,
-    houseFirstPlanOverlay?.housePolygonSource,
+    objectWorkbenchPlanOverlay?.housePolygonSource,
     onDeckInteractionTelemetryChange,
     selectedDeckRelationshipDimensionsAvailable,
     selectedDeckShape,
@@ -2200,32 +2201,32 @@ export default function ModelSpaceViewport({
   }, [handleNativeSelectionCapture]);
 
   useEffect(() => {
-    if (!houseFirstPlanOverlay?.customEdgeCandidates.some((candidate) => candidate.id === houseFirstActiveCustomEdgeId)) {
+    if (!objectWorkbenchPlanOverlay?.customEdgeCandidates.some((candidate) => candidate.id === houseFirstActiveCustomEdgeId)) {
       setHouseFirstActiveCustomEdgeId(null);
     }
-  }, [houseFirstActiveCustomEdgeId, houseFirstPlanOverlay]);
+  }, [houseFirstActiveCustomEdgeId, objectWorkbenchPlanOverlay]);
 
   useEffect(() => {
     const selectedDeckStillVisible =
       deckDragSession &&
-      houseFirstPlanOverlay?.shapes.some(
+      objectWorkbenchPlanOverlay?.shapes.some(
         (shape) => shape.ownerKind === 'deck' && shape.ownerId === deckDragSession.deckId && shape.selected,
       );
     if (!selectedDeckStillVisible) {
       setDeckDragSession(null);
       setDeckPreviewState(null);
     }
-  }, [deckDragSession, houseFirstPlanOverlay]);
+  }, [deckDragSession, objectWorkbenchPlanOverlay]);
 
   useEffect(() => {
     if (!houseFirstDimensionEditor) return;
     const annotationId = houseFirstDimensionEditor.annotation.id;
     const stillVisible = Boolean(
-      houseFirstPlanOverlay?.presetAnnotations.some((annotation) => annotation.id === annotationId) ||
-        houseFirstPlanOverlay?.customEdgeCandidates.some((annotation) => annotation.id === annotationId),
+      objectWorkbenchPlanOverlay?.presetAnnotations.some((annotation) => annotation.id === annotationId) ||
+        objectWorkbenchPlanOverlay?.customEdgeCandidates.some((annotation) => annotation.id === annotationId),
     );
     if (!stillVisible) closeHouseFirstDimensionEditor();
-  }, [closeHouseFirstDimensionEditor, houseFirstDimensionEditor, houseFirstPlanOverlay]);
+  }, [closeHouseFirstDimensionEditor, houseFirstDimensionEditor, objectWorkbenchPlanOverlay]);
 
   useEffect(() => {
     const annotation = houseFirstDimensionEditor?.annotation;
@@ -2632,13 +2633,13 @@ export default function ModelSpaceViewport({
                 interactiveFields={showPlanViewport ? modelInteractiveFields : undefined}
                 footprintEditor={showPlanViewport ? footprintEditor : undefined}
                 planInteraction={showPlanViewport ? planInteraction : undefined}
-                houseFirstPlanOverlay={showPlanViewport ? houseFirstPlanOverlay : null}
-                houseFirstPreviewOverlay={showPlanViewport ? houseFirstPreviewOverlay : null}
-                activeHouseFirstCustomEdgeId={houseFirstActiveCustomEdgeId}
-                onHouseFirstShapeSelect={showPlanViewport ? handleHouseFirstShapeSelect : undefined}
-                onHouseFirstShapeDragStart={showPlanViewport ? handleHouseFirstShapeDragStart : undefined}
-                onHouseFirstCustomEdgeSelect={showPlanViewport ? handleHouseFirstCustomEdgeSelect : undefined}
-                onHouseFirstDimensionActivate={showPlanViewport ? activateHouseFirstDimensionEditor : undefined}
+                objectWorkbenchPlanOverlay={showPlanViewport ? objectWorkbenchPlanOverlay : null}
+                objectWorkbenchPreviewOverlay={showPlanViewport ? houseFirstPreviewOverlay : null}
+                activeObjectWorkbenchCustomEdgeId={houseFirstActiveCustomEdgeId}
+                onObjectWorkbenchShapeSelect={showPlanViewport ? handleHouseFirstShapeSelect : undefined}
+                onObjectWorkbenchShapeDragStart={showPlanViewport ? handleHouseFirstShapeDragStart : undefined}
+                onObjectWorkbenchCustomEdgeSelect={showPlanViewport ? handleHouseFirstCustomEdgeSelect : undefined}
+                onObjectWorkbenchDimensionActivate={showPlanViewport ? activateHouseFirstDimensionEditor : undefined}
               />
             ) : showHouseSectionPlaceholder ? (
               <div className={styles.placeholder}>
