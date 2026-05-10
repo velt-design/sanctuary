@@ -38,6 +38,7 @@ import {
   resizeObjectWorkbenchCustomPolygonEdge,
   type ObjectWorkbenchPlanDeckInteraction,
   type ObjectWorkbenchPlanCustomEdgeCandidate,
+  type ObjectWorkbenchPlanHousePolygonSource,
   type ObjectWorkbenchPlanPresetDimensionAnnotation,
   type PlanPoint,
 } from '@/lib/drawings/views/plan/objectWorkbenchPlanOverlay';
@@ -163,7 +164,7 @@ type DeckPreviewState = {
 
 type DeckInteractionTelemetry = {
   selectedDeckId: string | null;
-  housePolygonSource: 'custom_saved' | 'preset_derived' | null;
+  housePolygonSource: ObjectWorkbenchPlanHousePolygonSource | null;
   selectedDeckType: 'none' | 'attached_preset_rect' | 'detached_preset_rect' | 'custom_outline' | 'preset_unresolved';
   dragEligible: boolean;
   dragReason: string | null;
@@ -216,7 +217,7 @@ function drawOutlineStatusText(state: DrawOutlineDiagnosticState): string {
       return 'Draw outline: click first corner';
     case 'placing':
       return 'Draw outline: click next corner or enter distance and angle';
-    case 'pending-segment':
+    case 'locked-distance':
       return 'Draw outline: confirm segment or undo';
     case 'close-ready':
       return 'Draw outline: close shape or add another corner';
@@ -2091,19 +2092,35 @@ export default function ModelSpaceViewport({
 
   const objectWorkbenchPlanOverlay =
     view === 'plan' && !drawOutlineViewModel.isActive ? planViewModel?.objectWorkbenchOverlay ?? null : null;
-  const houseFirstPreviewOverlay = useMemo(
-    () =>
-      deckPreviewState && deckDragSession
-        ? {
-            ownerId: deckPreviewState.deckId,
-            polygon: deckPreviewState.polygon,
-            hostEdge: {
-              start: deckDragSession.interaction.hostEdgeStart,
-              end: deckDragSession.interaction.hostEdgeEnd,
-              snapped: deckPreviewState.snapped,
-            },
-          }
-        : null,
+  // Build the engine-shape preview overlay from the deck drag session. The legacy
+  // hostEdge { start, end, snapped } maps as follows:
+  //   - referenceGuide: the host edge line (snap-lane while snapped, witness while floating)
+  //   - lockedCornerPoint / endCatchPoint: visible anchors when snapped only
+  //   - bodyState: 'snapped' | 'floating' (engine's preview-body enum)
+  // targetHighlights is empty here because the deck-drag has a single committed host
+  // edge rather than a candidate set; future work that surfaces multiple snap targets
+  // for a deck (e.g. cross-edge snapping) can populate it without changing this shape.
+  const objectWorkbenchPreviewOverlay = useMemo(
+    () => {
+      if (!deckPreviewState || !deckDragSession) return null;
+      const hostStart = deckDragSession.interaction.hostEdgeStart;
+      const hostEnd = deckDragSession.interaction.hostEdgeEnd;
+      return {
+        ownerKind: 'deck' as const,
+        ownerId: deckPreviewState.deckId,
+        polygon: deckPreviewState.polygon,
+        bodyState: deckPreviewState.snapped ? ('snapped' as const) : ('floating' as const),
+        anchorPoint: null,
+        lockedCornerPoint: deckPreviewState.snapped ? hostStart : null,
+        endCatchPoint: deckPreviewState.snapped ? hostEnd : null,
+        referenceGuide: {
+          start: hostStart,
+          end: hostEnd,
+          state: deckPreviewState.snapped ? ('snap-lane' as const) : ('witness' as const),
+        },
+        targetHighlights: [],
+      };
+    },
     [deckDragSession, deckPreviewState],
   );
   const selectedDeckShape = useMemo(
@@ -2634,7 +2651,7 @@ export default function ModelSpaceViewport({
                 footprintEditor={showPlanViewport ? footprintEditor : undefined}
                 planInteraction={showPlanViewport ? planInteraction : undefined}
                 objectWorkbenchPlanOverlay={showPlanViewport ? objectWorkbenchPlanOverlay : null}
-                objectWorkbenchPreviewOverlay={showPlanViewport ? houseFirstPreviewOverlay : null}
+                objectWorkbenchPreviewOverlay={showPlanViewport ? objectWorkbenchPreviewOverlay : null}
                 activeObjectWorkbenchCustomEdgeId={houseFirstActiveCustomEdgeId}
                 onObjectWorkbenchShapeSelect={showPlanViewport ? handleHouseFirstShapeSelect : undefined}
                 onObjectWorkbenchShapeDragStart={showPlanViewport ? handleHouseFirstShapeDragStart : undefined}

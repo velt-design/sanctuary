@@ -226,7 +226,16 @@ function makeHouseFirstDeck(overrides: Partial<DeckModel> = {}): DeckModel {
   };
 }
 
-function makeHouseFirstHouse(overrides: Partial<HouseModel> = {}): HouseModel {
+// The helper deep-merges overrides so nested fields can be partially specified.
+// `Partial<HouseModel>` alone keeps nested fields required when present, which
+// would force callers to provide the full footprint/roof/etc. shape — this looser
+// type matches the helper's actual merge behaviour without giving up the top-level
+// field hint.
+type HouseModelOverrides = {
+  [K in keyof HouseModel]?: HouseModel[K] extends object ? Partial<HouseModel[K]> : HouseModel[K];
+};
+
+function makeHouseFirstHouse(overrides: HouseModelOverrides = {}): HouseModel {
   const house: HouseModel = {
     id: 'house-main',
     label: 'House',
@@ -275,6 +284,9 @@ function makeHouseFirstHouse(overrides: Partial<HouseModel> = {}): HouseModel {
         pitchDeg: '3',
         dropMm: '0',
       },
+      geometryKind: 'footprint_mono',
+      appendageSupportedHostEdges: [],
+      appendageSupportReason: null,
       validation: {
         status: 'valid',
         code: null,
@@ -311,6 +323,9 @@ function makeHouseFirstHouse(overrides: Partial<HouseModel> = {}): HouseModel {
     decks: [],
     openings: [],
     attachmentZones: [],
+    derivedEnvelope: null,
+    derivedWallGraph: { walls: [], mergeGroups: [] },
+    attachmentZoneDiagnostics: { blocked: [] },
   };
   return {
     ...house,
@@ -339,7 +354,7 @@ function makeHouseFirstHouse(overrides: Partial<HouseModel> = {}): HouseModel {
         ...overrides.roof?.capabilities,
       },
     },
-  };
+  } as HouseModel;
 }
 
 function clickElement(target: Element): void {
@@ -419,6 +434,11 @@ function HouseFirstViewportHarness({
         status="ready"
         planModel={makePlanModelWithHouseContext()}
         sectionModel={drawing.sectionModel}
+        // TODO(milestone-13): migrate to the new `objectWorkbenchOverlayInput` shape
+        // (houseAssembly, houseForm, decks, openings, status). The old
+        // { house, activeHouseSelection, includeHouseFirstOverlay } fields were removed
+        // from PlanViewModelSource; this cast preserves the legacy test inputs while
+        // the harness is rewritten against the engine-driven overlay contract.
         planViewModel={buildPlanViewModel({
           moduleId: drawing.id,
           moduleLabel: 'Module 1',
@@ -429,7 +449,7 @@ function HouseFirstViewportHarness({
           includeHouseFirstOverlay: true,
           moduleLengthM: drawing.input.lengthM,
           moduleProjectionM: drawing.input.projectionM,
-        })}
+        } as unknown as Parameters<typeof buildPlanViewModel>[0])}
         viewportTransform={createDrawingWorkbenchUiState().viewportTransform}
         onViewportTransformChange={() => undefined}
         onCommitFootprintEdit={() => ({ ok: true })}
@@ -450,14 +470,17 @@ function HouseFirstViewportHarness({
                 },
               };
             }
-            return {
-              ...current,
-              footprint: {
-                ...current.footprint,
-                mode: 'custom_polygon',
-                polygon: edit.polygon,
-              },
-            };
+            if (edit.type === 'polygon' || edit.type === 'custom_polygon') {
+              return {
+                ...current,
+                footprint: {
+                  ...current.footprint,
+                  mode: 'custom_polygon',
+                  polygon: edit.polygon,
+                },
+              };
+            }
+            return current;
           });
           return { ok: true };
         }}
@@ -742,6 +765,8 @@ describe('ModelSpaceViewport', () => {
         status="ready"
         planModel={planModel}
         sectionModel={drawing.sectionModel}
+        // TODO(milestone-13): migrate to the new `objectWorkbenchOverlayInput` shape;
+        // see harness above for the same legacy-shape cast.
         planViewModel={buildPlanViewModel({
           moduleId: drawing.id,
           moduleLabel: 'Module 1',
@@ -752,7 +777,7 @@ describe('ModelSpaceViewport', () => {
           includeHouseFirstOverlay: true,
           moduleLengthM: drawing.input.lengthM,
           moduleProjectionM: drawing.input.projectionM,
-        })}
+        } as unknown as Parameters<typeof buildPlanViewModel>[0])}
         viewportTransform={createDrawingWorkbenchUiState().viewportTransform}
         onViewportTransformChange={() => undefined}
         editableFields={makePlanEditableFields()}
