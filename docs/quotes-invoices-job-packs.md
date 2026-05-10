@@ -27,6 +27,10 @@ For table/RPC ownership, write paths, access boundaries, and migration sources, 
 
 ## Quote Lifecycle
 
+The project page's Activity tab surfaces a current-design snapshot bar that picks the most relevant quote (accepted > sent > draft, declined excluded) and reads its totals for display. The precedence rules and source-of-truth notes live in `docs/projects-contacts-estimates-calculator.md` under "Current-design snapshot precedence". When changing quote status semantics, accept/decline behaviour, or quote totals, double-check the snapshot bar continues to reflect the right source.
+
+
+
 - Draft quote versions can be edited, refreshed from estimates, previewed, revised, and regenerated.
 - Sending a quote requires a recipient, subject, priced line items, a generated quote PDF, and configured email/public URL env.
 - Sent quote versions are locked from normal draft editing.

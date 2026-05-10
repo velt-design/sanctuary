@@ -9,6 +9,16 @@ import type { Estimate } from '@/lib/types/estimate';
 import { priceAllBlinds, type BlindLineItemInput } from '@/lib/costing/blinds';
 import type { QuoteLineItem } from './types';
 import { GST_RATE, lineTotalCents, toCents } from './utils';
+import {
+  formatDimension,
+  formatModuleColour,
+  formatModulePitch,
+  formatModulePosts,
+  formatModuleRoof,
+  formatModuleSize,
+  formatModuleStyle,
+  toTitleCase,
+} from './moduleFormatters';
 
 function toNumber(value: unknown): number {
   if (typeof value === 'number') return value;
@@ -21,14 +31,6 @@ function normaliseCalculatorInputs(inputs: unknown): CalculatorInputs | null {
   if (isCalculatorInputsV2(inputs)) return inputs;
   if (isLegacyCalculatorInputsV1(inputs)) return migrateLegacyCalculatorInputsToV2(inputs);
   return null;
-}
-
-function toTitleCase(value: string): string {
-  return value
-    .replace(/[_-]+/g, ' ')
-    .toLowerCase()
-    .replace(/(^|\s)\S/g, (m) => m.toUpperCase())
-    .trim();
 }
 
 function uniqueModuleStyles(modules: CalculatorModuleInputs[]): string[] {
@@ -52,14 +54,6 @@ function joinStyleLabels(styles: string[]): string {
   if (styles.length === 1) return styles[0]!;
   if (styles.length === 2) return `${styles[0]} + ${styles[1]}`;
   return `${styles.slice(0, -1).join(', ')} + ${styles[styles.length - 1]}`;
-}
-
-function formatDimension(value: string): string {
-  const n = toNumber(value);
-  if (!Number.isFinite(n)) return '—';
-  const rounded = Math.round(n * 100) / 100;
-  if (Number.isInteger(rounded)) return `${rounded}`;
-  return rounded.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
 }
 
 function buildModuleDescription(module: CalculatorModuleInputs, index: number): string {
@@ -199,45 +193,6 @@ function formatConnectionValue(value: string | null | undefined): string | null 
   return toTitleCase(normalized);
 }
 
-function formatModuleStyle(module: CalculatorModuleInputs): string | null {
-  const raw = typeof module?.pergolaStyle === 'string' ? module.pergolaStyle.trim() : '';
-  return raw ? toTitleCase(raw) : null;
-}
-
-function formatModuleRoof(module: CalculatorModuleInputs): string | null {
-  const raw = typeof module?.roofMaterial === 'string' ? module.roofMaterial.trim() : '';
-  return raw ? toTitleCase(raw) : null;
-}
-
-function formatModuleColour(module: CalculatorModuleInputs): string | null {
-  const base = typeof module?.extrusionColour === 'string' ? module.extrusionColour.trim() : '';
-  if (!base) return null;
-  if (module.powdercoatIsCustom) {
-    const custom = typeof module?.powdercoatCustomColour === 'string' ? module.powdercoatCustomColour.trim() : '';
-    return custom ? `${base} (${custom})` : `${base} (Custom)`;
-  }
-  const standard = typeof module?.powdercoatStandardColour === 'string' ? module.powdercoatStandardColour.trim() : '';
-  return standard ? `${base} (${standard})` : base;
-}
-
-function formatModuleSize(module: CalculatorModuleInputs): string {
-  const length = formatDimension(module.lengthM);
-  const projection = formatDimension(module.projectionM);
-  if (module.pergolaStyle === 'hip_corner') {
-    return `A ${length}m x ${projection}m, B ${formatDimension(module.hipCornerLengthBM)}m x ${formatDimension(module.hipCornerProjectionBM)}m`;
-  }
-  return `${length}m x ${projection}m`;
-}
-
-function formatModulePitch(module: CalculatorModuleInputs): string | null {
-  const raw = typeof module?.roofPitchDeg === 'string' ? module.roofPitchDeg.trim() : '';
-  return raw ? `${raw}°` : null;
-}
-
-function formatModulePosts(module: CalculatorModuleInputs): string | null {
-  const raw = typeof module?.postCount === 'string' ? module.postCount.trim() : String(module?.postCount ?? '').trim();
-  return raw || null;
-}
 
 function buildSharedCandidateFields(module: CalculatorModuleInputs): ModuleField[] {
   return [

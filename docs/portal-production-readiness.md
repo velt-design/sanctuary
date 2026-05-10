@@ -105,6 +105,7 @@ This snapshot records the most recent known production-readiness state from the 
 - [ ] Running Jobs spreadsheet edits, legacy row handling, and schedule-owned read-only fields verified.
 - [ ] Design workbench edit, save, reload, object-first geometry, plan, 3D, and fallback visibility verified.
 - [ ] Project page Activity tab tasks + notes: open project lands on Activity tab, tasks render and respond to manual completion, notes compose / edit-own / delete-own succeed, non-author staff sees no edit/delete affordance, admin can edit/delete any note, soft-deleted notes hide on reload.
+- [ ] Project page Activity tab current-design snapshot bar: shows correct precedence (accepted > sent > draft > estimate), declined-only quotes fall through with `Quotes declined` pill, multi-module projects show `+ N more`, empty state when no design exists, View quote/View design link points at the right tab/version.
 
 ### Security And Data Boundaries
 

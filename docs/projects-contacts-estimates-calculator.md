@@ -114,10 +114,33 @@ Do not bypass these rules with ad hoc estimate table writes. Use the estimate ro
 
 ## Activity Tab And Project Notes
 
-The Activity tab is the project page's default landing tab. It renders two columns:
+The Activity tab is the project page's default landing tab. It renders a current-design snapshot bar across the top, with two columns underneath:
 
+- Top: the current-design snapshot bar (`ProjectActivityDesignSnapshotBar`) — a slender summary of the project's current design (size, shape, customer price, status pill).
 - Left: the Tasks panel (`ProjectTasksSidebarClient`), reused inline from the Activity tab. Same data, same actions as the previous sidebar location.
 - Right: the Notes column (`ProjectNotesPanel`), an append-only feed of free-text project notes written by staff/admin.
+
+### Current-design snapshot precedence
+
+The snapshot bar names the project's "current design". Precedence is encoded in `apps/portal/lib/projects/currentDesign/resolve.ts`:
+
+1. Most recent `ACCEPTED` quote.
+2. Else most recent `SENT` quote.
+3. Else most recent `DRAFT` quote.
+4. Else the latest estimate (with status `Quotes declined` if any quote was declined, otherwise `No accepted quote`).
+5. Else empty state.
+
+`DECLINED` quotes are excluded from precedence. They never become the "current design"; the bar falls through to the next eligible source. A separate boolean flag (`hasDeclinedQuotes`) tells the summarizer whether to show the declined-tinted status pill on the fall-through estimate.
+
+### Source of truth rules for the bar
+
+- **Size** always reads from the source estimate's calculator snapshot (`outputs.snapshot` -> `inputs.modules`), regardless of which quote sourced the price. Quote versions intentionally do not denormalize geometry.
+- **Shape** is `formatModuleStyle` + lowercased `formatModuleRoof` from `apps/portal/lib/quotes/moduleFormatters.ts`. Both formatters are shared with the quote-line-item description path.
+- **Customer price** prefers `quoteVersion.totals.totalIncGstCents` when a quote is chosen, falls back to `estimate.summary.total`, then `Price not available`. Never recompute pricing in the bar; the helpers must not import costing.
+- **Multi-module projects** show the largest module by floor area as the primary, with a `+ N more` suffix when other modules exist.
+- **Empty/partial state**: `Size not set`, `Design details incomplete`, `Price not available` are the standard fallback strings.
+
+The bar reads from `estimateMetasByProjectQueryOptions`, `quoteVersionsByProjectQueryOptions`, and `estimateDetailQueryOptions` — the same TanStack queries the Quotes/Estimates tabs use. **No new browser Supabase reads.**
 
 Notes data:
 
