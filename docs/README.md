@@ -8,13 +8,14 @@ These docs are current-state references and active guardrails for coding agents.
 2. `agent-playbook.md`: active protocol for non-trivial portal work.
 3. `decision-log.md`: indexed lessons from past mistakes; scan relevant entries before risky work.
 4. `change-routing.md`: path ownership, doc update triggers, and common task cards.
-5. `portal-production-readiness.md`: active tracker for production-grade portal status, blockers, priorities, and parallel lanes.
-6. `architecture.md`: workspace structure and app/package ownership.
-7. `target-architecture.md`: target workspace shape and migration direction.
-8. `file-decomposition-and-ownership.md`: large-file ownership and early split guardrail.
-9. `code-retirement-and-bloat-control.md`: dead-code and dependency cleanup guardrail.
-10. `platform-workflow.md`: business workflow from lead to install completion.
-11. The feature doc for the area you are changing.
+5. `maintainability-principles.md`: repo-specific maintainability rules and failure modes.
+6. `portal-production-readiness.md`: active tracker for production-grade portal status, blockers, priorities, and parallel lanes.
+7. `architecture.md`: workspace structure and app/package ownership.
+8. `target-architecture.md`: target workspace shape and migration direction.
+9. `file-decomposition-and-ownership.md`: large-file ownership and early split guardrail.
+10. `code-retirement-and-bloat-control.md`: dead-code and dependency cleanup guardrail.
+11. `platform-workflow.md`: business workflow from lead to install completion.
+12. The feature doc for the area you are changing.
 
 ## Canonical Reference Docs
 
@@ -26,6 +27,7 @@ These docs are current-state references and active guardrails for coding agents.
 | `repo-health-trends.md` | Advisory dashboard | You are choosing cleanup lanes, reviewing repo health pressure, or checking whether cleanup metrics are trending better or worse. |
 | `architecture.md` | Current | You need the repo map, app/package boundaries, or CI/script overview. |
 | `target-architecture.md` | Target contract | You need the north-star structure, target area map, target data path, or migration direction before expanding an area. |
+| `maintainability-principles.md` | Active guardrail | You are fixing bugs, expanding large files, wiring interactions, or deciding whether to extract shared behavior. |
 | `file-decomposition-and-ownership.md` | Active guardrail | You are expanding or refactoring a large component, route, domain module, package file, page, or test. |
 | `code-retirement-and-bloat-control.md` | Active guardrail | You are deleting code, removing dependencies, retiring old compatibility paths, or triaging unused-code reports. |
 | `platform-workflow.md` | Current | You need to understand lead, project, estimate, quote, invoice, design, schedule, or running-job flow. |
@@ -59,6 +61,7 @@ These docs are current-state references and active guardrails for coding agents.
 ## Maintenance Rules
 
 - Treat docs as part of the implementation surface, not as optional commentary.
+- Treat maintainability as part of feature and bugfix work when touching known hotspots; use `maintainability-principles.md` and `file-decomposition-and-ownership.md` before adding inline behavior to warning or critical files.
 - When changing portal behavior, data flow, source-of-truth boundaries, test strategy, or known risks, update the relevant canonical doc in the same task unless docs are explicitly out of scope.
 - Prefer small current-state doc updates over new long planning docs.
 - Scan `decision-log.md` for relevant areas before non-trivial or risky portal work.

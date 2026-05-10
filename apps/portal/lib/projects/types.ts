@@ -44,6 +44,17 @@ export type ProjectActivityItem = {
   detail?: string;
 };
 
+export type ProjectNote = {
+  id: string;
+  body: string;
+  authorId: string;
+  authorEmail: string;
+  authorDisplayName: string | null;
+  createdAt: string;
+  updatedAt: string;
+  isOwn: boolean;
+};
+
 export type ProjectPageSnapshot = {
   project: {
     id: string;
@@ -66,8 +77,11 @@ export type ProjectPageSnapshot = {
     stage: ProjectStage;
     items: ProjectTaskItem[];
   };
+  // System-generated event feed (stage changes, emails sent, quote events). Distinct from
+  // the user-authored Activity tab notes, which live in `notes`.
   activity: ProjectActivityItem[];
   emails: ProjectEmailLog[]; // may be empty for now
+  notes: ProjectNote[];
 };
 
 export type ProjectPageSnapshotResponse = {

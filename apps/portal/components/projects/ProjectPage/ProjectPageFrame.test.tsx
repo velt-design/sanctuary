@@ -51,6 +51,7 @@ const snapshot = {
   },
   activity: [],
   emails: [],
+  notes: [],
 } as const;
 
 describe('ProjectPageFrame masthead layout', () => {

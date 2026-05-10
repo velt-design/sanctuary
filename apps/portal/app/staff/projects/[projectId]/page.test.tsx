@@ -50,6 +50,7 @@ describe('ProjectDetailPage', () => {
       tasks: { stage: 'new', items: [] },
       activity: [],
       emails: [],
+      notes: [],
     });
 
     const ui = (await ProjectDetailPage({
@@ -70,6 +71,7 @@ describe('ProjectDetailPage', () => {
       tasks: { stage: 'new', items: [] },
       activity: [],
       emails: [],
+      notes: [],
     });
 
     const ui = (await ProjectDetailPage({

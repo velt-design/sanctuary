@@ -4,6 +4,19 @@ These are the explicit rules of thumb the codebase optimises for. They are not a
 
 Long-term maintainability is the highest non-functional priority. The product will outlive any single feature; every line of code is read more than written. Bias decisions toward "the next person reading this in six months understands it without archaeology."
 
+## How Agents Should Use This
+
+Use this doc before bugfixes, migration work, interaction wiring, or changes in files reported by `npm run files:report`.
+
+For hotspot files, do not treat these principles as review-only advice. Before adding new behavior, ask:
+
+- Can the behavior live in an existing owner helper, controller, adapter, view model, or package function?
+- Is this the second caller for the same concept, and therefore a shared helper now?
+- Would a focused integration test catch the wiring failure this change could introduce?
+- If extraction is unsafe today, what exact next extraction should the handoff name?
+
+If the answer is unclear, keep the behavior change smaller and prefer a named deferral over adding a new inline branch to a hotspot.
+
 ## 1. Shared logic for shared operations
 
 When two paths perform the same conceptual operation, extract the shared logic into a helper. Both callers go through it.

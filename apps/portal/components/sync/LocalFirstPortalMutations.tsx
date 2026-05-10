@@ -13,16 +13,23 @@ import {
   type PortalEstimateCreateMutationPayload,
   type PortalEstimateNotesMutationPayload,
   type PortalEstimateUpdateMutationPayload,
+  type PortalProjectNoteCreateMutationPayload,
+  type PortalProjectNoteDeleteMutationPayload,
+  type PortalProjectNoteUpdateMutationPayload,
   type PortalQuoteCreateMutationPayload,
   type PortalQuoteUpdateMutationPayload,
   buildDesignRequestEntityKey,
+  isLocalProjectNoteId,
+  removeProjectNoteFromSnapshot,
   replaceEstimateDetailCache,
+  replaceProjectNoteInSnapshot,
   replaceQuoteDetailCache,
   upsertEstimateDetailCache,
   upsertQuoteDetailCache,
 } from '@/lib/localFirst/portalEntities';
 import { registerLocalFirstIdAlias, resolveLocalFirstId } from '@/lib/localFirst/store';
 import type { EstimateDetail } from '@/lib/estimates/types';
+import type { ProjectNote } from '@/lib/projects/types';
 import type { QuoteVersionDetail } from '@/lib/quotes/types';
 
 function isEstimateConflict(error: unknown): error is ApiError {
@@ -319,6 +326,101 @@ export default function LocalFirstPortalMutations() {
       },
     );
 
+    const unregisterProjectNoteCreate = registerLocalFirstMutationHandler(
+      PORTAL_LOCAL_FIRST_MUTATIONS.projectNoteCreate,
+      async (item) => {
+        const payload = item.payload as PortalProjectNoteCreateMutationPayload;
+        try {
+          const res = await apiJson<{ note: ProjectNote }>(
+            `/api/staff/v1/projects/${encodeURIComponent(payload.projectId)}/notes`,
+            {
+              method: 'POST',
+              body: JSON.stringify({ body: payload.body }),
+              skipSaveTracking: true,
+            },
+          );
+          if (!res.note) throw new Error('Note not created');
+          replaceProjectNoteInSnapshot(queryClient, hostKey, payload.projectId, payload.localNoteId, res.note);
+          await registerLocalFirstIdAlias(payload.localNoteId, res.note.id);
+          return { kind: 'success', clearWorkingCopy: true } as const;
+        } catch (error) {
+          if (error instanceof ApiError && error.status === 403) {
+            removeProjectNoteFromSnapshot(queryClient, hostKey, payload.projectId, payload.localNoteId);
+            return { kind: 'conflict', message: error.message, serverSnapshot: error.body } as const;
+          }
+          if (error instanceof ApiError && (error.status === 400 || error.status === 404)) {
+            removeProjectNoteFromSnapshot(queryClient, hostKey, payload.projectId, payload.localNoteId);
+            return { kind: 'conflict', message: error.message, serverSnapshot: error.body } as const;
+          }
+          throw error;
+        }
+      },
+    );
+
+    const unregisterProjectNoteUpdate = registerLocalFirstMutationHandler(
+      PORTAL_LOCAL_FIRST_MUTATIONS.projectNoteUpdate,
+      async (item) => {
+        const payload = item.payload as PortalProjectNoteUpdateMutationPayload;
+        const resolvedNoteId = resolveLocalFirstId(payload.noteId);
+        if (!resolvedNoteId || isLocalProjectNoteId(resolvedNoteId)) {
+          return {
+            kind: 'retry',
+            status: 'queued',
+            retryAt: new Date(Date.now() + 300).toISOString(),
+          } as const;
+        }
+        try {
+          const res = await apiJson<{ note: ProjectNote }>(
+            `/api/staff/v1/projects/${encodeURIComponent(payload.projectId)}/notes/${encodeURIComponent(resolvedNoteId)}`,
+            {
+              method: 'PATCH',
+              body: JSON.stringify({ body: payload.body }),
+              skipSaveTracking: true,
+            },
+          );
+          if (!res.note) throw new Error('Note not updated');
+          replaceProjectNoteInSnapshot(queryClient, hostKey, payload.projectId, resolvedNoteId, res.note);
+          return { kind: 'success', clearWorkingCopy: true } as const;
+        } catch (error) {
+          if (error instanceof ApiError && (error.status === 403 || error.status === 404 || error.status === 400)) {
+            return { kind: 'conflict', message: error.message, serverSnapshot: error.body } as const;
+          }
+          throw error;
+        }
+      },
+    );
+
+    const unregisterProjectNoteDelete = registerLocalFirstMutationHandler(
+      PORTAL_LOCAL_FIRST_MUTATIONS.projectNoteDelete,
+      async (item) => {
+        const payload = item.payload as PortalProjectNoteDeleteMutationPayload;
+        const resolvedNoteId = resolveLocalFirstId(payload.noteId);
+        if (!resolvedNoteId || isLocalProjectNoteId(resolvedNoteId)) {
+          return {
+            kind: 'retry',
+            status: 'queued',
+            retryAt: new Date(Date.now() + 300).toISOString(),
+          } as const;
+        }
+        try {
+          await apiJson<{ ok: true }>(
+            `/api/staff/v1/projects/${encodeURIComponent(payload.projectId)}/notes/${encodeURIComponent(resolvedNoteId)}`,
+            {
+              method: 'DELETE',
+              skipSaveTracking: true,
+            },
+          );
+          removeProjectNoteFromSnapshot(queryClient, hostKey, payload.projectId, resolvedNoteId);
+          return { kind: 'success', clearWorkingCopy: true } as const;
+        } catch (error) {
+          if (error instanceof ApiError && (error.status === 403 || error.status === 404)) {
+            return { kind: 'conflict', message: error.message, serverSnapshot: error.body } as const;
+          }
+          throw error;
+        }
+      },
+    );
+
     return () => {
       unregisterEstimateCreate();
       unregisterEstimateUpdate();
@@ -326,6 +428,9 @@ export default function LocalFirstPortalMutations() {
       unregisterQuoteCreate();
       unregisterQuoteUpdate();
       unregisterEstimateNotesUpdate();
+      unregisterProjectNoteCreate();
+      unregisterProjectNoteUpdate();
+      unregisterProjectNoteDelete();
     };
   }, [hostKey, queryClient]);
 

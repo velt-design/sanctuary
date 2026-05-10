@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
+import ActivityTab from './tabs/ActivityTab';
 import EmailsTab from './tabs/EmailsTab';
 import EstimatesTab from './tabs/EstimatesTab';
 import InvoicesTab from './tabs/InvoicesTab';
@@ -17,6 +18,7 @@ import { quoteVersionsByProjectQueryOptions } from '@/lib/queries/quotes';
 import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
 
 const BASE_TABS = [
+  { key: 'activity', label: 'Activity' },
   { key: 'estimates', label: 'Designs' },
   { key: 'quotes', label: 'Quotes' },
   { key: 'invoices', label: 'Invoices' },
@@ -28,7 +30,7 @@ type TabKey = (typeof BASE_TABS)[number]['key'];
 type QuoteViewKey = 'edit' | 'preview';
 
 function coerceTab(value: string | undefined, allowedTabs: readonly { key: TabKey; label: string }[]): TabKey {
-  return (allowedTabs.find((t) => t.key === value)?.key ?? 'estimates') as TabKey;
+  return (allowedTabs.find((t) => t.key === value)?.key ?? 'activity') as TabKey;
 }
 
 export default function ProjectMainTabs({
@@ -193,6 +195,7 @@ export default function ProjectMainTabs({
         className={`${legacy.sectionBody} ${activeTab === 'estimates' ? layout.sectionBodyWorkspace : ''}`}
         data-project-tab-body={activeTab}
       >
+        {activeTab === 'activity' ? <ActivityTab snapshot={snapshot} /> : null}
         {activeTab === 'emails' ? <EmailsTab projectId={snapshot.project.id} emails={snapshot.emails} /> : null}
         {activeTab === 'estimates' ? (
           <EstimatesTab projectId={snapshot.project.id} projectSnapshot={snapshot} />

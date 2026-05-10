@@ -5,7 +5,7 @@ import { buildEstimateSnapshotPayload } from '../estimates/persistence';
 import type { EstimateDetail, EstimateMeta, EstimateSummary } from '../estimates/types';
 import { qk } from '../queries/keys';
 import { patchProjectListItem, patchProjectSnapshot } from '../queries/projectCache';
-import type { ProjectPageSnapshotResponse, ProjectTaskItem } from '../projects/types';
+import type { ProjectNote, ProjectPageSnapshotResponse, ProjectTaskItem } from '../projects/types';
 import { DEFAULT_QUOTE_INTRO, DEFAULT_QUOTE_TERMS, applyDepositPercentToTerms } from '../quotes/defaults';
 import { buildQuoteLineItemsFromEstimate } from '../quotes/mapping';
 import type { QuoteLineItem, QuoteVersion, QuoteVersionDetail } from '../quotes/types';
@@ -23,6 +23,9 @@ export const PORTAL_LOCAL_FIRST_MUTATIONS = {
   quoteCreateFromEstimate: 'portal.quote.createFromEstimate',
   quoteUpdateDraft: 'portal.quote.updateDraft',
   estimateNotesUpdate: 'portal.estimate.notes.update',
+  projectNoteCreate: 'portal.project.note.create',
+  projectNoteUpdate: 'portal.project.note.update',
+  projectNoteDelete: 'portal.project.note.delete',
 } as const;
 
 export type PortalEstimatePayload = {
@@ -93,6 +96,28 @@ export type PortalEstimateNotesMutationPayload = {
   estimateId: string;
   projectId: string;
   internalNotes: string;
+};
+
+export type PortalProjectNoteCreateMutationPayload = {
+  localNoteId: string;
+  projectId: string;
+  body: string;
+  authorOptimistic: {
+    authorId: string;
+    authorEmail: string;
+    authorDisplayName: string | null;
+  };
+};
+
+export type PortalProjectNoteUpdateMutationPayload = {
+  noteId: string;
+  projectId: string;
+  body: string;
+};
+
+export type PortalProjectNoteDeleteMutationPayload = {
+  noteId: string;
+  projectId: string;
 };
 
 export type PortalContactDraft = {
@@ -269,12 +294,24 @@ export function createLocalQuoteId(): string {
   return `local-quote:${makeLocalToken()}`;
 }
 
+export function createLocalProjectNoteId(): string {
+  return `local-note:${makeLocalToken()}`;
+}
+
 export function isLocalEstimateId(estimateId: string): boolean {
   return estimateId.startsWith('local-estimate:');
 }
 
 export function isLocalQuoteId(quoteVersionId: string): boolean {
   return quoteVersionId.startsWith('local-quote:');
+}
+
+export function isLocalProjectNoteId(noteId: string): boolean {
+  return noteId.startsWith('local-note:');
+}
+
+export function buildProjectNoteEntityKey(noteId: string): string {
+  return `project-note:${noteId}`;
 }
 
 export function buildEstimatePayloadFromDetail(detail: EstimateDetail): PortalEstimatePayload {
@@ -623,6 +660,86 @@ export function upsertContactCaches(queryClient: QueryClient, hostKey: string, c
     next.push(contact);
     next.sort((a, b) => a.displayName.localeCompare(b.displayName, undefined, { sensitivity: 'base' }));
     return next;
+  });
+}
+
+export function buildOptimisticProjectNote(args: {
+  localNoteId: string;
+  body: string;
+  author: { authorId: string; authorEmail: string; authorDisplayName: string | null };
+  createdAt?: string;
+}): ProjectNote {
+  const createdAt = args.createdAt ?? new Date().toISOString();
+  return {
+    id: args.localNoteId,
+    body: args.body,
+    authorId: args.author.authorId,
+    authorEmail: args.author.authorEmail,
+    authorDisplayName: args.author.authorDisplayName,
+    createdAt,
+    updatedAt: createdAt,
+    isOwn: true,
+  };
+}
+
+export function insertOptimisticProjectNote(
+  queryClient: QueryClient,
+  hostKey: string,
+  projectId: string,
+  note: ProjectNote,
+) {
+  patchProjectSnapshot(queryClient, hostKey, projectId, (currentSnapshot) => {
+    if (!currentSnapshot) return currentSnapshot;
+    const existing = currentSnapshot.snapshot.notes ?? [];
+    return {
+      ...currentSnapshot,
+      generatedAt: new Date().toISOString(),
+      snapshot: {
+        ...currentSnapshot.snapshot,
+        notes: [note, ...existing],
+      },
+    };
+  });
+}
+
+export function replaceProjectNoteInSnapshot(
+  queryClient: QueryClient,
+  hostKey: string,
+  projectId: string,
+  matchId: string,
+  next: ProjectNote,
+) {
+  patchProjectSnapshot(queryClient, hostKey, projectId, (currentSnapshot) => {
+    if (!currentSnapshot) return currentSnapshot;
+    const existing = currentSnapshot.snapshot.notes ?? [];
+    return {
+      ...currentSnapshot,
+      generatedAt: new Date().toISOString(),
+      snapshot: {
+        ...currentSnapshot.snapshot,
+        notes: existing.map((entry) => (entry.id === matchId ? next : entry)),
+      },
+    };
+  });
+}
+
+export function removeProjectNoteFromSnapshot(
+  queryClient: QueryClient,
+  hostKey: string,
+  projectId: string,
+  noteId: string,
+) {
+  patchProjectSnapshot(queryClient, hostKey, projectId, (currentSnapshot) => {
+    if (!currentSnapshot) return currentSnapshot;
+    const existing = currentSnapshot.snapshot.notes ?? [];
+    return {
+      ...currentSnapshot,
+      generatedAt: new Date().toISOString(),
+      snapshot: {
+        ...currentSnapshot.snapshot,
+        notes: existing.filter((entry) => entry.id !== noteId),
+      },
+    };
   });
 }
 

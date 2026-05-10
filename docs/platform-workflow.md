@@ -19,6 +19,7 @@ Portal staff manage contacts and projects in `apps/portal`.
 - Project routes: `/staff/projects`, `/staff/projects/new`, `/staff/projects/[projectId]`.
 - Project pipeline stages are defined in `apps/portal/lib/projects/pipelineDefinition.ts`.
 - Stage tasks mix manual checks and action links, for example booking a site visit or generating an estimate.
+- The project page's default landing tab is Activity, which hosts the Tasks panel and the Notes column.
 - Canonical doc: `projects-contacts-estimates-calculator.md`.
 
 ## Estimate Flow

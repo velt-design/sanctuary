@@ -78,6 +78,8 @@ function normalizeProjectColumnLayout(layout: Partial<ProjectColumnLayout> | nul
   };
 }
 
+const DEFAULT_PROJECT_COLUMN_LAYOUT = normalizeProjectColumnLayout(null);
+
 function sameLayout(a: ProjectColumnLayout, b: ProjectColumnLayout): boolean {
   return (
     a.leftWidthPx === b.leftWidthPx &&
@@ -280,7 +282,8 @@ function setRailCollapsed(layout: ProjectColumnLayout, side: ResizeSide, collaps
 }
 
 export function useProjectColumnLayout() {
-  const [layout, setLayout] = useState<ProjectColumnLayout>(() => readStoredLayout());
+  const [layout, setLayout] = useState<ProjectColumnLayout>(DEFAULT_PROJECT_COLUMN_LAYOUT);
+  const [hasHydratedStoredLayout, setHasHydratedStoredLayout] = useState(false);
   const [containerNode, setContainerNode] = useState<HTMLDivElement | null>(null);
   const [containerWidthPx, setContainerWidthPx] = useState(0);
   const [isResizing, setIsResizing] = useState(false);
@@ -293,6 +296,12 @@ export function useProjectColumnLayout() {
   const setCollapseArmedSide = useCallback((next: ResizeSide | null) => {
     collapseArmedSideRef.current = next;
     setCollapseArmedSideState((prev) => (prev === next ? prev : next));
+  }, []);
+
+  useLayoutEffect(() => {
+    const storedLayout = readStoredLayout();
+    setLayout((prev) => (sameLayout(prev, storedLayout) ? prev : storedLayout));
+    setHasHydratedStoredLayout(true);
   }, []);
 
   useLayoutEffect(() => {
@@ -316,8 +325,9 @@ export function useProjectColumnLayout() {
   }, [containerNode]);
 
   useEffect(() => {
+    if (!hasHydratedStoredLayout) return;
     writeStoredLayout(layout);
-  }, [layout]);
+  }, [hasHydratedStoredLayout, layout]);
 
   useEffect(() => {
     setPreviewLayout((prev) => {

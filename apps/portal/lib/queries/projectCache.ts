@@ -35,6 +35,7 @@ export function buildProjectSnapshotPlaceholder(project: Project): ProjectPageSn
     },
     activity: [],
     emails: [],
+    notes: [],
   };
 
   return {

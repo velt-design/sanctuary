@@ -17,6 +17,10 @@ vi.mock('@tanstack/react-query', () => ({
   }),
 }));
 
+vi.mock('./tabs/ActivityTab', () => ({
+  default: () => <div data-testid="activity-tab" />,
+}));
+
 vi.mock('./tabs/EmailsTab', () => ({
   default: () => <div data-testid="emails-tab" />,
 }));
@@ -70,6 +74,7 @@ const snapshot = {
   },
   activity: [],
   emails: [],
+  notes: [],
 } as any;
 
 describe('ProjectMainTabs', () => {
@@ -95,6 +100,16 @@ describe('ProjectMainTabs', () => {
     expect(tabButtons).toContain('Emails');
     expect(tabButtons).not.toContain('Files');
     expect(rendered.container.textContent).not.toContain('Upload and manage project files once storage is wired up.');
+
+    rendered.unmount();
+  });
+
+  it('renders Activity as the first tab in the strip', () => {
+    const rendered = renderIntoDocument(<ProjectMainTabs snapshot={snapshot} tab="estimates" />);
+
+    const tabButtons = Array.from(rendered.container.querySelectorAll('[role="tab"]')).map((node) => node.textContent?.trim());
+
+    expect(tabButtons[0]).toBe('Activity');
 
     rendered.unmount();
   });

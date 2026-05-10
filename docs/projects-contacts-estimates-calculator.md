@@ -50,6 +50,7 @@ Keep contact fields, project fields, and estimate snapshot fields distinct. Esti
 - Action tasks link into owned workflows such as site visits, estimates, schedule, invoices, and job packs.
 - Snapshot readiness comes from portal data such as booked site visits, generated estimates, accepted quotes, open deposit invoices, scheduled install items, and generated job packs.
 - Stage action routes under `apps/portal/app/api/staff/v1/projects/[projectId]/action` own staff workflow side effects.
+- The project page Tasks panel is rendered inside the Activity tab (`ActivityTab.tsx`), not in the side rails. The side rails own the project details panel only.
 
 Do not hard-code duplicate pipeline or task rules in components. Update the pipeline definition and snapshot mapping together when task behavior changes.
 
@@ -111,6 +112,33 @@ Estimate editability is derived from related quote versions and send logs.
 
 Do not bypass these rules with ad hoc estimate table writes. Use the estimate routes and domain helpers so lock state, version labels, summaries, and downstream cache invalidation stay aligned.
 
+## Activity Tab And Project Notes
+
+The Activity tab is the project page's default landing tab. It renders two columns:
+
+- Left: the Tasks panel (`ProjectTasksSidebarClient`), reused inline from the Activity tab. Same data, same actions as the previous sidebar location.
+- Right: the Notes column (`ProjectNotesPanel`), an append-only feed of free-text project notes written by staff/admin.
+
+Notes data:
+
+- Stored in `public.project_notes` (`apps/portal/lib/projectNotes/server.ts` is the domain helper). Snapshot of latest 50 non-deleted notes is preloaded in `ProjectPageSnapshot.notes`.
+- Author info is denormalized at write time (`author_id`, `author_email`, `author_display_name`) so reads do not need to join `auth.users`.
+- Soft delete via `deleted_at`; UI list filters out deleted notes.
+
+Permissions:
+
+- Any portal user can read all notes for a project (RLS policy `project_notes_select`).
+- Authors can edit and soft-delete their own notes; admins (`is_portal_admin()`) can edit and soft-delete any note. RLS enforces this; route handlers do not re-check.
+
+Routes:
+
+- `GET /api/staff/v1/projects/[projectId]/notes` — list (paginated, default 50, max 200).
+- `POST /api/staff/v1/projects/[projectId]/notes` — create.
+- `PATCH /api/staff/v1/projects/[projectId]/notes/[noteId]` — update body.
+- `DELETE /api/staff/v1/projects/[projectId]/notes/[noteId]` — soft delete.
+
+Local-first mutation keys for project notes (`portal.project.note.{create,update,delete}`) are listed under `## Local-First Mutations`. The optimistic note uses a `local-note:*` id; the create handler aliases it to the durable id once the server returns.
+
 ## Local-First Mutations
 
 Project estimate and quote draft workflows use local-first mutations for responsive editing while server state remains authoritative.
@@ -123,6 +151,9 @@ Current mutation keys used by this workflow:
 - `portal.quote.updateDraft`
 - `portal.designRequest.create`
 - `portal.estimate.notes.update`
+- `portal.project.note.create`
+- `portal.project.note.update`
+- `portal.project.note.delete`
 
 Local IDs such as `local-estimate:*` and `local-quote:*` must be resolved through aliases before dependent mutations run. Creates and follow-on actions may queue until the durable server ID exists.
 

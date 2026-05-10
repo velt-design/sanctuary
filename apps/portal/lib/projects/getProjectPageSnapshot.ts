@@ -12,7 +12,33 @@ import {
   type TaskContext,
   type TaskKey,
 } from '@/lib/projects/pipelineDefinition';
-import type { ProjectActivityItem, ProjectEmailLog, ProjectPageSnapshot } from '@/lib/projects/types';
+import type { ProjectActivityItem, ProjectEmailLog, ProjectNote, ProjectPageSnapshot } from '@/lib/projects/types';
+
+const PROJECT_NOTES_SNAPSHOT_LIMIT = 50;
+
+function mapProjectNote(row: any, currentUserId: string | null): ProjectNote | null {
+  const id = typeof row?.id === 'string' ? row.id : null;
+  const body = typeof row?.body === 'string' ? row.body : null;
+  const authorId = typeof row?.author_id === 'string' ? row.author_id : null;
+  const createdAt = typeof row?.created_at === 'string' ? row.created_at : null;
+  if (!id || !body || !authorId || !createdAt) return null;
+  const updatedAt = typeof row?.updated_at === 'string' ? row.updated_at : createdAt;
+  const authorEmail = typeof row?.author_email === 'string' ? row.author_email : '';
+  const authorDisplayName =
+    typeof row?.author_display_name === 'string' && row.author_display_name.trim()
+      ? row.author_display_name
+      : null;
+  return {
+    id,
+    body,
+    authorId,
+    authorEmail,
+    authorDisplayName,
+    createdAt,
+    updatedAt,
+    isOwn: currentUserId !== null && authorId === currentUserId,
+  };
+}
 
 function pickString(...values: Array<unknown>): string | null {
   for (const value of values) {
@@ -225,7 +251,10 @@ export async function getProjectPageSnapshot(
     projectRow.followUpDate,
   );
 
-  const [contactRes, siteVisitRes, estimateRes, scheduleRes, acceptedQuoteRes, openInvoiceRes, manualRes, emailRes, auditRes, jobPackRes] = await Promise.all([
+  const userRes = await client.auth.getUser();
+  const currentUserId = userRes?.data?.user?.id ?? null;
+
+  const [contactRes, siteVisitRes, estimateRes, scheduleRes, acceptedQuoteRes, openInvoiceRes, manualRes, emailRes, auditRes, jobPackRes, notesRes] = await Promise.all([
     contactUuid
       ? client.from('contacts').select('*').eq('id', contactUuid).maybeSingle()
       : Promise.resolve({ data: null, error: null }),
@@ -273,6 +302,13 @@ export async function getProjectPageSnapshot(
       .order('created_at', { ascending: false })
       .limit(50),
     client.from('job_pack_generations').select('id').eq('project_id', projectUuid).limit(1).maybeSingle(),
+    client
+      .from('project_notes')
+      .select('id,body,author_id,author_email,author_display_name,created_at,updated_at')
+      .eq('project_id', projectUuid)
+      .is('deleted_at', null)
+      .order('created_at', { ascending: false })
+      .limit(PROJECT_NOTES_SNAPSHOT_LIMIT),
   ]);
 
   if (emailRes?.error) {
@@ -301,6 +337,9 @@ export async function getProjectPageSnapshot(
   }
   if (jobPackRes?.error) {
     logSnapshotError(diagnostics, 'job_pack_generations query failed', jobPackRes.error, 'job_pack_generations');
+  }
+  if (notesRes?.error) {
+    logSnapshotError(diagnostics, 'project_notes query failed', notesRes.error, 'project_notes');
   }
 
   const contact = contactRes?.data ?? null;
@@ -351,6 +390,10 @@ export async function getProjectPageSnapshot(
   const taskItems = resolveStageTasks(stage, taskContext, manualCompleted);
   const finalStage = stage;
 
+  const notes = (Array.isArray(notesRes?.data) ? notesRes.data : [])
+    .map((row) => mapProjectNote(row, currentUserId))
+    .filter((value): value is ProjectNote => value !== null);
+
   return {
     project: {
       id: projectIdOut,
@@ -375,5 +418,6 @@ export async function getProjectPageSnapshot(
     },
     activity,
     emails,
+    notes,
   };
 }

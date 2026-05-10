@@ -6,23 +6,24 @@ This repo is optimized for coding agents. Read this file first, then follow link
 
 1. Check `git status --short` before editing.
 2. Read `docs/agent-playbook.md` for non-trivial portal work.
-3. Scan `docs/decision-log.md` for matching areas, risks, or past mistakes.
-4. For non-trivial changes, use `docs/change-routing.md` to identify owner docs, path ownership, and doc update triggers.
-5. For production-readiness, quality-gate, hardening, or parallel-lane work, read `docs/portal-production-readiness.md`.
-6. Read `docs/target-architecture.md` when a change could expand app/package boundaries, root compatibility paths, data access patterns, or source-of-truth ownership.
-7. Read `docs/file-decomposition-and-ownership.md` before expanding a large component, route, package, domain module, or test.
-8. Read `docs/code-retirement-and-bloat-control.md` before deleting code, removing dependencies, or retiring legacy compatibility paths.
-9. Read the smallest relevant current-state doc in `docs/`.
-10. Prefer `rg` and `rg --files` for repo discovery.
-11. Keep changes scoped to the requested surface.
-12. Do not revert user changes or unrelated worktree changes.
-13. For parallel or dirty-tree work, run `npm run worktree:status`; use `WORKTREE_OWNER_PATTERNS` to declare owned paths when the task has a clear lane.
-14. Run `npm run architecture:changed` before handoff for non-trivial work; it includes handoff-time worktree ownership and dead-code changed reporting.
-15. Run `npm run dead-code:changed` directly before handoff when doing deletion, dependency, or cleanup work that needs the focused dead-code report.
-16. Run `npm run dead-code:changed:strict` for focused cleanup/tooling verification when newly added unused files should be blocked locally.
-17. Run `npm run architecture:changed:strict` only for architecture/tooling PRs or explicit strict verification; declare `WORKTREE_OWNER_PATTERNS` first when the tree is dirty.
-18. Run focused changed-file guards directly when you need a narrower report: `files:changed`, `root:compat:changed`, `browser:supabase:changed`, or `service-role:changed`.
-19. If the task changes portal behavior, data flow, source-of-truth boundaries, test strategy, or known risks, update the relevant doc in the same pass.
+3. Read `docs/maintainability-principles.md` before bugfixes, migrations, or work in large/high-risk portal files.
+4. Scan `docs/decision-log.md` for matching areas, risks, or past mistakes.
+5. For non-trivial changes, use `docs/change-routing.md` to identify owner docs, path ownership, and doc update triggers.
+6. For production-readiness, quality-gate, hardening, or parallel-lane work, read `docs/portal-production-readiness.md`.
+7. Read `docs/target-architecture.md` when a change could expand app/package boundaries, root compatibility paths, data access patterns, or source-of-truth ownership.
+8. Read `docs/file-decomposition-and-ownership.md` before expanding a large component, route, package, domain module, or test.
+9. Read `docs/code-retirement-and-bloat-control.md` before deleting code, removing dependencies, or retiring legacy compatibility paths.
+10. Read the smallest relevant current-state doc in `docs/`.
+11. Prefer `rg` and `rg --files` for repo discovery.
+12. Keep changes scoped to the requested surface.
+13. Do not revert user changes or unrelated worktree changes.
+14. For parallel or dirty-tree work, run `npm run worktree:status`; use `WORKTREE_OWNER_PATTERNS` to declare owned paths when the task has a clear lane.
+15. Run `npm run architecture:changed` before handoff for non-trivial work; it includes handoff-time worktree ownership and dead-code changed reporting.
+16. Run `npm run dead-code:changed` directly before handoff when doing deletion, dependency, or cleanup work that needs the focused dead-code report.
+17. Run `npm run dead-code:changed:strict` for focused cleanup/tooling verification when newly added unused files should be blocked locally.
+18. Run `npm run architecture:changed:strict` only for architecture/tooling PRs or explicit strict verification; declare `WORKTREE_OWNER_PATTERNS` first when the tree is dirty.
+19. Run focused changed-file guards directly when you need a narrower report: `files:changed`, `root:compat:changed`, `browser:supabase:changed`, or `service-role:changed`.
+20. If the task changes portal behavior, data flow, source-of-truth boundaries, test strategy, or known risks, update the relevant doc in the same pass.
 
 ## Repo Map
 
@@ -49,6 +50,14 @@ Use `docs/testing-and-qa.md` as the canonical command source. Feature docs may l
 - Schedule V2 writes go through staff API/RPC command routes; do not bypass with ad hoc table mutation.
 - Design List and Running Jobs share the spreadsheet shell and optimistic editing patterns.
 
+## Maintainability Default
+
+- Long-term maintainability is a default part of portal work, not a separate cleanup phase.
+- When touching a warning or critical file from `npm run files:report`, assume the task includes one small maintainability improvement unless that would make the change riskier.
+- Prefer extracting a named owner, helper, controller, adapter, view model, or child component before adding new inline behavior to a hotspot.
+- If extraction is unsafe in the same pass, keep the behavior change minimal and name the deferred extraction in the handoff.
+- A handoff for touched warning or critical files should state the file, owner, whether extraction was done or deferred, and the next safe extraction.
+
 ## Risky Areas
 
 - `apps/portal/app/staff/schedule`: large interactive surface with Board, Gantt, Site Visits, legacy fallback, drag/drop, and performance budgets.
@@ -72,6 +81,7 @@ Use `docs/testing-and-qa.md` as the canonical command source. Feature docs may l
 - `docs/portal-production-readiness.md`: active tracker for production-grade portal status, quality gates, blockers, priorities, and parallel lanes.
 - `docs/architecture.md`: repo structure and boundaries.
 - `docs/target-architecture.md`: target workspace shape, north-star data path, and migration direction.
+- `docs/maintainability-principles.md`: repo-specific maintainability rules, failure modes, and code-review heuristics.
 - `docs/file-decomposition-and-ownership.md`: active guardrail for splitting large files by responsibility and keeping portal code SaaS-ready.
 - `docs/code-retirement-and-bloat-control.md`: active guardrail for unused code, dependency cleanup, and safe legacy retirement.
 - `docs/platform-workflow.md`: business workflow across marketing and portal.

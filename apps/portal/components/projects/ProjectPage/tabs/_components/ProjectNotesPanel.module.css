@@ -1,0 +1,139 @@
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+}
+
+.composer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.composerTextarea {
+  width: 100%;
+  min-height: 88px;
+  resize: vertical;
+  padding: 0.625rem 0.75rem;
+  border: 1px solid var(--color-border, #d8d8d8);
+  border-radius: 6px;
+  font: inherit;
+  background: var(--color-surface, #fff);
+}
+
+.composerTextarea:focus-visible {
+  outline: 2px solid var(--color-focus, #2c6ed8);
+  outline-offset: 1px;
+}
+
+.composerActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.composerError {
+  color: var(--color-danger, #b3261e);
+  font-size: 0.85rem;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.empty {
+  color: var(--color-text-muted, #5e5e5e);
+  font-size: 0.9rem;
+  font-style: italic;
+}
+
+.note {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.75rem 0.875rem;
+  border: 1px solid var(--color-border, #e3e3e3);
+  border-radius: 6px;
+  background: var(--color-surface, #fff);
+}
+
+.noteHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+}
+
+.noteAuthor {
+  font-weight: 600;
+}
+
+.noteMeta {
+  color: var(--color-text-muted, #5e5e5e);
+}
+
+.noteEdited {
+  color: var(--color-text-muted, #5e5e5e);
+  font-style: italic;
+}
+
+.notePending {
+  color: var(--color-text-muted, #5e5e5e);
+  font-style: italic;
+}
+
+.noteBody {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.noteActions {
+  display: flex;
+  gap: 0.4rem;
+  margin-left: auto;
+}
+
+.actionButton {
+  background: none;
+  border: 1px solid transparent;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.8rem;
+  color: var(--color-text-muted, #5e5e5e);
+}
+
+.actionButton:hover {
+  border-color: var(--color-border, #d0d0d0);
+  color: var(--color-text, #111);
+}
+
+.actionButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.editorTextarea {
+  width: 100%;
+  min-height: 80px;
+  resize: vertical;
+  padding: 0.5rem 0.625rem;
+  border: 1px solid var(--color-border, #d8d8d8);
+  border-radius: 4px;
+  font: inherit;
+  background: var(--color-surface, #fff);
+}
+
+.editorActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.4rem;
+}

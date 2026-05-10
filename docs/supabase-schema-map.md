@@ -34,6 +34,7 @@ Tables/RPCs:
 - `projects`
 - `estimates`
 - `project_task_checks`
+- `project_notes`
 - `portal_users`
 - `has_portal_access()`
 - `is_portal_admin()`
@@ -43,6 +44,7 @@ Primary write path:
 - Contact/project create and update routes under `apps/portal/app/api/contacts`, `apps/portal/app/api/projects`, and `apps/portal/app/api/staff/v1/projects`.
 - Estimate create/update routes under `apps/portal/app/api/projects/[projectId]/estimates` and `apps/portal/app/api/estimates/[estimateId]`, usually reached through local-first mutation handlers.
 - Project task action routes and project snapshot action routes under `apps/portal/app/api/staff/v1/projects`.
+- Project notes (Activity tab) writes through `apps/portal/app/api/staff/v1/projects/[projectId]/notes` and `[noteId]`, reached through `portal.project.note.{create,update,delete}` local-first handlers.
 - Portal user creation through auth/admin helpers and invite/admin tooling, not general staff UI table writes.
 - Estimate pricing source fields were added by ordered forward migration: `estimates.pricing_source`, `estimates.pricing_source_metadata`, and nullable `estimates.commercial_design_input`; estimate write routes remain the only normal staff path for populating them.
 
@@ -58,10 +60,11 @@ Access rule:
 - Browser code should use routes, query helpers, or local-first adapters for writes.
 - `portal_users` gates staff/admin access and must remain server/admin governed.
 - Estimate writes must preserve quote-backed edit locks such as `ESTIMATE_LOCKED`.
+- `project_notes` row-level security restricts inserts to the authenticated portal user (the row's `author_id` must equal `auth.uid()`); updates and deletes are restricted to the author or any admin (`is_portal_admin()`). Notes are soft-deleted (`deleted_at`); queries that surface notes to staff filter `deleted_at IS NULL`.
 
 Migration source:
 
-- Current ordered history in `supabase/migrations/`, including `20260208_000001_project_task_checks.sql`, `20260210_000002_portal_auth.sql`, estimate cleanup migrations, and security hardening.
+- Current ordered history in `supabase/migrations/`, including `20260208_000001_project_task_checks.sql`, `20260210_000002_portal_auth.sql`, estimate cleanup migrations, security hardening, and `20260510_000001_project_notes.sql` for the Activity tab notes table.
 - Older root files such as `supabase/contacts_projects.sql` and `supabase/portal_schema.sql` are baseline/setup references, not the preferred path for new changes.
 
 ## Quotes, Invoices, Artifacts, And Job Packs

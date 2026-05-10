@@ -168,6 +168,7 @@ function makeProjectSnapshot(projectId = 'proj_1', contactId = 'ct_1'): ProjectP
       },
       activity: [],
       emails: [],
+      notes: [],
     },
   };
 }

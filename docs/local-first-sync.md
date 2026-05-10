@@ -21,6 +21,9 @@ Current portal local-first mutations:
 - `portal.quote.createFromEstimate`
 - `portal.quote.updateDraft`
 - `portal.estimate.notes.update`
+- `portal.project.note.create`
+- `portal.project.note.update`
+- `portal.project.note.delete`
 
 Add new mutation keys in `portalEntities.ts` and register a handler in `LocalFirstPortalMutations.tsx`.
 
@@ -68,6 +71,7 @@ For table/RPC ownership, write paths, access boundaries, and migration sources u
 - Quotes tab draft creation/update.
 - Design request creation.
 - Contact/project cache patching around create/detail workflows.
+- Activity tab project notes (create/update/soft-delete).
 
 Spreadsheet surfaces use their own optimistic editing helpers and should stay aligned with local-first UX expectations.
 

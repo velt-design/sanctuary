@@ -2,7 +2,7 @@
 
 Status: Active evolving tracker.
 
-Last updated: 2026-05-04.
+Last updated: 2026-05-10.
 
 Purpose: keep agents and maintainers aligned on the path to a first-class, production-grade internal portal. This doc is the dashboard for current readiness, blockers, priorities, parallel lanes, and next actions. Detailed behavior rules stay in the canonical docs linked below.
 
@@ -34,10 +34,11 @@ Before taking non-trivial portal production-readiness work:
 1. Read `../AGENTS.md`.
 2. Read `docs/agent-playbook.md`.
 3. Read `docs/change-routing.md`.
-4. Read this doc.
-5. Read the smallest relevant canonical doc for the area being changed.
-6. Scan `docs/decision-log.md` for matching risks or past mistakes.
-7. Check `git status --short` and leave unrelated changes untouched.
+4. Read `docs/maintainability-principles.md` for bugfixes, migrations, interaction wiring, or hotspot work.
+5. Read this doc.
+6. Read the smallest relevant canonical doc for the area being changed.
+7. Scan `docs/decision-log.md` for matching risks or past mistakes.
+8. Check `git status --short` and leave unrelated changes untouched.
 
 When work changes readiness status, blockers, priorities, verification commands, parallel lanes, or newly discovered risks, update this doc in the same pass. Prefer updating existing rows and checklist items over adding long new sections.
 
@@ -60,7 +61,7 @@ This snapshot records the most recent known production-readiness state from the 
 | Typecheck | Green | `npm run typecheck` passed on 2026-05-03 after the marketing public-token mock fix and the Workbench drawing-surface geometry guard restoration. | Keep typecheck in quick doctor and CI. |
 | Browser smoke | Yellow | `npm run test:portal:browser` passed on 2026-05-04: the no-auth fixture harness used port 3011 with isolated Next dev output, 7 fixture tests passed, and 1 auth-backed project-discovery smoke stayed skipped by design in the `portal-fixture` project. The fixture pass now covers geometry rendering, the ready U hipped workbench-solved case, invalid-fixture diagnostics, and compact `workbench_solved` pricing readiness diagnostics for all parity-critical baked fixtures. `PORTAL_BASE_URL=http://127.0.0.1:3001 npm run portal:fixture-env` still fails against the auth-gated normal server as intended. Authenticated smoke/performance remain blocked by valid staff test credentials. | Provision or reset a valid staff test account, then rerun auth-runtime, authenticated smoke, and performance. |
 | Docs and routing | Green | Canonical docs, agent playbook, change routing, and decision log are present. | Keep this tracker and owner docs current. |
-| File decomposition | Yellow | Calculator decomposition has two verified slices: pure input defaults/normalization and save-readiness helpers now live outside `CalculatorGridClient.tsx`; `npx vitest run apps/portal/app/staff/calculator` passed with 12 files and 120 tests, and `npm run test:portal:projects` passed with 40 files and 205 tests. Broader strict enforcement remains advisory while transitional files remain. | Continue one owner surface at a time; use `npm run files:report` before selecting the next split and `npm run files:changed` before handoff. |
+| File decomposition | Yellow | Calculator decomposition has two verified slices: pure input defaults/normalization and save-readiness helpers now live outside `CalculatorGridClient.tsx`; `npx vitest run apps/portal/app/staff/calculator` passed with 12 files and 120 tests, and `npm run test:portal:projects` passed with 40 files and 205 tests. Broader strict enforcement remains advisory while transitional files remain. | Continue one owner surface at a time; use `npm run files:report` before selecting the next split and `npm run files:changed` before handoff. When touching warning or critical files, treat one small extraction or a named deferral as part of the work. |
 | Code retirement | Yellow | `docs/code-retirement-and-bloat-control.md`, `npm run dead-code:report`, `npm run dead-code:changed`, and `npm run dead-code:changed:strict` make unused files, exports, types, and dependencies visible while blocking only newly added unused files locally. Worktree strict mode now blocks undeclared dirty-tree lanes during explicit strict verification. Portal Quality runs changed-file and strict new-growth reporting as advisory only. | Calibrate the registry, delete proven candidates in small PRs, then consider strict mode for new unused exports or dependencies. |
 | Local-first flows | Yellow | Focused local-first gate passed with 12 files and 67 tests: store/queue aliases, retries, conflicts, estimate editability, estimate API lock behavior, and `LocalFirstPortalMutations` handler coverage for estimate/quote aliases, retry, and conflict states. | Keep manual pending, failed, retry, conflict, and lock-state browser QA open until valid staff credentials and compatible project data exist. |
 | Quote/invoice/job-pack side effects | Green | `npm run portal:side-effects` passed: 8 quote/invoice/job-pack test files and 32 tests passed, then `npm run build:portal` completed with `Compiled successfully`, TypeScript, and 55 static pages generated. | Keep manual public-token and side-effect QA in release checks with a compatible portal environment. |
@@ -103,6 +104,7 @@ This snapshot records the most recent known production-readiness state from the 
 - [ ] Site Visits booking, assignment, confirmation, reschedule, cancellation, unschedule, and orphan cleanup verified.
 - [ ] Running Jobs spreadsheet edits, legacy row handling, and schedule-owned read-only fields verified.
 - [ ] Design workbench edit, save, reload, object-first geometry, plan, 3D, and fallback visibility verified.
+- [ ] Project page Activity tab tasks + notes: open project lands on Activity tab, tasks render and respond to manual completion, notes compose / edit-own / delete-own succeed, non-author staff sees no edit/delete affordance, admin can edit/delete any note, soft-deleted notes hide on reload.
 
 ### Security And Data Boundaries
 
@@ -133,6 +135,7 @@ This snapshot records the most recent known production-readiness state from the 
 ### Maintainability
 
 - [ ] Large files have an owner and a decomposition plan before major feature work continues in them.
+- [ ] Warning or critical files touched by feature or bugfix work include one small extraction, or a handoff note that names why extraction was deferred and what the next safe extraction is.
 - [ ] Parallel or dirty-tree work uses `npm run worktree:status` with `WORKTREE_OWNER_PATTERNS` before editing, `npm run architecture:changed` before handoff, and `npm run worktree:changed:strict` for explicit local lane enforcement.
 - [ ] `npm run architecture:changed` is included in non-trivial portal handoffs, including worktree ownership, dead-code changed reporting, and changed-file architecture checks.
 - [x] Portal Quality runs `npm run architecture:changed` as a PR-aware advisory report against base/head changes.
@@ -185,10 +188,10 @@ Do not enable `PORTAL_ESTIMATE_PRICING_SOURCE=workbench_solved` until every item
 
 Keep this ordered list current as work lands.
 
-1. Restore remaining browser quality gates: authenticated smoke and performance smoke.
+1. Restore failing quality gates before broad feature expansion; when the failure is in a hotspot, fix it at the owning layer rather than adding another caller workaround.
 2. Keep manual quote/invoice/public-token/job-pack, Schedule V2, and Design Workbench edit/save/reload QA visible in release checks with staff credentials and compatible data.
 3. Advance the geometry/costing migration without switching live pricing: extend package-owned physical takeoff in `packages/geometry`, compare `calculator_compat` and `workbench_solved`, and keep compatibility retirement explicit.
-4. Use `npm run files:report` and `npm run files:changed` to guide large-file decomposition after gates are green, one owner surface at a time.
+4. Make hotspot maintainability part of ordinary work: use `npm run files:report` to choose the next owner surface, and use `npm run files:changed` plus a decomposition note whenever warning or critical files are touched.
 
 ## Parallel Work Lanes
 
@@ -206,6 +209,7 @@ Parallel work is encouraged when ownership is clear and file overlap is low. Rea
 | Style isolation and portal shell | Shared layout, surface styles, PageHeader, portal shell tests. | Security/deps, contacts/projects, schedule. | Feature behavior and workflow-specific CSS unless required by isolation test. |
 | CI/typecheck/tooling | Scripts, workflows, typecheck, docs guard, command docs. | Most domain lanes. | Domain behavior changes unless a gate requires a small fix. |
 | Large-file decomposition | `CalculatorGridClient`, `ModuleViewsCard`, `ScheduleClient`, `Geometry3DViewport`, `ModelSpaceViewport`, and files reported by `npm run files:report`. | Only lanes that do not touch the same files. | Active feature fixes in the same large file. |
+| Hotspot bugfix with extraction | Current failing behavior inside a warning or critical file, plus the smallest owner extraction that makes the fix easier to test. | Docs tracker updates, unrelated security/deps, isolated feature work outside the same files. | Broad cleanup, formatting, or moving behavior that is not needed to stabilize the bug. |
 
 ## Canonical References
 
@@ -216,6 +220,7 @@ Use these docs as routing references. Do not copy their full rules into this tra
 | Agent protocol | `docs/agent-playbook.md` |
 | Path ownership and doc update triggers | `docs/change-routing.md` |
 | Repo and app boundaries | `docs/architecture.md` |
+| Maintainability principles | `docs/maintainability-principles.md` |
 | File decomposition and ownership | `docs/file-decomposition-and-ownership.md` |
 | Code retirement and bloat control | `docs/code-retirement-and-bloat-control.md` |
 | Whole platform workflow | `docs/platform-workflow.md` |
@@ -250,6 +255,10 @@ When updating this tracker:
 - Keep this file ASCII and link to repo-relative paths.
 
 ## Change Notes
+
+### 2026-05-10
+
+- Promoted maintainability from advisory reading to default agent routing: hotspot work now reads `docs/maintainability-principles.md`, warning/critical file changes should include one small extraction or a named deferral, and handoffs should name the owner plus next safe extraction.
 
 ### 2026-05-04
 

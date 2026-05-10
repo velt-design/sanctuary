@@ -17,6 +17,7 @@ For marketing-only or shared-package-only tasks, use the parts that affect porta
 - Run `git status --short`; identify unrelated worktree changes and leave them untouched.
 - For parallel or dirty-tree work, run `npm run worktree:status`; set `WORKTREE_OWNER_PATTERNS` when the task has a clear owned path lane.
 - Read `AGENTS.md`, `docs/README.md`, this playbook, and the smallest relevant canonical doc.
+- Read `docs/maintainability-principles.md` when the task is a bugfix, migration, interaction wiring change, or touches a known large-file hotspot.
 - For dense owner docs, read the smallest relevant section first, then follow links only when the touched path crosses that boundary.
 - Scan `docs/decision-log.md` for entries matching the feature area, source-of-truth boundary, or risk pattern.
 - Use `docs/change-routing.md` to map changed paths to owner docs, doc update triggers, and common task cards.
@@ -25,6 +26,7 @@ For marketing-only or shared-package-only tasks, use the parts that affect porta
 - Use `rg` and `rg --files` to find owner files, tests, routes, APIs, docs, and old compatibility paths.
 - Identify the owning layer before editing: package, domain library, API/RPC route, local-first adapter, component, or page.
 - Read `docs/file-decomposition-and-ownership.md` before expanding warning or critical files reported by `npm run files:changed`.
+- For warning or critical files, maintainability is in scope by default: either extract one cohesive owner before adding behavior, or name why extraction would make the current change riskier.
 - Make the change at the smallest owning layer that actually owns the behavior.
 - Name the source of truth before changing logic:
   - Costing logic and base config live in `packages/costing`.
@@ -39,6 +41,7 @@ For marketing-only or shared-package-only tasks, use the parts that affect porta
 ## During Implementation
 
 - Keep the diff scoped to the requested behavior and the files that own it.
+- When working in a warning or critical file, avoid adding a second responsibility inline. Move policy, calculations, persistence, or view-model preparation into the owning helper/controller/adapter when that can be done safely.
 - Preserve current public behavior unless the user explicitly asks for a behavior change.
 - Prefer existing local helpers, API routes, query layers, and package exports over new parallel paths.
 - Do not copy costing or geometry source-of-truth logic into apps.
@@ -72,6 +75,7 @@ For marketing-only or shared-package-only tasks, use the parts that affect porta
 - Run `npm run dead-code:changed` directly before handoff when doing deletion, dependency, or cleanup work that needs the focused dead-code report, and state whether the finding was deleted, wired into an owner, or intentionally deferred.
 - Run `npm run dead-code:changed:strict` for focused cleanup/tooling verification when newly added unused files should fail locally.
 - Run `npm run files:changed` before handoff when touched files are warning or critical size, and state whether decomposition was done, deferred, or not relevant.
+- For touched warning or critical files, include a decomposition note in the handoff: file, owner, extraction done or deferred, and next safe extraction.
 - Run `npm run root:compat:changed` before handoff when touched files live in root compatibility paths, and state why the behavior was not moved to `apps/*` or `packages/*`.
 - Run `npm run browser:supabase:changed` before handoff when touched files use browser-facing Supabase access, and state whether the access was migrated, preserved, or deferred.
 - Run `npm run service-role:changed` before handoff when touched files use service-role Supabase access, and state why privileged access remains required.
@@ -92,6 +96,7 @@ Use `docs/testing-and-qa.md` for the canonical command catalog. Use the feature 
 - For behavior paths covered by `docs/change-routing.md`, mention the owner docs considered and the `npm run docs:impact` result.
 - If `npm run worktree:changed` reported outside-lane files, mention they were intentionally left untouched.
 - If `npm run files:changed` reported warning or critical files, mention the decomposition decision.
+- For touched warning or critical files, name the owner and next safe extraction even when no extraction was done.
 - If `npm run dead-code:changed` reported files, mention the retirement decision.
 - If `npm run root:compat:changed` reported files, mention the root-compatibility decision.
 - If `npm run browser:supabase:changed` reported files, mention the browser data-access decision.
@@ -116,6 +121,7 @@ Use `docs/testing-and-qa.md` for the canonical command catalog. Use the feature 
 | Aggregate architecture handoff | `docs/target-architecture.md` | Run `npm run architecture:changed` before handoff for non-trivial work; it includes worktree ownership, dead-code changed reporting, and changed-file architecture checks. Reserve `architecture:changed:strict` for architecture/tooling PRs or explicit strict verification, and declare a lane first in dirty worktrees. |
 | Code retirement | `docs/code-retirement-and-bloat-control.md` | Run `npm run dead-code:changed` directly for deletion, dependency, or cleanup work; use `dead-code:changed:strict` to block newly added unused files locally. Prove unused before deleting. |
 | File decomposition | `docs/file-decomposition-and-ownership.md` | Run `npm run files:changed` for touched warning or critical files and avoid adding unrelated responsibilities inline. |
+| Maintainability principles | `docs/maintainability-principles.md` | Use these rules before bugfixes, migration work, interaction wiring, or hotspot expansion; prefer shared helpers and boundary tests over caller-specific workarounds. |
 | Root compatibility | `docs/target-architecture.md` | Run `npm run root:compat:changed` when touching root compatibility paths and avoid growing root app behavior. |
 | Browser Supabase access | `docs/target-architecture.md`, `docs/staff-api-auth-contracts.md` | Run `npm run browser:supabase:changed` and prefer API/query/local-first layers over direct browser table access. |
 | Service-role Supabase access | `docs/target-architecture.md`, `docs/environment-auth-supabase.md`, `docs/staff-api-auth-contracts.md` | Run `npm run service-role:changed` and keep privileged access server-only, owned, and documented. |

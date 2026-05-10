@@ -14,6 +14,20 @@ If a safe extraction would make the task too risky, keep the behavior change sma
 
 When extracting a helper or module as part of a decomposition pass, copy the body byte-for-byte. Do not rename, retype, or "tidy" while moving -- behaviour-preserving improvements belong in a separate PR with their own tests. Behavioural drift in pure helpers is invisible to typecheck and often invisible to existing call-site tests. See `docs/decision-log.md` (2026-05-06) for the failure mode.
 
+## Default Priority For Hotspots
+
+When a task touches a warning or critical file, maintainability work is part of the task by default. Agents should look for a small, behavior-preserving extraction before adding new inline behavior.
+
+If the change is an urgent bugfix or the extraction would increase risk, keep the code change minimal and leave a concrete decomposition note in the handoff. The note should name:
+
+- touched warning or critical file.
+- current owner area.
+- whether extraction was done or deferred.
+- the next safe extraction.
+- focused tests or guards that cover the area.
+
+This is not a request for broad cleanup. It is a bias against making already-risky files harder to change.
+
 ## Split Triggers
 
 Start looking for a split when a file:
@@ -74,7 +88,19 @@ Default bands:
 
 Warning means agents should prefer extracting a cohesive owner before adding another responsibility.
 
-Critical means major feature work should name the owner and decomposition direction before continuing in that file.
+Critical means major feature work should name the owner and decomposition direction before continuing in that file. If a critical file grows in a feature change, the default assumption is that the handoff is incomplete until it explains why extraction was deferred.
+
+## Hotspot States
+
+Use these states when choosing work or writing handoffs:
+
+| State | Meaning | Agent Default |
+| --- | --- | --- |
+| Red | Current quality gates fail, or the file is a critical hotspot on an active migration path. | Fix the gate or extract a focused owner before adding feature behavior. |
+| Yellow | The file is warning/critical but gates are green and ownership is understood. | Feature work may proceed with a small extraction or a named deferral. |
+| Green | The file has a clear owner, limited responsibility, and focused tests. | Normal scoped edits are acceptable. |
+
+The state is a local judgment from current reports and owner docs. If unsure, treat the file as Yellow and document the decision.
 
 ## Known Hotspots
 

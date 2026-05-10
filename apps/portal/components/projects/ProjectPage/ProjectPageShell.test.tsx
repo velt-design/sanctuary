@@ -12,10 +12,6 @@ vi.mock('./ProjectDetailsSidebar', () => ({
   default: () => <section data-testid="mock-details-panel">Details panel</section>,
 }));
 
-vi.mock('./ProjectTasksSidebar', () => ({
-  default: () => <section data-testid="mock-tasks-panel">Tasks panel</section>,
-}));
-
 vi.mock('./ProjectMainTabs', () => ({
   default: (props: any) => {
     const React = require('react');
@@ -50,6 +46,7 @@ const snapshot = {
   },
   activity: [],
   emails: [],
+  notes: [],
 } as const;
 
 function readWidthVar(element: HTMLElement, name: '--project-page-left-width' | '--project-page-right-width'): string {
@@ -209,13 +206,13 @@ describe('ProjectPageShell resize handles', () => {
     rendered.unmount();
   });
 
-  it('shows the design configurator in the right rail and stacks details/tasks on the left without rewriting stored slots', () => {
+  it('shows the design configurator in the right rail and keeps details on the left without rewriting stored slots', () => {
     mockConfiguratorOverride = true;
     window.localStorage.setItem(
       PROJECT_PANEL_LAYOUT_STORAGE_KEY,
       JSON.stringify({
         left: ['details'],
-        right: ['tasks'],
+        right: [],
       }),
     );
 
@@ -227,12 +224,11 @@ describe('ProjectPageShell resize handles', () => {
     expect(shell.dataset.projectDesignWorkspace).toBe('true');
     expect(Array.from(leftRail.querySelectorAll('[data-project-panel]')).map((node) => (node as HTMLElement).dataset.projectPanel)).toEqual([
       'details',
-      'tasks',
     ]);
     expect(rightRail.dataset.projectDesignRailActive).toBe('true');
     expect(rightRail.querySelector('[data-testid="mock-configurator-rail"]')).not.toBeNull();
     expect(rightRail.querySelector('[data-project-panel]')).toBeNull();
-    expect(window.localStorage.getItem(PROJECT_PANEL_LAYOUT_STORAGE_KEY)).toBe(JSON.stringify({ left: ['details'], right: ['tasks'] }));
+    expect(window.localStorage.getItem(PROJECT_PANEL_LAYOUT_STORAGE_KEY)).toBe(JSON.stringify({ left: ['details'], right: [] }));
 
     rendered.unmount();
   });
@@ -266,7 +262,7 @@ describe('ProjectPageShell resize handles', () => {
       PROJECT_PANEL_LAYOUT_STORAGE_KEY,
       JSON.stringify({
         left: ['details'],
-        right: ['tasks'],
+        right: [],
       }),
     );
 
@@ -277,9 +273,7 @@ describe('ProjectPageShell resize handles', () => {
     expect(Array.from(leftRail.querySelectorAll('[data-project-panel]')).map((node) => (node as HTMLElement).dataset.projectPanel)).toEqual([
       'details',
     ]);
-    expect(Array.from(rightRail.querySelectorAll('[data-project-panel]')).map((node) => (node as HTMLElement).dataset.projectPanel)).toEqual([
-      'tasks',
-    ]);
+    expect(rightRail.querySelectorAll('[data-project-panel]').length).toBe(0);
     expect(rendered.container.querySelector('[data-testid="mock-configurator-rail"]')).toBeNull();
 
     rendered.unmount();

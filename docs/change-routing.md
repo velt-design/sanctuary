@@ -31,7 +31,7 @@ Use it for non-trivial portal work, cross-app work, schema/API changes, side eff
 | Design workbench, drawing persistence, interaction model, or compatibility migration changes | `docs/design-workbench-architecture.md`, drawing READMEs, and `docs/parallel-work-guardrails.md` | `docs/costing-and-geometry.md`, `docs/decision-log.md` | Drawing unit tests, geometry tests, browser smoke, visual checks when UI changes. |
 | Costing or geometry package behavior changes | `docs/costing-and-geometry.md` | `docs/design-workbench-architecture.md` if workbench output changes | Package tests plus app tests for affected consumers. |
 | Marketing tracking, consent, CSP, Lighthouse, or public conversion behavior changes | `docs/security-privacy-quality.md` | `docs/platform-workflow.md`, `docs/automation-email-audit.md` for enquiry/email effects | Marketing tests, Lighthouse/audit guards, consent/manual checks. |
-| Large component, page, route, package, domain module, or test expansion | `docs/file-decomposition-and-ownership.md` and the owning feature doc | `docs/portal-production-readiness.md` for portal hotspots | Run `npm run files:report`; prefer extracting a cohesive owner before adding another responsibility. |
+| Large component, page, route, package, domain module, or test expansion | `docs/file-decomposition-and-ownership.md`, `docs/maintainability-principles.md`, and the owning feature doc | `docs/portal-production-readiness.md` for portal hotspots | Run `npm run files:report`; prefer extracting a cohesive owner before adding another responsibility. |
 | Dead code, unused exports, unused dependencies, or legacy retirement | `docs/code-retirement-and-bloat-control.md` and the owning feature doc | `docs/target-architecture.md`, `docs/decision-log.md` | Run `npm run dead-code:report` or `npm run dead-code:changed`; prove unused before deleting. |
 | Common commands, test strategy, or CI expectations change | `docs/testing-and-qa.md` | `docs/agent-playbook.md` if the rule becomes a checklist item | Run or update the command listed by the changed doc. |
 | A bug or correction reveals a reusable lesson | `docs/decision-log.md` first | Promote later to this doc, `docs/agent-playbook.md`, or owner doc | Include related tests or guard commands in the decision-log entry. |
@@ -89,6 +89,14 @@ If a path pattern is intentionally kept for a legacy or future surface and does 
 2. Update the owning feature doc if the behavior rule was unclear.
 3. Add a compact `docs/decision-log.md` entry if the lesson is reusable.
 4. Promote the lesson only if it becomes a stable future checklist rule.
+
+### Touching A Warning Or Critical File
+
+1. Read `docs/maintainability-principles.md` and `docs/file-decomposition-and-ownership.md`.
+2. Identify the current owner and the smallest cohesive extraction that would reduce risk.
+3. Prefer doing that extraction before adding new inline behavior.
+4. If extraction is unsafe for this task, keep the code change minimal and name the deferred extraction in the handoff.
+5. Run `npm run files:changed` before handoff and include the decomposition decision.
 
 ## Docs Bloat Control
 

@@ -18,6 +18,7 @@ function createQuery(result: QueryResult) {
   const query: any = {
     select: vi.fn(() => query),
     eq: vi.fn(() => query),
+    is: vi.fn(() => query),
     limit: vi.fn(() => query),
     order: vi.fn(() => query),
     maybeSingle: vi.fn(async () => result),
@@ -28,6 +29,10 @@ function createQuery(result: QueryResult) {
   };
   return query;
 }
+
+const fakeAuth = {
+  auth: { getUser: async () => ({ data: { user: { id: 'auth-user-1' } }, error: null }) },
+};
 
 describe('getProjectPageSnapshot', () => {
   beforeEach(() => {
@@ -69,6 +74,7 @@ describe('getProjectPageSnapshot', () => {
       email_outbox: { data: [], error: null },
       audit_events: { data: [], error: null },
       job_pack_generations: { data: null, error: null },
+      project_notes: { data: [], error: null },
     };
 
     fromMock.mockImplementation((table: string) => {
@@ -86,7 +92,7 @@ describe('getProjectPageSnapshot', () => {
         requestId: 'req_snapshot_read_only',
         startedAt: performance.now(),
       },
-      { from: fromMock } as any,
+      { from: fromMock, ...fakeAuth } as any,
     );
 
     expect(snapshot).toMatchObject({
@@ -129,6 +135,7 @@ describe('getProjectPageSnapshot', () => {
       email_outbox: { data: null, error: { message: 'outbox unavailable' } },
       audit_events: { data: [], error: null },
       job_pack_generations: { data: null, error: null },
+      project_notes: { data: [], error: null },
     };
 
     fromMock.mockImplementation((table: string) => {
@@ -146,7 +153,7 @@ describe('getProjectPageSnapshot', () => {
         requestId: 'req_snapshot_subordinate_error',
         startedAt: performance.now(),
       },
-      { from: fromMock } as any,
+      { from: fromMock, ...fakeAuth } as any,
     );
 
     expect(snapshot?.project).toMatchObject({

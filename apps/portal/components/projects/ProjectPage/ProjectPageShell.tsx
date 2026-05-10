@@ -18,7 +18,6 @@ import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalList
 import { CSS } from '@dnd-kit/utilities';
 import type { ProjectPageSnapshot } from '@/lib/projects/types';
 import ProjectDetailsSidebar from './ProjectDetailsSidebar';
-import ProjectTasksSidebar from './ProjectTasksSidebar';
 import { ProjectPageDesignRailProvider } from './ProjectPageDesignRailContext';
 import ProjectMainTabs from './ProjectMainTabs';
 import ProjectPanelFrame from './ProjectPanelFrame';
@@ -36,7 +35,6 @@ import styles from './ProjectPage.module.css';
 
 const PANEL_TITLES: Record<ProjectPanelId, string> = {
   details: 'Project details',
-  tasks: 'Project tasks',
 };
 
 function cx(...values: Array<string | false | null | undefined>): string {
@@ -44,7 +42,7 @@ function cx(...values: Array<string | false | null | undefined>): string {
 }
 
 function isProjectPanelId(value: string): value is ProjectPanelId {
-  return value === 'details' || value === 'tasks';
+  return value === 'details';
 }
 
 function getRailSlotId(rail: ProjectPanelRail): string {
@@ -247,7 +245,7 @@ export default function ProjectPageShell({
   const isRailCollapsed = (rail: ProjectPanelRail) =>
     isDesktopLayout && (rail === 'left' ? leftCollapsed : rightCollapsed);
   const isDesignRailOverrideActive = isDesktopLayout && activeTab === 'estimates';
-  const effectiveLeftPanelIds: ProjectPanelId[] = isDesignRailOverrideActive ? ['details', 'tasks'] : slots.left;
+  const effectiveLeftPanelIds: ProjectPanelId[] = isDesignRailOverrideActive ? ['details'] : slots.left;
   const effectiveRightPanelIds: ProjectPanelId[] = isDesignRailOverrideActive ? [] : slots.right;
   const handleDesignRailNode = useCallback((node: HTMLDivElement | null) => {
     setDesignRailNode((current) => (current === node ? current : node));
@@ -323,7 +321,7 @@ export default function ProjectPageShell({
     if (panelId === 'details') {
       return <ProjectDetailsSidebar project={snapshot.project} />;
     }
-    return <ProjectTasksSidebar projectId={snapshot.project.id} tasks={snapshot.tasks} />;
+    return null;
   };
 
   const renderRail = (rail: ProjectPanelRail) => {

@@ -52,6 +52,8 @@ vi.mock('@/lib/repo/apiClient', () => ({
 
 vi.mock('@/lib/queries/projectCache', () => ({
   invalidateProjectReadCaches: mocks.invalidateProjectReadCaches,
+  patchProjectSnapshot: vi.fn(),
+  patchProjectListItem: vi.fn(),
 }));
 
 vi.mock('@/lib/localFirst/store', () => ({
@@ -151,6 +153,9 @@ describe('LocalFirstPortalMutations', () => {
         'portal.quote.createFromEstimate',
         'portal.quote.updateDraft',
         'portal.estimate.notes.update',
+        'portal.project.note.create',
+        'portal.project.note.update',
+        'portal.project.note.delete',
       ]),
     );
     expect(registeredKeys).not.toContain('portal.project.details.update');
@@ -416,6 +421,87 @@ describe('LocalFirstPortalMutations', () => {
       serverSnapshot: body,
     });
     expect(mocks.apiJson).toHaveBeenCalledWith('/api/estimates/estimate-1', expect.objectContaining({ method: 'PATCH' }));
+    unmount();
+  });
+
+  it('aliases created project notes to the durable id returned by the server', async () => {
+    const note = {
+      id: 'note-server-1',
+      body: 'First note',
+      authorId: 'user-1',
+      authorEmail: 'a@b.test',
+      authorDisplayName: null,
+      createdAt: '2026-05-10T00:00:00Z',
+      updatedAt: '2026-05-10T00:00:00Z',
+      isOwn: true,
+    };
+    mocks.apiJson.mockResolvedValueOnce({ note });
+    const { handler, unmount } = renderAndGetHandler('portal.project.note.create');
+
+    const result = await handler({
+      payload: {
+        localNoteId: 'local-note:abc',
+        projectId: 'proj_1',
+        body: 'First note',
+        authorOptimistic: { authorId: 'user-1', authorEmail: 'a@b.test', authorDisplayName: null },
+      },
+    });
+
+    expect(result).toEqual({ kind: 'success', clearWorkingCopy: true });
+    expect(mocks.apiJson).toHaveBeenCalledWith(
+      '/api/staff/v1/projects/proj_1/notes',
+      expect.objectContaining({ method: 'POST' }),
+    );
+    expect(mocks.registerLocalFirstIdAlias).toHaveBeenCalledWith('local-note:abc', 'note-server-1');
+    unmount();
+  });
+
+  it('treats forbidden project note creates as visible conflicts and rolls back the optimistic insert', async () => {
+    const body = { error: 'Forbidden' };
+    mocks.apiJson.mockRejectedValueOnce(apiError('Forbidden', 403, body));
+    const { handler, unmount } = renderAndGetHandler('portal.project.note.create');
+
+    const result = await handler({
+      payload: {
+        localNoteId: 'local-note:abc',
+        projectId: 'proj_1',
+        body: 'First note',
+        authorOptimistic: { authorId: 'user-1', authorEmail: 'a@b.test', authorDisplayName: null },
+      },
+    });
+
+    expect(result).toEqual({ kind: 'conflict', message: 'Forbidden', serverSnapshot: body });
+    unmount();
+  });
+
+  it('retries project note updates until the durable note id has been aliased', async () => {
+    mocks.resolveLocalFirstId.mockReturnValueOnce('local-note:pending');
+    const { handler, unmount } = renderAndGetHandler('portal.project.note.update');
+
+    const result = await handler({
+      payload: { noteId: 'local-note:pending', projectId: 'proj_1', body: 'edited' },
+    });
+
+    expect((result as { kind: string }).kind).toBe('retry');
+    expect(mocks.apiJson).not.toHaveBeenCalled();
+    unmount();
+  });
+
+  it('treats not-found project note deletes as conflicts so the UI can resync', async () => {
+    mocks.resolveLocalFirstId.mockReturnValueOnce('note-1');
+    const body = { error: 'Note not found' };
+    mocks.apiJson.mockRejectedValueOnce(apiError('Note not found', 404, body));
+    const { handler, unmount } = renderAndGetHandler('portal.project.note.delete');
+
+    const result = await handler({
+      payload: { noteId: 'note-1', projectId: 'proj_1' },
+    });
+
+    expect(result).toEqual({ kind: 'conflict', message: 'Note not found', serverSnapshot: body });
+    expect(mocks.apiJson).toHaveBeenCalledWith(
+      '/api/staff/v1/projects/proj_1/notes/note-1',
+      expect.objectContaining({ method: 'DELETE' }),
+    );
     unmount();
   });
 });

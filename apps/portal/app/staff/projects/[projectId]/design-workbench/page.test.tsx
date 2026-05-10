@@ -226,6 +226,7 @@ describe('DesignWorkbenchPage', () => {
       tasks: { stage: 'new', items: [] },
       activity: [],
       emails: [],
+      notes: [],
     });
 
     const ui = (await DesignWorkbenchPage({
@@ -262,6 +263,7 @@ describe('DesignWorkbenchPage', () => {
       tasks: { stage: 'new', items: [] },
       activity: [],
       emails: [],
+      notes: [],
     });
 
     const ui = (await DesignWorkbenchPage({
@@ -289,6 +291,7 @@ describe('DesignWorkbenchPage', () => {
       tasks: { stage: 'new', items: [] },
       activity: [],
       emails: [],
+      notes: [],
     });
     loadProjectEstimateMetasMock.mockResolvedValue([
       buildEstimateMeta({
@@ -341,6 +344,7 @@ describe('DesignWorkbenchPage', () => {
       tasks: { stage: 'new', items: [] },
       activity: [],
       emails: [],
+      notes: [],
     });
     loadProjectEstimateMetasMock.mockResolvedValue([
       buildEstimateMeta({
@@ -384,6 +388,7 @@ describe('DesignWorkbenchPage', () => {
       tasks: { stage: 'new', items: [] },
       activity: [],
       emails: [],
+      notes: [],
     });
     loadProjectEstimateMetasMock.mockResolvedValue([
       buildEstimateMeta(),
@@ -426,6 +431,7 @@ describe('DesignWorkbenchPage', () => {
       tasks: { stage: 'new', items: [] },
       activity: [],
       emails: [],
+      notes: [],
     });
     loadProjectEstimateMetasMock.mockResolvedValue([
       buildEstimateMeta({
@@ -470,6 +476,7 @@ describe('DesignWorkbenchPage', () => {
       tasks: { stage: 'new', items: [] },
       activity: [],
       emails: [],
+      notes: [],
     });
     loadProjectEstimateMetasMock.mockResolvedValue([]);
     loadProjectDesignPackageRowsMock.mockResolvedValue([]);
@@ -494,6 +501,7 @@ describe('DesignWorkbenchPage', () => {
       tasks: { stage: 'new', items: [] },
       activity: [],
       emails: [],
+      notes: [],
     });
     loadProjectEstimateMetasMock.mockResolvedValue([buildEstimateMeta({ isActiveDraft: true })]);
     loadProjectDesignPackageRowsMock.mockResolvedValue([]);
@@ -518,6 +526,7 @@ describe('DesignWorkbenchPage', () => {
       tasks: { stage: 'new', items: [] },
       activity: [],
       emails: [],
+      notes: [],
     });
     loadProjectEstimateMetasMock.mockResolvedValue([buildEstimateMeta({ isActiveDraft: true })]);
     loadProjectDesignPackageRowsMock.mockResolvedValue([
@@ -552,6 +561,7 @@ describe('DesignWorkbenchPage', () => {
       tasks: { stage: 'new', items: [] },
       activity: [],
       emails: [],
+      notes: [],
     });
     loadProjectEstimateMetasMock.mockResolvedValue([
       buildEstimateMeta({
@@ -601,6 +611,7 @@ describe('DesignWorkbenchPage', () => {
       tasks: { stage: 'new', items: [] },
       activity: [],
       emails: [],
+      notes: [],
     });
     loadProjectEstimateMetasMock.mockResolvedValue([buildEstimateMeta()]);
     loadProjectDesignPackageRowsMock.mockResolvedValue([]);
@@ -625,6 +636,7 @@ describe('DesignWorkbenchPage', () => {
       tasks: { stage: 'new', items: [] },
       activity: [],
       emails: [],
+      notes: [],
     });
     loadProjectEstimateMetasMock.mockResolvedValue([buildEstimateMeta()]);
     loadProjectDesignPackageRowsMock.mockResolvedValue([buildDesignRequestRow()]);
