@@ -5,7 +5,6 @@ import DesignWorkbenchFixturePage from './page';
 
 const getProjectPageSnapshotMock = vi.fn();
 const notFoundMock = vi.fn();
-const originalEnableWorkbenchFlag = process.env.ENABLE_SANCTUARY_GEOMETRY_WORKBENCH;
 const originalEnableFixtureFlag = process.env.ENABLE_SANCTUARY_GEOMETRY_WORKBENCH_FIXTURES;
 
 vi.mock('@/lib/projects/getProjectPageSnapshot', () => ({
@@ -24,7 +23,6 @@ describe('DesignWorkbenchFixturePage', () => {
   beforeEach(() => {
     getProjectPageSnapshotMock.mockReset();
     notFoundMock.mockReset();
-    delete process.env.ENABLE_SANCTUARY_GEOMETRY_WORKBENCH;
     delete process.env.ENABLE_SANCTUARY_GEOMETRY_WORKBENCH_FIXTURES;
     notFoundMock.mockImplementation(() => {
       throw new Error('NEXT_NOT_FOUND');
@@ -32,12 +30,6 @@ describe('DesignWorkbenchFixturePage', () => {
   });
 
   afterEach(() => {
-    if (originalEnableWorkbenchFlag === undefined) {
-      delete process.env.ENABLE_SANCTUARY_GEOMETRY_WORKBENCH;
-    } else {
-      process.env.ENABLE_SANCTUARY_GEOMETRY_WORKBENCH = originalEnableWorkbenchFlag;
-    }
-
     if (originalEnableFixtureFlag === undefined) {
       delete process.env.ENABLE_SANCTUARY_GEOMETRY_WORKBENCH_FIXTURES;
     } else {
@@ -45,9 +37,7 @@ describe('DesignWorkbenchFixturePage', () => {
     }
   });
 
-  it('calls notFound when fixture flags are disabled', async () => {
-    process.env.ENABLE_SANCTUARY_GEOMETRY_WORKBENCH = '1';
-
+  it('calls notFound when the fixture flag is disabled', async () => {
     await expect(
       DesignWorkbenchFixturePage({
         searchParams: Promise.resolve({ fixture: 'mono-standard' }),
@@ -59,7 +49,6 @@ describe('DesignWorkbenchFixturePage', () => {
   });
 
   it('renders the fixture workbench shell without loading a project snapshot', async () => {
-    process.env.ENABLE_SANCTUARY_GEOMETRY_WORKBENCH = '1';
     process.env.ENABLE_SANCTUARY_GEOMETRY_WORKBENCH_FIXTURES = '1';
 
     const ui = (await DesignWorkbenchFixturePage({
@@ -86,7 +75,6 @@ describe('DesignWorkbenchFixturePage', () => {
   });
 
   it('renders an invalid-fixture state for unknown fixture slugs', async () => {
-    process.env.ENABLE_SANCTUARY_GEOMETRY_WORKBENCH = '1';
     process.env.ENABLE_SANCTUARY_GEOMETRY_WORKBENCH_FIXTURES = '1';
 
     const ui = (await DesignWorkbenchFixturePage({

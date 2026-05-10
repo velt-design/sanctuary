@@ -36,10 +36,7 @@ function isPortalPublicPath(path: string): boolean {
 }
 
 function areFixtureWorkbenchRoutesEnabled(): boolean {
-  return (
-    process.env.ENABLE_SANCTUARY_GEOMETRY_WORKBENCH?.trim() === '1' &&
-    process.env.ENABLE_SANCTUARY_GEOMETRY_WORKBENCH_FIXTURES?.trim() === '1'
-  );
+  return process.env.ENABLE_SANCTUARY_GEOMETRY_WORKBENCH_FIXTURES?.trim() === '1';
 }
 
 function isFixtureWorkbenchInternalPath(path: string): boolean {

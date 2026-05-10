@@ -11,7 +11,6 @@ const loadProjectEstimateMetasMock = vi.fn();
 const loadProjectDesignPackageRowsMock = vi.fn();
 const loadProjectEstimateDetailMock = vi.fn();
 const notFoundMock = vi.fn();
-const originalEnableWorkbenchFlag = process.env.ENABLE_SANCTUARY_GEOMETRY_WORKBENCH;
 const originalEnableFixtureFlag = process.env.ENABLE_SANCTUARY_GEOMETRY_WORKBENCH_FIXTURES;
 
 vi.mock('@/lib/projects/getProjectPageSnapshot', () => ({
@@ -118,7 +117,6 @@ describe('DesignWorkbenchPage', () => {
     loadProjectDesignPackageRowsMock.mockReset();
     loadProjectEstimateDetailMock.mockReset();
     notFoundMock.mockReset();
-    delete process.env.ENABLE_SANCTUARY_GEOMETRY_WORKBENCH;
     delete process.env.ENABLE_SANCTUARY_GEOMETRY_WORKBENCH_FIXTURES;
     notFoundMock.mockImplementation(() => {
       throw new Error('NEXT_NOT_FOUND');
@@ -126,12 +124,6 @@ describe('DesignWorkbenchPage', () => {
   });
 
   afterEach(() => {
-    if (originalEnableWorkbenchFlag === undefined) {
-      delete process.env.ENABLE_SANCTUARY_GEOMETRY_WORKBENCH;
-    } else {
-      process.env.ENABLE_SANCTUARY_GEOMETRY_WORKBENCH = originalEnableWorkbenchFlag;
-    }
-
     if (originalEnableFixtureFlag === undefined) {
       delete process.env.ENABLE_SANCTUARY_GEOMETRY_WORKBENCH_FIXTURES;
     } else {
@@ -139,39 +131,7 @@ describe('DesignWorkbenchPage', () => {
     }
   });
 
-  it('calls notFound when the workbench flag is unset', async () => {
-    await expect(
-      DesignWorkbenchPage({
-        params: Promise.resolve({ projectId: 'proj_1' }),
-      }),
-    ).rejects.toThrow('NEXT_NOT_FOUND');
-
-    expect(notFoundMock).toHaveBeenCalledTimes(1);
-    expect(getProjectPageSnapshotMock).not.toHaveBeenCalled();
-    expect(loadProjectEstimateMetasMock).not.toHaveBeenCalled();
-    expect(loadProjectDesignPackageRowsMock).not.toHaveBeenCalled();
-    expect(loadProjectEstimateDetailMock).not.toHaveBeenCalled();
-  });
-
-  it('calls notFound when the workbench flag is not enabled', async () => {
-    process.env.ENABLE_SANCTUARY_GEOMETRY_WORKBENCH = '0';
-
-    await expect(
-      DesignWorkbenchPage({
-        params: Promise.resolve({ projectId: 'proj_1' }),
-      }),
-    ).rejects.toThrow('NEXT_NOT_FOUND');
-
-    expect(notFoundMock).toHaveBeenCalledTimes(1);
-    expect(getProjectPageSnapshotMock).not.toHaveBeenCalled();
-    expect(loadProjectEstimateMetasMock).not.toHaveBeenCalled();
-    expect(loadProjectDesignPackageRowsMock).not.toHaveBeenCalled();
-    expect(loadProjectEstimateDetailMock).not.toHaveBeenCalled();
-  });
-
   it('calls notFound when fixture mode is requested without the fixture flag', async () => {
-    process.env.ENABLE_SANCTUARY_GEOMETRY_WORKBENCH = '1';
-
     await expect(
       DesignWorkbenchPage({
         params: Promise.resolve({ projectId: 'proj_1' }),
@@ -187,7 +147,6 @@ describe('DesignWorkbenchPage', () => {
   });
 
   it('renders an unavailable state for invalid ids', async () => {
-    process.env.ENABLE_SANCTUARY_GEOMETRY_WORKBENCH = '1';
 
     const ui = (await DesignWorkbenchPage({
       params: Promise.resolve({ projectId: '   ' }),
@@ -201,7 +160,6 @@ describe('DesignWorkbenchPage', () => {
   });
 
   it('renders an unavailable state when the project snapshot is missing', async () => {
-    process.env.ENABLE_SANCTUARY_GEOMETRY_WORKBENCH = '1';
     getProjectPageSnapshotMock.mockResolvedValue(null);
 
     const ui = (await DesignWorkbenchPage({
@@ -218,7 +176,6 @@ describe('DesignWorkbenchPage', () => {
   });
 
   it('renders the fixture workbench shell for a valid fixture slug', async () => {
-    process.env.ENABLE_SANCTUARY_GEOMETRY_WORKBENCH = '1';
     process.env.ENABLE_SANCTUARY_GEOMETRY_WORKBENCH_FIXTURES = '1';
     getProjectPageSnapshotMock.mockResolvedValue({
       project: { id: 'proj_1', name: 'Deck Build', stage: 'new', siteAddress: '1 Test Street' },
@@ -255,7 +212,6 @@ describe('DesignWorkbenchPage', () => {
   });
 
   it('renders an invalid-fixture state for unknown fixture slugs', async () => {
-    process.env.ENABLE_SANCTUARY_GEOMETRY_WORKBENCH = '1';
     process.env.ENABLE_SANCTUARY_GEOMETRY_WORKBENCH_FIXTURES = '1';
     getProjectPageSnapshotMock.mockResolvedValue({
       project: { id: 'proj_1', name: 'Deck Build', stage: 'new' },
@@ -284,7 +240,6 @@ describe('DesignWorkbenchPage', () => {
   });
 
   it('picks the active draft estimate by default and includes linked request metadata when available', async () => {
-    process.env.ENABLE_SANCTUARY_GEOMETRY_WORKBENCH = '1';
     getProjectPageSnapshotMock.mockResolvedValue({
       project: { id: 'proj_1', name: 'Deck Build', stage: 'new' },
       pipeline: { stage: 'new' },
@@ -337,7 +292,6 @@ describe('DesignWorkbenchPage', () => {
   });
 
   it('falls back to the most recent estimate when no active draft exists', async () => {
-    process.env.ENABLE_SANCTUARY_GEOMETRY_WORKBENCH = '1';
     getProjectPageSnapshotMock.mockResolvedValue({
       project: { id: 'proj_1', name: 'Deck Build', stage: 'new' },
       pipeline: { stage: 'new' },
@@ -381,7 +335,6 @@ describe('DesignWorkbenchPage', () => {
   });
 
   it('uses an explicit estimateId when it belongs to the project', async () => {
-    process.env.ENABLE_SANCTUARY_GEOMETRY_WORKBENCH = '1';
     getProjectPageSnapshotMock.mockResolvedValue({
       project: { id: 'proj_1', name: 'Deck Build', stage: 'new' },
       pipeline: { stage: 'new' },
@@ -424,7 +377,6 @@ describe('DesignWorkbenchPage', () => {
   });
 
   it('uses an explicit requestId as metadata when it matches the selected estimate', async () => {
-    process.env.ENABLE_SANCTUARY_GEOMETRY_WORKBENCH = '1';
     getProjectPageSnapshotMock.mockResolvedValue({
       project: { id: 'proj_1', name: 'Deck Build', stage: 'new' },
       pipeline: { stage: 'new' },
@@ -469,7 +421,6 @@ describe('DesignWorkbenchPage', () => {
   });
 
   it('renders a no-estimate state when the project has no estimates', async () => {
-    process.env.ENABLE_SANCTUARY_GEOMETRY_WORKBENCH = '1';
     getProjectPageSnapshotMock.mockResolvedValue({
       project: { id: 'proj_1', name: 'Deck Build', stage: 'new' },
       pipeline: { stage: 'new' },
@@ -494,7 +445,6 @@ describe('DesignWorkbenchPage', () => {
   });
 
   it('renders an unavailable state when the selected estimate detail cannot be loaded', async () => {
-    process.env.ENABLE_SANCTUARY_GEOMETRY_WORKBENCH = '1';
     getProjectPageSnapshotMock.mockResolvedValue({
       project: { id: 'proj_1', name: 'Deck Build', stage: 'new', siteAddress: '1 Test Street' },
       pipeline: { stage: 'new' },
@@ -519,7 +469,6 @@ describe('DesignWorkbenchPage', () => {
   });
 
   it('stays ready when the project has no active request linked to the selected estimate', async () => {
-    process.env.ENABLE_SANCTUARY_GEOMETRY_WORKBENCH = '1';
     getProjectPageSnapshotMock.mockResolvedValue({
       project: { id: 'proj_1', name: 'Deck Build', stage: 'new' },
       pipeline: { stage: 'new' },
@@ -554,7 +503,6 @@ describe('DesignWorkbenchPage', () => {
   });
 
   it('keeps the route ready and warns when estimateId and requestId do not match', async () => {
-    process.env.ENABLE_SANCTUARY_GEOMETRY_WORKBENCH = '1';
     getProjectPageSnapshotMock.mockResolvedValue({
       project: { id: 'proj_1', name: 'Deck Build', stage: 'new' },
       pipeline: { stage: 'new' },
@@ -604,7 +552,6 @@ describe('DesignWorkbenchPage', () => {
   });
 
   it('falls back to the default estimate and warns when estimateId is invalid', async () => {
-    process.env.ENABLE_SANCTUARY_GEOMETRY_WORKBENCH = '1';
     getProjectPageSnapshotMock.mockResolvedValue({
       project: { id: 'proj_1', name: 'Deck Build', stage: 'new' },
       pipeline: { stage: 'new' },
@@ -629,7 +576,6 @@ describe('DesignWorkbenchPage', () => {
   });
 
   it('keeps the route ready and warns when requestId is invalid', async () => {
-    process.env.ENABLE_SANCTUARY_GEOMETRY_WORKBENCH = '1';
     getProjectPageSnapshotMock.mockResolvedValue({
       project: { id: 'proj_1', name: 'Deck Build', stage: 'new' },
       pipeline: { stage: 'new' },

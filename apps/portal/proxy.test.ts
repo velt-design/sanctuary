@@ -11,7 +11,6 @@ vi.mock('@supabase/ssr', () => ({
 
 import { proxy } from './proxy';
 
-const originalEnableWorkbenchFlag = process.env.ENABLE_SANCTUARY_GEOMETRY_WORKBENCH;
 const originalEnableFixtureFlag = process.env.ENABLE_SANCTUARY_GEOMETRY_WORKBENCH_FIXTURES;
 
 const mockSupabase = {
@@ -75,7 +74,6 @@ describe('portal proxy', () => {
   beforeEach(() => {
     process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://example.supabase.co';
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'anon-key';
-    delete process.env.ENABLE_SANCTUARY_GEOMETRY_WORKBENCH;
     delete process.env.ENABLE_SANCTUARY_GEOMETRY_WORKBENCH_FIXTURES;
     createServerClientMock.mockReset();
     getUserMock.mockReset();
@@ -84,12 +82,6 @@ describe('portal proxy', () => {
   });
 
   afterEach(() => {
-    if (originalEnableWorkbenchFlag === undefined) {
-      delete process.env.ENABLE_SANCTUARY_GEOMETRY_WORKBENCH;
-    } else {
-      process.env.ENABLE_SANCTUARY_GEOMETRY_WORKBENCH = originalEnableWorkbenchFlag;
-    }
-
     if (originalEnableFixtureFlag === undefined) {
       delete process.env.ENABLE_SANCTUARY_GEOMETRY_WORKBENCH_FIXTURES;
     } else {
@@ -131,7 +123,6 @@ describe('portal proxy', () => {
   });
 
   it('rewrites enabled fixture workbench smoke routes before staff auth', async () => {
-    process.env.ENABLE_SANCTUARY_GEOMETRY_WORKBENCH = '1';
     process.env.ENABLE_SANCTUARY_GEOMETRY_WORKBENCH_FIXTURES = '1';
 
     const response = await proxy(new NextRequest('https://example.com/staff/projects/fixture-roof/design-workbench?fixture=mono-standard'));
@@ -155,7 +146,6 @@ describe('portal proxy', () => {
   });
 
   it('keeps non-fixture staff workbench routes protected', async () => {
-    process.env.ENABLE_SANCTUARY_GEOMETRY_WORKBENCH = '1';
     process.env.ENABLE_SANCTUARY_GEOMETRY_WORKBENCH_FIXTURES = '1';
     setUnauthenticated();
 

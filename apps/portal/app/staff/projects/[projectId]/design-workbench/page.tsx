@@ -7,7 +7,7 @@ import { loadDesignWorkbenchRouteContext } from '@/lib/drawings/loadDesignWorkbe
 import type { SanctuaryGeometryWorkbenchFixture } from '@/lib/drawings/sanctuaryWorkbenchFixtures.types';
 import { getSanctuaryGeometryWorkbenchFixture } from '@/lib/drawings/sanctuaryWorkbenchFixtures';
 import { buildWorkbenchFixturePricingReadiness } from '@/lib/drawings/workbenchFixturePricingReadiness';
-import { isSanctuaryGeometryWorkbenchEnabled, isSanctuaryGeometryWorkbenchFixturesEnabled } from '@/lib/drawings/workbenchFlags';
+import { isSanctuaryGeometryWorkbenchFixturesEnabled } from '@/lib/drawings/workbenchFlags';
 import { loadProjectEstimateDetail } from '@/lib/estimates/loadProjectEstimateDetail';
 import { getProjectPageSnapshot } from '@/lib/projects/getProjectPageSnapshot';
 
@@ -74,10 +74,6 @@ export default async function DesignWorkbenchPage({
   params: PageParams | Promise<PageParams>;
   searchParams?: SearchParams | Promise<SearchParams>;
 }) {
-  if (!isSanctuaryGeometryWorkbenchEnabled()) {
-    notFound();
-  }
-
   const { projectId } = await params;
   const normalizedProjectId = projectId.trim();
 

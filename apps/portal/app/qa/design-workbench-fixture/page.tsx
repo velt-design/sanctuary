@@ -4,7 +4,7 @@ import styles from '@/components/projects/ProjectPage/ProjectPage.module.css';
 import DesignWorkbenchFixtureClient from '@/app/staff/projects/[projectId]/design-workbench/DesignWorkbenchFixtureClient';
 import { getSanctuaryGeometryWorkbenchFixture } from '@/lib/drawings/sanctuaryWorkbenchFixtures';
 import { buildWorkbenchFixturePricingReadiness } from '@/lib/drawings/workbenchFixturePricingReadiness';
-import { isSanctuaryGeometryWorkbenchEnabled, isSanctuaryGeometryWorkbenchFixturesEnabled } from '@/lib/drawings/workbenchFlags';
+import { isSanctuaryGeometryWorkbenchFixturesEnabled } from '@/lib/drawings/workbenchFlags';
 
 type SearchParams = { [key: string]: string | string[] | undefined };
 
@@ -31,7 +31,7 @@ export default async function DesignWorkbenchFixturePage({
 }: {
   searchParams?: SearchParams | Promise<SearchParams>;
 }) {
-  if (!isSanctuaryGeometryWorkbenchEnabled() || !isSanctuaryGeometryWorkbenchFixturesEnabled()) {
+  if (!isSanctuaryGeometryWorkbenchFixturesEnabled()) {
     notFound();
   }
 

@@ -7,7 +7,7 @@ const port = Number.parseInt(process.env.PORTAL_PLAYWRIGHT_PORT ?? String(DEFAUL
 const baseUrl = process.env.PORTAL_BASE_URL?.trim() || '';
 const fixturePath = '/staff/projects/fixture-roof/design-workbench?fixture=mono-standard';
 const requiredFixtureFlags =
-  'Required fixture flags: ENABLE_SANCTUARY_GEOMETRY_WORKBENCH=1 and ENABLE_SANCTUARY_GEOMETRY_WORKBENCH_FIXTURES=1.';
+  'Required fixture flag: ENABLE_SANCTUARY_GEOMETRY_WORKBENCH_FIXTURES=1.';
 const manualSecondServerHint =
   'PORTAL_PLAYWRIGHT_DIST_DIR is only needed when you manually start a second Next dev server beside normal port 3001.';
 

@@ -31,7 +31,6 @@ export default defineConfig({
     : {
         command: `npm --prefix apps/portal run dev:playwright -- -p ${port}`,
         env: {
-          ENABLE_SANCTUARY_GEOMETRY_WORKBENCH: '1',
           ENABLE_SANCTUARY_GEOMETRY_WORKBENCH_FIXTURES: '1',
           PORTAL_PLAYWRIGHT_DIST_DIR: portalPlaywrightDistDir,
         },
