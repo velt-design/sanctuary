@@ -54,6 +54,9 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 | 2026-05-08 | PlanViewport / Pointer Events | Active | Pointer-driven tools require `touch-action: none`, `setPointerCapture` on primary-button down, `pointerCancel` -> `cancelActiveTool` (not `pointerUp`), and a pure dispatch helper that NEVER invents coords on null. |
 | 2026-05-08 | Debugging Hygiene | Active | When live-runtime symptoms don't match any of the current hypotheses, instrument the boundary with logs before iterating fixes; root-cause from real data, not theory chains. |
 | 2026-05-08 | House Roof Topology | Active | "Click hip triangle to open as gable" needs a Dutch-hip / half-hip topology in the geometry pipeline -- hipped + `openGableEndIds` is currently a no-op (gated to gable form). Multi-session work: rectangle Dutch-hip first, joined Dutch-hip second, UI third. |
+| 2026-05-12 | 3D Wall Rendering | Active | Wall solids must consume `renderMesh` (not just `boundary`); miter footprints offset inward-only `(0, -thickness)`, not centered `(±half, ±half)`; non-flat-top walls extrude polygonally via `buildPolygonalWallRenderMesh`; open-gable migrated-from-hipped boundaries reshape only when `wallBoundaryHasFlatTop` is true. |
+| 2026-05-12 | 3D Viewport Navigation | Active | OrbitControls `mouseButtons.LEFT` must branch on `lockedViewPreset === 'top'` (pan in Plan, rotate in 3D). Trackpad users have no MIDDLE button, so rotate-on-LEFT is the only navigable default. |
+| 2026-05-12 | Open-Gable Roof Frames | Active | Triangular gable walls have a 1-point top profile (apex only); the frame-feature gate must be `topProfile.length < 1`, not `< 2`, or the gable-end posts/top-chord disappear. |
 
 ## Entries
 
@@ -649,3 +652,66 @@ Terminal-end ID format: `house-gable-end-x-{N}` or `house-gable-end-y-{N}` (`pac
 Promoted to: None
 
 Related docs/tests: `packages/geometry/src/houseModel.ts` (gating at line 428), `packages/geometry/src/house/roofRectangleHipped.ts`, `packages/geometry/src/house/roofJoinedHipped.ts`, `packages/geometry/src/house/roofPrimary.ts`, `packages/geometry/src/house/roofJoinedGableTerminals.ts`, `apps/portal/components/drawings/rail/HouseFormRoofSections.tsx:165`, `apps/portal/lib/drawings/state/objectWorkbenchStatusModel.ts:336`.
+
+### 2026-05-12 - 3D Wall Rendering - Solid Walls, Inward Miter, and Renderable Open-Gable Boundaries
+
+Area: 3D Wall Rendering
+
+Status: Active
+
+Decision or mistake: walls in the 3D viewport rendered as flat polygons that looked papery; on hipped roofs with one end opened (Dutch-hip), the resulting open-gable wall was not drawn at all. Three independent issues were uncovered while making walls render as 3D solids: (1) the 3D viewport had a wall-specific branch that ignored `renderMesh` and rebuilt geometry from `boundary` alone -- so any extrusion work in `envelopeSolids.ts` was silently discarded for walls; (2) the miter footprint helper was offsetting walls by `±half-thickness` (centered on the footprint edge), but the house footprint is defined as the outer face of the wall -- centered offsets push half the wall mass *outside* the house outline, and adjacent walls' centered offsets do not meet cleanly at corners; (3) the migrated-from-hipped open-gable wall arrived with a 4-vertex flat-top boundary (rectangle), not the 5-vertex apex shape native gable walls have, so the polygonal extruder had no apex to extrude -- the wall vanished into the roof. A naive reshape (always inject the apex) regressed native gable: those walls already have 5 vertices and re-inserting an apex produces a degenerate boundary.
+
+Why it mattered: each issue masked the others. Bumping `DEFAULT_WALL_SOLID_THICKNESS_MM` from 90 -> 150 didn't make walls look thicker because the viewer was still rebuilding from boundary. Adding the polygonal extruder didn't make open-gable walls visible because they had no apex in their boundary. Fixing the reshape broke native gable until the `wallBoundaryHasFlatTop` guard landed. Future agents touching `envelopeSolids.ts`, `roofSolids.ts`, the viewer's `kind === 'wall'` path, or open-gable boundary handling can re-introduce any of these regressions individually.
+
+Current guardrail: four rules apply when touching 3D wall rendering:
+
+1. **Walls consume `renderMesh` first.** The 3D viewport's wall-rendering path in [Geometry3DViewport.tsx](../apps/portal/components/drawings/viewports/Geometry3DViewport.tsx) (around the wall-object useMemo) must call `buildRenderMeshGeometry(object.renderMesh) ?? buildPolygonSlabGeometry(...)`, in that order. Never reach for `boundary` before `renderMesh`.
+2. **Miter footprints are inward-only.** Use `buildMiteredOffsetStripFootprints(footprint, 0, -DEFAULT_WALL_SOLID_THICKNESS_MM)` in [envelopeSolids.ts](../packages/geometry/src/house/envelopeSolids.ts), not the centered `buildMiteredStripFootprints(footprint, half)` variant. The footprint edge is the outer face of the wall; the interior extrudes inward toward the house centroid. Adjacent walls meet cleanly at corners only under this convention.
+3. **Non-flat-top walls extrude polygonally.** When `wallBoundaryHasFlatTop(boundary)` is false (gable walls -- triangular or pentagonal top), the wall builder must call `buildPolygonalWallRenderMesh(boundary, planeNormal, thicknessMm)` in [roofSolids.ts](../packages/geometry/src/house/roofSolids.ts). This extrudes the closed polygonal boundary perpendicular to its plane via `±half-thickness`, fan-triangulates both faces, and bridges the sides with quads. Flat-top walls keep using `buildVerticalPrismRenderMesh` on the miter footprint.
+4. **Open-gable boundary reshape is gated by `wallBoundaryHasFlatTop`.** In [houseModel.ts](../packages/geometry/src/houseModel.ts), when an `open_gable_frame` wall is migrated from hipped topology, its boundary arrives flat-top (4 vertices) and must be reshaped to insert the apex at `ridgeZ`. Native gable walls already have 5-vertex apex boundaries and MUST NOT be reshaped -- gating on `wallBoundaryHasFlatTop(segment.boundary)` is what distinguishes the two cases. Inserting an apex into an already-apex boundary degrades the wall.
+
+Promoted to: None
+
+Related docs/tests: [packages/geometry/src/house/envelopeSolids.ts](../packages/geometry/src/house/envelopeSolids.ts), [packages/geometry/src/house/roofSolids.ts](../packages/geometry/src/house/roofSolids.ts), [packages/geometry/src/house/buildPolygonalWallRenderMesh.test.ts](../packages/geometry/src/house/buildPolygonalWallRenderMesh.test.ts), [packages/geometry/src/houseModel.ts](../packages/geometry/src/houseModel.ts), [packages/geometry/src/houseModel.test.ts](../packages/geometry/src/houseModel.test.ts), [apps/portal/components/drawings/viewports/Geometry3DViewport.tsx](../apps/portal/components/drawings/viewports/Geometry3DViewport.tsx).
+
+### 2026-05-12 - 3D Viewport Navigation - Trackpad-Friendly Mouse Bindings
+
+Area: 3D Viewport Navigation
+
+Status: Active
+
+Decision or mistake: the design workbench 3D viewport used OrbitControls defaults -- LEFT = rotate, MIDDLE = dolly, RIGHT = pan -- which works fine with a 3-button mouse but is hostile on a MacBook trackpad. Trackpads have no MIDDLE button; right-click-drag on a trackpad is either a context menu (Safari) or two-finger gesture (varies). Users couldn't rotate the 3D view at all on Mac trackpads, and on the Plan (top-locked) view, LEFT-drag accidentally rotated the locked-top camera, producing visible tilt artifacts before snapping back.
+
+Why it mattered: 3D viewport navigation is the primary "feel" interaction of the workbench. A confusing rotate/pan binding doesn't surface as a bug report -- users just feel the tool is broken. The fix is one tiny ternary in `mouseButtons`, but the principle (which button does what *depends* on which view-preset is active) is non-obvious and easy to regress when adding new view presets or wiring new controls.
+
+Current guardrail: `OrbitControls.mouseButtons.LEFT` must branch on `lockedViewPreset` in [Geometry3DViewport.tsx](../apps/portal/components/drawings/viewports/Geometry3DViewport.tsx):
+
+```ts
+mouseButtons={{
+  LEFT: lockedViewPreset === "top" ? THREE.MOUSE.PAN : THREE.MOUSE.ROTATE,
+  MIDDLE: THREE.MOUSE.DOLLY,
+  RIGHT: lockedViewPreset === "top" ? THREE.MOUSE.PAN : THREE.MOUSE.ROTATE,
+}}
+```
+
+In top-locked views (Plan), LEFT must PAN -- rotation has no semantic in a top-locked camera. In Perspective (3D), LEFT must ROTATE so trackpad users can navigate at all. RIGHT mirrors LEFT for safety (some Mac trackpad gestures synthesize right-click). MIDDLE stays dolly. Any new view preset that locks the camera in a constrained axis must extend this branch -- pan, not rotate, on LEFT.
+
+Promoted to: None
+
+Related docs/tests: [apps/portal/components/drawings/viewports/Geometry3DViewport.tsx](../apps/portal/components/drawings/viewports/Geometry3DViewport.tsx).
+
+### 2026-05-12 - Open-Gable Roof Frames - Triangular Top Profile Gate
+
+Area: Open-Gable Roof Frames
+
+Status: Active
+
+Decision or mistake: [roofFrames.ts](../packages/geometry/src/house/roofFrames.ts) emits gable-end frame features (posts, top-chord) by walking the top-profile of an open-gable wall. The gate guarded `topProfile.length < 2`, intending to skip degenerate walls with no top profile. But triangular gable walls (a single apex point above the eave line) have a *1-point* top profile -- one vertex, no segment. The `< 2` gate skipped them entirely, producing open-gable walls with no frame features (the apex post and top-chord vanished).
+
+Why it mattered: the failure mode is visually subtle -- the open-gable rectangle still renders (via `buildPolygonalWallRenderMesh`), but the frame timber detail is missing on the triangular variant only. Pentagonal flat-top gable walls (apex + two short verticals) have a 2-point top profile and were fine; triangular gable walls (apex only) silently lost their frames. The bug only manifests on roof presets that produce triangular gable boundaries.
+
+Current guardrail: the gate is `topProfile.length < 1`, not `< 2`. A 1-point top profile is valid -- it's the apex, and the frame builder emits the two side-verticals from the eave corners to the apex (no top-chord segment, since `topProfile.length - 1 === 0`). Only `topProfile.length < 1` (zero vertices = degenerate) deserves the skip. When adding new wall-topology variants, double-check that `topProfile.length === 1` is treated as a valid case by every consumer.
+
+Promoted to: None
+
+Related docs/tests: [packages/geometry/src/house/roofFrames.ts](../packages/geometry/src/house/roofFrames.ts), [packages/geometry/src/houseModel.test.ts](../packages/geometry/src/houseModel.test.ts).
