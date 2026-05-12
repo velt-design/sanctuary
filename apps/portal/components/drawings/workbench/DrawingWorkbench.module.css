@@ -5,6 +5,20 @@
   min-width: 0;
   min-height: 0;
   height: 100%;
+  /* Prevent accidental text selection across the workbench surface. The workbench
+   * is a CAD-style tool; double-clicking a label or dragging across panels should
+   * not paint the page blue with selection highlights. Inputs re-enable selection
+   * below so dimension editors, the notes composer, etc. keep normal behaviour. */
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.workbench input,
+.workbench textarea,
+.workbench [contenteditable='true'],
+.workbench [contenteditable=''] {
+  user-select: text;
+  -webkit-user-select: text;
 }
 
 .toolbar {

@@ -23,7 +23,12 @@ export function buildOpenGableFrameFeatures(input: {
     const wall = wallBySourceEdgeId.get(terminalEnd.sourceEdgeId);
     if (!wall) continue;
     const topProfile = wall.boundary.slice(2).reverse();
-    if (topProfile.length < 2) continue;
+    // A flat-top wall whose boundary was not reshaped has a 2-point top
+    // profile; a triangular gable wall (one apex point) has a 1-point top
+    // profile. Both deserve frame features (the verticals trace from the
+    // eave corners up to either the wall-height corners or the apex).
+    // Only skip degenerate cases with no top profile at all.
+    if (topProfile.length < 1) continue;
 
     const startVertical = line(wall.line.start, topProfile[0]!);
     if (lineLength(startVertical) > ROOF_JOIN_FEATURE_MIN_LENGTH_MM) {

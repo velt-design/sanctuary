@@ -33,6 +33,7 @@ import { ModulePlanPopoverLayer } from './ModulePlanPopoverLayer';
 import { buildPlanSvgPresentationModel } from './ModulePlanSvgPresentationModel';
 import {
   buildPlanSvgGeometryPresentation,
+  resolveObjectWorkbenchHousePolygonOverlay,
   resolvePlanSvgGeometryPresentationMode,
 } from './ModulePlanSvgGeometryPresentation';
 import { createPlanSvgPointResolvers, syncPlanSvgInteractionBridge } from './ModulePlanSvgBridge';
@@ -316,6 +317,15 @@ export function PlanSvg({
     if (!showHouseFootprint) {
       return rectToPoints(x, y, 0.1, 0.1);
     }
+    const overlayHousePolygon = resolveObjectWorkbenchHousePolygonOverlay({
+      overlay: objectWorkbenchPlanOverlay,
+      useTopProjectionBackedPlan,
+      modelSpaceTopProjection,
+      baseX: x,
+      baseY: y,
+      scale,
+    });
+    if (overlayHousePolygon) return overlayHousePolygon;
     const houseBottomY = y - houseBandOffset;
     const houseTopY = isModel ? houseBottomY - houseBandHeight : Math.max(isSheet ? (sheetLayout?.outerField.y ?? 0) + 4.8 : 4, houseBottomY - houseBandHeight);
     const houseLeftX = isModel ? x - houseInset : Math.max(isSheet ? (sheetLayout?.fitArea.x ?? 0) + 1.8 : 6, x - houseInset);

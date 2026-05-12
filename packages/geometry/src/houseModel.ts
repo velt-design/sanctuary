@@ -445,13 +445,55 @@ export function buildHouseModel3D(input: {
   const terminalEndBySourceEdgeId = new Map(
     availableTerminalEnds.map((terminalEnd) => [terminalEnd.sourceEdgeId, terminalEnd]),
   );
+  // Locate the ridge feature so we can read its height when reshaping
+  // open-gable end walls. The unified rectangular roof builder always emits
+  // a single ridge feature with `kind: 'ridge'`; its endpoints sit at the
+  // ridge apex height. We only need the z component here — the apex's
+  // x/y come from the wall's own eave midpoint.
+  const ridgeFeature = roof.roofFeatures.find((feature) => feature.kind === 'ridge');
+  const ridgeZ = ridgeFeature ? ridgeFeature.line.start.z : null;
+
   const displayWallSegments = wallSegments.map((segment) => {
     const terminalEnd = segment.sourceEdgeId
       ? terminalEndBySourceEdgeId.get(segment.sourceEdgeId)
       : null;
     if (!terminalEnd || !openTerminalEndIds.has(terminalEnd.id)) return segment;
+
+    // Reshape the wall boundary from a flat-top rectangle into a triangle
+    // climbing from the eave to the ridge apex. The wall's plane is already
+    // vertical (its xAxis runs along the eave, yAxis is +Z), so the apex
+    // sits at the eave midpoint at ridge height. With this triangular
+    // boundary, the wall-solid mesh builder produces the correct
+    // gable-end face that fills the open hip.
+    //
+    // Only reshape rectangular flat-top boundaries (the migrated-gable case
+    // where roofForm === 'hipped'). For a native `gable` roof form,
+    // `buildWallSegments` already produced a gable-shaped boundary via
+    // `buildWallTopProfile`; leave it alone so closed-vs-open boundary
+    // parity (test: "keeps open wrap gable ends on the same terminal
+    // closure geometry") is preserved.
+    //
+    // If we can't find a ridge height (defensive — should not happen for a
+    // valid rectangular roof), fall back to the existing rectangular
+    // boundary so the wall is still visible at eave height.
+    const groundStart = segment.boundary[0]!;
+    const groundEnd = segment.boundary[1]!;
+    const shouldReshape = ridgeZ !== null && wallBoundaryHasFlatTop(segment.boundary);
+    const nextBoundary = shouldReshape
+      ? [
+          groundStart,
+          groundEnd,
+          {
+            x: (groundStart.x + groundEnd.x) / 2,
+            y: (groundStart.y + groundEnd.y) / 2,
+            z: ridgeZ as number,
+          },
+        ]
+      : segment.boundary;
+
     return {
       ...segment,
+      boundary: nextBoundary,
       metadata: {
         ...segment.metadata,
         houseWallMode: 'open_gable_frame',

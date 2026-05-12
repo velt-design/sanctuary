@@ -877,7 +877,7 @@ function expectHouseSurfaceSolidsUseExactBoundariesAndMiteredMeshes(model: House
     model.wallSegments.map((segment) => segment.boundary),
     wallSolids.map((solid) => solid.boundary),
   );
-  expect(wallSolids.every((solid) => solid.thicknessMm === 90)).toBe(true);
+  expect(wallSolids.every((solid) => solid.thicknessMm === 150)).toBe(true);
   expectMiteredRenderMeshesAroundCorners(wallSolids.map((solid) => solid.renderMesh), 0, model.wallSegments[0]!.boundary[2]!.z);
   expectSolidBoundariesExact(
     fasciaPolygons,
@@ -1171,8 +1171,8 @@ describe('house model geometry builder', () => {
       z: 2400,
     });
     expectPoint3CloseTo(model.solids?.surfaceSolids.find((solid) => solid.kind === 'wall')?.renderMesh?.vertices[0], {
-      x: -45,
-      y: -1845,
+      x: 0,
+      y: -1800,
       z: 0,
     });
     expectPoint3CloseTo(model.solids?.surfaceSolids.find((solid) => solid.kind === 'fascia')?.renderMesh?.vertices[0], {
@@ -2437,7 +2437,7 @@ describe('house model geometry builder', () => {
     expect(gableTopProfile[1]?.z).toBeGreaterThan(gableTopProfile[2]?.z ?? Number.NEGATIVE_INFINITY);
   });
 
-  it('opens selected gable ends as frame-only geometry', () => {
+  it('opens selected gable ends with a tagged wall solid and frame features', () => {
     const footprint = makeFootprint();
     const openEndId = deriveHouseGableTerminalEnds({
       footprint,
@@ -2457,11 +2457,17 @@ describe('house model geometry builder', () => {
     expect(model).not.toBeNull();
     const openWall = model?.wallSegments.find((segment) => segment.metadata?.gableEndId === openEndId);
     expect(openWall?.metadata?.houseWallMode).toBe('open_gable_frame');
-    expect(
-      model?.solids?.surfaceSolids.some(
-        (solid) => solid.kind === 'wall' && solid.metadata?.sourceId === openWall?.id,
-      ),
-    ).toBe(false);
+    // A solid IS now built for the open-gable wall so the triangular gable
+    // face is visible in the 3D scene. The solid carries the same
+    // open_gable_frame metadata so consumers that need to discriminate
+    // (e.g. for the wireframe frame overlay) can still find it.
+    const openWallSolid = model?.solids?.surfaceSolids.find(
+      (solid) => solid.kind === 'wall' && solid.metadata?.sourceId === openWall?.id,
+    );
+    expect(openWallSolid).toBeDefined();
+    expect(openWallSolid?.metadata?.houseWallMode).toBe('open_gable_frame');
+    // Frame features (line-only gable-end posts and top chords) still exist
+    // as outline accents on top of the solid.
     const frameFeatures = model?.roofFeatures?.filter((feature) => feature.kind === 'gable_end_frame') ?? [];
     expect(frameFeatures.length).toBeGreaterThan(0);
     expect(frameFeatures.every((feature) => feature.metadata?.gableEndId === openEndId)).toBe(true);
@@ -2519,6 +2525,92 @@ describe('house model geometry builder', () => {
       attachmentEdge: makeAttachmentEdge(),
     });
     expect(openBoth?.metadata?.roofForm).toBe('gable');
+  });
+
+  it('produces an open-gable wall whose top profile climbs from eave to ridge apex (both-ends-open case)', () => {
+    // Both-ends-open is reported as roofForm: 'gable' by the unified
+    // rectangle builder, so the wall builder uses `buildWallTopProfile` to
+    // produce the apex-climbing boundary natively. The wall has 5
+    // vertices in that case (two ground corners + a 3-point top profile).
+    const footprint = makeFootprint();
+    const terminalEnds = deriveHouseGableTerminalEnds({ footprint, ridgeAxis: 'x' });
+    const model = buildHouseModel3D({
+      config: makeConfig({
+        footprint,
+        roofForm: 'hipped',
+        roofRidgeAxis: 'x',
+        openGableEndIds: terminalEnds.map((end) => end.id),
+      }),
+      attachmentEdge: makeAttachmentEdge(),
+    });
+    expect(model).not.toBeNull();
+    const ridgeFeature = model?.roofFeatures?.find((feature) => feature.kind === 'ridge');
+    const ridgeZ = ridgeFeature!.line.start.z;
+    expect(ridgeZ).toBeGreaterThan(0);
+
+    const openWalls = model?.wallSegments.filter(
+      (segment) => segment.metadata?.houseWallMode === 'open_gable_frame',
+    ) ?? [];
+    expect(openWalls.length).toBe(2);
+
+    for (const wall of openWalls) {
+      const maxZ = Math.max(...wall.boundary.map((v) => v.z));
+      expect(maxZ, `wall ${wall.id} top z should equal ridge z`).toBeCloseTo(ridgeZ, 6);
+    }
+  });
+
+  it('reshapes the open-gable wall into a triangle climbing to the apex (single-end-open / Dutch hip case)', () => {
+    // Single-end-open is reported as roofForm: 'dutch_hip'. The wall
+    // builder produces a flat-top rectangular wall (4 vertices) because
+    // `usesRoofAlignedTop` requires 'mono' or 'gable'. Our reshape in
+    // houseModel.ts must then triangulate it to [gs, ge, apex].
+    const footprint = makeFootprint();
+    const terminalEnds = deriveHouseGableTerminalEnds({ footprint, ridgeAxis: 'x' });
+    const openEndId = terminalEnds[0]?.id;
+    expect(openEndId).toBeTruthy();
+    const model = buildHouseModel3D({
+      config: makeConfig({
+        footprint,
+        roofForm: 'hipped',
+        roofRidgeAxis: 'x',
+        openGableEndIds: [openEndId!],
+      }),
+      attachmentEdge: makeAttachmentEdge(),
+    });
+    expect(model).not.toBeNull();
+    const ridgeFeature = model?.roofFeatures?.find((feature) => feature.kind === 'ridge');
+    const ridgeZ = ridgeFeature!.line.start.z;
+    expect(ridgeZ).toBeGreaterThan(0);
+
+    const openWall = model?.wallSegments.find(
+      (segment) => segment.metadata?.houseWallMode === 'open_gable_frame',
+    );
+    expect(openWall).toBeDefined();
+    expect(openWall!.boundary.length, 'Dutch-hip open wall should be triangular').toBe(3);
+
+    const groundStart = openWall!.boundary[0]!;
+    const groundEnd = openWall!.boundary[1]!;
+    const apex = openWall!.boundary[2]!;
+    expect(groundStart.z).toBe(0);
+    expect(groundEnd.z).toBe(0);
+    expect(apex.z).toBeCloseTo(ridgeZ, 6);
+    expect(apex.x).toBeCloseTo((groundStart.x + groundEnd.x) / 2, 6);
+    expect(apex.y).toBeCloseTo((groundStart.y + groundEnd.y) / 2, 6);
+
+    // The wall solid must exist with a precomputed render mesh so it
+    // renders as a 3D solid in the viewer (not a flat face).
+    const openWallSolid = model?.solids?.surfaceSolids.find(
+      (solid) => solid.kind === 'wall' && solid.metadata?.sourceId === openWall!.id,
+    );
+    expect(openWallSolid).toBeDefined();
+    expect(openWallSolid!.renderMesh).toBeDefined();
+    expect(openWallSolid!.thicknessMm).toBe(150);
+    expect(openWallSolid!.renderMesh!.vertices.length).toBe(6); // 3 boundary × 2 (in/out)
+    // Apex vertices should be the highest in z; ground vertices the lowest.
+    const minZ = Math.min(...openWallSolid!.renderMesh!.vertices.map((v) => v.z));
+    const maxZ = Math.max(...openWallSolid!.renderMesh!.vertices.map((v) => v.z));
+    expect(minZ, 'min z is the eave').toBeCloseTo(0, 6);
+    expect(maxZ, 'max z is the ridge apex').toBeCloseTo(ridgeZ, 6);
   });
 
   it('blocks unsupported hipped topology instead of falling back to a bounding box roof', () => {

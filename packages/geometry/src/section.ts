@@ -228,9 +228,14 @@ function buildHouseSectionObjects(assembly: Assembly3D, sliceXMm: number, refere
   }
 
   const surfaces = [
-    ...model.wallSegments
-      .filter((segment) => segment.metadata?.houseWallMode !== 'open_gable_frame')
-      .map((segment) => buildHouseSectionSurface(segment.id, 'wall', segment.boundary, sliceXMm, segment.metadata)),
+    // Open-gable walls participate in section rendering on the same terms as
+    // any other wall. `buildHouseSectionSurface` naturally returns nothing
+    // when the section slice plane doesn't intersect the wall's boundary,
+    // which covers the common case where the section is parallel to the
+    // gable end and never crosses it.
+    ...model.wallSegments.map((segment) =>
+      buildHouseSectionSurface(segment.id, 'wall', segment.boundary, sliceXMm, segment.metadata),
+    ),
     ...model.roofPlanes.map((roofPlane) => buildHouseSectionSurface(roofPlane.id, 'roof', roofPlane.boundary, sliceXMm, roofPlane.metadata)),
     ...(model.decks ?? []).map((deck) => buildHouseSectionSurface(deck.id, 'deck', deck.boundary, sliceXMm, deck.metadata)),
     ...(model.eave.soffitPolygons ?? []).map((polygon, index) => buildHouseSectionSurface(`house-soffit-${index + 1}`, 'soffit', polygon, sliceXMm, model.eave.metadata)),

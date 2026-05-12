@@ -2889,15 +2889,16 @@ function HouseSurfaceSolidObject({
   clippingPlanes: THREE.Plane[];
 }) {
   const geometry = useMemo(
-    () => {
-      if (object.kind === "wall") {
-        return buildPolygonGeometry(object.boundary);
-      }
-      return (
-        buildRenderMeshGeometry(object.renderMesh) ??
-        buildPolygonSlabGeometry(object.boundary, object.plane, object.thicknessMm)
-      );
-    },
+    () =>
+      // Walls (including the gable triangles produced by the open-gable
+      // mesh builder) render through the same path as every other surface
+      // solid: prefer the precomputed renderMesh, fall back to extruding
+      // the boundary polygon by `thicknessMm`. Previously walls used
+      // `buildPolygonGeometry(boundary)` which drew a flat polygon and
+      // ignored thickness entirely -- visually inconsistent with the rest
+      // of the building.
+      buildRenderMeshGeometry(object.renderMesh) ??
+      buildPolygonSlabGeometry(object.boundary, object.plane, object.thicknessMm),
     [object.boundary, object.plane, object.renderMesh, object.thicknessMm],
   );
   const opacity =
@@ -4954,7 +4955,16 @@ export default function Geometry3DViewport({
             minPolarAngle={0.04}
             maxPolarAngle={Math.PI - 0.08}
             mouseButtons={{
-              LEFT: ORBIT_MOUSE_DISABLED,
+              // Mirror the touch bindings: left-button drag rotates in 3D
+              // and pans in Plan view. This makes one-finger trackpad drag
+              // do the natural thing on laptops, while desktop mice get the
+              // standard left-drag-to-rotate convention. Right-button drag
+              // stays bound to the same action as a fallback for users who
+              // prefer right-click navigation.
+              LEFT:
+                lockedViewPreset === "top"
+                  ? THREE.MOUSE.PAN
+                  : THREE.MOUSE.ROTATE,
               MIDDLE: THREE.MOUSE.DOLLY,
               RIGHT:
                 lockedViewPreset === "top"

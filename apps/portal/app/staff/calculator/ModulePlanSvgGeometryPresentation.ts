@@ -19,6 +19,10 @@ import {
   topProjectionPointToPlanSvg,
 } from '@/lib/drawings/views/plan/planCoordinateAdapter';
 import type {
+  ObjectWorkbenchPlanOverlay,
+  PlanPoint,
+} from '@/lib/drawings/views/plan/objectWorkbenchPlanOverlay';
+import type {
   ModulePlanHouseLine2D,
   ModulePlanHouseSurface,
   ModulePlanModel,
@@ -246,6 +250,29 @@ export function buildPlanSvgGeometryPresentation(input: {
       !input.hideHouseFootprint &&
       (semanticPlanHouseSurfaces.length > 0 || semanticPlanHouseLines.length > 0),
   };
+}
+
+export function resolveObjectWorkbenchHousePolygonOverlay(input: {
+  overlay: ObjectWorkbenchPlanOverlay | null | undefined;
+  useTopProjectionBackedPlan: boolean;
+  modelSpaceTopProjection: GeometryTopProjectionViewModel | null | undefined;
+  baseX: number;
+  baseY: number;
+  scale: number;
+}): PlanSvgGeometryPoint[] | null {
+  const footprintShape = input.overlay?.shapes.find((shape) => shape.ownerKind === 'footprint');
+  if (!footprintShape || footprintShape.polygon.length < 3) return null;
+  const project = (point: PlanPoint) =>
+    input.useTopProjectionBackedPlan && input.modelSpaceTopProjection
+      ? topProjectionPointToPlanSvg(
+          { x: point.x * 1000, y: point.y * 1000 },
+          input.modelSpaceTopProjection,
+          input.baseX,
+          input.baseY,
+          input.scale,
+        )
+      : { x: input.baseX + point.x * input.scale, y: input.baseY + point.y * input.scale };
+  return footprintShape.polygon.map(project);
 }
 
 export function buildPlanMemberFootprint(input: {

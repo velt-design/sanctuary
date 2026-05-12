@@ -3,8 +3,10 @@ import type { GeometryPlanViewModel, GeometryTopProjectionViewModel } from '@sp/
 import type { DrawingWorkbenchVisibilityState } from '@/lib/drawings/state/drawingWorkbenchUiState';
 import type { ObjectWorkbenchOverlayShape } from './ModulePlanLayerRenderers';
 import type { ModulePlanModel } from './moduleViews';
+import type { ObjectWorkbenchPlanOverlay } from '@/lib/drawings/views/plan/objectWorkbenchPlanOverlay';
 import {
   buildPlanSvgGeometryPresentation,
+  resolveObjectWorkbenchHousePolygonOverlay,
   resolvePlanSvgGeometryPresentationMode,
 } from './ModulePlanSvgGeometryPresentation';
 
@@ -278,5 +280,124 @@ describe('ModulePlanSvgGeometryPresentation', () => {
     expect(sheet.semanticPlanHouseSurfaces.map((surface) => surface.id)).toEqual(['roof', 'deck-1']);
     expect(card.useTopProjectionBackedPlan).toBe(false);
     expect(card.semanticPlanHouseLines.map((line) => line.id)).toEqual(['wall-rear']);
+  });
+});
+
+function footprintOverlay(polygon: Array<{ x: number; y: number }>): ObjectWorkbenchPlanOverlay {
+  return {
+    housePolygonSource: 'geometry_projection',
+    shapes: [
+      {
+        ownerKind: 'footprint',
+        ownerId: 'footprint-1',
+        polygon,
+        detailSegments: [],
+        selected: false,
+        custom: false,
+        muted: false,
+        invalid: false,
+        invalidMessage: null,
+        deckInteraction: null,
+        openingInteraction: null,
+        deckDragEligibility: null,
+        openingDragEligibility: null,
+        source: 'top_projection_committed',
+        geometrySourceId: 'footprint-1',
+        renderStatus: 'geometry_ready',
+      },
+    ],
+    presetAnnotations: [],
+    customEdgeCandidates: [],
+  } as unknown as ObjectWorkbenchPlanOverlay;
+}
+
+describe('resolveObjectWorkbenchHousePolygonOverlay', () => {
+  it('returns null when overlay is missing', () => {
+    expect(
+      resolveObjectWorkbenchHousePolygonOverlay({
+        overlay: null,
+        useTopProjectionBackedPlan: false,
+        modelSpaceTopProjection: null,
+        baseX: 10,
+        baseY: 20,
+        scale: 2,
+      }),
+    ).toBeNull();
+  });
+
+  it('returns null when overlay has no footprint shape', () => {
+    expect(
+      resolveObjectWorkbenchHousePolygonOverlay({
+        overlay: { ...footprintOverlay([{ x: 0, y: 0 }]), shapes: [] } as ObjectWorkbenchPlanOverlay,
+        useTopProjectionBackedPlan: false,
+        modelSpaceTopProjection: null,
+        baseX: 10,
+        baseY: 20,
+        scale: 2,
+      }),
+    ).toBeNull();
+  });
+
+  it('returns null when footprint polygon has fewer than 3 points', () => {
+    expect(
+      resolveObjectWorkbenchHousePolygonOverlay({
+        overlay: footprintOverlay([
+          { x: 0, y: 0 },
+          { x: 6, y: 0 },
+        ]),
+        useTopProjectionBackedPlan: false,
+        modelSpaceTopProjection: null,
+        baseX: 10,
+        baseY: 20,
+        scale: 2,
+      }),
+    ).toBeNull();
+  });
+
+  it('projects overlay footprint to SVG space via simple scale when top-projection is not backing the plan', () => {
+    const result = resolveObjectWorkbenchHousePolygonOverlay({
+      overlay: footprintOverlay([
+        { x: 0, y: 0 },
+        { x: 6, y: 0 },
+        { x: 6, y: 3 },
+        { x: 0, y: 3 },
+      ]),
+      useTopProjectionBackedPlan: false,
+      modelSpaceTopProjection: null,
+      baseX: 10,
+      baseY: 20,
+      scale: 2,
+    });
+    expect(result).toEqual([
+      { x: 10, y: 20 },
+      { x: 22, y: 20 },
+      { x: 22, y: 26 },
+      { x: 10, y: 26 },
+    ]);
+  });
+
+  it('projects overlay footprint through top-projection screen-axis flip when backed by top projection', () => {
+    const projection = topProjection();
+    const result = resolveObjectWorkbenchHousePolygonOverlay({
+      overlay: footprintOverlay([
+        { x: 0, y: 0 },
+        { x: 6, y: 0 },
+        { x: 6, y: 3 },
+        { x: 0, y: 3 },
+      ]),
+      useTopProjectionBackedPlan: true,
+      modelSpaceTopProjection: projection,
+      baseX: 10,
+      baseY: 20,
+      scale: 2,
+    });
+    // Top-projection with screenAxis.x = 'world_x_left' mirrors x within extents [minX, maxX].
+    // extents.minX + extents.maxX - xMm: 0 + 6000 - (point.x * 1000) → mirrored mm → meters via /1000 → scale 2 → +baseX.
+    expect(result).toEqual([
+      { x: 10 + (6 * 2), y: 20 },
+      { x: 10 + (0 * 2), y: 20 },
+      { x: 10 + (0 * 2), y: 26 },
+      { x: 10 + (6 * 2), y: 26 },
+    ]);
   });
 });

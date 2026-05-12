@@ -84,6 +84,64 @@ export function buildVerticalPrismRenderMesh(planFootprint: Polygon3, bottomZ: n
   return renderMeshIsFinite(mesh) ? mesh : undefined;
 }
 
+/**
+ * Extrude a convex polygonal boundary perpendicular to its own plane by
+ * `thicknessMm`, producing a closed manifold mesh. Used for walls whose
+ * face boundary is non-flat-topped (e.g. open-gable end walls whose top
+ * profile climbs from the eave up to the ridge apex and back down).
+ *
+ * The boundary is assumed convex and to wind counter-clockwise when viewed
+ * from the +planeNormal direction. This matches `buildWallSegments`, which
+ * emits walls as `[groundStart, groundEnd, ...topProfile.reverse()]` where
+ * the plane normal points away from the building interior.
+ *
+ * The result thickens the boundary by half-thickness in each direction
+ * along `planeNormal`, fan-triangulates the two faces, and bridges the
+ * sides with quads (two triangles each).
+ */
+export function buildPolygonalWallRenderMesh(
+  boundary: Polygon3,
+  planeNormal: Vector3,
+  thicknessMm: number,
+): RenderMesh3D | undefined {
+  if (boundary.length < 3 || !Number.isFinite(thicknessMm) || thicknessMm <= 0) return undefined;
+  const normalLength = Math.hypot(planeNormal.x, planeNormal.y, planeNormal.z);
+  if (!Number.isFinite(normalLength) || normalLength <= 1e-9) return undefined;
+
+  const unitNormal = normalizeVector(planeNormal);
+  const halfThickness = thicknessMm / 2;
+  const outwardOffset = scaleVector(unitNormal, halfThickness);
+  const inwardOffset = scaleVector(unitNormal, -halfThickness);
+
+  const outerVertices = boundary.map((candidate) => translatePointByVector(candidate, outwardOffset));
+  const innerVertices = boundary.map((candidate) => translatePointByVector(candidate, inwardOffset));
+  const vertices: Point3[] = [...outerVertices, ...innerVertices];
+  const N = boundary.length;
+  const faces: [number, number, number][] = [];
+
+  // Outer face (fan-triangulate from boundary[0]) -- winding [0, i, i+1]
+  // produces outward-facing normals when the boundary is CCW-from-outside.
+  for (let i = 1; i < N - 1; i += 1) {
+    faces.push([0, i, i + 1]);
+  }
+
+  // Inner face -- reverse winding so normals point inward (away from outer).
+  for (let i = 1; i < N - 1; i += 1) {
+    faces.push([N, N + i + 1, N + i]);
+  }
+
+  // Side faces -- each boundary edge becomes a quad
+  // (outer_i, outer_next, inner_next, inner_i), split into two triangles.
+  for (let i = 0; i < N; i += 1) {
+    const nextIndex = (i + 1) % N;
+    faces.push([i, nextIndex, N + nextIndex]);
+    faces.push([i, N + nextIndex, N + i]);
+  }
+
+  const mesh = { vertices, faces };
+  return renderMeshIsFinite(mesh) ? mesh : undefined;
+}
+
 export function boundaryZRange(boundary: Polygon3): { bottomZ: number; topZ: number } | null {
   if (!boundary.length) return null;
   const zValues = boundary.map((candidate) => candidate.z);

@@ -32,7 +32,8 @@ import { roofSolidBottomPlaneEquation } from './roofPlane';
 import { wallBoundaryHasFlatTop } from './walls';
 import {
   boundaryZRange,
-  buildMiteredStripFootprints,
+  buildMiteredOffsetStripFootprints,
+  buildPolygonalWallRenderMesh,
   buildRoofSolidAdjacency,
   buildRoofSolidRenderMesh,
   buildVerticalPrismRenderMesh,
@@ -80,9 +81,17 @@ export function buildHouseEnvelopeSolids(input: {
 }): NonNullable<HouseModel3D['solids']> {
   const surfaceSolids: NonNullable<HouseModel3D['solids']>['surfaceSolids'] = [];
   const linearSolids: NonNullable<HouseModel3D['solids']>['linearSolids'] = [];
-  const wallMiterFootprints = buildMiteredStripFootprints(
+  // Wall solids are offset INWARD from the footprint edge: the outer wall
+  // face sits exactly at the footprint outline (where the eave line runs)
+  // and the wall extends fully into the building interior by its thickness.
+  // This matches conventional construction (the eave overhangs the wall's
+  // outer face rather than the wall sticking out past the eave) and gives
+  // a clean outside corner where two walls meet at the footprint corner
+  // with no extra geometry protruding past the roof outline.
+  const wallMiterFootprints = buildMiteredOffsetStripFootprints(
     input.wallSegments.map((segment) => segment.line.start),
-    DEFAULT_WALL_SOLID_THICKNESS_MM / 2,
+    0,
+    -DEFAULT_WALL_SOLID_THICKNESS_MM,
   );
   const fasciaMiterFootprints = buildPerimeterOffsetStripFootprints({
     edges: input.perimeterEdges,
@@ -100,14 +109,29 @@ export function buildHouseEnvelopeSolids(input: {
   }
 
   for (const [index, wall] of input.wallSegments.entries()) {
-    if (houseWallIsOpenGableFrame(wall)) continue;
     const zRange = boundaryZRange(wall.boundary);
-    const renderMesh =
-      zRange &&
-      wallBoundaryHasFlatTop(wall.boundary) &&
-      wallMiterFootprints?.length === input.wallSegments.length
-        ? buildVerticalPrismRenderMesh(wallMiterFootprints[index]!, zRange.bottomZ, zRange.topZ)
-        : undefined;
+    const isFlatTop = wallBoundaryHasFlatTop(wall.boundary);
+    const hasMiterFootprint = wallMiterFootprints?.length === input.wallSegments.length;
+
+    let renderMesh = undefined;
+    if (zRange && isFlatTop && hasMiterFootprint) {
+      // Standard rectangular wall: extrude the corner-mitered plan footprint
+      // vertically so mitered corners with neighbouring walls render cleanly.
+      renderMesh = buildVerticalPrismRenderMesh(wallMiterFootprints![index]!, zRange.bottomZ, zRange.topZ);
+    } else if (!isFlatTop) {
+      // Non-flat-top wall (e.g. open-gable end wall whose boundary climbs
+      // from the eave up to the ridge apex and back). The wall's own
+      // `boundary` polygon already encodes the pentagonal/triangular shape
+      // in the wall's vertical plane; extrude it perpendicular to that plane
+      // by the standard wall thickness to produce a solid that matches the
+      // visual weight of the rectangular walls around it.
+      renderMesh = buildPolygonalWallRenderMesh(
+        wall.boundary,
+        wall.plane.normal,
+        DEFAULT_WALL_SOLID_THICKNESS_MM,
+      );
+    }
+
     surfaceSolids.push({
       id: `house-solid-${wall.id}`,
       kind: 'wall',
@@ -118,6 +142,7 @@ export function buildHouseEnvelopeSolids(input: {
       metadata: {
         sourceId: wall.id,
         sourceEdgeId: wall.sourceEdgeId ?? null,
+        ...(houseWallIsOpenGableFrame(wall) ? { houseWallMode: 'open_gable_frame' as const } : {}),
       },
     });
   }
