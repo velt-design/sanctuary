@@ -412,7 +412,15 @@ describe('buildRawGeometryModuleInput', () => {
       objectWorkbenchGeometryContext: geometryContext,
     });
 
-    expect(raw.houseContext.roofForm).toBe('gable');
+    // Slice 2B: legacy `form: 'gable'` migrates to `'hipped'` at this
+    // boundary (the geometry pipeline only ever sees `'hipped'` for
+    // rectangular roofs). When a resolved footprint polygon is
+    // available the migration also populates openGableEndIds with the
+    // every-terminal-open set; for preset-mode fixtures without an
+    // explicit polygon, only the form-name flip applies here. The
+    // mono-standard fixture used here is preset-mode, so we assert the
+    // form flip only.
+    expect(raw.houseContext.roofForm).toBe('hipped');
     expect(raw.houseContext.roofPitchDeg).toBe('18');
     expect(raw.houseContext.roofPrimaryFallDirection).toBe('negative_x');
     expect(raw.houseContext.roofRidgeAxis).toBe('x');
@@ -507,7 +515,12 @@ describe('buildRawGeometryModuleInput', () => {
         });
 
         expect(raw.houseContext.footprintPreset, `${preset}/${form} footprint`).toBe(preset);
-        expect(raw.houseContext.roofForm, `${preset}/${form} roof form`).toBe(form);
+        // Slice 2B: legacy `form: 'gable'` migrates to `'hipped'` at
+        // this boundary. The geometry input only sees `'hipped'` for
+        // rectangular roofs; openGableEndIds carries the open-end set
+        // that previously lived implicitly in the form name.
+        const expectedForm = form === 'gable' ? 'hipped' : form;
+        expect(raw.houseContext.roofForm, `${preset}/${form} roof form`).toBe(expectedForm);
         expect(raw.houseContext.roofPitchDeg, `${preset}/${form} roof pitch`).toBe(roof.primaryPitchDeg);
         if (form === 'mono') {
           expect(raw.houseContext.roofPrimaryFallDirection, `${preset}/${form} fall direction`).toBe(
@@ -559,7 +572,9 @@ describe('buildRawGeometryModuleInput', () => {
           expect(projectModel.house?.roof.validation.code, `${preset}/${attachmentSide}/${form} validation`).toBeNull();
           expect(raw.connection.attachmentSide, `${preset}/${attachmentSide}/${form} side`).toBe(attachmentSide);
           expect(raw.houseContext.footprintPreset, `${preset}/${attachmentSide}/${form} footprint`).toBe(preset);
-          expect(raw.houseContext.roofForm, `${preset}/${attachmentSide}/${form} form`).toBe(form);
+          // Slice 2B: legacy 'gable' migrates to 'hipped' at this boundary.
+          const expectedForm = form === 'gable' ? 'hipped' : form;
+          expect(raw.houseContext.roofForm, `${preset}/${attachmentSide}/${form} form`).toBe(expectedForm);
           expect(raw.houseContext.roofPitchDeg, `${preset}/${attachmentSide}/${form} pitch`).toBe('5');
           expect(raw.houseContext.roofRidgeAxis, `${preset}/${attachmentSide}/${form} ridge`).toBe(
             projectModel.house?.roof.ridgeAxis,

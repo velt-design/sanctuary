@@ -36,7 +36,6 @@ import {
   resolveHouseFootprintFrame,
 } from './footprints';
 import { normalizeHouseRoofPitchDegForForm } from './houseRoofValidation';
-import { deriveHouseGableTerminalEndsFromFootprint } from './house/roofJoined';
 import { makeDatumFrame } from './math3d';
 import { parseAssemblyMemberProfile } from './profiles';
 import {
@@ -688,36 +687,7 @@ export function buildHouseModelConfig(input: {
       input.rawHouseContext.roofPrimaryFallDirection,
     ),
     roofRidgeAxis: resolveHouseRoofRidgeAxis(input.rawHouseContext.roofRidgeAxis),
-    openGableEndIds: (() => {
-      // Migration: when raw `roofForm` was `'gable'`, the form now lives
-      // as `'hipped'` with every terminal end open -- producing the
-      // identical roof topology via the unified Dutch-hip pipeline. We
-      // derive the full terminal-end set on demand from the resolved
-      // footprint + ridge axis, then merge with any existing
-      // `openGableEndIds` from storage so stored frame-tagging metadata
-      // is preserved.
-      const stored = resolveHouseOpenGableEndIds(input.rawHouseContext.openGableEndIds);
-      if (rawRoofForm !== 'gable' || !input.footprint) return stored;
-      const ridgeAxis = resolveHouseRoofRidgeAxis(input.rawHouseContext.roofRidgeAxis);
-      const xTerminals = deriveHouseGableTerminalEndsFromFootprint({
-        footprint: input.footprint,
-        ridgeAxis: 'x',
-      });
-      const yTerminals = deriveHouseGableTerminalEndsFromFootprint({
-        footprint: input.footprint,
-        ridgeAxis: 'y',
-      });
-      // Prefer the active ridge axis's terminals, falling back to the
-      // other axis's set if the active one is empty (defensive). Then
-      // union with stored ids so any orientation-flipped saved data
-      // doesn't drop entries.
-      const activeTerminals = ridgeAxis === 'x' ? xTerminals : yTerminals;
-      const fallbackTerminals = ridgeAxis === 'x' ? yTerminals : xTerminals;
-      const terminals = activeTerminals.length > 0 ? activeTerminals : fallbackTerminals;
-      const merged = new Set<string>(stored);
-      for (const t of terminals) merged.add(t.id);
-      return [...merged];
-    })(),
+    openGableEndIds: resolveHouseOpenGableEndIds(input.rawHouseContext.openGableEndIds),
     roofAppendage: input.rawHouseContext.roofAppendage
       ? {
           enabled: Boolean(input.rawHouseContext.roofAppendage.enabled),

@@ -1665,13 +1665,20 @@ describe('normalizeGeometryConfig', () => {
     });
   });
 
-  describe('milestone 13 session C: gable roof form migration', () => {
-    it('migrates raw `roofForm: gable` to normalised `roofForm: hipped` with all terminal ends marked open', () => {
-      // Sessions A + B made hipped honour `openGableEndIds` for per-end
-      // topology; session C migrates the legacy `gable` form to the
-      // unified hipped + all-ends-open shape so downstream consumers see
-      // only the new model. Visual: identical to a legacy gable roof
-      // (both ends open, no hip slopes).
+  describe('milestone 13: gable openGableEndIds auto-derivation moved upstream (slice 2B)', () => {
+    // The previous compat migration in this normalize layer auto-derived
+    // every-terminal-end-open IDs when raw `roofForm: 'gable'` came in.
+    // That logic moved to
+    // `apps/portal/lib/drawings/geometry/buildRawGeometryModuleInput.ts`
+    // (slice 2B) where the resolved polygon is always available. The
+    // form-name narrowing (`gable` -> `hipped`) stays as a defensive
+    // safety net at line 506 in normalize.ts so any direct geometry
+    // caller that bypasses `buildRawGeometryModuleInput` still produces
+    // a model with `roofForm: 'hipped'` (the only form the downstream
+    // builders are guaranteed to handle once M13 session C drops
+    // `'gable'` from the type union).
+
+    it('no longer auto-derives openGableEndIds for raw `roofForm: gable` (migration moved upstream); the form-name narrowing stays as a safety net', () => {
       const result = normalizeGeometryConfig(
         makeRawInput({
           houseContext: {
@@ -1697,22 +1704,17 @@ describe('normalizeGeometryConfig', () => {
       const model = result.value.houseContext.model;
       expect(model).not.toBeNull();
       if (!model) return;
-
-      // Form narrows to hipped (legacy gable retired at the boundary).
+      // Form name narrows to hipped (safety net for direct callers
+      // who didn't go through buildRawGeometryModuleInput).
       expect(model.roofForm).toBe('hipped');
-      // Every terminal end on the active ridge axis is now in the open
-      // set, so the unified Dutch-hip pipeline produces the legacy gable
-      // shape.
-      const openEnds = model.openGableEndIds ?? [];
-      expect(openEnds.length).toBeGreaterThan(0);
-      expect(
-        openEnds.every((id) =>
-          id.startsWith('house-gable-end-x-') || id.startsWith('house-gable-end-y-'),
-        ),
-      ).toBe(true);
+      // No automatic injection any more: openGableEndIds reflects only
+      // what the caller stored. (`resolveHouseOpenGableEndIds` returns
+      // null for an empty/missing input -- the resolver's
+      // nothing-to-store sentinel.)
+      expect(model.openGableEndIds).toBeNull();
     });
 
-    it('preserves any explicitly-stored openGableEndIds (frame-tagging metadata) during migration', () => {
+    it('passes through explicitly-stored openGableEndIds for `roofForm: gable` unchanged (no merge with derived terminals)', () => {
       const result = normalizeGeometryConfig(
         makeRawInput({
           houseContext: {
@@ -1737,12 +1739,10 @@ describe('normalizeGeometryConfig', () => {
       expect(result.ok).toBe(true);
       if (!result.ok) return;
       const model = result.value.houseContext.model;
-      // The explicit id stays in the merged set even after migration's
-      // automatic terminal-end derivation runs.
-      expect(model?.openGableEndIds).toContain('house-gable-end-x-1');
+      expect(model?.openGableEndIds).toEqual(['house-gable-end-x-1']);
     });
 
-    it('does NOT migrate when the raw form is already hipped (no spurious open-end ids)', () => {
+    it('does NOT inject open-end ids when the raw form is already hipped (unchanged from prior behaviour)', () => {
       const result = normalizeGeometryConfig(
         makeRawInput({
           houseContext: {
@@ -1767,11 +1767,6 @@ describe('normalizeGeometryConfig', () => {
       if (!result.ok) return;
       const model = result.value.houseContext.model;
       expect(model?.roofForm).toBe('hipped');
-      // No automatic ends-open injection -- legacy hipped data stays
-      // fully closed unless the user explicitly opens an end via the
-      // inspector. `resolveHouseOpenGableEndIds` returns null for an
-      // empty/missing input list (the resolver's nothing-to-store
-      // sentinel).
       expect(model?.openGableEndIds).toBeNull();
     });
   });

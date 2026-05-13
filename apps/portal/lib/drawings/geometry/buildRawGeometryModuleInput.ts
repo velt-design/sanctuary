@@ -1,5 +1,8 @@
 import type { CostOutputV1 } from '@sp/costing';
-import type { RawGeometryModuleInput } from '@sp/geometry';
+import {
+  deriveHouseGableTerminalEnds,
+  type RawGeometryModuleInput,
+} from '@sp/geometry';
 import type {
   DeckObjectModel,
   HouseFormModel,
@@ -101,6 +104,73 @@ function resolveFootprintPolygon(module: CalculatorModuleInputs): RawGeometryMod
 
   const polygon = normalizeHouseFootprintPolygon(module.houseFootprintPolygon);
   return polygon.length ? polygon : null;
+}
+
+/**
+ * Milestone 13 deep migration (slice 2B): legacy `roofForm: 'gable'`
+ * houses migrate to `roofForm: 'hipped' + openGableEndIds: <stored ∪
+ * all terminals>` at the geometry-input boundary. This is the LAST
+ * boundary before geometry runs, and unlike the workbench draft
+ * normalize layer, it always has the resolved footprint polygon
+ * (preset-mode houses have been resolved by `resolveFootprintPolygon`
+ * by the time this helper runs).
+ *
+ * Routing the migration through this single point lets us retire the
+ * geometry-side compat at `packages/geometry/src/normalize.ts:691-720`,
+ * so `roofForm: 'gable'` never reaches the geometry pipeline. Once
+ * every call path migrates here, the `'gable'` literal can be dropped
+ * from the `HouseRoofForm` type union (Milestone 13 session C).
+ *
+ * Idempotent: a `roofForm: 'hipped'` input passes through unchanged.
+ * Defensive: empty/missing polygons return `roofForm: 'hipped'` with
+ * no terminal ids (matches the geometry's behaviour when a gable
+ * couldn't be expanded due to missing footprint).
+ */
+function migrateGableToHippedForGeometryInput(input: {
+  roofForm: RawGeometryModuleInput['houseContext']['roofForm'];
+  roofRidgeAxis: RawGeometryModuleInput['houseContext']['roofRidgeAxis'];
+  openGableEndIds: RawGeometryModuleInput['houseContext']['openGableEndIds'];
+  footprintPolygon: RawGeometryModuleInput['houseContext']['footprintPolygon'];
+}): {
+  roofForm: RawGeometryModuleInput['houseContext']['roofForm'];
+  openGableEndIds: RawGeometryModuleInput['houseContext']['openGableEndIds'];
+} {
+  if (input.roofForm !== 'gable') {
+    return { roofForm: input.roofForm, openGableEndIds: input.openGableEndIds };
+  }
+  const stored = Array.isArray(input.openGableEndIds) ? input.openGableEndIds : [];
+  if (!input.footprintPolygon || input.footprintPolygon.length < 3) {
+    return { roofForm: 'hipped', openGableEndIds: stored };
+  }
+  const polygonMm = input.footprintPolygon.map((point) => ({
+    x: Number(point.alongM) * 1000,
+    y: Number(point.depthM) * 1000,
+    z: 0,
+  }));
+  const ridgeAxis = input.roofRidgeAxis === 'y' ? 'y' : 'x';
+  const xTerminals = deriveHouseGableTerminalEnds({
+    footprint: polygonMm,
+    ridgeAxis: 'x',
+  });
+  const yTerminals = deriveHouseGableTerminalEnds({
+    footprint: polygonMm,
+    ridgeAxis: 'y',
+  });
+  // Prefer the active ridge axis's terminals, fall back to the other
+  // axis when the active set is empty (defensive -- matches the
+  // retired geometry compat migration's semantics exactly). Then
+  // union with stored ids so orientation-flipped saved data doesn't
+  // drop entries.
+  const activeTerminals =
+    ridgeAxis === 'x'
+      ? xTerminals.length > 0
+        ? xTerminals
+        : yTerminals
+      : yTerminals.length > 0
+        ? yTerminals
+        : xTerminals;
+  const merged = [...new Set([...stored, ...activeTerminals.map((terminal) => terminal.id)])];
+  return { roofForm: 'hipped', openGableEndIds: merged };
 }
 
 function resolveOptionalOverride(value: string | null | undefined): string | null {
@@ -566,21 +636,30 @@ export function buildRawGeometryModuleInput(input: {
       framing: resolveStructuralFraming(module, result),
       drainage: resolveStructuralDrainage(result),
     },
-    houseContext: {
+    houseContext: (() => {
+      const footprintPolygon =
+        houseForm && houseForm.footprint.polygon.length
+          ? houseForm.footprint.polygon
+          : resolveFootprintPolygon(module);
+      const roofRidgeAxis = resolveHouseFormRoofRidgeAxis(houseForm);
+      const migrated = migrateGableToHippedForGeometryInput({
+        roofForm: roofIntent?.form ?? null,
+        roofRidgeAxis,
+        openGableEndIds: roofIntent?.openGableEndIds ?? null,
+        footprintPolygon,
+      });
+      return {
       footprintMode: houseForm?.footprint.mode ?? resolveFootprintMode(module),
       footprintPreset: houseForm?.footprint.preset ?? resolveFootprintPreset(module),
       footprintParams: houseForm?.footprint.params ?? resolveFootprintParams(module),
-      footprintPolygon:
-        houseForm && houseForm.footprint.polygon.length
-          ? houseForm.footprint.polygon
-          : resolveFootprintPolygon(module),
+      footprintPolygon,
       position: resolveHousePosition(module),
       storeyMode: houseForm?.storeyMode ?? module.houseStoreyMode ?? null,
-      roofForm: roofIntent?.form ?? null,
+      roofForm: migrated.roofForm,
       roofMaterial: roofIntent?.material ?? normalizeHouseRoofMaterial(module.houseRoofMaterial),
       roofPrimaryFallDirection: resolveHouseFormRoofFallDirection(houseForm),
-      roofRidgeAxis: resolveHouseFormRoofRidgeAxis(houseForm),
-      openGableEndIds: roofIntent?.openGableEndIds ?? null,
+      roofRidgeAxis,
+      openGableEndIds: migrated.openGableEndIds,
       roofAppendage: roofIntent?.appendage.enabled
         ? {
             enabled: true,
@@ -606,7 +685,8 @@ export function buildRawGeometryModuleInput(input: {
         ),
         eaveOverhangMm: resolveOptionalOverride(houseForm?.eaveOverhangMm ?? module.houseEaveOverhangMm),
       },
-    },
+    };
+    })(),
     dimensions: {
       lengthM: module.lengthM,
       projectionM: module.projectionM,
