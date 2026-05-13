@@ -44,6 +44,7 @@ type OverheadFlags = {
   has_gable: boolean;
   has_box_perimeter: boolean;
   has_timber_or_mixed: boolean;
+  has_acrylic_only: boolean;
 };
 
 function deriveOverheadFlagsForModule(module: Pick<CostOutputV1, 'inputs_normalized'>): OverheadFlags {
@@ -54,10 +55,15 @@ function deriveOverheadFlagsForModule(module: Pick<CostOutputV1, 'inputs_normali
     has_gable: style === 'gable',
     has_box_perimeter: structureType === 'box_perimeter',
     has_timber_or_mixed: roofMaterial === 'timber' || roofMaterial === 'mixed',
+    has_acrylic_only: roofMaterial === 'acrylic',
   };
 }
 
 function deriveOverheadFlagsForModules(modules: Array<Pick<CostOutputV1, 'inputs_normalized'>>): OverheadFlags {
+  if (modules.length === 0) {
+    return { has_gable: false, has_box_perimeter: false, has_timber_or_mixed: false, has_acrylic_only: false };
+  }
+
   return modules.reduce<OverheadFlags>(
     (acc, module) => {
       const next = deriveOverheadFlagsForModule(module);
@@ -65,9 +71,10 @@ function deriveOverheadFlagsForModules(modules: Array<Pick<CostOutputV1, 'inputs
         has_gable: acc.has_gable || next.has_gable,
         has_box_perimeter: acc.has_box_perimeter || next.has_box_perimeter,
         has_timber_or_mixed: acc.has_timber_or_mixed || next.has_timber_or_mixed,
+        has_acrylic_only: acc.has_acrylic_only && next.has_acrylic_only,
       };
     },
-    { has_gable: false, has_box_perimeter: false, has_timber_or_mixed: false },
+    { has_gable: false, has_box_perimeter: false, has_timber_or_mixed: false, has_acrylic_only: true },
   );
 }
 
@@ -333,6 +340,7 @@ export function calculateCostV1(inputs: CostInputsV1, config?: CostingConfigV1):
     has_gable: overheadFlags.has_gable,
     has_box_perimeter: overheadFlags.has_box_perimeter,
     has_timber_or_mixed: overheadFlags.has_timber_or_mixed,
+    has_acrylic_only: overheadFlags.has_acrylic_only,
   });
 
   const notes_and_warnings = [
@@ -726,6 +734,7 @@ export function calculateJobCostV1(inputs: JobInputsV1, config?: CostingConfigV1
     has_gable: overheadFlags.has_gable,
     has_box_perimeter: overheadFlags.has_box_perimeter,
     has_timber_or_mixed: overheadFlags.has_timber_or_mixed,
+    has_acrylic_only: overheadFlags.has_acrylic_only,
   });
   warnings.push(...overheadResult.notes_and_warnings.map((w) => `[Overhead] ${w}`));
 
@@ -1158,6 +1167,7 @@ export function calculateSiteCostV1(inputs: SiteInputsV1, config?: CostingConfig
       has_gable: pergolaFlags.has_gable,
       has_box_perimeter: pergolaFlags.has_box_perimeter,
       has_timber_or_mixed: pergolaFlags.has_timber_or_mixed,
+      has_acrylic_only: pergolaFlags.has_acrylic_only,
     });
 
     if (overheadResult.notes_and_warnings.length) {

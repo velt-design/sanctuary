@@ -4,12 +4,8 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
 import { calculateCostV1 } from '@sp/costing';
 import type { CostInputsV1 } from '@sp/costing';
-import {
-  QUOTE_MULTIPLIER,
-  toIndicativeRangeOneSided,
-  type EnquiryType as EstimateEnquiryType,
-  type MoneyRange,
-} from '../../../../../lib/pricing/enquiryEstimate';
+import { QUOTE_MULTIPLIER, type MoneyRange } from '../../../../../lib/pricing/enquiryEstimate';
+import { buildEnquiryBudgets } from '@/lib/enquiryBudgets';
 import {
   autoSplitByMaxWidth,
   getBlindSystemLimits,
@@ -308,12 +304,6 @@ function estimateIndicativeBudgets(params: {
   roofMaterials: string[];
   addOns: Record<string, unknown>;
 }): { baseRange: MoneyRange | null; blindsRange: MoneyRange | null; budgetBasis: string | null } {
-  if (params.enquiryType !== 'residential' && params.enquiryType !== 'commercial') {
-    return { baseRange: null, blindsRange: null, budgetBasis: null };
-  }
-
-  const enquiryType = params.enquiryType as EstimateEnquiryType;
-
   const baseTrueCostIncGst = estimateBaseTrueCostIncGst({
     widthM: params.widthM,
     depthM: params.depthM,
@@ -322,20 +312,16 @@ function estimateIndicativeBudgets(params: {
     roofMaterials: params.roofMaterials,
   });
 
-  const baseRange = baseTrueCostIncGst ? toIndicativeRangeOneSided(baseTrueCostIncGst, enquiryType) : null;
-
   const blindsSelected = isTruthy(params.addOns?.blinds);
   const blindsQuoteIncGst = blindsSelected
     ? estimateBlindsQuoteIncGst({ widthM: params.widthM, depthM: params.depthM, heightM: params.heightM })
     : null;
 
-  const blindsTrueCostIncGst = blindsQuoteIncGst ? blindsQuoteIncGst / QUOTE_MULTIPLIER : null;
-  const blindsRange = blindsTrueCostIncGst ? toIndicativeRangeOneSided(blindsTrueCostIncGst, enquiryType) : null;
-
-  const budgetBasis =
-    baseRange || blindsRange ? 'website ballpark: 1.25x true cost, baseline->+15%, fascia assumption' : null;
-
-  return { baseRange, blindsRange, budgetBasis };
+  return buildEnquiryBudgets({
+    enquiryType: params.enquiryType,
+    baseTrueCostIncGst,
+    blindsQuoteIncGst,
+  });
 }
 
 function buildEnquiryDraftInputs(params: {

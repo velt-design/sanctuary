@@ -92,7 +92,10 @@ describe('calculateCostV1', () => {
     expect(result.totals.cost_inc_gst).toBeGreaterThan(0);
     expect(result.materials.totals.materials_ex_gst).toBeGreaterThan(0);
     expect(result.install.totals.install_ex_gst).toBeGreaterThan(0);
-    expect(result.overhead.total_ex_gst).toBeGreaterThan(0);
+    expect(result.overhead.method).toBe('flat_acrylic_total');
+    expect(result.overhead.ops_ex_gst).toBe(2000);
+    expect(result.overhead.sales_ex_gst).toBe(0);
+    expect(result.overhead.total_ex_gst).toBe(2000);
 
     expect(result.totals).toMatchSnapshot();
   });
@@ -2045,6 +2048,40 @@ describe('calculateCostV1', () => {
     expect(job.modules[0].overhead.total_ex_gst).toBe(0);
   });
 
+  it('job rollup: pure acrylic modules keep the flat acrylic overhead total', () => {
+    const moduleInputs = {
+      length_m: 6,
+      projection_m: 3,
+      post_cut_height_m: 2.4,
+      post_count: 4,
+
+      pergola_style: 'pitched' as const,
+      box_perimeter_enabled: false,
+      roof_material: 'acrylic' as const,
+      extrusion_colour: 'Black' as const,
+
+      house_connection_type: 'soffit' as const,
+      post_connection_type: 'deck_bracket' as const,
+      access: 'normal' as const,
+      height: 'single_storey' as const,
+
+      travel_ex_gst: 0,
+      extras_allowance_ex_gst: 0,
+      quote_discount_pct: 0,
+    };
+
+    const job = calculateJobCostV1({
+      modules: [moduleInputs, moduleInputs],
+      travel_ex_gst: 0,
+      extras_allowance_ex_gst: 0,
+    });
+
+    expect(job.overhead.method).toBe('flat_acrylic_total');
+    expect(job.overhead.ops_ex_gst).toBe(2000);
+    expect(job.overhead.sales_ex_gst).toBe(0);
+    expect(job.overhead.total_ex_gst).toBe(2000);
+  });
+
   it('box perimeter: adds startup labour allowance (180 minutes) once per pergola', () => {
     const result = calculateCostV1({
       length_m: 6,
@@ -2354,7 +2391,8 @@ describe('calculateCostV1', () => {
 
     expect(onePergola.pergola_count).toBe(1);
     expect(twoPergolas.pergola_count).toBe(2);
-    expect(twoPergolas.overhead.total_ex_gst).toBeGreaterThan(onePergola.overhead.total_ex_gst);
+    expect(onePergola.overhead.total_ex_gst).toBe(2000);
+    expect(twoPergolas.overhead.total_ex_gst).toBe(4000);
     expect(twoPergolas.shared.install.totals.install_ex_gst).toBeGreaterThan(0);
     expect(roundMoney(twoPergolas.shared.install.totals.install_ex_gst)).toBe(roundMoney(onePergola.shared.install.totals.install_ex_gst));
   });

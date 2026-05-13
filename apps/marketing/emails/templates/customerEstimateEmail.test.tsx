@@ -27,7 +27,7 @@ const residential: ResidentialOrCommercial = {
   roof: 'Acrylic',
   addons: ['Blinds', 'Lighting'],
   blindsSelected: true,
-  baseRange: { lowIncGst: 27500, highIncGst: 31500 },
+  baseRange: { lowIncGst: 27500, highIncGst: 27500 },
   blindsRange: { lowIncGst: 7500, highIncGst: 8750 },
 };
 
@@ -41,7 +41,7 @@ const commercial: ResidentialOrCommercial = {
   roof: 'Both',
   addons: ['Lighting'],
   blindsSelected: false,
-  baseRange: { lowIncGst: 52500, highIncGst: 60500 },
+  baseRange: { lowIncGst: 52500, highIncGst: 52500 },
 };
 
 describe('customer estimate autoresponder emails', () => {
@@ -57,9 +57,10 @@ describe('customer estimate autoresponder emails', () => {
     expect(text).toContain('SANCTUARY PERGOLAS');
     expect(text).toContain('Outdoor living, designed around your home.');
     expect(text).toContain('Your pergola enquiry has been received');
-    expect(text).toContain("Thanks Alex Morgan. Based on the details you shared, we've prepared an initial installed investment range for your project.");
+    expect(text).toContain("Thanks Alex Morgan. Based on the details you shared, we've prepared an initial installed estimate for your project.");
     expect(text).toContain('Indicative installed investment');
-    expect(text).toContain('$27,500 - $31,500');
+    expect(text).toContain('$27,500');
+    expect(text).not.toContain('$27,500 - $27,500');
     expect(text).toContain('Blinds add-on');
     expect(text).toContain('What happens next');
     expect(text).toContain('Review');
@@ -76,7 +77,8 @@ describe('customer estimate autoresponder emails', () => {
     });
 
     expect(text).toContain('Your commercial pergola enquiry has been received');
-    expect(text).toContain('$52,500 - $60,500');
+    expect(text).toContain('$52,500');
+    expect(text).not.toContain('$52,500 - $52,500');
     expect(text).not.toContain('Blinds add-on');
     expect(text).not.toContain('within 30 minutes');
     expect(customerEstimateSubject('Alex Morgan', 'residential')).toBe(
@@ -85,5 +87,20 @@ describe('customer estimate autoresponder emails', () => {
     expect(customerEstimateSubject('Alex Morgan', 'commercial')).toBe(
       'Alex Morgan, your commercial pergola estimate is ready',
     );
+  });
+
+  it('keeps historical unequal base values rendered as a range', async () => {
+    const text = await render(
+      CustomerResidentialEmail({
+        ...residential,
+        baseRange: { lowIncGst: 27500, highIncGst: 31500 },
+        callWindowText: 'within 30 minutes',
+      }),
+      { plainText: true },
+    );
+
+    expect(text).toContain("Thanks Alex Morgan. Based on the details you shared, we've prepared an initial installed investment range for your project.");
+    expect(text).toContain('$27,500 - $31,500');
+    expect(text).toContain('The lower figure reflects a base structure');
   });
 });

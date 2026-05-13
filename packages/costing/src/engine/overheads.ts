@@ -16,6 +16,7 @@ export function buildOverheadV1(
     has_gable?: boolean;
     has_box_perimeter?: boolean;
     has_timber_or_mixed?: boolean;
+    has_acrylic_only?: boolean;
   },
 ): OverheadResultV1 {
   const warnings: string[] = [];
@@ -28,6 +29,7 @@ export function buildOverheadV1(
   const hasGable = opts?.has_gable === true;
   const hasBoxPerimeter = opts?.has_box_perimeter === true;
   const hasTimberOrMixed = opts?.has_timber_or_mixed === true;
+  const hasAcrylicOnly = opts?.has_acrylic_only === true;
 
   const v11 = (config.overheads as any).allocation_method_v1_1 as any;
   const hasV11 = v11 && typeof v11 === 'object' && v11.type === 'fixed_plus_variable';
@@ -37,7 +39,12 @@ export function buildOverheadV1(
   let sales = 0;
   let total = 0;
 
-  if (hasV11) {
+  if (hasAcrylicOnly) {
+    method = 'flat_acrylic_total';
+    ops = 2000;
+    sales = 0;
+    total = 2000;
+  } else if (hasV11) {
     method = 'fixed_plus_variable';
 
     const crewDayHours = Number(v11.crew_day_hours ?? 9);

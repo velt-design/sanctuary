@@ -68,6 +68,10 @@ Portal applies database overrides on top of `loadCostingConfigV1()`.
 
 Marketing enquiry estimates also use `@sp/costing`. Do not create a marketing-only pricing fork.
 
+Pure acrylic pergolas use a flat `$2000 ex GST` overhead total in the costing engine. Mixed roofs do not use that flat rule.
+
+Website enquiry base pergola budgets use the existing `1.25x true cost` lower amount only and encode that as equal low/high values; optional blinds remain a range.
+
 Primary route:
 
 ```text

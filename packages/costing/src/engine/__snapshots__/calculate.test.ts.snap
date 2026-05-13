@@ -2,8 +2,8 @@
 
 exports[`calculateCostV1 > fixture: box perimeter 300x50, internal pitched roof, same geometry 1`] = `
 {
-  "cost_ex_gst": 14926.09,
-  "cost_inc_gst": 17165,
+  "cost_ex_gst": 9745.73,
+  "cost_inc_gst": 11207.59,
   "notes_and_warnings": [],
   "warnings": [],
 }
@@ -11,8 +11,8 @@ exports[`calculateCostV1 > fixture: box perimeter 300x50, internal pitched roof,
 
 exports[`calculateCostV1 > fixture: pitched, acrylic, 6m × 3m, black, soffit + deck posts, 2.4m 1`] = `
 {
-  "cost_ex_gst": 11651.16,
-  "cost_inc_gst": 13398.83,
+  "cost_ex_gst": 8220.8,
+  "cost_inc_gst": 9453.92,
   "notes_and_warnings": [],
   "warnings": [],
 }

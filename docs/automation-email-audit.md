@@ -42,6 +42,8 @@ Event handlers can:
 
 Marketing enquiry routes can create public lead/enquiry records and send or log autoresponder email behavior. Keep public marketing writes narrow and server-owned.
 
+Current website enquiry autoresponders keep the existing payload shape for preview compatibility, but new base pergola estimates are sent and stored as a single lower-only amount by setting equal low/high values. Historical rows with unequal low/high values still preview as ranges. Optional blinds remain range-based.
+
 The email preview route renders an outbox row by template ID and variables. It uses repo-rendered website autoresponder templates, portal transactional templates, or DB `email_templates` fallback HTML.
 
 ## Access Boundaries

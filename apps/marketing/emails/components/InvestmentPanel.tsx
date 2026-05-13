@@ -4,6 +4,15 @@ import { THEME } from '../theme';
 
 export const INVESTMENT_PANEL_BACKGROUND = '#20211D';
 
+export function formatInvestmentAmount(
+  range: { lowIncGst: number; highIncGst: number },
+  formatMoney: (value: number) => string,
+) {
+  return range.lowIncGst === range.highIncGst
+    ? formatMoney(range.lowIncGst)
+    : `${formatMoney(range.lowIncGst)} - ${formatMoney(range.highIncGst)}`;
+}
+
 export function InvestmentPanel(props: {
   baseRange: string;
   blindsRange?: string;

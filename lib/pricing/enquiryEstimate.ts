@@ -40,3 +40,17 @@ export function toIndicativeRangeOneSided(trueCostIncGst: number, enquiryType: E
     highIncGst: roundTo(high, step),
   };
 }
+
+export function toIndicativeSingleAmount(trueCostIncGst: number, enquiryType: EnquiryType): MoneyRange {
+  if (!Number.isFinite(trueCostIncGst) || trueCostIncGst <= 0) {
+    return { lowIncGst: 0, highIncGst: 0 };
+  }
+
+  const baseline = trueCostIncGst * QUOTE_MULTIPLIER;
+  const rounded = roundTo(baseline, roundingStep(enquiryType));
+
+  return {
+    lowIncGst: rounded,
+    highIncGst: rounded,
+  };
+}

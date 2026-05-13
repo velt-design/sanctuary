@@ -2,7 +2,7 @@ import * as React from 'react';
 import { Text } from '@react-email/components';
 import { EmailLayout } from '../components/EmailLayout';
 import { HeroImage } from '../components/HeroImage';
-import { InvestmentPanel } from '../components/InvestmentPanel';
+import { InvestmentPanel, formatInvestmentAmount } from '../components/InvestmentPanel';
 import { NextSteps } from '../components/NextSteps';
 import { Summary } from '../components/Summary';
 import { THEME } from '../theme';
@@ -10,18 +10,23 @@ import { formatNZD } from '../utils/money';
 import type { ResidentialOrCommercial } from '../types';
 
 export function CustomerResidentialEmail(props: ResidentialOrCommercial & { callWindowText: string }) {
-  const baseRange = `${formatNZD(props.baseRange.lowIncGst)} - ${formatNZD(
-    props.baseRange.highIncGst,
-  )}`;
+  const baseIsSingleAmount = props.baseRange.lowIncGst === props.baseRange.highIncGst;
+  const baseRange = formatInvestmentAmount(props.baseRange, formatNZD);
   const blindsRange =
     props.blindsSelected && props.blindsRange
-      ? `${formatNZD(props.blindsRange.lowIncGst)} - ${formatNZD(props.blindsRange.highIncGst)}`
+      ? formatInvestmentAmount(props.blindsRange, formatNZD)
       : undefined;
 
   const addonsText = props.addons?.length ? props.addons.join(', ') : '-';
 
   return (
-    <EmailLayout preview="Your indicative installed range and next steps from Sanctuary Pergolas.">
+    <EmailLayout
+      preview={
+        baseIsSingleAmount
+          ? 'Your indicative installed estimate and next steps from Sanctuary Pergolas.'
+          : 'Your indicative installed range and next steps from Sanctuary Pergolas.'
+      }
+    >
       <HeroImage />
 
       <Text style={{ margin: '0 0 12px', fontSize: 24, lineHeight: 1.22, fontWeight: 700 }}>
@@ -30,7 +35,7 @@ export function CustomerResidentialEmail(props: ResidentialOrCommercial & { call
 
       <Text style={{ margin: '0 0 10px', fontSize: 14, color: THEME.text, lineHeight: 1.65 }}>
         Thanks {props.name}. Based on the details you shared, we&apos;ve prepared an initial installed
-        investment range for your project.
+        {baseIsSingleAmount ? ' estimate' : ' investment range'} for your project.
       </Text>
       <Text style={{ margin: '0 0 4px', fontSize: 13, color: THEME.muted, lineHeight: 1.65 }}>
         One of our team will review your enquiry and be in touch shortly to talk through the best approach
@@ -40,7 +45,11 @@ export function CustomerResidentialEmail(props: ResidentialOrCommercial & { call
       <InvestmentPanel
         baseRange={baseRange}
         blindsRange={blindsRange}
-        note="The lower figure reflects a base structure under standard assumptions (normal access, standard fixings/colour, fascia connection). Final pricing is confirmed after a quick check of site conditions and connection details."
+        note={
+          baseIsSingleAmount
+            ? 'The amount shown reflects a base structure under standard assumptions (normal access, standard fixings/colour, fascia connection). Final pricing is confirmed after a quick check of site conditions and connection details.'
+            : 'The lower figure reflects a base structure under standard assumptions (normal access, standard fixings/colour, fascia connection). Final pricing is confirmed after a quick check of site conditions and connection details.'
+        }
       />
 
       <NextSteps />

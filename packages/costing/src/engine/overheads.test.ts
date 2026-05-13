@@ -8,6 +8,21 @@ function roundMoney(n: number): number {
 }
 
 describe('buildOverheadV1', () => {
+  it('uses a flat acrylic-only overhead total', () => {
+    const cfg = loadCostingConfigV1();
+
+    const result = buildOverheadV1(cfg, {
+      module_count: 1,
+      total_crew_hours: 18,
+      has_acrylic_only: true,
+    });
+
+    expect(result.overhead.method).toBe('flat_acrylic_total');
+    expect(result.overhead.ops_ex_gst).toBe(2000);
+    expect(result.overhead.sales_ex_gst).toBe(0);
+    expect(result.overhead.total_ex_gst).toBe(2000);
+  });
+
   it('uses new ops base + variable formula and keeps sales scaling', () => {
     const cfg = loadCostingConfigV1();
 
@@ -64,6 +79,25 @@ describe('buildOverheadV1', () => {
 
     expect(roundMoney(dayTwo.overhead.ops_ex_gst - dayOne.overhead.ops_ex_gst)).toBe(25);
     expect(roundMoney(dayTwo.overhead.total_ex_gst - dayOne.overhead.total_ex_gst)).toBe(25);
+  });
+
+  it('does not apply the acrylic flat total to mixed roofs', () => {
+    const cfg = loadCostingConfigV1();
+
+    const acrylic = buildOverheadV1(cfg, {
+      module_count: 1,
+      total_crew_hours: 18,
+      has_acrylic_only: true,
+    });
+    const mixed = buildOverheadV1(cfg, {
+      module_count: 1,
+      total_crew_hours: 18,
+      has_timber_or_mixed: true,
+    });
+
+    expect(acrylic.overhead.total_ex_gst).toBe(2000);
+    expect(mixed.overhead.method).toBe('fixed_plus_variable');
+    expect(mixed.overhead.total_ex_gst).toBeGreaterThan(acrylic.overhead.total_ex_gst);
   });
 
   it('does not cap overhead totals at the previous flat-multiple cap', () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { toIndicativeRangeOneSided } from './enquiryEstimate';
+import { toIndicativeRangeOneSided, toIndicativeSingleAmount } from './enquiryEstimate';
 
 describe('toIndicativeRangeOneSided', () => {
   it('returns baseline -> +15% (residential), rounded to $250', () => {
@@ -31,5 +31,13 @@ describe('toIndicativeRangeOneSided', () => {
   it('is safe for invalid inputs', () => {
     expect(toIndicativeRangeOneSided(NaN, 'residential')).toEqual({ lowIncGst: 0, highIncGst: 0 });
     expect(toIndicativeRangeOneSided(-100, 'commercial')).toEqual({ lowIncGst: 0, highIncGst: 0 });
+  });
+
+  it('can return a single rounded lower-only amount', () => {
+    const residential = toIndicativeSingleAmount(19999, 'residential');
+    const commercial = toIndicativeSingleAmount(41234.56, 'commercial');
+
+    expect(residential).toEqual({ lowIncGst: 25000, highIncGst: 25000 });
+    expect(commercial).toEqual({ lowIncGst: 51500, highIncGst: 51500 });
   });
 });
