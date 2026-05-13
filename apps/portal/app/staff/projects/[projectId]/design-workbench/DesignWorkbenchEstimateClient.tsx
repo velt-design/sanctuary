@@ -536,6 +536,9 @@ export default function DesignWorkbenchEstimateClient({
                     currentlyOpen,
                     hasHouseForm: !!houseForm,
                     houseFormId: houseForm?.id,
+                    roofForm: currentRoof?.form,
+                    ridgeAxis: currentRoof?.ridgeAxis,
+                    roofIntentAuthored: houseForm?.roofIntentAuthored,
                     currentOpenIds,
                     nextOpenIds,
                   });
