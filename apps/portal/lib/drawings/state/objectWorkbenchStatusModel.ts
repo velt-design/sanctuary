@@ -386,7 +386,17 @@ function buildRoofStatus(input: {
     terminalEnds: terminalEnds.map((end) => ({
       id: end.id,
       label: end.label,
-      isOpen: intent.openGableEndIds.includes(end.id),
+      // Milestone 13 deep migration: when `form === 'gable'` (the
+      // legacy form retained for preset-mode houses whose polygon
+      // isn't resolved at the draft normalize boundary), the geometry
+      // pipeline treats EVERY terminal end as open via
+      // `normalize.ts:691-720`. The workbench-side migration covers
+      // custom-polygon cases at load; this derivation keeps the
+      // inspector view consistent for the preset-mode cases that
+      // still slip through as `form: 'gable'`. Without it, the rail's
+      // "Open"/"Close" button labels lie about the rendered topology.
+      // See decision-log 2026-05-14 "House Roof Topology -- Slice 2".
+      isOpen: intent.form === 'gable' ? true : intent.openGableEndIds.includes(end.id),
     })),
     geometryKind,
     validationStatus,

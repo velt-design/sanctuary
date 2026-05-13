@@ -9,6 +9,7 @@ import type {
   WorkbenchProjectModel,
 } from './objectFirstWorkbenchModel';
 import {
+  normalizeObjectFirstHouseFormDraft,
   normalizeObjectFirstPergolaDraft,
   normalizePergolaAttachment,
 } from './objectFirstWorkbenchModel';
@@ -339,6 +340,128 @@ describe('objectFirstWorkbenchModel contracts', () => {
 
     const legacyAliasProject: ObjectFirstWorkbenchProjectModel = project;
     expect(legacyAliasProject.houseAssembly?.houseForms).toEqual([]);
+  });
+});
+
+describe('normalizeObjectFirstHouseFormDraft — gable→hipped migration (slice 2)', () => {
+  // Milestone 13 deep migration: legacy `form: 'gable'` records with an
+  // explicit footprint polygon migrate to `form: 'hipped' +
+  // openGableEndIds: <all terminals>` at the draft normalize boundary.
+  // The geometry pipeline already treated those two representations as
+  // equivalent; the migration makes the workbench state explicit so
+  // every UI consumer (rail labels, inspector toggles) reads coherent
+  // state. See decision-log 2026-05-13 "House Roof Topology" entry.
+
+  function makeRectangularPolygon() {
+    return [
+      { alongM: '0', depthM: '0' },
+      { alongM: '6', depthM: '0' },
+      { alongM: '6', depthM: '4' },
+      { alongM: '0', depthM: '4' },
+    ];
+  }
+
+  function makeGableDraft(overrides: { polygon?: Array<{ alongM: string; depthM: string }>; openGableEndIds?: string[] } = {}) {
+    return {
+      id: 'house-main',
+      label: 'Main',
+      transform: { offsetXM: 0, offsetYM: 0, rotationQuarterTurns: 0 as const },
+      footprint: {
+        mode: 'custom_polygon' as const,
+        preset: 'straight' as const,
+        params: makeFootprintParams(),
+        polygon: overrides.polygon ?? makeRectangularPolygon(),
+        attachmentSide: 'rear' as const,
+        position: null,
+      },
+      roofIntent: {
+        form: 'gable' as const,
+        material: 'corrugated_iron' as const,
+        primaryPitchDeg: '15',
+        primaryFallDirection: 'positive_y' as const,
+        ridgeAxis: 'x' as const,
+        openGableEndIds: overrides.openGableEndIds ?? [],
+        appendage: {
+          enabled: false,
+          form: 'flat' as const,
+          hostEdge: 'rear' as const,
+          pitchDeg: '0',
+          dropMm: '0',
+        },
+      },
+      storeyMode: 'single_storey' as const,
+      attachmentStrategy: null,
+      sourceModuleIndexes: [],
+      sourceModuleIds: [],
+    };
+  }
+
+  it("migrates a custom-polygon gable house to form: 'hipped' with all terminals open", () => {
+    const draft = normalizeObjectFirstHouseFormDraft(makeGableDraft());
+    expect(draft).not.toBeNull();
+    if (!draft) return;
+    expect(draft.roofIntent.form).toBe('hipped');
+    // Rectangle with ridge axis x produces exactly two terminal ends.
+    // Don't pin specific IDs (they are edge-index based and may change
+    // if `deriveHouseGableTerminalEnds` internals shift); just assert
+    // the count, distinctness, and naming-convention prefix.
+    expect(draft.roofIntent.openGableEndIds).toHaveLength(2);
+    expect(new Set(draft.roofIntent.openGableEndIds).size).toBe(2);
+    for (const id of draft.roofIntent.openGableEndIds) {
+      expect(id).toMatch(/^house-gable-end-x-\d+$/);
+    }
+  });
+
+  it('preserves stored openGableEndIds when migrating (union semantics match the geometry compat layer)', () => {
+    // Seed with an end id that doesn't match the derived rectangle
+    // terminals to verify the stored ids are preserved AND the
+    // derived terminals are added (union semantics).
+    const draft = normalizeObjectFirstHouseFormDraft(
+      makeGableDraft({ openGableEndIds: ['house-gable-end-x-legacy'] }),
+    );
+    expect(draft).not.toBeNull();
+    if (!draft) return;
+    expect(draft.roofIntent.form).toBe('hipped');
+    // Stored "legacy" id preserved + derived terminals appended.
+    expect(draft.roofIntent.openGableEndIds).toContain('house-gable-end-x-legacy');
+    expect(draft.roofIntent.openGableEndIds.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("does NOT migrate when the footprint polygon is empty (preset-mode without resolved polygon stays form: 'gable')", () => {
+    // The geometry compat migration at normalize.ts:691-720 continues
+    // to handle this case until slice 2B moves the migration to a
+    // later boundary that always has the resolved polygon.
+    const draft = normalizeObjectFirstHouseFormDraft(makeGableDraft({ polygon: [] }));
+    expect(draft).not.toBeNull();
+    if (!draft) return;
+    expect(draft.roofIntent.form).toBe('gable');
+    expect(draft.roofIntent.openGableEndIds).toEqual([]);
+  });
+
+  it("leaves form: 'hipped' houses untouched", () => {
+    const draft = normalizeObjectFirstHouseFormDraft({
+      ...makeGableDraft(),
+      roofIntent: {
+        ...makeGableDraft().roofIntent,
+        form: 'hipped' as const,
+        openGableEndIds: ['house-gable-end-x-1'],
+      },
+    });
+    expect(draft).not.toBeNull();
+    if (!draft) return;
+    expect(draft.roofIntent.form).toBe('hipped');
+    expect(draft.roofIntent.openGableEndIds).toEqual(['house-gable-end-x-1']);
+  });
+
+  it('preserves all non-form roof-intent fields during migration', () => {
+    const draft = normalizeObjectFirstHouseFormDraft(makeGableDraft());
+    expect(draft).not.toBeNull();
+    if (!draft) return;
+    expect(draft.roofIntent.material).toBe('corrugated_iron');
+    expect(draft.roofIntent.primaryPitchDeg).toBe('15');
+    expect(draft.roofIntent.primaryFallDirection).toBe('positive_y');
+    expect(draft.roofIntent.ridgeAxis).toBe('x');
+    expect(draft.roofIntent.appendage.enabled).toBe(false);
   });
 });
 

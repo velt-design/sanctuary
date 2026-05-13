@@ -1,4 +1,7 @@
-import { isHouseRoofForm as isSupportedHouseRoofForm } from '@sp/geometry';
+import {
+  deriveHouseGableTerminalEnds,
+  isHouseRoofForm as isSupportedHouseRoofForm,
+} from '@sp/geometry';
 import {
   DEFAULT_CALCULATOR_HOUSE_ROOF_MATERIAL,
   normalizeAttachmentSide,
@@ -724,6 +727,28 @@ function normalizeHouseFormFootprint(
 
 function normalizeHouseFormRoofIntent(
   value: Partial<HouseFormRoofIntentModel> | null | undefined,
+  /**
+   * Footprint polygon for the same house form. Required to migrate
+   * legacy `form: 'gable'` records into the canonical
+   * `form: 'hipped' + openGableEndIds: <all terminals>` shape -- the
+   * geometry pipeline's normalize layer treats those two
+   * representations as equivalent (`packages/geometry/src/normalize.ts:691-720`),
+   * but UI consumers reading `roofIntent.openGableEndIds` directly
+   * (rail labels, inspector toggles) saw `[]` while the geometry
+   * rendered every end open -- the split caused the rail toggle bug
+   * fixed in `8d0bf5ab`. Migrating at the draft boundary makes every
+   * consumer read coherent state.
+   *
+   * Optional because the migration only applies when an explicit
+   * polygon is available (custom-mode houses, or preset-mode houses
+   * whose polygon has already been resolved). Preset-mode houses
+   * without an explicit polygon stay `form: 'gable'` for now and rely
+   * on the inspector model's `isOpen` derivation + the geometry compat
+   * migration as a safety net. Retiring the geometry compat is slice
+   * 2B and requires the migration to move to a later boundary that
+   * always has the resolved polygon.
+   */
+  footprintPolygon?: ReadonlyArray<CalculatorHouseFootprintPolygonPoint>,
 ): HouseFormRoofIntentModel {
   const openGableEndIds = Array.isArray(value?.openGableEndIds)
     ? [...new Set(
@@ -734,14 +759,55 @@ function normalizeHouseFormRoofIntent(
     )]
     : [];
 
+  const rawForm = isSupportedHouseRoofForm(value?.form) ? value.form : 'gable';
+  const ridgeAxis = isHouseRoofRidgeAxis(value?.ridgeAxis) ? value.ridgeAxis : 'x';
+
+  // Milestone 13 deep migration (slice 2): when an explicit footprint
+  // polygon is available, convert legacy `form: 'gable'` to
+  // `form: 'hipped' + openGableEndIds: <stored ∪ all terminals>`. The
+  // union with stored keeps any explicit ids the user had previously
+  // toggled; the all-terminals fold-in matches the geometry compat
+  // migration's semantics.
+  if (rawForm === 'gable' && footprintPolygon && footprintPolygon.length >= 3) {
+    const polygonMm = footprintPolygon.map((point) => ({
+      x: Number(point.alongM) * 1000,
+      y: Number(point.depthM) * 1000,
+      z: 0,
+    }));
+    const terminals = deriveHouseGableTerminalEnds({
+      footprint: polygonMm,
+      ridgeAxis,
+    });
+    const mergedOpenIds = [
+      ...new Set([...openGableEndIds, ...terminals.map((terminal) => terminal.id)]),
+    ];
+    return {
+      form: 'hipped',
+      material: isCalculatorHouseRoofMaterial(value?.material) ? value.material : DEFAULT_CALCULATOR_HOUSE_ROOF_MATERIAL,
+      primaryPitchDeg: trimNullableString(value?.primaryPitchDeg) ?? '5',
+      primaryFallDirection: isHouseRoofPrimaryFallDirection(value?.primaryFallDirection)
+        ? value.primaryFallDirection
+        : 'negative_y',
+      ridgeAxis,
+      openGableEndIds: mergedOpenIds,
+      appendage: {
+        enabled: typeof value?.appendage?.enabled === 'boolean' ? value.appendage.enabled : false,
+        form: isHouseRoofAppendageForm(value?.appendage?.form) ? value.appendage.form : 'flat',
+        hostEdge: normalizeAttachmentSide(value?.appendage?.hostEdge),
+        pitchDeg: trimNullableString(value?.appendage?.pitchDeg) ?? '0',
+        dropMm: trimNullableString(value?.appendage?.dropMm) ?? '0',
+      },
+    };
+  }
+
   return {
-    form: isSupportedHouseRoofForm(value?.form) ? value.form : 'gable',
+    form: rawForm,
     material: isCalculatorHouseRoofMaterial(value?.material) ? value.material : DEFAULT_CALCULATOR_HOUSE_ROOF_MATERIAL,
     primaryPitchDeg: trimNullableString(value?.primaryPitchDeg) ?? '5',
     primaryFallDirection: isHouseRoofPrimaryFallDirection(value?.primaryFallDirection)
       ? value.primaryFallDirection
       : 'negative_y',
-    ridgeAxis: isHouseRoofRidgeAxis(value?.ridgeAxis) ? value.ridgeAxis : 'x',
+    ridgeAxis,
     openGableEndIds,
     appendage: {
       enabled: typeof value?.appendage?.enabled === 'boolean' ? value.appendage.enabled : false,
@@ -792,12 +858,19 @@ export function normalizeObjectFirstHouseFormDraft(
   const id = normalizeStableId(value?.id);
   if (!id) return null;
 
+  const footprint = normalizeHouseFormFootprint(value?.footprint);
+
   return {
     id,
     label: trimNullableString(value?.label) ?? id,
     transform: normalizeHouseFormTransform(value?.transform),
-    footprint: normalizeHouseFormFootprint(value?.footprint),
-    roofIntent: normalizeHouseFormRoofIntent(value?.roofIntent),
+    footprint,
+    // Pass the resolved footprint polygon so the roof-intent
+    // normalizer can run the gable->hipped migration when an explicit
+    // polygon is available. Empty polygon (preset-mode without
+    // resolution) means migration is deferred; see comment inside
+    // normalizeHouseFormRoofIntent.
+    roofIntent: normalizeHouseFormRoofIntent(value?.roofIntent, footprint.polygon),
     ...(value?.roofIntentAuthored === true ? { roofIntentAuthored: true } : null),
     storeyMode: isCalculatorHouseStoreyMode(value?.storeyMode) ? value.storeyMode : 'single_storey',
     attachmentStrategy: isCalculatorHouseAttachmentStrategy(value?.attachmentStrategy)
