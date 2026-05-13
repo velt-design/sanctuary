@@ -1045,6 +1045,17 @@ export type HouseModel3D = {
   /** Roof eave snap targets (all attachable perimeter edges). See `HouseRoofEave3D`. */
   roofEaves?: HouseRoofEave3D[] | null;
   attachmentTarget?: HouseAttachmentTarget3D | null;
+  /**
+   * Workbench-configured ridge axis. Runtime hint for downstream
+   * consumers (top-projection click-target enrichment, rail
+   * derivations) that need to align on the active axis without a
+   * per-plane heuristic. Excluded from `canonicalizeAssembly3D`
+   * (golden hash) intentionally -- it reflects user intent, not
+   * geometric identity. Joined-hipped roof planes carry alternating
+   * x/y ridge metadata, so the per-plane fallback gave the wrong
+   * axis on custom polygons.
+   */
+  roofRidgeAxis?: HouseRoofRidgeAxis | null;
   metadata?: GeometryMetadata;
 };
 

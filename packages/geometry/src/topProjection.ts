@@ -687,7 +687,21 @@ function enrichHouseRoofShapesWithTerminalEnds(
       ? metaOpenIdsCsv.split(',').map((value) => value.trim()).filter(Boolean)
       : [],
   );
+  // Prefer the workbench's configured `roofRidgeAxis` (surfaced as
+  // a top-level field on the house model) over a per-plane
+  // derivation. The joined-hipped wavefront emits planes with
+  // alternating x/y ridge metadata; picking the FIRST plane's axis
+  // was correct for rectangular footprints (whose ridge axis
+  // matches the rectangle's long dimension on every plane) but
+  // produced an axis mismatch on joined custom polygons -- the
+  // workbench's rail validator filtered out the resulting click-
+  // tagged terminal ids because their axis didn't match
+  // `sharedRidgeAxis`, so toggling silently no-op'd. Falling back
+  // to plane-derived axis only when the model omits the configured
+  // ridge axis keeps legacy code paths working.
   const dominantRidgeAxis: 'x' | 'y' | null = (() => {
+    const configured = houseModel?.roofRidgeAxis;
+    if (configured === 'x' || configured === 'y') return configured;
     for (const plane of houseModel?.roofPlanes ?? []) {
       const axis = plane.metadata?.ridgeAxis;
       if (axis === 'x' || axis === 'y') return axis;

@@ -730,6 +730,19 @@ export function buildHouseModel3D(input: {
       metadata: roof.metadata,
     },
     attachmentTarget,
+    // Workbench's configured ridge axis. Surfaced at the top level
+    // (not in `metadata`) so it does NOT participate in the canonical
+    // golden hash -- it's a runtime hint for downstream consumers
+    // (top-projection click-target enrichment, rail derivations)
+    // that need to align on the active axis without a per-plane
+    // heuristic. Joined-hipped wavefront planes carry alternating
+    // x/y ridge metadata, so picking from `roofPlanes[0].metadata
+    // .ridgeAxis` chose the wrong axis on custom polygons where the
+    // user's configured axis differs from the first plane's. The
+    // canonical compare cherry-picks specific HouseModel3D fields,
+    // so an additional top-level field is silently excluded by
+    // omission -- intentional here.
+    roofRidgeAxis,
     metadata: {
       roofForm,
       roofMaterial,

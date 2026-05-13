@@ -1007,6 +1007,58 @@ describe("hip-end click target metadata on house roof shapes (milestone 13 plan-
     expect(stillClosed?.id).not.toContain("house_terminal_end_synthetic");
   });
 
+  it("tags terminal-end click targets with ids matching the workbench's configured ridge axis on joined custom polygons", () => {
+    // Regression: the click-target enrichment used to derive the
+    // terminal-end ridge axis from the FIRST roof plane's metadata.
+    // For rectangular footprints that's harmless (all planes share
+    // the same axis), but the joined-hipped wavefront emits planes
+    // with ALTERNATING x/y ridge axes. Picking the first plane on a
+    // custom L (or any non-rectangular polygon) where the workbench
+    // configured `roofRidgeAxis: 'y'` would tag the click targets
+    // with x-axis ids -- the rail's `validTerminalEndIds` filter
+    // (derived from `sharedRidgeAxis: 'y'`) then dropped every
+    // toggled id, making the click a silent no-op.
+    const customLFootprint: Polygon3 = [
+      { x: 0, y: 0, z: 0 },
+      { x: 6000, y: 0, z: 0 },
+      { x: 6000, y: 2000, z: 0 },
+      { x: 3000, y: 2000, z: 0 },
+      { x: 3000, y: 4000, z: 0 },
+      { x: 0, y: 4000, z: 0 },
+    ];
+    const fixture = requireSupportedFixture("mono_attached_soffit_away_standard");
+    const enriched = addHouseModelContext(fixture.config);
+    for (const configuredRidgeAxis of ["x", "y"] as const) {
+      const config: GeometryConfig = {
+        ...enriched,
+        houseContext: {
+          ...enriched.houseContext,
+          footprint: customLFootprint,
+          model: {
+            ...enriched.houseContext.model!,
+            footprint: customLFootprint,
+            roofForm: "hipped",
+            roofRidgeAxis: configuredRidgeAxis,
+            decks: [],
+            openings: [],
+          },
+        },
+      };
+      const solved = solveAssembly3D(config);
+      if (!solved.ok) throw new Error(solved.error);
+      const projection = buildTopProjectionViewModel(solved.value);
+      const tagged = houseRoofShapesWithEndId(projection);
+      expect(tagged.length, `${configuredRidgeAxis}-ridge tagged count`).toBeGreaterThan(0);
+      const axisPrefix = `house-gable-end-${configuredRidgeAxis}-`;
+      for (const shape of tagged) {
+        expect(
+          String(shape.metadata?.openGableEndId ?? ""),
+          `${configuredRidgeAxis}-ridge tag axis`,
+        ).toMatch(new RegExp(`^${axisPrefix}`));
+      }
+    }
+  });
+
   it("does not tag any roof shape on a mono house roof (no terminal ends to enrich)", () => {
     const fixture = requireSupportedFixture("mono_attached_soffit_away_standard");
     const enriched = addHouseModelContext(fixture.config);
