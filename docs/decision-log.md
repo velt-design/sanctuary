@@ -57,6 +57,7 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 | 2026-05-12 | 3D Wall Rendering | Active | Wall solids must consume `renderMesh` (not just `boundary`); miter footprints offset inward-only `(0, -thickness)`, not centered `(±half, ±half)`; non-flat-top walls extrude polygonally via `buildPolygonalWallRenderMesh`; open-gable migrated-from-hipped boundaries reshape only when `wallBoundaryHasFlatTop` is true. |
 | 2026-05-12 | 3D Viewport Navigation | Active | OrbitControls `mouseButtons.LEFT` must branch on `lockedViewPreset === 'top'` (pan in Plan, rotate in 3D). Trackpad users have no MIDDLE button, so rotate-on-LEFT is the only navigable default. |
 | 2026-05-12 | Open-Gable Roof Frames | Active | Triangular gable walls have a 1-point top profile (apex only); the frame-feature gate must be `topProfile.length < 1`, not `< 2`, or the gable-end posts/top-chord disappear. |
+| 2026-05-13 | Plan Rendering | Active | When a `house + roof` committed body exists, `buildProjectionPlanRenderGraph` must suppress ALL `house + footprint` shapes -- including `house_reference`. The roof IS the visible house top-down; the footprint becomes a redundant inner outline that produces overlapping strokes on Sheet/Plan. |
 
 ## Entries
 
@@ -715,3 +716,19 @@ Current guardrail: the gate is `topProfile.length < 1`, not `< 2`. A 1-point top
 Promoted to: None
 
 Related docs/tests: [packages/geometry/src/house/roofFrames.ts](../packages/geometry/src/house/roofFrames.ts), [packages/geometry/src/houseModel.test.ts](../packages/geometry/src/houseModel.test.ts).
+
+### 2026-05-13 - Plan Rendering - Suppress House Footprint When Roof Body Renders
+
+Area: Plan Rendering
+
+Status: Active
+
+Decision or mistake: on Sheet (and projection-only Plan), houses with a `house_surface_solid + roof` committed body ALSO rendered a `house_reference + footprint` committed body. Both are top_visible polygons in the same active module's top-projection. Visually they produced overlapping strokes -- the roof outline (with eave overhangs) plus a concentric inner footprint outline (the wall outer face). On hipped roofs this looked like doubled house edges; on roofs with zero overhang the polygons could coincide entirely and stroke twice. `buildProjectionPlanRenderGraph` previously filtered out `house_surface[_solid] + footprint` when a roof body existed but explicitly KEPT `house_reference + footprint` -- treating it as the "canonical anchor." That treatment is wrong for the active module: the roof IS the visible house, and the reference footprint becomes a redundant inner outline.
+
+Why it mattered: house_reference shapes serve TWO purposes the same render path conflates: (1) for the ACTIVE module they're the canonical outline anchor (used for hit detection and as a fallback when no roof exists), and (2) for the PROJECT context overlay they're the only outline non-active modules expose (rendered by `buildProjectContextOverlayShapes` after filtering out the active house's reference). The active module already has roof shapes for the "visible house" role; the reference's job there is anchor-only, not visual. Drawing it as a normal committed body double-strokes the house. The non-active project-context flow is unaffected because it consumes `projectReferenceShapes` directly, not the render graph.
+
+Current guardrail: in [planRenderGraph.ts](../apps/portal/lib/drawings/views/plan/planRenderGraph.ts), when `hasHouseRoofCommittedBody === true`, the committed-body filter suppresses ALL `family === 'house' && kind === 'footprint'` shapes regardless of `sourceType`. The roof body is the single visible house outline; `house_reference + footprint` remains in `topProjectionShapes` and can still be consulted for non-render purposes (hit detection, diagnostics) but never strokes. When there is NO roof body, `house_reference + footprint` keeps rendering -- houses without roof geometry still produce an outline. Future agents adding new visible house-body kinds (e.g. multi-storey roof tiers, mezzanines) must extend this filter or define a clear precedence between them and the reference footprint.
+
+Promoted to: None
+
+Related docs/tests: [apps/portal/lib/drawings/views/plan/planRenderGraph.ts](../apps/portal/lib/drawings/views/plan/planRenderGraph.ts), [apps/portal/lib/drawings/views/plan/planRenderGraph.test.ts](../apps/portal/lib/drawings/views/plan/planRenderGraph.test.ts), [apps/portal/lib/drawings/state/workbenchSolvedModel.ts](../apps/portal/lib/drawings/state/workbenchSolvedModel.ts) (`buildProjectContextOverlayShapes` for the project context-overlay path that still keeps `house_reference`).

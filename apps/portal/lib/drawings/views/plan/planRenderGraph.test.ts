@@ -109,4 +109,46 @@ describe('planRenderGraph', () => {
     })).toBe(false);
   });
 
+  it('suppresses the canonical house_reference footprint when a house roof body exists, so Sheet/Plan show one house outline (the roof) instead of overlapping wall + roof strokes', () => {
+    const roof = shape({
+      id: 'roof-main',
+      family: 'house',
+      kind: 'roof',
+      sourceType: 'house_surface_solid',
+      metadata: { topProjectionRole: 'top_visible' },
+    });
+    const referenceFootprint = shape({
+      id: 'house_reference:house-footprint',
+      family: 'house',
+      kind: 'footprint',
+      sourceType: 'house_reference',
+      metadata: { topProjectionRole: 'top_visible', isCanonicalOutline: true },
+    });
+
+    const graph = buildProjectionPlanRenderGraph([
+      { shape: roof, marker: 'roof' },
+      { shape: referenceFootprint, marker: 'reference-footprint' },
+    ]);
+
+    expect(graph.committedBodies.map((item) => item.marker)).toEqual(['roof']);
+    expect(graph.suppressed.map((item) => item.marker)).toEqual(['reference-footprint']);
+  });
+
+  it('keeps the canonical house_reference footprint when there is no roof committed body, so houses without roof geometry still render an outline', () => {
+    const referenceFootprint = shape({
+      id: 'house_reference:house-footprint',
+      family: 'house',
+      kind: 'footprint',
+      sourceType: 'house_reference',
+      metadata: { topProjectionRole: 'top_visible', isCanonicalOutline: true },
+    });
+
+    const graph = buildProjectionPlanRenderGraph([
+      { shape: referenceFootprint, marker: 'reference-footprint' },
+    ]);
+
+    expect(graph.committedBodies.map((item) => item.marker)).toEqual(['reference-footprint']);
+    expect(graph.suppressed).toEqual([]);
+  });
+
 });

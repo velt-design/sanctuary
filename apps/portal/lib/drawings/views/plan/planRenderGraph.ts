@@ -173,8 +173,7 @@ export function buildProjectionPlanRenderGraph<TItem extends { shape: GeometryTo
       !(
         hasHouseRoofCommittedBody &&
         shape.family === 'house' &&
-        shape.kind === 'footprint' &&
-        shape.sourceType !== 'house_reference'
+        shape.kind === 'footprint'
       ) &&
       (!options?.projectionOnlyModelSpace || topProjectionShapeAllowedInProjectionOnlyModel(shape)),
   );
