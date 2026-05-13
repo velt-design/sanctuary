@@ -32,6 +32,7 @@ import { buildEstimateDrawingModuleInfoRows, buildEstimateDrawingSheetMeta } fro
 import type { EstimateDetail } from '@/lib/estimates/types';
 import { type DrawOutlineTarget } from './objectWorkbenchClientTypes';
 import ObjectWorkbenchRailHost from './ObjectWorkbenchRailHost';
+import { resolveHouseTerminalEndToggleRoofDraft } from './resolveHouseTerminalEndToggleRoofDraft';
 import { useObjectWorkbenchDraftPersistence } from './useObjectWorkbenchDraftPersistence';
 import { useObjectWorkbenchActions } from './useObjectWorkbenchActions';
 import { useObjectWorkbenchSelection } from './useObjectWorkbenchSelection';
@@ -506,8 +507,7 @@ export default function DesignWorkbenchEstimateClient({
           onSelectPergolaTarget={!isLocked ? objectSelectionActions.selectPergolaObject : undefined}
           onClearWorkbenchSelection={!isLocked ? objectSelectionActions.clearActiveWorkbenchSelection : undefined}
           onToggleHouseTerminalEnd={
-            // eslint-disable-next-line no-console
-            (console.log('[toggle-trace] D-gate prop wiring', { isLocked }), !isLocked)
+            !isLocked
               ? (endId, currentlyOpen) => {
                   // Plan-view click on a hip-end marker. Mirror the rail's
                   // open-end toggle in HouseFormRoofSections.tsx -- read
@@ -526,27 +526,17 @@ export default function DesignWorkbenchEstimateClient({
                   const houseForm =
                     store.derived.activeHouseForm ?? store.derived.houseForms[0] ?? null;
                   const currentRoof = houseForm?.roofIntent ?? null;
-                  const currentOpenIds = currentRoof?.openGableEndIds ?? [];
-                  const nextOpenIds = currentlyOpen
-                    ? currentOpenIds.filter((id) => id !== endId)
-                    : [...currentOpenIds, endId];
-                  // eslint-disable-next-line no-console
-                  console.log('[toggle-trace] D-call onToggleHouseTerminalEnd', {
+                  if (!houseForm || !currentRoof) return;
+                  const nextRoof = resolveHouseTerminalEndToggleRoofDraft({
+                    currentRoof,
                     endId,
                     currentlyOpen,
-                    hasHouseForm: !!houseForm,
-                    houseFormId: houseForm?.id,
-                    roofForm: currentRoof?.form,
-                    ridgeAxis: currentRoof?.ridgeAxis,
-                    roofIntentAuthored: houseForm?.roofIntentAuthored,
-                    currentOpenIds,
-                    nextOpenIds,
+                    allTerminalEndIds:
+                      store.derived.objectWorkbench.houseForm.roof.terminalEnds.map(
+                        (end) => end.id,
+                      ),
                   });
-                  if (!houseForm || !currentRoof) return;
-                  void objectWorkbenchActions.commitSharedHouseRoofDraft({
-                    ...currentRoof,
-                    openGableEndIds: nextOpenIds,
-                  });
+                  void objectWorkbenchActions.commitSharedHouseRoofDraft(nextRoof);
                 }
               : undefined
           }
