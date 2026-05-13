@@ -8,6 +8,7 @@ import {
 import type { CalculatorHouseRoofMaterial, CalculatorModuleInputs } from '@/lib/types/calculator';
 import type { HouseFormRoofIntentModel } from '@/lib/drawings/state/objectFirstWorkbenchModel';
 import type { ObjectWorkbenchHouseFormInspectorModel } from '@/lib/drawings/state/objectWorkbenchInspectorModel';
+import { resolveHouseTerminalEndToggleRoofDraft } from '@/app/staff/projects/[projectId]/design-workbench/resolveHouseTerminalEndToggleRoofDraft';
 import type { FieldErrors, RunRoofCommit } from './objectWorkbenchRailTypes';
 import {
   ATTACHMENT_SIDE_OPTIONS,
@@ -186,12 +187,23 @@ export function buildHouseFormRoofSections({
                 label={`${end.isOpen ? 'Close' : 'Open'} ${end.label}`}
                 disabled={disabled}
                 onClick={() =>
-                  void runRoofCommit(`open-end-${end.id}`, {
-                    ...roofDraft,
-                    openGableEndIds: end.isOpen
-                      ? (roofDraft.openGableEndIds ?? []).filter((candidate) => candidate !== end.id)
-                      : [...new Set([...(roofDraft.openGableEndIds ?? []), end.id])],
-                  })
+                  // The shared helper ports the geometry-side gable->hipped
+                  // migration into explicit workbench state in the SAME
+                  // commit. Without it, a click on a `form: 'gable'` house
+                  // produces `openGableEndIds: []` which the normalize
+                  // migration immediately re-opens on the next solve --
+                  // a silent no-op for the user. See decision-log
+                  // 2026-05-13 "House Roof Topology -- Gable Form
+                  // Migration Must Be Ported on First Toggle".
+                  void runRoofCommit(
+                    `open-end-${end.id}`,
+                    resolveHouseTerminalEndToggleRoofDraft({
+                      currentRoof: roofDraft,
+                      endId: end.id,
+                      currentlyOpen: end.isOpen,
+                      allTerminalEndIds: terminalEnds.map((entry) => entry.id),
+                    }),
+                  )
                 }
               />
             ))}
