@@ -168,12 +168,25 @@ export function buildProjectionPlanRenderGraph<TItem extends { shape: GeometryTo
   const hasHouseRoofCommittedBody = baseGraph.committedBodies.some(
     ({ shape }) => shape.family === 'house' && shape.kind === 'roof',
   );
+  // Drop redundant `house_surface[_solid] + footprint` shapes when a roof
+  // body already represents the same outline; keep the canonical
+  // `house_reference + footprint`. That reference shape MUST stay in
+  // committedBodies because the Plan canvas derives `hitTargets` from
+  // this array (`filterPlanHitTargets(committedBodies)`), and the
+  // house's clickable polygon is the canonical reference footprint.
+  // Visual-only deduplication of the reference vs. the roof outline
+  // happens at render time in `PlanCommittedBodyLayer`
+  // (`planVisibleBodyFilter`) and the Sheet renderer in
+  // `TopProjectionLayerRenderer` -- not here, so the hit-target chain
+  // never loses its anchor. See `docs/decision-log.md` 2026-05-13
+  // "Plan Rendering -- Suppress House Footprint When Roof Body Renders".
   const committedBodies = baseGraph.committedBodies.filter(
     ({ shape }) =>
       !(
         hasHouseRoofCommittedBody &&
         shape.family === 'house' &&
-        shape.kind === 'footprint'
+        shape.kind === 'footprint' &&
+        shape.sourceType !== 'house_reference'
       ) &&
       (!options?.projectionOnlyModelSpace || topProjectionShapeAllowedInProjectionOnlyModel(shape)),
   );

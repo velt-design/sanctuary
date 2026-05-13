@@ -1201,11 +1201,16 @@ describe('house model geometry builder', () => {
     expect(model.attachmentTarget?.line).toEqual(makeAttachmentEdge());
   });
 
-  it('exposes drain eaves as discoverable roof-eave snap targets', () => {
+  it('exposes every attachable perimeter edge as a discoverable roof-eave snap target', () => {
     // Step 6 of the first-class spatial-entities migration. The snap engine
     // (step 7) will consume `model.roofEaves` to surface roof-edge candidates
-    // for pergola attachment. Each drain-eave perimeter edge produces one
-    // descriptor with a stable id and the eave line at gutter height.
+    // for pergola attachment. Each perimeter edge produces one descriptor
+    // with a stable id and the eave line at gutter height. The list
+    // includes draining edges (`drain_eave`) AND non-draining attachable
+    // ones (`weather_flashed_edge`, `house_apron_edge`) so pergolas can
+    // snap to opened Dutch-hip gables and L-/U-shape apron edges. See
+    // `docs/decision-log.md` 2026-05-13 "Pergola Snap to Every House
+    // Perimeter Edge".
     const model = buildHouseModel3D({
       config: makeConfig(),
       attachmentEdge: makeAttachmentEdge(),
@@ -1216,9 +1221,14 @@ describe('house model geometry builder', () => {
 
     const roofEaves = model.roofEaves ?? [];
     expect(roofEaves.length).toBeGreaterThan(0);
+    const allowedEdgeKinds: ReadonlySet<string> = new Set([
+      'drain_eave',
+      'weather_flashed_edge',
+      'house_apron_edge',
+    ]);
     for (const eave of roofEaves) {
       expect(eave.id).toMatch(/^roof-eave-/);
-      expect(eave.edgeKind).toBe('drain_eave');
+      expect(allowedEdgeKinds.has(eave.edgeKind)).toBe(true);
       expect(eave.sourceEdgeId).toBeTruthy();
       expect(typeof eave.eaveLine.start.x).toBe('number');
       expect(typeof eave.eaveLine.end.x).toBe('number');

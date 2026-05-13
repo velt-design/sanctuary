@@ -109,7 +109,7 @@ describe('planRenderGraph', () => {
     })).toBe(false);
   });
 
-  it('suppresses the canonical house_reference footprint when a house roof body exists, so Sheet/Plan show one house outline (the roof) instead of overlapping wall + roof strokes', () => {
+  it('keeps the canonical house_reference footprint in committedBodies even when a roof body exists, so the hit-target chain (filterPlanHitTargets) can still anchor house clicks; visual deduplication is the render layer\'s job', () => {
     const roof = shape({
       id: 'roof-main',
       family: 'house',
@@ -124,14 +124,22 @@ describe('planRenderGraph', () => {
       sourceType: 'house_reference',
       metadata: { topProjectionRole: 'top_visible', isCanonicalOutline: true },
     });
+    const redundantSurfaceFootprint = shape({
+      id: 'house_surface_solid:footprint',
+      family: 'house',
+      kind: 'footprint',
+      sourceType: 'house_surface_solid',
+      metadata: { topProjectionRole: 'top_visible' },
+    });
 
     const graph = buildProjectionPlanRenderGraph([
       { shape: roof, marker: 'roof' },
       { shape: referenceFootprint, marker: 'reference-footprint' },
+      { shape: redundantSurfaceFootprint, marker: 'surface-footprint' },
     ]);
 
-    expect(graph.committedBodies.map((item) => item.marker)).toEqual(['roof']);
-    expect(graph.suppressed.map((item) => item.marker)).toEqual(['reference-footprint']);
+    expect(graph.committedBodies.map((item) => item.marker)).toEqual(['roof', 'reference-footprint']);
+    expect(graph.suppressed.map((item) => item.marker)).toEqual(['surface-footprint']);
   });
 
   it('keeps the canonical house_reference footprint when there is no roof committed body, so houses without roof geometry still render an outline', () => {

@@ -246,6 +246,57 @@ describe('buildHouseSnapTargets', () => {
     expect(defaulted.map((t) => t.edgeKind)).toEqual(['wall', 'roof_eave']);
   });
 
+  it("emits a roof_eave snap target for opened-Dutch-hip gable-end perimeters (edgeKind: 'weather_flashed_edge') so pergolas can attach there", () => {
+    // Milestone 13: when a hipped roof's end is opened into a gable, the
+    // perimeter edge under that end loses its draining roof plane and is
+    // classified `weather_flashed_edge` by `classifyHousePerimeterEdges`.
+    // Pergola snap must still surface it -- the user's expectation is
+    // "snap to every house perimeter edge regardless of hydrology."
+    const houseModel = makeMinimalHouseModel({
+      roofEaves: [
+        {
+          id: 'roof-eave-footprint-edge-2',
+          edgeKind: 'weather_flashed_edge',
+          eaveLine: {
+            start: { x: 6000, y: -450, z: 2400 },
+            end: { x: 6000, y: 3450, z: 2400 },
+          },
+          sourceEdgeId: 'footprint-edge-2',
+          sourceRoofPlaneId: null,
+        },
+      ],
+    });
+    const targets = buildHouseSnapTargets({ houseModel, houseObjectId: 'house-main' });
+    expect(targets).toHaveLength(1);
+    expect(targets[0]).toEqual({
+      id: 'roof-eave-footprint-edge-2',
+      sourceObjectId: 'house-main',
+      edgeKind: 'roof_eave',
+      start: { x: 6000, y: -450 },
+      end: { x: 6000, y: 3450 },
+    });
+  });
+
+  it("emits a roof_eave snap target for L-/U-shape apron edges (edgeKind: 'house_apron_edge') so pergolas can attach to inner perimeter joins", () => {
+    const houseModel = makeMinimalHouseModel({
+      roofEaves: [
+        {
+          id: 'roof-eave-footprint-edge-3',
+          edgeKind: 'house_apron_edge',
+          eaveLine: {
+            start: { x: 3000, y: 2000, z: 2400 },
+            end: { x: 3000, y: 4000, z: 2400 },
+          },
+          sourceEdgeId: 'footprint-edge-3',
+          sourceRoofPlaneId: 'house-roof-wing-a',
+        },
+      ],
+    });
+    const targets = buildHouseSnapTargets({ houseModel, houseObjectId: 'house-main' });
+    expect(targets).toHaveLength(1);
+    expect(targets[0]?.edgeKind).toBe('roof_eave');
+  });
+
   it('uses the same houseObjectId on every emitted target for the same model', () => {
     const houseModel = makeMinimalHouseModel({
       wallSegments: [

@@ -1,10 +1,13 @@
+import { useMemo } from 'react';
 import { planCommittedBodyTokenClass } from '../shapeStyle';
 import { svgPointsAttr, type PlanRenderItem } from '../planRenderItem';
+import { filterPlanVisibleBodies } from '../planVisibleBodyFilter';
 
 export function PlanCommittedBodyLayer({ items }: { items: PlanRenderItem[] }) {
+  const visibleItems = useMemo(() => filterPlanVisibleBodies(items), [items]);
   return (
     <g data-plan-layer="committedBodies" pointerEvents="none">
-      {items.map(({ shape, points }) => (
+      {visibleItems.map(({ shape, points }) => (
         <polygon
           key={shape.id}
           points={svgPointsAttr(points)}

@@ -993,14 +993,25 @@ export type HouseOpening3D = {
 };
 
 /**
- * Roof eave snap target. One per drain-eave perimeter edge of a house roof.
- * Step 6 of the first-class spatial-entities migration: roof eaves become
+ * Roof eave snap target. One per attachable perimeter edge of a house roof.
+ * Step 6 of the first-class spatial-entities migration: eaves become
  * discoverable as a list parallel to wall edges so the snap engine can
  * surface them as candidates for pergola `spatialKind: 'roof_edge'`
  * attachments. The eave line is the bottom of the roof on this side (where
- * the gutter sits); the snap engine aligns pergola edges to this line and
- * the user picks the attachment method (fascia / direct-to-soffit / soffit
- * brackets) separately in the inspector.
+ * the gutter sits, or where the gable wall meets the eave-level perimeter
+ * on a non-draining edge); the snap engine aligns pergola edges to this
+ * line and the user picks the attachment method (fascia / direct-to-soffit
+ * / soffit brackets) separately in the inspector.
+ *
+ * `edgeKind` distinguishes the underlying topology:
+ * - `drain_eave`: an eave with an adjacent roof plane that drains over it
+ *   (gutters live here).
+ * - `weather_flashed_edge`: a perimeter edge with no draining roof plane
+ *   above it -- typically a gable end face of a hipped roof opened into a
+ *   gable (Dutch hip), or a gable rake. Pergola attachment is still valid;
+ *   gutter rendering is not. Downstream consumers that need drains only
+ *   (gutter, flashing) re-filter on `edgeKind === 'drain_eave'`.
+ * - `house_apron_edge`: an internal join edge of an L-/U-shape footprint.
  *
  * Coords are in world space after `applyAssemblyPosition3D` runs at the
  * boundary. When `assembly.house.position` is set the eave is in house-local
@@ -1010,7 +1021,7 @@ export type HouseOpening3D = {
 export type HouseRoofEave3D = {
   /** Stable id, scoped within the house model. Format: `roof-eave-${sourceEdgeId}`. */
   id: string;
-  edgeKind: "drain_eave";
+  edgeKind: "drain_eave" | "weather_flashed_edge" | "house_apron_edge";
   /** Line at eave height (gutter line) — the canonical snap line. */
   eaveLine: Line3;
   /** Footprint edge id this eave is derived from. */
@@ -1031,7 +1042,7 @@ export type HouseModel3D = {
   openings?: HouseOpening3D[] | null;
   solids?: HouseEnvelopeSolids3D | null;
   eave: HouseEaveGeometry3D;
-  /** Roof eave snap targets (drain eaves only). See `HouseRoofEave3D`. */
+  /** Roof eave snap targets (all attachable perimeter edges). See `HouseRoofEave3D`. */
   roofEaves?: HouseRoofEave3D[] | null;
   attachmentTarget?: HouseAttachmentTarget3D | null;
   metadata?: GeometryMetadata;

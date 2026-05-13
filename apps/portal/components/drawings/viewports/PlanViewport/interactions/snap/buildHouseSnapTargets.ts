@@ -13,15 +13,16 @@ import type { SnapLineTarget } from './snapEngine';
  *
  * Output shape:
  * - Wall segments → `edgeKind: 'wall'`, id `wall-${segment.id}`
- * - Drain eaves → `edgeKind: 'roof_eave'`, id reused from `eave.id`
+ * - Roof perimeter eaves → `edgeKind: 'roof_eave'`, id reused from `eave.id`
  *
  * `kinds` selects which subset to emit. Default `'walls_and_eaves'` is the
  * pergola edge-drag case. Decks pass `'walls'` because they sit at ground
  * level — snapping a deck edge to a gutter-height eave is meaningless.
  *
- * Other perimeter-edge kinds (`weather_flashed_edge`, `house_apron_edge`)
- * are not pergola attachment targets in v1 and are filtered out at the
- * `HouseModel3D.roofEaves` build step. See `houseModel.ts`.
+ * `HouseModel3D.roofEaves` now includes every attachable perimeter edge
+ * (`drain_eave`, `weather_flashed_edge`, `house_apron_edge`) so pergolas
+ * can snap to a Dutch-hip's opened gable end and to L-/U-shape inner
+ * apron edges, not just to draining eaves. See `houseModel.ts`.
  */
 export function buildHouseSnapTargets(input: {
   houseModel: HouseModel3D | null | undefined;

@@ -291,10 +291,22 @@ export function TopProjectionLayerRenderer({
   hideHouseFootprint = false,
   customPolygonOverrideActive = false,
 }: TopProjectionLayerRendererProps) {
+  // Visual-only deduplication: when a `house + roof` body is present, the
+  // canonical `house + footprint` outline becomes a redundant inner stroke
+  // (the roof already paints the house outline including overhangs). Skip
+  // every house + footprint polygon at the render layer. Sheet view has
+  // no hit-target layer for the house, so a render-time filter is enough
+  // here. Mirrors `filterPlanVisibleBodies` for the Plan canvas. See
+  // `docs/decision-log.md` 2026-05-13 "Plan Rendering -- Suppress House
+  // Footprint When Roof Body Renders".
+  const hasHouseRoofBody = shapes.some(
+    ({ shape }) => shape.family === 'house' && shape.kind === 'roof',
+  );
   return (
     <>
       {shapes
         .filter(({ shape }) => !(shape.family === 'house' && shape.kind === 'footprint' && (hideHouseFootprint || customPolygonOverrideActive)))
+        .filter(({ shape }) => !(hasHouseRoofBody && shape.family === 'house' && shape.kind === 'footprint'))
         .map(({ shape, points, layer }) => (
           <polygon
             key={shape.id}
