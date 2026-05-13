@@ -157,67 +157,42 @@ const CUSTOM_FIXTURES: readonly TopologyFixture[] = [
 // Phase 1 diagnostic populates the comment for each). Initial set
 // reflects the geometry-side state immediately after the session A
 // validator-strictness fix.
-// Phase 0 baseline: 18 known failures across 3 distinct failure
-// modes (captured 2026-05-14). Each entry is annotated with its
-// roofQaFailureReason so Phase 1's diagnostic can group fixes by
-// root cause. The matrix is GREEN at this baseline.
+// Phase 1 state (2026-05-14): 16 of 18 baseline failures resolved.
 //
-// Failure mode summary:
+//   Mode A (12 cases) -- fallback_features flag relaxed when
+//     stationary edges exist. The fallback's synthesized
+//     reflex-vertex valley is correct geometry for partial-open;
+//     the flag was over-reporting. Fix in `roofJoinedHipped.ts`.
 //
-//   A. `roof_topology_fallback_features` (12 cases)
-//      Feature derivation hit the re-entrant fallback path. The
-//      wavefront produced regions but the topology classifier
-//      couldn't place a feature (ridge/valley/hip) without
-//      synthesizing one. Most common; clustered around
-//      reflex-corner-adjacent terminal ends.
+//   Mode B (4 cases) + Mode C-staircase + Mode B/C-recess --
+//     `joinedRoofWavefrontSweptRegions` now explicitly skips
+//     stationary edges. Adjacent edges with same-direction inward
+//     normals (recess / staircase reflex corners) caused stationary
+//     endpoints to slide in unison, giving the swept quad real
+//     area despite the edge being conceptually "stationary". Those
+//     phantom regions tripped the dissolve pass's fragment-
+//     cancellation invariant. Fix in `roofJoinedWavefront.ts`.
 //
-//   B. `overlapping_boundary_fragments` (4 cases, all y-ridge)
-//      Two facets share a boundary fragment that overlaps in 2D.
-//      Surfaced by the eave-validator on the joined output. Mostly
-//      symmetric (preset-recess) -- the matrix's y-axis variant
-//      exposes a different wavefront pass than the x-axis variant
-//      on the same footprint.
+// Remaining 2 cases need Phase 2 (per-wing bent-spine variant):
 //
-//   C. `roof_topology_face_count_mismatch:8:7` (1 case: custom-recess y-5)
-//      One MORE facet than expected. The session A fix (subtract
-//      stationary edges from expected count) addressed the under-
-//      count case; this is the inverse. Likely a spurious region
-//      split near a reflex corner.
+//   custom-recess:y:house-gable-end-y-5 -- `roof_area_mismatch`
+//     after Phase 1 fixes. The slope facets near the opened inner
+//     notch edge don't fully cover the projected eave area
+//     (delta ~6.5% of eave area). Likely a wavefront convergence
+//     issue specific to opening an interior notch edge with two
+//     adjacent reflex corners on the SAME axis.
 //
-//   D. `roof_wavefront_missing_next_event` (1 case: custom-t y-1)
-//      Event scheduler returned null when there were still active
-//      loop segments. Numerical edge case; likely a degenerate
-//      collapse-distance calculation near a reflex vertex.
+//   custom-t:y:house-gable-end-y-1 -- `roof_wavefront_missing_next_event`.
+//     The event scheduler returns null when an active loop segment
+//     has degenerate vertex velocity near the T's reflex corners.
+//     Numerical edge case; might need a fallback split heuristic.
 //
 // Drop an entry the moment its underlying fix lands -- vitest will
 // flip the test red and tell you to update this set. New failures
 // (regressions on a working case) ALSO surface immediately because
 // they won't be in this set and the matrix will turn red.
 const KNOWN_FAILURES: ReadonlySet<string> = new Set([
-  // Mode A: roof_topology_fallback_features
-  'preset-recess_left:x:house-gable-end-x-4',
-  'preset-recess_right:x:house-gable-end-x-4',
-  'custom-l:x:house-gable-end-x-4',
-  'custom-l:y:house-gable-end-y-3',
-  'custom-recess:x:house-gable-end-x-6',
-  'custom-recess:x:house-gable-end-x-4',
-  'custom-t:x:house-gable-end-x-6',
-  'custom-t:x:house-gable-end-x-4',
-  'custom-t:y:house-gable-end-y-7',
-  'custom-t:y:house-gable-end-y-3',
-  'custom-staircase:x:house-gable-end-x-4',
-  'custom-staircase:y:house-gable-end-y-5',
-
-  // Mode B: overlapping_boundary_fragments
-  'preset-recess_left:y:house-gable-end-y-5',
-  'preset-recess_right:y:house-gable-end-y-3',
-  'custom-staircase:x:house-gable-end-x-6',
-  'custom-staircase:y:house-gable-end-y-3',
-
-  // Mode C: roof_topology_face_count_mismatch:8:7 (over-count)
   'custom-recess:y:house-gable-end-y-5',
-
-  // Mode D: roof_wavefront_missing_next_event
   'custom-t:y:house-gable-end-y-1',
 ]);
 

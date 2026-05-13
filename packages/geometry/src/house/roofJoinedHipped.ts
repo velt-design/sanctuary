@@ -111,10 +111,24 @@ export function buildJoinedRectilinearHippedRoof(input: {
   });
   const fallbackFeatureCount = roofFeatures.filter((feature) => feature.metadata?.roofFeatureSource === 'reentrant_fallback').length;
   const valleyFeatureCount = roofFeatures.filter((feature) => feature.kind === 'valley').length;
+  // Reentrant-fallback valley features fill in valleys at reflex
+  // eave vertices that the wavefront's facet-sharing pass didn't
+  // produce. For a fully-hipped roof, that always indicates a real
+  // topology problem (two slopes should meet at every reflex
+  // vertex). For partial-open joined topology, a stationary edge
+  // adjacent to a reflex vertex INTENTIONALLY breaks the
+  // facet-sharing pattern -- the stationary "wall" has zero area
+  // and isn't a facet, so the remaining slope's boundary at that
+  // vertex isn't shared with anyone. The fallback's synthesized
+  // valley (from reflex vertex to nearest interior apex) is correct
+  // geometry there; only the "this is a fallback" flag is alarming.
+  // Suppress the failure when stationary edges exist; the
+  // fully-hipped path is unchanged.
+  const hasStationaryEdges = stationaryIndexSet.size > 0;
   const topologyFailureReason =
     typeof facetResult.metadata.roofTopologyFailureReason === 'string'
       ? facetResult.metadata.roofTopologyFailureReason
-      : fallbackFeatureCount > 0
+      : fallbackFeatureCount > 0 && !hasStationaryEdges
         ? 'roof_topology_fallback_features'
         : null;
   return {

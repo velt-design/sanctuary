@@ -173,6 +173,23 @@ function joinedRoofWavefrontSweptRegions(
   const movedSegments = joinedRoofWavefrontMovedSegments(loop, distanceMm);
   const regions: JoinedRoofRegion[] = [];
   for (const [index, segment] of loop.segments.entries()) {
+    // Stationary edges (zero inward normal -- open-gable caps in
+    // partial-open joined topology) represent a vertical gable wall,
+    // not a slope facet. They should produce NO roof regions. In the
+    // simple case (both endpoints flanked by edges with opposite
+    // normals on either side of the stationary edge), the swept
+    // quad collapses to zero area and is filtered by the area
+    // threshold below. But when the adjacent edges' normals both
+    // point in the SAME direction (recess / staircase-style reflex
+    // corners), both endpoints slide along the stationary edge in
+    // unison, giving the swept quad real area despite the edge
+    // being conceptually "stationary". That phantom region is the
+    // root cause of Mode B (overlapping_boundary_fragments) failures
+    // -- two consecutive wavefront iterations produce the same
+    // phantom triangle in opposite winding, breaking the dissolve
+    // fragment-cancellation pass. Skip explicitly.
+    const inwardNormal = segment.edge.inwardNormal;
+    if (Math.hypot(inwardNormal.x, inwardNormal.y) <= ROOF_JOIN_EPSILON_MM) continue;
     const moved = movedSegments[index]!;
     const footprint = cleanRoofPolygon2D([segment.start, segment.end, moved.end, moved.start]);
     if (footprint.length < 3 || roofPolygonArea(footprint) <= ROOF_REGION_MIN_AREA_MM2) continue;
