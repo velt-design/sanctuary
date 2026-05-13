@@ -506,7 +506,8 @@ export default function DesignWorkbenchEstimateClient({
           onSelectPergolaTarget={!isLocked ? objectSelectionActions.selectPergolaObject : undefined}
           onClearWorkbenchSelection={!isLocked ? objectSelectionActions.clearActiveWorkbenchSelection : undefined}
           onToggleHouseTerminalEnd={
-            !isLocked
+            // eslint-disable-next-line no-console
+            (console.log('[toggle-trace] D-gate prop wiring', { isLocked }), !isLocked)
               ? (endId, currentlyOpen) => {
                   // Plan-view click on a hip-end marker. Mirror the rail's
                   // open-end toggle in HouseFormRoofSections.tsx -- read
@@ -524,12 +525,21 @@ export default function DesignWorkbenchEstimateClient({
                   // fallback at useObjectWorkbenchActions.ts:143.)
                   const houseForm =
                     store.derived.activeHouseForm ?? store.derived.houseForms[0] ?? null;
-                  if (!houseForm) return;
-                  const currentRoof = houseForm.roofIntent;
-                  const currentOpenIds = currentRoof.openGableEndIds ?? [];
+                  const currentRoof = houseForm?.roofIntent ?? null;
+                  const currentOpenIds = currentRoof?.openGableEndIds ?? [];
                   const nextOpenIds = currentlyOpen
                     ? currentOpenIds.filter((id) => id !== endId)
                     : [...currentOpenIds, endId];
+                  // eslint-disable-next-line no-console
+                  console.log('[toggle-trace] D-call onToggleHouseTerminalEnd', {
+                    endId,
+                    currentlyOpen,
+                    hasHouseForm: !!houseForm,
+                    houseFormId: houseForm?.id,
+                    currentOpenIds,
+                    nextOpenIds,
+                  });
+                  if (!houseForm || !currentRoof) return;
                   void objectWorkbenchActions.commitSharedHouseRoofDraft({
                     ...currentRoof,
                     openGableEndIds: nextOpenIds,

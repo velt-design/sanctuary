@@ -229,6 +229,11 @@ export function createEdgeDragTool(config: EdgeDragToolConfig): Tool {
       // event. See `docs/decision-log.md` 2026-05-13 entry on terminal
       // end click priority.
       if (typeof event.shape?.metadata?.openGableEndId === 'string') {
+        // eslint-disable-next-line no-console
+        console.log('[toggle-trace] B EdgeDragTool toggle gate', {
+          openGableEndId: event.shape.metadata.openGableEndId,
+          hasFallthrough: !!config.onPointerDownFallthrough,
+        });
         config.onPointerDownFallthrough?.(event);
         return;
       }

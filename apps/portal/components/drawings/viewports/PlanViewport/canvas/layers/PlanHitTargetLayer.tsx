@@ -44,6 +44,14 @@ export function PlanHitTargetLayer({
             // and edge-drag. Right-click (button 2) and middle-click (button 1)
             // must bubble to the SVG root so `usePanZoom` can start a pan even
             // when the pointer is over an object.
+            // eslint-disable-next-line no-console
+            console.log('[toggle-trace] A hit-target onPointerDown', {
+              button: event.button,
+              shapeId: shape.id,
+              kind: shape.kind,
+              openGableEndId: shape.metadata?.openGableEndId,
+              isOpen: shape.metadata?.isOpen,
+            });
             if (event.button !== 0) return;
             event.stopPropagation();
             onShapePointerDown(shape, event);
