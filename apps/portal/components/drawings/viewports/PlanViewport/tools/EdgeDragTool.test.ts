@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import type { GeometryTopProjectionShape } from '@sp/geometry';
 import { createEdgeDragTool, type EdgeDragOutline } from './EdgeDragTool';
 
 const RECT_OUTLINE: EdgeDragOutline = {
@@ -66,23 +67,9 @@ describe('EdgeDragTool', () => {
     expect(onPreviewChange).not.toHaveBeenCalled();
   });
 
-  it("falls through immediately when the click shape is a terminal-end toggle target (openGableEndId metadata), so SelectTool can dispatch the hip↔gable toggle instead of the click being captured as an edge resize", () => {
-    // Milestone 13: when the house is the active outline, the synthetic
-    // gable triangle for an opened end sits inside `edgeHitToleranceMm`
-    // of the house perimeter. Without this priority check the click
-    // becomes a resize session and the toggle never fires.
-    const onPreviewChange = vi.fn();
-    const onPointerDownFallthrough = vi.fn();
-    const tool = createEdgeDragTool({
-      getActiveOutline: () => RECT_OUTLINE,
-      onPreviewChange,
-      onPointerDownFallthrough,
-    });
-    tool.onPointerDown!({
-      // Click well inside the active outline AND well within tolerance
-      // of every edge -- the natural EdgeDragTool path WOULD capture
-      // this as a resize.
-      shape: {
+  describe('terminal-end toggle priority vs. edge drag', () => {
+    function terminalEndShape(): GeometryTopProjectionShape {
+      return {
         id: 'house_terminal_end_synthetic:house-gable-end-x-1',
         sourceObjectId: 'house-gable-end-x-1',
         sourceId: 'house-gable-end-x-1',
@@ -98,13 +85,56 @@ describe('EdgeDragTool', () => {
           openGableEndId: 'house-gable-end-x-1',
           isOpen: true,
         },
-      },
-      point: { x: 2000, y: 1000 },
-      button: 0,
-      pointerId: 1,
+      };
+    }
+
+    it("falls through to SelectTool when click is on a terminal-end shape AND far from the active outline edge -- preserves hip↔gable toggle in the synthetic's interior", () => {
+      const onPreviewChange = vi.fn();
+      const onPointerDownFallthrough = vi.fn();
+      const tool = createEdgeDragTool({
+        getActiveOutline: () => RECT_OUTLINE,
+        onPreviewChange,
+        onPointerDownFallthrough,
+      });
+      tool.onPointerDown!({
+        shape: terminalEndShape(),
+        // Centre of the active outline (RECT 0..4000 × 0..2000); every
+        // edge is at least 1000 mm away → well outside the 250 mm
+        // default tolerance, so the toggle path wins.
+        point: { x: 2000, y: 1000 },
+        button: 0,
+        pointerId: 1,
+      });
+      expect(onPreviewChange).not.toHaveBeenCalled();
+      expect(onPointerDownFallthrough).toHaveBeenCalledTimes(1);
     });
-    expect(onPreviewChange).not.toHaveBeenCalled();
-    expect(onPointerDownFallthrough).toHaveBeenCalledTimes(1);
+
+    it('starts an edge drag session when click is on a terminal-end shape but ALSO within edgeHitToleranceMm of an active outline edge -- restores wall edge interaction under the synthetic', () => {
+      // Regression: the synthetic gable triangle physically overlaps
+      // the house perimeter (its eave-corner extension wraps onto the
+      // wall edge). When the user clicks the wall edge inside that
+      // overlap, edge drag must take priority over the toggle.
+      const onPreviewChange = vi.fn();
+      const onPointerDownFallthrough = vi.fn();
+      const tool = createEdgeDragTool({
+        getActiveOutline: () => RECT_OUTLINE,
+        onPreviewChange,
+        onPointerDownFallthrough,
+      });
+      tool.onPointerDown!({
+        shape: terminalEndShape(),
+        // Inside the outline; only ~100 mm from the right edge of
+        // RECT_OUTLINE (x=4000). Well within the 250 mm default
+        // tolerance, so edge drag wins.
+        point: { x: 3900, y: 1000 },
+        button: 0,
+        pointerId: 1,
+      });
+      expect(onPreviewChange).toHaveBeenCalledTimes(1);
+      expect(onPointerDownFallthrough).not.toHaveBeenCalled();
+      const preview = onPreviewChange.mock.calls[0]![0];
+      expect(preview.edgeIndex).toBe(1);
+    });
   });
 
   it('updates the preview polygon as the pointer moves perpendicular to the edge', () => {

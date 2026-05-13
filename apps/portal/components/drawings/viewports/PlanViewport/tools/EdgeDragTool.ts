@@ -82,7 +82,7 @@ export type EdgeDragToolConfig = {
   onPointerDownFallthrough?: (event: ToolPointerEvent) => void;
 };
 
-const DEFAULT_EDGE_HIT_TOLERANCE_MM = 500;
+const DEFAULT_EDGE_HIT_TOLERANCE_MM = 250;
 
 type DragSession = {
   outline: EdgeDragOutline;
@@ -218,27 +218,32 @@ export function createEdgeDragTool(config: EdgeDragToolConfig): Tool {
     cursor: 'crosshair',
     onPointerDown(event: ToolPointerEvent) {
       if (event.button !== 0) return;
-      // Terminal-end toggle priority: a click on a roof shape tagged with
-      // `metadata.openGableEndId` is a hip↔gable toggle target (milestone
-      // 13), NOT an edge-drag handle. When the house is the active
-      // outline, the synthetic gable triangle sits within `tolerance`
-      // of the house's perimeter edge, so the natural EdgeDragTool path
-      // would intercept the click and start a resize session before the
-      // toggle ever reaches SelectTool. Fall through unconditionally so
-      // the SelectTool downstream of the chain receives the toggle
-      // event. See `docs/decision-log.md` 2026-05-13 entry on terminal
-      // end click priority.
-      if (typeof event.shape?.metadata?.openGableEndId === 'string') {
-        config.onPointerDownFallthrough?.(event);
-        return;
-      }
+      // Compute the active-outline edge proximity ONCE so the
+      // terminal-end toggle priority and the normal edge-drag start
+      // share the same answer. The toggle target (milestone 13
+      // synthetic gable triangle) physically overlaps the house
+      // perimeter; without this priority check, clicks on the wall
+      // edge underneath the synthetic always become toggle clicks and
+      // the user loses access to the wall drag affordance.
       const outline = config.getActiveOutline();
-      if (!outline) {
+      const closest = outline ? findClosestPolygonEdge(outline.polygon, event.point) : null;
+      const withinEdgeTolerance = !!closest && closest.distanceMm <= tolerance;
+
+      // Terminal-end toggle yields to edge drag WITHIN edge tolerance.
+      // Clicks on the synthetic triangle's interior (far from any
+      // outline edge) still route to SelectTool for the hip↔gable
+      // toggle; clicks on the eave-corner overhang that overlaps the
+      // wall edge start an edge-drag session instead. See
+      // `docs/decision-log.md` 2026-05-13 entry on terminal-end click
+      // priority.
+      if (
+        typeof event.shape?.metadata?.openGableEndId === 'string' &&
+        !withinEdgeTolerance
+      ) {
         config.onPointerDownFallthrough?.(event);
         return;
       }
-      const closest = findClosestPolygonEdge(outline.polygon, event.point);
-      if (!closest || closest.distanceMm > tolerance) {
+      if (!outline || !closest || !withinEdgeTolerance) {
         config.onPointerDownFallthrough?.(event);
         return;
       }
