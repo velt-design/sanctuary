@@ -810,23 +810,70 @@ function enrichHouseRoofShapesWithTerminalEnds(
     return inside;
   };
   const matchedEndIds = new Set<string>();
-  const enrichedShapes = shapes.map((shape) => {
-    if (shape.family !== 'house' || shape.kind !== 'roof') return shape;
-    // Hip-cap facets project as triangles (3 vertices); the long
-    // along-ridge main slopes project as quads. Filtering to
-    // triangles keeps the inward-probe from accidentally matching a
-    // long slope when one end is open and the ridge runs all the way
-    // to that eave (see 'flags isOpen' test).
-    if (shape.polygon.length !== 3) return shape;
-    const matched = probePoints.find((entry) => pointInPolygon(entry.probe, shape.polygon));
-    if (!matched) return shape;
-    matchedEndIds.add(matched.endId);
+  // First pass: for each terminal end, find ALL house roof shapes
+  // whose polygon contains the inward probe. Hip caps and long
+  // slopes can both contain the probe -- hip caps are bounded by
+  // the terminal eave + apex (small area); long slopes are bounded
+  // by the LONG eave + ridge (large area). Pick the smallest-area
+  // candidate per terminal: that's the hip cap.
+  //
+  // The previous implementation filtered to 3-vertex polygons under
+  // the assumption that hip caps always project as pure triangles.
+  // That holds for rectangular and simple joined footprints but
+  // breaks on custom polygons with asymmetric eave-overhang
+  // geometry (the hip cap's projection picks up 2 extra vertices
+  // per overhang corner, giving 5-vertex polygons). Area-based
+  // selection generalizes correctly without losing the
+  // hip-cap-vs-slope discrimination.
+  const polygonAreaXY = (polygon: Polygon2): number => {
+    let sum = 0;
+    for (let i = 0; i < polygon.length; i += 1) {
+      const current = polygon[i]!;
+      const next = polygon[(i + 1) % polygon.length]!;
+      sum += current.x * next.y - next.x * current.y;
+    }
+    return Math.abs(sum) / 2;
+  };
+  // Closed terminal ends only -- their real hip-cap facet exists
+  // and the user clicks it to OPEN. Open terminal ends have no
+  // real hip-cap facet (the wavefront removed it via the stationary-
+  // edge mechanism); the synthetic-shape pass below builds an
+  // invisible hover target at the would-be hip-cap location for the
+  // user to click to CLOSE. Matching opens here would tag the
+  // slope that filled the gap, swallowing the synthetic and
+  // changing UX -- preserved by filtering to closed probes only.
+  const closedProbes = probePoints.filter((entry) => !entry.isOpen);
+  const matchByEndId = new Map<
+    string,
+    { shapeIndex: number; area: number }
+  >();
+  for (let index = 0; index < shapes.length; index += 1) {
+    const shape = shapes[index]!;
+    if (shape.family !== 'house' || shape.kind !== 'roof') continue;
+    if (shape.polygon.length < 3) continue;
+    const matched = closedProbes.find((entry) => pointInPolygon(entry.probe, shape.polygon));
+    if (!matched) continue;
+    const area = polygonAreaXY(shape.polygon);
+    const existing = matchByEndId.get(matched.endId);
+    if (!existing || area < existing.area) {
+      matchByEndId.set(matched.endId, { shapeIndex: index, area });
+    }
+  }
+  const matchedShapeIndex = new Map<number, string>();
+  for (const [endId, { shapeIndex }] of matchByEndId) {
+    matchedShapeIndex.set(shapeIndex, endId);
+    matchedEndIds.add(endId);
+  }
+  const isOpenByEndId = new Map(probePoints.map((entry) => [entry.endId, entry.isOpen]));
+  const enrichedShapes = shapes.map((shape, index) => {
+    const endId = matchedShapeIndex.get(index);
+    if (!endId) return shape;
     return {
       ...shape,
       metadata: {
         ...(shape.metadata ?? {}),
-        openGableEndId: matched.endId,
-        isOpen: matched.isOpen,
+        openGableEndId: endId,
+        isOpen: isOpenByEndId.get(endId) ?? false,
       },
     };
   });

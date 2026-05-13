@@ -1059,6 +1059,68 @@ describe("hip-end click target metadata on house roof shapes (milestone 13 plan-
     }
   });
 
+  it("tags terminal-end click targets on custom polygons with non-triangular hip-cap projections", () => {
+    // Regression: a stricter version of the enrichment required
+    // hip-cap shapes to project as exactly 3-vertex triangles. That
+    // held for rectangular and simple joined footprints (whose
+    // eave-overhang corners didn't perturb the projected shape) but
+    // failed on custom polygons with asymmetric dimensions -- the
+    // user's bug: a custom U with one wing wider than the other had
+    // hip-cap shapes projecting as 4 or 5 vertex polygons because
+    // the eave-overhang corners landed at different polygon edges,
+    // so the triangle-only filter silently dropped every click
+    // target.
+    const asymmetricU: Polygon3 = [
+      { x: 0, y: 0, z: 0 },
+      { x: 11775, y: 0, z: 0 },
+      { x: 11775, y: 4819, z: 0 },
+      { x: 9322, y: 4819, z: 0 },
+      { x: 9322, y: 1500, z: 0 },
+      { x: 2443, y: 1500, z: 0 },
+      { x: 2443, y: 4819, z: 0 },
+      { x: 0, y: 4819, z: 0 },
+    ];
+    const fixture = requireSupportedFixture("mono_attached_soffit_away_standard");
+    const enriched = addHouseModelContext(fixture.config);
+    const config: GeometryConfig = {
+      ...enriched,
+      houseContext: {
+        ...enriched.houseContext,
+        footprint: asymmetricU,
+        model: {
+          ...enriched.houseContext.model!,
+          footprint: asymmetricU,
+          roofForm: "hipped",
+          roofRidgeAxis: "x",
+          decks: [],
+          openings: [],
+        },
+      },
+    };
+    const solved = solveAssembly3D(config);
+    if (!solved.ok) throw new Error(solved.error);
+
+    const projection = buildTopProjectionViewModel(solved.value);
+    const tagged = houseRoofShapesWithEndId(projection);
+    // Every vertical (x-perpendicular) edge of the U is a gable-end
+    // candidate for ridge x: outer left/right + inner notch sides
+    // = 4 terminals. Every one must be tagged for the rail toggle
+    // to fire.
+    expect(tagged.length).toBeGreaterThanOrEqual(4);
+    const endIds = new Set(tagged.map((shape) => String(shape.metadata?.openGableEndId ?? "")));
+    expect(endIds.has("house-gable-end-x-2")).toBe(true);
+    expect(endIds.has("house-gable-end-x-4")).toBe(true);
+    expect(endIds.has("house-gable-end-x-6")).toBe(true);
+    expect(endIds.has("house-gable-end-x-8")).toBe(true);
+    // Tagged shapes have 3+ vertices (non-triangular projections
+    // are now accepted; previously the triangle-only filter would
+    // have dropped 4- and 5-vertex hip caps).
+    for (const shape of tagged) {
+      expect(shape.polygon.length).toBeGreaterThanOrEqual(3);
+      expect(shape.metadata?.isOpen).toBe(false);
+    }
+  });
+
   it("does not tag any roof shape on a mono house roof (no terminal ends to enrich)", () => {
     const fixture = requireSupportedFixture("mono_attached_soffit_away_standard");
     const enriched = addHouseModelContext(fixture.config);
