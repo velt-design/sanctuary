@@ -70,73 +70,13 @@ describe('resolveHouseTerminalEndToggleRoofDraft', () => {
     });
   });
 
-  describe('gable form (implicit "all-ends-open" migration)', () => {
-    it("closes ONE end: converts form to 'hipped' and seeds openGableEndIds with every terminal except the one being closed", () => {
-      // Regression: with `form: 'gable'` + `openGableEndIds: []` (the
-      // workbench state that emerges from the geometry normalize
-      // migration that treats gable as hipped+all-open), naively
-      // filtering openGableEndIds is a no-op and the user sees no
-      // change. The fix ports the migration into explicit state in one
-      // commit: form becomes hipped, openGableEndIds becomes
-      // all-terminals-minus-the-closed-one.
-      const next = resolveHouseTerminalEndToggleRoofDraft({
-        currentRoof: makeRoof({ form: 'gable', openGableEndIds: [] }),
-        endId: 'house-gable-end-x-1',
-        currentlyOpen: true,
-        allTerminalEndIds: ['house-gable-end-x-1', 'house-gable-end-x-2'],
-      });
-      expect(next.form).toBe('hipped');
-      expect(next.openGableEndIds).toEqual(['house-gable-end-x-2']);
-    });
+  // Milestone 13 session C: `'gable'` was retired from the
+  // `HouseRoofForm` union; the gable->hipped migration moved to the
+  // workbench draft normalize boundary (`normalizeHouseFormRoofIntent`).
+  // Earlier slice-2 tests verifying this helper's gable-handling branch
+  // are gone -- the branch was retired in commit landing session C.
 
-    it("opens an end on a gable form: still converts to 'hipped' explicitly so subsequent toggles operate on explicit state", () => {
-      const next = resolveHouseTerminalEndToggleRoofDraft({
-        currentRoof: makeRoof({ form: 'gable', openGableEndIds: [] }),
-        endId: 'house-gable-end-x-1',
-        currentlyOpen: false,
-        allTerminalEndIds: ['house-gable-end-x-1', 'house-gable-end-x-2'],
-      });
-      expect(next.form).toBe('hipped');
-      // All terminals are open (migration semantic), and the toggled
-      // one is also added (set semantics dedupe).
-      expect(new Set(next.openGableEndIds)).toEqual(
-        new Set(['house-gable-end-x-1', 'house-gable-end-x-2']),
-      );
-    });
-
-    it('preserves non-form fields when migrating gable → hipped', () => {
-      const current = makeRoof({
-        form: 'gable',
-        ridgeAxis: 'x',
-        primaryPitchDeg: '18',
-        material: 'trapezoidal_5_rib',
-        primaryFallDirection: 'negative_x',
-      });
-      const next = resolveHouseTerminalEndToggleRoofDraft({
-        currentRoof: current,
-        endId: 'house-gable-end-x-1',
-        currentlyOpen: true,
-        allTerminalEndIds: ['house-gable-end-x-1', 'house-gable-end-x-2'],
-      });
-      expect(next.ridgeAxis).toBe('x');
-      expect(next.primaryPitchDeg).toBe('18');
-      expect(next.material).toBe('trapezoidal_5_rib');
-      expect(next.primaryFallDirection).toBe('negative_x');
-    });
-
-    it('handles the closing-the-only-open-end case on a gable form', () => {
-      const next = resolveHouseTerminalEndToggleRoofDraft({
-        currentRoof: makeRoof({ form: 'gable', openGableEndIds: [] }),
-        endId: 'house-gable-end-x-1',
-        currentlyOpen: true,
-        allTerminalEndIds: ['house-gable-end-x-1'],
-      });
-      expect(next.form).toBe('hipped');
-      expect(next.openGableEndIds).toEqual([]);
-    });
-  });
-
-  it('ignores allTerminalEndIds on the hipped path (it only matters for the gable migration)', () => {
+  it('ignores allTerminalEndIds on the hipped path (kept as a parameter for API stability; only the hipped flow uses it now)', () => {
     const next = resolveHouseTerminalEndToggleRoofDraft({
       currentRoof: makeRoof({ form: 'hipped', openGableEndIds: ['x-1'] }),
       endId: 'x-1',

@@ -111,8 +111,19 @@ function resolveHouseWallConstruction(value: HouseWallConstruction | null | unde
   return 'timber_frame';
 }
 
-function resolveHouseRoofForm(value: HouseRoofForm | null | undefined): HouseRoofForm {
-  if (value === 'flat' || value === 'mono' || value === 'gable' || value === 'hipped') {
+function resolveHouseRoofForm(value: HouseRoofForm | 'gable' | null | undefined): HouseRoofForm {
+  // Milestone 13 session C: legacy `'gable'` is no longer in the
+  // `HouseRoofForm` union. Storage and raw input may still carry it,
+  // so this resolver maps it to `'hipped'` here -- the only place
+  // legacy gable enters the typed world. Every downstream consumer
+  // can assume the narrowed `'flat' | 'mono' | 'hipped'` union.
+  // The full open-end semantic ("hipped + all terminals open") is
+  // re-attached upstream of geometry in the portal's
+  // `normalizeHouseFormRoofIntent` (workbench draft normalize) where
+  // the resolved polygon is available; here we only need the
+  // form-name flip so the typed surface is coherent.
+  if (value === 'gable') return 'hipped';
+  if (value === 'flat' || value === 'mono' || value === 'hipped') {
     return value;
   }
   return 'hipped';
@@ -493,17 +504,14 @@ export function buildHouseModelConfig(input: {
     input.houseUndersideMm ??
     DEFAULT_HOUSE_EAVE_HEIGHT_MM;
   const wallHeightMm = resolveOptionalMetresToMillimetres(input.rawHouseContext.wallHeightM) ?? eaveHeightMm;
-  // Milestone 13 session C: legacy `roofForm: 'gable'` data migrates to
-  // `'hipped'` + all-terminal-ends-open. Sessions A and B made hipped
-  // honour `openGableEndIds` for per-end topology, so a "fully open"
-  // hipped roof is geometrically identical to the legacy gable rectangle
-  // and produces the bent-spine joined gable for L-shapes via the same
-  // wavefront mechanism. The migration converts the FORM at normalize
-  // time so all downstream consumers see only the new model; the type
-  // narrowing of `HouseRoofForm` to drop `'gable'` is a separate slice
-  // (retiring the storage shape after the migration is verified live).
-  const rawRoofForm = resolveHouseRoofForm(input.rawHouseContext.roofForm);
-  const roofForm: HouseRoofForm = rawRoofForm === 'gable' ? 'hipped' : rawRoofForm;
+  // `resolveHouseRoofForm` maps any legacy `'gable'` input to `'hipped'`
+  // before it crosses the typed boundary. Milestone 13 session C dropped
+  // `'gable'` from the `HouseRoofForm` union; this resolver is the
+  // narrowing point for direct geometry callers that bypass
+  // `buildRawGeometryModuleInput`'s polygon-aware migration. Per slice
+  // 2B's contract, openGableEndIds enrichment lives upstream in the
+  // workbench draft loader -- normalize only narrows the form name.
+  const roofForm: HouseRoofForm = resolveHouseRoofForm(input.rawHouseContext.roofForm);
   const roofPitchDeg = normalizeHouseRoofPitchDegForForm({
     roofForm,
     pitchDeg: resolveOptionalDegrees(input.rawHouseContext.roofPitchDeg),

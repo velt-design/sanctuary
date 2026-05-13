@@ -298,27 +298,23 @@ describe('ObjectWorkbenchRail', () => {
     expect(monoMarkup).toContain('Roof pitch (deg)');
     expect(monoMarkup).toContain('Mono fall direction');
     expect(monoMarkup).toContain('Appendage band');
-    expect(monoMarkup).not.toContain('Gable ridge orientation');
-    expect(monoMarkup).not.toContain('Open gable ends');
+    expect(monoMarkup).not.toContain('Hipped ridge orientation');
+    expect(monoMarkup).not.toContain('Open hip ends as gables');
 
-    const gableMarkup = renderToStaticMarkup(
-      <ObjectWorkbenchRail {...buildRailProps({ draft: buildDraftWithRoofForm('gable') })} />,
-    );
-    expect(gableMarkup).toContain('Roof pitch (deg)');
-    expect(gableMarkup).toContain('Minimum is 5 deg for this roof.');
-    expect(gableMarkup).toContain('Gable ridge orientation');
-    expect(gableMarkup).toContain('Open gable ends');
-    expect(gableMarkup).toContain('Appendage band');
-    expect(gableMarkup).not.toContain('Mono fall direction');
-
+    // Milestone 13 session C: `'gable'` was retired from the form
+    // picker. Legacy gable storage is mapped to hipped at the
+    // normalize boundary; the rail exposes hipped + per-end
+    // toggles for the Dutch-hip topology that replaces it. Hipped
+    // also inherits the gable form's appendage capability, so the
+    // Appendage band section is now reachable on hipped.
     const hippedMarkup = renderToStaticMarkup(
       <ObjectWorkbenchRail {...buildRailProps({ draft: buildDraftWithRoofForm('hipped') })} />,
     );
     expect(hippedMarkup).toContain('Roof pitch (deg)');
     expect(hippedMarkup).toContain('Minimum is 5 deg for this roof.');
     expect(hippedMarkup).toContain('Hipped ridge orientation');
+    expect(hippedMarkup).toContain('Open hip ends as gables');
     expect(hippedMarkup).not.toContain('Mono fall direction');
-    expect(hippedMarkup).not.toContain('Open gable ends');
-    expect(hippedMarkup).not.toContain('Appendage band');
+    expect(hippedMarkup).toContain('Appendage band');
   });
 });

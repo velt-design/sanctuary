@@ -131,7 +131,7 @@ export function buildLegacyJoinedRectilinearGableRoof(input: {
         ridgeAxis: input.ridgeAxis,
         pitchDeg: input.roofPitchDeg,
         metadata: {
-          roofForm: 'gable',
+          roofForm: 'hipped',
           sourceEdgeId: facet.edge.id,
           footprintFollowing: true,
           roofGeometry: 'rectilinear_joined_gable',
@@ -146,7 +146,7 @@ export function buildLegacyJoinedRectilinearGableRoof(input: {
     edges,
     eavePolygon,
     eaveHeightMm: input.eaveHeightMm,
-    roofForm: 'gable',
+    roofForm: 'hipped',
     roofGeometry: 'rectilinear_joined_gable',
   }).filter((feature) => feature.kind === 'ridge' || feature.kind === 'valley');
   const fallbackFeatureCount = roofFeatures.filter(
@@ -231,7 +231,7 @@ export function buildBentSpineJoinedGableRoofX(input: {
     edges,
     eavePolygon,
     eaveHeightMm: input.eaveHeightMm,
-    roofForm: 'gable',
+    roofForm: 'hipped',
     roofGeometry: 'bent_spine_joined_gable',
   }).filter((feature) => feature.kind === 'ridge' || feature.kind === 'valley');
   const terminalIntersections = deriveBentSpineTerminalIntersectionsX({
@@ -273,7 +273,7 @@ export function buildBentSpineJoinedGableRoofX(input: {
         ridgeAxis: facet.edge.ridgeAxis,
         pitchDeg: input.roofPitchDeg,
         metadata: {
-          roofForm: 'gable',
+          roofForm: 'hipped',
           sourceEdgeId: facet.edge.id,
           footprintFollowing: true,
           roofGeometry: 'bent_spine_joined_gable',
@@ -297,7 +297,7 @@ export function buildBentSpineJoinedGableRoofX(input: {
     edges,
     eavePolygon,
     eaveHeightMm: input.eaveHeightMm,
-    roofForm: 'gable',
+    roofForm: 'hipped',
     roofGeometry: 'bent_spine_joined_gable',
   }).filter((feature) => feature.kind === 'ridge' || feature.kind === 'valley');
   const fallbackFeatureCount = roofFeatures.filter(

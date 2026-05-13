@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { normalizeGeometryConfig, type HouseFootprintPreset, type RawGeometryModuleInput } from '@sp/geometry';
+import {
+  normalizeGeometryConfig,
+  type HouseFootprintPreset,
+  type HouseRoofForm,
+  type RawGeometryModuleInput,
+} from '@sp/geometry';
 
 function makeRawInput(overrides: Partial<RawGeometryModuleInput> = {}): RawGeometryModuleInput {
   return {
@@ -1695,7 +1700,13 @@ describe('normalizeGeometryConfig', () => {
               rightLegRunM: '2.4',
               sideRunM: '2.4',
             },
-            roofForm: 'gable',
+            // Legacy serialized data with the retired `gable` form name.
+            // Cast through `unknown` because session C dropped `gable`
+            // from the `HouseRoofForm` union; the safety net inside
+            // `resolveHouseRoofForm` still narrows it to `hipped` for
+            // direct geometry callers that bypass the workbench draft
+            // migration boundary.
+            roofForm: 'gable' as unknown as HouseRoofForm,
           },
         }),
       );
@@ -1731,7 +1742,13 @@ describe('normalizeGeometryConfig', () => {
               rightLegRunM: '2.4',
               sideRunM: '2.4',
             },
-            roofForm: 'gable',
+            // Legacy serialized data with the retired `gable` form name.
+            // Cast through `unknown` because session C dropped `gable`
+            // from the `HouseRoofForm` union; the safety net inside
+            // `resolveHouseRoofForm` still narrows it to `hipped` for
+            // direct geometry callers that bypass the workbench draft
+            // migration boundary.
+            roofForm: 'gable' as unknown as HouseRoofForm,
             openGableEndIds: ['house-gable-end-x-1'],
           },
         }),

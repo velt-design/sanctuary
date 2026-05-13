@@ -22,7 +22,7 @@ import {
 } from '@/lib/types/calculator';
 export type WorkbenchObjectFamily = 'house_forms' | 'decks' | 'openings' | 'pergolas';
 
-export type HouseRoofForm = 'flat' | 'mono' | 'gable' | 'hipped';
+export type HouseRoofForm = 'flat' | 'mono' | 'hipped';
 export type HouseRoofPrimaryFallDirection = 'positive_x' | 'negative_x' | 'positive_y' | 'negative_y';
 export type HouseRoofRidgeAxis = 'x' | 'y';
 export type HouseRoofAppendageForm = 'flat' | 'mono';
@@ -759,16 +759,25 @@ function normalizeHouseFormRoofIntent(
     )]
     : [];
 
-  const rawForm = isSupportedHouseRoofForm(value?.form) ? value.form : 'gable';
+  // Milestone 13 session C: legacy `'gable'` is no longer in
+  // `HouseRoofForm`. Storage may still carry it -- detect at the
+  // string level (cast to unknown to bypass the narrowed type) before
+  // the validator narrows. When the polygon is available, seed
+  // openGableEndIds with the all-ends-open set so the rendered
+  // topology matches what gable-form houses produced before.
+  const legacyGableInput = (value?.form as unknown) === 'gable';
+  const rawForm: HouseRoofForm = legacyGableInput
+    ? 'hipped'
+    : isSupportedHouseRoofForm(value?.form)
+      ? value.form
+      : 'hipped';
   const ridgeAxis = isHouseRoofRidgeAxis(value?.ridgeAxis) ? value.ridgeAxis : 'x';
 
   // Milestone 13 deep migration (slice 2): when an explicit footprint
-  // polygon is available, convert legacy `form: 'gable'` to
-  // `form: 'hipped' + openGableEndIds: <stored ∪ all terminals>`. The
-  // union with stored keeps any explicit ids the user had previously
-  // toggled; the all-terminals fold-in matches the geometry compat
-  // migration's semantics.
-  if (rawForm === 'gable' && footprintPolygon && footprintPolygon.length >= 3) {
+  // polygon is available AND we're migrating from legacy gable, seed
+  // openGableEndIds with the full terminal set so the rendered
+  // topology matches what gable-form houses produced before.
+  if (legacyGableInput && footprintPolygon && footprintPolygon.length >= 3) {
     const polygonMm = footprintPolygon.map((point) => ({
       x: Number(point.alongM) * 1000,
       y: Number(point.depthM) * 1000,

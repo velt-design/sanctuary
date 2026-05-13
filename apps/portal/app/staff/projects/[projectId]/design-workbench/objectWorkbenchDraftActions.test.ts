@@ -442,7 +442,7 @@ describe('objectWorkbenchDraftActions', () => {
       draft,
       objectFirstDraft: makeObjectFirstDraft(),
       roof: makeRoofIntent({
-        form: 'gable',
+        form: 'hipped',
         material: 'trapezoidal_5_rib',
         primaryPitchDeg: '22',
         ridgeAxis: 'y',
@@ -452,7 +452,7 @@ describe('objectWorkbenchDraftActions', () => {
     const syncedForm = mergeHouseFormRoofIntentAfterFootprintSync({
       previewHouseForm: {
         ...makeObjectFirstDraft().houseAssembly!.houseForms[0]!,
-        roofIntent: makeRoofIntent({ form: 'gable', openGableEndIds: ['terminal-a', 'terminal-stale'] }),
+        roofIntent: makeRoofIntent({ form: 'hipped', openGableEndIds: ['terminal-a', 'terminal-stale'] }),
       },
       existingHouseForm: nextDraft.objectFirst!.houseAssembly!.houseForms[0]!,
       terminalEndIds: new Set(['terminal-a']),
@@ -463,7 +463,9 @@ describe('objectWorkbenchDraftActions', () => {
       houseRoofPitchDeg: '22',
     });
     expect(nextDraft.objectFirst?.houseAssembly?.houseForms[0]?.roofIntent).toMatchObject({
-      form: 'gable',
+      // Milestone 13 session C: gable retired -- commit serializes
+      // the canonical hipped form value.
+      form: 'hipped',
       material: 'trapezoidal_5_rib',
       primaryPitchDeg: '22',
       ridgeAxis: 'y',

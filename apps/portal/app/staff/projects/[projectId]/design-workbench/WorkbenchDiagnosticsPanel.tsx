@@ -66,7 +66,7 @@ export default function WorkbenchDiagnosticsPanel({
   const roofRidgeSourceLabel = roofControls?.ridgeAxis
     ? labelForRoofFieldSource(roof.provenance.ridgeAxis)
     : roofControlNotUsedLabel;
-  const roofOpenEndSourceLabel = roof.intent.form === 'gable'
+  const roofOpenEndSourceLabel = roof.intent.form === 'hipped'
     ? labelForRoofFieldSource(roof.provenance.openGableEndIds)
     : roofControlNotUsedLabel;
   const roofAppendageRelevant = Boolean(roofControls?.appendage);

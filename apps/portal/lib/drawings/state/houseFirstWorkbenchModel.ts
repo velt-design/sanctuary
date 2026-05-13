@@ -21,7 +21,7 @@ import type {
 } from './objectFirstWorkbenchModel';
 
 export type WorkbenchMode = 'house' | 'pergolas';
-export type HouseRoofForm = 'flat' | 'mono' | 'gable' | 'hipped';
+export type HouseRoofForm = 'flat' | 'mono' | 'hipped';
 export type HouseRoofPrimaryFallDirection = 'positive_x' | 'negative_x' | 'positive_y' | 'negative_y';
 export type HouseRoofRidgeAxis = 'x' | 'y';
 export type HouseRoofAppendageForm = 'flat' | 'mono';

@@ -522,7 +522,7 @@ describe('buildDrawingWorkbenchStore', () => {
       draft,
       compatibility: {
         roof: {
-          form: 'gable',
+          form: 'hipped',
         },
       },
     });
@@ -1377,7 +1377,7 @@ describe('buildDrawingWorkbenchStore', () => {
       draft,
       compatibility: {
         roof: {
-          form: 'gable',
+          form: 'hipped',
         },
       },
     });
@@ -1390,14 +1390,19 @@ describe('buildDrawingWorkbenchStore', () => {
       }),
     });
 
-    expect(store.derived.objectWorkbench.houseForm.roof.intent.form).toBe('gable');
+    // Milestone 13 session C: gable form retired -- legacy gable
+    // input migrates to hipped and the bent-spine geometry kicks in
+    // only when every active terminal end is open. With the
+    // open-set unsupplied, the unified hipped pipeline produces the
+    // rectilinear-joined-hipped variant.
+    expect(store.derived.objectWorkbench.houseForm.roof.intent.form).toBe('hipped');
     expect(store.derived.objectWorkbench.houseForm.roof.validationStatus).toBe('valid');
     expect(store.derived.objectWorkbench.houseForm.roof.validationCode).toBeNull();
     expect(store.derived.objectWorkbench.houseForm.roof.validationMessage).toBeNull();
     expect(store.derived.objectWorkbench.houseForm.roof.approximationReasons).toEqual([]);
     expect(store.derived.objectWorkbench.houseForm.roof.provenance.form).toBe('object_first_draft');
     expect(store.derived.objectWorkbench.houseForm.roof.provenance.ridgeAxis).toBe('object_first_draft');
-    expect(store.derived.objectWorkbench.houseForm.roof.geometryKind).toBe('bent_spine_joined_gable');
+    expect(store.derived.objectWorkbench.houseForm.roof.geometryKind).toBe('rectilinear_joined_hipped');
     expect(store.derived.objectWorkbench.houseForm.roof.intent.appendage.enabled).toBe(false);
     expect(store.derived.objectWorkbench.houseForm).toMatchObject({
       trustStatus: 'geometry_ready',
@@ -1495,7 +1500,7 @@ describe('buildDrawingWorkbenchStore', () => {
       draft: ridgeDraft,
       compatibility: {
         roof: {
-          form: 'gable',
+          form: 'hipped',
           ridgeAxis: 'y',
         },
       },
@@ -1552,9 +1557,13 @@ describe('buildDrawingWorkbenchStore', () => {
       primaryPitchDeg: '0',
       ridgeAxis: 'y',
       openGableEndIds: ['house-gable-end-y-1'],
+      // Milestone 13 session C: hipped now supports appendage
+      // (subsumes legacy gable). Leave appendage off so this test
+      // stays focused on ridge-axis healing -- an authored appendage
+      // on wrap_left rear would flag the host edge as invalid.
       appendage: {
         ...houseForm.roofIntent.appendage,
-        enabled: true,
+        enabled: false,
       },
     };
 

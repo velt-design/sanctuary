@@ -1368,11 +1368,15 @@ describe('DesignWorkbenchEstimateClient', () => {
     expect(hippedDraft?.appendage?.enabled).toBe(false);
     expect(hippedDraft?.openGableEndIds).toEqual([]);
     expect(readLabeledValue(rendered.container, 'Selected roof form')).toBe('hipped');
-    expect(readLabeledValue(rendered.container, 'Roof appendage source')).toBe('Not used for this roof');
+    // Milestone 13 session C: hipped subsumes the retired gable form
+    // and inherits its appendage capability. The rail now surfaces
+    // the appendage controls and the source label reflects the
+    // authored draft state.
+    expect(readLabeledValue(rendered.container, 'Roof appendage source')).toBe('Explicit object draft');
     clickButtonByText(rendered.container, 'House Forms');
     await flushAsyncWork();
     expect(rendered.container.querySelector('[aria-label="Hipped ridge orientation"]')).not.toBeNull();
-    expect(rendered.container.querySelector('[aria-label="Appendage band"]')).toBeNull();
+    expect(rendered.container.querySelector('[aria-label="Appendage band"]')).not.toBeNull();
 
     rendered.unmount();
   });

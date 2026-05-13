@@ -186,7 +186,7 @@ export function buildBentSpineGableTerminalEndsX(input: {
     edges,
     eavePolygon,
     eaveHeightMm: 0,
-    roofForm: 'gable',
+    roofForm: 'hipped',
     roofGeometry: 'bent_spine_joined_gable',
   }).filter((feature) => feature.kind === 'ridge');
   const terminalIntersections = deriveBentSpineTerminalIntersectionsX({

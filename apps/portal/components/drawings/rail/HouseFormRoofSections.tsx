@@ -148,7 +148,7 @@ export function buildHouseFormRoofSections({
     fields.push(
       <SelectField
         key="roof-ridge-axis"
-        label={roofDraft.form === 'hipped' ? 'Hipped ridge orientation' : 'Gable ridge orientation'}
+        label="Hipped ridge orientation"
         value={roofDraft.ridgeAxis ?? 'x'}
         options={ROOF_RIDGE_AXIS_OPTIONS}
         disabled={disabled}
@@ -163,23 +163,18 @@ export function buildHouseFormRoofSections({
     );
   }
 
-  // Open-end toggles apply to both gable (legacy) and hipped roof forms.
-  // For hipped, opening an end converts that corner of the roof into a
-  // gable wall (the milestone-13 Dutch-hip feature). For gable (legacy),
-  // the toggle marks which gable faces render as open frames vs. solid
-  // walls. Geometry-side: sessions A and B made `openGableEndIds` apply
-  // to hipped roofs; the normalize-time migration converts saved gable
-  // forms to hipped so the picker only needs to expose hipped going
-  // forward (see `HOUSE_ROOF_FORM_ORDER`).
+  // Milestone 13 session C: only `'hipped'` exposes the open-end
+  // toggles. Legacy `'gable'` was retired from `HouseRoofForm` and
+  // any stored gable data is mapped to `'hipped'` at the normalize
+  // boundary. Opening an end on a hipped roof converts that corner
+  // into a gable wall (Dutch hip).
   const showOpenEndControls =
-    canEditSelectedRoofForm && (roofDraft.form === 'gable' || roofDraft.form === 'hipped');
+    canEditSelectedRoofForm && roofDraft.form === 'hipped';
   if (showOpenEndControls) {
     if (terminalEnds.length > 0) {
       fields.push(
         <div key="open-end-toggles" className={styles.field}>
-          <span className={styles.fieldLabel}>
-            {roofDraft.form === 'hipped' ? 'Open hip ends as gables' : 'Open gable ends'}
-          </span>
+          <span className={styles.fieldLabel}>Open hip ends as gables</span>
           <div className={styles.buttonRow}>
             {terminalEnds.map((end) => (
               <ActionButton
@@ -209,9 +204,7 @@ export function buildHouseFormRoofSections({
             ))}
           </div>
           <span className={styles.fieldHint}>
-            {roofDraft.form === 'hipped'
-              ? 'Open a hip end to convert that corner of the roof into a gable wall. Click again to close.'
-              : 'Select which terminal gable faces render as open end frames.'}
+            Open a hip end to convert that corner of the roof into a gable wall. Click again to close.
           </span>
         </div>,
       );

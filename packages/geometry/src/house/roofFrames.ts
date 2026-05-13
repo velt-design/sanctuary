@@ -37,7 +37,7 @@ export function buildOpenGableFrameFeatures(input: {
         kind: 'gable_end_frame',
         line: startVertical,
         metadata: {
-          roofForm: 'gable',
+          roofForm: 'hipped',
           roofGeometry: input.roofGeometry,
           gableEndId: terminalEnd.id,
           sourceEdgeId: terminalEnd.sourceEdgeId,
@@ -54,7 +54,7 @@ export function buildOpenGableFrameFeatures(input: {
         kind: 'gable_end_frame',
         line: topSegment,
         metadata: {
-          roofForm: 'gable',
+          roofForm: 'hipped',
           roofGeometry: input.roofGeometry,
           gableEndId: terminalEnd.id,
           sourceEdgeId: terminalEnd.sourceEdgeId,
@@ -70,7 +70,7 @@ export function buildOpenGableFrameFeatures(input: {
         kind: 'gable_end_frame',
         line: endVertical,
         metadata: {
-          roofForm: 'gable',
+          roofForm: 'hipped',
           roofGeometry: input.roofGeometry,
           gableEndId: terminalEnd.id,
           sourceEdgeId: terminalEnd.sourceEdgeId,

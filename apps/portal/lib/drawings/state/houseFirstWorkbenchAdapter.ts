@@ -124,8 +124,17 @@ function pickFirstDefined<T>(...values: Array<T | null | undefined>): T | null {
 
 function resolveHouseRoofForm(module: CalculatorModuleInputs): HouseRoofForm {
   if (module.boxPerimeterEnabled) return 'flat';
-  if (module.pergolaStyle === 'gable') return 'gable';
-  if (module.pergolaStyle === 'hip' || module.pergolaStyle === 'hip_corner') return 'hipped';
+  // Milestone 13 session C: legacy `pergolaStyle === 'gable'` inherits
+  // the same roof-form mapping as hipped (the unified Dutch-hip
+  // builder produces gable-shape topology when all terminal ends are
+  // opened, which the workbench draft normalize layer arranges).
+  if (
+    module.pergolaStyle === 'gable' ||
+    module.pergolaStyle === 'hip' ||
+    module.pergolaStyle === 'hip_corner'
+  ) {
+    return 'hipped';
+  }
   return 'mono';
 }
 
@@ -1723,7 +1732,7 @@ function buildSharedHouse(
   const sharedPrimaryFallDirection =
     explicitPrimaryFallDirection ??
     derivedMonoFallDirection.value;
-  const ridgeAxisRelevant = sharedRoofForm === 'gable' || sharedRoofForm === 'hipped';
+  const ridgeAxisRelevant = sharedRoofForm === 'hipped';
   const shouldHealPresetRidgeAxis =
     normalizedFootprintMode !== 'custom_polygon' &&
     ridgeAxisRelevant &&
@@ -1752,13 +1761,10 @@ function buildSharedHouse(
     ridgeAxis: sharedRidgeAxis,
   });
   const validTerminalEndIds = new Set(terminalEnds.map((end) => end.id));
-  // Milestone 13: openGableEndIds applies to BOTH gable and hipped --
-  // sessions A/B made hipped honour per-end open toggles for the
-  // Dutch-hip feature. Without this, the plan-view click commits land
-  // in the working copy but the geometry rebuild silently discards
-  // them (the adapter is on the hot path between commit and solve).
-  const formAcceptsOpenGableEndIds =
-    sharedRoofForm === 'gable' || sharedRoofForm === 'hipped';
+  // Milestone 13 session C: openGableEndIds applies to `'hipped'`
+  // only -- legacy `'gable'` was retired from the type union and is
+  // mapped to `'hipped'` at the normalize boundary.
+  const formAcceptsOpenGableEndIds = sharedRoofForm === 'hipped';
   const requestedOpenGableEndIds = formAcceptsOpenGableEndIds
     ? normalizeRoofOpenGableEndIds(normalizedRoofDraft?.openGableEndIds)
     : [];
@@ -1779,7 +1785,10 @@ function buildSharedHouse(
       message: 'Some saved open gable ends no longer match the current footprint or ridge orientation and were cleared.',
     });
   }
-  const appendageAllowed = sharedRoofForm === 'mono' || sharedRoofForm === 'gable';
+  // Milestone 13 session C: appendage is supported for mono AND
+  // hipped (the latter includes the legacy gable topology, which is
+  // now expressed as hipped + all-open terminal ends).
+  const appendageAllowed = sharedRoofForm === 'mono' || sharedRoofForm === 'hipped';
   const appendage = {
     enabled: appendageAllowed && Boolean(explicitAppendage?.enabled),
     form: normalizeAppendageForm(explicitAppendage?.form) ?? 'mono',
@@ -1844,10 +1853,7 @@ function buildSharedHouse(
     attachmentEdge: attachmentLine,
     roofRidgeAxis: sharedRidgeAxis,
     roofRidgeAxisExplicit: effectiveRidgeAxisExplicit,
-    preferredRidgeAxis:
-      sharedRoofForm === 'gable' || sharedRoofForm === 'hipped'
-        ? derivedRidgeAxis.value
-        : null,
+    preferredRidgeAxis: sharedRoofForm === 'hipped' ? derivedRidgeAxis.value : null,
     appendageSupport: {
       supportedHostEdges: appendageSupport.supportedHostEdges as Array<NonNullable<CalculatorModuleInputs['attachmentSide']>>,
       blockedReasonsBySide: appendageSupport.blockedReasonsBySide,
@@ -1866,6 +1872,8 @@ function buildSharedHouse(
   const roofGeometryKind = deriveHouseRoofGeometryKind({
     roofForm: sharedRoofForm,
     footprint: geometryFootprint,
+    openGableEndIds,
+    roofRidgeAxis: sharedRidgeAxis,
   });
   const appendageSupportedHostEdges =
     appendageSupport.supportedHostEdges as Array<NonNullable<CalculatorModuleInputs['attachmentSide']>>;

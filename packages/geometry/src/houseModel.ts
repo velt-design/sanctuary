@@ -220,10 +220,7 @@ import {
   deriveHouseFootprintOpenSide,
 } from './house/roofJoinedGableTerminals';
 import {
-  buildBentSpineJoinedGableRoofX,
   buildComplexFootprintRoof,
-  buildJoinedRectilinearGableRoof,
-  buildLegacyJoinedRectilinearGableRoof,
   deriveHouseGableTerminalEndsFromFootprint,
   reflectRoofBuildResultAcrossX,
   swapRoofBuildResultAxes,
@@ -232,11 +229,9 @@ export { deriveHouseGableTerminalEndsFromFootprint } from './house/roofJoined';
 import { applyRoofQa, validateHouseRoofQa } from './house/roofQa';
 import {
   buildFlatHouseRoof,
-  buildGabledHouseRoof,
   buildHippedHouseRoof,
   buildMonoHouseRoof,
   buildPrimaryHouseRoof,
-  buildRectangularGableRoof,
   invalidHouseRoof,
 } from './house/roofPrimary';
 import {
@@ -419,7 +414,7 @@ export function buildHouseModel3D(input: {
     ridgeAxis: roofRidgeAxis,
   });
   const requestedOpenTerminalEndIds = new Set(
-    (roofForm === 'gable' || roofForm === 'hipped')
+    roofForm === 'hipped'
       ? (model.openGableEndIds ?? []).filter((id) =>
           availableTerminalEnds.some((terminalEnd) => terminalEnd.id === id),
         )
@@ -509,7 +504,19 @@ export function buildHouseModel3D(input: {
     roofGeometry:
       typeof roof.metadata.roofGeometry === 'string' ? roof.metadata.roofGeometry : null,
   });
-  const displayRoofFeatures = [...roof.roofFeatures, ...frameFeatures];
+  // Frame features are synthesized from the validated wall + roof
+  // geometry, so they inherit the parent roof's QA verdict. Stamp the
+  // QA metadata so downstream `roofQaStatus === 'valid'` checks on the
+  // full feature collection do not flag these synthetic outlines.
+  const parentRoofQaStatus =
+    typeof roof.metadata.roofQaStatus === 'string' ? roof.metadata.roofQaStatus : null;
+  const stampedFrameFeatures = parentRoofQaStatus
+    ? frameFeatures.map((feature) => ({
+        ...feature,
+        metadata: { ...feature.metadata, roofQaStatus: parentRoofQaStatus },
+      }))
+    : frameFeatures;
+  const displayRoofFeatures = [...roof.roofFeatures, ...stampedFrameFeatures];
   const attachmentTarget = buildAttachmentTarget({
     config: input.config,
     attachmentEdge: semanticAttachmentEdge,

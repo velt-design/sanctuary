@@ -97,8 +97,6 @@ export function labelForRoofForm(value: HouseFormRoofIntentModel['form'] | null 
   switch (value) {
     case 'flat':
       return 'Flat';
-    case 'gable':
-      return 'Gable';
     case 'hipped':
       return 'Hipped';
     case 'mono':

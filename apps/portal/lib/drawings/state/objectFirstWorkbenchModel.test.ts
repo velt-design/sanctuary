@@ -53,7 +53,7 @@ describe('objectFirstWorkbenchModel contracts', () => {
           attachmentSide: 'rear',
         },
         roofIntent: {
-          form: 'gable',
+          form: 'hipped',
           material: 'corrugated_iron',
           primaryPitchDeg: '7',
           primaryFallDirection: 'negative_y',
@@ -374,8 +374,12 @@ describe('normalizeObjectFirstHouseFormDraft — gable→hipped migration (slice
         attachmentSide: 'rear' as const,
         position: null,
       },
+      // Cast: `'gable'` is no longer in the `HouseRoofForm` union
+      // (session C), but storage may still carry it -- this fixture
+      // simulates legacy storage to verify the normalize-boundary
+      // migration still maps it to `'hipped'`.
       roofIntent: {
-        form: 'gable' as const,
+        form: 'gable' as unknown as 'hipped',
         material: 'corrugated_iron' as const,
         primaryPitchDeg: '15',
         primaryFallDirection: 'positive_y' as const,
@@ -427,14 +431,16 @@ describe('normalizeObjectFirstHouseFormDraft — gable→hipped migration (slice
     expect(draft.roofIntent.openGableEndIds.length).toBeGreaterThanOrEqual(2);
   });
 
-  it("does NOT migrate when the footprint polygon is empty (preset-mode without resolved polygon stays form: 'gable')", () => {
-    // The geometry compat migration at normalize.ts:691-720 continues
-    // to handle this case until slice 2B moves the migration to a
-    // later boundary that always has the resolved polygon.
+  it("migrates form to 'hipped' even when polygon is empty (preset-mode); openGableEndIds stays empty since no terminals can be derived", () => {
+    // Slice 2 left preset-mode as form: 'gable'. Session C closes the
+    // loop -- legacy gable input ALWAYS migrates the form name; only
+    // the openGableEndIds seeding requires an explicit polygon. The
+    // remaining preset-mode case is the documented regression in the
+    // session C decision-log entry.
     const draft = normalizeObjectFirstHouseFormDraft(makeGableDraft({ polygon: [] }));
     expect(draft).not.toBeNull();
     if (!draft) return;
-    expect(draft.roofIntent.form).toBe('gable');
+    expect(draft.roofIntent.form).toBe('hipped');
     expect(draft.roofIntent.openGableEndIds).toEqual([]);
   });
 

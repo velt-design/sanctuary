@@ -111,8 +111,16 @@ export function buildWallSegments(
     const xAxis = normalizeVector(subtractPoints(groundEnd, groundStart));
     const plane = planeFromOriginAxes(groundStart, xAxis, WORLD_Z);
     const roofForm = typeof roof?.metadata.roofForm === 'string' ? roof.metadata.roofForm : null;
+    const roofGeometry = typeof roof?.metadata.roofGeometry === 'string' ? roof.metadata.roofGeometry : null;
+    // Milestone 13 session C: legacy `roofForm === 'gable'` is now
+    // expressed as `roofGeometry === 'bent_spine_joined_gable'` for the
+    // joined / U / wrap path. The rectangular all-open / dutch-hip case
+    // produces flat-top walls here and is then reshaped to a triangular
+    // apex profile inside `buildHouseModel3D`, so it does NOT need
+    // roof-aligned tops in the wall builder.
     const usesRoofAlignedTop =
-      (roofForm === 'mono' || roofForm === 'gable') && Boolean(roof?.roofPlanes.length);
+      (roofForm === 'mono' || roofGeometry === 'bent_spine_joined_gable') &&
+      Boolean(roof?.roofPlanes.length);
     const terminalClosure = terminalClosureBySourceEdgeId.get(edgeId) ?? null;
     const topProfile =
       usesRoofAlignedTop

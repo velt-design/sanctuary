@@ -147,7 +147,7 @@ export function buildRectangularGableRoof(input: {
   if (!isRectanglePolygon(input.eavePolygon)) {
     return invalidHouseRoof({
       eavePolygon: input.eavePolygon,
-      roofForm: 'gable',
+      roofForm: 'hipped',
       roofGeometry: 'rectangular_gable',
       reason: 'unsupported_gable_topology',
     });
@@ -180,7 +180,7 @@ export function buildRectangularGableRoof(input: {
         lowPoint: point(centerX, box.minY, input.eaveHeightMm),
         ridgeAxis: 'x',
         pitchDeg: input.roofPitchDeg,
-        metadata: { roofForm: 'gable', roofGeometry: 'rectangular_gable' },
+        metadata: { roofForm: 'hipped', roofGeometry: 'rectangular_gable' },
       }),
       buildRoofPlane({
         id: 'house-roof-gable-max-y',
@@ -194,7 +194,7 @@ export function buildRectangularGableRoof(input: {
         lowPoint: point(centerX, box.maxY, input.eaveHeightMm),
         ridgeAxis: 'x',
         pitchDeg: input.roofPitchDeg,
-        metadata: { roofForm: 'gable', roofGeometry: 'rectangular_gable' },
+        metadata: { roofForm: 'hipped', roofGeometry: 'rectangular_gable' },
       }),
     );
   } else {
@@ -216,7 +216,7 @@ export function buildRectangularGableRoof(input: {
         lowPoint: point(box.minX, centerY, input.eaveHeightMm),
         ridgeAxis: 'y',
         pitchDeg: input.roofPitchDeg,
-        metadata: { roofForm: 'gable', roofGeometry: 'rectangular_gable' },
+        metadata: { roofForm: 'hipped', roofGeometry: 'rectangular_gable' },
       }),
       buildRoofPlane({
         id: 'house-roof-gable-max-x',
@@ -230,7 +230,7 @@ export function buildRectangularGableRoof(input: {
         lowPoint: point(box.maxX, centerY, input.eaveHeightMm),
         ridgeAxis: 'y',
         pitchDeg: input.roofPitchDeg,
-        metadata: { roofForm: 'gable', roofGeometry: 'rectangular_gable' },
+        metadata: { roofForm: 'hipped', roofGeometry: 'rectangular_gable' },
       }),
     );
   }
@@ -244,14 +244,14 @@ export function buildRectangularGableRoof(input: {
           kind: 'ridge',
           line: ridge,
           metadata: {
-            roofForm: 'gable',
+            roofForm: 'hipped',
             roofGeometry: 'rectangular_gable',
             ridgeAxis: input.ridgeAxis,
           },
         },
       ],
       metadata: {
-        roofForm: 'gable',
+        roofForm: 'hipped',
         roofGeometry: 'rectangular_gable',
         ridgeAxis: input.ridgeAxis,
       },
@@ -270,7 +270,7 @@ export function buildGabledHouseRoof(input: {
   if (!isOrthogonalFootprint(input.sourceFootprint)) {
     return invalidHouseRoof({
       eavePolygon: input.eavePolygon,
-      roofForm: 'gable',
+      roofForm: 'hipped',
       roofGeometry: 'bent_spine_joined_gable',
       reason: 'unsupported_gable_topology',
       metadata: { footprintFollowing: false, ridgeAxis: input.ridgeAxis },
@@ -290,7 +290,7 @@ export function buildGabledHouseRoof(input: {
   if (!roof.roofPlanes.length) {
     return invalidHouseRoof({
       eavePolygon: input.eavePolygon,
-      roofForm: 'gable',
+      roofForm: 'hipped',
       roofGeometry: 'bent_spine_joined_gable',
       reason: 'unsupported_gable_topology',
       metadata: { ...(roof.metadata ?? {}), footprintFollowing: true, ridgeAxis: input.ridgeAxis },
@@ -303,7 +303,7 @@ export function buildGabledHouseRoof(input: {
       roofFeatures: roof.roofFeatures,
       terminalClosures: roof.terminalClosures,
       metadata: {
-        roofForm: 'gable',
+        roofForm: 'hipped',
         roofGeometry: 'bent_spine_joined_gable',
         footprintFollowing: true,
         ridgeAxis: input.ridgeAxis,
@@ -329,7 +329,7 @@ export function buildGabledHouseRoof(input: {
       roofPlanes: legacyRoof.roofPlanes,
       roofFeatures: legacyRoof.roofFeatures,
       metadata: {
-        roofForm: 'gable',
+        roofForm: 'hipped',
         roofGeometry: 'rectilinear_joined_gable',
         footprintFollowing: true,
         ridgeAxis: input.ridgeAxis,
@@ -434,17 +434,23 @@ export function buildHippedHouseRoof(input: {
           endCap,
         }),
         metadata: {
-          // Form metadata reflects the resolved cap pair so downstream
-          // roof QA + visual code can distinguish hipped / gable /
-          // dutch_hip without re-deriving from the cap inputs.
+          // Milestone 13 session C: `roofForm` reports the typed
+          // `HouseRoofForm` value (`hipped`). One-end-open is reported
+          // as `dutch_hip` for downstream visual + QA disambiguation;
+          // both-ends-open ("all open" = legacy gable topology) is
+          // reported as `hipped` -- consumers that need to detect that
+          // shape check `openGableEndIds` covers every terminal end.
           roofForm:
-            startCap === 'hipped' && endCap === 'hipped'
+            (startCap === 'hipped' && endCap === 'hipped') ||
+            (startCap === 'open_gable' && endCap === 'open_gable')
               ? 'hipped'
-              : startCap === 'open_gable' && endCap === 'open_gable'
-                ? 'gable'
-                : 'dutch_hip',
+              : 'dutch_hip',
           roofGeometry: 'rectangular_hipped',
           footprintFollowing: true,
+          // Wall builder uses this to decide whether to compute a
+          // roof-aligned wall top profile (gable peaks). Open caps =>
+          // at least one wall climbs to the ridge apex.
+          roofTopologyHasOpenGable: startCap === 'open_gable' || endCap === 'open_gable',
         },
       },
       eavePolygon: input.eavePolygon,
@@ -458,6 +464,11 @@ export function buildHippedHouseRoof(input: {
   // them in place -- adjacent facets reach the eave on the open side
   // (true Dutch hip). Milestone 13 session B.
   const stationaryEdgeIndexes: number[] = [];
+  const resolvedJoinedRidgeAxis: HouseRoofRidgeAxis = input.ridgeAxis ?? 'x';
+  const activeAxisTerminals = deriveHouseGableTerminalEndsFromFootprint({
+    footprint: input.sourceFootprint,
+    ridgeAxis: resolvedJoinedRidgeAxis,
+  });
   if (input.openTerminalEndIds && input.openTerminalEndIds.length > 0) {
     // Terminal ends exist for both axes on an L-shape; collect from each
     // and look up by id. The terminal-end function does the per-axis
@@ -483,6 +494,25 @@ export function buildHippedHouseRoof(input: {
       const index = Number(match[1]) - 1;
       if (Number.isFinite(index) && index >= 0) stationaryEdgeIndexes.push(index);
     }
+  }
+  // Milestone 13 session C: when every active-axis terminal end is open
+  // (i.e. the legacy `roofForm: 'gable'` topology), route through the
+  // bent-spine joined-gable builder so consumers that depend on
+  // `roofGeometry: 'bent_spine_joined_gable'` + closure metadata keep
+  // working. Mixed / partial-open joined cases continue to use the
+  // unified wavefront with stationary edges (Dutch hip on a subset).
+  const openIdSet = new Set(input.openTerminalEndIds ?? []);
+  const allActiveTerminalsOpen =
+    activeAxisTerminals.length > 0 &&
+    activeAxisTerminals.every((terminalEnd) => openIdSet.has(terminalEnd.id));
+  if (allActiveTerminalsOpen) {
+    return buildGabledHouseRoof({
+      sourceFootprint: input.sourceFootprint,
+      eavePolygon: input.eavePolygon,
+      eaveHeightMm: input.eaveHeightMm,
+      roofPitchDeg: input.roofPitchDeg,
+      ridgeAxis: resolvedJoinedRidgeAxis,
+    });
   }
   const roof = buildJoinedRectilinearHippedRoof({
     ...input,
@@ -543,20 +573,12 @@ export function buildPrimaryHouseRoof(input: {
           roofPitchDeg: input.roofPitchDeg,
           fallDirection: input.roofPrimaryFallDirection,
         })
-      : input.roofForm === 'gable'
-        ? buildGabledHouseRoof({
-            sourceFootprint: input.sourceFootprint,
-            eavePolygon: input.eavePolygon,
-            eaveHeightMm: input.eaveHeightMm,
-            roofPitchDeg: input.roofPitchDeg,
-            ridgeAxis: input.roofRidgeAxis,
-          })
-        : buildHippedHouseRoof({
-            sourceFootprint: input.sourceFootprint,
-            eavePolygon: input.eavePolygon,
-            eaveHeightMm: input.eaveHeightMm,
-            roofPitchDeg: input.roofPitchDeg,
-            ridgeAxis: input.roofRidgeAxis,
-            openTerminalEndIds: input.openTerminalEndIds ?? null,
-          });
+      : buildHippedHouseRoof({
+          sourceFootprint: input.sourceFootprint,
+          eavePolygon: input.eavePolygon,
+          eaveHeightMm: input.eaveHeightMm,
+          roofPitchDeg: input.roofPitchDeg,
+          ridgeAxis: input.roofRidgeAxis,
+          openTerminalEndIds: input.openTerminalEndIds ?? null,
+        });
 }

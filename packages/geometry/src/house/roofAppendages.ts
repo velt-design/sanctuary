@@ -293,7 +293,7 @@ export function buildSharedHouseRoof(input: {
     return invalidHouseRoof({
       eavePolygon: input.eavePolygon,
       roofForm: input.roofForm,
-      roofGeometry: input.roofForm === 'gable' ? 'bent_spine_joined_gable' : 'rectilinear_joined_hipped',
+      roofGeometry: 'rectilinear_joined_hipped',
       reason: roofSelectionValidation.code,
     });
   }

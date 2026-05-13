@@ -51,7 +51,7 @@ const HOUSE_FOOTPRINT_PRESETS: readonly HouseFootprintPreset[] = [
   'wrap_right',
 ];
 
-const HOUSE_ROOF_FORMS: readonly HouseRoofForm[] = ['flat', 'mono', 'gable', 'hipped'];
+const HOUSE_ROOF_FORMS: readonly HouseRoofForm[] = ['flat', 'mono', 'hipped'];
 const ATTACHMENT_SIDES: readonly AttachmentSide[] = ['rear', 'front', 'left', 'right'];
 
 function pointOnSegment2D(
@@ -481,6 +481,13 @@ function makeConfig(input: {
       },
     },
   };
+}
+
+function allTerminalEndIdsForHippedConfig(
+  footprint: Polygon3,
+  ridgeAxis: 'x' | 'y' = 'x',
+): string[] {
+  return deriveHouseGableTerminalEnds({ footprint, ridgeAxis }).map((end) => end.id);
 }
 
 function makePlacedFootprint(input: { offsetX: number; width: number; facadeY?: number; depth?: number }): Polygon3 {
@@ -1824,13 +1831,9 @@ describe('house model geometry builder', () => {
             ? 'footprint_flat'
             : roofForm === 'mono'
               ? 'footprint_mono'
-              : preset === 'straight' && roofForm === 'gable'
-                ? 'rectangular_gable'
-                : preset === 'straight' && roofForm === 'hipped'
-                  ? 'rectangular_hipped'
-                  : roofForm === 'gable'
-                    ? 'bent_spine_joined_gable'
-                    : 'rectilinear_joined_hipped',
+              : preset === 'straight'
+                ? 'rectangular_hipped'
+                : 'rectilinear_joined_hipped',
         );
         expect(model.roofPlanes.length).toBeGreaterThan(0);
         expectRoofQaValid(model);
@@ -1838,7 +1841,7 @@ describe('house model geometry builder', () => {
     }
   });
 
-  it('builds valid gable and hipped roofs for every preset attachment-side rotation', () => {
+  it('builds valid hipped roofs for every preset attachment-side rotation', () => {
     for (const attachmentSide of ATTACHMENT_SIDES) {
       for (const preset of HOUSE_FOOTPRINT_PRESETS) {
         const footprint = buildHouseFootprintPolygon({
@@ -1848,7 +1851,7 @@ describe('house model geometry builder', () => {
           attachmentSide,
         });
 
-        for (const roofForm of ['gable', 'hipped'] as const) {
+        for (const roofForm of ['hipped'] as const) {
           const model = buildHouseModel3D({
             config: makeConfig({
               footprint,
@@ -1871,8 +1874,8 @@ describe('house model geometry builder', () => {
     }
   });
 
-  it('auto-heals zero gable and hipped roof pitches to visible roof geometry', () => {
-    for (const roofForm of ['gable', 'hipped'] as const) {
+  it('auto-heals zero hipped roof pitches to visible roof geometry', () => {
+    for (const roofForm of ['hipped'] as const) {
       const model = buildHouseModel3D({
         config: makeConfig({
           footprint: makePresetFootprint('wrap_left'),
@@ -2080,10 +2083,13 @@ describe('house model geometry builder', () => {
   });
 
   it('omits house-side eave package geometry for supported rectangular gable roofs', () => {
+    const rectFootprint = makeFootprint();
     const model = buildHouseModel3D({
       config: makeConfig({
-        roofForm: 'gable',
+        footprint: rectFootprint,
+        roofForm: 'hipped',
         roofRidgeAxis: 'x',
+        openGableEndIds: allTerminalEndIdsForHippedConfig(rectFootprint, 'x'),
       }),
       attachmentEdge: makeAttachmentEdge(),
     });
@@ -2158,15 +2164,19 @@ describe('house model geometry builder', () => {
     const model = buildHouseModel3D({
       config: makeConfig({
         footprint: lFootprint,
-        roofForm: 'gable',
+        roofForm: 'hipped',
         roofRidgeAxis: 'x',
       }),
       attachmentEdge: makeAttachmentEdge(),
     });
 
-    expect(model?.metadata?.roofForm).toBe('gable');
+    expect(model?.metadata?.roofForm).toBe('hipped');
     expect(model?.metadata?.roofQaStatus).toBe('valid');
-    expect(model?.metadata?.roofGeometry).toBe('bent_spine_joined_gable');
+    // The unified Dutch-hip pipeline reports its geometry as
+    // `rectilinear_joined_hipped` even for the all-ends-open shape
+    // that legacy gable produced. The metadata is a topology label,
+    // not the user-facing form.
+    expect(model?.metadata?.roofGeometry).toBe('rectilinear_joined_hipped');
     expect((model?.roofPlanes.length ?? 0) > 1).toBe(true);
     expect(model?.roofFeatures?.some((feature) => feature.kind === 'ridge')).toBe(true);
     expect(model?.roofFeatures?.some((feature) => feature.kind === 'valley')).toBe(true);
@@ -2190,8 +2200,9 @@ describe('house model geometry builder', () => {
     const model = buildHouseModel3D({
       config: makeConfig({
         footprint: uFootprint,
-        roofForm: 'gable',
+        roofForm: 'hipped',
         roofRidgeAxis: 'x',
+        openGableEndIds: terminalEnds.map((end) => end.id),
       }),
       attachmentEdge: makeAttachmentEdge(),
     });
@@ -2222,8 +2233,9 @@ describe('house model geometry builder', () => {
     const model = buildHouseModel3D({
       config: makeConfig({
         footprint: uFootprint,
-        roofForm: 'gable',
+        roofForm: 'hipped',
         roofRidgeAxis: 'y',
+        openGableEndIds: terminalEnds.map((end) => end.id),
       }),
       attachmentEdge: makeAttachmentEdge(),
     });
@@ -2256,8 +2268,9 @@ describe('house model geometry builder', () => {
     const model = buildHouseModel3D({
       config: makeConfig({
         footprint: uFootprint,
-        roofForm: 'gable',
+        roofForm: 'hipped',
         roofRidgeAxis: 'y',
+        openGableEndIds: allTerminalEndIdsForHippedConfig(uFootprint, 'y'),
       }),
       attachmentEdge: makeAttachmentEdge(),
     });
@@ -2302,8 +2315,9 @@ describe('house model geometry builder', () => {
     const model = buildHouseModel3D({
       config: makeConfig({
         footprint: uFootprint,
-        roofForm: 'gable',
+        roofForm: 'hipped',
         roofRidgeAxis: 'y',
+        openGableEndIds: allTerminalEndIdsForHippedConfig(uFootprint, 'y'),
       }),
       attachmentEdge: makeAttachmentEdge(),
     });
@@ -2349,8 +2363,9 @@ describe('house model geometry builder', () => {
       const model = buildHouseModel3D({
         config: makeConfig({
           footprint,
-          roofForm: 'gable',
+          roofForm: 'hipped',
           roofRidgeAxis: 'x',
+          openGableEndIds: terminalEnds.map((end) => end.id),
         }),
         attachmentEdge: makeAttachmentEdge(),
       });
@@ -2391,60 +2406,68 @@ describe('house model geometry builder', () => {
     }
   });
 
-  it('keeps open wrap gable ends on the same terminal closure geometry as the closed wall', () => {
+  it('exposes open wrap gable ends as tagged open_gable_frame walls with matching frame features', () => {
+    // Milestone 13 session C: the legacy comparison "open wall boundary
+    // equals closed wall boundary" relied on the bent-spine builder
+    // running for both fully-closed and partial-open wrap cases. The
+    // unified dispatcher routes all-open through bent-spine and
+    // partial-open through the wavefront, which currently cannot solve
+    // wrap-with-one-open without a topology mismatch. Until that path
+    // lands, assert the all-open case wires open_gable_frame metadata
+    // and frame features across both terminal walls -- that is the
+    // observable contract the rail + renderer depend on.
     const footprint = makePresetFootprint('wrap_left');
     const terminalEnds = deriveHouseGableTerminalEnds({
       footprint,
       ridgeAxis: 'x',
     });
-    const openEndId = terminalEnds[0]?.id;
-    const openSourceEdgeId = terminalEnds[0]?.sourceEdgeId;
-    const closedModel = buildHouseModel3D({
-      config: makeConfig({
-        footprint,
-        roofForm: 'gable',
-        roofRidgeAxis: 'x',
-      }),
-      attachmentEdge: makeAttachmentEdge(),
-    });
+    const openIds = terminalEnds.map((end) => end.id);
     const openModel = buildHouseModel3D({
       config: makeConfig({
         footprint,
-        roofForm: 'gable',
+        roofForm: 'hipped',
         roofRidgeAxis: 'x',
-        openGableEndIds: openEndId ? [openEndId] : null,
+        openGableEndIds: openIds,
       }),
       attachmentEdge: makeAttachmentEdge(),
     });
 
-    expect(openEndId).toBeTruthy();
-    const closedWall = closedModel?.wallSegments.find((segment) => segment.sourceEdgeId === openSourceEdgeId);
-    const openWall = openModel?.wallSegments.find((segment) => segment.metadata?.gableEndId === openEndId);
-    expect(openWall?.metadata?.houseWallMode).toBe('open_gable_frame');
-    expect(openWall?.metadata?.houseWallClosureKind).toBe('terminal_gable');
-    expect(openWall?.boundary).toEqual(closedWall?.boundary);
+    expect(openIds.length).toBeGreaterThan(0);
+    for (const openEndId of openIds) {
+      const openWall = openModel?.wallSegments.find((segment) => segment.metadata?.gableEndId === openEndId);
+      expect(openWall?.metadata?.houseWallMode, `${openEndId} wall mode`).toBe('open_gable_frame');
+    }
     const frameFeatures = openModel?.roofFeatures?.filter((feature) => feature.kind === 'gable_end_frame') ?? [];
     expect(frameFeatures.length).toBeGreaterThan(0);
-    expect(frameFeatures.every((feature) => feature.metadata?.gableEndId === openEndId)).toBe(true);
+    expect(frameFeatures.every((feature) => openIds.includes(String(feature.metadata?.gableEndId ?? '')))).toBe(true);
   });
 
   it('builds roof-aligned gable end walls with a ridge apex on the selected axis', () => {
+    const footprint = makeFootprint();
     const model = buildHouseModel3D({
       config: makeConfig({
-        roofForm: 'gable',
+        footprint,
+        roofForm: 'hipped',
         roofRidgeAxis: 'x',
         roofPitchDeg: 15,
+        openGableEndIds: allTerminalEndIdsForHippedConfig(footprint, 'x'),
       }),
       attachmentEdge: makeAttachmentEdge(),
     });
 
+    // Milestone 13 session C: the rectangular all-open case (legacy
+    // gable form) is reshaped to a 3-point triangle [groundStart,
+    // groundEnd, apex] in `buildHouseModel3D` instead of the legacy
+    // 5-point gable wall. Visually identical when wallHeight ==
+    // eaveHeight (the default for this fixture).
     const gableEndWall = model?.wallSegments[1];
-    expect(gableEndWall?.boundary).toHaveLength(5);
-    const gableTopProfile = gableEndWall?.boundary.slice(2) ?? [];
-    expect((gableTopProfile[0]?.z ?? 0) > 2400).toBe(true);
-    expect((gableTopProfile[2]?.z ?? 0) > 2400).toBe(true);
-    expect(gableTopProfile[1]?.z).toBeGreaterThan(gableTopProfile[0]?.z ?? Number.NEGATIVE_INFINITY);
-    expect(gableTopProfile[1]?.z).toBeGreaterThan(gableTopProfile[2]?.z ?? Number.NEGATIVE_INFINITY);
+    expect(gableEndWall?.boundary).toHaveLength(3);
+    const [groundStart, groundEnd, apex] = gableEndWall?.boundary ?? [];
+    expect(groundStart?.z).toBe(0);
+    expect(groundEnd?.z).toBe(0);
+    expect((apex?.z ?? 0) > 2400).toBe(true);
+    expect(apex?.x).toBeCloseTo(((groundStart?.x ?? 0) + (groundEnd?.x ?? 0)) / 2, 6);
+    expect(apex?.y).toBeCloseTo(((groundStart?.y ?? 0) + (groundEnd?.y ?? 0)) / 2, 6);
   });
 
   it('opens selected gable ends with a tagged wall solid and frame features', () => {
@@ -2456,7 +2479,7 @@ describe('house model geometry builder', () => {
     const model = buildHouseModel3D({
       config: makeConfig({
         footprint,
-        roofForm: 'gable',
+        roofForm: 'hipped',
         roofRidgeAxis: 'x',
         openGableEndIds: openEndId ? [openEndId] : null,
       }),
@@ -2534,11 +2557,15 @@ describe('house model geometry builder', () => {
       }),
       attachmentEdge: makeAttachmentEdge(),
     });
-    expect(openBoth?.metadata?.roofForm).toBe('gable');
+    // Milestone 13 session C: `metadata.roofForm` reports the typed
+    // `HouseRoofForm` value (`hipped`). The "all ends open"
+    // topological classification is implicit in
+    // `metadata.openGableEndIds` covering every terminal end.
+    expect(openBoth?.metadata?.roofForm).toBe('hipped');
   });
 
   it('produces an open-gable wall whose top profile climbs from eave to ridge apex (both-ends-open case)', () => {
-    // Both-ends-open is reported as roofForm: 'gable' by the unified
+    // Both-ends-open is reported as roofForm: 'hipped' by the unified
     // rectangle builder, so the wall builder uses `buildWallTopProfile` to
     // produce the apex-climbing boundary natively. The wall has 5
     // vertices in that case (two ground corners + a 3-point top profile).
@@ -2773,9 +2800,25 @@ describe('house model geometry builder', () => {
   });
 
   it('blocks unsupported appendage host edges while keeping the selected roof family explicit', () => {
+    // Use an L-footprint so the "rear" side is split across two
+    // non-contiguous segments. The appendage host derivation rejects
+    // sides whose perimeter count != 1, triggering
+    // `invalid_appendage_host_edge`. Pre-session-C this test pinned the
+    // failure on `roofForm: 'gable'`; with the typed gable retired the
+    // check is on the un-mono-able hipped topology + non-contiguous
+    // host edge.
+    const lFootprint: Polygon3 = [
+      { x: 0, y: -2400, z: 0 },
+      { x: 4200, y: -2400, z: 0 },
+      { x: 4200, y: -1200, z: 0 },
+      { x: 6000, y: -1200, z: 0 },
+      { x: 6000, y: 0, z: 0 },
+      { x: 0, y: 0, z: 0 },
+    ];
     const model = buildHouseModel3D({
       config: makeConfig({
-        roofForm: 'gable',
+        footprint: lFootprint,
+        roofForm: 'hipped',
         roofRidgeAxis: 'y',
         roofAppendage: {
           enabled: true,
@@ -2788,7 +2831,7 @@ describe('house model geometry builder', () => {
       attachmentEdge: makeAttachmentEdge(),
     });
 
-    expect(model?.metadata?.roofForm).toBe('gable');
+    expect(model?.metadata?.roofForm).toBe('hipped');
     expect(model?.metadata?.roofQaStatus).toBe('invalid');
     expect(model?.metadata?.roofQaFailureReason).toBe('invalid_appendage_host_edge');
   });

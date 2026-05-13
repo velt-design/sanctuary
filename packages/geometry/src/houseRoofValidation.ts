@@ -5,6 +5,7 @@ import type {
   HouseRoofRidgeAxis,
   Polygon3,
 } from './contracts';
+import { deriveHouseGableTerminalEndsFromFootprint as deriveHouseGableTerminalEnds } from './house/roofJoined';
 
 export type HouseRoofFootprintTopology = 'polygonal' | 'orthogonal' | 'rectangular';
 export type HouseRoofFootprintRequirement = 'any' | 'orthogonal' | 'rectangular';
@@ -30,14 +31,15 @@ export type HouseRoofFormBehavior = {
 };
 
 /**
- * Picker-facing list of house roof forms. `'gable'` is intentionally
- * excluded after milestone 13 -- the legacy gable form is migrated at
- * normalize time to `'hipped'` with all terminal ends open (see
- * `buildHouseModelConfig` in `normalize.ts`), so going forward all new
- * houses pick `'hipped'` and use per-end open toggles to choose Dutch-hip
- * or fully-open-gable topology. `HouseRoofForm` itself still includes
- * `'gable'` so legacy saved data round-trips through storage unchanged
- * until the type retirement step lands.
+ * Picker-facing list of house roof forms. Milestone 13 session C (2026-05-14):
+ * `'gable'` is retired from the `HouseRoofForm` type union. Legacy storage
+ * data carrying `roofForm: 'gable'` is migrated to `'hipped' +
+ * openGableEndIds: <all terminals>` at two upstream boundaries
+ * (`normalizeHouseFormRoofIntent` for workbench drafts;
+ * `migrateGableToHippedForGeometryInput` for the geometry input). Any
+ * direct geometry caller that still sends `'gable'` is force-mapped by
+ * `resolveHouseRoofForm` in `normalize.ts`. The result: every typed
+ * `HouseRoofForm` value is one of `flat | mono | hipped`.
  */
 export const HOUSE_ROOF_FORM_ORDER: readonly HouseRoofForm[] = ['flat', 'mono', 'hipped'];
 export const MIN_VISIBLE_HOUSE_ROOF_PITCH_DEG = 5;
@@ -63,23 +65,19 @@ export const HOUSE_ROOF_FORM_BEHAVIORS: Record<HouseRoofForm, HouseRoofFormBehav
     },
     selectedFormFootprintRequirement: 'orthogonal',
   },
-  gable: {
-    controls: {
-      pitch: true,
-      material: true,
-      primaryFallDirection: false,
-      ridgeAxis: true,
-      appendage: true,
-    },
-    selectedFormFootprintRequirement: 'orthogonal',
-  },
   hipped: {
     controls: {
       pitch: true,
       material: true,
       primaryFallDirection: false,
       ridgeAxis: true,
-      appendage: false,
+      // Milestone 13 session C: hipped now subsumes the retired gable
+      // form (gable topology == hipped + all-open terminal ends), and
+      // the appendage band was supported on gable. Keep appendage
+      // capability true on hipped so the rail's appendage controls
+      // remain reachable on legacy-gable workflows after the
+      // narrowing.
+      appendage: true,
     },
     selectedFormFootprintRequirement: 'orthogonal',
   },
@@ -90,11 +88,17 @@ export function isHouseRoofForm(value: unknown): value is HouseRoofForm {
 }
 
 export function getHouseRoofFormBehavior(roofForm: HouseRoofForm): HouseRoofFormBehavior {
-  return HOUSE_ROOF_FORM_BEHAVIORS[roofForm];
+  // Milestone 13 session C: legacy serialized data may still carry
+  // the retired `gable` form name even after the type union dropped
+  // it. Map any unknown form to the `hipped` behavior so direct
+  // callers that haven't routed through `resolveHouseRoofForm` still
+  // get a sane footprint requirement (gable shape == fully-open
+  // hipped topologically).
+  return HOUSE_ROOF_FORM_BEHAVIORS[roofForm] ?? HOUSE_ROOF_FORM_BEHAVIORS.hipped;
 }
 
 export function houseRoofFormUsesMinimumVisiblePitch(roofForm: HouseRoofForm): boolean {
-  return roofForm === 'gable' || roofForm === 'hipped';
+  return roofForm === 'hipped';
 }
 
 export function normalizeHouseRoofPitchDegForForm(input: {
@@ -241,6 +245,17 @@ export function classifyHouseRoofFootprintTopology(footprint: Polygon3): HouseRo
 export function deriveHouseRoofGeometryKind(input: {
   roofForm: HouseRoofForm;
   footprint: Polygon3;
+  /**
+   * Milestone 13 session C: when the hipped form is dispatched with
+   * every active-axis terminal end opened, the geometry pipeline
+   * routes through the bent-spine joined-gable builder (legacy gable
+   * topology). Surfacing that distinction here lets the rail report
+   * the active geometry kind without re-running the dispatcher.
+   * Optional -- callers that do not track open-end state still get
+   * the default hipped classification.
+   */
+  openGableEndIds?: ReadonlyArray<string> | null;
+  roofRidgeAxis?: 'x' | 'y' | null;
 }): HouseRoofGeometryKind | null {
   const footprintTopology = classifyHouseRoofFootprintTopology(input.footprint);
   switch (input.roofForm) {
@@ -248,12 +263,27 @@ export function deriveHouseRoofGeometryKind(input: {
       return 'footprint_flat';
     case 'mono':
       return footprintTopology === 'polygonal' ? null : 'footprint_mono';
-    case 'gable':
-      if (footprintTopology === 'rectangular') return 'rectangular_gable';
-      return footprintTopology === 'orthogonal' ? 'bent_spine_joined_gable' : null;
-    case 'hipped':
+    case 'hipped': {
+      if (footprintTopology === 'polygonal') return null;
+      const openIds = input.openGableEndIds;
+      if (openIds && openIds.length > 0) {
+        const ridgeAxis = input.roofRidgeAxis ?? 'x';
+        const terminalIds = deriveHouseGableTerminalEnds({
+          footprint: input.footprint,
+          ridgeAxis,
+        }).map((end) => end.id);
+        const openSet = new Set(openIds);
+        const allOpen =
+          terminalIds.length > 0 && terminalIds.every((id) => openSet.has(id));
+        if (allOpen) {
+          return footprintTopology === 'rectangular'
+            ? 'rectangular_hipped'
+            : 'bent_spine_joined_gable';
+        }
+      }
       if (footprintTopology === 'rectangular') return 'rectangular_hipped';
-      return footprintTopology === 'orthogonal' ? 'rectilinear_joined_hipped' : null;
+      return 'rectilinear_joined_hipped';
+    }
     default:
       return null;
   }
@@ -347,14 +377,6 @@ export function validateHouseRoofSelection(input: {
         message: 'Mono roofs are currently limited to orthogonal house footprints in this milestone.',
       };
     }
-    if (input.roofForm === 'gable') {
-      return {
-        status: 'invalid',
-        blockedBy: 'selected_form',
-        code: 'unsupported_gable_topology',
-        message: 'Gable roofs are currently limited to orthogonal house footprints in this milestone.',
-      };
-    }
     if (input.roofForm === 'hipped') {
       return {
         status: 'invalid',
@@ -382,7 +404,7 @@ export function validateHouseRoofSelection(input: {
   }
 
   if (
-    (input.roofForm === 'gable' || input.roofForm === 'hipped') &&
+    input.roofForm === 'hipped' &&
     input.roofRidgeAxisExplicit &&
     input.preferredRidgeAxis &&
     input.roofRidgeAxis &&

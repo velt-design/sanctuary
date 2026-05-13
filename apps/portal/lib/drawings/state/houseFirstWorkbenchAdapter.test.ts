@@ -26,7 +26,7 @@ const HOUSE_FOOTPRINT_PRESETS = [
   'wrap_right',
 ] as const;
 
-const HOUSE_ROOF_FORMS = ['flat', 'mono', 'gable', 'hipped'] as const;
+const HOUSE_ROOF_FORMS = ['flat', 'mono', 'hipped'] as const;
 const ATTACHMENT_SIDES = ['rear', 'front', 'left', 'right'] as const;
 
 describe('buildHouseFirstWorkbenchProjectModel', () => {
@@ -39,7 +39,11 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
     }
 
     expect(buildHouseFirstWorkbenchProjectModel({ snapshot: monoFixture.snapshot }).house?.roof.form).toBe('mono');
-    expect(buildHouseFirstWorkbenchProjectModel({ snapshot: gableFixture.snapshot }).house?.roof.form).toBe('gable');
+    // Milestone 13 session C: gable retired from the form union; legacy
+    // gable fixtures now classify as hipped, with the open-gable
+    // topology re-expressed via openGableEndIds populated at the draft
+    // boundary.
+    expect(buildHouseFirstWorkbenchProjectModel({ snapshot: gableFixture.snapshot }).house?.roof.form).toBe('hipped');
     expect(buildHouseFirstWorkbenchProjectModel({ snapshot: boxFixture.snapshot }).house?.roof.form).toBe('flat');
   });
 
@@ -75,7 +79,10 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
     ];
     draft.houseFirst = {
       roof: {
-        form: 'gable',
+        // Milestone 13 session C: gable retired from the form union;
+        // legacy callers that stored 'gable' should be migrated to
+        // 'hipped' at the draft load boundary.
+        form: 'hipped',
         primaryPitchDeg: '18',
         primaryFallDirection: 'negative_x',
         ridgeAxis: 'y',
@@ -93,7 +100,7 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
       draft,
     });
 
-    expect(projectModel.house?.roof.form).toBe('gable');
+    expect(projectModel.house?.roof.form).toBe('hipped');
     expect(projectModel.house?.roof.primaryPitchDeg).toBe('18');
     expect(projectModel.house?.roof.primaryFallDirection).toBe('negative_x');
     expect(projectModel.house?.roof.ridgeAxis).toBe('y');
@@ -406,19 +413,17 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
         ridgeAxis: false,
         appendage: true,
       },
-      gable: {
-        pitch: true,
-        material: true,
-        primaryFallDirection: false,
-        ridgeAxis: true,
-        appendage: true,
-      },
+      // Milestone 13 session C: gable retired from the form union. The
+      // hipped entry now covers both legacy gable + legacy hipped
+      // topologies (distinguished at runtime by openGableEndIds), so
+      // its `appendage` capability is true (inherited from the legacy
+      // gable's behavior).
       hipped: {
         pitch: true,
         material: true,
         primaryFallDirection: false,
         ridgeAxis: true,
-        appendage: false,
+        appendage: true,
       },
     } as const;
 
@@ -450,7 +455,11 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
     draft.inputs.modules[0]!.houseFootprintPreset = 'u_shape';
     draft.houseFirst = {
       roof: {
-        form: 'gable',
+        // Milestone 13 session C: legacy gable topology = hipped form
+        // with every terminal end opened. The bent-spine geometry
+        // kicks in only when the joined dispatcher sees all-open.
+        form: 'hipped',
+        openGableEndIds: ['house-gable-end-x-3', 'house-gable-end-x-7'],
       },
     };
 
@@ -490,7 +499,9 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
     expect(projectModel.house?.roof.validation.code).toBeNull();
     expect(projectModel.house?.roof.geometryKind).toBe('rectilinear_joined_hipped');
     expect(projectModel.house?.roof.capabilities.controls.ridgeAxis).toBe(true);
-    expect(projectModel.house?.roof.capabilities.controls.appendage).toBe(false);
+    // Milestone 13 session C: appendage capability is true on hipped
+    // (subsumes legacy gable). Inspect appendage support separately.
+    expect(projectModel.house?.roof.capabilities.controls.appendage).toBe(true);
   });
 
   it('filters invalid saved open gable ends when the ridge orientation changes', () => {
@@ -507,7 +518,7 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
     ];
     draft.houseFirst = {
       roof: {
-        form: 'gable',
+        form: 'hipped',
         ridgeAxis: 'y',
         openGableEndIds: ['house-gable-end-x-2'],
       },
@@ -538,7 +549,7 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
     ];
     draft.houseFirst = {
       roof: {
-        form: 'gable',
+        form: 'hipped',
       },
     };
 
@@ -569,7 +580,7 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
     ];
     draft.houseFirst = {
       roof: {
-        form: 'gable',
+        form: 'hipped',
         ridgeAxis: 'y',
       },
     };
@@ -584,10 +595,12 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
   });
 
   it('auto-heals stale preset ridge axes and dependent roof state for gable and hipped roofs', () => {
+    // Milestone 13 session C: gable retired from the form union;
+    // single hipped iteration now covers both legacy variants.
     const monoFixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
     if (!monoFixture) throw new Error('Missing mono-standard fixture.');
 
-    for (const form of ['gable', 'hipped'] as const) {
+    for (const form of ['hipped'] as const) {
       const draft = buildLegacyEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
       if (!draft) throw new Error('Expected drawing draft.');
       draft.inputs.modules[0]!.houseFootprintPreset = 'wrap_left';
@@ -596,17 +609,6 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
           form,
           ridgeAxis: 'y',
           openGableEndIds: ['house-gable-end-y-1'],
-          ...(form === 'hipped'
-            ? {
-                appendage: {
-                  enabled: true,
-                  form: 'mono' as const,
-                  hostEdge: 'rear' as const,
-                  pitchDeg: '5',
-                  dropMm: '450',
-                },
-              }
-            : null),
         },
       };
 
@@ -620,23 +622,20 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
       expect(projectModel.house?.roof.provenance?.ridgeAxis, form).toBe('default_fallback');
       expect(projectModel.house?.roof.validation.status, form).not.toBe('invalid');
       expect(projectModel.house?.roof.validation.code, form).toBeNull();
-      if (form === 'gable') {
-        expect(projectModel.house?.roof.openGableEndIds, form).toEqual([]);
-      } else {
-        expect(projectModel.house?.roof.openGableEndIds, form).toEqual([]);
-        expect(projectModel.house?.roof.appendage.enabled, form).toBe(false);
-      }
+      expect(projectModel.house?.roof.openGableEndIds, form).toEqual([]);
     }
   });
 
   it('auto-heals stale or too-low preset gable and hipped roof pitch while preserving flat and mono pitch behavior', () => {
+    // Milestone 13 session C: gable retired -- pitch heal still kicks
+    // in on hipped roofs, which subsume the legacy gable input.
     const monoFixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
     if (!monoFixture) throw new Error('Missing mono-standard fixture.');
 
     for (const [form, primaryPitchDeg] of [
-      ['gable', '0'],
+      ['hipped', '0'],
       ['hipped', '3.5'],
-      ['gable', ''],
+      ['hipped', ''],
       ['hipped', '-1'],
     ] as const) {
       const draft = buildLegacyEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
@@ -685,7 +684,7 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
     draft.inputs.modules[0]!.houseFootprintPreset = 'u_shape';
     draft.houseFirst = {
       roof: {
-        form: 'gable',
+        form: 'hipped',
         ridgeAxis: 'x',
       },
     };
@@ -765,7 +764,10 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
 
     for (const attachmentSide of ATTACHMENT_SIDES) {
       for (const preset of HOUSE_FOOTPRINT_PRESETS) {
-        for (const form of ['gable', 'hipped'] as const) {
+        // Milestone 13 session C: gable retired from the form union;
+        // single hipped iteration covers the legacy gable rotation
+        // matrix.
+        for (const form of ['hipped'] as const) {
           const draft = buildLegacyEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
           if (!draft) throw new Error('Expected drawing draft.');
           draft.inputs.modules[0]!.attachmentSide = attachmentSide;
@@ -953,7 +955,7 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
     draft.inputs.modules[0]!.houseFootprintPreset = 'u_shape';
     draft.houseFirst = {
       roof: {
-        form: 'gable',
+        form: 'hipped',
         ridgeAxis: 'x',
         appendage: {
           enabled: true,

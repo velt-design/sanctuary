@@ -33,7 +33,7 @@ const HOUSE_FOOTPRINT_PRESETS: readonly HouseFootprintPreset[] = [
   'wrap_right',
 ];
 
-const HOUSE_ROOF_FORMS: readonly HouseRoofForm[] = ['flat', 'mono', 'gable', 'hipped'];
+const HOUSE_ROOF_FORMS: readonly HouseRoofForm[] = ['flat', 'mono', 'hipped'];
 const ATTACHMENT_SIDES: readonly AttachmentSide[] = ['rear', 'front', 'left', 'right'];
 
 function applyObjectFirstCompatibilityDraft(input: {
@@ -385,8 +385,11 @@ describe('buildRawGeometryModuleInput', () => {
       snapshot: fixture.snapshot,
       draft,
       compatibility: {
+        // Cast: simulate legacy gable storage at the compatibility-draft
+        // boundary; the upstream normalize maps it to `'hipped'` so
+        // raw.houseContext.roofForm comes out as `'hipped'`.
         roof: {
-          form: 'gable',
+          form: 'gable' as unknown as 'hipped',
           primaryPitchDeg: '18',
           primaryFallDirection: 'negative_x',
           ridgeAxis: 'y',
@@ -460,7 +463,7 @@ describe('buildRawGeometryModuleInput', () => {
     applyObjectFirstCompatibilityDraft({
       snapshot: fixture.snapshot,
       draft: gableDraft,
-      compatibility: { roof: { form: 'gable' } },
+      compatibility: { roof: { form: 'gable' as unknown as 'hipped' } },
     });
     const gableProjectModel = buildObjectWorkbenchCompatibilityProjectModel({
       snapshot: fixture.snapshot,
@@ -489,7 +492,7 @@ describe('buildRawGeometryModuleInput', () => {
       for (const form of HOUSE_ROOF_FORMS) {
         const roof = {
           form,
-          primaryPitchDeg: form === 'flat' ? '0' : form === 'mono' ? '12' : form === 'gable' ? '18' : '22',
+          primaryPitchDeg: form === 'flat' ? '0' : form === 'mono' ? '12' : '22',
           primaryFallDirection: 'negative_y',
           ridgeAxis: 'x',
         } as const;
@@ -515,19 +518,17 @@ describe('buildRawGeometryModuleInput', () => {
         });
 
         expect(raw.houseContext.footprintPreset, `${preset}/${form} footprint`).toBe(preset);
-        // Slice 2B: legacy `form: 'gable'` migrates to `'hipped'` at
-        // this boundary. The geometry input only sees `'hipped'` for
-        // rectangular roofs; openGableEndIds carries the open-end set
-        // that previously lived implicitly in the form name.
-        const expectedForm = form === 'gable' ? 'hipped' : form;
-        expect(raw.houseContext.roofForm, `${preset}/${form} roof form`).toBe(expectedForm);
+        // Milestone 13 session C: `'gable'` retired from
+        // `HouseRoofForm`. The only forms reaching the geometry input
+        // boundary are `flat | mono | hipped`.
+        expect(raw.houseContext.roofForm, `${preset}/${form} roof form`).toBe(form);
         expect(raw.houseContext.roofPitchDeg, `${preset}/${form} roof pitch`).toBe(roof.primaryPitchDeg);
         if (form === 'mono') {
           expect(raw.houseContext.roofPrimaryFallDirection, `${preset}/${form} fall direction`).toBe(
             'negative_y',
           );
         }
-        if (form === 'gable' || form === 'hipped') {
+        if (form === 'hipped') {
           expect(raw.houseContext.roofRidgeAxis, `${preset}/${form} ridge axis`).toBe('x');
         }
       }
@@ -540,7 +541,7 @@ describe('buildRawGeometryModuleInput', () => {
 
     for (const attachmentSide of ATTACHMENT_SIDES) {
       for (const preset of HOUSE_FOOTPRINT_PRESETS) {
-        for (const form of ['gable', 'hipped'] as const) {
+        for (const form of ['hipped'] as const) {
           const draft = buildEstimateDrawingDraftFromSnapshot(fixture.snapshot);
           if (!draft) throw new Error('Expected draft');
           draft.inputs.modules[0]!.attachmentSide = attachmentSide;
@@ -551,7 +552,7 @@ describe('buildRawGeometryModuleInput', () => {
             compatibility: {
               roof: {
                 form,
-                primaryPitchDeg: form === 'gable' ? '' : '0',
+                primaryPitchDeg: '0',
                 material: 'corrugated_iron',
               },
             },
@@ -572,9 +573,9 @@ describe('buildRawGeometryModuleInput', () => {
           expect(projectModel.house?.roof.validation.code, `${preset}/${attachmentSide}/${form} validation`).toBeNull();
           expect(raw.connection.attachmentSide, `${preset}/${attachmentSide}/${form} side`).toBe(attachmentSide);
           expect(raw.houseContext.footprintPreset, `${preset}/${attachmentSide}/${form} footprint`).toBe(preset);
-          // Slice 2B: legacy 'gable' migrates to 'hipped' at this boundary.
-          const expectedForm = form === 'gable' ? 'hipped' : form;
-          expect(raw.houseContext.roofForm, `${preset}/${attachmentSide}/${form} form`).toBe(expectedForm);
+          // Session C: only `hipped` (and the other non-gable forms)
+          // reach this boundary.
+          expect(raw.houseContext.roofForm, `${preset}/${attachmentSide}/${form} form`).toBe(form);
           expect(raw.houseContext.roofPitchDeg, `${preset}/${attachmentSide}/${form} pitch`).toBe('5');
           expect(raw.houseContext.roofRidgeAxis, `${preset}/${attachmentSide}/${form} ridge`).toBe(
             projectModel.house?.roof.ridgeAxis,
