@@ -61,6 +61,7 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 | 2026-05-13 | Pergola Snap Targets | Active | `HouseModel3D.roofEaves` must include EVERY attachable perimeter edge (drain + weather-flashed gable + apron), not just `drain_eave`. Opening a Dutch-hip end strips the adjacent roof plane and reclassifies the eave as `weather_flashed_edge` -- the user still expects to snap a pergola there. Downstream gutter/flashing consumers re-filter on `edgeKind`. |
 | 2026-05-13 | Plan Tool Chain | Active | `EdgeDragTool.onPointerDown` runs a distance-based priority: terminal-end toggle target (`event.shape?.metadata?.openGableEndId`) ONLY falls through to SelectTool when the click is outside `edgeHitToleranceMm` of the active outline. Clicks on the synthetic's eave-corner overhang that overlap a wall edge start an edge drag instead, restoring wall interaction under the synthetic. Default tolerance is 250 mm (was 500). |
 | 2026-05-13 | House Roof Topology | Active | The geometry normalize migration treats `roofIntent.form: 'gable'` as "hipped + every terminal end open" regardless of `openGableEndIds`. Any terminal-end toggle that operates on the workbench state must port the migration into explicit `form: 'hipped' + openGableEndIds: <all terminals minus the toggled one>` in the SAME commit, or `[].filter(...)` produces a no-op and normalize re-migrates on the next solve. Helper: `resolveHouseTerminalEndToggleRoofDraft`. |
+| 2026-05-14 | Plan Snap Engine | Active | `resolveMoveSnap` resolves a corner snap after the primary: if a second target on a different polygon edge whose direction is at least `cornerMinAngleDeg` (default 30 deg) from the primary's lies within tolerance, it solves the 2x2 system `[primary_normal; secondary_normal] . delta = [ps; ss]` so the moving polygon's corner lands on the two target lines' intersection. `MoveSnapResult.secondary` + `cornerVertex` are optional; single-line consumers are unaffected. EdgeDragTool stays single-line (1D motion). |
 
 ## Entries
 
@@ -811,3 +812,33 @@ Future agents:
 Promoted to: None
 
 Related docs/tests: [apps/portal/app/staff/projects/[projectId]/design-workbench/resolveHouseTerminalEndToggleRoofDraft.ts](../apps/portal/app/staff/projects/[projectId]/design-workbench/resolveHouseTerminalEndToggleRoofDraft.ts), [apps/portal/app/staff/projects/[projectId]/design-workbench/resolveHouseTerminalEndToggleRoofDraft.test.ts](../apps/portal/app/staff/projects/[projectId]/design-workbench/resolveHouseTerminalEndToggleRoofDraft.test.ts), [apps/portal/app/staff/projects/[projectId]/design-workbench/DesignWorkbenchEstimateClient.tsx](../apps/portal/app/staff/projects/[projectId]/design-workbench/DesignWorkbenchEstimateClient.tsx) (`onToggleHouseTerminalEnd` callsite), [packages/geometry/src/normalize.ts](../packages/geometry/src/normalize.ts) (the migration at lines 691-720), [apps/portal/components/drawings/rail/HouseFormRoofSections.tsx](../apps/portal/components/drawings/rail/HouseFormRoofSections.tsx) (still-buggy rail toggle to migrate).
+
+### 2026-05-14 - Plan Snap Engine - Corner Snap Extends MoveTool
+
+Area: Plan Snap Engine
+
+Status: Active
+
+Decision or mistake: the snap engine was single-line for years -- each MoveTool/EdgeDragTool drag resolved at most one `EdgeSnapResult` and applied one perpendicular correction along the snapped edge's normal. Users couldn't snap a pergola or deck to a HOUSE CORNER cleanly: dragging toward a corner attracted to one wall, but the orthogonal axis stayed free, so the user had to drag along the snapped wall to align the second edge by eye. CAD users have a baked-in expectation of corner snapping; without it the workbench's feel was off in attachment workflows.
+
+Why it mattered: the constraint was a RESOLUTION choice, not a structural limit. `SnapLineTarget` already carries direction (bounded segment endpoints); the engine just never asked "is there a non-parallel partner in tolerance?" The deck system already proved the persistence side: deck shapes store `primaryHostEdgeId + secondaryHostEdgeId + cornerVertexId` (`deckInteractionContract.ts`), and `deckCommitAdapter.ts` resolves both reference frames before committing. The piece that was missing was the SNAP RESOLVER stage -- detecting the pair, computing the intersection, and producing a 2D delta that lands the moving polygon's corner there in one shot.
+
+Current guardrail: corner snap lives in [`resolveMoveSnap`](../apps/portal/components/drawings/viewports/PlanViewport/tools/resolveMoveSnap.ts) only. EdgeDragTool's motion is 1D (perpendicular to the dragged edge) -- a second axis doesn't exist, so corner snap doesn't apply.
+
+`resolveMoveSnap` runs a two-pass search:
+
+1. **Primary** -- the existing single-line search across every polygon edge against every target. Smallest-correction wins.
+2. **Secondary (corner partner)** -- on a DIFFERENT polygon edge (`excludeEdgeIndex` guard), against targets whose direction is at least `cornerMinAngleDeg` (default 30 deg) away from the primary's. The same per-edge distance/parallelism gates run; smallest-correction wins among the filtered candidates.
+
+When a secondary is found, the resolver solves the 2x2 system `[primary_normal; secondary_normal] . delta = [primary_snapDeltaMm; secondary_snapDeltaMm]` for the 2-vector `delta`. After applying `delta`, both edges sit exactly on their target lines; their shared corner sits on the intersection of the two target lines (computed and returned as `cornerVertex`). Existing single-line callers see `secondary: undefined` and unchanged behaviour.
+
+The visual indicator layer ([PlanMoveSnapIndicatorLayer in PlanSnapIndicatorLayer.tsx](../apps/portal/components/drawings/viewports/PlanViewport/canvas/layers/PlanSnapIndicatorLayer.tsx)) renders both snap lines + a marker at `cornerVertex` when secondary is present; the primary-only render path is unchanged.
+
+Future agents:
+- This slice ships the visual + geometric corner snap. The commit path still persists a single primary host edge for pergolas. Persistent dual-host attachment for pergolas (mirroring the deck `primaryHostEdgeId/secondaryHostEdgeId/cornerVertexId` data-model extension) is a separate slice -- gated on a clear product ask, since the geometric corner snap alone gives the user the "feel" they were asking for.
+- When adding new snap target families (opening edges, deck edges as pergola hosts, etc.), make sure the new targets carry bounded `start`/`end` so `targetsFormCornerPair` can compute a direction vector. Targets without orientation can't participate in the secondary search.
+- `cornerMinAngleDeg` is per-call, not per-family. If pergola-vs-deck have different "what counts as a corner" thresholds, expose per-family overrides at the MoveTool config layer (mirror `houseEdgeHitToleranceMm` / `pergolaEdgeHitToleranceMm` pattern flagged in the "Terminal-End Click Yields to Edge Drag" entry).
+
+Promoted to: None
+
+Related docs/tests: [apps/portal/components/drawings/viewports/PlanViewport/tools/resolveMoveSnap.ts](../apps/portal/components/drawings/viewports/PlanViewport/tools/resolveMoveSnap.ts), [apps/portal/components/drawings/viewports/PlanViewport/tools/resolveMoveSnap.test.ts](../apps/portal/components/drawings/viewports/PlanViewport/tools/resolveMoveSnap.test.ts) ("corner snap (two non-parallel targets in tolerance)" describe block), [apps/portal/components/drawings/viewports/PlanViewport/canvas/layers/PlanSnapIndicatorLayer.tsx](../apps/portal/components/drawings/viewports/PlanViewport/canvas/layers/PlanSnapIndicatorLayer.tsx) (`PlanMoveSnapIndicatorLayer` renders secondary + corner marker), [apps/portal/lib/drawings/interactions/deckInteractionContract.ts](../apps/portal/lib/drawings/interactions/deckInteractionContract.ts) (`corner_dual_edge` deck attachment precedent), `apps/portal/lib/drawings/interactions/deckReleaseSettlementController.ts` (dual-edge commit precedent: searches for `secondaryHostEdgeId` to see the settlement flow).

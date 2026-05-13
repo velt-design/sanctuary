@@ -99,15 +99,31 @@ export function PlanSnapIndicatorLayer({
   });
 }
 
+function translatedEdgeMidpoint(
+  sourcePolygonMm: ReadonlyArray<Point2>,
+  edgeIndex: number,
+  delta: Point2,
+): Point2 | null {
+  const start = sourcePolygonMm[edgeIndex];
+  const end = sourcePolygonMm[(edgeIndex + 1) % sourcePolygonMm.length];
+  if (!start || !end) return null;
+  return {
+    x: (start.x + end.x) / 2 + delta.x,
+    y: (start.y + end.y) / 2 + delta.y,
+  };
+}
+
 /**
  * Renders the snap visual for a MOVE drag. The snapped edge's midpoint is
  * computed from the source polygon (captured at drag-start in MoveTool's
  * session) translated by the move preview's adjusted delta -- so the dot
  * tracks the moving object's edge as the user drags.
  *
- * Mirrors `PlanSnapIndicatorLayer` for the same UX. Shared rendering helper
- * keeps both flows visually consistent without duplicating the line/dot/
- * label markup.
+ * When the move resolves a CORNER snap (two non-parallel targets within
+ * tolerance on different polygon edges), this also renders the secondary
+ * snap line + a corner-vertex marker at the intersection of the two
+ * target lines. The secondary visual reuses `renderSnapVisual` for
+ * consistency. See `resolveMoveSnap.ts` for the geometry.
  */
 export function PlanMoveSnapIndicatorLayer({
   preview,
@@ -122,20 +138,39 @@ export function PlanMoveSnapIndicatorLayer({
   if (!preview?.snap || !sourcePolygonMm) {
     return <g data-plan-layer="moveSnapIndicator" />;
   }
-  const { edgeIndex, edgeSnap } = preview.snap;
-  const edgeStart = sourcePolygonMm[edgeIndex];
-  const edgeEnd = sourcePolygonMm[(edgeIndex + 1) % sourcePolygonMm.length];
-  const midpointWorld =
-    edgeStart && edgeEnd
-      ? {
-          x: (edgeStart.x + edgeEnd.x) / 2 + preview.delta.x,
-          y: (edgeStart.y + edgeEnd.y) / 2 + preview.delta.y,
-        }
-      : null;
-  return renderSnapVisual({
-    snap: edgeSnap,
-    midpointWorld,
-    coordinateAdapter,
-    layerName: 'moveSnapIndicator',
-  });
+  const { edgeIndex, edgeSnap, secondary, cornerVertex } = preview.snap;
+  const primaryMidpointWorld = translatedEdgeMidpoint(sourcePolygonMm, edgeIndex, preview.delta);
+  const secondaryMidpointWorld = secondary
+    ? translatedEdgeMidpoint(sourcePolygonMm, secondary.edgeIndex, preview.delta)
+    : null;
+  const cornerVertexSvg = cornerVertex
+    ? coordinateAdapter.projectionToSvg(cornerVertex)
+    : null;
+  return (
+    <g data-plan-layer="moveSnapIndicator">
+      {renderSnapVisual({
+        snap: edgeSnap,
+        midpointWorld: primaryMidpointWorld,
+        coordinateAdapter,
+        layerName: 'moveSnapIndicatorPrimary',
+      })}
+      {secondary
+        ? renderSnapVisual({
+            snap: secondary.edgeSnap,
+            midpointWorld: secondaryMidpointWorld,
+            coordinateAdapter,
+            layerName: 'moveSnapIndicatorSecondary',
+          })
+        : null}
+      {cornerVertexSvg ? (
+        <circle
+          cx={cornerVertexSvg.x.toFixed(2)}
+          cy={cornerVertexSvg.y.toFixed(2)}
+          r="6"
+          className={lineweightStyles.snapIndicatorMarker}
+          data-plan-snap-corner-vertex="true"
+        />
+      ) : null}
+    </g>
+  );
 }

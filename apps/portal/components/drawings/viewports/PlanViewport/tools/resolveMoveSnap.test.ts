@@ -144,4 +144,125 @@ describe('resolveMoveSnap', () => {
     });
     expect(result?.edgeSnap.target.edgeKind).toBe('roof_eave');
   });
+
+  describe('corner snap (two non-parallel targets in tolerance)', () => {
+    it('snaps to a corner when two perpendicular targets are both within tolerance, landing the polygon corner on their intersection', () => {
+      // Natural drag pushes the rect by (200, 150). With RECT at origin:
+      //   - Right edge naturally lands at x = 4200, snaps to vertical wall at x=4150 (correction 50mm)
+      //   - Top edge naturally lands at y = 2150, snaps to horizontal wall at y=2200 (correction 50mm)
+      // Corner intersection: (4150, 2200). The polygon's top-right corner
+      // (originally 4000, 2000) should land there → 2D delta = (150, 200).
+      const verticalWall = wallTarget({ x: 4150, y: -1000 }, { x: 4150, y: 3000 });
+      const horizontalWall = wallTarget({ x: -1000, y: 2200 }, { x: 5000, y: 2200 });
+      const result = resolveMoveSnap({
+        originalPolygon: RECT,
+        naturalDeltaMm: { x: 200, y: 150 },
+        lineTargets: [verticalWall, horizontalWall],
+      });
+      expect(result).not.toBeNull();
+      if (!result) return;
+      expect(result.secondary).not.toBeNull();
+      expect(result.secondary).toBeDefined();
+      // Primary + secondary must be on different edges
+      expect(result.secondary?.edgeIndex).not.toBe(result.edgeIndex);
+      // Adjusted delta lands both edges on their targets
+      expect(result.adjustedDeltaMm.x).toBeCloseTo(150, 3);
+      expect(result.adjustedDeltaMm.y).toBeCloseTo(200, 3);
+      // Corner vertex = intersection of the two target lines
+      expect(result.cornerVertex?.x).toBeCloseTo(4150, 3);
+      expect(result.cornerVertex?.y).toBeCloseTo(2200, 3);
+    });
+
+    it('omits secondary when only one target is in tolerance (single-snap path unchanged)', () => {
+      const verticalWall = wallTarget({ x: 4150, y: -1000 }, { x: 4150, y: 3000 });
+      // Horizontal wall is 800mm away from the top edge's natural position
+      // (top edge naturally at y=2150, target y=2950 → correction 800mm,
+      // outside 250mm tolerance).
+      const distantHorizontalWall = wallTarget({ x: -1000, y: 2950 }, { x: 5000, y: 2950 });
+      const result = resolveMoveSnap({
+        originalPolygon: RECT,
+        naturalDeltaMm: { x: 200, y: 150 },
+        lineTargets: [verticalWall, distantHorizontalWall],
+      });
+      expect(result).not.toBeNull();
+      if (!result) return;
+      expect(result.secondary ?? null).toBeNull();
+      expect(result.cornerVertex ?? null).toBeNull();
+      // Single-snap path: x corrects to 150 (primary wall snap), y stays at 150 (free).
+      expect(result.adjustedDeltaMm.x).toBeCloseTo(150, 3);
+      expect(result.adjustedDeltaMm.y).toBeCloseTo(150, 3);
+    });
+
+    it('omits secondary when the best second candidate is parallel to the primary target', () => {
+      // Two vertical walls — both parallel to each other. The closer one wins
+      // as primary; the farther one is rejected as a corner partner because
+      // it's parallel.
+      const wallA = wallTarget({ x: 4150, y: -1000 }, { x: 4150, y: 3000 });
+      const wallB = wallTarget({ x: 4220, y: -1000 }, { x: 4220, y: 3000 });
+      const result = resolveMoveSnap({
+        originalPolygon: RECT,
+        naturalDeltaMm: { x: 200, y: 0 },
+        lineTargets: [wallA, wallB],
+      });
+      expect(result).not.toBeNull();
+      if (!result) return;
+      expect(result.secondary ?? null).toBeNull();
+    });
+
+    it('omits secondary when the angle between targets is below cornerMinAngleDeg', () => {
+      // Custom cornerMinAngleDeg = 60°. Two walls at a 30° angle don't
+      // qualify as a corner pair (the geometry might just be a slight
+      // angle change in the perimeter, not a real corner).
+      const horizontalWall = wallTarget({ x: -1000, y: 2200 }, { x: 5000, y: 2200 });
+      // A target at ~30° from horizontal: dx=1000, dy ≈ 577 (tan 30°).
+      // To pass the parallelism check the polygon's edge must be parallel
+      // to the target -- so this target is for a polygon edge that lives
+      // along the same axis. We construct a polygon with an oblique edge.
+      const obliquePoly: Point2[] = [
+        { x: 0, y: 0 },
+        { x: 4000, y: 0 },
+        { x: 4000, y: 2000 },
+        { x: 3000, y: 2000 + 577 }, // edge from (3000, 2577) to (4000, 2000) ≈ -30° from horizontal
+        { x: 0, y: 2000 },
+      ];
+      const obliqueWall = wallTarget(
+        { x: 3000, y: 2200 + 577 },
+        { x: 4000, y: 2200 },
+      );
+      const result = resolveMoveSnap({
+        originalPolygon: obliquePoly,
+        naturalDeltaMm: { x: 0, y: 150 },
+        lineTargets: [horizontalWall, obliqueWall],
+        cornerMinAngleDeg: 60,
+      });
+      expect(result).not.toBeNull();
+      if (!result) return;
+      // Only one snap should win; the perpendicular partner is rejected
+      // because the angle between the targets (~30°) is below 60°.
+      expect(result.secondary ?? null).toBeNull();
+    });
+
+    it('does NOT pick the same polygon edge for primary and secondary (corner requires two distinct edges)', () => {
+      // Two vertical walls at slightly different x positions; with
+      // cornerMinAngleDeg lowered to 0° they would PASS the parallelism
+      // gate (cross product = 0 ≥ sin(0) = 0). The excludeEdgeIndex guard
+      // prevents both snaps landing on the same polygon edge regardless.
+      // (Realistic users won't pass cornerMinAngleDeg=0, but this pins
+      // the secondary-edge-distinctness contract.)
+      const wallA = wallTarget({ x: 4150, y: -1000 }, { x: 4150, y: 3000 });
+      const wallB = wallTarget({ x: 4170, y: -1000 }, { x: 4170, y: 3000 });
+      const result = resolveMoveSnap({
+        originalPolygon: RECT,
+        naturalDeltaMm: { x: 200, y: 0 },
+        lineTargets: [wallA, wallB],
+        cornerMinAngleDeg: 0,
+      });
+      expect(result).not.toBeNull();
+      if (!result) return;
+      // If a secondary IS emitted, its edge index must differ from the primary's.
+      if (result.secondary) {
+        expect(result.secondary.edgeIndex).not.toBe(result.edgeIndex);
+      }
+    });
+  });
 });
