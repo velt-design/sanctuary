@@ -66,6 +66,47 @@ describe('EdgeDragTool', () => {
     expect(onPreviewChange).not.toHaveBeenCalled();
   });
 
+  it("falls through immediately when the click shape is a terminal-end toggle target (openGableEndId metadata), so SelectTool can dispatch the hip↔gable toggle instead of the click being captured as an edge resize", () => {
+    // Milestone 13: when the house is the active outline, the synthetic
+    // gable triangle for an opened end sits inside `edgeHitToleranceMm`
+    // of the house perimeter. Without this priority check the click
+    // becomes a resize session and the toggle never fires.
+    const onPreviewChange = vi.fn();
+    const onPointerDownFallthrough = vi.fn();
+    const tool = createEdgeDragTool({
+      getActiveOutline: () => RECT_OUTLINE,
+      onPreviewChange,
+      onPointerDownFallthrough,
+    });
+    tool.onPointerDown!({
+      // Click well inside the active outline AND well within tolerance
+      // of every edge -- the natural EdgeDragTool path WOULD capture
+      // this as a resize.
+      shape: {
+        id: 'house_terminal_end_synthetic:house-gable-end-x-1',
+        sourceObjectId: 'house-gable-end-x-1',
+        sourceId: 'house-gable-end-x-1',
+        sourceType: 'house_surface_solid',
+        family: 'house',
+        kind: 'roof',
+        polygon: [],
+        zOrder: 2,
+        zMin: 0,
+        zMax: 0,
+        metadata: {
+          topProjectionRole: 'top_visible',
+          openGableEndId: 'house-gable-end-x-1',
+          isOpen: true,
+        },
+      },
+      point: { x: 2000, y: 1000 },
+      button: 0,
+      pointerId: 1,
+    });
+    expect(onPreviewChange).not.toHaveBeenCalled();
+    expect(onPointerDownFallthrough).toHaveBeenCalledTimes(1);
+  });
+
   it('updates the preview polygon as the pointer moves perpendicular to the edge', () => {
     const onPreviewChange = vi.fn();
     const tool = createEdgeDragTool({
