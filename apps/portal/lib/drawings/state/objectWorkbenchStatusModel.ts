@@ -1,4 +1,5 @@
 import {
+  deriveAllHouseGableTerminalEnds,
   deriveHouseGableTerminalEnds,
   deriveHouseRoofAppendageSupportedHostEdges,
   deriveHouseRoofAppendageSupport,
@@ -333,9 +334,15 @@ function buildRoofStatus(input: {
     !houseForm.roofIntentAuthored && rawAppendageSupportedHostEdges.includes(houseForm.footprint.attachmentSide)
       ? [houseForm.footprint.attachmentSide]
       : rawAppendageSupportedHostEdges;
-  const terminalEnds = deriveHouseGableTerminalEnds({
+  // Multi-axis terminals: every gable-tip candidate from both ridge
+  // axes is surfaced as a toggleable end. For custom orthogonal
+  // polygons with parts running along both axes (L / U / T / wrap),
+  // each tip is independently clickable without forcing the user
+  // to flip the workbench's primary ridge axis. The single-axis
+  // derivation remains in axis-scoring code (preferred-ridge-axis
+  // computation) where one axis is the right answer.
+  const terminalEnds = deriveAllHouseGableTerminalEnds({
     footprint,
-    ridgeAxis: intent.ridgeAxis,
   });
   const preferredRidgeAxis =
     intent.form === 'hipped'

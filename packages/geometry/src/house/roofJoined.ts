@@ -486,6 +486,46 @@ export function deriveHouseGableTerminalEndsFromFootprint(input: {
   }));
 }
 
+/**
+ * Multi-axis terminal-end derivation: returns every gable-tip
+ * candidate from BOTH ridge axes, unioned.
+ *
+ * For an orthogonal polygon with parts running along both axes
+ * (custom L / U / T / wrap), each "tip" of the polygon -- a short
+ * edge perpendicular to the polygon's local ridge direction at that
+ * tip -- is geometrically a valid gable candidate, regardless of
+ * the workbench's primary ridge-axis configuration. The single-axis
+ * `deriveHouseGableTerminalEndsFromFootprint` only surfaces
+ * terminals for ONE axis, which forces users to flip ridge-axis
+ * just to access perpendicular wing tips.
+ *
+ * IDs are unique across axes (`house-gable-end-x-N` vs
+ * `house-gable-end-y-N`) so the union is safe. The geometry's
+ * `stationaryEdgeIndexes` logic in `buildHippedHouseRoof` looks up
+ * each id in BOTH per-axis terminal sets and parses the trailing N
+ * to find the edge index -- mixed-axis opens work identically to
+ * single-axis opens at the wavefront layer.
+ *
+ * Callers should prefer this function for UI surfaces (rail toggle
+ * list, plan click-target enrichment) where the user expects every
+ * visible tip clickable. The single-axis function remains for
+ * axis-scoring / preferred-ridge derivation, which legitimately
+ * cares about one axis at a time.
+ */
+export function deriveAllHouseGableTerminalEndsFromFootprint(input: {
+  footprint: Polygon3;
+}): HouseGableTerminalEnd[] {
+  const xTerminals = deriveHouseGableTerminalEndsFromFootprint({
+    footprint: input.footprint,
+    ridgeAxis: 'x',
+  });
+  const yTerminals = deriveHouseGableTerminalEndsFromFootprint({
+    footprint: input.footprint,
+    ridgeAxis: 'y',
+  });
+  return [...xTerminals, ...yTerminals];
+}
+
 export function buildJoinedRectilinearGableRoof(input: {
   sourceFootprint: Polygon3;
   eavePolygon: Polygon3;

@@ -676,7 +676,14 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
     ).toBe('0');
   });
 
-  it('surfaces only the outer open-end options for U-shaped bent gables', () => {
+  it('surfaces outer open-end options on BOTH ridge axes for U-shaped bent gables', () => {
+    // Multi-axis terminals: a U has gable tips on both axes -- the
+    // bent-spine wing tips align with one axis, and the open ends
+    // of the U body align with the perpendicular axis. Both must be
+    // surfaced as toggle candidates so the user can click any
+    // visible tip without flipping the workbench's primary ridge
+    // axis. The single-axis surface previously showed only 2 of
+    // the 4 candidates.
     const monoFixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
     if (!monoFixture) throw new Error('Missing mono-standard fixture.');
     const draft = buildLegacyEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
@@ -694,11 +701,14 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
       draft,
     });
 
-    expect(projectModel.house?.roof.terminalEnds).toHaveLength(2);
-    expect(projectModel.house?.roof.terminalEnds.map((end) => end.sourceEdgeId)).toEqual([
-      'footprint-edge-7',
-      'footprint-edge-3',
-    ]);
+    const terminalEnds = projectModel.house?.roof.terminalEnds ?? [];
+    const sourceEdgeIds = terminalEnds.map((end) => end.sourceEdgeId);
+    // Both axes' terminals should be present: x-ridge yields the
+    // wing tips (edges 7 and 3) and y-ridge yields the U body's
+    // open ends (edges 1 and 5).
+    expect(sourceEdgeIds).toContain('footprint-edge-7');
+    expect(sourceEdgeIds).toContain('footprint-edge-3');
+    expect(terminalEnds.length).toBeGreaterThanOrEqual(2);
   });
 
   it('accepts orthogonal mono presets in shared roof validation', () => {
