@@ -57,11 +57,19 @@ export function buildJoinedRectilinearHippedRoof(input: {
       }
     }
   }
+  // When any edge is stationary (open-gable cap on a joined
+  // footprint), the slope adjacent to it terminates at the eave at
+  // ridge-apex z, not eave z -- the gable wall fills the height gap.
+  // The default `roofPointOnEaveBoundaryAtWrongHeight` check would
+  // reject those facets as malformed; opt in to the raised-boundary
+  // allowance only when stationary edges exist so the fully-hipped
+  // path remains strict.
   const facetResult = buildJoinedRoofFacets({
     eavePolygon,
     edges,
     eaveHeightMm: input.eaveHeightMm,
     pitchRisePerRun,
+    allowRaisedBoundaryPoints: stationaryIndexSet.size > 0,
   });
   const facets = facetResult.facets;
 

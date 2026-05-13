@@ -63,6 +63,7 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 | 2026-05-13 | House Roof Topology | Active | The geometry normalize migration treats `roofIntent.form: 'gable'` as "hipped + every terminal end open" regardless of `openGableEndIds`. Any terminal-end toggle that operates on the workbench state must port the migration into explicit `form: 'hipped' + openGableEndIds: <all terminals minus the toggled one>` in the SAME commit, or `[].filter(...)` produces a no-op and normalize re-migrates on the next solve. Helper: `resolveHouseTerminalEndToggleRoofDraft`. |
 | 2026-05-14 | Plan Snap Engine | Active | `resolveMoveSnap` resolves a corner snap after the primary: if a second target on a different polygon edge whose direction is at least `cornerMinAngleDeg` (default 30 deg) from the primary's lies within tolerance, it solves the 2x2 system `[primary_normal; secondary_normal] . delta = [ps; ss]` so the moving polygon's corner lands on the two target lines' intersection. `MoveSnapResult.secondary` + `cornerVertex` are optional; single-line consumers are unaffected. EdgeDragTool stays single-line (1D motion). |
 | 2026-05-14 | House Roof Topology | Active | Milestone 13 session C: `'gable'` is retired from the `HouseRoofForm` type union (`'flat' \| 'mono' \| 'hipped'`). `resolveHouseRoofForm` (geometry normalize) and `normalizeHouseFormRoofIntent` (workbench draft normalize) BOTH map legacy `'gable'` string input to `'hipped'` so storage can still carry it but no typed surface accepts it. Picker, validators, dispatchers, and inspector derivations are simplified accordingly. Known regression: legacy gable-form houses in preset mode (no explicit polygon at normalize time) load as `'hipped'` with empty `openGableEndIds`; the user re-opens ends from the rail or Plan canvas. |
+| 2026-05-14 | House Roof Topology | Active | Partial-open clicks on joined footprints (U / wrap with one terminal end opened) require TWO wavefront facet-validator relaxations: (1) `allowRaisedBoundaryPoints: true` -- the slope adjacent to a stationary gable edge legitimately reaches the eave at apex z, not eave z (the gable wall fills the height gap); (2) the `face_count_mismatch` check subtracts the stationary edge count from the expected facet count because stationary edges intentionally produce zero slope facets. Without these, clicking ONE terminal end on a U produced `roof_topology_face_count_mismatch:5:8` and the geometry rendered as invalid. Fully-hipped (no stationary edges) and bent-spine all-open paths are unchanged. |
 
 ## Entries
 
@@ -879,3 +880,25 @@ Future agents:
 Promoted to: None
 
 Related docs/tests: [packages/geometry/src/contracts.ts](../packages/geometry/src/contracts.ts) (`HouseRoofForm` union), [packages/geometry/src/houseRoofValidation.ts](../packages/geometry/src/houseRoofValidation.ts) (`HOUSE_ROOF_FORM_BEHAVIORS`, `HOUSE_ROOF_FORM_ORDER`), [packages/geometry/src/normalize.ts](../packages/geometry/src/normalize.ts) (`resolveHouseRoofForm`), [packages/geometry/src/house/roofPrimary.ts](../packages/geometry/src/house/roofPrimary.ts) (`buildPrimaryHouseRoof` dispatcher), [apps/portal/lib/drawings/state/objectFirstWorkbenchModel.ts](../apps/portal/lib/drawings/state/objectFirstWorkbenchModel.ts) (`normalizeHouseFormRoofIntent`), [apps/portal/components/drawings/rail/HouseFormRoofSections.tsx](../apps/portal/components/drawings/rail/HouseFormRoofSections.tsx) (rail picker + open-end toggles), [apps/portal/app/staff/projects/[projectId]/design-workbench/resolveHouseTerminalEndToggleRoofDraft.ts](../apps/portal/app/staff/projects/[projectId]/design-workbench/resolveHouseTerminalEndToggleRoofDraft.ts) (now a plain hipped toggle since the migration moved upstream).
+
+### 2026-05-14 - House Roof Topology - Partial-Open Joined Topology Wavefront Fix
+
+Area: House Roof Topology
+
+Status: Active
+
+Decision or mistake: clicking ONE terminal end on a U / wrap footprint produced invalid geometry (`roof_topology_face_count_mismatch:5:8`) because the wavefront-based joined-hipped builder's facet validator was strict in two places that don't hold for partial-open topologies:
+
+1. `roofPointOnEaveBoundaryAtWrongHeight` rejected any facet whose boundary touched the eave polygon at a z != eaveHeightMm. For a slope adjacent to a stationary gable edge, the slope legitimately reaches the eave at apex z (the gable wall fills the vertical gap). The validator now accepts those raised-boundary points when `allowRaisedBoundaryPoints: true` is plumbed through; `buildJoinedRectilinearHippedRoof` opts in only when any edge is stationary, so the fully-hipped case stays strict.
+
+2. The `face_count_mismatch` topology check compared `facets.length` to `input.edges.length`. Stationary edges intentionally produce ZERO slope facets (the vertical gable wall replaces the slope), so the expected count is `input.edges.length - stationaryEdgeCount`. Detected by counting edges with `|inwardNormal| <= ROOF_JOIN_EPSILON_MM`.
+
+Why it mattered: before this fix, the only way to see bent-spine gable peaks on a U / wrap was to open BOTH terminal ends (which routes through `buildGabledHouseRoof`, a separate code path). Individual click-toggling was a no-op visually because the workbench fell back to invalid-geometry rendering. The user expectation (per session B) is that each terminal end is independently toggleable -- this fix makes that work for joined footprints, matching the rectangular case.
+
+Future agents:
+- `allowRaisedBoundaryPoints` is now plumbed through `buildJoinedRoofFacets`. The flag is consumed only by `roofPointOnEaveBoundaryAtWrongHeight`; other validators (finite boundary, non-zero area, simple polygon) still apply. Adding similar pre-existing-strict checks should mirror this opt-in shape.
+- The stationary-edge count is derived from the edge's inward normal (`Math.hypot(inwardNormal.x, inwardNormal.y) <= ROOF_JOIN_EPSILON_MM`). If a future builder wants to encode "stationary" differently (e.g. a flag), update both the velocity treatment in `roofJoinedWavefront.ts` and the count in `roofJoinedFacets.ts`.
+
+Promoted to: None
+
+Related docs/tests: [packages/geometry/src/house/roofJoinedFacets.ts](../packages/geometry/src/house/roofJoinedFacets.ts) (`allowRaisedBoundaryPoints` + stationary-edge-aware face-count check), [packages/geometry/src/house/roofJoinedHipped.ts](../packages/geometry/src/house/roofJoinedHipped.ts) (passes flag when stationary edges exist), [packages/geometry/src/houseModel.test.ts](../packages/geometry/src/houseModel.test.ts) (regression test: "produces valid joined-hipped geometry when ONE terminal end is opened on a U/wrap footprint").

@@ -2351,6 +2351,51 @@ describe('house model geometry builder', () => {
     expect(gutterEdgeIds).not.toContain('footprint-edge-7');
   });
 
+  it('produces valid joined-hipped geometry when ONE terminal end is opened on a U/wrap footprint (partial-open click)', () => {
+    // Regression: the wavefront facet validator (default-strict) used
+    // to reject any facet whose boundary touched the eave polygon at
+    // a non-eave z. For partial-open joined footprints, the slope
+    // adjacent to a stationary gable edge legitimately reaches the
+    // eave at apex z (the gable wall fills the height gap). The fix
+    // (1) plumbs `allowRaisedBoundaryPoints` through the wavefront
+    // facet builder when any edge is stationary, and (2) subtracts
+    // stationary edges from the expected facet count. Without the
+    // fix, clicking ONE terminal end on a U-shape produced
+    // `roof_topology_face_count_mismatch:5:8`, breaking individual
+    // toggles on joined footprints.
+    const presets: Array<'u_shape' | 'wrap_left' | 'wrap_right'> = ['u_shape', 'wrap_left', 'wrap_right'];
+    for (const preset of presets) {
+      const footprint = buildHouseFootprintPolygon({
+        pergolaWidthMm: 6000,
+        pergolaDepthMm: 1800,
+        preset,
+        attachmentSide: 'rear',
+      });
+      const terminalEnds = deriveHouseGableTerminalEnds({ footprint, ridgeAxis: 'x' });
+      expect(terminalEnds.length, `${preset} terminals`).toBeGreaterThanOrEqual(2);
+      for (const terminal of terminalEnds) {
+        const model = buildHouseModel3D({
+          config: makeConfig({
+            footprint,
+            roofForm: 'hipped',
+            roofRidgeAxis: 'x',
+            openGableEndIds: [terminal.id],
+          }),
+          attachmentEdge: makeAttachmentEdge(),
+        });
+        expect(model?.metadata?.roofQaStatus, `${preset}/${terminal.id}`).toBe('valid');
+        expect(model?.metadata?.roofQaFailureReason, `${preset}/${terminal.id}`).toBeNull();
+        // The opened terminal renders as an open_gable_frame wall;
+        // the other terminal remains hipped. Partial-open joined
+        // case routes through the unified wavefront (NOT bent-spine,
+        // which only fires for all-open).
+        expect(model?.metadata?.roofGeometry, `${preset}/${terminal.id} geometry`).toBe('rectilinear_joined_hipped');
+        const openWall = model?.wallSegments.find((segment) => segment.metadata?.gableEndId === terminal.id);
+        expect(openWall?.metadata?.houseWallMode, `${preset}/${terminal.id} wall mode`).toBe('open_gable_frame');
+      }
+    }
+  });
+
   it('builds bent-spine joined gables for wrap presets with explicit terminal closure metadata', () => {
     const presets: Array<'wrap_left' | 'wrap_right'> = ['wrap_left', 'wrap_right'];
 

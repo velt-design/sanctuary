@@ -64,6 +64,17 @@ export function buildJoinedRoofFacets(input: {
   edges: JoinedRoofEdge[];
   eaveHeightMm: number;
   pitchRisePerRun: number;
+  /**
+   * Allow facet boundary points to sit on the eave polygon at a
+   * non-eave z. Required when the wavefront has any stationary
+   * (open-gable) edges: the slope adjacent to a stationary edge rises
+   * vertically off the gable wall, so its facet's boundary touches
+   * the eave at the apex height, not at eaveHeightMm. The default-off
+   * check (`roofPointOnEaveBoundaryAtWrongHeight`) is correct for the
+   * fully-hipped wavefront, where every facet meets the eave at
+   * eaveHeightMm.
+   */
+  allowRaisedBoundaryPoints?: boolean;
 }): JoinedRoofFacetBuildResult {
   const baseRegions = buildRectilinearRoofBaseRegions(input.eavePolygon);
   const splitRegions = splitRoofRegionsByPlaneIntersections({
@@ -97,6 +108,7 @@ export function buildJoinedRoofFacets(input: {
       eavePolygon: input.eavePolygon,
       eaveHeightMm: input.eaveHeightMm,
       pitchRisePerRun: input.pitchRisePerRun,
+      allowRaisedBoundaryPoints: input.allowRaisedBoundaryPoints,
     });
     if (facet) {
       facets.push(facet);
@@ -112,9 +124,20 @@ export function buildJoinedRoofFacets(input: {
   });
   const sourceEdgeCount = new Set(facets.map((facet) => facet.edge.index)).size;
   const disconnectedSourceFaceCount = Math.max(0, facets.length - sourceEdgeCount);
+  // Stationary edges (open-gable caps on a joined footprint) have a
+  // zero inward normal and intentionally produce no slope facet -- a
+  // vertical gable wall fills the gap instead. Exclude them from the
+  // expected-facet count so the partial-open path stays valid; the
+  // fully-hipped wavefront has no stationary edges and is unaffected.
+  const stationaryEdgeCount = input.edges.reduce((count, edge) => {
+    return Math.hypot(edge.inwardNormal.x, edge.inwardNormal.y) <= ROOF_JOIN_EPSILON_MM
+      ? count + 1
+      : count;
+  }, 0);
+  const expectedFacetCount = input.edges.length - stationaryEdgeCount;
   let topologyFailureReason = wavefrontRegions.failureReason ?? mergedRegions.topologyFailureReason;
-  if (!topologyFailureReason && facets.length !== input.edges.length) {
-    topologyFailureReason = `roof_topology_face_count_mismatch:${facets.length}:${input.edges.length}`;
+  if (!topologyFailureReason && facets.length !== expectedFacetCount) {
+    topologyFailureReason = `roof_topology_face_count_mismatch:${facets.length}:${expectedFacetCount}`;
   }
   if (!topologyFailureReason && disconnectedSourceFaceCount > 0) {
     topologyFailureReason = 'roof_topology_disconnected_source_faces';
