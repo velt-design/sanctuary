@@ -109,6 +109,44 @@ describe('EdgeDragTool', () => {
       expect(onPointerDownFallthrough).toHaveBeenCalledTimes(1);
     });
 
+    it("falls through to SelectTool when the closest outline edge IS the terminal's own eave -- preserves hip↔gable toggle on small wing-tip hip caps where every interior point is within edge tolerance", () => {
+      // Phase 2: bent-spine identifies the wing tips of custom L /
+      // U / T polygons as terminals. Their hip caps project as small
+      // shapes whose every interior point is within the 250 mm
+      // default edge tolerance of the terminal's own eave. Without
+      // this priority refinement, every click on a wing-tip hip cap
+      // would route to wall-drag and the toggle would never fire.
+      // The fix: only redirect to drag when the closest outline edge
+      // is something OTHER than the terminal's own source edge.
+      const onPreviewChange = vi.fn();
+      const onPointerDownFallthrough = vi.fn();
+      const tool = createEdgeDragTool({
+        getActiveOutline: () => RECT_OUTLINE,
+        onPreviewChange,
+        onPointerDownFallthrough,
+      });
+      tool.onPointerDown!({
+        // Terminal id encodes edge index 1 (1-based "-2" -> 0-based
+        // 1 = RECT_OUTLINE's right edge from (4000,0) to (4000,2000)).
+        shape: {
+          ...terminalEndShape(),
+          metadata: {
+            topProjectionRole: 'top_visible',
+            openGableEndId: 'house-gable-end-x-2',
+            isOpen: false,
+          },
+        },
+        // Inside the outline, only ~100 mm from the right edge --
+        // within the 250 mm tolerance. The closest edge IS the
+        // terminal's own eave, so toggle wins.
+        point: { x: 3900, y: 1000 },
+        button: 0,
+        pointerId: 1,
+      });
+      expect(onPreviewChange).not.toHaveBeenCalled();
+      expect(onPointerDownFallthrough).toHaveBeenCalledTimes(1);
+    });
+
     it('starts an edge drag session when click is on a terminal-end shape but ALSO within edgeHitToleranceMm of an active outline edge -- restores wall edge interaction under the synthetic', () => {
       // Regression: the synthetic gable triangle physically overlaps
       // the house perimeter (its eave-corner extension wraps onto the

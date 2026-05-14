@@ -229,16 +229,41 @@ export function createEdgeDragTool(config: EdgeDragToolConfig): Tool {
       const closest = outline ? findClosestPolygonEdge(outline.polygon, event.point) : null;
       const withinEdgeTolerance = !!closest && closest.distanceMm <= tolerance;
 
-      // Terminal-end toggle yields to edge drag WITHIN edge tolerance.
+      // Terminal-end toggle yields to edge drag WITHIN edge tolerance,
+      // BUT only when the closest outline edge is something OTHER than
+      // the terminal's own eave edge. Small wing-tip hip caps on
+      // custom polygons (Phase 2) project to shapes whose every
+      // interior point is within the 250mm edge tolerance of the
+      // terminal's own eave -- every click would otherwise become a
+      // wall-drag and the user could never toggle wing tips. When the
+      // closest outline edge IS the terminal's source edge, the user
+      // is clicking the hip cap itself (not a different wall) and
+      // should get the toggle. The tag id encodes the edge index as
+      // `house-gable-end-{axis}-{N}` (1-based polygon edge index).
+      const taggedEndId =
+        typeof event.shape?.metadata?.openGableEndId === 'string'
+          ? event.shape.metadata.openGableEndId
+          : null;
+      const taggedEdgeIndex = taggedEndId
+        ? (() => {
+            const match = /-(\d+)$/.exec(taggedEndId);
+            const parsed = match ? Number.parseInt(match[1]!, 10) - 1 : NaN;
+            return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
+          })()
+        : null;
+      const closestIsTerminalEave =
+        closest !== null &&
+        taggedEdgeIndex !== null &&
+        closest.edgeIndex === taggedEdgeIndex;
       // Clicks on the synthetic triangle's interior (far from any
-      // outline edge) still route to SelectTool for the hip↔gable
-      // toggle; clicks on the eave-corner overhang that overlaps the
-      // wall edge start an edge-drag session instead. See
-      // `docs/decision-log.md` 2026-05-13 entry on terminal-end click
-      // priority.
+      // outline edge) OR clicks whose nearest outline edge is the
+      // terminal's own eave (small wing-tip hip caps) route to
+      // SelectTool for the hip↔gable toggle; clicks on the
+      // eave-corner overhang that overlaps a DIFFERENT wall edge
+      // start an edge-drag session instead.
       if (
-        typeof event.shape?.metadata?.openGableEndId === 'string' &&
-        !withinEdgeTolerance
+        taggedEndId !== null &&
+        (!withinEdgeTolerance || closestIsTerminalEave)
       ) {
         config.onPointerDownFallthrough?.(event);
         return;
