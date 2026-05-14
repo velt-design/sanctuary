@@ -14,7 +14,7 @@ import {
 } from './_internal';
 import { cleanRoofPolygon2D, point2FromPoint3, roofPoint3Key, roofPolygonArea } from './roof2D';
 import { buildJoinedRoofFacets, buildJoinedRoofFeatures } from './roofJoinedFacets';
-import { edgeLiesOnConvexHull, outwardNormalForEdge, ridgeGraphTerminalNodes, roofFeaturesAreAxisAligned } from './roofJoinedHipped';
+import { edgeLiesOnConvexHull, outwardNormalForEdge, ridgeGraphTerminalNodes } from './roofJoinedHipped';
 import { buildJoinedRoofEdges, roofHeightFromEdge } from './roofJoinedRegions';
 
 export function deriveHouseFootprintOpenSide(polygon: Polygon3): HouseFootprintOpenSide | null {
@@ -134,7 +134,26 @@ export function deriveBentSpineTerminalIntersectionsX(input: {
   footprint: Polygon3;
   ridgeFeatures: HouseRoofFeature3D[];
 }): HouseGableTerminalIntersection[] | null {
-  if (!input.ridgeFeatures.length || !roofFeaturesAreAxisAligned(input.ridgeFeatures)) return null;
+  if (!input.ridgeFeatures.length) return null;
+  // Phase 2: accept ridge graphs containing diagonal connector
+  // segments. For asymmetric orthogonal polygons (custom L / U / T
+  // whose wings have different widths), the wavefront's medial-axis
+  // approximation produces a diagonal where two perpendicular wing
+  // ridges converge at slightly offset meeting points -- e.g. a
+  // y-arm ridge ending at (1500, 1500) connected to an x-arm ridge
+  // starting at (2000, 1000) by a (1500, 1500) -> (2000, 1000)
+  // diagonal. The previous axis-aligned guard rejected the entire
+  // ridge graph in those cases, forcing fallback to a legacy
+  // "all axis-perpendicular edges are terminals" heuristic that
+  // over-included body-side edges and missed real wing tips. The
+  // ray-cast terminal derivation below uses ONLY the degree-1 nodes
+  // (true graph endpoints) and the axis dominant direction of each
+  // node's incident ridge segment to find the polygon edge that's
+  // the wing tip -- the diagonal connector lives between degree-2
+  // interior nodes and never participates in the derivation, so
+  // the relaxed check is correctness-preserving on the cases the
+  // strict check used to accept (rectangle / preset L / preset U)
+  // and unlocks the cases it used to reject.
   const terminalIntersections = ridgeGraphTerminalNodes(input.ridgeFeatures)
     .map((node) =>
       intersectTerminalRayWithFootprintDetail({

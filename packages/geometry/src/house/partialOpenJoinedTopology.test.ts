@@ -381,6 +381,65 @@ function runMatrix(input: {
   }
 }
 
+describe('Phase 2: bent-spine derives wing-tip terminals across both ridge axes', () => {
+  // Phase 2 contract: for any orthogonal polygon (preset or custom),
+  // the bent-spine terminal derivation surfaces the real wing-tip
+  // edges -- the polygon edges where a gable wall would close off a
+  // visible roof tip. Both ridge axes converge to the SAME wing-tip
+  // edge set because each axis's bent-spine medial-axis traces the
+  // same polygon topology. Previously (before relaxing the axis-
+  // aligned guard) the function fell back to a legacy "all axis-
+  // perpendicular edges are terminals" heuristic that returned a
+  // DIFFERENT, over-included set per axis -- e.g. for a custom L
+  // ridge=x returned 3 vertical edges, ridge=y returned 3 horizontal
+  // edges, none of which matched the user's mental model of "click
+  // the wing tip".
+  type FixtureCase = {
+    name: string;
+    footprint: Polygon3;
+    expectedSourceEdgeIds: ReadonlyArray<string>;
+  };
+  const PHASE_2_FIXTURES: ReadonlyArray<FixtureCase> = [
+    {
+      name: 'custom-L-symmetric',
+      footprint: [
+        { x: 0, y: 0, z: 0 }, { x: 6000, y: 0, z: 0 },
+        { x: 6000, y: 2000, z: 0 }, { x: 3000, y: 2000, z: 0 },
+        { x: 3000, y: 4000, z: 0 }, { x: 0, y: 4000, z: 0 },
+      ],
+      // Wing tips: edge 2 (x-arm right at x=6000) + edge 5 (y-arm
+      // top at y=4000). Both axes derive the same pair.
+      expectedSourceEdgeIds: ['footprint-edge-2', 'footprint-edge-5'],
+    },
+    {
+      name: 'custom-T',
+      footprint: [
+        { x: 0, y: 0, z: 0 }, { x: 9000, y: 0, z: 0 },
+        { x: 9000, y: 2000, z: 0 }, { x: 6000, y: 2000, z: 0 },
+        { x: 6000, y: 5000, z: 0 }, { x: 3000, y: 5000, z: 0 },
+        { x: 3000, y: 2000, z: 0 }, { x: 0, y: 2000, z: 0 },
+      ],
+      // Three arm tips: edge 2 (right), edge 5 (top of vertical
+      // arm), edge 8 (left).
+      expectedSourceEdgeIds: ['footprint-edge-2', 'footprint-edge-5', 'footprint-edge-8'],
+    },
+  ];
+
+  for (const fixture of PHASE_2_FIXTURES) {
+    for (const ridgeAxis of ['x', 'y'] as const) {
+      it(`${fixture.name} (${ridgeAxis}-ridge) terminals match the wing-tip set`, () => {
+        const terminals = deriveHouseGableTerminalEndsFromFootprint({
+          footprint: fixture.footprint,
+          ridgeAxis,
+        });
+        const actual = terminals.map((end) => end.sourceEdgeId).sort();
+        const expected = [...fixture.expectedSourceEdgeIds].sort();
+        expect(actual, `${fixture.name}/${ridgeAxis}`).toEqual(expected);
+      });
+    }
+  }
+});
+
 describe('partial-open joined topology regression matrix', () => {
   describe('preset footprints', () => {
     for (const preset of ALL_PRESETS) {
