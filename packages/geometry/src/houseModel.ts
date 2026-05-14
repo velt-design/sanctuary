@@ -225,10 +225,7 @@ import {
   reflectRoofBuildResultAcrossX,
   swapRoofBuildResultAxes,
 } from './house/roofJoined';
-export {
-  deriveHouseGableTerminalEndsFromFootprint,
-  deriveAllHouseGableTerminalEndsFromFootprint,
-} from './house/roofJoined';
+export { deriveHouseGableTerminalEndsFromFootprint } from './house/roofJoined';
 import { applyRoofQa, validateHouseRoofQa } from './house/roofQa';
 import {
   buildFlatHouseRoof,

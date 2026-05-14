@@ -12,10 +12,7 @@ import type {
   ViewerSceneModel,
   ViewerSceneObject,
 } from './contracts';
-import {
-  deriveAllHouseGableTerminalEndsFromFootprint,
-  deriveHouseGableTerminalEndsFromFootprint,
-} from './houseModel';
+import { deriveHouseGableTerminalEndsFromFootprint } from './houseModel';
 import { buildViewerSceneModel } from './viewer';
 
 const EPSILON_MM = 1e-6;
@@ -720,15 +717,9 @@ function enrichHouseRoofShapesWithTerminalEnds(
   ) {
     return shapes;
   }
-  // Multi-axis terminals: surface every gable-tip candidate from
-  // BOTH ridge axes. For orthogonal polygons with parts running
-  // along both axes (custom L / U / T / wrap with mixed-direction
-  // wings), each "tip" is a valid gable candidate regardless of
-  // the workbench's primary ridge-axis choice. Single-axis
-  // derivation forced users to flip ridge axis just to access
-  // perpendicular wing tips.
-  const terminalEnds = deriveAllHouseGableTerminalEndsFromFootprint({
+  const terminalEnds = deriveHouseGableTerminalEndsFromFootprint({
     footprint: houseModel.footprint,
+    ridgeAxis: dominantRidgeAxis,
   });
   if (terminalEnds.length === 0) return shapes;
   // Build per-terminal eave segment endpoints (in 2D world mm). The

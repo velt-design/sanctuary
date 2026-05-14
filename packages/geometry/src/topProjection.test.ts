@@ -1007,17 +1007,17 @@ describe("hip-end click target metadata on house roof shapes (milestone 13 plan-
     expect(stillClosed?.id).not.toContain("house_terminal_end_synthetic");
   });
 
-  it("tags terminal-end click targets on joined custom polygons regardless of the workbench's configured ridge axis", () => {
-    // Multi-axis terminals: the enrichment surfaces gable-tip
-    // candidates from BOTH ridge axes simultaneously, so the user
-    // can click any visible tip without flipping the workbench's
-    // primary ridge-axis. Previously the enrichment derived
-    // single-axis terminals -- when the user's L had wings along
-    // both axes, only the configured-axis wings were clickable.
-    //
-    // Both x- and y-axis tagged ids must appear for at least one
-    // configured axis (an L with parts on both axes produces
-    // candidates on both).
+  it("tags terminal-end click targets with ids matching the workbench's configured ridge axis on joined custom polygons", () => {
+    // Regression: the click-target enrichment used to derive the
+    // terminal-end ridge axis from the FIRST roof plane's metadata.
+    // For rectangular footprints that's harmless (all planes share
+    // the same axis), but the joined-hipped wavefront emits planes
+    // with ALTERNATING x/y ridge axes. Picking the first plane on a
+    // custom L (or any non-rectangular polygon) where the workbench
+    // configured `roofRidgeAxis: 'y'` would tag the click targets
+    // with x-axis ids -- the rail's `validTerminalEndIds` filter
+    // (derived from `sharedRidgeAxis: 'y'`) then dropped every
+    // toggled id, making the click a silent no-op.
     const customLFootprint: Polygon3 = [
       { x: 0, y: 0, z: 0 },
       { x: 6000, y: 0, z: 0 },
@@ -1028,8 +1028,6 @@ describe("hip-end click target metadata on house roof shapes (milestone 13 plan-
     ];
     const fixture = requireSupportedFixture("mono_attached_soffit_away_standard");
     const enriched = addHouseModelContext(fixture.config);
-    let sawX = false;
-    let sawY = false;
     for (const configuredRidgeAxis of ["x", "y"] as const) {
       const config: GeometryConfig = {
         ...enriched,
@@ -1051,16 +1049,14 @@ describe("hip-end click target metadata on house roof shapes (milestone 13 plan-
       const projection = buildTopProjectionViewModel(solved.value);
       const tagged = houseRoofShapesWithEndId(projection);
       expect(tagged.length, `${configuredRidgeAxis}-ridge tagged count`).toBeGreaterThan(0);
+      const axisPrefix = `house-gable-end-${configuredRidgeAxis}-`;
       for (const shape of tagged) {
-        const id = String(shape.metadata?.openGableEndId ?? "");
-        if (id.startsWith("house-gable-end-x-")) sawX = true;
-        if (id.startsWith("house-gable-end-y-")) sawY = true;
+        expect(
+          String(shape.metadata?.openGableEndId ?? ""),
+          `${configuredRidgeAxis}-ridge tag axis`,
+        ).toMatch(new RegExp(`^${axisPrefix}`));
       }
     }
-    // Across the two configured-ridge passes, both axes' terminal
-    // ids appear -- the L has hip caps on both axes' tips.
-    expect(sawX, "x-axis terminal id appears in at least one configuration").toBe(true);
-    expect(sawY, "y-axis terminal id appears in at least one configuration").toBe(true);
   });
 
   it("tags terminal-end click targets on custom polygons with non-triangular hip-cap projections", () => {

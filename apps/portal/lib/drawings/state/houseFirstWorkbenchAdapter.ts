@@ -5,7 +5,6 @@ import {
 } from '@/lib/estimates/drawingEdits';
 import { buildEstimateDrawingModules } from '@/lib/estimates/moduleDrawing';
 import {
-  deriveAllHouseGableTerminalEnds,
   deriveHouseGableTerminalEnds,
   buildHouseFootprintPresetSideLocalPoints,
   deriveHouseRoofAppendageSupport,
@@ -1757,15 +1756,9 @@ function buildSharedHouse(
     openGableEndIds: Array.isArray(explicitOpenGableEndIds) ? 'house_first_draft' : 'default_fallback',
     appendage: hasExplicitRoofAppendage(explicitAppendage) ? 'house_first_draft' : 'default_fallback',
   };
-  // Multi-axis terminals: every gable-tip candidate (both ridge
-  // axes) is a valid open-end target. For custom orthogonal
-  // polygons with parts running along both axes (L / U / T /
-  // wrap-style shapes), each tip can be clicked to gable
-  // independently without flipping the workbench's primary ridge
-  // axis. The single-axis terminal set previously forced users to
-  // switch ridge to access perpendicular wing tips.
-  const terminalEnds = deriveAllHouseGableTerminalEnds({
+  const terminalEnds = deriveHouseGableTerminalEnds({
     footprint: localPolygonToGeometryPolygon(derivedHousePolygon),
+    ridgeAxis: sharedRidgeAxis,
   });
   const validTerminalEndIds = new Set(terminalEnds.map((end) => end.id));
   // Milestone 13 session C: openGableEndIds applies to `'hipped'`
