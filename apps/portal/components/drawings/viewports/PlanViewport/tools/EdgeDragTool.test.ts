@@ -109,6 +109,46 @@ describe('EdgeDragTool', () => {
       expect(onPointerDownFallthrough).toHaveBeenCalledTimes(1);
     });
 
+    it('falls through to SelectTool when click is on a terminal-end shape while a NON-HOUSE outline is active (e.g. pergola selected) -- house terminal toggle wins over pergola wall-drag', () => {
+      // Regression: when the user has a pergola (not the house)
+      // selected, `getActiveOutline()` returns the pergola polygon.
+      // A click on a hip-cap shape (which is anchored to a HOUSE
+      // polygon edge) falls within the pergola's edge tolerance --
+      // but the closest pergola edge has nothing to do with the
+      // terminal end. Without this filter, the click would route to
+      // pergola wall-drag and the user could never toggle a hip-end
+      // unless they first selected the house. The toggle wins
+      // because pergola walls are in a different polygon family
+      // than the terminal end.
+      const PERGOLA_OUTLINE: EdgeDragOutline = {
+        id: 'pergola-1',
+        family: 'pergolas',
+        polygon: [
+          { x: 1000, y: 200 },
+          { x: 5000, y: 200 },
+          { x: 5000, y: 1800 },
+          { x: 1000, y: 1800 },
+        ],
+      };
+      const onPreviewChange = vi.fn();
+      const onPointerDownFallthrough = vi.fn();
+      const tool = createEdgeDragTool({
+        getActiveOutline: () => PERGOLA_OUTLINE,
+        onPreviewChange,
+        onPointerDownFallthrough,
+      });
+      tool.onPointerDown!({
+        shape: terminalEndShape(),
+        // Inside the pergola outline, well within 250 mm of its
+        // perimeter -- pergola wall-drag would normally engage here.
+        point: { x: 1100, y: 1000 },
+        button: 0,
+        pointerId: 1,
+      });
+      expect(onPreviewChange).not.toHaveBeenCalled();
+      expect(onPointerDownFallthrough).toHaveBeenCalledTimes(1);
+    });
+
     it("falls through to SelectTool when the closest outline edge IS the terminal's own eave -- preserves hip↔gable toggle on small wing-tip hip caps where every interior point is within edge tolerance", () => {
       // Phase 2: bent-spine identifies the wing tips of custom L /
       // U / T polygons as terminals. Their hip caps project as small

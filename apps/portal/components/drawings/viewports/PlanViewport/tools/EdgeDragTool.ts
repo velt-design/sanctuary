@@ -230,16 +230,28 @@ export function createEdgeDragTool(config: EdgeDragToolConfig): Tool {
       const withinEdgeTolerance = !!closest && closest.distanceMm <= tolerance;
 
       // Terminal-end toggle yields to edge drag WITHIN edge tolerance,
-      // BUT only when the closest outline edge is something OTHER than
-      // the terminal's own eave edge. Small wing-tip hip caps on
-      // custom polygons (Phase 2) project to shapes whose every
-      // interior point is within the 250mm edge tolerance of the
-      // terminal's own eave -- every click would otherwise become a
-      // wall-drag and the user could never toggle wing tips. When the
-      // closest outline edge IS the terminal's source edge, the user
-      // is clicking the hip cap itself (not a different wall) and
-      // should get the toggle. The tag id encodes the edge index as
-      // `house-gable-end-{axis}-{N}` (1-based polygon edge index).
+      // BUT only when the toggle would be ambiguous with a HOUSE wall
+      // drag. Two filters apply:
+      //
+      //   1. The active outline must be the HOUSE family. A terminal
+      //      end is anchored to a house polygon edge -- if the active
+      //      outline is a pergola or deck, those edges are in a
+      //      DIFFERENT polygon, so the click is unambiguously a
+      //      toggle. Without this filter, clicks on a hip cap while
+      //      a pergola is selected route to pergola wall-drag (the
+      //      closest pergola edge happens to be within 250 mm of
+      //      the click), and the toggle never fires.
+      //
+      //   2. The closest active-outline edge must be something OTHER
+      //      than the terminal's own eave. Small wing-tip hip caps on
+      //      custom polygons (Phase 2) project to shapes whose every
+      //      interior point is within the 250 mm edge tolerance of
+      //      the terminal's own eave -- every click would otherwise
+      //      become a wall-drag of the eave itself, and the user
+      //      could never toggle wing tips.
+      //
+      // The tag id encodes the polygon edge index as
+      // `house-gable-end-{axis}-{N}` (1-based).
       const taggedEndId =
         typeof event.shape?.metadata?.openGableEndId === 'string'
           ? event.shape.metadata.openGableEndId
@@ -251,19 +263,19 @@ export function createEdgeDragTool(config: EdgeDragToolConfig): Tool {
             return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
           })()
         : null;
+      const activeOutlineIsHouse = outline?.family === 'house_forms';
       const closestIsTerminalEave =
+        activeOutlineIsHouse &&
         closest !== null &&
         taggedEdgeIndex !== null &&
         closest.edgeIndex === taggedEdgeIndex;
-      // Clicks on the synthetic triangle's interior (far from any
-      // outline edge) OR clicks whose nearest outline edge is the
-      // terminal's own eave (small wing-tip hip caps) route to
-      // SelectTool for the hip↔gable toggle; clicks on the
-      // eave-corner overhang that overlaps a DIFFERENT wall edge
-      // start an edge-drag session instead.
+      // Clicks on a tagged terminal route to SelectTool for the
+      // hip↔gable toggle UNLESS the click overlaps a different house
+      // wall edge (the synthetic eave-corner overhang case). Pergola/
+      // deck wall-drag never wins over a house terminal toggle.
       if (
         taggedEndId !== null &&
-        (!withinEdgeTolerance || closestIsTerminalEave)
+        (!activeOutlineIsHouse || !withinEdgeTolerance || closestIsTerminalEave)
       ) {
         config.onPointerDownFallthrough?.(event);
         return;
