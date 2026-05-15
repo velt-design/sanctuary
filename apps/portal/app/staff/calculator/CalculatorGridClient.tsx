@@ -183,6 +183,8 @@ import {
   BLIND_FABRIC_OPTIONS,
   BLIND_SYSTEM_OPTIONS,
   buildCalculatorBlindsUi,
+  formatBlindMetresInput,
+  parseBlindMetresInputToMmString,
 } from './calculatorBlindUi';
 import {
   buildCalculatorQuoteStatusUi,
@@ -237,9 +239,15 @@ type HouseFootprintDragSession = HouseFootprintEditorDragMeta & {
   startParams: CalculatorHouseFootprintParams;
 };
 
+type BlindDimensionField = 'widthMm' | 'coverLengthMm';
+
 function formatMoney(n: number): string {
   if (!Number.isFinite(n)) return '$0.00';
   return `$${n.toFixed(2)}`;
+}
+
+function blindDimensionDraftKey(id: string, field: BlindDimensionField): string {
+  return `${id}:${field}`;
 }
 
 function formatMaybeMoney(n: number | undefined): string {
@@ -535,6 +543,7 @@ export default function CalculatorGridClient({
   const [previewRightWidthMaxPx, setPreviewRightWidthMaxPx] = useState(PREVIEW_SPLIT_RIGHT_DEFAULT_PX);
   const [isPreviewSplitDragging, setIsPreviewSplitDragging] = useState(false);
   const [pendingFlashingLengthFocusId, setPendingFlashingLengthFocusId] = useState<string | null>(null);
+  const [blindDimensionDraftsM, setBlindDimensionDraftsM] = useState<Record<string, string>>({});
   const baselineResultRef = useRef<SiteOutputV1 | null>(null);
   const [impactDiff, setImpactDiff] = useState<ImpactDiff | null>(null);
   const previewSplitRef = useRef<HTMLDivElement | null>(null);
@@ -1402,12 +1411,50 @@ export default function CalculatorGridClient({
     }
   }, [values.blinds, blindsState]);
 
+  useEffect(() => {
+    setBlindDimensionDraftsM((prev) => {
+      const validKeys = new Set(
+        blindsState.items.flatMap((item) => [
+          blindDimensionDraftKey(item.id, 'widthMm'),
+          blindDimensionDraftKey(item.id, 'coverLengthMm'),
+        ]),
+      );
+      const nextEntries = Object.entries(prev).filter(([key]) => validKeys.has(key));
+      if (nextEntries.length === Object.keys(prev).length) return prev;
+      return Object.fromEntries(nextEntries);
+    });
+  }, [blindsState.items]);
+
   const setBlindItem = (id: string, patch: Partial<BlindLineItem>) => {
     setValues((prev) => {
       const current = normalizeBlindsStateForUi(prev.blinds);
       const items = current.items.map((item) => (item.id === id ? { ...item, ...patch } : item));
       return { ...prev, blinds: { items } };
     });
+  };
+
+  const updateBlindDimensionInput = (id: string, field: BlindDimensionField, nextMetresValue: string) => {
+    const draftKey = blindDimensionDraftKey(id, field);
+    setBlindDimensionDraftsM((prev) => {
+      if (prev[draftKey] === nextMetresValue) return prev;
+      return { ...prev, [draftKey]: nextMetresValue };
+    });
+    setBlindItem(id, { [field]: parseBlindMetresInputToMmString(nextMetresValue) } as Pick<BlindLineItem, BlindDimensionField>);
+  };
+
+  const commitBlindDimensionInput = (id: string, field: BlindDimensionField) => {
+    const draftKey = blindDimensionDraftKey(id, field);
+    setBlindDimensionDraftsM((prev) => {
+      if (!(draftKey in prev)) return prev;
+      const next = { ...prev };
+      delete next[draftKey];
+      return next;
+    });
+  };
+
+  const displayBlindDimensionInput = (item: BlindLineItem, field: BlindDimensionField) => {
+    const draftKey = blindDimensionDraftKey(item.id, field);
+    return blindDimensionDraftsM[draftKey] ?? formatBlindMetresInput(item[field]);
   };
 
   const addBlind = (seed?: Partial<BlindLineItem>) => {
@@ -2322,17 +2369,25 @@ export default function CalculatorGridClient({
               />
               <FieldTile
                 id={`${domIdBase}-width`}
-                label="Width (mm)"
+                label="Width (m)"
                 type="number"
-                value={item.widthMm}
-                onChange={(v) => setBlindItem(item.id, { widthMm: String(v) })}
+                value={displayBlindDimensionInput(item, 'widthMm')}
+                inputMode="decimal"
+                step="0.001"
+                onChange={(v) => updateBlindDimensionInput(item.id, 'widthMm', String(v))}
+                onBlur={() => commitBlindDimensionInput(item.id, 'widthMm')}
+                onEnter={() => commitBlindDimensionInput(item.id, 'widthMm')}
               />
               <FieldTile
                 id={`${domIdBase}-cover`}
-                label="Cover length (mm)"
+                label="Cover length (m)"
                 type="number"
-                value={item.coverLengthMm}
-                onChange={(v) => setBlindItem(item.id, { coverLengthMm: String(v) })}
+                value={displayBlindDimensionInput(item, 'coverLengthMm')}
+                inputMode="decimal"
+                step="0.001"
+                onChange={(v) => updateBlindDimensionInput(item.id, 'coverLengthMm', String(v))}
+                onBlur={() => commitBlindDimensionInput(item.id, 'coverLengthMm')}
+                onEnter={() => commitBlindDimensionInput(item.id, 'coverLengthMm')}
               />
               <FieldTile
                 id={`${domIdBase}-fabric`}

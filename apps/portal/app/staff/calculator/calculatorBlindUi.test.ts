@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import type { BlindLineItem } from '@/lib/types/calculator';
-import { buildBlindInputs, buildCalculatorBlindsUi } from './calculatorBlindUi';
+import {
+  buildBlindInputs,
+  buildCalculatorBlindsUi,
+  formatBlindMetresInput,
+  parseBlindMetresInputToMmString,
+} from './calculatorBlindUi';
 
 function makeBlind(overrides?: Partial<BlindLineItem>): BlindLineItem {
   return {
@@ -16,6 +21,20 @@ function makeBlind(overrides?: Partial<BlindLineItem>): BlindLineItem {
 }
 
 describe('calculator blind UI helpers', () => {
+  it('formats stored millimetres for metre-based calculator inputs', () => {
+    expect(formatBlindMetresInput('2000')).toBe('2');
+    expect(formatBlindMetresInput('2400')).toBe('2.4');
+    expect(formatBlindMetresInput('2403')).toBe('2.403');
+    expect(formatBlindMetresInput('')).toBe('');
+  });
+
+  it('parses metre input strings back into stored millimetres', () => {
+    expect(parseBlindMetresInputToMmString('2.4')).toBe('2400');
+    expect(parseBlindMetresInputToMmString('2.403')).toBe('2403');
+    expect(parseBlindMetresInputToMmString('')).toBe('');
+    expect(parseBlindMetresInputToMmString('bad')).toBe('');
+  });
+
   it('maps valid calculator blind fields to pricing inputs', () => {
     expect(buildBlindInputs([makeBlind({ system: 'ZIPTRAK', fabric: 'PVC', motorised: 'YES' })])).toEqual([
       {
@@ -66,7 +85,7 @@ describe('calculator blind UI helpers', () => {
     expect(ui.rows[0]).toMatchObject({
       isPriceable: false,
       showStatus: true,
-      statusMessage: 'Add another blind and split widths manually.',
+      statusMessage: 'Add another blind and keep each width within 4.5m.',
       statusTone: 'error',
     });
   });
@@ -77,7 +96,7 @@ describe('calculator blind UI helpers', () => {
     expect(ui.rows[0]).toMatchObject({
       isPriceable: false,
       showStatus: true,
-      statusMessage: 'Manual quote required.',
+      statusMessage: 'Manual quote required above 3m cover length.',
       statusTone: 'error',
     });
   });

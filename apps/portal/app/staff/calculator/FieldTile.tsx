@@ -1,5 +1,5 @@
 import styles from './CalculatorGrid.module.css';
-import type { ReactNode } from 'react';
+import type { InputHTMLAttributes, ReactNode } from 'react';
 
 export type FieldOption = { label: string; value: string };
 
@@ -27,6 +27,8 @@ type FieldTileProps = {
   error?: string;
   onAction?: () => void;
   actionLabel?: string;
+  inputMode?: InputHTMLAttributes<HTMLInputElement>['inputMode'];
+  step?: number | string;
 };
 
 export default function FieldTile({
@@ -44,6 +46,8 @@ export default function FieldTile({
   error,
   onAction,
   actionLabel,
+  inputMode,
+  step,
 }: FieldTileProps) {
   const helperId = helperText ? `${id}-help` : undefined;
   const errorId = error ? `${id}-error` : undefined;
@@ -129,6 +133,8 @@ export default function FieldTile({
             }
           }}
           disabled={disabled}
+          inputMode={inputMode}
+          step={type === 'number' ? step : undefined}
           aria-describedby={describedBy}
           aria-invalid={error ? true : undefined}
         />

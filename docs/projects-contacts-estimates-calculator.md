@@ -62,6 +62,7 @@ The calculator produces estimate snapshots. Estimate rows are versioned per proj
 - Estimate summary mapping lives in `apps/portal/lib/estimates/summarize.ts` and server mapping helpers.
 - Version labels are derived from project estimate rows; new estimates advance the next available version.
 - Estimate snapshots carry calculator inputs plus output sections such as `derived`, `projectSnapshot`, `snapshot`, and `configVersions`.
+- Calculator blind add-ons keep `widthMm` and `coverLengthMm` in saved estimate snapshots for compatibility, but the staff calculator presents and accepts those two dimensions in metres and converts them back to mm in the client adapter before pricing/persistence.
 - Drawing state can be stored inside estimate snapshot/drawing draft shapes, but design workbench architecture and compatibility rules are owned by `docs/design-workbench-architecture.md`.
 
 Costing logic must remain in `packages/costing`; estimate code should persist and summarize costing output, not fork the costing engine.

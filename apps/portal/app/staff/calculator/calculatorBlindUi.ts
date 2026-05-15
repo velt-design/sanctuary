@@ -1,5 +1,6 @@
 import type { BlindFabric, BlindLineItem, BlindSystemType } from '@/lib/types/calculator';
 import {
+  getBlindSystemLimits,
   priceAllBlinds,
   type BlindLineItemInput,
   type BlindLineItemPricing,
@@ -52,9 +53,31 @@ type CalculatorBlindsUi = {
   summaryText: string;
 };
 
+const BLIND_METRES_SCALE = 1000;
+
 function formatCents(cents?: number): string {
   if (typeof cents !== 'number' || !Number.isFinite(cents)) return '$0.00';
   return `$${(cents / 100).toFixed(2)}`;
+}
+
+function trimTrailingZeroes(value: string): string {
+  return value.replace(/\.?0+$/, '');
+}
+
+export function formatBlindMetresInput(mmValue: string): string {
+  const trimmed = mmValue.trim();
+  if (!trimmed) return '';
+  const millimetres = Number(trimmed);
+  if (!Number.isFinite(millimetres)) return '';
+  return trimTrailingZeroes((millimetres / BLIND_METRES_SCALE).toFixed(3));
+}
+
+export function parseBlindMetresInputToMmString(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) return '';
+  const metres = Number(trimmed);
+  if (!Number.isFinite(metres)) return '';
+  return String(Math.round(metres * BLIND_METRES_SCALE));
 }
 
 export function buildBlindInputs(items: BlindLineItem[]): BlindLineItemInput[] {
@@ -69,11 +92,17 @@ export function buildBlindInputs(items: BlindLineItem[]): BlindLineItemInput[] {
   }));
 }
 
-function statusMessageForErrors(errors: string[]): string {
+function statusMessageForErrors(priced: BlindLineItemPricing | undefined): string {
+  const errors = priced?.errors ?? [];
   const isMissingDims = errors.some((err) => err.toLowerCase().includes('enter width'));
   if (isMissingDims) return 'Enter dimensions to price this blind.';
-  if (errors.some((err) => err.toLowerCase().includes('max width'))) return 'Add another blind and split widths manually.';
-  if (errors.some((err) => err.toLowerCase().includes('max cover length'))) return 'Manual quote required.';
+  const limits = getBlindSystemLimits(priced?.system ?? 'ZIPTRAK');
+  if (errors.some((err) => err.toLowerCase().includes('max width'))) {
+    return `Add another blind and keep each width within ${formatBlindMetresInput(String(limits.maxWidthMm))}m.`;
+  }
+  if (errors.some((err) => err.toLowerCase().includes('max cover length'))) {
+    return `Manual quote required above ${formatBlindMetresInput(String(limits.maxCoverLengthMm))}m cover length.`;
+  }
   return errors[0] ?? '';
 }
 
@@ -85,7 +114,7 @@ export function buildCalculatorBlindsUi(items: BlindLineItem[]): CalculatorBlind
     const errors = priced?.errors ?? [];
     const isMissingDims = errors.some((err) => err.toLowerCase().includes('enter width'));
     const hasErrors = errors.length > 0;
-    const statusMessage = statusMessageForErrors(errors);
+    const statusMessage = statusMessageForErrors(priced);
     const isPriceable = priced ? priced.errors.length === 0 : false;
     const statusTone: BlindStatusTone = hasErrors && !isMissingDims ? 'error' : 'helper';
     return {
