@@ -155,20 +155,43 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ projectId: st
   if (projectError) return jsonError(projectError.message ?? 'Failed to update project details', 500);
 
   // Silent-drop guard: if archive was requested but the row came back
-  // without the new archived_at reflected, the column is missing from
-  // this DB. Tell the caller plainly so the UI can surface "apply
-  // migrations" instead of pretending it worked.
+  // without archived_at reflected, the column is missing from this DB.
+  // Tell the caller plainly so the UI can surface "apply migrations"
+  // instead of pretending it worked.
+  //
+  // Comparison parses both sides as instants because Postgres normalises
+  // the ISO format on round-trip (`...000Z` -> `...+00:00`), so a naive
+  // string equality check would always fail.
   if (archivedAtRequested) {
-    const writtenArchivedAt = updatedProject && typeof (updatedProject as Record<string, unknown>).archived_at !== 'undefined'
-      ? (updatedProject as Record<string, unknown>).archived_at
-      : 'missing';
+    const row = (updatedProject ?? {}) as Record<string, unknown>;
+    const hasArchivedAtKey = Object.prototype.hasOwnProperty.call(row, 'archived_at');
+    const writtenRaw = hasArchivedAtKey ? row.archived_at : undefined;
     const expected = archivedField.value;
+
+    const expectedMs = expected === null ? null : Date.parse(expected);
+    const writtenMs =
+      writtenRaw === null || writtenRaw === undefined
+        ? null
+        : typeof writtenRaw === 'string'
+          ? Date.parse(writtenRaw)
+          : Number.NaN;
+
     const matches =
-      writtenArchivedAt === expected ||
-      (expected === null && (writtenArchivedAt === null || writtenArchivedAt === undefined));
-    if (writtenArchivedAt === 'missing' || !matches) {
+      !hasArchivedAtKey
+        ? false
+        : expectedMs === null
+          ? writtenMs === null
+          : writtenMs !== null && !Number.isNaN(writtenMs) && Math.abs(writtenMs - expectedMs) < 1000;
+
+    if (!hasArchivedAtKey) {
       return jsonError(
         'Archive failed: projects.archived_at column missing or not writable. Apply supabase/migrations/20260208_000002_project_archive.sql.',
+        500,
+      );
+    }
+    if (!matches) {
+      return jsonError(
+        `Archive failed: archived_at write did not persist (expected ${expected ?? 'null'}, got ${writtenRaw === undefined ? 'undefined' : JSON.stringify(writtenRaw)}). Check row-level security policies on projects.archived_at.`,
         500,
       );
     }
