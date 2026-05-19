@@ -886,7 +886,6 @@ export default function DesignWorkbenchEstimateClient({
                     };
                   }
                   // openings deferred (no canonical polygon yet).
-                  // eslint-disable-next-line no-console
                   console.warn('[edge-drag] outline edit not yet wired for family:', commit.family, commit);
                 }
               : undefined
