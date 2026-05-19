@@ -2,6 +2,7 @@ import type { CostingConfigV1 } from './config';
 import type { OverheadV1 } from './types';
 
 type OverheadResultV1 = { overhead: OverheadV1; notes_and_warnings: string[] };
+const FLAT_ACRYLIC_MAX_RAFTER_LENGTH_M = 3;
 
 function roundMoney(n: number): number {
   if (!Number.isFinite(n)) return 0;
@@ -17,6 +18,7 @@ export function buildOverheadV1(
     has_box_perimeter?: boolean;
     has_timber_or_mixed?: boolean;
     has_acrylic_only?: boolean;
+    max_acrylic_rafter_length_m?: number;
   },
 ): OverheadResultV1 {
   const warnings: string[] = [];
@@ -30,6 +32,9 @@ export function buildOverheadV1(
   const hasBoxPerimeter = opts?.has_box_perimeter === true;
   const hasTimberOrMixed = opts?.has_timber_or_mixed === true;
   const hasAcrylicOnly = opts?.has_acrylic_only === true;
+  const maxAcrylicRafterLengthRaw = Number(opts?.max_acrylic_rafter_length_m ?? 0);
+  const maxAcrylicRafterLengthM =
+    Number.isFinite(maxAcrylicRafterLengthRaw) && maxAcrylicRafterLengthRaw >= 0 ? maxAcrylicRafterLengthRaw : 0;
 
   const v11 = (config.overheads as any).allocation_method_v1_1 as any;
   const hasV11 = v11 && typeof v11 === 'object' && v11.type === 'fixed_plus_variable';
@@ -39,7 +44,7 @@ export function buildOverheadV1(
   let sales = 0;
   let total = 0;
 
-  if (hasAcrylicOnly) {
+  if (hasAcrylicOnly && maxAcrylicRafterLengthM <= FLAT_ACRYLIC_MAX_RAFTER_LENGTH_M) {
     method = 'flat_acrylic_total';
     ops = 2000;
     sales = 0;

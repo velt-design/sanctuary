@@ -8,19 +8,36 @@ function roundMoney(n: number): number {
 }
 
 describe('buildOverheadV1', () => {
-  it('uses a flat acrylic-only overhead total', () => {
+  it('uses a flat acrylic-only overhead total when max rafter length is at or below 3m', () => {
     const cfg = loadCostingConfigV1();
 
     const result = buildOverheadV1(cfg, {
       module_count: 1,
       total_crew_hours: 18,
       has_acrylic_only: true,
+      max_acrylic_rafter_length_m: 3,
     });
 
     expect(result.overhead.method).toBe('flat_acrylic_total');
     expect(result.overhead.ops_ex_gst).toBe(2000);
     expect(result.overhead.sales_ex_gst).toBe(0);
     expect(result.overhead.total_ex_gst).toBe(2000);
+  });
+
+  it('falls back to variable overhead when acrylic-only rafters exceed 3m', () => {
+    const cfg = loadCostingConfigV1();
+
+    const result = buildOverheadV1(cfg, {
+      module_count: 1,
+      total_crew_hours: 18,
+      has_acrylic_only: true,
+      max_acrylic_rafter_length_m: 3.001,
+    });
+
+    expect(result.overhead.method).toBe('fixed_plus_variable');
+    expect(result.overhead.ops_ex_gst).toBeGreaterThan(2000);
+    expect(result.overhead.sales_ex_gst).toBeGreaterThan(0);
+    expect(result.overhead.total_ex_gst).toBeGreaterThan(2000);
   });
 
   it('uses new ops base + variable formula and keeps sales scaling', () => {
@@ -88,11 +105,13 @@ describe('buildOverheadV1', () => {
       module_count: 1,
       total_crew_hours: 18,
       has_acrylic_only: true,
+      max_acrylic_rafter_length_m: 3,
     });
     const mixed = buildOverheadV1(cfg, {
       module_count: 1,
       total_crew_hours: 18,
       has_timber_or_mixed: true,
+      max_acrylic_rafter_length_m: 5,
     });
 
     expect(acrylic.overhead.total_ex_gst).toBe(2000);

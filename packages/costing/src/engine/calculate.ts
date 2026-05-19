@@ -45,23 +45,33 @@ type OverheadFlags = {
   has_box_perimeter: boolean;
   has_timber_or_mixed: boolean;
   has_acrylic_only: boolean;
+  max_acrylic_rafter_length_m: number;
 };
 
-function deriveOverheadFlagsForModule(module: Pick<CostOutputV1, 'inputs_normalized'>): OverheadFlags {
+function deriveOverheadFlagsForModule(module: Pick<CostOutputV1, 'inputs_normalized' | 'derived'>): OverheadFlags {
   const style = String(module.inputs_normalized.pergola_style_ui ?? '');
   const structureType = String(module.inputs_normalized.structure_type ?? '');
   const roofMaterial = String(module.inputs_normalized.roof_material ?? '');
+  const rafterLengthRaw = Number(module.derived?.rafter_length_m ?? 0);
+  const rafterLengthM = Number.isFinite(rafterLengthRaw) && rafterLengthRaw > 0 ? rafterLengthRaw : 0;
   return {
     has_gable: style === 'gable',
     has_box_perimeter: structureType === 'box_perimeter',
     has_timber_or_mixed: roofMaterial === 'timber' || roofMaterial === 'mixed',
     has_acrylic_only: roofMaterial === 'acrylic',
+    max_acrylic_rafter_length_m: roofMaterial === 'acrylic' ? rafterLengthM : 0,
   };
 }
 
-function deriveOverheadFlagsForModules(modules: Array<Pick<CostOutputV1, 'inputs_normalized'>>): OverheadFlags {
+function deriveOverheadFlagsForModules(modules: Array<Pick<CostOutputV1, 'inputs_normalized' | 'derived'>>): OverheadFlags {
   if (modules.length === 0) {
-    return { has_gable: false, has_box_perimeter: false, has_timber_or_mixed: false, has_acrylic_only: false };
+    return {
+      has_gable: false,
+      has_box_perimeter: false,
+      has_timber_or_mixed: false,
+      has_acrylic_only: false,
+      max_acrylic_rafter_length_m: 0,
+    };
   }
 
   return modules.reduce<OverheadFlags>(
@@ -72,9 +82,16 @@ function deriveOverheadFlagsForModules(modules: Array<Pick<CostOutputV1, 'inputs
         has_box_perimeter: acc.has_box_perimeter || next.has_box_perimeter,
         has_timber_or_mixed: acc.has_timber_or_mixed || next.has_timber_or_mixed,
         has_acrylic_only: acc.has_acrylic_only && next.has_acrylic_only,
+        max_acrylic_rafter_length_m: Math.max(acc.max_acrylic_rafter_length_m, next.max_acrylic_rafter_length_m),
       };
     },
-    { has_gable: false, has_box_perimeter: false, has_timber_or_mixed: false, has_acrylic_only: true },
+    {
+      has_gable: false,
+      has_box_perimeter: false,
+      has_timber_or_mixed: false,
+      has_acrylic_only: true,
+      max_acrylic_rafter_length_m: 0,
+    },
   );
 }
 
@@ -315,7 +332,10 @@ export function calculateCostV1(inputs: CostInputsV1, config?: CostingConfigV1):
 
   const materialsResult = buildMaterialsV1(inputsForMaterials, derivedResult.derived, cfg);
   const derivedWithPatch = { ...derivedResult.derived, ...(materialsResult.derived_patch ?? {}) };
-  const overheadFlags = deriveOverheadFlagsForModule({ inputs_normalized: derivedResult.inputs_normalized });
+  const overheadFlags = deriveOverheadFlagsForModule({
+    inputs_normalized: derivedResult.inputs_normalized,
+    derived: derivedWithPatch,
+  });
 
   const baseInstall = buildInstallV1(derivedResult.inputs_normalized, derivedWithPatch as any, cfg, {
     excludeActionIds: DAY_CYCLE_ACTION_IDS,
@@ -341,6 +361,7 @@ export function calculateCostV1(inputs: CostInputsV1, config?: CostingConfigV1):
     has_box_perimeter: overheadFlags.has_box_perimeter,
     has_timber_or_mixed: overheadFlags.has_timber_or_mixed,
     has_acrylic_only: overheadFlags.has_acrylic_only,
+    max_acrylic_rafter_length_m: overheadFlags.max_acrylic_rafter_length_m,
   });
 
   const notes_and_warnings = [
@@ -396,7 +417,10 @@ export function calculateCostV1WithMaterialsExplain(
 
   const materialsResult = buildMaterialsV1Explain(inputsForMaterials, derivedResult.derived, cfg, opts);
   const derivedWithPatch = { ...derivedResult.derived, ...(materialsResult.result.derived_patch ?? {}) };
-  const overheadFlags = deriveOverheadFlagsForModule({ inputs_normalized: derivedResult.inputs_normalized });
+  const overheadFlags = deriveOverheadFlagsForModule({
+    inputs_normalized: derivedResult.inputs_normalized,
+    derived: derivedWithPatch,
+  });
 
   const baseInstall = buildInstallV1(derivedResult.inputs_normalized, derivedWithPatch as any, cfg, {
     excludeActionIds: DAY_CYCLE_ACTION_IDS,
@@ -421,6 +445,8 @@ export function calculateCostV1WithMaterialsExplain(
     has_gable: overheadFlags.has_gable,
     has_box_perimeter: overheadFlags.has_box_perimeter,
     has_timber_or_mixed: overheadFlags.has_timber_or_mixed,
+    has_acrylic_only: overheadFlags.has_acrylic_only,
+    max_acrylic_rafter_length_m: overheadFlags.max_acrylic_rafter_length_m,
   });
 
   const notes_and_warnings = [
@@ -735,6 +761,7 @@ export function calculateJobCostV1(inputs: JobInputsV1, config?: CostingConfigV1
     has_box_perimeter: overheadFlags.has_box_perimeter,
     has_timber_or_mixed: overheadFlags.has_timber_or_mixed,
     has_acrylic_only: overheadFlags.has_acrylic_only,
+    max_acrylic_rafter_length_m: overheadFlags.max_acrylic_rafter_length_m,
   });
   warnings.push(...overheadResult.notes_and_warnings.map((w) => `[Overhead] ${w}`));
 
@@ -1168,6 +1195,7 @@ export function calculateSiteCostV1(inputs: SiteInputsV1, config?: CostingConfig
       has_box_perimeter: pergolaFlags.has_box_perimeter,
       has_timber_or_mixed: pergolaFlags.has_timber_or_mixed,
       has_acrylic_only: pergolaFlags.has_acrylic_only,
+      max_acrylic_rafter_length_m: pergolaFlags.max_acrylic_rafter_length_m,
     });
 
     if (overheadResult.notes_and_warnings.length) {

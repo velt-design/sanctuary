@@ -92,12 +92,42 @@ describe('calculateCostV1', () => {
     expect(result.totals.cost_inc_gst).toBeGreaterThan(0);
     expect(result.materials.totals.materials_ex_gst).toBeGreaterThan(0);
     expect(result.install.totals.install_ex_gst).toBeGreaterThan(0);
+    expect(result.overhead.method).toBe('fixed_plus_variable');
+    expect(result.overhead.ops_ex_gst).toBeGreaterThan(2000);
+    expect(result.overhead.sales_ex_gst).toBeGreaterThan(0);
+    expect(result.overhead.total_ex_gst).toBeGreaterThan(2000);
+
+    expect(result.totals).toMatchSnapshot();
+  });
+
+  it('acrylic overhead stays flat when sloped rafter length is at or below 3m', () => {
+    const result = calculateCostV1({
+      length_m: 6,
+      projection_m: 3,
+      roof_pitch_deg: 0,
+      post_cut_height_m: 2.4,
+      post_count: 4,
+
+      pergola_style: 'pitched',
+      box_perimeter_enabled: false,
+      roof_material: 'acrylic',
+      extrusion_colour: 'Black',
+
+      house_connection_type: 'soffit',
+      post_connection_type: 'deck_bracket',
+      access: 'normal',
+      height: 'single_storey',
+
+      travel_ex_gst: 0,
+      extras_allowance_ex_gst: 0,
+      quote_discount_pct: 0,
+    });
+
+    expect(result.derived.rafter_length_m).toBeCloseTo(3, 6);
     expect(result.overhead.method).toBe('flat_acrylic_total');
     expect(result.overhead.ops_ex_gst).toBe(2000);
     expect(result.overhead.sales_ex_gst).toBe(0);
     expect(result.overhead.total_ex_gst).toBe(2000);
-
-    expect(result.totals).toMatchSnapshot();
   });
 
   it('fixture: box perimeter 300x50, internal pitched roof, same geometry', () => {
@@ -2052,6 +2082,7 @@ describe('calculateCostV1', () => {
     const moduleInputs = {
       length_m: 6,
       projection_m: 3,
+      roof_pitch_deg: 0,
       post_cut_height_m: 2.4,
       post_count: 4,
 
@@ -2080,6 +2111,44 @@ describe('calculateCostV1', () => {
     expect(job.overhead.ops_ex_gst).toBe(2000);
     expect(job.overhead.sales_ex_gst).toBe(0);
     expect(job.overhead.total_ex_gst).toBe(2000);
+  });
+
+  it('job rollup: any acrylic module over 3m switches the whole acrylic job to variable overhead', () => {
+    const shortModule = {
+      length_m: 6,
+      projection_m: 3,
+      roof_pitch_deg: 0,
+      post_cut_height_m: 2.4,
+      post_count: 4,
+
+      pergola_style: 'pitched' as const,
+      box_perimeter_enabled: false,
+      roof_material: 'acrylic' as const,
+      extrusion_colour: 'Black' as const,
+
+      house_connection_type: 'soffit' as const,
+      post_connection_type: 'deck_bracket' as const,
+      access: 'normal' as const,
+      height: 'single_storey' as const,
+
+      travel_ex_gst: 0,
+      extras_allowance_ex_gst: 0,
+      quote_discount_pct: 0,
+    };
+    const longModule = {
+      ...shortModule,
+      roof_pitch_deg: 5,
+    };
+
+    const job = calculateJobCostV1({
+      modules: [shortModule, longModule],
+      travel_ex_gst: 0,
+      extras_allowance_ex_gst: 0,
+    });
+
+    expect(job.overhead.method).toBe('fixed_plus_variable');
+    expect(job.overhead.sales_ex_gst).toBeGreaterThan(0);
+    expect(job.overhead.total_ex_gst).toBeGreaterThan(2000);
   });
 
   it('box perimeter: adds startup labour allowance (180 minutes) once per pergola', () => {
@@ -2357,6 +2426,7 @@ describe('calculateCostV1', () => {
     const moduleInputs = {
       length_m: 6,
       projection_m: 3,
+      roof_pitch_deg: 0,
       post_cut_height_m: 2.4,
       post_count: 4,
 
@@ -2395,6 +2465,45 @@ describe('calculateCostV1', () => {
     expect(twoPergolas.overhead.total_ex_gst).toBe(4000);
     expect(twoPergolas.shared.install.totals.install_ex_gst).toBeGreaterThan(0);
     expect(roundMoney(twoPergolas.shared.install.totals.install_ex_gst)).toBe(roundMoney(onePergola.shared.install.totals.install_ex_gst));
+  });
+
+  it('site rollup: any acrylic module over 3m switches that pergola overhead to variable', () => {
+    const shortModule = {
+      length_m: 6,
+      projection_m: 3,
+      roof_pitch_deg: 0,
+      post_cut_height_m: 2.4,
+      post_count: 4,
+
+      pergola_style: 'pitched' as const,
+      box_perimeter_enabled: false,
+      roof_material: 'acrylic' as const,
+      extrusion_colour: 'Black' as const,
+
+      house_connection_type: 'soffit' as const,
+      post_connection_type: 'deck_bracket' as const,
+      access: 'normal' as const,
+      height: 'single_storey' as const,
+
+      travel_ex_gst: 0,
+      extras_allowance_ex_gst: 0,
+      quote_discount_pct: 0,
+    };
+    const longModule = {
+      ...shortModule,
+      roof_pitch_deg: 5,
+    };
+
+    const site = calculateSiteCostV1({
+      pergolas: [{ id: 'pergola-1', modules: [shortModule, longModule] }],
+      travel_ex_gst: 0,
+      extras_allowance_ex_gst: 0,
+    });
+
+    expect(site.pergolas[0]?.overhead.method).toBe('fixed_plus_variable');
+    expect(site.pergolas[0]?.overhead.sales_ex_gst).toBeGreaterThan(0);
+    expect(site.overhead.method).toBe('fixed_plus_variable');
+    expect(site.overhead.total_ex_gst).toBeGreaterThan(2000);
   });
 
   it('site rollup: box perimeter startup labour is charged once per pergola', () => {
