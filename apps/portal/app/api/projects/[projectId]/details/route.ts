@@ -120,6 +120,14 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ projectId: st
   }
 
   const archivedField = readDateField(projectBody, ['archivedAt', 'archived_at']);
+  // Track that archived_at was REQUESTED so we can detect the silent
+  // column-drop path. `updateWithUnknownColumnRetry` strips unknown
+  // columns and retries -- great for forward-compat, but it means an
+  // archive request against a DB missing the `archived_at` column
+  // returns 200 OK without writing anything. We check after the update
+  // and fail loudly so the UI surfaces "schema not migrated" instead
+  // of a misleading success toast.
+  const archivedAtRequested = archivedField.has;
   if (archivedField.has) {
     if (!archivedField.valid) return jsonError('Invalid archivedAt (expected ISO date)', 400);
     projectPatch.archived_at = archivedField.value;
@@ -145,6 +153,26 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ projectId: st
 
   const { data: updatedProject, error: projectError } = await updateWithUnknownColumnRetry(supabase, 'projects', { id: projectUuid }, projectPatch);
   if (projectError) return jsonError(projectError.message ?? 'Failed to update project details', 500);
+
+  // Silent-drop guard: if archive was requested but the row came back
+  // without the new archived_at reflected, the column is missing from
+  // this DB. Tell the caller plainly so the UI can surface "apply
+  // migrations" instead of pretending it worked.
+  if (archivedAtRequested) {
+    const writtenArchivedAt = updatedProject && typeof (updatedProject as Record<string, unknown>).archived_at !== 'undefined'
+      ? (updatedProject as Record<string, unknown>).archived_at
+      : 'missing';
+    const expected = archivedField.value;
+    const matches =
+      writtenArchivedAt === expected ||
+      (expected === null && (writtenArchivedAt === null || writtenArchivedAt === undefined));
+    if (writtenArchivedAt === 'missing' || !matches) {
+      return jsonError(
+        'Archive failed: projects.archived_at column missing or not writable. Apply supabase/migrations/20260208_000002_project_archive.sql.',
+        500,
+      );
+    }
+  }
 
   let updatedContact: any = null;
   if (contactUuid && hasContactFields) {
