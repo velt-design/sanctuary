@@ -1,5 +1,10 @@
-import type { ViewerSceneModel, ViewerSceneObject } from "@sp/geometry";
+import type {
+  ViewerSceneHouseSurfaceSolidObject,
+  ViewerSceneModel,
+  ViewerSceneObject,
+} from "@sp/geometry";
 import type { GeometryPreviewMode } from "@/lib/drawings/geometry/buildWorkbenchGeometryPreview";
+import { isRenderableSlab } from "../geometry/buildGeometries";
 import { formatPoint, formatVector } from "./cameraState";
 
 /**
@@ -8,11 +13,6 @@ import { formatPoint, formatVector } from "./cameraState";
  * sizing, roof-topology QA, opening counts, and a per-selection object
  * summary; every formatter consumed by that panel lives in this module
  * so the panel's render path is a pure transform over typed inputs.
- *
- * `collectHouseRoofViewportDiagnostics` stays in the main viewport for
- * now because it depends on `isRenderableSlab` (housed in the
- * not-yet-extracted buffer-geometry module). It moves here once
- * `geometry/buildGeometries.ts` lands.
  */
 
 export type ViewportRectDiagnostics = {
@@ -78,6 +78,59 @@ export function sceneMetadataString(scene: ViewerSceneModel, key: string): strin
 export function sceneMetadataNumber(scene: ViewerSceneModel, key: string): number | null {
   const value = scene.metadata?.[key];
   return typeof value === "number" ? value : null;
+}
+
+export function collectHouseRoofViewportDiagnostics(
+  scene: ViewerSceneModel | null,
+): HouseRoofViewportDiagnostics {
+  if (!scene) {
+    return {
+      qaStatus: "",
+      qaFailureReason: "",
+      topologyFinalFaceCount: 0,
+      topologyValleyCount: 0,
+      topologyDisconnectedSourceFaceCount: 0,
+      topologyInternalEaveHeightSegmentCount: 0,
+      expectedSolidCount: 0,
+      renderedSolidCount: 0,
+      skippedSolidCount: 0,
+    };
+  }
+
+  const roofSolids = scene.layers
+    .flatMap((layer) => layer.objects)
+    .filter(
+      (object): object is ViewerSceneHouseSurfaceSolidObject =>
+        object.type === "house_surface_solid" && object.kind === "roof",
+    );
+  const expectedSolidCount =
+    sceneMetadataNumber(scene, "houseRoofSolidExpectedCount") ?? roofSolids.length;
+  const renderedSolidCount = roofSolids.filter((object) =>
+    isRenderableSlab(object.boundary, object.plane, object.thicknessMm),
+  ).length;
+  const metadataSkippedCount =
+    sceneMetadataNumber(scene, "houseRoofSolidSkippedCount") ?? 0;
+  const skippedSolidCount = Math.max(
+    0,
+    expectedSolidCount - renderedSolidCount,
+    metadataSkippedCount,
+  );
+
+  return {
+    qaStatus: sceneMetadataString(scene, "houseRoofQaStatus") ?? "",
+    qaFailureReason: sceneMetadataString(scene, "houseRoofQaFailureReason") ?? "",
+    topologyFinalFaceCount:
+      sceneMetadataNumber(scene, "houseRoofTopologyFinalFaceCount") ?? 0,
+    topologyValleyCount:
+      sceneMetadataNumber(scene, "houseRoofTopologyValleyCount") ?? 0,
+    topologyDisconnectedSourceFaceCount:
+      sceneMetadataNumber(scene, "houseRoofTopologyDisconnectedSourceFaceCount") ?? 0,
+    topologyInternalEaveHeightSegmentCount:
+      sceneMetadataNumber(scene, "houseRoofTopologyInternalEaveHeightSegmentCount") ?? 0,
+    expectedSolidCount,
+    renderedSolidCount,
+    skippedSolidCount,
+  };
 }
 
 export function collectHouseOpeningViewportDiagnostics(
