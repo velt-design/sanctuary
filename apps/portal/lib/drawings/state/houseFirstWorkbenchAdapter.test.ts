@@ -4,6 +4,8 @@ import { buildEstimateDrawingDraftFromSnapshot, type EstimateDrawingDraft } from
 import { normalizeHouseFootprintParams } from '@/lib/types/calculator';
 import { makeHouseFirstConflictingLegacyContextFixture } from './houseFirstWorkbenchFixtures';
 import { buildHouseFirstWorkbenchProjectModel } from './houseFirstWorkbenchAdapter';
+import { buildObjectFirstWorkbenchDraftBaselineFromLegacyEstimateSnapshot } from './legacyEstimateSnapshotAdapter';
+import { addHouseFormToObjectFirstDraft } from './objectFirstWorkbenchAdapter';
 
 type LegacyEstimateDrawingDraft = EstimateDrawingDraft & {
   houseFirst?: any;
@@ -52,6 +54,47 @@ describe('buildHouseFirstWorkbenchProjectModel houseForms[] contract', () => {
     // callers read `houseForms[0] ?? null` to preserve the contract.
     const project = buildHouseFirstWorkbenchProjectModel({ snapshot: null });
     expect(project.houseForms).toEqual([]);
+  });
+
+  it('emits N forms when the draft authors additional houseAssembly.houseForms[] entries', () => {
+    // PR6: the read path concatenates legacy module-synthesised primary
+    // (house-main) with any extra forms authored into
+    // `draft.objectFirst.houseAssembly.houseForms[]`. Without this, the
+    // PR5 persistence helpers (addHouseFormToObjectFirstDraft) would
+    // round-trip into storage but never surface in the project model.
+    const fixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
+    if (!fixture) throw new Error('Missing Sanctuary fixture.');
+    const draft = buildLegacyEstimateDrawingDraftFromSnapshot(fixture.snapshot);
+    if (!draft) throw new Error('Expected drawing draft.');
+    const baselineObjectFirst = buildObjectFirstWorkbenchDraftBaselineFromLegacyEstimateSnapshot({
+      snapshot: fixture.snapshot,
+      draft,
+    });
+    if (!baselineObjectFirst) throw new Error('Expected objectFirst baseline draft.');
+    const augmented = addHouseFormToObjectFirstDraft({
+      draft: baselineObjectFirst,
+      label: 'Sleepout',
+    });
+    draft.objectFirst = augmented;
+
+    const project = buildHouseFirstWorkbenchProjectModel({
+      snapshot: fixture.snapshot,
+      draft,
+    });
+
+    expect(project.houseForms).toHaveLength(2);
+    expect(project.houseForms[0]!.id).toBe('house-main');
+    expect(project.houseForms[1]!.id).toBe('house-form-2');
+    // Additional forms emit empty decks/openings in v0 -- they're
+    // standalone structures with no host-form binding yet (Phase 5).
+    expect(project.houseForms[1]!.decks).toEqual([]);
+    expect(project.houseForms[1]!.openings).toEqual([]);
+    // The cloned footprint preset survives from the source form
+    // (mono-standard primary) into the additional form -- proves the
+    // authored draft drove the read-path synthesis.
+    expect(project.houseForms[1]!.footprint.preset).toBe(
+      project.houseForms[0]!.footprint.preset,
+    );
   });
 });
 

@@ -34,10 +34,16 @@ function makePrimaryHouseFormDraft(
       form: 'mono',
       material: 'corrugated_iron',
       primaryPitchDeg: '5',
-      primaryFallDirection: null,
-      ridgeAxis: null,
+      primaryFallDirection: 'negative_y',
+      ridgeAxis: 'x',
       openGableEndIds: [],
-      appendage: null,
+      appendage: {
+        enabled: false,
+        form: 'mono',
+        hostEdge: 'rear',
+        pitchDeg: '5',
+        dropMm: '450',
+      },
     } as ObjectFirstHouseFormDraft['roofIntent'],
     storeyMode: 'single_storey',
     attachmentStrategy: null,
@@ -75,11 +81,11 @@ describe('nextHouseFormId', () => {
     ).toBe('house-form-4');
   });
 
-  it('does NOT backfill gaps — starts at length+1 then steps past collisions (matches deck/opening pattern)', () => {
+  it('does NOT backfill gaps -- starts at length+1 then steps past collisions (matches deck/opening pattern)', () => {
     // Existing forms: [house-main, house-form-4]. length+1 = 3. Slot 3
     // is free, so the next id is house-form-3 (NOT house-form-2). This
     // mirrors `nextObjectWorkbenchDeckId` / `nextObjectWorkbenchOpeningId`
-    // — gap-filling would confuse the user ("I deleted house-form-3,
+    // -- gap-filling would confuse the user ("I deleted house-form-3,
     // why is my new one suddenly called that?").
     expect(
       nextHouseFormId([{ id: 'house-main' }, { id: 'house-form-4' }]),
@@ -143,7 +149,7 @@ describe('addHouseFormToObjectFirstDraft', () => {
       sourceHouseFormId: 'house-form-2',
     });
     // The new form clones from house-form-2 (offsetXM=20) and adds 10
-    // east → offsetXM=30 — proves the clone took its source's transform,
+    // east -> offsetXM=30 -- proves the clone took its source's transform,
     // not the primary's (which is at offsetXM=0).
     expect(result.houseAssembly!.houseForms.at(-1)!.transform.offsetXM).toBe(30);
   });
@@ -177,7 +183,7 @@ describe('removeHouseFormFromObjectFirstDraft', () => {
       draft,
       houseFormId: 'house-main',
     });
-    // Same reference — no change.
+    // Same reference -- no change.
     expect(result).toBe(draft);
     expect(result.houseAssembly!.houseForms).toHaveLength(1);
   });
@@ -192,7 +198,7 @@ describe('removeHouseFormFromObjectFirstDraft', () => {
   });
 });
 
-describe('add → remove → add round-trip', () => {
+describe('add -> remove -> add round-trip', () => {
   it('reuses the freed id slot after a remove (no orphaned ids)', () => {
     // Add house-form-2.
     const afterAdd1 = addHouseFormToObjectFirstDraft({ draft: makeSingleFormDraft() });
@@ -203,7 +209,7 @@ describe('add → remove → add round-trip', () => {
       houseFormId: 'house-form-2',
     });
     expect(afterRemove.houseAssembly!.houseForms).toHaveLength(1);
-    // Add again — id 2 is free, so the next-id generator picks it again.
+    // Add again -- id 2 is free, so the next-id generator picks it again.
     const afterAdd2 = addHouseFormToObjectFirstDraft({ draft: afterRemove });
     expect(afterAdd2.houseAssembly!.houseForms.at(-1)!.id).toBe('house-form-2');
   });

@@ -5,6 +5,7 @@ const ROOT = process.cwd();
 const READINESS_DOC = 'docs/portal-production-readiness.md';
 const RECOGNIZED_STATUSES = ['Green', 'Yellow', 'Red', 'Unknown'];
 const AT_RISK_STATUSES = new Set(['Yellow', 'Red', 'Unknown']);
+const STALE_READINESS_WARNING_DAYS = 7;
 
 function readText(relPath) {
   return fs.readFileSync(path.join(ROOT, relPath), 'utf8');
@@ -117,8 +118,14 @@ function main() {
 
   console.log('readiness-report: advisory report');
   if (lastUpdated && parsedDate) {
+    const ageDays = daysSince(parsedDate);
     console.log(`Tracker: ${READINESS_DOC}`);
-    console.log(`Last updated: ${lastUpdated} (${daysSince(parsedDate)} day(s) old)`);
+    console.log(`Last updated: ${lastUpdated} (${ageDays} day(s) old)`);
+    if (ageDays > STALE_READINESS_WARNING_DAYS) {
+      console.log(
+        `Stale tracker warning: refresh ${READINESS_DOC} before handoff; it is more than ${STALE_READINESS_WARNING_DAYS} days old.`,
+      );
+    }
   } else {
     console.log(`Tracker: ${READINESS_DOC}`);
     console.log('Last updated: missing or invalid');
