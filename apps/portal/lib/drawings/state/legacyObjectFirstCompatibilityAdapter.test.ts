@@ -31,7 +31,7 @@ describe('buildObjectFirstWorkbenchProjectModel', () => {
     const project = buildObjectFirstWorkbenchProjectModel({
       compatibilityProjectModel: {
         source: 'legacy_estimate_snapshot',
-        house: null,
+        houseForms: [],
         pergolas: [],
         warnings: [],
       },
@@ -50,7 +50,7 @@ describe('buildObjectFirstWorkbenchProjectModel', () => {
     const project = buildObjectFirstWorkbenchProjectModel({
       compatibilityProjectModel: compatibilityProject,
     });
-    const house = compatibilityProject.house;
+    const house = compatibilityProject.houseForms[0];
 
     if (!house) {
       throw new Error('Expected fixture house.');
@@ -135,7 +135,7 @@ describe('buildObjectFirstWorkbenchProjectModel', () => {
           offsetAlongWallM: '1.2',
         },
       ],
-      baselineCompatibilityProject.house?.id ?? null,
+      baselineCompatibilityProject.houseForms[0]?.id ?? null,
     );
     draft.objectFirst.pergolas = buildObjectFirstPergolaDraftsFromCompatibilityDrafts(
       [
@@ -171,7 +171,7 @@ describe('buildObjectFirstWorkbenchProjectModel', () => {
       label: 'Slider',
       kind: 'slider',
       panelCount: 3,
-      sourceFormId: compatibilityProject.house?.id,
+      sourceFormId: compatibilityProject.houseForms[0]?.id,
       widthM: '2.4',
       heightM: '2.1',
       offsetAlongWallM: '1.2',

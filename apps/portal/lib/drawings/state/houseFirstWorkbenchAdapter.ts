@@ -46,6 +46,15 @@ import {
   type DerivedWallLookup,
 } from './houseFirstWallLookup';
 import { resolveHouseRoofProjection } from './houseRoofFormAdapter';
+import {
+  buildHouseEnvelopeLookup,
+  normalizePergolaAttachmentEdgeId,
+  normalizePergolaAttachmentZoneId,
+  resolveAttachmentStrategyZoneKinds,
+  resolvePergolaAttachment,
+  resolvePergolaAttachmentKind,
+  resolvePergolaFamily,
+} from './pergolaAttachmentResolver';
 
 type HouseFirstWorkbenchDraftCarrier = EstimateDrawingDraft & {
   houseFirst?: {
@@ -55,6 +64,26 @@ type HouseFirstWorkbenchDraftCarrier = EstimateDrawingDraft & {
     pergolas?: HouseFirstPergolaDraft[] | null;
   } | null;
 };
+
+/**
+ * Legacy id for the single shared house form that pre-multi-form
+ * estimates implicitly own. Until `houseForms[]` becomes a real
+ * user-authored array, every estimate continues to synthesise exactly
+ * one house under this id so the migration path for existing data is
+ * a no-op: read once → see `LEGACY_PRIMARY_HOUSE_FORM_ID` → write back
+ * unchanged.
+ *
+ * Multi-form phases will:
+ *   - keep emitting this id for the first form (so persisted
+ *     `hostHouseFormId`-less deck/opening drafts still resolve)
+ *   - allocate new ids (`house-form-${uuid}` or similar) for
+ *     subsequently-added forms.
+ *
+ * Exported so other layers that still hardcode the literal (PlanViewport
+ * snap target source, geometry fixtures) can switch to the named
+ * constant without forcing a tree-wide rename.
+ */
+export const LEGACY_PRIMARY_HOUSE_FORM_ID = 'house-main';
 
 type SharedFieldConfig<T> = {
   field: string;
@@ -112,55 +141,6 @@ function resolveHouseRoofForm(module: CalculatorModuleInputs): HouseRoofForm {
 }
 
 
-function resolvePergolaFamily(module: CalculatorModuleInputs): PergolaModel['family'] {
-  if (module.boxPerimeterEnabled) return 'box';
-  if (module.pergolaStyle === 'gable') return 'gable';
-  if (module.pergolaStyle === 'hip') return 'hip';
-  if (module.pergolaStyle === 'hip_corner') return 'hip_corner';
-  if (module.pergolaStyle === 'pitched') return 'mono';
-  return 'unknown';
-}
-
-function resolvePergolaAttachmentKind(
-  module: CalculatorModuleInputs,
-): PergolaModel['attachment']['kind'] {
-  if (module.houseConnectionType === 'none') return 'freestanding';
-  if (module.houseConnectionType === 'facade') return 'wall';
-  return module.houseConnectionType;
-}
-
-function resolveAttachmentStrategyZoneKinds(
-  strategy: CalculatorHouseAttachmentStrategy | null,
-): HouseAttachmentZoneKind[] {
-  if (strategy === 'none') return [];
-  const kinds = new Set<HouseAttachmentZoneKind>();
-  if (strategy === 'facade_ledger' || strategy === 'post_supported_tieback' || strategy === null) {
-    kinds.add('wall');
-  }
-  if (strategy === 'soffit_brackets' || strategy === 'post_supported_tieback' || strategy === null) {
-    kinds.add('soffit');
-  }
-  if (strategy === 'fascia_under_gutter' || strategy === null) {
-    kinds.add('fascia');
-  }
-  if (strategy === 'fascia_under_gutter') {
-    kinds.add('roof_edge');
-  }
-  return Array.from(kinds);
-}
-
-
-function normalizePergolaAttachmentZoneId(value: string | null | undefined): string | null {
-  if (typeof value !== 'string') return null;
-  const trimmed = value.trim();
-  return trimmed.length ? trimmed : null;
-}
-
-function normalizePergolaAttachmentEdgeId(value: string | null | undefined): string | null {
-  if (typeof value !== 'string') return null;
-  const trimmed = value.trim();
-  return /^footprint-edge-\d+$/.test(trimmed) ? trimmed : null;
-}
 
 
 type DerivedAttachmentZoneResolution = {
@@ -403,6 +383,12 @@ function buildSharedHouse(
   roofDraft?: HouseFirstRoofDraft | null,
   deckDrafts?: HouseFirstDeckDraft[] | null,
   openingDrafts?: HouseFirstOpeningDraft[] | null,
+  // The id of the house form this call is producing. Defaults to the
+  // legacy primary id so existing single-form callers don't need to
+  // change. Multi-form callers (a future `buildHousesFromDraft` loop)
+  // pass each form's id explicitly so wall / envelope / model ids
+  // stay scoped per-form and don't collide across forms.
+  houseFormId: string = LEGACY_PRIMARY_HOUSE_FORM_ID,
 ): {
   house: HouseModel | null;
   warnings: HouseFirstMigrationWarning[];
@@ -592,7 +578,7 @@ function buildSharedHouse(
   });
   for (const warning of roofProjection.warnings) warnings.push(warning);
   const derivedWalls = buildDerivedWallLookup({
-    houseId: 'house-main',
+    houseId: houseFormId,
     housePolygon: derivedHousePolygon,
   });
   const decks = buildSharedDecks({
@@ -606,7 +592,7 @@ function buildSharedHouse(
     fallbackWallId: normalizedAttachmentSide,
   });
   const derivedEnvelope = buildDerivedEnvelopeLookup({
-    houseId: 'house-main',
+    houseId: houseFormId,
     housePolygon: derivedHousePolygon,
     derivedWalls,
     roof: {
@@ -619,7 +605,7 @@ function buildSharedHouse(
 
   return {
     house: {
-      id: 'house-main',
+      id: houseFormId,
       label: 'House',
       confidence: lowConfidence ? 'low' : 'high',
       lowConfidence,
@@ -705,130 +691,24 @@ function buildPergolas(input: {
     draftByPergolaId.set(draft.id.trim(), draft);
   }
 
-  const derivedEnvelope = input.house?.derivedEnvelope ?? null;
-  const zonesById = new Map<string, NonNullable<HouseModel['derivedEnvelope']>['attachmentZones'][number]>();
-  const edgesById = new Map<string, NonNullable<HouseModel['derivedEnvelope']>['edges'][number]>();
-  const zonesByEdgeId = new Map<string, Array<NonNullable<HouseModel['derivedEnvelope']>['attachmentZones'][number]>>();
-  const zonesBySideAndKind = new Map<string, Array<NonNullable<HouseModel['derivedEnvelope']>['attachmentZones'][number]>>();
-  for (const edge of derivedEnvelope?.edges ?? []) {
-    edgesById.set(edge.id, edge);
-  }
-  for (const zone of derivedEnvelope?.attachmentZones ?? []) {
-    zonesById.set(zone.id, zone);
-    if (zone.hostEdgeId) {
-      const edgeZones = zonesByEdgeId.get(zone.hostEdgeId) ?? [];
-      edgeZones.push(zone);
-      zonesByEdgeId.set(zone.hostEdgeId, edgeZones);
-    }
-    const sideKey = `${zone.side}:${zone.kind}`;
-    const sideZones = zonesBySideAndKind.get(sideKey) ?? [];
-    sideZones.push(zone);
-    zonesBySideAndKind.set(sideKey, sideZones);
-  }
+  // Build the host-envelope lookup once per house and reuse for each
+  // pergola. Once `houseForms[]` lifts off the single-house assumption,
+  // this lookup gets keyed by `houseFormId` so each pergola can resolve
+  // against the host form it's attached to.
+  const envelope = buildHouseEnvelopeLookup(input.house);
 
   const warnings: HouseFirstMigrationWarning[] = [];
   const pergolas: PergolaModel[] = Array.from(groups.entries()).map(([pergolaId, group]) => {
     const firstModule = group.modules[0]!;
     const moduleInput = firstModule.moduleInput;
-    const attachmentKind = resolvePergolaAttachmentKind(moduleInput);
-    const normalizedAttachmentSide = normalizeAttachmentSide(
-      moduleInput.attachmentSide ?? 'rear',
-    ) as NonNullable<CalculatorModuleInputs['attachmentSide']>;
-    const zoneKind = attachmentKind === 'freestanding'
-      ? null
-      : attachmentKind === 'wall'
-        ? 'wall'
-        : attachmentKind;
-    const savedDraft = draftByPergolaId.get(pergolaId) ?? null;
-    const requestedAttachmentZoneId = normalizePergolaAttachmentZoneId(savedDraft?.attachmentZoneId);
-    const requestedAttachmentEdgeId = normalizePergolaAttachmentEdgeId(savedDraft?.attachmentEdgeId);
-    let attachmentEdgeId =
-      attachmentKind === 'freestanding'
-        ? null
-        : requestedAttachmentEdgeId;
-    let attachmentZoneId =
-      attachmentKind === 'freestanding'
-        ? null
-        : requestedAttachmentZoneId;
-    let houseAttachmentZoneId: string | null = null;
-    let resolvedAttachmentSide = normalizedAttachmentSide;
-    let resolutionStatus: PergolaModel['attachment']['resolution']['status'] =
-      attachmentKind === 'freestanding' ? 'resolved' : 'unresolved';
-    let resolutionMessage: string | null = null;
-
-    if (zoneKind === null) {
-      attachmentEdgeId = null;
-      attachmentZoneId = null;
-    } else if (!derivedEnvelope) {
-      resolutionMessage = 'This pergola no longer has a derived building envelope to attach to.';
-    } else if (requestedAttachmentZoneId !== null) {
-      const requestedZone = zonesById.get(requestedAttachmentZoneId) ?? null;
-      if (requestedZone && requestedZone.kind === zoneKind && requestedZone.hostEdgeId) {
-        attachmentZoneId = requestedZone.id;
-        attachmentEdgeId = requestedZone.hostEdgeId;
-        houseAttachmentZoneId = requestedZone.id;
-        resolvedAttachmentSide = requestedZone.side;
-        resolutionStatus = 'resolved';
-      } else {
-        resolutionMessage =
-          `The saved ${zoneKind.replace('_', ' ')} host zone for this pergola is no longer available. Select a new host zone.`;
-      }
-    } else if (requestedAttachmentEdgeId !== null) {
-      const compatibleZones = (zonesByEdgeId.get(requestedAttachmentEdgeId) ?? []).filter(
-        (zone) => zone.kind === zoneKind,
-      );
-      const requestedEdge = edgesById.get(requestedAttachmentEdgeId) ?? null;
-      if (requestedEdge && compatibleZones.length === 1) {
-        const resolvedZone = compatibleZones[0]!;
-        attachmentEdgeId = requestedEdge.id;
-        attachmentZoneId = resolvedZone.id;
-        houseAttachmentZoneId = resolvedZone.id;
-        resolvedAttachmentSide = resolvedZone.side;
-        resolutionStatus = 'resolved';
-      } else {
-        resolutionMessage =
-          compatibleZones.length > 1
-            ? `The saved host edge now resolves to multiple compatible ${zoneKind.replace('_', ' ')} zones. Select one explicitly.`
-            : `The saved host edge no longer supports a ${zoneKind.replace('_', ' ')} attachment for this pergola. Select a new host edge.`;
-      }
-    } else {
-      const legacyZones = zonesBySideAndKind.get(`${normalizedAttachmentSide}:${zoneKind}`) ?? [];
-      if (legacyZones.length === 1) {
-        const resolvedZone = legacyZones[0]!;
-        attachmentEdgeId = resolvedZone.hostEdgeId ?? null;
-        attachmentZoneId = resolvedZone.id;
-        houseAttachmentZoneId = resolvedZone.id;
-        resolvedAttachmentSide = resolvedZone.side;
-        resolutionStatus = 'resolved';
-      } else if (legacyZones.length > 1) {
-        resolutionStatus = 'ambiguous';
-        resolutionMessage =
-          `Multiple compatible ${zoneKind.replace('_', ' ')} host edges exist on the ${normalizedAttachmentSide} side. Select the correct host edge for this pergola.`;
-      } else {
-        resolutionMessage =
-          `The shared house no longer exposes a valid ${normalizedAttachmentSide} ${zoneKind.replace('_', ' ')} host zone for this pergola.`;
-      }
-    }
-
-    if (zoneKind && resolutionStatus !== 'resolved') {
-      const warningField =
-        requestedAttachmentZoneId !== null
-          ? `houseFirst.pergolas.${pergolaId}.attachmentZoneId`
-          : requestedAttachmentEdgeId !== null
-            ? `houseFirst.pergolas.${pergolaId}.attachmentEdgeId`
-            : `inputs.modules.${firstModule.moduleIndex}.attachmentSide`;
-      warnings.push({
-        id: `house-attachment-zone-${pergolaId}`,
-        code: 'invalid_house_attachment_zone_overlay',
-        severity: 'blocking',
-        field: warningField,
-        chosenModuleIndex: firstModule.moduleIndex,
-        conflictingModuleIndexes: [],
-        message:
-          resolutionMessage ??
-          `The shared house no longer exposes a valid ${normalizedAttachmentSide} ${zoneKind.replace('_', ' ')} host zone for this pergola.`,
-      });
-    }
+    const resolution = resolvePergolaAttachment({
+      pergolaId,
+      moduleInput,
+      draft: draftByPergolaId.get(pergolaId) ?? null,
+      firstModuleIndex: firstModule.moduleIndex,
+      envelope,
+    });
+    if (resolution.warning) warnings.push(resolution.warning);
 
     return {
       id: pergolaId,
@@ -837,19 +717,7 @@ function buildPergolas(input: {
       confidence: input.house?.lowConfidence ? 'low' : 'high',
       sourceModuleIndexes: group.modules.map((module) => module.moduleIndex),
       sourceModuleIds: group.modules.map((module) => module.moduleId),
-      attachment: {
-        id: `attachment-${pergolaId}`,
-        kind: attachmentKind,
-        attachmentEdgeId,
-        attachmentZoneId,
-        houseAttachmentZoneId,
-        side: resolvedAttachmentSide,
-        strategy: pickFirstDefined(moduleInput.houseAttachmentStrategy, null),
-        resolution: {
-          status: resolutionStatus,
-          message: resolutionMessage,
-        },
-      },
+      attachment: resolution.attachment,
     };
   });
 
@@ -875,16 +743,23 @@ export function buildHouseFirstWorkbenchProjectModel(input: {
     input.draft?.houseFirst?.decks ?? null,
     input.draft?.houseFirst?.openings ?? null,
   );
+  // Multi-form-ready shape. Today the builder always produces a single
+  // shared house (or null when no modules resolve a footprint); future
+  // multi-form work replaces this with a loop over user-authored house
+  // forms in the draft. The empty-array case mirrors the previous
+  // `house: null` semantics.
+  const houseForms: HouseModel[] = sharedHouse.house ? [sharedHouse.house] : [];
+  const primaryHouseForm = houseForms[0] ?? null;
   const pergolaResult = buildPergolas({
     modules,
     legacyPergolas: calculatorInputs?.pergolas ?? [],
-    house: sharedHouse.house,
+    house: primaryHouseForm,
     pergolaDrafts: input.draft?.houseFirst?.pergolas ?? null,
   });
 
   return {
     source: 'legacy_estimate_snapshot',
-    house: sharedHouse.house,
+    houseForms,
     pergolas: pergolaResult.pergolas,
     warnings: [...sharedHouse.warnings, ...pergolaResult.warnings],
   };

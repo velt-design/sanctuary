@@ -570,7 +570,7 @@ describe('buildRawGeometryModuleInput', () => {
             objectWorkbenchGeometryContext: buildGeometryContextFromCompatibilityProjectModel(projectModel),
           });
 
-          expect(projectModel.house?.roof.validation.code, `${preset}/${attachmentSide}/${form} validation`).toBeNull();
+          expect(projectModel.houseForms[0]?.roof.validation.code, `${preset}/${attachmentSide}/${form} validation`).toBeNull();
           expect(raw.connection.attachmentSide, `${preset}/${attachmentSide}/${form} side`).toBe(attachmentSide);
           expect(raw.houseContext.footprintPreset, `${preset}/${attachmentSide}/${form} footprint`).toBe(preset);
           // Session C: only `hipped` (and the other non-gable forms)
@@ -578,7 +578,7 @@ describe('buildRawGeometryModuleInput', () => {
           expect(raw.houseContext.roofForm, `${preset}/${attachmentSide}/${form} form`).toBe(form);
           expect(raw.houseContext.roofPitchDeg, `${preset}/${attachmentSide}/${form} pitch`).toBe('5');
           expect(raw.houseContext.roofRidgeAxis, `${preset}/${attachmentSide}/${form} ridge`).toBe(
-            projectModel.house?.roof.ridgeAxis,
+            projectModel.houseForms[0]?.roof.ridgeAxis,
           );
         }
       }

@@ -10,7 +10,7 @@ describe('buildWorkbenchDeckSupportDiagnostic', () => {
 
     const diagnostic = buildWorkbenchDeckSupportDiagnostic({
       activeHostSide: fixture.activeHostSide,
-      decks: fixture.projectModel.house?.decks ?? [],
+      decks: fixture.projectModel.houseForms[0]?.decks ?? [],
     });
 
     expect(diagnostic.hasRelevantDeck).toBe(true);
@@ -29,11 +29,11 @@ describe('buildWorkbenchDeckSupportDiagnostic', () => {
 
     const matching = buildWorkbenchDeckSupportDiagnostic({
       activeHostSide: sideFixture.activeHostSide,
-      decks: sideFixture.projectModel.house?.decks ?? [],
+      decks: sideFixture.projectModel.houseForms[0]?.decks ?? [],
     });
     const nonMatching = buildWorkbenchDeckSupportDiagnostic({
       activeHostSide: rearFixture.activeHostSide,
-      decks: rearFixture.projectModel.house?.decks ?? [],
+      decks: rearFixture.projectModel.houseForms[0]?.decks ?? [],
     });
 
     expect(matching.resolvedClassification).toBe('threshold_attached');
@@ -52,11 +52,11 @@ describe('buildWorkbenchDeckSupportDiagnostic', () => {
 
     const detached = buildWorkbenchDeckSupportDiagnostic({
       activeHostSide: detachedFixture.activeHostSide,
-      decks: detachedFixture.projectModel.house?.decks ?? [],
+      decks: detachedFixture.projectModel.houseForms[0]?.decks ?? [],
     });
     const warningHeavy = buildWorkbenchDeckSupportDiagnostic({
       activeHostSide: warningFixture.activeHostSide,
-      decks: warningFixture.projectModel.house?.decks ?? [],
+      decks: warningFixture.projectModel.houseForms[0]?.decks ?? [],
     });
 
     expect(detached.hasRelevantDeck).toBe(true);
@@ -78,11 +78,11 @@ describe('buildWorkbenchDeckSupportDiagnostic', () => {
 
     const rear = buildWorkbenchDeckSupportDiagnostic({
       activeHostSide: 'rear',
-      decks: fixture.projectModel.house?.decks ?? [],
+      decks: fixture.projectModel.houseForms[0]?.decks ?? [],
     });
     const left = buildWorkbenchDeckSupportDiagnostic({
       activeHostSide: 'left',
-      decks: fixture.projectModel.house?.decks ?? [],
+      decks: fixture.projectModel.houseForms[0]?.decks ?? [],
     });
 
     expect(rear.relevantDeckIds).toEqual(['deck-rear-wrap']);

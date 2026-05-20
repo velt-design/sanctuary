@@ -414,7 +414,7 @@ export function buildObjectFirstWorkbenchProjectModel(input: {
   compatibilityProjectModel: ObjectWorkbenchCompatibilityProjectModel;
   objectFirstDraft?: Partial<ObjectFirstWorkbenchDraftVNext> | null;
 }): ObjectFirstWorkbenchProjectModel {
-  const house = input.compatibilityProjectModel.house;
+  const house = input.compatibilityProjectModel.houseForms[0];
   const houseForm = house ? buildHouseFormFromCompatibilityHouse(house) : null;
   const baseProject: ObjectFirstWorkbenchProjectModel = {
     source: 'legacy_estimate_snapshot',

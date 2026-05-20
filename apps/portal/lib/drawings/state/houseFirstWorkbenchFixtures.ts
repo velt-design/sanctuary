@@ -8,6 +8,7 @@ import type {
   DeckModel,
   HouseFirstWorkbenchProjectModel,
 } from './houseFirstWorkbenchModel';
+import { LEGACY_PRIMARY_HOUSE_FORM_ID } from './houseFirstWorkbenchAdapter';
 import { buildObjectWorkbenchCompatibilityProjectModel } from './compat/objectWorkbenchCompatibilityModel';
 import {
   buildObjectFirstWorkbenchDraftFromProjectModel,
@@ -20,7 +21,7 @@ const FIXTURE_WALLS = [
   {
     id: 'wall-footprint-edge-1',
     label: 'Rear wall',
-    sourceFormIds: ['house-main'],
+    sourceFormIds: [LEGACY_PRIMARY_HOUSE_FORM_ID],
     edgeIds: ['footprint-edge-1'],
     kind: 'exterior' as const,
     polygon: [
@@ -31,7 +32,7 @@ const FIXTURE_WALLS = [
   {
     id: 'wall-footprint-edge-2',
     label: 'Right wall',
-    sourceFormIds: ['house-main'],
+    sourceFormIds: [LEGACY_PRIMARY_HOUSE_FORM_ID],
     edgeIds: ['footprint-edge-2'],
     kind: 'exterior' as const,
     polygon: [
@@ -42,7 +43,7 @@ const FIXTURE_WALLS = [
   {
     id: 'wall-footprint-edge-3',
     label: 'Front wall',
-    sourceFormIds: ['house-main'],
+    sourceFormIds: [LEGACY_PRIMARY_HOUSE_FORM_ID],
     edgeIds: ['footprint-edge-3'],
     kind: 'exterior' as const,
     polygon: [
@@ -53,7 +54,7 @@ const FIXTURE_WALLS = [
   {
     id: 'wall-footprint-edge-4',
     label: 'Left wall',
-    sourceFormIds: ['house-main'],
+    sourceFormIds: [LEGACY_PRIMARY_HOUSE_FORM_ID],
     edgeIds: ['footprint-edge-4'],
     kind: 'exterior' as const,
     polygon: [
@@ -82,7 +83,7 @@ function buildFixtureDerivedEnvelope(input?: {
     FIXTURE_WALLS.find((wall) => wall.id === hostWallId)?.label ??
     `${zoneSide.charAt(0).toUpperCase()}${zoneSide.slice(1)} wall`;
   return {
-    mergedFormIds: ['house-main'],
+    mergedFormIds: [LEGACY_PRIMARY_HOUSE_FORM_ID],
     footprint: [],
     wallGraph: {
       walls: FIXTURE_WALLS,
@@ -93,7 +94,7 @@ function buildFixtureDerivedEnvelope(input?: {
       id: wall.edgeIds[0]!,
       label: wall.label,
       semanticKind: 'wall_perimeter' as const,
-      sourceFormIds: ['house-main'],
+      sourceFormIds: [LEGACY_PRIMARY_HOUSE_FORM_ID],
       hostWallId: wall.id,
       hostRoofZoneIds: [],
       start: wall.polygon[0]!,
@@ -105,7 +106,7 @@ function buildFixtureDerivedEnvelope(input?: {
         label: `${hostWallLabel} ${zoneKind.replace('_', ' ')}`,
         kind: zoneKind,
         side: zoneSide,
-        sourceFormIds: ['house-main'],
+        sourceFormIds: [LEGACY_PRIMARY_HOUSE_FORM_ID],
         hostWallId,
         hostEdgeId,
         hostRoofZoneId: null,
@@ -222,8 +223,8 @@ export function makeHouseFirstOnePergolaFixture(): HouseFirstWorkbenchProjectMod
   ];
   return {
     source: 'legacy_estimate_snapshot',
-    house: {
-      id: 'house-main',
+    houseForms: [{
+      id: LEGACY_PRIMARY_HOUSE_FORM_ID,
       label: 'House',
       confidence: 'high',
       lowConfidence: false,
@@ -295,7 +296,7 @@ export function makeHouseFirstOnePergolaFixture(): HouseFirstWorkbenchProjectMod
         },
       ],
       attachmentZoneDiagnostics: { blocked: [] },
-    },
+    }],
     pergolas: [
       {
         id: 'pergola-1',
@@ -461,7 +462,7 @@ export function makeHouseFirstDeckSupportProjectFixture(input: {
 
   switch (input.id) {
     case 'rear_threshold_attached':
-      projectModel.house!.decks = [
+      projectModel.houseForms[0]!.decks = [
         makeDeckModel({
           id: 'deck-rear-threshold',
           hostEdgeId: 'rear',
@@ -470,15 +471,15 @@ export function makeHouseFirstDeckSupportProjectFixture(input: {
       break;
     case 'left_threshold_attached':
       activeHostSide = 'left';
-      projectModel.house!.footprint.attachmentSide = 'left';
-      projectModel.house!.derivedEnvelope = buildFixtureDerivedEnvelope({
+      projectModel.houseForms[0]!.footprint.attachmentSide = 'left';
+      projectModel.houseForms[0]!.derivedEnvelope = buildFixtureDerivedEnvelope({
         zoneSide: 'left',
       });
-      projectModel.house!.derivedWallGraph = projectModel.house!.derivedEnvelope.wallGraph;
-      projectModel.house!.attachmentZones = [
+      projectModel.houseForms[0]!.derivedWallGraph = projectModel.houseForms[0]!.derivedEnvelope.wallGraph;
+      projectModel.houseForms[0]!.attachmentZones = [
         { id: 'zone-soffit-footprint-edge-4', label: 'Left wall soffit', kind: 'soffit', side: 'left' },
       ];
-      projectModel.house!.attachmentZoneDiagnostics = { blocked: [] };
+      projectModel.houseForms[0]!.attachmentZoneDiagnostics = { blocked: [] };
       projectModel.pergolas[0]!.attachment = {
         ...projectModel.pergolas[0]!.attachment,
         attachmentEdgeId: 'footprint-edge-4',
@@ -486,7 +487,7 @@ export function makeHouseFirstDeckSupportProjectFixture(input: {
         houseAttachmentZoneId: 'zone-soffit-footprint-edge-4',
         side: 'left',
       };
-      projectModel.house!.decks = [
+      projectModel.houseForms[0]!.decks = [
         makeDeckModel({
           id: 'deck-left-threshold',
           hostEdgeId: 'left',
@@ -494,7 +495,7 @@ export function makeHouseFirstDeckSupportProjectFixture(input: {
       ];
       break;
     case 'detached_rear_near_house':
-      projectModel.house!.decks = [
+      projectModel.houseForms[0]!.decks = [
         makeDeckModel({
           id: 'deck-rear-detached-near',
           hostEdgeId: 'rear',
@@ -515,7 +516,7 @@ export function makeHouseFirstDeckSupportProjectFixture(input: {
       ];
       break;
     case 'rear_wrap_multi_edge':
-      projectModel.house!.decks = [
+      projectModel.houseForms[0]!.decks = [
         makeDeckModel({
           id: 'deck-rear-wrap',
           hostEdgeId: 'rear',
@@ -531,7 +532,7 @@ export function makeHouseFirstDeckSupportProjectFixture(input: {
       ];
       break;
     case 'left_non_relevant_when_rear_active':
-      projectModel.house!.decks = [
+      projectModel.houseForms[0]!.decks = [
         makeDeckModel({
           id: 'deck-left-only',
           hostEdgeId: 'left',
@@ -547,7 +548,7 @@ export function makeHouseFirstDeckSupportProjectFixture(input: {
       ];
       break;
     case 'rear_warning_heavy_attached':
-      projectModel.house!.decks = [
+      projectModel.houseForms[0]!.decks = [
         makeDeckModel({
           id: 'deck-rear-warning',
           hostEdgeId: 'rear',

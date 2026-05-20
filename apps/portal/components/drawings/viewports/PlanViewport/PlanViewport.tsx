@@ -13,6 +13,7 @@ import type {
   DrawingWorkbenchViewportTransform,
   DrawingWorkbenchVisibilityState,
 } from '@/lib/drawings/state/drawingWorkbenchUiState';
+import { LEGACY_PRIMARY_HOUSE_FORM_ID } from '@/lib/drawings/state/houseFirstWorkbenchAdapter';
 import type { WorkbenchObjectRef } from '@/lib/drawings/state/objectFirstWorkbenchModel';
 import type {
   ObjectWorkbenchDisplayFamily,
@@ -233,7 +234,7 @@ export default function PlanViewport({
   // `lineTargets.length === 0`.)
   const houseModel = artifact?.assembly?.house?.model ?? null;
   const houseObjectId =
-    artifact?.assembly?.house?.attachmentTarget?.metadata?.sourceFormId ?? 'house-main';
+    artifact?.assembly?.house?.attachmentTarget?.metadata?.sourceFormId ?? LEGACY_PRIMARY_HOUSE_FORM_ID;
   const snapLineTargets = useMemo<SnapLineTarget[]>(() => {
     // Snap is meaningful for pergola edge drags (host attachment formation)
     // and for deck edge drags (decks attach to walls and pergola outline
@@ -250,7 +251,7 @@ export default function PlanViewport({
     if (activeFamily !== 'pergolas' && activeFamily !== 'decks') return [];
     const houseTargets = buildHouseSnapTargets({
       houseModel,
-      houseObjectId: typeof houseObjectId === 'string' ? houseObjectId : 'house-main',
+      houseObjectId: typeof houseObjectId === 'string' ? houseObjectId : LEGACY_PRIMARY_HOUSE_FORM_ID,
       kinds: activeFamily === 'pergolas' ? 'walls_and_eaves' : 'walls',
     });
     const pergolaTargets = projectContextShapes

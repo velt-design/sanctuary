@@ -29,6 +29,32 @@ const HOUSE_FOOTPRINT_PRESETS = [
 const HOUSE_ROOF_FORMS = ['flat', 'mono', 'hipped'] as const;
 const ATTACHMENT_SIDES = ['rear', 'front', 'left', 'right'] as const;
 
+describe('buildHouseFirstWorkbenchProjectModel houseForms[] contract', () => {
+  // Lock in the multi-form-ready array shape that replaced the singular
+  // `house: HouseModel | null` field. Every estimate today still
+  // synthesizes exactly one form under the legacy primary id; multi-form
+  // work later lifts the length-1 invariant. These tests catch a future
+  // regression where the array unexpectedly stays empty for a valid
+  // estimate, or grows past one without an explicit code change to the
+  // adapter loop.
+
+  it('emits exactly one house form for a resolvable single-house estimate, with the legacy primary id', () => {
+    const fixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
+    if (!fixture) throw new Error('Missing Sanctuary fixture.');
+    const project = buildHouseFirstWorkbenchProjectModel({ snapshot: fixture.snapshot });
+    expect(project.houseForms).toHaveLength(1);
+    expect(project.houseForms[0]!.id).toBe('house-main');
+  });
+
+  it('emits an empty houseForms[] array when no modules resolve a house footprint', () => {
+    // Empty snapshot = no modules = no shared house. The legacy field
+    // returned `null` in this case; the new shape returns `[]` and
+    // callers read `houseForms[0] ?? null` to preserve the contract.
+    const project = buildHouseFirstWorkbenchProjectModel({ snapshot: null });
+    expect(project.houseForms).toEqual([]);
+  });
+});
+
 describe('buildHouseFirstWorkbenchProjectModel', () => {
   it('classifies mono, gable, and box legacy fixtures into first-pass roof forms', () => {
     const monoFixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
@@ -38,13 +64,13 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
       throw new Error('Missing Sanctuary workbench fixtures.');
     }
 
-    expect(buildHouseFirstWorkbenchProjectModel({ snapshot: monoFixture.snapshot }).house?.roof.form).toBe('mono');
+    expect(buildHouseFirstWorkbenchProjectModel({ snapshot: monoFixture.snapshot }).houseForms[0]?.roof.form).toBe('mono');
     // Milestone 13 session C: gable retired from the form union; legacy
     // gable fixtures now classify as hipped, with the open-gable
     // topology re-expressed via openGableEndIds populated at the draft
     // boundary.
-    expect(buildHouseFirstWorkbenchProjectModel({ snapshot: gableFixture.snapshot }).house?.roof.form).toBe('hipped');
-    expect(buildHouseFirstWorkbenchProjectModel({ snapshot: boxFixture.snapshot }).house?.roof.form).toBe('flat');
+    expect(buildHouseFirstWorkbenchProjectModel({ snapshot: gableFixture.snapshot }).houseForms[0]?.roof.form).toBe('hipped');
+    expect(buildHouseFirstWorkbenchProjectModel({ snapshot: boxFixture.snapshot }).houseForms[0]?.roof.form).toBe('flat');
   });
 
   it('derives pergolas and shared house state from a local drawing draft', () => {
@@ -59,7 +85,7 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
       draft,
     });
 
-    expect(projectModel.house?.footprint.preset).toBe('wrap_left');
+    expect(projectModel.houseForms[0]?.footprint.preset).toBe('wrap_left');
     expect(projectModel.pergolas).toHaveLength(1);
     expect(projectModel.pergolas[0]?.attachment.resolution.status).toBe('ambiguous');
     expect(projectModel.warnings).toHaveLength(1);
@@ -100,21 +126,21 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
       draft,
     });
 
-    expect(projectModel.house?.roof.form).toBe('hipped');
-    expect(projectModel.house?.roof.primaryPitchDeg).toBe('18');
-    expect(projectModel.house?.roof.primaryFallDirection).toBe('negative_x');
-    expect(projectModel.house?.roof.ridgeAxis).toBe('y');
-    expect(projectModel.house?.roof.appendage.enabled).toBe(true);
-    expect(projectModel.house?.roof.validation.status).toBe('valid');
-    expect(projectModel.house?.roof.validation.approximationReasons).toEqual([]);
-    expect(projectModel.house?.roof.provenance).toMatchObject({
+    expect(projectModel.houseForms[0]?.roof.form).toBe('hipped');
+    expect(projectModel.houseForms[0]?.roof.primaryPitchDeg).toBe('18');
+    expect(projectModel.houseForms[0]?.roof.primaryFallDirection).toBe('negative_x');
+    expect(projectModel.houseForms[0]?.roof.ridgeAxis).toBe('y');
+    expect(projectModel.houseForms[0]?.roof.appendage.enabled).toBe(true);
+    expect(projectModel.houseForms[0]?.roof.validation.status).toBe('valid');
+    expect(projectModel.houseForms[0]?.roof.validation.approximationReasons).toEqual([]);
+    expect(projectModel.houseForms[0]?.roof.provenance).toMatchObject({
       form: 'house_first_draft',
       primaryPitchDeg: 'house_first_draft',
       primaryFallDirection: 'house_first_draft',
       ridgeAxis: 'house_first_draft',
       appendage: 'house_first_draft',
     });
-    expect(projectModel.house?.roof.source).toBe('house_first_draft');
+    expect(projectModel.houseForms[0]?.roof.source).toBe('house_first_draft');
   });
 
   it('derives shared soffit and fascia attachment zones from shared house context', () => {
@@ -126,7 +152,7 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
     });
     expect(soffitProject.pergolas[0]?.attachment.houseAttachmentZoneId).not.toBeNull();
     expect(
-      soffitProject.house?.attachmentZones.some(
+      soffitProject.houseForms[0]?.attachmentZones.some(
         (zone) => zone.id === soffitProject.pergolas[0]?.attachment.houseAttachmentZoneId,
       ),
     ).toBe(true);
@@ -142,13 +168,13 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
     });
     const fasciaZoneId = fasciaProject.pergolas[0]?.attachment.houseAttachmentZoneId ?? null;
     expect(fasciaZoneId).not.toBeNull();
-    const fasciaZone = fasciaProject.house?.derivedEnvelope?.attachmentZones.find((zone) => zone.id === fasciaZoneId) ?? null;
+    const fasciaZone = fasciaProject.houseForms[0]?.derivedEnvelope?.attachmentZones.find((zone) => zone.id === fasciaZoneId) ?? null;
     expect(fasciaZone?.kind).toBe('fascia');
     expect(
-      fasciaProject.house?.attachmentZones.some((zone) => zone.id === fasciaZoneId && zone.kind === 'fascia'),
+      fasciaProject.houseForms[0]?.attachmentZones.some((zone) => zone.id === fasciaZoneId && zone.kind === 'fascia'),
     ).toBe(true);
     expect(
-      fasciaProject.house?.derivedEnvelope?.attachmentZones.some(
+      fasciaProject.houseForms[0]?.derivedEnvelope?.attachmentZones.some(
         (zone) => zone.kind === 'roof_edge' && zone.hostEdgeId === fasciaZone?.hostEdgeId,
       ),
     ).toBe(true);
@@ -172,9 +198,9 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
       draft,
     });
 
-    expect(projectModel.house?.roof.validation.status).toBe('invalid');
-    expect(projectModel.house?.attachmentZones.some((zone) => zone.side === 'rear' && zone.kind === 'soffit')).toBe(false);
-    expect(projectModel.house?.attachmentZoneDiagnostics.blocked).toContainEqual({
+    expect(projectModel.houseForms[0]?.roof.validation.status).toBe('invalid');
+    expect(projectModel.houseForms[0]?.attachmentZones.some((zone) => zone.side === 'rear' && zone.kind === 'soffit')).toBe(false);
+    expect(projectModel.houseForms[0]?.attachmentZoneDiagnostics.blocked).toContainEqual({
       side: 'rear',
       kind: 'soffit',
       reason: 'invalid_roof_state',
@@ -209,10 +235,10 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
       draft,
     });
 
-    expect(projectModel.house?.attachmentZones.some((zone) => zone.side === 'rear' && zone.kind === 'soffit')).toBe(
+    expect(projectModel.houseForms[0]?.attachmentZones.some((zone) => zone.side === 'rear' && zone.kind === 'soffit')).toBe(
       false,
     );
-    expect(projectModel.house?.attachmentZoneDiagnostics.blocked).toContainEqual({
+    expect(projectModel.houseForms[0]?.attachmentZoneDiagnostics.blocked).toContainEqual({
       side: 'rear',
       kind: 'soffit',
       reason: 'side_openings_block_roof_zone',
@@ -255,7 +281,7 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
 
     expect(projectModel.pergolas).toHaveLength(2);
     expect(
-      projectModel.house?.attachmentZones.filter((zone) => zone.kind === 'soffit' && zone.side === 'rear').length,
+      projectModel.houseForms[0]?.attachmentZones.filter((zone) => zone.kind === 'soffit' && zone.side === 'rear').length,
     ).toBeGreaterThan(0);
     const resolvedZoneIds = new Set(
       projectModel.pergolas
@@ -265,7 +291,7 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
     expect(resolvedZoneIds.size).toBe(1);
     const sharedZoneId = Array.from(resolvedZoneIds)[0] ?? null;
     expect(
-      projectModel.house?.attachmentZones.some((zone) => zone.id === sharedZoneId && zone.kind === 'soffit'),
+      projectModel.houseForms[0]?.attachmentZones.some((zone) => zone.id === sharedZoneId && zone.kind === 'soffit'),
     ).toBe(true);
   });
 
@@ -349,11 +375,11 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
       snapshot: monoFixture.snapshot,
     });
 
-    expect(projectModel.house?.roof.form).toBe('mono');
-    expect(projectModel.house?.roof.validation.status).toBe('approximate');
-    expect(projectModel.house?.roof.validation.approximationReasons).toEqual(['inferred_form']);
-    expect(projectModel.house?.roof.primaryFallDirection).toBe('negative_y');
-    expect(projectModel.house?.roof.provenance).toMatchObject({
+    expect(projectModel.houseForms[0]?.roof.form).toBe('mono');
+    expect(projectModel.houseForms[0]?.roof.validation.status).toBe('approximate');
+    expect(projectModel.houseForms[0]?.roof.validation.approximationReasons).toEqual(['inferred_form']);
+    expect(projectModel.houseForms[0]?.roof.primaryFallDirection).toBe('negative_y');
+    expect(projectModel.houseForms[0]?.roof.provenance).toMatchObject({
       form: 'legacy_pergola_inference',
       material: 'legacy_shared_value',
       primaryPitchDeg: 'default_fallback',
@@ -381,8 +407,8 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
       draft,
     });
 
-    expect(coherentProjectModel.house?.roof.validation.status).toBe('valid');
-    expect(coherentProjectModel.house?.roof.validation.code).toBeNull();
+    expect(coherentProjectModel.houseForms[0]?.roof.validation.status).toBe('valid');
+    expect(coherentProjectModel.houseForms[0]?.roof.validation.code).toBeNull();
 
     draft.houseFirst.roof!.primaryFallDirection = 'positive_y';
     const incoherentProjectModel = buildHouseFirstWorkbenchProjectModel({
@@ -390,8 +416,8 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
       draft,
     });
 
-    expect(incoherentProjectModel.house?.roof.validation.status).toBe('invalid');
-    expect(incoherentProjectModel.house?.roof.validation.code).toBe('invalid_mono_fall_direction');
+    expect(incoherentProjectModel.houseForms[0]?.roof.validation.status).toBe('invalid');
+    expect(incoherentProjectModel.houseForms[0]?.roof.validation.code).toBe('invalid_mono_fall_direction');
   });
 
   it('derives form-aware roof capabilities from the shared house footprint', () => {
@@ -441,9 +467,9 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
         draft,
       });
 
-      expect(projectModel.house?.roof.capabilities.controls).toEqual(controls);
-      expect(projectModel.house?.roof.capabilities.footprintTopology).toBe('rectangular');
-      expect(projectModel.house?.roof.capabilities.selectedFormSupported).toBe(true);
+      expect(projectModel.houseForms[0]?.roof.capabilities.controls).toEqual(controls);
+      expect(projectModel.houseForms[0]?.roof.capabilities.footprintTopology).toBe('rectangular');
+      expect(projectModel.houseForms[0]?.roof.capabilities.selectedFormSupported).toBe(true);
     }
   });
 
@@ -468,14 +494,14 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
       draft,
     });
 
-    expect(projectModel.house?.roof.capabilities.footprintTopology).toBe('orthogonal');
-    expect(projectModel.house?.roof.capabilities.selectedFormSupported).toBe(true);
-    expect(projectModel.house?.roof.validation.code).toBeNull();
-    expect(projectModel.house?.roof.validation.message).toBeNull();
-    expect(projectModel.house?.roof.validation.status).toBe('valid');
-    expect(projectModel.house?.roof.ridgeAxis).toBe('x');
-    expect(projectModel.house?.roof.provenance?.ridgeAxis).toBe('default_fallback');
-    expect(projectModel.house?.roof.geometryKind).toBe('bent_spine_joined_gable');
+    expect(projectModel.houseForms[0]?.roof.capabilities.footprintTopology).toBe('orthogonal');
+    expect(projectModel.houseForms[0]?.roof.capabilities.selectedFormSupported).toBe(true);
+    expect(projectModel.houseForms[0]?.roof.validation.code).toBeNull();
+    expect(projectModel.houseForms[0]?.roof.validation.message).toBeNull();
+    expect(projectModel.houseForms[0]?.roof.validation.status).toBe('valid');
+    expect(projectModel.houseForms[0]?.roof.ridgeAxis).toBe('x');
+    expect(projectModel.houseForms[0]?.roof.provenance?.ridgeAxis).toBe('default_fallback');
+    expect(projectModel.houseForms[0]?.roof.geometryKind).toBe('bent_spine_joined_gable');
   });
 
   it('keeps orthogonal hipped footprints valid and exposes joined-hipped geometry', () => {
@@ -495,13 +521,13 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
       draft,
     });
 
-    expect(projectModel.house?.roof.validation.status).toBe('valid');
-    expect(projectModel.house?.roof.validation.code).toBeNull();
-    expect(projectModel.house?.roof.geometryKind).toBe('rectilinear_joined_hipped');
-    expect(projectModel.house?.roof.capabilities.controls.ridgeAxis).toBe(true);
+    expect(projectModel.houseForms[0]?.roof.validation.status).toBe('valid');
+    expect(projectModel.houseForms[0]?.roof.validation.code).toBeNull();
+    expect(projectModel.houseForms[0]?.roof.geometryKind).toBe('rectilinear_joined_hipped');
+    expect(projectModel.houseForms[0]?.roof.capabilities.controls.ridgeAxis).toBe(true);
     // Milestone 13 session C: appendage capability is true on hipped
     // (subsumes legacy gable). Inspect appendage support separately.
-    expect(projectModel.house?.roof.capabilities.controls.appendage).toBe(true);
+    expect(projectModel.houseForms[0]?.roof.capabilities.controls.appendage).toBe(true);
   });
 
   it('filters invalid saved open gable ends when the ridge orientation changes', () => {
@@ -529,10 +555,10 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
       draft,
     });
 
-    expect(projectModel.house?.roof.openGableEndIds).toEqual([]);
+    expect(projectModel.houseForms[0]?.roof.openGableEndIds).toEqual([]);
     expect(projectModel.warnings.some((warning) => warning.code === 'invalid_house_first_roof_overlay')).toBe(true);
-    expect(projectModel.house?.roof.validation.status).toBe('valid');
-    expect(projectModel.house?.roof.validation.approximationReasons).toEqual([]);
+    expect(projectModel.houseForms[0]?.roof.validation.status).toBe('valid');
+    expect(projectModel.houseForms[0]?.roof.validation.approximationReasons).toEqual([]);
   });
 
   it('marks near-square gable footprints as approximate when the ridge axis is inferred', () => {
@@ -558,12 +584,12 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
       draft,
     });
 
-    expect(projectModel.house?.roof.validation.status).toBe('approximate');
-    expect(projectModel.house?.roof.validation.approximationReasons).toEqual([
+    expect(projectModel.houseForms[0]?.roof.validation.status).toBe('approximate');
+    expect(projectModel.houseForms[0]?.roof.validation.approximationReasons).toEqual([
       'inferred_ridge_axis',
       'ambiguous_ridge_axis',
     ]);
-    expect(projectModel.house?.roof.provenance?.ridgeAxis).toBe('default_fallback');
+    expect(projectModel.houseForms[0]?.roof.provenance?.ridgeAxis).toBe('default_fallback');
   });
 
   it('blocks explicit ridge axes that do not match the current footprint span/topology', () => {
@@ -590,8 +616,8 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
       draft,
     });
 
-    expect(projectModel.house?.roof.validation.status).toBe('invalid');
-    expect(projectModel.house?.roof.validation.code).toBe('invalid_ridge_axis');
+    expect(projectModel.houseForms[0]?.roof.validation.status).toBe('invalid');
+    expect(projectModel.houseForms[0]?.roof.validation.code).toBe('invalid_ridge_axis');
   });
 
   it('auto-heals stale preset ridge axes and dependent roof state for gable and hipped roofs', () => {
@@ -617,12 +643,12 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
         draft,
       });
 
-      expect(projectModel.house?.roof.form, form).toBe(form);
-      expect(projectModel.house?.roof.ridgeAxis, form).toBe('x');
-      expect(projectModel.house?.roof.provenance?.ridgeAxis, form).toBe('default_fallback');
-      expect(projectModel.house?.roof.validation.status, form).not.toBe('invalid');
-      expect(projectModel.house?.roof.validation.code, form).toBeNull();
-      expect(projectModel.house?.roof.openGableEndIds, form).toEqual([]);
+      expect(projectModel.houseForms[0]?.roof.form, form).toBe(form);
+      expect(projectModel.houseForms[0]?.roof.ridgeAxis, form).toBe('x');
+      expect(projectModel.houseForms[0]?.roof.provenance?.ridgeAxis, form).toBe('default_fallback');
+      expect(projectModel.houseForms[0]?.roof.validation.status, form).not.toBe('invalid');
+      expect(projectModel.houseForms[0]?.roof.validation.code, form).toBeNull();
+      expect(projectModel.houseForms[0]?.roof.openGableEndIds, form).toEqual([]);
     }
   });
 
@@ -654,16 +680,16 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
         draft,
       });
 
-      expect(projectModel.house?.roof.form, `${form}/${primaryPitchDeg}`).toBe(form);
-      expect(projectModel.house?.roof.primaryPitchDeg, `${form}/${primaryPitchDeg}`).toBe('5');
-      expect(projectModel.house?.roof.validation.code, `${form}/${primaryPitchDeg}`).toBeNull();
+      expect(projectModel.houseForms[0]?.roof.form, `${form}/${primaryPitchDeg}`).toBe(form);
+      expect(projectModel.houseForms[0]?.roof.primaryPitchDeg, `${form}/${primaryPitchDeg}`).toBe('5');
+      expect(projectModel.houseForms[0]?.roof.validation.code, `${form}/${primaryPitchDeg}`).toBeNull();
     }
 
     const flatDraft = buildLegacyEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
     if (!flatDraft) throw new Error('Expected drawing draft.');
     flatDraft.houseFirst = { roof: { form: 'flat', primaryPitchDeg: '18' } };
     expect(
-      buildHouseFirstWorkbenchProjectModel({ snapshot: monoFixture.snapshot, draft: flatDraft }).house?.roof
+      buildHouseFirstWorkbenchProjectModel({ snapshot: monoFixture.snapshot, draft: flatDraft }).houseForms[0]?.roof
         .primaryPitchDeg,
     ).toBe('0');
 
@@ -671,7 +697,7 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
     if (!monoDraft) throw new Error('Expected drawing draft.');
     monoDraft.houseFirst = { roof: { form: 'mono', primaryPitchDeg: '0' } };
     expect(
-      buildHouseFirstWorkbenchProjectModel({ snapshot: monoFixture.snapshot, draft: monoDraft }).house?.roof
+      buildHouseFirstWorkbenchProjectModel({ snapshot: monoFixture.snapshot, draft: monoDraft }).houseForms[0]?.roof
         .primaryPitchDeg,
     ).toBe('0');
   });
@@ -694,8 +720,8 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
       draft,
     });
 
-    expect(projectModel.house?.roof.terminalEnds).toHaveLength(2);
-    expect(projectModel.house?.roof.terminalEnds.map((end) => end.sourceEdgeId)).toEqual([
+    expect(projectModel.houseForms[0]?.roof.terminalEnds).toHaveLength(2);
+    expect(projectModel.houseForms[0]?.roof.terminalEnds.map((end) => end.sourceEdgeId)).toEqual([
       'footprint-edge-7',
       'footprint-edge-3',
     ]);
@@ -713,11 +739,11 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
       draft,
     });
 
-    expect(projectModel.house?.roof.form).toBe('mono');
-    expect(projectModel.house?.roof.capabilities.footprintTopology).toBe('orthogonal');
-    expect(projectModel.house?.roof.capabilities.selectedFormSupported).toBe(true);
-    expect(projectModel.house?.roof.validation.code).toBeNull();
-    expect(projectModel.house?.roof.validation.message).toBeNull();
+    expect(projectModel.houseForms[0]?.roof.form).toBe('mono');
+    expect(projectModel.houseForms[0]?.roof.capabilities.footprintTopology).toBe('orthogonal');
+    expect(projectModel.houseForms[0]?.roof.capabilities.selectedFormSupported).toBe(true);
+    expect(projectModel.houseForms[0]?.roof.validation.code).toBeNull();
+    expect(projectModel.houseForms[0]?.roof.validation.message).toBeNull();
   });
 
   it('treats every preset and live roof form as supported in the shared house model', () => {
@@ -744,14 +770,14 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
           draft,
         });
 
-        expect(projectModel.house?.footprint.preset, `${preset}/${form} footprint`).toBe(preset);
-        expect(projectModel.house?.roof.form, `${preset}/${form} form`).toBe(form);
-        expect(projectModel.house?.roof.geometryKind, `${preset}/${form} geometry`).not.toBeNull();
-        expect(projectModel.house?.roof.capabilities.selectedFormSupported, `${preset}/${form} supported`).toBe(
+        expect(projectModel.houseForms[0]?.footprint.preset, `${preset}/${form} footprint`).toBe(preset);
+        expect(projectModel.houseForms[0]?.roof.form, `${preset}/${form} form`).toBe(form);
+        expect(projectModel.houseForms[0]?.roof.geometryKind, `${preset}/${form} geometry`).not.toBeNull();
+        expect(projectModel.houseForms[0]?.roof.capabilities.selectedFormSupported, `${preset}/${form} supported`).toBe(
           true,
         );
-        expect(projectModel.house?.roof.validation.code, `${preset}/${form} validation code`).toBeNull();
-        expect(projectModel.house?.roof.validation.status, `${preset}/${form} validation status`).not.toBe(
+        expect(projectModel.houseForms[0]?.roof.validation.code, `${preset}/${form} validation code`).toBeNull();
+        expect(projectModel.houseForms[0]?.roof.validation.status, `${preset}/${form} validation status`).not.toBe(
           'invalid',
         );
       }
@@ -785,20 +811,20 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
             draft,
           });
 
-          expect(projectModel.house?.footprint.preset, `${preset}/${attachmentSide}/${form} footprint`).toBe(
+          expect(projectModel.houseForms[0]?.footprint.preset, `${preset}/${attachmentSide}/${form} footprint`).toBe(
             preset,
           );
-          expect(projectModel.house?.footprint.attachmentSide, `${preset}/${attachmentSide}/${form} side`).toBe(
+          expect(projectModel.houseForms[0]?.footprint.attachmentSide, `${preset}/${attachmentSide}/${form} side`).toBe(
             attachmentSide,
           );
-          expect(projectModel.house?.roof.form, `${preset}/${attachmentSide}/${form} form`).toBe(form);
-          expect(projectModel.house?.roof.geometryKind, `${preset}/${attachmentSide}/${form} geometry`).not.toBeNull();
+          expect(projectModel.houseForms[0]?.roof.form, `${preset}/${attachmentSide}/${form} form`).toBe(form);
+          expect(projectModel.houseForms[0]?.roof.geometryKind, `${preset}/${attachmentSide}/${form} geometry`).not.toBeNull();
           expect(
-            projectModel.house?.roof.capabilities.selectedFormSupported,
+            projectModel.houseForms[0]?.roof.capabilities.selectedFormSupported,
             `${preset}/${attachmentSide}/${form} supported`,
           ).toBe(true);
-          expect(projectModel.house?.roof.validation.code, `${preset}/${attachmentSide}/${form} code`).toBeNull();
-          expect(projectModel.house?.roof.validation.status, `${preset}/${attachmentSide}/${form} status`).not.toBe(
+          expect(projectModel.houseForms[0]?.roof.validation.code, `${preset}/${attachmentSide}/${form} code`).toBeNull();
+          expect(projectModel.houseForms[0]?.roof.validation.status, `${preset}/${attachmentSide}/${form} status`).not.toBe(
             'invalid',
           );
         }
@@ -828,8 +854,8 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
       draft,
     });
 
-    expect(orthogonalProjectModel.house?.roof.capabilities.footprintTopology).toBe('orthogonal');
-    expect(orthogonalProjectModel.house?.roof.validation.code).toBeNull();
+    expect(orthogonalProjectModel.houseForms[0]?.roof.capabilities.footprintTopology).toBe('orthogonal');
+    expect(orthogonalProjectModel.houseForms[0]?.roof.validation.code).toBeNull();
 
     draft.inputs.modules[0]!.houseFootprintPolygon = [
       { alongM: '0', depthM: '-1.8' },
@@ -843,9 +869,9 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
       draft,
     });
 
-    expect(polygonalProjectModel.house?.roof.capabilities.footprintTopology).toBe('polygonal');
-    expect(polygonalProjectModel.house?.roof.validation.code).toBe('unsupported_roof_topology');
-    expect(polygonalProjectModel.house?.roof.validation.message).toBe(
+    expect(polygonalProjectModel.houseForms[0]?.roof.capabilities.footprintTopology).toBe('polygonal');
+    expect(polygonalProjectModel.houseForms[0]?.roof.validation.code).toBe('unsupported_roof_topology');
+    expect(polygonalProjectModel.houseForms[0]?.roof.validation.message).toBe(
       'Mono roofs are currently limited to orthogonal house footprints in this milestone.',
     );
   });
@@ -858,8 +884,8 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
       draft: fixture.draft,
     });
 
-    expect(projectModel.house?.footprint.preset).toBe('straight');
-    expect(projectModel.house?.lowConfidence).toBe(true);
+    expect(projectModel.houseForms[0]?.footprint.preset).toBe('straight');
+    expect(projectModel.houseForms[0]?.lowConfidence).toBe(true);
     expect(projectModel.warnings.length).toBeGreaterThan(0);
     expect(projectModel.warnings[0]?.severity).toBe('blocking');
     expect(projectModel.warnings[0]?.chosenModuleIndex).toBe(0);
@@ -921,25 +947,25 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
       draft,
     });
 
-    expect(projectModel.house?.decks[0]?.presetRect).toEqual({
+    expect(projectModel.houseForms[0]?.decks[0]?.presetRect).toEqual({
       widthM: '4',
       depthM: '2.5',
       centerOffsetM: '1',
       detachedGapM: null,
     });
-    expect(projectModel.house?.decks[0]?.outline).toEqual([
+    expect(projectModel.houseForms[0]?.decks[0]?.outline).toEqual([
       { alongM: '2', depthM: '-2.5' },
       { alongM: '6', depthM: '-2.5' },
       { alongM: '6', depthM: '0' },
       { alongM: '2', depthM: '0' },
     ]);
-    expect(projectModel.house?.decks[1]?.presetRect).toEqual({
+    expect(projectModel.houseForms[0]?.decks[1]?.presetRect).toEqual({
       widthM: '3.6',
       depthM: '3',
       centerOffsetM: '1',
       detachedGapM: '0.6',
     });
-    expect(projectModel.house?.decks[1]?.floatingRect).toEqual({
+    expect(projectModel.houseForms[0]?.decks[1]?.floatingRect).toEqual({
       centerAlongM: '4',
       centerDepthM: '-2.1',
       widthM: '3.6',
@@ -971,10 +997,10 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
       draft,
     });
 
-    expect(projectModel.house?.roof.validation.status).toBe('invalid');
-    expect(projectModel.house?.roof.validation.code).toBe('invalid_appendage_topology');
-    expect(projectModel.house?.roof.appendageSupportedHostEdges).toEqual([]);
-    expect(projectModel.house?.roof.appendageSupportReason).toContain('Appendage bands require at least one continuous exterior perimeter run');
+    expect(projectModel.houseForms[0]?.roof.validation.status).toBe('invalid');
+    expect(projectModel.houseForms[0]?.roof.validation.code).toBe('invalid_appendage_topology');
+    expect(projectModel.houseForms[0]?.roof.appendageSupportedHostEdges).toEqual([]);
+    expect(projectModel.houseForms[0]?.roof.appendageSupportReason).toContain('Appendage bands require at least one continuous exterior perimeter run');
   });
 
   it('uses floating preset rects as detached preset geometry without discarding legacy preset fields', () => {
@@ -1016,19 +1042,19 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
       draft,
     });
 
-    expect(projectModel.house?.decks[0]?.presetRect).toEqual({
+    expect(projectModel.houseForms[0]?.decks[0]?.presetRect).toEqual({
       widthM: '3.6',
       depthM: '3',
       centerOffsetM: '0.4',
       detachedGapM: '0.6',
     });
-    expect(projectModel.house?.decks[0]?.floatingRect).toEqual({
+    expect(projectModel.houseForms[0]?.decks[0]?.floatingRect).toEqual({
       centerAlongM: '8',
       centerDepthM: '5',
       widthM: '4',
       depthM: '2',
     });
-    expect(projectModel.house?.decks[0]?.outline).toEqual([
+    expect(projectModel.houseForms[0]?.decks[0]?.outline).toEqual([
       { alongM: '6', depthM: '4' },
       { alongM: '10', depthM: '4' },
       { alongM: '10', depthM: '6' },
@@ -1085,19 +1111,19 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
       draft,
     });
 
-    expect(projectModel.house?.decks[0]?.presetRect).toEqual({
+    expect(projectModel.houseForms[0]?.decks[0]?.presetRect).toEqual({
       widthM: '12',
       depthM: '2',
       centerOffsetM: '999',
       detachedGapM: null,
     });
-    expect(projectModel.house?.decks[0]?.outline).toEqual([
+    expect(projectModel.houseForms[0]?.decks[0]?.outline).toEqual([
       { alongM: '996', depthM: '-2' },
       { alongM: '1008', depthM: '-2' },
       { alongM: '1008', depthM: '0' },
       { alongM: '996', depthM: '0' },
     ]);
-    expect(projectModel.house?.decks[1]?.outline).toEqual([
+    expect(projectModel.houseForms[0]?.decks[1]?.outline).toEqual([
       { alongM: '7', depthM: '-1' },
       { alongM: '9', depthM: '-1' },
       { alongM: '8.5', depthM: '-3' },
@@ -1145,13 +1171,13 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
       draft,
     });
 
-    expect(projectModel.house?.decks[0]?.outline).toEqual([
+    expect(projectModel.houseForms[0]?.decks[0]?.outline).toEqual([
       { alongM: '1.25', depthM: '-1.25' },
       { alongM: '7.25', depthM: '-1.25' },
       { alongM: '7.25', depthM: '0.75' },
       { alongM: '1.25', depthM: '0.75' },
     ]);
-    expect(projectModel.house?.decks[0]?.validation.status).toBe('valid');
+    expect(projectModel.houseForms[0]?.decks[0]?.validation.status).toBe('valid');
   });
 
   it('keeps oversized attached preset decks anchored to the selected exact custom-footprint wall segment', () => {
@@ -1198,19 +1224,19 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
       draft,
     });
 
-    expect(projectModel.house?.decks[0]?.presetRect).toEqual({
+    expect(projectModel.houseForms[0]?.decks[0]?.presetRect).toEqual({
       widthM: '12',
       depthM: '2.2',
       centerOffsetM: '999',
       detachedGapM: null,
     });
-    expect(projectModel.house?.decks[0]?.outline).toEqual([
+    expect(projectModel.houseForms[0]?.decks[0]?.outline).toEqual([
       { alongM: '996', depthM: '-2.2' },
       { alongM: '1008', depthM: '-2.2' },
       { alongM: '1008', depthM: '0' },
       { alongM: '996', depthM: '0' },
     ]);
-    expect(projectModel.house?.decks[0]?.validation.status).toBe('valid');
+    expect(projectModel.houseForms[0]?.decks[0]?.validation.status).toBe('valid');
   });
 
   it('builds shared openings from opening drafts and validates overlaps on the same wall', () => {
@@ -1248,7 +1274,7 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
       draft,
     });
 
-    expect(projectModel.house?.openings[0]).toMatchObject({
+    expect(projectModel.houseForms[0]?.openings[0]).toMatchObject({
       id: 'opening-1',
       wallId: 'rear',
       hostEdgeId: 'footprint-edge-3',
@@ -1257,7 +1283,7 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
         message: null,
       },
     });
-    expect(projectModel.house?.openings[1]?.validation).toMatchObject({
+    expect(projectModel.houseForms[0]?.openings[1]?.validation).toMatchObject({
       status: 'invalid',
       codes: ['overlapping_openings'],
       message: 'Openings on the same wall cannot overlap.',
@@ -1274,7 +1300,7 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
     const straightProject = buildHouseFirstWorkbenchProjectModel({
       snapshot: monoFixture.snapshot,
     });
-    expect(straightProject.house?.derivedWallGraph.walls.map((wall) => ({
+    expect(straightProject.houseForms[0]?.derivedWallGraph.walls.map((wall) => ({
       id: wall.id,
       label: wall.label,
       edgeIds: wall.edgeIds,
@@ -1304,7 +1330,7 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
       draft: customDraft,
     });
     expect(
-      customProject.house?.derivedWallGraph.walls
+      customProject.houseForms[0]?.derivedWallGraph.walls
         .filter((wall) => wall.label.startsWith('Rear wall'))
         .map((wall) => `${wall.id}:${wall.label}`),
     ).toEqual([
@@ -1318,7 +1344,7 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
       draft: screenshotFixture.draft,
     });
     expect(
-      screenshotProject.house?.derivedWallGraph.walls
+      screenshotProject.houseForms[0]?.derivedWallGraph.walls
         .filter((wall) => wall.label.startsWith('Rear wall'))
         .map((wall) => `${wall.id}:${wall.label}`),
     ).toEqual([
@@ -1355,7 +1381,7 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
       draft,
     });
 
-    expect(projectModel.house?.openings[0]).toMatchObject({
+    expect(projectModel.houseForms[0]?.openings[0]).toMatchObject({
       hostWallId: 'wall-footprint-edge-3',
       wallId: 'rear',
       hostEdgeId: 'footprint-edge-3',
@@ -1393,7 +1419,7 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
       draft,
     });
 
-    expect(projectModel.house?.openings[0]).toMatchObject({
+    expect(projectModel.houseForms[0]?.openings[0]).toMatchObject({
       hostWallId: 'wall-footprint-edge-4',
       wallId: 'left',
       hostEdgeId: 'footprint-edge-4',
@@ -1430,7 +1456,7 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
       draft,
     });
 
-    expect(projectModel.house?.openings[0]).toMatchObject({
+    expect(projectModel.houseForms[0]?.openings[0]).toMatchObject({
       hostWallId: null,
       wallId: 'rear',
       hostEdgeId: null,
@@ -1469,7 +1495,7 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
       draft,
     });
 
-    expect(projectModel.house?.openings[0]).toMatchObject({
+    expect(projectModel.houseForms[0]?.openings[0]).toMatchObject({
       hostWallId: 'wall-footprint-edge-99',
       wallId: 'rear',
       hostEdgeId: 'footprint-edge-3',
@@ -1527,14 +1553,14 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
       draft,
     });
 
-    expect(projectModel.house?.openings.map((opening) => opening.kind)).toEqual([
+    expect(projectModel.houseForms[0]?.openings.map((opening) => opening.kind)).toEqual([
       'slider',
       'hinged_door',
       'window',
     ]);
-    expect(projectModel.house?.openings[0]?.panelCount).toBe(3);
-    expect(projectModel.house?.openings[1]?.panelCount).toBeNull();
-    expect(projectModel.house?.openings[2]?.panelCount).toBeNull();
+    expect(projectModel.houseForms[0]?.openings[0]?.panelCount).toBe(3);
+    expect(projectModel.houseForms[0]?.openings[1]?.panelCount).toBeNull();
+    expect(projectModel.houseForms[0]?.openings[2]?.panelCount).toBeNull();
   });
 
   it('enforces simple slider corner clearance while leaving window validation shared', () => {
@@ -1573,12 +1599,12 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
       draft,
     });
 
-    expect(projectModel.house?.openings[0]?.validation).toMatchObject({
+    expect(projectModel.houseForms[0]?.openings[0]?.validation).toMatchObject({
       status: 'invalid',
       codes: ['insufficient_corner_clearance'],
       message: 'Sliders and stackers need at least 0.3m clearance from each wall corner.',
     });
-    expect(projectModel.house?.openings[1]?.validation.status).toBe('valid');
+    expect(projectModel.houseForms[0]?.openings[1]?.validation.status).toBe('valid');
   });
 
   it('applies the same corner-clearance rule to stackers while keeping doors on shared wall-fit rules', () => {
@@ -1616,12 +1642,12 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
       draft,
     });
 
-    expect(projectModel.house?.openings[0]?.validation).toMatchObject({
+    expect(projectModel.houseForms[0]?.openings[0]?.validation).toMatchObject({
       status: 'invalid',
       codes: ['insufficient_corner_clearance'],
       message: 'Sliders and stackers need at least 0.3m clearance from each wall corner.',
     });
-    expect(projectModel.house?.openings[1]?.validation).toMatchObject({
+    expect(projectModel.houseForms[0]?.openings[1]?.validation).toMatchObject({
       status: 'valid',
       message: null,
     });

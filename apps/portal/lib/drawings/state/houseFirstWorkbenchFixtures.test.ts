@@ -11,17 +11,17 @@ describe('houseFirstWorkbenchFixtures', () => {
   it('provides a one-pergola shared house fixture', () => {
     const fixture = makeHouseFirstOnePergolaFixture();
 
-    expect(fixture.house?.id).toBe('house-main');
+    expect(fixture.houseForms[0]?.id).toBe('house-main');
     expect(fixture.pergolas).toHaveLength(1);
-    expect(fixture.house?.roof.form).toBe('mono');
-    expect(fixture.house?.attachmentZoneDiagnostics.blocked).toEqual([]);
+    expect(fixture.houseForms[0]?.roof.form).toBe('mono');
+    expect(fixture.houseForms[0]?.attachmentZoneDiagnostics.blocked).toEqual([]);
   });
 
   it('provides a two-pergola shared house fixture', () => {
     const fixture = makeHouseFirstTwoPergolaSharedHouseFixture();
 
     expect(fixture.pergolas).toHaveLength(2);
-    expect(fixture.house?.attachmentZones).toHaveLength(1);
+    expect(fixture.houseForms[0]?.attachmentZones).toHaveLength(1);
   });
 
   it('provides a conflicting legacy house-context snapshot fixture', () => {
@@ -41,12 +41,12 @@ describe('houseFirstWorkbenchFixtures', () => {
     const nonRelevant = makeHouseFirstDeckSupportProjectFixture({ id: 'left_non_relevant_when_rear_active' });
     const warningHeavy = makeHouseFirstDeckSupportProjectFixture({ id: 'rear_warning_heavy_attached' });
 
-    expect(rear.projectModel.house?.decks[0]?.supportContext.classification).toBe('threshold_attached');
+    expect(rear.projectModel.houseForms[0]?.decks[0]?.supportContext.classification).toBe('threshold_attached');
     expect(left.activeHostSide).toBe('left');
-    expect(detached.projectModel.house?.decks[0]?.supportContext.classification).toBe('ground_supported');
-    expect(wrap.projectModel.house?.decks[0]?.supportContext.nearestHouseEdgeId).toBe('left');
-    expect(nonRelevant.projectModel.house?.decks[0]?.hostEdgeId).toBe('left');
-    expect(warningHeavy.projectModel.house?.decks[0]?.supportContext.warningCodes).toContain(
+    expect(detached.projectModel.houseForms[0]?.decks[0]?.supportContext.classification).toBe('ground_supported');
+    expect(wrap.projectModel.houseForms[0]?.decks[0]?.supportContext.nearestHouseEdgeId).toBe('left');
+    expect(nonRelevant.projectModel.houseForms[0]?.decks[0]?.hostEdgeId).toBe('left');
+    expect(warningHeavy.projectModel.houseForms[0]?.decks[0]?.supportContext.warningCodes).toContain(
       'insufficient_host_edge_contact',
     );
   });

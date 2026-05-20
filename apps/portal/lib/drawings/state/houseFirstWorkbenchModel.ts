@@ -405,9 +405,16 @@ export function resolveOpeningPanelCount(
 
 // Compatibility runtime contract for the current hidden workbench store.
 // This is not the canonical object-first project contract described by the active April docs.
+//
+// `houseForms[]` is the multi-form-ready shape: every estimate today
+// emits exactly one entry (the synthesized `LEGACY_PRIMARY_HOUSE_FORM_ID`
+// house) until a future phase enables user-authored multi-form
+// estimates. Empty array signals "no resolvable house" (previously
+// `house: null`). Consumers should read `houseForms[0] ?? null` until
+// the rail UI gates a primary form explicitly.
 export type HouseFirstWorkbenchProjectModel = {
   source: 'legacy_estimate_snapshot';
-  house: HouseModel | null;
+  houseForms: HouseModel[];
   pergolas: PergolaModel[];
   warnings: HouseFirstMigrationWarning[];
 };
