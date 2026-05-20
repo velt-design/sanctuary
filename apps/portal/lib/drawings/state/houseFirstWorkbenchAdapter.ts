@@ -39,6 +39,7 @@ import type {
   HouseFirstWorkbenchProjectModel,
   PergolaModel,
 } from './houseFirstWorkbenchModel';
+import type { ObjectFirstHouseFormDraft } from './objectFirstWorkbenchModel';
 import { buildSharedDecks } from './houseFirstDeckAdapter';
 import { buildSharedOpenings } from './houseFirstOpeningAdapter';
 import {
@@ -652,6 +653,167 @@ function buildSharedHouse(
   };
 }
 
+/**
+ * Build a `HouseModel` for an additional (non-primary) house form authored
+ * directly in `objectFirst.houseAssembly.houseForms[]`. Mirrors
+ * `buildSharedHouse`'s post-collect block but reads every input from the
+ * authored draft instead of synthesising from `CalculatorModuleInputs[]`.
+ *
+ * Two deliberate v0 simplifications:
+ *   1. `attachmentKind: 'freestanding'` — additional forms cannot host
+ *      pergolas yet. Cross-form pergola hosting is a later phase that
+ *      lifts the per-pergola `hostHouseFormId` field.
+ *   2. Pergola-dimension fallbacks (`fallbackWidthMm`/`Depth`) are used
+ *      when synthesising preset-mode footprints. For draft-authored
+ *      forms these only matter when `footprintMode === 'preset'` AND
+ *      the form is independent of any pergola; the 6×3m default keeps
+ *      preset-derived polygons sensibly sized.
+ *
+ * Returns the form's `HouseModel` plus any warnings the roof projection
+ * raised. Migration warnings (the "collect disagreed across modules"
+ * shape) don't apply here because there are no modules to disagree.
+ */
+function buildAdditionalHouseFormFromDraft(input: {
+  formDraft: ObjectFirstHouseFormDraft;
+  deckDrafts: HouseFirstDeckDraft[] | null | undefined;
+  openingDrafts: HouseFirstOpeningDraft[] | null | undefined;
+  houseFormId: string;
+}): {
+  house: HouseModel;
+  warnings: HouseFirstMigrationWarning[];
+} {
+  const { formDraft, houseFormId } = input;
+  const warnings: HouseFirstMigrationWarning[] = [];
+
+  const normalizedFootprintMode = formDraft.footprint.mode;
+  const normalizedFootprintPreset = formDraft.footprint.preset;
+  const normalizedFootprintParams = formDraft.footprint.params;
+  const normalizedFootprintPolygon = formDraft.footprint.polygon;
+  const normalizedAttachmentSide = formDraft.footprint.attachmentSide;
+  const normalizedDrawingRotationQuarterTurns =
+    formDraft.transform.rotationQuarterTurns;
+  const normalizedRoofMaterial = formDraft.roofIntent.material;
+  const normalizedStoreyMode = formDraft.storeyMode;
+
+  // Default pergola dims for preset-mode footprint synthesis. Additional
+  // forms aren't tied to a pergola, so we pick a sensible 6×3m fallback;
+  // when `footprintMode === 'custom_polygon'` these values are ignored.
+  const fallbackPergolaWidthMm = 6000;
+  const fallbackPergolaDepthMm = 3000;
+  const derivedHousePolygon =
+    normalizedFootprintMode === 'custom_polygon'
+      ? normalizedFootprintPolygon
+      : buildHouseFootprintPresetSideLocalPoints({
+          pergolaWidthMm: fallbackPergolaWidthMm,
+          pergolaDepthMm: fallbackPergolaDepthMm,
+          preset: normalizedFootprintPreset,
+          params: normalizedFootprintParams,
+          attachmentSide: normalizedAttachmentSide,
+        }).map((point) => ({
+          alongM: String(point.alongM),
+          depthM: String(point.depthM),
+        }));
+
+  const roofDraft: HouseFirstRoofDraft = {
+    form: formDraft.roofIntent.form,
+    primaryPitchDeg: formDraft.roofIntent.primaryPitchDeg,
+    material: formDraft.roofIntent.material,
+    primaryFallDirection: formDraft.roofIntent.primaryFallDirection,
+    ridgeAxis: formDraft.roofIntent.ridgeAxis,
+    openGableEndIds: formDraft.roofIntent.openGableEndIds,
+    appendage: formDraft.roofIntent.appendage,
+  };
+
+  const roofProjection = resolveHouseRoofProjection({
+    roofDraft,
+    derivedHousePolygon,
+    normalizedFootprintMode,
+    normalizedFootprintPreset,
+    normalizedFootprintParams,
+    normalizedAttachmentSide,
+    attachmentKind: 'freestanding',
+    attachmentStrategy: formDraft.attachmentStrategy,
+    normalizedRoofMaterial,
+    roofMaterialSource: 'legacy_shared_value',
+    roofPitchSource: 'legacy_shared_value',
+    inferredPrimaryPitchDeg: formDraft.roofIntent.primaryPitchDeg,
+    roofForm: formDraft.roofIntent.form,
+    firstModuleLengthMm: fallbackPergolaWidthMm,
+    firstModuleProjectionMm: fallbackPergolaDepthMm,
+    eaveHeightM: formDraft.eaveHeightM ?? '',
+    eaveOverhangMm: formDraft.eaveOverhangMm ?? '',
+  });
+  for (const warning of roofProjection.warnings) warnings.push(warning);
+
+  const derivedWalls = buildDerivedWallLookup({
+    houseId: houseFormId,
+    housePolygon: derivedHousePolygon,
+  });
+  const decks = buildSharedDecks({
+    deckDrafts: input.deckDrafts,
+    housePolygon: derivedHousePolygon,
+    footprintParams: normalizedFootprintParams,
+  });
+  const openings = buildSharedOpenings({
+    openingDrafts: input.openingDrafts,
+    derivedWalls,
+    fallbackWallId: normalizedAttachmentSide,
+  });
+  const derivedEnvelope = buildDerivedEnvelopeLookup({
+    houseId: houseFormId,
+    housePolygon: derivedHousePolygon,
+    derivedWalls,
+    roof: {
+      form: roofProjection.roof.form,
+      validation: roofProjection.roof.validation,
+    },
+    attachmentStrategy: formDraft.attachmentStrategy,
+    openings,
+  });
+
+  return {
+    house: {
+      id: houseFormId,
+      label: formDraft.label,
+      confidence: 'high',
+      lowConfidence: false,
+      // No source modules — this form was authored directly in the draft,
+      // not synthesised from `CalculatorModuleInputs`.
+      sourceModuleIndexes: [],
+      sourceModuleIds: [],
+      footprint: {
+        mode: normalizedFootprintMode,
+        preset: normalizedFootprintPreset,
+        params: normalizedFootprintParams,
+        polygon: normalizedFootprintPolygon,
+        drawingRotationQuarterTurns: normalizedDrawingRotationQuarterTurns,
+        attachmentSide: normalizedAttachmentSide,
+      },
+      roof: {
+        ...roofProjection.roof,
+        confidence: 'high',
+      },
+      storeyMode: normalizedStoreyMode,
+      attachmentStrategy: formDraft.attachmentStrategy,
+      eaveHeightM: formDraft.eaveHeightM ?? '',
+      wallHeightM: formDraft.wallHeightM ?? '',
+      soffitDepthMm: formDraft.soffitDepthMm ?? '',
+      fasciaHeightMm: formDraft.fasciaHeightMm ?? '',
+      gutterWidthMm: formDraft.gutterWidthMm ?? '',
+      gutterDepthMm: formDraft.gutterDepthMm ?? '',
+      gutterProjectionMm: formDraft.gutterProjectionMm ?? '',
+      eaveOverhangMm: formDraft.eaveOverhangMm ?? '',
+      derivedEnvelope: derivedEnvelope.envelope,
+      derivedWallGraph: derivedWalls.graph,
+      decks,
+      openings,
+      attachmentZones: derivedEnvelope.compatibilityZones,
+      attachmentZoneDiagnostics: derivedEnvelope.diagnostics,
+    },
+    warnings,
+  };
+}
+
 function buildPergolas(input: {
   modules: ReturnType<typeof buildEstimateDrawingModules>;
   legacyPergolas: Array<{ id: string; label: string }>;
@@ -743,12 +905,32 @@ export function buildHouseFirstWorkbenchProjectModel(input: {
     input.draft?.houseFirst?.decks ?? null,
     input.draft?.houseFirst?.openings ?? null,
   );
-  // Multi-form-ready shape. Today the builder always produces a single
-  // shared house (or null when no modules resolve a footprint); future
-  // multi-form work replaces this with a loop over user-authored house
-  // forms in the draft. The empty-array case mirrors the previous
-  // `house: null` semantics.
+  // Primary house form is the legacy module-synthesised one (kept under
+  // `LEGACY_PRIMARY_HOUSE_FORM_ID`). Additional forms are read from the
+  // authored draft -- any `houseAssembly.houseForms[]` entry whose id
+  // doesn't match the primary becomes its own freestanding form via
+  // `buildAdditionalHouseFormFromDraft`.
+  //
+  // Today's deck/opening drafts have no `hostHouseFormId` field, so
+  // additional forms always emit empty decks/openings -- they exist as
+  // standalone structures (e.g. a sleepout next to the main house).
+  // Phase 5 lifts the host-form binding so decks/openings can attach
+  // to any form.
   const houseForms: HouseModel[] = sharedHouse.house ? [sharedHouse.house] : [];
+  const additionalFormWarnings: HouseFirstMigrationWarning[] = [];
+  const authoredForms = input.draft?.objectFirst?.houseAssembly?.houseForms ?? [];
+  const primaryId = sharedHouse.house?.id ?? LEGACY_PRIMARY_HOUSE_FORM_ID;
+  for (const formDraft of authoredForms) {
+    if (formDraft.id === primaryId) continue;
+    const result = buildAdditionalHouseFormFromDraft({
+      formDraft,
+      deckDrafts: null,
+      openingDrafts: null,
+      houseFormId: formDraft.id,
+    });
+    houseForms.push(result.house);
+    for (const warning of result.warnings) additionalFormWarnings.push(warning);
+  }
   const primaryHouseForm = houseForms[0] ?? null;
   const pergolaResult = buildPergolas({
     modules,
@@ -761,6 +943,10 @@ export function buildHouseFirstWorkbenchProjectModel(input: {
     source: 'legacy_estimate_snapshot',
     houseForms,
     pergolas: pergolaResult.pergolas,
-    warnings: [...sharedHouse.warnings, ...pergolaResult.warnings],
+    warnings: [
+      ...sharedHouse.warnings,
+      ...additionalFormWarnings,
+      ...pergolaResult.warnings,
+    ],
   };
 }
