@@ -28,91 +28,87 @@ import type {
 } from "@/lib/drawings/geometry/buildWorkbenchGeometryPreview";
 import type { DrawingWorkbenchVisibilityState } from "@/lib/drawings/state/drawingWorkbenchUiState";
 import type { ObjectWorkbenchDisplayFamily } from "@/lib/drawings/state/objectWorkbenchViewportTypes";
-import { blockNativeSelectionEvent } from "./nativeSelection";
+import { blockNativeSelectionEvent } from "../nativeSelection";
 import styles from "./Geometry3DViewport.module.css";
+import type { SceneBounds } from "./geometry/sceneBoundsTypes";
+import { sceneForDisplayMode } from "./geometry/sceneFilters";
+import {
+  MIN_RENDERABLE_POLYGON_AREA_MM2,
+  allSceneBoundsFinite,
+  boundingSize,
+  centroid,
+  isFinitePoint,
+  isRenderableLine,
+  isRenderablePolygon,
+  isRenderableRenderMesh,
+  linePoints,
+  midpoint,
+  polygonArea3D,
+  renderMeshPoints,
+  uniquePointCount,
+} from "./geometry/scenePointHelpers";
+import {
+  buildPresetCameraState,
+  cameraStatesEqual,
+  clampCameraStateToScene,
+  defaultCameraStateForScene,
+  directionForPreset,
+  directionFromCameraState,
+  fitDistanceForSize,
+  formatCameraFocusMode,
+  formatCameraPreset,
+  formatPoint,
+  formatVector,
+  offsetPoint,
+  pointDistance,
+  pointToVector,
+  pointsRoughlyEqual,
+  positionFromDirection,
+  vectorToPoint,
+  type Geometry3DViewportState,
+  type GeometryCameraFocusMode,
+  type GeometryCameraPreset,
+  type GeometryCameraState,
+  type GeometryViewportCamera,
+} from "./interaction/cameraState";
+export type { Geometry3DViewportState } from "./interaction/cameraState";
+import {
+  buildDatumOriginAnchor,
+  buildMeasurementAnchor,
+  defaultAnchorTypeForObject,
+  focusPointForObject,
+  formatAnchorType,
+  formatDistanceMm,
+  measurementDelta,
+  measurementDistance,
+  measurementPlanDistance,
+  pointsForObject,
+  resolveAnchorPoint,
+  supportsEndpointAnchors,
+  type MeasurementAnchor,
+  type MeasurementAnchorType,
+  type MeasurementState,
+} from "./interaction/measurement";
+import {
+  collectHouseOpeningViewportDiagnostics,
+  formatDiagnosticToken,
+  formatMetadata,
+  houseRoofQaSummary,
+  metadataNumber,
+  metadataText,
+  objectSummary,
+  previewModeLabel,
+  rectContains,
+  rectDiagnostics,
+  sceneMetadataNumber,
+  sceneMetadataString,
+  type HouseOpeningViewportDiagnostics,
+  type HouseRoofViewportDiagnostics,
+  type ViewportRectDiagnostics,
+} from "./interaction/diagnostics";
 
 const ORBIT_MOUSE_DISABLED = -1 as THREE.MOUSE;
 const ORBIT_ZOOM_SPEED = 2.85;
-
-type GeometryViewportCamera = THREE.PerspectiveCamera | THREE.OrthographicCamera;
-
-type SceneBounds = {
-  min: Point3;
-  max: Point3;
-  center: Point3;
-  size: number;
-};
-
-function sceneForDisplayMode(
-  scene: ViewerSceneModel,
-  displayMode: "house" | "pergolas",
-  visibility?: DrawingWorkbenchVisibilityState,
-): ViewerSceneModel {
-  if (displayMode !== "house") return scene;
-
-  const houseVisibility = visibility ?? {
-    house: true,
-    pergolas: true,
-    decks: true,
-    openings: true,
-  };
-
-  return {
-    ...scene,
-    layers: scene.layers
-      .map((layer) => {
-        if (layer.id === "house") {
-          return {
-            ...layer,
-            objects: layer.objects.filter((object) => {
-              const metadata =
-                "metadata" in object &&
-                object.metadata &&
-                typeof object.metadata === "object"
-                  ? object.metadata
-                  : {};
-              const openingKind =
-                "kind" in object &&
-                (object.kind === "opening_marker" ||
-                  object.kind === "opening_outline");
-              const isOpening =
-                openingKind ||
-                ("openingId" in metadata &&
-                  typeof metadata.openingId === "string");
-              if (isOpening) return houseVisibility.openings;
-
-              const isDeck =
-                object.id.includes("deck-") ||
-                ("deckId" in metadata &&
-                  typeof metadata.deckId === "string") ||
-                ("deckSurfaceMaterial" in metadata &&
-                  typeof metadata.deckSurfaceMaterial === "string");
-              if (isDeck) return houseVisibility.decks;
-
-              return houseVisibility.house;
-            }),
-          };
-        }
-
-        if (layer.id === "house_roof_materials") {
-          return houseVisibility.house
-            ? layer
-            : {
-                ...layer,
-                objects: [],
-              };
-        }
-
-        return houseVisibility.pergolas
-          ? layer
-          : {
-              ...layer,
-              objects: [],
-            };
-      })
-      .filter((layer) => layer.objects.length > 0),
-  };
-}
 
 type SectionCutState = {
   enabled: boolean;
@@ -123,74 +119,6 @@ type OverlayVisibility = {
   datumAxes: boolean;
   roofFallVectors: boolean;
   selectedMemberAxes: boolean;
-};
-
-type MeasurementAnchorType =
-  | "start"
-  | "midpoint"
-  | "end"
-  | "centroid"
-  | "datum_origin";
-
-type MeasurementAnchor = {
-  id: string;
-  objectId: string | "datum-origin";
-  anchorType: MeasurementAnchorType;
-  point: Point3;
-};
-
-type MeasurementState = {
-  enabled: boolean;
-  firstAnchor: MeasurementAnchor | null;
-  secondAnchor: MeasurementAnchor | null;
-  snapMode: "selection" | "datum";
-  lastEditedSlot: "a" | "b";
-};
-
-type GeometryCameraPreset = "iso" | "front" | "right" | "top" | "custom";
-
-type GeometryCameraFocusMode = "scene" | "selection" | "manual";
-
-type GeometryCameraState = {
-  position: Point3;
-  target: Point3;
-  distanceMm: number;
-  viewPreset: GeometryCameraPreset;
-  focusMode: GeometryCameraFocusMode;
-};
-
-export type Geometry3DViewportState = {
-  cameraState: GeometryCameraState;
-};
-
-type ViewportRectDiagnostics = {
-  shellWidth: number;
-  shellHeight: number;
-  canvasWidth: number;
-  canvasHeight: number;
-  canvasContained: boolean;
-};
-
-type HouseRoofViewportDiagnostics = {
-  qaStatus: string;
-  qaFailureReason: string;
-  topologyFinalFaceCount: number;
-  topologyValleyCount: number;
-  topologyDisconnectedSourceFaceCount: number;
-  topologyInternalEaveHeightSegmentCount: number;
-  expectedSolidCount: number;
-  renderedSolidCount: number;
-  skippedSolidCount: number;
-};
-
-type HouseOpeningViewportDiagnostics = {
-  totalCount: number;
-  validCount: number;
-  hostEdgeResolvedCount: number;
-  hostEdgeUnresolvedCount: number;
-  renderedMarkerCount: number;
-  skippedInvalidCount: number;
-  unresolvedValidCount: number;
 };
 
 const LAYER_COLORS: Record<string, string> = {
@@ -208,125 +136,7 @@ const LAYER_COLORS: Record<string, string> = {
   attachment_edge: "#bb4b4b",
 };
 
-const MIN_RENDERABLE_POLYGON_AREA_MM2 = 1;
 const POLYGON_TRIANGULATION_EPSILON_MM = 1e-6;
-
-function linePoints(line: { start: Point3; end: Point3 }): Point3[] {
-  return [line.start, line.end];
-}
-
-function isFinitePoint(point: Point3): boolean {
-  return (
-    Number.isFinite(point.x) &&
-    Number.isFinite(point.y) &&
-    Number.isFinite(point.z)
-  );
-}
-
-function isRenderableRenderMesh(mesh: RenderMesh3D | undefined): mesh is RenderMesh3D {
-  return Boolean(
-    mesh &&
-      mesh.vertices.length >= 3 &&
-      mesh.faces.length > 0 &&
-      mesh.vertices.every(isFinitePoint) &&
-      mesh.faces.every((face) =>
-        face.every((index) => Number.isInteger(index) && index >= 0 && index < mesh.vertices.length),
-      ),
-  );
-}
-
-function renderMeshPoints(mesh: RenderMesh3D | undefined): Point3[] {
-  return isRenderableRenderMesh(mesh) ? mesh.vertices : [];
-}
-
-function isRenderableLine(line: { start: Point3; end: Point3 }): boolean {
-  if (!isFinitePoint(line.start) || !isFinitePoint(line.end)) return false;
-  const dx = line.end.x - line.start.x;
-  const dy = line.end.y - line.start.y;
-  const dz = line.end.z - line.start.z;
-  return Math.sqrt(dx * dx + dy * dy + dz * dz) > 0.001;
-}
-
-function polygonArea3D(points: Point3[]): number {
-  if (points.length < 3) return 0;
-  const origin = points[0]!;
-  let area = 0;
-  for (let index = 1; index < points.length - 1; index += 1) {
-    const a = {
-      x: points[index]!.x - origin.x,
-      y: points[index]!.y - origin.y,
-      z: points[index]!.z - origin.z,
-    };
-    const b = {
-      x: points[index + 1]!.x - origin.x,
-      y: points[index + 1]!.y - origin.y,
-      z: points[index + 1]!.z - origin.z,
-    };
-    const cross = {
-      x: a.y * b.z - a.z * b.y,
-      y: a.z * b.x - a.x * b.z,
-      z: a.x * b.y - a.y * b.x,
-    };
-    area += Math.sqrt(cross.x * cross.x + cross.y * cross.y + cross.z * cross.z) / 2;
-  }
-  return area;
-}
-
-function uniquePointCount(points: Point3[]): number {
-  return new Set(
-    points.map((point) => `${point.x.toFixed(6)},${point.y.toFixed(6)},${point.z.toFixed(6)}`),
-  ).size;
-}
-
-function isRenderablePolygon(points: Point3[]): boolean {
-  return (
-    points.length >= 3 &&
-    points.every(isFinitePoint) &&
-    uniquePointCount(points) >= 3 &&
-    polygonArea3D(points) > MIN_RENDERABLE_POLYGON_AREA_MM2
-  );
-}
-
-function allSceneBoundsFinite(bounds: SceneBounds | null): boolean {
-  if (!bounds) return false;
-  return [
-    bounds.min.x,
-    bounds.min.y,
-    bounds.min.z,
-    bounds.max.x,
-    bounds.max.y,
-    bounds.max.z,
-    bounds.center.x,
-    bounds.center.y,
-    bounds.center.z,
-    bounds.size,
-  ].every(Number.isFinite);
-}
-
-function rectContains(outer: DOMRect, inner: DOMRect): boolean {
-  const tolerancePx = 1;
-  return (
-    inner.left >= outer.left - tolerancePx &&
-    inner.top >= outer.top - tolerancePx &&
-    inner.right <= outer.right + tolerancePx &&
-    inner.bottom <= outer.bottom + tolerancePx
-  );
-}
-
-function rectDiagnostics(
-  shell: HTMLElement | null,
-  canvas: HTMLElement | null | undefined,
-): ViewportRectDiagnostics {
-  const shellRect = shell?.getBoundingClientRect();
-  const canvasRect = canvas?.getBoundingClientRect();
-  return {
-    shellWidth: shellRect ? Math.round(shellRect.width) : 0,
-    shellHeight: shellRect ? Math.round(shellRect.height) : 0,
-    canvasWidth: canvasRect ? Math.round(canvasRect.width) : 0,
-    canvasHeight: canvasRect ? Math.round(canvasRect.height) : 0,
-    canvasContained: Boolean(shellRect && canvasRect && rectContains(shellRect, canvasRect)),
-  };
-}
 
 function resetRendererState(renderer: THREE.WebGLRenderer | null): void {
   if (!renderer) return;
@@ -417,16 +227,6 @@ function computeSceneBounds(scene: ViewerSceneModel): SceneBounds {
   };
 }
 
-function sceneMetadataString(scene: ViewerSceneModel, key: string): string | null {
-  const value = scene.metadata?.[key];
-  return typeof value === "string" ? value : null;
-}
-
-function sceneMetadataNumber(scene: ViewerSceneModel, key: string): number | null {
-  const value = scene.metadata?.[key];
-  return typeof value === "number" ? value : null;
-}
-
 function collectHouseRoofViewportDiagnostics(
   scene: ViewerSceneModel | null,
 ): HouseRoofViewportDiagnostics {
@@ -477,32 +277,6 @@ function collectHouseRoofViewportDiagnostics(
     expectedSolidCount,
     renderedSolidCount,
     skippedSolidCount,
-  };
-}
-
-function collectHouseOpeningViewportDiagnostics(
-  scene: ViewerSceneModel | null,
-): HouseOpeningViewportDiagnostics {
-  if (!scene) {
-    return {
-      totalCount: 0,
-      validCount: 0,
-      hostEdgeResolvedCount: 0,
-      hostEdgeUnresolvedCount: 0,
-      renderedMarkerCount: 0,
-      skippedInvalidCount: 0,
-      unresolvedValidCount: 0,
-    };
-  }
-
-  return {
-    totalCount: sceneMetadataNumber(scene, "houseOpeningCount") ?? 0,
-    validCount: sceneMetadataNumber(scene, "houseOpeningValidCount") ?? 0,
-    hostEdgeResolvedCount: sceneMetadataNumber(scene, "houseOpeningHostEdgeResolvedCount") ?? 0,
-    hostEdgeUnresolvedCount: sceneMetadataNumber(scene, "houseOpeningHostEdgeUnresolvedCount") ?? 0,
-    renderedMarkerCount: sceneMetadataNumber(scene, "houseOpeningRenderedMarkerCount") ?? 0,
-    skippedInvalidCount: sceneMetadataNumber(scene, "houseOpeningSkippedInvalidCount") ?? 0,
-    unresolvedValidCount: sceneMetadataNumber(scene, "houseOpeningUnresolvedValidCount") ?? 0,
   };
 }
 
@@ -1616,594 +1390,6 @@ function buildClosedLineGeometry(points: Point3[]): THREE.BufferGeometry {
     return new THREE.BufferGeometry();
   }
   return buildLineGeometry([...points, points[0]!]);
-}
-
-function pointToVector(point: Point3): THREE.Vector3 {
-  return new THREE.Vector3(point.x, point.y, point.z);
-}
-
-function vectorToPoint(vector: THREE.Vector3): Point3 {
-  return {
-    x: vector.x,
-    y: vector.y,
-    z: vector.z,
-  };
-}
-
-function formatVector(vector: { x: number; y: number; z: number }): string {
-  return `${vector.x.toFixed(3)}, ${vector.y.toFixed(3)}, ${vector.z.toFixed(3)}`;
-}
-
-function centroid(points: Point3[]): Point3 {
-  if (points.length === 0) return { x: 0, y: 0, z: 0 };
-  const total = points.reduce(
-    (current, point) => ({
-      x: current.x + point.x,
-      y: current.y + point.y,
-      z: current.z + point.z,
-    }),
-    { x: 0, y: 0, z: 0 },
-  );
-  return {
-    x: total.x / points.length,
-    y: total.y / points.length,
-    z: total.z / points.length,
-  };
-}
-
-function offsetPoint(
-  origin: Point3,
-  direction: { x: number; y: number; z: number },
-  distance: number,
-): Point3 {
-  const vector = pointToVector(origin).add(
-    new THREE.Vector3(direction.x, direction.y, direction.z).multiplyScalar(
-      distance,
-    ),
-  );
-  return vectorToPoint(vector);
-}
-
-function formatPoint(point: Point3): string {
-  return `${Math.round(point.x)}, ${Math.round(point.y)}, ${Math.round(point.z)} mm`;
-}
-
-function formatCameraFocusMode(focusMode: GeometryCameraFocusMode): string {
-  if (focusMode === "scene") return "Scene";
-  if (focusMode === "selection") return "Selected";
-  return "Manual";
-}
-
-function formatCameraPreset(viewPreset: GeometryCameraPreset): string {
-  if (viewPreset === "iso") return "Iso";
-  if (viewPreset === "front") return "Front";
-  if (viewPreset === "right") return "Right";
-  if (viewPreset === "custom") return "Custom";
-  return "Top";
-}
-
-function midpoint(start: Point3, end: Point3): Point3 {
-  return {
-    x: (start.x + end.x) / 2,
-    y: (start.y + end.y) / 2,
-    z: (start.z + end.z) / 2,
-  };
-}
-
-function formatAnchorType(anchorType: MeasurementAnchorType): string {
-  return anchorType === "datum_origin" ? "datum origin" : anchorType;
-}
-
-function boundingSize(points: Point3[]): number {
-  if (points.length === 0) return 1000;
-  const xs = points.map((point) => point.x);
-  const ys = points.map((point) => point.y);
-  const zs = points.map((point) => point.z);
-  return Math.max(
-    Math.max(...xs) - Math.min(...xs),
-    Math.max(...ys) - Math.min(...ys),
-    Math.max(...zs) - Math.min(...zs),
-    1000,
-  );
-}
-
-function pointsForObject(object: ViewerSceneObject): Point3[] {
-  if (object.type === "member_prism")
-    return linePoints(object.centerline).filter(isFinitePoint);
-  if (object.type === "roof_plane" || object.type === "roof_cladding_panel")
-    return object.boundary.filter(isFinitePoint);
-  if (object.type === "roof_flashing")
-    return object.wings.flatMap((wing) =>
-      wing.boundary.filter(isFinitePoint),
-    );
-  if (object.type === "house_roof_material")
-    return object.lines.flatMap((line) => linePoints(line)).filter(isFinitePoint);
-  if (object.type === "reference_line")
-    return linePoints(object.line).filter(isFinitePoint);
-  if (object.type === "house_line")
-    return isRenderableLine(object.line) ? linePoints(object.line) : [];
-  if (object.type === "house_surface")
-    return isRenderablePolygon(object.boundary) ? object.boundary : [];
-  if (object.type === "house_surface_solid") {
-    const meshPoints = renderMeshPoints(object.renderMesh);
-    if (meshPoints.length) return meshPoints;
-    return isRenderablePolygon(object.boundary) ? object.boundary : [];
-  }
-  if (object.type === "house_linear_solid") {
-    const meshPoints = renderMeshPoints(object.renderMesh);
-    if (meshPoints.length) return meshPoints;
-    return isRenderableLine(object.centerline)
-      ? linePoints(object.centerline)
-      : [];
-  }
-  return object.boundary.filter(isFinitePoint);
-}
-
-function focusPointForObject(object: ViewerSceneObject): Point3 {
-  if (object.type === "member_prism")
-    return midpoint(object.centerline.start, object.centerline.end);
-  if (object.type === "reference_line" || object.type === "house_line")
-    return midpoint(object.line.start, object.line.end);
-  if (object.type === "house_linear_solid") {
-    const points = pointsForObject(object);
-    return points.length
-      ? centroid(points)
-      : midpoint(object.centerline.start, object.centerline.end);
-  }
-  return centroid(pointsForObject(object));
-}
-
-function supportsEndpointAnchors(
-  object: ViewerSceneObject | null,
-): object is
-  | ViewerSceneMemberPrismObject
-  | ViewerSceneReferenceLineObject
-  | ViewerSceneHouseLineObject
-  | ViewerSceneHouseLinearSolidObject {
-  return (
-    object?.type === "member_prism" ||
-    object?.type === "reference_line" ||
-    object?.type === "house_line" ||
-    object?.type === "house_linear_solid"
-  );
-}
-
-function resolveAnchorPoint(
-  object: ViewerSceneObject,
-  anchorType: MeasurementAnchorType,
-): Point3 {
-  if (object.type === "member_prism") {
-    if (anchorType === "start") return object.centerline.start;
-    if (anchorType === "end") return object.centerline.end;
-    return midpoint(object.centerline.start, object.centerline.end);
-  }
-
-  if (object.type === "reference_line" || object.type === "house_line") {
-    if (anchorType === "start") return object.line.start;
-    if (anchorType === "end") return object.line.end;
-    return midpoint(object.line.start, object.line.end);
-  }
-
-  if (object.type === "house_linear_solid") {
-    if (anchorType === "start") return object.centerline.start;
-    if (anchorType === "end") return object.centerline.end;
-    return midpoint(object.centerline.start, object.centerline.end);
-  }
-
-  return centroid(pointsForObject(object));
-}
-
-function defaultAnchorTypeForObject(
-  object: ViewerSceneObject,
-): MeasurementAnchorType {
-  if (
-    object.type === "member_prism" ||
-    object.type === "reference_line" ||
-    object.type === "house_line" ||
-    object.type === "house_linear_solid"
-  )
-    return "midpoint";
-  return "centroid";
-}
-
-function buildMeasurementAnchor(
-  object: ViewerSceneObject,
-  anchorType = defaultAnchorTypeForObject(object),
-): MeasurementAnchor {
-  return {
-    id: `${object.id}:${anchorType}`,
-    objectId: object.id,
-    anchorType,
-    point: resolveAnchorPoint(object, anchorType),
-  };
-}
-
-function buildDatumOriginAnchor(point: Point3): MeasurementAnchor {
-  return {
-    id: "datum-origin",
-    objectId: "datum-origin",
-    anchorType: "datum_origin",
-    point,
-  };
-}
-
-function formatDistanceMm(distanceMm: number): string {
-  return `${Math.round(distanceMm)} mm`;
-}
-
-function measurementDelta(a: Point3 | null, b: Point3 | null): Point3 | null {
-  if (!a || !b) return null;
-  return {
-    x: b.x - a.x,
-    y: b.y - a.y,
-    z: b.z - a.z,
-  };
-}
-
-function measurementDistance(
-  a: Point3 | null,
-  b: Point3 | null,
-): number | null {
-  if (!a || !b) return null;
-  return pointDistance(a, b);
-}
-
-function measurementPlanDistance(
-  a: Point3 | null,
-  b: Point3 | null,
-): number | null {
-  const delta = measurementDelta(a, b);
-  if (!delta) return null;
-  return Math.sqrt(delta.x * delta.x + delta.y * delta.y);
-}
-
-function fitDistanceForSize(size: number, fovDeg = 40): number {
-  const radius = Math.max(size, 1000) / 2;
-  const fovRadians = THREE.MathUtils.degToRad(fovDeg / 2);
-  return Math.max((radius / Math.tan(fovRadians)) * 1.25, 1200);
-}
-
-function directionForPreset(viewPreset: GeometryCameraPreset): THREE.Vector3 {
-  if (viewPreset === "front") return new THREE.Vector3(0, -1, 0.28).normalize();
-  if (viewPreset === "right") return new THREE.Vector3(1, 0, 0.28).normalize();
-  if (viewPreset === "top")
-    return new THREE.Vector3(0, 0, 1).normalize();
-  return new THREE.Vector3(1, -1.15, 0.82).normalize();
-}
-
-function pointDistance(a: Point3, b: Point3): number {
-  return pointToVector(a).distanceTo(pointToVector(b));
-}
-
-function pointsRoughlyEqual(
-  a: Point3,
-  b: Point3,
-  toleranceMm: number,
-): boolean {
-  return pointDistance(a, b) <= toleranceMm;
-}
-
-function positionFromDirection(
-  target: Point3,
-  direction: THREE.Vector3,
-  distanceMm: number,
-): Point3 {
-  const next = pointToVector(target).add(
-    direction.clone().multiplyScalar(distanceMm),
-  );
-  return vectorToPoint(next);
-}
-
-function directionFromCameraState(state: GeometryCameraState): THREE.Vector3 {
-  const direction = pointToVector(state.position).sub(
-    pointToVector(state.target),
-  );
-  if (direction.lengthSq() < 1e-6) {
-    const fallbackPreset =
-      state.viewPreset === "custom" ? "iso" : state.viewPreset;
-    return directionForPreset(fallbackPreset);
-  }
-  return direction.normalize();
-}
-
-function buildPresetCameraState({
-  target,
-  distanceMm,
-  viewPreset,
-  focusMode,
-}: {
-  target: Point3;
-  distanceMm: number;
-  viewPreset: Exclude<GeometryCameraPreset, "custom">;
-  focusMode: GeometryCameraFocusMode;
-}): GeometryCameraState {
-  const direction = directionForPreset(viewPreset);
-  return {
-    position: positionFromDirection(target, direction, distanceMm),
-    target,
-    distanceMm,
-    viewPreset,
-    focusMode,
-  };
-}
-
-function defaultCameraStateForScene(input: {
-  sceneBounds: SceneBounds | null;
-  sceneFitDistance: number;
-}): GeometryCameraState {
-  if (!input.sceneBounds) {
-    return buildPresetCameraState({
-      target: { x: 0, y: 0, z: 500 },
-      distanceMm: fitDistanceForSize(2000),
-      viewPreset: "iso",
-      focusMode: "scene",
-    });
-  }
-  return buildPresetCameraState({
-    target: input.sceneBounds.center,
-    distanceMm: input.sceneFitDistance,
-    viewPreset: "iso",
-    focusMode: "scene",
-  });
-}
-
-function cameraStatesEqual(a: GeometryCameraState, b: GeometryCameraState): boolean {
-  return (
-    a.distanceMm === b.distanceMm &&
-    a.viewPreset === b.viewPreset &&
-    a.focusMode === b.focusMode &&
-    a.position.x === b.position.x &&
-    a.position.y === b.position.y &&
-    a.position.z === b.position.z &&
-    a.target.x === b.target.x &&
-    a.target.y === b.target.y &&
-    a.target.z === b.target.z
-  );
-}
-
-function clampCameraStateToScene(input: {
-  state: GeometryCameraState;
-  sceneBounds: SceneBounds | null;
-}): GeometryCameraState {
-  if (!input.sceneBounds) return input.state;
-  const minDistance = Math.max(input.sceneBounds.size * 0.18, 250);
-  const maxDistance = Math.max(input.sceneBounds.size * 14, 14000);
-  const nextDistance = Math.min(Math.max(input.state.distanceMm, minDistance), maxDistance);
-  if (nextDistance === input.state.distanceMm) return input.state;
-  return {
-    ...input.state,
-    position: positionFromDirection(
-      input.state.target,
-      directionFromCameraState(input.state),
-      nextDistance,
-    ),
-    distanceMm: nextDistance,
-  };
-}
-
-function formatMetadata(metadata: ViewerSceneObject["metadata"]): string {
-  if (!metadata) return "None";
-  return Object.entries(metadata)
-    .map(([key, value]) => `${key}: ${String(value)}`)
-    .join(", ");
-}
-
-function metadataText(
-  metadata: ViewerSceneObject["metadata"],
-  key: string,
-): string | null {
-  const value = metadata?.[key];
-  return typeof value === "string" ? value : null;
-}
-
-function metadataNumber(
-  metadata: ViewerSceneObject["metadata"],
-  key: string,
-): number | null {
-  const value = metadata?.[key];
-  return typeof value === "number" ? value : null;
-}
-
-function formatDiagnosticToken(value: string): string {
-  return value.replace(/_/g, " ");
-}
-
-function houseRoofQaSummary(
-  metadata: ViewerSceneObject["metadata"],
-): Array<{ label: string; value: string }> {
-  const qaStatus = metadataText(metadata, "roofQaStatus");
-  const skipReason = metadataText(metadata, "roofRenderSkipReason");
-  const failureReason = metadataText(metadata, "roofQaFailureReason");
-  const finalFaceCount = metadataNumber(metadata, "roofTopologyFinalFaceCount");
-  const valleyCount = metadataNumber(metadata, "roofTopologyValleyCount");
-  const internalEaveSeamCount = metadataNumber(metadata, "roofTopologyInternalEaveHeightSegmentCount");
-  const rows: Array<{ label: string; value: string }> = [];
-  if (qaStatus) rows.push({ label: "Roof QA", value: qaStatus });
-  if (finalFaceCount != null) rows.push({ label: "Roof faces", value: String(finalFaceCount) });
-  if (valleyCount != null) rows.push({ label: "Valleys", value: String(valleyCount) });
-  if (internalEaveSeamCount != null) {
-    rows.push({ label: "Internal eave seams", value: String(internalEaveSeamCount) });
-  }
-  if (skipReason) {
-    rows.push({ label: "Skip reason", value: formatDiagnosticToken(skipReason) });
-  } else if (failureReason) {
-    rows.push({ label: "QA reason", value: formatDiagnosticToken(failureReason) });
-  }
-  return rows;
-}
-
-function previewModeLabel(previewMode: GeometryPreviewMode): string {
-  if (previewMode === "snapshot_validated") return "Snapshot Validated";
-  if (previewMode === "snapshot_local_resolved") return "Snapshot Resolved Locally";
-  return "Draft Resolved Locally";
-}
-
-function objectSummary(
-  object: ViewerSceneObject | null,
-): Array<{ label: string; value: string }> {
-  if (!object) {
-    return [{ label: "Selection", value: "None" }];
-  }
-
-  if (object.type === "member_prism") {
-    return [
-      { label: "Object", value: object.id },
-      { label: "Role", value: object.role },
-      { label: "Length", value: `${object.lengthMm} mm` },
-      {
-        label: "Profile",
-        value: `${object.profile.widthMm} x ${object.profile.depthMm} mm`,
-      },
-      { label: "Profile key", value: object.profile.profileKey ?? "None" },
-      { label: "Shape", value: object.profile.shape },
-      { label: "Render", value: object.renderMode.replace(/_/g, " ") },
-      {
-        label: "Outline",
-        value: object.profile.sectionOutline?.length
-          ? `Yes (${object.profile.sectionOutline.length} points)`
-          : "No",
-      },
-      { label: "Start", value: formatPoint(object.centerline.start) },
-      { label: "End", value: formatPoint(object.centerline.end) },
-      { label: "Local X Axis", value: formatVector(object.localFrame.xAxis) },
-      { label: "Local Y Axis", value: formatVector(object.localFrame.yAxis) },
-      { label: "Local Z Axis", value: formatVector(object.localFrame.zAxis) },
-      { label: "Metadata", value: formatMetadata(object.metadata) },
-    ];
-  }
-
-  if (object.type === "roof_plane") {
-    return [
-      { label: "Object", value: object.id },
-      { label: "Type", value: "roof plane" },
-      { label: "Boundary", value: `${object.boundary.length} points` },
-      { label: "Plane origin", value: formatPoint(object.plane.origin) },
-      { label: "Plane normal", value: formatVector(object.plane.normal) },
-      {
-        label: "Fall vector",
-        value: `${object.fallVector.x.toFixed(3)}, ${object.fallVector.y.toFixed(3)}, ${object.fallVector.z.toFixed(3)}`,
-      },
-      { label: "Metadata", value: formatMetadata(object.metadata) },
-    ];
-  }
-
-  if (object.type === "roof_cladding_panel") {
-    return [
-      { label: "Object", value: object.id },
-      { label: "Type", value: "roof cladding panel" },
-      { label: "Material", value: object.material },
-      { label: "Boundary", value: `${object.boundary.length} points` },
-      { label: "Thickness", value: `${Math.round(object.thicknessMm)} mm` },
-      {
-        label: "Gutter embed",
-        value: `${Math.round(Number(object.metadata?.gutterEmbedMm ?? 0))} mm`,
-      },
-      {
-        label: "Panel area",
-        value: `${Math.round(Number(object.metadata?.areaMm2 ?? 0)).toLocaleString()} mm²`,
-      },
-      { label: "Plane origin", value: formatPoint(object.plane.origin) },
-      { label: "Plane normal", value: formatVector(object.plane.normal) },
-      { label: "Metadata", value: formatMetadata(object.metadata) },
-    ];
-  }
-
-  if (object.type === "roof_flashing") {
-    return [
-      { label: "Object", value: object.id },
-      { label: "Type", value: "roof flashing" },
-      { label: "Wings", value: `${object.wings.length}` },
-      { label: "Thickness", value: `${Math.round(object.thicknessMm)} mm` },
-      {
-        label: "Girth",
-        value: `${Math.round(Number(object.metadata?.girthMm ?? 0))} mm`,
-      },
-      {
-        label: "Wing length",
-        value: `${Math.round(Number(object.metadata?.wingLengthMm ?? 0))} mm`,
-      },
-      { label: "Metadata", value: formatMetadata(object.metadata) },
-    ];
-  }
-
-  if (object.type === "house_roof_material") {
-    return [
-      { label: "Object", value: object.id },
-      { label: "Type", value: "house roof material" },
-      { label: "Material", value: object.material.replace(/_/g, " ") },
-      { label: "Profile", value: object.profileKind },
-      { label: "Roof plane", value: object.roofPlaneId },
-      { label: "Lines", value: `${object.lines.length}` },
-      { label: "Spacing", value: `${Math.round(object.spacingMm)} mm` },
-      { label: "Surface offset", value: `${Math.round(object.surfaceOffsetMm)} mm` },
-      { label: "Plane origin", value: formatPoint(object.plane.origin) },
-      { label: "Plane normal", value: formatVector(object.plane.normal) },
-      { label: "Metadata", value: formatMetadata(object.metadata) },
-    ];
-  }
-
-  if (object.type === "reference_line") {
-    return [
-      { label: "Object", value: object.id },
-      { label: "Type", value: object.kind.replace(/_/g, " ") },
-      { label: "Start", value: formatPoint(object.line.start) },
-      { label: "End", value: formatPoint(object.line.end) },
-      { label: "Metadata", value: formatMetadata(object.metadata) },
-    ];
-  }
-
-  if (object.type === "house_line") {
-    return [
-      { label: "Object", value: object.id },
-      { label: "Type", value: `house ${object.kind.replace(/_/g, " ")}` },
-      ...houseRoofQaSummary(object.metadata),
-      { label: "Start", value: formatPoint(object.line.start) },
-      { label: "End", value: formatPoint(object.line.end) },
-      { label: "Metadata", value: formatMetadata(object.metadata) },
-    ];
-  }
-
-  if (object.type === "house_linear_solid") {
-    return [
-      { label: "Object", value: object.id },
-      { label: "Type", value: `house solid ${object.kind.replace(/_/g, " ")}` },
-      { label: "Start", value: formatPoint(object.centerline.start) },
-      { label: "End", value: formatPoint(object.centerline.end) },
-      { label: "Profile", value: `${Math.round(object.profileWidthMm)} x ${Math.round(object.profileDepthMm)} mm` },
-      { label: "Metadata", value: formatMetadata(object.metadata) },
-    ];
-  }
-
-  if (object.type === "house_surface") {
-    return [
-      { label: "Object", value: object.id },
-      { label: "Type", value: `house ${object.kind.replace(/_/g, " ")}` },
-      { label: "Boundary", value: `${object.boundary.length} points` },
-      { label: "Plane origin", value: formatPoint(object.plane.origin) },
-      { label: "Plane normal", value: formatVector(object.plane.normal) },
-      { label: "Metadata", value: formatMetadata(object.metadata) },
-    ];
-  }
-
-  if (object.type === "house_surface_solid") {
-    return [
-      { label: "Object", value: object.id },
-      { label: "Type", value: `house solid ${object.kind.replace(/_/g, " ")}` },
-      ...houseRoofQaSummary(object.metadata),
-      { label: "Boundary", value: `${object.boundary.length} points` },
-      { label: "Thickness", value: `${Math.round(object.thicknessMm)} mm` },
-      { label: "Plane origin", value: formatPoint(object.plane.origin) },
-      { label: "Plane normal", value: formatVector(object.plane.normal) },
-      { label: "Metadata", value: formatMetadata(object.metadata) },
-    ];
-  }
-
-  return [
-    { label: "Object", value: object.id },
-    { label: "Type", value: object.kind.replace(/_/g, " ") },
-    { label: "Boundary", value: `${object.boundary.length} points` },
-    { label: "Metadata", value: formatMetadata(object.metadata) },
-  ];
 }
 
 function MemberObject({

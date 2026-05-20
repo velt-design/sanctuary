@@ -131,12 +131,27 @@ function toRepoRelativePath(absolutePath: string): string {
   return path.normalize(path.relative(process.cwd(), absolutePath));
 }
 
+// House-first decomposition siblings. The original prefix rule was
+// `houseFirst*` -- a proxy for "this file participates in the house-first
+// model/adapter family." When the 2.2k-line `houseFirstWorkbenchAdapter`
+// got decomposed into focused roof-form modules (`houseRoofFormAdapter`,
+// `houseRoofFormNormalize`, `houseRoofFormRidgeAxis`,
+// `houseRoofFormValidate`) the new files kept that family membership --
+// they import the same model types -- but adopted a more descriptive
+// prefix. Allowlisting `houseRoofForm*` keeps the original guard intent
+// without forcing artificially long names.
+const HOUSE_FIRST_FAMILY_PREFIXES = ['houseFirst', 'houseRoofForm'];
+
+function isHouseFirstFamilyBasename(basename: string): boolean {
+  return HOUSE_FIRST_FAMILY_PREFIXES.some((prefix) => basename.startsWith(prefix));
+}
+
 function canImportLegacyStateCompatibility(relativePath: string): boolean {
   const basename = path.basename(relativePath);
   return (
     relativePath.includes(STATE_COMPAT_PATH_SEGMENT) ||
     LEGACY_STATE_COMPATIBILITY_ADAPTER_FILES.has(relativePath) ||
-    basename.startsWith('houseFirst')
+    isHouseFirstFamilyBasename(basename)
   );
 }
 
@@ -145,7 +160,7 @@ function isLegacyPersistenceCompatibilityZone(relativePath: string): boolean {
   return (
     relativePath.includes(STATE_COMPAT_PATH_SEGMENT) ||
     LEGACY_STATE_COMPATIBILITY_ADAPTER_FILES.has(relativePath) ||
-    basename.startsWith('houseFirst') ||
+    isHouseFirstFamilyBasename(basename) ||
     relativePath.endsWith(path.normalize(path.join('apps', 'portal', 'lib', 'estimates', 'drawingEdits.ts')))
   );
 }

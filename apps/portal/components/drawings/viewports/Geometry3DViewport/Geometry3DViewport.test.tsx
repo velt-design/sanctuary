@@ -36,8 +36,8 @@ import Geometry3DViewport, {
   buildPolygonSlabGeometry,
   buildRenderMeshGeometry,
   type Geometry3DViewportState,
-} from "./Geometry3DViewport";
-import { renderIntoDocument } from "../../../../../test/reactHarness";
+} from ".";
+import { renderIntoDocument } from "../../../../../../test/reactHarness";
 
 let mockThreeCamera: THREE.PerspectiveCamera | THREE.OrthographicCamera | null = null;
 let mockOrbitControls: { target: { x: number; y: number; z: number } } | null =

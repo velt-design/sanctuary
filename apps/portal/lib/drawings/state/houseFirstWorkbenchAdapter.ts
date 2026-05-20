@@ -5,16 +5,7 @@ import {
 } from '@/lib/estimates/drawingEdits';
 import { buildEstimateDrawingModules } from '@/lib/estimates/moduleDrawing';
 import {
-  deriveHouseGableTerminalEnds,
   buildHouseFootprintPresetSideLocalPoints,
-  deriveHouseRoofAppendageSupport,
-  deriveHouseRoofCapabilities,
-  deriveHouseRoofGeometryKind,
-  normalizeHouseRoofPitchInputForForm,
-  preferredMonoFallDirectionForAttachmentSide,
-  validateHouseRoofSelection,
-  type Line3,
-  type Polygon3,
 } from '@sp/geometry';
 import {
   makeDefaultHouseFootprintParams,
@@ -46,12 +37,7 @@ import type {
   HouseFirstRoofDraft,
   HouseFirstMigrationWarning,
   HouseModel,
-  HouseRoofApproximationReason,
-  HouseRoofAppendageForm,
   HouseRoofFieldSource,
-  HouseRoofPrimaryFallDirection,
-  HouseRoofProvenance,
-  HouseRoofRidgeAxis,
   HouseRoofForm,
   HouseFirstWorkbenchProjectModel,
   PergolaModel,
@@ -60,6 +46,7 @@ import {
   normalizeWallOpeningKind,
   resolveOpeningPanelCount,
 } from './houseFirstWorkbenchModel';
+import { resolveHouseRoofProjection } from './houseRoofFormAdapter';
 import {
   buildDeckReferenceHousePolygon,
   parseDeckLocalPolygon,
@@ -89,13 +76,6 @@ type SharedFieldResult<T> = {
   warning: HouseFirstMigrationWarning | null;
   lowConfidence: boolean;
   source: Extract<HouseRoofFieldSource, 'legacy_shared_value' | 'default_fallback'>;
-};
-
-type DerivedRoofRidgeAxisResolution = {
-  value: HouseRoofRidgeAxis;
-  source: Extract<HouseRoofFieldSource, 'default_fallback'>;
-  ambiguous: boolean;
-  usedFallback: boolean;
 };
 
 function isBlankString(value: string | null | undefined): boolean {
@@ -136,387 +116,6 @@ function resolveHouseRoofForm(module: CalculatorModuleInputs): HouseRoofForm {
     return 'hipped';
   }
   return 'mono';
-}
-
-function normalizeRoofDraftPitch(value: string | null | undefined, fallback: string): string {
-  return isBlankString(value) ? fallback : String(value).trim();
-}
-
-function normalizeRoofPrimaryFallDirection(
-  value: HouseFirstRoofDraft['primaryFallDirection'] | null | undefined,
-): HouseRoofPrimaryFallDirection | null {
-  if (
-    value === 'positive_x' ||
-    value === 'negative_x' ||
-    value === 'positive_y' ||
-    value === 'negative_y'
-  ) {
-    return value;
-  }
-  return null;
-}
-
-function normalizeRoofRidgeAxis(
-  value: HouseFirstRoofDraft['ridgeAxis'] | null | undefined,
-): HouseRoofRidgeAxis | null {
-  return value === 'y' ? 'y' : value === 'x' ? 'x' : null;
-}
-
-function normalizeRoofOpenGableEndIds(
-  value: HouseFirstRoofDraft['openGableEndIds'] | null | undefined,
-): string[] {
-  if (!Array.isArray(value)) return [];
-  return [...new Set(
-    value
-      .filter((candidate): candidate is string => typeof candidate === 'string')
-      .map((candidate) => candidate.trim())
-      .filter((candidate) => candidate.length > 0),
-  )];
-}
-
-function normalizeAppendageForm(
-  value: string | null | undefined,
-): HouseRoofAppendageForm | null {
-  return value === 'mono' || value === 'flat' ? value : null;
-}
-
-function hasExplicitRoofPitch(value: string | null | undefined): boolean {
-  return !isBlankString(value);
-}
-
-function hasExplicitRoofAppendage(
-  value: HouseFirstRoofDraft['appendage'] | null | undefined,
-): boolean {
-  return value !== null && value !== undefined;
-}
-
-function isOrthogonal2D(
-  polygon: CalculatorHouseFootprintPolygonPoint[],
-): boolean {
-  if (polygon.length < 4) return false;
-  for (let index = 0; index < polygon.length; index += 1) {
-    const start = polygon[index]!;
-    const end = polygon[(index + 1) % polygon.length]!;
-    const alongStart = Number(start.alongM);
-    const alongEnd = Number(end.alongM);
-    const depthStart = Number(start.depthM);
-    const depthEnd = Number(end.depthM);
-    if (
-      !Number.isFinite(alongStart) ||
-      !Number.isFinite(alongEnd) ||
-      !Number.isFinite(depthStart) ||
-      !Number.isFinite(depthEnd)
-    ) {
-      return false;
-    }
-    if (Math.abs(alongStart - alongEnd) > 1e-6 && Math.abs(depthStart - depthEnd) > 1e-6) {
-      return false;
-    }
-  }
-  return true;
-}
-
-function isRectanglePolygon2D(
-  polygon: CalculatorHouseFootprintPolygonPoint[],
-): boolean {
-  if (polygon.length !== 4 || !isOrthogonal2D(polygon)) return false;
-  const along = polygon.map((point) => Number(point.alongM));
-  const depth = polygon.map((point) => Number(point.depthM));
-  return new Set(along.map((value) => value.toFixed(6))).size === 2 &&
-    new Set(depth.map((value) => value.toFixed(6))).size === 2;
-}
-
-function inferLegacyRoofRidgeAxis(input: {
-  footprintMode: CalculatorHouseFootprintMode;
-  footprintPreset: CalculatorHouseFootprintPreset;
-  footprintParams: CalculatorHouseFootprintParams;
-  footprintPolygon: CalculatorHouseFootprintPolygonPoint[];
-}): HouseRoofRidgeAxis {
-  if (input.footprintMode === 'custom_polygon' && isRectanglePolygon2D(input.footprintPolygon)) {
-    const alongValues = input.footprintPolygon.map((point) => Number(point.alongM));
-    const depthValues = input.footprintPolygon.map((point) => Number(point.depthM));
-    const spanAlong = Math.max(...alongValues) - Math.min(...alongValues);
-    const spanDepth = Math.max(...depthValues) - Math.min(...depthValues);
-    return spanAlong >= spanDepth ? 'x' : 'y';
-  }
-  if (input.footprintPreset === 'straight') {
-    const widthM = Number(input.footprintParams.widthM);
-    const bandDepthM = Number(input.footprintParams.bandDepthM);
-    if (Number.isFinite(widthM) && Number.isFinite(bandDepthM) && bandDepthM > widthM) {
-      return 'y';
-    }
-  }
-  return 'x';
-}
-
-function resolveBoundingFootprintSpans(
-  polygon: CalculatorHouseFootprintPolygonPoint[],
-): { alongM: number; depthM: number } | null {
-  if (!polygon.length) return null;
-  const alongValues = polygon.map((point) => Number(point.alongM));
-  const depthValues = polygon.map((point) => Number(point.depthM));
-  if (
-    alongValues.some((value) => !Number.isFinite(value)) ||
-    depthValues.some((value) => !Number.isFinite(value))
-  ) {
-    return null;
-  }
-  return {
-    alongM: Math.max(...alongValues) - Math.min(...alongValues),
-    depthM: Math.max(...depthValues) - Math.min(...depthValues),
-  };
-}
-
-function resolveRectangularFootprintSpans(
-  polygon: CalculatorHouseFootprintPolygonPoint[],
-): { alongM: number; depthM: number } | null {
-  if (!isRectanglePolygon2D(polygon)) return null;
-  const alongValues = polygon.map((point) => Number(point.alongM));
-  const depthValues = polygon.map((point) => Number(point.depthM));
-  return {
-    alongM: Math.max(...alongValues) - Math.min(...alongValues),
-    depthM: Math.max(...depthValues) - Math.min(...depthValues),
-  };
-}
-
-function hasAmbiguousRidgeAxisSelection(
-  polygon: CalculatorHouseFootprintPolygonPoint[],
-): boolean {
-  const spans = resolveRectangularFootprintSpans(polygon);
-  if (!spans) return false;
-  const longerSpan = Math.max(spans.alongM, spans.depthM);
-  const shorterSpan = Math.min(spans.alongM, spans.depthM);
-  if (!(Number.isFinite(longerSpan) && Number.isFinite(shorterSpan)) || shorterSpan <= 0) return false;
-  return longerSpan < shorterSpan * 1.15;
-}
-
-function scoreGableTerminalTopology(input: {
-  footprint: Polygon3;
-  ridgeAxis: HouseRoofRidgeAxis;
-}): number {
-  return deriveHouseGableTerminalEnds({
-    footprint: input.footprint,
-    ridgeAxis: input.ridgeAxis,
-  }).length;
-}
-
-function resolveDerivedMonoFallDirection(input: {
-  attachmentSide: NonNullable<CalculatorModuleInputs['attachmentSide']>;
-}): {
-  value: HouseRoofPrimaryFallDirection;
-  source: Extract<HouseRoofFieldSource, 'default_fallback'>;
-} {
-  return {
-    value: preferredMonoFallDirectionForAttachmentSide(input.attachmentSide),
-    source: 'default_fallback',
-  };
-}
-
-function resolveDerivedRidgeAxis(input: {
-  footprintMode: CalculatorHouseFootprintMode;
-  footprintPreset: CalculatorHouseFootprintPreset;
-  footprintParams: CalculatorHouseFootprintParams;
-  footprintPolygon: CalculatorHouseFootprintPolygonPoint[];
-}): DerivedRoofRidgeAxisResolution {
-  const fallback = inferLegacyRoofRidgeAxis(input);
-  const rectangularSpans = resolveRectangularFootprintSpans(input.footprintPolygon);
-  if (rectangularSpans) {
-    if (hasAmbiguousRidgeAxisSelection(input.footprintPolygon)) {
-      return {
-        value: fallback,
-        source: 'default_fallback',
-        ambiguous: true,
-        usedFallback: true,
-      };
-    }
-    return {
-      value: rectangularSpans.alongM >= rectangularSpans.depthM ? 'x' : 'y',
-      source: 'default_fallback',
-      ambiguous: false,
-      usedFallback: false,
-    };
-  }
-
-  if (!isOrthogonal2D(input.footprintPolygon)) {
-    return {
-      value: fallback,
-      source: 'default_fallback',
-      ambiguous: true,
-      usedFallback: true,
-    };
-  }
-
-  const footprint = localPolygonToGeometryPolygon(input.footprintPolygon);
-  const xScore = scoreGableTerminalTopology({ footprint, ridgeAxis: 'x' });
-  const yScore = scoreGableTerminalTopology({ footprint, ridgeAxis: 'y' });
-  if (xScore > yScore) {
-    return {
-      value: 'x',
-      source: 'default_fallback',
-      ambiguous: false,
-      usedFallback: false,
-    };
-  }
-  if (yScore > xScore) {
-    return {
-      value: 'y',
-      source: 'default_fallback',
-      ambiguous: false,
-      usedFallback: false,
-    };
-  }
-
-  const spans = resolveBoundingFootprintSpans(input.footprintPolygon);
-  if (spans) {
-    if (spans.alongM > spans.depthM * 1.05) {
-      return {
-        value: 'x',
-        source: 'default_fallback',
-        ambiguous: false,
-        usedFallback: false,
-      };
-    }
-    if (spans.depthM > spans.alongM * 1.05) {
-      return {
-        value: 'y',
-        source: 'default_fallback',
-        ambiguous: false,
-        usedFallback: false,
-      };
-    }
-  }
-
-  return {
-    value: fallback,
-    source: 'default_fallback',
-    ambiguous: true,
-    usedFallback: true,
-  };
-}
-
-function validateSharedRoof(input: {
-  footprint: Polygon3;
-  roofForm: HouseRoofForm;
-  roofPrimaryFallDirection: HouseRoofPrimaryFallDirection;
-  roofPrimaryFallDirectionExplicit: boolean;
-  preferredMonoFallDirection: HouseRoofPrimaryFallDirection | null;
-  attachmentStrategy: CalculatorHouseAttachmentStrategy | null;
-  attachmentRequiresDrainEdge: boolean;
-  attachmentEdge: Line3 | null;
-  roofRidgeAxis: HouseRoofRidgeAxis;
-  roofRidgeAxisExplicit: boolean;
-  preferredRidgeAxis: HouseRoofRidgeAxis | null;
-  appendageSupport: {
-    supportedHostEdges: NonNullable<CalculatorModuleInputs['attachmentSide']>[];
-    blockedReasonsBySide?: Partial<Record<NonNullable<CalculatorModuleInputs['attachmentSide']>, string>>;
-  };
-  appendage: {
-    enabled: boolean;
-    form: HouseRoofAppendageForm;
-    hostEdge: NonNullable<CalculatorModuleInputs['attachmentSide']>;
-  };
-}): HouseModel['roof']['validation'] {
-  const result = validateHouseRoofSelection({
-    roofForm: input.roofForm,
-    footprint: input.footprint,
-    appendageEnabled: input.appendage.enabled,
-    roofPrimaryFallDirection: input.roofPrimaryFallDirection,
-    roofPrimaryFallDirectionExplicit: input.roofPrimaryFallDirectionExplicit,
-    preferredMonoFallDirection: input.preferredMonoFallDirection,
-    enforcePreferredMonoFallDirection: input.attachmentRequiresDrainEdge,
-    roofRidgeAxis: input.roofRidgeAxis,
-    roofRidgeAxisExplicit: input.roofRidgeAxisExplicit,
-    preferredRidgeAxis: input.preferredRidgeAxis,
-    appendageHostEdge: input.appendage.hostEdge,
-    appendageSupport: input.appendageSupport,
-  });
-  return {
-    status: result.status,
-    code: result.code,
-    message: result.message,
-    approximationReasons: [],
-  };
-}
-
-function localPolygonToGeometryPolygon(
-  polygon: CalculatorHouseFootprintPolygonPoint[],
-): Polygon3 {
-  return polygon.map((point) => ({
-    x: Number(point.alongM) * 1000,
-    y: Number(point.depthM) * 1000,
-    z: 0,
-  }));
-}
-
-function buildLocalHouseAttachmentLine(input: {
-  attachmentSide: NonNullable<CalculatorModuleInputs['attachmentSide']>;
-  pergolaWidthMm: number;
-  pergolaDepthMm: number;
-  zMm: number;
-}): Line3 {
-  const spanMm =
-    input.attachmentSide === 'left' || input.attachmentSide === 'right'
-      ? input.pergolaDepthMm
-      : input.pergolaWidthMm;
-  return {
-    start: { x: 0, y: 0, z: input.zMm },
-    end: { x: spanMm, y: 0, z: input.zMm },
-  };
-}
-
-function resolveAttachmentSourceEdgeId(input: {
-  footprint: Polygon3;
-  attachmentSide: NonNullable<CalculatorModuleInputs['attachmentSide']>;
-  attachmentLine: Line3 | null;
-}): string | null {
-  if (input.footprint.length < 2) return null;
-  const minX = Math.min(...input.footprint.map((point) => point.x));
-  const maxX = Math.max(...input.footprint.map((point) => point.x));
-  const minY = Math.min(...input.footprint.map((point) => point.y));
-  const maxY = Math.max(...input.footprint.map((point) => point.y));
-  const targetMidpoint = input.attachmentLine
-    ? {
-        x: (input.attachmentLine.start.x + input.attachmentLine.end.x) / 2,
-        y: (input.attachmentLine.start.y + input.attachmentLine.end.y) / 2,
-      }
-    : null;
-  let selected: { id: string; distanceSq: number; lengthSq: number } | null = null;
-
-  for (let index = 0; index < input.footprint.length; index += 1) {
-    const start = input.footprint[index]!;
-    const end = input.footprint[(index + 1) % input.footprint.length]!;
-    let edgeSide: NonNullable<CalculatorModuleInputs['attachmentSide']> | null = null;
-    if (Math.abs(start.y - end.y) <= 1e-6) {
-      if (Math.abs(start.y - minY) <= 1e-6 && Math.abs(end.y - minY) <= 1e-6) edgeSide = 'rear';
-      if (Math.abs(start.y - maxY) <= 1e-6 && Math.abs(end.y - maxY) <= 1e-6) edgeSide = 'front';
-    } else if (Math.abs(start.x - end.x) <= 1e-6) {
-      if (Math.abs(start.x - minX) <= 1e-6 && Math.abs(end.x - minX) <= 1e-6) edgeSide = 'left';
-      if (Math.abs(start.x - maxX) <= 1e-6 && Math.abs(end.x - maxX) <= 1e-6) edgeSide = 'right';
-    }
-    if (edgeSide !== input.attachmentSide) continue;
-
-    const midpoint = {
-      x: (start.x + end.x) / 2,
-      y: (start.y + end.y) / 2,
-    };
-    const distanceSq = targetMidpoint
-      ? (midpoint.x - targetMidpoint.x) ** 2 + (midpoint.y - targetMidpoint.y) ** 2
-      : 0;
-    const lengthSq = (end.x - start.x) ** 2 + (end.y - start.y) ** 2;
-    if (
-      !selected ||
-      distanceSq < selected.distanceSq ||
-      (Math.abs(distanceSq - selected.distanceSq) <= 1e-6 && lengthSq > selected.lengthSq)
-    ) {
-      selected = {
-        id: `footprint-edge-${index + 1}`,
-        distanceSq,
-        lengthSq,
-      };
-    }
-  }
-
-  return selected?.id ?? null;
 }
 
 type LocalPolygonPoint = {
@@ -1695,233 +1294,26 @@ function buildSharedHouse(
           alongM: String(point.alongM),
           depthM: String(point.depthM),
         }));
-  const inferredPrimaryPitchDeg = roofPitchDeg;
-  const derivedMonoFallDirection = resolveDerivedMonoFallDirection({
-    attachmentSide: normalizedAttachmentSide,
-  });
-  const derivedRidgeAxis = resolveDerivedRidgeAxis({
-    footprintMode: normalizedFootprintMode,
-    footprintPreset: normalizedFootprintPreset,
-    footprintParams: normalizedFootprintParams,
-    footprintPolygon: derivedHousePolygon,
-  });
-  const normalizedRoofDraft = roofDraft ?? null;
-  const explicitRoofForm = normalizedRoofDraft?.form ?? null;
-  const explicitRoofMaterial = normalizedRoofDraft?.material ?? null;
-  const explicitRoofPitchDeg = normalizedRoofDraft?.primaryPitchDeg ?? null;
-  const explicitPrimaryFallDirection = normalizeRoofPrimaryFallDirection(
-    normalizedRoofDraft?.primaryFallDirection,
-  );
-  const explicitRidgeAxis = normalizeRoofRidgeAxis(normalizedRoofDraft?.ridgeAxis);
-  const explicitOpenGableEndIds = normalizedRoofDraft?.openGableEndIds;
-  const explicitAppendage = normalizedRoofDraft?.appendage ?? null;
-  const sharedRoofForm = explicitRoofForm ?? roofForm;
-  const sharedRoofPitchFallback =
-    explicitRoofPitchDeg === null || explicitRoofPitchDeg === undefined || sharedRoofForm === 'mono'
-      ? inferredPrimaryPitchDeg
-      : null;
-  const sharedRoofPitchDeg = normalizeHouseRoofPitchInputForForm({
-    roofForm: sharedRoofForm,
-    value: explicitRoofPitchDeg,
-    fallbackValue: sharedRoofPitchFallback,
-  });
-  const sharedRoofMaterial =
-    explicitRoofMaterial
-      ? (normalizeHouseRoofMaterial(explicitRoofMaterial) as CalculatorHouseRoofMaterial)
-      : normalizedRoofMaterial;
-  const sharedPrimaryFallDirection =
-    explicitPrimaryFallDirection ??
-    derivedMonoFallDirection.value;
-  const ridgeAxisRelevant = sharedRoofForm === 'hipped';
-  const shouldHealPresetRidgeAxis =
-    normalizedFootprintMode !== 'custom_polygon' &&
-    ridgeAxisRelevant &&
-    explicitRidgeAxis !== null &&
-    explicitRidgeAxis !== derivedRidgeAxis.value;
-  const effectiveRidgeAxisExplicit = explicitRidgeAxis !== null && !shouldHealPresetRidgeAxis;
-  const sharedRidgeAxis =
-    shouldHealPresetRidgeAxis
-      ? derivedRidgeAxis.value
-      : (explicitRidgeAxis ?? derivedRidgeAxis.value);
-  const roofProvenance: HouseRoofProvenance = {
-    form: explicitRoofForm ? 'house_first_draft' : 'legacy_pergola_inference',
-    material: explicitRoofMaterial ? 'house_first_draft' : roofMaterialResult.source,
-    primaryPitchDeg: hasExplicitRoofPitch(explicitRoofPitchDeg)
-      ? 'house_first_draft'
-      : roofPitchResult.source,
-    primaryFallDirection: explicitPrimaryFallDirection
-      ? 'house_first_draft'
-      : derivedMonoFallDirection.source,
-    ridgeAxis: effectiveRidgeAxisExplicit ? 'house_first_draft' : derivedRidgeAxis.source,
-    openGableEndIds: Array.isArray(explicitOpenGableEndIds) ? 'house_first_draft' : 'default_fallback',
-    appendage: hasExplicitRoofAppendage(explicitAppendage) ? 'house_first_draft' : 'default_fallback',
-  };
-  const terminalEnds = deriveHouseGableTerminalEnds({
-    footprint: localPolygonToGeometryPolygon(derivedHousePolygon),
-    ridgeAxis: sharedRidgeAxis,
-  });
-  const validTerminalEndIds = new Set(terminalEnds.map((end) => end.id));
-  // Milestone 13 session C: openGableEndIds applies to `'hipped'`
-  // only -- legacy `'gable'` was retired from the type union and is
-  // mapped to `'hipped'` at the normalize boundary.
-  const formAcceptsOpenGableEndIds = sharedRoofForm === 'hipped';
-  const requestedOpenGableEndIds = formAcceptsOpenGableEndIds
-    ? normalizeRoofOpenGableEndIds(normalizedRoofDraft?.openGableEndIds)
-    : [];
-  const openGableEndIds = formAcceptsOpenGableEndIds
-    ? requestedOpenGableEndIds.filter((id) => validTerminalEndIds.has(id))
-    : [];
-  if (
-    normalizedFootprintMode === 'custom_polygon' &&
-    requestedOpenGableEndIds.length !== openGableEndIds.length
-  ) {
-    warnings.push({
-      id: 'house-roof-open-gable-ends',
-      code: 'invalid_house_first_roof_overlay',
-      severity: 'blocking',
-      field: 'houseFirst.roof.openGableEndIds',
-      chosenModuleIndex: 0,
-      conflictingModuleIndexes: [],
-      message: 'Some saved open gable ends no longer match the current footprint or ridge orientation and were cleared.',
-    });
-  }
-  // Milestone 13 session C: appendage is supported for mono AND
-  // hipped (the latter includes the legacy gable topology, which is
-  // now expressed as hipped + all-open terminal ends).
-  const appendageAllowed = sharedRoofForm === 'mono' || sharedRoofForm === 'hipped';
-  const appendage = {
-    enabled: appendageAllowed && Boolean(explicitAppendage?.enabled),
-    form: normalizeAppendageForm(explicitAppendage?.form) ?? 'mono',
-    hostEdge: normalizeAttachmentSide(
-      explicitAppendage?.hostEdge ?? normalizedAttachmentSide,
-    ) as NonNullable<CalculatorModuleInputs['attachmentSide']>,
-    pitchDeg: normalizeRoofDraftPitch(
-      explicitAppendage?.pitchDeg ?? null,
-      sharedRoofPitchDeg,
-    ),
-    dropMm: normalizeRoofDraftPitch(
-      explicitAppendage?.dropMm ?? null,
-      '450',
-    ),
-  };
-  const resolvedEaveHeightMm = Number.isFinite(Number(eaveHeightM))
-    ? Number(eaveHeightM) * 1000
-    : 2400;
-  const resolvedEaveOverhangMm = Number.isFinite(Number(eaveOverhangMm))
-    ? Number(eaveOverhangMm)
-    : 450;
-  const geometryFootprint = localPolygonToGeometryPolygon(derivedHousePolygon);
-  const attachmentLine =
-    attachmentKind === 'freestanding' || attachmentKind === 'wall'
-      ? null
-      : buildLocalHouseAttachmentLine({
-          attachmentSide: normalizedAttachmentSide,
-          pergolaWidthMm: firstModuleLengthMm,
-          pergolaDepthMm: firstModuleProjectionMm,
-          zMm: 0,
-        });
-  const attachmentSourceEdgeId =
-    attachmentKind === 'fascia'
-      ? resolveAttachmentSourceEdgeId({
-          footprint: geometryFootprint,
-          attachmentSide: normalizedAttachmentSide,
-          attachmentLine,
-        })
-      : null;
-  const appendageSupport = deriveHouseRoofAppendageSupport({
-    sourceFootprint: geometryFootprint,
-    eaveHeightMm: resolvedEaveHeightMm,
-    eaveOverhangMm: resolvedEaveOverhangMm,
-    roofPitchDeg: Number(sharedRoofPitchDeg),
-    roofForm: sharedRoofForm,
-    roofPrimaryFallDirection: sharedPrimaryFallDirection,
-    roofRidgeAxis: sharedRidgeAxis,
-    attachmentSourceEdgeId,
-  });
-  const validation = validateSharedRoof({
-    footprint: geometryFootprint,
-    roofForm: sharedRoofForm,
-    roofPrimaryFallDirection: sharedPrimaryFallDirection,
-    roofPrimaryFallDirectionExplicit: explicitPrimaryFallDirection !== null,
-    preferredMonoFallDirection:
-      sharedRoofForm === 'mono'
-        ? derivedMonoFallDirection.value
-        : null,
+  const roofProjection = resolveHouseRoofProjection({
+    roofDraft: roofDraft ?? null,
+    derivedHousePolygon,
+    normalizedFootprintMode,
+    normalizedFootprintPreset,
+    normalizedFootprintParams,
+    normalizedAttachmentSide,
+    attachmentKind,
     attachmentStrategy,
-    attachmentRequiresDrainEdge:
-      attachmentKind === 'soffit' || attachmentKind === 'fascia',
-    attachmentEdge: attachmentLine,
-    roofRidgeAxis: sharedRidgeAxis,
-    roofRidgeAxisExplicit: effectiveRidgeAxisExplicit,
-    preferredRidgeAxis: sharedRoofForm === 'hipped' ? derivedRidgeAxis.value : null,
-    appendageSupport: {
-      supportedHostEdges: appendageSupport.supportedHostEdges as Array<NonNullable<CalculatorModuleInputs['attachmentSide']>>,
-      blockedReasonsBySide: appendageSupport.blockedReasonsBySide,
-    },
-    appendage: {
-      enabled: appendage.enabled,
-      form: appendage.form,
-      hostEdge: appendage.hostEdge,
-    },
+    normalizedRoofMaterial,
+    roofMaterialSource: roofMaterialResult.source,
+    roofPitchSource: roofPitchResult.source,
+    inferredPrimaryPitchDeg: roofPitchDeg,
+    roofForm,
+    firstModuleLengthMm,
+    firstModuleProjectionMm,
+    eaveHeightM,
+    eaveOverhangMm,
   });
-  const capabilities = deriveHouseRoofCapabilities({
-    roofForm: sharedRoofForm,
-    footprint: geometryFootprint,
-  });
-  capabilities.appendageSupported = appendageSupport.supportedHostEdges.length > 0;
-  const roofGeometryKind = deriveHouseRoofGeometryKind({
-    roofForm: sharedRoofForm,
-    footprint: geometryFootprint,
-    openGableEndIds,
-    roofRidgeAxis: sharedRidgeAxis,
-  });
-  const appendageSupportedHostEdges =
-    appendageSupport.supportedHostEdges as Array<NonNullable<CalculatorModuleInputs['attachmentSide']>>;
-  const appendageSupportReason =
-    validation.code === 'invalid_appendage_topology' || validation.code === 'invalid_appendage_host_edge'
-      ? validation.message
-      : null;
-  const approximationReasons = new Set<HouseRoofApproximationReason>();
-  if (roofProvenance.form === 'legacy_pergola_inference') {
-    approximationReasons.add('inferred_form');
-  }
-  if (
-    sharedRoofForm === 'mono' &&
-    explicitPrimaryFallDirection === null &&
-    roofProvenance.primaryFallDirection === 'legacy_pergola_inference'
-  ) {
-    approximationReasons.add('inferred_fall_direction');
-  }
-  if (ridgeAxisRelevant && !effectiveRidgeAxisExplicit && derivedRidgeAxis.usedFallback) {
-    approximationReasons.add('inferred_ridge_axis');
-  }
-  if (
-    ridgeAxisRelevant &&
-    !effectiveRidgeAxisExplicit &&
-    derivedRidgeAxis.ambiguous
-  ) {
-    approximationReasons.add('ambiguous_ridge_axis');
-  }
-  const roofApproximationReasons = Array.from(approximationReasons);
-  const roofValidation: HouseModel['roof']['validation'] =
-    validation.status === 'invalid'
-      ? {
-          ...validation,
-          approximationReasons: roofApproximationReasons,
-        }
-      : {
-          ...validation,
-          status: roofApproximationReasons.length > 0 ? 'approximate' : 'valid',
-          approximationReasons: roofApproximationReasons,
-        };
-  const hasExplicitRoofDraftField =
-    explicitRoofForm !== null ||
-    explicitRoofMaterial !== null ||
-    hasExplicitRoofPitch(explicitRoofPitchDeg) ||
-    explicitPrimaryFallDirection !== null ||
-    explicitRidgeAxis !== null ||
-    (explicitOpenGableEndIds !== undefined && explicitOpenGableEndIds !== null) ||
-    hasExplicitRoofAppendage(explicitAppendage);
+  for (const warning of roofProjection.warnings) warnings.push(warning);
   const derivedWalls = buildDerivedWallLookup({
     houseId: 'house-main',
     housePolygon: derivedHousePolygon,
@@ -1941,8 +1333,8 @@ function buildSharedHouse(
     housePolygon: derivedHousePolygon,
     derivedWalls,
     roof: {
-      form: sharedRoofForm,
-      validation: roofValidation,
+      form: roofProjection.roof.form,
+      validation: roofProjection.roof.validation,
     },
     attachmentStrategy,
     openings,
@@ -1964,28 +1356,17 @@ function buildSharedHouse(
         drawingRotationQuarterTurns: normalizedDrawingRotationQuarterTurns,
         attachmentSide: normalizedAttachmentSide,
       },
+      // Roof view-model comes from the focused projection adapter
+      // (`houseRoofFormAdapter`); the only field overlaid here is
+      // `confidence`, which depends on whether any of the collect()'d
+      // shared fields hit a low-confidence fallback inside this function.
+      // Everything else (form, material, pitch, fall direction, ridge
+      // axis, terminal ends, open gable IDs, appendage, geometry kind,
+      // validation, provenance, capabilities, source) is owned by
+      // `resolveHouseRoofProjection`.
       roof: {
-        id: 'house-roof-main',
-        form: sharedRoofForm,
-        material: sharedRoofMaterial,
-        pitchDeg: sharedRoofPitchDeg,
-        primaryPitchDeg: sharedRoofPitchDeg,
-        primaryFallDirection: sharedPrimaryFallDirection,
-        ridgeAxis: sharedRidgeAxis,
-        openGableEndIds,
-        terminalEnds: terminalEnds.map((end) => ({
-          ...end,
-          isOpen: openGableEndIds.includes(end.id),
-        })),
-        appendage,
-        geometryKind: roofGeometryKind,
-        appendageSupportedHostEdges,
-        appendageSupportReason,
-        validation: roofValidation,
-        provenance: roofProvenance,
-        capabilities,
+        ...roofProjection.roof,
         confidence: lowConfidence ? 'low' : 'high',
-        source: hasExplicitRoofDraftField ? 'house_first_draft' : 'legacy_module_inference',
       },
       storeyMode: normalizedStoreyMode,
       attachmentStrategy,
