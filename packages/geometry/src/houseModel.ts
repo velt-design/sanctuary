@@ -348,8 +348,13 @@ export function buildHouseModel3D(input: {
   config: GeometryConfig;
   attachmentEdge: Line3 | null;
 }): HouseModel3D | null {
-  if (input.config.connection.type === 'freestanding') return null;
-
+  // Freestanding houses get a full 3D model (walls + roof + envelope) since
+  // PR8b. The previous `return null` short-circuit was a vestige of an era
+  // where the workbench only rendered pergola-attached houses; multi-form
+  // rendering needs standalone forms to surface walls/roof/decks too. The
+  // pergola-dependent helpers downstream (`buildSemanticHouseAttachmentEdge`,
+  // `buildAttachmentTarget`) are already null-safe for freestanding -- the
+  // resulting `attachmentTarget` is `{ kind: 'none' }`, which is correct.
   const model = input.config.houseContext.model;
   const footprint = model?.footprint;
   if (!footprint || footprint.length < 3) return null;
@@ -765,15 +770,19 @@ export function buildHouseReferenceGeometry(input: {
   // to world. When null, legacy world-coord path applies (footprint was
   // pergola-anchored in `normalize.ts` and pre-translated implicitly).
   const housePosition = input.config.houseContext.position ?? null;
+  const model = buildHouseModel3D(input);
 
   if (input.config.connection.type === 'freestanding') {
+    // Freestanding houses now populate `model` (PR8b) so multi-form workbench
+    // rendering can show walls/roof/decks. Pergola-attachment fields stay null
+    // -- there's no pergola wall to bind to, no fascia, no attachment target.
     return {
       wallPlane: null,
       fasciaLine: null,
       roofEdgeLine: null,
       soffitDepthMm: input.config.houseContext.soffitDepthMm ?? null,
       footprint: input.config.houseContext.footprint ?? null,
-      model: null,
+      model,
       attachmentTarget: null,
       position: housePosition,
     };
@@ -784,7 +793,6 @@ export function buildHouseReferenceGeometry(input: {
     input.config.datum.xAxis,
     input.config.datum.zAxis,
   );
-  const model = buildHouseModel3D(input);
 
   return {
     wallPlane: {

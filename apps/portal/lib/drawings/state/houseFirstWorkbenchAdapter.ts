@@ -612,6 +612,15 @@ function buildSharedHouse(
       lowConfidence,
       sourceModuleIndexes: modules.map((_, index) => index),
       sourceModuleIds,
+      // Primary form sits at world origin -- legacy module-synthesised
+      // houses have no authored offset. Rotation here mirrors the
+      // footprint's `drawingRotationQuarterTurns` so PR8 can drop the
+      // footprint field once geometry consumers migrate.
+      transform: {
+        offsetXM: 0,
+        offsetYM: 0,
+        rotationQuarterTurns: normalizedDrawingRotationQuarterTurns,
+      },
       footprint: {
         mode: normalizedFootprintMode,
         preset: normalizedFootprintPreset,
@@ -781,6 +790,10 @@ function buildAdditionalHouseFormFromDraft(input: {
       // not synthesised from `CalculatorModuleInputs`.
       sourceModuleIndexes: [],
       sourceModuleIds: [],
+      // Carry the authored world-space transform straight from the draft
+      // so PR8's solver pass can place this form at its offset (10m east
+      // by default, see PR5's `addHouseFormToObjectFirstDraft`).
+      transform: formDraft.transform,
       footprint: {
         mode: normalizedFootprintMode,
         preset: normalizedFootprintPreset,

@@ -18,6 +18,7 @@ import type {
 import type {
   DerivedBuildingEnvelopeModel,
   DerivedWallGraphModel,
+  HouseFormTransformModel,
 } from './objectFirstWorkbenchModel';
 
 export type WorkbenchMode = 'house' | 'pergolas';
@@ -242,6 +243,14 @@ export type HouseModel = {
   lowConfidence: boolean;
   sourceModuleIndexes: number[];
   sourceModuleIds: string[];
+  // World-space placement for multi-form rendering. Primary form is at
+  // `{0,0,0}` (origin); additional forms carry the authored offset from
+  // `draft.objectFirst.houseAssembly.houseForms[].transform`. Rotation
+  // here mirrors `footprint.drawingRotationQuarterTurns` for the primary;
+  // the duplication is intentional in PR7 to avoid touching geometry
+  // consumers that still read the footprint field. PR8 threads this into
+  // `buildWorkbenchSolvedModel` as the per-form `AssemblyPosition`.
+  transform: HouseFormTransformModel;
   footprint: {
     mode: CalculatorHouseFootprintMode;
     preset: CalculatorHouseFootprintPreset;

@@ -1088,7 +1088,16 @@ describe("buildViewerSceneModel", () => {
     ).toBe(false);
   });
 
-  it("does not render semantic house model objects for freestanding assemblies", () => {
+  it("renders semantic house model objects for freestanding assemblies when houseContext carries a footprint (PR8b)", () => {
+    // Pre-PR8b, freestanding pergolas suppressed house model rendering even
+    // when the houseContext had a real footprint. Multi-form workbench
+    // rendering inverts that: a freestanding house is a first-class form
+    // (e.g. a sleepout next to the main house) and must show walls/roof so
+    // users can see what they're authoring. Legacy "freestanding pergola
+    // with no house attachment" estimates always carried full house data in
+    // their context (the address has a house even when the pergola sits
+    // detached in the backyard); they now render the house alongside the
+    // pergola, which is the more honest visualisation.
     const fixture = requireSupportedFixture("gable_freestanding_standard");
     const config = addHouseModelContext(fixture.config, {
       lengthMm: 6500,
@@ -1104,12 +1113,18 @@ describe("buildViewerSceneModel", () => {
       (layer) => layer.id === "house",
     );
 
-    expect(
-      houseLayer?.objects.some((object) => object.type === "house_surface"),
-    ).toBe(false);
+    // Wall edges (`house_line`) and solid roof/wall geometry
+    // (`house_surface_solid`) are the renderable signals that the
+    // freestanding house now contributes to the 3D scene. `house_surface`
+    // (non-solid attachment-zone polygons) intentionally stays absent for
+    // freestanding -- those polygons exist only for pergola attachment
+    // surfaces and have no analogue for a standalone form.
     expect(
       houseLayer?.objects.some((object) => object.type === "house_line"),
-    ).toBe(false);
+    ).toBe(true);
+    expect(
+      houseLayer?.objects.some((object) => object.type === "house_surface_solid"),
+    ).toBe(true);
   });
 
   it("preserves member geometry fields for rendered member objects", () => {

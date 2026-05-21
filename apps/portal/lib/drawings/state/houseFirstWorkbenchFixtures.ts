@@ -229,6 +229,7 @@ export function makeHouseFirstOnePergolaFixture(): HouseFirstWorkbenchProjectMod
       confidence: 'high',
       lowConfidence: false,
       sourceModuleIndexes: [0],
+      transform: { offsetXM: 0, offsetYM: 0, rotationQuarterTurns: 0 },
       sourceModuleIds: ['module-1'],
       footprint: {
         mode: 'preset',

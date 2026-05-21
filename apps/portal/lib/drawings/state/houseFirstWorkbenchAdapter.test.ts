@@ -95,6 +95,17 @@ describe('buildHouseFirstWorkbenchProjectModel houseForms[] contract', () => {
     expect(project.houseForms[1]!.footprint.preset).toBe(
       project.houseForms[0]!.footprint.preset,
     );
+    // PR7: world-space transform survives from draft to project model.
+    // Primary is at origin; additional form gets the default 10m east
+    // offset that `addHouseFormToObjectFirstDraft` applies so cloned
+    // forms don't render on top of their source.
+    expect(project.houseForms[0]!.transform).toEqual({
+      offsetXM: 0,
+      offsetYM: 0,
+      rotationQuarterTurns: 0,
+    });
+    expect(project.houseForms[1]!.transform.offsetXM).toBe(10);
+    expect(project.houseForms[1]!.transform.offsetYM).toBe(0);
   });
 });
 

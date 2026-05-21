@@ -494,7 +494,13 @@ export function buildHouseModelConfig(input: {
   houseUndersideMm: number | null;
   referenceUndersideMm: number | null;
 }): HouseModelConfig | null {
-  if (input.connectionType === 'freestanding' || !input.footprint) {
+  // Pre-PR8b, freestanding contexts skipped HouseModelConfig synthesis because
+  // no consumer rendered the house separately from a pergola attachment. Multi-
+  // form rendering needs freestanding houses to surface walls/roof/decks too;
+  // `HouseModelConfig` is purely house data (footprint, roof, eave) so it has
+  // no pergola dependency. The footprint check stays -- genuinely-missing house
+  // data still bails.
+  if (!input.footprint) {
     return null;
   }
 

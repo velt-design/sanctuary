@@ -1682,7 +1682,7 @@ describe('house model geometry builder', () => {
     expect(model?.roofPlanes[0]?.boundary[0]?.z).toBe(3100);
   });
 
-  it('threads house model geometry into house reference output and keeps freestanding null', () => {
+  it('threads house model geometry into house reference output for both attached and freestanding configs', () => {
     const attached = buildHouseReferenceGeometry({
       config: makeConfig({ connectionType: 'fascia', strategy: 'fascia_under_gutter' }),
       attachmentEdge: makeAttachmentEdge(),
@@ -1699,9 +1699,14 @@ describe('house model geometry builder', () => {
     expect(attached.fasciaLine).toEqual(makeAttachmentEdge());
     expect(attached.model?.roofPlanes).toHaveLength(4);
     expect(attached.attachmentTarget?.kind).toBe('zone');
+    // PR8b: freestanding houses now populate `model` so multi-form workbench
+    // rendering can show their walls/roof/decks. Pergola-attachment fields
+    // (wallPlane, fasciaLine, roofEdgeLine, attachmentTarget) stay null --
+    // there's no pergola wall to bind to.
     expect(freestanding.wallPlane).toBeNull();
-    expect(freestanding.model).toBeNull();
     expect(freestanding.attachmentTarget).toBeNull();
+    expect(freestanding.model?.roofPlanes).toHaveLength(4);
+    expect(freestanding.model?.wallSegments.length).toBeGreaterThan(0);
   });
 
   it('builds flat roofs for orthogonal L-shaped footprints without downgrading the roof form', () => {
@@ -3095,7 +3100,15 @@ describe('buildHouseModel3DFromRawHouseInput (milestone 13 phase 2)', () => {
     expect(fromRaw.footprint).toEqual(legacy.footprint);
   });
 
-  it('returns null for freestanding pergola context (matches legacy)', () => {
+  it('builds a real HouseModel3D for a freestanding pergola context (PR8b: standalone-house support)', () => {
+    // Pre-PR8b this returned null because `buildHouseModelConfig` short-
+    // circuited on freestanding. Multi-form workbench rendering needs
+    // freestanding forms to surface walls/roof/decks, so the short-circuit
+    // moved upstream (in `normalize.ts`) to the genuine "no footprint" gate.
+    // The pergola-context fields (`pergolaLengthMm`, `pergolaProjectionMm`)
+    // remain in the input shape for back-compat but go unused on this path:
+    // `buildSemanticHouseAttachmentEdge` returns null for freestanding, so
+    // no pergola-derived geometry contributes to the resulting model.
     const footprint = makeFootprint();
     const rawHouse: RawHouseInput = {
       houseId: 'house-main',
@@ -3120,6 +3133,11 @@ describe('buildHouseModel3DFromRawHouseInput (milestone 13 phase 2)', () => {
         pergolaProjectionMm: 3000,
       },
     });
-    expect(result).toBeNull();
+    expect(result).not.toBeNull();
+    expect(result?.roofPlanes.length).toBeGreaterThan(0);
+    expect(result?.wallSegments.length).toBeGreaterThan(0);
+    // Pergola attachment fields are absent for freestanding -- the model
+    // is a standalone house, not a pergola-attached configuration.
+    expect(result?.attachmentTarget?.kind).toBe('none');
   });
 });

@@ -46,6 +46,7 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 | 2026-05-04 | Plan Rendering | Active | Geometry-ready Model Space Top renders through `Geometry3DViewport lockedViewPreset="top"` on the same R3F scene as Perspective; the SVG `ProjectionTopViewport` stack is retired. |
 | 2026-05-04 | Design Workbench Architecture | Active | Workbench has two render surfaces: a read-only 3D viewport (`Geometry3DViewport`) and a 2D `PlanViewport` (the editor). Plan replaces "Model Space" in the mode switch (`Sheet | Plan | 3D`); all editing, tools, and gizmos live in PlanViewport. |
 | 2026-05-04 | Design Workbench Architecture | Active | Nine foundational contracts govern the read/edit split (single-source intent, three-phase drag, plan-projection math, typed selection, isolated tool state machines, snap-as-a-service, gizmos+overlays Plan-only, mm everywhere, 3D is read-only). |
+| 2026-05-21 | Design Workbench Testing | Active | 8 ModelSpaceViewport tests are stale-fixture failures, not regressions — needs `objectWorkbenchOverlayInput` migration before they go green again. |
 | 2026-05-01 | Quotes/Invoices/Job Packs | Promoted | High-risk side-effect workflows need a canonical doc before future behavior changes. |
 | 2026-05-01 | Docs | Promoted | Read the agent playbook for non-trivial portal work; promote durable lessons from this log into the playbook. |
 | 2026-05-01 | Docs | Promoted | Do not delete active guardrail docs without confirming usage or replacing the rule. |
@@ -904,3 +905,21 @@ Current guardrail: joined-hipped facet validation must treat stationary-edge top
 Promoted to: None
 
 Related docs/tests: [packages/geometry/src/house/roofJoinedFacets.ts](../packages/geometry/src/house/roofJoinedFacets.ts) (`allowRaisedBoundaryPoints` + stationary-edge-aware face-count check), [packages/geometry/src/house/roofJoinedHipped.ts](../packages/geometry/src/house/roofJoinedHipped.ts) (passes flag when stationary edges exist), [packages/geometry/src/houseModel.test.ts](../packages/geometry/src/houseModel.test.ts) (regression test: "produces valid joined-hipped geometry when ONE terminal end is opened on a U/wrap footprint").
+
+### 2026-05-21 - Design Workbench Testing - ModelSpaceViewport Fixture Rot
+
+Area: Design Workbench Testing
+
+Status: Active
+
+Decision or mistake: 8 tests in `apps/portal/components/drawings/viewports/ModelSpaceViewport.test.tsx` fail on `main` with `data-plan-render-status="invalid_geometry"`. These are NOT a regression in shipped code — the neighbouring 30 `PlanViewport` / `Geometry3DViewport` tests pass against the same render pipeline, and `typecheck` is clean. The failures are localised stale-fixture rot from the milestone-13 `objectWorkbenchOverlayInput` contract change. Two of the test bodies have explicit `TODO(milestone-13): migrate to the new objectWorkbenchOverlayInput shape` comments left next to `as unknown as Parameters<typeof buildPlanViewModel>[0]` casts (the May 11 "build error" commit silenced the type errors but didn't finish the fixture migration). Tests 727 (resize handles) and 794 (house-first overlays) drive resize-handle / hit-target rendering for the primary dimension-editing path; tests 957 / 992 / 1028 / 1156 / 1220 are interaction tests that need those hit targets to exist before they can dispatch events; test 2435 is a separate draw-outline state-machine assertion (unrelated to geometry).
+
+Why it mattered: this is the kind of failure that compounds across PRs if the surface gets touched. A future agent making any HouseModel / plan-render change will see these same 8 fail and may assume their change caused them, or worse, may add their own `as unknown` cast to keep things green. The contract-change debt has to be paid down with a real migration.
+
+Fix path (Phase A — geometry/render, ~half day): trace why `buildAssemblyModel({ planModel })` no longer surfaces `planModel` into the resulting `DrawingAssemblyModel`; replace the two `as unknown as ...` casts (lines ~444, ~777) with properly-shaped `objectWorkbenchOverlayInput` objects matching the type at [buildPlanViewModel.ts:79](../apps/portal/lib/drawings/views/plan/buildPlanViewModel.ts#L79). Phase B (~1-2h): the draw-outline test at line 2435 is a separate state-machine bug — either the preceding `dispatchPointer` calls no longer correspond to the gesture they intend, or the state machine changed its precedence and the test encodes obsolete behaviour. Phase C (~30m): once green, remove the `as unknown` casts and the `TODO(milestone-13)` comments so the type system catches the next fixture drift before the tests do.
+
+Current guardrail: do NOT add more `as unknown as Parameters<typeof buildPlanViewModel>[0]` casts. If a future change makes these tests easier to migrate (e.g. a focused harness for the new overlay-input shape), take the migration in that PR instead of deferring again. Multi-form work (PR8+ in the multi-house-form sequence) verifies against the PR6/PR7 integration tests in `houseFirstWorkbenchAdapter.test.ts` and the passing `PlanViewport` / `Geometry3DViewport` suites; do not block on these 8 unless touching the same surface.
+
+Promoted to: None
+
+Related docs/tests: [apps/portal/components/drawings/viewports/ModelSpaceViewport.test.tsx](../apps/portal/components/drawings/viewports/ModelSpaceViewport.test.tsx) (failing tests, casted fixtures, TODO comments), [apps/portal/lib/drawings/views/plan/buildPlanViewModel.ts](../apps/portal/lib/drawings/views/plan/buildPlanViewModel.ts) (`PlanViewModelSource` union, `invalid_geometry` fallback at line 132), commit `d1fff14` ("build error", 2026-05-11) introduced the casts.

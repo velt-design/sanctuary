@@ -243,6 +243,7 @@ function makeHouseFirstHouse(overrides: HouseModelOverrides = {}): HouseModel {
     lowConfidence: false,
     sourceModuleIndexes: [0],
     sourceModuleIds: ['module-1'],
+    transform: { offsetXM: 0, offsetYM: 0, rotationQuarterTurns: 0 },
     footprint: {
       mode: 'preset',
       preset: 'straight',
@@ -677,6 +678,13 @@ function expectedFitForTargetRect(input: {
   };
 }
 
+// 8 tests in this file fail on main with `data-plan-render-status="invalid_geometry"`
+// (stale `objectWorkbenchOverlayInput` fixtures, not a render regression). Sibling
+// PlanViewport/Geometry3DViewport suites pass against the same pipeline. See
+// `docs/decision-log.md` -> "2026-05-21 - Design Workbench Testing - ModelSpaceViewport
+// Fixture Rot" for the diagnosis and fix plan. Do NOT add more `as unknown as
+// Parameters<typeof buildPlanViewModel>[0]` casts -- finish the milestone-13 migration
+// instead.
 describe('ModelSpaceViewport', () => {
   it('renders plan controls for the live model-space configurator', () => {
     const drawing = makeDrawingModule();

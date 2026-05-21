@@ -695,7 +695,11 @@ describe("solveAssembly3D", () => {
     if (!result.ok) return;
 
     expect(result.value.attachmentEdge).toBeNull();
-    expect(result.value.house.model).toBeNull();
+    // PR8b: freestanding assemblies now populate `house.model` when the
+    // houseContext carries a footprint, so multi-form workbench rendering
+    // can show standalone-house walls/roof. Pergola-attachment fields stay
+    // null because there's no pergola wall to bind to.
+    expect(result.value.house.model).not.toBeNull();
     expect(result.value.house.attachmentTarget).toBeNull();
     expect(
       result.value.members.some((member) => member.role === "ledger"),
@@ -1157,7 +1161,9 @@ describe("solveAssembly3D", () => {
     if (!result.ok) return;
 
     expect(result.value.attachmentEdge).toBeNull();
-    expect(result.value.house.model).toBeNull();
+    // PR8b: see freestanding-mono note above. Multi-form rendering requires
+    // freestanding houses to surface their full 3D model.
+    expect(result.value.house.model).not.toBeNull();
     expect(result.value.house.attachmentTarget).toBeNull();
     expect(result.value.members.some((member) => member.id === "ledger")).toBe(
       false,
