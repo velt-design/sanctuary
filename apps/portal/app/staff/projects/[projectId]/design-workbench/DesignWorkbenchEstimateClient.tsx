@@ -632,6 +632,23 @@ export default function DesignWorkbenchEstimateClient({
                     );
                     return;
                   }
+                  if (request.target.family === 'house_form') {
+                    // PR11 → PR-C (2026-05-22): drag-to-reposition for any
+                    // house form. The previous primary-skip guard is gone;
+                    // dragging the primary now commits a transform delta
+                    // like any other form. The transform write may be
+                    // overwritten on next read while `buildSharedHouse`
+                    // still hardcodes the synthesized primary's transform
+                    // to origin (retires in Phase 2 with cost engine input
+                    // migration). Workbench-can-break permission accepts
+                    // this temporary inconsistency.
+                    void objectWorkbenchActions.commitHouseFormTransformDelta({
+                      houseFormId: request.target.targetId,
+                      deltaXMm: request.delta.x,
+                      deltaYMm: request.delta.y,
+                    });
+                    return;
+                  }
                   // openings deferred — they're wall-anchored, not freely
                   // positioned, so move-via-translate doesn't apply.
                 }

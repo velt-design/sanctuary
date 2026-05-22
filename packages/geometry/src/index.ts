@@ -17,8 +17,9 @@ export type {
 } from './solveProject';
 export { validateGeometrySolve } from './validate';
 export type { ValidateGeometrySolveInput } from './validate';
-export { buildViewerSceneModel } from './viewer';
+export { buildHouseModelSceneObjects, buildViewerSceneModel } from './viewer';
 export {
+  buildHouseReferenceProjectionShape,
   buildProjectReferenceShapes,
   buildTopProjectionParityReport,
   buildTopProjectionViewModel,
@@ -36,3 +37,9 @@ export type {
 export { buildPlanViewModel } from './plan';
 export { buildSectionViewModel } from './section';
 export { buildAssemblyQuantityTakeoff } from './takeoff';
+// Multi-form workbench rendering (PR8): portal callers build per-form
+// freestanding geometry by composing these directly, bypassing the
+// per-pergola normalize/solve pipeline.
+export { buildHouseModel3DFromRawHouseInput } from './houseModel';
+export type { HouseModel3DPergolaContext } from './houseModel';
+export { applyHouseReferencePosition } from './applyAssemblyPosition';

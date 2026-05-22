@@ -1,10 +1,8 @@
-import { buildHouseFirstWorkbenchProjectModel } from '../houseFirstWorkbenchAdapter';
 import {
   normalizeWallOpeningKind,
   resolveOpeningPanelCount,
 } from '../houseFirstWorkbenchModel';
 import type { EstimateDrawingDraft } from '@/lib/estimates/drawingEdits';
-import { buildObjectWorkbenchCompatibilityDraftFromObjectFirstDraft } from '../legacyObjectFirstCompatibilityAdapter';
 import type {
   DeckAttachmentMode,
   DeckElevationMode,
@@ -83,24 +81,10 @@ export type {
   WorkbenchHouseSelection,
   WorkbenchMode,
 };
-export type BuildObjectWorkbenchCompatibilityProjectModelInput = {
-  snapshot: Record<string, unknown> | null;
-  draft?: EstimateDrawingDraft | ObjectWorkbenchCompatibilityDrawingDraft | null;
-  ignoreModuleResults?: boolean;
-};
-
-export function buildObjectWorkbenchCompatibilityProjectModel(
-  input: BuildObjectWorkbenchCompatibilityProjectModelInput,
-): ObjectWorkbenchCompatibilityProjectModel {
-  const draft: ObjectWorkbenchCompatibilityDrawingDraft | null | undefined = input.draft?.objectFirst
-    ? {
-        ...input.draft,
-        houseFirst: buildObjectWorkbenchCompatibilityDraftFromObjectFirstDraft(input.draft.objectFirst),
-      }
-    : input.draft as ObjectWorkbenchCompatibilityDrawingDraft | null | undefined;
-  return buildHouseFirstWorkbenchProjectModel({
-    snapshot: input.snapshot,
-    draft,
-    ignoreModuleResults: input.ignoreModuleResults,
-  });
-}
+// PR-A (2026-05-22): `BuildObjectWorkbenchCompatibilityProjectModelInput`
+// and `buildObjectWorkbenchCompatibilityProjectModel` were deleted. The
+// conversion they performed (objectFirst draft -> houseFirst draft view)
+// is now an internal step of `buildHouseFirstWorkbenchProjectModel`. Call
+// that function directly. This file remains a type re-export namespace
+// until PR-D / PR-E / PR-F migrate the consuming adapters to import from
+// `houseFirstWorkbenchModel` directly; PR-H deletes the file entirely.

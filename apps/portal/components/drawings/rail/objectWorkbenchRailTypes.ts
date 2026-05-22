@@ -26,6 +26,12 @@ export type ObjectWorkbenchRailInspectorContext = {
   onCommitFootprintEdit?: (edit: EstimateDrawingFootprintEdit) => Promise<CommitResult> | CommitResult;
   onCommitRoofIntent?: (roof: HouseFormRoofIntentModel) => Promise<CommitResult> | CommitResult;
   onAddDeck?: (mode: 'preset' | 'custom_outline') => Promise<CommitResult> | CommitResult;
+  /**
+   * PR10: rail "Add structure" button. Clones the active form (or
+   * primary if none selected) via PR5's `addHouseFormToObjectFirstDraft`
+   * and selects the new form. Disabled when locked.
+   */
+  onAddHouseForm?: () => Promise<CommitResult> | CommitResult;
   onAddOpening?: (
     kind: Extract<OpeningObjectModel['kind'], 'window' | 'hinged_door' | 'slider' | 'stacker'>,
   ) => Promise<CommitResult> | CommitResult;

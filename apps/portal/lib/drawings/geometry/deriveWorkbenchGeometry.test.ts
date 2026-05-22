@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { buildEstimateDrawingModules } from '@/lib/estimates/moduleDrawing';
 import { getSanctuaryGeometryWorkbenchFixture } from '@/lib/drawings/sanctuaryWorkbenchFixtures';
-import { buildObjectWorkbenchCompatibilityProjectModel } from '@/lib/drawings/state/compat/objectWorkbenchCompatibilityModel';
+import { buildHouseFirstWorkbenchProjectModel } from '@/lib/drawings/state/houseFirstWorkbenchAdapter';
 import { buildObjectFirstWorkbenchProjectModel } from '@/lib/drawings/state/legacyObjectFirstCompatibilityAdapter';
 import { buildDrawingWorkbenchStore } from '@/lib/drawings/state/drawingWorkbenchStore';
 import { createDrawingWorkbenchUiState } from '@/lib/drawings/state/drawingWorkbenchUiState';
@@ -18,7 +18,7 @@ function requireFixture(slug: 'mono-standard' | 'gable-standard' | 'box-standard
 }
 
 function buildGeometryContextFromSnapshot(snapshot: Record<string, unknown>) {
-  const compatibilityProjectModel = buildObjectWorkbenchCompatibilityProjectModel({ snapshot });
+  const compatibilityProjectModel = buildHouseFirstWorkbenchProjectModel({ snapshot });
   return buildObjectWorkbenchGeometryContext({
     projectModel: buildObjectFirstWorkbenchProjectModel({ compatibilityProjectModel }),
   });

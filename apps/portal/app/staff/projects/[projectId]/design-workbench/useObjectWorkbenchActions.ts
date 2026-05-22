@@ -23,6 +23,7 @@ import {
   normalizeObjectFirstWorkbenchDraftVNext,
 } from '@/lib/drawings/state/objectFirstWorkbenchModel';
 import {
+  addHouseFormToObjectFirstDraft,
   buildObjectFirstWorkbenchDraftFromProjectModel,
 } from '@/lib/drawings/state/objectFirstWorkbenchAdapter';
 import type {
@@ -558,11 +559,99 @@ export function useObjectWorkbenchActions({
     [commitObjectWorkbenchPatch],
   );
 
+  const commitHouseFormTransformDelta = useCallback(
+    async (input: {
+      houseFormId: string;
+      deltaXMm: number;
+      deltaYMm: number;
+    }): Promise<CommitResult> => {
+      // PR11: plan-view drag-to-reposition for additional house forms.
+      // The MoveTool delivers a delta in mm (world coords); we add it to
+      // the form's existing transform (which is in metres). Rotation is
+      // not touched -- PR12 will add rotation gestures.
+      const deltaXM = input.deltaXMm / 1000;
+      const deltaYM = input.deltaYMm / 1000;
+      return runDraftTransaction({
+        buildNextDraft: (draft) => {
+          const objectFirstDraft = resolveObjectFirstDraft(draft, store);
+          const assembly = objectFirstDraft.houseAssembly;
+          if (!assembly) {
+            return { ok: false, error: 'No house assembly available.' };
+          }
+          const formIndex = assembly.houseForms.findIndex((form) => form.id === input.houseFormId);
+          if (formIndex === -1) {
+            return { ok: false, error: `House form ${input.houseFormId} not found.` };
+          }
+          const current = assembly.houseForms[formIndex]!;
+          const nextForms = [...assembly.houseForms];
+          nextForms[formIndex] = {
+            ...current,
+            transform: {
+              offsetXM: current.transform.offsetXM + deltaXM,
+              offsetYM: current.transform.offsetYM + deltaYM,
+              rotationQuarterTurns: current.transform.rotationQuarterTurns,
+            },
+          };
+          return {
+            ok: true,
+            draft: updateDraftObjectFirst({
+              draft,
+              objectFirst: {
+                ...objectFirstDraft,
+                houseAssembly: { ...assembly, houseForms: nextForms },
+              },
+            }),
+          };
+        },
+      });
+    },
+    [runDraftTransaction, store],
+  );
+
+  const addSharedHouseForm = useCallback(
+    async (): Promise<CommitResult> => {
+      // PR10: rail "Add structure" button. Clones the active form (or
+      // primary if none selected) 10 m east via PR5's
+      // `addHouseFormToObjectFirstDraft`, then selects the new form so
+      // the inspector and viewports follow.
+      if (!houseForm) return missingSharedHouseResult();
+      let newFormId: string | null = null;
+      return runDraftTransaction({
+        buildNextDraft: (draft) => {
+          const objectFirstDraft = resolveObjectFirstDraft(draft, store);
+          const nextObjectFirst = addHouseFormToObjectFirstDraft({
+            draft: objectFirstDraft,
+            sourceHouseFormId: houseForm.id,
+          });
+          newFormId = nextObjectFirst.houseAssembly?.houseForms.at(-1)?.id ?? null;
+          return {
+            ok: true,
+            draft: updateDraftObjectFirst({ draft, objectFirst: nextObjectFirst }),
+          };
+        },
+        afterPersist: () => {
+          if (newFormId) {
+            selectObjectTarget({ family: 'house_forms', objectId: newFormId });
+          }
+        },
+      });
+    },
+    [houseForm, runDraftTransaction, selectObjectTarget, store],
+  );
+
   const addSharedHouseDeck = useCallback(
     async (mode: 'preset' | 'custom_outline'): Promise<CommitResult> => {
       if (!houseForm) return missingSharedHouseResult();
 
       let deckId = '';
+      // PR-D (2026-05-22): bind the deck to the selected form via the new
+      // `attachment` snap reference. `buildNewObjectWorkbenchDeckDraft`
+      // writes `attachment.host.objectId = hostHouseFormObjectId`. The
+      // `host.edgeId` stays empty until the user drags the deck to a wall
+      // (PR-F's snap migration populates it then). For decks added while
+      // no form is selected the read path's null-fallback routes the deck
+      // to the synthesized primary form.
+      const hostHouseFormObjectId = houseForm.id;
 
       return commitDeckDraftMutation({
         buildNextDecks: ({ currentDecks, housePolygon }) => {
@@ -573,6 +662,7 @@ export function useObjectWorkbenchActions({
             hostEdgeId: houseForm.footprint.attachmentSide ?? 'rear',
             housePolygon,
             mode,
+            hostHouseFormObjectId,
           });
           return [...currentDecks, nextDeck];
         },
@@ -814,7 +904,9 @@ export function useObjectWorkbenchActions({
 
   return {
     addSharedHouseDeck,
+    addSharedHouseForm,
     addSharedHouseOpening,
+    commitHouseFormTransformDelta,
     commitDrawingField,
     commitDeckDimension,
     commitGeometryIntent,

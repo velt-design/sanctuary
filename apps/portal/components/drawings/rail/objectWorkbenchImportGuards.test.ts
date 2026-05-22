@@ -30,7 +30,7 @@ const OBJECT_WORKBENCH_ACTION_SELECTION_FILES = [
 const OBJECT_WORKBENCH_BOUNDARY_FILES = [
   path.join('apps', 'portal', 'components', 'drawings', 'workbench', 'DrawingWorkbench.tsx'),
   path.join('apps', 'portal', 'components', 'drawings', 'viewports', 'ModelSpaceViewport.tsx'),
-  path.join('apps', 'portal', 'components', 'drawings', 'viewports', 'Geometry3DViewport.tsx'),
+  path.join('apps', 'portal', 'components', 'drawings', 'viewports', 'Geometry3DViewport', 'index.tsx'),
 ];
 const OBJECT_WORKBENCH_PLAN_OVERLAY_BOUNDARY_FILES = [
   path.join('apps', 'portal', 'app', 'staff', 'calculator', 'ModuleViewsCard.tsx'),
@@ -139,8 +139,10 @@ function toRepoRelativePath(absolutePath: string): string {
 // `houseRoofFormValidate`) the new files kept that family membership --
 // they import the same model types -- but adopted a more descriptive
 // prefix. Allowlisting `houseRoofForm*` keeps the original guard intent
-// without forcing artificially long names.
-const HOUSE_FIRST_FAMILY_PREFIXES = ['houseFirst', 'houseRoofForm'];
+// without forcing artificially long names. Same logic for
+// `pergolaAttachment*` (the resolver carve-out that consumes
+// `HouseModel`/`PergolaModel` types from the same family).
+const HOUSE_FIRST_FAMILY_PREFIXES = ['houseFirst', 'houseRoofForm', 'pergolaAttachment'];
 
 function isHouseFirstFamilyBasename(basename: string): boolean {
   return HOUSE_FIRST_FAMILY_PREFIXES.some((prefix) => basename.startsWith(prefix));
@@ -236,7 +238,7 @@ describe('object workbench import guards', () => {
       'utf8',
     );
     const geometry3DViewportSource = fs.readFileSync(
-      path.join(process.cwd(), path.normalize(path.join('apps', 'portal', 'components', 'drawings', 'viewports', 'Geometry3DViewport.tsx'))),
+      path.join(process.cwd(), path.normalize(path.join('apps', 'portal', 'components', 'drawings', 'viewports', 'Geometry3DViewport', 'index.tsx'))),
       'utf8',
     );
 

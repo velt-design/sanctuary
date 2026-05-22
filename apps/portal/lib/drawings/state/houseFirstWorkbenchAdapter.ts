@@ -39,7 +39,11 @@ import type {
   HouseFirstWorkbenchProjectModel,
   PergolaModel,
 } from './houseFirstWorkbenchModel';
-import type { ObjectFirstHouseFormDraft } from './objectFirstWorkbenchModel';
+import type {
+  ObjectFirstHouseFormDraft,
+  ObjectFirstWorkbenchDraftVNext,
+} from './objectFirstWorkbenchModel';
+import { buildObjectWorkbenchCompatibilityDraftFromObjectFirstDraft } from './legacyObjectFirstCompatibilityAdapter';
 import { buildSharedDecks } from './houseFirstDeckAdapter';
 import { buildSharedOpenings } from './houseFirstOpeningAdapter';
 import {
@@ -67,6 +71,78 @@ type HouseFirstWorkbenchDraftCarrier = EstimateDrawingDraft & {
 };
 
 /**
+ * PR-A: derive the legacy houseFirst-shaped view from the canonical
+ * `objectFirst` draft. This used to live as a cross-file bridge
+ * (`buildObjectWorkbenchCompatibilityProjectModel` in `state/compat/`);
+ * now it's a private helper called inline by
+ * `buildHouseFirstWorkbenchProjectModel`. The conversion logic itself
+ * still lives in `buildObjectWorkbenchCompatibilityDraftFromObjectFirstDraft`
+ * (in `legacyObjectFirstCompatibilityAdapter.ts`) because PR-D / PR-E /
+ * PR-F will retire it entirely when adapters migrate to consume the
+ * object-first types directly. Keeping the conversion in one named
+ * helper makes the deletion in those PRs a single grep.
+ */
+function deriveHouseFirstDraftViewFromObjectFirst(
+  objectFirstDraft: ObjectFirstWorkbenchDraftVNext,
+): HouseFirstWorkbenchDraftCarrier['houseFirst'] {
+  return buildObjectWorkbenchCompatibilityDraftFromObjectFirstDraft(objectFirstDraft);
+}
+
+/**
+ * PR-B: convert a built `HouseModel` (output of `buildSharedHouse`) into
+ * an `ObjectFirstHouseFormDraft` so primary and additional forms can
+ * flow through the same `buildHouseFormFromDraft` builder. The four
+ * fields that `buildSharedHouse` carries but `ObjectFirstHouseFormDraft`
+ * doesn't carry (`attachmentKind`, `firstModuleLengthMm`/`ProjectionMm`,
+ * source tracking, `confidence`) are dropped — `buildHouseFormFromDraft`
+ * uses freestanding defaults for them. This causes a deliberate workbench
+ * behavior change: the primary form's attachment zones disappear from the
+ * roof projection until PR-F restores them via snap references. Per the
+ * locked Phase 1 permission (2026-05-22), this temporary UX degradation
+ * is acceptable; the email-quote path is unaffected because it doesn't
+ * traverse the workbench.
+ */
+function houseModelToObjectFirstHouseFormDraft(
+  house: HouseModel,
+): ObjectFirstHouseFormDraft {
+  return {
+    id: house.id,
+    label: house.label,
+    transform: house.transform,
+    footprint: {
+      mode: house.footprint.mode,
+      preset: house.footprint.preset,
+      params: house.footprint.params,
+      polygon: house.footprint.polygon,
+      attachmentSide: house.footprint.attachmentSide,
+    },
+    roofIntent: {
+      form: house.roof.form,
+      material: house.roof.material,
+      primaryPitchDeg: house.roof.primaryPitchDeg,
+      primaryFallDirection: house.roof.primaryFallDirection,
+      ridgeAxis: house.roof.ridgeAxis,
+      openGableEndIds: house.roof.openGableEndIds,
+      appendage: house.roof.appendage,
+    },
+    storeyMode: house.storeyMode,
+    attachmentStrategy: house.attachmentStrategy,
+    eaveHeightM: house.eaveHeightM,
+    wallHeightM: house.wallHeightM,
+    soffitDepthMm: house.soffitDepthMm,
+    fasciaHeightMm: house.fasciaHeightMm,
+    gutterWidthMm: house.gutterWidthMm,
+    gutterDepthMm: house.gutterDepthMm,
+    gutterProjectionMm: house.gutterProjectionMm,
+    eaveOverhangMm: house.eaveOverhangMm,
+    // `sourceModuleIndexes`/`sourceModuleIds` not on `ObjectFirstHouseFormDraft`
+    // (they're on `HouseFormModel`, a related but different shape used inside
+    // the object-first project model). Dropped here; `buildHouseFormFromDraft`
+    // sets them to empty arrays. Acceptable per Phase 1 permission.
+  };
+}
+
+/**
  * Legacy id for the single shared house form that pre-multi-form
  * estimates implicitly own. Until `houseForms[]` becomes a real
  * user-authored array, every estimate continues to synthesise exactly
@@ -80,11 +156,14 @@ type HouseFirstWorkbenchDraftCarrier = EstimateDrawingDraft & {
  *   - allocate new ids (`house-form-${uuid}` or similar) for
  *     subsequently-added forms.
  *
- * Exported so other layers that still hardcode the literal (PlanViewport
- * snap target source, geometry fixtures) can switch to the named
- * constant without forcing a tree-wide rename.
+ * PR-C (2026-05-22): the previously-exported `LEGACY_PRIMARY_HOUSE_FORM_ID`
+ * constant is gone. The id `'house-main'` is now just an id string the
+ * synthesized form gets assigned by `buildSharedHouse`; nothing else
+ * special-cases it. Other layers that need to identify "the primary form"
+ * should read the actual form's `.id` field from the project model, not
+ * compare against a constant.
  */
-export const LEGACY_PRIMARY_HOUSE_FORM_ID = 'house-main';
+const SYNTHESIZED_PRIMARY_FORM_ID = 'house-main';
 
 type SharedFieldConfig<T> = {
   field: string;
@@ -389,7 +468,7 @@ function buildSharedHouse(
   // change. Multi-form callers (a future `buildHousesFromDraft` loop)
   // pass each form's id explicitly so wall / envelope / model ids
   // stay scoped per-form and don't collide across forms.
-  houseFormId: string = LEGACY_PRIMARY_HOUSE_FORM_ID,
+  houseFormId: string = SYNTHESIZED_PRIMARY_FORM_ID,
 ): {
   house: HouseModel | null;
   warnings: HouseFirstMigrationWarning[];
@@ -682,7 +761,16 @@ function buildSharedHouse(
  * raised. Migration warnings (the "collect disagreed across modules"
  * shape) don't apply here because there are no modules to disagree.
  */
-function buildAdditionalHouseFormFromDraft(input: {
+/**
+ * PR-B (2026-05-22): renamed from `buildAdditionalHouseFormFromDraft`.
+ * This is now the unified form-building pipeline for ALL house forms
+ * (primary and additional). The primary's `ObjectFirstHouseFormDraft`
+ * is synthesized from `buildSharedHouse`'s output via
+ * `houseModelToObjectFirstHouseFormDraft`; additional forms come straight
+ * from `draft.objectFirst.houseAssembly.houseForms[]`. Both flow through
+ * this single function.
+ */
+function buildHouseFormFromDraft(input: {
   formDraft: ObjectFirstHouseFormDraft;
   deckDrafts: HouseFirstDeckDraft[] | null | undefined;
   openingDrafts: HouseFirstOpeningDraft[] | null | undefined;
@@ -912,33 +1000,87 @@ export function buildHouseFirstWorkbenchProjectModel(input: {
   const modules = buildEstimateDrawingModules(effectiveSnapshot, {
     ignoreModuleResults: input.ignoreModuleResults,
   });
+
+  // PR-A: previously `buildObjectWorkbenchCompatibilityProjectModel` (in
+  // `state/compat/`) acted as a cross-file bridge that converted
+  // `draft.objectFirst` into the legacy `houseFirst` shape this adapter
+  // consumes. The conversion now happens inline. When `draft.objectFirst`
+  // is set (canonical state since the migration), it wins. The bare
+  // `draft.houseFirst` fallback is kept only for legacy callers that
+  // pre-bridged data in the carrier shape (notably the historical PR9
+  // integration test). PR-D / PR-E / PR-F retire this view entirely
+  // when adapters migrate to consume the object-first types directly.
+  const derivedHouseFirstView = input.draft?.objectFirst
+    ? deriveHouseFirstDraftViewFromObjectFirst(input.draft.objectFirst)
+    : null;
+  const houseFirstDraftView = derivedHouseFirstView ?? input.draft?.houseFirst ?? null;
+
+  // PR9: split decks/openings by host-form id so the primary form gets
+  // only its own decks/openings, and each additional form gets its
+  // share. `null`/`undefined` `hostHouseFormId` routes to the primary
+  // (back-compat for legacy single-form estimates and decks authored
+  // before multi-form).
+  const allDeckDrafts = houseFirstDraftView?.decks ?? null;
+  const allOpeningDrafts = houseFirstDraftView?.openings ?? null;
+
+  // PR-B (2026-05-22): synthesize the primary form's draft from calculator
+  // modules via `buildSharedHouse`, then route both the primary and any
+  // authored additional forms through the unified `buildHouseFormFromDraft`
+  // pipeline. The primary's `attachmentKind` becomes `'freestanding'` after
+  // this round-trip (workbench attachment zones disappear until PR-F restores
+  // them via snap references). The email-quote path is unaffected — it
+  // doesn't traverse the workbench.
+  //
+  // PR-C (2026-05-22): the previous `LEGACY_PRIMARY_HOUSE_FORM_ID` constant
+  // is gone. Filtering / routing now reads the synthesized primary's actual
+  // `.id` field (whatever `buildSharedHouse` happens to assign — today
+  // `'house-main'`, but not special-cased anywhere). A null `hostHouseFormId`
+  // on a deck/opening routes to the primary by way of "first form in list";
+  // an explicit id routes to the matching form.
+  //
+  // `buildSharedHouse` is called once with null deck/opening drafts because
+  // `houseModelToObjectFirstHouseFormDraft` only reads the form fields
+  // (footprint, roof, eave, etc.) — not the resolved decks/openings, which
+  // `buildHouseFormFromDraft` re-derives per-form below.
   const sharedHouse = buildSharedHouse(
     modules.map((module) => module.input),
-    input.draft?.houseFirst?.roof ?? null,
-    input.draft?.houseFirst?.decks ?? null,
-    input.draft?.houseFirst?.openings ?? null,
+    houseFirstDraftView?.roof ?? null,
+    null,
+    null,
   );
-  // Primary house form is the legacy module-synthesised one (kept under
-  // `LEGACY_PRIMARY_HOUSE_FORM_ID`). Additional forms are read from the
-  // authored draft -- any `houseAssembly.houseForms[]` entry whose id
-  // doesn't match the primary becomes its own freestanding form via
-  // `buildAdditionalHouseFormFromDraft`.
-  //
-  // Today's deck/opening drafts have no `hostHouseFormId` field, so
-  // additional forms always emit empty decks/openings -- they exist as
-  // standalone structures (e.g. a sleepout next to the main house).
-  // Phase 5 lifts the host-form binding so decks/openings can attach
-  // to any form.
-  const houseForms: HouseModel[] = sharedHouse.house ? [sharedHouse.house] : [];
+  const primaryFormDraft = sharedHouse.house
+    ? houseModelToObjectFirstHouseFormDraft(sharedHouse.house)
+    : null;
+  const primaryId = primaryFormDraft?.id ?? null;
+  const isHostedByPrimary = (host: string | null | undefined): boolean =>
+    host == null || (primaryId != null && host === primaryId);
+  const primaryDeckDrafts = allDeckDrafts?.filter((deck) => isHostedByPrimary(deck.hostHouseFormId)) ?? null;
+  const primaryOpeningDrafts = allOpeningDrafts?.filter((opening) => isHostedByPrimary(opening.hostHouseFormId)) ?? null;
+  const authoredAdditionalForms = (input.draft?.objectFirst?.houseAssembly?.houseForms ?? []).filter(
+    (form) => primaryId == null || form.id !== primaryId,
+  );
+  const unifiedFormDrafts: ObjectFirstHouseFormDraft[] = primaryFormDraft
+    ? [primaryFormDraft, ...authoredAdditionalForms]
+    : authoredAdditionalForms;
+
+  const houseForms: HouseModel[] = [];
   const additionalFormWarnings: HouseFirstMigrationWarning[] = [];
-  const authoredForms = input.draft?.objectFirst?.houseAssembly?.houseForms ?? [];
-  const primaryId = sharedHouse.house?.id ?? LEGACY_PRIMARY_HOUSE_FORM_ID;
-  for (const formDraft of authoredForms) {
-    if (formDraft.id === primaryId) continue;
-    const result = buildAdditionalHouseFormFromDraft({
+  for (let index = 0; index < unifiedFormDrafts.length; index += 1) {
+    const formDraft = unifiedFormDrafts[index]!;
+    // PR-C: primary is "the first form in the unified list" (no constant
+    // check). It gets the null-host-fallback decks; additional forms get
+    // decks tagged with their own id.
+    const isPrimary = index === 0 && primaryFormDraft !== null;
+    const formDeckDrafts = isPrimary
+      ? primaryDeckDrafts
+      : allDeckDrafts?.filter((deck) => deck.hostHouseFormId === formDraft.id) ?? null;
+    const formOpeningDrafts = isPrimary
+      ? primaryOpeningDrafts
+      : allOpeningDrafts?.filter((opening) => opening.hostHouseFormId === formDraft.id) ?? null;
+    const result = buildHouseFormFromDraft({
       formDraft,
-      deckDrafts: null,
-      openingDrafts: null,
+      deckDrafts: formDeckDrafts,
+      openingDrafts: formOpeningDrafts,
       houseFormId: formDraft.id,
     });
     houseForms.push(result.house);
@@ -949,7 +1091,7 @@ export function buildHouseFirstWorkbenchProjectModel(input: {
     modules,
     legacyPergolas: calculatorInputs?.pergolas ?? [],
     house: primaryHouseForm,
-    pergolaDrafts: input.draft?.houseFirst?.pergolas ?? null,
+    pergolaDrafts: houseFirstDraftView?.pergolas ?? null,
   });
 
   return {

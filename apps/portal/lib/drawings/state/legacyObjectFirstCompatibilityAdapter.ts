@@ -382,6 +382,12 @@ export function buildObjectWorkbenchCompatibilityDraftFromObjectFirstDraft(
       cornerVertexId: deck.cornerVertexId ?? null,
       isAttached: deck.isAttached,
       surfaceMaterial: deck.surfaceMaterial,
+      // PR-D (2026-05-22): propagate snap-derived host form id from the
+      // deck's `attachment` field (replaces the PR9 `hostHouseFormId`
+      // band-aid). When `attachment` is absent or freestanding, hostHouseFormId
+      // is null and the read path's null-fallback routes the deck to the
+      // synthesized primary form.
+      hostHouseFormId: deck.attachment?.host?.objectId ?? null,
     })),
     openings: normalized.openings.map((opening) => ({
       id: opening.id,
@@ -395,6 +401,11 @@ export function buildObjectWorkbenchCompatibilityDraftFromObjectFirstDraft(
       heightM: opening.heightM,
       sillHeightM: opening.sillHeightM,
       offsetAlongWallM: opening.offsetAlongWallM,
+      // PR9: `sourceFormId` is the object-first field name; the compat
+      // draft uses `hostHouseFormId` to match deck terminology in the
+      // resolver chain. Openings keep this pattern until PR-E migrates
+      // them to the snap-reference shape.
+      hostHouseFormId: opening.sourceFormId ?? null,
     })),
     pergolas: normalized.pergolas.map((pergola) => ({
       id: pergola.id,

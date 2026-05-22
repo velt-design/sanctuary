@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { applyAssemblyPosition3D } from './applyAssemblyPosition';
-import type { Assembly3D, AssemblyPosition } from './contracts';
+import { applyAssemblyPosition3D, applyHouseReferencePosition } from './applyAssemblyPosition';
+import type { Assembly3D, AssemblyPosition, HouseReferenceGeometry } from './contracts';
 
 function makeBaseAssembly(): Assembly3D {
   return {
@@ -263,5 +263,72 @@ describe('applyAssemblyPosition3D', () => {
     expect(eave.eaveLine.start.z).toBeCloseTo(2400, 6);
     expect(eave.eaveLine.end.x).toBeCloseTo(7450, 6);
     expect(eave.eaveLine.end.y).toBeCloseTo(50, 6);
+  });
+});
+
+describe('applyHouseReferencePosition', () => {
+  function makeBaseHouseReference(): HouseReferenceGeometry {
+    return {
+      wallPlane: null,
+      fasciaLine: null,
+      roofEdgeLine: null,
+      soffitDepthMm: 450,
+      footprint: [
+        { x: 0, y: 0, z: 0 },
+        { x: 8000, y: 0, z: 0 },
+        { x: 8000, y: -6000, z: 0 },
+        { x: 0, y: -6000, z: 0 },
+      ],
+      model: null,
+      attachmentTarget: null,
+      position: null,
+    };
+  }
+
+  it('translates the house footprint by the position origin (rotation 0)', () => {
+    // Multi-form workbench scenario: an additional house form at offset
+    // (10m east, 0m north). Footprint local coords run from (0,0) to
+    // (8000, -6000) mm; after translation they land at (10000, 0) to
+    // (18000, -6000) mm in world space.
+    const house = makeBaseHouseReference();
+    const position: AssemblyPosition = {
+      origin: { x: 10000, y: 0 },
+      rotationDeg: 0,
+    };
+    const result = applyHouseReferencePosition(house, position);
+    expect(result.footprint?.[0]).toEqual({ x: 10000, y: 0, z: 0 });
+    expect(result.footprint?.[1]).toEqual({ x: 18000, y: 0, z: 0 });
+    expect(result.footprint?.[2]).toEqual({ x: 18000, y: -6000, z: 0 });
+    expect(result.footprint?.[3]).toEqual({ x: 10000, y: -6000, z: 0 });
+  });
+
+  it('clears the position field after applying it (no double-application risk)', () => {
+    // Downstream `applyAssemblyPosition3D` calls would re-apply position
+    // if it stayed set. This is the contract that lets the portal pass
+    // the result straight into the scene builder without worrying about
+    // who already applied the transform.
+    const house = makeBaseHouseReference();
+    const result = applyHouseReferencePosition(house, {
+      origin: { x: 5000, y: 0 },
+      rotationDeg: 0,
+    });
+    expect(result.position).toBeNull();
+  });
+
+  it('rotates the footprint 90 degrees around +Z then translates', () => {
+    // Quarter turn: the (+x) axis maps to (+y), (-y) maps to (+x).
+    // Local point (8000, 0) -> world (0, 8000); local (8000, -6000) ->
+    // world (-6000, 8000). Applied translation lifts everything by (1000, 0).
+    const house = makeBaseHouseReference();
+    const result = applyHouseReferencePosition(house, {
+      origin: { x: 1000, y: 0 },
+      rotationDeg: 90,
+    });
+    expect(result.footprint?.[0]?.x).toBeCloseTo(1000, 6);
+    expect(result.footprint?.[0]?.y).toBeCloseTo(0, 6);
+    expect(result.footprint?.[1]?.x).toBeCloseTo(1000, 6);
+    expect(result.footprint?.[1]?.y).toBeCloseTo(8000, 6);
+    expect(result.footprint?.[2]?.x).toBeCloseTo(7000, 6);
+    expect(result.footprint?.[2]?.y).toBeCloseTo(8000, 6);
   });
 });

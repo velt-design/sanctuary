@@ -1,5 +1,7 @@
 import {
   buildAssemblyQuantityTakeoff,
+  buildHouseModelSceneObjects,
+  buildHouseReferenceProjectionShape,
   buildProjectReferenceShapes,
   buildTopProjectionViewModelFromScene,
   buildViewerSceneModel,
@@ -13,6 +15,7 @@ import {
   type GeometryValidationReport,
   type ProjectPergolaEntry,
   type ViewerSceneModel,
+  type ViewerSceneObject,
   validateGeometrySolve,
 } from '@sp/geometry';
 import type { ModulePlanModel, ModuleSectionModel } from '@/app/staff/calculator/moduleViews';
@@ -37,6 +40,7 @@ import {
 } from './deckSupportDiagnostics';
 import type { WorkbenchProjectModel } from './objectFirstWorkbenchModel';
 import { resolveObjectFirstPergolaAttachment } from './objectFirstDerivedHosting';
+import { buildAdditionalHouseFormGeometry } from './buildAdditionalHouseFormGeometry';
 
 type AttachmentSide = 'rear' | 'front' | 'left' | 'right';
 type LocalPolygonPoint = { alongM: number; depthM: number };
@@ -416,7 +420,7 @@ function buildViewerSceneFromSolvedGeometry(input: {
   assembly: Assembly3D;
   geometryContext: ObjectWorkbenchGeometryContext;
 }): ViewerSceneModel {
-  return annotateSceneHouseRoofMetadata(
+  const baseScene = annotateSceneHouseRoofMetadata(
     annotateSceneAttachmentZoneMetadata(
       annotateSceneHostEdgeSides(
         buildViewerSceneModel(input.assembly),
@@ -426,6 +430,50 @@ function buildViewerSceneFromSolvedGeometry(input: {
     ),
     input.config,
   );
+  return composeAdditionalHouseFormsIntoScene({
+    scene: baseScene,
+    projectModel: input.geometryContext.projectModel,
+  });
+}
+
+/**
+ * PR8d: append per-form house objects for every additional form into the
+ * scene's `house` layer. Each pergola module renders its own scene, so
+ * additional forms get composed in for ALL modules — the cost is
+ * negligible (one freestanding geometry build per form per module) and
+ * means the 3D viewport always shows every form regardless of which
+ * pergola is active.
+ *
+ * The primary form's house objects are already included in the assembly
+ * (the pergola brings its host house via the legacy solve path); only
+ * forms past index 0 get appended here.
+ */
+function composeAdditionalHouseFormsIntoScene(input: {
+  scene: ViewerSceneModel;
+  projectModel: WorkbenchProjectModel | null | undefined;
+}): ViewerSceneModel {
+  const allForms = input.projectModel?.houseAssembly?.houseForms ?? [];
+  if (allForms.length <= 1) return input.scene;
+  const additionalObjects: ViewerSceneObject[] = [];
+  for (const form of allForms.slice(1)) {
+    const geometry = buildAdditionalHouseFormGeometry({ houseForm: form });
+    if (!geometry?.model) continue;
+    additionalObjects.push(
+      ...buildHouseModelSceneObjects({
+        model: geometry.model,
+        attachmentTarget: null,
+      }),
+    );
+  }
+  if (additionalObjects.length === 0) return input.scene;
+  return {
+    ...input.scene,
+    layers: input.scene.layers.map((layer) =>
+      layer.id === 'house'
+        ? { ...layer, objects: [...layer.objects, ...additionalObjects] }
+        : layer,
+    ),
+  };
 }
 
 function buildTopProjectionFromSolvedScene(input: {
@@ -1025,12 +1073,36 @@ function buildProjectReferenceShapesFromModules(
       module.moduleInput.pergolaId ?? `pergola-${index + 1}`;
     entries.push({ assembly, pergolaSourceId });
   }
-  if (entries.length === 0) return [];
-  const houseSourceId = projectModel.houseAssembly?.houseForms[0]?.id ?? null;
-  return buildProjectReferenceShapes({
-    pergolas: entries,
-    houseSourceId,
-  });
+  const allHouseForms = projectModel.houseAssembly?.houseForms ?? [];
+  const primaryHouseForm = allHouseForms[0] ?? null;
+  const primaryHouseSourceId = primaryHouseForm?.id ?? null;
+  const shapes: GeometryTopProjectionShape[] =
+    entries.length === 0
+      ? []
+      : buildProjectReferenceShapes({
+          pergolas: entries,
+          houseSourceId: primaryHouseSourceId,
+        });
+
+  // PR8c-iii: additional house forms (sleepouts, granny flats) get their
+  // own `house_reference` shapes appended to the project overlay so
+  // PlanViewport can render them in their authored world position.
+  // The primary form is already covered by `buildProjectReferenceShapes`
+  // via the pergolas it hosts; for non-pergola estimates with only a
+  // primary house we also emit the primary here so the plan still shows
+  // it (no pergola means no overlay otherwise).
+  const additionalForms = allHouseForms.slice(entries.length === 0 ? 0 : 1);
+  for (const form of additionalForms) {
+    const geometry = buildAdditionalHouseFormGeometry({ houseForm: form });
+    if (!geometry) continue;
+    const shape = buildHouseReferenceProjectionShape({
+      house: geometry,
+      houseSourceId: form.id,
+    });
+    if (shape) shapes.push(shape);
+  }
+
+  return shapes;
 }
 
 /**

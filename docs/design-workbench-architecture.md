@@ -1,5 +1,92 @@
 # Design Workbench Architecture
 
+## Product North Star (READ FIRST)
+
+> This section gates every change to `apps/portal/lib/drawings/`, `apps/portal/components/drawings/`, `packages/geometry/src/`, and the costing engine's input layer. If a PR you're proposing doesn't fit one of the directions below, stop and ask before writing code.
+
+### The product
+
+**A single solved geometry model that serves many UI shells.** The marketing-site self-design tool, the on-site sales tool, the full designer workbench, and the future standalone tradie tool all read and write the **same object-first model**. The Rhino/Vray export reads from it. The costing engine reads from it. The model is the product; UIs are thin layers over it.
+
+### Three load-bearing decisions (locked 2026-05-22)
+
+These are gates. Every PR must respect them.
+
+1. **No "primary" form.** All house forms are peers. The legacy `LEGACY_PRIMARY_HOUSE_FORM_ID = 'house-main'` special-casing is being retired. A new design starts with zero forms; the user adds what they want.
+2. **No hierarchy in the data.** The model does not know which form is "main." Any visual prominence belongs to the UI shell, not the model. (Customers and tradies will have different ideas of "main"; the model doesn't take sides.)
+3. **Drag + snap is the only authoring flow.** A new deck, opening, or pergola is born freestanding. The user drags it to a host; the snap engine creates the attachment. There is no "select host first, then add" flow. Openings are the one exception (rigid wall attachment — see invariant 5).
+
+### The 5 invariants (full detail in § "Direction" below)
+
+1. **Origin independence.** No object's position is implicitly defined by another object's position or dimensions. Each object's `position` is the canonical source of truth.
+2. **Local-frame outlines.** Each object stores its outline in its own local frame, with `(0, 0)` at the object's anchor. World-space outline is derived by applying `position`.
+3. **Derived connections.** `connection.type` (`soffit`/`fascia`/`wall`/`freestanding`) is computed from spatial alignment at solve time, not stored as a user choice.
+4. **Snap is the connection-formation mechanism.** During drag, the snap engine surfaces alignment candidates. Commit produces a soft snap (breaks on next drag) — that is how attachments are made.
+5. **Openings are the exception.** Openings are rigidly attached to walls; their position is a wall-local offset, not a world position.
+
+### Costing direction
+
+The costing engine reads from the solved geometry, not from raw inputs. **We are rebuilding the costing engine's input layer around the workbench**, not the other way around. The cost engine's pricing logic (per-rafter, per-flashing, materials, labour, overheads) stays — it is hard-won and not being thrown out. What changes is the layer that feeds it.
+
+This happens in **two phases**:
+
+- **Phase 1 — workbench cull** (~1–2 weeks). Legacy compat removed, every object first-class, snap-derived connections. Cost engine unchanged; a thin temporary adapter converts the new model into the cost engine's current input shape. Email-quote path keeps working unchanged.
+- **Phase 2 — cost engine input migration** (~1 week, after Phase 1). Cost engine starts reading solved geometry directly. The Phase 1 adapter retires. Per-object line items become natural. Email format can evolve or stay identical — design choice, not architectural constraint.
+
+### Anti-pattern alert — STOP if your PR does any of these
+
+- Adds an `if (form.id === LEGACY_PRIMARY)` check or any "primary vs. additional" distinction
+- Stores or reads `attachmentSide` as a positional concept (it survives only as a derived UI label)
+- Calls `buildHouseFootprintPolygon({ pergolaWidthMm, pergolaDepthMm })` for a non-pergola use
+- Wires a deck/opening/pergola position relative to a host's polygon (use world position + snap reference)
+- Adds a "select host first" UX flow for any object family except openings
+- Documents a workaround in `docs/decision-log.md` without first asking "can we just delete the legacy code instead?"
+- Introduces a new file under `state/compat/` or similar legacy-bridging namespace
+
+The legacy audit at § "Legacy compat sites that violate the principle" (further down this doc) is the canonical to-do list. With the cull permission granted 2026-05-22, **most rows are now DELETE candidates, not migration candidates** — the calculator-driven path is being removed, not double-maintained.
+
+PRs that close audit rows are encouraged. PRs that extend them must justify it explicitly to the user before any code is written.
+
+### Marketing-site enquiry path (preserve, do not touch in Phase 1)
+
+The current marketing-site enquiry form collects fields that feed the calculator and trigger an automated estimate email. **The enquiry form stays.** Whatever it collects, a thin server-side adapter converts it to a simple object model (e.g., 1 house form + 1 pergola), which flows through the new solver → cost engine → email. Customer-facing surface is unchanged in Phase 1. (Future: a "design in the simple workbench" upgrade for the marketing site is a separate project, parallel to the form, both producing the same model.)
+
+### Phase 1 acceptance — what must NOT break vs what CAN break
+
+**Locked 2026-05-22.** The user explicitly authorised aggressive cull-and-rebuild work in the workbench. Phase 1 protects only one user-facing path:
+
+**MUST NOT break:**
+- The marketing-site enquiry → automated estimate email path: `apps/marketing/app/contact/page.tsx` → `apps/marketing/app/api/enquiry/route.ts` → `calculateCostV1()` from `@sp/costing` → `sendCustomerAutoresponder()` from `apps/marketing/lib/email/sendCustomerAutoresponder.ts`. **This path is fully independent of the workbench** — it goes form → API → costing package → email, without touching `apps/portal/lib/drawings/` at all.
+
+**Implication: workbench refactors cannot break this path** as long as they don't modify:
+- `@sp/costing/calculateCostV1` signature
+- `CostInputsV1` shape (in `@sp/costing`)
+- `EnquiryPayload` shape (in `apps/marketing/emails/types.ts`)
+- The form contract at `apps/marketing/app/contact/page.tsx` line 293+
+
+These four boundaries are the actual Phase 1 protect-list. Everything inside `apps/portal/lib/drawings/`, `apps/portal/components/drawings/`, and `packages/geometry/` (except the geometry types the cost engine consumes) is fair game.
+
+**CAN break temporarily during Phase 1:**
+- Workbench UI interactions (pergola attachment, deck snapping, rail buttons). Acceptable degradation while the cull is in flight.
+- Project model byte-identity against fixture snapshots. Tests get updated alongside the PR that changes behavior.
+- Visual rendering of attachment zones, snap targets, etc. As long as the underlying data is preserved, broken visuals get fixed in the rebuild.
+
+**Implication for scoping decisions:**
+- "Will this break the workbench UX?" is NOT a blocker.
+- "Will this break the email-quote path?" IS a blocker.
+- The previously-strict byte-identity rule was self-imposed and is retired. Update test fixtures freely.
+- Refactors that previously required careful gradual migration (parameterised consolidations, dual-path support) can now be replaced with simpler delete-and-rebuild cycles.
+
+The user is the only daily workbench user during Phase 1, has confirmed they're OK with degraded UX in exchange for faster progress to a clean foundation. **The goal is "end state quickly", not "no regressions along the way".**
+
+### When to read this section
+
+- **Every PR that touches** drawing state, drawings components, the geometry package, or the cost engine input layer.
+- **Before proposing any "next task"** — the task must either close an audit row, advance Phase 1 cull, advance Phase 2 cost engine migration, or be explicitly cleared by the user as a new feature.
+- **When in doubt**, default to: if your change requires a workaround comment, this section says no. Fix the foundation instead.
+
+---
+
 The design workbench is the portal drawing and model-editing surface for estimate-backed designs. The active workbench migration is sealed around an object-first project model and solved geometry spine. Compatibility remains only as explicit legacy estimate snapshot import/export support and named fallback boundaries.
 
 ## Design Workbench North Star: Read/Edit Split

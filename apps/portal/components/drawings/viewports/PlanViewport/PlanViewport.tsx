@@ -13,7 +13,6 @@ import type {
   DrawingWorkbenchViewportTransform,
   DrawingWorkbenchVisibilityState,
 } from '@/lib/drawings/state/drawingWorkbenchUiState';
-import { LEGACY_PRIMARY_HOUSE_FORM_ID } from '@/lib/drawings/state/houseFirstWorkbenchAdapter';
 import type { WorkbenchObjectRef } from '@/lib/drawings/state/objectFirstWorkbenchModel';
 import type {
   ObjectWorkbenchDisplayFamily,
@@ -233,8 +232,13 @@ export default function PlanViewport({
   // here unconditionally — `EdgeDragTool` skips the snap path when
   // `lineTargets.length === 0`.)
   const houseModel = artifact?.assembly?.house?.model ?? null;
+  // PR-C (2026-05-22): `'house-main'` is the id buildSharedHouse currently
+  // assigns to the synthesized primary form. Inlined here (was an imported
+  // constant) since nothing special-cases the id anymore — it's just the
+  // fallback when the attachment target has no `sourceFormId` metadata.
+  // Retires entirely when PR-F makes attachment a real snap reference.
   const houseObjectId =
-    artifact?.assembly?.house?.attachmentTarget?.metadata?.sourceFormId ?? LEGACY_PRIMARY_HOUSE_FORM_ID;
+    artifact?.assembly?.house?.attachmentTarget?.metadata?.sourceFormId ?? 'house-main';
   const snapLineTargets = useMemo<SnapLineTarget[]>(() => {
     // Snap is meaningful for pergola edge drags (host attachment formation)
     // and for deck edge drags (decks attach to walls and pergola outline
@@ -251,7 +255,7 @@ export default function PlanViewport({
     if (activeFamily !== 'pergolas' && activeFamily !== 'decks') return [];
     const houseTargets = buildHouseSnapTargets({
       houseModel,
-      houseObjectId: typeof houseObjectId === 'string' ? houseObjectId : LEGACY_PRIMARY_HOUSE_FORM_ID,
+      houseObjectId: typeof houseObjectId === 'string' ? houseObjectId : 'house-main',
       kinds: activeFamily === 'pergolas' ? 'walls_and_eaves' : 'walls',
     });
     const pergolaTargets = projectContextShapes
@@ -287,7 +291,16 @@ export default function PlanViewport({
     if (activeObjectRef.family === 'decks') {
       return { family: 'deck', targetId: activeObjectRef.objectId };
     }
-    // House and openings deferred — see canMoveTarget below for why.
+    if (activeObjectRef.family === 'house_forms') {
+      // PR11: drag-to-reposition additional house forms in plan view.
+      // The host commit (`onCommitMove`) is responsible for routing only
+      // additional forms (not the primary) through to the transform-
+      // delta action -- this `activeMoveTargetRef` just signals that
+      // SOMETHING is selected; the resolver layer enforces the
+      // "additional-only" rule.
+      return { family: 'house_form', targetId: activeObjectRef.objectId };
+    }
+    // Openings deferred — they're wall-anchored, not free-floating.
     return null;
   })();
 

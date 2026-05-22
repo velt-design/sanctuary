@@ -297,6 +297,27 @@ function transformHouseModel(model: HouseModel3D, ctx: TransformContext): HouseM
   };
 }
 
+/**
+ * Apply an `AssemblyPosition` to a standalone `HouseReferenceGeometry`
+ * (rotation around +Z then translation by `origin`). Returns a new
+ * geometry in world coords with `position` cleared so downstream
+ * `applyAssemblyPosition3D` calls don't double-apply.
+ *
+ * Used by multi-form workbench rendering (PR8c): each additional house
+ * form has its own `AssemblyPosition` derived from the draft's transform.
+ * The form's house geometry is built in local coords via
+ * `buildHouseReferenceGeometry` / `buildHouseModel3DFromRawHouseInput`,
+ * then placed at world coords via this function. Pergola-attached forms
+ * still go through `applyAssemblyPosition3D` -- this helper exists for
+ * the standalone case where there's no surrounding `Assembly3D`.
+ */
+export function applyHouseReferencePosition(
+  house: HouseReferenceGeometry,
+  position: AssemblyPosition,
+): HouseReferenceGeometry {
+  return transformHouseReference(house, buildTransformContext(position));
+}
+
 function transformHouseReference(
   house: HouseReferenceGeometry,
   ctx: TransformContext,

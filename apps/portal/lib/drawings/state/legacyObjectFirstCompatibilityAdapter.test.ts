@@ -1,10 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { getSanctuaryGeometryWorkbenchFixture } from '@/lib/drawings/sanctuaryWorkbenchFixtures';
 import { buildEstimateDrawingDraftFromSnapshot } from '@/lib/estimates/drawingEdits';
-import {
-  buildObjectWorkbenchCompatibilityProjectModel,
-  type ObjectWorkbenchCompatibilityProjectModel,
-} from './compat/objectWorkbenchCompatibilityModel';
+import type { ObjectWorkbenchCompatibilityProjectModel } from './compat/objectWorkbenchCompatibilityModel';
+import { buildHouseFirstWorkbenchProjectModel as buildObjectWorkbenchCompatibilityProjectModel } from './houseFirstWorkbenchAdapter';
 import {
   buildObjectFirstWorkbenchDraftFromProjectModel,
 } from './objectFirstWorkbenchAdapter';

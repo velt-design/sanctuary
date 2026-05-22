@@ -361,6 +361,12 @@ export type HouseFirstDeckDraft = {
   cornerVertexId?: string | null;
   isAttached?: boolean | null;
   surfaceMaterial?: DeckSurfaceMaterial | null;
+  /**
+   * PR9: id of the host house form. `null` / `undefined` routes to the
+   * primary form (back-compat). Propagated through the compat bridge
+   * from `ObjectFirstDeckDraft.hostHouseFormId`.
+   */
+  hostHouseFormId?: string | null;
 };
 
 export type HouseFirstOpeningDraft = {
@@ -375,6 +381,12 @@ export type HouseFirstOpeningDraft = {
   heightM?: string | null;
   sillHeightM?: string | null;
   offsetAlongWallM?: string | null;
+  /**
+   * PR9: id of the host house form. Mirrors
+   * `ObjectFirstOpeningDraft.sourceFormId`. `null` / `undefined` routes
+   * to the primary form (back-compat).
+   */
+  hostHouseFormId?: string | null;
 };
 
 export type HouseFirstPergolaDraft = {

@@ -47,6 +47,7 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 | 2026-05-04 | Design Workbench Architecture | Active | Workbench has two render surfaces: a read-only 3D viewport (`Geometry3DViewport`) and a 2D `PlanViewport` (the editor). Plan replaces "Model Space" in the mode switch (`Sheet | Plan | 3D`); all editing, tools, and gizmos live in PlanViewport. |
 | 2026-05-04 | Design Workbench Architecture | Active | Nine foundational contracts govern the read/edit split (single-source intent, three-phase drag, plan-projection math, typed selection, isolated tool state machines, snap-as-a-service, gizmos+overlays Plan-only, mm everywhere, 3D is read-only). |
 | 2026-05-21 | Design Workbench Testing | Active | 8 ModelSpaceViewport tests are stale-fixture failures, not regressions — needs `objectWorkbenchOverlayInput` migration before they go green again. |
+| 2026-05-21 | Design Workbench Testing | Active | 2 import-guard failures are real architectural drift — ModelSpaceViewport still imports houseFirstWorkbenchModel + does not route through Geometry3DViewport as the guards expect. |
 | 2026-05-01 | Quotes/Invoices/Job Packs | Promoted | High-risk side-effect workflows need a canonical doc before future behavior changes. |
 | 2026-05-01 | Docs | Promoted | Read the agent playbook for non-trivial portal work; promote durable lessons from this log into the playbook. |
 | 2026-05-01 | Docs | Promoted | Do not delete active guardrail docs without confirming usage or replacing the rule. |
@@ -923,3 +924,25 @@ Current guardrail: do NOT add more `as unknown as Parameters<typeof buildPlanVie
 Promoted to: None
 
 Related docs/tests: [apps/portal/components/drawings/viewports/ModelSpaceViewport.test.tsx](../apps/portal/components/drawings/viewports/ModelSpaceViewport.test.tsx) (failing tests, casted fixtures, TODO comments), [apps/portal/lib/drawings/views/plan/buildPlanViewModel.ts](../apps/portal/lib/drawings/views/plan/buildPlanViewModel.ts) (`PlanViewModelSource` union, `invalid_geometry` fallback at line 132), commit `d1fff14` ("build error", 2026-05-11) introduced the casts.
+
+### 2026-05-21 - Design Workbench Testing - ModelSpaceViewport Architectural Drift
+
+Area: Design Workbench Testing
+
+Status: Active
+
+Decision or mistake: 2 import-guard failures in `apps/portal/components/drawings/rail/objectWorkbenchImportGuards.test.ts` are real architectural violations, not stale paths. They were previously masked by ENOENT errors against the stale `Geometry3DViewport.tsx` path (file moved to `Geometry3DViewport/index.tsx` during decomposition); fixing the path in the guard test unmasked them. The two real violations:
+
+1. **ModelSpaceViewport.tsx imports `houseFirstWorkbenchModel`** -- uses `HouseFirstDeckDraft`, `HouseFirstOpeningDraft`, `WorkbenchHouseSelection`, `WorkbenchMode` types directly. The guard treats this as a layering violation because `houseFirstWorkbenchModel` is the legacy state-compatibility model that boundary files (viewports/workbench) should not consume directly.
+
+2. **ModelSpaceViewport.tsx does not route through `Geometry3DViewport`** -- the guard at [objectWorkbenchImportGuards.test.ts:270-272](../apps/portal/components/drawings/rail/objectWorkbenchImportGuards.test.ts#L270-L272) expects `ModelSpaceViewport` to import `Geometry3DViewport` with `lockedViewPreset="top"`, per the canonical architecture in the 2026-05-04 entry "Model Space Top renders through Geometry3DViewport lockedViewPreset='top'". The actual ModelSpaceViewport.tsx does not do this. Either the architecture migration was reverted/incomplete, or the guard was added speculatively before the migration landed and never enforced.
+
+Why it mattered: same compound-cost argument as the ModelSpaceViewport stale-fixture entry above -- failures accumulate across PRs, mask real issues, and erode test-signal trust. The PR8 multi-form sequence shipped 6 PRs with these failures red, masking the genuine question of "is multi-form work breaking anything?"
+
+Fix path: migrate `ModelSpaceViewport.tsx` off `houseFirstWorkbenchModel` -- either (a) move the legacy types to a neutral module both files import from, or (b) replace the imports with object-first equivalents (`ObjectFirstDeckDraft`, `ObjectFirstOpeningDraft`, etc.). For the Geometry3DViewport routing, audit whether the 2026-05-04 architecture is still the intent -- if yes, complete the migration; if not, retire the guard. Approx 1 day for the full fix.
+
+Current guardrail: do not add new `from '@/lib/drawings/state/houseFirstWorkbenchModel'` imports in viewport, workbench, or rail files (the existing ones in `ModelSpaceViewport.tsx` are grandfathered until the cleanup). Multi-form work continues on the object-first model -- HouseFormModel, ObjectFirstHouseFormDraft -- which is the canonical project-level shape.
+
+Promoted to: None
+
+Related docs/tests: [apps/portal/components/drawings/viewports/ModelSpaceViewport.tsx](../apps/portal/components/drawings/viewports/ModelSpaceViewport.tsx) (the legacy imports at lines 25-30), [apps/portal/components/drawings/rail/objectWorkbenchImportGuards.test.ts](../apps/portal/components/drawings/rail/objectWorkbenchImportGuards.test.ts) (the 2 failing assertions at lines 270-272 and 408-413), 2026-05-04 entry "Model Space Top renders through Geometry3DViewport lockedViewPreset='top'" (the canonical architecture the guard enforces).

@@ -4,6 +4,7 @@ import type {
   GeometryTopProjectionFamily,
   GeometryTopProjectionShape,
   GeometryTopProjectionViewModel,
+  HouseReferenceGeometry,
   Line3,
   Point2,
   Point3,
@@ -1140,6 +1141,52 @@ export type ProjectPergolaEntry = {
   assembly: Assembly3D;
   pergolaSourceId: string;
 };
+
+/**
+ * Build a single `house_reference` shape from a standalone
+ * `HouseReferenceGeometry`. Used by multi-form workbench rendering
+ * (PR8c-iii): the portal builds per-form geometry via
+ * `buildAdditionalHouseFormGeometry` (which composes
+ * `buildHouseModel3DFromRawHouseInput` + `applyHouseReferencePosition`)
+ * and converts the result into a project-level reference shape so
+ * `PlanViewport`'s projection-context overlay can render every form
+ * at its world transform.
+ *
+ * Mirrors the `house_reference` emission inside `buildReferenceShapes`
+ * but takes a `HouseReferenceGeometry` directly instead of pulling it
+ * out of an `Assembly3D`. The polygon prefers `model.footprint`
+ * (post-transform world coords from `buildHouseModel3D`) over the
+ * legacy reference `footprint` field, matching the existing precedence
+ * inside `buildReferenceShapes`.
+ *
+ * Returns `null` when no usable footprint exists (e.g. degenerate
+ * polygon).
+ */
+export function buildHouseReferenceProjectionShape(input: {
+  house: HouseReferenceGeometry;
+  houseSourceId: string;
+}): GeometryTopProjectionShape | null {
+  const footprint = input.house.model?.footprint ?? input.house.footprint ?? null;
+  if (!footprint) return null;
+  const polygon = cleanPolygon(toPolygon2(footprint));
+  if (!polygon) return null;
+  return {
+    id: `house_reference:${input.houseSourceId}`,
+    sourceObjectId: input.houseSourceId,
+    sourceId: input.houseSourceId,
+    sourceType: 'house_reference',
+    family: 'house',
+    kind: 'footprint',
+    polygon,
+    zOrder: 0,
+    zMin: 0,
+    zMax: 0,
+    metadata: {
+      ...metadataWithTopProjectionRole(input.house.model?.metadata as GeometryMetadata | undefined, 'top_visible'),
+      isCanonicalOutline: true,
+    },
+  };
+}
 
 /**
  * Build the project-level REFERENCE shapes — one canonical `house_reference`

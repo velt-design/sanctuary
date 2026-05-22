@@ -1,5 +1,5 @@
 import type { EstimateDrawingDraft } from '@/lib/estimates/drawingEdits';
-import { buildObjectWorkbenchCompatibilityProjectModel } from './compat/objectWorkbenchCompatibilityModel';
+import { buildHouseFirstWorkbenchProjectModel } from './houseFirstWorkbenchAdapter';
 import {
   buildObjectFirstWorkbenchProjectModel,
 } from './legacyObjectFirstCompatibilityAdapter';
@@ -16,7 +16,7 @@ export function buildObjectFirstWorkbenchProjectModelFromLegacyEstimateSnapshot(
   draft?: EstimateDrawingDraft | null;
   ignoreModuleResults?: boolean;
 }): WorkbenchProjectModel {
-  const compatibilityProjectModel = buildObjectWorkbenchCompatibilityProjectModel({
+  const compatibilityProjectModel = buildHouseFirstWorkbenchProjectModel({
     snapshot: input.snapshot,
     draft: input.draft,
     ignoreModuleResults: input.ignoreModuleResults,

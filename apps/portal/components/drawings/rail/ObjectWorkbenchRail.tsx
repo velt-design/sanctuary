@@ -33,6 +33,7 @@ export default function ObjectWorkbenchRail({
     onCommitFootprintEdit,
     onCommitRoofIntent,
     onAddDeck,
+    onAddHouseForm,
     onAddOpening,
     onRemoveDeck,
     onRemoveOpening,
@@ -84,6 +85,14 @@ export default function ObjectWorkbenchRail({
     },
     [],
   );
+
+  const runAddHouseForm = useCallback(async () => {
+    const result = await resolveCommitResult(onAddHouseForm?.());
+    setFieldErrors((current) => ({
+      ...current,
+      addHouseForm: result.ok ? '' : result.error ?? 'Unable to add a new house form.',
+    }));
+  }, [onAddHouseForm]);
 
   const activeFamily =
     activeRailTab === 'diagnostics' ? model.selectedInspector.family : activeRailTab;
@@ -243,6 +252,23 @@ export default function ObjectWorkbenchRail({
               <p className={styles.fieldHint}>
                 Available actions: {model.selectedInspector.addActionLabels.join(', ')}.
               </p>
+            ) : null}
+            {activeFamily === 'house_forms' && onAddHouseForm ? (
+              <button
+                type="button"
+                className={`${styles.secondaryButton} ${styles.objectButton}`}
+                data-action="add-house-form"
+                disabled={disabled}
+                onClick={runAddHouseForm}
+              >
+                <span className={styles.objectButtonLabel}>Add structure</span>
+                <span className={styles.objectButtonMeta}>
+                  Clones the selected house 10 m east
+                </span>
+              </button>
+            ) : null}
+            {fieldErrors.addHouseForm ? (
+              <p className={styles.fieldError}>{fieldErrors.addHouseForm}</p>
             ) : null}
           </div>
         </section>

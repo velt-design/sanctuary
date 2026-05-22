@@ -674,6 +674,14 @@ export function buildNewObjectWorkbenchDeckDraft(input: {
   hostEdgeId: string;
   housePolygon: CalculatorHouseFootprintPolygonPoint[];
   mode: 'preset' | 'custom_outline';
+  /**
+   * PR-D (2026-05-22): id of the host house form. Becomes
+   * `attachment.host.objectId` on the new deck (replaces the PR9
+   * `hostHouseFormId` band-aid). Required when adding a deck while a
+   * form is selected; if null, the deck is born freestanding and the
+   * read path routes via null-fallback to the synthesized primary.
+   */
+  hostHouseFormObjectId?: string | null;
 }): ObjectWorkbenchDeckDraft {
   const baseDeck: ObjectWorkbenchDeckDraft = {
     id: input.deckId,
@@ -691,6 +699,21 @@ export function buildNewObjectWorkbenchDeckDraft(input: {
     isAttached: input.mode === 'preset',
     surfaceMaterial: 'timber_decking',
     outline: [],
+    // PR-D: snap-derived attachment. `host.edgeId` is empty when the
+    // snap has not resolved yet (PR-F populates it via drag-to-wall);
+    // `host.objectId` is the routing key the read path uses today.
+    attachment: input.hostHouseFormObjectId
+      ? {
+          host: {
+            objectFamily: 'house_forms',
+            objectId: input.hostHouseFormObjectId,
+            edgeKind: 'wall',
+            edgeId: '',
+            myEdgeIndex: 0,
+          },
+          spatialKind: 'wall',
+        }
+      : null,
   };
   if (input.mode === 'custom_outline') return baseDeck;
   return resolveObjectWorkbenchDeckDraftGeometry({

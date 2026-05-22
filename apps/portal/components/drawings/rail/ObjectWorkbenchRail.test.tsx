@@ -71,6 +71,7 @@ function buildRailProps(input?: {
       onCommitFootprintEdit: () => ({ ok: true }),
       onCommitRoofIntent: () => ({ ok: true }),
       onAddDeck: () => ({ ok: true }),
+      onAddHouseForm: () => ({ ok: true }),
       onAddOpening: () => ({ ok: true }),
       onRemoveDeck: () => ({ ok: true }),
       onRemoveOpening: () => ({ ok: true }),
@@ -155,6 +156,30 @@ function buildDraftWithRoofForm(form: HouseFormRoofIntentModel['form']): Estimat
 }
 
 describe('ObjectWorkbenchRail', () => {
+  it('exposes the Add structure button on the house_forms tab and hides it on other tabs (PR10)', () => {
+    // PR10: rail "Add structure" button. Calls
+    // `addSharedHouseForm` (which delegates to PR5's
+    // `addHouseFormToObjectFirstDraft`). Visible only on the
+    // `house_forms` tab so users don't accidentally clone a form when
+    // they meant to add a deck/opening. The label + meta caption double
+    // as documentation for the 10 m east clone behavior.
+    const houseFormMarkup = renderToStaticMarkup(
+      <ObjectWorkbenchRail {...buildRailProps({ activeRailTab: 'house_forms' })} />,
+    );
+    expect(houseFormMarkup).toContain('data-action="add-house-form"');
+    expect(houseFormMarkup).toContain('Add structure');
+
+    const pergolaMarkup = renderToStaticMarkup(
+      <ObjectWorkbenchRail {...buildRailProps({ activeRailTab: 'pergolas' })} />,
+    );
+    expect(pergolaMarkup).not.toContain('data-action="add-house-form"');
+
+    const deckMarkup = renderToStaticMarkup(
+      <ObjectWorkbenchRail {...buildRailProps({ activeRailTab: 'decks' })} />,
+    );
+    expect(deckMarkup).not.toContain('data-action="add-house-form"');
+  });
+
   it('renders the canonical family navigator and selected house-form inspector by default', () => {
     const markup = renderToStaticMarkup(<ObjectWorkbenchRail {...buildRailProps()} />);
 

@@ -475,6 +475,37 @@ export type ObjectFirstHouseAssemblyDraft = {
   houseForms: ObjectFirstHouseFormDraft[];
 };
 
+export type DeckAttachmentSpatialKind = 'wall' | 'freestanding';
+
+export type DeckAttachmentHost = {
+  objectFamily: 'house_forms';
+  objectId: string;
+  edgeKind: 'wall';
+  edgeId: string;
+  myEdgeIndex: number;
+};
+
+/**
+ * PR-D (2026-05-22): snap-derived deck attachment. The new source of truth
+ * for "which house wall is this deck attached to", replacing the legacy
+ * `hostEdgeId` (as `AttachmentSide` enum) + `hostHouseFormId` (PR9 routing
+ * band-aid). Mirrors `PergolaAttachment` but collapses the method field
+ * (decks only attach via "wall" relationship; no method picker).
+ *
+ * Invariants:
+ * - `spatialKind === 'freestanding'` ⇔ `host === null`.
+ * - `spatialKind === 'wall'` ⇒ `host !== null` and `host.edgeKind === 'wall'`.
+ *
+ * For legacy decks authored before this field existed (`attachment` absent
+ * on the draft), the read path falls back to: deck is attached to the
+ * synthesized primary form's matching attachment-side wall. PR-H deletes
+ * the fallback once all persisted decks carry `attachment`.
+ */
+export type DeckAttachment = {
+  host: DeckAttachmentHost | null;
+  spatialKind: DeckAttachmentSpatialKind;
+};
+
 export type ObjectFirstDeckDraft = {
   id: string;
   label: string;
@@ -495,6 +526,15 @@ export type ObjectFirstDeckDraft = {
   primaryHostEdgeId?: string | null;
   secondaryHostEdgeId?: string | null;
   cornerVertexId?: string | null;
+  /**
+   * PR-D (2026-05-22): snap-derived attachment, source of truth for
+   * "which host wall is this deck attached to". When present, the read
+   * path's per-form routing uses `attachment.host.objectId` (replacing
+   * the PR9 `hostHouseFormId` band-aid which is now retired). When
+   * `attachment === null` or absent: legacy deck (pre-PR-D), routes to
+   * the synthesized primary form via the read path's null-fallback.
+   */
+  attachment?: DeckAttachment | null;
 };
 
 export type ObjectFirstOpeningDraft = {
@@ -963,7 +1003,49 @@ export function normalizeObjectFirstDeckDraft(
       ? { secondaryHostEdgeId: normalizeStableId(value?.secondaryHostEdgeId) }
       : null),
     ...(normalizeStableId(value?.cornerVertexId) ? { cornerVertexId: normalizeStableId(value?.cornerVertexId) } : null),
+    // PR-D (2026-05-22): preserve `attachment` (the snap-derived host
+    // reference) through normalization. Replaces the PR9 `hostHouseFormId`
+    // routing band-aid which was deleted. The host object id is now read
+    // from `attachment.host.objectId` by the read path's per-form filter.
+    ...(normalizeDeckAttachment(value?.attachment) !== undefined
+      ? { attachment: normalizeDeckAttachment(value?.attachment) }
+      : null),
   };
+}
+
+function normalizeDeckAttachment(
+  value: DeckAttachment | null | undefined,
+): DeckAttachment | null | undefined {
+  if (value === undefined) return undefined;
+  if (value === null) return null;
+  if (value.spatialKind === 'freestanding') {
+    return { host: null, spatialKind: 'freestanding' };
+  }
+  if (value.spatialKind === 'wall') {
+    const hostObjectId = normalizeStableId(value.host?.objectId);
+    if (!hostObjectId) {
+      // Wall spatialKind without a host object: degrade to freestanding
+      // rather than persist a partial reference.
+      return { host: null, spatialKind: 'freestanding' };
+    }
+    // PR-D (2026-05-22): `host.edgeId` can be empty when the snap has not
+    // resolved yet (e.g., deck just added via rail with the host form known
+    // but no wall-edge snap committed). PR-F's snap migration populates this
+    // properly when the user drags the deck to a wall. Until then, an empty
+    // edgeId is valid — the read path uses `host.objectId` for routing and
+    // falls back to legacy `hostEdgeId` (AttachmentSide) for wall geometry.
+    return {
+      host: {
+        objectFamily: 'house_forms',
+        objectId: hostObjectId,
+        edgeKind: 'wall',
+        edgeId: normalizeStableId(value.host?.edgeId) ?? '',
+        myEdgeIndex: typeof value.host?.myEdgeIndex === 'number' ? value.host.myEdgeIndex : 0,
+      },
+      spatialKind: 'wall',
+    };
+  }
+  return null;
 }
 
 export function normalizeObjectFirstOpeningDraft(

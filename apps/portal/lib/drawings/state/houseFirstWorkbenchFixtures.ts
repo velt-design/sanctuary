@@ -8,8 +8,14 @@ import type {
   DeckModel,
   HouseFirstWorkbenchProjectModel,
 } from './houseFirstWorkbenchModel';
-import { LEGACY_PRIMARY_HOUSE_FORM_ID } from './houseFirstWorkbenchAdapter';
-import { buildObjectWorkbenchCompatibilityProjectModel } from './compat/objectWorkbenchCompatibilityModel';
+import { buildHouseFirstWorkbenchProjectModel } from './houseFirstWorkbenchAdapter';
+
+// PR-C (2026-05-22): the previously-exported `LEGACY_PRIMARY_HOUSE_FORM_ID`
+// constant is gone. Test fixtures inline the literal id string the
+// synthesized primary form gets assigned. If `buildSharedHouse` ever
+// changes the synthesized id, update this single source.
+const SYNTHESIZED_PRIMARY_FORM_ID = 'house-main';
+const LEGACY_PRIMARY_HOUSE_FORM_ID = SYNTHESIZED_PRIMARY_FORM_ID;
 import {
   buildObjectFirstWorkbenchDraftFromProjectModel,
 } from './objectFirstWorkbenchAdapter';
@@ -720,7 +726,7 @@ export function makeHouseFirstDeckSupportSnapshotFixture(
     };
   }
 
-  const compatibilityProjectModel = buildObjectWorkbenchCompatibilityProjectModel({
+  const compatibilityProjectModel = buildHouseFirstWorkbenchProjectModel({
     snapshot,
     draft,
   });

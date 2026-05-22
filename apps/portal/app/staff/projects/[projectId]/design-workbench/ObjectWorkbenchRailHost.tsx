@@ -191,6 +191,7 @@ export default function ObjectWorkbenchRailHost({
         onCommitFootprintEdit: !isLocked ? objectWorkbenchActions.commitSharedHouseFootprintEdit : undefined,
         onCommitRoofIntent: !isLocked ? objectWorkbenchActions.commitSharedHouseRoofDraft : undefined,
         onAddDeck: !isLocked ? objectWorkbenchActions.addSharedHouseDeck : undefined,
+        onAddHouseForm: !isLocked ? objectWorkbenchActions.addSharedHouseForm : undefined,
         onAddOpening: !isLocked ? objectWorkbenchActions.addSharedHouseOpening : undefined,
         onRemoveDeck: !isLocked ? objectWorkbenchActions.removeSharedHouseDeck : undefined,
         onRemoveOpening: !isLocked ? objectWorkbenchActions.removeSharedHouseOpening : undefined,

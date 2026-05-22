@@ -7,7 +7,7 @@ import {
   updateEstimateDrawingObjectFirstWorkbenchDraft,
   type EstimateDrawingDraft,
 } from '@/lib/estimates/drawingEdits';
-import { buildObjectWorkbenchCompatibilityProjectModel } from './state/compat/objectWorkbenchCompatibilityModel';
+import { buildHouseFirstWorkbenchProjectModel } from './state/houseFirstWorkbenchAdapter';
 import {
   buildObjectFirstWorkbenchDraftFromProjectModel,
 } from './state/objectFirstWorkbenchAdapter';
@@ -178,7 +178,7 @@ function makeHouseRoofDraftFixtureDraft(input: {
   if (!draft) {
     throw new Error('Expected drawing draft from fixture snapshot.');
   }
-  const compatibilityProjectModel = buildObjectWorkbenchCompatibilityProjectModel({
+  const compatibilityProjectModel = buildHouseFirstWorkbenchProjectModel({
     snapshot: input.snapshot,
     draft,
   });

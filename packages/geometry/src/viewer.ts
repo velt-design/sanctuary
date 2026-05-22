@@ -2,6 +2,8 @@ import type {
   Assembly3D,
   GeometryMetadata,
   GeometryMetadataValue,
+  HouseAttachmentTarget3D,
+  HouseModel3D,
   Line3,
   Plane3,
   Point3,
@@ -679,11 +681,25 @@ function buildHouseOpeningMarkerObjects(
   return objects;
 }
 
-function buildHouseModelObjects(
-  assembly: Assembly3D,
-): ViewerSceneObject[] | null {
-  const model = assembly.house.model;
-  if (!model) return null;
+/**
+ * Build the viewer scene objects for a `HouseModel3D` (walls, roof,
+ * envelope, eave, attachment-target). Returns an empty array when
+ * `model` is null so callers can spread the result unconditionally.
+ *
+ * Used directly by `buildLayers` for the active assembly (legacy
+ * single-house path), and by the portal multi-form solver (PR8d) to
+ * compose additional-form house objects onto each pergola's viewer
+ * scene. The `attachmentTarget` override exists because the legacy
+ * path prefers `assembly.house.attachmentTarget` when set (pergola-
+ * attached configurations write the target there post-solve); for
+ * standalone freestanding forms it's always null.
+ */
+export function buildHouseModelSceneObjects(input: {
+  model: HouseModel3D | null;
+  attachmentTarget?: HouseAttachmentTarget3D | null;
+}): ViewerSceneObject[] {
+  const model = input.model;
+  if (!model) return [];
 
   const objects: ViewerSceneObject[] = [];
   const hasSolids =
@@ -848,7 +864,7 @@ function buildHouseModelObjects(
     if (object) objects.push(object);
   }
 
-  const target = assembly.house.attachmentTarget ?? model.attachmentTarget;
+  const target = input.attachmentTarget ?? model.attachmentTarget;
   if (target?.line) {
     const object = buildHouseLineObject({
       id: "house-attachment-target-line",
@@ -956,8 +972,11 @@ function buildLayers(assembly: Assembly3D): ViewerSceneLayer[] {
       ]
     : [];
 
-  const houseModelObjects = buildHouseModelObjects(assembly);
-  if (houseModelObjects) {
+  const houseModelObjects = buildHouseModelSceneObjects({
+    model: assembly.house.model ?? null,
+    attachmentTarget: assembly.house.attachmentTarget,
+  });
+  if (houseModelObjects.length > 0) {
     houseObjects.push(...houseModelObjects);
   } else {
     if (

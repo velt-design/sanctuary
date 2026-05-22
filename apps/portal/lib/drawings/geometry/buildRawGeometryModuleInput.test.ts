@@ -4,10 +4,8 @@ import { describe, expect, it } from 'vitest';
 import type { CostOutputV1 } from '@sp/costing';
 import type { AttachmentSide, HouseFootprintPreset, HouseRoofForm } from '@sp/geometry';
 import { getSanctuaryGeometryWorkbenchFixture } from '@/lib/drawings/sanctuaryWorkbenchFixtures';
-import {
-  buildObjectWorkbenchCompatibilityProjectModel,
-  type ObjectWorkbenchCompatibilityDraft,
-} from '@/lib/drawings/state/compat/objectWorkbenchCompatibilityModel';
+import type { ObjectWorkbenchCompatibilityDraft } from '@/lib/drawings/state/compat/objectWorkbenchCompatibilityModel';
+import { buildHouseFirstWorkbenchProjectModel as buildObjectWorkbenchCompatibilityProjectModel } from '@/lib/drawings/state/houseFirstWorkbenchAdapter';
 import { makeHouseFirstDeckSupportProjectFixture } from '@/lib/drawings/state/houseFirstWorkbenchFixtures';
 import { buildEstimateDrawingDraftFromSnapshot, type EstimateDrawingDraft } from '@/lib/estimates/drawingEdits';
 import {
