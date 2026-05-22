@@ -2,7 +2,6 @@ import {
   applyHouseReferencePosition,
   buildHouseModel3DFromRawHouseInput,
   buildHouseFootprintPolygon,
-  type HouseModel3DPergolaContext,
   type HouseReferenceGeometry,
   type Polygon3,
   type RawHouseInput,
@@ -93,19 +92,15 @@ function houseFormToRawHouseInput(houseForm: HouseFormModel): RawHouseInput {
  *      directly into mm.
  *   2. Map the object-first `HouseFormModel` to the geometry
  *      `RawHouseInput` so `buildHouseModel3DFromRawHouseInput` can
- *      produce a full `HouseModel3D` (walls + roof + envelope). PR8b
- *      made this work for `connectionType: 'freestanding'`.
+ *      produce a full `HouseModel3D` (walls + roof + envelope). PR-G2
+ *      dropped the synthetic `pergolaContext` stub: freestanding forms
+ *      now pass `pergolaAttachment: null` and the geometry package
+ *      handles the attachment-edge short-circuit internally.
  *   3. Wrap the resulting `HouseModel3D` in a `HouseReferenceGeometry`
  *      with pergola-attachment fields null and `position` set from the
  *      form's transform via PR8a's converter.
  *   4. Bake the position into every vertex via `applyHouseReferencePosition`
  *      (PR8c-i). The returned geometry is in world coords.
- *
- * The synthetic `pergolaContext` carries dead-weight fields
- * (`pergolaLengthMm`, `pergolaProjectionMm`, `datum`) that the geometry
- * package consumes only for pergola-attachment calculations -- those
- * helpers already short-circuit for `connectionType: 'freestanding'`
- * (verified in PR8b), so the values never affect the freestanding output.
  *
  * Returns `null` when `buildHouseModel3DFromRawHouseInput` can't produce
  * a model (e.g. an empty/degenerate footprint).
@@ -117,29 +112,11 @@ export function buildAdditionalHouseFormGeometry(input: {
   if (footprint.length < 3) return null;
 
   const rawHouse = houseFormToRawHouseInput(input.houseForm);
-  const pergolaContext: HouseModel3DPergolaContext = {
-    connectionType: 'freestanding',
-    attachmentSide: input.houseForm.footprint.attachmentSide,
-    attachmentEdge: null,
+  const model = buildHouseModel3DFromRawHouseInput({
+    rawHouse,
     footprint,
-    housePosition: null,
-    soffitDepthMm: null,
-    houseUndersideMm: null,
-    referenceUndersideMm: null,
-    outerUndersideMm: null,
-    datum: {
-      origin: { x: 0, y: 0, z: 0 },
-      xAxis: { x: 1, y: 0, z: 0 },
-      yAxis: { x: 0, y: 1, z: 0 },
-      zAxis: { x: 0, y: 0, z: 1 },
-      attachmentEdgeStart: { x: 0, y: 0, z: 0 },
-      attachmentEdgeEnd: { x: 0, y: 0, z: 0 },
-    },
-    pergolaLengthMm: FALLBACK_PERGOLA_WIDTH_MM,
-    pergolaProjectionMm: FALLBACK_PERGOLA_DEPTH_MM,
-  };
-
-  const model = buildHouseModel3DFromRawHouseInput({ rawHouse, pergolaContext });
+    pergolaAttachment: null,
+  });
   if (!model) return null;
 
   const houseLocal: HouseReferenceGeometry = {

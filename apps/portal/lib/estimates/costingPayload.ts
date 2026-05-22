@@ -13,7 +13,7 @@ import type {
   CalculatorPergola,
   InfillLineItem,
 } from '@/lib/types/calculator';
-import { DEFAULT_CALCULATOR_ATTACHMENT_SIDE, normalizeAttachmentSide } from '@/lib/types/calculator';
+import { normalizeAttachmentSide } from '@/lib/types/calculator';
 import type { PortalEstimatePayload } from '@/lib/localFirst/portalEntities';
 
 type AnyRecord = Record<string, unknown>;
@@ -283,6 +283,18 @@ function normalizePergolas(pergolas: CalculatorInputs['pergolas']): CalculatorPe
   return out.length ? out : [{ id: 'pergola-1', label: 'Pergola 1' }];
 }
 
+function deriveAttachmentLengthMm(
+  module: CalculatorModuleInputs,
+  lengthM: number,
+  roofSpanM: number,
+): number | null {
+  if (module.houseConnectionType === 'none') return null;
+  const side = normalizeAttachmentSide(module.attachmentSide);
+  const sourceM = side === 'left' || side === 'right' ? roofSpanM : lengthM;
+  if (!Number.isFinite(sourceM) || sourceM <= 0) return null;
+  return sourceM * 1000;
+}
+
 function buildModuleCostInputs(
   module: CalculatorModuleInputs,
   access: CalculatorInputs['access'],
@@ -394,7 +406,7 @@ function buildModuleCostInputs(
           }
         : undefined,
     house_connection_type: module.houseConnectionType,
-    attachment_side: module.houseConnectionType === 'none' ? DEFAULT_CALCULATOR_ATTACHMENT_SIDE : normalizeAttachmentSide(module.attachmentSide),
+    attachment_length_mm: deriveAttachmentLengthMm(module, length_m, roof_span_m),
     post_connection_type: module.postConnectionType,
     access,
     height,

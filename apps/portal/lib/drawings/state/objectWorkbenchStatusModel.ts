@@ -31,6 +31,7 @@ import type {
   PergolaObjectModel,
   WorkbenchProjectModel,
 } from './objectFirstWorkbenchModel';
+import { connectionKindFromAttachment } from './pergolaAttachment';
 
 type AttachmentSide = NonNullable<CalculatorModuleInputs['attachmentSide']>;
 
@@ -449,6 +450,10 @@ function buildOpeningStatuses(openings: OpeningObjectModel[]): Record<string, Ob
 }
 
 function resolvePergolaConnectionKind(pergola: PergolaObjectModel): ObjectWorkbenchPergolaConnectionKind {
+  // PR-F (2026-05-22): prefer the snap-derived attachment. Legacy
+  // `connectionKind` / `strategy` fields stay as fallback until PR-H
+  // deletes them.
+  if (pergola.attachment) return connectionKindFromAttachment(pergola.attachment);
   if (pergola.connectionKind) return pergola.connectionKind;
   if (pergola.strategy === 'none') return 'freestanding';
   return 'soffit';

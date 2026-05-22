@@ -85,20 +85,25 @@ describe('costingPayload', () => {
     expect(payload.pergolas).toHaveLength(1);
     expect(payload.pergolas[0]?.modules[0]?.roof_span_m).toBe(7);
     expect(payload.pergolas[0]?.modules[0]?.post_cut_height_m).toBe(2.7);
-    expect(payload.pergolas[0]?.modules[0]?.attachment_side).toBe('rear');
+    expect(payload.pergolas[0]?.modules[0]?.attachment_length_mm).toBe(7000);
   });
 
-  it('normalizes attachment side while defaulting freestanding modules back to rear', () => {
+  it('derives attachment_length_mm from attachment side (length vs projection) and nulls freestanding modules', () => {
     const inputs = makeInputs();
     inputs.modules = [
-      { ...inputs.modules[0]!, attachmentSide: 'left' },
-      { ...inputs.modules[0]!, pergolaId: 'pergola-1', houseConnectionType: 'none', attachmentSide: 'right' },
+      { ...inputs.modules[0]!, lengthM: '6', projectionM: '3', attachmentSide: 'left' },
+      {
+        ...inputs.modules[0]!,
+        pergolaId: 'pergola-1',
+        houseConnectionType: 'none',
+        attachmentSide: 'right',
+      },
     ];
 
     const payload = buildSiteInputsFromCalculatorInputs(inputs);
 
-    expect(payload.pergolas[0]?.modules[0]?.attachment_side).toBe('left');
-    expect(payload.pergolas[0]?.modules[1]?.attachment_side).toBe('rear');
+    expect(payload.pergolas[0]?.modules[0]?.attachment_length_mm).toBe(3000);
+    expect(payload.pergolas[0]?.modules[1]?.attachment_length_mm).toBeNull();
   });
 
   it('builds module costing inputs for a selected calculator module', () => {
@@ -112,7 +117,7 @@ describe('costingPayload', () => {
 
     expect(moduleInputs?.length_m).toBe(6.1);
     expect(moduleInputs?.roof_span_m).toBe(4.4);
-    expect(moduleInputs?.attachment_side).toBe('rear');
+    expect(moduleInputs?.attachment_length_mm).toBeNull();
   });
 
   it('preserves non-cost outputs such as drawing overrides when rebuilding an estimate payload', () => {

@@ -3070,16 +3070,16 @@ describe('buildHouseModel3DFromRawHouseInput (milestone 13 phase 2)', () => {
     };
     const fromRaw = buildHouseModel3DFromRawHouseInput({
       rawHouse,
-      pergolaContext: {
+      footprint,
+      housePosition: null,
+      soffitDepthMm: 450,
+      houseUndersideMm: 2400,
+      outerUndersideMm: 2137,
+      referenceUndersideMm: 2400,
+      pergolaAttachment: {
         connectionType: 'soffit',
         attachmentSide: 'rear',
         attachmentEdge,
-        footprint,
-        housePosition: null,
-        soffitDepthMm: 450,
-        houseUndersideMm: 2400,
-        outerUndersideMm: 2137,
-        referenceUndersideMm: 2400,
         datum: config.datum,
         pergolaLengthMm: 6000,
         pergolaProjectionMm: 3000,
@@ -3100,15 +3100,14 @@ describe('buildHouseModel3DFromRawHouseInput (milestone 13 phase 2)', () => {
     expect(fromRaw.footprint).toEqual(legacy.footprint);
   });
 
-  it('builds a real HouseModel3D for a freestanding pergola context (PR8b: standalone-house support)', () => {
+  it('builds a real HouseModel3D for a freestanding house (PR-G2: pergolaAttachment = null)', () => {
     // Pre-PR8b this returned null because `buildHouseModelConfig` short-
     // circuited on freestanding. Multi-form workbench rendering needs
     // freestanding forms to surface walls/roof/decks, so the short-circuit
     // moved upstream (in `normalize.ts`) to the genuine "no footprint" gate.
-    // The pergola-context fields (`pergolaLengthMm`, `pergolaProjectionMm`)
-    // remain in the input shape for back-compat but go unused on this path:
-    // `buildSemanticHouseAttachmentEdge` returns null for freestanding, so
-    // no pergola-derived geometry contributes to the resulting model.
+    // PR-G2 dropped the synthetic pergola-context stub: freestanding callers
+    // just pass `pergolaAttachment: null` and the geometry function applies
+    // the freestanding defaults internally.
     const footprint = makeFootprint();
     const rawHouse: RawHouseInput = {
       houseId: 'house-main',
@@ -3118,20 +3117,8 @@ describe('buildHouseModel3DFromRawHouseInput (milestone 13 phase 2)', () => {
     };
     const result = buildHouseModel3DFromRawHouseInput({
       rawHouse,
-      pergolaContext: {
-        connectionType: 'freestanding',
-        attachmentSide: 'rear',
-        attachmentEdge: null,
-        footprint,
-        housePosition: null,
-        soffitDepthMm: null,
-        houseUndersideMm: null,
-        outerUndersideMm: null,
-        referenceUndersideMm: null,
-        datum: makeConfig({ connectionType: 'freestanding' }).datum,
-        pergolaLengthMm: 6000,
-        pergolaProjectionMm: 3000,
-      },
+      footprint,
+      pergolaAttachment: null,
     });
     expect(result).not.toBeNull();
     expect(result?.roofPlanes.length).toBeGreaterThan(0);

@@ -702,7 +702,7 @@ describe('calculateCostV1', () => {
     expect(facade.install.actions.find((a) => a.id === 'house.install_facade_connection')?.minutes).toBeCloseTo(30, 2);
   });
 
-  it('attachment side switches house-connection drivers from length-driven to span-driven edges', () => {
+  it('attachment_length_mm switches house-connection drivers from length-driven to span-driven edges', () => {
     const baseInputs = {
       length_m: 6,
       projection_m: 3,
@@ -719,8 +719,8 @@ describe('calculateCostV1', () => {
       height: 'single_storey' as const,
     };
 
-    const rear = calculateCostV1({ ...baseInputs, attachment_side: 'rear' as const });
-    const left = calculateCostV1({ ...baseInputs, attachment_side: 'left' as const });
+    const rear = calculateCostV1({ ...baseInputs, attachment_length_mm: 6000 });
+    const left = calculateCostV1({ ...baseInputs, attachment_length_mm: 3000 });
 
     expect(rear.derived.attachment_length_m).toBeCloseTo(6, 6);
     expect(left.derived.attachment_length_m).toBeCloseTo(3, 6);

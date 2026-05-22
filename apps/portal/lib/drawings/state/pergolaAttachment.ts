@@ -175,3 +175,29 @@ export function connectionTypeFromAttachment(attachment: PergolaAttachment): Con
       return 'soffit';
   }
 }
+
+/**
+ * Project the snap-derived attachment onto the workbench-internal
+ * `ObjectFirstPergolaConnectionKind` enum used by inspector/status/store
+ * code paths. Mirrors `connectionTypeFromAttachment` but stays in the
+ * workbench domain (no `freestanding` collapse for `pergola_outline`
+ * needs different handling once pergola-to-pergola attachments land —
+ * for now we keep the same collapse as cost projection).
+ */
+export function connectionKindFromAttachment(
+  attachment: PergolaAttachment,
+): ObjectFirstPergolaConnectionKind {
+  if (attachment.spatialKind === 'freestanding') return 'freestanding';
+  if (attachment.spatialKind === 'wall') return 'wall';
+  if (attachment.spatialKind === 'pergola_outline') return 'freestanding';
+  // spatialKind === 'roof_edge'
+  switch (attachment.method) {
+    case 'fascia_under_gutter':
+      return 'fascia';
+    case 'direct_to_soffit':
+    case 'soffit_brackets':
+      return 'soffit';
+    default:
+      return 'soffit';
+  }
+}

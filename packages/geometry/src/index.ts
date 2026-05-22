@@ -41,5 +41,5 @@ export { buildAssemblyQuantityTakeoff } from './takeoff';
 // freestanding geometry by composing these directly, bypassing the
 // per-pergola normalize/solve pipeline.
 export { buildHouseModel3DFromRawHouseInput } from './houseModel';
-export type { HouseModel3DPergolaContext } from './houseModel';
+export type { HouseModel3DPergolaAttachment } from './houseModel';
 export { applyHouseReferencePosition } from './applyAssemblyPosition';

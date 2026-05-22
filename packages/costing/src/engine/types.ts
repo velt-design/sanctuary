@@ -172,7 +172,17 @@ export type CostInputsV1 = {
 
   post_count?: number;
   house_connection_type: HouseConnectionType;
-  attachment_side?: AttachmentSide;
+  /**
+   * PR-F (2026-05-22): replaces legacy `attachment_side` enum. Length of
+   * the pergola edge that meets the host wall (mm). Used for bracket /
+   * stringer-fixing count calculations. When `null` / `undefined`, the
+   * cost engine defaults to `length_m * 1000` (the pergola's long-side
+   * length — equivalent to the legacy `attachment_side: 'rear' | 'front'`
+   * behavior). Workbench callers derive this from the pergola's snap-
+   * attached edge length. Marketing-form enquiries leave this unset
+   * (defaults preserve historical cost output).
+   */
+  attachment_length_mm?: number | null;
   post_connection_type: PostConnectionType;
   access: AccessLevel;
   height: HeightCategory;
@@ -239,7 +249,8 @@ export type InputsNormalizedV1 = {
 
   post_count: number;
   house_connection_type: HouseConnectionType;
-  attachment_side: AttachmentSide;
+  /** PR-F (2026-05-22): echoed from input. See `CostInputsV1.attachment_length_mm`. */
+  attachment_length_mm: number;
   post_connection_type: PostConnectionType;
   access: AccessLevel;
   height: HeightCategory;

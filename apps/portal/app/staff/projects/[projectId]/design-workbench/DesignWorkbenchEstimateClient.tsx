@@ -24,7 +24,8 @@ import {
   buildEstimateDrawingSheetMetaOverrides,
   deriveEstimateDrawingEditableFields,
 } from '@/lib/estimates/drawingEdits';
-import type { WorkbenchObjectRef } from '@/lib/drawings/state/objectFirstWorkbenchModel';
+import type { PergolaAttachment, WorkbenchObjectRef } from '@/lib/drawings/state/objectFirstWorkbenchModel';
+import { pergolaAttachmentFromSnap } from '@/lib/drawings/state/pergolaAttachment';
 import { buildEstimateDrawingModuleInfoRows, buildEstimateDrawingSheetMeta } from '@/lib/estimates/drawingSheet';
 import type { EstimateDetail } from '@/lib/estimates/types';
 import { buildOutlineEditCommitHandler } from './commitOutlineEdit';
@@ -566,6 +567,34 @@ export default function DesignWorkbenchEstimateClient({
                       (p) => p.id === request.target.targetId,
                     );
                     if (!pergola) return;
+                    // PR-G1 (2026-05-22): when the move ended on a snap, derive
+                    // a `PergolaAttachment` (host + spatialKind + method) from
+                    // the snap target and write it alongside the position. Same
+                    // edgeKind→family routing as the edge-drag handler in
+                    // `commitOutlineEdit.ts`. Without this, the move tool wrote
+                    // position but left `attachment.host.myEdgeIndex` stale
+                    // (the PR-F follow-up). Undo intentionally leaves the new
+                    // attachment in place — MoveCommand's inverse delivers
+                    // `snap: null`, so the action's `attachment === undefined`
+                    // no-op runs. Acceptable per Phase 1 permission.
+                    let snapAttachment: PergolaAttachment | undefined = undefined;
+                    if (request.snap) {
+                      const hostEdgeKind = request.snap.edgeSnap.target.edgeKind;
+                      if (
+                        hostEdgeKind === 'wall' ||
+                        hostEdgeKind === 'roof_eave' ||
+                        hostEdgeKind === 'pergola_outline'
+                      ) {
+                        snapAttachment = pergolaAttachmentFromSnap({
+                          hostObjectFamily:
+                            hostEdgeKind === 'pergola_outline' ? 'pergolas' : 'house_forms',
+                          hostObjectId: request.snap.edgeSnap.target.sourceObjectId,
+                          hostEdgeKind,
+                          hostEdgeId: request.snap.edgeSnap.target.id,
+                          myEdgeIndex: request.snap.edgeIndex,
+                        });
+                      }
+                    }
                     void objectWorkbenchActions.commitSharedPergolaEdgeDragResult(
                       request.target.targetId,
                       {
@@ -573,6 +602,7 @@ export default function DesignWorkbenchEstimateClient({
                           currentPosition: pergola.position,
                           deltaMm: request.delta,
                         }),
+                        ...(snapAttachment ? { attachment: snapAttachment } : null),
                       },
                     );
                     return;

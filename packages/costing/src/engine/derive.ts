@@ -373,11 +373,19 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
 
   const postCountRaw = typeof inputs.post_count === 'number' ? inputs.post_count : Number.parseInt(String(inputs.post_count ?? ''), 10);
   const postCount = Number.isFinite(postCountRaw) && postCountRaw > 0 ? Math.round(postCountRaw) : DEFAULT_POST_COUNT;
-  const attachmentSideRaw = String(inputs.attachment_side ?? 'rear').trim().toLowerCase();
-  const attachmentSide =
-    attachmentSideRaw === 'front' || attachmentSideRaw === 'left' || attachmentSideRaw === 'right'
-      ? attachmentSideRaw
-      : 'rear';
+  // PR-F (2026-05-22): replaces legacy `attachment_side` enum. The cost
+  // engine only needed the attachment edge LENGTH (for bracket-count
+  // calculations); the cardinal-side concept was a clumsy 2-bit proxy
+  // for "is the long or short side attached". When callers don't supply
+  // `attachment_length_mm`, default to `length_m * 1000` — equivalent
+  // to the legacy `attachment_side: 'rear'` / `'front'` behavior the
+  // marketing-form enquiry path always used.
+  const attachmentLengthMmRaw =
+    typeof inputs.attachment_length_mm === 'number' ? inputs.attachment_length_mm : null;
+  const attachmentLengthMmInput =
+    attachmentLengthMmRaw !== null && Number.isFinite(attachmentLengthMmRaw) && attachmentLengthMmRaw > 0
+      ? attachmentLengthMmRaw
+      : null;
 
   const styleNormalized = normalizePergolaStyle(inputs.pergola_style);
   warnings.push(...styleNormalized.warnings);
@@ -505,8 +513,10 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
   const rafterCountB = rafterB ? rafterB.rafterCount : 0;
   const bayCountB = roofType === 'hip_corner' ? (rafterB ? rafterB.bayCount : 0) : 0;
 
+  // PR-F (2026-05-22): use caller-supplied `attachment_length_mm` when set,
+  // otherwise default to `lengthMmA` (legacy `'rear'` / `'front'` behavior).
   const attachmentLengthMmA =
-    roofType === 'hip_corner' ? lengthMmA : attachmentSide === 'left' || attachmentSide === 'right' ? Math.round(projectionM * 1000) : lengthMmA;
+    roofType === 'hip_corner' ? lengthMmA : (attachmentLengthMmInput ?? lengthMmA);
   const bracketCountA = inputs.house_connection_type === 'soffit' ? Math.ceil(attachmentLengthMmA / BRACKET_SPACING_MM_MAX) + 1 : 0;
   const bracketCountB =
     roofType === 'hip_corner' && inputs.house_connection_type === 'soffit'
@@ -1256,7 +1266,10 @@ export function normalizeAndDeriveV1(inputs: CostInputsV1, config?: Pick<Costing
 
     post_count: postCount,
     house_connection_type: inputs.house_connection_type,
-    attachment_side: attachmentSide,
+    // PR-F (2026-05-22): echo the resolved attachment length (input value
+    // or the lengthMmA default) so consumers can read it without
+    // recomputing the default.
+    attachment_length_mm: attachmentLengthMmA,
     post_connection_type: inputs.post_connection_type,
     access: inputs.access,
     height: inputs.height,

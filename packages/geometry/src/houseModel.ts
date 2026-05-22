@@ -823,27 +823,26 @@ export function buildHouseReferenceGeometry(input: {
  * For now, pergola context is an explicit parameter -- the orchestrator
  * (phase 3) supplies it once per pergola the house participates in.
  */
-export type HouseModel3DPergolaContext = {
-  connectionType: ConnectionType;
+/**
+ * Pergola-relationship context: the subset of fields that only make sense
+ * when a specific pergola is attached to this house. Pass `null` to
+ * `buildHouseModel3DFromRawHouseInput` for freestanding houses (no pergola).
+ *
+ * PR-G2 (2026-05-22) split this out of the omnibus per-call object so
+ * additional house forms stop synthesising stub values. The remaining
+ * fields are the genuine inputs to `buildSemanticHouseAttachmentEdge` —
+ * pergola-dependent, not house-intrinsic. Closes audit row N4 (synthetic
+ * context in `buildAdditionalHouseFormGeometry`).
+ */
+export type HouseModel3DPergolaAttachment = {
+  connectionType: Exclude<ConnectionType, 'freestanding'>;
   attachmentSide: AttachmentSide;
   attachmentEdge: Line3 | null;
-  /** World-space `Polygon3` footprint after position has been applied (if any). */
-  footprint: Polygon3 | null;
-  /** Optional house-level world position; passed through to the model. */
-  housePosition: AssemblyPosition | null;
-  /** Soffit depth used for attachment-zone geometry; passed through verbatim. */
-  soffitDepthMm: number | null;
-  /** Eave-height fallback heights from `structural.heights`. */
-  houseUndersideMm: number | null;
-  referenceUndersideMm: number | null;
-  outerUndersideMm: number | null;
   /** Datum frame the pergola contributes; used to derive the wall plane. */
   datum: GeometryConfig['datum'];
   /**
    * Pergola dimensions used by `buildSemanticHouseAttachmentEdge` to size
-   * the host attachment edge. Decoupling this from the house body is
-   * future work (the attachment-target geometry is the only field that
-   * truly depends on pergola dimensions).
+   * the host attachment edge.
    */
   pergolaLengthMm: number;
   pergolaProjectionMm: number;
@@ -877,23 +876,43 @@ export type HouseModel3DPergolaContext = {
  */
 export function buildHouseModel3DFromRawHouseInput(input: {
   rawHouse: RawHouseInput;
-  pergolaContext: HouseModel3DPergolaContext;
+  /** Resolved world-space footprint polygon (mm). */
+  footprint: Polygon3 | null;
+  /** Optional house-level world position; passed through to the model. */
+  housePosition?: AssemblyPosition | null;
+  /** Soffit depth used for attachment-zone geometry; passed through verbatim. */
+  soffitDepthMm?: number | null;
+  /** Eave-height fallback heights from `structural.heights`. */
+  houseUndersideMm?: number | null;
+  referenceUndersideMm?: number | null;
+  outerUndersideMm?: number | null;
+  /**
+   * Pergola-relationship context. `null` => freestanding house (no pergola
+   * attaches; `attachmentTarget` will be `{ kind: 'none' }`).
+   */
+  pergolaAttachment: HouseModel3DPergolaAttachment | null;
 }): HouseModel3D | null {
-  const { rawHouse, pergolaContext } = input;
+  const {
+    rawHouse,
+    footprint,
+    housePosition = null,
+    soffitDepthMm = null,
+    houseUndersideMm = null,
+    referenceUndersideMm = null,
+    outerUndersideMm = null,
+    pergolaAttachment,
+  } = input;
 
-  // RawHouseInput is structurally a superset of
-  // `RawGeometryModuleInput['houseContext']` (it adds `houseId`).
-  // `buildHouseModelConfig` ignores `houseId`, so the cast is safe;
-  // explicit so future changes to either type surface here.
-  const rawHouseContextEquivalent: RawHouseInput = rawHouse;
+  const connectionType: ConnectionType = pergolaAttachment?.connectionType ?? 'freestanding';
+  const attachmentSide: AttachmentSide = pergolaAttachment?.attachmentSide ?? 'rear';
 
   const houseModelConfig: HouseModelConfig | null = buildHouseModelConfig({
-    rawHouseContext: rawHouseContextEquivalent,
-    footprint: pergolaContext.footprint,
-    connectionType: pergolaContext.connectionType,
-    attachmentSide: pergolaContext.attachmentSide,
-    houseUndersideMm: pergolaContext.houseUndersideMm,
-    referenceUndersideMm: pergolaContext.referenceUndersideMm,
+    rawHouseContext: rawHouse,
+    footprint,
+    connectionType,
+    attachmentSide,
+    houseUndersideMm,
+    referenceUndersideMm,
   });
 
   // Construct a partial GeometryConfig containing exactly the fields
@@ -907,29 +926,29 @@ export function buildHouseModel3DFromRawHouseInput(input: {
   //   - houseContext.{model, position, soffitDepthMm, footprint}
   //   - structural.heights.{houseUndersideMm, outerUndersideMm,
   //     referenceUndersideMm}
-  //   - datum (used by buildHouseReferenceGeometry, but not buildHouseModel3D
-  //     directly -- still provided via pergolaContext to keep the contract
-  //     symmetrical with the legacy entry).
+  //   - datum (only meaningful when pergolaAttachment is non-null; a stub
+  //     identity frame is fine for freestanding because the attachment-edge
+  //     helper short-circuits)
   const partialConfig: Pick<
     GeometryConfig,
     'connection' | 'houseContext' | 'structural' | 'datum' | 'dimensions'
   > = {
     connection: {
-      type: pergolaContext.connectionType,
-      attachmentSide: pergolaContext.attachmentSide,
+      type: connectionType,
+      attachmentSide,
     },
-    datum: pergolaContext.datum,
+    datum: pergolaAttachment?.datum ?? FREESTANDING_DATUM_STUB,
     dimensions: {
-      lengthMm: pergolaContext.pergolaLengthMm,
-      projectionMm: pergolaContext.pergolaProjectionMm,
+      lengthMm: pergolaAttachment?.pergolaLengthMm ?? 0,
+      projectionMm: pergolaAttachment?.pergolaProjectionMm ?? 0,
       roofPitchDeg: 0,
     },
     houseContext: {
-      footprint: pergolaContext.footprint,
+      footprint,
       footprintMode: null,
       footprintPolygon: null,
-      position: pergolaContext.housePosition,
-      soffitDepthMm: pergolaContext.soffitDepthMm,
+      position: housePosition,
+      soffitDepthMm,
       model: houseModelConfig,
       attachmentStrategy: rawHouse.attachmentStrategy ?? null,
       wallLine: null,
@@ -938,9 +957,9 @@ export function buildHouseModel3DFromRawHouseInput(input: {
     },
     structural: {
       heights: {
-        houseUndersideMm: pergolaContext.houseUndersideMm,
-        outerUndersideMm: pergolaContext.outerUndersideMm,
-        referenceUndersideMm: pergolaContext.referenceUndersideMm,
+        houseUndersideMm,
+        outerUndersideMm,
+        referenceUndersideMm,
       },
       // Fields `buildHouseModel3D` doesn't read -- stubs. If the builder
       // ever starts reading these, TS will surface the missing field.
@@ -965,6 +984,15 @@ export function buildHouseModel3DFromRawHouseInput(input: {
 
   return buildHouseModel3D({
     config: partialConfig as GeometryConfig,
-    attachmentEdge: pergolaContext.attachmentEdge,
+    attachmentEdge: pergolaAttachment?.attachmentEdge ?? null,
   });
 }
+
+const FREESTANDING_DATUM_STUB: GeometryConfig['datum'] = {
+  origin: { x: 0, y: 0, z: 0 },
+  xAxis: { x: 1, y: 0, z: 0 },
+  yAxis: { x: 0, y: 1, z: 0 },
+  zAxis: { x: 0, y: 0, z: 1 },
+  attachmentEdgeStart: { x: 0, y: 0, z: 0 },
+  attachmentEdgeEnd: { x: 0, y: 0, z: 0 },
+};

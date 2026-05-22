@@ -151,38 +151,103 @@ Each PR is small enough to ship in 1–2 days. Dependencies are explicit. **No n
 
 **Acceptance:** existing single-form fixtures render decks identically. Dragging a deck from one form's wall to another form's wall produces a snap reference to the new form. The PR9 test still passes (semantics: deck routed to correct form), but the implementation uses snap references instead of `hostHouseFormId`.
 
-### PR-E — Openings store wall-local offsets with absolute wall edge id
+### PR-E — [MERGED INTO PR-F, 2026-05-22]
 
-**Closes:** N5 (opening part — deletes `HouseFirstOpeningDraft` type), audit row 4 (opening part).
-**Phase 2 dependencies:** Same caveat as PR-D — verify cost engine doesn't read opening `wallId` enum directly. If it does, scope to model + read-path migration and keep a thin compat shim that synthesises `wallId` from the new edge id.
-**Touches:** `ObjectFirstOpeningDraft` (replace `wallId` enum with `hostWallEdgeId` absolute reference; `sourceFormId` becomes redundant with the wall edge id and is deleted), opening resolver, `addSharedHouseOpening` action.
-**What changes:** openings know which wall edge they sit on by absolute id; they no longer carry a side enum or form id separately.
+**Scope-check 2026-05-22 (skipped after grep)**: scoping found that the opening data model is already mostly where the architecture wants it (`hostEdgeId: string | null` carries an absolute wall edge id; `sourceFormId` carries the host form id). The real migration work — deleting the legacy `wallId: WallOpeningHostSide` enum — lives in the **geometry pipeline consumers** (10 files in `packages/geometry/` + `apps/portal/lib/drawings/geometry/` + `apps/portal/lib/drawings/views/plan/`). Those consumers naturally migrate as part of PR-F (snap-driven attachment) and PR-G (per-object geometry).
 
-**Risk:** smaller than PR-D because openings don't have the world-position aspect. Mostly a field rename + resolver rewrite.
+**PR-E is therefore folded into PR-F + PR-G.** No standalone PR. The cull audit rows that PR-E was meant to close (N5 opening-part, audit row 4 opening-part) get closed by PR-F + PR-H instead.
 
-**Acceptance:** existing openings render identically. Adding an opening while a non-primary form is selected creates the opening on that form's wall.
+**Lesson for the cull plan**: PR-E's over-scoping was caught by the "blast-radius grep before coding" step in CLAUDE.md's gate. Process is doing what it's designed to do.
 
-### PR-F — Pergola attachment becomes a real snap reference
+### PR-F — Pergola attachment becomes a real snap reference + retire `attachment_side` from cost engine ✅ SHIPPED 2026-05-22
 
-**Closes:** N5 (pergola + roof parts — deletes `HouseFirstPergolaDraft` and `HouseFirstRoofDraft` types), audit row 4 (pergola part).
-**Phase 2 dependencies:** **YES — most likely.** The cost engine reads `attachmentSide` directly from `inputs.modules` (pergola attachment drives ledger/bracket/flashing costing). PR-F must keep the legacy `attachmentSide` field synthesised from the new snap reference for the cost engine to keep working. Sequence: (1) add the new snap-reference field alongside the legacy `attachmentSide`; (2) make the workbench READ from the snap reference; (3) populate the legacy `attachmentSide` as a derived shim; (4) cost engine is unchanged. The shim retires in Phase 2.
-**Touches:** `ObjectFirstPergolaDraft.attachment` (already partially uses `host.edgeId` — finish the migration), pergola attachment resolver, `commitSharedPergolaAttachment` action.
-**What changes:** pergola attachment becomes the `PergolaAttachment` shape in the architecture doc § "Attachment data shape". `attachmentSide` enum reads become derived UI labels only.
+**Scope expanded 2026-05-22 (after user pushback on Q2 during scoping)**: original PR-F planned a Phase 1 compat shim that synthesised `attachment_side` from the new snap reference, deferring cost engine input migration to Phase 2. User asked "do we even need this at all?" — investigation showed `attachment_side` is only used inside `derive.ts:508-510` as a 2-bit selector for "is the long or short side attached" — used to compute `attachmentLengthMm`. Cleaner end state: replace `attachment_side` with `attachment_length_mm` directly. The cardinal-side concept disappears entirely from costing. **This is the first Phase 2 chunk — cost engine input migration, scoped to one field.**
 
-**Risk:** the legacy `attachmentSide` is plumbed through ~20 sites including the cost engine input layer. The cost engine input adapter (Phase 1 thin layer) keeps the `attachmentSide` field synthesised from the new snap reference, so cost engine stays unchanged.
+**Closes:** N5 partial (pergola + roof parts), audit row 4 (pergola part), opening parts that PR-E was folded into.
+**Does NOT close:** the `HouseFirst*` type deletions (deferred to PR-H once all readers migrate).
+**Phase 2 dependencies:** N/A — PR-F IS the cost engine input migration for the `attachment_side → attachment_length_mm` field. Other Phase 2 work (cost engine reading from solved geometry instead of `inputs.modules`) remains future.
 
-**Acceptance:** all pergola attachment scenarios in the existing solve test suite produce identical solved geometry. Email-quote path unchanged.
+**Touches (shipped 2026-05-22):**
+- `packages/costing/src/engine/types.ts` — `CostInputsV1` + output type ✅
+- `packages/costing/src/engine/derive.ts` — input normalization, usage, output all switched to `attachment_length_mm` ✅
+- `packages/costing/src/engine/calculate.test.ts` — test now exercises `attachment_length_mm: 6000` vs `3000` ✅
+- `apps/portal/lib/estimates/costingPayload.ts` — bridge derives `attachment_length_mm` from legacy `attachmentSide` + `lengthM`/`projectionM` via new `deriveAttachmentLengthMm` helper ✅
+- `apps/portal/lib/estimates/costingPayload.test.ts` — tests now assert mm values, freestanding → null ✅
+- `apps/portal/lib/drawings/state/pergolaAttachment.ts` — new `connectionKindFromAttachment()` helper ✅
+- `apps/portal/lib/drawings/state/objectWorkbenchStatusModel.ts` — `resolvePergolaConnectionKind` now prefers `pergola.attachment` (downstream `objectWorkbenchInspectorModel:411` + `drawingWorkbenchStore:340` inherit the change because they read from the resolved status) ✅
 
-### PR-G — Geometry pipeline iterates per object, not per pergola
+**Scope trimmed:** `pergolaAttachmentResolver.ts` migration deferred to PR-G/H where the entire `houseFirstWorkbenchAdapter` pipeline (the resolver's only caller) is replaced. Refactoring the resolver in PR-F would be churn: its inputs/outputs feed legacy `PergolaModel.attachment` consumers that PR-G/H deletes wholesale.
 
-**Closes:** audit row 9, N4, N8, N9, N10.
-**Phase 2 dependencies:** **Likely.** The cost engine consumes solved geometry per-pergola-module today. If PR-G changes the per-module structure (e.g., scene built once per project instead of per pergola), the cost engine's iteration pattern may need to change. Scope: verify cost engine assumptions about per-module solved geometry; keep per-module solved outputs unchanged for cost-engine consumption, even if internally the scene is built once. Decouples the workbench's view from cost engine's read shape.
-**Touches:** `workbenchSolvedModel.ts` (the per-module loop becomes a per-object loop), `buildRawGeometryModuleInput.ts` (drops non-pergola wrapping), `buildHouseModel3DFromRawHouseInput` signature (drops pergola context).
+**What changes:**
+- Cost engine: `attachment_length_mm: number | null` replaces `attachment_side`. When null, defaults to `length_m * 1000` (preserves current behavior for marketing-form enquiries which never set `attachment_side`).
+- Cost engine output: `attachment_side` removed (no production consumers; only test snapshots referenced it).
+- Workbench cost payload: derives `attachment_length_mm` from `pergola.attachment.host.edgeId` + form's wall graph (the edge's length). Freestanding pergolas: null → defaults to lengthMm.
+- 5 workbench UI/state reads of `connectionKind` migrate to read `attachment.spatialKind` first, falling back to legacy `connectionKind` when `attachment` is absent.
+- `pergolaAttachmentResolver.ts` accepts `PergolaAttachment` as input (when present) and synthesises the legacy fields it needs for warning emission.
+- Action layer keeps dual writes (legacy + new) for now — full legacy-field deletion is PR-H.
+
+**What temporarily breaks (acceptable per locked Phase 1 permission):**
+- Pergolas without a populated `attachment.host.edgeId` (i.e., legacy-loaded pergolas before the snap commit wiring lands in PR-F-2 follow-up) will fall back to lengthMm for `attachment_length_mm` regardless of whether they were originally attached to the long or short side. **Cost may differ for left/right-attached legacy pergolas** until the user re-snaps them. Workaround: existing estimates re-snap on next drag. Email-quote path unaffected (marketing form was always 'rear').
+- `myEdgeIndex` stays 0 for legacy-migrated pergolas (acceptable per Q3 — a pergola with no host is freestanding, and `myEdgeIndex` only matters once snap commits write it explicitly).
+
+**Acceptance:**
+- Email-quote tests pass (6/6).
+- Cost engine test that exercised `attachment_side` updated to exercise `attachment_length_mm`; same bracket count assertions hold for `attachment_length_mm = projection_m * 1000` (mimics old `'left'`/`'right'`) vs `attachment_length_mm = length_m * 1000` (mimics `'rear'`/`'front'`). ✅
+- Workbench: rear/front-attached pergola estimates produce identical cost. Left/right-attached estimates produce identical cost ONLY for pergolas that have been re-snapped after PR-F (acceptable per locked permission).
+- `resolvePergolaConnectionKind` prefers `attachment` over legacy `connectionKind` field (downstream inspector/status/store reads inherit the change). ✅
+- `pergolaAttachmentResolver` deferred to PR-G/H (out of scope — see "Scope trimmed" above).
+
+**Sizing**: ~2.5 days.
+
+**Follow-up (PR-F-2 or rolled into PR-G):** snap engine wiring — `PlanViewport` commit path calls `pergolaAttachmentFromSnap()` to populate `attachment.host.myEdgeIndex` properly. Without this, re-snaps from drag don't fully populate the new shape (current dual-write pattern covers it via legacy field migration on next read). **Shipped as PR-G1 (2026-05-22).**
+
+### PR-G1 — Snap-commit wiring follow-up (PR-F-2) ✅ SHIPPED 2026-05-22
+
+**Closes:** the PR-F follow-up flagged above ("snap engine wiring — `PlanViewport` commit path calls `pergolaAttachmentFromSnap()` to populate `attachment.host.myEdgeIndex` properly").
+
+**Phase 2 dependencies:** None.
+
+**Touches:**
+- `apps/portal/app/staff/projects/[projectId]/design-workbench/DesignWorkbenchEstimateClient.tsx:564-606` — the Move-tool pergola commit handler. When `request.snap` is present, derives a `PergolaAttachment` via `pergolaAttachmentFromSnap` (same edgeKind→family routing as the edge-drag handler in `commitOutlineEdit.ts`) and writes it alongside `position` via `commitSharedPergolaEdgeDragResult`.
+
+**What changes:** Move-tool drags that end on a snap target now write the full attachment shape (`spatialKind`, `method`, `host.objectFamily`, `host.objectId`, `host.edgeId`, `host.myEdgeIndex`) instead of only writing `position`. The edge-drag handler already did this — Move tool was the missing path. Undo intentionally leaves the new attachment in place (MoveCommand's inverse delivers `snap: null`, the action's `attachment === undefined` no-op runs). Acceptable per Phase 1 permission.
+
+**Acceptance:**
+- Typecheck clean ✅
+- Email-quote tests pass (6/6) ✅
+- One pre-existing failure in `DesignWorkbenchEstimateClient.test.tsx` "clears them when reverted" — confirmed not caused by PR-G1 (fails identically with PR-G1 stashed).
+
+### PR-G2 — `buildHouseModel3DFromRawHouseInput` drops omnibus `pergolaContext` ✅ SHIPPED 2026-05-22
+
+**Closes:** N4 fully (synthetic pergola context in `buildAdditionalHouseFormGeometry` deleted). Partial N8 (the dead-weight underside fields no longer flow through pergola context, but the `connectionType`/`attachmentSide` params in `buildHouseModelConfig` remain until PR-G3 restructures deck-positioning).
+
+**Phase 2 dependencies:** None. Cost engine doesn't call `buildHouseModel3DFromRawHouseInput`; this is purely a workbench-internal pipeline refactor.
+
+**Touches:**
+- `packages/geometry/src/houseModel.ts:826-991` — deleted omnibus `HouseModel3DPergolaContext` type. Introduced focused `HouseModel3DPergolaAttachment` containing only the genuine pergola-relationship fields (`connectionType`, `attachmentSide`, `attachmentEdge`, `datum`, `pergolaLengthMm`, `pergolaProjectionMm`). `buildHouseModel3DFromRawHouseInput` now takes per-field params for house-intrinsic data (`footprint`, `housePosition`, `soffitDepthMm`, the three underside heights) and a single nullable `pergolaAttachment` for the relationship data. `null` => freestanding; the function internally substitutes a stub datum + `connectionType: 'freestanding'` + `attachmentSide: 'rear'`.
+- `packages/geometry/src/index.ts:44` — export renamed from `HouseModel3DPergolaContext` to `HouseModel3DPergolaAttachment`.
+- `apps/portal/lib/drawings/state/buildAdditionalHouseFormGeometry.ts:113-145` — synthetic pergolaContext stub block (lines 120-140) deleted. Function now calls `buildHouseModel3DFromRawHouseInput({ rawHouse, footprint, pergolaAttachment: null })`. ~23 lines shorter.
+- `packages/geometry/src/houseModel.test.ts:3071-3142` — both attached + freestanding tests updated to new call shape.
+
+**What changes:** additional house forms (multi-form scenes — sleepouts, granny flats) no longer fabricate stub `pergolaLengthMm`, `pergolaProjectionMm`, `datum`, and zero-valued underside heights. The freestanding case is now first-class: pass `pergolaAttachment: null`. The attached case keeps the same fields it always needed, but in a clearly-named sub-object so its purpose is obvious at call sites.
+
+**Acceptance:**
+- Typecheck clean ✅
+- Geometry suite: 352/352 passed ✅
+- Portal workbench: 468 passed + 6 PR-B-era skips (no new failures) ✅
+- Email-quote tests: 6/6 ✅
+- `composeAdditionalHouseFormsIntoScene` (audit row N10) untouched — deferred to PR-G3 where the per-pergola scene loop becomes per-project.
+
+### PR-G3 — Geometry pipeline iterates per object, not per pergola
+
+**Closes:** audit row 9, remaining N8 (config-carries-pergola-dims coupling in `normalize.ts`), N9, N10.
+**Phase 2 dependencies:** **Likely.** The cost engine consumes solved geometry per-pergola-module today. If PR-G3 changes the per-module structure (e.g., scene built once per project instead of per pergola), the cost engine's iteration pattern may need to change. Scope: verify cost engine assumptions about per-module solved geometry; keep per-module solved outputs unchanged for cost-engine consumption, even if internally the scene is built once. Decouples the workbench's view from cost engine's read shape.
+**Touches:** `workbenchSolvedModel.ts` (the per-module loop becomes a per-object loop), `buildRawGeometryModuleInput.ts` (drops non-pergola wrapping), `viewer.ts` (`buildLayers` iterates project objects, not single pergola's assembly).
 **What changes:** the project solves N objects independently (N pergolas + M houses + decks/openings as drawn). The scene builder emits one set of layers per project, not per pergola module. `composeAdditionalHouseFormsIntoScene` (PR8d workaround) deletes.
 
-**Risk:** biggest geometry-side PR. The pergola solve path is the foundation of everything. Test extensively against the 349-test geometry suite.
+**Risk:** biggest geometry-side PR. The pergola solve path is the foundation of everything. Test extensively against the 352-test geometry suite.
 
-**Acceptance:** geometry suite passes byte-identical for single-pergola estimates. Multi-form scenes produce one set of house objects per form (not duplicated per pergola module).
+**Acceptance:** geometry suite passes for single-pergola estimates. Multi-form scenes produce one set of house objects per form (not duplicated per pergola module).
 
 ### PR-H — Final cleanup sweep: delete `houseFirstWorkbenchModel.ts`, retire compat namespace, geometry pruning
 
