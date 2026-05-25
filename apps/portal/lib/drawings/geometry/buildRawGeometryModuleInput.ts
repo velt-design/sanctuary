@@ -375,6 +375,26 @@ function mapDeckPresetRect(
   };
 }
 
+/**
+ * Public project-level deck mapper (PR-G3b, 2026-05-22). Lets the workbench
+ * solve compute once per project instead of per pergola module.
+ */
+export function mapProjectDecks(
+  projectModel: WorkbenchProjectModel | null,
+): RawGeometryModuleInput['houseContext']['decks'] {
+  return mapDecks(projectModel);
+}
+
+/**
+ * Public project-level opening mapper (PR-G3b, 2026-05-22). Lets the workbench
+ * solve compute once per project instead of per pergola module.
+ */
+export function mapProjectOpenings(
+  projectModel: WorkbenchProjectModel | null,
+): RawGeometryModuleInput['houseContext']['openings'] {
+  return mapOpenings(projectModel);
+}
+
 function mapDecks(
   projectModel: WorkbenchProjectModel | null,
 ): RawGeometryModuleInput['houseContext']['decks'] {
@@ -504,6 +524,19 @@ export function buildRawGeometryModuleInput(input: {
   module: CalculatorModuleInputs;
   result: CostOutputV1 | null;
   objectWorkbenchGeometryContext?: ObjectWorkbenchGeometryContext | null;
+  /**
+   * PR-G3b (2026-05-22): pre-computed project-level decks/openings, so the
+   * per-pergola call doesn't redundantly remap the same project data once
+   * per module. Closes audit row 9 in spirit (production workbench solve no
+   * longer wraps project-level data per pergola). When omitted, falls back
+   * to internal `mapDecks`/`mapOpenings` against `projectModel` — that
+   * default is preserved so test fixtures don't have to wire the pre-pass
+   * themselves. The structural per-object split (`RawGeometryProjectInput`
+   * vs `RawGeometryModuleInput`) is deferred until consumers in the
+   * geometry package can read decks/openings from a separate field.
+   */
+  projectDecks?: RawGeometryModuleInput['houseContext']['decks'];
+  projectOpenings?: RawGeometryModuleInput['houseContext']['openings'];
 }): RawGeometryModuleInput {
   const {
     projectId,
@@ -513,8 +546,12 @@ export function buildRawGeometryModuleInput(input: {
     module,
     result,
     objectWorkbenchGeometryContext = null,
+    projectDecks,
+    projectOpenings,
   } = input;
   const projectModel = objectWorkbenchGeometryContext?.projectModel ?? null;
+  const decks = projectDecks !== undefined ? projectDecks : mapDecks(projectModel);
+  const openings = projectOpenings !== undefined ? projectOpenings : mapOpenings(projectModel);
   const houseForm = selectHouseForm({ projectModel, module, moduleId });
   const roofIntent = houseForm?.roofIntent ?? null;
   const pergola = projectModel
@@ -590,8 +627,8 @@ export function buildRawGeometryModuleInput(input: {
             dropMm: resolveOptionalOverride(roofIntent.appendage.dropMm),
           }
         : null,
-      decks: mapDecks(projectModel),
-      openings: mapOpenings(projectModel),
+      decks,
+      openings,
       attachmentStrategy: houseForm?.attachmentStrategy ?? module.houseAttachmentStrategy ?? null,
       eaveHeightM: resolveOptionalOverride(houseForm?.eaveHeightM ?? module.houseEaveHeightM),
       wallHeightM: resolveOptionalOverride(houseForm?.wallHeightM ?? module.houseWallHeightM),

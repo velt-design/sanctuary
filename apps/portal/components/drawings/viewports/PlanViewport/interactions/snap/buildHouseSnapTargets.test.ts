@@ -4,6 +4,7 @@ import { buildHouseSnapTargets } from './buildHouseSnapTargets';
 
 function makeMinimalHouseModel(overrides: Partial<HouseModel3D> = {}): HouseModel3D {
   return {
+    houseId: 'test-house',
     footprint: [],
     wallSegments: [],
     roofPlanes: [],

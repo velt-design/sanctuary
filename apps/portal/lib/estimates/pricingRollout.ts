@@ -6,8 +6,8 @@ import {
 } from '@sp/costing';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createHash } from 'crypto';
-import { buildCommercialDesignInputFromWorkbenchSolvedModel } from '@/lib/drawings/commercialDesignPayload';
-import { buildWorkbenchSolvedModel } from '@/lib/drawings/state/workbenchSolvedModel';
+import { buildCommercialDesignInputFromWorkbenchSolvedProject } from '@/lib/drawings/commercialDesignPayload';
+import { buildWorkbenchSolvedModel, buildWorkbenchSolvedProject } from '@/lib/drawings/state/workbenchSolvedModel';
 import {
   isCalculatorInputsV2,
   isLegacyCalculatorInputsV1,
@@ -309,8 +309,9 @@ export function buildEstimateWorkbenchSolvedReadinessFromSnapshot(
         designRequestId: input.designRequestId ?? null,
       },
     });
-    const workbenchCommercialInput = buildCommercialDesignInputFromWorkbenchSolvedModel({
-      solvedModel,
+    const solvedProject = buildWorkbenchSolvedProject({ solvedModel });
+    const workbenchCommercialInput = buildCommercialDesignInputFromWorkbenchSolvedProject({
+      solvedProject,
       siteCommercial: calculatorCommercialInput.siteCommercial,
     });
     const parityReport = parityReportForReadiness(

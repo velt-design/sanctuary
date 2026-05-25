@@ -1,6 +1,5 @@
 import {
   buildAssemblyQuantityTakeoff,
-  buildHouseModelSceneObjects,
   buildHouseReferenceProjectionShape,
   buildProjectReferenceShapes,
   buildTopProjectionViewModelFromScene,
@@ -13,11 +12,13 @@ import {
   type GeometryTopProjectionShape,
   type GeometryTopProjectionViewModel,
   type GeometryValidationReport,
+  type HouseModel3D,
   type ProjectPergolaEntry,
+  type RawGeometryModuleInput,
   type ViewerSceneModel,
-  type ViewerSceneObject,
   validateGeometrySolve,
 } from '@sp/geometry';
+import { mapProjectDecks, mapProjectOpenings } from '@/lib/drawings/geometry/buildRawGeometryModuleInput';
 import type { ModulePlanModel, ModuleSectionModel } from '@/app/staff/calculator/moduleViews';
 import {
   deriveWorkbenchGeometry,
@@ -180,6 +181,83 @@ export type WorkbenchSolvedModel = {
    * `module.geometryTopProjection`; the overlay only adds shapes for OTHER
    * pergolas (filtered via `buildProjectContextOverlayShapes`).
    */
+  projectReferenceShapes: GeometryTopProjectionShape[];
+  trust: WorkbenchTrustStatus;
+  geometryIdentity: Required<WorkbenchGeometryIdentity>;
+};
+
+// ============================================================================
+// PR-2B.1a (2026-05-23): per-object solved shape — coexists with legacy
+// ============================================================================
+//
+// `SolvedPergola` and `WorkbenchSolvedProject` are the per-object equivalents
+// of `WorkbenchSolvedModule` and `WorkbenchSolvedModel`. They expose the same
+// per-pergola data but keyed by pergola id (matching `projectModel.pergolas[]`)
+// instead of by drawing-module array position. New consumers can target this
+// shape; existing consumers continue reading `modules[]` until PR-2B.1b
+// migrates them.
+//
+// Difference from `WorkbenchSolvedModule`:
+// - Drops `index` (array position, structural — rederive from list position).
+// - Drops `drawingModule` (legacy wrapper; consumers that needed the cost
+//   result reach it via `pergola.moduleInput`).
+// - Adds `pergolaIndex` as an explicit back-reference to the source
+//   `WorkbenchSolvedModule` for the coexist period.
+// - Adds `sourceModules: WorkbenchSolvedModule[]` — all underlying solver
+//   modules that share this pergola id. Length 1 for the per-object case;
+//   length > 1 only for legacy multi-module-per-pergola snapshots, which
+//   collapse in the cost engine V2 migration (Phase 2). The first entry is
+//   reflected in the SolvedPergola's primary fields (moduleInput, assembly,
+//   trust, etc.) for the single-module callers.
+//
+// Difference from `WorkbenchSolvedModel`:
+// - `modules: WorkbenchSolvedModule[]` → `pergolas: SolvedPergola[]`.
+// - `activeModule` → `activePergolaId: string | null` (UI selection by id).
+
+export type SolvedPergola = {
+  /** Pergola id (matches `projectModel.pergolas[].id` and `moduleInput.pergolaId`). */
+  id: string;
+  label: string;
+  /** Back-reference to the first source module's array index — drops when PR-2B.1b retires the legacy loop. */
+  pergolaIndex: number;
+  moduleInput: CalculatorModuleInputs;
+  previewMode: GeometryPreviewMode;
+  resultSource: WorkbenchGeometryResultSource;
+  draftTouchesGeometry: boolean;
+  trust: WorkbenchTrustStatus;
+  renderSource: WorkbenchPergolaRenderSource;
+  renderStatus: WorkbenchPergolaRenderStatus;
+  geometryArtifact: WorkbenchSolvedGeometryArtifact | null;
+  config: GeometryConfig | null;
+  assembly: Assembly3D | null;
+  geometryPlan: GeometryPlanViewModel | null;
+  geometrySection: GeometrySectionViewModel | null;
+  geometryTopProjection: GeometryTopProjectionViewModel | null;
+  validation: GeometryValidationReport | null;
+  viewerScene: ViewerSceneModel | null;
+  geometryPreview: GeometryPreviewState;
+  viewportGeometry: WorkbenchViewportGeometry;
+  deckSupport: WorkbenchDeckSupportDiagnostic | null;
+  planModel: ModulePlanModel | null;
+  sectionModel: ModuleSectionModel | null;
+  /**
+   * Legacy multi-module-per-pergola carrier. Typically a single entry equal
+   * to the primary module that populates this SolvedPergola's fields. For
+   * legacy snapshots where multiple solver modules share `pergolaId`, all
+   * entries appear here in source order so commercial parity callers can
+   * enumerate every cost row. Collapses to length 1 in Phase 2 once the
+   * cost engine reads from the per-object spine.
+   */
+  sourceModules: WorkbenchSolvedModule[];
+};
+
+export type WorkbenchSolvedProject = {
+  projectModel: WorkbenchProjectModel;
+  pergolas: SolvedPergola[];
+  /** Pergola id of the currently-active selection, or null when nothing is active. */
+  activePergolaId: string | null;
+  /** Convenience accessor — `pergolas.find(p => p.id === activePergolaId) ?? null`. */
+  activePergola: SolvedPergola | null;
   projectReferenceShapes: GeometryTopProjectionShape[];
   trust: WorkbenchTrustStatus;
   geometryIdentity: Required<WorkbenchGeometryIdentity>;
@@ -419,61 +497,51 @@ function buildViewerSceneFromSolvedGeometry(input: {
   config: GeometryConfig;
   assembly: Assembly3D;
   geometryContext: ObjectWorkbenchGeometryContext;
+  /**
+   * Pre-built `HouseModel3D`s for project house forms beyond the active
+   * pergola's host. Built once at project level in `buildWorkbenchSolvedModel`
+   * (PR-G3a, 2026-05-22) and threaded through; the per-module solve no
+   * longer rebuilds them. The scene builder iterates them inside `buildLayers`.
+   */
+  additionalHouseModels: ReadonlyArray<HouseModel3D>;
 }): ViewerSceneModel {
-  const baseScene = annotateSceneHouseRoofMetadata(
+  return annotateSceneHouseRoofMetadata(
     annotateSceneAttachmentZoneMetadata(
       annotateSceneHostEdgeSides(
-        buildViewerSceneModel(input.assembly),
+        buildViewerSceneModel(input.assembly, {
+          additionalHouseModels: input.additionalHouseModels,
+        }),
         input.geometryContext.projectModel?.houseAssembly?.houseForms[0]?.footprint.polygon,
       ),
       input.geometryContext,
     ),
     input.config,
   );
-  return composeAdditionalHouseFormsIntoScene({
-    scene: baseScene,
-    projectModel: input.geometryContext.projectModel,
-  });
 }
 
 /**
- * PR8d: append per-form house objects for every additional form into the
- * scene's `house` layer. Each pergola module renders its own scene, so
- * additional forms get composed in for ALL modules — the cost is
- * negligible (one freestanding geometry build per form per module) and
- * means the 3D viewport always shows every form regardless of which
- * pergola is active.
+ * PR-G3a (2026-05-22): build `HouseModel3D`s for every non-host form once
+ * at project level (replaces the per-module `composeAdditionalHouseFormsIntoScene`
+ * workaround that called `buildAdditionalHouseFormGeometry` M × F times).
  *
- * The primary form's house objects are already included in the assembly
- * (the pergola brings its host house via the legacy solve path); only
- * forms past index 0 get appended here.
+ * Active pergola's host house arrives via the per-pergola solve in
+ * `assembly.house.model`; everything else comes from this list. Today the
+ * primary form (index 0) is the only one the pergola solver carries, so
+ * `houseForms.slice(1)` enumerates the additional forms. Once PR-G3b
+ * restructures `buildRawGeometryModuleInput`, this list can include every
+ * non-host form regardless of index.
  */
-function composeAdditionalHouseFormsIntoScene(input: {
-  scene: ViewerSceneModel;
-  projectModel: WorkbenchProjectModel | null | undefined;
-}): ViewerSceneModel {
-  const allForms = input.projectModel?.houseAssembly?.houseForms ?? [];
-  if (allForms.length <= 1) return input.scene;
-  const additionalObjects: ViewerSceneObject[] = [];
+function buildProjectAdditionalHouseModels(
+  projectModel: WorkbenchProjectModel | null | undefined,
+): ReadonlyArray<HouseModel3D> {
+  const allForms = projectModel?.houseAssembly?.houseForms ?? [];
+  if (allForms.length <= 1) return [];
+  const models: HouseModel3D[] = [];
   for (const form of allForms.slice(1)) {
     const geometry = buildAdditionalHouseFormGeometry({ houseForm: form });
-    if (!geometry?.model) continue;
-    additionalObjects.push(
-      ...buildHouseModelSceneObjects({
-        model: geometry.model,
-        attachmentTarget: null,
-      }),
-    );
+    if (geometry?.model) models.push(geometry.model);
   }
-  if (additionalObjects.length === 0) return input.scene;
-  return {
-    ...input.scene,
-    layers: input.scene.layers.map((layer) =>
-      layer.id === 'house'
-        ? { ...layer, objects: [...layer.objects, ...additionalObjects] }
-        : layer,
-    ),
-  };
+  return models;
 }
 
 function buildTopProjectionFromSolvedScene(input: {
@@ -785,6 +853,12 @@ function buildSolvedModule(input: {
   ignoreModuleResults?: boolean;
   geometryIdentity: Required<WorkbenchGeometryIdentity>;
   geometryContext: ObjectWorkbenchGeometryContext;
+  /** PR-G3a: pre-built non-host house models, shared across all modules. */
+  additionalHouseModels: ReadonlyArray<HouseModel3D>;
+  /** PR-G3b: pre-computed project-level decks, shared across all modules. */
+  projectDecks: RawGeometryModuleInput['houseContext']['decks'];
+  /** PR-G3b: pre-computed project-level openings, shared across all modules. */
+  projectOpenings: RawGeometryModuleInput['houseContext']['openings'];
 }): WorkbenchSolvedModule {
   const initialModuleInput = coerceHiddenWorkbenchGableBaseline(input.drawingModule.input);
   const resolved = resolveWorkbenchGeometryModule({
@@ -833,6 +907,8 @@ function buildSolvedModule(input: {
     objectWorkbenchGeometryContext: input.geometryContext,
     fallbackPlanModel: drawingModule.planModel,
     fallbackSectionModel: drawingModule.sectionModel,
+    projectDecks: input.projectDecks,
+    projectOpenings: input.projectOpenings,
   });
 
   if (derivation.kind === 'legacy_unsupported_family') {
@@ -908,6 +984,7 @@ function buildSolvedModule(input: {
     config: derivation.config,
     assembly: derivation.assembly,
     geometryContext: input.geometryContext,
+    additionalHouseModels: input.additionalHouseModels,
   });
   const quantityTakeoff = buildAssemblyQuantityTakeoff(derivation.assembly);
   const geometryTopProjection = buildTopProjectionFromSolvedScene({
@@ -1020,6 +1097,14 @@ export function buildWorkbenchSolvedModel(input: {
       ignoreModuleResults: input.ignoreModuleResults,
     });
   const projectModel = input.projectModel ?? geometryContext.projectModel ?? EMPTY_WORKBENCH_PROJECT_MODEL;
+  // PR-G3a (2026-05-22): build additional-house geometry ONCE per project
+  // instead of once per pergola module (closes audit row N10's O(M×F)
+  // workaround). Threaded into every module's scene via `buildSolvedModule`.
+  const additionalHouseModels = buildProjectAdditionalHouseModels(projectModel);
+  // PR-G3b (2026-05-22): map project-level decks/openings ONCE instead of
+  // once per pergola module. Closes audit row 9 in production-path spirit.
+  const projectDecks = mapProjectDecks(projectModel);
+  const projectOpenings = mapProjectOpenings(projectModel);
   const modules = drawingModules.map((drawingModule, index) =>
     buildSolvedModule({
       index,
@@ -1030,6 +1115,9 @@ export function buildWorkbenchSolvedModel(input: {
       ignoreModuleResults: input.ignoreModuleResults,
       geometryIdentity,
       geometryContext,
+      additionalHouseModels,
+      projectDecks,
+      projectOpenings,
     }),
   );
   const activeModule = modules[input.activeModuleIndex ?? 0] ?? null;
@@ -1049,6 +1137,95 @@ export function buildWorkbenchSolvedModel(input: {
         message: inactiveMessage ?? 'No active workbench module is available.',
       }),
     geometryIdentity,
+  };
+}
+
+/**
+ * PR-2B.1a (2026-05-23): derive the per-object `WorkbenchSolvedProject`
+ * from a `WorkbenchSolvedModel`. Transposes the legacy per-module array
+ * into a per-pergola array keyed by `PergolaObjectModel.id`. Active
+ * selection lifts from `activeModuleIndex` to `activePergolaId`.
+ *
+ * For each pergola in `projectModel.pergolas`, the matching
+ * `WorkbenchSolvedModule` is identified via `moduleInput.pergolaId === pergola.id`.
+ * Legacy multi-module setups (multiple modules sharing a pergolaId) use
+ * first-wins — V2's "one PergolaObjectModel equals one logical module"
+ * contract assumes 1:1. Pergolas in the scene without matching solved
+ * modules are skipped (the geometry pipeline has nothing to solve for them).
+ *
+ * Coexists with the legacy `WorkbenchSolvedModel` for the duration of
+ * PR-2B.1a. Consumers migrate to this shape in PR-2B.1b, after which
+ * the legacy `modules[]` array and the transposition both retire.
+ */
+export function buildWorkbenchSolvedProject(input: {
+  solvedModel: WorkbenchSolvedModel;
+  activePergolaId?: string | null;
+}): WorkbenchSolvedProject {
+  const { solvedModel } = input;
+  // Iterate in source-module order: first occurrence of each pergolaId
+  // establishes the SolvedPergola's primary fields and ordering; subsequent
+  // occurrences (legacy multi-module-per-pergola) append to `sourceModules`.
+  const indexByPergolaId = new Map<string, number>();
+  const pergolaLabelById = new Map(
+    solvedModel.projectModel.pergolas.map((pergolaObj) => [pergolaObj.id, pergolaObj.label]),
+  );
+  const pergolas: SolvedPergola[] = [];
+
+  for (let index = 0; index < solvedModel.modules.length; index += 1) {
+    const module = solvedModel.modules[index]!;
+    const pergolaId = module.moduleInput.pergolaId;
+    if (typeof pergolaId !== 'string' || pergolaId.trim().length === 0) continue;
+    if (!pergolaLabelById.has(pergolaId)) continue; // orphan: no matching project pergola
+    const existingPergolaIndex = indexByPergolaId.get(pergolaId);
+    if (existingPergolaIndex !== undefined) {
+      pergolas[existingPergolaIndex]!.sourceModules.push(module);
+      continue;
+    }
+    indexByPergolaId.set(pergolaId, pergolas.length);
+    pergolas.push({
+      id: pergolaId,
+      label: pergolaLabelById.get(pergolaId)!,
+      pergolaIndex: index,
+      moduleInput: module.moduleInput,
+      previewMode: module.previewMode,
+      resultSource: module.resultSource,
+      draftTouchesGeometry: module.draftTouchesGeometry,
+      trust: module.trust,
+      renderSource: module.renderSource,
+      renderStatus: module.renderStatus,
+      geometryArtifact: module.geometryArtifact,
+      config: module.config,
+      assembly: module.assembly,
+      geometryPlan: module.geometryPlan,
+      geometrySection: module.geometrySection,
+      geometryTopProjection: module.geometryTopProjection,
+      validation: module.validation,
+      viewerScene: module.viewerScene,
+      geometryPreview: module.geometryPreview,
+      viewportGeometry: module.viewportGeometry,
+      deckSupport: module.deckSupport,
+      planModel: module.planModel,
+      sectionModel: module.sectionModel,
+      sourceModules: [module],
+    });
+  }
+
+  // Active selection: prefer the caller's explicit pergola id; else fall
+  // back to the legacy `activeModule`'s pergolaId; else first pergola; else null.
+  const explicit = input.activePergolaId ?? null;
+  const fallback = solvedModel.activeModule?.moduleInput.pergolaId ?? pergolas[0]?.id ?? null;
+  const activePergolaId =
+    explicit && pergolas.some((p) => p.id === explicit) ? explicit : fallback;
+  const activePergola = pergolas.find((p) => p.id === activePergolaId) ?? null;
+
+  return {
+    projectModel: solvedModel.projectModel,
+    pergolas,
+    activePergolaId,
+    activePergola,
+    projectReferenceShapes: solvedModel.projectReferenceShapes,
+    trust: solvedModel.trust,
+    geometryIdentity: solvedModel.geometryIdentity,
   };
 }
 

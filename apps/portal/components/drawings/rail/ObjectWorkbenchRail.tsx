@@ -1,17 +1,23 @@
 'use client';
 
 import { useCallback, useState } from 'react';
-import DeckInspector from './DeckInspector';
-import HouseFormInspector from './HouseFormInspector';
-import OpeningInspector from './OpeningInspector';
 import { resolveCommitResult } from './objectRailShared';
-import type {
-  ObjectWorkbenchRailProps,
-  RunAction,
-  RunFootprintCommit,
-  RunRoofCommit,
-} from './objectWorkbenchRailTypes';
+import type { ObjectWorkbenchRailProps } from './objectWorkbenchRailTypes';
 import styles from './WorkbenchRail.module.css';
+
+/*
+ * PR-W3c (2026-05-25) — rail is now navigation-only.
+ *
+ * The per-family inspector panels (PergolaInspector, HouseFormInspector,
+ * DeckInspector, OpeningInspector, DiagnosticsPanel) moved into
+ * `WorkbenchInspectorHost` and render in the right-side `RightInspectorPanel`.
+ * The rail keeps visibility toggles, the object navigator, and the selected-
+ * object summary; the inspector slot below the summary is gone.
+ *
+ * PR-W3d will further reduce the rail to VISIBILITY + OBJECTS TREE only,
+ * collapsing the Object Navigator tabs once the right inspector resolves
+ * which family is active from the underlying selection.
+ */
 
 export default function ObjectWorkbenchRail({
   model,
@@ -25,66 +31,7 @@ export default function ObjectWorkbenchRail({
   inspectorContext,
 }: ObjectWorkbenchRailProps) {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const {
-    objectWorkbench,
-    canEditFootprint,
-    canStartDrawOutline,
-    onStartDrawOutline,
-    onCommitFootprintEdit,
-    onCommitRoofIntent,
-    onAddDeck,
-    onAddHouseForm,
-    onAddOpening,
-    onRemoveDeck,
-    onRemoveOpening,
-    onCommitDeckPatch,
-    onCommitOpeningPatch,
-    onStartDeckOutline,
-    houseFormAttachmentContextPanel,
-    pergolaInspectorPanel,
-    diagnosticsPanel,
-  } = inspectorContext;
-
-  const runFootprintCommit = useCallback<RunFootprintCommit>(
-    async (fieldId, edit) => {
-      const result = await resolveCommitResult(onCommitFootprintEdit?.(edit));
-      setFieldErrors((current) => ({
-        ...current,
-        [fieldId]: result.ok ? '' : result.error ?? 'Unable to update the shared house footprint.',
-      }));
-    },
-    [onCommitFootprintEdit],
-  );
-
-  const runStartOutline = useCallback(async () => {
-    const result = await resolveCommitResult(onStartDrawOutline?.());
-    setFieldErrors((current) => ({
-      ...current,
-      outline: result.ok ? '' : result.error ?? 'Unable to start outline drawing.',
-    }));
-  }, [onStartDrawOutline]);
-
-  const runRoofCommit = useCallback<RunRoofCommit>(
-    async (fieldId, nextRoof) => {
-      const result = await resolveCommitResult(onCommitRoofIntent?.(nextRoof));
-      setFieldErrors((current) => ({
-        ...current,
-        [fieldId]: result.ok ? '' : result.error ?? 'Unable to update the shared house roof.',
-      }));
-    },
-    [onCommitRoofIntent],
-  );
-
-  const runInspectorAction = useCallback<RunAction>(
-    async (fieldId, action, fallbackMessage) => {
-      const result = await resolveCommitResult(action);
-      setFieldErrors((current) => ({
-        ...current,
-        [fieldId]: result.ok ? '' : result.error ?? fallbackMessage,
-      }));
-    },
-    [],
-  );
+  const { onAddHouseForm } = inspectorContext;
 
   const runAddHouseForm = useCallback(async () => {
     const result = await resolveCommitResult(onAddHouseForm?.());
@@ -97,63 +44,6 @@ export default function ObjectWorkbenchRail({
   const activeFamily =
     activeRailTab === 'diagnostics' ? model.selectedInspector.family : activeRailTab;
   const activeObjectEntries = model.objectLists[activeFamily];
-  const activeObjectKey = `${activeFamily}:${activeObjectRef.objectId ?? 'none'}`;
-
-  const inspectorPanel =
-    activeRailTab === 'diagnostics' ? (
-      diagnosticsPanel
-    ) : (
-      <div data-active-workbench-object={activeObjectKey}>
-        {activeFamily === 'house_forms' ? (
-          <HouseFormInspector
-            hasSelection={model.selectedInspector.hasSelection}
-            emptyTitle={model.selectedInspector.emptyTitle}
-            emptyMessage={model.selectedInspector.emptyMessage}
-            houseFormContext={objectWorkbench.houseForm}
-            disabled={disabled}
-            fieldErrors={fieldErrors}
-            canEditFootprint={canEditFootprint}
-            canStartDrawOutline={canStartDrawOutline}
-            runFootprintCommit={runFootprintCommit}
-            runStartOutline={runStartOutline}
-            runRoofCommit={runRoofCommit}
-            attachmentContextPanel={houseFormAttachmentContextPanel}
-          />
-        ) : activeFamily === 'pergolas' ? (
-          model.selectedInspector.hasSelection ? (
-            pergolaInspectorPanel
-          ) : (
-            <section className={styles.section}>
-              <h4 className={styles.sectionTitle}>{model.selectedInspector.emptyTitle}</h4>
-              <div className={styles.sectionBody}>
-                <p className={styles.empty}>{model.selectedInspector.emptyMessage}</p>
-              </div>
-            </section>
-          )
-        ) : activeFamily === 'decks' ? (
-          <DeckInspector
-            activeDeck={objectWorkbench.activeDeck}
-            disabled={disabled}
-            fieldErrors={fieldErrors}
-            onAddDeck={onAddDeck}
-            onCommitDeckPatch={onCommitDeckPatch}
-            onRemoveDeck={onRemoveDeck}
-            onStartDeckOutline={onStartDeckOutline}
-            runAction={runInspectorAction}
-          />
-        ) : (
-          <OpeningInspector
-            activeOpening={objectWorkbench.activeOpening}
-            disabled={disabled}
-            fieldErrors={fieldErrors}
-            onAddOpening={onAddOpening}
-            onCommitOpeningPatch={onCommitOpeningPatch}
-            onRemoveOpening={onRemoveOpening}
-            runAction={runInspectorAction}
-          />
-        )}
-      </div>
-    );
 
   return (
     <div className={styles.rail}>
@@ -298,8 +188,6 @@ export default function ObjectWorkbenchRail({
           </div>
         </section>
       ) : null}
-
-      {inspectorPanel}
     </div>
   );
 }

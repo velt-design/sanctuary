@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { getSanctuaryGeometryWorkbenchFixture } from '@/lib/drawings/sanctuaryWorkbenchFixtures';
 import { buildEstimateDrawingDraftFromSnapshot } from '@/lib/estimates/drawingEdits';
-import type { ObjectWorkbenchCompatibilityProjectModel } from './compat/objectWorkbenchCompatibilityModel';
 import { buildHouseFirstWorkbenchProjectModel as buildObjectWorkbenchCompatibilityProjectModel } from './houseFirstWorkbenchAdapter';
 import {
   buildObjectFirstWorkbenchDraftFromProjectModel,
@@ -11,6 +10,7 @@ import {
   buildObjectFirstOpeningDraftsFromCompatibilityDrafts,
   buildObjectFirstPergolaDraftsFromCompatibilityDrafts,
   buildObjectFirstWorkbenchProjectModel,
+  type ObjectWorkbenchCompatibilityProjectModel,
 } from './legacyObjectFirstCompatibilityAdapter';
 
 function loadFixtureProject(slug = 'mono-standard'): ObjectWorkbenchCompatibilityProjectModel {

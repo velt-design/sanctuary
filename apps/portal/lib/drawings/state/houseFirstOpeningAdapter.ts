@@ -1,12 +1,10 @@
 import type { CalculatorModuleInputs } from '@/lib/types/calculator';
-import type {
-  HouseFirstOpeningDraft,
-  HouseModel,
-} from './houseFirstWorkbenchModel';
+import type { HouseModel } from './houseFirstWorkbenchModel';
 import {
   normalizeWallOpeningKind,
   resolveOpeningPanelCount,
 } from './houseFirstWorkbenchModel';
+import type { ObjectFirstOpeningDraft } from './objectFirstWorkbenchModel';
 import type { DerivedWallLookup } from './houseFirstWallLookup';
 
 /**
@@ -68,7 +66,7 @@ function normalizeExactOpeningHostEdgeId(value: string | null | undefined): stri
 }
 
 export function buildSharedOpenings(input: {
-  openingDrafts: HouseFirstOpeningDraft[] | null | undefined;
+  openingDrafts: ObjectFirstOpeningDraft[] | null | undefined;
   derivedWalls: DerivedWallLookup;
   fallbackWallId: NonNullable<CalculatorModuleInputs['attachmentSide']>;
 }): HouseModel['openings'] {

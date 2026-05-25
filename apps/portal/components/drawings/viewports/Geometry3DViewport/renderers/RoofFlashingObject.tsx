@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+﻿import { useMemo } from "react";
 import * as THREE from "three";
 import type { ViewerSceneRoofFlashingObject } from "@sp/geometry";
 import { buildPolygonSlabGeometry } from "../geometry/buildGeometries";
@@ -37,7 +37,7 @@ export function RoofFlashingObject({
   );
   return (
     <group
-      data-testid={`scene-object-${object.id}`}
+      data-testid={`scene-object-${(object as { sourceId?: string }).sourceId ?? object.id}`}
       onClick={(event) => {
         event.stopPropagation();
         onSelect(object.id);

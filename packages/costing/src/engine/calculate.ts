@@ -14,6 +14,7 @@ import type {
   PergolaInputsV1,
   PergolaOutputV1,
   SiteInputsV1,
+  SiteInputsV2,
   SiteOutputV1,
   WarningLevelV1,
   WarningV1,
@@ -1286,4 +1287,69 @@ export function calculateSiteCostV1(inputs: SiteInputsV1, config?: CostingConfig
       notes_and_warnings: warnings,
     },
   };
+}
+
+// ============================================================================
+// V2 entry point (PR-2B.4, 2026-05-22)
+// ============================================================================
+//
+// Workbench scene-derived cost input. Per the Phase 2 north star:
+// - Cost engine receives pergola data only (no house/deck/opening fields)
+// - Logical-pergola grouping comes from scene adjacency (snapped pergolas =
+//   modules of same logical pergola); the workbench builder
+//   (`buildSiteInputsV2FromScene`) does this derivation
+// - Site-level fields (`access`, `height`, `job_type`, travel/extras/discount)
+//   lift to the SiteInputsV2 top level
+//
+// The pricing logic is untouched — we adapt V2 inputs to the existing V1
+// shape inside the engine and delegate to `calculateSiteCostV1`. Workbench
+// switches to V2 in PR-2B.5; marketing form stays on V1 (per Phase 2 plan
+// Q5 "Marketing path stays independent").
+
+/**
+ * Adapt a SiteInputsV2 to SiteInputsV1 for the legacy pricing pipeline.
+ *
+ * Per-module: V2's `id` field is dropped (V1 has no `id` on modules); V2's
+ * site-level `access`/`height` lift onto each module (V1 carries them
+ * per-module); V1's `travel_ex_gst`/`extras_allowance_ex_gst`/`quote_discount_pct`
+ * site-dummy fields zero out per-module (legacy contract carries them but
+ * the engine reads them at the site level).
+ *
+ * Per-pergola: V2's `accessories` slot is dropped (currently always `[]`;
+ * pricing wiring lands when the first accessory family ships).
+ */
+function adaptSiteInputsV2ToV1(inputs: SiteInputsV2): SiteInputsV1 {
+  return {
+    pergolas: inputs.pergolas.map((pergola) => ({
+      id: pergola.id,
+      label: pergola.label,
+      modules: pergola.modules.map((moduleV2) => {
+        // Strip V2-only `id` field via destructure; spread the rest into V1.
+        const { id: _moduleId, ...pergolaFields } = moduleV2;
+        const moduleV1: CostInputsV1 = {
+          ...pergolaFields,
+          access: inputs.access,
+          height: inputs.height,
+          travel_ex_gst: 0,
+          extras_allowance_ex_gst: 0,
+          quote_discount_pct: 0,
+        };
+        return moduleV1;
+      }),
+    })),
+    job_type: inputs.job_type,
+    travel_ex_gst: inputs.travel_ex_gst,
+    extras_allowance_ex_gst: inputs.extras_allowance_ex_gst,
+    quote_discount_pct: inputs.quote_discount_pct,
+  };
+}
+
+/**
+ * Scene-derived cost-engine entry. Equivalent to `calculateSiteCostV1` in
+ * output shape and pricing logic — just accepts the leaner V2 input shape
+ * the workbench produces from the scene. Returns `SiteOutputV1` because
+ * the output contract is unchanged (only the input layer is migrating).
+ */
+export function calculateSiteCostV2(inputs: SiteInputsV2, config?: CostingConfigV1): SiteOutputV1 {
+  return calculateSiteCostV1(adaptSiteInputsV2ToV1(inputs), config);
 }

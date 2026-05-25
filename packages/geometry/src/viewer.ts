@@ -879,7 +879,30 @@ export function buildHouseModelSceneObjects(input: {
     if (object) objects.push(object);
   }
 
-  return objects;
+  // PR-Geo1 (2026-05-25) — scene-assembly seam: prefix every emitted scene
+  // object's id with the source house id. This is what makes multi-house
+  // scenes work without colliding React keys, selection ambiguity, or
+  // hover bridge confusion. The naked id is preserved as `sourceId` so the
+  // 3D viewport's cross-viewport hover matcher (which compares against
+  // plan-emitted workbench-level ids like "deck-1") keeps working.
+  //
+  // When a helper already set `sourceId` (e.g. surface solids set it to
+  // their kind-specific id), we preserve that — the in-house identity
+  // stays stable; only the globally-unique `id` becomes prefixed.
+  const prefix = `${model.houseId}:`;
+  return objects.map((object) => {
+    const existingSourceId =
+      'sourceId' in object && typeof object.sourceId === 'string'
+        ? object.sourceId
+        : typeof object.metadata?.sourceId === 'string'
+          ? object.metadata.sourceId
+          : null;
+    return {
+      ...object,
+      id: `${prefix}${object.id}`,
+      sourceId: existingSourceId ?? object.id,
+    };
+  });
 }
 
 function hiddenSupportBeamIdsForIntegratedSpGutters(
@@ -909,7 +932,10 @@ function hiddenSupportBeamIdsForIntegratedSpGutters(
   return hiddenIds;
 }
 
-function buildLayers(assembly: Assembly3D): ViewerSceneLayer[] {
+function buildLayers(
+  assembly: Assembly3D,
+  additionalHouseModels: ReadonlyArray<HouseModel3D> = [],
+): ViewerSceneLayer[] {
   const houseObjects: ViewerSceneObject[] = [];
   const postObjects = assembly.members
     .filter((member) => member.role === "post")
@@ -1012,6 +1038,20 @@ function buildLayers(assembly: Assembly3D): ViewerSceneLayer[] {
         ),
       );
     }
+  }
+
+  // PR-G3a (2026-05-22): scene builder iterates project-level house forms
+  // beyond the active pergola's host. Closes audit row N9 (viewer reads
+  // only `assembly.house.model` for one pergola) + N10 (portal-layer
+  // `composeAdditionalHouseFormsIntoScene` workaround). Additional forms
+  // aren't pergola-attached, so `attachmentTarget: null`.
+  for (const additionalModel of additionalHouseModels) {
+    houseObjects.push(
+      ...buildHouseModelSceneObjects({
+        model: additionalModel,
+        attachmentTarget: null,
+      }),
+    );
   }
 
   const layers: ViewerSceneLayer[] = [
@@ -1175,8 +1215,23 @@ function buildViewerSceneMetadata(
   });
 }
 
-export function buildViewerSceneModel(assembly: Assembly3D): ViewerSceneModel {
-  const layers = buildLayers(assembly);
+export type BuildViewerSceneModelOptions = {
+  /**
+   * Additional house models to compose into the scene's house layer
+   * beyond the host house in `assembly.house.model`. Used by the workbench
+   * to render multi-form scenes where the active pergola's assembly only
+   * carries its host house — every other form attaches via this list.
+   * Each model is rendered with `attachmentTarget: null` (additional forms
+   * aren't pergola-attached).
+   */
+  additionalHouseModels?: ReadonlyArray<HouseModel3D>;
+};
+
+export function buildViewerSceneModel(
+  assembly: Assembly3D,
+  options?: BuildViewerSceneModelOptions,
+): ViewerSceneModel {
+  const layers = buildLayers(assembly, options?.additionalHouseModels ?? []);
   return {
     layers,
     metadata: buildViewerSceneMetadata(assembly, layers),

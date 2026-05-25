@@ -30,8 +30,21 @@ The costing engine reads from the solved geometry, not from raw inputs. **We are
 
 This happens in **two phases**:
 
-- **Phase 1 — workbench cull** (~1–2 weeks). Legacy compat removed, every object first-class, snap-derived connections. Cost engine unchanged; a thin temporary adapter converts the new model into the cost engine's current input shape. Email-quote path keeps working unchanged.
-- **Phase 2 — cost engine input migration** (~1 week, after Phase 1). Cost engine starts reading solved geometry directly. The Phase 1 adapter retires. Per-object line items become natural. Email format can evolve or stay identical — design choice, not architectural constraint.
+- **Phase 1 — workbench cull** ✅ shipped 2026-05-22. Legacy calc-era patterns removed, every object first-class, snap-derived connections. Cost engine unchanged; a thin temporary adapter (`costingPayload.ts`) converts the new model into the cost engine's current input shape. Email-quote path unchanged. See [Legacy Cull Plan](design-workbench-legacy-cull.md) for the retrospective.
+- **Phase 2 — bridge deletion + cost engine input migration** ✅ substantially shipped 2026-05-23. Cost engine receives scene-derived input via `SiteInputsV2` carrying **pergola data only** — house/deck/opening data exists in the scene but is not costed. Pergola module grouping is derived from spatial adjacency (snapped pergolas = same logical pergola). Workbench's save-reprice goes through `WorkbenchProjectModel` → `buildSiteInputsV2FromScene` → `calculateSiteCostV2`. Marketing email path unchanged (still V1). Remaining: per-object solve loop (`workbenchSolvedModel.ts`), test-surface migration (40+ test cases on legacy carrier), other-shell V1 paths (calculator UI, commercial design, staff API). See [Phase 2 Plan](design-workbench-phase-2-plan.md) for status + lessons learned.
+
+### North star progress (2026-05-23)
+
+The product north star is "a single solved geometry model that serves many UI shells." Where we are:
+
+- ✅ **Canonical project shape** (`WorkbenchProjectModel`): object-first, snap-derived attachments, every object owns its world position + local outline. Workbench layer fully on this shape.
+- ✅ **Scene-derived cost engine input** (`SiteInputsV2`): cost engine consumes pergola data derived from scene adjacency. Snapped pergolas are modules of one logical pergola; unconnected pergolas are separate. Pure derivation, no stored field.
+- ✅ **First-class spatial entities**: pergolas, decks, openings, house forms all own their geometry. No more "primary vs. additional" special-casing. Snap engine produces all attachments.
+- 🟡 **Per-object solve**: the geometry pipeline still iterates per pergola module (Stream 2B.1 pending). Each pergola module solves independently; per-object restructure deferred.
+- 🟡 **Legacy bridge code retired**: cross-file bridge synthesis deleted; `state/compat/` deleted; `HouseFirst*` draft types still used by test carrier (40+ tests pending migration); `legacyEstimateSnapshotAdapter` still loads-bears initial-state synthesis from calc-era server snapshots.
+- ❌ **Multi-shell consumers** (marketing self-design upgrade, sales tool, tradie tool, Rhino/Vray export): not started, per Q6 ("all other shells worked on once the solved geometry and data model is polished and clean"). The workbench is the foundation; other shells consume the same `WorkbenchProjectModel` once Phase 2 fully lands.
+
+The substantive Phase 1+2 work is done. The model is canonical, the cost engine reads from it, attachments are scene-derived. What's left is geometry-pipeline cleanup (per-object solve) and the multi-shell rollout — both unblocked by the core architecture being right.
 
 ### Anti-pattern alert — STOP if your PR does any of these
 

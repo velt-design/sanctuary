@@ -1,0 +1,328 @@
+'use client';
+
+import { useCallback, useState, type Dispatch, type SetStateAction } from 'react';
+import DeckInspector from '@/components/drawings/rail/DeckInspector';
+import HouseFormInspector from '@/components/drawings/rail/HouseFormInspector';
+import OpeningInspector from '@/components/drawings/rail/OpeningInspector';
+import { resolveCommitResult } from '@/components/drawings/rail/objectRailShared';
+import type {
+  RunAction,
+  RunFootprintCommit,
+  RunRoofCommit,
+} from '@/components/drawings/rail/objectWorkbenchRailTypes';
+import workbenchRailStyles from '@/components/drawings/rail/WorkbenchRail.module.css';
+import type { GeometryPreviewState } from '@/lib/drawings/geometry/buildWorkbenchGeometryPreview';
+import type { ObjectWorkbenchGeometryEditState } from '@/lib/drawings/geometry/geometryEditAdapter';
+import type { DrawingWorkbenchStore } from '@/lib/drawings/state/drawingWorkbenchStore';
+import {
+  buildDrawingWorkbenchObjectSelectionState,
+  deriveDrawingWorkbenchCompatibilitySelection,
+  type DrawingWorkbenchRailTab,
+  type DrawingWorkbenchUiState,
+} from '@/lib/drawings/state/drawingWorkbenchUiState';
+import type { CalculatorModuleInputs } from '@/lib/types/calculator';
+import HouseFormAttachmentContextPanel from './HouseFormAttachmentContextPanel';
+import PergolaInspector from './PergolaInspector';
+import WorkbenchDiagnosticsPanel from './WorkbenchDiagnosticsPanel';
+import type { ObjectWorkbenchActions } from './useObjectWorkbenchActions';
+import type { ObjectWorkbenchSelectionActions } from './useObjectWorkbenchSelection';
+
+/*
+ * PR-W3c (2026-05-25) — right-inspector content host.
+ *
+ * Mounts the per-family inspector content (PergolaInspector,
+ * HouseFormInspector, DeckInspector, OpeningInspector, DiagnosticsPanel)
+ * for the active rail tab + selection. Extracted from ObjectWorkbenchRail
+ * so the inspector content can render in the right-side panel while the
+ * left rail keeps its visibility + object-tree navigation.
+ *
+ * The host takes the same props as ObjectWorkbenchRailHost — both are
+ * sibling consumers of `DrawingWorkbenchStore` + the action hooks. The rail
+ * host renders the left nav; this host renders the right inspector. Action
+ * dispatch is shared; the surfaces are independent visual mounts.
+ *
+ * After PR-W3d retires the legacy per-object input rails entirely, this
+ * host is the only consumer of those inspector components; the rail's
+ * inspector slot disappears.
+ */
+
+type WorkbenchInspectorHostProps = {
+  activeModuleInput: CalculatorModuleInputs | null;
+  geometryEditState: ObjectWorkbenchGeometryEditState | null;
+  geometryPreview: GeometryPreviewState;
+  isLocked: boolean;
+  objectSelectionActions: ObjectWorkbenchSelectionActions;
+  objectWorkbenchActions: ObjectWorkbenchActions;
+  setUi: Dispatch<SetStateAction<DrawingWorkbenchUiState>>;
+  store: DrawingWorkbenchStore;
+  supportsSanctuaryEditing: boolean;
+};
+
+export default function WorkbenchInspectorHost({
+  activeModuleInput,
+  geometryEditState,
+  geometryPreview,
+  isLocked,
+  objectSelectionActions,
+  objectWorkbenchActions,
+  setUi,
+  store,
+  supportsSanctuaryEditing,
+}: WorkbenchInspectorHostProps) {
+  const activePergolaModel =
+    store.derived.objectWorkbench.activePergola ??
+    store.derived.objectWorkbench.pergolas[0] ??
+    null;
+  const compatibilitySelection = deriveDrawingWorkbenchCompatibilitySelection(store.ui);
+  const defaultPergolaId =
+    store.ui.activeObjectFamily === 'pergolas' && store.ui.activeObjectRef.objectId
+      ? store.ui.activeObjectRef.objectId
+      : store.derived.objectWorkbench.activePergola?.id ??
+        activeModuleInput?.pergolaId ??
+        store.derived.railModel.objectLists.pergolas[0]?.ref.objectId ??
+        null;
+
+  const handleRailTabSelect = useCallback(
+    (tab: DrawingWorkbenchRailTab) => {
+      if (tab !== 'pergolas') {
+        objectSelectionActions.selectRailTab(tab);
+        return;
+      }
+
+      setUi((current) => {
+        const nextModuleIndex =
+          defaultPergolaId === null
+            ? current.activeModuleIndex
+            : Math.max(
+                0,
+                store.persisted.modules.findIndex(
+                  (module) => module.drawingModule.input.pergolaId === defaultPergolaId,
+                ),
+              );
+        return {
+          ...current,
+          activeModuleIndex: nextModuleIndex,
+          ...buildDrawingWorkbenchObjectSelectionState({
+            activeRailTab: 'pergolas',
+            activeObjectRef: { family: 'pergolas', objectId: defaultPergolaId },
+          }),
+        };
+      });
+    },
+    [defaultPergolaId, objectSelectionActions, setUi, store.persisted.modules],
+  );
+
+  const handleCanonicalPergolaSelection = useCallback(
+    (pergolaId: string | null) => {
+      setUi((current) => {
+        const nextModuleIndex =
+          pergolaId === null
+            ? current.activeModuleIndex
+            : Math.max(
+                0,
+                store.persisted.modules.findIndex(
+                  (module) => module.drawingModule.input.pergolaId === pergolaId,
+                ),
+              );
+        return {
+          ...current,
+          activeModuleIndex: nextModuleIndex,
+          ...buildDrawingWorkbenchObjectSelectionState({
+            activeRailTab: 'pergolas',
+            activeObjectRef: { family: 'pergolas', objectId: pergolaId },
+          }),
+        };
+      });
+    },
+    [setUi, store.persisted.modules],
+  );
+
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const onCommitFootprintEdit = !isLocked
+    ? objectWorkbenchActions.commitSharedHouseFootprintEdit
+    : undefined;
+  const onCommitRoofIntent = !isLocked ? objectWorkbenchActions.commitSharedHouseRoofDraft : undefined;
+  const onStartDrawOutline = objectSelectionActions.startDrawOutlineEditor;
+  const onAddDeck = !isLocked ? objectWorkbenchActions.addSharedHouseDeck : undefined;
+  const onAddOpening = !isLocked ? objectWorkbenchActions.addSharedHouseOpening : undefined;
+  const onRemoveDeck = !isLocked ? objectWorkbenchActions.removeSharedHouseDeck : undefined;
+  const onRemoveOpening = !isLocked ? objectWorkbenchActions.removeSharedHouseOpening : undefined;
+  const onCommitDeckPatch = !isLocked
+    ? objectWorkbenchActions.commitSharedHouseDeckPatch
+    : undefined;
+  const onCommitOpeningPatch = !isLocked
+    ? objectWorkbenchActions.commitSharedHouseOpeningPatch
+    : undefined;
+  const onStartDeckOutline = !isLocked
+    ? objectSelectionActions.startDeckOutlineEditor
+    : undefined;
+  const canEditFootprint = Boolean(
+    store.derived.activeModule?.assemblyModel.capabilities.canEditHouseFootprint,
+  );
+  const canStartDrawOutline = !isLocked;
+
+  const runFootprintCommit = useCallback<RunFootprintCommit>(
+    async (fieldId, edit) => {
+      const result = await resolveCommitResult(onCommitFootprintEdit?.(edit));
+      setFieldErrors((current) => ({
+        ...current,
+        [fieldId]: result.ok ? '' : result.error ?? 'Unable to update the shared house footprint.',
+      }));
+    },
+    [onCommitFootprintEdit],
+  );
+
+  const runStartOutline = useCallback(async () => {
+    const result = await resolveCommitResult(onStartDrawOutline?.());
+    setFieldErrors((current) => ({
+      ...current,
+      outline: result.ok ? '' : result.error ?? 'Unable to start outline drawing.',
+    }));
+  }, [onStartDrawOutline]);
+
+  const runRoofCommit = useCallback<RunRoofCommit>(
+    async (fieldId, nextRoof) => {
+      const result = await resolveCommitResult(onCommitRoofIntent?.(nextRoof));
+      setFieldErrors((current) => ({
+        ...current,
+        [fieldId]: result.ok ? '' : result.error ?? 'Unable to update the shared house roof.',
+      }));
+    },
+    [onCommitRoofIntent],
+  );
+
+  const runInspectorAction = useCallback<RunAction>(
+    async (fieldId, action, fallbackMessage) => {
+      const result = await resolveCommitResult(action);
+      setFieldErrors((current) => ({
+        ...current,
+        [fieldId]: result.ok ? '' : result.error ?? fallbackMessage,
+      }));
+    },
+    [],
+  );
+
+  const activeRailTab = store.ui.activeRailTab;
+  const activeFamily =
+    activeRailTab === 'diagnostics' ? store.derived.railModel.selectedInspector.family : activeRailTab;
+  const activeObjectKey = `${activeFamily}:${store.ui.activeObjectRef.objectId ?? 'none'}`;
+
+  if (activeRailTab === 'diagnostics') {
+    return (
+      <WorkbenchDiagnosticsPanel
+        objectWorkbench={store.derived.objectWorkbench}
+        ui={store.ui}
+        compatibilitySelection={compatibilitySelection}
+        geometryPreview={geometryPreview}
+      />
+    );
+  }
+
+  if (activeFamily === 'house_forms') {
+    const attachmentContextPanel =
+      supportsSanctuaryEditing && activeModuleInput ? (
+        <HouseFormAttachmentContextPanel
+          moduleLabel={store.derived.activeModuleLabel}
+          geometryState={geometryEditState}
+          view={store.ui.activeView}
+          disabled={isLocked}
+          canStartDrawOutline={!isLocked}
+          onStartDrawOutline={objectSelectionActions.startDrawOutlineEditor}
+          onCommitGeometryEdit={!isLocked ? objectWorkbenchActions.commitGeometryIntent : undefined}
+        />
+      ) : null;
+    return (
+      <div data-active-workbench-object={activeObjectKey}>
+        <HouseFormInspector
+          hasSelection={store.derived.railModel.selectedInspector.hasSelection}
+          emptyTitle={store.derived.railModel.selectedInspector.emptyTitle}
+          emptyMessage={store.derived.railModel.selectedInspector.emptyMessage}
+          houseFormContext={store.derived.objectWorkbench.houseForm}
+          disabled={isLocked}
+          fieldErrors={fieldErrors}
+          canEditFootprint={canEditFootprint}
+          canStartDrawOutline={canStartDrawOutline}
+          runFootprintCommit={runFootprintCommit}
+          runStartOutline={runStartOutline}
+          runRoofCommit={runRoofCommit}
+          attachmentContextPanel={attachmentContextPanel}
+        />
+      </div>
+    );
+  }
+
+  if (activeFamily === 'pergolas') {
+    if (!store.derived.railModel.selectedInspector.hasSelection) {
+      return (
+        <section className={workbenchRailStyles.section}>
+          <h4 className={workbenchRailStyles.sectionTitle}>
+            {store.derived.railModel.selectedInspector.emptyTitle}
+          </h4>
+          <div className={workbenchRailStyles.sectionBody}>
+            <p className={workbenchRailStyles.empty}>
+              {store.derived.railModel.selectedInspector.emptyMessage}
+            </p>
+          </div>
+        </section>
+      );
+    }
+    const pergolaInspectorModules = store.persisted.modules.map((module) => ({
+      id: module.id,
+      label: module.label,
+      pergolaId: module.drawingModule.input.pergolaId ?? null,
+    }));
+    return (
+      <div data-active-workbench-object={activeObjectKey}>
+        <PergolaInspector
+          activePergolaModel={activePergolaModel}
+          activeModuleInput={activeModuleInput}
+          activeModuleIndex={store.derived.activeModuleIndex}
+          activeModuleLabel={store.derived.activeModuleLabel}
+          disabled={isLocked}
+          geometryState={geometryEditState}
+          houseAssembly={store.derived.houseAssembly}
+          modules={pergolaInspectorModules}
+          supportsSanctuaryEditing={supportsSanctuaryEditing}
+          view={store.ui.activeView}
+          onOpenHouseForms={() => handleRailTabSelect('house_forms')}
+          onSelectPergolaByModule={handleCanonicalPergolaSelection}
+          onStartDrawOutline={objectSelectionActions.startDrawOutlineEditor}
+          onCommitGeometryEdit={!isLocked ? objectWorkbenchActions.commitGeometryIntent : undefined}
+          onCommitAttachment={!isLocked ? objectWorkbenchActions.commitSharedPergolaAttachment : undefined}
+        />
+      </div>
+    );
+  }
+
+  if (activeFamily === 'decks') {
+    return (
+      <div data-active-workbench-object={activeObjectKey}>
+        <DeckInspector
+          activeDeck={store.derived.objectWorkbench.activeDeck}
+          disabled={isLocked}
+          fieldErrors={fieldErrors}
+          onAddDeck={onAddDeck}
+          onCommitDeckPatch={onCommitDeckPatch}
+          onRemoveDeck={onRemoveDeck}
+          onStartDeckOutline={onStartDeckOutline}
+          runAction={runInspectorAction}
+        />
+      </div>
+    );
+  }
+
+  // activeFamily === 'openings'
+  return (
+    <div data-active-workbench-object={activeObjectKey}>
+      <OpeningInspector
+        activeOpening={store.derived.objectWorkbench.activeOpening}
+        disabled={isLocked}
+        fieldErrors={fieldErrors}
+        onAddOpening={onAddOpening}
+        onCommitOpeningPatch={onCommitOpeningPatch}
+        onRemoveOpening={onRemoveOpening}
+        runAction={runInspectorAction}
+      />
+    </div>
+  );
+}

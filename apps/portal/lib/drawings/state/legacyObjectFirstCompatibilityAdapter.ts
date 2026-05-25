@@ -15,20 +15,36 @@ import {
   normalizeObjectFirstWorkbenchDraftVNext,
 } from './objectFirstWorkbenchModel';
 import type {
-  ObjectWorkbenchCompatibilityDeckDraft,
-  ObjectWorkbenchCompatibilityMigrationWarning,
-  ObjectWorkbenchCompatibilityOpeningDraft,
-  ObjectWorkbenchCompatibilityPergolaDraft,
-  ObjectWorkbenchCompatibilityRoofDraft,
-  ObjectWorkbenchCompatibilityProjectModel,
-  ObjectWorkbenchCompatibilityHouseModel,
-  ObjectWorkbenchCompatibilityPergolaModel,
-} from './compat/objectWorkbenchCompatibilityModel';
+  HouseFirstDeckDraft,
+  HouseFirstMigrationWarning,
+  HouseFirstOpeningDraft,
+  HouseFirstPergolaDraft,
+  HouseFirstRoofDraft,
+  HouseFirstWorkbenchProjectModel,
+  HouseModel,
+  PergolaModel,
+} from './houseFirstWorkbenchModel';
 
-export type {
-  ObjectWorkbenchCompatibilityDraft,
-  ObjectWorkbenchCompatibilityProjectModel,
-} from './compat/objectWorkbenchCompatibilityModel';
+// PR-2A.3 (2026-05-23): the `state/compat/` namespace deleted. The
+// `ObjectWorkbenchCompatibility*` aliases moved inline here — this file is
+// the only runtime consumer of the legacy-compat shape, so colocating the
+// aliases with the conversion code drops one cross-file indirection.
+// Aliases stay as `ObjectWorkbenchCompatibility*` names for downstream test
+// stability; the underlying types are the same `HouseFirst*` shapes.
+export type ObjectWorkbenchCompatibilityProjectModel = HouseFirstWorkbenchProjectModel;
+export type ObjectWorkbenchCompatibilityHouseModel = HouseModel;
+export type ObjectWorkbenchCompatibilityPergolaModel = PergolaModel;
+export type ObjectWorkbenchCompatibilityMigrationWarning = HouseFirstMigrationWarning;
+export type ObjectWorkbenchCompatibilityRoofDraft = HouseFirstRoofDraft;
+export type ObjectWorkbenchCompatibilityDeckDraft = HouseFirstDeckDraft;
+export type ObjectWorkbenchCompatibilityOpeningDraft = HouseFirstOpeningDraft;
+export type ObjectWorkbenchCompatibilityPergolaDraft = HouseFirstPergolaDraft;
+export type ObjectWorkbenchCompatibilityDraft = {
+  roof?: ObjectWorkbenchCompatibilityRoofDraft | null;
+  decks?: ObjectWorkbenchCompatibilityDeckDraft[] | null;
+  openings?: ObjectWorkbenchCompatibilityOpeningDraft[] | null;
+  pergolas?: ObjectWorkbenchCompatibilityPergolaDraft[] | null;
+};
 
 function buildRoofIntentFromCompatibilityHouse(house: ObjectWorkbenchCompatibilityHouseModel): HouseFormModel['roofIntent'] {
   return {
@@ -339,86 +355,6 @@ function buildHouseAssemblyFromDraft(
     }),
     derivedEnvelope: compatibilityHouse?.derivedEnvelope ?? null,
   };
-}
-
-export function buildObjectWorkbenchCompatibilityDraftFromObjectFirstDraft(
-  objectFirstDraft: Partial<ObjectFirstWorkbenchDraftVNext> | null | undefined,
-): {
-  roof?: ObjectWorkbenchCompatibilityRoofDraft | null;
-  decks?: ObjectWorkbenchCompatibilityDeckDraft[] | null;
-  openings?: ObjectWorkbenchCompatibilityOpeningDraft[] | null;
-  pergolas?: ObjectWorkbenchCompatibilityPergolaDraft[] | null;
-} {
-  const normalized = normalizeObjectFirstWorkbenchDraftVNext(objectFirstDraft);
-  const houseForm = normalized.houseAssembly?.houseForms[0] ?? null;
-  const roof = houseForm?.roofIntentAuthored
-    ? {
-        form: houseForm.roofIntent.form,
-        material: houseForm.roofIntent.material,
-        primaryPitchDeg: houseForm.roofIntent.primaryPitchDeg,
-        primaryFallDirection: houseForm.roofIntent.primaryFallDirection,
-        ridgeAxis: houseForm.roofIntent.ridgeAxis,
-        openGableEndIds: houseForm.roofIntent.openGableEndIds,
-        appendage: houseForm.roofIntent.appendage,
-      }
-    : null;
-  return {
-    ...(roof ? { roof } : null),
-    decks: normalized.decks.map((deck) => ({
-      id: deck.id,
-      name: deck.label,
-      kind: deck.kind,
-      shape: deck.shape,
-      presetType: deck.presetType,
-      presetRect: deck.presetRect ?? null,
-      floatingRect: deck.floatingRect ?? null,
-      outline: deck.outline,
-      elevationMode: deck.elevationMode,
-      levelOffsetMm: deck.levelOffsetMm,
-      hostEdgeId: deck.hostEdgeId,
-      attachmentMode: deck.attachmentMode ?? null,
-      primaryHostEdgeId: deck.primaryHostEdgeId ?? null,
-      secondaryHostEdgeId: deck.secondaryHostEdgeId ?? null,
-      cornerVertexId: deck.cornerVertexId ?? null,
-      isAttached: deck.isAttached,
-      surfaceMaterial: deck.surfaceMaterial,
-      // PR-D (2026-05-22): propagate snap-derived host form id from the
-      // deck's `attachment` field (replaces the PR9 `hostHouseFormId`
-      // band-aid). When `attachment` is absent or freestanding, hostHouseFormId
-      // is null and the read path's null-fallback routes the deck to the
-      // synthesized primary form.
-      hostHouseFormId: deck.attachment?.host?.objectId ?? null,
-    })),
-    openings: normalized.openings.map((opening) => ({
-      id: opening.id,
-      label: opening.label,
-      kind: opening.kind,
-      panelCount: opening.panelCount,
-      hostWallId: opening.hostWallId,
-      wallId: opening.wallId ?? null,
-      hostEdgeId: opening.hostEdgeId ?? null,
-      widthM: opening.widthM,
-      heightM: opening.heightM,
-      sillHeightM: opening.sillHeightM,
-      offsetAlongWallM: opening.offsetAlongWallM,
-      // PR9: `sourceFormId` is the object-first field name; the compat
-      // draft uses `hostHouseFormId` to match deck terminology in the
-      // resolver chain. Openings keep this pattern until PR-E migrates
-      // them to the snap-reference shape.
-      hostHouseFormId: opening.sourceFormId ?? null,
-    })),
-    pergolas: normalized.pergolas.map((pergola) => ({
-      id: pergola.id,
-      attachmentEdgeId: pergola.attachmentEdgeId,
-      attachmentZoneId: pergola.attachmentZoneId,
-    })),
-  };
-}
-
-export function buildHouseFirstCompatibilityDraftFromObjectFirstDraft(
-  objectFirstDraft: Partial<ObjectFirstWorkbenchDraftVNext> | null | undefined,
-): ReturnType<typeof buildObjectWorkbenchCompatibilityDraftFromObjectFirstDraft> {
-  return buildObjectWorkbenchCompatibilityDraftFromObjectFirstDraft(objectFirstDraft);
 }
 
 export function buildObjectFirstWorkbenchProjectModel(input: {

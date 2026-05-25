@@ -194,7 +194,7 @@ describe('DesignWorkbenchPage', () => {
 
     expect(markup).toContain('Fixture Preview');
     expect(markup).toContain('Drawing workbench');
-    expect(markup).toContain('Sheet View');
+    expect(markup).toContain('Sheet Output');
     expect(markup).toContain('Back to Project');
     expect(markup).toContain('data-workbench-context="fixture_ready"');
     expect(markup).toContain('data-workbench-fixture="mono-standard"');
@@ -281,7 +281,7 @@ describe('DesignWorkbenchPage', () => {
     const markup = renderToStaticMarkup(ui);
 
     expect(markup).toContain('aria-label="Drawing workbench"');
-    expect(markup).toContain('Sheet View');
+    expect(markup).toContain('Sheet Output');
     expect(markup).toContain('Back to Project');
     expect(markup).toContain('href="/staff/projects/proj_1"');
     expect(markup).toContain('data-project-id="proj_1"');

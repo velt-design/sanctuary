@@ -1,6 +1,15 @@
 .shell {
   display: grid;
-  grid-template-columns: minmax(320px, 380px) minmax(0, 1fr);
+  /*
+   * PR-W3b (2026-05-23) — CAD-style 3-column layout:
+   *   left  = configurator (visibility + object tree, soon to be VISIBILITY + OBJECTS TREE only)
+   *   centre = workspace (canvas + chrome)
+   *   right  = inspector (selected-object inputs, populated by PR-W3c)
+   *
+   * The right column is reserved here so PR-W3c can mount the moved-from-rail
+   * sections without a forklift. Initially renders an empty placeholder.
+   */
+  grid-template-columns: minmax(320px, 380px) minmax(0, 1fr) minmax(280px, 360px);
   gap: 16px;
   align-items: stretch;
   min-height: 44rem;
@@ -9,16 +18,19 @@
 }
 
 .configuratorColumn,
-.workspaceColumn {
+.workspaceColumn,
+.inspectorColumn {
   min-width: 0;
   min-height: 0;
 }
 
-.configuratorColumn {
+.configuratorColumn,
+.inspectorColumn {
   display: grid;
 }
 
-.configuratorScroll {
+.configuratorScroll,
+.inspectorScroll {
   min-height: 0;
   overflow-y: auto;
   display: grid;
@@ -159,6 +171,7 @@
   }
 
   .configuratorScroll,
+  .inspectorScroll,
   .workspaceSurface {
     overflow: visible;
   }

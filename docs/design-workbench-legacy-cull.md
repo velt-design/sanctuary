@@ -1,6 +1,29 @@
 # Design Workbench Legacy Cull — Phase 1 Plan
 
-**Scope**: this is the deletion roadmap for Phase 1 of the [Product North Star](design-workbench-architecture.md). It is a working document — entries get checked off as PRs ship.
+**Status (2026-05-22): Phase 1 closed. Continuing work tracked in [Phase 2 Plan](design-workbench-phase-2-plan.md).**
+
+Phase 1 shipped as PR-A through PR-G3c. The originally-planned PR-H ("final cleanup sweep") + PR-I ("ModelSpaceViewport fixture rot") turned out to be **superseded by Phase 2 work**: investigation in 2026-05-22 revealed that PR-H's deletion targets (`HouseFirst*` types, `legacyObjectFirstCompatibilityAdapter`, `hostHouseFormId`, `houseFootprintSideLocalToWorldPolygon`) are still load-bearing because Phase 1 PRs deliberately preserved them while migrating upstream consumers. Deleting them requires the consumer-side migration that IS Phase 2 (see § "Stream 2A" in the Phase 2 plan). PR-I is deferred until after the consumer-side migration stabilises the test fixtures.
+
+**What Phase 1 actually delivered (final retrospective):**
+- Object-first project model is the dominant runtime shape (`WorkbenchProjectModel`)
+- Snap-derived pergola + deck attachments (`PergolaAttachment`, `DeckAttachment`)
+- `attachment_side` retired from cost engine (replaced by `attachment_length_mm`)
+- Scene composition lifted to project level (additional house forms built once per project)
+- Project-level decks/openings pre-pass (no per-pergola redundancy)
+- `buildHouseModelConfig` decoupled from pergola context
+- Email-quote path completely unchanged throughout
+
+**What Phase 1 left for Phase 2:**
+- Bridge deletion (`HouseFirst*` types, `legacyObjectFirstCompatibilityAdapter`)
+- Per-object solve loop (the `workbenchSolvedModel` per-module loop still exists)
+- Cost engine input migration (cost engine still consumes `CostInputsV1` via `costingPayload.ts`)
+- Snapshot persistence migration (canonical shape lock-in)
+
+The rest of this doc is **the working history** of Phase 1 — kept for reference until archived to the decision log.
+
+---
+
+**Scope**: this was the deletion roadmap for Phase 1 of the [Product North Star](design-workbench-architecture.md). Working document; entries got checked off as PRs shipped.
 
 **Goal**: remove every legacy calculator-era pattern from the design workbench, so every object is a first-class spatial entity. Replace pergola-anchored coordinates, `attachmentSide` enums-as-position, primary-vs-additional special-casing, and the multi-shape (`houseFirst*` vs `objectFirst*`) draft duality.
 
@@ -238,16 +261,79 @@ Each PR is small enough to ship in 1–2 days. Dependencies are explicit. **No n
 - Email-quote tests: 6/6 ✅
 - `composeAdditionalHouseFormsIntoScene` (audit row N10) untouched — deferred to PR-G3 where the per-pergola scene loop becomes per-project.
 
-### PR-G3 — Geometry pipeline iterates per object, not per pergola
+### PR-G3a — Scene lifting: project-level additional house models ✅ SHIPPED 2026-05-22
 
-**Closes:** audit row 9, remaining N8 (config-carries-pergola-dims coupling in `normalize.ts`), N9, N10.
-**Phase 2 dependencies:** **Likely.** The cost engine consumes solved geometry per-pergola-module today. If PR-G3 changes the per-module structure (e.g., scene built once per project instead of per pergola), the cost engine's iteration pattern may need to change. Scope: verify cost engine assumptions about per-module solved geometry; keep per-module solved outputs unchanged for cost-engine consumption, even if internally the scene is built once. Decouples the workbench's view from cost engine's read shape.
-**Touches:** `workbenchSolvedModel.ts` (the per-module loop becomes a per-object loop), `buildRawGeometryModuleInput.ts` (drops non-pergola wrapping), `viewer.ts` (`buildLayers` iterates project objects, not single pergola's assembly).
-**What changes:** the project solves N objects independently (N pergolas + M houses + decks/openings as drawn). The scene builder emits one set of layers per project, not per pergola module. `composeAdditionalHouseFormsIntoScene` (PR8d workaround) deletes.
+**Closes:** N9 (viewer's scene builder now iterates project-level additional house models, not just the active pergola's host). N10 (portal-layer `composeAdditionalHouseFormsIntoScene` workaround deleted; geometry build moved to a single project-level pass).
 
-**Risk:** biggest geometry-side PR. The pergola solve path is the foundation of everything. Test extensively against the 352-test geometry suite.
+**Phase 2 dependencies:** None. Cost engine doesn't read solved scenes; this is a pure workbench-internal scene-composition fix. Verified via scope investigation: `apps/marketing/app/api/enquiry/route.ts:5` imports only `calculateCostV1` from `@sp/costing`, and `packages/costing/src/engine/calculate.ts:549` iterates `inputs.modules[]` without touching `WorkbenchSolvedModule`.
 
-**Acceptance:** geometry suite passes for single-pergola estimates. Multi-form scenes produce one set of house objects per form (not duplicated per pergola module).
+**Touches:**
+- `packages/geometry/src/viewer.ts` — `buildLayers(assembly, additionalHouseModels)` and `buildViewerSceneModel(assembly, options?)` now accept an optional `additionalHouseModels: ReadonlyArray<HouseModel3D>`. Iterated inside `buildLayers`; each renders with `attachmentTarget: null` (additional forms aren't pergola-attached). Second arg is optional → all 30+ existing geometry-package test call sites stay valid.
+- `packages/geometry/src/index.ts` — new `BuildViewerSceneModelOptions` type export.
+- `apps/portal/lib/drawings/state/workbenchSolvedModel.ts` —
+  - Deleted `composeAdditionalHouseFormsIntoScene` (O(M×F) per-module workaround, ~26 lines).
+  - New `buildProjectAdditionalHouseModels(projectModel)` runs ONCE at the top of `buildWorkbenchSolvedModel` and returns the list of non-host `HouseModel3D`s.
+  - `buildSolvedModule` accepts `additionalHouseModels` parameter; threads it into `buildViewerSceneFromSolvedGeometry`, which threads it to `buildViewerSceneModel` via the new options arg.
+  - Dropped unused imports (`buildHouseModelSceneObjects`, `ViewerSceneObject`); added `HouseModel3D` import.
+
+**What changes:** Multi-form scenes (sleepouts, granny flats alongside a pergola) used to rebuild additional-form geometry **once per pergola module** (O(M×F) work). Now built once per project, shared across all modules. Same visual output, identical fixture-test results — the viewer's `house` layer still includes the additional forms, just composed inside the scene builder instead of patched in afterwards.
+
+**What temporarily breaks:** Nothing observed. Scope investigation found no tests asserting per-module duplicate house geometry; all 468 workbench tests + 352 geometry tests pass unchanged.
+
+**Acceptance:**
+- Typecheck clean ✅
+- Geometry suite: 352/352 ✅
+- Portal workbench: 468 passed + 6 PR-B-era skips, no new failures ✅
+- Email-quote tests: 6/6 ✅
+
+### PR-G3b — Project-level decks/openings pre-pass ✅ SHIPPED 2026-05-22
+
+**Closes:** audit row 9 in production-path spirit. The workbench solve no longer remaps the same project-level decks/openings once per pergola module; it computes them once at the top of `buildWorkbenchSolvedModel` and threads pre-built arrays through to the per-module raw-input builder. The deeper structural split (a separate `RawGeometryProjectInput` type distinct from `RawGeometryModuleInput`, with geometry consumers reading decks/openings from the project type) is deferred until the geometry package's `buildHouseModelConfig` is also restructured (see PR-G3c).
+
+**Phase 2 dependencies:** None confirmed (per PR-G3a + PR-G3b scope investigations). Cost engine reads `CostInputsV1` per module without touching `RawGeometryModuleInput`.
+
+**Touches:**
+- `apps/portal/lib/drawings/geometry/buildRawGeometryModuleInput.ts` — `buildRawGeometryModuleInput` gains optional `projectDecks` + `projectOpenings` params. When passed, used directly; when omitted, falls back to internal `mapDecks(projectModel)` / `mapOpenings(projectModel)` (test-convenience default). New exported helpers `mapProjectDecks` / `mapProjectOpenings` so the workbench can compute once.
+- `apps/portal/lib/drawings/geometry/deriveWorkbenchGeometry.ts` — accepts the same pair of optional params and forwards them through to `buildRawGeometryModuleInput`.
+- `apps/portal/lib/drawings/state/workbenchSolvedModel.ts` — `buildWorkbenchSolvedModel` pre-computes `projectDecks` + `projectOpenings` once before the per-module loop; `buildSolvedModule` accepts the pair and threads to `deriveWorkbenchGeometry`.
+- `objectWorkbenchGeometryEditAdapterCore.ts` (single-call site) keeps using the internal fallback (only one call, not a loop — no gain from threading).
+
+**What changes:** projects with M pergola modules used to call `mapDecks(projectModel)` and `mapOpenings(projectModel)` M times — same input, same output, all wasted. Now called once per project. The geometry package's downstream readers (`normalize.ts:533` for decks, `normalize.ts:653` for openings) see the same data shape.
+
+**Acceptance:**
+- Typecheck clean ✅
+- Geometry suite: 352/352 ✅
+- Portal workbench: 468 passed + 6 PR-B-era skips, no new failures ✅
+- Email-quote tests: 6/6 ✅
+
+### PR-G3c — `buildHouseModelConfig` drops `connectionType`/`attachmentSide` params ✅ SHIPPED 2026-05-22
+
+**Closes:** remaining N8 — `buildHouseModelConfig` no longer accepts pergola-context inputs. The function is now pure house data: footprint, eave heights, raw house context, and a pre-resolved `attachmentStrategy`. Both upstream consumers of the function resolve `attachmentStrategy` themselves (the logic that needed `connectionType` for fallback now lives at the caller, where `connectionType` already exists).
+
+**Phase 2 dependencies:** None. Cost engine doesn't call `buildHouseModelConfig`.
+
+**Touches:**
+- `packages/geometry/src/normalize.ts`:
+  - `buildHouseModelConfig` signature drops `connectionType` and `attachmentSide`. Gains `attachmentStrategy: HouseAttachmentStrategy` (pre-resolved by caller).
+  - Internal `deckFrame` now standardizes on `'rear'` (matches the post-Stage-4.5 standardization already used for position-set decks). Legacy un-migrated decks that were attached to a non-rear pergola decode against the standardized frame instead of the host's attachmentSide — they re-migrate to position-based on first edit.
+  - Output `attachmentStrategy` field is the passed-in pre-resolved value (no internal `resolveHouseAttachmentStrategy` call).
+  - `resolveHouseAttachmentStrategy` exported so the other caller can reuse the same fallback logic.
+  - In-file caller (`normalizeGeometryConfig`) passes the already-resolved `houseAttachmentStrategy` (computed at lines 835-838) directly.
+- `packages/geometry/src/houseModel.ts`:
+  - `buildHouseModel3DFromRawHouseInput` pre-resolves `attachmentStrategy` via `resolveHouseAttachmentStrategy(rawHouse.attachmentStrategy ?? null, connectionType)` and passes through.
+  - Imports `resolveHouseAttachmentStrategy` alongside `buildHouseModelConfig`.
+- `packages/geometry/src/normalize.test.ts`:
+  - "LEGACY (no position): deck shifts when host attachmentSide changes — known coupling" test renamed to "LEGACY (no position): deck stays put when host attachmentSide changes — PR-G3c decoupling". Assertion flipped from `not.toBeCloseTo` to `toBeCloseTo` — the legacy coupling is intentionally gone.
+
+**What changes:** `buildHouseModelConfig` is now genuinely house-only. Audit row N8's "config carries pergola dims" coupling is closed at this entry point (downstream `HouseModelConfig` consumers still read `houseContext.attachmentStrategy` etc., but those flow from the cleaner inputs).
+
+**What temporarily breaks (acceptable per Phase 1 permission):** Legacy un-migrated decks attached to non-rear sides decode against a standardized `'rear'` frame instead of their original attachmentSide. Visible as a one-time shift in plan/3D viewport rendering for unedited decks; first edit re-migrates the deck to its first-class `position` field and locks the world coords in.
+
+**Acceptance:**
+- Typecheck clean ✅
+- Geometry suite: 352/352 (legacy-coupling test updated to assert the decoupling) ✅
+- Portal workbench: 468 passed + 6 PR-B-era skips, no new failures ✅
+- Email-quote tests: 6/6 ✅
 
 ### PR-H — Final cleanup sweep: delete `houseFirstWorkbenchModel.ts`, retire compat namespace, geometry pruning
 

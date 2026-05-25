@@ -295,11 +295,22 @@ function deriveAttachmentLengthMm(
   return sourceM * 1000;
 }
 
-function buildModuleCostInputs(
+/**
+ * Pergola-only cost-input fields shared by V1 (per-module shape) and V2
+ * (scene-derived shape). Site-level fields (`access`, `height`,
+ * `travel_ex_gst`, `extras_allowance_ex_gst`, `quote_discount_pct`,
+ * `job_type`) are NOT in this return — V1 callers add `access`/`height`
+ * + zero-padded site fields per-module (legacy V1 shape carries these
+ * as dummies); V2 puts them at the site level.
+ *
+ * PR-2B.3 (2026-05-22): extracted from `buildModuleCostInputs` so the
+ * V2 scene-derived builder (`buildSiteInputsV2FromScene`) can reuse the
+ * exact same field mapping. Consolidation point: this is the canonical
+ * pergola-field source; both V1 and V2 paths flow through it.
+ */
+export function buildPergolaModuleCostFields(
   module: CalculatorModuleInputs,
-  access: CalculatorInputs['access'],
-  height: CalculatorInputs['height'],
-): CostInputsV1 {
+): Omit<CostInputsV1, 'access' | 'height' | 'travel_ex_gst' | 'extras_allowance_ex_gst' | 'quote_discount_pct'> {
   const length_m = toNumber(module.lengthM);
   const roof_span_m = toNumber(module.projectionM);
   const post_cut_height_m = toNumber(module.postCutHeightM);
@@ -408,10 +419,24 @@ function buildModuleCostInputs(
     house_connection_type: module.houseConnectionType,
     attachment_length_mm: deriveAttachmentLengthMm(module, length_m, roof_span_m),
     post_connection_type: module.postConnectionType,
-    access,
-    height,
     ground: isPile ? module.ground : undefined,
     infills: parseInfillsForPayload(module),
+  };
+}
+
+function buildModuleCostInputs(
+  module: CalculatorModuleInputs,
+  access: CalculatorInputs['access'],
+  height: CalculatorInputs['height'],
+): CostInputsV1 {
+  // PR-2B.3 (2026-05-22): pergola field mapping extracted into
+  // `buildPergolaModuleCostFields` so the new V2 scene-derived builder
+  // can reuse it. V1 wraps with site-level `access`/`height` + the
+  // zero-padded V1 site dummies the legacy contract carries per-module.
+  return {
+    ...buildPergolaModuleCostFields(module),
+    access,
+    height,
     travel_ex_gst: 0,
     extras_allowance_ex_gst: 0,
     quote_discount_pct: 0,

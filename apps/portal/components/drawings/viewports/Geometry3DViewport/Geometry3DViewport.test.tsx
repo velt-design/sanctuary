@@ -1402,26 +1402,26 @@ describe("Geometry3DViewport", () => {
     ).not.toBeNull();
     expect(
       rendered.container.querySelector(
-        `[data-testid="scene-object-${roofSolid?.id ?? "missing-roof-solid"}"]`,
+        `[data-testid="scene-object-${roofSolid?.sourceId ?? "missing-roof-solid"}"]`,
       ),
     ).not.toBeNull();
     if (soffitSolid) {
       expect(
         rendered.container.querySelector(
-          `[data-testid="scene-object-${soffitSolid.id}"]`,
+          `[data-testid="scene-object-${soffitSolid.sourceId ?? soffitSolid.id}"]`,
         ),
       ).not.toBeNull();
     }
     if (fasciaSolid) {
       expect(
         rendered.container.querySelector(
-          `[data-testid="scene-object-${fasciaSolid.id}"]`,
+          `[data-testid="scene-object-${fasciaSolid.sourceId ?? fasciaSolid.id}"]`,
         ),
       ).not.toBeNull();
     }
     expect(
       rendered.container.querySelector(
-        `[data-testid="scene-object-${attachmentTargetLine?.id ?? "missing-attachment-target"}"]`,
+        `[data-testid="scene-object-${attachmentTargetLine?.sourceId ?? "missing-attachment-target"}"]`,
       ),
     ).not.toBeNull();
 
@@ -1438,7 +1438,8 @@ describe("Geometry3DViewport", () => {
     if (!roofSolid) {
       throw new Error("Expected house roof solid.");
     }
-    clickSceneObject(rendered.container, roofSolid.id);
+    // PR-Geo1: testids use in-house sourceId; inspector panel still surfaces the prefixed id.
+    clickSceneObject(rendered.container, roofSolid.sourceId ?? roofSolid.id);
     expect(rendered.container.textContent).toContain(roofSolid.id);
     expect(rendered.container.textContent).toContain("house solid roof");
     expect(rendered.container.textContent).toContain("Roof QA");
@@ -1447,7 +1448,7 @@ describe("Geometry3DViewport", () => {
     expect(rendered.container.textContent).toContain("Plane normal");
 
     if (gutterSolid) {
-      clickSceneObject(rendered.container, gutterSolid.id);
+      clickSceneObject(rendered.container, gutterSolid.sourceId ?? gutterSolid.id);
       expect(rendered.container.textContent).toContain(gutterSolid.id);
       expect(rendered.container.textContent).toContain("house solid gutter");
       expect(rendered.container.textContent).toContain("Profile");
@@ -1562,7 +1563,9 @@ describe("Geometry3DViewport", () => {
     ).toBeNull();
 
     clickSceneObject(rendered.container, "house-solid-deck-1");
-    expect(viewportDiagnostics(rendered.container).selectedObjectId).toBe("house-solid-deck-1");
+    // PR-Geo1: selection emits the prefixed scene id (globally unique across
+    // multi-house scenes); testids use the in-house sourceId for ergonomics.
+    expect(viewportDiagnostics(rendered.container).selectedObjectId).toBe("host-house:house-solid-deck-1");
     expect(
       rendered.container.querySelector('[data-testid="scene-object-house-solid-deck-1-deck-outline-selected"]'),
     ).not.toBeNull();
@@ -1785,7 +1788,7 @@ describe("Geometry3DViewport", () => {
 
     const attachmentTarget = geometryPreview.scene.layers
       .flatMap((layer) => layer.objects)
-      .find((object) => object.id === "house-attachment-target-line");
+      .find((object) => object.sourceId === "house-attachment-target-line");
     expect(attachmentTarget).toMatchObject({
       type: "house_line",
       line: {
@@ -1840,7 +1843,7 @@ describe("Geometry3DViewport", () => {
 
     const frontTarget = frontPreview.scene.layers
       .flatMap((layer) => layer.objects)
-      .find((object) => object.id === "house-attachment-target-line");
+      .find((object) => object.sourceId === "house-attachment-target-line");
     expect(frontTarget).toMatchObject({
       type: "house_line",
       line: {
@@ -1851,7 +1854,7 @@ describe("Geometry3DViewport", () => {
 
     const sideTarget = sidePreview.scene.layers
       .flatMap((layer) => layer.objects)
-      .find((object) => object.id === "house-attachment-target-line");
+      .find((object) => object.sourceId === "house-attachment-target-line");
     expect(sideTarget).toMatchObject({
       type: "house_line",
       line: {
@@ -1882,8 +1885,9 @@ describe("Geometry3DViewport", () => {
     toggleCheckboxByText(rendered.container, "Section cut", true);
     clickSceneObject(rendered.container, "house-attachment-target-line");
     expect(viewportDiagnostics(rendered.container).clippingEnabled).toBe("true");
+    // PR-Geo1: selection emits the prefixed scene id; testids use the in-house sourceId.
     expect(viewportDiagnostics(rendered.container).selectedObjectId).toBe(
-      "house-attachment-target-line",
+      "host-house:house-attachment-target-line",
     );
 
     mockRendererResetState?.mockClear();

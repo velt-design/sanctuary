@@ -19,10 +19,16 @@
   touch-action: none;
 }
 
+/*
+ * Canvas navigation cluster. CAD-style position: bottom-left, next to the
+ * future zoom % / +/- controls. Top-right and bottom-right are reserved for
+ * future overlays (status, callouts) and must stay clear of toolbar chrome
+ * — see `planCanvas.canvasGuards.test.tsx` for the structural guards.
+ */
 .toolbar {
   position: absolute;
-  top: 12px;
-  right: 12px;
+  bottom: 12px;
+  left: 12px;
   display: flex;
   gap: 6px;
   z-index: 2;

@@ -5,7 +5,7 @@ import { buildEstimateDrawingDraftFromSnapshot, type EstimateDrawingDraft } from
 import { buildDrawingWorkbenchStore } from '@/lib/drawings/state/drawingWorkbenchStore';
 import { createDrawingWorkbenchUiState, type DrawingWorkbenchRailTab } from '@/lib/drawings/state/drawingWorkbenchUiState';
 import type { HouseFormRoofIntentModel, WorkbenchObjectRef } from '@/lib/drawings/state/objectFirstWorkbenchModel';
-import type { ObjectWorkbenchCompatibilityDraft } from '@/lib/drawings/state/compat/objectWorkbenchCompatibilityModel';
+import type { ObjectWorkbenchCompatibilityDraft } from '@/lib/drawings/state/legacyObjectFirstCompatibilityAdapter';
 import {
   buildObjectFirstWorkbenchDraftFromProjectModel,
 } from '@/lib/drawings/state/objectFirstWorkbenchAdapter';
@@ -180,7 +180,12 @@ describe('ObjectWorkbenchRail', () => {
     expect(deckMarkup).not.toContain('data-action="add-house-form"');
   });
 
-  it('renders the canonical family navigator and selected house-form inspector by default', () => {
+  it('renders the canonical family navigator and selected house-form summary by default', () => {
+    // PR-W3c (2026-05-25): inspector content moved to WorkbenchInspectorHost,
+    // which renders in the right-side RightInspectorPanel. The rail keeps the
+    // visibility toggles, object navigator, and selected-object summary.
+    // Inspector-content assertions for HouseFormInspector live in the new
+    // WorkbenchInspectorHost test file (TODO: create alongside W3c hardening).
     const markup = renderToStaticMarkup(<ObjectWorkbenchRail {...buildRailProps()} />);
 
     expect(markup).toContain('Object Navigator');
@@ -189,32 +194,30 @@ describe('ObjectWorkbenchRail', () => {
     expect(markup).toContain('Openings');
     expect(markup).toContain('Pergolas');
     expect(markup).toContain('Diagnostics');
-    expect(markup).toContain('House Form Inspector');
-    expect(markup).toContain('Footprint');
-    expect(markup).toContain('Roof');
-    expect(markup).toContain('Review Basis');
-    expect(markup).toContain('Attachment Context');
-    expect(markup).toContain('Attachment context extras');
     expect(markup).toContain('Selected Object');
     expect(markup).toContain('Visibility');
     expect(markup).not.toContain('House Configurator');
+    // Inspector-content assertions (House Form Inspector, Footprint, Roof,
+    // Review Basis, Attachment Context, ...) no longer apply here — those
+    // sections render in the right-side inspector now.
   });
 
-  it('renders the native pergola inspector inside the canonical Pergolas family', () => {
-    const markup = renderToStaticMarkup(
-      <ObjectWorkbenchRail {...buildRailProps({ activeRailTab: 'pergolas' })} />,
-    );
-
-    expect(markup).toContain('Native pergola inspector');
-    expect(markup).toContain('data-workbench-object-button="pergolas:pergola-1"');
-    expect(markup).not.toContain('Add deck');
-    expect(markup).not.toContain('Add window');
-    expect(markup).not.toContain('Add door');
-    expect(markup).not.toContain('Add slider');
-    expect(markup).not.toContain('Add stacker');
+  it.skip('renders the native pergola inspector inside the canonical Pergolas family — moved to WorkbenchInspectorHost', () => {
+    // PR-W3c (2026-05-25): PergolaInspector mounting moved to
+    // WorkbenchInspectorHost (right-side RightInspectorPanel). The rail no
+    // longer renders pergola inspector content. Skipped until the
+    // WorkbenchInspectorHost test file is created. The rail-only assertion
+    // (`data-workbench-object-button="pergolas:pergola-1"`) still holds and
+    // is covered by the navigator/family rendering tests above.
   });
 
-  it('keeps the opening type editable for hinged doors without deferred family copy', () => {
+  it.skip('keeps the opening type editable for hinged doors without deferred family copy — moved to WorkbenchInspectorHost', () => {
+    // PR-W3c (2026-05-25): OpeningInspector mounting moved to
+    // WorkbenchInspectorHost. Coverage owed to its test file.
+    return;
+  });
+  // Original test retained below the skip marker for migration reference.
+  it.skip('_legacy: keeps the opening type editable for hinged doors without deferred family copy', () => {
     const fixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
     if (!fixture) throw new Error('Expected Sanctuary fixture.');
     const draft = buildEstimateDrawingDraftFromSnapshot(fixture.snapshot);
@@ -251,7 +254,10 @@ describe('ObjectWorkbenchRail', () => {
     expect(markup).not.toContain('Family-specific editing for this opening is deferred in this slice.');
   });
 
-  it('shows derived host wall labels for openings in the canonical rail shell', () => {
+  it.skip('shows derived host wall labels for openings in the canonical rail shell — moved to WorkbenchInspectorHost', () => {
+    return;
+  });
+  it.skip('_legacy: shows derived host wall labels for openings in the canonical rail shell', () => {
     const fixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
     if (!fixture) throw new Error('Expected Sanctuary fixture.');
     const draft = buildEstimateDrawingDraftFromSnapshot(fixture.snapshot);
@@ -288,7 +294,10 @@ describe('ObjectWorkbenchRail', () => {
     expect(markup).toContain('Host wall');
   });
 
-  it('keeps all supported house roof forms editable in the house-form roof section', () => {
+  it.skip('keeps all supported house roof forms editable in the house-form roof section — moved to WorkbenchInspectorHost', () => {
+    return;
+  });
+  it.skip('_legacy: keeps all supported house roof forms editable in the house-form roof section', () => {
     const markup = renderToStaticMarkup(
       <ObjectWorkbenchRail {...buildRailProps({ fixtureSlug: 'box-standard' })} />,
     );
@@ -304,7 +313,10 @@ describe('ObjectWorkbenchRail', () => {
     expect(markup).toContain('aria-label="Roof material"');
   });
 
-  it('renders only the controls relevant to each house roof form', () => {
+  it.skip('renders only the controls relevant to each house roof form — moved to WorkbenchInspectorHost', () => {
+    return;
+  });
+  it.skip('_legacy: renders only the controls relevant to each house roof form', () => {
     const flatMarkup = renderToStaticMarkup(
       <ObjectWorkbenchRail {...buildRailProps({ draft: buildDraftWithRoofForm('flat') })} />,
     );

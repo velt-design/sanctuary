@@ -43,10 +43,13 @@ import { buildObjectWorkbenchStatusFacade } from './objectWorkbenchStatusModel';
 import {
   appendWorkbenchTrustIssues,
   buildWorkbenchSolvedModel,
+  buildWorkbenchSolvedProject,
   resolveWorkbenchTrustGate,
+  type SolvedPergola,
   type WorkbenchGeometryIdentity,
   type WorkbenchSolvedModel,
   type WorkbenchSolvedModule,
+  type WorkbenchSolvedProject,
   type WorkbenchViewportGeometry,
   type WorkbenchTrustGateModel,
   type WorkbenchTrustStatus,
@@ -91,6 +94,16 @@ export type DrawingWorkbenchStore = {
     moduleCount: number;
     activeModuleIndex: number;
     solvedModel: WorkbenchSolvedModel;
+    /**
+     * PR-2B.1b.2 (2026-05-23): per-object spine view of the solve. Mirrors
+     * `solvedModel.modules` keyed by `PergolaObjectModel.id` instead of by
+     * legacy drawing-module array position. New consumers should target
+     * this; legacy `solvedModel.modules` + `activeSolution` stays for the
+     * remainder of the coexist period.
+     */
+    solvedProject: WorkbenchSolvedProject;
+    /** PR-2B.1b.2: per-object active selection lifted from `activeSolution`. */
+    activePergola: SolvedPergola | null;
     activeSolution: WorkbenchSolvedModule | null;
     activeTrust: WorkbenchTrustStatus;
     activeTrustGate: WorkbenchTrustGateModel;
@@ -279,6 +292,14 @@ export function buildDrawingWorkbenchStore(input: {
 
   const activeModule = modules[ui.activeModuleIndex] ?? null;
   const activeSolution = solvedModel.activeModule;
+  // PR-2B.1b.2: surface per-object spine alongside legacy modules.
+  // `activePergolaId` derives from the legacy `activeSolution`'s pergolaId
+  // until 2B.1b.3 lifts the UI selection itself to pergolaId.
+  const solvedProject = buildWorkbenchSolvedProject({
+    solvedModel,
+    activePergolaId: activeSolution?.moduleInput.pergolaId ?? null,
+  });
+  const activeSolvedPergola = solvedProject.activePergola;
   const activePergola =
     objectFirstPergolas.find((pergola) => pergola.id === compatibilitySelection.activePergolaId) ??
     objectFirstPergolas.find((pergola) => pergola.id === activeModule?.drawingModule.input.pergolaId) ??
@@ -405,6 +426,8 @@ export function buildDrawingWorkbenchStore(input: {
       moduleCount: modules.length,
       activeModuleIndex: ui.activeModuleIndex,
       solvedModel,
+      solvedProject,
+      activePergola: activeSolvedPergola,
       activeSolution,
       activeTrust,
       activeTrustGate,

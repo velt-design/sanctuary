@@ -5,7 +5,7 @@ import type { ModuleViewsTab } from '@/app/staff/calculator/ModuleViewsCard';
 import type { DrawingWorkbenchViewportMode } from '@/lib/drawings/state/drawingWorkbenchUiState';
 import styles from './DrawingWorkbench.module.css';
 
-type PrimaryNavId = 'sheet' | 'plan' | 'geometry3d';
+type PrimaryNavId = 'geometry3d' | 'plan' | 'sheet';
 
 type PrimaryNavItem = {
   id: PrimaryNavId;
@@ -14,10 +14,12 @@ type PrimaryNavItem = {
   view: ModuleViewsTab | null;
 };
 
+// Order matches the CAD-style header mockup (3D Review → Plan Editor → Sheet
+// Output): review on the left, editor in the middle, output on the right.
 const PRIMARY_NAV_ITEMS: PrimaryNavItem[] = [
-  { id: 'sheet', label: 'Sheet View', viewportMode: 'sheet', view: 'plan' },
-  { id: 'plan', label: 'Plan', viewportMode: 'plan', view: 'plan' },
-  { id: 'geometry3d', label: '3D', viewportMode: 'geometry3d', view: null },
+  { id: 'geometry3d', label: '3D Review', viewportMode: 'geometry3d', view: null },
+  { id: 'plan', label: 'Plan Editor', viewportMode: 'plan', view: 'plan' },
+  { id: 'sheet', label: 'Sheet Output', viewportMode: 'sheet', view: 'plan' },
 ];
 
 function activeNavId(viewportMode: DrawingWorkbenchViewportMode): PrimaryNavId | null {
@@ -33,6 +35,7 @@ type WorkbenchChromeProps = {
   viewportMode: DrawingWorkbenchViewportMode;
   onViewportModeChange: (mode: DrawingWorkbenchViewportMode) => void;
   backHref?: string;
+  projectLabel?: string | null;
 };
 
 export default function WorkbenchChrome({
@@ -41,9 +44,11 @@ export default function WorkbenchChrome({
   viewportMode,
   onViewportModeChange,
   backHref,
+  projectLabel,
 }: WorkbenchChromeProps) {
   void view;
   const active = activeNavId(viewportMode);
+  const trimmedProjectLabel = projectLabel?.trim() ?? '';
 
   return (
     <div className={styles.toolbar}>
@@ -52,6 +57,12 @@ export default function WorkbenchChrome({
         aria-label="Drawing workbench primary navigation"
         data-workbench-primary-nav="true"
       >
+        {trimmedProjectLabel ? (
+          <div className={styles.toolbarTitle} data-workbench-title="true">
+            <span className={styles.toolbarTitlePrimary}>{trimmedProjectLabel}</span>
+            <span className={styles.toolbarTitleSecondary}>Design Workbench</span>
+          </div>
+        ) : null}
         <div className={styles.toggleGroup} role="tablist" aria-label="Drawing workbench mode">
           {PRIMARY_NAV_ITEMS.map((item) => {
             const isActive = active === item.id;
@@ -73,11 +84,22 @@ export default function WorkbenchChrome({
             );
           })}
         </div>
-        {backHref ? (
-          <Link href={backHref} className={styles.toolbarLink}>
-            Back to Project
-          </Link>
-        ) : null}
+        <div className={styles.toolbarActions}>
+          {backHref ? (
+            <Link href={backHref} className={styles.toolbarLink}>
+              Back to Project
+            </Link>
+          ) : null}
+          <button
+            type="button"
+            className={styles.toolbarOverflowButton}
+            aria-label="More actions"
+            data-workbench-overflow="true"
+            disabled
+          >
+            <span aria-hidden="true">…</span>
+          </button>
+        </div>
       </nav>
     </div>
   );

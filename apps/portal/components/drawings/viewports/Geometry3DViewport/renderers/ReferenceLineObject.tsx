@@ -1,11 +1,11 @@
-import { useMemo } from "react";
+﻿import { useMemo } from "react";
 import * as THREE from "three";
 import type { ViewerSceneReferenceLineObject } from "@sp/geometry";
 import { buildLineGeometry } from "../geometry/lineBuilders";
 import { linePoints } from "../geometry/scenePointHelpers";
 
 /**
- * Reference line renderer — drawn for datum axes, fall-vector
+ * Reference line renderer â€” drawn for datum axes, fall-vector
  * scaffolding, and the orientation overlays. Single-segment line, no
  * fill, no thickness modulation.
  */
@@ -28,7 +28,7 @@ export function ReferenceLineObject({
   );
   return (
     <line
-      data-testid={`scene-object-${object.id}`}
+      data-testid={`scene-object-${(object as { sourceId?: string }).sourceId ?? object.id}`}
       onClick={(event) => {
         event.stopPropagation();
         onSelect(object.id);

@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+﻿import { useCallback, useMemo } from "react";
 import * as THREE from "three";
 import type { ViewerSceneMemberPrismObject } from "@sp/geometry";
 import {
@@ -17,12 +17,12 @@ import { linePoints } from "../geometry/scenePointHelpers";
  *  - `line_fallback`: degenerate cases (profile invalid, length too
  *    short) render as the centerline only.
  *  - `outline_extrusion`: posts with end caps. Two paths:
- *      (a) full outline composite — body inset by `bodyInsetStartMm` /
+ *      (a) full outline composite â€” body inset by `bodyInsetStartMm` /
  *          `bodyInsetEndMm`, capped with either a rectangular cap
  *          (when `endCapWidthMm`/`endCapDepthMm` are present) or a
  *          re-extruded profile sans voids. Used by post-style members
  *          where the cap visually differs from the body.
- *      (b) single extrusion — full-length profile extrusion, with
+ *      (b) single extrusion â€” full-length profile extrusion, with
  *          `buildClippedProfileExtrusionGeometry` applied only when
  *          end-cuts demand it (otherwise the flat extrusion is fine).
  *  - default (`prism`): box geometry. `buildClippedBoxGeometry`
@@ -244,7 +244,7 @@ export function MemberObject({
   if (object.renderMode === "line_fallback") {
     return (
       <line
-        data-testid={`scene-object-${object.id}`}
+        data-testid={`scene-object-${(object as { sourceId?: string }).sourceId ?? object.id}`}
         onClick={handleSelect}
         onDoubleClick={handleFocus}
       >
@@ -263,7 +263,7 @@ export function MemberObject({
   ) {
     return (
       <group
-        data-testid={`scene-object-${object.id}`}
+        data-testid={`scene-object-${(object as { sourceId?: string }).sourceId ?? object.id}`}
         matrixAutoUpdate={false}
         matrix={matrix}
         onClick={handleSelect}
@@ -288,7 +288,7 @@ export function MemberObject({
   if (object.renderMode === "outline_extrusion") {
     return (
       <mesh
-        data-testid={`scene-object-${object.id}`}
+        data-testid={`scene-object-${(object as { sourceId?: string }).sourceId ?? object.id}`}
         matrixAutoUpdate={false}
         matrix={matrix}
         onClick={handleSelect}
@@ -311,7 +311,7 @@ export function MemberObject({
 
   return (
     <mesh
-      data-testid={`scene-object-${object.id}`}
+      data-testid={`scene-object-${(object as { sourceId?: string }).sourceId ?? object.id}`}
       matrixAutoUpdate={false}
       matrix={matrix}
       onClick={handleSelect}

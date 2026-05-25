@@ -6,8 +6,8 @@ import {
   type EstimateWorkbenchSolvedReadinessReport,
 } from '@/lib/estimates/pricingRollout';
 import type { SanctuaryGeometryWorkbenchFixture } from './sanctuaryWorkbenchFixtures.types';
-import { buildCommercialDesignInputFromWorkbenchSolvedModel } from './commercialDesignPayload';
-import { buildWorkbenchSolvedModel } from './state/workbenchSolvedModel';
+import { buildCommercialDesignInputFromWorkbenchSolvedProject } from './commercialDesignPayload';
+import { buildWorkbenchSolvedModel, buildWorkbenchSolvedProject } from './state/workbenchSolvedModel';
 
 type FixtureCalculatorSnapshot = {
   inputs: CalculatorInputs;
@@ -71,8 +71,9 @@ export function buildWorkbenchFixturePricingReadiness(
     moduleLabels: fixture.moduleLabels,
     geometryIdentity: identity,
   });
-  const workbenchCommercialInput = buildCommercialDesignInputFromWorkbenchSolvedModel({
-    solvedModel,
+  const solvedProject = buildWorkbenchSolvedProject({ solvedModel });
+  const workbenchCommercialInput = buildCommercialDesignInputFromWorkbenchSolvedProject({
+    solvedProject,
     siteCommercial: calculatorCommercialInput.siteCommercial,
   });
   const parityReport = compareCommercialDesignInputsV1(calculatorCommercialInput, workbenchCommercialInput, {

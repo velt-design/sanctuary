@@ -1,11 +1,11 @@
-import { useMemo } from "react";
+﻿import { useMemo } from "react";
 import * as THREE from "three";
 import type { ViewerSceneHouseRoofMaterialObject } from "@sp/geometry";
 import { buildLineGeometry } from "../geometry/lineBuilders";
 import { linePoints } from "../geometry/scenePointHelpers";
 
 /**
- * House roof material renderer — emits the periodic line set (corrugation
+ * House roof material renderer â€” emits the periodic line set (corrugation
  * ribs, standing seams, etc.) projected onto the roof plane. The parent
  * group is the click/focus target; per-line geometries render with the
  * shared material colour for the layer.
@@ -34,7 +34,7 @@ export function HouseRoofMaterialObject({
 
   return (
     <group
-      data-testid={`scene-object-${object.id}`}
+      data-testid={`scene-object-${(object as { sourceId?: string }).sourceId ?? object.id}`}
       onClick={(event) => {
         event.stopPropagation();
         onSelect(object.id);

@@ -63,6 +63,8 @@ type DrawingWorkbenchProps = {
   onGeometryViewportStateChange?: (state: Geometry3DViewportState) => void;
   meta: EstimateDrawingSheetMeta;
   backHref?: string;
+  /** Project name shown at the top-left of the workbench chrome. */
+  projectLabel?: string | null;
   editableFields?: EstimateDrawingField[];
   modelEditableFields?: EstimateDrawingField[];
   showDebugOverlays?: boolean;
@@ -138,6 +140,7 @@ export default function DrawingWorkbench({
   onGeometryViewportStateChange,
   meta,
   backHref,
+  projectLabel,
   editableFields,
   modelEditableFields,
   showDebugOverlays,
@@ -172,6 +175,7 @@ export default function DrawingWorkbench({
         viewportMode={viewportMode}
         onViewportModeChange={onViewportModeChange}
         backHref={backHref}
+        projectLabel={projectLabel ?? null}
       />
       <WorkbenchViewportHost
         moduleLabel={moduleLabel}

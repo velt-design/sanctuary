@@ -20,7 +20,7 @@ import { createDrawingWorkbenchUiState } from '@/lib/drawings/state/drawingWorkb
 import type {
   ObjectWorkbenchCompatibilityOpeningDraft,
   ObjectWorkbenchCompatibilityRoofDraft,
-} from '@/lib/drawings/state/compat/objectWorkbenchCompatibilityModel';
+} from '@/lib/drawings/state/legacyObjectFirstCompatibilityAdapter';
 import {
   buildObjectFirstWorkbenchDraftFromProjectModel,
 } from '@/lib/drawings/state/objectFirstWorkbenchAdapter';

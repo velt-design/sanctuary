@@ -1,10 +1,10 @@
-import { useMemo } from "react";
+﻿import { useMemo } from "react";
 import * as THREE from "three";
 import type { ViewerSceneRoofCladdingPanelObject } from "@sp/geometry";
 import { buildPolygonSlabGeometry } from "../geometry/buildGeometries";
 
 /**
- * Roof cladding panel renderer — the per-panel slab geometry the
+ * Roof cladding panel renderer â€” the per-panel slab geometry the
  * geometry pipeline emits between the roof plane and the rafter
  * spacing. Slightly more opaque than the roof plane itself (0.52)
  * because cladding sits on top and reads as a distinct surface.
@@ -33,7 +33,7 @@ export function RoofCladdingPanelObject({
   );
   return (
     <mesh
-      data-testid={`scene-object-${object.id}`}
+      data-testid={`scene-object-${(object as { sourceId?: string }).sourceId ?? object.id}`}
       onClick={(event) => {
         event.stopPropagation();
         onSelect(object.id);

@@ -1456,7 +1456,13 @@ describe('normalizeGeometryConfig', () => {
       });
     }
 
-    it('LEGACY (no position): deck shifts when host attachmentSide changes — known coupling', () => {
+    it('LEGACY (no position): deck stays put when host attachmentSide changes — PR-G3c decoupling', () => {
+      // PR-G3c (2026-05-22) standardized the legacy deck-outline decoder on
+      // a `'rear'` frame inside `buildHouseModelConfig`. Previously, legacy
+      // decks (no `position` set) decoded against the host's `attachmentSide`
+      // and visibly shifted when the pergola attached to a different side.
+      // Acceptable per Phase 1's workbench-can-break permission; legacy decks
+      // re-migrate to position-based on first edit.
       const rear = normalizeGeometryConfig(makeDeckInput({ attachmentSide: 'rear', deckPosition: null }));
       const front = normalizeGeometryConfig(makeDeckInput({ attachmentSide: 'front', deckPosition: null }));
       expect(rear.ok).toBe(true);
@@ -1466,9 +1472,8 @@ describe('normalizeGeometryConfig', () => {
       const frontDeck = front.value.houseContext.model?.decks?.[0];
       expect(rearDeck?.outline).not.toBeNull();
       expect(frontDeck?.outline).not.toBeNull();
-      // 'rear' decoder: world.y = -depth*1000. 'front' decoder: world.y = (1+depth)*1000.
-      // For the same polygon, they produce different world coords.
-      expect(rearDeck!.outline![0]!.y).not.toBeCloseTo(frontDeck!.outline![0]!.y, 6);
+      // Both decode against the standardized 'rear' frame — identical world coords.
+      expect(rearDeck!.outline![0]!.y).toBeCloseTo(frontDeck!.outline![0]!.y, 6);
     });
 
     it('FIRST-CLASS (position set): deck position is applied post-decode (decoupled from attachmentSide drift)', () => {

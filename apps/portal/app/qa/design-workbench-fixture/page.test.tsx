@@ -58,7 +58,7 @@ describe('DesignWorkbenchFixturePage', () => {
 
     expect(markup).toContain('Fixture Preview');
     expect(markup).toContain('Drawing workbench');
-    expect(markup).toContain('Sheet View');
+    expect(markup).toContain('Sheet Output');
     expect(markup).toContain('Back to Project');
     expect(markup).toContain('data-project-id="fixture-roof"');
     expect(markup).toContain('data-workbench-context="fixture_ready"');

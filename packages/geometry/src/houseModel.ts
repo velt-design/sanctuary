@@ -32,7 +32,7 @@ import type {
   RoofPlane3D,
   Vector3,
 } from './contracts';
-import { buildHouseModelConfig } from './normalize';
+import { buildHouseModelConfig, resolveHouseAttachmentStrategy } from './normalize';
 import {
   normalizeHouseRoofPitchDegForForm,
   validateHouseRoofSelection,
@@ -345,6 +345,14 @@ export function deriveHouseRoofAppendageSupportFromFootprint(input: {
 
 
 export function buildHouseModel3D(input: {
+  /**
+   * Source house form id. Stamped onto the returned `HouseModel3D.houseId`
+   * so the scene-assembly seam can prefix derived scene-object ids by
+   * source house. Required even for single-house scenes — tests pass a
+   * stable literal (e.g. `'test-house'`) so multi-house regressions trip
+   * the lock-in invariant test (PR-Geo2) rather than slipping through.
+   */
+  houseId: string;
   config: GeometryConfig;
   attachmentEdge: Line3 | null;
 }): HouseModel3D | null {
@@ -698,6 +706,7 @@ export function buildHouseModel3D(input: {
     }));
 
   return {
+    houseId: input.houseId,
     footprint,
     wallSegments: displayWallSegments,
     roofPlanes: roof.roofPlanes,
@@ -761,6 +770,13 @@ export function buildHouseModel3D(input: {
 }
 
 export function buildHouseReferenceGeometry(input: {
+  /**
+   * Source house form id. Stamped onto the returned model so the scene
+   * seam can prefix derived ids by source house. For the solver path this
+   * is the host house id (the form the active pergola attaches to); for
+   * tests it's a stable literal. Required.
+   */
+  houseId: string;
   config: GeometryConfig;
   attachmentEdge: Line3 | null;
 }): HouseReferenceGeometry {
@@ -770,7 +786,11 @@ export function buildHouseReferenceGeometry(input: {
   // to world. When null, legacy world-coord path applies (footprint was
   // pergola-anchored in `normalize.ts` and pre-translated implicitly).
   const housePosition = input.config.houseContext.position ?? null;
-  const model = buildHouseModel3D(input);
+  const model = buildHouseModel3D({
+    houseId: input.houseId,
+    config: input.config,
+    attachmentEdge: input.attachmentEdge,
+  });
 
   if (input.config.connection.type === 'freestanding') {
     // Freestanding houses now populate `model` (PR8b) so multi-form workbench
@@ -905,12 +925,15 @@ export function buildHouseModel3DFromRawHouseInput(input: {
 
   const connectionType: ConnectionType = pergolaAttachment?.connectionType ?? 'freestanding';
   const attachmentSide: AttachmentSide = pergolaAttachment?.attachmentSide ?? 'rear';
+  const attachmentStrategy =
+    connectionType === 'freestanding'
+      ? 'none'
+      : resolveHouseAttachmentStrategy(rawHouse.attachmentStrategy ?? null, connectionType);
 
   const houseModelConfig: HouseModelConfig | null = buildHouseModelConfig({
     rawHouseContext: rawHouse,
     footprint,
-    connectionType,
-    attachmentSide,
+    attachmentStrategy,
     houseUndersideMm,
     referenceUndersideMm,
   });
@@ -983,6 +1006,7 @@ export function buildHouseModel3DFromRawHouseInput(input: {
   };
 
   return buildHouseModel3D({
+    houseId: rawHouse.houseId,
     config: partialConfig as GeometryConfig,
     attachmentEdge: pergolaAttachment?.attachmentEdge ?? null,
   });

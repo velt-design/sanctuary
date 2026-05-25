@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { HOUSE_FOOTPRINT_PRESET_OPTIONS, type ModuleViewsTab } from '@/app/staff/calculator/ModuleViewsCard';
 import {
   normalizeDrawingRotationQuarterTurns,
@@ -16,47 +16,15 @@ import type {
   CalculatorModuleInputs,
 } from '@/lib/types/calculator';
 import type { ObjectWorkbenchGeometryEditIntent, ObjectWorkbenchGeometryEditState, ObjectWorkbenchPergolaFamily } from '@/lib/drawings/geometry/geometryEditAdapter';
+import {
+  RailSection,
+  renderRailField,
+  withCurrentOption,
+  type CommitResult,
+  type RailFieldDefinition,
+  type SelectOption,
+} from './fields';
 import styles from './WorkbenchRail.module.css';
-
-type CommitResult = { ok: boolean; error?: string };
-
-type SelectOption = { label: string; value: string; disabled?: boolean };
-
-type RailFieldDefinition =
-  | {
-      id: string;
-      kind: 'select';
-      label: string;
-      value: string;
-      options: SelectOption[];
-      helperText?: string;
-      error?: string;
-      disabled?: boolean;
-      pending?: boolean;
-      onCommit: (value: string) => Promise<unknown> | void;
-    }
-  | {
-      id: string;
-      kind: 'number';
-      label: string;
-      value: string;
-      helperText?: string;
-      error?: string;
-      disabled?: boolean;
-      pending?: boolean;
-      onCommit: (value: string) => Promise<unknown> | void;
-    }
-  | {
-      id: string;
-      kind: 'toggle';
-      label: string;
-      value: boolean;
-      helperText?: string;
-      error?: string;
-      disabled?: boolean;
-      pending?: boolean;
-      onCommit: (value: boolean) => Promise<unknown> | void;
-    };
 
 type SanctuaryWorkbenchSectionVisibility = {
   geometry?: boolean;
@@ -186,124 +154,12 @@ const CANONICAL_HOUSE_CONTEXT_EXCLUDED_IDS = new Set([
   'house-footprint-side-run',
 ]);
 
-function withCurrentOption(options: SelectOption[], value: string, fallbackLabel: string): SelectOption[] {
-  if (!value || options.some((option) => option.value === value)) return options;
-  return [{ label: `${fallbackLabel}: ${value}`, value }, ...options];
-}
-
 function gableEndFrameOptionsForConnection(connectionType: ObjectWorkbenchGeometryEditState['connection']['type']): SelectOption[] {
   return GABLE_END_FRAME_OPTIONS.filter((option) => {
     if (option.value === 'none') return true;
     if (connectionType === 'freestanding') return option.value === 'both_ends';
     return option.value === 'outer_end_only' || option.value === 'both_ends';
   });
-}
-
-function renderField(field: RailFieldDefinition) {
-  if (field.kind === 'toggle') {
-    return <ToggleField key={field.id} {...field} />;
-  }
-
-  if (field.kind === 'select') {
-    return <SelectField key={field.id} {...field} />;
-  }
-
-  return <NumberField key={field.id} {...field} />;
-}
-
-function SelectField(field: Extract<RailFieldDefinition, { kind: 'select' }>) {
-  return (
-    <label className={styles.field}>
-      <span className={styles.fieldLabel}>{field.label}</span>
-      <select
-        id={field.id}
-        className={styles.select}
-        aria-label={field.label}
-        value={field.value}
-        disabled={field.disabled || field.pending}
-        onChange={(event) => void field.onCommit(event.target.value)}
-      >
-        {field.options.map((option) => (
-          <option key={option.value} value={option.value} disabled={option.disabled}>
-            {option.label}
-          </option>
-        ))}
-      </select>
-      {field.error ? <span className={styles.fieldError}>{field.error}</span> : field.helperText ? <span className={styles.fieldHint}>{field.helperText}</span> : null}
-    </label>
-  );
-}
-
-function NumberField(field: Extract<RailFieldDefinition, { kind: 'number' }>) {
-  const [draft, setDraft] = useState(field.value);
-
-  useEffect(() => {
-    setDraft(field.value);
-  }, [field.value]);
-
-  const commit = useCallback(async () => {
-    if (draft === field.value) return;
-    await field.onCommit(draft);
-  }, [draft, field]);
-
-  return (
-    <label className={styles.field}>
-      <span className={styles.fieldLabel}>{field.label}</span>
-      <input
-        id={field.id}
-        className={styles.input}
-        aria-label={field.label}
-        inputMode="decimal"
-        value={draft}
-        disabled={field.disabled || field.pending}
-        onChange={(event) => setDraft(event.target.value)}
-        onBlur={() => void commit()}
-        onKeyDown={(event) => {
-          if (event.key === 'Enter') {
-            event.preventDefault();
-            void commit();
-          }
-
-          if (event.key === 'Escape') {
-            event.preventDefault();
-            setDraft(field.value);
-          }
-        }}
-      />
-      {field.error ? <span className={styles.fieldError}>{field.error}</span> : field.helperText ? <span className={styles.fieldHint}>{field.helperText}</span> : null}
-    </label>
-  );
-}
-
-function ToggleField(field: Extract<RailFieldDefinition, { kind: 'toggle' }>) {
-  return (
-    <label className={`${styles.field} ${styles.toggleField}`}>
-      <div className={styles.toggleHeader}>
-        <span className={styles.fieldLabel}>{field.label}</span>
-        <button
-          id={field.id}
-          type="button"
-          aria-label={field.label}
-          className={`${styles.toggleButton} ${field.value ? styles.toggleButtonActive : ''}`}
-          aria-pressed={field.value}
-          disabled={field.disabled || field.pending}
-          onClick={() => void field.onCommit(!field.value)}
-        >
-          {field.value ? 'On' : 'Off'}
-        </button>
-      </div>
-      {field.error ? <span className={styles.fieldError}>{field.error}</span> : field.helperText ? <span className={styles.fieldHint}>{field.helperText}</span> : null}
-    </label>
-  );
-}
-
-function Section({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <section className={styles.section}>
-      <h4 className={styles.sectionTitle}>{title}</h4>
-      <div className={styles.fieldStack}>{children}</div>
-    </section>
-  );
 }
 
 export default function SanctuaryWorkbenchRail({
@@ -1312,16 +1168,16 @@ export default function SanctuaryWorkbenchRail({
         </section>
       ) : null}
 
-      {sectionVisibility.geometry ? <Section title="Geometry">{geometryFields.map(renderField)}</Section> : null}
-      {sectionVisibility.roof ? <Section title="Roof">{roofFields.map(renderField)}</Section> : null}
+      {sectionVisibility.geometry ? <RailSection title="Geometry">{geometryFields.map(renderRailField)}</RailSection> : null}
+      {sectionVisibility.roof ? <RailSection title="Roof">{roofFields.map(renderRailField)}</RailSection> : null}
       {sectionVisibility.gable && gableFields.length ? (
-        <Section title="Gable Baseline">{gableFields.map(renderField)}</Section>
+        <RailSection title="Gable Baseline">{gableFields.map(renderRailField)}</RailSection>
       ) : null}
       {sectionVisibility.houseContext !== 'none' && visibleHouseFields.length ? (
-        <Section title={houseContextSectionTitle}>{visibleHouseFields.map(renderField)}</Section>
+        <RailSection title={houseContextSectionTitle}>{visibleHouseFields.map(renderRailField)}</RailSection>
       ) : null}
-      {sectionVisibility.supports ? <Section title="Supports">{supportFields.map(renderField)}</Section> : null}
-      {sectionVisibility.overrides ? <Section title="Overrides">{overrideFields.map(renderField)}</Section> : null}
+      {sectionVisibility.supports ? <RailSection title="Supports">{supportFields.map(renderRailField)}</RailSection> : null}
+      {sectionVisibility.overrides ? <RailSection title="Overrides">{overrideFields.map(renderRailField)}</RailSection> : null}
     </>
   );
 

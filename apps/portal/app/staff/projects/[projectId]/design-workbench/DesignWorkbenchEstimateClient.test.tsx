@@ -24,7 +24,7 @@ import {
 import {
   buildObjectFirstOpeningDraftsFromCompatibilityDrafts,
 } from '@/lib/drawings/state/legacyObjectFirstCompatibilityAdapter';
-import type { ObjectWorkbenchCompatibilityOpeningDraft } from '@/lib/drawings/state/compat/objectWorkbenchCompatibilityModel';
+import type { ObjectWorkbenchCompatibilityOpeningDraft } from '@/lib/drawings/state/legacyObjectFirstCompatibilityAdapter';
 import { dispatchPointer, installDomGeometryMock, renderIntoDocument } from '../../../../../../../test/reactHarness';
 
 const originalConsoleError = console.error.bind(console);
@@ -450,9 +450,9 @@ describe('DesignWorkbenchEstimateClient', () => {
     expect(rendered.container.textContent).toContain('House Forms');
     expect(rendered.container.textContent).toContain('Diagnostics');
     expect(rendered.container.textContent).toContain('Pergolas');
-    expect(rendered.container.textContent).toContain('Sheet View');
-    expect(rendered.container.textContent).toContain('Plan');
-    expect(rendered.container.textContent).toContain('3D');
+    expect(rendered.container.textContent).toContain('Sheet Output');
+    expect(rendered.container.textContent).toContain('Plan Editor');
+    expect(rendered.container.textContent).toContain('3D Review');
     expect(rendered.container.textContent).toContain('Back to Project');
     expect(rendered.container.textContent).not.toContain('Model Space');
     expect(rendered.container.textContent).not.toContain('3D View');
@@ -931,7 +931,7 @@ describe('DesignWorkbenchEstimateClient', () => {
     rendered.unmount();
   });
 
-  it('renders Sheet View from locally resolved stale pricing outputs', async () => {
+  it('renders Sheet Output from locally resolved stale pricing outputs', async () => {
     const estimate = buildEstimateDetail({
       mutateSnapshot: (snapshot) => {
         const next = structuredClone(snapshot) as {
@@ -950,7 +950,7 @@ describe('DesignWorkbenchEstimateClient', () => {
     );
 
     await flushAsyncWork();
-    clickButtonByText(rendered.container, 'Sheet View');
+    clickButtonByText(rendered.container, 'Sheet Output');
     await flushAsyncWork();
 
     expect(rendered.container.querySelector('[aria-label="Plan view A3 drawing sheet"]')).not.toBeNull();
@@ -998,15 +998,15 @@ describe('DesignWorkbenchEstimateClient', () => {
         expect(rendered.container.querySelector('[aria-label="Side run (m)"]')).not.toBeNull();
       }
 
-      clickButtonByText(rendered.container, 'Plan');
+      clickButtonByText(rendered.container, 'Plan Editor');
       await flushAsyncWork();
       expect(rendered.container.querySelector('[data-object-workbench-shape-hit="footprint:house-main"]')).not.toBeNull();
 
-      clickButtonByText(rendered.container, 'Sheet View');
+      clickButtonByText(rendered.container, 'Sheet Output');
       await flushAsyncWork();
       expect(rendered.container.querySelector('[aria-label="Plan view A3 drawing sheet"]')).not.toBeNull();
 
-      clickButtonByText(rendered.container, '3D');
+      clickButtonByText(rendered.container, '3D Review');
       await flushAsyncWork();
       expect(rendered.container.querySelector('[data-testid="scene-object-house-solid-house-wall-1"]')).not.toBeNull();
     }
@@ -1227,7 +1227,7 @@ describe('DesignWorkbenchEstimateClient', () => {
     await flushAsyncWork();
     expect(rendered.container.querySelector('[data-object-workbench-shape-hit="footprint:house-main"]')).not.toBeNull();
 
-    clickButtonByText(rendered.container, 'Sheet View');
+    clickButtonByText(rendered.container, 'Sheet Output');
     await flushAsyncWork();
     expect(rendered.container.querySelector('[aria-label="Plan view A3 drawing sheet"]')).not.toBeNull();
 
@@ -2110,7 +2110,7 @@ describe('DesignWorkbenchEstimateClient', () => {
     );
 
     await flushAsyncWork();
-    clickButtonByText(rendered.container, 'Sheet View');
+    clickButtonByText(rendered.container, 'Sheet Output');
     await flushAsyncWork();
 
     expect(rendered.container.textContent).toContain('Draft overlay note for hidden route');

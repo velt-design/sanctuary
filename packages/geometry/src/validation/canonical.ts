@@ -241,6 +241,15 @@ function canonicalizeHouseModel(
 ): HouseModel3D | null {
   if (!model) return null;
   return {
+    // `houseId` is normalized to a stable placeholder in the canonical form.
+    // PR-Geo1 (2026-05-25): the field is identity (which house this is),
+    // not geometric content (the shape of this house). Per the pattern
+    // documented for `roofRidgeAxis` in contracts.ts, identity fields are
+    // excluded from the golden-hash so renaming/repointing a house doesn't
+    // drift the canonical assembly diff. Without this normalisation, every
+    // golden fixture would break the moment a houseId differs from the
+    // legacy 'host-house' default.
+    houseId: 'canonical-house',
     footprint: model.footprint.map(canonicalizePoint3),
     wallSegments: [...model.wallSegments]
       .sort((a, b) => a.id.localeCompare(b.id))

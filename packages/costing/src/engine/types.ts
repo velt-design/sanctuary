@@ -587,3 +587,151 @@ export type SiteOutputV1 = {
   add_ons: AddOnsV1;
   totals: TotalsV1;
 };
+
+// ============================================================================
+// V2 — scene-derived cost input (PR-2B.3, 2026-05-22)
+// ============================================================================
+//
+// Phase 2 north star (locked 2026-05-22): the cost engine receives PERGOLA
+// data only (plus future pergola accessories — blinds, lights, etc.). House
+// forms, decks, openings exist in the scene for design but are NOT costed.
+//
+// Logical pergola grouping (which pergola objects belong to one pergola vs.
+// stand alone) is derived from spatial adjacency in the workbench scene:
+// pergolas snapped to each other are modules of one logical pergola;
+// unsnapped pergolas are separate. The workbench builder
+// (`buildSiteInputsV2FromScene`) does this derivation via
+// `derivePergolaGroupsFromScene` (PR-2B.2). The shape below is the contract
+// the cost engine accepts.
+//
+// Differences from V1:
+// - No `houseContext`, no `decks`, no `openings` fields anywhere. Those are
+//   workbench-scene data the cost engine doesn't read (confirmed in PR-G3a
+//   investigation; cost engine reads only pergola-shape fields).
+// - `access`, `height` lift to site-level (they're per-job, never varied per
+//   pergola in practice).
+// - Each logical pergola exposes an `accessories[]` slot for future blinds,
+//   lights, etc. Empty union for now — extensible without contract churn.
+// - Module grouping is scene-derived, not driven by a stored `pergolaId`
+//   field on the calculator inputs.
+
+/**
+ * Future-proofed accessory slot. Empty union for now — populated when the
+ * first pergola accessory (blinds, lights, etc.) lands. Cost engine accepts
+ * the empty array as a no-op pass-through; pricing logic stays out of the
+ * way until a concrete accessory type ships.
+ */
+export type PergolaAccessoryV2 = never;
+
+/**
+ * Per-physical-module pergola cost fields. Mirrors the pergola-only subset
+ * of `CostInputsV1`. Each module is one `PergolaObjectModel` in the scene;
+ * modules of the same logical pergola are snapped to each other.
+ *
+ * `access`, `height`, `travel_ex_gst`, `extras_allowance_ex_gst`,
+ * `quote_discount_pct`, `job_type` lift to `SiteInputsV2` (site-level).
+ */
+export type PergolaModuleCostInputV2 = {
+  /** Stable id from the scene's `PergolaObjectModel.id`. */
+  id: string;
+
+  length_m: number;
+  roof_span_m?: number;
+  projection_m?: number;
+  post_cut_height_m?: number;
+  roof_pitch_deg?: number;
+
+  pergola_style: PergolaStyleUi;
+  roof_material: RoofMaterial;
+  extrusion_colour: ExtrusionColour;
+  gable_end_frames_mode?: GableEndFramesMode;
+  powdercoat_standard_colour?: string;
+  powdercoat_is_custom?: boolean;
+  powdercoat_custom_colour?: string;
+  mixed_roof?: MixedRoofInputsV1;
+  hip_corner?: HipCornerInputsV1;
+  flashings?: FlashingInputsV1;
+
+  post_count?: number;
+  house_connection_type: HouseConnectionType;
+  /**
+   * Length of the pergola edge that meets the host wall (mm). When
+   * `null`/`undefined`, defaults to `length_m * 1000` (the long side —
+   * legacy `attachment_side: 'rear' | 'front'` behavior). Workbench
+   * derives this from the snap-attached edge length.
+   */
+  attachment_length_mm?: number | null;
+  post_connection_type: PostConnectionType;
+  ground?: GroundCondition;
+
+  box_perimeter_enabled?: boolean;
+  internal_roof_type?: RoofType;
+  fall_distance_mm?: number;
+  gutter_length_m?: number;
+  downpipe_count?: number;
+  downpipe_join_count?: number;
+  downpipe_elbow_count?: number;
+  box_gutter_house_edge?: BoxGutterEdge;
+  box_gutter_far_edge?: BoxGutterEdge;
+  gable_house_edge_gutter?: 'house' | 'our';
+  gable_outer_edge_gutter?: 'house' | 'our';
+  overhang_enabled?: boolean;
+  overhang_amount_m?: number;
+  overhang_support_beam_profile?: OverhangSupportBeamProfile;
+  inverted_enabled?: boolean;
+  inverted_house_gutter?: boolean;
+  separate_gutter_enabled?: boolean;
+  overrides?: {
+    ledger_profile?: string;
+    rafter_profile?: string;
+    post_profile?: string;
+    front_beam_profile?: string;
+    ridge_beam_profile?: string;
+    box_perimeter_beam_profile?: string;
+    overhang_support_beam_profile?: string;
+    tie_beam_profile?: string;
+    strut_profile?: string;
+  };
+
+  timber_roof_above_type?: TimberRoofAboveType;
+  timber_insulated_panel_thickness_mm?: number;
+  timber_tray_width_mm?: number;
+  timber_roof_allowance_ex_gst?: number;
+  infills?: InfillInputV1[];
+};
+
+/**
+ * One logical pergola — one or more physical modules snapped together in
+ * the scene, plus future accessory slots. Derived from the scene by the
+ * workbench builder; cost engine treats this as the unit it prices.
+ */
+export type PergolaInputsV2 = {
+  /** Logical-pergola id, stable across runs (from `PergolaGroup.pergolaId`). */
+  id: string;
+  /** Display label (commonly the first member's label). */
+  label?: string;
+  /** Physical pergola modules connected to each other via snap-derived adjacency. */
+  modules: PergolaModuleCostInputV2[];
+  /**
+   * Pergola-attached accessories (blinds, lights, awnings, etc.). Empty
+   * for now; the slot exists so the cost engine contract is forward-
+   * compatible without future churn.
+   */
+  accessories: PergolaAccessoryV2[];
+};
+
+/**
+ * Scene-derived cost input. Replaces `SiteInputsV1` for the workbench cost
+ * path. Marketing form path keeps `SiteInputsV1` (per Phase 2 plan Q5
+ * "Marketing path stays independent").
+ */
+export type SiteInputsV2 = {
+  schema_version: 'v2';
+  pergolas: PergolaInputsV2[];
+  job_type?: JobType;
+  access: AccessLevel;
+  height: HeightCategory;
+  travel_ex_gst?: number;
+  extras_allowance_ex_gst?: number;
+  quote_discount_pct?: number;
+};

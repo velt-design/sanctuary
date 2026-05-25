@@ -11,10 +11,17 @@ import { listParityCriticalSanctuaryGeometryWorkbenchFixtures } from '@/lib/draw
 import { buildCommercialDesignInputFromCalculatorInputs } from '@/lib/estimates/commercialDesignPayload';
 import { buildSiteInputsFromCalculatorInputs } from '@/lib/estimates/costingPayload';
 import type { CalculatorInputs, CalculatorModuleInputs } from '@/lib/types/calculator';
-import { buildWorkbenchSolvedModel, type WorkbenchSolvedModel, type WorkbenchSolvedModule } from './state/workbenchSolvedModel';
 import {
-  buildCommercialDesignInputFromWorkbenchSolvedModel,
-  buildCommercialModuleInputFromWorkbenchSolvedModule,
+  buildWorkbenchSolvedModel,
+  buildWorkbenchSolvedProject,
+  type SolvedPergola,
+  type WorkbenchSolvedModel,
+  type WorkbenchSolvedModule,
+  type WorkbenchSolvedProject,
+} from './state/workbenchSolvedModel';
+import {
+  buildCommercialDesignInputFromWorkbenchSolvedProject,
+  buildCommercialPergolaInput,
 } from './commercialDesignPayload';
 
 const SITE_COMMERCIAL = {
@@ -426,10 +433,14 @@ function makeSolvedModel(snapshot = makeSnapshot()): WorkbenchSolvedModel {
   });
 }
 
-function requireModule(model: WorkbenchSolvedModel, index = 0): WorkbenchSolvedModule {
-  const module = model.modules[index];
-  if (!module) throw new Error(`Missing solved module ${index}.`);
-  return module;
+function makeSolvedProject(snapshot = makeSnapshot()): WorkbenchSolvedProject {
+  return buildWorkbenchSolvedProject({ solvedModel: makeSolvedModel(snapshot) });
+}
+
+function requirePergola(project: WorkbenchSolvedProject, index = 0): SolvedPergola {
+  const pergola = project.pergolas[index];
+  if (!pergola) throw new Error(`Missing solved pergola ${index}.`);
+  return pergola;
 }
 
 function cloneFixtureSnapshot(snapshot: Record<string, unknown>): SnapshotWithCalculatorInputs {
@@ -470,8 +481,8 @@ function expectPositiveNumber(value: number | null | undefined, label: string): 
 describe('workbench commercialDesignPayload', () => {
   it('builds a workbench-solved commercial payload with explicit site commercial fields and identity', () => {
     const solvedModel = makeSolvedModel();
-    const commercial = buildCommercialDesignInputFromWorkbenchSolvedModel({
-      solvedModel,
+    const commercial = buildCommercialDesignInputFromWorkbenchSolvedProject({
+      solvedProject: buildWorkbenchSolvedProject({ solvedModel }),
       siteCommercial: SITE_COMMERCIAL,
     });
 
@@ -490,12 +501,12 @@ describe('workbench commercialDesignPayload', () => {
 
   it('fills stable geometry and quantity buckets from assembly dimensions, members, and quantity hooks', () => {
     const solvedModel = makeSolvedModel();
-    const commercial = buildCommercialDesignInputFromWorkbenchSolvedModel({
-      solvedModel,
+    const commercial = buildCommercialDesignInputFromWorkbenchSolvedProject({
+      solvedProject: buildWorkbenchSolvedProject({ solvedModel }),
       siteCommercial: SITE_COMMERCIAL,
     });
     const module = commercial.pergolas[0]?.modules[0];
-    const geometryTakeoff = requireModule(solvedModel).geometryArtifact?.quantityTakeoff;
+    const geometryTakeoff = requirePergola(buildWorkbenchSolvedProject({ solvedModel })).geometryArtifact?.quantityTakeoff;
     const geometryPlane = geometryTakeoff?.roofPlanes.items[0];
 
     expect(module?.trustStatus).toBe('ready');
@@ -562,10 +573,10 @@ describe('workbench commercialDesignPayload', () => {
   });
 
   it('keeps blocked invalid geometry modules in the payload with diagnostics', () => {
-    const solvedModel = makeSolvedModel();
-    const ready = requireModule(solvedModel);
-    const invalidModule: WorkbenchSolvedModule = {
-      ...ready,
+    const solvedProject = makeSolvedProject();
+    const ready = requirePergola(solvedProject);
+    const invalidSource: WorkbenchSolvedModule = {
+      ...ready.sourceModules[0]!,
       trust: {
         status: 'invalid_geometry',
         issues: [],
@@ -575,7 +586,11 @@ describe('workbench commercialDesignPayload', () => {
       assembly: null,
     };
 
-    const module = buildCommercialModuleInputFromWorkbenchSolvedModule({ module: invalidModule });
+    const module = buildCommercialPergolaInput({
+      module: invalidSource,
+      pergolaId: ready.id,
+      pergolaLabel: ready.label,
+    });
 
     expect(module.trustStatus).toBe('blocked');
     expect(module.solvedGeometry.status).toBe('blocked');
@@ -588,10 +603,10 @@ describe('workbench commercialDesignPayload', () => {
   });
 
   it('includes unsupported legacy modules instead of dropping them', () => {
-    const solvedModel = makeSolvedModel();
-    const ready = requireModule(solvedModel);
-    const unsupportedModule: WorkbenchSolvedModule = {
-      ...ready,
+    const solvedProject = makeSolvedProject();
+    const ready = requirePergola(solvedProject);
+    const unsupportedSource: WorkbenchSolvedModule = {
+      ...ready.sourceModules[0]!,
       trust: {
         status: 'legacy_unsupported_family',
         issues: ['legacy_fallback'],
@@ -600,9 +615,15 @@ describe('workbench commercialDesignPayload', () => {
       },
       assembly: null,
     };
+    const unsupportedPergola: SolvedPergola = {
+      ...ready,
+      trust: unsupportedSource.trust,
+      assembly: null,
+      sourceModules: [unsupportedSource],
+    };
 
-    const commercial = buildCommercialDesignInputFromWorkbenchSolvedModel({
-      solvedModel: { ...solvedModel, modules: [unsupportedModule], activeModule: unsupportedModule },
+    const commercial = buildCommercialDesignInputFromWorkbenchSolvedProject({
+      solvedProject: { ...solvedProject, pergolas: [unsupportedPergola], activePergola: unsupportedPergola, activePergolaId: unsupportedPergola.id },
       siteCommercial: SITE_COMMERCIAL,
     });
 
@@ -630,8 +651,8 @@ describe('workbench commercialDesignPayload', () => {
     });
     const solvedModel = makeSolvedModel(snapshot);
 
-    const commercial = buildCommercialDesignInputFromWorkbenchSolvedModel({
-      solvedModel,
+    const commercial = buildCommercialDesignInputFromWorkbenchSolvedProject({
+      solvedProject: buildWorkbenchSolvedProject({ solvedModel }),
       siteCommercial: SITE_COMMERCIAL,
     });
 
@@ -666,11 +687,12 @@ describe('workbench commercialDesignPayload', () => {
           designRequestId: fixture.request.id,
         },
       });
-      const workbenchCommercial = buildCommercialDesignInputFromWorkbenchSolvedModel({
-        solvedModel,
+      const solvedProject = buildWorkbenchSolvedProject({ solvedModel });
+      const workbenchCommercial = buildCommercialDesignInputFromWorkbenchSolvedProject({
+        solvedProject,
         siteCommercial: calculatorCommercial.siteCommercial,
       });
-      const solvedModule = requireModule(solvedModel);
+      const solvedModule = requirePergola(solvedProject);
 
       const report = compareCommercialDesignInputsV1(calculatorCommercial, workbenchCommercial, {
         labelLeft: `${fixture.slug}:calculator_compat`,
@@ -797,8 +819,9 @@ describe('workbench commercialDesignPayload', () => {
         snapshot: saved.snapshot,
         geometryIdentity: identity,
       });
-      const workbenchCommercial = buildCommercialDesignInputFromWorkbenchSolvedModel({
-        solvedModel,
+      const solvedProject = buildWorkbenchSolvedProject({ solvedModel });
+      const workbenchCommercial = buildCommercialDesignInputFromWorkbenchSolvedProject({
+        solvedProject,
         siteCommercial: calculatorCommercial.siteCommercial,
       });
 

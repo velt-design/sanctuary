@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+﻿import { useMemo } from "react";
 import * as THREE from "three";
 import type { ViewerSceneHouseLinearSolidObject } from "@sp/geometry";
 import {
@@ -60,7 +60,7 @@ export function HouseLinearSolidObject({
   if (renderMeshGeometry) {
     return (
       <mesh
-        data-testid={`scene-object-${object.id}`}
+        data-testid={`scene-object-${(object as { sourceId?: string }).sourceId ?? object.id}`}
         onClick={(event) => {
           event.stopPropagation();
           onSelect(object.id);
@@ -85,7 +85,7 @@ export function HouseLinearSolidObject({
 
   return (
     <mesh
-      data-testid={`scene-object-${object.id}`}
+      data-testid={`scene-object-${(object as { sourceId?: string }).sourceId ?? object.id}`}
       matrixAutoUpdate={false}
       matrix={placement.matrix}
       onClick={(event) => {

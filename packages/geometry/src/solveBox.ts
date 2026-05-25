@@ -497,7 +497,7 @@ export function solveBoxAssembly3D(config: GeometryConfig): SolveAssembly3DResul
     datum: config.datum,
     outline,
     attachmentEdge,
-    house: buildHouseReferenceGeometry({ config, attachmentEdge }),
+    house: buildHouseReferenceGeometry({ houseId: 'host-house', config, attachmentEdge }),
     members,
     roofPlanes,
     roofCladdingPanels: [],

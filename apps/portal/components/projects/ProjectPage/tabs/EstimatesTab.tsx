@@ -31,15 +31,16 @@ import {
   type EstimateSaveMode,
   buildEstimatePayloadPreservingCurrentPricing,
   buildEstimatePayloadFromSiteCosting,
-  buildSiteInputsFromCalculatorInputs,
   deriveSiteResultWarnings,
   hasPricingAffectingCalculatorInputChanges,
 } from '@/lib/estimates/costingPayload';
+import { buildSiteInputsV2FromScene } from '@/lib/estimates/buildSiteInputsV2FromScene';
+import { buildObjectFirstWorkbenchProjectModelFromLegacyEstimateSnapshot } from '@/lib/drawings/state/legacyEstimateSnapshotAdapter';
 import type { EstimateDetail, EstimateMeta, EstimateSummary } from '@/lib/estimates/types';
 import type { ProjectPageSnapshot } from '@/lib/projects/types';
 import { isCalculatorInputsV2, isLegacyCalculatorInputsV1, type CalculatorModuleInputs, type LegacyCalculatorInputsV1 } from '@/lib/types/calculator';
 import type { QuoteStatus, QuoteVersion } from '@/lib/quotes/types';
-import { calculateSiteCostV1, getCostingMeta } from '@/lib/costing/costEngine';
+import { calculateSiteCostV2, getCostingMeta } from '@/lib/costing/costEngine';
 import { useToast } from '@/components/ui/toast/ToastProvider';
 import RequestDesignModal from '@/components/designPackages/RequestDesignModal';
 import legacy from '@/app/staff/projects/projects.module.css';
@@ -1334,7 +1335,21 @@ export default function EstimatesTab({
       const estimatePayload =
         saveMode === 'reprice_latest'
           ? await (async () => {
-              const siteResult = await calculateSiteCostV1(buildSiteInputsFromCalculatorInputs(activeDraft.inputs));
+              // PR-2B.5 (2026-05-22): switch the workbench save-reprice from
+              // V1 to V2. Build the workbench project model from snapshot +
+              // draft, then derive scene-grouped pergola costing via
+              // `buildSiteInputsV2FromScene`. Logical-pergola grouping comes
+              // from spatial adjacency in the scene (snapped pergolas =
+              // modules of same logical pergola) — see Phase 2 plan Q4.
+              const projectModel = buildObjectFirstWorkbenchProjectModelFromLegacyEstimateSnapshot({
+                snapshot: saveSourceDetail.calculatorSnapshot,
+                draft: activeDraft,
+              });
+              const siteInputsV2 = buildSiteInputsV2FromScene({
+                projectModel,
+                calculatorInputs: activeDraft.inputs,
+              });
+              const siteResult = await calculateSiteCostV2(siteInputsV2);
               const warnings = deriveSiteResultWarnings(siteResult);
               const criticalWarnings = warnings.filter((warning) => mapEngineLevel(warning.level) === 'critical');
               const reviewWarnings = warnings.filter((warning) => mapEngineLevel(warning.level) === 'review');

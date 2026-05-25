@@ -191,7 +191,7 @@ function resolveHouseRoofMaterial(value: HouseRoofMaterial | null | undefined): 
   return DEFAULT_HOUSE_ROOF_MATERIAL;
 }
 
-function resolveHouseAttachmentStrategy(
+export function resolveHouseAttachmentStrategy(
   value: HouseAttachmentStrategy | null | undefined,
   connectionType: ConnectionType,
 ): HouseAttachmentStrategy {
@@ -489,8 +489,13 @@ function resolveFootprintMode(value: HouseFootprintMode | 'orthogonal_polygon' |
 export function buildHouseModelConfig(input: {
   rawHouseContext: RawGeometryModuleInput['houseContext'];
   footprint: GeometryConfig['houseContext']['footprint'];
-  connectionType: ConnectionType;
-  attachmentSide: AttachmentSide;
+  /**
+   * Pre-resolved attachment strategy. PR-G3c (2026-05-22) removed the
+   * internal `resolveHouseAttachmentStrategy(rawCtx.attachmentStrategy,
+   * connectionType)` call so this function stops carrying pergola context.
+   * Callers resolve once and pass through.
+   */
+  attachmentStrategy: HouseAttachmentStrategy;
   houseUndersideMm: number | null;
   referenceUndersideMm: number | null;
 }): HouseModelConfig | null {
@@ -524,10 +529,17 @@ export function buildHouseModelConfig(input: {
     fallbackPitchDeg: DEFAULT_HOUSE_ROOF_PITCH_DEG,
   });
   const rawEave = input.rawHouseContext.eave;
+  // PR-G3c (2026-05-22): standardize on `'rear'` for the legacy deck-outline
+  // decoder frame. Previously this used the pergola's `attachmentSide`, which
+  // re-coupled this function to pergola context. The post-migration path
+  // already standardizes on `'rear'` (see Stage 4.5 comment below); legacy
+  // un-migrated decks that were attached to a non-rear side will decode
+  // against the wrong frame until first edit re-migrates them (acceptable
+  // per Phase 1's workbench-can-break permission).
   const deckFrame = resolveHouseFootprintFrame({
     pergolaWidthMm: 1000,
     pergolaDepthMm: 1000,
-    attachmentSide: input.attachmentSide,
+    attachmentSide: 'rear',
   });
   const decks: HouseDeckConfig[] =
     (input.rawHouseContext.decks ?? [])
@@ -713,7 +725,7 @@ export function buildHouseModelConfig(input: {
       : null,
     decks,
     openings,
-    attachmentStrategy: resolveHouseAttachmentStrategy(input.rawHouseContext.attachmentStrategy, input.connectionType),
+    attachmentStrategy: input.attachmentStrategy,
     eave: {
       soffitDepthMm: resolveMillimetresWithDefault(rawEave?.soffitDepthMm, DEFAULT_HOUSE_SOFFIT_DEPTH_MM),
       fasciaHeightMm: resolveMillimetresWithDefault(rawEave?.fasciaHeightMm, DEFAULT_HOUSE_FASCIA_HEIGHT_MM),
@@ -839,8 +851,7 @@ export function normalizeGeometryConfig(input: RawGeometryModuleInput): Normaliz
   const houseModel = buildHouseModelConfig({
     rawHouseContext: input.houseContext,
     footprint: houseFootprint,
-    connectionType,
-    attachmentSide,
+    attachmentStrategy: houseAttachmentStrategy,
     houseUndersideMm,
     referenceUndersideMm,
   });

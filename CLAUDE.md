@@ -60,6 +60,7 @@ If you find yourself reaching for a `LEGACY_PRIMARY` check, an `attachmentSide` 
 - Don't revert user changes or unrelated worktree changes; assume a dirty tree may belong to in-flight work.
 - Update the relevant `docs/*.md` in the same pass when behaviour, data flow, source-of-truth ownership, or known risks shift. Use `docs/change-routing.md` to identify the owner doc.
 - Match the conventions already present in the file you're editing — don't introduce a new style mid-file.
+- For non-trivial plans (multi-PR sequences, contract changes, refactors with >100 LOC ripple), follow **[docs/plan-template.md](docs/plan-template.md)**. Includes a required "Architectural fit" section that names which north-star invariant the work serves, alternatives considered, and conscious scope limits — designed to surface drift before code lands. Scale sections to the task; small plans don't need all 11 sections.
 
 ## Why this file exists
 

@@ -30,7 +30,9 @@ import { buildEstimateDrawingModuleInfoRows, buildEstimateDrawingSheetMeta } fro
 import type { EstimateDetail } from '@/lib/estimates/types';
 import { buildOutlineEditCommitHandler } from './commitOutlineEdit';
 import { type DrawOutlineTarget } from './objectWorkbenchClientTypes';
+import RightInspectorPanel from '@/components/drawings/inspector/RightInspectorPanel';
 import ObjectWorkbenchRailHost from './ObjectWorkbenchRailHost';
+import WorkbenchInspectorHost from './WorkbenchInspectorHost';
 import { resolveHouseTerminalEndToggleRoofDraft } from './resolveHouseTerminalEndToggleRoofDraft';
 import { useObjectWorkbenchDraftPersistence } from './useObjectWorkbenchDraftPersistence';
 import { useObjectWorkbenchActions } from './useObjectWorkbenchActions';
@@ -505,6 +507,7 @@ export default function DesignWorkbenchEstimateClient({
           onGeometryViewportStateChange={handleGeometryViewportStateChange}
           meta={meta}
           backHref={backHref}
+          projectLabel={projectName}
           modelEditableFields={isPergolaTabActive ? drawingEditableFields : []}
           onCommitModelField={workbenchFieldCommit}
           onCommitFootprintEdit={workbenchFootprintCommit}
@@ -687,6 +690,27 @@ export default function DesignWorkbenchEstimateClient({
         />
         </div>
       </div>
+
+      <aside className={styles.inspectorColumn}>
+        <div className={styles.inspectorScroll}>
+          <RightInspectorPanel
+            selectionLabel={store.derived.railModel.selectedInspector.selectedObjectLabel}
+            trustStatusLabel={store.derived.railModel.selectedInspector.selectedObjectTrustLabel}
+          >
+            <WorkbenchInspectorHost
+              activeModuleInput={activeModuleInput}
+              geometryEditState={geometryEditState}
+              geometryPreview={geometryPreview}
+              isLocked={isLocked}
+              objectSelectionActions={objectSelectionActions}
+              objectWorkbenchActions={objectWorkbenchActions}
+              setUi={setUi}
+              store={store}
+              supportsSanctuaryEditing={supportsSanctuaryEditing}
+            />
+          </RightInspectorPanel>
+        </div>
+      </aside>
     </div>
   );
 }

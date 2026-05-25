@@ -1031,6 +1031,16 @@ export type HouseRoofEave3D = {
 };
 
 export type HouseModel3D = {
+  /**
+   * Source house form id (matches `RawHouseInput.houseId` and
+   * `HouseFormModel.id`). Required so the scene-assembly seam can prefix
+   * derived scene-object ids by source house, eliminating duplicate-key
+   * collisions when multiple house forms render into the same scene.
+   * See `viewer.ts:buildHouseModelSceneObjects` for the prefixing logic
+   * and `docs/design-workbench-architecture.md` § Object-First Model
+   * for the broader "first-class spatial entities" invariant this serves.
+   */
+  houseId: string;
   footprint: Polygon3;
   wallSegments: HouseWallSegment3D[];
   roofPlanes: RoofPlane3D[];

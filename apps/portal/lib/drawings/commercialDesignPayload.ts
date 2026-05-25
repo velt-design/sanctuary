@@ -1,4 +1,4 @@
-import {
+﻿import {
   COMMERCIAL_DESIGN_INPUT_SCHEMA_VERSION_V1,
   type CommercialDesignInputV1,
   type CommercialDiagnosticV1,
@@ -14,27 +14,28 @@ import type { Assembly3D, AssemblyMemberProfile, GeometryQuantityTakeoff } from 
 import { DEFAULT_CALCULATOR_ATTACHMENT_SIDE, normalizeAttachmentSide } from '@/lib/types/calculator';
 import type { CalculatorModuleInputs } from '@/lib/types/calculator';
 import type {
-  WorkbenchSolvedModel,
   WorkbenchSolvedModule,
+  WorkbenchSolvedProject,
   WorkbenchTrustStatus,
   WorkbenchTrustStatusKind,
 } from './state/workbenchSolvedModel';
 
 type BuildCommercialDesignInputArgs = {
-  solvedModel: WorkbenchSolvedModel;
+  solvedProject: WorkbenchSolvedProject;
   siteCommercial: CommercialSiteCommercialV1;
   diagnostics?: CommercialDiagnosticV1[];
 };
 
-type BuildCommercialModuleInputArgs = {
+type BuildCommercialPergolaInputArgs = {
+  /**
+   * Source solver module to render as a single CommercialModuleInputV1.
+   * For per-object pergolas this is the pergola's sole source module; for
+   * legacy multi-module-per-pergola snapshots the caller iterates the
+   * pergola's full `sourceModules` list and calls this helper once per entry.
+   */
   module: WorkbenchSolvedModule;
-};
-
-type PergolaGroup = {
-  id: string;
-  label: string;
-  modules: CommercialModuleInputV1[];
-  diagnostics: CommercialDiagnosticV1[];
+  pergolaId: string;
+  pergolaLabel: string;
 };
 
 const SOURCE = 'workbench_solved' as const;
@@ -73,7 +74,7 @@ function profileLabel(profile: AssemblyMemberProfile | null | undefined): string
   return `${profile.depthMm}x${profile.widthMm}`;
 }
 
-function trustStatusForModule(module: WorkbenchSolvedModule): CommercialTrustStatusV1 {
+function trustStatusForPergolaModule(module: WorkbenchSolvedModule): CommercialTrustStatusV1 {
   if (module.trust.status === 'invalid_geometry' || module.trust.status === 'unresolved_host') return 'blocked';
   if (module.trust.status === 'legacy_unsupported_family') return 'unsupported';
   if (module.trust.status === 'geometry_ready' && module.assembly && module.trust.issues.length === 0) return 'ready';
@@ -104,14 +105,14 @@ function diagnosticForTrustIssue(issue: WorkbenchTrustStatusKind, trust: Workben
   };
 }
 
-function diagnosticsForModule(module: WorkbenchSolvedModule): CommercialDiagnosticV1[] {
+function diagnosticsForPergola(module: WorkbenchSolvedModule): CommercialDiagnosticV1[] {
   const issueSet = new Set<WorkbenchTrustStatusKind>([module.trust.status, ...module.trust.issues]);
   issueSet.delete('geometry_ready');
   const diagnostics = Array.from(issueSet).map((issue) => diagnosticForTrustIssue(issue, module.trust));
   if (!module.assembly) {
     diagnostics.push({
       code: 'workbench_assembly_missing',
-      message: module.trust.message ?? 'Workbench solved module does not include a ready geometry assembly.',
+      message: module.trust.message ?? 'Workbench solved pergola does not include a ready geometry assembly.',
       severity: module.trust.status === 'legacy_unsupported_family' ? 'warning' : 'blocking',
     });
   }
@@ -136,7 +137,7 @@ function sanitizeOverrides(overrides: CalculatorModuleInputs['overrides']): Reco
 function buildSolvedGeometry(module: WorkbenchSolvedModule): CommercialSolvedGeometryV1 {
   const assembly = module.assembly;
   return {
-    status: trustStatusForModule(module),
+    status: trustStatusForPergolaModule(module),
     geometrySource: SOURCE,
     primaryDimensionsM: assembly?.semantics.primaryDimensionsMm
       ? {
@@ -162,7 +163,7 @@ function buildSolvedGeometry(module: WorkbenchSolvedModule): CommercialSolvedGeo
     attachmentLengthM: assembly?.attachmentEdge
       ? lineLengthM(assembly.attachmentEdge)
       : null,
-    warnings: diagnosticsForModule(module).map((diagnostic) => diagnostic.message),
+    warnings: diagnosticsForPergola(module).map((diagnostic) => diagnostic.message),
   };
 }
 
@@ -293,18 +294,19 @@ function buildQuantityTakeoff(module: WorkbenchSolvedModule): CommercialQuantity
   };
 }
 
-export function buildCommercialModuleInputFromWorkbenchSolvedModule(args: BuildCommercialModuleInputArgs): CommercialModuleInputV1 {
-  const input = args.module.moduleInput;
+export function buildCommercialPergolaInput(args: BuildCommercialPergolaInputArgs): CommercialModuleInputV1 {
+  const { module } = args;
+  const input = module.moduleInput;
   return {
-    id: args.module.id,
-    label: args.module.label,
-    sourceModuleIndex: args.module.index,
-    trustStatus: trustStatusForModule(args.module),
+    id: args.pergolaId,
+    label: args.pergolaLabel,
+    sourceModuleIndex: module.index,
+    trustStatus: trustStatusForPergolaModule(module),
     designIntent: {
       pergolaStyle: input.pergolaStyle,
       roofMaterial: input.roofMaterial,
       extrusionColour: input.extrusionColour,
-      roofType: effectiveRoofType(input, args.module.assembly),
+      roofType: effectiveRoofType(input, module.assembly),
       houseConnectionType: input.houseConnectionType,
       attachmentSide:
         input.houseConnectionType === 'none'
@@ -327,8 +329,8 @@ export function buildCommercialModuleInputFromWorkbenchSolvedModule(args: BuildC
         invertedEnabled: input.invertedEnabled,
       },
     },
-    solvedGeometry: buildSolvedGeometry(args.module),
-    quantityTakeoff: buildQuantityTakeoff(args.module),
+    solvedGeometry: buildSolvedGeometry(module),
+    quantityTakeoff: buildQuantityTakeoff(module),
     options: {
       flashings: input.flashings,
       infills: input.infills,
@@ -339,54 +341,38 @@ export function buildCommercialModuleInputFromWorkbenchSolvedModule(args: BuildC
         customColour: input.powdercoatCustomColour?.trim() || null,
       },
     },
-    diagnostics: diagnosticsForModule(args.module),
+    diagnostics: diagnosticsForPergola(module),
   };
 }
 
-function groupLabelFromProjectModel(model: WorkbenchSolvedModel, pergolaId: string, fallbackIndex: number): string {
-  const projectPergola = model.projectModel.pergolas.find((pergola) => pergola.id === pergolaId);
-  if (projectPergola?.label?.trim()) return projectPergola.label.trim();
-  return `Pergola ${fallbackIndex + 1}`;
-}
-
-export function buildCommercialDesignInputFromWorkbenchSolvedModel(args: BuildCommercialDesignInputArgs): CommercialDesignInputV1 {
-  const groups: PergolaGroup[] = [];
-  const groupById = new Map<string, PergolaGroup>();
-
-  const getGroup = (pergolaId: string): PergolaGroup => {
-    const existing = groupById.get(pergolaId);
-    if (existing) return existing;
-    const group: PergolaGroup = {
-      id: pergolaId,
-      label: groupLabelFromProjectModel(args.solvedModel, pergolaId, groups.length),
-      modules: [],
+/**
+ * PR-2B.1b.1 (2026-05-23): consumes per-object `WorkbenchSolvedProject`
+ * directly. Iterates `solvedProject.pergolas` (ordered by first-source
+ * appearance) and emits one `CommercialPergolaInputV1` per SolvedPergola.
+ * Each pergola's `sourceModules` (typically length 1; >1 only for legacy
+ * multi-module-per-pergola snapshots) produces one `CommercialModuleInputV1`
+ * entry, preserving cost-row parity with the calculator-side payload until
+ * Phase 2 collapses multi-module legacy in the cost engine's input layer.
+ * Renamed from `buildCommercialDesignInputFromWorkbenchSolvedModel`.
+ */
+export function buildCommercialDesignInputFromWorkbenchSolvedProject(args: BuildCommercialDesignInputArgs): CommercialDesignInputV1 {
+  const pergolas: CommercialPergolaInputV1[] = args.solvedProject.pergolas.map((pergola, index) => {
+    const label = pergola.label || `Pergola ${index + 1}`;
+    const modules = pergola.sourceModules.map((module) =>
+      buildCommercialPergolaInput({ module, pergolaId: pergola.id, pergolaLabel: label }),
+    );
+    return {
+      id: pergola.id,
+      label,
+      trustStatus: trustStatusForPergola(modules),
+      modules,
       diagnostics: [],
     };
-    groups.push(group);
-    groupById.set(pergolaId, group);
-    return group;
-  };
-
-  for (const solvedModule of args.solvedModel.modules) {
-    const pergolaId = typeof solvedModule.moduleInput.pergolaId === 'string' && solvedModule.moduleInput.pergolaId.trim()
-      ? solvedModule.moduleInput.pergolaId.trim()
-      : 'pergola-1';
-    getGroup(pergolaId).modules.push(buildCommercialModuleInputFromWorkbenchSolvedModule({ module: solvedModule }));
-  }
-
-  const pergolas: CommercialPergolaInputV1[] = groups
-    .filter((group) => group.modules.length > 0)
-    .map((group) => ({
-      id: group.id,
-      label: group.label,
-      trustStatus: trustStatusForPergola(group.modules),
-      modules: group.modules,
-      diagnostics: group.diagnostics,
-    }));
+  });
 
   const diagnostics = [...(args.diagnostics ?? [])];
-  if (args.solvedModel.trust.status !== 'geometry_ready') {
-    diagnostics.push(diagnosticForTrustIssue(args.solvedModel.trust.status, args.solvedModel.trust));
+  if (args.solvedProject.trust.status !== 'geometry_ready') {
+    diagnostics.push(diagnosticForTrustIssue(args.solvedProject.trust.status, args.solvedProject.trust));
   }
 
   return {
@@ -394,9 +380,9 @@ export function buildCommercialDesignInputFromWorkbenchSolvedModel(args: BuildCo
     source: SOURCE,
     trustStatus: trustStatusForDesign(pergolas),
     identity: {
-      projectId: args.solvedModel.geometryIdentity.projectId,
-      estimateId: args.solvedModel.geometryIdentity.estimateId,
-      designRequestId: args.solvedModel.geometryIdentity.designRequestId,
+      projectId: args.solvedProject.geometryIdentity.projectId,
+      estimateId: args.solvedProject.geometryIdentity.estimateId,
+      designRequestId: args.solvedProject.geometryIdentity.designRequestId,
     },
     pergolas,
     siteCommercial: args.siteCommercial,

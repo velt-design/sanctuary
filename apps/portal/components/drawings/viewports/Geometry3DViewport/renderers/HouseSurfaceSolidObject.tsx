@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+﻿import { useMemo } from "react";
 import * as THREE from "three";
 import type { ViewerSceneHouseSurfaceSolidObject } from "@sp/geometry";
 import {
@@ -19,7 +19,7 @@ import {
 } from "../geometry/lineBuilders";
 
 /**
- * Solid house-surface renderer — covers roofs, walls (including the
+ * Solid house-surface renderer â€” covers roofs, walls (including the
  * gable triangles emitted by the open-gable mesh builder), and decks.
  * Geometry prefers the precomputed `renderMesh` and falls back to
  * extruding the boundary polygon by `thicknessMm` via
@@ -37,7 +37,7 @@ import {
  * the selection styling.
  *
  * 3D occlusion of the deck interior against the house bounds is NOT
- * yet shipped — see the inline notes in the previous viewport: a
+ * yet shipped â€” see the inline notes in the previous viewport: a
  * depth-write attempt made the whole 3D viewport read as opaque
  * because the same depth values occluded pergola elements visible
  * through transparent walls. Until either a polygon-clip pre-process
@@ -143,7 +143,7 @@ export function HouseSurfaceSolidObject({
 
   return (
     <group
-      data-testid={`scene-object-${object.id}`}
+      data-testid={`scene-object-${(object as { sourceId?: string }).sourceId ?? object.id}`}
       onClick={(event) => {
         event.stopPropagation();
         onSelect(object.id);
@@ -185,7 +185,7 @@ export function HouseSurfaceSolidObject({
               clippingPlanes={clippingPlanes}
             />
           </mesh>
-          <line data-testid={`scene-object-${object.id}-deck-outline`}>
+          <line data-testid={`scene-object-${(object as { sourceId?: string }).sourceId ?? object.id}-deck-outline`}>
             <primitive attach="geometry" object={outlineGeometry} />
             <lineBasicMaterial
               color={selected ? deckPalette?.selectedColor ?? "#2f6f96" : deckPalette?.outlineColor ?? color}
@@ -195,7 +195,7 @@ export function HouseSurfaceSolidObject({
             />
           </line>
           {deckGrooveGeometries.length ? (
-            <group data-testid={`scene-object-${object.id}-deck-grooves`}>
+            <group data-testid={`scene-object-${(object as { sourceId?: string }).sourceId ?? object.id}-deck-grooves`}>
               {deckGrooveGeometries.map((line) => (
                 <line key={line.id}>
                   <primitive attach="geometry" object={line.geometry} />
@@ -210,7 +210,7 @@ export function HouseSurfaceSolidObject({
             </group>
           ) : null}
           {selected ? (
-            <line data-testid={`scene-object-${object.id}-deck-outline-selected`}>
+            <line data-testid={`scene-object-${(object as { sourceId?: string }).sourceId ?? object.id}-deck-outline-selected`}>
               <primitive attach="geometry" object={selectedOutlineGeometry} />
               <lineBasicMaterial color={deckPalette?.selectedColor ?? "#2f6f96"} clippingPlanes={clippingPlanes} />
             </line>

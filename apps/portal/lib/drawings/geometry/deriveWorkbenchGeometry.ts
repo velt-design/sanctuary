@@ -10,6 +10,7 @@ import {
   type GeometryPlanViewModel,
   type GeometrySectionViewModel,
   type GeometryTopProjectionViewModel,
+  type RawGeometryModuleInput,
 } from '@sp/geometry';
 import type { ModulePlanModel, ModuleSectionModel } from '@/app/staff/calculator/moduleViews';
 import { buildRawGeometryModuleInput } from './buildRawGeometryModuleInput';
@@ -65,6 +66,13 @@ export function deriveWorkbenchGeometry(input: {
   objectWorkbenchGeometryContext?: ObjectWorkbenchGeometryContext | null;
   fallbackPlanModel?: ModulePlanModel | null;
   fallbackSectionModel?: ModuleSectionModel | null;
+  /**
+   * PR-G3b (2026-05-22): pre-computed project-level decks/openings, passed
+   * through to `buildRawGeometryModuleInput` so a multi-module project
+   * computes them once instead of M times.
+   */
+  projectDecks?: RawGeometryModuleInput['houseContext']['decks'];
+  projectOpenings?: RawGeometryModuleInput['houseContext']['openings'];
 }): WorkbenchGeometryDerivation {
   const rawInput = buildRawGeometryModuleInput({
     projectId: input.projectId,
@@ -74,6 +82,8 @@ export function deriveWorkbenchGeometry(input: {
     module: input.module,
     result: input.result,
     objectWorkbenchGeometryContext: input.objectWorkbenchGeometryContext ?? null,
+    projectDecks: input.projectDecks,
+    projectOpenings: input.projectOpenings,
   });
   const normalized = normalizeGeometryConfig(rawInput);
 

@@ -1,10 +1,10 @@
-import { useMemo } from "react";
+﻿import { useMemo } from "react";
 import * as THREE from "three";
 import type { ViewerSceneReferencePlaneObject } from "@sp/geometry";
 import { buildPolygonGeometry } from "../geometry/buildGeometries";
 
 /**
- * Reference plane renderer — fallback dispatcher target for any
+ * Reference plane renderer â€” fallback dispatcher target for any
  * polygon-shaped scene object not handled by a more specific renderer.
  * Renders at very low opacity (0.12) so reference geometry doesn't
  * dominate the scene visually.
@@ -28,7 +28,7 @@ export function ReferencePlaneObject({
   );
   return (
     <mesh
-      data-testid={`scene-object-${object.id}`}
+      data-testid={`scene-object-${(object as { sourceId?: string }).sourceId ?? object.id}`}
       onClick={(event) => {
         event.stopPropagation();
         onSelect(object.id);

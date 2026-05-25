@@ -7,9 +7,9 @@ import type {
   DeckSupportClassification,
   DeckSupportWarningCode,
   DeckValidationCode,
-  HouseFirstDeckDraft,
   HouseModel,
 } from './houseFirstWorkbenchModel';
+import type { ObjectFirstDeckDraft } from './objectFirstWorkbenchModel';
 import {
   buildDeckReferenceHousePolygon,
   parseDeckLocalPolygon,
@@ -282,8 +282,23 @@ function outlinesOverlap(left: LocalPolygonPoint[], right: LocalPolygonPoint[]):
   return false;
 }
 
+type DeckValidationDraft = Pick<
+  ObjectFirstDeckDraft,
+  | 'id'
+  | 'outline'
+  | 'levelOffsetMm'
+  | 'isAttached'
+  | 'attachmentMode'
+  | 'secondaryHostEdgeId'
+  | 'cornerVertexId'
+  | 'primaryHostEdgeId'
+  | 'hostEdgeId'
+  | 'elevationMode'
+  | 'presetRect'
+>;
+
 function validateDeckDraft(
-  deck: HouseFirstDeckDraft,
+  deck: DeckValidationDraft,
   context: DeckValidationContext,
 ): {
   validation: {
@@ -427,7 +442,7 @@ function validateDeckDraft(
 }
 
 export function buildSharedDecks(input: {
-  deckDrafts: HouseFirstDeckDraft[] | null | undefined;
+  deckDrafts: ObjectFirstDeckDraft[] | null | undefined;
   housePolygon: CalculatorHouseFootprintPolygonPoint[];
   footprintParams: CalculatorHouseFootprintParams;
 }): HouseModel['decks'] {
@@ -467,7 +482,7 @@ export function buildSharedDecks(input: {
     );
     const deck: HouseModel['decks'][number] = {
       id: draft.id.trim(),
-      name: draft.name?.trim() || `Deck ${decks.length + 1}`,
+      name: draft.label?.trim() || `Deck ${decks.length + 1}`,
       kind: draft.kind === 'landing' ? 'landing' : 'deck',
       shape: draft.shape === 'custom' ? 'custom' : 'preset',
       presetType:

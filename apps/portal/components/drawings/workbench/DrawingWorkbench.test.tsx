@@ -346,9 +346,9 @@ describe('DrawingWorkbench', () => {
     );
 
     expect(markup).toContain('aria-label="Drawing workbench"');
-    expect(markup).toContain('Sheet View');
-    expect(markup).toContain('>Plan<');
-    expect(markup).toContain('>3D<');
+    expect(markup).toContain('Sheet Output');
+    expect(markup).toContain('>Plan Editor<');
+    expect(markup).toContain('>3D Review<');
     expect(markup).toContain('Back to Project');
     expect(markup).not.toContain('Model Space');
     expect(markup).not.toContain('3D View');
@@ -410,7 +410,7 @@ describe('DrawingWorkbench', () => {
       });
     };
 
-    clickByText('Plan');
+    clickByText('Plan Editor');
 
     expect(viewChanges).toEqual(['plan']);
     expect(viewportChanges).toEqual(['plan']);
@@ -668,7 +668,7 @@ describe('DrawingWorkbench', () => {
       />,
     );
 
-    expect(markup).toContain('>3D<');
+    expect(markup).toContain('>3D Review<');
     expect(markup).toContain('data-workbench-nav-id="geometry3d"');
   });
 

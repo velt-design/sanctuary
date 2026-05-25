@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import DrawingWorkbench from '@/components/drawings/workbench/DrawingWorkbench';
+import RightInspectorPanel from '@/components/drawings/inspector/RightInspectorPanel';
 import type { Geometry3DViewportState } from '@/components/drawings/viewports/Geometry3DViewport';
 import { buildDrawingWorkbenchStore } from '@/lib/drawings/state/drawingWorkbenchStore';
 import {
@@ -230,9 +231,24 @@ export default function DesignWorkbenchFixtureClient({
             onGeometryViewportStateChange={handleGeometryViewportStateChange}
             meta={meta}
             backHref={backHref}
+            projectLabel={projectName}
           />
         </div>
       </div>
+
+      <aside className={styles.inspectorColumn}>
+        <div className={styles.inspectorScroll}>
+          {/*
+           * PR-W3c: fixture mode doesn't expose an action surface (read-only
+           * preview), so we mount the panel header without inspector body
+           * content. The fixture is intentionally non-editable here.
+           */}
+          <RightInspectorPanel
+            selectionLabel={store.derived.railModel.selectedInspector.selectedObjectLabel}
+            trustStatusLabel={store.derived.railModel.selectedInspector.selectedObjectTrustLabel}
+          />
+        </div>
+      </aside>
     </div>
   );
 }

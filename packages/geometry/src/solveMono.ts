@@ -625,7 +625,7 @@ export function solveMonoAssembly3D(config: GeometryConfig): SolveAssembly3DResu
     datum: config.datum,
     outline,
     attachmentEdge,
-    house: buildHouseReferenceGeometry({ config, attachmentEdge }),
+    house: buildHouseReferenceGeometry({ houseId: 'host-house', config, attachmentEdge }),
     members,
     roofPlanes,
     roofCladdingPanels,

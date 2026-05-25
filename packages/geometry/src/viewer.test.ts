@@ -162,6 +162,47 @@ function addHouseModelContext(
 }
 
 describe("buildViewerSceneModel", () => {
+  it("keeps every scene object id globally unique across multi-house scenes (PR-Geo2 lock-in)", () => {
+    // PR-Geo2 (2026-05-25) — regression guard for the multi-house duplicate-id
+    // class of bug. If anyone reintroduces a hardcoded id pattern that doesn't
+    // get prefixed at the `buildHouseModelSceneObjects` seam, this test trips
+    // and points them at the scene-assembly seam. The fix is always: either
+    // route the id through the seam (it gets prefixed automatically) or
+    // ensure your new id is structurally derived from a houseId-scoped value.
+    const fixture = requireSupportedFixture("mono_attached_soffit_away_standard");
+    const config = addHouseModelContext(fixture.config, {
+      lengthMm: 6000,
+      eaveHeightMm: 2400,
+      strategy: "fascia_under_gutter",
+    });
+    const solveResult = solveAssembly3D(config);
+    if (!solveResult.ok) throw new Error(solveResult.error);
+
+    const hostHouseModel = solveResult.value.house.model;
+    if (!hostHouseModel) throw new Error("Expected host house model");
+    // Simulate a second house form (e.g. a sleepout) sharing the scene. In
+    // production this comes from `buildAdditionalHouseFormGeometry`; here we
+    // clone the host model and override `houseId` to keep the test focused
+    // on the seam behaviour rather than the full geometry pipeline.
+    const secondHouseModel = { ...hostHouseModel, houseId: "second-house" };
+
+    const scene = buildViewerSceneModel(solveResult.value, {
+      additionalHouseModels: [secondHouseModel],
+    });
+
+    const allIds = scene.layers.flatMap((layer) =>
+      layer.objects.map((object) => object.id),
+    );
+    const uniqueIds = new Set(allIds);
+    expect(
+      uniqueIds.size,
+      "Every scene object id across a multi-house scene must be globally unique. " +
+        "If this fails, a house-derived object id is bypassing the prefix seam at " +
+        "`buildHouseModelSceneObjects` in `viewer.ts`. Fix at the seam, not at " +
+        "the consumer.",
+    ).toBe(allIds.length);
+  });
+
   it("produces deterministic layer grouping for mono, gable, and box assemblies", () => {
     const fixtureIds = {
       mono_attached_soffit_away_standard: [
@@ -474,7 +515,7 @@ describe("buildViewerSceneModel", () => {
 
     const houseTarget = buildViewerSceneModel(solveResult.value)
       .layers.flatMap((layer) => layer.objects)
-      .find((object) => object.id === "house-attachment-target-line");
+      .find((object) => object.sourceId === "house-attachment-target-line");
 
     expect(solveResult.value.attachmentEdge).toEqual({
       start: { x: 0, y: 0, z: 2400 },
@@ -532,7 +573,7 @@ describe("buildViewerSceneModel", () => {
     const scene = buildViewerSceneModel(solveResult.value);
     const houseTarget = scene.layers
       .flatMap((layer) => layer.objects)
-      .find((object) => object.id === "house-attachment-target-line");
+      .find((object) => object.sourceId === "house-attachment-target-line");
     const points = scene.layers.flatMap((layer) =>
       layer.objects.flatMap(pointsForViewerObject),
     );
@@ -585,7 +626,7 @@ describe("buildViewerSceneModel", () => {
     const scene = buildViewerSceneModel(solveResult.value);
     const houseTarget = scene.layers
       .flatMap((layer) => layer.objects)
-      .find((object) => object.id === "house-attachment-target-line");
+      .find((object) => object.sourceId === "house-attachment-target-line");
     const points = scene.layers.flatMap((layer) =>
       layer.objects.flatMap(pointsForViewerObject),
     );
@@ -797,14 +838,14 @@ describe("buildViewerSceneModel", () => {
     ).toBe(false);
     expect(
       houseObjects.some(
-        (object) => object.id === "house-attachment-target-line",
+        (object) => object.sourceId === "house-attachment-target-line",
       ),
     ).toBe(false);
-    expect(houseObjects.some((object) => object.id === "house-solid-house-wall-2")).toBe(
+    expect(houseObjects.some((object) => object.sourceId === "house-solid-house-wall-2")).toBe(
       true,
     );
     expect(
-      houseObjects.some((object) => object.id === "house-solid-gutter-2"),
+      houseObjects.some((object) => object.sourceId === "house-solid-gutter-2"),
     ).toBe(true);
 
     const points = houseObjects.flatMap(pointsForViewerObject);

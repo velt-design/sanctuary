@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+﻿import { useMemo } from "react";
 import * as THREE from "three";
 import type { ViewerSceneRoofPlaneObject } from "@sp/geometry";
 import { buildPolygonGeometry } from "../geometry/buildGeometries";
@@ -6,7 +6,7 @@ import { buildPolygonGeometry } from "../geometry/buildGeometries";
 /**
  * Translucent roof-plane surface renderer. Roof planes share the
  * pergola layer's body color and render at 0.45 opacity so the rafter
- * lines beneath stay legible. No depth-write tweaks here — the parent
+ * lines beneath stay legible. No depth-write tweaks here â€” the parent
  * viewport relies on plain alpha blending for these.
  */
 export function RoofPlaneObject({
@@ -28,7 +28,7 @@ export function RoofPlaneObject({
   );
   return (
     <mesh
-      data-testid={`scene-object-${object.id}`}
+      data-testid={`scene-object-${(object as { sourceId?: string }).sourceId ?? object.id}`}
       onClick={(event) => {
         event.stopPropagation();
         onSelect(object.id);
