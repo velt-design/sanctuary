@@ -569,6 +569,23 @@ function buildTopProjectionFromSolvedScene(input: {
    * source": tag once at projection time instead of patching every consumer.
    */
   pergolaId?: string | null;
+  /**
+   * PR-Bug1 (2026-05-25): host house form id for this assembly. Mirrors the
+   * `pergolaId` enrichment above for house-family shapes. After PR-Geo1's
+   * scene-seam id prefixing, `house_surface_solid` shapes (walls, roof
+   * solids, eaves) carry prefixed scene ids like `<houseId>:house-wall-1`
+   * that don't map to any workbench house form id. Without this tag the
+   * plan-view classifier resolves clicks on those surfaces to the prefixed
+   * scene id, and the right inspector can't find a matching house form so
+   * shows "No selection". Tagging once at projection time lets the
+   * classifier prefer `metadata.houseFormId` over the id-derived fallback.
+   *
+   * The primary host house is the active pergola's host (the one carried in
+   * `assembly.house.model`). Additional house forms render via
+   * `projectReferenceShapes` overlay and carry their own ids in
+   * `sourceObjectId` from `buildHouseReferenceProjectionShape`.
+   */
+  houseFormId?: string | null;
 }): GeometryTopProjectionViewModel {
   const projection = buildTopProjectionViewModelFromScene(input.scene, {
     referenceShapes: input.fallbackTopProjection.shapes.filter(
@@ -576,15 +593,55 @@ function buildTopProjectionFromSolvedScene(input: {
     ),
     terminalEndAssembly: input.assembly,
   });
-  if (!input.pergolaId) return projection;
-  const taggedPergolaId = input.pergolaId;
+  const taggedPergolaId = input.pergolaId ?? null;
+  const taggedHouseFormId = input.houseFormId ?? null;
   return {
     ...projection,
-    shapes: projection.shapes.map((shape) =>
-      shape.family === 'pergola'
-        ? { ...shape, metadata: { ...(shape.metadata ?? {}), pergolaId: taggedPergolaId } }
-        : shape,
-    ),
+    shapes: projection.shapes.map((shape) => {
+      if (taggedPergolaId && shape.family === 'pergola') {
+        return {
+          ...shape,
+          metadata: { ...(shape.metadata ?? {}), pergolaId: taggedPergolaId },
+        };
+      }
+      if (shape.family === 'house' && (shape.kind === 'deck' || shape.kind === 'landing')) {
+        // PR-Bug4 (2026-05-25): mirror the pergolaId/houseFormId pattern for
+        // decks. The `house_surface_solid` deck prism arrives with
+        // `metadata.sourceId === deck.id` (set in
+        // `packages/geometry/src/house/envelopeSolids.ts`), but
+        // `selectionMatch.ts` reads `metadata.deckId` to disambiguate
+        // selection halos between decks. Without this tag, every deck
+        // matches the active deck selection and the renderer falls back to
+        // the largest-area shape, so only one deck visually highlights.
+        // Copy the existing sourceId into the family-specific discriminator
+        // so all consumers can resolve "which deck" by the same key.
+        const existingDeckId = (shape.metadata as { deckId?: string } | undefined)?.deckId;
+        if (existingDeckId) return shape;
+        const sourceDeckId =
+          typeof shape.metadata?.sourceId === 'string'
+            ? shape.metadata.sourceId
+            : (shape.sourceId ?? null);
+        if (!sourceDeckId) return shape;
+        return {
+          ...shape,
+          metadata: { ...(shape.metadata ?? {}), deckId: sourceDeckId },
+        };
+      }
+      if (taggedHouseFormId && shape.family === 'house') {
+        // Only tag shapes that don't already carry an explicit houseFormId.
+        // Additional house forms' reference shapes (built via
+        // `buildHouseReferenceProjectionShape` at line ~1275) get their own
+        // form id; preserve those so clicks on additional houses resolve
+        // correctly once Bug 2's hit-target promotion lands.
+        const existing = (shape.metadata as { houseFormId?: string } | undefined)?.houseFormId;
+        if (existing) return shape;
+        return {
+          ...shape,
+          metadata: { ...(shape.metadata ?? {}), houseFormId: taggedHouseFormId },
+        };
+      }
+      return shape;
+    }),
   };
 }
 
@@ -859,6 +916,13 @@ function buildSolvedModule(input: {
   projectDecks: RawGeometryModuleInput['houseContext']['decks'];
   /** PR-G3b: pre-computed project-level openings, shared across all modules. */
   projectOpenings: RawGeometryModuleInput['houseContext']['openings'];
+  /**
+   * PR-Bug1 (2026-05-25): primary host house form id. Tagged onto every
+   * house-family shape in the top projection so plan-view clicks resolve
+   * to a real workbench house form id (not the scene-seam prefixed scene
+   * id introduced in PR-Geo1).
+   */
+  primaryHouseFormId: string | null;
 }): WorkbenchSolvedModule {
   const initialModuleInput = coerceHiddenWorkbenchGableBaseline(input.drawingModule.input);
   const resolved = resolveWorkbenchGeometryModule({
@@ -992,6 +1056,7 @@ function buildSolvedModule(input: {
     fallbackTopProjection: derivation.geometryTopProjection,
     assembly: derivation.assembly,
     pergolaId: moduleInput.pergolaId ?? null,
+    houseFormId: input.primaryHouseFormId,
   });
   const trust = buildTrustStatus({
     status: 'geometry_ready',
@@ -1105,6 +1170,7 @@ export function buildWorkbenchSolvedModel(input: {
   // once per pergola module. Closes audit row 9 in production-path spirit.
   const projectDecks = mapProjectDecks(projectModel);
   const projectOpenings = mapProjectOpenings(projectModel);
+  const primaryHouseFormId = projectModel.houseAssembly?.houseForms[0]?.id ?? null;
   const modules = drawingModules.map((drawingModule, index) =>
     buildSolvedModule({
       index,
@@ -1118,6 +1184,7 @@ export function buildWorkbenchSolvedModel(input: {
       additionalHouseModels,
       projectDecks,
       projectOpenings,
+      primaryHouseFormId,
     }),
   );
   const activeModule = modules[input.activeModuleIndex ?? 0] ?? null;

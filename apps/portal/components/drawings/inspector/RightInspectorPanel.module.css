@@ -1,24 +1,22 @@
 .panel {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
-  gap: 12px;
+  gap: var(--portal-density-12);
   height: 100%;
-  border: 1px solid rgba(var(--portal-text-rgb), 0.08);
-  border-radius: 18px;
-  background:
-    linear-gradient(180deg, rgba(var(--portal-bg-rgb), 0.98), rgba(var(--portal-bg-rgb), 0.95)),
-    radial-gradient(circle at top right, rgba(var(--accentRgb), 0.04), transparent 50%);
-  padding: 14px;
+  border: var(--portal-section-border);
+  border-radius: var(--portal-section-radius);
+  background: var(--portal-section-background);
+  padding: var(--portal-section-padding);
   min-height: 0;
 }
 
 .header {
   display: grid;
-  gap: 4px;
+  gap: var(--portal-density-4);
 }
 
 .headerEyebrow {
-  font-size: 10px;
+  font-size: var(--portal-font-2xs);
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -29,12 +27,12 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: var(--portal-density-8);
 }
 
 .headerTitle {
   margin: 0;
-  font-size: 16px;
+  font-size: var(--portal-font-xl);
   font-weight: 800;
   letter-spacing: -0.005em;
   color: rgba(var(--portal-text-rgb), 0.92);
@@ -48,12 +46,12 @@
 .trustPill {
   display: inline-flex;
   align-items: center;
-  min-height: 22px;
-  padding: 2px 8px;
-  border-radius: 999px;
+  min-height: var(--portal-density-22);
+  padding: var(--portal-density-2) var(--portal-density-8);
+  border-radius: var(--portal-radius-pill);
   background: rgba(127, 137, 124, 0.14);
   color: rgba(74, 84, 73, 0.92);
-  font-size: 11px;
+  font-size: var(--portal-font-xs);
   font-weight: 700;
   white-space: nowrap;
 }
@@ -62,13 +60,13 @@
   min-height: 0;
   overflow-y: auto;
   display: grid;
-  gap: 12px;
+  gap: var(--portal-section-stack-gap);
   align-content: start;
 }
 
 .emptyHint {
   margin: 0;
-  font-size: 12px;
+  font-size: var(--portal-font-sm);
   line-height: 1.55;
   color: rgba(var(--portal-text-rgb), 0.6);
 }

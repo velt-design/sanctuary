@@ -1,31 +1,53 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
+import {
+  emptyStateForFamily,
+  familyVisibilityFor,
+  subtitleForObjectTreeRow,
+} from '@/lib/drawings/state/objectTreeRowSubtitles';
+import type { WorkbenchObjectFamily } from '@/lib/drawings/state/objectFirstWorkbenchModel';
 import { resolveCommitResult } from './objectRailShared';
+import { ObjectTreeSection } from './objectTree/ObjectTreeSection';
 import type { ObjectWorkbenchRailProps } from './objectWorkbenchRailTypes';
 import styles from './WorkbenchRail.module.css';
 
 /*
- * PR-W3c (2026-05-25) — rail is now navigation-only.
+ * PR-W3d (2026-05-25) — CAD-style left rail: VISIBILITY + flat OBJECTS TREE.
  *
- * The per-family inspector panels (PergolaInspector, HouseFormInspector,
- * DeckInspector, OpeningInspector, DiagnosticsPanel) moved into
- * `WorkbenchInspectorHost` and render in the right-side `RightInspectorPanel`.
- * The rail keeps visibility toggles, the object navigator, and the selected-
- * object summary; the inspector slot below the summary is gone.
+ * Removed:
+ *  - Object Navigator tab strip (forced one-family-at-a-time view)
+ *  - Selected Object summary section (duplicated info — selection signal
+ *    lives in the tree row highlight; trust pill lives in the right
+ *    inspector header)
+ *  - Diagnostics tab (debug content, future access via top bar `…` menu)
  *
- * PR-W3d will further reduce the rail to VISIBILITY + OBJECTS TREE only,
- * collapsing the Object Navigator tabs once the right inspector resolves
- * which family is active from the underlying selection.
+ * What stays:
+ *  - Visibility toggles (House / Pergolas / Decks / Openings)
+ *  - Four `<ObjectTreeSection>` blocks always rendered simultaneously, one
+ *    per family. Order matches the mockup.
+ *
+ * Row content + subtitle derivation lives in `objectTreeRowSubtitles.ts`
+ * (PR-W3d.1); row/section primitives live in `objectTree/` (PR-W3d.2).
+ * This file is now pure composition + visibility section.
  */
+
+// Family render order matches the mockup: House Forms → Pergolas → Decks →
+// Openings. Distinct from the rail model's internal `FAMILY_ORDER` so the
+// outliner reads top-down by spatial-entity importance regardless of how
+// the data layer orders families.
+const TREE_FAMILY_ORDER: ReadonlyArray<{ family: WorkbenchObjectFamily; label: string }> = [
+  { family: 'house_forms', label: 'House Forms' },
+  { family: 'pergolas', label: 'Pergolas' },
+  { family: 'decks', label: 'Decks' },
+  { family: 'openings', label: 'Openings' },
+];
 
 export default function ObjectWorkbenchRail({
   model,
   disabled,
-  activeRailTab,
   activeObjectRef,
   visibility,
-  onSelectRailTab,
   onSelectObjectRef,
   onVisibilityChange,
   inspectorContext,
@@ -41,9 +63,26 @@ export default function ObjectWorkbenchRail({
     }));
   }, [onAddHouseForm]);
 
-  const activeFamily =
-    activeRailTab === 'diagnostics' ? model.selectedInspector.family : activeRailTab;
-  const activeObjectEntries = model.objectLists[activeFamily];
+  // Pre-compose the per-family row data so the JSX stays declarative.
+  const familyRows = useMemo(() => {
+    return TREE_FAMILY_ORDER.map(({ family }) => {
+      const entries = model.objectLists[family];
+      const familyVisible = familyVisibilityFor(family, visibility);
+      const rows = entries.map((entry) => {
+        const selected =
+          activeObjectRef.family === entry.ref.family &&
+          activeObjectRef.objectId === entry.ref.objectId;
+        return {
+          objectId: entry.ref.objectId,
+          label: entry.label,
+          subtitle: subtitleForObjectTreeRow({ entry, selected, familyVisible }),
+          selected,
+          visibilityHidden: !familyVisible,
+        };
+      });
+      return { family, rows };
+    });
+  }, [activeObjectRef, model.objectLists, visibility]);
 
   return (
     <div className={styles.rail}>
@@ -77,116 +116,28 @@ export default function ObjectWorkbenchRail({
         </div>
       </section>
 
-      <section className={styles.section}>
-        <h4 className={styles.sectionTitle}>Object Navigator</h4>
-        <div className={styles.navigatorStack} role="tablist" aria-label="Workbench object families">
-          {model.familySummaries.map((family) => {
-            const active = activeRailTab === family.family;
-            return (
-              <button
-                key={family.family}
-                type="button"
-                role="tab"
-                aria-selected={active}
-                className={`${active ? styles.buttonPrimary : styles.secondaryButton} ${styles.navigatorButton}`}
-                onClick={() => onSelectRailTab?.(family.family)}
-              >
-                <span className={styles.navigatorLabel}>{family.label}</span>
-                <span className={styles.navigatorMeta}>{family.countLabel}</span>
-              </button>
-            );
-          })}
-          <button
-            type="button"
-            role="tab"
-            aria-selected={activeRailTab === 'diagnostics'}
-            className={`${activeRailTab === 'diagnostics' ? styles.buttonPrimary : styles.secondaryButton} ${styles.navigatorButton}`}
-            onClick={() => onSelectRailTab?.('diagnostics')}
-          >
-            <span className={styles.navigatorLabel}>Diagnostics</span>
-            <span className={styles.navigatorMeta}>Compatibility checks</span>
-          </button>
-        </div>
-      </section>
+      <div className={styles.rail} data-object-tree="true" aria-label="Workbench objects">
+        {TREE_FAMILY_ORDER.map(({ family, label }, index) => {
+          const { rows } = familyRows[index]!;
+          const isHouseForms = family === 'house_forms';
+          return (
+            <ObjectTreeSection
+              key={family}
+              family={family}
+              label={label}
+              rows={rows}
+              emptyState={emptyStateForFamily(family)}
+              onSelect={(ref) => onSelectObjectRef?.(ref)}
+              onAdd={isHouseForms && onAddHouseForm ? runAddHouseForm : undefined}
+              addLabel={isHouseForms ? 'Add structure' : undefined}
+              addDisabled={isHouseForms ? disabled : undefined}
+            />
+          );
+        })}
+      </div>
 
-      {activeRailTab !== 'diagnostics' ? (
-        <section className={styles.section}>
-          <h4 className={styles.sectionTitle}>{model.selectedInspector.familyLabel}</h4>
-          <div className={styles.sectionBody}>
-            {activeObjectEntries.length ? (
-              <div className={styles.objectList}>
-                {activeObjectEntries.map((entry) => {
-                  const selected =
-                    activeObjectRef.family === entry.ref.family && activeObjectRef.objectId === entry.ref.objectId;
-                  return (
-                    <button
-                      key={`${entry.ref.family}:${entry.ref.objectId ?? 'none'}`}
-                      type="button"
-                      data-workbench-object-button={`${entry.ref.family}:${entry.ref.objectId ?? 'none'}`}
-                      className={`${selected ? styles.buttonPrimary : styles.secondaryButton} ${styles.objectButton}`}
-                      onClick={() => onSelectObjectRef?.(entry.ref)}
-                    >
-                      <span className={styles.objectButtonLabel}>{entry.label}</span>
-                      <span className={styles.objectButtonMeta}>
-                        {entry.statusLabel}
-                        {entry.meta ? ` • ${entry.meta}` : ''}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            ) : (
-              <p className={styles.empty}>{model.selectedInspector.emptyMessage}</p>
-            )}
-            {model.selectedInspector.addActionLabels.length ? (
-              <p className={styles.fieldHint}>
-                Available actions: {model.selectedInspector.addActionLabels.join(', ')}.
-              </p>
-            ) : null}
-            {activeFamily === 'house_forms' && onAddHouseForm ? (
-              <button
-                type="button"
-                className={`${styles.secondaryButton} ${styles.objectButton}`}
-                data-action="add-house-form"
-                disabled={disabled}
-                onClick={runAddHouseForm}
-              >
-                <span className={styles.objectButtonLabel}>Add structure</span>
-                <span className={styles.objectButtonMeta}>
-                  Clones the selected house 10 m east
-                </span>
-              </button>
-            ) : null}
-            {fieldErrors.addHouseForm ? (
-              <p className={styles.fieldError}>{fieldErrors.addHouseForm}</p>
-            ) : null}
-          </div>
-        </section>
-      ) : null}
-
-      {activeRailTab !== 'diagnostics' && model.selectedInspector.hasSelection ? (
-        <section className={styles.section}>
-          <h4 className={styles.sectionTitle}>Selected Object</h4>
-          <div className={styles.sectionBody}>
-            <div className={styles.inlineMeta}>
-              <span className={styles.inlineLabel}>{model.selectedInspector.singularLabel}</span>
-              <span className={styles.inlineValue}>{model.selectedInspector.selectedObjectLabel}</span>
-            </div>
-            {model.selectedInspector.selectedObjectTrustLabel ? (
-              <div className={styles.inlineMeta}>
-                <span className={styles.inlineLabel}>Trust</span>
-                <span className={styles.inlineValue}>{model.selectedInspector.selectedObjectTrustLabel}</span>
-              </div>
-            ) : null}
-            {model.selectedInspector.selectedObjectStatusLabel || model.selectedInspector.selectedObjectMeta ? (
-              <p className={styles.fieldHint}>
-                {[model.selectedInspector.selectedObjectStatusLabel, model.selectedInspector.selectedObjectMeta]
-                  .filter(Boolean)
-                  .join(' • ')}
-              </p>
-            ) : null}
-          </div>
-        </section>
+      {fieldErrors.addHouseForm ? (
+        <p className={styles.fieldError}>{fieldErrors.addHouseForm}</p>
       ) : null}
     </div>
   );

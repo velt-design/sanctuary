@@ -10,12 +10,12 @@
 
 .emptyState {
   display: grid;
-  gap: 4px;
+  gap: var(--portal-density-4);
 }
 
 .emptyHint {
   margin: 0;
-  font-size: 11px;
+  font-size: var(--portal-font-xs);
   line-height: 1.4;
   color: rgba(var(--portal-text-rgb), 0.5);
 }
@@ -23,14 +23,14 @@
 .addInline {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--portal-density-6);
   align-self: start;
   border: 1px dashed rgba(var(--portal-text-rgb), 0.18);
-  border-radius: 10px;
+  border-radius: var(--portal-radius-sm);
   background: transparent;
   color: rgba(var(--portal-text-rgb), 0.72);
-  padding: 6px 10px;
-  font-size: 11px;
+  padding: var(--portal-density-6) var(--portal-density-10);
+  font-size: var(--portal-font-xs);
   font-weight: 700;
   letter-spacing: 0.02em;
   cursor: pointer;

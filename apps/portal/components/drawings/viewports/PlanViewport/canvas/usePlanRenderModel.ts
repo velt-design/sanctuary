@@ -47,13 +47,30 @@ export type UsePlanRenderModelInput = {
   activeObjectRef: WorkbenchObjectRef | null | undefined;
   /** External hover state (e.g. driven by 3D viewport pointer-over). */
   hoveredObjectRef?: WorkbenchObjectRef | null;
+  /**
+   * PR-Bug2 (2026-05-25): project-level shapes that should flow into the
+   * active module's render graph alongside the per-module projection.
+   * Used to promote additional (non-host) house form `house_reference`
+   * footprints into committedBodies so they're hit-targetable and movable.
+   * Without this, additional house forms render as a faded context overlay
+   * (`PlanProjectContextLayer`) with no pointer handlers — clicks fall
+   * through and the move tool can never start.
+   *
+   * Caller derives these from `WorkbenchSolvedModel.projectReferenceShapes`
+   * filtered to non-host house references (the active pergola's host comes
+   * through the module projection already). Empty for single-house projects.
+   */
+  additionalShapes?: ReadonlyArray<GeometryTopProjectionShape>;
 };
+
+const EMPTY_ADDITIONAL_SHAPES: ReadonlyArray<GeometryTopProjectionShape> = [];
 
 export function usePlanRenderModel({
   projection,
   visibility,
   activeObjectRef,
   hoveredObjectRef,
+  additionalShapes = EMPTY_ADDITIONAL_SHAPES,
 }: UsePlanRenderModelInput): PlanRenderModel | null {
   return useMemo(() => {
     if (!projection) return null;
@@ -64,7 +81,10 @@ export function usePlanRenderModel({
       baseY: layout.baseY,
       scale: layout.scale,
     });
-    const visibleItems: RawPlanItem[] = projection.shapes
+    const allShapes: GeometryTopProjectionShape[] = additionalShapes.length
+      ? [...projection.shapes, ...additionalShapes]
+      : (projection.shapes as GeometryTopProjectionShape[]);
+    const visibleItems: RawPlanItem[] = allShapes
       .filter((shape) => topProjectionShapeVisible(shape, visibility))
       .map((shape) => ({
         shape,
@@ -117,5 +137,5 @@ export function usePlanRenderModel({
       selectionHaloItems,
       hoverHaloItems,
     };
-  }, [activeObjectRef, hoveredObjectRef, projection, visibility]);
+  }, [activeObjectRef, additionalShapes, hoveredObjectRef, projection, visibility]);
 }

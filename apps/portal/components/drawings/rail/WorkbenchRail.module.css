@@ -1,34 +1,32 @@
 .rail {
   display: grid;
-  gap: 12px;
+  gap: var(--portal-density-12);
 }
 
 .railCompact {
-  gap: 10px;
+  gap: var(--portal-density-10);
 }
 
 .summary,
 .section {
-  border: 1px solid rgba(var(--portal-text-rgb), 0.08);
-  border-radius: 18px;
-  background:
-    linear-gradient(180deg, rgba(var(--portal-bg-rgb), 0.98), rgba(var(--portal-bg-rgb), 0.95)),
-    radial-gradient(circle at top left, rgba(var(--accentRgb), 0.04), transparent 50%);
-  padding: 14px;
+  border: var(--portal-section-border);
+  border-radius: var(--portal-section-radius);
+  background: var(--portal-section-background);
+  padding: var(--portal-section-padding);
 }
 
 .summary {
   display: grid;
-  gap: 6px;
+  gap: var(--portal-density-6);
 }
 
 .summaryCompact {
-  gap: 4px;
+  gap: var(--portal-density-4);
 }
 
 .eyebrow {
   margin: 0;
-  font-size: 11px;
+  font-size: var(--portal-font-xs);
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -37,28 +35,28 @@
 
 .title {
   margin: 0;
-  font-size: 16px;
+  font-size: var(--portal-font-xl);
   font-weight: 700;
   color: rgba(var(--portal-text-rgb), 0.92);
 }
 
 .summaryText {
   margin: 0;
-  font-size: 12px;
+  font-size: var(--portal-font-sm);
   line-height: 1.5;
   color: rgba(var(--portal-text-rgb), 0.68);
 }
 
 .section {
   display: grid;
-  gap: 12px;
+  gap: var(--portal-density-12);
 }
 
 .sectionToggle {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: var(--portal-density-8);
   width: 100%;
   border: none;
   background: transparent;
@@ -69,12 +67,12 @@
 
 .sectionBody {
   display: grid;
-  gap: 12px;
+  gap: var(--portal-density-12);
 }
 
 .sectionTitle {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--portal-font-md);
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -84,87 +82,156 @@
 .fieldStack,
 .actionStack {
   display: grid;
-  gap: 10px;
+  gap: var(--portal-density-10);
 }
 
 .navigatorStack,
 .objectList {
   display: grid;
-  gap: 8px;
+  gap: var(--portal-density-8);
 }
 
 .navigatorButton,
 .objectButton {
   display: grid;
-  gap: 2px;
+  gap: var(--portal-density-2);
   text-align: left;
+}
+
+/*
+ * PR-T4 (2026-05-26): object-tree row visual treatment is token-driven.
+ *
+ * Default mode picks up `--portal-row-button-*` values that match the
+ * legacy chunky-button look. Compact mode flips the same tokens to a
+ * flat list row (no border, no fill) — see `[data-workbench-density="compact"]`
+ * in `apps/portal/app/globals.css`. The selected state is conveyed by a
+ * subtle background bump applied on top regardless of mode, so a row
+ * still reads as "active" in both densities.
+ *
+ * This overrides the `.buttonPrimary` / `.secondaryButton` defaults
+ * (which were designed for standalone action buttons) only when the
+ * row marker class `.objectButton` is present. Standalone buttons are
+ * unaffected.
+ */
+.objectButton {
+  border: var(--portal-row-button-border);
+  background: var(--portal-row-button-bg);
+  border-radius: var(--portal-row-button-radius);
+  padding: var(--portal-row-button-padding-y) var(--portal-row-button-padding-x);
+  min-height: var(--portal-row-md);
+  color: rgba(var(--portal-text-rgb), 0.88);
+  cursor: pointer;
+  transition:
+    border-color 140ms ease,
+    background 140ms ease;
+}
+
+.objectButton:hover {
+  background: rgba(var(--portal-text-rgb), 0.05);
+}
+
+.buttonPrimary.objectButton {
+  background: rgba(var(--portal-text-rgb), 0.08);
+  color: rgba(var(--portal-text-rgb), 0.94);
+}
+
+.buttonPrimary.objectButton:hover {
+  background: rgba(var(--portal-text-rgb), 0.1);
 }
 
 .navigatorLabel,
 .objectButtonLabel {
-  font-size: 12px;
+  font-size: var(--portal-font-sm);
   font-weight: 700;
   color: rgba(var(--portal-text-rgb), 0.92);
 }
 
 .navigatorMeta,
 .objectButtonMeta {
-  font-size: 11px;
+  font-size: var(--portal-font-xs);
   line-height: 1.4;
   color: rgba(var(--portal-text-rgb), 0.62);
 }
 
 .summaryList {
   display: grid;
-  gap: 8px;
+  gap: var(--portal-density-8);
 }
 
 .summaryRow {
   display: grid;
-  gap: 2px;
+  gap: var(--portal-density-2);
 }
 
 .summaryLabel {
-  font-size: 11px;
+  font-size: var(--portal-font-xs);
   font-weight: 700;
   letter-spacing: 0.04em;
   color: rgba(var(--portal-text-rgb), 0.58);
 }
 
 .summaryValue {
-  font-size: 12px;
+  font-size: var(--portal-font-sm);
   font-weight: 700;
   line-height: 1.35;
   color: rgba(var(--portal-text-rgb), 0.9);
 }
 
 .summaryHint {
-  font-size: 11px;
+  font-size: var(--portal-font-xs);
   line-height: 1.45;
   color: rgba(var(--portal-text-rgb), 0.62);
 }
 
 .field {
   display: grid;
-  gap: 4px;
+  grid-template-columns: minmax(0, 1fr) minmax(120px, auto);
+  align-items: center;
+  gap: var(--portal-density-8) var(--portal-density-12);
+}
+
+/*
+ * PR-T4 revision (2026-05-26): in compact density, inspector field
+ * rows wear the same soft pill as the rail rows so the whole
+ * workbench reads as one consistent CAD list. The select/input on
+ * the right side loses its own background (in compact mode) to avoid
+ * a "pill inside a pill" double-stacked look — the field row IS the
+ * pill, and the input is just the editable value inside it.
+ */
+[data-workbench-density="compact"] .field {
+  padding: var(--portal-density-6) var(--portal-density-10);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.06);
+  border-radius: 8px;
+  background: rgba(var(--portal-text-rgb), 0.03);
+}
+
+[data-workbench-density="compact"] .field .input,
+[data-workbench-density="compact"] .field .select {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  min-height: 0;
+  text-align: right;
 }
 
 .toggleField {
-  gap: 6px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--portal-density-6);
 }
 
 .toggleHeader {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: var(--portal-density-8);
 }
 
 .fieldLabel {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  color: rgba(var(--portal-text-rgb), 0.82);
+  font-size: var(--portal-font-sm);
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  color: rgba(var(--portal-text-rgb), 0.7);
 }
 
 .input,
@@ -172,26 +239,26 @@
 .button,
 .secondaryButton,
 .toggleButton {
-  min-height: 36px;
+  min-height: var(--portal-control-md);
   border: 1px solid rgba(var(--portal-text-rgb), 0.1);
-  border-radius: 12px;
+  border-radius: var(--portal-radius-button);
   background: rgba(var(--portal-text-rgb), 0.03);
   color: rgba(var(--portal-text-rgb), 0.9);
   font: inherit;
-  font-size: 12px;
+  font-size: var(--portal-font-sm);
   font-weight: 600;
 }
 
 .input,
 .select {
   width: 100%;
-  padding: 8px 10px;
+  padding: var(--portal-density-8) var(--portal-density-10);
 }
 
 .button,
 .secondaryButton,
 .toggleButton {
-  padding: 8px 12px;
+  padding: var(--portal-density-8) var(--portal-density-12);
   cursor: pointer;
   transition:
     border-color 140ms ease,
@@ -220,6 +287,33 @@
   background: rgba(var(--portal-text-rgb), 0.03);
 }
 
+.dangerButton {
+  min-height: var(--portal-control-md);
+  border: 1px solid rgba(220, 53, 69, 0.35);
+  border-radius: var(--portal-radius-button);
+  background: rgba(220, 53, 69, 0.06);
+  color: rgba(220, 53, 69, 0.92);
+  font: inherit;
+  font-size: var(--portal-font-sm);
+  font-weight: 600;
+  padding: var(--portal-density-8) var(--portal-density-12);
+  cursor: pointer;
+  width: 100%;
+  transition:
+    border-color 140ms ease,
+    background 140ms ease;
+}
+
+.dangerButton:hover {
+  border-color: rgba(220, 53, 69, 0.55);
+  background: rgba(220, 53, 69, 0.1);
+}
+
+.dangerButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
 .toggleButton {
   min-width: 68px;
   background: rgba(var(--portal-text-rgb), 0.03);
@@ -233,13 +327,13 @@
 .buttonPrimary {
   min-height: 38px;
   border: 1px solid rgba(var(--portal-text-rgb), 0.16);
-  border-radius: 12px;
+  border-radius: var(--portal-radius-button);
   background: rgba(var(--portal-text-rgb), 0.08);
   color: rgba(var(--portal-text-rgb), 0.94);
   font: inherit;
-  font-size: 12px;
+  font-size: var(--portal-font-sm);
   font-weight: 700;
-  padding: 8px 12px;
+  padding: var(--portal-density-8) var(--portal-density-12);
   cursor: pointer;
   transition:
     border-color 140ms ease,
@@ -262,11 +356,11 @@
 .buttonRow {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
+  gap: var(--portal-density-8);
 }
 
 .sectionToggleIcon {
-  font-size: 16px;
+  font-size: var(--portal-font-xl);
   font-weight: 700;
   line-height: 1;
   color: rgba(var(--portal-text-rgb), 0.62);
@@ -274,14 +368,14 @@
 
 .flashingsSection {
   display: grid;
-  gap: 10px;
+  gap: var(--portal-density-10);
 }
 
 .flashingsTable {
   display: grid;
   gap: 0;
   border: 1px solid rgba(var(--portal-text-rgb), 0.08);
-  border-radius: 14px;
+  border-radius: var(--portal-radius-md);
   background: rgba(var(--portal-text-rgb), 0.02);
   overflow: hidden;
 }
@@ -291,15 +385,15 @@
 .flashingsRowPrimary {
   display: grid;
   grid-template-columns: minmax(130px, 1fr) minmax(96px, 118px) minmax(96px, 118px) minmax(92px, 112px) 34px;
-  gap: 8px;
+  gap: var(--portal-density-8);
   align-items: center;
-  padding: 8px 10px;
+  padding: var(--portal-density-8) var(--portal-density-10);
 }
 
 .flashingsGridHeader {
   border-bottom: 1px solid rgba(var(--portal-text-rgb), 0.1);
   background: rgba(var(--portal-text-rgb), 0.04);
-  font-size: 10px;
+  font-size: var(--portal-font-2xs);
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -317,18 +411,18 @@
 
 .flashingsCellItem {
   display: grid;
-  gap: 2px;
+  gap: var(--portal-density-2);
   min-width: 0;
 }
 
 .flashingsItemBadge {
-  font-size: 12px;
+  font-size: var(--portal-font-sm);
   font-weight: 700;
 }
 
 .flashingsItemMeta,
 .flashingsWarning {
-  font-size: 10px;
+  font-size: var(--portal-font-2xs);
   line-height: 1.35;
   color: rgba(var(--portal-text-rgb), 0.62);
 }
@@ -338,15 +432,15 @@
 }
 
 .flashingsLengthCell .input {
-  padding-right: 24px;
+  padding-right: var(--portal-density-24);
 }
 
 .flashingsLengthSuffix {
   position: absolute;
-  right: 10px;
+  right: var(--portal-density-10);
   top: 50%;
   transform: translateY(-50%);
-  font-size: 10px;
+  font-size: var(--portal-font-2xs);
   font-weight: 700;
   color: rgba(var(--portal-text-rgb), 0.55);
   pointer-events: none;
@@ -361,22 +455,22 @@
 
 .flashingsRemoveButton {
   border: 1px solid rgba(var(--portal-text-rgb), 0.14);
-  border-radius: 999px;
+  border-radius: var(--portal-radius-pill);
   background: rgba(var(--portal-text-rgb), 0.03);
   color: rgba(var(--portal-text-rgb), 0.74);
 }
 
 .flashingsTotalsCard {
   border: 1px solid rgba(var(--portal-text-rgb), 0.1);
-  border-radius: 12px;
-  padding: 10px;
+  border-radius: var(--portal-radius-button);
+  padding: var(--portal-density-10);
   background: rgba(var(--portal-text-rgb), 0.02);
   display: grid;
-  gap: 6px;
+  gap: var(--portal-density-6);
 }
 
 .flashingsTotalsTitle {
-  font-size: 12px;
+  font-size: var(--portal-font-sm);
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -386,16 +480,16 @@
 .flashingsTotalsRow {
   display: flex;
   justify-content: space-between;
-  gap: 8px;
-  font-size: 12px;
+  gap: var(--portal-density-8);
+  font-size: var(--portal-font-sm);
 }
 
 .flashingsTotalsToggle {
-  margin-top: 2px;
+  margin-top: var(--portal-density-2);
   border: none;
   background: transparent;
   color: rgba(var(--portal-text-rgb), 0.72);
-  font-size: 11px;
+  font-size: var(--portal-font-xs);
   font-weight: 700;
   cursor: pointer;
   text-align: left;
@@ -406,20 +500,57 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  padding: 8px 10px;
-  border-radius: 12px;
+  gap: var(--portal-density-8);
+  padding: var(--portal-density-8) var(--portal-density-10);
+  border-radius: var(--portal-radius-button);
   background: rgba(var(--portal-text-rgb), 0.04);
 }
 
+/*
+ * PR-T4 revision (2026-05-26): in compact density, the VISIBILITY rows
+ * stay as soft pill cards — same pattern as the object-tree rows below.
+ * The previous "fully flat" treatment was too sparse. The toggle
+ * button becomes muted status text on the right, but the row itself
+ * keeps a subtle background + border + rounded corners so it reads
+ * as a clickable affordance.
+ *
+ * Scoped to `.inlineMeta .toggleButton` so other toggle buttons in
+ * the rail (e.g. gable end frames) keep their chunky look.
+ */
+[data-workbench-density="compact"] .inlineMeta {
+  padding: var(--portal-density-8) var(--portal-density-10);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.06);
+  border-radius: 8px;
+  background: rgba(var(--portal-text-rgb), 0.03);
+}
+
+[data-workbench-density="compact"] .inlineMeta .toggleButton {
+  min-height: 0;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: rgba(var(--portal-text-rgb), 0.58);
+  font-size: var(--portal-font-xs);
+  font-weight: 600;
+}
+
+[data-workbench-density="compact"] .inlineMeta .toggleButton:hover {
+  color: rgba(var(--portal-text-rgb), 0.84);
+}
+
+[data-workbench-density="compact"] .inlineMeta .toggleButtonActive {
+  color: rgba(var(--portal-text-rgb), 0.84);
+}
+
 .inlineLabel {
-  font-size: 11px;
+  font-size: var(--portal-font-xs);
   font-weight: 700;
   color: rgba(var(--portal-text-rgb), 0.68);
 }
 
 .inlineValue {
-  font-size: 12px;
+  font-size: var(--portal-font-sm);
   font-weight: 700;
   color: rgba(var(--portal-text-rgb), 0.9);
 }
@@ -427,21 +558,70 @@
 .fieldHint,
 .empty {
   margin: 0;
-  font-size: 11px;
+  font-size: var(--portal-font-xs);
   line-height: 1.45;
   color: rgba(var(--portal-text-rgb), 0.62);
 }
 
+.field > .fieldHint,
+.field > .fieldError {
+  grid-column: 1 / -1;
+}
+
 .fieldError {
   margin: 0;
-  font-size: 11px;
+  font-size: var(--portal-font-xs);
   line-height: 1.45;
   color: rgb(153, 27, 27);
+}
+
+.collapsibleSection {
+  border-top: 1px solid rgba(var(--portal-text-rgb), 0.08);
+  padding-top: var(--portal-density-12);
+}
+
+.collapsibleSection > .collapsibleSectionTitle {
+  margin: 0;
+  font-size: var(--portal-font-md);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(var(--portal-text-rgb), 0.62);
+  cursor: pointer;
+  list-style: none;
+  padding: var(--portal-density-4) 0;
+}
+
+.collapsibleSection > .collapsibleSectionTitle::-webkit-details-marker {
+  display: none;
+}
+
+.collapsibleSection > .collapsibleSectionTitle::before {
+  content: '▸';
+  display: inline-block;
+  width: 14px;
+  font-size: var(--portal-font-2xs);
+  color: rgba(var(--portal-text-rgb), 0.5);
+  transition: transform 140ms ease;
+}
+
+.collapsibleSection[open] > .collapsibleSectionTitle::before {
+  transform: rotate(90deg);
+}
+
+.collapsibleSectionBody {
+  display: grid;
+  gap: var(--portal-density-12);
+  padding-top: var(--portal-density-12);
 }
 
 @media (max-width: 1120px) {
   .summary,
   .section {
-    padding: 12px;
+    /*
+     * Default-mode responsive shrink. Compact mode already zeros padding
+     * via the token, so this only affects the original chunky-card look.
+     */
+    padding: var(--portal-density-12);
   }
 }

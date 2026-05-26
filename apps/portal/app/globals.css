@@ -45,7 +45,201 @@
   --bg: var(--portal-bg-page);
   --panel: var(--portal-bg-surface);
   --border: var(--portal-border);
+
+  /*
+   * PR-T1 (2026-05-26) — density-flippable token scale.
+   *
+   * The legacy `--portal-space-1..6` tokens above are a perceptual scale
+   * (6/10/14/18/24/32) used by the rest of the portal. The workbench needs
+   * finer-grained tokens because it composes dense CAD-style layouts where
+   * a 4-unit gap is meaningfully different from an 8-unit gap. The new
+   * `--portal-density-*`, `--portal-row-*`, `--portal-control-*`,
+   * `--portal-font-*`, and `--portal-rail-width` / `--portal-inspector-width`
+   * tokens get flipped to compact values inside
+   * `[data-workbench-density="compact"]` (PR-T3) — same tokens, different
+   * resolved value per scope. CSS modules that read these tokens
+   * automatically shrink when the workbench enters compact mode.
+   *
+   * Token names suffix the pixel value (e.g. `--portal-density-12: 12px`)
+   * so the call site reads intent: `gap: var(--portal-density-12)` says
+   * "twelve units of gap" without forcing the reader to look up the scale.
+   */
+  --portal-density-2: 2px;
+  --portal-density-4: 4px;
+  --portal-density-6: 6px;
+  --portal-density-8: 8px;
+  --portal-density-10: 10px;
+  --portal-density-12: 12px;
+  --portal-density-14: 14px;
+  --portal-density-16: 16px;
+  --portal-density-18: 18px;
+  --portal-density-22: 22px;
+  --portal-density-24: 24px;
+  --portal-density-32: 32px;
+
+  --portal-row-sm: 28px;
+  --portal-row-md: 36px;
+  --portal-row-lg: 48px;
+
+  --portal-control-sm: 28px;
+  --portal-control-md: 36px;
+  --portal-control-lg: 40px;
+  --portal-control-xl: 46px;
+
+  --portal-font-2xs: 10px;
+  --portal-font-xs: 11px;
+  --portal-font-sm: 12px;
+  --portal-font-md: 13px;
+  --portal-font-lg: 14px;
+  --portal-font-xl: 16px;
+  --portal-font-2xl: 18px;
+
+  --portal-rail-width-min: 320px;
+  --portal-rail-width-max: 380px;
+  --portal-inspector-width-min: 280px;
+  --portal-inspector-width-max: 360px;
+
+  --portal-radius-pill-tight: 8px;
+  --portal-radius-button: 12px;
+
+  /*
+   * PR-T4 (2026-05-26) — section card visual-treatment tokens.
+   *
+   * Three files (WorkbenchRail.module.css, RightInspectorPanel.module.css,
+   * DesignWorkbenchEstimateClient.module.css) all share the same "rounded
+   * card" treatment for their section wrappers: 1px subtle border + a
+   * two-layer linear/radial gradient + lg radius + 14px padding. Promoting
+   * these to tokens lets compact-density mode flatten all three at once
+   * without editing each file. Default mode keeps the cards exactly as
+   * before — token VALUES match the previous hardcoded values.
+   */
+  --portal-section-border: 1px solid rgba(var(--portal-text-rgb), 0.08);
+  --portal-section-background:
+    linear-gradient(180deg, rgba(var(--portal-bg-rgb), 0.98), rgba(var(--portal-bg-rgb), 0.95)),
+    radial-gradient(circle at top left, rgba(var(--accentRgb), 0.04), transparent 50%);
+  --portal-section-radius: var(--portal-radius-lg);
+  --portal-section-padding: var(--portal-density-14);
+  --portal-section-stack-gap: var(--portal-density-12);
+
+  /*
+   * PR-T4: row-button (object-tree row) visual treatment. Default mode
+   * keeps the chunky button look (border + filled bg). Compact mode
+   * strips chrome down to a flat list row with hover/selected highlight.
+   */
+  --portal-row-button-border: 1px solid rgba(var(--portal-text-rgb), 0.1);
+  --portal-row-button-bg: rgba(var(--portal-text-rgb), 0.03);
+  --portal-row-button-radius: var(--portal-radius-button);
+  --portal-row-button-padding-x: var(--portal-density-12);
+  --portal-row-button-padding-y: var(--portal-density-8);
 }
+
+/*
+ * PR-T3 (2026-05-26) — compact density values for the workbench.
+ *
+ * Token values here override the defaults inside the workbench shell
+ * (`<div data-workbench-density="compact">` on `DesignWorkbenchEstimateClient`).
+ * Everywhere a workbench CSS module reads `var(--portal-density-N)`,
+ * `var(--portal-control-md)`, etc. it automatically picks up these
+ * compact values without any rule editing.
+ *
+ * Strategy:
+ *   - Spacing shrinks roughly 25-40% — gaps and paddings get tighter
+ *     without going so small that things touch.
+ *   - Control + row heights drop from ~36-40px to ~28-32px so multiple
+ *     rail/inspector rows fit on screen at once.
+ *   - Column widths tighten — rail loses ~80px, inspector loses ~40-50px.
+ *   - Radii flatten from chunky 14-18px to a CAD-appropriate 6-10px.
+ *   - Font sizes are left alone — readability ≠ density. If text needs
+ *     to shrink that's a separate decision.
+ */
+[data-workbench-density="compact"] {
+  --portal-density-2: 2px;
+  --portal-density-4: 3px;
+  --portal-density-6: 4px;
+  --portal-density-8: 6px;
+  --portal-density-10: 6px;
+  --portal-density-12: 8px;
+  --portal-density-14: 10px;
+  --portal-density-16: 12px;
+  --portal-density-18: 12px;
+  --portal-density-22: 14px;
+  --portal-density-24: 16px;
+  --portal-density-32: 20px;
+
+  --portal-row-sm: 24px;
+  --portal-row-md: 28px;
+  --portal-row-lg: 36px;
+
+  --portal-control-sm: 24px;
+  --portal-control-md: 28px;
+  --portal-control-lg: 32px;
+  --portal-control-xl: 36px;
+
+  --portal-rail-width-min: 220px;
+  --portal-rail-width-max: 260px;
+  --portal-inspector-width-min: 280px;
+  --portal-inspector-width-max: 320px;
+
+  --portal-radius-sm: 6px;
+  --portal-radius-md: 8px;
+  --portal-radius-lg: 10px;
+  --portal-radius-xl: 12px;
+  --portal-radius-button: 6px;
+  --portal-radius-pill-tight: 6px;
+
+  /*
+   * PR-T4: flatten section cards in compact mode.
+   *
+   * The mockup shows essentially borderless sections with just a title
+   * + content flowing below — no rounded card, no gradient. Tokenising
+   * the card properties (default block above) lets compact mode flip
+   * all three section-using files (rail / inspector / shell) at once.
+   * `--portal-section-stack-gap` controls the breathing room between
+   * sections in the inspector body.
+   */
+  --portal-section-border: 0;
+  --portal-section-background: transparent;
+  --portal-section-radius: 0;
+  --portal-section-padding: 0;
+  /*
+   * Tighter gap between flattened sections so PRIMARY / CONNECTIONS /
+   * MEMBER SIZES read as one continuous list rather than separate cards.
+   * 8px is roughly the mockup target.
+   */
+  --portal-section-stack-gap: var(--portal-density-12);
+
+  /*
+   * PR-T4 revision (2026-05-26): row buttons KEEP a soft pill in
+   * compact mode — the previous "fully flat" treatment lost all visual
+   * structure and left rows reading as bare text on the page. The
+   * mockup pattern is "flat section wrappers + soft row pills",
+   * not "flat everything". Reverted border + background to subtle
+   * values; radius + padding stay tight.
+   */
+  --portal-row-button-border: 1px solid rgba(var(--portal-text-rgb), 0.06);
+  --portal-row-button-bg: rgba(var(--portal-text-rgb), 0.03);
+  --portal-row-button-radius: 8px;
+  --portal-row-button-padding-x: var(--portal-density-10);
+  --portal-row-button-padding-y: var(--portal-density-8);
+}
+
+/*
+ * PR-T1 (2026-05-26) — Tailwind v4 @theme inline block REMOVED after the
+ * first browser test of T2 collapsed the workbench's 3-column shell
+ * (CSS modules couldn't resolve `var(--portal-density-N)` references when
+ * this file also carried `@theme inline { ... }`). Suspected cause: the
+ * portal still uses Tailwind v3 directives (`@tailwind base/components/
+ * utilities`) at the top of this file while the postcss config switched
+ * to `@tailwindcss/postcss` (the v4 plugin). Mixing `@theme inline` with
+ * v3 directives in the same file appears to break custom-property
+ * processing.
+ *
+ * The CSS modules don't need `@theme inline` to work — they read the
+ * `:root` declarations above directly. The block is only required when
+ * we want Tailwind utilities like `bg-portal-page` or `p-portal-12`,
+ * which no current code uses. Re-introduce it (or migrate the file to
+ * `@import "tailwindcss"`) when a real consumer needs the utilities.
+ */
 
 @media (max-width: 768px) {
   :root {

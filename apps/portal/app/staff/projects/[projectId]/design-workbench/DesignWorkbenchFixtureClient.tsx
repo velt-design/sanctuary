@@ -2,10 +2,18 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import DrawingWorkbench from '@/components/drawings/workbench/DrawingWorkbench';
+import ObjectWorkbenchRail from '@/components/drawings/rail/ObjectWorkbenchRail';
 import RightInspectorPanel from '@/components/drawings/inspector/RightInspectorPanel';
+import { buildObjectWorkbenchGeometryEditState } from '@/lib/drawings/geometry/geometryEditAdapter';
+import WorkbenchInspectorHost from './WorkbenchInspectorHost';
+import {
+  buildFixtureSelectionActions,
+  buildFixtureWorkbenchActions,
+} from './fixtureWorkbenchActionStubs';
 import type { Geometry3DViewportState } from '@/components/drawings/viewports/Geometry3DViewport';
 import { buildDrawingWorkbenchStore } from '@/lib/drawings/state/drawingWorkbenchStore';
 import {
+  buildDrawingWorkbenchObjectSelectionState,
   createDrawingWorkbenchUiState,
   type DrawingWorkbenchViewportTransform,
 } from '@/lib/drawings/state/drawingWorkbenchUiState';
@@ -88,6 +96,27 @@ export default function DesignWorkbenchFixtureClient({
   }));
 
   const activeModule = store.derived.activeModule;
+  // PR-T5 (2026-05-26): mount production WorkbenchInspectorHost with
+  // no-op action stubs so the snapshot dev loop covers the right
+  // inspector. Stubs are memoised so the host's prop identity stays
+  // stable across UI state updates.
+  const fixtureSelectionActions = useMemo(
+    () => buildFixtureSelectionActions(setUi),
+    [setUi],
+  );
+  const fixtureWorkbenchActions = useMemo(() => buildFixtureWorkbenchActions(), []);
+  // Build the real geometry-edit state from fixture snapshot + draft so
+  // SanctuaryWorkbenchRail / PergolaInspector / HouseFormInspector all
+  // see populated form data and render their PRIMARY / CONNECTIONS /
+  // MEMBER SIZES sections (vs the "No Sanctuary controls" empty state).
+  const fixtureGeometryEditState = useMemo(() => {
+    const result = buildObjectWorkbenchGeometryEditState({
+      snapshot: fixture.snapshot,
+      draft: fixture.draft,
+      moduleIndex: store.derived.activeModuleIndex,
+    });
+    return result.ok ? result.value : null;
+  }, [fixture.draft, fixture.snapshot, store.derived.activeModuleIndex]);
   const meta = useMemo(
     () =>
       buildEstimateDrawingSheetMeta({
@@ -155,38 +184,46 @@ export default function DesignWorkbenchFixtureClient({
   }
 
   return (
-    <div className={styles.shell} data-fixture-workbench-hydrated={hasHydrated ? 'true' : 'false'}>
+    <div
+      className={styles.shell}
+      data-fixture-workbench-hydrated={hasHydrated ? 'true' : 'false'}
+      data-workbench-density="compact"
+    >
       <aside className={styles.configuratorColumn}>
         <div className={styles.configuratorScroll}>
-          {modules.length > 1 ? (
-            <section className={styles.moduleSection}>
-              <p className={styles.moduleSectionTitle}>Module</p>
-              <select
-                className={styles.moduleSelect}
-                aria-label="Drawing module"
-                value={String(store.derived.activeModuleIndex)}
-                onChange={(event) =>
-                  setUi((current) => ({
-                    ...current,
-                    activeModuleIndex: Number(event.target.value),
-                  }))
-                }
-              >
-                {modules.map((module, index) => (
-                  <option key={module.id} value={String(index)}>
-                    {module.label}
-                  </option>
-                ))}
-              </select>
-            </section>
-          ) : null}
-
-          <section className={styles.notice}>
-            <p className={styles.noticeTitle}>Fixture Preview</p>
-            <p className={styles.noticeText}>
-              This hidden route is rendering a baked fixture snapshot. The workspace stays interactive for plan, section, and 3D review, but configurator editing is not part of fixture mode.
-            </p>
-          </section>
+          {/*
+            PR-T4-snapshot (2026-05-26): mount the same flat OBJECTS TREE rail
+            the real workbench uses so visual snapshots taken against
+            /qa/design-workbench-fixture exercise the same CSS as the
+            authenticated /staff/projects/[id]/design-workbench route.
+            Handlers are no-ops — the fixture is read-only, the rail just
+            renders the tree + visibility toggles for layout iteration.
+          */}
+          <ObjectWorkbenchRail
+            model={store.derived.railModel}
+            activeObjectRef={store.ui.activeObjectRef}
+            visibility={store.ui.visibility}
+            disabled
+            onSelectObjectRef={(ref) =>
+              setUi((current) => ({
+                ...current,
+                ...buildDrawingWorkbenchObjectSelectionState({
+                  activeRailTab: ref.family,
+                  activeObjectRef: ref,
+                }),
+              }))
+            }
+            onVisibilityChange={(family, visible) =>
+              setUi((current) => ({
+                ...current,
+                visibility: {
+                  ...current.visibility,
+                  [family]: visible,
+                },
+              }))
+            }
+            inspectorContext={{}}
+          />
         </div>
       </aside>
 
@@ -239,14 +276,28 @@ export default function DesignWorkbenchFixtureClient({
       <aside className={styles.inspectorColumn}>
         <div className={styles.inspectorScroll}>
           {/*
-           * PR-W3c: fixture mode doesn't expose an action surface (read-only
-           * preview), so we mount the panel header without inspector body
-           * content. The fixture is intentionally non-editable here.
+           * PR-T5 (2026-05-26): mount the real production
+           * `WorkbenchInspectorHost` with no-op action stubs so the AI
+           * snapshot dev loop sees the same inspector code path users
+           * see in the authenticated workbench. `isLocked={true}`
+           * disables controls visually so it's obvious the fixture is
+           * read-only. Replaces the prior empty-shell mount.
            */}
           <RightInspectorPanel
             selectionLabel={store.derived.railModel.selectedInspector.selectedObjectLabel}
             trustStatusLabel={store.derived.railModel.selectedInspector.selectedObjectTrustLabel}
-          />
+          >
+            <WorkbenchInspectorHost
+              activeModuleInput={activeModule.drawingModule.input}
+              geometryEditState={fixtureGeometryEditState}
+              isLocked
+              objectSelectionActions={fixtureSelectionActions}
+              objectWorkbenchActions={fixtureWorkbenchActions}
+              setUi={setUi}
+              store={store}
+              supportsSanctuaryEditing={Boolean(fixtureGeometryEditState)}
+            />
+          </RightInspectorPanel>
         </div>
       </aside>
     </div>

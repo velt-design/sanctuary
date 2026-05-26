@@ -27,10 +27,10 @@
  */
 .toolbar {
   position: absolute;
-  bottom: 12px;
-  left: 12px;
+  bottom: var(--portal-density-12);
+  left: var(--portal-density-12);
   display: flex;
-  gap: 6px;
+  gap: var(--portal-density-6);
   z-index: 2;
   pointer-events: auto;
 }
@@ -38,11 +38,11 @@
 .toolbarButton {
   appearance: none;
   border: 1px solid rgba(0, 0, 0, 0.12);
-  border-radius: 999px;
-  padding: 4px 10px;
+  border-radius: var(--portal-radius-pill);
+  padding: var(--portal-density-4) var(--portal-density-10);
   background: rgba(255, 255, 255, 0.92);
   color: rgba(0, 0, 0, 0.78);
-  font-size: 12px;
+  font-size: var(--portal-font-sm);
   font-weight: 600;
   cursor: pointer;
 }

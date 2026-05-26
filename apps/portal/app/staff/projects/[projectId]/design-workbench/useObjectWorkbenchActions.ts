@@ -24,6 +24,7 @@ import {
 } from '@/lib/drawings/state/objectFirstWorkbenchModel';
 import {
   addHouseFormToObjectFirstDraft,
+  removeHouseFormFromObjectFirstDraft,
   buildObjectFirstWorkbenchDraftFromProjectModel,
 } from '@/lib/drawings/state/objectFirstWorkbenchAdapter';
 import type {
@@ -181,22 +182,42 @@ export function useObjectWorkbenchActions({
       const terminalEndIds = new Set(
         previewStore.derived.objectWorkbench.houseForm.roof.terminalEnds.map((end) => end.id),
       );
+      // PR-Bug3 (2026-05-25): the preview store is built with `objectFirst: null`,
+      // which strips authored additional house forms from the project model rebuild.
+      // The previewObjectFirst therefore only carries the synthesized primary
+      // (from `buildSharedHouse`). Without explicit preservation, the map below
+      // would drop every additional form on every footprint sync — silent data
+      // loss when the user resizes House 1.
+      //
+      // Footprint sync only affects the active pergola's host (the primary
+      // today). Additional forms (sleepouts, granny flats) aren't touched by
+      // the sync and pass through unchanged. We merge them after the
+      // primary-form sync to preserve them.
+      const previewHouseFormIds = new Set(
+        (previewObjectFirst.houseAssembly?.houseForms ?? []).map((form) => form.id),
+      );
+      const additionalHouseForms = existingHouseForms.filter(
+        (form) => !previewHouseFormIds.has(form.id),
+      );
       return {
         ...objectFirstDraft,
         houseAssembly: previewObjectFirst.houseAssembly
           ? {
               ...previewObjectFirst.houseAssembly,
-              houseForms: previewObjectFirst.houseAssembly.houseForms.map((houseForm, index) => {
-                const existingHouseForm =
-                  existingHouseForms.find((candidate) => candidate.id === houseForm.id) ??
-                  existingHouseForms[index] ??
-                  null;
-                return mergeHouseFormRoofIntentAfterFootprintSync({
-                  previewHouseForm: houseForm,
-                  existingHouseForm,
-                  terminalEndIds,
-                });
-              }),
+              houseForms: [
+                ...previewObjectFirst.houseAssembly.houseForms.map((houseForm, index) => {
+                  const existingHouseForm =
+                    existingHouseForms.find((candidate) => candidate.id === houseForm.id) ??
+                    existingHouseForms[index] ??
+                    null;
+                  return mergeHouseFormRoofIntentAfterFootprintSync({
+                    previewHouseForm: houseForm,
+                    existingHouseForm,
+                    terminalEndIds,
+                  });
+                }),
+                ...additionalHouseForms,
+              ],
             }
           : previewObjectFirst.houseAssembly,
       };
@@ -639,6 +660,41 @@ export function useObjectWorkbenchActions({
     [houseForm, runDraftTransaction, selectObjectTarget, store],
   );
 
+  const removeSharedHouseForm = useCallback(
+    async (input: { houseFormId: string }): Promise<CommitResult> => {
+      // PR-Bug3 (2026-05-25): inverse of `addSharedHouseForm`. Removes the
+      // named house form via `removeHouseFormFromObjectFirstDraft` (which
+      // refuses to delete when only one form remains, preserving the
+      // legacy-compat invariant that every estimate has at least one
+      // house). On success, falls back to selecting the primary form so
+      // the inspector doesn't strand on a deleted target.
+      return runDraftTransaction({
+        buildNextDraft: (draft) => {
+          const objectFirstDraft = resolveObjectFirstDraft(draft, store);
+          const nextObjectFirst = removeHouseFormFromObjectFirstDraft({
+            draft: objectFirstDraft,
+            houseFormId: input.houseFormId,
+          });
+          if (nextObjectFirst === objectFirstDraft) {
+            return { ok: false, error: 'Cannot remove this house form.' };
+          }
+          return {
+            ok: true,
+            draft: updateDraftObjectFirst({ draft, objectFirst: nextObjectFirst }),
+          };
+        },
+        afterPersist: () => {
+          const primaryFormId =
+            store.derived.houseForms[0]?.id ?? null;
+          if (primaryFormId) {
+            selectObjectTarget({ family: 'house_forms', objectId: primaryFormId });
+          }
+        },
+      });
+    },
+    [runDraftTransaction, selectObjectTarget, store],
+  );
+
   const addSharedHouseDeck = useCallback(
     async (mode: 'preset' | 'custom_outline'): Promise<CommitResult> => {
       if (!houseForm) return missingSharedHouseResult();
@@ -920,6 +976,7 @@ export function useObjectWorkbenchActions({
     commitSharedHouseOpeningPatch,
     commitSharedHouseRoofDraft,
     removeSharedHouseDeck,
+    removeSharedHouseForm,
     removeSharedHouseOpening,
   };
 }

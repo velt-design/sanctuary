@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState, type ReactNode } from 'react';
 import { HOUSE_FOOTPRINT_PRESET_OPTIONS, type ModuleViewsTab } from '@/app/staff/calculator/ModuleViewsCard';
 import {
   normalizeDrawingRotationQuarterTurns,
@@ -48,7 +48,53 @@ export type SanctuaryWorkbenchRailProps = {
   sections?: SanctuaryWorkbenchSectionVisibility;
   houseContextSectionTitle?: string;
   emptyMessage?: string;
+  /**
+   * PR-W12 (2026-05-26): switch the section layout from the legacy
+   * Geometry / Roof / Gable Baseline / House Context / Supports / Overrides
+   * stack to the CAD mockup's PRIMARY / CONNECTIONS / MEMBER SIZES /
+   * ADVANCED grouping. The same field set is rendered — only the
+   * grouping and collapsed-by-default ADVANCED change. New consumers
+   * (PergolaInspector) opt in; legacy call sites (House form / deck
+   * editors that still use this rail) keep the original sections.
+   */
+  mockupGrouping?: boolean;
+  /**
+   * Extra content rendered inside the ADVANCED section when
+   * `mockupGrouping` is on. Used by PergolaInspector to keep the
+   * snap-derived Host Attachment summary tucked away from the primary
+   * fields rather than as a top-level section.
+   */
+  advancedExtras?: ReactNode;
 };
+
+/**
+ * PR-W12: ids that belong in each visible-by-default section of the
+ * mockup-grouping layout. Anything not listed here lands in ADVANCED.
+ * Lookups are O(1) and the membership is plain data so the layout reads
+ * top-down at the call site.
+ */
+const MOCKUP_PRIMARY_FIELD_IDS: ReadonlySet<string> = new Set([
+  'pergola-family',
+  'roof-material',
+  'projectionM',
+  'lengthM',
+  'roof-pitch',
+]);
+
+const MOCKUP_CONNECTIONS_FIELD_IDS: ReadonlySet<string> = new Set([
+  'post-connection',
+  'post-count',
+  'post-cut-height',
+]);
+
+const MOCKUP_MEMBER_SIZE_FIELD_IDS: ReadonlySet<string> = new Set([
+  'rafter-profile-override',
+  'post-profile-override',
+  'front-beam-profile-override',
+  'ledger-profile-override',
+  'ridge-beam-profile-override',
+  'box-perimeter-beam-profile-override',
+]);
 
 const FAMILY_OPTIONS: SelectOption[] = [
   { label: 'Mono', value: 'mono' },
@@ -175,6 +221,8 @@ export default function SanctuaryWorkbenchRail({
   sections,
   houseContextSectionTitle = 'House / Context',
   emptyMessage,
+  mockupGrouping = false,
+  advancedExtras,
 }: SanctuaryWorkbenchRailProps) {
   const [pendingFieldId, setPendingFieldId] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -1152,7 +1200,71 @@ export default function SanctuaryWorkbenchRail({
     );
   }
 
-  const content = (
+  // PR-W12 (2026-05-26): when `mockupGrouping` is on, fold all six legacy
+  // sections into the four-section mockup (PRIMARY / CONNECTIONS /
+  // MEMBER SIZES / ADVANCED). Membership of the first three is by id
+  // lookup; ADVANCED gets the long tail in stable order.
+  const mockupSections = useMemo(() => {
+    if (!mockupGrouping) return null;
+    const allCoreFields = [
+      ...geometryFields,
+      ...roofFields,
+      ...supportFields,
+      ...overrideFields,
+    ];
+    const byId = new Map(allCoreFields.map((field) => [field.id, field]));
+    const primary = Array.from(MOCKUP_PRIMARY_FIELD_IDS)
+      .map((id) => byId.get(id))
+      .filter((field): field is RailFieldDefinition => Boolean(field));
+    const connections = Array.from(MOCKUP_CONNECTIONS_FIELD_IDS)
+      .map((id) => byId.get(id))
+      .filter((field): field is RailFieldDefinition => Boolean(field));
+    const memberSizes = Array.from(MOCKUP_MEMBER_SIZE_FIELD_IDS)
+      .map((id) => byId.get(id))
+      .filter((field): field is RailFieldDefinition => Boolean(field));
+    const placed = new Set<string>([
+      ...MOCKUP_PRIMARY_FIELD_IDS,
+      ...MOCKUP_CONNECTIONS_FIELD_IDS,
+      ...MOCKUP_MEMBER_SIZE_FIELD_IDS,
+    ]);
+    const advanced = [
+      ...allCoreFields.filter((field) => !placed.has(field.id)),
+      ...gableFields,
+      ...visibleHouseFields,
+    ];
+    return { primary, connections, memberSizes, advanced };
+  }, [
+    mockupGrouping,
+    geometryFields,
+    roofFields,
+    supportFields,
+    overrideFields,
+    gableFields,
+    visibleHouseFields,
+  ]);
+
+  const content = mockupGrouping && mockupSections ? (
+    <>
+      {mockupSections.primary.length ? (
+        <RailSection title="Primary">{mockupSections.primary.map(renderRailField)}</RailSection>
+      ) : null}
+      {mockupSections.connections.length ? (
+        <RailSection title="Connections">{mockupSections.connections.map(renderRailField)}</RailSection>
+      ) : null}
+      {mockupSections.memberSizes.length ? (
+        <RailSection title="Member sizes">{mockupSections.memberSizes.map(renderRailField)}</RailSection>
+      ) : null}
+      {(mockupSections.advanced.length > 0 || advancedExtras) ? (
+        <details className={styles.collapsibleSection}>
+          <summary className={styles.collapsibleSectionTitle}>Advanced</summary>
+          <div className={styles.collapsibleSectionBody}>
+            {mockupSections.advanced.map(renderRailField)}
+            {advancedExtras}
+          </div>
+        </details>
+      ) : null}
+    </>
+  ) : (
     <>
       {renderSummary ? (
         <section className={styles.summary}>

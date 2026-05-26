@@ -313,6 +313,24 @@ export default function DesignWorkbenchEstimateClient({
       }),
     [store.derived.solvedModel.projectReferenceShapes, activePergolaSourceId],
   );
+  // PR-Bug2 (2026-05-25): non-host house form `house_reference` footprints
+  // promoted into the active module's committedBodies so they're hit-target-
+  // able and movable. The active pergola's host house already arrives via
+  // the module projection (from `buildReferenceShapes` inside the geometry
+  // package), so we exclude it here to avoid double rendering. All OTHER
+  // house forms (additional sleepouts, granny flats, second houses) flow in.
+  const additionalCommittedShapes = useMemo(() => {
+    const hostHouseSourceId =
+      store.derived.solvedModel.projectModel.houseAssembly?.houseForms[0]?.id ?? null;
+    return store.derived.solvedModel.projectReferenceShapes.filter(
+      (shape) =>
+        shape.sourceType === 'house_reference' &&
+        (hostHouseSourceId === null || shape.sourceObjectId !== hostHouseSourceId),
+    );
+  }, [
+    store.derived.solvedModel.projectReferenceShapes,
+    store.derived.solvedModel.projectModel.houseAssembly,
+  ]);
   const activeModelViewportTransform =
     modelViewportTransformsByKey[modelViewportSurfaceKey] ?? DEFAULT_MODEL_VIEWPORT_TRANSFORM;
   const activeGeometryViewportState =
@@ -405,13 +423,12 @@ export default function DesignWorkbenchEstimateClient({
   }
 
   return (
-    <div className={styles.shell}>
+    <div className={styles.shell} data-workbench-density="compact">
       <aside className={styles.configuratorColumn}>
         <div className={styles.configuratorScroll}>
         <ObjectWorkbenchRailHost
           activeModuleInput={activeModuleInput}
           geometryEditState={geometryEditState}
-          geometryPreview={geometryPreview}
           isLocked={isLocked}
           objectSelectionActions={objectSelectionActions}
           objectWorkbenchActions={objectWorkbenchActions}
@@ -429,14 +446,15 @@ export default function DesignWorkbenchEstimateClient({
           </section>
         ) : null}
 
-        {geometryPreview.kind === 'ready' && geometryPreview.previewMode === 'draft_local_resolved' ? (
-          <section className={styles.notice}>
-            <p className={styles.noticeTitle}>3D Preview Resolved Locally</p>
-            <p className={styles.noticeText}>
-              The 3D view is using the current unsaved draft inputs and a fresh local module solve for geometry verification. It is authoritative for draft geometry, but it still reflects unsaved work.
-            </p>
-          </section>
-        ) : null}
+        {/*
+          PR-T4 (2026-05-26): the "3D Preview Resolved Locally" notice
+          was killed — the same state is already conveyed by the
+          "Approximate" trust chip in the right-inspector header, and
+          the chunky bottom-of-rail card was wasting vertical real
+          estate in compact mode. If a more prominent surface for
+          draft-resolution state is needed later, the bottom status
+          bar (PR-W10) is the right home for it.
+        */}
         </div>
       </aside>
 
@@ -488,6 +506,7 @@ export default function DesignWorkbenchEstimateClient({
           planViewModel={store.derived.activePlanViewModel}
           activeObjectRef={viewportActiveObjectRef}
           projectContextShapes={projectContextShapes}
+          additionalCommittedShapes={additionalCommittedShapes}
           hoveredObjectRef={hoveredObjectRef}
           onHoverObjectChange={setHoveredObjectRef}
           pergolaTargetId={viewportPergolaId}
@@ -700,7 +719,6 @@ export default function DesignWorkbenchEstimateClient({
             <WorkbenchInspectorHost
               activeModuleInput={activeModuleInput}
               geometryEditState={geometryEditState}
-              geometryPreview={geometryPreview}
               isLocked={isLocked}
               objectSelectionActions={objectSelectionActions}
               objectWorkbenchActions={objectWorkbenchActions}

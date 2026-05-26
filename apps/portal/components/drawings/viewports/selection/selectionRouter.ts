@@ -76,7 +76,23 @@ export function topProjectionShapeClassifier(
       shape.kind === 'deck' && typeof shape.metadata?.sourceId === 'string'
         ? shape.metadata.sourceId
         : null;
-    const targetId = taggedDeckId ?? shape.sourceId ?? shape.sourceObjectId ?? shape.id;
+    // PR-Bug1 (2026-05-25): for house form selection (footprint / roof /
+    // walls / attachment target), prefer the explicit
+    // `metadata.houseFormId` tag set at projection time by
+    // `buildTopProjectionFromSolvedScene`. After PR-Geo1's scene-seam id
+    // prefixing, `house_surface_solid` shapes carry prefixed ids that no
+    // longer map to a workbench house form id, so the legacy
+    // `sourceId/sourceObjectId/id` fallback breaks plan-view clicks on the
+    // host house's walls or roof solids.
+    const taggedHouseFormId =
+      typeof shape.metadata?.houseFormId === 'string' ? shape.metadata.houseFormId : null;
+    const targetId =
+      taggedDeckId ??
+      // Deck targets stay on `taggedDeckId` only — they don't want the
+      // houseFormId fallback because decks are their own family.
+      (shape.kind === 'deck'
+        ? (shape.sourceId ?? shape.sourceObjectId ?? shape.id)
+        : (taggedHouseFormId ?? shape.sourceId ?? shape.sourceObjectId ?? shape.id));
     if (shape.kind === 'deck') {
       return { kind: 'workbench', targetKind: 'deck', targetId };
     }

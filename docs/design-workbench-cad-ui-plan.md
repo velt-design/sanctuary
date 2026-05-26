@@ -176,65 +176,13 @@ OBJECTS
 
 Guardrail #1 territory.
 
-### PR-W5: Viewport filter via plan render graph
+### PR-W5: ~~Viewport filter via plan render graph~~ **SCRAPPED 2026-05-26**
 
-**Goal**: `viewportFilter: 'all' | 'pergola_only'`. Filter changes what the canvas shows, not what the object tree lists.
+Reason: the existing per-family visibility toggles (House / Pergolas / Decks / Openings on the left rail) already give the user enough control over what the canvas shows. A dedicated "pergola only" mode would duplicate that surface and add a second source of truth for what's visible. The mockup's "Pergola only" pill is interpreted as an aesthetic decoration only; not implementing it.
 
-**Architectural shape**:
-- New field on `DrawingWorkbenchUiState`: `viewportFilter: ViewportFilterMode`
-- `planRenderGraph.ts` takes `viewportFilter` as input
-- Filter applies at the `topProjectionShapeVisible()` boundary — extend it: when `viewportFilter === 'pergola_only'`, only shapes belonging to the active pergola pass through
-- `selectionOutlines`, `hitTargets`, `dimensions`, `dragPreview` automatically respect filter (derived from `committedBodies`)
-- `contextLines` (wall outlines for snap reference) — explicit decision: in `pergola_only` mode, drop them too
+### PR-W6: ~~Double-line rafter rendering~~ **SCRAPPED 2026-05-26**
 
-**Files**:
-- `apps/portal/lib/drawings/state/drawingWorkbenchUiState.ts` — add field + normalizer
-- `apps/portal/lib/drawings/views/plan/planRenderGraph.ts` — extend `topProjectionShapeVisible` and the layer builders
-- `apps/portal/components/drawings/viewports/PlanViewport/canvas/PlanCanvas.tsx` — pass filter through
-- Left rail VISIBILITY section gets a "Viewport filter: Pergola only ▾" dropdown
-- Tests: `planRenderGraph.test.ts` gets pergola-only-filter cases
-
-**HARD GATE**: N/A · purely additive · no Phase 2 deps · no consolidation.
-
-**Acceptance**:
-- `viewportFilter: 'pergola_only'` shows only the active pergola
-- Object tree still lists house + decks + openings
-- Switching filter back to `'all'` shows everything
-- Filter persists across selection changes
-- Existing visibility toggles still work and compose with filter
-
-**Risk**: medium. **Size**: medium (~250 LOC + tests).
-
----
-
-### PR-W6: Double-line rafter rendering
-
-**Goal**: pergola rafters render as paired parallel lines. Same idea for major perimeter members where visible.
-
-**Architectural shape**:
-- New plan render graph layer: `memberOverlay` (or extend `detailLines`)
-- Source: `WorkbenchSolvedGeometryArtifact.assembly.rafters` (3D centerlines + member profile w/d). Project to plan, offset perpendicular by `±width/2` in plan space.
-- Same derivation for front beam, ledger, ridge if visible from above
-- Line style: muted bronze, thin stroke, less than selection outline weight
-
-**Files**:
-- `apps/portal/lib/drawings/views/plan/planRenderGraph.ts` — add `memberOverlay` layer + `topProjectionPlanLayer()` case
-- New `buildMemberOverlayLines(assembly: Assembly3D): MemberOverlayLine[]` helper
-- Theme tokens for member overlay color/weight
-- Tests: derivation test for known assembly fixture; render-graph test
-- `PlanCanvas.tsx` — render the new layer
-
-**HARD GATE**: N/A · additive · no Phase 2 deps · no consolidation.
-
-**Acceptance**:
-- Pergola with N rafters renders 2N parallel lines in plan
-- Member overlay respects viewport filter (PR-W5)
-- Member overlay doesn't drive scene extents
-- Member overlay suppressed during drag preview
-
-**Risk**: medium-high — geometric derivation in plan-projection space. **Size**: medium (~350 LOC + tests).
-
----
+Reason: pergolas already render with double-line rafters in the current plan view (the user confirmed visually). No work needed.
 
 ### PR-W7: Selection visual treatment
 
@@ -248,6 +196,64 @@ Guardrail #1 territory.
 **HARD GATE**: N/A · REMOVE legacy (heavy fills) · no Phase 2 deps · no consolidation.
 
 **Risk**: low. **Size**: small.
+
+---
+
+## Phase B′ — visual polish to match mockup (PRs W8–W11)
+
+Added 2026-05-26. After PR-W3d shipped the rail and PR-Bug1–4 closed correctness gaps, the user reviewed the result against `public/images/sanctuary_pergola_workbench.png` and asked for several pixel-level pieces still missing. These are pure presentation work — no render-graph or commit-bus changes.
+
+### PR-W8: Visibility section completeness
+
+**Goal**: left rail VISIBILITY section matches the mockup's 6 toggles (House, Pergolas, Decks, Openings, **Dimensions**, **Snap guides**). Row labels read "Hidden in viewport" / "Shown" with subtle status colour.
+
+**Files**:
+- `apps/portal/lib/drawings/state/drawingWorkbenchUiState.ts` — extend `DrawingWorkbenchVisibilityState` with `dimensions: boolean` and `snapGuides: boolean`
+- `apps/portal/components/drawings/rail/ObjectWorkbenchRail.tsx` — render two extra toggles, update label copy
+- `WorkbenchRail.module.css` — tighten row style + status colour
+- Consumers of the visibility state (PlanCanvas dimension layer, snap indicator layer) read the new flags
+
+**HARD GATE**: N/A · additive · no Phase 2 deps · no consolidation.
+
+**Risk**: low. **Size**: small (~80 LOC + tests).
+
+### PR-W9: Canvas chrome — bottom toolbar + corner pills
+
+**Goal**: canvas bottom-centre toolbar `- 78% + Pan Measure` and a small `Plan Editor` pill in the top-left of the canvas area. (The mockup also shows a `Pergola-only view` pill in the top-right — skipped because PR-W5 is scrapped.)
+
+**Files**:
+- `apps/portal/components/drawings/viewports/PlanViewport/canvas/PlanCanvas.tsx` — relocate toolbar, render pills
+- `PlanCanvas.module.css` — toolbar layout + pill styling
+- Hook into `usePanZoom` for the zoom buttons (already exists)
+
+**HARD GATE**: N/A · purely presentation · no Phase 2 deps · no consolidation.
+
+**Risk**: low. **Size**: small (~120 LOC).
+
+### PR-W10: Bottom status bar
+
+**Goal**: thin bar pinned to the bottom of the workbench shell. Left: green-dot status pill + descriptor (e.g. "Plan editor / Object tree includes house/decks · selected pergola drawn with double-line rafters"). Right: scale + coordinate-frame indicator (`Scale 1:100 · World XY`).
+
+**Files**:
+- `apps/portal/components/drawings/workbench/WorkbenchChrome.tsx` OR a new `WorkbenchStatusBar.tsx` (TBD during impl — likely new file so chrome stays a top-bar)
+- `DrawingWorkbench.tsx` — slot the status bar into the layout
+- `DrawingWorkbench.module.css` — flex layout adjustment to reserve bottom row
+
+**HARD GATE**: N/A · additive · no Phase 2 deps · no consolidation.
+
+**Risk**: low. **Size**: small (~150 LOC).
+
+### PR-W11: Top chrome "ready" pill
+
+**Goal**: status indicator (green dot + "ready") between the mode tabs and the Back-Project link in the top chrome. Reads `WorkbenchTrustStatus`.
+
+**Files**:
+- `apps/portal/components/drawings/workbench/WorkbenchChrome.tsx`
+- May need to thread `trustGate` from `DrawingWorkbench` (already available on the store)
+
+**HARD GATE**: N/A · additive · no Phase 2 deps · no consolidation.
+
+**Risk**: low. **Size**: small (~60 LOC).
 
 ---
 

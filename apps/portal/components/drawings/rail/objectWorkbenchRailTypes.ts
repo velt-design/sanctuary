@@ -1,63 +1,36 @@
-import type { ReactNode } from 'react';
 import type { EstimateDrawingFootprintEdit } from '@/lib/estimates/drawingEdits';
-import type {
-  DrawingWorkbenchRailTab,
-  DrawingWorkbenchVisibilityState,
-} from '@/lib/drawings/state/drawingWorkbenchUiState';
+import type { DrawingWorkbenchVisibilityState } from '@/lib/drawings/state/drawingWorkbenchUiState';
 import type { DrawingWorkbenchRailModel } from '@/lib/drawings/state/drawingWorkbenchRailModel';
-import type {
-  ObjectWorkbenchDeckPatch,
-  ObjectWorkbenchInspectorFacade,
-  ObjectWorkbenchOpeningPatch,
-} from '@/lib/drawings/state/objectWorkbenchInspectorModel';
-import type {
-  HouseFormRoofIntentModel,
-  WorkbenchObjectRef,
-} from '@/lib/drawings/state/objectFirstWorkbenchModel';
-import type { OpeningObjectModel } from '@/lib/drawings/state/objectFirstWorkbenchModel';
+import type { HouseFormRoofIntentModel, WorkbenchObjectRef } from '@/lib/drawings/state/objectFirstWorkbenchModel';
 
 export type CommitResult = { ok: boolean; error?: string };
 
+/*
+ * PR-W3d.5 (2026-05-25): inspector context slimmed to just the rail's
+ * "Add structure" callback. All other inspector wiring (footprint edits,
+ * roof intent, deck/opening patches, attachment context, diagnostics)
+ * moved to `WorkbenchInspectorHost` which builds the right-panel inspector
+ * content from its own copy of the store + actions. The rail's only
+ * inspector-side need is the inline `+ Add structure` button on the
+ * House Forms tree section.
+ */
 export type ObjectWorkbenchRailInspectorContext = {
-  objectWorkbench: ObjectWorkbenchInspectorFacade;
-  canEditFootprint?: boolean;
-  canStartDrawOutline?: boolean;
-  onStartDrawOutline?: () => Promise<CommitResult> | CommitResult;
-  onCommitFootprintEdit?: (edit: EstimateDrawingFootprintEdit) => Promise<CommitResult> | CommitResult;
-  onCommitRoofIntent?: (roof: HouseFormRoofIntentModel) => Promise<CommitResult> | CommitResult;
-  onAddDeck?: (mode: 'preset' | 'custom_outline') => Promise<CommitResult> | CommitResult;
   /**
    * PR10: rail "Add structure" button. Clones the active form (or
    * primary if none selected) via PR5's `addHouseFormToObjectFirstDraft`
    * and selects the new form. Disabled when locked.
    */
   onAddHouseForm?: () => Promise<CommitResult> | CommitResult;
-  onAddOpening?: (
-    kind: Extract<OpeningObjectModel['kind'], 'window' | 'hinged_door' | 'slider' | 'stacker'>,
-  ) => Promise<CommitResult> | CommitResult;
-  onRemoveDeck?: (deckId: string) => Promise<CommitResult> | CommitResult;
-  onRemoveOpening?: (openingId: string) => Promise<CommitResult> | CommitResult;
-  onCommitDeckPatch?: (
-    deckId: string,
-    patch: ObjectWorkbenchDeckPatch,
-  ) => Promise<CommitResult> | CommitResult;
-  onCommitOpeningPatch?: (
-    openingId: string,
-    patch: ObjectWorkbenchOpeningPatch,
-  ) => Promise<CommitResult> | CommitResult;
-  onStartDeckOutline?: (deckId: string) => Promise<CommitResult> | CommitResult;
-  houseFormAttachmentContextPanel?: ReactNode;
-  pergolaInspectorPanel: ReactNode;
-  diagnosticsPanel: ReactNode;
 };
 
 export type ObjectWorkbenchRailProps = {
   model: DrawingWorkbenchRailModel;
   disabled?: boolean;
-  activeRailTab: DrawingWorkbenchRailTab;
   activeObjectRef: WorkbenchObjectRef;
   visibility: DrawingWorkbenchVisibilityState;
-  onSelectRailTab?: (tab: DrawingWorkbenchRailTab) => void;
+  // PR-W3d (2026-05-25): `activeRailTab` + `onSelectRailTab` removed. The
+  // rail no longer has a tab strip; selection drives the active family via
+  // `activeObjectRef.family` and is dispatched through `onSelectObjectRef`.
   onSelectObjectRef?: (ref: WorkbenchObjectRef) => void;
   onVisibilityChange?: (family: keyof DrawingWorkbenchVisibilityState, visible: boolean) => void;
   inspectorContext: ObjectWorkbenchRailInspectorContext;

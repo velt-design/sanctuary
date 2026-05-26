@@ -8,12 +8,19 @@
    *
    * The right column is reserved here so PR-W3c can mount the moved-from-rail
    * sections without a forklift. Initially renders an empty placeholder.
+   *
+   * PR-T2 (2026-05-26): column widths reference the density-flippable
+   * `--portal-rail-width-*` and `--portal-inspector-width-*` tokens so
+   * compact-density mode (PR-T3) can shrink them without touching this rule.
    */
-  grid-template-columns: minmax(320px, 380px) minmax(0, 1fr) minmax(280px, 360px);
-  gap: 16px;
+  grid-template-columns:
+    minmax(var(--portal-rail-width-min), var(--portal-rail-width-max))
+    minmax(0, 1fr)
+    minmax(var(--portal-inspector-width-min), var(--portal-inspector-width-max));
+  gap: var(--portal-density-16);
   align-items: stretch;
   min-height: 44rem;
-  height: calc(100dvh - var(--portal-header-height, 72px) - 32px);
+  height: calc(100dvh - var(--portal-header-height, 72px) - var(--portal-density-32));
   overflow: hidden;
 }
 
@@ -35,24 +42,22 @@
   overflow-y: auto;
   display: grid;
   align-content: start;
-  gap: 12px;
-  padding-right: 4px;
+  gap: var(--portal-section-stack-gap);
+  padding-right: var(--portal-density-4);
 }
 
 .moduleSection {
-  border: 1px solid rgba(var(--portal-text-rgb), 0.08);
-  border-radius: 18px;
-  background:
-    linear-gradient(180deg, rgba(var(--portal-bg-rgb), 0.98), rgba(var(--portal-bg-rgb), 0.95)),
-    radial-gradient(circle at top left, rgba(var(--accentRgb), 0.04), transparent 50%);
-  padding: 14px;
+  border: var(--portal-section-border);
+  border-radius: var(--portal-section-radius);
+  background: var(--portal-section-background);
+  padding: var(--portal-section-padding);
   display: grid;
-  gap: 8px;
+  gap: var(--portal-density-8);
 }
 
 .moduleSectionTitle {
   margin: 0;
-  font-size: 11px;
+  font-size: var(--portal-font-xs);
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -61,30 +66,30 @@
 
 .moduleSelect {
   width: 100%;
-  min-height: 40px;
+  min-height: var(--portal-control-lg);
   border: 1px solid rgba(var(--portal-text-rgb), 0.1);
-  border-radius: 14px;
+  border-radius: var(--portal-radius-md);
   background: rgba(var(--portal-text-rgb), 0.03);
   color: rgba(var(--portal-text-rgb), 0.88);
-  padding: 8px 12px;
-  font-size: 12px;
+  padding: var(--portal-density-8) var(--portal-density-12);
+  font-size: var(--portal-font-sm);
   font-weight: 600;
 }
 
 .modeSwitch {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
+  gap: var(--portal-density-8);
 }
 
 .modeButton {
   min-height: 38px;
   border: 1px solid rgba(var(--portal-text-rgb), 0.1);
-  border-radius: 12px;
+  border-radius: var(--portal-radius-button);
   background: rgba(var(--portal-text-rgb), 0.03);
   color: rgba(var(--portal-text-rgb), 0.9);
   font: inherit;
-  font-size: 12px;
+  font-size: var(--portal-font-sm);
   font-weight: 700;
   cursor: pointer;
   transition:
@@ -105,14 +110,14 @@
 
 .diagnosticsList {
   display: grid;
-  gap: 8px;
+  gap: var(--portal-density-8);
 }
 
 .diagnosticRow {
   display: flex;
   justify-content: space-between;
-  gap: 12px;
-  font-size: 12px;
+  gap: var(--portal-density-12);
+  font-size: var(--portal-font-sm);
 }
 
 .diagnosticLabel {
@@ -137,18 +142,16 @@
 
 .notice,
 .emptyState {
-  border: 1px solid rgba(var(--portal-text-rgb), 0.08);
-  border-radius: 18px;
-  background:
-    linear-gradient(180deg, rgba(var(--portal-bg-rgb), 0.98), rgba(var(--portal-bg-rgb), 0.95)),
-    radial-gradient(circle at top left, rgba(var(--accentRgb), 0.04), transparent 50%);
-  padding: 14px;
+  border: var(--portal-section-border);
+  border-radius: var(--portal-section-radius);
+  background: var(--portal-section-background);
+  padding: var(--portal-section-padding);
 }
 
 .noticeTitle,
 .emptyTitle {
-  margin: 0 0 6px;
-  font-size: 13px;
+  margin: 0 0 var(--portal-density-6);
+  font-size: var(--portal-font-md);
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -158,7 +161,7 @@
 .noticeText,
 .emptyText {
   margin: 0;
-  font-size: 12px;
+  font-size: var(--portal-font-sm);
   line-height: 1.55;
   color: rgba(var(--portal-text-rgb), 0.68);
 }

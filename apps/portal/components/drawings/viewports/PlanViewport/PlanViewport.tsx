@@ -58,6 +58,14 @@ export type PlanViewportProps = {
    * render. Empty for single-pergola projects.
    */
   projectContextShapes?: ReadonlyArray<GeometryTopProjectionShape>;
+  /**
+   * PR-Bug2 (2026-05-25): project-level shapes that should be promoted to
+   * the active module's committedBodies (and therefore hit targets). Used
+   * to make non-host house form footprints clickable + movable. Caller
+   * derives from `WorkbenchSolvedModel.projectReferenceShapes` filtered to
+   * non-host `house_reference` shapes. Empty for single-house projects.
+   */
+  additionalCommittedShapes?: ReadonlyArray<GeometryTopProjectionShape>;
   viewportTransform: DrawingWorkbenchViewportTransform;
   onViewportTransformChange: (next: DrawingWorkbenchViewportTransform) => void;
   onSelectObjectWorkbenchTarget?: (selection: ObjectWorkbenchViewportTargetSelection) => void;
@@ -116,6 +124,7 @@ export default function PlanViewport({
   activeObjectRef,
   dimensions: providedDimensions,
   projectContextShapes,
+  additionalCommittedShapes,
   viewportTransform,
   onViewportTransformChange,
   onSelectObjectWorkbenchTarget,
@@ -133,6 +142,7 @@ export default function PlanViewport({
     visibility,
     activeObjectRef,
     hoveredObjectRef,
+    additionalShapes: additionalCommittedShapes,
   });
   const [edgeDragPreview, setEdgeDragPreview] = useState<EdgeDragPreview | null>(null);
   const [edgeDragHover, setEdgeDragHover] = useState<EdgeDragHover | null>(null);

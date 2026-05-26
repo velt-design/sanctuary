@@ -156,50 +156,49 @@ function buildDraftWithRoofForm(form: HouseFormRoofIntentModel['form']): Estimat
 }
 
 describe('ObjectWorkbenchRail', () => {
-  it('exposes the Add structure button on the house_forms tab and hides it on other tabs (PR10)', () => {
-    // PR10: rail "Add structure" button. Calls
-    // `addSharedHouseForm` (which delegates to PR5's
-    // `addHouseFormToObjectFirstDraft`). Visible only on the
-    // `house_forms` tab so users don't accidentally clone a form when
-    // they meant to add a deck/opening. The label + meta caption double
-    // as documentation for the 10 m east clone behavior.
-    const houseFormMarkup = renderToStaticMarkup(
-      <ObjectWorkbenchRail {...buildRailProps({ activeRailTab: 'house_forms' })} />,
-    );
-    expect(houseFormMarkup).toContain('data-action="add-house-form"');
-    expect(houseFormMarkup).toContain('Add structure');
-
-    const pergolaMarkup = renderToStaticMarkup(
-      <ObjectWorkbenchRail {...buildRailProps({ activeRailTab: 'pergolas' })} />,
-    );
-    expect(pergolaMarkup).not.toContain('data-action="add-house-form"');
-
-    const deckMarkup = renderToStaticMarkup(
-      <ObjectWorkbenchRail {...buildRailProps({ activeRailTab: 'decks' })} />,
-    );
-    expect(deckMarkup).not.toContain('data-action="add-house-form"');
+  it('renders the Add structure button under the House Forms family section', () => {
+    // PR-W3d (2026-05-25): "Add structure" is now an inline add affordance at
+    // the bottom of the House Forms tree section, not a tab-conditional button.
+    // The data-action attribute moved from `add-house-form` to
+    // `add-house_forms` (matches the family id used as section identifier).
+    // The button always renders when `onAddHouseForm` is provided — there are
+    // no more per-tab visibility rules because there are no more tabs.
+    const markup = renderToStaticMarkup(<ObjectWorkbenchRail {...buildRailProps()} />);
+    expect(markup).toContain('data-action="add-house_forms"');
+    expect(markup).toContain('>Add structure<');
+    // Other families don't get the add button (decks/openings will get one
+    // via their own onAdd wiring in a follow-up; pergolas never get one
+    // because creation is snap-driven).
+    expect(markup).not.toContain('data-action="add-pergolas"');
+    expect(markup).not.toContain('data-action="add-decks"');
+    expect(markup).not.toContain('data-action="add-openings"');
   });
 
-  it('renders the canonical family navigator and selected house-form summary by default', () => {
-    // PR-W3c (2026-05-25): inspector content moved to WorkbenchInspectorHost,
-    // which renders in the right-side RightInspectorPanel. The rail keeps the
-    // visibility toggles, object navigator, and selected-object summary.
-    // Inspector-content assertions for HouseFormInspector live in the new
-    // WorkbenchInspectorHost test file (TODO: create alongside W3c hardening).
+  it('renders the flat OBJECTS TREE with every family heading visible simultaneously', () => {
+    // PR-W3d (2026-05-25): Object Navigator tab strip + Selected Object
+    // summary section removed. Visibility toggles stay. All four family
+    // sections render at once so the user never has to switch tabs to see
+    // another family's objects. Diagnostics is removed from the rail
+    // entirely (future access via top-bar `…` menu).
+    //
+    // Inspector content (House Form Inspector, Footprint, Roof, ...) lives
+    // in WorkbenchInspectorHost (right-side panel) — that test surface is a
+    // tracked follow-up.
     const markup = renderToStaticMarkup(<ObjectWorkbenchRail {...buildRailProps()} />);
 
-    expect(markup).toContain('Object Navigator');
-    expect(markup).toContain('House Forms');
-    expect(markup).toContain('Decks');
-    expect(markup).toContain('Openings');
-    expect(markup).toContain('Pergolas');
-    expect(markup).toContain('Diagnostics');
-    expect(markup).toContain('Selected Object');
     expect(markup).toContain('Visibility');
+    // All four family section headings render together (flat outliner).
+    expect(markup).toContain('data-object-tree-section="house_forms"');
+    expect(markup).toContain('data-object-tree-section="pergolas"');
+    expect(markup).toContain('data-object-tree-section="decks"');
+    expect(markup).toContain('data-object-tree-section="openings"');
+    // Removed surfaces: tab strip, Selected Object summary, Diagnostics tab.
+    expect(markup).not.toContain('Object Navigator');
+    expect(markup).not.toContain('Selected Object');
+    expect(markup).not.toContain('role="tablist"');
+    expect(markup).not.toContain('Diagnostics');
+    // House Configurator was already gone — keep the negative assertion.
     expect(markup).not.toContain('House Configurator');
-    // Inspector-content assertions (House Form Inspector, Footprint, Roof,
-    // Review Basis, Attachment Context, ...) no longer apply here — those
-    // sections render in the right-side inspector now.
   });
 
   it.skip('renders the native pergola inspector inside the canonical Pergolas family — moved to WorkbenchInspectorHost', () => {

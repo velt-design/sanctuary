@@ -54,6 +54,8 @@ If you find yourself reaching for a `LEGACY_PRIMARY` check, an `attachmentSide` 
 
 4. Before handoff on non-trivial work, run `npm run architecture:changed`. Add `npm run files:changed` when the task touched a warning/critical file (it shows current vs. HEAD line counts and prints the handoff cue). Add `npm run dead-code:changed` for cleanup or deletion work.
 
+5. For any **visual / layout / density / token** change inside the workbench, **use the snapshot dev loop** — read [docs/workbench-visual-snapshot-loop.md](docs/workbench-visual-snapshot-loop.md). One command produces 3 PNGs in `tmp/` that the agent reads directly. Don't iterate blind from mockups + user screenshots; that loop produced multiple wasted iterations before PR-T5 (2026-05-26) closed the gap.
+
 ## Operating defaults
 
 - Keep changes scoped to the requested surface. Don't refactor adjacent code unless the task asks for it.

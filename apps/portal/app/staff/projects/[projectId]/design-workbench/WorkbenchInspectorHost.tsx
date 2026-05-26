@@ -11,19 +11,16 @@ import type {
   RunRoofCommit,
 } from '@/components/drawings/rail/objectWorkbenchRailTypes';
 import workbenchRailStyles from '@/components/drawings/rail/WorkbenchRail.module.css';
-import type { GeometryPreviewState } from '@/lib/drawings/geometry/buildWorkbenchGeometryPreview';
 import type { ObjectWorkbenchGeometryEditState } from '@/lib/drawings/geometry/geometryEditAdapter';
 import type { DrawingWorkbenchStore } from '@/lib/drawings/state/drawingWorkbenchStore';
 import {
   buildDrawingWorkbenchObjectSelectionState,
-  deriveDrawingWorkbenchCompatibilitySelection,
   type DrawingWorkbenchRailTab,
   type DrawingWorkbenchUiState,
 } from '@/lib/drawings/state/drawingWorkbenchUiState';
 import type { CalculatorModuleInputs } from '@/lib/types/calculator';
 import HouseFormAttachmentContextPanel from './HouseFormAttachmentContextPanel';
 import PergolaInspector from './PergolaInspector';
-import WorkbenchDiagnosticsPanel from './WorkbenchDiagnosticsPanel';
 import type { ObjectWorkbenchActions } from './useObjectWorkbenchActions';
 import type { ObjectWorkbenchSelectionActions } from './useObjectWorkbenchSelection';
 
@@ -49,7 +46,6 @@ import type { ObjectWorkbenchSelectionActions } from './useObjectWorkbenchSelect
 type WorkbenchInspectorHostProps = {
   activeModuleInput: CalculatorModuleInputs | null;
   geometryEditState: ObjectWorkbenchGeometryEditState | null;
-  geometryPreview: GeometryPreviewState;
   isLocked: boolean;
   objectSelectionActions: ObjectWorkbenchSelectionActions;
   objectWorkbenchActions: ObjectWorkbenchActions;
@@ -61,7 +57,6 @@ type WorkbenchInspectorHostProps = {
 export default function WorkbenchInspectorHost({
   activeModuleInput,
   geometryEditState,
-  geometryPreview,
   isLocked,
   objectSelectionActions,
   objectWorkbenchActions,
@@ -73,7 +68,6 @@ export default function WorkbenchInspectorHost({
     store.derived.objectWorkbench.activePergola ??
     store.derived.objectWorkbench.pergolas[0] ??
     null;
-  const compatibilitySelection = deriveDrawingWorkbenchCompatibilitySelection(store.ui);
   const defaultPergolaId =
     store.ui.activeObjectFamily === 'pergolas' && store.ui.activeObjectRef.objectId
       ? store.ui.activeObjectRef.objectId
@@ -202,21 +196,19 @@ export default function WorkbenchInspectorHost({
     [],
   );
 
-  const activeRailTab = store.ui.activeRailTab;
-  const activeFamily =
-    activeRailTab === 'diagnostics' ? store.derived.railModel.selectedInspector.family : activeRailTab;
+  // PR-W3d.4 (2026-05-25): the right inspector derives its family directly
+  // from the workbench's active object selection (`ui.activeObjectRef.family`).
+  // The old `activeRailTab` is no longer the source of truth — PR-W3d.3
+  // removed the tab strip entirely, so the rail no longer dispatches
+  // `selectRailTab`. Selection itself (row click in the flat tree) carries
+  // the family signal through `activeObjectRef.family`.
+  //
+  // Diagnostics is locked out of the rail (option a). Future access lands
+  // in the top-bar `…` menu; this host doesn't render the diagnostics
+  // panel — when Diagnostics gets a new entry point, re-add the
+  // `WorkbenchDiagnosticsPanel` import and switch on a dedicated UI flag.
+  const activeFamily = store.ui.activeObjectRef.family;
   const activeObjectKey = `${activeFamily}:${store.ui.activeObjectRef.objectId ?? 'none'}`;
-
-  if (activeRailTab === 'diagnostics') {
-    return (
-      <WorkbenchDiagnosticsPanel
-        objectWorkbench={store.derived.objectWorkbench}
-        ui={store.ui}
-        compatibilitySelection={compatibilitySelection}
-        geometryPreview={geometryPreview}
-      />
-    );
-  }
 
   if (activeFamily === 'house_forms') {
     const attachmentContextPanel =
@@ -231,6 +223,19 @@ export default function WorkbenchInspectorHost({
           onCommitGeometryEdit={!isLocked ? objectWorkbenchActions.commitGeometryIntent : undefined}
         />
       ) : null;
+    // PR-Bug3 (2026-05-25): allow removing non-primary house forms. The
+    // primary (index 0) is the legacy-compat anchor and cannot be deleted;
+    // `removeHouseFormFromObjectFirstDraft` itself enforces this, but we
+    // also hide the affordance so the user isn't presented with a button
+    // that does nothing. The button calls the new `removeSharedHouseForm`
+    // action, which falls back to selecting the primary on success.
+    const activeHouseFormId = store.ui.activeObjectRef.objectId ?? null;
+    const primaryHouseFormId = store.derived.houseForms[0]?.id ?? null;
+    const canRemoveActiveHouseForm =
+      !isLocked &&
+      typeof activeHouseFormId === 'string' &&
+      activeHouseFormId !== primaryHouseFormId &&
+      store.derived.houseForms.length > 1;
     return (
       <div data-active-workbench-object={activeObjectKey}>
         <HouseFormInspector
@@ -247,6 +252,23 @@ export default function WorkbenchInspectorHost({
           runRoofCommit={runRoofCommit}
           attachmentContextPanel={attachmentContextPanel}
         />
+        {canRemoveActiveHouseForm && activeHouseFormId ? (
+          <section className={workbenchRailStyles.section}>
+            <div className={workbenchRailStyles.sectionBody}>
+              <button
+                type="button"
+                className={workbenchRailStyles.dangerButton}
+                onClick={() => {
+                  void objectWorkbenchActions.removeSharedHouseForm({
+                    houseFormId: activeHouseFormId,
+                  });
+                }}
+              >
+                Remove this house form
+              </button>
+            </div>
+          </section>
+        ) : null}
       </div>
     );
   }

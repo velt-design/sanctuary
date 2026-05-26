@@ -1,7 +1,7 @@
 .workbench {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
-  gap: 8px;
+  gap: var(--portal-density-8);
   min-width: 0;
   min-height: 0;
   height: 100%;
@@ -25,8 +25,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  min-height: 46px;
-  padding: 2px 2px 0;
+  min-height: var(--portal-control-xl);
+  padding: var(--portal-density-2) var(--portal-density-2) 0;
   min-width: 0;
 }
 
@@ -35,7 +35,7 @@
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 12px 22px;
+  gap: var(--portal-density-12) var(--portal-density-22);
   min-width: 0;
   width: 100%;
 }
@@ -49,7 +49,7 @@
 }
 
 .toolbarTitlePrimary {
-  font-size: 14px;
+  font-size: var(--portal-font-lg);
   font-weight: 800;
   letter-spacing: -0.005em;
   color: rgba(var(--portal-text-rgb), 0.92);
@@ -61,7 +61,7 @@
 }
 
 .toolbarTitleSecondary {
-  font-size: 10px;
+  font-size: var(--portal-font-2xs);
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -72,7 +72,7 @@
 .toolbarActions {
   display: inline-flex;
   align-items: center;
-  gap: 14px;
+  gap: var(--portal-density-14);
   margin-left: auto;
 }
 
@@ -82,12 +82,12 @@
   justify-content: center;
   min-width: 26px;
   min-height: 26px;
-  padding: 0 4px 4px;
+  padding: 0 var(--portal-density-4) var(--portal-density-4);
   border: 0;
-  border-radius: 6px;
+  border-radius: var(--portal-density-6);
   background: transparent;
   color: rgba(var(--portal-text-rgb), 0.64);
-  font-size: 18px;
+  font-size: var(--portal-font-2xl);
   font-weight: 700;
   line-height: 1;
   cursor: pointer;
@@ -108,7 +108,7 @@
 
 .eyebrow {
   margin: 0;
-  font-size: 11px;
+  font-size: var(--portal-font-xs);
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -121,11 +121,11 @@
   justify-content: center;
   position: relative;
   min-height: 26px;
-  padding: 0 0 2px;
+  padding: 0 0 var(--portal-density-2);
   border: 0;
   background: transparent;
   color: rgba(var(--portal-text-rgb), 0.64);
-  font-size: 13px;
+  font-size: var(--portal-font-md);
   font-weight: 700;
   text-decoration: none;
   line-height: 1.2;
@@ -163,7 +163,7 @@
   display: inline-flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 18px;
+  gap: var(--portal-density-18);
 }
 
 .toggleButton {
@@ -172,8 +172,8 @@
   background: transparent;
   color: rgba(var(--portal-text-rgb), 0.58);
   min-height: 26px;
-  padding: 0 0 2px;
-  font-size: 13px;
+  padding: 0 0 var(--portal-density-2);
+  font-size: var(--portal-font-md);
   font-weight: 700;
   line-height: 1.2;
   cursor: pointer;
@@ -220,12 +220,12 @@
   align-items: center;
   min-height: 26px;
   max-width: min(280px, 100%);
-  padding: 4px 9px;
+  padding: var(--portal-density-4) 9px;
   border: 1px solid rgba(var(--portal-text-rgb), 0.16);
-  border-radius: 8px;
+  border-radius: var(--portal-radius-pill-tight);
   background: rgba(255, 255, 255, 0.78);
   color: rgba(var(--portal-text-rgb), 0.78);
-  font-size: 12px;
+  font-size: var(--portal-font-sm);
   font-weight: 800;
   line-height: 1.2;
 }
@@ -257,7 +257,7 @@
 
 @media (max-width: 1120px) {
   .workbench {
-    gap: 6px;
+    gap: var(--portal-density-6);
   }
 }
 
@@ -269,6 +269,6 @@
   .toolbarNav {
     width: 100%;
     justify-content: flex-start;
-    gap: 10px 18px;
+    gap: var(--portal-density-10) var(--portal-density-18);
   }
 }

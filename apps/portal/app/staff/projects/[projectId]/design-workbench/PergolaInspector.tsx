@@ -46,7 +46,13 @@ type PergolaInspectorProps = {
   modules: PergolaInspectorModule[];
   supportsSanctuaryEditing: boolean;
   view: ModuleViewsTab;
-  onOpenHouseForms: () => void;
+  /**
+   * Retained for back-compat with `WorkbenchInspectorHost` even though
+   * PR-W12 dropped the "Open House Forms" button from the rendered output.
+   * Removing the prop here would require coordinated changes in the host
+   * and that's not the cull's job.
+   */
+  onOpenHouseForms?: () => void;
   onSelectPergolaByModule: (pergolaId: string | null) => void;
   onStartDrawOutline?: () => Promise<CommitResult> | CommitResult;
   onCommitGeometryEdit?: (intent: ObjectWorkbenchGeometryEditIntent) => Promise<CommitResult> | CommitResult;
@@ -91,7 +97,7 @@ export default function PergolaInspector({
   modules,
   supportsSanctuaryEditing,
   view,
-  onOpenHouseForms,
+  onOpenHouseForms: _onOpenHouseForms,
   onSelectPergolaByModule,
   onStartDrawOutline,
   onCommitGeometryEdit,
@@ -138,137 +144,84 @@ export default function PergolaInspector({
     ? pergolaAttachmentMethodIsWritable(displayAttachment)
     : false;
 
-  return (
-    <>
+  // PR-W12 (2026-05-26) — visual cull to match the CAD mockup.
+  // Dropped from the previous render:
+  //   • "Pergola Inspector" intro paragraph + "Open House Forms" button
+  //     (the flat OBJECTS TREE already lets the user navigate to House Forms).
+  //   • Standalone "Module" picker (the rail tree provides this).
+  //   • "Selection" diagnostics block (the inspector header already shows
+  //     the selected object name).
+  //   • Trust + Resolution rows inside Host Attachment (header chip shows
+  //     trust state; the resolution row was duplicate noise).
+  // What stays:
+  //   • Host Attachment: snap-derived summary + writable method dropdown
+  //     when applicable. Pushed below the SanctuaryWorkbenchRail's main
+  //     four sections — it's drag-driven, not primary input.
+  //   • SanctuaryWorkbenchRail, restructured to PRIMARY / CONNECTIONS /
+  //     MEMBER SIZES / ADVANCED via the new `mockupGrouping` flag.
+  const hostAttachmentSection =
+    activePergolaModel && displayAttachment ? (
       <section className={styles.moduleSection}>
-        <p className={styles.moduleSectionTitle}>Pergola Inspector</p>
-        <p className={styles.noticeText}>
-          Geometry, roof, supports, and overrides live here. Footprint and drawing rotation still live in House Forms.
-        </p>
-        <button type="button" className={styles.modeButton} onClick={onOpenHouseForms}>
-          Open House Forms
-        </button>
-      </section>
-
-      {activePergolaModel && displayAttachment ? (
-        <section className={styles.moduleSection}>
-          <p className={styles.moduleSectionTitle}>Host Attachment</p>
-          <p className={styles.noticeText}>
-            Drag the pergola onto a wall or roof eave to change the host. Re-hosting is no longer
-            done via dropdown.
-          </p>
-
-          <div className={styles.diagnosticsList}>
-            <div className={styles.diagnosticRow}>
-              <span className={styles.diagnosticLabel}>Connection</span>
-              <span className={styles.diagnosticValue}>
-                {labelForPergolaAttachmentSpatialKind(displayAttachment.spatialKind)}
-              </span>
-            </div>
-            <div className={styles.diagnosticRow}>
-              <span className={styles.diagnosticLabel}>Host edge</span>
-              <span className={styles.diagnosticValue}>
-                {labelForPergolaAttachmentHostEdge(displayAttachment)}
-              </span>
-            </div>
-            <div className={styles.diagnosticRow}>
-              <span className={styles.diagnosticLabel}>Host zone</span>
-              <span className={styles.diagnosticValue}>
-                {labelForPergolaAttachmentHostZone(displayAttachment)}
-              </span>
-            </div>
-            <div className={styles.diagnosticRow}>
-              <span className={styles.diagnosticLabel}>Attachment side</span>
-              <span className={styles.diagnosticValue}>
-                {labelForAttachmentSideList([activePergolaModel.side])}
-              </span>
-            </div>
+        <p className={styles.moduleSectionTitle}>Host attachment</p>
+        <div className={styles.diagnosticsList}>
+          <div className={styles.diagnosticRow}>
+            <span className={styles.diagnosticLabel}>Connection</span>
+            <span className={styles.diagnosticValue}>
+              {labelForPergolaAttachmentSpatialKind(displayAttachment.spatialKind)}
+            </span>
           </div>
-
-          {methodIsWritable ? (
-            <>
-              <label className={styles.moduleSectionTitle} htmlFor="pergola-attachment-method">
-                Attachment method
-              </label>
-              <select
-                id="pergola-attachment-method"
-                className={styles.moduleSelect}
-                aria-label="Pergola attachment method"
-                value={displayAttachment.method}
-                disabled={disabled || pendingFieldId === 'pergola-attachment-method'}
-                onChange={(event) => handleMethodChange(event.target.value as PergolaAttachmentMethod)}
-              >
-                {PERGOLA_ATTACHMENT_METHOD_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </>
-          ) : (
-            <div className={styles.diagnosticRow}>
-              <span className={styles.diagnosticLabel}>Method</span>
-              <span className={styles.diagnosticValue}>
-                {labelForPergolaAttachmentMethod(displayAttachment.method)}
-              </span>
-            </div>
-          )}
-
-          <div className={styles.diagnosticsList}>
-            <div className={styles.diagnosticRow}>
-              <span className={styles.diagnosticLabel}>Trust</span>
-              <span className={styles.diagnosticValue}>{activePergolaModel.trustLabel}</span>
-            </div>
-            <div className={styles.diagnosticRow}>
-              <span className={styles.diagnosticLabel}>Resolution</span>
-              <span className={styles.diagnosticValue}>{activePergolaModel.resolution.status}</span>
-            </div>
+          <div className={styles.diagnosticRow}>
+            <span className={styles.diagnosticLabel}>Host edge</span>
+            <span className={styles.diagnosticValue}>
+              {labelForPergolaAttachmentHostEdge(displayAttachment)}
+            </span>
           </div>
-
-          {activePergolaModel.resolution.message ? (
-            <p className={styles.noticeText}>{activePergolaModel.resolution.message}</p>
-          ) : null}
-          {fieldErrors['pergola-attachment-method'] ? (
-            <p className={styles.noticeText}>{fieldErrors['pergola-attachment-method']}</p>
-          ) : null}
-        </section>
-      ) : null}
-
-      {modules.length > 1 ? (
-        <section className={styles.moduleSection}>
-          <p className={styles.moduleSectionTitle}>Module</p>
+          <div className={styles.diagnosticRow}>
+            <span className={styles.diagnosticLabel}>Host zone</span>
+            <span className={styles.diagnosticValue}>
+              {labelForPergolaAttachmentHostZone(displayAttachment)}
+            </span>
+          </div>
+          <div className={styles.diagnosticRow}>
+            <span className={styles.diagnosticLabel}>Side</span>
+            <span className={styles.diagnosticValue}>
+              {labelForAttachmentSideList([activePergolaModel.side])}
+            </span>
+          </div>
+        </div>
+        {methodIsWritable ? (
           <select
+            id="pergola-attachment-method"
             className={styles.moduleSelect}
-            aria-label="Drawing module"
-            value={String(activeModuleIndex)}
-            onChange={(event) =>
-              onSelectPergolaByModule(modules[Number(event.target.value)]?.pergolaId ?? null)
-            }
+            aria-label="Pergola attachment method"
+            value={displayAttachment.method}
+            disabled={disabled || pendingFieldId === 'pergola-attachment-method'}
+            onChange={(event) => handleMethodChange(event.target.value as PergolaAttachmentMethod)}
           >
-            {modules.map((module, index) => (
-              <option key={module.id} value={String(index)}>
-                {module.label}
+            {PERGOLA_ATTACHMENT_METHOD_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
               </option>
             ))}
           </select>
-        </section>
-      ) : null}
+        ) : (
+          <div className={styles.diagnosticRow}>
+            <span className={styles.diagnosticLabel}>Method</span>
+            <span className={styles.diagnosticValue}>
+              {labelForPergolaAttachmentMethod(displayAttachment.method)}
+            </span>
+          </div>
+        )}
+        {fieldErrors['pergola-attachment-method'] ? (
+          <p className={styles.noticeText}>{fieldErrors['pergola-attachment-method']}</p>
+        ) : null}
+      </section>
+    ) : null;
 
+  return (
+    <>
       {supportsSanctuaryEditing && activeModuleInput && activePergolaModel ? (
         <>
-          <section className={styles.moduleSection}>
-            <p className={styles.moduleSectionTitle}>Selection</p>
-            <div className={styles.diagnosticsList}>
-              <div className={styles.diagnosticRow}>
-                <span className={styles.diagnosticLabel}>Active pergola</span>
-                <span className={styles.diagnosticValue}>{activePergolaModel.label || activePergolaModel.id}</span>
-              </div>
-              <div className={styles.diagnosticRow}>
-                <span className={styles.diagnosticLabel}>Module</span>
-                <span className={styles.diagnosticValue}>{activeModuleLabel}</span>
-              </div>
-            </div>
-          </section>
           <SanctuaryWorkbenchRail
             moduleLabel={activeModuleLabel}
             geometryState={geometryState}
@@ -279,21 +232,34 @@ export default function PergolaInspector({
             onCommitGeometryEdit={onCommitGeometryEdit}
             chrome="embedded"
             renderSummary={false}
-            sections={{
-              geometry: true,
-              roof: true,
-              gable: true,
-              houseContext: 'none',
-              supports: true,
-              overrides: true,
-            }}
+            mockupGrouping
+            advancedExtras={hostAttachmentSection}
           />
+          {modules.length > 1 ? (
+            <section className={styles.moduleSection}>
+              <p className={styles.moduleSectionTitle}>Module</p>
+              <select
+                className={styles.moduleSelect}
+                aria-label="Drawing module"
+                value={String(activeModuleIndex)}
+                onChange={(event) =>
+                  onSelectPergolaByModule(modules[Number(event.target.value)]?.pergolaId ?? null)
+                }
+              >
+                {modules.map((module, index) => (
+                  <option key={module.id} value={String(index)}>
+                    {module.label}
+                  </option>
+                ))}
+              </select>
+            </section>
+          ) : null}
         </>
       ) : activePergolaModel ? (
         <section className={styles.notice}>
-          <p className={styles.noticeTitle}>Editing Deferred</p>
+          <p className={styles.noticeTitle}>Editing deferred</p>
           <p className={styles.noticeText}>
-            This pergola family is not supported for native editing yet, but it can still be reviewed in the canonical workbench.
+            This pergola family is not supported for native editing yet.
           </p>
         </section>
       ) : null}

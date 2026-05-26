@@ -207,6 +207,69 @@ describe('selectionRouter', () => {
       ).toEqual({ kind: 'workbench', targetKind: 'house', targetId: 'house-1' });
     });
 
+    it('PR-Bug1: prefers metadata.houseFormId over the prefixed scene id for house-family shapes', () => {
+      // After PR-Geo1's scene-seam id prefixing, house_surface_solid shapes
+      // carry ids like `<houseId>:house-wall-1` that don't map to any
+      // workbench house form id. The houseFormId metadata tag (set at the
+      // workbench-side projection seam) is the source of truth for selection.
+      expect(
+        topProjectionShapeClassifier(
+          makeShape({
+            family: 'house',
+            kind: 'roof',
+            // Simulate a post-Geo1 prefixed scene id on the surface solid.
+            id: 'host-house:house-solid-house-roof-main',
+            sourceObjectId: 'host-house:house-solid-house-roof-main',
+            sourceId: 'house-solid-house-roof-main',
+            metadata: { houseFormId: 'house-main' },
+          }),
+        ),
+      ).toEqual({ kind: 'workbench', targetKind: 'roof', targetId: 'house-main' });
+
+      expect(
+        topProjectionShapeClassifier(
+          makeShape({
+            family: 'house',
+            kind: 'footprint',
+            sourceObjectId: 'house-footprint',
+            sourceId: 'house-footprint',
+            metadata: { houseFormId: 'house-main' },
+          }),
+        ),
+      ).toEqual({ kind: 'workbench', targetKind: 'footprint', targetId: 'house-main' });
+
+      // Deck classification is unaffected — decks have their own family
+      // resolution via metadata.sourceId, not houseFormId.
+      expect(
+        topProjectionShapeClassifier(
+          makeShape({
+            family: 'house',
+            kind: 'deck',
+            sourceObjectId: 'host-house:house-solid-deck-1',
+            sourceId: 'house-solid-deck-1',
+            metadata: { houseFormId: 'house-main', sourceId: 'deck-1' },
+          }),
+        ),
+      ).toEqual({ kind: 'workbench', targetKind: 'deck', targetId: 'deck-1' });
+    });
+
+    it('PR-Bug1: still falls back to sourceObjectId/sourceId/id for house shapes without houseFormId metadata', () => {
+      // Reference shapes (built by `buildReferenceShapes` /
+      // `buildHouseReferenceProjectionShape`) carry the form id in
+      // sourceObjectId directly, no metadata tag. The fallback path stays.
+      expect(
+        topProjectionShapeClassifier(
+          makeShape({
+            family: 'house',
+            kind: 'footprint',
+            id: 'house_reference:house-2',
+            sourceObjectId: 'house-2',
+            sourceId: 'house-2',
+          }),
+        ),
+      ).toEqual({ kind: 'workbench', targetKind: 'footprint', targetId: 'house-2' });
+    });
+
     it('returns unhandled for shape families outside house and pergola', () => {
       expect(
         topProjectionShapeClassifier(

@@ -86,6 +86,7 @@ Use `docs/testing-and-qa.md` as the canonical command source. Feature docs may l
 - `docs/maintainability-principles.md`: repo-specific maintainability rules, failure modes, and code-review heuristics.
 - `docs/file-decomposition-and-ownership.md`: active guardrail for splitting large files by responsibility and keeping portal code SaaS-ready.
 - `docs/code-retirement-and-bloat-control.md`: active guardrail for unused code, dependency cleanup, and safe legacy retirement.
+- `docs/workbench-visual-snapshot-loop.md`: how to take + read rendered workbench screenshots when iterating on layout / density / tokens (uses `/qa/design-workbench-fixture` + Playwright; mandatory read before any visual-only PR in the workbench).
 - `docs/platform-workflow.md`: business workflow across marketing and portal.
 - `docs/environment-auth-supabase.md`: env, auth, roles, schema readiness.
 - `docs/supabase-schema-map.md`: table/RPC ownership, write paths, access boundaries, and migration sources.

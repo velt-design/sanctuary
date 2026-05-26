@@ -897,10 +897,24 @@ export function buildHouseModelSceneObjects(input: {
         : typeof object.metadata?.sourceId === 'string'
           ? object.metadata.sourceId
           : null;
+    // PR-Bug2 (2026-05-25): tag every house-derived scene object with the
+    // source model's `houseId` so the top-projection classifier can resolve
+    // clicks on multi-house scenes to the correct form. Without this tag,
+    // additional house forms' shapes carry no per-form discriminator and the
+    // portal-layer enrichment in `buildTopProjectionFromSolvedScene` falls
+    // back to the primary house id — so clicking House 2 selects House 1.
+    // Preserve any existing `houseFormId` (e.g. shapes a future helper sets
+    // explicitly) so this only fills gaps.
+    const existingHouseFormId =
+      typeof object.metadata?.houseFormId === 'string' ? object.metadata.houseFormId : null;
     return {
       ...object,
       id: `${prefix}${object.id}`,
       sourceId: existingSourceId ?? object.id,
+      metadata: {
+        ...(object.metadata ?? {}),
+        houseFormId: existingHouseFormId ?? model.houseId,
+      },
     };
   });
 }
