@@ -311,6 +311,7 @@ export default function WorkbenchInspectorHost({
           onStartDrawOutline={objectSelectionActions.startDrawOutlineEditor}
           onCommitGeometryEdit={!isLocked ? objectWorkbenchActions.commitGeometryIntent : undefined}
           onCommitAttachment={!isLocked ? objectWorkbenchActions.commitSharedPergolaAttachment : undefined}
+          activeAssembly={store.derived.activeModule?.solution?.geometryArtifact?.assembly ?? null}
         />
       </div>
     );

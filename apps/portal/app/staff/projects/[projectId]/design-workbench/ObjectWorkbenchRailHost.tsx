@@ -100,6 +100,16 @@ export default function ObjectWorkbenchRailHost({
       }
       inspectorContext={{
         onAddHouseForm: !isLocked ? objectWorkbenchActions.addSharedHouseForm : undefined,
+        // PR-T6: defer mode choice to the inspector's existing add helper.
+        // Decks default to 'preset' (rectangle) which mirrors what the
+        // inspector's first-time-add does today. Openings have a single
+        // add path with default opening kind.
+        onAddDeck: !isLocked
+          ? () => objectWorkbenchActions.addSharedHouseDeck('preset')
+          : undefined,
+        onAddOpening: !isLocked
+          ? () => objectWorkbenchActions.addSharedHouseOpening('window')
+          : undefined,
       }}
     />
   );

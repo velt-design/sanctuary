@@ -157,21 +157,21 @@ function buildDraftWithRoofForm(form: HouseFormRoofIntentModel['form']): Estimat
 
 describe('ObjectWorkbenchRail', () => {
   it('renders the Add structure button under the House Forms family section', () => {
-    // PR-W3d (2026-05-25): "Add structure" is now an inline add affordance at
-    // the bottom of the House Forms tree section, not a tab-conditional button.
-    // The data-action attribute moved from `add-house-form` to
-    // `add-house_forms` (matches the family id used as section identifier).
-    // The button always renders when `onAddHouseForm` is provided — there are
-    // no more per-tab visibility rules because there are no more tabs.
+    // PR-T6 (2026-05-26): all four families render an inline "+ Add X"
+    // pill for visual consistency with the CAD mockup. House Forms keeps
+    // "Add structure" copy. Pergolas renders the pill but disabled
+    // (no production add path yet; visual completeness with the limit
+    // communicated). Decks + Openings wire to addSharedHouseDeck /
+    // addSharedHouseOpening through the inspector context.
     const markup = renderToStaticMarkup(<ObjectWorkbenchRail {...buildRailProps()} />);
     expect(markup).toContain('data-action="add-house_forms"');
     expect(markup).toContain('>Add structure<');
-    // Other families don't get the add button (decks/openings will get one
-    // via their own onAdd wiring in a follow-up; pergolas never get one
-    // because creation is snap-driven).
-    expect(markup).not.toContain('data-action="add-pergolas"');
-    expect(markup).not.toContain('data-action="add-decks"');
-    expect(markup).not.toContain('data-action="add-openings"');
+    expect(markup).toContain('data-action="add-pergolas"');
+    expect(markup).toContain('>Add pergola<');
+    expect(markup).toContain('data-action="add-decks"');
+    expect(markup).toContain('>Add deck<');
+    expect(markup).toContain('data-action="add-openings"');
+    expect(markup).toContain('>Add opening<');
   });
 
   it('renders the flat OBJECTS TREE with every family heading visible simultaneously', () => {

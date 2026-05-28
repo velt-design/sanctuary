@@ -255,6 +255,46 @@
   padding: var(--portal-density-8) var(--portal-density-10);
 }
 
+/*
+ * PR-T6 (2026-05-26): muted text color for system-resolved override
+ * values (member sizes when the user hasn't set an explicit override).
+ * Uses the existing portal-text-muted alpha steps — no new tokens.
+ * The manually-overridden state uses the regular `.select` color, so
+ * the two states read as "system default" vs "your choice" purely via
+ * text weight.
+ */
+.selectMuted {
+  color: rgba(var(--portal-text-rgb), 0.55);
+}
+
+/*
+ * PR-T6 (2026-05-26): number-field with unit suffix. Uses flex so the
+ * unit sits INLINE next to the input rather than absolutely overlapping
+ * it. The absolute-positioned variant collided with compact mode's
+ * `text-align: right + padding: 0` reset (the unit ended up on top of
+ * the right-aligned digits, reading as e.g. "m3" instead of "3 m").
+ * Flex keeps the two pieces visually adjacent in any density.
+ */
+.inputWithUnit {
+  display: flex;
+  align-items: center;
+  gap: var(--portal-density-4);
+  width: 100%;
+}
+
+.inputWithUnit .input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.inputUnit {
+  flex: 0 0 auto;
+  font-size: var(--portal-font-xs);
+  font-weight: 600;
+  color: rgba(var(--portal-text-rgb), 0.55);
+  pointer-events: none;
+}
+
 .button,
 .secondaryButton,
 .toggleButton {

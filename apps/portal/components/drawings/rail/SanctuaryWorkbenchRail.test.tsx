@@ -135,16 +135,16 @@ describe('SanctuaryWorkbenchRail', () => {
     expect(markup).toContain('House connection');
     expect(markup).toContain('Attachment strategy');
     expect(markup).toContain('Storey mode');
-    expect(markup).toContain('Eave height (m)');
-    expect(markup).toContain('Fascia height (mm)');
-    expect(markup).toContain('House width (m)');
-    expect(markup).toContain('House offset X (m)');
-    expect(markup).toContain('Facade setback (m)');
+    expect(markup).toContain('Eave height');
+    expect(markup).toContain('Fascia height');
+    expect(markup).toContain('House width');
+    expect(markup).toContain('House offset X');
+    expect(markup).toContain('Facade setback');
     expect(markup).toContain('Post count');
     expect(markup).toContain('Overrides');
-    expect(markup).toContain('Ledger override');
-    expect(markup).toContain('Rafter override');
-    expect(markup).toContain('Post override');
+    expect(markup).toContain('>Ledger<');
+    expect(markup).toContain('>Rafters<');
+    expect(markup).toContain('>Posts<');
     expect(markup).not.toContain('Flashings');
     expect(markup).not.toContain('Allowances');
     expect(markup).not.toContain('Travel');
@@ -176,8 +176,8 @@ describe('SanctuaryWorkbenchRail', () => {
     );
 
     expect(markup).toContain('Ground');
-    expect(markup).toContain('aria-label="Roof pitch (deg)"');
-    expect(markup).toContain('Box perimeter beam override');
+    expect(markup).toContain('aria-label="Roof pitch"');
+    expect(markup).toContain('>Box perimeter beam<');
     expect(markup).toContain('disabled=""');
   });
 
@@ -209,14 +209,14 @@ describe('SanctuaryWorkbenchRail', () => {
     expect(selectMarkup(markup, 'Attachment strategy')).toContain('value="auto"');
     expect(selectMarkup(markup, 'Attachment strategy')).toContain('value="fascia_under_gutter"');
     expect(selectMarkup(markup, 'Storey mode')).toContain('value="single_storey"');
-    expect(markup).toContain('aria-label="Eave height (m)"');
+    expect(markup).toContain('aria-label="Eave height"');
     expect(markup).toContain('value="2.4"');
-    expect(markup).toContain('aria-label="Soffit depth (mm)"');
+    expect(markup).toContain('aria-label="Soffit depth"');
     expect(markup).toContain('value="450"');
-    expect(markup).toContain('aria-label="Gutter projection (mm)"');
-    expect(markup).toContain('aria-label="House width (m)"');
-    expect(markup).toContain('aria-label="House offset X (m)"');
-    expect(markup).toContain('aria-label="Facade setback (m)"');
+    expect(markup).toContain('aria-label="Gutter projection"');
+    expect(markup).toContain('aria-label="House width"');
+    expect(markup).toContain('aria-label="House offset X"');
+    expect(markup).toContain('aria-label="Facade setback"');
     expect(markup).toContain('Blank matches the pergola length.');
   });
 
@@ -240,9 +240,9 @@ describe('SanctuaryWorkbenchRail', () => {
 
     expect(selectMarkup(markup, 'Attachment strategy')).toContain('disabled=""');
     expect(selectMarkup(markup, 'Storey mode')).toContain('disabled=""');
-    expect(markup).toContain('aria-label="Eave height (m)"');
+    expect(markup).toContain('aria-label="Eave height"');
     expect(markup).toContain('disabled=""');
-    expect(markup).toContain('aria-label="House width (m)"');
+    expect(markup).toContain('aria-label="House width"');
   });
 
   it('shows gable-only overrides and editable attached gable end frames', () => {
@@ -278,9 +278,9 @@ describe('SanctuaryWorkbenchRail', () => {
     expect(selectMarkup(markup, 'Gable end frames')).toContain('value="both_ends"');
     expect(selectMarkup(markup, 'House-side eave gutter')).toContain('disabled=""');
     expect(selectMarkup(markup, 'Outer-side eave gutter')).toContain('disabled=""');
-    expect(markup).toContain('Tie beam override');
-    expect(markup).toContain('King-post strut override');
-    expect(markup).not.toContain('Box perimeter beam override');
+    expect(markup).toContain('>Tie beam<');
+    expect(markup).toContain('>King-post strut<');
+    expect(markup).not.toContain('>Box perimeter beam<');
   });
 
   it('shows the freestanding supported gable baseline when the connection is freestanding', () => {

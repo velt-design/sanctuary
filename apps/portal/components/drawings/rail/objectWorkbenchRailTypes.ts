@@ -21,6 +21,16 @@ export type ObjectWorkbenchRailInspectorContext = {
    * and selects the new form. Disabled when locked.
    */
   onAddHouseForm?: () => Promise<CommitResult> | CommitResult;
+  /**
+   * PR-T6 (2026-05-26): inline "+ Add deck" / "+ Add opening" pills
+   * on the OBJECTS TREE for visual parity with House Forms. Defer the
+   * mode/kind decision to the existing add-helpers (preset rectangle
+   * for decks; default opening kind from the inspector defaults).
+   * Pergolas have no production add path yet; the rail renders that
+   * pill in a disabled state for visual completeness.
+   */
+  onAddDeck?: () => Promise<CommitResult> | CommitResult;
+  onAddOpening?: () => Promise<CommitResult> | CommitResult;
 };
 
 export type ObjectWorkbenchRailProps = {

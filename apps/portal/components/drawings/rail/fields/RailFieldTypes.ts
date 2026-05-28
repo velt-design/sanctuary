@@ -21,6 +21,15 @@ export type RailFieldDefinition =
       error?: string;
       disabled?: boolean;
       pending?: boolean;
+      /**
+       * PR-T6 (2026-05-26): when true and the field's current value is the
+       * empty string (the "auto / default" sentinel used by the override
+       * options), the select renders in a muted text color so the user can
+       * tell at a glance that the value is system-resolved rather than
+       * manually chosen. Member-size overrides set this; one-off pickers
+       * (gable end frames, footprint preset, etc.) leave it false.
+       */
+      mutedWhenEmpty?: boolean;
       onCommit: (value: string) => Promise<unknown> | void;
     }
   | {
@@ -28,6 +37,12 @@ export type RailFieldDefinition =
       kind: 'number';
       label: string;
       value: string;
+      /**
+       * PR-T6 (2026-05-26): unit string rendered after the input value
+       * (e.g. "m", "mm", "deg"). When set, the label no longer carries
+       * `(m)` etc. — units belong with the value, not the label.
+       */
+      unit?: string;
       helperText?: string;
       error?: string;
       disabled?: boolean;

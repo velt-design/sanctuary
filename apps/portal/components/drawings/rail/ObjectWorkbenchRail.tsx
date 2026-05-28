@@ -53,7 +53,7 @@ export default function ObjectWorkbenchRail({
   inspectorContext,
 }: ObjectWorkbenchRailProps) {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const { onAddHouseForm } = inspectorContext;
+  const { onAddHouseForm, onAddDeck, onAddOpening } = inspectorContext;
 
   const runAddHouseForm = useCallback(async () => {
     const result = await resolveCommitResult(onAddHouseForm?.());
@@ -62,6 +62,22 @@ export default function ObjectWorkbenchRail({
       addHouseForm: result.ok ? '' : result.error ?? 'Unable to add a new house form.',
     }));
   }, [onAddHouseForm]);
+
+  const runAddDeck = useCallback(async () => {
+    const result = await resolveCommitResult(onAddDeck?.());
+    setFieldErrors((current) => ({
+      ...current,
+      addDeck: result.ok ? '' : result.error ?? 'Unable to add a new deck.',
+    }));
+  }, [onAddDeck]);
+
+  const runAddOpening = useCallback(async () => {
+    const result = await resolveCommitResult(onAddOpening?.());
+    setFieldErrors((current) => ({
+      ...current,
+      addOpening: result.ok ? '' : result.error ?? 'Unable to add a new opening.',
+    }));
+  }, [onAddOpening]);
 
   // Pre-compose the per-family row data so the JSX stays declarative.
   const familyRows = useMemo(() => {
@@ -119,7 +135,41 @@ export default function ObjectWorkbenchRail({
       <div className={styles.rail} data-object-tree="true" aria-label="Workbench objects">
         {TREE_FAMILY_ORDER.map(({ family, label }, index) => {
           const { rows } = familyRows[index]!;
-          const isHouseForms = family === 'house_forms';
+          // PR-T6 (2026-05-26): per-family add affordance. All four
+          // families render the "+ Add X" pill for visual consistency
+          // with the mockup. Pergolas have no production add handler
+          // yet, so the pill renders disabled rather than absent —
+          // visual completeness, real limit communicated.
+          const addConfig = (() => {
+            switch (family) {
+              case 'house_forms':
+                return {
+                  onAdd: onAddHouseForm ? runAddHouseForm : undefined,
+                  addLabel: 'Add structure',
+                  addDisabled: !onAddHouseForm || disabled,
+                };
+              case 'pergolas':
+                return {
+                  onAdd: () => undefined,
+                  addLabel: 'Add pergola',
+                  addDisabled: true,
+                };
+              case 'decks':
+                return {
+                  onAdd: onAddDeck ? runAddDeck : undefined,
+                  addLabel: 'Add deck',
+                  addDisabled: !onAddDeck || disabled,
+                };
+              case 'openings':
+                return {
+                  onAdd: onAddOpening ? runAddOpening : undefined,
+                  addLabel: 'Add opening',
+                  addDisabled: !onAddOpening || disabled,
+                };
+              default:
+                return { onAdd: undefined, addLabel: undefined, addDisabled: undefined };
+            }
+          })();
           return (
             <ObjectTreeSection
               key={family}
@@ -128,9 +178,9 @@ export default function ObjectWorkbenchRail({
               rows={rows}
               emptyState={emptyStateForFamily(family)}
               onSelect={(ref) => onSelectObjectRef?.(ref)}
-              onAdd={isHouseForms && onAddHouseForm ? runAddHouseForm : undefined}
-              addLabel={isHouseForms ? 'Add structure' : undefined}
-              addDisabled={isHouseForms ? disabled : undefined}
+              onAdd={addConfig.onAdd}
+              addLabel={addConfig.addLabel}
+              addDisabled={addConfig.addDisabled}
             />
           );
         })}
@@ -138,6 +188,12 @@ export default function ObjectWorkbenchRail({
 
       {fieldErrors.addHouseForm ? (
         <p className={styles.fieldError}>{fieldErrors.addHouseForm}</p>
+      ) : null}
+      {fieldErrors.addDeck ? (
+        <p className={styles.fieldError}>{fieldErrors.addDeck}</p>
+      ) : null}
+      {fieldErrors.addOpening ? (
+        <p className={styles.fieldError}>{fieldErrors.addOpening}</p>
       ) : null}
     </div>
   );

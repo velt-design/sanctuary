@@ -1,8 +1,10 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
+import type { Assembly3D } from '@sp/geometry';
 import { type ModuleViewsTab } from '@/app/staff/calculator/ModuleViewsCard';
 import SanctuaryWorkbenchRail from '@/components/drawings/rail/SanctuaryWorkbenchRail';
+import { buildResolvedMemberSizeMap } from '@/lib/drawings/state/resolvedMemberSizes';
 import { labelForAttachmentSideList } from '@/components/drawings/rail/objectRailShared';
 import type {
   ObjectWorkbenchGeometryEditIntent,
@@ -54,6 +56,14 @@ type PergolaInspectorProps = {
    */
   onOpenHouseForms?: () => void;
   onSelectPergolaByModule: (pergolaId: string | null) => void;
+  /**
+   * PR-T6 (2026-05-26): solved assembly for the active pergola. When
+   * present, MEMBER SIZES dropdowns display the system-resolved size
+   * (e.g. "100x50") in place of "Auto" with muted text. Optional so
+   * call sites that don't have an assembly yet still render cleanly
+   * with the "Auto" fallback.
+   */
+  activeAssembly?: Assembly3D | null;
   onStartDrawOutline?: () => Promise<CommitResult> | CommitResult;
   onCommitGeometryEdit?: (intent: ObjectWorkbenchGeometryEditIntent) => Promise<CommitResult> | CommitResult;
   /**
@@ -102,7 +112,12 @@ export default function PergolaInspector({
   onStartDrawOutline,
   onCommitGeometryEdit,
   onCommitAttachment,
+  activeAssembly,
 }: PergolaInspectorProps) {
+  const resolvedMemberSizes = useMemo(
+    () => buildResolvedMemberSizeMap(activeAssembly),
+    [activeAssembly],
+  );
   const [pendingFieldId, setPendingFieldId] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
@@ -234,6 +249,7 @@ export default function PergolaInspector({
             renderSummary={false}
             mockupGrouping
             advancedExtras={hostAttachmentSection}
+            resolvedMemberSizes={resolvedMemberSizes}
           />
           {modules.length > 1 ? (
             <section className={styles.moduleSection}>

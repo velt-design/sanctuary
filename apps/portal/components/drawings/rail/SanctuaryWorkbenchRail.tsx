@@ -17,6 +17,10 @@ import type {
 } from '@/lib/types/calculator';
 import type { ObjectWorkbenchGeometryEditIntent, ObjectWorkbenchGeometryEditState, ObjectWorkbenchPergolaFamily } from '@/lib/drawings/geometry/geometryEditAdapter';
 import {
+  MEMBER_SIZE_NOT_USED,
+  type ResolvedMemberSizeMap,
+} from '@/lib/drawings/state/resolvedMemberSizes';
+import {
   RailSection,
   renderRailField,
   withCurrentOption,
@@ -35,6 +39,16 @@ type SanctuaryWorkbenchSectionVisibility = {
   overrides?: boolean;
 };
 
+export type MemberOverrideKey =
+  | 'ledgerProfile'
+  | 'rafterProfile'
+  | 'postProfile'
+  | 'frontBeamProfile'
+  | 'ridgeBeamProfile'
+  | 'boxPerimeterBeamProfile'
+  | 'tieBeamProfile'
+  | 'strutProfile';
+
 export type SanctuaryWorkbenchRailProps = {
   moduleLabel: string;
   geometryState?: ObjectWorkbenchGeometryEditState | null;
@@ -48,6 +62,19 @@ export type SanctuaryWorkbenchRailProps = {
   sections?: SanctuaryWorkbenchSectionVisibility;
   houseContextSectionTitle?: string;
   emptyMessage?: string;
+  /**
+   * PR-T6 (2026-05-26): system-resolved member profile display labels
+   * keyed by override field name (`rafterProfile` → "100x50" for the
+   * rafters the solver actually picked). When provided AND the field's
+   * override value is empty (the "auto / system default" sentinel),
+   * the dropdown shows this label in muted text instead of "Auto" so
+   * the user can see the actual size. Values can be the literal
+   * `MEMBER_SIZE_NOT_USED` to indicate "this member type isn't part
+   * of the current geometry" (e.g. ridge beam on a mono pergola); the
+   * rail renders that as "Not used" rather than "Auto". Caller derives
+   * the map from the solved assembly's members (see PergolaInspector).
+   */
+  resolvedMemberSizes?: ResolvedMemberSizeMap;
   /**
    * PR-W12 (2026-05-26): switch the section layout from the legacy
    * Geometry / Roof / Gable Baseline / House Context / Supports / Overrides
@@ -223,6 +250,7 @@ export default function SanctuaryWorkbenchRail({
   emptyMessage,
   mockupGrouping = false,
   advancedExtras,
+  resolvedMemberSizes,
 }: SanctuaryWorkbenchRailProps) {
   const [pendingFieldId, setPendingFieldId] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -1071,13 +1099,44 @@ export default function SanctuaryWorkbenchRail({
   const overrideFields = useMemo(() => {
     if (!geometryState) return [];
 
+    /*
+     * PR-T6 (2026-05-26): when the user hasn't picked an explicit
+     * override, the dropdown's "Auto" label is replaced with one of:
+     *   • the actual resolved member size (e.g. "100x50") — when the
+     *     geometry includes a member of that type
+     *   • "Not used" — when the geometry doesn't use that member type
+     *     at all (e.g. ridge beam on a mono pergola). The helper writes
+     *     MEMBER_SIZE_NOT_USED in this case so the inspector can
+     *     distinguish "system default" from "doesn't apply here".
+     * When the user HAS picked an override, the selected option's label
+     * renders normally. Both states use existing portal-text-rgb alpha
+     * steps; no new colours.
+     */
+    const optionsForMemberSize = (
+      baseOptions: SelectOption[],
+      currentValue: string,
+      overrideKey: MemberOverrideKey,
+    ): SelectOption[] => {
+      const enriched = withCurrentOption(baseOptions, currentValue, 'Current override');
+      const resolved = resolvedMemberSizes?.[overrideKey];
+      if (!resolved) return enriched;
+      const displayLabel = resolved === MEMBER_SIZE_NOT_USED ? 'Not used' : resolved;
+      // Re-label the empty-value "Auto" option with the resolved label
+      // so the select displays the system default (or "Not used") when
+      // that's what's active.
+      return enriched.map((option) =>
+        option.value === '' ? { ...option, label: displayLabel } : option,
+      );
+    };
+
     const fields: RailFieldDefinition[] = [
       {
         id: 'ledger-profile-override',
         kind: 'select',
-        label: 'Ledger override',
+        label: 'Ledger',
         value: geometryState.overrides.ledgerProfile,
-        options: withCurrentOption(LEDGER_PROFILE_OPTIONS, geometryState.overrides.ledgerProfile, 'Current override'),
+        options: optionsForMemberSize(LEDGER_PROFILE_OPTIONS, geometryState.overrides.ledgerProfile, 'ledgerProfile'),
+        mutedWhenEmpty: true,
         pending: pendingFieldId === 'ledger-profile-override',
         error: fieldErrors['ledger-profile-override'],
         disabled: disabled || !onCommitGeometryEdit,
@@ -1086,9 +1145,10 @@ export default function SanctuaryWorkbenchRail({
       {
         id: 'rafter-profile-override',
         kind: 'select',
-        label: 'Rafter override',
+        label: 'Rafters',
         value: geometryState.overrides.rafterProfile,
-        options: withCurrentOption(RAFTER_PROFILE_OPTIONS, geometryState.overrides.rafterProfile, 'Current override'),
+        options: optionsForMemberSize(RAFTER_PROFILE_OPTIONS, geometryState.overrides.rafterProfile, 'rafterProfile'),
+        mutedWhenEmpty: true,
         pending: pendingFieldId === 'rafter-profile-override',
         error: fieldErrors['rafter-profile-override'],
         disabled: disabled || !onCommitGeometryEdit,
@@ -1097,9 +1157,10 @@ export default function SanctuaryWorkbenchRail({
       {
         id: 'post-profile-override',
         kind: 'select',
-        label: 'Post override',
+        label: 'Posts',
         value: geometryState.overrides.postProfile,
-        options: withCurrentOption(POST_PROFILE_OPTIONS, geometryState.overrides.postProfile, 'Current override'),
+        options: optionsForMemberSize(POST_PROFILE_OPTIONS, geometryState.overrides.postProfile, 'postProfile'),
+        mutedWhenEmpty: true,
         pending: pendingFieldId === 'post-profile-override',
         error: fieldErrors['post-profile-override'],
         disabled: disabled || !onCommitGeometryEdit,
@@ -1108,9 +1169,10 @@ export default function SanctuaryWorkbenchRail({
       {
         id: 'front-beam-profile-override',
         kind: 'select',
-        label: 'Front beam override',
+        label: 'Front beam',
         value: geometryState.overrides.frontBeamProfile,
-        options: withCurrentOption(FRONT_BEAM_PROFILE_OPTIONS, geometryState.overrides.frontBeamProfile, 'Current override'),
+        options: optionsForMemberSize(FRONT_BEAM_PROFILE_OPTIONS, geometryState.overrides.frontBeamProfile, 'frontBeamProfile'),
+        mutedWhenEmpty: true,
         pending: pendingFieldId === 'front-beam-profile-override',
         error: fieldErrors['front-beam-profile-override'],
         disabled: disabled || !onCommitGeometryEdit,
@@ -1119,9 +1181,10 @@ export default function SanctuaryWorkbenchRail({
       {
         id: 'ridge-beam-profile-override',
         kind: 'select',
-        label: 'Ridge beam override',
+        label: 'Ridge beam',
         value: geometryState.overrides.ridgeBeamProfile,
-        options: withCurrentOption(RIDGE_BEAM_PROFILE_OPTIONS, geometryState.overrides.ridgeBeamProfile, 'Current override'),
+        options: optionsForMemberSize(RIDGE_BEAM_PROFILE_OPTIONS, geometryState.overrides.ridgeBeamProfile, 'ridgeBeamProfile'),
+        mutedWhenEmpty: true,
         pending: pendingFieldId === 'ridge-beam-profile-override',
         error: fieldErrors['ridge-beam-profile-override'],
         disabled: disabled || !onCommitGeometryEdit,
@@ -1133,9 +1196,10 @@ export default function SanctuaryWorkbenchRail({
       fields.push({
         id: 'box-perimeter-beam-profile-override',
         kind: 'select',
-        label: 'Box perimeter beam override',
+        label: 'Box perimeter beam',
         value: geometryState.overrides.boxPerimeterBeamProfile,
-        options: withCurrentOption(BOX_BEAM_PROFILE_OPTIONS, geometryState.overrides.boxPerimeterBeamProfile, 'Current override'),
+        options: optionsForMemberSize(BOX_BEAM_PROFILE_OPTIONS, geometryState.overrides.boxPerimeterBeamProfile, 'boxPerimeterBeamProfile'),
+        mutedWhenEmpty: true,
         pending: pendingFieldId === 'box-perimeter-beam-profile-override',
         error: fieldErrors['box-perimeter-beam-profile-override'],
         disabled: disabled || !onCommitGeometryEdit,
@@ -1148,9 +1212,10 @@ export default function SanctuaryWorkbenchRail({
         {
           id: 'tie-beam-profile-override',
           kind: 'select',
-          label: 'Tie beam override',
+          label: 'Tie beam',
           value: geometryState.overrides.tieBeamProfile,
-          options: withCurrentOption(FRONT_BEAM_PROFILE_OPTIONS, geometryState.overrides.tieBeamProfile, 'Current override'),
+          options: optionsForMemberSize(FRONT_BEAM_PROFILE_OPTIONS, geometryState.overrides.tieBeamProfile, 'tieBeamProfile'),
+          mutedWhenEmpty: true,
           pending: pendingFieldId === 'tie-beam-profile-override',
           error: fieldErrors['tie-beam-profile-override'],
           disabled: disabled || !onCommitGeometryEdit,
@@ -1159,9 +1224,10 @@ export default function SanctuaryWorkbenchRail({
         {
           id: 'strut-profile-override',
           kind: 'select',
-          label: 'King-post strut override',
+          label: 'King-post strut',
           value: geometryState.overrides.strutProfile,
-          options: withCurrentOption(STRUT_PROFILE_OPTIONS, geometryState.overrides.strutProfile, 'Current override'),
+          options: optionsForMemberSize(STRUT_PROFILE_OPTIONS, geometryState.overrides.strutProfile, 'strutProfile'),
+          mutedWhenEmpty: true,
           pending: pendingFieldId === 'strut-profile-override',
           error: fieldErrors['strut-profile-override'],
           disabled: disabled || !onCommitGeometryEdit,
@@ -1171,7 +1237,7 @@ export default function SanctuaryWorkbenchRail({
     }
 
     return fields;
-  }, [commitGeometryEdit, disabled, family, fieldErrors, geometryState, onCommitGeometryEdit, pendingFieldId]);
+  }, [commitGeometryEdit, disabled, family, fieldErrors, geometryState, onCommitGeometryEdit, pendingFieldId, resolvedMemberSizes]);
 
   const sectionVisibility = {
     geometry: sections?.geometry ?? true,

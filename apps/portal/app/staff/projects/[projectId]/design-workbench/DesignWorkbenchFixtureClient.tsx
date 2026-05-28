@@ -222,7 +222,15 @@ export default function DesignWorkbenchFixtureClient({
                 },
               }))
             }
-            inspectorContext={{}}
+            inspectorContext={{
+              // PR-T6 (2026-05-26): wire no-op stubs to the add pills so the
+              // snapshot fixture renders all four families' "+ Add X" pills.
+              // Real add behaviour is wired in `ObjectWorkbenchRailHost` —
+              // fixture is read-only by design.
+              onAddHouseForm: fixtureWorkbenchActions.addSharedHouseForm,
+              onAddDeck: () => fixtureWorkbenchActions.addSharedHouseDeck('preset'),
+              onAddOpening: () => fixtureWorkbenchActions.addSharedHouseOpening('window'),
+            }}
           />
         </div>
       </aside>
