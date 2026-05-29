@@ -960,6 +960,10 @@ export function normalizeGeometryConfig(input: RawGeometryModuleInput): Normaliz
       },
     },
     houseContext: {
+      houseId:
+        typeof input.houseContext.houseId === 'string' && input.houseContext.houseId.trim()
+          ? input.houseContext.houseId.trim()
+          : 'host-house',
       wallLine: null,
       fasciaLine: null,
       roofEdgeLine: null,

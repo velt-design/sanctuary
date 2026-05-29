@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildHouseFormReferenceGeometry } from './buildHouseFormReferenceGeometry';
+import { buildHouseFormRawGeometryInput } from './houseFormRawGeometry';
 import type { HouseFormModel } from './objectFirstWorkbenchModel';
 
 function makeStraightHouseForm(overrides: Partial<HouseFormModel> = {}): HouseFormModel {
@@ -48,6 +49,28 @@ function makeStraightHouseForm(overrides: Partial<HouseFormModel> = {}): HouseFo
 }
 
 describe('buildHouseFormReferenceGeometry', () => {
+  it('builds the shared raw-house boundary from the form id and transform', () => {
+    const result = buildHouseFormRawGeometryInput(
+      makeStraightHouseForm({
+        id: 'house-main',
+        transform: { offsetXM: 2.5, offsetYM: -1.25, rotationQuarterTurns: 1 },
+      }),
+    );
+
+    expect(result?.rawHouse).toEqual(expect.objectContaining({
+      houseId: 'house-main',
+      footprintMode: 'preset',
+      footprintPreset: 'straight',
+      position: {
+        origin: { x: 2500, y: -1250 },
+        rotationDeg: 90,
+      },
+      roofForm: 'mono',
+      roofMaterial: 'corrugated_iron',
+    }));
+    expect(result?.footprint.length).toBeGreaterThanOrEqual(4);
+  });
+
   it('produces a non-null geometry with walls and roof for a basic preset form', () => {
     // Sanity: the freestanding path (PR8b geometry lift + PR8c-i position
     // export + this PR8c-ii portal wiring) actually produces renderable

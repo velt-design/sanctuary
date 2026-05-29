@@ -2,12 +2,11 @@ import type { CostOutputV1 } from '@sp/costing';
 import type { RawGeometryModuleInput } from '@sp/geometry';
 import type {
   DeckObjectModel,
-  HouseFormModel,
   OpeningObjectModel,
   PergolaObjectModel,
   WorkbenchProjectModel,
 } from '@/lib/drawings/state/objectFirstWorkbenchModel';
-import { houseFormTransformToAssemblyPosition } from '@/lib/drawings/state/houseFormTransform';
+import { buildRawHouseInputFromHouseForm } from '@/lib/drawings/state/houseFormRawGeometry';
 import { connectionTypeFromAttachment } from '@/lib/drawings/state/pergolaAttachment';
 import type { ObjectWorkbenchGeometryContext } from './objectWorkbenchGeometryContext';
 import {
@@ -108,31 +107,10 @@ function resolveFootprintPolygon(module: CalculatorModuleInputs): RawGeometryMod
   return polygon.length ? polygon : null;
 }
 
-function resolveOptionalOverride(value: string | null | undefined): string | null {
+function resolveOptionalOverride(value: string | number | null | undefined): string | number | null {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null;
   const trimmed = value?.trim();
   return trimmed ? trimmed : null;
-}
-
-function resolveHouseFormRoofFallDirection(
-  houseForm: HouseFormModel | null,
-): RawGeometryModuleInput['houseContext']['roofPrimaryFallDirection'] {
-  if (!houseForm) return undefined;
-  switch (houseForm.roofIntent.primaryFallDirection) {
-    case 'positive_x':
-    case 'negative_x':
-    case 'negative_y':
-      return houseForm.roofIntent.primaryFallDirection;
-    case 'positive_y':
-    default:
-      return 'positive_y';
-  }
-}
-
-function resolveHouseFormRoofRidgeAxis(
-  houseForm: HouseFormModel | null,
-): RawGeometryModuleInput['houseContext']['roofRidgeAxis'] {
-  if (!houseForm) return undefined;
-  return houseForm.roofIntent.ridgeAxis === 'y' ? 'y' : 'x';
 }
 
 function resolveDerivedRoofPitchDeg(module: CalculatorModuleInputs, result: CostOutputV1 | null): number | null {
@@ -282,13 +260,8 @@ function resolvePergolaPosition(
  * fallback for callers that have not supplied a workbench house form.
  */
 function resolveHousePosition(input: {
-  houseForm: HouseFormModel | null;
   module: CalculatorModuleInputs;
 }): RawGeometryModuleInput['houseContext']['position'] {
-  if (input.houseForm) {
-    return houseFormTransformToAssemblyPosition(input.houseForm.transform);
-  }
-
   const position = input.module.houseFootprintPosition;
   if (!position || !position.originXMm || !position.originYMm) return null;
   return {
@@ -494,7 +467,7 @@ export function buildRawGeometryModuleInput(input: {
   const decks = projectDecks !== undefined ? projectDecks : mapDecks(projectModel);
   const openings = projectOpenings !== undefined ? projectOpenings : mapOpenings(projectModel);
   const houseForm = resolveModuleHouseForm({ projectModel, module, moduleId });
-  const roofIntent = houseForm?.roofIntent ?? null;
+  const rawHouse = houseForm ? buildRawHouseInputFromHouseForm(houseForm) : null;
   const pergola = projectModel
     ? resolvePergolaForGeometryModule({ projectModel, module, moduleId })
     : null;
@@ -545,35 +518,33 @@ export function buildRawGeometryModuleInput(input: {
       drainage: resolveStructuralDrainage(result),
     },
     houseContext: {
-      footprintMode: houseForm?.footprint.mode ?? resolveFootprintMode(module),
-      footprintPreset: houseForm?.footprint.preset ?? resolveFootprintPreset(module),
-      footprintParams: houseForm?.footprint.params ?? resolveFootprintParams(module),
-      footprintPolygon:
-        houseForm && houseForm.footprint.polygon.length
-          ? houseForm.footprint.polygon
-          : resolveFootprintPolygon(module),
-      position: resolveHousePosition({ houseForm, module }),
-      storeyMode: houseForm?.storeyMode ?? module.houseStoreyMode ?? null,
-      roofForm: roofIntent?.form ?? null,
-      roofMaterial: roofIntent?.material ?? normalizeHouseRoofMaterial(module.houseRoofMaterial),
-      roofPrimaryFallDirection: resolveHouseFormRoofFallDirection(houseForm),
-      roofRidgeAxis: resolveHouseFormRoofRidgeAxis(houseForm),
-      openGableEndIds: roofIntent?.openGableEndIds ?? null,
+      houseId: rawHouse?.houseId ?? null,
+      footprintMode: rawHouse?.footprintMode ?? resolveFootprintMode(module),
+      footprintPreset: rawHouse?.footprintPreset ?? resolveFootprintPreset(module),
+      footprintParams: rawHouse?.footprintParams ?? resolveFootprintParams(module),
+      footprintPolygon: rawHouse?.footprintPolygon ?? resolveFootprintPolygon(module),
+      position: rawHouse?.position ?? resolveHousePosition({ module }),
+      storeyMode: rawHouse?.storeyMode ?? module.houseStoreyMode ?? null,
+      roofForm: rawHouse?.roofForm ?? null,
+      roofMaterial: rawHouse?.roofMaterial ?? normalizeHouseRoofMaterial(module.houseRoofMaterial),
+      roofPrimaryFallDirection: rawHouse?.roofPrimaryFallDirection,
+      roofRidgeAxis: rawHouse?.roofRidgeAxis,
+      openGableEndIds: rawHouse?.openGableEndIds ?? null,
       decks,
       openings,
-      attachmentStrategy: houseForm?.attachmentStrategy ?? module.houseAttachmentStrategy ?? null,
-      eaveHeightM: resolveOptionalOverride(houseForm?.eaveHeightM ?? module.houseEaveHeightM),
-      wallHeightM: resolveOptionalOverride(houseForm?.wallHeightM ?? module.houseWallHeightM),
-      roofPitchDeg: resolveOptionalOverride(roofIntent?.primaryPitchDeg ?? module.houseRoofPitchDeg),
+      attachmentStrategy: rawHouse?.attachmentStrategy ?? module.houseAttachmentStrategy ?? null,
+      eaveHeightM: resolveOptionalOverride(rawHouse?.eaveHeightM ?? module.houseEaveHeightM),
+      wallHeightM: resolveOptionalOverride(rawHouse?.wallHeightM ?? module.houseWallHeightM),
+      roofPitchDeg: resolveOptionalOverride(rawHouse?.roofPitchDeg ?? module.houseRoofPitchDeg),
       eave: {
-        soffitDepthMm: resolveOptionalOverride(houseForm?.soffitDepthMm ?? module.houseSoffitDepthMm),
-        fasciaHeightMm: resolveOptionalOverride(houseForm?.fasciaHeightMm ?? module.houseFasciaHeightMm),
-        gutterWidthMm: resolveOptionalOverride(houseForm?.gutterWidthMm ?? module.houseGutterWidthMm),
-        gutterDepthMm: resolveOptionalOverride(houseForm?.gutterDepthMm ?? module.houseGutterDepthMm),
+        soffitDepthMm: resolveOptionalOverride(rawHouse?.eave?.soffitDepthMm ?? module.houseSoffitDepthMm),
+        fasciaHeightMm: resolveOptionalOverride(rawHouse?.eave?.fasciaHeightMm ?? module.houseFasciaHeightMm),
+        gutterWidthMm: resolveOptionalOverride(rawHouse?.eave?.gutterWidthMm ?? module.houseGutterWidthMm),
+        gutterDepthMm: resolveOptionalOverride(rawHouse?.eave?.gutterDepthMm ?? module.houseGutterDepthMm),
         gutterProjectionMm: resolveOptionalOverride(
-          houseForm?.gutterProjectionMm ?? module.houseGutterProjectionMm,
+          rawHouse?.eave?.gutterProjectionMm ?? module.houseGutterProjectionMm,
         ),
-        eaveOverhangMm: resolveOptionalOverride(houseForm?.eaveOverhangMm ?? module.houseEaveOverhangMm),
+        eaveOverhangMm: resolveOptionalOverride(rawHouse?.eave?.eaveOverhangMm ?? module.houseEaveOverhangMm),
       },
     },
     dimensions: {

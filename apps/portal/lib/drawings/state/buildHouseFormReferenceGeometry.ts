@@ -1,71 +1,11 @@
 import {
   applyHouseReferencePosition,
   buildHouseModel3DFromRawHouseInput,
-  buildHouseFootprintPolygon,
   type HouseReferenceGeometry,
-  type Polygon3,
-  type RawHouseInput,
 } from '@sp/geometry';
 import { houseFormTransformToAssemblyPosition } from './houseFormTransform';
 import type { HouseFormModel } from './objectFirstWorkbenchModel';
-
-/**
- * Fallback pergola dimensions used to synthesise a preset footprint for
- * a standalone house form. The preset helper still expects pergola dims,
- * and the house form's transform supplies world placement.
- */
-const FALLBACK_PERGOLA_WIDTH_MM = 6000;
-const FALLBACK_PERGOLA_DEPTH_MM = 3000;
-
-function buildHouseFormFootprintPolygonMm(houseForm: HouseFormModel): Polygon3 {
-  if (houseForm.footprint.mode === 'custom_polygon') {
-    // Custom polygons are stored in `{alongM, depthM}` portal-frame.
-    // Convert to `Polygon3` (mm) by lifting onto the ground plane (z=0).
-    // The polygon stays in house-local coords; `applyHouseReferencePosition`
-    // translates to world via the form's transform.
-    return houseForm.footprint.polygon.map((point) => ({
-      x: Number(point.alongM) * 1000,
-      y: -Number(point.depthM) * 1000,
-      z: 0,
-    }));
-  }
-  return buildHouseFootprintPolygon({
-    pergolaWidthMm: FALLBACK_PERGOLA_WIDTH_MM,
-    pergolaDepthMm: FALLBACK_PERGOLA_DEPTH_MM,
-    preset: houseForm.footprint.preset,
-    params: houseForm.footprint.params,
-    attachmentSide: houseForm.footprint.attachmentSide,
-  });
-}
-
-function houseFormToRawHouseInput(houseForm: HouseFormModel): RawHouseInput {
-  return {
-    houseId: houseForm.id,
-    footprintMode: houseForm.footprint.mode,
-    footprintPreset: houseForm.footprint.preset,
-    footprintParams: houseForm.footprint.params,
-    footprintPolygon:
-      houseForm.footprint.mode === 'custom_polygon' ? houseForm.footprint.polygon : null,
-    storeyMode: houseForm.storeyMode,
-    roofForm: houseForm.roofIntent.form,
-    roofMaterial: houseForm.roofIntent.material,
-    roofPrimaryFallDirection: houseForm.roofIntent.primaryFallDirection,
-    roofRidgeAxis: houseForm.roofIntent.ridgeAxis,
-    openGableEndIds: houseForm.roofIntent.openGableEndIds,
-    attachmentStrategy: houseForm.attachmentStrategy,
-    eaveHeightM: houseForm.eaveHeightM ?? null,
-    wallHeightM: houseForm.wallHeightM ?? null,
-    roofPitchDeg: houseForm.roofIntent.primaryPitchDeg,
-    eave: {
-      soffitDepthMm: houseForm.soffitDepthMm ?? null,
-      fasciaHeightMm: houseForm.fasciaHeightMm ?? null,
-      gutterWidthMm: houseForm.gutterWidthMm ?? null,
-      gutterDepthMm: houseForm.gutterDepthMm ?? null,
-      gutterProjectionMm: houseForm.gutterProjectionMm ?? null,
-      eaveOverhangMm: houseForm.eaveOverhangMm ?? null,
-    },
-  };
-}
+import { buildHouseFormRawGeometryInput } from './houseFormRawGeometry';
 
 /**
  * Build a freestanding `HouseReferenceGeometry` for a workbench house form.
@@ -96,13 +36,12 @@ function houseFormToRawHouseInput(houseForm: HouseFormModel): RawHouseInput {
 export function buildHouseFormReferenceGeometry(input: {
   houseForm: HouseFormModel;
 }): HouseReferenceGeometry | null {
-  const footprint = buildHouseFormFootprintPolygonMm(input.houseForm);
-  if (footprint.length < 3) return null;
+  const rawGeometry = buildHouseFormRawGeometryInput(input.houseForm);
+  if (!rawGeometry) return null;
 
-  const rawHouse = houseFormToRawHouseInput(input.houseForm);
   const model = buildHouseModel3DFromRawHouseInput({
-    rawHouse,
-    footprint,
+    rawHouse: rawGeometry.rawHouse,
+    footprint: rawGeometry.footprint,
     pergolaAttachment: null,
   });
   if (!model) return null;
@@ -112,7 +51,7 @@ export function buildHouseFormReferenceGeometry(input: {
     fasciaLine: null,
     roofEdgeLine: null,
     soffitDepthMm: model.eave?.soffitDepthMm ?? null,
-    footprint,
+    footprint: rawGeometry.footprint,
     model,
     attachmentTarget: null,
     position: null,

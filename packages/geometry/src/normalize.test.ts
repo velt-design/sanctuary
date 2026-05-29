@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   normalizeGeometryConfig,
+  solveAssembly3D,
   type HouseFootprintPreset,
   type HouseRoofForm,
   type RawGeometryModuleInput,
@@ -439,6 +440,25 @@ describe('normalizeGeometryConfig', () => {
         eaveOverhangMm: 450,
       },
     }));
+  });
+
+  it('propagates the raw host house id through normalization and solve output', () => {
+    const normalized = normalizeGeometryConfig(
+      makeRawInput({
+        houseContext: {
+          houseId: 'house-form-2',
+        },
+      }),
+    );
+
+    expect(normalized.ok).toBe(true);
+    if (!normalized.ok) return;
+    expect(normalized.value.houseContext.houseId).toBe('house-form-2');
+
+    const solved = solveAssembly3D(normalized.value);
+    expect(solved.ok).toBe(true);
+    if (!solved.ok) return;
+    expect(solved.value.house.model?.houseId).toBe('house-form-2');
   });
 
   it('maps existing house connection types into first-class house attachment strategies', () => {

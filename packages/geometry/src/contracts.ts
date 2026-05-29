@@ -347,11 +347,10 @@ export type AssemblyMemberEndCut = {
  * describes the house and many `RawGeometryModuleInput`s reference it
  * (rather than duplicating the same `houseContext` sub-tree N times).
  *
- * Intentionally additive at this stage: no consumer reads `RawHouseInput`
- * yet. Phase 2 introduces a builder that produces `HouseModel3D` directly
- * from this input; phase 3 wires solve orchestration so the house solves
- * once per project; phase 4 migrates portal callers; phase 5 retires (or
- * shrinks) the `houseContext` field on `RawGeometryModuleInput`.
+ * Intentionally additive at this stage: project house references already use
+ * this shape, and the legacy per-module `houseContext` mirrors its fields
+ * until solve orchestration can read raw houses directly. A later phase
+ * retires (or shrinks) the `houseContext` field on `RawGeometryModuleInput`.
  *
  * Field-for-field equivalent to today's `houseContext` shape so the
  * migration is a structural lift, not a redesign.
@@ -534,6 +533,12 @@ export type RawGeometryModuleInput = {
     } | null;
   } | null;
   houseContext: {
+    /**
+     * Stable source house id for the host house carried through this legacy
+     * per-module context. Defaults to `'host-house'` for callers that have not
+     * migrated to object-first house forms yet.
+     */
+    houseId?: string | null;
     footprintMode?: HouseFootprintMode | "orthogonal_polygon" | null;
     footprintPreset?: HouseFootprintPreset | null;
     footprintParams?: HouseFootprintParams | null;
@@ -765,6 +770,12 @@ export type GeometryConfig = {
     };
   };
   houseContext: {
+    /**
+     * Stable source house id for the host house carried through this legacy
+     * per-module context. Defaults to `'host-house'` for callers that have not
+     * migrated to object-first house forms yet.
+     */
+    houseId?: string | null;
     wallLine?: Line3 | null;
     fasciaLine?: Line3 | null;
     roofEdgeLine?: Line3 | null;

@@ -41,7 +41,6 @@ import {
 } from './deckSupportDiagnostics';
 import type { HouseFormModel, WorkbenchProjectModel } from './objectFirstWorkbenchModel';
 import { resolveObjectFirstPergolaAttachment } from './objectFirstDerivedHosting';
-import { tagSceneHostHouseForm } from './tagSceneHostHouseForm';
 import {
   buildProjectHouseGeometryRegistry,
   type ProjectHouseGeometryEntry,
@@ -515,12 +514,9 @@ function buildViewerSceneFromSolvedGeometry(input: {
   return annotateSceneHouseRoofMetadata(
     annotateSceneAttachmentZoneMetadata(
       annotateSceneHostEdgeSides(
-        tagSceneHostHouseForm(
-          buildViewerSceneModel(input.assembly, {
-            additionalHouseModels: input.projectHouseModels,
-          }),
-          input.hostHouseForm?.id ?? null,
-        ),
+        buildViewerSceneModel(input.assembly, {
+          additionalHouseModels: input.projectHouseModels,
+        }),
         input.hostHouseForm?.footprint.polygon,
       ),
       input.geometryContext,

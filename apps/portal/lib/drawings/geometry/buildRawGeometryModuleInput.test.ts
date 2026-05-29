@@ -441,6 +441,7 @@ describe('buildRawGeometryModuleInput', () => {
       objectWorkbenchGeometryContext: geometryContext,
     });
 
+    expect(raw.houseContext.houseId).toBe(houseForm.id);
     expect(raw.houseContext.position).toEqual({
       origin: { x: 2500, y: -1250 },
       rotationDeg: 90,
@@ -461,6 +462,7 @@ describe('buildRawGeometryModuleInput', () => {
       result: makeResult(),
     });
 
+    expect(raw.houseContext.houseId).toBeNull();
     expect(raw.houseContext.position).toEqual({
       origin: { x: '7000', y: '-3000' },
       rotationDeg: '180',
@@ -526,6 +528,7 @@ describe('buildRawGeometryModuleInput', () => {
       objectWorkbenchGeometryContext: geometryContext,
     });
 
+    expect(raw.houseContext.houseId).toBe(secondHouse.id);
     expect(raw.houseContext.position).toEqual({
       origin: { x: 12000, y: -2000 },
       rotationDeg: 90,

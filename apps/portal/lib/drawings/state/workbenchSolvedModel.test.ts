@@ -298,7 +298,8 @@ describe('buildWorkbenchSolvedModel geometry artifact', () => {
     if (!houseLayer) throw new Error('Expected house layer in viewer scene.');
     const objectIds = houseLayer.objects.map((object) => object.id);
     expect(objectIds.some((id) => id.startsWith('house-main:'))).toBe(true);
-    expect(objectIds.some((id) => id.startsWith('host-house:'))).toBe(true);
+    expect(objectIds.some((id) => id.startsWith('house-form-2:'))).toBe(true);
+    expect(objectIds.some((id) => id.startsWith('host-house:'))).toBe(false);
     const houseForm2Objects = houseLayer.objects.filter(
       (object) => (object.metadata as { houseFormId?: string } | undefined)?.houseFormId === 'house-form-2',
     );

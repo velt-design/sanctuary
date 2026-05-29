@@ -43,7 +43,7 @@ Strong:
 
 Still incomplete:
 
-- `buildRawGeometryModuleInput` still wraps a selected host house in each pergola module's `houseContext`.
+- `buildRawGeometryModuleInput` still wraps a selected host house in each pergola module's `houseContext`, but the host form id now flows through geometry directly instead of a portal scene-retag bridge.
 - The per-object solve loop is not complete; houses do not solve once as project-level inputs consumed by pergolas/decks.
 - The rail's `Add pergola` affordance is intentionally disabled.
 - Non-active pergolas are visible mostly as project reference context, not fully interactive solved bodies.
@@ -77,10 +77,10 @@ Do not expand this goal to include:
 ## Suggested PR Sequence
 
 1. **Per-object house solve boundary**
-   - Add project-level raw house input/build path.
+   - Add project-level raw house input/build path. (Started: house-form to raw-house conversion is now shared by project references and host raw geometry.)
    - Solve each house once into a stable `HouseModel3D`.
    - Let pergola raw inputs reference the resolved host model instead of wrapping the full house context.
-   - Delete the temporary host-scene retag bridge when the geometry package emits real house form ids.
+   - Delete the temporary host-scene retag bridge when the geometry package emits real house form ids. (Done: solver output now carries the host form id.)
 
 2. **Enable freestanding Add Pergola**
    - Add a new pergola object with its own position, local outline/dimensions, and no host.
