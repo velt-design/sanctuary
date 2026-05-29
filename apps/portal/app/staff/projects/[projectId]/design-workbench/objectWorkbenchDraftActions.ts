@@ -595,7 +595,10 @@ export function mergeHouseFormRoofIntentAfterFootprintSync(input: {
   terminalEndIds: ReadonlySet<string>;
 }): ObjectFirstHouseFormDraft {
   const { previewHouseForm, existingHouseForm, terminalEndIds } = input;
-  if (!existingHouseForm?.roofIntentAuthored) return previewHouseForm;
+  const mergedBase = existingHouseForm
+    ? { ...previewHouseForm, transform: existingHouseForm.transform }
+    : previewHouseForm;
+  if (!existingHouseForm?.roofIntentAuthored) return mergedBase;
 
   const existingRoof = existingHouseForm.roofIntent;
   const previewRoof = previewHouseForm.roofIntent;
@@ -608,7 +611,7 @@ export function mergeHouseFormRoofIntentAfterFootprintSync(input: {
       : [];
 
   return {
-    ...previewHouseForm,
+    ...mergedBase,
     roofIntentAuthored: true,
     roofIntent: {
       ...previewRoof,

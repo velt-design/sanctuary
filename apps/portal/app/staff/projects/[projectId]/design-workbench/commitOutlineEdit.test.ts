@@ -17,6 +17,7 @@ type StoreStubInput = {
     | { family: 'house_forms'; objectId: string | null }
     | { family: 'decks'; objectId: string | null };
   activeHouseForm?: {
+    transform?: { offsetXM: number; offsetYM: number; rotationQuarterTurns: 0 | 1 | 2 | 3 };
     footprint: { attachmentSide: 'rear' | 'left' | 'right' | 'front' };
   } | null;
   activeObjectFirstPergola?: {
@@ -46,6 +47,7 @@ function stubStore(input: StoreStubInput = {}): DrawingWorkbenchStore {
     },
     derived: {
       activeHouseForm: input.activeHouseForm ?? null,
+      houseForms: input.activeHouseForm ? [input.activeHouseForm] : [],
       activeObjectFirstPergola: input.activeObjectFirstPergola ?? null,
     },
   } as unknown as DrawingWorkbenchStore;
@@ -367,6 +369,39 @@ describe('buildOutlineEditCommitHandler', () => {
         actions.commitSharedHouseDeckPatch as ReturnType<typeof vi.fn>
       ).mock.calls[0];
       expect(invertCall?.[1].outline).toEqual(previousOutline);
+    });
+
+    it('subtracts active house form transform when encoding deck world position', () => {
+      const actions = stubActions();
+      const handler = buildOutlineEditCommitHandler({
+        store: stubStore({
+          activeHouseForm: {
+            transform: { offsetXM: 1, offsetYM: 0.5, rotationQuarterTurns: 0 },
+            footprint: { attachmentSide: 'rear' },
+          },
+          decks: [{ id: 'deck-1', shape: 'custom', outline: [] }],
+        }),
+        activeModuleInput: {
+          houseFootprintPosition: { originXMm: '9000', originYMm: '9000', rotationDeg: '0' },
+        } as never,
+        objectWorkbenchActions: actions,
+      });
+      const command = handler({
+        outlineId: 'house_surface:deck-1',
+        family: 'decks',
+        edgeIndex: 0,
+        nextPolygon: SQUARE_2M,
+        snap: null,
+      });
+      command!.apply();
+      const applyCall = (
+        actions.commitSharedHouseDeckPatch as ReturnType<typeof vi.fn>
+      ).mock.calls[0];
+      expect(applyCall?.[1].position).toEqual({
+        originXMm: '-1000',
+        originYMm: '-500',
+        rotationDeg: '0',
+      });
     });
   });
 

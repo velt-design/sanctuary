@@ -48,6 +48,28 @@ describe('buildHouseFirstWorkbenchProjectModel houseForms[] contract', () => {
     expect(project.houseForms[0]!.id).toBe('house-main');
   });
 
+  it('seeds the primary house transform from legacy module houseFootprintPosition', () => {
+    const fixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
+    if (!fixture) throw new Error('Missing Sanctuary fixture.');
+    const snapshot = structuredClone(fixture.snapshot) as {
+      inputs?: { modules?: Array<Record<string, unknown>> };
+    };
+    if (!snapshot.inputs?.modules?.[0]) throw new Error('Expected fixture module.');
+    snapshot.inputs.modules[0].houseFootprintPosition = {
+      originXMm: '2500',
+      originYMm: '-1250',
+      rotationDeg: '90',
+    };
+
+    const project = buildHouseFirstWorkbenchProjectModel({ snapshot });
+
+    expect(project.houseForms[0]!.transform).toEqual({
+      offsetXM: 2.5,
+      offsetYM: -1.25,
+      rotationQuarterTurns: 1,
+    });
+  });
+
   it('emits an empty houseForms[] array when no modules resolve a house footprint', () => {
     // Empty snapshot = no modules = no shared house. The legacy field
     // returned `null` in this case; the new shape returns `[]` and

@@ -29,3 +29,14 @@ export function houseFormTransformToAssemblyPosition(
     rotationDeg: transform.rotationQuarterTurns * 90,
   };
 }
+
+export function houseFormTransformToWorldPositionMm(
+  transform: HouseFormTransformModel,
+): { x: number; y: number; rotationDeg: number } {
+  const position = houseFormTransformToAssemblyPosition(transform);
+  return {
+    x: Number(position.origin.x) || 0,
+    y: Number(position.origin.y) || 0,
+    rotationDeg: Number(position.rotationDeg) || 0,
+  };
+}

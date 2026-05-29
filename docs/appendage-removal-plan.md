@@ -137,7 +137,7 @@ Grouped by layer; each file's change line is "delete the appendage refs" unless 
 | [houseRoofFormAdapter.ts](apps/portal/lib/drawings/state/houseRoofFormAdapter.ts) | Drop appendage field mapping | -15 |
 | [houseRoofFormNormalize.ts](apps/portal/lib/drawings/state/houseRoofFormNormalize.ts) | Drop appendage normalisation (silently drops field on read from persisted data) | -20 |
 | [houseFirstWorkbenchAdapter.ts](apps/portal/lib/drawings/state/houseFirstWorkbenchAdapter.ts) | Drop `appendageAllowed` derivation | -10 |
-| [buildAdditionalHouseFormGeometry.ts](apps/portal/lib/drawings/state/buildAdditionalHouseFormGeometry.ts) | Drop appendage in geometry handling | -10 |
+| [buildHouseFormReferenceGeometry.ts](apps/portal/lib/drawings/state/buildHouseFormReferenceGeometry.ts) | Drop appendage in geometry handling | -10 |
 
 ### Portal inspector + UI (3 files)
 

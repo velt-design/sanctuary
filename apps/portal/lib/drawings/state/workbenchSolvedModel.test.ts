@@ -3,7 +3,7 @@ import { getSanctuaryGeometryWorkbenchFixture } from '@/lib/drawings/sanctuaryWo
 import { buildEstimateDrawingDraftFromSnapshot } from '@/lib/estimates/drawingEdits';
 import { buildObjectFirstWorkbenchDraftBaselineFromLegacyEstimateSnapshot } from './legacyEstimateSnapshotAdapter';
 import { addHouseFormToObjectFirstDraft } from './objectFirstWorkbenchAdapter';
-import { buildWorkbenchSolvedModel } from './workbenchSolvedModel';
+import { buildWorkbenchSolvedModel, type WorkbenchSolvedModel } from './workbenchSolvedModel';
 
 function getFixtureSnapshot(name: Parameters<typeof getSanctuaryGeometryWorkbenchFixture>[0]): Record<string, unknown> {
   const fixture = getSanctuaryGeometryWorkbenchFixture(name);
@@ -11,6 +11,19 @@ function getFixtureSnapshot(name: Parameters<typeof getSanctuaryGeometryWorkbenc
     throw new Error(`Missing ${name} workbench fixture.`);
   }
   return fixture.snapshot;
+}
+
+function houseReferencePolygon(
+  model: WorkbenchSolvedModel,
+  houseFormId: string,
+) {
+  const shape = model.projectReferenceShapes.find(
+    (candidate) =>
+      candidate.sourceType === 'house_reference' &&
+      candidate.sourceObjectId === houseFormId,
+  );
+  if (!shape) throw new Error(`Missing house reference ${houseFormId}.`);
+  return shape.polygon;
 }
 
 describe('buildWorkbenchSolvedModel geometry artifact', () => {
@@ -90,15 +103,12 @@ describe('buildWorkbenchSolvedModel geometry artifact', () => {
     expect(solvedModel.activeModule?.geometryTopProjection).toBeNull();
   });
 
-  it('emits a house_reference shape in projectReferenceShapes for each additional house form (PR8c-iii)', () => {
+  it('emits one canonical house_reference shape per house form', () => {
     // End-to-end multi-form rendering check: starting from a single-form
-    // legacy snapshot, author a second form via PR5's persistence helper,
-    // attach to the draft's objectFirst slot, and run the solver. The
-    // additional form must surface as a house_reference shape in the
-    // project-level overlay so PlanViewport can render it at the authored
-    // 10m east offset. Without PR8c-iii's solver wiring (PR8b's freestanding
-    // geometry support + PR8c-i/ii's portal helpers), the form would be
-    // persisted but invisible.
+    // legacy snapshot, author a second form, attach it to the draft's
+    // objectFirst slot, and run the solver. Every form, including the
+    // primary House, must surface through the same project-level reference
+    // path so PlanViewport can render and move it by house form id.
     const snapshot = getFixtureSnapshot('mono-standard');
     const draft = buildEstimateDrawingDraftFromSnapshot(snapshot);
     if (!draft) throw new Error('Expected drawing draft.');
@@ -117,12 +127,11 @@ describe('buildWorkbenchSolvedModel geometry artifact', () => {
     const houseRefs = solvedModel.projectReferenceShapes.filter(
       (shape) => shape.sourceType === 'house_reference',
     );
-    // One reference for the primary (emitted by the pergola overlay) plus
-    // one for the additional form (emitted by PR8c-iii's new loop).
     expect(houseRefs.map((shape) => shape.sourceObjectId)).toEqual([
       'house-main',
       'house-form-2',
     ]);
+    expect(new Set(houseRefs.map((shape) => shape.id)).size).toBe(houseRefs.length);
     // Primary lives at world origin; additional form lives 10m east via
     // `addHouseFormToObjectFirstDraft`'s default offset. Every vertex of
     // the second polygon must be at x >= 10000 mm.
@@ -133,12 +142,73 @@ describe('buildWorkbenchSolvedModel geometry artifact', () => {
     }
   });
 
-  it('composes additional house form objects into the 3D viewerScene house layer (PR8d)', () => {
-    // PR8c-iii made additional forms visible in PlanViewport's projection
-    // overlay; PR8d closes the 3D gap by appending per-form
+  it('updates only the moved house_reference polygon for each house form', () => {
+    const snapshot = getFixtureSnapshot('mono-standard');
+    const draft = buildEstimateDrawingDraftFromSnapshot(snapshot);
+    if (!draft) throw new Error('Expected drawing draft.');
+    const baseline = buildObjectFirstWorkbenchDraftBaselineFromLegacyEstimateSnapshot({
+      snapshot,
+      draft,
+    });
+    if (!baseline) throw new Error('Expected objectFirst baseline draft.');
+    draft.objectFirst = addHouseFormToObjectFirstDraft({
+      draft: baseline,
+      label: 'Sleepout',
+    });
+
+    const initial = buildWorkbenchSolvedModel({ snapshot, draft });
+    const initialPrimary = houseReferencePolygon(initial, 'house-main');
+    const initialSecond = houseReferencePolygon(initial, 'house-form-2');
+
+    const primaryMovedDraft = structuredClone(draft);
+    const primary = primaryMovedDraft.objectFirst?.houseAssembly?.houseForms[0] ?? null;
+    if (!primary) throw new Error('Expected primary house form.');
+    primary.transform = { offsetXM: 4, offsetYM: 0, rotationQuarterTurns: 0 };
+    const primaryMoved = buildWorkbenchSolvedModel({ snapshot, draft: primaryMovedDraft });
+    expect(houseReferencePolygon(primaryMoved, 'house-main')).not.toEqual(initialPrimary);
+    expect(houseReferencePolygon(primaryMoved, 'house-form-2')).toEqual(initialSecond);
+
+    const secondMovedDraft = structuredClone(draft);
+    const second = secondMovedDraft.objectFirst?.houseAssembly?.houseForms[1] ?? null;
+    if (!second) throw new Error('Expected second house form.');
+    second.transform = { offsetXM: 14, offsetYM: 0, rotationQuarterTurns: 0 };
+    const secondMoved = buildWorkbenchSolvedModel({ snapshot, draft: secondMovedDraft });
+    expect(houseReferencePolygon(secondMoved, 'house-main')).toEqual(initialPrimary);
+    expect(houseReferencePolygon(secondMoved, 'house-form-2')).not.toEqual(initialSecond);
+  });
+
+  it('applies the primary house form transform to the solved house projection', () => {
+    const snapshot = getFixtureSnapshot('mono-standard');
+    const draft = buildEstimateDrawingDraftFromSnapshot(snapshot);
+    if (!draft) throw new Error('Expected drawing draft.');
+    const baseline = buildObjectFirstWorkbenchDraftBaselineFromLegacyEstimateSnapshot({
+      snapshot,
+      draft,
+    });
+    if (!baseline) throw new Error('Expected objectFirst baseline draft.');
+    const primaryHouseForm = baseline.houseAssembly?.houseForms[0] ?? null;
+    if (!primaryHouseForm) throw new Error('Expected primary house form.');
+    primaryHouseForm.transform = { offsetXM: 10, offsetYM: 0, rotationQuarterTurns: 0 };
+    draft.objectFirst = baseline;
+
+    const solvedModel = buildWorkbenchSolvedModel({ snapshot, draft });
+    const primary = solvedModel.projectReferenceShapes.find(
+      (shape) => shape.sourceType === 'house_reference' && shape.sourceObjectId === 'house-main',
+    );
+
+    expect(primary).toBeDefined();
+    for (const vertex of primary!.polygon) {
+      expect(vertex.x).toBeGreaterThanOrEqual(10000);
+    }
+  });
+
+  it('composes non-host house form objects into the 3D viewerScene house layer (PR8d)', () => {
+    // Project-level references make every form visible in PlanViewport;
+    // PR8d closes the 3D gap by appending non-host per-form
     // `house_line` / `house_surface_solid` objects to each pergola's
     // `viewerScene` house layer. After this, switching to the 3D viewport
-    // shows the same two houses the plan view shows.
+    // shows the same two houses the plan view shows without duplicating
+    // the active host.
     const snapshot = getFixtureSnapshot('mono-standard');
     const draft = buildEstimateDrawingDraftFromSnapshot(snapshot);
     if (!draft) throw new Error('Expected drawing draft.');

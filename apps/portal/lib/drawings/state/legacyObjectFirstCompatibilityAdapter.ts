@@ -61,11 +61,7 @@ function buildHouseFormFromCompatibilityHouse(house: ObjectWorkbenchCompatibilit
   return {
     id: house.id,
     label: house.label,
-    transform: {
-      offsetXM: 0,
-      offsetYM: 0,
-      rotationQuarterTurns: house.footprint.drawingRotationQuarterTurns,
-    },
+    transform: house.transform,
     footprint: {
       mode: house.footprint.mode,
       preset: house.footprint.preset,

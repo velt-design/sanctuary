@@ -19,6 +19,7 @@ import {
   pickDrawingWorkbenchObjectSelectionState,
   type DrawingWorkbenchViewportTransform,
 } from '@/lib/drawings/state/drawingWorkbenchUiState';
+import { houseFormTransformToWorldPositionMm } from '@/lib/drawings/state/houseFormTransform';
 import {
   buildEstimateDrawingDraftFromSnapshot,
   buildEstimateDrawingSheetMetaOverrides,
@@ -313,24 +314,16 @@ export default function DesignWorkbenchEstimateClient({
       }),
     [store.derived.solvedModel.projectReferenceShapes, activePergolaSourceId],
   );
-  // PR-Bug2 (2026-05-25): non-host house form `house_reference` footprints
-  // promoted into the active module's committedBodies so they're hit-target-
-  // able and movable. The active pergola's host house already arrives via
-  // the module projection (from `buildReferenceShapes` inside the geometry
-  // package), so we exclude it here to avoid double rendering. All OTHER
-  // house forms (additional sleepouts, granny flats, second houses) flow in.
-  const additionalCommittedShapes = useMemo(() => {
-    const hostHouseSourceId =
-      store.derived.solvedModel.projectModel.houseAssembly?.houseForms[0]?.id ?? null;
-    return store.derived.solvedModel.projectReferenceShapes.filter(
-      (shape) =>
-        shape.sourceType === 'house_reference' &&
-        (hostHouseSourceId === null || shape.sourceObjectId !== hostHouseSourceId),
-    );
-  }, [
-    store.derived.solvedModel.projectReferenceShapes,
-    store.derived.solvedModel.projectModel.houseAssembly,
-  ]);
+  // Canonical project-level house references are promoted into the active
+  // module's committedBodies so every house form, including the host, uses
+  // the same plan hit-target and move identity.
+  const houseCommittedShapes = useMemo(
+    () =>
+      store.derived.solvedModel.projectReferenceShapes.filter(
+        (shape) => shape.sourceType === 'house_reference',
+      ),
+    [store.derived.solvedModel.projectReferenceShapes],
+  );
   const activeModelViewportTransform =
     modelViewportTransformsByKey[modelViewportSurfaceKey] ?? DEFAULT_MODEL_VIEWPORT_TRANSFORM;
   const activeGeometryViewportState =
@@ -506,7 +499,7 @@ export default function DesignWorkbenchEstimateClient({
           planViewModel={store.derived.activePlanViewModel}
           activeObjectRef={viewportActiveObjectRef}
           projectContextShapes={projectContextShapes}
-          additionalCommittedShapes={additionalCommittedShapes}
+          houseCommittedShapes={houseCommittedShapes}
           hoveredObjectRef={hoveredObjectRef}
           onHoverObjectChange={setHoveredObjectRef}
           pergolaTargetId={viewportPergolaId}
@@ -661,17 +654,19 @@ export default function DesignWorkbenchEstimateClient({
                     // world position here. Same fix, same reason: the
                     // decoder adds `deck.position + house.position`, so
                     // we must subtract house.position when going from
-                    // world coords to the persisted deck.position. We
-                    // read from `activeModuleInput.houseFootprintPosition`
-                    // because that's the exact field the geometry
-                    // pipeline consumes.
-                    const houseModulePosition = activeModuleInput?.houseFootprintPosition;
-                    const houseWorldPositionMm = houseModulePosition
-                      ? {
-                          x: Number(houseModulePosition.originXMm) || 0,
-                          y: Number(houseModulePosition.originYMm) || 0,
-                        }
-                      : null;
+                    // world coords to the persisted deck.position. Read
+                    // the same object-first transform raw geometry now
+                    // consumes, with legacy module position as fallback.
+                    const hostHouseForm =
+                      store.derived.activeHouseForm ?? store.derived.houseForms[0] ?? null;
+                    const houseWorldPositionMm = hostHouseForm
+                      ? houseFormTransformToWorldPositionMm(hostHouseForm.transform)
+                      : activeModuleInput?.houseFootprintPosition
+                        ? {
+                            x: Number(activeModuleInput.houseFootprintPosition.originXMm) || 0,
+                            y: Number(activeModuleInput.houseFootprintPosition.originYMm) || 0,
+                          }
+                        : null;
                     const patch = buildDeckTransformPatch({
                       worldPolygonMm: nextWorldPolygon,
                       currentRotationDeg: deck.position?.rotationDeg,
@@ -686,14 +681,10 @@ export default function DesignWorkbenchEstimateClient({
                   }
                   if (request.target.family === 'house_form') {
                     // PR11 → PR-C (2026-05-22): drag-to-reposition for any
-                    // house form. The previous primary-skip guard is gone;
-                    // dragging the primary now commits a transform delta
-                    // like any other form. The transform write may be
-                    // overwritten on next read while `buildSharedHouse`
-                    // still hardcodes the synthesized primary's transform
-                    // to origin (retires in Phase 2 with cost engine input
-                    // migration). Workbench-can-break permission accepts
-                    // this temporary inconsistency.
+                    // house form. The old primary-only exclusion is gone;
+                    // dragging the primary now commits the same transform
+                    // delta as added forms, and raw geometry reads that
+                    // transform before consulting legacy module position.
                     void objectWorkbenchActions.commitHouseFormTransformDelta({
                       houseFormId: request.target.targetId,
                       deltaXMm: request.delta.x,

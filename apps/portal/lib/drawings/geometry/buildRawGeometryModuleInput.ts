@@ -7,6 +7,7 @@ import type {
   PergolaObjectModel,
   WorkbenchProjectModel,
 } from '@/lib/drawings/state/objectFirstWorkbenchModel';
+import { houseFormTransformToAssemblyPosition } from '@/lib/drawings/state/houseFormTransform';
 import { connectionTypeFromAttachment } from '@/lib/drawings/state/pergolaAttachment';
 import type { ObjectWorkbenchGeometryContext } from './objectWorkbenchGeometryContext';
 import {
@@ -272,18 +273,19 @@ function resolvePergolaPosition(
 }
 
 /**
- * Map a house's first-class spatial `position` (stage 3 of the house
- * decoupling migration) to the geometry module input. Read from
- * `module.houseFootprintPosition` (CalculatorModuleInputs field, persists
- * via the snapshot/draft pipeline). When set, geometry decodes the custom
- * polygon against a unit frame and applies this position post-decode — so
- * the house's world location is invariant to pergola dimensions. When null
- * or empty, the legacy real-frame decoder runs (back-compat).
+ * Map the selected/host house form's object-first transform to geometry.
+ * `module.houseFootprintPosition` is retained only as a compatibility
+ * fallback for callers that have not supplied a workbench house form.
  */
-function resolveHousePosition(
-  module: CalculatorModuleInputs,
-): RawGeometryModuleInput['houseContext']['position'] {
-  const position = module.houseFootprintPosition;
+function resolveHousePosition(input: {
+  houseForm: HouseFormModel | null;
+  module: CalculatorModuleInputs;
+}): RawGeometryModuleInput['houseContext']['position'] {
+  if (input.houseForm) {
+    return houseFormTransformToAssemblyPosition(input.houseForm.transform);
+  }
+
+  const position = input.module.houseFootprintPosition;
   if (!position || !position.originXMm || !position.originYMm) return null;
   return {
     origin: {
@@ -610,7 +612,7 @@ export function buildRawGeometryModuleInput(input: {
         houseForm && houseForm.footprint.polygon.length
           ? houseForm.footprint.polygon
           : resolveFootprintPolygon(module),
-      position: resolveHousePosition(module),
+      position: resolveHousePosition({ houseForm, module }),
       storeyMode: houseForm?.storeyMode ?? module.houseStoreyMode ?? null,
       roofForm: roofIntent?.form ?? null,
       roofMaterial: roofIntent?.material ?? normalizeHouseRoofMaterial(module.houseRoofMaterial),

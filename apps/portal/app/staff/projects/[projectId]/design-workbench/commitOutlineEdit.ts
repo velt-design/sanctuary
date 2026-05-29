@@ -3,6 +3,7 @@ import { buildDeckTransformPatch } from '@/lib/drawings/commits/commitDeckTransf
 import type { EdgeDragCommit } from '@/components/drawings/viewports/PlanViewport/tools/EdgeDragTool';
 import type { ReversibleCommandInput } from '@/lib/drawings/commands/createReversibleCommand';
 import type { DrawingWorkbenchStore } from '@/lib/drawings/state/drawingWorkbenchStore';
+import { houseFormTransformToWorldPositionMm } from '@/lib/drawings/state/houseFormTransform';
 import type { PergolaAttachment } from '@/lib/drawings/state/objectFirstWorkbenchModel';
 import type { ObjectWorkbenchDeckPatch } from '@/lib/drawings/state/objectWorkbenchInspectorModel';
 import { pergolaAttachmentFromSnap } from '@/lib/drawings/state/pergolaAttachment';
@@ -11,6 +12,25 @@ import type { ObjectWorkbenchActions } from './useObjectWorkbenchActions';
 
 type ActiveModuleInput =
   NonNullable<DrawingWorkbenchStore['derived']['activeModule']>['drawingModule']['input'];
+
+function resolveHouseWorldPositionMm(input: {
+  store: DrawingWorkbenchStore;
+  activeModuleInput: ActiveModuleInput | null;
+}): { x: number; y: number } | null {
+  const houseForm = input.store.derived.activeHouseForm ?? input.store.derived.houseForms[0] ?? null;
+  if (houseForm) {
+    const position = houseFormTransformToWorldPositionMm(houseForm.transform);
+    return { x: position.x, y: position.y };
+  }
+
+  const modulePosition = input.activeModuleInput?.houseFootprintPosition;
+  return modulePosition
+    ? {
+        x: Number(modulePosition.originXMm) || 0,
+        y: Number(modulePosition.originYMm) || 0,
+      }
+    : null;
+}
 
 export type BuildOutlineEditCommitHandlerInput = {
   store: DrawingWorkbenchStore;
@@ -311,20 +331,13 @@ export function buildOutlineEditCommitHandler(
       // commit would re-add house.position and the deck
       // would drift).
       //
-      // Read from `activeModuleInput.houseFootprintPosition` —
-      // the SAME field the geometry pipeline reads via
-      // `buildRawGeometryModuleInput.resolveHousePosition` and
-      // hands to `applyAssemblyPosition3D`. Reading from
-      // `houseAssembly.houseForms[0].footprint.position`
-      // (project-model) instead would risk a stale/diverged
-      // value if the two fields ever desynced.
-      const houseModulePosition = activeModuleInput?.houseFootprintPosition;
-      const houseWorldPositionMm = houseModulePosition
-        ? {
-            x: Number(houseModulePosition.originXMm) || 0,
-            y: Number(houseModulePosition.originYMm) || 0,
-          }
-        : null;
+      // Read the same object-first transform that raw geometry consumes.
+      // The legacy module position remains a fallback for old callers that
+      // do not have a workbench house form.
+      const houseWorldPositionMm = resolveHouseWorldPositionMm({
+        store,
+        activeModuleInput,
+      });
       const patch = buildDeckTransformPatch({
         worldPolygonMm: commit.nextPolygon,
         currentRotationDeg: matchedDeck?.position?.rotationDeg,

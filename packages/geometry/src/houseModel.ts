@@ -806,7 +806,7 @@ export function buildHouseReferenceGeometry(input: {
  * additional house forms stop synthesising stub values. The remaining
  * fields are the genuine inputs to `buildSemanticHouseAttachmentEdge` —
  * pergola-dependent, not house-intrinsic. Closes audit row N4 (synthetic
- * context in `buildAdditionalHouseFormGeometry`).
+ * context in the portal house-form reference geometry builder).
  */
 export type HouseModel3DPergolaAttachment = {
   connectionType: Exclude<ConnectionType, 'freestanding'>;

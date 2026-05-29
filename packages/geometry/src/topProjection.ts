@@ -1146,7 +1146,7 @@ export type ProjectPergolaEntry = {
  * Build a single `house_reference` shape from a standalone
  * `HouseReferenceGeometry`. Used by multi-form workbench rendering
  * (PR8c-iii): the portal builds per-form geometry via
- * `buildAdditionalHouseFormGeometry` (which composes
+ * the portal house-form reference geometry builder (which composes
  * `buildHouseModel3DFromRawHouseInput` + `applyHouseReferencePosition`)
  * and converts the result into a project-level reference shape so
  * `PlanViewport`'s projection-context overlay can render every form

@@ -102,11 +102,10 @@ export function moveTargetFromShape(shape: GeometryTopProjectionShape): MoveTarg
   if (target.kind === 'workbench') {
     if (target.targetKind === 'deck') return { family: 'deck', targetId: target.targetId };
     if (target.targetKind === 'opening') return { family: 'opening', targetId: target.targetId };
-    // PR11: house footprints (the `house_reference` shapes PR8c-iii emits
-    // for every form) become movable too -- drag updates the form's
-    // `transform.offsetXM/Y`. The host predicate (`canMoveTarget`)
-    // gates which forms accept moves; today only additional forms move
-    // (primary stays anchored to the calculator snapshot's frame).
+    // House footprints (the `house_reference` shapes PR8c-iii emits for
+    // each form) are movable: drag updates the form's object-first
+    // `transform.offsetXM/Y`. The host predicate (`canMoveTarget`) still
+    // gates active-object matching, not primary-vs-added behavior.
     if (target.targetKind === 'footprint') return { family: 'house_form', targetId: target.targetId };
   }
   return null;

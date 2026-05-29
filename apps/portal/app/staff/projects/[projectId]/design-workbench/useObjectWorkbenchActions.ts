@@ -586,7 +586,7 @@ export function useObjectWorkbenchActions({
       deltaXMm: number;
       deltaYMm: number;
     }): Promise<CommitResult> => {
-      // PR11: plan-view drag-to-reposition for additional house forms.
+      // Plan-view drag-to-reposition for all house forms.
       // The MoveTool delivers a delta in mm (world coords); we add it to
       // the form's existing transform (which is in metres). Rotation is
       // not touched -- PR12 will add rotation gestures.

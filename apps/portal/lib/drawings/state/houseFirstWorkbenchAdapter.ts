@@ -303,6 +303,46 @@ function pickFirstDefined<T>(...values: Array<T | null | undefined>): T | null {
   return null;
 }
 
+function resolveSharedHouseTransform(input: {
+  modules: CalculatorModuleInputs[];
+  drawingRotationQuarterTurns: CalculatorDrawingRotationQuarterTurns;
+}): {
+  offsetXM: number;
+  offsetYM: number;
+  rotationQuarterTurns: CalculatorDrawingRotationQuarterTurns;
+} {
+  const position = input.modules
+    .map((module) => module.houseFootprintPosition)
+    .find((candidate) =>
+      candidate?.originXMm !== undefined &&
+      candidate?.originXMm !== null &&
+      candidate.originXMm !== '' &&
+      candidate?.originYMm !== undefined &&
+      candidate?.originYMm !== null &&
+      candidate.originYMm !== '',
+    );
+  if (!position) {
+    return {
+      offsetXM: 0,
+      offsetYM: 0,
+      rotationQuarterTurns: input.drawingRotationQuarterTurns,
+    };
+  }
+
+  const originXMm = Number(position.originXMm);
+  const originYMm = Number(position.originYMm);
+  const rotationDeg = Number(position.rotationDeg ?? 0);
+  return {
+    offsetXM: Number.isFinite(originXMm) ? originXMm / 1000 : 0,
+    offsetYM: Number.isFinite(originYMm) ? originYMm / 1000 : 0,
+    rotationQuarterTurns: normalizeDrawingRotationQuarterTurns(
+      Number.isFinite(rotationDeg)
+        ? Math.round(rotationDeg / 90)
+        : input.drawingRotationQuarterTurns,
+    ),
+  };
+}
+
 function resolveHouseRoofForm(module: CalculatorModuleInputs): HouseRoofForm {
   if (module.boxPerimeterEnabled) return 'flat';
   // Milestone 13 session C: legacy `pergolaStyle === 'gable'` inherits
@@ -798,15 +838,14 @@ export function buildSharedHouse(
       lowConfidence,
       sourceModuleIndexes: modules.map((_, index) => index),
       sourceModuleIds,
-      // Primary form sits at world origin -- legacy module-synthesised
-      // houses have no authored offset. Rotation here mirrors the
-      // footprint's `drawingRotationQuarterTurns` so PR8 can drop the
-      // footprint field once geometry consumers migrate.
-      transform: {
-        offsetXM: 0,
-        offsetYM: 0,
-        rotationQuarterTurns: normalizedDrawingRotationQuarterTurns,
-      },
+      // Legacy module-synthesised houses seed their object-first transform
+      // from `houseFootprintPosition` when present. This keeps older
+      // migrated/edge-edited houses aligned with the transform source used by
+      // authored house forms.
+      transform: resolveSharedHouseTransform({
+        modules,
+        drawingRotationQuarterTurns: normalizedDrawingRotationQuarterTurns,
+      }),
       footprint: {
         mode: normalizedFootprintMode,
         preset: normalizedFootprintPreset,

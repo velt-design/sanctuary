@@ -11,11 +11,8 @@ import type { HouseFormModel } from './objectFirstWorkbenchModel';
 
 /**
  * Fallback pergola dimensions used to synthesise a preset footprint for
- * an additional house form. Additional forms aren't tied to a pergola,
- * but `buildHouseFootprintPolygon` still expects pergola dims to anchor
- * the preset frame. 6×3m matches PR6's `buildAdditionalHouseFormFromDraft`
- * fallback (used for the same reason at the portal-model layer) so the
- * derived footprint here matches the portal HouseModel's derived shape.
+ * a standalone house form. The preset helper still expects pergola dims,
+ * and the house form's transform supplies world placement.
  */
 const FALLBACK_PERGOLA_WIDTH_MM = 6000;
 const FALLBACK_PERGOLA_DEPTH_MM = 3000;
@@ -71,9 +68,9 @@ function houseFormToRawHouseInput(houseForm: HouseFormModel): RawHouseInput {
 }
 
 /**
- * Build a freestanding `HouseReferenceGeometry` for an additional house
- * form (sleepout, granny flat, second dwelling). Returns world-space
- * geometry with `model` populated and `position` baked into every vertex.
+ * Build a freestanding `HouseReferenceGeometry` for a workbench house form.
+ * Returns world-space geometry with `model` populated and `position` baked
+ * into every vertex.
  *
  * The pipeline:
  *   1. Derive a footprint `Polygon3` in mm. Preset-mode forms go through
@@ -96,7 +93,7 @@ function houseFormToRawHouseInput(houseForm: HouseFormModel): RawHouseInput {
  * Returns `null` when `buildHouseModel3DFromRawHouseInput` can't produce
  * a model (e.g. an empty/degenerate footprint).
  */
-export function buildAdditionalHouseFormGeometry(input: {
+export function buildHouseFormReferenceGeometry(input: {
   houseForm: HouseFormModel;
 }): HouseReferenceGeometry | null {
   const footprint = buildHouseFormFootprintPolygonMm(input.houseForm);

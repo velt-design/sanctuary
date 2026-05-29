@@ -256,6 +256,51 @@ describe('activeObjectMatchesPlanShape', () => {
       ).toBe(true);
     });
 
+    it('does not fall back across explicit house_reference ids', () => {
+      expect(
+        activeObjectMatchesPlanShape(
+          ref('house_forms', 'house-main'),
+          shape({
+            id: 'house_reference:house-form-2',
+            family: 'house',
+            kind: 'footprint',
+            sourceObjectId: 'house-form-2',
+            sourceId: 'house-form-2',
+            sourceType: 'house_reference',
+          }),
+        ),
+      ).toBe(false);
+    });
+
+    it('matches the selected explicit house_reference id', () => {
+      expect(
+        activeObjectMatchesPlanShape(
+          ref('house_forms', 'house-main'),
+          shape({
+            id: 'house_reference:house-main',
+            family: 'house',
+            kind: 'footprint',
+            sourceObjectId: 'house-main',
+            sourceId: 'house-main',
+            sourceType: 'house_reference',
+          }),
+        ),
+      ).toBe(true);
+      expect(
+        activeObjectMatchesPlanShape(
+          ref('house_forms', 'house-form-2'),
+          shape({
+            id: 'house_reference:house-form-2',
+            family: 'house',
+            kind: 'footprint',
+            sourceObjectId: 'house-form-2',
+            sourceId: 'house-form-2',
+            sourceType: 'house_reference',
+          }),
+        ),
+      ).toBe(true);
+    });
+
     it('matches without a specific id when sourceType is house-derived', () => {
       expect(
         activeObjectMatchesPlanShape(

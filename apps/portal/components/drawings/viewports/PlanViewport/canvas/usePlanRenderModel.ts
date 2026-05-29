@@ -48,29 +48,58 @@ export type UsePlanRenderModelInput = {
   /** External hover state (e.g. driven by 3D viewport pointer-over). */
   hoveredObjectRef?: WorkbenchObjectRef | null;
   /**
-   * PR-Bug2 (2026-05-25): project-level shapes that should flow into the
-   * active module's render graph alongside the per-module projection.
-   * Used to promote additional (non-host) house form `house_reference`
-   * footprints into committedBodies so they're hit-targetable and movable.
-   * Without this, additional house forms render as a faded context overlay
+   * Project-level house references that should flow into the active
+   * module's render graph alongside the per-module projection.
+   * Used to promote every house form `house_reference` footprint into
+   * committedBodies so they're hit-targetable and movable.
+   * Without this, house references would only render as a faded context overlay
    * (`PlanProjectContextLayer`) with no pointer handlers — clicks fall
-   * through and the move tool can never start.
+   * through and the move tool could never start.
    *
    * Caller derives these from `WorkbenchSolvedModel.projectReferenceShapes`
-   * filtered to non-host house references (the active pergola's host comes
-   * through the module projection already). Empty for single-house projects.
+   * filtered to canonical house references.
    */
-  additionalShapes?: ReadonlyArray<GeometryTopProjectionShape>;
+  houseReferenceShapes?: ReadonlyArray<GeometryTopProjectionShape>;
 };
 
-const EMPTY_ADDITIONAL_SHAPES: ReadonlyArray<GeometryTopProjectionShape> = [];
+const EMPTY_HOUSE_REFERENCE_SHAPES: ReadonlyArray<GeometryTopProjectionShape> = [];
+
+function projectionShapeIdentity(shape: GeometryTopProjectionShape): string {
+  return shape.sourceObjectId
+    ? `${shape.sourceType}:${shape.sourceObjectId}`
+    : shape.id;
+}
+
+function mergeProjectionShapesWithHouseReferences(input: {
+  projectionShapes: ReadonlyArray<GeometryTopProjectionShape>;
+  houseReferenceShapes: ReadonlyArray<GeometryTopProjectionShape>;
+}): GeometryTopProjectionShape[] {
+  if (!input.houseReferenceShapes.length) {
+    return input.projectionShapes as GeometryTopProjectionShape[];
+  }
+  const houseReferenceKeys = new Set(
+    input.houseReferenceShapes.map(projectionShapeIdentity),
+  );
+  const shapes = input.projectionShapes.filter((shape) => {
+    if (shape.sourceType !== 'house_reference') return true;
+    return !houseReferenceKeys.has(projectionShapeIdentity(shape));
+  });
+  const seen = new Set(shapes.map(projectionShapeIdentity));
+  for (const shape of input.houseReferenceShapes) {
+    const key = projectionShapeIdentity(shape);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    shapes.push(shape);
+  }
+  return shapes;
+}
 
 export function usePlanRenderModel({
   projection,
   visibility,
   activeObjectRef,
   hoveredObjectRef,
-  additionalShapes = EMPTY_ADDITIONAL_SHAPES,
+  houseReferenceShapes = EMPTY_HOUSE_REFERENCE_SHAPES,
 }: UsePlanRenderModelInput): PlanRenderModel | null {
   return useMemo(() => {
     if (!projection) return null;
@@ -81,9 +110,10 @@ export function usePlanRenderModel({
       baseY: layout.baseY,
       scale: layout.scale,
     });
-    const allShapes: GeometryTopProjectionShape[] = additionalShapes.length
-      ? [...projection.shapes, ...additionalShapes]
-      : (projection.shapes as GeometryTopProjectionShape[]);
+    const allShapes = mergeProjectionShapesWithHouseReferences({
+      projectionShapes: projection.shapes,
+      houseReferenceShapes,
+    });
     const visibleItems: RawPlanItem[] = allShapes
       .filter((shape) => topProjectionShapeVisible(shape, visibility))
       .map((shape) => ({
@@ -137,5 +167,5 @@ export function usePlanRenderModel({
       selectionHaloItems,
       hoverHaloItems,
     };
-  }, [activeObjectRef, additionalShapes, hoveredObjectRef, projection, visibility]);
+  }, [activeObjectRef, houseReferenceShapes, hoveredObjectRef, projection, visibility]);
 }

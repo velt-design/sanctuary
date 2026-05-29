@@ -145,6 +145,67 @@ describe('PlanViewport', () => {
       expect(markup).not.toContain('data-plan-selection-shape-id="rendered-pergola-1"');
     });
 
+    it('selects only the matching project-level house reference', () => {
+      const houseMain = makeShape({
+        id: 'house_reference:house-main',
+        sourceObjectId: 'house-main',
+        sourceId: 'house-main',
+        sourceType: 'house_reference',
+        family: 'house',
+        kind: 'footprint',
+      });
+      const houseTwo = makeShape({
+        id: 'house_reference:house-form-2',
+        sourceObjectId: 'house-form-2',
+        sourceId: 'house-form-2',
+        sourceType: 'house_reference',
+        family: 'house',
+        kind: 'footprint',
+        polygon: [
+          { x: 2000, y: 0 },
+          { x: 3000, y: 0 },
+          { x: 3000, y: 1000 },
+          { x: 2000, y: 1000 },
+        ],
+      });
+      const markup = renderToStaticMarkup(
+        <PlanViewport
+          artifact={makeArtifact([])}
+          activeObjectRef={{ family: 'house_forms', objectId: 'house-main' }}
+          houseCommittedShapes={[houseMain, houseTwo]}
+          viewportTransform={IDENTITY_TRANSFORM}
+          onViewportTransformChange={() => undefined}
+        />,
+      );
+      expect(markup).toContain('data-plan-selection-shape-id="house_reference:house-main"');
+      expect(markup).not.toContain('data-plan-selection-shape-id="house_reference:house-form-2"');
+    });
+
+    it('dedupes project house references against projection house references before rendering', () => {
+      const houseMain = makeShape({
+        id: 'house_reference:house-main',
+        sourceObjectId: 'house-main',
+        sourceId: 'house-main',
+        sourceType: 'house_reference',
+        family: 'house',
+        kind: 'footprint',
+      });
+      const rendered = renderIntoDocument(
+        <PlanViewport
+          artifact={makeArtifact([houseMain])}
+          houseCommittedShapes={[houseMain]}
+          viewportTransform={IDENTITY_TRANSFORM}
+          onViewportTransformChange={() => undefined}
+        />,
+      );
+      expect(
+        rendered.container.querySelectorAll(
+          '[data-plan-hit-shape-id="house_reference:house-main"]',
+        ),
+      ).toHaveLength(1);
+      rendered.unmount();
+    });
+
     it('hides pergola shapes when pergola visibility is off', () => {
       const markup = renderToStaticMarkup(
         <PlanViewport

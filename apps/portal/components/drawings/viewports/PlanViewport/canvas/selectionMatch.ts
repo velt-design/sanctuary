@@ -56,6 +56,7 @@ export function activeObjectMatchesPlanShape(
         typeof shape.metadata?.houseFormId === 'string' ? shape.metadata.houseFormId : null;
       if (taggedHouseFormId !== null) return taggedHouseFormId === objectId;
       if (identities.includes(objectId)) return true;
+      if (shape.sourceType === 'house_reference') return false;
       return shape.sourceType.startsWith('house_');
     }
     default:

@@ -41,7 +41,7 @@ import {
 } from './deckSupportDiagnostics';
 import type { WorkbenchProjectModel } from './objectFirstWorkbenchModel';
 import { resolveObjectFirstPergolaAttachment } from './objectFirstDerivedHosting';
-import { buildAdditionalHouseFormGeometry } from './buildAdditionalHouseFormGeometry';
+import { buildHouseFormReferenceGeometry } from './buildHouseFormReferenceGeometry';
 
 type AttachmentSide = 'rear' | 'front' | 'left' | 'right';
 type LocalPolygonPoint = { alongM: number; depthM: number };
@@ -498,18 +498,18 @@ function buildViewerSceneFromSolvedGeometry(input: {
   assembly: Assembly3D;
   geometryContext: ObjectWorkbenchGeometryContext;
   /**
-   * Pre-built `HouseModel3D`s for project house forms beyond the active
-   * pergola's host. Built once at project level in `buildWorkbenchSolvedModel`
-   * (PR-G3a, 2026-05-22) and threaded through; the per-module solve no
-   * longer rebuilds them. The scene builder iterates them inside `buildLayers`.
+   * Pre-built `HouseModel3D`s for non-host scene house forms. Built once at
+   * project level in `buildWorkbenchSolvedModel` and threaded through; the
+   * per-module solve no longer rebuilds them. The scene builder iterates
+   * them inside `buildLayers`.
    */
-  additionalHouseModels: ReadonlyArray<HouseModel3D>;
+  projectHouseModels: ReadonlyArray<HouseModel3D>;
 }): ViewerSceneModel {
   return annotateSceneHouseRoofMetadata(
     annotateSceneAttachmentZoneMetadata(
       annotateSceneHostEdgeSides(
         buildViewerSceneModel(input.assembly, {
-          additionalHouseModels: input.additionalHouseModels,
+          additionalHouseModels: input.projectHouseModels,
         }),
         input.geometryContext.projectModel?.houseAssembly?.houseForms[0]?.footprint.polygon,
       ),
@@ -520,25 +520,25 @@ function buildViewerSceneFromSolvedGeometry(input: {
 }
 
 /**
- * PR-G3a (2026-05-22): build `HouseModel3D`s for every non-host form once
+ * Build `HouseModel3D`s for every non-host scene form once
  * at project level (replaces the per-module `composeAdditionalHouseFormsIntoScene`
- * workaround that called `buildAdditionalHouseFormGeometry` M × F times).
+ * workaround that called `buildHouseFormReferenceGeometry` M × F times).
  *
  * Active pergola's host house arrives via the per-pergola solve in
  * `assembly.house.model`; everything else comes from this list. Today the
  * primary form (index 0) is the only one the pergola solver carries, so
- * `houseForms.slice(1)` enumerates the additional forms. Once PR-G3b
+ * `houseForms.slice(1)` enumerates non-host scene forms. Once PR-G3b
  * restructures `buildRawGeometryModuleInput`, this list can include every
  * non-host form regardless of index.
  */
-function buildProjectAdditionalHouseModels(
+function buildProjectNonHostHouseModels(
   projectModel: WorkbenchProjectModel | null | undefined,
 ): ReadonlyArray<HouseModel3D> {
   const allForms = projectModel?.houseAssembly?.houseForms ?? [];
   if (allForms.length <= 1) return [];
   const models: HouseModel3D[] = [];
   for (const form of allForms.slice(1)) {
-    const geometry = buildAdditionalHouseFormGeometry({ houseForm: form });
+    const geometry = buildHouseFormReferenceGeometry({ houseForm: form });
     if (geometry?.model) models.push(geometry.model);
   }
   return models;
@@ -580,16 +580,15 @@ function buildTopProjectionFromSolvedScene(input: {
    * shows "No selection". Tagging once at projection time lets the
    * classifier prefer `metadata.houseFormId` over the id-derived fallback.
    *
-   * The primary host house is the active pergola's host (the one carried in
-   * `assembly.house.model`). Additional house forms render via
-   * `projectReferenceShapes` overlay and carry their own ids in
-   * `sourceObjectId` from `buildHouseReferenceProjectionShape`.
+   * The solved host house is still carried in `assembly.house.model` for
+   * this Phase 1 slice. Canonical plan identity for every house form,
+   * including the host, comes from project-level `house_reference` shapes.
    */
   houseFormId?: string | null;
 }): GeometryTopProjectionViewModel {
   const projection = buildTopProjectionViewModelFromScene(input.scene, {
     referenceShapes: input.fallbackTopProjection.shapes.filter(
-      (shape) => shape.sourceType === 'house_reference' || shape.sourceType === 'pergola_reference',
+      (shape) => shape.sourceType === 'pergola_reference',
     ),
     terminalEndAssembly: input.assembly,
   });
@@ -629,10 +628,8 @@ function buildTopProjectionFromSolvedScene(input: {
       }
       if (taggedHouseFormId && shape.family === 'house') {
         // Only tag shapes that don't already carry an explicit houseFormId.
-        // Additional house forms' reference shapes (built via
-        // `buildHouseReferenceProjectionShape` at line ~1275) get their own
-        // form id; preserve those so clicks on additional houses resolve
-        // correctly once Bug 2's hit-target promotion lands.
+        // Canonical project-level house references get their own form ids;
+        // preserve explicit tags if the projection already carries one.
         const existing = (shape.metadata as { houseFormId?: string } | undefined)?.houseFormId;
         if (existing) return shape;
         return {
@@ -910,8 +907,8 @@ function buildSolvedModule(input: {
   ignoreModuleResults?: boolean;
   geometryIdentity: Required<WorkbenchGeometryIdentity>;
   geometryContext: ObjectWorkbenchGeometryContext;
-  /** PR-G3a: pre-built non-host house models, shared across all modules. */
-  additionalHouseModels: ReadonlyArray<HouseModel3D>;
+  /** Pre-built non-host scene house models, shared across all modules. */
+  projectHouseModels: ReadonlyArray<HouseModel3D>;
   /** PR-G3b: pre-computed project-level decks, shared across all modules. */
   projectDecks: RawGeometryModuleInput['houseContext']['decks'];
   /** PR-G3b: pre-computed project-level openings, shared across all modules. */
@@ -1048,7 +1045,7 @@ function buildSolvedModule(input: {
     config: derivation.config,
     assembly: derivation.assembly,
     geometryContext: input.geometryContext,
-    additionalHouseModels: input.additionalHouseModels,
+    projectHouseModels: input.projectHouseModels,
   });
   const quantityTakeoff = buildAssemblyQuantityTakeoff(derivation.assembly);
   const geometryTopProjection = buildTopProjectionFromSolvedScene({
@@ -1162,10 +1159,10 @@ export function buildWorkbenchSolvedModel(input: {
       ignoreModuleResults: input.ignoreModuleResults,
     });
   const projectModel = input.projectModel ?? geometryContext.projectModel ?? EMPTY_WORKBENCH_PROJECT_MODEL;
-  // PR-G3a (2026-05-22): build additional-house geometry ONCE per project
-  // instead of once per pergola module (closes audit row N10's O(M×F)
-  // workaround). Threaded into every module's scene via `buildSolvedModule`.
-  const additionalHouseModels = buildProjectAdditionalHouseModels(projectModel);
+  // Build non-host scene house geometry once per project instead of once
+  // per pergola module. Threaded into every module's scene via
+  // `buildSolvedModule`.
+  const projectHouseModels = buildProjectNonHostHouseModels(projectModel);
   // PR-G3b (2026-05-22): map project-level decks/openings ONCE instead of
   // once per pergola module. Closes audit row 9 in production-path spirit.
   const projectDecks = mapProjectDecks(projectModel);
@@ -1181,7 +1178,7 @@ export function buildWorkbenchSolvedModel(input: {
       ignoreModuleResults: input.ignoreModuleResults,
       geometryIdentity,
       geometryContext,
-      additionalHouseModels,
+      projectHouseModels,
       projectDecks,
       projectOpenings,
       primaryHouseFormId,
@@ -1317,33 +1314,26 @@ function buildProjectReferenceShapesFromModules(
       module.moduleInput.pergolaId ?? `pergola-${index + 1}`;
     entries.push({ assembly, pergolaSourceId });
   }
-  const allHouseForms = projectModel.houseAssembly?.houseForms ?? [];
-  const primaryHouseForm = allHouseForms[0] ?? null;
-  const primaryHouseSourceId = primaryHouseForm?.id ?? null;
   const shapes: GeometryTopProjectionShape[] =
     entries.length === 0
       ? []
       : buildProjectReferenceShapes({
           pergolas: entries,
-          houseSourceId: primaryHouseSourceId,
-        });
+          houseSourceId: null,
+        }).filter((shape) => shape.sourceType !== 'house_reference');
 
-  // PR8c-iii: additional house forms (sleepouts, granny flats) get their
-  // own `house_reference` shapes appended to the project overlay so
-  // PlanViewport can render them in their authored world position.
-  // The primary form is already covered by `buildProjectReferenceShapes`
-  // via the pergolas it hosts; for non-pergola estimates with only a
-  // primary house we also emit the primary here so the plan still shows
-  // it (no pergola means no overlay otherwise).
-  const additionalForms = allHouseForms.slice(entries.length === 0 ? 0 : 1);
-  for (const form of additionalForms) {
-    const geometry = buildAdditionalHouseFormGeometry({ houseForm: form });
+  const seenHouseReferenceIds = new Set<string>();
+  const houseReferenceForms = projectModel.houseAssembly?.houseForms ?? [];
+  for (const form of houseReferenceForms) {
+    const geometry = buildHouseFormReferenceGeometry({ houseForm: form });
     if (!geometry) continue;
     const shape = buildHouseReferenceProjectionShape({
       house: geometry,
       houseSourceId: form.id,
     });
-    if (shape) shapes.push(shape);
+    if (!shape || seenHouseReferenceIds.has(shape.id)) continue;
+    seenHouseReferenceIds.add(shape.id);
+    shapes.push(shape);
   }
 
   return shapes;

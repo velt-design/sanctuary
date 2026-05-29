@@ -407,6 +407,64 @@ describe('buildRawGeometryModuleInput', () => {
     expect(raw.houseContext.roofRidgeAxis).toBe('x');
   });
 
+  it('prefers the selected house form transform over legacy module house position', () => {
+    const fixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
+    if (!fixture) throw new Error('Expected mono fixture');
+    const draft = buildEstimateDrawingDraftFromSnapshot(fixture.snapshot);
+    if (!draft) throw new Error('Expected draft');
+    applyObjectFirstCompatibilityDraft({
+      snapshot: fixture.snapshot,
+      draft,
+      compatibility: {},
+    });
+    const houseForm = draft.objectFirst?.houseAssembly?.houseForms[0] ?? null;
+    if (!houseForm) throw new Error('Expected object-first house form');
+    houseForm.transform = { offsetXM: 2.5, offsetYM: -1.25, rotationQuarterTurns: 1 };
+    const geometryContext = buildGeometryContextFromObjectFirstDraft({
+      snapshot: fixture.snapshot,
+      draft,
+    });
+
+    const raw = buildRawGeometryModuleInput({
+      projectId: 'proj_1',
+      estimateId: 'est_1',
+      module: makeModule({
+        houseFootprintPosition: {
+          originXMm: '9000',
+          originYMm: '9000',
+          rotationDeg: '180',
+        },
+      }),
+      result: makeResult(),
+      objectWorkbenchGeometryContext: geometryContext,
+    });
+
+    expect(raw.houseContext.position).toEqual({
+      origin: { x: 2500, y: -1250 },
+      rotationDeg: 90,
+    });
+  });
+
+  it('falls back to module houseFootprintPosition when no object-first house form exists', () => {
+    const raw = buildRawGeometryModuleInput({
+      projectId: 'proj_1',
+      estimateId: 'est_1',
+      module: makeModule({
+        houseFootprintPosition: {
+          originXMm: '7000',
+          originYMm: '-3000',
+          rotationDeg: '180',
+        },
+      }),
+      result: makeResult(),
+    });
+
+    expect(raw.houseContext.position).toEqual({
+      origin: { x: '7000', y: '-3000' },
+      rotationDeg: '180',
+    });
+  });
+
   it('maps corrected derived shared house roof orientation into raw house context without explicit overrides', () => {
     const fixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
     if (!fixture) throw new Error('Expected mono fixture');

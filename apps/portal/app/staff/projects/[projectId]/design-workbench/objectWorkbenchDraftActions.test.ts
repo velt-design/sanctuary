@@ -462,6 +462,29 @@ describe('objectWorkbenchDraftActions', () => {
     expectNoStaleHouseFirst(nextDraft);
   });
 
+  it('preserves the existing house transform when footprint sync rebuilds the preview form', () => {
+    const existingHouseForm = {
+      ...makeHouseForm(),
+      transform: { offsetXM: 3, offsetYM: -1, rotationQuarterTurns: 1 as const },
+    };
+    const previewHouseForm = {
+      ...makeHouseForm(),
+      transform: { offsetXM: 0, offsetYM: 0, rotationQuarterTurns: 0 as const },
+    };
+
+    const syncedForm = mergeHouseFormRoofIntentAfterFootprintSync({
+      previewHouseForm,
+      existingHouseForm,
+      terminalEndIds: new Set(),
+    });
+
+    expect(syncedForm.transform).toEqual({
+      offsetXM: 3,
+      offsetYM: -1,
+      rotationQuarterTurns: 1,
+    });
+  });
+
   it('clears stale houseFirst data whenever object-first draft data is written', () => {
     const draft = {
       ...makeDraft(),

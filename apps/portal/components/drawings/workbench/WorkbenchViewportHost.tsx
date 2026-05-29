@@ -93,8 +93,8 @@ type WorkbenchViewportHostProps = {
   onCommitMove?: (request: MoveRequest) => void;
   /** Faded outline shapes for non-active pergolas (Step 5d Option A). */
   projectContextShapes?: ReadonlyArray<GeometryTopProjectionShape>;
-  /** PR-Bug2: non-host house references promoted to active module hit targets. */
-  additionalCommittedShapes?: ReadonlyArray<GeometryTopProjectionShape>;
+  /** Canonical house references promoted to active module hit targets. */
+  houseCommittedShapes?: ReadonlyArray<GeometryTopProjectionShape>;
   /**
    * Cross-viewport hover state (milestone 16). PlanViewport emits via
    * `onHoverObjectChange` when the local pointer enters a shape; the host
@@ -149,7 +149,7 @@ export default function WorkbenchViewportHost({
   onCommitOutlineEdit,
   onCommitMove,
   projectContextShapes,
-  additionalCommittedShapes,
+  houseCommittedShapes,
   hoveredObjectRef,
   onHoverObjectChange,
 }: WorkbenchViewportHostProps) {
@@ -183,7 +183,7 @@ export default function WorkbenchViewportHost({
           visibility={visibility}
           activeObjectRef={activeObjectRef}
           projectContextShapes={projectContextShapes}
-          additionalCommittedShapes={additionalCommittedShapes}
+          houseCommittedShapes={houseCommittedShapes}
           viewportTransform={modelViewportTransform}
           onViewportTransformChange={onModelViewportTransformChange}
           onSelectObjectWorkbenchTarget={onSelectObjectWorkbenchTarget}

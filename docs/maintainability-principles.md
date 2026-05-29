@@ -121,11 +121,11 @@ Pergolas live OUTSIDE the house model; their `position` is world coords directly
 
 ### 3. `assembly.house.position` is consumed by `applyAssemblyPosition3D` and then null
 
-After the boundary transform runs, `assembly.house.position` is set to `null`. Don't read it from the post-transform artifact -- it's gone. The persisted house position lives at `store.persisted.projectModel.houseAssembly.houseForms[0].footprint.position`. See milestone 12 in `design-workbench-architecture.md`.
+After the boundary transform runs, `assembly.house.position` is set to `null`. Don't read it from the post-transform artifact -- it's gone. The workbench house position lives on the selected/host `HouseFormModel.transform`; legacy module `houseFootprintPosition` exists only as compatibility fallback. See milestone 12 in `design-workbench-architecture.md`.
 
 ### 4. Read house position from the SAME source the geometry pipeline reads
 
-The geometry pipeline reads `module.houseFootprintPosition` (the legacy `CalculatorModuleInputs` field). The project-model field at `houseAssembly.houseForms[0].footprint.position` is a separate copy and can drift from the legacy field if both ever get written independently. Consumers that need to read house position must read from `activeModuleInput.houseFootprintPosition` -- the same field the pipeline reads -- to avoid stale-state bugs.
+The geometry pipeline reads the selected/host `HouseFormModel.transform` first and only falls back to `module.houseFootprintPosition` when no object-first house form is available. Consumers that need house world position should use the same transform path (`houseFormTransformToAssemblyPosition` / `houseFormTransformToWorldPositionMm`) before consulting the legacy module field.
 
 ### 5. Pointer dispatchers must NEVER invent coords, AND `pointerCancel` is not `pointerUp`
 

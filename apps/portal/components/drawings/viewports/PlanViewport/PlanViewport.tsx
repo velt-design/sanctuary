@@ -59,13 +59,11 @@ export type PlanViewportProps = {
    */
   projectContextShapes?: ReadonlyArray<GeometryTopProjectionShape>;
   /**
-   * PR-Bug2 (2026-05-25): project-level shapes that should be promoted to
-   * the active module's committedBodies (and therefore hit targets). Used
-   * to make non-host house form footprints clickable + movable. Caller
-   * derives from `WorkbenchSolvedModel.projectReferenceShapes` filtered to
-   * non-host `house_reference` shapes. Empty for single-house projects.
+   * Project-level house references promoted to committedBodies and hit
+   * targets. This gives every house form the same selection and move path,
+   * including the active pergola's host.
    */
-  additionalCommittedShapes?: ReadonlyArray<GeometryTopProjectionShape>;
+  houseCommittedShapes?: ReadonlyArray<GeometryTopProjectionShape>;
   viewportTransform: DrawingWorkbenchViewportTransform;
   onViewportTransformChange: (next: DrawingWorkbenchViewportTransform) => void;
   onSelectObjectWorkbenchTarget?: (selection: ObjectWorkbenchViewportTargetSelection) => void;
@@ -124,7 +122,7 @@ export default function PlanViewport({
   activeObjectRef,
   dimensions: providedDimensions,
   projectContextShapes,
-  additionalCommittedShapes,
+  houseCommittedShapes,
   viewportTransform,
   onViewportTransformChange,
   onSelectObjectWorkbenchTarget,
@@ -142,7 +140,7 @@ export default function PlanViewport({
     visibility,
     activeObjectRef,
     hoveredObjectRef,
-    additionalShapes: additionalCommittedShapes,
+    houseReferenceShapes: houseCommittedShapes,
   });
   const [edgeDragPreview, setEdgeDragPreview] = useState<EdgeDragPreview | null>(null);
   const [edgeDragHover, setEdgeDragHover] = useState<EdgeDragHover | null>(null);
@@ -302,12 +300,9 @@ export default function PlanViewport({
       return { family: 'deck', targetId: activeObjectRef.objectId };
     }
     if (activeObjectRef.family === 'house_forms') {
-      // PR11: drag-to-reposition additional house forms in plan view.
-      // The host commit (`onCommitMove`) is responsible for routing only
-      // additional forms (not the primary) through to the transform-
-      // delta action -- this `activeMoveTargetRef` just signals that
-      // SOMETHING is selected; the resolver layer enforces the
-      // "additional-only" rule.
+      // Drag-to-reposition house forms in plan view. The host commit
+      // writes the same object-first transform for the primary and added
+      // forms; this ref only supplies the active target.
       return { family: 'house_form', targetId: activeObjectRef.objectId };
     }
     // Openings deferred — they're wall-anchored, not free-floating.

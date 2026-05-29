@@ -9,6 +9,7 @@ Phase 1 shipped as PR-A through PR-G3c. The originally-planned PR-H ("final clea
 - Snap-derived pergola + deck attachments (`PergolaAttachment`, `DeckAttachment`)
 - `attachment_side` retired from cost engine (replaced by `attachment_length_mm`)
 - Scene composition lifted to project level (additional house forms built once per project)
+- Plan references now use one canonical `house_reference:<formId>` per house form, including `house-main`
 - Project-level decks/openings pre-pass (no per-pergola redundancy)
 - `buildHouseModelConfig` decoupled from pergola context
 - Email-quote path completely unchanged throughout
@@ -88,8 +89,8 @@ These are the patterns I shipped or extended that were not in the original audit
 |---|---|---|---|
 | **N1** | `apps/portal/lib/drawings/state/objectFirstWorkbenchModel.ts` — `ObjectFirstDeckDraft.hostHouseFormId` | Routing field I added in PR9 so decks could attach to non-primary forms. Bandaid: deck still stores side-local coords against the host polygon. | **DELETE** once decks store world-coord polygons + snap reference. The snap reference's `host.objectId` replaces it. |
 | **N2** | `apps/portal/lib/drawings/state/houseFirstWorkbenchAdapter.ts` — `LEGACY_PRIMARY_HOUSE_FORM_ID` constant + every consumer | The primary-vs-additional distinction. Currently special-cased in `buildSharedHouse`, `buildAdditionalHouseFormFromDraft`, the per-form deck filter, `commitHouseFormTransformDelta`, and the rail "Add structure" wiring. | **DELETE** — primary becomes "just another form" per north star decision 1. Calculator-snapshot import converts to N forms with no priority. |
-| **N3** | `apps/portal/app/staff/projects/[projectId]/design-workbench/DesignWorkbenchEstimateClient.tsx` — primary-skip guard in `onCommitMove` for `house_form` family (PR11) | Guard that prevents dragging the primary form. Only exists because the primary has no real transform. | **DELETE** with N2 — once all forms have real transforms, the guard is dead code |
-| **N4** | `apps/portal/lib/drawings/state/buildAdditionalHouseFormGeometry.ts` — synthetic pergola context (PR8c-ii) | Workaround for `buildHouseModel3DFromRawHouseInput` requiring a `pergolaContext` even for freestanding houses. Stub dims (6000×3000), zero datum, etc. | **DELETE** with row 9 — once `buildHouseModel3DFromRawHouseInput` takes a clean `RawHouseInput` only |
+| **N3** | `apps/portal/app/staff/projects/[projectId]/design-workbench/DesignWorkbenchEstimateClient.tsx` — old primary-skip guard in `onCommitMove` for `house_form` family (PR11) | Guard that prevented dragging the primary form. Removed in the primary-transform PR; raw geometry now consumes `HouseFormModel.transform` first. | **DONE / WATCH** — keep deleting any remaining primary-vs-added movement assumptions as N2 collapses |
+| **N4** | `apps/portal/lib/drawings/state/buildHouseFormReferenceGeometry.ts` — freestanding house-form reference geometry | Former workaround for `buildHouseModel3DFromRawHouseInput` requiring a `pergolaContext` even for freestanding houses. The synthetic pergola context is gone, but the helper still uses fallback preset dimensions until house footprints are fully object-owned. | **DELETE/SIMPLIFY** with row 9 — once `buildHouseModel3DFromRawHouseInput` takes object-owned footprint geometry directly |
 | **N5** | `apps/portal/lib/drawings/state/houseFirstWorkbenchModel.ts` — entire `houseFirst*` draft type family (`HouseFirstDeckDraft`, `HouseFirstOpeningDraft`, `HouseFirstRoofDraft`, `HouseFirstPergolaDraft`, `HouseFirstWorkbenchDraftCarrier`) | Legacy persisted shape. The action layer writes to `objectFirst`; a compat bridge converts to `houseFirst` for the read path. Two shapes for the same data. | **DELETE** — read path reads `objectFirst` directly; bridge retires; compat adapters in `state/compat/` and `legacyObjectFirstCompatibilityAdapter` go with it |
 | **N6** | `apps/portal/lib/drawings/state/compat/objectWorkbenchCompatibilityModel.ts` and `legacyObjectFirstCompatibilityAdapter.ts` | The bridge between objectFirst and houseFirst draft shapes. | **DELETE** with N5 |
 | **N7** | `apps/portal/lib/drawings/state/houseFirstWorkbenchAdapter.ts` — `buildSharedHouse` synthesising the primary from `CalculatorModuleInputs[]` | The entry point that creates the legacy primary form from pergola module data. | **CONVERT** — extract a one-shot adapter `buildObjectModelFromLegacySnapshot(snapshot) → ObjectFirstWorkbenchDraftVNext` used only at snapshot import. The synthesis-on-every-read goes away. |
@@ -157,7 +158,7 @@ Each PR is small enough to ship in 1–2 days. Dependencies are explicit. **No n
 
 **Closes:** N2, N3, N4 (partial).
 **Phase 2 dependencies:** None. The id literal goes away; the dual source-of-truth in `inputs.modules` + `objectFirst.houseAssembly` stays. Cost engine continues to read `inputs.modules` unchanged.
-**Touches:** every consumer of `LEGACY_PRIMARY_HOUSE_FORM_ID` (`grep -r LEGACY_PRIMARY` first; expect 10–15 sites), `buildAdditionalHouseFormFromDraft` (gets merged with the primary path into one `buildHouseFormFromDraft` — done in PR-B), `commitHouseFormTransformDelta` primary-skip guard, rail "Add structure" sourceHouseFormId logic.
+**Touches:** every consumer of `LEGACY_PRIMARY_HOUSE_FORM_ID` (`grep -r LEGACY_PRIMARY` first; expect 10–15 sites), `buildAdditionalHouseFormFromDraft` (gets merged with the primary path into one `buildHouseFormFromDraft` — done in PR-B), remaining movement assumptions around primary-vs-added forms, rail "Add structure" sourceHouseFormId logic.
 **What changes:** one code path for all forms. The rail's "Add structure" button still works (clones the active form or the first form in the list). All forms are draggable. All forms participate in deck routing equally.
 
 **Risk:** the rail's behavior should look identical to the user. Verify with the PR10 rail test that the button still produces a new form 10 m east.
@@ -242,14 +243,14 @@ Each PR is small enough to ship in 1–2 days. Dependencies are explicit. **No n
 
 ### PR-G2 — `buildHouseModel3DFromRawHouseInput` drops omnibus `pergolaContext` ✅ SHIPPED 2026-05-22
 
-**Closes:** N4 fully (synthetic pergola context in `buildAdditionalHouseFormGeometry` deleted). Partial N8 (the dead-weight underside fields no longer flow through pergola context, but the `connectionType`/`attachmentSide` params in `buildHouseModelConfig` remain until PR-G3 restructures deck-positioning).
+**Closes:** N4 fully (synthetic pergola context in the house-form reference geometry builder deleted). Partial N8 (the dead-weight underside fields no longer flow through pergola context, but the `connectionType`/`attachmentSide` params in `buildHouseModelConfig` remain until PR-G3 restructures deck-positioning).
 
 **Phase 2 dependencies:** None. Cost engine doesn't call `buildHouseModel3DFromRawHouseInput`; this is purely a workbench-internal pipeline refactor.
 
 **Touches:**
 - `packages/geometry/src/houseModel.ts:826-991` — deleted omnibus `HouseModel3DPergolaContext` type. Introduced focused `HouseModel3DPergolaAttachment` containing only the genuine pergola-relationship fields (`connectionType`, `attachmentSide`, `attachmentEdge`, `datum`, `pergolaLengthMm`, `pergolaProjectionMm`). `buildHouseModel3DFromRawHouseInput` now takes per-field params for house-intrinsic data (`footprint`, `housePosition`, `soffitDepthMm`, the three underside heights) and a single nullable `pergolaAttachment` for the relationship data. `null` => freestanding; the function internally substitutes a stub datum + `connectionType: 'freestanding'` + `attachmentSide: 'rear'`.
 - `packages/geometry/src/index.ts:44` — export renamed from `HouseModel3DPergolaContext` to `HouseModel3DPergolaAttachment`.
-- `apps/portal/lib/drawings/state/buildAdditionalHouseFormGeometry.ts:113-145` — synthetic pergolaContext stub block (lines 120-140) deleted. Function now calls `buildHouseModel3DFromRawHouseInput({ rawHouse, footprint, pergolaAttachment: null })`. ~23 lines shorter.
+- `apps/portal/lib/drawings/state/buildHouseFormReferenceGeometry.ts` — synthetic pergolaContext stub block deleted. Function now calls `buildHouseModel3DFromRawHouseInput({ rawHouse, footprint, pergolaAttachment: null })`.
 - `packages/geometry/src/houseModel.test.ts:3071-3142` — both attached + freestanding tests updated to new call shape.
 
 **What changes:** additional house forms (multi-form scenes — sleepouts, granny flats) no longer fabricate stub `pergolaLengthMm`, `pergolaProjectionMm`, `datum`, and zero-valued underside heights. The freestanding case is now first-class: pass `pergolaAttachment: null`. The attached case keeps the same fields it always needed, but in a clearly-named sub-object so its purpose is obvious at call sites.
@@ -272,8 +273,8 @@ Each PR is small enough to ship in 1–2 days. Dependencies are explicit. **No n
 - `packages/geometry/src/index.ts` — new `BuildViewerSceneModelOptions` type export.
 - `apps/portal/lib/drawings/state/workbenchSolvedModel.ts` —
   - Deleted `composeAdditionalHouseFormsIntoScene` (O(M×F) per-module workaround, ~26 lines).
-  - New `buildProjectAdditionalHouseModels(projectModel)` runs ONCE at the top of `buildWorkbenchSolvedModel` and returns the list of non-host `HouseModel3D`s.
-  - `buildSolvedModule` accepts `additionalHouseModels` parameter; threads it into `buildViewerSceneFromSolvedGeometry`, which threads it to `buildViewerSceneModel` via the new options arg.
+  - New `buildProjectNonHostHouseModels(projectModel)` runs ONCE at the top of `buildWorkbenchSolvedModel` and returns the list of non-host `HouseModel3D`s.
+  - `buildSolvedModule` accepts `projectHouseModels`; `buildViewerSceneFromSolvedGeometry` threads it to `buildViewerSceneModel` via the geometry package's `additionalHouseModels` option.
   - Dropped unused imports (`buildHouseModelSceneObjects`, `ViewerSceneObject`); added `HouseModel3D` import.
 
 **What changes:** Multi-form scenes (sleepouts, granny flats alongside a pergola) used to rebuild additional-form geometry **once per pergola module** (O(M×F) work). Now built once per project, shared across all modules. Same visual output, identical fixture-test results — the viewer's `house` layer still includes the additional forms, just composed inside the scene builder instead of patched in afterwards.

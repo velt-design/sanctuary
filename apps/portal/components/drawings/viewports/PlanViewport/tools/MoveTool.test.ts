@@ -87,9 +87,9 @@ describe('moveTargetFromShape', () => {
   it('classifies a house footprint as house_form family (PR11)', () => {
     // PR8c-iii emits `house_reference` shapes with `family: 'house',
     // kind: 'footprint'` for every form. PR11 makes the footprint a
-    // movable target so the user can drag-to-reposition additional
-    // forms. The classifier doesn't decide which forms accept moves --
-    // that's the host's `canMoveTarget` predicate (filters out primary).
+    // movable target so the user can drag-to-reposition any house form.
+    // The classifier doesn't decide which form is active -- that's the
+    // host's `canMoveTarget` predicate.
     expect(
       moveTargetFromShape({
         id: 'house_reference:house-form-2',

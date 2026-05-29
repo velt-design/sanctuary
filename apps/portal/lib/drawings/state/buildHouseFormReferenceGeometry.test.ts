@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildAdditionalHouseFormGeometry } from './buildAdditionalHouseFormGeometry';
+import { buildHouseFormReferenceGeometry } from './buildHouseFormReferenceGeometry';
 import type { HouseFormModel } from './objectFirstWorkbenchModel';
 
 function makeStraightHouseForm(overrides: Partial<HouseFormModel> = {}): HouseFormModel {
@@ -47,13 +47,13 @@ function makeStraightHouseForm(overrides: Partial<HouseFormModel> = {}): HouseFo
   };
 }
 
-describe('buildAdditionalHouseFormGeometry', () => {
+describe('buildHouseFormReferenceGeometry', () => {
   it('produces a non-null geometry with walls and roof for a basic preset form', () => {
     // Sanity: the freestanding path (PR8b geometry lift + PR8c-i position
     // export + this PR8c-ii portal wiring) actually produces renderable
     // geometry. If this regresses we lost end-to-end coverage of multi-
     // form rendering before any viewport even sees it.
-    const result = buildAdditionalHouseFormGeometry({ houseForm: makeStraightHouseForm() });
+    const result = buildHouseFormReferenceGeometry({ houseForm: makeStraightHouseForm() });
     expect(result).not.toBeNull();
     expect(result?.model).not.toBeNull();
     expect(result?.model?.wallSegments.length).toBeGreaterThan(0);
@@ -61,12 +61,12 @@ describe('buildAdditionalHouseFormGeometry', () => {
   });
 
   it('leaves pergola-attachment fields null for a freestanding form', () => {
-    // Additional forms are standalone (no pergola hosting in v0, per PR6's
+    // Freestanding reference forms have no pergola host in this path.
     // explicit decision). The geometry must not synthesise a wallPlane,
     // fasciaLine, roofEdgeLine, or attachmentTarget -- those concepts
     // belong to pergola-attached forms and would confuse downstream
     // consumers if non-null here.
-    const result = buildAdditionalHouseFormGeometry({ houseForm: makeStraightHouseForm() });
+    const result = buildHouseFormReferenceGeometry({ houseForm: makeStraightHouseForm() });
     expect(result?.wallPlane).toBeNull();
     expect(result?.fasciaLine).toBeNull();
     expect(result?.roofEdgeLine).toBeNull();
@@ -79,7 +79,7 @@ describe('buildAdditionalHouseFormGeometry', () => {
     // PR8c-ii's job is to make sure that offset reaches the world-space
     // geometry. After this helper, every footprint vertex must have
     // x >= 10000 (the form is to the east of origin).
-    const result = buildAdditionalHouseFormGeometry({
+    const result = buildHouseFormReferenceGeometry({
       houseForm: makeStraightHouseForm({
         transform: { offsetXM: 10, offsetYM: 0, rotationQuarterTurns: 0 },
       }),
@@ -103,11 +103,26 @@ describe('buildAdditionalHouseFormGeometry', () => {
     // re-apply the offset, doubling the placement. The contract test for
     // applyHouseReferencePosition (PR8c-i) already locks this in at the
     // geometry layer; this test mirrors it from the portal consumer side.
-    const result = buildAdditionalHouseFormGeometry({
+    const result = buildHouseFormReferenceGeometry({
       houseForm: makeStraightHouseForm({
         transform: { offsetXM: 10, offsetYM: 0, rotationQuarterTurns: 0 },
       }),
     });
     expect(result?.position).toBeNull();
+  });
+
+  it('accepts the primary house id without special-casing it out of reference geometry', () => {
+    const result = buildHouseFormReferenceGeometry({
+      houseForm: makeStraightHouseForm({
+        id: 'house-main',
+        label: 'House',
+        transform: { offsetXM: 4, offsetYM: 0, rotationQuarterTurns: 0 },
+      }),
+    });
+
+    expect(result?.model?.houseId).toBe('house-main');
+    for (const vertex of result?.footprint ?? []) {
+      expect(vertex.x).toBeGreaterThanOrEqual(4000);
+    }
   });
 });

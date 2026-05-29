@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { houseFormTransformToAssemblyPosition } from './houseFormTransform';
+import {
+  houseFormTransformToAssemblyPosition,
+  houseFormTransformToWorldPositionMm,
+} from './houseFormTransform';
 
 describe('houseFormTransformToAssemblyPosition', () => {
   it('maps the primary-form origin transform to the geometry zero position', () => {
@@ -49,5 +52,15 @@ describe('houseFormTransformToAssemblyPosition', () => {
         rotationQuarterTurns: 3,
       }),
     ).toEqual({ origin: { x: 2500, y: -7500 }, rotationDeg: 270 });
+  });
+
+  it('exposes a deck-patch friendly world-position view in millimetres', () => {
+    expect(
+      houseFormTransformToWorldPositionMm({
+        offsetXM: 1.25,
+        offsetYM: -0.5,
+        rotationQuarterTurns: 2,
+      }),
+    ).toEqual({ x: 1250, y: -500, rotationDeg: 180 });
   });
 });

@@ -181,7 +181,7 @@ describe("buildViewerSceneModel", () => {
     const hostHouseModel = solveResult.value.house.model;
     if (!hostHouseModel) throw new Error("Expected host house model");
     // Simulate a second house form (e.g. a sleepout) sharing the scene. In
-    // production this comes from `buildAdditionalHouseFormGeometry`; here we
+    // production this comes from the portal house-form reference geometry builder; here we
     // clone the host model and override `houseId` to keep the test focused
     // on the seam behaviour rather than the full geometry pipeline.
     const secondHouseModel = { ...hostHouseModel, houseId: "second-house" };
