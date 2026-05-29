@@ -15,7 +15,6 @@ import type {
   HouseFootprintPreset,
   HouseModelConfig,
   HouseOpeningConfig,
-  HouseRoofAppendageForm,
   HouseRoofPrimaryFallDirection,
   HouseRoofRidgeAxis,
   HouseRoofForm,
@@ -173,11 +172,8 @@ function resolveHouseOpenGableEndIds(
   return ids.length ? [...new Set(ids)] : null;
 }
 
-function resolveHouseRoofAppendageForm(
-  value: HouseRoofAppendageForm | null | undefined,
-): HouseRoofAppendageForm {
-  return value === 'flat' ? 'flat' : 'mono';
-}
+// PR-T8 (2026-05-29): `resolveHouseRoofAppendageForm` removed with the
+// appendage feature cull.
 
 function resolveHouseRoofMaterial(value: HouseRoofMaterial | null | undefined): HouseRoofMaterial {
   if (
@@ -714,15 +710,8 @@ export function buildHouseModelConfig(input: {
     ),
     roofRidgeAxis: resolveHouseRoofRidgeAxis(input.rawHouseContext.roofRidgeAxis),
     openGableEndIds: resolveHouseOpenGableEndIds(input.rawHouseContext.openGableEndIds),
-    roofAppendage: input.rawHouseContext.roofAppendage
-      ? {
-          enabled: Boolean(input.rawHouseContext.roofAppendage.enabled),
-          form: resolveHouseRoofAppendageForm(input.rawHouseContext.roofAppendage.form),
-          hostEdge: input.rawHouseContext.roofAppendage.hostEdge ?? 'rear',
-          pitchDeg: resolveOptionalDegrees(input.rawHouseContext.roofAppendage.pitchDeg),
-          dropMm: resolveOptionalMillimetres(input.rawHouseContext.roofAppendage.dropMm),
-        }
-      : null,
+    // PR-T8 (2026-05-29): roofAppendage normalisation removed. Persisted
+    // raw input may still carry the field; we silently drop it on read.
     decks,
     openings,
     attachmentStrategy: input.attachmentStrategy,

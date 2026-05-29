@@ -10,13 +10,6 @@ function makeRoof(overrides: Partial<HouseFormRoofIntentModel> = {}): HouseFormR
     primaryFallDirection: 'positive_y',
     ridgeAxis: 'x',
     openGableEndIds: [],
-    appendage: {
-      enabled: false,
-      form: 'mono',
-      hostEdge: 'rear',
-      pitchDeg: '',
-      dropMm: '450',
-    },
     ...overrides,
   };
 }
@@ -55,7 +48,6 @@ describe('resolveHouseTerminalEndToggleRoofDraft', () => {
         primaryPitchDeg: '22',
         material: 'trapezoidal_5_rib',
         openGableEndIds: [],
-        appendage: { enabled: true, form: 'mono', hostEdge: 'left', pitchDeg: '12', dropMm: '600' },
       });
       const next = resolveHouseTerminalEndToggleRoofDraft({
         currentRoof: current,

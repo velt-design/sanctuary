@@ -16,7 +16,7 @@ When extracting helpers as part of this decomposition pass, **copy the body byte
 | `constants.ts` | `DEFAULT_*` numeric constants (eave height, roof pitch, soffit depth, fascia thickness, etc) plus `WORLD_Z`, `RIDGE_COLLAPSE_EPSILON_MM`, `ROOF_JOIN_EPSILON_MM`, `ROOF_JOIN_FEATURE_MIN_LENGTH_MM`, `ROOF_REGION_MIN_AREA_MM2`. Pure data, no functions. | ✅ shipped |
 | `footprintMath.ts` | Footprint polygon utilities: `isOrthogonalFootprint`, `offsetFootprintPolygon`, `clearanceToPolygon`, `findInteriorRoofNode`, `polygonLineInterval`, `closestPointOnLineSegment2D`, `isRectanglePolygon`. | ✅ shipped |
 | `walls.ts` | Wall segment construction: `buildWallTopProfile`, `wallBoundaryHasFlatTop`, `buildWallSegments`. | ✅ shipped |
-| `perimeterEdges.ts` | House perimeter edge classification + builders: `classifyHousePerimeterEdges`, `buildHouseRoofPerimeterEdges`, `buildMonoAppendagePerimeterEdges`, `buildAppendagePerimeterEdges`, `roofPlaneTouchesPerimeterEdge`, `roofPlanePerimeterOverlapSegment`. | ✅ shipped |
+| `perimeterEdges.ts` | House perimeter edge classification + builders: `classifyHousePerimeterEdges`, `buildHouseRoofPerimeterEdges`, `roofPlaneTouchesPerimeterEdge`, `roofPlanePerimeterOverlapSegment`. | ✅ shipped |
 | `eave.ts` | Eave/fascia/soffit/gutter polygons: `isEavePackageEdge`, `buildPolygonGutterLines`, `buildPolygonGutterBoundaries`, `buildPolygonFasciaPolygons`, `buildPolygonSoffitPolygons`, `buildPerimeterOffsetStripFootprints`. | ✅ shipped |
 | `roofPlane.ts` | Roof plane primitives + height-at-XY math: `buildRoofPlane`, `roofPlaneHeightAtXY`, `roofPlaneEquationHeightAtXY`, `roofFeatureHeightAtXY`, `roofHeightAtXY`, plus `RoofSolidPlaneEquation` type, `roofSolidPlaneEquationFromPlane`, `roofSolidBottomPlaneEquation`, `pointOnRoofPolygonBoundary`, `pointInOrOnRoofPolygon`. | ✅ shipped |
 | `roofRectangleHipped.ts` | Rectangle-specific hipped roof: `buildRectangleRoofFeatures`, `buildRectangleHippedRoof`. | ✅ shipped |
@@ -31,7 +31,7 @@ When extracting helpers as part of this decomposition pass, **copy the body byte
 | `roofQa.ts` | Roof-validation subsystem: `applyRoofQa`, `validateHouseRoofQa`, plus internal helpers and `RoofQa*` types/constants. Validates roof plane finiteness, plan-area, eave-containment, and area parity. | ✅ shipped |
 | `roofPrimary.ts` | Per-form roof orchestrators: `buildPrimaryHouseRoof`, plus the per-form builders `buildFlatHouseRoof`, `buildMonoHouseRoof`, `buildRectangularGableRoof`, `buildGabledHouseRoof`, `buildHippedHouseRoof`, and the failure helper `invalidHouseRoof`. Wraps each result through `applyRoofQa`. | ✅ shipped |
 | `roofPrimary.ts` | Primary house roof orchestrator: `buildPrimaryHouseRoof` and per-form builders (`buildFlatHouseRoof`, `buildMonoHouseRoof`, etc). | pending |
-| `roofAppendages.ts` | Appendage band + support derivation + shared roof builder: `buildHouseRoofAppendageBand`, `buildSharedHouseRoof`, `deriveHouseRoofAppendageSupportFromPrimaryRoof`, plus `buildAppendageSupportAnalysisFromPerimeterEdges`, the `attachmentSideFromPerimeterEdge` helper, and the public types `HouseRoofAppendageHostRun` + `HouseRoofAppendageSupportAnalysis`. | ✅ shipped |
+| `sharedHouseRoof.ts` | Shared roof entry point: `buildSharedHouseRoof` — validates the selected roof form against the footprint and delegates to `buildPrimaryHouseRoof`. PR-T8 (2026-05-29): replaced the deleted `roofAppendages.ts` after the appendage feature was removed; only the primary-roof wrapper remained load-bearing. | ✅ shipped |
 | `roofSolids.ts` | Render mesh + solid adjacency: `buildVerticalPrismRenderMesh`, `boundaryZRange`, `buildMiteredStripFootprints`, `buildMiteredOffsetStripFootprints`, `buildRoofSolidAdjacency`, `buildRoofSolidBottomEdge`, `buildRoofSolidRenderMesh`, `polygonAveragePoint3D`, `cleanPolygon3D`, `clipPolygon3DByScalar`, `roofPlaneTopNormal`, plus polygon triangulation helpers and the `RoofSolid*` types. | ✅ shipped |
 | `roofFlashings.ts` | Roof feature + perimeter flashings: `buildHouseRoofFeatureFlashings`, `buildPerimeterFlashings`, plus the wing builders (`buildHouseRoofFeatureFlashingWing`, `buildPerimeterRoofFlashingWing`, `buildPerimeterReturnFlashingWing`), `attachmentTargetPlane`, and `isPerimeterFlashingEdge`. | ✅ shipped |
 | `roofMaterial.ts` | Roof material visuals: `buildHouseRoofMaterialVisualForPlane`, `buildHouseRoofMaterialVisuals`, plus the projection / clipping helpers (`houseRoofMaterialSettings`, `clipHouseRoofMaterialLine`, `worldHouseRoofMaterialPoint`, etc.). | ✅ shipped |
@@ -45,7 +45,7 @@ After all splits land, `packages/geometry/src/houseModel.ts` becomes a slim orch
 
 - `buildHouseModel3D` — the top-level public function that orchestrates footprint normalisation, wall building, roof composition, deck/opening building, solid generation, etc.
 - `buildHouseReferenceGeometry` — the wrapper that returns `HouseReferenceGeometry` (called from solvers).
-- `deriveHouseGableTerminalEndsFromFootprint`, `deriveHouseRoofAppendageSupportFromFootprint` — derivation entry points called from outside the package.
+- `deriveHouseGableTerminalEndsFromFootprint` — derivation entry point called from outside the package. PR-T8 (2026-05-29): `deriveHouseRoofAppendageSupportFromFootprint` was removed with the appendage cull.
 
 ## Split sequence
 
@@ -69,7 +69,7 @@ Order matters because some files depend on others. Recommended sequence:
 16. ✅ `roofJoined.ts` (joined gable + complex builders + reflect/swap helpers) — joined-roof family complete
 17. ✅ `roofQa.ts` (roof QA validators — prerequisite for `roofPrimary.ts`)
 18. ✅ `roofPrimary.ts` (per-form roof orchestrators)
-19. ✅ `roofAppendages.ts` (appendage band + shared roof + support derivation)
+19. ✅ `roofAppendages.ts` (appendage band + shared roof + support derivation) — superseded by `sharedHouseRoof.ts` in PR-T8 (2026-05-29); appendage band + support derivation deleted with the feature, shared-roof wrapper kept.
 20. ✅ `roofSolids.ts` (render mesh + solid adjacency)
 21. ✅ `roofFlashings.ts` (roof feature + perimeter flashings)
 22. ✅ `roofMaterial.ts` (roof material visuals)
@@ -77,9 +77,8 @@ Order matters because some files depend on others. Recommended sequence:
 24. ✅ `roofFrames.ts` (open-gable frame features)
 25. ✅ `attachment.ts` (attachment target + zone boundary + semantic attachment edge)
 26. ✅ `envelopeSolids.ts` (envelope-solid orchestrator)
-27. **Final pass**: `houseModel.ts` is now ~690 lines — slim orchestrator + public entry points (`buildHouseModel3D`, `buildHouseReferenceGeometry`, `deriveHouseRoofAppendageSupportFromFootprint`).
+27. **Final pass**: `houseModel.ts` is now ~690 lines — slim orchestrator + public entry points (`buildHouseModel3D`, `buildHouseReferenceGeometry`). PR-T8 (2026-05-29): `deriveHouseRoofAppendageSupportFromFootprint` removed with the appendage cull.
 10. `roofPrimary.ts`
-11. `roofAppendages.ts`
 12. `roofMaterial.ts`
 13. `roofSolids.ts`
 14. `roofFlashings.ts`

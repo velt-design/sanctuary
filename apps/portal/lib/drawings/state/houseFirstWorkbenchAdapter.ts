@@ -104,7 +104,7 @@ function readAuthoredRoofDraft(
     primaryFallDirection: houseForm.roofIntent.primaryFallDirection,
     ridgeAxis: houseForm.roofIntent.ridgeAxis,
     openGableEndIds: houseForm.roofIntent.openGableEndIds,
-    appendage: houseForm.roofIntent.appendage,
+    // PR-T8 (2026-05-29): `appendage` removed with the appendage cull.
   };
 }
 
@@ -224,7 +224,7 @@ function houseModelToObjectFirstHouseFormDraft(
       primaryFallDirection: house.roof.primaryFallDirection,
       ridgeAxis: house.roof.ridgeAxis,
       openGableEndIds: house.roof.openGableEndIds,
-      appendage: house.roof.appendage,
+      // PR-T8 (2026-05-29): `appendage` removed with the appendage cull.
     },
     storeyMode: house.storeyMode,
     attachmentStrategy: house.attachmentStrategy,
@@ -927,7 +927,7 @@ function buildHouseFormFromDraft(input: {
     primaryFallDirection: formDraft.roofIntent.primaryFallDirection,
     ridgeAxis: formDraft.roofIntent.ridgeAxis,
     openGableEndIds: formDraft.roofIntent.openGableEndIds,
-    appendage: formDraft.roofIntent.appendage,
+    // PR-T8 (2026-05-29): `appendage` removed with the appendage cull.
   };
 
   const roofProjection = resolveHouseRoofProjection({

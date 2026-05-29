@@ -1,14 +1,10 @@
 import {
   deriveHouseGableTerminalEnds,
-  deriveHouseRoofAppendageSupport,
   deriveHouseRoofCapabilities,
   deriveHouseRoofGeometryKind,
   normalizeHouseRoofPitchInputForForm,
-  type Line3,
-  type Polygon3,
 } from '@sp/geometry';
 import {
-  normalizeAttachmentSide,
   normalizeHouseRoofMaterial,
   type CalculatorHouseAttachmentStrategy,
   type CalculatorHouseFootprintMode,
@@ -28,11 +24,8 @@ import type {
   HouseRoofProvenance,
 } from './houseFirstWorkbenchModel';
 import {
-  hasExplicitRoofAppendage,
   hasExplicitRoofPitch,
   localPolygonToGeometryPolygon,
-  normalizeAppendageForm,
-  normalizeRoofDraftPitch,
   normalizeRoofOpenGableEndIds,
   normalizeRoofPrimaryFallDirection,
   normalizeRoofRidgeAxis,
@@ -48,8 +41,8 @@ import { validateSharedRoof } from './houseRoofFormValidate';
  * pipeline. Takes the already-normalised collected fields off
  * `buildSharedHouse` plus an optional explicit roof draft, and produces
  * the canonical `HouseModel['roof']` view-model (terminal ends, gates,
- * appendage, validation, provenance, capabilities) along with any
- * migration warnings the projection raises.
+ * validation, provenance, capabilities) along with any migration warnings
+ * the projection raises.
  *
  * Extracted from `houseFirstWorkbenchAdapter.buildSharedHouse` so the
  * roof-form rules (`form === 'hipped'` gates that ship-broke during the
@@ -57,7 +50,7 @@ import { validateSharedRoof } from './houseRoofFormValidate';
  * the 2k-line god adapter. Behaviour is preserved byte-for-byte; only
  * the call sites moved.
  *
- * Three gate predicates are exported as their own functions so each
+ * Two gate predicates are exported as their own functions so each
  * mistake-prone "which forms accept this field?" decision has its own
  * focused test surface:
  *
@@ -65,9 +58,6 @@ import { validateSharedRoof } from './houseRoofFormValidate';
  *     for hipped (Dutch-hip topology). Returning the wrong answer for
  *     hipped is exactly the bug that hid the Dutch-hip toggle commit
  *     from the geometry pipeline — see `docs/decision-log.md` 2026-05-14.
- *   - `roofFormAcceptsAppendage`: appendage supported for mono AND
- *     hipped (the hipped path includes the legacy gable topology, now
- *     expressed as hipped + all-open terminal ends).
  *   - `roofFormHasRidgeAxis`: ridge axis only meaningful for hipped.
  *     Mono drains in a primary fall direction instead.
  */
@@ -76,83 +66,8 @@ export function roofFormAcceptsOpenGableEnds(form: HouseRoofForm): boolean {
   return form === 'hipped';
 }
 
-export function roofFormAcceptsAppendage(form: HouseRoofForm): boolean {
-  return form === 'mono' || form === 'hipped';
-}
-
 export function roofFormHasRidgeAxis(form: HouseRoofForm): boolean {
   return form === 'hipped';
-}
-
-function buildLocalHouseAttachmentLine(input: {
-  attachmentSide: NonNullable<CalculatorModuleInputs['attachmentSide']>;
-  pergolaWidthMm: number;
-  pergolaDepthMm: number;
-  zMm: number;
-}): Line3 {
-  const spanMm =
-    input.attachmentSide === 'left' || input.attachmentSide === 'right'
-      ? input.pergolaDepthMm
-      : input.pergolaWidthMm;
-  return {
-    start: { x: 0, y: 0, z: input.zMm },
-    end: { x: spanMm, y: 0, z: input.zMm },
-  };
-}
-
-function resolveAttachmentSourceEdgeId(input: {
-  footprint: Polygon3;
-  attachmentSide: NonNullable<CalculatorModuleInputs['attachmentSide']>;
-  attachmentLine: Line3 | null;
-}): string | null {
-  if (input.footprint.length < 2) return null;
-  const minX = Math.min(...input.footprint.map((point) => point.x));
-  const maxX = Math.max(...input.footprint.map((point) => point.x));
-  const minY = Math.min(...input.footprint.map((point) => point.y));
-  const maxY = Math.max(...input.footprint.map((point) => point.y));
-  const targetMidpoint = input.attachmentLine
-    ? {
-        x: (input.attachmentLine.start.x + input.attachmentLine.end.x) / 2,
-        y: (input.attachmentLine.start.y + input.attachmentLine.end.y) / 2,
-      }
-    : null;
-  let selected: { id: string; distanceSq: number; lengthSq: number } | null = null;
-
-  for (let index = 0; index < input.footprint.length; index += 1) {
-    const start = input.footprint[index]!;
-    const end = input.footprint[(index + 1) % input.footprint.length]!;
-    let edgeSide: NonNullable<CalculatorModuleInputs['attachmentSide']> | null = null;
-    if (Math.abs(start.y - end.y) <= 1e-6) {
-      if (Math.abs(start.y - minY) <= 1e-6 && Math.abs(end.y - minY) <= 1e-6) edgeSide = 'rear';
-      if (Math.abs(start.y - maxY) <= 1e-6 && Math.abs(end.y - maxY) <= 1e-6) edgeSide = 'front';
-    } else if (Math.abs(start.x - end.x) <= 1e-6) {
-      if (Math.abs(start.x - minX) <= 1e-6 && Math.abs(end.x - minX) <= 1e-6) edgeSide = 'left';
-      if (Math.abs(start.x - maxX) <= 1e-6 && Math.abs(end.x - maxX) <= 1e-6) edgeSide = 'right';
-    }
-    if (edgeSide !== input.attachmentSide) continue;
-
-    const midpoint = {
-      x: (start.x + end.x) / 2,
-      y: (start.y + end.y) / 2,
-    };
-    const distanceSq = targetMidpoint
-      ? (midpoint.x - targetMidpoint.x) ** 2 + (midpoint.y - targetMidpoint.y) ** 2
-      : 0;
-    const lengthSq = (end.x - start.x) ** 2 + (end.y - start.y) ** 2;
-    if (
-      !selected ||
-      distanceSq < selected.distanceSq ||
-      (Math.abs(distanceSq - selected.distanceSq) <= 1e-6 && lengthSq > selected.lengthSq)
-    ) {
-      selected = {
-        id: `footprint-edge-${index + 1}`,
-        distanceSq,
-        lengthSq,
-      };
-    }
-  }
-
-  return selected?.id ?? null;
 }
 
 export type ResolveHouseRoofProjectionInput = {
@@ -218,7 +133,6 @@ export function resolveHouseRoofProjection(
   );
   const explicitRidgeAxis = normalizeRoofRidgeAxis(normalizedRoofDraft?.ridgeAxis);
   const explicitOpenGableEndIds = normalizedRoofDraft?.openGableEndIds;
-  const explicitAppendage = normalizedRoofDraft?.appendage ?? null;
   const sharedRoofForm = explicitRoofForm ?? input.roofForm;
   const sharedRoofPitchFallback =
     explicitRoofPitchDeg === null || explicitRoofPitchDeg === undefined || sharedRoofForm === 'mono'
@@ -258,7 +172,6 @@ export function resolveHouseRoofProjection(
       : derivedMonoFallDirection.source,
     ridgeAxis: effectiveRidgeAxisExplicit ? 'house_first_draft' : derivedRidgeAxis.source,
     openGableEndIds: Array.isArray(explicitOpenGableEndIds) ? 'house_first_draft' : 'default_fallback',
-    appendage: hasExplicitRoofAppendage(explicitAppendage) ? 'house_first_draft' : 'default_fallback',
   };
   const terminalEnds = deriveHouseGableTerminalEnds({
     footprint: localPolygonToGeometryPolygon(input.derivedHousePolygon),
@@ -289,59 +202,7 @@ export function resolveHouseRoofProjection(
       message: 'Some saved open gable ends no longer match the current footprint or ridge orientation and were cleared.',
     });
   }
-  // Milestone 13 session C: appendage is supported for mono AND
-  // hipped (the latter includes the legacy gable topology, which is
-  // now expressed as hipped + all-open terminal ends).
-  const appendageAllowed = roofFormAcceptsAppendage(sharedRoofForm);
-  const appendage = {
-    enabled: appendageAllowed && Boolean(explicitAppendage?.enabled),
-    form: normalizeAppendageForm(explicitAppendage?.form) ?? 'mono',
-    hostEdge: normalizeAttachmentSide(
-      explicitAppendage?.hostEdge ?? input.normalizedAttachmentSide,
-    ) as NonNullable<CalculatorModuleInputs['attachmentSide']>,
-    pitchDeg: normalizeRoofDraftPitch(
-      explicitAppendage?.pitchDeg ?? null,
-      sharedRoofPitchDeg,
-    ),
-    dropMm: normalizeRoofDraftPitch(
-      explicitAppendage?.dropMm ?? null,
-      '450',
-    ),
-  };
-  const resolvedEaveHeightMm = Number.isFinite(Number(input.eaveHeightM))
-    ? Number(input.eaveHeightM) * 1000
-    : 2400;
-  const resolvedEaveOverhangMm = Number.isFinite(Number(input.eaveOverhangMm))
-    ? Number(input.eaveOverhangMm)
-    : 450;
   const geometryFootprint = localPolygonToGeometryPolygon(input.derivedHousePolygon);
-  const attachmentLine =
-    input.attachmentKind === 'freestanding' || input.attachmentKind === 'wall'
-      ? null
-      : buildLocalHouseAttachmentLine({
-          attachmentSide: input.normalizedAttachmentSide,
-          pergolaWidthMm: input.firstModuleLengthMm,
-          pergolaDepthMm: input.firstModuleProjectionMm,
-          zMm: 0,
-        });
-  const attachmentSourceEdgeId =
-    input.attachmentKind === 'fascia'
-      ? resolveAttachmentSourceEdgeId({
-          footprint: geometryFootprint,
-          attachmentSide: input.normalizedAttachmentSide,
-          attachmentLine,
-        })
-      : null;
-  const appendageSupport = deriveHouseRoofAppendageSupport({
-    sourceFootprint: geometryFootprint,
-    eaveHeightMm: resolvedEaveHeightMm,
-    eaveOverhangMm: resolvedEaveOverhangMm,
-    roofPitchDeg: Number(sharedRoofPitchDeg),
-    roofForm: sharedRoofForm,
-    roofPrimaryFallDirection: sharedPrimaryFallDirection,
-    roofRidgeAxis: sharedRidgeAxis,
-    attachmentSourceEdgeId,
-  });
   const validation = validateSharedRoof({
     footprint: geometryFootprint,
     roofForm: sharedRoofForm,
@@ -351,40 +212,22 @@ export function resolveHouseRoofProjection(
       sharedRoofForm === 'mono'
         ? derivedMonoFallDirection.value
         : null,
-    attachmentStrategy: input.attachmentStrategy,
     attachmentRequiresDrainEdge:
       input.attachmentKind === 'soffit' || input.attachmentKind === 'fascia',
-    attachmentEdge: attachmentLine,
     roofRidgeAxis: sharedRidgeAxis,
     roofRidgeAxisExplicit: effectiveRidgeAxisExplicit,
     preferredRidgeAxis: sharedRoofForm === 'hipped' ? derivedRidgeAxis.value : null,
-    appendageSupport: {
-      supportedHostEdges: appendageSupport.supportedHostEdges as Array<NonNullable<CalculatorModuleInputs['attachmentSide']>>,
-      blockedReasonsBySide: appendageSupport.blockedReasonsBySide,
-    },
-    appendage: {
-      enabled: appendage.enabled,
-      form: appendage.form,
-      hostEdge: appendage.hostEdge,
-    },
   });
   const capabilities = deriveHouseRoofCapabilities({
     roofForm: sharedRoofForm,
     footprint: geometryFootprint,
   });
-  capabilities.appendageSupported = appendageSupport.supportedHostEdges.length > 0;
   const roofGeometryKind = deriveHouseRoofGeometryKind({
     roofForm: sharedRoofForm,
     footprint: geometryFootprint,
     openGableEndIds,
     roofRidgeAxis: sharedRidgeAxis,
   });
-  const appendageSupportedHostEdges =
-    appendageSupport.supportedHostEdges as Array<NonNullable<CalculatorModuleInputs['attachmentSide']>>;
-  const appendageSupportReason =
-    validation.code === 'invalid_appendage_topology' || validation.code === 'invalid_appendage_host_edge'
-      ? validation.message
-      : null;
   const approximationReasons = new Set<HouseRoofApproximationReason>();
   if (roofProvenance.form === 'legacy_pergola_inference') {
     approximationReasons.add('inferred_form');
@@ -424,8 +267,7 @@ export function resolveHouseRoofProjection(
     hasExplicitRoofPitch(explicitRoofPitchDeg) ||
     explicitPrimaryFallDirection !== null ||
     explicitRidgeAxis !== null ||
-    (explicitOpenGableEndIds !== undefined && explicitOpenGableEndIds !== null) ||
-    hasExplicitRoofAppendage(explicitAppendage);
+    (explicitOpenGableEndIds !== undefined && explicitOpenGableEndIds !== null);
   return {
     roof: {
       id: 'house-roof-main',
@@ -440,10 +282,7 @@ export function resolveHouseRoofProjection(
         ...end,
         isOpen: openGableEndIds.includes(end.id),
       })),
-      appendage,
       geometryKind: roofGeometryKind,
-      appendageSupportedHostEdges,
-      appendageSupportReason,
       validation: roofValidation,
       provenance: roofProvenance,
       capabilities,

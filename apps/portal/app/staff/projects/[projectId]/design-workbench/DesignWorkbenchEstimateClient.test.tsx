@@ -737,10 +737,7 @@ describe('DesignWorkbenchEstimateClient', () => {
     expect(readLabeledValue(rendered.container, 'Roof material source')).toBe('Legacy shared value');
     expect(readLabeledValue(rendered.container, 'Roof fall source')).toBe('Default fallback');
     expect(readLabeledValue(rendered.container, 'Roof ridge source')).toBe('Not used for this roof');
-    expect(readLabeledValue(rendered.container, 'Roof appendage source')).toBe('Default fallback');
     expect(readLabeledValue(rendered.container, 'Roof geometry')).toBe('Footprint mono');
-    expect(readLabeledValue(rendered.container, 'Appendage support')).toBe('Supported');
-    expect(readLabeledValue(rendered.container, 'Appendage supported edges')).toBe('Rear');
 
     rendered.unmount();
   });
@@ -1151,7 +1148,6 @@ describe('DesignWorkbenchEstimateClient', () => {
       ridgeAxis: 'x',
       openGableEndIds: [],
     });
-    expect(healedHippedDraft?.appendage?.enabled).toBe(false);
     expect(readLabeledValue(rendered.container, 'Roof reason code')).toBe('none');
     expect(readLabeledValue(rendered.container, 'Roof status')).not.toBe('Blocked');
 
@@ -1188,10 +1184,6 @@ describe('DesignWorkbenchEstimateClient', () => {
       primaryPitchDeg: '0',
       ridgeAxis: 'y',
       openGableEndIds: ['house-gable-end-y-1'],
-      appendage: {
-        ...houseForm.roofIntent.appendage,
-        enabled: true,
-      },
     };
     await ensureLocalFirstStoreReady();
     await writeLocalFirstWorkingCopy({
@@ -1331,17 +1323,14 @@ describe('DesignWorkbenchEstimateClient', () => {
       form: 'flat',
       primaryPitchDeg: '0',
     });
-    expect(flatDraft?.appendage?.enabled).toBe(false);
     expect(flatDraft?.openGableEndIds).toEqual([]);
     expect(flatDraft?.primaryFallDirection).not.toBe('positive_x');
     expect(readLabeledValue(rendered.container, 'Selected roof form')).toBe('flat');
     expect(readLabeledValue(rendered.container, 'Roof pitch source')).toBe('Not used for this roof');
-    expect(readLabeledValue(rendered.container, 'Roof appendage source')).toBe('Not used for this roof');
     clickButtonByText(rendered.container, 'House Forms');
     await flushAsyncWork();
     expect(rendered.container.querySelector('[aria-label="Roof form"]')).not.toBeNull();
     expect(rendered.container.querySelector('[aria-label="Roof pitch (deg)"]')).toBeNull();
-    expect(rendered.container.querySelector('[aria-label="Appendage band"]')).toBeNull();
 
     changeSelectByLabel(rendered.container, 'Roof form', 'mono');
     await flushAsyncWork();
@@ -1365,18 +1354,11 @@ describe('DesignWorkbenchEstimateClient', () => {
       form: 'hipped',
       primaryPitchDeg: '5',
     });
-    expect(hippedDraft?.appendage?.enabled).toBe(false);
     expect(hippedDraft?.openGableEndIds).toEqual([]);
     expect(readLabeledValue(rendered.container, 'Selected roof form')).toBe('hipped');
-    // Milestone 13 session C: hipped subsumes the retired gable form
-    // and inherits its appendage capability. The rail now surfaces
-    // the appendage controls and the source label reflects the
-    // authored draft state.
-    expect(readLabeledValue(rendered.container, 'Roof appendage source')).toBe('Explicit object draft');
     clickButtonByText(rendered.container, 'House Forms');
     await flushAsyncWork();
     expect(rendered.container.querySelector('[aria-label="Hipped ridge orientation"]')).not.toBeNull();
-    expect(rendered.container.querySelector('[aria-label="Appendage band"]')).not.toBeNull();
 
     rendered.unmount();
   });
@@ -1465,8 +1447,6 @@ describe('DesignWorkbenchEstimateClient', () => {
     expect(readLabeledValue(rendered.container, 'Roof pitch source')).toBe('Not used for this roof');
     expect(readLabeledValue(rendered.container, 'Roof fall source')).toBe('Not used for this roof');
     expect(readLabeledValue(rendered.container, 'Roof ridge source')).toBe('Not used for this roof');
-    expect(readLabeledValue(rendered.container, 'Roof appendage source')).toBe('Not used for this roof');
-    expect(readLabeledValue(rendered.container, 'Appendage support')).toBe('Not used for this roof');
     clickButtonByText(rendered.container, 'House Forms');
     await flushAsyncWork();
     const roofFormSelect = rendered.container.querySelector('[aria-label="Roof form"]') as HTMLSelectElement | null;
@@ -1486,43 +1466,8 @@ describe('DesignWorkbenchEstimateClient', () => {
     rendered.unmount();
   });
 
-  it('surfaces appendage invalid diagnostics without changing the house roof family set', async () => {
-    const estimate = buildMultiModuleEstimateDetail();
-    const snapshot = structuredClone(estimate.calculatorSnapshot) as {
-      inputs?: { modules?: Array<Record<string, unknown>> };
-    } | null;
-    for (const module of snapshot?.inputs?.modules ?? []) {
-      module.houseConnectionType = 'facade';
-      module.houseAttachmentStrategy = 'facade_ledger';
-    }
-
-    const rendered = renderIntoDocument(
-      <DesignWorkbenchEstimateClient
-        estimate={{
-          ...estimate,
-          calculatorSnapshot: (snapshot ?? estimate.calculatorSnapshot) as Record<string, unknown>,
-        }}
-        projectName="Deck Build"
-        siteAddress="1 Test Street"
-      />,
-    );
-
-    await flushAsyncWork();
-    changeSelectByLabel(rendered.container, 'House footprint', 'u_shape');
-    await flushAsyncWork();
-    changeSelectByLabel(rendered.container, 'Appendage band', 'enabled');
-    await flushAsyncWork();
-
-    expect(readLabeledValue(rendered.container, 'Selected roof form')).toBe('mono');
-    expect(readLabeledValue(rendered.container, 'Roof appendage')).toBe('invalid');
-    expect(readLabeledValue(rendered.container, 'Roof reason code')).toBe('invalid_appendage_topology');
-    expect(readLabeledValue(rendered.container, 'Appendage supported edges')).toBe('None');
-    expect(rendered.container.textContent).toContain(
-      'Appendage bands require at least one continuous exterior perimeter run on the current house footprint.',
-    );
-
-    rendered.unmount();
-  });
+  // PR-T8 (2026-05-29): appendage-band invalid-diagnostics test removed
+  // with the appendage feature cull.
 
   it('shows orthogonal mono presets as non-blocked in house mode diagnostics', async () => {
     const estimate = buildEstimateDetail();

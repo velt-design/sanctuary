@@ -25,7 +25,6 @@ export type WorkbenchMode = 'house' | 'pergolas';
 export type HouseRoofForm = 'flat' | 'mono' | 'hipped';
 export type HouseRoofPrimaryFallDirection = 'positive_x' | 'negative_x' | 'positive_y' | 'negative_y';
 export type HouseRoofRidgeAxis = 'x' | 'y';
-export type HouseRoofAppendageForm = 'flat' | 'mono';
 export type HouseRoofFieldSource =
   | 'house_first_draft'
   | 'legacy_shared_value'
@@ -43,7 +42,6 @@ export type HouseRoofProvenance = {
   primaryFallDirection: HouseRoofFieldSource;
   ridgeAxis: HouseRoofFieldSource;
   openGableEndIds: HouseRoofFieldSource;
-  appendage: HouseRoofFieldSource;
 };
 export type DeckKind = 'deck' | 'landing';
 export type DeckShape = 'preset' | 'custom';
@@ -120,24 +118,13 @@ export type HouseRoofModel = {
     sourceEdgeId: string;
     isOpen: boolean;
   }>;
-  appendage: {
-    enabled: boolean;
-    form: HouseRoofAppendageForm;
-    hostEdge: NonNullable<CalculatorModuleInputs['attachmentSide']>;
-    pitchDeg: string;
-    dropMm: string;
-  };
   geometryKind: HouseRoofGeometryKind | null;
-  appendageSupportedHostEdges: Array<NonNullable<CalculatorModuleInputs['attachmentSide']>>;
-  appendageSupportReason: string | null;
   validation: {
     status: 'valid' | 'approximate' | 'invalid';
     code:
       | 'unsupported_roof_topology'
       | 'unsupported_gable_topology'
       | 'unsupported_hipped_topology'
-      | 'invalid_appendage_topology'
-      | 'invalid_appendage_host_edge'
       | 'invalid_mono_fall_direction'
       | 'invalid_ridge_axis'
       | null;
@@ -333,13 +320,6 @@ export type HouseFirstRoofDraft = {
   primaryFallDirection?: HouseRoofPrimaryFallDirection | null;
   ridgeAxis?: HouseRoofRidgeAxis | null;
   openGableEndIds?: string[] | null;
-  appendage?: {
-    enabled?: boolean | null;
-    form?: HouseRoofAppendageForm | null;
-    hostEdge?: NonNullable<CalculatorModuleInputs['attachmentSide']> | null;
-    pitchDeg?: string | null;
-    dropMm?: string | null;
-  } | null;
 };
 
 export type HouseFirstDeckDraft = {

@@ -585,12 +585,6 @@ function normalizeSharedHouseRoofIntentForCommit(roof: HouseFormRoofIntentModel)
     // mapped to `'hipped'` at the normalize boundary. Forms without
     // terminal ends (flat, mono) still have the field cleared.
     openGableEndIds: form === 'hipped' ? roof.openGableEndIds ?? [] : [],
-    appendage: behavior.controls.appendage
-      ? roof.appendage
-      : {
-          ...roof.appendage,
-          enabled: false,
-        },
   };
 }
 
@@ -629,12 +623,6 @@ export function mergeHouseFormRoofIntentAfterFootprintSync(input: {
         : 'negative_y',
       ridgeAxis: behavior.controls.ridgeAxis ? previewRoof.ridgeAxis : 'x',
       openGableEndIds,
-      appendage: behavior.controls.appendage
-        ? existingRoof.appendage
-        : {
-            ...previewRoof.appendage,
-            enabled: false,
-          },
     },
   };
 }

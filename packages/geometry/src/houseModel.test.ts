@@ -345,7 +345,6 @@ function makeConfig(input: {
   roofPrimaryFallDirection?: NonNullable<GeometryConfig['houseContext']['model']>['roofPrimaryFallDirection'];
   roofRidgeAxis?: NonNullable<GeometryConfig['houseContext']['model']>['roofRidgeAxis'];
   openGableEndIds?: NonNullable<GeometryConfig['houseContext']['model']>['openGableEndIds'];
-  roofAppendage?: NonNullable<GeometryConfig['houseContext']['model']>['roofAppendage'];
   eaveHeightMm?: number;
   wallHeightMm?: number;
   roofPitchDeg?: number;
@@ -468,7 +467,6 @@ function makeConfig(input: {
         roofPrimaryFallDirection: input.roofPrimaryFallDirection ?? 'positive_y',
         roofRidgeAxis: input.roofRidgeAxis ?? 'x',
         openGableEndIds: input.openGableEndIds ?? null,
-        roofAppendage: input.roofAppendage ?? null,
         attachmentStrategy: strategy,
         eave: {
           soffitDepthMm: 450,
@@ -2721,197 +2719,9 @@ describe('house model geometry builder', () => {
     expect(model?.roofPlanes).toHaveLength(0);
   });
 
-  it('adds one shared appendage band on a supported host edge', () => {
-    const model = buildHouseModel3D({
-      config: makeConfig({
-        roofForm: 'mono',
-        roofPrimaryFallDirection: 'positive_y',
-        roofAppendage: {
-          enabled: true,
-          form: 'mono',
-          hostEdge: 'front',
-          pitchDeg: 5,
-          dropMm: 500,
-        },
-      }),
-      attachmentEdge: makeAttachmentEdge(),
-    });
-
-    expect(model?.metadata?.roofAppendageEnabled).toBe(true);
-    expect(model?.metadata?.roofQaStatus).toBe('valid');
-    expect((model?.roofPlanes.length ?? 0) > 1).toBe(true);
-    expect(model?.roofPlanes.some((plane) => plane.metadata?.roofGeometry === 'appendage_band')).toBe(true);
-    const appendageSoffits =
-      model?.solids?.surfaceSolids.filter(
-        (solid) =>
-          solid.kind === 'soffit' &&
-          solid.metadata?.sourceRoofPlaneId === 'house-roof-appendage-front',
-      ) ?? [];
-    const appendageFascias =
-      model?.solids?.surfaceSolids.filter(
-        (solid) =>
-          solid.kind === 'fascia' &&
-          solid.metadata?.sourceRoofPlaneId === 'house-roof-appendage-front',
-      ) ?? [];
-    const appendageGutters =
-      model?.solids?.linearSolids.filter(
-        (solid) =>
-          solid.kind === 'gutter' &&
-          solid.metadata?.sourceRoofPlaneId === 'house-roof-appendage-front',
-      ) ?? [];
-    const appendageFlashings =
-      model?.roofFlashings?.filter(
-        (flashing) => flashing.metadata?.roofGeometry === 'appendage_band',
-      ) ?? [];
-
-    expect(appendageSoffits).toHaveLength(1);
-    expect(appendageFascias).toHaveLength(1);
-    expect(appendageGutters).toHaveLength(1);
-    expect(appendageSoffits[0]?.metadata?.houseRoofPerimeterRole).toBe('drain_eave');
-    expect(appendageFascias[0]?.metadata?.houseRoofPerimeterRole).toBe('drain_eave');
-    expect(appendageGutters[0]?.metadata?.houseRoofPerimeterRole).toBe('drain_eave');
-    expect(
-      appendageFlashings.map((flashing) => ({
-        sourceEdgeId: flashing.metadata?.sourceEdgeId ?? null,
-        sourceRoofPlaneId: flashing.metadata?.sourceRoofPlaneId ?? null,
-        flashingRole: flashing.metadata?.flashingRole ?? null,
-        perimeterRole: flashing.metadata?.houseRoofPerimeterRole ?? null,
-      })),
-    ).toEqual([
-      {
-        sourceEdgeId: 'footprint-edge-3',
-        sourceRoofPlaneId: 'house-roof-appendage-front',
-        flashingRole: 'house_apron',
-        perimeterRole: 'house_apron_edge',
-      },
-      {
-        sourceEdgeId: 'house-roof-appendage-front-edge-1',
-        sourceRoofPlaneId: 'house-roof-appendage-front',
-        flashingRole: 'high_side',
-        perimeterRole: 'weather_flashed_edge',
-      },
-      {
-        sourceEdgeId: 'house-roof-appendage-front-edge-2',
-        sourceRoofPlaneId: 'house-roof-appendage-front',
-        flashingRole: 'rake',
-        perimeterRole: 'weather_flashed_edge',
-      },
-      {
-        sourceEdgeId: 'house-roof-appendage-front-edge-4',
-        sourceRoofPlaneId: 'house-roof-appendage-front',
-        flashingRole: 'rake',
-        perimeterRole: 'weather_flashed_edge',
-      },
-    ]);
-    expect(
-      appendageFlashings.every((flashing) =>
-        flashing.metadata?.houseRoofPerimeterRole === 'weather_flashed_edge' ||
-        flashing.metadata?.houseRoofPerimeterRole === 'house_apron_edge',
-      ),
-    ).toBe(true);
-    expect(
-      appendageFlashings.every(
-        (flashing) =>
-          flashing.wings.length === 2 &&
-          flashing.metadata?.flashingTreatment === 'house_perimeter_folded',
-      ),
-    ).toBe(true);
-  });
-
-  it('builds appendage bands from the resolved host run span instead of the house bounding box span', () => {
-    const footprint: Polygon3 = [
-      { x: 0, y: 0, z: 0 },
-      { x: 6000, y: 0, z: 0 },
-      { x: 6000, y: 2000, z: 0 },
-      { x: 4000, y: 2000, z: 0 },
-      { x: 4000, y: 4000, z: 0 },
-      { x: 0, y: 4000, z: 0 },
-    ];
-    const model = buildHouseModel3D({
-      config: makeConfig({
-        footprint,
-        roofForm: 'mono',
-        roofPrimaryFallDirection: 'positive_x',
-        roofAppendage: {
-          enabled: true,
-          form: 'mono',
-          hostEdge: 'right',
-          pitchDeg: 5,
-          dropMm: 450,
-        },
-      }),
-      attachmentEdge: makeAttachmentEdge(),
-    });
-
-    const appendagePlane = model?.roofPlanes.find((plane) => plane.id === 'house-roof-appendage-right');
-    expect(appendagePlane).toBeTruthy();
-    expect(Math.abs((appendagePlane?.boundary[1]?.y ?? 0) - (appendagePlane?.boundary[0]?.y ?? 0))).toBe(2900);
-    expect(Math.abs((appendagePlane?.boundary[1]?.y ?? 0) - (appendagePlane?.boundary[0]?.y ?? 0))).toBeLessThan(4000);
-  });
-
-  it('blocks unsupported appendage host edges while keeping the selected roof family explicit', () => {
-    // Use an L-footprint so the "rear" side is split across two
-    // non-contiguous segments. The appendage host derivation rejects
-    // sides whose perimeter count != 1, triggering
-    // `invalid_appendage_host_edge`. Pre-session-C this test pinned the
-    // failure on `roofForm: 'gable'`; with the typed gable retired the
-    // check is on the un-mono-able hipped topology + non-contiguous
-    // host edge.
-    const lFootprint: Polygon3 = [
-      { x: 0, y: -2400, z: 0 },
-      { x: 4200, y: -2400, z: 0 },
-      { x: 4200, y: -1200, z: 0 },
-      { x: 6000, y: -1200, z: 0 },
-      { x: 6000, y: 0, z: 0 },
-      { x: 0, y: 0, z: 0 },
-    ];
-    const model = buildHouseModel3D({
-      config: makeConfig({
-        footprint: lFootprint,
-        roofForm: 'hipped',
-        roofRidgeAxis: 'y',
-        roofAppendage: {
-          enabled: true,
-          form: 'mono',
-          hostEdge: 'rear',
-          pitchDeg: 5,
-          dropMm: 450,
-        },
-      }),
-      attachmentEdge: makeAttachmentEdge(),
-    });
-
-    expect(model?.metadata?.roofForm).toBe('hipped');
-    expect(model?.metadata?.roofQaStatus).toBe('invalid');
-    expect(model?.metadata?.roofQaFailureReason).toBe('invalid_appendage_host_edge');
-  });
-
-  it('blocks appendage bands when the footprint exposes no continuous exterior appendage host edge', () => {
-    const footprint: Polygon3 = [
-      { x: 0, y: -1800, z: 0 },
-      { x: 6000, y: -1600, z: 0 },
-      { x: 5600, y: 0, z: 0 },
-      { x: 0, y: 0, z: 0 },
-    ];
-    const model = buildHouseModel3D({
-      config: makeConfig({
-        footprint,
-        roofForm: 'flat',
-        roofAppendage: {
-          enabled: true,
-          form: 'mono',
-          hostEdge: 'rear',
-          pitchDeg: 5,
-          dropMm: 450,
-        },
-      }),
-      attachmentEdge: makeAttachmentEdge(),
-    });
-
-    expect(model?.metadata?.roofForm).toBe('flat');
-    expect(model?.metadata?.roofQaStatus).toBe('invalid');
-    expect(model?.metadata?.roofQaFailureReason).toBe('invalid_appendage_topology');
-  });
+  // PR-T8 (2026-05-29): Four appendage-band tests removed with the
+  // appendage feature cull (one shared band; host-run span; unsupported
+  // host edge; no continuous exterior host run).
 
   it('builds shared deck geometry for attached, detached, and custom decks', () => {
     const config = makeConfig();

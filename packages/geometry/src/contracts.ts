@@ -135,7 +135,8 @@ export type HouseWallConstruction = "timber_frame";
 export type HouseRoofForm = "flat" | "mono" | "hipped";
 export type HouseRoofPrimaryFallDirection = "positive_x" | "negative_x" | "positive_y" | "negative_y";
 export type HouseRoofRidgeAxis = "x" | "y";
-export type HouseRoofAppendageForm = "flat" | "mono";
+// PR-T8 (2026-05-29): `HouseRoofAppendageForm` removed with the
+// appendage feature cull. No production consumer remained.
 export type HouseRoofFeatureKind = "ridge" | "hip" | "valley" | "gable_end_frame";
 export type HouseDeckKind = "deck" | "landing";
 export type HouseDeckShape = "preset" | "custom";
@@ -252,13 +253,7 @@ export type HouseModelConfig = {
   roofPrimaryFallDirection?: HouseRoofPrimaryFallDirection | null;
   roofRidgeAxis?: HouseRoofRidgeAxis | null;
   openGableEndIds?: string[] | null;
-  roofAppendage?: {
-    enabled?: boolean | null;
-    form?: HouseRoofAppendageForm | null;
-    hostEdge?: AttachmentSide | null;
-    pitchDeg?: number | null;
-    dropMm?: number | null;
-  } | null;
+  // PR-T8 (2026-05-29): `roofAppendage` removed with the appendage cull.
   decks?: HouseDeckConfig[] | null;
   openings?: HouseOpeningConfig[] | null;
   eave?: HouseEaveConfig | null;
@@ -392,13 +387,7 @@ export type RawHouseInput = {
   roofPrimaryFallDirection?: HouseRoofPrimaryFallDirection | null;
   roofRidgeAxis?: HouseRoofRidgeAxis | null;
   openGableEndIds?: string[] | null;
-  roofAppendage?: {
-    enabled?: boolean | null;
-    form?: HouseRoofAppendageForm | null;
-    hostEdge?: AttachmentSide | null;
-    pitchDeg?: string | number | null;
-    dropMm?: string | number | null;
-  } | null;
+  // PR-T8 (2026-05-29): `roofAppendage` removed with the appendage cull.
   decks?: Array<{
     id: string;
     name?: string | null;
@@ -572,13 +561,7 @@ export type RawGeometryModuleInput = {
     roofPrimaryFallDirection?: HouseRoofPrimaryFallDirection | null;
     roofRidgeAxis?: HouseRoofRidgeAxis | null;
     openGableEndIds?: string[] | null;
-    roofAppendage?: {
-      enabled?: boolean | null;
-      form?: HouseRoofAppendageForm | null;
-      hostEdge?: AttachmentSide | null;
-      pitchDeg?: string | number | null;
-      dropMm?: string | number | null;
-    } | null;
+    // PR-T8 (2026-05-29): `roofAppendage` removed with the appendage cull.
     decks?: Array<{
       id: string;
       name?: string | null;

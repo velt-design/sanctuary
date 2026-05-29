@@ -133,13 +133,6 @@ function applyObjectFirstCompatibilityDraft(input: {
       primaryFallDirection: roofPatch.primaryFallDirection ?? houseForm.roofIntent.primaryFallDirection,
       ridgeAxis: roofPatch.ridgeAxis ?? houseForm.roofIntent.ridgeAxis,
       openGableEndIds: roofPatch.openGableEndIds ?? houseForm.roofIntent.openGableEndIds,
-      appendage: {
-        enabled: roofPatch.appendage?.enabled ?? houseForm.roofIntent.appendage.enabled,
-        form: roofPatch.appendage?.form ?? houseForm.roofIntent.appendage.form,
-        hostEdge: roofPatch.appendage?.hostEdge ?? houseForm.roofIntent.appendage.hostEdge,
-        pitchDeg: roofPatch.appendage?.pitchDeg ?? houseForm.roofIntent.appendage.pitchDeg,
-        dropMm: roofPatch.appendage?.dropMm ?? houseForm.roofIntent.appendage.dropMm,
-      },
     };
   }
   if (input.compatibility.decks) {
@@ -1403,7 +1396,6 @@ describe('buildDrawingWorkbenchStore', () => {
     expect(store.derived.objectWorkbench.houseForm.roof.provenance.form).toBe('object_first_draft');
     expect(store.derived.objectWorkbench.houseForm.roof.provenance.ridgeAxis).toBe('object_first_draft');
     expect(store.derived.objectWorkbench.houseForm.roof.geometryKind).toBe('rectilinear_joined_hipped');
-    expect(store.derived.objectWorkbench.houseForm.roof.intent.appendage.enabled).toBe(false);
     expect(store.derived.objectWorkbench.houseForm).toMatchObject({
       trustStatus: 'geometry_ready',
       trustLabel: 'Geometry ready',
@@ -1557,14 +1549,6 @@ describe('buildDrawingWorkbenchStore', () => {
       primaryPitchDeg: '0',
       ridgeAxis: 'y',
       openGableEndIds: ['house-gable-end-y-1'],
-      // Milestone 13 session C: hipped now supports appendage
-      // (subsumes legacy gable). Leave appendage off so this test
-      // stays focused on ridge-axis healing -- an authored appendage
-      // on wrap_left rear would flag the host edge as invalid.
-      appendage: {
-        ...houseForm.roofIntent.appendage,
-        enabled: false,
-      },
     };
 
     const store = buildDrawingWorkbenchStore({
@@ -1584,50 +1568,10 @@ describe('buildDrawingWorkbenchStore', () => {
       primaryPitchDeg: '5',
       ridgeAxis: 'x',
       openGableEndIds: [],
-      appendage: expect.objectContaining({ enabled: false }),
     });
   });
 
-  it('derives appendage support edges and blocks unsupported host edges without hiding support metadata', () => {
-    const fixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
-    if (!fixture) throw new Error('Missing mono-standard fixture.');
-    const draft = buildEstimateDrawingDraftFromSnapshot(fixture.snapshot);
-    if (!draft) throw new Error('Expected drawing draft.');
-    draft.inputs.modules[0]!.houseFootprintPreset = 'u_shape';
-    applyObjectFirstCompatibilityDraft({
-      snapshot: fixture.snapshot,
-      draft,
-      compatibility: {
-        roof: {
-          appendage: {
-            enabled: true,
-            hostEdge: 'rear',
-            pitchDeg: '5',
-            dropMm: '450',
-          },
-        },
-      },
-    });
-
-    const store = buildDrawingWorkbenchStore({
-      snapshot: fixture.snapshot,
-      draft,
-      ui: createDrawingWorkbenchUiState({
-        workbenchMode: 'house',
-      }),
-    });
-
-    expect(store.derived.objectWorkbench.houseForm.roof.validationStatus).toBe('invalid');
-    expect(store.derived.objectWorkbench.houseForm.roof.validationCode).toBe('invalid_appendage_topology');
-    expect(store.derived.activeTrustGate).toMatchObject({
-      status: 'block',
-      canExport: false,
-      canReview: false,
-      label: 'Blocked: Invalid geometry',
-    });
-    expect(store.derived.objectWorkbench.houseForm.roof.appendageSupportedHostEdges).toEqual([]);
-    expect(store.derived.objectWorkbench.houseForm.roof.appendageSupportReason).toContain('Appendage bands require at least one continuous exterior perimeter run');
-  });
+  // PR-T8 (2026-05-29): appendage-support test removed with the appendage cull.
 
   it('derives active-side deck support diagnostics for attached and detached deck scenarios', () => {
     const attachedFixture = makeHouseFirstDeckSupportSnapshotFixture('rear_threshold_attached');

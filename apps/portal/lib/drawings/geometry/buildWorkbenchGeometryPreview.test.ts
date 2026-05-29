@@ -249,20 +249,6 @@ function setObjectFirstRoofIntent(
     ...(roof.primaryFallDirection ? { primaryFallDirection: roof.primaryFallDirection } : null),
     ...(roof.ridgeAxis ? { ridgeAxis: roof.ridgeAxis } : null),
     ...(roof.openGableEndIds ? { openGableEndIds: roof.openGableEndIds } : null),
-    appendage: {
-      ...houseForm.roofIntent.appendage,
-      ...(roof.appendage?.enabled !== undefined && roof.appendage.enabled !== null
-        ? { enabled: roof.appendage.enabled }
-        : null),
-      ...(roof.appendage?.form ? { form: roof.appendage.form } : null),
-      ...(roof.appendage?.hostEdge ? { hostEdge: roof.appendage.hostEdge } : null),
-      ...(roof.appendage?.pitchDeg !== undefined && roof.appendage.pitchDeg !== null
-        ? { pitchDeg: roof.appendage.pitchDeg }
-        : null),
-      ...(roof.appendage?.dropMm !== undefined && roof.appendage.dropMm !== null
-        ? { dropMm: roof.appendage.dropMm }
-        : null),
-    },
   };
   houseForm.roofIntentAuthored = true;
 }
@@ -1085,15 +1071,6 @@ describe('buildWorkbenchGeometryPreview', () => {
       primaryPitchDeg: '0',
       ridgeAxis: 'y',
       openGableEndIds: ['house-gable-end-y-1'],
-      // Milestone 13 session C: appendage capability is now enabled
-      // for `hipped` (previously gable-only), so an authored
-      // appendage on wrap_left rear now flags the host edge as
-      // invalid. Keep this fixture focused on ridge-axis healing by
-      // leaving appendage off.
-      appendage: {
-        ...houseForm.roofIntent.appendage,
-        enabled: false,
-      },
     };
 
     const preview = buildWorkbenchGeometryPreview({

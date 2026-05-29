@@ -7,8 +7,5 @@ export type HouseGableTerminalEnd = {
 };
 
 export { deriveHouseGableTerminalEndsFromFootprint as deriveHouseGableTerminalEnds } from './houseModel';
-export {
-  deriveHouseRoofAppendageSupportFromFootprint as deriveHouseRoofAppendageSupport,
-  type HouseRoofAppendageHostRun,
-  type HouseRoofAppendageSupportAnalysis,
-} from './houseModel';
+// PR-T8 (2026-05-29): appendage re-exports removed alongside the
+// appendage feature cull.

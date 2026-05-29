@@ -109,13 +109,6 @@ function applyObjectFirstCompatibilityDraft(input: {
       primaryFallDirection: roofPatch.primaryFallDirection ?? houseForm.roofIntent.primaryFallDirection,
       ridgeAxis: roofPatch.ridgeAxis ?? houseForm.roofIntent.ridgeAxis,
       openGableEndIds: roofPatch.openGableEndIds ?? houseForm.roofIntent.openGableEndIds,
-      appendage: {
-        enabled: roofPatch.appendage?.enabled ?? houseForm.roofIntent.appendage.enabled,
-        form: roofPatch.appendage?.form ?? houseForm.roofIntent.appendage.form,
-        hostEdge: roofPatch.appendage?.hostEdge ?? houseForm.roofIntent.appendage.hostEdge,
-        pitchDeg: roofPatch.appendage?.pitchDeg ?? houseForm.roofIntent.appendage.pitchDeg,
-        dropMm: roofPatch.appendage?.dropMm ?? houseForm.roofIntent.appendage.dropMm,
-      },
     };
   }
   if (input.compatibility.openings) {
@@ -142,13 +135,6 @@ function buildDraftWithRoofForm(form: HouseFormRoofIntentModel['form']): Estimat
         primaryFallDirection: 'negative_y',
         ridgeAxis: 'x',
         openGableEndIds: ['house-gable-end-x-1'],
-        appendage: {
-          enabled: true,
-          form: 'mono',
-          hostEdge: 'rear',
-          pitchDeg: '5',
-          dropMm: '450',
-        },
       },
     },
   });
@@ -333,16 +319,14 @@ describe('ObjectWorkbenchRail', () => {
     );
     expect(monoMarkup).toContain('Roof pitch (deg)');
     expect(monoMarkup).toContain('Mono fall direction');
-    expect(monoMarkup).toContain('Appendage band');
+    expect(monoMarkup).not.toContain('Appendage band');
     expect(monoMarkup).not.toContain('Hipped ridge orientation');
     expect(monoMarkup).not.toContain('Open hip ends as gables');
 
     // Milestone 13 session C: `'gable'` was retired from the form
     // picker. Legacy gable storage is mapped to hipped at the
     // normalize boundary; the rail exposes hipped + per-end
-    // toggles for the Dutch-hip topology that replaces it. Hipped
-    // also inherits the gable form's appendage capability, so the
-    // Appendage band section is now reachable on hipped.
+    // toggles for the Dutch-hip topology that replaces it.
     const hippedMarkup = renderToStaticMarkup(
       <ObjectWorkbenchRail {...buildRailProps({ draft: buildDraftWithRoofForm('hipped') })} />,
     );
@@ -351,6 +335,6 @@ describe('ObjectWorkbenchRail', () => {
     expect(hippedMarkup).toContain('Hipped ridge orientation');
     expect(hippedMarkup).toContain('Open hip ends as gables');
     expect(hippedMarkup).not.toContain('Mono fall direction');
-    expect(hippedMarkup).toContain('Appendage band');
+    expect(hippedMarkup).not.toContain('Appendage band');
   });
 });

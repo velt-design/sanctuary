@@ -299,7 +299,6 @@ function buildPartialOpenConfig(input: {
         roofPrimaryFallDirection: 'positive_y',
         roofRidgeAxis: input.ridgeAxis,
         openGableEndIds: input.openGableEndIds,
-        roofAppendage: null,
         attachmentStrategy: 'soffit_brackets',
         eave: {
           soffitDepthMm: 450,

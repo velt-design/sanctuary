@@ -37,13 +37,6 @@ function makePrimaryHouseFormDraft(
       primaryFallDirection: 'negative_y',
       ridgeAxis: 'x',
       openGableEndIds: [],
-      appendage: {
-        enabled: false,
-        form: 'mono',
-        hostEdge: 'rear',
-        pitchDeg: '5',
-        dropMm: '450',
-      },
     } as ObjectFirstHouseFormDraft['roofIntent'],
     storeyMode: 'single_storey',
     attachmentStrategy: null,

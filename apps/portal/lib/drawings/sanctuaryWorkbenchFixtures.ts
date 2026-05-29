@@ -194,10 +194,6 @@ function makeHouseRoofDraftFixtureDraft(input: {
   houseForm.roofIntent = {
     ...houseForm.roofIntent,
     ...input.roof,
-    appendage: {
-      ...houseForm.roofIntent.appendage,
-      ...(input.roof.appendage ?? {}),
-    },
   };
   return updateEstimateDrawingObjectFirstWorkbenchDraft({
     draft,

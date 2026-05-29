@@ -25,7 +25,8 @@ export type WorkbenchObjectFamily = 'house_forms' | 'decks' | 'openings' | 'perg
 export type HouseRoofForm = 'flat' | 'mono' | 'hipped';
 export type HouseRoofPrimaryFallDirection = 'positive_x' | 'negative_x' | 'positive_y' | 'negative_y';
 export type HouseRoofRidgeAxis = 'x' | 'y';
-export type HouseRoofAppendageForm = 'flat' | 'mono';
+// PR-T8 (2026-05-29): `HouseRoofAppendageForm` removed with the
+// appendage feature cull.
 export type DeckKind = 'deck' | 'landing';
 export type DeckShape = 'preset' | 'custom';
 export type DeckAttachmentMode = 'floating' | 'single_edge' | 'corner_dual_edge';
@@ -149,13 +150,7 @@ export type HouseFormRoofIntentModel = {
   primaryFallDirection: HouseRoofPrimaryFallDirection;
   ridgeAxis: HouseRoofRidgeAxis;
   openGableEndIds: string[];
-  appendage: {
-    enabled: boolean;
-    form: HouseRoofAppendageForm;
-    hostEdge: NonNullable<CalculatorModuleInputs['attachmentSide']>;
-    pitchDeg: string;
-    dropMm: string;
-  };
+  // PR-T8 (2026-05-29): `appendage` field removed.
 };
 
 export type HouseFormModel = {
@@ -637,9 +632,8 @@ function isHouseRoofRidgeAxis(value: unknown): value is HouseRoofRidgeAxis {
   return value === 'x' || value === 'y';
 }
 
-function isHouseRoofAppendageForm(value: unknown): value is HouseRoofAppendageForm {
-  return value === 'flat' || value === 'mono';
-}
+// PR-T8 (2026-05-29): `isHouseRoofAppendageForm` removed with the
+// appendage feature cull.
 
 function isCalculatorHouseStoreyMode(value: unknown): value is CalculatorHouseStoreyMode {
   return value === 'single_storey' || value === 'double_storey' || value === 'custom';
@@ -839,13 +833,9 @@ function normalizeHouseFormRoofIntent(
         : 'negative_y',
       ridgeAxis,
       openGableEndIds: mergedOpenIds,
-      appendage: {
-        enabled: typeof value?.appendage?.enabled === 'boolean' ? value.appendage.enabled : false,
-        form: isHouseRoofAppendageForm(value?.appendage?.form) ? value.appendage.form : 'flat',
-        hostEdge: normalizeAttachmentSide(value?.appendage?.hostEdge),
-        pitchDeg: trimNullableString(value?.appendage?.pitchDeg) ?? '0',
-        dropMm: trimNullableString(value?.appendage?.dropMm) ?? '0',
-      },
+      // PR-T8 (2026-05-29): `appendage` normalisation removed with the
+      // appendage feature cull. Persisted JSON may still carry the field;
+      // we silently drop it on read.
     };
   }
 
@@ -858,13 +848,7 @@ function normalizeHouseFormRoofIntent(
       : 'negative_y',
     ridgeAxis,
     openGableEndIds,
-    appendage: {
-      enabled: typeof value?.appendage?.enabled === 'boolean' ? value.appendage.enabled : false,
-      form: isHouseRoofAppendageForm(value?.appendage?.form) ? value.appendage.form : 'flat',
-      hostEdge: normalizeAttachmentSide(value?.appendage?.hostEdge),
-      pitchDeg: trimNullableString(value?.appendage?.pitchDeg) ?? '0',
-      dropMm: trimNullableString(value?.appendage?.dropMm) ?? '0',
-    },
+    // PR-T8 (2026-05-29): same as above.
   };
 }
 

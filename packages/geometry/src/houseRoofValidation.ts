@@ -17,12 +17,13 @@ export type HouseRoofGeometryKind =
   | 'rectangular_hipped'
   | 'rectilinear_joined_hipped';
 
+// PR-T8 (2026-05-29): `appendage` capability removed from the controls
+// shape with the appendage feature cull.
 export type HouseRoofControls = {
   pitch: boolean;
   material: true;
   primaryFallDirection: boolean;
   ridgeAxis: boolean;
-  appendage: boolean;
 };
 
 export type HouseRoofFormBehavior = {
@@ -51,7 +52,6 @@ export const HOUSE_ROOF_FORM_BEHAVIORS: Record<HouseRoofForm, HouseRoofFormBehav
       material: true,
       primaryFallDirection: false,
       ridgeAxis: false,
-      appendage: false,
     },
     selectedFormFootprintRequirement: 'any',
   },
@@ -61,7 +61,6 @@ export const HOUSE_ROOF_FORM_BEHAVIORS: Record<HouseRoofForm, HouseRoofFormBehav
       material: true,
       primaryFallDirection: true,
       ridgeAxis: false,
-      appendage: true,
     },
     selectedFormFootprintRequirement: 'orthogonal',
   },
@@ -71,13 +70,6 @@ export const HOUSE_ROOF_FORM_BEHAVIORS: Record<HouseRoofForm, HouseRoofFormBehav
       material: true,
       primaryFallDirection: false,
       ridgeAxis: true,
-      // Milestone 13 session C: hipped now subsumes the retired gable
-      // form (gable topology == hipped + all-open terminal ends), and
-      // the appendage band was supported on gable. Keep appendage
-      // capability true on hipped so the rail's appendage controls
-      // remain reachable on legacy-gable workflows after the
-      // narrowing.
-      appendage: true,
     },
     selectedFormFootprintRequirement: 'orthogonal',
   },
@@ -143,42 +135,35 @@ export function normalizeHouseRoofPitchInputForForm(input: {
   return rawValue;
 }
 
+// PR-T8 (2026-05-29): `appendageFootprintRequirement` /
+// `appendageSupported` removed from the capabilities shape.
 export type HouseRoofCapabilities = {
   roofForm: HouseRoofForm;
   footprintTopology: HouseRoofFootprintTopology;
   controls: HouseRoofControls;
   selectedFormFootprintRequirement: HouseRoofFootprintRequirement;
   selectedFormSupported: boolean;
-  appendageFootprintRequirement: 'rectangular';
-  appendageSupported: boolean;
 };
 
+// PR-T8 (2026-05-29): `invalid_appendage_topology` and
+// `invalid_appendage_host_edge` codes removed alongside the appendage
+// feature. `blockedBy: 'appendage'` removed too.
 export type HouseRoofSelectionValidation = {
   status: 'valid' | 'invalid';
-  blockedBy: 'selected_form' | 'appendage' | 'orientation' | null;
+  blockedBy: 'selected_form' | 'orientation' | null;
   code:
     | 'unsupported_roof_topology'
     | 'unsupported_gable_topology'
     | 'unsupported_hipped_topology'
-    | 'invalid_appendage_topology'
-    | 'invalid_appendage_host_edge'
     | 'invalid_mono_fall_direction'
     | 'invalid_ridge_axis'
     | null;
   message: string | null;
 };
 
-export type HouseRoofAppendageSupport = {
-  supportedHostEdges: AttachmentSide[];
-  blockedReasonsBySide?: Partial<Record<AttachmentSide, string>>;
-};
-
-function formatAttachmentSideList(sides: AttachmentSide[]): string {
-  if (sides.length === 0) return 'none';
-  return sides
-    .map((side) => side.charAt(0).toUpperCase() + side.slice(1))
-    .join(', ');
-}
+// PR-T8 (2026-05-29): `HouseRoofAppendageSupport` type + the
+// `formatAttachmentSideList` helper (only used to format appendage
+// error messages) removed alongside the appendage feature cull.
 
 export function preferredMonoFallDirectionForAttachmentSide(
   attachmentSide: AttachmentSide,
@@ -289,34 +274,8 @@ export function deriveHouseRoofGeometryKind(input: {
   }
 }
 
-export function deriveHouseRoofAppendageSupportedHostEdges(input: {
-  footprint: Polygon3;
-}): AttachmentSide[] {
-  if (!isOrthogonalFootprint(input.footprint)) return [];
-  const minX = Math.min(...input.footprint.map((point) => point.x));
-  const maxX = Math.max(...input.footprint.map((point) => point.x));
-  const minY = Math.min(...input.footprint.map((point) => point.y));
-  const maxY = Math.max(...input.footprint.map((point) => point.y));
-  const counts: Record<AttachmentSide, number> = {
-    rear: 0,
-    front: 0,
-    left: 0,
-    right: 0,
-  };
-  for (let index = 0; index < input.footprint.length; index += 1) {
-    const start = input.footprint[index]!;
-    const end = input.footprint[(index + 1) % input.footprint.length]!;
-    if (Math.abs(start.y - end.y) <= 1e-6) {
-      if (Math.abs(start.y - minY) <= 1e-6 && Math.abs(end.y - minY) <= 1e-6) counts.rear += 1;
-      if (Math.abs(start.y - maxY) <= 1e-6 && Math.abs(end.y - maxY) <= 1e-6) counts.front += 1;
-    }
-    if (Math.abs(start.x - end.x) <= 1e-6) {
-      if (Math.abs(start.x - minX) <= 1e-6 && Math.abs(end.x - minX) <= 1e-6) counts.left += 1;
-      if (Math.abs(start.x - maxX) <= 1e-6 && Math.abs(end.x - maxX) <= 1e-6) counts.right += 1;
-    }
-  }
-  return (['rear', 'front', 'left', 'right'] as const).filter((side) => counts[side] === 1);
-}
+// PR-T8 (2026-05-29): `deriveHouseRoofAppendageSupportedHostEdges`
+// removed alongside the appendage feature cull.
 
 export function deriveHouseRoofCapabilities(input: {
   roofForm: HouseRoofForm;
@@ -324,9 +283,6 @@ export function deriveHouseRoofCapabilities(input: {
 }): HouseRoofCapabilities {
   const footprintTopology = classifyHouseRoofFootprintTopology(input.footprint);
   const roofGeometryKind = deriveHouseRoofGeometryKind(input);
-  const appendageSupportedHostEdges = deriveHouseRoofAppendageSupportedHostEdges({
-    footprint: input.footprint,
-  });
   const behavior = getHouseRoofFormBehavior(input.roofForm);
   const selectedFormFootprintRequirement = behavior.selectedFormFootprintRequirement;
 
@@ -339,15 +295,12 @@ export function deriveHouseRoofCapabilities(input: {
       input.roofForm === 'flat'
         ? true
         : roofGeometryKind !== null && requirementSatisfied(footprintTopology, selectedFormFootprintRequirement),
-    appendageFootprintRequirement: 'rectangular',
-    appendageSupported: appendageSupportedHostEdges.length > 0,
   };
 }
 
 export function validateHouseRoofSelection(input: {
   roofForm: HouseRoofForm;
   footprint: Polygon3;
-  appendageEnabled: boolean;
   roofPrimaryFallDirection?: HouseRoofPrimaryFallDirection | null;
   roofPrimaryFallDirectionExplicit?: boolean;
   preferredMonoFallDirection?: HouseRoofPrimaryFallDirection | null;
@@ -355,18 +308,11 @@ export function validateHouseRoofSelection(input: {
   roofRidgeAxis?: HouseRoofRidgeAxis | null;
   roofRidgeAxisExplicit?: boolean;
   preferredRidgeAxis?: HouseRoofRidgeAxis | null;
-  appendageHostEdge?: AttachmentSide | null;
-  appendageSupport?: HouseRoofAppendageSupport | null;
 }): HouseRoofSelectionValidation {
   const capabilities = deriveHouseRoofCapabilities({
     roofForm: input.roofForm,
     footprint: input.footprint,
   });
-  const appendageSupportedHostEdges =
-    input.appendageSupport?.supportedHostEdges ??
-    deriveHouseRoofAppendageSupportedHostEdges({
-      footprint: input.footprint,
-    });
 
   if (!capabilities.selectedFormSupported) {
     if (input.roofForm === 'mono') {
@@ -418,30 +364,9 @@ export function validateHouseRoofSelection(input: {
     };
   }
 
-  if (input.appendageEnabled && appendageSupportedHostEdges.length === 0) {
-    return {
-      status: 'invalid',
-      blockedBy: 'appendage',
-      code: 'invalid_appendage_topology',
-      message: 'Appendage bands require at least one continuous exterior perimeter run on the current house footprint.',
-    };
-  }
-
-  if (
-    input.appendageEnabled &&
-    input.appendageHostEdge &&
-    !appendageSupportedHostEdges.includes(input.appendageHostEdge)
-  ) {
-    const blockedReason = input.appendageSupport?.blockedReasonsBySide?.[input.appendageHostEdge] ?? null;
-    return {
-      status: 'invalid',
-      blockedBy: 'appendage',
-      code: 'invalid_appendage_host_edge',
-      message: blockedReason
-        ? `${blockedReason} Supported edges: ${formatAttachmentSideList(appendageSupportedHostEdges)}.`
-        : `The ${input.appendageHostEdge} edge does not resolve to one continuous exterior appendage run on this footprint. Supported edges: ${formatAttachmentSideList(appendageSupportedHostEdges)}.`,
-    };
-  }
+  // PR-T8 (2026-05-29): the two appendage-related validation branches
+  // (`invalid_appendage_topology` and `invalid_appendage_host_edge`)
+  // were removed alongside the appendage feature cull.
 
   return {
     status: 'valid',

@@ -55,15 +55,6 @@ function houseFormToRawHouseInput(houseForm: HouseFormModel): RawHouseInput {
     roofPrimaryFallDirection: houseForm.roofIntent.primaryFallDirection,
     roofRidgeAxis: houseForm.roofIntent.ridgeAxis,
     openGableEndIds: houseForm.roofIntent.openGableEndIds,
-    roofAppendage: houseForm.roofIntent.appendage.enabled
-      ? {
-          enabled: true,
-          form: houseForm.roofIntent.appendage.form,
-          hostEdge: houseForm.roofIntent.appendage.hostEdge,
-          pitchDeg: houseForm.roofIntent.appendage.pitchDeg,
-          dropMm: houseForm.roofIntent.appendage.dropMm,
-        }
-      : null,
     attachmentStrategy: houseForm.attachmentStrategy,
     eaveHeightM: houseForm.eaveHeightM ?? null,
     wallHeightM: houseForm.wallHeightM ?? null,

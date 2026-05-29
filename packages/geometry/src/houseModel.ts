@@ -11,7 +11,6 @@ import type {
   HouseAttachmentTarget3D,
   HouseModel3D,
   HouseModelConfig,
-  HouseRoofAppendageForm,
   HouseReferenceGeometry,
   HouseRoofFeature3D,
   HouseRoofFeatureKind,
@@ -36,7 +35,6 @@ import { buildHouseModelConfig, resolveHouseAttachmentStrategy } from './normali
 import {
   normalizeHouseRoofPitchDegForForm,
   validateHouseRoofSelection,
-  type HouseRoofAppendageSupport,
 } from './houseRoofValidation';
 import {
   crossProduct,
@@ -128,9 +126,7 @@ import {
   type RoofPoint2,
 } from './house/_internal';
 import {
-  buildAppendagePerimeterEdges,
   buildHouseRoofPerimeterEdges,
-  buildMonoAppendagePerimeterEdges,
   classifyHousePerimeterEdges,
   roofPlanePerimeterOverlapSegment,
   roofPlaneTouchesPerimeterEdge,
@@ -234,14 +230,7 @@ import {
   buildPrimaryHouseRoof,
   invalidHouseRoof,
 } from './house/roofPrimary';
-import {
-  buildHouseRoofAppendageBand,
-  buildSharedHouseRoof,
-  deriveHouseRoofAppendageSupportFromPrimaryRoof,
-  type HouseRoofAppendageHostRun,
-  type HouseRoofAppendageSupportAnalysis,
-} from './house/roofAppendages';
-export type { HouseRoofAppendageHostRun, HouseRoofAppendageSupportAnalysis } from './house/roofAppendages';
+import { buildSharedHouseRoof } from './house/sharedHouseRoof';
 import {
   boundaryZRange,
   buildMiteredOffsetStripFootprints,
@@ -294,48 +283,10 @@ import { buildHouseOpenings } from './house/openings';
 
 
 
-export function deriveHouseRoofAppendageSupportFromFootprint(input: {
-  sourceFootprint: Polygon3;
-  eaveHeightMm: number;
-  eaveOverhangMm: number;
-  roofPitchDeg: number;
-  roofForm: HouseRoofForm;
-  roofPrimaryFallDirection: HouseRoofPrimaryFallDirection;
-  roofRidgeAxis: HouseRoofRidgeAxis;
-  attachmentSourceEdgeId?: string | null;
-}): HouseRoofAppendageSupportAnalysis {
-  const wallBox = boundingBox(input.sourceFootprint);
-  const baseEavePolygon =
-    offsetFootprintPolygon(input.sourceFootprint, input.eaveOverhangMm) ?? [
-      point(wallBox.minX - input.eaveOverhangMm, wallBox.minY - input.eaveOverhangMm, 0),
-      point(wallBox.maxX + input.eaveOverhangMm, wallBox.minY - input.eaveOverhangMm, 0),
-      point(wallBox.maxX + input.eaveOverhangMm, wallBox.maxY + input.eaveOverhangMm, 0),
-      point(wallBox.minX - input.eaveOverhangMm, wallBox.maxY + input.eaveOverhangMm, 0),
-    ];
-  const eavePolygon = buildAttachmentAwareMonoEavePolygon({
-    footprint: input.sourceFootprint,
-    eavePolygon: baseEavePolygon,
-    roofForm: input.roofForm,
-    attachmentSourceEdgeId: input.attachmentSourceEdgeId ?? null,
-  });
-  const primaryRoof = buildPrimaryHouseRoof({
-    sourceFootprint: input.sourceFootprint,
-    eavePolygon,
-    eaveHeightMm: input.eaveHeightMm,
-    roofPitchDeg: input.roofPitchDeg,
-    roofForm: input.roofForm,
-    roofPrimaryFallDirection: input.roofPrimaryFallDirection,
-    roofRidgeAxis: input.roofRidgeAxis,
-  });
-  return deriveHouseRoofAppendageSupportFromPrimaryRoof({
-    sourceFootprint: input.sourceFootprint,
-    eavePolygon,
-    eaveHeightMm: input.eaveHeightMm,
-    roofForm: input.roofForm,
-    primaryRoof,
-    attachmentSourceEdgeId: input.attachmentSourceEdgeId ?? null,
-  });
-}
+// PR-T8 (2026-05-29): `deriveHouseRoofAppendageSupportFromFootprint` was
+// the public entry point for the inspector to ask "is appendage
+// supported on this footprint?" before showing the editor. Removed with
+// the rest of the appendage feature.
 
 
 
@@ -398,7 +349,11 @@ export function buildHouseModel3D(input: {
     eaveHeightMm,
     fasciaHeightMm,
   });
-  const appendageJoinSourceEdgeId =
+  // PR-T8 (2026-05-29): renamed from `appendageJoinSourceEdgeId`. The
+  // value itself is the attachment target's source edge id — the
+  // mono-eave builder still needs it to know where the pergola joins,
+  // independent of any appendage feature.
+  const attachmentJoinSourceEdgeId =
     preliminaryAttachmentTarget.kind === 'zone' && preliminaryAttachmentTarget.line
       ? preliminaryAttachmentTarget.sourceEdgeId ?? null
       : null;
@@ -414,7 +369,7 @@ export function buildHouseModel3D(input: {
     footprint,
     eavePolygon: baseEavePolygon,
     roofForm,
-    attachmentSourceEdgeId: appendageJoinSourceEdgeId,
+    attachmentSourceEdgeId: attachmentJoinSourceEdgeId,
   });
   // Resolve which terminal ends are open BEFORE building the roof, so
   // the unified `buildRectangularRoof` (called inside the hipped path
@@ -442,8 +397,6 @@ export function buildHouseModel3D(input: {
     roofForm,
     roofPrimaryFallDirection,
     roofRidgeAxis,
-    roofAppendage: model.roofAppendage ?? null,
-    attachmentSourceEdgeId: appendageJoinSourceEdgeId,
     openTerminalEndIds: [...requestedOpenTerminalEndIds],
   });
   const wallSegments = buildWallSegments(footprint, wallHeightMm, roof);
@@ -537,6 +490,11 @@ export function buildHouseModel3D(input: {
     eaveHeightMm,
     fasciaHeightMm,
   });
+  // PR-T8 (2026-05-29): previously the perimeter-edge set was
+  // `[...perimeterEdges, ...buildAppendagePerimeterEdges(...)]`. With
+  // appendages gone, no roof plane carries `roofGeometry: 'appendage_band'`
+  // metadata, so the appendage builder always returned []. Inlined as
+  // just `perimeterEdges`.
   const perimeterEdges = buildHouseRoofPerimeterEdges({
     footprint,
     eavePolygon,
@@ -545,22 +503,18 @@ export function buildHouseModel3D(input: {
     eaveHeightMm,
     joinSourceEdgeId: attachmentTarget.sourceEdgeId ?? null,
   });
-  const appendagePerimeterEdges = buildAppendagePerimeterEdges({
-    roofPlanes: roof.roofPlanes,
-  });
-  const allPerimeterEdges = [...perimeterEdges, ...appendagePerimeterEdges];
-  const gutterLines = buildPolygonGutterLines({ perimeterEdges: allPerimeterEdges });
+  const gutterLines = buildPolygonGutterLines({ perimeterEdges });
   const gutterBoundaries = buildPolygonGutterBoundaries({
-    perimeterEdges: allPerimeterEdges,
+    perimeterEdges,
     gutterWidthMm,
     gutterProjectionMm,
   });
   const fasciaPolygons = buildPolygonFasciaPolygons({
-    perimeterEdges: allPerimeterEdges,
+    perimeterEdges,
     fasciaHeightMm,
   });
   const soffitPolygons = buildPolygonSoffitPolygons({
-    perimeterEdges: allPerimeterEdges,
+    perimeterEdges,
     roofForm,
     roofPlanes: roof.roofPlanes,
   });
@@ -573,7 +527,7 @@ export function buildHouseModel3D(input: {
             roofFeatures: roof.roofFeatures,
           }),
           ...buildPerimeterFlashings({
-            perimeterEdges: allPerimeterEdges,
+            perimeterEdges: perimeterEdges,
             roofPlanes: roof.roofPlanes,
             attachmentTarget,
           }),
@@ -690,7 +644,7 @@ export function buildHouseModel3D(input: {
   // consumers re-filter on `edgeKind` when they truly need drains only
   // (gutter rendering, flashing rules). Pergola snap is the primary
   // attachment usage and it needs the full perimeter.
-  const roofEaves = allPerimeterEdges
+  const roofEaves = perimeterEdges
     .filter(
       (edge) =>
         edge.edgeKind === 'drain_eave' ||
@@ -721,7 +675,7 @@ export function buildHouseModel3D(input: {
       roofPlanes: roofPlanesForSolids,
       roofForm,
       decks,
-      perimeterEdges: allPerimeterEdges,
+      perimeterEdges: perimeterEdges,
       soffitPolygons,
       fasciaPolygons,
       gutterLines,

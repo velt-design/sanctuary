@@ -203,47 +203,9 @@ export function buildHouseRoofPerimeterEdges(input: {
   });
 }
 
-export function buildMonoAppendagePerimeterEdges(input: {
-  roofPlane: RoofPlane3D;
-}): HouseRoofPerimeterEdge[] {
-  const boundary = input.roofPlane.boundary;
-  if (boundary.length < 4) return [];
-
-  const baseEdges = boundary.map((roofStart, index) => {
-    const roofEnd = boundary[(index + 1) % boundary.length]!;
-    const oppositeStart = boundary[(index + 3) % boundary.length]!;
-    const oppositeEnd = boundary[(index + 2) % boundary.length]!;
-    return {
-      index,
-      sourceEdgeId: `${input.roofPlane.id}-edge-${index + 1}`,
-      edgeKind: 'drain_eave' as HouseRoofPerimeterEdgeKind,
-      perimeterId: input.roofPlane.id,
-      perimeterPolygon: boundary,
-      wallStart: oppositeStart,
-      wallEnd: oppositeEnd,
-      eaveStart: roofStart,
-      eaveEnd: roofEnd,
-      roofStart,
-      roofEnd,
-      sourceRoofPlaneId: input.roofPlane.id,
-      flashingRole: null,
-    };
-  });
-
-  return classifyHousePerimeterEdges({
-    edges: baseEdges,
-    joinSourceEdgeId: null,
-    roofForm: 'mono',
-    roofPlanes: [input.roofPlane],
-  });
-}
-
-export function buildAppendagePerimeterEdges(input: {
-  roofPlanes: RoofPlane3D[];
-}): HouseRoofPerimeterEdge[] {
-  return input.roofPlanes.flatMap((roofPlane) =>
-    roofPlane.metadata?.roofGeometry === 'appendage_band'
-      ? buildMonoAppendagePerimeterEdges({ roofPlane })
-      : [],
-  );
-}
+// PR-T8 (2026-05-29): `buildMonoAppendagePerimeterEdges` and
+// `buildAppendagePerimeterEdges` removed alongside the appendage
+// feature. The latter filtered roof planes by
+// `roofGeometry === 'appendage_band'` metadata; no roof plane carries
+// that metadata anymore, so the call became a permanent no-op before
+// removal. The former was only called from inside the no-op filter.

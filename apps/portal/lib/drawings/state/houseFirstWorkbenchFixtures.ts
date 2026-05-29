@@ -255,16 +255,7 @@ export function makeHouseFirstOnePergolaFixture(): HouseFirstWorkbenchProjectMod
         ridgeAxis: 'x',
         openGableEndIds: [],
         terminalEnds: [],
-        appendage: {
-          enabled: false,
-          form: 'mono',
-          hostEdge: 'rear',
-          pitchDeg: '5',
-          dropMm: '450',
-        },
         geometryKind: null,
-        appendageSupportedHostEdges: ['rear', 'front', 'left', 'right'],
-        appendageSupportReason: null,
         validation: {
           status: 'valid',
           code: null,

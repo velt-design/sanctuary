@@ -52,13 +52,6 @@ function makeHouseForm(input: {
       primaryFallDirection: 'negative_y',
       ridgeAxis: 'x',
       openGableEndIds: [],
-      appendage: {
-        enabled: false,
-        form: 'flat',
-        hostEdge: input.attachmentSide,
-        pitchDeg: '0',
-        dropMm: '0',
-      },
     },
     storeyMode: 'single_storey',
     attachmentStrategy: null,

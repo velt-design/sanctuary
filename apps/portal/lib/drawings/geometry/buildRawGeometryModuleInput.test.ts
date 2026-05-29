@@ -56,20 +56,6 @@ function applyObjectFirstCompatibilityDraft(input: {
       ...(roof.primaryFallDirection ? { primaryFallDirection: roof.primaryFallDirection } : null),
       ...(roof.ridgeAxis ? { ridgeAxis: roof.ridgeAxis } : null),
       ...(roof.openGableEndIds ? { openGableEndIds: roof.openGableEndIds } : null),
-      appendage: {
-        ...houseForm.roofIntent.appendage,
-        ...(roof.appendage?.enabled !== undefined && roof.appendage.enabled !== null
-          ? { enabled: roof.appendage.enabled }
-          : null),
-        ...(roof.appendage?.form ? { form: roof.appendage.form } : null),
-        ...(roof.appendage?.hostEdge ? { hostEdge: roof.appendage.hostEdge } : null),
-        ...(roof.appendage?.pitchDeg !== undefined && roof.appendage.pitchDeg !== null
-          ? { pitchDeg: roof.appendage.pitchDeg }
-          : null),
-        ...(roof.appendage?.dropMm !== undefined && roof.appendage.dropMm !== null
-          ? { dropMm: roof.appendage.dropMm }
-          : null),
-      },
     };
   }
   if (input.compatibility.decks) {
@@ -391,12 +377,6 @@ describe('buildRawGeometryModuleInput', () => {
           primaryPitchDeg: '18',
           primaryFallDirection: 'negative_x',
           ridgeAxis: 'y',
-          appendage: {
-            enabled: true,
-            hostEdge: 'front',
-            pitchDeg: '4',
-            dropMm: '500',
-          },
         },
       },
     });
@@ -425,13 +405,6 @@ describe('buildRawGeometryModuleInput', () => {
     expect(raw.houseContext.roofPitchDeg).toBe('18');
     expect(raw.houseContext.roofPrimaryFallDirection).toBe('negative_x');
     expect(raw.houseContext.roofRidgeAxis).toBe('x');
-    expect(raw.houseContext.roofAppendage).toEqual({
-      enabled: true,
-      form: 'mono',
-      hostEdge: 'front',
-      pitchDeg: '4',
-      dropMm: '500',
-    });
   });
 
   it('maps corrected derived shared house roof orientation into raw house context without explicit overrides', () => {

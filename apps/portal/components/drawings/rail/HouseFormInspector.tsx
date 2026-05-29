@@ -24,7 +24,7 @@ import styles from './WorkbenchRail.module.css';
  * What stays:
  *   • The footprint-sections factory (footprint mode / preset / dimensions)
  *   • The roof-sections factory (roof form / pitch / material / fall /
- *     ridge / open-end toggles / appendage)
+ *     ridge / open-end toggles)
  *   • The legacy-context house fields (eave / wall / soffit / fascia /
  *     gutter / overhang) surfaced via the embedded SanctuaryWorkbenchRail
  *     in canonical_extras mode — these still belong in this inspector
@@ -35,7 +35,7 @@ import styles from './WorkbenchRail.module.css';
  *                + material (the editable identity of the form)
  *   DIMENSIONS = the canonical-extras house dimensions (eave / wall /
  *                soffit / fascia / gutters / overhang)
- *   ADVANCED   = footprint mode + dimension params + roof appendage +
+ *   ADVANCED   = footprint mode + dimension params +
  *                fall direction / ridge orientation / open-end toggles
  *
  * For now PRIMARY + ADVANCED come from the footprint/roof factories

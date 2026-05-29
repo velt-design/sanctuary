@@ -33,6 +33,7 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 | 2026-05-01 | Plan Rendering | Promoted | Projection-backed plans must suppress context/reference bodies as normal visuals and invert the projection transform for deck drag coordinates. |
 | 2026-05-01 | Plan Rendering | Promoted | Geometry-ready plan selection and drag must use render-graph layer ownership and canonical preview/commit/rebuild round trips. |
 | 2026-05-01 | Plan Rendering | Promoted | Projection-backed overlays must bind visible selection/hit geometry to committed top-projection polygons, not reference footprints. |
+| 2026-05-29 | Workbench Cleanup | Active | PR-T8: roof appendage band feature removed end-to-end; future shape edits go through the gumball, not inspector number fields. |
 | 2026-05-01 | Plan Rendering | Promoted | Geometry-ready Model Space is a hard top-projection-only render path; legacy/context/reference/opening overlays stay out of normal visuals. |
 | 2026-05-01 | Design Workbench Architecture | Promoted | Split workbench ownership contract-first: coordinate adapters and render graphs leave React presenters before moving tools/renderers. |
 | 2026-05-01 | Deck Interaction | Promoted | Projection-backed deck snapping must use top-projection frames live and object frames only at the commit boundary. |
@@ -946,3 +947,32 @@ Current guardrail: do not add new `from '@/lib/drawings/state/houseFirstWorkbenc
 Promoted to: None
 
 Related docs/tests: [apps/portal/components/drawings/viewports/ModelSpaceViewport.tsx](../apps/portal/components/drawings/viewports/ModelSpaceViewport.tsx) (the legacy imports at lines 25-30), [apps/portal/components/drawings/rail/objectWorkbenchImportGuards.test.ts](../apps/portal/components/drawings/rail/objectWorkbenchImportGuards.test.ts) (the 2 failing assertions at lines 270-272 and 408-413), 2026-05-04 entry "Model Space Top renders through Geometry3DViewport lockedViewPreset='top'" (the canonical architecture the guard enforces).
+
+### 2026-05-29 - Workbench Cleanup - PR-T8 Appendage Feature Cull
+
+Area: Design Workbench / House Geometry
+
+Status: Active
+
+Decision or mistake: removed the roof "appendage band" feature end-to-end -- types, UI, geometry solver, validation codes, fixtures, and dedicated tests. The feature surfaced an editable secondary roof band attached to a chosen house-edge ("hostEdge") with its own pitch, drop, and form, but no production flow consumed it and the right inspector exposed dead fields with no downstream effect.
+
+Why it mattered: the appendage controls were dead UI -- they sat in the inspector but nothing in cost engine, rendering, or estimates read the resulting `HouseRoofModel.appendage` shape. Keeping them around accumulated drag (validation branches, capability flags, host-edge support analysis, geometry-side perimeter builders, and ~12 test surfaces) without delivering a feature. Each subsequent house-roof PR had to thread the appendage shape through, increasing the cognitive load on otherwise-simple changes.
+
+Current guardrail: shape edits to the house roof (pitch tweaks at one corner, mansard bands, lean-tos) go through the gumball in the 3D viewport in a future PR -- not through inspector number fields. If a future engineer reaches for an "add a roof band to this edge" inspector control again, treat it as a smell that the gumball is missing a capability instead of resurrecting the appendage feature. The deleted code lives at the PR-T8 commit -- check git history before re-deriving.
+
+What was deleted (production source returns zero hits for `[Aa]ppendage` outside tombstone comments + tests):
+
+- `packages/geometry/src/house/roofAppendages.ts` -- deleted entirely. The single load-bearing function (`buildSharedHouseRoof`) was lifted into `packages/geometry/src/house/sharedHouseRoof.ts`.
+- Geometry types: `HouseRoofAppendageForm`, `HouseRoofAppendageSupport`, `HouseRoofAppendageHostRun`, `HouseRoofAppendageSupportAnalysis`, plus the `roofAppendage` field on `RawHouseInput` and friends.
+- Geometry helpers: `deriveHouseRoofAppendageSupport`, `deriveHouseRoofAppendageSupportedHostEdges`, `deriveHouseRoofAppendageSupportFromFootprint`, `deriveHouseRoofAppendageSupportFromPrimaryRoof`, `buildHouseRoofAppendageBand`, `buildMonoAppendagePerimeterEdges`, `buildAppendagePerimeterEdges`, `resolveHouseRoofAppendageForm`, `formatAttachmentSideList`.
+- Capability flags: `HouseRoofCapabilities.appendageSupported`, `HouseRoofCapabilities.appendageFootprintRequirement`, `HouseRoofControls.appendage`.
+- Validation: `'invalid_appendage_topology'` and `'invalid_appendage_host_edge'` validation codes; `blockedBy: 'appendage'`.
+- Portal state: `HouseRoofAppendageForm`, `HouseRoofModel.appendage`, `HouseRoofModel.appendageSupportedHostEdges`, `HouseRoofModel.appendageSupportReason`, `HouseRoofProvenance.appendage`, `HouseFirstRoofDraft.appendage`, plus `isHouseRoofAppendageForm`, `normalizeAppendageForm`, `hasExplicitRoofAppendage`, `roofFormAcceptsAppendage`.
+- UI: appendage controls in `HouseFormRoofSections.tsx`, appendage rows in `WorkbenchDiagnosticsPanel.tsx`, appendage inspector model fields in `objectWorkbenchInspectorModel.ts` and `objectWorkbenchStatusModel.ts`.
+- Tests: 4 dedicated `houseModel.test.ts` blocks, 1 `houseFirstWorkbenchAdapter.test.ts` block (re-skipped, asserts no longer derivable), 1 `drawingWorkbenchStore.test.ts` block (removed), the appendage gate suite in `houseRoofFormAdapter.test.ts`, the appendage invalid-diagnostics test in `DesignWorkbenchEstimateClient.test.tsx`, plus appendage entries scrubbed from every fixture (`objectFirstWorkbenchFixtures.ts`, `houseFirstWorkbenchFixtures.ts`, multiple test fixtures inline).
+
+Legacy storage: any persisted draft still carrying an `appendage` block is silently dropped at the workbench draft normalize boundary (`normalizeHouseFormRoofIntent`); no migration path is needed because the only consumers were the inspector + the deleted geometry path.
+
+Promoted to: None
+
+Related docs/tests: [packages/geometry/src/house/sharedHouseRoof.ts](../packages/geometry/src/house/sharedHouseRoof.ts), [packages/geometry/src/houseRoofValidation.ts](../packages/geometry/src/houseRoofValidation.ts), [apps/portal/lib/drawings/state/houseRoofFormAdapter.ts](../apps/portal/lib/drawings/state/houseRoofFormAdapter.ts), [apps/portal/components/drawings/rail/HouseFormRoofSections.tsx](../apps/portal/components/drawings/rail/HouseFormRoofSections.tsx), [docs/appendage-removal-plan.md](appendage-removal-plan.md) (the PR-T8 plan).

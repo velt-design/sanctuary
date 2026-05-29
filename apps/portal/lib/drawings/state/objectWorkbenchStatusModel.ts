@@ -1,7 +1,5 @@
 import {
   deriveHouseGableTerminalEnds,
-  deriveHouseRoofAppendageSupportedHostEdges,
-  deriveHouseRoofAppendageSupport,
   deriveHouseRoofCapabilities,
   deriveHouseRoofGeometryKind,
   getHouseRoofFormBehavior,
@@ -52,8 +50,7 @@ export type ObjectWorkbenchRoofProvenance = Partial<
     | 'primaryPitchDeg'
     | 'primaryFallDirection'
     | 'ridgeAxis'
-    | 'openGableEndIds'
-    | 'appendage',
+    | 'openGableEndIds',
     string | null
   >
 >;
@@ -62,9 +59,6 @@ export type ObjectWorkbenchRoofStatus = {
   form: HouseFormRoofIntentModel['form'];
   controls: ReturnType<typeof getHouseRoofFormBehavior>['controls'];
   selectedFormSupported: boolean;
-  appendageSupported: boolean;
-  appendageSupportedHostEdges: AttachmentSide[];
-  appendageSupportReason: string | null;
   terminalEnds: Array<{
     id: string;
     label: string;
@@ -274,7 +268,6 @@ function buildRoofProvenance(houseForm: HouseFormModel): ObjectWorkbenchRoofProv
       primaryFallDirection: 'default_fallback',
       ridgeAxis: 'default_fallback',
       openGableEndIds: 'default_fallback',
-      appendage: 'default_fallback',
     };
   }
   const source = 'object_first_draft';
@@ -285,7 +278,6 @@ function buildRoofProvenance(houseForm: HouseFormModel): ObjectWorkbenchRoofProv
     primaryFallDirection: source,
     ridgeAxis: source,
     openGableEndIds: source,
-    appendage: source,
   };
 }
 
@@ -310,30 +302,6 @@ function buildRoofStatus(input: {
     roofForm: intent.form,
     footprint,
   });
-  const eaveHeightMm = parseFiniteNumber(houseForm.eaveHeightM, 2.4) * 1000;
-  const eaveOverhangMm = parseFiniteNumber(houseForm.eaveOverhangMm, 450);
-  const pitchDeg = parseFiniteNumber(intent.primaryPitchDeg, intent.form === 'flat' ? 0 : 5);
-  const appendageSupport = intent.appendage.enabled
-    ? deriveHouseRoofAppendageSupport({
-        sourceFootprint: footprint,
-        eaveHeightMm,
-        eaveOverhangMm,
-        roofPitchDeg: pitchDeg,
-        roofForm: intent.form,
-        roofPrimaryFallDirection: intent.primaryFallDirection,
-        roofRidgeAxis: intent.ridgeAxis,
-      })
-    : {
-        supportedHostEdges: deriveHouseRoofAppendageSupportedHostEdges({
-          footprint,
-        }),
-        blockedReasonsBySide: {},
-      };
-  const rawAppendageSupportedHostEdges = appendageSupport.supportedHostEdges.filter(isAttachmentSide);
-  const appendageSupportedHostEdges =
-    !houseForm.roofIntentAuthored && rawAppendageSupportedHostEdges.includes(houseForm.footprint.attachmentSide)
-      ? [houseForm.footprint.attachmentSide]
-      : rawAppendageSupportedHostEdges;
   const terminalEnds = deriveHouseGableTerminalEnds({
     footprint,
     ridgeAxis: intent.ridgeAxis,
@@ -349,7 +317,6 @@ function buildRoofStatus(input: {
   const validation = validateHouseRoofSelection({
     roofForm: intent.form,
     footprint,
-    appendageEnabled: intent.appendage.enabled,
     roofPrimaryFallDirection: intent.primaryFallDirection,
     roofPrimaryFallDirectionExplicit: houseForm.roofIntentAuthored === true,
     preferredMonoFallDirection:
@@ -360,11 +327,6 @@ function buildRoofStatus(input: {
     roofRidgeAxis: intent.ridgeAxis,
     roofRidgeAxisExplicit: houseForm.roofIntentAuthored === true,
     preferredRidgeAxis,
-    appendageHostEdge: intent.appendage.hostEdge,
-    appendageSupport: {
-      supportedHostEdges: appendageSupportedHostEdges,
-      blockedReasonsBySide: appendageSupport.blockedReasonsBySide,
-    },
   });
   const approximationReasons = houseForm.roofIntentAuthored ? [] : ['inferred_form'];
   const validationStatus =
@@ -378,12 +340,6 @@ function buildRoofStatus(input: {
     form: intent.form,
     controls: getHouseRoofFormBehavior(intent.form).controls,
     selectedFormSupported: capabilities.selectedFormSupported,
-    appendageSupported: appendageSupportedHostEdges.length > 0,
-    appendageSupportedHostEdges,
-    appendageSupportReason:
-      validation.code === 'invalid_appendage_topology' || validation.code === 'invalid_appendage_host_edge'
-        ? validation.message
-        : null,
     terminalEnds: terminalEnds.map((end) => ({
       id: end.id,
       label: end.label,

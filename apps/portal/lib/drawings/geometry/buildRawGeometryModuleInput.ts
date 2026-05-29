@@ -618,15 +618,6 @@ export function buildRawGeometryModuleInput(input: {
       roofPrimaryFallDirection: resolveHouseFormRoofFallDirection(houseForm),
       roofRidgeAxis: resolveHouseFormRoofRidgeAxis(houseForm),
       openGableEndIds: roofIntent?.openGableEndIds ?? null,
-      roofAppendage: roofIntent?.appendage.enabled
-        ? {
-            enabled: true,
-            form: roofIntent.appendage.form,
-            hostEdge: roofIntent.appendage.hostEdge,
-            pitchDeg: resolveOptionalOverride(roofIntent.appendage.pitchDeg),
-            dropMm: resolveOptionalOverride(roofIntent.appendage.dropMm),
-          }
-        : null,
       decks,
       openings,
       attachmentStrategy: houseForm?.attachmentStrategy ?? module.houseAttachmentStrategy ?? null,

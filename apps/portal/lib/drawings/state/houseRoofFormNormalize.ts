@@ -4,7 +4,6 @@ import type {
 } from '@/lib/types/calculator';
 import type {
   HouseFirstRoofDraft,
-  HouseRoofAppendageForm,
   HouseRoofPrimaryFallDirection,
   HouseRoofRidgeAxis,
 } from './houseFirstWorkbenchModel';
@@ -77,18 +76,9 @@ export function normalizeRoofOpenGableEndIds(
   )];
 }
 
-export function normalizeAppendageForm(
-  value: string | null | undefined,
-): HouseRoofAppendageForm | null {
-  return value === 'mono' || value === 'flat' ? value : null;
-}
+// PR-T8 (2026-05-29): `normalizeAppendageForm` and
+// `hasExplicitRoofAppendage` removed with the appendage feature cull.
 
 export function hasExplicitRoofPitch(value: string | null | undefined): boolean {
   return !isBlankString(value);
-}
-
-export function hasExplicitRoofAppendage(
-  value: HouseFirstRoofDraft['appendage'] | null | undefined,
-): boolean {
-  return value !== null && value !== undefined;
 }

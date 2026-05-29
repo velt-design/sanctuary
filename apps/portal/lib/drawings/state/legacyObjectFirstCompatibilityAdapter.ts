@@ -54,13 +54,6 @@ function buildRoofIntentFromCompatibilityHouse(house: ObjectWorkbenchCompatibili
     primaryFallDirection: house.roof.primaryFallDirection,
     ridgeAxis: house.roof.ridgeAxis,
     openGableEndIds: house.roof.openGableEndIds,
-    appendage: {
-      enabled: house.roof.appendage.enabled,
-      form: house.roof.appendage.form,
-      hostEdge: house.roof.appendage.hostEdge,
-      pitchDeg: house.roof.appendage.pitchDeg,
-      dropMm: house.roof.appendage.dropMm,
-    },
   };
 }
 

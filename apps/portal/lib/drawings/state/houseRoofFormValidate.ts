@@ -1,15 +1,9 @@
 import {
   validateHouseRoofSelection,
-  type Line3,
   type Polygon3,
 } from '@sp/geometry';
 import type {
-  CalculatorHouseAttachmentStrategy,
-  CalculatorModuleInputs,
-} from '@/lib/types/calculator';
-import type {
   HouseModel,
-  HouseRoofAppendageForm,
   HouseRoofForm,
   HouseRoofPrimaryFallDirection,
   HouseRoofRidgeAxis,
@@ -29,26 +23,14 @@ export function validateSharedRoof(input: {
   roofPrimaryFallDirection: HouseRoofPrimaryFallDirection;
   roofPrimaryFallDirectionExplicit: boolean;
   preferredMonoFallDirection: HouseRoofPrimaryFallDirection | null;
-  attachmentStrategy: CalculatorHouseAttachmentStrategy | null;
   attachmentRequiresDrainEdge: boolean;
-  attachmentEdge: Line3 | null;
   roofRidgeAxis: HouseRoofRidgeAxis;
   roofRidgeAxisExplicit: boolean;
   preferredRidgeAxis: HouseRoofRidgeAxis | null;
-  appendageSupport: {
-    supportedHostEdges: NonNullable<CalculatorModuleInputs['attachmentSide']>[];
-    blockedReasonsBySide?: Partial<Record<NonNullable<CalculatorModuleInputs['attachmentSide']>, string>>;
-  };
-  appendage: {
-    enabled: boolean;
-    form: HouseRoofAppendageForm;
-    hostEdge: NonNullable<CalculatorModuleInputs['attachmentSide']>;
-  };
 }): HouseModel['roof']['validation'] {
   const result = validateHouseRoofSelection({
     roofForm: input.roofForm,
     footprint: input.footprint,
-    appendageEnabled: input.appendage.enabled,
     roofPrimaryFallDirection: input.roofPrimaryFallDirection,
     roofPrimaryFallDirectionExplicit: input.roofPrimaryFallDirectionExplicit,
     preferredMonoFallDirection: input.preferredMonoFallDirection,
@@ -56,8 +38,6 @@ export function validateSharedRoof(input: {
     roofRidgeAxis: input.roofRidgeAxis,
     roofRidgeAxisExplicit: input.roofRidgeAxisExplicit,
     preferredRidgeAxis: input.preferredRidgeAxis,
-    appendageHostEdge: input.appendage.hostEdge,
-    appendageSupport: input.appendageSupport,
   });
   return {
     status: result.status,

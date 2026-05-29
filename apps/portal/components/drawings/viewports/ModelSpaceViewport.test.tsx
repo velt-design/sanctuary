@@ -278,16 +278,7 @@ function makeHouseFirstHouse(overrides: HouseModelOverrides = {}): HouseModel {
       ridgeAxis: 'x',
       openGableEndIds: [],
       terminalEnds: [],
-      appendage: {
-        enabled: false,
-        form: 'flat',
-        hostEdge: 'rear',
-        pitchDeg: '3',
-        dropMm: '0',
-      },
       geometryKind: 'footprint_mono',
-      appendageSupportedHostEdges: [],
-      appendageSupportReason: null,
       validation: {
         status: 'valid',
         code: null,
@@ -300,13 +291,10 @@ function makeHouseFirstHouse(overrides: HouseModelOverrides = {}): HouseModel {
           material: true,
           primaryFallDirection: true,
           ridgeAxis: false,
-          appendage: true,
         },
         footprintTopology: 'orthogonal',
         selectedFormFootprintRequirement: 'orthogonal',
         selectedFormSupported: true,
-        appendageFootprintRequirement: 'rectangular',
-        appendageSupported: true,
       },
       confidence: 'high',
       source: 'house_first_draft',
@@ -342,10 +330,6 @@ function makeHouseFirstHouse(overrides: HouseModelOverrides = {}): HouseModel {
     roof: {
       ...house.roof,
       ...overrides.roof,
-      appendage: {
-        ...house.roof.appendage,
-        ...overrides.roof?.appendage,
-      },
       validation: {
         ...house.roof.validation,
         ...overrides.roof?.validation,

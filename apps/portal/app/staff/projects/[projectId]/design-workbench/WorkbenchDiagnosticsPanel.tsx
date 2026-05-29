@@ -1,7 +1,6 @@
 'use client';
 
 import {
-  labelForAttachmentSideList,
   labelForRoofApproximationReason,
   labelForRoofFieldSource,
   labelForRoofGeometryKind,
@@ -68,27 +67,6 @@ export default function WorkbenchDiagnosticsPanel({
     : roofControlNotUsedLabel;
   const roofOpenEndSourceLabel = roof.intent.form === 'hipped'
     ? labelForRoofFieldSource(roof.provenance.openGableEndIds)
-    : roofControlNotUsedLabel;
-  const roofAppendageRelevant = Boolean(roofControls?.appendage);
-  const roofAppendageSourceLabel = roofAppendageRelevant
-    ? labelForRoofFieldSource(roof.provenance.appendage)
-    : roofControlNotUsedLabel;
-  const roofAppendageStatusLabel = roofAppendageRelevant
-    ? roof.intent.appendage.enabled && (
-        roof.validationCode === 'invalid_appendage_topology' ||
-        roof.validationCode === 'invalid_appendage_host_edge'
-      )
-        ? 'invalid'
-        : roof.intent.appendage.enabled
-          ? 'valid'
-          : 'off'
-    : roofControlNotUsedLabel;
-  const roofAppendageSupportLabel = roofAppendageRelevant
-    ? roof.appendageSupportReason ??
-      (roof.appendageSupportedHostEdges.length > 0 ? 'Supported' : 'Not supported')
-    : roofControlNotUsedLabel;
-  const roofAppendageSupportedEdgesLabel = roofAppendageRelevant
-    ? labelForAttachmentSideList(roof.appendageSupportedHostEdges)
     : roofControlNotUsedLabel;
   const sceneMetadata = geometryPreview.kind === 'ready' ? geometryPreview.scene.metadata : undefined;
   const sceneRoofQaStatusLabel = metadataString(sceneMetadata, 'houseRoofQaStatus') ?? 'not available';
@@ -356,22 +334,6 @@ export default function WorkbenchDiagnosticsPanel({
         <div className={styles.diagnosticRow}>
           <span className={styles.diagnosticLabel}>Roof open-end source</span>
           <span className={styles.diagnosticValue}>{roofOpenEndSourceLabel}</span>
-        </div>
-        <div className={styles.diagnosticRow}>
-          <span className={styles.diagnosticLabel}>Roof appendage source</span>
-          <span className={styles.diagnosticValue}>{roofAppendageSourceLabel}</span>
-        </div>
-        <div className={styles.diagnosticRow}>
-          <span className={styles.diagnosticLabel}>Roof appendage</span>
-          <span className={styles.diagnosticValue}>{roofAppendageStatusLabel}</span>
-        </div>
-        <div className={styles.diagnosticRow}>
-          <span className={styles.diagnosticLabel}>Appendage support</span>
-          <span className={styles.diagnosticValue}>{roofAppendageSupportLabel}</span>
-        </div>
-        <div className={styles.diagnosticRow}>
-          <span className={styles.diagnosticLabel}>Appendage supported edges</span>
-          <span className={styles.diagnosticValue}>{roofAppendageSupportedEdgesLabel}</span>
         </div>
         {roof.validationMessage ? (
           <div className={styles.diagnosticRow}>

@@ -248,12 +248,6 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
         primaryPitchDeg: '18',
         primaryFallDirection: 'negative_x',
         ridgeAxis: 'y',
-        appendage: {
-          enabled: true,
-          hostEdge: 'left',
-          pitchDeg: '5',
-          dropMm: '600',
-        },
       },
     };
 
@@ -266,7 +260,6 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
     expect(projectModel.houseForms[0]?.roof.primaryPitchDeg).toBe('18');
     expect(projectModel.houseForms[0]?.roof.primaryFallDirection).toBe('negative_x');
     expect(projectModel.houseForms[0]?.roof.ridgeAxis).toBe('y');
-    expect(projectModel.houseForms[0]?.roof.appendage.enabled).toBe(true);
     expect(projectModel.houseForms[0]?.roof.validation.status).toBe('valid');
     expect(projectModel.houseForms[0]?.roof.validation.approximationReasons).toEqual([]);
     expect(projectModel.houseForms[0]?.roof.provenance).toMatchObject({
@@ -274,7 +267,6 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
       primaryPitchDeg: 'house_first_draft',
       primaryFallDirection: 'house_first_draft',
       ridgeAxis: 'house_first_draft',
-      appendage: 'house_first_draft',
     });
     expect(projectModel.houseForms[0]?.roof.source).toBe('house_first_draft');
   });
@@ -532,7 +524,6 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
       primaryFallDirection: 'default_fallback',
       ridgeAxis: 'default_fallback',
       openGableEndIds: 'default_fallback',
-      appendage: 'default_fallback',
     });
   });
 
@@ -576,26 +567,21 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
         material: true,
         primaryFallDirection: false,
         ridgeAxis: false,
-        appendage: false,
       },
       mono: {
         pitch: true,
         material: true,
         primaryFallDirection: true,
         ridgeAxis: false,
-        appendage: true,
       },
       // Milestone 13 session C: gable retired from the form union. The
       // hipped entry now covers both legacy gable + legacy hipped
-      // topologies (distinguished at runtime by openGableEndIds), so
-      // its `appendage` capability is true (inherited from the legacy
-      // gable's behavior).
+      // topologies (distinguished at runtime by openGableEndIds).
       hipped: {
         pitch: true,
         material: true,
         primaryFallDirection: false,
         ridgeAxis: true,
-        appendage: true,
       },
     } as const;
 
@@ -671,9 +657,6 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
     expect(projectModel.houseForms[0]?.roof.validation.code).toBeNull();
     expect(projectModel.houseForms[0]?.roof.geometryKind).toBe('rectilinear_joined_hipped');
     expect(projectModel.houseForms[0]?.roof.capabilities.controls.ridgeAxis).toBe(true);
-    // Milestone 13 session C: appendage capability is true on hipped
-    // (subsumes legacy gable). Inspect appendage support separately.
-    expect(projectModel.houseForms[0]?.roof.capabilities.controls.appendage).toBe(true);
   });
 
   it('filters invalid saved open gable ends when the ridge orientation changes', () => {
@@ -1119,35 +1102,7 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
     });
   });
 
-  it('surfaces supported appendage host edges and blocks unsupported ones', () => {
-    const monoFixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
-    if (!monoFixture) throw new Error('Missing mono-standard fixture.');
-    const draft = buildLegacyEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
-    if (!draft) throw new Error('Expected drawing draft.');
-    draft.inputs.modules[0]!.houseFootprintPreset = 'u_shape';
-    draft.houseFirst = {
-      roof: {
-        form: 'hipped',
-        ridgeAxis: 'x',
-        appendage: {
-          enabled: true,
-          hostEdge: 'front',
-          pitchDeg: '5',
-          dropMm: '450',
-        },
-      },
-    };
-
-    const projectModel = buildHouseFirstWorkbenchProjectModel({
-      snapshot: monoFixture.snapshot,
-      draft,
-    });
-
-    expect(projectModel.houseForms[0]?.roof.validation.status).toBe('invalid');
-    expect(projectModel.houseForms[0]?.roof.validation.code).toBe('invalid_appendage_topology');
-    expect(projectModel.houseForms[0]?.roof.appendageSupportedHostEdges).toEqual([]);
-    expect(projectModel.houseForms[0]?.roof.appendageSupportReason).toContain('Appendage bands require at least one continuous exterior perimeter run');
-  });
+  // PR-T8 (2026-05-29): appendage-host-edge support test removed with the appendage cull.
 
   it('uses floating preset rects as detached preset geometry without discarding legacy preset fields', () => {
     const monoFixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');

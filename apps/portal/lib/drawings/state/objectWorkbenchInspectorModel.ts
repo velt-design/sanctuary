@@ -105,9 +105,6 @@ export type ObjectWorkbenchRoofInspectorModel = {
   intent: HouseFormRoofIntentModel;
   controls: ReturnType<typeof getHouseRoofFormBehavior>['controls'];
   selectedFormSupported: boolean;
-  appendageSupported: boolean;
-  appendageSupportedHostEdges: Array<NonNullable<CalculatorModuleInputs['attachmentSide']>>;
-  appendageSupportReason: string | null;
   terminalEnds: Array<{
     id: string;
     label: string;
@@ -237,13 +234,6 @@ function buildFallbackRoofIntent(houseForm: HouseFormModel | null): HouseFormRoo
     primaryFallDirection: 'positive_y',
     ridgeAxis: 'x',
     openGableEndIds: [],
-    appendage: {
-      enabled: false,
-      form: 'mono',
-      hostEdge: 'rear',
-      pitchDeg: '',
-      dropMm: '450',
-    },
   };
 }
 
@@ -259,9 +249,6 @@ function buildRoofInspector(
     intent,
     controls: roof?.controls ?? fallbackControls,
     selectedFormSupported: roof?.selectedFormSupported ?? true,
-    appendageSupported: roof?.appendageSupported ?? false,
-    appendageSupportedHostEdges: roof?.appendageSupportedHostEdges ?? [],
-    appendageSupportReason: roof?.appendageSupportReason ?? null,
     terminalEnds: roof?.terminalEnds.map((end) => ({
       id: end.id,
       label: end.label,

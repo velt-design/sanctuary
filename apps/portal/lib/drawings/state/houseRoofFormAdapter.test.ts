@@ -6,7 +6,6 @@ import type {
 } from './houseFirstWorkbenchModel';
 import {
   resolveHouseRoofProjection,
-  roofFormAcceptsAppendage,
   roofFormAcceptsOpenGableEnds,
   roofFormHasRidgeAxis,
   type ResolveHouseRoofProjectionInput,
@@ -59,7 +58,6 @@ function draftWithForm(form: HouseRoofForm, openGableEndIds?: string[]): HouseFi
     primaryFallDirection: null,
     ridgeAxis: null,
     openGableEndIds: openGableEndIds ?? null,
-    appendage: null,
   };
 }
 
@@ -74,11 +72,7 @@ describe('roof form gate predicates', () => {
     expect(roofFormAcceptsOpenGableEnds('flat')).toBe(false);
   });
 
-  it('roofFormAcceptsAppendage is true for mono AND hipped', () => {
-    expect(roofFormAcceptsAppendage('mono')).toBe(true);
-    expect(roofFormAcceptsAppendage('hipped')).toBe(true);
-    expect(roofFormAcceptsAppendage('flat')).toBe(false);
-  });
+  // PR-T8 (2026-05-29): `roofFormAcceptsAppendage` retired with the appendage cull.
 
   it('roofFormHasRidgeAxis is true for hipped only', () => {
     expect(roofFormHasRidgeAxis('hipped')).toBe(true);
@@ -129,64 +123,8 @@ describe('resolveHouseRoofProjection — openGableEndIds gate', () => {
   });
 });
 
-describe('resolveHouseRoofProjection — appendage gate', () => {
-  it('keeps appendage.enabled when form is mono and draft enables it', () => {
-    const projection = resolveHouseRoofProjection(
-      baseInput({
-        roofForm: 'mono',
-        roofDraft: {
-          ...draftWithForm('mono'),
-          appendage: {
-            enabled: true,
-            form: 'mono',
-            hostEdge: 'rear',
-            pitchDeg: '5',
-            dropMm: '450',
-          },
-        },
-      }),
-    );
-    expect(projection.roof.appendage.enabled).toBe(true);
-  });
-
-  it('keeps appendage.enabled when form is hipped and draft enables it (Dutch-hip path)', () => {
-    const projection = resolveHouseRoofProjection(
-      baseInput({
-        roofForm: 'hipped',
-        roofDraft: {
-          ...draftWithForm('hipped'),
-          appendage: {
-            enabled: true,
-            form: 'mono',
-            hostEdge: 'rear',
-            pitchDeg: '22',
-            dropMm: '450',
-          },
-        },
-      }),
-    );
-    expect(projection.roof.appendage.enabled).toBe(true);
-  });
-
-  it('forces appendage.enabled=false when form is flat (gate closed)', () => {
-    const projection = resolveHouseRoofProjection(
-      baseInput({
-        roofForm: 'flat',
-        roofDraft: {
-          ...draftWithForm('flat'),
-          appendage: {
-            enabled: true,
-            form: 'mono',
-            hostEdge: 'rear',
-            pitchDeg: '5',
-            dropMm: '450',
-          },
-        },
-      }),
-    );
-    expect(projection.roof.appendage.enabled).toBe(false);
-  });
-});
+// PR-T8 (2026-05-29): "resolveHouseRoofProjection — appendage gate" suite
+// removed alongside the appendage feature cull.
 
 describe('resolveHouseRoofProjection — provenance and source tagging', () => {
   it('tags source=legacy_module_inference when no explicit draft fields are set', () => {

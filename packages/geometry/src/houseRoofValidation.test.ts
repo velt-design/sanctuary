@@ -77,7 +77,6 @@ describe('house roof validation', () => {
         const validation = validateHouseRoofSelection({
           roofForm,
           footprint,
-          appendageEnabled: false,
           roofPrimaryFallDirection: 'negative_y',
           roofRidgeAxis: 'x',
         });
@@ -101,8 +100,7 @@ describe('house roof validation', () => {
           const validation = validateHouseRoofSelection({
             roofForm,
             footprint,
-            appendageEnabled: false,
-            roofRidgeAxis: 'x',
+              roofRidgeAxis: 'x',
           });
 
           expect(geometryKind, `${preset}/${attachmentSide}/${roofForm} geometry kind`).not.toBeNull();
@@ -131,7 +129,6 @@ describe('house roof validation', () => {
     const validation = validateHouseRoofSelection({
       roofForm: 'hipped',
       footprint: polygonalFootprint,
-      appendageEnabled: false,
       roofRidgeAxis: 'x',
     });
 

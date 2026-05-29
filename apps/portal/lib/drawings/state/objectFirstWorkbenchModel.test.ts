@@ -59,13 +59,6 @@ describe('objectFirstWorkbenchModel contracts', () => {
           primaryFallDirection: 'negative_y',
           ridgeAxis: 'x',
           openGableEndIds: [],
-          appendage: {
-            enabled: false,
-            form: 'flat',
-            hostEdge: 'rear',
-            pitchDeg: '0',
-            dropMm: '0',
-          },
         },
         storeyMode: 'single_storey',
         attachmentStrategy: null,
@@ -88,13 +81,6 @@ describe('objectFirstWorkbenchModel contracts', () => {
           primaryFallDirection: 'negative_x',
           ridgeAxis: 'y',
           openGableEndIds: [],
-          appendage: {
-            enabled: false,
-            form: 'flat',
-            hostEdge: 'left',
-            pitchDeg: '0',
-            dropMm: '0',
-          },
         },
         storeyMode: 'single_storey',
         attachmentStrategy: null,
@@ -385,13 +371,6 @@ describe('normalizeObjectFirstHouseFormDraft — gable→hipped migration (slice
         primaryFallDirection: 'positive_y' as const,
         ridgeAxis: 'x' as const,
         openGableEndIds: overrides.openGableEndIds ?? [],
-        appendage: {
-          enabled: false,
-          form: 'flat' as const,
-          hostEdge: 'rear' as const,
-          pitchDeg: '0',
-          dropMm: '0',
-        },
       },
       storeyMode: 'single_storey' as const,
       attachmentStrategy: null,
@@ -467,7 +446,6 @@ describe('normalizeObjectFirstHouseFormDraft — gable→hipped migration (slice
     expect(draft.roofIntent.primaryPitchDeg).toBe('15');
     expect(draft.roofIntent.primaryFallDirection).toBe('positive_y');
     expect(draft.roofIntent.ridgeAxis).toBe('x');
-    expect(draft.roofIntent.appendage.enabled).toBe(false);
   });
 });
 

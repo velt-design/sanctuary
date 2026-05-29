@@ -88,13 +88,6 @@ function makeObjectFirstGeometryDraft(): ObjectFirstWorkbenchDraftVNext {
             primaryFallDirection: 'negative_y',
             ridgeAxis: 'x',
             openGableEndIds: [],
-            appendage: {
-              enabled: false,
-              form: 'flat',
-              hostEdge: 'rear',
-              pitchDeg: '0',
-              dropMm: '0',
-            },
           },
           roofIntentAuthored: true,
           storeyMode: 'double_storey',

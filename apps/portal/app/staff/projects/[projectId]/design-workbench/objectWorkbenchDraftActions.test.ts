@@ -31,13 +31,6 @@ function makeRoofIntent(overrides: Partial<HouseFormRoofIntentModel> = {}): Hous
     primaryFallDirection: 'negative_y',
     ridgeAxis: 'x',
     openGableEndIds: [],
-    appendage: {
-      enabled: false,
-      form: 'flat',
-      hostEdge: 'rear',
-      pitchDeg: '2',
-      dropMm: '100',
-    },
     ...overrides,
   };
 }

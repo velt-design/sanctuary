@@ -32,7 +32,6 @@ function makeStraightHouseForm(overrides: Partial<HouseFormModel> = {}): HouseFo
       primaryFallDirection: 'negative_y',
       ridgeAxis: 'x',
       openGableEndIds: [],
-      appendage: { enabled: false, form: 'mono', hostEdge: 'rear', pitchDeg: '5', dropMm: '450' },
     },
     storeyMode: 'single_storey',
     attachmentStrategy: null,

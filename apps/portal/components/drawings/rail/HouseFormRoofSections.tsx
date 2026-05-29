@@ -5,13 +5,12 @@ import {
   MIN_VISIBLE_HOUSE_ROOF_PITCH_DEG,
   normalizeHouseRoofPitchInputForForm,
 } from '@sp/geometry';
-import type { CalculatorHouseRoofMaterial, CalculatorModuleInputs } from '@/lib/types/calculator';
+import type { CalculatorHouseRoofMaterial } from '@/lib/types/calculator';
 import type { HouseFormRoofIntentModel } from '@/lib/drawings/state/objectFirstWorkbenchModel';
 import type { ObjectWorkbenchHouseFormInspectorModel } from '@/lib/drawings/state/objectWorkbenchInspectorModel';
 import { resolveHouseTerminalEndToggleRoofDraft } from '@/app/staff/projects/[projectId]/design-workbench/resolveHouseTerminalEndToggleRoofDraft';
 import type { FieldErrors, RunRoofCommit } from './objectWorkbenchRailTypes';
 import {
-  ATTACHMENT_SIDE_OPTIONS,
   ActionButton,
   HOUSE_ROOF_FORM_OPTIONS,
   NumberField,
@@ -19,7 +18,6 @@ import {
   ROOF_MATERIAL_OPTIONS,
   ROOF_RIDGE_AXIS_OPTIONS,
   SelectField,
-  labelForAttachmentSideList,
 } from './objectRailShared';
 import styles from './WorkbenchRail.module.css';
 
@@ -38,7 +36,6 @@ export function buildHouseFormRoofSections({
 }: BuildHouseFormRoofSectionsInput): ReactNode[] {
   const roofContext = houseFormContext.roof;
   const roofDraft = roofContext.intent;
-  const appendageSupportedHostEdges = roofContext.appendageSupportedHostEdges;
   const terminalEnds = roofContext.terminalEnds;
   const selectedFormSupported = roofContext.selectedFormSupported;
   const canEditSelectedRoofForm = selectedFormSupported;
@@ -46,14 +43,6 @@ export function buildHouseFormRoofSections({
   const pitchHelperText = houseRoofFormUsesMinimumVisiblePitch(roofDraft.form ?? 'mono')
     ? `Minimum is ${MIN_VISIBLE_HOUSE_ROOF_PITCH_DEG} deg for this roof.`
     : 'Shared roof pitch for the main house roof.';
-  const canShowAppendageControls = canEditSelectedRoofForm && roofControls.appendage;
-  const appendageHelperText =
-    roofContext.validationCode === 'invalid_appendage_topology' ||
-    roofContext.validationCode === 'invalid_appendage_host_edge'
-      ? 'The current appendage remains editable so you can disable it or adjust it after the footprint changes.'
-      : roofContext.appendageSupported
-        ? `Supported host edges: ${labelForAttachmentSideList(appendageSupportedHostEdges)}.`
-        : 'Appendage bands require at least one continuous exterior perimeter run on the current footprint.';
   const fields: ReactNode[] = [];
 
   fields.push(
@@ -211,97 +200,9 @@ export function buildHouseFormRoofSections({
     }
   }
 
-  if (canShowAppendageControls) {
-    fields.push(
-      <SelectField
-        key="appendage-enabled"
-        label="Appendage band"
-        value={roofDraft.appendage?.enabled ? 'enabled' : 'disabled'}
-        options={[
-          { label: 'Off', value: 'disabled' },
-          { label: 'On', value: 'enabled' },
-        ]}
-        disabled={disabled}
-        error={fieldErrors['appendage-enabled']}
-        helperText={appendageHelperText}
-        onCommit={(value) =>
-          runRoofCommit('appendage-enabled', {
-            ...roofDraft,
-            appendage: {
-              ...(roofDraft.appendage ?? {}),
-              enabled: value === 'enabled',
-            },
-          })
-        }
-      />,
-    );
-  } else if (canEditSelectedRoofForm && roofControls.appendage && !roofContext.appendageSupported) {
-    fields.push(
-      <p key="appendage-disabled-hint" className={styles.fieldHint}>
-        {appendageHelperText}
-      </p>,
-    );
-  }
-
-  if (roofDraft.appendage?.enabled && canShowAppendageControls) {
-    fields.push(
-      <SelectField
-        key="appendage-host-edge"
-        label="Appendage host edge"
-        value={roofDraft.appendage.hostEdge ?? 'rear'}
-        options={ATTACHMENT_SIDE_OPTIONS}
-        disabled={disabled}
-        error={fieldErrors['appendage-host-edge']}
-        helperText={
-          roofContext.validationCode === 'invalid_appendage_host_edge'
-            ? roofContext.appendageSupportReason ?? `Supported edges: ${labelForAttachmentSideList(appendageSupportedHostEdges)}.`
-            : `Supported edges: ${labelForAttachmentSideList(appendageSupportedHostEdges)}.`
-        }
-        onCommit={(value) =>
-          runRoofCommit('appendage-host-edge', {
-            ...roofDraft,
-            appendage: {
-              ...(roofDraft.appendage ?? {}),
-              hostEdge: value as NonNullable<CalculatorModuleInputs['attachmentSide']>,
-            },
-          })
-        }
-      />,
-      <NumberField
-        key="appendage-pitch"
-        label="Appendage pitch (deg)"
-        value={roofDraft.appendage.pitchDeg ?? ''}
-        disabled={disabled}
-        error={fieldErrors['appendage-pitch']}
-        onCommit={(value) =>
-          runRoofCommit('appendage-pitch', {
-            ...roofDraft,
-            appendage: {
-              ...(roofDraft.appendage ?? {}),
-              pitchDeg: value,
-              form: Number(value) === 0 ? 'flat' : 'mono',
-            },
-          })
-        }
-      />,
-      <NumberField
-        key="appendage-drop"
-        label="Appendage drop (mm)"
-        value={roofDraft.appendage.dropMm ?? '450'}
-        disabled={disabled}
-        error={fieldErrors['appendage-drop']}
-        onCommit={(value) =>
-          runRoofCommit('appendage-drop', {
-            ...roofDraft,
-            appendage: {
-              ...(roofDraft.appendage ?? {}),
-              dropMm: value,
-            },
-          })
-        }
-      />,
-    );
-  }
+  // PR-T8 (2026-05-29): appendage band controls removed alongside the
+  // appendage feature cull. Future shape edits will live on the gumball,
+  // not in inspector number fields.
 
   // PR-T7 (2026-05-29): Review Basis SummarySection removed. It surfaced
   // solver diagnostics (roof geometry kind, form basis, mono fall basis,
