@@ -4,7 +4,6 @@ import type { HouseFormModel } from '@/lib/drawings/state/objectFirstWorkbenchMo
 import type { FieldErrors, RunFootprintCommit } from './objectWorkbenchRailTypes';
 import {
   ActionButton,
-  ATTACHMENT_SIDE_OPTIONS,
   FOOTPRINT_MODE_OPTIONS,
   FOOTPRINT_OPTIONS,
   NumberField,
@@ -68,74 +67,36 @@ export function buildHouseFormFootprintSections({
         })
       }
     />,
-    <SelectField
-      key="attachment-side"
-      label="Attachment side"
-      value={houseForm?.footprint.attachmentSide ?? 'rear'}
-      options={ATTACHMENT_SIDE_OPTIONS}
-      disabled={disabled || !canEditFootprint}
-      error={fieldErrors['attachment-side']}
-      onCommit={(value) =>
-        runFootprintCommit('attachment-side', {
-          type: 'attachment_side',
-          side: value as CalculatorModuleInputs['attachmentSide'],
-        })
-      }
-    />,
-    <div key="footprint-actions" className={styles.buttonRow}>
+    // PR-T7b (2026-05-29): five number-field/dropdown removals after a
+    // recon pass:
+    //   • Attachment side — superseded by snap-driven `pergola.attachment`
+    //     per PR-F (docs/design-workbench-legacy-cull.md:185-225). Cost
+    //     engine no longer reads it; geometry still uses it for polygon
+    //     orientation but that's a leftover from the same retirement.
+    //     Defaulting to 'rear' downstream is fine until the geometry
+    //     path is cleaned up.
+    //   • House width / Footprint band depth — only meaningful when
+    //     synthesising a PRESET polygon. Disabled in custom_polygon
+    //     mode already; removing rather than conditionally rendering
+    //     because the user direction is "shape edits go through direct
+    //     polygon editing or the gumball, not number fields."
+    //   • House offset X / Facade setback — were the load-bearing
+    //     position/setback controls but slot into the same category:
+    //     direct polygon editing (drag the outline) or the future
+    //     gumball replaces typed number entry. Removed per user
+    //     direction. Geometry path (footprints.ts) keeps reading the
+    //     persisted values; default-zero is the natural fallback.
+    // "Continue outline" stays — conditional on custom_polygon mode so
+    // it only appears when there's an active polygon edit to resume.
+    footprintMode === 'custom_polygon' ? (
       <ActionButton
-        label="Rotate -90"
-        disabled={disabled || !canEditFootprint}
-        onClick={() => void runFootprintCommit('rotate-left', { type: 'rotate', delta: -1 })}
+        key="continue-outline"
+        label="Continue outline"
+        disabled={disabled || !canEditFootprint || !canStartDrawOutline}
+        onClick={() => void runStartOutline()}
       />
-      <ActionButton
-        label="Rotate +90"
-        disabled={disabled || !canEditFootprint}
-        onClick={() => void runFootprintCommit('rotate-right', { type: 'rotate', delta: 1 })}
-      />
-    </div>,
-    <ActionButton
-      key="draw-outline"
-      label={footprintMode === 'custom_polygon' ? 'Continue outline' : 'Draw outline'}
-      disabled={disabled || !canEditFootprint || !canStartDrawOutline}
-      onClick={() => void runStartOutline()}
-    />,
+    ) : null,
     fieldErrors.outline ? <p key="outline-error" className={styles.fieldError}>{fieldErrors.outline}</p> : null,
-    <NumberField
-      key="width"
-      label="House width (m)"
-      value={footprintParams.widthM}
-      disabled={disabled || !canEditFootprint || footprintMode === 'custom_polygon'}
-      error={fieldErrors.widthM}
-      helperText="Blank matches the active legacy module length."
-      onCommit={(value) => runFootprintCommit('widthM', { type: 'param', key: 'widthM', value })}
-    />,
-    <NumberField
-      key="offset"
-      label="House offset X (m)"
-      value={footprintParams.offsetXM}
-      disabled={disabled || !canEditFootprint}
-      error={fieldErrors.offsetXM}
-      helperText="Negative values extend left of the pergola datum."
-      onCommit={(value) => runFootprintCommit('offsetXM', { type: 'param', key: 'offsetXM', value })}
-    />,
-    <NumberField
-      key="setback"
-      label="Facade setback (m)"
-      value={footprintParams.setbackM}
-      disabled={disabled || !canEditFootprint}
-      error={fieldErrors.setbackM}
-      helperText="Shared facade offset for the house footprint context."
-      onCommit={(value) => runFootprintCommit('setbackM', { type: 'param', key: 'setbackM', value })}
-    />,
-    <NumberField
-      key="band-depth"
-      label="Footprint band depth (m)"
-      value={footprintParams.bandDepthM}
-      disabled={disabled || !canEditFootprint || footprintMode === 'custom_polygon'}
-      error={fieldErrors.bandDepthM}
-      onCommit={(value) => runFootprintCommit('bandDepthM', { type: 'param', key: 'bandDepthM', value })}
-    />,
   ];
 
   if (footprintMode === 'preset' && (footprintPreset === 'l_left' || footprintPreset === 'l_right')) {

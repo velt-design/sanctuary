@@ -548,28 +548,15 @@ export default function SanctuaryWorkbenchRail({
             value: value as CalculatorModuleInputs['gableEndFramesMode'],
           }),
       },
-      {
-        id: 'gable-house-eave-gutter',
-        kind: 'select',
-        label: 'House-side eave gutter',
-        value: geometryState.gable.houseEaveGutterMode,
-        options: GABLE_GUTTER_OPTIONS,
-        helperText: gutterHelperText,
-        disabled: true,
-        pending: false,
-        onCommit: () => undefined,
-      },
-      {
-        id: 'gable-outer-eave-gutter',
-        kind: 'select',
-        label: 'Outer-side eave gutter',
-        value: geometryState.gable.outerEaveGutterMode,
-        options: GABLE_GUTTER_OPTIONS,
-        helperText: gutterHelperText,
-        disabled: true,
-        pending: false,
-        onCommit: () => undefined,
-      },
+      // PR-T7 (2026-05-29): gable eave gutter readouts removed —
+      // they were rendered as disabled dropdowns with `onCommit: () => undefined`
+      // so the user could never change them. Their helper text already
+      // explained why ("Controlled by the supported gable baseline for
+      // this connection type."); the dropdown chrome was decoration on
+      // top of that note. If the same information needs to surface
+      // again later (e.g. on a gable diagnostics overlay) it's still
+      // derivable from `geometryState.gable.houseEaveGutterMode` /
+      // `outerEaveGutterMode`.
     ] satisfies RailFieldDefinition[];
   }, [commitGeometryEdit, disabled, family, fieldErrors, geometryState, onCommitGeometryEdit, pendingFieldId]);
 
@@ -577,54 +564,17 @@ export default function SanctuaryWorkbenchRail({
     if (!geometryState) return [];
 
     const footprintFields: RailFieldDefinition[] = [
-      {
-        id: 'house-connection',
-        kind: 'select',
-        label: 'House connection',
-        value: geometryState.connection.type,
-        options: HOUSE_CONNECTION_OPTIONS,
-        pending: pendingFieldId === 'house-connection',
-        error: fieldErrors['house-connection'],
-        disabled: disabled || !onCommitGeometryEdit,
-        onCommit: (value: string) =>
-          commitGeometryEdit('house-connection', {
-            type: 'house_connection',
-            value: value as ObjectWorkbenchGeometryEditState['connection']['type'],
-          }),
-      },
-      {
-        id: 'house-attachment-strategy',
-        kind: 'select',
-        label: 'Attachment strategy',
-        value: geometryState.houseContext.attachmentStrategy,
-        options: HOUSE_ATTACHMENT_STRATEGY_OPTIONS,
-        helperText: canEditHouseModel ? 'Auto follows the broad house connection.' : 'Available when the pergola is attached to the house.',
-        pending: pendingFieldId === 'house-attachment-strategy',
-        error: fieldErrors['house-attachment-strategy'],
-        disabled: !canEditHouseModel,
-        onCommit: (value: string) =>
-          commitGeometryEdit('house-attachment-strategy', {
-            type: 'house_config',
-            key: 'houseAttachmentStrategy',
-            value: value as CalculatorHouseAttachmentStrategy | 'auto',
-          }),
-      },
-      {
-        id: 'house-storey-mode',
-        kind: 'select',
-        label: 'Storey mode',
-        value: geometryState.houseContext.storeyMode,
-        options: HOUSE_STOREY_MODE_OPTIONS,
-        pending: pendingFieldId === 'house-storey-mode',
-        error: fieldErrors['house-storey-mode'],
-        disabled: !canEditHouseModel,
-        onCommit: (value: string) =>
-          commitGeometryEdit('house-storey-mode', {
-            type: 'house_config',
-            key: 'houseStoreyMode',
-            value: value as CalculatorHouseStoreyMode,
-          }),
-      },
+      // PR-T7 (2026-05-29): three dead-write field defs removed —
+      //   • `house-connection` wrote `pergola.connectionKind` but
+      //     buildRawGeometryModuleInput reads `module.houseConnectionType`
+      //     on next solve, so the user's pick was silently discarded.
+      //   • `house-attachment-strategy` and `house-storey-mode` both
+      //     committed `house_config` intents but the user confirmed
+      //     the values don't drive any visible geometry — they get
+      //     re-derived from the canonical house model each solve.
+      // The corresponding intent handlers in `useObjectWorkbenchActions`
+      // stay in place so non-UI callers (none today) keep working;
+      // only the lying UI surface is removed.
       {
         id: 'house-roof-material',
         kind: 'select',
@@ -747,18 +697,11 @@ export default function SanctuaryWorkbenchRail({
             value: value as CalculatorModuleInputs['houseFootprintPreset'],
           }),
       },
-      {
-        id: 'drawing-rotation',
-        kind: 'select',
-        label: 'Drawing rotation',
-        value: drawingRotation,
-        options: DRAWING_ROTATION_OPTIONS,
-        helperText: canEditHouseContext ? undefined : 'Available when the pergola is attached to the house.',
-        pending: pendingFieldId === 'drawing-rotation',
-        error: fieldErrors['drawing-rotation'],
-        disabled: !canEditHouseContext,
-        onCommit: commitRotation,
-      },
+      // PR-T7 (2026-05-29): drawing-rotation dropdown removed alongside
+      // the Rotate -90 / Rotate +90 buttons in HouseFormFootprintSections.
+      // Per user direction, future rotation edits go through a plan-
+      // viewport gumball. The underlying `drawing_rotation` intent
+      // handler stays in place so the future gumball can call it.
       {
         id: 'house-soffit-depth',
         kind: 'number',

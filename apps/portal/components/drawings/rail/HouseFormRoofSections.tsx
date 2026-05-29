@@ -19,11 +19,7 @@ import {
   ROOF_MATERIAL_OPTIONS,
   ROOF_RIDGE_AXIS_OPTIONS,
   SelectField,
-  SummarySection,
-  labelForRoofApproximationReason,
   labelForAttachmentSideList,
-  labelForRoofFieldSource,
-  labelForRoofGeometryKind,
 } from './objectRailShared';
 import styles from './WorkbenchRail.module.css';
 
@@ -42,8 +38,6 @@ export function buildHouseFormRoofSections({
 }: BuildHouseFormRoofSectionsInput): ReactNode[] {
   const roofContext = houseFormContext.roof;
   const roofDraft = roofContext.intent;
-  const roofProvenance = roofContext.provenance;
-  const approximationReasons = roofContext.approximationReasons;
   const appendageSupportedHostEdges = roofContext.appendageSupportedHostEdges;
   const terminalEnds = roofContext.terminalEnds;
   const selectedFormSupported = roofContext.selectedFormSupported;
@@ -309,51 +303,14 @@ export function buildHouseFormRoofSections({
     );
   }
 
-  const ridgeBasisLabel =
-    approximationReasons.includes('ambiguous_ridge_axis')
-      ? `${labelForRoofFieldSource(roofProvenance?.ridgeAxis)}; near-square rectangular footprint keeps the current axis`
-      : labelForRoofFieldSource(roofProvenance?.ridgeAxis);
-  const appendageSupportLabel =
-    !roofControls.appendage
-      ? 'Not used for this roof'
-      : roofContext.validationCode === 'invalid_appendage_topology' ||
-          roofContext.validationCode === 'invalid_appendage_host_edge'
-        ? roofContext.appendageSupportReason ?? 'Blocked on the current footprint'
-        : roofContext.appendageSupported
-          ? 'Supported on the current footprint'
-          : 'Not supported on the current footprint';
-  const appendageSupportedEdgesLabel = roofControls.appendage
-    ? labelForAttachmentSideList(appendageSupportedHostEdges)
-    : 'Not used for this roof';
-
-  fields.push(
-    <SummarySection
-      key="roof-review-basis"
-      title="Review Basis"
-      items={[
-        { label: 'Roof geometry', value: labelForRoofGeometryKind(roofContext.geometryKind) },
-        { label: 'Roof form basis', value: labelForRoofFieldSource(roofProvenance?.form) },
-        {
-          label: 'Mono fall basis',
-          value:
-            roofControls.primaryFallDirection
-              ? labelForRoofFieldSource(roofProvenance?.primaryFallDirection)
-              : 'Not used for this roof',
-        },
-        {
-          label: 'Ridge basis',
-          value: roofControls.ridgeAxis ? ridgeBasisLabel : 'Not used for this roof',
-        },
-        { label: 'Appendage support', value: appendageSupportLabel },
-        { label: 'Appendage supported edges', value: appendageSupportedEdgesLabel },
-      ]}
-      hint={
-        approximationReasons.length > 0
-          ? approximationReasons.map((reason) => labelForRoofApproximationReason(reason)).join(' | ')
-          : 'These review signals explain whether the current roof is explicit, inherited, or best-guess.'
-      }
-    />,
-  );
+  // PR-T7 (2026-05-29): Review Basis SummarySection removed. It surfaced
+  // solver diagnostics (roof geometry kind, form basis, mono fall basis,
+  // ridge basis, appendage support, appendage supported edges) — useful
+  // for debugging the solver but not for editing the house. The same
+  // data is still derivable from `roofContext.approximationReasons` and
+  // `roofProvenance` if a future surface ever needs it (e.g. a "why
+  // approximate?" overlay on the trust chip). Deleting only the
+  // rendering; the data path is intact.
 
   if (roofContext.validationStatus === 'invalid' && roofContext.validationMessage) {
     fields.push(

@@ -211,7 +211,13 @@ export default function WorkbenchInspectorHost({
   const activeObjectKey = `${activeFamily}:${store.ui.activeObjectRef.objectId ?? 'none'}`;
 
   if (activeFamily === 'house_forms') {
-    const attachmentContextPanel =
+    // PR-T7 (2026-05-29): renamed prop attachmentContextPanel → dimensionsPanel
+    // to reflect what it actually contains after the cull (eave / wall /
+    // soffit / fascia / gutter / overhang dimensions, not attachment
+    // context). The duplicate "Attachment Context" outer wrapper in
+    // HouseFormInspector went away, so the embedded rail's own section
+    // title now reads cleanly inside the DIMENSIONS bin.
+    const dimensionsPanel =
       supportsSanctuaryEditing && activeModuleInput ? (
         <HouseFormAttachmentContextPanel
           moduleLabel={store.derived.activeModuleLabel}
@@ -250,7 +256,7 @@ export default function WorkbenchInspectorHost({
           runFootprintCommit={runFootprintCommit}
           runStartOutline={runStartOutline}
           runRoofCommit={runRoofCommit}
-          attachmentContextPanel={attachmentContextPanel}
+          dimensionsPanel={dimensionsPanel}
         />
         {canRemoveActiveHouseForm && activeHouseFormId ? (
           <section className={workbenchRailStyles.section}>

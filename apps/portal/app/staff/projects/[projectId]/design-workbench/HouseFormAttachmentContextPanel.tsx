@@ -38,7 +38,11 @@ export default function HouseFormAttachmentContextPanel({
       onCommitGeometryEdit={onCommitGeometryEdit}
       chrome="embedded"
       renderSummary={false}
-      houseContextSectionTitle="Attachment Context"
+      // PR-T7 (2026-05-29): empty title so the embedded rail just emits
+      // the field stack — the outer DIMENSIONS heading is provided by
+      // HouseFormInspector. Previously the title was "Attachment Context"
+      // which doubled with the inspector's own wrapper heading.
+      houseContextSectionTitle=""
       sections={{
         geometry: false,
         roof: false,

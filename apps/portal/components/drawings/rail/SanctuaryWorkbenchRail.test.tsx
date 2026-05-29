@@ -132,9 +132,11 @@ describe('SanctuaryWorkbenchRail', () => {
     expect(markup).toContain('Pergola family');
     expect(markup).toContain('Box perimeter');
     expect(markup).toContain('Roof material');
-    expect(markup).toContain('House connection');
-    expect(markup).toContain('Attachment strategy');
-    expect(markup).toContain('Storey mode');
+    // PR-T7 (2026-05-29): House connection / Attachment strategy / Storey
+    // mode dropdowns removed (dead writes — values derive from model).
+    expect(markup).not.toContain('House connection');
+    expect(markup).not.toContain('Attachment strategy');
+    expect(markup).not.toContain('Storey mode');
     expect(markup).toContain('Eave height');
     expect(markup).toContain('Fascia height');
     expect(markup).toContain('House width');
@@ -181,7 +183,7 @@ describe('SanctuaryWorkbenchRail', () => {
     expect(markup).toContain('disabled=""');
   });
 
-  it('renders separate house attachment strategy and effective default values', () => {
+  it('renders the house-context dimension fields with their effective values', () => {
     const markup = renderToStaticMarkup(
       <SanctuaryWorkbenchRail
         moduleLabel="M1 - Mono"
@@ -205,10 +207,8 @@ describe('SanctuaryWorkbenchRail', () => {
       />,
     );
 
-    expect(selectMarkup(markup, 'House connection')).toContain('value="fascia"');
-    expect(selectMarkup(markup, 'Attachment strategy')).toContain('value="auto"');
-    expect(selectMarkup(markup, 'Attachment strategy')).toContain('value="fascia_under_gutter"');
-    expect(selectMarkup(markup, 'Storey mode')).toContain('value="single_storey"');
+    // PR-T7 (2026-05-29): House connection / Attachment strategy / Storey
+    // mode dropdowns culled; only the editable dimension fields stay.
     expect(markup).toContain('aria-label="Eave height"');
     expect(markup).toContain('value="2.4"');
     expect(markup).toContain('aria-label="Soffit depth"');
@@ -220,7 +220,7 @@ describe('SanctuaryWorkbenchRail', () => {
     expect(markup).toContain('Blank matches the pergola length.');
   });
 
-  it('disables house model controls for freestanding modules', () => {
+  it('disables house dimension controls for freestanding modules', () => {
     const markup = renderToStaticMarkup(
       <SanctuaryWorkbenchRail
         moduleLabel="M1 - Mono"
@@ -238,8 +238,9 @@ describe('SanctuaryWorkbenchRail', () => {
       />,
     );
 
-    expect(selectMarkup(markup, 'Attachment strategy')).toContain('disabled=""');
-    expect(selectMarkup(markup, 'Storey mode')).toContain('disabled=""');
+    // PR-T7 (2026-05-29): freestanding disables the house model dimension
+    // fields. The strategy / storey dropdowns this test used to assert
+    // against were culled.
     expect(markup).toContain('aria-label="Eave height"');
     expect(markup).toContain('disabled=""');
     expect(markup).toContain('aria-label="House width"');
@@ -269,15 +270,15 @@ describe('SanctuaryWorkbenchRail', () => {
 
     expect(markup).toContain('Gable Baseline');
     expect(markup).toContain('Gable end frames');
-    expect(markup).toContain('House-side eave gutter');
-    expect(markup).toContain('Outer-side eave gutter');
+    // PR-T7 (2026-05-29): gable eave gutter readouts removed (were
+    // disabled-no-op dropdowns).
+    expect(markup).not.toContain('House-side eave gutter');
+    expect(markup).not.toContain('Outer-side eave gutter');
     expect(markup).toContain('End frames are editable. Eave gutter modes are constrained to the supported gable baseline.');
     expect(selectMarkup(markup, 'Gable end frames')).not.toContain('disabled=""');
     expect(selectMarkup(markup, 'Gable end frames')).toContain('value="none"');
     expect(selectMarkup(markup, 'Gable end frames')).toContain('value="outer_end_only"');
     expect(selectMarkup(markup, 'Gable end frames')).toContain('value="both_ends"');
-    expect(selectMarkup(markup, 'House-side eave gutter')).toContain('disabled=""');
-    expect(selectMarkup(markup, 'Outer-side eave gutter')).toContain('disabled=""');
     expect(markup).toContain('>Tie beam<');
     expect(markup).toContain('>King-post strut<');
     expect(markup).not.toContain('>Box perimeter beam<');
@@ -304,14 +305,13 @@ describe('SanctuaryWorkbenchRail', () => {
       />,
     );
 
-    expect(markup).toContain('value="our"');
+    // PR-T7 (2026-05-29): gable eave gutter readouts removed; only the
+    // editable Gable end frames field remains in the gable section.
     expect(markup).toContain('Gable Baseline');
     expect(selectMarkup(markup, 'Gable end frames')).not.toContain('disabled=""');
     expect(selectMarkup(markup, 'Gable end frames')).toContain('value="none"');
     expect(selectMarkup(markup, 'Gable end frames')).toContain('value="both_ends"');
     expect(selectMarkup(markup, 'Gable end frames')).not.toContain('value="outer_end_only"');
-    expect(selectMarkup(markup, 'House-side eave gutter')).toContain('disabled=""');
-    expect(selectMarkup(markup, 'Outer-side eave gutter')).toContain('disabled=""');
   });
 
   it('keeps draw outline locked to the model-space plan editor', () => {
