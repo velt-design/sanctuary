@@ -84,15 +84,13 @@ export default function WorkbenchInspectorHost({
       }
 
       setUi((current) => {
-        const nextModuleIndex =
+        const matchedModuleIndex =
           defaultPergolaId === null
-            ? current.activeModuleIndex
-            : Math.max(
-                0,
-                store.persisted.modules.findIndex(
-                  (module) => module.drawingModule.input.pergolaId === defaultPergolaId,
-                ),
+            ? -1
+            : store.persisted.modules.findIndex(
+                (module) => module.drawingModule.input.pergolaId === defaultPergolaId,
               );
+        const nextModuleIndex = matchedModuleIndex >= 0 ? matchedModuleIndex : current.activeModuleIndex;
         return {
           ...current,
           activeModuleIndex: nextModuleIndex,
@@ -109,15 +107,13 @@ export default function WorkbenchInspectorHost({
   const handleCanonicalPergolaSelection = useCallback(
     (pergolaId: string | null) => {
       setUi((current) => {
-        const nextModuleIndex =
+        const matchedModuleIndex =
           pergolaId === null
-            ? current.activeModuleIndex
-            : Math.max(
-                0,
-                store.persisted.modules.findIndex(
-                  (module) => module.drawingModule.input.pergolaId === pergolaId,
-                ),
+            ? -1
+            : store.persisted.modules.findIndex(
+                (module) => module.drawingModule.input.pergolaId === pergolaId,
               );
+        const nextModuleIndex = matchedModuleIndex >= 0 ? matchedModuleIndex : current.activeModuleIndex;
         return {
           ...current,
           activeModuleIndex: nextModuleIndex,

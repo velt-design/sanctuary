@@ -95,6 +95,7 @@ export function buildFixtureSelectionActions(
  */
 export function buildFixtureWorkbenchActions(): ObjectWorkbenchActions {
   return {
+    addSharedPergola: ok,
     addSharedHouseDeck: ok,
     addSharedHouseForm: ok,
     addSharedHouseOpening: ok,

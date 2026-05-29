@@ -49,15 +49,13 @@ export default function ObjectWorkbenchRailHost({
   const handleCanonicalPergolaSelection = useCallback(
     (pergolaId: string | null) => {
       setUi((current) => {
-        const nextModuleIndex =
+        const matchedModuleIndex =
           pergolaId === null
-            ? current.activeModuleIndex
-            : Math.max(
-                0,
-                store.persisted.modules.findIndex(
-                  (module) => module.drawingModule.input.pergolaId === pergolaId,
-                ),
+            ? -1
+            : store.persisted.modules.findIndex(
+                (module) => module.drawingModule.input.pergolaId === pergolaId,
               );
+        const nextModuleIndex = matchedModuleIndex >= 0 ? matchedModuleIndex : current.activeModuleIndex;
         return {
           ...current,
           activeModuleIndex: nextModuleIndex,
@@ -100,6 +98,7 @@ export default function ObjectWorkbenchRailHost({
       }
       inspectorContext={{
         onAddHouseForm: !isLocked ? objectWorkbenchActions.addSharedHouseForm : undefined,
+        onAddPergola: objectWorkbenchActions.addSharedPergola,
         // PR-T6: defer mode choice to the inspector's existing add helper.
         // Decks default to 'preset' (rectangle) which mirrors what the
         // inspector's first-time-add does today. Openings have a single

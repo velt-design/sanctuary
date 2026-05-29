@@ -27,6 +27,7 @@ import type {
   ObjectFirstHouseFormDraft,
   ObjectFirstOpeningDraft,
   ObjectFirstPergolaDraft,
+  ObjectFirstPergolaPosition,
   ObjectFirstWorkbenchDraftVNext,
   PergolaAttachment,
 } from '@/lib/drawings/state/objectFirstWorkbenchModel';
@@ -818,4 +819,114 @@ export function nextObjectWorkbenchOpeningId(existing: ObjectWorkbenchOpeningDra
   let index = existing.length + 1;
   while (used.has(`opening-${index}`)) index += 1;
   return `opening-${index}`;
+}
+
+export function nextObjectWorkbenchPergolaId(existing: ObjectWorkbenchPergolaDraft[]): string {
+  const used = new Set(existing.map((pergola) => pergola.id));
+  let index = existing.length + 1;
+  while (used.has(`pergola-${index}`)) index += 1;
+  return `pergola-${index}`;
+}
+
+const DEFAULT_NEW_PERGOLA_LENGTH_M = '6';
+const DEFAULT_NEW_PERGOLA_PROJECTION_M = '3';
+const NEW_PERGOLA_GAP_MM = 2000;
+
+function parseFiniteNumber(value: string | null | undefined): number | null {
+  if (typeof value !== 'string') return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function parsePergolaIndex(pergolaId: string): number | null {
+  const match = /^pergola-(\d+)$/.exec(pergolaId);
+  if (!match?.[1]) return null;
+  const parsed = Number(match[1]);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
+function resolvePlacementSource(input: {
+  currentPergolas: ObjectWorkbenchPergolaDraft[];
+  activePergolaId?: string | null;
+}): { pergola: ObjectWorkbenchPergolaDraft; index: number } | null {
+  if (!input.currentPergolas.length) return null;
+  const activeIndex =
+    input.activePergolaId
+      ? input.currentPergolas.findIndex((pergola) => pergola.id === input.activePergolaId)
+      : -1;
+  const index = activeIndex >= 0 ? activeIndex : input.currentPergolas.length - 1;
+  return { pergola: input.currentPergolas[index]!, index };
+}
+
+function resolvePlacementOriginXMm(source: {
+  pergola: ObjectWorkbenchPergolaDraft;
+  index: number;
+}): number {
+  const explicitOrigin = parseFiniteNumber(source.pergola.position?.originXMm);
+  if (explicitOrigin !== null) return explicitOrigin;
+  return source.index * (Number(DEFAULT_NEW_PERGOLA_LENGTH_M) * 1000 + NEW_PERGOLA_GAP_MM);
+}
+
+function resolvePergolaLengthMm(pergola: ObjectWorkbenchPergolaDraft): number {
+  return (parseFiniteNumber(pergola.geometry?.dimensions?.lengthM) ?? Number(DEFAULT_NEW_PERGOLA_LENGTH_M)) * 1000;
+}
+
+function resolveNewObjectWorkbenchPergolaPosition(input: {
+  currentPergolas: ObjectWorkbenchPergolaDraft[];
+  activePergolaId?: string | null;
+}): ObjectFirstPergolaPosition {
+  const source = resolvePlacementSource(input);
+  if (!source) {
+    return { originXMm: '0', originYMm: '0', rotationDeg: '0' };
+  }
+  const sourceOriginX = resolvePlacementOriginXMm(source);
+  const sourceOriginY = parseFiniteNumber(source.pergola.position?.originYMm) ?? 0;
+  const sourceLength = resolvePergolaLengthMm(source.pergola);
+  return {
+    originXMm: String(Math.round(sourceOriginX + sourceLength + NEW_PERGOLA_GAP_MM)),
+    originYMm: String(Math.round(sourceOriginY)),
+    rotationDeg: source.pergola.position?.rotationDeg ?? '0',
+  };
+}
+
+export function buildNewObjectWorkbenchPergolaDraft(input: {
+  pergolaId: string;
+  currentPergolas: ObjectWorkbenchPergolaDraft[];
+  activePergolaId?: string | null;
+}): ObjectWorkbenchPergolaDraft {
+  const labelIndex = parsePergolaIndex(input.pergolaId) ?? input.currentPergolas.length + 1;
+  return {
+    id: input.pergolaId,
+    label: `Pergola ${labelIndex}`,
+    family: 'mono',
+    connectionKind: 'freestanding',
+    attachmentEdgeId: null,
+    attachmentZoneId: null,
+    side: 'rear',
+    strategy: null,
+    geometry: {
+      dimensions: {
+        lengthM: DEFAULT_NEW_PERGOLA_LENGTH_M,
+        projectionM: DEFAULT_NEW_PERGOLA_PROJECTION_M,
+      },
+      roof: {
+        pitchDeg: '5',
+      },
+      supports: {
+        postConnectionType: 'slab_anchors',
+        ground: 'easy',
+        postCount: '4',
+        postCutHeightM: '2.4',
+      },
+    },
+    position: resolveNewObjectWorkbenchPergolaPosition({
+      currentPergolas: input.currentPergolas,
+      activePergolaId: input.activePergolaId,
+    }),
+    attachment: {
+      spatialKind: 'freestanding',
+      host: null,
+      method: 'none',
+    },
+  };
 }

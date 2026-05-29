@@ -15,11 +15,13 @@ import {
   applyObjectWorkbenchPergolaPatch,
   buildNewObjectWorkbenchDeckDraft,
   buildNewObjectWorkbenchOpeningDraft,
+  buildNewObjectWorkbenchPergolaDraft,
   buildObjectFirstDraftWithDecks,
   buildObjectFirstDraftWithOpenings,
   buildObjectFirstDraftWithPergolas,
   buildObjectWorkbenchRoofCommitDraft,
   mergeHouseFormRoofIntentAfterFootprintSync,
+  nextObjectWorkbenchPergolaId,
   updateDraftObjectFirst,
 } from './objectWorkbenchDraftActions';
 
@@ -413,6 +415,153 @@ describe('objectWorkbenchDraftActions', () => {
       },
     });
     expectNoStaleHouseFirst(nextDraft);
+  });
+
+  it('builds a freestanding object-first pergola draft with solve-safe defaults', () => {
+    const pergola = buildNewObjectWorkbenchPergolaDraft({
+      pergolaId: 'pergola-2',
+      currentPergolas: [],
+    });
+
+    expect(pergola).toMatchObject({
+      id: 'pergola-2',
+      label: 'Pergola 2',
+      family: 'mono',
+      connectionKind: 'freestanding',
+      attachmentEdgeId: null,
+      attachmentZoneId: null,
+      side: 'rear',
+      strategy: null,
+      geometry: {
+        dimensions: {
+          lengthM: '6',
+          projectionM: '3',
+        },
+        roof: {
+          pitchDeg: '5',
+        },
+        supports: {
+          postConnectionType: 'slab_anchors',
+          ground: 'easy',
+          postCount: '4',
+          postCutHeightM: '2.4',
+        },
+      },
+      position: {
+        originXMm: '0',
+        originYMm: '0',
+        rotationDeg: '0',
+      },
+      attachment: {
+        spatialKind: 'freestanding',
+        host: null,
+        method: 'none',
+      },
+    });
+  });
+
+  it('allocates the next pergola id without filling deleted gaps', () => {
+    expect(
+      nextObjectWorkbenchPergolaId([
+        {
+          id: 'pergola-1',
+          label: 'Pergola 1',
+          family: 'mono',
+          attachmentEdgeId: null,
+          attachmentZoneId: null,
+          side: 'rear',
+          strategy: null,
+        },
+        {
+          id: 'pergola-4',
+          label: 'Pergola 4',
+          family: 'mono',
+          attachmentEdgeId: null,
+          attachmentZoneId: null,
+          side: 'rear',
+          strategy: null,
+        },
+      ]),
+    ).toBe('pergola-3');
+  });
+
+  it('places a new pergola to the right of the active pergola when available', () => {
+    const currentPergolas: ObjectFirstPergolaDraft[] = [
+      {
+        id: 'pergola-1',
+        label: 'Pergola 1',
+        family: 'mono',
+        attachmentEdgeId: null,
+        attachmentZoneId: null,
+        side: 'rear',
+        strategy: null,
+        geometry: {
+          dimensions: {
+            lengthM: '6',
+          },
+        },
+        position: {
+          originXMm: '1000',
+          originYMm: '2000',
+          rotationDeg: '0',
+        },
+      },
+      {
+        id: 'pergola-2',
+        label: 'Pergola 2',
+        family: 'mono',
+        attachmentEdgeId: null,
+        attachmentZoneId: null,
+        side: 'rear',
+        strategy: null,
+        geometry: {
+          dimensions: {
+            lengthM: '7',
+          },
+        },
+        position: {
+          originXMm: '12000',
+          originYMm: '3000',
+          rotationDeg: '0',
+        },
+      },
+    ];
+
+    const pergola = buildNewObjectWorkbenchPergolaDraft({
+      pergolaId: 'pergola-3',
+      currentPergolas,
+      activePergolaId: 'pergola-2',
+    });
+
+    expect(pergola.position).toEqual({
+      originXMm: '21000',
+      originYMm: '3000',
+      rotationDeg: '0',
+    });
+  });
+
+  it('places a new pergola after the last pergola when no active pergola is available', () => {
+    const pergola = buildNewObjectWorkbenchPergolaDraft({
+      pergolaId: 'pergola-2',
+      currentPergolas: [
+        {
+          id: 'pergola-1',
+          label: 'Pergola 1',
+          family: 'mono',
+          attachmentEdgeId: null,
+          attachmentZoneId: null,
+          side: 'rear',
+          strategy: null,
+        },
+      ],
+      activePergolaId: 'missing-pergola',
+    });
+
+    expect(pergola.position).toEqual({
+      originXMm: '8000',
+      originYMm: '0',
+      rotationDeg: '0',
+    });
   });
 
   it('commits roof intent and removes invalid terminal-end ids after footprint sync', () => {

@@ -10,7 +10,7 @@ Phase 1 shipped as PR-A through PR-G3c. The originally-planned PR-H ("final clea
 - `attachment_side` retired from cost engine (replaced by `attachment_length_mm`)
 - Scene composition lifted to project level (additional house forms built once per project)
 - Plan references now use one canonical `house_reference:<formId>` per house form, including `house-main`
-- Follow-up PR3: `WorkbenchSolvedModel.projectHouseGeometries` is now the project house registry feeding canonical references, host-excluded scene composition, shared host-house selection, and PlanViewport snap targets for every valid house form. Follow-up PR1 of the multi-object goal moved host house ids through raw/normalized geometry and deleted the portal scene-retag bridge; the per-pergola `RawGeometryModuleInput.houseContext` loop is still the Phase 2 deletion target.
+- Follow-up PR3: `WorkbenchSolvedModel.projectHouseGeometries` is now the project house registry feeding canonical references, host-excluded scene composition, shared host-house selection, and PlanViewport snap targets for every valid house form. Follow-up PR1 of the multi-object goal moved host house ids through raw/normalized geometry and deleted the portal scene-retag bridge. Follow-up PR2 added runtime-only object-first pergola solve sources so orphan pergolas no longer require fake persisted `inputs.modules[]` rows. Follow-up PR3 enabled rail Add Pergola to create freestanding object-first pergolas through that runtime path; the per-pergola `RawGeometryModuleInput.houseContext` loop is still the Phase 2 deletion target.
 - Project-level decks/openings pre-pass (no per-pergola redundancy)
 - `buildHouseModelConfig` decoupled from pergola context
 - Email-quote path completely unchanged throughout

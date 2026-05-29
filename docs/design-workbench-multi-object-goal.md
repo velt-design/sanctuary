@@ -39,14 +39,15 @@ Strong:
 - Plan snap targets can include walls/eaves from every valid house form.
 - Pergola-to-pergola snap exists.
 - Connected pergola grouping exists as derived scene logic.
+- Object-first pergolas without a persisted calculator module now get a runtime-only solve source, so the workbench can render/select orphan pergolas without writing fake `inputs.modules[]` rows.
+- The rail's `Add pergola` affordance creates a freestanding object-first pergola, selects it immediately, and renders it through the runtime solve-source path.
 - Costing direction is scene-derived through `SiteInputsV2` for pergola data.
 
 Still incomplete:
 
 - `buildRawGeometryModuleInput` still wraps a selected host house in each pergola module's `houseContext`, but the host form id now flows through geometry directly instead of a portal scene-retag bridge.
 - The per-object solve loop is not complete; houses do not solve once as project-level inputs consumed by pergolas/decks.
-- The rail's `Add pergola` affordance is intentionally disabled.
-- Non-active pergolas are visible mostly as project reference context, not fully interactive solved bodies.
+- Non-active pergolas and object-first-only pergolas can appear as solved project context, but full move/resize/snap edit parity for every pergola id is still incomplete.
 - Connected-pergola cost semantics such as shared posts remain deferred.
 - Some legacy snapshot/test carriers still rely on `HouseFirst*` paths.
 - Inspector parity for house forms, decks, and openings is not at the same standard as the pergola inspector.
@@ -83,10 +84,11 @@ Do not expand this goal to include:
    - Delete the temporary host-scene retag bridge when the geometry package emits real house form ids. (Done: solver output now carries the host form id.)
 
 2. **Enable freestanding Add Pergola**
-   - Add a new pergola object with its own position, local outline/dimensions, and no host.
-   - Select it immediately.
-   - Render it in plan as a real editable object.
-   - Keep cost fallback explicit for freestanding pergolas.
+   - Foundation shipped: object-first pergolas no longer need a persisted calculator module to solve/render; transient runtime solve sources are explicit and do not mutate `inputs.modules[]`.
+   - Add a new pergola object with its own position, dimensions, and no host. (Shipped: rail add creates a freestanding object-first pergola.)
+   - Select it immediately. (Shipped.)
+   - Render it in plan as a real editable object. (Shipped via runtime solve source; full edit parity follows.)
+   - Keep cost fallback explicit for freestanding pergolas. (Still deferred to connected-pergola costing semantics.)
 
 3. **Full multi-pergola interaction**
    - Promote non-active pergolas from reference-only context to selectable/editable project objects where the surface supports it.

@@ -14,7 +14,7 @@ export type CommitResult = { ok: boolean; error?: string };
  * inspector-side need is the inline `+ Add structure` button on the
  * House Forms tree section.
  */
-export type ObjectWorkbenchRailInspectorContext = {
+type ObjectWorkbenchRailInspectorContext = {
   /**
    * PR10: rail "Add structure" button. Clones the active form (or
    * primary if none selected) via PR5's `addHouseFormToObjectFirstDraft`
@@ -22,13 +22,12 @@ export type ObjectWorkbenchRailInspectorContext = {
    */
   onAddHouseForm?: () => Promise<CommitResult> | CommitResult;
   /**
-   * PR-T6 (2026-05-26): inline "+ Add deck" / "+ Add opening" pills
-   * on the OBJECTS TREE for visual parity with House Forms. Defer the
-   * mode/kind decision to the existing add-helpers (preset rectangle
-   * for decks; default opening kind from the inspector defaults).
-   * Pergolas have no production add path yet; the rail renders that
-   * pill in a disabled state for visual completeness.
+   * PR-T6 (2026-05-26): inline "+ Add X" pills on the OBJECTS TREE.
+   * Decks/openings defer mode/kind choice to existing add helpers. Pergolas
+   * create a freestanding object-first pergola and let snap form the host
+   * relationship later.
    */
+  onAddPergola?: () => Promise<CommitResult> | CommitResult;
   onAddDeck?: () => Promise<CommitResult> | CommitResult;
   onAddOpening?: () => Promise<CommitResult> | CommitResult;
 };

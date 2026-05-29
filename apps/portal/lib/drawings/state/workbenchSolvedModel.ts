@@ -29,11 +29,18 @@ import { buildObjectWorkbenchGeometryContext, type ObjectWorkbenchGeometryContex
 import { coerceHiddenWorkbenchGableBaseline } from '@/lib/drawings/geometry/hiddenWorkbenchGableBaseline';
 import {
   resolveWorkbenchGeometryModule,
+  type WorkbenchGeometryModuleResolveResult,
   type WorkbenchGeometryResultSource,
 } from '@/lib/drawings/geometry/resolveWorkbenchGeometryModule';
 import { buildEstimateDrawingModules, type EstimateDrawingModule } from '@/lib/estimates/moduleDrawing';
-import { mergeEstimateDrawingDraftIntoSnapshot, type EstimateDrawingDraft } from '@/lib/estimates/drawingEdits';
+import {
+  estimateDrawingDraftTouchesGeometry,
+  mergeEstimateDrawingDraftIntoSnapshot,
+  resolveCalculatorInputsFromSnapshot,
+  type EstimateDrawingDraft,
+} from '@/lib/estimates/drawingEdits';
 import type { CalculatorHouseAttachmentStrategy, CalculatorModuleInputs } from '@/lib/types/calculator';
+import { solveActiveGeometryModuleResult } from '@/lib/drawings/geometry/solveActiveGeometryModuleResult';
 import {
   buildWorkbenchDeckSupportDiagnostic,
   resolveWorkbenchDeckSupportActiveSide,
@@ -45,6 +52,11 @@ import {
   buildProjectHouseGeometryRegistry,
   type ProjectHouseGeometryEntry,
 } from './projectHouseGeometryRegistry';
+import {
+  buildCalculatorInputsForObjectFirstPergolaSolve,
+  buildObjectFirstPergolaSolveSources,
+  type ObjectFirstPergolaSolveSource,
+} from './objectFirstPergolaSolveSources';
 
 type AttachmentSide = 'rear' | 'front' | 'left' | 'right';
 type LocalPolygonPoint = { alongM: number; depthM: number };
@@ -148,6 +160,7 @@ export type WorkbenchSolvedModule = {
   index: number;
   id: string;
   label: string;
+  sourceKind: 'drawing_module' | 'object_first_pergola';
   drawingModule: EstimateDrawingModule;
   moduleInput: CalculatorModuleInputs;
   previewMode: GeometryPreviewMode;
@@ -815,6 +828,7 @@ function buildInvalidSolvedModule(input: {
   index: number;
   drawingModule: EstimateDrawingModule;
   label: string;
+  sourceKind?: WorkbenchSolvedModule['sourceKind'];
   moduleInput: CalculatorModuleInputs;
   previewMode: GeometryPreviewMode;
   resultSource: WorkbenchGeometryResultSource;
@@ -846,6 +860,7 @@ function buildInvalidSolvedModule(input: {
     index: input.index,
     id: input.drawingModule.id,
     label: input.label,
+    sourceKind: input.sourceKind ?? 'drawing_module',
     drawingModule,
     moduleInput: input.moduleInput,
     previewMode: input.previewMode,
@@ -883,9 +898,11 @@ function buildSolvedModule(input: {
   index: number;
   drawingModule: EstimateDrawingModule;
   label: string;
+  sourceKind?: WorkbenchSolvedModule['sourceKind'];
   snapshot: Record<string, unknown> | null;
   draft?: EstimateDrawingDraft | null;
   ignoreModuleResults?: boolean;
+  moduleResolution?: WorkbenchGeometryModuleResolveResult;
   geometryIdentity: Required<WorkbenchGeometryIdentity>;
   geometryContext: ObjectWorkbenchGeometryContext;
   /** Project-level house geometry registry, shared across all modules. */
@@ -896,12 +913,14 @@ function buildSolvedModule(input: {
   projectOpenings: RawGeometryModuleInput['houseContext']['openings'];
 }): WorkbenchSolvedModule {
   const initialModuleInput = coerceHiddenWorkbenchGableBaseline(input.drawingModule.input);
-  const resolved = resolveWorkbenchGeometryModule({
-    snapshot: input.snapshot,
-    draft: input.draft,
-    moduleIndex: input.index,
-    ignoreModuleResults: input.ignoreModuleResults,
-  });
+  const resolved =
+    input.moduleResolution ??
+    resolveWorkbenchGeometryModule({
+      snapshot: input.snapshot,
+      draft: input.draft,
+      moduleIndex: input.index,
+      ignoreModuleResults: input.ignoreModuleResults,
+    });
   const previewMode = resolvePreviewMode({
     resultSource: resolved.resultSource,
     draftTouchesGeometry: resolved.draftTouchesGeometry,
@@ -912,6 +931,7 @@ function buildSolvedModule(input: {
       index: input.index,
       drawingModule: input.drawingModule,
       label: input.label,
+      sourceKind: input.sourceKind,
       moduleInput: resolved.module ? coerceHiddenWorkbenchGableBaseline(resolved.module) : initialModuleInput,
       previewMode,
       resultSource: resolved.resultSource,
@@ -968,6 +988,7 @@ function buildSolvedModule(input: {
       index: input.index,
       id: input.drawingModule.id,
       label: input.label,
+      sourceKind: input.sourceKind ?? 'drawing_module',
       drawingModule,
       moduleInput,
       previewMode,
@@ -1007,6 +1028,7 @@ function buildSolvedModule(input: {
       index: input.index,
       drawingModule: input.drawingModule,
       label: input.label,
+      sourceKind: input.sourceKind,
       moduleInput,
       previewMode,
       resultSource: resolved.resultSource,
@@ -1068,6 +1090,7 @@ function buildSolvedModule(input: {
     index: input.index,
     id: input.drawingModule.id,
     label: input.label,
+    sourceKind: input.sourceKind ?? 'drawing_module',
     drawingModule,
     moduleInput,
     previewMode,
@@ -1116,6 +1139,47 @@ function resolveInactiveSolvedModelMessage(input: {
   return resolution.ok ? 'No active workbench module is available.' : resolution.message;
 }
 
+function buildObjectFirstPergolaModuleResolution(input: {
+  snapshot: Record<string, unknown> | null;
+  effectiveSnapshot: Record<string, unknown> | null;
+  draft?: EstimateDrawingDraft | null;
+  baseInputs: ReturnType<typeof resolveCalculatorInputsFromSnapshot>;
+  source: ObjectFirstPergolaSolveSource;
+}): WorkbenchGeometryModuleResolveResult {
+  const calculatorInputs = buildCalculatorInputsForObjectFirstPergolaSolve({
+    baseInputs: input.baseInputs,
+    pergola: input.source.pergola,
+    moduleInput: input.source.moduleInput,
+  });
+  const draftTouchesGeometry = estimateDrawingDraftTouchesGeometry(input.draft, input.snapshot);
+  const localResult = solveActiveGeometryModuleResult({
+    calculatorInputs,
+    moduleIndex: 0,
+  });
+
+  if (!localResult.ok) {
+    return {
+      ok: false,
+      effectiveSnapshot: input.effectiveSnapshot,
+      calculatorInputs,
+      module: input.source.moduleInput,
+      resultSource: 'local_resolve',
+      draftTouchesGeometry,
+      message: localResult.message,
+    };
+  }
+
+  return {
+    ok: true,
+    effectiveSnapshot: input.effectiveSnapshot,
+    calculatorInputs,
+    module: input.source.moduleInput,
+    moduleResult: localResult.moduleResult,
+    resultSource: 'local_resolve',
+    draftTouchesGeometry,
+  };
+}
+
 export function buildWorkbenchSolvedModel(input: {
   snapshot: Record<string, unknown> | null;
   draft?: EstimateDrawingDraft | null;
@@ -1153,6 +1217,7 @@ export function buildWorkbenchSolvedModel(input: {
       index,
       drawingModule,
       label: input.moduleLabels?.[index] ?? drawingModule.label,
+      sourceKind: 'drawing_module',
       snapshot: input.snapshot,
       draft: input.draft,
       ignoreModuleResults: input.ignoreModuleResults,
@@ -1163,6 +1228,47 @@ export function buildWorkbenchSolvedModel(input: {
       projectOpenings,
     }),
   );
+  const calculatorInputs = resolveCalculatorInputsFromSnapshot(effectiveSnapshot);
+  const objectFirstPergolaSources = buildObjectFirstPergolaSolveSources({
+    projectModel,
+    drawingModules,
+    preferredBaseModule:
+      drawingModules[input.activeModuleIndex ?? 0]?.input ?? drawingModules[0]?.input ?? null,
+  });
+  for (const source of objectFirstPergolaSources) {
+    const index = modules.length;
+    const moduleResolution = buildObjectFirstPergolaModuleResolution({
+      snapshot: input.snapshot,
+      effectiveSnapshot,
+      draft: input.draft,
+      baseInputs: calculatorInputs,
+      source,
+    });
+    modules.push(
+      buildSolvedModule({
+        index,
+        drawingModule: {
+          id: `object-pergola:${source.pergola.id}`,
+          label: source.pergola.label,
+          input: source.moduleInput,
+          result: moduleResolution.ok ? moduleResolution.moduleResult : null,
+          planModel: null,
+          sectionModel: null,
+        },
+        label: source.pergola.label,
+        sourceKind: 'object_first_pergola',
+        snapshot: input.snapshot,
+        draft: input.draft,
+        ignoreModuleResults: true,
+        moduleResolution,
+        geometryIdentity,
+        geometryContext,
+        projectHouseGeometries,
+        projectDecks,
+        projectOpenings,
+      }),
+    );
+  }
   const activeModule = modules[input.activeModuleIndex ?? 0] ?? null;
   const inactiveMessage = activeModule ? null : resolveInactiveSolvedModelMessage(input);
   const projectReferenceShapes = buildProjectReferenceShapesFromModules(
@@ -1304,16 +1410,23 @@ function buildProjectReferenceShapesFromModules(
           pergolas: entries,
           houseSourceId: null,
         }).filter((shape) => shape.sourceType !== 'house_reference');
+  const seenPergolaReferenceIds = new Set<string>();
+  const dedupedShapes = shapes.filter((shape) => {
+    if (shape.sourceType !== 'pergola_reference') return true;
+    if (seenPergolaReferenceIds.has(shape.id)) return false;
+    seenPergolaReferenceIds.add(shape.id);
+    return true;
+  });
 
   const seenHouseReferenceIds = new Set<string>();
   for (const entry of projectHouseGeometries) {
     const shape = entry.referenceShape;
     if (seenHouseReferenceIds.has(shape.id)) continue;
     seenHouseReferenceIds.add(shape.id);
-    shapes.push(shape);
+    dedupedShapes.push(shape);
   }
 
-  return shapes;
+  return dedupedShapes;
 }
 
 /**

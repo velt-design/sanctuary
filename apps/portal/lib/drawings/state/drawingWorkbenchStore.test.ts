@@ -15,6 +15,7 @@ import { makeHouseFirstDeckSupportSnapshotFixture } from './houseFirstWorkbenchF
 import {
   buildObjectFirstWorkbenchDraftFromProjectModel,
 } from './objectFirstWorkbenchAdapter';
+import { buildObjectFirstWorkbenchDraftBaselineFromLegacyEstimateSnapshot } from './legacyEstimateSnapshotAdapter';
 import {
   type ObjectWorkbenchCompatibilityDraft,
   buildObjectFirstDeckDraftsFromCompatibilityDrafts,
@@ -769,6 +770,61 @@ describe('buildDrawingWorkbenchStore', () => {
     expect(houseCompatibility.activePergolaId).toBeNull();
     expect(houseStore.ui.activeRailTab).toBe('house_forms');
     expect(houseCompatibility.activeHouseSelection).toEqual({ kind: 'footprint', targetId: 'house-main' });
+  });
+
+  it('keeps orphan object-first pergola selection on its runtime solve source', () => {
+    const fixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
+    if (!fixture) throw new Error('Missing mono-standard fixture.');
+    const draft = buildEstimateDrawingDraftFromSnapshot(fixture.snapshot);
+    if (!draft) throw new Error('Expected drawing draft.');
+    const baseline = buildObjectFirstWorkbenchDraftBaselineFromLegacyEstimateSnapshot({
+      snapshot: fixture.snapshot,
+      draft,
+    });
+    if (!baseline) throw new Error('Expected objectFirst baseline draft.');
+    baseline.pergolas.push({
+      id: 'pergola-2',
+      label: 'Freestanding pergola',
+      family: 'mono',
+      connectionKind: 'freestanding',
+      attachmentEdgeId: null,
+      attachmentZoneId: null,
+      side: 'rear',
+      strategy: 'none',
+      geometry: {
+        dimensions: { lengthM: '4', projectionM: '2.5' },
+        roof: { pitchDeg: '5', material: 'acrylic' },
+        supports: {
+          postCount: '4',
+          postCutHeightM: '2.4',
+          postConnectionType: 'slab_anchors',
+          ground: 'easy',
+        },
+      },
+      position: { originXMm: '12000', originYMm: '0', rotationDeg: '0' },
+      attachment: { spatialKind: 'freestanding', host: null, method: 'none' },
+    });
+    draft.objectFirst = baseline;
+
+    const store = buildDrawingWorkbenchStore({
+      snapshot: fixture.snapshot,
+      draft,
+      ui: createDrawingWorkbenchUiState({
+        activeModuleIndex: 1,
+        activeRailTab: 'pergolas',
+        activeObjectFamily: 'pergolas',
+        activeObjectRef: { family: 'pergolas', objectId: 'pergola-2' },
+      }),
+    });
+
+    expect(draft.inputs.modules).toHaveLength(1);
+    expect(store.persisted.modules).toHaveLength(2);
+    expect(store.ui.activeModuleIndex).toBe(1);
+    expect(store.derived.activeModule?.solution.sourceKind).toBe('object_first_pergola');
+    expect(store.derived.activeModule?.drawingModule.input.pergolaId).toBe('pergola-2');
+    expect(store.derived.activeSolution?.moduleInput.pergolaId).toBe('pergola-2');
+    expect(store.derived.activePergola?.id).toBe('pergola-2');
+    expect(store.derived.objectWorkbench.activePergola?.id).toBe('pergola-2');
   });
 
   it('uses object-first derived attachment resolution for pergola rail state without retargeting stale hosts', () => {

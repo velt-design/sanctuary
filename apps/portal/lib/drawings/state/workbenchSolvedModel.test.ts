@@ -3,7 +3,11 @@ import { getSanctuaryGeometryWorkbenchFixture } from '@/lib/drawings/sanctuaryWo
 import { buildEstimateDrawingDraftFromSnapshot } from '@/lib/estimates/drawingEdits';
 import { buildObjectFirstWorkbenchDraftBaselineFromLegacyEstimateSnapshot } from './legacyEstimateSnapshotAdapter';
 import { addHouseFormToObjectFirstDraft } from './objectFirstWorkbenchAdapter';
-import { buildWorkbenchSolvedModel, type WorkbenchSolvedModel } from './workbenchSolvedModel';
+import {
+  buildWorkbenchSolvedModel,
+  buildWorkbenchSolvedProject,
+  type WorkbenchSolvedModel,
+} from './workbenchSolvedModel';
 
 function getFixtureSnapshot(name: Parameters<typeof getSanctuaryGeometryWorkbenchFixture>[0]): Record<string, unknown> {
   const fixture = getSanctuaryGeometryWorkbenchFixture(name);
@@ -75,6 +79,81 @@ describe('buildWorkbenchSolvedModel geometry artifact', () => {
     expect(activeModule.viewportGeometry.preview.validation).toBe(artifact.validation);
     expect(activeModule.viewportGeometry.legacyFallback.planModel).toBe(activeModule.planModel);
     expect(activeModule.viewportGeometry.legacyFallback.sectionModel).toBe(activeModule.sectionModel);
+    expect(activeModule.sourceKind).toBe('drawing_module');
+  });
+
+  it('solves object-first pergolas without adding persisted calculator modules', () => {
+    const snapshot = getFixtureSnapshot('mono-standard');
+    const draft = buildEstimateDrawingDraftFromSnapshot(snapshot);
+    if (!draft) throw new Error('Expected drawing draft.');
+    const baseline = buildObjectFirstWorkbenchDraftBaselineFromLegacyEstimateSnapshot({
+      snapshot,
+      draft,
+    });
+    if (!baseline) throw new Error('Expected objectFirst baseline draft.');
+    const initialModuleCount = draft.inputs.modules.length;
+    baseline.pergolas.push({
+      id: 'pergola-2',
+      label: 'Freestanding pergola',
+      family: 'mono',
+      connectionKind: 'freestanding',
+      attachmentEdgeId: null,
+      attachmentZoneId: null,
+      side: 'rear',
+      strategy: 'none',
+      geometry: {
+        dimensions: { lengthM: '4', projectionM: '2.5' },
+        roof: { pitchDeg: '5', material: 'acrylic' },
+        supports: {
+          postCount: '4',
+          postCutHeightM: '2.4',
+          postConnectionType: 'slab_anchors',
+          ground: 'easy',
+        },
+      },
+      position: { originXMm: '12000', originYMm: '0', rotationDeg: '0' },
+      attachment: { spatialKind: 'freestanding', host: null, method: 'none' },
+    });
+    draft.objectFirst = baseline;
+
+    const solvedModel = buildWorkbenchSolvedModel({
+      snapshot,
+      draft,
+      activeModuleIndex: 1,
+    });
+
+    expect(draft.inputs.modules).toHaveLength(initialModuleCount);
+    expect(solvedModel.modules).toHaveLength(initialModuleCount + 1);
+    expect(solvedModel.activeModule?.sourceKind).toBe('object_first_pergola');
+    expect(solvedModel.activeModule?.moduleInput).toMatchObject({
+      pergolaId: 'pergola-2',
+      houseConnectionType: 'none',
+      lengthM: '4',
+      projectionM: '2.5',
+      postCount: '4',
+      postConnectionType: 'slab_anchors',
+    });
+    expect(solvedModel.activeModule?.geometryArtifact).toBeTruthy();
+
+    const pergolaRefs = solvedModel.projectReferenceShapes.filter(
+      (shape) => shape.sourceType === 'pergola_reference',
+    );
+    expect(pergolaRefs.map((shape) => shape.sourceObjectId)).toEqual([
+      'pergola-1',
+      'pergola-2',
+    ]);
+    expect(new Set(pergolaRefs.map((shape) => shape.id)).size).toBe(pergolaRefs.length);
+
+    const solvedProject = buildWorkbenchSolvedProject({
+      solvedModel,
+      activePergolaId: 'pergola-2',
+    });
+    expect(solvedProject.pergolas.map((pergola) => pergola.id)).toEqual([
+      'pergola-1',
+      'pergola-2',
+    ]);
+    expect(solvedProject.activePergola?.id).toBe('pergola-2');
+    expect(solvedProject.activePergola?.sourceModules[0]?.sourceKind).toBe('object_first_pergola');
   });
 
   it('keeps invalid geometry outside the solved artifact contract', () => {

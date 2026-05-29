@@ -51,6 +51,7 @@ import {
   applyObjectWorkbenchPergolaPatch,
   buildNewObjectWorkbenchDeckDraft,
   buildNewObjectWorkbenchOpeningDraft,
+  buildNewObjectWorkbenchPergolaDraft,
   buildObjectFirstDraftWithDecks,
   buildObjectFirstDraftWithOpenings,
   buildObjectFirstDraftWithPergolas,
@@ -58,6 +59,7 @@ import {
   mergeHouseFormRoofIntentAfterFootprintSync,
   nextObjectWorkbenchDeckId,
   nextObjectWorkbenchOpeningId,
+  nextObjectWorkbenchPergolaId,
   resolveCurrentObjectWorkbenchDeckDrafts,
   resolveCurrentObjectWorkbenchOpeningDrafts,
   resolveCurrentObjectWorkbenchPergolaDrafts,
@@ -295,7 +297,10 @@ export function useObjectWorkbenchActions({
             return { ok: false, error: 'This pergola is no longer available.' };
           }
           const moduleIndexes = store.persisted.modules.flatMap((module, moduleIndex) =>
-            module.drawingModule.input.pergolaId === commit.target.objectId ? [moduleIndex] : [],
+            module.solution.sourceKind === 'drawing_module' &&
+            module.drawingModule.input.pergolaId === commit.target.objectId
+              ? [moduleIndex]
+              : [],
           );
           const nextDraft = updateDraftObjectFirst({
             draft,
@@ -823,6 +828,62 @@ export function useObjectWorkbenchActions({
     [clearSelectedObjectTarget, commitOpeningDraftMutation],
   );
 
+  const addSharedPergola = useCallback(
+    async (): Promise<CommitResult> => {
+      let newPergolaId: string | null = null;
+      const newPergolaModuleIndex = store.persisted.modules.length;
+      return runDraftTransaction({
+        buildNextDraft: (draft) => {
+          const objectFirstDraft = resolveObjectFirstDraft(draft, store);
+          const currentPergolas = resolveCurrentObjectWorkbenchPergolaDrafts(objectFirstDraft);
+          const activePergolaId =
+            ui.activeObjectFamily === 'pergolas' && ui.activeObjectRef.family === 'pergolas'
+              ? ui.activeObjectRef.objectId
+              : null;
+          newPergolaId = nextObjectWorkbenchPergolaId(currentPergolas);
+          return {
+            ok: true,
+            draft: updateDraftObjectFirst({
+              draft,
+              objectFirst: buildObjectFirstDraftWithPergolas({
+                objectFirstDraft,
+                pergolas: [
+                  ...currentPergolas,
+                  buildNewObjectWorkbenchPergolaDraft({
+                    pergolaId: newPergolaId,
+                    currentPergolas,
+                    activePergolaId,
+                  }),
+                ],
+              }),
+            }),
+          };
+        },
+        afterPersist: () => {
+          if (!newPergolaId) return;
+          setUi((current) => ({
+            ...current,
+            activeModuleIndex: newPergolaModuleIndex,
+            ...buildDrawingWorkbenchObjectSelectionState({
+              activeRailTab: 'pergolas',
+              activeObjectRef: { family: 'pergolas', objectId: newPergolaId },
+            }),
+            selection: { kind: 'none', targetId: null },
+          }));
+        },
+      });
+    },
+    [
+      runDraftTransaction,
+      setUi,
+      store,
+      store.persisted.modules.length,
+      ui.activeObjectFamily,
+      ui.activeObjectRef.family,
+      ui.activeObjectRef.objectId,
+    ],
+  );
+
   const commitDrawingField = useCallback(
     async (field: EstimateDrawingField, nextValue: string): Promise<CommitResult> => {
       const intent = translateEstimateDrawingFieldToObjectWorkbenchGeometryIntent(field, nextValue);
@@ -959,6 +1020,7 @@ export function useObjectWorkbenchActions({
   );
 
   return {
+    addSharedPergola,
     addSharedHouseDeck,
     addSharedHouseForm,
     addSharedHouseOpening,

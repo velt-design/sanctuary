@@ -55,6 +55,7 @@ import {
   type WorkbenchTrustStatus,
   type WorkbenchTrustStatusKind,
 } from './workbenchSolvedModel';
+import { countObjectFirstPergolaSolveSources } from './objectFirstPergolaSolveSources';
 import type {
   HouseAssemblyModel,
   HouseFormModel,
@@ -184,8 +185,12 @@ export function buildDrawingWorkbenchStore(input: {
   const objectFirstDecks = projectModel.decks;
   const objectFirstOpenings = projectModel.openings;
   const objectFirstPergolas = projectModel.pergolas;
+  const runtimePergolaSolveSourceCount = countObjectFirstPergolaSolveSources({
+    projectModel,
+    drawingModules,
+  });
   const ui = normalizeDrawingWorkbenchUiState(input.ui, {
-    moduleCount: drawingModules.length,
+    moduleCount: drawingModules.length + runtimePergolaSolveSourceCount,
     houseFormIds: houseForms.map((houseForm) => houseForm.id),
     pergolaIds: objectFirstPergolas.map((pergola) => pergola.id),
     deckIds: objectFirstDecks.map((deck) => deck.id),

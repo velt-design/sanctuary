@@ -656,6 +656,52 @@ describe('DesignWorkbenchEstimateClient', () => {
     rendered.unmount();
   });
 
+  it('adds a freestanding object-first pergola without persisting a calculator module', async () => {
+    const estimate = buildEstimateDetail();
+    const entityKey = buildEstimateDrawingDraftEntityKey(estimate.id);
+    const rendered = renderIntoDocument(
+      <DesignWorkbenchEstimateClient
+        estimate={estimate}
+        projectName="Deck Build"
+        siteAddress="1 Test Street"
+      />,
+    );
+
+    await flushAsyncWork();
+    clickButtonByText(rendered.container, 'Add pergola');
+    await flushAsyncWork();
+
+    const workingCopy = getLocalFirstWorkingCopy<any>(entityKey)?.data;
+    const pergolas = readObjectFirstPergolas(workingCopy);
+    expect(pergolas.map((pergola: any) => pergola.id)).toEqual(['pergola-1', 'pergola-2']);
+    expect(pergolas[1]).toMatchObject({
+      id: 'pergola-2',
+      label: 'Pergola 2',
+      family: 'mono',
+      connectionKind: 'freestanding',
+      geometry: {
+        dimensions: {
+          lengthM: '6',
+          projectionM: '3',
+        },
+        supports: {
+          postCount: '4',
+          postCutHeightM: '2.4',
+        },
+      },
+      attachment: {
+        spatialKind: 'freestanding',
+        host: null,
+        method: 'none',
+      },
+    });
+    expect(workingCopy?.inputs.modules).toHaveLength(1);
+
+    expect(rendered.container.querySelector('[data-active-workbench-object="pergolas:pergola-2"]')).not.toBeNull();
+
+    rendered.unmount();
+  });
+
   it('renders unsupported geometry as view-only without the Sanctuary rail', async () => {
     const estimate = buildEstimateDetail({
       mutateSnapshot: (snapshot) => {

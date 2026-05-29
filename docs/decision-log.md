@@ -36,6 +36,8 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 | 2026-05-29 | Workbench Cleanup | Active | PR-T8: roof appendage band feature removed end-to-end; future shape edits go through the gumball, not inspector number fields. |
 | 2026-05-29 | Workbench Cleanup | Active | PR-T9: deck inspector cull — `deck.label` / `deck.kind` / `deck.elevationMode` removed; host edge dropdown removed (snap-derived only); ground-clamp on negative offsets dropped. |
 | 2026-05-29 | Workbench Geometry | Active | Multi-house PR3: project house geometry registry is the canonical derived source for per-form house references, host-excluded 3D scene composition, and PlanViewport house snap targets. Per-pergola `RawGeometryModuleInput.houseContext` remains a Phase 2 deletion target; host house ids now flow through geometry, so portal-side scene retag bridges should not be reintroduced. |
+| 2026-05-29 | Workbench Geometry | Active | Multi-object PR2: object-first pergolas without persisted calculator modules solve through explicit runtime-only sources. Do not reintroduce fake `inputs.modules[]` persistence just to render/select a pergola; keep the temporary `CalculatorModuleInputs` adapter in memory until the per-object solve rewrite deletes it. |
+| 2026-05-29 | Workbench Geometry | Active | Multi-object PR3: Add Pergola creates a freestanding object-first pergola and selects its transient solve entry. Do not revive select-host-first or persisted-module creation flows when adding new pergolas. |
 | 2026-05-01 | Plan Rendering | Promoted | Geometry-ready Model Space is a hard top-projection-only render path; legacy/context/reference/opening overlays stay out of normal visuals. |
 | 2026-05-01 | Design Workbench Architecture | Promoted | Split workbench ownership contract-first: coordinate adapters and render graphs leave React presenters before moving tools/renderers. |
 | 2026-05-01 | Deck Interaction | Promoted | Projection-backed deck snapping must use top-projection frames live and object frames only at the commit boundary. |
@@ -1025,3 +1027,35 @@ Current guardrail: scene composition + snap-target derivation must read from the
 Promoted to: None
 
 Related docs/tests: [apps/portal/components/drawings/viewports/PlanViewport/PlanViewport.tsx](../apps/portal/components/drawings/viewports/PlanViewport/PlanViewport.tsx), [apps/portal/components/drawings/viewports/PlanViewport/interactions/snap/buildProjectHouseSnapTargets.ts](../apps/portal/components/drawings/viewports/PlanViewport/interactions/snap/buildProjectHouseSnapTargets.ts), [apps/portal/components/drawings/viewports/PlanViewport/interactions/snap/buildProjectHouseSnapTargets.test.ts](../apps/portal/components/drawings/viewports/PlanViewport/interactions/snap/buildProjectHouseSnapTargets.test.ts).
+
+### 2026-05-29 - Workbench Geometry - Multi-Object PR2 Runtime Pergola Solve Sources
+
+Area: Workbench Geometry
+
+Status: Active
+
+Decision or mistake: object-first pergolas without matching calculator modules now solve through explicit runtime-only solve sources. The workbench synthesizes the temporary `CalculatorModuleInputs` adapter in memory so the existing renderer can consume it, but it does not write a fake row to persisted `inputs.modules[]`.
+
+Why it mattered: enabling Add Pergola by persisting a temporary module row would have made the old calculator module bridge more comfortable instead of moving toward the object-first north star. Runtime solve sources let orphan pergolas render/select now while keeping the persistence model pointed at `objectFirst.pergolas`.
+
+Current guardrail: do not create persisted calculator modules just to make object-first pergolas visible or selectable. If code needs calculator-shaped fields during the coexist period, keep them in a named runtime adapter and mark them for deletion with the per-object solve rewrite. Freestanding mono defaults need at least four posts because the geometry solver rejects the two-post layout.
+
+Promoted to: None
+
+Related docs/tests: [apps/portal/lib/drawings/state/objectFirstPergolaSolveSources.ts](../apps/portal/lib/drawings/state/objectFirstPergolaSolveSources.ts), [apps/portal/lib/drawings/state/workbenchSolvedModel.test.ts](../apps/portal/lib/drawings/state/workbenchSolvedModel.test.ts), [apps/portal/lib/drawings/state/drawingWorkbenchStore.test.ts](../apps/portal/lib/drawings/state/drawingWorkbenchStore.test.ts).
+
+Date: 2026-05-29
+
+Area: Workbench Geometry
+
+Status: Active
+
+Decision or mistake: Add Pergola now creates a freestanding `objectFirst.pergolas[]` draft, selects it, and lets the runtime object-first pergola solve-source path render it. The action does not create or persist a calculator module row.
+
+Why it mattered: this is the first user-visible multiple-pergola creation step. If it had written `inputs.modules[]` rows or asked the user to pick a host before creation, it would have rebuilt the legacy module/host workflow instead of the object-first north star.
+
+Current guardrail: new pergolas are born freestanding with solver-valid defaults and snap later creates relationships. Do not add host-picking add flows or fake persisted module rows for visibility, selection, or costing during the coexistence period.
+
+Promoted to: None
+
+Related docs/tests: [apps/portal/app/staff/projects/[projectId]/design-workbench/objectWorkbenchDraftActions.test.ts](../apps/portal/app/staff/projects/%5BprojectId%5D/design-workbench/objectWorkbenchDraftActions.test.ts), [apps/portal/app/staff/projects/[projectId]/design-workbench/DesignWorkbenchEstimateClient.test.tsx](../apps/portal/app/staff/projects/%5BprojectId%5D/design-workbench/DesignWorkbenchEstimateClient.test.tsx), [apps/portal/components/drawings/rail/ObjectWorkbenchRail.test.tsx](../apps/portal/components/drawings/rail/ObjectWorkbenchRail.test.tsx).

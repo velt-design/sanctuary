@@ -19,6 +19,8 @@ function buildRailProps(input?: {
   draft?: EstimateDrawingDraft | null;
   activeRailTab?: DrawingWorkbenchRailTab;
   activeObjectRef?: WorkbenchObjectRef;
+  disabled?: boolean;
+  onAddPergola?: () => { ok: boolean; error?: string };
 }) {
   const fixture = getSanctuaryGeometryWorkbenchFixture(input?.fixtureSlug ?? 'mono-standard');
   if (!fixture) throw new Error('Expected Sanctuary fixture.');
@@ -59,7 +61,7 @@ function buildRailProps(input?: {
 
   return {
     model: store.derived.railModel,
-    disabled: false,
+    disabled: input?.disabled ?? false,
     activeRailTab: store.ui.activeRailTab,
     activeObjectRef: store.ui.activeObjectRef,
     visibility: store.ui.visibility,
@@ -72,6 +74,7 @@ function buildRailProps(input?: {
       onCommitRoofIntent: () => ({ ok: true }),
       onAddDeck: () => ({ ok: true }),
       onAddHouseForm: () => ({ ok: true }),
+      onAddPergola: input?.onAddPergola ?? (() => ({ ok: true })),
       onAddOpening: () => ({ ok: true }),
       onRemoveDeck: () => ({ ok: true }),
       onRemoveOpening: () => ({ ok: true }),
@@ -145,19 +148,24 @@ describe('ObjectWorkbenchRail', () => {
   it('renders the Add structure button under the House Forms family section', () => {
     // PR-T6 (2026-05-26): all four families render an inline "+ Add X"
     // pill for visual consistency with the CAD mockup. House Forms keeps
-    // "Add structure" copy. Pergolas renders the pill but disabled
-    // (no production add path yet; visual completeness with the limit
-    // communicated). Decks + Openings wire to addSharedHouseDeck /
-    // addSharedHouseOpening through the inspector context.
+    // "Add structure" copy. Pergolas now wires to addSharedPergola. Decks
+    // + Openings wire to addSharedHouseDeck / addSharedHouseOpening
+    // through the inspector context.
     const markup = renderToStaticMarkup(<ObjectWorkbenchRail {...buildRailProps()} />);
     expect(markup).toContain('data-action="add-house_forms"');
     expect(markup).toContain('>Add structure<');
     expect(markup).toContain('data-action="add-pergolas"');
     expect(markup).toContain('>Add pergola<');
+    expect(markup).not.toContain('data-action="add-pergolas" disabled=""');
     expect(markup).toContain('data-action="add-decks"');
     expect(markup).toContain('>Add deck<');
     expect(markup).toContain('data-action="add-openings"');
     expect(markup).toContain('>Add opening<');
+  });
+
+  it('disables Add pergola when the rail is locked', () => {
+    const markup = renderToStaticMarkup(<ObjectWorkbenchRail {...buildRailProps({ disabled: true })} />);
+    expect(markup).toContain('data-action="add-pergolas" disabled=""');
   });
 
   it('renders the flat OBJECTS TREE with every family heading visible simultaneously', () => {

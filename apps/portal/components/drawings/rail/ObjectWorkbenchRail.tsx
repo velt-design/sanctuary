@@ -53,7 +53,7 @@ export default function ObjectWorkbenchRail({
   inspectorContext,
 }: ObjectWorkbenchRailProps) {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const { onAddHouseForm, onAddDeck, onAddOpening } = inspectorContext;
+  const { onAddHouseForm, onAddPergola, onAddDeck, onAddOpening } = inspectorContext;
 
   const runAddHouseForm = useCallback(async () => {
     const result = await resolveCommitResult(onAddHouseForm?.());
@@ -70,6 +70,14 @@ export default function ObjectWorkbenchRail({
       addDeck: result.ok ? '' : result.error ?? 'Unable to add a new deck.',
     }));
   }, [onAddDeck]);
+
+  const runAddPergola = useCallback(async () => {
+    const result = await resolveCommitResult(onAddPergola?.());
+    setFieldErrors((current) => ({
+      ...current,
+      addPergola: result.ok ? '' : result.error ?? 'Unable to add a new pergola.',
+    }));
+  }, [onAddPergola]);
 
   const runAddOpening = useCallback(async () => {
     const result = await resolveCommitResult(onAddOpening?.());
@@ -137,9 +145,8 @@ export default function ObjectWorkbenchRail({
           const { rows } = familyRows[index]!;
           // PR-T6 (2026-05-26): per-family add affordance. All four
           // families render the "+ Add X" pill for visual consistency
-          // with the mockup. Pergolas have no production add handler
-          // yet, so the pill renders disabled rather than absent —
-          // visual completeness, real limit communicated.
+          // with the mockup. Pergolas now add freestanding object-first
+          // drafts; drag/snap forms relationships later.
           const addConfig = (() => {
             switch (family) {
               case 'house_forms':
@@ -150,9 +157,9 @@ export default function ObjectWorkbenchRail({
                 };
               case 'pergolas':
                 return {
-                  onAdd: () => undefined,
+                  onAdd: onAddPergola ? runAddPergola : undefined,
                   addLabel: 'Add pergola',
-                  addDisabled: true,
+                  addDisabled: !onAddPergola || disabled,
                 };
               case 'decks':
                 return {
@@ -191,6 +198,9 @@ export default function ObjectWorkbenchRail({
       ) : null}
       {fieldErrors.addDeck ? (
         <p className={styles.fieldError}>{fieldErrors.addDeck}</p>
+      ) : null}
+      {fieldErrors.addPergola ? (
+        <p className={styles.fieldError}>{fieldErrors.addPergola}</p>
       ) : null}
       {fieldErrors.addOpening ? (
         <p className={styles.fieldError}>{fieldErrors.addOpening}</p>
