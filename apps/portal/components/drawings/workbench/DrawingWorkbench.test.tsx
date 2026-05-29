@@ -2,7 +2,11 @@ import { act, useState } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import type { CostOutputV1 } from '@sp/costing';
-import type { GeometryPlanViewModel, GeometryTopProjectionViewModel } from '@sp/geometry';
+import type {
+  GeometryPlanViewModel,
+  GeometryTopProjectionShape,
+  GeometryTopProjectionViewModel,
+} from '@sp/geometry';
 import type { ModuleViewsTab } from '@/app/staff/calculator/ModuleViewsCard';
 import type { CalculatorModuleInputs } from '@/lib/types/calculator';
 import { buildEstimateDrawingModules } from '@/lib/estimates/moduleDrawing';
@@ -233,6 +237,29 @@ function makeTopProjectionFixture(
       heightMm: 3000,
     },
   } as unknown as GeometryTopProjectionViewModel;
+}
+
+function makeTopProjectionShape(
+  overrides: Partial<GeometryTopProjectionShape> = {},
+): GeometryTopProjectionShape {
+  return {
+    id: 'shape-1',
+    sourceObjectId: 'shape-1',
+    sourceId: null,
+    sourceType: 'roof_plane',
+    family: 'pergola',
+    kind: 'roof_plane',
+    polygon: [
+      { x: 0, y: 0 },
+      { x: 1000, y: 0 },
+      { x: 1000, y: 1000 },
+      { x: 0, y: 1000 },
+    ],
+    zOrder: 60,
+    zMin: 2400,
+    zMax: 2600,
+    ...overrides,
+  };
 }
 
 function makeReadyPlanViewModel(
@@ -601,6 +628,99 @@ describe('DrawingWorkbench', () => {
     expect(markup).toContain('data-plan-render-status="no_artifact"');
     expect(markup).toContain('Plan view unavailable');
     expect(markup).not.toContain('data-plan-screen-axis=');
+  });
+
+  it('uses the project viewport basis for Plan when the active selection has no artifact', () => {
+    const drawing = makeDrawingModule();
+    const projectDrawingSurfaceGeometry = makeSolvedDrawingSurfaceGeometry(drawing);
+    if (!projectDrawingSurfaceGeometry.artifact) {
+      throw new Error('Expected project drawing surface artifact.');
+    }
+    const activeDrawingSurfaceGeometry: WorkbenchDrawingSurfaceGeometry = {
+      source: 'unavailable',
+      artifact: null,
+      legacyFallback: {
+        planModel: null,
+        sectionModel: null,
+      },
+      legacyPlanModel: null,
+      planViewModel: null,
+      geometryPlan: null,
+      geometryTopProjection: null,
+      legacySectionModel: null,
+      geometrySection: null,
+    };
+    const projectViewportGeometry: WorkbenchViewportGeometry = {
+      artifact: projectDrawingSurfaceGeometry.artifact,
+      legacyFallback: {
+        planModel: null,
+        sectionModel: null,
+      },
+      preview: {
+        kind: 'error',
+        message: 'Project viewport basis is only needed for Plan here.',
+      },
+    };
+    const houseReference = makeTopProjectionShape({
+      id: 'house_reference:house-main',
+      sourceObjectId: 'house-main',
+      sourceId: 'house-main',
+      sourceType: 'house_reference',
+      family: 'house',
+      kind: 'footprint',
+    });
+    const invalidPergolaReference = makeTopProjectionShape({
+      id: 'pergola_reference:pergola-3',
+      sourceObjectId: 'pergola-3',
+      sourceId: 'pergola-3',
+      sourceType: 'pergola_reference',
+      family: 'pergola',
+      kind: 'footprint',
+      metadata: { pergolaId: 'pergola-3', isCanonicalOutline: true },
+    });
+    const validProjectPergola = makeTopProjectionShape({
+      id: 'project_pergola:pergola-1:roof_plane:roof-plane-main',
+      sourceObjectId: 'scene-roof-plane-main',
+      sourceId: 'roof-plane-main',
+      sourceType: 'roof_plane',
+      family: 'pergola',
+      kind: 'roof_plane',
+      metadata: { pergolaId: 'pergola-1' },
+    });
+    const meta = buildEstimateDrawingSheetMeta({
+      moduleLabel: 'Pergola 3',
+      view: 'plan',
+    });
+
+    const markup = renderToStaticMarkup(
+      <DrawingWorkbench
+        moduleLabel="Pergola 3"
+        modules={[{ id: 'module-3', label: 'Pergola 3' }]}
+        activeModuleIndex={0}
+        onActiveModuleIndexChange={() => undefined}
+        view="plan"
+        onViewChange={() => undefined}
+        viewportMode="model"
+        objectWorkbenchDisplayFamily="pergolas"
+        onViewportModeChange={() => undefined}
+        status="ready"
+        drawingSurfaceGeometry={activeDrawingSurfaceGeometry}
+        projectViewportGeometry={projectViewportGeometry}
+        activeObjectRef={{ family: 'pergolas', objectId: 'pergola-3' }}
+        houseCommittedShapes={[houseReference]}
+        projectPergolaPlanShapes={[validProjectPergola]}
+        projectContextShapes={[invalidPergolaReference]}
+        modelViewportTransform={createDrawingWorkbenchUiState().viewportTransform}
+        onModelViewportTransformChange={() => undefined}
+        meta={meta}
+      />,
+    );
+
+    expect(markup).not.toContain('data-plan-render-status="no_artifact"');
+    expect(markup).toContain('data-plan-screen-axis="world_x_left_world_y_down"');
+    expect(markup).toContain('data-plan-hit-shape-id="house_reference:house-main"');
+    expect(markup).toContain('data-plan-shape-id="project_pergola:pergola-1:roof_plane:roof-plane-main"');
+    expect(markup).toContain('data-plan-context-source-id="pergola-3"');
   });
 
   it('passes family visibility to model space so pergolas can be hidden without changing sheet output', () => {

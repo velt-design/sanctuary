@@ -1,4 +1,4 @@
-import type { Assembly3D, RawGeometryModuleInput, RawHouseInput } from './contracts';
+import type { Assembly3D, GeometryConfig, RawGeometryModuleInput, RawHouseInput } from './contracts';
 import { normalizeGeometryConfig, type NormalizeGeometryConfigErrorCode } from './normalize';
 import { solveAssembly3D } from './solve';
 import type { SolveAssembly3DErrorCode } from './solve.types';
@@ -16,7 +16,7 @@ export type SolveProjectPergolaErrorCode =
   | 'house_context_mismatch';
 
 export type SolveProjectPergolaResult =
-  | { ok: true; pergolaIndex: number; value: Assembly3D }
+  | { ok: true; pergolaIndex: number; config: GeometryConfig; value: Assembly3D }
   | {
       ok: false;
       pergolaIndex: number;
@@ -121,7 +121,7 @@ export function solveProject(input: SolveProjectInput): SolveProjectResult {
         error: solve.error,
       };
     }
-    return { ok: true, pergolaIndex, value: solve.value };
+    return { ok: true, pergolaIndex, config: normalize.value, value: solve.value };
   });
 
   return { rawHouse: input.rawHouse, pergolas };

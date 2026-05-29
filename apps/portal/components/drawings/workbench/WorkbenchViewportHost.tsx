@@ -44,6 +44,7 @@ type WorkbenchViewportHostProps = {
   visibility?: DrawingWorkbenchVisibilityState;
   status: ModuleViewsStatus;
   viewportGeometry?: WorkbenchViewportGeometry | null;
+  projectViewportGeometry?: WorkbenchViewportGeometry | null;
   projectGeometryPreview?: GeometryPreviewState | null;
   drawingSurfaceGeometry?: WorkbenchDrawingSurfaceGeometry | null;
   planViewModel?: PlanViewModel | null;
@@ -126,6 +127,7 @@ export default function WorkbenchViewportHost({
   visibility,
   status,
   viewportGeometry,
+  projectViewportGeometry,
   projectGeometryPreview,
   drawingSurfaceGeometry,
   planViewModel,
@@ -175,6 +177,16 @@ export default function WorkbenchViewportHost({
       viewportGeometry: viewportGeometry ?? null,
       planViewModel: planViewModel ?? null,
     });
+  const projectDrawingSurfaceGeometry = projectViewportGeometry
+    ? buildWorkbenchDrawingSurfaceGeometry({
+        viewportGeometry: projectViewportGeometry,
+        planViewModel: null,
+      })
+    : null;
+  const routedPlanDrawingSurfaceGeometry =
+    routedDrawingSurfaceGeometry?.artifact
+      ? routedDrawingSurfaceGeometry
+      : projectDrawingSurfaceGeometry ?? routedDrawingSurfaceGeometry;
   const routedGeometryPreview = projectGeometryPreview ?? viewportGeometry?.preview ?? null;
 
   return (
@@ -194,7 +206,7 @@ export default function WorkbenchViewportHost({
         />
       ) : viewportMode === 'plan' || viewportMode === 'model' ? (
         <PlanViewport
-          artifact={routedDrawingSurfaceGeometry?.artifact ?? null}
+          artifact={routedPlanDrawingSurfaceGeometry?.artifact ?? null}
           objectWorkbenchDisplayFamily={objectWorkbenchDisplayFamily}
           visibility={visibility}
           activeObjectRef={activeObjectRef}

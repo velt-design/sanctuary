@@ -284,6 +284,11 @@ describe('buildWorkbenchSolvedModel geometry artifact', () => {
     });
     const preview = solvedModel.projectGeometryPreview;
     expect(solvedModel.activeModule?.geometryPreview.kind).toBe('error');
+    expect(solvedModel.activeModule?.geometryArtifact).toBeNull();
+    expect(solvedModel.projectViewportGeometry?.artifact).toBeTruthy();
+    expect(solvedModel.projectReferenceShapes.some(
+      (shape) => shape.sourceType === 'house_reference',
+    )).toBe(true);
     expect(preview.kind).toBe('ready');
     if (preview.kind !== 'ready') return;
     const objectIds = preview.scene.layers.flatMap((layer) => layer.objects.map((object) => object.id));

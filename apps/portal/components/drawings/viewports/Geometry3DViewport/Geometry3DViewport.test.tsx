@@ -2220,6 +2220,38 @@ describe("Geometry3DViewport", () => {
     rendered.unmount();
   });
 
+  it("tolerates a controlled selected id that is missing from the scene", async () => {
+    const fixture = requireFixture("mono-standard");
+    const geometryPreview = buildWorkbenchGeometryPreview({
+      projectId: "proj_preview",
+      estimateId: fixture.estimate.id,
+      designRequestId: fixture.request.id,
+      snapshot: fixture.snapshot,
+      moduleIndex: 0,
+    });
+    expect(geometryPreview.kind).toBe("ready");
+    if (geometryPreview.kind !== "ready") return;
+
+    const rendered = renderIntoDocument(
+      <Geometry3DViewport
+        geometryPreview={geometryPreview}
+        controlledSelectedObjectId="pergola-3"
+      />,
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(viewportDiagnostics(rendered.container).selectedObjectId).toBe("pergola-3");
+    clickButtonByText(rendered.container, "Workspace panel");
+    expect(rendered.container.querySelector('[data-testid="workspace-panel"]')).toBeTruthy();
+    expect(rendered.container.textContent).not.toContain("NaN");
+    expect(rendered.container.textContent).not.toContain("Infinity");
+
+    rendered.unmount();
+  });
+
   it("renders an unsupported diagnostic panel instead of a blank canvas", () => {
     const fixture = requireFixture("mono-standard");
     const snapshot = structuredClone(fixture.snapshot) as {

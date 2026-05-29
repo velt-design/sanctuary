@@ -34,13 +34,11 @@ import {
 } from '@/lib/drawings/geometry/resolveWorkbenchGeometryModule';
 import { buildEstimateDrawingModules, type EstimateDrawingModule } from '@/lib/estimates/moduleDrawing';
 import {
-  estimateDrawingDraftTouchesGeometry,
   mergeEstimateDrawingDraftIntoSnapshot,
   resolveCalculatorInputsFromSnapshot,
   type EstimateDrawingDraft,
 } from '@/lib/estimates/drawingEdits';
 import type { CalculatorHouseAttachmentStrategy, CalculatorModuleInputs } from '@/lib/types/calculator';
-import { solveActiveGeometryModuleResult } from '@/lib/drawings/geometry/solveActiveGeometryModuleResult';
 import {
   buildWorkbenchDeckSupportDiagnostic,
   resolveWorkbenchDeckSupportActiveSide,
@@ -55,10 +53,14 @@ import {
 import { buildProjectPergolaPlanShapesFromModules } from './projectPergolaPlanShapes';
 import { buildProjectPergolaViewerSceneFromModules } from './projectPergolaViewerScene';
 import {
-  buildCalculatorInputsForObjectFirstPergolaSolve,
   buildObjectFirstPergolaSolveSources,
-  type ObjectFirstPergolaSolveSource,
 } from './objectFirstPergolaSolveSources';
+import {
+  buildWorkbenchProjectSolveSources,
+  solveWorkbenchProjectSources,
+  type WorkbenchProjectSolveSource,
+  type WorkbenchProjectSolvedPergola,
+} from './workbenchProjectSolveSources';
 
 type AttachmentSide = 'rear' | 'front' | 'left' | 'right';
 type LocalPolygonPoint = { alongM: number; depthM: number };
@@ -198,6 +200,14 @@ export type WorkbenchSolvedModel = {
    */
   projectPergolaPlanShapes: GeometryTopProjectionShape[];
   /**
+   * Stable project-level drawing basis for Plan/3D shells. When the selected
+   * pergola is invalid or unsupported, this points at the active ready module
+   * when possible, otherwise the first ready module, so project references and
+   * other valid pergolas can keep rendering without inventing fake geometry for
+   * the invalid selection.
+   */
+  projectViewportGeometry: WorkbenchViewportGeometry | null;
+  /**
    * Project-level 3D preview. Single-pergola projects keep the active module
    * preview unchanged; multi-pergola projects aggregate every valid pergola
    * scene into one selectable 3D surface.
@@ -288,6 +298,7 @@ export type WorkbenchSolvedProject = {
   activePergola: SolvedPergola | null;
   projectHouseGeometries: ProjectHouseGeometryEntry[];
   projectPergolaPlanShapes: GeometryTopProjectionShape[];
+  projectViewportGeometry: WorkbenchViewportGeometry | null;
   projectGeometryPreview: GeometryPreviewState;
   projectReferenceShapes: GeometryTopProjectionShape[];
   trust: WorkbenchTrustStatus;
@@ -837,6 +848,14 @@ function buildWorkbenchViewportGeometry(input: {
   };
 }
 
+function resolveProjectReadyBasisModule(input: {
+  modules: ReadonlyArray<WorkbenchSolvedModule>;
+  activeModule: WorkbenchSolvedModule | null;
+}): WorkbenchSolvedModule | null {
+  const activeReady = input.activeModule?.geometryArtifact ? input.activeModule : null;
+  return activeReady ?? input.modules.find((module) => module.geometryArtifact) ?? null;
+}
+
 function buildProjectGeometryPreviewFromModules(input: {
   modules: ReadonlyArray<WorkbenchSolvedModule>;
   activeModule: WorkbenchSolvedModule | null;
@@ -845,11 +864,7 @@ function buildProjectGeometryPreviewFromModules(input: {
   const readyModules = input.modules.filter(
     (module) => module.geometryPreview.kind === 'ready' && module.viewerScene,
   );
-  const activeReady =
-    input.activeModule?.geometryPreview.kind === 'ready' && input.activeModule.viewerScene
-      ? input.activeModule
-      : null;
-  const basisModule = activeReady ?? readyModules[0] ?? null;
+  const basisModule = resolveProjectReadyBasisModule(input);
   if (!basisModule || basisModule.geometryPreview.kind !== 'ready') {
     return (
       input.activeModule?.viewportGeometry.preview ?? {
@@ -956,6 +971,8 @@ function buildSolvedModule(input: {
   draft?: EstimateDrawingDraft | null;
   ignoreModuleResults?: boolean;
   moduleResolution?: WorkbenchGeometryModuleResolveResult;
+  projectSolveSource?: WorkbenchProjectSolveSource;
+  projectSolveResult?: WorkbenchProjectSolvedPergola | null;
   geometryIdentity: Required<WorkbenchGeometryIdentity>;
   geometryContext: ObjectWorkbenchGeometryContext;
   /** Project-level house geometry registry, shared across all modules. */
@@ -968,6 +985,7 @@ function buildSolvedModule(input: {
   const initialModuleInput = coerceHiddenWorkbenchGableBaseline(input.drawingModule.input);
   const resolved =
     input.moduleResolution ??
+    input.projectSolveSource?.moduleResolution ??
     resolveWorkbenchGeometryModule({
       snapshot: input.snapshot,
       draft: input.draft,
@@ -985,7 +1003,9 @@ function buildSolvedModule(input: {
       drawingModule: input.drawingModule,
       label: input.label,
       sourceKind: input.sourceKind,
-      moduleInput: resolved.module ? coerceHiddenWorkbenchGableBaseline(resolved.module) : initialModuleInput,
+      moduleInput:
+        (resolved.module ? coerceHiddenWorkbenchGableBaseline(resolved.module) : input.projectSolveSource?.moduleInput) ??
+        initialModuleInput,
       previewMode,
       resultSource: resolved.resultSource,
       draftTouchesGeometry: resolved.draftTouchesGeometry,
@@ -995,12 +1015,14 @@ function buildSolvedModule(input: {
     });
   }
 
-  const moduleInput = coerceHiddenWorkbenchGableBaseline(resolved.module);
-  const hostHouseForm = resolveModuleHouseForm({
-    projectModel: input.geometryContext.projectModel ?? null,
-    module: moduleInput,
-    moduleId: input.drawingModule.id,
-  });
+  const moduleInput = input.projectSolveSource?.moduleInput ?? coerceHiddenWorkbenchGableBaseline(resolved.module);
+  const hostHouseForm =
+    input.projectSolveSource?.hostHouseForm ??
+    resolveModuleHouseForm({
+      projectModel: input.geometryContext.projectModel ?? null,
+      module: moduleInput,
+      moduleId: input.drawingModule.id,
+    });
   const hostHouseFormId = hostHouseForm?.id ?? null;
   const projectHouseModels = input.projectHouseGeometries
     .filter((entry) => entry.houseFormId !== hostHouseFormId)
@@ -1026,6 +1048,8 @@ function buildSolvedModule(input: {
     fallbackSectionModel: drawingModule.sectionModel,
     projectDecks: input.projectDecks,
     projectOpenings: input.projectOpenings,
+    rawInput: input.projectSolveSource?.rawInput ?? null,
+    projectSolveResult: input.projectSolveResult ?? null,
   });
 
   if (derivation.kind === 'legacy_unsupported_family') {
@@ -1192,47 +1216,6 @@ function resolveInactiveSolvedModelMessage(input: {
   return resolution.ok ? 'No active workbench module is available.' : resolution.message;
 }
 
-function buildObjectFirstPergolaModuleResolution(input: {
-  snapshot: Record<string, unknown> | null;
-  effectiveSnapshot: Record<string, unknown> | null;
-  draft?: EstimateDrawingDraft | null;
-  baseInputs: ReturnType<typeof resolveCalculatorInputsFromSnapshot>;
-  source: ObjectFirstPergolaSolveSource;
-}): WorkbenchGeometryModuleResolveResult {
-  const calculatorInputs = buildCalculatorInputsForObjectFirstPergolaSolve({
-    baseInputs: input.baseInputs,
-    pergola: input.source.pergola,
-    moduleInput: input.source.moduleInput,
-  });
-  const draftTouchesGeometry = estimateDrawingDraftTouchesGeometry(input.draft, input.snapshot);
-  const localResult = solveActiveGeometryModuleResult({
-    calculatorInputs,
-    moduleIndex: 0,
-  });
-
-  if (!localResult.ok) {
-    return {
-      ok: false,
-      effectiveSnapshot: input.effectiveSnapshot,
-      calculatorInputs,
-      module: input.source.moduleInput,
-      resultSource: 'local_resolve',
-      draftTouchesGeometry,
-      message: localResult.message,
-    };
-  }
-
-  return {
-    ok: true,
-    effectiveSnapshot: input.effectiveSnapshot,
-    calculatorInputs,
-    module: input.source.moduleInput,
-    moduleResult: localResult.moduleResult,
-    resultSource: 'local_resolve',
-    draftTouchesGeometry,
-  };
-}
-
 export function buildWorkbenchSolvedModel(input: {
   snapshot: Record<string, unknown> | null;
   draft?: EstimateDrawingDraft | null;
@@ -1265,22 +1248,6 @@ export function buildWorkbenchSolvedModel(input: {
   // once per pergola module. Closes audit row 9 in production-path spirit.
   const projectDecks = mapProjectDecks(projectModel);
   const projectOpenings = mapProjectOpenings(projectModel);
-  const modules = drawingModules.map((drawingModule, index) =>
-    buildSolvedModule({
-      index,
-      drawingModule,
-      label: input.moduleLabels?.[index] ?? drawingModule.label,
-      sourceKind: 'drawing_module',
-      snapshot: input.snapshot,
-      draft: input.draft,
-      ignoreModuleResults: input.ignoreModuleResults,
-      geometryIdentity,
-      geometryContext,
-      projectHouseGeometries,
-      projectDecks,
-      projectOpenings,
-    }),
-  );
   const calculatorInputs = resolveCalculatorInputsFromSnapshot(effectiveSnapshot);
   const objectFirstPergolaSources = buildObjectFirstPergolaSolveSources({
     projectModel,
@@ -1288,40 +1255,40 @@ export function buildWorkbenchSolvedModel(input: {
     preferredBaseModule:
       drawingModules[input.activeModuleIndex ?? 0]?.input ?? drawingModules[0]?.input ?? null,
   });
-  for (const source of objectFirstPergolaSources) {
-    const index = modules.length;
-    const moduleResolution = buildObjectFirstPergolaModuleResolution({
+  const solveSources = buildWorkbenchProjectSolveSources({
+    snapshot: input.snapshot,
+    draft: input.draft,
+    ignoreModuleResults: input.ignoreModuleResults,
+    moduleLabels: input.moduleLabels,
+    drawingModules,
+    objectFirstPergolaSources,
+    effectiveSnapshot,
+    baseInputs: calculatorInputs,
+    geometryIdentity,
+    geometryContext,
+    projectDecks,
+    projectOpenings,
+  });
+  const projectSolveResults = solveWorkbenchProjectSources(solveSources);
+  const modules = solveSources.map((source) =>
+    buildSolvedModule({
+      index: source.index,
+      drawingModule: source.drawingModule,
+      label: source.label,
+      sourceKind: source.sourceKind,
       snapshot: input.snapshot,
-      effectiveSnapshot,
       draft: input.draft,
-      baseInputs: calculatorInputs,
-      source,
-    });
-    modules.push(
-      buildSolvedModule({
-        index,
-        drawingModule: {
-          id: `object-pergola:${source.pergola.id}`,
-          label: source.pergola.label,
-          input: source.moduleInput,
-          result: moduleResolution.ok ? moduleResolution.moduleResult : null,
-          planModel: null,
-          sectionModel: null,
-        },
-        label: source.pergola.label,
-        sourceKind: 'object_first_pergola',
-        snapshot: input.snapshot,
-        draft: input.draft,
-        ignoreModuleResults: true,
-        moduleResolution,
-        geometryIdentity,
-        geometryContext,
-        projectHouseGeometries,
-        projectDecks,
-        projectOpenings,
-      }),
-    );
-  }
+      ignoreModuleResults: input.ignoreModuleResults,
+      moduleResolution: source.moduleResolution,
+      projectSolveSource: source,
+      projectSolveResult: projectSolveResults.get(source.index) ?? null,
+      geometryIdentity,
+      geometryContext,
+      projectHouseGeometries,
+      projectDecks,
+      projectOpenings,
+    }),
+  );
   const activeModule = modules[input.activeModuleIndex ?? 0] ?? null;
   const inactiveMessage = activeModule ? null : resolveInactiveSolvedModelMessage(input);
   const projectReferenceShapes = buildProjectReferenceShapesFromModules(
@@ -1329,6 +1296,10 @@ export function buildWorkbenchSolvedModel(input: {
     projectHouseGeometries,
   );
   const projectPergolaPlanShapes = buildProjectPergolaPlanShapesFromModules(modules);
+  const projectViewportGeometry = resolveProjectReadyBasisModule({
+    modules,
+    activeModule,
+  })?.viewportGeometry ?? null;
   const projectGeometryPreview = buildProjectGeometryPreviewFromModules({
     modules,
     activeModule,
@@ -1343,6 +1314,7 @@ export function buildWorkbenchSolvedModel(input: {
     activeModule,
     projectHouseGeometries,
     projectPergolaPlanShapes,
+    projectViewportGeometry,
     projectGeometryPreview,
     projectReferenceShapes,
     trust:
@@ -1441,6 +1413,7 @@ export function buildWorkbenchSolvedProject(input: {
     activePergola,
     projectHouseGeometries: solvedModel.projectHouseGeometries,
     projectPergolaPlanShapes: solvedModel.projectPergolaPlanShapes,
+    projectViewportGeometry: solvedModel.projectViewportGeometry,
     projectGeometryPreview: solvedModel.projectGeometryPreview,
     projectReferenceShapes: solvedModel.projectReferenceShapes,
     trust: solvedModel.trust,

@@ -25,7 +25,7 @@ export type WorkbenchPergolaRenderStatus =
   | 'legacy_unsupported_family'
   | 'invalid_geometry';
 
-export type WorkbenchGeometryDerivation =
+type WorkbenchGeometryDerivation =
   | {
       kind: 'geometry';
       renderSource: 'geometry';
@@ -73,19 +73,25 @@ export function deriveWorkbenchGeometry(input: {
    */
   projectDecks?: RawGeometryModuleInput['houseContext']['decks'];
   projectOpenings?: RawGeometryModuleInput['houseContext']['openings'];
+  rawInput?: RawGeometryModuleInput | null;
+  projectSolveResult?: { config: GeometryConfig; assembly: Assembly3D } | null;
 }): WorkbenchGeometryDerivation {
-  const rawInput = buildRawGeometryModuleInput({
-    projectId: input.projectId,
-    estimateId: input.estimateId,
-    designRequestId: input.designRequestId ?? null,
-    moduleId: input.moduleId,
-    module: input.module,
-    result: input.result,
-    objectWorkbenchGeometryContext: input.objectWorkbenchGeometryContext ?? null,
-    projectDecks: input.projectDecks,
-    projectOpenings: input.projectOpenings,
-  });
-  const normalized = normalizeGeometryConfig(rawInput);
+  const rawInput =
+    input.rawInput ??
+    buildRawGeometryModuleInput({
+      projectId: input.projectId,
+      estimateId: input.estimateId,
+      designRequestId: input.designRequestId ?? null,
+      moduleId: input.moduleId,
+      module: input.module,
+      result: input.result,
+      objectWorkbenchGeometryContext: input.objectWorkbenchGeometryContext ?? null,
+      projectDecks: input.projectDecks,
+      projectOpenings: input.projectOpenings,
+    });
+  const normalized = input.projectSolveResult
+    ? { ok: true as const, value: input.projectSolveResult.config }
+    : normalizeGeometryConfig(rawInput);
 
   if (!normalized.ok) {
     if (normalized.code === 'unsupported_family') {
@@ -110,7 +116,9 @@ export function deriveWorkbenchGeometry(input: {
     };
   }
 
-  const solved = solveAssembly3D(normalized.value);
+  const solved = input.projectSolveResult
+    ? { ok: true as const, value: input.projectSolveResult.assembly }
+    : solveAssembly3D(normalized.value);
   if (!solved.ok) {
     return {
       kind: 'invalid_geometry',

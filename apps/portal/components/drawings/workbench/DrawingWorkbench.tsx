@@ -50,6 +50,7 @@ type DrawingWorkbenchProps = {
   status: ModuleViewsStatus;
   trustGate?: WorkbenchTrustGateModel | null;
   viewportGeometry?: WorkbenchViewportGeometry | null;
+  projectViewportGeometry?: WorkbenchViewportGeometry | null;
   projectGeometryPreview?: GeometryPreviewState | null;
   drawingSurfaceGeometry?: WorkbenchDrawingSurfaceGeometry | null;
   planViewModel?: PlanViewModel | null;
@@ -136,6 +137,7 @@ export default function DrawingWorkbench({
   status,
   trustGate,
   viewportGeometry,
+  projectViewportGeometry,
   projectGeometryPreview,
   drawingSurfaceGeometry,
   planViewModel,
@@ -205,6 +207,7 @@ export default function DrawingWorkbench({
         visibility={visibility}
         status={status}
         viewportGeometry={viewportGeometry}
+        projectViewportGeometry={projectViewportGeometry}
         projectGeometryPreview={projectGeometryPreview}
         drawingSurfaceGeometry={drawingSurfaceGeometry}
         planViewModel={planViewModel}

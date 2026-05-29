@@ -41,6 +41,8 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 | 2026-05-29 | Workbench Geometry | Active | Multi-object PR4: project context pergola outlines are selectable plan targets. Selection must resolve by `pergolaId` across persisted and transient solved entries, never by falling back to module 0. |
 | 2026-05-29 | Plan Rendering | Active | Multi-object PR5: Plan Editor renders project-wide pergola bodies by object id, not by active module. Do not regress multi-pergola plans to active-only detail plus reference boxes. |
 | 2026-05-29 | 3D Rendering | Active | Multi-object PR6: 3D Review renders project-wide pergola scene bodies by `pergolaId`, not by active module. Keep 3D read/select-only and preserve object ids for selection. |
+| 2026-05-30 | Workbench Geometry | Active | Multi-object PR7: workbench solve sources route eligible host-house groups through package-level `solveProject`. Do not add new per-module normalize/solve branches in portal state; keep remaining `houseContext` use explicit as the next deletion target. |
+| 2026-05-30 | Workbench Rendering | Active | Multi-object PR8: invalid selected pergolas must not own the project view basis. Keep Plan/3D on a ready project basis and render invalid selections as reference/context objects. |
 | 2026-05-01 | Plan Rendering | Promoted | Geometry-ready Model Space is a hard top-projection-only render path; legacy/context/reference/opening overlays stay out of normal visuals. |
 | 2026-05-01 | Design Workbench Architecture | Promoted | Split workbench ownership contract-first: coordinate adapters and render graphs leave React presenters before moving tools/renderers. |
 | 2026-05-01 | Deck Interaction | Promoted | Projection-backed deck snapping must use top-projection frames live and object frames only at the commit boundary. |
@@ -77,6 +79,22 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 
 ## Entries
 
+### 2026-05-30 - Workbench Rendering - Stable Project View Basis
+
+Area: Workbench Rendering
+
+Status: Active
+
+Decision or mistake: selecting an invalid transient pergola could make Plan lose its projection basis and could leave 3D with a selected id that did not exist in the aggregated scene.
+
+Why it mattered: object selection and project rendering were still coupled to the active module's artifact, so one invalid object could blank or crash an otherwise valid multi-object project view.
+
+Current guardrail: Plan and 3D should use a stable project basis derived from the active ready module, or the first ready module when the active selection is invalid. Invalid/unsupported objects remain selectable as reference/context outlines; do not invent solved bodies for them.
+
+Promoted to: None
+
+Related docs/tests: `docs/design-workbench-multi-object-goal.md`, `docs/design-workbench-architecture.md`, `apps/portal/lib/drawings/state/workbenchSolvedModel.test.ts`, `apps/portal/components/drawings/workbench/DrawingWorkbench.test.tsx`, `apps/portal/components/drawings/viewports/Geometry3DViewport/Geometry3DViewport.test.tsx`.
+
 ### 2026-05-29 - 3D Rendering - Project-Wide Pergola Scene Bodies
 
 Area: 3D Rendering
@@ -92,6 +110,22 @@ Current guardrail: 3D Review must consume a project-wide solved preview for vali
 Promoted to: None
 
 Related docs/tests: `docs/design-workbench-multi-object-goal.md`, `apps/portal/lib/drawings/state/workbenchSolvedModel.test.ts`, `apps/portal/components/drawings/viewports/selection/selectionRouter.test.ts`, `apps/portal/components/drawings/workbench/DrawingWorkbench.test.tsx`.
+
+### 2026-05-30 - Workbench Geometry - Project Solve Boundary
+
+Area: Workbench Geometry
+
+Status: Active
+
+Decision or mistake: workbench state now builds an explicit persisted + transient pergola solve-source list and routes eligible host-house groups through `@sp/geometry solveProject` before rehydrating the existing `WorkbenchSolvedModule` contract.
+
+Why it mattered: repeated portal-side per-module normalize/solve branches made it too easy for future multi-object work to keep treating each pergola as its own project. The package-level boundary is now the normal workbench entry point for object-first host groups, while legacy/no-object-first sources remain named fallback.
+
+Current guardrail: new workbench geometry solve work should extend the project solve-source boundary, not add another caller-specific per-module solve path in `workbenchSolvedModel.ts`. `RawGeometryModuleInput.houseContext` still exists as compatibility data and remains the next deletion/shrink target.
+
+Promoted to: None
+
+Related docs/tests: `docs/design-workbench-multi-object-goal.md`, `docs/design-workbench-architecture.md`, `apps/portal/lib/drawings/state/workbenchProjectSolveSources.test.ts`, `packages/geometry/src/solveProject.test.ts`.
 
 ### 2026-05-29 - Plan Rendering - Project-Wide Pergola Bodies
 

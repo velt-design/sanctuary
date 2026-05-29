@@ -334,6 +334,8 @@ export default function Geometry3DViewport({
       current === controlledSelectedObjectId ? current : controlledSelectedObjectId,
     );
   }, [controlledSelectedObjectId]);
+  const controlledSelectedObjectIdRef = useRef(controlledSelectedObjectId);
+  controlledSelectedObjectIdRef.current = controlledSelectedObjectId;
   useEffect(() => {
     if (!onSelectedObjectChange) return;
     onSelectedObjectChange(selectedObjectId);
@@ -476,6 +478,30 @@ export default function Geometry3DViewport({
       ) ?? null,
     [allObjects, selectedObjectId],
   );
+  useEffect(() => {
+    if (!selectedObjectId || selectedObject) return;
+
+    setCameraState((current) =>
+      current.focusMode === "selection"
+        ? { ...current, focusMode: "scene" }
+        : current,
+    );
+    setMeasurement((current) => {
+      const firstAnchor =
+        current.firstAnchor?.objectId === selectedObjectId ? null : current.firstAnchor;
+      const secondAnchor =
+        current.secondAnchor?.objectId === selectedObjectId ? null : current.secondAnchor;
+      if (firstAnchor === current.firstAnchor && secondAnchor === current.secondAnchor) {
+        return current;
+      }
+      return {
+        ...current,
+        firstAnchor,
+        secondAnchor,
+        snapMode: firstAnchor || secondAnchor ? current.snapMode : "selection",
+      };
+    });
+  }, [selectedObject, selectedObjectId]);
   const finiteBounds = useMemo(() => allSceneBoundsFinite(sceneBounds), [sceneBounds]);
   const houseRoofDiagnostics = useMemo(
     () => collectHouseRoofViewportDiagnostics(scene),
@@ -843,7 +869,7 @@ export default function Geometry3DViewport({
         scene.layers.map((layer) => [layer.id, layer.visibleByDefault]),
       ),
     );
-    setSelectedObjectId(null);
+    setSelectedObjectId(controlledSelectedObjectIdRef.current ?? null);
     setSectionCut({ enabled: false, positionMm: Math.round(lengthMm / 2) });
     setOverlayVisibility({
       datumAxes: false,
@@ -1462,12 +1488,14 @@ export default function Geometry3DViewport({
                       </div>
                     </>
                   ) : null}
-                  {objectSummary(selectedObject).map((entry) => (
-                    <div key={entry.label} className={styles.inspectorRow}>
-                      <dt>{entry.label}</dt>
-                      <dd>{entry.value}</dd>
-                    </div>
-                  ))}
+                  {selectedObject
+                    ? objectSummary(selectedObject).map((entry) => (
+                        <div key={entry.label} className={styles.inspectorRow}>
+                          <dt>{entry.label}</dt>
+                          <dd>{entry.value}</dd>
+                        </div>
+                      ))
+                    : null}
                 </dl>
               </div>
             </div>

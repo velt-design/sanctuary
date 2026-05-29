@@ -43,7 +43,7 @@ The product north star is "a single solved geometry model that serves many UI sh
 - ✅ **Scene-derived cost engine input** (`SiteInputsV2`): cost engine consumes pergola data derived from scene adjacency. Snapped pergolas are modules of one logical pergola; unconnected pergolas are separate. Pure derivation, no stored field.
 - ✅ **First-class spatial entities**: pergolas, decks, openings, house forms all own their geometry. No more "primary vs. additional" special-casing. Snap engine produces all attachments.
 - ✅ **Project house geometry registry**: `WorkbenchSolvedModel.projectHouseGeometries` derives one canonical `house_reference:<formId>`, `HouseReferenceGeometry`, and `HouseModel3D` per valid house form. Plan references, host-excluded 3D scene composition, and PlanViewport house snap sources consume this registry instead of rebuilding host/non-host branches.
-- 🟡 **Per-object solve**: the geometry pipeline still iterates per pergola module (Stream 2B.1 pending). Object-first pergolas without a persisted module now use a runtime-only solve source, the rail can add new freestanding object-first pergolas through that path, plan context outlines can select any solved pergola by id, and Plan Editor aggregates full solved plan bodies for every valid pergola id. The solve spine still adapts each pergola through a temporary `CalculatorModuleInputs` shape until the full per-object rewrite lands, and full 3D aggregation remains deferred.
+- 🟡 **Per-object solve**: the workbench now builds an explicit persisted + transient pergola solve-source list, groups object-first sources by host house form, and routes those groups through the package-level `solveProject` boundary. Object-first pergolas without a persisted module now use a runtime-only solve source, the rail can add new freestanding object-first pergolas through that path, Plan Editor and 3D Review aggregate full solved bodies for every valid pergola id, and selection routes by `pergolaId`. The solve spine still adapts each pergola through temporary `CalculatorModuleInputs` / `RawGeometryModuleInput.houseContext` shapes until the full per-object rewrite lands.
 - 🟡 **Legacy bridge code retired**: cross-file bridge synthesis deleted; `state/compat/` deleted; `HouseFirst*` draft types still used by test carrier (40+ tests pending migration); `legacyEstimateSnapshotAdapter` still loads-bears initial-state synthesis from calc-era server snapshots.
 - ❌ **Multi-shell consumers** (marketing self-design upgrade, sales tool, tradie tool, Rhino/Vray export): not started, per Q6 ("all other shells worked on once the solved geometry and data model is polished and clean"). The workbench is the foundation; other shells consume the same `WorkbenchProjectModel` once Phase 2 fully lands.
 
@@ -62,6 +62,10 @@ The substantive Phase 1+2 work is done. The model is canonical, the cost engine 
 The legacy audit at § "Legacy compat sites that violate the principle" (further down this doc) is the canonical to-do list. With the cull permission granted 2026-05-22, **most rows are now DELETE candidates, not migration candidates** — the calculator-driven path is being removed, not double-maintained.
 
 PRs that close audit rows are encouraged. PRs that extend them must justify it explicitly to the user before any code is written.
+
+### Project View Stability
+
+Plan and 3D must not depend on the selected pergola having a valid solved artifact. `WorkbenchSolvedModel.projectViewportGeometry` and `projectGeometryPreview` provide the stable project basis: active ready module first, otherwise the first ready module. Invalid or unsupported selected pergolas stay selectable as reference/context objects while valid houses and pergolas remain visible.
 
 ### Marketing-site enquiry path (preserve, do not touch in Phase 1)
 
@@ -157,6 +161,8 @@ Legacy calculator-era plan geometry is fallback and compatibility only. It must 
 ## Object-First Model
 
 The active workbench is object-first:
+
+Viewport routing should pass solved geometry bundles, not loose scene/projection fragments. `WorkbenchViewportGeometry` is the per-active-object bundle; `WorkbenchSolvedModel.projectViewportGeometry` is the project-level fallback basis used by Plan when the selected object has no artifact.
 
 - House forms, decks, openings, and pergolas are modeled as explicit objects.
 - Hosted objects resolve against derived house/building behavior.
