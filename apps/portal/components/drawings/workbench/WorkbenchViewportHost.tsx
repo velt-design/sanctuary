@@ -25,6 +25,7 @@ import type { EstimateDrawingField, EstimateDrawingFootprintEdit } from '@/lib/e
 import type { EstimateDrawingSheetMeta } from '@/lib/estimates/drawingSheet';
 import type { CalculatorHouseFootprintPolygonPoint } from '@/lib/types/calculator';
 import { type Geometry3DViewportState } from '@/components/drawings/viewports/Geometry3DViewport';
+import type { GeometryPreviewState } from '@/lib/drawings/state/workbenchSolvedModel';
 import DesignViewport from '@/components/drawings/viewports/DesignViewport';
 import PlanViewport, {
   type EdgeDragCommit,
@@ -43,6 +44,7 @@ type WorkbenchViewportHostProps = {
   visibility?: DrawingWorkbenchVisibilityState;
   status: ModuleViewsStatus;
   viewportGeometry?: WorkbenchViewportGeometry | null;
+  projectGeometryPreview?: GeometryPreviewState | null;
   drawingSurfaceGeometry?: WorkbenchDrawingSurfaceGeometry | null;
   planViewModel?: PlanViewModel | null;
   activeObjectRef?: WorkbenchObjectRef | null;
@@ -97,6 +99,10 @@ type WorkbenchViewportHostProps = {
   onCommitMove?: (request: MoveRequest) => void;
   /** Faded outline shapes for non-active pergolas (Step 5d Option A). */
   projectContextShapes?: ReadonlyArray<GeometryTopProjectionShape>;
+  /** Project-wide full pergola plan bodies, prefixed per pergola id. */
+  projectPergolaPlanShapes?: ReadonlyArray<GeometryTopProjectionShape>;
+  /** Canonical pergola reference shapes used as snap targets. */
+  projectPergolaSnapShapes?: ReadonlyArray<GeometryTopProjectionShape>;
   /** Canonical house references promoted to active module hit targets. */
   houseCommittedShapes?: ReadonlyArray<GeometryTopProjectionShape>;
   /** Project-level house models used as wall/eave snap sources. */
@@ -120,6 +126,7 @@ export default function WorkbenchViewportHost({
   visibility,
   status,
   viewportGeometry,
+  projectGeometryPreview,
   drawingSurfaceGeometry,
   planViewModel,
   activeObjectRef,
@@ -155,6 +162,8 @@ export default function WorkbenchViewportHost({
   onCommitOutlineEdit,
   onCommitMove,
   projectContextShapes,
+  projectPergolaPlanShapes,
+  projectPergolaSnapShapes,
   houseCommittedShapes,
   projectHouseSnapSources,
   hoveredObjectRef,
@@ -166,7 +175,7 @@ export default function WorkbenchViewportHost({
       viewportGeometry: viewportGeometry ?? null,
       planViewModel: planViewModel ?? null,
     });
-  const routedGeometryPreview = viewportGeometry?.preview ?? null;
+  const routedGeometryPreview = projectGeometryPreview ?? viewportGeometry?.preview ?? null;
 
   return (
     <div className={styles.viewport}>
@@ -190,6 +199,8 @@ export default function WorkbenchViewportHost({
           visibility={visibility}
           activeObjectRef={activeObjectRef}
           projectContextShapes={projectContextShapes}
+          projectPergolaPlanShapes={projectPergolaPlanShapes}
+          projectPergolaSnapShapes={projectPergolaSnapShapes}
           houseCommittedShapes={houseCommittedShapes}
           projectHouseSnapSources={projectHouseSnapSources}
           viewportTransform={modelViewportTransform}

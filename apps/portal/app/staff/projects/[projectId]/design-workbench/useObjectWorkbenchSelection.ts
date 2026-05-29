@@ -11,6 +11,10 @@ import type {
 import type { ObjectWorkbenchViewportTargetSelection } from '@/lib/drawings/state/objectWorkbenchViewportTypes';
 import type { WorkbenchObjectFamily, WorkbenchObjectRef } from '@/lib/drawings/state/objectFirstWorkbenchModel';
 import type { CommitResult, DrawOutlineTarget } from './objectWorkbenchClientTypes';
+import {
+  buildPergolaSelectionUiState,
+  type PergolaSelectionModuleEntry,
+} from './pergolaSelectionState';
 
 type ObjectWorkbenchTargetSelection = ObjectWorkbenchViewportTargetSelection;
 
@@ -19,6 +23,7 @@ type UseObjectWorkbenchSelectionInput = {
   setDrawOutlineTarget: Dispatch<SetStateAction<DrawOutlineTarget>>;
   setDrawOutlineRequestId: Dispatch<SetStateAction<number>>;
   availableObjectIdsByFamily: Record<WorkbenchObjectFamily, string[]>;
+  pergolaModules: ReadonlyArray<PergolaSelectionModuleEntry>;
 };
 
 const FOOTPRINT_DRAW_OUTLINE_TARGET: DrawOutlineTarget = {
@@ -74,6 +79,7 @@ export function useObjectWorkbenchSelection({
   setDrawOutlineTarget,
   setDrawOutlineRequestId,
   availableObjectIdsByFamily,
+  pergolaModules,
 }: UseObjectWorkbenchSelectionInput) {
   const resetDrawOutlineTarget = useCallback(() => {
     setDrawOutlineTarget(FOOTPRINT_DRAW_OUTLINE_TARGET);
@@ -103,18 +109,17 @@ export function useObjectWorkbenchSelection({
     (defaultPergolaId: string | null) => {
       resetDrawOutlineTarget();
       setUi((current) => ({
-        ...current,
-        ...buildSelectionStateForObjectRef(current, {
-          family: 'pergolas',
-          objectId:
+        ...buildPergolaSelectionUiState({
+          current,
+          modules: pergolaModules,
+          pergolaId:
             defaultPergolaId ??
             (current.activeObjectRef.family === 'pergolas' ? current.activeObjectRef.objectId : null) ??
             getDefaultObjectId('pergolas'),
         }),
-        selection: { kind: 'none', targetId: null },
       }));
     },
-    [getDefaultObjectId, resetDrawOutlineTarget, setUi],
+    [getDefaultObjectId, pergolaModules, resetDrawOutlineTarget, setUi],
   );
 
   const selectRailTab = useCallback(
@@ -248,16 +253,15 @@ export function useObjectWorkbenchSelection({
   const selectPergolaObject = useCallback(
     (pergolaId: string | null) => {
       resetDrawOutlineTarget();
-      setUi((current) => ({
-        ...current,
-        ...buildSelectionStateForObjectRef(current, {
-          family: 'pergolas',
-          objectId: pergolaId,
+      setUi((current) =>
+        buildPergolaSelectionUiState({
+          current,
+          modules: pergolaModules,
+          pergolaId,
         }),
-        selection: { kind: 'none', targetId: null },
-      }));
+      );
     },
-    [resetDrawOutlineTarget, setUi],
+    [pergolaModules, resetDrawOutlineTarget, setUi],
   );
 
   const clearActiveWorkbenchSelection = useCallback(() => {

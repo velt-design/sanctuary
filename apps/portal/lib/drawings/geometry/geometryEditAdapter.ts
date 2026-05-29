@@ -3,6 +3,7 @@ import type { CalculatorHouseAttachmentStrategy } from '@/lib/types/calculator';
 import type { ObjectWorkbenchPergolaPatch } from '@/lib/drawings/state/objectWorkbenchInspectorModel';
 import {
   applyGeometryEditIntent as applyObjectWorkbenchGeometryEditIntent,
+  buildGeometryEditStateFromGeometryConfig as buildObjectWorkbenchGeometryEditStateFromGeometryConfig,
   buildGeometryEditState as buildObjectWorkbenchGeometryEditState,
   mirrorPergolaPatchToTemporaryGeometryModuleFields,
   translateEstimateDrawingFieldToGeometryIntent as translateEstimateDrawingFieldToObjectWorkbenchGeometryIntent,
@@ -14,6 +15,8 @@ import {
 export {
   applyObjectWorkbenchGeometryEditIntent,
   applyObjectWorkbenchGeometryEditIntent as applyGeometryEditIntent,
+  buildObjectWorkbenchGeometryEditStateFromGeometryConfig,
+  buildObjectWorkbenchGeometryEditStateFromGeometryConfig as buildGeometryEditStateFromGeometryConfig,
   buildObjectWorkbenchGeometryEditState,
   buildObjectWorkbenchGeometryEditState as buildGeometryEditState,
   translateEstimateDrawingFieldToObjectWorkbenchGeometryIntent,

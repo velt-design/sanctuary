@@ -6,6 +6,7 @@ import {
   applyGeometryEditIntent,
   buildObjectWorkbenchPergolaPatchFromGeometryIntent,
   buildGeometryEditState,
+  buildGeometryEditStateFromGeometryConfig,
   mirrorObjectWorkbenchPergolaPatchToTemporaryGeometryModuleFields,
   translateEstimateDrawingFieldToGeometryIntent,
   translateFootprintEditToGeometryIntent,
@@ -156,6 +157,30 @@ describe('geometryEditAdapter', () => {
     expect(result.value.connection.type).toBe('soffit');
     expect(result.value.supports.postCount).toBe('4');
     expect(result.value.overrides.frontBeamProfile).toBe('');
+  });
+
+  it('builds native edit state from an in-memory solved module config', () => {
+    const snapshot = getFixtureSnapshot('mono-standard');
+    const persistedState = buildGeometryEditState({
+      snapshot,
+      moduleIndex: 0,
+    });
+    expect(persistedState.ok).toBe(true);
+    if (!persistedState.ok) return;
+    const module = (snapshot as { inputs?: { modules?: unknown[] } }).inputs?.modules?.[0];
+    if (!module) throw new Error('Expected fixture module.');
+
+    const transientState = buildGeometryEditStateFromGeometryConfig({
+      module: module as Parameters<typeof buildGeometryEditStateFromGeometryConfig>[0]['module'],
+      config: persistedState.value.config,
+    });
+
+    expect(transientState.ok).toBe(true);
+    if (!transientState.ok) return;
+    expect(transientState.value.family).toBe('mono');
+    expect(transientState.value.dimensions.lengthM).toBe('6');
+    expect(transientState.value.connection.type).toBe('soffit');
+    expect(transientState.value.config).toBe(persistedState.value.config);
   });
 
   it('builds geometry edit state from object-first house, deck, and opening context', () => {

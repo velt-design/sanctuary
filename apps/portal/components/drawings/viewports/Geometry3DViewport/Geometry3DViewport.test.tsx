@@ -1559,7 +1559,7 @@ describe("Geometry3DViewport", () => {
     clickSceneObject(rendered.container, "house-solid-deck-1");
     // PR-Geo1: selection emits the prefixed scene id (globally unique across
     // multi-house scenes); testids use the in-house sourceId for ergonomics.
-    expect(viewportDiagnostics(rendered.container).selectedObjectId).toBe("host-house:house-solid-deck-1");
+    expect(viewportDiagnostics(rendered.container).selectedObjectId).toBe("house-main:house-solid-deck-1");
     expect(
       rendered.container.querySelector('[data-testid="scene-object-house-solid-deck-1-deck-outline-selected"]'),
     ).not.toBeNull();
@@ -1878,7 +1878,7 @@ describe("Geometry3DViewport", () => {
     expect(viewportDiagnostics(rendered.container).clippingEnabled).toBe("true");
     // PR-Geo1: selection emits the prefixed scene id; testids use the in-house sourceId.
     expect(viewportDiagnostics(rendered.container).selectedObjectId).toBe(
-      "host-house:house-attachment-target-line",
+      "house-main:house-attachment-target-line",
     );
 
     mockRendererResetState?.mockClear();

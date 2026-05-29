@@ -60,9 +60,15 @@ export type UsePlanRenderModelInput = {
    * filtered to canonical house references.
    */
   houseReferenceShapes?: ReadonlyArray<GeometryTopProjectionShape>;
+  /** Project-wide full pergola plan bodies, already prefixed per pergola id. */
+  projectPergolaPlanShapes?: ReadonlyArray<GeometryTopProjectionShape>;
+  /** Context/reference shapes that should influence layout even when drawn by a separate layer. */
+  projectContextShapes?: ReadonlyArray<GeometryTopProjectionShape>;
 };
 
 const EMPTY_HOUSE_REFERENCE_SHAPES: ReadonlyArray<GeometryTopProjectionShape> = [];
+const EMPTY_PROJECT_PERGOLA_PLAN_SHAPES: ReadonlyArray<GeometryTopProjectionShape> = [];
+const EMPTY_PROJECT_CONTEXT_SHAPES: ReadonlyArray<GeometryTopProjectionShape> = [];
 
 function projectionShapeIdentity(shape: GeometryTopProjectionShape): string {
   return shape.sourceObjectId
@@ -94,25 +100,99 @@ function mergeProjectionShapesWithHouseReferences(input: {
   return shapes;
 }
 
+function pergolaShapeIdentity(shape: GeometryTopProjectionShape): string | null {
+  const taggedPergolaId =
+    typeof shape.metadata?.pergolaId === 'string' ? shape.metadata.pergolaId : null;
+  return taggedPergolaId ?? shape.sourceObjectId ?? shape.sourceId ?? null;
+}
+
+function mergeProjectionShapesWithProjectPergolas(input: {
+  projectionShapes: ReadonlyArray<GeometryTopProjectionShape>;
+  projectPergolaPlanShapes: ReadonlyArray<GeometryTopProjectionShape>;
+}): GeometryTopProjectionShape[] {
+  if (!input.projectPergolaPlanShapes.length) {
+    return input.projectionShapes as GeometryTopProjectionShape[];
+  }
+  const projectPergolaIds = new Set(
+    input.projectPergolaPlanShapes
+      .map(pergolaShapeIdentity)
+      .filter((value): value is string => Boolean(value)),
+  );
+  const shapes = input.projectionShapes.filter((shape) => {
+    if (shape.family !== 'pergola') return true;
+    const pergolaId = pergolaShapeIdentity(shape);
+    return !pergolaId || !projectPergolaIds.has(pergolaId);
+  });
+  const seen = new Set(shapes.map((shape) => shape.id));
+  for (const shape of input.projectPergolaPlanShapes) {
+    if (seen.has(shape.id)) continue;
+    seen.add(shape.id);
+    shapes.push(shape);
+  }
+  return shapes;
+}
+
+function projectionWithExtentsFromShapes(input: {
+  projection: GeometryTopProjectionViewModel;
+  shapes: ReadonlyArray<GeometryTopProjectionShape>;
+}): GeometryTopProjectionViewModel {
+  let minX = Number.POSITIVE_INFINITY;
+  let minY = Number.POSITIVE_INFINITY;
+  let maxX = Number.NEGATIVE_INFINITY;
+  let maxY = Number.NEGATIVE_INFINITY;
+  for (const shape of input.shapes) {
+    for (const point of shape.polygon) {
+      if (!Number.isFinite(point.x) || !Number.isFinite(point.y)) continue;
+      minX = Math.min(minX, point.x);
+      minY = Math.min(minY, point.y);
+      maxX = Math.max(maxX, point.x);
+      maxY = Math.max(maxY, point.y);
+    }
+  }
+  if (![minX, minY, maxX, maxY].every(Number.isFinite)) {
+    return input.projection;
+  }
+  return {
+    ...input.projection,
+    extents: {
+      minX,
+      minY,
+      maxX,
+      maxY,
+      widthMm: Math.max(0, maxX - minX),
+      heightMm: Math.max(0, maxY - minY),
+    },
+  };
+}
+
 export function usePlanRenderModel({
   projection,
   visibility,
   activeObjectRef,
   hoveredObjectRef,
   houseReferenceShapes = EMPTY_HOUSE_REFERENCE_SHAPES,
+  projectPergolaPlanShapes = EMPTY_PROJECT_PERGOLA_PLAN_SHAPES,
+  projectContextShapes = EMPTY_PROJECT_CONTEXT_SHAPES,
 }: UsePlanRenderModelInput): PlanRenderModel | null {
   return useMemo(() => {
     if (!projection) return null;
-    const layout = resolvePlanLayout(projection);
-    const adapter = buildTopProjectionPlanCoordinateAdapter({
+    const allShapes = mergeProjectionShapesWithProjectPergolas({
+      projectionShapes: mergeProjectionShapesWithHouseReferences({
+        projectionShapes: projection.shapes,
+        houseReferenceShapes,
+      }),
+      projectPergolaPlanShapes,
+    });
+    const layoutProjection = projectionWithExtentsFromShapes({
       projection,
+      shapes: [...allShapes, ...projectContextShapes],
+    });
+    const layout = resolvePlanLayout(layoutProjection);
+    const adapter = buildTopProjectionPlanCoordinateAdapter({
+      projection: layoutProjection,
       baseX: layout.baseX,
       baseY: layout.baseY,
       scale: layout.scale,
-    });
-    const allShapes = mergeProjectionShapesWithHouseReferences({
-      projectionShapes: projection.shapes,
-      houseReferenceShapes,
     });
     const visibleItems: RawPlanItem[] = allShapes
       .filter((shape) => topProjectionShapeVisible(shape, visibility))
@@ -167,5 +247,13 @@ export function usePlanRenderModel({
       selectionHaloItems,
       hoverHaloItems,
     };
-  }, [activeObjectRef, houseReferenceShapes, hoveredObjectRef, projection, visibility]);
+  }, [
+    activeObjectRef,
+    houseReferenceShapes,
+    hoveredObjectRef,
+    projectContextShapes,
+    projectPergolaPlanShapes,
+    projection,
+    visibility,
+  ]);
 }

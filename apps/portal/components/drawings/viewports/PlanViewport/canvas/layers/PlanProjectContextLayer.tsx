@@ -8,16 +8,14 @@ type PlanProjectContextLayerProps = {
 };
 
 /**
- * Step 5d Option A of the first-class spatial-entities migration. Renders
- * faded outline shapes for OTHER pergolas in the project (not the active
- * module). Lets multi-pergola scenes show every pergola's outline in one
- * canvas without requiring a full per-pergola scene aggregation. The
- * active module still renders in full detail through the regular layers.
+ * Fallback context layer for pergolas that do not yet have full project-wide
+ * plan detail. Valid solved pergolas render through committed bodies; this
+ * faded outline layer keeps invalid/unsupported pergolas visible and
+ * selectable without treating references as normal body geometry.
  *
  * Source: `WorkbenchSolvedModel.projectReferenceShapes` filtered via
- * `buildProjectContextOverlayShapes(activePergolaSourceId)` so the active
- * pergola's outline (already rendered) and the house reference (likewise)
- * are removed.
+ * `buildProjectContextOverlayShapes(...)` so the active pergola, full-detail
+ * pergolas, and house references are removed.
  */
 export function PlanProjectContextLayer({
   shapes,

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { GeometryTopProjectionShape } from '@sp/geometry';
-import { buildProjectContextOverlayShapes } from './workbenchSolvedModel';
+import { buildProjectContextOverlayShapes } from './projectContextOverlayShapes';
 
 function shape(overrides: Partial<GeometryTopProjectionShape>): GeometryTopProjectionShape {
   return {
@@ -99,6 +99,19 @@ describe('buildProjectContextOverlayShapes (step 5d Option A)', () => {
       activePergolaSourceId: null,
     });
     expect(result.map((s) => s.sourceObjectId)).toEqual(['pergola-1', 'pergola-2']);
+  });
+
+  it('drops pergola outlines that already have full project plan detail', () => {
+    const result = buildProjectContextOverlayShapes({
+      projectReferenceShapes: [
+        shape({ id: 'pergola_reference:pergola-1', sourceObjectId: 'pergola-1' }),
+        shape({ id: 'pergola_reference:pergola-2', sourceObjectId: 'pergola-2' }),
+        shape({ id: 'pergola_reference:pergola-3', sourceObjectId: 'pergola-3' }),
+      ],
+      activePergolaSourceId: null,
+      fullDetailPergolaSourceIds: new Set(['pergola-1', 'pergola-2']),
+    });
+    expect(result.map((s) => s.sourceObjectId)).toEqual(['pergola-3']);
   });
 
   it('returns an empty array when input is empty', () => {

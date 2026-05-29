@@ -172,6 +172,20 @@ const LAYER_COLORS: Record<string, string> = {
   attachment_edge: "#bb4b4b",
 };
 
+function workbenchObjectIdForSceneObject(object: ViewerSceneObject): string | null {
+  const sourceId =
+    ("sourceId" in object && typeof object.sourceId === "string"
+      ? object.sourceId
+      : null) ??
+    (typeof object.metadata?.sourceId === "string"
+      ? object.metadata.sourceId
+      : null);
+  const pergolaId =
+    typeof object.metadata?.pergolaId === "string"
+      ? object.metadata.pergolaId
+      : null;
+  return pergolaId ?? sourceId;
+}
 
 function resetRendererState(renderer: THREE.WebGLRenderer | null): void {
   if (!renderer) return;
@@ -454,7 +468,12 @@ export default function Geometry3DViewport({
     ].join(":");
   }, [displayMode, geometryPreview, scene, sceneBounds]);
   const selectedObject = useMemo(
-    () => allObjects.find((object) => object.id === selectedObjectId) ?? null,
+    () =>
+      allObjects.find(
+        (object) =>
+          object.id === selectedObjectId ||
+          workbenchObjectIdForSceneObject(object) === selectedObjectId,
+      ) ?? null,
     [allObjects, selectedObjectId],
   );
   const finiteBounds = useMemo(() => allSceneBoundsFinite(sceneBounds), [sceneBounds]);
@@ -1620,26 +1639,23 @@ export default function Geometry3DViewport({
                   // the 3D side matches against either form so a plan hover
                   // on "deck-1" highlights the matching scene prism without
                   // the parent needing to know the prism naming scheme.
-                  // Selection still uses raw `id` because the existing
-                  // selection contract already produces 3D-scene ids on
-                  // click.
-                  const workbenchId =
-                    ("sourceId" in object && typeof object.sourceId === "string"
-                      ? object.sourceId
-                      : null) ??
-                    (typeof object.metadata?.sourceId === "string"
-                      ? object.metadata.sourceId
-                      : null);
+                  // Selection accepts either raw 3D ids or workbench ids so
+                  // project-wide scenes can highlight every object belonging
+                  // to the selected pergola.
+                  const workbenchId = workbenchObjectIdForSceneObject(object);
                   const hovered =
                     controlledHoveredObjectId != null &&
                     (controlledHoveredObjectId === object.id ||
                       controlledHoveredObjectId === workbenchId);
+                  const selected =
+                    selectedObjectId === object.id ||
+                    (workbenchId != null && selectedObjectId === workbenchId);
                   return (
                     <SceneObjectNode
                       key={object.id}
                       object={object}
                       color={LAYER_COLORS[layer.id] ?? "#6c7a86"}
-                      selected={selectedObjectId === object.id}
+                      selected={selected}
                       hovered={hovered}
                       onSelect={handleObjectSelect}
                       onHoverEnter={() =>

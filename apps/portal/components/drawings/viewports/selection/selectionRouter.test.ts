@@ -91,6 +91,17 @@ describe('selectionRouter', () => {
       });
     });
 
+    it('classifies project-wide 3D pergola scene object ids by pergola id', () => {
+      expect(defaultPrefixClassifier('project_pergola:pergola-2:post-1')).toEqual({
+        kind: 'pergola',
+        pergolaId: 'pergola-2',
+      });
+      expect(defaultPrefixClassifier('pergola-2:post-1')).toEqual({
+        kind: 'pergola',
+        pergolaId: 'pergola-2',
+      });
+    });
+
     it('returns unhandled for ids that do not match a known prefix', () => {
       expect(defaultPrefixClassifier('house-soffit-1')).toEqual({
         kind: 'unhandled',

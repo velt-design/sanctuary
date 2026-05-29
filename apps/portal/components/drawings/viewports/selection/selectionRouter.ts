@@ -25,12 +25,18 @@ export function routeSelectedObject(
 }
 
 const OPENING_DERIVED_SUFFIX = /(?:-marker|-outline-\d+|-edge)$/;
+const PROJECT_PERGOLA_SCENE_PREFIX = /^project_pergola:([^:]+):/;
+const PERGOLA_SCENE_PREFIX = /^(pergola[-_][^:]+):/;
 
 export function stripOpeningDerivedSuffix(objectId: string): string {
   return objectId.replace(OPENING_DERIVED_SUFFIX, '');
 }
 
 export function defaultPrefixClassifier(objectId: string): WorkbenchSelectionTarget {
+  const projectPergolaMatch = PROJECT_PERGOLA_SCENE_PREFIX.exec(objectId);
+  if (projectPergolaMatch?.[1]) {
+    return { kind: 'pergola', pergolaId: projectPergolaMatch[1] };
+  }
   if (objectId.startsWith('deck-') || objectId.startsWith('deck_')) {
     return { kind: 'workbench', targetKind: 'deck', targetId: objectId };
   }
@@ -42,7 +48,8 @@ export function defaultPrefixClassifier(objectId: string): WorkbenchSelectionTar
     };
   }
   if (objectId.startsWith('pergola-') || objectId.startsWith('pergola_')) {
-    return { kind: 'pergola', pergolaId: objectId };
+    const pergolaSceneMatch = PERGOLA_SCENE_PREFIX.exec(objectId);
+    return { kind: 'pergola', pergolaId: pergolaSceneMatch?.[1] ?? objectId };
   }
   return { kind: 'unhandled', objectId };
 }

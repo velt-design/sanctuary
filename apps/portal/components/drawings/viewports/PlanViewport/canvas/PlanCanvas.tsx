@@ -42,7 +42,7 @@ import type { PlanRenderItem } from './planRenderItem';
 
 const IDENTITY_TRANSFORM: DrawingWorkbenchViewportTransform = { zoom: 1, panX: 0, panY: 0 };
 
-export type PlanCanvasProps = {
+type PlanCanvasProps = {
   layout: PlanLayout;
   coordinateAdapter: PlanCoordinateAdapter;
   committedBodies: PlanRenderItem[];
@@ -70,11 +70,8 @@ export type PlanCanvasProps = {
   /** World-coord polygon (mm) of the object being moved; used by PlanMovePreviewLayer. */
   movePreviewSourcePolygon?: ReadonlyArray<Point2> | null;
   /**
-   * Faded outline shapes for non-active pergolas in the project (Step 5d).
-   * Sourced from `WorkbenchSolvedModel.projectReferenceShapes` filtered for
-   * the active pergola's outline + house reference (already rendered by the
-   * regular layers). Empty array (default) when the project has only one
-   * pergola or none.
+   * Faded fallback outlines for pergolas without full project-wide plan
+   * detail. Full valid pergolas render through committed bodies.
    */
   projectContextShapes?: ReadonlyArray<GeometryTopProjectionShape>;
   /** Active outline polygon used for hit-testing — passed in for the debug overlay. */
@@ -116,6 +113,22 @@ export function PlanCanvas({
   const { hoveredShape, onShapeEnter, onShapeLeave } = useHoveredShape();
   const panZoom = usePanZoom({ transform, onTransformChange });
   const hitTargetItems = useMemo(() => filterPlanHitTargets(committedBodies), [committedBodies]);
+  const projectContextHitTargetItems = useMemo<PlanRenderItem[]>(
+    () =>
+      projectContextShapes
+        .filter((shape) => shape.sourceType === 'pergola_reference')
+        .map((shape) => ({
+          shape,
+          points: coordinateAdapter.projectionPolygonToSvg(shape.polygon),
+          layer: 'committedBodies' as const,
+        }))
+        .filter((item) => item.points.length >= 3),
+    [coordinateAdapter, projectContextShapes],
+  );
+  const allHitTargetItems = useMemo(
+    () => [...projectContextHitTargetItems, ...hitTargetItems],
+    [hitTargetItems, projectContextHitTargetItems],
+  );
 
   // Wrap the local hover handlers so we ALSO emit the full shape upward via
   // `onHoverShape`. PlanViewport classifies it into a `WorkbenchObjectRef`
@@ -302,7 +315,7 @@ export function PlanCanvas({
           <PlanSelectionHaloLayer items={selectionHaloItems} />
           <PlanHoverHaloLayer items={hoverHaloItems} />
           <PlanHitTargetLayer
-            items={hitTargetItems}
+            items={allHitTargetItems}
             onShapePointerDown={(shape, event) => dispatchPlanPointer('down', event, shape)}
             onShapeEnter={handleShapeEnterWithEmit}
             onShapeLeave={handleShapeLeaveWithEmit}

@@ -56,12 +56,22 @@ export type PlanViewportProps = {
   activeObjectRef?: WorkbenchObjectRef | null;
   dimensions?: ReadonlyArray<PlanDimension>;
   /**
-   * Faded outlines for OTHER pergolas in the project (Step 5d). Filtered
-   * upstream to drop the active pergola's own outline + the house ref so
-   * the overlay only adds shapes the active artifact doesn't already
-   * render. Empty for single-pergola projects.
+   * Faded fallback outlines for pergolas without full project-wide plan
+   * detail. Valid solved pergolas render via `projectPergolaPlanShapes`.
    */
   projectContextShapes?: ReadonlyArray<GeometryTopProjectionShape>;
+  /**
+   * Project-wide full pergola bodies. These are prefixed per pergola id and
+   * promoted into the committed body graph so valid pergolas render together
+   * instead of only the active one showing full detail.
+   */
+  projectPergolaPlanShapes?: ReadonlyArray<GeometryTopProjectionShape>;
+  /**
+   * Canonical pergola references used for snap targets. Kept separate from
+   * `projectContextShapes`, which is visual fallback only once a pergola has
+   * full project-wide detail.
+   */
+  projectPergolaSnapShapes?: ReadonlyArray<GeometryTopProjectionShape>;
   /**
    * Project-level house references promoted to committedBodies and hit
    * targets. This gives every house form the same selection and move path,
@@ -128,6 +138,8 @@ export default function PlanViewport({
   activeObjectRef,
   dimensions: providedDimensions,
   projectContextShapes,
+  projectPergolaPlanShapes,
+  projectPergolaSnapShapes,
   houseCommittedShapes,
   projectHouseSnapSources,
   viewportTransform,
@@ -148,6 +160,8 @@ export default function PlanViewport({
     activeObjectRef,
     hoveredObjectRef,
     houseReferenceShapes: houseCommittedShapes,
+    projectPergolaPlanShapes,
+    projectContextShapes,
   });
   const [edgeDragPreview, setEdgeDragPreview] = useState<EdgeDragPreview | null>(null);
   const [edgeDragHover, setEdgeDragHover] = useState<EdgeDragHover | null>(null);
@@ -262,22 +276,30 @@ export default function PlanViewport({
     //
     // Per-family rules:
     //   - pergolas: walls + roof eaves + OTHER pergolas' outline edges
-    //     (`projectContextShapes` is already filtered upstream to drop the
+    //     (`projectPergolaSnapShapes` is filtered upstream to drop the
     //      active pergola; eaves valid because pergolas attach at gutter)
     //   - decks: walls (no eaves — decks sit at ground level) + ALL pergolas'
     //     outline edges (`activePergolaSourceId` is null for non-pergola
-    //     active objects, so `projectContextShapes` includes every pergola)
+    //     active objects, so the snap shape list includes every pergola)
     const houseTargets = buildProjectHouseSnapTargets({
       activeFamily,
       projectHouseSnapSources,
       fallbackHouseModel: houseModel,
       fallbackHouseObjectId: typeof houseObjectId === 'string' ? houseObjectId : 'house-main',
     });
-    const pergolaTargets = projectContextShapes
-      ? buildOtherPergolaSnapTargets({ shapes: projectContextShapes })
+    const pergolaSnapShapes = projectPergolaSnapShapes ?? projectContextShapes;
+    const pergolaTargets = pergolaSnapShapes
+      ? buildOtherPergolaSnapTargets({ shapes: pergolaSnapShapes })
       : [];
     return [...houseTargets, ...pergolaTargets];
-  }, [activeFamily, houseModel, houseObjectId, projectContextShapes, projectHouseSnapSources]);
+  }, [
+    activeFamily,
+    houseModel,
+    houseObjectId,
+    projectContextShapes,
+    projectHouseSnapSources,
+    projectPergolaSnapShapes,
+  ]);
   const snapLineTargetsRef = useRef(snapLineTargets);
   snapLineTargetsRef.current = snapLineTargets;
 

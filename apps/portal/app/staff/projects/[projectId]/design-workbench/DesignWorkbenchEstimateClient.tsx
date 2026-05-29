@@ -8,9 +8,10 @@ import type { Geometry3DViewportState } from '@/components/drawings/viewports/Ge
 import type { GeometryPreviewState } from '@/lib/drawings/geometry/buildWorkbenchGeometryPreview';
 import {
   buildObjectWorkbenchGeometryEditState,
+  buildObjectWorkbenchGeometryEditStateFromGeometryConfig,
 } from '@/lib/drawings/geometry/geometryEditAdapter';
 import { buildDrawingWorkbenchStore } from '@/lib/drawings/state/drawingWorkbenchStore';
-import { buildProjectContextOverlayShapes } from '@/lib/drawings/state/workbenchSolvedModel';
+import { buildProjectContextOverlayShapes } from '@/lib/drawings/state/projectContextOverlayShapes';
 import {
   areDrawingWorkbenchObjectSelectionStatesEqual,
   areDrawingWorkbenchVisibilityStatesEqual,
@@ -204,8 +205,25 @@ export default function DesignWorkbenchEstimateClient({
       draft: effectiveDrawingDraft,
       moduleIndex: store.derived.activeModuleIndex,
     });
-    return result.ok ? result.value : null;
-  }, [effectiveDrawingDraft, estimate.calculatorSnapshot, store.derived.activeModuleIndex]);
+    if (result.ok) return result.value;
+    const transientModule = store.derived.activeSolution;
+    if (
+      transientModule?.sourceKind !== 'object_first_pergola' ||
+      !transientModule.config
+    ) {
+      return null;
+    }
+    const transientResult = buildObjectWorkbenchGeometryEditStateFromGeometryConfig({
+      module: transientModule.moduleInput,
+      config: transientModule.config,
+    });
+    return transientResult.ok ? transientResult.value : null;
+  }, [
+    effectiveDrawingDraft,
+    estimate.calculatorSnapshot,
+    store.derived.activeModuleIndex,
+    store.derived.activeSolution,
+  ]);
   const supportsSanctuaryEditing = Boolean(geometryEditState);
   const drawingMetaOverrides = useMemo(
     () =>
@@ -304,9 +322,34 @@ export default function DesignWorkbenchEstimateClient({
   // is the common case, not an exception.
   const activePergolaSourceId =
     store.ui.activeObjectRef.family === 'pergolas'
-      ? store.derived.activeModule?.drawingModule.input.pergolaId ?? null
+      ? store.ui.activeObjectRef.objectId ?? store.derived.activeModule?.drawingModule.input.pergolaId ?? null
       : null;
+  const projectPergolaPlanShapes = store.derived.solvedModel.projectPergolaPlanShapes;
+  const fullDetailPergolaSourceIds = useMemo(
+    () =>
+      new Set(
+        projectPergolaPlanShapes
+          .map((shape) =>
+            typeof shape.metadata?.pergolaId === 'string' ? shape.metadata.pergolaId : null,
+          )
+          .filter((value): value is string => Boolean(value)),
+      ),
+    [projectPergolaPlanShapes],
+  );
   const projectContextShapes = useMemo(
+    () =>
+      buildProjectContextOverlayShapes({
+        projectReferenceShapes: store.derived.solvedModel.projectReferenceShapes,
+        activePergolaSourceId,
+        fullDetailPergolaSourceIds,
+      }),
+    [
+      store.derived.solvedModel.projectReferenceShapes,
+      activePergolaSourceId,
+      fullDetailPergolaSourceIds,
+    ],
+  );
+  const projectPergolaSnapShapes = useMemo(
     () =>
       buildProjectContextOverlayShapes({
         projectReferenceShapes: store.derived.solvedModel.projectReferenceShapes,
@@ -384,6 +427,7 @@ export default function DesignWorkbenchEstimateClient({
       openings: store.derived.railModel.objectLists.openings.map((entry) => entry.ref.objectId ?? '').filter(Boolean),
       pergolas: store.derived.railModel.objectLists.pergolas.map((entry) => entry.ref.objectId ?? '').filter(Boolean),
     },
+    pergolaModules: store.persisted.modules,
   });
   const objectWorkbenchActions = useObjectWorkbenchActions({
     activeModuleInput,
@@ -466,22 +510,25 @@ export default function DesignWorkbenchEstimateClient({
           modules={modules}
           activeModuleIndex={store.derived.activeModuleIndex}
           onActiveModuleIndexChange={(index) =>
-            setUi((current) => ({
-              ...current,
-              activeModuleIndex: index,
-              ...(current.activeObjectFamily === 'pergolas'
-                ? buildDrawingWorkbenchObjectSelectionState({
-                    activeRailTab: current.activeRailTab,
-                    activeObjectFamily: current.activeObjectFamily,
-                    activeObjectRef: {
-                      family: 'pergolas',
-                      objectId:
-                        store.persisted.modules[index]?.drawingModule.input.pergolaId ??
-                        (current.activeObjectRef.family === 'pergolas' ? current.activeObjectRef.objectId : null),
-                    },
-                  })
-                : {}),
-            }))
+            setUi((current) => {
+              const selectedPergolaId = store.persisted.modules[index]?.drawingModule.input.pergolaId ?? null;
+              return {
+                ...current,
+                activeModuleIndex: index,
+                ...(current.activeObjectFamily === 'pergolas'
+                  ? buildDrawingWorkbenchObjectSelectionState({
+                      activeRailTab: current.activeRailTab,
+                      activeObjectFamily: current.activeObjectFamily,
+                      activeObjectRef: {
+                        family: 'pergolas',
+                        objectId:
+                          selectedPergolaId ??
+                          (current.activeObjectRef.family === 'pergolas' ? current.activeObjectRef.objectId : null),
+                      },
+                    })
+                  : {}),
+              };
+            })
           }
           view={store.ui.activeView}
           onViewChange={(view) =>
@@ -503,10 +550,13 @@ export default function DesignWorkbenchEstimateClient({
           status={store.derived.status}
           trustGate={store.derived.activeTrustGate}
           viewportGeometry={store.derived.activeViewportGeometry}
+          projectGeometryPreview={store.derived.solvedModel.projectGeometryPreview}
           drawingSurfaceGeometry={store.derived.activeDrawingSurfaceGeometry}
           planViewModel={store.derived.activePlanViewModel}
           activeObjectRef={viewportActiveObjectRef}
           projectContextShapes={projectContextShapes}
+          projectPergolaPlanShapes={projectPergolaPlanShapes}
+          projectPergolaSnapShapes={projectPergolaSnapShapes}
           houseCommittedShapes={houseCommittedShapes}
           projectHouseSnapSources={projectHouseSnapSources}
           hoveredObjectRef={hoveredObjectRef}

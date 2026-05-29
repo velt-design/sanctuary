@@ -41,13 +41,18 @@ Strong:
 - Connected pergola grouping exists as derived scene logic.
 - Object-first pergolas without a persisted calculator module now get a runtime-only solve source, so the workbench can render/select orphan pergolas without writing fake `inputs.modules[]` rows.
 - The rail's `Add pergola` affordance creates a freestanding object-first pergola, selects it immediately, and renders it through the runtime solve-source path.
+- Non-active pergola context outlines are selectable in plan and route through the same pergola-id selection path as the rail, including transient object-first pergolas.
+- Plan Editor now aggregates full solved plan bodies for every valid pergola id, including transient object-first pergolas, so multi-pergola projects are no longer visually active-module-only in plan.
+- 3D Review now aggregates valid solved pergola scene bodies by `pergolaId` and keeps pergola selection identity on prefixed scene objects.
+- Transient object-first mono pergolas can build native inspector edit state from their solved in-memory module/config without being written into `inputs.modules[]`.
 - Costing direction is scene-derived through `SiteInputsV2` for pergola data.
 
 Still incomplete:
 
 - `buildRawGeometryModuleInput` still wraps a selected host house in each pergola module's `houseContext`, but the host form id now flows through geometry directly instead of a portal scene-retag bridge.
 - The per-object solve loop is not complete; houses do not solve once as project-level inputs consumed by pergolas/decks.
-- Non-active pergolas and object-first-only pergolas can appear as solved project context, but full move/resize/snap edit parity for every pergola id is still incomplete.
+- Invalid or unsupported pergolas still fall back to project reference/context outlines rather than full solved detail.
+- 3D aggregation is read/select only; direct manipulation remains Plan-only, and invalid/unsupported pergolas are skipped from full 3D bodies.
 - Connected-pergola cost semantics such as shared posts remain deferred.
 - Some legacy snapshot/test carriers still rely on `HouseFirst*` paths.
 - Inspector parity for house forms, decks, and openings is not at the same standard as the pergola inspector.
@@ -91,9 +96,12 @@ Do not expand this goal to include:
    - Keep cost fallback explicit for freestanding pergolas. (Still deferred to connected-pergola costing semantics.)
 
 3. **Full multi-pergola interaction**
-   - Promote non-active pergolas from reference-only context to selectable/editable project objects where the surface supports it.
-   - Ensure move, edge drag, snap, undo, and selection work for every pergola id.
-   - Preserve pergola-to-pergola snap and attachment shape.
+   - Promote non-active pergolas from reference-only context to selectable/editable project objects where the surface supports it. (Shipped: plan context outlines now select by `pergolaId` and switch to the matching solved entry.)
+   - Render all valid pergolas as full project plan bodies rather than active-only detail plus faded boxes. (Shipped for Plan Editor; invalid/unsupported pergolas keep reference fallback.)
+   - Render all valid pergolas as full project 3D bodies rather than active-only 3D. (Shipped for 3D Review as read/select aggregation.)
+   - Let transient supported pergolas show native inspector controls from solved in-memory state. (Shipped for supported mono through the temporary solve adapter.)
+   - Ensure move, edge drag, snap, undo, and selection work for every pergola id. (Selection foundation shipped; broader edit parity remains under active verification as the solve bridge retires.)
+   - Preserve pergola-to-pergola snap and attachment shape. (Preserved.)
 
 4. **Connected-pergola costing semantics**
    - Make derived pergola groups cost as intended.

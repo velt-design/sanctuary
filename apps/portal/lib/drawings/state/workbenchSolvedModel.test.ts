@@ -30,6 +30,40 @@ function houseReferencePolygon(
   return shape.polygon;
 }
 
+function addFreestandingPergolaTwo(
+  draft: NonNullable<ReturnType<typeof buildEstimateDrawingDraftFromSnapshot>>,
+  snapshot: Record<string, unknown> = getFixtureSnapshot('mono-standard'),
+) {
+  const baseline = buildObjectFirstWorkbenchDraftBaselineFromLegacyEstimateSnapshot({
+    snapshot,
+    draft,
+  });
+  if (!baseline) throw new Error('Expected objectFirst baseline draft.');
+  baseline.pergolas.push({
+    id: 'pergola-2',
+    label: 'Freestanding pergola',
+    family: 'mono',
+    connectionKind: 'freestanding',
+    attachmentEdgeId: null,
+    attachmentZoneId: null,
+    side: 'rear',
+    strategy: 'none',
+    geometry: {
+      dimensions: { lengthM: '4', projectionM: '2.5' },
+      roof: { pitchDeg: '5', material: 'acrylic' },
+      supports: {
+        postCount: '4',
+        postCutHeightM: '2.4',
+        postConnectionType: 'slab_anchors',
+        ground: 'easy',
+      },
+    },
+    position: { originXMm: '12000', originYMm: '0', rotationDeg: '0' },
+    attachment: { spatialKind: 'freestanding', host: null, method: 'none' },
+  });
+  draft.objectFirst = baseline;
+}
+
 describe('buildWorkbenchSolvedModel geometry artifact', () => {
   it('exposes one solved geometry artifact and compatibility aliases for geometry-ready modules', () => {
     const solvedModel = buildWorkbenchSolvedModel({
@@ -134,6 +168,18 @@ describe('buildWorkbenchSolvedModel geometry artifact', () => {
       postConnectionType: 'slab_anchors',
     });
     expect(solvedModel.activeModule?.geometryArtifact).toBeTruthy();
+    const projectPergolaPlanIds = solvedModel.projectPergolaPlanShapes.map(
+      (shape) => (typeof shape.metadata?.pergolaId === 'string' ? shape.metadata.pergolaId : null),
+    );
+    expect(new Set(projectPergolaPlanIds)).toEqual(new Set(['pergola-1', 'pergola-2']));
+    expect(
+      solvedModel.projectPergolaPlanShapes.every((shape) =>
+        shape.id.startsWith(`project_pergola:${shape.metadata?.pergolaId}:`),
+      ),
+    ).toBe(true);
+    expect(new Set(solvedModel.projectPergolaPlanShapes.map((shape) => shape.id)).size).toBe(
+      solvedModel.projectPergolaPlanShapes.length,
+    );
 
     const pergolaRefs = solvedModel.projectReferenceShapes.filter(
       (shape) => shape.sourceType === 'pergola_reference',
@@ -156,6 +202,96 @@ describe('buildWorkbenchSolvedModel geometry artifact', () => {
     expect(solvedProject.activePergola?.sourceModules[0]?.sourceKind).toBe('object_first_pergola');
   });
 
+  it('aggregates valid pergolas into a project-wide 3D preview with unique pergola ids', () => {
+    const snapshot = getFixtureSnapshot('mono-standard');
+    const draft = buildEstimateDrawingDraftFromSnapshot(snapshot);
+    if (!draft) throw new Error('Expected drawing draft.');
+    addFreestandingPergolaTwo(draft, snapshot as Record<string, unknown>);
+
+    const solvedModel = buildWorkbenchSolvedModel({
+      snapshot,
+      draft,
+      activeModuleIndex: 1,
+    });
+    const preview = solvedModel.projectGeometryPreview;
+    expect(preview.kind).toBe('ready');
+    if (preview.kind !== 'ready') return;
+
+    const sceneObjects = preview.scene.layers.flatMap((layer) => layer.objects);
+    const objectIds = sceneObjects.map((object) => object.id);
+    expect(new Set(objectIds).size).toBe(objectIds.length);
+    expect(objectIds.some((id) => id.startsWith('project_pergola:pergola-1:'))).toBe(true);
+    expect(objectIds.some((id) => id.startsWith('project_pergola:pergola-2:'))).toBe(true);
+    expect(
+      sceneObjects.some(
+        (object) => object.id.startsWith('project_pergola:pergola-2:') && object.metadata?.pergolaId === 'pergola-2',
+      ),
+    ).toBe(true);
+    expect(preview.scene.metadata?.projectPergolaSceneIds).toBe('pergola-1,pergola-2');
+  });
+
+  it('keeps house geometry single-sourced in the project-wide 3D preview', () => {
+    const snapshot = getFixtureSnapshot('mono-standard');
+    const draft = buildEstimateDrawingDraftFromSnapshot(snapshot);
+    if (!draft) throw new Error('Expected drawing draft.');
+    addFreestandingPergolaTwo(draft);
+
+    const solvedModel = buildWorkbenchSolvedModel({ snapshot, draft });
+    const activeHouseLayer = solvedModel.activeModule?.viewerScene?.layers.find(
+      (layer) => layer.id === 'house',
+    );
+    const preview = solvedModel.projectGeometryPreview;
+    if (preview.kind !== 'ready' || !activeHouseLayer) {
+      throw new Error('Expected ready project preview and active house layer.');
+    }
+    const projectHouseLayer = preview.scene.layers.find((layer) => layer.id === 'house');
+    expect(projectHouseLayer?.objects).toHaveLength(activeHouseLayer.objects.length);
+    expect(projectHouseLayer?.objects.some((object) => object.id.startsWith('project_pergola:'))).toBe(false);
+  });
+
+  it('skips invalid pergolas from the full project-wide 3D aggregation', () => {
+    const snapshot = getFixtureSnapshot('mono-standard');
+    const draft = buildEstimateDrawingDraftFromSnapshot(snapshot);
+    if (!draft) throw new Error('Expected drawing draft.');
+    addFreestandingPergolaTwo(draft, snapshot);
+    draft.objectFirst?.pergolas.push({
+      id: 'pergola-3',
+      label: 'Invalid pergola',
+      family: 'mono',
+      connectionKind: 'freestanding',
+      attachmentEdgeId: null,
+      attachmentZoneId: null,
+      side: 'rear',
+      strategy: 'none',
+      geometry: {
+        dimensions: { lengthM: '', projectionM: '2.5' },
+        roof: { pitchDeg: '5', material: 'acrylic' },
+        supports: {
+          postCount: '2',
+          postCutHeightM: '2.4',
+          postConnectionType: 'slab_anchors',
+          ground: 'easy',
+        },
+      },
+      position: { originXMm: '17000', originYMm: '0', rotationDeg: '0' },
+      attachment: { spatialKind: 'freestanding', host: null, method: 'none' },
+    });
+
+    const solvedModel = buildWorkbenchSolvedModel({
+      snapshot,
+      draft,
+      activeModuleIndex: 2,
+    });
+    const preview = solvedModel.projectGeometryPreview;
+    expect(solvedModel.activeModule?.geometryPreview.kind).toBe('error');
+    expect(preview.kind).toBe('ready');
+    if (preview.kind !== 'ready') return;
+    const objectIds = preview.scene.layers.flatMap((layer) => layer.objects.map((object) => object.id));
+    expect(objectIds.some((id) => id.startsWith('project_pergola:pergola-1:'))).toBe(true);
+    expect(objectIds.some((id) => id.startsWith('project_pergola:pergola-2:'))).toBe(true);
+    expect(objectIds.some((id) => id.startsWith('project_pergola:pergola-3:'))).toBe(false);
+  });
+
   it('keeps invalid geometry outside the solved artifact contract', () => {
     const snapshot = structuredClone(getFixtureSnapshot('mono-standard')) as {
       inputs?: { modules?: Array<Record<string, unknown>> };
@@ -176,6 +312,7 @@ describe('buildWorkbenchSolvedModel geometry artifact', () => {
 
     expect(solvedModel.activeModule?.trust.status).toBe('invalid_geometry');
     expect(solvedModel.activeModule?.geometryArtifact).toBeNull();
+    expect(solvedModel.projectPergolaPlanShapes).toEqual([]);
     expect(solvedModel.activeModule?.viewportGeometry.artifact).toBeNull();
     expect(solvedModel.activeModule?.viewportGeometry.preview.kind).toBe('error');
     expect(solvedModel.activeModule?.viewerScene).toBeNull();

@@ -5,11 +5,11 @@ import ObjectWorkbenchRail from '@/components/drawings/rail/ObjectWorkbenchRail'
 import type { ObjectWorkbenchGeometryEditState } from '@/lib/drawings/geometry/geometryEditAdapter';
 import type { DrawingWorkbenchStore } from '@/lib/drawings/state/drawingWorkbenchStore';
 import {
-  buildDrawingWorkbenchObjectSelectionState,
   type DrawingWorkbenchUiState,
 } from '@/lib/drawings/state/drawingWorkbenchUiState';
 import type { WorkbenchObjectRef } from '@/lib/drawings/state/objectFirstWorkbenchModel';
 import type { CalculatorModuleInputs } from '@/lib/types/calculator';
+import { buildPergolaSelectionUiState } from './pergolaSelectionState';
 import type { ObjectWorkbenchActions } from './useObjectWorkbenchActions';
 import type { ObjectWorkbenchSelectionActions } from './useObjectWorkbenchSelection';
 
@@ -48,23 +48,13 @@ export default function ObjectWorkbenchRailHost({
 }: ObjectWorkbenchRailHostProps) {
   const handleCanonicalPergolaSelection = useCallback(
     (pergolaId: string | null) => {
-      setUi((current) => {
-        const matchedModuleIndex =
-          pergolaId === null
-            ? -1
-            : store.persisted.modules.findIndex(
-                (module) => module.drawingModule.input.pergolaId === pergolaId,
-              );
-        const nextModuleIndex = matchedModuleIndex >= 0 ? matchedModuleIndex : current.activeModuleIndex;
-        return {
-          ...current,
-          activeModuleIndex: nextModuleIndex,
-          ...buildDrawingWorkbenchObjectSelectionState({
-            activeRailTab: 'pergolas',
-            activeObjectRef: { family: 'pergolas', objectId: pergolaId },
-          }),
-        };
-      });
+      setUi((current) =>
+        buildPergolaSelectionUiState({
+          current,
+          modules: store.persisted.modules,
+          pergolaId,
+        }),
+      );
     },
     [setUi, store.persisted.modules],
   );

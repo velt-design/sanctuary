@@ -21,6 +21,7 @@ import type {
 } from '@/lib/drawings/state/objectWorkbenchViewportTypes';
 import type { WorkbenchObjectRef } from '@/lib/drawings/state/objectFirstWorkbenchModel';
 import type {
+  GeometryPreviewState,
   WorkbenchTrustGateModel,
   WorkbenchViewportGeometry,
 } from '@/lib/drawings/state/workbenchSolvedModel';
@@ -49,6 +50,7 @@ type DrawingWorkbenchProps = {
   status: ModuleViewsStatus;
   trustGate?: WorkbenchTrustGateModel | null;
   viewportGeometry?: WorkbenchViewportGeometry | null;
+  projectGeometryPreview?: GeometryPreviewState | null;
   drawingSurfaceGeometry?: WorkbenchDrawingSurfaceGeometry | null;
   planViewModel?: PlanViewModel | null;
   activeObjectRef?: WorkbenchObjectRef | null;
@@ -106,6 +108,10 @@ type DrawingWorkbenchProps = {
   onCommitMove?: (request: MoveRequest) => void;
   /** Faded outline shapes for non-active pergolas (Step 5d Option A). */
   projectContextShapes?: ReadonlyArray<GeometryTopProjectionShape>;
+  /** Project-wide full pergola plan bodies, prefixed per pergola id. */
+  projectPergolaPlanShapes?: ReadonlyArray<GeometryTopProjectionShape>;
+  /** Canonical pergola reference shapes used as snap targets. */
+  projectPergolaSnapShapes?: ReadonlyArray<GeometryTopProjectionShape>;
   /** Canonical house references promoted to active module hit targets. */
   houseCommittedShapes?: ReadonlyArray<GeometryTopProjectionShape>;
   /** Project-level house models used as wall/eave snap sources. */
@@ -130,6 +136,7 @@ export default function DrawingWorkbench({
   status,
   trustGate,
   viewportGeometry,
+  projectGeometryPreview,
   drawingSurfaceGeometry,
   planViewModel,
   activeObjectRef,
@@ -167,6 +174,8 @@ export default function DrawingWorkbench({
   onCommitOutlineEdit,
   onCommitMove,
   projectContextShapes,
+  projectPergolaPlanShapes,
+  projectPergolaSnapShapes,
   houseCommittedShapes,
   projectHouseSnapSources,
   hoveredObjectRef,
@@ -196,6 +205,7 @@ export default function DrawingWorkbench({
         visibility={visibility}
         status={status}
         viewportGeometry={viewportGeometry}
+        projectGeometryPreview={projectGeometryPreview}
         drawingSurfaceGeometry={drawingSurfaceGeometry}
         planViewModel={planViewModel}
         activeObjectRef={activeObjectRef}
@@ -231,6 +241,8 @@ export default function DrawingWorkbench({
         onCommitOutlineEdit={onCommitOutlineEdit}
         onCommitMove={onCommitMove}
         projectContextShapes={projectContextShapes}
+        projectPergolaPlanShapes={projectPergolaPlanShapes}
+        projectPergolaSnapShapes={projectPergolaSnapShapes}
         houseCommittedShapes={houseCommittedShapes}
         projectHouseSnapSources={projectHouseSnapSources}
         hoveredObjectRef={hoveredObjectRef}

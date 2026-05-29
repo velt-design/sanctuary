@@ -38,6 +38,9 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 | 2026-05-29 | Workbench Geometry | Active | Multi-house PR3: project house geometry registry is the canonical derived source for per-form house references, host-excluded 3D scene composition, and PlanViewport house snap targets. Per-pergola `RawGeometryModuleInput.houseContext` remains a Phase 2 deletion target; host house ids now flow through geometry, so portal-side scene retag bridges should not be reintroduced. |
 | 2026-05-29 | Workbench Geometry | Active | Multi-object PR2: object-first pergolas without persisted calculator modules solve through explicit runtime-only sources. Do not reintroduce fake `inputs.modules[]` persistence just to render/select a pergola; keep the temporary `CalculatorModuleInputs` adapter in memory until the per-object solve rewrite deletes it. |
 | 2026-05-29 | Workbench Geometry | Active | Multi-object PR3: Add Pergola creates a freestanding object-first pergola and selects its transient solve entry. Do not revive select-host-first or persisted-module creation flows when adding new pergolas. |
+| 2026-05-29 | Workbench Geometry | Active | Multi-object PR4: project context pergola outlines are selectable plan targets. Selection must resolve by `pergolaId` across persisted and transient solved entries, never by falling back to module 0. |
+| 2026-05-29 | Plan Rendering | Active | Multi-object PR5: Plan Editor renders project-wide pergola bodies by object id, not by active module. Do not regress multi-pergola plans to active-only detail plus reference boxes. |
+| 2026-05-29 | 3D Rendering | Active | Multi-object PR6: 3D Review renders project-wide pergola scene bodies by `pergolaId`, not by active module. Keep 3D read/select-only and preserve object ids for selection. |
 | 2026-05-01 | Plan Rendering | Promoted | Geometry-ready Model Space is a hard top-projection-only render path; legacy/context/reference/opening overlays stay out of normal visuals. |
 | 2026-05-01 | Design Workbench Architecture | Promoted | Split workbench ownership contract-first: coordinate adapters and render graphs leave React presenters before moving tools/renderers. |
 | 2026-05-01 | Deck Interaction | Promoted | Projection-backed deck snapping must use top-projection frames live and object frames only at the commit boundary. |
@@ -73,6 +76,38 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 | 2026-05-14 | House Roof Topology | Active | Partial-open clicks on joined footprints (U / wrap with one terminal end opened) require TWO wavefront facet-validator relaxations: (1) `allowRaisedBoundaryPoints: true` -- the slope adjacent to a stationary gable edge legitimately reaches the eave at apex z, not eave z (the gable wall fills the height gap); (2) the `face_count_mismatch` check subtracts the stationary edge count from the expected facet count because stationary edges intentionally produce zero slope facets. Without these, clicking ONE terminal end on a U produced `roof_topology_face_count_mismatch:5:8` and the geometry rendered as invalid. Fully-hipped (no stationary edges) and bent-spine all-open paths are unchanged. |
 
 ## Entries
+
+### 2026-05-29 - 3D Rendering - Project-Wide Pergola Scene Bodies
+
+Area: 3D Rendering
+
+Status: Active
+
+Decision or mistake: multi-pergola 3D Review still showed only the active pergola after Plan Editor had moved to project-wide solved bodies.
+
+Why it mattered: active-only 3D made the workbench look unresolved and encouraged another active-module-only presentation path, splitting Plan and 3D identity.
+
+Current guardrail: 3D Review must consume a project-wide solved preview for valid pergolas. Prefix aggregated scene object ids by `pergolaId`, preserve `metadata.pergolaId`, and route selection by that id; direct manipulation remains Plan-only.
+
+Promoted to: None
+
+Related docs/tests: `docs/design-workbench-multi-object-goal.md`, `apps/portal/lib/drawings/state/workbenchSolvedModel.test.ts`, `apps/portal/components/drawings/viewports/selection/selectionRouter.test.ts`, `apps/portal/components/drawings/workbench/DrawingWorkbench.test.tsx`.
+
+### 2026-05-29 - Plan Rendering - Project-Wide Pergola Bodies
+
+Area: Plan Rendering
+
+Status: Active
+
+Decision or mistake: multi-pergola Plan Editor rendering had reached solved-object selection, but full detail still came from the active module while other pergolas appeared only as faded reference boxes.
+
+Why it mattered: active-only plan bodies made the workbench look like only one pergola was resolved, and it encouraged callers to keep adding active-module branches instead of aggregating solved objects by id.
+
+Current guardrail: Plan rendering must aggregate valid pergola plan bodies by `pergolaId` from the solved model. Reference/context outlines are fallback and snap inputs, not the normal visual body for valid solved pergolas.
+
+Promoted to: None
+
+Related docs/tests: `docs/design-workbench-multi-object-goal.md`, `apps/portal/lib/drawings/state/workbenchSolvedModel.test.ts`, `apps/portal/components/drawings/viewports/PlanViewport/PlanViewport.test.tsx`.
 
 ### 2026-05-03 - Design Workbench Geometry - Single Solved Geometry Spine
 
@@ -1059,3 +1094,19 @@ Current guardrail: new pergolas are born freestanding with solver-valid defaults
 Promoted to: None
 
 Related docs/tests: [apps/portal/app/staff/projects/[projectId]/design-workbench/objectWorkbenchDraftActions.test.ts](../apps/portal/app/staff/projects/%5BprojectId%5D/design-workbench/objectWorkbenchDraftActions.test.ts), [apps/portal/app/staff/projects/[projectId]/design-workbench/DesignWorkbenchEstimateClient.test.tsx](../apps/portal/app/staff/projects/%5BprojectId%5D/design-workbench/DesignWorkbenchEstimateClient.test.tsx), [apps/portal/components/drawings/rail/ObjectWorkbenchRail.test.tsx](../apps/portal/components/drawings/rail/ObjectWorkbenchRail.test.tsx).
+
+### 2026-05-29 - Workbench Geometry - Multi-Object PR4 Plan Pergola Selection
+
+Area: Workbench Geometry
+
+Status: Active
+
+Decision or mistake: non-active project pergola outlines are no longer passive-only plan context. The context `pergola_reference:<id>` shape is rendered as a hit target and routed through the same pergola-id selection resolver used by rail and inspector selection.
+
+Why it mattered: a newly added or non-active pergola could be visible but not directly selectable from the plan, which preserved the old active-module-only editing assumption. Routing by `pergolaId` keeps transient object-first pergolas editable without inventing persisted calculator modules.
+
+Current guardrail: selecting a pergola must resolve the matching solved entry by `pergolaId` across persisted and transient runtime modules. If no entry exists, keep the current module index; never silently select module 0.
+
+Promoted to: None
+
+Related docs/tests: [apps/portal/app/staff/projects/[projectId]/design-workbench/pergolaSelectionState.ts](../apps/portal/app/staff/projects/%5BprojectId%5D/design-workbench/pergolaSelectionState.ts), [apps/portal/components/drawings/viewports/PlanViewport/PlanViewport.test.tsx](../apps/portal/components/drawings/viewports/PlanViewport/PlanViewport.test.tsx), [apps/portal/components/drawings/viewports/PlanViewport/interactions/selectShape.test.ts](../apps/portal/components/drawings/viewports/PlanViewport/interactions/selectShape.test.ts).

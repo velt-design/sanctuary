@@ -61,6 +61,22 @@ describe('selectShape', () => {
     expect(callbacks.onSelectObjectWorkbenchTarget).not.toHaveBeenCalled();
   });
 
+  it('dispatches a project-level pergola reference by source object id', () => {
+    const callbacks = spies();
+    selectShape(
+      shape({
+        id: 'pergola_reference:pergola-2',
+        sourceObjectId: 'pergola-2',
+        sourceType: 'pergola_reference',
+        family: 'pergola',
+        kind: 'outline',
+      }),
+      callbacks,
+    );
+    expect(callbacks.onSelectPergolaTarget).toHaveBeenCalledWith('pergola-2');
+    expect(callbacks.onSelectObjectWorkbenchTarget).not.toHaveBeenCalled();
+  });
+
   it('dispatches the workbench opening kind for opening_marker and opening_outline', () => {
     const callbacks = spies();
     selectShape(

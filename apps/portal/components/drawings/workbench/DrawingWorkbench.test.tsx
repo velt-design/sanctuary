@@ -13,6 +13,7 @@ import { createDrawingWorkbenchUiState } from '@/lib/drawings/state/drawingWorkb
 import type { DrawingWorkbenchViewportMode } from '@/lib/drawings/state/drawingWorkbenchUiState';
 import {
   resolveWorkbenchTrustGate,
+  type GeometryPreviewState,
   type WorkbenchTrustStatusKind,
   type WorkbenchViewportGeometry,
 } from '@/lib/drawings/state/workbenchSolvedModel';
@@ -709,6 +710,51 @@ describe('DrawingWorkbench', () => {
     );
 
     expect(markup).toContain('Artifact viewport preview wins.');
+  });
+
+  it('routes the 3D branch through the project-wide preview when provided', () => {
+    const meta = buildEstimateDrawingSheetMeta({
+      moduleLabel: 'M1 - Pitched - 6m x 3m - Acrylic',
+      view: 'plan',
+    });
+    const viewportGeometry = {
+      artifact: null,
+      legacyFallback: {
+        planModel: null,
+        sectionModel: null,
+      },
+      preview: {
+        kind: 'error',
+        message: 'Active-only preview should not render.',
+      },
+    } satisfies WorkbenchViewportGeometry;
+    const projectGeometryPreview: GeometryPreviewState = {
+      kind: 'error',
+      message: 'Project-wide 3D preview wins.',
+    };
+
+    const markup = renderToStaticMarkup(
+      <DrawingWorkbench
+        moduleLabel="M1 - Pitched - 6m x 3m - Acrylic"
+        modules={[{ id: 'module-1', label: 'M1 - Pitched - 6m x 3m - Acrylic' }]}
+        activeModuleIndex={0}
+        onActiveModuleIndexChange={() => undefined}
+        view="plan"
+        onViewChange={() => undefined}
+        viewportMode="geometry3d"
+        availableViewportModes={['sheet', 'model', 'geometry3d']}
+        onViewportModeChange={() => undefined}
+        status="ready"
+        viewportGeometry={viewportGeometry}
+        projectGeometryPreview={projectGeometryPreview}
+        modelViewportTransform={createDrawingWorkbenchUiState().viewportTransform}
+        onModelViewportTransformChange={() => undefined}
+        meta={meta}
+      />,
+    );
+
+    expect(markup).toContain('Project-wide 3D preview wins.');
+    expect(markup).not.toContain('Active-only preview should not render.');
   });
 
   it('routes sheet drawing through the artifact-first drawing surface contract', () => {

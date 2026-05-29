@@ -340,84 +340,95 @@ export function buildGeometryEditState(input: {
     };
   }
 
-  const houseModel = normalized.value.houseContext.model;
+  return buildGeometryEditStateFromGeometryConfig({
+    module: resolved.module,
+    config: normalized.value,
+  });
+}
+
+export function buildGeometryEditStateFromGeometryConfig(input: {
+  module: CalculatorModuleInputs;
+  config: GeometryConfig;
+}): GeometryEditStateResult {
+  const { module, config } = input;
+  const houseModel = config.houseContext.model;
 
   return {
     ok: true,
     value: {
-      family: resolveFamily(normalized.value.family),
-      config: normalized.value,
+      family: resolveFamily(config.family),
+      config,
       dimensions: {
-        lengthM: formatMetres(normalized.value.dimensions.lengthMm),
-        projectionM: formatMetres(normalized.value.dimensions.projectionMm),
-        hipCornerLengthBM: formatMetres(normalized.value.dimensions.lengthBMm),
-        hipCornerProjectionBM: formatMetres(normalized.value.dimensions.projectionBMm),
+        lengthM: formatMetres(config.dimensions.lengthMm),
+        projectionM: formatMetres(config.dimensions.projectionMm),
+        hipCornerLengthBM: formatMetres(config.dimensions.lengthBMm),
+        hipCornerProjectionBM: formatMetres(config.dimensions.projectionBMm),
       },
       roof: {
-        material: mapRoofMaterial(normalized.value),
-        pitchDeg: formatNumber(normalized.value.dimensions.roofPitchDeg),
-        boxPerimeterEnabled: normalized.value.roof.boxPerimeterEnabled,
-        mixedAcrylicBaysMain: String(resolved.module.mixedAcrylicBaysMain ?? ''),
-        mixedAcrylicBaysA: String(resolved.module.mixedAcrylicBaysA ?? ''),
-        mixedAcrylicBaysB: String(resolved.module.mixedAcrylicBaysB ?? ''),
+        material: mapRoofMaterial(config),
+        pitchDeg: formatNumber(config.dimensions.roofPitchDeg),
+        boxPerimeterEnabled: config.roof.boxPerimeterEnabled,
+        mixedAcrylicBaysMain: String(module.mixedAcrylicBaysMain ?? ''),
+        mixedAcrylicBaysA: String(module.mixedAcrylicBaysA ?? ''),
+        mixedAcrylicBaysB: String(module.mixedAcrylicBaysB ?? ''),
       },
       connection: {
-        type: resolveConnectionType(normalized.value.connection.type),
-        attachmentSide: normalized.value.connection.attachmentSide,
+        type: resolveConnectionType(config.connection.type),
+        attachmentSide: config.connection.attachmentSide,
       },
       houseContext: {
         canEditFootprint:
-          normalized.value.connection.type !== 'freestanding' &&
-          supportsHouseFootprints(resolved.module.pergolaStyle),
-        footprintMode: normalizeHouseFootprintMode(resolved.module.houseFootprintMode),
-        footprintPreset: normalizeHouseFootprintPreset(resolved.module.houseFootprintPreset) as CalculatorModuleInputs['houseFootprintPreset'],
-        footprintParams: normalizeHouseFootprintParams(resolved.module.houseFootprintParams),
-        footprintPolygon: normalizeHouseFootprintPolygon(resolved.module.houseFootprintPolygon),
-        drawingRotationQuarterTurns: normalizeDrawingRotationQuarterTurns(resolved.module.drawingRotationQuarterTurns),
-        attachmentStrategy: resolved.module.houseAttachmentStrategy ?? 'auto',
+          config.connection.type !== 'freestanding' &&
+          supportsHouseFootprints(module.pergolaStyle),
+        footprintMode: normalizeHouseFootprintMode(module.houseFootprintMode),
+        footprintPreset: normalizeHouseFootprintPreset(module.houseFootprintPreset) as CalculatorModuleInputs['houseFootprintPreset'],
+        footprintParams: normalizeHouseFootprintParams(module.houseFootprintParams),
+        footprintPolygon: normalizeHouseFootprintPolygon(module.houseFootprintPolygon),
+        drawingRotationQuarterTurns: normalizeDrawingRotationQuarterTurns(module.drawingRotationQuarterTurns),
+        attachmentStrategy: module.houseAttachmentStrategy ?? 'auto',
         storeyMode: (houseModel?.storeyMode as CalculatorHouseStoreyMode | undefined) ?? 'single_storey',
-        roofMaterial: normalizeHouseRoofMaterial(resolved.module.houseRoofMaterial ?? houseModel?.roofMaterial),
-        eaveHeightM: formatMetresOverride(resolved.module.houseEaveHeightM, houseModel?.eaveHeightMm),
-        wallHeightM: formatMetresOverride(resolved.module.houseWallHeightM, houseModel?.wallHeightMm),
-        roofPitchDeg: formatNumberOverride(resolved.module.houseRoofPitchDeg, houseModel?.roofPitchDeg),
-        soffitDepthMm: formatMillimetresOverride(resolved.module.houseSoffitDepthMm, houseModel?.eave?.soffitDepthMm),
-        fasciaHeightMm: formatMillimetresOverride(resolved.module.houseFasciaHeightMm, houseModel?.eave?.fasciaHeightMm),
-        gutterWidthMm: formatMillimetresOverride(resolved.module.houseGutterWidthMm, houseModel?.eave?.gutterWidthMm),
-        gutterDepthMm: formatMillimetresOverride(resolved.module.houseGutterDepthMm, houseModel?.eave?.gutterDepthMm),
-        gutterProjectionMm: formatMillimetresOverride(resolved.module.houseGutterProjectionMm, houseModel?.eave?.gutterProjectionMm),
-        eaveOverhangMm: formatMillimetresOverride(resolved.module.houseEaveOverhangMm, houseModel?.eave?.eaveOverhangMm),
+        roofMaterial: normalizeHouseRoofMaterial(module.houseRoofMaterial ?? houseModel?.roofMaterial),
+        eaveHeightM: formatMetresOverride(module.houseEaveHeightM, houseModel?.eaveHeightMm),
+        wallHeightM: formatMetresOverride(module.houseWallHeightM, houseModel?.wallHeightMm),
+        roofPitchDeg: formatNumberOverride(module.houseRoofPitchDeg, houseModel?.roofPitchDeg),
+        soffitDepthMm: formatMillimetresOverride(module.houseSoffitDepthMm, houseModel?.eave?.soffitDepthMm),
+        fasciaHeightMm: formatMillimetresOverride(module.houseFasciaHeightMm, houseModel?.eave?.fasciaHeightMm),
+        gutterWidthMm: formatMillimetresOverride(module.houseGutterWidthMm, houseModel?.eave?.gutterWidthMm),
+        gutterDepthMm: formatMillimetresOverride(module.houseGutterDepthMm, houseModel?.eave?.gutterDepthMm),
+        gutterProjectionMm: formatMillimetresOverride(module.houseGutterProjectionMm, houseModel?.eave?.gutterProjectionMm),
+        eaveOverhangMm: formatMillimetresOverride(module.houseEaveOverhangMm, houseModel?.eave?.eaveOverhangMm),
       },
       supports: {
         postConnectionType:
-          (normalized.value.supports.postConnectionType as CalculatorModuleInputs['postConnectionType']) ?? resolved.module.postConnectionType,
+          (config.supports.postConnectionType as CalculatorModuleInputs['postConnectionType']) ?? module.postConnectionType,
         ground:
-          (normalized.value.supports.groundCondition as CalculatorModuleInputs['ground']) ?? resolved.module.ground,
-        postCount: String(normalized.value.supports.postCount ?? resolved.module.postCount ?? ''),
-        postCutHeightM: formatMetres(normalized.value.supports.postCutHeightMm) || String(resolved.module.postCutHeightM ?? ''),
+          (config.supports.groundCondition as CalculatorModuleInputs['ground']) ?? module.ground,
+        postCount: String(config.supports.postCount ?? module.postCount ?? ''),
+        postCutHeightM: formatMetres(config.supports.postCutHeightMm) || String(module.postCutHeightM ?? ''),
       },
       gable:
-        normalized.value.family === 'gable'
+        config.family === 'gable'
           ? {
               endFramesMode:
-                (normalized.value.gable.endFramesMode as CalculatorModuleInputs['gableEndFramesMode']) ??
-                resolved.module.gableEndFramesMode,
+                (config.gable.endFramesMode as CalculatorModuleInputs['gableEndFramesMode']) ??
+                module.gableEndFramesMode,
               houseEaveGutterMode:
-                (normalized.value.gable.houseEaveGutterMode as CalculatorModuleInputs['gableHouseEdgeGutter']) ??
-                resolved.module.gableHouseEdgeGutter,
+                (config.gable.houseEaveGutterMode as CalculatorModuleInputs['gableHouseEdgeGutter']) ??
+                module.gableHouseEdgeGutter,
               outerEaveGutterMode:
-                (normalized.value.gable.outerEaveGutterMode as CalculatorModuleInputs['gableOuterEdgeGutter']) ??
-                resolved.module.gableOuterEdgeGutter,
+                (config.gable.outerEaveGutterMode as CalculatorModuleInputs['gableOuterEdgeGutter']) ??
+                module.gableOuterEdgeGutter,
             }
           : null,
       overrides: {
-        ledgerProfile: formatOverrideValue(resolved.module.overrides, 'ledgerProfile'),
-        rafterProfile: formatOverrideValue(resolved.module.overrides, 'rafterProfile'),
-        postProfile: formatOverrideValue(resolved.module.overrides, 'postProfile'),
-        frontBeamProfile: formatOverrideValue(resolved.module.overrides, 'frontBeamProfile'),
-        ridgeBeamProfile: formatOverrideValue(resolved.module.overrides, 'ridgeBeamProfile'),
-        boxPerimeterBeamProfile: formatOverrideValue(resolved.module.overrides, 'boxPerimeterBeamProfile'),
-        tieBeamProfile: formatOverrideValue(resolved.module.overrides, 'tieBeamProfile'),
-        strutProfile: formatOverrideValue(resolved.module.overrides, 'strutProfile'),
+        ledgerProfile: formatOverrideValue(module.overrides, 'ledgerProfile'),
+        rafterProfile: formatOverrideValue(module.overrides, 'rafterProfile'),
+        postProfile: formatOverrideValue(module.overrides, 'postProfile'),
+        frontBeamProfile: formatOverrideValue(module.overrides, 'frontBeamProfile'),
+        ridgeBeamProfile: formatOverrideValue(module.overrides, 'ridgeBeamProfile'),
+        boxPerimeterBeamProfile: formatOverrideValue(module.overrides, 'boxPerimeterBeamProfile'),
+        tieBeamProfile: formatOverrideValue(module.overrides, 'tieBeamProfile'),
+        strutProfile: formatOverrideValue(module.overrides, 'strutProfile'),
       },
     },
   };

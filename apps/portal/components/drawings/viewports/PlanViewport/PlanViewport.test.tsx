@@ -132,6 +132,51 @@ describe('PlanViewport', () => {
       expect(markup).toContain('data-plan-shape-target-kind="pergola"');
     });
 
+    it('emits hit-targets for non-active project pergola context outlines', () => {
+      const markup = renderToStaticMarkup(
+        <PlanViewport
+          artifact={makeArtifactWithDeckPergolaAndContext()}
+          projectContextShapes={[
+            makeShape({
+              id: 'pergola_reference:pergola-B',
+              sourceObjectId: 'pergola-B',
+              sourceType: 'pergola_reference',
+              family: 'pergola',
+              kind: 'outline',
+              metadata: { isCanonicalOutline: true },
+            }),
+          ]}
+          viewportTransform={IDENTITY_TRANSFORM}
+          onViewportTransformChange={() => undefined}
+        />,
+      );
+
+      expect(markup).toContain('data-plan-context-source-id="pergola-B"');
+      expect(markup).toContain('data-plan-hit-shape-id="pergola_reference:pergola-B"');
+      expect(markup).toContain('data-plan-shape-target-kind="pergola"');
+    });
+
+    it('does not emit context hit-targets for non-pergola project references', () => {
+      const markup = renderToStaticMarkup(
+        <PlanViewport
+          artifact={makeArtifactWithDeckPergolaAndContext()}
+          projectContextShapes={[
+            makeShape({
+              id: 'house_reference:house-main',
+              sourceObjectId: 'house-main',
+              sourceType: 'house_reference',
+              family: 'house',
+              kind: 'footprint',
+            }),
+          ]}
+          viewportTransform={IDENTITY_TRANSFORM}
+          onViewportTransformChange={() => undefined}
+        />,
+      );
+
+      expect(markup).not.toContain('data-plan-hit-shape-id="house_reference:house-main"');
+    });
+
     it('renders a selection halo polygon for the active deck', () => {
       const markup = renderToStaticMarkup(
         <PlanViewport
@@ -204,6 +249,53 @@ describe('PlanViewport', () => {
         ),
       ).toHaveLength(1);
       rendered.unmount();
+    });
+
+    it('renders project-wide pergola plan bodies and replaces the active unprefixed body', () => {
+      const activePergola = makeShape({
+        id: 'rendered-pergola-A',
+        sourceObjectId: 'rendered-pergola-A',
+        sourceType: 'roof_plane',
+        family: 'pergola',
+        kind: 'roof_plane',
+        metadata: { pergolaId: 'pergola-A' },
+      });
+      const projectPergolaA = makeShape({
+        id: 'project_pergola:pergola-A:rendered-pergola-A',
+        sourceObjectId: 'rendered-pergola-A',
+        sourceType: 'roof_plane',
+        family: 'pergola',
+        kind: 'roof_plane',
+        metadata: { pergolaId: 'pergola-A' },
+      });
+      const projectPergolaB = makeShape({
+        id: 'project_pergola:pergola-B:rendered-pergola-B',
+        sourceObjectId: 'rendered-pergola-B',
+        sourceType: 'roof_plane',
+        family: 'pergola',
+        kind: 'roof_plane',
+        polygon: [
+          { x: 8000, y: 0 },
+          { x: 9000, y: 0 },
+          { x: 9000, y: 1000 },
+          { x: 8000, y: 1000 },
+        ],
+        metadata: { pergolaId: 'pergola-B' },
+      });
+      const markup = renderToStaticMarkup(
+        <PlanViewport
+          artifact={makeArtifact([activePergola])}
+          activeObjectRef={{ family: 'pergolas', objectId: 'pergola-B' }}
+          projectPergolaPlanShapes={[projectPergolaA, projectPergolaB]}
+          viewportTransform={IDENTITY_TRANSFORM}
+          onViewportTransformChange={() => undefined}
+        />,
+      );
+
+      expect(markup).toContain('data-plan-shape-id="project_pergola:pergola-A:rendered-pergola-A"');
+      expect(markup).toContain('data-plan-shape-id="project_pergola:pergola-B:rendered-pergola-B"');
+      expect(markup).not.toContain('data-plan-shape-id="rendered-pergola-A"');
+      expect(markup).toContain('data-plan-selection-shape-id="project_pergola:pergola-B:rendered-pergola-B"');
     });
 
     it('hides pergola shapes when pergola visibility is off', () => {
@@ -291,6 +383,66 @@ describe('PlanViewport', () => {
       );
       dispatchPointer(hitTarget!, 'pointerdown', { button: 0 });
       expect(onClearWorkbenchSelection).not.toHaveBeenCalled();
+      rendered.unmount();
+    });
+
+    it('dispatches onSelectPergolaTarget on left-click of a context pergola reference', () => {
+      const onSelectPergolaTarget = vi.fn();
+      const rendered = renderIntoDocument(
+        <PlanViewport
+          artifact={deckArtifact()}
+          projectContextShapes={[
+            makeShape({
+              id: 'pergola_reference:pergola-context',
+              sourceObjectId: 'pergola-context',
+              sourceType: 'pergola_reference',
+              family: 'pergola',
+              kind: 'outline',
+              metadata: { isCanonicalOutline: true },
+            }),
+          ]}
+          viewportTransform={IDENTITY_TRANSFORM}
+          onViewportTransformChange={() => undefined}
+          onSelectPergolaTarget={onSelectPergolaTarget}
+        />,
+      );
+      const hitTarget = rendered.container.querySelector(
+        '[data-plan-hit-shape-id="pergola_reference:pergola-context"]',
+      );
+      expect(hitTarget).not.toBeNull();
+      dispatchPointer(hitTarget!, 'pointerdown', { button: 0 });
+
+      expect(onSelectPergolaTarget).toHaveBeenCalledWith('pergola-context');
+      rendered.unmount();
+    });
+
+    it('dispatches onSelectPergolaTarget from a non-active full project pergola body', () => {
+      const onSelectPergolaTarget = vi.fn();
+      const rendered = renderIntoDocument(
+        <PlanViewport
+          artifact={deckArtifact()}
+          projectPergolaPlanShapes={[
+            makeShape({
+              id: 'project_pergola:pergola-body:roof',
+              sourceObjectId: 'rendered-pergola-body',
+              sourceType: 'roof_plane',
+              family: 'pergola',
+              kind: 'roof_plane',
+              metadata: { pergolaId: 'pergola-body' },
+            }),
+          ]}
+          viewportTransform={IDENTITY_TRANSFORM}
+          onViewportTransformChange={() => undefined}
+          onSelectPergolaTarget={onSelectPergolaTarget}
+        />,
+      );
+      const hitTarget = rendered.container.querySelector(
+        '[data-plan-hit-shape-id="project_pergola:pergola-body:roof"]',
+      );
+      expect(hitTarget).not.toBeNull();
+      dispatchPointer(hitTarget!, 'pointerdown', { button: 0 });
+
+      expect(onSelectPergolaTarget).toHaveBeenCalledWith('pergola-body');
       rendered.unmount();
     });
   });
