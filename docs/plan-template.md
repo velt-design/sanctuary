@@ -93,8 +93,8 @@ export type HouseModel3D = {
 
 | File | Change | LOC |
 |---|---|---|
-| [contracts.ts](packages/geometry/src/contracts.ts) | Add `houseId: string` to `HouseModel3D` | +2 |
-| [viewer.ts](packages/geometry/src/viewer.ts) | Prefix every output id, set `sourceId` to unprefixed form | +40 |
+| [contracts.ts](../packages/geometry/src/contracts.ts) | Add `houseId: string` to `HouseModel3D` | +2 |
+| [viewer.ts](../packages/geometry/src/viewer.ts) | Prefix every output id, set `sourceId` to unprefixed form | +40 |
 
 Use markdown file links (relative paths). LOC estimates are educated guesses — they bound the change for the reader.
 

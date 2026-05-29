@@ -4,7 +4,7 @@ import type { ViewerSceneReferencePlaneObject } from "@sp/geometry";
 import { buildPolygonGeometry } from "../geometry/buildGeometries";
 
 /**
- * Reference plane renderer â€” fallback dispatcher target for any
+ * Reference plane renderer — fallback dispatcher target for any
  * polygon-shaped scene object not handled by a more specific renderer.
  * Renders at very low opacity (0.12) so reference geometry doesn't
  * dominate the scene visually.

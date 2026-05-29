@@ -4,6 +4,8 @@
 
 > This section gates every change to `apps/portal/lib/drawings/`, `apps/portal/components/drawings/`, `packages/geometry/src/`, and the costing engine's input layer. If a PR you're proposing doesn't fit one of the directions below, stop and ask before writing code.
 
+Active campaign: [Design Workbench Multi-Object Goal](design-workbench-multi-object-goal.md) is the compact goal contract for moving from the current object-first foundation to robust multiple-house and multiple-pergola editing.
+
 ### The product
 
 **A single solved geometry model that serves many UI shells.** The marketing-site self-design tool, the on-site sales tool, the full designer workbench, and the future standalone tradie tool all read and write the **same object-first model**. The Rhino/Vray export reads from it. The costing engine reads from it. The model is the product; UIs are thin layers over it.

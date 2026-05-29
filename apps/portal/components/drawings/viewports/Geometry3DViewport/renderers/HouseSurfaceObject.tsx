@@ -4,7 +4,7 @@ import type { ViewerSceneHouseSurfaceObject } from "@sp/geometry";
 import { buildPolygonGeometry } from "../geometry/buildGeometries";
 
 /**
- * Flat house-surface renderer (non-solid) â€” used for the diagnostic
+ * Flat house-surface renderer (non-solid) — used for the diagnostic
  * surface objects emitted by the scene builder before the solid mesh
  * is available: roof projections, wall outlines, attachment zones /
  * planes, and opening markers. Opacity + colour are keyed off `kind`

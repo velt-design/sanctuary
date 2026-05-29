@@ -123,7 +123,7 @@ Grouped by layer; each file's change line is "delete the appendage refs" unless 
 | File | Change | LOC delta |
 |---|---|---|
 | [packages/geometry/src/contracts.ts](packages/geometry/src/contracts.ts) | Delete `HouseRoofAppendageForm` + `HouseRoofAppendageSupport` types | -20 |
-| [packages/geometry/src/house/roofAppendages.ts](packages/geometry/src/house/roofAppendages.ts) | **DELETE FILE** | -300 |
+| `packages/geometry/src/house/roofAppendages.ts` | **DELETE FILE** (load-bearing `buildSharedHouseRoof` lifted into [sharedHouseRoof.ts](../packages/geometry/src/house/sharedHouseRoof.ts) first) | -300 |
 | [packages/geometry/src/houseModel.ts](packages/geometry/src/houseModel.ts) | Drop appendage branches (lines 401, 417, 445-446, 548, 551). Perimeter-edge builder becomes unconditional. | -40 |
 | [packages/geometry/src/houseRoofValidation.ts](packages/geometry/src/houseRoofValidation.ts) | Drop `appendage` from capabilities config. Delete `appendageFootprintRequirement`/`appendageSupported`. Delete `deriveHouseRoofAppendageSupportedHostEdges`. Drop validation codes `invalid_appendage_topology`/`invalid_appendage_host_edge`. | -80 |
 | [packages/geometry/src/normalize.ts](packages/geometry/src/normalize.ts) | Drop appendage field from `RawHouseInput` normaliser | -25 |

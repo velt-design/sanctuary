@@ -42,6 +42,7 @@ These docs are current-state references and active guardrails for coding agents.
 | `costing-and-geometry.md` | Current | You are touching costing inputs/outputs, geometry semantics, or pricing/shape assumptions. |
 | `local-first-sync.md` | Current | You are touching portal working copies, mutation queue, optimistic state, or conflict handling. |
 | `design-workbench-architecture.md` | Current | You are touching drawing workbench, object-first model, geometry preview, or direct manipulation. |
+| `design-workbench-multi-object-goal.md` | Active goal | You are moving the workbench toward robust multiple-house or multiple-pergola editing. |
 | `decision-log.md` | Active guardrail log | You need lessons from past mistakes, durable decisions, or reusable safety rules before risky work. |
 | `design-list.md` | Current | You are touching `/staff/projects/design-packages` or design-package request APIs. |
 | `running-jobs.md` | Current | You are touching `/staff/projects/running-jobs` or running-job spreadsheet APIs. |

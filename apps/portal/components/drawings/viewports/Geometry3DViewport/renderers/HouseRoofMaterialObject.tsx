@@ -5,7 +5,7 @@ import { buildLineGeometry } from "../geometry/lineBuilders";
 import { linePoints } from "../geometry/scenePointHelpers";
 
 /**
- * House roof material renderer â€” emits the periodic line set (corrugation
+ * House roof material renderer — emits the periodic line set (corrugation
  * ribs, standing seams, etc.) projected onto the roof plane. The parent
  * group is the click/focus target; per-line geometries render with the
  * shared material colour for the layer.

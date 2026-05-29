@@ -19,7 +19,7 @@ import {
 } from "../geometry/lineBuilders";
 
 /**
- * Solid house-surface renderer â€” covers roofs, walls (including the
+ * Solid house-surface renderer — covers roofs, walls (including the
  * gable triangles emitted by the open-gable mesh builder), and decks.
  * Geometry prefers the precomputed `renderMesh` and falls back to
  * extruding the boundary polygon by `thicknessMm` via
@@ -37,7 +37,7 @@ import {
  * the selection styling.
  *
  * 3D occlusion of the deck interior against the house bounds is NOT
- * yet shipped â€” see the inline notes in the previous viewport: a
+ * yet shipped — see the inline notes in the previous viewport: a
  * depth-write attempt made the whole 3D viewport read as opaque
  * because the same depth values occluded pergola elements visible
  * through transparent walls. Until either a polygon-clip pre-process

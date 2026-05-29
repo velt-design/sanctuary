@@ -6,7 +6,7 @@ import { buildPolygonGeometry } from "../geometry/buildGeometries";
 /**
  * Translucent roof-plane surface renderer. Roof planes share the
  * pergola layer's body color and render at 0.45 opacity so the rafter
- * lines beneath stay legible. No depth-write tweaks here â€” the parent
+ * lines beneath stay legible. No depth-write tweaks here — the parent
  * viewport relies on plain alpha blending for these.
  */
 export function RoofPlaneObject({

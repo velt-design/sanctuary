@@ -5,7 +5,7 @@ import { buildLineGeometry } from "../geometry/lineBuilders";
 import { linePoints } from "../geometry/scenePointHelpers";
 
 /**
- * Reference line renderer â€” drawn for datum axes, fall-vector
+ * Reference line renderer — drawn for datum axes, fall-vector
  * scaffolding, and the orientation overlays. Single-segment line, no
  * fill, no thickness modulation.
  */

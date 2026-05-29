@@ -1009,3 +1009,19 @@ Legacy storage: persisted drafts still carrying `label` / `kind` / `elevationMod
 Promoted to: None
 
 Related docs/tests: [apps/portal/components/drawings/rail/DeckInspectorSections.tsx](../apps/portal/components/drawings/rail/DeckInspectorSections.tsx), [apps/portal/lib/drawings/state/houseFirstDeckAdapter.ts](../apps/portal/lib/drawings/state/houseFirstDeckAdapter.ts), [apps/portal/lib/drawings/state/objectFirstWorkbenchModel.ts](../apps/portal/lib/drawings/state/objectFirstWorkbenchModel.ts), [docs/deck-inspector-cull-plan.md](deck-inspector-cull-plan.md) (the PR-T9 plan).
+
+### 2026-05-29 - Workbench Geometry - Multi-House PR3 Project House Geometry Registry
+
+Area: Workbench Geometry
+
+Status: Active
+
+Decision or mistake: introduced a project-level house geometry registry as the canonical derived source for per-form house references, host-excluded 3D scene composition, and PlanViewport house snap targets in multi-house scenes. Replaces the previous pattern of each per-pergola `RawGeometryModuleInput.houseContext` carrying its own copy of the host house geometry — which produced duplicate scene objects and inconsistent snap targets when more than one pergola attached to the same house form.
+
+Why it mattered: with multi-house support landing (PR3 of the multi-house sequence), the per-pergola houseContext shape stops being a 1:1 source of truth. Multiple pergolas pointing at the same house produced duplicate render objects with colliding ids; PlanViewport snap targets fired against the per-pergola copy, not the canonical project-level house. The registry pattern lifts house geometry to project scope so every consumer reads the same derived artifact.
+
+Current guardrail: scene composition + snap-target derivation must read from the project house geometry registry, not from per-pergola `RawGeometryModuleInput.houseContext`. Per-pergola `houseContext` remains a Phase 2 deletion target (cleanup blocked on the solve loop becoming per-object — see [Phase 2 Plan](design-workbench-phase-2-plan.md)). Until that happens, host scene objects may still need boundary retagging at the integration boundary; the registry is the canonical read, not a write-through cache.
+
+Promoted to: None
+
+Related docs/tests: [apps/portal/components/drawings/viewports/PlanViewport/PlanViewport.tsx](../apps/portal/components/drawings/viewports/PlanViewport/PlanViewport.tsx), [apps/portal/components/drawings/viewports/PlanViewport/interactions/snap/buildProjectHouseSnapTargets.ts](../apps/portal/components/drawings/viewports/PlanViewport/interactions/snap/buildProjectHouseSnapTargets.ts), [apps/portal/components/drawings/viewports/PlanViewport/interactions/snap/buildProjectHouseSnapTargets.test.ts](../apps/portal/components/drawings/viewports/PlanViewport/interactions/snap/buildProjectHouseSnapTargets.test.ts).

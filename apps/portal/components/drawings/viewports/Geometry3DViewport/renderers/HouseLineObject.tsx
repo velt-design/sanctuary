@@ -5,7 +5,7 @@ import { buildLineGeometry } from "../geometry/lineBuilders";
 import { linePoints } from "../geometry/scenePointHelpers";
 
 /**
- * House line renderer â€” single-segment lines emitted for opening
+ * House line renderer — single-segment lines emitted for opening
  * outlines, attachment edges, and other 1D scaffolding in the house
  * model. The `opening_outline` kind overrides the layer colour to the
  * marker blue so an outlined opening reads consistently with its

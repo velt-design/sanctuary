@@ -101,6 +101,18 @@ const ALLOWED_NON_ASCII_CODE_POINTS = new Set([
   0x1F7E2, // LARGE GREEN CIRCLE
   0x1F7E3, // LARGE PURPLE CIRCLE
   0x1F7E4, // LARGE BROWN CIRCLE
+  // Common punctuation + glyphs used in plan docs and inspector mockups
+  0x00A7, // SECTION SIGN (§)
+  0x00B0, // DEGREE SIGN (°)
+  0x00B7, // MIDDLE DOT (·)
+  0x2032, // PRIME (′)
+  0x25B6, // BLACK RIGHT-POINTING TRIANGLE (▶)
+  0x25BE, // BLACK DOWN-POINTING SMALL TRIANGLE (▾)
+  // Box-drawing characters (ASCII-art mockups in plan docs)
+  0x2500, // BOX DRAWINGS LIGHT HORIZONTAL (─)
+  0x2502, // BOX DRAWINGS LIGHT VERTICAL (│)
+  0x2510, // BOX DRAWINGS LIGHT DOWN AND LEFT (┐)
+  0x253C, // BOX DRAWINGS LIGHT VERTICAL AND HORIZONTAL (┼)
 ]);
 
 function toPosix(value) {
@@ -224,7 +236,20 @@ function anchorFromHref(href) {
 function localMarkdownLinkTarget(file, href) {
   const target = withoutAnchorOrQuery(href);
   if (!target) return file;
-  return toPosix(path.normalize(path.join(path.dirname(file), target)));
+  // Try doc-relative first (matches strict Markdown semantics).
+  const docRelative = toPosix(path.normalize(path.join(path.dirname(file), target)));
+  if (exists(docRelative)) return docRelative;
+  // Fall back to repo-rooted resolution. Many of our plan docs write
+  // links as `apps/portal/...` or `packages/geometry/...` — that's the
+  // convention throughout the repo. Accept both as valid as long as one
+  // resolves; the resolver returns whichever exists so the downstream
+  // existence check stays accurate.
+  if (target.startsWith('/') || target.startsWith('.') || target.startsWith('#')) {
+    return docRelative;
+  }
+  const repoRooted = toPosix(path.normalize(target));
+  if (exists(repoRooted)) return repoRooted;
+  return docRelative;
 }
 
 function stripInlineMarkdown(value) {
