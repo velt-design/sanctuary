@@ -67,20 +67,12 @@ export const ROOF_RIDGE_AXIS_OPTIONS: Array<SelectOption & { value: HouseFormRoo
   { label: 'Ridge Y', value: 'y' },
 ];
 
-export const DECK_KIND_OPTIONS: SelectOption[] = [
-  { label: 'Deck', value: 'deck' },
-  { label: 'Landing', value: 'landing' },
-];
+// PR-T9 (2026-05-29): `DECK_KIND_OPTIONS` and `DECK_ELEVATION_OPTIONS`
+// removed with the deck inspector cull.
 
 export const DECK_SHAPE_OPTIONS: Array<SelectOption & { value: DeckObjectModel['shape'] }> = [
   { label: 'Rectangular preset', value: 'preset' },
   { label: 'Custom outline', value: 'custom' },
-];
-
-export const DECK_ELEVATION_OPTIONS: Array<SelectOption & { value: DeckObjectModel['elevationMode'] }> = [
-  { label: 'Ground', value: 'ground' },
-  { label: 'Stepped', value: 'stepped' },
-  { label: 'Threshold aligned', value: 'aligned_to_threshold' },
 ];
 
 export const DECK_SURFACE_OPTIONS: Array<SelectOption & { value: DeckObjectModel['surfaceMaterial'] }> = [

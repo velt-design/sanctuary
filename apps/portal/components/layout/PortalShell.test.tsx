@@ -24,12 +24,8 @@ vi.mock('@/components/navigation/SidebarRail', () => ({
   default: () => <div data-testid="mock-sidebar-rail">Sidebar rail</div>,
 }));
 
-vi.mock('@/components/navigation/SidebarRevealOverlayLab', () => ({
-  default: ({ mode }: { mode?: string }) => (
-    <div data-testid="mock-sidebar-overlay" data-sidebar-mode={mode}>
-      Sidebar overlay
-    </div>
-  ),
+vi.mock('@/components/navigation/PortalSidebarPanel', () => ({
+  default: () => <div data-testid="mock-sidebar-panel">Sidebar panel</div>,
 }));
 
 vi.mock('@/components/auth/PortalAuthProvider', () => ({
@@ -68,7 +64,7 @@ describe('PortalShell', () => {
 
     expect(rendered.container.querySelector('[data-testid="child"]')?.textContent).toContain('Public child');
     expect(rendered.container.querySelector('[data-testid="mock-sidebar-rail"]')).toBeNull();
-    expect(rendered.container.querySelector('[data-testid="mock-sidebar-overlay"]')).toBeNull();
+    expect(rendered.container.querySelector('[data-testid="mock-sidebar-panel"]')).toBeNull();
 
     rendered.unmount();
   });
@@ -82,9 +78,7 @@ describe('PortalShell', () => {
 
     expect(rendered.container.querySelector('[data-testid="child"]')?.textContent).toContain('Protected child');
     expect(rendered.container.querySelector('[data-testid="mock-sidebar-rail"]')).not.toBeNull();
-    expect(rendered.container.querySelector('[data-testid="mock-sidebar-overlay"]')?.getAttribute('data-sidebar-mode')).toBe(
-      'pinned',
-    );
+    expect(rendered.container.querySelector('[data-testid="mock-sidebar-panel"]')).not.toBeNull();
     expect(rendered.container.querySelector('[data-portal-sidebar-mode]')?.getAttribute('data-portal-sidebar-mode')).toBe(
       'pinned',
     );
@@ -108,7 +102,7 @@ describe('PortalShell', () => {
 
     expect(rendered.container.querySelector('[data-testid="child"]')?.textContent).toContain('Workbench child');
     expect(rendered.container.querySelector('[data-testid="mock-sidebar-rail"]')).not.toBeNull();
-    expect(rendered.container.querySelector('[data-testid="mock-sidebar-overlay"]')).toBeNull();
+    expect(rendered.container.querySelector('[data-testid="mock-sidebar-panel"]')).toBeNull();
     expect(rendered.container.querySelector('[data-portal-sidebar-mode]')?.getAttribute('data-portal-sidebar-mode')).toBe(
       'railOnly',
     );

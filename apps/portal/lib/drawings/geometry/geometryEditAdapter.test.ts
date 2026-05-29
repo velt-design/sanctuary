@@ -106,8 +106,6 @@ function makeObjectFirstGeometryDraft(): ObjectFirstWorkbenchDraftVNext {
     decks: [
       {
         id: 'deck-object',
-        label: 'Object Deck',
-        kind: 'deck',
         shape: 'custom',
         presetType: null,
         outline: [
@@ -116,7 +114,6 @@ function makeObjectFirstGeometryDraft(): ObjectFirstWorkbenchDraftVNext {
           { alongM: '2', depthM: '1' },
           { alongM: '0', depthM: '1' },
         ],
-        elevationMode: 'ground',
         levelOffsetMm: '0',
         isAttached: true,
         surfaceMaterial: 'composite',

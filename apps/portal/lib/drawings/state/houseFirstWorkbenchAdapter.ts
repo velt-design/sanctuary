@@ -114,16 +114,14 @@ function readDeckDrafts(
   // Legacy test path: carrier override wins.
   const legacy = draft?.houseFirst?.decks;
   if (legacy) {
-    return legacy.map((deck, index) => ({
+    return legacy.map((deck) => ({
       id: deck.id,
-      label: deck.name?.trim() || `Deck ${index + 1}`,
-      kind: deck.kind ?? 'deck',
+      // PR-T9 (2026-05-29): `label`, `kind`, `elevationMode` removed.
       shape: deck.shape ?? 'preset',
       presetType: deck.presetType ?? null,
       presetRect: deck.presetRect ?? null,
       floatingRect: deck.floatingRect ?? null,
       outline: deck.outline ?? [],
-      elevationMode: deck.elevationMode ?? 'ground',
       levelOffsetMm: deck.levelOffsetMm?.trim() || '0',
       isAttached: deck.isAttached ?? true,
       surfaceMaterial: deck.surfaceMaterial ?? 'timber_decking',

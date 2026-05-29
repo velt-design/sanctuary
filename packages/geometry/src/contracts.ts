@@ -138,10 +138,11 @@ export type HouseRoofRidgeAxis = "x" | "y";
 // PR-T8 (2026-05-29): `HouseRoofAppendageForm` removed with the
 // appendage feature cull. No production consumer remained.
 export type HouseRoofFeatureKind = "ridge" | "hip" | "valley" | "gable_end_frame";
-export type HouseDeckKind = "deck" | "landing";
+// PR-T9 (2026-05-29): `HouseDeckKind` and `HouseDeckElevationMode` removed
+// with the deck inspector cull. No costing or geometry consumer branched
+// on either type.
 export type HouseDeckShape = "preset" | "custom";
 export type HouseDeckPresetType = "rect_attached" | "rect_detached";
-export type HouseDeckElevationMode = "ground" | "stepped" | "aligned_to_threshold";
 export type HouseDeckSurfaceMaterial = "timber_decking" | "composite" | "concrete";
 export type HouseDeckSupportClassification =
   | "ground_supported"
@@ -262,8 +263,7 @@ export type HouseModelConfig = {
 
 export type HouseDeckConfig = {
   id: string;
-  name?: string | null;
-  kind?: HouseDeckKind | null;
+  // PR-T9 (2026-05-29): `name`, `kind`, `elevationMode` removed.
   shape?: HouseDeckShape | null;
   presetType?: HouseDeckPresetType | null;
   presetRect?: {
@@ -273,7 +273,6 @@ export type HouseDeckConfig = {
     detachedGapMm: number;
   } | null;
   outline?: Polygon3 | null;
-  elevationMode?: HouseDeckElevationMode | null;
   levelOffsetMm?: number | null;
   topSurfaceElevationMm?: number | null;
   hostEdgeId?: string | null;
@@ -390,8 +389,7 @@ export type RawHouseInput = {
   // PR-T8 (2026-05-29): `roofAppendage` removed with the appendage cull.
   decks?: Array<{
     id: string;
-    name?: string | null;
-    kind?: HouseDeckKind | null;
+    // PR-T9 (2026-05-29): `name`, `kind`, `elevationMode` removed.
     shape?: HouseDeckShape | null;
     presetType?: HouseDeckPresetType | null;
     presetRect?: {
@@ -405,7 +403,6 @@ export type RawHouseInput = {
       origin: { x: string | number; y: string | number };
       rotationDeg?: string | number | null;
     } | null;
-    elevationMode?: HouseDeckElevationMode | null;
     levelOffsetMm?: string | number | null;
     topSurfaceElevationMm?: number | null;
     hostEdgeId?: string | null;
@@ -564,8 +561,7 @@ export type RawGeometryModuleInput = {
     // PR-T8 (2026-05-29): `roofAppendage` removed with the appendage cull.
     decks?: Array<{
       id: string;
-      name?: string | null;
-      kind?: HouseDeckKind | null;
+      // PR-T9 (2026-05-29): `name`, `kind`, `elevationMode` removed.
       shape?: HouseDeckShape | null;
       presetType?: HouseDeckPresetType | null;
       presetRect?: {
@@ -586,7 +582,6 @@ export type RawGeometryModuleInput = {
         origin: { x: string | number; y: string | number };
         rotationDeg?: string | number | null;
       } | null;
-      elevationMode?: HouseDeckElevationMode | null;
       levelOffsetMm?: string | number | null;
       topSurfaceElevationMm?: number | null;
       hostEdgeId?: string | null;
@@ -937,8 +932,7 @@ export type HouseEnvelopeSolids3D = {
 
 export type HouseDeck3D = {
   id: string;
-  name?: string | null;
-  kind: HouseDeckKind;
+  // PR-T9 (2026-05-29): `name`, `kind`, `elevationMode` removed.
   shape: HouseDeckShape;
   presetType?: HouseDeckPresetType | null;
   presetRect?: {
@@ -950,7 +944,6 @@ export type HouseDeck3D = {
   boundary: Polygon3;
   plane: Plane3;
   topSurfaceElevationMm: number;
-  elevationMode: HouseDeckElevationMode;
   hostEdgeId?: string | null;
   isAttached: boolean;
   surfaceMaterial: HouseDeckSurfaceMaterial;

@@ -401,8 +401,8 @@ function mapDecks(
   if (!projectModel) return null;
   return projectModel.decks.map((deck) => ({
     id: deck.id,
-    name: deck.label,
-    kind: deck.kind,
+    // PR-T9 (2026-05-29): `name`, `kind`, `elevationMode` removed from the
+    // deck contract — costing never branched on any of them.
     shape: deck.shape,
     presetType: deck.presetType,
     presetRect: mapDeckPresetRect(deck.presetRect ?? null),
@@ -413,7 +413,6 @@ function mapDecks(
           rotationDeg: deck.position.rotationDeg,
         }
       : null,
-    elevationMode: deck.elevationMode,
     levelOffsetMm: resolveOptionalOverride(deck.levelOffsetMm) ?? '0',
     hostEdgeId: deck.hostEdgeId,
     isAttached: deck.isAttached,

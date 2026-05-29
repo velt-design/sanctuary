@@ -594,12 +594,9 @@ describe('buildDrawingWorkbenchStore', () => {
         decks: [
           {
             id: 'deck-edge-drag',
-            name: 'Edge-dragged deck',
-            kind: 'deck',
             shape: 'custom',
             presetType: null,
             outline,
-            elevationMode: 'ground',
             levelOffsetMm: '0',
             hostEdgeId: 'rear',
             isAttached: false,
@@ -645,7 +642,7 @@ describe('buildDrawingWorkbenchStore', () => {
         shape.kind === 'deck' &&
         (shape.sourceId === 'deck-edge-drag' ||
           shape.sourceObjectId === 'deck-edge-drag' ||
-          shape.metadata?.deckName === 'Edge-dragged deck'),
+          shape.metadata?.deckName === 'deck-edge-drag'),
     );
     expect(deckShape).toBeDefined();
     if (!deckShape) return;
@@ -890,13 +887,10 @@ describe('buildDrawingWorkbenchStore', () => {
       decks: [
         {
           id: 'deck-object',
-          label: 'Object deck',
-          kind: 'deck',
           shape: 'preset',
           presetType: 'rect_attached',
           presetRect: { widthM: '4', depthM: '2', centerOffsetM: '0' },
           outline: [],
-          elevationMode: 'aligned_to_threshold',
           levelOffsetMm: '0',
           isAttached: true,
           surfaceMaterial: 'timber_decking',
@@ -943,7 +937,6 @@ describe('buildDrawingWorkbenchStore', () => {
     expect(store.persisted.projectModel.decks.map((deck) => deck.id)).toEqual(['deck-object']);
     expect(store.derived.objectWorkbench.decks[0]).toMatchObject({
       id: 'deck-object',
-      label: 'Object deck',
       hostEdgeId: 'rear',
       validation: { status: 'valid' },
     });
@@ -976,7 +969,7 @@ describe('buildDrawingWorkbenchStore', () => {
       snapshot: fixture.snapshot,
       draft,
       compatibility: {
-        decks: [{ id: 'object-deck', name: 'Object deck', hostEdgeId: 'rear' }],
+        decks: [{ id: 'object-deck', hostEdgeId: 'rear' }],
         openings: [{ id: 'object-opening', label: 'Object opening', wallId: 'rear' }],
       },
     });
@@ -993,7 +986,6 @@ describe('buildDrawingWorkbenchStore', () => {
     expect(store.derived.objectWorkbench.houseForm.houseForm?.id).toBe('house-main');
     expect(store.derived.objectWorkbench.decks[0]).toMatchObject({
       id: 'object-deck',
-      label: 'Object deck',
       hostEdgeId: 'rear',
     });
     expect(store.derived.objectWorkbench.openings[0]).toMatchObject({

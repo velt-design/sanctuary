@@ -1,0 +1,152 @@
+import { act } from 'react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import PortalSidebarPanel from './PortalSidebarPanel';
+import { renderIntoDocument } from '../../../../test/reactHarness';
+
+const transitionMocks = vi.hoisted(() => ({
+  beginRouteTransition: vi.fn(),
+}));
+
+let mockPathname = '/dashboard';
+let mockSearchParams = new URLSearchParams();
+let mockRole: 'admin' | 'staff' = 'staff';
+
+function preventDocumentNavigation(event: Event): void {
+  const target = event.target;
+  if (!(target instanceof Element)) return;
+  if (target.closest('a')) event.preventDefault();
+}
+
+vi.mock('next/navigation', () => ({
+  usePathname: () => mockPathname,
+  useSearchParams: () => mockSearchParams,
+}));
+
+vi.mock('@/components/auth/PortalAuthProvider', () => ({
+  usePortalSession: () => ({ role: mockRole }),
+}));
+
+vi.mock('@/components/page-state/PortalRouteTransition', async () => {
+  const actual = await vi.importActual<typeof import('@/components/page-state/PortalRouteTransition')>(
+    '@/components/page-state/PortalRouteTransition',
+  );
+
+  return {
+    ...actual,
+    usePortalRouteTransition: () => ({
+      beginRouteTransition: transitionMocks.beginRouteTransition,
+    }),
+  };
+});
+
+function renderSidebar() {
+  return renderIntoDocument(<PortalSidebarPanel />);
+}
+
+function panelLayer(container: HTMLElement): HTMLElement {
+  const panel = container.querySelector('[data-portal-sidebar-panel="true"]');
+  const layer = panel?.firstElementChild;
+  if (!(layer instanceof HTMLElement)) throw new Error('Sidebar panel layer not found.');
+  return layer;
+}
+
+function linkByText(container: HTMLElement, text: string): HTMLAnchorElement {
+  const link = Array.from(container.querySelectorAll('a')).find((node) => node.textContent?.trim() === text);
+  if (!(link instanceof HTMLAnchorElement)) throw new Error(`Link not found: ${text}`);
+  return link;
+}
+
+function queryLinkByText(container: HTMLElement, text: string): HTMLAnchorElement | null {
+  const link = Array.from(container.querySelectorAll('a')).find((node) => node.textContent?.trim() === text);
+  return link instanceof HTMLAnchorElement ? link : null;
+}
+
+function buttonByLabel(container: HTMLElement, label: string): HTMLButtonElement {
+  const button = container.querySelector(`button[aria-label="${label}"]`);
+  if (!(button instanceof HTMLButtonElement)) throw new Error(`Button not found: ${label}`);
+  return button;
+}
+
+describe('PortalSidebarPanel', () => {
+  beforeEach(() => {
+    transitionMocks.beginRouteTransition.mockReset();
+    mockPathname = '/dashboard';
+    mockSearchParams = new URLSearchParams();
+    mockRole = 'staff';
+    window.history.replaceState({}, '', '/dashboard');
+    document.addEventListener('click', preventDocumentNavigation);
+  });
+
+  afterEach(() => {
+    document.removeEventListener('click', preventDocumentNavigation);
+    document.body.innerHTML = '';
+    window.history.replaceState({}, '', '/');
+  });
+
+  it('opens the active section and toggles multiple sections from chevrons', () => {
+    mockPathname = '/staff/projects/design-packages';
+    const rendered = renderSidebar();
+
+    expect(panelLayer(rendered.container).getAttribute('aria-hidden')).toBe('false');
+    expect(linkByText(rendered.container, 'Drafting Queue')).toBeInstanceOf(HTMLAnchorElement);
+    expect(queryLinkByText(rendered.container, 'New Contact')).toBeNull();
+
+    act(() => {
+      buttonByLabel(rendered.container, 'Expand Contacts').dispatchEvent(
+        new MouseEvent('click', { bubbles: true, cancelable: true, button: 0 }),
+      );
+    });
+
+    expect(linkByText(rendered.container, 'Drafting Queue')).toBeInstanceOf(HTMLAnchorElement);
+    expect(linkByText(rendered.container, 'New Contact')).toBeInstanceOf(HTMLAnchorElement);
+    expect(buttonByLabel(rendered.container, 'Collapse Contacts').getAttribute('aria-expanded')).toBe('true');
+
+    act(() => {
+      buttonByLabel(rendered.container, 'Collapse Contacts').dispatchEvent(
+        new MouseEvent('click', { bubbles: true, cancelable: true, button: 0 }),
+      );
+    });
+
+    expect(linkByText(rendered.container, 'Drafting Queue')).toBeInstanceOf(HTMLAnchorElement);
+    expect(queryLinkByText(rendered.container, 'New Contact')).toBeNull();
+
+    rendered.unmount();
+  });
+
+  it('keeps parent label clicks as navigation without toggling sections', () => {
+    mockPathname = '/staff/projects/design-packages';
+    const rendered = renderSidebar();
+
+    act(() => {
+      linkByText(rendered.container, 'Projects').dispatchEvent(
+        new MouseEvent('click', { bubbles: true, cancelable: true, button: 0 }),
+      );
+    });
+
+    expect(transitionMocks.beginRouteTransition).toHaveBeenCalledWith({
+      href: '/projects',
+      label: 'Projects',
+      source: 'sidebar-panel',
+    });
+    expect(buttonByLabel(rendered.container, 'Collapse Projects').getAttribute('aria-expanded')).toBe('true');
+
+    rendered.unmount();
+  });
+
+  it('does not close from Escape because the panel is pinned-only', () => {
+    mockPathname = '/staff/projects/design-packages';
+    const rendered = renderSidebar();
+
+    act(() => {
+      panelLayer(rendered.container).parentElement?.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
+      );
+    });
+
+    expect(panelLayer(rendered.container).getAttribute('aria-hidden')).toBe('false');
+    expect(linkByText(rendered.container, 'Drafting Queue')).toBeInstanceOf(HTMLAnchorElement);
+
+    rendered.unmount();
+  });
+});
+

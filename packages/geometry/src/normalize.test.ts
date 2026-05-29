@@ -1435,8 +1435,6 @@ describe('normalizeGeometryConfig', () => {
           decks: [
             {
               id: 'deck-1',
-              name: 'Deck 1',
-              kind: 'deck',
               shape: 'custom',
               outline: [
                 { alongM: '0', depthM: '0' },
@@ -1445,7 +1443,6 @@ describe('normalizeGeometryConfig', () => {
                 { alongM: '0', depthM: '2' },
               ],
               position: opts.deckPosition,
-              elevationMode: 'ground',
               levelOffsetMm: '0',
               hostEdgeId: null,
               isAttached: false,
@@ -1541,8 +1538,6 @@ describe('normalizeGeometryConfig', () => {
             decks: [
               {
                 id: 'deck-1',
-                name: 'Deck 1',
-                kind: 'deck',
                 shape: 'custom',
                 outline: [
                   // Polygon encoded against 'rear' frame (positive depth → -y world).
@@ -1555,7 +1550,6 @@ describe('normalizeGeometryConfig', () => {
                   { alongM: '0', depthM: '-2' },
                 ],
                 position: { origin: { x: 1000, y: 500 }, rotationDeg: 0 },
-                elevationMode: 'ground',
                 levelOffsetMm: '0',
                 hostEdgeId: null,
                 isAttached: false,
@@ -1646,12 +1640,9 @@ describe('normalizeGeometryConfig', () => {
             decks: [
               {
                 id: 'deck-1',
-                name: 'Deck 1',
-                kind: 'deck',
                 shape: 'custom',
                 outline: encodedSideLocal,
                 position: { origin: { x: 1000, y: 500 }, rotationDeg: 0 },
-                elevationMode: 'ground',
                 levelOffsetMm: '0',
                 hostEdgeId: null,
                 isAttached: false,

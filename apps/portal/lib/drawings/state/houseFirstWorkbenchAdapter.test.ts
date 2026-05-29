@@ -139,12 +139,9 @@ describe('buildHouseFirstWorkbenchProjectModel houseForms[] contract', () => {
       decks: [
         {
           id: 'deck-primary',
-          label: 'Primary Deck',
-          kind: 'deck',
           shape: 'preset',
           presetType: 'rect_attached',
           outline: [],
-          elevationMode: 'aligned_to_threshold',
           levelOffsetMm: '0',
           isAttached: true,
           surfaceMaterial: 'timber_decking',
@@ -153,12 +150,9 @@ describe('buildHouseFirstWorkbenchProjectModel houseForms[] contract', () => {
         },
         {
           id: 'deck-sleepout',
-          label: 'Sleepout Deck',
-          kind: 'deck',
           shape: 'preset',
           presetType: 'rect_attached',
           outline: [],
-          elevationMode: 'aligned_to_threshold',
           levelOffsetMm: '0',
           isAttached: true,
           surfaceMaterial: 'timber_decking',

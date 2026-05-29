@@ -454,7 +454,7 @@ export default function UserMenu({ email, roleLabel }: { email?: string; roleLab
     <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger asChild>
         <button type="button" aria-label="User menu" className={styles.trigger}>
-          <CircleUser aria-hidden="true" size={22} strokeWidth={2} className={styles.icon} />
+          <CircleUser aria-hidden="true" size={20} strokeWidth={2} className={styles.icon} />
         </button>
       </DropdownMenuTrigger>
 

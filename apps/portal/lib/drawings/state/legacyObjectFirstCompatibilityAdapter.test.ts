@@ -107,11 +107,8 @@ describe('buildObjectFirstWorkbenchProjectModel', () => {
     draft.objectFirst.decks = buildObjectFirstDeckDraftsFromCompatibilityDrafts([
       {
         id: 'deck-1',
-        name: 'Rear deck',
-        kind: 'deck',
         shape: 'preset',
         presetType: 'rect_attached',
-        elevationMode: 'aligned_to_threshold',
         levelOffsetMm: '0',
         hostEdgeId: 'rear',
         isAttached: true,
@@ -155,11 +152,8 @@ describe('buildObjectFirstWorkbenchProjectModel', () => {
 
     expect(project.decks[0]).toMatchObject({
       id: 'deck-1',
-      label: 'Rear deck',
-      kind: 'deck',
       shape: 'preset',
       presetType: 'rect_attached',
-      elevationMode: 'aligned_to_threshold',
       hostEdgeId: 'rear',
       isAttached: true,
       surfaceMaterial: 'timber_decking',
@@ -208,8 +202,6 @@ describe('buildObjectFirstWorkbenchProjectModel', () => {
     draft.objectFirst.decks = [
       {
         id: 'deck-1',
-        label: 'Rear deck',
-        kind: 'deck',
         shape: 'custom',
         presetType: null,
         outline: [
@@ -223,7 +215,6 @@ describe('buildObjectFirstWorkbenchProjectModel', () => {
           originYMm: '-3000',
           rotationDeg: '0',
         },
-        elevationMode: 'ground',
         levelOffsetMm: '0',
         hostEdgeId: 'rear',
         attachmentMode: 'floating',

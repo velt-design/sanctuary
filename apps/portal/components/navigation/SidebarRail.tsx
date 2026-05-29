@@ -2,9 +2,10 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import type { CSSProperties, MouseEvent as ReactMouseEvent } from 'react';
+import type { MouseEvent as ReactMouseEvent } from 'react';
 import { useCallback, useMemo, useRef } from 'react';
-import { NAV_ITEMS, SIDEBAR_WIDTH_PX } from './navItems';
+import { NAV_ITEMS } from './navItems';
+import { SIDEBAR_RAIL_WIDTH_PX } from './sidebarLayout';
 import UserMenu from './UserMenu';
 import styles from './SidebarRail.module.css';
 import { useQueryClient } from '@tanstack/react-query';
@@ -41,13 +42,14 @@ export default function SidebarRail({
   email,
   roleLabel,
   role,
+  panelVisible = false,
 }: {
   email?: string;
   roleLabel?: string;
   role?: 'admin' | 'staff';
+  panelVisible?: boolean;
 }) {
   const pathname = usePathname();
-  const iconSyncEnabled = true;
   const visibleItems = NAV_ITEMS.filter((item) => !item.adminOnly || role === 'admin');
   const queryClient = useQueryClient();
   const { beginRouteTransition } = usePortalRouteTransition();
@@ -84,9 +86,9 @@ export default function SidebarRail({
   return (
     <aside
       className={styles.rail}
-      style={{ width: SIDEBAR_WIDTH_PX }}
+      style={{ width: SIDEBAR_RAIL_WIDTH_PX }}
       data-portal-sidebar-rail="true"
-      data-icon-sync-enabled={iconSyncEnabled ? 'true' : undefined}
+      data-sidebar-panel-visible={panelVisible ? 'true' : undefined}
     >
       <div className={styles.section}>
         <nav className={styles.nav} aria-label="Portal navigation">
@@ -101,7 +103,6 @@ export default function SidebarRail({
                 aria-current={active ? 'page' : undefined}
                 className={cx(styles.iconButton, active && styles.iconButtonActive)}
                 data-nav-key={key}
-                style={{ '--icon-shift': `var(--icon-shift-${key}, 0px)` } as CSSProperties}
                 onClick={(event) => handleNavClick(event, href, label)}
                 onMouseEnter={() => prefetchFor(key)}
                 onFocus={() => prefetchFor(key)}
@@ -109,7 +110,7 @@ export default function SidebarRail({
                 {active ? <span className={styles.activeBar} aria-hidden="true" /> : null}
                 <Icon
                   aria-hidden="true"
-                  size={22}
+                  size={20}
                   strokeWidth={2}
                   className={styles.icon}
                   style={{ opacity: active ? 1 : 0.85 }}

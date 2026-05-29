@@ -8,8 +8,6 @@ import {
   KeyRound,
 } from 'lucide-react';
 
-export const SIDEBAR_WIDTH_PX = 56;
-
 export const NAV_ITEMS = [
   { key: 'dashboard', label: 'Dashboard', href: '/dashboard', Icon: Home, adminOnly: false },
   {

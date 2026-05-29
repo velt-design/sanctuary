@@ -63,12 +63,10 @@ function makeHouseForm(input: {
 function makeDeck(overrides: Partial<DeckObjectModel> = {}): DeckObjectModel {
   return {
     id: 'deck-a',
-    label: 'Rear Deck',
-    kind: 'deck',
+    // PR-T9 (2026-05-29): `label`, `kind`, `elevationMode` removed.
     shape: 'preset',
     presetType: 'rect_attached',
     outline: [point('1', '0'), point('5', '0'), point('5', '3'), point('1', '3')],
-    elevationMode: 'aligned_to_threshold',
     levelOffsetMm: '0',
     isAttached: true,
     surfaceMaterial: 'timber_decking',

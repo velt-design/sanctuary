@@ -370,8 +370,6 @@ function makeGeometryArtifact(
 function makeDeck(): DeckObjectModel {
   return {
     id: 'deck-1',
-    label: 'Deck',
-    kind: 'deck',
     shape: 'custom',
     presetType: null,
     presetRect: null,
@@ -382,7 +380,6 @@ function makeDeck(): DeckObjectModel {
       { alongM: '100', depthM: '100' },
       { alongM: '99', depthM: '100' },
     ],
-    elevationMode: 'ground',
     levelOffsetMm: '0',
     isAttached: true,
     surfaceMaterial: 'timber_decking',

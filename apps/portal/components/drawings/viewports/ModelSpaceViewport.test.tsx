@@ -192,8 +192,7 @@ function makeCustomPolygonPlanModel(): ModulePlanModel {
 function makeHouseFirstDeck(overrides: Partial<DeckModel> = {}): DeckModel {
   return {
     id: 'deck-1',
-    name: 'Deck 1',
-    kind: 'deck',
+    // PR-T9 (2026-05-29): `name`, `kind`, `elevationMode` removed.
     shape: 'preset',
     presetType: 'rect_attached',
     presetRect: {
@@ -202,7 +201,6 @@ function makeHouseFirstDeck(overrides: Partial<DeckModel> = {}): DeckModel {
       centerOffsetM: '0',
     },
     outline: [],
-    elevationMode: 'aligned_to_threshold',
     levelOffsetMm: '0',
     hostEdgeId: 'rear',
     isAttached: true,

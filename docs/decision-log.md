@@ -34,6 +34,7 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 | 2026-05-01 | Plan Rendering | Promoted | Geometry-ready plan selection and drag must use render-graph layer ownership and canonical preview/commit/rebuild round trips. |
 | 2026-05-01 | Plan Rendering | Promoted | Projection-backed overlays must bind visible selection/hit geometry to committed top-projection polygons, not reference footprints. |
 | 2026-05-29 | Workbench Cleanup | Active | PR-T8: roof appendage band feature removed end-to-end; future shape edits go through the gumball, not inspector number fields. |
+| 2026-05-29 | Workbench Cleanup | Active | PR-T9: deck inspector cull — `deck.label` / `deck.kind` / `deck.elevationMode` removed; host edge dropdown removed (snap-derived only); ground-clamp on negative offsets dropped. |
 | 2026-05-01 | Plan Rendering | Promoted | Geometry-ready Model Space is a hard top-projection-only render path; legacy/context/reference/opening overlays stay out of normal visuals. |
 | 2026-05-01 | Design Workbench Architecture | Promoted | Split workbench ownership contract-first: coordinate adapters and render graphs leave React presenters before moving tools/renderers. |
 | 2026-05-01 | Deck Interaction | Promoted | Projection-backed deck snapping must use top-projection frames live and object frames only at the commit boundary. |
@@ -976,3 +977,34 @@ Legacy storage: any persisted draft still carrying an `appendage` block is silen
 Promoted to: None
 
 Related docs/tests: [packages/geometry/src/house/sharedHouseRoof.ts](../packages/geometry/src/house/sharedHouseRoof.ts), [packages/geometry/src/houseRoofValidation.ts](../packages/geometry/src/houseRoofValidation.ts), [apps/portal/lib/drawings/state/houseRoofFormAdapter.ts](../apps/portal/lib/drawings/state/houseRoofFormAdapter.ts), [apps/portal/components/drawings/rail/HouseFormRoofSections.tsx](../apps/portal/components/drawings/rail/HouseFormRoofSections.tsx), [docs/appendage-removal-plan.md](appendage-removal-plan.md) (the PR-T8 plan).
+
+### 2026-05-29 - Workbench Cleanup - PR-T9 Deck Inspector Cull
+
+Area: Design Workbench / Deck
+
+Status: Active
+
+Decision or mistake: stripped the deck right-rail inspector of three dead fields (`deck.label`, `deck.kind`, `deck.elevationMode`), one snap-derived field that had a misleading inspector dropdown (`hostEdgeId`), and two duplicate action buttons (top-row `Add deck` + `Custom outline`). Same shape as PR-T8 (atomic delete + verify).
+
+Why it mattered: deck right rail was the same shape as the pre-T7 house rail — manual labels nothing reads, a `kind` enum nothing branched on, an `elevationMode` dropdown whose three options collapsed to a single boolean branch (clamp negative offsets to ground or don't) that the user had never observed firing, and a host-edge dropdown that misled users into thinking they could override the snap engine. Each field added cost to every PR that touched the deck pipeline.
+
+Current guardrail:
+- `hostEdgeId` is snap-derived only — written by `buildDeckCommitPatch` in `deckCommitAdapter.ts` during drag release. If a future inspector control re-exposes manual edge selection, treat it as a smell that the snap-target picker is missing a UI affordance, not that the dropdown should come back.
+- Deck names auto-derive from list index (`Deck ${index + 1}`). If a future use case needs persistent identity (e.g. PDF callouts), reintroduce as a derived field, not a manual one.
+- `elevationMode` is gone — negative `levelOffsetMm` is no longer clamped to ground. A user can now sink a deck below ground level by typing a negative offset. If this bites, the boolean `sitsOnGround` comes back as a one-line addition.
+- Costing recon (`rg 'kind|elevationMode' packages/costing/src`) confirmed zero hits before deletion. Re-run before similar culls.
+
+What was deleted (production source returns zero hits for these names outside tombstone comments + negative-assertion tests):
+
+- Portal state types: `DeckKind`, `DeckElevationMode` (both copies — `objectFirstWorkbenchModel.ts` + `houseFirstWorkbenchModel.ts`), plus `label` / `kind` / `elevationMode` fields on `DeckObjectModel`, `ObjectFirstDeckDraft`, `DeckModel`, `HouseFirstDeckDraft`, `ObjectWorkbenchDeckPatch`.
+- Type guards: `isDeckKind`, `isDeckElevationMode`.
+- Geometry types: `HouseDeckKind`, `HouseDeckElevationMode`, plus `name` / `kind` / `elevationMode` on `HouseDeckConfig`, `HouseDeck3D`, `RawHouseInput.decks[]`.
+- Adapter logic: the elevationMode-branched `topSurfaceElevationMm` calc (now unconditionally `= levelOffsetMm`), the detached_threshold_alignment validation emission, the elevationMode-based deck classification (now `isAttached ? 'threshold_attached' : 'ground_supported'`).
+- UI: deck-name TextField, deck-kind SelectField, deck-host-edge SelectField, deck-elevation SelectField in `DeckInspectorSections.tsx`. Top-row `Add deck` / `Custom outline` action buttons (left rail and Shape dropdown remain the canonical entry points).
+- Options arrays: `DECK_KIND_OPTIONS`, `DECK_ELEVATION_OPTIONS` in `objectRailShared.tsx`.
+
+Legacy storage: persisted drafts still carrying `label` / `kind` / `elevationMode` are silently dropped at `normalizeObjectFirstDeckDraft`. No migration script.
+
+Promoted to: None
+
+Related docs/tests: [apps/portal/components/drawings/rail/DeckInspectorSections.tsx](../apps/portal/components/drawings/rail/DeckInspectorSections.tsx), [apps/portal/lib/drawings/state/houseFirstDeckAdapter.ts](../apps/portal/lib/drawings/state/houseFirstDeckAdapter.ts), [apps/portal/lib/drawings/state/objectFirstWorkbenchModel.ts](../apps/portal/lib/drawings/state/objectFirstWorkbenchModel.ts), [docs/deck-inspector-cull-plan.md](deck-inspector-cull-plan.md) (the PR-T9 plan).

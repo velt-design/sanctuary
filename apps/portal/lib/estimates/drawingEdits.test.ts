@@ -327,8 +327,6 @@ describe('drawingEdits', () => {
       decks: [
         {
           id: ' deck-1 ',
-          label: ' Rear deck ',
-          kind: 'deck',
           shape: 'preset',
           presetType: 'rect_attached',
           presetRect: {
@@ -337,7 +335,6 @@ describe('drawingEdits', () => {
             centerOffsetM: '0',
           },
           outline: [],
-          elevationMode: 'aligned_to_threshold',
           levelOffsetMm: '0',
           isAttached: true,
           surfaceMaterial: 'timber_decking',

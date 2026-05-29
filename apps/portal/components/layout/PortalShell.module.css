@@ -13,11 +13,11 @@
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  padding-left: 56px;
+  padding-left: var(--portal-sidebar-rail-width, 48px);
 }
 
 .contentSidebarPinned {
-  padding-left: 262px;
+  padding-left: var(--portal-sidebar-pinned-width, 208px);
 }
 
 .contentStandalone {
@@ -34,6 +34,6 @@
 
 @media (max-width: 899px) {
   .contentSidebarPinned {
-    padding-left: 56px;
+    padding-left: var(--portal-sidebar-rail-width, 48px);
   }
 }

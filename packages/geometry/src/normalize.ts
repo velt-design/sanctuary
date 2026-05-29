@@ -556,8 +556,7 @@ export function buildHouseModelConfig(input: {
           );
         return {
           id: deck.id,
-          name: deck.name ?? null,
-          kind: deck.kind === 'landing' ? 'landing' : 'deck',
+          // PR-T9 (2026-05-29): `name`, `kind`, `elevationMode` removed.
           shape: deck.shape === 'custom' ? 'custom' : 'preset',
           presetType:
             deck.presetType === 'rect_attached' || deck.presetType === 'rect_detached'
@@ -613,10 +612,6 @@ export function buildHouseModelConfig(input: {
               ? applyPositionToPolygon3(decoded, deckPosition)
               : decoded;
           })(),
-          elevationMode:
-            deck.elevationMode === 'aligned_to_threshold' || deck.elevationMode === 'stepped'
-              ? deck.elevationMode
-              : 'ground',
           levelOffsetMm: resolveOptionalMillimetres(deck.levelOffsetMm),
           topSurfaceElevationMm:
             typeof deck.topSurfaceElevationMm === 'number' && Number.isFinite(deck.topSurfaceElevationMm)

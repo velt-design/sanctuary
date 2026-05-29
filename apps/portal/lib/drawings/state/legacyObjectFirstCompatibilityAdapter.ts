@@ -95,14 +95,12 @@ function buildDeckObjects(house: ObjectWorkbenchCompatibilityHouseModel | null):
       ? [
           {
             id: deck.id,
-            label: deck.name ?? deck.id,
-            kind: deck.kind,
+            // PR-T9 (2026-05-29): `label`, `kind`, `elevationMode` removed.
             shape: deck.shape,
             presetType: deck.presetType,
             presetRect: deck.presetRect,
             floatingRect: deck.floatingRect,
             outline: deck.outline,
-            elevationMode: deck.elevationMode,
             levelOffsetMm: deck.levelOffsetMm,
             isAttached: deck.isAttached,
             surfaceMaterial: deck.surfaceMaterial,
@@ -191,16 +189,14 @@ function buildHouseAssemblyDraftFromProject(
 export function buildObjectFirstDeckDraftsFromCompatibilityDrafts(
   decks: ObjectWorkbenchCompatibilityDeckDraft[] | null | undefined,
 ): ObjectFirstDeckDraft[] {
-  return (decks ?? []).map((deck, index) => ({
+  return (decks ?? []).map((deck) => ({
     id: deck.id,
-    label: deck.name?.trim() || `Deck ${index + 1}`,
-    kind: deck.kind ?? 'deck',
+    // PR-T9 (2026-05-29): `label`, `kind`, `elevationMode` removed.
     shape: deck.shape ?? 'preset',
     presetType: deck.presetType ?? null,
     presetRect: deck.presetRect ?? null,
     floatingRect: deck.floatingRect ?? null,
     outline: deck.outline ?? [],
-    elevationMode: deck.elevationMode ?? 'ground',
     levelOffsetMm: deck.levelOffsetMm?.trim() || '0',
     isAttached: deck.isAttached ?? true,
     surfaceMaterial: deck.surfaceMaterial ?? 'timber_decking',

@@ -1,7 +1,7 @@
 .trigger {
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
   border: 0;
   background: transparent;
   display: inline-flex;

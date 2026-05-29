@@ -55,7 +55,6 @@ function addHouseModelContext(config: GeometryConfig): GeometryConfig {
         decks: [
           {
             id: "deck-main",
-            kind: "deck",
             shape: "custom",
             outline: [
               { x: 900, y: 300, z: 0 },
@@ -63,7 +62,6 @@ function addHouseModelContext(config: GeometryConfig): GeometryConfig {
               { x: 4200, y: 2100, z: 0 },
               { x: 900, y: 2100, z: 0 },
             ],
-            elevationMode: "aligned_to_threshold",
             levelOffsetMm: 0,
             hostEdgeId: "footprint-edge-3",
             isAttached: true,

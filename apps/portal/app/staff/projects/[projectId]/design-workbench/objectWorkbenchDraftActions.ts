@@ -422,7 +422,8 @@ function resolveObjectWorkbenchDeckDraftGeometry(input: {
   const resolved = resolveDeckPresetGeometry({
     deck: {
       ...input.deck,
-      name: input.deck.label,
+      // PR-T9 (2026-05-29): deck.label removed; name is no longer
+      // surfaced to the preset-geometry resolver.
     },
     housePolygon: input.housePolygon,
   });
@@ -673,11 +674,9 @@ export function buildNewObjectWorkbenchDeckDraft(input: {
 }): ObjectWorkbenchDeckDraft {
   const baseDeck: ObjectWorkbenchDeckDraft = {
     id: input.deckId,
-    label: `Deck ${input.deckIndex + 1}`,
-    kind: 'deck',
+    // PR-T9 (2026-05-29): `label`, `kind`, `elevationMode` removed.
     shape: input.mode === 'custom_outline' ? 'custom' : 'preset',
     presetType: input.mode === 'preset' ? 'rect_attached' : null,
-    elevationMode: input.mode === 'preset' ? 'aligned_to_threshold' : 'ground',
     levelOffsetMm: '0',
     hostEdgeId: input.hostEdgeId,
     attachmentMode: input.mode === 'preset' ? 'single_edge' : 'floating',

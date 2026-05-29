@@ -293,7 +293,6 @@ type DeckValidationDraft = Pick<
   | 'cornerVertexId'
   | 'primaryHostEdgeId'
   | 'hostEdgeId'
-  | 'elevationMode'
   | 'presetRect'
 >;
 
@@ -347,7 +346,11 @@ function validateDeckDraft(
     requestedAttachmentContacts.length > 0
       ? Math.min(...requestedAttachmentContacts.map((contact) => contact.lengthMm))
       : 0;
-  const elevationMode = deck.elevationMode ?? 'ground';
+  // PR-T9 (2026-05-29): `elevationMode` removed from the deck contract.
+  // The adapter previously branched between `'ground'` (clamp negatives)
+  // / `'stepped'` / `'aligned_to_threshold'` (apply as-is). Threshold
+  // semantics are kept as the default since they preserve classification
+  // for attached decks; the negative-offset clamp is dropped.
 
   if (outline.length < 3 || Math.abs(localPolygonArea(outline)) <= 1e-6) {
     codes.push('unsupported_house_intersection');
@@ -380,10 +383,9 @@ function validateDeckDraft(
     codes.push('attached_missing_host_edge');
     messages.push('Attached decks need a host edge.');
   }
-  if (!isAttached && elevationMode === 'aligned_to_threshold') {
-    codes.push('detached_threshold_alignment');
-    messages.push('Detached decks cannot use threshold-aligned elevation.');
-  }
+  // PR-T9 (2026-05-29): `detached_threshold_alignment` validation code
+  // can no longer fire — its only trigger was the now-removed
+  // `elevationMode === 'aligned_to_threshold'` field on detached decks.
 
   if (isAttached && minimumRequestedContactLengthMm < 200) {
     warningCodes.push('insufficient_host_edge_contact');
@@ -397,21 +399,24 @@ function validateDeckDraft(
     warningCodes.push('detached_too_close_to_house');
     warningMessages.push('Detached deck is too close to the house to classify cleanly.');
   }
-  if (elevationMode === 'aligned_to_threshold' && Math.abs(levelOffsetMm) > 600) {
+  // PR-T9 (2026-05-29): `threshold_alignment_offset` warning gated on
+  // the now-removed `elevationMode`. Detached decks no longer warn for
+  // large offsets; the diagnostic was inspector-facing only.
+  if (Math.abs(levelOffsetMm) > 600) {
     warningCodes.push('threshold_alignment_offset');
-    warningMessages.push('Threshold-aligned decks should stay close to the house threshold datum.');
+    warningMessages.push('Decks should stay close to the house threshold datum.');
   }
   if (codes.includes('outline_inside_house')) {
     warningCodes.push('unsupported_house_intersection');
     warningMessages.push('Deck outline crosses unsupported house geometry zones.');
   }
 
-  const classification: DeckSupportClassification =
-    isAttached && elevationMode === 'aligned_to_threshold'
-      ? 'threshold_attached'
-      : !isAttached && elevationMode === 'ground'
-        ? 'ground_supported'
-        : 'mixed_or_unclear';
+  // PR-T9 (2026-05-29): without `elevationMode`, classification falls
+  // back to attachment alone — attached decks sit at threshold;
+  // detached decks are ground-supported.
+  const classification: DeckSupportClassification = isAttached
+    ? 'threshold_attached'
+    : 'ground_supported';
 
   return {
     validation: {
@@ -432,12 +437,11 @@ function validateDeckDraft(
       warningCodes,
       warningMessages,
     },
-    topSurfaceElevationMm:
-      elevationMode === 'ground'
-        ? Math.max(0, levelOffsetMm)
-        : elevationMode === 'aligned_to_threshold'
-          ? levelOffsetMm
-          : levelOffsetMm,
+    // PR-T9 (2026-05-29): `elevationMode` removed; the geometry only ever
+    // branched on `'ground'` to clamp negative offsets, which the user
+    // never observed firing. Now `topSurfaceElevationMm = levelOffsetMm`
+    // unconditionally — negative offsets are honoured.
+    topSurfaceElevationMm: levelOffsetMm,
   };
 }
 
@@ -482,8 +486,8 @@ export function buildSharedDecks(input: {
     );
     const deck: HouseModel['decks'][number] = {
       id: draft.id.trim(),
-      name: draft.label?.trim() || `Deck ${decks.length + 1}`,
-      kind: draft.kind === 'landing' ? 'landing' : 'deck',
+      // PR-T9 (2026-05-29): `name`, `kind`, `elevationMode` dropped from
+      // `DeckModel` with the inspector cull.
       shape: draft.shape === 'custom' ? 'custom' : 'preset',
       presetType:
         draft.presetType === 'rect_detached'
@@ -494,10 +498,6 @@ export function buildSharedDecks(input: {
       presetRect: presetGeometry.presetRect,
       floatingRect: presetGeometry.floatingRect,
       outline,
-      elevationMode:
-        draft.elevationMode === 'aligned_to_threshold' || draft.elevationMode === 'stepped'
-          ? draft.elevationMode
-          : 'ground',
       levelOffsetMm: draft.levelOffsetMm?.trim() || '0',
       hostEdgeId: presetGeometry.hostEdgeId,
       attachmentMode: presetGeometry.attachmentMode,

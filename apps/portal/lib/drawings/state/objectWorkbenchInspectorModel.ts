@@ -33,18 +33,16 @@ import {
   type WorkbenchTrustStatusKind,
 } from './workbenchSolvedModel';
 
+// PR-T9 (2026-05-29): `label`, `kind`, `elevationMode` removed.
 export type ObjectWorkbenchDeckPatch = Partial<
   Pick<
     DeckObjectModel,
-    | 'label'
-    | 'kind'
     | 'shape'
     | 'presetType'
     | 'presetRect'
     | 'floatingRect'
     | 'outline'
     | 'hostEdgeId'
-    | 'elevationMode'
     | 'levelOffsetMm'
     | 'surfaceMaterial'
     | 'isAttached'

@@ -1480,8 +1480,6 @@ describe("Geometry3DViewport", () => {
     draft.objectFirst.decks = buildObjectFirstDeckDraftsFromCompatibilityDrafts([
         {
           id: "deck-1",
-          name: "Deck 1",
-          kind: "deck",
           shape: "preset",
           presetType: "rect_attached",
           presetRect: {
@@ -1495,7 +1493,6 @@ describe("Geometry3DViewport", () => {
             { alongM: "5.5", depthM: "0" },
             { alongM: "1.5", depthM: "0" },
           ],
-          elevationMode: "aligned_to_threshold",
           levelOffsetMm: "0",
           hostEdgeId: "rear",
           isAttached: true,
@@ -1503,8 +1500,6 @@ describe("Geometry3DViewport", () => {
         },
         {
           id: "deck-2",
-          name: "Deck 2",
-          kind: "deck",
           shape: "preset",
           presetType: "rect_detached",
           presetRect: {
@@ -1519,7 +1514,6 @@ describe("Geometry3DViewport", () => {
             { alongM: "5.3", depthM: "-3.8" },
             { alongM: "1.7", depthM: "-3.8" },
           ],
-          elevationMode: "ground",
           levelOffsetMm: "0",
           hostEdgeId: "rear",
           isAttached: false,
@@ -1674,8 +1668,6 @@ describe("Geometry3DViewport", () => {
     draft.objectFirst.decks = buildObjectFirstDeckDraftsFromCompatibilityDrafts([
       {
         id: "deck-1",
-        name: "Deck 1",
-        kind: "deck",
         shape: "preset",
         presetType: "rect_attached",
         presetRect: { widthM: "3", depthM: "1.5", centerOffsetM: "0" },
@@ -1685,7 +1677,6 @@ describe("Geometry3DViewport", () => {
           { alongM: "4.5", depthM: "0" },
           { alongM: "1.5", depthM: "0" },
         ],
-        elevationMode: "aligned_to_threshold",
         levelOffsetMm: "0",
         hostEdgeId: "rear",
         isAttached: true,

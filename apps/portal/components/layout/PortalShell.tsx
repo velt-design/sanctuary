@@ -1,9 +1,13 @@
 'use client';
 
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, type CSSProperties } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import SidebarRail from '@/components/navigation/SidebarRail';
-import SidebarRevealOverlayLab from '@/components/navigation/SidebarRevealOverlayLab';
+import PortalSidebarPanel from '@/components/navigation/PortalSidebarPanel';
+import {
+  SIDEBAR_PINNED_WIDTH_PX,
+  SIDEBAR_RAIL_WIDTH_PX,
+} from '@/components/navigation/sidebarLayout';
 import styles from './PortalShell.module.css';
 import { usePortalSession } from '@/components/auth/PortalAuthProvider';
 import { buildAccessStatusHref, buildLoginHref, currentRequestPathWithSearch, toAccessStatusQueryState } from '@/lib/portalAccess';
@@ -76,6 +80,14 @@ export default function PortalShell({ children }: { children: React.ReactNode })
     }
     return null;
   }, [callbackUrl, status]);
+  const sidebarLayoutStyle = useMemo(
+    () =>
+      ({
+        '--portal-sidebar-rail-width': `${SIDEBAR_RAIL_WIDTH_PX}px`,
+        '--portal-sidebar-pinned-width': `${SIDEBAR_PINNED_WIDTH_PX}px`,
+      }) as CSSProperties,
+    [],
+  );
 
   useEffect(() => {
     if (!hasMountedRef.current) {
@@ -97,9 +109,15 @@ export default function PortalShell({ children }: { children: React.ReactNode })
       <div
         className={cx(styles.shell, isViewportLockedPath && styles.shellViewportLocked)}
         data-portal-sidebar-mode={sidebarMode}
+        style={sidebarLayoutStyle}
       >
-        <SidebarRail email={email ?? undefined} roleLabel={roleLabel} role={role ?? undefined} />
-        {sidebarMode === 'pinned' ? <SidebarRevealOverlayLab mode="pinned" /> : null}
+        <SidebarRail
+          email={email ?? undefined}
+          roleLabel={roleLabel}
+          role={role ?? undefined}
+          panelVisible={sidebarMode === 'pinned'}
+        />
+        {sidebarMode === 'pinned' ? <PortalSidebarPanel /> : null}
         <div
           className={cx(
             styles.content,

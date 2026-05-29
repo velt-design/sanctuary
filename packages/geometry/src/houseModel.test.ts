@@ -2730,8 +2730,6 @@ describe('house model geometry builder', () => {
       decks: [
         {
           id: 'deck-attached',
-          name: 'Attached deck',
-          kind: 'deck',
           shape: 'preset',
           presetType: 'rect_attached',
           outline: [
@@ -2740,7 +2738,6 @@ describe('house model geometry builder', () => {
             { x: 6000, y: 3000, z: 0 },
             { x: 0, y: 3000, z: 0 },
           ],
-          elevationMode: 'aligned_to_threshold',
           topSurfaceElevationMm: 0,
           hostEdgeId: 'rear',
           isAttached: true,
@@ -2751,8 +2748,6 @@ describe('house model geometry builder', () => {
         },
         {
           id: 'deck-detached',
-          name: 'Detached deck',
-          kind: 'deck',
           shape: 'preset',
           presetType: 'rect_detached',
           outline: [
@@ -2761,7 +2756,6 @@ describe('house model geometry builder', () => {
             { x: 9800, y: 3600, z: 0 },
             { x: 7000, y: 3600, z: 0 },
           ],
-          elevationMode: 'stepped',
           topSurfaceElevationMm: 450,
           isAttached: false,
           surfaceMaterial: 'composite',
@@ -2771,8 +2765,6 @@ describe('house model geometry builder', () => {
         },
         {
           id: 'deck-custom',
-          name: 'Custom landing',
-          kind: 'landing',
           shape: 'custom',
           outline: [
             { x: -2800, y: 800, z: 0 },
@@ -2782,7 +2774,6 @@ describe('house model geometry builder', () => {
             { x: -1600, y: 3200, z: 0 },
             { x: -2800, y: 3200, z: 0 },
           ],
-          elevationMode: 'ground',
           topSurfaceElevationMm: 75,
           isAttached: false,
           surfaceMaterial: 'concrete',
@@ -2815,7 +2806,6 @@ describe('house model geometry builder', () => {
     expect(detachedDeck?.supportClassification).toBe('ground_supported');
     expect(detachedDeck?.topSurfaceElevationMm).toBe(450);
     expect(detachedDeck?.boundary.every((point) => point.z === 450)).toBe(true);
-    expect(customDeck?.kind).toBe('landing');
     expect(customDeck?.shape).toBe('custom');
     expect(customDeck?.boundary).toHaveLength(6);
     expect(customDeck?.boundary.every((point) => point.z === 75)).toBe(true);

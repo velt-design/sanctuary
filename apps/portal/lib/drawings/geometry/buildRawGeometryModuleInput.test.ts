@@ -568,8 +568,6 @@ describe('buildRawGeometryModuleInput', () => {
         decks: [
           {
             id: 'deck-1',
-            name: 'Detached deck',
-            kind: 'deck',
             shape: 'preset',
             presetType: 'rect_detached',
             presetRect: {
@@ -584,7 +582,6 @@ describe('buildRawGeometryModuleInput', () => {
               { alongM: '5.3', depthM: '-0.6' },
               { alongM: '1.7', depthM: '-0.6' },
             ],
-            elevationMode: 'stepped',
             levelOffsetMm: '350',
             hostEdgeId: 'rear',
             isAttached: false,
@@ -609,8 +606,6 @@ describe('buildRawGeometryModuleInput', () => {
     expect(raw.houseContext.decks).toEqual([
       expect.objectContaining({
         id: 'deck-1',
-        name: 'Detached deck',
-        kind: 'deck',
         shape: 'preset',
         presetType: 'rect_detached',
         presetRect: {
@@ -619,13 +614,15 @@ describe('buildRawGeometryModuleInput', () => {
           centerOffsetMm: 0,
           detachedGapMm: 600,
         },
-        elevationMode: 'stepped',
         levelOffsetMm: '350',
         hostEdgeId: 'rear',
         isAttached: false,
         surfaceMaterial: 'composite',
+        // PR-T9 (2026-05-29): detached decks now classify as
+        // 'ground_supported' unconditionally (elevationMode removed,
+        // simplified to isAttached-only branching).
         supportContext: expect.objectContaining({
-          classification: 'mixed_or_unclear',
+          classification: 'ground_supported',
         }),
         validation: expect.objectContaining({
           status: 'valid',

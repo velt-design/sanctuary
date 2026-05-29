@@ -27,11 +27,13 @@ export type HouseRoofPrimaryFallDirection = 'positive_x' | 'negative_x' | 'posit
 export type HouseRoofRidgeAxis = 'x' | 'y';
 // PR-T8 (2026-05-29): `HouseRoofAppendageForm` removed with the
 // appendage feature cull.
-export type DeckKind = 'deck' | 'landing';
+// PR-T9 (2026-05-29): `DeckKind` and `DeckElevationMode` removed with the
+// deck inspector cull. `kind` was passed to costing but never branched on;
+// `elevationMode` only branched on `'ground'` vs not-ground to clamp
+// negative offsets, which the user never observed firing.
 export type DeckShape = 'preset' | 'custom';
 export type DeckAttachmentMode = 'floating' | 'single_edge' | 'corner_dual_edge';
 export type DeckPresetType = 'rect_attached' | 'rect_detached';
-export type DeckElevationMode = 'ground' | 'stepped' | 'aligned_to_threshold';
 export type DeckSurfaceMaterial = 'timber_decking' | 'composite' | 'concrete';
 export type DeckPresetRect = {
   widthM: string;
@@ -256,8 +258,10 @@ export type DeckPosition = {
 
 export type DeckObjectModel = {
   id: string;
-  label: string;
-  kind: DeckKind;
+  // PR-T9 (2026-05-29): `label`, `kind`, `elevationMode` removed with the
+  // deck inspector cull. The left-rail list auto-derives "Deck 1", "Deck 2"
+  // from index; nothing branched on `kind`; `elevationMode` only branched
+  // on `'ground'` vs not-ground to clamp negative offsets.
   shape: DeckShape;
   presetType: DeckPresetType | null;
   presetRect?: DeckPresetRect | null;
@@ -265,7 +269,6 @@ export type DeckObjectModel = {
   outline: CalculatorHouseFootprintPolygonPoint[];
   /** Optional world-space position overlay. See `DeckPosition`. */
   position?: DeckPosition | null;
-  elevationMode: DeckElevationMode;
   levelOffsetMm: string;
   isAttached: boolean;
   surfaceMaterial: DeckSurfaceMaterial;
@@ -503,8 +506,9 @@ export type DeckAttachment = {
 
 export type ObjectFirstDeckDraft = {
   id: string;
-  label: string;
-  kind: DeckKind;
+  // PR-T9 (2026-05-29): `label`, `kind`, `elevationMode` removed with the
+  // deck inspector cull. Persisted drafts carrying these fields are
+  // silently dropped at the workbench draft normalize boundary.
   shape: DeckShape;
   presetType: DeckPresetType | null;
   presetRect?: DeckPresetRect | null;
@@ -512,7 +516,6 @@ export type ObjectFirstDeckDraft = {
   outline: CalculatorHouseFootprintPolygonPoint[];
   /** Optional world-space position overlay. See `DeckPosition` for details. */
   position?: DeckPosition | null;
-  elevationMode: DeckElevationMode;
   levelOffsetMm: string;
   isAttached: boolean;
   surfaceMaterial: DeckSurfaceMaterial;
@@ -659,9 +662,8 @@ function isCalculatorHouseRoofMaterial(value: unknown): value is CalculatorHouse
   );
 }
 
-function isDeckKind(value: unknown): value is DeckKind {
-  return value === 'deck' || value === 'landing';
-}
+// PR-T9 (2026-05-29): `isDeckKind` and `isDeckElevationMode` removed
+// with the deck inspector cull.
 
 function isDeckShape(value: unknown): value is DeckShape {
   return value === 'preset' || value === 'custom';
@@ -669,10 +671,6 @@ function isDeckShape(value: unknown): value is DeckShape {
 
 function isDeckPresetType(value: unknown): value is DeckPresetType {
   return value === 'rect_attached' || value === 'rect_detached';
-}
-
-function isDeckElevationMode(value: unknown): value is DeckElevationMode {
-  return value === 'ground' || value === 'stepped' || value === 'aligned_to_threshold';
 }
 
 function isDeckAttachmentMode(value: unknown): value is DeckAttachmentMode {
@@ -962,10 +960,11 @@ export function normalizeObjectFirstDeckDraft(
   if (!id) return null;
 
   const position = normalizeDeckPosition(value?.position ?? null);
+  // PR-T9 (2026-05-29): `label`, `kind`, `elevationMode` normalisation
+  // removed with the deck inspector cull. Persisted JSON may still carry
+  // these fields; they're silently dropped here.
   return {
     id,
-    label: trimNullableString(value?.label) ?? id,
-    kind: isDeckKind(value?.kind) ? value.kind : 'deck',
     shape: isDeckShape(value?.shape) ? value.shape : 'preset',
     presetType: isDeckPresetType(value?.presetType) ? value.presetType : null,
     ...(normalizeObjectFirstDeckPresetRect(value?.presetRect)
@@ -976,7 +975,6 @@ export function normalizeObjectFirstDeckDraft(
       : null),
     outline: normalizeHouseFootprintPolygon(value?.outline),
     ...(position ? { position } : null),
-    elevationMode: isDeckElevationMode(value?.elevationMode) ? value.elevationMode : 'ground',
     levelOffsetMm: trimNullableString(value?.levelOffsetMm) ?? '0',
     isAttached: typeof value?.isAttached === 'boolean' ? value.isAttached : true,
     surfaceMaterial: isDeckSurfaceMaterial(value?.surfaceMaterial) ? value.surfaceMaterial : 'timber_decking',

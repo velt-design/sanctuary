@@ -6,15 +6,11 @@ import type {
 import type { DeckObjectModel } from '@/lib/drawings/state/objectFirstWorkbenchModel';
 import type { CommitResult, FieldErrors, RunAction } from './objectWorkbenchRailTypes';
 import {
-  ATTACHMENT_SIDE_OPTIONS,
   ActionButton,
-  DECK_ELEVATION_OPTIONS,
-  DECK_KIND_OPTIONS,
   DECK_SHAPE_OPTIONS,
   DECK_SURFACE_OPTIONS,
   NumberField,
   SelectField,
-  TextField,
   resolveDeckPresetRectDraft,
   resolveDeckValidationSummary,
   resolveDeckWarningSummaries,
@@ -39,7 +35,6 @@ export function buildDeckInspectorSections({
   activeDeck,
   disabled,
   fieldErrors,
-  onAddDeck,
   onCommitDeckPatch,
   onRemoveDeck,
   onStartDeckOutline,
@@ -48,32 +43,10 @@ export function buildDeckInspectorSections({
   const activeDeckPlacement = activeDeck?.isAttached ? 'snapped' : 'floating';
   const deckValidationSummary = activeDeck ? resolveDeckValidationSummary(activeDeck) : null;
   const deckWarningSummaries = activeDeck ? resolveDeckWarningSummaries(activeDeck) : [];
-  const deckButtons: ReactNode[] = [
-    <div key="deck-actions" className={styles.buttonRow}>
-      <ActionButton
-        label="Add deck"
-        disabled={disabled}
-        onClick={() =>
-          void runAction(
-            'deck-add-preset',
-            onAddDeck?.('preset'),
-            'Unable to add a deck.',
-          )
-        }
-      />
-      <ActionButton
-        label="Custom outline"
-        disabled={disabled}
-        onClick={() =>
-          void runAction(
-            'deck-add-custom',
-            onAddDeck?.('custom_outline'),
-            'Unable to start a custom deck outline.',
-          )
-        }
-      />
-    </div>,
-  ];
+  // PR-T9 (2026-05-29): top-row `Add deck` + `Custom outline` action
+  // buttons removed — the left rail already renders `+ Add deck`, and the
+  // Shape dropdown below is the canonical place to switch preset/custom.
+  const deckButtons: ReactNode[] = [];
 
   if (!activeDeck) {
     deckButtons.push(
@@ -101,58 +74,14 @@ export function buildDeckInspectorSections({
         ? 'Only the selected deck shows active dimensions in plan/model space. Rectangular presets can be dragged in Model Space, snap to the house edge, or sit in floating placement with witness dimensions.'
         : 'Only the selected deck shows active dimensions in plan/model space. Custom outlines can translate as one object relative to the house, expose witness dimensions, and still use the outline edge workflow for shape changes.'}
     </p>,
-    <TextField
-      key="deck-name"
-      label="Deck name"
-      value={activeDeck.label}
-      disabled={disabled}
-      error={fieldErrors[`deck-name-${activeDeck.id}`]}
-      onCommit={(value) =>
-        runAction(
-          `deck-name-${activeDeck.id}`,
-          onCommitDeckPatch?.(activeDeck.id, { label: value }),
-          'Unable to rename the deck.',
-        )
-      }
-    />,
-    <SelectField
-      key="deck-kind"
-      label="Deck kind"
-      value={activeDeck.kind}
-      options={DECK_KIND_OPTIONS}
-      disabled={disabled}
-      error={fieldErrors[`deck-kind-${activeDeck.id}`]}
-      onCommit={(value) =>
-        runAction(
-          `deck-kind-${activeDeck.id}`,
-          onCommitDeckPatch?.(activeDeck.id, { kind: value as DeckObjectModel['kind'] }),
-          'Unable to update the deck kind.',
-        )
-      }
-    />,
   );
 
+  // PR-T9 (2026-05-29): `Deck name` text field, `Deck kind` select, and
+  // `Host edge / Witness edge` select removed. Name auto-derives from
+  // index; kind was never branched on by costing/geometry; host edge is
+  // snap-derived by `buildDeckCommitPatch` and the inspector dropdown
+  // misled users into thinking they could override the snap result.
   deckButtons.push(
-    <SelectField
-      key="deck-host-edge"
-      label={activeDeck.isAttached ? 'Host edge' : 'Witness / snap edge'}
-      value={activeDeck.hostEdgeId ?? activeDeck.defaultHostEdgeId}
-      options={ATTACHMENT_SIDE_OPTIONS}
-      disabled={disabled}
-      error={fieldErrors[`deck-host-${activeDeck.id}`]}
-      helperText={
-        activeDeck.isAttached
-          ? 'The snapped preset rectangle rebuilds fully outside this edge.'
-          : 'This edge is the current witness reference for floating dimensions and a manual snap target hint.'
-      }
-      onCommit={(value) =>
-        runAction(
-          `deck-host-${activeDeck.id}`,
-          onCommitDeckPatch?.(activeDeck.id, { hostEdgeId: value }),
-          'Unable to update the deck host edge.',
-        )
-      }
-    />,
     <SelectField
       key="deck-shape"
       label="Shape"
@@ -292,22 +221,11 @@ export function buildDeckInspectorSections({
     }
   }
 
+  // PR-T9 (2026-05-29): `Elevation mode` dropdown removed. Geometry no
+  // longer branches on `elevationMode`; the inspector field had three
+  // options when the only effective branch was `'ground'` (clamp negative
+  // offsets) vs not-ground.
   deckButtons.push(
-    <SelectField
-      key="deck-elevation"
-      label="Elevation mode"
-      value={activeDeck.elevationMode}
-      options={DECK_ELEVATION_OPTIONS}
-      disabled={disabled}
-      error={fieldErrors[`deck-elevation-${activeDeck.id}`]}
-      onCommit={(value) =>
-        runAction(
-          `deck-elevation-${activeDeck.id}`,
-          onCommitDeckPatch?.(activeDeck.id, { elevationMode: value as DeckObjectModel['elevationMode'] }),
-          'Unable to update the deck elevation mode.',
-        )
-      }
-    />,
     <NumberField
       key="deck-offset"
       label="Level offset (mm)"
@@ -380,7 +298,7 @@ export function buildDeckInspectorSections({
     <p key="deck-reset-hint" className={styles.fieldHint}>
       Reset position clears the deck&apos;s world-space position and reverts the
       shape to a default rectangle. Use it to recover a deck that has drifted
-      off-canvas; the deck record (name, kind, host edge, material) is preserved.
+      off-canvas; the deck record (host edge, material) is preserved.
     </p>,
   );
 

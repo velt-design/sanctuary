@@ -553,8 +553,7 @@ export function buildHouseModel3D(input: {
           if (!boundary?.length) return [];
           return [{
             id: deck.id,
-            name: deck.name ?? null,
-            kind: deck.kind ?? 'deck',
+            // PR-T9 (2026-05-29): `name`, `kind`, `elevationMode` removed.
             shape: deck.shape ?? 'preset',
             presetType: deck.presetType ?? null,
             presetRect: deck.presetRect ?? null,
@@ -562,21 +561,22 @@ export function buildHouseModel3D(input: {
             plane: planeFromOriginAxes(point(0, 0, 0), { x: 1, y: 0, z: 0 }, { x: 0, y: 1, z: 0 }),
             topSurfaceElevationMm:
               finiteNumber(deck.topSurfaceElevationMm, finiteNumber(deck.levelOffsetMm, 0)),
-            elevationMode: deck.elevationMode ?? 'ground',
             hostEdgeId: deck.hostEdgeId ?? null,
             isAttached: Boolean(deck.isAttached),
             surfaceMaterial: deck.surfaceMaterial ?? 'timber_decking',
             supportClassification: deck.supportContext?.classification ?? 'mixed_or_unclear',
             metadata: {
-              deckName: deck.name ?? deck.id,
-              deckKind: deck.kind ?? 'deck',
+              // PR-T9 (2026-05-29): `deckKind` metadata removed alongside
+              // the inspector cull. `deckName` is kept as `deck.id` so the
+              // legacy diagnostic / hit-test paths that look up the deck
+              // by metadata stay functional during the cleanup window.
+              deckName: deck.id,
               deckShape: deck.shape ?? 'preset',
               deckPresetType: deck.presetType ?? null,
               deckPresetRectWidthMm: deck.presetRect?.widthMm ?? null,
               deckPresetRectDepthMm: deck.presetRect?.depthMm ?? null,
               deckPresetRectCenterOffsetMm: deck.presetRect?.centerOffsetMm ?? null,
               deckPresetRectDetachedGapMm: deck.presetRect?.detachedGapMm ?? null,
-              deckElevationMode: deck.elevationMode ?? 'ground',
               deckHostEdgeId: deck.hostEdgeId ?? null,
               deckIsAttached: Boolean(deck.isAttached),
               deckSurfaceMaterial: deck.surfaceMaterial ?? 'timber_decking',

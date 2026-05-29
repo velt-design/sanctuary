@@ -136,7 +136,6 @@ describe('objectWorkbenchDraftActions', () => {
       deckId: 'deck-1',
       housePolygon,
       patch: {
-        label: 'Kitchen deck',
         levelOffsetMm: '150',
         presetRect: {
           widthM: '2.4',
@@ -148,14 +147,12 @@ describe('objectWorkbenchDraftActions', () => {
 
     expect(deck).toMatchObject({
       id: 'deck-1',
-      label: 'Deck 1',
       shape: 'preset',
       presetType: 'rect_attached',
       isAttached: true,
     });
     expect(deck.outline.length).toBe(4);
     expect(nextDecks[0]).toMatchObject({
-      label: 'Kitchen deck',
       levelOffsetMm: '150',
       shape: 'preset',
       presetRect: expect.objectContaining({
@@ -168,12 +165,10 @@ describe('objectWorkbenchDraftActions', () => {
   it('keeps custom deck outlines as object-first deck drafts', () => {
     const deck: ObjectFirstDeckDraft = {
       id: 'deck-1',
-      label: 'Deck 1',
-      kind: 'deck',
+      // PR-T9 (2026-05-29): `label`, `kind`, `elevationMode` removed.
       shape: 'preset',
       presetType: 'rect_attached',
       outline: [],
-      elevationMode: 'ground',
       levelOffsetMm: '0',
       hostEdgeId: 'rear',
       attachmentMode: 'single_edge',
@@ -216,12 +211,10 @@ describe('objectWorkbenchDraftActions', () => {
     // because the decoder has nothing to translate the side-local outline by.
     const deck: ObjectFirstDeckDraft = {
       id: 'deck-1',
-      label: 'Deck 1',
-      kind: 'deck',
+      // PR-T9 (2026-05-29): `label`, `kind`, `elevationMode` removed.
       shape: 'preset',
       presetType: 'rect_attached',
       outline: [],
-      elevationMode: 'ground',
       levelOffsetMm: '0',
       hostEdgeId: 'rear',
       attachmentMode: 'single_edge',

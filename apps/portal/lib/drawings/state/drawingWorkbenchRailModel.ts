@@ -204,7 +204,7 @@ function buildDeckEntries(input: {
   decks: DeckObjectModel[];
   status: ObjectWorkbenchStatusFacade;
 }): DrawingWorkbenchRailObjectEntry[] {
-  return input.decks.map((deck) => {
+  return input.decks.map((deck, index) => {
     const deckStatus = input.status.deckStatuses[deck.id] ?? null;
     const trustStatus: WorkbenchTrustStatusKind =
       deckStatus?.validation.status === 'invalid' ? 'invalid_geometry' : 'geometry_ready';
@@ -214,7 +214,8 @@ function buildDeckEntries(input: {
         family: 'decks',
         objectId: deck.id,
       },
-      label: deck.label,
+      // PR-T9 (2026-05-29): `deck.label` removed; auto-derive from index.
+      label: `Deck ${index + 1}`,
       status: railStatusForTrustStatus(trustStatus),
       trustStatus,
       trustLabel,

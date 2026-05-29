@@ -402,8 +402,7 @@ function makeDeckModel(
 ): DeckModel {
   return {
     id: overrides.id,
-    name: overrides.name ?? 'Fixture Deck',
-    kind: overrides.kind ?? 'deck',
+    // PR-T9 (2026-05-29): `name`, `kind`, `elevationMode` removed.
     shape: overrides.shape ?? 'preset',
     presetType: overrides.presetType ?? 'rect_attached',
     presetRect:
@@ -422,7 +421,6 @@ function makeDeckModel(
         { alongM: '3.6', depthM: '3' },
         { alongM: '0', depthM: '3' },
       ],
-    elevationMode: overrides.elevationMode ?? 'aligned_to_threshold',
     levelOffsetMm: overrides.levelOffsetMm ?? '0',
     hostEdgeId: overrides.hostEdgeId,
     isAttached: overrides.isAttached ?? true,
@@ -499,7 +497,6 @@ export function makeHouseFirstDeckSupportProjectFixture(input: {
           hostEdgeId: 'rear',
           isAttached: false,
           presetType: 'rect_detached',
-          elevationMode: 'ground',
           levelOffsetMm: '120',
           topSurfaceElevationMm: 120,
           supportContext: {
