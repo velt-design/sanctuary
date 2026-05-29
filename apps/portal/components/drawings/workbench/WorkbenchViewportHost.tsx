@@ -26,7 +26,11 @@ import type { EstimateDrawingSheetMeta } from '@/lib/estimates/drawingSheet';
 import type { CalculatorHouseFootprintPolygonPoint } from '@/lib/types/calculator';
 import { type Geometry3DViewportState } from '@/components/drawings/viewports/Geometry3DViewport';
 import DesignViewport from '@/components/drawings/viewports/DesignViewport';
-import PlanViewport, { type EdgeDragCommit, type MoveRequest } from '@/components/drawings/viewports/PlanViewport/PlanViewport';
+import PlanViewport, {
+  type EdgeDragCommit,
+  type MoveRequest,
+  type ProjectHouseSnapSource,
+} from '@/components/drawings/viewports/PlanViewport/PlanViewport';
 import SheetViewport from '@/components/drawings/viewports/SheetViewport';
 import styles from './DrawingWorkbench.module.css';
 
@@ -95,6 +99,8 @@ type WorkbenchViewportHostProps = {
   projectContextShapes?: ReadonlyArray<GeometryTopProjectionShape>;
   /** Canonical house references promoted to active module hit targets. */
   houseCommittedShapes?: ReadonlyArray<GeometryTopProjectionShape>;
+  /** Project-level house models used as wall/eave snap sources. */
+  projectHouseSnapSources?: ReadonlyArray<ProjectHouseSnapSource>;
   /**
    * Cross-viewport hover state (milestone 16). PlanViewport emits via
    * `onHoverObjectChange` when the local pointer enters a shape; the host
@@ -150,6 +156,7 @@ export default function WorkbenchViewportHost({
   onCommitMove,
   projectContextShapes,
   houseCommittedShapes,
+  projectHouseSnapSources,
   hoveredObjectRef,
   onHoverObjectChange,
 }: WorkbenchViewportHostProps) {
@@ -184,6 +191,7 @@ export default function WorkbenchViewportHost({
           activeObjectRef={activeObjectRef}
           projectContextShapes={projectContextShapes}
           houseCommittedShapes={houseCommittedShapes}
+          projectHouseSnapSources={projectHouseSnapSources}
           viewportTransform={modelViewportTransform}
           onViewportTransformChange={onModelViewportTransformChange}
           onSelectObjectWorkbenchTarget={onSelectObjectWorkbenchTarget}

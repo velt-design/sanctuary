@@ -9,6 +9,7 @@ import { buildHouseFirstWorkbenchProjectModel as buildObjectWorkbenchCompatibili
 import { makeHouseFirstDeckSupportProjectFixture } from '@/lib/drawings/state/houseFirstWorkbenchFixtures';
 import { buildEstimateDrawingDraftFromSnapshot, type EstimateDrawingDraft } from '@/lib/estimates/drawingEdits';
 import {
+  addHouseFormToObjectFirstDraft,
   buildObjectFirstWorkbenchDraftFromProjectModel,
 } from '@/lib/drawings/state/objectFirstWorkbenchAdapter';
 import {
@@ -18,6 +19,7 @@ import {
 } from '@/lib/drawings/state/legacyObjectFirstCompatibilityAdapter';
 import { buildObjectWorkbenchGeometryContext } from './objectWorkbenchGeometryContext';
 import { buildRawGeometryModuleInput } from './buildRawGeometryModuleInput';
+import { resolveModuleHouseForm } from './resolveModuleHouseForm';
 import type { CalculatorModuleInputs } from '@/lib/types/calculator';
 
 const HOUSE_FOOTPRINT_PRESETS: readonly HouseFootprintPreset[] = [
@@ -462,6 +464,71 @@ describe('buildRawGeometryModuleInput', () => {
     expect(raw.houseContext.position).toEqual({
       origin: { x: '7000', y: '-3000' },
       rotationDeg: '180',
+    });
+  });
+
+  it('uses the shared host-house resolver when building raw house context', () => {
+    const fixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
+    if (!fixture) throw new Error('Expected mono fixture');
+    const draft = buildEstimateDrawingDraftFromSnapshot(fixture.snapshot);
+    if (!draft) throw new Error('Expected draft');
+    applyObjectFirstCompatibilityDraft({
+      snapshot: fixture.snapshot,
+      draft,
+      compatibility: {},
+    });
+    const baseline = draft.objectFirst;
+    if (!baseline) throw new Error('Expected object-first baseline draft');
+    draft.objectFirst = addHouseFormToObjectFirstDraft({
+      draft: baseline,
+      label: 'Sleepout',
+    });
+    const pergola = draft.objectFirst.pergolas[0];
+    const secondHouse = draft.objectFirst.houseAssembly?.houseForms[1] ?? null;
+    if (!pergola || !secondHouse) throw new Error('Expected pergola and second house form');
+    secondHouse.transform = { offsetXM: 12, offsetYM: -2, rotationQuarterTurns: 1 };
+    pergola.attachment = {
+      spatialKind: 'wall',
+      host: {
+        objectFamily: 'house_forms',
+        objectId: secondHouse.id,
+        edgeKind: 'wall',
+        edgeId: 'wall-house-wall-1',
+        myEdgeIndex: 0,
+      },
+      method: 'facade_ledger',
+    };
+    const geometryContext = buildGeometryContextFromObjectFirstDraft({
+      snapshot: fixture.snapshot,
+      draft,
+    });
+    const module = makeModule({
+      pergolaId: pergola.id,
+      houseFootprintPosition: {
+        originXMm: '9000',
+        originYMm: '9000',
+        rotationDeg: '180',
+      },
+    });
+
+    expect(resolveModuleHouseForm({
+      projectModel: geometryContext.projectModel,
+      module,
+      moduleId: pergola.id,
+    })?.id).toBe(secondHouse.id);
+
+    const raw = buildRawGeometryModuleInput({
+      projectId: 'proj_1',
+      estimateId: 'est_1',
+      moduleId: pergola.id,
+      module,
+      result: makeResult(),
+      objectWorkbenchGeometryContext: geometryContext,
+    });
+
+    expect(raw.houseContext.position).toEqual({
+      origin: { x: 12000, y: -2000 },
+      rotationDeg: 90,
     });
   });
 

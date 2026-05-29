@@ -324,6 +324,14 @@ export default function DesignWorkbenchEstimateClient({
       ),
     [store.derived.solvedModel.projectReferenceShapes],
   );
+  const projectHouseSnapSources = useMemo(
+    () =>
+      store.derived.solvedModel.projectHouseGeometries.map((entry) => ({
+        houseFormId: entry.houseFormId,
+        model: entry.model,
+      })),
+    [store.derived.solvedModel.projectHouseGeometries],
+  );
   const activeModelViewportTransform =
     modelViewportTransformsByKey[modelViewportSurfaceKey] ?? DEFAULT_MODEL_VIEWPORT_TRANSFORM;
   const activeGeometryViewportState =
@@ -500,6 +508,7 @@ export default function DesignWorkbenchEstimateClient({
           activeObjectRef={viewportActiveObjectRef}
           projectContextShapes={projectContextShapes}
           houseCommittedShapes={houseCommittedShapes}
+          projectHouseSnapSources={projectHouseSnapSources}
           hoveredObjectRef={hoveredObjectRef}
           onHoverObjectChange={setHoveredObjectRef}
           pergolaTargetId={viewportPergolaId}

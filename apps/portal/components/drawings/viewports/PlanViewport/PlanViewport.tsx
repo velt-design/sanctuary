@@ -27,12 +27,16 @@ import { createSelectTool } from './tools/SelectTool';
 import { createEdgeDragTool, type EdgeDragCommit, type EdgeDragHover, type EdgeDragPreview } from './tools/EdgeDragTool';
 import { createMoveTool, type MoveRequest, type MoveTarget, type MoveToolPreview } from './tools/MoveTool';
 import { createPlanToolChain } from './tools/createPlanToolChain';
-import { buildHouseSnapTargets } from './interactions/snap/buildHouseSnapTargets';
+import {
+  buildProjectHouseSnapTargets,
+  type ProjectHouseSnapSource,
+} from './interactions/snap/buildProjectHouseSnapTargets';
 import { buildOtherPergolaSnapTargets } from './interactions/snap/buildOtherPergolaSnapTargets';
 import type { SnapLineTarget } from './interactions/snap/snapEngine';
 
 export type { EdgeDragCommit, EdgeDragHover, EdgeDragPreview } from './tools/EdgeDragTool';
 export type { MoveRequest } from './tools/MoveTool';
+export type { ProjectHouseSnapSource } from './interactions/snap/buildProjectHouseSnapTargets';
 import { PlanViewportPlaceholder } from './PlanViewportPlaceholder';
 import lineweightStyles from './canvas/planLineweights.module.css';
 
@@ -64,6 +68,8 @@ export type PlanViewportProps = {
    * including the active pergola's host.
    */
   houseCommittedShapes?: ReadonlyArray<GeometryTopProjectionShape>;
+  /** Project-level house models used as wall/eave snap sources. */
+  projectHouseSnapSources?: ReadonlyArray<ProjectHouseSnapSource>;
   viewportTransform: DrawingWorkbenchViewportTransform;
   onViewportTransformChange: (next: DrawingWorkbenchViewportTransform) => void;
   onSelectObjectWorkbenchTarget?: (selection: ObjectWorkbenchViewportTargetSelection) => void;
@@ -123,6 +129,7 @@ export default function PlanViewport({
   dimensions: providedDimensions,
   projectContextShapes,
   houseCommittedShapes,
+  projectHouseSnapSources,
   viewportTransform,
   onViewportTransformChange,
   onSelectObjectWorkbenchTarget,
@@ -235,8 +242,8 @@ export default function PlanViewport({
   // Snap line targets — house wall edges + roof eaves + other pergolas'
   // outline edges projected to plan space. Read fresh on every drag-time
   // consult (via the ref) so re-solves between pointer events surface
-  // up-to-date targets. Only pergola edits use snap in v1; deck/house
-  // drags pass an empty list to fall through to natural delta. (Wired
+  // up-to-date targets. Pergola and deck edits use snap; house
+  // drags pass an empty list to avoid self-snaps. (Wired
   // here unconditionally — `EdgeDragTool` skips the snap path when
   // `lineTargets.length === 0`.)
   const houseModel = artifact?.assembly?.house?.model ?? null;
@@ -260,17 +267,17 @@ export default function PlanViewport({
     //   - decks: walls (no eaves — decks sit at ground level) + ALL pergolas'
     //     outline edges (`activePergolaSourceId` is null for non-pergola
     //     active objects, so `projectContextShapes` includes every pergola)
-    if (activeFamily !== 'pergolas' && activeFamily !== 'decks') return [];
-    const houseTargets = buildHouseSnapTargets({
-      houseModel,
-      houseObjectId: typeof houseObjectId === 'string' ? houseObjectId : 'house-main',
-      kinds: activeFamily === 'pergolas' ? 'walls_and_eaves' : 'walls',
+    const houseTargets = buildProjectHouseSnapTargets({
+      activeFamily,
+      projectHouseSnapSources,
+      fallbackHouseModel: houseModel,
+      fallbackHouseObjectId: typeof houseObjectId === 'string' ? houseObjectId : 'house-main',
     });
     const pergolaTargets = projectContextShapes
       ? buildOtherPergolaSnapTargets({ shapes: projectContextShapes })
       : [];
     return [...houseTargets, ...pergolaTargets];
-  }, [activeFamily, houseModel, houseObjectId, projectContextShapes]);
+  }, [activeFamily, houseModel, houseObjectId, projectContextShapes, projectHouseSnapSources]);
   const snapLineTargetsRef = useRef(snapLineTargets);
   snapLineTargetsRef.current = snapLineTargets;
 

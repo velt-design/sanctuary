@@ -25,7 +25,11 @@ import type {
   WorkbenchViewportGeometry,
 } from '@/lib/drawings/state/workbenchSolvedModel';
 import type { Geometry3DViewportState } from '@/components/drawings/viewports/Geometry3DViewport';
-import type { EdgeDragCommit, MoveRequest } from '@/components/drawings/viewports/PlanViewport/PlanViewport';
+import type {
+  EdgeDragCommit,
+  MoveRequest,
+  ProjectHouseSnapSource,
+} from '@/components/drawings/viewports/PlanViewport/PlanViewport';
 import WorkbenchChrome from './WorkbenchChrome';
 import WorkbenchViewportHost from './WorkbenchViewportHost';
 import styles from './DrawingWorkbench.module.css';
@@ -104,6 +108,8 @@ type DrawingWorkbenchProps = {
   projectContextShapes?: ReadonlyArray<GeometryTopProjectionShape>;
   /** Canonical house references promoted to active module hit targets. */
   houseCommittedShapes?: ReadonlyArray<GeometryTopProjectionShape>;
+  /** Project-level house models used as wall/eave snap sources. */
+  projectHouseSnapSources?: ReadonlyArray<ProjectHouseSnapSource>;
   /** Cross-viewport hover state (milestone 16). Pass-through to viewports. */
   hoveredObjectRef?: WorkbenchObjectRef | null;
   onHoverObjectChange?: (next: WorkbenchObjectRef | null) => void;
@@ -162,6 +168,7 @@ export default function DrawingWorkbench({
   onCommitMove,
   projectContextShapes,
   houseCommittedShapes,
+  projectHouseSnapSources,
   hoveredObjectRef,
   onHoverObjectChange,
 }: DrawingWorkbenchProps) {
@@ -225,6 +232,7 @@ export default function DrawingWorkbench({
         onCommitMove={onCommitMove}
         projectContextShapes={projectContextShapes}
         houseCommittedShapes={houseCommittedShapes}
+        projectHouseSnapSources={projectHouseSnapSources}
         hoveredObjectRef={hoveredObjectRef}
         onHoverObjectChange={onHoverObjectChange}
       />

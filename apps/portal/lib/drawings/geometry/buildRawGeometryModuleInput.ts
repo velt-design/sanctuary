@@ -11,6 +11,10 @@ import { houseFormTransformToAssemblyPosition } from '@/lib/drawings/state/house
 import { connectionTypeFromAttachment } from '@/lib/drawings/state/pergolaAttachment';
 import type { ObjectWorkbenchGeometryContext } from './objectWorkbenchGeometryContext';
 import {
+  resolveModuleHouseForm,
+  resolvePergolaForGeometryModule,
+} from './resolveModuleHouseForm';
+import {
   DEFAULT_CALCULATOR_ATTACHMENT_SIDE,
   DEFAULT_CALCULATOR_HOUSE_FOOTPRINT_PRESET,
   normalizeAttachmentSide,
@@ -296,70 +300,6 @@ function resolveHousePosition(input: {
   };
 }
 
-function resolvePergolaForModule(input: {
-  projectModel: WorkbenchProjectModel;
-  module: CalculatorModuleInputs;
-  moduleId: string | null;
-}): PergolaObjectModel | null {
-  const pergolaId = typeof input.module.pergolaId === 'string' ? input.module.pergolaId.trim() : '';
-  if (pergolaId) {
-    const byPergolaId = input.projectModel.pergolas.find((pergola) => pergola.id === pergolaId) ?? null;
-    if (byPergolaId) return byPergolaId;
-  }
-
-  if (input.moduleId) {
-    return input.projectModel.pergolas.find((pergola) => pergola.id === input.moduleId) ?? null;
-  }
-
-  return null;
-}
-
-function resolvePergolaSourceFormIds(input: {
-  projectModel: WorkbenchProjectModel;
-  pergola: PergolaObjectModel | null;
-}): string[] {
-  const envelope = input.projectModel.houseAssembly?.derivedEnvelope ?? null;
-  if (!envelope || !input.pergola) return [];
-
-  const attachmentZone = input.pergola.attachmentZoneId
-    ? envelope.attachmentZones.find((zone) => zone.id === input.pergola?.attachmentZoneId) ?? null
-    : null;
-  if (attachmentZone?.sourceFormIds.length) return attachmentZone.sourceFormIds;
-
-  const attachmentEdge = input.pergola.attachmentEdgeId
-    ? envelope.edges.find((edge) => edge.id === input.pergola?.attachmentEdgeId) ?? null
-    : null;
-  return attachmentEdge?.sourceFormIds ?? [];
-}
-
-function selectHouseForm(input: {
-  projectModel: WorkbenchProjectModel | null;
-  module: CalculatorModuleInputs;
-  moduleId: string | null;
-}): HouseFormModel | null {
-  const forms = input.projectModel?.houseAssembly?.houseForms ?? [];
-  if (!forms.length || !input.projectModel) return null;
-
-  const pergola = resolvePergolaForModule({
-    projectModel: input.projectModel,
-    module: input.module,
-    moduleId: input.moduleId,
-  });
-  const pergolaSourceFormIds = new Set(resolvePergolaSourceFormIds({
-    projectModel: input.projectModel,
-    pergola,
-  }));
-  const pergolaForm = forms.find((form) => pergolaSourceFormIds.has(form.id)) ?? null;
-  if (pergolaForm) return pergolaForm;
-
-  if (input.moduleId) {
-    const sourceModuleForm = forms.find((form) => form.sourceModuleIds?.includes(input.moduleId ?? '')) ?? null;
-    if (sourceModuleForm) return sourceModuleForm;
-  }
-
-  return forms[0] ?? null;
-}
-
 function toOptionalMillimetresFromMetres(value: string | number | null | undefined): number | null {
   const numericValue = Number(value);
   return Number.isFinite(numericValue) ? Math.round(numericValue * 1000) : null;
@@ -553,10 +493,10 @@ export function buildRawGeometryModuleInput(input: {
   const projectModel = objectWorkbenchGeometryContext?.projectModel ?? null;
   const decks = projectDecks !== undefined ? projectDecks : mapDecks(projectModel);
   const openings = projectOpenings !== undefined ? projectOpenings : mapOpenings(projectModel);
-  const houseForm = selectHouseForm({ projectModel, module, moduleId });
+  const houseForm = resolveModuleHouseForm({ projectModel, module, moduleId });
   const roofIntent = houseForm?.roofIntent ?? null;
   const pergola = projectModel
-    ? resolvePergolaForModule({ projectModel, module, moduleId })
+    ? resolvePergolaForGeometryModule({ projectModel, module, moduleId })
     : null;
 
   return {

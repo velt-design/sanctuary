@@ -132,12 +132,20 @@ describe('buildWorkbenchSolvedModel geometry artifact', () => {
       'house-form-2',
     ]);
     expect(new Set(houseRefs.map((shape) => shape.id)).size).toBe(houseRefs.length);
-    // Primary lives at world origin; additional form lives 10m east via
+    expect(solvedModel.projectHouseGeometries.map((entry) => entry.houseFormId)).toEqual([
+      'house-main',
+      'house-form-2',
+    ]);
+    expect(solvedModel.projectHouseGeometries.map((entry) => entry.referenceShape.id)).toEqual([
+      'house_reference:house-main',
+      'house_reference:house-form-2',
+    ]);
+    // Primary lives at world origin; second form lives 10m east via
     // `addHouseFormToObjectFirstDraft`'s default offset. Every vertex of
     // the second polygon must be at x >= 10000 mm.
-    const additional = houseRefs.find((shape) => shape.sourceObjectId === 'house-form-2');
-    expect(additional).toBeDefined();
-    for (const vertex of additional!.polygon) {
+    const secondForm = houseRefs.find((shape) => shape.sourceObjectId === 'house-form-2');
+    expect(secondForm).toBeDefined();
+    for (const vertex of secondForm!.polygon) {
       expect(vertex.x).toBeGreaterThanOrEqual(10000);
     }
   });
@@ -202,9 +210,9 @@ describe('buildWorkbenchSolvedModel geometry artifact', () => {
     }
   });
 
-  it('composes non-host house form objects into the 3D viewerScene house layer (PR8d)', () => {
+  it('composes host-excluded project house form objects into the 3D viewerScene house layer (PR8d)', () => {
     // Project-level references make every form visible in PlanViewport;
-    // PR8d closes the 3D gap by appending non-host per-form
+    // PR8d closes the 3D gap by appending host-excluded per-form
     // `house_line` / `house_surface_solid` objects to each pergola's
     // `viewerScene` house layer. After this, switching to the 3D viewport
     // shows the same two houses the plan view shows without duplicating
@@ -231,7 +239,7 @@ describe('buildWorkbenchSolvedModel geometry artifact', () => {
 
     // Find house_line wall_segment objects -- these are the wall edges.
     // With one form, the primary contributes wall edges in world coords
-    // (origin-anchored); with PR8d, the second form contributes additional
+    // (origin-anchored); with PR8d, the second form contributes project
     // wall edges offset 10m east. Detect by finding at least one wall edge
     // whose endpoint sits at x >= 10000mm (only the 2nd form can produce
     // those -- the primary's east extent is much smaller).
@@ -244,5 +252,59 @@ describe('buildWorkbenchSolvedModel geometry artifact', () => {
       return object.line.start.x >= 10000 || object.line.end.x >= 10000;
     });
     expect(easternEdges.length).toBeGreaterThan(0);
+  });
+
+  it('uses the resolved module host form for host house tagging and scene host exclusion', () => {
+    const snapshot = getFixtureSnapshot('mono-standard');
+    const draft = buildEstimateDrawingDraftFromSnapshot(snapshot);
+    if (!draft) throw new Error('Expected drawing draft.');
+    const baseline = buildObjectFirstWorkbenchDraftBaselineFromLegacyEstimateSnapshot({
+      snapshot,
+      draft,
+    });
+    if (!baseline) throw new Error('Expected objectFirst baseline draft.');
+    draft.objectFirst = addHouseFormToObjectFirstDraft({
+      draft: baseline,
+      label: 'Sleepout',
+    });
+    const pergola = draft.objectFirst.pergolas[0];
+    if (!pergola) throw new Error('Expected pergola draft.');
+    pergola.attachment = {
+      spatialKind: 'wall',
+      host: {
+        objectFamily: 'house_forms',
+        objectId: 'house-form-2',
+        edgeKind: 'wall',
+        edgeId: 'wall-house-wall-1',
+        myEdgeIndex: 0,
+      },
+      method: 'facade_ledger',
+    };
+
+    const solvedModel = buildWorkbenchSolvedModel({ snapshot, draft });
+    const activeModule = solvedModel.activeModule;
+    if (!activeModule?.geometryTopProjection || !activeModule.viewerScene) {
+      throw new Error('Expected solved active module.');
+    }
+
+    const taggedHostShapes = activeModule.geometryTopProjection.shapes.filter(
+      (shape) =>
+        shape.sourceType !== 'house_reference' &&
+        (shape.metadata as { houseFormId?: string } | undefined)?.houseFormId === 'house-form-2',
+    );
+    expect(taggedHostShapes.length).toBeGreaterThan(0);
+
+    const houseLayer = activeModule.viewerScene.layers.find((layer) => layer.id === 'house');
+    if (!houseLayer) throw new Error('Expected house layer in viewer scene.');
+    const objectIds = houseLayer.objects.map((object) => object.id);
+    expect(objectIds.some((id) => id.startsWith('house-main:'))).toBe(true);
+    expect(objectIds.some((id) => id.startsWith('host-house:'))).toBe(true);
+    const houseForm2Objects = houseLayer.objects.filter(
+      (object) => (object.metadata as { houseFormId?: string } | undefined)?.houseFormId === 'house-form-2',
+    );
+    expect(houseForm2Objects.length).toBeGreaterThan(0);
+    expect(houseLayer.objects.some(
+      (object) => (object.metadata as { houseFormId?: string } | undefined)?.houseFormId === 'host-house',
+    )).toBe(false);
   });
 });
