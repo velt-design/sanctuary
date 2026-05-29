@@ -25,7 +25,11 @@ vi.mock('@/components/navigation/SidebarRail', () => ({
 }));
 
 vi.mock('@/components/navigation/SidebarRevealOverlayLab', () => ({
-  default: () => <div data-testid="mock-sidebar-overlay">Sidebar overlay</div>,
+  default: ({ mode }: { mode?: string }) => (
+    <div data-testid="mock-sidebar-overlay" data-sidebar-mode={mode}>
+      Sidebar overlay
+    </div>
+  ),
 }));
 
 vi.mock('@/components/auth/PortalAuthProvider', () => ({
@@ -69,7 +73,7 @@ describe('PortalShell', () => {
     rendered.unmount();
   });
 
-  it('renders protected routes with the shell chrome for authenticated users', () => {
+  it('renders protected routes with the pinned shell chrome for authenticated users', () => {
     const rendered = renderIntoDocument(
       <PortalShell>
         <div data-testid="child">Protected child</div>
@@ -78,7 +82,41 @@ describe('PortalShell', () => {
 
     expect(rendered.container.querySelector('[data-testid="child"]')?.textContent).toContain('Protected child');
     expect(rendered.container.querySelector('[data-testid="mock-sidebar-rail"]')).not.toBeNull();
-    expect(rendered.container.querySelector('[data-testid="mock-sidebar-overlay"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[data-testid="mock-sidebar-overlay"]')?.getAttribute('data-sidebar-mode')).toBe(
+      'pinned',
+    );
+    expect(rendered.container.querySelector('[data-portal-sidebar-mode]')?.getAttribute('data-portal-sidebar-mode')).toBe(
+      'pinned',
+    );
+    expect(
+      rendered.container
+        .querySelector('[data-portal-content-sidebar-mode]')
+        ?.getAttribute('data-portal-content-sidebar-mode'),
+    ).toBe('pinned');
+
+    rendered.unmount();
+  });
+
+  it('renders design workbench routes with rail-only shell chrome', () => {
+    mockPathname = '/staff/projects/proj_123/design-workbench';
+
+    const rendered = renderIntoDocument(
+      <PortalShell>
+        <div data-testid="child">Workbench child</div>
+      </PortalShell>,
+    );
+
+    expect(rendered.container.querySelector('[data-testid="child"]')?.textContent).toContain('Workbench child');
+    expect(rendered.container.querySelector('[data-testid="mock-sidebar-rail"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[data-testid="mock-sidebar-overlay"]')).toBeNull();
+    expect(rendered.container.querySelector('[data-portal-sidebar-mode]')?.getAttribute('data-portal-sidebar-mode')).toBe(
+      'railOnly',
+    );
+    expect(
+      rendered.container
+        .querySelector('[data-portal-content-sidebar-mode]')
+        ?.getAttribute('data-portal-content-sidebar-mode'),
+    ).toBe('railOnly');
 
     rendered.unmount();
   });

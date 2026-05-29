@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import type { CSSProperties } from 'react';
+import type { CSSProperties, MouseEvent as ReactMouseEvent } from 'react';
 import { useCallback, useMemo, useRef } from 'react';
 import { NAV_ITEMS, SIDEBAR_WIDTH_PX } from './navItems';
 import UserMenu from './UserMenu';
@@ -11,6 +11,11 @@ import { useQueryClient } from '@tanstack/react-query';
 import { scheduleV2SnapshotQueryOptions } from '@/lib/queries/schedule';
 import { todayYmd } from '@/lib/scheduling/date';
 import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
+import {
+  shouldHandleRouteTransitionClick,
+  shouldStartRouteTransitionForHref,
+  usePortalRouteTransition,
+} from '@/components/page-state/PortalRouteTransition';
 
 function cx(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(' ');
@@ -45,6 +50,7 @@ export default function SidebarRail({
   const iconSyncEnabled = true;
   const visibleItems = NAV_ITEMS.filter((item) => !item.adminOnly || role === 'admin');
   const queryClient = useQueryClient();
+  const { beginRouteTransition } = usePortalRouteTransition();
 
   const hostKey = useMemo(() => supabaseHostFromUrl(supabaseRuntimeUrl()) || 'unknown', []);
   const today = useMemo(() => todayYmd(), []);
@@ -59,6 +65,20 @@ export default function SidebarRail({
       void queryClient.prefetchQuery(scheduleV2SnapshotQueryOptions(hostKey, today));
     },
     [hostKey, queryClient, today],
+  );
+
+  const handleNavClick = useCallback(
+    (event: ReactMouseEvent<HTMLAnchorElement>, href: string, label: string) => {
+      if (!shouldHandleRouteTransitionClick(event)) return;
+      if (!shouldStartRouteTransitionForHref(href)) return;
+
+      beginRouteTransition({
+        href,
+        label,
+        source: 'sidebar-rail',
+      });
+    },
+    [beginRouteTransition],
   );
 
   return (
@@ -82,6 +102,7 @@ export default function SidebarRail({
                 className={cx(styles.iconButton, active && styles.iconButtonActive)}
                 data-nav-key={key}
                 style={{ '--icon-shift': `var(--icon-shift-${key}, 0px)` } as CSSProperties}
+                onClick={(event) => handleNavClick(event, href, label)}
                 onMouseEnter={() => prefetchFor(key)}
                 onFocus={() => prefetchFor(key)}
               >

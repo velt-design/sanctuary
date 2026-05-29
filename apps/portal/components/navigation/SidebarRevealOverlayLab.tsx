@@ -25,6 +25,7 @@ import styles from './SidebarRevealOverlayLab.module.css';
 
 const OVERLAY_WIDTH_PX = 262;
 const LABEL_LAYER_WIDTH_PX = OVERLAY_WIDTH_PX - SIDEBAR_WIDTH_PX;
+type SidebarRevealOverlayMode = 'reveal' | 'pinned';
 
 function cx(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(' ');
@@ -133,13 +134,14 @@ function isChildActive(
   }
 }
 
-export default function SidebarRevealOverlayLab() {
+export default function SidebarRevealOverlayLab({ mode = 'reveal' }: { mode?: SidebarRevealOverlayMode }) {
+  const pinned = mode === 'pinned';
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { role } = usePortalSession();
   const { beginRouteTransition } = usePortalRouteTransition();
   const prefersReducedMotion = usePrefersReducedMotion();
-  const [expanded, setExpanded] = useState(false);
+  const [revealExpanded, setRevealExpanded] = useState(false);
   const pointerInRailRef = useRef(false);
   const pointerInOverlayRef = useRef(false);
   const focusWithinRef = useRef(false);
@@ -159,6 +161,7 @@ export default function SidebarRevealOverlayLab() {
   const prevRouteKeyRef = useRef<string | null>(null);
 
   const submenuEnabled = true;
+  const expanded = pinned || revealExpanded;
   const scheduleView = (searchParams.get('view') || 'board').toLowerCase();
   const visibleItems = NAV_ITEMS.filter((item) => !item.adminOnly || role === 'admin');
   const routeKey = useMemo(
@@ -291,28 +294,31 @@ export default function SidebarRevealOverlayLab() {
   const submenuCloseDelay = prefersReducedMotion ? 0 : 260;
 
   const activeParentKey = useMemo(() => {
-    const parentWithActiveChild = visibleItems.find((item) =>
-      itemChildren(item)?.some((child) => isChildActive(item.key, child.key, pathname, scheduleView, hashValue)),
-    );
-    return parentWithActiveChild?.key ?? null;
+    const activeParent = visibleItems.find((item) => {
+      if (isParentActive(pathname, item.href)) return true;
+      return itemChildren(item)?.some((child) => isChildActive(item.key, child.key, pathname, scheduleView, hashValue));
+    });
+    return activeParent?.key ?? null;
   }, [hashValue, pathname, scheduleView, visibleItems]);
 
   const openNow = useCallback(() => {
+    if (pinned) return;
     clearTimer(closeTimerRef);
     clearTimer(openTimerRef);
-    setExpanded(true);
-  }, [clearTimer]);
+    setRevealExpanded(true);
+  }, [clearTimer, pinned]);
 
   const closeNow = useCallback(() => {
     clearTimer(openTimerRef);
     clearTimer(closeTimerRef);
     clearSubmenuTimers();
+    if (pinned) return;
     pointerInRailRef.current = false;
     pointerInOverlayRef.current = false;
     setHoveredKey(null);
     setOpenParentKey(null);
-    setExpanded(false);
-  }, [clearSubmenuTimers, clearTimer]);
+    setRevealExpanded(false);
+  }, [clearSubmenuTimers, clearTimer, pinned]);
 
   const handleNavLinkClick = useCallback(
     (event: ReactMouseEvent<HTMLAnchorElement>, href: string, label: string, source: string) => {
@@ -338,16 +344,18 @@ export default function SidebarRevealOverlayLab() {
   }, [clearSubmenuTimers, closeNow, routeKey]);
 
   const scheduleOpen = useCallback(() => {
+    if (pinned) return;
     clearTimer(closeTimerRef);
     if (expanded) return;
     clearTimer(openTimerRef);
     openTimerRef.current = window.setTimeout(() => {
       openTimerRef.current = null;
-      setExpanded(true);
+      setRevealExpanded(true);
     }, openDelay);
-  }, [clearTimer, expanded, openDelay]);
+  }, [clearTimer, expanded, openDelay, pinned]);
 
   const scheduleClose = useCallback(() => {
+    if (pinned) return;
     clearTimer(openTimerRef);
     clearTimer(closeTimerRef);
     closeTimerRef.current = window.setTimeout(() => {
@@ -357,9 +365,9 @@ export default function SidebarRevealOverlayLab() {
       clearSubmenuTimers();
       setHoveredKey(null);
       setOpenParentKey(null);
-      setExpanded(false);
+      setRevealExpanded(false);
     }, closeDelay);
-  }, [clearSubmenuTimers, clearTimer, closeDelay, syncInteractionStateFromDom]);
+  }, [clearSubmenuTimers, clearTimer, closeDelay, pinned, syncInteractionStateFromDom]);
 
   const scheduleSubmenuOpen = useCallback(
     (key: string) => {
@@ -395,15 +403,17 @@ export default function SidebarRevealOverlayLab() {
   }, [activeParentKey, expanded, submenuEnabled]);
 
   const handleMouseEnter = useCallback(() => {
+    if (pinned) return;
     pointerInOverlayRef.current = true;
     scheduleOpen();
-  }, [scheduleOpen]);
+  }, [pinned, scheduleOpen]);
 
   const handleMouseLeave = useCallback(() => {
+    if (pinned) return;
     pointerInOverlayRef.current = false;
     setHoveredKey(null);
     scheduleClose();
-  }, [scheduleClose]);
+  }, [pinned, scheduleClose]);
 
   const handleFocusCapture = useCallback(() => {
     focusWithinRef.current = true;
@@ -412,28 +422,31 @@ export default function SidebarRevealOverlayLab() {
 
   const handleBlurCapture = useCallback(
     (event: ReactFocusEvent<HTMLDivElement>) => {
+      if (pinned) return;
       const nextTarget = event.relatedTarget;
       if (nextTarget instanceof Node && event.currentTarget.contains(nextTarget)) return;
       focusWithinRef.current = false;
       if (!isPointerInside()) closeNow();
     },
-    [closeNow, isPointerInside],
+    [closeNow, isPointerInside, pinned],
   );
 
   const handleKeyDown = useCallback(
     (event: ReactKeyboardEvent<HTMLDivElement>) => {
       if (event.key !== 'Escape') return;
+      if (pinned) return;
       focusWithinRef.current = false;
       closeNow();
       railElementRef.current?.querySelector<HTMLElement>('a[href]')?.focus();
     },
-    [closeNow],
+    [closeNow, pinned],
   );
 
   useEffect(() => {
     const railElement = document.querySelector<HTMLElement>('[data-portal-sidebar-rail="true"]');
     railElementRef.current = railElement;
     if (!railElement) return;
+    if (pinned) return;
 
     const onRailMouseEnter = () => {
       pointerInRailRef.current = true;
@@ -473,30 +486,11 @@ export default function SidebarRevealOverlayLab() {
       if (!isPointerInside()) closeNow();
     };
 
-    const onRailClick = (event: MouseEvent) => {
-      const target = event.target;
-      if (!(target instanceof Element)) return;
-      const link = target.closest<HTMLAnchorElement>('a[data-nav-key]');
-      if (!link || !railElement.contains(link)) return;
-      if (!shouldHandleRouteTransitionClick(event, link)) return;
-
-      closeNow();
-
-      const href = link.getAttribute('href') ?? '';
-      if (!shouldStartRouteTransitionForHref(href)) return;
-      beginRouteTransition({
-        href,
-        label: link.getAttribute('aria-label') ?? undefined,
-        source: 'sidebar-rail',
-      });
-    };
-
     railElement.addEventListener('mouseenter', onRailMouseEnter);
     railElement.addEventListener('mouseover', onRailMouseOver);
     railElement.addEventListener('mouseleave', onRailMouseLeave);
     railElement.addEventListener('focusin', onRailFocusIn);
     railElement.addEventListener('focusout', onRailFocusOut);
-    railElement.addEventListener('click', onRailClick);
 
     return () => {
       railElement.removeEventListener('mouseenter', onRailMouseEnter);
@@ -504,9 +498,8 @@ export default function SidebarRevealOverlayLab() {
       railElement.removeEventListener('mouseleave', onRailMouseLeave);
       railElement.removeEventListener('focusin', onRailFocusIn);
       railElement.removeEventListener('focusout', onRailFocusOut);
-      railElement.removeEventListener('click', onRailClick);
     };
-  }, [beginRouteTransition, closeNow, isPointerInside, openNow, scheduleClose, scheduleOpen]);
+  }, [closeNow, isPointerInside, openNow, pinned, scheduleClose, scheduleOpen]);
 
   useEffect(() => {
     const railElement = railElementRef.current;
@@ -562,9 +555,11 @@ export default function SidebarRevealOverlayLab() {
   return (
     <div
       ref={overlayRef}
-      className={cx(styles.overlay, expanded && styles.overlayExpanded)}
+      className={cx(styles.overlay, pinned && styles.overlayPinned, expanded && styles.overlayExpanded)}
       style={{ width: LABEL_LAYER_WIDTH_PX }}
-      aria-label="Sidebar reveal lab"
+      aria-label={pinned ? 'Portal navigation labels' : 'Sidebar reveal lab'}
+      data-portal-sidebar-labels="true"
+      data-sidebar-mode={mode}
       onBlurCapture={handleBlurCapture}
       onFocusCapture={handleFocusCapture}
       onKeyDown={handleKeyDown}
@@ -583,19 +578,22 @@ export default function SidebarRevealOverlayLab() {
             const isParentCurrent =
               isParentActive(pathname, item.href) ||
               Boolean(children?.some((child) => isChildActive(item.key, child.key, pathname, scheduleView, hashValue)));
-            const isBubbled = hoveredKey === item.key || isParentCurrent;
-            const isSubmenuOpen = openParentKey === item.key && hasSubmenu;
+            const isBubbled = pinned ? isParentCurrent : hoveredKey === item.key || isParentCurrent;
+            const isSubmenuOpen = hasSubmenu && (pinned ? activeParentKey === item.key : openParentKey === item.key);
+            const shouldRenderSubmenu = hasSubmenu && (!pinned || isSubmenuOpen);
 
             return (
               <div
                 key={item.key}
                 className={styles.parentGroup}
                 onMouseEnter={() => {
+                  if (pinned) return;
                   setHoveredKey(item.key);
                   if (!hasSubmenu) return;
                   scheduleSubmenuOpen(item.key);
                 }}
                 onMouseLeave={() => {
+                  if (pinned) return;
                   if (!hasSubmenu) return;
                   scheduleSubmenuClose(item.key);
                 }}
@@ -608,6 +606,7 @@ export default function SidebarRevealOverlayLab() {
                   tabIndex={expanded ? 0 : -1}
                   onClick={(event) => handleNavLinkClick(event, item.href, item.label, 'sidebar-overlay')}
                   onFocus={() => {
+                    if (pinned) return;
                     setHoveredKey(item.key);
                     if (!hasSubmenu) return;
                     setOpenParentKey(item.key);
@@ -622,7 +621,7 @@ export default function SidebarRevealOverlayLab() {
                   ) : null}
                 </Link>
 
-                {hasSubmenu ? (
+                {shouldRenderSubmenu ? (
                   <div className={cx(styles.submenu, isSubmenuOpen && styles.submenuOpen)}>
                     <div className={styles.submenuInner}>
                       {children?.map((child) => {
@@ -633,11 +632,12 @@ export default function SidebarRevealOverlayLab() {
                             href={child.href}
                             aria-current={childActive ? 'page' : undefined}
                             className={cx(styles.childRow, childActive && styles.childRowActive)}
-                            tabIndex={expanded ? 0 : -1}
+                            tabIndex={expanded && isSubmenuOpen ? 0 : -1}
                             onClick={(event) =>
                               handleNavLinkClick(event, child.href, child.label, 'sidebar-overlay')
                             }
                             onFocus={() => {
+                              if (pinned) return;
                               setHoveredKey(item.key);
                               setOpenParentKey(item.key);
                             }}

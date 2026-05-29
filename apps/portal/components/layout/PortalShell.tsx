@@ -4,7 +4,6 @@ import { useEffect, useMemo, useRef } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import SidebarRail from '@/components/navigation/SidebarRail';
 import SidebarRevealOverlayLab from '@/components/navigation/SidebarRevealOverlayLab';
-import { SIDEBAR_WIDTH_PX } from '@/components/navigation/navItems';
 import styles from './PortalShell.module.css';
 import { usePortalSession } from '@/components/auth/PortalAuthProvider';
 import { buildAccessStatusHref, buildLoginHref, currentRequestPathWithSearch, toAccessStatusQueryState } from '@/lib/portalAccess';
@@ -34,6 +33,10 @@ function isPublicRoutePath(pathname: string | null, searchParams: { get(name: st
   );
 }
 
+function isDesignWorkbenchRoutePath(pathname: string | null): boolean {
+  return Boolean(pathname && /^\/staff\/projects\/[^/]+\/design-workbench(?:\/|$)/.test(pathname));
+}
+
 export default function PortalShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -42,6 +45,7 @@ export default function PortalShell({ children }: { children: React.ReactNode })
   const hasMountedRef = useRef(false);
 
   const isPublicRoute = isPublicRoutePath(pathname, searchParams);
+  const sidebarMode = isDesignWorkbenchRoutePath(pathname) ? 'railOnly' : 'pinned';
   const isViewportLockedPath =
     typeof pathname === 'string' &&
     (pathname === '/schedule' ||
@@ -90,10 +94,20 @@ export default function PortalShell({ children }: { children: React.ReactNode })
 
   return (
     <PortalRouteTransitionProvider>
-      <div className={cx(styles.shell, isViewportLockedPath && styles.shellViewportLocked)}>
+      <div
+        className={cx(styles.shell, isViewportLockedPath && styles.shellViewportLocked)}
+        data-portal-sidebar-mode={sidebarMode}
+      >
         <SidebarRail email={email ?? undefined} roleLabel={roleLabel} role={role ?? undefined} />
-        <SidebarRevealOverlayLab />
-        <div className={cx(styles.content, isViewportLockedPath && styles.contentViewportLocked)} style={{ paddingLeft: SIDEBAR_WIDTH_PX }}>
+        {sidebarMode === 'pinned' ? <SidebarRevealOverlayLab mode="pinned" /> : null}
+        <div
+          className={cx(
+            styles.content,
+            sidebarMode === 'pinned' && styles.contentSidebarPinned,
+            isViewportLockedPath && styles.contentViewportLocked,
+          )}
+          data-portal-content-sidebar-mode={sidebarMode}
+        >
           {children}
         </div>
       </div>

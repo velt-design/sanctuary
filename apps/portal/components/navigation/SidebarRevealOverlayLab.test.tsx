@@ -39,7 +39,7 @@ vi.mock('@/components/page-state/PortalRouteTransition', async () => {
   };
 });
 
-function renderSidebar() {
+function renderSidebar(mode?: 'reveal' | 'pinned') {
   return renderIntoDocument(
     <div>
       <aside data-portal-sidebar-rail="true">
@@ -50,13 +50,13 @@ function renderSidebar() {
           Projects icon
         </a>
       </aside>
-      <SidebarRevealOverlayLab />
+      <SidebarRevealOverlayLab mode={mode} />
     </div>,
   );
 }
 
 function labelLayer(container: HTMLElement): HTMLElement {
-  const overlay = container.querySelector('[aria-label="Sidebar reveal lab"]');
+  const overlay = container.querySelector('[data-portal-sidebar-labels="true"]');
   const layer = overlay?.firstElementChild;
   if (!(layer instanceof HTMLElement)) throw new Error('Sidebar label layer not found.');
   return layer;
@@ -137,26 +137,24 @@ describe('SidebarRevealOverlayLab', () => {
     rendered.unmount();
   });
 
-  it('handles rail icon clicks with the same immediate close behavior', () => {
-    const rendered = renderSidebar();
-    const railDashboard = rendered.container.querySelector('a[data-nav-key="dashboard"]');
-    const railProjects = rendered.container.querySelector('a[data-nav-key="projects"]');
+  it('keeps pinned navigation visible and only renders the active section children', () => {
+    mockPathname = '/staff/projects/design-packages';
+    const rendered = renderSidebar('pinned');
 
-    act(() => {
-      railDashboard?.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
-    });
     expect(labelLayer(rendered.container).getAttribute('aria-hidden')).toBe('false');
+    expect(linkByText(rendered.container, 'Drafting Queue')).toBeInstanceOf(HTMLAnchorElement);
+    expect(Array.from(rendered.container.querySelectorAll('a')).some((node) => node.textContent?.trim() === 'New Contact')).toBe(
+      false,
+    );
 
     act(() => {
-      railProjects?.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, button: 0 }));
+      labelLayer(rendered.container).parentElement?.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
+      );
     });
 
-    expect(labelLayer(rendered.container).getAttribute('aria-hidden')).toBe('true');
-    expect(transitionMocks.beginRouteTransition).toHaveBeenCalledWith({
-      href: '/projects',
-      label: 'Projects',
-      source: 'sidebar-rail',
-    });
+    expect(labelLayer(rendered.container).getAttribute('aria-hidden')).toBe('false');
+    expect(transitionMocks.beginRouteTransition).not.toHaveBeenCalled();
 
     rendered.unmount();
   });

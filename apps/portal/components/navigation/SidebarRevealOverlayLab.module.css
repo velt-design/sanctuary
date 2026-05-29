@@ -10,6 +10,10 @@
   pointer-events: auto;
 }
 
+.overlayPinned {
+  pointer-events: auto;
+}
+
 .labelLayer {
   position: absolute;
   inset: 0 auto 0 0;
@@ -234,5 +238,11 @@
   .submenu,
   .chevron {
     transition: none;
+  }
+}
+
+@media (max-width: 899px) {
+  .overlayPinned {
+    display: none;
   }
 }
