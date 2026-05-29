@@ -1113,7 +1113,7 @@ Promoted to: None
 
 Related docs/tests: [apps/portal/lib/drawings/state/objectFirstPergolaSolveSources.ts](../apps/portal/lib/drawings/state/objectFirstPergolaSolveSources.ts), [apps/portal/lib/drawings/state/workbenchSolvedModel.test.ts](../apps/portal/lib/drawings/state/workbenchSolvedModel.test.ts), [apps/portal/lib/drawings/state/drawingWorkbenchStore.test.ts](../apps/portal/lib/drawings/state/drawingWorkbenchStore.test.ts).
 
-Date: 2026-05-29
+### 2026-05-29 - Workbench Geometry - Multi-Object PR3 Freestanding Add Pergola
 
 Area: Workbench Geometry
 

@@ -18,6 +18,25 @@ The workbench has crossed the hardest conceptual boundary:
 
 The remaining risk is local work drifting back toward host-specific or primary-form shortcuts. Future PRs should use this goal as the check: are we moving toward a true multi-object editor, or making the old shape more comfortable?
 
+## Current Handoff
+
+Last updated: 2026-05-30.
+
+The current workbench campaign is through the PR8 slice:
+
+- PR7 moved eligible workbench solve sources through the package-level `solveProject` boundary while preserving the existing solved-module output contract.
+- PR8 fixed invalid selected pergolas as a render-stability issue: invalid or unsupported selections must not own the project view basis.
+- Plan Editor should show every valid pergola as full solved plan geometry, with invalid/unsupported pergolas kept as selectable reference/context outlines.
+- 3D Review should show every valid pergola in the project-wide scene, with invalid/unsupported selected pergolas skipped from full scene aggregation but not allowed to crash or blank the view.
+- The next robust architecture step is still to delete or shrink the per-pergola `RawGeometryModuleInput.houseContext` path by solving houses once and letting pergolas/decks consume stable project house geometry.
+
+Recommended next PRs, in order:
+
+1. **House-body / attachment split**: make the house solve a project-level body and pass only attachment metadata to pergola solves.
+2. **Delete the remaining `houseContext` normal path**: keep any compatibility alias explicit and tested.
+3. **Multi-object edit parity**: harden move, resize, snap, undo, inspector state, and unsupported-state messaging for every pergola id.
+4. **Connected-pergola costing semantics**: decide shared-post/shared-edge pricing and test separate vs connected pergola groups.
+
 ## North-Star Constraints
 
 Every PR under this goal must preserve these constraints:
@@ -55,6 +74,7 @@ Still incomplete:
 - The per-object solve loop is not complete; `solveProject` is now the workbench entry boundary for object-first host groups, but internally it still normalizes/solves each pergola and carries per-module `houseContext`.
 - Invalid or unsupported pergolas still fall back to project reference/context outlines rather than full solved detail, but they must not remove valid project geometry from Plan or 3D when selected.
 - 3D aggregation is read/select only; direct manipulation remains Plan-only, and invalid/unsupported pergolas are skipped from full 3D bodies while the project-wide ready scene remains visible.
+- Project-wide 3D is presentation/selection only; no 3D drag, gizmos, or commit paths should be added before the Plan edit path is stable.
 - Connected-pergola cost semantics such as shared posts remain deferred.
 - Some legacy snapshot/test carriers still rely on `HouseFirst*` paths.
 - Inspector parity for house forms, decks, and openings is not at the same standard as the pergola inspector.
@@ -83,6 +103,8 @@ Do not expand this goal to include:
 - Manual host-picking dropdowns as a substitute for snap.
 
 ## Suggested PR Sequence
+
+This sequence is partly shipped. Keep it as the planning spine rather than starting a new plan from scratch.
 
 1. **Per-object house solve boundary**
    - Add project-level raw house input/build path. (Started: house-form to raw-house conversion is now shared by project references and host raw geometry.)
@@ -115,6 +137,15 @@ Do not expand this goal to include:
    - Bring house-form, deck, opening, and pergola inspectors to a consistent read/write contract.
    - Remove stale fields that imply manual host selection.
    - Add visual checks for multi-house and multi-pergola projects.
+
+## New Chat Startup Checklist
+
+When resuming this work in a new chat, start here:
+
+1. Read `AGENTS.md`, then this file and `docs/design-workbench-architecture.md` section "Product North Star (READ FIRST)".
+2. Check `git status --short`; if moving machines, confirm the branch containing PR7/PR8 work has been pushed or otherwise transferred.
+3. For any code PR in the workbench/geometry lane, answer Gate 0 before coding: touched legacy rows, remove-vs-build-on legacy, Phase 2 dependencies, and consumer grep.
+4. Prefer the next PR from "Current Handoff" unless live runtime behavior shows a more urgent bug.
 
 ## Verification Expectations
 

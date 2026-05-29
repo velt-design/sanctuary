@@ -35,7 +35,7 @@ This happens in **two phases**:
 - **Phase 1 — workbench cull** ✅ shipped 2026-05-22. Legacy calc-era patterns removed, every object first-class, snap-derived connections. Cost engine unchanged; a thin temporary adapter (`costingPayload.ts`) converts the new model into the cost engine's current input shape. Email-quote path unchanged. See [Legacy Cull Plan](design-workbench-legacy-cull.md) for the retrospective.
 - **Phase 2 — bridge deletion + cost engine input migration** ✅ substantially shipped 2026-05-23. Cost engine receives scene-derived input via `SiteInputsV2` carrying **pergola data only** — house/deck/opening data exists in the scene but is not costed. Pergola module grouping is derived from spatial adjacency (snapped pergolas = same logical pergola). Workbench's save-reprice goes through `WorkbenchProjectModel` → `buildSiteInputsV2FromScene` → `calculateSiteCostV2`. Marketing email path unchanged (still V1). Remaining: per-object solve loop (`workbenchSolvedModel.ts`), test-surface migration (40+ test cases on legacy carrier), other-shell V1 paths (calculator UI, commercial design, staff API). See [Phase 2 Plan](design-workbench-phase-2-plan.md) for status + lessons learned.
 
-### North star progress (2026-05-23)
+### North star progress (2026-05-30)
 
 The product north star is "a single solved geometry model that serves many UI shells." Where we are:
 
@@ -43,7 +43,7 @@ The product north star is "a single solved geometry model that serves many UI sh
 - ✅ **Scene-derived cost engine input** (`SiteInputsV2`): cost engine consumes pergola data derived from scene adjacency. Snapped pergolas are modules of one logical pergola; unconnected pergolas are separate. Pure derivation, no stored field.
 - ✅ **First-class spatial entities**: pergolas, decks, openings, house forms all own their geometry. No more "primary vs. additional" special-casing. Snap engine produces all attachments.
 - ✅ **Project house geometry registry**: `WorkbenchSolvedModel.projectHouseGeometries` derives one canonical `house_reference:<formId>`, `HouseReferenceGeometry`, and `HouseModel3D` per valid house form. Plan references, host-excluded 3D scene composition, and PlanViewport house snap sources consume this registry instead of rebuilding host/non-host branches.
-- 🟡 **Per-object solve**: the workbench now builds an explicit persisted + transient pergola solve-source list, groups object-first sources by host house form, and routes those groups through the package-level `solveProject` boundary. Object-first pergolas without a persisted module now use a runtime-only solve source, the rail can add new freestanding object-first pergolas through that path, Plan Editor and 3D Review aggregate full solved bodies for every valid pergola id, and selection routes by `pergolaId`. The solve spine still adapts each pergola through temporary `CalculatorModuleInputs` / `RawGeometryModuleInput.houseContext` shapes until the full per-object rewrite lands.
+- 🟡 **Per-object solve**: the workbench now builds an explicit persisted + transient pergola solve-source list, groups object-first sources by host house form, and routes those groups through the package-level `solveProject` boundary. Object-first pergolas without a persisted module now use a runtime-only solve source, the rail can add new freestanding object-first pergolas through that path, Plan Editor and 3D Review aggregate full solved bodies for every valid pergola id, and selection routes by `pergolaId`. Invalid/unsupported selected pergolas use reference/context fallback while Plan and 3D keep rendering from a stable ready project basis. The solve spine still adapts each pergola through temporary `CalculatorModuleInputs` / `RawGeometryModuleInput.houseContext` shapes until the full per-object rewrite lands.
 - 🟡 **Legacy bridge code retired**: cross-file bridge synthesis deleted; `state/compat/` deleted; `HouseFirst*` draft types still used by test carrier (40+ tests pending migration); `legacyEstimateSnapshotAdapter` still loads-bears initial-state synthesis from calc-era server snapshots.
 - ❌ **Multi-shell consumers** (marketing self-design upgrade, sales tool, tradie tool, Rhino/Vray export): not started, per Q6 ("all other shells worked on once the solved geometry and data model is polished and clean"). The workbench is the foundation; other shells consume the same `WorkbenchProjectModel` once Phase 2 fully lands.
 
@@ -66,6 +66,8 @@ PRs that close audit rows are encouraged. PRs that extend them must justify it e
 ### Project View Stability
 
 Plan and 3D must not depend on the selected pergola having a valid solved artifact. `WorkbenchSolvedModel.projectViewportGeometry` and `projectGeometryPreview` provide the stable project basis: active ready module first, otherwise the first ready module. Invalid or unsupported selected pergolas stay selectable as reference/context objects while valid houses and pergolas remain visible.
+
+This rule is a render contract, not permission to invent fake geometry. If a pergola is invalid, show its reference/context outline and inspector/trust state; do not fabricate posts, roof planes, costing rows, or 3D bodies.
 
 ### Marketing-site enquiry path (preserve, do not touch in Phase 1)
 
