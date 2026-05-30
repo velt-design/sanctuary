@@ -35,7 +35,11 @@ export function filterPlanVisibleBodies(items: ReadonlyArray<PlanRenderItem>): P
   const houseFormIdsWithRoof = new Set<string>();
   let hasUnownedHouseRoofBody = false;
   for (const { shape } of items) {
-    if (shape.family !== 'house' || shape.kind !== 'roof') continue;
+    const isHouseRoofBody =
+      shape.family === 'house' &&
+      (shape.kind === 'roof' ||
+        (shape.sourceType === 'house_roof_material' && shape.kind === 'house_roof_material'));
+    if (!isHouseRoofBody) continue;
     const owner = houseFormOwner(shape);
     if (owner) houseFormIdsWithRoof.add(owner);
     else hasUnownedHouseRoofBody = true;

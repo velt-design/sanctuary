@@ -1,6 +1,9 @@
 'use client';
 
-import type { GeometryTopProjectionShape } from '@sp/geometry';
+import type {
+  GeometryTopProjectionShape,
+  GeometryTopProjectionViewModel,
+} from '@sp/geometry';
 import type { ModuleViewsStatus, ModuleViewsTab } from '@/app/staff/calculator/ModuleViewsCard';
 import type { PlanViewModel } from '@/lib/drawings/views/plan/buildPlanViewModel';
 import type { WorkbenchDrawingSurfaceGeometry } from '@/lib/drawings/views/workbenchDrawingSurfaceGeometry';
@@ -52,6 +55,7 @@ type DrawingWorkbenchProps = {
   viewportGeometry?: WorkbenchViewportGeometry | null;
   projectViewportGeometry?: WorkbenchViewportGeometry | null;
   projectGeometryPreview?: GeometryPreviewState | null;
+  projectPlanProjection?: GeometryTopProjectionViewModel | null;
   drawingSurfaceGeometry?: WorkbenchDrawingSurfaceGeometry | null;
   planViewModel?: PlanViewModel | null;
   activeObjectRef?: WorkbenchObjectRef | null;
@@ -139,6 +143,7 @@ export default function DrawingWorkbench({
   viewportGeometry,
   projectViewportGeometry,
   projectGeometryPreview,
+  projectPlanProjection,
   drawingSurfaceGeometry,
   planViewModel,
   activeObjectRef,
@@ -209,6 +214,7 @@ export default function DrawingWorkbench({
         viewportGeometry={viewportGeometry}
         projectViewportGeometry={projectViewportGeometry}
         projectGeometryPreview={projectGeometryPreview}
+        projectPlanProjection={projectPlanProjection}
         drawingSurfaceGeometry={drawingSurfaceGeometry}
         planViewModel={planViewModel}
         activeObjectRef={activeObjectRef}

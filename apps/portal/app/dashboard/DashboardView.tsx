@@ -21,10 +21,12 @@ export default function DashboardView({
       <PageHeader title="Dashboard" />
 
       <div className={dash.layout}>
+        <PipelineCountsCard counts={data.pipelineCounts} />
+
         <KpiStrip kpis={data.kpis} />
 
         <div className={dash.grid}>
-          <div className={dash.columnStack}>
+          <div className={`${dash.columnStack} ${dash.primaryStack}`}>
             <AttentionCard items={data.attention} />
             <WorkQueueCard
               mode={queueMode}
@@ -35,13 +37,11 @@ export default function DashboardView({
             />
           </div>
 
-          <div className={dash.columnStack}>
+          <div className={`${dash.columnStack} ${dash.sideStack}`}>
             <InstallScheduleCard schedule={data.schedule} />
             <SiteVisitsCard siteVisits={data.siteVisits} />
           </div>
         </div>
-
-        <PipelineCountsCard counts={data.pipelineCounts} />
       </div>
     </main>
   );

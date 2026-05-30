@@ -1,12 +1,16 @@
 ﻿.page {
-  padding: 12px 16px 16px;
+  padding: 14px 22px 16px;
   height: calc(100dvh - var(--portal-header-height, var(--appHeaderHeight, 72px)));
+  min-height: 0;
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: auto 1fr;
   gap: 12px;
   overflow: hidden;
 
-  --border: rgba(var(--portal-text-rgb), 0.14);
+  --border: rgba(var(--portal-text-rgb), 0.11);
+  --card-border: rgba(var(--portal-text-rgb), 0.1);
+  --card-bg: rgba(var(--portal-bg-surface-rgb), 0.96);
+  --card-header-bg: rgba(var(--portal-bg-page-rgb), 0.34);
   --muted: rgba(var(--portal-text-rgb), 0.65);
   --focus: rgba(var(--accentRgb), 0.95);
   --bg: rgba(var(--portal-bg-surface-rgb), 0.92);
@@ -23,31 +27,59 @@
 
 .layout {
   display: grid;
-  grid-template-rows: clamp(76px, 10vh, 96px) minmax(0, 1fr) clamp(120px, 16vh, 180px);
-  gap: 16px;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  gap: 12px;
   min-height: 0;
+  height: 100%;
 }
 
 .grid {
   display: grid;
   grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
-  gap: 16px;
+  gap: 14px;
   align-items: stretch;
   min-height: 0;
+  overflow: hidden;
 }
 
 @media (max-width: 1024px) {
+  .page {
+    height: auto;
+    min-height: calc(100dvh - var(--portal-header-height, var(--appHeaderHeight, 72px)));
+    overflow: auto;
+  }
+
+  .layout {
+    height: auto;
+    grid-template-rows: auto auto auto;
+  }
+
   .grid {
     grid-template-columns: 1fr;
-    grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    overflow: visible;
   }
 }
 
 .columnStack {
   display: grid;
-  grid-template-rows: minmax(0, 1fr) auto;
-  gap: 16px;
+  gap: 14px;
   min-height: 0;
+}
+
+.primaryStack {
+  grid-template-rows: minmax(0, 0.96fr) minmax(0, 1.04fr);
+}
+
+.sideStack {
+  grid-template-rows: minmax(0, 1.1fr) minmax(0, 0.9fr);
+}
+
+@media (max-width: 1024px) {
+  .primaryStack,
+  .sideStack {
+    grid-template-rows: auto;
+  }
 }
 
 .card {
@@ -55,18 +87,24 @@
   flex-direction: column;
   min-height: 0;
   overflow: hidden;
+  border-color: var(--card-border) !important;
+  border-radius: 16px !important;
+  background:
+    linear-gradient(180deg, rgba(var(--portal-bg-elevated-rgb), 0.98), var(--card-bg)) !important;
 }
 
 .cardHeader {
   flex: 0 0 auto;
-  padding: 10px 12px !important;
+  min-height: 46px;
+  padding: 10px 16px !important;
+  background: var(--card-header-bg) !important;
 }
 
 .cardBody {
   flex: 1 1 auto;
   min-height: 0;
   overflow: auto;
-  padding: 10px 12px !important;
+  padding: 12px 16px !important;
 }
 
 .cardBodyNoScroll {
@@ -74,32 +112,33 @@
 }
 
 .cardCompact {
-  max-height: clamp(160px, 26vh, 240px);
-  align-self: start;
+  max-height: none;
+  align-self: stretch;
 }
 
 .kpiStrip {
   display: grid;
-  gap: 12px;
-  height: 100%;
+  gap: 14px;
   min-height: 0;
   align-items: stretch;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  --kpi-font-scale: 1.2;
+  --kpi-font-scale: 1.05;
 }
 
 .kpiTile {
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  background: var(--bg);
-  padding: 8px 12px;
+  border: 1px solid var(--card-border);
+  border-radius: 16px;
+  background:
+    linear-gradient(180deg, rgba(var(--portal-bg-elevated-rgb), 0.98), rgba(var(--portal-bg-surface-rgb), 0.94));
+  padding: 12px 16px;
   text-decoration: none;
   color: inherit;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  height: 100%;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: 6px;
+  min-height: 74px;
   transition: background 150ms ease;
+  box-shadow: 0 14px 36px -30px rgba(0, 0, 0, 0.42);
 }
 
 .kpiTile:hover {
@@ -113,14 +152,18 @@
 
 .kpiLabel {
   font-size: calc(10px * var(--kpi-font-scale));
-  letter-spacing: 0.04em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--muted);
+  font-weight: 800;
 }
 
 .kpiValue {
-  font-size: calc(22px * var(--kpi-font-scale));
-  font-weight: 700;
+  align-self: end;
+  font-size: calc(24px * var(--kpi-font-scale));
+  line-height: 0.95;
+  font-weight: 760;
+  font-variant-numeric: tabular-nums;
 }
 
 .kpiValueZero {
@@ -168,8 +211,8 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 0 12px;
-  height: 44px;
+  padding: 8px 14px;
+  min-height: 48px;
   width: 100%;
   text-decoration: none;
   color: inherit;
@@ -189,8 +232,8 @@
 }
 
 .attentionIndicator {
-  width: 3px;
-  height: 24px;
+  width: 4px;
+  height: 30px;
   border-radius: 999px;
   flex: 0 0 auto;
 }
@@ -234,7 +277,7 @@
   display: inline-flex;
   min-width: 32px;
   justify-content: center;
-  padding: 4px 8px;
+  padding: 5px 9px;
   border-radius: 999px;
   background: rgba(var(--portal-text-rgb), 0.9);
   color: var(--portal-text-inverse);
@@ -308,14 +351,16 @@
 }
 
 .linkButton {
-  border: none;
-  padding: 0;
-  background: none;
+  border: 1px solid rgba(var(--portal-text-rgb), 0.14);
+  border-radius: 999px;
+  padding: 5px 10px;
+  background: rgba(var(--portal-text-rgb), 0.035);
   font: inherit;
-  color: var(--accentRed);
-  text-decoration: underline;
+  color: rgba(var(--portal-text-rgb), 0.84);
+  text-decoration: none;
   cursor: pointer;
-  font-weight: 600;
+  font-size: 12px;
+  font-weight: 800;
 }
 
 .twoColumn {
@@ -365,7 +410,7 @@
 }
 
 .flatRowLink {
-  color: var(--accentRed);
+  color: rgba(var(--portal-text-rgb), 0.86);
   text-decoration: underline;
   font-weight: 600;
 }
@@ -397,30 +442,40 @@
 
 .pipelineGrid {
   display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: minmax(96px, 1fr);
-  min-width: max-content;
+  min-width: 0;
+  width: 100%;
   gap: 0;
+}
+
+.pipelineCard .cardHeader {
+  min-height: 40px;
+  padding: 8px 16px !important;
+}
+
+.pipelineCard .cardBody {
+  padding: 10px 14px !important;
 }
 
 .pipelineStrip {
   border: 1px solid var(--border);
   border-radius: 12px;
   background: var(--bg);
-  overflow-x: auto;
+  overflow-x: hidden;
   overflow-y: hidden;
-  padding: 6px 0;
+  padding: 0;
   overscroll-behavior-x: contain;
   scrollbar-gutter: stable;
-  height: 100%;
+  min-height: 62px;
   display: flex;
   align-items: stretch;
 }
 
 .pipelineCell {
-  padding: 8px 10px;
+  min-width: 0;
+  padding: 9px 12px;
   background: transparent;
   display: grid;
+  align-content: center;
   gap: 4px;
   text-decoration: none;
   color: inherit;
@@ -447,16 +502,19 @@
 
 .pipelineLabel {
   font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
+  font-weight: 800;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--muted);
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .pipelineCount {
-  font-size: 20px;
-  font-weight: 700;
+  font-size: 24px;
+  font-weight: 760;
+  line-height: 1;
   font-variant-numeric: tabular-nums;
 }
 
@@ -479,17 +537,56 @@
 }
 
 .workQueueLink {
-  color: var(--accentRed);
+  color: rgba(var(--portal-text-rgb), 0.86);
   text-decoration: underline;
   font-weight: 600;
 }
 
+.workQueueTableWrap {
+  border-color: rgba(var(--portal-text-rgb), 0.1) !important;
+  border-radius: 14px !important;
+}
+
+.workQueueTable {
+  font-size: 13.5px;
+}
+
+.workQueueTable th {
+  padding: 8px 14px;
+  letter-spacing: 0.08em;
+  color: rgba(var(--portal-text-rgb), 0.58);
+  background: rgba(var(--portal-bg-page-rgb), 0.32);
+}
+
+.workQueueTable td {
+  padding: 8px 14px;
+  vertical-align: middle;
+}
+
+.workQueueDueDate {
+  font-variant-numeric: tabular-nums;
+}
+
+.tableActionLink {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(var(--portal-text-rgb), 0.14);
+  background: rgba(var(--portal-text-rgb), 0.035);
+  color: rgba(var(--portal-text-rgb), 0.86) !important;
+  text-decoration: none !important;
+  font-size: 12px;
+  font-weight: 800;
+}
+
 .workQueueRow:hover td {
-  background: rgba(var(--portal-text-rgb), 0.05);
+  background: rgba(var(--portal-text-rgb), 0.035);
 }
 
 .workQueueRow:focus-within td {
-  background: rgba(var(--portal-text-rgb), 0.05);
+  background: rgba(var(--portal-text-rgb), 0.035);
 }
 
 .skeletonCard {

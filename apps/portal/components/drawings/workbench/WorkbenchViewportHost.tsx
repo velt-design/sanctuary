@@ -1,6 +1,9 @@
 'use client';
 
-import type { GeometryTopProjectionShape } from '@sp/geometry';
+import type {
+  GeometryTopProjectionShape,
+  GeometryTopProjectionViewModel,
+} from '@sp/geometry';
 import type { ModuleViewsStatus, ModuleViewsTab } from '@/app/staff/calculator/ModuleViewsCard';
 import type { DeckInteractionTelemetry } from '@/lib/drawings/interactions/deckInteractionContract';
 import type {
@@ -46,6 +49,7 @@ type WorkbenchViewportHostProps = {
   viewportGeometry?: WorkbenchViewportGeometry | null;
   projectViewportGeometry?: WorkbenchViewportGeometry | null;
   projectGeometryPreview?: GeometryPreviewState | null;
+  projectPlanProjection?: GeometryTopProjectionViewModel | null;
   drawingSurfaceGeometry?: WorkbenchDrawingSurfaceGeometry | null;
   planViewModel?: PlanViewModel | null;
   activeObjectRef?: WorkbenchObjectRef | null;
@@ -129,6 +133,7 @@ export default function WorkbenchViewportHost({
   viewportGeometry,
   projectViewportGeometry,
   projectGeometryPreview,
+  projectPlanProjection,
   drawingSurfaceGeometry,
   planViewModel,
   activeObjectRef,
@@ -207,6 +212,7 @@ export default function WorkbenchViewportHost({
       ) : viewportMode === 'plan' || viewportMode === 'model' ? (
         <PlanViewport
           artifact={routedPlanDrawingSurfaceGeometry?.artifact ?? null}
+          projectionOverride={projectPlanProjection ?? null}
           objectWorkbenchDisplayFamily={objectWorkbenchDisplayFamily}
           visibility={visibility}
           activeObjectRef={activeObjectRef}

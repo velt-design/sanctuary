@@ -560,6 +560,7 @@ export default function DesignWorkbenchEstimateClient({
           viewportGeometry={store.derived.activeViewportGeometry}
           projectViewportGeometry={store.derived.solvedModel.projectViewportGeometry}
           projectGeometryPreview={store.derived.solvedModel.projectGeometryPreview}
+          projectPlanProjection={store.derived.solvedModel.projectPlanProjection}
           drawingSurfaceGeometry={store.derived.activeDrawingSurfaceGeometry}
           planViewModel={store.derived.activePlanViewModel}
           activeObjectRef={viewportActiveObjectRef}

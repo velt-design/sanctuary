@@ -4,6 +4,7 @@ import type {
   GeometryTopProjectionFamily,
   GeometryTopProjectionShape,
   GeometryTopProjectionViewModel,
+  HouseModel3D,
   HouseReferenceGeometry,
   Line3,
   Point2,
@@ -14,7 +15,11 @@ import type {
   ViewerSceneObject,
 } from './contracts';
 import { deriveHouseGableTerminalEndsFromFootprint } from './houseModel';
-import { buildViewerSceneModel } from './viewer';
+import {
+  buildHouseModelRoofMaterialSceneObjects,
+  buildHouseModelSceneObjects,
+  buildViewerSceneModel,
+} from './viewer';
 
 const EPSILON_MM = 1e-6;
 const TOP_VIEW_SURFACE_NORMAL_Z_MIN = 0.5;
@@ -1119,6 +1124,41 @@ export function buildTopProjectionViewModelFromScene(
     shapes,
     extents: shapeExtents(shapes),
   };
+}
+
+export function buildHouseModelTopProjectionShapes(input: {
+  model: HouseModel3D | null;
+}): GeometryTopProjectionShape[] {
+  const model = input.model;
+  if (!model) return [];
+  const houseObjects = buildHouseModelSceneObjects({
+    model,
+    attachmentTarget: null,
+  });
+  const roofMaterialObjects = buildHouseModelRoofMaterialSceneObjects({
+    model,
+  });
+  const projection = buildTopProjectionViewModelFromScene({
+    layers: [
+      {
+        id: 'house',
+        label: 'House',
+        visibleByDefault: true,
+        objects: houseObjects,
+      },
+      ...(roofMaterialObjects.length > 0
+        ? [
+            {
+              id: 'house_roof_materials',
+              label: 'House Roof Materials',
+              visibleByDefault: true,
+              objects: roofMaterialObjects,
+            },
+          ]
+        : []),
+    ],
+  });
+  return projection.shapes;
 }
 
 export function buildTopProjectionViewModel(

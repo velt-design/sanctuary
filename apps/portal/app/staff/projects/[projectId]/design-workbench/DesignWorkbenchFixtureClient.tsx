@@ -5,6 +5,7 @@ import DrawingWorkbench from '@/components/drawings/workbench/DrawingWorkbench';
 import ObjectWorkbenchRail from '@/components/drawings/rail/ObjectWorkbenchRail';
 import RightInspectorPanel from '@/components/drawings/inspector/RightInspectorPanel';
 import { buildObjectWorkbenchGeometryEditState } from '@/lib/drawings/geometry/geometryEditAdapter';
+import { buildProjectContextOverlayShapes } from '@/lib/drawings/state/projectContextOverlayShapes';
 import WorkbenchInspectorHost from './WorkbenchInspectorHost';
 import {
   buildFixtureSelectionActions,
@@ -17,6 +18,7 @@ import {
   createDrawingWorkbenchUiState,
   type DrawingWorkbenchViewportTransform,
 } from '@/lib/drawings/state/drawingWorkbenchUiState';
+import type { WorkbenchObjectRef } from '@/lib/drawings/state/objectFirstWorkbenchModel';
 import { buildEstimateDrawingModuleInfoRows, buildEstimateDrawingSheetMeta } from '@/lib/estimates/drawingSheet';
 import type { SanctuaryGeometryWorkbenchFixture } from '@/lib/drawings/sanctuaryWorkbenchFixtures.types';
 import styles from './DesignWorkbenchEstimateClient.module.css';
@@ -68,6 +70,7 @@ export default function DesignWorkbenchFixtureClient({
   const [geometryViewportStatesByKey, setGeometryViewportStatesByKey] = useState<
     Record<string, Geometry3DViewportState>
   >({});
+  const [hoveredObjectRef, setHoveredObjectRef] = useState<WorkbenchObjectRef | null>(null);
   const store = useMemo(
     () =>
       buildDrawingWorkbenchStore({
@@ -133,14 +136,79 @@ export default function DesignWorkbenchFixtureClient({
   );
   const activeSelectionFamily =
     store.ui.activeRailTab === 'diagnostics' ? store.ui.activeObjectFamily : store.ui.activeRailTab;
-  const canonicalWorkbenchDisplayMode = activeSelectionFamily === 'pergolas' ? 'pergolas' : 'house';
+  const objectWorkbenchDisplayFamily = activeSelectionFamily === 'pergolas' ? 'pergolas' : 'house_forms';
   const activePergolaSurfaceKey =
     store.ui.activePergolaId ??
     store.derived.activePergola?.id ??
     activeModule?.drawingModule.input.pergolaId ??
     'none';
   const modelViewportSurfaceKey = `${activePergolaSurfaceKey}:${store.ui.activeView}`;
-  const geometryViewportSurfaceKey = `${canonicalWorkbenchDisplayMode}:${activePergolaSurfaceKey}`;
+  const geometryViewportSurfaceKey = `${objectWorkbenchDisplayFamily}:${activePergolaSurfaceKey}`;
+  const viewportPergolaId =
+    store.derived.objectWorkbench.activePergola?.id ??
+    activeModule?.drawingModule.input.pergolaId ??
+    store.derived.objectWorkbench.pergolas[0]?.id ??
+    null;
+  const viewportDefaultHouseFormId =
+    store.derived.activeHouseForm?.id ?? store.derived.houseForms[0]?.id ?? null;
+  const viewportActiveObjectRef =
+    store.ui.activeObjectRef.family === 'pergolas'
+      ? { family: 'pergolas' as const, objectId: store.ui.activeObjectRef.objectId ?? viewportPergolaId }
+      : store.ui.activeObjectRef.family === 'house_forms'
+        ? { family: 'house_forms' as const, objectId: store.ui.activeObjectRef.objectId ?? viewportDefaultHouseFormId }
+        : store.ui.activeObjectRef;
+  const activePergolaSourceId =
+    store.ui.activeObjectRef.family === 'pergolas'
+      ? store.ui.activeObjectRef.objectId ?? activeModule?.drawingModule.input.pergolaId ?? null
+      : null;
+  const projectPergolaPlanShapes = store.derived.solvedModel.projectPergolaPlanShapes;
+  const fullDetailPergolaSourceIds = useMemo(
+    () =>
+      new Set(
+        projectPergolaPlanShapes
+          .map((shape) =>
+            typeof shape.metadata?.pergolaId === 'string' ? shape.metadata.pergolaId : null,
+          )
+          .filter((value): value is string => Boolean(value)),
+      ),
+    [projectPergolaPlanShapes],
+  );
+  const projectContextShapes = useMemo(
+    () =>
+      buildProjectContextOverlayShapes({
+        projectReferenceShapes: store.derived.solvedModel.projectReferenceShapes,
+        activePergolaSourceId,
+        fullDetailPergolaSourceIds,
+      }),
+    [
+      store.derived.solvedModel.projectReferenceShapes,
+      activePergolaSourceId,
+      fullDetailPergolaSourceIds,
+    ],
+  );
+  const projectPergolaSnapShapes = useMemo(
+    () =>
+      buildProjectContextOverlayShapes({
+        projectReferenceShapes: store.derived.solvedModel.projectReferenceShapes,
+        activePergolaSourceId,
+      }),
+    [store.derived.solvedModel.projectReferenceShapes, activePergolaSourceId],
+  );
+  const houseCommittedShapes = useMemo(
+    () =>
+      store.derived.solvedModel.projectReferenceShapes.filter(
+        (shape) => shape.sourceType === 'house_reference',
+      ),
+    [store.derived.solvedModel.projectReferenceShapes],
+  );
+  const projectHouseSnapSources = useMemo(
+    () =>
+      store.derived.solvedModel.projectHouseGeometries.map((entry) => ({
+        houseFormId: entry.houseFormId,
+        model: entry.model,
+      })),
+    [store.derived.solvedModel.projectHouseGeometries],
+  );
   const activeModelViewportTransform =
     modelViewportTransformsByKey[modelViewportSurfaceKey] ?? DEFAULT_MODEL_VIEWPORT_TRANSFORM;
   const activeGeometryViewportState =
@@ -277,6 +345,19 @@ export default function DesignWorkbenchFixtureClient({
             viewportGeometry={store.derived.activeViewportGeometry}
             projectViewportGeometry={store.derived.solvedModel.projectViewportGeometry}
             projectGeometryPreview={store.derived.solvedModel.projectGeometryPreview}
+            projectPlanProjection={store.derived.solvedModel.projectPlanProjection}
+            objectWorkbenchDisplayFamily={objectWorkbenchDisplayFamily}
+            visibility={store.ui.visibility}
+            activeObjectRef={viewportActiveObjectRef}
+            projectContextShapes={projectContextShapes}
+            projectPergolaPlanShapes={projectPergolaPlanShapes}
+            projectPergolaSnapShapes={projectPergolaSnapShapes}
+            houseCommittedShapes={houseCommittedShapes}
+            projectHouseSnapSources={projectHouseSnapSources}
+            hoveredObjectRef={hoveredObjectRef}
+            onHoverObjectChange={setHoveredObjectRef}
+            pergolaTargetId={viewportPergolaId}
+            enableProjectionOnlyModelInteractions
             drawingSurfaceGeometry={store.derived.activeDrawingSurfaceGeometry}
             planViewModel={store.derived.activePlanViewModel}
             modelViewportKey={modelViewportSurfaceKey}

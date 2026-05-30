@@ -347,6 +347,64 @@ describe('PlanViewport', () => {
       expect(markup).toContain('data-plan-selection-shape-id="project_pergola:pergola-B:rendered-pergola-B"');
     });
 
+    it('uses projectionOverride instead of active artifact house bodies', () => {
+      const activeModuleHouseRoof = makeShape({
+        id: 'house_surface_solid:active-module-house-roof',
+        sourceObjectId: 'active-module-house-roof',
+        sourceId: 'active-module-house-roof',
+        sourceType: 'house_surface_solid',
+        family: 'house',
+        kind: 'roof',
+        metadata: { houseFormId: 'house-main' },
+      });
+      const projectHouseTwoRoof = makeShape({
+        id: 'house_surface_solid:house-form-2:project-roof',
+        sourceObjectId: 'house-form-2:project-roof',
+        sourceId: 'project-roof',
+        sourceType: 'house_surface_solid',
+        family: 'house',
+        kind: 'roof',
+        polygon: [
+          { x: 2000, y: 0 },
+          { x: 3000, y: 0 },
+          { x: 3000, y: 1000 },
+          { x: 2000, y: 1000 },
+        ],
+        metadata: { houseFormId: 'house-form-2' },
+      });
+      const projectHouseTwoRoofMaterial = makeShape({
+        id: 'house_roof_material:house-form-2:project-roof-material',
+        sourceObjectId: 'house-form-2:project-roof-material',
+        sourceId: 'project-roof-material',
+        sourceType: 'house_roof_material',
+        family: 'house',
+        kind: 'house_roof_material',
+        polygon: [
+          { x: 2100, y: 100 },
+          { x: 2900, y: 100 },
+          { x: 2900, y: 900 },
+          { x: 2100, y: 900 },
+        ],
+        metadata: { houseFormId: 'house-form-2' },
+      });
+
+      const markup = renderToStaticMarkup(
+        <PlanViewport
+          artifact={makeArtifact([activeModuleHouseRoof])}
+          projectionOverride={makeProjection([projectHouseTwoRoof, projectHouseTwoRoofMaterial])}
+          activeObjectRef={{ family: 'house_forms', objectId: 'house-form-2' }}
+          viewportTransform={IDENTITY_TRANSFORM}
+          onViewportTransformChange={() => undefined}
+        />,
+      );
+
+      expect(markup).toContain('data-plan-shape-id="house_surface_solid:house-form-2:project-roof"');
+      expect(markup).toContain('data-plan-shape-id="house_roof_material:house-form-2:project-roof-material"');
+      expect(markup).toContain('data-plan-selection-shape-id="house_surface_solid:house-form-2:project-roof"');
+      expect(markup).not.toContain('data-plan-hit-shape-id="house_roof_material:house-form-2:project-roof-material"');
+      expect(markup).not.toContain('data-plan-shape-id="house_surface_solid:active-module-house-roof"');
+    });
+
     it('hides pergola shapes when pergola visibility is off', () => {
       const markup = renderToStaticMarkup(
         <PlanViewport

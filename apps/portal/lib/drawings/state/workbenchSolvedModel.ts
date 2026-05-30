@@ -1,5 +1,6 @@
 import {
   buildAssemblyQuantityTakeoff,
+  buildHouseModelTopProjectionShapes,
   buildProjectReferenceShapes,
   buildTopProjectionViewModelFromScene,
   buildViewerSceneModel,
@@ -200,6 +201,13 @@ export type WorkbenchSolvedModel = {
    */
   projectPergolaPlanShapes: GeometryTopProjectionShape[];
   /**
+   * Canonical project-level Plan projection. Unlike per-module
+   * `geometryArtifact.topProjection`, this is built from project registries by
+   * object id, so active pergola selection cannot change which house form owns
+   * the visible roof/body shapes.
+   */
+  projectPlanProjection: GeometryTopProjectionViewModel | null;
+  /**
    * Stable project-level drawing basis for Plan/3D shells. When the selected
    * pergola is invalid or unsupported, this points at the active ready module
    * when possible, otherwise the first ready module, so project references and
@@ -298,6 +306,7 @@ export type WorkbenchSolvedProject = {
   activePergola: SolvedPergola | null;
   projectHouseGeometries: ProjectHouseGeometryEntry[];
   projectPergolaPlanShapes: GeometryTopProjectionShape[];
+  projectPlanProjection: GeometryTopProjectionViewModel | null;
   projectViewportGeometry: WorkbenchViewportGeometry | null;
   projectGeometryPreview: GeometryPreviewState;
   projectReferenceShapes: GeometryTopProjectionShape[];
@@ -1308,6 +1317,11 @@ export function buildWorkbenchSolvedModel(input: {
     projectHouseGeometries,
   );
   const projectPergolaPlanShapes = buildProjectPergolaPlanShapesFromModules(modules);
+  const projectPlanProjection = buildProjectPlanProjection({
+    projectHouseGeometries,
+    projectPergolaPlanShapes,
+    projectReferenceShapes,
+  });
   const projectViewportGeometry = resolveProjectReadyBasisModule({
     modules,
     activeModule,
@@ -1327,6 +1341,7 @@ export function buildWorkbenchSolvedModel(input: {
     activeModule,
     projectHouseGeometries,
     projectPergolaPlanShapes,
+    projectPlanProjection,
     projectViewportGeometry,
     projectGeometryPreview,
     projectReferenceShapes,
@@ -1426,12 +1441,65 @@ export function buildWorkbenchSolvedProject(input: {
     activePergola,
     projectHouseGeometries: solvedModel.projectHouseGeometries,
     projectPergolaPlanShapes: solvedModel.projectPergolaPlanShapes,
+    projectPlanProjection: solvedModel.projectPlanProjection,
     projectViewportGeometry: solvedModel.projectViewportGeometry,
     projectGeometryPreview: solvedModel.projectGeometryPreview,
     projectReferenceShapes: solvedModel.projectReferenceShapes,
     trust: solvedModel.trust,
     geometryIdentity: solvedModel.geometryIdentity,
   };
+}
+
+function projectPergolaShapeIdentity(shape: GeometryTopProjectionShape): string | null {
+  const taggedPergolaId =
+    typeof shape.metadata?.pergolaId === 'string' ? shape.metadata.pergolaId : null;
+  return taggedPergolaId ?? shape.sourceObjectId ?? shape.sourceId ?? null;
+}
+
+function dedupeTopProjectionShapes(
+  shapes: ReadonlyArray<GeometryTopProjectionShape>,
+): GeometryTopProjectionShape[] {
+  const seen = new Set<string>();
+  const deduped: GeometryTopProjectionShape[] = [];
+  for (const shape of shapes) {
+    if (seen.has(shape.id)) continue;
+    seen.add(shape.id);
+    deduped.push(shape);
+  }
+  return deduped;
+}
+
+function buildProjectPlanProjection(input: {
+  projectHouseGeometries: ReadonlyArray<ProjectHouseGeometryEntry>;
+  projectPergolaPlanShapes: ReadonlyArray<GeometryTopProjectionShape>;
+  projectReferenceShapes: ReadonlyArray<GeometryTopProjectionShape>;
+}): GeometryTopProjectionViewModel | null {
+  const fullDetailPergolaSourceIds = new Set(
+    input.projectPergolaPlanShapes
+      .map(projectPergolaShapeIdentity)
+      .filter((value): value is string => Boolean(value)),
+  );
+  const houseShapes = input.projectHouseGeometries.flatMap((entry) => [
+    entry.referenceShape,
+    ...buildHouseModelTopProjectionShapes({
+      model: entry.model,
+    }),
+  ]);
+  const unresolvedPergolaReferences = input.projectReferenceShapes.filter((shape) => {
+    if (shape.sourceType !== 'pergola_reference') return false;
+    const pergolaId = projectPergolaShapeIdentity(shape);
+    return !pergolaId || !fullDetailPergolaSourceIds.has(pergolaId);
+  });
+  const shapes = dedupeTopProjectionShapes([
+    ...houseShapes,
+    ...input.projectPergolaPlanShapes,
+    ...unresolvedPergolaReferences,
+  ]);
+  if (shapes.length === 0) return null;
+  return buildTopProjectionViewModelFromScene(
+    { layers: [] },
+    { referenceShapes: shapes },
+  );
 }
 
 /**

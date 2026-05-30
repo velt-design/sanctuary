@@ -144,6 +144,43 @@ describe('planRenderGraph', () => {
     expect(graph.suppressed.map((item) => item.marker)).toEqual(['surface-footprint']);
   });
 
+  it('routes house roof-material projection shapes to committedBodies without dropping the canonical reference footprint', () => {
+    const roofMaterial = shape({
+      id: 'house_roof_material:house-form-2:roof-material',
+      family: 'house',
+      kind: 'house_roof_material',
+      sourceType: 'house_roof_material',
+      metadata: { topProjectionRole: 'top_visible', houseFormId: 'house-form-2' },
+    });
+    const referenceFootprint = shape({
+      id: 'house_reference:house-form-2',
+      sourceObjectId: 'house-form-2',
+      family: 'house',
+      kind: 'footprint',
+      sourceType: 'house_reference',
+      metadata: { topProjectionRole: 'top_visible', isCanonicalOutline: true },
+    });
+    const redundantSurfaceFootprint = shape({
+      id: 'house_surface_solid:house-form-2-footprint',
+      family: 'house',
+      kind: 'footprint',
+      sourceType: 'house_surface_solid',
+      metadata: { topProjectionRole: 'top_visible', houseFormId: 'house-form-2' },
+    });
+
+    const graph = buildProjectionPlanRenderGraph([
+      { shape: roofMaterial, marker: 'roof-material' },
+      { shape: referenceFootprint, marker: 'reference-footprint' },
+      { shape: redundantSurfaceFootprint, marker: 'surface-footprint' },
+    ]);
+
+    expect(graph.committedBodies.map((item) => item.marker)).toEqual([
+      'roof-material',
+      'reference-footprint',
+    ]);
+    expect(graph.suppressed.map((item) => item.marker)).toEqual(['surface-footprint']);
+  });
+
   it('suppresses redundant house footprints per house form instead of globally', () => {
     const roof = shape({
       id: 'roof-main',

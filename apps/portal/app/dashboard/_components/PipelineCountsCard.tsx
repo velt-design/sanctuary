@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import type { CSSProperties } from 'react';
 import type { PipelineCounts } from '@/lib/dashboard/types';
 import styles from '@/components/ui/surface/PortalSurface.module.css';
 import dash from '../dashboard.module.css';
@@ -7,6 +8,9 @@ import { PIPELINE_STAGES, normalizePipelineStageKey, toCanonicalStageCounts } fr
 
 export default function PipelineCountsCard({ counts }: { counts: PipelineCounts }) {
   const normalized = toCanonicalStageCounts(counts);
+  const gridStyle = {
+    gridTemplateColumns: `repeat(${PIPELINE_STAGES.length}, minmax(0, 1fr))`,
+  } satisfies CSSProperties;
 
   if (process.env.NODE_ENV !== 'production') {
     const keys = PIPELINE_STAGES.map((s) => s.key);
@@ -21,14 +25,14 @@ export default function PipelineCountsCard({ counts }: { counts: PipelineCounts 
   }
 
   return (
-    <section className={`${styles.section} ${dash.card}`} aria-label="Pipeline counts">
+    <section className={`${styles.section} ${dash.card} ${dash.pipelineCard}`} aria-label="Pipeline counts">
       <div className={`${styles.sectionHeader} ${dash.cardHeader}`}>
         <h2 className={styles.sectionTitle}>Pipeline</h2>
         <span className={dash.sectionMeta}>Counts by stage</span>
       </div>
       <div className={`${styles.sectionBody} ${dash.cardBody} ${dash.cardBodyNoScroll}`}>
         <div className={dash.pipelineStrip}>
-          <div className={dash.pipelineGrid}>
+          <div className={dash.pipelineGrid} style={gridStyle}>
             {PIPELINE_STAGES.map((stage) => {
               const count = normalized[stage.key] ?? 0;
               return (

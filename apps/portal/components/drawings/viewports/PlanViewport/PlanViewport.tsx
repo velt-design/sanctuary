@@ -1,7 +1,10 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { GeometryTopProjectionShape } from '@sp/geometry';
+import type {
+  GeometryTopProjectionShape,
+  GeometryTopProjectionViewModel,
+} from '@sp/geometry';
 import { topProjectionShapeClassifier } from '@/components/drawings/viewports/selection/selectionRouter';
 import { createCommandBus } from '@/lib/drawings/commands/commandBus';
 import {
@@ -51,6 +54,7 @@ const DEFAULT_VISIBILITY: DrawingWorkbenchVisibilityState = {
 
 export type PlanViewportProps = {
   artifact: WorkbenchSolvedGeometryArtifact | null;
+  projectionOverride?: GeometryTopProjectionViewModel | null;
   objectWorkbenchDisplayFamily?: ObjectWorkbenchDisplayFamily;
   visibility?: DrawingWorkbenchVisibilityState;
   activeObjectRef?: WorkbenchObjectRef | null;
@@ -134,6 +138,7 @@ export type PlanViewportProps = {
 
 export default function PlanViewport({
   artifact,
+  projectionOverride,
   visibility = DEFAULT_VISIBILITY,
   activeObjectRef,
   dimensions: providedDimensions,
@@ -153,7 +158,7 @@ export default function PlanViewport({
   hoveredObjectRef,
   onHoverObjectChange,
 }: PlanViewportProps) {
-  const projection = artifact?.topProjection ?? null;
+  const projection = projectionOverride ?? artifact?.topProjection ?? null;
   const renderModel = usePlanRenderModel({
     projection,
     visibility,

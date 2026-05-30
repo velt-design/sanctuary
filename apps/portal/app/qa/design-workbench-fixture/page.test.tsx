@@ -56,7 +56,7 @@ describe('DesignWorkbenchFixturePage', () => {
     })) as ReactElement;
     const markup = renderToStaticMarkup(ui);
 
-    expect(markup).toContain('Fixture Preview');
+    expect(markup).toContain('Sanctuary Fixture Project');
     expect(markup).toContain('Drawing workbench');
     expect(markup).toContain('Sheet Output');
     expect(markup).toContain('Back to Project');

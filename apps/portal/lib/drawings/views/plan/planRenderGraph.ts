@@ -69,6 +69,9 @@ export function topProjectionPlanLayer(shape: GeometryTopProjectionShape): Proje
     ) {
       return 'committedBodies';
     }
+    if (shape.sourceType === 'house_roof_material' && shape.kind === 'house_roof_material') {
+      return 'committedBodies';
+    }
     if (shape.sourceType === 'house_line' || shape.sourceType === 'reference_line') return 'contextLines';
     if (
       (shape.sourceType === 'house_surface_solid' || shape.sourceType === 'house_surface') &&
@@ -100,6 +103,14 @@ export function topProjectionPlanLayer(shape: GeometryTopProjectionShape): Proje
     return shape.sourceType === 'reference_line' ? 'contextLines' : null;
   }
   return null;
+}
+
+function houseShapeIsRoofBody(shape: GeometryTopProjectionShape): boolean {
+  return (
+    shape.family === 'house' &&
+    (shape.kind === 'roof' ||
+      (shape.sourceType === 'house_roof_material' && shape.kind === 'house_roof_material'))
+  );
 }
 
 export function topProjectionShapeIsCommittedBody(shape: GeometryTopProjectionShape): boolean {
@@ -188,7 +199,7 @@ export function buildProjectionPlanRenderGraph<TItem extends { shape: GeometryTo
   const houseRoofOwners = new Set<string>();
   let hasUnownedHouseRoofCommittedBody = false;
   for (const { shape } of baseGraph.committedBodies) {
-    if (shape.family !== 'house' || shape.kind !== 'roof') continue;
+    if (!houseShapeIsRoofBody(shape)) continue;
     const owner = topProjectionHouseFormOwner(shape);
     if (owner) houseRoofOwners.add(owner);
     else hasUnownedHouseRoofCommittedBody = true;

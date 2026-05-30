@@ -16,6 +16,7 @@ describe('sanctuary workbench fixtures', () => {
       'box-standard',
       'gable-u-hipped-screenshot',
       'mono-join-screenshot',
+      'multi-house-u-two-pergola',
     ]);
   });
 
@@ -58,6 +59,41 @@ describe('sanctuary workbench fixtures', () => {
     const module = (gable?.snapshot as { inputs?: { modules?: Array<{ gableEndFramesMode?: string }> } } | undefined)?.inputs?.modules?.[0];
 
     expect(module?.gableEndFramesMode).toBe('outer_end_only');
+  });
+
+  it('exposes a production-aligned multi-object repro fixture', () => {
+    const fixture = listSanctuaryGeometryWorkbenchFixtures().find(
+      (candidate) => candidate.slug === 'multi-house-u-two-pergola',
+    );
+    if (!fixture) throw new Error('Expected multi-object fixture.');
+
+    const store = buildDrawingWorkbenchStore({
+      snapshot: fixture.snapshot,
+      draft: fixture.draft,
+      ui: createDrawingWorkbenchUiState(),
+      moduleLabels: fixture.moduleLabels,
+      geometryIdentity: {
+        projectId: 'fixture-multi-house',
+        estimateId: fixture.estimate.id,
+        designRequestId: fixture.request.id,
+      },
+    });
+    const objectFirst = fixture.draft?.objectFirst;
+
+    expect(objectFirst?.houseAssembly?.houseForms).toHaveLength(2);
+    expect(objectFirst?.pergolas.map((pergola) => pergola.id)).toEqual(['pergola-1', 'pergola-2']);
+    expect(store.derived.houseForms.map((houseForm) => houseForm.id)).toEqual(['house-main', 'house-form-2']);
+    expect(store.derived.objectWorkbench.pergolas.map((pergola) => pergola.id)).toEqual(['pergola-1', 'pergola-2']);
+    expect(store.derived.solvedModel.projectHouseGeometries.map((entry) => entry.houseFormId)).toEqual([
+      'house-main',
+      'house-form-2',
+    ]);
+    expect(store.derived.solvedModel.projectPlanProjection?.shapes.some(
+      (shape) => shape.id.includes('house_roof_material:house-main'),
+    )).toBe(true);
+    expect(store.derived.solvedModel.projectPlanProjection?.shapes.some(
+      (shape) => shape.id.includes('house_roof_material:house-form-2'),
+    )).toBe(true);
   });
 
   it('builds a non-empty drawing store and sheet meta for every fixture', () => {

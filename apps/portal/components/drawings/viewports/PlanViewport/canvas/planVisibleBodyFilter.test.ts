@@ -44,6 +44,36 @@ describe('filterPlanVisibleBodies', () => {
     expect(filterPlanVisibleBodies(items).map(({ shape }) => shape.id)).toEqual(['roof']);
   });
 
+  it('drops house_reference + footprint when the same house form has a roof-material body', () => {
+    const items: PlanRenderItem[] = [
+      item({
+        id: 'house_roof_material:house-form-2:roof-material',
+        family: 'house',
+        kind: 'house_roof_material',
+        sourceType: 'house_roof_material',
+        metadata: { houseFormId: 'house-form-2' },
+      }),
+      item({
+        id: 'house_reference:house-form-2',
+        sourceObjectId: 'house-form-2',
+        family: 'house',
+        kind: 'footprint',
+        sourceType: 'house_reference',
+      }),
+      item({
+        id: 'house_reference:house-main',
+        sourceObjectId: 'house-main',
+        family: 'house',
+        kind: 'footprint',
+        sourceType: 'house_reference',
+      }),
+    ];
+    expect(filterPlanVisibleBodies(items).map(({ shape }) => shape.id)).toEqual([
+      'house_roof_material:house-form-2:roof-material',
+      'house_reference:house-main',
+    ]);
+  });
+
   it('keeps house + footprint when no roof body exists, so houses without roof geometry still render an outline', () => {
     const items: PlanRenderItem[] = [
       item({

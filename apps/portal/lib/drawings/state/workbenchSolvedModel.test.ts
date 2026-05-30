@@ -132,6 +132,27 @@ function sceneLayerObjectsByHouseForm(
     ) ?? [];
 }
 
+function projectPlanHouseShapeIds(
+  model: WorkbenchSolvedModel,
+  houseFormId: string,
+): string[] {
+  const projection = model.projectPlanProjection;
+  if (!projection) throw new Error('Expected project plan projection.');
+  return projection.shapes
+    .filter((shape) => {
+      if (shape.family !== 'house') return false;
+      const owner =
+        typeof shape.metadata?.houseFormId === 'string'
+          ? shape.metadata.houseFormId
+          : shape.sourceType === 'house_reference'
+            ? shape.sourceObjectId
+            : null;
+      return owner === houseFormId;
+    })
+    .map((shape) => shape.id)
+    .sort();
+}
+
 describe('buildWorkbenchSolvedModel geometry artifact', () => {
   it('exposes one solved geometry artifact and compatibility aliases for geometry-ready modules', () => {
     const solvedModel = buildWorkbenchSolvedModel({
@@ -326,6 +347,10 @@ describe('buildWorkbenchSolvedModel geometry artifact', () => {
     const draft = buildEstimateDrawingDraftFromSnapshot(snapshot);
     if (!draft) throw new Error('Expected drawing draft.');
     addSecondHouseFormAndFreestandingPergolaTwo(draft, snapshot);
+    const houseForms = draft.objectFirst?.houseAssembly?.houseForms ?? [];
+    for (const form of houseForms) {
+      form.footprint = { ...form.footprint, preset: 'u_shape' as typeof form.footprint.preset };
+    }
 
     const pergolaOneActive = buildWorkbenchSolvedModel({
       snapshot,
@@ -370,6 +395,53 @@ describe('buildWorkbenchSolvedModel geometry artifact', () => {
         (object) => object.id,
       ),
     );
+  });
+
+  it('keeps project plan house bodies stable when active pergola changes', () => {
+    const snapshot = getFixtureSnapshot('mono-standard');
+    const draft = buildEstimateDrawingDraftFromSnapshot(snapshot);
+    if (!draft) throw new Error('Expected drawing draft.');
+    addSecondHouseFormAndFreestandingPergolaTwo(draft, snapshot);
+
+    const pergolaOneActive = buildWorkbenchSolvedModel({
+      snapshot,
+      draft,
+      activePergolaId: 'pergola-1',
+    });
+    const pergolaTwoActive = buildWorkbenchSolvedModel({
+      snapshot,
+      draft,
+      activePergolaId: 'pergola-2',
+    });
+
+    expect(pergolaOneActive.activeModule?.moduleInput.pergolaId).toBe('pergola-1');
+    expect(pergolaTwoActive.activeModule?.moduleInput.pergolaId).toBe('pergola-2');
+    expect(projectPlanHouseShapeIds(pergolaOneActive, 'house-main')).toEqual(
+      projectPlanHouseShapeIds(pergolaTwoActive, 'house-main'),
+    );
+    expect(projectPlanHouseShapeIds(pergolaOneActive, 'house-form-2')).toEqual(
+      projectPlanHouseShapeIds(pergolaTwoActive, 'house-form-2'),
+    );
+    expect(
+      projectPlanHouseShapeIds(pergolaOneActive, 'house-form-2').some((id) =>
+        id.startsWith('house_surface_solid:'),
+      ),
+    ).toBe(true);
+    expect(
+      projectPlanHouseShapeIds(pergolaOneActive, 'house-form-2').some((id) =>
+        id.startsWith('house_roof_material:'),
+      ),
+    ).toBe(true);
+    expect(
+      projectPlanHouseShapeIds(pergolaOneActive, 'house-form-2').some((id) =>
+        id.startsWith('house_reference:'),
+      ),
+    ).toBe(true);
+    const solvedProject = buildWorkbenchSolvedProject({
+      solvedModel: pergolaTwoActive,
+      activePergolaId: 'pergola-2',
+    });
+    expect(solvedProject.projectPlanProjection).toBe(pergolaTwoActive.projectPlanProjection);
   });
 
   it('skips invalid pergolas from the full project-wide 3D aggregation', () => {

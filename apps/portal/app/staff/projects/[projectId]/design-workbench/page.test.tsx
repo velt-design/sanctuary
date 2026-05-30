@@ -192,7 +192,7 @@ describe('DesignWorkbenchPage', () => {
     })) as ReactElement;
     const markup = renderToStaticMarkup(ui);
 
-    expect(markup).toContain('Fixture Preview');
+    expect(markup).toContain('Deck Build');
     expect(markup).toContain('Drawing workbench');
     expect(markup).toContain('Sheet Output');
     expect(markup).toContain('Back to Project');

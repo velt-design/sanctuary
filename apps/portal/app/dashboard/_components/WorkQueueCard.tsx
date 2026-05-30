@@ -16,7 +16,7 @@ export default function WorkQueueCard(props: {
   hrefNext7: string;
   hrefAllDue: string;
 }) {
-  const maxItems = 5;
+  const maxItems = 3;
   const visibleItems = props.items.slice(0, maxItems);
   const hasMore = props.items.length > maxItems;
   const viewAllHref = projectsHref({ nextActionDue: true });

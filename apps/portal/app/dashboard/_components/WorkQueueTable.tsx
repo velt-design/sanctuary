@@ -44,8 +44,8 @@ export default function WorkQueueTable({ items }: { items: WorkQueueItem[] }) {
   }
 
   return (
-    <div className={`${styles.tableWrap} ${styles.tableWrapScrollX}`}>
-      <table className={styles.table}>
+    <div className={`${styles.tableWrap} ${styles.tableWrapScrollX} ${dash.workQueueTableWrap}`}>
+      <table className={`${styles.table} ${dash.workQueueTable}`}>
         <thead>
           <tr>
             <th>Project</th>
@@ -81,7 +81,7 @@ export default function WorkQueueTable({ items }: { items: WorkQueueItem[] }) {
                   )}
                 </td>
                 <td>
-                  <div>{it.nextActionDueDate ?? '—'}</div>
+                  <div className={dash.workQueueDueDate}>{it.nextActionDueDate ?? '—'}</div>
                   {dueLabel ? (
                     <span className={styles.dueBadge} style={{ marginLeft: 0 }}>
                       {dueLabel}
@@ -90,7 +90,7 @@ export default function WorkQueueTable({ items }: { items: WorkQueueItem[] }) {
                 </td>
                 <td className={styles.muted}>{formatShortDateTime(it.lastActivityAt)}</td>
                 <td>
-                  <Link className={styles.link} href={projectDetailHref(it.projectId)}>
+                  <Link className={`${styles.link} ${dash.tableActionLink}`} href={projectDetailHref(it.projectId)}>
                     Open
                   </Link>
                 </td>

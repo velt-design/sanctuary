@@ -13,10 +13,10 @@ export default function SiteVisitsCard({ siteVisits }: { siteVisits: SiteVisitsS
   const next7HasMore = siteVisits.next7.length > maxItems;
 
   return (
-    <section className={`${styles.section} ${dash.card} ${dash.cardCompact}`} aria-label="Site visits">
+    <section className={`${styles.section} ${dash.card}`} aria-label="Site visits">
       <div className={`${styles.sectionHeader} ${dash.cardHeader}`}>
         <h2 className={styles.sectionTitle}>Site visits</h2>
-        <Link className={styles.link} href={siteVisits.hrefSiteVisits}>
+        <Link className={styles.buttonSecondary} href={siteVisits.hrefSiteVisits}>
           Open calendar
         </Link>
       </div>

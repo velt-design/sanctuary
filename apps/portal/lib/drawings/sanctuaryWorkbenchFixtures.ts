@@ -9,6 +9,7 @@ import {
 } from '@/lib/estimates/drawingEdits';
 import { buildHouseFirstWorkbenchProjectModel } from './state/houseFirstWorkbenchAdapter';
 import {
+  addHouseFormToObjectFirstDraft,
   buildObjectFirstWorkbenchDraftFromProjectModel,
 } from './state/objectFirstWorkbenchAdapter';
 import {
@@ -288,6 +289,132 @@ function makeMonoJoinScreenshotFixtureSource(): {
   };
 }
 
+function makeMultiHouseUTwoPergolaFixtureSource(): {
+  snapshot: Record<string, unknown>;
+  draft: EstimateDrawingDraft;
+} {
+  const snapshot = makeSnapshot(
+    makeModule({
+      pergolaStyle: 'pitched',
+      roofMaterial: 'acrylic',
+      lengthM: '5.8',
+      projectionM: '2.6',
+      roofPitchDeg: '5',
+      postCutHeightM: '2.4',
+      houseConnectionType: 'soffit',
+      houseAttachmentStrategy: 'soffit_brackets',
+      attachmentSide: 'rear',
+      houseFootprintMode: 'preset',
+      houseFootprintPreset: 'u_shape',
+      houseFootprintParams: {
+        widthM: '8',
+        offsetXM: '-1',
+        setbackM: '0.4',
+        bandDepthM: '1.8',
+        returnRunM: '2.4',
+        recessWidthM: '2.4',
+        recessDepthM: '1.2',
+        leftLegRunM: '5',
+        rightLegRunM: '5',
+        sideRunM: '2.4',
+      },
+      houseRoofPitchDeg: '20',
+      houseFasciaHeightMm: '300',
+      houseEaveOverhangMm: '1000',
+    }),
+    makeResult({
+      roofType: 'pitched',
+      lengthA: 5.8,
+      spanA: 2.6,
+      roofPitchDegUsed: 5,
+      heightHouseSideM: 2.4,
+      heightOuterSideM: 2.1,
+      gutterType: 'SP Gutter',
+      rafterCount: 10,
+      rafterSpacingMm: 644,
+      effectiveRunM: 2.45,
+      acrylicRequiredDownslopeM: 2.45936,
+      joinerPieceLengthM: 2.45936,
+      joinerRunsTotal: 10,
+      roofPlaneCount: 1,
+      roofSurfaceAreaM2: 15.12,
+      acrylicAreaM2: 15.12,
+    }),
+    'Multi House U Two Pergola',
+  );
+  const draft = makeHouseRoofDraftFixtureDraft({
+    snapshot,
+    roof: {
+      form: 'hipped',
+      material: 'corrugated_iron',
+      primaryPitchDeg: '20',
+    },
+  });
+  const objectFirst = draft.objectFirst;
+  if (!objectFirst?.houseAssembly?.houseForms[0]) {
+    throw new Error('Expected object-first house form for multi-house fixture.');
+  }
+
+  objectFirst.houseAssembly.houseForms[0].label = 'House';
+  const withSecondHouse = addHouseFormToObjectFirstDraft({
+    draft: objectFirst,
+    label: 'House 2',
+    transformOverride: { offsetXM: 10, offsetYM: 0, rotationQuarterTurns: 0 },
+  });
+  const firstPergola = withSecondHouse.pergolas[0];
+  if (!firstPergola) {
+    throw new Error('Expected primary pergola for multi-house fixture.');
+  }
+  firstPergola.label = 'Pergola 1';
+  firstPergola.family = 'mono';
+  firstPergola.geometry = {
+    ...(firstPergola.geometry ?? {}),
+    dimensions: { lengthM: '5.8', projectionM: '2.6' },
+    roof: { ...(firstPergola.geometry?.roof ?? {}), material: 'acrylic', pitchDeg: '5' },
+    supports: {
+      ...(firstPergola.geometry?.supports ?? {}),
+      postCount: '4',
+      postCutHeightM: '2.4',
+      postConnectionType: 'deck_bracket',
+      ground: 'easy',
+    },
+  };
+  withSecondHouse.pergolas.push({
+    id: 'pergola-2',
+    label: 'Pergola 2',
+    family: 'gable',
+    connectionKind: 'fascia',
+    attachmentEdgeId: 'footprint-edge-99',
+    attachmentZoneId: null,
+    side: 'rear',
+    strategy: 'fascia_under_gutter',
+    geometry: {
+      dimensions: { lengthM: '5.1', projectionM: '2.4' },
+      roof: { material: 'acrylic', pitchDeg: '25' },
+      gable: {
+        endFramesMode: 'outer_end_only',
+        houseEaveGutterMode: 'house',
+        outerEaveGutterMode: 'our',
+      },
+      supports: {
+        postCount: '4',
+        postCutHeightM: '2.4',
+        postConnectionType: 'slab_anchors',
+        ground: 'easy',
+      },
+    },
+    position: { originXMm: '11000', originYMm: '0', rotationDeg: '0' },
+    attachment: null,
+  });
+  return {
+    snapshot,
+    draft: updateEstimateDrawingObjectFirstWorkbenchDraft({
+      draft,
+      objectFirst: withSecondHouse,
+    }),
+  };
+}
+
 const FIXTURES: SanctuaryGeometryWorkbenchFixture[] = [
   {
     slug: 'mono-standard',
@@ -539,6 +666,40 @@ const FIXTURES: SanctuaryGeometryWorkbenchFixture[] = [
     },
     request: {
       id: 'dpr_00000000-0000-4000-8000-000000000125',
+      requestVersion: 1,
+      status: 'OPEN',
+      priorityTier: 'TIER_2',
+    },
+  },
+  {
+    slug: 'multi-house-u-two-pergola',
+    label: 'Multi House U Two Pergola',
+    qa: {
+      source: 'baked_workbench_fixture',
+      purpose: 'Production-aligned multi-object fixture for two U-shape houses and two pergolas.',
+      parityCritical: false,
+      shapeFamily: 'mono',
+      houseRoofForm: 'hipped',
+      expectedModule: {
+        lengthM: 5.8,
+        projectionM: 2.6,
+        roofMaterial: 'acrylic',
+        attachmentSide: 'rear',
+        roofPitchDeg: 5,
+        roofType: 'pitched',
+        roofPlaneCount: 1,
+      },
+    },
+    ...makeMultiHouseUTwoPergolaFixtureSource(),
+    moduleLabels: ['M1 - Multi House U Pergola 1 - 5.8m x 2.6m - Acrylic'],
+    estimate: {
+      id: 'est_00000000-0000-4000-8000-000000000126',
+      versionLabel: 'V-FIX-MULTI-U',
+      status: 'draft',
+      createdAt: '2026-05-30T00:00:00.000Z',
+    },
+    request: {
+      id: 'dpr_00000000-0000-4000-8000-000000000126',
       requestVersion: 1,
       status: 'OPEN',
       priorityTier: 'TIER_2',

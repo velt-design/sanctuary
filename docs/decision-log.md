@@ -46,6 +46,7 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 | 2026-05-30 | Workbench Geometry | Active | Multi-object PR7: workbench solve sources route eligible host-house groups through package-level `solveProject`. Do not add new per-module normalize/solve branches in portal state; keep remaining `houseContext` use explicit as the next deletion target. |
 | 2026-05-30 | Workbench Rendering | Active | Multi-object PR8: invalid selected pergolas must not own the project view basis. Keep Plan/3D on a ready project basis and render invalid selections as reference/context objects. |
 | 2026-05-30 | Plan Rendering | Active | Multi-object PR9: house-form plan rendering must resolve by canonical `house_reference:<formId>` from `projectHouseGeometries`. Do not let the object-workbench overlay borrow the active pergola module's host-house projection for a different selected house form; visible-body dedupe is per house form id, not global. |
+| 2026-05-30 | Plan Rendering | Active | PR-2B.1b.3e: project Plan surfaces must use `projectPlanProjection` as their object source. Do not render object-workbench Plan from the active module `topProjection`; active selection may affect halos and inspector state only, not which house or pergola bodies exist. |
 | 2026-05-01 | Plan Rendering | Promoted | Geometry-ready Model Space is a hard top-projection-only render path; legacy/context/reference/opening overlays stay out of normal visuals. |
 | 2026-05-01 | Design Workbench Architecture | Promoted | Split workbench ownership contract-first: coordinate adapters and render graphs leave React presenters before moving tools/renderers. |
 | 2026-05-01 | Deck Interaction | Promoted | Projection-backed deck snapping must use top-projection frames live and object frames only at the commit boundary. |
@@ -113,6 +114,22 @@ Current guardrail: resolve house-form plan bodies through the canonical `house_r
 Promoted to: None
 
 Related docs/tests: `apps/portal/lib/drawings/state/workbenchSolvedModel.test.ts`, `apps/portal/lib/drawings/views/plan/buildPlanViewModel.test.ts`, `apps/portal/lib/drawings/views/plan/planRenderGraph.test.ts`.
+
+### 2026-05-30 - Plan Rendering - Project Projection Source
+
+Area: Plan Rendering
+
+Status: Active
+
+Decision or mistake: object-workbench Plan rendering still used the active module's `topProjection` as its base, then merged project-level references and pergola bodies on top.
+
+Why it mattered: switching active pergolas changed which house form contributed detailed roof/body shapes. The Plan surface looked like houses were connected even though project-level house references were stable.
+
+Current guardrail: object-workbench Plan surfaces must render from `WorkbenchSolvedModel.projectPlanProjection`, built from project-level house geometry and project pergola plan bodies. Active selection may change halos, dimensions, snap exclusions, and inspector state; it must not change which project objects exist in the Plan render source.
+
+Promoted to: None
+
+Related docs/tests: `apps/portal/lib/drawings/state/workbenchSolvedModel.test.ts`, `apps/portal/components/drawings/viewports/PlanViewport/PlanViewport.test.tsx`, `packages/geometry/src/topProjection.test.ts`.
 
 ### 2026-05-30 - Workbench Rendering - Stable Project View Basis
 
@@ -1195,3 +1212,19 @@ Current guardrail: selecting a pergola must resolve the matching solved entry by
 Promoted to: None
 
 Related docs/tests: [apps/portal/app/staff/projects/[projectId]/design-workbench/pergolaSelectionState.ts](../apps/portal/app/staff/projects/%5BprojectId%5D/design-workbench/pergolaSelectionState.ts), [apps/portal/components/drawings/viewports/PlanViewport/PlanViewport.test.tsx](../apps/portal/components/drawings/viewports/PlanViewport/PlanViewport.test.tsx), [apps/portal/components/drawings/viewports/PlanViewport/interactions/selectShape.test.ts](../apps/portal/components/drawings/viewports/PlanViewport/interactions/selectShape.test.ts).
+
+### 2026-05-30 - Workbench Geometry - Production-Aligned QA Fixture Routes
+
+Area: Workbench Geometry
+
+Status: Active
+
+Decision or mistake: hidden workbench fixture routes must mount the same project-level render contract as the production workbench route. The `/qa/design-workbench-fixture` route now passes `projectPlanProjection`, project pergola/context overlays, canonical house snap sources, active object refs, hover state, and projection-only model interactions into `DrawingWorkbench` instead of relying on active-module-only fixture defaults.
+
+Why it mattered: the multi-house/two-pergola regressions were caused by active-module render sources. A Playwright fixture that omitted the production project-level props would have tested a parallel surface and could pass while production regressed, or fail on behavior that users no longer exercise.
+
+Current guardrail: fixture routes are allowed to be authless and baked, but they must not simplify workbench render ownership. If production uses project-level object registries, the fixture route must pass those same inputs and only vary the data source.
+
+Promoted to: None
+
+Related docs/tests: [apps/portal/app/staff/projects/[projectId]/design-workbench/DesignWorkbenchFixtureClient.tsx](../apps/portal/app/staff/projects/%5BprojectId%5D/design-workbench/DesignWorkbenchFixtureClient.tsx), [apps/portal/lib/drawings/sanctuaryWorkbenchFixtures.ts](../apps/portal/lib/drawings/sanctuaryWorkbenchFixtures.ts), [playwright/portal.workbench-fixture.spec.ts](../playwright/portal.workbench-fixture.spec.ts).

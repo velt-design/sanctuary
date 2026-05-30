@@ -20,6 +20,22 @@ function clickButtonByText(container: HTMLElement, label: string) {
   });
 }
 
+function clickObjectButton(container: HTMLElement, family: string, id: string) {
+  const button = container.querySelector(`[data-workbench-object-button="${family}:${id}"]`);
+  if (!(button instanceof HTMLElement)) throw new Error(`Missing object button: ${family}:${id}`);
+  act(() => {
+    button.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  });
+}
+
+function committedHouseShapeIds(container: HTMLElement): string[] {
+  return Array.from(
+    container.querySelectorAll<SVGPolygonElement>(
+      '[data-plan-layer="committedBodies"] [data-plan-shape-family="house"][data-plan-shape-id]',
+    ),
+  ).map((shape) => shape.getAttribute('data-plan-shape-id') ?? '');
+}
+
 describe('DesignWorkbenchFixtureClient', () => {
   let restoreGeometry: (() => void) | null = null;
 
@@ -52,7 +68,7 @@ describe('DesignWorkbenchFixtureClient', () => {
     expect(rendered.container.textContent).toContain('Back to Project');
     expect(rendered.container.textContent).not.toContain('Model Space');
     expect(rendered.container.textContent).not.toContain('3D View');
-    expect(rendered.container.textContent).toContain('Fixture Preview');
+    expect(rendered.container.textContent).toContain('Deck Build');
     expect(rendered.container.textContent).not.toContain('Rotate +90');
 
     expect(rendered.container.textContent).toContain('Workspace panel');
@@ -74,6 +90,48 @@ describe('DesignWorkbenchFixtureClient', () => {
     expect(rendered.container.querySelector('[data-plan-viewport="true"]')).not.toBeNull();
     expect(rendered.container.querySelector('[aria-label="Plan editor"]')).not.toBeNull();
     expect(rendered.container.textContent).not.toContain('Rotate +90');
+
+    rendered.unmount();
+  });
+
+  it('passes project-level plan props through the fixture route workbench path', async () => {
+    const fixture = getSanctuaryGeometryWorkbenchFixture('multi-house-u-two-pergola');
+    if (!fixture) throw new Error('Expected multi-house fixture');
+
+    const rendered = renderIntoDocument(
+      <DesignWorkbenchFixtureClient
+        fixture={fixture}
+        projectName="Fixture Project"
+        siteAddress="1 Test Street"
+        backHref="/staff/projects/proj_1"
+      />,
+    );
+
+    clickButtonByText(rendered.container, 'Plan');
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    const initialHouseShapes = committedHouseShapeIds(rendered.container).sort();
+    expect(initialHouseShapes.some((id) => id.includes('house_roof_material:house-main'))).toBe(true);
+    expect(initialHouseShapes.some((id) => id.includes('house_roof_material:house-form-2'))).toBe(true);
+
+    clickObjectButton(rendered.container, 'pergolas', 'pergola-1');
+    await act(async () => {
+      await Promise.resolve();
+    });
+    const pergolaOneHouseShapes = committedHouseShapeIds(rendered.container).sort();
+    expect(rendered.container.querySelector('[data-active-workbench-object="pergolas:pergola-1"]')).not.toBeNull();
+
+    clickObjectButton(rendered.container, 'pergolas', 'pergola-2');
+    await act(async () => {
+      await Promise.resolve();
+    });
+    const pergolaTwoHouseShapes = committedHouseShapeIds(rendered.container).sort();
+
+    expect(rendered.container.querySelector('[data-active-workbench-object="pergolas:pergola-2"]')).not.toBeNull();
+    expect(pergolaTwoHouseShapes).toEqual(pergolaOneHouseShapes);
+    expect(pergolaTwoHouseShapes).toEqual(initialHouseShapes);
 
     rendered.unmount();
   });

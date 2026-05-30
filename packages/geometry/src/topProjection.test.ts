@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildHouseModelTopProjectionShapes,
   buildProjectReferenceShapes,
   buildTopProjectionParityReport,
   buildTopProjectionViewModelFromScene,
@@ -269,6 +270,37 @@ describe("buildTopProjectionViewModel", () => {
       expect(shape.family).toBe("house");
       expect(shape.metadata?.topProjectionRole).toBe("hidden_from_top");
     }
+  });
+
+  it("builds standalone house model top-projection shapes with house ownership", () => {
+    const fixture = requireSupportedFixture("mono_attached_soffit_away_standard");
+    const solved = solveAssembly3D(addHouseModelContext(fixture.config));
+    if (!solved.ok) throw new Error(solved.error);
+    const model = solved.value.house.model;
+    if (!model) throw new Error("Expected house model.");
+    const secondHouseModel = { ...model, houseId: "house-form-2" };
+
+    const shapes = buildHouseModelTopProjectionShapes({
+      model: secondHouseModel,
+    });
+
+    expect(shapes.length).toBeGreaterThan(0);
+    expect(
+      shapes.some(
+        (shape) =>
+          shape.family === "house" &&
+          shape.kind === "roof" &&
+          shape.metadata?.houseFormId === "house-form-2",
+      ),
+    ).toBe(true);
+    expect(
+      shapes.some(
+        (shape) =>
+          shape.family === "house" &&
+          shape.kind === "house_roof_material" &&
+          shape.metadata?.houseFormId === "house-form-2",
+      ),
+    ).toBe(true);
   });
 
   it("projects objects that exist only in the supplied viewer scene", () => {
