@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildHouseModelRoofMaterialSceneObjects,
   buildViewerSceneModel,
   solveAssembly3D,
   type GeometryConfig,
@@ -201,6 +202,39 @@ describe("buildViewerSceneModel", () => {
         "`buildHouseModelSceneObjects` in `viewer.ts`. Fix at the seam, not at " +
         "the consumer.",
     ).toBe(allIds.length);
+  });
+
+  it("emits roof material scene objects for additional house models", () => {
+    const fixture = requireSupportedFixture("mono_attached_soffit_away_standard");
+    const config = addHouseModelContext(fixture.config, {
+      lengthMm: 6000,
+      eaveHeightMm: 2400,
+      strategy: "fascia_under_gutter",
+    });
+    const solveResult = solveAssembly3D(config);
+    if (!solveResult.ok) throw new Error(solveResult.error);
+
+    const hostHouseModel = solveResult.value.house.model;
+    if (!hostHouseModel) throw new Error("Expected host house model");
+    const secondHouseModel = { ...hostHouseModel, houseId: "second-house" };
+
+    const roofMaterialObjects = buildHouseModelRoofMaterialSceneObjects({
+      model: secondHouseModel,
+    });
+    expect(roofMaterialObjects.length).toBeGreaterThan(0);
+    expect(roofMaterialObjects.every((object) => object.id.startsWith("second-house:"))).toBe(true);
+    expect(
+      roofMaterialObjects.every((object) => object.metadata?.houseFormId === "second-house"),
+    ).toBe(true);
+
+    const scene = buildViewerSceneModel(solveResult.value, {
+      additionalHouseModels: [secondHouseModel],
+    });
+    const sceneRoofMaterialObjects =
+      scene.layers.find((layer) => layer.id === "house_roof_materials")?.objects ?? [];
+    expect(
+      sceneRoofMaterialObjects.some((object) => object.id.startsWith("second-house:")),
+    ).toBe(true);
   });
 
   it("produces deterministic layer grouping for mono, gable, and box assemblies", () => {

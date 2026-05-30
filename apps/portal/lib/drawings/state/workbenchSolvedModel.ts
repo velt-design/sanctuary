@@ -859,6 +859,7 @@ function resolveProjectReadyBasisModule(input: {
 function buildProjectGeometryPreviewFromModules(input: {
   modules: ReadonlyArray<WorkbenchSolvedModule>;
   activeModule: WorkbenchSolvedModule | null;
+  projectHouseGeometries: ReadonlyArray<ProjectHouseGeometryEntry>;
   fallbackMessage?: string;
 }): GeometryPreviewState {
   const readyModules = input.modules.filter(
@@ -888,6 +889,7 @@ function buildProjectGeometryPreviewFromModules(input: {
     scene: buildProjectPergolaViewerSceneFromModules({
       basisScene: basisModule.geometryPreview.scene,
       modules: readyModules,
+      projectHouseGeometries: input.projectHouseGeometries,
     }),
   };
 }
@@ -1313,6 +1315,7 @@ export function buildWorkbenchSolvedModel(input: {
   const projectGeometryPreview = buildProjectGeometryPreviewFromModules({
     modules,
     activeModule,
+    projectHouseGeometries,
     fallbackMessage: inactiveMessage
       ? previewMessageFromWorkbenchMessage(inactiveMessage)
       : undefined,

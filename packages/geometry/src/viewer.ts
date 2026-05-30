@@ -362,6 +362,30 @@ function buildHouseRoofMaterialObject(
   };
 }
 
+export function buildHouseModelRoofMaterialSceneObjects(input: {
+  model: HouseModel3D | null;
+}): ViewerSceneHouseRoofMaterialObject[] {
+  const model = input.model;
+  if (!model) return [];
+
+  const prefix = `${model.houseId}:`;
+  return (model.roofMaterialVisuals ?? [])
+    .map(buildHouseRoofMaterialObject)
+    .filter((object): object is ViewerSceneHouseRoofMaterialObject => object !== null)
+    .map((object) => ({
+      ...object,
+      id: object.id.startsWith(prefix) ? object.id : `${prefix}${object.id}`,
+      sourceId: object.sourceId,
+      metadata: {
+        ...(object.metadata ?? {}),
+        houseFormId:
+          typeof object.metadata?.houseFormId === "string"
+            ? object.metadata.houseFormId
+            : model.houseId,
+      },
+    }));
+}
+
 function buildReferenceLineObject(
   id: string,
   kind: ViewerSceneReferenceLineObject["kind"],
@@ -1064,6 +1088,11 @@ function buildLayers(
       ...buildHouseModelSceneObjects({
         model: additionalModel,
         attachmentTarget: null,
+      }),
+    );
+    houseRoofMaterialObjects.push(
+      ...buildHouseModelRoofMaterialSceneObjects({
+        model: additionalModel,
       }),
     );
   }

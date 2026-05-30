@@ -1,0 +1,154 @@
+import { describe, expect, it } from 'vitest';
+import type {
+  HouseModel3D,
+  Line3,
+  Plane3,
+  ViewerSceneLayer,
+  ViewerSceneModel,
+  ViewerSceneObject,
+} from '@sp/geometry';
+import { buildProjectPergolaViewerSceneFromModules } from './projectPergolaViewerScene';
+
+const WALL_PLANE: Plane3 = {
+  origin: { x: 0, y: 0, z: 0 },
+  xAxis: { x: 1, y: 0, z: 0 },
+  yAxis: { x: 0, y: 0, z: 1 },
+  normal: { x: 0, y: -1, z: 0 },
+};
+
+const ROOF_PLANE: Plane3 = {
+  origin: { x: 0, y: 0, z: 2400 },
+  xAxis: { x: 1, y: 0, z: 0 },
+  yAxis: { x: 0, y: 1, z: 0 },
+  normal: { x: 0, y: 0, z: 1 },
+};
+
+const ROOF_LINE: Line3 = {
+  start: { x: 0, y: 0, z: 2400 },
+  end: { x: 1200, y: 0, z: 2400 },
+};
+
+function fakeReferenceObject(id: string): ViewerSceneObject {
+  return {
+    id,
+    type: 'reference_line',
+    kind: 'attachment_edge',
+    sourceId: id,
+    line: {
+      start: { x: 0, y: 0, z: 0 },
+      end: { x: 1000, y: 0, z: 0 },
+    },
+  } as ViewerSceneObject;
+}
+
+function fakeLayer(id: string, objectId: string): ViewerSceneLayer {
+  return {
+    id,
+    label: id,
+    visibleByDefault: true,
+    objects: [fakeReferenceObject(objectId)],
+  };
+}
+
+function fakeHouseModel(houseId: string): HouseModel3D {
+  return {
+    houseId,
+    footprint: [
+      { x: 0, y: -1000, z: 0 },
+      { x: 1200, y: -1000, z: 0 },
+      { x: 1200, y: 0, z: 0 },
+      { x: 0, y: 0, z: 0 },
+    ],
+    wallSegments: [
+      {
+        id: 'wall-1',
+        sourceEdgeId: 'edge-1',
+        line: {
+          start: { x: 0, y: 0, z: 2400 },
+          end: { x: 1200, y: 0, z: 2400 },
+        },
+        boundary: [
+          { x: 0, y: 0, z: 0 },
+          { x: 1200, y: 0, z: 0 },
+          { x: 1200, y: 0, z: 2400 },
+          { x: 0, y: 0, z: 2400 },
+        ],
+        plane: WALL_PLANE,
+        metadata: {},
+      },
+    ],
+    roofPlanes: [],
+    roofFeatures: [],
+    roofFlashings: [],
+    roofMaterial: 'corrugated_iron',
+    roofMaterialVisuals: [
+      {
+        id: 'roof-material-1',
+        roofPlaneId: 'roof-plane-1',
+        material: 'corrugated_iron',
+        profileKind: 'rib',
+        lines: [ROOF_LINE],
+        plane: ROOF_PLANE,
+        spacingMm: 762,
+        surfaceOffsetMm: 3,
+        metadata: {},
+      },
+    ],
+    decks: [],
+    openings: [],
+    eave: {
+      soffitDepthMm: null,
+      fasciaHeightMm: null,
+    },
+    attachmentTarget: null,
+  } as unknown as HouseModel3D;
+}
+
+function layerObjectIds(scene: ViewerSceneModel, layerId: string): string[] {
+  return scene.layers.find((layer) => layer.id === layerId)?.objects.map((object) => object.id) ?? [];
+}
+
+describe('buildProjectPergolaViewerSceneFromModules', () => {
+  it('uses project house layers instead of basis or module house layers', () => {
+    const basisScene: ViewerSceneModel = {
+      layers: [
+        fakeLayer('house', 'basis-house'),
+        fakeLayer('posts', 'basis-post'),
+        fakeLayer('house_roof_materials', 'basis-house-roof-material'),
+      ],
+    };
+
+    const scene = buildProjectPergolaViewerSceneFromModules({
+      basisScene,
+      modules: [
+        {
+          moduleInput: { pergolaId: 'pergola-1' },
+          viewerScene: {
+            layers: [
+              fakeLayer('house', 'module-house'),
+              fakeLayer('posts', 'module-post'),
+              fakeLayer('house_roof_materials', 'module-house-roof-material'),
+            ],
+          },
+        },
+      ],
+      projectHouseGeometries: [
+        {
+          houseFormId: 'house-form-2',
+          model: fakeHouseModel('house-form-2'),
+        },
+      ],
+    });
+
+    expect(layerObjectIds(scene, 'house')).toEqual([
+      'house-form-2:wall-1',
+      'house-form-2:wall-1-edge',
+    ]);
+    expect(layerObjectIds(scene, 'house_roof_materials')).toEqual([
+      'house-form-2:roof-material-1',
+    ]);
+    expect(layerObjectIds(scene, 'posts')).toEqual([
+      'project_pergola:pergola-1:module-post',
+    ]);
+  });
+});

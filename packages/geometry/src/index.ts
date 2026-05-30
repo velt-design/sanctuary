@@ -17,7 +17,11 @@ export type {
 } from './solveProject';
 export { validateGeometrySolve } from './validate';
 export type { ValidateGeometrySolveInput } from './validate';
-export { buildHouseModelSceneObjects, buildViewerSceneModel } from './viewer';
+export {
+  buildHouseModelRoofMaterialSceneObjects,
+  buildHouseModelSceneObjects,
+  buildViewerSceneModel,
+} from './viewer';
 export type { BuildViewerSceneModelOptions } from './viewer';
 export {
   buildHouseReferenceProjectionShape,

@@ -275,7 +275,17 @@
 
 .childRowActive {
   color: rgba(var(--portal-bg-surface-rgb), 0.99);
-  background: rgba(var(--portal-bg-surface-rgb), 0.09);
+  background: transparent;
+  text-decoration-line: underline !important;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
+  text-decoration-color: rgba(var(--portal-bg-surface-rgb), 0.88) !important;
+}
+
+.childRowActive:hover,
+.childRowActive:focus-visible {
+  color: rgba(var(--portal-bg-surface-rgb), 0.99);
+  background: transparent;
 }
 
 .bottom {
