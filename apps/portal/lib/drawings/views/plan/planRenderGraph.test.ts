@@ -71,7 +71,7 @@ describe('planRenderGraph', () => {
 
     expect(graph.committedBodies.map((item) => item.marker)).toEqual(['roof', 'deck']);
     expect(graph.contextLines.map((item) => item.marker)).toEqual(['wall']);
-    expect(graph.hitTargets).toEqual([]);
+    expect(graph.hitTargets.map((item) => item.marker)).toEqual(['deck']);
     expect(graph.selectionOutlines).toEqual([]);
     expect(graph.dimensions).toEqual([]);
     expect(graph.dragPreview).toEqual([]);
@@ -110,7 +110,7 @@ describe('planRenderGraph', () => {
     })).toBe(false);
   });
 
-  it('keeps the canonical house_reference footprint in committedBodies even when a roof body exists, so the hit-target chain (filterPlanHitTargets) can still anchor house clicks; visual deduplication is the render layer\'s job', () => {
+  it('keeps the canonical house_reference footprint as a hit target, not a visible body, when a roof body exists', () => {
     const roof = shape({
       id: 'roof-main',
       family: 'house',
@@ -140,11 +140,12 @@ describe('planRenderGraph', () => {
       { shape: redundantSurfaceFootprint, marker: 'surface-footprint' },
     ]);
 
-    expect(graph.committedBodies.map((item) => item.marker)).toEqual(['roof', 'reference-footprint']);
+    expect(graph.committedBodies.map((item) => item.marker)).toEqual(['roof']);
+    expect(graph.hitTargets.map((item) => item.marker)).toEqual(['reference-footprint']);
     expect(graph.suppressed.map((item) => item.marker)).toEqual(['surface-footprint']);
   });
 
-  it('routes house roof-material projection shapes to committedBodies without dropping the canonical reference footprint', () => {
+  it('routes house roof-material projection shapes to committedBodies and the canonical reference footprint to hitTargets', () => {
     const roofMaterial = shape({
       id: 'house_roof_material:house-form-2:roof-material',
       family: 'house',
@@ -174,10 +175,8 @@ describe('planRenderGraph', () => {
       { shape: redundantSurfaceFootprint, marker: 'surface-footprint' },
     ]);
 
-    expect(graph.committedBodies.map((item) => item.marker)).toEqual([
-      'roof-material',
-      'reference-footprint',
-    ]);
+    expect(graph.committedBodies.map((item) => item.marker)).toEqual(['roof-material']);
+    expect(graph.hitTargets.map((item) => item.marker)).toEqual(['reference-footprint']);
     expect(graph.suppressed.map((item) => item.marker)).toEqual(['surface-footprint']);
   });
 
@@ -215,6 +214,7 @@ describe('planRenderGraph', () => {
       'roof',
       'second-reference-footprint',
     ]);
+    expect(graph.hitTargets.map((item) => item.marker)).toEqual(['second-reference-footprint']);
     expect(graph.suppressed.map((item) => item.marker)).toEqual(['primary-footprint']);
   });
 
@@ -232,6 +232,7 @@ describe('planRenderGraph', () => {
     ]);
 
     expect(graph.committedBodies.map((item) => item.marker)).toEqual(['reference-footprint']);
+    expect(graph.hitTargets.map((item) => item.marker)).toEqual(['reference-footprint']);
     expect(graph.suppressed).toEqual([]);
   });
 

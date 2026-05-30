@@ -308,14 +308,7 @@ export default function DesignWorkbenchEstimateClient({
     activeModuleInput?.pergolaId ??
     store.derived.objectWorkbench.pergolas[0]?.id ??
     null;
-  const viewportDefaultHouseFormId =
-    store.derived.activeHouseForm?.id ?? store.derived.houseForms[0]?.id ?? null;
-  const viewportActiveObjectRef =
-    store.ui.activeObjectRef.family === 'pergolas'
-      ? { family: 'pergolas' as const, objectId: store.ui.activeObjectRef.objectId ?? viewportPergolaId }
-      : store.ui.activeObjectRef.family === 'house_forms'
-        ? { family: 'house_forms' as const, objectId: store.ui.activeObjectRef.objectId ?? viewportDefaultHouseFormId }
-        : store.ui.activeObjectRef;
+  const viewportActiveObjectRef = store.ui.activeObjectRef;
   // Step 5d Option A: faded outlines for OTHER pergolas in the project so
   // multi-pergola scenes show every pergola's outline at a glance. The
   // active module's full topProjection still drives detail rendering; the

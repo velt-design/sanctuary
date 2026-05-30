@@ -15,6 +15,14 @@ export async function selectRailObject(page: Page, family: string, objectId: str
   await expect(page.locator(`[data-active-workbench-object="${family}:${objectId}"]`).first()).toBeVisible();
 }
 
+export async function clearPlanSelection(page: Page) {
+  await page.locator('[data-plan-viewport="true"]').click({ position: { x: 8, y: 8 } });
+  await expect(page.locator('[data-plan-viewport="true"]')).toHaveAttribute(
+    'data-plan-selection-halo-count',
+    '0',
+  );
+}
+
 async function readPlanShapeIds(page: Page, selector = '[data-plan-shape-id]'): Promise<string[]> {
   return page.locator(selector).evaluateAll((nodes) =>
     nodes
@@ -30,6 +38,33 @@ export async function readVisibleHouseBodyIds(page: Page): Promise<string[]> {
     '[data-plan-shape-family="house"][data-plan-shape-id]',
   );
   return ids.filter((id) => id.startsWith('house_roof_material:') || id.startsWith('house_surface_solid:'));
+}
+
+export async function readVisiblePergolaShapeIds(page: Page): Promise<string[]> {
+  return readPlanShapeIds(
+    page,
+    '[data-plan-shape-family="pergola"][data-plan-shape-id]',
+  );
+}
+
+export async function readHouseHitTargetIds(page: Page): Promise<string[]> {
+  return page
+    .locator('[data-plan-shape-family="house"][data-plan-hit-shape-id]')
+    .evaluateAll((nodes) =>
+      nodes
+        .map((node) => node.getAttribute('data-plan-hit-shape-id'))
+        .filter((value): value is string => Boolean(value))
+        .sort(),
+    );
+}
+
+export async function readPlanSelectionIds(page: Page): Promise<string[]> {
+  return page.locator('[data-plan-selection-shape-id]').evaluateAll((nodes) =>
+    nodes
+      .map((node) => node.getAttribute('data-plan-selection-shape-id'))
+      .filter((value): value is string => Boolean(value))
+      .sort(),
+  );
 }
 
 export async function expect3DViewportEvidence(page: Page) {

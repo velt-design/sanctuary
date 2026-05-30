@@ -27,11 +27,38 @@
  */
 
 import type { Dispatch, SetStateAction } from 'react';
-import type { DrawingWorkbenchUiState } from '@/lib/drawings/state/drawingWorkbenchUiState';
+import {
+  buildDrawingWorkbenchObjectSelectionState,
+  type DrawingWorkbenchUiState,
+} from '@/lib/drawings/state/drawingWorkbenchUiState';
+import type { ObjectWorkbenchViewportTargetSelection } from '@/lib/drawings/state/objectWorkbenchViewportTypes';
+import type { WorkbenchObjectRef } from '@/lib/drawings/state/objectFirstWorkbenchModel';
 import type { ObjectWorkbenchActions } from './useObjectWorkbenchActions';
 import type { ObjectWorkbenchSelectionActions } from './useObjectWorkbenchSelection';
+import { buildPergolaSelectionUiState } from './pergolaSelectionState';
 
 const ok = async () => ({ ok: true as const });
+
+function buildObjectRefForFixtureViewportTarget(
+  selection: ObjectWorkbenchViewportTargetSelection,
+): WorkbenchObjectRef {
+  if (selection.kind === 'deck') {
+    return {
+      family: 'decks',
+      objectId: selection.targetId,
+    };
+  }
+  if (selection.kind === 'opening') {
+    return {
+      family: 'openings',
+      objectId: selection.targetId,
+    };
+  }
+  return {
+    family: 'house_forms',
+    objectId: selection.targetId,
+  };
+}
 
 /**
  * Build the selection-actions stub. The `setUi` setter is wired through
@@ -56,35 +83,73 @@ export function buildFixtureSelectionActions(
     selectObjectRef: (ref) =>
       setUi((current) => ({
         ...current,
-        activeObjectRef: ref,
-        activeObjectFamily: ref.family,
-        activeRailTab: ref.family,
+        ...(ref.family === 'pergolas' ? { activePergolaId: ref.objectId } : {}),
+        ...buildDrawingWorkbenchObjectSelectionState({
+          activeRailTab: ref.family,
+          activeObjectRef: ref,
+        }),
+        selection: { kind: 'none', targetId: null },
       })),
     startDrawOutlineEditor: () => ({ ok: true as const }),
     startDeckOutlineEditor: () => ({ ok: true as const }),
     selectDeckObject: (deckId) =>
       setUi((current) => ({
         ...current,
-        activeObjectRef: { family: 'decks', objectId: deckId },
-        activeObjectFamily: 'decks',
-        activeRailTab: 'decks',
+        ...buildDrawingWorkbenchObjectSelectionState({
+          activeRailTab: 'decks',
+          activeObjectRef: { family: 'decks', objectId: deckId },
+        }),
+        selection: { kind: 'none', targetId: null },
       })),
     selectOpeningObject: (openingId) =>
       setUi((current) => ({
         ...current,
-        activeObjectRef: { family: 'openings', objectId: openingId },
-        activeObjectFamily: 'openings',
-        activeRailTab: 'openings',
+        ...buildDrawingWorkbenchObjectSelectionState({
+          activeRailTab: 'openings',
+          activeObjectRef: { family: 'openings', objectId: openingId },
+        }),
+        selection: { kind: 'none', targetId: null },
       })),
-    selectObjectWorkbenchTarget: noopVoid,
+    selectObjectWorkbenchTarget: (selection) =>
+      setUi((current) => {
+        const ref = buildObjectRefForFixtureViewportTarget(selection);
+        return {
+          ...current,
+          ...buildDrawingWorkbenchObjectSelectionState({
+            activeRailTab: ref.family,
+            activeObjectRef: ref,
+          }),
+          selection: {
+            kind: selection.kind === 'house' ? 'none' : 'geometry',
+            targetId: selection.targetId,
+            targetKind: selection.kind === 'house' ? undefined : selection.kind,
+          },
+        };
+      }),
     selectPergolaObject: (pergolaId) =>
-      setUi((current) => ({
-        ...current,
-        activeObjectRef: { family: 'pergolas', objectId: pergolaId },
-        activeObjectFamily: 'pergolas',
-        activeRailTab: 'pergolas',
-      })),
-    clearActiveWorkbenchSelection: noopVoid,
+      setUi((current) =>
+        buildPergolaSelectionUiState({
+          current,
+          pergolaId,
+        }),
+      ),
+    clearActiveWorkbenchSelection: () =>
+      setUi((current) => {
+        const activeFamily =
+          current.activeRailTab === 'diagnostics' ? current.activeObjectFamily : current.activeRailTab;
+        return {
+          ...current,
+          ...buildDrawingWorkbenchObjectSelectionState({
+            activeRailTab: current.activeRailTab,
+            activeObjectFamily: activeFamily,
+            activeObjectRef: {
+              family: activeFamily,
+              objectId: null,
+            },
+          }),
+          selection: { kind: 'none', targetId: null },
+        };
+      }),
   };
 }
 

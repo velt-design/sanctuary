@@ -3,8 +3,17 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import DashboardView from './DashboardView';
 import type { DashboardData } from '@/lib/dashboard/types';
 
-vi.mock('./_components/SetNextActionButton', () => ({
-  default: () => <button type="button">Set next action</button>,
+vi.mock('./_components/DashboardTasksCard.client', () => ({
+  default: (props: { initialTasks: Array<{ title: string; completedAt?: string | null }> }) => (
+    <section aria-label="Tasks">
+      <h2>Tasks</h2>
+      {props.initialTasks.map((task) => (
+        <div key={task.title} style={{ textDecoration: task.completedAt ? 'line-through' : undefined }}>
+          {task.title}
+        </div>
+      ))}
+    </section>
+  ),
 }));
 
 const data: DashboardData = {
@@ -40,54 +49,80 @@ const data: DashboardData = {
     hrefSiteVisits: '/staff/schedule?view=site-visits',
   },
   pipelineCounts: {},
+  recentActivity: [
+    {
+      id: 'note_1',
+      type: 'project_note',
+      at: '2026-04-02T10:00:00.000Z',
+      body: 'Client prefers a darker roof finish.',
+      projectId: 'proj_123',
+      projectName: 'Beach House',
+      authorDisplayName: 'Alex',
+      authorEmail: 'alex@example.com',
+      href: '/staff/projects/proj_123',
+    },
+  ],
+  personalTasks: [
+    {
+      id: 'task_1',
+      title: 'Call supplier',
+      completedAt: null,
+      createdAt: '2026-04-02T09:00:00.000Z',
+      updatedAt: '2026-04-02T09:00:00.000Z',
+    },
+  ],
 };
 
-function withWorkQueue(projectNames: string[]): DashboardData {
-  return {
-    ...data,
-    workQueue: projectNames.map((projectName, index) => ({
-      projectId: `proj_${index}`,
-      projectName,
-      clientName: `Client ${index}`,
-      status: 'NEW',
-      nextActionLabel: null,
-      nextActionDueDate: '2026-04-03',
-      lastActivityAt: '2026-04-02T10:00:00.000Z',
-    })),
-  };
-}
-
 describe('DashboardView', () => {
-  it('renders work queue rows with the next-action client island inside server markup', () => {
-    const markup = renderToStaticMarkup(<DashboardView data={data} queueMode="today" />);
+  it('renders pipeline, kpis, recent activity, and personal tasks', () => {
+    const markup = renderToStaticMarkup(<DashboardView data={data} />);
 
-    expect(markup).toContain('Beach House');
-    expect(markup).toContain('Set next action');
     expect(markup).toContain('Dashboard');
+    expect(markup).toContain('Pipeline');
+    expect(markup).toContain('Actions due');
+    expect(markup).toContain('Recent Activity');
+    expect(markup).toContain('Beach House');
+    expect(markup).toContain('Project note');
+    expect(markup).toContain('Client prefers a darker roof finish.');
+    expect(markup).toContain('Tasks');
+    expect(markup).toContain('Call supplier');
   });
 
-  it('prioritizes pipeline before kpis and operational cards', () => {
-    const markup = renderToStaticMarkup(<DashboardView data={data} queueMode="today" />);
+  it('renders recent activity as project-first note cards', () => {
+    const markup = renderToStaticMarkup(<DashboardView data={data} />);
+
+    const projectIndex = markup.indexOf('Beach House');
+    const noteIndex = markup.indexOf('Client prefers a darker roof finish.');
+    const labelIndex = markup.indexOf('Project note');
+
+    expect(projectIndex).toBeGreaterThan(-1);
+    expect(noteIndex).toBeGreaterThan(-1);
+    expect(labelIndex).toBeGreaterThan(-1);
+    expect(projectIndex).toBeLessThan(noteIndex);
+  });
+
+  it('prioritizes pipeline before kpis and activity before tasks', () => {
+    const markup = renderToStaticMarkup(<DashboardView data={data} />);
 
     const pipelineIndex = markup.indexOf('Pipeline');
     const kpiIndex = markup.indexOf('Actions due');
-    const attentionIndex = markup.indexOf('Attention');
+    const activityIndex = markup.indexOf('Recent Activity');
+    const tasksIndex = markup.indexOf('Tasks');
 
     expect(pipelineIndex).toBeGreaterThan(-1);
     expect(kpiIndex).toBeGreaterThan(-1);
-    expect(attentionIndex).toBeGreaterThan(-1);
+    expect(activityIndex).toBeGreaterThan(-1);
+    expect(tasksIndex).toBeGreaterThan(-1);
     expect(pipelineIndex).toBeLessThan(kpiIndex);
-    expect(pipelineIndex).toBeLessThan(attentionIndex);
+    expect(activityIndex).toBeLessThan(tasksIndex);
   });
 
-  it('keeps the work queue to a compact preview with a view-all path', () => {
-    const compactData = withWorkQueue(['First Project', 'Second Project', 'Third Project', 'Fourth Project']);
-    const markup = renderToStaticMarkup(<DashboardView data={compactData} queueMode="today" />);
+  it('does not render the retired operational dashboard sections', () => {
+    const markup = renderToStaticMarkup(<DashboardView data={data} />);
 
-    expect(markup).toContain('First Project');
-    expect(markup).toContain('Second Project');
-    expect(markup).toContain('Third Project');
-    expect(markup).not.toContain('Fourth Project');
-    expect(markup).toContain('View all actions');
+    expect(markup).not.toContain('Attention');
+    expect(markup).not.toContain('Work Queue');
+    expect(markup).not.toContain('Install schedule');
+    expect(markup).not.toContain('Site visits');
   });
 });

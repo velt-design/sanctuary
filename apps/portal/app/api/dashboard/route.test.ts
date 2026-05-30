@@ -19,7 +19,7 @@ describe('GET /api/dashboard', () => {
 
     requireStaffContext.mockResolvedValue({
       ok: true,
-      session: { user: { email: 'ops@example.com' }, role: 'staff' },
+      session: { user: { id: 'user_1', email: 'ops@example.com' }, role: 'staff' },
       supabase: {},
     });
     getDashboardData.mockResolvedValue({
@@ -30,6 +30,8 @@ describe('GET /api/dashboard', () => {
       schedule: { startingSoon: [], crewAvailability: [], hrefBoard: '/staff/schedule', hrefGantt: '/staff/schedule?view=gantt' },
       siteVisits: { unscheduledCount: 0, today: [], next7: [], hrefSiteVisits: '/staff/schedule?tab=site-visits' },
       pipelineCounts: {},
+      recentActivity: [],
+      personalTasks: [],
     });
   });
 
@@ -54,7 +56,7 @@ describe('GET /api/dashboard', () => {
     const mod = await import('./route');
     const res = await mod.GET(new Request('http://localhost/api/dashboard?queue=next7'));
 
-    expect(getDashboardData).toHaveBeenCalledWith({ queueMode: 'next7' });
+    expect(getDashboardData).toHaveBeenCalledWith({ queueMode: 'next7', userId: 'user_1' });
     expect(res.status).toBe(200);
     await expect(res.json()).resolves.toEqual(
       expect.objectContaining({

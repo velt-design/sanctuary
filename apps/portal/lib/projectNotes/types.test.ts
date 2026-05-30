@@ -4,6 +4,7 @@ import {
   deriveAuthorDisplayName,
   mapProjectNoteRow,
   normalizeNoteBody,
+  projectNoteAuthorDisplayName,
   type ProjectNoteRow,
 } from './types';
 
@@ -43,6 +44,29 @@ describe('deriveAuthorDisplayName', () => {
     expect(deriveAuthorDisplayName({ user_metadata: {} })).toBeNull();
     expect(deriveAuthorDisplayName({})).toBeNull();
   });
+
+  it('falls back to Ellen for the Sanctuary info account', () => {
+    expect(deriveAuthorDisplayName({ email: 'info@sanctuarypergolas.co.nz', user_metadata: {} })).toBe('Ellen');
+  });
+});
+
+describe('projectNoteAuthorDisplayName', () => {
+  it('prefers an explicit display name', () => {
+    expect(
+      projectNoteAuthorDisplayName({
+        authorDisplayName: 'Casey',
+        authorEmail: 'info@sanctuarypergolas.co.nz',
+      }),
+    ).toBe('Casey');
+  });
+
+  it('maps the Sanctuary info account to Ellen', () => {
+    expect(projectNoteAuthorDisplayName({ authorEmail: 'INFO@sanctuarypergolas.co.nz' })).toBe('Ellen');
+  });
+
+  it('returns null for ordinary emails without a display name', () => {
+    expect(projectNoteAuthorDisplayName({ authorEmail: 'casey@example.test' })).toBeNull();
+  });
 });
 
 describe('mapProjectNoteRow', () => {
@@ -75,5 +99,17 @@ describe('mapProjectNoteRow', () => {
   it('treats blank display names as null', () => {
     const note = mapProjectNoteRow({ ...baseRow, author_display_name: '   ' }, 'user-1');
     expect(note.authorDisplayName).toBeNull();
+  });
+
+  it('maps blank Sanctuary info author names to Ellen', () => {
+    const note = mapProjectNoteRow(
+      {
+        ...baseRow,
+        author_email: 'info@sanctuarypergolas.co.nz',
+        author_display_name: '   ',
+      },
+      'user-1',
+    );
+    expect(note.authorDisplayName).toBe('Ellen');
   });
 });

@@ -1,23 +1,16 @@
 import type { PlanRenderItem } from './planRenderItem';
-
-function houseFormOwner(shape: PlanRenderItem['shape']): string | null {
-  if (shape.family !== 'house') return null;
-  const taggedHouseFormId =
-    typeof shape.metadata?.houseFormId === 'string' ? shape.metadata.houseFormId : null;
-  if (taggedHouseFormId) return taggedHouseFormId;
-  if (shape.sourceType === 'house_reference') {
-    return shape.sourceObjectId ?? shape.sourceId ?? null;
-  }
-  return null;
-}
+import {
+  planHouseFormOwner,
+  planShapeIsHouseRoofBody,
+} from '@/lib/drawings/views/plan/planShapeOwnership';
 
 /**
  * Visual-only filter for the Plan/Sheet committed-body render layer.
  *
- * The render graph keeps `house_reference + footprint` in `committedBodies`
- * because the hit-target chain (`filterPlanHitTargets(committedBodies)`)
- * derives clickable polygons from that same array, and house selection on
- * the canvas depends on the canonical reference footprint being present.
+ * The render graph now keeps `house_reference + footprint` in `hitTargets`
+ * and only promotes it to `committedBodies` as a visible fallback when that
+ * same house form has no roof body. This filter remains as a defensive guard
+ * for older callers and tests that still hand it mixed body/reference arrays.
  *
  * For VISIBLE rendering, drawing the reference footprint outline on top of
  * a roof body produces overlapping concentric strokes (the user-reported
@@ -27,27 +20,22 @@ function houseFormOwner(shape: PlanRenderItem['shape']): string | null {
  * canonical footprint visible. The polygon stays in committedBodies for
  * hit-test purposes; only the stroke is suppressed.
  *
- * See `docs/decision-log.md` 2026-05-13 "Plan Rendering -- Suppress House
- * Footprint When Roof Body Renders" for the split between graph-level
- * (hit-target) and render-level (visual) concerns.
+ * See `docs/decision-log.md` 2026-05-30 "Plan Rendering -- interaction
+ * references must not live in visible body layers" for the layer contract.
  */
 export function filterPlanVisibleBodies(items: ReadonlyArray<PlanRenderItem>): PlanRenderItem[] {
   const houseFormIdsWithRoof = new Set<string>();
   let hasUnownedHouseRoofBody = false;
   for (const { shape } of items) {
-    const isHouseRoofBody =
-      shape.family === 'house' &&
-      (shape.kind === 'roof' ||
-        (shape.sourceType === 'house_roof_material' && shape.kind === 'house_roof_material'));
-    if (!isHouseRoofBody) continue;
-    const owner = houseFormOwner(shape);
+    if (!planShapeIsHouseRoofBody(shape)) continue;
+    const owner = planHouseFormOwner(shape);
     if (owner) houseFormIdsWithRoof.add(owner);
     else hasUnownedHouseRoofBody = true;
   }
   if (!houseFormIdsWithRoof.size && !hasUnownedHouseRoofBody) return [...items];
   return items.filter(({ shape }) => {
     if (shape.family !== 'house' || shape.kind !== 'footprint') return true;
-    const owner = houseFormOwner(shape);
+    const owner = planHouseFormOwner(shape);
     return owner
       ? !houseFormIdsWithRoof.has(owner)
       : !hasUnownedHouseRoofBody;

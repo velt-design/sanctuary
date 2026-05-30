@@ -149,14 +149,7 @@ export default function DesignWorkbenchFixtureClient({
     activeModule?.drawingModule.input.pergolaId ??
     store.derived.objectWorkbench.pergolas[0]?.id ??
     null;
-  const viewportDefaultHouseFormId =
-    store.derived.activeHouseForm?.id ?? store.derived.houseForms[0]?.id ?? null;
-  const viewportActiveObjectRef =
-    store.ui.activeObjectRef.family === 'pergolas'
-      ? { family: 'pergolas' as const, objectId: store.ui.activeObjectRef.objectId ?? viewportPergolaId }
-      : store.ui.activeObjectRef.family === 'house_forms'
-        ? { family: 'house_forms' as const, objectId: store.ui.activeObjectRef.objectId ?? viewportDefaultHouseFormId }
-        : store.ui.activeObjectRef;
+  const viewportActiveObjectRef = store.ui.activeObjectRef;
   const activePergolaSourceId =
     store.ui.activeObjectRef.family === 'pergolas'
       ? store.ui.activeObjectRef.objectId ?? activeModule?.drawingModule.input.pergolaId ?? null
@@ -358,6 +351,9 @@ export default function DesignWorkbenchFixtureClient({
             onHoverObjectChange={setHoveredObjectRef}
             pergolaTargetId={viewportPergolaId}
             enableProjectionOnlyModelInteractions
+            onSelectObjectWorkbenchTarget={fixtureSelectionActions.selectObjectWorkbenchTarget}
+            onSelectPergolaTarget={fixtureSelectionActions.selectPergolaObject}
+            onClearWorkbenchSelection={fixtureSelectionActions.clearActiveWorkbenchSelection}
             drawingSurfaceGeometry={store.derived.activeDrawingSurfaceGeometry}
             planViewModel={store.derived.activePlanViewModel}
             modelViewportKey={modelViewportSurfaceKey}

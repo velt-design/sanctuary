@@ -62,13 +62,13 @@ describe('activeObjectMatchesPlanShape', () => {
       ).toBe(false);
     });
 
-    it('matches any deck shape when the active ref has no specific id', () => {
+    it('does not match deck shapes when the active ref has no specific id', () => {
       expect(
         activeObjectMatchesPlanShape(
           ref('decks', null),
           shape({ family: 'house', kind: 'deck', sourceObjectId: 'deck-7' }),
         ),
-      ).toBe(true);
+      ).toBe(false);
     });
 
     it('does not match a deck shape tagged with a different deckId', () => {
@@ -192,13 +192,13 @@ describe('activeObjectMatchesPlanShape', () => {
       ).toBe(true);
     });
 
-    it('matches any pergola shape when the active ref has no specific id', () => {
+    it('does not match pergola shapes when the active ref has no specific id', () => {
       expect(
         activeObjectMatchesPlanShape(
           ref('pergolas', null),
           shape({ family: 'pergola', kind: 'roof_plane', sourceObjectId: 'rendered-1' }),
         ),
-      ).toBe(true);
+      ).toBe(false);
     });
   });
 
@@ -301,13 +301,13 @@ describe('activeObjectMatchesPlanShape', () => {
       ).toBe(true);
     });
 
-    it('matches without a specific id when sourceType is house-derived', () => {
+    it('does not match without a specific house form id', () => {
       expect(
         activeObjectMatchesPlanShape(
           ref('house_forms', null),
           shape({ family: 'house', kind: 'roof', sourceType: 'house_surface' }),
         ),
-      ).toBe(true);
+      ).toBe(false);
     });
 
     it('does not match deck or opening shapes', () => {

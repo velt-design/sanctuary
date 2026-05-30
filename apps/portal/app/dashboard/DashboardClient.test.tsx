@@ -39,6 +39,8 @@ const initialData: DashboardData = {
     hrefSiteVisits: '/staff/schedule?view=site-visits',
   },
   pipelineCounts: {},
+  recentActivity: [],
+  personalTasks: [],
 };
 
 describe('DashboardClient', () => {

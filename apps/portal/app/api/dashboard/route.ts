@@ -12,7 +12,7 @@ export async function GET(req: Request) {
   try {
     const url = new URL(req.url);
     const queue = parseDashboardQueueMode(url.searchParams.get('queue'));
-    const data = await getDashboardData({ queueMode: queue });
+    const data = await getDashboardData({ queueMode: queue, userId: auth.session.user.id });
     return NextResponse.json(data);
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Failed to load dashboard data.';

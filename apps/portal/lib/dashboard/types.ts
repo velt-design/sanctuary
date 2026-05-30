@@ -79,12 +79,24 @@ export interface SiteVisitsSnapshot {
 
 export type PipelineCounts = Record<string, number>;
 
-interface ActivityItem {
+export interface DashboardRecentActivityItem {
+  id: string;
+  type: 'project_note';
   at: string; // ISO
-  label: string; // "Quote sent"
-  projectId?: string;
-  projectName?: string;
-  href?: string;
+  body: string;
+  projectId: string;
+  projectName: string;
+  authorDisplayName?: string | null;
+  authorEmail?: string | null;
+  href: string;
+}
+
+export interface DashboardPersonalTask {
+  id: string;
+  title: string;
+  completedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface DashboardData {
@@ -95,5 +107,6 @@ export interface DashboardData {
   schedule: ScheduleSnapshot;
   siteVisits: SiteVisitsSnapshot;
   pipelineCounts: PipelineCounts;
-  recentActivity?: ActivityItem[];
+  recentActivity: DashboardRecentActivityItem[];
+  personalTasks: DashboardPersonalTask[];
 }

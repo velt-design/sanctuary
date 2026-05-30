@@ -22,11 +22,19 @@ import {
   replaceProjectNoteInSnapshot,
 } from '@/lib/localFirst/portalEntities';
 import type { ProjectNote, ProjectPageSnapshotResponse } from '@/lib/projects/types';
-import { PROJECT_NOTE_BODY_MAX_LENGTH, normalizeNoteBody } from '@/lib/projectNotes/types';
+import {
+  PROJECT_NOTE_BODY_MAX_LENGTH,
+  normalizeNoteBody,
+  projectNoteAuthorDisplayName,
+} from '@/lib/projectNotes/types';
 import styles from './ProjectNotesPanel.module.css';
 
 function authorLabelFor(note: ProjectNote): string {
-  if (note.authorDisplayName && note.authorDisplayName.trim()) return note.authorDisplayName;
+  const resolved = projectNoteAuthorDisplayName({
+    authorDisplayName: note.authorDisplayName,
+    authorEmail: note.authorEmail,
+  });
+  if (resolved) return resolved;
   if (note.authorEmail) {
     const local = note.authorEmail.split('@')[0];
     if (local) return local;

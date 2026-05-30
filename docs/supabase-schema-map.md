@@ -64,7 +64,7 @@ Access rule:
 
 Migration source:
 
-- Current ordered history in `supabase/migrations/`, including `20260208_000001_project_task_checks.sql`, `20260210_000002_portal_auth.sql`, estimate cleanup migrations, security hardening, and `20260510_000001_project_notes.sql` for the Activity tab notes table.
+- Current ordered history in `supabase/migrations/`, including `20260208_000001_project_task_checks.sql`, `20260210_000002_portal_auth.sql`, estimate cleanup migrations, security hardening, `20260510_000001_project_notes.sql` for the Activity tab notes table, and forward backfills such as the project-note author display-name cleanup.
 - Older root files such as `supabase/contacts_projects.sql` and `supabase/portal_schema.sql` are baseline/setup references, not the preferred path for new changes.
 
 ## Quotes, Invoices, Artifacts, And Job Packs
@@ -199,6 +199,7 @@ Tables/RPCs:
 - Email and automation: `email_templates`, `email_outbox`, `audit_events`, `tasks`, `design_package_tickets`, `followup_plans`, `followup_tasks`
 - Site-visit automation support: `site_visit_events`
 - Dashboard/supporting RPC: `dashboard_snapshot_v1()`
+- Personal dashboard tasks: `portal_dashboard_tasks`
 
 Primary write path:
 
@@ -206,12 +207,14 @@ Primary write path:
 - Portal automation runner under `apps/portal/lib/automation`.
 - Project action routes that enqueue or preview email/outbox entries.
 - Dashboard snapshot is read-oriented and should not become a generic write boundary.
+- Personal dashboard task writes go through staff-only dashboard task APIs under `apps/portal/app/api/dashboard/tasks`.
 
 Primary read path:
 
 - Marketing lead and enquiry route handlers.
 - Portal project snapshot and automation repos under `apps/portal/lib/repo/automationRepo.ts`.
 - Dashboard cached snapshot helper under `apps/portal/lib/dashboard/getDashboardSnapshotCached.ts`.
+- Dashboard data helpers under `apps/portal/lib/dashboard` read recent project-note activity and user-owned dashboard tasks.
 
 Access rule:
 
@@ -219,10 +222,12 @@ Access rule:
 - Email/outbox and audit writes are server-owned side effects.
 - Automation may use service-role access only on the server and only for intentional bypasses documented by the owning workflow.
 - Audit/supporting tables should stay append-oriented where possible.
+- Personal dashboard tasks are owned by `owner_id = auth.uid()` and are independent from automation/project workflow `tasks`.
 
 Migration source:
 
 - `supabase/enquiry_requests.sql`, `supabase/automation_phase_a.sql`, `supabase/email_templates_website_autoresponder.sql`, `supabase/dashboard_snapshot_v1.sql`, and security hardening.
+- Personal dashboard tasks use ordered migrations under `supabase/migrations`.
 - If a supporting table becomes part of a new first-class workflow, add an ordered migration and update this map plus the owning feature doc.
 
 ## Verification

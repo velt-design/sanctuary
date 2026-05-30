@@ -1,6 +1,5 @@
 import {
   buildAssemblyQuantityTakeoff,
-  buildHouseModelTopProjectionShapes,
   buildProjectReferenceShapes,
   buildTopProjectionViewModelFromScene,
   buildViewerSceneModel,
@@ -52,6 +51,7 @@ import {
   type ProjectHouseGeometryEntry,
 } from './projectHouseGeometryRegistry';
 import { buildProjectPergolaPlanShapesFromModules } from './projectPergolaPlanShapes';
+import { buildProjectPlanProjection } from './projectPlanProjection';
 import { buildProjectPergolaViewerSceneFromModules } from './projectPergolaViewerScene';
 import {
   buildObjectFirstPergolaSolveSources,
@@ -1261,18 +1261,9 @@ export function buildWorkbenchSolvedModel(input: {
   const projectDecks = mapProjectDecks(projectModel);
   const projectOpenings = mapProjectOpenings(projectModel);
   const calculatorInputs = resolveCalculatorInputsFromSnapshot(effectiveSnapshot);
-  const activeDrawingModuleByPergolaId =
-    input.activePergolaId
-      ? drawingModules.find((module) => module.input.pergolaId === input.activePergolaId) ?? null
-      : null;
   const objectFirstPergolaSources = buildObjectFirstPergolaSolveSources({
     projectModel,
     drawingModules,
-    preferredBaseModule:
-      activeDrawingModuleByPergolaId?.input ??
-      drawingModules[input.activeModuleIndex ?? 0]?.input ??
-      drawingModules[0]?.input ??
-      null,
   });
   const solveSources = buildWorkbenchProjectSolveSources({
     snapshot: input.snapshot,
@@ -1448,58 +1439,6 @@ export function buildWorkbenchSolvedProject(input: {
     trust: solvedModel.trust,
     geometryIdentity: solvedModel.geometryIdentity,
   };
-}
-
-function projectPergolaShapeIdentity(shape: GeometryTopProjectionShape): string | null {
-  const taggedPergolaId =
-    typeof shape.metadata?.pergolaId === 'string' ? shape.metadata.pergolaId : null;
-  return taggedPergolaId ?? shape.sourceObjectId ?? shape.sourceId ?? null;
-}
-
-function dedupeTopProjectionShapes(
-  shapes: ReadonlyArray<GeometryTopProjectionShape>,
-): GeometryTopProjectionShape[] {
-  const seen = new Set<string>();
-  const deduped: GeometryTopProjectionShape[] = [];
-  for (const shape of shapes) {
-    if (seen.has(shape.id)) continue;
-    seen.add(shape.id);
-    deduped.push(shape);
-  }
-  return deduped;
-}
-
-function buildProjectPlanProjection(input: {
-  projectHouseGeometries: ReadonlyArray<ProjectHouseGeometryEntry>;
-  projectPergolaPlanShapes: ReadonlyArray<GeometryTopProjectionShape>;
-  projectReferenceShapes: ReadonlyArray<GeometryTopProjectionShape>;
-}): GeometryTopProjectionViewModel | null {
-  const fullDetailPergolaSourceIds = new Set(
-    input.projectPergolaPlanShapes
-      .map(projectPergolaShapeIdentity)
-      .filter((value): value is string => Boolean(value)),
-  );
-  const houseShapes = input.projectHouseGeometries.flatMap((entry) => [
-    entry.referenceShape,
-    ...buildHouseModelTopProjectionShapes({
-      model: entry.model,
-    }),
-  ]);
-  const unresolvedPergolaReferences = input.projectReferenceShapes.filter((shape) => {
-    if (shape.sourceType !== 'pergola_reference') return false;
-    const pergolaId = projectPergolaShapeIdentity(shape);
-    return !pergolaId || !fullDetailPergolaSourceIds.has(pergolaId);
-  });
-  const shapes = dedupeTopProjectionShapes([
-    ...houseShapes,
-    ...input.projectPergolaPlanShapes,
-    ...unresolvedPergolaReferences,
-  ]);
-  if (shapes.length === 0) return null;
-  return buildTopProjectionViewModelFromScene(
-    { layers: [] },
-    { referenceShapes: shapes },
-  );
 }
 
 /**

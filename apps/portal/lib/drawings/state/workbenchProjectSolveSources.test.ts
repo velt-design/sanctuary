@@ -79,7 +79,6 @@ describe('workbench project solve sources', () => {
     const objectFirstPergolaSources = buildObjectFirstPergolaSolveSources({
       projectModel,
       drawingModules,
-      preferredBaseModule: drawingModules[0]?.input ?? null,
     });
     const sources = buildWorkbenchProjectSolveSources({
       snapshot,
@@ -197,7 +196,6 @@ describe('workbench project solve sources', () => {
       objectFirstPergolaSources: buildObjectFirstPergolaSolveSources({
         projectModel,
         drawingModules,
-        preferredBaseModule: drawingModules[0]?.input ?? null,
       }),
       effectiveSnapshot,
       baseInputs: resolveCalculatorInputsFromSnapshot(effectiveSnapshot),

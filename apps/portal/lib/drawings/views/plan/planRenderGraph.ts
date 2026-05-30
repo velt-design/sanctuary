@@ -1,5 +1,11 @@
 import type { GeometryTopProjectionShape } from '@sp/geometry';
 import type { DrawingWorkbenchVisibilityState } from '@/lib/drawings/state/drawingWorkbenchUiState';
+import {
+  planHouseFormOwner,
+  planShapeIsHouseRoofBody,
+  planShapeIsPlanHitTarget,
+  planShapeVisualOwner,
+} from './planShapeOwnership';
 
 export type ProjectionPlanLayer =
   | 'committedBodies'
@@ -61,7 +67,7 @@ export function topProjectionPlanLayer(shape: GeometryTopProjectionShape): Proje
   }
   if (shape.family === 'house') {
     if (shape.sourceType === 'house_reference' && shape.kind === 'footprint') {
-      return 'committedBodies';
+      return 'hitTargets';
     }
     if (
       (shape.sourceType === 'house_surface_solid' || shape.sourceType === 'house_surface') &&
@@ -105,14 +111,6 @@ export function topProjectionPlanLayer(shape: GeometryTopProjectionShape): Proje
   return null;
 }
 
-function houseShapeIsRoofBody(shape: GeometryTopProjectionShape): boolean {
-  return (
-    shape.family === 'house' &&
-    (shape.kind === 'roof' ||
-      (shape.sourceType === 'house_roof_material' && shape.kind === 'house_roof_material'))
-  );
-}
-
 export function topProjectionShapeIsCommittedBody(shape: GeometryTopProjectionShape): boolean {
   return topProjectionPlanLayer(shape) === 'committedBodies';
 }
@@ -137,22 +135,8 @@ export function topProjectionContextLineAllowedInProjectionOnlyModel(shape: Geom
   return shape.kind === 'opening_marker';
 }
 
-function topProjectionHouseFormOwner(shape: GeometryTopProjectionShape): string | null {
-  if (shape.family !== 'house') return null;
-  const taggedHouseFormId =
-    typeof shape.metadata?.houseFormId === 'string' ? shape.metadata.houseFormId : null;
-  if (taggedHouseFormId) return taggedHouseFormId;
-  if (shape.sourceType === 'house_reference') {
-    return shape.sourceObjectId ?? shape.sourceId ?? null;
-  }
-  return null;
-}
-
 export function topProjectionShapeVisualOwner(shape: GeometryTopProjectionShape): string {
-  if (shape.family === 'house' && shape.kind === 'deck') return `deck:${shape.sourceId ?? shape.sourceObjectId ?? shape.id}`;
-  if (shape.family === 'house') return `house:${topProjectionHouseFormOwner(shape) ?? 'unowned'}`;
-  if (shape.family === 'pergola') return `pergola:${shape.sourceObjectId ?? shape.sourceId ?? shape.id}`;
-  return `${shape.family}:${shape.sourceObjectId ?? shape.sourceId ?? shape.id}`;
+  return planShapeVisualOwner(shape);
 }
 
 function houseFootprintHasMatchingRoof(input: {
@@ -160,8 +144,15 @@ function houseFootprintHasMatchingRoof(input: {
   roofOwners: ReadonlySet<string>;
   hasUnownedRoof: boolean;
 }): boolean {
-  const owner = topProjectionHouseFormOwner(input.footprint);
+  const owner = planHouseFormOwner(input.footprint);
   return owner ? input.roofOwners.has(owner) : input.hasUnownedRoof;
+}
+
+function withLayer<TItem extends { shape: GeometryTopProjectionShape }>(
+  item: ProjectionPlanGraphItem<TItem>,
+  layer: ProjectionPlanLayer,
+): ProjectionPlanGraphItem<TItem> {
+  return { ...item, layer };
 }
 
 export function buildProjectionPlanRenderGraph<TItem extends { shape: GeometryTopProjectionShape }>(
@@ -179,6 +170,8 @@ export function buildProjectionPlanRenderGraph<TItem extends { shape: GeometryTo
         graph.contextLines.push({ ...item, layer });
       } else if (layer === 'detailLines') {
         graph.detailLines.push({ ...item, layer });
+      } else if (layer === 'hitTargets') {
+        graph.hitTargets.push({ ...item, layer });
       } else {
         graph.suppressed.push(item);
       }
@@ -199,37 +192,47 @@ export function buildProjectionPlanRenderGraph<TItem extends { shape: GeometryTo
   const houseRoofOwners = new Set<string>();
   let hasUnownedHouseRoofCommittedBody = false;
   for (const { shape } of baseGraph.committedBodies) {
-    if (!houseShapeIsRoofBody(shape)) continue;
-    const owner = topProjectionHouseFormOwner(shape);
+    if (!planShapeIsHouseRoofBody(shape)) continue;
+    const owner = planHouseFormOwner(shape);
     if (owner) houseRoofOwners.add(owner);
     else hasUnownedHouseRoofCommittedBody = true;
   }
-  // Drop redundant `house_surface[_solid] + footprint` shapes when a roof
-  // body already represents the same outline; keep the canonical
-  // `house_reference + footprint`. That reference shape MUST stay in
-  // committedBodies because the Plan canvas derives `hitTargets` from
-  // this array (`filterPlanHitTargets(committedBodies)`), and the
-  // house's clickable polygon is the canonical reference footprint.
-  // Visual-only deduplication of the reference vs. the roof outline
-  // happens at render time in `PlanCommittedBodyLayer`
-  // (`planVisibleBodyFilter`) and the Sheet renderer in
-  // `TopProjectionLayerRenderer` -- not here, so the hit-target chain
-  // never loses its anchor. See `docs/decision-log.md` 2026-05-13
-  // "Plan Rendering -- Suppress House Footprint When Roof Body Renders".
-  const committedBodies = baseGraph.committedBodies.filter(
-    ({ shape }) =>
-      !(
-        shape.family === 'house' &&
-        shape.kind === 'footprint' &&
-        shape.sourceType !== 'house_reference' &&
-        houseFootprintHasMatchingRoof({
-          footprint: shape,
-          roofOwners: houseRoofOwners,
-          hasUnownedRoof: hasUnownedHouseRoofCommittedBody,
-        })
-      ) &&
-      (!options?.projectionOnlyModelSpace || topProjectionShapeAllowedInProjectionOnlyModel(shape)),
-  );
+  const houseReferenceFallbackBodies = baseGraph.hitTargets
+    .filter(({ shape }) => {
+      if (shape.family !== 'house' || shape.kind !== 'footprint') return false;
+      if (shape.sourceType !== 'house_reference') return false;
+      return !houseFootprintHasMatchingRoof({
+        footprint: shape,
+        roofOwners: houseRoofOwners,
+        hasUnownedRoof: hasUnownedHouseRoofCommittedBody,
+      });
+    })
+    .map((item) => withLayer(item, 'committedBodies'));
+  const committedBodies = [
+    ...baseGraph.committedBodies.filter(
+      ({ shape }) =>
+        !(
+          shape.family === 'house' &&
+          shape.kind === 'footprint' &&
+          shape.sourceType !== 'house_reference' &&
+          houseFootprintHasMatchingRoof({
+            footprint: shape,
+            roofOwners: houseRoofOwners,
+            hasUnownedRoof: hasUnownedHouseRoofCommittedBody,
+          })
+        ) &&
+        (!options?.projectionOnlyModelSpace || topProjectionShapeAllowedInProjectionOnlyModel(shape)),
+    ),
+    ...houseReferenceFallbackBodies.filter(
+      ({ shape }) => !options?.projectionOnlyModelSpace || topProjectionShapeAllowedInProjectionOnlyModel(shape),
+    ),
+  ];
+  const hitTargets = [
+    ...baseGraph.hitTargets,
+    ...committedBodies
+      .filter(({ shape }) => shape.sourceType !== 'house_reference' && planShapeIsPlanHitTarget(shape))
+      .map((item) => withLayer(item, 'hitTargets')),
+  ];
   const contextLines = options?.projectionOnlyModelSpace
     ? baseGraph.contextLines.filter(({ shape }) => topProjectionContextLineAllowedInProjectionOnlyModel(shape))
     : baseGraph.contextLines;
@@ -238,7 +241,7 @@ export function buildProjectionPlanRenderGraph<TItem extends { shape: GeometryTo
     committedBodies,
     contextLines,
     detailLines,
-    hitTargets: [],
+    hitTargets,
     selectionOutlines: [],
     dimensions: [],
     dragPreview: [],

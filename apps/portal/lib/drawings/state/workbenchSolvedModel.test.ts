@@ -24,6 +24,14 @@ function getFixtureSnapshot(name: Parameters<typeof getSanctuaryGeometryWorkbenc
   return fixture.snapshot;
 }
 
+function getFixture(name: Parameters<typeof getSanctuaryGeometryWorkbenchFixture>[0]) {
+  const fixture = getSanctuaryGeometryWorkbenchFixture(name);
+  if (!fixture) {
+    throw new Error(`Missing ${name} workbench fixture.`);
+  }
+  return fixture;
+}
+
 function houseReferencePolygon(
   model: WorkbenchSolvedModel,
   houseFormId: string,
@@ -150,6 +158,18 @@ function projectPlanHouseShapeIds(
       return owner === houseFormId;
     })
     .map((shape) => shape.id)
+    .sort();
+}
+
+function projectPergolaPlanShapeIds(model: WorkbenchSolvedModel): string[] {
+  return model.projectPergolaPlanShapes
+    .map((shape) => shape.id)
+    .sort();
+}
+
+function readyProjectSceneObjectIds(model: WorkbenchSolvedModel): string[] {
+  return readyProjectScene(model)
+    .layers.flatMap((layer) => layer.objects.map((object) => object.id))
     .sort();
 }
 
@@ -442,6 +462,57 @@ describe('buildWorkbenchSolvedModel geometry artifact', () => {
       activePergolaId: 'pergola-2',
     });
     expect(solvedProject.projectPlanProjection).toBe(pergolaTwoActive.projectPlanProjection);
+  });
+
+  it('keeps transient pergola solve inputs and project render owners stable when active pergola changes', () => {
+    const fixture = getFixture('multi-house-u-two-pergola');
+
+    const pergolaOneActive = buildWorkbenchSolvedModel({
+      snapshot: fixture.snapshot,
+      draft: fixture.draft,
+      moduleLabels: fixture.moduleLabels,
+      activePergolaId: 'pergola-1',
+    });
+    const pergolaTwoActive = buildWorkbenchSolvedModel({
+      snapshot: fixture.snapshot,
+      draft: fixture.draft,
+      moduleLabels: fixture.moduleLabels,
+      activePergolaId: 'pergola-2',
+    });
+    const pergolaTwoFromPergolaOneActive = pergolaOneActive.modules.find(
+      (module) => module.moduleInput.pergolaId === 'pergola-2',
+    );
+    const pergolaTwoFromPergolaTwoActive = pergolaTwoActive.modules.find(
+      (module) => module.moduleInput.pergolaId === 'pergola-2',
+    );
+
+    expect(pergolaTwoFromPergolaOneActive?.sourceKind).toBe('object_first_pergola');
+    expect(pergolaTwoFromPergolaTwoActive?.sourceKind).toBe('object_first_pergola');
+    expect(pergolaTwoFromPergolaTwoActive?.moduleInput).toEqual(
+      pergolaTwoFromPergolaOneActive?.moduleInput,
+    );
+    expect(pergolaTwoFromPergolaTwoActive?.moduleInput).toMatchObject({
+      pergolaId: 'pergola-2',
+      pergolaStyle: 'gable',
+      internalRoofType: 'gable',
+      roofMaterial: 'acrylic',
+      roofPitchDeg: '25',
+      postConnectionType: 'slab_anchors',
+      lengthM: '5.1',
+      projectionM: '2.4',
+    });
+    expect(projectPergolaPlanShapeIds(pergolaTwoActive)).toEqual(
+      projectPergolaPlanShapeIds(pergolaOneActive),
+    );
+    expect(projectPlanHouseShapeIds(pergolaTwoActive, 'house-main')).toEqual(
+      projectPlanHouseShapeIds(pergolaOneActive, 'house-main'),
+    );
+    expect(projectPlanHouseShapeIds(pergolaTwoActive, 'house-form-2')).toEqual(
+      projectPlanHouseShapeIds(pergolaOneActive, 'house-form-2'),
+    );
+    expect(readyProjectSceneObjectIds(pergolaTwoActive)).toEqual(
+      readyProjectSceneObjectIds(pergolaOneActive),
+    );
   });
 
   it('skips invalid pergolas from the full project-wide 3D aggregation', () => {

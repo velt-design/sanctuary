@@ -502,6 +502,7 @@ export default function PlanViewport({
           committedBodies={renderModel.committedBodies}
           contextLines={renderModel.contextLines}
           detailLines={renderModel.detailLines}
+          hitTargetItems={renderModel.hitTargetItems}
           selectionHaloItems={renderModel.selectionHaloItems}
           hoverHaloItems={renderModel.hoverHaloItems}
           onHoverShape={handleHoverShape}

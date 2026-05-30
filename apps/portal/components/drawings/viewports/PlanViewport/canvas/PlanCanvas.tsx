@@ -36,7 +36,6 @@ import type { EdgeDragHover, EdgeDragPreview } from '../tools/EdgeDragTool';
 import type { MoveToolPreview } from '../tools/MoveTool';
 import styles from './PlanCanvas.module.css';
 import type { PlanLayout } from './planLayout';
-import { filterPlanHitTargets } from './planHitTargetFilter';
 import type { Point2 } from './polygonEdgeMath';
 import type { PlanRenderItem } from './planRenderItem';
 
@@ -48,6 +47,7 @@ type PlanCanvasProps = {
   committedBodies: PlanRenderItem[];
   contextLines: PlanRenderItem[];
   detailLines: PlanRenderItem[];
+  hitTargetItems: PlanRenderItem[];
   selectionHaloItems: PlanRenderItem[];
   /**
    * Cross-viewport hover halo items. Empty when no external hover (e.g. 3D
@@ -95,6 +95,7 @@ export function PlanCanvas({
   committedBodies,
   contextLines,
   detailLines,
+  hitTargetItems,
   selectionHaloItems,
   hoverHaloItems = EMPTY_HOVER_HALO_ITEMS,
   onHoverShape,
@@ -112,7 +113,6 @@ export function PlanCanvas({
   const dispatcher = useToolDispatcher();
   const { hoveredShape, onShapeEnter, onShapeLeave } = useHoveredShape();
   const panZoom = usePanZoom({ transform, onTransformChange });
-  const hitTargetItems = useMemo(() => filterPlanHitTargets(committedBodies), [committedBodies]);
   const projectContextHitTargetItems = useMemo<PlanRenderItem[]>(
     () =>
       projectContextShapes
@@ -290,6 +290,7 @@ export function PlanCanvas({
         data-plan-committed-body-count={committedBodies.length}
         data-plan-context-line-count={contextLines.length}
         data-plan-detail-line-count={detailLines.length}
+        data-plan-hit-target-count={allHitTargetItems.length}
         data-plan-selection-halo-count={selectionHaloItems.length}
         data-plan-dimension-count={dimensions.length}
         data-plan-hover-shape-id={hoveredShape?.shapeId ?? ''}

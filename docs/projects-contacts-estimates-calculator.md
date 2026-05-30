@@ -148,7 +148,8 @@ The bar reads from `estimateMetasByProjectQueryOptions`, `quoteVersionsByProject
 Notes data:
 
 - Stored in `public.project_notes` (`apps/portal/lib/projectNotes/server.ts` is the domain helper). Snapshot of latest 50 non-deleted notes is preloaded in `ProjectPageSnapshot.notes`.
-- Author info is denormalized at write time (`author_id`, `author_email`, `author_display_name`) so reads do not need to join `auth.users`.
+- The dashboard `Recent Activity` card reads the latest non-deleted project notes across projects as a read-only feed. Creating, editing, and deleting project notes remains owned by the project page note routes and local-first mutation keys.
+- Author info is denormalized at write time (`author_id`, `author_email`, `author_display_name`) so reads do not need to join `auth.users`; display-name fallback rules live in `apps/portal/lib/projectNotes/types.ts` so project pages and dashboard activity resolve authors consistently.
 - Soft delete via `deleted_at`; UI list filters out deleted notes.
 
 Permissions:

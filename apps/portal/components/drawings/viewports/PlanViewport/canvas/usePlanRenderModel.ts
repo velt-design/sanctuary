@@ -29,6 +29,7 @@ export type PlanRenderModel = {
   committedBodies: PlanRenderItem[];
   contextLines: PlanRenderItem[];
   detailLines: PlanRenderItem[];
+  hitTargetItems: PlanRenderItem[];
   selectionHaloItems: PlanRenderItem[];
   /**
    * Cross-viewport hover halo. Populated when an external surface (e.g. 3D
@@ -204,7 +205,8 @@ export function usePlanRenderModel({
     const committedBodies = renderGraph.committedBodies as PlanRenderItem[];
     const contextLines = renderGraph.contextLines as PlanRenderItem[];
     const detailLines = renderGraph.detailLines as PlanRenderItem[];
-    const matchedItems = committedBodies.filter(({ shape }) =>
+    const hitTargetItems = renderGraph.hitTargets as PlanRenderItem[];
+    const matchedItems = hitTargetItems.filter(({ shape }) =>
       activeObjectMatchesPlanShape(activeObjectRef, shape),
     );
     const activeFamily = (activeObjectRef?.family ?? null) as ActiveObjectFamily | null;
@@ -234,7 +236,7 @@ export function usePlanRenderModel({
       hoveredObjectRef.objectId === activeObjectRef.objectId;
     const hoverHaloItems: PlanRenderItem[] =
       hoveredObjectRef && !hoverIsActive
-        ? committedBodies.filter(({ shape }) =>
+        ? hitTargetItems.filter(({ shape }) =>
             activeObjectMatchesPlanShape(hoveredObjectRef, shape),
           )
         : [];
@@ -244,6 +246,7 @@ export function usePlanRenderModel({
       committedBodies,
       contextLines,
       detailLines,
+      hitTargetItems,
       selectionHaloItems,
       hoverHaloItems,
     };

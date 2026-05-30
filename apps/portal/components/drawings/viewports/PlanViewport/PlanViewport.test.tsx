@@ -387,11 +387,30 @@ describe('PlanViewport', () => {
         ],
         metadata: { houseFormId: 'house-form-2' },
       });
+      const projectHouseTwoReference = makeShape({
+        id: 'house_reference:house-form-2',
+        sourceObjectId: 'house-form-2',
+        sourceId: 'house-form-2',
+        sourceType: 'house_reference',
+        family: 'house',
+        kind: 'footprint',
+        polygon: [
+          { x: 2000, y: 0 },
+          { x: 3000, y: 0 },
+          { x: 3000, y: 1000 },
+          { x: 2000, y: 1000 },
+        ],
+        metadata: { houseFormId: 'house-form-2', isCanonicalOutline: true },
+      });
 
       const markup = renderToStaticMarkup(
         <PlanViewport
           artifact={makeArtifact([activeModuleHouseRoof])}
-          projectionOverride={makeProjection([projectHouseTwoRoof, projectHouseTwoRoofMaterial])}
+          projectionOverride={makeProjection([
+            projectHouseTwoReference,
+            projectHouseTwoRoof,
+            projectHouseTwoRoofMaterial,
+          ])}
           activeObjectRef={{ family: 'house_forms', objectId: 'house-form-2' }}
           viewportTransform={IDENTITY_TRANSFORM}
           onViewportTransformChange={() => undefined}
@@ -400,7 +419,9 @@ describe('PlanViewport', () => {
 
       expect(markup).toContain('data-plan-shape-id="house_surface_solid:house-form-2:project-roof"');
       expect(markup).toContain('data-plan-shape-id="house_roof_material:house-form-2:project-roof-material"');
-      expect(markup).toContain('data-plan-selection-shape-id="house_surface_solid:house-form-2:project-roof"');
+      expect(markup).not.toContain('data-plan-shape-id="house_reference:house-form-2"');
+      expect(markup).toContain('data-plan-hit-shape-id="house_reference:house-form-2"');
+      expect(markup).toContain('data-plan-selection-shape-id="house_reference:house-form-2"');
       expect(markup).not.toContain('data-plan-hit-shape-id="house_roof_material:house-form-2:project-roof-material"');
       expect(markup).not.toContain('data-plan-shape-id="house_surface_solid:active-module-house-roof"');
     });

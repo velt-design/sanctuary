@@ -1,4 +1,5 @@
 import { makeDefaultModule } from '@/app/staff/calculator/calculatorInputs';
+import { makeDefaultFlashings } from '@/app/staff/calculator/calculatorFlashings';
 import type { CalculatorInputs, CalculatorModuleInputs } from '@/lib/types/calculator';
 import type { EstimateDrawingModule } from '@/lib/estimates/moduleDrawing';
 import type {
@@ -12,11 +13,6 @@ export type ObjectFirstPergolaSolveSource = {
   pergola: PergolaObjectModel;
   moduleInput: CalculatorModuleInputs;
 };
-
-function cloneModule(module: CalculatorModuleInputs): CalculatorModuleInputs {
-  if (typeof structuredClone === 'function') return structuredClone(module);
-  return JSON.parse(JSON.stringify(module)) as CalculatorModuleInputs;
-}
 
 function nonBlank(value: string | null | undefined): string | null {
   if (typeof value !== 'string') return null;
@@ -78,12 +74,23 @@ function resolveConnectionFields(input: {
   }
 }
 
+function makeStableTransientFlashings(module: CalculatorModuleInputs, pergolaId: string): CalculatorModuleInputs['flashings'] {
+  const flashings = makeDefaultFlashings(module);
+  return {
+    rows: flashings.rows.map((row, index) => ({
+      ...row,
+      id:
+        index === 0
+          ? `object-first:${pergolaId}:primary-flashing`
+          : `object-first:${pergolaId}:flashing-${index + 1}`,
+    })),
+  };
+}
+
 function buildTransientModuleInput(input: {
   pergola: PergolaObjectModel;
-  baseModule?: CalculatorModuleInputs | null;
 }): CalculatorModuleInputs {
-  const hasBaseModule = Boolean(input.baseModule);
-  const module = input.baseModule ? cloneModule(input.baseModule) : makeDefaultModule(input.pergola.id);
+  const module = makeDefaultModule(input.pergola.id);
   const geometry = input.pergola.geometry ?? null;
 
   Object.assign(module, resolvePergolaFamilyFields(input.pergola.family));
@@ -98,21 +105,13 @@ function buildTransientModuleInput(input: {
 
   module.pergolaId = input.pergola.id;
   module.attachmentSide = input.pergola.side;
-  module.lengthM = nonBlank(geometry?.dimensions?.lengthM) ?? (hasBaseModule ? nonBlank(module.lengthM) : null) ?? '6';
-  module.projectionM =
-    nonBlank(geometry?.dimensions?.projectionM) ?? (hasBaseModule ? nonBlank(module.projectionM) : null) ?? '3';
-  module.hipCornerLengthBM =
-    nonBlank(geometry?.dimensions?.hipCornerLengthBM) ??
-    (hasBaseModule ? nonBlank(module.hipCornerLengthBM) : null) ??
-    '0';
+  module.lengthM = nonBlank(geometry?.dimensions?.lengthM) ?? module.lengthM;
+  module.projectionM = nonBlank(geometry?.dimensions?.projectionM) ?? module.projectionM;
+  module.hipCornerLengthBM = nonBlank(geometry?.dimensions?.hipCornerLengthBM) ?? module.hipCornerLengthBM;
   module.hipCornerProjectionBM =
-    nonBlank(geometry?.dimensions?.hipCornerProjectionBM) ??
-    (hasBaseModule ? nonBlank(module.hipCornerProjectionBM) : null) ??
-    '0';
-  module.roofMaterial =
-    geometry?.roof?.material ?? (hasBaseModule ? module.roofMaterial : 'acrylic');
-  module.roofPitchDeg =
-    nonBlank(geometry?.roof?.pitchDeg) ?? (hasBaseModule ? nonBlank(module.roofPitchDeg) : null) ?? '5';
+    nonBlank(geometry?.dimensions?.hipCornerProjectionBM) ?? module.hipCornerProjectionBM;
+  module.roofMaterial = geometry?.roof?.material ?? module.roofMaterial;
+  module.roofPitchDeg = nonBlank(geometry?.roof?.pitchDeg) ?? module.roofPitchDeg;
   module.boxPerimeterEnabled = geometry?.roof?.boxPerimeterEnabled ?? module.boxPerimeterEnabled;
   module.mixedAcrylicBaysMain =
     nonBlank(geometry?.roof?.mixedAcrylicBaysMain) ?? module.mixedAcrylicBaysMain;
@@ -124,15 +123,10 @@ function buildTransientModuleInput(input: {
   module.gableHouseEdgeGutter = geometry?.gable?.houseEaveGutterMode ?? module.gableHouseEdgeGutter;
   module.gableOuterEdgeGutter = geometry?.gable?.outerEaveGutterMode ?? module.gableOuterEdgeGutter;
   module.postConnectionType =
-    geometry?.supports?.postConnectionType ??
-    (hasBaseModule ? module.postConnectionType : 'slab_anchors');
-  module.ground = geometry?.supports?.ground ?? (hasBaseModule ? module.ground : 'easy');
-  module.postCount =
-    nonBlank(geometry?.supports?.postCount) ?? (hasBaseModule ? nonBlank(module.postCount) : null) ?? '4';
-  module.postCutHeightM =
-    nonBlank(geometry?.supports?.postCutHeightM) ??
-    (hasBaseModule ? nonBlank(module.postCutHeightM) : null) ??
-    '2.4';
+    geometry?.supports?.postConnectionType ?? module.postConnectionType;
+  module.ground = geometry?.supports?.ground ?? module.ground;
+  module.postCount = nonBlank(geometry?.supports?.postCount) ?? module.postCount;
+  module.postCutHeightM = nonBlank(geometry?.supports?.postCutHeightM) ?? module.postCutHeightM;
   module.overrides = {
     ...(module.overrides ?? {}),
     ...(geometry?.overrides ?? {}),
@@ -142,6 +136,8 @@ function buildTransientModuleInput(input: {
     module.gableHouseEdgeGutter = 'our';
     module.gableOuterEdgeGutter = 'our';
   }
+
+  module.flashings = makeStableTransientFlashings(module, input.pergola.id);
 
   return module;
 }
@@ -157,7 +153,6 @@ function moduleBackedPergolaIds(drawingModules: ReadonlyArray<EstimateDrawingMod
 export function buildObjectFirstPergolaSolveSources(input: {
   projectModel: WorkbenchProjectModel;
   drawingModules: ReadonlyArray<EstimateDrawingModule>;
-  preferredBaseModule?: CalculatorModuleInputs | null;
 }): ObjectFirstPergolaSolveSource[] {
   const backedPergolaIds = moduleBackedPergolaIds(input.drawingModules);
   return input.projectModel.pergolas
@@ -167,7 +162,6 @@ export function buildObjectFirstPergolaSolveSources(input: {
       pergola,
       moduleInput: buildTransientModuleInput({
         pergola,
-        baseModule: input.preferredBaseModule ?? input.drawingModules[0]?.input ?? null,
       }),
     }));
 }
