@@ -86,12 +86,11 @@ export default function WorkbenchInspectorHost({
       setUi((current) =>
         buildPergolaSelectionUiState({
           current,
-          modules: store.persisted.modules,
           pergolaId: defaultPergolaId,
         }),
       );
     },
-    [defaultPergolaId, objectSelectionActions, setUi, store.persisted.modules],
+    [defaultPergolaId, objectSelectionActions, setUi],
   );
 
   const handleCanonicalPergolaSelection = useCallback(
@@ -99,12 +98,11 @@ export default function WorkbenchInspectorHost({
       setUi((current) =>
         buildPergolaSelectionUiState({
           current,
-          modules: store.persisted.modules,
           pergolaId,
         }),
       );
     },
-    [setUi, store.persisted.modules],
+    [setUi],
   );
 
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -271,25 +269,28 @@ export default function WorkbenchInspectorHost({
       );
     }
     const pergolaInspectorModules = store.persisted.modules.map((module) => ({
-      id: module.id,
+      id: module.drawingModule.input.pergolaId ?? module.id,
       label: module.label,
-      pergolaId: module.drawingModule.input.pergolaId ?? null,
+    }));
+    const perObjectPergolaOptions = store.derived.solvedProject.pergolas.map((pergola) => ({
+      id: pergola.id,
+      label: pergola.label,
     }));
     return (
       <div data-active-workbench-object={activeObjectKey}>
         <PergolaInspector
           activePergolaModel={activePergolaModel}
           activeModuleInput={activeModuleInput}
-          activeModuleIndex={store.derived.activeModuleIndex}
           activeModuleLabel={store.derived.activeModuleLabel}
+          activePergolaId={store.derived.activePergola?.id ?? store.ui.activePergolaId}
           disabled={isLocked}
           geometryState={geometryEditState}
           houseAssembly={store.derived.houseAssembly}
-          modules={pergolaInspectorModules}
+          modules={perObjectPergolaOptions.length ? perObjectPergolaOptions : pergolaInspectorModules}
           supportsSanctuaryEditing={supportsSanctuaryEditing}
           view={store.ui.activeView}
           onOpenHouseForms={() => handleRailTabSelect('house_forms')}
-          onSelectPergolaByModule={handleCanonicalPergolaSelection}
+          onSelectPergola={handleCanonicalPergolaSelection}
           onStartDrawOutline={objectSelectionActions.startDrawOutlineEditor}
           onCommitGeometryEdit={!isLocked ? objectWorkbenchActions.commitGeometryIntent : undefined}
           onCommitAttachment={!isLocked ? objectWorkbenchActions.commitSharedPergolaAttachment : undefined}

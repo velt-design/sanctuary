@@ -134,8 +134,13 @@ export default function DesignWorkbenchFixtureClient({
   const activeSelectionFamily =
     store.ui.activeRailTab === 'diagnostics' ? store.ui.activeObjectFamily : store.ui.activeRailTab;
   const canonicalWorkbenchDisplayMode = activeSelectionFamily === 'pergolas' ? 'pergolas' : 'house';
-  const modelViewportSurfaceKey = `${store.derived.activeModuleIndex}:${store.ui.activeView}`;
-  const geometryViewportSurfaceKey = `${canonicalWorkbenchDisplayMode}:${store.derived.activeModuleIndex}`;
+  const activePergolaSurfaceKey =
+    store.ui.activePergolaId ??
+    store.derived.activePergola?.id ??
+    activeModule?.drawingModule.input.pergolaId ??
+    'none';
+  const modelViewportSurfaceKey = `${activePergolaSurfaceKey}:${store.ui.activeView}`;
+  const geometryViewportSurfaceKey = `${canonicalWorkbenchDisplayMode}:${activePergolaSurfaceKey}`;
   const activeModelViewportTransform =
     modelViewportTransformsByKey[modelViewportSurfaceKey] ?? DEFAULT_MODEL_VIEWPORT_TRANSFORM;
   const activeGeometryViewportState =
@@ -207,6 +212,7 @@ export default function DesignWorkbenchFixtureClient({
             onSelectObjectRef={(ref) =>
               setUi((current) => ({
                 ...current,
+                ...(ref.family === 'pergolas' ? { activePergolaId: ref.objectId } : {}),
                 ...buildDrawingWorkbenchObjectSelectionState({
                   activeRailTab: ref.family,
                   activeObjectRef: ref,
@@ -242,10 +248,14 @@ export default function DesignWorkbenchFixtureClient({
             modules={modules}
             activeModuleIndex={store.derived.activeModuleIndex}
             onActiveModuleIndexChange={(index) =>
-              setUi((current) => ({
-                ...current,
-                activeModuleIndex: index,
-              }))
+              setUi((current) => {
+                const selectedPergolaId = store.persisted.modules[index]?.drawingModule.input.pergolaId ?? null;
+                return {
+                  ...current,
+                  activeModuleIndex: index,
+                  activePergolaId: selectedPergolaId ?? current.activePergolaId,
+                };
+              })
             }
             view={store.ui.activeView}
             onViewChange={(view) =>

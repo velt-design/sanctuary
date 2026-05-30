@@ -18,9 +18,8 @@ import type { ObjectWorkbenchSelectionActions } from './useObjectWorkbenchSelect
  * TREE rail. Inspector panel building moved to `WorkbenchInspectorHost`
  * (right-side `RightInspectorPanel`); this host now only:
  *   - forwards visibility + object-ref selection state to the rail
- *   - bridges pergola row clicks into the legacy `activeModuleIndex` so
- *     downstream consumers (sheet preview, viewport keys, etc.) that still
- *     index by module position stay in sync
+ *   - writes pergola row clicks into the canonical `activePergolaId`; the
+ *     store derives the temporary module-index compatibility projection
  *   - wires the rail's inline "+ Add structure" affordance
  *
  * `activeRailTab` and `onSelectRailTab` are gone — the rail no longer has
@@ -51,12 +50,11 @@ export default function ObjectWorkbenchRailHost({
       setUi((current) =>
         buildPergolaSelectionUiState({
           current,
-          modules: store.persisted.modules,
           pergolaId,
         }),
       );
     },
-    [setUi, store.persisted.modules],
+    [setUi],
   );
 
   const handleRailObjectSelect = useCallback(

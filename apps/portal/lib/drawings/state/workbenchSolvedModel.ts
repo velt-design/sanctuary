@@ -1222,6 +1222,7 @@ export function buildWorkbenchSolvedModel(input: {
   ignoreModuleResults?: boolean;
   moduleLabels?: string[];
   activeModuleIndex?: number;
+  activePergolaId?: string | null;
   geometryIdentity?: WorkbenchGeometryIdentity | null;
   projectModel?: WorkbenchProjectModel | null;
   drawingModules?: EstimateDrawingModule[];
@@ -1249,11 +1250,18 @@ export function buildWorkbenchSolvedModel(input: {
   const projectDecks = mapProjectDecks(projectModel);
   const projectOpenings = mapProjectOpenings(projectModel);
   const calculatorInputs = resolveCalculatorInputsFromSnapshot(effectiveSnapshot);
+  const activeDrawingModuleByPergolaId =
+    input.activePergolaId
+      ? drawingModules.find((module) => module.input.pergolaId === input.activePergolaId) ?? null
+      : null;
   const objectFirstPergolaSources = buildObjectFirstPergolaSolveSources({
     projectModel,
     drawingModules,
     preferredBaseModule:
-      drawingModules[input.activeModuleIndex ?? 0]?.input ?? drawingModules[0]?.input ?? null,
+      activeDrawingModuleByPergolaId?.input ??
+      drawingModules[input.activeModuleIndex ?? 0]?.input ??
+      drawingModules[0]?.input ??
+      null,
   });
   const solveSources = buildWorkbenchProjectSolveSources({
     snapshot: input.snapshot,
@@ -1289,7 +1297,9 @@ export function buildWorkbenchSolvedModel(input: {
       projectOpenings,
     }),
   );
-  const activeModule = modules[input.activeModuleIndex ?? 0] ?? null;
+  const activeModule = input.activePergolaId
+    ? modules.find((module) => module.moduleInput.pergolaId === input.activePergolaId) ?? null
+    : modules[input.activeModuleIndex ?? 0] ?? null;
   const inactiveMessage = activeModule ? null : resolveInactiveSolvedModelMessage(input);
   const projectReferenceShapes = buildProjectReferenceShapesFromModules(
     modules,

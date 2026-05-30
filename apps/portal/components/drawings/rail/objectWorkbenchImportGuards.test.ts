@@ -79,7 +79,7 @@ const OBJECT_WORKBENCH_RAIL_INSPECTOR_STATE_BOUNDARY_FILES = [
   path.join('apps', 'portal', 'lib', 'drawings', 'interactions', 'deckInteractionContract.ts'),
 ];
 const FLAT_COMPATIBILITY_DERIVED_FIELD_READ =
-  /\b[A-Za-z_$][\w$]*\.derived\.(?:house|houseCount|decks|openings|activeDeck|activeDeckId|activeOpening|activeOpeningId|pergolas|activePergola|activePergolaId|roofForm|roofReviewStatus|roofValidationStatus|roofValidationCode|roofValidationMessage|roofApproximationReasons|roofProvenance|roofGeometryKind|roofAppendageEnabled|roofAppendageStatus|roofAppendageSupportedHostEdges|roofAppendageSupportReason|migrationWarnings|migrationWarningCount|houseIsLowConfidence)\b/;
+  /\b[A-Za-z_$][\w$]*\.derived\.(?:house|houseCount|decks|openings|activeDeck|activeDeckId|activeOpening|activeOpeningId|pergolas|roofForm|roofReviewStatus|roofValidationStatus|roofValidationCode|roofValidationMessage|roofApproximationReasons|roofProvenance|roofGeometryKind|roofAppendageEnabled|roofAppendageStatus|roofAppendageSupportedHostEdges|roofAppendageSupportReason|migrationWarnings|migrationWarningCount|houseIsLowConfidence)\b/;
 const REMOVED_DERIVED_COMPATIBILITY_BRIDGE_READ =
   /\b[A-Za-z_$][\w$]*\.derived\.compatibilityBridge\b/;
 const FLAT_PERSISTED_COMPATIBILITY_PROJECT_MODEL_READ =
@@ -350,7 +350,7 @@ describe('object workbench import guards', () => {
         const importsHouseFirstModel = /from ['"][^'"]*houseFirstWorkbenchModel['"]/.test(source);
         const importsConfiguratorRail = /from ['"][^'"]*ConfiguratorRail['"]/.test(source);
         const readsCompatibilityUiSelection =
-          /\b(?:ui|current|store\.ui)\.(?:workbenchMode|activeHouseSelection|activePergolaId)\b/.test(source);
+          /\b(?:ui|current|store\.ui)\.(?:workbenchMode|activeHouseSelection)\b/.test(source);
         const readsFlatCompatibilityDerivedField = FLAT_COMPATIBILITY_DERIVED_FIELD_READ.test(source);
         const readsFlatPersistedCompatibilityModel = FLAT_PERSISTED_COMPATIBILITY_PROJECT_MODEL_READ.test(source);
         const readsPersistedCompatibilityBridge = REMOVED_PERSISTED_COMPATIBILITY_BRIDGE_READ.test(source);

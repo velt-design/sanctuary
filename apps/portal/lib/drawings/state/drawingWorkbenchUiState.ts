@@ -45,6 +45,7 @@ export type DrawingWorkbenchRailTab = WorkbenchObjectFamily | 'diagnostics';
 
 export type DrawingWorkbenchUiState = {
   activeModuleIndex: number;
+  activePergolaId: string | null;
   activeRailTab: DrawingWorkbenchRailTab;
   activeObjectFamily: WorkbenchObjectFamily;
   activeObjectRef: WorkbenchObjectRef;
@@ -89,6 +90,7 @@ export type DrawingWorkbenchBridgeTargetSelectionInput = {
 function buildDefaultDrawingWorkbenchUiState(): DrawingWorkbenchUiState {
   return {
     activeModuleIndex: 0,
+    activePergolaId: null,
     activeRailTab: 'house_forms',
     activeObjectFamily: 'house_forms',
     activeObjectRef: { family: 'house_forms', objectId: null },
@@ -114,7 +116,6 @@ function splitUiStateOverrides(overrides: DrawingWorkbenchUiStateOverrides): {
   const {
     workbenchMode,
     activeHouseSelection,
-    activePergolaId,
     ...uiOverrides
   } = overrides;
   return {
@@ -122,7 +123,7 @@ function splitUiStateOverrides(overrides: DrawingWorkbenchUiStateOverrides): {
     compatibilityOverrides: {
       workbenchMode,
       activeHouseSelection,
-      activePergolaId,
+      activePergolaId: workbenchMode === 'pergolas' ? uiOverrides.activePergolaId : undefined,
     },
   };
 }
@@ -480,7 +481,7 @@ export function deriveDrawingWorkbenchCompatibilitySelection(
     activeHouseSelection,
     activePergolaId:
       state.activeObjectFamily === 'pergolas' && state.activeObjectRef.family === 'pergolas'
-        ? state.activeObjectRef.objectId
+        ? state.activeObjectRef.objectId ?? state.activePergolaId
         : null,
   };
 }
@@ -558,6 +559,10 @@ export function normalizeDrawingWorkbenchUiState(
     legacyObjectSelection?.activeObjectFamily ?? rawState.activeObjectFamily,
   );
   const requestedObjectRef = legacyObjectSelection?.activeObjectRef ?? rawState.activeObjectRef;
+  const requestedActivePergolaId =
+    rawState.activePergolaId ??
+    legacyCompatibility.activePergolaId ??
+    (requestedObjectRef.family === 'pergolas' ? requestedObjectRef.objectId : null);
   const legacySelection = buildSelectionStateFromCompatibility(legacyCompatibility);
   const normalizedSelection = normalizeDrawingWorkbenchSelectionState(uiOverrides.selection ?? legacySelection);
   let bridgedObjectRef = requestedObjectRef;
@@ -583,6 +588,8 @@ export function normalizeDrawingWorkbenchUiState(
       bridgedObjectRef = { family: 'openings', objectId: legacyCompatibility.activeHouseSelection.targetId ?? null };
     } else if (activeObjectFamily === 'pergolas' && legacyCompatibility.activePergolaId) {
       bridgedObjectRef = { family: 'pergolas', objectId: legacyCompatibility.activePergolaId };
+    } else if (activeObjectFamily === 'pergolas' && requestedActivePergolaId) {
+      bridgedObjectRef = { family: 'pergolas', objectId: requestedActivePergolaId };
     }
   }
   let activeObjectRef = normalizeActiveObjectRef(
@@ -608,9 +615,16 @@ export function normalizeDrawingWorkbenchUiState(
     activeObjectFamily,
     legacyCompatibility.workbenchMode,
   );
+  const activePergolaId = normalizeActivePergolaId(
+    activeObjectFamily === 'pergolas' && activeObjectRef.family === 'pergolas' && activeObjectRef.objectId
+      ? activeObjectRef.objectId
+      : requestedActivePergolaId,
+    input.pergolaIds ?? [],
+  );
   return {
     ...rawState,
     activeModuleIndex: clampDrawingWorkbenchModuleIndex(rawState.activeModuleIndex, input.moduleCount),
+    activePergolaId,
     activeRailTab,
     activeObjectFamily,
     activeObjectRef,

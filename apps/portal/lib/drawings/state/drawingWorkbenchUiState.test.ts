@@ -14,9 +14,9 @@ describe('drawingWorkbenchUiState', () => {
     expect(state.activeObjectFamily).toBe('house_forms');
     expect(state.activeObjectRef).toEqual({ family: 'house_forms', objectId: null });
     expect(state.activeRailTab).toBe('house_forms');
+    expect(state.activePergolaId).toBeNull();
     expect('workbenchMode' in state).toBe(false);
     expect('activeHouseSelection' in state).toBe(false);
-    expect('activePergolaId' in state).toBe(false);
     expect(state.visibility).toEqual({
       house: true,
       pergolas: true,

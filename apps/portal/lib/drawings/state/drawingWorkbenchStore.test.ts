@@ -348,6 +348,50 @@ describe('buildDrawingWorkbenchStore', () => {
     expect(store.derived.status).toBe('ready');
   });
 
+  it('derives the active solved module from activePergolaId before the legacy module index', () => {
+    const snapshot = {
+      inputs: {
+        schemaVersion: 'v2',
+        projectName: 'Test Project',
+        quoteRef: 'Q-1000',
+        access: 'normal',
+        height: 'single_storey',
+        jobType: 'residential',
+        travelExGst: '0',
+        extrasAllowanceExGst: '0',
+        quoteDiscountPct: '0',
+        pergolas: [
+          { id: 'pergola-1', label: 'Pergola 1' },
+          { id: 'pergola-2', label: 'Pergola 2' },
+        ],
+        modules: [
+          makeModule({ pergolaId: 'pergola-1', lengthM: '6' }),
+          makeModule({ pergolaId: 'pergola-2', lengthM: '4.5', projectionM: '2.5' }),
+        ],
+      },
+      outputs: {
+        pergolas: [{ id: 'pergola-1', modules: [makeResult({ lengthA: 6, spanA: 3 }), makeResult({ lengthA: 4.5, spanA: 2.5 })] }],
+      },
+    } satisfies Record<string, unknown>;
+
+    const store = buildDrawingWorkbenchStore({
+      snapshot,
+      ui: createDrawingWorkbenchUiState({
+        activeModuleIndex: 0,
+        activePergolaId: 'pergola-2',
+        activeObjectFamily: 'house_forms',
+        activeObjectRef: { family: 'house_forms', objectId: 'house-main' },
+      }),
+      moduleLabels: ['Pergola 1 module', 'Pergola 2 module'],
+    });
+
+    expect(store.ui.activePergolaId).toBe('pergola-2');
+    expect(store.ui.activeModuleIndex).toBe(1);
+    expect(store.derived.activeModuleIndex).toBe(1);
+    expect(store.derived.activeSolution?.moduleInput.pergolaId).toBe('pergola-2');
+    expect(store.derived.activePergola?.id).toBe('pergola-2');
+  });
+
   it('keeps sheet models available while marking supported hip families as geometry-ready', () => {
     const snapshot = {
       inputs: {

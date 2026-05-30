@@ -34,14 +34,13 @@ import styles from './DesignWorkbenchEstimateClient.module.css';
 type PergolaInspectorModule = {
   id: string;
   label: string;
-  pergolaId: string | null;
 };
 
 type PergolaInspectorProps = {
   activePergolaModel: ObjectWorkbenchPergolaInspectorModel | null;
   activeModuleInput: CalculatorModuleInputs | null;
-  activeModuleIndex: number;
   activeModuleLabel: string;
+  activePergolaId: string | null;
   disabled?: boolean;
   geometryState: ObjectWorkbenchGeometryEditState | null;
   houseAssembly: HouseAssemblyModel | null;
@@ -55,7 +54,7 @@ type PergolaInspectorProps = {
    * and that's not the cull's job.
    */
   onOpenHouseForms?: () => void;
-  onSelectPergolaByModule: (pergolaId: string | null) => void;
+  onSelectPergola: (pergolaId: string | null) => void;
   /**
    * PR-T6 (2026-05-26): solved assembly for the active pergola. When
    * present, MEMBER SIZES dropdowns display the system-resolved size
@@ -99,8 +98,8 @@ function resolveDisplayAttachment(
 export default function PergolaInspector({
   activePergolaModel,
   activeModuleInput,
-  activeModuleIndex,
   activeModuleLabel,
+  activePergolaId,
   disabled = false,
   geometryState,
   houseAssembly: _houseAssembly,
@@ -108,7 +107,7 @@ export default function PergolaInspector({
   supportsSanctuaryEditing,
   view,
   onOpenHouseForms: _onOpenHouseForms,
-  onSelectPergolaByModule,
+  onSelectPergola,
   onStartDrawOutline,
   onCommitGeometryEdit,
   onCommitAttachment,
@@ -256,14 +255,14 @@ export default function PergolaInspector({
               <p className={styles.moduleSectionTitle}>Module</p>
               <select
                 className={styles.moduleSelect}
-                aria-label="Drawing module"
-                value={String(activeModuleIndex)}
+                aria-label="Pergola"
+                value={activePergolaId ?? ''}
                 onChange={(event) =>
-                  onSelectPergolaByModule(modules[Number(event.target.value)]?.pergolaId ?? null)
+                  onSelectPergola(event.target.value || null)
                 }
               >
-                {modules.map((module, index) => (
-                  <option key={module.id} value={String(index)}>
+                {modules.map((module) => (
+                  <option key={module.id} value={module.id}>
                     {module.label}
                   </option>
                 ))}

@@ -831,7 +831,6 @@ export function useObjectWorkbenchActions({
   const addSharedPergola = useCallback(
     async (): Promise<CommitResult> => {
       let newPergolaId: string | null = null;
-      const newPergolaModuleIndex = store.persisted.modules.length;
       return runDraftTransaction({
         buildNextDraft: (draft) => {
           const objectFirstDraft = resolveObjectFirstDraft(draft, store);
@@ -863,7 +862,7 @@ export function useObjectWorkbenchActions({
           if (!newPergolaId) return;
           setUi((current) => ({
             ...current,
-            activeModuleIndex: newPergolaModuleIndex,
+            activePergolaId: newPergolaId,
             ...buildDrawingWorkbenchObjectSelectionState({
               activeRailTab: 'pergolas',
               activeObjectRef: { family: 'pergolas', objectId: newPergolaId },
@@ -877,7 +876,6 @@ export function useObjectWorkbenchActions({
       runDraftTransaction,
       setUi,
       store,
-      store.persisted.modules.length,
       ui.activeObjectFamily,
       ui.activeObjectRef.family,
       ui.activeObjectRef.objectId,

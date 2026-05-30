@@ -152,6 +152,7 @@ export default function DesignWorkbenchEstimateClient({
     setUi((current) => ({
       ...current,
       activeModuleIndex: 0,
+      activePergolaId: null,
       ...buildDrawingWorkbenchObjectSelectionState({
         activeRailTab: 'house_forms',
         activeObjectRef: { family: 'house_forms', objectId: defaultHouseFormId },
@@ -167,6 +168,7 @@ export default function DesignWorkbenchEstimateClient({
     const uiSelection = pickDrawingWorkbenchObjectSelectionState(ui);
     if (
       store.ui.activeModuleIndex === ui.activeModuleIndex &&
+      store.ui.activePergolaId === ui.activePergolaId &&
       areDrawingWorkbenchObjectSelectionStatesEqual(storeSelection, uiSelection) &&
       areDrawingWorkbenchVisibilityStatesEqual(store.ui.visibility, ui.visibility)
     ) {
@@ -175,6 +177,7 @@ export default function DesignWorkbenchEstimateClient({
     setUi((current) => ({
       ...current,
       activeModuleIndex: store.ui.activeModuleIndex,
+      activePergolaId: store.ui.activePergolaId,
       ...storeSelection,
       visibility: store.ui.visibility,
     }));
@@ -293,8 +296,13 @@ export default function DesignWorkbenchEstimateClient({
       kind: 'error',
       message: 'No active 3D geometry preview is available.',
     };
-  const modelViewportSurfaceKey = `${store.derived.activeModuleIndex}:${store.ui.activeView}`;
-  const geometryViewportSurfaceKey = `${objectWorkbenchDisplayFamily}:${store.derived.activeModuleIndex}`;
+  const activePergolaSurfaceKey =
+    store.ui.activePergolaId ??
+    store.derived.activePergola?.id ??
+    activeModuleInput?.pergolaId ??
+    'none';
+  const modelViewportSurfaceKey = `${activePergolaSurfaceKey}:${store.ui.activeView}`;
+  const geometryViewportSurfaceKey = `${objectWorkbenchDisplayFamily}:${activePergolaSurfaceKey}`;
   const viewportPergolaId =
     store.derived.objectWorkbench.activePergola?.id ??
     activeModuleInput?.pergolaId ??
@@ -427,7 +435,6 @@ export default function DesignWorkbenchEstimateClient({
       openings: store.derived.railModel.objectLists.openings.map((entry) => entry.ref.objectId ?? '').filter(Boolean),
       pergolas: store.derived.railModel.objectLists.pergolas.map((entry) => entry.ref.objectId ?? '').filter(Boolean),
     },
-    pergolaModules: store.persisted.modules,
   });
   const objectWorkbenchActions = useObjectWorkbenchActions({
     activeModuleInput,
@@ -515,6 +522,7 @@ export default function DesignWorkbenchEstimateClient({
               return {
                 ...current,
                 activeModuleIndex: index,
+                activePergolaId: selectedPergolaId ?? current.activePergolaId,
                 ...(current.activeObjectFamily === 'pergolas'
                   ? buildDrawingWorkbenchObjectSelectionState({
                       activeRailTab: current.activeRailTab,
