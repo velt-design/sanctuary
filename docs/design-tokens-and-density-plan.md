@@ -6,6 +6,12 @@ Phase 1 establishes a unified design-tokens layer that both Tailwind v4 and CSS 
 
 ---
 
+## Read First
+
+- Treat this as a visual-density plan, not the current workbench style contract.
+- Use `docs/workbench-visual-snapshot-loop.md` before making visual changes.
+- Check shipped markers in each PR section before assuming a step is still pending.
+
 ## 1. Goal
 
 **Phase 1**: Make a single source of truth for design decisions — CSS custom properties at `:root`, exposed to Tailwind via `@theme inline`, referenced from CSS modules, with no visual change to the rendered app.

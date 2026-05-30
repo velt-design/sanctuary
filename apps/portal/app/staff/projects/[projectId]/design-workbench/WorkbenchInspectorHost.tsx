@@ -107,7 +107,7 @@ export default function WorkbenchInspectorHost({
 
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const onCommitFootprintEdit = !isLocked
-    ? objectWorkbenchActions.commitSharedHouseFootprintEdit
+    ? objectWorkbenchActions.commitHouseFormFootprintDimension
     : undefined;
   const onCommitRoofIntent = !isLocked ? objectWorkbenchActions.commitSharedHouseRoofDraft : undefined;
   const onStartDrawOutline = objectSelectionActions.startDrawOutlineEditor;
@@ -134,7 +134,7 @@ export default function WorkbenchInspectorHost({
       const result = await resolveCommitResult(onCommitFootprintEdit?.(edit));
       setFieldErrors((current) => ({
         ...current,
-        [fieldId]: result.ok ? '' : result.error ?? 'Unable to update the shared house footprint.',
+        [fieldId]: result.ok ? '' : result.error ?? 'Unable to update the house form footprint.',
       }));
     },
     [onCommitFootprintEdit],

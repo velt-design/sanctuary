@@ -1,5 +1,11 @@
 # Design Workbench Architecture
 
+## Read First
+
+- Start with `## Product North Star (READ FIRST)` for every workbench, drawing, geometry, or cost-input change.
+- Use `## Object-First Model`, `## Attachment Model: Snap-Derived Connections`, and `## Drawing Persistence` for implementation routing.
+- Use `docs/design-workbench-multi-object-goal.md` for the current multi-house and multi-pergola campaign handoff.
+
 ## Product North Star (READ FIRST)
 
 > This section gates every change to `apps/portal/lib/drawings/`, `apps/portal/components/drawings/`, `packages/geometry/src/`, and the costing engine's input layer. If a PR you're proposing doesn't fit one of the directions below, stop and ask before writing code.
@@ -176,7 +182,7 @@ Viewport routing should pass solved geometry bundles, not loose scene/projection
 - The solved module's 3D scene and model-space top projection are paired: the projection is generated from the same `ViewerSceneModel` handed to the 3D viewport, with assembly reference shapes carried forward explicitly.
 - The scene also carries plan-detail lines for real house wall segments. These project as context lines with wall/snap metadata, do not drive plan extents, and are the preferred live deck host-edge snap source.
 - Geometry-ready model-space plan fitting uses `geometryTopProjection.extents`; legacy `ModulePlanModel` dimensions are a fallback path, not the source of scene fit.
-- `apps/portal/lib/drawings/commercialDesignPayload.ts` is a callable-only shadow adapter from `WorkbenchSolvedModel` to the commercial boundary. It maps `WorkbenchSolvedGeometryArtifact.quantityTakeoff`, a `@sp/geometry` takeoff built from the same solved `Assembly3D` as plan, section, top projection, and viewer scene; low-level quantity hooks remain compatibility data inside that geometry-owned contract. The adapter does not drive workbench rendering, persistence, quote totals, or live pricing.
+- `apps/portal/lib/drawings/commercialDesignPayload.ts` is a callable-only shadow adapter from `WorkbenchSolvedProject` to the commercial boundary. It maps each solved pergola's `WorkbenchSolvedGeometryArtifact.quantityTakeoff`, a `@sp/geometry` takeoff built from the same solved `Assembly3D` as plan, section, top projection, and viewer scene; low-level quantity hooks remain compatibility data inside that geometry-owned contract. The adapter does not drive workbench rendering, quote totals, or live pricing, and saved estimate persistence may use `workbench_solved` only through the server-owned rollout gate.
 - Geometry-ready Model Space is a projection-only surface. Its normal body rendering consumes only top-projection committed bodies that match the 3D Top view; it does not execute legacy pergola plan geometry, semantic house context bodies, legacy footprint bodies, model primary dimensions, fall labels, or context/reference projection bodies. Sheet View and unsupported geometry fallback keep their existing legacy paths.
 - Geometry-ready plan mode uses an internal plan render graph with explicit layer ownership: `committedBodies`, `contextLines`, `hitTargets`, `selectionOutlines`, `dimensions`, `dragPreview`, and `debug`. Normal visible body rendering may only consume `committedBodies`; selecting an object may add outlines, hit targets, handles, and dimensions, but must not add another filled house/deck/pergola body.
 - Plan coordinate transforms are owned by the plan view layer, not by React render branches. The `PlanCoordinateAdapter` contract is the traceable boundary for projection-to-SVG and SVG-to-projection conversions; Model Space pointer tools should consume this adapter rather than duplicating top-projection math in components.

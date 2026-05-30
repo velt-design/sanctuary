@@ -1,10 +1,16 @@
 # Appendage Feature Removal — Plan (PR-T8)
 
-**Drafted**: 2026-05-29. **Status**: proposed, awaiting go-ahead.
+**Drafted**: 2026-05-29. **Status**: shipped; retained as a retrospective plan.
 
-Delete the roof "appendage band" feature entirely — UI surfaces, state fields, geometry solver code, validation, fixtures, tests, and docs. Recon confirmed the feature has zero consumers in the cost engine or marketing email path; all 150+ references live in workbench-internal layers.
+This plan records the PR-T8 removal of the roof "appendage band" feature. The active guardrail is in `docs/decision-log.md`; do not treat this file as an active execution request.
 
 ---
+
+## Read First
+
+- Treat this as shipped history for PR-T8.
+- Use `docs/decision-log.md` for the current no-appendage guardrail.
+- Use this file only when checking why the feature was removed and what acceptance gates were used.
 
 ## 1. Goal
 
@@ -247,6 +253,6 @@ Also: the 7 dedicated test cases being deleted aren't all *purely* dedicated. Th
 
 ---
 
-## 11. CTA
+## 11. Retrospective note
 
-Ready to ship PR-T8? Single PR, ~25 files touched / 1 deleted, ~-1000 LOC net, 2-3 hours. Or want to narrow scope first (e.g. UI + state only, defer geometry deletion to a follow-up)?
+PR-T8 shipped. The appendage feature is removed from production code, and persisted legacy appendage data is intentionally dropped at the workbench draft normalize boundary.

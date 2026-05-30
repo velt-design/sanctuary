@@ -69,7 +69,9 @@ Costing logic must remain in `packages/costing`; estimate code should persist an
 
 ## Estimate Pricing Rollout Boundary
 
-Live estimate pricing still comes from calculator snapshots. The rollout-prep contract in `apps/portal/lib/estimates/pricingRollout.ts` names the current live source as `calculator_live` and is wired at estimate create/update/duplicate persistence so saved rows record server-owned source metadata.
+Saved estimate source metadata still defaults to `calculator_live`. Workbench save-reprice may build scene-derived `SiteInputsV2` for the cost-engine call, but that V2 input is not the same contract as `CommercialDesignInputV1` and does not by itself make the saved estimate source `workbench_solved`.
+
+The rollout-prep contract in `apps/portal/lib/estimates/pricingRollout.ts` owns the saved source-of-record decision at estimate create/update/duplicate persistence so saved rows record server-owned source metadata.
 
 `workbench_solved` may become live only after all readiness gates pass: ready workbench trust with no blocking diagnostics, owned geometry-derived quantity takeoff, stable `calculator_compat` versus `workbench_solved` parity reports, explicit estimate source-of-record metadata, preserved estimate locks, preserved local-first queue/alias/conflict behavior, preserved quote/invoice/job-pack pricing boundaries, and an explicit rollback switch back to `calculator_live`.
 

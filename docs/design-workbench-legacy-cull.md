@@ -25,6 +25,12 @@ The rest of this doc is **the working history** of Phase 1 — kept for referenc
 
 ---
 
+## Read First
+
+- Treat this as Phase 1 history and audit-row archaeology.
+- Use `docs/design-workbench-architecture.md` for the active Product North Star.
+- Use `docs/design-workbench-phase-2-plan.md` and `docs/design-workbench-multi-object-goal.md` for remaining cleanup and current handoff state.
+
 **Scope**: this was the deletion roadmap for Phase 1 of the [Product North Star](design-workbench-architecture.md). Working document; entries got checked off as PRs shipped.
 
 **Goal**: remove every legacy calculator-era pattern from the design workbench, so every object is a first-class spatial entity. Replace pergola-anchored coordinates, `attachmentSide` enums-as-position, primary-vs-additional special-casing, and the multi-shape (`houseFirst*` vs `objectFirst*`) draft duality.

@@ -4,10 +4,9 @@ import type { EdgeDragCommit } from '@/components/drawings/viewports/PlanViewpor
 import type { ReversibleCommandInput } from '@/lib/drawings/commands/createReversibleCommand';
 import type { DrawingWorkbenchStore } from '@/lib/drawings/state/drawingWorkbenchStore';
 import { houseFormTransformToWorldPositionMm } from '@/lib/drawings/state/houseFormTransform';
-import type { PergolaAttachment } from '@/lib/drawings/state/objectFirstWorkbenchModel';
+import type { HouseFormModel, PergolaAttachment } from '@/lib/drawings/state/objectFirstWorkbenchModel';
 import type { ObjectWorkbenchDeckPatch } from '@/lib/drawings/state/objectWorkbenchInspectorModel';
 import { pergolaAttachmentFromSnap } from '@/lib/drawings/state/pergolaAttachment';
-import { resolveHouseFootprintMigrationDefault } from './houseFootprintMigrationDefault';
 import type { ObjectWorkbenchActions } from './useObjectWorkbenchActions';
 
 type ActiveModuleInput =
@@ -38,6 +37,17 @@ export type BuildOutlineEditCommitHandlerInput = {
   objectWorkbenchActions: ObjectWorkbenchActions;
 };
 
+function resolveSelectedHouseForm(store: DrawingWorkbenchStore): HouseFormModel | null {
+  const selectedHouseFormId =
+    store.ui.activeObjectRef.family === 'house_forms'
+      ? store.ui.activeObjectRef.objectId
+      : null;
+  if (selectedHouseFormId) {
+    return store.derived.houseForms.find((houseForm) => houseForm.id === selectedHouseFormId) ?? null;
+  }
+  return store.derived.activeHouseForm ?? null;
+}
+
 /**
  * Build the edge-drag commit handler shared across house/pergola/deck
  * outlines. Each family branch reads the dragged polygon out of `commit`,
@@ -49,8 +59,7 @@ export type BuildOutlineEditCommitHandlerInput = {
  * Extracted from the inline handler in DesignWorkbenchEstimateClient so
  * each family path has a focused test surface and any future caller
  * (keyboard nudge, gizmo drag) can call the same factory. Behaviour is
- * preserved byte-for-byte; the only logic change is delegating the house
- * migration-default math to `resolveHouseFootprintMigrationDefault`.
+ * preserved byte-for-byte for non-house branches.
  */
 export function buildOutlineEditCommitHandler(
   input: BuildOutlineEditCommitHandlerInput,
@@ -58,46 +67,13 @@ export function buildOutlineEditCommitHandler(
   const { store, activeModuleInput, objectWorkbenchActions } = input;
   return (commit) => {
     if (commit.family === 'house_forms') {
-      // House edge-drag commit (stage 3.4 — house first-class spatial
-      // entity). The house owns its own world `position` and its
-      // polygon is stored in side-local (alongM, depthM) coords
-      // decoded against a unit (1m × 1m) frame. With this layout, the
-      // house's world location is invariant to pergola dimensions.
-      //
-      // For un-migrated data (no `houseFootprintPosition` set), this
-      // commit is also the migration trigger. We compute the
-      // attachment-side-aware migration default (the offset that
-      // would make a unit-frame decode match the legacy real-frame
-      // decode for the current pergola dims), persist that as the
-      // house position, and encode the new polygon against the unit
-      // frame. After this commit, the house is fully decoupled.
-      //
-      // For migrated data (position already set), we encode against
-      // the unit frame using the existing position; position stays
-      // unchanged.
-      const houseForm = store.derived.activeHouseForm;
-      const attachmentSide = houseForm?.footprint.attachmentSide ?? 'rear';
-      const persistedPosition = activeModuleInput?.houseFootprintPosition ?? null;
-      let positionXMm: number;
-      let positionYMm: number;
-      let positionRotationDeg: number;
-      if (persistedPosition) {
-        positionXMm = Number(persistedPosition.originXMm);
-        positionYMm = Number(persistedPosition.originYMm);
-        positionRotationDeg = Number(persistedPosition.rotationDeg);
-      } else {
-        const migration = resolveHouseFootprintMigrationDefault({
-          attachmentSide,
-          pergolaWidthM: activeModuleInput?.lengthM,
-          pergolaDepthM: activeModuleInput?.projectionM,
-        });
-        positionXMm = migration.positionXMm;
-        positionYMm = migration.positionYMm;
-        positionRotationDeg = migration.positionRotationDeg;
-      }
-      // Subtract position from each world point, then encode against
-      // the unit frame. Round-trip: unit_decoder(side_local) +
-      // position == worldPolygonMm.
+      const houseForm = resolveSelectedHouseForm(store);
+      if (!houseForm) return;
+      const position = houseFormTransformToWorldPositionMm(houseForm.transform);
+      const attachmentSide = houseForm.footprint.attachmentSide;
+      const positionXMm = Number(position.x) || 0;
+      const positionYMm = Number(position.y) || 0;
+      const positionRotationDeg = Number(position.rotationDeg) || 0;
       const cos = Math.cos((positionRotationDeg * Math.PI) / 180);
       const sin = Math.sin((positionRotationDeg * Math.PI) / 180);
       const localWorldPolygon = commit.nextPolygon.map((p) => {
@@ -109,6 +85,8 @@ export function buildOutlineEditCommitHandler(
           y: -sin * dx + cos * dy,
         };
       });
+      // House forms now own their own transform. Encode the drag result
+      // against the selected form's local frame and update only that form.
       const sideLocalPoints = buildSideLocalPolygonFromWorld({
         worldPolygonMm: localWorldPolygon,
         pergolaWidthMm: 1000,
@@ -116,24 +94,15 @@ export function buildOutlineEditCommitHandler(
         attachmentSide,
         params: null,
       });
-      if (!persistedPosition) {
-        // First-edit migration — write position before polygon so
-        // both land in the same draft transaction batch.
-        void objectWorkbenchActions.commitSharedHouseFootprintEdit({
-          type: 'position',
-          position: {
-            originXMm: positionXMm.toString(),
-            originYMm: positionYMm.toString(),
-            rotationDeg: positionRotationDeg.toString(),
-          },
-        });
-      }
-      void objectWorkbenchActions.commitSharedHouseFootprintEdit({
-        type: 'custom_polygon',
-        polygon: sideLocalPoints.map((p) => ({
-          alongM: p.alongM.toString(),
-          depthM: p.depthM.toString(),
-        })),
+      void objectWorkbenchActions.commitHouseFormFootprintEdit({
+        houseFormId: houseForm.id,
+        edit: {
+          type: 'custom_polygon',
+          polygon: sideLocalPoints.map((p) => ({
+            alongM: p.alongM.toString(),
+            depthM: p.depthM.toString(),
+          })),
+        },
       });
       return;
     }

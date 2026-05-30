@@ -6,6 +6,12 @@
 
 **Alignment with north star** (see `docs/design-workbench-architecture.md` § "Product North Star"): this entire plan is UI/presentation. It does not modify the data model, the solved geometry artifact, or the cost engine. It honors the load-bearing decisions: 3D is read-only · Plan is the editor · object-first model · snap-derived attachments. Gumball is plan-only.
 
+## Read First
+
+- Treat this as the CAD-style UI planning spine, not a current-state contract.
+- Check shipped markers before assuming a PR section is still pending.
+- Current workbench architecture still lives in `docs/design-workbench-architecture.md`.
+
 ## Architectural guardrails baked in
 
 1. **Viewport filtering goes through `lib/drawings/views/plan/planRenderGraph.ts`** — not new render conditionals inside SVG components. Filter is a layer-pass decision at the render-graph boundary.

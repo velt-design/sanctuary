@@ -1,10 +1,16 @@
 # Fixture Inspector Mount — Plan (PR-T5)
 
-**Drafted**: 2026-05-26. **Status**: proposed, awaiting go-ahead.
+**Drafted**: 2026-05-26. **Status**: shipped; retained as a retrospective plan.
 
-Extending the workbench fixture route so the AI snapshot dev loop can iterate on right-inspector visuals against the same production code path users see.
+This plan records the fixture-inspector mount that now supports the workbench visual snapshot loop. For the current operating instructions, use `docs/workbench-visual-snapshot-loop.md`.
 
 ---
+
+## Read First
+
+- Treat this as history for PR-T5, not as an active proposal.
+- Current snapshot-loop behavior lives in `docs/workbench-visual-snapshot-loop.md`.
+- Do not re-execute the CTA-style sections below; use them only to understand why the fixture mirrors production inspector code.
 
 ## 1. Goal
 
@@ -210,8 +216,6 @@ I'd add a one-line addition to `docs/agent-playbook.md` (or similar) after T5 la
 
 ---
 
-## 11. CTA
+## 11. Retrospective note
 
-Ready to ship PR-T5? Say go and I'll execute. The plan covers ~115 LOC across 3 files, est. 45-60 min, single PR, no dependencies on anything else.
-
-Or if you want to refine the scope first — for example, *only* mount inspector for pergola family and defer the others — say so and I'll narrow before starting.
+PR-T5 shipped. The fixture route now mounts the real inspector host with typed no-op action stubs, and `docs/workbench-visual-snapshot-loop.md` is the active guide for using it.

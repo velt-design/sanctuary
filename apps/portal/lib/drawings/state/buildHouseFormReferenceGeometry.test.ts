@@ -3,6 +3,13 @@ import { buildHouseFormReferenceGeometry } from './buildHouseFormReferenceGeomet
 import { buildHouseFormRawGeometryInput } from './houseFormRawGeometry';
 import type { HouseFormModel } from './objectFirstWorkbenchModel';
 
+const HOUSE_FORM_PRESET_REGRESSION_CASES = [
+  'straight',
+  'recess_right',
+  'l_right',
+  'wrap_right',
+] as const;
+
 function makeStraightHouseForm(overrides: Partial<HouseFormModel> = {}): HouseFormModel {
   return {
     id: 'house-form-2',
@@ -46,6 +53,10 @@ function makeStraightHouseForm(overrides: Partial<HouseFormModel> = {}): HouseFo
     eaveOverhangMm: '450',
     ...overrides,
   };
+}
+
+function polygonMinX(polygon: ReadonlyArray<{ x: number }>): number {
+  return Math.min(...polygon.map((point) => point.x));
 }
 
 describe('buildHouseFormReferenceGeometry', () => {
@@ -148,4 +159,36 @@ describe('buildHouseFormReferenceGeometry', () => {
       expect(vertex.x).toBeGreaterThanOrEqual(4000);
     }
   });
+
+  it.each(HOUSE_FORM_PRESET_REGRESSION_CASES)(
+    'keeps two %s house-form references separated by each form transform',
+    (preset) => {
+      const primary = buildHouseFormReferenceGeometry({
+        houseForm: makeStraightHouseForm({
+          id: 'house-main',
+          label: 'House',
+          footprint: {
+            ...makeStraightHouseForm().footprint,
+            preset,
+          },
+        }),
+      });
+      const second = buildHouseFormReferenceGeometry({
+        houseForm: makeStraightHouseForm({
+          id: 'house-form-2',
+          label: 'House 2',
+          transform: { offsetXM: 10, offsetYM: 0, rotationQuarterTurns: 0 },
+          footprint: {
+            ...makeStraightHouseForm().footprint,
+            preset,
+          },
+        }),
+      });
+
+      expect(primary?.model?.houseId).toBe('house-main');
+      expect(second?.model?.houseId).toBe('house-form-2');
+      expect(polygonMinX(second?.footprint ?? [])).toBeGreaterThanOrEqual(10000);
+      expect(polygonMinX(second?.footprint ?? [])).toBeGreaterThan(polygonMinX(primary?.footprint ?? []));
+    },
+  );
 });

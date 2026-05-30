@@ -126,11 +126,31 @@ export function topProjectionContextLineAllowedInProjectionOnlyModel(shape: Geom
   return shape.kind === 'opening_marker';
 }
 
+function topProjectionHouseFormOwner(shape: GeometryTopProjectionShape): string | null {
+  if (shape.family !== 'house') return null;
+  const taggedHouseFormId =
+    typeof shape.metadata?.houseFormId === 'string' ? shape.metadata.houseFormId : null;
+  if (taggedHouseFormId) return taggedHouseFormId;
+  if (shape.sourceType === 'house_reference') {
+    return shape.sourceObjectId ?? shape.sourceId ?? null;
+  }
+  return null;
+}
+
 export function topProjectionShapeVisualOwner(shape: GeometryTopProjectionShape): string {
   if (shape.family === 'house' && shape.kind === 'deck') return `deck:${shape.sourceId ?? shape.sourceObjectId ?? shape.id}`;
-  if (shape.family === 'house') return 'house';
+  if (shape.family === 'house') return `house:${topProjectionHouseFormOwner(shape) ?? 'unowned'}`;
   if (shape.family === 'pergola') return `pergola:${shape.sourceObjectId ?? shape.sourceId ?? shape.id}`;
   return `${shape.family}:${shape.sourceObjectId ?? shape.sourceId ?? shape.id}`;
+}
+
+function houseFootprintHasMatchingRoof(input: {
+  footprint: GeometryTopProjectionShape;
+  roofOwners: ReadonlySet<string>;
+  hasUnownedRoof: boolean;
+}): boolean {
+  const owner = topProjectionHouseFormOwner(input.footprint);
+  return owner ? input.roofOwners.has(owner) : input.hasUnownedRoof;
 }
 
 export function buildProjectionPlanRenderGraph<TItem extends { shape: GeometryTopProjectionShape }>(
@@ -165,9 +185,14 @@ export function buildProjectionPlanRenderGraph<TItem extends { shape: GeometryTo
       suppressed: [],
     },
   );
-  const hasHouseRoofCommittedBody = baseGraph.committedBodies.some(
-    ({ shape }) => shape.family === 'house' && shape.kind === 'roof',
-  );
+  const houseRoofOwners = new Set<string>();
+  let hasUnownedHouseRoofCommittedBody = false;
+  for (const { shape } of baseGraph.committedBodies) {
+    if (shape.family !== 'house' || shape.kind !== 'roof') continue;
+    const owner = topProjectionHouseFormOwner(shape);
+    if (owner) houseRoofOwners.add(owner);
+    else hasUnownedHouseRoofCommittedBody = true;
+  }
   // Drop redundant `house_surface[_solid] + footprint` shapes when a roof
   // body already represents the same outline; keep the canonical
   // `house_reference + footprint`. That reference shape MUST stay in
@@ -183,10 +208,14 @@ export function buildProjectionPlanRenderGraph<TItem extends { shape: GeometryTo
   const committedBodies = baseGraph.committedBodies.filter(
     ({ shape }) =>
       !(
-        hasHouseRoofCommittedBody &&
         shape.family === 'house' &&
         shape.kind === 'footprint' &&
-        shape.sourceType !== 'house_reference'
+        shape.sourceType !== 'house_reference' &&
+        houseFootprintHasMatchingRoof({
+          footprint: shape,
+          roofOwners: houseRoofOwners,
+          hasUnownedRoof: hasUnownedHouseRoofCommittedBody,
+        })
       ) &&
       (!options?.projectionOnlyModelSpace || topProjectionShapeAllowedInProjectionOnlyModel(shape)),
   );

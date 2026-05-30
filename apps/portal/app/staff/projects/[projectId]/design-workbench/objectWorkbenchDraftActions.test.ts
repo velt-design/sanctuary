@@ -5,10 +5,12 @@ import type {
   HouseFormModel,
   HouseFormRoofIntentModel,
   ObjectFirstDeckDraft,
+  ObjectFirstHouseFormDraft,
   ObjectFirstOpeningDraft,
   ObjectFirstPergolaDraft,
   ObjectFirstWorkbenchDraftVNext,
 } from '@/lib/drawings/state/objectFirstWorkbenchModel';
+import { applyHouseFormFootprintEdit } from './houseFormFootprintDraftActions';
 import {
   applyObjectWorkbenchDeckPatch,
   applyObjectWorkbenchOpeningPatch,
@@ -203,6 +205,77 @@ describe('objectWorkbenchDraftActions', () => {
       id: 'deck-1',
       shape: 'custom',
       outline,
+    });
+  });
+
+  it('updates only the targeted house form footprint by id', () => {
+    const house1 = makeHouseForm();
+    const house2: ObjectFirstHouseFormDraft = {
+      ...makeHouseForm(),
+      id: 'house-form-2',
+      label: 'House 2',
+      transform: { offsetXM: 10, offsetYM: 0, rotationQuarterTurns: 0 },
+      footprint: {
+        ...makeHouseForm().footprint,
+        preset: 'recess_right',
+      },
+    };
+    const originalHouse1 = structuredClone(house1);
+    const originalHouse2Transform = structuredClone(house2.transform);
+
+    const result = applyHouseFormFootprintEdit({
+      houseForms: [house1, house2],
+      houseFormId: 'house-form-2',
+      edit: {
+        type: 'custom_polygon',
+        polygon: [
+          { alongM: '0', depthM: '0' },
+          { alongM: '4', depthM: '0' },
+          { alongM: '4', depthM: '2' },
+          { alongM: '0', depthM: '2' },
+        ],
+      },
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.houseForms[0]).toEqual(originalHouse1);
+    expect(result.houseForms[1]?.transform).toEqual(originalHouse2Transform);
+    expect(result.houseForms[1]?.footprint).toMatchObject({
+      mode: 'custom_polygon',
+      polygon: [
+        { alongM: '0', depthM: '0' },
+        { alongM: '4', depthM: '0' },
+        { alongM: '4', depthM: '2' },
+        { alongM: '0', depthM: '2' },
+      ],
+    });
+  });
+
+  it('updates only the targeted house form transform on footprint rotate', () => {
+    const house1 = makeHouseForm();
+    const house2: ObjectFirstHouseFormDraft = {
+      ...makeHouseForm(),
+      id: 'house-form-2',
+      transform: { offsetXM: 10, offsetYM: 0, rotationQuarterTurns: 3 },
+    };
+    const originalHouse1 = structuredClone(house1);
+    const originalHouse2Footprint = structuredClone(house2.footprint);
+
+    const result = applyHouseFormFootprintEdit({
+      houseForms: [house1, house2],
+      houseFormId: 'house-form-2',
+      edit: { type: 'rotate', delta: 1 },
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.houseForms[0]).toEqual(originalHouse1);
+    expect(result.houseForms[1]?.footprint).toEqual(originalHouse2Footprint);
+    expect(result.houseForms[1]?.transform).toEqual({
+      offsetXM: 10,
+      offsetYM: 0,
+      rotationQuarterTurns: 0,
     });
   });
 

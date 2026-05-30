@@ -226,6 +226,55 @@ describe('PlanViewport', () => {
       expect(markup).not.toContain('data-plan-selection-shape-id="house_reference:house-form-2"');
     });
 
+    it('keeps a selected second house reference visible when the active module renders the primary roof', () => {
+      const primaryRoof = makeShape({
+        id: 'house_surface_solid:house-main-roof',
+        sourceObjectId: 'house-main-roof',
+        sourceId: 'house-main-roof',
+        sourceType: 'house_surface_solid',
+        family: 'house',
+        kind: 'roof',
+        metadata: { houseFormId: 'house-main' },
+      });
+      const houseMain = makeShape({
+        id: 'house_reference:house-main',
+        sourceObjectId: 'house-main',
+        sourceId: 'house-main',
+        sourceType: 'house_reference',
+        family: 'house',
+        kind: 'footprint',
+      });
+      const houseTwo = makeShape({
+        id: 'house_reference:house-form-2',
+        sourceObjectId: 'house-form-2',
+        sourceId: 'house-form-2',
+        sourceType: 'house_reference',
+        family: 'house',
+        kind: 'footprint',
+        polygon: [
+          { x: 2000, y: 0 },
+          { x: 3000, y: 0 },
+          { x: 3000, y: 1000 },
+          { x: 2000, y: 1000 },
+        ],
+      });
+
+      const markup = renderToStaticMarkup(
+        <PlanViewport
+          artifact={makeArtifact([primaryRoof])}
+          activeObjectRef={{ family: 'house_forms', objectId: 'house-form-2' }}
+          houseCommittedShapes={[houseMain, houseTwo]}
+          viewportTransform={IDENTITY_TRANSFORM}
+          onViewportTransformChange={() => undefined}
+        />,
+      );
+
+      expect(markup).toContain('data-plan-shape-id="house_surface_solid:house-main-roof"');
+      expect(markup).toContain('data-plan-shape-id="house_reference:house-form-2"');
+      expect(markup).toContain('data-plan-selection-shape-id="house_reference:house-form-2"');
+      expect(markup).not.toContain('data-plan-selection-shape-id="house_surface_solid:house-main-roof"');
+    });
+
     it('dedupes project house references against projection house references before rendering', () => {
       const houseMain = makeShape({
         id: 'house_reference:house-main',

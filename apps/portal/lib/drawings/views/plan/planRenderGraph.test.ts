@@ -92,7 +92,8 @@ describe('planRenderGraph', () => {
       family: 'house',
       kind: 'roof',
       sourceType: 'house_surface_solid',
-    }))).toBe('house');
+      metadata: { houseFormId: 'house-main' },
+    }))).toBe('house:house-main');
   });
 
   it('applies family visibility before graph construction', () => {
@@ -115,10 +116,11 @@ describe('planRenderGraph', () => {
       family: 'house',
       kind: 'roof',
       sourceType: 'house_surface_solid',
-      metadata: { topProjectionRole: 'top_visible' },
+      metadata: { topProjectionRole: 'top_visible', houseFormId: 'house-main' },
     });
     const referenceFootprint = shape({
       id: 'house_reference:house-footprint',
+      sourceObjectId: 'house-main',
       family: 'house',
       kind: 'footprint',
       sourceType: 'house_reference',
@@ -129,7 +131,7 @@ describe('planRenderGraph', () => {
       family: 'house',
       kind: 'footprint',
       sourceType: 'house_surface_solid',
-      metadata: { topProjectionRole: 'top_visible' },
+      metadata: { topProjectionRole: 'top_visible', houseFormId: 'house-main' },
     });
 
     const graph = buildProjectionPlanRenderGraph([
@@ -140,6 +142,43 @@ describe('planRenderGraph', () => {
 
     expect(graph.committedBodies.map((item) => item.marker)).toEqual(['roof', 'reference-footprint']);
     expect(graph.suppressed.map((item) => item.marker)).toEqual(['surface-footprint']);
+  });
+
+  it('suppresses redundant house footprints per house form instead of globally', () => {
+    const roof = shape({
+      id: 'roof-main',
+      family: 'house',
+      kind: 'roof',
+      sourceType: 'house_surface_solid',
+      metadata: { topProjectionRole: 'top_visible', houseFormId: 'house-main' },
+    });
+    const primaryFootprint = shape({
+      id: 'house_surface_solid:house-main-footprint',
+      family: 'house',
+      kind: 'footprint',
+      sourceType: 'house_surface_solid',
+      metadata: { topProjectionRole: 'top_visible', houseFormId: 'house-main' },
+    });
+    const secondReferenceFootprint = shape({
+      id: 'house_reference:house-form-2',
+      sourceObjectId: 'house-form-2',
+      family: 'house',
+      kind: 'footprint',
+      sourceType: 'house_reference',
+      metadata: { topProjectionRole: 'top_visible', isCanonicalOutline: true },
+    });
+
+    const graph = buildProjectionPlanRenderGraph([
+      { shape: roof, marker: 'roof' },
+      { shape: primaryFootprint, marker: 'primary-footprint' },
+      { shape: secondReferenceFootprint, marker: 'second-reference-footprint' },
+    ]);
+
+    expect(graph.committedBodies.map((item) => item.marker)).toEqual([
+      'roof',
+      'second-reference-footprint',
+    ]);
+    expect(graph.suppressed.map((item) => item.marker)).toEqual(['primary-footprint']);
   });
 
   it('keeps the canonical house_reference footprint when there is no roof committed body, so houses without roof geometry still render an outline', () => {

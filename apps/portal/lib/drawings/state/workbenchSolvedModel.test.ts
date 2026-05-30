@@ -9,6 +9,13 @@ import {
   type WorkbenchSolvedModel,
 } from './workbenchSolvedModel';
 
+const HOUSE_FORM_PRESET_REGRESSION_CASES = [
+  'straight',
+  'recess_right',
+  'l_right',
+  'wrap_right',
+] as const;
+
 function getFixtureSnapshot(name: Parameters<typeof getSanctuaryGeometryWorkbenchFixture>[0]): Record<string, unknown> {
   const fixture = getSanctuaryGeometryWorkbenchFixture(name);
   if (!fixture) {
@@ -28,6 +35,10 @@ function houseReferencePolygon(
   );
   if (!shape) throw new Error(`Missing house reference ${houseFormId}.`);
   return shape.polygon;
+}
+
+function polygonMinX(polygon: ReadonlyArray<{ x: number }>): number {
+  return Math.min(...polygon.map((point) => point.x));
 }
 
 function addFreestandingPergolaTwo(
@@ -370,6 +381,45 @@ describe('buildWorkbenchSolvedModel geometry artifact', () => {
       expect(vertex.x).toBeGreaterThanOrEqual(10000);
     }
   });
+
+  it.each(HOUSE_FORM_PRESET_REGRESSION_CASES)(
+    'keeps project house geometry entries aligned to each selected %s house form',
+    (preset) => {
+      const snapshot = getFixtureSnapshot('mono-standard');
+      const draft = buildEstimateDrawingDraftFromSnapshot(snapshot);
+      if (!draft) throw new Error('Expected drawing draft.');
+      const baseline = buildObjectFirstWorkbenchDraftBaselineFromLegacyEstimateSnapshot({
+        snapshot,
+        draft,
+      });
+      if (!baseline) throw new Error('Expected objectFirst baseline draft.');
+      draft.objectFirst = addHouseFormToObjectFirstDraft({
+        draft: baseline,
+        label: 'Sleepout',
+      });
+      const forms = draft.objectFirst.houseAssembly?.houseForms ?? [];
+      const primary = forms[0];
+      const second = forms[1];
+      if (!primary || !second) throw new Error('Expected two house forms.');
+      primary.footprint = { ...primary.footprint, preset };
+      second.footprint = { ...second.footprint, preset };
+      second.transform = { offsetXM: 10, offsetYM: 0, rotationQuarterTurns: 0 };
+
+      const solvedModel = buildWorkbenchSolvedModel({ snapshot, draft });
+      expect(solvedModel.projectHouseGeometries.map((entry) => entry.houseFormId)).toEqual([
+        'house-main',
+        'house-form-2',
+      ]);
+      expect(solvedModel.projectHouseGeometries.map((entry) => entry.referenceShape.id)).toEqual([
+        'house_reference:house-main',
+        'house_reference:house-form-2',
+      ]);
+      const primaryPolygon = houseReferencePolygon(solvedModel, 'house-main');
+      const secondPolygon = houseReferencePolygon(solvedModel, 'house-form-2');
+      expect(polygonMinX(secondPolygon)).toBeGreaterThanOrEqual(10000);
+      expect(polygonMinX(secondPolygon)).toBeGreaterThan(polygonMinX(primaryPolygon));
+    },
+  );
 
   it('updates only the moved house_reference polygon for each house form', () => {
     const snapshot = getFixtureSnapshot('mono-standard');

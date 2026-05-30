@@ -44,6 +44,7 @@ import type {
   CalculatorHouseFootprintPolygonPoint,
   CalculatorModuleInputs,
 } from '@/lib/types/calculator';
+import { applyHouseFormFootprintEdit } from './houseFormFootprintDraftActions';
 import type { CommitResult, DrawOutlineTarget } from './objectWorkbenchClientTypes';
 import {
   applyObjectWorkbenchDeckPatch,
@@ -558,6 +559,43 @@ export function useObjectWorkbenchActions({
     [runDraftTransaction, store, syncHouseAssemblyFromDraftInputs],
   );
 
+  const commitHouseFormFootprintEdit = useCallback(
+    async (input: {
+      houseFormId: string;
+      edit: EstimateDrawingFootprintEdit;
+    }): Promise<CommitResult> =>
+      runDraftTransaction({
+        buildNextDraft: (draft) => {
+          const objectFirstDraft = resolveObjectFirstDraft(draft, store);
+          const assembly = objectFirstDraft.houseAssembly;
+          if (!assembly) {
+            return { ok: false, error: 'No house assembly available.' };
+          }
+          const result = applyHouseFormFootprintEdit({
+            houseForms: assembly.houseForms,
+            houseFormId: input.houseFormId,
+            edit: input.edit,
+          });
+          if (!result.ok) return result;
+
+          return {
+            ok: true,
+            draft: updateDraftObjectFirst({
+              draft,
+              objectFirst: {
+                ...objectFirstDraft,
+                houseAssembly: {
+                  ...assembly,
+                  houseForms: result.houseForms,
+                },
+              },
+            }),
+          };
+        },
+      }),
+    [runDraftTransaction, store],
+  );
+
   const commitSharedHouseRoofDraft = useCallback(
     async (roof: HouseFormRoofIntentModel): Promise<CommitResult> =>
       runDraftTransaction({
@@ -902,8 +940,22 @@ export function useObjectWorkbenchActions({
   );
 
   const commitHouseFormFootprintDimension = useCallback(
-    async (edit: EstimateDrawingFootprintEdit): Promise<CommitResult> => commitSharedHouseFootprintEdit(edit),
-    [commitSharedHouseFootprintEdit],
+    async (edit: EstimateDrawingFootprintEdit): Promise<CommitResult> => {
+      const houseFormId =
+        ui.activeObjectRef.family === 'house_forms' && ui.activeObjectRef.objectId
+          ? ui.activeObjectRef.objectId
+          : houseForm?.id ?? null;
+      if (!houseFormId) {
+        return { ok: false, error: 'This house form is no longer available.' };
+      }
+      return commitHouseFormFootprintEdit({ houseFormId, edit });
+    },
+    [
+      commitHouseFormFootprintEdit,
+      houseForm?.id,
+      ui.activeObjectRef.family,
+      ui.activeObjectRef.objectId,
+    ],
   );
 
   const commitDeckDimension = useCallback(
@@ -1022,6 +1074,7 @@ export function useObjectWorkbenchActions({
     addSharedHouseDeck,
     addSharedHouseForm,
     addSharedHouseOpening,
+    commitHouseFormFootprintEdit,
     commitHouseFormTransformDelta,
     commitDrawingField,
     commitDeckDimension,

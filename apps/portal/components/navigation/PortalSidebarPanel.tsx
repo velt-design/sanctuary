@@ -2,16 +2,21 @@
 
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import { ChevronDown } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState, type MouseEvent as ReactMouseEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react';
 import { NAV_ITEMS } from './navItems';
-import { SIDEBAR_LABEL_PANEL_WIDTH_PX } from './sidebarLayout';
+import { SIDEBAR_PINNED_WIDTH_PX } from './sidebarLayout';
+import UserMenu from './UserMenu';
 import { usePortalSession } from '@/components/auth/PortalAuthProvider';
 import {
   shouldHandleRouteTransitionClick,
   shouldStartRouteTransitionForHref,
   usePortalRouteTransition,
 } from '@/components/page-state/PortalRouteTransition';
+import { scheduleV2SnapshotQueryOptions } from '@/lib/queries/schedule';
+import { todayYmd } from '@/lib/scheduling/date';
+import { supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
 import styles from './PortalSidebarPanel.module.css';
 
 type PinnedOpenParentState = {
@@ -112,13 +117,18 @@ function isChildActive(
 export default function PortalSidebarPanel() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { role } = usePortalSession();
+  const { email, role } = usePortalSession();
   const { beginRouteTransition } = usePortalRouteTransition();
+  const queryClient = useQueryClient();
   const [hashValue, setHashValue] = useState('');
   const [openParentState, setOpenParentState] = useState<PinnedOpenParentState | null>(null);
+  const prefetchedRef = useRef(new Set<string>());
 
   const scheduleView = (searchParams.get('view') || 'board').toLowerCase();
   const visibleItems = NAV_ITEMS.filter((item) => !item.adminOnly || role === 'admin');
+  const hostKey = useMemo(() => supabaseHostFromUrl(supabaseRuntimeUrl()) || 'unknown', []);
+  const today = useMemo(() => todayYmd(), []);
+  const roleLabel = role === 'admin' ? 'Admin access' : 'Staff access';
   const routeKey = useMemo(
     () => `${pathname}?${searchParams.toString()}#${hashValue}`,
     [hashValue, pathname, searchParams],
@@ -177,11 +187,31 @@ export default function PortalSidebarPanel() {
     [openParentKeys, routeKey],
   );
 
+  const prefetchFor = useCallback(
+    (key: string) => {
+      if (key !== 'schedule') return;
+      const token = `${key}:${hostKey}:${today}`;
+      if (prefetchedRef.current.has(token)) return;
+      prefetchedRef.current.add(token);
+      void queryClient.prefetchQuery(scheduleV2SnapshotQueryOptions(hostKey, today));
+    },
+    [hostKey, queryClient, today],
+  );
+
+  const handleIconLinkClick = useCallback(
+    (event: ReactMouseEvent<HTMLAnchorElement>, href: string, label: string) => {
+      if (!shouldHandleRouteTransitionClick(event)) return;
+      if (!shouldStartRouteTransitionForHref(href)) return;
+      beginRouteTransition({ href, label, source: 'sidebar-rail' });
+    },
+    [beginRouteTransition],
+  );
+
   return (
     <div
       className={styles.panel}
-      style={{ width: SIDEBAR_LABEL_PANEL_WIDTH_PX }}
-      aria-label="Portal navigation labels"
+      style={{ width: SIDEBAR_PINNED_WIDTH_PX }}
+      aria-label="Portal navigation"
       data-portal-sidebar-panel="true"
     >
       <div className={styles.labelLayer} aria-hidden="false">
@@ -195,30 +225,50 @@ export default function PortalSidebarPanel() {
             const isSubmenuOpen = hasSubmenu && openParentKeys.has(item.key);
 
             return (
-              <div key={item.key} className={styles.parentGroup}>
-                <div className={cx(styles.parentHeader, isParentCurrent && styles.parentHeaderBubbled)}>
+              <div key={item.key} className={styles.parentGroup} data-sidebar-parent-key={item.key}>
+                <div className={cx(styles.parentRow, isParentCurrent && styles.parentRowBubbled)}>
                   <Link
                     href={item.href}
+                    aria-label={item.label}
                     aria-current={isParentCurrent ? 'page' : undefined}
-                    className={styles.parentLink}
-                    onClick={(event) => handleNavLinkClick(event, item.href, item.label)}
+                    className={cx(styles.iconButton, isParentCurrent && styles.iconButtonActive)}
+                    data-nav-key={item.key}
+                    onClick={(event) => handleIconLinkClick(event, item.href, item.label)}
+                    onMouseEnter={() => prefetchFor(item.key)}
+                    onFocus={() => prefetchFor(item.key)}
                   >
-                    <span className={styles.parentLabel}>{item.label}</span>
+                    <item.Icon
+                      aria-hidden="true"
+                      size={20}
+                      strokeWidth={2}
+                      className={styles.icon}
+                      style={{ opacity: isParentCurrent ? 1 : 0.85 }}
+                    />
                   </Link>
-                  {hasSubmenu ? (
-                    <button
-                      type="button"
-                      className={styles.chevronButton}
-                      aria-label={`${isSubmenuOpen ? 'Collapse' : 'Expand'} ${item.label}`}
-                      aria-expanded={isSubmenuOpen}
-                      onClick={() => handleChevronClick(item.key)}
+                  <div className={styles.parentHeader}>
+                    <Link
+                      href={item.href}
+                      aria-current={isParentCurrent ? 'page' : undefined}
+                      className={styles.parentLink}
+                      onClick={(event) => handleNavLinkClick(event, item.href, item.label)}
                     >
-                      <ChevronDown
-                        aria-hidden="true"
-                        className={cx(styles.chevron, isSubmenuOpen && styles.chevronOpen)}
-                      />
-                    </button>
-                  ) : null}
+                      <span className={styles.parentLabel}>{item.label}</span>
+                    </Link>
+                    {hasSubmenu ? (
+                      <button
+                        type="button"
+                        className={styles.chevronButton}
+                        aria-label={`${isSubmenuOpen ? 'Collapse' : 'Expand'} ${item.label}`}
+                        aria-expanded={isSubmenuOpen}
+                        onClick={() => handleChevronClick(item.key)}
+                      >
+                        <ChevronDown
+                          aria-hidden="true"
+                          className={cx(styles.chevron, isSubmenuOpen && styles.chevronOpen)}
+                        />
+                      </button>
+                    ) : null}
+                  </div>
                 </div>
 
                 {hasSubmenu && isSubmenuOpen ? (
@@ -245,8 +295,10 @@ export default function PortalSidebarPanel() {
             );
           })}
         </div>
+        <div className={styles.bottom}>
+          <UserMenu email={email ?? undefined} roleLabel={roleLabel} />
+        </div>
       </div>
     </div>
   );
 }
-

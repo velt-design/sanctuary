@@ -2,6 +2,12 @@
 
 This doc is the current-state reference for quote, invoice, public-token, PDF/email, and job-pack flows. These workflows have side effects, public access surfaces, file artifacts, and project-stage implications, so verify behavior at the domain boundary, not only in the UI.
 
+## Read First
+
+- Use `## Ownership` to find the owning route/helper before changing side effects.
+- Use `## Public Token Boundaries` before touching public quote, invoice, PDF, or attachment routes.
+- Use `## Pricing Source Boundary` before changing estimate-to-quote pricing metadata.
+
 ## Ownership
 
 - Staff quote UI: `apps/portal/components/projects/ProjectPage/tabs/QuotesTab.tsx`.

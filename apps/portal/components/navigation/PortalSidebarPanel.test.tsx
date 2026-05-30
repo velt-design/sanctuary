@@ -5,6 +5,7 @@ import { renderIntoDocument } from '../../../../test/reactHarness';
 
 const transitionMocks = vi.hoisted(() => ({
   beginRouteTransition: vi.fn(),
+  prefetchQuery: vi.fn(),
 }));
 
 let mockPathname = '/dashboard';
@@ -23,7 +24,17 @@ vi.mock('next/navigation', () => ({
 }));
 
 vi.mock('@/components/auth/PortalAuthProvider', () => ({
-  usePortalSession: () => ({ role: mockRole }),
+  usePortalSession: () => ({ email: 'ops@example.com', role: mockRole }),
+}));
+
+vi.mock('@tanstack/react-query', () => ({
+  useQueryClient: () => ({
+    prefetchQuery: transitionMocks.prefetchQuery,
+  }),
+}));
+
+vi.mock('./UserMenu', () => ({
+  default: () => <div data-testid="mock-user-menu">User menu</div>,
 }));
 
 vi.mock('@/components/page-state/PortalRouteTransition', async () => {
@@ -56,6 +67,12 @@ function linkByText(container: HTMLElement, text: string): HTMLAnchorElement {
   return link;
 }
 
+function linkByLabel(container: HTMLElement, label: string): HTMLAnchorElement {
+  const link = container.querySelector(`a[aria-label="${label}"]`);
+  if (!(link instanceof HTMLAnchorElement)) throw new Error(`Link not found: ${label}`);
+  return link;
+}
+
 function queryLinkByText(container: HTMLElement, text: string): HTMLAnchorElement | null {
   const link = Array.from(container.querySelectorAll('a')).find((node) => node.textContent?.trim() === text);
   return link instanceof HTMLAnchorElement ? link : null;
@@ -70,6 +87,7 @@ function buttonByLabel(container: HTMLElement, label: string): HTMLButtonElement
 describe('PortalSidebarPanel', () => {
   beforeEach(() => {
     transitionMocks.beginRouteTransition.mockReset();
+    transitionMocks.prefetchQuery.mockReset();
     mockPathname = '/dashboard';
     mockSearchParams = new URLSearchParams();
     mockRole = 'staff';
@@ -113,6 +131,24 @@ describe('PortalSidebarPanel', () => {
     rendered.unmount();
   });
 
+  it('keeps each parent icon, label, and expanded submenu in one flow group', () => {
+    mockPathname = '/staff/projects/design-packages';
+    const rendered = renderSidebar();
+
+    const projectsGroup = rendered.container.querySelector('[data-sidebar-parent-key="projects"]');
+    const contactsGroup = rendered.container.querySelector('[data-sidebar-parent-key="contacts"]');
+    if (!(projectsGroup instanceof HTMLElement) || !(contactsGroup instanceof HTMLElement)) {
+      throw new Error('Expected projects and contacts sidebar groups.');
+    }
+
+    expect(projectsGroup.querySelector('a[aria-label="Projects"]')).toBeInstanceOf(HTMLAnchorElement);
+    expect(projectsGroup.textContent).toContain('Projects');
+    expect(projectsGroup.textContent).toContain('Drafting Queue');
+    expect(projectsGroup.compareDocumentPosition(contactsGroup) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+
+    rendered.unmount();
+  });
+
   it('keeps parent label clicks as navigation without toggling sections', () => {
     mockPathname = '/staff/projects/design-packages';
     const rendered = renderSidebar();
@@ -133,6 +169,25 @@ describe('PortalSidebarPanel', () => {
     rendered.unmount();
   });
 
+  it('keeps parent icon clicks as rail-source navigation in pinned mode', () => {
+    mockPathname = '/staff/projects/design-packages';
+    const rendered = renderSidebar();
+
+    act(() => {
+      linkByLabel(rendered.container, 'Projects').dispatchEvent(
+        new MouseEvent('click', { bubbles: true, cancelable: true, button: 0 }),
+      );
+    });
+
+    expect(transitionMocks.beginRouteTransition).toHaveBeenCalledWith({
+      href: '/projects',
+      label: 'Projects',
+      source: 'sidebar-rail',
+    });
+
+    rendered.unmount();
+  });
+
   it('does not close from Escape because the panel is pinned-only', () => {
     mockPathname = '/staff/projects/design-packages';
     const rendered = renderSidebar();
@@ -149,4 +204,3 @@ describe('PortalSidebarPanel', () => {
     rendered.unmount();
   });
 });
-

@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import type { ModulePlanModel } from '@/app/staff/calculator/moduleViews';
-import type { GeometryPlanViewModel, GeometryTopProjectionViewModel } from '@sp/geometry';
+import type {
+  GeometryPlanViewModel,
+  GeometryTopProjectionShape,
+  GeometryTopProjectionViewModel,
+} from '@sp/geometry';
 import type { WorkbenchSolvedGeometryArtifact } from '@/lib/drawings/state/workbenchSolvedModel';
 import type {
   DeckObjectModel,
@@ -438,6 +442,33 @@ function makeObjectWorkbenchOverlayInput(
   };
 }
 
+function makeHouseReferenceShape(input: {
+  houseFormId: string;
+  xOffsetMm: number;
+}): GeometryTopProjectionShape {
+  return {
+    id: `house_reference:${input.houseFormId}`,
+    sourceObjectId: input.houseFormId,
+    sourceId: input.houseFormId,
+    sourceType: 'house_reference',
+    family: 'house',
+    kind: 'footprint',
+    polygon: [
+      { x: input.xOffsetMm, y: -1800 },
+      { x: input.xOffsetMm + 6000, y: -1800 },
+      { x: input.xOffsetMm + 6000, y: 0 },
+      { x: input.xOffsetMm, y: 0 },
+    ],
+    zOrder: 0,
+    zMin: 0,
+    zMax: 0,
+    metadata: {
+      topProjectionRole: 'top_visible',
+      isCanonicalOutline: true,
+    },
+  };
+}
+
 describe('buildPlanViewModel', () => {
   it('prefers the solved geometry artifact over loose compatibility geometry fields', () => {
     const artifactPlan = makeGeometryPlan();
@@ -616,6 +647,52 @@ describe('buildPlanViewModel', () => {
       expect.objectContaining({
         sourceEdgeId: 'footprint-edge-3',
         edgeCoordinateM: 2.4,
+      }),
+    );
+  });
+
+  it('uses the selected house form reference for the object-workbench house overlay instead of the active module host projection', () => {
+    const planModel = makePlanModelWithHouseContext();
+    const geometryPlan = makeGeometryPlan();
+    const secondHouseForm = {
+      ...makeHouseForm(),
+      id: 'house-form-2',
+      label: 'House 2',
+      transform: { offsetXM: 10, offsetYM: 0, rotationQuarterTurns: 0 },
+    } satisfies HouseFormModel;
+    const viewModel = buildPlanViewModel({
+      moduleId: 'module-1',
+      moduleLabel: 'Module 1',
+      planModel,
+      geometryPlan,
+      geometryTopProjection: makeGeometryTopProjection(),
+      canEditHouseFootprint: true,
+      objectWorkbenchOverlayInput: {
+        ...makeObjectWorkbenchOverlayInput(geometryPlan, secondHouseForm),
+        selection: { kind: 'house', targetId: null },
+        houseReferenceShape: makeHouseReferenceShape({
+          houseFormId: 'house-form-2',
+          xOffsetMm: 10000,
+        }),
+      },
+    });
+
+    const footprint = viewModel?.objectWorkbenchOverlay?.shapes.find(
+      (shape) => shape.ownerKind === 'footprint',
+    );
+    expect(footprint).toEqual(
+      expect.objectContaining({
+        ownerKind: 'footprint',
+        ownerId: 'house-form-2',
+        geometrySourceId: 'house_reference:house-form-2',
+        source: 'top_projection_committed',
+        selected: true,
+        polygon: [
+          { x: 10, y: -1.8 },
+          { x: 16, y: -1.8 },
+          { x: 16, y: 0 },
+          { x: 10, y: 0 },
+        ],
       }),
     );
   });

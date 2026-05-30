@@ -208,6 +208,7 @@ export type ObjectWorkbenchPlanOverlayInput = {
   selection: ObjectWorkbenchPlanOverlaySelection;
   geometryPlan: GeometryPlanViewModel | null | undefined;
   geometryTopProjection?: GeometryTopProjectionViewModel | null | undefined;
+  houseReferenceShape?: GeometryTopProjectionShape | null | undefined;
   geometryAssembly?: Assembly3D | null | undefined;
   geometryRenderSource?: WorkbenchPergolaRenderSource;
   geometryRenderStatus?: WorkbenchPergolaRenderStatus;
@@ -686,6 +687,27 @@ function buildGeometryLookup(
     snapFrameSource,
     openingFrames,
   };
+}
+
+function houseReferenceShapeToPlanPolygon(
+  shape: GeometryTopProjectionShape | null | undefined,
+): GeometryResolvedPlanPolygon | null {
+  if (
+    !shape ||
+    shape.family !== 'house' ||
+    shape.kind !== 'footprint' ||
+    shape.sourceType !== 'house_reference'
+  ) {
+    return null;
+  }
+  const polygon = topProjectionPolygonToMetres(shape);
+  return polygon.length >= 3
+    ? {
+        id: shape.id,
+        polygon,
+        source: 'top_projection_committed',
+      }
+    : null;
 }
 
 function buildHouseFormDeckCommitFootprint(input: {
@@ -1593,7 +1615,8 @@ export function buildObjectWorkbenchPlanOverlay(input: ObjectWorkbenchPlanOverla
       moduleProjectionM: input.moduleProjectionM,
     }),
   );
-  const footprint = lookup.footprint;
+  const canonicalHouseFootprint = houseReferenceShapeToPlanPolygon(input.houseReferenceShape);
+  const footprint = canonicalHouseFootprint ?? lookup.footprint;
   if (!footprint?.polygon.length) return null;
   const houseAttachmentSide = houseForm?.footprint.attachmentSide ?? 'rear';
   const shapes: ObjectWorkbenchPlanShapeOverlay[] = [

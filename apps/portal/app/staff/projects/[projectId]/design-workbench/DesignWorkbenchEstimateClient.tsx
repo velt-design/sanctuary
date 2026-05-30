@@ -455,7 +455,7 @@ export default function DesignWorkbenchEstimateClient({
       : undefined;
   const workbenchFootprintCommit =
     !isLocked && objectWorkbenchDisplayFamily === 'house_forms' && store.ui.viewportMode === 'model'
-      ? objectWorkbenchActions.commitSharedHouseFootprintEdit
+      ? objectWorkbenchActions.commitHouseFormFootprintDimension
       : undefined;
   const outlineEditCommitHandler = useMemo(
     () =>

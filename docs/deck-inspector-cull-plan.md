@@ -1,6 +1,14 @@
 # Deck Inspector Cull Plan (PR-T9)
 
-Companion to [`docs/house-inspector-cull-plan.md`](house-inspector-cull-plan.md) and PR-T8 [appendage cull](appendage-removal-plan.md). Cleans the deck right rail to match the CAD-style direction: dead/derived fields removed (not hidden), snap is the authority for placement, future shape edits go through the gumball.
+**Status**: shipped; retained as a retrospective plan.
+
+Companion to [`docs/house-inspector-cull-plan.md`](house-inspector-cull-plan.md) and PR-T8 [appendage cull](appendage-removal-plan.md). Records the PR-T9 cleanup of the deck right rail to match the CAD-style direction: dead/derived fields removed (not hidden), snap is the authority for placement, future shape edits go through the gumball.
+
+## Read First
+
+- Treat this as shipped history for PR-T9.
+- Use `docs/decision-log.md` for the current deck inspector guardrail.
+- Do not re-execute the CTA-style sections below; use the file as archaeology for the cull.
 
 ## 1. Goal
 
@@ -104,6 +112,6 @@ Persisted-draft compatibility: `label` / `kind` / `elevationMode` on legacy stor
 
 The user's framing said "elevation mode doesn't change anything." The recon found it DOES branch — but only on negative `levelOffsetMm` (clamps to 0 for `'ground'`). So the user is right in practice (they likely never typed a negative number), and the dropdown is overwrought UI for a single branch on an edge case. Going with delete-the-clamp (Option A) instead of preserving it as a boolean (Option B) because the user has never observed it behaving — meaning the clamp's protective value is unproven, and a boolean later costs one line.
 
-## 8. CTA
+## 8. Retrospective note
 
-Ready to execute as a single PR (same shape as PR-T8 — atomic delete + verify)? Say go and I'll start with the costing-side `rg` check first, then walk the file map top-to-bottom.
+PR-T9 shipped. The deck inspector now relies on snap-derived host identity and derived list labels instead of the removed manual deck name, kind, elevation mode, and host-edge controls.

@@ -4,6 +4,12 @@ Status: Active guardrail.
 
 Purpose: keep files, modules, and ownership boundaries aligned with the target architecture while the repo moves toward a production-ready marketing site and a portal that can later be extracted into a SaaS product.
 
+## Read First
+
+- Use `## Default Priority For Hotspots` when touching warning or critical files.
+- Use `## Advisory Size Bands` to interpret `npm run files:report` and `npm run files:changed`.
+- Update the machine-readable registry before treating this human summary as changed.
+
 ## Operating Rule
 
 When touching a file, leave it closer to the target architecture when that can be done safely inside the task.

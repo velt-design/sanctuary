@@ -24,11 +24,18 @@ function item(
 }
 
 describe('filterPlanVisibleBodies', () => {
-  it('drops house_reference + footprint when a house + roof body exists, so the visible stroke does not double up over the roof outline', () => {
+  it('drops house_reference + footprint when the same house form has a roof body, so the visible stroke does not double up over the roof outline', () => {
     const items: PlanRenderItem[] = [
-      item({ id: 'roof', family: 'house', kind: 'roof', sourceType: 'house_surface_solid' }),
+      item({
+        id: 'roof',
+        family: 'house',
+        kind: 'roof',
+        sourceType: 'house_surface_solid',
+        metadata: { houseFormId: 'house-main' },
+      }),
       item({
         id: 'house_reference:footprint',
+        sourceObjectId: 'house-main',
         family: 'house',
         kind: 'footprint',
         sourceType: 'house_reference',
@@ -51,23 +58,41 @@ describe('filterPlanVisibleBodies', () => {
     ]);
   });
 
-  it('drops every house + footprint (any sourceType) when a roof body exists', () => {
+  it('drops house + footprint shapes only for the house form that has a roof body', () => {
     const items: PlanRenderItem[] = [
-      item({ id: 'roof', family: 'house', kind: 'roof', sourceType: 'house_surface_solid' }),
       item({
-        id: 'house_reference:footprint',
+        id: 'roof',
+        family: 'house',
+        kind: 'roof',
+        sourceType: 'house_surface_solid',
+        metadata: { houseFormId: 'house-main' },
+      }),
+      item({
+        id: 'house_reference:house-main',
+        sourceObjectId: 'house-main',
         family: 'house',
         kind: 'footprint',
         sourceType: 'house_reference',
       }),
       item({
-        id: 'house_surface_solid:footprint',
+        id: 'house_surface_solid:house-main-footprint',
         family: 'house',
         kind: 'footprint',
         sourceType: 'house_surface_solid',
+        metadata: { houseFormId: 'house-main' },
+      }),
+      item({
+        id: 'house_reference:house-form-2',
+        sourceObjectId: 'house-form-2',
+        family: 'house',
+        kind: 'footprint',
+        sourceType: 'house_reference',
       }),
     ];
-    expect(filterPlanVisibleBodies(items).map(({ shape }) => shape.id)).toEqual(['roof']);
+    expect(filterPlanVisibleBodies(items).map(({ shape }) => shape.id)).toEqual([
+      'roof',
+      'house_reference:house-form-2',
+    ]);
   });
 
   it('passes non-house shapes through regardless of roof presence', () => {

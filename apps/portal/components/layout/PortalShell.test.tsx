@@ -25,7 +25,7 @@ vi.mock('@/components/navigation/SidebarRail', () => ({
 }));
 
 vi.mock('@/components/navigation/PortalSidebarPanel', () => ({
-  default: () => <div data-testid="mock-sidebar-panel">Sidebar panel</div>,
+  default: () => <div data-testid="mock-pinned-sidebar">Pinned sidebar</div>,
 }));
 
 vi.mock('@/components/auth/PortalAuthProvider', () => ({
@@ -64,7 +64,7 @@ describe('PortalShell', () => {
 
     expect(rendered.container.querySelector('[data-testid="child"]')?.textContent).toContain('Public child');
     expect(rendered.container.querySelector('[data-testid="mock-sidebar-rail"]')).toBeNull();
-    expect(rendered.container.querySelector('[data-testid="mock-sidebar-panel"]')).toBeNull();
+    expect(rendered.container.querySelector('[data-testid="mock-pinned-sidebar"]')).toBeNull();
 
     rendered.unmount();
   });
@@ -77,8 +77,8 @@ describe('PortalShell', () => {
     );
 
     expect(rendered.container.querySelector('[data-testid="child"]')?.textContent).toContain('Protected child');
-    expect(rendered.container.querySelector('[data-testid="mock-sidebar-rail"]')).not.toBeNull();
-    expect(rendered.container.querySelector('[data-testid="mock-sidebar-panel"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[data-testid="mock-sidebar-rail"]')).toBeNull();
+    expect(rendered.container.querySelector('[data-testid="mock-pinned-sidebar"]')).not.toBeNull();
     expect(rendered.container.querySelector('[data-portal-sidebar-mode]')?.getAttribute('data-portal-sidebar-mode')).toBe(
       'pinned',
     );
@@ -102,7 +102,7 @@ describe('PortalShell', () => {
 
     expect(rendered.container.querySelector('[data-testid="child"]')?.textContent).toContain('Workbench child');
     expect(rendered.container.querySelector('[data-testid="mock-sidebar-rail"]')).not.toBeNull();
-    expect(rendered.container.querySelector('[data-testid="mock-sidebar-panel"]')).toBeNull();
+    expect(rendered.container.querySelector('[data-testid="mock-pinned-sidebar"]')).toBeNull();
     expect(rendered.container.querySelector('[data-portal-sidebar-mode]')?.getAttribute('data-portal-sidebar-mode')).toBe(
       'railOnly',
     );

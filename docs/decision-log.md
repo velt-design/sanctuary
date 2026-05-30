@@ -33,6 +33,8 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 | 2026-05-01 | Plan Rendering | Promoted | Projection-backed plans must suppress context/reference bodies as normal visuals and invert the projection transform for deck drag coordinates. |
 | 2026-05-01 | Plan Rendering | Promoted | Geometry-ready plan selection and drag must use render-graph layer ownership and canonical preview/commit/rebuild round trips. |
 | 2026-05-01 | Plan Rendering | Promoted | Projection-backed overlays must bind visible selection/hit geometry to committed top-projection polygons, not reference footprints. |
+| 2026-05-30 | Portal Shell | Active | Expandable pinned sidebars must keep each icon, label, and submenu in one vertical flow group; split rail/panel lists desync icons from labels. |
+| 2026-05-29 | Workbench Cleanup | Active | PR-T7: house form inspector cull -- dead-write/derived fields and duplicate diagnostics were removed from the right rail; future inspector controls must persist and re-derive. |
 | 2026-05-29 | Workbench Cleanup | Active | PR-T8: roof appendage band feature removed end-to-end; future shape edits go through the gumball, not inspector number fields. |
 | 2026-05-29 | Workbench Cleanup | Active | PR-T9: deck inspector cull — `deck.label` / `deck.kind` / `deck.elevationMode` removed; host edge dropdown removed (snap-derived only); ground-clamp on negative offsets dropped. |
 | 2026-05-29 | Workbench Geometry | Active | Multi-house PR3: project house geometry registry is the canonical derived source for per-form house references, host-excluded 3D scene composition, and PlanViewport house snap targets. Per-pergola `RawGeometryModuleInput.houseContext` remains a Phase 2 deletion target; host house ids now flow through geometry, so portal-side scene retag bridges should not be reintroduced. |
@@ -43,6 +45,7 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 | 2026-05-29 | 3D Rendering | Active | Multi-object PR6: 3D Review renders project-wide pergola scene bodies by `pergolaId`, not by active module. Keep 3D read/select-only and preserve object ids for selection. |
 | 2026-05-30 | Workbench Geometry | Active | Multi-object PR7: workbench solve sources route eligible host-house groups through package-level `solveProject`. Do not add new per-module normalize/solve branches in portal state; keep remaining `houseContext` use explicit as the next deletion target. |
 | 2026-05-30 | Workbench Rendering | Active | Multi-object PR8: invalid selected pergolas must not own the project view basis. Keep Plan/3D on a ready project basis and render invalid selections as reference/context objects. |
+| 2026-05-30 | Plan Rendering | Active | Multi-object PR9: house-form plan rendering must resolve by canonical `house_reference:<formId>` from `projectHouseGeometries`. Do not let the object-workbench overlay borrow the active pergola module's host-house projection for a different selected house form; visible-body dedupe is per house form id, not global. |
 | 2026-05-01 | Plan Rendering | Promoted | Geometry-ready Model Space is a hard top-projection-only render path; legacy/context/reference/opening overlays stay out of normal visuals. |
 | 2026-05-01 | Design Workbench Architecture | Promoted | Split workbench ownership contract-first: coordinate adapters and render graphs leave React presenters before moving tools/renderers. |
 | 2026-05-01 | Deck Interaction | Promoted | Projection-backed deck snapping must use top-projection frames live and object frames only at the commit boundary. |
@@ -78,6 +81,38 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 | 2026-05-14 | House Roof Topology | Active | Partial-open clicks on joined footprints (U / wrap with one terminal end opened) require TWO wavefront facet-validator relaxations: (1) `allowRaisedBoundaryPoints: true` -- the slope adjacent to a stationary gable edge legitimately reaches the eave at apex z, not eave z (the gable wall fills the height gap); (2) the `face_count_mismatch` check subtracts the stationary edge count from the expected facet count because stationary edges intentionally produce zero slope facets. Without these, clicking ONE terminal end on a U produced `roof_topology_face_count_mismatch:5:8` and the geometry rendered as invalid. Fully-hipped (no stationary edges) and bent-spine all-open paths are unchanged. |
 
 ## Entries
+
+### 2026-05-30 - Portal Shell - Pinned Sidebar Flow
+
+Area: Portal Shell
+
+Status: Active
+
+Decision or mistake: pinned sidebar icons and labels were rendered as two separate fixed vertical lists. Expanding a label submenu pushed only the label list down, so later icons no longer lined up with their labels.
+
+Why it mattered: the sidebar looked like icons belonged to the wrong navigation item, which makes routine staff navigation error-prone and undermines the compact rail/label design.
+
+Current guardrail: expandable pinned navigation must render each top-level icon, label, chevron, and submenu in a single parent flow group. Rail-only routes can keep an icon-only rail, but pinned mode must not stack an independent icon list beside an expandable label list.
+
+Promoted to: None
+
+Related docs/tests: `apps/portal/components/navigation/PortalSidebarPanel.test.tsx`, `apps/portal/components/layout/PortalShell.test.tsx`, `npm run test:portal:shell`.
+
+### 2026-05-30 - Plan Rendering - House Form Plan Body Identity
+
+Area: Plan Rendering
+
+Status: Active
+
+Decision or mistake: house-form plan rendering could borrow the active pergola module's host-house projection when the selected house form was different.
+
+Why it mattered: multi-house plan views need stable visual and hit-target identity per house form. Borrowing the active module's host projection makes the wrong house look selected and can dedupe visible bodies globally instead of by form.
+
+Current guardrail: resolve house-form plan bodies through the canonical `house_reference:<formId>` entry from `projectHouseGeometries`. Visible-body dedupe is scoped by house form id, not treated as one global house outline.
+
+Promoted to: None
+
+Related docs/tests: `apps/portal/lib/drawings/state/workbenchSolvedModel.test.ts`, `apps/portal/lib/drawings/views/plan/buildPlanViewModel.test.ts`, `apps/portal/lib/drawings/views/plan/planRenderGraph.test.ts`.
 
 ### 2026-05-30 - Workbench Rendering - Stable Project View Basis
 
@@ -1020,6 +1055,22 @@ Current guardrail: do not add new `from '@/lib/drawings/state/houseFirstWorkbenc
 Promoted to: None
 
 Related docs/tests: [apps/portal/components/drawings/viewports/ModelSpaceViewport.tsx](../apps/portal/components/drawings/viewports/ModelSpaceViewport.tsx) (the legacy imports at lines 25-30), [apps/portal/components/drawings/rail/objectWorkbenchImportGuards.test.ts](../apps/portal/components/drawings/rail/objectWorkbenchImportGuards.test.ts) (the 2 failing assertions at lines 270-272 and 408-413), 2026-05-04 entry "Model Space Top renders through Geometry3DViewport lockedViewPreset='top'" (the canonical architecture the guard enforces).
+
+### 2026-05-29 - Workbench Cleanup - PR-T7 House Form Inspector Cull
+
+Area: Design Workbench / House Forms
+
+Status: Active
+
+Decision or mistake: restructured the house form right inspector into PRIMARY / DIMENSIONS / ADVANCED and removed dead-write or derived controls from the inspector and embedded rail. Removed surfaces included house connection, attachment strategy, storey mode, drawing rotation, disabled gable gutter readouts, duplicate selected-object diagnostics, and the Review Basis summary block.
+
+Why it mattered: the old inspector mixed editable geometry controls with values that were either derived on the next solve, disabled, duplicated elsewhere, or useful only as solver diagnostics. That made the right rail look more powerful than it was and made future inspector changes harder to reason about.
+
+Current guardrail: a house-form inspector control must either write a persisted object-first field that survives the next solve, or it should not be presented as an editable field. Solver diagnostics belong behind explicit diagnostics surfaces, not in the primary editing inspector. Keep the compact PRIMARY / DIMENSIONS / ADVANCED structure unless a future product change creates a new persisted editing concept.
+
+Promoted to: None
+
+Related docs/tests: [apps/portal/components/drawings/rail/HouseFormInspector.tsx](../apps/portal/components/drawings/rail/HouseFormInspector.tsx), [apps/portal/components/drawings/rail/HouseFormRoofSections.tsx](../apps/portal/components/drawings/rail/HouseFormRoofSections.tsx), [apps/portal/components/drawings/rail/SanctuaryWorkbenchRail.tsx](../apps/portal/components/drawings/rail/SanctuaryWorkbenchRail.tsx), [docs/house-inspector-cull-plan.md](house-inspector-cull-plan.md) (the PR-T7 plan).
 
 ### 2026-05-29 - Workbench Cleanup - PR-T8 Appendage Feature Cull
 

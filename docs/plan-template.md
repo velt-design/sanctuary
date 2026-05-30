@@ -2,6 +2,12 @@
 
 Use this structure when delivering a plan for non-trivial work — multi-PR sequences, contract changes, refactors with >100 LOC ripple, or any change touching a load-bearing system. **The goal is to give the reader enough information to make a go/no-go decision without having to spelunk for implications.**
 
+## Read First
+
+- Use this template for planning docs, not current-state owner docs.
+- Keep plans decision-complete and compact enough for another agent to execute.
+- Prefer updating existing current-state docs over creating a new plan when no future sequence is needed.
+
 ## Scaling guidance
 
 Not every plan needs every section. Adaptive sizing:

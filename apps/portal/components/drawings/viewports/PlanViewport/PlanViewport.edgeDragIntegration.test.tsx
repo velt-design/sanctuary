@@ -186,6 +186,7 @@ describe('PlanViewport edge-drag composed integration', () => {
       activeModuleInput: { lengthM: '5', projectionM: '3' } as never,
       objectWorkbenchActions: {
         commitSharedPergolaEdgeDragResult,
+        commitHouseFormFootprintEdit: vi.fn(),
         commitSharedHouseDeckPatch: vi.fn(),
         commitSharedHouseFootprintEdit: vi.fn(),
       } as unknown as ObjectWorkbenchActions,

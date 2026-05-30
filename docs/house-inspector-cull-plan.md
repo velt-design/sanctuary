@@ -1,8 +1,14 @@
 # House Form Inspector Cull — Plan (PR-T7)
 
-**Drafted**: 2026-05-29. **Status**: proposed, awaiting go-ahead.
+**Drafted**: 2026-05-29. **Status**: shipped; retained as a retrospective plan.
 
-Strip the right inspector for a selected house form down to the editable fields that actually drive geometry, in the same compact 3-section + collapsible-advanced layout we shipped for pergolas in PR-W12. Removes all confirmed no-op/derived dropdowns, all read-only diagnostic blocks that duplicate the header chip or the objects tree, and the duplicate "ATTACHMENT CONTEXT" heading.
+This plan records the PR-T7 house form inspector cull. The current guardrail is captured in `docs/decision-log.md`; do not treat this file as an active request to execute the cleanup again.
+
+## Read First
+
+- Treat this as shipped history for PR-T7.
+- Use the file map and risk notes for archaeology only.
+- Current workbench rules live in `docs/design-workbench-architecture.md`, `docs/design-workbench-multi-object-goal.md`, and the PR-T7 decision-log entry.
 
 ---
 
@@ -122,7 +128,7 @@ Total: ~280-340 LOC removed, ~30-50 LOC added (the new section composition). **N
 | Removing `house-connection` field breaks the `commitGeometryEdit({ type: 'house_connection' })` consumer | Very Low | The intent handler stays in place; only the UI that calls it goes away. If some other surface still calls the intent it'll still work. (We're not removing the underlying capability — only the lying UI.) |
 | Removing the gable gutter fields breaks the embedded rail's `gable` section | Low | The `gableFields` useMemo only has 3 fields total: end-frames (works) + the two gutter readouts (no-ops). After removing the gutter readouts the section still renders with the end-frames field. If `gableFields.length === 0` somewhere the section is skipped — that's fine. |
 | User reports a NEW dead-field after seeing the snapshot | Med | Expected. Snapshot the result; iterate. The plan structure (visible PRIMARY + collapsed ADVANCED) handles "one more thing to hide" cheaply — just move the field's def into the ADVANCED bin or delete it. |
-| Removing rotation buttons breaks workflows that depended on them | Low (user-confirmed go-ahead) | User explicitly directed this removal; gumball is the future path. No mitigation needed beyond confirming once more before merge. |
+| Removing rotation buttons breaks workflows that depended on them | Low (user-confirmed removal) | User explicitly directed this removal; gumball is the future path. The shipped PR did not retain a separate rotation-button fallback. |
 
 ---
 
@@ -165,6 +171,6 @@ Also: the plan keeps the `commitGeometryEdit({ type: 'house_connection' | 'house
 
 ---
 
-## 11. CTA
+## 11. Retrospective note
 
-Ready to ship PR-T7? One PR, ~250 LOC net deletion, single browser refresh to verify. Or want to tighten the bin contents (move something between PRIMARY / DIMENSIONS / ADVANCED) before I start?
+PR-T7 shipped. The house inspector was restructured around PRIMARY / DIMENSIONS / ADVANCED, dead-write fields were removed from the rail, and the duplicate attachment-context heading was resolved.

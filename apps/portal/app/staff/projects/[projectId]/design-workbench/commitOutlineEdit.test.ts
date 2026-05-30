@@ -17,6 +17,7 @@ type StoreStubInput = {
     | { family: 'house_forms'; objectId: string | null }
     | { family: 'decks'; objectId: string | null };
   activeHouseForm?: {
+    id: string;
     transform?: { offsetXM: number; offsetYM: number; rotationQuarterTurns: 0 | 1 | 2 | 3 };
     footprint: { attachmentSide: 'rear' | 'left' | 'right' | 'front' };
   } | null;
@@ -55,6 +56,7 @@ function stubStore(input: StoreStubInput = {}): DrawingWorkbenchStore {
 
 function stubActions(): ObjectWorkbenchActions {
   return {
+    commitHouseFormFootprintEdit: vi.fn().mockResolvedValue({ ok: true }),
     commitSharedHouseFootprintEdit: vi.fn().mockResolvedValue({ ok: true }),
     commitSharedPergolaEdgeDragResult: vi.fn().mockResolvedValue({ ok: true }),
     commitSharedHouseDeckPatch: vi.fn().mockResolvedValue({ ok: true }),
@@ -70,11 +72,16 @@ const SQUARE_2M: EdgeDragCommit['nextPolygon'] = [
 
 describe('buildOutlineEditCommitHandler', () => {
   describe('house_forms branch', () => {
-    it('writes the migration default position THEN polygon when houseFootprintPosition is null', () => {
+    it('writes the selected house form custom polygon by id', () => {
       const actions = stubActions();
       const handler = buildOutlineEditCommitHandler({
         store: stubStore({
-          activeHouseForm: { footprint: { attachmentSide: 'rear' } },
+          activeRailRef: { family: 'house_forms', objectId: 'house-form-2' },
+          activeHouseForm: {
+            id: 'house-form-2',
+            transform: { offsetXM: 0, offsetYM: 0, rotationQuarterTurns: 0 },
+            footprint: { attachmentSide: 'rear' },
+          },
         }),
         activeModuleInput: {
           houseFootprintPosition: null,
@@ -90,50 +97,30 @@ describe('buildOutlineEditCommitHandler', () => {
         nextPolygon: SQUARE_2M,
         snap: null,
       });
-      const calls = (actions.commitSharedHouseFootprintEdit as ReturnType<typeof vi.fn>).mock.calls;
-      expect(calls).toHaveLength(2);
-      expect(calls[0]?.[0]).toEqual({
-        type: 'position',
-        position: { originXMm: '0', originYMm: '0', rotationDeg: '0' },
-      });
-      expect(calls[1]?.[0].type).toBe('custom_polygon');
-    });
-
-    it('skips the position write when houseFootprintPosition is already persisted', () => {
-      const actions = stubActions();
-      const handler = buildOutlineEditCommitHandler({
-        store: stubStore({
-          activeHouseForm: { footprint: { attachmentSide: 'rear' } },
-        }),
-        activeModuleInput: {
-          houseFootprintPosition: { originXMm: '500', originYMm: '700', rotationDeg: '0' },
-          lengthM: '6',
-          projectionM: '3',
-        } as never,
-        objectWorkbenchActions: actions,
-      });
-      handler({
-        outlineId: 'house_surface:house-1',
-        family: 'house_forms',
-        edgeIndex: 0,
-        nextPolygon: SQUARE_2M,
-        snap: null,
-      });
-      const calls = (actions.commitSharedHouseFootprintEdit as ReturnType<typeof vi.fn>).mock.calls;
+      expect(actions.commitSharedHouseFootprintEdit).not.toHaveBeenCalled();
+      const calls = (actions.commitHouseFormFootprintEdit as ReturnType<typeof vi.fn>).mock.calls;
       expect(calls).toHaveLength(1);
-      expect(calls[0]?.[0].type).toBe('custom_polygon');
+      expect(calls[0]?.[0]).toMatchObject({
+        houseFormId: 'house-form-2',
+        edit: { type: 'custom_polygon' },
+      });
     });
 
-    it('uses front-attachment migration default (Y shift) when attachment is front', () => {
+    it('encodes against the selected house transform instead of active module position', () => {
       const actions = stubActions();
       const handler = buildOutlineEditCommitHandler({
         store: stubStore({
-          activeHouseForm: { footprint: { attachmentSide: 'front' } },
+          activeRailRef: { family: 'house_forms', objectId: 'house-form-2' },
+          activeHouseForm: {
+            id: 'house-form-2',
+            transform: { offsetXM: 1, offsetYM: 0, rotationQuarterTurns: 0 },
+            footprint: { attachmentSide: 'rear' },
+          },
         }),
         activeModuleInput: {
-          houseFootprintPosition: null,
+          houseFootprintPosition: { originXMm: '50000', originYMm: '70000', rotationDeg: '0' },
           lengthM: '6',
-          projectionM: '4',
+          projectionM: '3',
         } as never,
         objectWorkbenchActions: actions,
       });
@@ -144,16 +131,15 @@ describe('buildOutlineEditCommitHandler', () => {
         nextPolygon: SQUARE_2M,
         snap: null,
       });
-      const positionCall = (
-        actions.commitSharedHouseFootprintEdit as ReturnType<typeof vi.fn>
-      ).mock.calls[0]?.[0];
-      expect(positionCall).toEqual({
-        type: 'position',
-        position: { originXMm: '0', originYMm: '3000', rotationDeg: '0' },
+      const calls = (actions.commitHouseFormFootprintEdit as ReturnType<typeof vi.fn>).mock.calls;
+      expect(calls).toHaveLength(1);
+      expect(calls[0]?.[0].edit.polygon[0]).toEqual({
+        alongM: '-1',
+        depthM: '0',
       });
     });
 
-    it('defaults attachmentSide to rear when no house form is active', () => {
+    it('does not write when no house form is selected or active', () => {
       const actions = stubActions();
       const handler = buildOutlineEditCommitHandler({
         store: stubStore({ activeHouseForm: null }),
@@ -171,10 +157,8 @@ describe('buildOutlineEditCommitHandler', () => {
         nextPolygon: SQUARE_2M,
         snap: null,
       });
-      const positionCall = (
-        actions.commitSharedHouseFootprintEdit as ReturnType<typeof vi.fn>
-      ).mock.calls[0]?.[0];
-      expect(positionCall.position).toEqual({ originXMm: '0', originYMm: '0', rotationDeg: '0' });
+      expect(actions.commitHouseFormFootprintEdit).not.toHaveBeenCalled();
+      expect(actions.commitSharedHouseFootprintEdit).not.toHaveBeenCalled();
     });
   });
 
@@ -376,6 +360,7 @@ describe('buildOutlineEditCommitHandler', () => {
       const handler = buildOutlineEditCommitHandler({
         store: stubStore({
           activeHouseForm: {
+            id: 'house-form-1',
             transform: { offsetXM: 1, offsetYM: 0.5, rotationQuarterTurns: 0 },
             footprint: { attachmentSide: 'rear' },
           },

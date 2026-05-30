@@ -1,0 +1,104 @@
+import type { EstimateDrawingFootprintEdit } from '@/lib/estimates/drawingEdits';
+import type { ObjectFirstHouseFormDraft } from '@/lib/drawings/state/objectFirstWorkbenchModel';
+import {
+  normalizeAttachmentSide,
+  normalizeDrawingRotationQuarterTurns,
+  normalizeHouseFootprintMode,
+  normalizeHouseFootprintParams,
+  normalizeHouseFootprintPolygon,
+  normalizeHouseFootprintPosition,
+  normalizeHouseFootprintPreset,
+} from '@/lib/types/calculator';
+
+export function applyHouseFormFootprintEdit(input: {
+  houseForms: ObjectFirstHouseFormDraft[];
+  houseFormId: string;
+  edit: EstimateDrawingFootprintEdit;
+}): { ok: true; houseForms: ObjectFirstHouseFormDraft[] } | { ok: false; error: string } {
+  let found = false;
+  const houseForms = input.houseForms.map((houseForm) => {
+    if (houseForm.id !== input.houseFormId) return houseForm;
+    found = true;
+
+    const footprint = houseForm.footprint;
+    switch (input.edit.type) {
+      case 'mode':
+        return {
+          ...houseForm,
+          footprint: {
+            ...footprint,
+            mode: normalizeHouseFootprintMode(input.edit.mode),
+          },
+        };
+      case 'preset':
+        return {
+          ...houseForm,
+          footprint: {
+            ...footprint,
+            preset: normalizeHouseFootprintPreset(input.edit.preset),
+          },
+        };
+      case 'rotate':
+        return {
+          ...houseForm,
+          transform: {
+            ...houseForm.transform,
+            rotationQuarterTurns: normalizeDrawingRotationQuarterTurns(
+              houseForm.transform.rotationQuarterTurns + input.edit.delta,
+            ),
+          },
+        };
+      case 'attachment_side':
+        return {
+          ...houseForm,
+          footprint: {
+            ...footprint,
+            attachmentSide: normalizeAttachmentSide(input.edit.side),
+          },
+        };
+      case 'param':
+        return {
+          ...houseForm,
+          footprint: {
+            ...footprint,
+            params: {
+              ...normalizeHouseFootprintParams(footprint.params),
+              [input.edit.key]: input.edit.value,
+            },
+          },
+        };
+      case 'polygon':
+        return {
+          ...houseForm,
+          footprint: {
+            ...footprint,
+            polygon: normalizeHouseFootprintPolygon(input.edit.polygon),
+          },
+        };
+      case 'custom_polygon':
+        return {
+          ...houseForm,
+          footprint: {
+            ...footprint,
+            mode: 'custom_polygon' as const,
+            polygon: normalizeHouseFootprintPolygon(input.edit.polygon),
+          },
+        };
+      case 'position':
+        return {
+          ...houseForm,
+          footprint: {
+            ...footprint,
+            position: normalizeHouseFootprintPosition(input.edit.position),
+          },
+        };
+      default:
+        return houseForm;
+    }
+  });
+
+  if (!found) {
+    return { ok: false, error: `House form ${input.houseFormId} not found.` };
+  }
+  return { ok: true, houseForms };
+}

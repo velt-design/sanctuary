@@ -6,6 +6,12 @@ Make the design workbench a robust multi-object editor: multiple house forms, mu
 
 This goal is the active campaign for work that sits between "the architecture is mostly right" and "the workbench is a dependable product surface."
 
+## Read First
+
+- Start with `## Current Handoff` before proposing the next workbench PR.
+- Use `## North-Star Constraints` as the non-negotiable rule set.
+- Answer `## Gate 0 Mapping` for any workbench/geometry implementation plan.
+
 ## Why Now
 
 The workbench has crossed the hardest conceptual boundary:

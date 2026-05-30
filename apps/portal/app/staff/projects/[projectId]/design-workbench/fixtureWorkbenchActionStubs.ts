@@ -99,6 +99,7 @@ export function buildFixtureWorkbenchActions(): ObjectWorkbenchActions {
     addSharedHouseDeck: ok,
     addSharedHouseForm: ok,
     addSharedHouseOpening: ok,
+    commitHouseFormFootprintEdit: ok,
     commitHouseFormTransformDelta: ok,
     commitDrawingField: ok,
     commitDeckDimension: ok,

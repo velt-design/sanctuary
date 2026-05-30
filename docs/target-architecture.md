@@ -4,6 +4,12 @@ Status: Target contract.
 
 Purpose: describe the architecture this repo is actively converging toward. Current-state docs still describe what exists today; this doc names the north star so agents can tell whether a change moves the repo closer to or farther from the intended structure.
 
+## Read First
+
+- Use `## Target Areas` to pick the owner lane before broad or ambiguous work.
+- Use `docs/change-routing.md` after choosing a lane to find owner docs and doc update triggers.
+- Use current-state feature docs for exact implementation behavior; this doc names direction and boundaries.
+
 ## North Star
 
 This repo should be a clean two-app product workspace where apps orchestrate workflows, packages own reusable domain truth, and persistence, auth, and side-effect boundaries are explicit and increasingly enforced by tests and tooling.

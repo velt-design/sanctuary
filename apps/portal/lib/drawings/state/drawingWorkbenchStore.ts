@@ -224,6 +224,12 @@ export function buildDrawingWorkbenchStore(input: {
     drawingModules,
     objectWorkbenchGeometryContext,
   });
+  const overlayHouseReferenceShape =
+    overlayHouseForm
+      ? solvedModel.projectHouseGeometries.find(
+          (entry) => entry.houseFormId === overlayHouseForm.id,
+        )?.referenceShape ?? null
+      : null;
   const modules = solvedModel.modules.map((solution) => {
     const label = solution.label;
     const geometryModule = solution.moduleInput;
@@ -264,6 +270,7 @@ export function buildDrawingWorkbenchStore(input: {
             selection: compatibilitySelection.activeHouseSelection,
             geometryPlan: geometryPlanViewModel,
             geometryTopProjection: geometryTopProjectionViewModel,
+            houseReferenceShape: overlayHouseReferenceShape,
             geometryAssembly: solution.assembly,
             geometryRenderSource: planRenderSource,
             geometryRenderStatus: planRenderStatus,

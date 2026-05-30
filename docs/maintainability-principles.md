@@ -4,6 +4,12 @@ These are the explicit rules of thumb the codebase optimises for. They are not a
 
 Long-term maintainability is the highest non-functional priority. The product will outlive any single feature; every line of code is read more than written. Bias decisions toward "the next person reading this in six months understands it without archaeology."
 
+## Read First
+
+- Use `## How Agents Should Use This` before bugfixes, migrations, interaction wiring, or hotspot work.
+- Use the numbered principles as review criteria when choosing between a workaround and an extraction.
+- Use the coordinate-system footguns before changing PlanViewport or workbench geometry commits.
+
 ## How Agents Should Use This
 
 Use this doc before bugfixes, migration work, interaction wiring, or changes in files reported by `npm run files:report`.

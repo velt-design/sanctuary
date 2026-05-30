@@ -111,13 +111,16 @@ export default function PortalShell({ children }: { children: React.ReactNode })
         data-portal-sidebar-mode={sidebarMode}
         style={sidebarLayoutStyle}
       >
-        <SidebarRail
-          email={email ?? undefined}
-          roleLabel={roleLabel}
-          role={role ?? undefined}
-          panelVisible={sidebarMode === 'pinned'}
-        />
-        {sidebarMode === 'pinned' ? <PortalSidebarPanel /> : null}
+        {sidebarMode === 'railOnly' ? (
+          <SidebarRail
+            email={email ?? undefined}
+            roleLabel={roleLabel}
+            role={role ?? undefined}
+            panelVisible={false}
+          />
+        ) : (
+          <PortalSidebarPanel />
+        )}
         <div
           className={cx(
             styles.content,
