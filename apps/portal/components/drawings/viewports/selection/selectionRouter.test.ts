@@ -314,11 +314,16 @@ describe('selectionRouter', () => {
             family: 'house',
             kind: 'roof',
             sourceObjectId: 'house-roof-edge-2',
-            metadata: { openGableEndId: 'house-gable-end-x-2', isOpen: false },
+            metadata: {
+              houseFormId: 'house-form-2',
+              openGableEndId: 'house-gable-end-x-2',
+              isOpen: false,
+            },
           }),
         ),
       ).toEqual({
         kind: 'house_terminal_end_toggle',
+        houseFormId: 'house-form-2',
         endId: 'house-gable-end-x-2',
         isOpen: false,
       });
@@ -334,6 +339,7 @@ describe('selectionRouter', () => {
         ),
       ).toEqual({
         kind: 'house_terminal_end_toggle',
+        houseFormId: null,
         endId: 'house-gable-end-x-4',
         isOpen: true,
       });

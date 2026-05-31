@@ -852,7 +852,11 @@ describe('PlanViewport', () => {
       ).not.toBeNull();
 
       dispatchPointer(hitTarget!, 'pointerdown', { button: 0 });
-      expect(onToggleHouseTerminalEnd).toHaveBeenCalledWith('house-gable-end-x-2', false);
+      expect(onToggleHouseTerminalEnd).toHaveBeenCalledWith({
+        houseFormId: 'house-form-2',
+        endId: 'house-gable-end-x-2',
+        currentlyOpen: false,
+      });
       rendered.unmount();
     });
 

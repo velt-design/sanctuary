@@ -878,6 +878,7 @@ function enrichHouseRoofShapesWithTerminalEnds(
       ...shape,
       metadata: {
         ...(shape.metadata ?? {}),
+        houseFormId: houseModel.houseId,
         openGableEndId: endId,
         isOpen: isOpenByEndId.get(endId) ?? false,
       },
@@ -962,6 +963,7 @@ function enrichHouseRoofShapesWithTerminalEnds(
       zMax: 0,
       metadata: {
         topProjectionRole: 'top_visible',
+        houseFormId: houseModel.houseId,
         openGableEndId: segment.endId,
         isOpen: true,
       },

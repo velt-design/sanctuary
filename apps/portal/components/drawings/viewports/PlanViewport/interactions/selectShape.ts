@@ -5,6 +5,12 @@ import {
 } from '@/components/drawings/viewports/selection/selectionRouter';
 import type { ObjectWorkbenchViewportTargetSelection } from '@/lib/drawings/state/objectWorkbenchViewportTypes';
 
+export type HouseTerminalEndToggleRequest = {
+  houseFormId: string | null;
+  endId: string;
+  currentlyOpen: boolean;
+};
+
 export type ShapeSelectionCallbacks = {
   onSelectObjectWorkbenchTarget?: (selection: ObjectWorkbenchViewportTargetSelection) => void;
   onSelectPergolaTarget?: (pergolaId: string) => void;
@@ -13,7 +19,7 @@ export type ShapeSelectionCallbacks = {
   // through whatever the dispatcher resolved -- the workbench shell is
   // responsible for actually inverting `isOpen` and committing the
   // updated `openGableEndIds` to the house draft.
-  onToggleHouseTerminalEnd?: (endId: string, currentlyOpen: boolean) => void;
+  onToggleHouseTerminalEnd?: (request: HouseTerminalEndToggleRequest) => void;
 };
 
 export function dispatchSelectionTarget(
@@ -31,7 +37,11 @@ export function dispatchSelectionTarget(
       });
       return;
     case 'house_terminal_end_toggle':
-      callbacks.onToggleHouseTerminalEnd?.(target.endId, target.isOpen);
+      callbacks.onToggleHouseTerminalEnd?.({
+        houseFormId: target.houseFormId,
+        endId: target.endId,
+        currentlyOpen: target.isOpen,
+      });
       return;
     case 'none':
       callbacks.onClearWorkbenchSelection?.();

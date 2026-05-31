@@ -109,7 +109,7 @@ export default function WorkbenchInspectorHost({
   const onCommitFootprintEdit = !isLocked
     ? objectWorkbenchActions.commitHouseFormFootprintDimension
     : undefined;
-  const onCommitRoofIntent = !isLocked ? objectWorkbenchActions.commitSharedHouseRoofDraft : undefined;
+  const onCommitRoofIntent = !isLocked ? objectWorkbenchActions.commitHouseFormRoofIntent : undefined;
   const onStartDrawOutline = objectSelectionActions.startDrawOutlineEditor;
   const onAddDeck = !isLocked ? objectWorkbenchActions.addSharedHouseDeck : undefined;
   const onAddOpening = !isLocked ? objectWorkbenchActions.addSharedHouseOpening : undefined;
@@ -128,6 +128,10 @@ export default function WorkbenchInspectorHost({
     store.derived.activeModule?.assemblyModel.capabilities.canEditHouseFootprint,
   );
   const canStartDrawOutline = !isLocked;
+  const selectedHouseFormIdForRoofCommit =
+    store.ui.activeObjectRef.family === 'house_forms'
+      ? store.ui.activeObjectRef.objectId ?? null
+      : null;
 
   const runFootprintCommit = useCallback<RunFootprintCommit>(
     async (fieldId, edit) => {
@@ -150,13 +154,20 @@ export default function WorkbenchInspectorHost({
 
   const runRoofCommit = useCallback<RunRoofCommit>(
     async (fieldId, nextRoof) => {
-      const result = await resolveCommitResult(onCommitRoofIntent?.(nextRoof));
+      const result = await resolveCommitResult(
+        selectedHouseFormIdForRoofCommit
+          ? onCommitRoofIntent?.({
+              houseFormId: selectedHouseFormIdForRoofCommit,
+              roof: nextRoof,
+            })
+          : { ok: false, error: 'Select a house form before editing its roof.' },
+      );
       setFieldErrors((current) => ({
         ...current,
-        [fieldId]: result.ok ? '' : result.error ?? 'Unable to update the shared house roof.',
+        [fieldId]: result.ok ? '' : result.error ?? 'Unable to update this house form roof.',
       }));
     },
-    [onCommitRoofIntent],
+    [onCommitRoofIntent, selectedHouseFormIdForRoofCommit],
   );
 
   const runInspectorAction = useCallback<RunAction>(

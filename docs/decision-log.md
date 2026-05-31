@@ -54,6 +54,7 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 | 2026-05-31 | Plan Rendering | Active | PR-2B.1b.3l: Plan SVG paint order is a semantic view-model contract, not raw top-projection array/z-order. Project pergola bodies must paint below house roof/roof-material bodies while hit targets and selection chrome remain separate layers. |
 | 2026-05-31 | Plan Rendering | Active | PR-2B.1b.3m: Plan hit targets are event geometry only. They must not paint hover/body visuals; local hover affordance belongs in explicit outline chrome, suppressed for the active selection. |
 | 2026-05-31 | Workbench House Forms | Active | PR-2B.1b.3n: solver-derived roof fields should not appear as primary user controls unless they are clear design choices. Hipped ridge axis is derived from the selected house form's footprint, and footprint presets are seeds/provenance rather than object identity. |
+| 2026-05-31 | Workbench House Forms | Active | PR-2B.1b.3o: roof intent writes must be object-id addressed. Roof controls and plan terminal-end toggles must carry `houseFormId` and must not fall back to the first house form. |
 | 2026-05-01 | Plan Rendering | Promoted | Geometry-ready Model Space is a hard top-projection-only render path; legacy/context/reference/opening overlays stay out of normal visuals. |
 | 2026-05-01 | Design Workbench Architecture | Promoted | Split workbench ownership contract-first: coordinate adapters and render graphs leave React presenters before moving tools/renderers. |
 | 2026-05-01 | Deck Interaction | Promoted | Projection-backed deck snapping must use top-projection frames live and object frames only at the commit boundary. |
@@ -1316,3 +1317,19 @@ Current guardrail: reconcile hipped `roofIntent.ridgeAxis` from the edited house
 Promoted to: None
 
 Related docs/tests: [apps/portal/lib/drawings/state/houseFormRoofIntentForFootprint.ts](../apps/portal/lib/drawings/state/houseFormRoofIntentForFootprint.ts), [apps/portal/app/staff/projects/[projectId]/design-workbench/houseFormFootprintDraftActions.ts](../apps/portal/app/staff/projects/%5BprojectId%5D/design-workbench/houseFormFootprintDraftActions.ts), [apps/portal/lib/drawings/state/drawingWorkbenchRailModel.ts](../apps/portal/lib/drawings/state/drawingWorkbenchRailModel.ts).
+
+### 2026-05-31 - Workbench House Forms - Roof Intent By Id
+
+Area: Workbench House Forms
+
+Status: Active
+
+Decision or mistake: house roof form, material, pitch, and open-end edits must write to an explicit `houseFormId`. Plan terminal-end hit targets carry their owning house form id, and clicks with missing ownership no-op instead of editing House 1.
+
+Why it mattered: the shared-house roof draft path kept the original single-house assumption alive. When multiple house forms were visible, roof/open-end interactions could silently mutate the first form and make the selected form's Plan/3D roof body look disconnected from the inspector.
+
+Current guardrail: normal roof writes go through `commitHouseFormRoofIntent({ houseFormId, roof })`; `commitSharedHouseRoofDraft` is a legacy wrapper only. New terminal-end or roof-control routes must preserve owner metadata from geometry through selection routing to the draft commit, and must not use array index 0 as a fallback.
+
+Promoted to: None
+
+Related docs/tests: [apps/portal/app/staff/projects/[projectId]/design-workbench/houseFormRoofDraftActions.ts](../apps/portal/app/staff/projects/%5BprojectId%5D/design-workbench/houseFormRoofDraftActions.ts), [apps/portal/components/drawings/viewports/selection/selectionRouter.ts](../apps/portal/components/drawings/viewports/selection/selectionRouter.ts), [packages/geometry/src/topProjection.ts](../packages/geometry/src/topProjection.ts).

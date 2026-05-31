@@ -170,6 +170,7 @@ export function buildFixtureWorkbenchActions(): ObjectWorkbenchActions {
     commitDeckDimension: ok,
     commitGeometryIntent: ok,
     commitHouseFormFootprintDimension: ok,
+    commitHouseFormRoofIntent: ok,
     commitOpeningDimension: ok,
     commitSharedPergolaAttachment: ok,
     commitSharedPergolaEdgeDragResult: ok,

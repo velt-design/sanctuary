@@ -26,6 +26,7 @@ import {
   nextObjectWorkbenchPergolaId,
   updateDraftObjectFirst,
 } from './objectWorkbenchDraftActions';
+import { buildHouseFormRoofIntentCommitDraft } from './houseFormRoofDraftActions';
 
 function makeRoofIntent(overrides: Partial<HouseFormRoofIntentModel> = {}): HouseFormRoofIntentModel {
   return {
@@ -716,6 +717,77 @@ describe('objectWorkbenchDraftActions', () => {
     expect(nextDraft.objectFirst?.houseAssembly?.houseForms[0]?.roofIntentAuthored).toBe(true);
     expect(syncedForm.roofIntent.openGableEndIds).toEqual([]);
     expectNoStaleHouseFirst(nextDraft);
+  });
+
+  it('commits roof intent to the addressed house form only', () => {
+    const house1 = makeObjectFirstDraft().houseAssembly!.houseForms[0]!;
+    const house2: ObjectFirstHouseFormDraft = {
+      ...house1,
+      id: 'house-form-2',
+      label: 'House 2',
+      transform: { offsetXM: 8, offsetYM: 0, rotationQuarterTurns: 0 },
+      roofIntent: makeRoofIntent({ material: 'eurotray_300', primaryPitchDeg: '12' }),
+    };
+    const originalHouse1 = {
+      ...(JSON.parse(JSON.stringify(house1)) as ObjectFirstHouseFormDraft),
+      footprint: {
+        ...house1.footprint,
+        position: null,
+      },
+    };
+    const originalHouse2Transform = { ...house2.transform };
+    const objectFirstDraft: ObjectFirstWorkbenchDraftVNext = {
+      ...makeObjectFirstDraft(),
+      houseAssembly: {
+        id: 'house-main',
+        label: 'House',
+        houseForms: [house1, house2],
+      },
+    };
+
+    const result = buildHouseFormRoofIntentCommitDraft({
+      draft: makeDraft(objectFirstDraft),
+      objectFirstDraft,
+      houseFormId: 'house-form-2',
+      roof: makeRoofIntent({
+        form: 'hipped',
+        material: 'trapezoidal_5_rib',
+        primaryPitchDeg: '22',
+        ridgeAxis: 'y',
+        openGableEndIds: ['terminal-a'],
+      }),
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error(result.error);
+    const forms = result.draft.objectFirst!.houseAssembly!.houseForms;
+    expect(forms[0]).toEqual(originalHouse1);
+    expect(forms[1]?.transform).toEqual(originalHouse2Transform);
+    expect(forms[1]?.roofIntent).toMatchObject({
+      form: 'hipped',
+      material: 'trapezoidal_5_rib',
+      primaryPitchDeg: '22',
+      ridgeAxis: 'x',
+      openGableEndIds: [],
+    });
+    expect(forms[1]?.roofIntentAuthored).toBe(true);
+    expect(result.draft.inputs.modules[0]?.houseRoofMaterial).toBeUndefined();
+    expectNoStaleHouseFirst(result.draft);
+  });
+
+  it('does not fall back to the first house form when roof commit id is missing', () => {
+    const objectFirstDraft = makeObjectFirstDraft();
+    const result = buildHouseFormRoofIntentCommitDraft({
+      draft: makeDraft(objectFirstDraft),
+      objectFirstDraft,
+      houseFormId: 'missing-house-form',
+      roof: makeRoofIntent({ material: 'trapezoidal_5_rib' }),
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      error: 'This house form is no longer available.',
+    });
   });
 
   it('preserves the existing house transform when footprint sync rebuilds the preview form', () => {

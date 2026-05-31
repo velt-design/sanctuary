@@ -994,7 +994,8 @@ describe("hip-end click target metadata on house roof shapes (milestone 13 plan-
       expect(shape.metadata?.isOpen).toBe(false);
       // Tag is additive: the enrichment never strips existing roof
       // metadata (roofForm / pitchDeg / ridgeAxis) -- it just ADDS
-      // openGableEndId + isOpen.
+      // houseFormId + openGableEndId + isOpen.
+      expect(shape.metadata?.houseFormId).toBe('host-house');
       expect(shape.metadata?.roofForm).toBe('hipped');
     }
     // Distinct end ids per tagged facet -- the toggle dispatches by
@@ -1021,6 +1022,7 @@ describe("hip-end click target metadata on house roof shapes (milestone 13 plan-
       (shape) => shape.metadata?.openGableEndId === "house-gable-end-x-2",
     );
     expect(opened).toBeDefined();
+    expect(opened?.metadata?.houseFormId).toBe('host-house');
     expect(opened?.metadata?.isOpen).toBe(true);
     // The synthetic shape's id distinguishes it from real hip facets
     // (real ids are `house_surface_solid:house-solid-house-roof-...`).

@@ -46,6 +46,10 @@ import type {
   CalculatorModuleInputs,
 } from '@/lib/types/calculator';
 import { applyHouseFormFootprintEdit } from './houseFormFootprintDraftActions';
+import {
+  buildHouseFormRoofIntentCommitDraft,
+  buildLegacySharedHouseRoofCommitDraft,
+} from './houseFormRoofDraftActions';
 import type { CommitResult, DrawOutlineTarget } from './objectWorkbenchClientTypes';
 import {
   applyObjectWorkbenchDeckPatch,
@@ -57,7 +61,6 @@ import {
   buildObjectFirstDraftWithDecks,
   buildObjectFirstDraftWithOpenings,
   buildObjectFirstDraftWithPergolas,
-  buildObjectWorkbenchRoofCommitDraft,
   mergeHouseFormRoofIntentAfterFootprintSync,
   nextObjectWorkbenchDeckId,
   nextObjectWorkbenchOpeningId,
@@ -597,14 +600,33 @@ export function useObjectWorkbenchActions({
     [runDraftTransaction, store],
   );
 
-  const commitSharedHouseRoofDraft = useCallback(
+  const commitHouseFormRoofIntent = useCallback(
+    async (input: {
+      houseFormId: string;
+      roof: HouseFormRoofIntentModel;
+    }): Promise<CommitResult> =>
+      runDraftTransaction({
+        buildNextDraft: (draft) => {
+          const objectFirstDraft = resolveObjectFirstDraft(draft, store);
+          return buildHouseFormRoofIntentCommitDraft({
+            draft,
+            objectFirstDraft,
+            houseFormId: input.houseFormId,
+            roof: input.roof,
+          });
+        },
+      }),
+    [runDraftTransaction, store],
+  );
+
+  const commitLegacySharedHouseRoofDraft = useCallback(
     async (roof: HouseFormRoofIntentModel): Promise<CommitResult> =>
       runDraftTransaction({
         buildNextDraft: (draft) => {
           const objectFirstDraft = resolveObjectFirstDraft(draft, store);
           return {
             ok: true,
-            draft: buildObjectWorkbenchRoofCommitDraft({
+            draft: buildLegacySharedHouseRoofCommitDraft({
               draft,
               objectFirstDraft,
               roof,
@@ -1071,6 +1093,7 @@ export function useObjectWorkbenchActions({
     addSharedHouseForm,
     addSharedHouseOpening,
     commitHouseFormFootprintEdit,
+    commitHouseFormRoofIntent,
     commitHouseFormTransformDelta,
     commitDrawingField,
     commitDeckDimension,
@@ -1083,7 +1106,7 @@ export function useObjectWorkbenchActions({
     commitSharedHouseDeckPatch,
     commitSharedHouseFootprintEdit,
     commitSharedHouseOpeningPatch,
-    commitSharedHouseRoofDraft,
+    commitSharedHouseRoofDraft: commitLegacySharedHouseRoofDraft,
     removeSharedHouseDeck,
     removeSharedHouseForm,
     removeSharedHouseOpening,

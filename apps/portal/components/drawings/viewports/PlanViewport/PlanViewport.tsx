@@ -36,10 +36,12 @@ import {
 } from './interactions/snap/buildProjectHouseSnapTargets';
 import { buildOtherPergolaSnapTargets } from './interactions/snap/buildOtherPergolaSnapTargets';
 import type { SnapLineTarget } from './interactions/snap/snapEngine';
+import type { HouseTerminalEndToggleRequest } from './interactions/selectShape';
 
 export type { EdgeDragCommit, EdgeDragHover, EdgeDragPreview } from './tools/EdgeDragTool';
 export type { MoveRequest } from './tools/MoveTool';
 export type { ProjectHouseSnapSource } from './interactions/snap/buildProjectHouseSnapTargets';
+export type { HouseTerminalEndToggleRequest } from './interactions/selectShape';
 import { PlanViewportPlaceholder } from './PlanViewportPlaceholder';
 import lineweightStyles from './canvas/planLineweights.module.css';
 
@@ -91,13 +93,14 @@ export type PlanViewportProps = {
   onClearWorkbenchSelection?: () => void;
   /**
    * Click on a `house_terminal_end` marker (the inward-pointing hip
-   * triangle in plan view). The handler must invert `currentlyOpen`
-   * and commit the new `openGableEndIds` set on the active house draft.
+   * triangle in plan view). The handler must use the clicked
+   * `houseFormId`, invert `currentlyOpen`, and commit the new
+   * `openGableEndIds` set on that house draft.
    * Defined alongside the selection callbacks because the click flows
    * through the same SelectTool dispatch path -- the action variant
    * just routes elsewhere instead of mutating the selection.
    */
-  onToggleHouseTerminalEnd?: (endId: string, currentlyOpen: boolean) => void;
+  onToggleHouseTerminalEnd?: (request: HouseTerminalEndToggleRequest) => void;
   /**
    * Called when an edge drag commits. The host reads the new polygon, builds
    * a patch, and either:

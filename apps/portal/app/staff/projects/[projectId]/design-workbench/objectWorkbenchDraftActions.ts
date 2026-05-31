@@ -1,7 +1,6 @@
 import {
   buildHouseFootprintPresetSideLocalPoints,
   getHouseRoofFormBehavior,
-  isHouseRoofForm,
   normalizeHouseRoofPitchInputForForm,
 } from '@sp/geometry';
 import {
@@ -43,6 +42,10 @@ import type {
   ObjectWorkbenchPergolaInspectorModel,
   ObjectWorkbenchPergolaPatch,
 } from '@/lib/drawings/state/objectWorkbenchInspectorModel';
+
+export {
+  buildLegacySharedHouseRoofCommitDraft as buildObjectWorkbenchRoofCommitDraft,
+} from './houseFormRoofDraftActions';
 
 type AttachmentSide = NonNullable<CalculatorModuleInputs['attachmentSide']>;
 
@@ -549,48 +552,6 @@ export function resolveDeckReferencePolygon(
     : [];
 }
 
-function mirrorSharedRoofDraftToModules(
-  draft: EstimateDrawingDraft,
-  roof: HouseFormRoofIntentModel,
-): EstimateDrawingDraft {
-  const material = roof.material;
-  const pitchDeg = roof.primaryPitchDeg?.trim() ?? '';
-  for (const module of draft.inputs.modules) {
-    if (!module) continue;
-    if (material) {
-      module.houseRoofMaterial = material;
-    }
-    if (pitchDeg) {
-      module.houseRoofPitchDeg = pitchDeg;
-    } else {
-      delete module.houseRoofPitchDeg;
-    }
-  }
-  return draft;
-}
-
-function normalizeSharedHouseRoofIntentForCommit(roof: HouseFormRoofIntentModel): HouseFormRoofIntentModel {
-  const form = isHouseRoofForm(roof.form) ? roof.form : 'mono';
-  const behavior = getHouseRoofFormBehavior(form);
-  const pitchDeg = normalizeHouseRoofPitchInputForForm({
-    roofForm: form,
-    value: roof.primaryPitchDeg,
-  });
-
-  return {
-    ...roof,
-    form,
-    primaryPitchDeg: behavior.controls.pitch ? pitchDeg : '0',
-    primaryFallDirection: behavior.controls.primaryFallDirection ? roof.primaryFallDirection : 'negative_y',
-    ridgeAxis: behavior.controls.ridgeAxis ? roof.ridgeAxis : 'x',
-    // Milestone 13 session C: openGableEndIds applies to `'hipped'`
-    // only -- legacy `'gable'` was retired from the type union and is
-    // mapped to `'hipped'` at the normalize boundary. Forms without
-    // terminal ends (flat, mono) still have the field cleared.
-    openGableEndIds: form === 'hipped' ? roof.openGableEndIds ?? [] : [],
-  };
-}
-
 export function mergeHouseFormRoofIntentAfterFootprintSync(input: {
   previewHouseForm: ObjectFirstHouseFormDraft;
   existingHouseForm: ObjectFirstHouseFormDraft | null;
@@ -640,41 +601,6 @@ export function mergeHouseFormRoofIntentAfterFootprintSync(input: {
     ...nextHouseForm,
     roofIntent: deriveHouseFormRoofIntentForFootprint({ houseForm: nextHouseForm }),
   };
-}
-
-export function buildObjectWorkbenchRoofCommitDraft(input: {
-  draft: EstimateDrawingDraft;
-  objectFirstDraft: ObjectFirstWorkbenchDraftVNext;
-  roof: HouseFormRoofIntentModel;
-}): EstimateDrawingDraft {
-  const normalizedRoof = normalizeSharedHouseRoofIntentForCommit(input.roof);
-  const nextObjectFirstDraft: ObjectFirstWorkbenchDraftVNext = {
-    ...input.objectFirstDraft,
-    houseAssembly: input.objectFirstDraft.houseAssembly
-      ? {
-          ...input.objectFirstDraft.houseAssembly,
-          houseForms: input.objectFirstDraft.houseAssembly.houseForms.map((houseForm, index) =>
-            index === 0
-              ? (() => {
-                  const nextHouseForm = {
-                    ...houseForm,
-                    roofIntentAuthored: true,
-                    roofIntent: normalizedRoof,
-                  };
-                  return {
-                    ...nextHouseForm,
-                    roofIntent: deriveHouseFormRoofIntentForFootprint({ houseForm: nextHouseForm }),
-                  };
-                })()
-              : houseForm,
-          ),
-        }
-      : input.objectFirstDraft.houseAssembly,
-  };
-  return updateDraftObjectFirst({
-    draft: mirrorSharedRoofDraftToModules(input.draft, normalizedRoof),
-    objectFirst: nextObjectFirstDraft,
-  });
 }
 
 export function buildNewObjectWorkbenchDeckDraft(input: {

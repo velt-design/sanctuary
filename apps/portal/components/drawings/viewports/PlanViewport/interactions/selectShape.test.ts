@@ -128,14 +128,20 @@ describe('dispatchSelectionTarget', () => {
   it('routes house_terminal_end_toggle to onToggleHouseTerminalEnd with the resolved endId and isOpen', () => {
     const callbacks = spies();
     dispatchSelectionTarget(
-      { kind: 'house_terminal_end_toggle', endId: 'house-gable-end-x-2', isOpen: true },
+      {
+        kind: 'house_terminal_end_toggle',
+        houseFormId: 'house-form-2',
+        endId: 'house-gable-end-x-2',
+        isOpen: true,
+      },
       callbacks,
     );
     expect(callbacks.onToggleHouseTerminalEnd).toHaveBeenCalledTimes(1);
-    expect(callbacks.onToggleHouseTerminalEnd).toHaveBeenCalledWith(
-      'house-gable-end-x-2',
-      true,
-    );
+    expect(callbacks.onToggleHouseTerminalEnd).toHaveBeenCalledWith({
+      houseFormId: 'house-form-2',
+      endId: 'house-gable-end-x-2',
+      currentlyOpen: true,
+    });
     // The toggle action does NOT clear the selection or fire any of the
     // selection-style callbacks -- mutating selection on every click on a
     // hip end would be jarring (the user is editing the roof, not
@@ -157,14 +163,19 @@ describe('selectShape end-to-end for terminal-end roof facets', () => {
         family: 'house',
         kind: 'roof',
         sourceObjectId: 'house-roof-edge-2',
-        metadata: { openGableEndId: 'house-gable-end-x-2', isOpen: false },
+        metadata: {
+          houseFormId: 'house-form-2',
+          openGableEndId: 'house-gable-end-x-2',
+          isOpen: false,
+        },
       }),
       callbacks,
     );
-    expect(callbacks.onToggleHouseTerminalEnd).toHaveBeenCalledWith(
-      'house-gable-end-x-2',
-      false,
-    );
+    expect(callbacks.onToggleHouseTerminalEnd).toHaveBeenCalledWith({
+      houseFormId: 'house-form-2',
+      endId: 'house-gable-end-x-2',
+      currentlyOpen: false,
+    });
     expect(callbacks.onSelectObjectWorkbenchTarget).not.toHaveBeenCalled();
   });
 

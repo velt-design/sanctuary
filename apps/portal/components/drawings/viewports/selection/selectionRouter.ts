@@ -11,7 +11,12 @@ export type WorkbenchSelectionTarget =
   // shell mutates the house draft (openGableEndIds) and does NOT update
   // the active selection. Kept on this union so the existing dispatcher
   // can route it without a parallel pathway.
-  | { kind: 'house_terminal_end_toggle'; endId: string; isOpen: boolean }
+  | {
+      kind: 'house_terminal_end_toggle';
+      houseFormId: string | null;
+      endId: string;
+      isOpen: boolean;
+    }
   | { kind: 'unhandled'; objectId: string };
 
 export type SelectionClassifier = (objectId: string) => WorkbenchSelectionTarget;
@@ -127,6 +132,7 @@ export function topProjectionShapeClassifier(
       if (terminalEndId) {
         return {
           kind: 'house_terminal_end_toggle',
+          houseFormId: taggedHouseFormId,
           endId: terminalEndId,
           isOpen: shape.metadata?.isOpen === true,
         };

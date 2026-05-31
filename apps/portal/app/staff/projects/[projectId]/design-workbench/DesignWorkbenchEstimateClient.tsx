@@ -591,35 +591,26 @@ export default function DesignWorkbenchEstimateClient({
           onClearWorkbenchSelection={!isLocked ? objectSelectionActions.clearActiveWorkbenchSelection : undefined}
           onToggleHouseTerminalEnd={
             !isLocked
-              ? (endId, currentlyOpen) => {
-                  // Plan-view click on a hip-end marker. Mirror the rail's
-                  // open-end toggle in HouseFormRoofSections.tsx -- read
-                  // the active roof intent, invert membership of `endId`
-                  // in `openGableEndIds`, and commit. The rail and the
-                  // plan view share the same commit action so undo/redo
-                  // and persistence work the same regardless of where
-                  // the toggle was triggered.
-                  //
-                  // Plan-view clicks happen INDEPENDENT of rail selection
-                  // -- the user might be on the Pergolas tab when they
-                  // click a hip triangle. Fall back to the first house
-                  // form so the toggle still targets the right entity.
-                  // (commitSharedHouseRoofDraft itself uses the same
-                  // fallback at useObjectWorkbenchActions.ts:143.)
-                  const houseForm =
-                    store.derived.activeHouseForm ?? store.derived.houseForms[0] ?? null;
+              ? ({ houseFormId, endId, currentlyOpen }) => {
+                  // Plan-view clicks happen independent of rail selection,
+                  // so the clicked shape must carry its owning house id.
+                  // Missing ownership is a no-op; falling back to the first
+                  // house would reopen the legacy shared-house bug.
+                  const houseForm = houseFormId
+                    ? store.derived.houseForms.find((form) => form.id === houseFormId) ?? null
+                    : null;
                   const currentRoof = houseForm?.roofIntent ?? null;
                   if (!houseForm || !currentRoof) return;
                   const nextRoof = resolveHouseTerminalEndToggleRoofDraft({
                     currentRoof,
                     endId,
                     currentlyOpen,
-                    allTerminalEndIds:
-                      store.derived.objectWorkbench.houseForm.roof.terminalEnds.map(
-                        (end) => end.id,
-                      ),
+                    allTerminalEndIds: [],
                   });
-                  void objectWorkbenchActions.commitSharedHouseRoofDraft(nextRoof);
+                  void objectWorkbenchActions.commitHouseFormRoofIntent({
+                    houseFormId: houseForm.id,
+                    roof: nextRoof,
+                  });
                 }
               : undefined
           }

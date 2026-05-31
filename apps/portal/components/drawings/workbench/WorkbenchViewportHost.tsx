@@ -32,6 +32,7 @@ import type { GeometryPreviewState } from '@/lib/drawings/state/workbenchSolvedM
 import DesignViewport from '@/components/drawings/viewports/DesignViewport';
 import PlanViewport, {
   type EdgeDragCommit,
+  type HouseTerminalEndToggleRequest,
   type MoveRequest,
   type ProjectHouseSnapSource,
 } from '@/components/drawings/viewports/PlanViewport/PlanViewport';
@@ -87,7 +88,7 @@ type WorkbenchViewportHostProps = {
   onSelectObjectWorkbenchTarget?: (selection: ObjectWorkbenchViewportTargetSelection) => void;
   onSelectPergolaTarget?: (pergolaId: string) => void;
   onClearWorkbenchSelection?: () => void;
-  onToggleHouseTerminalEnd?: (endId: string, currentlyOpen: boolean) => void;
+  onToggleHouseTerminalEnd?: (request: HouseTerminalEndToggleRequest) => void;
   onCommitHouseFormFootprintDimension?: (
     edit: EstimateDrawingFootprintEdit,
   ) => Promise<{ ok: boolean; error?: string }> | { ok: boolean; error?: string };
