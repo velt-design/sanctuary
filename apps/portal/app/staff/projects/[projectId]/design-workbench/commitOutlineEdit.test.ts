@@ -21,6 +21,11 @@ type StoreStubInput = {
     transform?: { offsetXM: number; offsetYM: number; rotationQuarterTurns: 0 | 1 | 2 | 3 };
     footprint: { attachmentSide: 'rear' | 'left' | 'right' | 'front' };
   } | null;
+  houseForms?: Array<{
+    id: string;
+    transform?: { offsetXM: number; offsetYM: number; rotationQuarterTurns: 0 | 1 | 2 | 3 };
+    footprint: { attachmentSide: 'rear' | 'left' | 'right' | 'front' };
+  }>;
   activeObjectFirstPergola?: {
     position?: { originXMm: string; originYMm: string; rotationDeg: string } | null;
     attachment?: unknown | null;
@@ -33,6 +38,16 @@ type StoreStubInput = {
     presetType?: string | null;
     presetRect?: unknown | null;
     floatingRect?: unknown | null;
+    attachment?: {
+      host: {
+        objectFamily: 'house_forms';
+        objectId: string;
+        edgeKind: 'wall';
+        edgeId: string;
+        myEdgeIndex: number;
+      } | null;
+      spatialKind: 'wall' | 'freestanding';
+    } | null;
   }>;
 };
 
@@ -48,7 +63,7 @@ function stubStore(input: StoreStubInput = {}): DrawingWorkbenchStore {
     },
     derived: {
       activeHouseForm: input.activeHouseForm ?? null,
-      houseForms: input.activeHouseForm ? [input.activeHouseForm] : [],
+      houseForms: input.houseForms ?? (input.activeHouseForm ? [input.activeHouseForm] : []),
       activeObjectFirstPergola: input.activeObjectFirstPergola ?? null,
     },
   } as unknown as DrawingWorkbenchStore;
@@ -69,6 +84,30 @@ const SQUARE_2M: EdgeDragCommit['nextPolygon'] = [
   { x: 2000, y: 2000 },
   { x: 0, y: 2000 },
 ];
+
+function houseFormStub(
+  id: string,
+  transform = { offsetXM: 0, offsetYM: 0, rotationQuarterTurns: 0 as const },
+) {
+  return {
+    id,
+    transform,
+    footprint: { attachmentSide: 'rear' as const },
+  };
+}
+
+function deckHostAttachment(houseFormId: string) {
+  return {
+    host: {
+      objectFamily: 'house_forms' as const,
+      objectId: houseFormId,
+      edgeKind: 'wall' as const,
+      edgeId: 'rear',
+      myEdgeIndex: 0,
+    },
+    spatialKind: 'wall' as const,
+  };
+}
 
 describe('buildOutlineEditCommitHandler', () => {
   describe('house_forms branch', () => {
@@ -145,6 +184,35 @@ describe('buildOutlineEditCommitHandler', () => {
         store: stubStore({ activeHouseForm: null }),
         activeModuleInput: {
           houseFootprintPosition: null,
+          lengthM: '6',
+          projectionM: '3',
+        } as never,
+        objectWorkbenchActions: actions,
+      });
+      handler({
+        outlineId: 'house_surface:house-1',
+        family: 'house_forms',
+        edgeIndex: 0,
+        nextPolygon: SQUARE_2M,
+        snap: null,
+      });
+      expect(actions.commitHouseFormFootprintEdit).not.toHaveBeenCalled();
+      expect(actions.commitSharedHouseFootprintEdit).not.toHaveBeenCalled();
+    });
+
+    it('does not fall back to the active/first house form when no house id is selected', () => {
+      const actions = stubActions();
+      const handler = buildOutlineEditCommitHandler({
+        store: stubStore({
+          activeRailRef: { family: 'house_forms', objectId: null },
+          activeHouseForm: {
+            id: 'house-form-1',
+            transform: { offsetXM: 0, offsetYM: 0, rotationQuarterTurns: 0 },
+            footprint: { attachmentSide: 'rear' },
+          },
+        }),
+        activeModuleInput: {
+          houseFootprintPosition: { originXMm: '0', originYMm: '0', rotationDeg: '0' },
           lengthM: '6',
           projectionM: '3',
         } as never,
@@ -269,7 +337,15 @@ describe('buildOutlineEditCommitHandler', () => {
       const actions = stubActions();
       const handler = buildOutlineEditCommitHandler({
         store: stubStore({
-          decks: [{ id: 'deck-1', shape: 'custom', outline: [] }],
+          houseForms: [houseFormStub('house-form-1')],
+          decks: [
+            {
+              id: 'deck-1',
+              shape: 'custom',
+              outline: [],
+              attachment: deckHostAttachment('house-form-1'),
+            },
+          ],
         }),
         activeModuleInput: { houseFootprintPosition: null } as never,
         objectWorkbenchActions: actions,
@@ -294,7 +370,15 @@ describe('buildOutlineEditCommitHandler', () => {
       const actions = stubActions();
       const handler = buildOutlineEditCommitHandler({
         store: stubStore({
-          decks: [{ id: 'deck-2', shape: 'custom', outline: [] }],
+          houseForms: [houseFormStub('house-form-1')],
+          decks: [
+            {
+              id: 'deck-2',
+              shape: 'custom',
+              outline: [],
+              attachment: deckHostAttachment('house-form-1'),
+            },
+          ],
         }),
         activeModuleInput: { houseFootprintPosition: null } as never,
         objectWorkbenchActions: actions,
@@ -313,7 +397,17 @@ describe('buildOutlineEditCommitHandler', () => {
     it('returns nothing when no deck matches outlineId', () => {
       const actions = stubActions();
       const handler = buildOutlineEditCommitHandler({
-        store: stubStore({ decks: [{ id: 'deck-1', shape: 'custom', outline: [] }] }),
+        store: stubStore({
+          houseForms: [houseFormStub('house-form-1')],
+          decks: [
+            {
+              id: 'deck-1',
+              shape: 'custom',
+              outline: [],
+              attachment: deckHostAttachment('house-form-1'),
+            },
+          ],
+        }),
         activeModuleInput: { houseFootprintPosition: null } as never,
         objectWorkbenchActions: actions,
       });
@@ -336,7 +430,15 @@ describe('buildOutlineEditCommitHandler', () => {
       ];
       const handler = buildOutlineEditCommitHandler({
         store: stubStore({
-          decks: [{ id: 'deck-1', shape: 'custom', outline: previousOutline }],
+          houseForms: [houseFormStub('house-form-1')],
+          decks: [
+            {
+              id: 'deck-1',
+              shape: 'custom',
+              outline: previousOutline,
+              attachment: deckHostAttachment('house-form-1'),
+            },
+          ],
         }),
         activeModuleInput: { houseFootprintPosition: null } as never,
         objectWorkbenchActions: actions,
@@ -355,16 +457,22 @@ describe('buildOutlineEditCommitHandler', () => {
       expect(invertCall?.[1].outline).toEqual(previousOutline);
     });
 
-    it('subtracts active house form transform when encoding deck world position', () => {
+    it('subtracts the deck host house transform when encoding deck world position', () => {
       const actions = stubActions();
       const handler = buildOutlineEditCommitHandler({
         store: stubStore({
-          activeHouseForm: {
-            id: 'house-form-1',
-            transform: { offsetXM: 1, offsetYM: 0.5, rotationQuarterTurns: 0 },
-            footprint: { attachmentSide: 'rear' },
-          },
-          decks: [{ id: 'deck-1', shape: 'custom', outline: [] }],
+          houseForms: [
+            houseFormStub('house-form-1', { offsetXM: 9, offsetYM: 9, rotationQuarterTurns: 0 }),
+            houseFormStub('house-form-2', { offsetXM: 1, offsetYM: 0.5, rotationQuarterTurns: 0 }),
+          ],
+          decks: [
+            {
+              id: 'deck-1',
+              shape: 'custom',
+              outline: [],
+              attachment: deckHostAttachment('house-form-2'),
+            },
+          ],
         }),
         activeModuleInput: {
           houseFootprintPosition: { originXMm: '9000', originYMm: '9000', rotationDeg: '0' },
@@ -387,6 +495,36 @@ describe('buildOutlineEditCommitHandler', () => {
         originYMm: '-500',
         rotationDeg: '0',
       });
+    });
+
+    it('returns nothing for an unhosted deck instead of encoding against House 1', () => {
+      const actions = stubActions();
+      const handler = buildOutlineEditCommitHandler({
+        store: stubStore({
+          houseForms: [houseFormStub('house-form-1')],
+          decks: [
+            {
+              id: 'deck-1',
+              shape: 'custom',
+              outline: [],
+              attachment: { host: null, spatialKind: 'freestanding' },
+            },
+          ],
+        }),
+        activeModuleInput: {
+          houseFootprintPosition: { originXMm: '9000', originYMm: '9000', rotationDeg: '0' },
+        } as never,
+        objectWorkbenchActions: actions,
+      });
+      const result = handler({
+        outlineId: 'house_surface:deck-1',
+        family: 'decks',
+        edgeIndex: 0,
+        nextPolygon: SQUARE_2M,
+        snap: null,
+      });
+      expect(result).toBeUndefined();
+      expect(actions.commitSharedHouseDeckPatch).not.toHaveBeenCalled();
     });
   });
 

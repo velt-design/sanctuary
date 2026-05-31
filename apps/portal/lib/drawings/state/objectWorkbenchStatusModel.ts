@@ -124,7 +124,9 @@ export type ObjectWorkbenchPergolaStatus = {
 
 export type ObjectWorkbenchStatusFacade = {
   houseFormsById: Record<string, ObjectWorkbenchHouseFormStatus>;
-  houseForm: ObjectWorkbenchHouseFormStatus;
+  selectedHouseFormId: string | null;
+  selectedHouseFormStatus: ObjectWorkbenchHouseFormStatus | null;
+  houseForm: ObjectWorkbenchHouseFormStatus | null;
   deckStatuses: Record<string, ObjectWorkbenchDeckStatus>;
   openingStatuses: Record<string, ObjectWorkbenchOpeningStatus>;
   pergolaStatuses: Record<string, ObjectWorkbenchPergolaStatus>;
@@ -546,11 +548,9 @@ export function buildObjectWorkbenchStatusFacade(input: {
 }): ObjectWorkbenchStatusFacade {
   const houseForms = input.projectModel.houseAssembly?.houseForms ?? [];
   const activeHouseForm =
-    (input.activeHouseFormId
-      ? houseForms.find((houseForm) => houseForm.id === input.activeHouseFormId)
-      : null) ??
-    houseForms[0] ??
-    null;
+    input.activeHouseFormId
+      ? houseForms.find((houseForm) => houseForm.id === input.activeHouseFormId) ?? null
+      : null;
   const warnings = buildMigrationWarnings(input.projectModel.warnings ?? []);
   const singleHouseDerivedFootprint =
     houseForms.length === 1 ? input.projectModel.houseAssembly?.derivedEnvelope?.footprint ?? null : null;
@@ -566,15 +566,7 @@ export function buildObjectWorkbenchStatusFacade(input: {
       }),
     ]),
   );
-  const activeHouseFormStatus =
-    (activeHouseForm ? houseFormsById[activeHouseForm.id] : null) ??
-    buildHouseFormStatus({
-      activeModuleInput: input.activeModuleInput,
-      derivedFootprintPolygon: singleHouseDerivedFootprint,
-      houseForm: activeHouseForm,
-      projectModel: input.projectModel,
-      warnings,
-    });
+  const activeHouseFormStatus = activeHouseForm ? houseFormsById[activeHouseForm.id] ?? null : null;
   const decks = input.projectModel.decks;
   const deckStatuses = buildDeckStatuses(decks);
   const activeHostSide = input.activeModuleInput
@@ -589,6 +581,8 @@ export function buildObjectWorkbenchStatusFacade(input: {
 
   return {
     houseFormsById,
+    selectedHouseFormId: activeHouseForm?.id ?? null,
+    selectedHouseFormStatus: activeHouseFormStatus,
     houseForm: activeHouseFormStatus,
     deckStatuses,
     openingStatuses: buildOpeningStatuses(input.projectModel.openings),

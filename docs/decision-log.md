@@ -55,6 +55,8 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 | 2026-05-31 | Plan Rendering | Active | PR-2B.1b.3m: Plan hit targets are event geometry only. They must not paint hover/body visuals; local hover affordance belongs in explicit outline chrome, suppressed for the active selection. |
 | 2026-05-31 | Workbench House Forms | Active | PR-2B.1b.3n: solver-derived roof fields should not appear as primary user controls unless they are clear design choices. Hipped ridge axis is derived from the selected house form's footprint, and footprint presets are seeds/provenance rather than object identity. |
 | 2026-05-31 | Workbench House Forms | Active | PR-2B.1b.3o: roof intent writes must be object-id addressed. Roof controls and plan terminal-end toggles must carry `houseFormId` and must not fall back to the first house form. |
+| 2026-05-31 | Workbench House Forms | Active | PR-2B.1b.3r: selected-object status must be nullable and keyed by explicit object id. Project/row status may list every house form, but selected-house inspector, trust, diagnostics, and overlay status must not fall back to the first house form. |
+| 2026-05-31 | Workbench Actions | Active | PR-2B.1b.3s: action context must be nullable and object-owned. Deck/opening/pergola/house action paths resolve house context from the target object's owner id, never from House 1 or the active module. |
 | 2026-05-01 | Plan Rendering | Promoted | Geometry-ready Model Space is a hard top-projection-only render path; legacy/context/reference/opening overlays stay out of normal visuals. |
 | 2026-05-01 | Design Workbench Architecture | Promoted | Split workbench ownership contract-first: coordinate adapters and render graphs leave React presenters before moving tools/renderers. |
 | 2026-05-01 | Deck Interaction | Promoted | Projection-backed deck snapping must use top-projection frames live and object frames only at the commit boundary. |
@@ -154,6 +156,22 @@ Current guardrail: Plan hit targets are event-only. They may carry pointer handl
 Promoted to: None
 
 Related docs/tests: `apps/portal/components/drawings/viewports/PlanViewport/canvas/layers/PlanHitTargetLayer.tsx`, `apps/portal/components/drawings/viewports/PlanViewport/canvas/layers/PlanLocalHoverLayer.tsx`, `apps/portal/components/drawings/viewports/PlanViewport/PlanViewport.test.tsx`, `playwright/portal.workbench-fixture.spec.ts`.
+
+### 2026-05-31 - Plan Rendering - Reference Fallback Provenance
+
+Area: Plan Rendering
+
+Status: Active
+
+Decision or mistake: no-roof `house_reference:*` fallbacks could be promoted into the committed body layer without diagnostics and still use filled footprint styling. That made missing roof-material/roof bodies look like a generic overlay problem instead of an explicit fallback for one house form.
+
+Why it mattered: Plan fallbacks are useful for inspectability, but they are not real house roof bodies. They need to expose their owning `houseFormId` and render as reference outlines so they do not visually compete with project roof/pergola geometry.
+
+Current guardrail: Plan render diagnostics report per-house reference ids, roof/roof-material body ids, hit targets, and visible reference fallbacks. `house_reference:*` fallbacks may render only as transparent outline geometry; filled committed house bodies must come from roof or roof-material projection shapes.
+
+Promoted to: None
+
+Related docs/tests: `apps/portal/lib/drawings/views/plan/planRenderDiagnostics.ts`, `apps/portal/lib/drawings/views/plan/planRenderGraph.test.ts`, `apps/portal/components/drawings/viewports/PlanViewport/PlanViewport.test.tsx`, `playwright/portal.workbench-fixture.spec.ts`.
 
 ### 2026-05-30 - Plan Rendering - House Form Plan Body Identity
 
@@ -1333,3 +1351,51 @@ Current guardrail: normal roof writes go through `commitHouseFormRoofIntent({ ho
 Promoted to: None
 
 Related docs/tests: [apps/portal/app/staff/projects/[projectId]/design-workbench/houseFormRoofDraftActions.ts](../apps/portal/app/staff/projects/%5BprojectId%5D/design-workbench/houseFormRoofDraftActions.ts), [apps/portal/components/drawings/viewports/selection/selectionRouter.ts](../apps/portal/components/drawings/viewports/selection/selectionRouter.ts), [packages/geometry/src/topProjection.ts](../packages/geometry/src/topProjection.ts).
+
+### 2026-05-31 - Plan Rendering - House Projection Health And Selected-Only Overlays
+
+Area: Plan Rendering
+
+Status: Active
+
+Decision or mistake: project Plan fallbacks must be diagnosed at the solved-model boundary, and selected-house overlays must only exist for an explicit selected `houseFormId`. No-selection must not manufacture House 1 chrome or overlay geometry.
+
+Why it mattered: after visible body, hit-target, hover, and roof-write ownership were separated, the remaining large outline was a legitimate `house_reference` fallback for a house that lacked a usable roof/roof-material Plan body. Without solved-model health, the UI looked like another paint-layer bug. Without selected-only overlay resolution, no-selection could still inject first-house overlay state and hide the real render source.
+
+Current guardrail: `WorkbenchSolvedModel.projectHouseProjectionHealth` is the project-level diagnostic source for house Plan projection stages. Plan overlays are selected-object chrome/status only; visible bodies come from `projectPlanProjection`, and no selected house means no object-workbench house overlay.
+
+Promoted to: None
+
+Related docs/tests: [apps/portal/lib/drawings/state/projectHouseProjectionHealth.ts](../apps/portal/lib/drawings/state/projectHouseProjectionHealth.ts), [apps/portal/lib/drawings/state/objectWorkbenchHouseOverlayInput.ts](../apps/portal/lib/drawings/state/objectWorkbenchHouseOverlayInput.ts), [apps/portal/components/drawings/viewports/PlanViewport/PlanViewport.test.tsx](../apps/portal/components/drawings/viewports/PlanViewport/PlanViewport.test.tsx), [playwright/portal.workbench-fixture.spec.ts](../playwright/portal.workbench-fixture.spec.ts).
+
+### 2026-05-31 - Workbench House Forms - Selected Status Is Nullable
+
+Area: Workbench House Forms
+
+Status: Active
+
+Decision or mistake: selected-house status must be a nullable, object-id-addressed view over project house-form status. `houseFormsById` can carry status for every row, but selected-house inspector context, trust aggregation, diagnostics, and Plan overlay status must not borrow array index 0 when no house is selected.
+
+Why it mattered: the previous facade kept a temporary `status.houseForm` alias alive by falling back to the first form. That made no-selection and invalid-selection states look like House 1 was active, which obscured whether the remaining Plan issue came from selected chrome, fallback projection health, or a real House 2 geometry problem.
+
+Current guardrail: call sites that need a selected house must use `selectedHouseFormStatus` / `selectedHouseFormId` and handle `null`. Row lists use `houseFormsById[houseForm.id]`; project diagnostics use project-level health; no selected house means no selected-house status.
+
+Promoted to: None
+
+Related docs/tests: [apps/portal/lib/drawings/state/objectWorkbenchStatusModel.ts](../apps/portal/lib/drawings/state/objectWorkbenchStatusModel.ts), [apps/portal/lib/drawings/state/objectWorkbenchInspectorModel.ts](../apps/portal/lib/drawings/state/objectWorkbenchInspectorModel.ts), [apps/portal/lib/drawings/state/objectWorkbenchStatusModel.test.ts](../apps/portal/lib/drawings/state/objectWorkbenchStatusModel.test.ts), [apps/portal/lib/drawings/state/drawingWorkbenchStore.test.ts](../apps/portal/lib/drawings/state/drawingWorkbenchStore.test.ts).
+
+### 2026-05-31 - Workbench Actions - Object-Owned House Context
+
+Area: Workbench Actions
+
+Status: Active
+
+Decision or mistake: object-workbench action paths must resolve house context from the target object owner, and unresolved ownership is a real nullable state. They must not use `activeHouseForm ?? houseForms[0]`, active module house position, or any other first-house fallback.
+
+Why it mattered: after status/render paths became selected-object aware, action paths could still silently encode deck/opening/outline commits against House 1. That kind of write path makes later Plan diagnostics misleading because the stored object has already been mutated through the wrong house frame.
+
+Current guardrail: selected house actions resolve by selected `houseFormId`; deck actions resolve through `deck.attachment.host.objectId`; opening actions resolve through `opening.sourceFormId`; pergola house context resolves only through an explicit house-form host. Missing context no-ops or returns a validation error instead of borrowing House 1.
+
+Promoted to: None
+
+Related docs/tests: [apps/portal/app/staff/projects/[projectId]/design-workbench/objectWorkbenchActionContext.ts](../apps/portal/app/staff/projects/%5BprojectId%5D/design-workbench/objectWorkbenchActionContext.ts), [apps/portal/app/staff/projects/[projectId]/design-workbench/useObjectWorkbenchActions.ts](../apps/portal/app/staff/projects/%5BprojectId%5D/design-workbench/useObjectWorkbenchActions.ts), [apps/portal/app/staff/projects/[projectId]/design-workbench/commitOutlineEdit.ts](../apps/portal/app/staff/projects/%5BprojectId%5D/design-workbench/commitOutlineEdit.ts), [apps/portal/app/staff/projects/[projectId]/design-workbench/objectWorkbenchActionContext.test.ts](../apps/portal/app/staff/projects/%5BprojectId%5D/design-workbench/objectWorkbenchActionContext.test.ts).

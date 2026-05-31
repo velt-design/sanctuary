@@ -40,6 +40,44 @@ export async function readVisibleHouseBodyIds(page: Page): Promise<string[]> {
   return ids.filter((id) => id.startsWith('house_roof_material:') || id.startsWith('house_surface_solid:'));
 }
 
+export async function readVisibleHouseReferenceFallbackIds(page: Page): Promise<string[]> {
+  const ids = await readPlanShapeIds(
+    page,
+    '[data-plan-visible-reference-fallback="true"][data-plan-shape-id]',
+  );
+  return ids.sort();
+}
+
+export async function readPlanHouseRenderDiagnostics(page: Page): Promise<Array<{
+  houseFormId: string;
+  referenceIds: string[];
+  roofBodyIds: string[];
+  roofMaterialBodyIds: string[];
+  visibleReferenceFallbackIds: string[];
+  hitTargetIds: string[];
+}>> {
+  const raw = await page.locator('[data-plan-viewport="true"]').getAttribute('data-plan-house-render-diagnostics');
+  if (!raw) return [];
+  return JSON.parse(raw);
+}
+
+export async function readPlanHouseProjectionHealth(page: Page): Promise<Array<{
+  houseFormId: string;
+  referencePresent: boolean;
+  modelPresent: boolean;
+  wallCount: number;
+  roofPlaneCount: number;
+  roofBodyCount: number;
+  roofMaterialBodyCount: number;
+  visibleReferenceFallbackIds: string[];
+  roofValidationStatus: string | null;
+  roofValidationCode: string | null;
+}>> {
+  const raw = await page.locator('[data-plan-viewport="true"]').getAttribute('data-plan-house-projection-health');
+  if (!raw) return [];
+  return JSON.parse(raw);
+}
+
 export async function readVisiblePergolaShapeIds(page: Page): Promise<string[]> {
   return readPlanShapeIds(
     page,
@@ -106,6 +144,16 @@ export async function expectPlanHitTargetPaintIsInvisible(page: Page, shapeId: s
   });
   expect(['transparent', 'rgba(0, 0, 0, 0)']).toContain(style.fill);
   expect(['none', 'rgba(0, 0, 0, 0)']).toContain(style.stroke);
+}
+
+export async function expectPlanVisibleReferenceFallbackIsOutlineOnly(page: Page, shapeId: string) {
+  const style = await page.locator(`[data-plan-visible-reference-fallback="true"][data-plan-shape-id="${shapeId}"]`).first().evaluate((node) => {
+    const computed = window.getComputedStyle(node);
+    return { fill: computed.fill, stroke: computed.stroke };
+  });
+  expect(['transparent', 'rgba(0, 0, 0, 0)']).toContain(style.fill);
+  expect(style.stroke).not.toBe('none');
+  expect(style.stroke).not.toBe('rgba(0, 0, 0, 0)');
 }
 
 export async function expect3DViewportEvidence(page: Page) {

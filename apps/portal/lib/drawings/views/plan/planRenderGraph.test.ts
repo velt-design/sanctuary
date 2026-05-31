@@ -143,6 +143,16 @@ describe('planRenderGraph', () => {
     expect(graph.committedBodies.map((item) => item.marker)).toEqual(['roof']);
     expect(graph.hitTargets.map((item) => item.marker)).toEqual(['reference-footprint']);
     expect(graph.suppressed.map((item) => item.marker)).toEqual(['surface-footprint']);
+    expect(graph.diagnostics.visibleReferenceFallbackIds).toEqual([]);
+    expect(graph.diagnostics.houses).toEqual([
+      expect.objectContaining({
+        houseFormId: 'house-main',
+        referenceIds: ['house_reference:house-footprint'],
+        roofBodyIds: ['roof-main'],
+        visibleReferenceFallbackIds: [],
+        hitTargetIds: ['house_reference:house-footprint'],
+      }),
+    ]);
   });
 
   it('routes house roof-material projection shapes to committedBodies and the canonical reference footprint to hitTargets', () => {
@@ -186,6 +196,14 @@ describe('planRenderGraph', () => {
     expect(graph.committedBodies.map((item) => item.marker)).toEqual(['roof-material']);
     expect(graph.hitTargets.map((item) => item.marker)).toEqual(['reference-footprint']);
     expect(graph.suppressed.map((item) => item.marker)).toEqual(['roof-solid', 'surface-footprint']);
+    expect(graph.diagnostics.houses).toEqual([
+      expect.objectContaining({
+        houseFormId: 'house-form-2',
+        roofBodyIds: ['house_roof_material:house-form-2:roof-material'],
+        roofMaterialBodyIds: ['house_roof_material:house-form-2:roof-material'],
+        visibleReferenceFallbackIds: [],
+      }),
+    ]);
   });
 
   it('suppresses redundant house footprints per house form instead of globally', () => {
@@ -226,9 +244,10 @@ describe('planRenderGraph', () => {
     expect(graph.suppressed.map((item) => item.marker)).toEqual(['primary-footprint']);
   });
 
-  it('keeps the canonical house_reference footprint when there is no roof committed body, so houses without roof geometry still render an outline', () => {
+  it('keeps the canonical house_reference footprint as a visible fallback when there is no roof committed body', () => {
     const referenceFootprint = shape({
       id: 'house_reference:house-footprint',
+      sourceObjectId: 'house-footprint',
       family: 'house',
       kind: 'footprint',
       sourceType: 'house_reference',
@@ -241,6 +260,17 @@ describe('planRenderGraph', () => {
 
     expect(graph.committedBodies.map((item) => item.marker)).toEqual(['reference-footprint']);
     expect(graph.hitTargets.map((item) => item.marker)).toEqual(['reference-footprint']);
+    expect(graph.diagnostics.visibleReferenceFallbackIds).toEqual(['house_reference:house-footprint']);
+    expect(graph.diagnostics.houses).toEqual([
+      expect.objectContaining({
+        houseFormId: 'house-footprint',
+        referenceIds: ['house_reference:house-footprint'],
+        roofBodyIds: [],
+        roofMaterialBodyIds: [],
+        visibleReferenceFallbackIds: ['house_reference:house-footprint'],
+        hitTargetIds: ['house_reference:house-footprint'],
+      }),
+    ]);
     expect(graph.suppressed).toEqual([]);
   });
 

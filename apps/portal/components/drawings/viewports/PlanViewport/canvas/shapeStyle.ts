@@ -20,7 +20,11 @@ function houseCommittedBodyTokenClass(shape: GeometryTopProjectionShape): string
   if (shape.kind === 'soffit') return lineweightStyles.bodyHouseSoffit;
   if (shape.kind === 'fascia') return lineweightStyles.bodyHouseFascia;
   if (shape.kind === 'attachment_zone') return lineweightStyles.bodyHouseAttachmentZone;
-  if (shape.kind === 'footprint') return lineweightStyles.bodyHouseFootprint;
+  if (shape.kind === 'footprint') {
+    return shape.sourceType === 'house_reference'
+      ? lineweightStyles.bodyHouseReferenceFallback
+      : lineweightStyles.bodyHouseFootprint;
+  }
   if (shape.kind === 'gutter' || shape.kind === 'roof_feature' || shape.kind === 'wall_segment') {
     return lineweightStyles.bodyHouseLine;
   }

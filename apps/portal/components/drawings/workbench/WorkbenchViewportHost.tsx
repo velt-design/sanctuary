@@ -12,6 +12,7 @@ import type {
   DrawingWorkbenchVisibilityState,
 } from '@/lib/drawings/state/drawingWorkbenchUiState';
 import type { WorkbenchViewportGeometry } from '@/lib/drawings/state/workbenchSolvedModel';
+import type { ProjectHouseProjectionHealth } from '@/lib/drawings/state/projectHouseProjectionHealth';
 import {
   buildWorkbenchDrawingSurfaceGeometry,
   type WorkbenchDrawingSurfaceGeometry,
@@ -111,6 +112,8 @@ type WorkbenchViewportHostProps = {
   projectPergolaSnapShapes?: ReadonlyArray<GeometryTopProjectionShape>;
   /** Canonical house references promoted to active module hit targets. */
   houseCommittedShapes?: ReadonlyArray<GeometryTopProjectionShape>;
+  /** Solved-model diagnostics for each house form's project Plan projection. */
+  projectHouseProjectionHealth?: ReadonlyArray<ProjectHouseProjectionHealth>;
   /** Project-level house models used as wall/eave snap sources. */
   projectHouseSnapSources?: ReadonlyArray<ProjectHouseSnapSource>;
   /**
@@ -173,6 +176,7 @@ export default function WorkbenchViewportHost({
   projectPergolaPlanShapes,
   projectPergolaSnapShapes,
   houseCommittedShapes,
+  projectHouseProjectionHealth,
   projectHouseSnapSources,
   hoveredObjectRef,
   onHoverObjectChange,
@@ -221,6 +225,7 @@ export default function WorkbenchViewportHost({
           projectPergolaPlanShapes={projectPergolaPlanShapes}
           projectPergolaSnapShapes={projectPergolaSnapShapes}
           houseCommittedShapes={houseCommittedShapes}
+          projectHouseProjectionHealth={projectHouseProjectionHealth}
           projectHouseSnapSources={projectHouseSnapSources}
           viewportTransform={modelViewportTransform}
           onViewportTransformChange={onModelViewportTransformChange}

@@ -107,6 +107,12 @@
   fill: var(--plan-fill-house-footprint);
 }
 
+.bodyHouseReferenceFallback {
+  composes: strokeLight;
+  stroke-dasharray: 6 4;
+  fill: transparent;
+}
+
 .bodyHouseOpening {
   composes: strokeVisible;
   fill: var(--plan-fill-house-opening);

@@ -1605,7 +1605,8 @@ export function buildObjectWorkbenchPlanOverlay(input: ObjectWorkbenchPlanOverla
   const geometryPlan = input.geometryPlan;
   if (!geometryPlan) return null;
 
-  const houseForm = input.houseForm ?? input.houseAssembly?.houseForms[0] ?? null;
+  const houseForm = input.houseForm ?? null;
+  if (!houseForm) return null;
   const lookup = buildGeometryLookup(
     geometryPlan,
     input.geometryTopProjection,

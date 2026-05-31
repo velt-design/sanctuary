@@ -47,6 +47,18 @@ describe('planCommittedBodyTokenClass', () => {
       );
     });
 
+    it('renders visible house_reference fallbacks with the outline-only fallback token', () => {
+      expect(
+        planCommittedBodyTokenClass(
+          shape({
+            family: 'house',
+            kind: 'footprint',
+            sourceType: 'house_reference',
+          }),
+        ),
+      ).toMatch(/bodyHouseReferenceFallback/);
+    });
+
     it('keeps a hip-end facet on the standard roof style even when tagged with openGableEndId metadata', () => {
       // Milestone 13: terminal-end click targets reuse the EXISTING
       // hip facet (kind: 'roof') by tagging its metadata. The styling

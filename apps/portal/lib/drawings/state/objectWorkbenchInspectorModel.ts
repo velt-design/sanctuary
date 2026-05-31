@@ -22,6 +22,7 @@ import type {
 } from './objectFirstWorkbenchModel';
 import type {
   ObjectWorkbenchMigrationWarning,
+  ObjectWorkbenchHouseFormStatus,
   ObjectWorkbenchPergolaAttachmentStrategy,
   ObjectWorkbenchPergolaConnectionKind,
   ObjectWorkbenchRoofProvenance,
@@ -33,6 +34,7 @@ import {
   type WorkbenchTrustStatusKind,
 } from './workbenchSolvedModel';
 import { deriveHouseFormRoofIntentForFootprint } from './houseFormRoofIntentForFootprint';
+import type { ProjectHouseProjectionHealth } from './projectHouseProjectionHealth';
 
 // PR-T9 (2026-05-29): `label`, `kind`, `elevationMode` removed.
 export type ObjectWorkbenchDeckPatch = Partial<
@@ -196,12 +198,13 @@ export type ObjectWorkbenchDiagnosticsModel = {
   activeOpeningId: string | null;
   activeDeckSupport: WorkbenchDeckSupportDiagnostic | null;
   activeDeckInteraction: DeckInteractionCapability | null;
-  footprintSource: 'custom_saved' | 'preset_derived';
+  footprintSource: 'custom_saved' | 'preset_derived' | null;
   lowConfidence: boolean;
   migrationWarningCount: number;
   activeTrust: WorkbenchTrustStatus;
   activeTrustLabel: string;
   roof: ObjectWorkbenchRoofInspectorModel;
+  projectHouseProjectionHealth: ProjectHouseProjectionHealth[];
 };
 
 export type ObjectWorkbenchInspectorFacade = {
@@ -222,6 +225,7 @@ type BuildObjectWorkbenchInspectorFacadeInput = {
   openingHostResolutions: Map<string, ObjectFirstOpeningHostResolution>;
   pergolaAttachmentResolutions: Map<string, ObjectFirstPergolaAttachmentResolution>;
   projectModel: ObjectFirstWorkbenchProjectModel;
+  projectHouseProjectionHealth?: ReadonlyArray<ProjectHouseProjectionHealth>;
   status: ObjectWorkbenchStatusFacade;
 };
 
@@ -240,10 +244,10 @@ function buildFallbackRoofIntent(houseForm: HouseFormModel | null): HouseFormRoo
 
 function buildRoofInspector(
   houseForm: HouseFormModel | null,
-  status: ObjectWorkbenchStatusFacade,
+  houseFormStatus: ObjectWorkbenchHouseFormStatus | null,
 ): ObjectWorkbenchRoofInspectorModel {
   const intent = buildFallbackRoofIntent(houseForm);
-  const roof = status.houseForm.roof;
+  const roof = houseFormStatus?.roof ?? null;
   const fallbackControls = getHouseRoofFormBehavior(intent.form).controls;
 
   return {
@@ -266,14 +270,14 @@ function buildRoofInspector(
 
 function resolveHouseFormTrustStatus(input: {
   activeTrust: WorkbenchTrustStatus;
+  houseFormStatus: ObjectWorkbenchHouseFormStatus | null;
   roof: ObjectWorkbenchRoofInspectorModel;
-  status: ObjectWorkbenchStatusFacade;
 }): WorkbenchTrustStatusKind {
   if (input.roof.validationStatus === 'invalid') return 'invalid_geometry';
   if (
     input.roof.validationStatus === 'approximate' ||
-    input.status.houseForm.lowConfidence ||
-    input.status.houseForm.warnings.length > 0
+    input.houseFormStatus?.lowConfidence ||
+    (input.houseFormStatus?.warnings.length ?? 0) > 0
   ) {
     return 'approximate';
   }
@@ -304,7 +308,7 @@ function buildDeckInspectorModels(input: {
   decks: DeckObjectModel[];
   status: ObjectWorkbenchStatusFacade;
 }): ObjectWorkbenchDeckInspectorModel[] {
-  const defaultHostEdgeId = input.status.houseForm.defaultDeckHostEdgeId;
+  const defaultHostEdgeId = input.status.selectedHouseFormStatus?.defaultDeckHostEdgeId ?? 'rear';
 
   return input.decks.map((deck) => {
     const deckStatus = input.status.deckStatuses[deck.id] ?? null;
@@ -452,6 +456,7 @@ function buildDiagnostics(input: {
   houseAssembly: HouseAssemblyModel | null;
   houseFormContext: ObjectWorkbenchHouseFormInspectorModel;
   pergolas: ObjectWorkbenchPergolaInspectorModel[];
+  projectHouseProjectionHealth: ReadonlyArray<ProjectHouseProjectionHealth>;
   status: ObjectWorkbenchStatusFacade;
 }): ObjectWorkbenchDiagnosticsModel {
   const { activeDeck, activeOpening, houseAssembly, houseFormContext, pergolas } = input;
@@ -464,7 +469,7 @@ function buildDiagnostics(input: {
     openingCount: houseFormContext.openingCount,
     attachmentZoneCount: houseAssembly?.derivedEnvelope?.attachmentZones.length ?? 0,
     attachmentZoneKindsSummary: summarizeAttachmentZoneKinds(houseAssembly),
-    attachmentZoneBlockedSummary: input.status.houseForm.attachmentZoneBlockedSummary,
+    attachmentZoneBlockedSummary: input.status.selectedHouseFormStatus?.attachmentZoneBlockedSummary ?? 'none',
     ...resolutionCounts,
     sliderOpeningCount: 0,
     invalidOpeningCount: 0,
@@ -477,12 +482,17 @@ function buildDiagnostics(input: {
     activeOpeningId: activeOpening?.id ?? null,
     activeDeckSupport: input.activeDeckSupport,
     activeDeckInteraction: input.activeDeckInteraction,
-    footprintSource: houseFormContext.houseForm?.footprint.mode === 'custom_polygon' ? 'custom_saved' : 'preset_derived',
+    footprintSource: houseFormContext.houseForm
+      ? houseFormContext.houseForm.footprint.mode === 'custom_polygon'
+        ? 'custom_saved'
+        : 'preset_derived'
+      : null,
     lowConfidence: houseFormContext.lowConfidence,
     migrationWarningCount: houseFormContext.warnings.length,
     activeTrust: input.activeTrust,
     activeTrustLabel: buildTrustLabel(input.activeTrust.status),
     roof: houseFormContext.roof,
+    projectHouseProjectionHealth: [...input.projectHouseProjectionHealth],
   };
 }
 
@@ -493,15 +503,18 @@ export function buildObjectWorkbenchInspectorFacade({
   openingHostResolutions,
   pergolaAttachmentResolutions,
   projectModel,
+  projectHouseProjectionHealth = [],
   status,
 }: BuildObjectWorkbenchInspectorFacadeInput): ObjectWorkbenchInspectorFacade {
   const houseForms = projectModel.houseAssembly?.houseForms ?? [];
   const selectedHouseForm =
     activeObjectRef.family === 'house_forms'
-      ? houseForms.find((houseForm) => houseForm.id === activeObjectRef.objectId) ?? houseForms[0] ?? null
-      : houseForms[0] ?? null;
-  const roof = buildRoofInspector(selectedHouseForm, status);
-  const warnings = status.houseForm.warnings;
+      ? houseForms.find((houseForm) => houseForm.id === activeObjectRef.objectId) ?? null
+      : null;
+  const selectedHouseFormStatus =
+    selectedHouseForm ? status.houseFormsById[selectedHouseForm.id] ?? null : null;
+  const roof = buildRoofInspector(selectedHouseForm, selectedHouseFormStatus);
+  const warnings = selectedHouseFormStatus?.warnings ?? [];
   const decks = buildDeckInspectorModels({
     decks: projectModel.decks,
     status,
@@ -532,8 +545,8 @@ export function buildObjectWorkbenchInspectorFacade({
       : null;
   const houseFormTrustStatus = resolveHouseFormTrustStatus({
     activeTrust,
+    houseFormStatus: selectedHouseFormStatus,
     roof,
-    status,
   });
   const houseFormContext: ObjectWorkbenchHouseFormInspectorModel = {
     houseAssembly,
@@ -546,7 +559,7 @@ export function buildObjectWorkbenchInspectorFacade({
     openingCount: openings.length,
     pergolaCount: pergolas.length,
     warnings,
-    lowConfidence: status.houseForm.lowConfidence,
+    lowConfidence: selectedHouseFormStatus?.lowConfidence ?? false,
   };
   const diagnostics = buildDiagnostics({
     activeDeck,
@@ -557,6 +570,7 @@ export function buildObjectWorkbenchInspectorFacade({
     houseAssembly,
     houseFormContext,
     pergolas,
+    projectHouseProjectionHealth,
     status,
   });
 

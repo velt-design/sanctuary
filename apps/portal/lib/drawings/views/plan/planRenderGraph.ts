@@ -2,6 +2,10 @@ import type { GeometryTopProjectionShape } from '@sp/geometry';
 import type { DrawingWorkbenchVisibilityState } from '@/lib/drawings/state/drawingWorkbenchUiState';
 import { buildPlanCommittedBodyVisualStack } from './planCommittedBodyVisualStack';
 import {
+  buildPlanRenderDiagnostics,
+  type PlanRenderDiagnostics,
+} from './planRenderDiagnostics';
+import {
   planShapeIsPlanHitTarget,
   planShapeVisualOwner,
 } from './planShapeOwnership';
@@ -32,6 +36,7 @@ export type ProjectionPlanRenderGraph<TItem extends { shape: GeometryTopProjecti
   dragPreview: Array<ProjectionPlanGraphItem<TItem>>;
   debug: Array<ProjectionPlanGraphItem<TItem>>;
   suppressed: TItem[];
+  diagnostics: PlanRenderDiagnostics;
 };
 
 export function topProjectionRole(shape: GeometryTopProjectionShape): TopProjectionRole {
@@ -177,6 +182,7 @@ export function buildProjectionPlanRenderGraph<TItem extends { shape: GeometryTo
       dragPreview: [],
       debug: [],
       suppressed: [],
+      diagnostics: { houses: [], visibleReferenceFallbackIds: [] },
     },
   );
   const visualStack = buildPlanCommittedBodyVisualStack({
@@ -196,6 +202,7 @@ export function buildProjectionPlanRenderGraph<TItem extends { shape: GeometryTo
     ? baseGraph.contextLines.filter(({ shape }) => topProjectionContextLineAllowedInProjectionOnlyModel(shape))
     : baseGraph.contextLines;
   const detailLines = options?.projectionOnlyModelSpace ? [] : baseGraph.detailLines;
+  const diagnostics = buildPlanRenderDiagnostics({ committedBodies, hitTargets });
   return {
     committedBodies,
     contextLines,
@@ -211,5 +218,6 @@ export function buildProjectionPlanRenderGraph<TItem extends { shape: GeometryTo
       ...baseGraph.contextLines.filter((item) => !contextLines.includes(item)),
       ...(options?.projectionOnlyModelSpace ? baseGraph.detailLines : []),
     ],
+    diagnostics,
   };
 }

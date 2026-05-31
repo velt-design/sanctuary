@@ -207,6 +207,59 @@ function makeStaleGableFixtureSnapshot(houseConnectionType: 'none' | 'soffit' = 
 }
 
 describe('buildDrawingWorkbenchStore', () => {
+  it('does not manufacture a House 1 plan overlay when no house form is selected', () => {
+    const fixture = getSanctuaryGeometryWorkbenchFixture('multi-house-u-two-pergola');
+    if (!fixture) throw new Error('Missing multi-house fixture.');
+
+    const store = buildDrawingWorkbenchStore({
+      snapshot: fixture.snapshot,
+      draft: fixture.draft,
+      moduleLabels: fixture.moduleLabels,
+      ui: createDrawingWorkbenchUiState({
+        activeRailTab: 'house_forms',
+        activeObjectFamily: 'house_forms',
+        activeObjectRef: { family: 'house_forms', objectId: null },
+        viewportMode: 'plan',
+      }),
+    });
+
+    expect(store.derived.activePlanViewModel?.objectWorkbenchOverlay).toBeNull();
+    expect(store.derived.objectWorkbench.houseForm.houseForm).toBeNull();
+    expect(store.derived.objectWorkbench.houseForm.lowConfidence).toBe(false);
+    expect(store.derived.objectWorkbench.houseForm.warnings).toEqual([]);
+    expect(store.derived.objectWorkbench.houseForm.roof.validationStatus).toBeNull();
+    expect(store.derived.objectWorkbench.diagnostics.footprintSource).toBeNull();
+    expect(store.derived.objectWorkbench.diagnostics.projectHouseProjectionHealth.length).toBe(2);
+  });
+
+  it('resolves object-workbench plan overlay only for the selected house form id', () => {
+    const fixture = getSanctuaryGeometryWorkbenchFixture('multi-house-u-two-pergola');
+    if (!fixture) throw new Error('Missing multi-house fixture.');
+
+    const store = buildDrawingWorkbenchStore({
+      snapshot: fixture.snapshot,
+      draft: fixture.draft,
+      moduleLabels: fixture.moduleLabels,
+      ui: createDrawingWorkbenchUiState({
+        activeRailTab: 'house_forms',
+        activeObjectFamily: 'house_forms',
+        activeObjectRef: { family: 'house_forms', objectId: 'house-form-2' },
+        viewportMode: 'plan',
+      }),
+    });
+
+    const footprint = store.derived.activePlanViewModel?.objectWorkbenchOverlay?.shapes.find(
+      (shape) => shape.ownerKind === 'footprint',
+    );
+    expect(footprint).toEqual(
+      expect.objectContaining({
+        ownerId: 'house-form-2',
+        geometrySourceId: 'house_reference:house-form-2',
+      }),
+    );
+    expect(store.derived.objectWorkbench.houseForm.houseForm?.id).toBe('house-form-2');
+  });
+
   it('builds shared module, assembly, and plan-view state from one snapshot', () => {
     const snapshot = {
       inputs: {
@@ -509,8 +562,8 @@ describe('buildDrawingWorkbenchStore', () => {
     expect(store.persisted.modules[0]?.planRenderStatus).toBe('geometry_ready');
     expect(store.derived.activeSolution?.trust.status).toBe('geometry_ready');
     expect(store.derived.activeSolution?.renderStatus).toBe('geometry_ready');
-    expect(store.derived.activeTrustGate.status).toBe('warn');
-    expect(store.derived.activeTrustGate.warningIssues).toContain('approximate');
+    expect(store.derived.activeTrustGate.status).toBe('pass');
+    expect(store.derived.activeTrustGate.warningIssues).not.toContain('approximate');
     expect(store.derived.exportReadiness.canExport).toBe(true);
     expect(store.derived.activeSolution?.geometryPlan).toBe(store.persisted.modules[0]?.geometryPlanViewModel);
     expect(store.derived.activeSolution?.geometryTopProjection).toBe(store.persisted.modules[0]?.geometryTopProjectionViewModel);
@@ -653,6 +706,8 @@ describe('buildDrawingWorkbenchStore', () => {
       draft,
       ui: createDrawingWorkbenchUiState({
         workbenchMode: 'house',
+        activeObjectFamily: 'house_forms',
+        activeObjectRef: { family: 'house_forms', objectId: 'house-main' },
       }),
     });
 
@@ -1166,7 +1221,7 @@ describe('buildDrawingWorkbenchStore', () => {
       }),
     });
 
-    expect(store.derived.objectWorkbench.houseForm.houseForm?.id).toBe('house-main');
+    expect(store.derived.objectWorkbench.houseForm.houseForm).toBeNull();
     expect(store.derived.objectWorkbench.decks[0]).toMatchObject({
       id: 'object-deck',
       hostEdgeId: 'rear',
@@ -1515,6 +1570,8 @@ describe('buildDrawingWorkbenchStore', () => {
       snapshot,
       ui: createDrawingWorkbenchUiState({
         workbenchMode: 'house',
+        activeObjectFamily: 'house_forms',
+        activeObjectRef: { family: 'house_forms', objectId: 'house-main' },
       }),
     });
 
@@ -1555,6 +1612,8 @@ describe('buildDrawingWorkbenchStore', () => {
       draft,
       ui: createDrawingWorkbenchUiState({
         workbenchMode: 'house',
+        activeObjectFamily: 'house_forms',
+        activeObjectRef: { family: 'house_forms', objectId: 'house-main' },
       }),
     });
 
@@ -1596,6 +1655,8 @@ describe('buildDrawingWorkbenchStore', () => {
       draft,
       ui: createDrawingWorkbenchUiState({
         workbenchMode: 'house',
+        activeObjectFamily: 'house_forms',
+        activeObjectRef: { family: 'house_forms', objectId: 'house-main' },
       }),
     });
 
@@ -1637,6 +1698,8 @@ describe('buildDrawingWorkbenchStore', () => {
       draft: monoDraft,
       ui: createDrawingWorkbenchUiState({
         workbenchMode: 'house',
+        activeObjectFamily: 'house_forms',
+        activeObjectRef: { family: 'house_forms', objectId: 'house-main' },
       }),
     });
 
@@ -1678,6 +1741,8 @@ describe('buildDrawingWorkbenchStore', () => {
       draft: ridgeDraft,
       ui: createDrawingWorkbenchUiState({
         workbenchMode: 'house',
+        activeObjectFamily: 'house_forms',
+        activeObjectRef: { family: 'house_forms', objectId: 'house-main' },
       }),
     });
 

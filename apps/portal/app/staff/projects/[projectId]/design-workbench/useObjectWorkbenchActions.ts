@@ -14,6 +14,7 @@ import {
 } from '@/lib/drawings/state/drawingWorkbenchUiState';
 import type { DrawingWorkbenchUiState } from '@/lib/drawings/state/drawingWorkbenchUiState';
 import type {
+  HouseFormModel,
   HouseFormRoofIntentModel,
   ObjectFirstWorkbenchDraftVNext,
   PergolaAttachment,
@@ -50,6 +51,10 @@ import {
   buildHouseFormRoofIntentCommitDraft,
   buildLegacySharedHouseRoofCommitDraft,
 } from './houseFormRoofDraftActions';
+import {
+  resolveObjectOwnedHouseActionContext,
+  resolveSelectedHouseActionContext,
+} from './objectWorkbenchActionContext';
 import type { CommitResult, DrawOutlineTarget } from './objectWorkbenchClientTypes';
 import {
   applyObjectWorkbenchDeckPatch,
@@ -149,7 +154,11 @@ export function useObjectWorkbenchActions({
   store,
   ui,
 }: UseObjectWorkbenchActionsInput) {
-  const houseForm = store.derived.activeHouseForm ?? store.derived.houseForms[0] ?? null;
+  const selectedHouseContext = resolveSelectedHouseActionContext({
+    activeObjectRef: ui.activeObjectRef,
+    houseForms: store.derived.houseForms,
+  });
+  const selectedHouseForm = selectedHouseContext?.houseForm ?? null;
   const activeObjectWorkbenchOpening =
     ui.activeObjectFamily === 'openings'
       ? store.derived.objectWorkbench.openings.find((opening) => opening.id === ui.activeObjectRef.objectId) ?? null
@@ -246,7 +255,12 @@ export function useObjectWorkbenchActions({
             if (!currentDecks.some((deck) => deck.id === commit.target.objectId)) {
               return { ok: false, error: 'This deck is no longer available.' };
             }
-            const housePolygon = resolveDeckReferencePolygon(houseForm, activeModuleInput);
+            const houseContext = resolveObjectOwnedHouseActionContext({
+              target: commit.target,
+              houseForms: store.derived.houseForms,
+              decks: currentDecks,
+            });
+            const housePolygon = resolveDeckReferencePolygon(houseContext?.houseForm ?? null, activeModuleInput);
             return {
               ok: true,
               draft: updateDraftObjectFirst({
@@ -269,6 +283,14 @@ export function useObjectWorkbenchActions({
             if (!currentOpenings.some((opening) => opening.id === commit.target.objectId)) {
               return { ok: false, error: 'This opening is no longer available.' };
             }
+            const houseContext = resolveObjectOwnedHouseActionContext({
+              target: commit.target,
+              houseForms: store.derived.houseForms,
+              openings: currentOpenings,
+            });
+            if (!houseContext) {
+              return { ok: false, error: 'Opening host house form is not available.' };
+            }
             return {
               ok: true,
               draft: updateDraftObjectFirst({
@@ -280,10 +302,10 @@ export function useObjectWorkbenchActions({
                     currentOpenings,
                     openingId: commit.target.objectId,
                     houseAssembly: store.derived.houseAssembly,
-                    houseForm,
+                    houseForm: houseContext.houseForm,
                     patch: commit.patch,
                   }),
-                  sourceFormId: houseForm?.id ?? null,
+                  sourceFormId: houseContext.houseForm.id,
                 }),
               }),
             };
@@ -341,8 +363,6 @@ export function useObjectWorkbenchActions({
       }),
     [
       activeModuleInput,
-      houseForm,
-      houseForm?.id,
       runDraftTransaction,
       snapshot,
       store,
@@ -473,6 +493,7 @@ export function useObjectWorkbenchActions({
   const commitDeckDraftMutation = useCallback(
     async (input: {
       buildNextDecks: (context: DeckMutationInput) => DeckMutationInput['currentDecks'];
+      houseForm?: HouseFormModel | null;
       validateDraft?: (draft: EstimateDrawingDraft) => CommitResult;
       afterPersist?: () => CommitResult | void | Promise<CommitResult | void>;
     }): Promise<CommitResult> =>
@@ -480,7 +501,7 @@ export function useObjectWorkbenchActions({
         buildNextDraft: (draft) => {
           const objectFirstDraft = resolveObjectFirstDraft(draft, store);
           const currentDecks = resolveCurrentObjectWorkbenchDeckDrafts(objectFirstDraft);
-          const housePolygon = resolveDeckReferencePolygon(houseForm, activeModuleInput);
+          const housePolygon = resolveDeckReferencePolygon(input.houseForm ?? null, activeModuleInput);
           const nextDecks = input.buildNextDecks({
             currentDecks,
             housePolygon,
@@ -499,12 +520,13 @@ export function useObjectWorkbenchActions({
         validateDraft: input.validateDraft,
         afterPersist: input.afterPersist,
       }),
-    [activeModuleInput, houseForm, runDraftTransaction, store],
+    [activeModuleInput, runDraftTransaction, store],
   );
 
   const commitOpeningDraftMutation = useCallback(
     async (input: {
       buildNextOpenings: (context: OpeningMutationInput) => OpeningMutationInput['currentOpenings'];
+      houseForm?: HouseFormModel | null;
       afterPersist?: () => CommitResult | void | Promise<CommitResult | void>;
     }): Promise<CommitResult> =>
       runDraftTransaction({
@@ -521,14 +543,14 @@ export function useObjectWorkbenchActions({
               objectFirst: buildObjectFirstDraftWithOpenings({
                 objectFirstDraft,
                 openings: nextOpenings,
-                sourceFormId: houseForm?.id ?? null,
+                sourceFormId: input.houseForm?.id ?? null,
               }),
             }),
           };
         },
         afterPersist: input.afterPersist,
       }),
-    [houseForm?.id, runDraftTransaction, store],
+    [runDraftTransaction, store],
   );
 
   const commitSharedHouseFootprintEdit = useCallback(
@@ -706,7 +728,7 @@ export function useObjectWorkbenchActions({
           const objectFirstDraft = resolveObjectFirstDraft(draft, store);
           const nextObjectFirst = addHouseFormToObjectFirstDraft({
             draft: objectFirstDraft,
-            sourceHouseFormId: houseForm?.id ?? null,
+            sourceHouseFormId: selectedHouseForm?.id ?? null,
           });
           newFormId = nextObjectFirst.houseAssembly?.houseForms.at(-1)?.id ?? null;
           return {
@@ -721,7 +743,7 @@ export function useObjectWorkbenchActions({
         },
       });
     },
-    [houseForm, runDraftTransaction, selectObjectTarget, store],
+    [runDraftTransaction, selectObjectTarget, selectedHouseForm?.id, store],
   );
 
   const removeSharedHouseForm = useCallback(
@@ -758,25 +780,24 @@ export function useObjectWorkbenchActions({
 
   const addSharedHouseDeck = useCallback(
     async (mode: 'preset' | 'custom_outline'): Promise<CommitResult> => {
-      if (!houseForm) return missingSharedHouseResult();
+      if (!selectedHouseForm) return missingSharedHouseResult();
 
       let deckId = '';
       // PR-D (2026-05-22): bind the deck to the selected form via the new
       // `attachment` snap reference. `buildNewObjectWorkbenchDeckDraft`
       // writes `attachment.host.objectId = hostHouseFormObjectId`. The
       // `host.edgeId` stays empty until the user drags the deck to a wall
-      // (PR-F's snap migration populates it then). For decks added while
-      // no form is selected the read path's null-fallback routes the deck
-      // to the synthesized primary form.
-      const hostHouseFormObjectId = houseForm.id;
+      // (PR-F's snap migration populates it then).
+      const hostHouseFormObjectId = selectedHouseForm.id;
 
       return commitDeckDraftMutation({
+        houseForm: selectedHouseForm,
         buildNextDecks: ({ currentDecks, housePolygon }) => {
           deckId = nextObjectWorkbenchDeckId(currentDecks);
           const nextDeck = buildNewObjectWorkbenchDeckDraft({
             deckId,
             deckIndex: currentDecks.length,
-            hostEdgeId: houseForm.footprint.attachmentSide ?? 'rear',
+            hostEdgeId: selectedHouseForm.footprint.attachmentSide ?? 'rear',
             housePolygon,
             mode,
             hostHouseFormObjectId,
@@ -791,7 +812,7 @@ export function useObjectWorkbenchActions({
         },
       });
     },
-    [commitDeckDraftMutation, houseForm, selectObjectTarget, startDeckOutlineEditor],
+    [commitDeckDraftMutation, selectObjectTarget, selectedHouseForm, startDeckOutlineEditor],
   );
 
   const removeSharedHouseDeck = useCallback(
@@ -830,19 +851,20 @@ export function useObjectWorkbenchActions({
 
   const addSharedHouseOpening = useCallback(
     async (kind: 'window' | 'hinged_door' | 'slider' | 'stacker'): Promise<CommitResult> => {
-      if (!houseForm) return missingSharedHouseResult();
+      if (!selectedHouseForm) return missingSharedHouseResult();
 
       let openingId = '';
 
       return commitOpeningDraftMutation({
+        houseForm: selectedHouseForm,
         buildNextOpenings: ({ currentOpenings }) => {
           openingId = nextObjectWorkbenchOpeningId(currentOpenings);
           const preferredWall = resolvePreferredNewObjectWorkbenchOpeningHostWall({
             activeModuleInput,
             houseAssembly: store.derived.houseAssembly,
-            houseForm,
+            houseForm: selectedHouseForm,
             preferredHostWallId: activeObjectWorkbenchOpening?.hostWallId ?? null,
-            preferredSide: houseForm.footprint.attachmentSide ?? 'rear',
+            preferredSide: selectedHouseForm.footprint.attachmentSide ?? 'rear',
           });
           return [
             ...currentOpenings,
@@ -850,10 +872,10 @@ export function useObjectWorkbenchActions({
               currentOpenings,
               kind,
               openingId,
-              sourceFormId: houseForm.id,
+              sourceFormId: selectedHouseForm.id,
               hostWallId: preferredWall?.wallId ?? null,
               hostEdgeId: preferredWall?.hostEdgeId ?? null,
-              wallId: preferredWall?.semanticSide ?? houseForm.footprint.attachmentSide ?? 'rear',
+              wallId: preferredWall?.semanticSide ?? selectedHouseForm.footprint.attachmentSide ?? 'rear',
             }),
           ];
         },
@@ -866,8 +888,8 @@ export function useObjectWorkbenchActions({
       activeModuleInput,
       activeObjectWorkbenchOpening?.hostWallId,
       commitOpeningDraftMutation,
-      houseForm,
       selectObjectTarget,
+      selectedHouseForm,
       store.derived.houseAssembly,
     ],
   );
@@ -962,7 +984,7 @@ export function useObjectWorkbenchActions({
       const houseFormId =
         ui.activeObjectRef.family === 'house_forms' && ui.activeObjectRef.objectId
           ? ui.activeObjectRef.objectId
-          : houseForm?.id ?? null;
+          : null;
       if (!houseFormId) {
         return { ok: false, error: 'This house form is no longer available.' };
       }
@@ -970,7 +992,6 @@ export function useObjectWorkbenchActions({
     },
     [
       commitHouseFormFootprintEdit,
-      houseForm?.id,
       ui.activeObjectRef.family,
       ui.activeObjectRef.objectId,
     ],

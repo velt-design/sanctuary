@@ -12,6 +12,7 @@ import type {
   HouseFormModel,
   OpeningObjectModel,
 } from '@/lib/drawings/state/objectFirstWorkbenchModel';
+import type { ObjectWorkbenchHouseFormStatus } from '@/lib/drawings/state/objectWorkbenchStatusModel';
 import { buildPlanViewModel } from './buildPlanViewModel';
 import type { ObjectWorkbenchPlanOverlayInput } from './objectWorkbenchPlanOverlay';
 
@@ -412,6 +413,16 @@ function makeObjectWorkbenchOverlayInput(
   geometryPlan: GeometryPlanViewModel,
   houseForm: HouseFormModel = makeHouseForm(),
 ): ObjectWorkbenchPlanOverlayInput {
+  const houseFormStatus: ObjectWorkbenchHouseFormStatus = {
+    lowConfidence: false,
+    warnings: [],
+    footprintPreset: houseForm.footprint.preset,
+    roofForm: houseForm.roofIntent.form,
+    defaultDeckHostEdgeId: 'rear',
+    attachmentZoneBlockedSummary: 'none',
+    roof: null,
+  };
+
   return {
     houseAssembly: makeHouseAssembly(houseForm),
     houseForm,
@@ -424,25 +435,11 @@ function makeObjectWorkbenchOverlayInput(
     geometryTopProjection: makeGeometryTopProjection(),
     status: {
       houseFormsById: {
-        [houseForm.id]: {
-          lowConfidence: false,
-          warnings: [],
-          footprintPreset: houseForm.footprint.preset,
-          roofForm: houseForm.roofIntent.form,
-          defaultDeckHostEdgeId: 'rear',
-          attachmentZoneBlockedSummary: 'none',
-          roof: null,
-        },
+        [houseForm.id]: houseFormStatus,
       },
-      houseForm: {
-        lowConfidence: false,
-        warnings: [],
-        footprintPreset: houseForm.footprint.preset,
-        roofForm: houseForm.roofIntent.form,
-        defaultDeckHostEdgeId: 'rear',
-        attachmentZoneBlockedSummary: 'none',
-        roof: null,
-      },
+      selectedHouseFormId: houseForm.id,
+      selectedHouseFormStatus: houseFormStatus,
+      houseForm: houseFormStatus,
       deckStatuses: {},
       openingStatuses: {},
       pergolaStatuses: {},
@@ -706,5 +703,26 @@ describe('buildPlanViewModel', () => {
         ],
       }),
     );
+  });
+
+  it('does not fall back to the first house form when overlay input has no selected house form', () => {
+    const geometryPlan = makeGeometryPlan();
+    const houseForm = makeHouseForm();
+    const viewModel = buildPlanViewModel({
+      moduleId: 'module-1',
+      moduleLabel: 'Module 1',
+      planModel: makePlanModelWithHouseContext(),
+      geometryPlan,
+      geometryTopProjection: makeGeometryTopProjection(),
+      canEditHouseFootprint: true,
+      objectWorkbenchOverlayInput: {
+        ...makeObjectWorkbenchOverlayInput(geometryPlan, houseForm),
+        houseAssembly: makeHouseAssembly(houseForm),
+        houseForm: null,
+        houseReferenceShape: makeHouseReferenceShape({ houseFormId: houseForm.id, xOffsetMm: 0 }),
+      },
+    });
+
+    expect(viewModel?.objectWorkbenchOverlay).toBeNull();
   });
 });

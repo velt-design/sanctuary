@@ -88,6 +88,11 @@ export default function WorkbenchDiagnosticsPanel({
   const healedRoofRidgeLabel = roofControls?.ridgeAxis
     ? formatRidgeAxis(healedRoofRidgeAxis, 'none')
     : roofControlNotUsedLabel;
+  const houseProjectionHealthLabel = diagnostics.projectHouseProjectionHealth
+    .map((health) =>
+      `${health.houseFormId}: model ${health.modelPresent ? 'yes' : 'no'}, roof ${health.roofBodyCount}, material ${health.roofMaterialBodyCount}, fallback ${health.visibleReferenceFallbackIds.length}`,
+    )
+    .join(' | ') || 'none';
 
   return (
     <section className={styles.moduleSection}>
@@ -118,6 +123,10 @@ export default function WorkbenchDiagnosticsPanel({
         <div className={styles.diagnosticRow}>
           <span className={styles.diagnosticLabel}>House forms</span>
           <span className={styles.diagnosticValue}>{diagnostics.houseCount}</span>
+        </div>
+        <div className={styles.diagnosticRow}>
+          <span className={styles.diagnosticLabel}>House projection health</span>
+          <span className={styles.diagnosticValue}>{houseProjectionHealthLabel}</span>
         </div>
         <div className={styles.diagnosticRow}>
           <span className={styles.diagnosticLabel}>Pergolas</span>
@@ -220,7 +229,7 @@ export default function WorkbenchDiagnosticsPanel({
         <div className={styles.diagnosticRow}>
           <span className={styles.diagnosticLabel}>House polygon source</span>
           <span className={styles.diagnosticValue}>
-            {diagnostics.footprintSource}
+            {diagnostics.footprintSource ?? 'none'}
           </span>
         </div>
         {diagnostics.activeDeckInteraction ? (

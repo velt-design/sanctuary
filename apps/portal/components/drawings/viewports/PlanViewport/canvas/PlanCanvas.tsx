@@ -40,6 +40,8 @@ import type { PlanLayout } from './planLayout';
 import type { Point2 } from './polygonEdgeMath';
 import type { PlanRenderItem } from './planRenderItem';
 import { buildPlanLocalHoverItems } from './usePlanLocalHoverItems';
+import type { PlanRenderDiagnostics } from '@/lib/drawings/views/plan/planRenderDiagnostics';
+import type { ProjectHouseProjectionHealth } from '@/lib/drawings/state/projectHouseProjectionHealth';
 
 const IDENTITY_TRANSFORM: DrawingWorkbenchViewportTransform = { zoom: 1, panX: 0, panY: 0 };
 
@@ -57,6 +59,8 @@ type PlanCanvasProps = {
    * selection halo so the active selection still reads as primary.
    */
   hoverHaloItems?: PlanRenderItem[];
+  diagnostics: PlanRenderDiagnostics;
+  projectHouseProjectionHealth?: ReadonlyArray<ProjectHouseProjectionHealth>;
   /**
    * Fires when the local pointer enters or leaves a top-projection shape.
    * Receives the full shape on enter, `null` on leave. Used by PlanViewport
@@ -100,6 +104,8 @@ export function PlanCanvas({
   hitTargetItems,
   selectionHaloItems,
   hoverHaloItems = EMPTY_HOVER_HALO_ITEMS,
+  diagnostics,
+  projectHouseProjectionHealth = [],
   onHoverShape,
   dimensions = EMPTY_DIMENSIONS,
   edgeDragPreview = null,
@@ -302,6 +308,11 @@ export function PlanCanvas({
         data-plan-context-line-count={contextLines.length}
         data-plan-detail-line-count={detailLines.length}
         data-plan-hit-target-count={allHitTargetItems.length}
+        data-plan-visible-reference-fallback-count={diagnostics.visibleReferenceFallbackIds.length}
+        data-plan-visible-reference-fallback-ids={diagnostics.visibleReferenceFallbackIds.join(',')}
+        data-plan-house-render-diagnostics={JSON.stringify(diagnostics.houses)}
+        data-plan-house-projection-health={JSON.stringify(projectHouseProjectionHealth)}
+        data-plan-house-projection-health-count={projectHouseProjectionHealth.length}
         data-plan-selection-halo-count={selectionHaloItems.length}
         data-plan-dimension-count={dimensions.length}
         data-plan-hover-shape-id={hoveredShape?.shapeId ?? ''}

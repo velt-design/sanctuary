@@ -52,6 +52,10 @@ import {
 } from './projectHouseGeometryRegistry';
 import { buildProjectPergolaPlanShapesFromModules } from './projectPergolaPlanShapes';
 import { buildProjectPlanProjection } from './projectPlanProjection';
+import {
+  buildProjectHouseProjectionHealth,
+  type ProjectHouseProjectionHealth,
+} from './projectHouseProjectionHealth';
 import { buildProjectPergolaViewerSceneFromModules } from './projectPergolaViewerScene';
 import {
   buildObjectFirstPergolaSolveSources,
@@ -201,6 +205,14 @@ export type WorkbenchSolvedModel = {
    */
   projectPergolaPlanShapes: GeometryTopProjectionShape[];
   /**
+   * Project-level diagnostics for each house form's Plan projection chain.
+   * This records whether the form has a canonical reference, solved 3D model,
+   * roof planes, roof-material Plan bodies, and any visible reference fallback.
+   * It is derived with the solved model so Plan/fixture diagnostics can name
+   * the failing house form without inventing React-layer state.
+   */
+  projectHouseProjectionHealth: ProjectHouseProjectionHealth[];
+  /**
    * Canonical project-level Plan projection. Unlike per-module
    * `geometryArtifact.topProjection`, this is built from project registries by
    * object id, so active pergola selection cannot change which house form owns
@@ -306,6 +318,7 @@ export type WorkbenchSolvedProject = {
   activePergola: SolvedPergola | null;
   projectHouseGeometries: ProjectHouseGeometryEntry[];
   projectPergolaPlanShapes: GeometryTopProjectionShape[];
+  projectHouseProjectionHealth: ProjectHouseProjectionHealth[];
   projectPlanProjection: GeometryTopProjectionViewModel | null;
   projectViewportGeometry: WorkbenchViewportGeometry | null;
   projectGeometryPreview: GeometryPreviewState;
@@ -1313,6 +1326,11 @@ export function buildWorkbenchSolvedModel(input: {
     projectPergolaPlanShapes,
     projectReferenceShapes,
   });
+  const projectHouseProjectionHealth = buildProjectHouseProjectionHealth({
+    houseFormIds: projectModel.houseAssembly?.houseForms.map((houseForm) => houseForm.id) ?? [],
+    projectHouseGeometries,
+    projectPlanProjection,
+  });
   const projectViewportGeometry = resolveProjectReadyBasisModule({
     modules,
     activeModule,
@@ -1332,6 +1350,7 @@ export function buildWorkbenchSolvedModel(input: {
     activeModule,
     projectHouseGeometries,
     projectPergolaPlanShapes,
+    projectHouseProjectionHealth,
     projectPlanProjection,
     projectViewportGeometry,
     projectGeometryPreview,
@@ -1432,6 +1451,7 @@ export function buildWorkbenchSolvedProject(input: {
     activePergola,
     projectHouseGeometries: solvedModel.projectHouseGeometries,
     projectPergolaPlanShapes: solvedModel.projectPergolaPlanShapes,
+    projectHouseProjectionHealth: solvedModel.projectHouseProjectionHealth,
     projectPlanProjection: solvedModel.projectPlanProjection,
     projectViewportGeometry: solvedModel.projectViewportGeometry,
     projectGeometryPreview: solvedModel.projectGeometryPreview,

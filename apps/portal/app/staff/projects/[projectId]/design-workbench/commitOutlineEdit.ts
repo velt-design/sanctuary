@@ -7,28 +7,21 @@ import { houseFormTransformToWorldPositionMm } from '@/lib/drawings/state/houseF
 import type { HouseFormModel, PergolaAttachment } from '@/lib/drawings/state/objectFirstWorkbenchModel';
 import type { ObjectWorkbenchDeckPatch } from '@/lib/drawings/state/objectWorkbenchInspectorModel';
 import { pergolaAttachmentFromSnap } from '@/lib/drawings/state/pergolaAttachment';
+import {
+  resolveObjectOwnedHouseActionContext,
+  resolveSelectedHouseActionContext,
+} from './objectWorkbenchActionContext';
 import type { ObjectWorkbenchActions } from './useObjectWorkbenchActions';
 
 type ActiveModuleInput =
   NonNullable<DrawingWorkbenchStore['derived']['activeModule']>['drawingModule']['input'];
 
-function resolveHouseWorldPositionMm(input: {
-  store: DrawingWorkbenchStore;
-  activeModuleInput: ActiveModuleInput | null;
-}): { x: number; y: number } | null {
-  const houseForm = input.store.derived.activeHouseForm ?? input.store.derived.houseForms[0] ?? null;
-  if (houseForm) {
-    const position = houseFormTransformToWorldPositionMm(houseForm.transform);
-    return { x: position.x, y: position.y };
-  }
-
-  const modulePosition = input.activeModuleInput?.houseFootprintPosition;
-  return modulePosition
-    ? {
-        x: Number(modulePosition.originXMm) || 0,
-        y: Number(modulePosition.originYMm) || 0,
-      }
-    : null;
+function resolveHouseWorldPositionMm(
+  houseForm: HouseFormModel | null,
+): { x: number; y: number } | null {
+  if (!houseForm) return null;
+  const position = houseFormTransformToWorldPositionMm(houseForm.transform);
+  return { x: position.x, y: position.y };
 }
 
 export type BuildOutlineEditCommitHandlerInput = {
@@ -38,14 +31,10 @@ export type BuildOutlineEditCommitHandlerInput = {
 };
 
 function resolveSelectedHouseForm(store: DrawingWorkbenchStore): HouseFormModel | null {
-  const selectedHouseFormId =
-    store.ui.activeObjectRef.family === 'house_forms'
-      ? store.ui.activeObjectRef.objectId
-      : null;
-  if (selectedHouseFormId) {
-    return store.derived.houseForms.find((houseForm) => houseForm.id === selectedHouseFormId) ?? null;
-  }
-  return store.derived.activeHouseForm ?? null;
+  return resolveSelectedHouseActionContext({
+    activeObjectRef: store.ui.activeObjectRef,
+    houseForms: store.derived.houseForms,
+  })?.houseForm ?? null;
 }
 
 /**
@@ -299,14 +288,15 @@ export function buildOutlineEditCommitHandler(
       // value must be in house-local coords; otherwise each
       // commit would re-add house.position and the deck
       // would drift).
-      //
-      // Read the same object-first transform that raw geometry consumes.
-      // The legacy module position remains a fallback for old callers that
-      // do not have a workbench house form.
-      const houseWorldPositionMm = resolveHouseWorldPositionMm({
-        store,
-        activeModuleInput,
+      const houseContext = resolveObjectOwnedHouseActionContext({
+        target: { family: 'decks', objectId: deckId },
+        houseForms: store.derived.houseForms,
+        decks: projectModelDecks,
       });
+      const houseWorldPositionMm = resolveHouseWorldPositionMm(
+        houseContext?.houseForm ?? null,
+      );
+      if (!houseWorldPositionMm) return;
       const patch = buildDeckTransformPatch({
         worldPolygonMm: commit.nextPolygon,
         currentRotationDeg: matchedDeck?.position?.rotationDeg,

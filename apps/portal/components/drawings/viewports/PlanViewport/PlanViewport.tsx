@@ -12,6 +12,7 @@ import {
   type ReversibleCommandInput,
 } from '@/lib/drawings/commands/createReversibleCommand';
 import type { WorkbenchSolvedGeometryArtifact } from '@/lib/drawings/state/workbenchSolvedModel';
+import type { ProjectHouseProjectionHealth } from '@/lib/drawings/state/projectHouseProjectionHealth';
 import type {
   DrawingWorkbenchViewportTransform,
   DrawingWorkbenchVisibilityState,
@@ -84,6 +85,8 @@ export type PlanViewportProps = {
    * including the active pergola's host.
    */
   houseCommittedShapes?: ReadonlyArray<GeometryTopProjectionShape>;
+  /** Solved-model diagnostics for each house form's project Plan projection. */
+  projectHouseProjectionHealth?: ReadonlyArray<ProjectHouseProjectionHealth>;
   /** Project-level house models used as wall/eave snap sources. */
   projectHouseSnapSources?: ReadonlyArray<ProjectHouseSnapSource>;
   viewportTransform: DrawingWorkbenchViewportTransform;
@@ -149,6 +152,7 @@ export default function PlanViewport({
   projectPergolaPlanShapes,
   projectPergolaSnapShapes,
   houseCommittedShapes,
+  projectHouseProjectionHealth,
   projectHouseSnapSources,
   viewportTransform,
   onViewportTransformChange,
@@ -508,6 +512,8 @@ export default function PlanViewport({
           hitTargetItems={renderModel.hitTargetItems}
           selectionHaloItems={renderModel.selectionHaloItems}
           hoverHaloItems={renderModel.hoverHaloItems}
+          diagnostics={renderModel.diagnostics}
+          projectHouseProjectionHealth={projectHouseProjectionHealth}
           onHoverShape={handleHoverShape}
           dimensions={mergedDimensions}
           edgeDragPreview={edgeDragPreview}

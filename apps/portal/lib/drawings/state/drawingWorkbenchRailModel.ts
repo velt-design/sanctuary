@@ -179,13 +179,13 @@ function buildHouseFormEntries(
   status: ObjectWorkbenchStatusFacade,
 ): DrawingWorkbenchRailObjectEntry[] {
   return houseForms.map((houseForm, index) => {
-    const houseStatus = status.houseFormsById[houseForm.id] ?? status.houseForm;
-    const warningCount = houseStatus.warnings.length;
-    const roofStatus = houseStatus.roof?.validationStatus ?? null;
+    const houseStatus = status.houseFormsById[houseForm.id] ?? null;
+    const warningCount = houseStatus?.warnings.length ?? 0;
+    const roofStatus = houseStatus?.roof?.validationStatus ?? null;
     const trustStatus: WorkbenchTrustStatusKind =
       roofStatus === 'invalid'
         ? 'invalid_geometry'
-        : roofStatus === 'approximate' || houseStatus.lowConfidence || warningCount > 0
+        : roofStatus === 'approximate' || houseStatus?.lowConfidence || warningCount > 0
           ? 'approximate'
           : activeTrust.status;
     const trustLabel = buildTrustLabel(trustStatus);
@@ -200,7 +200,7 @@ function buildHouseFormEntries(
       trustLabel,
       statusLabel: trustLabel,
       meta: `${describeHouseFootprint(houseForm)} | ${
-        houseStatus.roofForm ?? houseForm.roofIntent.form
+        houseStatus?.roofForm ?? houseForm.roofIntent.form
       } roof | ${warningCount} warning${warningCount === 1 ? '' : 's'}`,
     };
   });

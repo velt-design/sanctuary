@@ -13,6 +13,7 @@ import {
   buildProjectionPlanRenderGraph,
   topProjectionShapeVisible,
 } from '@/lib/drawings/views/plan/planRenderGraph';
+import type { PlanRenderDiagnostics } from '@/lib/drawings/views/plan/planRenderDiagnostics';
 import { resolvePlanLayout, type PlanLayout } from './planLayout';
 import { pickPrimaryEditCandidate, type ActiveObjectFamily } from './planDimension';
 import type { PlanRenderItem } from './planRenderItem';
@@ -40,6 +41,7 @@ export type PlanRenderModel = {
    * milestone 16 for the hover-sync contract.
    */
   hoverHaloItems: PlanRenderItem[];
+  diagnostics: PlanRenderDiagnostics;
 };
 
 export type UsePlanRenderModelInput = {
@@ -249,6 +251,7 @@ export function usePlanRenderModel({
       hitTargetItems,
       selectionHaloItems,
       hoverHaloItems,
+      diagnostics: renderGraph.diagnostics,
     };
   }, [
     activeObjectRef,

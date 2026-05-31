@@ -107,6 +107,20 @@ describe('PlanViewport', () => {
       const markup = renderToStaticMarkup(
         <PlanViewport
           artifact={makeArtifactWithDeckPergolaAndContext()}
+          projectHouseProjectionHealth={[
+            {
+              houseFormId: 'house-form-2',
+              referencePresent: true,
+              modelPresent: true,
+              wallCount: 4,
+              roofPlaneCount: 2,
+              roofBodyCount: 0,
+              roofMaterialBodyCount: 0,
+              visibleReferenceFallbackIds: ['house_reference:house-form-2'],
+              roofValidationStatus: null,
+              roofValidationCode: null,
+            },
+          ]}
           viewportTransform={IDENTITY_TRANSFORM}
           onViewportTransformChange={() => undefined}
         />,
@@ -117,6 +131,10 @@ describe('PlanViewport', () => {
       expect(markup).toContain('data-plan-render-source="geometry"');
       expect(markup).toContain('data-plan-committed-body-count="2"');
       expect(markup).toContain('data-plan-context-line-count="1"');
+      expect(markup).toContain('data-plan-visible-reference-fallback-count="0"');
+      expect(markup).toContain('data-plan-house-projection-health-count="1"');
+      expect(markup).toContain('&quot;houseFormId&quot;:&quot;house-form-2&quot;');
+      expect(markup).toContain('&quot;visibleReferenceFallbackIds&quot;:[&quot;house_reference:house-form-2&quot;]');
     });
 
     it('emits per-shape hit-target attributes including the typed selection target kind', () => {
@@ -177,6 +195,34 @@ describe('PlanViewport', () => {
       );
 
       expect(markup).not.toContain('data-plan-hit-shape-id="house_reference:house-main"');
+    });
+
+    it('reports house reference fallbacks and renders them as outline-only committed bodies', () => {
+      const markup = renderToStaticMarkup(
+        <PlanViewport
+          artifact={makeArtifact([
+            makeShape({
+              id: 'house_reference:house-form-fallback',
+              sourceObjectId: 'house-form-fallback',
+              sourceId: 'house-form-fallback',
+              sourceType: 'house_reference',
+              family: 'house',
+              kind: 'footprint',
+              metadata: { houseFormId: 'house-form-fallback', isCanonicalOutline: true },
+            }),
+          ])}
+          viewportTransform={IDENTITY_TRANSFORM}
+          onViewportTransformChange={() => undefined}
+        />,
+      );
+
+      expect(markup).toContain('data-plan-visible-reference-fallback-count="1"');
+      expect(markup).toContain('data-plan-visible-reference-fallback-ids="house_reference:house-form-fallback"');
+      expect(markup).toContain('data-plan-visible-reference-fallback="true"');
+      expect(markup).toContain('data-plan-shape-source-type="house_reference"');
+      expect(markup).toContain('data-plan-hit-shape-id="house_reference:house-form-fallback"');
+      expect(markup).toContain('&quot;houseFormId&quot;:&quot;house-form-fallback&quot;');
+      expect(markup).toContain('&quot;visibleReferenceFallbackIds&quot;:[&quot;house_reference:house-form-fallback&quot;]');
     });
 
     it('renders a selection halo polygon for the active deck', () => {
@@ -870,6 +916,7 @@ describe('PlanViewport', () => {
       );
       expect(css).toMatch(/\.hitTarget:hover\s*{[\s\S]*?fill:\s*transparent;[\s\S]*?stroke:\s*none;/);
       expect(css).toMatch(/\.hitTargetTerminalEnd:hover\s*{[\s\S]*?fill:\s*transparent;[\s\S]*?stroke:\s*none;/);
+      expect(css).toMatch(/\.bodyHouseReferenceFallback\s*{[\s\S]*?fill:\s*transparent;/);
     });
   });
 });
