@@ -62,11 +62,6 @@ export const ROOF_FALL_DIRECTION_OPTIONS: Array<SelectOption & { value: HouseFor
   { label: 'Fall -X', value: 'negative_x' },
 ];
 
-export const ROOF_RIDGE_AXIS_OPTIONS: Array<SelectOption & { value: HouseFormRoofIntentModel['ridgeAxis'] }> = [
-  { label: 'Ridge X', value: 'x' },
-  { label: 'Ridge Y', value: 'y' },
-];
-
 // PR-T9 (2026-05-29): `DECK_KIND_OPTIONS` and `DECK_ELEVATION_OPTIONS`
 // removed with the deck inspector cull.
 

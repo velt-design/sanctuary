@@ -423,6 +423,17 @@ function makeObjectWorkbenchOverlayInput(
     geometryPlan,
     geometryTopProjection: makeGeometryTopProjection(),
     status: {
+      houseFormsById: {
+        [houseForm.id]: {
+          lowConfidence: false,
+          warnings: [],
+          footprintPreset: houseForm.footprint.preset,
+          roofForm: houseForm.roofIntent.form,
+          defaultDeckHostEdgeId: 'rear',
+          attachmentZoneBlockedSummary: 'none',
+          roof: null,
+        },
+      },
       houseForm: {
         lowConfidence: false,
         warnings: [],

@@ -30,6 +30,7 @@ import type {
   WorkbenchProjectModel,
 } from './objectFirstWorkbenchModel';
 import { connectionKindFromAttachment } from './pergolaAttachment';
+import { deriveHouseFormRoofIntentForFootprint } from './houseFormRoofIntentForFootprint';
 
 type AttachmentSide = NonNullable<CalculatorModuleInputs['attachmentSide']>;
 
@@ -122,6 +123,7 @@ export type ObjectWorkbenchPergolaStatus = {
 };
 
 export type ObjectWorkbenchStatusFacade = {
+  houseFormsById: Record<string, ObjectWorkbenchHouseFormStatus>;
   houseForm: ObjectWorkbenchHouseFormStatus;
   deckStatuses: Record<string, ObjectWorkbenchDeckStatus>;
   openingStatuses: Record<string, ObjectWorkbenchOpeningStatus>;
@@ -288,11 +290,14 @@ function buildRoofStatus(input: {
 }): ObjectWorkbenchRoofStatus | null {
   const houseForm = input.houseForm;
   if (!houseForm) return null;
-  const intent = houseForm.roofIntent;
   const roofFootprintPolygon =
     input.derivedFootprintPolygon && input.derivedFootprintPolygon.length > 0
       ? input.derivedFootprintPolygon
       : houseForm.footprint.polygon;
+  const intent = deriveHouseFormRoofIntentForFootprint({
+    houseForm,
+    footprintPolygon: roofFootprintPolygon,
+  });
   const footprint = localPolygonToGeometryPolygon(roofFootprintPolygon);
   const capabilities = deriveHouseRoofCapabilities({
     roofForm: intent.form,
@@ -486,14 +491,18 @@ function resolveOpeningAttachmentSide(
   return null;
 }
 
-function summarizeAttachmentZoneBlocks(projectModel: WorkbenchProjectModel): string {
-  const houseForm = projectModel.houseAssembly?.houseForms[0] ?? null;
+function summarizeAttachmentZoneBlocks(
+  projectModel: WorkbenchProjectModel,
+  houseForm: HouseFormModel | null,
+): string {
   const candidateKinds = resolveAttachmentStrategyZoneKinds(houseForm?.attachmentStrategy);
   if (!candidateKinds.length) return 'none';
+  const houseFormId = houseForm?.id ?? null;
 
   const blocked = new Set<string>();
   for (const opening of projectModel.openings) {
     if (opening.kind !== 'slider' && opening.kind !== 'stacker') continue;
+    if (houseFormId && opening.sourceFormId && opening.sourceFormId !== houseFormId) continue;
     const side = resolveOpeningAttachmentSide(projectModel, opening);
     if (!side) continue;
     for (const kind of candidateKinds) {
@@ -506,13 +515,66 @@ function summarizeAttachmentZoneBlocks(projectModel: WorkbenchProjectModel): str
   return blocked.size ? Array.from(blocked).join(' | ') : 'none';
 }
 
+function buildHouseFormStatus(input: {
+  activeModuleInput: Partial<CalculatorModuleInputs> | null | undefined;
+  derivedFootprintPolygon?: CalculatorHouseFootprintPolygonPoint[] | null;
+  houseForm: HouseFormModel | null;
+  projectModel: WorkbenchProjectModel;
+  warnings: ObjectWorkbenchMigrationWarning[];
+}): ObjectWorkbenchHouseFormStatus {
+  const houseForm = input.houseForm;
+  return {
+    lowConfidence: input.warnings.length > 0,
+    warnings: input.warnings,
+    footprintPreset: houseForm?.footprint.preset ?? null,
+    roofForm: houseForm?.roofIntent.form ?? null,
+    defaultDeckHostEdgeId: houseForm?.footprint.attachmentSide ?? 'rear',
+    attachmentZoneBlockedSummary: summarizeAttachmentZoneBlocks(input.projectModel, houseForm),
+    roof: buildRoofStatus({
+      activeModuleInput: input.activeModuleInput,
+      derivedFootprintPolygon: input.derivedFootprintPolygon,
+      houseForm,
+    }),
+  };
+}
+
 export function buildObjectWorkbenchStatusFacade(input: {
   activeDeckId: string | null;
+  activeHouseFormId?: string | null;
   activeModuleInput: Partial<CalculatorModuleInputs> | null | undefined;
   projectModel: WorkbenchProjectModel;
 }): ObjectWorkbenchStatusFacade {
-  const houseForm = input.projectModel.houseAssembly?.houseForms[0] ?? null;
+  const houseForms = input.projectModel.houseAssembly?.houseForms ?? [];
+  const activeHouseForm =
+    (input.activeHouseFormId
+      ? houseForms.find((houseForm) => houseForm.id === input.activeHouseFormId)
+      : null) ??
+    houseForms[0] ??
+    null;
   const warnings = buildMigrationWarnings(input.projectModel.warnings ?? []);
+  const singleHouseDerivedFootprint =
+    houseForms.length === 1 ? input.projectModel.houseAssembly?.derivedEnvelope?.footprint ?? null : null;
+  const houseFormsById = Object.fromEntries(
+    houseForms.map((houseForm) => [
+      houseForm.id,
+      buildHouseFormStatus({
+        activeModuleInput: input.activeModuleInput,
+        derivedFootprintPolygon: singleHouseDerivedFootprint,
+        houseForm,
+        projectModel: input.projectModel,
+        warnings,
+      }),
+    ]),
+  );
+  const activeHouseFormStatus =
+    (activeHouseForm ? houseFormsById[activeHouseForm.id] : null) ??
+    buildHouseFormStatus({
+      activeModuleInput: input.activeModuleInput,
+      derivedFootprintPolygon: singleHouseDerivedFootprint,
+      houseForm: activeHouseForm,
+      projectModel: input.projectModel,
+      warnings,
+    });
   const decks = input.projectModel.decks;
   const deckStatuses = buildDeckStatuses(decks);
   const activeHostSide = input.activeModuleInput
@@ -526,19 +588,8 @@ export function buildObjectWorkbenchStatusFacade(input: {
     : null;
 
   return {
-    houseForm: {
-      lowConfidence: warnings.length > 0,
-      warnings,
-      footprintPreset: houseForm?.footprint.preset ?? null,
-      roofForm: houseForm?.roofIntent.form ?? null,
-      defaultDeckHostEdgeId: houseForm?.footprint.attachmentSide ?? 'rear',
-      attachmentZoneBlockedSummary: summarizeAttachmentZoneBlocks(input.projectModel),
-      roof: buildRoofStatus({
-        activeModuleInput: input.activeModuleInput,
-        derivedFootprintPolygon: input.projectModel.houseAssembly?.derivedEnvelope?.footprint ?? null,
-        houseForm,
-      }),
-    },
+    houseFormsById,
+    houseForm: activeHouseFormStatus,
     deckStatuses,
     openingStatuses: buildOpeningStatuses(input.projectModel.openings),
     pergolaStatuses: buildPergolaStatuses(input.projectModel.pergolas),

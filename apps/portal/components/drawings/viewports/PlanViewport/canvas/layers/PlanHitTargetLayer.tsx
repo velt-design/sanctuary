@@ -28,9 +28,8 @@ export function PlanHitTargetLayer({
           points={svgPointsAttr(points)}
           className={
             // Milestone 13: hip-end facets tagged with openGableEndId
-            // get a stronger hover affordance so users can find the
-            // toggle target. Untagged hit targets keep the subtle
-            // global hover.
+            // are preserved as typed event targets. Visual affordance lives
+            // in PlanLocalHoverLayer so hit targets never paint bodies.
             shape.kind === 'roof' && typeof shape.metadata?.openGableEndId === 'string'
               ? `${lineweightStyles.hitTarget} ${lineweightStyles.hitTargetTerminalEnd}`
               : lineweightStyles.hitTarget

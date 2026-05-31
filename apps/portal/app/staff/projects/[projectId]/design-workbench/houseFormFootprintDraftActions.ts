@@ -1,5 +1,6 @@
 import type { EstimateDrawingFootprintEdit } from '@/lib/estimates/drawingEdits';
 import type { ObjectFirstHouseFormDraft } from '@/lib/drawings/state/objectFirstWorkbenchModel';
+import { reconcileHouseFormRoofIntentForFootprint } from '@/lib/drawings/state/houseFormRoofIntentForFootprint';
 import {
   normalizeAttachmentSide,
   normalizeDrawingRotationQuarterTurns,
@@ -21,7 +22,8 @@ export function applyHouseFormFootprintEdit(input: {
     found = true;
 
     const footprint = houseForm.footprint;
-    switch (input.edit.type) {
+    const nextHouseForm = (() => {
+      switch (input.edit.type) {
       case 'mode':
         return {
           ...houseForm,
@@ -94,7 +96,9 @@ export function applyHouseFormFootprintEdit(input: {
         };
       default:
         return houseForm;
-    }
+      }
+    })();
+    return reconcileHouseFormRoofIntentForFootprint(nextHouseForm);
   });
 
   if (!found) {

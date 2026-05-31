@@ -8,6 +8,8 @@ import type {
 import {
   normalizeObjectFirstWorkbenchDraftVNext,
 } from './objectFirstWorkbenchModel';
+import { deriveHouseFormDisplayLabel } from './houseFormDisplayLabel';
+import { reconcileHouseFormRoofIntentForFootprint } from './houseFormRoofIntentForFootprint';
 
 function buildHouseFormDraftFromModel(houseForm: HouseFormModel): ObjectFirstHouseFormDraft {
   return {
@@ -53,20 +55,64 @@ export function buildObjectFirstWorkbenchDraftFromProjectModel(
   });
 }
 
-/**
- * Generate the next house-form id for an authored multi-form estimate.
- * The legacy primary form sits at `house-main` (see
- * `LEGACY_PRIMARY_HOUSE_FORM_ID` in `houseFirstWorkbenchAdapter.ts`);
- * additional forms get `house-form-N` (starting at N=2 so the visual
- * sequence reads "main, form 2, form 3" rather than colliding with
- * the legacy id). Skips ids already in use so removals + re-adds
- * never clash.
- */
 export function nextHouseFormId(existing: ReadonlyArray<{ id: string }>): string {
   const used = new Set(existing.map((form) => form.id));
-  let index = Math.max(2, existing.length + 1);
+  let index = existing.length === 0 ? 1 : existing.length + 1;
   while (used.has(`house-form-${index}`)) index += 1;
   return `house-form-${index}`;
+}
+
+function buildDefaultHouseAssemblyDraft(): ObjectFirstHouseAssemblyDraft {
+  return {
+    id: 'assembly-main',
+    label: 'House Assembly',
+    houseForms: [],
+  };
+}
+
+function buildDefaultHouseFormDraft(input: {
+  id: string;
+  label: string;
+  transform?: Partial<ObjectFirstHouseFormDraft['transform']>;
+}): ObjectFirstHouseFormDraft {
+  return {
+    id: input.id,
+    label: input.label,
+    transform: {
+      offsetXM: 0,
+      offsetYM: 0,
+      rotationQuarterTurns: 0,
+      ...input.transform,
+    },
+    footprint: {
+      mode: 'preset',
+      preset: 'straight',
+      params: {
+        widthM: '6',
+        offsetXM: '0',
+        setbackM: '0',
+        bandDepthM: '4',
+        returnRunM: '0',
+        recessWidthM: '0',
+        recessDepthM: '0',
+        leftLegRunM: '0',
+        rightLegRunM: '0',
+        sideRunM: '0',
+      } as ObjectFirstHouseFormDraft['footprint']['params'],
+      polygon: [],
+      attachmentSide: 'rear',
+    },
+    roofIntent: {
+      form: 'mono',
+      material: 'corrugated_iron',
+      primaryPitchDeg: '5',
+      primaryFallDirection: 'negative_y',
+      ridgeAxis: 'x',
+      openGableEndIds: [],
+    },
+    storeyMode: 'single_storey',
+    attachmentStrategy: null,
+  };
 }
 
 /**
@@ -74,12 +120,9 @@ export function nextHouseFormId(existing: ReadonlyArray<{ id: string }>): string
  * Clones the chosen source form's footprint/roof/etc. so the new form
  * has sensible defaults the user can then edit. Offsets the transform
  * by `offsetXM: 10` (10 m east by default) so the cloned form doesn't
- * land directly on top of the source in plan/3D.
- *
- * Returns the draft unchanged when `houseAssembly` is missing — the
- * caller (rail "Add structure" handler) should never invoke this on
- * an estimate without a primary form, but the no-op keeps the contract
- * forgiving.
+ * land directly on top of the source in plan/3D. When no source form
+ * exists, creates a deterministic first form instead of reviving the
+ * legacy `house-main` snapshot form.
  *
  * The returned draft's last entry is the new form; callers can read
  * `result.houseAssembly!.houseForms.at(-1)!.id` to drive selection.
@@ -93,46 +136,47 @@ export function addHouseFormToObjectFirstDraft(input: {
   /** Override the auto-offset position. Defaults to `{ offsetXM: 10, offsetYM: 0, rotationQuarterTurns: 0 }`. */
   transformOverride?: Partial<ObjectFirstHouseFormDraft['transform']>;
 }): ObjectFirstWorkbenchDraftVNext {
-  const assembly = input.draft.houseAssembly;
-  if (!assembly || assembly.houseForms.length === 0) return input.draft;
-  const source =
+  const assembly = input.draft.houseAssembly ?? buildDefaultHouseAssemblyDraft();
+  const source: ObjectFirstHouseFormDraft | null =
     (input.sourceHouseFormId
       ? assembly.houseForms.find((form) => form.id === input.sourceHouseFormId)
-      : null) ?? assembly.houseForms[0]!;
+      : null) ?? assembly.houseForms[0] ?? null;
   const id = nextHouseFormId(assembly.houseForms);
-  const defaultTransform: ObjectFirstHouseFormDraft['transform'] = {
-    offsetXM: source.transform.offsetXM + 10,
-    offsetYM: source.transform.offsetYM,
-    rotationQuarterTurns: source.transform.rotationQuarterTurns,
-  };
-  const cloned: ObjectFirstHouseFormDraft = {
-    ...source,
-    id,
-    label: input.label ?? `House ${assembly.houseForms.length + 1}`,
-    transform: { ...defaultTransform, ...input.transformOverride },
-  };
+  const label = input.label ?? deriveHouseFormDisplayLabel(assembly.houseForms.length);
+  const nextForm: ObjectFirstHouseFormDraft = reconcileHouseFormRoofIntentForFootprint(
+    source
+      ? {
+          ...source,
+          id,
+          label,
+          transform: {
+            offsetXM: source.transform.offsetXM + 10,
+            offsetYM: source.transform.offsetYM,
+            rotationQuarterTurns: source.transform.rotationQuarterTurns,
+            ...input.transformOverride,
+          },
+        }
+      : buildDefaultHouseFormDraft({
+          id,
+          label,
+          transform: input.transformOverride,
+        }),
+  );
   return normalizeObjectFirstWorkbenchDraftVNext({
     ...input.draft,
     houseAssembly: {
       ...assembly,
-      houseForms: [...assembly.houseForms, cloned],
+      houseForms: [...assembly.houseForms, nextForm],
     },
   });
 }
 
-/**
- * Remove a house form from the draft. Refuses to remove the only
- * remaining form (`houseForms[]` must stay non-empty to keep the
- * legacy-compat invariant that every estimate has at least one house);
- * the caller is responsible for surfacing that as a UI error.
- */
 export function removeHouseFormFromObjectFirstDraft(input: {
   draft: ObjectFirstWorkbenchDraftVNext;
   houseFormId: string;
 }): ObjectFirstWorkbenchDraftVNext {
   const assembly = input.draft.houseAssembly;
   if (!assembly) return input.draft;
-  if (assembly.houseForms.length <= 1) return input.draft;
   const next = assembly.houseForms.filter((form) => form.id !== input.houseFormId);
   if (next.length === assembly.houseForms.length) return input.draft;
   return normalizeObjectFirstWorkbenchDraftVNext({
@@ -142,4 +186,14 @@ export function removeHouseFormFromObjectFirstDraft(input: {
       houseForms: next,
     },
   });
+}
+
+export function resolveNextHouseFormIdAfterRemoval(
+  houseForms: ReadonlyArray<{ id: string }>,
+  removedHouseFormId: string,
+): string | null | undefined {
+  const removedIndex = houseForms.findIndex((form) => form.id === removedHouseFormId);
+  if (removedIndex === -1) return undefined;
+  const nextForms = houseForms.filter((form) => form.id !== removedHouseFormId);
+  return nextForms[Math.min(removedIndex, nextForms.length - 1)]?.id ?? null;
 }

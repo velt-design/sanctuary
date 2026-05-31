@@ -49,6 +49,11 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 | 2026-05-30 | Plan Rendering | Active | PR-2B.1b.3e: project Plan surfaces must use `projectPlanProjection` as their object source. Do not render object-workbench Plan from the active module `topProjection`; active selection may affect halos and inspector state only, not which house or pergola bodies exist. |
 | 2026-05-30 | Workbench Solve Inputs | Active | PR-2B.1b.3h: transient object-first solve inputs must synthesize from deterministic defaults plus the object model. Do not clone the active or preferred module to fill missing fields for unbacked objects; keep site-level context in the surrounding calculator input wrapper instead. |
 | 2026-05-30 | Plan Rendering | Active | PR-2B.1b.3i: interaction references must not live in visible body layers. Keep canonical `house_reference:*` footprints in explicit hit/selection layers, and promote them to visible bodies only as fallback when the same house form has no roof or roof-material body. |
+| 2026-05-30 | Workbench House Forms | Active | PR-2B.1b.3j: house-form labels are order-derived presentation and `house-main` must never be privileged. An explicit empty object-first house assembly is a tombstone, not permission to re-synthesize a primary house. |
+| 2026-05-31 | Plan Rendering | Active | PR-2B.1b.3k: house-form status and visible plan body precedence must be keyed by `houseFormId`. Rail/inspector/overlay status must not borrow the first house form, and roof-material plan bodies win over same-form raw roof solids. |
+| 2026-05-31 | Plan Rendering | Active | PR-2B.1b.3l: Plan SVG paint order is a semantic view-model contract, not raw top-projection array/z-order. Project pergola bodies must paint below house roof/roof-material bodies while hit targets and selection chrome remain separate layers. |
+| 2026-05-31 | Plan Rendering | Active | PR-2B.1b.3m: Plan hit targets are event geometry only. They must not paint hover/body visuals; local hover affordance belongs in explicit outline chrome, suppressed for the active selection. |
+| 2026-05-31 | Workbench House Forms | Active | PR-2B.1b.3n: solver-derived roof fields should not appear as primary user controls unless they are clear design choices. Hipped ridge axis is derived from the selected house form's footprint, and footprint presets are seeds/provenance rather than object identity. |
 | 2026-05-01 | Plan Rendering | Promoted | Geometry-ready Model Space is a hard top-projection-only render path; legacy/context/reference/opening overlays stay out of normal visuals. |
 | 2026-05-01 | Design Workbench Architecture | Promoted | Split workbench ownership contract-first: coordinate adapters and render graphs leave React presenters before moving tools/renderers. |
 | 2026-05-01 | Deck Interaction | Promoted | Projection-backed deck snapping must use top-projection frames live and object frames only at the commit boundary. |
@@ -75,7 +80,7 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 | 2026-05-12 | 3D Wall Rendering | Active | Wall solids must consume `renderMesh` (not just `boundary`); miter footprints offset inward-only `(0, -thickness)`, not centered `(±half, ±half)`; non-flat-top walls extrude polygonally via `buildPolygonalWallRenderMesh`; open-gable migrated-from-hipped boundaries reshape only when `wallBoundaryHasFlatTop` is true. |
 | 2026-05-12 | 3D Viewport Navigation | Active | OrbitControls `mouseButtons.LEFT` must branch on `lockedViewPreset === 'top'` (pan in Plan, rotate in 3D). Trackpad users have no MIDDLE button, so rotate-on-LEFT is the only navigable default. |
 | 2026-05-12 | Open-Gable Roof Frames | Active | Triangular gable walls have a 1-point top profile (apex only); the frame-feature gate must be `topProfile.length < 1`, not `< 2`, or the gable-end posts/top-chord disappear. |
-| 2026-05-13 | Plan Rendering | Active | Visual deduplication of redundant house outlines is the RENDER LAYER's job, not the graph's: keep `house_reference + footprint` in `committedBodies` (the hit-target chain needs it for canvas house selection) and drop the redundant stroke in `PlanCommittedBodyLayer` (Plan) and `TopProjectionLayerRenderer` (Sheet) via `filterPlanVisibleBodies`. |
+| 2026-05-13 | Plan Rendering | Active | Superseded by PR-2B.1b.3i/3l: visual house dedupe now lives in the Plan render graph's explicit committed-body visual stack, while `house_reference:*` stays in hit targets. Sheet still applies its own render-only suppression. |
 | 2026-05-13 | Pergola Snap Targets | Active | `HouseModel3D.roofEaves` must include EVERY attachable perimeter edge (drain + weather-flashed gable + apron), not just `drain_eave`. Opening a Dutch-hip end strips the adjacent roof plane and reclassifies the eave as `weather_flashed_edge` -- the user still expects to snap a pergola there. Downstream gutter/flashing consumers re-filter on `edgeKind`. |
 | 2026-05-13 | Plan Tool Chain | Active | `EdgeDragTool.onPointerDown` runs a distance-based priority: terminal-end toggle target (`event.shape?.metadata?.openGableEndId`) ONLY falls through to SelectTool when the click is outside `edgeHitToleranceMm` of the active outline. Clicks on the synthetic's eave-corner overhang that overlap a wall edge start an edge drag instead, restoring wall interaction under the synthetic. Default tolerance is 250 mm (was 500). |
 | 2026-05-13 | House Roof Topology | Active | The geometry normalize migration treats `roofIntent.form: 'gable'` as "hipped + every terminal end open" regardless of `openGableEndIds`. Any terminal-end toggle that operates on the workbench state must port the migration into explicit `form: 'hipped' + openGableEndIds: <all terminals minus the toggled one>` in the SAME commit, or `[].filter(...)` produces a no-op and normalize re-migrates on the next solve. Helper: `resolveHouseTerminalEndToggleRoofDraft`. |
@@ -100,6 +105,54 @@ Current guardrail: expandable pinned navigation must render each top-level icon,
 Promoted to: None
 
 Related docs/tests: `apps/portal/components/navigation/PortalSidebarPanel.test.tsx`, `apps/portal/components/layout/PortalShell.test.tsx`, `npm run test:portal:shell`.
+
+### 2026-05-31 - Plan Rendering - House-Form Overlay Ownership
+
+Area: Plan Rendering
+
+Status: Active
+
+Decision or mistake: object workbench status still exposed one `houseForm` status derived from the first house form, while Plan could paint both raw roof-solid and roof-material bodies for the same house form.
+
+Why it mattered: selecting House 2 could show House 1's preset/status in rail or inspector surfaces, and duplicate visible roof bodies made the Plan overlay look like house forms were connected or competing.
+
+Current guardrail: house-form status, rail rows, inspector state, selection overlays, hit targets, and visible body precedence must resolve by `houseFormId`. `house_roof_material:<houseFormId>` is the preferred visible roof body when present; raw same-form roof solids and canonical references stay out of the visible body layer except as explicit fallback.
+
+Promoted to: None
+
+Related docs/tests: `apps/portal/lib/drawings/state/drawingWorkbenchStore.test.ts`, `apps/portal/lib/drawings/views/plan/planRenderGraph.test.ts`, `apps/portal/lib/drawings/views/plan/planCommittedBodyVisualStack.ts`, `apps/portal/components/drawings/viewports/PlanViewport/PlanViewport.test.tsx`.
+
+### 2026-05-31 - Plan Rendering - Project Visual Stack Ownership
+
+Area: Plan Rendering
+
+Status: Active
+
+Decision or mistake: project Plan committed bodies still inherited raw top-projection array/z-order after the projection became object-owned. Pergola bodies have higher package-level geometry z-order than house roofs, so attached pergola panels could paint over the house/eave plan body even when there was no selection overlay.
+
+Why it mattered: top-projection z-order describes geometry/object detail depth, not the SVG drawing contract for the project Plan editor. Letting it drive the final paint stack made project-level rendering look like objects were visually fused or selected when only their projected footprints overlapped.
+
+Current guardrail: Plan SVG paint order is owned by the Plan view model. The render graph returns already-filtered and semantically sorted committed bodies: pergola visual bodies below house roof/roof-material bodies, canonical house references in hit/selection layers unless promoted as no-roof fallbacks, and detail/selection chrome in separate layers.
+
+Promoted to: None
+
+Related docs/tests: `apps/portal/lib/drawings/views/plan/planCommittedBodyVisualStack.ts`, `apps/portal/lib/drawings/views/plan/planRenderGraph.test.ts`, `apps/portal/components/drawings/viewports/PlanViewport/PlanViewport.test.tsx`, `playwright/portal.workbench-fixture.spec.ts`.
+
+### 2026-05-31 - Plan Rendering - Invisible Hit Targets
+
+Area: Plan Rendering
+
+Status: Active
+
+Decision or mistake: Plan hit targets stayed visually coupled to hover styling after visible bodies and hit targets were split. Because hit targets sit above committed bodies for pointer routing, the CSS `:hover` fill on canonical `house_reference:*` polygons could still paint a blue footprint over the house roof/pergola stack.
+
+Why it mattered: event geometry is often larger or more canonical than the visible body it controls. Letting it paint hover/body visuals reintroduced the same overlay bug through a different layer.
+
+Current guardrail: Plan hit targets are event-only. They may carry pointer handlers and diagnostics, but hover feedback must render through explicit chrome layers with outline-only styling, and the active selection suppresses duplicate hover chrome.
+
+Promoted to: None
+
+Related docs/tests: `apps/portal/components/drawings/viewports/PlanViewport/canvas/layers/PlanHitTargetLayer.tsx`, `apps/portal/components/drawings/viewports/PlanViewport/canvas/layers/PlanLocalHoverLayer.tsx`, `apps/portal/components/drawings/viewports/PlanViewport/PlanViewport.test.tsx`, `playwright/portal.workbench-fixture.spec.ts`.
 
 ### 2026-05-30 - Plan Rendering - House Form Plan Body Identity
 
@@ -865,18 +918,19 @@ A first fix (commit `77a3a133`) suppressed `house_reference + footprint` at the 
 
 Why it mattered: the same array (`committedBodies`) serves two distinct concerns -- visible rendering AND hit-testing -- and they have different requirements. Removing the canonical reference footprint from the graph removes BOTH, even when only one was the goal. The hit-target chain has no alternative anchor for house selection on the canvas. Future agents who push more responsibilities through `committedBodies` (selection, drag, dimensions) will hit the same trap if they suppress at the graph level.
 
-Current guardrail: visual deduplication of the redundant house outline lives at the RENDER LAYER, not the graph. Specifically:
+Current guardrail: superseded by the explicit Plan hit-target layer and project visual stack from PR-2B.1b.3i/3l. The original mistake remains valid -- do not remove a house selection anchor just because it should not visibly paint -- but the implementation moved from a React render-layer filter into the Plan view model. Specifically:
 
-- In [planRenderGraph.ts](../apps/portal/lib/drawings/views/plan/planRenderGraph.ts), `buildProjectionPlanRenderGraph` filters out `house_surface[_solid] + footprint` shapes when a `house + roof` body exists (they are redundant footprint surfaces of a footprint), but KEEPS `house_reference + footprint`. The reference shape is the hit-target anchor for house selection.
-- In [PlanCommittedBodyLayer.tsx](../apps/portal/components/drawings/viewports/PlanViewport/canvas/layers/PlanCommittedBodyLayer.tsx), the visible polygon list is filtered through [planVisibleBodyFilter.ts](../apps/portal/components/drawings/viewports/PlanViewport/canvas/planVisibleBodyFilter.ts) (`filterPlanVisibleBodies`). When a `house + roof` body is present, every `house + footprint` polygon (any sourceType) is dropped from the visible layer. The hit-target layer (different `<g>`) still sees the polygon, so clicks still work.
+- In [planRenderGraph.ts](../apps/portal/lib/drawings/views/plan/planRenderGraph.ts), `buildProjectionPlanRenderGraph` puts canonical `house_reference + footprint` shapes in `hitTargets`, not normal visible bodies. `house_reference` promotes to a visible committed fallback only when the same house form has no roof or roof-material body.
+- In [planCommittedBodyVisualStack.ts](../apps/portal/lib/drawings/views/plan/planCommittedBodyVisualStack.ts), visible committed bodies are filtered and semantically sorted before they reach React. Roof-material bodies win over same-form raw roof solids, and project pergola bodies paint below house roof/roof-material bodies.
+- In [PlanCommittedBodyLayer.tsx](../apps/portal/components/drawings/viewports/PlanViewport/canvas/layers/PlanCommittedBodyLayer.tsx), the layer is now a presenter only; it renders the already-filtered/sorted items from the render model.
 - In [ModulePlanLayerRenderers.tsx](../apps/portal/app/staff/calculator/ModulePlanLayerRenderers.tsx)'s `TopProjectionLayerRenderer` (Sheet view), the same render-time suppression applies. Sheet has no hit-target layer for the house so a render-only filter is sufficient.
 - The non-active project-context overlay path (`buildProjectContextOverlayShapes` in workbenchSolvedModel.ts) is unaffected -- it filters `house_reference` out of the context overlay separately.
 
-When the render graph eventually grows a dedicated `hitTargets` layer that is independent of `committedBodies`, the visible-only filter can collapse back into the graph filter. Until then, keep visible and hit-target concerns split across graph and render.
+Keep visible and hit-target concerns separate: interaction references belong in hit/selection layers unless explicitly promoted as no-body fallbacks.
 
 Promoted to: None
 
-Related docs/tests: [apps/portal/lib/drawings/views/plan/planRenderGraph.ts](../apps/portal/lib/drawings/views/plan/planRenderGraph.ts), [apps/portal/lib/drawings/views/plan/planRenderGraph.test.ts](../apps/portal/lib/drawings/views/plan/planRenderGraph.test.ts), [apps/portal/components/drawings/viewports/PlanViewport/canvas/planVisibleBodyFilter.ts](../apps/portal/components/drawings/viewports/PlanViewport/canvas/planVisibleBodyFilter.ts), [apps/portal/components/drawings/viewports/PlanViewport/canvas/planVisibleBodyFilter.test.ts](../apps/portal/components/drawings/viewports/PlanViewport/canvas/planVisibleBodyFilter.test.ts), [apps/portal/components/drawings/viewports/PlanViewport/canvas/layers/PlanCommittedBodyLayer.tsx](../apps/portal/components/drawings/viewports/PlanViewport/canvas/layers/PlanCommittedBodyLayer.tsx), [apps/portal/components/drawings/viewports/PlanViewport/canvas/planHitTargetFilter.ts](../apps/portal/components/drawings/viewports/PlanViewport/canvas/planHitTargetFilter.ts), [apps/portal/app/staff/calculator/ModulePlanLayerRenderers.tsx](../apps/portal/app/staff/calculator/ModulePlanLayerRenderers.tsx), [apps/portal/lib/drawings/state/workbenchSolvedModel.ts](../apps/portal/lib/drawings/state/workbenchSolvedModel.ts) (`buildProjectContextOverlayShapes` for the project context-overlay path that still keeps `house_reference`).
+Related docs/tests: [apps/portal/lib/drawings/views/plan/planRenderGraph.ts](../apps/portal/lib/drawings/views/plan/planRenderGraph.ts), [apps/portal/lib/drawings/views/plan/planCommittedBodyVisualStack.ts](../apps/portal/lib/drawings/views/plan/planCommittedBodyVisualStack.ts), [apps/portal/lib/drawings/views/plan/planRenderGraph.test.ts](../apps/portal/lib/drawings/views/plan/planRenderGraph.test.ts), [apps/portal/components/drawings/viewports/PlanViewport/canvas/layers/PlanCommittedBodyLayer.tsx](../apps/portal/components/drawings/viewports/PlanViewport/canvas/layers/PlanCommittedBodyLayer.tsx), [apps/portal/components/drawings/viewports/PlanViewport/canvas/planHitTargetFilter.ts](../apps/portal/components/drawings/viewports/PlanViewport/canvas/planHitTargetFilter.ts), [apps/portal/app/staff/calculator/ModulePlanLayerRenderers.tsx](../apps/portal/app/staff/calculator/ModulePlanLayerRenderers.tsx), [apps/portal/lib/drawings/state/workbenchSolvedModel.ts](../apps/portal/lib/drawings/state/workbenchSolvedModel.ts) (`buildProjectContextOverlayShapes` for the project context-overlay path that still keeps `house_reference`).
 
 ### 2026-05-13 - Pergola Snap Targets - Every Attachable Perimeter Edge
 
@@ -1230,3 +1284,35 @@ Current guardrail: fixture routes are allowed to be authless and baked, but they
 Promoted to: None
 
 Related docs/tests: [apps/portal/app/staff/projects/[projectId]/design-workbench/DesignWorkbenchFixtureClient.tsx](../apps/portal/app/staff/projects/%5BprojectId%5D/design-workbench/DesignWorkbenchFixtureClient.tsx), [apps/portal/lib/drawings/sanctuaryWorkbenchFixtures.ts](../apps/portal/lib/drawings/sanctuaryWorkbenchFixtures.ts), [playwright/portal.workbench-fixture.spec.ts](../playwright/portal.workbench-fixture.spec.ts).
+
+### 2026-05-30 - Workbench House Forms - Removable Peer Forms
+
+Area: Workbench House Forms
+
+Status: Active
+
+Decision or mistake: house forms are peers. User-visible labels are derived from current order (`House 1`, `House 2`, ...), and existing ids such as `house-main` are not presentation or primary-role signals.
+
+Why it mattered: protecting `house-main`, displaying it as `House`, or re-creating it after the final form was removed kept the old single shared-house model alive inside the object-first workbench. That made removal and attachment behavior look inconsistent and encouraged fallback retargeting.
+
+Current guardrail: when `objectFirst.houseAssembly` exists, its `houseForms[]` array is authoritative even when empty. Removing a house form must not retarget attached objects or silently synthesize a replacement; unresolved hosts are the correct object-first state until the user creates or snaps a new relationship.
+
+Promoted to: None
+
+Related docs/tests: [apps/portal/lib/drawings/state/objectFirstWorkbenchAdapter.ts](../apps/portal/lib/drawings/state/objectFirstWorkbenchAdapter.ts), [apps/portal/lib/drawings/state/houseFirstWorkbenchAdapter.ts](../apps/portal/lib/drawings/state/houseFirstWorkbenchAdapter.ts), [apps/portal/lib/drawings/state/drawingWorkbenchStore.test.ts](../apps/portal/lib/drawings/state/drawingWorkbenchStore.test.ts).
+
+### 2026-05-31 - Workbench House Forms - Derived Roof Axis And Preset Seeds
+
+Area: Workbench House Forms
+
+Status: Active
+
+Decision or mistake: hipped ridge axis is a solver-derived field, not normal user-facing house identity or a primary design control. Footprint presets are creation/edit seeds and provenance only; rail and inspector presentation must not describe a house form by raw preset id.
+
+Why it mattered: exposing ridge axis made users fix a solver implementation detail manually when switching between U/wrap/recess footprints. Displaying raw preset ids (`wrap_right footprint`) also made presets look like the object identity even after the footprint became object-owned geometry.
+
+Current guardrail: reconcile hipped `roofIntent.ridgeAxis` from the edited house form's current footprint by `houseFormId` before status/solve/render and on footprint writes. Keep presets available as seed controls, but use order-derived house labels plus neutral footprint readiness/custom status for presentation.
+
+Promoted to: None
+
+Related docs/tests: [apps/portal/lib/drawings/state/houseFormRoofIntentForFootprint.ts](../apps/portal/lib/drawings/state/houseFormRoofIntentForFootprint.ts), [apps/portal/app/staff/projects/[projectId]/design-workbench/houseFormFootprintDraftActions.ts](../apps/portal/app/staff/projects/%5BprojectId%5D/design-workbench/houseFormFootprintDraftActions.ts), [apps/portal/lib/drawings/state/drawingWorkbenchRailModel.ts](../apps/portal/lib/drawings/state/drawingWorkbenchRailModel.ts).

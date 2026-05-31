@@ -23,6 +23,7 @@ import { PlanEdgeHoverHighlightLayer } from './layers/PlanEdgeHoverHighlightLaye
 import { PlanHitTargetLayer } from './layers/PlanHitTargetLayer';
 import { PlanHitTestDebugLayer } from './layers/PlanHitTestDebugLayer';
 import { PlanHoverHaloLayer } from './layers/PlanHoverHaloLayer';
+import { PlanLocalHoverLayer } from './layers/PlanLocalHoverLayer';
 import { PlanMovePreviewLayer } from './layers/PlanMovePreviewLayer';
 import { PlanProjectContextLayer } from './layers/PlanProjectContextLayer';
 import { PlanSelectionHaloLayer } from './layers/PlanSelectionHaloLayer';
@@ -38,6 +39,7 @@ import styles from './PlanCanvas.module.css';
 import type { PlanLayout } from './planLayout';
 import type { Point2 } from './polygonEdgeMath';
 import type { PlanRenderItem } from './planRenderItem';
+import { buildPlanLocalHoverItems } from './usePlanLocalHoverItems';
 
 const IDENTITY_TRANSFORM: DrawingWorkbenchViewportTransform = { zoom: 1, panX: 0, panY: 0 };
 
@@ -128,6 +130,15 @@ export function PlanCanvas({
   const allHitTargetItems = useMemo(
     () => [...projectContextHitTargetItems, ...hitTargetItems],
     [hitTargetItems, projectContextHitTargetItems],
+  );
+  const localHoverItems = useMemo(
+    () =>
+      buildPlanLocalHoverItems({
+        hoveredShape,
+        hitTargetItems: allHitTargetItems,
+        selectionHaloItems,
+      }),
+    [allHitTargetItems, hoveredShape, selectionHaloItems],
   );
 
   // Wrap the local hover handlers so we ALSO emit the full shape upward via
@@ -315,6 +326,7 @@ export function PlanCanvas({
           <PlanDetailLayer items={detailLines} />
           <PlanSelectionHaloLayer items={selectionHaloItems} />
           <PlanHoverHaloLayer items={hoverHaloItems} />
+          <PlanLocalHoverLayer items={localHoverItems} />
           <PlanHitTargetLayer
             items={allHitTargetItems}
             onShapePointerDown={(shape, event) => dispatchPlanPointer('down', event, shape)}

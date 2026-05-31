@@ -252,6 +252,40 @@ describe('objectWorkbenchDraftActions', () => {
     });
   });
 
+  it('derives ridge axis only for the house form whose footprint changed', () => {
+    const house1: ObjectFirstHouseFormDraft = {
+      ...makeHouseForm(),
+      roofIntent: makeRoofIntent({ form: 'hipped', ridgeAxis: 'x' }),
+      roofIntentAuthored: true,
+    };
+    const house2: ObjectFirstHouseFormDraft = {
+      ...makeHouseForm(),
+      id: 'house-form-2',
+      roofIntent: makeRoofIntent({ form: 'hipped', ridgeAxis: 'x' }),
+      roofIntentAuthored: true,
+    };
+
+    const result = applyHouseFormFootprintEdit({
+      houseForms: [house1, house2],
+      houseFormId: house2.id,
+      edit: {
+        type: 'custom_polygon',
+        polygon: [
+          { alongM: '0', depthM: '0' },
+          { alongM: '1.8', depthM: '0' },
+          { alongM: '1.8', depthM: '6' },
+          { alongM: '0', depthM: '6' },
+        ],
+      },
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.houseForms[0]?.roofIntent.ridgeAxis).toBe('x');
+    expect(result.houseForms[1]?.roofIntent.ridgeAxis).toBe('y');
+    expect(result.houseForms[1]?.footprint.mode).toBe('custom_polygon');
+  });
+
   it('updates only the targeted house form transform on footprint rotate', () => {
     const house1 = makeHouseForm();
     const house2: ObjectFirstHouseFormDraft = {
@@ -676,11 +710,11 @@ describe('objectWorkbenchDraftActions', () => {
       form: 'hipped',
       material: 'trapezoidal_5_rib',
       primaryPitchDeg: '22',
-      ridgeAxis: 'y',
-      openGableEndIds: ['terminal-a'],
+      ridgeAxis: 'x',
+      openGableEndIds: [],
     });
     expect(nextDraft.objectFirst?.houseAssembly?.houseForms[0]?.roofIntentAuthored).toBe(true);
-    expect(syncedForm.roofIntent.openGableEndIds).toEqual(['terminal-a']);
+    expect(syncedForm.roofIntent.openGableEndIds).toEqual([]);
     expectNoStaleHouseFirst(nextDraft);
   });
 

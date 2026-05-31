@@ -37,6 +37,14 @@ export function planShapeIsHouseRoofBody(shape: GeometryTopProjectionShape): boo
   );
 }
 
+export function planShapeIsHouseRoofMaterialBody(shape: GeometryTopProjectionShape): boolean {
+  return (
+    shape.family === 'house' &&
+    shape.sourceType === 'house_roof_material' &&
+    shape.kind === 'house_roof_material'
+  );
+}
+
 export function planShapeIsPlanHitTarget(shape: GeometryTopProjectionShape): boolean {
   if (shape.family === 'house' && DECORATIVE_HOUSE_HIT_TARGET_KINDS.has(shape.kind)) {
     return shape.kind === 'roof' && typeof shape.metadata?.openGableEndId === 'string';

@@ -16,9 +16,9 @@ export type CommitResult = { ok: boolean; error?: string };
  */
 type ObjectWorkbenchRailInspectorContext = {
   /**
-   * PR10: rail "Add structure" button. Clones the active form (or
-   * primary if none selected) via PR5's `addHouseFormToObjectFirstDraft`
-   * and selects the new form. Disabled when locked.
+   * Rail "Add structure" button. Clones the selected/current form when
+   * available, or creates a deterministic first form for an explicit
+   * zero-house object-first assembly. Disabled when locked.
    */
   onAddHouseForm?: () => Promise<CommitResult> | CommitResult;
   /**

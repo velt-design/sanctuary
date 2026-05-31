@@ -32,8 +32,8 @@ const VISIBLE_VISIBILITY: DrawingWorkbenchVisibilityState = {
 describe('primaryDescriptorFromMeta', () => {
   it('returns the first pipe-delimited segment trimmed', () => {
     expect(primaryDescriptorFromMeta('Mono | Rear edge')).toBe('Mono');
-    expect(primaryDescriptorFromMeta('straight footprint | mono roof | 0 warnings')).toBe(
-      'straight footprint',
+    expect(primaryDescriptorFromMeta('Footprint ready | mono roof | 0 warnings')).toBe(
+      'Footprint ready',
     );
     expect(primaryDescriptorFromMeta('Attached | Preset rectangle')).toBe('Attached');
     expect(primaryDescriptorFromMeta('hinged door | Rear wall')).toBe('hinged door');
@@ -139,18 +139,18 @@ describe('subtitleForObjectTreeRow', () => {
     ).toBe('');
   });
 
-  it('composes the mockup-style "Gable roof · hidden in viewport" for house forms', () => {
+  it('composes a neutral house footprint state with visibility hints', () => {
     expect(
       subtitleForObjectTreeRow({
         entry: makeEntry({
           ref: { family: 'house_forms', objectId: 'house-1' },
           label: 'House Form 1',
-          meta: 'straight footprint | gable roof | 0 warnings',
+          meta: 'Footprint ready | hipped roof | 0 warnings',
         }),
         selected: false,
         familyVisible: false,
       }),
-    ).toBe('straight footprint · hidden in viewport');
+    ).toBe('Footprint ready · hidden in viewport');
   });
 
   it('shows "hidden in viewport" over trust when both could apply (visibility wins over trust)', () => {

@@ -31,6 +31,7 @@ import type {
   ObjectFirstWorkbenchDraftVNext,
   PergolaAttachment,
 } from '@/lib/drawings/state/objectFirstWorkbenchModel';
+import { deriveHouseFormRoofIntentForFootprint } from '@/lib/drawings/state/houseFormRoofIntentForFootprint';
 import {
   normalizeWallOpeningKind,
   resolveOpeningPanelCount,
@@ -599,7 +600,12 @@ export function mergeHouseFormRoofIntentAfterFootprintSync(input: {
   const mergedBase = existingHouseForm
     ? { ...previewHouseForm, transform: existingHouseForm.transform }
     : previewHouseForm;
-  if (!existingHouseForm?.roofIntentAuthored) return mergedBase;
+  if (!existingHouseForm?.roofIntentAuthored) {
+    return {
+      ...mergedBase,
+      roofIntent: deriveHouseFormRoofIntentForFootprint({ houseForm: mergedBase }),
+    };
+  }
 
   const existingRoof = existingHouseForm.roofIntent;
   const previewRoof = previewHouseForm.roofIntent;
@@ -611,7 +617,7 @@ export function mergeHouseFormRoofIntentAfterFootprintSync(input: {
       ? existingRoof.openGableEndIds.filter((id) => terminalEndIds.has(id))
       : [];
 
-  return {
+  const nextHouseForm: ObjectFirstHouseFormDraft = {
     ...mergedBase,
     roofIntentAuthored: true,
     roofIntent: {
@@ -630,6 +636,10 @@ export function mergeHouseFormRoofIntentAfterFootprintSync(input: {
       openGableEndIds,
     },
   };
+  return {
+    ...nextHouseForm,
+    roofIntent: deriveHouseFormRoofIntentForFootprint({ houseForm: nextHouseForm }),
+  };
 }
 
 export function buildObjectWorkbenchRoofCommitDraft(input: {
@@ -645,11 +655,17 @@ export function buildObjectWorkbenchRoofCommitDraft(input: {
           ...input.objectFirstDraft.houseAssembly,
           houseForms: input.objectFirstDraft.houseAssembly.houseForms.map((houseForm, index) =>
             index === 0
-              ? {
-                  ...houseForm,
-                  roofIntentAuthored: true,
-                  roofIntent: normalizedRoof,
-                }
+              ? (() => {
+                  const nextHouseForm = {
+                    ...houseForm,
+                    roofIntentAuthored: true,
+                    roofIntent: normalizedRoof,
+                  };
+                  return {
+                    ...nextHouseForm,
+                    roofIntent: deriveHouseFormRoofIntentForFootprint({ houseForm: nextHouseForm }),
+                  };
+                })()
               : houseForm,
           ),
         }

@@ -69,7 +69,7 @@ describe('planRenderGraph', () => {
       { projectionOnlyModelSpace: true },
     );
 
-    expect(graph.committedBodies.map((item) => item.marker)).toEqual(['roof', 'deck']);
+    expect(graph.committedBodies.map((item) => item.marker)).toEqual(['deck', 'roof']);
     expect(graph.contextLines.map((item) => item.marker)).toEqual(['wall']);
     expect(graph.hitTargets.map((item) => item.marker)).toEqual(['deck']);
     expect(graph.selectionOutlines).toEqual([]);
@@ -146,6 +146,13 @@ describe('planRenderGraph', () => {
   });
 
   it('routes house roof-material projection shapes to committedBodies and the canonical reference footprint to hitTargets', () => {
+    const roofSolid = shape({
+      id: 'house_surface_solid:house-form-2:roof',
+      family: 'house',
+      kind: 'roof',
+      sourceType: 'house_surface_solid',
+      metadata: { topProjectionRole: 'top_visible', houseFormId: 'house-form-2' },
+    });
     const roofMaterial = shape({
       id: 'house_roof_material:house-form-2:roof-material',
       family: 'house',
@@ -170,6 +177,7 @@ describe('planRenderGraph', () => {
     });
 
     const graph = buildProjectionPlanRenderGraph([
+      { shape: roofSolid, marker: 'roof-solid' },
       { shape: roofMaterial, marker: 'roof-material' },
       { shape: referenceFootprint, marker: 'reference-footprint' },
       { shape: redundantSurfaceFootprint, marker: 'surface-footprint' },
@@ -177,7 +185,7 @@ describe('planRenderGraph', () => {
 
     expect(graph.committedBodies.map((item) => item.marker)).toEqual(['roof-material']);
     expect(graph.hitTargets.map((item) => item.marker)).toEqual(['reference-footprint']);
-    expect(graph.suppressed.map((item) => item.marker)).toEqual(['surface-footprint']);
+    expect(graph.suppressed.map((item) => item.marker)).toEqual(['roof-solid', 'surface-footprint']);
   });
 
   it('suppresses redundant house footprints per house form instead of globally', () => {
@@ -234,6 +242,35 @@ describe('planRenderGraph', () => {
     expect(graph.committedBodies.map((item) => item.marker)).toEqual(['reference-footprint']);
     expect(graph.hitTargets.map((item) => item.marker)).toEqual(['reference-footprint']);
     expect(graph.suppressed).toEqual([]);
+  });
+
+  it('uses semantic paint order so pergola bodies render below house roof-material bodies even with higher geometry z-order', () => {
+    const pergolaRoof = shape({
+      id: 'project_pergola:pergola-1:roof_cladding_panel:panel-1',
+      family: 'pergola',
+      kind: 'roof_cladding',
+      sourceType: 'roof_cladding_panel',
+      zOrder: 999,
+      metadata: { topProjectionRole: 'top_visible', pergolaId: 'pergola-1' },
+    });
+    const houseRoofMaterial = shape({
+      id: 'house_roof_material:house-form-1:roof-material',
+      family: 'house',
+      kind: 'house_roof_material',
+      sourceType: 'house_roof_material',
+      zOrder: 1,
+      metadata: { topProjectionRole: 'top_visible', houseFormId: 'house-form-1' },
+    });
+
+    const graph = buildProjectionPlanRenderGraph([
+      { shape: houseRoofMaterial, marker: 'house-roof-material' },
+      { shape: pergolaRoof, marker: 'pergola-roof' },
+    ]);
+
+    expect(graph.committedBodies.map((item) => item.marker)).toEqual([
+      'pergola-roof',
+      'house-roof-material',
+    ]);
   });
 
 });

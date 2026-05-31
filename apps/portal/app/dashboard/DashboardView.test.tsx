@@ -88,17 +88,21 @@ describe('DashboardView', () => {
     expect(markup).toContain('Call supplier');
   });
 
-  it('renders recent activity as project-first note cards', () => {
+  it('renders recent activity with category, project, note, and author hierarchy', () => {
     const markup = renderToStaticMarkup(<DashboardView data={data} />);
 
+    const labelIndex = markup.indexOf('Project note');
     const projectIndex = markup.indexOf('Beach House');
     const noteIndex = markup.indexOf('Client prefers a darker roof finish.');
-    const labelIndex = markup.indexOf('Project note');
+    const authorIndex = markup.indexOf('Added by Alex');
 
+    expect(labelIndex).toBeGreaterThan(-1);
     expect(projectIndex).toBeGreaterThan(-1);
     expect(noteIndex).toBeGreaterThan(-1);
-    expect(labelIndex).toBeGreaterThan(-1);
+    expect(authorIndex).toBeGreaterThan(-1);
+    expect(labelIndex).toBeLessThan(projectIndex);
     expect(projectIndex).toBeLessThan(noteIndex);
+    expect(noteIndex).toBeLessThan(authorIndex);
   });
 
   it('prioritizes pipeline before kpis and activity before tasks', () => {

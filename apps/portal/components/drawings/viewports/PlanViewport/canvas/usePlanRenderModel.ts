@@ -51,8 +51,8 @@ export type UsePlanRenderModelInput = {
   /**
    * Project-level house references that should flow into the active
    * module's render graph alongside the per-module projection.
-   * Used to promote every house form `house_reference` footprint into
-   * committedBodies so they're hit-targetable and movable.
+   * Used to add every house form `house_reference` footprint to the
+   * explicit hit-target layer so they're selectable and movable.
    * Without this, house references would only render as a faded context overlay
    * (`PlanProjectContextLayer`) with no pointer handlers — clicks fall
    * through and the move tool could never start.

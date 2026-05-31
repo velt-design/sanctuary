@@ -5,6 +5,7 @@ import {
 } from '@sp/geometry';
 import { houseFormTransformToAssemblyPosition } from './houseFormTransform';
 import type { HouseFormModel } from './objectFirstWorkbenchModel';
+import { reconcileHouseFormRoofIntentForFootprint } from './houseFormRoofIntentForFootprint';
 
 /**
  * Fallback pergola dimensions used to synthesize a preset footprint for a
@@ -37,31 +38,32 @@ function buildHouseFormFootprintPolygonMm(houseForm: HouseFormModel): Polygon3 {
 }
 
 export function buildRawHouseInputFromHouseForm(houseForm: HouseFormModel): RawHouseInput {
+  const reconciledHouseForm = reconcileHouseFormRoofIntentForFootprint(houseForm);
   return {
-    houseId: houseForm.id,
-    footprintMode: houseForm.footprint.mode,
-    footprintPreset: houseForm.footprint.preset,
-    footprintParams: houseForm.footprint.params,
+    houseId: reconciledHouseForm.id,
+    footprintMode: reconciledHouseForm.footprint.mode,
+    footprintPreset: reconciledHouseForm.footprint.preset,
+    footprintParams: reconciledHouseForm.footprint.params,
     footprintPolygon:
-      houseForm.footprint.mode === 'custom_polygon' ? houseForm.footprint.polygon : null,
-    position: houseFormTransformToAssemblyPosition(houseForm.transform),
-    storeyMode: houseForm.storeyMode,
-    roofForm: houseForm.roofIntent.form,
-    roofMaterial: houseForm.roofIntent.material,
-    roofPrimaryFallDirection: houseForm.roofIntent.primaryFallDirection,
-    roofRidgeAxis: houseForm.roofIntent.ridgeAxis,
-    openGableEndIds: houseForm.roofIntent.openGableEndIds,
-    attachmentStrategy: houseForm.attachmentStrategy,
-    eaveHeightM: houseForm.eaveHeightM ?? null,
-    wallHeightM: houseForm.wallHeightM ?? null,
-    roofPitchDeg: houseForm.roofIntent.primaryPitchDeg,
+      reconciledHouseForm.footprint.mode === 'custom_polygon' ? reconciledHouseForm.footprint.polygon : null,
+    position: houseFormTransformToAssemblyPosition(reconciledHouseForm.transform),
+    storeyMode: reconciledHouseForm.storeyMode,
+    roofForm: reconciledHouseForm.roofIntent.form,
+    roofMaterial: reconciledHouseForm.roofIntent.material,
+    roofPrimaryFallDirection: reconciledHouseForm.roofIntent.primaryFallDirection,
+    roofRidgeAxis: reconciledHouseForm.roofIntent.ridgeAxis,
+    openGableEndIds: reconciledHouseForm.roofIntent.openGableEndIds,
+    attachmentStrategy: reconciledHouseForm.attachmentStrategy,
+    eaveHeightM: reconciledHouseForm.eaveHeightM ?? null,
+    wallHeightM: reconciledHouseForm.wallHeightM ?? null,
+    roofPitchDeg: reconciledHouseForm.roofIntent.primaryPitchDeg,
     eave: {
-      soffitDepthMm: houseForm.soffitDepthMm ?? null,
-      fasciaHeightMm: houseForm.fasciaHeightMm ?? null,
-      gutterWidthMm: houseForm.gutterWidthMm ?? null,
-      gutterDepthMm: houseForm.gutterDepthMm ?? null,
-      gutterProjectionMm: houseForm.gutterProjectionMm ?? null,
-      eaveOverhangMm: houseForm.eaveOverhangMm ?? null,
+      soffitDepthMm: reconciledHouseForm.soffitDepthMm ?? null,
+      fasciaHeightMm: reconciledHouseForm.fasciaHeightMm ?? null,
+      gutterWidthMm: reconciledHouseForm.gutterWidthMm ?? null,
+      gutterDepthMm: reconciledHouseForm.gutterDepthMm ?? null,
+      gutterProjectionMm: reconciledHouseForm.gutterProjectionMm ?? null,
+      eaveOverhangMm: reconciledHouseForm.eaveOverhangMm ?? null,
     },
   };
 }

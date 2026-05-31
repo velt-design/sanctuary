@@ -46,14 +46,12 @@ export default function RecentActivityCard({ items }: { items: DashboardRecentAc
               <li key={item.id}>
                 <Link href={item.href} className={dash.activityItem}>
                   <div className={dash.activityHeaderRow}>
-                    <div className={dash.activityProject}>{item.projectName}</div>
+                    <span className={dash.activityTypePill}>Project note</span>
                     <span className={dash.activityTime}>{activityTimeLabel(item.at)}</span>
                   </div>
+                  <div className={dash.activityProject}>{item.projectName}</div>
                   <div className={dash.activityBody}>{item.body}</div>
-                  <div className={dash.activityFooter}>
-                    <span className={dash.activityKind}>Project note</span>
-                    <span>by {authorLabel(item)}</span>
-                  </div>
+                  <div className={dash.activityFooter}>Added by {authorLabel(item)}</div>
                 </Link>
               </li>
             ))}

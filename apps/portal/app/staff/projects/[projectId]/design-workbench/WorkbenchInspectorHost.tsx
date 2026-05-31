@@ -203,19 +203,10 @@ export default function WorkbenchInspectorHost({
           onCommitGeometryEdit={!isLocked ? objectWorkbenchActions.commitGeometryIntent : undefined}
         />
       ) : null;
-    // PR-Bug3 (2026-05-25): allow removing non-primary house forms. The
-    // primary (index 0) is the legacy-compat anchor and cannot be deleted;
-    // `removeHouseFormFromObjectFirstDraft` itself enforces this, but we
-    // also hide the affordance so the user isn't presented with a button
-    // that does nothing. The button calls the new `removeSharedHouseForm`
-    // action, which falls back to selecting the primary on success.
     const activeHouseFormId = store.ui.activeObjectRef.objectId ?? null;
-    const primaryHouseFormId = store.derived.houseForms[0]?.id ?? null;
     const canRemoveActiveHouseForm =
       !isLocked &&
-      typeof activeHouseFormId === 'string' &&
-      activeHouseFormId !== primaryHouseFormId &&
-      store.derived.houseForms.length > 1;
+      typeof activeHouseFormId === 'string';
     return (
       <div data-active-workbench-object={activeObjectKey}>
         <HouseFormInspector

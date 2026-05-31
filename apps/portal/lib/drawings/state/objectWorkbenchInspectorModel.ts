@@ -32,6 +32,7 @@ import {
   type WorkbenchTrustStatus,
   type WorkbenchTrustStatusKind,
 } from './workbenchSolvedModel';
+import { deriveHouseFormRoofIntentForFootprint } from './houseFormRoofIntentForFootprint';
 
 // PR-T9 (2026-05-29): `label`, `kind`, `elevationMode` removed.
 export type ObjectWorkbenchDeckPatch = Partial<
@@ -225,14 +226,16 @@ type BuildObjectWorkbenchInspectorFacadeInput = {
 };
 
 function buildFallbackRoofIntent(houseForm: HouseFormModel | null): HouseFormRoofIntentModel {
-  return houseForm?.roofIntent ?? {
-    form: 'mono',
-    material: 'corrugated_iron',
-    primaryPitchDeg: '',
-    primaryFallDirection: 'positive_y',
-    ridgeAxis: 'x',
-    openGableEndIds: [],
-  };
+  return houseForm
+    ? deriveHouseFormRoofIntentForFootprint({ houseForm })
+    : {
+        form: 'mono',
+        material: 'corrugated_iron',
+        primaryPitchDeg: '',
+        primaryFallDirection: 'positive_y',
+        ridgeAxis: 'x',
+        openGableEndIds: [],
+      };
 }
 
 function buildRoofInspector(

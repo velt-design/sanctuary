@@ -7,14 +7,8 @@ import {
   addHouseFormToObjectFirstDraft,
   nextHouseFormId,
   removeHouseFormFromObjectFirstDraft,
+  resolveNextHouseFormIdAfterRemoval,
 } from './objectFirstWorkbenchAdapter';
-
-// PR5 persistence helpers for multi-form authoring. The read path is
-// still single-form (one synthesized `house-main` per estimate); these
-// helpers exist so the upcoming rail "Add structure" button has a
-// supported way to author additional forms into the persisted draft.
-// PR6 wires the read path to honour authored forms beyond the
-// primary; PR7+ adds the rail UI.
 
 function makePrimaryHouseFormDraft(
   overrides: Partial<ObjectFirstHouseFormDraft> = {},
@@ -59,8 +53,25 @@ function makeSingleFormDraft(
   };
 }
 
+function makeEmptyHouseAssemblyDraft(): ObjectFirstWorkbenchDraftVNext {
+  return {
+    houseAssembly: {
+      id: 'assembly-main',
+      label: 'House Assembly',
+      houseForms: [],
+    },
+    decks: [],
+    openings: [],
+    pergolas: [],
+  };
+}
+
 describe('nextHouseFormId', () => {
-  it('starts at house-form-2 so the primary (house-main) sits before any added forms', () => {
+  it('starts at house-form-1 for explicit zero-house assemblies', () => {
+    expect(nextHouseFormId([])).toBe('house-form-1');
+  });
+
+  it('keeps imported house-main as an ordinary existing id', () => {
     expect(nextHouseFormId([{ id: 'house-main' }])).toBe('house-form-2');
   });
 
@@ -147,14 +158,27 @@ describe('addHouseFormToObjectFirstDraft', () => {
     expect(result.houseAssembly!.houseForms.at(-1)!.transform.offsetXM).toBe(30);
   });
 
-  it('returns the draft unchanged when no houseAssembly is present', () => {
+  it('creates a deterministic first form when the assembly is empty', () => {
+    const result = addHouseFormToObjectFirstDraft({ draft: makeEmptyHouseAssemblyDraft() });
+    expect(result.houseAssembly!.houseForms).toHaveLength(1);
+    expect(result.houseAssembly!.houseForms[0]).toMatchObject({
+      id: 'house-form-1',
+      label: 'House 1',
+      transform: { offsetXM: 0, offsetYM: 0, rotationQuarterTurns: 0 },
+      footprint: { mode: 'preset', preset: 'straight', attachmentSide: 'rear' },
+      roofIntent: { form: 'mono', material: 'corrugated_iron' },
+    });
+  });
+
+  it('creates a house assembly when no houseAssembly is present', () => {
     const empty: ObjectFirstWorkbenchDraftVNext = {
       houseAssembly: null,
       decks: [],
       openings: [],
       pergolas: [],
     };
-    expect(addHouseFormToObjectFirstDraft({ draft: empty })).toBe(empty);
+    const result = addHouseFormToObjectFirstDraft({ draft: empty });
+    expect(result.houseAssembly!.houseForms.map((form) => form.id)).toEqual(['house-form-1']);
   });
 });
 
@@ -170,15 +194,27 @@ describe('removeHouseFormFromObjectFirstDraft', () => {
     expect(result.houseAssembly!.houseForms[0]!.id).toBe('house-main');
   });
 
-  it('refuses to remove the last remaining form (single-form invariant)', () => {
+  it('removes the first form and leaves the remaining form as a peer', () => {
+    const seeded = addHouseFormToObjectFirstDraft({ draft: makeSingleFormDraft() });
+    const result = removeHouseFormFromObjectFirstDraft({
+      draft: seeded,
+      houseFormId: 'house-main',
+    });
+    expect(result.houseAssembly!.houseForms.map((form) => form.id)).toEqual(['house-form-2']);
+  });
+
+  it('removes the last remaining form and preserves an explicit empty assembly', () => {
     const draft = makeSingleFormDraft();
     const result = removeHouseFormFromObjectFirstDraft({
       draft,
       houseFormId: 'house-main',
     });
-    // Same reference -- no change.
-    expect(result).toBe(draft);
-    expect(result.houseAssembly!.houseForms).toHaveLength(1);
+    expect(result).not.toBe(draft);
+    expect(result.houseAssembly).toMatchObject({
+      id: 'assembly-main',
+      label: 'House Assembly',
+      houseForms: [],
+    });
   });
 
   it('no-ops when the id does not match any form', () => {
@@ -188,6 +224,31 @@ describe('removeHouseFormFromObjectFirstDraft', () => {
       houseFormId: 'house-form-99',
     });
     expect(result).toBe(draft);
+  });
+});
+
+describe('resolveNextHouseFormIdAfterRemoval', () => {
+  it('selects the form now occupying the removed index', () => {
+    expect(
+      resolveNextHouseFormIdAfterRemoval(
+        [{ id: 'house-main' }, { id: 'house-form-2' }, { id: 'house-form-3' }],
+        'house-main',
+      ),
+    ).toBe('house-form-2');
+  });
+
+  it('selects the previous form when the removed form was last', () => {
+    expect(
+      resolveNextHouseFormIdAfterRemoval(
+        [{ id: 'house-main' }, { id: 'house-form-2' }, { id: 'house-form-3' }],
+        'house-form-3',
+      ),
+    ).toBe('house-form-2');
+  });
+
+  it('clears selection when removing the only form and reports missing ids distinctly', () => {
+    expect(resolveNextHouseFormIdAfterRemoval([{ id: 'house-main' }], 'house-main')).toBeNull();
+    expect(resolveNextHouseFormIdAfterRemoval([{ id: 'house-main' }], 'house-form-99')).toBeUndefined();
   });
 });
 
@@ -205,5 +266,14 @@ describe('add -> remove -> add round-trip', () => {
     // Add again -- id 2 is free, so the next-id generator picks it again.
     const afterAdd2 = addHouseFormToObjectFirstDraft({ draft: afterRemove });
     expect(afterAdd2.houseAssembly!.houseForms.at(-1)!.id).toBe('house-form-2');
+  });
+
+  it('starts over at house-form-1 after removing every house form', () => {
+    const afterRemove = removeHouseFormFromObjectFirstDraft({
+      draft: makeSingleFormDraft(),
+      houseFormId: 'house-main',
+    });
+    const afterAdd = addHouseFormToObjectFirstDraft({ draft: afterRemove });
+    expect(afterAdd.houseAssembly!.houseForms.map((form) => form.id)).toEqual(['house-form-1']);
   });
 });

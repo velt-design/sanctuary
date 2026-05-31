@@ -26,6 +26,7 @@ import {
   addHouseFormToObjectFirstDraft,
   removeHouseFormFromObjectFirstDraft,
   buildObjectFirstWorkbenchDraftFromProjectModel,
+  resolveNextHouseFormIdAfterRemoval,
 } from '@/lib/drawings/state/objectFirstWorkbenchAdapter';
 import type {
   ObjectWorkbenchDeckPatch,
@@ -674,18 +675,16 @@ export function useObjectWorkbenchActions({
 
   const addSharedHouseForm = useCallback(
     async (): Promise<CommitResult> => {
-      // PR10: rail "Add structure" button. Clones the active form (or
-      // primary if none selected) 10 m east via PR5's
-      // `addHouseFormToObjectFirstDraft`, then selects the new form so
-      // the inspector and viewports follow.
-      if (!houseForm) return missingSharedHouseResult();
+      // Rail "Add structure" clones the selected/current form when one
+      // exists, or creates a deterministic first form for explicit
+      // zero-house object-first assemblies.
       let newFormId: string | null = null;
       return runDraftTransaction({
         buildNextDraft: (draft) => {
           const objectFirstDraft = resolveObjectFirstDraft(draft, store);
           const nextObjectFirst = addHouseFormToObjectFirstDraft({
             draft: objectFirstDraft,
-            sourceHouseFormId: houseForm.id,
+            sourceHouseFormId: houseForm?.id ?? null,
           });
           newFormId = nextObjectFirst.houseAssembly?.houseForms.at(-1)?.id ?? null;
           return {
@@ -705,15 +704,16 @@ export function useObjectWorkbenchActions({
 
   const removeSharedHouseForm = useCallback(
     async (input: { houseFormId: string }): Promise<CommitResult> => {
-      // PR-Bug3 (2026-05-25): inverse of `addSharedHouseForm`. Removes the
-      // named house form via `removeHouseFormFromObjectFirstDraft` (which
-      // refuses to delete when only one form remains, preserving the
-      // legacy-compat invariant that every estimate has at least one
-      // house). On success, falls back to selecting the primary form so
-      // the inspector doesn't strand on a deleted target.
+      let nextSelectedHouseFormId: string | null = null;
       return runDraftTransaction({
         buildNextDraft: (draft) => {
           const objectFirstDraft = resolveObjectFirstDraft(draft, store);
+          const currentForms = objectFirstDraft.houseAssembly?.houseForms ?? [];
+          const nextSelection = resolveNextHouseFormIdAfterRemoval(currentForms, input.houseFormId);
+          if (typeof nextSelection === 'undefined') {
+            return { ok: false, error: 'This house form is no longer available.' };
+          }
+          nextSelectedHouseFormId = nextSelection;
           const nextObjectFirst = removeHouseFormFromObjectFirstDraft({
             draft: objectFirstDraft,
             houseFormId: input.houseFormId,
@@ -727,11 +727,7 @@ export function useObjectWorkbenchActions({
           };
         },
         afterPersist: () => {
-          const primaryFormId =
-            store.derived.houseForms[0]?.id ?? null;
-          if (primaryFormId) {
-            selectObjectTarget({ family: 'house_forms', objectId: primaryFormId });
-          }
+          selectObjectTarget({ family: 'house_forms', objectId: nextSelectedHouseFormId });
         },
       });
     },

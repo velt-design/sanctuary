@@ -18,6 +18,7 @@ import type {
   WorkbenchObjectRef,
 } from './objectFirstWorkbenchModel';
 import type { ObjectWorkbenchStatusFacade } from './objectWorkbenchStatusModel';
+import { deriveHouseFormDisplayLabel } from './houseFormDisplayLabel';
 
 export type DrawingWorkbenchRailObjectStatus = 'ready' | 'approximate' | 'blocked' | 'deferred';
 
@@ -136,6 +137,10 @@ function buildTrustLabel(status: WorkbenchTrustStatusKind): string {
   return labelForWorkbenchTrustStatus(status);
 }
 
+function describeHouseFootprint(houseForm: HouseFormModel): string {
+  return houseForm.footprint.mode === 'custom_polygon' ? 'Custom footprint' : 'Footprint ready';
+}
+
 function railStatusForTrustStatus(status: WorkbenchTrustStatusKind): DrawingWorkbenchRailObjectStatus {
   switch (status) {
     case 'invalid_geometry':
@@ -173,13 +178,14 @@ function buildHouseFormEntries(
   activeTrust: WorkbenchTrustStatus,
   status: ObjectWorkbenchStatusFacade,
 ): DrawingWorkbenchRailObjectEntry[] {
-  return houseForms.map((houseForm) => {
-    const warningCount = status.houseForm.warnings.length;
-    const roofStatus = status.houseForm.roof?.validationStatus ?? null;
+  return houseForms.map((houseForm, index) => {
+    const houseStatus = status.houseFormsById[houseForm.id] ?? status.houseForm;
+    const warningCount = houseStatus.warnings.length;
+    const roofStatus = houseStatus.roof?.validationStatus ?? null;
     const trustStatus: WorkbenchTrustStatusKind =
       roofStatus === 'invalid'
         ? 'invalid_geometry'
-        : roofStatus === 'approximate' || status.houseForm.lowConfidence || warningCount > 0
+        : roofStatus === 'approximate' || houseStatus.lowConfidence || warningCount > 0
           ? 'approximate'
           : activeTrust.status;
     const trustLabel = buildTrustLabel(trustStatus);
@@ -188,13 +194,13 @@ function buildHouseFormEntries(
         family: 'house_forms',
         objectId: houseForm.id,
       },
-      label: houseForm.label,
+      label: deriveHouseFormDisplayLabel(index),
       status: railStatusForTrustStatus(trustStatus),
       trustStatus,
       trustLabel,
       statusLabel: trustLabel,
-      meta: `${status.houseForm.footprintPreset ?? houseForm.footprint.preset} footprint | ${
-        status.houseForm.roofForm ?? houseForm.roofIntent.form
+      meta: `${describeHouseFootprint(houseForm)} | ${
+        houseStatus.roofForm ?? houseForm.roofIntent.form
       } roof | ${warningCount} warning${warningCount === 1 ? '' : 's'}`,
     };
   });

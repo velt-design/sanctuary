@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 import type {
@@ -417,13 +419,53 @@ describe('PlanViewport', () => {
         />,
       );
 
-      expect(markup).toContain('data-plan-shape-id="house_surface_solid:house-form-2:project-roof"');
       expect(markup).toContain('data-plan-shape-id="house_roof_material:house-form-2:project-roof-material"');
+      expect(markup).not.toContain('data-plan-shape-id="house_surface_solid:house-form-2:project-roof"');
       expect(markup).not.toContain('data-plan-shape-id="house_reference:house-form-2"');
       expect(markup).toContain('data-plan-hit-shape-id="house_reference:house-form-2"');
       expect(markup).toContain('data-plan-selection-shape-id="house_reference:house-form-2"');
       expect(markup).not.toContain('data-plan-hit-shape-id="house_roof_material:house-form-2:project-roof-material"');
       expect(markup).not.toContain('data-plan-shape-id="house_surface_solid:active-module-house-roof"');
+    });
+
+    it('renders project pergola bodies before house roof-material bodies in the committed visual stack', () => {
+      const projectPergola = makeShape({
+        id: 'project_pergola:pergola-1:roof_cladding_panel:panel-1',
+        sourceObjectId: 'pergola-1:panel-1',
+        sourceId: 'panel-1',
+        sourceType: 'roof_cladding_panel',
+        family: 'pergola',
+        kind: 'roof_cladding',
+        zOrder: 999,
+        metadata: { pergolaId: 'pergola-1' },
+      });
+      const projectHouseRoofMaterial = makeShape({
+        id: 'house_roof_material:house-form-1:roof-material',
+        sourceObjectId: 'house-form-1:roof-material',
+        sourceId: 'roof-material',
+        sourceType: 'house_roof_material',
+        family: 'house',
+        kind: 'house_roof_material',
+        zOrder: 1,
+        metadata: { houseFormId: 'house-form-1' },
+      });
+      const rendered = renderIntoDocument(
+        <PlanViewport
+          artifact={makeArtifact([])}
+          projectionOverride={makeProjection([projectHouseRoofMaterial, projectPergola])}
+          viewportTransform={IDENTITY_TRANSFORM}
+          onViewportTransformChange={() => undefined}
+        />,
+      );
+
+      const committedBodyIds = Array.from(
+        rendered.container.querySelectorAll('[data-plan-layer="committedBodies"] [data-plan-shape-id]'),
+      ).map((node) => node.getAttribute('data-plan-shape-id'));
+      expect(committedBodyIds).toEqual([
+        'project_pergola:pergola-1:roof_cladding_panel:panel-1',
+        'house_roof_material:house-form-1:roof-material',
+      ]);
+      rendered.unmount();
     });
 
     it('hides pergola shapes when pergola visibility is off', () => {
@@ -698,6 +740,132 @@ describe('PlanViewport', () => {
         objectId: 'pergola-7',
       });
       rendered.unmount();
+    });
+  });
+
+  describe('local hover chrome', () => {
+    function houseArtifact(): WorkbenchSolvedGeometryArtifact {
+      return makeArtifact([
+        makeShape({
+          id: 'house_roof_material:house-form-2:project-roof-material',
+          sourceObjectId: 'house-form-2',
+          sourceId: 'house-form-2',
+          sourceType: 'house_roof_material',
+          family: 'house',
+          kind: 'house_roof_material',
+          metadata: { houseFormId: 'house-form-2' },
+        }),
+        makeShape({
+          id: 'house_reference:house-form-2',
+          sourceObjectId: 'house-form-2',
+          sourceId: 'house-form-2',
+          sourceType: 'house_reference',
+          family: 'house',
+          kind: 'footprint',
+          metadata: { houseFormId: 'house-form-2', isCanonicalOutline: true },
+        }),
+      ]);
+    }
+
+    it('renders local house hover as outline chrome without changing committed bodies', () => {
+      const rendered = renderIntoDocument(
+        <PlanViewport
+          artifact={houseArtifact()}
+          viewportTransform={IDENTITY_TRANSFORM}
+          onViewportTransformChange={() => undefined}
+        />,
+      );
+      const committedBefore = Array.from(
+        rendered.container.querySelectorAll('[data-plan-layer="committedBodies"] [data-plan-shape-id]'),
+      ).map((node) => node.getAttribute('data-plan-shape-id'));
+      const hitTarget = rendered.container.querySelector(
+        '[data-plan-hit-shape-id="house_reference:house-form-2"]',
+      );
+      expect(hitTarget).not.toBeNull();
+
+      dispatchPointer(hitTarget!, 'pointerover');
+
+      expect(rendered.container.querySelector('[data-plan-local-hover-shape-id="house_reference:house-form-2"]')).not.toBeNull();
+      const committedAfter = Array.from(
+        rendered.container.querySelectorAll('[data-plan-layer="committedBodies"] [data-plan-shape-id]'),
+      ).map((node) => node.getAttribute('data-plan-shape-id'));
+      expect(committedAfter).toEqual(committedBefore);
+      rendered.unmount();
+    });
+
+    it('does not add local hover chrome over the active house selection', () => {
+      const rendered = renderIntoDocument(
+        <PlanViewport
+          artifact={houseArtifact()}
+          activeObjectRef={{ family: 'house_forms', objectId: 'house-form-2' }}
+          viewportTransform={IDENTITY_TRANSFORM}
+          onViewportTransformChange={() => undefined}
+        />,
+      );
+      const hitTarget = rendered.container.querySelector(
+        '[data-plan-hit-shape-id="house_reference:house-form-2"]',
+      );
+      expect(hitTarget).not.toBeNull();
+
+      dispatchPointer(hitTarget!, 'pointerover');
+
+      expect(rendered.container.querySelector('[data-plan-selection-shape-id="house_reference:house-form-2"]')).not.toBeNull();
+      expect(rendered.container.querySelector('[data-plan-local-hover-shape-id="house_reference:house-form-2"]')).toBeNull();
+      rendered.unmount();
+    });
+
+    it('renders terminal-end hover as explicit outline chrome while keeping the hit target clickable', () => {
+      const onToggleHouseTerminalEnd = vi.fn();
+      const artifact = makeArtifact([
+        makeShape({
+          id: 'house_terminal_end_synthetic:house-gable-end-x-2',
+          sourceObjectId: 'house-form-2',
+          sourceId: 'house-form-2',
+          sourceType: 'house_surface_solid',
+          family: 'house',
+          kind: 'roof',
+          metadata: {
+            houseFormId: 'house-form-2',
+            openGableEndId: 'house-gable-end-x-2',
+            isOpen: false,
+          },
+        }),
+      ]);
+      const rendered = renderIntoDocument(
+        <PlanViewport
+          artifact={artifact}
+          viewportTransform={IDENTITY_TRANSFORM}
+          onViewportTransformChange={() => undefined}
+          onToggleHouseTerminalEnd={onToggleHouseTerminalEnd}
+        />,
+      );
+      const hitTarget = rendered.container.querySelector(
+        '[data-plan-hit-shape-id="house_terminal_end_synthetic:house-gable-end-x-2"]',
+      );
+      expect(hitTarget).not.toBeNull();
+
+      dispatchPointer(hitTarget!, 'pointerover');
+      expect(
+        rendered.container.querySelector(
+          '[data-plan-local-hover-shape-id="house_terminal_end_synthetic:house-gable-end-x-2"]',
+        ),
+      ).not.toBeNull();
+
+      dispatchPointer(hitTarget!, 'pointerdown', { button: 0 });
+      expect(onToggleHouseTerminalEnd).toHaveBeenCalledWith('house-gable-end-x-2', false);
+      rendered.unmount();
+    });
+
+    it('keeps normal hit-target hover styling visually inert', () => {
+      const css = readFileSync(
+        join(
+          process.cwd(),
+          'apps/portal/components/drawings/viewports/PlanViewport/canvas/planLineweights.module.css',
+        ),
+        'utf8',
+      );
+      expect(css).toMatch(/\.hitTarget:hover\s*{[\s\S]*?fill:\s*transparent;[\s\S]*?stroke:\s*none;/);
+      expect(css).toMatch(/\.hitTargetTerminalEnd:hover\s*{[\s\S]*?fill:\s*transparent;[\s\S]*?stroke:\s*none;/);
     });
   });
 });

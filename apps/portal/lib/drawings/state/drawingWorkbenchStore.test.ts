@@ -14,6 +14,8 @@ import {
 import { makeHouseFirstDeckSupportSnapshotFixture } from './houseFirstWorkbenchFixtures';
 import {
   buildObjectFirstWorkbenchDraftFromProjectModel,
+  addHouseFormToObjectFirstDraft,
+  removeHouseFormFromObjectFirstDraft,
 } from './objectFirstWorkbenchAdapter';
 import { buildObjectFirstWorkbenchDraftBaselineFromLegacyEstimateSnapshot } from './legacyEstimateSnapshotAdapter';
 import {
@@ -341,11 +343,92 @@ describe('buildDrawingWorkbenchStore', () => {
       family: 'house_forms',
       objectId: store.derived.houseForms[0]?.id ?? null,
     });
+    expect(store.derived.railModel.objectLists.house_forms[0]?.label).toBe('House 1');
     expect(store.derived.railModel.objectLists.pergolas[0]?.ref).toEqual({
       family: 'pergolas',
       objectId: 'pergola-1',
     });
     expect(store.derived.status).toBe('ready');
+  });
+
+  it('derives visible house-form labels from current order after removal', () => {
+    const fixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
+    if (!fixture) throw new Error('Missing Sanctuary fixture.');
+    const draft = buildEstimateDrawingDraftFromSnapshot(fixture.snapshot);
+    if (!draft) throw new Error('Expected drawing draft.');
+    const baseStore = buildDrawingWorkbenchStore({
+      snapshot: fixture.snapshot,
+      draft,
+      ui: createDrawingWorkbenchUiState(),
+    });
+    const objectFirst = addHouseFormToObjectFirstDraft({
+      draft: buildObjectFirstWorkbenchDraftFromProjectModel(baseStore.persisted.projectModel),
+    });
+    const twoHouseStore = buildDrawingWorkbenchStore({
+      snapshot: fixture.snapshot,
+      draft: { ...draft, objectFirst },
+      ui: createDrawingWorkbenchUiState(),
+    });
+    expect(twoHouseStore.derived.railModel.objectLists.house_forms.map((entry) => entry.label)).toEqual([
+      'House 1',
+      'House 2',
+    ]);
+
+    const afterRemove = removeHouseFormFromObjectFirstDraft({
+      draft: objectFirst,
+      houseFormId: 'house-main',
+    });
+    const removedStore = buildDrawingWorkbenchStore({
+      snapshot: fixture.snapshot,
+      draft: { ...draft, objectFirst: afterRemove },
+      ui: createDrawingWorkbenchUiState(),
+    });
+
+    expect(removedStore.derived.houseForms.map((form) => form.id)).toEqual(['house-form-2']);
+    expect(removedStore.derived.railModel.objectLists.house_forms.map((entry) => entry.label)).toEqual([
+      'House 1',
+    ]);
+  });
+
+  it('keys house-form rail and inspector status to the selected house form id', () => {
+    const fixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
+    if (!fixture) throw new Error('Missing Sanctuary fixture.');
+    const draft = buildEstimateDrawingDraftFromSnapshot(fixture.snapshot);
+    if (!draft) throw new Error('Expected drawing draft.');
+    const baseStore = buildDrawingWorkbenchStore({
+      snapshot: fixture.snapshot,
+      draft,
+      ui: createDrawingWorkbenchUiState(),
+    });
+    const objectFirst = addHouseFormToObjectFirstDraft({
+      draft: buildObjectFirstWorkbenchDraftFromProjectModel(baseStore.persisted.projectModel),
+    });
+    const houseOne = objectFirst.houseAssembly?.houseForms[0] ?? null;
+    const houseTwo = objectFirst.houseAssembly?.houseForms[1] ?? null;
+    if (!houseOne || !houseTwo) throw new Error('Expected two house forms.');
+    houseOne.footprint.preset = 'u_shape';
+    houseOne.roofIntent.form = 'mono';
+    houseTwo.footprint.preset = 'wrap_right';
+    houseTwo.roofIntent.form = 'hipped';
+
+    const store = buildDrawingWorkbenchStore({
+      snapshot: fixture.snapshot,
+      draft: { ...draft, objectFirst },
+      ui: createDrawingWorkbenchUiState({
+        activeObjectFamily: 'house_forms',
+        activeObjectRef: { family: 'house_forms', objectId: houseTwo.id },
+      }),
+    });
+
+    expect(store.derived.railModel.objectLists.house_forms.map((entry) => entry.meta)).toEqual([
+      'Footprint ready | mono roof | 0 warnings',
+      'Footprint ready | hipped roof | 0 warnings',
+    ]);
+    expect(store.derived.railModel.selectedInspector.selectedObjectMeta).toBe(
+      'Footprint ready | hipped roof | 0 warnings',
+    );
+    expect(store.derived.objectWorkbench.houseForm.houseForm?.id).toBe(houseTwo.id);
+    expect(store.derived.objectWorkbench.houseForm.roof.intent.form).toBe('hipped');
   });
 
   it('derives the active solved module from activePergolaId before the legacy module index', () => {
@@ -1598,13 +1681,13 @@ describe('buildDrawingWorkbenchStore', () => {
       }),
     });
 
-    expect(ridgeStore.derived.objectWorkbench.houseForm.roof.validationStatus).toBe('invalid');
-    expect(ridgeStore.derived.objectWorkbench.houseForm.roof.validationCode).toBe('invalid_ridge_axis');
+    expect(ridgeStore.derived.objectWorkbench.houseForm.roof.validationStatus).not.toBe('invalid');
+    expect(ridgeStore.derived.objectWorkbench.houseForm.roof.validationCode).toBeNull();
     expect(ridgeStore.derived.activeTrustGate).toMatchObject({
-      status: 'block',
-      canExport: false,
-      canReview: false,
-      label: 'Blocked: Invalid geometry',
+      status: 'pass',
+      canExport: true,
+      canReview: true,
+      label: 'Geometry ready',
     });
   });
 

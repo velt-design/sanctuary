@@ -78,6 +78,63 @@ describe('buildHouseFirstWorkbenchProjectModel houseForms[] contract', () => {
     expect(project.houseForms).toEqual([]);
   });
 
+  it('honours an explicit empty object-first house assembly without re-synthesizing house-main', () => {
+    const fixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
+    if (!fixture) throw new Error('Missing Sanctuary fixture.');
+    const draft = buildLegacyEstimateDrawingDraftFromSnapshot(fixture.snapshot);
+    if (!draft) throw new Error('Expected drawing draft.');
+    draft.objectFirst = {
+      houseAssembly: {
+        id: 'assembly-main',
+        label: 'House Assembly',
+        houseForms: [],
+      },
+      decks: [],
+      openings: [],
+      pergolas: [],
+    };
+
+    const project = buildHouseFirstWorkbenchProjectModel({
+      snapshot: fixture.snapshot,
+      draft,
+    });
+
+    expect(project.houseForms).toEqual([]);
+  });
+
+  it('treats authored house forms as peers and does not inject house-main ahead of them', () => {
+    const fixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
+    if (!fixture) throw new Error('Missing Sanctuary fixture.');
+    const draft = buildLegacyEstimateDrawingDraftFromSnapshot(fixture.snapshot);
+    if (!draft) throw new Error('Expected drawing draft.');
+    const baselineObjectFirst = buildObjectFirstWorkbenchDraftBaselineFromLegacyEstimateSnapshot({
+      snapshot: fixture.snapshot,
+      draft,
+    });
+    if (!baselineObjectFirst?.houseAssembly?.houseForms[0]) {
+      throw new Error('Expected objectFirst baseline form.');
+    }
+    draft.objectFirst = {
+      ...baselineObjectFirst,
+      houseAssembly: {
+        ...baselineObjectFirst.houseAssembly,
+        houseForms: [
+          {
+            ...baselineObjectFirst.houseAssembly.houseForms[0],
+            id: 'house-form-2',
+          },
+        ],
+      },
+    };
+
+    const project = buildHouseFirstWorkbenchProjectModel({
+      snapshot: fixture.snapshot,
+      draft,
+    });
+
+    expect(project.houseForms.map((form) => form.id)).toEqual(['house-form-2']);
+  });
+
   it('emits N forms when the draft authors additional houseAssembly.houseForms[] entries', () => {
     // PR6: the read path concatenates legacy module-synthesised primary
     // (house-main) with any extra forms authored into
@@ -737,7 +794,7 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
     expect(projectModel.houseForms[0]?.roof.provenance?.ridgeAxis).toBe('default_fallback');
   });
 
-  it('blocks explicit ridge axes that do not match the current footprint span/topology', () => {
+  it('derives stale explicit ridge axes from the current footprint span/topology', () => {
     const monoFixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
     if (!monoFixture) throw new Error('Missing mono-standard fixture.');
     const draft = buildLegacyEstimateDrawingDraftFromSnapshot(monoFixture.snapshot);
@@ -761,8 +818,9 @@ describe('buildHouseFirstWorkbenchProjectModel', () => {
       draft,
     });
 
-    expect(projectModel.houseForms[0]?.roof.validation.status).toBe('invalid');
-    expect(projectModel.houseForms[0]?.roof.validation.code).toBe('invalid_ridge_axis');
+    expect(projectModel.houseForms[0]?.roof.validation.status).toBe('valid');
+    expect(projectModel.houseForms[0]?.roof.validation.code).toBeNull();
+    expect(projectModel.houseForms[0]?.roof.ridgeAxis).toBe('x');
   });
 
   it.skip('auto-heals stale preset ridge axes and dependent roof state for gable and hipped roofs', () => {

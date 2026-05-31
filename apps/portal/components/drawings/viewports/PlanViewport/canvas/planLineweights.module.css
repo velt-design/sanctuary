@@ -125,8 +125,8 @@
 /*
  * Invisible body. Used by milestone-13 synthetic hover targets for
  * OPENED hip ends -- the polygon exists for hit-testing but should
- * not paint over the open-gable rendering. The hit-target layer above
- * still shows .hitTargetTerminalEnd hover styling.
+ * not paint over the open-gable rendering. Explicit local hover chrome
+ * shows the terminal affordance when the event-only target is hovered.
  */
 .bodyTransparent {
   fill: transparent;
@@ -251,6 +251,21 @@
   pointer-events: none;
 }
 
+.localHoverHalo {
+  stroke: var(--plan-stroke-selection);
+  stroke-opacity: 0.65;
+  stroke-width: var(--plan-width-medium);
+  stroke-dasharray: 4 3;
+  vector-effect: non-scaling-stroke;
+  fill: none;
+  pointer-events: none;
+}
+
+.terminalEndHoverHalo {
+  stroke-opacity: 0.9;
+  stroke-width: calc(var(--plan-width-medium) * 1.75);
+}
+
 .hitTarget {
   fill: transparent;
   stroke: none;
@@ -258,20 +273,18 @@
 }
 
 .hitTarget:hover {
-  fill: var(--plan-fill-hover);
+  fill: transparent;
+  stroke: none;
 }
 
 /*
  * Milestone 13: hip-end click target gets a more visible hover
- * affordance than the global hit-target hover. The hover fill +
- * stroke makes it clear which hip can be opened/closed without
- * permanently styling the roof.
+ * affordance through PlanLocalHoverLayer. The event layer remains
+ * visually inert so interaction polygons never paint over the plan.
  */
 .hitTargetTerminalEnd:hover {
-  fill: rgba(47, 111, 150, 0.22);
-  stroke: var(--plan-stroke-selection);
-  stroke-width: var(--plan-width-medium);
-  vector-effect: non-scaling-stroke;
+  fill: transparent;
+  stroke: none;
 }
 
 .dimensionLayer {

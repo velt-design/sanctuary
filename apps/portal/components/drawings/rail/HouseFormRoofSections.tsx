@@ -16,7 +16,6 @@ import {
   NumberField,
   ROOF_FALL_DIRECTION_OPTIONS,
   ROOF_MATERIAL_OPTIONS,
-  ROOF_RIDGE_AXIS_OPTIONS,
   SelectField,
 } from './objectRailShared';
 import styles from './WorkbenchRail.module.css';
@@ -121,25 +120,6 @@ export function buildHouseFormRoofSections({
           runRoofCommit('roof-fall-direction', {
             ...roofDraft,
             primaryFallDirection: value as HouseFormRoofIntentModel['primaryFallDirection'],
-          })
-        }
-      />,
-    );
-  }
-
-  if (canEditSelectedRoofForm && roofControls.ridgeAxis) {
-    fields.push(
-      <SelectField
-        key="roof-ridge-axis"
-        label="Hipped ridge orientation"
-        value={roofDraft.ridgeAxis ?? 'x'}
-        options={ROOF_RIDGE_AXIS_OPTIONS}
-        disabled={disabled}
-        error={fieldErrors['roof-ridge-axis']}
-        onCommit={(value) =>
-          runRoofCommit('roof-ridge-axis', {
-            ...roofDraft,
-            ridgeAxis: value as HouseFormRoofIntentModel['ridgeAxis'],
           })
         }
       />,

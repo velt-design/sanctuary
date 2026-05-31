@@ -1,8 +1,7 @@
 import type { GeometryTopProjectionShape } from '@sp/geometry';
 import type { DrawingWorkbenchVisibilityState } from '@/lib/drawings/state/drawingWorkbenchUiState';
+import { buildPlanCommittedBodyVisualStack } from './planCommittedBodyVisualStack';
 import {
-  planHouseFormOwner,
-  planShapeIsHouseRoofBody,
   planShapeIsPlanHitTarget,
   planShapeVisualOwner,
 } from './planShapeOwnership';
@@ -139,15 +138,6 @@ export function topProjectionShapeVisualOwner(shape: GeometryTopProjectionShape)
   return planShapeVisualOwner(shape);
 }
 
-function houseFootprintHasMatchingRoof(input: {
-  footprint: GeometryTopProjectionShape;
-  roofOwners: ReadonlySet<string>;
-  hasUnownedRoof: boolean;
-}): boolean {
-  const owner = planHouseFormOwner(input.footprint);
-  return owner ? input.roofOwners.has(owner) : input.hasUnownedRoof;
-}
-
 function withLayer<TItem extends { shape: GeometryTopProjectionShape }>(
   item: ProjectionPlanGraphItem<TItem>,
   layer: ProjectionPlanLayer,
@@ -189,44 +179,13 @@ export function buildProjectionPlanRenderGraph<TItem extends { shape: GeometryTo
       suppressed: [],
     },
   );
-  const houseRoofOwners = new Set<string>();
-  let hasUnownedHouseRoofCommittedBody = false;
-  for (const { shape } of baseGraph.committedBodies) {
-    if (!planShapeIsHouseRoofBody(shape)) continue;
-    const owner = planHouseFormOwner(shape);
-    if (owner) houseRoofOwners.add(owner);
-    else hasUnownedHouseRoofCommittedBody = true;
-  }
-  const houseReferenceFallbackBodies = baseGraph.hitTargets
-    .filter(({ shape }) => {
-      if (shape.family !== 'house' || shape.kind !== 'footprint') return false;
-      if (shape.sourceType !== 'house_reference') return false;
-      return !houseFootprintHasMatchingRoof({
-        footprint: shape,
-        roofOwners: houseRoofOwners,
-        hasUnownedRoof: hasUnownedHouseRoofCommittedBody,
-      });
-    })
-    .map((item) => withLayer(item, 'committedBodies'));
-  const committedBodies = [
-    ...baseGraph.committedBodies.filter(
-      ({ shape }) =>
-        !(
-          shape.family === 'house' &&
-          shape.kind === 'footprint' &&
-          shape.sourceType !== 'house_reference' &&
-          houseFootprintHasMatchingRoof({
-            footprint: shape,
-            roofOwners: houseRoofOwners,
-            hasUnownedRoof: hasUnownedHouseRoofCommittedBody,
-          })
-        ) &&
-        (!options?.projectionOnlyModelSpace || topProjectionShapeAllowedInProjectionOnlyModel(shape)),
-    ),
-    ...houseReferenceFallbackBodies.filter(
-      ({ shape }) => !options?.projectionOnlyModelSpace || topProjectionShapeAllowedInProjectionOnlyModel(shape),
-    ),
-  ];
+  const visualStack = buildPlanCommittedBodyVisualStack({
+    committedBodies: baseGraph.committedBodies,
+    hitTargets: baseGraph.hitTargets,
+    projectionOnlyModelSpace: options?.projectionOnlyModelSpace,
+    topProjectionShapeAllowedInProjectionOnlyModel,
+  });
+  const committedBodies = visualStack.committedBodies;
   const hitTargets = [
     ...baseGraph.hitTargets,
     ...committedBodies
@@ -248,7 +207,7 @@ export function buildProjectionPlanRenderGraph<TItem extends { shape: GeometryTo
     debug: [],
     suppressed: [
       ...baseGraph.suppressed,
-      ...baseGraph.committedBodies.filter((item) => !committedBodies.includes(item)),
+      ...visualStack.suppressedCommittedBodies,
       ...baseGraph.contextLines.filter((item) => !contextLines.includes(item)),
       ...(options?.projectionOnlyModelSpace ? baseGraph.detailLines : []),
     ],

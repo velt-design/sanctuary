@@ -443,15 +443,15 @@
 .activityList {
   list-style: none;
   display: grid;
-  gap: 12px;
+  gap: 11px;
   margin: 0;
   padding: 0;
 }
 
 .activityItem {
   display: grid;
-  gap: 9px;
-  padding: 13px 15px;
+  gap: 8px;
+  padding: 12px 14px;
   border: 1px solid rgba(var(--portal-text-rgb), 0.11);
   border-radius: 12px;
   background:
@@ -460,15 +460,14 @@
   text-decoration: none;
   transition:
     background 150ms ease,
-    border-color 150ms ease,
-    transform 150ms ease;
+    border-color 150ms ease;
 }
 
 .activityItem:hover {
-  border-color: rgba(var(--portal-text-rgb), 0.18);
+  border-color: rgba(var(--portal-text-rgb), 0.2);
   background:
+    linear-gradient(180deg, rgba(var(--portal-text-rgb), 0.055), rgba(var(--portal-text-rgb), 0.035)),
     linear-gradient(180deg, rgba(var(--portal-bg-elevated-rgb), 0.98), rgba(var(--portal-bg-surface-rgb), 0.96));
-  transform: translateY(-1px);
 }
 
 .activityItem:focus-visible {
@@ -476,8 +475,14 @@
   outline-offset: -2px;
 }
 
-.activityHeaderRow,
-.activityFooter {
+.activityItem:hover .activityTypePill,
+.activityItem:focus-visible .activityTypePill {
+  border-color: rgba(var(--portal-status-success-rgb), 0.34);
+  background: rgba(var(--portal-status-success-rgb), 0.18);
+  color: rgba(21, 92, 48, 0.98);
+}
+
+.activityHeaderRow {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -502,22 +507,38 @@
   font-size: 12px;
 }
 
+.activityFooter {
+  line-height: 1.25;
+}
+
 .activityBody {
   display: -webkit-box;
   overflow: hidden;
-  color: rgba(var(--portal-text-rgb), 0.9);
+  color: rgba(var(--portal-text-rgb), 0.78);
   font-size: 13px;
   line-height: 1.45;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
+  -webkit-line-clamp: 2;
 }
 
-.activityKind {
-  color: rgba(var(--portal-text-rgb), 0.58);
+.activityTypePill {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  border: 1px solid rgba(var(--portal-status-success-rgb), 0.2);
+  border-radius: 999px;
+  background: rgba(var(--portal-status-success-rgb), 0.09);
+  color: rgba(38, 98, 62, 0.92);
   font-size: 10px;
   font-weight: 800;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.055em;
+  line-height: 1;
+  padding: 4px 8px;
   text-transform: uppercase;
+  transition:
+    background 150ms ease,
+    border-color 150ms ease,
+    color 150ms ease;
 }
 
 .emptyState {

@@ -45,6 +45,7 @@ import type {
   ObjectFirstOpeningDraft,
 } from './objectFirstWorkbenchModel';
 import { normalizeObjectFirstWorkbenchDraftVNext } from './objectFirstWorkbenchModel';
+import { reconcileHouseFormRoofIntentForFootprint } from './houseFormRoofIntentForFootprint';
 import { buildSharedDecks } from './houseFirstDeckAdapter';
 import { buildSharedOpenings } from './houseFirstOpeningAdapter';
 import {
@@ -925,7 +926,8 @@ function buildHouseFormFromDraft(input: {
   house: HouseModel;
   warnings: HouseFirstMigrationWarning[];
 } {
-  const { formDraft, houseFormId } = input;
+  const { houseFormId } = input;
+  const formDraft = reconcileHouseFormRoofIntentForFootprint(input.formDraft);
   const warnings: HouseFirstMigrationWarning[] = [];
 
   const normalizedFootprintMode = formDraft.footprint.mode;
@@ -1165,33 +1167,26 @@ export function buildHouseFirstWorkbenchProjectModel(input: {
   const allOpeningDrafts = readOpeningDrafts(input.draft);
   const pergolaDrafts = readPergolaDrafts(input.draft);
 
-  // PR-B (2026-05-22): synthesize the primary form's draft from calculator
-  // modules via `buildSharedHouse`, then route both the primary and any
-  // authored additional forms through the unified `buildHouseFormFromDraft`
-  // pipeline. The primary's `attachmentKind` becomes `'freestanding'` after
-  // this round-trip (workbench attachment zones disappear until PR-F restores
-  // them via snap references). The email-quote path is unaffected — it
-  // doesn't traverse the workbench.
-  //
-  // PR-C (2026-05-22): the previous `LEGACY_PRIMARY_HOUSE_FORM_ID` constant
-  // is gone. Filtering / routing now reads the synthesized primary's actual
-  // `.id` field. A null host on a deck/opening routes to the primary by way
-  // of "first form in list"; an explicit id routes to the matching form.
-  //
-  // `buildSharedHouse` is called once with null deck/opening drafts because
-  // `houseModelToObjectFirstHouseFormDraft` only reads the form fields
-  // (footprint, roof, eave, etc.) — not the resolved decks/openings, which
-  // `buildHouseFormFromDraft` re-derives per-form below.
+  // Calculator snapshots may still synthesize an imported legacy form, but
+  // any authored object-first house assembly is complete and authoritative,
+  // including an empty `houseForms[]` tombstone. Null deck/opening hosts
+  // route to the first effective form only when one exists.
   const sharedHouse = buildSharedHouse(
     modules.map((module) => module.input),
     authoredRoofDraft,
     null,
     null,
   );
-  const primaryFormDraft = sharedHouse.house
+  const authoredHouseAssembly = input.draft?.objectFirst?.houseAssembly ?? null;
+  const legacyFormDraft = sharedHouse.house && !authoredHouseAssembly
     ? houseModelToObjectFirstHouseFormDraft(sharedHouse.house)
     : null;
-  const primaryId = primaryFormDraft?.id ?? null;
+  const unifiedFormDrafts: ObjectFirstHouseFormDraft[] = authoredHouseAssembly
+    ? authoredHouseAssembly.houseForms
+    : legacyFormDraft
+      ? [legacyFormDraft]
+      : [];
+  const firstFormId = unifiedFormDrafts[0]?.id ?? null;
   // PR-2A.1b: deck.attachment.host.objectId is the snap-derived host
   // form id (PR-D shape); opening.sourceFormId is its object-first
   // equivalent. Both null/undefined route to the primary by way of
@@ -1201,30 +1196,25 @@ export function buildHouseFirstWorkbenchProjectModel(input: {
     deck.attachment?.host?.objectId ?? null;
   const openingHostFormId = (opening: ObjectFirstOpeningDraft): string | null =>
     opening.sourceFormId ?? null;
-  const isHostedByPrimary = (host: string | null | undefined): boolean =>
-    host == null || (primaryId != null && host === primaryId);
-  const primaryDeckDrafts = allDeckDrafts?.filter((deck) => isHostedByPrimary(deckHostFormId(deck))) ?? null;
-  const primaryOpeningDrafts = allOpeningDrafts?.filter((opening) => isHostedByPrimary(openingHostFormId(opening))) ?? null;
-  const authoredAdditionalForms = (input.draft?.objectFirst?.houseAssembly?.houseForms ?? []).filter(
-    (form) => primaryId == null || form.id !== primaryId,
-  );
-  const unifiedFormDrafts: ObjectFirstHouseFormDraft[] = primaryFormDraft
-    ? [primaryFormDraft, ...authoredAdditionalForms]
-    : authoredAdditionalForms;
+  const isHostedByFirstForm = (host: string | null | undefined): boolean =>
+    host == null || (firstFormId != null && host === firstFormId);
+  const firstFormDeckDrafts = firstFormId
+    ? allDeckDrafts?.filter((deck) => isHostedByFirstForm(deckHostFormId(deck))) ?? null
+    : null;
+  const firstFormOpeningDrafts = firstFormId
+    ? allOpeningDrafts?.filter((opening) => isHostedByFirstForm(openingHostFormId(opening))) ?? null
+    : null;
 
   const houseForms: HouseModel[] = [];
   const additionalFormWarnings: HouseFirstMigrationWarning[] = [];
   for (let index = 0; index < unifiedFormDrafts.length; index += 1) {
     const formDraft = unifiedFormDrafts[index]!;
-    // PR-C: primary is "the first form in the unified list" (no constant
-    // check). It gets the null-host-fallback decks; additional forms get
-    // decks tagged with their own id.
-    const isPrimary = index === 0 && primaryFormDraft !== null;
-    const formDeckDrafts = isPrimary
-      ? primaryDeckDrafts
+    const isFirstForm = index === 0;
+    const formDeckDrafts = isFirstForm
+      ? firstFormDeckDrafts
       : allDeckDrafts?.filter((deck) => deckHostFormId(deck) === formDraft.id) ?? null;
-    const formOpeningDrafts = isPrimary
-      ? primaryOpeningDrafts
+    const formOpeningDrafts = isFirstForm
+      ? firstFormOpeningDrafts
       : allOpeningDrafts?.filter((opening) => openingHostFormId(opening) === formDraft.id) ?? null;
     const result = buildHouseFormFromDraft({
       formDraft,

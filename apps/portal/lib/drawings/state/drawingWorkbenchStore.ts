@@ -203,6 +203,7 @@ export function buildDrawingWorkbenchStore(input: {
       : houseForms[0] ?? null;
   const objectWorkbenchOverlayStatus = buildObjectWorkbenchStatusFacade({
     activeDeckId: null,
+    activeHouseFormId: overlayHouseForm?.id ?? null,
     activeModuleInput: undefined,
     projectModel,
   });
@@ -384,6 +385,7 @@ export function buildDrawingWorkbenchStore(input: {
     : null;
   const objectWorkbenchStatus = buildObjectWorkbenchStatusFacade({
     activeDeckId: activeObjectFirstDeck?.id ?? null,
+    activeHouseFormId: activeHouseForm?.id ?? null,
     activeModuleInput: activeModule?.assemblyModel.moduleInput,
     projectModel,
   });

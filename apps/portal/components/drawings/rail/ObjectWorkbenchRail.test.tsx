@@ -340,7 +340,7 @@ describe('ObjectWorkbenchRail', () => {
     );
     expect(hippedMarkup).toContain('Roof pitch (deg)');
     expect(hippedMarkup).toContain('Minimum is 5 deg for this roof.');
-    expect(hippedMarkup).toContain('Hipped ridge orientation');
+    expect(hippedMarkup).not.toContain('Hipped ridge orientation');
     expect(hippedMarkup).toContain('Open hip ends as gables');
     expect(hippedMarkup).not.toContain('Mono fall direction');
     expect(hippedMarkup).not.toContain('Appendage band');

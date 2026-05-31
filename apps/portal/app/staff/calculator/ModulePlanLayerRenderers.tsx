@@ -296,9 +296,10 @@ export function TopProjectionLayerRenderer({
   // (the roof already paints the house outline including overhangs). Skip
   // every house + footprint polygon at the render layer. Sheet view has
   // no hit-target layer for the house, so a render-time filter is enough
-  // here. Mirrors `filterPlanVisibleBodies` for the Plan canvas. See
-  // `docs/decision-log.md` 2026-05-13 "Plan Rendering -- Suppress House
-  // Footprint When Roof Body Renders".
+  // here. The workbench Plan canvas now owns this in its render graph /
+  // visual-stack helper because it also needs explicit hit targets and
+  // project-level paint ordering. See `docs/decision-log.md` 2026-05-13
+  // "Plan Rendering -- Suppress House Footprint When Roof Body Renders".
   const hasHouseRoofBody = shapes.some(
     ({ shape }) => shape.family === 'house' && shape.kind === 'roof',
   );

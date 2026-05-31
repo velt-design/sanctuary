@@ -51,8 +51,8 @@ describe('planCommittedBodyTokenClass', () => {
       // Milestone 13: terminal-end click targets reuse the EXISTING
       // hip facet (kind: 'roof') by tagging its metadata. The styling
       // is intentionally identical to a non-toggleable hipped roof so
-      // the marker only reveals itself on hover via the hit-target
-      // layer's :hover affordance. The toggle vs selection split is
+      // the marker only reveals itself through explicit hover chrome.
+      // The toggle vs selection split is
       // resolved by the selection router, not the shape style.
       expect(
         planCommittedBodyTokenClass(

@@ -47,6 +47,16 @@ export async function readVisiblePergolaShapeIds(page: Page): Promise<string[]> 
   );
 }
 
+export async function readCommittedBodyShapeIdsInPaintOrder(page: Page): Promise<string[]> {
+  return page
+    .locator('[data-plan-layer="committedBodies"] [data-plan-shape-id]')
+    .evaluateAll((nodes) =>
+      nodes
+        .map((node) => node.getAttribute('data-plan-shape-id'))
+        .filter((value): value is string => Boolean(value)),
+    );
+}
+
 export async function readHouseHitTargetIds(page: Page): Promise<string[]> {
   return page
     .locator('[data-plan-shape-family="house"][data-plan-hit-shape-id]')
@@ -65,6 +75,37 @@ export async function readPlanSelectionIds(page: Page): Promise<string[]> {
       .filter((value): value is string => Boolean(value))
       .sort(),
   );
+}
+
+export async function readPlanLocalHoverIds(page: Page): Promise<string[]> {
+  return page.locator('[data-plan-local-hover-shape-id]').evaluateAll((nodes) =>
+    nodes
+      .map((node) => node.getAttribute('data-plan-local-hover-shape-id'))
+      .filter((value): value is string => Boolean(value))
+      .sort(),
+  );
+}
+
+export async function hoverPlanHitTarget(page: Page, shapeId: string) {
+  await page.locator(`[data-plan-hit-shape-id="${shapeId}"]`).first().evaluate((node) => {
+    node.dispatchEvent(
+      new PointerEvent('pointerover', {
+        bubbles: true,
+        cancelable: true,
+        pointerId: 1,
+        pointerType: 'mouse',
+      }),
+    );
+  });
+}
+
+export async function expectPlanHitTargetPaintIsInvisible(page: Page, shapeId: string) {
+  const style = await page.locator(`[data-plan-hit-shape-id="${shapeId}"]`).first().evaluate((node) => {
+    const computed = window.getComputedStyle(node);
+    return { fill: computed.fill, stroke: computed.stroke };
+  });
+  expect(['transparent', 'rgba(0, 0, 0, 0)']).toContain(style.fill);
+  expect(['none', 'rgba(0, 0, 0, 0)']).toContain(style.stroke);
 }
 
 export async function expect3DViewportEvidence(page: Page) {

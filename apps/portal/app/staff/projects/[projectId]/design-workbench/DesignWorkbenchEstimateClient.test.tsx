@@ -1088,7 +1088,7 @@ describe('DesignWorkbenchEstimateClient', () => {
     expect(readObjectFirstRoofDraft(getLocalFirstWorkingCopy<any>(entityKey)?.data)?.form).toBe('hipped');
     expect('houseFirst' in (getLocalFirstWorkingCopy<any>(entityKey)?.data ?? {})).toBe(false);
     expect(rendered.container.textContent).not.toContain('Mono fall direction');
-    expect(rendered.container.textContent).toContain('Hipped ridge orientation');
+    expect(rendered.container.textContent).not.toContain('Hipped ridge orientation');
     expect(readLabeledValue(rendered.container, 'Selected roof form')).toBe('hipped');
     expect(rendered.container.textContent).toContain('Roof status');
     expect(rendered.container.textContent).toContain('Ready');
@@ -1137,7 +1137,7 @@ describe('DesignWorkbenchEstimateClient', () => {
     rendered.unmount();
   }, 10000);
 
-  it('heals stale ridge and open-gable intent when preset changes rebuild supported roofs', async () => {
+  it('derives ridge axis and heals open-gable intent when preset changes rebuild supported roofs', async () => {
     // Milestone 13 session C: 'gable' is no longer in the picker; the
     // open-end toggles (formerly only on gable form) now also live under
     // hipped form. This test exercises the "intent heals on preset
@@ -1155,17 +1155,12 @@ describe('DesignWorkbenchEstimateClient', () => {
     await flushAsyncWork();
     changeSelectByLabel(rendered.container, 'Roof form', 'hipped');
     await flushAsyncWork();
-    changeSelectByLabel(rendered.container, 'Hipped ridge orientation', 'x');
-    await flushAsyncWork();
+    expect(rendered.container.textContent).not.toContain('Hipped ridge orientation');
     clickButtonByText(rendered.container, 'Open End 1');
     await flushAsyncWork();
 
     const openHipDraft = readObjectFirstRoofDraft(getLocalFirstWorkingCopy<any>(entityKey)?.data);
     expect(openHipDraft?.openGableEndIds?.length).toBeGreaterThan(0);
-
-    // Switching ridge axis with stale open-end ids should not block.
-    changeSelectByLabel(rendered.container, 'Hipped ridge orientation', 'y');
-    await flushAsyncWork();
     expect(readLabeledValue(rendered.container, 'Roof reason code')).toBe('none');
     expect(readLabeledValue(rendered.container, 'Roof status')).not.toBe('Blocked');
 
@@ -1345,8 +1340,7 @@ describe('DesignWorkbenchEstimateClient', () => {
     // hipped-with-open-ends == legacy gable topology.
     changeSelectByLabel(rendered.container, 'Roof form', 'hipped');
     await flushAsyncWork();
-    changeSelectByLabel(rendered.container, 'Hipped ridge orientation', 'x');
-    await flushAsyncWork();
+    expect(rendered.container.querySelector('[aria-label="Hipped ridge orientation"]')).toBeNull();
     clickButtonByText(rendered.container, 'Open End 1');
     await flushAsyncWork();
     const hippedOpenDraft = readObjectFirstRoofDraft(getLocalFirstWorkingCopy<any>(entityKey)?.data);
@@ -1356,7 +1350,7 @@ describe('DesignWorkbenchEstimateClient', () => {
     });
     expect(hippedOpenDraft?.primaryFallDirection).not.toBe('positive_x');
     expect(hippedOpenDraft?.openGableEndIds?.length).toBeGreaterThan(0);
-    expect(rendered.container.querySelector('[aria-label="Hipped ridge orientation"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[aria-label="Hipped ridge orientation"]')).toBeNull();
     expect(readLabeledValue(rendered.container, 'Selected roof form')).toBe('hipped');
     expect(readLabeledValue(rendered.container, 'Roof fall source')).toBe('Not used for this roof');
 
@@ -1404,7 +1398,7 @@ describe('DesignWorkbenchEstimateClient', () => {
     expect(readLabeledValue(rendered.container, 'Selected roof form')).toBe('hipped');
     clickButtonByText(rendered.container, 'House Forms');
     await flushAsyncWork();
-    expect(rendered.container.querySelector('[aria-label="Hipped ridge orientation"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[aria-label="Hipped ridge orientation"]')).toBeNull();
 
     rendered.unmount();
   });
@@ -1436,7 +1430,7 @@ describe('DesignWorkbenchEstimateClient', () => {
     rendered.unmount();
   });
 
-  it('blocks explicit ridge orientations that do not match the current footprint span', async () => {
+  it('derives hipped ridge orientation from the current footprint span', async () => {
     const estimate = buildEstimateDetail();
     const entityKey = buildEstimateDrawingDraftEntityKey(estimate.id);
     const draft = buildEstimateDrawingDraftFromSnapshot(estimate.calculatorSnapshot);
@@ -1459,21 +1453,15 @@ describe('DesignWorkbenchEstimateClient', () => {
     );
 
     await flushAsyncWork();
-    // Milestone 13 session C: 'gable' was removed from the picker; the
-    // ridge-orientation block now applies to 'hipped' form instead. The
-    // underlying `invalid_ridge_axis` reason fires the same way.
     clickButtonByText(rendered.container, 'House Forms');
     await flushAsyncWork();
     changeSelectByLabel(rendered.container, 'Roof form', 'hipped');
     await flushAsyncWork();
-    changeSelectByLabel(rendered.container, 'Hipped ridge orientation', 'y');
-    await flushAsyncWork();
 
-    expect(readLabeledValue(rendered.container, 'Roof status')).toBe('Blocked');
-    expect(readLabeledValue(rendered.container, 'Roof reason code')).toBe('invalid_ridge_axis');
-    expect(rendered.container.textContent).toContain(
-      'This ridge orientation does not match the current house footprint.',
-    );
+    expect(rendered.container.querySelector('[aria-label="Hipped ridge orientation"]')).toBeNull();
+    expect(readObjectFirstRoofDraft(getLocalFirstWorkingCopy<any>(entityKey)?.data)?.ridgeAxis).toBe('x');
+    expect(readLabeledValue(rendered.container, 'Roof status')).not.toBe('Blocked');
+    expect(readLabeledValue(rendered.container, 'Roof reason code')).toBe('none');
 
     rendered.unmount();
   });

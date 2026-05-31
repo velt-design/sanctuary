@@ -7,7 +7,7 @@ import type { WorkbenchObjectFamily } from './objectFirstWorkbenchModel';
  *
  * The CAD-style left rail renders each object as a row with `label` on the
  * first line and a concise subtitle on the second. The subtitle combines a
- * family-specific descriptor (e.g. "Mono", "straight footprint") with a
+ * family-specific descriptor (e.g. "Mono", "Footprint ready") with a
  * state hint (e.g. "selected", "hidden in viewport", "approximate").
  *
  * These are pure functions over the existing rail-model + UI-state shapes —
@@ -89,7 +89,7 @@ export function subtitleForObjectTreeRow(input: ObjectTreeRowSubtitleInput): str
 /**
  * Extract the primary descriptor from a rail-entry meta string. The rail
  * model builds meta as a pipe-delimited summary (e.g. "Mono | Rear edge",
- * "straight footprint | mono roof | 0 warnings"). The CAD outliner only
+ * "Footprint ready | mono roof | 0 warnings"). The CAD outliner only
  * needs the first segment for the always-visible subtitle; deeper details
  * surface in the right inspector when the row is selected.
  */
