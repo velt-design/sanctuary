@@ -6,6 +6,10 @@ import {
   type PlanRenderDiagnostics,
 } from './planRenderDiagnostics';
 import {
+  comparePlanDiagnosticFallbackItems,
+  withDiagnosticFallbackLayer,
+} from './planDiagnosticFallbacks';
+import {
   planShapeIsPergolaDiagnosticFallback,
   planShapeIsPlanHitTarget,
   planShapeVisualOwner,
@@ -13,6 +17,7 @@ import {
 
 export type ProjectionPlanLayer =
   | 'committedBodies'
+  | 'diagnosticFallbacks'
   | 'contextLines'
   | 'detailLines'
   | 'hitTargets'
@@ -29,6 +34,7 @@ export type ProjectionPlanGraphItem<TItem extends { shape: GeometryTopProjection
 
 export type ProjectionPlanRenderGraph<TItem extends { shape: GeometryTopProjectionShape }> = {
   committedBodies: Array<ProjectionPlanGraphItem<TItem>>;
+  diagnosticFallbacks: Array<ProjectionPlanGraphItem<TItem>>;
   contextLines: Array<ProjectionPlanGraphItem<TItem>>;
   detailLines: Array<ProjectionPlanGraphItem<TItem>>;
   hitTargets: Array<ProjectionPlanGraphItem<TItem>>;
@@ -172,7 +178,7 @@ export function buildProjectionPlanRenderGraph<TItem extends { shape: GeometryTo
       } else if (layer === 'hitTargets') {
         graph.hitTargets.push({ ...item, layer });
         if (planShapeIsPergolaDiagnosticFallback(item.shape)) {
-          graph.contextLines.push({ ...item, layer: 'contextLines' });
+          graph.diagnosticFallbacks.push(withDiagnosticFallbackLayer({ ...item, layer }));
         }
       } else {
         graph.suppressed.push(item);
@@ -181,6 +187,7 @@ export function buildProjectionPlanRenderGraph<TItem extends { shape: GeometryTo
     },
     {
       committedBodies: [],
+      diagnosticFallbacks: [],
       contextLines: [],
       detailLines: [],
       hitTargets: [],
@@ -199,6 +206,10 @@ export function buildProjectionPlanRenderGraph<TItem extends { shape: GeometryTo
     topProjectionShapeAllowedInProjectionOnlyModel,
   });
   const committedBodies = visualStack.committedBodies;
+  const diagnosticFallbacks = [
+    ...visualStack.diagnosticFallbacks,
+    ...baseGraph.diagnosticFallbacks,
+  ].sort(comparePlanDiagnosticFallbackItems);
   const hitTargets = [
     ...baseGraph.hitTargets,
     ...committedBodies
@@ -209,9 +220,14 @@ export function buildProjectionPlanRenderGraph<TItem extends { shape: GeometryTo
     ? baseGraph.contextLines.filter(({ shape }) => topProjectionContextLineAllowedInProjectionOnlyModel(shape))
     : baseGraph.contextLines;
   const detailLines = options?.projectionOnlyModelSpace ? [] : baseGraph.detailLines;
-  const diagnostics = buildPlanRenderDiagnostics({ committedBodies, hitTargets });
+  const diagnostics = buildPlanRenderDiagnostics({
+    committedBodies,
+    diagnosticFallbacks,
+    hitTargets,
+  });
   return {
     committedBodies,
+    diagnosticFallbacks,
     contextLines,
     detailLines,
     hitTargets,

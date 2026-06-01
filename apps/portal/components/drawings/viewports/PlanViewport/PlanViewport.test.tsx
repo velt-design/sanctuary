@@ -163,7 +163,12 @@ describe('PlanViewport', () => {
               sourceType: 'pergola_reference',
               family: 'pergola',
               kind: 'outline',
-              metadata: { isCanonicalOutline: true },
+              metadata: {
+                isCanonicalOutline: true,
+                pergolaId: 'pergola-B',
+                renderRole: 'diagnostic_fallback',
+                fallbackReason: 'unresolved_host',
+              },
             }),
           ]}
           viewportTransform={IDENTITY_TRANSFORM}
@@ -173,9 +178,12 @@ describe('PlanViewport', () => {
 
       expect(markup).toContain('data-plan-shape-id="pergola_reference:pergola-B"');
       expect(markup).toContain('data-plan-shape-source-type="pergola_reference"');
+      expect(markup).toContain('data-plan-layer="diagnosticFallbacks"');
+      expect(markup).toContain('data-plan-diagnostic-fallback="true"');
       expect(markup).toContain('data-plan-pergola-fallback="true"');
       expect(markup).toContain('data-plan-pergola-fallback-count="1"');
       expect(markup).toContain('data-plan-pergola-fallback-ids="pergola-B"');
+      expect(markup).toContain('data-plan-diagnostic-fallback-count="1"');
       expect(markup).toContain('data-plan-hit-shape-id="pergola_reference:pergola-B"');
       expect(markup).toContain('data-plan-shape-target-kind="pergola"');
       expect(markup).toContain('data-plan-committed-body-count="2"');
@@ -203,9 +211,11 @@ describe('PlanViewport', () => {
         />,
       );
 
-      expect(markup).toContain('data-plan-context-line-count="1"');
+      expect(markup).toContain('data-plan-context-line-count="0"');
+      expect(markup).toContain('data-plan-diagnostic-fallback-count="1"');
       expect(markup).toContain('data-plan-hit-target-count="1"');
       expect(markup).toContain('data-plan-committed-body-count="0"');
+      expect(markup).toContain('data-plan-diagnostic-fallback="true"');
       expect(markup).toContain('data-plan-pergola-fallback="true"');
       expect(markup).toContain('data-plan-shape-source-type="pergola_reference"');
       expect(markup).toContain('data-plan-hit-shape-id="pergola_reference:pergola-B"');
@@ -232,7 +242,7 @@ describe('PlanViewport', () => {
       expect(markup).not.toContain('data-plan-hit-shape-id="house_reference:house-main"');
     });
 
-    it('reports house reference fallbacks and renders them as outline-only committed bodies', () => {
+    it('reports house reference fallbacks and renders them as outline-only diagnostic fallbacks', () => {
       const markup = renderToStaticMarkup(
         <PlanViewport
           artifact={makeArtifact([
@@ -253,6 +263,9 @@ describe('PlanViewport', () => {
 
       expect(markup).toContain('data-plan-visible-reference-fallback-count="1"');
       expect(markup).toContain('data-plan-visible-reference-fallback-ids="house_reference:house-form-fallback"');
+      expect(markup).toContain('data-plan-diagnostic-fallback-count="1"');
+      expect(markup).toContain('data-plan-diagnostic-fallback-ids="house_reference:house-form-fallback"');
+      expect(markup).toContain('data-plan-diagnostic-fallback="true"');
       expect(markup).toContain('data-plan-visible-reference-fallback="true"');
       expect(markup).toContain('data-plan-shape-source-type="house_reference"');
       expect(markup).toContain('data-plan-hit-shape-id="house_reference:house-form-fallback"');

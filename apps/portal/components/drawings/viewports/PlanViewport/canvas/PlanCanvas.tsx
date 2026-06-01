@@ -16,6 +16,7 @@ import { usePanZoom } from '../interactions/usePanZoom';
 import { useToolDispatcher } from '../tools/ToolDispatcher';
 import { PlanCommittedBodyLayer } from './layers/PlanCommittedBodyLayer';
 import { PlanContextLineLayer } from './layers/PlanContextLineLayer';
+import { PlanDiagnosticFallbackLayer } from './layers/PlanDiagnosticFallbackLayer';
 import { PlanDetailLayer } from './layers/PlanDetailLayer';
 import { PlanDimensionLayer } from './layers/PlanDimensionLayer';
 import { PlanEdgeDragPreviewLayer } from './layers/PlanEdgeDragPreviewLayer';
@@ -42,6 +43,7 @@ import { buildPlanLocalHoverItems } from './usePlanLocalHoverItems';
 import type { PlanRenderDiagnostics } from '@/lib/drawings/views/plan/planRenderDiagnostics';
 import type { ProjectHouseProjectionHealth } from '@/lib/drawings/state/projectHouseProjectionHealth';
 import type { ProjectPergolaRenderHealth } from '@/lib/drawings/state/projectObjectRenderPipeline';
+import { planShapeIsPergolaDiagnosticFallback } from '@/lib/drawings/views/plan/planShapeOwnership';
 
 const IDENTITY_TRANSFORM: DrawingWorkbenchViewportTransform = { zoom: 1, panX: 0, panY: 0 };
 
@@ -49,6 +51,7 @@ type PlanCanvasProps = {
   layout: PlanLayout;
   coordinateAdapter: PlanCoordinateAdapter;
   committedBodies: PlanRenderItem[];
+  diagnosticFallbackItems: PlanRenderItem[];
   contextLines: PlanRenderItem[];
   detailLines: PlanRenderItem[];
   hitTargetItems: PlanRenderItem[];
@@ -76,11 +79,6 @@ type PlanCanvasProps = {
   movePreview?: MoveToolPreview | null;
   /** World-coord polygon (mm) of the object being moved; used by PlanMovePreviewLayer. */
   movePreviewSourcePolygon?: ReadonlyArray<Point2> | null;
-  /**
-   * Faded fallback outlines for pergolas without full project-wide plan
-   * detail. Full valid pergolas render through committed bodies.
-   */
-  projectContextShapes?: ReadonlyArray<GeometryTopProjectionShape>;
   /** Active outline polygon used for hit-testing — passed in for the debug overlay. */
   activeOutlinePolygon?: ReadonlyArray<Point2> | null;
   transform: DrawingWorkbenchViewportTransform;
@@ -89,7 +87,6 @@ type PlanCanvasProps = {
 };
 
 const EMPTY_DIMENSIONS: ReadonlyArray<PlanDimension> = [];
-const EMPTY_PROJECT_CONTEXT_SHAPES: ReadonlyArray<GeometryTopProjectionShape> = [];
 const EMPTY_HOVER_HALO_ITEMS: PlanRenderItem[] = [];
 
 function transformAttr(transform: DrawingWorkbenchViewportTransform): string {
@@ -100,6 +97,7 @@ export function PlanCanvas({
   layout,
   coordinateAdapter,
   committedBodies,
+  diagnosticFallbackItems,
   contextLines,
   detailLines,
   hitTargetItems,
@@ -114,7 +112,6 @@ export function PlanCanvas({
   edgeDragHover = null,
   movePreview = null,
   movePreviewSourcePolygon = null,
-  projectContextShapes = EMPTY_PROJECT_CONTEXT_SHAPES,
   activeOutlinePolygon = null,
   transform,
   onTransformChange,
@@ -127,8 +124,9 @@ export function PlanCanvas({
     () =>
       Array.from(
         new Set(
-          projectContextShapes
-            .filter((shape) => shape.sourceType === 'pergola_reference')
+          diagnosticFallbackItems
+            .map((item) => item.shape)
+            .filter(planShapeIsPergolaDiagnosticFallback)
             .map((shape) =>
               typeof shape.metadata?.pergolaId === 'string'
                 ? shape.metadata.pergolaId
@@ -137,7 +135,11 @@ export function PlanCanvas({
             .filter((value): value is string => Boolean(value)),
         ),
       ).sort(),
-    [projectContextShapes],
+    [diagnosticFallbackItems],
+  );
+  const diagnosticFallbackIds = useMemo(
+    () => diagnosticFallbackItems.map((item) => item.shape.id).sort(),
+    [diagnosticFallbackItems],
   );
   const allHitTargetItems = hitTargetItems;
   const localHoverItems = useMemo(
@@ -145,9 +147,10 @@ export function PlanCanvas({
       buildPlanLocalHoverItems({
         hoveredShape,
         hitTargetItems: allHitTargetItems,
+        diagnosticFallbackItems,
         selectionHaloItems,
       }),
-    [allHitTargetItems, hoveredShape, selectionHaloItems],
+    [allHitTargetItems, diagnosticFallbackItems, hoveredShape, selectionHaloItems],
   );
 
   // Wrap the local hover handlers so we ALSO emit the full shape upward via
@@ -308,6 +311,8 @@ export function PlanCanvas({
         data-plan-render-status="ready"
         data-plan-screen-axis={screenAxisLabel}
         data-plan-committed-body-count={committedBodies.length}
+        data-plan-diagnostic-fallback-count={diagnosticFallbackItems.length}
+        data-plan-diagnostic-fallback-ids={diagnosticFallbackIds.join(',')}
         data-plan-context-line-count={contextLines.length}
         data-plan-detail-line-count={detailLines.length}
         data-plan-hit-target-count={allHitTargetItems.length}
@@ -337,6 +342,7 @@ export function PlanCanvas({
         <g transform={transformAttr(transform)} data-plan-transform="true">
           <PlanCommittedBodyLayer items={committedBodies} />
           <PlanContextLineLayer items={contextLines} />
+          <PlanDiagnosticFallbackLayer items={diagnosticFallbackItems} />
           <PlanDetailLayer items={detailLines} />
           <PlanSelectionHaloLayer items={selectionHaloItems} />
           <PlanHoverHaloLayer items={hoverHaloItems} />

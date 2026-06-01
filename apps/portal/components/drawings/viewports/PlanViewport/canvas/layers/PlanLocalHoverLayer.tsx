@@ -2,6 +2,9 @@ import lineweightStyles from '../planLineweights.module.css';
 import { svgPointsAttr, type PlanRenderItem } from '../planRenderItem';
 
 function localHoverClassName(item: PlanRenderItem): string {
+  if (item.layer === 'diagnosticFallbacks') {
+    return lineweightStyles.localDiagnosticHoverHalo;
+  }
   const isTerminalEnd =
     item.shape.kind === 'roof' && typeof item.shape.metadata?.openGableEndId === 'string';
   return isTerminalEnd

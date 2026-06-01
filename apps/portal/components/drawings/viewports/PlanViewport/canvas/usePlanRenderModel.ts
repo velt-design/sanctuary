@@ -28,6 +28,7 @@ export type PlanRenderModel = {
   layout: PlanLayout;
   adapter: PlanCoordinateAdapter;
   committedBodies: PlanRenderItem[];
+  diagnosticFallbackItems: PlanRenderItem[];
   contextLines: PlanRenderItem[];
   detailLines: PlanRenderItem[];
   hitTargetItems: PlanRenderItem[];
@@ -226,6 +227,7 @@ export function usePlanRenderModel({
       }));
     const renderGraph = buildProjectionPlanRenderGraph(visibleItems);
     const committedBodies = renderGraph.committedBodies as PlanRenderItem[];
+    const diagnosticFallbackItems = renderGraph.diagnosticFallbacks as PlanRenderItem[];
     const contextLines = renderGraph.contextLines as PlanRenderItem[];
     const detailLines = renderGraph.detailLines as PlanRenderItem[];
     const hitTargetItems = renderGraph.hitTargets as PlanRenderItem[];
@@ -267,6 +269,7 @@ export function usePlanRenderModel({
       layout,
       adapter,
       committedBodies,
+      diagnosticFallbackItems,
       contextLines,
       detailLines,
       hitTargetItems,

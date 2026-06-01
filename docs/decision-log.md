@@ -1433,3 +1433,19 @@ Current guardrail: unresolved pergola references flow through `projectPergolaFal
 Promoted to: None
 
 Related docs/tests: [apps/portal/lib/drawings/state/projectObjectRenderPipeline.ts](../apps/portal/lib/drawings/state/projectObjectRenderPipeline.ts), [apps/portal/lib/drawings/state/projectPergolaViewerScene.ts](../apps/portal/lib/drawings/state/projectPergolaViewerScene.ts), [apps/portal/lib/drawings/views/plan/planRenderGraph.test.ts](../apps/portal/lib/drawings/views/plan/planRenderGraph.test.ts), [playwright/portal.workbench-fixture.spec.ts](../playwright/portal.workbench-fixture.spec.ts).
+
+### 2026-06-01 - Workbench Rendering - First-Class Diagnostic Fallbacks
+
+Area: Workbench Rendering
+
+Status: Active
+
+Decision or mistake: diagnostic fallbacks are first-class render outputs. They must not live in committed body layers, hit-target paint, selection/hover chrome, or generic context overlays.
+
+Why it mattered: invalid/custom house roof projection fallbacks and unresolved pergola references were visually ambiguous. A `house_reference` fallback could look like selected-object chrome, while unresolved pergolas could either disappear or borrow generic context styling that was too faint to diagnose.
+
+Current guardrail: Plan render graph exposes `diagnosticFallbacks` separately from `committedBodies` and `hitTargets`; house reference fallbacks render as muted outline-only diagnostics; unresolved pergola fallbacks render as diagnostic Plan outlines and non-committed 3D reference lines with owner/reason metadata. Healthy geometry remains the only source of committed bodies.
+
+Promoted to: None
+
+Related docs/tests: [apps/portal/lib/drawings/views/plan/planRenderGraph.ts](../apps/portal/lib/drawings/views/plan/planRenderGraph.ts), [apps/portal/lib/drawings/views/plan/planDiagnosticFallbacks.ts](../apps/portal/lib/drawings/views/plan/planDiagnosticFallbacks.ts), [apps/portal/components/drawings/viewports/PlanViewport/canvas/layers/PlanDiagnosticFallbackLayer.tsx](../apps/portal/components/drawings/viewports/PlanViewport/canvas/layers/PlanDiagnosticFallbackLayer.tsx), [apps/portal/components/drawings/viewports/Geometry3DViewport/renderers/ReferenceLineObject.tsx](../apps/portal/components/drawings/viewports/Geometry3DViewport/renderers/ReferenceLineObject.tsx).

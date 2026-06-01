@@ -64,8 +64,9 @@ export type PlanViewportProps = {
   activeObjectRef?: WorkbenchObjectRef | null;
   dimensions?: ReadonlyArray<PlanDimension>;
   /**
-   * Faded fallback outlines for pergolas without full project-wide plan
-   * detail. Valid solved pergolas render via `projectPergolaPlanShapes`.
+   * Diagnostic fallback outlines for pergolas without healthy committed
+   * project-wide plan detail. Valid solved pergolas render via
+   * `projectPergolaPlanShapes`.
    */
   projectContextShapes?: ReadonlyArray<GeometryTopProjectionShape>;
   /**
@@ -81,9 +82,9 @@ export type PlanViewportProps = {
    */
   projectPergolaSnapShapes?: ReadonlyArray<GeometryTopProjectionShape>;
   /**
-   * Project-level house references promoted to committedBodies and hit
-   * targets. This gives every house form the same selection and move path,
-   * including the active pergola's host.
+   * Project-level house references and body shapes. House references become
+   * hit targets or diagnostic fallbacks; healthy roof bodies become committed
+   * visual geometry.
    */
   houseCommittedShapes?: ReadonlyArray<GeometryTopProjectionShape>;
   /** Solved-model diagnostics for each house form's project Plan projection. */
@@ -511,6 +512,7 @@ export default function PlanViewport({
           layout={renderModel.layout}
           coordinateAdapter={renderModel.adapter}
           committedBodies={renderModel.committedBodies}
+          diagnosticFallbackItems={renderModel.diagnosticFallbackItems}
           contextLines={renderModel.contextLines}
           detailLines={renderModel.detailLines}
           hitTargetItems={renderModel.hitTargetItems}
@@ -528,7 +530,6 @@ export default function PlanViewport({
           // outline's polygon (the same shape the selection halo wraps)
           // so the preview tracks what the user thinks they're moving.
           movePreviewSourcePolygon={activeOutlineForRender?.polygon ?? null}
-          projectContextShapes={projectContextShapes}
           activeOutlinePolygon={activeOutlineForRender?.polygon ?? null}
           transform={viewportTransform}
           onTransformChange={onViewportTransformChange}

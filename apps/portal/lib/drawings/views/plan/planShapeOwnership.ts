@@ -57,7 +57,9 @@ export function planShapeIsPergolaDiagnosticFallback(shape: GeometryTopProjectio
   return (
     shape.family === 'pergola' &&
     shape.sourceType === 'pergola_reference' &&
-    shape.kind === 'outline'
+    shape.kind === 'outline' &&
+    (shape.metadata?.renderRole === 'diagnostic_fallback' ||
+      typeof shape.metadata?.fallbackReason === 'string')
   );
 }
 

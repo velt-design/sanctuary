@@ -236,15 +236,15 @@ describe('planRenderGraph', () => {
       { shape: secondReferenceFootprint, marker: 'second-reference-footprint' },
     ]);
 
-    expect(graph.committedBodies.map((item) => item.marker)).toEqual([
-      'roof',
+    expect(graph.committedBodies.map((item) => item.marker)).toEqual(['roof']);
+    expect(graph.diagnosticFallbacks.map((item) => item.marker)).toEqual([
       'second-reference-footprint',
     ]);
     expect(graph.hitTargets.map((item) => item.marker)).toEqual(['second-reference-footprint']);
     expect(graph.suppressed.map((item) => item.marker)).toEqual(['primary-footprint']);
   });
 
-  it('keeps the canonical house_reference footprint as a visible fallback when there is no roof committed body', () => {
+  it('keeps the canonical house_reference footprint as a diagnostic fallback when there is no roof committed body', () => {
     const referenceFootprint = shape({
       id: 'house_reference:house-footprint',
       sourceObjectId: 'house-footprint',
@@ -258,7 +258,8 @@ describe('planRenderGraph', () => {
       { shape: referenceFootprint, marker: 'reference-footprint' },
     ]);
 
-    expect(graph.committedBodies.map((item) => item.marker)).toEqual(['reference-footprint']);
+    expect(graph.committedBodies.map((item) => item.marker)).toEqual([]);
+    expect(graph.diagnosticFallbacks.map((item) => item.marker)).toEqual(['reference-footprint']);
     expect(graph.hitTargets.map((item) => item.marker)).toEqual(['reference-footprint']);
     expect(graph.diagnostics.visibleReferenceFallbackIds).toEqual(['house_reference:house-footprint']);
     expect(graph.diagnostics.houses).toEqual([
@@ -303,7 +304,7 @@ describe('planRenderGraph', () => {
     ]);
   });
 
-  it('routes pergola_reference fallbacks to context and hit targets, not committed bodies', () => {
+  it('routes pergola_reference fallbacks to diagnostic fallbacks and hit targets, not committed bodies', () => {
     const fallback = shape({
       id: 'pergola_reference:pergola-2',
       sourceObjectId: 'pergola-2',
@@ -324,7 +325,8 @@ describe('planRenderGraph', () => {
     ]);
 
     expect(graph.committedBodies).toEqual([]);
-    expect(graph.contextLines.map((item) => item.marker)).toEqual(['fallback']);
+    expect(graph.contextLines).toEqual([]);
+    expect(graph.diagnosticFallbacks.map((item) => item.marker)).toEqual(['fallback']);
     expect(graph.hitTargets.map((item) => item.marker)).toEqual(['fallback']);
     expect(graph.suppressed).toEqual([]);
   });

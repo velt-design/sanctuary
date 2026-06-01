@@ -168,7 +168,7 @@ const LAYER_COLORS: Record<string, string> = {
   roof_cladding: "#d9c77b",
   roof_flashings: "#d8d2bd",
   house_roof_materials: "#f0f2f3",
-  project_pergola_fallbacks: "#8a8f95",
+  project_pergola_fallbacks: "#9b6a24",
   roof_planes: "#d4b35a",
   attachment_edge: "#bb4b4b",
 };

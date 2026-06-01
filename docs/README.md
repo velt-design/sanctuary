@@ -10,12 +10,13 @@ These docs are current-state references and active guardrails for coding agents.
 4. `change-routing.md`: path ownership, doc update triggers, and common task cards.
 5. `maintainability-principles.md`: repo-specific maintainability rules and failure modes.
 6. `portal-production-readiness.md`: active tracker for production-grade portal status, blockers, priorities, and parallel lanes.
-7. `architecture.md`: workspace structure and app/package ownership.
-8. `target-architecture.md`: target workspace shape and migration direction.
-9. `file-decomposition-and-ownership.md`: large-file ownership and early split guardrail.
-10. `code-retirement-and-bloat-control.md`: dead-code and dependency cleanup guardrail.
-11. `platform-workflow.md`: business workflow from lead to install completion.
-12. The feature doc for the area you are changing.
+7. `portal-ux-roadmap.md`: active roadmap for the highest-leverage staff usability work.
+8. `architecture.md`: workspace structure and app/package ownership.
+9. `target-architecture.md`: target workspace shape and migration direction.
+10. `file-decomposition-and-ownership.md`: large-file ownership and early split guardrail.
+11. `code-retirement-and-bloat-control.md`: dead-code and dependency cleanup guardrail.
+12. `platform-workflow.md`: business workflow from lead to install completion.
+13. The feature doc for the area you are changing.
 
 ## Canonical Reference Docs
 
@@ -24,6 +25,7 @@ These docs are current-state references and active guardrails for coding agents.
 | `agent-playbook.md` | Active protocol | You are doing non-trivial portal implementation, investigation, bugfix, or verification work. |
 | `change-routing.md` | Active protocol | You need path ownership, doc update triggers, common task cards, or docs bloat control before editing. |
 | `portal-production-readiness.md` | Active tracker | You need current portal production-readiness status, quality gates, blockers, priorities, or parallel work lanes. |
+| `portal-ux-roadmap.md` | Active roadmap | You are planning or prioritising portal usability work, workflow polish, visual hierarchy, or staff UX improvements. |
 | `repo-health-trends.md` | Advisory dashboard | You are choosing cleanup lanes, reviewing repo health pressure, or checking whether cleanup metrics are trending better or worse. |
 | `architecture.md` | Current | You need the repo map, app/package boundaries, or CI/script overview. |
 | `target-architecture.md` | Target contract | You need the north-star structure, target area map, target data path, or migration direction before expanding an area. |

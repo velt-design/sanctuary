@@ -1,5 +1,9 @@
 import type { GeometryTopProjectionShape } from '@sp/geometry';
 import {
+  comparePlanDiagnosticFallbackItems,
+  withDiagnosticFallbackLayer,
+} from './planDiagnosticFallbacks';
+import {
   planHouseFormOwner,
   planShapeIsHouseRoofBody,
   planShapeIsHouseRoofMaterialBody,
@@ -52,12 +56,6 @@ function compareCommittedBodyItems<TItem extends { shape: GeometryTopProjectionS
   );
 }
 
-function withCommittedBodyLayer<TItem extends { shape: GeometryTopProjectionShape }>(
-  item: ProjectionPlanGraphItem<TItem>,
-): ProjectionPlanGraphItem<TItem> {
-  return { ...item, layer: 'committedBodies' };
-}
-
 export function buildPlanCommittedBodyVisualStack<TItem extends { shape: GeometryTopProjectionShape }>(input: {
   committedBodies: ReadonlyArray<ProjectionPlanGraphItem<TItem>>;
   hitTargets: ReadonlyArray<ProjectionPlanGraphItem<TItem>>;
@@ -65,6 +63,7 @@ export function buildPlanCommittedBodyVisualStack<TItem extends { shape: Geometr
   topProjectionShapeAllowedInProjectionOnlyModel: (shape: GeometryTopProjectionShape) => boolean;
 }): {
   committedBodies: Array<ProjectionPlanGraphItem<TItem>>;
+  diagnosticFallbacks: Array<ProjectionPlanGraphItem<TItem>>;
   suppressedCommittedBodies: Array<ProjectionPlanGraphItem<TItem>>;
 } {
   const houseRoofOwners = new Set<string>();
@@ -86,7 +85,7 @@ export function buildPlanCommittedBodyVisualStack<TItem extends { shape: Geometr
   const projectionOnlyAllowed = (shape: GeometryTopProjectionShape): boolean =>
     !input.projectionOnlyModelSpace || input.topProjectionShapeAllowedInProjectionOnlyModel(shape);
 
-  const houseReferenceFallbackBodies = input.hitTargets
+  const houseReferenceFallbacks = input.hitTargets
     .filter(({ shape }) => {
       if (shape.family !== 'house' || shape.kind !== 'footprint') return false;
       if (shape.sourceType !== 'house_reference') return false;
@@ -97,10 +96,11 @@ export function buildPlanCommittedBodyVisualStack<TItem extends { shape: Geometr
       });
     })
     .filter(({ shape }) => projectionOnlyAllowed(shape))
-    .map(withCommittedBodyLayer);
+    .map(withDiagnosticFallbackLayer)
+    .sort(comparePlanDiagnosticFallbackItems);
 
-  const committedBodies = [
-    ...input.committedBodies.filter(({ shape }) => {
+  const committedBodies = input.committedBodies
+    .filter(({ shape }) => {
       if (!projectionOnlyAllowed(shape)) return false;
       if (
         houseRoofSolidHasMatchingRoofMaterial({
@@ -121,12 +121,12 @@ export function buildPlanCommittedBodyVisualStack<TItem extends { shape: Geometr
           hasUnownedRoof: hasUnownedHouseRoofCommittedBody,
         })
       );
-    }),
-    ...houseReferenceFallbackBodies,
-  ].sort(compareCommittedBodyItems);
+    })
+    .sort(compareCommittedBodyItems);
 
   return {
     committedBodies,
+    diagnosticFallbacks: houseReferenceFallbacks,
     suppressedCommittedBodies: input.committedBodies.filter((item) => !committedBodies.includes(item)),
   };
 }

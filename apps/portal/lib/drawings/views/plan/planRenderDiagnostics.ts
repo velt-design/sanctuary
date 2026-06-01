@@ -47,6 +47,7 @@ function collectHouseShape(input: {
   houses: Map<string, PlanHouseRenderDiagnostics>;
   shape: GeometryTopProjectionShape;
   visibleCommittedBody: boolean;
+  diagnosticFallback: boolean;
   hitTarget: boolean;
 }): void {
   const houseFormId = planHouseFormOwner(input.shape);
@@ -55,7 +56,7 @@ function collectHouseShape(input: {
 
   if (input.shape.sourceType === 'house_reference') {
     pushUnique(house.referenceIds, input.shape.id);
-    if (input.visibleCommittedBody && planShapeIsVisibleHouseReferenceFallback(input.shape)) {
+    if (input.diagnosticFallback && planShapeIsVisibleHouseReferenceFallback(input.shape)) {
       pushUnique(house.visibleReferenceFallbackIds, input.shape.id);
     }
   }
@@ -72,6 +73,7 @@ function collectHouseShape(input: {
 
 export function buildPlanRenderDiagnostics<TItem extends { shape: GeometryTopProjectionShape }>(input: {
   committedBodies: ReadonlyArray<ProjectionPlanGraphItem<TItem>>;
+  diagnosticFallbacks: ReadonlyArray<ProjectionPlanGraphItem<TItem>>;
   hitTargets: ReadonlyArray<ProjectionPlanGraphItem<TItem>>;
 }): PlanRenderDiagnostics {
   const houses = new Map<string, PlanHouseRenderDiagnostics>();
@@ -81,6 +83,16 @@ export function buildPlanRenderDiagnostics<TItem extends { shape: GeometryTopPro
       houses,
       shape: item.shape,
       visibleCommittedBody: true,
+      diagnosticFallback: false,
+      hitTarget: false,
+    });
+  }
+  for (const item of input.diagnosticFallbacks) {
+    collectHouseShape({
+      houses,
+      shape: item.shape,
+      visibleCommittedBody: false,
+      diagnosticFallback: true,
       hitTarget: false,
     });
   }
@@ -89,6 +101,7 @@ export function buildPlanRenderDiagnostics<TItem extends { shape: GeometryTopPro
       houses,
       shape: item.shape,
       visibleCommittedBody: false,
+      diagnosticFallback: false,
       hitTarget: true,
     });
   }

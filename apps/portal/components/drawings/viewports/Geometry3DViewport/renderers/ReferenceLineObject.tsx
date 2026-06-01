@@ -22,6 +22,9 @@ export function ReferenceLineObject({
   onFocus: (id: string) => void;
   clippingPlanes: THREE.Plane[];
 }) {
+  const isDiagnosticFallback =
+    (object as { metadata?: { renderRole?: unknown } }).metadata?.renderRole ===
+    "diagnostic_fallback";
   const geometry = useMemo(
     () => buildLineGeometry(linePoints(object.line)),
     [object.line],
@@ -39,7 +42,13 @@ export function ReferenceLineObject({
       }}
     >
       <primitive attach="geometry" object={geometry} />
-      <lineBasicMaterial color={color} clippingPlanes={clippingPlanes} />
+      <lineBasicMaterial
+        color={isDiagnosticFallback ? "#9b6a24" : color}
+        clippingPlanes={clippingPlanes}
+        depthTest={!isDiagnosticFallback}
+        opacity={isDiagnosticFallback ? 0.95 : 1}
+        transparent={isDiagnosticFallback}
+      />
     </line>
   );
 }
