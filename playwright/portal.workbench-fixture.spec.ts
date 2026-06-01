@@ -7,9 +7,12 @@ import {
   hoverPlanHitTarget,
   openWorkbenchFixture,
   readCommittedBodyShapeIdsInPaintOrder,
+  readCommittedPergolaBodyIds,
+  read3DPergolaRenderHealth,
   readHouseHitTargetIds,
   readPlanHouseProjectionHealth,
   readPlanHouseRenderDiagnostics,
+  readPlanPergolaRenderHealth,
   readPlanLocalHoverIds,
   readPlanSelectionIds,
   readVisibleHouseBodyIds,
@@ -34,6 +37,8 @@ test.describe('workbench fixture route', () => {
     await selectRailObject(page, 'pergolas', 'pergola-1');
     const pergolaOneHouseBodyIds = await readVisibleHouseBodyIds(page);
     const pergolaOnePergolaShapeIds = await readVisiblePergolaShapeIds(page);
+    const pergolaOneCommittedPergolaBodyIds = await readCommittedPergolaBodyIds(page);
+    const pergolaOnePergolaRenderHealth = await readPlanPergolaRenderHealth(page);
     const pergolaOneHouseHitTargetIds = await readHouseHitTargetIds(page);
     const pergolaOneReferenceFallbackIds = await readVisibleHouseReferenceFallbackIds(page);
     const pergolaOneDiagnostics = await readPlanHouseRenderDiagnostics(page);
@@ -73,15 +78,38 @@ test.describe('workbench fixture route', () => {
     );
     expect(pergolaOnePergolaShapeIds.some((id) => id.includes('pergola-1'))).toBe(true);
     expect(pergolaOnePergolaShapeIds.some((id) => id.includes('pergola-2'))).toBe(true);
+    expect(pergolaOneCommittedPergolaBodyIds.some((id) => id.includes('pergola-1'))).toBe(true);
+    expect(
+      pergolaOneCommittedPergolaBodyIds.some((id) => id.startsWith('project_pergola:pergola-2:')),
+    ).toBe(false);
+    expect(pergolaOnePergolaRenderHealth).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          pergolaId: 'pergola-1',
+          canRenderCommittedBody: true,
+          suppressedCommittedBodyReason: 'none',
+        }),
+        expect.objectContaining({
+          pergolaId: 'pergola-2',
+          canRenderCommittedBody: false,
+          hostAttachmentStatus: 'unresolved',
+          suppressedCommittedBodyReason: 'unresolved_host',
+        }),
+      ]),
+    );
 
     await selectRailObject(page, 'pergolas', 'pergola-2');
     const pergolaTwoHouseBodyIds = await readVisibleHouseBodyIds(page);
     const pergolaTwoPergolaShapeIds = await readVisiblePergolaShapeIds(page);
+    const pergolaTwoCommittedPergolaBodyIds = await readCommittedPergolaBodyIds(page);
+    const pergolaTwoPergolaRenderHealth = await readPlanPergolaRenderHealth(page);
     const pergolaTwoHouseHitTargetIds = await readHouseHitTargetIds(page);
     const pergolaTwoReferenceFallbackIds = await readVisibleHouseReferenceFallbackIds(page);
     const pergolaTwoProjectionHealth = await readPlanHouseProjectionHealth(page);
     expect(pergolaTwoHouseBodyIds).toEqual(pergolaOneHouseBodyIds);
     expect(pergolaTwoPergolaShapeIds).toEqual(pergolaOnePergolaShapeIds);
+    expect(pergolaTwoCommittedPergolaBodyIds).toEqual(pergolaOneCommittedPergolaBodyIds);
+    expect(pergolaTwoPergolaRenderHealth).toEqual(pergolaOnePergolaRenderHealth);
     expect(pergolaTwoHouseHitTargetIds).toEqual(pergolaOneHouseHitTargetIds);
     expect(pergolaTwoReferenceFallbackIds).toEqual(pergolaOneReferenceFallbackIds);
     expect(pergolaTwoProjectionHealth).toEqual(pergolaOneProjectionHealth);
@@ -151,7 +179,25 @@ test.describe('workbench fixture route', () => {
     await switchWorkbenchMode(page, '3D Review');
     await selectRailObject(page, 'pergolas', 'pergola-1');
     await expect3DViewportEvidence(page);
+    expect(await read3DPergolaRenderHealth(page)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          pergolaId: 'pergola-2',
+          canRenderCommittedBody: false,
+          suppressedCommittedBodyReason: 'unresolved_host',
+        }),
+      ]),
+    );
     await selectRailObject(page, 'pergolas', 'pergola-2');
     await expect3DViewportEvidence(page);
+    expect(await read3DPergolaRenderHealth(page)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          pergolaId: 'pergola-2',
+          canRenderCommittedBody: false,
+          suppressedCommittedBodyReason: 'unresolved_host',
+        }),
+      ]),
+    );
   });
 });

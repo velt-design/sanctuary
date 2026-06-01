@@ -93,6 +93,11 @@ export default function WorkbenchDiagnosticsPanel({
       `${health.houseFormId}: model ${health.modelPresent ? 'yes' : 'no'}, roof ${health.roofBodyCount}, material ${health.roofMaterialBodyCount}, fallback ${health.visibleReferenceFallbackIds.length}`,
     )
     .join(' | ') || 'none';
+  const pergolaRenderHealthLabel = diagnostics.projectPergolaRenderHealth
+    .map((health) =>
+      `${health.pergolaId || health.moduleId}: ${health.canRenderCommittedBody ? 'committed' : health.suppressedCommittedBodyReason}, host ${health.hostAttachmentStatus}, plan ${health.planBodyCount}, 3D ${health.sceneBodyCount}`,
+    )
+    .join(' | ') || 'none';
 
   return (
     <section className={styles.moduleSection}>
@@ -131,6 +136,10 @@ export default function WorkbenchDiagnosticsPanel({
         <div className={styles.diagnosticRow}>
           <span className={styles.diagnosticLabel}>Pergolas</span>
           <span className={styles.diagnosticValue}>{diagnostics.pergolaCount}</span>
+        </div>
+        <div className={styles.diagnosticRow}>
+          <span className={styles.diagnosticLabel}>Pergola render health</span>
+          <span className={styles.diagnosticValue}>{pergolaRenderHealthLabel}</span>
         </div>
         <div className={styles.diagnosticRow}>
           <span className={styles.diagnosticLabel}>Deck count</span>

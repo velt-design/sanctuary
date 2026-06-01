@@ -57,6 +57,7 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 | 2026-05-31 | Workbench House Forms | Active | PR-2B.1b.3o: roof intent writes must be object-id addressed. Roof controls and plan terminal-end toggles must carry `houseFormId` and must not fall back to the first house form. |
 | 2026-05-31 | Workbench House Forms | Active | PR-2B.1b.3r: selected-object status must be nullable and keyed by explicit object id. Project/row status may list every house form, but selected-house inspector, trust, diagnostics, and overlay status must not fall back to the first house form. |
 | 2026-05-31 | Workbench Actions | Active | PR-2B.1b.3s: action context must be nullable and object-owned. Deck/opening/pergola/house action paths resolve house context from the target object's owner id, never from House 1 or the active module. |
+| 2026-06-01 | Workbench Rendering | Active | PR-2B.1b.3t: project render surfaces may show committed bodies only for object-owned healthy geometry. Invalid or unresolved object-first pergolas must render as reference/diagnostic fallbacks, not normal Plan/3D bodies. |
 | 2026-05-01 | Plan Rendering | Promoted | Geometry-ready Model Space is a hard top-projection-only render path; legacy/context/reference/opening overlays stay out of normal visuals. |
 | 2026-05-01 | Design Workbench Architecture | Promoted | Split workbench ownership contract-first: coordinate adapters and render graphs leave React presenters before moving tools/renderers. |
 | 2026-05-01 | Deck Interaction | Promoted | Projection-backed deck snapping must use top-projection frames live and object frames only at the commit boundary. |
@@ -1399,3 +1400,19 @@ Current guardrail: selected house actions resolve by selected `houseFormId`; dec
 Promoted to: None
 
 Related docs/tests: [apps/portal/app/staff/projects/[projectId]/design-workbench/objectWorkbenchActionContext.ts](../apps/portal/app/staff/projects/%5BprojectId%5D/design-workbench/objectWorkbenchActionContext.ts), [apps/portal/app/staff/projects/[projectId]/design-workbench/useObjectWorkbenchActions.ts](../apps/portal/app/staff/projects/%5BprojectId%5D/design-workbench/useObjectWorkbenchActions.ts), [apps/portal/app/staff/projects/[projectId]/design-workbench/commitOutlineEdit.ts](../apps/portal/app/staff/projects/%5BprojectId%5D/design-workbench/commitOutlineEdit.ts), [apps/portal/app/staff/projects/[projectId]/design-workbench/objectWorkbenchActionContext.test.ts](../apps/portal/app/staff/projects/%5BprojectId%5D/design-workbench/objectWorkbenchActionContext.test.ts).
+
+### 2026-06-01 - Workbench Rendering - Project Object Render Health
+
+Area: Workbench Rendering
+
+Status: Active
+
+Decision or mistake: project render surfaces may only show committed bodies for object-owned healthy geometry. Invalid or unresolved object-first pergolas must stay visible as reference/diagnostic fallback only; they must not be painted into Plan/3D as normal pergola roof/panel/post bodies.
+
+Why it mattered: the multi-object fixture showed an unresolved Pergola 2 still producing committed Plan and 3D geometry by way of coexist solve outputs. That made the UI look like a Plan overlay bug, but the real ambiguity was upstream: render consumers could not tell whether a body was healthy committed geometry or a fallback solve artifact.
+
+Current guardrail: project rendering flows through `buildProjectObjectRenderPipeline`, which emits project Plan projection, per-house projection health, per-pergola render health, and gated Plan/3D body sources. Persisted module-backed pergolas keep their coexist render path, but transient object-first pergolas with unresolved hosts are suppressed from committed body layers and named by id in diagnostics.
+
+Promoted to: None
+
+Related docs/tests: [apps/portal/lib/drawings/state/projectObjectRenderPipeline.ts](../apps/portal/lib/drawings/state/projectObjectRenderPipeline.ts), [apps/portal/lib/drawings/state/projectObjectRenderPipeline.test.ts](../apps/portal/lib/drawings/state/projectObjectRenderPipeline.test.ts), [apps/portal/lib/drawings/state/workbenchSolvedModel.ts](../apps/portal/lib/drawings/state/workbenchSolvedModel.ts), [playwright/portal.workbench-fixture.spec.ts](../playwright/portal.workbench-fixture.spec.ts).

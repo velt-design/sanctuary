@@ -109,6 +109,7 @@ export function buildProjectPergolaViewerSceneFromModules(input: {
   basisScene: ViewerSceneModel;
   modules: ReadonlyArray<ProjectPergolaViewerSceneSource>;
   projectHouseGeometries: ReadonlyArray<ProjectHouseViewerSceneSource>;
+  projectPergolaRenderHealth?: ReadonlyArray<unknown>;
 }): ViewerSceneModel {
   const layerById = new Map<string, ViewerSceneLayer>();
   const layerOrder: string[] = [];
@@ -164,6 +165,7 @@ export function buildProjectPergolaViewerSceneFromModules(input: {
       ...(input.basisScene.metadata ?? {}),
       projectPergolaSceneCount: seenPergolaIds.size,
       projectPergolaSceneIds: Array.from(seenPergolaIds).join(','),
+      projectPergolaRenderHealth: JSON.stringify(input.projectPergolaRenderHealth ?? []),
     },
   };
 }

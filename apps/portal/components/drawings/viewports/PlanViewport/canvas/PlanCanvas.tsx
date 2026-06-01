@@ -42,6 +42,7 @@ import type { PlanRenderItem } from './planRenderItem';
 import { buildPlanLocalHoverItems } from './usePlanLocalHoverItems';
 import type { PlanRenderDiagnostics } from '@/lib/drawings/views/plan/planRenderDiagnostics';
 import type { ProjectHouseProjectionHealth } from '@/lib/drawings/state/projectHouseProjectionHealth';
+import type { ProjectPergolaRenderHealth } from '@/lib/drawings/state/projectObjectRenderPipeline';
 
 const IDENTITY_TRANSFORM: DrawingWorkbenchViewportTransform = { zoom: 1, panX: 0, panY: 0 };
 
@@ -61,6 +62,7 @@ type PlanCanvasProps = {
   hoverHaloItems?: PlanRenderItem[];
   diagnostics: PlanRenderDiagnostics;
   projectHouseProjectionHealth?: ReadonlyArray<ProjectHouseProjectionHealth>;
+  projectPergolaRenderHealth?: ReadonlyArray<ProjectPergolaRenderHealth>;
   /**
    * Fires when the local pointer enters or leaves a top-projection shape.
    * Receives the full shape on enter, `null` on leave. Used by PlanViewport
@@ -106,6 +108,7 @@ export function PlanCanvas({
   hoverHaloItems = EMPTY_HOVER_HALO_ITEMS,
   diagnostics,
   projectHouseProjectionHealth = [],
+  projectPergolaRenderHealth = [],
   onHoverShape,
   dimensions = EMPTY_DIMENSIONS,
   edgeDragPreview = null,
@@ -313,6 +316,8 @@ export function PlanCanvas({
         data-plan-house-render-diagnostics={JSON.stringify(diagnostics.houses)}
         data-plan-house-projection-health={JSON.stringify(projectHouseProjectionHealth)}
         data-plan-house-projection-health-count={projectHouseProjectionHealth.length}
+        data-plan-pergola-render-health={JSON.stringify(projectPergolaRenderHealth)}
+        data-plan-pergola-render-health-count={projectPergolaRenderHealth.length}
         data-plan-selection-halo-count={selectionHaloItems.length}
         data-plan-dimension-count={dimensions.length}
         data-plan-hover-shape-id={hoveredShape?.shapeId ?? ''}

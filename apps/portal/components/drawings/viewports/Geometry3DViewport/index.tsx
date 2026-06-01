@@ -1501,7 +1501,6 @@ export default function Geometry3DViewport({
             </div>
           </aside>
         ) : null}
-
         <div
           aria-hidden="true"
           className={styles.viewportDiagnostics}
@@ -1529,6 +1528,7 @@ export default function Geometry3DViewport({
           data-house-opening-rendered-marker-count={String(houseOpeningDiagnostics.renderedMarkerCount)}
           data-house-opening-skipped-invalid-count={String(houseOpeningDiagnostics.skippedInvalidCount)}
           data-house-opening-unresolved-valid-count={String(houseOpeningDiagnostics.unresolvedValidCount)}
+          data-project-pergola-render-health={String(scene?.metadata?.projectPergolaRenderHealth ?? "[]")}
           data-top-view-screen-axis={cameraState.viewPreset === "top" ? "world_x_left_world_y_down" : ""}
           data-clipping-enabled={String(sectionCut.enabled)}
           data-selected-object-id={selectedObjectId ?? ""}

@@ -29,6 +29,7 @@ import type {
   WorkbenchViewportGeometry,
 } from '@/lib/drawings/state/workbenchSolvedModel';
 import type { ProjectHouseProjectionHealth } from '@/lib/drawings/state/projectHouseProjectionHealth';
+import type { ProjectPergolaRenderHealth } from '@/lib/drawings/state/projectObjectRenderPipeline';
 import type { Geometry3DViewportState } from '@/components/drawings/viewports/Geometry3DViewport';
 import type {
   EdgeDragCommit,
@@ -123,6 +124,8 @@ type DrawingWorkbenchProps = {
   houseCommittedShapes?: ReadonlyArray<GeometryTopProjectionShape>;
   /** Solved-model diagnostics for each house form's project Plan projection. */
   projectHouseProjectionHealth?: ReadonlyArray<ProjectHouseProjectionHealth>;
+  /** Solved-model diagnostics for project pergola render eligibility. */
+  projectPergolaRenderHealth?: ReadonlyArray<ProjectPergolaRenderHealth>;
   /** Project-level house models used as wall/eave snap sources. */
   projectHouseSnapSources?: ReadonlyArray<ProjectHouseSnapSource>;
   /** Cross-viewport hover state (milestone 16). Pass-through to viewports. */
@@ -189,6 +192,7 @@ export default function DrawingWorkbench({
   projectPergolaSnapShapes,
   houseCommittedShapes,
   projectHouseProjectionHealth,
+  projectPergolaRenderHealth,
   projectHouseSnapSources,
   hoveredObjectRef,
   onHoverObjectChange,
@@ -259,6 +263,7 @@ export default function DrawingWorkbench({
         projectPergolaSnapShapes={projectPergolaSnapShapes}
         houseCommittedShapes={houseCommittedShapes}
         projectHouseProjectionHealth={projectHouseProjectionHealth}
+        projectPergolaRenderHealth={projectPergolaRenderHealth}
         projectHouseSnapSources={projectHouseSnapSources}
         hoveredObjectRef={hoveredObjectRef}
         onHoverObjectChange={onHoverObjectChange}

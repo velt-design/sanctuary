@@ -347,6 +347,7 @@ export default function DesignWorkbenchFixtureClient({
             projectPergolaSnapShapes={projectPergolaSnapShapes}
             houseCommittedShapes={houseCommittedShapes}
             projectHouseProjectionHealth={store.derived.solvedModel.projectHouseProjectionHealth}
+            projectPergolaRenderHealth={store.derived.solvedModel.projectPergolaRenderHealth}
             projectHouseSnapSources={projectHouseSnapSources}
             hoveredObjectRef={hoveredObjectRef}
             onHoverObjectChange={setHoveredObjectRef}

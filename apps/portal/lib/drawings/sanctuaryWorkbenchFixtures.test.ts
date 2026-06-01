@@ -84,6 +84,13 @@ describe('sanctuary workbench fixtures', () => {
     expect(objectFirst?.pergolas.map((pergola) => pergola.id)).toEqual(['pergola-1', 'pergola-2']);
     expect(store.derived.houseForms.map((houseForm) => houseForm.id)).toEqual(['house-main', 'house-form-2']);
     expect(store.derived.objectWorkbench.pergolas.map((pergola) => pergola.id)).toEqual(['pergola-1', 'pergola-2']);
+    expect(store.derived.solvedModel.projectPergolaRenderHealth.find(
+      (health) => health.pergolaId === 'pergola-2',
+    )).toMatchObject({
+      canRenderCommittedBody: false,
+      suppressedCommittedBodyReason: 'unresolved_host',
+      hostAttachmentCode: 'missing_attachment_edge',
+    });
     expect(store.derived.solvedModel.projectHouseGeometries.map((entry) => entry.houseFormId)).toEqual([
       'house-main',
       'house-form-2',

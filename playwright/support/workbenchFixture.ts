@@ -78,10 +78,34 @@ export async function readPlanHouseProjectionHealth(page: Page): Promise<Array<{
   return JSON.parse(raw);
 }
 
+export async function readPlanPergolaRenderHealth(page: Page): Promise<Array<{
+  pergolaId: string;
+  moduleId: string;
+  sourceKind: string;
+  solveStatus: string;
+  hostAttachmentStatus: string;
+  hostAttachmentCode: string | null;
+  planBodyCount: number;
+  sceneBodyCount: number;
+  canRenderCommittedBody: boolean;
+  suppressedCommittedBodyReason: string;
+}>> {
+  const raw = await page.locator('[data-plan-viewport="true"]').getAttribute('data-plan-pergola-render-health');
+  if (!raw) return [];
+  return JSON.parse(raw);
+}
+
 export async function readVisiblePergolaShapeIds(page: Page): Promise<string[]> {
   return readPlanShapeIds(
     page,
     '[data-plan-shape-family="pergola"][data-plan-shape-id]',
+  );
+}
+
+export async function readCommittedPergolaBodyIds(page: Page): Promise<string[]> {
+  return readPlanShapeIds(
+    page,
+    '[data-plan-layer="committedBodies"] [data-plan-shape-family="pergola"][data-plan-shape-id]',
   );
 }
 
@@ -173,4 +197,24 @@ export async function expect3DViewportEvidence(page: Page) {
   const box = await shell.boundingBox();
   expect(box?.width ?? 0).toBeGreaterThan(100);
   expect(box?.height ?? 0).toBeGreaterThan(100);
+}
+
+export async function read3DPergolaRenderHealth(page: Page): Promise<Array<{
+  pergolaId: string;
+  moduleId: string;
+  sourceKind: string;
+  solveStatus: string;
+  hostAttachmentStatus: string;
+  hostAttachmentCode: string | null;
+  planBodyCount: number;
+  sceneBodyCount: number;
+  canRenderCommittedBody: boolean;
+  suppressedCommittedBodyReason: string;
+}>> {
+  const raw = await page
+    .locator('[data-testid="geometry-3d-viewport-diagnostics"]')
+    .first()
+    .getAttribute('data-project-pergola-render-health');
+  if (!raw) return [];
+  return JSON.parse(raw);
 }

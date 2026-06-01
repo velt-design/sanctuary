@@ -35,6 +35,7 @@ import {
 } from './workbenchSolvedModel';
 import { deriveHouseFormRoofIntentForFootprint } from './houseFormRoofIntentForFootprint';
 import type { ProjectHouseProjectionHealth } from './projectHouseProjectionHealth';
+import type { ProjectPergolaRenderHealth } from './projectObjectRenderPipeline';
 
 // PR-T9 (2026-05-29): `label`, `kind`, `elevationMode` removed.
 export type ObjectWorkbenchDeckPatch = Partial<
@@ -205,6 +206,7 @@ export type ObjectWorkbenchDiagnosticsModel = {
   activeTrustLabel: string;
   roof: ObjectWorkbenchRoofInspectorModel;
   projectHouseProjectionHealth: ProjectHouseProjectionHealth[];
+  projectPergolaRenderHealth: ProjectPergolaRenderHealth[];
 };
 
 export type ObjectWorkbenchInspectorFacade = {
@@ -226,6 +228,7 @@ type BuildObjectWorkbenchInspectorFacadeInput = {
   pergolaAttachmentResolutions: Map<string, ObjectFirstPergolaAttachmentResolution>;
   projectModel: ObjectFirstWorkbenchProjectModel;
   projectHouseProjectionHealth?: ReadonlyArray<ProjectHouseProjectionHealth>;
+  projectPergolaRenderHealth?: ReadonlyArray<ProjectPergolaRenderHealth>;
   status: ObjectWorkbenchStatusFacade;
 };
 
@@ -457,6 +460,7 @@ function buildDiagnostics(input: {
   houseFormContext: ObjectWorkbenchHouseFormInspectorModel;
   pergolas: ObjectWorkbenchPergolaInspectorModel[];
   projectHouseProjectionHealth: ReadonlyArray<ProjectHouseProjectionHealth>;
+  projectPergolaRenderHealth: ReadonlyArray<ProjectPergolaRenderHealth>;
   status: ObjectWorkbenchStatusFacade;
 }): ObjectWorkbenchDiagnosticsModel {
   const { activeDeck, activeOpening, houseAssembly, houseFormContext, pergolas } = input;
@@ -493,6 +497,7 @@ function buildDiagnostics(input: {
     activeTrustLabel: buildTrustLabel(input.activeTrust.status),
     roof: houseFormContext.roof,
     projectHouseProjectionHealth: [...input.projectHouseProjectionHealth],
+    projectPergolaRenderHealth: [...input.projectPergolaRenderHealth],
   };
 }
 
@@ -504,6 +509,7 @@ export function buildObjectWorkbenchInspectorFacade({
   pergolaAttachmentResolutions,
   projectModel,
   projectHouseProjectionHealth = [],
+  projectPergolaRenderHealth = [],
   status,
 }: BuildObjectWorkbenchInspectorFacadeInput): ObjectWorkbenchInspectorFacade {
   const houseForms = projectModel.houseAssembly?.houseForms ?? [];
@@ -571,6 +577,7 @@ export function buildObjectWorkbenchInspectorFacade({
     houseFormContext,
     pergolas,
     projectHouseProjectionHealth,
+    projectPergolaRenderHealth,
     status,
   });
 

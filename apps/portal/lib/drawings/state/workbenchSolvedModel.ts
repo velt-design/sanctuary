@@ -1,6 +1,5 @@
 import {
   buildAssemblyQuantityTakeoff,
-  buildProjectReferenceShapes,
   buildTopProjectionViewModelFromScene,
   buildViewerSceneModel,
   type Assembly3D,
@@ -12,7 +11,6 @@ import {
   type GeometryTopProjectionViewModel,
   type GeometryValidationReport,
   type HouseModel3D,
-  type ProjectPergolaEntry,
   type RawGeometryModuleInput,
   type ViewerSceneModel,
   validateGeometrySolve,
@@ -50,13 +48,15 @@ import {
   buildProjectHouseGeometryRegistry,
   type ProjectHouseGeometryEntry,
 } from './projectHouseGeometryRegistry';
-import { buildProjectPergolaPlanShapesFromModules } from './projectPergolaPlanShapes';
-import { buildProjectPlanProjection } from './projectPlanProjection';
 import {
-  buildProjectHouseProjectionHealth,
+  buildProjectGeometryPreviewFromModules,
+  buildProjectObjectRenderPipeline,
+  resolveProjectReadyBasisModule,
+  type ProjectPergolaRenderHealth,
+} from './projectObjectRenderPipeline';
+import {
   type ProjectHouseProjectionHealth,
 } from './projectHouseProjectionHealth';
-import { buildProjectPergolaViewerSceneFromModules } from './projectPergolaViewerScene';
 import {
   buildObjectFirstPergolaSolveSources,
 } from './objectFirstPergolaSolveSources';
@@ -205,6 +205,12 @@ export type WorkbenchSolvedModel = {
    */
   projectPergolaPlanShapes: GeometryTopProjectionShape[];
   /**
+   * Project-level render health for pergolas. Committed project render bodies
+   * are allowed only for object-owned healthy pergola geometry; unresolved or
+   * invalid pergolas remain as reference/diagnostic fallbacks.
+   */
+  projectPergolaRenderHealth: ProjectPergolaRenderHealth[];
+  /**
    * Project-level diagnostics for each house form's Plan projection chain.
    * This records whether the form has a canonical reference, solved 3D model,
    * roof planes, roof-material Plan bodies, and any visible reference fallback.
@@ -318,6 +324,7 @@ export type WorkbenchSolvedProject = {
   activePergola: SolvedPergola | null;
   projectHouseGeometries: ProjectHouseGeometryEntry[];
   projectPergolaPlanShapes: GeometryTopProjectionShape[];
+  projectPergolaRenderHealth: ProjectPergolaRenderHealth[];
   projectHouseProjectionHealth: ProjectHouseProjectionHealth[];
   projectPlanProjection: GeometryTopProjectionViewModel | null;
   projectViewportGeometry: WorkbenchViewportGeometry | null;
@@ -870,52 +877,6 @@ function buildWorkbenchViewportGeometry(input: {
   };
 }
 
-function resolveProjectReadyBasisModule(input: {
-  modules: ReadonlyArray<WorkbenchSolvedModule>;
-  activeModule: WorkbenchSolvedModule | null;
-}): WorkbenchSolvedModule | null {
-  const activeReady = input.activeModule?.geometryArtifact ? input.activeModule : null;
-  return activeReady ?? input.modules.find((module) => module.geometryArtifact) ?? null;
-}
-
-function buildProjectGeometryPreviewFromModules(input: {
-  modules: ReadonlyArray<WorkbenchSolvedModule>;
-  activeModule: WorkbenchSolvedModule | null;
-  projectHouseGeometries: ReadonlyArray<ProjectHouseGeometryEntry>;
-  fallbackMessage?: string;
-}): GeometryPreviewState {
-  const readyModules = input.modules.filter(
-    (module) => module.geometryPreview.kind === 'ready' && module.viewerScene,
-  );
-  const basisModule = resolveProjectReadyBasisModule(input);
-  if (!basisModule || basisModule.geometryPreview.kind !== 'ready') {
-    return (
-      input.activeModule?.viewportGeometry.preview ?? {
-        kind: 'error',
-        message: input.fallbackMessage ?? 'No project 3D geometry preview is available.',
-      }
-    );
-  }
-
-  const uniqueReadyPergolaIds = new Set(
-    readyModules
-      .map((module) => module.moduleInput.pergolaId)
-      .filter((pergolaId): pergolaId is string => Boolean(pergolaId)),
-  );
-  if (uniqueReadyPergolaIds.size <= 1) {
-    return basisModule.geometryPreview;
-  }
-
-  return {
-    ...basisModule.geometryPreview,
-    scene: buildProjectPergolaViewerSceneFromModules({
-      basisScene: basisModule.geometryPreview.scene,
-      modules: readyModules,
-      projectHouseGeometries: input.projectHouseGeometries,
-    }),
-  };
-}
-
 function buildInvalidSolvedModule(input: {
   index: number;
   drawingModule: EstimateDrawingModule;
@@ -1316,29 +1277,21 @@ export function buildWorkbenchSolvedModel(input: {
     ? modules.find((module) => module.moduleInput.pergolaId === input.activePergolaId) ?? null
     : modules[input.activeModuleIndex ?? 0] ?? null;
   const inactiveMessage = activeModule ? null : resolveInactiveSolvedModelMessage(input);
-  const projectReferenceShapes = buildProjectReferenceShapesFromModules(
+  const projectRenderPipeline = buildProjectObjectRenderPipeline({
+    projectModel,
     modules,
     projectHouseGeometries,
-  );
-  const projectPergolaPlanShapes = buildProjectPergolaPlanShapesFromModules(modules);
-  const projectPlanProjection = buildProjectPlanProjection({
-    projectHouseGeometries,
-    projectPergolaPlanShapes,
-    projectReferenceShapes,
-  });
-  const projectHouseProjectionHealth = buildProjectHouseProjectionHealth({
-    houseFormIds: projectModel.houseAssembly?.houseForms.map((houseForm) => houseForm.id) ?? [],
-    projectHouseGeometries,
-    projectPlanProjection,
   });
   const projectViewportGeometry = resolveProjectReadyBasisModule({
     modules,
     activeModule,
+    projectPergolaRenderHealth: projectRenderPipeline.projectPergolaRenderHealth,
   })?.viewportGeometry ?? null;
   const projectGeometryPreview = buildProjectGeometryPreviewFromModules({
     modules,
     activeModule,
-    projectHouseGeometries,
+    projectHouseGeometries: projectRenderPipeline.projectHouseGeometries,
+    projectPergolaRenderHealth: projectRenderPipeline.projectPergolaRenderHealth,
     fallbackMessage: inactiveMessage
       ? previewMessageFromWorkbenchMessage(inactiveMessage)
       : undefined,
@@ -1348,13 +1301,14 @@ export function buildWorkbenchSolvedModel(input: {
     projectModel,
     modules,
     activeModule,
-    projectHouseGeometries,
-    projectPergolaPlanShapes,
-    projectHouseProjectionHealth,
-    projectPlanProjection,
+    projectHouseGeometries: projectRenderPipeline.projectHouseGeometries,
+    projectPergolaPlanShapes: projectRenderPipeline.projectPergolaPlanShapes,
+    projectPergolaRenderHealth: projectRenderPipeline.projectPergolaRenderHealth,
+    projectHouseProjectionHealth: projectRenderPipeline.projectHouseProjectionHealth,
+    projectPlanProjection: projectRenderPipeline.projectPlanProjection,
     projectViewportGeometry,
     projectGeometryPreview,
-    projectReferenceShapes,
+    projectReferenceShapes: projectRenderPipeline.projectReferenceShapes,
     trust:
       activeModule?.trust ??
       buildTrustStatus({
@@ -1451,6 +1405,7 @@ export function buildWorkbenchSolvedProject(input: {
     activePergola,
     projectHouseGeometries: solvedModel.projectHouseGeometries,
     projectPergolaPlanShapes: solvedModel.projectPergolaPlanShapes,
+    projectPergolaRenderHealth: solvedModel.projectPergolaRenderHealth,
     projectHouseProjectionHealth: solvedModel.projectHouseProjectionHealth,
     projectPlanProjection: solvedModel.projectPlanProjection,
     projectViewportGeometry: solvedModel.projectViewportGeometry,
@@ -1459,49 +1414,6 @@ export function buildWorkbenchSolvedProject(input: {
     trust: solvedModel.trust,
     geometryIdentity: solvedModel.geometryIdentity,
   };
-}
-
-/**
- * Aggregate simple project reference shapes. Pergola references feed snap and
- * fallback context; house references are canonical committed house targets.
- */
-function buildProjectReferenceShapesFromModules(
-  modules: WorkbenchSolvedModule[],
-  projectHouseGeometries: ReadonlyArray<ProjectHouseGeometryEntry>,
-): GeometryTopProjectionShape[] {
-  const entries: ProjectPergolaEntry[] = [];
-  for (let index = 0; index < modules.length; index += 1) {
-    const module = modules[index]!;
-    const assembly = module.assembly;
-    if (!assembly) continue;
-    const pergolaSourceId =
-      module.moduleInput.pergolaId ?? `pergola-${index + 1}`;
-    entries.push({ assembly, pergolaSourceId });
-  }
-  const shapes: GeometryTopProjectionShape[] =
-    entries.length === 0
-      ? []
-      : buildProjectReferenceShapes({
-          pergolas: entries,
-          houseSourceId: null,
-        }).filter((shape) => shape.sourceType !== 'house_reference');
-  const seenPergolaReferenceIds = new Set<string>();
-  const dedupedShapes = shapes.filter((shape) => {
-    if (shape.sourceType !== 'pergola_reference') return true;
-    if (seenPergolaReferenceIds.has(shape.id)) return false;
-    seenPergolaReferenceIds.add(shape.id);
-    return true;
-  });
-
-  const seenHouseReferenceIds = new Set<string>();
-  for (const entry of projectHouseGeometries) {
-    const shape = entry.referenceShape;
-    if (seenHouseReferenceIds.has(shape.id)) continue;
-    seenHouseReferenceIds.add(shape.id);
-    dedupedShapes.push(shape);
-  }
-
-  return dedupedShapes;
 }
 
 function buildGeometryPreviewStateFromSolvedModule(
