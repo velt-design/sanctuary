@@ -263,28 +263,30 @@ export default function ProjectNotesPanel({
             return (
               <li key={note.id} className={styles.note} data-project-note-id={note.id}>
                 <header className={styles.noteHeader}>
-                  <span className={styles.noteAuthor}>{authorLabelFor(note)}</span>
-                  <span className={styles.noteMeta}>{formatPortalDateTime(note.createdAt)}</span>
-                  {pending ? <span className={styles.notePending}>Saving…</span> : null}
-                  {!pending && noteWasEdited(note) ? <span className={styles.noteEdited}>(edited)</span> : null}
-                  {!editing && canEditNote(note) ? (
-                    <span className={styles.noteActions}>
-                      <button
-                        type="button"
-                        className={styles.actionButton}
-                        onClick={() => startEditing(note)}
-                      >
-                        Edit
-                      </button>
-                      <button
-                        type="button"
-                        className={styles.actionButton}
-                        onClick={() => void handleDelete(note)}
-                      >
-                        Delete
-                      </button>
-                    </span>
-                  ) : null}
+                  <span className={styles.noteTypePill}>Project note</span>
+                  <span className={styles.noteMetaCluster}>
+                    <span className={styles.noteMeta}>{formatPortalDateTime(note.createdAt)}</span>
+                    {pending ? <span className={styles.notePending}>Saving…</span> : null}
+                    {!pending && noteWasEdited(note) ? <span className={styles.noteEdited}>(edited)</span> : null}
+                    {!editing && canEditNote(note) ? (
+                      <span className={styles.noteActions}>
+                        <button
+                          type="button"
+                          className={styles.actionButton}
+                          onClick={() => startEditing(note)}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          className={styles.actionButton}
+                          onClick={() => void handleDelete(note)}
+                        >
+                          Delete
+                        </button>
+                      </span>
+                    ) : null}
+                  </span>
                 </header>
                 {editing ? (
                   <div>
@@ -315,6 +317,7 @@ export default function ProjectNotesPanel({
                 ) : (
                   <p className={styles.noteBody}>{note.body}</p>
                 )}
+                <p className={styles.noteFooter}>Added by {authorLabelFor(note)}</p>
               </li>
             );
           })}

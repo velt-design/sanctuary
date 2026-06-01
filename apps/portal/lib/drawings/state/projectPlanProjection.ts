@@ -1,10 +1,8 @@
 import {
-  buildHouseModelTopProjectionShapes,
   buildTopProjectionViewModelFromScene,
   type GeometryTopProjectionShape,
   type GeometryTopProjectionViewModel,
 } from '@sp/geometry';
-import type { ProjectHouseGeometryEntry } from './projectHouseGeometryRegistry';
 
 function dedupeTopProjectionShapes(
   shapes: ReadonlyArray<GeometryTopProjectionShape>,
@@ -20,17 +18,11 @@ function dedupeTopProjectionShapes(
 }
 
 export function buildProjectPlanProjection(input: {
-  projectHouseGeometries: ReadonlyArray<ProjectHouseGeometryEntry>;
+  projectHousePlanShapes: ReadonlyArray<GeometryTopProjectionShape>;
   projectPergolaPlanShapes: ReadonlyArray<GeometryTopProjectionShape>;
 }): GeometryTopProjectionViewModel | null {
-  const houseShapes = input.projectHouseGeometries.flatMap((entry) => [
-    entry.referenceShape,
-    ...buildHouseModelTopProjectionShapes({
-      model: entry.model,
-    }),
-  ]);
   const shapes = dedupeTopProjectionShapes([
-    ...houseShapes,
+    ...input.projectHousePlanShapes,
     ...input.projectPergolaPlanShapes,
   ]);
   if (shapes.length === 0) return null;

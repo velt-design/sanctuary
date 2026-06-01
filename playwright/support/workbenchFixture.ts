@@ -63,13 +63,24 @@ export async function readPlanHouseRenderDiagnostics(page: Page): Promise<Array<
 
 export async function readPlanHouseProjectionHealth(page: Page): Promise<Array<{
   houseFormId: string;
+  geometryInputPresent: boolean;
+  rawHouseInputPresent: boolean;
+  footprintPointCount: number;
   referencePresent: boolean;
   modelPresent: boolean;
   wallCount: number;
   roofPlaneCount: number;
   roofBodyCount: number;
   roofMaterialBodyCount: number;
+  planBodyIds: string[];
+  roofBodyIds: string[];
+  roofMaterialBodyIds: string[];
+  sceneBodyCount: number;
+  sceneRoofMaterialBodyCount: number;
+  canRenderCommittedBody: boolean;
   visibleReferenceFallbackIds: string[];
+  failureStage: string;
+  diagnosticCode: string | null;
   roofValidationStatus: string | null;
   roofValidationCode: string | null;
 }>> {
@@ -83,8 +94,14 @@ export async function readPlanPergolaRenderHealth(page: Page): Promise<Array<{
   moduleId: string;
   sourceKind: string;
   solveStatus: string;
+  hostObjectId?: string | null;
+  hostEdgeId?: string | null;
+  attachmentEdgeId?: string | null;
+  attachmentZoneId?: string | null;
   hostAttachmentStatus: string;
   hostAttachmentCode: string | null;
+  placementStatus?: string;
+  placementCode?: string | null;
   planBodyCount: number;
   sceneBodyCount: number;
   canRenderCommittedBody: boolean;
@@ -222,8 +239,14 @@ export async function read3DPergolaRenderHealth(page: Page): Promise<Array<{
   moduleId: string;
   sourceKind: string;
   solveStatus: string;
+  hostObjectId?: string | null;
+  hostEdgeId?: string | null;
+  attachmentEdgeId?: string | null;
+  attachmentZoneId?: string | null;
   hostAttachmentStatus: string;
   hostAttachmentCode: string | null;
+  placementStatus?: string;
+  placementCode?: string | null;
   planBodyCount: number;
   sceneBodyCount: number;
   canRenderCommittedBody: boolean;
@@ -243,4 +266,21 @@ export async function read3DPergolaFallbackIds(page: Page): Promise<string[]> {
     .first()
     .getAttribute('data-project-pergola-fallback-ids');
   return raw ? raw.split(',').filter(Boolean).sort() : [];
+}
+
+export async function read3DProjectPreviewSource(page: Page): Promise<string> {
+  return (
+    (await page
+      .locator('[data-testid="geometry-3d-viewport-diagnostics"]')
+      .first()
+      .getAttribute('data-project-preview-source')) ?? ''
+  );
+}
+
+export async function readWorkbenchDebugExport(page: Page): Promise<unknown> {
+  const raw = await page
+    .locator('[data-workbench-debug-export="true"]')
+    .first()
+    .textContent();
+  return raw ? JSON.parse(raw) : null;
 }

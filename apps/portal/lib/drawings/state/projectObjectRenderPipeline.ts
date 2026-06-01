@@ -7,19 +7,21 @@ import {
   type ViewerSceneModel,
 } from '@sp/geometry';
 import type { CalculatorModuleInputs } from '@/lib/types/calculator';
-import type { GeometryPreviewState, WorkbenchSolvedModule } from './workbenchSolvedModel';
+import type { WorkbenchSolvedModule } from './workbenchSolvedModel';
 import { resolveObjectFirstPergolaAttachment } from './objectFirstDerivedHosting';
 import type { PergolaObjectModel, WorkbenchProjectModel } from './objectFirstWorkbenchModel';
 import {
-  buildProjectHouseGeometryRegistry,
   type ProjectHouseGeometryEntry,
 } from './projectHouseGeometryRegistry';
 import {
-  buildProjectHouseProjectionHealth,
+  buildProjectHouseRenderPipeline,
+  type ProjectHouseRenderPipeline,
+} from './projectHouseRenderPipeline';
+import type { HouseFormGeometryInputDiagnostics } from './houseFormGeometryInput';
+import {
   type ProjectHouseProjectionHealth,
 } from './projectHouseProjectionHealth';
 import { buildProjectPergolaPlanShapesFromModules } from './projectPergolaPlanShapes';
-import { buildProjectPergolaViewerSceneFromModules } from './projectPergolaViewerScene';
 import { buildProjectPlanProjection } from './projectPlanProjection';
 
 type ProjectPergolaRenderSuppressionReason =
@@ -40,8 +42,14 @@ export type ProjectPergolaRenderHealth = {
   moduleId: string;
   sourceKind: WorkbenchSolvedModule['sourceKind'];
   solveStatus: WorkbenchSolvedModule['renderStatus'];
+  hostObjectId: string | null;
+  hostEdgeId: string | null;
+  attachmentEdgeId: string | null;
+  attachmentZoneId: string | null;
   hostAttachmentStatus: ProjectPergolaHostAttachmentStatus;
   hostAttachmentCode: string | null;
+  placementStatus: ProjectPergolaHostAttachmentStatus;
+  placementCode: string | null;
   planBodyCount: number;
   sceneBodyCount: number;
   canRenderCommittedBody: boolean;
@@ -50,10 +58,12 @@ export type ProjectPergolaRenderHealth = {
 
 export type ProjectObjectRenderPipeline = {
   projectHouseGeometries: ProjectHouseGeometryEntry[];
+  projectHousePlanShapes: GeometryTopProjectionShape[];
   projectPergolaPlanShapes: GeometryTopProjectionShape[];
   projectPergolaFallbackPlanShapes: GeometryTopProjectionShape[];
   projectHouseProjectionHealth: ProjectHouseProjectionHealth[];
   projectPergolaRenderHealth: ProjectPergolaRenderHealth[];
+  houseGeometryInputsById: Record<string, HouseFormGeometryInputDiagnostics>;
   projectPlanProjection: GeometryTopProjectionViewModel | null;
   projectReferenceShapes: GeometryTopProjectionShape[];
 };
@@ -136,6 +146,14 @@ function planBodyCountByPergolaId(
   return counts;
 }
 
+function pergolaHostObjectId(pergola: PergolaObjectModel | null): string | null {
+  return pergola?.attachment?.host?.objectId ?? null;
+}
+
+function pergolaHostEdgeId(pergola: PergolaObjectModel | null): string | null {
+  return pergola?.attachment?.host?.edgeId ?? null;
+}
+
 function buildProjectPergolaRenderHealth(input: {
   projectModel: WorkbenchProjectModel;
   modules: ReadonlyArray<WorkbenchSolvedModule>;
@@ -175,8 +193,14 @@ function buildProjectPergolaRenderHealth(input: {
       moduleId: module.id,
       sourceKind: module.sourceKind,
       solveStatus: module.renderStatus,
+      hostObjectId: pergolaHostObjectId(pergola),
+      hostEdgeId: pergolaHostEdgeId(pergola),
+      attachmentEdgeId: pergola?.attachmentEdgeId ?? null,
+      attachmentZoneId: pergola?.attachmentZoneId ?? null,
       hostAttachmentStatus: attachmentHealth.hostAttachmentStatus,
       hostAttachmentCode: attachmentHealth.hostAttachmentCode,
+      placementStatus: attachmentHealth.hostAttachmentStatus,
+      placementCode: attachmentHealth.hostAttachmentCode,
       planBodyCount: pergolaId ? planCounts.get(pergolaId) ?? 0 : 0,
       sceneBodyCount: countPergolaSceneBodies(module),
       canRenderCommittedBody,
@@ -283,9 +307,11 @@ export function buildProjectObjectRenderPipeline(input: {
   modules: ReadonlyArray<WorkbenchSolvedModule>;
   projectHouseGeometries?: ReadonlyArray<ProjectHouseGeometryEntry>;
 }): ProjectObjectRenderPipeline {
-  const projectHouseGeometries = [
-    ...(input.projectHouseGeometries ?? buildProjectHouseGeometryRegistry(input.projectModel)),
-  ];
+  const projectHousePipeline: ProjectHouseRenderPipeline = buildProjectHouseRenderPipeline({
+    projectModel: input.projectModel,
+    projectHouseGeometries: input.projectHouseGeometries,
+  });
+  const projectHouseGeometries = projectHousePipeline.projectHouseGeometries;
   const projectReferenceShapes = buildProjectReferenceShapesFromModules(
     input.modules,
     projectHouseGeometries,
@@ -305,97 +331,20 @@ export function buildProjectObjectRenderPipeline(input: {
     health: projectPergolaRenderHealth,
   });
   const projectPlanProjection = buildProjectPlanProjection({
-    projectHouseGeometries,
+    projectHousePlanShapes: projectHousePipeline.projectHousePlanShapes,
     projectPergolaPlanShapes,
   });
-  const projectHouseProjectionHealth = buildProjectHouseProjectionHealth({
-    houseFormIds: input.projectModel.houseAssembly?.houseForms.map((houseForm) => houseForm.id) ?? [],
-    projectHouseGeometries,
-    projectPlanProjection,
-  });
+  const projectHouseProjectionHealth = projectHousePipeline.projectHouseProjectionHealth;
 
   return {
     projectHouseGeometries,
+    projectHousePlanShapes: projectHousePipeline.projectHousePlanShapes,
     projectPergolaPlanShapes,
     projectPergolaFallbackPlanShapes,
     projectHouseProjectionHealth,
     projectPergolaRenderHealth,
+    houseGeometryInputsById: projectHousePipeline.houseGeometryInputsById,
     projectPlanProjection,
     projectReferenceShapes,
-  };
-}
-
-export function resolveProjectReadyBasisModule(input: {
-  modules: ReadonlyArray<WorkbenchSolvedModule>;
-  activeModule: WorkbenchSolvedModule | null;
-  projectPergolaRenderHealth?: ReadonlyArray<ProjectPergolaRenderHealth>;
-}): WorkbenchSolvedModule | null {
-  const healthByPergolaId = new Map(
-    (input.projectPergolaRenderHealth ?? [])
-      .filter((entry) => entry.pergolaId)
-      .map((entry) => [entry.pergolaId, entry]),
-  );
-  const isRenderable = (module: WorkbenchSolvedModule): boolean => {
-    const pergolaId = module.moduleInput.pergolaId;
-    if (!pergolaId) return Boolean(module.geometryArtifact);
-    const health = healthByPergolaId.get(pergolaId);
-    return Boolean(module.geometryArtifact && (!health || health.canRenderCommittedBody));
-  };
-  const activeReady = input.activeModule && isRenderable(input.activeModule)
-    ? input.activeModule
-    : null;
-  return activeReady ?? input.modules.find(isRenderable) ?? null;
-}
-
-export function buildProjectGeometryPreviewFromModules(input: {
-  modules: ReadonlyArray<WorkbenchSolvedModule>;
-  activeModule: WorkbenchSolvedModule | null;
-  projectHouseGeometries: ReadonlyArray<ProjectHouseGeometryEntry>;
-  projectPergolaRenderHealth: ReadonlyArray<ProjectPergolaRenderHealth>;
-  projectPergolaFallbackPlanShapes?: ReadonlyArray<GeometryTopProjectionShape>;
-  fallbackMessage?: string;
-}): GeometryPreviewState {
-  const renderablePergolas = renderablePergolaIds(input.projectPergolaRenderHealth);
-  const readyModules = input.modules.filter(
-    (module) =>
-      module.geometryPreview.kind === 'ready' &&
-      module.viewerScene &&
-      Boolean(module.moduleInput.pergolaId && renderablePergolas.has(module.moduleInput.pergolaId)),
-  );
-  const basisModule = resolveProjectReadyBasisModule({
-    modules: input.modules,
-    activeModule: input.activeModule,
-    projectPergolaRenderHealth: input.projectPergolaRenderHealth,
-  });
-  if (!basisModule || basisModule.geometryPreview.kind !== 'ready') {
-    return (
-      input.activeModule?.viewportGeometry.preview ?? {
-        kind: 'error',
-        message: input.fallbackMessage ?? 'No project 3D geometry preview is available.',
-      }
-    );
-  }
-
-  const projectPergolaIds = new Set(
-    input.modules
-      .map((module) => module.moduleInput.pergolaId)
-      .filter((pergolaId): pergolaId is string => Boolean(pergolaId)),
-  );
-  const hasSuppressedPergola = input.projectPergolaRenderHealth.some(
-    (entry) => entry.pergolaId && !entry.canRenderCommittedBody,
-  );
-  if (projectPergolaIds.size <= 1 && !hasSuppressedPergola) {
-    return basisModule.geometryPreview;
-  }
-
-  return {
-    ...basisModule.geometryPreview,
-    scene: buildProjectPergolaViewerSceneFromModules({
-      basisScene: basisModule.geometryPreview.scene,
-      modules: readyModules,
-      projectHouseGeometries: input.projectHouseGeometries,
-      projectPergolaRenderHealth: input.projectPergolaRenderHealth,
-      projectPergolaFallbackPlanShapes: input.projectPergolaFallbackPlanShapes,
-    }),
   };
 }

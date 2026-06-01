@@ -49,14 +49,17 @@ import {
   type ProjectHouseGeometryEntry,
 } from './projectHouseGeometryRegistry';
 import {
-  buildProjectGeometryPreviewFromModules,
   buildProjectObjectRenderPipeline,
-  resolveProjectReadyBasisModule,
   type ProjectPergolaRenderHealth,
 } from './projectObjectRenderPipeline';
 import {
+  buildProjectGeometryPreviewFromModules,
+  resolveProjectReadyBasisModule,
+} from './projectGeometryPreviewPipeline';
+import {
   type ProjectHouseProjectionHealth,
 } from './projectHouseProjectionHealth';
+import type { HouseFormGeometryInputDiagnostics } from './houseFormGeometryInput';
 import {
   buildObjectFirstPergolaSolveSources,
 } from './objectFirstPergolaSolveSources';
@@ -223,6 +226,7 @@ export type WorkbenchSolvedModel = {
    * the failing house form without inventing React-layer state.
    */
   projectHouseProjectionHealth: ProjectHouseProjectionHealth[];
+  houseGeometryInputsById: Record<string, HouseFormGeometryInputDiagnostics>;
   /**
    * Canonical project-level Plan projection. Unlike per-module
    * `geometryArtifact.topProjection`, this is built from project registries by
@@ -332,6 +336,7 @@ export type WorkbenchSolvedProject = {
   projectPergolaFallbackPlanShapes: GeometryTopProjectionShape[];
   projectPergolaRenderHealth: ProjectPergolaRenderHealth[];
   projectHouseProjectionHealth: ProjectHouseProjectionHealth[];
+  houseGeometryInputsById: Record<string, HouseFormGeometryInputDiagnostics>;
   projectPlanProjection: GeometryTopProjectionViewModel | null;
   projectViewportGeometry: WorkbenchViewportGeometry | null;
   projectGeometryPreview: GeometryPreviewState;
@@ -1313,6 +1318,7 @@ export function buildWorkbenchSolvedModel(input: {
     projectPergolaFallbackPlanShapes: projectRenderPipeline.projectPergolaFallbackPlanShapes,
     projectPergolaRenderHealth: projectRenderPipeline.projectPergolaRenderHealth,
     projectHouseProjectionHealth: projectRenderPipeline.projectHouseProjectionHealth,
+    houseGeometryInputsById: projectRenderPipeline.houseGeometryInputsById,
     projectPlanProjection: projectRenderPipeline.projectPlanProjection,
     projectViewportGeometry,
     projectGeometryPreview,
@@ -1416,6 +1422,7 @@ export function buildWorkbenchSolvedProject(input: {
     projectPergolaFallbackPlanShapes: solvedModel.projectPergolaFallbackPlanShapes,
     projectPergolaRenderHealth: solvedModel.projectPergolaRenderHealth,
     projectHouseProjectionHealth: solvedModel.projectHouseProjectionHealth,
+    houseGeometryInputsById: solvedModel.houseGeometryInputsById,
     projectPlanProjection: solvedModel.projectPlanProjection,
     projectViewportGeometry: solvedModel.projectViewportGeometry,
     projectGeometryPreview: solvedModel.projectGeometryPreview,

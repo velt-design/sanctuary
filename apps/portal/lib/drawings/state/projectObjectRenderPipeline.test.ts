@@ -55,8 +55,14 @@ describe('project object render pipeline', () => {
     });
     expect(healthByPergolaId.get('pergola-2')).toMatchObject({
       canRenderCommittedBody: false,
+      attachmentEdgeId: 'footprint-edge-99',
+      attachmentZoneId: null,
+      hostObjectId: null,
+      hostEdgeId: null,
       hostAttachmentStatus: 'unresolved',
       hostAttachmentCode: 'missing_attachment_edge',
+      placementStatus: 'unresolved',
+      placementCode: 'missing_attachment_edge',
       suppressedCommittedBodyReason: 'unresolved_host',
     });
 
@@ -101,6 +107,20 @@ describe('project object render pipeline', () => {
     );
     expect(pergolaTwoActive.projectHouseProjectionHealth).toEqual(
       pergolaOneActive.projectHouseProjectionHealth,
+    );
+    expect(pergolaOneActive.projectHouseProjectionHealth).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          houseFormId: 'house-main',
+          failureStage: 'none',
+          diagnosticCode: null,
+        }),
+        expect.objectContaining({
+          houseFormId: 'house-form-2',
+          failureStage: 'none',
+          diagnosticCode: null,
+        }),
+      ]),
     );
   });
 });

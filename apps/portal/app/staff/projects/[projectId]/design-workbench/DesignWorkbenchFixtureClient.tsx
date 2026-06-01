@@ -13,6 +13,7 @@ import {
 } from './fixtureWorkbenchActionStubs';
 import type { Geometry3DViewportState } from '@/components/drawings/viewports/Geometry3DViewport';
 import { buildDrawingWorkbenchStore } from '@/lib/drawings/state/drawingWorkbenchStore';
+import { buildWorkbenchDebugFixtureExport } from '@/lib/drawings/workbenchDebugExport';
 import {
   buildDrawingWorkbenchObjectSelectionState,
   createDrawingWorkbenchUiState,
@@ -108,6 +109,27 @@ export default function DesignWorkbenchFixtureClient({
     [setUi],
   );
   const fixtureWorkbenchActions = useMemo(() => buildFixtureWorkbenchActions(), []);
+  const debugFixtureExport = useMemo(
+    () =>
+      buildWorkbenchDebugFixtureExport({
+        snapshot: fixture.snapshot,
+        draft: fixture.draft,
+        ui: store.ui,
+        projectGeometryPreview: store.derived.solvedModel.projectGeometryPreview,
+        houseGeometryInputsById: store.derived.solvedModel.houseGeometryInputsById,
+        projectHouseProjectionHealth: store.derived.solvedModel.projectHouseProjectionHealth,
+        projectPergolaRenderHealth: store.derived.solvedModel.projectPergolaRenderHealth,
+      }),
+    [
+      fixture.draft,
+      fixture.snapshot,
+      store.derived.solvedModel.projectGeometryPreview,
+      store.derived.solvedModel.houseGeometryInputsById,
+      store.derived.solvedModel.projectHouseProjectionHealth,
+      store.derived.solvedModel.projectPergolaRenderHealth,
+      store.ui,
+    ],
+  );
   // Build the real geometry-edit state from fixture snapshot + draft so
   // SanctuaryWorkbenchRail / PergolaInspector / HouseFormInspector all
   // see populated form data and render their PRIMARY / CONNECTIONS /
@@ -235,6 +257,11 @@ export default function DesignWorkbenchFixtureClient({
       data-fixture-workbench-hydrated={hasHydrated ? 'true' : 'false'}
       data-workbench-density="compact"
     >
+      <script
+        type="application/json"
+        data-workbench-debug-export="true"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(debugFixtureExport) }}
+      />
       <aside className={styles.configuratorColumn}>
         <div className={styles.configuratorScroll}>
           {/*

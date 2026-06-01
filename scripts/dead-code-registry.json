@@ -74,6 +74,23 @@
       "proofCommand": "npm run test:portal:browser"
     },
     {
+      "id": "portal-workbench-fixture-server-modules",
+      "category": "dynamic-reference",
+      "status": "current",
+      "ownerArea": "Portal workbench QA fixtures",
+      "pathPatterns": [
+        "apps/portal/lib/drawings/sanctuaryWorkbenchFixtureBuilders.ts",
+        "apps/portal/lib/drawings/sanctuaryWorkbenchFixtures.ts",
+        "apps/portal/lib/drawings/sanctuaryWorkbenchMultiObjectFixtures.ts"
+      ],
+      "issueDetails": [
+        "server-only"
+      ],
+      "reason": "Workbench QA fixture definitions are loaded by the server-only `/qa/design-workbench-fixture` route and intentionally guard against browser imports with Next's `server-only` marker.",
+      "retirementAction": "Remove fixture modules only after checking the QA fixture route, Playwright portal fixture lane, fixture registry slugs, and workbench docs.",
+      "proofCommand": "npx playwright test playwright/portal.workbench-fixture.spec.ts --project=portal-fixture --reporter=line"
+    },
+    {
       "id": "operational-scripts",
       "category": "dynamic-reference",
       "status": "current",

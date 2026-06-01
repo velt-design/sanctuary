@@ -197,7 +197,7 @@ function buildProjectHouseSceneLayerById(
 }
 
 export function buildProjectPergolaViewerSceneFromModules(input: {
-  basisScene: ViewerSceneModel;
+  basisScene: ViewerSceneModel | null;
   modules: ReadonlyArray<ProjectPergolaViewerSceneSource>;
   projectHouseGeometries: ReadonlyArray<ProjectHouseViewerSceneSource>;
   projectPergolaRenderHealth?: ReadonlyArray<ProjectPergolaRenderHealthEntry>;
@@ -216,7 +216,7 @@ export function buildProjectPergolaViewerSceneFromModules(input: {
     return next;
   };
 
-  for (const layer of input.basisScene.layers) {
+  for (const layer of input.basisScene?.layers ?? []) {
     if (HOUSE_LAYER_IDS.has(layer.id)) {
       const projectHouseLayer = projectHouseLayerById.get(layer.id);
       if (projectHouseLayer) {
@@ -263,7 +263,7 @@ export function buildProjectPergolaViewerSceneFromModules(input: {
   return {
     layers: layerOrder.map((id) => layerById.get(id)!).filter((layer) => layer.objects.length > 0),
     metadata: {
-      ...(input.basisScene.metadata ?? {}),
+      ...(input.basisScene?.metadata ?? {}),
       projectPergolaSceneCount: seenPergolaIds.size,
       projectPergolaSceneIds: Array.from(seenPergolaIds).join(','),
       projectPergolaFallbackIds: Array.from(

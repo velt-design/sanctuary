@@ -209,4 +209,34 @@ describe('buildProjectPergolaViewerSceneFromModules', () => {
     ]);
     expect(scene.metadata?.projectPergolaFallbackIds).toBe('pergola-2');
   });
+
+  it('can build a diagnostic project scene without a ready committed basis scene', () => {
+    const scene = buildProjectPergolaViewerSceneFromModules({
+      basisScene: null,
+      modules: [],
+      projectHouseGeometries: [
+        {
+          houseFormId: 'house-form-1',
+          model: fakeHouseModel('house-form-1'),
+        },
+      ],
+      projectPergolaRenderHealth: [
+        {
+          pergolaId: 'pergola-2',
+          canRenderCommittedBody: false,
+          suppressedCommittedBodyReason: 'unresolved_host',
+        },
+      ],
+      projectPergolaFallbackPlanShapes: [fallbackPlanShape('pergola-2')],
+    });
+
+    expect(layerObjectIds(scene, 'house')).toContain('house-form-1:wall-1');
+    expect(layerObjectIds(scene, 'project_pergola_fallbacks')).toEqual([
+      'project_pergola_fallback:pergola-2:edge-1',
+      'project_pergola_fallback:pergola-2:edge-2',
+      'project_pergola_fallback:pergola-2:edge-3',
+      'project_pergola_fallback:pergola-2:edge-4',
+    ]);
+    expect(scene.metadata?.projectPergolaSceneCount).toBe(0);
+  });
 });

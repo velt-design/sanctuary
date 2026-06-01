@@ -28,6 +28,7 @@ import {
 } from '@/lib/estimates/drawingEdits';
 import type { PergolaAttachment, WorkbenchObjectRef } from '@/lib/drawings/state/objectFirstWorkbenchModel';
 import { pergolaAttachmentFromSnap } from '@/lib/drawings/state/pergolaAttachment';
+import { buildWorkbenchDebugFixtureExport } from '@/lib/drawings/workbenchDebugExport';
 import { buildEstimateDrawingModuleInfoRows, buildEstimateDrawingSheetMeta } from '@/lib/estimates/drawingSheet';
 import type { EstimateDetail } from '@/lib/estimates/types';
 import { buildOutlineEditCommitHandler } from './commitOutlineEdit';
@@ -49,6 +50,9 @@ type DesignWorkbenchEstimateClientProps = {
 };
 
 const DEFAULT_MODEL_VIEWPORT_TRANSFORM = createDrawingWorkbenchUiState().viewportTransform;
+const ENABLE_LIVE_WORKBENCH_DEBUG_EXPORT =
+  process.env.NEXT_PUBLIC_ENABLE_SANCTUARY_GEOMETRY_WORKBENCH_FIXTURES === '1' ||
+  process.env.ENABLE_SANCTUARY_GEOMETRY_WORKBENCH_FIXTURES === '1';
 
 function buildInitialWorkbenchUiState(snapshot: Record<string, unknown> | null) {
   const defaultHouseFormId =
@@ -437,6 +441,29 @@ export default function DesignWorkbenchEstimateClient({
         : buildOutlineEditCommitHandler({ store, activeModuleInput, objectWorkbenchActions }),
     [isLocked, store, activeModuleInput, objectWorkbenchActions],
   );
+  const debugFixtureExport = useMemo(
+    () =>
+      ENABLE_LIVE_WORKBENCH_DEBUG_EXPORT
+        ? buildWorkbenchDebugFixtureExport({
+            snapshot: estimate.calculatorSnapshot,
+            draft: effectiveDrawingDraft,
+            ui: store.ui,
+            projectGeometryPreview: store.derived.solvedModel.projectGeometryPreview,
+            houseGeometryInputsById: store.derived.solvedModel.houseGeometryInputsById,
+            projectHouseProjectionHealth: store.derived.solvedModel.projectHouseProjectionHealth,
+            projectPergolaRenderHealth: store.derived.solvedModel.projectPergolaRenderHealth,
+          })
+        : null,
+    [
+      effectiveDrawingDraft,
+      estimate.calculatorSnapshot,
+      store.derived.solvedModel.houseGeometryInputsById,
+      store.derived.solvedModel.projectGeometryPreview,
+      store.derived.solvedModel.projectHouseProjectionHealth,
+      store.derived.solvedModel.projectPergolaRenderHealth,
+      store.ui,
+    ],
+  );
 
   if (!activeModule) {
     return (
@@ -449,6 +476,13 @@ export default function DesignWorkbenchEstimateClient({
 
   return (
     <div className={styles.shell} data-workbench-density="compact">
+      {debugFixtureExport ? (
+        <script
+          type="application/json"
+          data-workbench-debug-export="true"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(debugFixtureExport) }}
+        />
+      ) : null}
       <aside className={styles.configuratorColumn}>
         <div className={styles.configuratorScroll}>
         <ObjectWorkbenchRailHost

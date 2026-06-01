@@ -1,11 +1,6 @@
-import {
-  applyHouseReferencePosition,
-  buildHouseModel3DFromRawHouseInput,
-  type HouseReferenceGeometry,
-} from '@sp/geometry';
-import { houseFormTransformToAssemblyPosition } from './houseFormTransform';
+import type { HouseReferenceGeometry } from '@sp/geometry';
 import type { HouseFormModel } from './objectFirstWorkbenchModel';
-import { buildHouseFormRawGeometryInput } from './houseFormRawGeometry';
+import { buildHouseFormGeometryInputForForm } from './houseFormGeometryInput';
 
 /**
  * Build a freestanding `HouseReferenceGeometry` for a workbench house form.
@@ -36,27 +31,6 @@ import { buildHouseFormRawGeometryInput } from './houseFormRawGeometry';
 export function buildHouseFormReferenceGeometry(input: {
   houseForm: HouseFormModel;
 }): HouseReferenceGeometry | null {
-  const rawGeometry = buildHouseFormRawGeometryInput(input.houseForm);
-  if (!rawGeometry) return null;
-
-  const model = buildHouseModel3DFromRawHouseInput({
-    rawHouse: rawGeometry.rawHouse,
-    footprint: rawGeometry.footprint,
-    pergolaAttachment: null,
-  });
-  if (!model) return null;
-
-  const houseLocal: HouseReferenceGeometry = {
-    wallPlane: null,
-    fasciaLine: null,
-    roofEdgeLine: null,
-    soffitDepthMm: model.eave?.soffitDepthMm ?? null,
-    footprint: rawGeometry.footprint,
-    model,
-    attachmentTarget: null,
-    position: null,
-  };
-
-  const position = houseFormTransformToAssemblyPosition(input.houseForm.transform);
-  return applyHouseReferencePosition(houseLocal, position);
+  const result = buildHouseFormGeometryInputForForm(input.houseForm);
+  return result.ok ? result.geometry : null;
 }

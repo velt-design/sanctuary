@@ -11,13 +11,13 @@ export default function ActivityTab({ snapshot }: { snapshot: ProjectPageSnapsho
     <div className={styles.container}>
       <ProjectActivityDesignSnapshotBar projectId={snapshot.project.id} />
       <div className={styles.layout} data-project-activity-tab="true">
-        <div className={styles.column} data-activity-column="tasks">
+        <div className={`${styles.column} ${styles.activityColumn}`} data-activity-column="activity">
+          <h2 className={styles.columnHeader}>Activity</h2>
+          <ProjectNotesPanel projectId={snapshot.project.id} initialNotes={snapshot.notes} />
+        </div>
+        <div className={`${styles.column} ${styles.tasksColumn}`} data-activity-column="tasks">
           <h2 className={styles.columnHeader}>Tasks</h2>
           <ProjectTasksSidebarClient projectId={snapshot.project.id} tasks={snapshot.tasks} />
-        </div>
-        <div className={styles.column} data-activity-column="notes">
-          <h2 className={styles.columnHeader}>Notes</h2>
-          <ProjectNotesPanel projectId={snapshot.project.id} initialNotes={snapshot.notes} />
         </div>
       </div>
     </div>

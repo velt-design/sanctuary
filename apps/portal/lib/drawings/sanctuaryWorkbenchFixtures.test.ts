@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { buildDrawingWorkbenchStore } from '@/lib/drawings/state/drawingWorkbenchStore';
 import { createDrawingWorkbenchUiState } from '@/lib/drawings/state/drawingWorkbenchUiState';
 import { buildWorkbenchSolvedModel } from '@/lib/drawings/state/workbenchSolvedModel';
+import { buildWorkbenchDebugFixtureExport } from '@/lib/drawings/workbenchDebugExport';
 import { buildEstimateDrawingModuleInfoRows, buildEstimateDrawingSheetMeta } from '@/lib/estimates/drawingSheet';
 import {
   listParityCriticalSanctuaryGeometryWorkbenchFixtures,
@@ -17,6 +18,7 @@ describe('sanctuary workbench fixtures', () => {
       'gable-u-hipped-screenshot',
       'mono-join-screenshot',
       'multi-house-u-two-pergola',
+      'multi-house-custom-projection',
     ]);
   });
 
@@ -106,6 +108,70 @@ describe('sanctuary workbench fixtures', () => {
     expect(store.derived.solvedModel.projectPlanProjection?.shapes.some(
       (shape) => shape.id.includes('house_roof_material:house-form-2'),
     )).toBe(true);
+
+    const debugExport = buildWorkbenchDebugFixtureExport({
+      snapshot: fixture.snapshot,
+      draft: fixture.draft,
+      ui: store.ui,
+      projectGeometryPreview: store.derived.solvedModel.projectGeometryPreview,
+      houseGeometryInputsById: store.derived.solvedModel.houseGeometryInputsById,
+      projectHouseProjectionHealth: store.derived.solvedModel.projectHouseProjectionHealth,
+      projectPergolaRenderHealth: store.derived.solvedModel.projectPergolaRenderHealth,
+    });
+    expect(debugExport.objectFirst?.houseAssembly?.houseForms).toHaveLength(2);
+    expect(debugExport.renderDiagnostics.projectPreviewSource).toBe('project_pipeline');
+    expect(Object.keys(debugExport.renderDiagnostics.houseGeometryInputsById).sort()).toEqual([
+      'house-form-2',
+      'house-main',
+    ]);
+    expect(debugExport.renderDiagnostics.projectPergolaRenderHealth).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          pergolaId: 'pergola-2',
+          canRenderCommittedBody: false,
+          suppressedCommittedBodyReason: 'unresolved_host',
+        }),
+      ]),
+    );
+  });
+
+  it('exposes a custom multi-house projection diagnostics fixture', () => {
+    const fixture = listSanctuaryGeometryWorkbenchFixtures().find(
+      (candidate) => candidate.slug === 'multi-house-custom-projection',
+    );
+    if (!fixture) throw new Error('Expected custom projection fixture.');
+
+    const solvedModel = buildWorkbenchSolvedModel({
+      snapshot: fixture.snapshot,
+      draft: fixture.draft,
+      moduleLabels: fixture.moduleLabels,
+      activePergolaId: 'pergola-1',
+      geometryIdentity: {
+        projectId: 'fixture-multi-house-custom',
+        estimateId: fixture.estimate.id,
+        designRequestId: fixture.request.id,
+      },
+    });
+
+    if (!fixture.draft) throw new Error('Expected custom projection fixture draft.');
+    expect(fixture.draft.objectFirst?.houseAssembly?.houseForms).toHaveLength(3);
+    expect(solvedModel.projectHouseProjectionHealth.map((entry) => entry.houseFormId).sort()).toEqual([
+      'house-main',
+      'house-form-2',
+      'house-form-3',
+    ].sort());
+    for (const health of solvedModel.projectHouseProjectionHealth) {
+      expect(health.referencePresent, health.houseFormId).toBe(true);
+      expect(health.modelPresent, health.houseFormId).toBe(true);
+      expect(health.failureStage, health.houseFormId).toBe('none');
+      expect(health.diagnosticCode, health.houseFormId).toBeNull();
+      expect(health.roofPlaneCount, health.houseFormId).toBeGreaterThan(0);
+      expect(health.roofBodyCount, health.houseFormId).toBeGreaterThan(0);
+      expect(health.roofMaterialBodyCount, health.houseFormId).toBeGreaterThan(0);
+      expect(health.sceneBodyCount, health.houseFormId).toBeGreaterThan(0);
+      expect(health.sceneRoofMaterialBodyCount, health.houseFormId).toBeGreaterThan(0);
+      expect(health.visibleReferenceFallbackIds, health.houseFormId).toEqual([]);
+    }
   });
 
   it('builds a non-empty drawing store and sheet meta for every fixture', () => {

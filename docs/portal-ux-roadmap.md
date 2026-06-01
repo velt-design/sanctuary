@@ -28,7 +28,7 @@ The main UX standard:
 1. **Project Page Command Centre**
    - Goal: make the project page the clearest operational hub.
    - Improve current status, next action, latest note/activity, current design/quote state, and obvious primary actions.
-   - Next PR target: polish the project page Activity/default view first, because it is where tasks, notes, current design, and project state converge.
+   - Current PR1: polish the project page Activity/default view first, keeping the current-design snapshot on top, making Activity/project notes the wider left column, and moving Tasks into a compact right action rail. A dedicated Next Action card remains deferred.
 
 2. **Activity System V2**
    - Goal: turn activity into a useful cross-workflow timeline, not just a note list.

@@ -1531,6 +1531,7 @@ export default function Geometry3DViewport({
           data-house-opening-unresolved-valid-count={String(houseOpeningDiagnostics.unresolvedValidCount)}
           data-project-pergola-render-health={String(scene?.metadata?.projectPergolaRenderHealth ?? "[]")}
           data-project-pergola-fallback-ids={String(scene?.metadata?.projectPergolaFallbackIds ?? "")}
+          data-project-preview-source={String(scene?.metadata?.projectPreviewSource ?? "")}
           data-top-view-screen-axis={cameraState.viewPreset === "top" ? "world_x_left_world_y_down" : ""}
           data-clipping-enabled={String(sectionCut.enabled)}
           data-selected-object-id={selectedObjectId ?? ""}

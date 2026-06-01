@@ -1,17 +1,22 @@
 import {
-  buildHouseReferenceProjectionShape,
   type GeometryTopProjectionShape,
   type HouseModel3D,
   type HouseReferenceGeometry,
+  type RawHouseInput,
 } from '@sp/geometry';
 import type { WorkbenchProjectModel } from './objectFirstWorkbenchModel';
-import { buildHouseFormReferenceGeometry } from './buildHouseFormReferenceGeometry';
+import {
+  buildHouseFormGeometryInput,
+  type HouseFormGeometryInputDiagnostics,
+} from './houseFormGeometryInput';
 
 export type ProjectHouseGeometryEntry = {
   houseFormId: string;
+  rawHouseInput: RawHouseInput;
   geometry: HouseReferenceGeometry;
   model: HouseModel3D;
   referenceShape: GeometryTopProjectionShape;
+  geometryInputDiagnostics: HouseFormGeometryInputDiagnostics;
 };
 
 export function buildProjectHouseGeometryRegistry(
@@ -22,19 +27,19 @@ export function buildProjectHouseGeometryRegistry(
   const entries: ProjectHouseGeometryEntry[] = [];
   for (const form of houseForms) {
     if (seenHouseFormIds.has(form.id)) continue;
-    const geometry = buildHouseFormReferenceGeometry({ houseForm: form });
-    if (!geometry?.model) continue;
-    const referenceShape = buildHouseReferenceProjectionShape({
-      house: geometry,
-      houseSourceId: form.id,
+    const geometryInput = buildHouseFormGeometryInput({
+      projectModel: projectModel!,
+      houseFormId: form.id,
     });
-    if (!referenceShape) continue;
+    if (!geometryInput.ok) continue;
     seenHouseFormIds.add(form.id);
     entries.push({
       houseFormId: form.id,
-      geometry,
-      model: geometry.model,
-      referenceShape,
+      rawHouseInput: geometryInput.rawHouseInput,
+      geometry: geometryInput.geometry,
+      model: geometryInput.model,
+      referenceShape: geometryInput.referenceShape,
+      geometryInputDiagnostics: geometryInput.diagnostics,
     });
   }
   return entries;

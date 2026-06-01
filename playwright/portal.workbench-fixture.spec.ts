@@ -10,6 +10,7 @@ import {
   readCommittedBodyShapeIdsInPaintOrder,
   readCommittedPergolaBodyIds,
   read3DPergolaFallbackIds,
+  read3DProjectPreviewSource,
   read3DPergolaRenderHealth,
   readHouseHitTargetIds,
   readPlanHouseProjectionHealth,
@@ -21,11 +22,13 @@ import {
   readVisibleHouseBodyIds,
   readVisibleHouseReferenceFallbackIds,
   readVisiblePergolaShapeIds,
+  readWorkbenchDebugExport,
   selectRailObject,
   switchWorkbenchMode,
 } from './support/workbenchFixture';
 
 const MULTI_OBJECT_FIXTURE = 'multi-house-u-two-pergola';
+const CUSTOM_HOUSE_PROJECTION_FIXTURE = 'multi-house-custom-projection';
 
 test.describe('workbench fixture route', () => {
   test('keeps project house plan bodies stable when switching pergolas', async ({ page }) => {
@@ -187,6 +190,7 @@ test.describe('workbench fixture route', () => {
     await switchWorkbenchMode(page, '3D Review');
     await selectRailObject(page, 'pergolas', 'pergola-1');
     await expect3DViewportEvidence(page);
+    await expect.poll(() => read3DProjectPreviewSource(page)).toBe('project_pipeline');
     expect(await read3DPergolaRenderHealth(page)).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -199,6 +203,7 @@ test.describe('workbench fixture route', () => {
     expect(await read3DPergolaFallbackIds(page)).toEqual(['pergola-2']);
     await selectRailObject(page, 'pergolas', 'pergola-2');
     await expect3DViewportEvidence(page);
+    expect(await read3DProjectPreviewSource(page)).not.toBe('legacy_active_module_fallback');
     expect(await read3DPergolaRenderHealth(page)).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -209,5 +214,60 @@ test.describe('workbench fixture route', () => {
       ]),
     );
     expect(await read3DPergolaFallbackIds(page)).toEqual(['pergola-2']);
+    const debugExport = await readWorkbenchDebugExport(page);
+    expect(debugExport).toEqual(
+      expect.objectContaining({
+        objectFirst: expect.any(Object),
+        renderDiagnostics: expect.objectContaining({
+          projectPreviewSource: expect.not.stringContaining('legacy_active_module_fallback'),
+          projectPergolaRenderHealth: expect.arrayContaining([
+            expect.objectContaining({
+              pergolaId: 'pergola-2',
+              canRenderCommittedBody: false,
+              suppressedCommittedBodyReason: 'unresolved_host',
+            }),
+          ]),
+        }),
+      }),
+    );
+  });
+
+  test('reports custom house projection health by failing stage before rendering fallbacks', async ({ page }) => {
+    await openWorkbenchFixture(page, CUSTOM_HOUSE_PROJECTION_FIXTURE);
+    await switchWorkbenchMode(page, 'Plan Editor');
+    const planViewport = page.locator('[data-plan-viewport="true"]');
+    await expect(planViewport).toBeVisible();
+    await clearPlanSelection(page);
+    await expect(planViewport).toHaveAttribute('data-plan-selection-halo-count', '0');
+    await expect(planViewport).toHaveAttribute('data-plan-dimension-count', '0');
+
+    const health = await readPlanHouseProjectionHealth(page);
+    expect(health.map((entry) => entry.houseFormId).sort()).toEqual([
+      'house-form-2',
+      'house-form-3',
+      'house-main',
+    ]);
+    for (const entry of health) {
+      expect(entry.referencePresent, entry.houseFormId).toBe(true);
+      expect(entry.modelPresent, entry.houseFormId).toBe(true);
+      expect(entry.roofPlaneCount, entry.houseFormId).toBeGreaterThan(0);
+      expect(entry.roofBodyCount, entry.houseFormId).toBeGreaterThan(0);
+      expect(entry.roofMaterialBodyCount, entry.houseFormId).toBeGreaterThan(0);
+      expect(entry.sceneBodyCount, entry.houseFormId).toBeGreaterThan(0);
+      expect(entry.sceneRoofMaterialBodyCount, entry.houseFormId).toBeGreaterThan(0);
+      expect(entry.canRenderCommittedBody, entry.houseFormId).toBe(true);
+      expect(entry.failureStage, entry.houseFormId).toBe('none');
+      expect(entry.diagnosticCode, entry.houseFormId).toBeNull();
+      expect(entry.visibleReferenceFallbackIds, entry.houseFormId).toEqual([]);
+    }
+
+    const bodyIds = await readVisibleHouseBodyIds(page);
+    for (const houseFormId of ['house-main', 'house-form-2', 'house-form-3']) {
+      expect(bodyIds.some((id) => id.includes(`house_roof_material:${houseFormId}`))).toBe(true);
+    }
+    expect(await readVisibleHouseReferenceFallbackIds(page)).toEqual([]);
+
+    await switchWorkbenchMode(page, '3D Review');
+    await expect3DViewportEvidence(page);
   });
 });

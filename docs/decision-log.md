@@ -59,6 +59,10 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 | 2026-05-31 | Workbench Actions | Active | PR-2B.1b.3s: action context must be nullable and object-owned. Deck/opening/pergola/house action paths resolve house context from the target object's owner id, never from House 1 or the active module. |
 | 2026-06-01 | Workbench Rendering | Active | PR-2B.1b.3t: project render surfaces may show committed bodies only for object-owned healthy geometry. Invalid or unresolved object-first pergolas must render as reference/diagnostic fallbacks, not normal Plan/3D bodies. |
 | 2026-06-01 | Workbench Rendering | Active | PR-2B.1b.3u: unresolved pergola fallbacks must have their own diagnostic render path. They may appear as transparent Plan context outlines and 3D reference lines, but must not flow through committed pergola body layers. |
+| 2026-06-01 | Workbench Rendering | Active | PR-2B.1b.3v: diagnostic fallbacks are first-class render outputs, separate from committed bodies, hit-target paint, selection chrome, and generic context overlays. |
+| 2026-06-01 | Workbench Rendering | Active | PR-2B.1b.3w: house render health is owned per `houseFormId` before Plan/3D consume project render data. Mixed project composition orchestrates house health; it must not infer house stages after merge. |
+| 2026-06-01 | Workbench Rendering | Active | PR-2B.1b.3x: house render health has one implementation and repro fixtures should live in focused fixture modules instead of growing the registry hotspot. |
+| 2026-06-01 | Workbench Rendering | Active | PR-2B.1b.3y: project 3D must not use active-module preview as committed geometry for suppressed/unresolved project objects. |
 | 2026-05-01 | Plan Rendering | Promoted | Geometry-ready Model Space is a hard top-projection-only render path; legacy/context/reference/opening overlays stay out of normal visuals. |
 | 2026-05-01 | Design Workbench Architecture | Promoted | Split workbench ownership contract-first: coordinate adapters and render graphs leave React presenters before moving tools/renderers. |
 | 2026-05-01 | Deck Interaction | Promoted | Projection-backed deck snapping must use top-projection frames live and object frames only at the commit boundary. |
@@ -1449,3 +1453,67 @@ Current guardrail: Plan render graph exposes `diagnosticFallbacks` separately fr
 Promoted to: None
 
 Related docs/tests: [apps/portal/lib/drawings/views/plan/planRenderGraph.ts](../apps/portal/lib/drawings/views/plan/planRenderGraph.ts), [apps/portal/lib/drawings/views/plan/planDiagnosticFallbacks.ts](../apps/portal/lib/drawings/views/plan/planDiagnosticFallbacks.ts), [apps/portal/components/drawings/viewports/PlanViewport/canvas/layers/PlanDiagnosticFallbackLayer.tsx](../apps/portal/components/drawings/viewports/PlanViewport/canvas/layers/PlanDiagnosticFallbackLayer.tsx), [apps/portal/components/drawings/viewports/Geometry3DViewport/renderers/ReferenceLineObject.tsx](../apps/portal/components/drawings/viewports/Geometry3DViewport/renderers/ReferenceLineObject.tsx).
+
+### 2026-06-01 - Workbench Rendering - House Render Health By Form
+
+Area: Workbench Rendering
+
+Status: Active
+
+Decision or mistake: house render health is owned per `houseFormId` before Plan or 3D consume project render data. The mixed project render pipeline may orchestrate houses and pergolas, but it must not infer house failure stages from the final merged projection.
+
+Why it mattered: custom and edited house forms could degrade to a large `house_reference` diagnostic fallback, but the old diagnostics only counted shapes after project composition. That made it unclear whether the failing stage was reference geometry, model construction, roof planes, roof-material projection, Plan body classification, or 3D scene output.
+
+Current guardrail: `projectHouseRenderPipeline` emits pre-classified house Plan shapes plus per-house stage diagnostics (`referencePresent`, model/wall/roof counts, roof/roof-material ids, 3D body counts, `failureStage`, `diagnosticCode`). `buildProjectPlanProjection` consumes those house shapes and does not rebuild house projection inline.
+
+Promoted to: None
+
+Related docs/tests: [apps/portal/lib/drawings/state/projectHouseRenderPipeline.ts](../apps/portal/lib/drawings/state/projectHouseRenderPipeline.ts), [apps/portal/lib/drawings/state/projectObjectRenderPipeline.ts](../apps/portal/lib/drawings/state/projectObjectRenderPipeline.ts), [apps/portal/lib/drawings/state/projectHouseRenderPipeline.test.ts](../apps/portal/lib/drawings/state/projectHouseRenderPipeline.test.ts), [apps/portal/lib/drawings/sanctuaryWorkbenchFixtures.test.ts](../apps/portal/lib/drawings/sanctuaryWorkbenchFixtures.test.ts).
+
+### 2026-06-01 - Workbench Rendering - House Fixture Health Ownership
+
+Area: Workbench Rendering
+
+Status: Active
+
+Decision or mistake: house render health should have one implementation (`projectHouseRenderPipeline`) and custom/multi-object repro fixtures should live in focused fixture modules, not in the registry entrypoint.
+
+Why it mattered: the custom-house screenshot debugging was obscured by a growing fixture registry and a duplicate post-composition health helper. Once health assertions were tightened, the baked custom fixture reported healthy houses through Plan and 3D, which means that fixture does not reproduce the visible failure and future bug work needs a more exact state fixture/export before changing render policy again.
+
+Current guardrail: add new house/pergola repros in focused fixture modules, assert `failureStage`, Plan/3D body counts, and fallback ids in fixture tests, and keep `projectHouseRenderPipeline` as the single source for per-house render health before Plan/3D consume it.
+
+Promoted to: None
+
+Related docs/tests: [apps/portal/lib/drawings/sanctuaryWorkbenchFixtureBuilders.ts](../apps/portal/lib/drawings/sanctuaryWorkbenchFixtureBuilders.ts), [apps/portal/lib/drawings/sanctuaryWorkbenchMultiObjectFixtures.ts](../apps/portal/lib/drawings/sanctuaryWorkbenchMultiObjectFixtures.ts), [apps/portal/lib/drawings/state/projectHouseRenderPipeline.ts](../apps/portal/lib/drawings/state/projectHouseRenderPipeline.ts), [apps/portal/lib/drawings/sanctuaryWorkbenchFixtures.test.ts](../apps/portal/lib/drawings/sanctuaryWorkbenchFixtures.test.ts), [playwright/portal.workbench-fixture.spec.ts](../playwright/portal.workbench-fixture.spec.ts).
+
+### 2026-06-01 - Workbench Rendering - Project 3D Preview Ownership
+
+Area: Workbench Rendering
+
+Status: Active
+
+Decision or mistake: project 3D preview must never use the active module preview as committed geometry for suppressed or unresolved project objects. A ready module may only act as a preview carrier for config/camera metadata when the scene is rebuilt from project-owned house geometry and diagnostic fallbacks.
+
+Why it mattered: unresolved Pergola 2 could be suppressed by project render health but still appear as committed roof geometry in 3D through the active-module preview escape hatch. That made Plan and 3D disagree about whether the pergola was healthy, and it obscured the remaining house projection issue.
+
+Current guardrail: `projectGeometryPreviewPipeline` owns project 3D preview assembly. Healthy project render paths set `projectPreviewSource=project_pipeline`; when no committed pergola basis exists, the viewport receives a diagnostic project scene (`projectPreviewSource=diagnostic_project_scene`) with project house geometry and non-committed pergola fallbacks. `legacy_active_module_fallback` is diagnostic-only and must not appear in normal object-workbench 3D.
+
+Promoted to: None
+
+Related docs/tests: [apps/portal/lib/drawings/state/projectGeometryPreviewPipeline.ts](../apps/portal/lib/drawings/state/projectGeometryPreviewPipeline.ts), [apps/portal/lib/drawings/state/projectGeometryPreviewPipeline.test.ts](../apps/portal/lib/drawings/state/projectGeometryPreviewPipeline.test.ts), [apps/portal/lib/drawings/state/projectPergolaViewerScene.ts](../apps/portal/lib/drawings/state/projectPergolaViewerScene.ts), [playwright/portal.workbench-fixture.spec.ts](../playwright/portal.workbench-fixture.spec.ts).
+
+### 2026-06-01 - Workbench Geometry - House Form Input Boundary
+
+Area: Workbench Geometry
+
+Status: Active
+
+Decision or mistake: house geometry must cross one object-id-addressed input boundary before Plan or 3D consume it. Render pipelines must not infer a house form from the first form, `house-main`, active module input, or active pergola state.
+
+Why it mattered: the remaining house-form screenshots looked like Plan overlays, but the persistent symptom was missing or invalid roof geometry for a specific object. Without a per-house input boundary, diagnostics could name final render fallout but not the first failing stage.
+
+Current guardrail: use `buildHouseFormGeometryInput({ projectModel, houseFormId })` for project house render assembly. It resolves exactly one form and reports typed stages (`missing_house_form`, `invalid_footprint`, `missing_geometry_input`, `missing_model`, `missing_roof_model`, `missing_plan_body`, `missing_3d_body`, `none`) with no fallback to any other house or module. Gated debug exports include `houseGeometryInputsById` so live failures can be captured as fixtures.
+
+Promoted to: None
+
+Related docs/tests: [apps/portal/lib/drawings/state/houseFormGeometryInput.ts](../apps/portal/lib/drawings/state/houseFormGeometryInput.ts), [apps/portal/lib/drawings/state/projectHouseRenderPipeline.ts](../apps/portal/lib/drawings/state/projectHouseRenderPipeline.ts), [apps/portal/lib/drawings/workbenchDebugExport.ts](../apps/portal/lib/drawings/workbenchDebugExport.ts), [apps/portal/lib/drawings/state/houseFormGeometryInput.test.ts](../apps/portal/lib/drawings/state/houseFormGeometryInput.test.ts).

@@ -3,6 +3,7 @@ import type { GeometryTopProjectionViewModel } from '@sp/geometry';
 import { getSanctuaryGeometryWorkbenchFixture } from '@/lib/drawings/sanctuaryWorkbenchFixtures';
 import { planHouseFormOwner } from '@/lib/drawings/views/plan/planShapeOwnership';
 import { buildWorkbenchSolvedModel } from './workbenchSolvedModel';
+import { buildProjectHouseRenderPipeline } from './projectHouseRenderPipeline';
 import { buildProjectPlanProjection } from './projectPlanProjection';
 
 function getFixture(name: Parameters<typeof getSanctuaryGeometryWorkbenchFixture>[0]) {
@@ -38,8 +39,12 @@ describe('buildProjectPlanProjection', () => {
       activePergolaId: 'pergola-2',
     });
 
-    const rebuiltProjection = buildProjectPlanProjection({
+    const housePipeline = buildProjectHouseRenderPipeline({
+      projectModel: pergolaOneActive.projectModel,
       projectHouseGeometries: pergolaOneActive.projectHouseGeometries,
+    });
+    const rebuiltProjection = buildProjectPlanProjection({
+      projectHousePlanShapes: housePipeline.projectHousePlanShapes,
       projectPergolaPlanShapes: pergolaOneActive.projectPergolaPlanShapes,
     });
 

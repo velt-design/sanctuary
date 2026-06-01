@@ -9,7 +9,7 @@ vi.mock('../ProjectTasksSidebar.client', () => ({
 
 vi.mock('./_components/ProjectNotesPanel.client', () => ({
   default: ({ projectId }: { projectId: string }) => (
-    <section data-testid="mock-notes-panel" data-project-id={projectId}>Notes</section>
+    <section data-testid="mock-notes-panel" data-project-id={projectId}>Project notes</section>
   ),
 }));
 
@@ -39,22 +39,30 @@ describe('ActivityTab', () => {
     document.body.innerHTML = '';
   });
 
-  it('renders the snapshot bar above the tasks and notes columns', () => {
+  it('renders the snapshot bar above the activity and tasks columns', () => {
     const rendered = renderIntoDocument(<ActivityTab snapshot={snapshot} />);
 
     const bar = rendered.container.querySelector('[data-testid="mock-snapshot-bar"]');
+    const activityColumn = rendered.container.querySelector('[data-activity-column="activity"]');
+    const tasksColumn = rendered.container.querySelector('[data-activity-column="tasks"]');
     const tasks = rendered.container.querySelector('[data-testid="mock-tasks-panel"]');
     const notes = rendered.container.querySelector('[data-testid="mock-notes-panel"]');
 
     expect(bar).not.toBeNull();
+    expect(activityColumn).not.toBeNull();
+    expect(tasksColumn).not.toBeNull();
     expect(tasks).not.toBeNull();
     expect(notes).not.toBeNull();
+    expect(activityColumn?.textContent).toContain('Activity');
 
     // Bar must precede both columns in the document order.
-    const barPosition = bar!.compareDocumentPosition(tasks!);
+    const barPosition = bar!.compareDocumentPosition(activityColumn!);
     expect(barPosition & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    const barVsNotes = bar!.compareDocumentPosition(notes!);
-    expect(barVsNotes & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    const barVsTasks = bar!.compareDocumentPosition(tasksColumn!);
+    expect(barVsTasks & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+
+    const activityVsTasks = activityColumn!.compareDocumentPosition(tasksColumn!);
+    expect(activityVsTasks & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
 
     rendered.unmount();
   });
