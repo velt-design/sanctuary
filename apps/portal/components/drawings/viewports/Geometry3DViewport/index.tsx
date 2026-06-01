@@ -168,6 +168,7 @@ const LAYER_COLORS: Record<string, string> = {
   roof_cladding: "#d9c77b",
   roof_flashings: "#d8d2bd",
   house_roof_materials: "#f0f2f3",
+  project_pergola_fallbacks: "#8a8f95",
   roof_planes: "#d4b35a",
   attachment_edge: "#bb4b4b",
 };
@@ -1529,6 +1530,7 @@ export default function Geometry3DViewport({
           data-house-opening-skipped-invalid-count={String(houseOpeningDiagnostics.skippedInvalidCount)}
           data-house-opening-unresolved-valid-count={String(houseOpeningDiagnostics.unresolvedValidCount)}
           data-project-pergola-render-health={String(scene?.metadata?.projectPergolaRenderHealth ?? "[]")}
+          data-project-pergola-fallback-ids={String(scene?.metadata?.projectPergolaFallbackIds ?? "")}
           data-top-view-screen-axis={cameraState.viewPreset === "top" ? "world_x_left_world_y_down" : ""}
           data-clipping-enabled={String(sectionCut.enabled)}
           data-selected-object-id={selectedObjectId ?? ""}

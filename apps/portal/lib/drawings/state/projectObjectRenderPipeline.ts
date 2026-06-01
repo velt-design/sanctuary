@@ -51,6 +51,7 @@ export type ProjectPergolaRenderHealth = {
 export type ProjectObjectRenderPipeline = {
   projectHouseGeometries: ProjectHouseGeometryEntry[];
   projectPergolaPlanShapes: GeometryTopProjectionShape[];
+  projectPergolaFallbackPlanShapes: GeometryTopProjectionShape[];
   projectHouseProjectionHealth: ProjectHouseProjectionHealth[];
   projectPergolaRenderHealth: ProjectPergolaRenderHealth[];
   projectPlanProjection: GeometryTopProjectionViewModel | null;
@@ -207,6 +208,37 @@ function filterCommittedPergolaPlanShapes(input: {
   });
 }
 
+function buildProjectPergolaFallbackPlanShapes(input: {
+  projectReferenceShapes: ReadonlyArray<GeometryTopProjectionShape>;
+  health: ReadonlyArray<ProjectPergolaRenderHealth>;
+}): GeometryTopProjectionShape[] {
+  const healthByPergolaId = new Map(
+    input.health
+      .filter((entry) => entry.pergolaId && !entry.canRenderCommittedBody)
+      .map((entry) => [entry.pergolaId, entry]),
+  );
+  return input.projectReferenceShapes
+    .filter((shape) => shape.sourceType === 'pergola_reference')
+    .filter((shape) => {
+      const pergolaId = projectPergolaIdFromShape(shape);
+      return Boolean(pergolaId && healthByPergolaId.has(pergolaId));
+    })
+    .map((shape) => {
+      const pergolaId = projectPergolaIdFromShape(shape);
+      const health = pergolaId ? healthByPergolaId.get(pergolaId) : null;
+      return {
+        ...shape,
+        metadata: {
+          ...(shape.metadata ?? {}),
+          ...(pergolaId ? { pergolaId } : {}),
+          renderRole: 'diagnostic_fallback',
+          fallbackReason: health?.suppressedCommittedBodyReason ?? 'invalid_geometry',
+          topProjectionRole: 'context',
+        },
+      };
+    });
+}
+
 function buildProjectReferenceShapesFromModules(
   modules: ReadonlyArray<WorkbenchSolvedModule>,
   projectHouseGeometries: ReadonlyArray<ProjectHouseGeometryEntry>,
@@ -268,10 +300,13 @@ export function buildProjectObjectRenderPipeline(input: {
     shapes: rawProjectPergolaPlanShapes,
     health: projectPergolaRenderHealth,
   });
+  const projectPergolaFallbackPlanShapes = buildProjectPergolaFallbackPlanShapes({
+    projectReferenceShapes,
+    health: projectPergolaRenderHealth,
+  });
   const projectPlanProjection = buildProjectPlanProjection({
     projectHouseGeometries,
     projectPergolaPlanShapes,
-    projectReferenceShapes,
   });
   const projectHouseProjectionHealth = buildProjectHouseProjectionHealth({
     houseFormIds: input.projectModel.houseAssembly?.houseForms.map((houseForm) => houseForm.id) ?? [],
@@ -282,6 +317,7 @@ export function buildProjectObjectRenderPipeline(input: {
   return {
     projectHouseGeometries,
     projectPergolaPlanShapes,
+    projectPergolaFallbackPlanShapes,
     projectHouseProjectionHealth,
     projectPergolaRenderHealth,
     projectPlanProjection,
@@ -316,6 +352,7 @@ export function buildProjectGeometryPreviewFromModules(input: {
   activeModule: WorkbenchSolvedModule | null;
   projectHouseGeometries: ReadonlyArray<ProjectHouseGeometryEntry>;
   projectPergolaRenderHealth: ReadonlyArray<ProjectPergolaRenderHealth>;
+  projectPergolaFallbackPlanShapes?: ReadonlyArray<GeometryTopProjectionShape>;
   fallbackMessage?: string;
 }): GeometryPreviewState {
   const renderablePergolas = renderablePergolaIds(input.projectPergolaRenderHealth);
@@ -358,6 +395,7 @@ export function buildProjectGeometryPreviewFromModules(input: {
       modules: readyModules,
       projectHouseGeometries: input.projectHouseGeometries,
       projectPergolaRenderHealth: input.projectPergolaRenderHealth,
+      projectPergolaFallbackPlanShapes: input.projectPergolaFallbackPlanShapes,
     }),
   };
 }

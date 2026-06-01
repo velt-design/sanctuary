@@ -55,9 +55,9 @@ export type UsePlanRenderModelInput = {
    * module's render graph alongside the per-module projection.
    * Used to add every house form `house_reference` footprint to the
    * explicit hit-target layer so they're selectable and movable.
-   * Without this, house references would only render as a faded context overlay
-   * (`PlanProjectContextLayer`) with no pointer handlers — clicks fall
-   * through and the move tool could never start.
+   * Without this, house references would not enter the render graph's explicit
+   * hit-target layer; clicks would fall through and the move tool could never
+   * start.
    *
    * Caller derives these from `WorkbenchSolvedModel.projectReferenceShapes`
    * filtered to canonical house references.
@@ -135,6 +135,24 @@ function mergeProjectionShapesWithProjectPergolas(input: {
   return shapes;
 }
 
+function mergeProjectionShapesWithProjectContext(input: {
+  projectionShapes: ReadonlyArray<GeometryTopProjectionShape>;
+  projectContextShapes: ReadonlyArray<GeometryTopProjectionShape>;
+}): GeometryTopProjectionShape[] {
+  if (!input.projectContextShapes.length) {
+    return input.projectionShapes as GeometryTopProjectionShape[];
+  }
+  const shapes = [...input.projectionShapes];
+  const seen = new Set(shapes.map((shape) => shape.id));
+  for (const shape of input.projectContextShapes) {
+    if (shape.sourceType !== 'pergola_reference') continue;
+    if (seen.has(shape.id)) continue;
+    seen.add(shape.id);
+    shapes.push(shape);
+  }
+  return shapes;
+}
+
 function projectionWithExtentsFromShapes(input: {
   projection: GeometryTopProjectionViewModel;
   shapes: ReadonlyArray<GeometryTopProjectionShape>;
@@ -179,16 +197,19 @@ export function usePlanRenderModel({
 }: UsePlanRenderModelInput): PlanRenderModel | null {
   return useMemo(() => {
     if (!projection) return null;
-    const allShapes = mergeProjectionShapesWithProjectPergolas({
-      projectionShapes: mergeProjectionShapesWithHouseReferences({
-        projectionShapes: projection.shapes,
-        houseReferenceShapes,
+    const allShapes = mergeProjectionShapesWithProjectContext({
+      projectionShapes: mergeProjectionShapesWithProjectPergolas({
+        projectionShapes: mergeProjectionShapesWithHouseReferences({
+          projectionShapes: projection.shapes,
+          houseReferenceShapes,
+        }),
+        projectPergolaPlanShapes,
       }),
-      projectPergolaPlanShapes,
+      projectContextShapes,
     });
     const layoutProjection = projectionWithExtentsFromShapes({
       projection,
-      shapes: [...allShapes, ...projectContextShapes],
+      shapes: allShapes,
     });
     const layout = resolvePlanLayout(layoutProjection);
     const adapter = buildTopProjectionPlanCoordinateAdapter({

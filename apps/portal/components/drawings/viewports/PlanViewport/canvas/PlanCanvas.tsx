@@ -25,7 +25,6 @@ import { PlanHitTestDebugLayer } from './layers/PlanHitTestDebugLayer';
 import { PlanHoverHaloLayer } from './layers/PlanHoverHaloLayer';
 import { PlanLocalHoverLayer } from './layers/PlanLocalHoverLayer';
 import { PlanMovePreviewLayer } from './layers/PlanMovePreviewLayer';
-import { PlanProjectContextLayer } from './layers/PlanProjectContextLayer';
 import { PlanSelectionHaloLayer } from './layers/PlanSelectionHaloLayer';
 import {
   PlanMoveSnapIndicatorLayer,
@@ -124,22 +123,23 @@ export function PlanCanvas({
   const dispatcher = useToolDispatcher();
   const { hoveredShape, onShapeEnter, onShapeLeave } = useHoveredShape();
   const panZoom = usePanZoom({ transform, onTransformChange });
-  const projectContextHitTargetItems = useMemo<PlanRenderItem[]>(
+  const projectPergolaFallbackIds = useMemo(
     () =>
-      projectContextShapes
-        .filter((shape) => shape.sourceType === 'pergola_reference')
-        .map((shape) => ({
-          shape,
-          points: coordinateAdapter.projectionPolygonToSvg(shape.polygon),
-          layer: 'committedBodies' as const,
-        }))
-        .filter((item) => item.points.length >= 3),
-    [coordinateAdapter, projectContextShapes],
+      Array.from(
+        new Set(
+          projectContextShapes
+            .filter((shape) => shape.sourceType === 'pergola_reference')
+            .map((shape) =>
+              typeof shape.metadata?.pergolaId === 'string'
+                ? shape.metadata.pergolaId
+                : shape.sourceObjectId ?? shape.sourceId ?? null,
+            )
+            .filter((value): value is string => Boolean(value)),
+        ),
+      ).sort(),
+    [projectContextShapes],
   );
-  const allHitTargetItems = useMemo(
-    () => [...projectContextHitTargetItems, ...hitTargetItems],
-    [hitTargetItems, projectContextHitTargetItems],
-  );
+  const allHitTargetItems = hitTargetItems;
   const localHoverItems = useMemo(
     () =>
       buildPlanLocalHoverItems({
@@ -318,6 +318,8 @@ export function PlanCanvas({
         data-plan-house-projection-health-count={projectHouseProjectionHealth.length}
         data-plan-pergola-render-health={JSON.stringify(projectPergolaRenderHealth)}
         data-plan-pergola-render-health-count={projectPergolaRenderHealth.length}
+        data-plan-pergola-fallback-count={projectPergolaFallbackIds.length}
+        data-plan-pergola-fallback-ids={projectPergolaFallbackIds.join(',')}
         data-plan-selection-halo-count={selectionHaloItems.length}
         data-plan-dimension-count={dimensions.length}
         data-plan-hover-shape-id={hoveredShape?.shapeId ?? ''}
@@ -333,10 +335,6 @@ export function PlanCanvas({
         onContextMenu={panZoom.onContextMenu}
       >
         <g transform={transformAttr(transform)} data-plan-transform="true">
-          <PlanProjectContextLayer
-            shapes={projectContextShapes}
-            coordinateAdapter={coordinateAdapter}
-          />
           <PlanCommittedBodyLayer items={committedBodies} />
           <PlanContextLineLayer items={contextLines} />
           <PlanDetailLayer items={detailLines} />

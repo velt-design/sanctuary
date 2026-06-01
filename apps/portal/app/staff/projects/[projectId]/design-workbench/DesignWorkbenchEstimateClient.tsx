@@ -326,29 +326,9 @@ export default function DesignWorkbenchEstimateClient({
       ? store.ui.activeObjectRef.objectId ?? store.derived.activeModule?.drawingModule.input.pergolaId ?? null
       : null;
   const projectPergolaPlanShapes = store.derived.solvedModel.projectPergolaPlanShapes;
-  const fullDetailPergolaSourceIds = useMemo(
-    () =>
-      new Set(
-        projectPergolaPlanShapes
-          .map((shape) =>
-            typeof shape.metadata?.pergolaId === 'string' ? shape.metadata.pergolaId : null,
-          )
-          .filter((value): value is string => Boolean(value)),
-      ),
-    [projectPergolaPlanShapes],
-  );
   const projectContextShapes = useMemo(
-    () =>
-      buildProjectContextOverlayShapes({
-        projectReferenceShapes: store.derived.solvedModel.projectReferenceShapes,
-        activePergolaSourceId,
-        fullDetailPergolaSourceIds,
-      }),
-    [
-      store.derived.solvedModel.projectReferenceShapes,
-      activePergolaSourceId,
-      fullDetailPergolaSourceIds,
-    ],
+    () => store.derived.solvedModel.projectPergolaFallbackPlanShapes,
+    [store.derived.solvedModel.projectPergolaFallbackPlanShapes],
   );
   const projectPergolaSnapShapes = useMemo(
     () =>

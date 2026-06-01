@@ -41,7 +41,6 @@ describe('buildProjectPlanProjection', () => {
     const rebuiltProjection = buildProjectPlanProjection({
       projectHouseGeometries: pergolaOneActive.projectHouseGeometries,
       projectPergolaPlanShapes: pergolaOneActive.projectPergolaPlanShapes,
-      projectReferenceShapes: pergolaOneActive.projectReferenceShapes,
     });
 
     expect(rebuiltProjection).toEqual(pergolaOneActive.projectPlanProjection);

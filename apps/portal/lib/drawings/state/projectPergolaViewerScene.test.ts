@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type {
+  GeometryTopProjectionShape,
   HouseModel3D,
   Line3,
   Plane3,
@@ -108,6 +109,31 @@ function layerObjectIds(scene: ViewerSceneModel, layerId: string): string[] {
   return scene.layers.find((layer) => layer.id === layerId)?.objects.map((object) => object.id) ?? [];
 }
 
+function fallbackPlanShape(pergolaId: string): GeometryTopProjectionShape {
+  return {
+    id: `pergola_reference:${pergolaId}`,
+    sourceObjectId: pergolaId,
+    sourceId: pergolaId,
+    sourceType: 'pergola_reference',
+    family: 'pergola',
+    kind: 'outline',
+    polygon: [
+      { x: 0, y: 0 },
+      { x: 1000, y: 0 },
+      { x: 1000, y: 800 },
+      { x: 0, y: 800 },
+    ],
+    zOrder: 0,
+    zMin: 0,
+    zMax: 2400,
+    metadata: {
+      pergolaId,
+      renderRole: 'diagnostic_fallback',
+      fallbackReason: 'unresolved_host',
+    },
+  };
+}
+
 describe('buildProjectPergolaViewerSceneFromModules', () => {
   it('uses project house layers instead of basis or module house layers', () => {
     const basisScene: ViewerSceneModel = {
@@ -150,5 +176,37 @@ describe('buildProjectPergolaViewerSceneFromModules', () => {
     expect(layerObjectIds(scene, 'posts')).toEqual([
       'project_pergola:pergola-1:module-post',
     ]);
+  });
+
+  it('adds unresolved pergolas as diagnostic reference-line fallbacks, not committed pergola bodies', () => {
+    const basisScene: ViewerSceneModel = {
+      layers: [
+        fakeLayer('house', 'basis-house'),
+        fakeLayer('posts', 'basis-post'),
+      ],
+    };
+
+    const scene = buildProjectPergolaViewerSceneFromModules({
+      basisScene,
+      modules: [],
+      projectHouseGeometries: [],
+      projectPergolaRenderHealth: [
+        {
+          pergolaId: 'pergola-2',
+          canRenderCommittedBody: false,
+          suppressedCommittedBodyReason: 'unresolved_host',
+        },
+      ],
+      projectPergolaFallbackPlanShapes: [fallbackPlanShape('pergola-2')],
+    });
+
+    expect(layerObjectIds(scene, 'posts')).toEqual([]);
+    expect(layerObjectIds(scene, 'project_pergola_fallbacks')).toEqual([
+      'project_pergola_fallback:pergola-2:edge-1',
+      'project_pergola_fallback:pergola-2:edge-2',
+      'project_pergola_fallback:pergola-2:edge-3',
+      'project_pergola_fallback:pergola-2:edge-4',
+    ]);
+    expect(scene.metadata?.projectPergolaFallbackIds).toBe('pergola-2');
   });
 });

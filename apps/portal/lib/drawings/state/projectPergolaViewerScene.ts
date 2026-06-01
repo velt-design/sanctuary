@@ -1,5 +1,7 @@
 import type {
+  GeometryTopProjectionShape,
   HouseModel3D,
+  Line3,
   ViewerSceneLayer,
   ViewerSceneModel,
   ViewerSceneObject,
@@ -20,6 +22,12 @@ const HOUSE_LAYER_IDS = new Set(['house', 'house_roof_materials']);
 type ProjectHouseViewerSceneSource = {
   houseFormId: string;
   model: HouseModel3D;
+};
+
+type ProjectPergolaRenderHealthEntry = {
+  pergolaId?: string;
+  canRenderCommittedBody?: boolean;
+  suppressedCommittedBodyReason?: string;
 };
 
 function projectPergolaSceneObjectIdPrefix(pergolaId: string): string {
@@ -63,6 +71,89 @@ function cloneLayerWithObjects(
 
 function sortSceneObjects(objects: ViewerSceneObject[]): ViewerSceneObject[] {
   return [...objects].sort((a, b) => a.id.localeCompare(b.id));
+}
+
+function projectPergolaIdFromShape(shape: GeometryTopProjectionShape): string | null {
+  const taggedPergolaId =
+    typeof shape.metadata?.pergolaId === 'string' ? shape.metadata.pergolaId : null;
+  return taggedPergolaId ?? shape.sourceObjectId ?? shape.sourceId ?? null;
+}
+
+function finiteZ(value: number | null | undefined): number | null {
+  return typeof value === 'number' && Number.isFinite(value) ? value : null;
+}
+
+function buildPergolaFallbackLine(input: {
+  id: string;
+  pergolaId: string;
+  reason: string;
+  start: { x: number; y: number };
+  end: { x: number; y: number };
+  z: number;
+}): ViewerSceneObject {
+  const line: Line3 = {
+    start: { x: input.start.x, y: input.start.y, z: input.z },
+    end: { x: input.end.x, y: input.end.y, z: input.z },
+  };
+  return {
+    id: input.id,
+    type: 'reference_line',
+    sourceId: input.pergolaId,
+    kind: 'attachment_edge',
+    line,
+    metadata: {
+      pergolaId: input.pergolaId,
+      renderRole: 'diagnostic_fallback',
+      fallbackReason: input.reason,
+      sourceId: input.pergolaId,
+    },
+  };
+}
+
+function buildProjectPergolaFallbackSceneLayer(input: {
+  fallbackPlanShapes: ReadonlyArray<GeometryTopProjectionShape>;
+  projectPergolaRenderHealth?: ReadonlyArray<ProjectPergolaRenderHealthEntry>;
+}): ViewerSceneLayer | null {
+  const healthByPergolaId = new Map(
+    (input.projectPergolaRenderHealth ?? [])
+      .filter((entry) => entry.pergolaId && entry.canRenderCommittedBody === false)
+      .map((entry) => [entry.pergolaId!, entry]),
+  );
+  const objects: ViewerSceneObject[] = [];
+  for (const shape of input.fallbackPlanShapes) {
+    const pergolaId = projectPergolaIdFromShape(shape);
+    if (!pergolaId) continue;
+    const reason =
+      (typeof shape.metadata?.fallbackReason === 'string' ? shape.metadata.fallbackReason : null) ??
+      healthByPergolaId.get(pergolaId)?.suppressedCommittedBodyReason ??
+      'invalid_geometry';
+    const polygon = shape.polygon.filter(
+      (point) => Number.isFinite(point.x) && Number.isFinite(point.y),
+    );
+    if (polygon.length < 2) continue;
+    const z = finiteZ(shape.zMax) ?? finiteZ(shape.zMin) ?? 0;
+    for (let index = 0; index < polygon.length; index += 1) {
+      const start = polygon[index]!;
+      const end = polygon[(index + 1) % polygon.length]!;
+      objects.push(
+        buildPergolaFallbackLine({
+          id: `project_pergola_fallback:${pergolaId}:edge-${index + 1}`,
+          pergolaId,
+          reason,
+          start,
+          end,
+          z,
+        }),
+      );
+    }
+  }
+  if (objects.length === 0) return null;
+  return {
+    id: 'project_pergola_fallbacks',
+    label: 'Pergola Diagnostic Fallbacks',
+    visibleByDefault: true,
+    objects: sortSceneObjects(objects),
+  };
 }
 
 function buildProjectHouseSceneLayerById(
@@ -109,7 +200,8 @@ export function buildProjectPergolaViewerSceneFromModules(input: {
   basisScene: ViewerSceneModel;
   modules: ReadonlyArray<ProjectPergolaViewerSceneSource>;
   projectHouseGeometries: ReadonlyArray<ProjectHouseViewerSceneSource>;
-  projectPergolaRenderHealth?: ReadonlyArray<unknown>;
+  projectPergolaRenderHealth?: ReadonlyArray<ProjectPergolaRenderHealthEntry>;
+  projectPergolaFallbackPlanShapes?: ReadonlyArray<GeometryTopProjectionShape>;
 }): ViewerSceneModel {
   const layerById = new Map<string, ViewerSceneLayer>();
   const layerOrder: string[] = [];
@@ -142,6 +234,15 @@ export function buildProjectPergolaViewerSceneFromModules(input: {
     layerOrder.push(layerId);
   }
 
+  const fallbackLayer = buildProjectPergolaFallbackSceneLayer({
+    fallbackPlanShapes: input.projectPergolaFallbackPlanShapes ?? [],
+    projectPergolaRenderHealth: input.projectPergolaRenderHealth,
+  });
+  if (fallbackLayer) {
+    layerById.set(fallbackLayer.id, fallbackLayer);
+    layerOrder.push(fallbackLayer.id);
+  }
+
   const seenPergolaIds = new Set<string>();
   for (const module of input.modules) {
     const pergolaId = module.moduleInput.pergolaId;
@@ -165,6 +266,13 @@ export function buildProjectPergolaViewerSceneFromModules(input: {
       ...(input.basisScene.metadata ?? {}),
       projectPergolaSceneCount: seenPergolaIds.size,
       projectPergolaSceneIds: Array.from(seenPergolaIds).join(','),
+      projectPergolaFallbackIds: Array.from(
+        new Set(
+          (input.projectPergolaFallbackPlanShapes ?? [])
+            .map(projectPergolaIdFromShape)
+            .filter((pergolaId): pergolaId is string => Boolean(pergolaId)),
+        ),
+      ).join(','),
       projectPergolaRenderHealth: JSON.stringify(input.projectPergolaRenderHealth ?? []),
     },
   };

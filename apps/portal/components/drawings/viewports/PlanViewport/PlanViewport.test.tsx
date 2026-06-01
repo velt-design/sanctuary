@@ -171,9 +171,44 @@ describe('PlanViewport', () => {
         />,
       );
 
-      expect(markup).toContain('data-plan-context-source-id="pergola-B"');
+      expect(markup).toContain('data-plan-shape-id="pergola_reference:pergola-B"');
+      expect(markup).toContain('data-plan-shape-source-type="pergola_reference"');
+      expect(markup).toContain('data-plan-pergola-fallback="true"');
+      expect(markup).toContain('data-plan-pergola-fallback-count="1"');
+      expect(markup).toContain('data-plan-pergola-fallback-ids="pergola-B"');
       expect(markup).toContain('data-plan-hit-shape-id="pergola_reference:pergola-B"');
       expect(markup).toContain('data-plan-shape-target-kind="pergola"');
+      expect(markup).toContain('data-plan-committed-body-count="2"');
+    });
+
+    it('does not render pergola_reference projection fallbacks as committed bodies', () => {
+      const markup = renderToStaticMarkup(
+        <PlanViewport
+          artifact={makeArtifact([
+            makeShape({
+              id: 'pergola_reference:pergola-B',
+              sourceObjectId: 'pergola-B',
+              sourceType: 'pergola_reference',
+              family: 'pergola',
+              kind: 'outline',
+              metadata: {
+                pergolaId: 'pergola-B',
+                renderRole: 'diagnostic_fallback',
+                fallbackReason: 'unresolved_host',
+              },
+            }),
+          ])}
+          viewportTransform={IDENTITY_TRANSFORM}
+          onViewportTransformChange={() => undefined}
+        />,
+      );
+
+      expect(markup).toContain('data-plan-context-line-count="1"');
+      expect(markup).toContain('data-plan-hit-target-count="1"');
+      expect(markup).toContain('data-plan-committed-body-count="0"');
+      expect(markup).toContain('data-plan-pergola-fallback="true"');
+      expect(markup).toContain('data-plan-shape-source-type="pergola_reference"');
+      expect(markup).toContain('data-plan-hit-shape-id="pergola_reference:pergola-B"');
     });
 
     it('does not emit context hit-targets for non-pergola project references', () => {

@@ -205,6 +205,11 @@ export type WorkbenchSolvedModel = {
    */
   projectPergolaPlanShapes: GeometryTopProjectionShape[];
   /**
+   * Diagnostic-only fallback outlines for pergolas that are present in the
+   * project but are not healthy enough to render committed pergola bodies.
+   */
+  projectPergolaFallbackPlanShapes: GeometryTopProjectionShape[];
+  /**
    * Project-level render health for pergolas. Committed project render bodies
    * are allowed only for object-owned healthy pergola geometry; unresolved or
    * invalid pergolas remain as reference/diagnostic fallbacks.
@@ -324,6 +329,7 @@ export type WorkbenchSolvedProject = {
   activePergola: SolvedPergola | null;
   projectHouseGeometries: ProjectHouseGeometryEntry[];
   projectPergolaPlanShapes: GeometryTopProjectionShape[];
+  projectPergolaFallbackPlanShapes: GeometryTopProjectionShape[];
   projectPergolaRenderHealth: ProjectPergolaRenderHealth[];
   projectHouseProjectionHealth: ProjectHouseProjectionHealth[];
   projectPlanProjection: GeometryTopProjectionViewModel | null;
@@ -1292,6 +1298,7 @@ export function buildWorkbenchSolvedModel(input: {
     activeModule,
     projectHouseGeometries: projectRenderPipeline.projectHouseGeometries,
     projectPergolaRenderHealth: projectRenderPipeline.projectPergolaRenderHealth,
+    projectPergolaFallbackPlanShapes: projectRenderPipeline.projectPergolaFallbackPlanShapes,
     fallbackMessage: inactiveMessage
       ? previewMessageFromWorkbenchMessage(inactiveMessage)
       : undefined,
@@ -1303,6 +1310,7 @@ export function buildWorkbenchSolvedModel(input: {
     activeModule,
     projectHouseGeometries: projectRenderPipeline.projectHouseGeometries,
     projectPergolaPlanShapes: projectRenderPipeline.projectPergolaPlanShapes,
+    projectPergolaFallbackPlanShapes: projectRenderPipeline.projectPergolaFallbackPlanShapes,
     projectPergolaRenderHealth: projectRenderPipeline.projectPergolaRenderHealth,
     projectHouseProjectionHealth: projectRenderPipeline.projectHouseProjectionHealth,
     projectPlanProjection: projectRenderPipeline.projectPlanProjection,
@@ -1405,6 +1413,7 @@ export function buildWorkbenchSolvedProject(input: {
     activePergola,
     projectHouseGeometries: solvedModel.projectHouseGeometries,
     projectPergolaPlanShapes: solvedModel.projectPergolaPlanShapes,
+    projectPergolaFallbackPlanShapes: solvedModel.projectPergolaFallbackPlanShapes,
     projectPergolaRenderHealth: solvedModel.projectPergolaRenderHealth,
     projectHouseProjectionHealth: solvedModel.projectHouseProjectionHealth,
     projectPlanProjection: solvedModel.projectPlanProjection,

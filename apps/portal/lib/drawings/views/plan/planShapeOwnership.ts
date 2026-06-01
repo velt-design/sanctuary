@@ -53,6 +53,14 @@ export function planShapeIsVisibleHouseReferenceFallback(shape: GeometryTopProje
   );
 }
 
+export function planShapeIsPergolaDiagnosticFallback(shape: GeometryTopProjectionShape): boolean {
+  return (
+    shape.family === 'pergola' &&
+    shape.sourceType === 'pergola_reference' &&
+    shape.kind === 'outline'
+  );
+}
+
 export function planShapeIsPlanHitTarget(shape: GeometryTopProjectionShape): boolean {
   if (shape.family === 'house' && DECORATIVE_HOUSE_HIT_TARGET_KINDS.has(shape.kind)) {
     return shape.kind === 'roof' && typeof shape.metadata?.openGableEndId === 'string';

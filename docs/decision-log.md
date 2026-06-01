@@ -58,6 +58,7 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 | 2026-05-31 | Workbench House Forms | Active | PR-2B.1b.3r: selected-object status must be nullable and keyed by explicit object id. Project/row status may list every house form, but selected-house inspector, trust, diagnostics, and overlay status must not fall back to the first house form. |
 | 2026-05-31 | Workbench Actions | Active | PR-2B.1b.3s: action context must be nullable and object-owned. Deck/opening/pergola/house action paths resolve house context from the target object's owner id, never from House 1 or the active module. |
 | 2026-06-01 | Workbench Rendering | Active | PR-2B.1b.3t: project render surfaces may show committed bodies only for object-owned healthy geometry. Invalid or unresolved object-first pergolas must render as reference/diagnostic fallbacks, not normal Plan/3D bodies. |
+| 2026-06-01 | Workbench Rendering | Active | PR-2B.1b.3u: unresolved pergola fallbacks must have their own diagnostic render path. They may appear as transparent Plan context outlines and 3D reference lines, but must not flow through committed pergola body layers. |
 | 2026-05-01 | Plan Rendering | Promoted | Geometry-ready Model Space is a hard top-projection-only render path; legacy/context/reference/opening overlays stay out of normal visuals. |
 | 2026-05-01 | Design Workbench Architecture | Promoted | Split workbench ownership contract-first: coordinate adapters and render graphs leave React presenters before moving tools/renderers. |
 | 2026-05-01 | Deck Interaction | Promoted | Projection-backed deck snapping must use top-projection frames live and object frames only at the commit boundary. |
@@ -1416,3 +1417,19 @@ Current guardrail: project rendering flows through `buildProjectObjectRenderPipe
 Promoted to: None
 
 Related docs/tests: [apps/portal/lib/drawings/state/projectObjectRenderPipeline.ts](../apps/portal/lib/drawings/state/projectObjectRenderPipeline.ts), [apps/portal/lib/drawings/state/projectObjectRenderPipeline.test.ts](../apps/portal/lib/drawings/state/projectObjectRenderPipeline.test.ts), [apps/portal/lib/drawings/state/workbenchSolvedModel.ts](../apps/portal/lib/drawings/state/workbenchSolvedModel.ts), [playwright/portal.workbench-fixture.spec.ts](../playwright/portal.workbench-fixture.spec.ts).
+
+### 2026-06-01 - Workbench Rendering - Pergola Diagnostic Fallbacks
+
+Area: Workbench Rendering
+
+Status: Active
+
+Decision or mistake: suppressing unhealthy pergolas from committed body layers is not enough; unresolved pergolas need an explicit diagnostic fallback path.
+
+Why it mattered: after committed-body gating, an unresolved gable pergola could either disappear from 3D or paint as a dark Plan body if its `pergola_reference` outline re-entered the generic committed-body graph. Both outcomes made the fixture look broken even though the health gate was correct.
+
+Current guardrail: unresolved pergola references flow through `projectPergolaFallbackPlanShapes` and the 3D `project_pergola_fallbacks` reference-line layer. They may be visible/selectable as transparent context outlines or reference lines with owner diagnostics, but must never use normal pergola roof/panel/post committed body styling.
+
+Promoted to: None
+
+Related docs/tests: [apps/portal/lib/drawings/state/projectObjectRenderPipeline.ts](../apps/portal/lib/drawings/state/projectObjectRenderPipeline.ts), [apps/portal/lib/drawings/state/projectPergolaViewerScene.ts](../apps/portal/lib/drawings/state/projectPergolaViewerScene.ts), [apps/portal/lib/drawings/views/plan/planRenderGraph.test.ts](../apps/portal/lib/drawings/views/plan/planRenderGraph.test.ts), [playwright/portal.workbench-fixture.spec.ts](../playwright/portal.workbench-fixture.spec.ts).

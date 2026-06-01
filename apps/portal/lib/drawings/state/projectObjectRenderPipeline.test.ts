@@ -72,9 +72,18 @@ describe('project object render pipeline', () => {
           shape.sourceType === 'pergola_reference' &&
           (shape.metadata?.pergolaId === 'pergola-2' || shape.sourceObjectId === 'pergola-2'),
       ),
+    ).toBe(false);
+    expect(
+      model.projectPergolaFallbackPlanShapes.some(
+        (shape) =>
+          shape.sourceType === 'pergola_reference' &&
+          (shape.metadata?.pergolaId === 'pergola-2' || shape.sourceObjectId === 'pergola-2') &&
+          shape.metadata?.renderRole === 'diagnostic_fallback',
+      ),
     ).toBe(true);
 
     expect(projectSceneObjectIds(model).some((id) => id.startsWith('project_pergola:pergola-2:'))).toBe(false);
+    expect(projectSceneObjectIds(model).some((id) => id.startsWith('project_pergola_fallback:pergola-2:'))).toBe(true);
   });
 
   it('keeps project render ownership stable when active pergola changes', () => {

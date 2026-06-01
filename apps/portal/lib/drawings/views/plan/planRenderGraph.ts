@@ -6,6 +6,7 @@ import {
   type PlanRenderDiagnostics,
 } from './planRenderDiagnostics';
 import {
+  planShapeIsPergolaDiagnosticFallback,
   planShapeIsPlanHitTarget,
   planShapeVisualOwner,
 } from './planShapeOwnership';
@@ -63,6 +64,9 @@ export function topProjectionPlanLayer(shape: GeometryTopProjectionShape): Proje
   const role = topProjectionRole(shape);
   if (role === 'hidden_from_top') return null;
   if (role === 'context') {
+    if (shape.family === 'pergola' && shape.sourceType === 'pergola_reference' && shape.kind === 'outline') {
+      return 'hitTargets';
+    }
     if (shape.sourceType === 'reference_line' || shape.sourceType === 'house_line') return 'contextLines';
     if (shape.family === 'house' && (shape.kind === 'opening_marker' || shape.kind === 'opening_outline' || shape.kind === 'attachment_target')) {
       return 'contextLines';
@@ -100,7 +104,7 @@ export function topProjectionPlanLayer(shape: GeometryTopProjectionShape): Proje
   }
   if (shape.family === 'pergola') {
     if (shape.sourceType === 'pergola_reference' && shape.kind === 'outline') {
-      return 'committedBodies';
+      return 'hitTargets';
     }
     if (
       shape.sourceType === 'roof_plane' ||
@@ -119,7 +123,7 @@ export function topProjectionShapeIsCommittedBody(shape: GeometryTopProjectionSh
   return topProjectionPlanLayer(shape) === 'committedBodies';
 }
 
-export function topProjectionShapeAllowedInProjectionOnlyModel(shape: GeometryTopProjectionShape): boolean {
+function topProjectionShapeAllowedInProjectionOnlyModel(shape: GeometryTopProjectionShape): boolean {
   if (topProjectionRole(shape) !== 'top_visible') return false;
   if (shape.family === 'house') {
     return shape.kind === 'roof' || shape.kind === 'deck' || shape.kind === 'footprint';
@@ -130,7 +134,7 @@ export function topProjectionShapeAllowedInProjectionOnlyModel(shape: GeometryTo
   return false;
 }
 
-export function topProjectionContextLineAllowedInProjectionOnlyModel(shape: GeometryTopProjectionShape): boolean {
+function topProjectionContextLineAllowedInProjectionOnlyModel(shape: GeometryTopProjectionShape): boolean {
   if (topProjectionRole(shape) !== 'context') return false;
   if (shape.family !== 'house') return false;
   if (shape.sourceType === 'house_line') {
@@ -167,6 +171,9 @@ export function buildProjectionPlanRenderGraph<TItem extends { shape: GeometryTo
         graph.detailLines.push({ ...item, layer });
       } else if (layer === 'hitTargets') {
         graph.hitTargets.push({ ...item, layer });
+        if (planShapeIsPergolaDiagnosticFallback(item.shape)) {
+          graph.contextLines.push({ ...item, layer: 'contextLines' });
+        }
       } else {
         graph.suppressed.push(item);
       }

@@ -142,7 +142,7 @@
 .projectContextOutline {
   composes: strokeHairline;
   stroke-dasharray: 4 3;
-  fill: rgba(120, 120, 130, 0.05);
+  fill: transparent;
   pointer-events: none;
 }
 

@@ -3,16 +3,19 @@ import {
   clearPlanSelection,
   expect3DViewportEvidence,
   expectPlanHitTargetPaintIsInvisible,
+  expectPlanPergolaFallbackIsOutlineOnly,
   expectPlanVisibleReferenceFallbackIsOutlineOnly,
   hoverPlanHitTarget,
   openWorkbenchFixture,
   readCommittedBodyShapeIdsInPaintOrder,
   readCommittedPergolaBodyIds,
+  read3DPergolaFallbackIds,
   read3DPergolaRenderHealth,
   readHouseHitTargetIds,
   readPlanHouseProjectionHealth,
   readPlanHouseRenderDiagnostics,
   readPlanPergolaRenderHealth,
+  readPlanPergolaFallbackIds,
   readPlanLocalHoverIds,
   readPlanSelectionIds,
   readVisibleHouseBodyIds,
@@ -39,6 +42,7 @@ test.describe('workbench fixture route', () => {
     const pergolaOnePergolaShapeIds = await readVisiblePergolaShapeIds(page);
     const pergolaOneCommittedPergolaBodyIds = await readCommittedPergolaBodyIds(page);
     const pergolaOnePergolaRenderHealth = await readPlanPergolaRenderHealth(page);
+    const pergolaOnePergolaFallbackIds = await readPlanPergolaFallbackIds(page);
     const pergolaOneHouseHitTargetIds = await readHouseHitTargetIds(page);
     const pergolaOneReferenceFallbackIds = await readVisibleHouseReferenceFallbackIds(page);
     const pergolaOneDiagnostics = await readPlanHouseRenderDiagnostics(page);
@@ -77,7 +81,8 @@ test.describe('workbench fixture route', () => {
       expect.arrayContaining(['house_reference:house-main', 'house_reference:house-form-2']),
     );
     expect(pergolaOnePergolaShapeIds.some((id) => id.includes('pergola-1'))).toBe(true);
-    expect(pergolaOnePergolaShapeIds.some((id) => id.includes('pergola-2'))).toBe(true);
+    expect(pergolaOnePergolaFallbackIds).toEqual(['pergola-2']);
+    await expectPlanPergolaFallbackIsOutlineOnly(page, 'pergola-2');
     expect(pergolaOneCommittedPergolaBodyIds.some((id) => id.includes('pergola-1'))).toBe(true);
     expect(
       pergolaOneCommittedPergolaBodyIds.some((id) => id.startsWith('project_pergola:pergola-2:')),
@@ -103,6 +108,7 @@ test.describe('workbench fixture route', () => {
     const pergolaTwoPergolaShapeIds = await readVisiblePergolaShapeIds(page);
     const pergolaTwoCommittedPergolaBodyIds = await readCommittedPergolaBodyIds(page);
     const pergolaTwoPergolaRenderHealth = await readPlanPergolaRenderHealth(page);
+    const pergolaTwoPergolaFallbackIds = await readPlanPergolaFallbackIds(page);
     const pergolaTwoHouseHitTargetIds = await readHouseHitTargetIds(page);
     const pergolaTwoReferenceFallbackIds = await readVisibleHouseReferenceFallbackIds(page);
     const pergolaTwoProjectionHealth = await readPlanHouseProjectionHealth(page);
@@ -110,6 +116,7 @@ test.describe('workbench fixture route', () => {
     expect(pergolaTwoPergolaShapeIds).toEqual(pergolaOnePergolaShapeIds);
     expect(pergolaTwoCommittedPergolaBodyIds).toEqual(pergolaOneCommittedPergolaBodyIds);
     expect(pergolaTwoPergolaRenderHealth).toEqual(pergolaOnePergolaRenderHealth);
+    expect(pergolaTwoPergolaFallbackIds).toEqual(pergolaOnePergolaFallbackIds);
     expect(pergolaTwoHouseHitTargetIds).toEqual(pergolaOneHouseHitTargetIds);
     expect(pergolaTwoReferenceFallbackIds).toEqual(pergolaOneReferenceFallbackIds);
     expect(pergolaTwoProjectionHealth).toEqual(pergolaOneProjectionHealth);
@@ -122,6 +129,7 @@ test.describe('workbench fixture route', () => {
     const pergolaOneAgainPergolaShapeIds = await readVisiblePergolaShapeIds(page);
     expect(pergolaOneAgainHouseBodyIds).toEqual(pergolaOneHouseBodyIds);
     expect(pergolaOneAgainPergolaShapeIds).toEqual(pergolaOnePergolaShapeIds);
+    expect(await readPlanPergolaFallbackIds(page)).toEqual(['pergola-2']);
 
     const paintOrderedBodyIds = await readCommittedBodyShapeIdsInPaintOrder(page);
     const lastPergolaIndex = Math.max(
@@ -188,6 +196,7 @@ test.describe('workbench fixture route', () => {
         }),
       ]),
     );
+    expect(await read3DPergolaFallbackIds(page)).toEqual(['pergola-2']);
     await selectRailObject(page, 'pergolas', 'pergola-2');
     await expect3DViewportEvidence(page);
     expect(await read3DPergolaRenderHealth(page)).toEqual(
@@ -199,5 +208,6 @@ test.describe('workbench fixture route', () => {
         }),
       ]),
     );
+    expect(await read3DPergolaFallbackIds(page)).toEqual(['pergola-2']);
   });
 });

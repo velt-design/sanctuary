@@ -102,6 +102,24 @@ export async function readVisiblePergolaShapeIds(page: Page): Promise<string[]> 
   );
 }
 
+export async function readPlanPergolaFallbackIds(page: Page): Promise<string[]> {
+  const raw = await page.locator('[data-plan-viewport="true"]').getAttribute('data-plan-pergola-fallback-ids');
+  return raw ? raw.split(',').filter(Boolean).sort() : [];
+}
+
+export async function expectPlanPergolaFallbackIsOutlineOnly(page: Page, pergolaId: string) {
+  const style = await page
+    .locator(`[data-plan-pergola-fallback="true"][data-plan-shape-id="pergola_reference:${pergolaId}"]`)
+    .first()
+    .evaluate((node) => {
+      const computed = window.getComputedStyle(node);
+      return { fill: computed.fill, stroke: computed.stroke };
+    });
+  expect(['none', 'transparent', 'rgba(0, 0, 0, 0)']).toContain(style.fill);
+  expect(style.stroke).not.toBe('none');
+  expect(style.stroke).not.toBe('rgba(0, 0, 0, 0)');
+}
+
 export async function readCommittedPergolaBodyIds(page: Page): Promise<string[]> {
   return readPlanShapeIds(
     page,
@@ -217,4 +235,12 @@ export async function read3DPergolaRenderHealth(page: Page): Promise<Array<{
     .getAttribute('data-project-pergola-render-health');
   if (!raw) return [];
   return JSON.parse(raw);
+}
+
+export async function read3DPergolaFallbackIds(page: Page): Promise<string[]> {
+  const raw = await page
+    .locator('[data-testid="geometry-3d-viewport-diagnostics"]')
+    .first()
+    .getAttribute('data-project-pergola-fallback-ids');
+  return raw ? raw.split(',').filter(Boolean).sort() : [];
 }

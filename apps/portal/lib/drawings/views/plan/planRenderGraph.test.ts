@@ -303,4 +303,30 @@ describe('planRenderGraph', () => {
     ]);
   });
 
+  it('routes pergola_reference fallbacks to context and hit targets, not committed bodies', () => {
+    const fallback = shape({
+      id: 'pergola_reference:pergola-2',
+      sourceObjectId: 'pergola-2',
+      sourceId: 'pergola-2',
+      family: 'pergola',
+      kind: 'outline',
+      sourceType: 'pergola_reference',
+      metadata: {
+        pergolaId: 'pergola-2',
+        renderRole: 'diagnostic_fallback',
+        fallbackReason: 'unresolved_host',
+        topProjectionRole: 'context',
+      },
+    });
+
+    const graph = buildProjectionPlanRenderGraph([
+      { shape: fallback, marker: 'fallback' },
+    ]);
+
+    expect(graph.committedBodies).toEqual([]);
+    expect(graph.contextLines.map((item) => item.marker)).toEqual(['fallback']);
+    expect(graph.hitTargets.map((item) => item.marker)).toEqual(['fallback']);
+    expect(graph.suppressed).toEqual([]);
+  });
+
 });

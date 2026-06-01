@@ -91,6 +91,11 @@ describe('sanctuary workbench fixtures', () => {
       suppressedCommittedBodyReason: 'unresolved_host',
       hostAttachmentCode: 'missing_attachment_edge',
     });
+    expect(store.derived.solvedModel.projectPergolaFallbackPlanShapes.some(
+      (shape) =>
+        shape.sourceType === 'pergola_reference' &&
+        (shape.metadata?.pergolaId === 'pergola-2' || shape.sourceObjectId === 'pergola-2'),
+    )).toBe(true);
     expect(store.derived.solvedModel.projectHouseGeometries.map((entry) => entry.houseFormId)).toEqual([
       'house-main',
       'house-form-2',
