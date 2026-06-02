@@ -4,6 +4,8 @@ import {
   buildPortalAgentScorecard,
   formatPortalAgentScorecard,
   parseRepoHealthForScorecard,
+  type PortalAgentScorecard,
+  validatePortalAgentScorecardStrict,
 } from './portalAgentScorecard';
 import { portalRouteCatalog } from './portalRouteCatalog';
 import { portalScenarioRegistry } from './portalScenarioRegistry';
@@ -21,6 +23,10 @@ Browser-direct Supabase files        5            0           -2     better
 
 Recommended next lane: large-file decomposition, because Critical files is up 1 from baseline.
 `;
+
+function cloneScorecard(scorecard: PortalAgentScorecard): PortalAgentScorecard {
+  return JSON.parse(JSON.stringify(scorecard)) as PortalAgentScorecard;
+}
 
 describe('portal agent scorecard', () => {
   it('counts route catalog smoke and debug coverage from the executable catalog', () => {
@@ -118,5 +124,92 @@ describe('portal agent scorecard', () => {
     expect(json).not.toContain('storagestate');
     expect(json).not.toContain('authorization');
     expect(json).not.toContain('bearer ');
+  });
+
+  it('passes the strict portal-agent ratchet against the current baseline', () => {
+    const scorecard = buildPortalAgentScorecard({ repoHealthText: REPO_HEALTH_SAMPLE });
+    const result = validatePortalAgentScorecardStrict(scorecard);
+
+    expect(result.passed).toBe(true);
+    expect(result.failures).toEqual([]);
+    expect(result.metrics.map((metric) => metric.metricId).sort()).toEqual([
+      'agent-access-routes',
+      'browser-evidence-adoption',
+      'exported-debug-routes',
+      'scenario-routes',
+      'seeded-scenarios',
+      'total-routes',
+    ]);
+  });
+
+  it('fails strict validation when agent-access route coverage drops below baseline', () => {
+    const scorecard = cloneScorecard(buildPortalAgentScorecard({ repoHealthText: REPO_HEALTH_SAMPLE }));
+    scorecard.routeCoverage.smokeStatus['agent-access'] = 3;
+
+    const result = validatePortalAgentScorecardStrict(scorecard);
+
+    expect(result.passed).toBe(false);
+    expect(result.failures).toEqual(
+      expect.arrayContaining([expect.objectContaining({ metricId: 'agent-access-routes' })]),
+    );
+  });
+
+  it('fails strict validation when exported debug route coverage drops below baseline', () => {
+    const scorecard = cloneScorecard(buildPortalAgentScorecard({ repoHealthText: REPO_HEALTH_SAMPLE }));
+    scorecard.routeCoverage.debugExportStatus.exported = 4;
+
+    const result = validatePortalAgentScorecardStrict(scorecard);
+
+    expect(result.passed).toBe(false);
+    expect(result.failures).toEqual(
+      expect.arrayContaining([expect.objectContaining({ metricId: 'exported-debug-routes' })]),
+    );
+  });
+
+  it('fails strict validation when seeded scenario coverage drops below baseline', () => {
+    const scorecard = cloneScorecard(buildPortalAgentScorecard({ repoHealthText: REPO_HEALTH_SAMPLE }));
+    scorecard.scenarioCoverage.seeded = 2;
+
+    const result = validatePortalAgentScorecardStrict(scorecard);
+
+    expect(result.passed).toBe(false);
+    expect(result.failures).toEqual(
+      expect.arrayContaining([expect.objectContaining({ metricId: 'seeded-scenarios' })]),
+    );
+  });
+
+  it('fails strict validation when a required browser spec leaves the shared evidence lane', () => {
+    const scorecard = cloneScorecard(buildPortalAgentScorecard({ repoHealthText: REPO_HEALTH_SAMPLE }));
+    scorecard.evidenceCoverage.specs = scorecard.evidenceCoverage.specs.map((spec) =>
+      spec.id === 'auth-runtime'
+        ? { ...spec, adopted: false, missingMarkers: ['withPortalBrowserEvidence'] }
+        : spec,
+    );
+    scorecard.evidenceCoverage.adoptedSpecs = scorecard.evidenceCoverage.specs.filter((spec) => spec.adopted).length;
+    scorecard.evidenceCoverage.missingSpecs = scorecard.evidenceCoverage.specs.filter((spec) => !spec.adopted);
+
+    const result = validatePortalAgentScorecardStrict(scorecard);
+
+    expect(result.passed).toBe(false);
+    expect(result.failures).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          metricId: 'browser-evidence-adoption',
+          current: expect.stringContaining('auth-runtime'),
+        }),
+      ]),
+    );
+  });
+
+  it('does not fail strict validation on repo-health pressure', () => {
+    const scorecard = cloneScorecard(buildPortalAgentScorecard({ repoHealthText: REPO_HEALTH_SAMPLE }));
+    scorecard.repoHealth.metrics.criticalFiles = 999;
+    scorecard.repoHealth.metrics.deadCodeDeleteCandidates = 9999;
+    scorecard.repoHealth.recommendedNextLane = 'urgent cleanup';
+
+    const result = validatePortalAgentScorecardStrict(scorecard);
+
+    expect(result.passed).toBe(true);
+    expect(result.failures).toEqual([]);
   });
 });

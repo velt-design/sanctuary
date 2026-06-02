@@ -28,9 +28,11 @@ describe('sanctuary workbench fixtures', () => {
 
   it('keeps the live captured failure lane explicit until an exact payload is baked', () => {
     expect(CAPTURED_SANCTUARY_GEOMETRY_WORKBENCH_FIXTURES).toEqual([]);
-    expect(listSanctuaryGeometryWorkbenchFixtures().some(
-      (fixture) => fixture.slug === 'captured-house-roof-failure-2026-06-02',
-    )).toBe(false);
+    expect(
+      listSanctuaryGeometryWorkbenchFixtures()
+        .map((fixture) => fixture.slug)
+        .filter((slug) => /^captured-house-roof-failure-/.test(slug)),
+    ).toEqual([]);
   });
 
   it('keeps parity-critical fixture metadata explicit and stable', () => {

@@ -1,5 +1,10 @@
 import { expect, type Page } from '@playwright/test';
 
+export {
+  attachWorkbenchCapturedReproPayload,
+  readWorkbenchCapturedReproPayload,
+} from './workbenchCapturedRepro';
+
 export async function openWorkbenchFixture(page: Page, fixtureSlug: string) {
   await page.goto(`/qa/design-workbench-fixture?fixture=${encodeURIComponent(fixtureSlug)}`);
   await expect(page.locator('[data-workbench-fixture]').first()).toBeVisible({ timeout: 60_000 });

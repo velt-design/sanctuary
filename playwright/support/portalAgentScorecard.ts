@@ -46,6 +46,35 @@ export interface PortalAgentScorecard {
   repoHealth: PortalAgentScorecardRepoHealth;
 }
 
+type PortalAgentScorecardStrictMetricId =
+  | 'total-routes'
+  | 'agent-access-routes'
+  | 'scenario-routes'
+  | 'exported-debug-routes'
+  | 'seeded-scenarios'
+  | 'browser-evidence-adoption';
+
+interface PortalAgentScorecardStrictFailure {
+  metricId: PortalAgentScorecardStrictMetricId;
+  label: string;
+  expected: string;
+  current: string;
+  message: string;
+}
+
+interface PortalAgentScorecardStrictMetric {
+  metricId: PortalAgentScorecardStrictMetricId;
+  label: string;
+  expected: string;
+  current: string;
+}
+
+export interface PortalAgentScorecardStrictResult {
+  passed: boolean;
+  metrics: PortalAgentScorecardStrictMetric[];
+  failures: PortalAgentScorecardStrictFailure[];
+}
+
 export interface BuildPortalAgentScorecardOptions {
   repoRoot?: string;
   repoHealthText?: string | null;
@@ -91,6 +120,15 @@ const EVIDENCE_SPEC_MARKERS = [
     markers: ['installPortalBrowserEvidence', 'attachPortalBrowserEvidence', 'attachWorkbenchViewportEvidence'],
   },
 ] as const;
+
+const PORTAL_AGENT_SCORECARD_STRICT_BASELINE = {
+  minTotalRoutes: 18,
+  minAgentAccessRoutes: 4,
+  minScenarioRequiredRoutes: 4,
+  minExportedDebugRoutes: 5,
+  minSeededScenarios: 3,
+  requiredEvidenceSpecIds: ['agent-access', 'agent-scenarios', 'auth-runtime', 'workbench-fixture'],
+} as const;
 
 function countBy<T extends string>(values: readonly T[], allValues: readonly T[]): Record<T, number> {
   const counts = Object.fromEntries(allValues.map((value) => [value, 0])) as Record<T, number>;
@@ -234,4 +272,99 @@ export function formatPortalAgentScorecard(scorecard: PortalAgentScorecard): str
     `  Browser-direct Supabase files: ${formatMetric(repoHealth.metrics.browserDirectSupabaseFiles)}`,
     `  Recommended next lane: ${repoHealth.recommendedNextLane ?? 'n/a'}`,
   ].join('\n');
+}
+
+function buildStrictMetric(
+  metricId: PortalAgentScorecardStrictMetricId,
+  label: string,
+  expected: string,
+  current: string,
+): PortalAgentScorecardStrictMetric {
+  return { metricId, label, expected, current };
+}
+
+function buildStrictFailure(metric: PortalAgentScorecardStrictMetric): PortalAgentScorecardStrictFailure {
+  return {
+    ...metric,
+    message: `${metric.label} is below the strict portal-agent baseline: expected ${metric.expected}, current ${metric.current}.`,
+  };
+}
+
+export function validatePortalAgentScorecardStrict(
+  scorecard: PortalAgentScorecard,
+): PortalAgentScorecardStrictResult {
+  const baseline = PORTAL_AGENT_SCORECARD_STRICT_BASELINE;
+  const requiredEvidenceSpecs = new Set(baseline.requiredEvidenceSpecIds);
+  const missingEvidenceSpecs = baseline.requiredEvidenceSpecIds.filter((id) => {
+    const spec = scorecard.evidenceCoverage.specs.find((entry) => entry.id === id);
+    return !spec || !spec.adopted;
+  });
+
+  const metrics = [
+    buildStrictMetric(
+      'total-routes',
+      'Route catalog total',
+      `>= ${baseline.minTotalRoutes}`,
+      String(scorecard.routeCoverage.totalRoutes),
+    ),
+    buildStrictMetric(
+      'agent-access-routes',
+      'Agent-access smoke routes',
+      `>= ${baseline.minAgentAccessRoutes}`,
+      String(scorecard.routeCoverage.smokeStatus['agent-access']),
+    ),
+    buildStrictMetric(
+      'scenario-routes',
+      'Scenario smoke routes',
+      `>= ${baseline.minScenarioRequiredRoutes}`,
+      String(scorecard.routeCoverage.smokeStatus['scenario-required']),
+    ),
+    buildStrictMetric(
+      'exported-debug-routes',
+      'Exported debug routes',
+      `>= ${baseline.minExportedDebugRoutes}`,
+      String(scorecard.routeCoverage.debugExportStatus.exported),
+    ),
+    buildStrictMetric(
+      'seeded-scenarios',
+      'Seeded scenarios',
+      `>= ${baseline.minSeededScenarios}`,
+      String(scorecard.scenarioCoverage.seeded),
+    ),
+    buildStrictMetric(
+      'browser-evidence-adoption',
+      'Browser evidence adoption',
+      Array.from(requiredEvidenceSpecs).join(', '),
+      missingEvidenceSpecs.length === 0 ? 'all required specs adopted' : `missing ${missingEvidenceSpecs.join(', ')}`,
+    ),
+  ];
+
+  const failures = metrics.flatMap((metric) => {
+    switch (metric.metricId) {
+      case 'total-routes':
+        return scorecard.routeCoverage.totalRoutes < baseline.minTotalRoutes ? [buildStrictFailure(metric)] : [];
+      case 'agent-access-routes':
+        return scorecard.routeCoverage.smokeStatus['agent-access'] < baseline.minAgentAccessRoutes
+          ? [buildStrictFailure(metric)]
+          : [];
+      case 'scenario-routes':
+        return scorecard.routeCoverage.smokeStatus['scenario-required'] < baseline.minScenarioRequiredRoutes
+          ? [buildStrictFailure(metric)]
+          : [];
+      case 'exported-debug-routes':
+        return scorecard.routeCoverage.debugExportStatus.exported < baseline.minExportedDebugRoutes
+          ? [buildStrictFailure(metric)]
+          : [];
+      case 'seeded-scenarios':
+        return scorecard.scenarioCoverage.seeded < baseline.minSeededScenarios ? [buildStrictFailure(metric)] : [];
+      case 'browser-evidence-adoption':
+        return missingEvidenceSpecs.length > 0 ? [buildStrictFailure(metric)] : [];
+    }
+  });
+
+  return {
+    passed: failures.length === 0,
+    metrics,
+    failures,
+  };
 }

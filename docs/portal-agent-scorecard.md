@@ -16,6 +16,14 @@ For automation or future PR comments:
 npm run portal:agent-scorecard -- --json
 ```
 
+To prevent the established portal-agent baseline from going backwards:
+
+```bash
+npm run portal:agent-scorecard:strict
+```
+
+The strict command is also read-only. It fails only when route catalog coverage, scenario coverage, exported debug-route coverage, seeded scenarios, or shared browser evidence adoption drops below the current documented baseline. Repo-health metrics remain advisory.
+
 ## What It Measures
 
 The scorecard reports from existing executable sources:
@@ -71,4 +79,4 @@ Use these rough rules:
 
 ## Guardrail
 
-The scorecard is advisory. PR-Agent.7 owns strictness ratchets. Do not make this command block unrelated work until a specific metric has a documented, changed-file-safe enforcement rule.
+`npm run portal:agent-scorecard` remains advisory. `npm run portal:agent-scorecard:strict` is the narrow ratchet: it blocks only portal-agent readiness regression and does not enforce broad legacy cleanup, repo-health pressure, or workbench runtime reliability.

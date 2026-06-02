@@ -178,6 +178,7 @@ npm run portal:scenarios:ensure
 npm run portal:agent-scenarios
 npm run portal:agent-scenarios:provision
 npm run portal:agent-scorecard
+npm run portal:agent-scorecard:strict
 npm run portal:fixture-env
 npm run test:portal:browser:auth
 npm run test:portal:browser
@@ -200,11 +201,15 @@ npm run test:portal:performance
 
 `npm run portal:agent-scorecard` prints a read-only portal-agent quality snapshot from the route catalog, scenario registry, debug-export metadata, browser evidence adoption, and `npm run repo:health` headline. It does not run browser tests, provision users, seed scenarios, or mutate data. Use `npm run portal:agent-scorecard -- --json` for automation-friendly output. The human guide is `docs/portal-agent-scorecard.md`.
 
+`npm run portal:agent-scorecard:strict` runs the same read-only scorecard plus the current portal-agent strictness ratchet. It fails only when route catalog, scenario, debug-export, seeded-scenario, or shared browser evidence coverage drops below the documented baseline; repo-health metrics remain advisory.
+
 The portal route catalog is documented in `docs/portal-route-catalog.md`. Add new authenticated route coverage there first, then let browser specs consume the relevant catalog subset instead of adding local hardcoded route lists.
 
 Shared page debug exports are enabled only outside production and only with `ENABLE_SANCTUARY_GEOMETRY_WORKBENCH_FIXTURES=1`, `NEXT_PUBLIC_ENABLE_SANCTUARY_GEOMETRY_WORKBENCH_FIXTURES=1`, `PORTAL_PAGE_DEBUG_EXPORTS=1`, or `NEXT_PUBLIC_PORTAL_PAGE_DEBUG_EXPORTS=1`. Project detail, redirected estimate detail, quote detail, and design workbench routes expose `data-portal-debug-export="true"` in the scenario lane. Browser specs should use `readPortalPageDebugExport(page)` / `expectPortalDebugExport(page, pageId)` from `playwright/support/portalAgent.ts`; bug reports for complex pages should include this payload when available.
 
 Portal browser specs should install evidence through `playwright/support/portalBrowserEvidence.ts`, not local ad hoc listeners. The shared lane always attaches `portal-browser-evidence.json` with route/scenario context, current URL, console warnings/errors, page errors, failed requests, 4xx/5xx response summaries, and debug-export availability. On failure, or when `PORTAL_EVIDENCE_MODE=full`, it also attaches a full-page screenshot and truncated DOM snapshot. Workbench fixture specs add `workbench-viewport-evidence.json` with Plan body/fallback/hit-target ids, selection counts, 3D diagnostics, viewport bounds, and Plan/3D viewport screenshots when rich evidence is active. The lane never attaches storage state, cookies, auth headers, passwords, or service-role keys.
+
+Workbench captured repro payloads are read through `readWorkbenchCapturedReproPayload(page)` from `playwright/support/workbenchFixture.ts`. The helper accepts the shared page debug export (`diagnostics.workbenchDebugFixture`) or the raw fixture script (`data-workbench-debug-export="true"`), validates `snapshot`, `objectFirst`, selected state, house geometry inputs, project house health, pergola health, and `projectPreviewSource`, and returns a normalized payload that can be pasted into `sanctuaryWorkbenchCapturedFixtures.ts`. Browser specs may attach this payload as evidence, but must not write captured payloads to tracked files. The full workflow is in `docs/workbench-captured-repro-workflow.md`.
 
 `npm run portal:fixture-env` is the fail-fast server-readiness preflight for the no-auth drawing fixture gate. `npm run test:portal:browser`, `npm run test:portal:browser:headed`, and the browser segment of `npm run test:portal:workbench` run it before Playwright starts. It catches a normal portal dev server already occupying the Playwright port and catches `PORTAL_BASE_URL` targets that redirect the fixture route to auth.
 

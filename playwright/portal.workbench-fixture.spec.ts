@@ -6,6 +6,7 @@ import {
 } from './support/portalBrowserEvidence';
 import { attachWorkbenchViewportEvidence } from './support/workbenchEvidence';
 import {
+  attachWorkbenchCapturedReproPayload,
   clearPlanSelection,
   expect3DViewportEvidence,
   expectPlanHitTargetPaintIsInvisible,
@@ -27,6 +28,7 @@ import {
   readPlanSelectionIds,
   readVisibleHouseBodyIds,
   readVisibleHouseReferenceFallbackIds,
+  readWorkbenchCapturedReproPayload,
   readVisiblePergolaShapeIds,
   readWorkbenchDebugExport,
   readWorkbenchDebugHouseGeometryInputs,
@@ -52,6 +54,10 @@ test.describe('workbench fixture route', () => {
     }
 
     await attachWorkbenchViewportEvidence(testInfo, page, {
+      phase: 'workbench-fixture',
+    });
+
+    await attachWorkbenchCapturedReproPayload(testInfo, page, {
       phase: 'workbench-fixture',
     });
   });
@@ -261,6 +267,33 @@ test.describe('workbench fixture route', () => {
           ]),
         }),
       }),
+    );
+  });
+
+  test('exposes a validated captured repro payload for the multi-object fixture', async ({ page }) => {
+    await openWorkbenchFixture(page, MULTI_OBJECT_FIXTURE);
+
+    const capturedRepro = await readWorkbenchCapturedReproPayload(page);
+
+    expect(capturedRepro).not.toBeNull();
+    expect(capturedRepro?.snapshot).toEqual(expect.any(Object));
+    expect(capturedRepro?.objectFirst).toEqual(expect.any(Object));
+    expect(capturedRepro?.selectedState).toEqual(expect.any(Object));
+    expect(capturedRepro?.validation.houseFormIds).toEqual(['house-form-2', 'house-main']);
+    expect(capturedRepro?.validation.projectPreviewSource).not.toBe('legacy_active_module_fallback');
+    expect(capturedRepro?.renderDiagnostics.projectHouseProjectionHealth).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ houseFormId: 'house-main' }),
+        expect.objectContaining({ houseFormId: 'house-form-2' }),
+      ]),
+    );
+    expect(capturedRepro?.renderDiagnostics.projectPergolaRenderHealth).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          pergolaId: 'pergola-2',
+          suppressedCommittedBodyReason: 'unresolved_host',
+        }),
+      ]),
     );
   });
 

@@ -144,7 +144,7 @@ Done when:
 
 Simple version: create a repo health dashboard for humans and agents.
 
-Status: active. The advisory command is `npm run portal:agent-scorecard`; the human guide is `docs/portal-agent-scorecard.md`.
+Status: shipped. The advisory scorecard is available through `npm run portal:agent-scorecard` and `docs/portal-agent-scorecard.md`.
 
 Why it matters: we need to know whether the repo is getting cleaner, not just whether a single PR passed.
 
@@ -167,6 +167,8 @@ Done when:
 ### PR-Agent.7: Strictness Ratchet
 
 Simple version: gradually turn good advisory checks into stronger local or CI checks.
+
+Status: shipped. The first ratchet is `npm run portal:agent-scorecard:strict`; it blocks only portal-agent readiness regressions, not broad repo-health debt.
 
 Why it matters: advisory reports are useful, but A+ repos prevent new debt from entering. The key is to ratchet slowly so current legacy debt does not block all work.
 
@@ -191,6 +193,8 @@ Done when:
 ### PR-Agent.8: Workbench Captured Repro Workflow
 
 Simple version: make the workbench bug workflow: capture live state, bake fixture, fix first failing stage.
+
+Status: active. This slice adds the Playwright-side captured-repro validator/evidence path and keeps the captured fixture lane empty until a real copied payload is available.
 
 Why it matters: recent workbench improvements made diagnostics better, but visible bugs have persisted because screenshot approximations were not exact enough.
 
@@ -217,10 +221,10 @@ Done when:
 4. PR-Agent.4: Page Debug Export Contract
 5. PR-Agent.5: Browser Evidence Lane
 6. PR-Agent.6: Quality Scorecard
-7. PR-Agent.8: Workbench Captured Repro Workflow
-8. PR-Agent.7: Strictness Ratchet
+7. PR-Agent.7: Strictness Ratchet
+8. PR-Agent.8: Workbench Captured Repro Workflow
 
-This order gives immediate value first: agents can access real pages, know which routes matter, open seeded scenarios, capture page state, and collect consistent browser evidence. The later PRs turn that evidence into exact workbench repros and stronger quality pressure across the whole repo.
+This order gives immediate value first: agents can access real pages, know which routes matter, open seeded scenarios, capture page state, collect consistent browser evidence, and prevent that baseline from going backwards. The later PRs turn that evidence into exact workbench repros and stronger quality pressure across the whole repo.
 
 ## What This Does Not Replace
 
@@ -250,4 +254,4 @@ Use this as a simple target checklist:
 
 ## Current Highest-Leverage Next Step
 
-Build PR-Agent.6 now. Authenticated access, route catalog, seeded scenarios, page debug exports, and shared browser evidence exist; the next leverage point is a read-only scorecard that makes route coverage, scenario/debug readiness, evidence adoption, and repo health pressure visible before choosing the next PR.
+Build PR-Agent.8 now. Agent access, route catalog, seeded scenarios, shared debug exports, browser evidence, scorecard, and strictness ratchet exist; the next leverage point is making workbench bug reports executable from exact captured payloads before changing geometry or render behavior.
