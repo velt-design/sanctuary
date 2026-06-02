@@ -121,7 +121,7 @@ Done when:
 
 Simple version: when a browser test fails, collect evidence automatically.
 
-Status: active. The shared evidence lane lives in `playwright/support/portalBrowserEvidence.ts`; workbench Plan/3D viewport evidence lives in `playwright/support/workbenchEvidence.ts`.
+Status: shipped. The shared evidence lane lives in `playwright/support/portalBrowserEvidence.ts`; workbench Plan/3D viewport evidence lives in `playwright/support/workbenchEvidence.ts`.
 
 Why it matters: a failing Playwright test should tell us what happened without a human rerunning it and looking around.
 
@@ -143,6 +143,8 @@ Done when:
 ### PR-Agent.6: Quality Scorecard
 
 Simple version: create a repo health dashboard for humans and agents.
+
+Status: active. The advisory command is `npm run portal:agent-scorecard`; the human guide is `docs/portal-agent-scorecard.md`.
 
 Why it matters: we need to know whether the repo is getting cleaner, not just whether a single PR passed.
 
@@ -214,8 +216,8 @@ Done when:
 3. PR-Agent.3: Seeded Scenario Registry
 4. PR-Agent.4: Page Debug Export Contract
 5. PR-Agent.5: Browser Evidence Lane
-6. PR-Agent.8: Workbench Captured Repro Workflow
-7. PR-Agent.6: Quality Scorecard
+6. PR-Agent.6: Quality Scorecard
+7. PR-Agent.8: Workbench Captured Repro Workflow
 8. PR-Agent.7: Strictness Ratchet
 
 This order gives immediate value first: agents can access real pages, know which routes matter, open seeded scenarios, capture page state, and collect consistent browser evidence. The later PRs turn that evidence into exact workbench repros and stronger quality pressure across the whole repo.
@@ -248,4 +250,4 @@ Use this as a simple target checklist:
 
 ## Current Highest-Leverage Next Step
 
-Build PR-Agent.5 now. Authenticated access, route catalog, seeded scenarios, and page debug exports exist; the next leverage point is making every browser failure attach consistent route, scenario, debug, console, network, screenshot, and workbench viewport evidence.
+Build PR-Agent.6 now. Authenticated access, route catalog, seeded scenarios, page debug exports, and shared browser evidence exist; the next leverage point is a read-only scorecard that makes route coverage, scenario/debug readiness, evidence adoption, and repo health pressure visible before choosing the next PR.

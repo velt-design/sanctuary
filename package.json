@@ -51,6 +51,7 @@
     "portal:test-user:ensure": "tsx scripts/ensure-portal-test-user.ts",
     "portal:agent-access": "npm run portal:auth-env && npx playwright test playwright/portal.agent-access.spec.ts --project=portal-chromium",
     "portal:agent-access:provision": "npm run portal:test-user:ensure && npm run portal:agent-access",
+    "portal:agent-scorecard": "tsx scripts/portal-agent-scorecard.ts",
     "portal:build-env": "node scripts/check-portal-build-env.mjs",
     "portal:fixture-env": "node scripts/check-portal-fixture-env.mjs",
     "portal:side-effects": "npm run test:portal:quotes && npm run build:portal",

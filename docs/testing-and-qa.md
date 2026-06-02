@@ -177,6 +177,7 @@ npm run portal:agent-access:provision
 npm run portal:scenarios:ensure
 npm run portal:agent-scenarios
 npm run portal:agent-scenarios:provision
+npm run portal:agent-scorecard
 npm run portal:fixture-env
 npm run test:portal:browser:auth
 npm run test:portal:browser
@@ -196,6 +197,8 @@ npm run test:portal:performance
 `npm run portal:scenarios:ensure` is the explicit service-role provisioning command for local/staging scenario data. It requires `PORTAL_TEST_SCENARIO_TARGET=local|staging`, `PORTAL_TEST_EMAIL`, `PORTAL_TEST_PASSWORD`, `NEXT_PUBLIC_SUPABASE_URL`, and `SUPABASE_SERVICE_ROLE_KEY`; it refuses missing targets and `production`, upserts deterministic `[Agent Scenario]` records, and writes non-secret route state to `playwright/.auth/portal-scenarios.json`. Optional env: `PORTAL_SCENARIOS=project-with-estimate,quote-ready,workbench-multi-object` and `PORTAL_SCENARIO_PREFIX=agent`.
 
 `npm run portal:agent-scenarios` captures authenticated browser state and opens dynamic routes from the catalog-backed scenario lane: project detail, estimate detail, quote detail, and design workbench. It reads `playwright/.auth/portal-scenarios.json` only and does not mutate data. `npm run portal:agent-scenarios:provision` is the opt-in combined command that provisions the test user, seeds scenarios, then runs scenario smoke; because user provisioning and scenario provisioning have separate safety gates, set both `PORTAL_TEST_PROVISION_TARGET=local|staging` and `PORTAL_TEST_SCENARIO_TARGET=local|staging`.
+
+`npm run portal:agent-scorecard` prints a read-only portal-agent quality snapshot from the route catalog, scenario registry, debug-export metadata, browser evidence adoption, and `npm run repo:health` headline. It does not run browser tests, provision users, seed scenarios, or mutate data. Use `npm run portal:agent-scorecard -- --json` for automation-friendly output. The human guide is `docs/portal-agent-scorecard.md`.
 
 The portal route catalog is documented in `docs/portal-route-catalog.md`. Add new authenticated route coverage there first, then let browser specs consume the relevant catalog subset instead of adding local hardcoded route lists.
 
