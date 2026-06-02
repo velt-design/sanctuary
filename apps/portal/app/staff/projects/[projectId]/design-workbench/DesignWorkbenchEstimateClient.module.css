@@ -140,6 +140,38 @@
   height: 100%;
 }
 
+.debugExportPanel {
+  border: 1px dashed rgba(var(--portal-warning-rgb, var(--portal-text-rgb)), 0.36);
+  border-radius: var(--portal-section-radius);
+  background: rgba(var(--portal-warning-rgb, var(--portal-text-rgb)), 0.04);
+  padding: var(--portal-density-8);
+  display: grid;
+  gap: var(--portal-density-6);
+}
+
+.debugExportButton {
+  min-height: 32px;
+  border: 1px solid rgba(var(--portal-text-rgb), 0.16);
+  border-radius: var(--portal-radius-button);
+  background: rgba(var(--portal-text-rgb), 0.05);
+  color: rgba(var(--portal-text-rgb), 0.86);
+  font: inherit;
+  font-size: var(--portal-font-sm);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.debugExportButton:hover {
+  background: rgba(var(--portal-text-rgb), 0.08);
+}
+
+.debugExportStatus {
+  margin: 0;
+  font-size: var(--portal-font-xs);
+  font-weight: 700;
+  color: rgba(var(--portal-text-rgb), 0.58);
+}
+
 .notice,
 .emptyState {
   border: var(--portal-section-border);

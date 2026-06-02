@@ -80,6 +80,7 @@
       "ownerArea": "Portal workbench QA fixtures",
       "pathPatterns": [
         "apps/portal/lib/drawings/sanctuaryWorkbenchFixtureBuilders.ts",
+        "apps/portal/lib/drawings/sanctuaryWorkbenchCapturedFixtures.ts",
         "apps/portal/lib/drawings/sanctuaryWorkbenchFixtures.ts",
         "apps/portal/lib/drawings/sanctuaryWorkbenchMultiObjectFixtures.ts"
       ],

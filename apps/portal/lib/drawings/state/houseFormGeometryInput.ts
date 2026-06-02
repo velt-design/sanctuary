@@ -2,16 +2,23 @@ import {
   applyHouseReferencePosition,
   buildHouseModel3DFromRawHouseInput,
   buildHouseReferenceProjectionShape,
+  buildHouseRoofModelPipeline,
+  EMPTY_HOUSE_ROOF_STAGE_DIAGNOSTICS,
   type GeometryTopProjectionShape,
+  type HouseRoofModelPipelineFailureStage,
+  type HouseRoofStageDiagnostics,
   type HouseModel3D,
   type HouseReferenceGeometry,
   type Polygon3,
   type RawHouseInput,
-} from '@sp/geometry';
-import { houseFormTransformToAssemblyPosition } from './houseFormTransform';
-import { buildHouseFormRawGeometryInput } from './houseFormRawGeometry';
-import type { HouseFormModel, WorkbenchProjectModel } from './objectFirstWorkbenchModel';
-import type { ProjectHouseProjectionFailureStage } from './projectHouseProjectionHealth';
+} from "@sp/geometry";
+import { houseFormTransformToAssemblyPosition } from "./houseFormTransform";
+import { buildHouseFormRawGeometryInput } from "./houseFormRawGeometry";
+import type {
+  HouseFormModel,
+  WorkbenchProjectModel,
+} from "./objectFirstWorkbenchModel";
+import type { ProjectHouseProjectionFailureStage } from "./projectHouseProjectionHealth";
 
 export type HouseFormGeometryInputDiagnostics = {
   houseFormId: string;
@@ -23,7 +30,8 @@ export type HouseFormGeometryInputDiagnostics = {
   roofPlaneCount: number;
   failureStage: ProjectHouseProjectionFailureStage;
   diagnosticCode: string | null;
-};
+  roofPipelineFailureStage: HouseRoofModelPipelineFailureStage;
+} & HouseRoofStageDiagnostics;
 
 type HouseFormGeometryInputSuccess = {
   ok: true;
@@ -40,7 +48,7 @@ type HouseFormGeometryInputSuccess = {
 type HouseFormGeometryInputFailure = {
   ok: false;
   houseFormId: string;
-  failureStage: Exclude<ProjectHouseProjectionFailureStage, 'none'>;
+  failureStage: Exclude<ProjectHouseProjectionFailureStage, "none">;
   diagnosticCode: string;
   diagnostics: HouseFormGeometryInputDiagnostics;
 };
@@ -51,7 +59,7 @@ export type HouseFormGeometryInputResult =
 
 function buildFailure(input: {
   houseFormId: string;
-  failureStage: Exclude<ProjectHouseProjectionFailureStage, 'none'>;
+  failureStage: Exclude<ProjectHouseProjectionFailureStage, "none">;
   diagnosticCode?: string;
   footprintPointCount?: number;
   rawHouseInputPresent?: boolean;
@@ -76,6 +84,8 @@ function buildFailure(input: {
       roofPlaneCount: input.roofPlaneCount ?? 0,
       failureStage: input.failureStage,
       diagnosticCode,
+      roofPipelineFailureStage: "not_started",
+      ...EMPTY_HOUSE_ROOF_STAGE_DIAGNOSTICS,
     },
   };
 }
@@ -87,8 +97,8 @@ export function buildHouseFormGeometryInputForForm(
   if (!rawGeometry) {
     return buildFailure({
       houseFormId: houseForm.id,
-      failureStage: 'invalid_footprint',
-      diagnosticCode: 'invalid_footprint',
+      failureStage: "invalid_footprint",
+      diagnosticCode: "invalid_footprint",
     });
   }
 
@@ -100,7 +110,7 @@ export function buildHouseFormGeometryInputForForm(
   if (!model) {
     return buildFailure({
       houseFormId: houseForm.id,
-      failureStage: 'missing_model',
+      failureStage: "missing_model",
       footprintPointCount: rawGeometry.footprint.length,
       rawHouseInputPresent: true,
     });
@@ -126,8 +136,8 @@ export function buildHouseFormGeometryInputForForm(
   if (!referenceShape) {
     return buildFailure({
       houseFormId: houseForm.id,
-      failureStage: 'missing_geometry_input',
-      diagnosticCode: 'missing_reference_shape',
+      failureStage: "missing_geometry_input",
+      diagnosticCode: "missing_reference_shape",
       footprintPointCount: rawGeometry.footprint.length,
       rawHouseInputPresent: true,
       modelPresent: true,
@@ -137,7 +147,20 @@ export function buildHouseFormGeometryInputForForm(
   }
 
   const failureStage: ProjectHouseProjectionFailureStage =
-    positionedModel.roofPlanes.length <= 0 ? 'missing_roof_model' : 'none';
+    positionedModel.roofPlanes.length <= 0 ? "missing_roof_model" : "none";
+  const roofPipeline = buildHouseRoofModelPipeline({
+    houseId: houseForm.id,
+    model: positionedModel,
+  });
+  const {
+    houseId: _roofPipelineHouseId,
+    modelPresent: _roofPipelineModelPresent,
+    failureStage: roofPipelineFailureStage,
+    diagnosticCode: roofPipelineDiagnosticCode,
+    ...roofStageDiagnostics
+  } = roofPipeline.diagnostics;
+  const diagnosticCode =
+    failureStage === "none" ? roofPipelineDiagnosticCode : failureStage;
   return {
     ok: true,
     houseFormId: houseForm.id,
@@ -156,7 +179,9 @@ export function buildHouseFormGeometryInputForForm(
       wallCount: positionedModel.wallSegments.length,
       roofPlaneCount: positionedModel.roofPlanes.length,
       failureStage,
-      diagnosticCode: failureStage === 'none' ? null : failureStage,
+      diagnosticCode,
+      roofPipelineFailureStage,
+      ...roofStageDiagnostics,
     },
   };
 }
@@ -166,13 +191,14 @@ export function buildHouseFormGeometryInput(input: {
   houseFormId: string;
 }): HouseFormGeometryInputResult {
   const houseForm =
-    input.projectModel.houseAssembly?.houseForms.find((candidate) => candidate.id === input.houseFormId) ??
-    null;
+    input.projectModel.houseAssembly?.houseForms.find(
+      (candidate) => candidate.id === input.houseFormId,
+    ) ?? null;
   if (!houseForm) {
     return buildFailure({
       houseFormId: input.houseFormId,
-      failureStage: 'missing_house_form',
-      diagnosticCode: 'missing_house_form',
+      failureStage: "missing_house_form",
+      diagnosticCode: "missing_house_form",
     });
   }
   return buildHouseFormGeometryInputForForm(houseForm);

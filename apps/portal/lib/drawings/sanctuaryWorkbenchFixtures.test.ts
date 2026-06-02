@@ -8,6 +8,10 @@ import {
   listParityCriticalSanctuaryGeometryWorkbenchFixtures,
   listSanctuaryGeometryWorkbenchFixtures,
 } from './sanctuaryWorkbenchFixtures';
+import {
+  buildCapturedSanctuaryGeometryWorkbenchFixture,
+  CAPTURED_SANCTUARY_GEOMETRY_WORKBENCH_FIXTURES,
+} from './sanctuaryWorkbenchCapturedFixtures';
 
 describe('sanctuary workbench fixtures', () => {
   it('exposes one fixture for each target V1 family', () => {
@@ -20,6 +24,13 @@ describe('sanctuary workbench fixtures', () => {
       'multi-house-u-two-pergola',
       'multi-house-custom-projection',
     ]);
+  });
+
+  it('keeps the live captured failure lane explicit until an exact payload is baked', () => {
+    expect(CAPTURED_SANCTUARY_GEOMETRY_WORKBENCH_FIXTURES).toEqual([]);
+    expect(listSanctuaryGeometryWorkbenchFixtures().some(
+      (fixture) => fixture.slug === 'captured-house-roof-failure-2026-06-02',
+    )).toBe(false);
   });
 
   it('keeps parity-critical fixture metadata explicit and stable', () => {
@@ -125,6 +136,69 @@ describe('sanctuary workbench fixtures', () => {
       'house-main',
     ]);
     expect(debugExport.renderDiagnostics.projectPergolaRenderHealth).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          pergolaId: 'pergola-2',
+          canRenderCommittedBody: false,
+          suppressedCommittedBodyReason: 'unresolved_host',
+        }),
+      ]),
+    );
+  });
+
+  it('can convert a copied workbench debug payload into a baked fixture shell', () => {
+    const fixture = listSanctuaryGeometryWorkbenchFixtures().find(
+      (candidate) => candidate.slug === 'multi-house-u-two-pergola',
+    );
+    if (!fixture) throw new Error('Expected multi-object fixture.');
+
+    const store = buildDrawingWorkbenchStore({
+      snapshot: fixture.snapshot,
+      draft: fixture.draft,
+      ui: createDrawingWorkbenchUiState(),
+      moduleLabels: fixture.moduleLabels,
+      geometryIdentity: {
+        projectId: 'fixture-captured-shell',
+        estimateId: fixture.estimate.id,
+        designRequestId: fixture.request.id,
+      },
+    });
+    const debugExport = buildWorkbenchDebugFixtureExport({
+      snapshot: fixture.snapshot,
+      draft: fixture.draft,
+      ui: store.ui,
+      projectGeometryPreview: store.derived.solvedModel.projectGeometryPreview,
+      houseGeometryInputsById: store.derived.solvedModel.houseGeometryInputsById,
+      projectHouseProjectionHealth: store.derived.solvedModel.projectHouseProjectionHealth,
+      projectPergolaRenderHealth: store.derived.solvedModel.projectPergolaRenderHealth,
+    });
+
+    const captured = buildCapturedSanctuaryGeometryWorkbenchFixture({
+      slug: 'captured-shell-test',
+      label: 'Captured Shell Test',
+      payload: debugExport,
+      expectedModule: fixture.qa.expectedModule,
+      moduleLabels: fixture.moduleLabels,
+    });
+    const capturedStore = buildDrawingWorkbenchStore({
+      snapshot: captured.snapshot,
+      draft: captured.draft,
+      ui: createDrawingWorkbenchUiState(),
+      moduleLabels: captured.moduleLabels,
+      geometryIdentity: {
+        projectId: 'fixture-captured-shell-replay',
+        estimateId: captured.estimate.id,
+        designRequestId: captured.request.id,
+      },
+    });
+
+    expect(captured.qa.source).toBe('baked_workbench_fixture');
+    expect(captured.draft?.objectFirst?.houseAssembly?.houseForms).toHaveLength(2);
+    expect(Object.keys(capturedStore.derived.solvedModel.houseGeometryInputsById).sort()).toEqual([
+      'house-form-2',
+      'house-main',
+    ]);
+    expect(capturedStore.derived.solvedModel.projectPergolaRenderHealth).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           pergolaId: 'pergola-2',

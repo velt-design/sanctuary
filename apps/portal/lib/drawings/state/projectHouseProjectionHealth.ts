@@ -1,3 +1,5 @@
+import type { HouseRoofStageDiagnostics } from '@sp/geometry';
+
 export type ProjectHouseProjectionHealth = {
   houseFormId: string;
   geometryInputPresent: boolean;
@@ -13,6 +15,7 @@ export type ProjectHouseProjectionHealth = {
   roofBodyIds: string[];
   roofMaterialBodyIds: string[];
   sceneBodyCount: number;
+  sceneRoofBodyCount: number;
   sceneRoofMaterialBodyCount: number;
   canRenderCommittedBody: boolean;
   visibleReferenceFallbackIds: string[];
@@ -20,7 +23,7 @@ export type ProjectHouseProjectionHealth = {
   diagnosticCode: string | null;
   roofValidationStatus: string | null;
   roofValidationCode: string | null;
-};
+} & HouseRoofStageDiagnostics;
 
 export type ProjectHouseProjectionFailureStage =
   | 'none'

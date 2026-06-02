@@ -76,6 +76,7 @@ export async function readPlanHouseProjectionHealth(page: Page): Promise<Array<{
   roofBodyIds: string[];
   roofMaterialBodyIds: string[];
   sceneBodyCount: number;
+  sceneRoofBodyCount: number;
   sceneRoofMaterialBodyCount: number;
   canRenderCommittedBody: boolean;
   visibleReferenceFallbackIds: string[];
@@ -83,6 +84,29 @@ export async function readPlanHouseProjectionHealth(page: Page): Promise<Array<{
   diagnosticCode: string | null;
   roofValidationStatus: string | null;
   roofValidationCode: string | null;
+  eavePolygonPointCount: number;
+  roofIntentForm: string | null;
+  roofIntentPitchDeg: number | null;
+  roofIntentRidgeAxis: string | null;
+  roofGeometry: string | null;
+  roofFacetMergeMode: string | null;
+  roofTopologyFailureReason: string | null;
+  roofTopologyFinalFaceCount: number | null;
+  roofTopologySourceEdgeCount: number | null;
+  roofTopologyDisconnectedSourceFaceCount: number | null;
+  roofTopologyInternalEaveHeightSegmentCount: number | null;
+  roofTopologyProjectionViolationCount: number | null;
+  roofWavefrontFailureReason: string | null;
+  roofQaStatus: string | null;
+  roofQaFailureReason: string | null;
+  roofQaRejectedFacetCount: number | null;
+  roofQaFacetAreaMm2: number | null;
+  roofQaEaveAreaMm2: number | null;
+  roofQaAreaDeltaMm2: number | null;
+  roofPlaneCountBeforeQa: number;
+  roofPlaneCountAfterQa: number;
+  roofMaterialVisualCount: number;
+  roofSolidCount: number;
 }>> {
   const raw = await page.locator('[data-plan-viewport="true"]').getAttribute('data-plan-house-projection-health');
   if (!raw) return [];
@@ -283,4 +307,12 @@ export async function readWorkbenchDebugExport(page: Page): Promise<unknown> {
     .first()
     .textContent();
   return raw ? JSON.parse(raw) : null;
+}
+
+export async function readWorkbenchDebugHouseGeometryInputs(page: Page): Promise<Record<string, unknown>> {
+  const payload = await readWorkbenchDebugExport(page);
+  if (!payload || typeof payload !== 'object') return {};
+  const diagnostics = (payload as { renderDiagnostics?: { houseGeometryInputsById?: Record<string, unknown> } })
+    .renderDiagnostics;
+  return diagnostics?.houseGeometryInputsById ?? {};
 }

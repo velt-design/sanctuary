@@ -1,26 +1,36 @@
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
-import { renderToStaticMarkup } from 'react-dom/server';
-import { describe, expect, it, vi } from 'vitest';
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { renderToStaticMarkup } from "react-dom/server";
+import { describe, expect, it, vi } from "vitest";
 import type {
   GeometryTopProjectionShape,
   GeometryTopProjectionViewModel,
-} from '@sp/geometry';
-import type { DrawingWorkbenchViewportTransform } from '@/lib/drawings/state/drawingWorkbenchUiState';
-import type { WorkbenchSolvedGeometryArtifact } from '@/lib/drawings/state/workbenchSolvedModel';
-import { dispatchPointer, renderIntoDocument } from '../../../../../../test/reactHarness';
-import PlanViewport from './PlanViewport';
+} from "@sp/geometry";
+import { EMPTY_HOUSE_ROOF_STAGE_DIAGNOSTICS } from "@sp/geometry";
+import type { DrawingWorkbenchViewportTransform } from "@/lib/drawings/state/drawingWorkbenchUiState";
+import type { WorkbenchSolvedGeometryArtifact } from "@/lib/drawings/state/workbenchSolvedModel";
+import {
+  dispatchPointer,
+  renderIntoDocument,
+} from "../../../../../../test/reactHarness";
+import PlanViewport from "./PlanViewport";
 
-const IDENTITY_TRANSFORM: DrawingWorkbenchViewportTransform = { zoom: 1, panX: 0, panY: 0 };
+const IDENTITY_TRANSFORM: DrawingWorkbenchViewportTransform = {
+  zoom: 1,
+  panX: 0,
+  panY: 0,
+};
 
-function makeShape(overrides: Partial<GeometryTopProjectionShape>): GeometryTopProjectionShape {
+function makeShape(
+  overrides: Partial<GeometryTopProjectionShape>,
+): GeometryTopProjectionShape {
   return {
-    id: 'shape-1',
-    sourceObjectId: 'shape-1',
+    id: "shape-1",
+    sourceObjectId: "shape-1",
     sourceId: null,
-    sourceType: 'house_surface_solid',
-    family: 'house',
-    kind: 'footprint',
+    sourceType: "house_surface_solid",
+    family: "house",
+    kind: "footprint",
     polygon: [
       { x: 0, y: 0 },
       { x: 1000, y: 0 },
@@ -38,8 +48,8 @@ function makeProjection(
   shapes: GeometryTopProjectionShape[],
 ): GeometryTopProjectionViewModel {
   return {
-    coordinateSpace: 'world_xy_mm',
-    screenAxis: { x: 'world_x_right', y: 'world_y_down' },
+    coordinateSpace: "world_xy_mm",
+    screenAxis: { x: "world_x_right", y: "world_y_down" },
     extents: {
       minX: 0,
       minY: 0,
@@ -55,12 +65,14 @@ function makeProjection(
 function makeArtifact(
   shapes: GeometryTopProjectionShape[],
 ): WorkbenchSolvedGeometryArtifact {
-  return { topProjection: makeProjection(shapes) } as unknown as WorkbenchSolvedGeometryArtifact;
+  return {
+    topProjection: makeProjection(shapes),
+  } as unknown as WorkbenchSolvedGeometryArtifact;
 }
 
-describe('PlanViewport', () => {
-  describe('placeholder', () => {
-    it('renders the no-artifact placeholder when artifact is null', () => {
+describe("PlanViewport", () => {
+  describe("placeholder", () => {
+    it("renders the no-artifact placeholder when artifact is null", () => {
       const markup = renderToStaticMarkup(
         <PlanViewport
           artifact={null}
@@ -69,47 +81,47 @@ describe('PlanViewport', () => {
         />,
       );
       expect(markup).toContain('data-plan-render-status="no_artifact"');
-      expect(markup).toContain('Plan view unavailable');
+      expect(markup).toContain("Plan view unavailable");
     });
   });
 
-  describe('with a populated artifact', () => {
+  describe("with a populated artifact", () => {
     function makeArtifactWithDeckPergolaAndContext(): WorkbenchSolvedGeometryArtifact {
       return makeArtifact([
         makeShape({
-          id: 'deck-1',
-          sourceObjectId: 'deck-1',
-          sourceType: 'house_surface_solid',
-          family: 'house',
-          kind: 'deck',
-          metadata: { deckId: 'deck-1' },
+          id: "deck-1",
+          sourceObjectId: "deck-1",
+          sourceType: "house_surface_solid",
+          family: "house",
+          kind: "deck",
+          metadata: { deckId: "deck-1" },
         }),
         makeShape({
-          id: 'rendered-pergola-1',
-          sourceObjectId: 'rendered-pergola-1',
-          sourceType: 'roof_plane',
-          family: 'pergola',
-          kind: 'roof_plane',
-          metadata: { pergolaId: 'pergola-A' },
+          id: "rendered-pergola-1",
+          sourceObjectId: "rendered-pergola-1",
+          sourceType: "roof_plane",
+          family: "pergola",
+          kind: "roof_plane",
+          metadata: { pergolaId: "pergola-A" },
         }),
         makeShape({
-          id: 'house-wall-1',
-          sourceObjectId: 'house-wall-1',
-          sourceType: 'house_line',
-          family: 'house',
-          kind: 'wall_segment',
-          metadata: { topProjectionRole: 'context' },
+          id: "house-wall-1",
+          sourceObjectId: "house-wall-1",
+          sourceType: "house_line",
+          family: "house",
+          kind: "wall_segment",
+          metadata: { topProjectionRole: "context" },
         }),
       ]);
     }
 
-    it('renders the canvas with diagnostic counts and screen axis', () => {
+    it("renders the canvas with diagnostic counts and screen axis", () => {
       const markup = renderToStaticMarkup(
         <PlanViewport
           artifact={makeArtifactWithDeckPergolaAndContext()}
           projectHouseProjectionHealth={[
             {
-              houseFormId: 'house-form-2',
+              houseFormId: "house-form-2",
               geometryInputPresent: true,
               rawHouseInputPresent: true,
               footprintPointCount: 4,
@@ -123,13 +135,15 @@ describe('PlanViewport', () => {
               roofBodyIds: [],
               roofMaterialBodyIds: [],
               sceneBodyCount: 0,
+              sceneRoofBodyCount: 0,
               sceneRoofMaterialBodyCount: 0,
               canRenderCommittedBody: false,
-              visibleReferenceFallbackIds: ['house_reference:house-form-2'],
-              failureStage: 'missing_plan_body',
-              diagnosticCode: 'missing_plan_body',
+              visibleReferenceFallbackIds: ["house_reference:house-form-2"],
+              failureStage: "missing_plan_body",
+              diagnosticCode: "missing_plan_body",
               roofValidationStatus: null,
               roofValidationCode: null,
+              ...EMPTY_HOUSE_ROOF_STAGE_DIAGNOSTICS,
             },
           ]}
           viewportTransform={IDENTITY_TRANSFORM}
@@ -138,17 +152,25 @@ describe('PlanViewport', () => {
       );
 
       expect(markup).toContain('data-plan-render-status="ready"');
-      expect(markup).toContain('data-plan-screen-axis="world_x_right_world_y_down"');
+      expect(markup).toContain(
+        'data-plan-screen-axis="world_x_right_world_y_down"',
+      );
       expect(markup).toContain('data-plan-render-source="geometry"');
       expect(markup).toContain('data-plan-committed-body-count="2"');
       expect(markup).toContain('data-plan-context-line-count="1"');
-      expect(markup).toContain('data-plan-visible-reference-fallback-count="0"');
+      expect(markup).toContain(
+        'data-plan-visible-reference-fallback-count="0"',
+      );
       expect(markup).toContain('data-plan-house-projection-health-count="1"');
-      expect(markup).toContain('&quot;houseFormId&quot;:&quot;house-form-2&quot;');
-      expect(markup).toContain('&quot;visibleReferenceFallbackIds&quot;:[&quot;house_reference:house-form-2&quot;]');
+      expect(markup).toContain(
+        "&quot;houseFormId&quot;:&quot;house-form-2&quot;",
+      );
+      expect(markup).toContain(
+        "&quot;visibleReferenceFallbackIds&quot;:[&quot;house_reference:house-form-2&quot;]",
+      );
     });
 
-    it('emits per-shape hit-target attributes including the typed selection target kind', () => {
+    it("emits per-shape hit-target attributes including the typed selection target kind", () => {
       const markup = renderToStaticMarkup(
         <PlanViewport
           artifact={makeArtifactWithDeckPergolaAndContext()}
@@ -163,22 +185,22 @@ describe('PlanViewport', () => {
       expect(markup).toContain('data-plan-shape-target-kind="pergola"');
     });
 
-    it('emits hit-targets for non-active project pergola context outlines', () => {
+    it("emits hit-targets for non-active project pergola context outlines", () => {
       const markup = renderToStaticMarkup(
         <PlanViewport
           artifact={makeArtifactWithDeckPergolaAndContext()}
           projectContextShapes={[
             makeShape({
-              id: 'pergola_reference:pergola-B',
-              sourceObjectId: 'pergola-B',
-              sourceType: 'pergola_reference',
-              family: 'pergola',
-              kind: 'outline',
+              id: "pergola_reference:pergola-B",
+              sourceObjectId: "pergola-B",
+              sourceType: "pergola_reference",
+              family: "pergola",
+              kind: "outline",
               metadata: {
                 isCanonicalOutline: true,
-                pergolaId: 'pergola-B',
-                renderRole: 'diagnostic_fallback',
-                fallbackReason: 'unresolved_host',
+                pergolaId: "pergola-B",
+                renderRole: "diagnostic_fallback",
+                fallbackReason: "unresolved_host",
               },
             }),
           ]}
@@ -187,33 +209,39 @@ describe('PlanViewport', () => {
         />,
       );
 
-      expect(markup).toContain('data-plan-shape-id="pergola_reference:pergola-B"');
-      expect(markup).toContain('data-plan-shape-source-type="pergola_reference"');
+      expect(markup).toContain(
+        'data-plan-shape-id="pergola_reference:pergola-B"',
+      );
+      expect(markup).toContain(
+        'data-plan-shape-source-type="pergola_reference"',
+      );
       expect(markup).toContain('data-plan-layer="diagnosticFallbacks"');
       expect(markup).toContain('data-plan-diagnostic-fallback="true"');
       expect(markup).toContain('data-plan-pergola-fallback="true"');
       expect(markup).toContain('data-plan-pergola-fallback-count="1"');
       expect(markup).toContain('data-plan-pergola-fallback-ids="pergola-B"');
       expect(markup).toContain('data-plan-diagnostic-fallback-count="1"');
-      expect(markup).toContain('data-plan-hit-shape-id="pergola_reference:pergola-B"');
+      expect(markup).toContain(
+        'data-plan-hit-shape-id="pergola_reference:pergola-B"',
+      );
       expect(markup).toContain('data-plan-shape-target-kind="pergola"');
       expect(markup).toContain('data-plan-committed-body-count="2"');
     });
 
-    it('does not render pergola_reference projection fallbacks as committed bodies', () => {
+    it("does not render pergola_reference projection fallbacks as committed bodies", () => {
       const markup = renderToStaticMarkup(
         <PlanViewport
           artifact={makeArtifact([
             makeShape({
-              id: 'pergola_reference:pergola-B',
-              sourceObjectId: 'pergola-B',
-              sourceType: 'pergola_reference',
-              family: 'pergola',
-              kind: 'outline',
+              id: "pergola_reference:pergola-B",
+              sourceObjectId: "pergola-B",
+              sourceType: "pergola_reference",
+              family: "pergola",
+              kind: "outline",
               metadata: {
-                pergolaId: 'pergola-B',
-                renderRole: 'diagnostic_fallback',
-                fallbackReason: 'unresolved_host',
+                pergolaId: "pergola-B",
+                renderRole: "diagnostic_fallback",
+                fallbackReason: "unresolved_host",
               },
             }),
           ])}
@@ -228,21 +256,25 @@ describe('PlanViewport', () => {
       expect(markup).toContain('data-plan-committed-body-count="0"');
       expect(markup).toContain('data-plan-diagnostic-fallback="true"');
       expect(markup).toContain('data-plan-pergola-fallback="true"');
-      expect(markup).toContain('data-plan-shape-source-type="pergola_reference"');
-      expect(markup).toContain('data-plan-hit-shape-id="pergola_reference:pergola-B"');
+      expect(markup).toContain(
+        'data-plan-shape-source-type="pergola_reference"',
+      );
+      expect(markup).toContain(
+        'data-plan-hit-shape-id="pergola_reference:pergola-B"',
+      );
     });
 
-    it('does not emit context hit-targets for non-pergola project references', () => {
+    it("does not emit context hit-targets for non-pergola project references", () => {
       const markup = renderToStaticMarkup(
         <PlanViewport
           artifact={makeArtifactWithDeckPergolaAndContext()}
           projectContextShapes={[
             makeShape({
-              id: 'house_reference:house-main',
-              sourceObjectId: 'house-main',
-              sourceType: 'house_reference',
-              family: 'house',
-              kind: 'footprint',
+              id: "house_reference:house-main",
+              sourceObjectId: "house-main",
+              sourceType: "house_reference",
+              family: "house",
+              kind: "footprint",
             }),
           ]}
           viewportTransform={IDENTITY_TRANSFORM}
@@ -250,21 +282,26 @@ describe('PlanViewport', () => {
         />,
       );
 
-      expect(markup).not.toContain('data-plan-hit-shape-id="house_reference:house-main"');
+      expect(markup).not.toContain(
+        'data-plan-hit-shape-id="house_reference:house-main"',
+      );
     });
 
-    it('reports house reference fallbacks and renders them as outline-only diagnostic fallbacks', () => {
+    it("reports house reference fallbacks and renders them as outline-only diagnostic fallbacks", () => {
       const markup = renderToStaticMarkup(
         <PlanViewport
           artifact={makeArtifact([
             makeShape({
-              id: 'house_reference:house-form-fallback',
-              sourceObjectId: 'house-form-fallback',
-              sourceId: 'house-form-fallback',
-              sourceType: 'house_reference',
-              family: 'house',
-              kind: 'footprint',
-              metadata: { houseFormId: 'house-form-fallback', isCanonicalOutline: true },
+              id: "house_reference:house-form-fallback",
+              sourceObjectId: "house-form-fallback",
+              sourceId: "house-form-fallback",
+              sourceType: "house_reference",
+              family: "house",
+              kind: "footprint",
+              metadata: {
+                houseFormId: "house-form-fallback",
+                isCanonicalOutline: true,
+              },
             }),
           ])}
           viewportTransform={IDENTITY_TRANSFORM}
@@ -272,47 +309,61 @@ describe('PlanViewport', () => {
         />,
       );
 
-      expect(markup).toContain('data-plan-visible-reference-fallback-count="1"');
-      expect(markup).toContain('data-plan-visible-reference-fallback-ids="house_reference:house-form-fallback"');
+      expect(markup).toContain(
+        'data-plan-visible-reference-fallback-count="1"',
+      );
+      expect(markup).toContain(
+        'data-plan-visible-reference-fallback-ids="house_reference:house-form-fallback"',
+      );
       expect(markup).toContain('data-plan-diagnostic-fallback-count="1"');
-      expect(markup).toContain('data-plan-diagnostic-fallback-ids="house_reference:house-form-fallback"');
+      expect(markup).toContain(
+        'data-plan-diagnostic-fallback-ids="house_reference:house-form-fallback"',
+      );
       expect(markup).toContain('data-plan-diagnostic-fallback="true"');
       expect(markup).toContain('data-plan-visible-reference-fallback="true"');
       expect(markup).toContain('data-plan-shape-source-type="house_reference"');
-      expect(markup).toContain('data-plan-hit-shape-id="house_reference:house-form-fallback"');
-      expect(markup).toContain('&quot;houseFormId&quot;:&quot;house-form-fallback&quot;');
-      expect(markup).toContain('&quot;visibleReferenceFallbackIds&quot;:[&quot;house_reference:house-form-fallback&quot;]');
+      expect(markup).toContain(
+        'data-plan-hit-shape-id="house_reference:house-form-fallback"',
+      );
+      expect(markup).toContain(
+        "&quot;houseFormId&quot;:&quot;house-form-fallback&quot;",
+      );
+      expect(markup).toContain(
+        "&quot;visibleReferenceFallbackIds&quot;:[&quot;house_reference:house-form-fallback&quot;]",
+      );
     });
 
-    it('renders a selection halo polygon for the active deck', () => {
+    it("renders a selection halo polygon for the active deck", () => {
       const markup = renderToStaticMarkup(
         <PlanViewport
           artifact={makeArtifactWithDeckPergolaAndContext()}
-          activeObjectRef={{ family: 'decks', objectId: 'deck-1' }}
+          activeObjectRef={{ family: "decks", objectId: "deck-1" }}
           viewportTransform={IDENTITY_TRANSFORM}
           onViewportTransformChange={() => undefined}
         />,
       );
       expect(markup).toContain('data-plan-selection-shape-id="deck-1"');
-      expect(markup).not.toContain('data-plan-selection-shape-id="rendered-pergola-1"');
+      expect(markup).not.toContain(
+        'data-plan-selection-shape-id="rendered-pergola-1"',
+      );
     });
 
-    it('selects only the matching project-level house reference', () => {
+    it("selects only the matching project-level house reference", () => {
       const houseMain = makeShape({
-        id: 'house_reference:house-main',
-        sourceObjectId: 'house-main',
-        sourceId: 'house-main',
-        sourceType: 'house_reference',
-        family: 'house',
-        kind: 'footprint',
+        id: "house_reference:house-main",
+        sourceObjectId: "house-main",
+        sourceId: "house-main",
+        sourceType: "house_reference",
+        family: "house",
+        kind: "footprint",
       });
       const houseTwo = makeShape({
-        id: 'house_reference:house-form-2',
-        sourceObjectId: 'house-form-2',
-        sourceId: 'house-form-2',
-        sourceType: 'house_reference',
-        family: 'house',
-        kind: 'footprint',
+        id: "house_reference:house-form-2",
+        sourceObjectId: "house-form-2",
+        sourceId: "house-form-2",
+        sourceType: "house_reference",
+        family: "house",
+        kind: "footprint",
         polygon: [
           { x: 2000, y: 0 },
           { x: 3000, y: 0 },
@@ -323,41 +374,45 @@ describe('PlanViewport', () => {
       const markup = renderToStaticMarkup(
         <PlanViewport
           artifact={makeArtifact([])}
-          activeObjectRef={{ family: 'house_forms', objectId: 'house-main' }}
+          activeObjectRef={{ family: "house_forms", objectId: "house-main" }}
           houseCommittedShapes={[houseMain, houseTwo]}
           viewportTransform={IDENTITY_TRANSFORM}
           onViewportTransformChange={() => undefined}
         />,
       );
-      expect(markup).toContain('data-plan-selection-shape-id="house_reference:house-main"');
-      expect(markup).not.toContain('data-plan-selection-shape-id="house_reference:house-form-2"');
+      expect(markup).toContain(
+        'data-plan-selection-shape-id="house_reference:house-main"',
+      );
+      expect(markup).not.toContain(
+        'data-plan-selection-shape-id="house_reference:house-form-2"',
+      );
     });
 
-    it('keeps a selected second house reference visible when the active module renders the primary roof', () => {
+    it("keeps a selected second house reference visible when the active module renders the primary roof", () => {
       const primaryRoof = makeShape({
-        id: 'house_surface_solid:house-main-roof',
-        sourceObjectId: 'house-main-roof',
-        sourceId: 'house-main-roof',
-        sourceType: 'house_surface_solid',
-        family: 'house',
-        kind: 'roof',
-        metadata: { houseFormId: 'house-main' },
+        id: "house_surface_solid:house-main-roof",
+        sourceObjectId: "house-main-roof",
+        sourceId: "house-main-roof",
+        sourceType: "house_surface_solid",
+        family: "house",
+        kind: "roof",
+        metadata: { houseFormId: "house-main" },
       });
       const houseMain = makeShape({
-        id: 'house_reference:house-main',
-        sourceObjectId: 'house-main',
-        sourceId: 'house-main',
-        sourceType: 'house_reference',
-        family: 'house',
-        kind: 'footprint',
+        id: "house_reference:house-main",
+        sourceObjectId: "house-main",
+        sourceId: "house-main",
+        sourceType: "house_reference",
+        family: "house",
+        kind: "footprint",
       });
       const houseTwo = makeShape({
-        id: 'house_reference:house-form-2',
-        sourceObjectId: 'house-form-2',
-        sourceId: 'house-form-2',
-        sourceType: 'house_reference',
-        family: 'house',
-        kind: 'footprint',
+        id: "house_reference:house-form-2",
+        sourceObjectId: "house-form-2",
+        sourceId: "house-form-2",
+        sourceType: "house_reference",
+        family: "house",
+        kind: "footprint",
         polygon: [
           { x: 2000, y: 0 },
           { x: 3000, y: 0 },
@@ -369,27 +424,35 @@ describe('PlanViewport', () => {
       const markup = renderToStaticMarkup(
         <PlanViewport
           artifact={makeArtifact([primaryRoof])}
-          activeObjectRef={{ family: 'house_forms', objectId: 'house-form-2' }}
+          activeObjectRef={{ family: "house_forms", objectId: "house-form-2" }}
           houseCommittedShapes={[houseMain, houseTwo]}
           viewportTransform={IDENTITY_TRANSFORM}
           onViewportTransformChange={() => undefined}
         />,
       );
 
-      expect(markup).toContain('data-plan-shape-id="house_surface_solid:house-main-roof"');
-      expect(markup).toContain('data-plan-shape-id="house_reference:house-form-2"');
-      expect(markup).toContain('data-plan-selection-shape-id="house_reference:house-form-2"');
-      expect(markup).not.toContain('data-plan-selection-shape-id="house_surface_solid:house-main-roof"');
+      expect(markup).toContain(
+        'data-plan-shape-id="house_surface_solid:house-main-roof"',
+      );
+      expect(markup).toContain(
+        'data-plan-shape-id="house_reference:house-form-2"',
+      );
+      expect(markup).toContain(
+        'data-plan-selection-shape-id="house_reference:house-form-2"',
+      );
+      expect(markup).not.toContain(
+        'data-plan-selection-shape-id="house_surface_solid:house-main-roof"',
+      );
     });
 
-    it('dedupes project house references against projection house references before rendering', () => {
+    it("dedupes project house references against projection house references before rendering", () => {
       const houseMain = makeShape({
-        id: 'house_reference:house-main',
-        sourceObjectId: 'house-main',
-        sourceId: 'house-main',
-        sourceType: 'house_reference',
-        family: 'house',
-        kind: 'footprint',
+        id: "house_reference:house-main",
+        sourceObjectId: "house-main",
+        sourceId: "house-main",
+        sourceType: "house_reference",
+        family: "house",
+        kind: "footprint",
       });
       const rendered = renderIntoDocument(
         <PlanViewport
@@ -407,107 +470,113 @@ describe('PlanViewport', () => {
       rendered.unmount();
     });
 
-    it('renders project-wide pergola plan bodies and replaces the active unprefixed body', () => {
+    it("renders project-wide pergola plan bodies and replaces the active unprefixed body", () => {
       const activePergola = makeShape({
-        id: 'rendered-pergola-A',
-        sourceObjectId: 'rendered-pergola-A',
-        sourceType: 'roof_plane',
-        family: 'pergola',
-        kind: 'roof_plane',
-        metadata: { pergolaId: 'pergola-A' },
+        id: "rendered-pergola-A",
+        sourceObjectId: "rendered-pergola-A",
+        sourceType: "roof_plane",
+        family: "pergola",
+        kind: "roof_plane",
+        metadata: { pergolaId: "pergola-A" },
       });
       const projectPergolaA = makeShape({
-        id: 'project_pergola:pergola-A:rendered-pergola-A',
-        sourceObjectId: 'rendered-pergola-A',
-        sourceType: 'roof_plane',
-        family: 'pergola',
-        kind: 'roof_plane',
-        metadata: { pergolaId: 'pergola-A' },
+        id: "project_pergola:pergola-A:rendered-pergola-A",
+        sourceObjectId: "rendered-pergola-A",
+        sourceType: "roof_plane",
+        family: "pergola",
+        kind: "roof_plane",
+        metadata: { pergolaId: "pergola-A" },
       });
       const projectPergolaB = makeShape({
-        id: 'project_pergola:pergola-B:rendered-pergola-B',
-        sourceObjectId: 'rendered-pergola-B',
-        sourceType: 'roof_plane',
-        family: 'pergola',
-        kind: 'roof_plane',
+        id: "project_pergola:pergola-B:rendered-pergola-B",
+        sourceObjectId: "rendered-pergola-B",
+        sourceType: "roof_plane",
+        family: "pergola",
+        kind: "roof_plane",
         polygon: [
           { x: 8000, y: 0 },
           { x: 9000, y: 0 },
           { x: 9000, y: 1000 },
           { x: 8000, y: 1000 },
         ],
-        metadata: { pergolaId: 'pergola-B' },
+        metadata: { pergolaId: "pergola-B" },
       });
       const markup = renderToStaticMarkup(
         <PlanViewport
           artifact={makeArtifact([activePergola])}
-          activeObjectRef={{ family: 'pergolas', objectId: 'pergola-B' }}
+          activeObjectRef={{ family: "pergolas", objectId: "pergola-B" }}
           projectPergolaPlanShapes={[projectPergolaA, projectPergolaB]}
           viewportTransform={IDENTITY_TRANSFORM}
           onViewportTransformChange={() => undefined}
         />,
       );
 
-      expect(markup).toContain('data-plan-shape-id="project_pergola:pergola-A:rendered-pergola-A"');
-      expect(markup).toContain('data-plan-shape-id="project_pergola:pergola-B:rendered-pergola-B"');
+      expect(markup).toContain(
+        'data-plan-shape-id="project_pergola:pergola-A:rendered-pergola-A"',
+      );
+      expect(markup).toContain(
+        'data-plan-shape-id="project_pergola:pergola-B:rendered-pergola-B"',
+      );
       expect(markup).not.toContain('data-plan-shape-id="rendered-pergola-A"');
-      expect(markup).toContain('data-plan-selection-shape-id="project_pergola:pergola-B:rendered-pergola-B"');
+      expect(markup).toContain(
+        'data-plan-selection-shape-id="project_pergola:pergola-B:rendered-pergola-B"',
+      );
     });
 
-    it('uses projectionOverride instead of active artifact house bodies', () => {
+    it("uses projectionOverride instead of active artifact house bodies", () => {
       const activeModuleHouseRoof = makeShape({
-        id: 'house_surface_solid:active-module-house-roof',
-        sourceObjectId: 'active-module-house-roof',
-        sourceId: 'active-module-house-roof',
-        sourceType: 'house_surface_solid',
-        family: 'house',
-        kind: 'roof',
-        metadata: { houseFormId: 'house-main' },
+        id: "house_surface_solid:active-module-house-roof",
+        sourceObjectId: "active-module-house-roof",
+        sourceId: "active-module-house-roof",
+        sourceType: "house_surface_solid",
+        family: "house",
+        kind: "roof",
+        metadata: { houseFormId: "house-main" },
       });
       const projectHouseTwoRoof = makeShape({
-        id: 'house_surface_solid:house-form-2:project-roof',
-        sourceObjectId: 'house-form-2:project-roof',
-        sourceId: 'project-roof',
-        sourceType: 'house_surface_solid',
-        family: 'house',
-        kind: 'roof',
+        id: "house_surface_solid:house-form-2:project-roof",
+        sourceObjectId: "house-form-2:project-roof",
+        sourceId: "project-roof",
+        sourceType: "house_surface_solid",
+        family: "house",
+        kind: "roof",
         polygon: [
           { x: 2000, y: 0 },
           { x: 3000, y: 0 },
           { x: 3000, y: 1000 },
           { x: 2000, y: 1000 },
         ],
-        metadata: { houseFormId: 'house-form-2' },
+        metadata: { houseFormId: "house-form-2" },
       });
       const projectHouseTwoRoofMaterial = makeShape({
-        id: 'house_roof_material:house-form-2:project-roof-material',
-        sourceObjectId: 'house-form-2:project-roof-material',
-        sourceId: 'project-roof-material',
-        sourceType: 'house_roof_material',
-        family: 'house',
-        kind: 'house_roof_material',
+        id: "house_roof_material:house-form-2:project-roof-material",
+        sourceObjectId: "house-form-2:project-roof-material",
+        sourceId: "project-roof-material",
+        sourceType: "house_roof_material",
+        family: "house",
+        kind: "house_roof_material",
         polygon: [
           { x: 2100, y: 100 },
           { x: 2900, y: 100 },
           { x: 2900, y: 900 },
           { x: 2100, y: 900 },
         ],
-        metadata: { houseFormId: 'house-form-2' },
+        metadata: { houseFormId: "house-form-2" },
       });
       const projectHouseTwoReference = makeShape({
-        id: 'house_reference:house-form-2',
-        sourceObjectId: 'house-form-2',
-        sourceId: 'house-form-2',
-        sourceType: 'house_reference',
-        family: 'house',
-        kind: 'footprint',
+        id: "house_reference:house-form-2",
+        sourceObjectId: "house-form-2",
+        sourceId: "house-form-2",
+        sourceType: "house_reference",
+        family: "house",
+        kind: "footprint",
         polygon: [
           { x: 2000, y: 0 },
           { x: 3000, y: 0 },
           { x: 3000, y: 1000 },
           { x: 2000, y: 1000 },
         ],
-        metadata: { houseFormId: 'house-form-2', isCanonicalOutline: true },
+        metadata: { houseFormId: "house-form-2", isCanonicalOutline: true },
       });
 
       const markup = renderToStaticMarkup(
@@ -518,89 +587,115 @@ describe('PlanViewport', () => {
             projectHouseTwoRoof,
             projectHouseTwoRoofMaterial,
           ])}
-          activeObjectRef={{ family: 'house_forms', objectId: 'house-form-2' }}
+          activeObjectRef={{ family: "house_forms", objectId: "house-form-2" }}
           viewportTransform={IDENTITY_TRANSFORM}
           onViewportTransformChange={() => undefined}
         />,
       );
 
-      expect(markup).toContain('data-plan-shape-id="house_roof_material:house-form-2:project-roof-material"');
-      expect(markup).not.toContain('data-plan-shape-id="house_surface_solid:house-form-2:project-roof"');
-      expect(markup).not.toContain('data-plan-shape-id="house_reference:house-form-2"');
-      expect(markup).toContain('data-plan-hit-shape-id="house_reference:house-form-2"');
-      expect(markup).toContain('data-plan-selection-shape-id="house_reference:house-form-2"');
-      expect(markup).not.toContain('data-plan-hit-shape-id="house_roof_material:house-form-2:project-roof-material"');
-      expect(markup).not.toContain('data-plan-shape-id="house_surface_solid:active-module-house-roof"');
+      expect(markup).toContain(
+        'data-plan-shape-id="house_roof_material:house-form-2:project-roof-material"',
+      );
+      expect(markup).not.toContain(
+        'data-plan-shape-id="house_surface_solid:house-form-2:project-roof"',
+      );
+      expect(markup).not.toContain(
+        'data-plan-shape-id="house_reference:house-form-2"',
+      );
+      expect(markup).toContain(
+        'data-plan-hit-shape-id="house_reference:house-form-2"',
+      );
+      expect(markup).toContain(
+        'data-plan-selection-shape-id="house_reference:house-form-2"',
+      );
+      expect(markup).not.toContain(
+        'data-plan-hit-shape-id="house_roof_material:house-form-2:project-roof-material"',
+      );
+      expect(markup).not.toContain(
+        'data-plan-shape-id="house_surface_solid:active-module-house-roof"',
+      );
     });
 
-    it('renders project pergola bodies before house roof-material bodies in the committed visual stack', () => {
+    it("renders project pergola bodies before house roof-material bodies in the committed visual stack", () => {
       const projectPergola = makeShape({
-        id: 'project_pergola:pergola-1:roof_cladding_panel:panel-1',
-        sourceObjectId: 'pergola-1:panel-1',
-        sourceId: 'panel-1',
-        sourceType: 'roof_cladding_panel',
-        family: 'pergola',
-        kind: 'roof_cladding',
+        id: "project_pergola:pergola-1:roof_cladding_panel:panel-1",
+        sourceObjectId: "pergola-1:panel-1",
+        sourceId: "panel-1",
+        sourceType: "roof_cladding_panel",
+        family: "pergola",
+        kind: "roof_cladding",
         zOrder: 999,
-        metadata: { pergolaId: 'pergola-1' },
+        metadata: { pergolaId: "pergola-1" },
       });
       const projectHouseRoofMaterial = makeShape({
-        id: 'house_roof_material:house-form-1:roof-material',
-        sourceObjectId: 'house-form-1:roof-material',
-        sourceId: 'roof-material',
-        sourceType: 'house_roof_material',
-        family: 'house',
-        kind: 'house_roof_material',
+        id: "house_roof_material:house-form-1:roof-material",
+        sourceObjectId: "house-form-1:roof-material",
+        sourceId: "roof-material",
+        sourceType: "house_roof_material",
+        family: "house",
+        kind: "house_roof_material",
         zOrder: 1,
-        metadata: { houseFormId: 'house-form-1' },
+        metadata: { houseFormId: "house-form-1" },
       });
       const rendered = renderIntoDocument(
         <PlanViewport
           artifact={makeArtifact([])}
-          projectionOverride={makeProjection([projectHouseRoofMaterial, projectPergola])}
+          projectionOverride={makeProjection([
+            projectHouseRoofMaterial,
+            projectPergola,
+          ])}
           viewportTransform={IDENTITY_TRANSFORM}
           onViewportTransformChange={() => undefined}
         />,
       );
 
       const committedBodyIds = Array.from(
-        rendered.container.querySelectorAll('[data-plan-layer="committedBodies"] [data-plan-shape-id]'),
-      ).map((node) => node.getAttribute('data-plan-shape-id'));
+        rendered.container.querySelectorAll(
+          '[data-plan-layer="committedBodies"] [data-plan-shape-id]',
+        ),
+      ).map((node) => node.getAttribute("data-plan-shape-id"));
       expect(committedBodyIds).toEqual([
-        'project_pergola:pergola-1:roof_cladding_panel:panel-1',
-        'house_roof_material:house-form-1:roof-material',
+        "project_pergola:pergola-1:roof_cladding_panel:panel-1",
+        "house_roof_material:house-form-1:roof-material",
       ]);
       rendered.unmount();
     });
 
-    it('hides pergola shapes when pergola visibility is off', () => {
+    it("hides pergola shapes when pergola visibility is off", () => {
       const markup = renderToStaticMarkup(
         <PlanViewport
           artifact={makeArtifactWithDeckPergolaAndContext()}
-          visibility={{ house: true, pergolas: false, decks: true, openings: true }}
+          visibility={{
+            house: true,
+            pergolas: false,
+            decks: true,
+            openings: true,
+          }}
           viewportTransform={IDENTITY_TRANSFORM}
           onViewportTransformChange={() => undefined}
         />,
       );
-      expect(markup).not.toContain('data-plan-hit-shape-id="rendered-pergola-1"');
+      expect(markup).not.toContain(
+        'data-plan-hit-shape-id="rendered-pergola-1"',
+      );
       expect(markup).toContain('data-plan-hit-shape-id="deck-1"');
     });
   });
 
-  describe('selection dispatch', () => {
+  describe("selection dispatch", () => {
     function deckArtifact(): WorkbenchSolvedGeometryArtifact {
       return makeArtifact([
         makeShape({
-          id: 'deck-7',
-          sourceObjectId: 'deck-7',
-          sourceType: 'house_surface_solid',
-          family: 'house',
-          kind: 'deck',
+          id: "deck-7",
+          sourceObjectId: "deck-7",
+          sourceType: "house_surface_solid",
+          family: "house",
+          kind: "deck",
         }),
       ]);
     }
 
-    it('dispatches onSelectObjectWorkbenchTarget on left-click of a deck hit-target', () => {
+    it("dispatches onSelectObjectWorkbenchTarget on left-click of a deck hit-target", () => {
       const onSelectObjectWorkbenchTarget = vi.fn();
       const onSelectPergolaTarget = vi.fn();
       const rendered = renderIntoDocument(
@@ -616,17 +711,17 @@ describe('PlanViewport', () => {
         '[data-plan-hit-shape-id="deck-7"]',
       );
       expect(hitTarget).not.toBeNull();
-      dispatchPointer(hitTarget!, 'pointerdown', { button: 0 });
+      dispatchPointer(hitTarget!, "pointerdown", { button: 0 });
 
       expect(onSelectObjectWorkbenchTarget).toHaveBeenCalledWith({
-        kind: 'deck',
-        targetId: 'deck-7',
+        kind: "deck",
+        targetId: "deck-7",
       });
       expect(onSelectPergolaTarget).not.toHaveBeenCalled();
       rendered.unmount();
     });
 
-    it('clears selection when an empty-canvas pointerdown lands on the SVG root', () => {
+    it("clears selection when an empty-canvas pointerdown lands on the SVG root", () => {
       const onClearWorkbenchSelection = vi.fn();
       const rendered = renderIntoDocument(
         <PlanViewport
@@ -636,14 +731,16 @@ describe('PlanViewport', () => {
           onClearWorkbenchSelection={onClearWorkbenchSelection}
         />,
       );
-      const svg = rendered.container.querySelector('svg[data-plan-viewport="true"]');
+      const svg = rendered.container.querySelector(
+        'svg[data-plan-viewport="true"]',
+      );
       expect(svg).not.toBeNull();
-      dispatchPointer(svg!, 'pointerdown', { button: 0 });
+      dispatchPointer(svg!, "pointerdown", { button: 0 });
       expect(onClearWorkbenchSelection).toHaveBeenCalledTimes(1);
       rendered.unmount();
     });
 
-    it('does not clear selection when a hit-target swallows the pointerdown', () => {
+    it("does not clear selection when a hit-target swallows the pointerdown", () => {
       const onClearWorkbenchSelection = vi.fn();
       const rendered = renderIntoDocument(
         <PlanViewport
@@ -656,23 +753,23 @@ describe('PlanViewport', () => {
       const hitTarget = rendered.container.querySelector(
         '[data-plan-hit-shape-id="deck-7"]',
       );
-      dispatchPointer(hitTarget!, 'pointerdown', { button: 0 });
+      dispatchPointer(hitTarget!, "pointerdown", { button: 0 });
       expect(onClearWorkbenchSelection).not.toHaveBeenCalled();
       rendered.unmount();
     });
 
-    it('dispatches onSelectPergolaTarget on left-click of a context pergola reference', () => {
+    it("dispatches onSelectPergolaTarget on left-click of a context pergola reference", () => {
       const onSelectPergolaTarget = vi.fn();
       const rendered = renderIntoDocument(
         <PlanViewport
           artifact={deckArtifact()}
           projectContextShapes={[
             makeShape({
-              id: 'pergola_reference:pergola-context',
-              sourceObjectId: 'pergola-context',
-              sourceType: 'pergola_reference',
-              family: 'pergola',
-              kind: 'outline',
+              id: "pergola_reference:pergola-context",
+              sourceObjectId: "pergola-context",
+              sourceType: "pergola_reference",
+              family: "pergola",
+              kind: "outline",
               metadata: { isCanonicalOutline: true },
             }),
           ]}
@@ -685,25 +782,25 @@ describe('PlanViewport', () => {
         '[data-plan-hit-shape-id="pergola_reference:pergola-context"]',
       );
       expect(hitTarget).not.toBeNull();
-      dispatchPointer(hitTarget!, 'pointerdown', { button: 0 });
+      dispatchPointer(hitTarget!, "pointerdown", { button: 0 });
 
-      expect(onSelectPergolaTarget).toHaveBeenCalledWith('pergola-context');
+      expect(onSelectPergolaTarget).toHaveBeenCalledWith("pergola-context");
       rendered.unmount();
     });
 
-    it('dispatches onSelectPergolaTarget from a non-active full project pergola body', () => {
+    it("dispatches onSelectPergolaTarget from a non-active full project pergola body", () => {
       const onSelectPergolaTarget = vi.fn();
       const rendered = renderIntoDocument(
         <PlanViewport
           artifact={deckArtifact()}
           projectPergolaPlanShapes={[
             makeShape({
-              id: 'project_pergola:pergola-body:roof',
-              sourceObjectId: 'rendered-pergola-body',
-              sourceType: 'roof_plane',
-              family: 'pergola',
-              kind: 'roof_plane',
-              metadata: { pergolaId: 'pergola-body' },
+              id: "project_pergola:pergola-body:roof",
+              sourceObjectId: "rendered-pergola-body",
+              sourceType: "roof_plane",
+              family: "pergola",
+              kind: "roof_plane",
+              metadata: { pergolaId: "pergola-body" },
             }),
           ]}
           viewportTransform={IDENTITY_TRANSFORM}
@@ -715,27 +812,27 @@ describe('PlanViewport', () => {
         '[data-plan-hit-shape-id="project_pergola:pergola-body:roof"]',
       );
       expect(hitTarget).not.toBeNull();
-      dispatchPointer(hitTarget!, 'pointerdown', { button: 0 });
+      dispatchPointer(hitTarget!, "pointerdown", { button: 0 });
 
-      expect(onSelectPergolaTarget).toHaveBeenCalledWith('pergola-body');
+      expect(onSelectPergolaTarget).toHaveBeenCalledWith("pergola-body");
       rendered.unmount();
     });
   });
 
-  describe('cross-viewport hover (milestone 16, phase 1)', () => {
+  describe("cross-viewport hover (milestone 16, phase 1)", () => {
     function deckArtifact(): WorkbenchSolvedGeometryArtifact {
       return makeArtifact([
         makeShape({
-          id: 'deck-9',
-          sourceObjectId: 'deck-9',
-          sourceType: 'house_surface_solid',
-          family: 'house',
-          kind: 'deck',
+          id: "deck-9",
+          sourceObjectId: "deck-9",
+          sourceType: "house_surface_solid",
+          family: "house",
+          kind: "deck",
         }),
       ]);
     }
 
-    it('emits onHoverObjectChange with a typed deck ref when the local pointer enters a deck hit-target', () => {
+    it("emits onHoverObjectChange with a typed deck ref when the local pointer enters a deck hit-target", () => {
       // The classifier (`topProjectionShapeClassifier`) maps a deck shape to
       // `{ kind: 'workbench', targetKind: 'deck', targetId }`; PlanViewport
       // adapts that to the ref envelope (`{ family: 'decks', objectId }`)
@@ -754,15 +851,15 @@ describe('PlanViewport', () => {
         '[data-plan-hit-shape-id="deck-9"]',
       );
       expect(hitTarget).not.toBeNull();
-      dispatchPointer(hitTarget!, 'pointerover');
+      dispatchPointer(hitTarget!, "pointerover");
       expect(onHoverObjectChange).toHaveBeenCalledWith({
-        family: 'decks',
-        objectId: 'deck-9',
+        family: "decks",
+        objectId: "deck-9",
       });
       rendered.unmount();
     });
 
-    it('emits onHoverObjectChange(null) when the pointer leaves the hit-target', () => {
+    it("emits onHoverObjectChange(null) when the pointer leaves the hit-target", () => {
       const onHoverObjectChange = vi.fn();
       const rendered = renderIntoDocument(
         <PlanViewport
@@ -775,14 +872,14 @@ describe('PlanViewport', () => {
       const hitTarget = rendered.container.querySelector(
         '[data-plan-hit-shape-id="deck-9"]',
       );
-      dispatchPointer(hitTarget!, 'pointerover');
+      dispatchPointer(hitTarget!, "pointerover");
       onHoverObjectChange.mockClear();
-      dispatchPointer(hitTarget!, 'pointerout');
+      dispatchPointer(hitTarget!, "pointerout");
       expect(onHoverObjectChange).toHaveBeenCalledWith(null);
       rendered.unmount();
     });
 
-    it('renders a hover halo for the matching shape when hoveredObjectRef is set externally', () => {
+    it("renders a hover halo for the matching shape when hoveredObjectRef is set externally", () => {
       // External hover (e.g. driven by 3D pointer-over once the follow-up
       // slice lands) -- PlanViewport reads the prop and surfaces a
       // lower-intensity halo on the matching shape. Distinct from the
@@ -792,18 +889,18 @@ describe('PlanViewport', () => {
           artifact={deckArtifact()}
           viewportTransform={IDENTITY_TRANSFORM}
           onViewportTransformChange={() => undefined}
-          hoveredObjectRef={{ family: 'decks', objectId: 'deck-9' }}
+          hoveredObjectRef={{ family: "decks", objectId: "deck-9" }}
         />,
       );
       expect(markup).toContain('data-plan-hover-halo-shape-id="deck-9"');
     });
 
-    it('suppresses the hover halo when the hovered ref equals the active selection (avoid double-paint)', () => {
+    it("suppresses the hover halo when the hovered ref equals the active selection (avoid double-paint)", () => {
       const markup = renderToStaticMarkup(
         <PlanViewport
           artifact={deckArtifact()}
-          activeObjectRef={{ family: 'decks', objectId: 'deck-9' }}
-          hoveredObjectRef={{ family: 'decks', objectId: 'deck-9' }}
+          activeObjectRef={{ family: "decks", objectId: "deck-9" }}
+          hoveredObjectRef={{ family: "decks", objectId: "deck-9" }}
           viewportTransform={IDENTITY_TRANSFORM}
           onViewportTransformChange={() => undefined}
         />,
@@ -812,16 +909,16 @@ describe('PlanViewport', () => {
       expect(markup).not.toContain('data-plan-hover-halo-shape-id="deck-9"');
     });
 
-    it('emits a pergola hover ref when the local pointer enters a pergola shape', () => {
+    it("emits a pergola hover ref when the local pointer enters a pergola shape", () => {
       const onHoverObjectChange = vi.fn();
       const artifact = makeArtifact([
         makeShape({
-          id: 'rendered-pergola-1',
-          sourceObjectId: 'rendered-pergola-1',
-          sourceType: 'roof_plane',
-          family: 'pergola',
-          kind: 'roof_plane',
-          metadata: { pergolaId: 'pergola-7' },
+          id: "rendered-pergola-1",
+          sourceObjectId: "rendered-pergola-1",
+          sourceType: "roof_plane",
+          family: "pergola",
+          kind: "roof_plane",
+          metadata: { pergolaId: "pergola-7" },
         }),
       ]);
       const rendered = renderIntoDocument(
@@ -836,43 +933,43 @@ describe('PlanViewport', () => {
         '[data-plan-hit-shape-id="rendered-pergola-1"]',
       );
       expect(hitTarget).not.toBeNull();
-      dispatchPointer(hitTarget!, 'pointerover');
+      dispatchPointer(hitTarget!, "pointerover");
       // Classifier prefers `metadata.pergolaId` over `sourceObjectId`, so
       // the emitted ref carries the workbench-level pergola id even though
       // the shape itself was a roof_plane child object.
       expect(onHoverObjectChange).toHaveBeenCalledWith({
-        family: 'pergolas',
-        objectId: 'pergola-7',
+        family: "pergolas",
+        objectId: "pergola-7",
       });
       rendered.unmount();
     });
   });
 
-  describe('local hover chrome', () => {
+  describe("local hover chrome", () => {
     function houseArtifact(): WorkbenchSolvedGeometryArtifact {
       return makeArtifact([
         makeShape({
-          id: 'house_roof_material:house-form-2:project-roof-material',
-          sourceObjectId: 'house-form-2',
-          sourceId: 'house-form-2',
-          sourceType: 'house_roof_material',
-          family: 'house',
-          kind: 'house_roof_material',
-          metadata: { houseFormId: 'house-form-2' },
+          id: "house_roof_material:house-form-2:project-roof-material",
+          sourceObjectId: "house-form-2",
+          sourceId: "house-form-2",
+          sourceType: "house_roof_material",
+          family: "house",
+          kind: "house_roof_material",
+          metadata: { houseFormId: "house-form-2" },
         }),
         makeShape({
-          id: 'house_reference:house-form-2',
-          sourceObjectId: 'house-form-2',
-          sourceId: 'house-form-2',
-          sourceType: 'house_reference',
-          family: 'house',
-          kind: 'footprint',
-          metadata: { houseFormId: 'house-form-2', isCanonicalOutline: true },
+          id: "house_reference:house-form-2",
+          sourceObjectId: "house-form-2",
+          sourceId: "house-form-2",
+          sourceType: "house_reference",
+          family: "house",
+          kind: "footprint",
+          metadata: { houseFormId: "house-form-2", isCanonicalOutline: true },
         }),
       ]);
     }
 
-    it('renders local house hover as outline chrome without changing committed bodies', () => {
+    it("renders local house hover as outline chrome without changing committed bodies", () => {
       const rendered = renderIntoDocument(
         <PlanViewport
           artifact={houseArtifact()}
@@ -881,28 +978,36 @@ describe('PlanViewport', () => {
         />,
       );
       const committedBefore = Array.from(
-        rendered.container.querySelectorAll('[data-plan-layer="committedBodies"] [data-plan-shape-id]'),
-      ).map((node) => node.getAttribute('data-plan-shape-id'));
+        rendered.container.querySelectorAll(
+          '[data-plan-layer="committedBodies"] [data-plan-shape-id]',
+        ),
+      ).map((node) => node.getAttribute("data-plan-shape-id"));
       const hitTarget = rendered.container.querySelector(
         '[data-plan-hit-shape-id="house_reference:house-form-2"]',
       );
       expect(hitTarget).not.toBeNull();
 
-      dispatchPointer(hitTarget!, 'pointerover');
+      dispatchPointer(hitTarget!, "pointerover");
 
-      expect(rendered.container.querySelector('[data-plan-local-hover-shape-id="house_reference:house-form-2"]')).not.toBeNull();
+      expect(
+        rendered.container.querySelector(
+          '[data-plan-local-hover-shape-id="house_reference:house-form-2"]',
+        ),
+      ).not.toBeNull();
       const committedAfter = Array.from(
-        rendered.container.querySelectorAll('[data-plan-layer="committedBodies"] [data-plan-shape-id]'),
-      ).map((node) => node.getAttribute('data-plan-shape-id'));
+        rendered.container.querySelectorAll(
+          '[data-plan-layer="committedBodies"] [data-plan-shape-id]',
+        ),
+      ).map((node) => node.getAttribute("data-plan-shape-id"));
       expect(committedAfter).toEqual(committedBefore);
       rendered.unmount();
     });
 
-    it('does not add local hover chrome over the active house selection', () => {
+    it("does not add local hover chrome over the active house selection", () => {
       const rendered = renderIntoDocument(
         <PlanViewport
           artifact={houseArtifact()}
-          activeObjectRef={{ family: 'house_forms', objectId: 'house-form-2' }}
+          activeObjectRef={{ family: "house_forms", objectId: "house-form-2" }}
           viewportTransform={IDENTITY_TRANSFORM}
           onViewportTransformChange={() => undefined}
         />,
@@ -912,26 +1017,34 @@ describe('PlanViewport', () => {
       );
       expect(hitTarget).not.toBeNull();
 
-      dispatchPointer(hitTarget!, 'pointerover');
+      dispatchPointer(hitTarget!, "pointerover");
 
-      expect(rendered.container.querySelector('[data-plan-selection-shape-id="house_reference:house-form-2"]')).not.toBeNull();
-      expect(rendered.container.querySelector('[data-plan-local-hover-shape-id="house_reference:house-form-2"]')).toBeNull();
+      expect(
+        rendered.container.querySelector(
+          '[data-plan-selection-shape-id="house_reference:house-form-2"]',
+        ),
+      ).not.toBeNull();
+      expect(
+        rendered.container.querySelector(
+          '[data-plan-local-hover-shape-id="house_reference:house-form-2"]',
+        ),
+      ).toBeNull();
       rendered.unmount();
     });
 
-    it('renders terminal-end hover as explicit outline chrome while keeping the hit target clickable', () => {
+    it("renders terminal-end hover as explicit outline chrome while keeping the hit target clickable", () => {
       const onToggleHouseTerminalEnd = vi.fn();
       const artifact = makeArtifact([
         makeShape({
-          id: 'house_terminal_end_synthetic:house-gable-end-x-2',
-          sourceObjectId: 'house-form-2',
-          sourceId: 'house-form-2',
-          sourceType: 'house_surface_solid',
-          family: 'house',
-          kind: 'roof',
+          id: "house_terminal_end_synthetic:house-gable-end-x-2",
+          sourceObjectId: "house-form-2",
+          sourceId: "house-form-2",
+          sourceType: "house_surface_solid",
+          family: "house",
+          kind: "roof",
           metadata: {
-            houseFormId: 'house-form-2',
-            openGableEndId: 'house-gable-end-x-2',
+            houseFormId: "house-form-2",
+            openGableEndId: "house-gable-end-x-2",
             isOpen: false,
           },
         }),
@@ -949,33 +1062,39 @@ describe('PlanViewport', () => {
       );
       expect(hitTarget).not.toBeNull();
 
-      dispatchPointer(hitTarget!, 'pointerover');
+      dispatchPointer(hitTarget!, "pointerover");
       expect(
         rendered.container.querySelector(
           '[data-plan-local-hover-shape-id="house_terminal_end_synthetic:house-gable-end-x-2"]',
         ),
       ).not.toBeNull();
 
-      dispatchPointer(hitTarget!, 'pointerdown', { button: 0 });
+      dispatchPointer(hitTarget!, "pointerdown", { button: 0 });
       expect(onToggleHouseTerminalEnd).toHaveBeenCalledWith({
-        houseFormId: 'house-form-2',
-        endId: 'house-gable-end-x-2',
+        houseFormId: "house-form-2",
+        endId: "house-gable-end-x-2",
         currentlyOpen: false,
       });
       rendered.unmount();
     });
 
-    it('keeps normal hit-target hover styling visually inert', () => {
+    it("keeps normal hit-target hover styling visually inert", () => {
       const css = readFileSync(
         join(
           process.cwd(),
-          'apps/portal/components/drawings/viewports/PlanViewport/canvas/planLineweights.module.css',
+          "apps/portal/components/drawings/viewports/PlanViewport/canvas/planLineweights.module.css",
         ),
-        'utf8',
+        "utf8",
       );
-      expect(css).toMatch(/\.hitTarget:hover\s*{[\s\S]*?fill:\s*transparent;[\s\S]*?stroke:\s*none;/);
-      expect(css).toMatch(/\.hitTargetTerminalEnd:hover\s*{[\s\S]*?fill:\s*transparent;[\s\S]*?stroke:\s*none;/);
-      expect(css).toMatch(/\.bodyHouseReferenceFallback\s*{[\s\S]*?fill:\s*transparent;/);
+      expect(css).toMatch(
+        /\.hitTarget:hover\s*{[\s\S]*?fill:\s*transparent;[\s\S]*?stroke:\s*none;/,
+      );
+      expect(css).toMatch(
+        /\.hitTargetTerminalEnd:hover\s*{[\s\S]*?fill:\s*transparent;[\s\S]*?stroke:\s*none;/,
+      );
+      expect(css).toMatch(
+        /\.bodyHouseReferenceFallback\s*{[\s\S]*?fill:\s*transparent;/,
+      );
     });
   });
 });

@@ -2,26 +2,29 @@ import {
   buildHouseModelRoofMaterialSceneObjects,
   buildHouseModelSceneObjects,
   buildHouseModelTopProjectionShapes,
+  EMPTY_HOUSE_ROOF_STAGE_DIAGNOSTICS,
+  firstHouseRoofStageDiagnosticCode,
+  pickHouseRoofStageDiagnostics,
   type GeometryTopProjectionShape,
-} from '@sp/geometry';
+} from "@sp/geometry";
 import {
   planHouseFormOwner,
   planShapeIsHouseRoofBody,
   planShapeIsHouseRoofMaterialBody,
-} from '@/lib/drawings/views/plan/planShapeOwnership';
-import type { WorkbenchProjectModel } from './objectFirstWorkbenchModel';
+} from "@/lib/drawings/views/plan/planShapeOwnership";
+import type { WorkbenchProjectModel } from "./objectFirstWorkbenchModel";
 import {
   buildProjectHouseGeometryInputs,
   type HouseFormGeometryInputDiagnostics,
-} from './houseFormGeometryInput';
+} from "./houseFormGeometryInput";
 import {
   buildProjectHouseGeometryRegistry,
   type ProjectHouseGeometryEntry,
-} from './projectHouseGeometryRegistry';
+} from "./projectHouseGeometryRegistry";
 import type {
   ProjectHouseProjectionFailureStage,
   ProjectHouseProjectionHealth,
-} from './projectHouseProjectionHealth';
+} from "./projectHouseProjectionHealth";
 
 export type ProjectHouseRenderPipeline = {
   projectHouseGeometries: ProjectHouseGeometryEntry[];
@@ -49,11 +52,14 @@ function emptyHouseHealth(input: {
   fallbackStage?: ProjectHouseProjectionFailureStage;
 }): ProjectHouseProjectionHealth {
   const failureStage: ProjectHouseProjectionFailureStage =
-    input.inputDiagnostics && input.inputDiagnostics.failureStage !== 'none'
+    input.inputDiagnostics && input.inputDiagnostics.failureStage !== "none"
       ? input.inputDiagnostics.failureStage
-      : input.fallbackStage ?? 'missing_geometry_input';
+      : (input.fallbackStage ?? "missing_geometry_input");
   const diagnosticCode =
-    input.inputDiagnostics?.diagnosticCode ?? (failureStage === 'none' ? null : failureStage);
+    input.inputDiagnostics?.diagnosticCode ??
+    (failureStage === "none" ? null : failureStage);
+  const roofDiagnostics =
+    input.inputDiagnostics ?? EMPTY_HOUSE_ROOF_STAGE_DIAGNOSTICS;
   return {
     houseFormId: input.houseFormId,
     geometryInputPresent: Boolean(input.inputDiagnostics?.rawHouseInputPresent),
@@ -69,38 +75,42 @@ function emptyHouseHealth(input: {
     roofBodyIds: [],
     roofMaterialBodyIds: [],
     sceneBodyCount: 0,
+    sceneRoofBodyCount: 0,
     sceneRoofMaterialBodyCount: 0,
     canRenderCommittedBody: false,
     visibleReferenceFallbackIds: [],
     failureStage,
     diagnosticCode,
-    roofValidationStatus: null,
-    roofValidationCode: null,
+    roofValidationStatus: roofDiagnostics.roofQaStatus,
+    roofValidationCode: roofDiagnostics.roofQaFailureReason,
+    ...pickHouseRoofStageDiagnostics(roofDiagnostics),
   };
 }
 
 function houseProjectionFailureStage(
   health: Pick<
     ProjectHouseProjectionHealth,
-    | 'geometryInputPresent'
-    | 'rawHouseInputPresent'
-    | 'referencePresent'
-    | 'modelPresent'
-    | 'wallCount'
-    | 'roofPlaneCount'
-    | 'sceneBodyCount'
-    | 'roofBodyCount'
-    | 'roofMaterialBodyCount'
+    | "geometryInputPresent"
+    | "rawHouseInputPresent"
+    | "referencePresent"
+    | "modelPresent"
+    | "wallCount"
+    | "roofPlaneCount"
+    | "sceneBodyCount"
+    | "roofBodyCount"
+    | "roofMaterialBodyCount"
   >,
 ): ProjectHouseProjectionFailureStage {
-  if (!health.geometryInputPresent || !health.rawHouseInputPresent) return 'missing_geometry_input';
-  if (!health.referencePresent) return 'missing_geometry_input';
-  if (!health.modelPresent) return 'missing_model';
-  if (health.wallCount <= 0) return 'missing_3d_body';
-  if (health.roofPlaneCount <= 0) return 'missing_roof_model';
-  if (health.sceneBodyCount <= 0) return 'missing_3d_body';
-  if (health.roofBodyCount <= 0 && health.roofMaterialBodyCount <= 0) return 'missing_plan_body';
-  return 'none';
+  if (!health.geometryInputPresent || !health.rawHouseInputPresent)
+    return "missing_geometry_input";
+  if (!health.referencePresent) return "missing_geometry_input";
+  if (!health.modelPresent) return "missing_model";
+  if (health.wallCount <= 0) return "missing_3d_body";
+  if (health.roofPlaneCount <= 0) return "missing_roof_model";
+  if (health.sceneBodyCount <= 0) return "missing_3d_body";
+  if (health.roofBodyCount <= 0 && health.roofMaterialBodyCount <= 0)
+    return "missing_plan_body";
+  return "none";
 }
 
 function buildHealthForEntry(input: {
@@ -136,6 +146,9 @@ function buildHealthForEntry(input: {
   const roofBodyCount = roofBodyIds.length;
   const roofMaterialBodyCount = roofMaterialBodyIds.length;
   const sceneBodyCount = sceneObjects.length;
+  const sceneRoofBodyCount =
+    entry.model.solids?.surfaceSolids.filter((solid) => solid.kind === "roof")
+      .length ?? 0;
   const sceneRoofMaterialBodyCount = roofMaterialSceneObjects.length;
   const inputDiagnostics = entry.geometryInputDiagnostics;
   const failureStage = houseProjectionFailureStage({
@@ -150,7 +163,9 @@ function buildHealthForEntry(input: {
     roofMaterialBodyCount,
   });
   const visibleReferenceFallbackIds =
-    roofBodyCount > 0 || roofMaterialBodyCount > 0 ? [] : [entry.referenceShape.id];
+    roofBodyCount > 0 || roofMaterialBodyCount > 0
+      ? []
+      : [entry.referenceShape.id];
 
   return {
     houseFormId: entry.houseFormId,
@@ -171,9 +186,14 @@ function buildHealthForEntry(input: {
     canRenderCommittedBody: roofBodyCount > 0 || roofMaterialBodyCount > 0,
     visibleReferenceFallbackIds: visibleReferenceFallbackIds.sort(),
     failureStage,
-    diagnosticCode: failureStage === 'none' ? null : failureStage,
-    roofValidationStatus: null,
-    roofValidationCode: null,
+    diagnosticCode:
+      failureStage === "none"
+        ? firstHouseRoofStageDiagnosticCode(inputDiagnostics)
+        : (firstHouseRoofStageDiagnosticCode(inputDiagnostics) ?? failureStage),
+    roofValidationStatus: inputDiagnostics.roofQaStatus,
+    roofValidationCode: inputDiagnostics.roofQaFailureReason,
+    sceneRoofBodyCount,
+    ...pickHouseRoofStageDiagnostics(inputDiagnostics),
   };
 }
 
@@ -181,16 +201,28 @@ export function buildProjectHouseRenderPipeline(input: {
   projectModel: WorkbenchProjectModel;
   projectHouseGeometries?: ReadonlyArray<ProjectHouseGeometryEntry>;
 }): ProjectHouseRenderPipeline {
-  const houseFormIds = input.projectModel.houseAssembly?.houseForms.map((houseForm) => houseForm.id) ?? [];
-  const geometryInputResults = buildProjectHouseGeometryInputs(input.projectModel);
-  const houseGeometryInputsById: Record<string, HouseFormGeometryInputDiagnostics> = {};
+  const houseFormIds =
+    input.projectModel.houseAssembly?.houseForms.map(
+      (houseForm) => houseForm.id,
+    ) ?? [];
+  const geometryInputResults = buildProjectHouseGeometryInputs(
+    input.projectModel,
+  );
+  const houseGeometryInputsById: Record<
+    string,
+    HouseFormGeometryInputDiagnostics
+  > = {};
   for (const [houseFormId, result] of Object.entries(geometryInputResults)) {
     houseGeometryInputsById[houseFormId] = result.diagnostics;
   }
   const projectHouseGeometries = [
-    ...(input.projectHouseGeometries ?? buildProjectHouseGeometryRegistry(input.projectModel)),
+    ...(input.projectHouseGeometries ??
+      buildProjectHouseGeometryRegistry(input.projectModel)),
   ];
-  const planShapesByHouseFormId = new Map<string, GeometryTopProjectionShape[]>();
+  const planShapesByHouseFormId = new Map<
+    string,
+    GeometryTopProjectionShape[]
+  >();
   const allPlanShapes: GeometryTopProjectionShape[] = [];
 
   for (const entry of projectHouseGeometries) {
@@ -227,8 +259,8 @@ export function buildProjectHouseRenderPipeline(input: {
   return {
     projectHouseGeometries,
     projectHousePlanShapes: dedupeTopProjectionShapes(allPlanShapes),
-    projectHouseProjectionHealth: Array.from(healthByHouseFormId.values()).sort((left, right) =>
-      left.houseFormId.localeCompare(right.houseFormId),
+    projectHouseProjectionHealth: Array.from(healthByHouseFormId.values()).sort(
+      (left, right) => left.houseFormId.localeCompare(right.houseFormId),
     ),
     houseGeometryInputsById,
   };

@@ -36,6 +36,7 @@ import { type DrawOutlineTarget } from './objectWorkbenchClientTypes';
 import RightInspectorPanel from '@/components/drawings/inspector/RightInspectorPanel';
 import ObjectWorkbenchRailHost from './ObjectWorkbenchRailHost';
 import WorkbenchInspectorHost from './WorkbenchInspectorHost';
+import WorkbenchDebugExportButton from './WorkbenchDebugExportButton';
 import { resolveHouseTerminalEndToggleRoofDraft } from './resolveHouseTerminalEndToggleRoofDraft';
 import { useObjectWorkbenchDraftPersistence } from './useObjectWorkbenchDraftPersistence';
 import { useObjectWorkbenchActions } from './useObjectWorkbenchActions';
@@ -485,6 +486,7 @@ export default function DesignWorkbenchEstimateClient({
       ) : null}
       <aside className={styles.configuratorColumn}>
         <div className={styles.configuratorScroll}>
+        {debugFixtureExport ? <WorkbenchDebugExportButton exportPayload={debugFixtureExport} /> : null}
         <ObjectWorkbenchRailHost
           activeModuleInput={activeModuleInput}
           geometryEditState={geometryEditState}

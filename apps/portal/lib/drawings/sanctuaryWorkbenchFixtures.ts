@@ -7,6 +7,7 @@ import {
   makeResult,
   makeSnapshot,
 } from './sanctuaryWorkbenchFixtureBuilders';
+import { CAPTURED_SANCTUARY_GEOMETRY_WORKBENCH_FIXTURES } from './sanctuaryWorkbenchCapturedFixtures';
 import { MULTI_OBJECT_SANCTUARY_GEOMETRY_WORKBENCH_FIXTURES } from './sanctuaryWorkbenchMultiObjectFixtures';
 import type { SanctuaryGeometryWorkbenchFixture } from './sanctuaryWorkbenchFixtures.types';
 
@@ -354,6 +355,7 @@ const FIXTURES: SanctuaryGeometryWorkbenchFixture[] = [
     },
   },
   ...MULTI_OBJECT_SANCTUARY_GEOMETRY_WORKBENCH_FIXTURES,
+  ...CAPTURED_SANCTUARY_GEOMETRY_WORKBENCH_FIXTURES,
 ];
 
 export function listSanctuaryGeometryWorkbenchFixtures(): SanctuaryGeometryWorkbenchFixture[] {

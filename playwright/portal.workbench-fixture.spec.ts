@@ -23,6 +23,7 @@ import {
   readVisibleHouseReferenceFallbackIds,
   readVisiblePergolaShapeIds,
   readWorkbenchDebugExport,
+  readWorkbenchDebugHouseGeometryInputs,
   selectRailObject,
   switchWorkbenchMode,
 } from './support/workbenchFixture';
@@ -215,6 +216,13 @@ test.describe('workbench fixture route', () => {
     );
     expect(await read3DPergolaFallbackIds(page)).toEqual(['pergola-2']);
     const debugExport = await readWorkbenchDebugExport(page);
+    const debugHouseGeometryInputs = await readWorkbenchDebugHouseGeometryInputs(page);
+    expect(debugHouseGeometryInputs['house-main']).toEqual(
+      expect.objectContaining({
+        houseFormId: 'house-main',
+        failureStage: 'none',
+      }),
+    );
     expect(debugExport).toEqual(
       expect.objectContaining({
         objectFirst: expect.any(Object),
