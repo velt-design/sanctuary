@@ -53,6 +53,15 @@ Authenticated Playwright smoke and performance gates use `PORTAL_TEST_EMAIL` and
 
 Use `npm run portal:auth-env` to check credential presence and `npm run portal:auth-runtime` to check the role, session, schedule readiness, and minimum dataset before running deeper authenticated browser gates.
 
+To provision or reset a local/staging browser-test account, use the explicit service-role command:
+
+```bash
+PORTAL_TEST_PROVISION_TARGET=local npm run portal:test-user:ensure
+PORTAL_TEST_PROVISION_TARGET=staging npm run portal:agent-access:provision
+```
+
+Provisioning requires `PORTAL_TEST_EMAIL`, `PORTAL_TEST_PASSWORD`, `NEXT_PUBLIC_SUPABASE_URL`, and `SUPABASE_SERVICE_ROLE_KEY`. `PORTAL_TEST_ROLE=staff|admin` is optional and defaults to `staff`. The command refuses missing targets and `production`; routine browser gates never provision or mutate users.
+
 ## Creating Portal Users
 
 Use the invite script from the repo root:

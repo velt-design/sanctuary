@@ -159,6 +159,8 @@ Required env:
 
 Optional env:
 
+- `PORTAL_TEST_PROVISION_TARGET=local|staging`, required only for the opt-in provisioning command.
+- `PORTAL_TEST_ROLE=staff|admin`, defaults to `staff` for provisioning.
 - `PORTAL_PLAYWRIGHT_PORT`, defaults to `3011` when the portal harness starts locally.
 - `PORTAL_BASE_URL`, disables local harness startup and points browser gates at an already-running portal.
 - `PORTAL_DRAWING_URL`, points the drawing smoke at a known project/design page.
@@ -168,6 +170,9 @@ Commands:
 ```bash
 npm run portal:auth-env
 npm run portal:auth-runtime
+npm run portal:test-user:ensure
+npm run portal:agent-access
+npm run portal:agent-access:provision
 npm run portal:fixture-env
 npm run test:portal:browser:auth
 npm run test:portal:browser
@@ -179,6 +184,10 @@ npm run test:portal:performance
 `npm run portal:auth-env` is the cheap fail-fast credential preflight for authenticated portal browser gates. It checks that `PORTAL_TEST_EMAIL` and `PORTAL_TEST_PASSWORD` are set before Playwright starts, so missing credentials fail loudly instead of producing a skipped or late setup failure.
 
 `npm run portal:auth-runtime` is the authenticated runtime-readiness preflight for smoke and performance gates. It runs after `portal:auth-env`, signs in through the existing Playwright setup flow, verifies the session is not redirected to `/login` or `/access-status`, checks dashboard/projects/contacts/schedule shell access, confirms schedule readiness, and requires at least one project visible to the test account. `npm run test:portal:smoke`, `npm run test:portal:performance`, and broad `npm run portal:doctor` run it before their deeper authenticated assertions.
+
+`npm run portal:test-user:ensure` is an explicit service-role provisioning command for local or staging only. It requires `PORTAL_TEST_PROVISION_TARGET=local|staging`, `PORTAL_TEST_EMAIL`, `PORTAL_TEST_PASSWORD`, `NEXT_PUBLIC_SUPABASE_URL`, and `SUPABASE_SERVICE_ROLE_KEY`; it creates or updates the Supabase Auth user and upserts `portal_users.role`. It must not be embedded into routine browser gates.
+
+`npm run portal:agent-access` captures authenticated browser state and opens `/dashboard`, `/staff/projects`, `/staff/contacts`, and `/staff/schedule` with shared browser evidence. `npm run portal:agent-access:provision` is the opt-in combined command that provisions the test user first, then runs the same access smoke. Neither command seeds project or schedule data; the access smoke still expects at least one visible project.
 
 `npm run portal:fixture-env` is the fail-fast server-readiness preflight for the no-auth drawing fixture gate. `npm run test:portal:browser`, `npm run test:portal:browser:headed`, and the browser segment of `npm run test:portal:workbench` run it before Playwright starts. It catches a normal portal dev server already occupying the Playwright port and catches `PORTAL_BASE_URL` targets that redirect the fixture route to auth.
 

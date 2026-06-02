@@ -43,6 +43,8 @@ This plan makes the portal more like a lab bench:
 
 Simple version: give agents a safe way to log in and open portal pages in Playwright.
 
+Status: active first slice. This now owns the safe local/staging test-user provisioning path, shared authenticated route helper, browser evidence capture, and first agent access smoke for dashboard, projects, contacts, and schedule.
+
 Why it matters: without authenticated browser access, agents can only test hidden QA pages or unauthenticated routes. This creates blind spots in the real staff portal.
 
 What it should add:
