@@ -102,7 +102,7 @@ Done when:
 
 Simple version: let complex pages copy a structured debug payload, not just a screenshot.
 
-Status: active. The shared contract lives in `apps/portal/lib/debug/portalPageDebugExport.ts`, the browser reader lives in `playwright/support/portalAgent.ts`, and debug-export status is cataloged in `playwright/support/portalRouteCatalog.ts` / `docs/portal-route-catalog.md`.
+Status: shipped. The shared contract lives in `apps/portal/lib/debug/portalPageDebugExport.ts`, the browser reader lives in `playwright/support/portalAgent.ts`, and debug-export status is cataloged in `playwright/support/portalRouteCatalog.ts` / `docs/portal-route-catalog.md`.
 
 Why it matters: a screenshot shows the symptom but not the state that caused it. Workbench already started the right pattern with debug fixture export. Other complex pages need the same idea.
 
@@ -120,6 +120,8 @@ Done when:
 ### PR-Agent.5: Browser Evidence Lane
 
 Simple version: when a browser test fails, collect evidence automatically.
+
+Status: active. The shared evidence lane lives in `playwright/support/portalBrowserEvidence.ts`; workbench Plan/3D viewport evidence lives in `playwright/support/workbenchEvidence.ts`.
 
 Why it matters: a failing Playwright test should tell us what happened without a human rerunning it and looking around.
 
@@ -211,12 +213,12 @@ Done when:
 2. PR-Agent.2: Portal Route Catalog
 3. PR-Agent.3: Seeded Scenario Registry
 4. PR-Agent.4: Page Debug Export Contract
-5. PR-Agent.8: Workbench Captured Repro Workflow
-6. PR-Agent.5: Browser Evidence Lane
+5. PR-Agent.5: Browser Evidence Lane
+6. PR-Agent.8: Workbench Captured Repro Workflow
 7. PR-Agent.6: Quality Scorecard
 8. PR-Agent.7: Strictness Ratchet
 
-This order gives immediate value first: agents can access real pages, know which routes matter, and capture exact workbench bugs. The later PRs improve coverage and quality pressure across the whole repo.
+This order gives immediate value first: agents can access real pages, know which routes matter, open seeded scenarios, capture page state, and collect consistent browser evidence. The later PRs turn that evidence into exact workbench repros and stronger quality pressure across the whole repo.
 
 ## What This Does Not Replace
 
@@ -246,4 +248,4 @@ Use this as a simple target checklist:
 
 ## Current Highest-Leverage Next Step
 
-Build PR-Agent.3 now. Authenticated Playwright access and a route catalog exist; the next leverage point is deterministic local/staging scenario data so agents can open project detail, estimate, quote, and workbench routes without relying on whatever happens to be in the database.
+Build PR-Agent.5 now. Authenticated access, route catalog, seeded scenarios, and page debug exports exist; the next leverage point is making every browser failure attach consistent route, scenario, debug, console, network, screenshot, and workbench viewport evidence.

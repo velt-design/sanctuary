@@ -1,10 +1,12 @@
-import { expect, type Page, type TestInfo } from '@playwright/test';
+import { expect, type Page } from '@playwright/test';
 
-export interface PortalBrowserEvidence {
-  consoleMessages: Array<{ type: string; text: string }>;
-  failedRequests: Array<{ method: string; url: string; failureText: string | null }>;
-  pageErrors: string[];
-}
+export {
+  attachPortalBrowserEvidence,
+  installPortalBrowserEvidence,
+  withPortalBrowserEvidence,
+  type PortalBrowserEvidence,
+  type PortalBrowserEvidenceContext,
+} from './portalBrowserEvidence';
 
 export interface OpenPortalPageOptions {
   heading?: string | RegExp;
@@ -21,56 +23,6 @@ export interface PortalPageDebugExportPayload {
   clientState: Record<string, unknown>;
   diagnostics: Record<string, unknown>;
   scenario: unknown;
-}
-
-export function installPortalBrowserEvidence(page: Page): PortalBrowserEvidence {
-  const evidence: PortalBrowserEvidence = {
-    consoleMessages: [],
-    failedRequests: [],
-    pageErrors: [],
-  };
-
-  page.on('console', (message) => {
-    if (message.type() === 'error' || message.type() === 'warning') {
-      evidence.consoleMessages.push({ type: message.type(), text: message.text() });
-    }
-  });
-
-  page.on('pageerror', (error) => {
-    evidence.pageErrors.push(error.stack ?? error.message);
-  });
-
-  page.on('requestfailed', (request) => {
-    evidence.failedRequests.push({
-      method: request.method(),
-      url: request.url(),
-      failureText: request.failure()?.errorText ?? null,
-    });
-  });
-
-  return evidence;
-}
-
-export async function attachPortalBrowserEvidence(
-  testInfo: TestInfo,
-  page: Page,
-  evidence: PortalBrowserEvidence,
-) {
-  await testInfo.attach('portal-browser-evidence', {
-    body: JSON.stringify(
-      {
-        currentUrl: page.url(),
-        title: await page.title().catch(() => null),
-        viewport: page.viewportSize(),
-        consoleMessages: evidence.consoleMessages,
-        failedRequests: evidence.failedRequests,
-        pageErrors: evidence.pageErrors,
-      },
-      null,
-      2,
-    ),
-    contentType: 'application/json',
-  });
 }
 
 export async function openPortalPage(page: Page, route: string, options: OpenPortalPageOptions = {}) {

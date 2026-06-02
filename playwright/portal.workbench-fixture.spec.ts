@@ -1,4 +1,10 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type TestInfo } from '@playwright/test';
+import {
+  attachPortalBrowserEvidence,
+  installPortalBrowserEvidence,
+  type PortalBrowserEvidence,
+} from './support/portalBrowserEvidence';
+import { attachWorkbenchViewportEvidence } from './support/workbenchEvidence';
 import {
   clearPlanSelection,
   expect3DViewportEvidence,
@@ -30,8 +36,26 @@ import {
 
 const MULTI_OBJECT_FIXTURE = 'multi-house-u-two-pergola';
 const CUSTOM_HOUSE_PROJECTION_FIXTURE = 'multi-house-custom-projection';
+const browserEvidenceByTest = new WeakMap<TestInfo, PortalBrowserEvidence>();
 
 test.describe('workbench fixture route', () => {
+  test.beforeEach(async ({ page }, testInfo) => {
+    browserEvidenceByTest.set(testInfo, installPortalBrowserEvidence(page));
+  });
+
+  test.afterEach(async ({ page }, testInfo) => {
+    const evidence = browserEvidenceByTest.get(testInfo);
+    if (evidence) {
+      await attachPortalBrowserEvidence(testInfo, page, evidence, {
+        phase: 'workbench-fixture',
+      });
+    }
+
+    await attachWorkbenchViewportEvidence(testInfo, page, {
+      phase: 'workbench-fixture',
+    });
+  });
+
   test('keeps project house plan bodies stable when switching pergolas', async ({ page }) => {
     await openWorkbenchFixture(page, MULTI_OBJECT_FIXTURE);
     await switchWorkbenchMode(page, 'Plan Editor');

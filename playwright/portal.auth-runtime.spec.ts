@@ -1,18 +1,15 @@
 import { expect, test } from '@playwright/test';
 
 import {
-  attachPortalBrowserEvidence,
   expectVisiblePortalProject,
-  installPortalBrowserEvidence,
   openPortalPage,
+  withPortalBrowserEvidence,
 } from './support/portalAgent';
 
 test.describe.configure({ mode: 'serial' });
 
 test('authenticated portal runtime is ready for smoke and performance gates', async ({ page }, testInfo) => {
-  const evidence = installPortalBrowserEvidence(page);
-
-  try {
+  await withPortalBrowserEvidence(page, testInfo, { phase: 'auth-runtime' }, async () => {
     await openPortalPage(page, '/dashboard', { heading: 'Dashboard' });
     await openPortalPage(page, '/staff/projects', { heading: 'Projects' });
     await expectVisiblePortalProject(page);
@@ -44,7 +41,5 @@ test('authenticated portal runtime is ready for smoke and performance gates', as
     }
 
     expect(body.ok, `Authenticated runtime preflight requires schedule readiness ok: true.\n${readiness.bodyText}`).toBe(true);
-  } finally {
-    await attachPortalBrowserEvidence(testInfo, page, evidence);
-  }
+  });
 });

@@ -1,10 +1,9 @@
 import { expect, test } from '@playwright/test';
 
 import {
-  attachPortalBrowserEvidence,
   expectPortalDebugExport,
-  installPortalBrowserEvidence,
   openPortalPage,
+  withPortalBrowserEvidence,
 } from './support/portalAgent';
 import {
   getPortalScenarioState,
@@ -16,10 +15,9 @@ import { agentScenarioSmokeRoutes } from './support/portalRouteCatalog';
 test.describe.configure({ mode: 'serial' });
 
 test('agent can open seeded dynamic portal scenario routes', async ({ page }, testInfo) => {
-  const evidence = installPortalBrowserEvidence(page);
-  const scenarioState = loadPortalScenarioState();
+  await withPortalBrowserEvidence(page, testInfo, { phase: 'agent-scenarios' }, async () => {
+    const scenarioState = loadPortalScenarioState();
 
-  try {
     for (const routeEntry of agentScenarioSmokeRoutes) {
       const scenario = getPortalScenarioState(scenarioState, routeEntry.scenarioId);
       const route = routeForPortalScenario(routeEntry, scenarioState);
@@ -49,7 +47,5 @@ test('agent can open seeded dynamic portal scenario routes', async ({ page }, te
         expect(debugExport.selectedIds.projectId).toBe(scenario.projectId);
       }
     }
-  } finally {
-    await attachPortalBrowserEvidence(testInfo, page, evidence);
-  }
+  });
 });
