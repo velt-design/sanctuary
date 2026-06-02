@@ -1,12 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import type { CalculatorModuleInputs } from '@/lib/types/calculator';
+import { makeDefaultHouseFootprintParams, type CalculatorModuleInputs } from '@/lib/types/calculator';
+import type { ObjectFirstWorkbenchDraftVNext } from '@/lib/drawings/state/objectFirstWorkbenchModel';
 import {
+  ESTIMATE_DRAWING_OBJECT_FIRST_OUTPUT_KEY,
   ESTIMATE_DRAWING_OVERRIDES_OUTPUT_KEY,
   applyEstimateDrawingFootprintEdit,
   applyEstimateDrawingFieldEdit,
   applyEstimateDrawingModuleFieldEdit,
   buildEstimateDrawingDraftFromSnapshot,
   deriveEstimateDrawingEditableFields,
+  mergeEstimateDrawingDraftIntoSnapshot,
   resolveEstimateDrawingOverridesFromSnapshot,
   updateEstimateDrawingObjectFirstDeckDrafts,
   updateEstimateDrawingObjectFirstPergolaDrafts,
@@ -79,6 +82,44 @@ function makeSnapshot(module: CalculatorModuleInputs) {
     },
     outputs: {},
   } satisfies Record<string, unknown>;
+}
+
+function makeObjectFirstDraft(houseFormIds: string[]): ObjectFirstWorkbenchDraftVNext {
+  return {
+    houseAssembly: {
+      id: 'house-assembly',
+      label: 'House forms',
+      houseForms: houseFormIds.map((id, index) => ({
+        id,
+        label: `House ${index + 1}`,
+        transform: {
+          offsetXM: index * 8,
+          offsetYM: 0,
+          rotationQuarterTurns: 0,
+        },
+        footprint: {
+          mode: 'preset',
+          preset: index % 2 === 0 ? 'straight' : 'recess_right',
+          params: makeDefaultHouseFootprintParams(),
+          polygon: [],
+          attachmentSide: 'rear',
+        },
+        roofIntent: {
+          form: 'hipped',
+          material: 'corrugated_iron',
+          primaryPitchDeg: '20',
+          primaryFallDirection: 'positive_y',
+          ridgeAxis: 'x',
+          openGableEndIds: [],
+        },
+        storeyMode: 'single_storey',
+        attachmentStrategy: null,
+      })),
+    },
+    decks: [],
+    openings: [],
+    pergolas: [],
+  };
 }
 
 describe('drawingEdits', () => {
@@ -346,7 +387,6 @@ describe('drawingEdits', () => {
     expect('houseFirst' in (deckDraft as Record<string, unknown>)).toBe(false);
     expect(deckDraft.objectFirst?.decks[0]).toMatchObject({
       id: 'deck-1',
-      label: 'Rear deck',
       hostEdgeId: 'rear',
       presetRect: {
         widthM: '3.6',
@@ -372,5 +412,54 @@ describe('drawingEdits', () => {
 
     expect('houseFirst' in (pergolaDraft as Record<string, unknown>)).toBe(false);
     expect(pergolaDraft.objectFirst?.pergolas[0]?.attachmentZoneId).toBe('zone-soffit-footprint-edge-3');
+  });
+
+  it('persists and reloads object-first house forms without rewriting legacy modules', () => {
+    const snapshot = makeSnapshot(makeModule());
+    const draft = buildEstimateDrawingDraftFromSnapshot(snapshot)!;
+    draft.objectFirst = makeObjectFirstDraft(['house-form-1', 'house-form-2']);
+
+    const merged = mergeEstimateDrawingDraftIntoSnapshot(snapshot, draft)!;
+
+    expect(merged.inputs).toEqual(snapshot.inputs);
+    const savedObjectFirst = (merged.outputs as Record<string, unknown>)[
+      ESTIMATE_DRAWING_OBJECT_FIRST_OUTPUT_KEY
+    ] as ObjectFirstWorkbenchDraftVNext;
+    expect(savedObjectFirst.houseAssembly?.houseForms.map((form) => form.id)).toEqual([
+      'house-form-1',
+      'house-form-2',
+    ]);
+
+    const reloaded = buildEstimateDrawingDraftFromSnapshot(merged)!;
+    expect(reloaded.objectFirst?.houseAssembly?.houseForms.map((form) => form.id)).toEqual([
+      'house-form-1',
+      'house-form-2',
+    ]);
+    expect(reloaded.inputs.modules).toEqual(draft.inputs.modules);
+  });
+
+  it('persists an explicit empty house assembly without recreating a legacy house form', () => {
+    const snapshot = makeSnapshot(makeModule());
+    const draft = buildEstimateDrawingDraftFromSnapshot(snapshot)!;
+    draft.objectFirst = {
+      houseAssembly: {
+        id: 'house-assembly',
+        label: 'House forms',
+        houseForms: [],
+      },
+      decks: [],
+      openings: [],
+      pergolas: [],
+    };
+
+    const merged = mergeEstimateDrawingDraftIntoSnapshot(snapshot, draft)!;
+    const reloaded = buildEstimateDrawingDraftFromSnapshot(merged)!;
+
+    expect(reloaded.objectFirst?.houseAssembly?.houseForms).toEqual([]);
+    expect((merged.outputs as Record<string, unknown>)[ESTIMATE_DRAWING_OBJECT_FIRST_OUTPUT_KEY]).toMatchObject({
+      houseAssembly: {
+        houseForms: [],
+      },
+    });
   });
 });

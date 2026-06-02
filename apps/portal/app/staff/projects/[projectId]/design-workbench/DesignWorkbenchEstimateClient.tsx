@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { buildDeckTransformPatch } from '@/lib/drawings/commits/commitDeckTransform';
 import { buildPergolaTransformPosition } from '@/lib/drawings/commits/commitPergolaTransform';
 import DrawingWorkbench from '@/components/drawings/workbench/DrawingWorkbench';
@@ -25,6 +26,8 @@ import {
   buildEstimateDrawingDraftFromSnapshot,
   buildEstimateDrawingSheetMetaOverrides,
   deriveEstimateDrawingEditableFields,
+  estimateDrawingDraftMatchesSnapshot,
+  mergeEstimateDrawingDraftIntoSnapshot,
 } from '@/lib/estimates/drawingEdits';
 import type { PergolaAttachment, WorkbenchObjectRef } from '@/lib/drawings/state/objectFirstWorkbenchModel';
 import { pergolaAttachmentFromSnap } from '@/lib/drawings/state/pergolaAttachment';
@@ -43,6 +46,7 @@ import { resolveHouseTerminalEndToggleRoofDraft } from './resolveHouseTerminalEn
 import { useObjectWorkbenchDraftPersistence } from './useObjectWorkbenchDraftPersistence';
 import { useObjectWorkbenchActions } from './useObjectWorkbenchActions';
 import { useObjectWorkbenchSelection } from './useObjectWorkbenchSelection';
+import { apiJson } from '@/lib/repo/apiClient';
 import styles from './DesignWorkbenchEstimateClient.module.css';
 
 type DesignWorkbenchEstimateClientProps = {
@@ -55,10 +59,62 @@ type DesignWorkbenchEstimateClientProps = {
 
 const DEFAULT_MODEL_VIEWPORT_TRANSFORM = createDrawingWorkbenchUiState().viewportTransform;
 
-function buildInitialWorkbenchUiState(snapshot: Record<string, unknown> | null) {
+type DraftSaveState =
+  | { status: 'idle'; message: string | null }
+  | { status: 'saving'; message: string | null }
+  | { status: 'saved'; message: string | null }
+  | { status: 'error'; message: string };
+
+type EstimateUpdatePayload = {
+  status: EstimateDetail['status'];
+  inputs: Record<string, unknown>;
+  outputs: Record<string, unknown>;
+  derived?: Record<string, unknown>;
+  projectSnapshot?: Record<string, unknown>;
+  snapshot?: Record<string, unknown>;
+  configVersions?: Record<string, unknown>;
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === 'object' && !Array.isArray(value));
+}
+
+function optionalRecord(value: unknown): Record<string, unknown> | undefined {
+  return isRecord(value) ? value : undefined;
+}
+
+function buildWorkbenchDraftEstimateUpdatePayload(input: {
+  estimate: EstimateDetail;
+  draft: NonNullable<ReturnType<typeof buildEstimateDrawingDraftFromSnapshot>>;
+}): EstimateUpdatePayload | null {
+  const merged = mergeEstimateDrawingDraftIntoSnapshot(input.estimate.calculatorSnapshot, input.draft);
+  if (!merged) return null;
+  const inputs = isRecord(merged.inputs) ? merged.inputs : {};
+  const mergedOutputs = isRecord(merged.outputs) ? merged.outputs : {};
+  const { derived, projectSnapshot, snapshot, configVersions, ...outputs } = mergedOutputs;
+  const derivedRecord = optionalRecord(derived);
+  const projectSnapshotRecord = optionalRecord(projectSnapshot);
+  const snapshotRecord = optionalRecord(snapshot);
+  const configVersionsRecord = optionalRecord(configVersions);
+  return {
+    status: input.estimate.status,
+    inputs,
+    outputs,
+    ...(derivedRecord ? { derived: derivedRecord } : null),
+    ...(projectSnapshotRecord ? { projectSnapshot: projectSnapshotRecord } : null),
+    ...(snapshotRecord ? { snapshot: snapshotRecord } : null),
+    ...(configVersionsRecord ? { configVersions: configVersionsRecord } : null),
+  };
+}
+
+function buildInitialWorkbenchUiState(input: {
+  snapshot: Record<string, unknown> | null;
+  draft?: ReturnType<typeof buildEstimateDrawingDraftFromSnapshot>;
+}) {
   const defaultHouseFormId =
     buildDrawingWorkbenchStore({
-      snapshot,
+      snapshot: input.snapshot,
+      draft: input.draft,
       ui: createDrawingWorkbenchUiState(),
     }).derived.houseForms[0]?.id ?? null;
 
@@ -105,7 +161,13 @@ export default function DesignWorkbenchEstimateClient({
   backHref,
   debugExportEnabled = false,
 }: DesignWorkbenchEstimateClientProps) {
-  const [ui, setUi] = useState(() => buildInitialWorkbenchUiState(estimate.calculatorSnapshot));
+  const router = useRouter();
+  const [ui, setUi] = useState(() =>
+    buildInitialWorkbenchUiState({
+      snapshot: estimate.calculatorSnapshot,
+      draft: buildEstimateDrawingDraftFromSnapshot(estimate.calculatorSnapshot),
+    }),
+  );
   const [modelViewportTransformsByKey, setModelViewportTransformsByKey] = useState<
     Record<string, DrawingWorkbenchViewportTransform>
   >({});
@@ -117,6 +179,11 @@ export default function DesignWorkbenchEstimateClient({
     kind: 'footprint',
     deckId: null,
   });
+  const [draftSaveState, setDraftSaveState] = useState<DraftSaveState>({
+    status: 'idle',
+    message: null,
+  });
+  const [lastSavedDraftSignature, setLastSavedDraftSignature] = useState<string | null>(null);
   // Cross-viewport hover state (milestone 16). Driven by whichever viewport
   // currently has the user's pointer; consumed by the other(s) to render a
   // matching highlight. Local hover (data-plan-hover-shape-id, hit-target
@@ -133,6 +200,22 @@ export default function DesignWorkbenchEstimateClient({
     [estimate.calculatorSnapshot],
   );
   const effectiveDrawingDraft = drawingDraft ?? snapshotDrawingDraft;
+  const effectiveDrawingDraftSignature = useMemo(
+    () => JSON.stringify(effectiveDrawingDraft ?? null),
+    [effectiveDrawingDraft],
+  );
+  const hasUnsavedWorkbenchDraft = useMemo(
+    () =>
+      Boolean(effectiveDrawingDraft) &&
+      !estimateDrawingDraftMatchesSnapshot(effectiveDrawingDraft, estimate.calculatorSnapshot) &&
+      effectiveDrawingDraftSignature !== lastSavedDraftSignature,
+    [
+      effectiveDrawingDraft,
+      effectiveDrawingDraftSignature,
+      estimate.calculatorSnapshot,
+      lastSavedDraftSignature,
+    ],
+  );
 
   const store = useMemo(
     () =>
@@ -152,6 +235,7 @@ export default function DesignWorkbenchEstimateClient({
     const defaultHouseFormId =
       buildDrawingWorkbenchStore({
         snapshot: estimate.calculatorSnapshot,
+        draft: snapshotDrawingDraft,
         ui: createDrawingWorkbenchUiState(),
       }).derived.houseForms[0]?.id ?? null;
 
@@ -167,7 +251,15 @@ export default function DesignWorkbenchEstimateClient({
     setModelViewportTransformsByKey({});
     setGeometryViewportStatesByKey({});
     setDrawOutlineTarget({ kind: 'footprint', deckId: null });
-  }, [estimate.calculatorSnapshot]);
+    setDraftSaveState({ status: 'idle', message: null });
+    setLastSavedDraftSignature(null);
+  }, [estimate.calculatorSnapshot, snapshotDrawingDraft]);
+
+  useEffect(() => {
+    if (hasUnsavedWorkbenchDraft && draftSaveState.status === 'saved') {
+      setDraftSaveState({ status: 'idle', message: null });
+    }
+  }, [draftSaveState.status, hasUnsavedWorkbenchDraft]);
 
   useEffect(() => {
     const storeSelection = pickDrawingWorkbenchObjectSelectionState(store.ui);
@@ -436,6 +528,69 @@ export default function DesignWorkbenchEstimateClient({
     !isLocked && objectWorkbenchDisplayFamily === 'house_forms' && store.ui.viewportMode === 'model'
       ? objectWorkbenchActions.commitHouseFormFootprintDimension
       : undefined;
+  const handleSaveWorkbenchDraft = useCallback(async () => {
+    if (!effectiveDrawingDraft || isLocked || draftSaveState.status === 'saving') return;
+    const estimatePayload = buildWorkbenchDraftEstimateUpdatePayload({
+      estimate,
+      draft: effectiveDrawingDraft,
+    });
+    if (!estimatePayload) {
+      setDraftSaveState({ status: 'error', message: 'Nothing to save.' });
+      return;
+    }
+
+    setDraftSaveState({ status: 'saving', message: 'Saving...' });
+    try {
+      await apiJson<{ estimate: EstimateDetail }>(`/api/estimates/${encodeURIComponent(estimate.id)}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ estimate_update: estimatePayload }),
+      });
+      setLastSavedDraftSignature(effectiveDrawingDraftSignature);
+      setDraftSaveState({ status: 'saved', message: 'Saved' });
+      router.refresh();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unable to save workbench draft.';
+      setDraftSaveState({ status: 'error', message });
+    }
+  }, [
+    draftSaveState.status,
+    effectiveDrawingDraft,
+    effectiveDrawingDraftSignature,
+    estimate,
+    isLocked,
+    router,
+  ]);
+  const draftSaveAction = useMemo(() => {
+    const disabled =
+      isLocked ||
+      !effectiveDrawingDraft ||
+      draftSaveState.status === 'saving' ||
+      !hasUnsavedWorkbenchDraft;
+    const statusText =
+      isLocked
+        ? 'Read only'
+        : draftSaveState.status === 'error'
+          ? draftSaveState.message
+          : draftSaveState.status === 'saved'
+            ? draftSaveState.message
+            : hasUnsavedWorkbenchDraft
+              ? 'Unsaved changes'
+              : null;
+    return {
+      label: draftSaveState.status === 'saving' ? 'Saving...' : 'Save workbench draft',
+      statusText,
+      disabled,
+      onSave: () => {
+        void handleSaveWorkbenchDraft();
+      },
+    };
+  }, [
+    draftSaveState,
+    effectiveDrawingDraft,
+    handleSaveWorkbenchDraft,
+    hasUnsavedWorkbenchDraft,
+    isLocked,
+  ]);
   const outlineEditCommitHandler = useMemo(
     () =>
       isLocked
@@ -653,6 +808,7 @@ export default function DesignWorkbenchEstimateClient({
           meta={meta}
           backHref={backHref}
           projectLabel={projectName}
+          draftSaveAction={draftSaveAction}
           modelEditableFields={isPergolaTabActive ? drawingEditableFields : []}
           onCommitModelField={workbenchFieldCommit}
           onCommitFootprintEdit={workbenchFootprintCommit}

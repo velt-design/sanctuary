@@ -79,6 +79,12 @@ type DrawingWorkbenchProps = {
   backHref?: string;
   /** Project name shown at the top-left of the workbench chrome. */
   projectLabel?: string | null;
+  draftSaveAction?: {
+    label: string;
+    statusText: string | null;
+    disabled: boolean;
+    onSave: () => void;
+  } | null;
   editableFields?: EstimateDrawingField[];
   modelEditableFields?: EstimateDrawingField[];
   showDebugOverlays?: boolean;
@@ -170,6 +176,7 @@ export default function DrawingWorkbench({
   meta,
   backHref,
   projectLabel,
+  draftSaveAction,
   editableFields,
   modelEditableFields,
   showDebugOverlays,
@@ -211,6 +218,7 @@ export default function DrawingWorkbench({
         onViewportModeChange={onViewportModeChange}
         backHref={backHref}
         projectLabel={projectLabel ?? null}
+        draftSaveAction={draftSaveAction ?? null}
       />
       <WorkbenchViewportHost
         moduleLabel={moduleLabel}

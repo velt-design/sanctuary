@@ -111,13 +111,21 @@ export function summarizeHouseModelRoofStageDiagnostics(
   const roofIntentPitchDeg =
     numberMetadata(metadata, "roofPitchDeg") ??
     numberMetadata(firstRoofPlaneMetadata, "pitchDeg");
+  const roofGeometry = stringMetadata(metadata, "roofGeometry");
+  const roofMaterialVisualCount = model.roofMaterialVisuals?.length ?? 0;
   const roofSolidCount =
     model.solids?.surfaceSolids.filter((solid) => solid.kind === "roof")
       .length ?? 0;
+  const hasMonoRoofBodyOutput =
+    roofGeometry === "footprint_mono" &&
+    roofPlaneCountBeforeQa > 0 &&
+    (roofMaterialVisualCount > 0 || roofSolidCount > 0);
+  const eavePolygonConstructionStatus =
+    eavePolygonPointCount > 0 || hasMonoRoofBodyOutput ? "ok" : "failed";
 
   return {
     footprintNormalizationStatus: model.footprint.length >= 3 ? "ok" : "failed",
-    eavePolygonConstructionStatus: eavePolygonPointCount > 0 ? "ok" : "failed",
+    eavePolygonConstructionStatus,
     roofIntentNormalizationStatus:
       roofIntentForm && roofIntentPitchDeg !== null ? "ok" : "failed",
     roofTopologyClassificationStatus:
@@ -138,7 +146,7 @@ export function summarizeHouseModelRoofStageDiagnostics(
     roofIntentPitchDeg,
     roofIntentRidgeAxis:
       model.roofRidgeAxis ?? stringMetadata(metadata, "ridgeAxis"),
-    roofGeometry: stringMetadata(metadata, "roofGeometry"),
+    roofGeometry,
     roofFacetMergeMode: stringMetadata(metadata, "roofFacetMergeMode"),
     roofTopologyFailureReason,
     roofTopologyFinalFaceCount: numberMetadata(
@@ -173,7 +181,7 @@ export function summarizeHouseModelRoofStageDiagnostics(
     roofQaAreaDeltaMm2: numberMetadata(metadata, "roofQaAreaDeltaMm2"),
     roofPlaneCountBeforeQa,
     roofPlaneCountAfterQa,
-    roofMaterialVisualCount: model.roofMaterialVisuals?.length ?? 0,
+    roofMaterialVisualCount,
     roofSolidCount,
   };
 }

@@ -36,6 +36,12 @@ type WorkbenchChromeProps = {
   onViewportModeChange: (mode: DrawingWorkbenchViewportMode) => void;
   backHref?: string;
   projectLabel?: string | null;
+  draftSaveAction?: {
+    label: string;
+    statusText: string | null;
+    disabled: boolean;
+    onSave: () => void;
+  } | null;
 };
 
 export default function WorkbenchChrome({
@@ -45,6 +51,7 @@ export default function WorkbenchChrome({
   onViewportModeChange,
   backHref,
   projectLabel,
+  draftSaveAction,
 }: WorkbenchChromeProps) {
   void view;
   const active = activeNavId(viewportMode);
@@ -85,6 +92,24 @@ export default function WorkbenchChrome({
           })}
         </div>
         <div className={styles.toolbarActions}>
+          {draftSaveAction ? (
+            <div className={styles.toolbarSaveGroup}>
+              <button
+                type="button"
+                className={styles.toolbarSaveButton}
+                data-workbench-save-draft="true"
+                disabled={draftSaveAction.disabled}
+                onClick={draftSaveAction.onSave}
+              >
+                {draftSaveAction.label}
+              </button>
+              {draftSaveAction.statusText ? (
+                <span className={styles.toolbarSaveStatus} data-workbench-save-status="true" aria-live="polite">
+                  {draftSaveAction.statusText}
+                </span>
+              ) : null}
+            </div>
+          ) : null}
           {backHref ? (
             <Link href={backHref} className={styles.toolbarLink}>
               Back to Project

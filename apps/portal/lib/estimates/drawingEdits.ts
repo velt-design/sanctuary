@@ -46,6 +46,7 @@ import {
 type AnyRecord = Record<string, unknown>;
 
 export const ESTIMATE_DRAWING_OVERRIDES_OUTPUT_KEY = 'drawing_sheet_overrides';
+export const ESTIMATE_DRAWING_OBJECT_FIRST_OUTPUT_KEY = 'drawing_object_first';
 
 export type EstimateDrawingOverrides = {
   noteOverride?: string | null;
@@ -729,13 +730,22 @@ export function resolveEstimateDrawingOverridesFromSnapshot(snapshot: Record<str
   return normalizeOverrides(raw as EstimateDrawingOverrides | null);
 }
 
+export function resolveEstimateDrawingObjectFirstFromSnapshot(
+  snapshot: Record<string, unknown> | null,
+): ObjectFirstWorkbenchDraftVNext | undefined {
+  if (!snapshot) return undefined;
+  const outputs = isRecord(snapshot.outputs) ? snapshot.outputs : null;
+  const raw = outputs?.[ESTIMATE_DRAWING_OBJECT_FIRST_OUTPUT_KEY];
+  return normalizeObjectFirstDraft(isRecord(raw) ? raw : null);
+}
+
 export function buildEstimateDrawingDraftFromSnapshot(snapshot: Record<string, unknown> | null): EstimateDrawingDraft | null {
   const inputs = resolveCalculatorInputsFromSnapshot(snapshot);
   if (!inputs) return null;
   return {
     inputs,
     overrides: resolveEstimateDrawingOverridesFromSnapshot(snapshot),
-    objectFirst: undefined,
+    objectFirst: resolveEstimateDrawingObjectFirstFromSnapshot(snapshot),
   };
 }
 
@@ -795,6 +805,12 @@ export function mergeEstimateDrawingDraftIntoSnapshot(
     outputs[ESTIMATE_DRAWING_OVERRIDES_OUTPUT_KEY] = normalizedOverrides;
   } else {
     delete outputs[ESTIMATE_DRAWING_OVERRIDES_OUTPUT_KEY];
+  }
+  const normalizedObjectFirst = normalizeObjectFirstDraft(draft.objectFirst);
+  if (normalizedObjectFirst) {
+    outputs[ESTIMATE_DRAWING_OBJECT_FIRST_OUTPUT_KEY] = normalizedObjectFirst;
+  } else {
+    delete outputs[ESTIMATE_DRAWING_OBJECT_FIRST_OUTPUT_KEY];
   }
   next.outputs = outputs;
   return next;

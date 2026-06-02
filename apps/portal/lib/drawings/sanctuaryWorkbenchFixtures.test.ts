@@ -23,16 +23,19 @@ describe('sanctuary workbench fixtures', () => {
       'mono-join-screenshot',
       'multi-house-u-two-pergola',
       'multi-house-custom-projection',
+      'captured-house-roof-failure-2026-06-02',
     ]);
   });
 
-  it('keeps the live captured failure lane explicit until an exact payload is baked', () => {
-    expect(CAPTURED_SANCTUARY_GEOMETRY_WORKBENCH_FIXTURES).toEqual([]);
+  it('keeps the live captured failure lane exact and explicit', () => {
+    expect(CAPTURED_SANCTUARY_GEOMETRY_WORKBENCH_FIXTURES.map((fixture) => fixture.slug)).toEqual([
+      'captured-house-roof-failure-2026-06-02',
+    ]);
     expect(
       listSanctuaryGeometryWorkbenchFixtures()
         .map((fixture) => fixture.slug)
         .filter((slug) => /^captured-house-roof-failure-/.test(slug)),
-    ).toEqual([]);
+    ).toEqual(['captured-house-roof-failure-2026-06-02']);
   });
 
   it('keeps parity-critical fixture metadata explicit and stable', () => {
@@ -209,6 +212,60 @@ describe('sanctuary workbench fixtures', () => {
         }),
       ]),
     );
+  });
+
+  it('replays the exact captured house roof failure fixture through healthy roof diagnostics', () => {
+    const fixture = listSanctuaryGeometryWorkbenchFixtures().find(
+      (candidate) => candidate.slug === 'captured-house-roof-failure-2026-06-02',
+    );
+    if (!fixture) throw new Error('Expected captured house roof fixture.');
+
+    const store = buildDrawingWorkbenchStore({
+      snapshot: fixture.snapshot,
+      draft: fixture.draft,
+      ui: createDrawingWorkbenchUiState(),
+      moduleLabels: fixture.moduleLabels,
+      geometryIdentity: {
+        projectId: 'fixture-captured-house-roof',
+        estimateId: fixture.estimate.id,
+        designRequestId: fixture.request.id,
+      },
+    });
+
+    const houseInput = store.derived.solvedModel.houseGeometryInputsById['house-main'];
+    const houseHealth = store.derived.solvedModel.projectHouseProjectionHealth.find(
+      (entry) => entry.houseFormId === 'house-main',
+    );
+
+    expect(fixture.draft?.objectFirst).toBeUndefined();
+    expect(store.derived.houseForms.map((houseForm) => houseForm.id)).toEqual(['house-main']);
+    expect(houseInput).toEqual(
+      expect.objectContaining({
+        failureStage: 'none',
+        diagnosticCode: null,
+        roofPipelineFailureStage: 'none',
+        footprintNormalizationStatus: 'ok',
+        eavePolygonConstructionStatus: 'ok',
+        roofIntentNormalizationStatus: 'ok',
+        roofTopologyClassificationStatus: 'ok',
+        roofPlaneGenerationStatus: 'ok',
+        roofQaValidationStatus: 'ok',
+        roofGeometry: 'footprint_mono',
+      }),
+    );
+    expect(houseInput?.roofPlaneCountAfterQa).toBeGreaterThan(0);
+    expect(houseInput?.roofMaterialVisualCount).toBeGreaterThan(0);
+    expect(houseHealth).toEqual(
+      expect.objectContaining({
+        failureStage: 'none',
+        diagnosticCode: null,
+        roofValidationStatus: 'valid',
+        canRenderCommittedBody: true,
+        visibleReferenceFallbackIds: [],
+      }),
+    );
+    expect(houseHealth?.roofMaterialBodyCount).toBeGreaterThan(0);
+    expect(houseHealth?.sceneRoofMaterialBodyCount).toBeGreaterThan(0);
   });
 
   it('exposes a custom multi-house projection diagnostics fixture', () => {

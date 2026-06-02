@@ -3,7 +3,7 @@ import type { Page, TestInfo } from '@playwright/test';
 import { readPortalPageDebugExport, type PortalPageDebugExportPayload } from './portalAgent';
 import { redactEvidenceValue, type PortalBrowserEvidenceContext } from './portalBrowserEvidence';
 
-type UnknownRecord = Record<string, unknown>;
+export type UnknownRecord = Record<string, unknown>;
 
 type WorkbenchCapturedReproPayload = {
   snapshot: UnknownRecord | null;
@@ -24,7 +24,7 @@ type WorkbenchCapturedReproValidation = {
   projectPergolaHealthCount: number;
 };
 
-type NormalizedWorkbenchCapturedRepro = WorkbenchCapturedReproPayload & {
+export type NormalizedWorkbenchCapturedRepro = WorkbenchCapturedReproPayload & {
   validation: WorkbenchCapturedReproValidation;
 };
 

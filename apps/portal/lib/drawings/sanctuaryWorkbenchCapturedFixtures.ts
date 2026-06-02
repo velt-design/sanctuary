@@ -4,6 +4,7 @@ import {
   buildEstimateDrawingDraftFromSnapshot,
   type EstimateDrawingDraft,
 } from '@/lib/estimates/drawingEdits';
+import { CAPTURED_HOUSE_ROOF_FAILURE_20260602_PAYLOAD } from './sanctuaryWorkbenchCapturedHouseRoofFailure20260602';
 import type { WorkbenchDebugFixtureExport } from './workbenchDebugExport';
 import type { SanctuaryGeometryWorkbenchFixture } from './sanctuaryWorkbenchFixtures.types';
 
@@ -67,6 +68,34 @@ export function buildCapturedSanctuaryGeometryWorkbenchFixture(
   };
 }
 
-// Paste exact live debug exports here as baked fixtures only after capturing the failing staff workbench state.
-// Do not approximate screenshot-only states in this lane.
-export const CAPTURED_SANCTUARY_GEOMETRY_WORKBENCH_FIXTURES: SanctuaryGeometryWorkbenchFixture[] = [];
+export const CAPTURED_SANCTUARY_GEOMETRY_WORKBENCH_FIXTURES: SanctuaryGeometryWorkbenchFixture[] = [
+  buildCapturedSanctuaryGeometryWorkbenchFixture({
+    slug: 'captured-house-roof-failure-2026-06-02',
+    label: 'Captured House Roof Failure 2026-06-02',
+    payload: CAPTURED_HOUSE_ROOF_FAILURE_20260602_PAYLOAD,
+    expectedModule: {
+      lengthM: 3.95,
+      projectionM: 4.75,
+      roofMaterial: 'acrylic',
+      attachmentSide: 'rear',
+      roofPitchDeg: 10,
+      roofType: 'pitched',
+      roofPlaneCount: 1,
+    },
+    moduleLabels: ['M1 - Captured Mono - 3.95m x 4.75m - Acrylic'],
+    qa: {
+      purpose:
+        'Exact captured staff workbench payload for house roof-stage diagnostics.',
+      shapeFamily: 'mono',
+      houseRoofForm: 'mono',
+    },
+    estimate: {
+      id: 'est_captured_house_roof_failure_20260602',
+      versionLabel: 'V-CAP-HOUSE-ROOF-20260602',
+      createdAt: '2026-06-02T00:00:00.000Z',
+    },
+    request: {
+      id: 'dpr_captured_house_roof_failure_20260602',
+    },
+  }),
+];

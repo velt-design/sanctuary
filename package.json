@@ -53,6 +53,7 @@
     "portal:agent-access:provision": "npm run portal:test-user:ensure && npm run portal:agent-access",
     "portal:agent-scorecard": "tsx scripts/portal-agent-scorecard.ts",
     "portal:agent-scorecard:strict": "tsx scripts/portal-agent-scorecard.ts --strict",
+    "workbench:capture:verify": "npm run portal:auth-env && PORTAL_PAGE_DEBUG_EXPORTS=1 NEXT_PUBLIC_PORTAL_PAGE_DEBUG_EXPORTS=1 ENABLE_SANCTUARY_GEOMETRY_WORKBENCH_FIXTURES=1 NEXT_PUBLIC_ENABLE_SANCTUARY_GEOMETRY_WORKBENCH_FIXTURES=1 npx playwright test playwright/workbench.capture-verify.spec.ts --project=portal-chromium --reporter=line",
     "portal:build-env": "node scripts/check-portal-build-env.mjs",
     "portal:fixture-env": "node scripts/check-portal-fixture-env.mjs",
     "portal:side-effects": "npm run test:portal:quotes && npm run build:portal",

@@ -38,11 +38,19 @@ It rejects payloads missing:
 
 Workbench fixture browser runs attach `workbench-captured-repro-payload.json` as evidence when a valid payload is present.
 
+For the current multi-house roof failure lane, run the stricter verifier before baking a fixture:
+
+```bash
+npm run workbench:capture:verify
+```
+
+Set `WORKBENCH_CAPTURE_URL` when the broken state lives somewhere other than the default staff workbench route. The verifier intentionally rejects healthy one-house payloads, missing object-first state, multi-house payloads without per-house diagnostics, and multi-house payloads where every house reports a healthy roof/render stage. If it rejects the page, do not change solver behavior or bake a multi-house captured fixture from that state.
+
 ## Bake
 
-Paste only exact copied live payloads into `apps/portal/lib/drawings/sanctuaryWorkbenchCapturedFixtures.ts` through `buildCapturedSanctuaryGeometryWorkbenchFixture`.
+Paste only exact copied live payloads into `apps/portal/lib/drawings/sanctuaryWorkbenchCapturedFixtures.ts` through `buildCapturedSanctuaryGeometryWorkbenchFixture`; store large payload constants in focused captured-fixture modules.
 
-Keep `CAPTURED_SANCTUARY_GEOMETRY_WORKBENCH_FIXTURES` empty unless there is a real copied payload. Do not add screenshot-approximated slugs such as `captured-house-roof-failure-*`.
+Keep `CAPTURED_SANCTUARY_GEOMETRY_WORKBENCH_FIXTURES` limited to exact copied payloads. Captured slugs are allowed only when backed by copied debug JSON; do not add screenshot-approximated payloads.
 
 ## Fix
 

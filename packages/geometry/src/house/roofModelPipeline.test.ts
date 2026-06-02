@@ -58,6 +58,39 @@ describe("buildHouseRoofModelPipeline", () => {
     expect(result.diagnostics.roofMaterialVisualCount).toBeGreaterThan(0);
   });
 
+  it("does not classify healthy mono roof body output as an eave construction failure", () => {
+    const model = buildHouseModel3DFromRawHouseInput({
+      rawHouse: rawHouse({
+        roofForm: "mono",
+        roofPitchDeg: "25",
+        roofRidgeAxis: "x",
+      }),
+      footprint: rectangleFootprint(4851, 6000),
+      pergolaAttachment: null,
+    });
+
+    const result = buildHouseRoofModelPipeline({
+      houseId: "house-form-mono",
+      model,
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.diagnostics).toEqual(
+      expect.objectContaining({
+        failureStage: "none",
+        diagnosticCode: null,
+        roofGeometry: "footprint_mono",
+        eavePolygonConstructionStatus: "ok",
+        roofQaValidationStatus: "ok",
+      }),
+    );
+    expect(result.diagnostics.roofPlaneCountAfterQa).toBeGreaterThan(0);
+    expect(
+      result.diagnostics.roofMaterialVisualCount +
+        result.diagnostics.roofSolidCount,
+    ).toBeGreaterThan(0);
+  });
+
   it("classifies missing models without inventing downstream roof stages", () => {
     const result = buildHouseRoofModelPipeline({
       houseId: "missing-house",

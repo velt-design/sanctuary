@@ -11,7 +11,10 @@ import {
   getLocalFirstWorkingCopy,
   writeLocalFirstWorkingCopy,
 } from '@/lib/localFirst/store';
-import { buildEstimateDrawingDraftFromSnapshot } from '@/lib/estimates/drawingEdits';
+import {
+  ESTIMATE_DRAWING_OBJECT_FIRST_OUTPUT_KEY,
+  buildEstimateDrawingDraftFromSnapshot,
+} from '@/lib/estimates/drawingEdits';
 import { ESTIMATE_PRICING_SYNC_STATE_OUTPUT_KEY } from '@/lib/estimates/costingPayload';
 import type { EstimateDetail } from '@/lib/estimates/types';
 import type { LocalFirstPersistedState } from '@/lib/localFirst/types';
@@ -26,6 +29,9 @@ import {
 } from '@/lib/drawings/state/legacyObjectFirstCompatibilityAdapter';
 import type { ObjectWorkbenchCompatibilityOpeningDraft } from '@/lib/drawings/state/legacyObjectFirstCompatibilityAdapter';
 import { dispatchPointer, installDomGeometryMock, renderIntoDocument } from '../../../../../../../test/reactHarness';
+
+const routerRefreshMock = vi.hoisted(() => vi.fn());
+const apiJsonMock = vi.hoisted(() => vi.fn());
 
 const originalConsoleError = console.error.bind(console);
 vi.spyOn(console, 'error').mockImplementation((...args) => {
@@ -47,6 +53,14 @@ vi.mock('@react-three/fiber', () => ({
 
 vi.mock('@react-three/drei', () => ({
   OrbitControls: () => null,
+}));
+
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ refresh: routerRefreshMock }),
+}));
+
+vi.mock('@/lib/repo/apiClient', () => ({
+  apiJson: apiJsonMock,
 }));
 
 const deferredProjectionTopEstimateClientInteractionReason =
@@ -405,6 +419,9 @@ describe('DesignWorkbenchEstimateClient', () => {
   beforeEach(() => {
     restoreGeometry = installDomGeometryMock();
     restoreSvgGeometry = installSvgGeometryMock();
+    routerRefreshMock.mockReset();
+    apiJsonMock.mockReset();
+    apiJsonMock.mockResolvedValue({ estimate: buildEstimateDetail() });
     persisted = createEmptyLocalFirstState();
     __setLocalFirstStorageAdapterForTests({
       get: async () => structuredClone(persisted),
@@ -868,6 +885,78 @@ describe('DesignWorkbenchEstimateClient', () => {
     expect(readLabeledValue(rendered.container, 'Unresolved pergola zones')).toBe('1');
     expect(readLabeledValue(rendered.container, 'Warnings')).toBe('1');
     expect(readLabeledValue(rendered.container, '3D unresolved pergola zones')).toBe('1');
+
+    rendered.unmount();
+  });
+
+  it('saves a durable object-first workbench draft through the staff estimate API', async () => {
+    const estimate = buildEstimateDetail();
+    const entityKey = buildEstimateDrawingDraftEntityKey(estimate.id);
+    const draft = buildEstimateDrawingDraftFromSnapshot(estimate.calculatorSnapshot);
+    if (!draft) throw new Error('Expected drawing draft.');
+    const baselineStore = buildDrawingWorkbenchStore({
+      snapshot: estimate.calculatorSnapshot,
+      ui: createDrawingWorkbenchUiState(),
+    });
+    const objectFirst = buildObjectFirstWorkbenchDraftFromProjectModel(baselineStore.persisted.projectModel);
+    const firstHouseForm = objectFirst.houseAssembly?.houseForms[0];
+    if (!objectFirst.houseAssembly || !firstHouseForm) throw new Error('Expected source house form.');
+    objectFirst.houseAssembly.houseForms = [
+      firstHouseForm,
+      {
+        ...structuredClone(firstHouseForm),
+        id: 'house-form-2',
+        label: 'House 2',
+        transform: {
+          ...firstHouseForm.transform,
+          offsetXM: 8,
+        },
+        footprint: {
+          ...firstHouseForm.footprint,
+          preset: 'recess_right',
+        },
+      },
+    ];
+    draft.objectFirst = objectFirst;
+
+    await ensureLocalFirstStoreReady();
+    await writeLocalFirstWorkingCopy({
+      entityKey,
+      data: draft,
+    });
+
+    const rendered = renderIntoDocument(
+      <DesignWorkbenchEstimateClient estimate={estimate} projectName="Deck Build" siteAddress="1 Test Street" />,
+    );
+    await flushAsyncWork();
+
+    const saveButton = rendered.container.querySelector('[data-workbench-save-draft="true"]') as HTMLButtonElement | null;
+    expect(saveButton).not.toBeNull();
+    expect(saveButton?.disabled).toBe(false);
+    expect(rendered.container.textContent).toContain('Unsaved changes');
+    clickElement(saveButton!);
+    await flushAsyncWork();
+
+    expect(apiJsonMock).toHaveBeenCalledTimes(1);
+    expect(apiJsonMock.mock.calls[0]?.[0]).toBe(`/api/estimates/${encodeURIComponent(estimate.id)}`);
+    const requestInit = apiJsonMock.mock.calls[0]?.[1] as { body?: string } | undefined;
+    const body = JSON.parse(requestInit?.body ?? '{}') as {
+      estimate_update?: {
+        inputs?: { modules?: unknown[] };
+        outputs?: Record<string, unknown>;
+      };
+    };
+    const savedObjectFirst = body.estimate_update?.outputs?.[
+      ESTIMATE_DRAWING_OBJECT_FIRST_OUTPUT_KEY
+    ] as { houseAssembly?: { houseForms?: Array<{ id: string }> } } | undefined;
+    expect(savedObjectFirst?.houseAssembly?.houseForms?.map((form) => form.id)).toEqual([
+      firstHouseForm.id,
+      'house-form-2',
+    ]);
+    expect(body.estimate_update?.inputs?.modules).toEqual(draft.inputs.modules);
+    expect(routerRefreshMock).toHaveBeenCalledTimes(1);
+    await flushAsyncWork();
+    expect(rendered.container.textContent).toContain('Saved');
 
     rendered.unmount();
   });

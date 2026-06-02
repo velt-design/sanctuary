@@ -76,6 +76,55 @@
   margin-left: auto;
 }
 
+.toolbarSaveGroup {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--portal-density-6);
+  min-width: 0;
+}
+
+.toolbarSaveButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  padding: 0 var(--portal-density-10);
+  border: 1px solid rgba(var(--portal-text-rgb), 0.18);
+  border-radius: var(--portal-density-6);
+  background: rgba(255, 255, 255, 0.82);
+  color: rgba(var(--portal-text-rgb), 0.76);
+  font-size: var(--portal-font-sm);
+  font-weight: 750;
+  line-height: 1.2;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color 140ms ease,
+    border-color 140ms ease,
+    color 140ms ease;
+}
+
+.toolbarSaveButton:hover:not(:disabled) {
+  background: rgba(var(--portal-text-rgb), 0.06);
+  border-color: rgba(var(--portal-text-rgb), 0.28);
+  color: rgba(var(--portal-text-rgb), 0.92);
+}
+
+.toolbarSaveButton:disabled {
+  cursor: default;
+  opacity: 0.56;
+}
+
+.toolbarSaveStatus {
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: rgba(var(--portal-text-rgb), 0.52);
+  font-size: var(--portal-font-xs);
+  font-weight: 700;
+}
+
 .toolbarOverflowButton {
   display: inline-flex;
   align-items: center;
