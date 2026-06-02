@@ -34,6 +34,9 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 | 2026-05-01 | Plan Rendering                   | Promoted | Geometry-ready plan selection and drag must use render-graph layer ownership and canonical preview/commit/rebuild round trips.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | 2026-05-01 | Plan Rendering                   | Promoted | Projection-backed overlays must bind visible selection/hit geometry to committed top-projection polygons, not reference footprints.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | 2026-06-02 | Portal Test Auth                 | Active   | Service-role-backed portal test-user provisioning must be explicit, local/staging-targeted, and never run as part of routine browser gates.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| 2026-06-02 | Portal Browser Coverage          | Active   | Authenticated portal route coverage must be catalog-driven through `playwright/support/portalRouteCatalog.ts`; browser specs consume catalog subsets instead of local hardcoded route lists.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| 2026-06-02 | Portal Browser Coverage          | Active   | Seeded portal scenarios must be explicit, local/staging-only, idempotent, and separate from non-mutating browser gates.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| 2026-06-02 | Agent Tooling                    | Active   | Complex page bug reports should capture the shared page debug export before implementation changes; page exports must stay gated outside production and preserve page-specific inner payloads.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 | 2026-05-30 | Portal Shell                     | Active   | Expandable pinned sidebars must keep each icon, label, and submenu in one vertical flow group; split rail/panel lists desync icons from labels.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 | 2026-05-29 | Workbench Cleanup                | Active   | PR-T7: house form inspector cull -- dead-write/derived fields and duplicate diagnostics were removed from the right rail; future inspector controls must persist and re-derive.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 | 2026-05-29 | Workbench Cleanup                | Active   | PR-T8: roof appendage band feature removed end-to-end; future shape edits go through the gumball, not inspector number fields.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
@@ -122,6 +125,38 @@ Current guardrail: use `npm run portal:test-user:ensure` or `npm run portal:agen
 Promoted to: None
 
 Related docs/tests: `scripts/ensure-portal-test-user.ts`, `scripts/ensure-portal-test-user.test.ts`, `playwright/support/portalAgent.ts`, `playwright/portal.agent-access.spec.ts`, `docs/testing-and-qa.md`, `docs/environment-auth-supabase.md`.
+
+### 2026-06-02 - Portal Browser Coverage - Route Catalog Ownership
+
+Area: Portal Browser Coverage
+
+Status: Active
+
+Decision or mistake: authenticated portal browser coverage should not grow through scattered hardcoded route lists in unrelated specs.
+
+Why it mattered: agents need to know which routes exist, which role or seeded data they require, and which owner doc explains them. Hardcoded smoke lists make coverage drift harder to see and make dynamic/data-dependent routes look accidentally untested instead of intentionally scenario-gated.
+
+Current guardrail: portal route coverage is catalog-driven through `playwright/support/portalRouteCatalog.ts`, with status mirrored in `docs/portal-route-catalog.md`. Browser specs consume catalog subsets such as `agentAccessSmokeRoutes`; dynamic routes remain `scenario-required` until seeded scenarios exist.
+
+Promoted to: None
+
+Related docs/tests: `playwright/support/portalRouteCatalog.ts`, `playwright/support/portalRouteCatalog.test.ts`, `playwright/portal.agent-access.spec.ts`, `docs/portal-route-catalog.md`, `docs/testing-and-qa.md`.
+
+### 2026-06-02 - Portal Browser Coverage - Explicit Seeded Scenario Registry
+
+Area: Portal Browser Coverage
+
+Status: Active
+
+Decision or mistake: dynamic portal route smoke needs deterministic project, estimate, quote, and workbench data, but data seeding is a mutation and must stay separate from routine browser gates.
+
+Why it mattered: without seeded scenarios, agents could only open static staff pages or depend on whatever data happened to exist. If scenario provisioning were implicit, browser checks could mutate local or staging unexpectedly and make failures harder to reproduce.
+
+Current guardrail: seeded portal scenarios live in `playwright/support/portalScenarioRegistry.ts` and are provisioned only by `npm run portal:scenarios:ensure` or the opt-in combined `npm run portal:agent-scenarios:provision`. Provisioning must require `PORTAL_TEST_SCENARIO_TARGET=local|staging`, refuse `production`, never log service-role keys or passwords, and write only non-secret route state to `playwright/.auth/portal-scenarios.json`. `npm run portal:agent-scenarios` reads that state only.
+
+Promoted to: None
+
+Related docs/tests: `scripts/ensure-portal-scenarios.ts`, `scripts/ensure-portal-scenarios.test.ts`, `playwright/support/portalScenarioRegistry.ts`, `playwright/portal.agent-scenarios.spec.ts`, `docs/testing-and-qa.md`, `docs/portal-route-catalog.md`.
 
 ### 2026-06-01 - Workbench Geometry - Roof Solver Stage Diagnostics
 
@@ -1626,3 +1661,19 @@ Current guardrail: bake captured live failures through `sanctuaryWorkbenchCaptur
 Promoted to: None
 
 Related docs/tests: [apps/portal/lib/drawings/sanctuaryWorkbenchCapturedFixtures.ts](../apps/portal/lib/drawings/sanctuaryWorkbenchCapturedFixtures.ts), [apps/portal/lib/drawings/workbenchDebugExport.ts](../apps/portal/lib/drawings/workbenchDebugExport.ts), [apps/portal/lib/drawings/sanctuaryWorkbenchFixtures.test.ts](../apps/portal/lib/drawings/sanctuaryWorkbenchFixtures.test.ts).
+
+### 2026-06-02 - Agent Tooling - Shared Page Debug Exports
+
+Area: Agent Tooling
+
+Status: Active
+
+Decision or mistake: complex portal page bug reports should capture the shared gated page debug export before implementation changes. Screenshots are useful evidence, but they are not enough for routes with server state, client state, local drafts, scenario data, or render diagnostics.
+
+Why it mattered: recent workbench debugging improved architecture but did not visibly fix the bug until the exact failing state could be captured. The same pattern should apply across project, estimate, quote, schedule, running jobs, design list, and future complex pages.
+
+Current guardrail: use `PortalPageDebugExport` for local/staging/debug-only page diagnostics, expose it with `data-portal-debug-export="true"`, and read it in browser specs through `readPortalPageDebugExport` / `expectPortalDebugExport`. Routine browser gates may read debug exports but must not mutate app data.
+
+Promoted to: None
+
+Related docs/tests: [apps/portal/lib/debug/portalPageDebugExport.ts](../apps/portal/lib/debug/portalPageDebugExport.ts), [playwright/support/portalAgent.ts](../playwright/support/portalAgent.ts), [docs/portal-route-catalog.md](portal-route-catalog.md), [docs/testing-and-qa.md](testing-and-qa.md).

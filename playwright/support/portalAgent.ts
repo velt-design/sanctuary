@@ -11,6 +11,18 @@ export interface OpenPortalPageOptions {
   timeout?: number;
 }
 
+export interface PortalPageDebugExportPayload {
+  version: number;
+  pageId: string;
+  route: string;
+  capturedAt: string;
+  selectedIds: Record<string, string | null>;
+  serverState: Record<string, unknown>;
+  clientState: Record<string, unknown>;
+  diagnostics: Record<string, unknown>;
+  scenario: unknown;
+}
+
 export function installPortalBrowserEvidence(page: Page): PortalBrowserEvidence {
   const evidence: PortalBrowserEvidence = {
     consoleMessages: [],
@@ -79,10 +91,21 @@ export async function openPortalPage(page: Page, route: string, options: OpenPor
     );
   }
 
-  await expect(page.locator('[data-portal-sidebar-rail="true"]')).toBeVisible({ timeout });
+  await expect(
+    page
+      .locator('[data-portal-sidebar-rail="true"], [data-portal-sidebar-panel="true"]')
+      .or(page.getByRole('navigation', { name: 'Portal navigation' }))
+      .first(),
+    `Expected authenticated portal shell chrome while opening ${route}.`,
+  ).toBeVisible({ timeout });
 
   if (options.heading) {
-    await expect(page.getByRole('heading', { name: options.heading })).toBeVisible({ timeout });
+    await expect(
+      page.getByRole('heading', {
+        name: options.heading,
+        exact: typeof options.heading === 'string',
+      }),
+    ).toBeVisible({ timeout });
   }
 
   return url;
@@ -94,4 +117,31 @@ export async function expectVisiblePortalProject(page: Page) {
     firstProjectLink,
     'Authenticated portal access requires at least one project visible to the staff test account.',
   ).toBeVisible({ timeout: 60_000 });
+}
+
+export async function readPortalPageDebugExport(page: Page): Promise<PortalPageDebugExportPayload | null> {
+  const locator = page.locator('[data-portal-debug-export="true"]').first();
+  if ((await locator.count()) === 0) return null;
+
+  const raw = await locator.textContent();
+  if (!raw) return null;
+
+  return JSON.parse(raw) as PortalPageDebugExportPayload;
+}
+
+export async function expectPortalDebugExport(
+  page: Page,
+  pageId: string,
+): Promise<PortalPageDebugExportPayload> {
+  const payload = await readPortalPageDebugExport(page);
+  expect(payload, `Expected ${pageId} to expose a portal page debug export.`).not.toBeNull();
+  expect(payload?.version, `${pageId} debug export version`).toBe(1);
+  expect(payload?.pageId, `${pageId} debug export pageId`).toBe(pageId);
+  expect(payload?.route, `${pageId} debug export route`).toMatch(/^\//);
+  expect(payload?.capturedAt, `${pageId} debug export capturedAt`).toBeTruthy();
+  expect(payload?.selectedIds, `${pageId} debug export selectedIds`).toBeTruthy();
+  expect(payload?.serverState, `${pageId} debug export serverState`).toBeTruthy();
+  expect(payload?.clientState, `${pageId} debug export clientState`).toBeTruthy();
+  expect(payload?.diagnostics, `${pageId} debug export diagnostics`).toBeTruthy();
+  return payload as PortalPageDebugExportPayload;
 }

@@ -1,8 +1,37 @@
 import { test as setup, expect } from '@playwright/test';
+import fs from 'node:fs';
+import path from 'node:path';
 
 const authFile = 'playwright/.auth/portal-staff.json';
 
+function loadEnvFile(filePath: string) {
+  if (!fs.existsSync(filePath)) return;
+  const raw = fs.readFileSync(filePath, 'utf8');
+  for (const line of raw.split('\n')) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) continue;
+    const cleaned = trimmed.startsWith('export ') ? trimmed.slice(7).trim() : trimmed;
+    const eqIndex = cleaned.indexOf('=');
+    if (eqIndex <= 0) continue;
+    const key = cleaned.slice(0, eqIndex).trim();
+    if (!key || process.env[key] !== undefined) continue;
+    let value = cleaned.slice(eqIndex + 1).trim();
+    if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+      value = value.slice(1, -1);
+    }
+    process.env[key] = value;
+  }
+}
+
+function loadPortalAgentEnv() {
+  loadEnvFile(path.resolve(process.cwd(), '.env.agent.local'));
+  loadEnvFile(path.resolve(process.cwd(), '.env.local'));
+  loadEnvFile(path.resolve(process.cwd(), '.env'));
+}
+
 setup('authenticate portal admin session', async ({ page }) => {
+  loadPortalAgentEnv();
+
   const email = process.env.PORTAL_TEST_EMAIL?.trim();
   const password = process.env.PORTAL_TEST_PASSWORD?.trim();
 

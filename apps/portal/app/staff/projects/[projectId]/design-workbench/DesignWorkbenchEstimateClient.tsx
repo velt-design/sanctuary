@@ -31,6 +31,8 @@ import { pergolaAttachmentFromSnap } from '@/lib/drawings/state/pergolaAttachmen
 import { buildWorkbenchDebugFixtureExport } from '@/lib/drawings/workbenchDebugExport';
 import { buildEstimateDrawingModuleInfoRows, buildEstimateDrawingSheetMeta } from '@/lib/estimates/drawingSheet';
 import type { EstimateDetail } from '@/lib/estimates/types';
+import { buildPortalPageDebugExport, type PortalPageDebugExport } from '@/lib/debug/portalPageDebugExport';
+import { inferPortalScenarioFromLabel } from '@/lib/debug/portalScenarioDebug';
 import { buildOutlineEditCommitHandler } from './commitOutlineEdit';
 import { type DrawOutlineTarget } from './objectWorkbenchClientTypes';
 import RightInspectorPanel from '@/components/drawings/inspector/RightInspectorPanel';
@@ -48,12 +50,10 @@ type DesignWorkbenchEstimateClientProps = {
   projectName: string;
   siteAddress?: string | null;
   backHref?: string;
+  debugExportEnabled?: boolean;
 };
 
 const DEFAULT_MODEL_VIEWPORT_TRANSFORM = createDrawingWorkbenchUiState().viewportTransform;
-const ENABLE_LIVE_WORKBENCH_DEBUG_EXPORT =
-  process.env.NEXT_PUBLIC_ENABLE_SANCTUARY_GEOMETRY_WORKBENCH_FIXTURES === '1' ||
-  process.env.ENABLE_SANCTUARY_GEOMETRY_WORKBENCH_FIXTURES === '1';
 
 function buildInitialWorkbenchUiState(snapshot: Record<string, unknown> | null) {
   const defaultHouseFormId =
@@ -103,6 +103,7 @@ export default function DesignWorkbenchEstimateClient({
   projectName,
   siteAddress,
   backHref,
+  debugExportEnabled = false,
 }: DesignWorkbenchEstimateClientProps) {
   const [ui, setUi] = useState(() => buildInitialWorkbenchUiState(estimate.calculatorSnapshot));
   const [modelViewportTransformsByKey, setModelViewportTransformsByKey] = useState<
@@ -444,7 +445,7 @@ export default function DesignWorkbenchEstimateClient({
   );
   const debugFixtureExport = useMemo(
     () =>
-      ENABLE_LIVE_WORKBENCH_DEBUG_EXPORT
+      debugExportEnabled
         ? buildWorkbenchDebugFixtureExport({
             snapshot: estimate.calculatorSnapshot,
             draft: effectiveDrawingDraft,
@@ -463,6 +464,56 @@ export default function DesignWorkbenchEstimateClient({
       store.derived.solvedModel.projectHouseProjectionHealth,
       store.derived.solvedModel.projectPergolaRenderHealth,
       store.ui,
+      debugExportEnabled,
+    ],
+  );
+  const portalDebugExport = useMemo<PortalPageDebugExport | null>(
+    () =>
+      debugFixtureExport
+        ? buildPortalPageDebugExport({
+            pageId: 'design-workbench',
+            route: `/staff/projects/${encodeURIComponent(estimate.projectId)}/design-workbench`,
+            selectedIds: {
+              projectId: estimate.projectId,
+              estimateId: estimate.id,
+              activeObjectId: store.ui.activeObjectRef?.objectId ?? null,
+              activePergolaId: store.ui.activePergolaId ?? null,
+            },
+            serverState: {
+              project: {
+                id: estimate.projectId,
+                name: projectName,
+                siteAddress: siteAddress ?? null,
+              },
+              estimate: {
+                id: estimate.id,
+                versionLabel: estimate.versionLabel,
+                editability: estimate.editability,
+              },
+            },
+            clientState: {
+              viewportMode: store.ui.viewportMode,
+              activeObjectRef: store.ui.activeObjectRef,
+            },
+            diagnostics: {
+              debugExportStatus: 'ready',
+              source: 'design-workbench',
+              workbenchDebugFixture: debugFixtureExport,
+            },
+            scenario: inferPortalScenarioFromLabel(projectName),
+          })
+        : null,
+    [
+      debugFixtureExport,
+      estimate.editability,
+      estimate.id,
+      estimate.projectId,
+      estimate.versionLabel,
+      projectName,
+      siteAddress,
+      store.ui.activeObjectRef,
+      store.ui.activePergolaId,
+      store.ui.viewportMode,
     ],
   );
 
@@ -481,12 +532,14 @@ export default function DesignWorkbenchEstimateClient({
         <script
           type="application/json"
           data-workbench-debug-export="true"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(debugFixtureExport) }}
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(debugFixtureExport).replace(/</g, '\\u003c') }}
         />
       ) : null}
       <aside className={styles.configuratorColumn}>
         <div className={styles.configuratorScroll}>
-        {debugFixtureExport ? <WorkbenchDebugExportButton exportPayload={debugFixtureExport} /> : null}
+        {debugFixtureExport ? (
+          <WorkbenchDebugExportButton exportPayload={debugFixtureExport} portalDebugExport={portalDebugExport} />
+        ) : null}
         <ObjectWorkbenchRailHost
           activeModuleInput={activeModuleInput}
           geometryEditState={geometryEditState}

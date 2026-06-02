@@ -43,7 +43,7 @@ This plan makes the portal more like a lab bench:
 
 Simple version: give agents a safe way to log in and open portal pages in Playwright.
 
-Status: active first slice. This now owns the safe local/staging test-user provisioning path, shared authenticated route helper, browser evidence capture, and first agent access smoke for dashboard, projects, contacts, and schedule.
+Status: shipped. This now owns the safe local/staging test-user provisioning path, shared authenticated route helper, browser evidence capture, and first agent access smoke for dashboard, projects, contacts, and schedule.
 
 Why it matters: without authenticated browser access, agents can only test hidden QA pages or unauthenticated routes. This creates blind spots in the real staff portal.
 
@@ -64,11 +64,13 @@ Done when:
 
 Simple version: make a map of the important portal pages and how to test each one.
 
+Status: shipped. The executable route catalog lives in `playwright/support/portalRouteCatalog.ts`, with the human-readable status in `docs/portal-route-catalog.md`.
+
 Why it matters: agents should not guess which routes exist, which role they need, or which fixture data makes a page useful.
 
 What it should add:
 
-- a route catalog in docs or JSON;
+- a typed route catalog plus docs;
 - route, required role, owner doc, smoke test, and seed/fixture needs;
 - initial coverage for project page, estimates, quotes, schedule, running jobs, design list, and design workbench.
 
@@ -80,6 +82,8 @@ Done when:
 ### PR-Agent.3: Seeded Scenario Registry
 
 Simple version: create known portal states agents can load again and again.
+
+Status: shipped. The scenario registry lives in `playwright/support/portalScenarioRegistry.ts`; provisioning is explicit through `npm run portal:scenarios:ensure`, and browser scenario smoke is `npm run portal:agent-scenarios`.
 
 Why it matters: many portal bugs depend on specific projects, estimates, quotes, schedules, or drafts. Manual setup is slow and inconsistent.
 
@@ -97,6 +101,8 @@ Done when:
 ### PR-Agent.4: Page Debug Export Contract
 
 Simple version: let complex pages copy a structured debug payload, not just a screenshot.
+
+Status: active. The shared contract lives in `apps/portal/lib/debug/portalPageDebugExport.ts`, the browser reader lives in `playwright/support/portalAgent.ts`, and debug-export status is cataloged in `playwright/support/portalRouteCatalog.ts` / `docs/portal-route-catalog.md`.
 
 Why it matters: a screenshot shows the symptom but not the state that caused it. Workbench already started the right pattern with debug fixture export. Other complex pages need the same idea.
 
@@ -203,10 +209,10 @@ Done when:
 
 1. PR-Agent.1: Portal Agent Access Harness
 2. PR-Agent.2: Portal Route Catalog
-3. PR-Agent.8: Workbench Captured Repro Workflow
-4. PR-Agent.3: Seeded Scenario Registry
-5. PR-Agent.5: Browser Evidence Lane
-6. PR-Agent.4: Page Debug Export Contract
+3. PR-Agent.3: Seeded Scenario Registry
+4. PR-Agent.4: Page Debug Export Contract
+5. PR-Agent.8: Workbench Captured Repro Workflow
+6. PR-Agent.5: Browser Evidence Lane
 7. PR-Agent.6: Quality Scorecard
 8. PR-Agent.7: Strictness Ratchet
 
@@ -240,4 +246,4 @@ Use this as a simple target checklist:
 
 ## Current Highest-Leverage Next Step
 
-Build PR-Agent.1 first. Authenticated Playwright access is the foundation for viewing the portal like a staff user, capturing reliable browser evidence, and making every later debug/export/fixture workflow useful.
+Build PR-Agent.3 now. Authenticated Playwright access and a route catalog exist; the next leverage point is deterministic local/staging scenario data so agents can open project detail, estimate, quote, and workbench routes without relying on whatever happens to be in the database.

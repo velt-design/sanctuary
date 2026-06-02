@@ -46,6 +46,7 @@ function loadEnvFile(filePath: string) {
 
 function loadEnvFromRepo() {
   const cwd = process.cwd();
+  loadEnvFile(path.resolve(cwd, '.env.agent.local'));
   loadEnvFile(path.resolve(cwd, '.env.local'));
   loadEnvFile(path.resolve(cwd, '.env'));
 }

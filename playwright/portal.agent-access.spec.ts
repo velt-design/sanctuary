@@ -6,6 +6,7 @@ import {
   installPortalBrowserEvidence,
   openPortalPage,
 } from './support/portalAgent';
+import { agentAccessSmokeRoutes } from './support/portalRouteCatalog';
 
 test.describe.configure({ mode: 'serial' });
 
@@ -13,13 +14,13 @@ test('agent can open core authenticated portal pages', async ({ page }, testInfo
   const evidence = installPortalBrowserEvidence(page);
 
   try {
-    await openPortalPage(page, '/dashboard', { heading: 'Dashboard' });
+    for (const route of agentAccessSmokeRoutes) {
+      await openPortalPage(page, route.runnableRoute, { heading: route.expectedHeading });
 
-    await openPortalPage(page, '/staff/projects', { heading: 'Projects' });
-    await expectVisiblePortalProject(page);
-
-    await openPortalPage(page, '/staff/contacts', { heading: 'Contacts' });
-    await openPortalPage(page, '/staff/schedule', { heading: 'Schedule' });
+      if (route.dataRequirement === 'visible_project') {
+        await expectVisiblePortalProject(page);
+      }
+    }
   } finally {
     await attachPortalBrowserEvidence(testInfo, page, evidence);
   }

@@ -173,6 +173,9 @@ npm run portal:auth-runtime
 npm run portal:test-user:ensure
 npm run portal:agent-access
 npm run portal:agent-access:provision
+npm run portal:scenarios:ensure
+npm run portal:agent-scenarios
+npm run portal:agent-scenarios:provision
 npm run portal:fixture-env
 npm run test:portal:browser:auth
 npm run test:portal:browser
@@ -187,7 +190,15 @@ npm run test:portal:performance
 
 `npm run portal:test-user:ensure` is an explicit service-role provisioning command for local or staging only. It requires `PORTAL_TEST_PROVISION_TARGET=local|staging`, `PORTAL_TEST_EMAIL`, `PORTAL_TEST_PASSWORD`, `NEXT_PUBLIC_SUPABASE_URL`, and `SUPABASE_SERVICE_ROLE_KEY`; it creates or updates the Supabase Auth user and upserts `portal_users.role`. It must not be embedded into routine browser gates.
 
-`npm run portal:agent-access` captures authenticated browser state and opens `/dashboard`, `/staff/projects`, `/staff/contacts`, and `/staff/schedule` with shared browser evidence. `npm run portal:agent-access:provision` is the opt-in combined command that provisions the test user first, then runs the same access smoke. Neither command seeds project or schedule data; the access smoke still expects at least one visible project.
+`npm run portal:agent-access` captures authenticated browser state and opens the `agentAccessSmokeRoutes` subset from `playwright/support/portalRouteCatalog.ts` with shared browser evidence. The current smoke subset is `/dashboard`, `/staff/projects`, `/staff/contacts`, and `/staff/schedule`; `/staff/projects` still expects at least one visible project. `npm run portal:agent-access:provision` is the opt-in combined command that provisions the test user first, then runs the same access smoke. Neither command seeds project or schedule data.
+
+`npm run portal:scenarios:ensure` is the explicit service-role provisioning command for local/staging scenario data. It requires `PORTAL_TEST_SCENARIO_TARGET=local|staging`, `PORTAL_TEST_EMAIL`, `PORTAL_TEST_PASSWORD`, `NEXT_PUBLIC_SUPABASE_URL`, and `SUPABASE_SERVICE_ROLE_KEY`; it refuses missing targets and `production`, upserts deterministic `[Agent Scenario]` records, and writes non-secret route state to `playwright/.auth/portal-scenarios.json`. Optional env: `PORTAL_SCENARIOS=project-with-estimate,quote-ready,workbench-multi-object` and `PORTAL_SCENARIO_PREFIX=agent`.
+
+`npm run portal:agent-scenarios` captures authenticated browser state and opens dynamic routes from the catalog-backed scenario lane: project detail, estimate detail, quote detail, and design workbench. It reads `playwright/.auth/portal-scenarios.json` only and does not mutate data. `npm run portal:agent-scenarios:provision` is the opt-in combined command that provisions the test user, seeds scenarios, then runs scenario smoke; because user provisioning and scenario provisioning have separate safety gates, set both `PORTAL_TEST_PROVISION_TARGET=local|staging` and `PORTAL_TEST_SCENARIO_TARGET=local|staging`.
+
+The portal route catalog is documented in `docs/portal-route-catalog.md`. Add new authenticated route coverage there first, then let browser specs consume the relevant catalog subset instead of adding local hardcoded route lists.
+
+Shared page debug exports are enabled only outside production and only with `ENABLE_SANCTUARY_GEOMETRY_WORKBENCH_FIXTURES=1`, `NEXT_PUBLIC_ENABLE_SANCTUARY_GEOMETRY_WORKBENCH_FIXTURES=1`, `PORTAL_PAGE_DEBUG_EXPORTS=1`, or `NEXT_PUBLIC_PORTAL_PAGE_DEBUG_EXPORTS=1`. Project detail, redirected estimate detail, quote detail, and design workbench routes expose `data-portal-debug-export="true"` in the scenario lane. Browser specs should use `readPortalPageDebugExport(page)` / `expectPortalDebugExport(page, pageId)` from `playwright/support/portalAgent.ts`; bug reports for complex pages should include this payload when available.
 
 `npm run portal:fixture-env` is the fail-fast server-readiness preflight for the no-auth drawing fixture gate. `npm run test:portal:browser`, `npm run test:portal:browser:headed`, and the browser segment of `npm run test:portal:workbench` run it before Playwright starts. It catches a normal portal dev server already occupying the Playwright port and catches `PORTAL_BASE_URL` targets that redirect the fixture route to auth.
 

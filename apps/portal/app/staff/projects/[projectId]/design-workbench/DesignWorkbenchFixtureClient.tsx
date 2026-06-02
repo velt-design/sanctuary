@@ -15,6 +15,11 @@ import type { Geometry3DViewportState } from '@/components/drawings/viewports/Ge
 import { buildDrawingWorkbenchStore } from '@/lib/drawings/state/drawingWorkbenchStore';
 import { buildWorkbenchDebugFixtureExport } from '@/lib/drawings/workbenchDebugExport';
 import {
+  buildPortalPageDebugExport,
+  type PortalPageDebugExport,
+} from '@/lib/debug/portalPageDebugExport';
+import { inferPortalScenarioFromLabel } from '@/lib/debug/portalScenarioDebug';
+import {
   buildDrawingWorkbenchObjectSelectionState,
   createDrawingWorkbenchUiState,
   type DrawingWorkbenchViewportTransform,
@@ -26,6 +31,7 @@ import styles from './DesignWorkbenchEstimateClient.module.css';
 
 type DesignWorkbenchFixtureClientProps = {
   fixture: SanctuaryGeometryWorkbenchFixture;
+  projectId?: string;
   projectName: string;
   siteAddress?: string | null;
   backHref?: string;
@@ -59,10 +65,12 @@ function geometryViewportStatesEqual(
 
 export default function DesignWorkbenchFixtureClient({
   fixture,
+  projectId,
   projectName,
   siteAddress,
   backHref,
 }: DesignWorkbenchFixtureClientProps) {
+  const resolvedProjectId = projectId ?? `fixture-${fixture.slug}`;
   const [hasHydrated, setHasHydrated] = useState(false);
   const [ui, setUi] = useState(() => createDrawingWorkbenchUiState({ viewportMode: 'geometry3d' }));
   const [modelViewportTransformsByKey, setModelViewportTransformsByKey] = useState<
@@ -80,12 +88,12 @@ export default function DesignWorkbenchFixtureClient({
         ui,
         moduleLabels: fixture.moduleLabels,
         geometryIdentity: {
-          projectId: `fixture-${fixture.slug}`,
+          projectId: resolvedProjectId,
           estimateId: fixture.estimate.id,
           designRequestId: fixture.request.id,
         },
       }),
-    [fixture.draft, fixture.estimate.id, fixture.moduleLabels, fixture.request.id, fixture.slug, fixture.snapshot, ui],
+    [fixture.draft, fixture.estimate.id, fixture.moduleLabels, fixture.request.id, fixture.snapshot, resolvedProjectId, ui],
   );
   useEffect(() => {
     setModelViewportTransformsByKey({});
@@ -128,6 +136,67 @@ export default function DesignWorkbenchFixtureClient({
       store.derived.solvedModel.projectHouseProjectionHealth,
       store.derived.solvedModel.projectPergolaRenderHealth,
       store.ui,
+    ],
+  );
+  const portalDebugExport = useMemo<PortalPageDebugExport>(
+    () =>
+      buildPortalPageDebugExport({
+        pageId: 'design-workbench',
+        route: `/staff/projects/${resolvedProjectId}/design-workbench?fixture=${fixture.slug}`,
+        selectedIds: {
+          projectId: resolvedProjectId,
+          estimateId: fixture.estimate.id,
+          designRequestId: fixture.request.id,
+          activeObjectId: store.ui.activeObjectRef.objectId,
+          activePergolaId: store.ui.activePergolaId,
+        },
+        serverState: {
+          project: {
+            id: resolvedProjectId,
+            name: projectName,
+            siteAddress: siteAddress ?? null,
+          },
+          estimate: {
+            id: fixture.estimate.id,
+            versionLabel: fixture.estimate.versionLabel,
+          },
+          designRequest: {
+            id: fixture.request.id,
+          },
+          fixture: {
+            slug: fixture.slug,
+          },
+        },
+        clientState: {
+          viewportMode: store.ui.viewportMode,
+          activeView: store.ui.activeView,
+          activeObjectRef: store.ui.activeObjectRef,
+          activePergolaId: store.ui.activePergolaId,
+        },
+        diagnostics: {
+          source: 'design-workbench-fixture',
+          workbenchDebugFixture: debugFixtureExport,
+          projectPreviewSource: debugFixtureExport.renderDiagnostics.projectPreviewSource,
+          projectHouseProjectionHealth: store.derived.solvedModel.projectHouseProjectionHealth,
+          projectPergolaRenderHealth: store.derived.solvedModel.projectPergolaRenderHealth,
+        },
+        scenario: inferPortalScenarioFromLabel(projectName),
+      }),
+    [
+      debugFixtureExport,
+      fixture.estimate.id,
+      fixture.estimate.versionLabel,
+      fixture.request.id,
+      fixture.slug,
+      projectName,
+      resolvedProjectId,
+      siteAddress,
+      store.derived.solvedModel.projectHouseProjectionHealth,
+      store.derived.solvedModel.projectPergolaRenderHealth,
+      store.ui.activeObjectRef,
+      store.ui.activePergolaId,
+      store.ui.activeView,
+      store.ui.viewportMode,
     ],
   );
   // Build the real geometry-edit state from fixture snapshot + draft so
@@ -260,7 +329,13 @@ export default function DesignWorkbenchFixtureClient({
       <script
         type="application/json"
         data-workbench-debug-export="true"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(debugFixtureExport) }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(debugFixtureExport).replace(/</g, '\\u003c') }}
+      />
+      <script
+        type="application/json"
+        data-portal-debug-export="true"
+        data-portal-debug-page-id={portalDebugExport.pageId}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(portalDebugExport).replace(/</g, '\\u003c') }}
       />
       <aside className={styles.configuratorColumn}>
         <div className={styles.configuratorScroll}>

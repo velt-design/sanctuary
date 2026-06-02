@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import styles from '@/components/projects/ProjectPage/ProjectPage.module.css';
 import ProjectSnapshotPageClient from './ProjectSnapshotPageClient';
+import { isPortalPageDebugExportEnabled } from '@/lib/debug/portalPageDebugExport';
 import { getProjectPageSnapshot } from '@/lib/projects/getProjectPageSnapshot';
 
 const VALID_TABS = new Set(['estimates', 'quotes', 'job-packs', 'emails']);
@@ -14,6 +15,11 @@ function parseTab(value: string | string[] | undefined): string {
 type SearchParams = { [key: string]: string | string[] | undefined };
 type PageParams = { projectId: string };
 
+function parseSingleSearchParam(value: string | string[] | undefined): string | null {
+  const raw = Array.isArray(value) ? value[0] : value;
+  return raw && raw.trim() ? raw : null;
+}
+
 export default async function ProjectDetailPage({
   params,
   searchParams,
@@ -24,6 +30,7 @@ export default async function ProjectDetailPage({
   const { projectId } = await params;
   const resolvedSearchParams = await searchParams;
   const tab = parseTab(resolvedSearchParams?.tab);
+  const estimateId = parseSingleSearchParam(resolvedSearchParams?.estimateId);
   if (!projectId.trim()) {
     return (
       <main className={styles.page}>
@@ -57,5 +64,13 @@ export default async function ProjectDetailPage({
     );
   }
 
-  return <ProjectSnapshotPageClient projectId={projectId} tab={tab} initialSnapshot={snapshot} />;
+  return (
+    <ProjectSnapshotPageClient
+      projectId={projectId}
+      tab={tab}
+      estimateId={estimateId}
+      initialSnapshot={snapshot}
+      debugExportEnabled={isPortalPageDebugExportEnabled()}
+    />
+  );
 }

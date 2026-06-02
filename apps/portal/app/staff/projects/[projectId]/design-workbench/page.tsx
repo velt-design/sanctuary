@@ -8,6 +8,7 @@ import type { SanctuaryGeometryWorkbenchFixture } from '@/lib/drawings/sanctuary
 import { getSanctuaryGeometryWorkbenchFixture } from '@/lib/drawings/sanctuaryWorkbenchFixtures';
 import { buildWorkbenchFixturePricingReadiness } from '@/lib/drawings/workbenchFixturePricingReadiness';
 import { isSanctuaryGeometryWorkbenchFixturesEnabled } from '@/lib/drawings/workbenchFlags';
+import { isPortalPageDebugExportEnabled } from '@/lib/debug/portalPageDebugExport';
 import { loadProjectEstimateDetail } from '@/lib/estimates/loadProjectEstimateDetail';
 import { getProjectPageSnapshot } from '@/lib/projects/getProjectPageSnapshot';
 
@@ -149,6 +150,7 @@ export default async function DesignWorkbenchPage({
           <div className={styles.surfaceInner}>
             <DesignWorkbenchFixtureClient
               fixture={fixture}
+              projectId={normalizedProjectId}
               projectName={projectName}
               siteAddress={siteAddress}
               backHref={backHref}
@@ -197,6 +199,7 @@ export default async function DesignWorkbenchPage({
               projectName={context.project.name}
               siteAddress={context.project.siteAddress}
               backHref={backHref}
+              debugExportEnabled={isPortalPageDebugExportEnabled()}
             />
           </div>
         </section>

@@ -58,9 +58,13 @@ To provision or reset a local/staging browser-test account, use the explicit ser
 ```bash
 PORTAL_TEST_PROVISION_TARGET=local npm run portal:test-user:ensure
 PORTAL_TEST_PROVISION_TARGET=staging npm run portal:agent-access:provision
+PORTAL_TEST_SCENARIO_TARGET=local npm run portal:scenarios:ensure
+PORTAL_TEST_PROVISION_TARGET=staging PORTAL_TEST_SCENARIO_TARGET=staging npm run portal:agent-scenarios:provision
 ```
 
 Provisioning requires `PORTAL_TEST_EMAIL`, `PORTAL_TEST_PASSWORD`, `NEXT_PUBLIC_SUPABASE_URL`, and `SUPABASE_SERVICE_ROLE_KEY`. `PORTAL_TEST_ROLE=staff|admin` is optional and defaults to `staff`. The command refuses missing targets and `production`; routine browser gates never provision or mutate users.
+
+Seeded scenario provisioning uses the same credential and service-role boundary with `PORTAL_TEST_SCENARIO_TARGET=local|staging`. It writes deterministic local/staging `[Agent Scenario]` contact, project, estimate, and quote records, then saves non-secret route IDs to `playwright/.auth/portal-scenarios.json`. Routine scenario browser gates read that file only.
 
 ## Creating Portal Users
 
