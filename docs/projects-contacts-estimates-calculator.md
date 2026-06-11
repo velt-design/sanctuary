@@ -122,6 +122,7 @@ The Activity tab is the project page's default landing tab. It renders a current
 - Top: the current-design snapshot bar (`ProjectActivityDesignSnapshotBar`) — a slender summary of the project's current design (size, shape, customer price, status pill).
 - Left: the wider Activity column (`ProjectNotesPanel`), currently an activity-style feed of project notes written by staff/admin. Entries use the same project-note pill, timestamp, note body, and author metadata pattern as dashboard Recent Activity.
 - Right: the compact Tasks panel (`ProjectTasksSidebarClient`), reused inline from the Activity tab. Same data and actions as before, but visually treated as the action rail beside the wider activity feed.
+- Project details render in the desktop project rail when there is enough width. When the shell falls back to the stacked laptop/mobile layout, details move to a dedicated `Details` tab so they do not push the Activity command centre down the page.
 
 ### Current-design snapshot precedence
 

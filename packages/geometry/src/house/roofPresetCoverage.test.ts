@@ -580,6 +580,9 @@ describe("house model roof preset coverage", () => {
         ).toBeLessThanOrEqual(1);
       }
       expect(model.metadata?.roofTopologySourceEdgeCount).toBe(6);
+      expect(model.metadata?.roofTopologyChordViolationCount).toBe(0);
+      expect(model.metadata?.roofTopologyUnbackedBoundaryCount).toBe(0);
+      expect(model.metadata?.roofTopologyUnclassifiedFeatureCount).toBe(0);
       expect(
         Number(model.metadata?.roofTopologyClosedFaceCount ?? 0),
       ).toBeGreaterThanOrEqual(6);

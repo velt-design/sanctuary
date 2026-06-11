@@ -327,7 +327,7 @@ export default function ProjectPageShell({
   const renderRail = (rail: ProjectPanelRail) => {
     const panelIds = rail === 'left' ? effectiveLeftPanelIds : effectiveRightPanelIds;
     const collapsed = isRailCollapsed(rail);
-    if (!isDesktopLayout && panelIds.length === 0) return null;
+    if (!isDesktopLayout) return null;
 
     const showDropZone =
       !collapsed &&
@@ -441,7 +441,12 @@ export default function ProjectPageShell({
         ) : null}
 
         <section className={styles.center}>
-          <ProjectMainTabs snapshot={snapshot} tab={tab} onActiveTabChange={setActiveTab} />
+          <ProjectMainTabs
+            snapshot={snapshot}
+            showDetailsTab={!isDesktopLayout}
+            tab={tab}
+            onActiveTabChange={setActiveTab}
+          />
         </section>
 
         {isDesktopLayout ? (

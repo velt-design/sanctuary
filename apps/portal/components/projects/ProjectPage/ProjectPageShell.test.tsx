@@ -7,6 +7,7 @@ import { PROJECT_PANEL_LAYOUT_STORAGE_KEY } from './useProjectPanelSlots';
 
 let mockActiveTab: string = 'quotes';
 let mockConfiguratorOverride = false;
+let latestShowDetailsTab: boolean | undefined;
 
 vi.mock('./ProjectDetailsSidebar', () => ({
   default: () => <section data-testid="mock-details-panel">Details panel</section>,
@@ -18,11 +19,12 @@ vi.mock('./ProjectMainTabs', () => ({
     const ReactDOM = require('react-dom');
     const { renderInShell, rightRailNode } = useProjectPageDesignRail();
     React.useEffect(() => {
+      latestShowDetailsTab = props.showDetailsTab;
       props.onActiveTabChange?.(mockActiveTab);
-    }, [props.onActiveTabChange]);
+    }, [props.onActiveTabChange, props.showDetailsTab]);
     return (
       <>
-        <section data-testid="mock-center-panel">Center panel</section>
+        <section data-testid="mock-center-panel" data-show-details-tab={props.showDetailsTab ? 'true' : 'false'}>Center panel</section>
         {mockConfiguratorOverride && renderInShell && rightRailNode
           ? ReactDOM.createPortal(<section data-testid="mock-configurator-rail">Configurator rail</section>, rightRailNode)
           : null}
@@ -86,6 +88,7 @@ describe('ProjectPageShell resize handles', () => {
     setProjectPageShellWidth(1500);
     mockActiveTab = 'quotes';
     mockConfiguratorOverride = false;
+    latestShowDetailsTab = undefined;
   });
 
   afterEach(() => {
@@ -99,6 +102,7 @@ describe('ProjectPageShell resize handles', () => {
 
     expect(readWidthVar(shell, '--project-page-left-width')).toBe('280px');
     expect(readWidthVar(shell, '--project-page-right-width')).toBe('320px');
+    expect(latestShowDetailsTab).toBe(false);
 
     dispatchPointer(leftHandle, 'pointerdown', { button: 0, clientX: 500 });
     dispatchPointer(window, 'pointermove', { clientX: 560 });
@@ -202,11 +206,16 @@ describe('ProjectPageShell resize handles', () => {
 
     expect(rendered.container.querySelector('[aria-label="Resize left project rail"]')).toBeNull();
     expect(rendered.container.querySelector('[aria-label="Resize right project rail"]')).toBeNull();
+    expect(rendered.container.querySelector('[data-project-rail="left"]')).toBeNull();
+    expect(rendered.container.querySelector('[data-project-rail="right"]')).toBeNull();
+    expect(rendered.container.querySelector('[data-testid="mock-details-panel"]')).toBeNull();
+    expect(latestShowDetailsTab).toBe(true);
 
     rendered.unmount();
   });
 
   it('shows the design configurator in the right rail and keeps details on the left without rewriting stored slots', () => {
+    mockActiveTab = 'estimates';
     mockConfiguratorOverride = true;
     window.localStorage.setItem(
       PROJECT_PANEL_LAYOUT_STORAGE_KEY,
@@ -234,6 +243,7 @@ describe('ProjectPageShell resize handles', () => {
   });
 
   it('auto-expands the right rail when the designs configurator takes over a collapsed rail', () => {
+    mockActiveTab = 'estimates';
     mockConfiguratorOverride = true;
     window.localStorage.setItem(
       PROJECT_PAGE_LAYOUT_STORAGE_KEY,

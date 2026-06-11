@@ -26,7 +26,7 @@ The remaining risk is local work drifting back toward host-specific or primary-f
 
 ## Current Handoff
 
-Last updated: 2026-05-30.
+Last updated: 2026-06-11.
 
 The current workbench campaign is through the PR8 slice:
 
@@ -35,6 +35,8 @@ The current workbench campaign is through the PR8 slice:
 - Plan Editor should show every valid pergola as full solved plan geometry, with invalid/unsupported pergolas kept as selectable reference/context outlines.
 - 3D Review should show every valid pergola in the project-wide scene, with invalid/unsupported selected pergolas skipped from full scene aggregation but not allowed to crash or blank the view.
 - The next robust architecture step is still to delete or shrink the per-pergola `RawGeometryModuleInput.houseContext` path by solving houses once and letting pergolas/decks consume stable project house geometry.
+
+Later 2026-06-03 house-form and roof-solver guardrails live in `docs/decision-log.md`; check those entries before changing house-form geometry, roof topology, or Plan/3D diagnostics. They refine the solver/debugging guardrails but do not change the recommended next architecture step below.
 
 Recommended next PRs, in order:
 

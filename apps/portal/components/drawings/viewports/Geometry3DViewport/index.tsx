@@ -1527,6 +1527,8 @@ export default function Geometry3DViewport({
           data-house-roof-topology-valley-count={String(houseRoofDiagnostics.topologyValleyCount)}
           data-house-roof-topology-disconnected-source-face-count={String(houseRoofDiagnostics.topologyDisconnectedSourceFaceCount)}
           data-house-roof-topology-internal-eave-height-segment-count={String(houseRoofDiagnostics.topologyInternalEaveHeightSegmentCount)}
+          data-house-roof-topology-chord-violation-count={String(houseRoofDiagnostics.topologyChordViolationCount)}
+          data-house-roof-topology-unbacked-boundary-count={String(houseRoofDiagnostics.topologyUnbackedBoundaryCount)}
           data-house-roof-solid-expected-count={String(houseRoofDiagnostics.expectedSolidCount)}
           data-house-roof-solid-rendered-count={String(houseRoofDiagnostics.renderedSolidCount)}
           data-house-roof-solid-skipped-count={String(houseRoofDiagnostics.skippedSolidCount)}

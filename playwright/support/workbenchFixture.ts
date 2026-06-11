@@ -117,6 +117,8 @@ export async function readPlanHouseProjectionHealth(page: Page): Promise<Array<{
   roofTopologyCoverageOverlapAreaMm2: number | null;
   roofTopologyCoverageAreaDeltaMm2: number | null;
   roofTopologyOverlapAreaMm2: number | null;
+  roofTopologyChordViolationCount: number | null;
+  roofTopologyUnbackedBoundaryCount: number | null;
   roofTopologyDanglingFeatureCount: number | null;
   roofTopologyUnclassifiedFeatureCount: number | null;
   roofWavefrontFailureReason: string | null;

@@ -32,6 +32,8 @@ export type HouseRoofStageDiagnostics = {
   roofTopologyCoverageOverlapAreaMm2: number | null;
   roofTopologyCoverageAreaDeltaMm2: number | null;
   roofTopologyOverlapAreaMm2: number | null;
+  roofTopologyChordViolationCount: number | null;
+  roofTopologyUnbackedBoundaryCount: number | null;
   roofTopologyDanglingFeatureCount: number | null;
   roofTopologyUnclassifiedFeatureCount: number | null;
   roofWavefrontFailureReason: string | null;
@@ -85,6 +87,8 @@ export const EMPTY_HOUSE_ROOF_STAGE_DIAGNOSTICS: HouseRoofStageDiagnostics = {
   roofTopologyCoverageOverlapAreaMm2: null,
   roofTopologyCoverageAreaDeltaMm2: null,
   roofTopologyOverlapAreaMm2: null,
+  roofTopologyChordViolationCount: null,
+  roofTopologyUnbackedBoundaryCount: null,
   roofTopologyDanglingFeatureCount: null,
   roofTopologyUnclassifiedFeatureCount: null,
   roofWavefrontFailureReason: null,
@@ -252,6 +256,14 @@ export function summarizeHouseModelRoofStageDiagnostics(
       metadata,
       "roofTopologyOverlapAreaMm2",
     ),
+    roofTopologyChordViolationCount: numberMetadata(
+      metadata,
+      "roofTopologyChordViolationCount",
+    ),
+    roofTopologyUnbackedBoundaryCount: numberMetadata(
+      metadata,
+      "roofTopologyUnbackedBoundaryCount",
+    ),
     roofTopologyDanglingFeatureCount: numberMetadata(
       metadata,
       "roofTopologyDanglingFeatureCount",
@@ -351,6 +363,10 @@ export function pickHouseRoofStageDiagnostics(
     roofTopologyCoverageAreaDeltaMm2:
       diagnostics.roofTopologyCoverageAreaDeltaMm2,
     roofTopologyOverlapAreaMm2: diagnostics.roofTopologyOverlapAreaMm2,
+    roofTopologyChordViolationCount:
+      diagnostics.roofTopologyChordViolationCount,
+    roofTopologyUnbackedBoundaryCount:
+      diagnostics.roofTopologyUnbackedBoundaryCount,
     roofTopologyDanglingFeatureCount:
       diagnostics.roofTopologyDanglingFeatureCount,
     roofTopologyUnclassifiedFeatureCount:

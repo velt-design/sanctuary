@@ -35,6 +35,8 @@ export type HouseRoofViewportDiagnostics = {
   topologyValleyCount: number;
   topologyDisconnectedSourceFaceCount: number;
   topologyInternalEaveHeightSegmentCount: number;
+  topologyChordViolationCount: number;
+  topologyUnbackedBoundaryCount: number;
   expectedSolidCount: number;
   renderedSolidCount: number;
   skippedSolidCount: number;
@@ -101,6 +103,8 @@ export function collectHouseRoofViewportDiagnostics(
       topologyValleyCount: 0,
       topologyDisconnectedSourceFaceCount: 0,
       topologyInternalEaveHeightSegmentCount: 0,
+      topologyChordViolationCount: 0,
+      topologyUnbackedBoundaryCount: 0,
       expectedSolidCount: 0,
       renderedSolidCount: 0,
       skippedSolidCount: 0,
@@ -147,6 +151,10 @@ export function collectHouseRoofViewportDiagnostics(
       sceneMetadataNumber(scene, "houseRoofTopologyDisconnectedSourceFaceCount") ?? 0,
     topologyInternalEaveHeightSegmentCount:
       sceneMetadataNumber(scene, "houseRoofTopologyInternalEaveHeightSegmentCount") ?? 0,
+    topologyChordViolationCount:
+      sceneMetadataNumber(scene, "houseRoofTopologyChordViolationCount") ?? 0,
+    topologyUnbackedBoundaryCount:
+      sceneMetadataNumber(scene, "houseRoofTopologyUnbackedBoundaryCount") ?? 0,
     expectedSolidCount,
     renderedSolidCount,
     skippedSolidCount,

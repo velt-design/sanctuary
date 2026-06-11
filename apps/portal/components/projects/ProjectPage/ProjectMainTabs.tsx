@@ -8,6 +8,7 @@ import EmailsTab from './tabs/EmailsTab';
 import EstimatesTab from './tabs/EstimatesTab';
 import InvoicesTab from './tabs/InvoicesTab';
 import JobPacksTab from './tabs/JobPacksTab';
+import ProjectDetailsSidebar from './ProjectDetailsSidebar';
 import QuotesTab from './tabs/QuotesTab';
 import type { ProjectPageSnapshot } from '@/lib/projects/types';
 import legacy from '@/app/staff/projects/projects.module.css';
@@ -26,7 +27,8 @@ const BASE_TABS = [
   { key: 'emails', label: 'Emails' },
 ] as const;
 
-type TabKey = (typeof BASE_TABS)[number]['key'];
+type BaseTabKey = (typeof BASE_TABS)[number]['key'];
+type TabKey = BaseTabKey | 'details';
 type QuoteViewKey = 'edit' | 'preview';
 
 function coerceTab(value: string | undefined, allowedTabs: readonly { key: TabKey; label: string }[]): TabKey {
@@ -35,10 +37,12 @@ function coerceTab(value: string | undefined, allowedTabs: readonly { key: TabKe
 
 export default function ProjectMainTabs({
   snapshot,
+  showDetailsTab = false,
   tab,
   onActiveTabChange,
 }: {
   snapshot: ProjectPageSnapshot;
+  showDetailsTab?: boolean;
   tab: string;
   onActiveTabChange?: (tab: TabKey) => void;
 }) {
@@ -51,10 +55,17 @@ export default function ProjectMainTabs({
   const projectId = snapshot.project.id;
 
   const availableTabs = useMemo(
-    () => BASE_TABS.filter((tabItem) => tabItem.key !== 'job-packs' || snapshot.project.hasJobPacks),
-    [snapshot.project.hasJobPacks],
+    () => {
+      const tabs: Array<{ key: TabKey; label: string }> = BASE_TABS.filter(
+        (tabItem) => tabItem.key !== 'job-packs' || snapshot.project.hasJobPacks,
+      );
+      if (showDetailsTab) tabs.push({ key: 'details', label: 'Details' });
+      return tabs;
+    },
+    [showDetailsTab, snapshot.project.hasJobPacks],
   );
-  const tabFromUrl = useMemo(() => coerceTab(searchParams.get('tab') ?? tab, availableTabs), [availableTabs, searchParams, tab]);
+  const requestedTab = searchParams.get('tab') ?? tab;
+  const tabFromUrl = useMemo(() => coerceTab(requestedTab, availableTabs), [availableTabs, requestedTab]);
   const [activeTab, setActiveTab] = useState<TabKey>(tabFromUrl);
   const quotePreviewFromUrl = useMemo(() => searchParams.get('quotePreview') === '1', [searchParams]);
   const quoteView: QuoteViewKey = quotePreviewFromUrl ? 'preview' : 'edit';
@@ -94,6 +105,11 @@ export default function ProjectMainTabs({
     if (next.tab) setActiveTab(next.tab);
     router.replace(`${pathname}${query ? `?${query}` : ''}`);
   };
+
+  useEffect(() => {
+    if (requestedTab !== 'details' || showDetailsTab) return;
+    updateParams({ tab: 'activity' });
+  }, [requestedTab, showDetailsTab]);
 
   const prefetchTabData = (tabKey: TabKey) => {
     if (tabKey === 'estimates') {
@@ -196,6 +212,7 @@ export default function ProjectMainTabs({
         data-project-tab-body={activeTab}
       >
         {activeTab === 'activity' ? <ActivityTab snapshot={snapshot} /> : null}
+        {activeTab === 'details' ? <ProjectDetailsSidebar project={snapshot.project} /> : null}
         {activeTab === 'emails' ? <EmailsTab projectId={snapshot.project.id} emails={snapshot.emails} /> : null}
         {activeTab === 'estimates' ? (
           <EstimatesTab projectId={snapshot.project.id} projectSnapshot={snapshot} />

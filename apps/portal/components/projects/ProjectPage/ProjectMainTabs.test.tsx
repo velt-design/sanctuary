@@ -4,11 +4,12 @@ import ProjectMainTabs from './ProjectMainTabs';
 
 const replaceMock = vi.fn();
 const prefetchQueryMock = vi.fn();
+let mockSearchParams = 'tab=estimates';
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ replace: replaceMock }),
   usePathname: () => '/staff/projects/proj_1',
-  useSearchParams: () => new URLSearchParams('tab=estimates'),
+  useSearchParams: () => new URLSearchParams(mockSearchParams),
 }));
 
 vi.mock('@tanstack/react-query', () => ({
@@ -39,6 +40,10 @@ vi.mock('./tabs/JobPacksTab', () => ({
 
 vi.mock('./tabs/QuotesTab', () => ({
   default: () => <div data-testid="quotes-tab" />,
+}));
+
+vi.mock('./ProjectDetailsSidebar', () => ({
+  default: () => <div data-testid="details-tab" />,
 }));
 
 vi.mock('@/lib/queries/invoices', () => ({
@@ -81,6 +86,7 @@ describe('ProjectMainTabs', () => {
   beforeEach(() => {
     replaceMock.mockReset();
     prefetchQueryMock.mockReset();
+    mockSearchParams = 'tab=estimates';
     window.sessionStorage.clear();
   });
 
@@ -110,6 +116,39 @@ describe('ProjectMainTabs', () => {
     const tabButtons = Array.from(rendered.container.querySelectorAll('[role="tab"]')).map((node) => node.textContent?.trim());
 
     expect(tabButtons[0]).toBe('Activity');
+
+    rendered.unmount();
+  });
+
+  it('renders Details only when the stacked layout asks for it', () => {
+    const wide = renderIntoDocument(<ProjectMainTabs snapshot={snapshot} tab="estimates" />);
+    const wideButtons = Array.from(wide.container.querySelectorAll('[role="tab"]')).map((node) => node.textContent?.trim());
+    expect(wideButtons).not.toContain('Details');
+    wide.unmount();
+
+    const stacked = renderIntoDocument(<ProjectMainTabs snapshot={snapshot} showDetailsTab tab="estimates" />);
+    const stackedButtons = Array.from(stacked.container.querySelectorAll('[role="tab"]')).map((node) => node.textContent?.trim());
+    expect(stackedButtons).toContain('Details');
+    stacked.unmount();
+  });
+
+  it('renders project details from the Details tab when stacked', () => {
+    mockSearchParams = 'tab=details';
+    const rendered = renderIntoDocument(<ProjectMainTabs snapshot={snapshot} showDetailsTab tab="activity" />);
+
+    expect(rendered.container.querySelector('[data-testid="details-tab"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[data-testid="activity-tab"]')).toBeNull();
+
+    rendered.unmount();
+  });
+
+  it('coerces the Details tab back to Activity when details are already available in the desktop rail', () => {
+    mockSearchParams = 'tab=details';
+    const rendered = renderIntoDocument(<ProjectMainTabs snapshot={snapshot} tab="details" />);
+
+    expect(rendered.container.querySelector('[data-testid="activity-tab"]')).not.toBeNull();
+    expect(rendered.container.querySelector('[data-testid="details-tab"]')).toBeNull();
+    expect(replaceMock).toHaveBeenCalledWith('/staff/projects/proj_1?tab=activity');
 
     rendered.unmount();
   });

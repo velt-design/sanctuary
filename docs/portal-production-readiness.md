@@ -2,7 +2,7 @@
 
 Status: Active evolving tracker.
 
-Last updated: 2026-06-02.
+Last updated: 2026-06-11.
 
 Purpose: keep agents and maintainers aligned on the path to a first-class, production-grade internal portal. This doc is the dashboard for current readiness, blockers, priorities, parallel lanes, and next actions. Detailed behavior rules stay in the canonical docs linked below.
 
@@ -48,7 +48,7 @@ Do not duplicate detailed rules from canonical docs here. Link to them, then kee
 
 ## Current Readiness Snapshot
 
-This snapshot records the most recent known production-readiness state from the portal review and follow-up checks through 2026-06-02. Re-run the listed commands before treating any item as current after new work lands. If a row is older than the current work, treat it as a last known signal, not live truth, until the relevant command or manual check is repeated.
+This snapshot records the most recent known production-readiness state from the portal review and follow-up checks through 2026-06-02, with docs-health checks refreshed on 2026-06-11. Re-run the listed commands before treating any item as current after new work lands. If a row is older than the current work, treat it as a last known signal, not live truth, until the relevant command or manual check is repeated.
 
 | Area | Status | Last Known Signal | Next Action |
 | --- | --- | --- | --- |
@@ -60,7 +60,7 @@ This snapshot records the most recent known production-readiness state from the 
 | Portal build | Green | `npm run build:portal` passed with `Compiled successfully`, TypeScript completed, 55 static pages generated, and no Turbopack/NFT trace warnings after module-relative PDF asset URL loading. Build-dependent gates now run `npm run portal:build-env` first to catch active portal dev servers and Next build locks early. | Keep build in portal CI and re-run after quote, invoice, PDF, job-pack, or Next config changes. |
 | Typecheck | Green | `npm run typecheck` passed on 2026-05-21 after the object-first workbench adapter test fixture was aligned with normalized roof-intent types. | Keep typecheck in quick doctor and CI. |
 | Browser smoke | Yellow | `npm run portal:agent-access` passed on 2026-06-02 with the portal agent staff account: authenticated shell access opened dashboard, projects, contacts, and schedule, and at least one visible project was present. Route coverage is catalog-owned by `playwright/support/portalRouteCatalog.ts` / `docs/portal-route-catalog.md`; seeded dynamic route smoke is owned by `npm run portal:agent-scenarios`; shared browser evidence is owned by `playwright/support/portalBrowserEvidence.ts`; and `npm run portal:agent-scorecard` now summarizes route, scenario, debug-export, evidence, and repo-health pressure without mutating data. The older no-auth fixture signal remains `npm run test:portal:browser` passed on 2026-05-04 with 7 fixture tests passed and 1 auth-backed project-discovery smoke skipped by design in the `portal-fixture` project. | Keep the catalog current, run `npm run portal:auth-runtime`, seed scenarios with `npm run portal:scenarios:ensure` on local/staging, then extend seeded coverage and debug exports to Design List, Running Jobs, schedule, calculator, and admin routes only after each domain has a safe write contract. |
-| Docs and routing | Green | `npm run docs:guard`, `npm run text:mojibake`, `npm run docs:navigation`, and `npm run docs:readiness` passed on 2026-05-30 after shipped workbench plan docs were marked retrospective, dense docs gained lightweight routing cues, stale `WorkbenchSolvedModel` commercial-adapter wording was refreshed to `WorkbenchSolvedProject`, and this tracker was refreshed. `npm run docs:impact` remains advisory when non-doc workbench files are dirty without matching owner-doc changes. | Keep this tracker and owner docs current; refresh readiness when process signals change or the tracker ages past 7 days. |
+| Docs and routing | Green | Before the 2026-06-11 docs-readiness pass, `npm run docs:guard` was failing because `docs/decision-log.md` had Workbench House Forms index drift and an unescaped `Sheet \| Plan \| 3D` mode-switch phrase inside the index table. This pass repaired the drift, added the missing `docs/environment-auth-supabase.md` navigation cue, and reran `npm run docs:guard`, `npm run text:mojibake`, `npm run docs:navigation`, `npm run docs:readiness`, and `npm run docs:impact` successfully. | Keep this tracker and owner docs current; refresh readiness when process signals change or the tracker ages past 7 days. |
 | File decomposition | Yellow | Calculator decomposition has two verified slices: pure input defaults/normalization and save-readiness helpers now live outside `CalculatorGridClient.tsx`; `npx vitest run apps/portal/app/staff/calculator` passed with 12 files and 120 tests, and `npm run test:portal:projects` passed with 40 files and 205 tests. Broader strict enforcement remains advisory while transitional files remain. | Continue one owner surface at a time; use `npm run files:report` before selecting the next split and `npm run files:changed` before handoff. When touching warning or critical files, treat one small extraction or a named deferral as part of the work. |
 | Code retirement | Yellow | `docs/code-retirement-and-bloat-control.md`, `npm run dead-code:report`, `npm run dead-code:changed`, and `npm run dead-code:changed:strict` make unused files, exports, types, and dependencies visible while blocking only newly added unused files locally. Worktree strict mode now blocks undeclared dirty-tree lanes during explicit strict verification. Portal Quality runs changed-file and strict new-growth reporting as advisory only. | Calibrate the registry, delete proven candidates in small PRs, then consider strict mode for new unused exports or dependencies. |
 | Local-first flows | Yellow | Focused local-first gate passed with 12 files and 67 tests: store/queue aliases, retries, conflicts, estimate editability, estimate API lock behavior, and `LocalFirstPortalMutations` handler coverage for estimate/quote aliases, retry, and conflict states. | Keep manual pending, failed, retry, conflict, and lock-state browser QA open until valid staff credentials and compatible project data exist. |
@@ -256,6 +256,10 @@ When updating this tracker:
 - Keep this file ASCII and link to repo-relative paths.
 
 ## Change Notes
+
+### 2026-06-11
+
+- Restored docs health after `npm run docs:guard` failed on decision-log index drift: synced the 2026-06-03 Workbench House Forms index count with entries and escaped the `Sheet \| Plan \| 3D` mode-switch text inside the index table. Added the missing `Read First` navigation cue to `docs/environment-auth-supabase.md`, then reran the docs-only checks successfully. Existing dirty worktree files outside this lane were intentionally left untouched.
 
 ### 2026-05-30
 

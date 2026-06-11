@@ -2,6 +2,13 @@
 
 This repo uses Supabase for app data and Supabase Auth for the staff portal.
 
+## Read First
+
+- Use `## Core Environment Variables` before running local portal, browser, email, Supabase, or operational commands.
+- Use `## Staff Portal Auth` and `## Authenticated Browser Test Account` before auth or Playwright work.
+- Use `## Supabase Setup`, `## Service Role Boundaries`, and `## RLS And Permissions` before schema, service-role, or access-policy changes.
+- Use `## Troubleshooting` for missing role rows, schema-cache issues, readiness failures, or schedule fallback.
+
 ## Core Environment Variables
 
 Most local portal work needs:
