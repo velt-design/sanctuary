@@ -14,15 +14,19 @@ import {
   assignRoofRegion,
   buildJoinedRoofEdges,
   buildRectilinearRoofBaseRegions,
+  roofHeightFromEdge,
   splitRoofRegionsByPlaneIntersections,
 } from './roofJoinedRegions';
 import {
   canonicalRoofSegmentKey,
   cleanRoofPolygon2D,
+  clipRoofPolygonByScalar,
   compareRoofPoints,
   orientRoofFeatureLine,
   point2FromPoint3,
   roofPolygonArea,
+  roofPolygonIsSimple,
+  roofRegionInsideEave,
   roofSegmentOverlapLength2D,
 } from './roof2D';
 
@@ -316,13 +320,17 @@ function semanticFailureReason(input: {
   unclassifiedFeatureCount: number;
   internalEaveHeightSegmentCount: number;
   existingFailureReason: string | null;
+  allowSplitSourceFaces?: boolean;
 }): string | null {
   if (input.existingFailureReason) return input.existingFailureReason;
   if (input.sourceEdgeCount !== input.expectedFaceCount) return 'roof_topology_missing_source_edge_face';
-  if (input.closedFaceCount !== input.expectedFaceCount) {
+  if (!input.allowSplitSourceFaces && input.closedFaceCount !== input.expectedFaceCount) {
     return `roof_topology_face_count_mismatch:${input.closedFaceCount}:${input.expectedFaceCount}`;
   }
-  if (input.duplicateFacetCount > 0) return 'roof_topology_duplicate_source_faces';
+  if (input.allowSplitSourceFaces && input.closedFaceCount < input.expectedFaceCount) {
+    return `roof_topology_face_count_mismatch:${input.closedFaceCount}:${input.expectedFaceCount}`;
+  }
+  if (!input.allowSplitSourceFaces && input.duplicateFacetCount > 0) return 'roof_topology_duplicate_source_faces';
   if (input.fallbackFeatureCount > 0) return 'roof_topology_fallback_features';
   if (input.unbackedBoundaryCount > 0) return 'roof_topology_unbacked_internal_boundary';
   if (input.unclassifiedFeatureCount > 0) return 'roof_topology_unclassified_internal_segment';
@@ -434,6 +442,112 @@ function buildSourceEdgeCoverageFacets(input: {
       roofAtomicRegionCount: mergedRegions.atomicRegionCount,
       roofDissolvedRegionCount: mergedRegions.dissolvedRegionCount,
       roofDiscardedDissolveLoopCount: mergedRegions.discardedLoopCount,
+    },
+  };
+}
+
+function buildSourceEdgeExactPartitionFacets(input: {
+  eavePolygon: Polygon3;
+  edges: JoinedRoofEdge[];
+  eaveHeightMm: number;
+  pitchRisePerRun: number;
+}): {
+  facets: JoinedRoofFacet[];
+  metadata: GeometryMetadata;
+} {
+  const eaveFootprint = cleanRoofPolygon2D(input.eavePolygon.map(point2FromPoint3));
+  const facets: JoinedRoofFacet[] = [];
+  let rejectedFacetCount = 0;
+  let failureEdgeId: string | null = null;
+  let failureReason: string | null = null;
+
+  for (const edge of input.edges) {
+    let footprint = eaveFootprint;
+    for (const otherEdge of input.edges) {
+      if (otherEdge.index === edge.index) continue;
+      footprint = clipRoofPolygonByScalar(footprint, (candidate) =>
+        roofHeightFromEdge({
+          edge,
+          candidate,
+          eaveHeightMm: input.eaveHeightMm,
+          pitchRisePerRun: input.pitchRisePerRun,
+        }) -
+        roofHeightFromEdge({
+          edge: otherEdge,
+          candidate,
+          eaveHeightMm: input.eaveHeightMm,
+          pitchRisePerRun: input.pitchRisePerRun,
+        }),
+      );
+      if (roofPolygonArea(footprint) <= 1) break;
+    }
+
+    footprint = cleanRoofPolygon2D(footprint);
+    const sourceEdgeHasContact =
+      sourceEdgeEaveContactLength({ footprint, edge }) >
+      ROOF_JOIN_FEATURE_MIN_LENGTH_MM;
+    const footprintValid =
+      footprint.length >= 3 &&
+      roofPolygonArea(footprint) > 1 &&
+      roofPolygonIsSimple(footprint) &&
+      roofRegionInsideEave(footprint, input.eavePolygon);
+    const facet =
+      footprintValid && sourceEdgeHasContact
+        ? buildJoinedRoofFacetFromRegion({
+            region: { edge, footprint },
+            eavePolygon: input.eavePolygon,
+            eaveHeightMm: input.eaveHeightMm,
+            pitchRisePerRun: input.pitchRisePerRun,
+          })
+        : null;
+
+    if (!facet) {
+      rejectedFacetCount += 1;
+      failureEdgeId ??= edge.id;
+      failureReason ??= !footprintValid
+        ? `${edge.id}:invalid_exact_partition_face`
+        : `${edge.id}:missing_source_edge_contact`;
+      continue;
+    }
+    facets.push(facet);
+  }
+
+  const eaveAreaMm2 = Math.abs(signedAreaXY(input.eavePolygon));
+  const facetAreaMm2 = facets.reduce((sum, facet) => sum + roofPolygonArea(facet.footprint), 0);
+  const areaDeltaMm2 = facetAreaMm2 - eaveAreaMm2;
+  const areaToleranceMm2 = Math.max(100, eaveAreaMm2 * 0.001);
+  const sourceEdgeCount = new Set(facets.map((facet) => facet.edge.index)).size;
+  if (!failureReason && facets.length !== input.edges.length) {
+    const missingEdge = input.edges.find((edge) => !facets.some((facet) => facet.edge.index === edge.index));
+    failureEdgeId = missingEdge?.id ?? null;
+    failureReason = `${failureEdgeId ?? 'house-eave-edge'}:missing_source_edge_face`;
+  }
+  if (!failureReason && sourceEdgeCount !== input.edges.length) {
+    failureReason = 'roof_topology_duplicate_source_faces';
+  }
+  if (!failureReason && Math.abs(areaDeltaMm2) > areaToleranceMm2) {
+    failureReason = 'roof_area_mismatch';
+  }
+
+  return {
+    facets: facets.sort((left, right) => left.edge.index - right.edge.index),
+    metadata: {
+      roofTopologyExactPartitionQaStatus: failureReason ? 'invalid' : 'valid',
+      roofTopologyExactPartitionFailureReason: failureReason,
+      roofTopologyExactPartitionFaceCount: facets.length,
+      roofTopologyCoverageGapAreaMm2: Math.round(Math.max(0, -areaDeltaMm2)),
+      roofTopologyCoverageOverlapAreaMm2: Math.round(Math.max(0, areaDeltaMm2)),
+      roofTopologyCoverageAreaDeltaMm2: Math.round(areaDeltaMm2),
+      roofTopologyFailureEdgeId: failureEdgeId,
+      roofTopologyFailureReason: failureReason,
+      roofRejectedFacetCount: rejectedFacetCount,
+      roofFacetCount: facets.length,
+      roofBaseRegionCount: 0,
+      roofSplitRegionCount: 0,
+      roofAssignedRegionCount: facets.length,
+      roofAtomicRegionCount: facets.length,
+      roofDissolvedRegionCount: 0,
+      roofDiscardedDissolveLoopCount: 0,
     },
   };
 }
@@ -572,6 +686,12 @@ export function buildEaveGraphJoinedHippedRoof(input: {
   });
   let topologyFailureEdgeId: string | null = null;
   let topologyFailureReason: string | null = null;
+  const exactFacetResult = buildSourceEdgeExactPartitionFacets({
+    eavePolygon,
+    edges,
+    eaveHeightMm: input.eaveHeightMm,
+    pitchRisePerRun,
+  });
   const coverageFacetResult = buildSourceEdgeCoverageFacets({
     eavePolygon,
     edges,
@@ -584,7 +704,10 @@ export function buildEaveGraphJoinedHippedRoof(input: {
     eaveHeightMm: input.eaveHeightMm,
     pitchRisePerRun,
   });
-  const assessCandidate = (facetResult: typeof legacyFacetResult): string | null => {
+  const assessCandidate = (
+    facetResult: typeof legacyFacetResult,
+    options?: { allowSplitSourceFaces?: boolean },
+  ): string | null => {
     const candidateFeatures = buildSourceEdgeEnvelopeFeatures({
       facets: facetResult.facets,
       edges,
@@ -620,25 +743,40 @@ export function buildEaveGraphJoinedHippedRoof(input: {
         typeof facetResult.metadata.roofTopologyFailureReason === 'string'
           ? facetResult.metadata.roofTopologyFailureReason
           : null,
+      allowSplitSourceFaces: options?.allowSplitSourceFaces,
     });
   };
+  const exactSemanticFailureReason = assessCandidate(exactFacetResult);
   const legacySemanticFailureReason = assessCandidate(legacyFacetResult);
-  const coverageSemanticFailureReason = assessCandidate(coverageFacetResult);
-  const useLegacyCommittedPath = legacySemanticFailureReason === null;
-  const facetResult = useLegacyCommittedPath ? legacyFacetResult : coverageFacetResult;
-  const topologySolver = useLegacyCommittedPath
-    ? 'eave_graph_source_edge_envelope'
-    : 'source_edge_coverage_partition';
-  const facetMergeMode = useLegacyCommittedPath
-    ? 'source_edge_envelope'
-    : 'source_edge_coverage_partition';
+  const coverageSemanticFailureReason = assessCandidate(coverageFacetResult, {
+    allowSplitSourceFaces: true,
+  });
+  const useExactCommittedPath = exactSemanticFailureReason === null;
+  const useLegacyCommittedPath = !useExactCommittedPath && legacySemanticFailureReason === null;
+  const facetResult = useExactCommittedPath
+    ? exactFacetResult
+    : useLegacyCommittedPath
+      ? legacyFacetResult
+      : coverageFacetResult;
+  const topologySolver = useExactCommittedPath
+    ? 'source_edge_exact_envelope_partition'
+    : useLegacyCommittedPath
+      ? 'eave_graph_source_edge_envelope'
+      : 'source_edge_coverage_partition';
+  const facetMergeMode = useExactCommittedPath
+    ? 'source_edge_exact_envelope_partition'
+    : useLegacyCommittedPath
+      ? 'source_edge_envelope'
+      : 'source_edge_coverage_partition';
   topologyFailureReason =
     typeof facetResult.metadata.roofTopologyFailureReason === 'string'
       ? facetResult.metadata.roofTopologyFailureReason
       : null;
-  topologyFailureReason ??= useLegacyCommittedPath
-    ? legacySemanticFailureReason
-    : coverageSemanticFailureReason;
+  topologyFailureReason ??= useExactCommittedPath
+    ? exactSemanticFailureReason
+    : useLegacyCommittedPath
+      ? legacySemanticFailureReason
+      : coverageSemanticFailureReason;
 
   const roofPlanes: RoofPlane3D[] = [];
   const renderedFacets: JoinedRoofFacet[] = [];
@@ -740,12 +878,11 @@ export function buildEaveGraphJoinedHippedRoof(input: {
       ...diagnostic.metadata,
       roofTopologySolver: topologySolver,
       roofFacetMergeMode: facetMergeMode,
-      ...(useLegacyCommittedPath
-        ? {}
-        : {
-            roofTopologyCoverageQaStatus: facetResult.metadata.roofTopologyCoverageQaStatus,
-            roofTopologyCoverageFailureReason: facetResult.metadata.roofTopologyCoverageFailureReason,
-          }),
+      roofTopologyExactPartitionQaStatus: exactFacetResult.metadata.roofTopologyExactPartitionQaStatus,
+      roofTopologyExactPartitionFailureReason: exactFacetResult.metadata.roofTopologyExactPartitionFailureReason,
+      roofTopologyExactPartitionFaceCount: exactFacetResult.metadata.roofTopologyExactPartitionFaceCount,
+      roofTopologyCoverageQaStatus: coverageFacetResult.metadata.roofTopologyCoverageQaStatus,
+      roofTopologyCoverageFailureReason: coverageFacetResult.metadata.roofTopologyCoverageFailureReason,
       roofTopologySemanticQaStatus: topologyFailureReason ? 'invalid' : 'valid',
       roofTopologySemanticFailureReason: topologyFailureReason,
       roofTopologyFailureEdgeId: topologyFailureEdgeId,
@@ -767,6 +904,8 @@ export function buildEaveGraphJoinedHippedRoof(input: {
       roofTopologyLegacySemanticFailureReason: legacySemanticFailureReason,
       roofTopologyCoverageSemanticQaStatus: coverageSemanticFailureReason ? 'invalid' : 'valid',
       roofTopologyCoverageSemanticFailureReason: coverageSemanticFailureReason,
+      roofTopologyExactPartitionSemanticQaStatus: exactSemanticFailureReason ? 'invalid' : 'valid',
+      roofTopologyExactPartitionSemanticFailureReason: exactSemanticFailureReason,
       roofRejectedFacetCount:
         (typeof facetResult.metadata.roofRejectedFacetCount === 'number'
           ? facetResult.metadata.roofRejectedFacetCount

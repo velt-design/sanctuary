@@ -526,6 +526,12 @@ describe("house model roof preset coverage", () => {
     expect(model.metadata?.footprintCanonicalizationPointCountAfter).toBe(6);
     expect(model.metadata?.roofTopologySolver).toBe("eave_graph_source_edge_envelope");
     expect(model.metadata?.roofFacetMergeMode).toBe("source_edge_envelope");
+    expect(model.metadata?.roofTopologyExactPartitionQaStatus).toEqual(
+      expect.stringMatching(/^(valid|invalid)$/),
+    );
+    expect(typeof model.metadata?.roofTopologyExactPartitionFaceCount).toBe(
+      "number",
+    );
     expect(model.metadata?.roofTopologyFailureReason).toBeNull();
     expect(model.metadata?.roofTopologySourceEdgeCount).toBe(6);
     expect(model.metadata?.roofTopologyFinalFaceCount).toBe(

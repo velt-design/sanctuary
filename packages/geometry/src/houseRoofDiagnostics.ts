@@ -28,6 +28,11 @@ export type HouseRoofStageDiagnostics = {
   roofTopologyProjectionViolationCount: number | null;
   roofTopologyCoverageQaStatus: string | null;
   roofTopologyCoverageFailureReason: string | null;
+  roofTopologyExactPartitionQaStatus: string | null;
+  roofTopologyExactPartitionFailureReason: string | null;
+  roofTopologyExactPartitionFaceCount: number | null;
+  roofTopologyExactPartitionSemanticQaStatus: string | null;
+  roofTopologyExactPartitionSemanticFailureReason: string | null;
   roofTopologyCoverageGapAreaMm2: number | null;
   roofTopologyCoverageOverlapAreaMm2: number | null;
   roofTopologyCoverageAreaDeltaMm2: number | null;
@@ -83,6 +88,11 @@ export const EMPTY_HOUSE_ROOF_STAGE_DIAGNOSTICS: HouseRoofStageDiagnostics = {
   roofTopologyProjectionViolationCount: null,
   roofTopologyCoverageQaStatus: null,
   roofTopologyCoverageFailureReason: null,
+  roofTopologyExactPartitionQaStatus: null,
+  roofTopologyExactPartitionFailureReason: null,
+  roofTopologyExactPartitionFaceCount: null,
+  roofTopologyExactPartitionSemanticQaStatus: null,
+  roofTopologyExactPartitionSemanticFailureReason: null,
   roofTopologyCoverageGapAreaMm2: null,
   roofTopologyCoverageOverlapAreaMm2: null,
   roofTopologyCoverageAreaDeltaMm2: null,
@@ -240,6 +250,26 @@ export function summarizeHouseModelRoofStageDiagnostics(
       metadata,
       "roofTopologyCoverageFailureReason",
     ),
+    roofTopologyExactPartitionQaStatus: stringMetadata(
+      metadata,
+      "roofTopologyExactPartitionQaStatus",
+    ),
+    roofTopologyExactPartitionFailureReason: stringMetadata(
+      metadata,
+      "roofTopologyExactPartitionFailureReason",
+    ),
+    roofTopologyExactPartitionFaceCount: numberMetadata(
+      metadata,
+      "roofTopologyExactPartitionFaceCount",
+    ),
+    roofTopologyExactPartitionSemanticQaStatus: stringMetadata(
+      metadata,
+      "roofTopologyExactPartitionSemanticQaStatus",
+    ),
+    roofTopologyExactPartitionSemanticFailureReason: stringMetadata(
+      metadata,
+      "roofTopologyExactPartitionSemanticFailureReason",
+    ),
     roofTopologyCoverageGapAreaMm2: numberMetadata(
       metadata,
       "roofTopologyCoverageGapAreaMm2",
@@ -356,6 +386,16 @@ export function pickHouseRoofStageDiagnostics(
       diagnostics.roofTopologyCoverageQaStatus,
     roofTopologyCoverageFailureReason:
       diagnostics.roofTopologyCoverageFailureReason,
+    roofTopologyExactPartitionQaStatus:
+      diagnostics.roofTopologyExactPartitionQaStatus,
+    roofTopologyExactPartitionFailureReason:
+      diagnostics.roofTopologyExactPartitionFailureReason,
+    roofTopologyExactPartitionFaceCount:
+      diagnostics.roofTopologyExactPartitionFaceCount,
+    roofTopologyExactPartitionSemanticQaStatus:
+      diagnostics.roofTopologyExactPartitionSemanticQaStatus,
+    roofTopologyExactPartitionSemanticFailureReason:
+      diagnostics.roofTopologyExactPartitionSemanticFailureReason,
     roofTopologyCoverageGapAreaMm2:
       diagnostics.roofTopologyCoverageGapAreaMm2,
     roofTopologyCoverageOverlapAreaMm2:

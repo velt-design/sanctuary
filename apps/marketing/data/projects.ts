@@ -151,6 +151,86 @@ const baseProjects: Project[] = [
     related: ['dairy-flat-estate', 'st-heliers-townhouse', 'tindalls-bay-pavilion'],
   },
   {
+    slug: 'mt-maunganui-box',
+    title: 'Mt Maunganui Box',
+    location: 'Mt Maunganui, Bay of Plenty',
+    region: 'Bay of Plenty',
+    type: 'Residential',
+    roof: 'Perimeter',
+    year: '2025',
+    heroImage: {
+      src: '/images/project-mt-maunganui-01.jpg',
+      alt: 'First-floor box-perimeter pergola with opal acrylic roof on a dark Mt Maunganui home',
+      objectPosition: '50% 0%',
+    },
+    gallery: [
+      {
+        src: '/images/project-mt-maunganui-01.jpg',
+        alt: 'First-floor box-perimeter pergola with opal acrylic roof on a dark Mt Maunganui home',
+        objectPosition: '50% 0%',
+      },
+      {
+        src: '/images/project-mt-maunganui-02.jpg',
+        alt: 'Front view of the Mt Maunganui first-floor deck cover with dark aluminium framing',
+        objectPosition: '50% 0%',
+      },
+      {
+        src: '/images/project-mt-maunganui-03.jpg',
+        alt: 'View beneath the opal acrylic pergola roof along the first-floor deck at Mt Maunganui',
+        objectPosition: '50% 0%',
+      },
+    ],
+    blurb:
+      'First-floor box-perimeter pergola with opal acrylic roofing, built to extend a dark contemporary home with soft filtered light and a clean roofline.',
+    description: [
+      'This Mt Maunganui project covers a first-floor deck on a contemporary dark-clad home, creating a sheltered outdoor space without making the interior or deck feel heavy. The box-perimeter frame gives the structure a strong architectural edge, while the opal acrylic roof softens glare and keeps daylight moving through the deck and adjacent rooms.',
+      'The roof was set out with a 5 degree fall and a hip-style junction at the outside end, allowing the cover to follow the deck geometry while keeping the perimeter line crisp from below and from the garden. Dark aluminium framing ties back into the house cladding and joinery, so the pergola reads as part of the original architecture rather than an add-on.',
+    ],
+    stats: {
+      width: '8.67 m',
+      depth: '3.1 m',
+      area: '26.9 m²',
+      pitch: '5°',
+    },
+    tags: ['Residential', 'Box-perimeter', 'Hip', 'Opal acrylic', 'First-floor deck', 'Aluminium'],
+    sections: [
+      {
+        title: 'Design brief',
+        paragraphs: [
+          'Create a covered first-floor deck that matched the home\'s dark contemporary exterior and preserved the open feeling of the balcony. The structure needed to provide usable weather cover while keeping the glass balustrade, outlook and natural light intact.',
+        ],
+        bullets: [
+          'Cover the first-floor deck without closing in the view',
+          'Use opal acrylic to diffuse light and reduce glare',
+          'Keep the frame aligned with the home\'s dark architectural language',
+        ],
+      },
+      {
+        title: 'Structure & finish',
+        paragraphs: [
+          'The pergola uses a dark powder-coated aluminium frame with a strong box perimeter. The plan calls up 300 x 50 mm aluminium beams, 100 x 50 mm aluminium rafters and 150 x 150 mm posts, giving the deck cover a clean, deliberate profile.',
+        ],
+        bullets: [
+          'Dark aluminium box-perimeter frame',
+          '300 x 50 mm beam and 100 x 50 mm rafter layout',
+          '150 x 150 mm posts positioned to keep the deck edge open',
+        ],
+      },
+      {
+        title: 'Roof & glazing',
+        paragraphs: [
+          'Opal acrylic roofing gives the space a soft, even light quality. The 5 degree fall manages drainage while the hip-style end detail resolves the angled deck geometry inside the perimeter frame.',
+        ],
+        bullets: [
+          '6 mm opal acrylic glazing',
+          '5 degree roof fall',
+          'Hip-style roof junction at the outside end',
+        ],
+      },
+    ],
+    related: ['waiheke-coastal-louvre', 'st-heliers-townhouse', 'dairy-flat-estate'],
+  },
+  {
     slug: 'devonport-gable-lightwell',
     title: 'Lilliput Mini Golf',
     location: '3 Tamaki Drive, Parnell, Auckland',
@@ -722,6 +802,189 @@ const baseProjects: Project[] = [
     videoYoutubeId: 'e5RXcNdCrD4',
   },
   {
+    slug: 'ardmore-box-carport',
+    title: 'Ardmore Box Carport',
+    location: 'Ardmore, Auckland',
+    region: 'South Auckland',
+    type: 'Residential',
+    roof: 'Perimeter',
+    year: '2025',
+    heroImage: {
+      src: '/images/project-ardmore-carport-01.jpg',
+      alt: 'Front view of the Ardmore box-perimeter carport with red steel framing and acrylic roofing',
+      objectPosition: '50% 44%',
+    },
+    gallery: [
+      {
+        src: '/images/project-ardmore-carport-01.jpg',
+        alt: 'Front view of the Ardmore box-perimeter carport with red steel framing and acrylic roofing',
+        objectPosition: '50% 44%',
+      },
+      {
+        src: '/images/project-ardmore-carport-02.jpg',
+        alt: 'View beneath the Ardmore carport showing the internal gable roof and steel PFC beams',
+        objectPosition: '50% 45%',
+      },
+      {
+        src: '/images/project-ardmore-carport-03.jpg',
+        alt: 'Close detail of acrylic roofing, aluminium rafters and red steel framing in the Ardmore carport',
+        objectPosition: '50% 42%',
+      },
+      {
+        src: '/images/project-ardmore-carport-04.jpg',
+        alt: 'Top-down view of the Ardmore box-perimeter carport roof with gable form inside the frame',
+        objectPosition: '50% 46%',
+      },
+      {
+        src: '/images/project-ardmore-carport-05.jpg',
+        alt: 'Side view of the Ardmore carport showing the black perimeter fascia and red steel posts',
+        objectPosition: '50% 42%',
+      },
+    ],
+    blurb:
+      'Large box-perimeter carport with a gable roof set inside the frame, combining steel PFC beams, aluminium rafters and 6 mm acrylic roofing.',
+    description: [
+      'This Ardmore project turns a wide driveway area beside the home into a covered carport with a strong architectural profile. The black box perimeter gives the structure a clean outer line, while the red steel frame and gable roof form inside create a practical, open span for vehicle access and everyday use.',
+      'The roof combines aluminium rafters with steel PFC beams and 6 mm acrylic glazing, keeping the space bright while providing weather cover across the driveway. The main roof falls at 5 degrees, with the internal gable section resolving the roof geometry neatly inside the perimeter frame. Integrated LED lighting completes the carport for evening arrivals and day-to-day use.',
+    ],
+    stats: {
+      width: '8.77 m',
+      depth: '6.19 m',
+      area: '54.3 m²',
+      pitch: '5°',
+    },
+    tags: ['Residential', 'Box-perimeter', 'Gable', 'Carport', 'Steel', 'Aluminium', 'Acrylic roof', 'LED lighting'],
+    sections: [
+      {
+        title: 'Design brief',
+        paragraphs: [
+          'Create a large covered carport that felt deliberate beside the existing home, not like a lightweight add-on. The structure needed clear vehicle access, strong weather protection and enough daylight to keep the driveway from feeling enclosed.',
+        ],
+        bullets: [
+          'Cover a wide driveway and carport zone',
+          'Keep the perimeter line clean and architectural',
+          'Use a gable form inside the box frame to manage the roof shape',
+        ],
+      },
+      {
+        title: 'Structure & finish',
+        paragraphs: [
+          'The structure uses steel PFC beams for the main frame, with aluminium rafters and guttering to complete the roof system. The red steelwork gives the underside a bold, exposed structural character, while the black perimeter wraps the carport with a crisp outer edge.',
+        ],
+        bullets: [
+          'Steel PFC beam structure',
+          'Aluminium rafters, including 100 x 50 mm and 80 x 50 mm members',
+          '150 x 100 mm aluminium SP gutter',
+          'Black box perimeter with exposed red structural framing',
+        ],
+      },
+      {
+        title: 'Roof & glazing',
+        paragraphs: [
+          'The roof uses 6 mm acrylic glazing over the main carport span. A 5 degree fall manages drainage across the larger roof areas, while the gable section sits inside the perimeter frame to bring height and structure through the centre.',
+        ],
+        bullets: [
+          '6 mm acrylic roofing',
+          '5 degree fall to the main roof planes',
+          'Internal gable form inside the box perimeter',
+          '12 LED lights integrated into the carport',
+        ],
+      },
+    ],
+    related: ['mt-maunganui-box', 'waiheke-coastal-louvre', 'dairy-flat-estate'],
+  },
+  {
+    slug: 'riverhead-gable-pavilion',
+    title: 'Riverhead Gable Pavilion',
+    location: 'Riverhead, Auckland',
+    region: 'Northwest Auckland',
+    type: 'Residential',
+    roof: 'Gable',
+    year: '2026',
+    heroImage: {
+      src: '/images/project-riverhead-gable-01.jpg',
+      alt: 'Front view of the Riverhead poolside gable pavilion with timber sarking and black framing',
+      objectPosition: '50% 45%',
+    },
+    gallery: [
+      {
+        src: '/images/project-riverhead-gable-01.jpg',
+        alt: 'Front view of the Riverhead poolside gable pavilion with timber sarking and black framing',
+        objectPosition: '50% 45%',
+      },
+      {
+        src: '/images/project-riverhead-gable-02.jpg',
+        alt: 'Wide view of the Riverhead gable pavilion beside the pool and landscaped garden',
+        objectPosition: '50% 45%',
+      },
+      {
+        src: '/images/project-riverhead-gable-03.png',
+        alt: 'Detail of timber sarking, downlights and LED strip lighting inside the Riverhead gable roof',
+        objectPosition: '50% 0%',
+      },
+      {
+        src: '/images/project-riverhead-gable-04.jpg',
+        alt: 'Riverhead gable pavilion with black frame and sheltered seating beside the pool',
+        objectPosition: '50% 0%',
+      },
+      {
+        src: '/images/project-riverhead-gable-05.jpg',
+        alt: 'Side view of the Riverhead poolside pavilion showing the gable roof and timber-lined underside',
+        objectPosition: '50% 0%',
+      },
+    ],
+    blurb:
+      'Poolside gable pavilion with black aluminium and steel framing, warm timber sarking, integrated downlights and LED strip lighting.',
+    description: [
+      'This Riverhead project creates a sheltered outdoor lounge beside the pool, turning the deck edge into a more usable all-season space. The gable form gives the pavilion height and symmetry, while the black frame keeps the structure sharp against the surrounding landscape and modern home.',
+      'The build combines aluminium framing with steel beams for the main structure, then softens the underside with timber sarking. Skillion insulation helps improve comfort under the roof, while downlights and warm LED strip lighting around the ceiling edges make the space work just as well in the evening as it does during the day.',
+    ],
+    stats: {
+      width: '5.55 m',
+      depth: '4.20 m',
+      area: '23.3 m²',
+    },
+    tags: ['Residential', 'Gable', 'Poolside', 'Timber sarking', 'Steel', 'Aluminium', 'Downlights', 'LED lighting', 'Insulated roof'],
+    sections: [
+      {
+        title: 'Design brief',
+        paragraphs: [
+          'Create a sheltered poolside lounge that felt open to the garden and view, while giving the seating area proper weather protection. The structure needed to sit confidently beside the pool without blocking the outlook or feeling too heavy on the deck.',
+        ],
+        bullets: [
+          'Provide shelter beside the pool',
+          'Keep the view open through the gable end',
+          'Create a warm outdoor-room feel with timber and lighting',
+        ],
+      },
+      {
+        title: 'Structure & finish',
+        paragraphs: [
+          'The pavilion uses a combination of aluminium and steel beams for strength and clean spans. The black frame gives the roof a crisp outline, while the timber sarking adds warmth and texture to the ceiling.',
+        ],
+        bullets: [
+          'Aluminium and steel beam structure',
+          'Black exterior frame and posts',
+          'Timber sarking to the underside of the gable roof',
+          'Open gable end framing the landscape',
+        ],
+      },
+      {
+        title: 'Roof, insulation & lighting',
+        paragraphs: [
+          'The roof is designed as a comfortable covered lounge, not just a basic shelter. Skillion insulation improves comfort, downlights provide functional lighting, and LED strip lighting traces the ceiling edges for a softer evening effect.',
+        ],
+        bullets: [
+          'Skillion insulation above timber sarking',
+          'Integrated downlights',
+          'Warm LED strip lighting around the ceiling perimeter',
+          'Poolside cover sized at approximately 5.55 m x 4.20 m',
+        ],
+      },
+    ],
+    related: ['warkworth-outdoor-room', 'st-heliers-townhouse', 'dairy-flat-estate'],
+  },
+  {
     slug: 'st-heliers-townhouse',
     title: 'St Heliers Townhouse',
     location: 'St Heliers, Auckland',
@@ -782,12 +1045,15 @@ const baseProjects: Project[] = [
 
 const projectOrder: string[] = [
   'warkworth-outdoor-room',    // Warkworth Outdoor Room
+  'mt-maunganui-box',          // Mt Maunganui Box
   'devonport-gable-lightwell', // Lilliput Mini Golf
+  'riverhead-gable-pavilion',  // Riverhead Gable Pavilion
   'velskov-forest',            // Velskov Forest
   'tindalls-bay-pavilion',     // Tindalls Bay - Patio & Carport
   'goodhome-commercial-terrace', // The Good Home Takanini
   'dairy-flat-estate',         // Dairy Flat Estate
   'waitakere-ranges-lanai',    // Murawai Courtyard
+  'ardmore-box-carport',       // Ardmore Box Carport
   'st-heliers-townhouse',      // St Heliers Townhouse
   'kiwi-rail-platform',        // KiwiRail Head Office
   'waiheke-coastal-louvre',    // Waiheke Holiday Home

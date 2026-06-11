@@ -1932,3 +1932,19 @@ Current guardrail: fully hipped custom roofs first use the existing validated so
 Promoted to: None
 
 Related docs/tests: [packages/geometry/src/house/roofEaveGraphHipped.ts](../packages/geometry/src/house/roofEaveGraphHipped.ts), [packages/geometry/src/house/roofPresetCoverage.test.ts](../packages/geometry/src/house/roofPresetCoverage.test.ts), [packages/geometry/src/houseRoofDiagnostics.ts](../packages/geometry/src/houseRoofDiagnostics.ts), [packages/geometry/src/viewer.ts](../packages/geometry/src/viewer.ts), [playwright/support/workbenchFixture.ts](../playwright/support/workbenchFixture.ts).
+
+### 2026-06-11 - Workbench House Forms - Exact Hipped Partition Diagnostics
+
+Area: Workbench House Forms
+
+Status: Active
+
+Decision or mistake: a pure source-edge exact lower-envelope partition is useful package-owned topology evidence, but it must not become the first failure diagnostic when another committed candidate passes semantic QA. Infinite source-edge roof-plane clipping can erase legitimate short-edge faces on concave custom forms, so replacing every custom hipped roof with that exact attempt in one slice would regress known-valid fixtures.
+
+Why it mattered: the north-star move is to retire the brittle rectilinear/dissolve path by proving cleaner package geometry, not by making healthy roofs look invalid or adding portal paint fallbacks. Exact partition QA now surfaces as metadata for captured payloads, while committed geometry still has to pass semantic and coverage gates.
+
+Current guardrail: fully hipped custom roofs try `source_edge_exact_envelope_partition` first and expose `roofTopologyExactPartition*` metadata. If exact semantic QA fails, known-good `eave_graph_source_edge_envelope` may still commit only when semantic QA passes; `source_edge_coverage_partition` may recover split source-edge faces only when every source edge is represented and coverage/semantic QA are valid. Do not use failed exact-attempt metadata as `diagnosticCode` for a roof that committed valid geometry.
+
+Promoted to: None
+
+Related docs/tests: [docs/costing-and-geometry.md](costing-and-geometry.md), [docs/design-workbench-architecture.md](design-workbench-architecture.md), [packages/geometry/src/house/roofEaveGraphHipped.ts](../packages/geometry/src/house/roofEaveGraphHipped.ts), [packages/geometry/src/house/roofPresetCoverage.test.ts](../packages/geometry/src/house/roofPresetCoverage.test.ts), [packages/geometry/src/houseRoofDiagnostics.ts](../packages/geometry/src/houseRoofDiagnostics.ts), [packages/geometry/src/viewer.ts](../packages/geometry/src/viewer.ts), [playwright/support/workbenchFixture.ts](../playwright/support/workbenchFixture.ts).

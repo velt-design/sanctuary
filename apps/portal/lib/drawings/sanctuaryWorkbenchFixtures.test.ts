@@ -322,6 +322,8 @@ describe('sanctuary workbench fixtures', () => {
         roofTopologySolver: 'eave_graph_source_edge_envelope',
         roofTopologySemanticQaStatus: 'valid',
         roofTopologySemanticFailureReason: null,
+        roofTopologyExactPartitionQaStatus: expect.stringMatching(/^(valid|invalid)$/),
+        roofTopologyExactPartitionFaceCount: expect.any(Number),
         roofTopologyClosedFaceCount: 6,
         roofTopologyExpectedFaceCount: 6,
         roofTopologyCoverageGapAreaMm2: 0,

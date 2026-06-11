@@ -113,6 +113,11 @@ export async function readPlanHouseProjectionHealth(page: Page): Promise<Array<{
   roofTopologyProjectionViolationCount: number | null;
   roofTopologyCoverageQaStatus: string | null;
   roofTopologyCoverageFailureReason: string | null;
+  roofTopologyExactPartitionQaStatus: string | null;
+  roofTopologyExactPartitionFailureReason: string | null;
+  roofTopologyExactPartitionFaceCount: number | null;
+  roofTopologyExactPartitionSemanticQaStatus: string | null;
+  roofTopologyExactPartitionSemanticFailureReason: string | null;
   roofTopologyCoverageGapAreaMm2: number | null;
   roofTopologyCoverageOverlapAreaMm2: number | null;
   roofTopologyCoverageAreaDeltaMm2: number | null;
