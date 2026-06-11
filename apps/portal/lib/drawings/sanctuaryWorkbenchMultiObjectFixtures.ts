@@ -157,9 +157,14 @@ function makeMultiHouseCustomProjectionFixtureSource(): {
     label: 'House 3',
     transformOverride: { offsetXM: 6, offsetYM: -8, rotationQuarterTurns: 0 },
   });
+  nextDraft = addHouseFormToObjectFirstDraft({
+    draft: nextDraft,
+    label: 'House 4',
+    transformOverride: { offsetXM: 16, offsetYM: -8, rotationQuarterTurns: 0 },
+  });
   const houseForms = nextDraft.houseAssembly?.houseForms;
-  if (!houseForms || houseForms.length < 3) {
-    throw new Error('Expected three house forms for custom projection fixture.');
+  if (!houseForms || houseForms.length < 4) {
+    throw new Error('Expected four house forms for custom projection fixture.');
   }
 
   houseForms[0] = {
@@ -213,6 +218,32 @@ function makeMultiHouseCustomProjectionFixtureSource(): {
         returnRunM: '2.4',
       },
     },
+  };
+  houseForms[3] = {
+    ...houseForms[3],
+    label: 'House 4',
+    transform: { offsetXM: 16, offsetYM: -8, rotationQuarterTurns: 0 },
+    footprint: {
+      ...houseForms[3].footprint,
+      mode: 'custom_polygon',
+      preset: 'recess_left',
+      polygon: [
+        housePoint('-0.8149011184049414', '1.2000000001296671'),
+        housePoint('2.3999999995950567', '1.2000000001296671'),
+        housePoint('2.3999999995950567', '1.2966711437911727e-10'),
+        housePoint('8.901820743595056', '1.2966711437911727e-10'),
+        housePoint('8.901820743595056', '4.171359789141505'),
+        housePoint('-0.8149011184049414', '4.171359789141505'),
+      ],
+    },
+    roofIntent: {
+      ...houseForms[3].roofIntent,
+      form: 'hipped',
+      primaryPitchDeg: '5',
+      ridgeAxis: 'x',
+      openGableEndIds: [],
+    },
+    roofIntentAuthored: true,
   };
 
   nextDraft = {

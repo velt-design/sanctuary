@@ -7,6 +7,9 @@ function houseCommittedBodyTokenClass(shape: GeometryTopProjectionShape): string
     return lineweightStyles.bodyHouseOpening;
   }
   if (shape.kind === 'roof' || shape.kind === 'house_roof_material') {
+    if (shape.metadata?.planProjectionSource === 'house_terminal_end') {
+      return lineweightStyles.bodyTransparent;
+    }
     // Milestone 13 plan-view UX: a hip-end facet tagged isOpen=true is
     // a synthetic hover target for an OPENED gable end. Render it
     // transparent so the only visible marker is the explicit local hover

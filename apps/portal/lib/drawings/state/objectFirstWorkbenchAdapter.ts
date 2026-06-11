@@ -4,14 +4,14 @@ import type {
   ObjectFirstHouseFormDraft,
   ObjectFirstWorkbenchDraftVNext,
   ObjectFirstWorkbenchProjectModel,
-} from './objectFirstWorkbenchModel';
-import {
-  normalizeObjectFirstWorkbenchDraftVNext,
-} from './objectFirstWorkbenchModel';
-import { deriveHouseFormDisplayLabel } from './houseFormDisplayLabel';
-import { reconcileHouseFormRoofIntentForFootprint } from './houseFormRoofIntentForFootprint';
+} from "./objectFirstWorkbenchModel";
+import { normalizeObjectFirstWorkbenchDraftVNext } from "./objectFirstWorkbenchModel";
+import { deriveHouseFormDisplayLabel } from "./houseFormDisplayLabel";
+import { reconcileHouseFormRoofIntentForFootprint } from "./houseFormRoofIntentForFootprint";
 
-function buildHouseFormDraftFromModel(houseForm: HouseFormModel): ObjectFirstHouseFormDraft {
+function buildHouseFormDraftFromModel(
+  houseForm: HouseFormModel,
+): ObjectFirstHouseFormDraft {
   return {
     id: houseForm.id,
     label: houseForm.label,
@@ -55,7 +55,9 @@ export function buildObjectFirstWorkbenchDraftFromProjectModel(
   });
 }
 
-export function nextHouseFormId(existing: ReadonlyArray<{ id: string }>): string {
+export function nextHouseFormId(
+  existing: ReadonlyArray<{ id: string }>,
+): string {
   const used = new Set(existing.map((form) => form.id));
   let index = existing.length === 0 ? 1 : existing.length + 1;
   while (used.has(`house-form-${index}`)) index += 1;
@@ -64,8 +66,8 @@ export function nextHouseFormId(existing: ReadonlyArray<{ id: string }>): string
 
 function buildDefaultHouseAssemblyDraft(): ObjectFirstHouseAssemblyDraft {
   return {
-    id: 'assembly-main',
-    label: 'House Assembly',
+    id: "assembly-main",
+    label: "House Assembly",
     houseForms: [],
   };
 }
@@ -73,7 +75,7 @@ function buildDefaultHouseAssemblyDraft(): ObjectFirstHouseAssemblyDraft {
 function buildDefaultHouseFormDraft(input: {
   id: string;
   label: string;
-  transform?: Partial<ObjectFirstHouseFormDraft['transform']>;
+  transform?: Partial<ObjectFirstHouseFormDraft["transform"]>;
 }): ObjectFirstHouseFormDraft {
   return {
     id: input.id,
@@ -85,32 +87,32 @@ function buildDefaultHouseFormDraft(input: {
       ...input.transform,
     },
     footprint: {
-      mode: 'preset',
-      preset: 'straight',
+      mode: "preset",
+      preset: "straight",
       params: {
-        widthM: '6',
-        offsetXM: '0',
-        setbackM: '0',
-        bandDepthM: '4',
-        returnRunM: '0',
-        recessWidthM: '0',
-        recessDepthM: '0',
-        leftLegRunM: '0',
-        rightLegRunM: '0',
-        sideRunM: '0',
-      } as ObjectFirstHouseFormDraft['footprint']['params'],
+        widthM: "6",
+        offsetXM: "0",
+        setbackM: "0",
+        bandDepthM: "4",
+        returnRunM: "0",
+        recessWidthM: "0",
+        recessDepthM: "0",
+        leftLegRunM: "0",
+        rightLegRunM: "0",
+        sideRunM: "0",
+      } as ObjectFirstHouseFormDraft["footprint"]["params"],
       polygon: [],
-      attachmentSide: 'rear',
+      attachmentSide: "rear",
     },
     roofIntent: {
-      form: 'mono',
-      material: 'corrugated_iron',
-      primaryPitchDeg: '5',
-      primaryFallDirection: 'negative_y',
-      ridgeAxis: 'x',
+      form: "hipped",
+      material: "corrugated_iron",
+      primaryPitchDeg: "5",
+      primaryFallDirection: "negative_y",
+      ridgeAxis: "x",
       openGableEndIds: [],
     },
-    storeyMode: 'single_storey',
+    storeyMode: "single_storey",
     attachmentStrategy: null,
   };
 }
@@ -134,34 +136,39 @@ export function addHouseFormToObjectFirstDraft(input: {
   /** Override the generated label. Defaults to `House <N>` where N is the new entry's 1-based index. */
   label?: string;
   /** Override the auto-offset position. Defaults to `{ offsetXM: 10, offsetYM: 0, rotationQuarterTurns: 0 }`. */
-  transformOverride?: Partial<ObjectFirstHouseFormDraft['transform']>;
+  transformOverride?: Partial<ObjectFirstHouseFormDraft["transform"]>;
 }): ObjectFirstWorkbenchDraftVNext {
-  const assembly = input.draft.houseAssembly ?? buildDefaultHouseAssemblyDraft();
+  const assembly =
+    input.draft.houseAssembly ?? buildDefaultHouseAssemblyDraft();
   const source: ObjectFirstHouseFormDraft | null =
     (input.sourceHouseFormId
       ? assembly.houseForms.find((form) => form.id === input.sourceHouseFormId)
-      : null) ?? assembly.houseForms[0] ?? null;
+      : null) ??
+    assembly.houseForms[0] ??
+    null;
   const id = nextHouseFormId(assembly.houseForms);
-  const label = input.label ?? deriveHouseFormDisplayLabel(assembly.houseForms.length);
-  const nextForm: ObjectFirstHouseFormDraft = reconcileHouseFormRoofIntentForFootprint(
-    source
-      ? {
-          ...source,
-          id,
-          label,
-          transform: {
-            offsetXM: source.transform.offsetXM + 10,
-            offsetYM: source.transform.offsetYM,
-            rotationQuarterTurns: source.transform.rotationQuarterTurns,
-            ...input.transformOverride,
-          },
-        }
-      : buildDefaultHouseFormDraft({
-          id,
-          label,
-          transform: input.transformOverride,
-        }),
-  );
+  const label =
+    input.label ?? deriveHouseFormDisplayLabel(assembly.houseForms.length);
+  const nextForm: ObjectFirstHouseFormDraft =
+    reconcileHouseFormRoofIntentForFootprint(
+      source
+        ? {
+            ...source,
+            id,
+            label,
+            transform: {
+              offsetXM: source.transform.offsetXM + 10,
+              offsetYM: source.transform.offsetYM,
+              rotationQuarterTurns: source.transform.rotationQuarterTurns,
+              ...input.transformOverride,
+            },
+          }
+        : buildDefaultHouseFormDraft({
+            id,
+            label,
+            transform: input.transformOverride,
+          }),
+    );
   return normalizeObjectFirstWorkbenchDraftVNext({
     ...input.draft,
     houseAssembly: {
@@ -177,7 +184,9 @@ export function removeHouseFormFromObjectFirstDraft(input: {
 }): ObjectFirstWorkbenchDraftVNext {
   const assembly = input.draft.houseAssembly;
   if (!assembly) return input.draft;
-  const next = assembly.houseForms.filter((form) => form.id !== input.houseFormId);
+  const next = assembly.houseForms.filter(
+    (form) => form.id !== input.houseFormId,
+  );
   if (next.length === assembly.houseForms.length) return input.draft;
   return normalizeObjectFirstWorkbenchDraftVNext({
     ...input.draft,
@@ -192,7 +201,9 @@ export function resolveNextHouseFormIdAfterRemoval(
   houseForms: ReadonlyArray<{ id: string }>,
   removedHouseFormId: string,
 ): string | null | undefined {
-  const removedIndex = houseForms.findIndex((form) => form.id === removedHouseFormId);
+  const removedIndex = houseForms.findIndex(
+    (form) => form.id === removedHouseFormId,
+  );
   if (removedIndex === -1) return undefined;
   const nextForms = houseForms.filter((form) => form.id !== removedHouseFormId);
   return nextForms[Math.min(removedIndex, nextForms.length - 1)]?.id ?? null;

@@ -83,6 +83,13 @@ function emptyHouseHealth(input: {
     diagnosticCode,
     roofValidationStatus: roofDiagnostics.roofQaStatus,
     roofValidationCode: roofDiagnostics.roofQaFailureReason,
+    roofIntentAuthored: input.inputDiagnostics?.roofIntentAuthored ?? false,
+    rawRoofIntentForm: input.inputDiagnostics?.rawRoofIntentForm ?? null,
+    resolvedRoofIntentForm:
+      input.inputDiagnostics?.resolvedRoofIntentForm ?? null,
+    roofIntentResolutionSource:
+      input.inputDiagnostics?.roofIntentResolutionSource ?? null,
+    roofIntentRepairCode: input.inputDiagnostics?.roofIntentRepairCode ?? null,
     ...pickHouseRoofStageDiagnostics(roofDiagnostics),
   };
 }
@@ -192,6 +199,11 @@ function buildHealthForEntry(input: {
         : (firstHouseRoofStageDiagnosticCode(inputDiagnostics) ?? failureStage),
     roofValidationStatus: inputDiagnostics.roofQaStatus,
     roofValidationCode: inputDiagnostics.roofQaFailureReason,
+    roofIntentAuthored: inputDiagnostics.roofIntentAuthored,
+    rawRoofIntentForm: inputDiagnostics.rawRoofIntentForm,
+    resolvedRoofIntentForm: inputDiagnostics.resolvedRoofIntentForm,
+    roofIntentResolutionSource: inputDiagnostics.roofIntentResolutionSource,
+    roofIntentRepairCode: inputDiagnostics.roofIntentRepairCode,
     sceneRoofBodyCount,
     ...pickHouseRoofStageDiagnostics(inputDiagnostics),
   };

@@ -16,8 +16,11 @@ import { houseFormTransformToAssemblyPosition } from "./houseFormTransform";
 import { buildHouseFormRawGeometryInput } from "./houseFormRawGeometry";
 import type {
   HouseFormModel,
+  HouseRoofIntentAuthorshipResolution,
+  HouseRoofIntentResolutionSource,
   WorkbenchProjectModel,
 } from "./objectFirstWorkbenchModel";
+import { resolveHouseRoofIntentForAuthorship } from "./objectFirstWorkbenchModel";
 import type { ProjectHouseProjectionFailureStage } from "./projectHouseProjectionHealth";
 
 export type HouseFormGeometryInputDiagnostics = {
@@ -31,6 +34,11 @@ export type HouseFormGeometryInputDiagnostics = {
   failureStage: ProjectHouseProjectionFailureStage;
   diagnosticCode: string | null;
   roofPipelineFailureStage: HouseRoofModelPipelineFailureStage;
+  roofIntentAuthored: boolean;
+  rawRoofIntentForm: string | null;
+  resolvedRoofIntentForm: string | null;
+  roofIntentResolutionSource: HouseRoofIntentResolutionSource | null;
+  roofIntentRepairCode: string | null;
 } & HouseRoofStageDiagnostics;
 
 type HouseFormGeometryInputSuccess = {
@@ -67,6 +75,7 @@ function buildFailure(input: {
   modelPresent?: boolean;
   wallCount?: number;
   roofPlaneCount?: number;
+  roofIntentResolution?: HouseRoofIntentAuthorshipResolution;
 }): HouseFormGeometryInputFailure {
   const diagnosticCode = input.diagnosticCode ?? input.failureStage;
   return {
@@ -85,6 +94,12 @@ function buildFailure(input: {
       failureStage: input.failureStage,
       diagnosticCode,
       roofPipelineFailureStage: "not_started",
+      roofIntentAuthored:
+        input.roofIntentResolution?.roofIntentAuthored ?? false,
+      rawRoofIntentForm: input.roofIntentResolution?.rawForm ?? null,
+      resolvedRoofIntentForm: input.roofIntentResolution?.resolvedForm ?? null,
+      roofIntentResolutionSource: input.roofIntentResolution?.source ?? null,
+      roofIntentRepairCode: input.roofIntentResolution?.repairCode ?? null,
       ...EMPTY_HOUSE_ROOF_STAGE_DIAGNOSTICS,
     },
   };
@@ -93,12 +108,17 @@ function buildFailure(input: {
 export function buildHouseFormGeometryInputForForm(
   houseForm: HouseFormModel,
 ): HouseFormGeometryInputResult {
+  const roofIntentResolution = resolveHouseRoofIntentForAuthorship({
+    roofIntent: houseForm.roofIntent,
+    roofIntentAuthored: houseForm.roofIntentAuthored,
+  });
   const rawGeometry = buildHouseFormRawGeometryInput(houseForm);
   if (!rawGeometry) {
     return buildFailure({
       houseFormId: houseForm.id,
       failureStage: "invalid_footprint",
       diagnosticCode: "invalid_footprint",
+      roofIntentResolution,
     });
   }
 
@@ -121,7 +141,7 @@ export function buildHouseFormGeometryInputForForm(
     fasciaLine: null,
     roofEdgeLine: null,
     soffitDepthMm: model.eave?.soffitDepthMm ?? null,
-    footprint: rawGeometry.footprint,
+    footprint: model.footprint,
     model,
     attachmentTarget: null,
     position: null,
@@ -181,6 +201,11 @@ export function buildHouseFormGeometryInputForForm(
       failureStage,
       diagnosticCode,
       roofPipelineFailureStage,
+      roofIntentAuthored: roofIntentResolution.roofIntentAuthored,
+      rawRoofIntentForm: roofIntentResolution.rawForm,
+      resolvedRoofIntentForm: roofIntentResolution.resolvedForm,
+      roofIntentResolutionSource: roofIntentResolution.source,
+      roofIntentRepairCode: roofIntentResolution.repairCode,
       ...roofStageDiagnostics,
     },
   };

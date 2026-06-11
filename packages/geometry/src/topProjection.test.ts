@@ -35,6 +35,28 @@ function makeHouseFootprint(lengthMm: number, depthMm = 1800): Polygon3 {
   ];
 }
 
+function makeLFootprint(): Polygon3 {
+  return [
+    { x: 0, y: 0, z: 0 },
+    { x: 7800, y: 0, z: 0 },
+    { x: 7800, y: 1800, z: 0 },
+    { x: 1800, y: 1800, z: 0 },
+    { x: 1800, y: 4200, z: 0 },
+    { x: 0, y: 4200, z: 0 },
+  ];
+}
+
+function makeRecessFootprint(): Polygon3 {
+  return [
+    { x: 0, y: 0, z: 0 },
+    { x: 6000, y: 0, z: 0 },
+    { x: 6000, y: 2096, z: 0 },
+    { x: 3600, y: 2096, z: 0 },
+    { x: 3600, y: 3296, z: 0 },
+    { x: 0, y: 3296, z: 0 },
+  ];
+}
+
 function addHouseModelContext(config: GeometryConfig): GeometryConfig {
   const footprint = makeHouseFootprint(7200);
   const strategy: HouseAttachmentStrategy = "fascia_under_gutter";
@@ -98,6 +120,62 @@ function addHouseModelContext(config: GeometryConfig): GeometryConfig {
         },
       },
     },
+  };
+}
+
+function buildHousePlanShapes(input: {
+  footprint: Polygon3;
+  roofForm: "mono" | "hipped";
+  houseId?: string;
+}) {
+  const fixture = requireSupportedFixture("mono_attached_soffit_away_standard");
+  const enriched = addHouseModelContext(fixture.config);
+  const config: GeometryConfig = {
+    ...enriched,
+    houseContext: {
+      ...enriched.houseContext,
+      footprint: input.footprint,
+      model: {
+        ...enriched.houseContext.model!,
+        footprint: input.footprint,
+        roofForm: input.roofForm,
+        roofPrimaryFallDirection: "negative_y",
+        roofRidgeAxis: "x",
+        decks: [],
+        openings: [],
+      },
+    },
+  };
+  const solved = solveAssembly3D(config);
+  if (!solved.ok) throw new Error(solved.error);
+  const model = solved.value.house.model;
+  if (!model) throw new Error("Expected house model.");
+  return buildHouseModelTopProjectionShapes({
+    model: { ...model, houseId: input.houseId ?? model.houseId },
+  });
+}
+
+function housePlanRoofBody(shapes: ReturnType<typeof buildHouseModelTopProjectionShapes>) {
+  const shape = shapes.find(
+    (candidate) => candidate.metadata?.planProjectionSource === "house_eave_perimeter",
+  );
+  if (!shape) throw new Error("Expected house eave-perimeter roof body.");
+  return shape;
+}
+
+function polygonHasDiagonalEdge(polygon: Point2[]): boolean {
+  return polygon.some((point, index) => {
+    const next = polygon[(index + 1) % polygon.length]!;
+    return Math.abs(point.x - next.x) > 1e-6 && Math.abs(point.y - next.y) > 1e-6;
+  });
+}
+
+function polygonExtents(polygon: Point2[]) {
+  const xs = polygon.map((point) => point.x);
+  const ys = polygon.map((point) => point.y);
+  return {
+    width: Math.max(...xs) - Math.min(...xs),
+    height: Math.max(...ys) - Math.min(...ys),
   };
 }
 
@@ -290,17 +368,71 @@ describe("buildTopProjectionViewModel", () => {
         (shape) =>
           shape.family === "house" &&
           shape.kind === "roof" &&
+          shape.id === "house_plan_roof:house-form-2" &&
+          shape.metadata?.planProjectionSource === "house_eave_perimeter" &&
           shape.metadata?.houseFormId === "house-form-2",
       ),
     ).toBe(true);
     expect(
-      shapes.some(
+      shapes.every(
         (shape) =>
-          shape.family === "house" &&
-          shape.kind === "house_roof_material" &&
-          shape.metadata?.houseFormId === "house-form-2",
+          shape.sourceType !== "house_roof_material" &&
+          shape.metadata?.planProjectionSource !== "house_roof_material",
       ),
     ).toBe(true);
+  });
+
+  it("uses an eave-perimeter roof body for mono L footprints instead of a material convex hull chord", () => {
+    const shapes = buildHousePlanShapes({
+      footprint: makeLFootprint(),
+      roofForm: "mono",
+      houseId: "mono-l-house",
+    });
+    const roofBody = housePlanRoofBody(shapes);
+
+    expect(roofBody.metadata?.houseFormId).toBe("mono-l-house");
+    expect(roofBody.polygon).toHaveLength(makeLFootprint().length);
+    expect(polygonHasDiagonalEdge(roofBody.polygon)).toBe(false);
+    expect(shapes.some((shape) => shape.sourceType === "house_roof_material")).toBe(false);
+  });
+
+  it("emits hipped terminal-end hit targets independently of projected roof facets", () => {
+    const shapes = buildHousePlanShapes({
+      footprint: makeHouseFootprint(6000, 1800),
+      roofForm: "hipped",
+      houseId: "straight-hip-house",
+    });
+    const terminalTargets = shapes.filter(
+      (shape) =>
+        shape.metadata?.planProjectionSource === "house_terminal_end" &&
+        typeof shape.metadata?.openGableEndId === "string",
+    );
+
+    expect(terminalTargets.length).toBeGreaterThanOrEqual(2);
+    expect(
+      terminalTargets.every(
+        (shape) =>
+          shape.metadata?.houseFormId === "straight-hip-house" &&
+          shape.kind === "roof" &&
+          shape.sourceType === "house_surface_solid",
+      ),
+    ).toBe(true);
+  });
+
+  it("keeps custom hipped roof plan bodies non-collapsed and orthogonal", () => {
+    const shapes = buildHousePlanShapes({
+      footprint: makeRecessFootprint(),
+      roofForm: "hipped",
+      houseId: "recess-hip-house",
+    });
+    const roofBody = housePlanRoofBody(shapes);
+    const extents = polygonExtents(roofBody.polygon);
+
+    expect(roofBody.metadata?.houseFormId).toBe("recess-hip-house");
+    expect(roofBody.polygon.length).toBe(makeRecessFootprint().length);
+    expect(polygonHasDiagonalEdge(roofBody.polygon)).toBe(false);
+    expect(extents.width).toBeGreaterThan(5000);
+    expect(extents.height).toBeGreaterThan(2500);
   });
 
   it("projects objects that exist only in the supplied viewer scene", () => {

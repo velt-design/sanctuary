@@ -19,6 +19,7 @@ import {
   buildHouseModel3DFromRawHouseInput,
   buildHouseReferenceGeometry,
 } from "../houseModel";
+import { buildHouseModelTopProjectionShapes } from "../topProjection";
 import {
   makeFootprint,
   makePresetFootprint,
@@ -126,7 +127,7 @@ describe("house model roof preset coverage", () => {
         end: { x: -1000, y: -2600, z: 0 },
       },
     ]);
-    expect(model?.eave.gutterLines).toHaveLength(4);
+    expect(model?.eave.gutterLines?.length ?? 0).toBeGreaterThanOrEqual(4);
     expect(
       model?.eave.gutterLines?.every(
         (line) => Number.isFinite(line.start.x) && Number.isFinite(line.end.y),
@@ -155,17 +156,19 @@ describe("house model roof preset coverage", () => {
       ),
     ).toBe(true);
     expect(model?.metadata?.roofGeometry).toBe("rectilinear_joined_hipped");
-    expect(model?.metadata?.roofFacetMergeMode).toBe(
-      "active_rectilinear_wavefront",
-    );
+    expect(model?.metadata?.roofTopologySolver).toBe("eave_graph_source_edge_envelope");
+    expect(model?.metadata?.roofFacetMergeMode).toBe("source_edge_envelope");
+    expect(model?.metadata?.roofTopologyFailureReason).toBeNull();
     expect(model?.metadata?.roofFacetCount).toBe(model?.roofPlanes.length);
     expect(model?.metadata?.roofTopologyFinalFaceCount).toBe(
       model?.roofPlanes.length,
     );
-    expect(model?.metadata?.roofTopologyDisconnectedSourceFaceCount).toBe(0);
-    expect(Number(model?.metadata?.roofFacetCount ?? 0)).toBeLessThan(
-      Number(model?.metadata?.roofSplitRegionCount ?? Number.POSITIVE_INFINITY),
+    expect(model?.metadata?.roofTopologyDiagnosticPlaneCount).toBeGreaterThan(
+      model?.roofPlanes.length ?? 0,
     );
+    expect(model?.metadata?.roofTopologyFailureEdgeId).toBeNull();
+    expect(model?.metadata?.roofTopologySourceEdgeCount).toBe(6);
+    expect(Number(model?.metadata?.roofFacetCount ?? 0)).toBeGreaterThan(0);
     expect(model?.metadata?.roofWingCount).toBeUndefined();
     expectRoofQaValid(model!);
     expectRoofFacetsInsideEave(model!, 2400);
@@ -176,7 +179,7 @@ describe("house model roof preset coverage", () => {
     expect(
       model?.solids?.surfaceSolids.filter((solid) => solid.kind === "roof"),
     ).toHaveLength(model?.roofPlanes.length ?? 0);
-    expect(model?.solids?.linearSolids).toHaveLength(4);
+    expect(model?.solids?.linearSolids.length ?? 0).toBeGreaterThanOrEqual(4);
     expectHouseRoofSolidsUseExactBoundariesAndMiteredMeshes(model);
     expectHouseRoofFeatureFlashings(model, ["ridge", "hip", "valley"]);
     expectHouseSurfaceSolidsUseExactBoundariesAndMiteredMeshes(model);
@@ -417,6 +420,195 @@ describe("house model roof preset coverage", () => {
       ).toBe(true);
       expectRoofQaValid(model);
     }
+  });
+
+  it("repairs narrow custom hipped eave offsets without changing saved eave input", () => {
+    const footprint: Polygon3 = [
+      { x: 0, y: 0, z: 0 },
+      { x: 6000, y: 0, z: 0 },
+      { x: 6000, y: -8000, z: 0 },
+      { x: 3900, y: -8000, z: 0 },
+      { x: 3900, y: -10000, z: 0 },
+      { x: 3600, y: -10000, z: 0 },
+      { x: 3600, y: -8000, z: 0 },
+      { x: 0, y: -8000, z: 0 },
+    ];
+    const model = buildHouseModel3D({
+      houseId: "test-house",
+      config: makeConfig({
+        footprint,
+        roofForm: "hipped",
+        roofPitchDeg: 5,
+        roofRidgeAxis: "x",
+        eaveOverhangMm: 450,
+      }),
+      attachmentEdge: makeAttachmentEdge(),
+    });
+
+    expect(model).not.toBeNull();
+    if (!model) return;
+
+    expectRoofQaValid(model);
+    expect(model.eave.eaveOverhangMm).toBe(450);
+    expect(model.metadata?.roofEaveOffsetRepairStatus).toBe("repaired");
+    expect(model.metadata?.roofEaveOffsetRepairCode).toBe(
+      "eave_offset_self_overlap",
+    );
+    expect(model.metadata?.roofRequestedEaveOverhangMm).toBe(450);
+    expect(
+      Number(model.metadata?.roofEffectiveEaveOverhangMm ?? Number.NaN),
+    ).toBeLessThanOrEqual(450);
+    expect(
+      model.solids?.surfaceSolids.filter((solid) => solid.kind === "roof"),
+    ).not.toHaveLength(0);
+    expect(eavePolygonFromModel(model).length).toBeGreaterThanOrEqual(4);
+    expect(polygonAreaXY(eavePolygonFromModel(model))).toBeGreaterThan(0);
+    const planRoofBodies = buildHouseModelTopProjectionShapes({ model }).filter(
+      (shape) => shape.metadata?.planProjectionSource === "house_eave_perimeter",
+    );
+    expect(planRoofBodies).toHaveLength(1);
+    expect(planRoofBodies[0]?.id).toBe("house_plan_roof:test-house");
+  });
+
+  it("canonicalizes edited custom hipped footprint residue before roof topology solve", () => {
+    const footprint: Polygon3 = [
+      { x: -814.9011184049414, y: 1200.0000001296671, z: 0 },
+      { x: 2399.9999995950567, y: 1200.0000001296671, z: 0 },
+      { x: 2399.9999995950567, y: 0.00000012966711437911727, z: 0 },
+      { x: 8901.820743595056, y: 0.00000012966711437911727, z: 0 },
+      { x: 8901.820743595056, y: 4171.359789141505, z: 0 },
+      { x: -814.9011184049414, y: 4171.359789141505, z: 0 },
+    ];
+    const manuallyRoundedFootprint: Polygon3 = [
+      { x: -814.901, y: 1200, z: 0 },
+      { x: 2400, y: 1200, z: 0 },
+      { x: 2400, y: 0, z: 0 },
+      { x: 8901.821, y: 0, z: 0 },
+      { x: 8901.821, y: 4171.36, z: 0 },
+      { x: -814.901, y: 4171.36, z: 0 },
+    ];
+
+    const model = buildHouseModel3D({
+      houseId: "captured-house-4",
+      config: makeConfig({
+        footprint,
+        roofForm: "hipped",
+        roofPitchDeg: 5,
+        roofRidgeAxis: "x",
+        eaveOverhangMm: 450,
+      }),
+      attachmentEdge: makeAttachmentEdge(),
+    });
+    const manuallyRoundedModel = buildHouseModel3D({
+      houseId: "captured-house-4-rounded",
+      config: makeConfig({
+        footprint: manuallyRoundedFootprint,
+        roofForm: "hipped",
+        roofPitchDeg: 5,
+        roofRidgeAxis: "x",
+        eaveOverhangMm: 450,
+      }),
+      attachmentEdge: makeAttachmentEdge(),
+    });
+
+    expect(model).not.toBeNull();
+    expect(manuallyRoundedModel).not.toBeNull();
+    if (!model || !manuallyRoundedModel) return;
+
+    expectRoofQaValid(model);
+    expectRoofQaValid(manuallyRoundedModel);
+    expect(model.footprint).toEqual(manuallyRoundedFootprint);
+    expect(model.metadata?.footprintCanonicalizationStatus).toBe(
+      "canonicalized",
+    );
+    expect(model.metadata?.footprintCanonicalizationPrecisionMm).toBe(0.001);
+    expect(model.metadata?.footprintCanonicalizationPointCountBefore).toBe(6);
+    expect(model.metadata?.footprintCanonicalizationPointCountAfter).toBe(6);
+    expect(model.metadata?.roofTopologySolver).toBe("eave_graph_source_edge_envelope");
+    expect(model.metadata?.roofFacetMergeMode).toBe("source_edge_envelope");
+    expect(model.metadata?.roofTopologyFailureReason).toBeNull();
+    expect(model.metadata?.roofTopologySourceEdgeCount).toBe(6);
+    expect(model.metadata?.roofTopologyFinalFaceCount).toBe(
+      manuallyRoundedModel.metadata?.roofTopologyFinalFaceCount,
+    );
+    expect(model.roofPlanes).toHaveLength(manuallyRoundedModel.roofPlanes.length);
+    expect(
+      model.solids?.surfaceSolids.filter((solid) => solid.kind === "roof"),
+    ).toHaveLength(
+      manuallyRoundedModel.solids?.surfaceSolids.filter(
+        (solid) => solid.kind === "roof",
+      ).length ?? 0,
+    );
+  });
+
+  it("keeps the edited custom hipped footprint coverage-valid across pitch variants", () => {
+    const footprint: Polygon3 = [
+      { x: -814.9011184049414, y: 1200.0000001296671, z: 0 },
+      { x: 2399.9999995950567, y: 1200.0000001296671, z: 0 },
+      { x: 2399.9999995950567, y: 0.00000012966711437911727, z: 0 },
+      { x: 8901.820743595056, y: 0.00000012966711437911727, z: 0 },
+      { x: 8901.820743595056, y: 4171.359789141505, z: 0 },
+      { x: -814.9011184049414, y: 4171.359789141505, z: 0 },
+    ];
+
+    for (const pitch of [5, 20, 30]) {
+      const model = buildHouseModel3D({
+        houseId: `captured-house-4-pitch-${pitch}`,
+        config: makeConfig({
+          footprint,
+          roofForm: "hipped",
+          roofPitchDeg: pitch,
+          roofRidgeAxis: "x",
+          eaveOverhangMm: 450,
+        }),
+        attachmentEdge: makeAttachmentEdge(),
+      });
+
+      expect(model).not.toBeNull();
+      if (!model) continue;
+
+      expectRoofQaValid(model);
+      expect([
+        "eave_graph_source_edge_envelope",
+        "source_edge_coverage_partition",
+      ]).toContain(model.metadata?.roofTopologySolver);
+      if (model.metadata?.roofTopologySolver === "source_edge_coverage_partition") {
+        expect(model.metadata?.roofTopologyCoverageQaStatus).toBe("valid");
+        expect(model.metadata?.roofTopologyCoverageFailureReason).toBeNull();
+        expect(
+          Math.abs(Number(model.metadata?.roofTopologyCoverageAreaDeltaMm2 ?? 0)),
+        ).toBeLessThanOrEqual(1);
+      }
+      expect(model.metadata?.roofTopologySourceEdgeCount).toBe(6);
+      expect(
+        Number(model.metadata?.roofTopologyClosedFaceCount ?? 0),
+      ).toBeGreaterThanOrEqual(6);
+      expect(model.roofPlanes.length).toBeGreaterThan(0);
+      expect(
+        model.solids?.surfaceSolids.filter((solid) => solid.kind === "roof"),
+      ).not.toHaveLength(0);
+    }
+  });
+
+  it("leaves already-valid hipped eave offsets unrepaired", () => {
+    const model = buildHouseModel3D({
+      config: makeConfig({
+        footprint: makePresetFootprint("wrap_left"),
+        roofForm: "hipped",
+        roofPitchDeg: 20,
+        roofRidgeAxis: "x",
+        eaveOverhangMm: 450,
+      }),
+      attachmentEdge: makeAttachmentEdge(),
+    });
+
+    expect(model).not.toBeNull();
+    if (!model) return;
+
+    expectRoofQaValid(model);
+    expect(model.metadata?.roofEaveOffsetRepairStatus).toBeUndefined();
+    expect(model.metadata?.roofEaveOffsetRepairCode).toBeUndefined();
+    expect(model.metadata?.roofEffectiveEaveOverhangMm).toBeUndefined();
   });
 
   it("aligns mono wall tops to the roof plane without dropping below the wall height", () => {

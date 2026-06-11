@@ -273,6 +273,7 @@ import {
 } from "./house/attachment";
 import { buildHouseEnvelopeSolids } from "./house/envelopeSolids";
 import {
+  canonicalizeHouseFootprintPolygon,
   closestPointOnLineSegment2D,
   clearanceToPolygon,
   findInteriorRoofNode,
@@ -282,6 +283,7 @@ import {
   polygonLineInterval,
 } from "./house/footprintMath";
 import { buildHouseOpenings } from "./house/openings";
+import { buildHippedRoofWithEaveOffsetRepair } from "./house/eaveOffsetRepair";
 
 // PR-T8 (2026-05-29): `deriveHouseRoofAppendageSupportFromFootprint` was
 // the public entry point for the inspector to ask "is appendage
@@ -308,8 +310,24 @@ export function buildHouseModel3D(input: {
   // `buildAttachmentTarget`) are already null-safe for freestanding -- the
   // resulting `attachmentTarget` is `{ kind: 'none' }`, which is correct.
   const model = input.config.houseContext.model;
-  const footprint = model?.footprint;
-  if (!footprint || footprint.length < 3) return null;
+  const rawFootprint = model?.footprint;
+  if (!rawFootprint || rawFootprint.length < 3) return null;
+  const canonicalizedFootprint =
+    canonicalizeHouseFootprintPolygon(rawFootprint);
+  const footprint = canonicalizedFootprint.footprint;
+  if (footprint.length < 3) return null;
+  const footprintCanonicalizationMetadata: GeometryMetadata =
+    canonicalizedFootprint.status === "canonicalized"
+      ? {
+          footprintCanonicalizationStatus: canonicalizedFootprint.status,
+          footprintCanonicalizationPrecisionMm:
+            canonicalizedFootprint.precisionMm,
+          footprintCanonicalizationPointCountBefore:
+            canonicalizedFootprint.pointCountBefore,
+          footprintCanonicalizationPointCountAfter:
+            canonicalizedFootprint.pointCountAfter,
+        }
+      : {};
 
   const eaveHeightMm = finiteNumber(
     model.eaveHeightMm,
@@ -408,16 +426,41 @@ export function buildHouseModel3D(input: {
       : [],
   );
 
-  const roof = buildSharedHouseRoof({
-    sourceFootprint: footprint,
-    eavePolygon,
-    eaveHeightMm,
-    roofPitchDeg,
-    roofForm,
-    roofPrimaryFallDirection,
-    roofRidgeAxis,
-    openTerminalEndIds: [...requestedOpenTerminalEndIds],
-  });
+  const roofBuild =
+    roofForm === "hipped"
+      ? buildHippedRoofWithEaveOffsetRepair({
+          footprint,
+          requestedEaveOverhangMm: eaveOverhangMm,
+          initialEavePolygon: eavePolygon,
+          buildRoof: (candidate) =>
+            buildSharedHouseRoof({
+              sourceFootprint: candidate.sourceFootprint,
+              eavePolygon: candidate.eavePolygon,
+              eaveHeightMm,
+              roofPitchDeg,
+              roofForm,
+              roofPrimaryFallDirection,
+              roofRidgeAxis,
+              openTerminalEndIds: [...requestedOpenTerminalEndIds],
+            }),
+        })
+      : {
+          roof: buildSharedHouseRoof({
+            sourceFootprint: footprint,
+            eavePolygon,
+            eaveHeightMm,
+            roofPitchDeg,
+            roofForm,
+            roofPrimaryFallDirection,
+            roofRidgeAxis,
+            openTerminalEndIds: [...requestedOpenTerminalEndIds],
+          }),
+          eavePolygon,
+          sourceFootprint: footprint,
+        };
+  const roof = roofBuild.roof;
+  const effectiveEavePolygon = roofBuild.eavePolygon;
+  const effectiveRoofFootprint = roofBuild.sourceFootprint;
   const wallSegments = buildWallSegments(footprint, wallHeightMm, roof);
   const openTerminalEndIds = new Set(
     roof.metadata.roofQaStatus === "valid" ? requestedOpenTerminalEndIds : [],
@@ -525,8 +568,8 @@ export function buildHouseModel3D(input: {
   // metadata, so the appendage builder always returned []. Inlined as
   // just `perimeterEdges`.
   const perimeterEdges = buildHouseRoofPerimeterEdges({
-    footprint,
-    eavePolygon,
+    footprint: effectiveRoofFootprint,
+    eavePolygon: effectiveEavePolygon,
     roofForm,
     roofPlanes: roof.roofPlanes,
     eaveHeightMm,
@@ -765,6 +808,7 @@ export function buildHouseModel3D(input: {
       wallConstruction: model.wallConstruction ?? "timber_frame",
       attachmentStrategy: attachmentTarget.strategy,
       ...roof.metadata,
+      ...footprintCanonicalizationMetadata,
     },
   };
 }
@@ -801,7 +845,7 @@ export function buildHouseReferenceGeometry(input: {
       fasciaLine: null,
       roofEdgeLine: null,
       soffitDepthMm: input.config.houseContext.soffitDepthMm ?? null,
-      footprint: input.config.houseContext.footprint ?? null,
+      footprint: model?.footprint ?? input.config.houseContext.footprint ?? null,
       model,
       attachmentTarget: null,
       position: housePosition,
@@ -823,7 +867,7 @@ export function buildHouseReferenceGeometry(input: {
       input.config.connection.type === "fascia" ? input.attachmentEdge : null,
     roofEdgeLine: input.attachmentEdge,
     soffitDepthMm: input.config.houseContext.soffitDepthMm ?? null,
-    footprint: input.config.houseContext.footprint ?? null,
+    footprint: model?.footprint ?? input.config.houseContext.footprint ?? null,
     model,
     attachmentTarget: model?.attachmentTarget ?? null,
     position: housePosition,

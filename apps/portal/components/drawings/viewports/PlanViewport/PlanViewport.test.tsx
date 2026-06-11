@@ -143,6 +143,11 @@ describe("PlanViewport", () => {
               diagnosticCode: "missing_plan_body",
               roofValidationStatus: null,
               roofValidationCode: null,
+              roofIntentAuthored: false,
+              rawRoofIntentForm: null,
+              resolvedRoofIntentForm: null,
+              roofIntentResolutionSource: null,
+              roofIntentRepairCode: null,
               ...EMPTY_HOUSE_ROOF_STAGE_DIAGNOSTICS,
             },
           ]}

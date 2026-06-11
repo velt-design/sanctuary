@@ -19,6 +19,7 @@ import {
 } from './_internal';
 import { buildRoofPlane } from './roofPlane';
 import { buildJoinedRectilinearHippedRoof } from './roofJoinedHipped';
+import { buildEaveGraphJoinedHippedRoof } from './roofEaveGraphHipped';
 import {
   buildJoinedRectilinearGableRoof,
   buildLegacyJoinedRectilinearGableRoof,
@@ -514,10 +515,17 @@ export function buildHippedHouseRoof(input: {
       ridgeAxis: resolvedJoinedRidgeAxis,
     });
   }
-  const roof = buildJoinedRectilinearHippedRoof({
-    ...input,
-    stationaryEdgeIndexes: stationaryEdgeIndexes.length > 0 ? stationaryEdgeIndexes : null,
-  });
+  const hasOpenTerminalIntent = (input.openTerminalEndIds?.length ?? 0) > 0;
+  const roof = hasOpenTerminalIntent
+    ? buildJoinedRectilinearHippedRoof({
+        ...input,
+        stationaryEdgeIndexes,
+      })
+    : buildEaveGraphJoinedHippedRoof({
+        eavePolygon: input.eavePolygon,
+        eaveHeightMm: input.eaveHeightMm,
+        roofPitchDeg: input.roofPitchDeg,
+      });
   if (!roof.roofPlanes.length) {
     return invalidHouseRoof({
       eavePolygon: input.eavePolygon,

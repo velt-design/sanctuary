@@ -14,9 +14,9 @@ import type {
   ViewerSceneModel,
   ViewerSceneObject,
 } from './contracts';
+import { buildHouseRoofPlanProjectionShapes } from './housePlanProjection';
 import { deriveHouseGableTerminalEndsFromFootprint } from './houseModel';
 import {
-  buildHouseModelRoofMaterialSceneObjects,
   buildHouseModelSceneObjects,
   buildViewerSceneModel,
 } from './viewer';
@@ -585,6 +585,43 @@ function buildShapeFromObject(object: ViewerSceneObject): GeometryTopProjectionS
   };
 }
 
+function shapeIsGenericHouseRoofProjection(shape: GeometryTopProjectionShape): boolean {
+  if (shape.family !== 'house') return false;
+  if (shape.sourceType === 'house_roof_material') return true;
+  return (
+    shape.kind === 'roof' &&
+    (shape.sourceType === 'house_surface_solid' || shape.sourceType === 'house_surface')
+  );
+}
+
+export function buildHouseModelPlanProjectionShapes(input: {
+  model: HouseModel3D | null;
+}): GeometryTopProjectionShape[] {
+  const model = input.model;
+  if (!model) return [];
+  const houseObjects = buildHouseModelSceneObjects({
+    model,
+    attachmentTarget: null,
+  });
+  const projection = buildTopProjectionViewModelFromScene({
+    layers: [
+      {
+        id: 'house',
+        label: 'House',
+        visibleByDefault: true,
+        objects: houseObjects,
+      },
+    ],
+  });
+  const nonRoofShapes = projection.shapes.filter(
+    (shape) => !shapeIsGenericHouseRoofProjection(shape),
+  );
+  return [
+    ...nonRoofShapes,
+    ...buildHouseRoofPlanProjectionShapes(model),
+  ].sort((left, right) => left.zOrder - right.zOrder || left.id.localeCompare(right.id));
+}
+
 /**
  * Per-instance identifiers for the reference shapes a single
  * `buildTopProjectionViewModel` call emits. Step 5b of the first-class
@@ -1131,36 +1168,7 @@ export function buildTopProjectionViewModelFromScene(
 export function buildHouseModelTopProjectionShapes(input: {
   model: HouseModel3D | null;
 }): GeometryTopProjectionShape[] {
-  const model = input.model;
-  if (!model) return [];
-  const houseObjects = buildHouseModelSceneObjects({
-    model,
-    attachmentTarget: null,
-  });
-  const roofMaterialObjects = buildHouseModelRoofMaterialSceneObjects({
-    model,
-  });
-  const projection = buildTopProjectionViewModelFromScene({
-    layers: [
-      {
-        id: 'house',
-        label: 'House',
-        visibleByDefault: true,
-        objects: houseObjects,
-      },
-      ...(roofMaterialObjects.length > 0
-        ? [
-            {
-              id: 'house_roof_materials',
-              label: 'House Roof Materials',
-              visibleByDefault: true,
-              objects: roofMaterialObjects,
-            },
-          ]
-        : []),
-    ],
-  });
-  return projection.shapes;
+  return buildHouseModelPlanProjectionShapes(input);
 }
 
 export function buildTopProjectionViewModel(

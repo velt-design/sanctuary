@@ -24,6 +24,7 @@ import { buildEstimateDrawingDraftFromSnapshot } from "@/lib/estimates/drawingEd
 import { applyObjectWorkbenchGeometryEditIntent } from "@/lib/drawings/geometry/geometryEditAdapter";
 import { buildDrawingWorkbenchStore } from "@/lib/drawings/state/drawingWorkbenchStore";
 import { createDrawingWorkbenchUiState } from "@/lib/drawings/state/drawingWorkbenchUiState";
+import type { ProjectHouseProjectionHealth } from "@/lib/drawings/state/projectHouseProjectionHealth";
 import {
   buildObjectFirstWorkbenchDraftFromProjectModel,
 } from "@/lib/drawings/state/objectFirstWorkbenchAdapter";
@@ -2026,8 +2027,10 @@ describe("Geometry3DViewport", () => {
 
     expect(qaStatus).toBe("valid");
     expect(Number(geometryPreview.scene.metadata?.houseRoofSolidExpectedCount ?? 0)).toBeGreaterThan(0);
+    expect(geometryPreview.scene.metadata?.houseRoofTopologySolver).toBe("eave_graph_joined_hipped");
+    expect(geometryPreview.scene.metadata?.houseRoofTopologyFailureReason).toBeNull();
+    expect(geometryPreview.scene.metadata?.houseRoofTopologyFailureEdgeId).toBeNull();
     expect(geometryPreview.scene.metadata?.houseRoofTopologyValleyCount).toBe(2);
-    expect(geometryPreview.scene.metadata?.houseRoofTopologyInternalEaveHeightSegmentCount).toBe(0);
     expect(roofFeatures.length).toBeGreaterThan(0);
     expect(roofSolids.length).toBeGreaterThan(0);
     expect(roofOutlines).toHaveLength(0);
@@ -2056,13 +2059,54 @@ describe("Geometry3DViewport", () => {
     expect(diagnostics.finiteBounds).toBe("true");
     expect(diagnostics.canvasContained).toBe("true");
     expect(diagnostics.houseRoofQaStatus).toBe(qaStatus);
+    expect(diagnostics.houseRoofTopologySolver).toBe("eave_graph_joined_hipped");
+    expect(diagnostics.houseRoofTopologyFailureReason).toBe("");
+    expect(diagnostics.houseRoofTopologyFailureEdgeId).toBe("");
     expect(Number(diagnostics.houseRoofTopologyValleyCount)).toBe(2);
-    expect(Number(diagnostics.houseRoofTopologyInternalEaveHeightSegmentCount)).toBe(0);
     expect(Number(diagnostics.houseRoofSolidExpectedCount)).toBeGreaterThan(0);
     expect(Number(diagnostics.houseRoofSolidRenderedCount)).toBeGreaterThan(0);
     expect(Number(diagnostics.houseRoofSolidSkippedCount)).toBe(0);
     expect(rendered.container.textContent).not.toContain("NaN");
     expect(rendered.container.textContent).not.toContain("Infinity");
+
+    rendered.unmount();
+  });
+
+  it("exposes per-house project projection health diagnostics", async () => {
+    const fixture = requireFixture("mono-standard");
+    const geometryPreview = buildWorkbenchGeometryPreview({
+      projectId: "proj_preview",
+      estimateId: fixture.estimate.id,
+      designRequestId: fixture.request.id,
+      snapshot: fixture.snapshot,
+      moduleIndex: 0,
+    });
+    if (geometryPreview.kind !== "ready") {
+      throw new Error("Expected ready geometry preview");
+    }
+
+    const projectHouseProjectionHealth = [
+      {
+        houseFormId: "house-main",
+        failureStage: "missing_plan_body",
+        diagnosticCode: "missing_plan_body",
+      } as ProjectHouseProjectionHealth,
+    ];
+    const rendered = renderIntoDocument(
+      <Geometry3DViewport
+        geometryPreview={geometryPreview}
+        projectHouseProjectionHealth={projectHouseProjectionHealth}
+      />,
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    const diagnostics = viewportDiagnostics(rendered.container);
+    expect(diagnostics.projectHouseProjectionHealthCount).toBe("1");
+    expect(diagnostics.projectHouseProjectionHealth).toContain('"houseFormId":"house-main"');
+    expect(diagnostics.projectHouseProjectionHealth).toContain('"failureStage":"missing_plan_body"');
 
     rendered.unmount();
   });

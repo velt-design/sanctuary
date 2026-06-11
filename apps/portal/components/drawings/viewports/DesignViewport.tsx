@@ -13,6 +13,7 @@ import type {
   ObjectWorkbenchDisplayFamily,
   ObjectWorkbenchViewportTargetSelection,
 } from '@/lib/drawings/state/objectWorkbenchViewportTypes';
+import type { ProjectHouseProjectionHealth } from '@/lib/drawings/state/projectHouseProjectionHealth';
 
 type GeometryCameraPreset = 'iso' | 'front' | 'right' | 'top' | 'custom';
 
@@ -25,6 +26,7 @@ export type DesignViewportProps = {
   onViewportStateChange?: (next: Geometry3DViewportState) => void;
   lockedViewPreset?: GeometryCameraPreset;
   selectedObjectId?: string | null;
+  projectHouseProjectionHealth?: ReadonlyArray<ProjectHouseProjectionHealth>;
   selectionClassifier?: SelectionClassifier;
   onSelectObjectWorkbenchTarget?: (selection: ObjectWorkbenchViewportTargetSelection) => void;
   onSelectPergolaTarget?: (pergolaId: string) => void;
@@ -47,6 +49,7 @@ export default function DesignViewport({
   onViewportStateChange,
   lockedViewPreset,
   selectedObjectId,
+  projectHouseProjectionHealth,
   selectionClassifier = defaultPrefixClassifier,
   onSelectObjectWorkbenchTarget,
   onSelectPergolaTarget,
@@ -98,6 +101,7 @@ export default function DesignViewport({
       controlledSelectedObjectId={selectedObjectId}
       onSelectedObjectChange={handleSelectedObjectChange}
       controlledHoveredObjectId={hoveredObjectId}
+      projectHouseProjectionHealth={projectHouseProjectionHealth}
     />
   );
 }

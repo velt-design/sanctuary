@@ -28,6 +28,7 @@ import type {
 } from "@/lib/drawings/geometry/buildWorkbenchGeometryPreview";
 import type { DrawingWorkbenchVisibilityState } from "@/lib/drawings/state/drawingWorkbenchUiState";
 import type { ObjectWorkbenchDisplayFamily } from "@/lib/drawings/state/objectWorkbenchViewportTypes";
+import type { ProjectHouseProjectionHealth } from "@/lib/drawings/state/projectHouseProjectionHealth";
 import { blockNativeSelectionEvent } from "../nativeSelection";
 import styles from "./Geometry3DViewport.module.css";
 import type { SceneBounds } from "./geometry/sceneBoundsTypes";
@@ -290,6 +291,7 @@ export default function Geometry3DViewport({
   onSelectedObjectChange,
   controlledHoveredObjectId,
   onHoveredObjectChange,
+  projectHouseProjectionHealth = [],
 }: {
   geometryPreview?: GeometryPreviewState | null;
   objectWorkbenchDisplayFamily?: ObjectWorkbenchDisplayFamily;
@@ -311,6 +313,7 @@ export default function Geometry3DViewport({
    * downstream emit half lets PlanViewport receive 3D-driven hover.
    */
   controlledHoveredObjectId?: string | null;
+  projectHouseProjectionHealth?: ReadonlyArray<ProjectHouseProjectionHealth>;
   /**
    * Cross-viewport hover state output. Phase 1 placeholder: the 3D viewport
    * does not yet emit hover events from raycaster/pointer-over (would require
@@ -1515,7 +1518,12 @@ export default function Geometry3DViewport({
           data-finite-bounds-size={sceneBounds && finiteBounds ? String(Number(sceneBounds.size.toFixed(3))) : ""}
           data-house-roof-qa-status={houseRoofDiagnostics.qaStatus}
           data-house-roof-qa-failure-reason={houseRoofDiagnostics.qaFailureReason}
+          data-house-roof-topology-solver={houseRoofDiagnostics.topologySolver}
+          data-house-roof-topology-failure-reason={houseRoofDiagnostics.topologyFailureReason}
+          data-house-roof-topology-failure-edge-id={houseRoofDiagnostics.topologyFailureEdgeId}
           data-house-roof-topology-final-face-count={String(houseRoofDiagnostics.topologyFinalFaceCount)}
+          data-house-roof-topology-closed-face-count={String(houseRoofDiagnostics.topologyClosedFaceCount)}
+          data-house-roof-topology-expected-face-count={String(houseRoofDiagnostics.topologyExpectedFaceCount)}
           data-house-roof-topology-valley-count={String(houseRoofDiagnostics.topologyValleyCount)}
           data-house-roof-topology-disconnected-source-face-count={String(houseRoofDiagnostics.topologyDisconnectedSourceFaceCount)}
           data-house-roof-topology-internal-eave-height-segment-count={String(houseRoofDiagnostics.topologyInternalEaveHeightSegmentCount)}
@@ -1529,6 +1537,8 @@ export default function Geometry3DViewport({
           data-house-opening-rendered-marker-count={String(houseOpeningDiagnostics.renderedMarkerCount)}
           data-house-opening-skipped-invalid-count={String(houseOpeningDiagnostics.skippedInvalidCount)}
           data-house-opening-unresolved-valid-count={String(houseOpeningDiagnostics.unresolvedValidCount)}
+          data-project-house-projection-health={JSON.stringify(projectHouseProjectionHealth)}
+          data-project-house-projection-health-count={String(projectHouseProjectionHealth.length)}
           data-project-pergola-render-health={String(scene?.metadata?.projectPergolaRenderHealth ?? "[]")}
           data-project-pergola-fallback-ids={String(scene?.metadata?.projectPergolaFallbackIds ?? "")}
           data-project-preview-source={String(scene?.metadata?.projectPreviewSource ?? "")}

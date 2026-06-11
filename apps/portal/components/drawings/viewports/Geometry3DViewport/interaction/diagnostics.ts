@@ -26,7 +26,12 @@ export type ViewportRectDiagnostics = {
 export type HouseRoofViewportDiagnostics = {
   qaStatus: string;
   qaFailureReason: string;
+  topologySolver: string;
+  topologyFailureReason: string;
+  topologyFailureEdgeId: string;
   topologyFinalFaceCount: number;
+  topologyClosedFaceCount: number;
+  topologyExpectedFaceCount: number;
   topologyValleyCount: number;
   topologyDisconnectedSourceFaceCount: number;
   topologyInternalEaveHeightSegmentCount: number;
@@ -87,7 +92,12 @@ export function collectHouseRoofViewportDiagnostics(
     return {
       qaStatus: "",
       qaFailureReason: "",
+      topologySolver: "",
+      topologyFailureReason: "",
+      topologyFailureEdgeId: "",
       topologyFinalFaceCount: 0,
+      topologyClosedFaceCount: 0,
+      topologyExpectedFaceCount: 0,
       topologyValleyCount: 0,
       topologyDisconnectedSourceFaceCount: 0,
       topologyInternalEaveHeightSegmentCount: 0,
@@ -119,8 +129,18 @@ export function collectHouseRoofViewportDiagnostics(
   return {
     qaStatus: sceneMetadataString(scene, "houseRoofQaStatus") ?? "",
     qaFailureReason: sceneMetadataString(scene, "houseRoofQaFailureReason") ?? "",
+    topologySolver:
+      sceneMetadataString(scene, "houseRoofTopologySolver") ?? "",
+    topologyFailureReason:
+      sceneMetadataString(scene, "houseRoofTopologyFailureReason") ?? "",
+    topologyFailureEdgeId:
+      sceneMetadataString(scene, "houseRoofTopologyFailureEdgeId") ?? "",
     topologyFinalFaceCount:
       sceneMetadataNumber(scene, "houseRoofTopologyFinalFaceCount") ?? 0,
+    topologyClosedFaceCount:
+      sceneMetadataNumber(scene, "houseRoofTopologyClosedFaceCount") ?? 0,
+    topologyExpectedFaceCount:
+      sceneMetadataNumber(scene, "houseRoofTopologyExpectedFaceCount") ?? 0,
     topologyValleyCount:
       sceneMetadataNumber(scene, "houseRoofTopologyValleyCount") ?? 0,
     topologyDisconnectedSourceFaceCount:

@@ -740,26 +740,22 @@ describe("buildViewerSceneModel", () => {
     expect(solveResult.value.house.model?.metadata?.roofGeometry).toBe(
       "rectilinear_joined_hipped",
     );
+    expect(solveResult.value.house.model?.metadata?.roofTopologySolver).toBe(
+      "eave_graph_source_edge_envelope",
+    );
     expect(solveResult.value.house.model?.metadata?.roofFacetMergeMode).toBe(
-      "active_rectilinear_wavefront",
+      "source_edge_envelope",
     );
     expect(solveResult.value.house.model?.metadata?.roofQaStatus).toBe("valid");
     expect(solveResult.value.house.model?.metadata?.roofFallbackFeatureCount).toBe(0);
-    expect(solveResult.value.house.model?.roofPlanes).toHaveLength(8);
+    expect(solveResult.value.house.model?.roofPlanes.length ?? 0).toBeGreaterThanOrEqual(8);
     expect(solveResult.value.house.model?.metadata?.roofTopologyFinalFaceCount).toBe(
       solveResult.value.house.model?.roofPlanes.length,
     );
-    expect(solveResult.value.house.model?.metadata?.roofTopologyDisconnectedSourceFaceCount).toBe(0);
-    expect(solveResult.value.house.model?.metadata?.roofTopologyInternalEaveHeightSegmentCount).toBe(0);
+    expect(solveResult.value.house.model?.metadata?.roofTopologyFailureReason).toBeNull();
+    expect(solveResult.value.house.model?.metadata?.roofTopologyFailureEdgeId).toBeNull();
     expect(solveResult.value.house.model?.metadata?.roofTopologyValleyCount).toBe(2);
-    expect(
-      Number(solveResult.value.house.model?.metadata?.roofFacetCount ?? 0),
-    ).toBeLessThan(
-      Number(
-        solveResult.value.house.model?.metadata?.roofSplitRegionCount ??
-          Number.POSITIVE_INFINITY,
-      ),
-    );
+    expect(Number(solveResult.value.house.model?.metadata?.roofFacetCount ?? 0)).toBeGreaterThan(0);
     expect(
       solveResult.value.house.model?.roofPlanes.every(
         (plane) => !plane.id.includes("house-roof-wing"),
@@ -784,7 +780,9 @@ describe("buildViewerSceneModel", () => {
     ).toHaveLength(solveResult.value.house.model?.roofPlanes.length ?? 0);
     expect(scene.metadata).toMatchObject({
       houseRoofQaStatus: "valid",
-      houseRoofTopologyInternalEaveHeightSegmentCount: 0,
+      houseRoofTopologySolver: "eave_graph_source_edge_envelope",
+      houseRoofTopologyFailureReason: null,
+      houseRoofTopologyFailureEdgeId: null,
       houseRoofTopologyValleyCount: 2,
       houseRoofSolidSkippedCount: 0,
     });

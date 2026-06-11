@@ -444,14 +444,14 @@ describe('buildWorkbenchSolvedModel geometry artifact', () => {
     );
     expect(
       projectPlanHouseShapeIds(pergolaOneActive, 'house-form-2').some((id) =>
-        id.startsWith('house_surface_solid:'),
+        id === 'house_plan_roof:house-form-2',
       ),
     ).toBe(true);
     expect(
       projectPlanHouseShapeIds(pergolaOneActive, 'house-form-2').some((id) =>
         id.startsWith('house_roof_material:'),
       ),
-    ).toBe(true);
+    ).toBe(false);
     expect(
       projectPlanHouseShapeIds(pergolaOneActive, 'house-form-2').some((id) =>
         id.startsWith('house_reference:'),

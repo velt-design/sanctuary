@@ -27,6 +27,7 @@ export {
 } from "./viewer";
 export type { BuildViewerSceneModelOptions } from "./viewer";
 export {
+  buildHouseModelPlanProjectionShapes,
   buildHouseModelTopProjectionShapes,
   buildHouseReferenceProjectionShape,
   buildProjectReferenceShapes,

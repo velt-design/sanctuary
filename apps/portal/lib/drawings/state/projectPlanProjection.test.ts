@@ -52,7 +52,8 @@ describe('buildProjectPlanProjection', () => {
     for (const houseFormId of ['house-main', 'house-form-2']) {
       const ids = houseShapeIds(rebuiltProjection, houseFormId);
       expect(ids.some((id) => id === `house_reference:${houseFormId}`)).toBe(true);
-      expect(ids.some((id) => id.startsWith(`house_roof_material:${houseFormId}:`))).toBe(true);
+      expect(ids.some((id) => id === `house_plan_roof:${houseFormId}`)).toBe(true);
+      expect(ids.some((id) => id.startsWith(`house_roof_material:${houseFormId}:`))).toBe(false);
       expect(ids).toEqual(houseShapeIds(pergolaTwoActive.projectPlanProjection, houseFormId));
     }
   });

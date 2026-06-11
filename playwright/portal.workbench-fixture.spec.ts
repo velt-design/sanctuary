@@ -310,6 +310,7 @@ test.describe('workbench fixture route', () => {
     expect(health.map((entry) => entry.houseFormId).sort()).toEqual([
       'house-form-2',
       'house-form-3',
+      'house-form-4',
       'house-main',
     ]);
     for (const entry of health) {
@@ -317,18 +318,34 @@ test.describe('workbench fixture route', () => {
       expect(entry.modelPresent, entry.houseFormId).toBe(true);
       expect(entry.roofPlaneCount, entry.houseFormId).toBeGreaterThan(0);
       expect(entry.roofBodyCount, entry.houseFormId).toBeGreaterThan(0);
-      expect(entry.roofMaterialBodyCount, entry.houseFormId).toBeGreaterThan(0);
+      expect(entry.roofMaterialBodyCount, entry.houseFormId).toBe(0);
       expect(entry.sceneBodyCount, entry.houseFormId).toBeGreaterThan(0);
       expect(entry.sceneRoofMaterialBodyCount, entry.houseFormId).toBeGreaterThan(0);
       expect(entry.canRenderCommittedBody, entry.houseFormId).toBe(true);
       expect(entry.failureStage, entry.houseFormId).toBe('none');
-      expect(entry.diagnosticCode, entry.houseFormId).toBeNull();
+      expect(entry.diagnosticCode, entry.houseFormId).toBe(null);
+      if (entry.houseFormId === 'house-form-4') {
+        expect(entry.footprintCanonicalizationStatus).toBe('canonicalized');
+        expect(entry.footprintCanonicalizationPrecisionMm).toBe(0.001);
+        expect(entry.footprintCanonicalizationPointCountBefore).toBe(6);
+        expect(entry.footprintCanonicalizationPointCountAfter).toBe(6);
+        expect(entry.roofTopologySolver).toBe('eave_graph_source_edge_envelope');
+        expect(entry.roofTopologySemanticQaStatus).toBe('valid');
+        expect(entry.roofTopologySemanticFailureReason).toBe(null);
+        expect(entry.roofTopologyClosedFaceCount).toBe(6);
+        expect(entry.roofTopologyExpectedFaceCount).toBe(6);
+        expect(entry.roofTopologyCoverageGapAreaMm2).toBe(0);
+        expect(entry.roofTopologyOverlapAreaMm2).toBe(0);
+        expect(entry.roofTopologyDanglingFeatureCount).toBe(0);
+        expect(entry.roofEaveOffsetRepairStatus).toBe(null);
+        expect(entry.roofEaveOffsetRepairCode).toBe(null);
+      }
       expect(entry.visibleReferenceFallbackIds, entry.houseFormId).toEqual([]);
     }
 
     const bodyIds = await readVisibleHouseBodyIds(page);
-    for (const houseFormId of ['house-main', 'house-form-2', 'house-form-3']) {
-      expect(bodyIds.some((id) => id.includes(`house_roof_material:${houseFormId}`))).toBe(true);
+    for (const houseFormId of ['house-main', 'house-form-2', 'house-form-3', 'house-form-4']) {
+      expect(bodyIds.some((id) => id.includes(`house_plan_roof:${houseFormId}`))).toBe(true);
     }
     expect(await readVisibleHouseReferenceFallbackIds(page)).toEqual([]);
 

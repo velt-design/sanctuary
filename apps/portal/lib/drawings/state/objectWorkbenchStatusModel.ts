@@ -1,4 +1,5 @@
 import {
+  buildHouseModel3DFromRawHouseInput,
   deriveHouseGableTerminalEnds,
   deriveHouseRoofCapabilities,
   deriveHouseRoofGeometryKind,
@@ -6,21 +7,21 @@ import {
   preferredMonoFallDirectionForAttachmentSide,
   validateHouseRoofSelection,
   type Polygon3,
-} from '@sp/geometry';
+} from "@sp/geometry";
 import type {
   CalculatorHouseAttachmentStrategy,
   CalculatorHouseFootprintPolygonPoint,
   CalculatorModuleInputs,
-} from '@/lib/types/calculator';
+} from "@/lib/types/calculator";
 import {
   resolveDeckInteractionCapability,
   type DeckInteractionCapability,
-} from '@/lib/drawings/interactions/deckInteractionContract';
+} from "@/lib/drawings/interactions/deckInteractionContract";
 import {
   buildWorkbenchDeckSupportDiagnostic,
   resolveWorkbenchDeckSupportActiveSide,
   type WorkbenchDeckSupportDiagnostic,
-} from './deckSupportDiagnostics';
+} from "./deckSupportDiagnostics";
 import type {
   DeckObjectModel,
   HouseFormModel,
@@ -28,37 +29,48 @@ import type {
   OpeningObjectModel,
   PergolaObjectModel,
   WorkbenchProjectModel,
-} from './objectFirstWorkbenchModel';
-import { connectionKindFromAttachment } from './pergolaAttachment';
-import { deriveHouseFormRoofIntentForFootprint } from './houseFormRoofIntentForFootprint';
+} from "./objectFirstWorkbenchModel";
+import { connectionKindFromAttachment } from "./pergolaAttachment";
+import { resolveHouseFormRoofIntentForFootprint } from "./houseFormRoofIntentForFootprint";
+import { buildHouseFormRawGeometryInput } from "./houseFormRawGeometry";
 
-type AttachmentSide = NonNullable<CalculatorModuleInputs['attachmentSide']>;
+type AttachmentSide = NonNullable<CalculatorModuleInputs["attachmentSide"]>;
 
-const ATTACHMENT_SIDES: readonly AttachmentSide[] = ['rear', 'front', 'left', 'right'];
+const ATTACHMENT_SIDES: readonly AttachmentSide[] = [
+  "rear",
+  "front",
+  "left",
+  "right",
+];
 
 export type ObjectWorkbenchMigrationWarning = {
   id: string;
   code: string;
   field: string;
   message: string;
-  severity: 'blocking';
+  severity: "blocking";
 };
 
 export type ObjectWorkbenchRoofProvenance = Partial<
   Record<
-    | 'form'
-    | 'material'
-    | 'primaryPitchDeg'
-    | 'primaryFallDirection'
-    | 'ridgeAxis'
-    | 'openGableEndIds',
+    | "form"
+    | "material"
+    | "primaryPitchDeg"
+    | "primaryFallDirection"
+    | "ridgeAxis"
+    | "openGableEndIds",
     string | null
   >
 >;
 
 export type ObjectWorkbenchRoofStatus = {
-  form: HouseFormRoofIntentModel['form'];
-  controls: ReturnType<typeof getHouseRoofFormBehavior>['controls'];
+  form: HouseFormRoofIntentModel["form"];
+  roofIntentAuthored: boolean;
+  rawForm: HouseFormRoofIntentModel["form"];
+  resolvedForm: HouseFormRoofIntentModel["form"];
+  resolutionSource: string;
+  repairCode: string | null;
+  controls: ReturnType<typeof getHouseRoofFormBehavior>["controls"];
   selectedFormSupported: boolean;
   terminalEnds: Array<{
     id: string;
@@ -66,7 +78,7 @@ export type ObjectWorkbenchRoofStatus = {
     isOpen: boolean;
   }>;
   geometryKind: string | null;
-  validationStatus: 'valid' | 'approximate' | 'invalid' | null;
+  validationStatus: "valid" | "approximate" | "invalid" | null;
   validationCode: string | null;
   validationMessage: string | null;
   approximationReasons: string[];
@@ -87,7 +99,7 @@ export type ObjectWorkbenchHouseFormStatus = {
 
 export type ObjectWorkbenchDeckStatus = {
   validation: {
-    status: 'valid' | 'invalid';
+    status: "valid" | "invalid";
     codes: string[];
     messages: string[];
     message: string | null;
@@ -101,23 +113,29 @@ export type ObjectWorkbenchDeckStatus = {
 
 export type ObjectWorkbenchOpeningStatus = {
   validation: {
-    status: 'valid' | 'invalid';
+    status: "valid" | "invalid";
     codes: string[];
     message: string | null;
   };
 };
 
-export type ObjectWorkbenchPergolaConnectionKind = 'freestanding' | 'soffit' | 'fascia' | 'wall';
+export type ObjectWorkbenchPergolaConnectionKind =
+  | "freestanding"
+  | "soffit"
+  | "fascia"
+  | "wall";
 
-export type ObjectWorkbenchPergolaAttachmentStrategy = CalculatorHouseAttachmentStrategy | 'auto';
+export type ObjectWorkbenchPergolaAttachmentStrategy =
+  | CalculatorHouseAttachmentStrategy
+  | "auto";
 
 export type ObjectWorkbenchPergolaStatus = {
   connectionKind: ObjectWorkbenchPergolaConnectionKind;
   attachmentStrategy: ObjectWorkbenchPergolaAttachmentStrategy;
-  confidence: 'high' | 'low';
+  confidence: "high" | "low";
   isFreestanding: boolean;
   resolution: {
-    status: 'resolved' | 'unresolved' | 'ambiguous';
+    status: "resolved" | "unresolved" | "ambiguous";
     message: string | null;
   };
 };
@@ -135,12 +153,18 @@ export type ObjectWorkbenchStatusFacade = {
   deckSupportWarningCount: number;
 };
 
-function isAttachmentSide(value: string | null | undefined): value is AttachmentSide {
+function isAttachmentSide(
+  value: string | null | undefined,
+): value is AttachmentSide {
   return ATTACHMENT_SIDES.includes(value as AttachmentSide);
 }
 
-function parseFiniteNumber(value: string | number | null | undefined, fallback: number): number {
-  const parsed = typeof value === 'number' ? value : Number(String(value ?? '').trim());
+function parseFiniteNumber(
+  value: string | number | null | undefined,
+  fallback: number,
+): number {
+  const parsed =
+    typeof value === "number" ? value : Number(String(value ?? "").trim());
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
@@ -154,7 +178,18 @@ function localPolygonToGeometryPolygon(
   }));
 }
 
-function isOrthogonal2D(polygon: CalculatorHouseFootprintPolygonPoint[]): boolean {
+function geometryPolygonToSideLocalPolygon(
+  polygon: Polygon3,
+): CalculatorHouseFootprintPolygonPoint[] {
+  return polygon.map((point) => ({
+    alongM: String(point.x / 1000),
+    depthM: String(Math.abs(point.y) / 1000),
+  }));
+}
+
+function isOrthogonal2D(
+  polygon: CalculatorHouseFootprintPolygonPoint[],
+): boolean {
   if (polygon.length < 4) return false;
   for (let index = 0; index < polygon.length; index += 1) {
     const start = polygon[index]!;
@@ -171,7 +206,10 @@ function isOrthogonal2D(polygon: CalculatorHouseFootprintPolygonPoint[]): boolea
     ) {
       return false;
     }
-    if (Math.abs(alongStart - alongEnd) > 1e-6 && Math.abs(depthStart - depthEnd) > 1e-6) {
+    if (
+      Math.abs(alongStart - alongEnd) > 1e-6 &&
+      Math.abs(depthStart - depthEnd) > 1e-6
+    ) {
       return false;
     }
   }
@@ -196,7 +234,9 @@ function resolveBoundingFootprintSpans(
   };
 }
 
-function isRectanglePolygon2D(polygon: CalculatorHouseFootprintPolygonPoint[]): boolean {
+function isRectanglePolygon2D(
+  polygon: CalculatorHouseFootprintPolygonPoint[],
+): boolean {
   if (polygon.length !== 4 || !isOrthogonal2D(polygon)) return false;
   const alongValues = polygon.map((point) => Number(point.alongM));
   const depthValues = polygon.map((point) => Number(point.depthM));
@@ -216,30 +256,30 @@ function resolveRectangularFootprintSpans(
 function resolvePreferredRidgeAxis(input: {
   footprint: Polygon3;
   polygon: CalculatorHouseFootprintPolygonPoint[];
-  fallback: HouseFormRoofIntentModel['ridgeAxis'];
-}): HouseFormRoofIntentModel['ridgeAxis'] {
+  fallback: HouseFormRoofIntentModel["ridgeAxis"];
+}): HouseFormRoofIntentModel["ridgeAxis"] {
   const rectangularSpans = resolveRectangularFootprintSpans(input.polygon);
   if (rectangularSpans) {
-    return rectangularSpans.alongM >= rectangularSpans.depthM ? 'x' : 'y';
+    return rectangularSpans.alongM >= rectangularSpans.depthM ? "x" : "y";
   }
 
   if (isOrthogonal2D(input.polygon)) {
     const xScore = deriveHouseGableTerminalEnds({
       footprint: input.footprint,
-      ridgeAxis: 'x',
+      ridgeAxis: "x",
     }).length;
     const yScore = deriveHouseGableTerminalEnds({
       footprint: input.footprint,
-      ridgeAxis: 'y',
+      ridgeAxis: "y",
     }).length;
-    if (xScore > yScore) return 'x';
-    if (yScore > xScore) return 'y';
+    if (xScore > yScore) return "x";
+    if (yScore > xScore) return "y";
   }
 
   const spans = resolveBoundingFootprintSpans(input.polygon);
   if (spans) {
-    if (spans.alongM > spans.depthM * 1.05) return 'x';
-    if (spans.depthM > spans.alongM * 1.05) return 'y';
+    if (spans.alongM > spans.depthM * 1.05) return "x";
+    if (spans.depthM > spans.alongM * 1.05) return "y";
   }
   return input.fallback;
 }
@@ -247,34 +287,41 @@ function resolvePreferredRidgeAxis(input: {
 function activeAttachmentRequiresDrainEdge(
   module: Partial<CalculatorModuleInputs> | null | undefined,
 ): boolean {
-  return module?.houseConnectionType === 'soffit' || module?.houseConnectionType === 'fascia';
+  return (
+    module?.houseConnectionType === "soffit" ||
+    module?.houseConnectionType === "fascia"
+  );
 }
 
-function buildMigrationWarnings(warnings: string[]): ObjectWorkbenchMigrationWarning[] {
+function buildMigrationWarnings(
+  warnings: string[],
+): ObjectWorkbenchMigrationWarning[] {
   return warnings
     .map((warning) => warning.trim())
     .filter((warning) => warning.length > 0)
     .map((warning, index) => ({
       id: `legacy-estimate-warning-${index + 1}`,
-      code: 'legacy_estimate_snapshot_warning',
-      field: 'legacy_estimate_snapshot',
+      code: "legacy_estimate_snapshot_warning",
+      field: "legacy_estimate_snapshot",
       message: warning,
-      severity: 'blocking',
+      severity: "blocking",
     }));
 }
 
-function buildRoofProvenance(houseForm: HouseFormModel): ObjectWorkbenchRoofProvenance {
+function buildRoofProvenance(
+  houseForm: HouseFormModel,
+): ObjectWorkbenchRoofProvenance {
   if (!houseForm.roofIntentAuthored) {
     return {
-      form: 'legacy_pergola_inference',
-      material: 'legacy_shared_value',
-      primaryPitchDeg: 'legacy_shared_value',
-      primaryFallDirection: 'default_fallback',
-      ridgeAxis: 'default_fallback',
-      openGableEndIds: 'default_fallback',
+      form: "legacy_pergola_inference",
+      material: "legacy_shared_value",
+      primaryPitchDeg: "legacy_shared_value",
+      primaryFallDirection: "default_fallback",
+      ridgeAxis: "default_fallback",
+      openGableEndIds: "default_fallback",
     };
   }
-  const source = 'object_first_draft';
+  const source = "object_first_draft";
   return {
     form: source,
     material: source,
@@ -292,15 +339,21 @@ function buildRoofStatus(input: {
 }): ObjectWorkbenchRoofStatus | null {
   const houseForm = input.houseForm;
   if (!houseForm) return null;
+  const rawGeometry = buildHouseFormRawGeometryInput(houseForm);
   const roofFootprintPolygon =
     input.derivedFootprintPolygon && input.derivedFootprintPolygon.length > 0
       ? input.derivedFootprintPolygon
-      : houseForm.footprint.polygon;
-  const intent = deriveHouseFormRoofIntentForFootprint({
+      : houseForm.footprint.polygon.length > 0
+        ? houseForm.footprint.polygon
+        : rawGeometry
+          ? geometryPolygonToSideLocalPolygon(rawGeometry.footprint)
+          : [];
+  const intentResolution = resolveHouseFormRoofIntentForFootprint({
     houseForm,
     footprintPolygon: roofFootprintPolygon,
   });
-  const footprint = localPolygonToGeometryPolygon(roofFootprintPolygon);
+  const intent = intentResolution.roofIntent;
+  const footprint = rawGeometry?.footprint ?? localPolygonToGeometryPolygon(roofFootprintPolygon);
   const capabilities = deriveHouseRoofCapabilities({
     roofForm: intent.form,
     footprint,
@@ -314,7 +367,7 @@ function buildRoofStatus(input: {
     ridgeAxis: intent.ridgeAxis,
   });
   const preferredRidgeAxis =
-    intent.form === 'hipped'
+    intent.form === "hipped"
       ? resolvePreferredRidgeAxis({
           footprint,
           polygon: roofFootprintPolygon,
@@ -327,24 +380,73 @@ function buildRoofStatus(input: {
     roofPrimaryFallDirection: intent.primaryFallDirection,
     roofPrimaryFallDirectionExplicit: houseForm.roofIntentAuthored === true,
     preferredMonoFallDirection:
-      intent.form === 'mono'
-        ? preferredMonoFallDirectionForAttachmentSide(houseForm.footprint.attachmentSide)
+      intent.form === "mono"
+        ? preferredMonoFallDirectionForAttachmentSide(
+            houseForm.footprint.attachmentSide,
+          )
         : null,
-    enforcePreferredMonoFallDirection: activeAttachmentRequiresDrainEdge(input.activeModuleInput),
+    enforcePreferredMonoFallDirection: activeAttachmentRequiresDrainEdge(
+      input.activeModuleInput,
+    ),
     roofRidgeAxis: intent.ridgeAxis,
     roofRidgeAxisExplicit: houseForm.roofIntentAuthored === true,
     preferredRidgeAxis,
   });
-  const approximationReasons = houseForm.roofIntentAuthored ? [] : ['inferred_form'];
+  const packageRoofModel = rawGeometry
+    ? buildHouseModel3DFromRawHouseInput({
+        rawHouse: rawGeometry.rawHouse,
+        footprint: rawGeometry.footprint,
+        pergolaAttachment: null,
+      })
+    : null;
+  const packageRoofQaStatus =
+    typeof packageRoofModel?.metadata?.roofQaStatus === "string"
+      ? packageRoofModel.metadata.roofQaStatus
+      : null;
+  const packageRoofQaFailureReason =
+    typeof packageRoofModel?.metadata?.roofQaFailureReason === "string"
+      ? packageRoofModel.metadata.roofQaFailureReason
+      : null;
+  const packageRoofEaveOffsetRepairStatus =
+    typeof packageRoofModel?.metadata?.roofEaveOffsetRepairStatus === "string"
+      ? packageRoofModel.metadata.roofEaveOffsetRepairStatus
+      : null;
+  const packageRoofEaveOffsetRepairCode =
+    typeof packageRoofModel?.metadata?.roofEaveOffsetRepairCode === "string"
+      ? packageRoofModel.metadata.roofEaveOffsetRepairCode
+      : null;
+  const approximationReasons = [
+    ...(houseForm.roofIntentAuthored ? [] : ["inferred_form"]),
+    ...(packageRoofEaveOffsetRepairStatus === "repaired"
+      ? ["eave_offset_repaired"]
+      : []),
+  ];
   const validationStatus =
-    validation.status === 'invalid'
-      ? 'invalid'
+    packageRoofQaStatus === "invalid"
+      ? "invalid"
+      : validation.status === "invalid"
+      ? "invalid"
       : approximationReasons.length > 0
-        ? 'approximate'
-        : 'valid';
+        ? "approximate"
+        : "valid";
+  const validationCode =
+    packageRoofQaStatus === "invalid"
+      ? (packageRoofEaveOffsetRepairCode ?? packageRoofQaFailureReason)
+      : validation.code;
+  const validationMessage =
+    packageRoofQaStatus === "invalid"
+      ? `Roof geometry failed package QA${
+          validationCode ? `: ${validationCode}` : ""
+        }.`
+      : validation.message;
 
   return {
     form: intent.form,
+    roofIntentAuthored: intentResolution.roofIntentAuthored,
+    rawForm: intentResolution.rawForm,
+    resolvedForm: intentResolution.resolvedForm,
+    resolutionSource: intentResolution.source,
+    repairCode: intentResolution.repairCode,
     controls: getHouseRoofFormBehavior(intent.form).controls,
     selectedFormSupported: capabilities.selectedFormSupported,
     terminalEnds: terminalEnds.map((end) => ({
@@ -359,26 +461,28 @@ function buildRoofStatus(input: {
     })),
     geometryKind,
     validationStatus,
-    validationCode: validation.code,
-    validationMessage: validation.message,
+    validationCode,
+    validationMessage,
     approximationReasons,
     provenance: buildRoofProvenance(houseForm),
   };
 }
 
-function buildDeckStatuses(decks: DeckObjectModel[]): Record<string, ObjectWorkbenchDeckStatus> {
+function buildDeckStatuses(
+  decks: DeckObjectModel[],
+): Record<string, ObjectWorkbenchDeckStatus> {
   return Object.fromEntries(
     decks.map((deck) => {
       const dragInteractionAvailable =
-        deck.hostEdgeId === 'rear' ||
-        deck.hostEdgeId === 'front' ||
-        deck.hostEdgeId === 'left' ||
-        deck.hostEdgeId === 'right';
+        deck.hostEdgeId === "rear" ||
+        deck.hostEdgeId === "front" ||
+        deck.hostEdgeId === "left" ||
+        deck.hostEdgeId === "right";
       return [
         deck.id,
         {
           validation: {
-            status: deck.validation?.status ?? 'valid',
+            status: deck.validation?.status ?? "valid",
             codes: deck.validation?.codes ?? [],
             messages: deck.validation?.messages ?? [],
             message: deck.validation?.message ?? null,
@@ -397,13 +501,15 @@ function buildDeckStatuses(decks: DeckObjectModel[]): Record<string, ObjectWorkb
   );
 }
 
-function buildOpeningStatuses(openings: OpeningObjectModel[]): Record<string, ObjectWorkbenchOpeningStatus> {
+function buildOpeningStatuses(
+  openings: OpeningObjectModel[],
+): Record<string, ObjectWorkbenchOpeningStatus> {
   return Object.fromEntries(
     openings.map((opening) => [
       opening.id,
       {
         validation: {
-          status: opening.validation?.status ?? 'valid',
+          status: opening.validation?.status ?? "valid",
           codes: opening.validation?.codes ?? [],
           message: opening.validation?.message ?? null,
         },
@@ -412,32 +518,39 @@ function buildOpeningStatuses(openings: OpeningObjectModel[]): Record<string, Ob
   );
 }
 
-function resolvePergolaConnectionKind(pergola: PergolaObjectModel): ObjectWorkbenchPergolaConnectionKind {
+function resolvePergolaConnectionKind(
+  pergola: PergolaObjectModel,
+): ObjectWorkbenchPergolaConnectionKind {
   // PR-F (2026-05-22): prefer the snap-derived attachment. Legacy
   // `connectionKind` / `strategy` fields stay as fallback until PR-H
   // deletes them.
-  if (pergola.attachment) return connectionKindFromAttachment(pergola.attachment);
+  if (pergola.attachment)
+    return connectionKindFromAttachment(pergola.attachment);
   if (pergola.connectionKind) return pergola.connectionKind;
-  if (pergola.strategy === 'none') return 'freestanding';
-  return 'soffit';
+  if (pergola.strategy === "none") return "freestanding";
+  return "soffit";
 }
 
-function buildPergolaResolution(pergola: PergolaObjectModel, isFreestanding: boolean): ObjectWorkbenchPergolaStatus['resolution'] {
+function buildPergolaResolution(
+  pergola: PergolaObjectModel,
+  isFreestanding: boolean,
+): ObjectWorkbenchPergolaStatus["resolution"] {
   if (isFreestanding) {
     return {
-      status: 'resolved',
+      status: "resolved",
       message: null,
     };
   }
   if (pergola.attachmentEdgeId || pergola.attachmentZoneId) {
     return {
-      status: 'resolved',
+      status: "resolved",
       message: null,
     };
   }
   return {
-    status: 'unresolved',
-    message: 'Select a resolved house edge or attachment zone for this pergola.',
+    status: "unresolved",
+    message:
+      "Select a resolved house edge or attachment zone for this pergola.",
   };
 }
 
@@ -447,13 +560,13 @@ function buildPergolaStatuses(
   return Object.fromEntries(
     pergolas.map((pergola) => {
       const connectionKind = resolvePergolaConnectionKind(pergola);
-      const isFreestanding = connectionKind === 'freestanding';
+      const isFreestanding = connectionKind === "freestanding";
       return [
         pergola.id,
         {
           connectionKind,
-          attachmentStrategy: pergola.strategy ?? 'auto',
-          confidence: pergola.family === 'unknown' ? 'low' : 'high',
+          attachmentStrategy: pergola.strategy ?? "auto",
+          confidence: pergola.family === "unknown" ? "low" : "high",
           isFreestanding,
           resolution: buildPergolaResolution(pergola, isFreestanding),
         },
@@ -463,19 +576,19 @@ function buildPergolaStatuses(
 }
 
 function resolveAttachmentStrategyZoneKinds(
-  strategy: HouseFormModel['attachmentStrategy'] | null | undefined,
-): Array<'wall' | 'soffit' | 'fascia' | 'roof_edge'> {
+  strategy: HouseFormModel["attachmentStrategy"] | null | undefined,
+): Array<"wall" | "soffit" | "fascia" | "roof_edge"> {
   switch (strategy) {
-    case 'facade_ledger':
-    case 'post_supported_tieback':
-      return ['wall'];
-    case 'fascia_under_gutter':
-      return ['fascia'];
-    case 'none':
+    case "facade_ledger":
+    case "post_supported_tieback":
+      return ["wall"];
+    case "fascia_under_gutter":
+      return ["fascia"];
+    case "none":
       return [];
-    case 'soffit_brackets':
+    case "soffit_brackets":
     default:
-      return ['soffit'];
+      return ["soffit"];
   }
 }
 
@@ -486,8 +599,9 @@ function resolveOpeningAttachmentSide(
   if (isAttachmentSide(opening.wallId)) return opening.wallId;
   if (opening.hostEdgeId) {
     const zoneSide =
-      projectModel.houseAssembly?.derivedEnvelope?.attachmentZones.find((zone) => zone.hostEdgeId === opening.hostEdgeId)?.side ??
-      null;
+      projectModel.houseAssembly?.derivedEnvelope?.attachmentZones.find(
+        (zone) => zone.hostEdgeId === opening.hostEdgeId,
+      )?.side ?? null;
     if (isAttachmentSide(zoneSide)) return zoneSide;
   }
   return null;
@@ -497,24 +611,31 @@ function summarizeAttachmentZoneBlocks(
   projectModel: WorkbenchProjectModel,
   houseForm: HouseFormModel | null,
 ): string {
-  const candidateKinds = resolveAttachmentStrategyZoneKinds(houseForm?.attachmentStrategy);
-  if (!candidateKinds.length) return 'none';
+  const candidateKinds = resolveAttachmentStrategyZoneKinds(
+    houseForm?.attachmentStrategy,
+  );
+  if (!candidateKinds.length) return "none";
   const houseFormId = houseForm?.id ?? null;
 
   const blocked = new Set<string>();
   for (const opening of projectModel.openings) {
-    if (opening.kind !== 'slider' && opening.kind !== 'stacker') continue;
-    if (houseFormId && opening.sourceFormId && opening.sourceFormId !== houseFormId) continue;
+    if (opening.kind !== "slider" && opening.kind !== "stacker") continue;
+    if (
+      houseFormId &&
+      opening.sourceFormId &&
+      opening.sourceFormId !== houseFormId
+    )
+      continue;
     const side = resolveOpeningAttachmentSide(projectModel, opening);
     if (!side) continue;
     for (const kind of candidateKinds) {
-      if (kind === 'soffit' || kind === 'fascia' || kind === 'roof_edge') {
+      if (kind === "soffit" || kind === "fascia" || kind === "roof_edge") {
         blocked.add(`${side} ${kind} (side_openings_block_roof_zone)`);
       }
     }
   }
 
-  return blocked.size ? Array.from(blocked).join(' | ') : 'none';
+  return blocked.size ? Array.from(blocked).join(" | ") : "none";
 }
 
 function buildHouseFormStatus(input: {
@@ -525,18 +646,22 @@ function buildHouseFormStatus(input: {
   warnings: ObjectWorkbenchMigrationWarning[];
 }): ObjectWorkbenchHouseFormStatus {
   const houseForm = input.houseForm;
+  const roof = buildRoofStatus({
+    activeModuleInput: input.activeModuleInput,
+    derivedFootprintPolygon: input.derivedFootprintPolygon,
+    houseForm,
+  });
   return {
     lowConfidence: input.warnings.length > 0,
     warnings: input.warnings,
     footprintPreset: houseForm?.footprint.preset ?? null,
-    roofForm: houseForm?.roofIntent.form ?? null,
-    defaultDeckHostEdgeId: houseForm?.footprint.attachmentSide ?? 'rear',
-    attachmentZoneBlockedSummary: summarizeAttachmentZoneBlocks(input.projectModel, houseForm),
-    roof: buildRoofStatus({
-      activeModuleInput: input.activeModuleInput,
-      derivedFootprintPolygon: input.derivedFootprintPolygon,
+    roofForm: roof?.form ?? null,
+    defaultDeckHostEdgeId: houseForm?.footprint.attachmentSide ?? "rear",
+    attachmentZoneBlockedSummary: summarizeAttachmentZoneBlocks(
+      input.projectModel,
       houseForm,
-    }),
+    ),
+    roof,
   };
 }
 
@@ -547,13 +672,16 @@ export function buildObjectWorkbenchStatusFacade(input: {
   projectModel: WorkbenchProjectModel;
 }): ObjectWorkbenchStatusFacade {
   const houseForms = input.projectModel.houseAssembly?.houseForms ?? [];
-  const activeHouseForm =
-    input.activeHouseFormId
-      ? houseForms.find((houseForm) => houseForm.id === input.activeHouseFormId) ?? null
-      : null;
+  const activeHouseForm = input.activeHouseFormId
+    ? (houseForms.find(
+        (houseForm) => houseForm.id === input.activeHouseFormId,
+      ) ?? null)
+    : null;
   const warnings = buildMigrationWarnings(input.projectModel.warnings ?? []);
   const singleHouseDerivedFootprint =
-    houseForms.length === 1 ? input.projectModel.houseAssembly?.derivedEnvelope?.footprint ?? null : null;
+    houseForms.length === 1
+      ? (input.projectModel.houseAssembly?.derivedEnvelope?.footprint ?? null)
+      : null;
   const houseFormsById = Object.fromEntries(
     houseForms.map((houseForm) => [
       houseForm.id,
@@ -566,7 +694,9 @@ export function buildObjectWorkbenchStatusFacade(input: {
       }),
     ]),
   );
-  const activeHouseFormStatus = activeHouseForm ? houseFormsById[activeHouseForm.id] ?? null : null;
+  const activeHouseFormStatus = activeHouseForm
+    ? (houseFormsById[activeHouseForm.id] ?? null)
+    : null;
   const decks = input.projectModel.decks;
   const deckStatuses = buildDeckStatuses(decks);
   const activeHostSide = input.activeModuleInput
@@ -588,7 +718,9 @@ export function buildObjectWorkbenchStatusFacade(input: {
     openingStatuses: buildOpeningStatuses(input.projectModel.openings),
     pergolaStatuses: buildPergolaStatuses(input.projectModel.pergolas),
     activeDeckSupport,
-    activeDeckInteraction: input.activeDeckId ? deckStatuses[input.activeDeckId]?.interaction ?? null : null,
+    activeDeckInteraction: input.activeDeckId
+      ? (deckStatuses[input.activeDeckId]?.interaction ?? null)
+      : null,
     deckSupportWarningCount: decks.reduce(
       (sum, deck) => sum + (deck.supportContext?.warningCodes.length ?? 0),
       0,

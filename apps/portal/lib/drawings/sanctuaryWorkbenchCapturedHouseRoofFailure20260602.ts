@@ -2857,4 +2857,4 @@ export const CAPTURED_HOUSE_ROOF_FAILURE_20260602_PAYLOAD = {
       }
     ]
   }
-} as WorkbenchDebugFixtureExport;
+} as unknown as WorkbenchDebugFixtureExport;

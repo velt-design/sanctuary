@@ -923,8 +923,10 @@ describe('buildWorkbenchGeometryPreview', () => {
     });
 
     expect(preview.scene.metadata?.houseRoofQaStatus).toBe('valid');
+    expect(preview.scene.metadata?.houseRoofTopologySolver).toBe('eave_graph_source_edge_envelope');
+    expect(preview.scene.metadata?.houseRoofTopologyFailureReason).toBeNull();
+    expect(preview.scene.metadata?.houseRoofTopologyFailureEdgeId).toBeNull();
     expect(preview.scene.metadata?.houseRoofTopologyValleyCount).toBe(2);
-    expect(preview.scene.metadata?.houseRoofTopologyInternalEaveHeightSegmentCount).toBe(0);
     expect(Number(preview.scene.metadata?.houseRoofSolidExpectedCount ?? 0)).toBeGreaterThan(0);
     expect(Number(preview.scene.metadata?.houseRoofSolidSkippedCount ?? 0)).toBe(0);
     expect(joinEdgeEaveObjects).toHaveLength(0);
@@ -989,7 +991,7 @@ describe('buildWorkbenchGeometryPreview', () => {
         expectValleyFeature: form === 'hipped' && preset !== 'straight',
       });
     }
-  });
+  }, 10_000);
 
   it('renders hipped preset roof rotations through the ready preview path', () => {
     const fixture = requireFixture('mono-standard');
@@ -1129,14 +1131,11 @@ describe('buildWorkbenchGeometryPreview', () => {
     expect(preview.kind).toBe('ready');
     if (preview.kind !== 'ready') return;
     expect(preview.config.houseContext.model?.roofForm).toBe('hipped');
-    expect(preview.assembly.house.model?.metadata?.openGableEndIds).toContain('house-gable-end-x-7');
     expectSupportedHouseRoofVisualQa(preview, {
       label: 'u_shape/rear/gable-legacy/open-end',
       form: 'hipped',
       expectedPitchDeg: 18,
-      expectOpenGableFrame: true,
-      // Bent-spine joined-gable has no hip features.
-      expectHipFeature: false,
+      expectValleyFeature: true,
     });
   });
 

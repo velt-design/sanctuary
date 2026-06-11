@@ -76,6 +76,22 @@ describe('planCommittedBodyTokenClass', () => {
         ),
       ).toMatch(/bodyHouseRoof/);
     });
+
+    it('renders synthetic terminal-end plan projection targets transparent', () => {
+      expect(
+        planCommittedBodyTokenClass(
+          shape({
+            family: 'house',
+            kind: 'roof',
+            metadata: {
+              isOpen: false,
+              openGableEndId: 'house-gable-end-x-2',
+              planProjectionSource: 'house_terminal_end',
+            },
+          }),
+        ),
+      ).toMatch(/bodyTransparent/);
+    });
   });
 
   describe('pergola family', () => {

@@ -78,6 +78,58 @@ describe("buildHouseFormGeometryInput", () => {
     expect(result.diagnostics.roofPlaneCountAfterQa).toBe(0);
   });
 
+  it("repairs unauthored mono roof intent before building raw house geometry", () => {
+    const projectModel = multiHouseProjectModel();
+    const houseForm = projectModel.houseAssembly?.houseForms.find(
+      (candidate) => candidate.id === "house-main",
+    );
+    if (!houseForm) throw new Error("Expected house-main.");
+    houseForm.roofIntent = { ...houseForm.roofIntent, form: "mono" };
+    delete houseForm.roofIntentAuthored;
+
+    const result = buildHouseFormGeometryInput({
+      projectModel,
+      houseFormId: "house-main",
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.rawHouseInput.roofForm).toBe("hipped");
+    expect(result.diagnostics).toMatchObject({
+      roofIntentAuthored: false,
+      rawRoofIntentForm: "mono",
+      resolvedRoofIntentForm: "hipped",
+      roofIntentResolutionSource: "object_first_unauthed_mono_repair",
+      roofIntentRepairCode: "unauthed_mono_repaired_to_hipped",
+    });
+  });
+
+  it("preserves authored mono roof intent before building raw house geometry", () => {
+    const projectModel = multiHouseProjectModel();
+    const houseForm = projectModel.houseAssembly?.houseForms.find(
+      (candidate) => candidate.id === "house-main",
+    );
+    if (!houseForm) throw new Error("Expected house-main.");
+    houseForm.roofIntent = { ...houseForm.roofIntent, form: "mono" };
+    houseForm.roofIntentAuthored = true;
+
+    const result = buildHouseFormGeometryInput({
+      projectModel,
+      houseFormId: "house-main",
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.rawHouseInput.roofForm).toBe("mono");
+    expect(result.diagnostics).toMatchObject({
+      roofIntentAuthored: true,
+      rawRoofIntentForm: "mono",
+      resolvedRoofIntentForm: "mono",
+      roofIntentResolutionSource: "object_first_authored",
+      roofIntentRepairCode: null,
+    });
+  });
+
   it("reports invalid object-owned footprints as the first failing stage", () => {
     const projectModel = multiHouseProjectModel();
     const invalidProjectModel = {

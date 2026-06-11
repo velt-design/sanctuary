@@ -14,13 +14,26 @@ export type HouseRoofStageDiagnostics = {
   roofIntentPitchDeg: number | null;
   roofIntentRidgeAxis: string | null;
   roofGeometry: string | null;
+  roofTopologySolver: string | null;
   roofFacetMergeMode: string | null;
+  roofTopologySemanticQaStatus: string | null;
+  roofTopologySemanticFailureReason: string | null;
   roofTopologyFailureReason: string | null;
+  roofTopologyClosedFaceCount: number | null;
+  roofTopologyExpectedFaceCount: number | null;
   roofTopologyFinalFaceCount: number | null;
   roofTopologySourceEdgeCount: number | null;
   roofTopologyDisconnectedSourceFaceCount: number | null;
   roofTopologyInternalEaveHeightSegmentCount: number | null;
   roofTopologyProjectionViolationCount: number | null;
+  roofTopologyCoverageQaStatus: string | null;
+  roofTopologyCoverageFailureReason: string | null;
+  roofTopologyCoverageGapAreaMm2: number | null;
+  roofTopologyCoverageOverlapAreaMm2: number | null;
+  roofTopologyCoverageAreaDeltaMm2: number | null;
+  roofTopologyOverlapAreaMm2: number | null;
+  roofTopologyDanglingFeatureCount: number | null;
+  roofTopologyUnclassifiedFeatureCount: number | null;
   roofWavefrontFailureReason: string | null;
   roofQaStatus: string | null;
   roofQaFailureReason: string | null;
@@ -28,6 +41,14 @@ export type HouseRoofStageDiagnostics = {
   roofQaFacetAreaMm2: number | null;
   roofQaEaveAreaMm2: number | null;
   roofQaAreaDeltaMm2: number | null;
+  roofEaveOffsetRepairStatus: string | null;
+  roofEaveOffsetRepairCode: string | null;
+  roofRequestedEaveOverhangMm: number | null;
+  roofEffectiveEaveOverhangMm: number | null;
+  footprintCanonicalizationStatus: string | null;
+  footprintCanonicalizationPrecisionMm: number | null;
+  footprintCanonicalizationPointCountBefore: number | null;
+  footprintCanonicalizationPointCountAfter: number | null;
   roofPlaneCountBeforeQa: number;
   roofPlaneCountAfterQa: number;
   roofMaterialVisualCount: number;
@@ -46,13 +67,26 @@ export const EMPTY_HOUSE_ROOF_STAGE_DIAGNOSTICS: HouseRoofStageDiagnostics = {
   roofIntentPitchDeg: null,
   roofIntentRidgeAxis: null,
   roofGeometry: null,
+  roofTopologySolver: null,
   roofFacetMergeMode: null,
+  roofTopologySemanticQaStatus: null,
+  roofTopologySemanticFailureReason: null,
   roofTopologyFailureReason: null,
+  roofTopologyClosedFaceCount: null,
+  roofTopologyExpectedFaceCount: null,
   roofTopologyFinalFaceCount: null,
   roofTopologySourceEdgeCount: null,
   roofTopologyDisconnectedSourceFaceCount: null,
   roofTopologyInternalEaveHeightSegmentCount: null,
   roofTopologyProjectionViolationCount: null,
+  roofTopologyCoverageQaStatus: null,
+  roofTopologyCoverageFailureReason: null,
+  roofTopologyCoverageGapAreaMm2: null,
+  roofTopologyCoverageOverlapAreaMm2: null,
+  roofTopologyCoverageAreaDeltaMm2: null,
+  roofTopologyOverlapAreaMm2: null,
+  roofTopologyDanglingFeatureCount: null,
+  roofTopologyUnclassifiedFeatureCount: null,
   roofWavefrontFailureReason: null,
   roofQaStatus: null,
   roofQaFailureReason: null,
@@ -60,6 +94,14 @@ export const EMPTY_HOUSE_ROOF_STAGE_DIAGNOSTICS: HouseRoofStageDiagnostics = {
   roofQaFacetAreaMm2: null,
   roofQaEaveAreaMm2: null,
   roofQaAreaDeltaMm2: null,
+  roofEaveOffsetRepairStatus: null,
+  roofEaveOffsetRepairCode: null,
+  roofRequestedEaveOverhangMm: null,
+  roofEffectiveEaveOverhangMm: null,
+  footprintCanonicalizationStatus: null,
+  footprintCanonicalizationPrecisionMm: null,
+  footprintCanonicalizationPointCountBefore: null,
+  footprintCanonicalizationPointCountAfter: null,
   roofPlaneCountBeforeQa: 0,
   roofPlaneCountAfterQa: 0,
   roofMaterialVisualCount: 0,
@@ -147,8 +189,25 @@ export function summarizeHouseModelRoofStageDiagnostics(
     roofIntentRidgeAxis:
       model.roofRidgeAxis ?? stringMetadata(metadata, "ridgeAxis"),
     roofGeometry,
+    roofTopologySolver: stringMetadata(metadata, "roofTopologySolver"),
     roofFacetMergeMode: stringMetadata(metadata, "roofFacetMergeMode"),
+    roofTopologySemanticQaStatus: stringMetadata(
+      metadata,
+      "roofTopologySemanticQaStatus",
+    ),
+    roofTopologySemanticFailureReason: stringMetadata(
+      metadata,
+      "roofTopologySemanticFailureReason",
+    ),
     roofTopologyFailureReason,
+    roofTopologyClosedFaceCount: numberMetadata(
+      metadata,
+      "roofTopologyClosedFaceCount",
+    ),
+    roofTopologyExpectedFaceCount: numberMetadata(
+      metadata,
+      "roofTopologyExpectedFaceCount",
+    ),
     roofTopologyFinalFaceCount: numberMetadata(
       metadata,
       "roofTopologyFinalFaceCount",
@@ -169,6 +228,38 @@ export function summarizeHouseModelRoofStageDiagnostics(
       metadata,
       "roofTopologyProjectionViolationCount",
     ),
+    roofTopologyCoverageQaStatus: stringMetadata(
+      metadata,
+      "roofTopologyCoverageQaStatus",
+    ),
+    roofTopologyCoverageFailureReason: stringMetadata(
+      metadata,
+      "roofTopologyCoverageFailureReason",
+    ),
+    roofTopologyCoverageGapAreaMm2: numberMetadata(
+      metadata,
+      "roofTopologyCoverageGapAreaMm2",
+    ),
+    roofTopologyCoverageOverlapAreaMm2: numberMetadata(
+      metadata,
+      "roofTopologyCoverageOverlapAreaMm2",
+    ),
+    roofTopologyCoverageAreaDeltaMm2: numberMetadata(
+      metadata,
+      "roofTopologyCoverageAreaDeltaMm2",
+    ),
+    roofTopologyOverlapAreaMm2: numberMetadata(
+      metadata,
+      "roofTopologyOverlapAreaMm2",
+    ),
+    roofTopologyDanglingFeatureCount: numberMetadata(
+      metadata,
+      "roofTopologyDanglingFeatureCount",
+    ),
+    roofTopologyUnclassifiedFeatureCount: numberMetadata(
+      metadata,
+      "roofTopologyUnclassifiedFeatureCount",
+    ),
     roofWavefrontFailureReason,
     roofQaStatus,
     roofQaFailureReason: stringMetadata(metadata, "roofQaFailureReason"),
@@ -179,6 +270,36 @@ export function summarizeHouseModelRoofStageDiagnostics(
     roofQaFacetAreaMm2: numberMetadata(metadata, "roofQaFacetAreaMm2"),
     roofQaEaveAreaMm2: numberMetadata(metadata, "roofQaEaveAreaMm2"),
     roofQaAreaDeltaMm2: numberMetadata(metadata, "roofQaAreaDeltaMm2"),
+    roofEaveOffsetRepairStatus: stringMetadata(
+      metadata,
+      "roofEaveOffsetRepairStatus",
+    ),
+    roofEaveOffsetRepairCode: stringMetadata(
+      metadata,
+      "roofEaveOffsetRepairCode",
+    ),
+    roofRequestedEaveOverhangMm: numberMetadata(
+      metadata,
+      "roofRequestedEaveOverhangMm",
+    ),
+    roofEffectiveEaveOverhangMm: numberMetadata(
+      metadata,
+      "roofEffectiveEaveOverhangMm",
+    ),
+    footprintCanonicalizationStatus:
+      stringMetadata(metadata, "footprintCanonicalizationStatus") ?? "none",
+    footprintCanonicalizationPrecisionMm: numberMetadata(
+      metadata,
+      "footprintCanonicalizationPrecisionMm",
+    ),
+    footprintCanonicalizationPointCountBefore: numberMetadata(
+      metadata,
+      "footprintCanonicalizationPointCountBefore",
+    ),
+    footprintCanonicalizationPointCountAfter: numberMetadata(
+      metadata,
+      "footprintCanonicalizationPointCountAfter",
+    ),
     roofPlaneCountBeforeQa,
     roofPlaneCountAfterQa,
     roofMaterialVisualCount,
@@ -202,8 +323,15 @@ export function pickHouseRoofStageDiagnostics(
     roofIntentPitchDeg: diagnostics.roofIntentPitchDeg,
     roofIntentRidgeAxis: diagnostics.roofIntentRidgeAxis,
     roofGeometry: diagnostics.roofGeometry,
+    roofTopologySolver: diagnostics.roofTopologySolver,
     roofFacetMergeMode: diagnostics.roofFacetMergeMode,
+    roofTopologySemanticQaStatus:
+      diagnostics.roofTopologySemanticQaStatus,
+    roofTopologySemanticFailureReason:
+      diagnostics.roofTopologySemanticFailureReason,
     roofTopologyFailureReason: diagnostics.roofTopologyFailureReason,
+    roofTopologyClosedFaceCount: diagnostics.roofTopologyClosedFaceCount,
+    roofTopologyExpectedFaceCount: diagnostics.roofTopologyExpectedFaceCount,
     roofTopologyFinalFaceCount: diagnostics.roofTopologyFinalFaceCount,
     roofTopologySourceEdgeCount: diagnostics.roofTopologySourceEdgeCount,
     roofTopologyDisconnectedSourceFaceCount:
@@ -212,6 +340,21 @@ export function pickHouseRoofStageDiagnostics(
       diagnostics.roofTopologyInternalEaveHeightSegmentCount,
     roofTopologyProjectionViolationCount:
       diagnostics.roofTopologyProjectionViolationCount,
+    roofTopologyCoverageQaStatus:
+      diagnostics.roofTopologyCoverageQaStatus,
+    roofTopologyCoverageFailureReason:
+      diagnostics.roofTopologyCoverageFailureReason,
+    roofTopologyCoverageGapAreaMm2:
+      diagnostics.roofTopologyCoverageGapAreaMm2,
+    roofTopologyCoverageOverlapAreaMm2:
+      diagnostics.roofTopologyCoverageOverlapAreaMm2,
+    roofTopologyCoverageAreaDeltaMm2:
+      diagnostics.roofTopologyCoverageAreaDeltaMm2,
+    roofTopologyOverlapAreaMm2: diagnostics.roofTopologyOverlapAreaMm2,
+    roofTopologyDanglingFeatureCount:
+      diagnostics.roofTopologyDanglingFeatureCount,
+    roofTopologyUnclassifiedFeatureCount:
+      diagnostics.roofTopologyUnclassifiedFeatureCount,
     roofWavefrontFailureReason: diagnostics.roofWavefrontFailureReason,
     roofQaStatus: diagnostics.roofQaStatus,
     roofQaFailureReason: diagnostics.roofQaFailureReason,
@@ -219,6 +362,18 @@ export function pickHouseRoofStageDiagnostics(
     roofQaFacetAreaMm2: diagnostics.roofQaFacetAreaMm2,
     roofQaEaveAreaMm2: diagnostics.roofQaEaveAreaMm2,
     roofQaAreaDeltaMm2: diagnostics.roofQaAreaDeltaMm2,
+    roofEaveOffsetRepairStatus: diagnostics.roofEaveOffsetRepairStatus,
+    roofEaveOffsetRepairCode: diagnostics.roofEaveOffsetRepairCode,
+    roofRequestedEaveOverhangMm: diagnostics.roofRequestedEaveOverhangMm,
+    roofEffectiveEaveOverhangMm: diagnostics.roofEffectiveEaveOverhangMm,
+    footprintCanonicalizationStatus:
+      diagnostics.footprintCanonicalizationStatus,
+    footprintCanonicalizationPrecisionMm:
+      diagnostics.footprintCanonicalizationPrecisionMm,
+    footprintCanonicalizationPointCountBefore:
+      diagnostics.footprintCanonicalizationPointCountBefore,
+    footprintCanonicalizationPointCountAfter:
+      diagnostics.footprintCanonicalizationPointCountAfter,
     roofPlaneCountBeforeQa: diagnostics.roofPlaneCountBeforeQa,
     roofPlaneCountAfterQa: diagnostics.roofPlaneCountAfterQa,
     roofMaterialVisualCount: diagnostics.roofMaterialVisualCount,
@@ -235,6 +390,10 @@ export function firstHouseRoofStageDiagnosticCode(
     return "eave_polygon_construction_failed";
   if (diagnostics.roofIntentNormalizationStatus === "failed")
     return "roof_intent_normalization_failed";
+  if (diagnostics.roofEaveOffsetRepairCode)
+    return diagnostics.roofEaveOffsetRepairCode;
+  if (diagnostics.roofTopologyCoverageFailureReason)
+    return diagnostics.roofTopologyCoverageFailureReason;
   if (diagnostics.roofTopologyFailureReason)
     return diagnostics.roofTopologyFailureReason;
   if (diagnostics.roofWavefrontFailureReason)

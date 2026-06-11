@@ -1,7 +1,7 @@
 import {
   deriveHouseGableTerminalEnds,
   isHouseRoofForm as isSupportedHouseRoofForm,
-} from '@sp/geometry';
+} from "@sp/geometry";
 import {
   DEFAULT_CALCULATOR_HOUSE_ROOF_MATERIAL,
   normalizeAttachmentSide,
@@ -19,22 +19,33 @@ import {
   type CalculatorHouseRoofMaterial,
   type CalculatorHouseStoreyMode,
   type CalculatorModuleInputs,
-} from '@/lib/types/calculator';
-export type WorkbenchObjectFamily = 'house_forms' | 'decks' | 'openings' | 'pergolas';
+} from "@/lib/types/calculator";
+export type WorkbenchObjectFamily =
+  | "house_forms"
+  | "decks"
+  | "openings"
+  | "pergolas";
 
-export type HouseRoofForm = 'flat' | 'mono' | 'hipped';
-export type HouseRoofPrimaryFallDirection = 'positive_x' | 'negative_x' | 'positive_y' | 'negative_y';
-export type HouseRoofRidgeAxis = 'x' | 'y';
+export type HouseRoofForm = "flat" | "mono" | "hipped";
+export type HouseRoofPrimaryFallDirection =
+  | "positive_x"
+  | "negative_x"
+  | "positive_y"
+  | "negative_y";
+export type HouseRoofRidgeAxis = "x" | "y";
 // PR-T8 (2026-05-29): `HouseRoofAppendageForm` removed with the
 // appendage feature cull.
 // PR-T9 (2026-05-29): `DeckKind` and `DeckElevationMode` removed with the
 // deck inspector cull. `kind` was passed to costing but never branched on;
 // `elevationMode` only branched on `'ground'` vs not-ground to clamp
 // negative offsets, which the user never observed firing.
-export type DeckShape = 'preset' | 'custom';
-export type DeckAttachmentMode = 'floating' | 'single_edge' | 'corner_dual_edge';
-export type DeckPresetType = 'rect_attached' | 'rect_detached';
-export type DeckSurfaceMaterial = 'timber_decking' | 'composite' | 'concrete';
+export type DeckShape = "preset" | "custom";
+export type DeckAttachmentMode =
+  | "floating"
+  | "single_edge"
+  | "corner_dual_edge";
+export type DeckPresetType = "rect_attached" | "rect_detached";
+export type DeckSurfaceMaterial = "timber_decking" | "composite" | "concrete";
 export type DeckPresetRect = {
   widthM: string;
   depthM: string;
@@ -47,51 +58,73 @@ export type DeckFloatingPresetRect = {
   widthM: string;
   depthM: string;
 };
-export type DeckSupportClassification = 'ground_supported' | 'threshold_attached' | 'mixed_or_unclear';
+export type DeckSupportClassification =
+  | "ground_supported"
+  | "threshold_attached"
+  | "mixed_or_unclear";
 export type DeckSupportWarningCode =
-  | 'insufficient_host_edge_contact'
-  | 'detached_too_close_to_house'
-  | 'threshold_alignment_offset'
-  | 'unsupported_house_intersection';
+  | "insufficient_host_edge_contact"
+  | "detached_too_close_to_house"
+  | "threshold_alignment_offset"
+  | "unsupported_house_intersection";
 export type DeckValidationCode =
-  | 'self_intersecting_outline'
-  | 'outline_inside_house'
-  | 'attached_missing_host_edge'
-  | 'overlapping_decks'
-  | 'detached_threshold_alignment'
-  | 'unsupported_house_intersection';
-export type WallOpeningKind = 'window' | 'hinged_door' | 'slider' | 'stacker';
-export const WALL_OPENING_KINDS = ['window', 'hinged_door', 'slider', 'stacker'] as const;
+  | "self_intersecting_outline"
+  | "outline_inside_house"
+  | "attached_missing_host_edge"
+  | "overlapping_decks"
+  | "detached_threshold_alignment"
+  | "unsupported_house_intersection";
+export type WallOpeningKind = "window" | "hinged_door" | "slider" | "stacker";
+export const WALL_OPENING_KINDS = [
+  "window",
+  "hinged_door",
+  "slider",
+  "stacker",
+] as const;
 export type SliderPanelCount = 2 | 3 | 4;
 export const SLIDER_PANEL_COUNTS = [2, 3, 4] as const;
-export type WallOpeningHostSide = NonNullable<CalculatorModuleInputs['attachmentSide']>;
+export type WallOpeningHostSide = NonNullable<
+  CalculatorModuleInputs["attachmentSide"]
+>;
 export type WallOpeningValidationCode =
-  | 'missing_host_wall'
-  | 'ambiguous_host_wall'
-  | 'invalid_width'
-  | 'invalid_height'
-  | 'invalid_sill_height'
-  | 'offset_out_of_bounds'
-  | 'span_exceeds_wall'
-  | 'insufficient_corner_clearance'
-  | 'overlapping_openings';
-export type HouseAttachmentZoneKind = 'wall' | 'soffit' | 'fascia' | 'roof_edge';
+  | "missing_host_wall"
+  | "ambiguous_host_wall"
+  | "invalid_width"
+  | "invalid_height"
+  | "invalid_sill_height"
+  | "offset_out_of_bounds"
+  | "span_exceeds_wall"
+  | "insufficient_corner_clearance"
+  | "overlapping_openings";
+export type HouseAttachmentZoneKind =
+  | "wall"
+  | "soffit"
+  | "fascia"
+  | "roof_edge";
 
 export function isWallOpeningKind(value: unknown): value is WallOpeningKind {
-  return typeof value === 'string' && WALL_OPENING_KINDS.includes(value as WallOpeningKind);
+  return (
+    typeof value === "string" &&
+    WALL_OPENING_KINDS.includes(value as WallOpeningKind)
+  );
 }
 
 export function normalizeWallOpeningKind(value: unknown): WallOpeningKind {
-  return isWallOpeningKind(value) ? value : 'window';
+  return isWallOpeningKind(value) ? value : "window";
 }
 
 export function isSliderPanelCount(value: unknown): value is SliderPanelCount {
-  return typeof value === 'number' && SLIDER_PANEL_COUNTS.includes(value as SliderPanelCount);
+  return (
+    typeof value === "number" &&
+    SLIDER_PANEL_COUNTS.includes(value as SliderPanelCount)
+  );
 }
 
-export function normalizeSliderPanelCount(value: unknown): SliderPanelCount | null {
+export function normalizeSliderPanelCount(
+  value: unknown,
+): SliderPanelCount | null {
   if (isSliderPanelCount(value)) return value;
-  if (typeof value === 'string') {
+  if (typeof value === "string") {
     const parsed = Number.parseInt(value, 10);
     return isSliderPanelCount(parsed) ? parsed : null;
   }
@@ -102,7 +135,7 @@ export function resolveOpeningPanelCount(
   kind: WallOpeningKind,
   value: unknown,
 ): SliderPanelCount | null {
-  if (kind !== 'slider') return null;
+  if (kind !== "slider") return null;
   return normalizeSliderPanelCount(value) ?? 2;
 }
 
@@ -140,7 +173,7 @@ export type HouseFormFootprintModel = {
   preset: CalculatorHouseFootprintPreset;
   params: CalculatorHouseFootprintParams;
   polygon: CalculatorHouseFootprintPolygonPoint[];
-  attachmentSide: NonNullable<CalculatorModuleInputs['attachmentSide']>;
+  attachmentSide: NonNullable<CalculatorModuleInputs["attachmentSide"]>;
   /** Optional world-space position. See `HouseFormPosition` for details. */
   position?: HouseFormPosition | null;
 };
@@ -176,12 +209,59 @@ export type HouseFormModel = {
   sourceModuleIds?: string[];
 };
 
+export type HouseRoofIntentResolutionSource =
+  | "object_first_authored"
+  | "object_first_unauthed_default"
+  | "object_first_unauthed_mono_repair";
+
+export type HouseRoofIntentAuthorshipResolution = {
+  roofIntent: HouseFormRoofIntentModel;
+  roofIntentAuthored: boolean;
+  rawForm: HouseRoofForm;
+  resolvedForm: HouseRoofForm;
+  source: HouseRoofIntentResolutionSource;
+  repairCode: "unauthed_mono_repaired_to_hipped" | null;
+};
+
+export function resolveHouseRoofIntentForAuthorship(input: {
+  roofIntent: HouseFormRoofIntentModel;
+  roofIntentAuthored?: boolean | null;
+}): HouseRoofIntentAuthorshipResolution {
+  const roofIntentAuthored = input.roofIntentAuthored === true;
+  const rawForm = input.roofIntent.form;
+  if (!roofIntentAuthored && rawForm === "mono") {
+    const roofIntent: HouseFormRoofIntentModel = {
+      ...input.roofIntent,
+      form: "hipped",
+      openGableEndIds: [],
+    };
+    return {
+      roofIntent,
+      roofIntentAuthored,
+      rawForm,
+      resolvedForm: roofIntent.form,
+      source: "object_first_unauthed_mono_repair",
+      repairCode: "unauthed_mono_repaired_to_hipped",
+    };
+  }
+  return {
+    roofIntent: input.roofIntent,
+    roofIntentAuthored,
+    rawForm,
+    resolvedForm: input.roofIntent.form,
+    source: roofIntentAuthored
+      ? "object_first_authored"
+      : "object_first_unauthed_default",
+    repairCode: null,
+  };
+}
+
 export type DerivedWallModel = {
   id: string;
   label: string;
   sourceFormIds: string[];
   edgeIds: string[];
-  kind: 'exterior';
+  kind: "exterior";
   polygon: CalculatorHouseFootprintPolygonPoint[];
 };
 
@@ -195,12 +275,12 @@ export type DerivedWallGraphModel = {
 };
 
 export type DerivedEnvelopeEdgeSemanticKind =
-  | 'wall_perimeter'
-  | 'roof_perimeter'
-  | 'ridge'
-  | 'valley'
-  | 'eave'
-  | 'gutter';
+  | "wall_perimeter"
+  | "roof_perimeter"
+  | "ridge"
+  | "valley"
+  | "eave"
+  | "gutter";
 
 export type DerivedEnvelopeEdgeModel = {
   id: string;
@@ -225,7 +305,7 @@ export type DerivedAttachmentZoneModel = {
   id: string;
   label: string;
   kind: HouseAttachmentZoneKind;
-  side: NonNullable<CalculatorModuleInputs['attachmentSide']>;
+  side: NonNullable<CalculatorModuleInputs["attachmentSide"]>;
   sourceFormIds: string[];
   hostWallId: string | null;
   hostEdgeId: string | null;
@@ -291,7 +371,7 @@ export type DeckObjectModel = {
     warningMessages: string[];
   } | null;
   validation?: {
-    status: 'valid' | 'invalid';
+    status: "valid" | "invalid";
     codes: DeckValidationCode[];
     messages: string[];
     message: string | null;
@@ -312,7 +392,7 @@ export type OpeningObjectModel = {
   sillHeightM: string;
   offsetAlongWallM: string;
   validation?: {
-    status: 'valid' | 'invalid';
+    status: "valid" | "invalid";
     codes: WallOpeningValidationCode[];
     message: string | null;
   } | null;
@@ -335,21 +415,25 @@ export type ObjectFirstPergolaPosition = {
 };
 
 /** What sort of object the pergola is snapped to. */
-export type PergolaAttachmentSpatialKind = 'wall' | 'roof_edge' | 'pergola_outline' | 'freestanding';
+export type PergolaAttachmentSpatialKind =
+  | "wall"
+  | "roof_edge"
+  | "pergola_outline"
+  | "freestanding";
 
 /**
  * How the pergola physically connects, given its `spatialKind`. Only writable
  * when `spatialKind === 'roof_edge'`; otherwise single-valued (derived).
  */
 export type PergolaAttachmentMethod =
-  | 'facade_ledger'
-  | 'fascia_under_gutter'
-  | 'direct_to_soffit'
-  | 'soffit_brackets'
-  | 'none';
+  | "facade_ledger"
+  | "fascia_under_gutter"
+  | "direct_to_soffit"
+  | "soffit_brackets"
+  | "none";
 
 /** Family of object the pergola is snapped to (future-proof for pergola arrays). */
-export type PergolaAttachmentHostFamily = 'house_forms' | 'pergolas';
+export type PergolaAttachmentHostFamily = "house_forms" | "pergolas";
 
 /**
  * Resolved snap host. Derived from the snap engine's chosen target on the
@@ -360,7 +444,7 @@ export type PergolaAttachmentHostFamily = 'house_forms' | 'pergolas';
 export type PergolaAttachmentHost = {
   objectFamily: PergolaAttachmentHostFamily;
   objectId: string;
-  edgeKind: 'wall' | 'roof_eave' | 'pergola_outline';
+  edgeKind: "wall" | "roof_eave" | "pergola_outline";
   edgeId: string;
   myEdgeIndex: number;
 };
@@ -404,11 +488,11 @@ export type PergolaAttachment = {
 export type PergolaObjectModel = {
   id: string;
   label: string;
-  family: 'mono' | 'gable' | 'box' | 'hip' | 'hip_corner' | 'unknown';
+  family: "mono" | "gable" | "box" | "hip" | "hip_corner" | "unknown";
   connectionKind?: ObjectFirstPergolaConnectionKind | null;
   attachmentEdgeId: string | null;
   attachmentZoneId: string | null;
-  side: NonNullable<CalculatorModuleInputs['attachmentSide']>;
+  side: NonNullable<CalculatorModuleInputs["attachmentSide"]>;
   strategy: CalculatorHouseAttachmentStrategy | null;
   geometry?: ObjectFirstPergolaGeometryDraft | null;
   position?: ObjectFirstPergolaPosition | null;
@@ -430,7 +514,7 @@ export type HouseAssemblyModel = {
 };
 
 export type ObjectFirstWorkbenchProjectModel = {
-  source: 'legacy_estimate_snapshot';
+  source: "legacy_estimate_snapshot";
   houseAssembly: HouseAssemblyModel | null;
   decks: DeckObjectModel[];
   openings: OpeningObjectModel[];
@@ -473,12 +557,12 @@ export type ObjectFirstHouseAssemblyDraft = {
   houseForms: ObjectFirstHouseFormDraft[];
 };
 
-export type DeckAttachmentSpatialKind = 'wall' | 'freestanding';
+export type DeckAttachmentSpatialKind = "wall" | "freestanding";
 
 export type DeckAttachmentHost = {
-  objectFamily: 'house_forms';
+  objectFamily: "house_forms";
   objectId: string;
-  edgeKind: 'wall';
+  edgeKind: "wall";
   edgeId: string;
   myEdgeIndex: number;
 };
@@ -553,11 +637,11 @@ export type ObjectFirstOpeningDraft = {
 export type ObjectFirstPergolaDraft = {
   id: string;
   label: string;
-  family: 'mono' | 'gable' | 'box' | 'hip' | 'hip_corner' | 'unknown';
+  family: "mono" | "gable" | "box" | "hip" | "hip_corner" | "unknown";
   connectionKind?: ObjectFirstPergolaConnectionKind | null;
   attachmentEdgeId: string | null;
   attachmentZoneId: string | null;
-  side: NonNullable<CalculatorModuleInputs['attachmentSide']>;
+  side: NonNullable<CalculatorModuleInputs["attachmentSide"]>;
   strategy: CalculatorHouseAttachmentStrategy | null;
   geometry?: ObjectFirstPergolaGeometryDraft | null;
   position?: ObjectFirstPergolaPosition | null;
@@ -565,15 +649,21 @@ export type ObjectFirstPergolaDraft = {
   attachment?: PergolaAttachment | null;
 };
 
-export type ObjectFirstPergolaConnectionKind = 'freestanding' | 'soffit' | 'fascia' | 'wall';
+export type ObjectFirstPergolaConnectionKind =
+  | "freestanding"
+  | "soffit"
+  | "fascia"
+  | "wall";
 
 export type ObjectFirstPergolaGeometryDraft = {
-  dimensions?: Partial<Record<
-    'lengthM' | 'projectionM' | 'hipCornerLengthBM' | 'hipCornerProjectionBM',
-    string
-  >>;
+  dimensions?: Partial<
+    Record<
+      "lengthM" | "projectionM" | "hipCornerLengthBM" | "hipCornerProjectionBM",
+      string
+    >
+  >;
   roof?: Partial<{
-    material: CalculatorModuleInputs['roofMaterial'];
+    material: CalculatorModuleInputs["roofMaterial"];
     pitchDeg: string;
     boxPerimeterEnabled: boolean;
     mixedAcrylicBaysMain: string;
@@ -581,27 +671,29 @@ export type ObjectFirstPergolaGeometryDraft = {
     mixedAcrylicBaysB: string;
   }>;
   gable?: Partial<{
-    endFramesMode: CalculatorModuleInputs['gableEndFramesMode'];
-    houseEaveGutterMode: CalculatorModuleInputs['gableHouseEdgeGutter'];
-    outerEaveGutterMode: CalculatorModuleInputs['gableOuterEdgeGutter'];
+    endFramesMode: CalculatorModuleInputs["gableEndFramesMode"];
+    houseEaveGutterMode: CalculatorModuleInputs["gableHouseEdgeGutter"];
+    outerEaveGutterMode: CalculatorModuleInputs["gableOuterEdgeGutter"];
   }>;
   supports?: Partial<{
-    postConnectionType: CalculatorModuleInputs['postConnectionType'];
-    ground: CalculatorModuleInputs['ground'];
+    postConnectionType: CalculatorModuleInputs["postConnectionType"];
+    ground: CalculatorModuleInputs["ground"];
     postCount: string;
     postCutHeightM: string;
   }>;
-  overrides?: Partial<Pick<
-    NonNullable<CalculatorModuleInputs['overrides']>,
-    | 'ledgerProfile'
-    | 'rafterProfile'
-    | 'postProfile'
-    | 'frontBeamProfile'
-    | 'ridgeBeamProfile'
-    | 'boxPerimeterBeamProfile'
-    | 'tieBeamProfile'
-    | 'strutProfile'
-  >>;
+  overrides?: Partial<
+    Pick<
+      NonNullable<CalculatorModuleInputs["overrides"]>,
+      | "ledgerProfile"
+      | "rafterProfile"
+      | "postProfile"
+      | "frontBeamProfile"
+      | "ridgeBeamProfile"
+      | "boxPerimeterBeamProfile"
+      | "tieBeamProfile"
+      | "strutProfile"
+    >
+  >;
 };
 
 export type ObjectFirstWorkbenchDraftVNext = {
@@ -618,7 +710,7 @@ export type ObjectFirstWorkbenchDraftVNext = {
 // - `roofIntentAuthored` keeps snapshot-inferred roofs from becoming explicit compatibility roof overrides.
 
 function trimNullableString(value: string | null | undefined): string | null {
-  if (typeof value !== 'string') return null;
+  if (typeof value !== "string") return null;
   const trimmed = value.trim();
   return trimmed.length ? trimmed : null;
 }
@@ -627,38 +719,53 @@ function normalizeStableId(value: string | null | undefined): string | null {
   return trimNullableString(value);
 }
 
-function isHouseRoofPrimaryFallDirection(value: unknown): value is HouseRoofPrimaryFallDirection {
-  return value === 'positive_x' || value === 'negative_x' || value === 'positive_y' || value === 'negative_y';
+function isHouseRoofPrimaryFallDirection(
+  value: unknown,
+): value is HouseRoofPrimaryFallDirection {
+  return (
+    value === "positive_x" ||
+    value === "negative_x" ||
+    value === "positive_y" ||
+    value === "negative_y"
+  );
 }
 
 function isHouseRoofRidgeAxis(value: unknown): value is HouseRoofRidgeAxis {
-  return value === 'x' || value === 'y';
+  return value === "x" || value === "y";
 }
 
 // PR-T8 (2026-05-29): `isHouseRoofAppendageForm` removed with the
 // appendage feature cull.
 
-function isCalculatorHouseStoreyMode(value: unknown): value is CalculatorHouseStoreyMode {
-  return value === 'single_storey' || value === 'double_storey' || value === 'custom';
-}
-
-function isCalculatorHouseAttachmentStrategy(value: unknown): value is CalculatorHouseAttachmentStrategy {
+function isCalculatorHouseStoreyMode(
+  value: unknown,
+): value is CalculatorHouseStoreyMode {
   return (
-    value === 'soffit_brackets' ||
-    value === 'fascia_under_gutter' ||
-    value === 'facade_ledger' ||
-    value === 'post_supported_tieback' ||
-    value === 'none'
+    value === "single_storey" || value === "double_storey" || value === "custom"
   );
 }
 
-function isCalculatorHouseRoofMaterial(value: unknown): value is CalculatorHouseRoofMaterial {
+function isCalculatorHouseAttachmentStrategy(
+  value: unknown,
+): value is CalculatorHouseAttachmentStrategy {
   return (
-    value === 'corrugated_iron' ||
-    value === 'trapezoidal_5_rib' ||
-    value === 'eurotray_300' ||
-    value === 'eurotray_500' ||
-    value === 'shingles'
+    value === "soffit_brackets" ||
+    value === "fascia_under_gutter" ||
+    value === "facade_ledger" ||
+    value === "post_supported_tieback" ||
+    value === "none"
+  );
+}
+
+function isCalculatorHouseRoofMaterial(
+  value: unknown,
+): value is CalculatorHouseRoofMaterial {
+  return (
+    value === "corrugated_iron" ||
+    value === "trapezoidal_5_rib" ||
+    value === "eurotray_300" ||
+    value === "eurotray_500" ||
+    value === "shingles"
   );
 }
 
@@ -666,67 +773,118 @@ function isCalculatorHouseRoofMaterial(value: unknown): value is CalculatorHouse
 // with the deck inspector cull.
 
 function isDeckShape(value: unknown): value is DeckShape {
-  return value === 'preset' || value === 'custom';
+  return value === "preset" || value === "custom";
 }
 
 function isDeckPresetType(value: unknown): value is DeckPresetType {
-  return value === 'rect_attached' || value === 'rect_detached';
+  return value === "rect_attached" || value === "rect_detached";
 }
 
 function isDeckAttachmentMode(value: unknown): value is DeckAttachmentMode {
-  return value === 'floating' || value === 'single_edge' || value === 'corner_dual_edge';
-}
-
-function isDeckSurfaceMaterial(value: unknown): value is DeckSurfaceMaterial {
-  return value === 'timber_decking' || value === 'composite' || value === 'concrete';
-}
-
-function isPergolaFamily(value: unknown): value is ObjectFirstPergolaDraft['family'] {
   return (
-    value === 'mono' ||
-    value === 'gable' ||
-    value === 'box' ||
-    value === 'hip' ||
-    value === 'hip_corner' ||
-    value === 'unknown'
+    value === "floating" ||
+    value === "single_edge" ||
+    value === "corner_dual_edge"
   );
 }
 
-function isObjectFirstPergolaConnectionKind(value: unknown): value is ObjectFirstPergolaConnectionKind {
-  return value === 'freestanding' || value === 'soffit' || value === 'fascia' || value === 'wall';
+function isDeckSurfaceMaterial(value: unknown): value is DeckSurfaceMaterial {
+  return (
+    value === "timber_decking" || value === "composite" || value === "concrete"
+  );
 }
 
-function isPortalRoofMaterial(value: unknown): value is CalculatorModuleInputs['roofMaterial'] {
-  return value === 'acrylic' || value === 'timber' || value === 'mixed' || value === 'insulated' || value === 'louvre';
+function isPergolaFamily(
+  value: unknown,
+): value is ObjectFirstPergolaDraft["family"] {
+  return (
+    value === "mono" ||
+    value === "gable" ||
+    value === "box" ||
+    value === "hip" ||
+    value === "hip_corner" ||
+    value === "unknown"
+  );
 }
 
-function isGableEndFramesMode(value: unknown): value is CalculatorModuleInputs['gableEndFramesMode'] {
-  return value === 'none' || value === 'outer_end_only' || value === 'both_ends';
+function isObjectFirstPergolaConnectionKind(
+  value: unknown,
+): value is ObjectFirstPergolaConnectionKind {
+  return (
+    value === "freestanding" ||
+    value === "soffit" ||
+    value === "fascia" ||
+    value === "wall"
+  );
 }
 
-function isHouseEdgeGutterMode(value: unknown): value is CalculatorModuleInputs['gableHouseEdgeGutter'] {
-  return value === 'house' || value === 'our';
+function isPortalRoofMaterial(
+  value: unknown,
+): value is CalculatorModuleInputs["roofMaterial"] {
+  return (
+    value === "acrylic" ||
+    value === "timber" ||
+    value === "mixed" ||
+    value === "insulated" ||
+    value === "louvre"
+  );
 }
 
-function isPostConnectionType(value: unknown): value is CalculatorModuleInputs['postConnectionType'] {
-  return value === 'pile_1m' || value === 'pile_1_5m' || value === 'deck_bracket' || value === 'slab_anchors';
+function isGableEndFramesMode(
+  value: unknown,
+): value is CalculatorModuleInputs["gableEndFramesMode"] {
+  return (
+    value === "none" || value === "outer_end_only" || value === "both_ends"
+  );
 }
 
-function isGroundCondition(value: unknown): value is CalculatorModuleInputs['ground'] {
-  return value === 'easy' || value === 'hard';
+function isHouseEdgeGutterMode(
+  value: unknown,
+): value is CalculatorModuleInputs["gableHouseEdgeGutter"] {
+  return value === "house" || value === "our";
+}
+
+function isPostConnectionType(
+  value: unknown,
+): value is CalculatorModuleInputs["postConnectionType"] {
+  return (
+    value === "pile_1m" ||
+    value === "pile_1_5m" ||
+    value === "deck_bracket" ||
+    value === "slab_anchors"
+  );
+}
+
+function isGroundCondition(
+  value: unknown,
+): value is CalculatorModuleInputs["ground"] {
+  return value === "easy" || value === "hard";
 }
 
 function isWallOpeningHostSide(value: unknown): value is WallOpeningHostSide {
-  return value === 'rear' || value === 'front' || value === 'left' || value === 'right';
+  return (
+    value === "rear" ||
+    value === "front" ||
+    value === "left" ||
+    value === "right"
+  );
 }
 
 function normalizeHouseFormTransform(
   value: Partial<HouseFormTransformModel> | null | undefined,
 ): HouseFormTransformModel {
   return {
-    offsetXM: typeof value?.offsetXM === 'number' && Number.isFinite(value.offsetXM) ? value.offsetXM : 0,
-    offsetYM: typeof value?.offsetYM === 'number' && Number.isFinite(value.offsetYM) ? value.offsetYM : 0,
-    rotationQuarterTurns: normalizeDrawingRotationQuarterTurns(value?.rotationQuarterTurns),
+    offsetXM:
+      typeof value?.offsetXM === "number" && Number.isFinite(value.offsetXM)
+        ? value.offsetXM
+        : 0,
+    offsetYM:
+      typeof value?.offsetYM === "number" && Number.isFinite(value.offsetYM)
+        ? value.offsetYM
+        : 0,
+    rotationQuarterTurns: normalizeDrawingRotationQuarterTurns(
+      value?.rotationQuarterTurns,
+    ),
   };
 }
 
@@ -740,7 +898,7 @@ function normalizeHouseFormPosition(
   return {
     originXMm,
     originYMm,
-    rotationDeg: trimNullableString(value.rotationDeg) ?? '0',
+    rotationDeg: trimNullableString(value.rotationDeg) ?? "0",
   };
 }
 
@@ -783,12 +941,16 @@ function normalizeHouseFormRoofIntent(
   footprintPolygon?: ReadonlyArray<CalculatorHouseFootprintPolygonPoint>,
 ): HouseFormRoofIntentModel {
   const openGableEndIds = Array.isArray(value?.openGableEndIds)
-    ? [...new Set(
-      value.openGableEndIds
-        .filter((candidate): candidate is string => typeof candidate === 'string')
-        .map((candidate) => candidate.trim())
-        .filter((candidate) => candidate.length > 0),
-    )]
+    ? [
+        ...new Set(
+          value.openGableEndIds
+            .filter(
+              (candidate): candidate is string => typeof candidate === "string",
+            )
+            .map((candidate) => candidate.trim())
+            .filter((candidate) => candidate.length > 0),
+        ),
+      ]
     : [];
 
   // Milestone 13 session C: legacy `'gable'` is no longer in
@@ -797,13 +959,15 @@ function normalizeHouseFormRoofIntent(
   // the validator narrows. When the polygon is available, seed
   // openGableEndIds with the all-ends-open set so the rendered
   // topology matches what gable-form houses produced before.
-  const legacyGableInput = (value?.form as unknown) === 'gable';
+  const legacyGableInput = (value?.form as unknown) === "gable";
   const rawForm: HouseRoofForm = legacyGableInput
-    ? 'hipped'
+    ? "hipped"
     : isSupportedHouseRoofForm(value?.form)
       ? value.form
-      : 'hipped';
-  const ridgeAxis = isHouseRoofRidgeAxis(value?.ridgeAxis) ? value.ridgeAxis : 'x';
+      : "hipped";
+  const ridgeAxis = isHouseRoofRidgeAxis(value?.ridgeAxis)
+    ? value.ridgeAxis
+    : "x";
 
   // Milestone 13 deep migration (slice 2): when an explicit footprint
   // polygon is available AND we're migrating from legacy gable, seed
@@ -820,15 +984,22 @@ function normalizeHouseFormRoofIntent(
       ridgeAxis,
     });
     const mergedOpenIds = [
-      ...new Set([...openGableEndIds, ...terminals.map((terminal) => terminal.id)]),
+      ...new Set([
+        ...openGableEndIds,
+        ...terminals.map((terminal) => terminal.id),
+      ]),
     ];
     return {
-      form: 'hipped',
-      material: isCalculatorHouseRoofMaterial(value?.material) ? value.material : DEFAULT_CALCULATOR_HOUSE_ROOF_MATERIAL,
-      primaryPitchDeg: trimNullableString(value?.primaryPitchDeg) ?? '5',
-      primaryFallDirection: isHouseRoofPrimaryFallDirection(value?.primaryFallDirection)
+      form: "hipped",
+      material: isCalculatorHouseRoofMaterial(value?.material)
+        ? value.material
+        : DEFAULT_CALCULATOR_HOUSE_ROOF_MATERIAL,
+      primaryPitchDeg: trimNullableString(value?.primaryPitchDeg) ?? "5",
+      primaryFallDirection: isHouseRoofPrimaryFallDirection(
+        value?.primaryFallDirection,
+      )
         ? value.primaryFallDirection
-        : 'negative_y',
+        : "negative_y",
       ridgeAxis,
       openGableEndIds: mergedOpenIds,
       // PR-T8 (2026-05-29): `appendage` normalisation removed with the
@@ -839,11 +1010,15 @@ function normalizeHouseFormRoofIntent(
 
   return {
     form: rawForm,
-    material: isCalculatorHouseRoofMaterial(value?.material) ? value.material : DEFAULT_CALCULATOR_HOUSE_ROOF_MATERIAL,
-    primaryPitchDeg: trimNullableString(value?.primaryPitchDeg) ?? '5',
-    primaryFallDirection: isHouseRoofPrimaryFallDirection(value?.primaryFallDirection)
+    material: isCalculatorHouseRoofMaterial(value?.material)
+      ? value.material
+      : DEFAULT_CALCULATOR_HOUSE_ROOF_MATERIAL,
+    primaryPitchDeg: trimNullableString(value?.primaryPitchDeg) ?? "5",
+    primaryFallDirection: isHouseRoofPrimaryFallDirection(
+      value?.primaryFallDirection,
+    )
       ? value.primaryFallDirection
-      : 'negative_y',
+      : "negative_y",
     ridgeAxis,
     openGableEndIds,
     // PR-T8 (2026-05-29): same as above.
@@ -859,10 +1034,12 @@ function normalizeObjectFirstDeckPresetRect(
   const centerOffsetM = trimNullableString(value.centerOffsetM);
   if (!widthM && !depthM && !centerOffsetM) return null;
   return {
-    widthM: widthM ?? '0',
-    depthM: depthM ?? '0',
-    centerOffsetM: centerOffsetM ?? '0',
-    ...(trimNullableString(value.detachedGapM) ? { detachedGapM: trimNullableString(value.detachedGapM) } : null),
+    widthM: widthM ?? "0",
+    depthM: depthM ?? "0",
+    centerOffsetM: centerOffsetM ?? "0",
+    ...(trimNullableString(value.detachedGapM)
+      ? { detachedGapM: trimNullableString(value.detachedGapM) }
+      : null),
   };
 }
 
@@ -876,10 +1053,10 @@ function normalizeObjectFirstDeckFloatingRect(
   const depthM = trimNullableString(value.depthM);
   if (!centerAlongM && !centerDepthM && !widthM && !depthM) return null;
   return {
-    centerAlongM: centerAlongM ?? '0',
-    centerDepthM: centerDepthM ?? '0',
-    widthM: widthM ?? '0',
-    depthM: depthM ?? '0',
+    centerAlongM: centerAlongM ?? "0",
+    centerDepthM: centerDepthM ?? "0",
+    widthM: widthM ?? "0",
+    depthM: depthM ?? "0",
   };
 }
 
@@ -890,6 +1067,10 @@ export function normalizeObjectFirstHouseFormDraft(
   if (!id) return null;
 
   const footprint = normalizeHouseFormFootprint(value?.footprint);
+  const roofIntent = normalizeHouseFormRoofIntent(
+    value?.roofIntent,
+    footprint.polygon,
+  );
 
   return {
     id,
@@ -901,18 +1082,36 @@ export function normalizeObjectFirstHouseFormDraft(
     // polygon is available. Empty polygon (preset-mode without
     // resolution) means migration is deferred; see comment inside
     // normalizeHouseFormRoofIntent.
-    roofIntent: normalizeHouseFormRoofIntent(value?.roofIntent, footprint.polygon),
-    ...(value?.roofIntentAuthored === true ? { roofIntentAuthored: true } : null),
-    storeyMode: isCalculatorHouseStoreyMode(value?.storeyMode) ? value.storeyMode : 'single_storey',
-    attachmentStrategy: isCalculatorHouseAttachmentStrategy(value?.attachmentStrategy)
+    roofIntent,
+    ...(value?.roofIntentAuthored === true
+      ? { roofIntentAuthored: true }
+      : null),
+    storeyMode: isCalculatorHouseStoreyMode(value?.storeyMode)
+      ? value.storeyMode
+      : "single_storey",
+    attachmentStrategy: isCalculatorHouseAttachmentStrategy(
+      value?.attachmentStrategy,
+    )
       ? value.attachmentStrategy
       : null,
-    ...(trimNullableString(value?.eaveHeightM) ? { eaveHeightM: trimNullableString(value?.eaveHeightM) } : null),
-    ...(trimNullableString(value?.wallHeightM) ? { wallHeightM: trimNullableString(value?.wallHeightM) } : null),
-    ...(trimNullableString(value?.soffitDepthMm) ? { soffitDepthMm: trimNullableString(value?.soffitDepthMm) } : null),
-    ...(trimNullableString(value?.fasciaHeightMm) ? { fasciaHeightMm: trimNullableString(value?.fasciaHeightMm) } : null),
-    ...(trimNullableString(value?.gutterWidthMm) ? { gutterWidthMm: trimNullableString(value?.gutterWidthMm) } : null),
-    ...(trimNullableString(value?.gutterDepthMm) ? { gutterDepthMm: trimNullableString(value?.gutterDepthMm) } : null),
+    ...(trimNullableString(value?.eaveHeightM)
+      ? { eaveHeightM: trimNullableString(value?.eaveHeightM) }
+      : null),
+    ...(trimNullableString(value?.wallHeightM)
+      ? { wallHeightM: trimNullableString(value?.wallHeightM) }
+      : null),
+    ...(trimNullableString(value?.soffitDepthMm)
+      ? { soffitDepthMm: trimNullableString(value?.soffitDepthMm) }
+      : null),
+    ...(trimNullableString(value?.fasciaHeightMm)
+      ? { fasciaHeightMm: trimNullableString(value?.fasciaHeightMm) }
+      : null),
+    ...(trimNullableString(value?.gutterWidthMm)
+      ? { gutterWidthMm: trimNullableString(value?.gutterWidthMm) }
+      : null),
+    ...(trimNullableString(value?.gutterDepthMm)
+      ? { gutterDepthMm: trimNullableString(value?.gutterDepthMm) }
+      : null),
     ...(trimNullableString(value?.gutterProjectionMm)
       ? { gutterProjectionMm: trimNullableString(value?.gutterProjectionMm) }
       : null),
@@ -930,7 +1129,9 @@ export function normalizeObjectFirstHouseAssemblyDraft(
 
   const houseForms = (value?.houseForms ?? [])
     .map((houseForm) => normalizeObjectFirstHouseFormDraft(houseForm))
-    .filter((houseForm): houseForm is ObjectFirstHouseFormDraft => Boolean(houseForm));
+    .filter((houseForm): houseForm is ObjectFirstHouseFormDraft =>
+      Boolean(houseForm),
+    );
 
   return {
     id,
@@ -949,7 +1150,7 @@ function normalizeDeckPosition(
   return {
     originXMm,
     originYMm,
-    rotationDeg: trimNullableString(value.rotationDeg) ?? '0',
+    rotationDeg: trimNullableString(value.rotationDeg) ?? "0",
   };
 }
 
@@ -965,26 +1166,39 @@ export function normalizeObjectFirstDeckDraft(
   // these fields; they're silently dropped here.
   return {
     id,
-    shape: isDeckShape(value?.shape) ? value.shape : 'preset',
+    shape: isDeckShape(value?.shape) ? value.shape : "preset",
     presetType: isDeckPresetType(value?.presetType) ? value.presetType : null,
     ...(normalizeObjectFirstDeckPresetRect(value?.presetRect)
       ? { presetRect: normalizeObjectFirstDeckPresetRect(value?.presetRect) }
       : null),
     ...(normalizeObjectFirstDeckFloatingRect(value?.floatingRect)
-      ? { floatingRect: normalizeObjectFirstDeckFloatingRect(value?.floatingRect) }
+      ? {
+          floatingRect: normalizeObjectFirstDeckFloatingRect(
+            value?.floatingRect,
+          ),
+        }
       : null),
     outline: normalizeHouseFootprintPolygon(value?.outline),
     ...(position ? { position } : null),
-    levelOffsetMm: trimNullableString(value?.levelOffsetMm) ?? '0',
-    isAttached: typeof value?.isAttached === 'boolean' ? value.isAttached : true,
-    surfaceMaterial: isDeckSurfaceMaterial(value?.surfaceMaterial) ? value.surfaceMaterial : 'timber_decking',
+    levelOffsetMm: trimNullableString(value?.levelOffsetMm) ?? "0",
+    isAttached:
+      typeof value?.isAttached === "boolean" ? value.isAttached : true,
+    surfaceMaterial: isDeckSurfaceMaterial(value?.surfaceMaterial)
+      ? value.surfaceMaterial
+      : "timber_decking",
     hostEdgeId: normalizeStableId(value?.hostEdgeId),
-    ...(isDeckAttachmentMode(value?.attachmentMode) ? { attachmentMode: value.attachmentMode } : null),
-    ...(normalizeStableId(value?.primaryHostEdgeId) ? { primaryHostEdgeId: normalizeStableId(value?.primaryHostEdgeId) } : null),
+    ...(isDeckAttachmentMode(value?.attachmentMode)
+      ? { attachmentMode: value.attachmentMode }
+      : null),
+    ...(normalizeStableId(value?.primaryHostEdgeId)
+      ? { primaryHostEdgeId: normalizeStableId(value?.primaryHostEdgeId) }
+      : null),
     ...(normalizeStableId(value?.secondaryHostEdgeId)
       ? { secondaryHostEdgeId: normalizeStableId(value?.secondaryHostEdgeId) }
       : null),
-    ...(normalizeStableId(value?.cornerVertexId) ? { cornerVertexId: normalizeStableId(value?.cornerVertexId) } : null),
+    ...(normalizeStableId(value?.cornerVertexId)
+      ? { cornerVertexId: normalizeStableId(value?.cornerVertexId) }
+      : null),
     // PR-D (2026-05-22): preserve `attachment` (the snap-derived host
     // reference) through normalization. Replaces the PR9 `hostHouseFormId`
     // routing band-aid which was deleted. The host object id is now read
@@ -1000,15 +1214,15 @@ function normalizeDeckAttachment(
 ): DeckAttachment | null | undefined {
   if (value === undefined) return undefined;
   if (value === null) return null;
-  if (value.spatialKind === 'freestanding') {
-    return { host: null, spatialKind: 'freestanding' };
+  if (value.spatialKind === "freestanding") {
+    return { host: null, spatialKind: "freestanding" };
   }
-  if (value.spatialKind === 'wall') {
+  if (value.spatialKind === "wall") {
     const hostObjectId = normalizeStableId(value.host?.objectId);
     if (!hostObjectId) {
       // Wall spatialKind without a host object: degrade to freestanding
       // rather than persist a partial reference.
-      return { host: null, spatialKind: 'freestanding' };
+      return { host: null, spatialKind: "freestanding" };
     }
     // PR-D (2026-05-22): `host.edgeId` can be empty when the snap has not
     // resolved yet (e.g., deck just added via rail with the host form known
@@ -1018,13 +1232,16 @@ function normalizeDeckAttachment(
     // falls back to legacy `hostEdgeId` (AttachmentSide) for wall geometry.
     return {
       host: {
-        objectFamily: 'house_forms',
+        objectFamily: "house_forms",
         objectId: hostObjectId,
-        edgeKind: 'wall',
-        edgeId: normalizeStableId(value.host?.edgeId) ?? '',
-        myEdgeIndex: typeof value.host?.myEdgeIndex === 'number' ? value.host.myEdgeIndex : 0,
+        edgeKind: "wall",
+        edgeId: normalizeStableId(value.host?.edgeId) ?? "",
+        myEdgeIndex:
+          typeof value.host?.myEdgeIndex === "number"
+            ? value.host.myEdgeIndex
+            : 0,
       },
-      spatialKind: 'wall',
+      spatialKind: "wall",
     };
   }
   return null;
@@ -1051,10 +1268,10 @@ export function normalizeObjectFirstOpeningDraft(
     ...(sourceFormId ? { sourceFormId } : null),
     ...(isWallOpeningHostSide(wallId) ? { wallId } : null),
     ...(hostEdgeId ? { hostEdgeId } : null),
-    widthM: trimNullableString(value?.widthM) ?? '0',
-    heightM: trimNullableString(value?.heightM) ?? '0',
-    sillHeightM: trimNullableString(value?.sillHeightM) ?? '0',
-    offsetAlongWallM: trimNullableString(value?.offsetAlongWallM) ?? '0',
+    widthM: trimNullableString(value?.widthM) ?? "0",
+    heightM: trimNullableString(value?.heightM) ?? "0",
+    sillHeightM: trimNullableString(value?.sillHeightM) ?? "0",
+    offsetAlongWallM: trimNullableString(value?.offsetAlongWallM) ?? "0",
   };
 }
 
@@ -1078,25 +1295,27 @@ function normalizeObjectFirstPergolaGeometryDraft(
   if (!value) return null;
 
   const dimensions = normalizePergolaGeometryStringFields(value.dimensions, [
-    'lengthM',
-    'projectionM',
-    'hipCornerLengthBM',
-    'hipCornerProjectionBM',
+    "lengthM",
+    "projectionM",
+    "hipCornerLengthBM",
+    "hipCornerProjectionBM",
   ]);
   const roofStringFields = normalizePergolaGeometryStringFields(value.roof, [
-    'pitchDeg',
-    'mixedAcrylicBaysMain',
-    'mixedAcrylicBaysA',
-    'mixedAcrylicBaysB',
+    "pitchDeg",
+    "mixedAcrylicBaysMain",
+    "mixedAcrylicBaysA",
+    "mixedAcrylicBaysB",
   ]);
-  const roof: ObjectFirstPergolaGeometryDraft['roof'] = {
+  const roof: ObjectFirstPergolaGeometryDraft["roof"] = {
     ...(roofStringFields ?? {}),
-    ...(isPortalRoofMaterial(value.roof?.material) ? { material: value.roof.material } : null),
-    ...(typeof value.roof?.boxPerimeterEnabled === 'boolean'
+    ...(isPortalRoofMaterial(value.roof?.material)
+      ? { material: value.roof.material }
+      : null),
+    ...(typeof value.roof?.boxPerimeterEnabled === "boolean"
       ? { boxPerimeterEnabled: value.roof.boxPerimeterEnabled }
       : null),
   };
-  const gable: ObjectFirstPergolaGeometryDraft['gable'] = {
+  const gable: ObjectFirstPergolaGeometryDraft["gable"] = {
     ...(isGableEndFramesMode(value.gable?.endFramesMode)
       ? { endFramesMode: value.gable.endFramesMode }
       : null),
@@ -1107,26 +1326,28 @@ function normalizeObjectFirstPergolaGeometryDraft(
       ? { outerEaveGutterMode: value.gable.outerEaveGutterMode }
       : null),
   };
-  const supportStringFields = normalizePergolaGeometryStringFields(value.supports, [
-    'postCount',
-    'postCutHeightM',
-  ]);
-  const supports: ObjectFirstPergolaGeometryDraft['supports'] = {
+  const supportStringFields = normalizePergolaGeometryStringFields(
+    value.supports,
+    ["postCount", "postCutHeightM"],
+  );
+  const supports: ObjectFirstPergolaGeometryDraft["supports"] = {
     ...(supportStringFields ?? {}),
     ...(isPostConnectionType(value.supports?.postConnectionType)
       ? { postConnectionType: value.supports.postConnectionType }
       : null),
-    ...(isGroundCondition(value.supports?.ground) ? { ground: value.supports.ground } : null),
+    ...(isGroundCondition(value.supports?.ground)
+      ? { ground: value.supports.ground }
+      : null),
   };
   const overrides = normalizePergolaGeometryStringFields(value.overrides, [
-    'ledgerProfile',
-    'rafterProfile',
-    'postProfile',
-    'frontBeamProfile',
-    'ridgeBeamProfile',
-    'boxPerimeterBeamProfile',
-    'tieBeamProfile',
-    'strutProfile',
+    "ledgerProfile",
+    "rafterProfile",
+    "postProfile",
+    "frontBeamProfile",
+    "ridgeBeamProfile",
+    "boxPerimeterBeamProfile",
+    "tieBeamProfile",
+    "strutProfile",
   ]);
 
   const result: ObjectFirstPergolaGeometryDraft = {
@@ -1149,65 +1370,93 @@ function normalizeObjectFirstPergolaPosition(
   return {
     originXMm,
     originYMm,
-    rotationDeg: trimNullableString(value.rotationDeg) ?? '0',
+    rotationDeg: trimNullableString(value.rotationDeg) ?? "0",
   };
 }
 
-const PERGOLA_ATTACHMENT_SPATIAL_KINDS: ReadonlySet<PergolaAttachmentSpatialKind> = new Set([
-  'wall',
-  'roof_edge',
-  'pergola_outline',
-  'freestanding',
-]);
+const PERGOLA_ATTACHMENT_SPATIAL_KINDS: ReadonlySet<PergolaAttachmentSpatialKind> =
+  new Set(["wall", "roof_edge", "pergola_outline", "freestanding"]);
 
-const PERGOLA_ATTACHMENT_METHODS: ReadonlySet<PergolaAttachmentMethod> = new Set([
-  'facade_ledger',
-  'fascia_under_gutter',
-  'direct_to_soffit',
-  'soffit_brackets',
-  'none',
-]);
+const PERGOLA_ATTACHMENT_METHODS: ReadonlySet<PergolaAttachmentMethod> =
+  new Set([
+    "facade_ledger",
+    "fascia_under_gutter",
+    "direct_to_soffit",
+    "soffit_brackets",
+    "none",
+  ]);
 
-const PERGOLA_ATTACHMENT_HOST_FAMILIES: ReadonlySet<PergolaAttachmentHostFamily> = new Set([
-  'house_forms',
-  'pergolas',
-]);
+const PERGOLA_ATTACHMENT_HOST_FAMILIES: ReadonlySet<PergolaAttachmentHostFamily> =
+  new Set(["house_forms", "pergolas"]);
 
-const PERGOLA_ATTACHMENT_HOST_EDGE_KINDS: ReadonlySet<PergolaAttachmentHost['edgeKind']> = new Set([
-  'wall',
-  'roof_eave',
-  'pergola_outline',
-]);
+const PERGOLA_ATTACHMENT_HOST_EDGE_KINDS: ReadonlySet<
+  PergolaAttachmentHost["edgeKind"]
+> = new Set(["wall", "roof_eave", "pergola_outline"]);
 
-function isPergolaAttachmentSpatialKind(value: unknown): value is PergolaAttachmentSpatialKind {
-  return typeof value === 'string' && PERGOLA_ATTACHMENT_SPATIAL_KINDS.has(value as PergolaAttachmentSpatialKind);
+function isPergolaAttachmentSpatialKind(
+  value: unknown,
+): value is PergolaAttachmentSpatialKind {
+  return (
+    typeof value === "string" &&
+    PERGOLA_ATTACHMENT_SPATIAL_KINDS.has(value as PergolaAttachmentSpatialKind)
+  );
 }
 
-function isPergolaAttachmentMethod(value: unknown): value is PergolaAttachmentMethod {
-  return typeof value === 'string' && PERGOLA_ATTACHMENT_METHODS.has(value as PergolaAttachmentMethod);
+function isPergolaAttachmentMethod(
+  value: unknown,
+): value is PergolaAttachmentMethod {
+  return (
+    typeof value === "string" &&
+    PERGOLA_ATTACHMENT_METHODS.has(value as PergolaAttachmentMethod)
+  );
 }
 
-function isPergolaAttachmentHostFamily(value: unknown): value is PergolaAttachmentHostFamily {
-  return typeof value === 'string' && PERGOLA_ATTACHMENT_HOST_FAMILIES.has(value as PergolaAttachmentHostFamily);
+function isPergolaAttachmentHostFamily(
+  value: unknown,
+): value is PergolaAttachmentHostFamily {
+  return (
+    typeof value === "string" &&
+    PERGOLA_ATTACHMENT_HOST_FAMILIES.has(value as PergolaAttachmentHostFamily)
+  );
 }
 
-function isPergolaAttachmentHostEdgeKind(value: unknown): value is PergolaAttachmentHost['edgeKind'] {
-  return typeof value === 'string' && PERGOLA_ATTACHMENT_HOST_EDGE_KINDS.has(value as PergolaAttachmentHost['edgeKind']);
+function isPergolaAttachmentHostEdgeKind(
+  value: unknown,
+): value is PergolaAttachmentHost["edgeKind"] {
+  return (
+    typeof value === "string" &&
+    PERGOLA_ATTACHMENT_HOST_EDGE_KINDS.has(
+      value as PergolaAttachmentHost["edgeKind"],
+    )
+  );
 }
 
 function normalizePergolaAttachmentHost(
   value: Partial<PergolaAttachmentHost> | null | undefined,
 ): PergolaAttachmentHost | null {
   if (!value) return null;
-  const objectFamily = isPergolaAttachmentHostFamily(value.objectFamily) ? value.objectFamily : null;
+  const objectFamily = isPergolaAttachmentHostFamily(value.objectFamily)
+    ? value.objectFamily
+    : null;
   const objectId = normalizeStableId(value.objectId);
-  const edgeKind = isPergolaAttachmentHostEdgeKind(value.edgeKind) ? value.edgeKind : null;
+  const edgeKind = isPergolaAttachmentHostEdgeKind(value.edgeKind)
+    ? value.edgeKind
+    : null;
   const edgeId = normalizeStableId(value.edgeId);
   const myEdgeIndex =
-    typeof value.myEdgeIndex === 'number' && Number.isFinite(value.myEdgeIndex) && value.myEdgeIndex >= 0
+    typeof value.myEdgeIndex === "number" &&
+    Number.isFinite(value.myEdgeIndex) &&
+    value.myEdgeIndex >= 0
       ? Math.floor(value.myEdgeIndex)
       : null;
-  if (!objectFamily || !objectId || !edgeKind || !edgeId || myEdgeIndex === null) return null;
+  if (
+    !objectFamily ||
+    !objectId ||
+    !edgeKind ||
+    !edgeId ||
+    myEdgeIndex === null
+  )
+    return null;
   return { objectFamily, objectId, edgeKind, edgeId, myEdgeIndex };
 }
 
@@ -1222,34 +1471,44 @@ export function normalizePergolaAttachment(
   value: Partial<PergolaAttachment> | null | undefined,
 ): PergolaAttachment | null {
   if (!value) return null;
-  const spatialKind = isPergolaAttachmentSpatialKind(value.spatialKind) ? value.spatialKind : null;
+  const spatialKind = isPergolaAttachmentSpatialKind(value.spatialKind)
+    ? value.spatialKind
+    : null;
   if (!spatialKind) return null;
-  const host = spatialKind === 'freestanding' ? null : normalizePergolaAttachmentHost(value.host ?? null);
+  const host =
+    spatialKind === "freestanding"
+      ? null
+      : normalizePergolaAttachmentHost(value.host ?? null);
   // Method must be valid for the spatialKind. Coerce to the canonical method
   // when there's only one valid choice; preserve user picks for roof_edge.
   let method: PergolaAttachmentMethod;
-  const rawMethod = isPergolaAttachmentMethod(value.method) ? value.method : null;
+  const rawMethod = isPergolaAttachmentMethod(value.method)
+    ? value.method
+    : null;
   switch (spatialKind) {
-    case 'freestanding':
-      method = 'none';
+    case "freestanding":
+      method = "none";
       break;
-    case 'wall':
-      method = 'facade_ledger';
+    case "wall":
+      method = "facade_ledger";
       break;
-    case 'pergola_outline':
-      method = 'none';
+    case "pergola_outline":
+      method = "none";
       break;
-    case 'roof_edge': {
+    case "roof_edge": {
       const validRoofEdgeMethods: PergolaAttachmentMethod[] = [
-        'fascia_under_gutter',
-        'direct_to_soffit',
-        'soffit_brackets',
+        "fascia_under_gutter",
+        "direct_to_soffit",
+        "soffit_brackets",
       ];
-      method = rawMethod && validRoofEdgeMethods.includes(rawMethod) ? rawMethod : 'fascia_under_gutter';
+      method =
+        rawMethod && validRoofEdgeMethods.includes(rawMethod)
+          ? rawMethod
+          : "fascia_under_gutter";
       break;
     }
     default:
-      method = 'none';
+      method = "none";
   }
   return { host, spatialKind, method };
 }
@@ -1266,14 +1525,16 @@ export function normalizeObjectFirstPergolaDraft(
   return {
     id,
     label: trimNullableString(value?.label) ?? id,
-    family: isPergolaFamily(value?.family) ? value.family : 'unknown',
+    family: isPergolaFamily(value?.family) ? value.family : "unknown",
     ...(isObjectFirstPergolaConnectionKind(value?.connectionKind)
       ? { connectionKind: value.connectionKind }
       : null),
     attachmentEdgeId: normalizeStableId(value?.attachmentEdgeId),
     attachmentZoneId: normalizeStableId(value?.attachmentZoneId),
     side: normalizeAttachmentSide(value?.side),
-    strategy: isCalculatorHouseAttachmentStrategy(value?.strategy) ? value.strategy : null,
+    strategy: isCalculatorHouseAttachmentStrategy(value?.strategy)
+      ? value.strategy
+      : null,
     ...(geometry ? { geometry } : null),
     ...(position ? { position } : null),
     ...(attachment ? { attachment } : null),
@@ -1290,9 +1551,13 @@ export function normalizeObjectFirstWorkbenchDraftVNext(
       .filter((deck): deck is ObjectFirstDeckDraft => Boolean(deck)),
     openings: (value?.openings ?? [])
       .map((opening) => normalizeObjectFirstOpeningDraft(opening))
-      .filter((opening): opening is ObjectFirstOpeningDraft => Boolean(opening)),
+      .filter((opening): opening is ObjectFirstOpeningDraft =>
+        Boolean(opening),
+      ),
     pergolas: (value?.pergolas ?? [])
       .map((pergola) => normalizeObjectFirstPergolaDraft(pergola))
-      .filter((pergola): pergola is ObjectFirstPergolaDraft => Boolean(pergola)),
+      .filter((pergola): pergola is ObjectFirstPergolaDraft =>
+        Boolean(pergola),
+      ),
   };
 }

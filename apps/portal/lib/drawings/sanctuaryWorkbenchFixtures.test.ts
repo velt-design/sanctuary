@@ -119,10 +119,10 @@ describe('sanctuary workbench fixtures', () => {
       'house-form-2',
     ]);
     expect(store.derived.solvedModel.projectPlanProjection?.shapes.some(
-      (shape) => shape.id.includes('house_roof_material:house-main'),
+      (shape) => shape.id === 'house_plan_roof:house-main',
     )).toBe(true);
     expect(store.derived.solvedModel.projectPlanProjection?.shapes.some(
-      (shape) => shape.id.includes('house_roof_material:house-form-2'),
+      (shape) => shape.id === 'house_plan_roof:house-form-2',
     )).toBe(true);
 
     const debugExport = buildWorkbenchDebugFixtureExport({
@@ -250,7 +250,11 @@ describe('sanctuary workbench fixtures', () => {
         roofTopologyClassificationStatus: 'ok',
         roofPlaneGenerationStatus: 'ok',
         roofQaValidationStatus: 'ok',
-        roofGeometry: 'footprint_mono',
+        rawRoofIntentForm: 'hipped',
+        resolvedRoofIntentForm: 'hipped',
+        roofIntentResolutionSource: 'object_first_unauthed_default',
+        roofIntentRepairCode: null,
+        roofGeometry: 'rectangular_hipped',
       }),
     );
     expect(houseInput?.roofPlaneCountAfterQa).toBeGreaterThan(0);
@@ -264,7 +268,8 @@ describe('sanctuary workbench fixtures', () => {
         visibleReferenceFallbackIds: [],
       }),
     );
-    expect(houseHealth?.roofMaterialBodyCount).toBeGreaterThan(0);
+    expect(houseHealth?.roofBodyCount).toBeGreaterThan(0);
+    expect(houseHealth?.roofMaterialBodyCount).toBe(0);
     expect(houseHealth?.sceneRoofMaterialBodyCount).toBeGreaterThan(0);
   });
 
@@ -287,11 +292,12 @@ describe('sanctuary workbench fixtures', () => {
     });
 
     if (!fixture.draft) throw new Error('Expected custom projection fixture draft.');
-    expect(fixture.draft.objectFirst?.houseAssembly?.houseForms).toHaveLength(3);
+    expect(fixture.draft.objectFirst?.houseAssembly?.houseForms).toHaveLength(4);
     expect(solvedModel.projectHouseProjectionHealth.map((entry) => entry.houseFormId).sort()).toEqual([
       'house-main',
       'house-form-2',
       'house-form-3',
+      'house-form-4',
     ].sort());
     for (const health of solvedModel.projectHouseProjectionHealth) {
       expect(health.referencePresent, health.houseFormId).toBe(true);
@@ -300,11 +306,33 @@ describe('sanctuary workbench fixtures', () => {
       expect(health.diagnosticCode, health.houseFormId).toBeNull();
       expect(health.roofPlaneCount, health.houseFormId).toBeGreaterThan(0);
       expect(health.roofBodyCount, health.houseFormId).toBeGreaterThan(0);
-      expect(health.roofMaterialBodyCount, health.houseFormId).toBeGreaterThan(0);
+      expect(health.roofMaterialBodyCount, health.houseFormId).toBe(0);
       expect(health.sceneBodyCount, health.houseFormId).toBeGreaterThan(0);
       expect(health.sceneRoofMaterialBodyCount, health.houseFormId).toBeGreaterThan(0);
       expect(health.visibleReferenceFallbackIds, health.houseFormId).toEqual([]);
     }
+    expect(
+      solvedModel.projectHouseProjectionHealth.find(
+        (entry) => entry.houseFormId === 'house-form-4',
+      ),
+    ).toEqual(
+      expect.objectContaining({
+        diagnosticCode: null,
+        roofQaStatus: 'valid',
+        roofTopologySolver: 'eave_graph_source_edge_envelope',
+        roofTopologySemanticQaStatus: 'valid',
+        roofTopologySemanticFailureReason: null,
+        roofTopologyClosedFaceCount: 6,
+        roofTopologyExpectedFaceCount: 6,
+        roofTopologyCoverageGapAreaMm2: 0,
+        roofTopologyOverlapAreaMm2: 0,
+        roofTopologyDanglingFeatureCount: 0,
+        footprintCanonicalizationStatus: 'canonicalized',
+        footprintCanonicalizationPrecisionMm: 0.001,
+        footprintCanonicalizationPointCountBefore: 6,
+        footprintCanonicalizationPointCountAfter: 6,
+      }),
+    );
   });
 
   it('builds a non-empty drawing store and sheet meta for every fixture', () => {

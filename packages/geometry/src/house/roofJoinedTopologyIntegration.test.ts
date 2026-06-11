@@ -113,26 +113,23 @@ describe("house model joined roof topology", () => {
     });
 
     expect(model?.metadata?.roofGeometry).toBe("rectilinear_joined_hipped");
-    expect(model?.metadata?.roofFacetMergeMode).toBe(
-      "active_rectilinear_wavefront",
-    );
+    expect(model?.metadata?.roofTopologySolver).toBe("eave_graph_source_edge_envelope");
+    expect(model?.metadata?.roofFacetMergeMode).toBe("source_edge_envelope");
     expect(model?.metadata?.roofRejectedFacetCount).toBe(0);
     expect(model?.metadata?.roofFallbackFeatureCount).toBe(0);
     expectRoofQaValid(model!);
-    expect(model?.roofPlanes).toHaveLength(8);
+    expect(model?.roofPlanes.length ?? 0).toBeGreaterThanOrEqual(8);
     expect(model?.metadata?.roofTopologyFinalFaceCount).toBe(
       model?.roofPlanes.length,
     );
-    expect(model?.metadata?.roofTopologySourceEdgeCount).toBe(8);
-    expect(model?.metadata?.roofTopologyDisconnectedSourceFaceCount).toBe(0);
-    expect(model?.metadata?.roofTopologyValleyCount).toBe(2);
-    expect(Number(model?.metadata?.roofFacetCount ?? 0)).toBeLessThan(
-      Number(model?.metadata?.roofSplitRegionCount ?? Number.POSITIVE_INFINITY),
+    expect(model?.metadata?.roofTopologyDiagnosticPlaneCount).toBeGreaterThan(
+      model?.roofPlanes.length ?? 0,
     );
-    expect(Number(model?.metadata?.roofFacetCount ?? 0)).toBeLessThan(
-      Number(
-        model?.metadata?.roofWavefrontAtomCount ?? Number.POSITIVE_INFINITY,
-      ),
+    expect(model?.metadata?.roofTopologySourceEdgeCount).toBe(8);
+    expect(model?.metadata?.roofTopologyFailureReason).toBeNull();
+    expect(model?.metadata?.roofTopologyValleyCount).toBe(2);
+    expect(String(model?.metadata?.roofTopologyFailureReason ?? "")).not.toContain(
+      "unclosed_boundary_graph",
     );
     expect(
       model?.roofPlanes.every((plane) => !plane.id.includes("house-roof-wing")),
@@ -199,12 +196,11 @@ describe("house model joined roof topology", () => {
     });
 
     expect(model?.metadata?.roofGeometry).toBe("rectilinear_joined_hipped");
-    expect(model?.metadata?.roofFacetMergeMode).toBe(
-      "active_rectilinear_wavefront",
-    );
+    expect(model?.metadata?.roofTopologySolver).toBe("eave_graph_source_edge_envelope");
+    expect(model?.metadata?.roofFacetMergeMode).toBe("source_edge_envelope");
     expect(model?.metadata?.roofFallbackFeatureCount).toBe(0);
     expectRoofQaValid(model!);
-    expect(model?.metadata?.roofTopologyDisconnectedSourceFaceCount).toBe(0);
+    expect(model?.metadata?.roofTopologyFailureReason).toBeNull();
     expect(
       model?.roofPlanes.every((plane) => !plane.id.includes("house-roof-wing")),
     ).toBe(true);

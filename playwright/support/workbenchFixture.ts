@@ -42,7 +42,12 @@ export async function readVisibleHouseBodyIds(page: Page): Promise<string[]> {
     page,
     '[data-plan-shape-family="house"][data-plan-shape-id]',
   );
-  return ids.filter((id) => id.startsWith('house_roof_material:') || id.startsWith('house_surface_solid:'));
+  return ids.filter(
+    (id) =>
+      id.startsWith('house_plan_roof:') ||
+      id.startsWith('house_roof_material:') ||
+      id.startsWith('house_surface_solid:'),
+  );
 }
 
 export async function readVisibleHouseReferenceFallbackIds(page: Page): Promise<string[]> {
@@ -94,13 +99,26 @@ export async function readPlanHouseProjectionHealth(page: Page): Promise<Array<{
   roofIntentPitchDeg: number | null;
   roofIntentRidgeAxis: string | null;
   roofGeometry: string | null;
+  roofTopologySolver: string | null;
   roofFacetMergeMode: string | null;
+  roofTopologySemanticQaStatus: string | null;
+  roofTopologySemanticFailureReason: string | null;
   roofTopologyFailureReason: string | null;
+  roofTopologyClosedFaceCount: number | null;
+  roofTopologyExpectedFaceCount: number | null;
   roofTopologyFinalFaceCount: number | null;
   roofTopologySourceEdgeCount: number | null;
   roofTopologyDisconnectedSourceFaceCount: number | null;
   roofTopologyInternalEaveHeightSegmentCount: number | null;
   roofTopologyProjectionViolationCount: number | null;
+  roofTopologyCoverageQaStatus: string | null;
+  roofTopologyCoverageFailureReason: string | null;
+  roofTopologyCoverageGapAreaMm2: number | null;
+  roofTopologyCoverageOverlapAreaMm2: number | null;
+  roofTopologyCoverageAreaDeltaMm2: number | null;
+  roofTopologyOverlapAreaMm2: number | null;
+  roofTopologyDanglingFeatureCount: number | null;
+  roofTopologyUnclassifiedFeatureCount: number | null;
   roofWavefrontFailureReason: string | null;
   roofQaStatus: string | null;
   roofQaFailureReason: string | null;
@@ -108,6 +126,14 @@ export async function readPlanHouseProjectionHealth(page: Page): Promise<Array<{
   roofQaFacetAreaMm2: number | null;
   roofQaEaveAreaMm2: number | null;
   roofQaAreaDeltaMm2: number | null;
+  roofEaveOffsetRepairStatus: string | null;
+  roofEaveOffsetRepairCode: string | null;
+  roofRequestedEaveOverhangMm: number | null;
+  roofEffectiveEaveOverhangMm: number | null;
+  footprintCanonicalizationStatus: string | null;
+  footprintCanonicalizationPrecisionMm: number | null;
+  footprintCanonicalizationPointCountBefore: number | null;
+  footprintCanonicalizationPointCountAfter: number | null;
   roofPlaneCountBeforeQa: number;
   roofPlaneCountAfterQa: number;
   roofMaterialVisualCount: number;

@@ -256,6 +256,7 @@ export default function WorkbenchViewportHost({
           onSelectPergolaTarget={onSelectPergolaTarget}
           onClearWorkbenchSelection={onClearWorkbenchSelection}
           hoveredObjectId={hoveredObjectRef?.objectId ?? null}
+          projectHouseProjectionHealth={projectHouseProjectionHealth}
         />
       )}
     </div>

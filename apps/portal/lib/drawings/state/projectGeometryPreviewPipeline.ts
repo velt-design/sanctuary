@@ -99,9 +99,10 @@ export function buildProjectGeometryPreviewFromModules(input: {
   const hasSuppressedPergola = input.projectPergolaRenderHealth.some(
     (entry) => entry.pergolaId && !entry.canRenderCommittedBody,
   );
+  const hasProjectHouseGeometry = input.projectHouseGeometries.length > 0;
 
   if (basisModule?.geometryPreview.kind === 'ready') {
-    if (projectPergolaIds.size <= 1 && !hasSuppressedPergola) {
+    if (projectPergolaIds.size <= 1 && !hasSuppressedPergola && !hasProjectHouseGeometry) {
       return withProjectPreviewSource(basisModule.geometryPreview, 'project_pipeline');
     }
 

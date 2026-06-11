@@ -69,5 +69,11 @@ describe('project geometry preview pipeline', () => {
     expect(preview.scene.metadata?.[PROJECT_GEOMETRY_PREVIEW_SOURCE_METADATA_KEY]).toBe(
       'project_pipeline',
     );
+    const houseLayer = preview.scene.layers.find((layer) => layer.id === 'house');
+    const activeHouseLayer = model.activeModule?.viewerScene?.layers.find(
+      (layer) => layer.id === 'house',
+    );
+    expect(houseLayer?.objects.some((object) => object.id.includes('house-form-2'))).toBe(true);
+    expect(houseLayer?.objects).not.toHaveLength(activeHouseLayer?.objects.length ?? 0);
   });
 });

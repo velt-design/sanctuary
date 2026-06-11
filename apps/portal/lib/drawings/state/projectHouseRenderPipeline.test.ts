@@ -144,7 +144,9 @@ describe("buildProjectHouseRenderPipeline", () => {
       pipeline.projectHouseProjectionHealth
         .map((health) => health.houseFormId)
         .sort(),
-    ).toEqual(["house-main", "house-form-2", "house-form-3"].sort());
+    ).toEqual(
+      ["house-main", "house-form-2", "house-form-3", "house-form-4"].sort(),
+    );
     expect(pipeline.projectHouseProjectionHealth).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -177,13 +179,29 @@ describe("buildProjectHouseRenderPipeline", () => {
           failureStage: "none",
           diagnosticCode: null,
         }),
+        expect.objectContaining({
+          houseFormId: "house-form-4",
+          referencePresent: true,
+          modelPresent: true,
+          wallCount: expect.any(Number),
+          roofPlaneCount: expect.any(Number),
+          canRenderCommittedBody: true,
+          failureStage: "none",
+          diagnosticCode: null,
+          footprintCanonicalizationStatus: "canonicalized",
+          footprintCanonicalizationPrecisionMm: 0.001,
+          footprintCanonicalizationPointCountBefore: 6,
+          footprintCanonicalizationPointCountAfter: 6,
+          roofEaveOffsetRepairStatus: null,
+          roofEaveOffsetRepairCode: null,
+          roofQaStatus: "valid",
+          roofQaFailureReason: null,
+        }),
       ]),
     );
     for (const health of pipeline.projectHouseProjectionHealth) {
       expect(health.roofBodyCount, health.houseFormId).toBeGreaterThan(0);
-      expect(health.roofMaterialBodyCount, health.houseFormId).toBeGreaterThan(
-        0,
-      );
+      expect(health.roofMaterialBodyCount, health.houseFormId).toBe(0);
       expect(health.sceneBodyCount, health.houseFormId).toBeGreaterThan(0);
       expect(health.sceneRoofBodyCount, health.houseFormId).toBeGreaterThan(0);
       expect(

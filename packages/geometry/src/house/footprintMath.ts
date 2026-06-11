@@ -13,6 +13,97 @@ import {
   uniqueSorted,
 } from './_internal';
 
+export const HOUSE_FOOTPRINT_CANONICALIZATION_PRECISION_MM = 0.001;
+
+export type CanonicalizedHouseFootprint = {
+  footprint: Polygon3;
+  status: 'none' | 'canonicalized';
+  precisionMm: number;
+  pointCountBefore: number;
+  pointCountAfter: number;
+};
+
+function canonicalizeCoord(value: number, precisionMm: number): number {
+  const rounded = Math.round(value / precisionMm) * precisionMm;
+  const stable = Number(rounded.toFixed(6));
+  return Object.is(stable, -0) ? 0 : stable;
+}
+
+function pointsEqual(a: Point3, b: Point3): boolean {
+  return a.x === b.x && a.y === b.y && a.z === b.z;
+}
+
+function residueCollinearPoint(input: {
+  previous: Point3;
+  current: Point3;
+  next: Point3;
+  precisionMm: number;
+}): boolean {
+  const previousSegmentLength = lineLength(line(input.previous, input.current));
+  const nextSegmentLength = lineLength(line(input.current, input.next));
+  if (
+    previousSegmentLength > input.precisionMm &&
+    nextSegmentLength > input.precisionMm
+  ) {
+    return false;
+  }
+  return (
+    (input.previous.x === input.current.x && input.current.x === input.next.x) ||
+    (input.previous.y === input.current.y && input.current.y === input.next.y)
+  );
+}
+
+export function canonicalizeHouseFootprintPolygon(
+  footprint: Polygon3,
+  precisionMm = HOUSE_FOOTPRINT_CANONICALIZATION_PRECISION_MM,
+): CanonicalizedHouseFootprint {
+  const rounded = footprint.map((candidate) =>
+    point(
+      canonicalizeCoord(candidate.x, precisionMm),
+      canonicalizeCoord(candidate.y, precisionMm),
+      canonicalizeCoord(candidate.z, precisionMm),
+    ),
+  );
+  const deduped: Polygon3 = [];
+  for (const candidate of rounded) {
+    const previous = deduped[deduped.length - 1];
+    if (previous && pointsEqual(previous, candidate)) continue;
+    deduped.push(candidate);
+  }
+  if (deduped.length > 1 && pointsEqual(deduped[0]!, deduped[deduped.length - 1]!)) {
+    deduped.pop();
+  }
+
+  const cleaned = [...deduped];
+  let changed = true;
+  while (changed && cleaned.length >= 3) {
+    changed = false;
+    for (let index = 0; index < cleaned.length; index += 1) {
+      const previous = cleaned[(index - 1 + cleaned.length) % cleaned.length]!;
+      const current = cleaned[index]!;
+      const next = cleaned[(index + 1) % cleaned.length]!;
+      if (!residueCollinearPoint({ previous, current, next, precisionMm })) {
+        continue;
+      }
+      cleaned.splice(index, 1);
+      changed = true;
+      break;
+    }
+  }
+
+  const pointCountChanged = cleaned.length !== footprint.length;
+  const coordinateChanged =
+    !pointCountChanged &&
+    cleaned.some((candidate, index) => !pointsEqual(candidate, footprint[index]!));
+  return {
+    footprint: cleaned,
+    status: pointCountChanged || coordinateChanged ? 'canonicalized' : 'none',
+    precisionMm,
+    pointCountBefore: footprint.length,
+    pointCountAfter: cleaned.length,
+  };
+}
+
 export function isOrthogonalFootprint(polygon: Polygon3): boolean {
   if (polygon.length < 4) return false;
   for (let index = 0; index < polygon.length; index += 1) {
