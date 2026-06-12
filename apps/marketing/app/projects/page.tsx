@@ -13,6 +13,12 @@ export const metadata: Metadata = {
     description:
       'Explore real pergola projects: pitched, gable, hip and box-perimeter, with screens, blinds and lighting.',
   },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Projects – Sanctuary Pergolas',
+    description:
+      'Explore real pergola projects: pitched, gable, hip and box-perimeter, with screens, blinds and lighting.',
+  },
 };
 
 type ProjectsPageProps = {

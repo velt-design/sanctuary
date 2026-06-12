@@ -121,6 +121,11 @@ const nextConfig: NextConfig = {
       { source: '/testimonials', destination: '/projects', permanent: true },
       // Avoid self-redirect loops. Only include redirects when source !== destination.
 
+      // Renamed project slugs -> accurate slugs (keep inbound links / SEO equity)
+      { source: '/projects/devonport-gable-lightwell', destination: '/projects/lilliput-mini-golf', permanent: true },
+      { source: '/projects/waiheke-coastal-louvre', destination: '/projects/waiheke-holiday-home', permanent: true },
+      { source: '/projects/waitakere-ranges-lanai', destination: '/projects/muriwai-courtyard', permanent: true },
+
       // Category landing
       { source: '/pergolas', destination: '/products?group=pergolas', permanent: true },
       { source: '/accessories', destination: '/products', permanent: true },

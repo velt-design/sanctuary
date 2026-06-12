@@ -46,6 +46,12 @@ export async function generateMetadata(
           ]
         : undefined,
     },
+    twitter: {
+      card: 'summary_large_image',
+      title: `${project.title} – Sanctuary Pergolas`,
+      description: project.blurb,
+      images: project.heroImage?.src ? [project.heroImage.src] : undefined,
+    },
   };
 }
 

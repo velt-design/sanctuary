@@ -230,6 +230,7 @@ export default function ProjectsExperience({ projects, initialSlugFromUrl = '' }
                           optionRefs.current[project.slug] = element;
                         }}
                         type="button"
+                        tabIndex={-1}
                         className={cx('projects-list__item', isActive && 'is-active')}
                         role="option"
                         aria-selected={isActive}

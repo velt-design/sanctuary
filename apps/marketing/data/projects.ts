@@ -228,10 +228,10 @@ const baseProjects: Project[] = [
         ],
       },
     ],
-    related: ['waiheke-coastal-louvre', 'st-heliers-townhouse', 'dairy-flat-estate'],
+    related: ['waiheke-holiday-home', 'st-heliers-townhouse', 'dairy-flat-estate'],
   },
   {
-    slug: 'devonport-gable-lightwell',
+    slug: 'lilliput-mini-golf',
     title: 'Lilliput Mini Golf',
     location: '3 Tamaki Drive, Parnell, Auckland',
     region: 'Central Auckland',
@@ -311,10 +311,10 @@ const baseProjects: Project[] = [
         ],
       },
     ],
-    related: ['waiheke-coastal-louvre', 'tindalls-bay-pavilion'],
+    related: ['waiheke-holiday-home', 'tindalls-bay-pavilion'],
   },
   {
-    slug: 'waiheke-coastal-louvre',
+    slug: 'waiheke-holiday-home',
     title: 'Waiheke Holiday Home',
     location: 'Palm Beach, Waiheke Island',
     region: 'Hauraki Gulf',
@@ -387,7 +387,7 @@ const baseProjects: Project[] = [
         ],
       },
     ],
-    related: ['devonport-gable-lightwell', 'tindalls-bay-pavilion'],
+    related: ['lilliput-mini-golf', 'tindalls-bay-pavilion'],
   },
   {
     slug: 'goodhome-commercial-terrace',
@@ -397,14 +397,14 @@ const baseProjects: Project[] = [
     type: 'Commercial',
     roof: 'Gable',
     year: '2024',
-    heroImage: { src: '/images/project-goodhome-01.jpg', alt: 'Covered hospitality courtyard with perimeter pergola', objectPosition: '50% 48%' },
+    heroImage: { src: '/images/project-goodhome-01.jpg', alt: 'Covered hospitality courtyard with gable pergola', objectPosition: '50% 48%' },
     gallery: [
       { src: '/images/project-goodhome-01.jpg', alt: 'Twilight crowd under the pergola', objectPosition: '50% 48%' },
       { src: '/images/project-goodhome-02.jpg', alt: 'Cafe blinds closing the courtyard edge', objectPosition: '50% 50%' },
       { src: '/images/project-goodhome-03.jpg', alt: 'Detail of structural column and planter', objectPosition: '50% 52%' },
       { src: '/images/project-goodhome-04.jpg', alt: 'Lighting wash across the roof panels', objectPosition: '50% 44%' },
     ],
-    blurb: 'Two-zone perimeter roof matching the villa-style facade, extending the restaurant into a covered front courtyard.',
+    blurb: 'Two-zone gable roof matching the villa-style facade, extending the restaurant into a covered front courtyard.',
     description: [
       'The client wanted to cover the front courtyard of their restaurant while keeping the architecture reading as a single, coherent villa-style facade. The existing building features 25° roofs and a rhythm of gables that we needed to respect.',
       'We matched the 25° roof pitch and extended from the existing roofline to carry that geometry out over the courtyard, creating a generous outdoor room that blends seamlessly into the building and feels like part of the original structure.',
@@ -551,9 +551,6 @@ const baseProjects: Project[] = [
     heroImage: { src: '/images/project-tindalls-bay.jpg', alt: 'Coastal pavilion overlooking Tindalls Bay', objectPosition: '50% 42%' },
     gallery: [
       { src: '/images/project-tindalls-bay.jpg', alt: 'Coastal pavilion overlooking Tindalls Bay', objectPosition: '50% 42%' },
-      { src: '/images/hero-2.jpg', alt: 'Side view of the Tindalls Bay patio and deck cover', objectPosition: '50% 48%' },
-      { src: '/images/product-pitched-01.jpg', alt: 'Pitched roof and timber batten detail at Tindalls Bay', objectPosition: '50% 50%' },
-      { src: '/images/hero-1.jpg', alt: 'Tindalls Bay pergola overlooking the coastal view', objectPosition: '50% 45%' },
     ],
     blurb: 'Layered patio and carport cover combining insulated panels, acrylic roofing and battens to keep spaces bright but protected.',
     description: [
@@ -562,9 +559,9 @@ const baseProjects: Project[] = [
       'On one portion we introduced light grey acrylic to bring in more light again, and along one side we added mesh blinds for wind protection and privacy from neighbours. Together the mix of roof types and screening frames a beautiful view without closing the house off from the outdoors.',
     ],
     stats: {
-      width: '-',
-      depth: '-',
-      height: '-',
+      width: '',
+      depth: '',
+      height: '',
       area: '108 m²',
     },
     tags: ['Coastal', 'Automation', 'Screens'],
@@ -614,7 +611,7 @@ const baseProjects: Project[] = [
         ],
       },
     ],
-    related: ['devonport-gable-lightwell', 'waiheke-coastal-louvre'],
+    related: ['lilliput-mini-golf', 'waiheke-holiday-home'],
   },
   {
     slug: 'atelier-shu-cafe',
@@ -691,9 +688,9 @@ const baseProjects: Project[] = [
     related: ['goodhome-commercial-terrace', 'kiwi-rail-platform'],
   },
   {
-    slug: 'waitakere-ranges-lanai',
+    slug: 'muriwai-courtyard',
     title: 'Muriwai Courtyard',
-    location: 'Waitakere Ranges, Auckland',
+    location: 'Muriwai, Auckland',
     region: 'West Auckland',
     type: 'Residential',
     roof: 'Hip',
@@ -762,7 +759,7 @@ const baseProjects: Project[] = [
         ],
       },
     ],
-    related: ['warkworth-outdoor-room', 'waiheke-coastal-louvre', 'tindalls-bay-pavilion'],
+    related: ['warkworth-outdoor-room', 'waiheke-holiday-home', 'tindalls-bay-pavilion'],
   },
   {
     slug: 'velskov-forest',
@@ -771,7 +768,7 @@ const baseProjects: Project[] = [
     region: 'West Auckland',
     type: 'Commercial',
     roof: 'Pitched',
-    year: '—',
+    year: '',
     heroImage: {
       src: '/images/project-velskov-01.jpg',
       alt: 'Pitched pergola in the middle of native forest at Velskov',
@@ -798,7 +795,7 @@ const baseProjects: Project[] = [
     },
     tags: ['Commercial', 'Pitched', 'Bush'],
     sections: [],
-    related: ['waitakere-ranges-lanai', 'goodhome-commercial-terrace'],
+    related: ['muriwai-courtyard', 'goodhome-commercial-terrace'],
     videoYoutubeId: 'e5RXcNdCrD4',
   },
   {
@@ -891,7 +888,7 @@ const baseProjects: Project[] = [
         ],
       },
     ],
-    related: ['mt-maunganui-box', 'waiheke-coastal-louvre', 'dairy-flat-estate'],
+    related: ['mt-maunganui-box', 'waiheke-holiday-home', 'dairy-flat-estate'],
   },
   {
     slug: 'riverhead-gable-pavilion',
@@ -1010,7 +1007,7 @@ const baseProjects: Project[] = [
     },
     tags: ['Residential', 'Gable', 'Opal acrylic', 'Aluminium'],
     sections: [],
-    related: ['dairy-flat-estate', 'warkworth-outdoor-room', 'waiheke-coastal-louvre'],
+    related: ['dairy-flat-estate', 'warkworth-outdoor-room', 'waiheke-holiday-home'],
   },
   {
     slug: 'dairy-flat-estate',
@@ -1039,25 +1036,25 @@ const baseProjects: Project[] = [
     },
     tags: ['Residential', 'Gable'],
     sections: [],
-    related: ['warkworth-outdoor-room', 'st-heliers-townhouse', 'waiheke-coastal-louvre'],
+    related: ['warkworth-outdoor-room', 'st-heliers-townhouse', 'waiheke-holiday-home'],
   },
 ];
 
 const projectOrder: string[] = [
-  'warkworth-outdoor-room',    // Warkworth Outdoor Room
-  'mt-maunganui-box',          // Mt Maunganui Box
-  'devonport-gable-lightwell', // Lilliput Mini Golf
-  'riverhead-gable-pavilion',  // Riverhead Gable Pavilion
-  'velskov-forest',            // Velskov Forest
-  'tindalls-bay-pavilion',     // Tindalls Bay - Patio & Carport
+  'warkworth-outdoor-room',      // Warkworth Outdoor Room
+  'mt-maunganui-box',            // Mt Maunganui Box
+  'lilliput-mini-golf',          // Lilliput Mini Golf
+  'riverhead-gable-pavilion',    // Riverhead Gable Pavilion
+  'velskov-forest',              // Velskov Forest
+  'tindalls-bay-pavilion',       // Tindalls Bay - Patio & Carport
   'goodhome-commercial-terrace', // The Good Home Takanini
-  'dairy-flat-estate',         // Dairy Flat Estate
-  'waitakere-ranges-lanai',    // Murawai Courtyard
-  'ardmore-box-carport',       // Ardmore Box Carport
-  'st-heliers-townhouse',      // St Heliers Townhouse
-  'kiwi-rail-platform',        // KiwiRail Head Office
-  'waiheke-coastal-louvre',    // Waiheke Holiday Home
-  'atelier-shu-cafe',          // Atelier Shu Cafe
+  'dairy-flat-estate',           // Dairy Flat Estate
+  'muriwai-courtyard',           // Muriwai Courtyard
+  'ardmore-box-carport',         // Ardmore Box Carport
+  'st-heliers-townhouse',        // St Heliers Townhouse
+  'kiwi-rail-platform',          // KiwiRail Head Office
+  'waiheke-holiday-home',        // Waiheke Holiday Home
+  'atelier-shu-cafe',            // Atelier Shu Cafe
 ];
 
 export const projects: Project[] = [...baseProjects].sort((a, b) => {
