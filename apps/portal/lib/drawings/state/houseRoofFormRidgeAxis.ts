@@ -4,25 +4,24 @@ import {
   type Polygon3,
 } from '@sp/geometry';
 import type {
-  CalculatorHouseFootprintMode,
-  CalculatorHouseFootprintParams,
-  CalculatorHouseFootprintPolygonPoint,
-  CalculatorHouseFootprintPreset,
-  CalculatorModuleInputs,
-} from '@/lib/types/calculator';
-import type {
-  HouseRoofFieldSource,
+  HouseFormFootprintModel,
   HouseRoofPrimaryFallDirection,
   HouseRoofRidgeAxis,
-} from './houseFirstWorkbenchModel';
+  WorkbenchAttachmentSide,
+} from './objectFirstWorkbenchModel';
 import { localPolygonToGeometryPolygon } from './houseRoofFormNormalize';
 
+type HouseFootprintLocalPoint = HouseFormFootprintModel['polygon'][number];
+type HouseFootprintMode = HouseFormFootprintModel['mode'];
+type HouseFootprintParams = HouseFormFootprintModel['params'];
+type HouseFootprintPreset = HouseFormFootprintModel['preset'];
+type HouseRoofFieldSource = 'default_fallback';
+
 /**
- * Ridge-axis and primary-fall-direction derivation helpers extracted
- * from `houseFirstWorkbenchAdapter`. These predicates classify whether a
- * footprint is orthogonal/rectangular, score gable terminal-end
- * topology, and pick a sensible default ridge axis when the user has
- * not committed an explicit choice.
+ * Ridge-axis and primary-fall-direction derivation helpers. These predicates
+ * classify whether a footprint is orthogonal/rectangular, score gable
+ * terminal-end topology, and pick a sensible default ridge axis when the user
+ * has not committed an explicit choice.
  *
  * The 1.05 / 1.15 span ratios below are deliberate aspect tolerances —
  * rectangular footprints close to a 1:1 ratio (`hasAmbiguousRidgeAxisSelection`)
@@ -32,13 +31,13 @@ import { localPolygonToGeometryPolygon } from './houseRoofFormNormalize';
  */
 export type DerivedRoofRidgeAxisResolution = {
   value: HouseRoofRidgeAxis;
-  source: Extract<HouseRoofFieldSource, 'default_fallback'>;
+  source: HouseRoofFieldSource;
   ambiguous: boolean;
   usedFallback: boolean;
 };
 
 export function isOrthogonal2D(
-  polygon: CalculatorHouseFootprintPolygonPoint[],
+  polygon: HouseFootprintLocalPoint[],
 ): boolean {
   if (polygon.length < 4) return false;
   for (let index = 0; index < polygon.length; index += 1) {
@@ -64,7 +63,7 @@ export function isOrthogonal2D(
 }
 
 export function isRectanglePolygon2D(
-  polygon: CalculatorHouseFootprintPolygonPoint[],
+  polygon: HouseFootprintLocalPoint[],
 ): boolean {
   if (polygon.length !== 4 || !isOrthogonal2D(polygon)) return false;
   const along = polygon.map((point) => Number(point.alongM));
@@ -74,10 +73,10 @@ export function isRectanglePolygon2D(
 }
 
 export function inferLegacyRoofRidgeAxis(input: {
-  footprintMode: CalculatorHouseFootprintMode;
-  footprintPreset: CalculatorHouseFootprintPreset;
-  footprintParams: CalculatorHouseFootprintParams;
-  footprintPolygon: CalculatorHouseFootprintPolygonPoint[];
+  footprintMode: HouseFootprintMode;
+  footprintPreset: HouseFootprintPreset;
+  footprintParams: HouseFootprintParams;
+  footprintPolygon: HouseFootprintLocalPoint[];
 }): HouseRoofRidgeAxis {
   if (input.footprintMode === 'custom_polygon' && isRectanglePolygon2D(input.footprintPolygon)) {
     const alongValues = input.footprintPolygon.map((point) => Number(point.alongM));
@@ -97,7 +96,7 @@ export function inferLegacyRoofRidgeAxis(input: {
 }
 
 export function resolveBoundingFootprintSpans(
-  polygon: CalculatorHouseFootprintPolygonPoint[],
+  polygon: HouseFootprintLocalPoint[],
 ): { alongM: number; depthM: number } | null {
   if (!polygon.length) return null;
   const alongValues = polygon.map((point) => Number(point.alongM));
@@ -115,7 +114,7 @@ export function resolveBoundingFootprintSpans(
 }
 
 export function resolveRectangularFootprintSpans(
-  polygon: CalculatorHouseFootprintPolygonPoint[],
+  polygon: HouseFootprintLocalPoint[],
 ): { alongM: number; depthM: number } | null {
   if (!isRectanglePolygon2D(polygon)) return null;
   const alongValues = polygon.map((point) => Number(point.alongM));
@@ -127,7 +126,7 @@ export function resolveRectangularFootprintSpans(
 }
 
 export function hasAmbiguousRidgeAxisSelection(
-  polygon: CalculatorHouseFootprintPolygonPoint[],
+  polygon: HouseFootprintLocalPoint[],
 ): boolean {
   const spans = resolveRectangularFootprintSpans(polygon);
   if (!spans) return false;
@@ -148,10 +147,10 @@ export function scoreGableTerminalTopology(input: {
 }
 
 export function resolveDerivedMonoFallDirection(input: {
-  attachmentSide: NonNullable<CalculatorModuleInputs['attachmentSide']>;
+  attachmentSide: WorkbenchAttachmentSide;
 }): {
   value: HouseRoofPrimaryFallDirection;
-  source: Extract<HouseRoofFieldSource, 'default_fallback'>;
+  source: HouseRoofFieldSource;
 } {
   return {
     value: preferredMonoFallDirectionForAttachmentSide(input.attachmentSide),
@@ -160,10 +159,10 @@ export function resolveDerivedMonoFallDirection(input: {
 }
 
 export function resolveDerivedRidgeAxis(input: {
-  footprintMode: CalculatorHouseFootprintMode;
-  footprintPreset: CalculatorHouseFootprintPreset;
-  footprintParams: CalculatorHouseFootprintParams;
-  footprintPolygon: CalculatorHouseFootprintPolygonPoint[];
+  footprintMode: HouseFootprintMode;
+  footprintPreset: HouseFootprintPreset;
+  footprintParams: HouseFootprintParams;
+  footprintPolygon: HouseFootprintLocalPoint[];
 }): DerivedRoofRidgeAxisResolution {
   const fallback = inferLegacyRoofRidgeAxis(input);
   const rectangularSpans = resolveRectangularFootprintSpans(input.footprintPolygon);

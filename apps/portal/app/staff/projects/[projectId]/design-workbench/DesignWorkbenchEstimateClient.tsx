@@ -6,11 +6,6 @@ import { buildDeckTransformPatch } from '@/lib/drawings/commits/commitDeckTransf
 import { buildPergolaTransformPosition } from '@/lib/drawings/commits/commitPergolaTransform';
 import DrawingWorkbench from '@/components/drawings/workbench/DrawingWorkbench';
 import type { Geometry3DViewportState } from '@/components/drawings/viewports/Geometry3DViewport';
-import type { GeometryPreviewState } from '@/lib/drawings/geometry/buildWorkbenchGeometryPreview';
-import {
-  buildObjectWorkbenchGeometryEditState,
-  buildObjectWorkbenchGeometryEditStateFromGeometryConfig,
-} from '@/lib/drawings/geometry/geometryEditAdapter';
 import { buildDrawingWorkbenchStore } from '@/lib/drawings/state/drawingWorkbenchStore';
 import { buildProjectContextOverlayShapes } from '@/lib/drawings/state/projectContextOverlayShapes';
 import {
@@ -23,16 +18,17 @@ import {
 } from '@/lib/drawings/state/drawingWorkbenchUiState';
 import { houseFormTransformToWorldPositionMm } from '@/lib/drawings/state/houseFormTransform';
 import {
-  buildEstimateDrawingDraftFromSnapshot,
-  buildEstimateDrawingSheetMetaOverrides,
-  deriveEstimateDrawingEditableFields,
-  estimateDrawingDraftMatchesSnapshot,
-  mergeEstimateDrawingDraftIntoSnapshot,
+  ESTIMATE_DRAWING_OBJECT_FIRST_OUTPUT_KEY,
+  type EstimateDrawingDraft,
 } from '@/lib/estimates/drawingEdits';
-import type { PergolaAttachment, WorkbenchObjectRef } from '@/lib/drawings/state/objectFirstWorkbenchModel';
+import {
+  normalizeObjectFirstWorkbenchDraftVNext,
+  type PergolaAttachment,
+  type WorkbenchObjectRef,
+} from '@/lib/drawings/state/objectFirstWorkbenchModel';
 import { pergolaAttachmentFromSnap } from '@/lib/drawings/state/pergolaAttachment';
 import { buildWorkbenchDebugFixtureExport } from '@/lib/drawings/workbenchDebugExport';
-import { buildEstimateDrawingModuleInfoRows, buildEstimateDrawingSheetMeta } from '@/lib/estimates/drawingSheet';
+import { buildEstimateDrawingSheetMeta } from '@/lib/estimates/drawingSheet';
 import type { EstimateDetail } from '@/lib/estimates/types';
 import { buildPortalPageDebugExport, type PortalPageDebugExport } from '@/lib/debug/portalPageDebugExport';
 import { inferPortalScenarioFromLabel } from '@/lib/debug/portalScenarioDebug';
@@ -71,49 +67,28 @@ type EstimateUpdatePayload = {
   outputs: Record<string, unknown>;
   derived?: Record<string, unknown>;
   projectSnapshot?: Record<string, unknown>;
-  snapshot?: Record<string, unknown>;
   configVersions?: Record<string, unknown>;
 };
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return Boolean(value && typeof value === 'object' && !Array.isArray(value));
-}
-
-function optionalRecord(value: unknown): Record<string, unknown> | undefined {
-  return isRecord(value) ? value : undefined;
-}
-
 function buildWorkbenchDraftEstimateUpdatePayload(input: {
   estimate: EstimateDetail;
-  draft: NonNullable<ReturnType<typeof buildEstimateDrawingDraftFromSnapshot>>;
+  draft: EstimateDrawingDraft;
 }): EstimateUpdatePayload | null {
-  const merged = mergeEstimateDrawingDraftIntoSnapshot(input.estimate.calculatorSnapshot, input.draft);
-  if (!merged) return null;
-  const inputs = isRecord(merged.inputs) ? merged.inputs : {};
-  const mergedOutputs = isRecord(merged.outputs) ? merged.outputs : {};
-  const { derived, projectSnapshot, snapshot, configVersions, ...outputs } = mergedOutputs;
-  const derivedRecord = optionalRecord(derived);
-  const projectSnapshotRecord = optionalRecord(projectSnapshot);
-  const snapshotRecord = optionalRecord(snapshot);
-  const configVersionsRecord = optionalRecord(configVersions);
   return {
     status: input.estimate.status,
-    inputs,
-    outputs,
-    ...(derivedRecord ? { derived: derivedRecord } : null),
-    ...(projectSnapshotRecord ? { projectSnapshot: projectSnapshotRecord } : null),
-    ...(snapshotRecord ? { snapshot: snapshotRecord } : null),
-    ...(configVersionsRecord ? { configVersions: configVersionsRecord } : null),
+    inputs: {},
+    outputs: {
+      [ESTIMATE_DRAWING_OBJECT_FIRST_OUTPUT_KEY]:
+        normalizeObjectFirstWorkbenchDraftVNext(input.draft.objectFirst),
+    },
   };
 }
 
 function buildInitialWorkbenchUiState(input: {
-  snapshot: Record<string, unknown> | null;
-  draft?: ReturnType<typeof buildEstimateDrawingDraftFromSnapshot>;
+  draft?: EstimateDrawingDraft | null;
 }) {
   const defaultHouseFormId =
     buildDrawingWorkbenchStore({
-      snapshot: input.snapshot,
       draft: input.draft,
       ui: createDrawingWorkbenchUiState(),
     }).derived.houseForms[0]?.id ?? null;
@@ -164,8 +139,7 @@ export default function DesignWorkbenchEstimateClient({
   const router = useRouter();
   const [ui, setUi] = useState(() =>
     buildInitialWorkbenchUiState({
-      snapshot: estimate.calculatorSnapshot,
-      draft: buildEstimateDrawingDraftFromSnapshot(estimate.calculatorSnapshot),
+      draft: null,
     }),
   );
   const [modelViewportTransformsByKey, setModelViewportTransformsByKey] = useState<
@@ -193,13 +167,8 @@ export default function DesignWorkbenchEstimateClient({
   const [hoveredObjectRef, setHoveredObjectRef] = useState<WorkbenchObjectRef | null>(null);
   const { drawingDraft, persistDrawingDraftLocally } = useObjectWorkbenchDraftPersistence({
     estimateId: estimate.id,
-    snapshot: estimate.calculatorSnapshot,
   });
-  const snapshotDrawingDraft = useMemo(
-    () => buildEstimateDrawingDraftFromSnapshot(estimate.calculatorSnapshot),
-    [estimate.calculatorSnapshot],
-  );
-  const effectiveDrawingDraft = drawingDraft ?? snapshotDrawingDraft;
+  const effectiveDrawingDraft = drawingDraft;
   const effectiveDrawingDraftSignature = useMemo(
     () => JSON.stringify(effectiveDrawingDraft ?? null),
     [effectiveDrawingDraft],
@@ -207,20 +176,13 @@ export default function DesignWorkbenchEstimateClient({
   const hasUnsavedWorkbenchDraft = useMemo(
     () =>
       Boolean(effectiveDrawingDraft) &&
-      !estimateDrawingDraftMatchesSnapshot(effectiveDrawingDraft, estimate.calculatorSnapshot) &&
       effectiveDrawingDraftSignature !== lastSavedDraftSignature,
-    [
-      effectiveDrawingDraft,
-      effectiveDrawingDraftSignature,
-      estimate.calculatorSnapshot,
-      lastSavedDraftSignature,
-    ],
+    [effectiveDrawingDraft, effectiveDrawingDraftSignature, lastSavedDraftSignature],
   );
 
   const store = useMemo(
     () =>
       buildDrawingWorkbenchStore({
-        snapshot: estimate.calculatorSnapshot,
         draft: effectiveDrawingDraft,
         ui,
         geometryIdentity: {
@@ -228,20 +190,18 @@ export default function DesignWorkbenchEstimateClient({
           estimateId: estimate.id,
         },
       }),
-    [effectiveDrawingDraft, estimate.calculatorSnapshot, estimate.id, estimate.projectId, ui],
+    [effectiveDrawingDraft, estimate.id, estimate.projectId, ui],
   );
 
   useEffect(() => {
     const defaultHouseFormId =
       buildDrawingWorkbenchStore({
-        snapshot: estimate.calculatorSnapshot,
-        draft: snapshotDrawingDraft,
+        draft: effectiveDrawingDraft,
         ui: createDrawingWorkbenchUiState(),
       }).derived.houseForms[0]?.id ?? null;
 
     setUi((current) => ({
       ...current,
-      activeModuleIndex: 0,
       activePergolaId: null,
       ...buildDrawingWorkbenchObjectSelectionState({
         activeRailTab: 'house_forms',
@@ -253,7 +213,7 @@ export default function DesignWorkbenchEstimateClient({
     setDrawOutlineTarget({ kind: 'footprint', deckId: null });
     setDraftSaveState({ status: 'idle', message: null });
     setLastSavedDraftSignature(null);
-  }, [estimate.calculatorSnapshot, snapshotDrawingDraft]);
+  }, [estimate.id, effectiveDrawingDraft]);
 
   useEffect(() => {
     if (hasUnsavedWorkbenchDraft && draftSaveState.status === 'saved') {
@@ -265,7 +225,6 @@ export default function DesignWorkbenchEstimateClient({
     const storeSelection = pickDrawingWorkbenchObjectSelectionState(store.ui);
     const uiSelection = pickDrawingWorkbenchObjectSelectionState(ui);
     if (
-      store.ui.activeModuleIndex === ui.activeModuleIndex &&
       store.ui.activePergolaId === ui.activePergolaId &&
       areDrawingWorkbenchObjectSelectionStatesEqual(storeSelection, uiSelection) &&
       areDrawingWorkbenchVisibilityStatesEqual(store.ui.visibility, ui.visibility)
@@ -274,7 +233,6 @@ export default function DesignWorkbenchEstimateClient({
     }
     setUi((current) => ({
       ...current,
-      activeModuleIndex: store.ui.activeModuleIndex,
       activePergolaId: store.ui.activePergolaId,
       ...storeSelection,
       visibility: store.ui.visibility,
@@ -284,8 +242,6 @@ export default function DesignWorkbenchEstimateClient({
     ui,
   ]);
 
-  const activeModule = store.derived.activeModule;
-  const activeModuleInput = activeModule?.drawingModule.input ?? null;
   const activeDeck =
     store.derived.objectWorkbench.decks.find((deck) => deck.id === drawOutlineTarget.deckId) ??
     store.derived.objectWorkbench.activeDeck ??
@@ -295,53 +251,14 @@ export default function DesignWorkbenchEstimateClient({
     drawOutlineTarget.kind === 'deck'
       ? (activeDeck?.outline ?? null)
       : null;
-  const modules = store.persisted.modules.map((module) => ({
-    id: module.id,
-    label: module.label,
-  }));
   const isLocked = estimate.editability.isLocked;
-  const geometryEditState = useMemo(() => {
-    const result = buildObjectWorkbenchGeometryEditState({
-      snapshot: estimate.calculatorSnapshot,
-      draft: effectiveDrawingDraft,
-      moduleIndex: store.derived.activeModuleIndex,
-    });
-    if (result.ok) return result.value;
-    const transientModule = store.derived.activeSolution;
-    if (
-      transientModule?.sourceKind !== 'object_first_pergola' ||
-      !transientModule.config
-    ) {
-      return null;
-    }
-    const transientResult = buildObjectWorkbenchGeometryEditStateFromGeometryConfig({
-      module: transientModule.moduleInput,
-      config: transientModule.config,
-    });
-    return transientResult.ok ? transientResult.value : null;
-  }, [
-    effectiveDrawingDraft,
-    estimate.calculatorSnapshot,
-    store.derived.activeModuleIndex,
-    store.derived.activeSolution,
-  ]);
-  const supportsSanctuaryEditing = Boolean(geometryEditState);
-  const drawingMetaOverrides = useMemo(
-    () =>
-      buildEstimateDrawingSheetMetaOverrides({
-        moduleLabel: store.derived.activeModuleLabel,
-        moduleIndex: store.derived.activeModuleIndex,
-        draft: effectiveDrawingDraft,
-      }),
-    [effectiveDrawingDraft, store.derived.activeModuleIndex, store.derived.activeModuleLabel],
-  );
   const meta = useMemo(
     () =>
       buildEstimateDrawingSheetMeta({
-        moduleLabel: store.derived.activeModuleLabel,
-        moduleTitleOverride: drawingMetaOverrides.moduleTitle,
-        noteOverride: drawingMetaOverrides.note,
-        moduleInfoRows: buildEstimateDrawingModuleInfoRows(activeModule?.drawingModule.input),
+        sheetLabel: 'Design Workbench',
+        sheetTitleOverride: null,
+        noteOverride: null,
+        sheetInfoRows: [],
         view: store.ui.activeView,
         versionLabel: estimate.versionLabel,
         estimateDate: estimate.createdAt,
@@ -350,60 +267,24 @@ export default function DesignWorkbenchEstimateClient({
         clientName: null,
       }),
     [
-      activeModule?.drawingModule.input,
-      drawingMetaOverrides.moduleTitle,
-      drawingMetaOverrides.note,
       estimate.createdAt,
       estimate.versionLabel,
       projectName,
       siteAddress,
-      store.derived.activeModuleLabel,
       store.ui.activeView,
     ],
   );
   const activeSelectionFamily =
     store.ui.activeRailTab === 'diagnostics' ? store.ui.activeObjectFamily : store.ui.activeRailTab;
   const objectWorkbenchDisplayFamily = activeSelectionFamily === 'pergolas' ? 'pergolas' : 'house_forms';
-  const isPergolaTabActive = store.ui.activeRailTab === 'pergolas';
-  const drawingEditableFields = useMemo(
-    () =>
-      !effectiveDrawingDraft || isLocked || !supportsSanctuaryEditing || !isPergolaTabActive
-        ? []
-        : deriveEstimateDrawingEditableFields({
-            draft: effectiveDrawingDraft,
-            moduleIndex: store.derived.activeModuleIndex,
-            moduleLabel: store.derived.activeModuleLabel,
-            view: store.ui.activeView,
-            planModel: store.derived.activeLegacyPlanModel,
-            sectionModel: store.derived.activeLegacySectionModel,
-          }),
-    [
-      effectiveDrawingDraft,
-      isLocked,
-      store.derived.activeModuleIndex,
-      store.derived.activeModuleLabel,
-      store.derived.activeLegacyPlanModel,
-      store.derived.activeLegacySectionModel,
-      store.ui.activeView,
-      supportsSanctuaryEditing,
-      isPergolaTabActive,
-    ],
-  );
-  const geometryPreview: GeometryPreviewState =
-    store.derived.activeViewportGeometry?.preview ?? {
-      kind: 'error',
-      message: 'No active 3D geometry preview is available.',
-    };
   const activePergolaSurfaceKey =
     store.ui.activePergolaId ??
     store.derived.activePergola?.id ??
-    activeModuleInput?.pergolaId ??
     'none';
   const modelViewportSurfaceKey = `${activePergolaSurfaceKey}:${store.ui.activeView}`;
   const geometryViewportSurfaceKey = `${objectWorkbenchDisplayFamily}:${activePergolaSurfaceKey}`;
   const viewportPergolaId =
     store.derived.objectWorkbench.activePergola?.id ??
-    activeModuleInput?.pergolaId ??
     store.derived.objectWorkbench.pergolas[0]?.id ??
     null;
   const viewportActiveObjectRef = store.ui.activeObjectRef;
@@ -421,7 +302,7 @@ export default function DesignWorkbenchEstimateClient({
   // is the common case, not an exception.
   const activePergolaSourceId =
     store.ui.activeObjectRef.family === 'pergolas'
-      ? store.ui.activeObjectRef.objectId ?? store.derived.activeModule?.drawingModule.input.pergolaId ?? null
+      ? store.ui.activeObjectRef.objectId ?? null
       : null;
   const projectPergolaPlanShapes = store.derived.solvedModel.projectPergolaPlanShapes;
   const projectContextShapes = useMemo(
@@ -508,22 +389,16 @@ export default function DesignWorkbenchEstimateClient({
     },
   });
   const objectWorkbenchActions = useObjectWorkbenchActions({
-    activeModuleInput,
     drawingDraft: effectiveDrawingDraft,
     drawOutlineTarget,
     persistDrawingDraftLocally,
     setDrawOutlineTarget,
     setUi,
-    snapshot: estimate.calculatorSnapshot,
     startDeckOutlineEditor: objectSelectionActions.startDeckOutlineEditor,
     store,
     ui,
   });
 
-  const workbenchFieldCommit =
-    !isLocked && supportsSanctuaryEditing && isPergolaTabActive
-      ? objectWorkbenchActions.commitDrawingField
-      : undefined;
   const workbenchFootprintCommit =
     !isLocked && objectWorkbenchDisplayFamily === 'house_forms' && store.ui.viewportMode === 'model'
       ? objectWorkbenchActions.commitHouseFormFootprintDimension
@@ -595,14 +470,13 @@ export default function DesignWorkbenchEstimateClient({
     () =>
       isLocked
         ? undefined
-        : buildOutlineEditCommitHandler({ store, activeModuleInput, objectWorkbenchActions }),
-    [isLocked, store, activeModuleInput, objectWorkbenchActions],
+        : buildOutlineEditCommitHandler({ store, objectWorkbenchActions }),
+    [isLocked, store, objectWorkbenchActions],
   );
   const debugFixtureExport = useMemo(
     () =>
       debugExportEnabled
         ? buildWorkbenchDebugFixtureExport({
-            snapshot: estimate.calculatorSnapshot,
             draft: effectiveDrawingDraft,
             ui: store.ui,
             projectGeometryPreview: store.derived.solvedModel.projectGeometryPreview,
@@ -613,7 +487,6 @@ export default function DesignWorkbenchEstimateClient({
         : null,
     [
       effectiveDrawingDraft,
-      estimate.calculatorSnapshot,
       store.derived.solvedModel.houseGeometryInputsById,
       store.derived.solvedModel.projectGeometryPreview,
       store.derived.solvedModel.projectHouseProjectionHealth,
@@ -672,15 +545,6 @@ export default function DesignWorkbenchEstimateClient({
     ],
   );
 
-  if (!activeModule) {
-    return (
-      <div className={styles.emptyState}>
-        <p className={styles.emptyTitle}>No Drawing</p>
-        <p className={styles.emptyText}>No plan or section drawing is available for this design.</p>
-      </div>
-    );
-  }
-
   return (
     <div className={styles.shell} data-workbench-density="compact">
       {debugFixtureExport ? (
@@ -696,14 +560,11 @@ export default function DesignWorkbenchEstimateClient({
           <WorkbenchDebugExportButton exportPayload={debugFixtureExport} portalDebugExport={portalDebugExport} />
         ) : null}
         <ObjectWorkbenchRailHost
-          activeModuleInput={activeModuleInput}
-          geometryEditState={geometryEditState}
           isLocked={isLocked}
           objectSelectionActions={objectSelectionActions}
           objectWorkbenchActions={objectWorkbenchActions}
           setUi={setUi}
           store={store}
-          supportsSanctuaryEditing={supportsSanctuaryEditing}
         />
 
         {isLocked ? (
@@ -730,31 +591,7 @@ export default function DesignWorkbenchEstimateClient({
       <div className={styles.workspaceColumn}>
         <div className={styles.workspaceSurface}>
         <DrawingWorkbench
-          moduleLabel={store.derived.activeModuleLabel}
-          modules={modules}
-          activeModuleIndex={store.derived.activeModuleIndex}
-          onActiveModuleIndexChange={(index) =>
-            setUi((current) => {
-              const selectedPergolaId = store.persisted.modules[index]?.drawingModule.input.pergolaId ?? null;
-              return {
-                ...current,
-                activeModuleIndex: index,
-                activePergolaId: selectedPergolaId ?? current.activePergolaId,
-                ...(current.activeObjectFamily === 'pergolas'
-                  ? buildDrawingWorkbenchObjectSelectionState({
-                      activeRailTab: current.activeRailTab,
-                      activeObjectFamily: current.activeObjectFamily,
-                      activeObjectRef: {
-                        family: 'pergolas',
-                        objectId:
-                          selectedPergolaId ??
-                          (current.activeObjectRef.family === 'pergolas' ? current.activeObjectRef.objectId : null),
-                      },
-                    })
-                  : {}),
-              };
-            })
-          }
+          sheetLabel={store.derived.projectSheetLabel}
           view={store.ui.activeView}
           onViewChange={(view) =>
             setUi((current) => ({
@@ -809,8 +646,8 @@ export default function DesignWorkbenchEstimateClient({
           backHref={backHref}
           projectLabel={projectName}
           draftSaveAction={draftSaveAction}
-          modelEditableFields={isPergolaTabActive ? drawingEditableFields : []}
-          onCommitModelField={workbenchFieldCommit}
+          modelEditableFields={[]}
+          onCommitModelField={undefined}
           onCommitFootprintEdit={workbenchFootprintCommit}
           onCommitCustomPolygon={!isLocked ? objectWorkbenchActions.commitSharedDeckCustomPolygon : undefined}
           onSelectObjectWorkbenchTarget={!isLocked ? objectSelectionActions.selectObjectWorkbenchTarget : undefined}
@@ -907,19 +744,15 @@ export default function DesignWorkbenchEstimateClient({
                       (d) => d.id === request.target.targetId,
                     );
                     if (!deck) return;
-                    // Read the deck's CURRENT world polygon from the solved
-                    // artifact. This is the source of truth regardless of
-                    // whether the deck has been migrated to its first-class
-                    // `position + side-local outline` form yet — the
+                    // Read the deck's current world polygon from the solved
+                    // artifact. This is the object-first source of truth; the
                     // geometry pipeline always produces a world boundary.
                     // Translating the world polygon by `request.delta` and
                     // running it through `buildDeckTransformPatch` gives the
                     // exact same atomic patch shape the edge-drag handler
-                    // writes; that's the point of the shared helper. Legacy
-                    // decks with `position == null` migrate cleanly on first
-                    // move instead of jumping to a tiny location because the
-                    // unit-frame decoder runs against a pergola-anchored
-                    // outline.
+                    // writes; that's the point of the shared helper. Decks
+                    // with `position == null` are normalized on first move
+                    // instead of being decoded against the wrong local frame.
                     const artifact = store.derived.activeViewportGeometry?.artifact;
                     const deckSolid = artifact?.assembly?.house?.model?.decks?.find(
                       (entry) => entry.id === request.target.targetId,
@@ -935,18 +768,13 @@ export default function DesignWorkbenchEstimateClient({
                     // decoder adds `deck.position + house.position`, so
                     // we must subtract house.position when going from
                     // world coords to the persisted deck.position. Read
-                    // the same object-first transform raw geometry now
-                    // consumes, with legacy module position as fallback.
+                    // the same object-first transform the geometry solve
+                    // consumes.
                     const hostHouseForm =
                       store.derived.activeHouseForm ?? store.derived.houseForms[0] ?? null;
                     const houseWorldPositionMm = hostHouseForm
                       ? houseFormTransformToWorldPositionMm(hostHouseForm.transform)
-                      : activeModuleInput?.houseFootprintPosition
-                        ? {
-                            x: Number(activeModuleInput.houseFootprintPosition.originXMm) || 0,
-                            y: Number(activeModuleInput.houseFootprintPosition.originYMm) || 0,
-                          }
-                        : null;
+                      : null;
                     const patch = buildDeckTransformPatch({
                       worldPolygonMm: nextWorldPolygon,
                       currentRotationDeg: deck.position?.rotationDeg,
@@ -960,11 +788,9 @@ export default function DesignWorkbenchEstimateClient({
                     return;
                   }
                   if (request.target.family === 'house_form') {
-                    // PR11 → PR-C (2026-05-22): drag-to-reposition for any
-                    // house form. The old primary-only exclusion is gone;
-                    // dragging the primary now commits the same transform
-                    // delta as added forms, and raw geometry reads that
-                    // transform before consulting legacy module position.
+                    // Drag-to-reposition is object-id based for every house
+                    // form. The geometry solve reads the committed transform
+                    // directly.
                     void objectWorkbenchActions.commitHouseFormTransformDelta({
                       houseFormId: request.target.targetId,
                       deltaXMm: request.delta.x,
@@ -988,14 +814,11 @@ export default function DesignWorkbenchEstimateClient({
             trustStatusLabel={store.derived.railModel.selectedInspector.selectedObjectTrustLabel}
           >
             <WorkbenchInspectorHost
-              activeModuleInput={activeModuleInput}
-              geometryEditState={geometryEditState}
               isLocked={isLocked}
               objectSelectionActions={objectSelectionActions}
               objectWorkbenchActions={objectWorkbenchActions}
               setUi={setUi}
               store={store}
-              supportsSanctuaryEditing={supportsSanctuaryEditing}
             />
           </RightInspectorPanel>
         </div>

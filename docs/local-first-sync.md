@@ -27,9 +27,9 @@ Current portal local-first mutations:
 
 Add new mutation keys in `portalEntities.ts` and register a handler in `LocalFirstPortalMutations.tsx`.
 
-The `workbench_solved` pricing rollout prep does not add a mutation key and does not change estimate create/update request bodies. Server-owned source metadata is attached at estimate persistence and must preserve provisional estimate aliases, queued dependent quote/design-request actions, retry visibility, `ESTIMATE_LOCKED` conflicts, and server-authoritative estimate persistence.
+The workbench breakaway does not add a mutation key and does not change estimate create/update request bodies. Workbench repricing is unavailable in this pass, so local-first estimate mutations continue to preserve existing calculator-backed pricing, provisional estimate aliases, queued dependent quote/design-request actions, retry visibility, `ESTIMATE_LOCKED` conflicts, and server-authoritative estimate persistence.
 
-Future `workbench_solved` enablement must stay a server-authoritative gate, not a browser-selected local-first mode. The local-first layer surfaces `409 ESTIMATE_PRICING_SOURCE_BLOCKED` as a visible conflict for the affected estimate; it must not silently retry with `calculator_live`, rewrite the requested source, alias a blocked create, queue dependent design work from a blocked create, or mark a blocked save as synced. Dependent quote/design-request mutations should remain queued or conflicted according to the existing alias/conflict rules until the durable estimate save succeeds.
+Future workbench-solved pricing enablement must stay a server-authoritative gate, not a browser-selected local-first mode. If a future save is blocked by source readiness, the local-first layer must surface that as a visible conflict for the affected estimate; it must not silently retry with calculator pricing, rewrite the requested source, alias a blocked create, queue dependent design work from a blocked create, or mark a blocked save as synced. Dependent quote/design-request mutations should remain queued or conflicted according to the existing alias/conflict rules until the durable estimate save succeeds.
 
 ## Working Copies
 
@@ -87,4 +87,4 @@ Current local signal from 2026-05-03: `npx vitest run apps/portal/lib/localFirst
 
 Manually verify pending, failed, retry, and lock states for changed entity flows.
 
-Before enabling workbench-backed saved pricing, manual QA must include local-first estimate create/update under both `calculator_live` and blocked `workbench_solved`, retry after a transient failure, durable ID alias resolution, dependent quote/design-request queue release, and `ESTIMATE_LOCKED` conflict handling for sent, accepted, and declined quote-backed estimates.
+Before enabling future workbench-backed saved pricing, manual QA must include local-first estimate create/update under calculator pricing and blocked workbench-solved pricing, retry after a transient failure, durable ID alias resolution, dependent quote/design-request queue release, and `ESTIMATE_LOCKED` conflict handling for sent, accepted, and declined quote-backed estimates.

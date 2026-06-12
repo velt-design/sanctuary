@@ -1,8 +1,8 @@
 import type { DesignRequestPriorityTier, DesignRequestStatus } from '@/lib/designPackages/types';
 import type { EstimateDrawingDraft } from '@/lib/estimates/drawingEdits';
 import type { EstimateStatus } from '@/lib/estimates/types';
-import type { RoofType } from '@sp/costing';
-import type { CalculatorModuleInputs } from '@/lib/types/calculator';
+
+type WorkbenchFixtureRoofType = 'pitched' | 'low_gable' | 'gable' | 'hip' | 'hip_corner';
 
 type SanctuaryGeometryWorkbenchFixtureEstimate = {
   id: string;
@@ -24,13 +24,13 @@ type SanctuaryGeometryWorkbenchFixtureQaMetadata = {
   parityCritical: boolean;
   shapeFamily: 'mono' | 'gable' | 'box';
   houseRoofForm: 'flat' | 'mono' | 'gable' | 'hipped';
-  expectedModule: {
+  expectedPergola: {
     lengthM: number;
     projectionM: number;
-    roofMaterial: CalculatorModuleInputs['roofMaterial'];
-    attachmentSide: CalculatorModuleInputs['attachmentSide'];
+    roofMaterial: 'acrylic' | 'timber' | 'mixed';
+    attachmentSide: 'rear' | 'front' | 'left' | 'right';
     roofPitchDeg: number;
-    roofType: RoofType;
+    roofType: WorkbenchFixtureRoofType;
     roofPlaneCount: number;
   };
 };
@@ -41,7 +41,7 @@ export type SanctuaryGeometryWorkbenchFixture = {
   qa: SanctuaryGeometryWorkbenchFixtureQaMetadata;
   snapshot: Record<string, unknown>;
   draft?: EstimateDrawingDraft;
-  moduleLabels?: string[];
+  sheetLabels?: string[];
   estimate: SanctuaryGeometryWorkbenchFixtureEstimate;
   request: SanctuaryGeometryWorkbenchFixtureRequest;
 };

@@ -486,7 +486,7 @@ function makeTopProjectionFixtureWithDeck(): GeometryTopProjectionViewModel {
 }
 
 function makeSolvedDrawingSurfaceGeometry(
-  drawing: {
+  _drawing: {
     planModel?: ModulePlanModel | null;
     sectionModel?: ModuleSectionModel | null;
   },
@@ -503,35 +503,23 @@ function makeSolvedDrawingSurfaceGeometry(
       plan: geometryPlan,
       topProjection: geometryTopProjection,
     } as WorkbenchDrawingSurfaceGeometry['artifact'],
-    legacyFallback: {
-      planModel: drawing.planModel ?? null,
-      sectionModel: drawing.sectionModel ?? null,
-    },
-    legacyPlanModel: drawing.planModel ?? null,
     planViewModel: null,
     geometryPlan,
     geometryTopProjection,
-    legacySectionModel: drawing.sectionModel ?? null,
     geometrySection: null,
   };
 }
 
-function makeLegacyDrawingSurfaceGeometry(drawing: {
+function makeLegacyDrawingSurfaceGeometry(_drawing: {
   planModel?: ModulePlanModel | null;
   sectionModel?: ModuleSectionModel | null;
 }): WorkbenchDrawingSurfaceGeometry {
   return {
-    source: 'legacy_fallback',
+    source: 'unavailable',
     artifact: null,
-    legacyFallback: {
-      planModel: drawing.planModel ?? null,
-      sectionModel: drawing.sectionModel ?? null,
-    },
-    legacyPlanModel: drawing.planModel ?? null,
     planViewModel: null,
     geometryPlan: null,
     geometryTopProjection: null,
-    legacySectionModel: drawing.sectionModel ?? null,
     geometrySection: null,
   };
 }
@@ -886,15 +874,9 @@ describe('ModuleViewsCard', () => {
             topProjection: makeTopProjectionFixture(),
             section: makeGeometrySectionFixture(),
           } as WorkbenchDrawingSurfaceGeometry['artifact'],
-          legacyFallback: {
-            planModel: null,
-            sectionModel: null,
-          },
-          legacyPlanModel: null,
           planViewModel: null,
           geometryPlan: makeGeometryPlanFixture(),
           geometryTopProjection: makeTopProjectionFixture(),
-          legacySectionModel: null,
           geometrySection: makeGeometrySectionFixture(),
         }}
         presentation="sheet"
@@ -941,20 +923,8 @@ describe('ModuleViewsCard', () => {
       <ModuleDrawingRenderer
         view="section"
         status="ready"
-        drawingSurfaceGeometry={{
-          source: 'legacy_fallback',
-          artifact: null,
-          legacyFallback: {
-            planModel: drawing.planModel,
-            sectionModel: drawing.sectionModel,
-          },
-          legacyPlanModel: drawing.planModel,
-          planViewModel: null,
-          geometryPlan: null,
-          geometryTopProjection: null,
-          legacySectionModel: drawing.sectionModel,
-          geometrySection: null,
-        }}
+        planModel={drawing.planModel}
+        sectionModel={drawing.sectionModel}
         presentation="sheet"
       />,
     );

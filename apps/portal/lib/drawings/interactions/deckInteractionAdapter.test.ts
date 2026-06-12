@@ -62,7 +62,7 @@ function makeInteraction(input: {
     renderedCenter: input.renderedCenter,
     dragPolygon: input.dragPolygon ?? input.polygon,
     dragCenter: input.dragCenter ?? input.renderedCenter,
-    dragCoordinateSpace: input.dragCoordinateSpace ?? 'legacy_plan_m',
+    dragCoordinateSpace: input.dragCoordinateSpace ?? 'object_outline_plan_m',
     dragSource: input.dragSource ?? 'geometry',
     commitStartPolygon: input.commitStartPolygon ?? null,
     referenceFrames: input.frames,

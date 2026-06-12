@@ -4,7 +4,7 @@ import type {
   GeometryTopProjectionShape,
   GeometryTopProjectionViewModel,
 } from '@sp/geometry';
-import type { ModuleViewsStatus, ModuleViewsTab } from '@/app/staff/calculator/ModuleViewsCard';
+import type { WorkbenchViewStatus, WorkbenchViewTab } from '@/lib/drawings/workbenchViewTypes';
 import type { PlanViewModel } from '@/lib/drawings/views/plan/buildPlanViewModel';
 import type { WorkbenchDrawingSurfaceGeometry } from '@/lib/drawings/views/workbenchDrawingSurfaceGeometry';
 import type { EstimateDrawingField, EstimateDrawingFootprintEdit } from '@/lib/estimates/drawingEdits';
@@ -42,18 +42,15 @@ import WorkbenchViewportHost from './WorkbenchViewportHost';
 import styles from './DrawingWorkbench.module.css';
 
 type DrawingWorkbenchProps = {
-  moduleLabel: string;
-  modules: Array<{ id: string; label: string }>;
-  activeModuleIndex: number;
-  onActiveModuleIndexChange: (index: number) => void;
-  view: ModuleViewsTab;
-  onViewChange: (view: ModuleViewsTab) => void;
+  sheetLabel: string;
+  view: WorkbenchViewTab;
+  onViewChange: (view: WorkbenchViewTab) => void;
   viewportMode: DrawingWorkbenchViewportMode;
   objectWorkbenchDisplayFamily?: ObjectWorkbenchDisplayFamily;
   visibility?: DrawingWorkbenchVisibilityState;
   onViewportModeChange: (mode: DrawingWorkbenchViewportMode) => void;
   availableViewportModes?: DrawingWorkbenchViewportMode[];
-  status: ModuleViewsStatus;
+  status: WorkbenchViewStatus;
   trustGate?: WorkbenchTrustGateModel | null;
   viewportGeometry?: WorkbenchViewportGeometry | null;
   projectViewportGeometry?: WorkbenchViewportGeometry | null;
@@ -140,10 +137,7 @@ type DrawingWorkbenchProps = {
 };
 
 export default function DrawingWorkbench({
-  moduleLabel,
-  modules,
-  activeModuleIndex,
-  onActiveModuleIndexChange,
+  sheetLabel,
   view,
   onViewChange,
   viewportMode,
@@ -204,8 +198,6 @@ export default function DrawingWorkbench({
   hoveredObjectRef,
   onHoverObjectChange,
 }: DrawingWorkbenchProps) {
-  void modules;
-  void onActiveModuleIndexChange;
   void availableViewportModes;
   void trustGate;
 
@@ -221,8 +213,7 @@ export default function DrawingWorkbench({
         draftSaveAction={draftSaveAction ?? null}
       />
       <WorkbenchViewportHost
-        moduleLabel={moduleLabel}
-        activeModuleIndex={activeModuleIndex}
+        sheetLabel={sheetLabel}
         view={view}
         viewportMode={viewportMode}
         objectWorkbenchDisplayFamily={objectWorkbenchDisplayFamily}

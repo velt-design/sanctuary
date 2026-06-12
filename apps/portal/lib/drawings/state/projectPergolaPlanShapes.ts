@@ -2,10 +2,11 @@ import type {
   GeometryTopProjectionShape,
   GeometryTopProjectionViewModel,
 } from '@sp/geometry';
-import type { CalculatorModuleInputs } from '@/lib/types/calculator';
 
 type ProjectPergolaPlanSource = {
-  moduleInput: Pick<CalculatorModuleInputs, 'pergolaId'>;
+  moduleInput: {
+    pergolaId?: string | null;
+  };
   geometryTopProjection: Pick<GeometryTopProjectionViewModel, 'shapes'> | null;
 };
 

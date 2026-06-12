@@ -31,6 +31,11 @@ vi.mock('@/lib/estimates/loadProjectEstimateDetail', () => ({
 
 vi.mock('next/navigation', () => ({
   notFound: () => notFoundMock(),
+  useRouter: () => ({
+    push: vi.fn(),
+    replace: vi.fn(),
+    refresh: vi.fn(),
+  }),
 }));
 
 vi.mock('@/components/drawings/viewports/Geometry3DViewport', () => ({
@@ -198,14 +203,8 @@ describe('DesignWorkbenchPage', () => {
     expect(markup).toContain('Back to Project');
     expect(markup).toContain('data-workbench-context="fixture_ready"');
     expect(markup).toContain('data-workbench-fixture="mono-standard"');
-    expect(markup).toContain('data-workbench-pricing-source="workbench_solved"');
-    expect(markup).toContain('data-workbench-pricing-trust-status="ready"');
-    expect(markup).toContain('data-workbench-pricing-readiness="eligible"');
-    expect(markup).toContain('data-workbench-pricing-blocking-gates=""');
-    expect(markup).toContain('data-workbench-pricing-quantity-takeoff-source="solved_geometry_spine"');
-    expect(markup).toContain('data-workbench-pricing-parity-pergolas-compared="1"');
-    expect(markup).toContain('data-workbench-pricing-parity-modules-compared="1"');
-    expect(markup).toContain('data-workbench-pricing-parity-blocking-differences="0"');
+    expect(markup).not.toContain('data-workbench-pricing-source');
+    expect(markup).not.toContain('data-workbench-pricing-readiness');
     expect(loadProjectEstimateMetasMock).not.toHaveBeenCalled();
     expect(loadProjectDesignPackageRowsMock).not.toHaveBeenCalled();
     expect(loadProjectEstimateDetailMock).not.toHaveBeenCalled();

@@ -42,6 +42,7 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 | 2026-06-02 | Agent Tooling                    | Active   | Strictness ratchets must start with stable, changed-safe coverage baselines and must not block broad legacy pressure or unrelated repo-health debt.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | 2026-06-02 | Workbench Debugging              | Active   | Workbench captured repros must be validated and attached through the shared Playwright helper before any exact payload is baked into `sanctuaryWorkbenchCapturedFixtures.ts`; browser specs must not write captured payloads to tracked files.                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | 2026-06-02 | Workbench Debugging              | Active   | Multi-house roof solver captures must pass the stricter verifier before baking; healthy one-house payloads or non-reproducing pages are evidence only, not solver fixtures.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| 2026-06-11 | Design Workbench                 | Active   | Live workbench runtime is object-first only: no calculator module state, house-first carrier, raw module/house context, module index, legacy plan/section fallback, or costing imports may enter workbench roots. Snapshot-only calculator designs are unsupported/empty in the workbench, and repricing stays disabled until a downstream artifact-to-commercial adapter is introduced outside runtime.                                                                                                                                                                                                                                                                                                              |
 | 2026-06-03 | Design Workbench                 | Active   | Object-first workbench state must persist through authenticated staff estimate boundaries and reload as the source of truth before live multi-house bugs are captured; legacy `house-main` synthesis is only for estimates without saved object-first state.                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 | 2026-06-03 | Design Workbench                 | Active   | House roof intent must resolve through an object-first authorship boundary before status, raw geometry input, Plan, or 3D render health; unauthored legacy/default `mono` repairs to canonical `hipped`, while authored mono remains a user design choice.                                                                                                                                                                                                                                                                                                                                                                                               |
 | 2026-06-03 | Workbench House Forms            | Active   | House-form status must validate preset forms against resolved raw geometry when draft polygons are empty; do not mark healthy preset roofs invalid just because the authored polygon field is blank.                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
@@ -1639,11 +1640,11 @@ Decision or mistake: project 3D preview must never use the active module preview
 
 Why it mattered: unresolved Pergola 2 could be suppressed by project render health but still appear as committed roof geometry in 3D through the active-module preview escape hatch. That made Plan and 3D disagree about whether the pergola was healthy, and it obscured the remaining house projection issue.
 
-Current guardrail: `projectGeometryPreviewPipeline` owns project 3D preview assembly. Healthy project render paths set `projectPreviewSource=project_pipeline`; when no committed pergola basis exists, the viewport receives a diagnostic project scene (`projectPreviewSource=diagnostic_project_scene`) with project house geometry and non-committed pergola fallbacks. `legacy_active_module_fallback` is diagnostic-only and must not appear in normal object-workbench 3D.
+Current guardrail: superseded by the 2026-06-11 breakaway. Project 3D preview assembly now flows from the solved project artifact and live workbench runtime must not carry active-module preview fallbacks. Diagnostic/reference geometry is explicit and must not be committed as healthy geometry.
 
 Promoted to: None
 
-Related docs/tests: [apps/portal/lib/drawings/state/projectGeometryPreviewPipeline.ts](../apps/portal/lib/drawings/state/projectGeometryPreviewPipeline.ts), [apps/portal/lib/drawings/state/projectGeometryPreviewPipeline.test.ts](../apps/portal/lib/drawings/state/projectGeometryPreviewPipeline.test.ts), [apps/portal/lib/drawings/state/projectPergolaViewerScene.ts](../apps/portal/lib/drawings/state/projectPergolaViewerScene.ts), [playwright/portal.workbench-fixture.spec.ts](../playwright/portal.workbench-fixture.spec.ts).
+Related docs/tests: [docs/design-workbench-architecture.md](design-workbench-architecture.md), [apps/portal/lib/workbenchBreakawayImportGuards.test.ts](../apps/portal/lib/workbenchBreakawayImportGuards.test.ts), [apps/portal/lib/drawings/state/projectPergolaViewerScene.ts](../apps/portal/lib/drawings/state/projectPergolaViewerScene.ts), [playwright/portal.workbench-fixture.spec.ts](../playwright/portal.workbench-fixture.spec.ts).
 
 ### 2026-06-01 - Workbench Geometry - House Form Input Boundary
 
@@ -1837,6 +1838,22 @@ Promoted to: None
 
 Related docs/tests: [docs/costing-and-geometry.md](costing-and-geometry.md), [docs/design-workbench-architecture.md](design-workbench-architecture.md), [packages/geometry/src/house/eaveOffsetRepair.ts](../packages/geometry/src/house/eaveOffsetRepair.ts), [packages/geometry/src/house/roofPresetCoverage.test.ts](../packages/geometry/src/house/roofPresetCoverage.test.ts), [apps/portal/lib/drawings/state/projectHouseRenderPipeline.test.ts](../apps/portal/lib/drawings/state/projectHouseRenderPipeline.test.ts), [apps/portal/lib/drawings/state/objectWorkbenchStatusModel.test.ts](../apps/portal/lib/drawings/state/objectWorkbenchStatusModel.test.ts), [playwright/portal.workbench-fixture.spec.ts](../playwright/portal.workbench-fixture.spec.ts).
 
+### 2026-06-11 - Workbench House Forms - Topology-Aware Eave Offset Boundary
+
+Area: Workbench House Forms
+
+Status: Active
+
+Decision or mistake: some fully hipped custom orthogonal house roofs fail before roof topology because adjacent-edge miter eave offset can self-overlap on edited narrow recesses. Treating this as a roof-topology or Plan-paint issue hides the first failing geometry stage.
+
+Why it mattered: House 4-style footprints could be valid wall shapes with the requested eave overhang, but the legacy eave offset boundary collapsed before semantic roof QA had a clean polygon to solve. Reducing the eave overhang can make a roof visible, but that is an approximate render repair and should not be the first north-star path.
+
+Current guardrail: eave-offset recovery belongs in `@sp/geometry`. For fully hipped custom orthogonal roofs, keep the existing adjacent-edge eave path for already-healthy cases, but when package QA fails with eave-offset self-overlap, try `orthogonal_cell_union` at the requested overhang before any reduced-overhang/narrow-return repair. Commit the exact boundary only if downstream roof QA is valid; otherwise remain invalid or fall through to the approximate repair path with `roofEaveOffsetRepair*` metadata. Do not add Plan paint fallbacks, first-house fallbacks, or active-module fallbacks.
+
+Promoted to: None
+
+Related docs/tests: [docs/costing-and-geometry.md](costing-and-geometry.md), [docs/design-workbench-architecture.md](design-workbench-architecture.md), [packages/geometry/src/house/orthogonalEaveOffset.ts](../packages/geometry/src/house/orthogonalEaveOffset.ts), [packages/geometry/src/house/eaveOffsetRepair.ts](../packages/geometry/src/house/eaveOffsetRepair.ts), [packages/geometry/src/houseModel.ts](../packages/geometry/src/houseModel.ts), [packages/geometry/src/house/roofPresetCoverage.test.ts](../packages/geometry/src/house/roofPresetCoverage.test.ts).
+
 ### 2026-06-03 - Workbench House Forms - Custom Footprint Numeric Canonicalization
 
 Area: Workbench House Forms
@@ -1911,11 +1928,11 @@ Decision or mistake: project 3D preview composition must replace legacy active-m
 
 Why it mattered: the single-pergola fast path returned the active module's legacy 3D preview directly. Multi-house projects could therefore show object-owned house forms in Plan diagnostics while 3D still rendered the active module's wall-only/legacy house layer, making the same `houseFormId` visually disagree across Plan and 3D.
 
-Current guardrail: `projectGeometryPreviewPipeline` may use the active module preview directly only when there is no project house geometry to own the house layer. 3D viewport diagnostics now expose `projectHouseProjectionHealth` beside Plan's matching diagnostics so captured/browser fixtures can compare failure stage and body counts per `houseFormId`.
+Current guardrail: superseded by the 2026-06-11 breakaway. Live workbench runtime no longer has an active-module preview path; Plan and 3D consume the solved project artifact and expose object-owned diagnostics per `houseFormId`.
 
 Promoted to: None
 
-Related docs/tests: [apps/portal/lib/drawings/state/projectGeometryPreviewPipeline.ts](../apps/portal/lib/drawings/state/projectGeometryPreviewPipeline.ts), [apps/portal/lib/drawings/state/projectGeometryPreviewPipeline.test.ts](../apps/portal/lib/drawings/state/projectGeometryPreviewPipeline.test.ts), [apps/portal/components/drawings/viewports/Geometry3DViewport/index.tsx](../apps/portal/components/drawings/viewports/Geometry3DViewport/index.tsx), [apps/portal/components/drawings/viewports/Geometry3DViewport/Geometry3DViewport.test.tsx](../apps/portal/components/drawings/viewports/Geometry3DViewport/Geometry3DViewport.test.tsx).
+Related docs/tests: [docs/design-workbench-architecture.md](design-workbench-architecture.md), [apps/portal/lib/workbenchBreakawayImportGuards.test.ts](../apps/portal/lib/workbenchBreakawayImportGuards.test.ts), [apps/portal/components/drawings/viewports/Geometry3DViewport/index.tsx](../apps/portal/components/drawings/viewports/Geometry3DViewport/index.tsx), [apps/portal/components/drawings/viewports/Geometry3DViewport/Geometry3DViewport.test.tsx](../apps/portal/components/drawings/viewports/Geometry3DViewport/Geometry3DViewport.test.tsx).
 
 ### 2026-06-03 - Workbench House Forms - Coverage Solver Quarantine
 
@@ -1948,3 +1965,35 @@ Current guardrail: fully hipped custom roofs try `source_edge_exact_envelope_par
 Promoted to: None
 
 Related docs/tests: [docs/costing-and-geometry.md](costing-and-geometry.md), [docs/design-workbench-architecture.md](design-workbench-architecture.md), [packages/geometry/src/house/roofEaveGraphHipped.ts](../packages/geometry/src/house/roofEaveGraphHipped.ts), [packages/geometry/src/house/roofPresetCoverage.test.ts](../packages/geometry/src/house/roofPresetCoverage.test.ts), [packages/geometry/src/houseRoofDiagnostics.ts](../packages/geometry/src/houseRoofDiagnostics.ts), [packages/geometry/src/viewer.ts](../packages/geometry/src/viewer.ts), [playwright/support/workbenchFixture.ts](../playwright/support/workbenchFixture.ts).
+
+### 2026-06-11 - Design Workbench - Breakaway From Calculator Runtime
+
+Area: Design Workbench
+
+Status: Active
+
+Decision or mistake: live Design Workbench runtime is now a separate object-first product path. It accepts persisted `WorkbenchProjectModel` state and solves to `WorkbenchSolvedGeometryArtifact`; it no longer reads or synthesizes calculator module state, house-first carriers, raw module house context, active module indexes, legacy plan/section models, or workbench costing payloads.
+
+Why it mattered: compatibility bridges kept reintroducing first-house and per-module assumptions while roof geometry bugs were being debugged. Keeping calculator and workbench coupled made visual trust depend on hidden fallback paths instead of object-owned package geometry diagnostics.
+
+Current guardrail: workbench runtime roots must pass the breakaway import guard. Snapshot-only calculator designs should load as unsupported/empty workbench designs, not be synthesized. Workbench repricing remains unavailable until a downstream artifact/takeoff-to-commercial adapter is introduced outside geometry/render/runtime decisions. Marketing enquiry and calculator V1 pricing remain protected as a separate path.
+
+Promoted to: None
+
+Related docs/tests: [docs/design-workbench-architecture.md](design-workbench-architecture.md), [docs/costing-and-geometry.md](costing-and-geometry.md), [apps/portal/lib/workbenchBreakawayImportGuards.test.ts](../apps/portal/lib/workbenchBreakawayImportGuards.test.ts), `npm run test:portal:workbench`.
+
+### 2026-06-12 - Design Workbench - Remaining Runtime Cleanup Guard
+
+Area: Design Workbench
+
+Status: Active
+
+Decision or mistake: after the breakaway, live workbench roots still carried cleanup-only calculator-era names and fixture pricing diagnostics that could invite new compatibility work.
+
+Why it mattered: the workbench should stay object-first and geometry-owned. Pricing/readiness belongs to estimates/calculator/commercial paths until a downstream solved-artifact takeoff adapter exists.
+
+Current guardrail: live workbench runtime roots must not import `@sp/costing`, expose `data-workbench-pricing*`, or reintroduce `activeModule`, `moduleLabel`, `legacy_plan_m`, or `geometry_plan_fallback`. Sheet labels, object-outline diagnostic coordinates, and diagnostic plan references are the workbench names.
+
+Promoted to: None
+
+Related docs/tests: [docs/design-workbench-architecture.md](design-workbench-architecture.md), [apps/portal/lib/workbenchBreakawayImportGuards.test.ts](../apps/portal/lib/workbenchBreakawayImportGuards.test.ts).

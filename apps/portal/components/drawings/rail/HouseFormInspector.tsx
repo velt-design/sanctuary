@@ -19,16 +19,15 @@ import styles from './WorkbenchRail.module.css';
  *     the outer wrapper was a duplicate heading.
  *   • Dead/derived dropdowns (House connection / Attachment strategy /
  *     Storey mode / Rotate buttons / gable gutter readouts / Drawing
- *     rotation) — removed from `SanctuaryWorkbenchRail`'s field defs.
+ *     rotation) — removed from the old shared rail field defs.
  *
  * What stays:
  *   • The footprint-sections factory (footprint mode / preset / dimensions)
  *   • The roof-sections factory (roof form / pitch / material / fall /
  *     ridge / open-end toggles)
- *   • The legacy-context house fields (eave / wall / soffit / fascia /
- *     gutter / overhang) surfaced via the embedded SanctuaryWorkbenchRail
- *     in canonical_extras mode — these still belong in this inspector
- *     because they drive the house's actual rendering.
+ *   • House dimension fields (eave / wall / soffit / fascia / gutter /
+ *     overhang) surfaced via the embedded drawing rail in canonical_extras
+ *     mode because they drive the house's actual rendering.
  *
  * Grouping:
  *   PRIMARY    = footprint preset + attachment side + roof form + pitch
@@ -58,7 +57,7 @@ type HouseFormInspectorProps = {
   /**
    * House-context dimension fields (Eave height / Wall height / Soffit
    * depth / Fascia height / Gutter dimensions / Eave overhang) sourced
-   * by the caller from a `SanctuaryWorkbenchRail` mount in
+   * by the caller from a drawing rail mount in
    * `canonical_extras` mode. Rendered inside DIMENSIONS.
    */
   dimensionsPanel?: ReactNode;

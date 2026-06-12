@@ -48,7 +48,8 @@ type LegendSourceClass =
   | 'moduleDimTick';
 
 type EstimateDrawingSheetProps = {
-  moduleLabel: string;
+  moduleLabel?: string;
+  sheetLabel?: string;
   view: ModuleViewsTab;
   status: ModuleViewsStatus;
   drawingSurfaceGeometry?: WorkbenchDrawingSurfaceGeometry | null;
@@ -274,6 +275,7 @@ function clientPointToSvg(svg: SVGSVGElement, clientX: number, clientY: number):
 
 export default function EstimateDrawingSheet({
   moduleLabel,
+  sheetLabel,
   view,
   status,
   drawingSurfaceGeometry,
@@ -286,8 +288,8 @@ export default function EstimateDrawingSheet({
   onCommitField,
   onCommitFootprintEdit,
 }: EstimateDrawingSheetProps) {
-  const legacyPlanModel = drawingSurfaceGeometry?.legacyPlanModel ?? planModel ?? null;
-  const legacySectionModel = drawingSurfaceGeometry?.legacySectionModel ?? sectionModel ?? null;
+  const legacyPlanModel = planModel ?? null;
+  const legacySectionModel = sectionModel ?? null;
   void planViewModel;
   const sheetViewportRef = useRef<HTMLDivElement | null>(null);
   const editorInputRef = useRef<HTMLInputElement | HTMLTextAreaElement | null>(null);
@@ -315,6 +317,7 @@ export default function EstimateDrawingSheet({
   const legendItems = buildLegendItems(view, legacyPlanModel, legacySectionModel);
   const noteLines = splitNoteLines(meta.note);
   const moduleInfoRows = meta.moduleInfoRows.filter((row) => row.label.trim() && row.value.trim());
+  const resolvedSheetLabel = sheetLabel ?? moduleLabel ?? meta.moduleTitle;
   const scaleOptions = getEstimateDrawingScaleOptions(view).map((option) => ({
     value: estimateDrawingScaleKey(option),
     label: option.mode === 'fit' ? 'Fit / NTS' : formatEstimateDrawingScale(option),
@@ -419,7 +422,7 @@ export default function EstimateDrawingSheet({
   const scaleResetKey = useMemo(
     () =>
       [
-        moduleLabel,
+        resolvedSheetLabel,
         legacyPlanModel?.roofType ?? '-',
         legacyPlanModel?.lengthA ?? '-',
         legacyPlanModel?.spanA ?? '-',
@@ -432,7 +435,7 @@ export default function EstimateDrawingSheet({
         legacySectionModel?.ridgeHeightM ?? '-',
       ].join('|'),
     [
-      moduleLabel,
+      resolvedSheetLabel,
       legacyPlanModel?.roofType,
       legacyPlanModel?.lengthA,
       legacyPlanModel?.spanA,
@@ -453,7 +456,7 @@ export default function EstimateDrawingSheet({
   useEffect(() => {
     setActiveEditor(null);
     setEditorSaving(false);
-  }, [editableFieldStateKey, moduleLabel, view]);
+  }, [editableFieldStateKey, resolvedSheetLabel, view]);
 
   const clearInteractionHideTimer = useCallback(() => {
     if (interactionHideTimerRef.current === null) return;
@@ -552,7 +555,7 @@ export default function EstimateDrawingSheet({
 
   useEffect(() => {
     resetFootprintInteractions();
-  }, [moduleLabel, resetFootprintInteractions, view]);
+  }, [resolvedSheetLabel, resetFootprintInteractions, view]);
 
   useEffect(() => {
     if (canEditFootprint || canRotatePlan) return;

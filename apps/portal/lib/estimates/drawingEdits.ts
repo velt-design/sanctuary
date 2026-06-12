@@ -14,7 +14,7 @@ import {
   normalizeFlashingsStateForUi,
   roofLengthForPrimaryFlashing,
   formatFlashingLengthInput,
-} from '@/lib/drawings/flashings';
+} from '@/lib/estimates/flashings';
 import {
   DEFAULT_ESTIMATE_DRAWING_SHEET_NOTE,
   type EstimateDrawingSheetMeta,

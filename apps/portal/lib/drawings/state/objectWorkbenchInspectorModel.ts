@@ -1,5 +1,4 @@
 import { getHouseRoofFormBehavior } from '@sp/geometry';
-import type { CalculatorModuleInputs } from '@/lib/types/calculator';
 import type { DeckInteractionCapability } from '@/lib/drawings/interactions/deckInteractionContract';
 import type { WorkbenchDeckSupportDiagnostic } from './deckSupportDiagnostics';
 import type {
@@ -297,9 +296,6 @@ function resolveModuleTrustStatus(trust: WorkbenchTrustStatus): WorkbenchTrustSt
   }
   if (trust.status === 'unresolved_host' || trust.issues.includes('unresolved_host')) {
     return 'unresolved_host';
-  }
-  if (trust.status === 'legacy_unsupported_family' && trust.issues.includes('legacy_fallback')) {
-    return 'legacy_fallback';
   }
   if (trust.status === 'approximate' || trust.issues.includes('approximate')) {
     return 'approximate';

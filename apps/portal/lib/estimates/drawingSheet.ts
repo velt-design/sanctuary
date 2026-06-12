@@ -29,9 +29,12 @@ export type EstimateDrawingSheetMeta = {
 
 export type BuildEstimateDrawingSheetMetaInput = {
   moduleLabel?: string | null;
+  sheetLabel?: string | null;
   moduleTitleOverride?: string | null;
+  sheetTitleOverride?: string | null;
   noteOverride?: string | null;
   moduleInfoRows?: EstimateDrawingSheetInfoRow[];
+  sheetInfoRows?: EstimateDrawingSheetInfoRow[];
   view: EstimateDrawingSheetView;
   versionLabel?: string | null;
   estimateDate?: string | null;
@@ -176,8 +179,8 @@ export function buildEstimateDrawingModuleInfoRows(
 }
 
 export function buildEstimateDrawingSheetMeta(input: BuildEstimateDrawingSheetMetaInput): EstimateDrawingSheetMeta {
-  const moduleLabel = trimOrNull(input.moduleLabel) ?? 'Module';
-  const moduleTitle = trimOrNull(input.moduleTitleOverride) ?? moduleLabel;
+  const sheetLabel = trimOrNull(input.sheetLabel) ?? trimOrNull(input.moduleLabel) ?? 'Module';
+  const moduleTitle = trimOrNull(input.sheetTitleOverride) ?? trimOrNull(input.moduleTitleOverride) ?? sheetLabel;
   const isPlan = input.view === 'plan';
   const projectName = trimOrNull(input.projectName);
 
@@ -192,6 +195,6 @@ export function buildEstimateDrawingSheetMeta(input: BuildEstimateDrawingSheetMe
     client: trimOrNull(input.clientName) ?? 'Not set',
     issue: 'Portal preview',
     note: trimOrNull(input.noteOverride) ?? DEFAULT_ESTIMATE_DRAWING_SHEET_NOTE,
-    moduleInfoRows: input.moduleInfoRows ?? [],
+    moduleInfoRows: input.sheetInfoRows ?? input.moduleInfoRows ?? [],
   };
 }

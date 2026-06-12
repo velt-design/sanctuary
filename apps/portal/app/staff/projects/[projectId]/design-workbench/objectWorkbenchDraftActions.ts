@@ -7,10 +7,7 @@ import {
   updateEstimateDrawingObjectFirstWorkbenchDraft,
   type EstimateDrawingDraft,
 } from '@/lib/estimates/drawingEdits';
-import type {
-  CalculatorHouseFootprintPolygonPoint,
-  CalculatorModuleInputs,
-} from '@/lib/types/calculator';
+import type { CalculatorHouseFootprintPolygonPoint } from '@/lib/types/calculator';
 import {
   buildDeckReferenceHousePolygon,
   resolveDeckHostEdgeFrame,
@@ -29,25 +26,23 @@ import type {
   ObjectFirstPergolaPosition,
   ObjectFirstWorkbenchDraftVNext,
   PergolaAttachment,
+  WorkbenchAttachmentSide,
 } from '@/lib/drawings/state/objectFirstWorkbenchModel';
 import { deriveHouseFormRoofIntentForFootprint } from '@/lib/drawings/state/houseFormRoofIntentForFootprint';
 import {
   normalizeWallOpeningKind,
   resolveOpeningPanelCount,
 } from '@/lib/drawings/state/objectFirstWorkbenchModel';
-import { pergolaAttachmentFromLegacyFields } from '@/lib/drawings/state/pergolaAttachment';
+import { pergolaAttachmentFromStoredConnectionFields } from '@/lib/drawings/state/pergolaAttachment';
 import type {
   ObjectWorkbenchDeckPatch,
   ObjectWorkbenchOpeningPatch,
   ObjectWorkbenchPergolaInspectorModel,
   ObjectWorkbenchPergolaPatch,
 } from '@/lib/drawings/state/objectWorkbenchInspectorModel';
+import { buildHouseFormRoofIntentCommitDraft } from './houseFormRoofDraftActions';
 
-export {
-  buildLegacySharedHouseRoofCommitDraft as buildObjectWorkbenchRoofCommitDraft,
-} from './houseFormRoofDraftActions';
-
-type AttachmentSide = NonNullable<CalculatorModuleInputs['attachmentSide']>;
+type AttachmentSide = WorkbenchAttachmentSide;
 
 export type ObjectWorkbenchDeckDraft = ObjectFirstDeckDraft;
 export type ObjectWorkbenchOpeningDraft = ObjectFirstOpeningDraft;
@@ -165,14 +160,12 @@ function resolveOpeningWallSpanM(wall: DerivedWallModel): number {
 
 function houseFormLocalPolygon(input: {
   houseForm: HouseFormModel;
-  moduleLengthM: string | undefined;
-  moduleProjectionM: string | undefined;
 }): CalculatorHouseFootprintPolygonPoint[] {
   if (input.houseForm.footprint.mode === 'custom_polygon' && input.houseForm.footprint.polygon.length) {
     return input.houseForm.footprint.polygon;
   }
-  const widthMm = Math.round((Number(input.moduleLengthM) || 6) * 1000);
-  const depthMm = Math.round((Number(input.moduleProjectionM) || 3) * 1000);
+  const widthMm = 6000;
+  const depthMm = 3000;
   return buildHouseFootprintPresetSideLocalPoints({
     pergolaWidthMm: widthMm,
     pergolaDepthMm: depthMm,
@@ -186,7 +179,6 @@ function houseFormLocalPolygon(input: {
 }
 
 function buildOpeningHostWallOptions(input: {
-  activeModuleInput: CalculatorModuleInputs | null;
   houseAssembly: HouseAssemblyModel | null;
   houseForm: HouseFormModel | null;
 }): OpeningHostWallOption[] {
@@ -195,8 +187,6 @@ function buildOpeningHostWallOptions(input: {
   const wallPolygon = input.houseForm
     ? houseFormLocalPolygon({
         houseForm: input.houseForm,
-        moduleLengthM: input.activeModuleInput?.lengthM,
-        moduleProjectionM: input.activeModuleInput?.projectionM,
       })
     : [];
 
@@ -234,7 +224,6 @@ function clampOpeningOffsetForHostWall(input: {
 }
 
 function normalizeOpeningPatchAgainstDerivedWalls(input: {
-  activeModuleInput: CalculatorModuleInputs | null;
   currentOpening: ObjectWorkbenchOpeningDraft;
   houseAssembly: HouseAssemblyModel | null;
   houseForm: HouseFormModel | null;
@@ -243,7 +232,6 @@ function normalizeOpeningPatchAgainstDerivedWalls(input: {
   if (input.patch.hostWallId === undefined) return input.patch;
 
   const resolvedWall = buildOpeningHostWallOptions({
-    activeModuleInput: input.activeModuleInput,
     houseAssembly: input.houseAssembly,
     houseForm: input.houseForm,
   }).find((wall) => wall.wallId === input.patch.hostWallId);
@@ -268,14 +256,12 @@ function normalizeOpeningPatchAgainstDerivedWalls(input: {
 }
 
 export function resolvePreferredNewObjectWorkbenchOpeningHostWall(input: {
-  activeModuleInput: CalculatorModuleInputs | null;
   houseAssembly: HouseAssemblyModel | null;
   houseForm: HouseFormModel | null;
   preferredHostWallId: string | null;
   preferredSide: AttachmentSide;
 }): OpeningHostWallOption | null {
   const options = buildOpeningHostWallOptions({
-    activeModuleInput: input.activeModuleInput,
     houseAssembly: input.houseAssembly,
     houseForm: input.houseForm,
   });
@@ -371,15 +357,14 @@ function mergePergolaGeometryDraft(
 }
 
 /**
- * Step 8 follow-up #2 (lazy attachment migration). When a legacy pergola
- * (no `attachment` set, but with `connectionKind` + optional `strategy`) is
- * patched for any reason, derive a `PergolaAttachment` from the post-patch
- * legacy fields and write it through alongside the patch. The migration is
- * one-time per pergola: subsequent patches see `currentPergola.attachment`
- * already set and skip derivation.
+ * When a stored-field-only pergola (no `attachment` set, but with
+ * `connectionKind` + optional `strategy`) is patched, derive a canonical
+ * `PergolaAttachment` from the post-patch fields and write it through
+ * alongside the patch. The upgrade is one-time per pergola: subsequent
+ * patches see `currentPergola.attachment` already set and skip derivation.
  *
  * Derivation reads from `{...currentPergola, ...patch}` so a patch that
- * changes `connectionKind` (legacy inspector path) produces an attachment
+ * changes `connectionKind` produces an attachment
  * matching the new state, not the stale pre-patch state.
  *
  * Returns `undefined` (= no attachment in the merged patch) when the caller
@@ -392,7 +377,7 @@ function deriveLazyAttachmentForPergolaPatch(input: {
   if (input.patch.attachment !== undefined) return undefined;
   if (input.currentPergola?.attachment) return undefined;
   const postPatch = { ...(input.currentPergola ?? {}), ...input.patch };
-  return pergolaAttachmentFromLegacyFields({
+  return pergolaAttachmentFromStoredConnectionFields({
     connectionKind: postPatch.connectionKind ?? null,
     strategy: postPatch.strategy ?? null,
   });
@@ -488,7 +473,6 @@ export function applyObjectWorkbenchDeckPatch(input: {
 }
 
 export function applyObjectWorkbenchOpeningPatch(input: {
-  activeModuleInput: CalculatorModuleInputs | null;
   currentOpenings: ObjectWorkbenchOpeningDraft[];
   openingId: string;
   houseAssembly: HouseAssemblyModel | null;
@@ -496,7 +480,6 @@ export function applyObjectWorkbenchOpeningPatch(input: {
   patch: ObjectWorkbenchOpeningPatch;
 }): ObjectWorkbenchOpeningDraft[] {
   const patch = normalizeOpeningPatchAgainstDerivedWalls({
-    activeModuleInput: input.activeModuleInput,
     currentOpening: input.currentOpenings.find((opening) => opening.id === input.openingId) ?? {
       id: input.openingId,
       label: input.openingId,
@@ -538,18 +521,36 @@ export function applyObjectWorkbenchOpeningPatch(input: {
 
 export function resolveDeckReferencePolygon(
   houseForm: HouseFormModel | null,
-  activeModuleInput: CalculatorModuleInputs | null,
 ): CalculatorHouseFootprintPolygonPoint[] {
   return houseForm
     ? buildDeckReferenceHousePolygon({
         housePolygon: houseFormLocalPolygon({
           houseForm,
-          moduleLengthM: activeModuleInput?.lengthM,
-          moduleProjectionM: activeModuleInput?.projectionM,
         }),
         footprintParams: houseForm.footprint.params,
       })
     : [];
+}
+
+export function buildObjectWorkbenchRoofCommitDraft(input: {
+  draft: EstimateDrawingDraft;
+  objectFirstDraft: ObjectFirstWorkbenchDraftVNext;
+  roof: HouseFormRoofIntentModel;
+}): EstimateDrawingDraft {
+  const firstHouseFormId = input.objectFirstDraft.houseAssembly?.houseForms[0]?.id ?? null;
+  if (!firstHouseFormId) {
+    return updateEstimateDrawingObjectFirstWorkbenchDraft({
+      draft: input.draft,
+      objectFirst: input.objectFirstDraft,
+    });
+  }
+  const result = buildHouseFormRoofIntentCommitDraft({
+    draft: input.draft,
+    objectFirstDraft: input.objectFirstDraft,
+    houseFormId: firstHouseFormId,
+    roof: input.roof,
+  });
+  return result.ok ? result.draft : input.draft;
 }
 
 export function mergeHouseFormRoofIntentAfterFootprintSync(input: {

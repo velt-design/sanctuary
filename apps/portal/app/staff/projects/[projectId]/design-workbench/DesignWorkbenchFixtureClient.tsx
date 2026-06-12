@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import DrawingWorkbench from '@/components/drawings/workbench/DrawingWorkbench';
 import ObjectWorkbenchRail from '@/components/drawings/rail/ObjectWorkbenchRail';
 import RightInspectorPanel from '@/components/drawings/inspector/RightInspectorPanel';
-import { buildObjectWorkbenchGeometryEditState } from '@/lib/drawings/geometry/geometryEditAdapter';
 import { buildProjectContextOverlayShapes } from '@/lib/drawings/state/projectContextOverlayShapes';
 import WorkbenchInspectorHost from './WorkbenchInspectorHost';
 import {
@@ -25,7 +24,7 @@ import {
   type DrawingWorkbenchViewportTransform,
 } from '@/lib/drawings/state/drawingWorkbenchUiState';
 import type { WorkbenchObjectRef } from '@/lib/drawings/state/objectFirstWorkbenchModel';
-import { buildEstimateDrawingModuleInfoRows, buildEstimateDrawingSheetMeta } from '@/lib/estimates/drawingSheet';
+import { buildEstimateDrawingSheetMeta } from '@/lib/estimates/drawingSheet';
 import type { SanctuaryGeometryWorkbenchFixture } from '@/lib/drawings/sanctuaryWorkbenchFixtures.types';
 import styles from './DesignWorkbenchEstimateClient.module.css';
 
@@ -83,17 +82,15 @@ export default function DesignWorkbenchFixtureClient({
   const store = useMemo(
     () =>
       buildDrawingWorkbenchStore({
-        snapshot: fixture.snapshot,
         draft: fixture.draft,
         ui,
-        moduleLabels: fixture.moduleLabels,
         geometryIdentity: {
           projectId: resolvedProjectId,
           estimateId: fixture.estimate.id,
           designRequestId: fixture.request.id,
         },
       }),
-    [fixture.draft, fixture.estimate.id, fixture.moduleLabels, fixture.request.id, fixture.snapshot, resolvedProjectId, ui],
+    [fixture.draft, fixture.estimate.id, fixture.request.id, resolvedProjectId, ui],
   );
   useEffect(() => {
     setModelViewportTransformsByKey({});
@@ -102,14 +99,8 @@ export default function DesignWorkbenchFixtureClient({
   useEffect(() => {
     setHasHydrated(true);
   }, []);
-  const modules = store.persisted.modules.map((module) => ({
-    id: module.id,
-    label: module.label,
-  }));
-
-  const activeModule = store.derived.activeModule;
   // PR-T5 (2026-05-26): mount production WorkbenchInspectorHost with
-  // no-op action stubs so the snapshot dev loop covers the right
+  // no-op action stubs so the fixture dev loop covers the right
   // inspector. Stubs are memoised so the host's prop identity stays
   // stable across UI state updates.
   const fixtureSelectionActions = useMemo(
@@ -120,7 +111,6 @@ export default function DesignWorkbenchFixtureClient({
   const debugFixtureExport = useMemo(
     () =>
       buildWorkbenchDebugFixtureExport({
-        snapshot: fixture.snapshot,
         draft: fixture.draft,
         ui: store.ui,
         projectGeometryPreview: store.derived.solvedModel.projectGeometryPreview,
@@ -130,7 +120,6 @@ export default function DesignWorkbenchFixtureClient({
       }),
     [
       fixture.draft,
-      fixture.snapshot,
       store.derived.solvedModel.projectGeometryPreview,
       store.derived.solvedModel.houseGeometryInputsById,
       store.derived.solvedModel.projectHouseProjectionHealth,
@@ -199,23 +188,11 @@ export default function DesignWorkbenchFixtureClient({
       store.ui.viewportMode,
     ],
   );
-  // Build the real geometry-edit state from fixture snapshot + draft so
-  // SanctuaryWorkbenchRail / PergolaInspector / HouseFormInspector all
-  // see populated form data and render their PRIMARY / CONNECTIONS /
-  // MEMBER SIZES sections (vs the "No Sanctuary controls" empty state).
-  const fixtureGeometryEditState = useMemo(() => {
-    const result = buildObjectWorkbenchGeometryEditState({
-      snapshot: fixture.snapshot,
-      draft: fixture.draft,
-      moduleIndex: store.derived.activeModuleIndex,
-    });
-    return result.ok ? result.value : null;
-  }, [fixture.draft, fixture.snapshot, store.derived.activeModuleIndex]);
   const meta = useMemo(
     () =>
       buildEstimateDrawingSheetMeta({
-        moduleLabel: store.derived.activeModuleLabel,
-        moduleInfoRows: buildEstimateDrawingModuleInfoRows(activeModule?.drawingModule.input),
+        sheetLabel: store.derived.projectSheetLabel,
+        sheetInfoRows: [],
         view: store.ui.activeView,
         versionLabel: fixture.estimate.versionLabel,
         estimateDate: fixture.estimate.createdAt,
@@ -223,7 +200,7 @@ export default function DesignWorkbenchFixtureClient({
         siteAddress: siteAddress ?? `${projectName} fixture preview`,
         clientName: 'Fixture preview',
       }),
-    [activeModule?.drawingModule.input, fixture.estimate.createdAt, fixture.estimate.versionLabel, projectName, siteAddress, store.derived.activeModuleLabel, store.ui.activeView],
+    [fixture.estimate.createdAt, fixture.estimate.versionLabel, projectName, siteAddress, store.derived.projectSheetLabel, store.ui.activeView],
   );
   const activeSelectionFamily =
     store.ui.activeRailTab === 'diagnostics' ? store.ui.activeObjectFamily : store.ui.activeRailTab;
@@ -231,19 +208,17 @@ export default function DesignWorkbenchFixtureClient({
   const activePergolaSurfaceKey =
     store.ui.activePergolaId ??
     store.derived.activePergola?.id ??
-    activeModule?.drawingModule.input.pergolaId ??
     'none';
   const modelViewportSurfaceKey = `${activePergolaSurfaceKey}:${store.ui.activeView}`;
   const geometryViewportSurfaceKey = `${objectWorkbenchDisplayFamily}:${activePergolaSurfaceKey}`;
   const viewportPergolaId =
     store.derived.objectWorkbench.activePergola?.id ??
-    activeModule?.drawingModule.input.pergolaId ??
     store.derived.objectWorkbench.pergolas[0]?.id ??
     null;
   const viewportActiveObjectRef = store.ui.activeObjectRef;
   const activePergolaSourceId =
     store.ui.activeObjectRef.family === 'pergolas'
-      ? store.ui.activeObjectRef.objectId ?? activeModule?.drawingModule.input.pergolaId ?? null
+      ? store.ui.activeObjectRef.objectId ?? null
       : null;
   const projectPergolaPlanShapes = store.derived.solvedModel.projectPergolaPlanShapes;
   const projectContextShapes = useMemo(
@@ -316,10 +291,6 @@ export default function DesignWorkbenchFixtureClient({
     [geometryViewportSurfaceKey],
   );
 
-  if (!activeModule) {
-    return <p>Fixture data did not produce any drawing modules.</p>;
-  }
-
   return (
     <div
       className={styles.shell}
@@ -340,8 +311,8 @@ export default function DesignWorkbenchFixtureClient({
       <aside className={styles.configuratorColumn}>
         <div className={styles.configuratorScroll}>
           {/*
-            PR-T4-snapshot (2026-05-26): mount the same flat OBJECTS TREE rail
-            the real workbench uses so visual snapshots taken against
+            PR-T4 (2026-05-26): mount the same flat OBJECTS TREE rail
+            the real workbench uses so visual captures taken against
             /qa/design-workbench-fixture exercise the same CSS as the
             authenticated /staff/projects/[id]/design-workbench route.
             Handlers are no-ops — the fixture is read-only, the rail just
@@ -373,7 +344,7 @@ export default function DesignWorkbenchFixtureClient({
             }
             inspectorContext={{
               // PR-T6 (2026-05-26): wire no-op stubs to the add pills so the
-              // snapshot fixture renders all four families' "+ Add X" pills.
+              // fixture renders all four families' "+ Add X" pills.
               // Real add behaviour is wired in `ObjectWorkbenchRailHost` —
               // fixture is read-only by design.
               onAddHouseForm: fixtureWorkbenchActions.addSharedHouseForm,
@@ -387,19 +358,7 @@ export default function DesignWorkbenchFixtureClient({
       <div className={styles.workspaceColumn}>
         <div className={styles.workspaceSurface}>
           <DrawingWorkbench
-            moduleLabel={store.derived.activeModuleLabel}
-            modules={modules}
-            activeModuleIndex={store.derived.activeModuleIndex}
-            onActiveModuleIndexChange={(index) =>
-              setUi((current) => {
-                const selectedPergolaId = store.persisted.modules[index]?.drawingModule.input.pergolaId ?? null;
-                return {
-                  ...current,
-                  activeModuleIndex: index,
-                  activePergolaId: selectedPergolaId ?? current.activePergolaId,
-                };
-              })
-            }
+            sheetLabel={store.derived.projectSheetLabel}
             view={store.ui.activeView}
             onViewChange={(view) =>
               setUi((current) => ({
@@ -459,7 +418,7 @@ export default function DesignWorkbenchFixtureClient({
           {/*
            * PR-T5 (2026-05-26): mount the real production
            * `WorkbenchInspectorHost` with no-op action stubs so the AI
-           * snapshot dev loop sees the same inspector code path users
+           * fixture dev loop sees the same inspector code path users
            * see in the authenticated workbench. `isLocked={true}`
            * disables controls visually so it's obvious the fixture is
            * read-only. Replaces the prior empty-shell mount.
@@ -469,14 +428,11 @@ export default function DesignWorkbenchFixtureClient({
             trustStatusLabel={store.derived.railModel.selectedInspector.selectedObjectTrustLabel}
           >
             <WorkbenchInspectorHost
-              activeModuleInput={activeModule.drawingModule.input}
-              geometryEditState={fixtureGeometryEditState}
               isLocked
               objectSelectionActions={fixtureSelectionActions}
               objectWorkbenchActions={fixtureWorkbenchActions}
               setUi={setUi}
               store={store}
-              supportsSanctuaryEditing={Boolean(fixtureGeometryEditState)}
             />
           </RightInspectorPanel>
         </div>

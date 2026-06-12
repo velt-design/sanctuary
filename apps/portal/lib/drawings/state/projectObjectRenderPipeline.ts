@@ -6,7 +6,6 @@ import {
   type ProjectPergolaEntry,
   type ViewerSceneModel,
 } from '@sp/geometry';
-import type { CalculatorModuleInputs } from '@/lib/types/calculator';
 import type { WorkbenchSolvedModule } from './workbenchSolvedModel';
 import { resolveObjectFirstPergolaAttachment } from './objectFirstDerivedHosting';
 import type { PergolaObjectModel, WorkbenchProjectModel } from './objectFirstWorkbenchModel';
@@ -37,11 +36,20 @@ type ProjectPergolaHostAttachmentStatus =
   | 'freestanding'
   | 'unknown';
 
+type ProjectPergolaSourceKind = 'object_first_pergola';
+
+type ProjectPergolaSolveStatus =
+  | 'geometry_ready'
+  | 'using_reference_geometry'
+  | 'empty'
+  | 'unsupported'
+  | 'invalid_geometry';
+
 export type ProjectPergolaRenderHealth = {
   pergolaId: string;
   moduleId: string;
-  sourceKind: WorkbenchSolvedModule['sourceKind'];
-  solveStatus: WorkbenchSolvedModule['renderStatus'];
+  sourceKind: ProjectPergolaSourceKind;
+  solveStatus: ProjectPergolaSolveStatus;
   hostObjectId: string | null;
   hostEdgeId: string | null;
   attachmentEdgeId: string | null;
@@ -69,7 +77,9 @@ export type ProjectObjectRenderPipeline = {
 };
 
 type ProjectPergolaSceneSource = {
-  moduleInput: Pick<CalculatorModuleInputs, 'pergolaId'>;
+  moduleInput: {
+    pergolaId?: string | null;
+  };
   viewerScene: ViewerSceneModel | null;
 };
 
@@ -120,15 +130,11 @@ function resolvePergolaAttachmentHealth(input: {
 function resolvePergolaSuppressionReason(input: {
   pergolaId: string | null;
   pergola: PergolaObjectModel | null;
-  renderStatus: WorkbenchSolvedModule['renderStatus'];
-  sourceKind: WorkbenchSolvedModule['sourceKind'];
+  renderStatus: ProjectPergolaSolveStatus;
   hostAttachmentStatus: ProjectPergolaHostAttachmentStatus;
 }): ProjectPergolaRenderSuppressionReason {
   if (!input.pergolaId) return 'missing_pergola_id';
   if (input.renderStatus !== 'geometry_ready') return 'invalid_geometry';
-  // Persisted calculator modules remain renderable during coexistence even if
-  // their object-first host metadata has not been backfilled yet.
-  if (input.sourceKind === 'drawing_module') return 'none';
   if (!input.pergola) return 'missing_project_object';
   if (input.hostAttachmentStatus === 'unresolved') return 'unresolved_host';
   return 'none';
@@ -175,32 +181,27 @@ function buildProjectPergolaRenderHealth(input: {
       projectModel: input.projectModel,
       pergola,
     });
-    const attachmentHealth =
-      module.sourceKind === 'drawing_module' && rawAttachmentHealth.hostAttachmentStatus === 'unresolved'
-        ? { hostAttachmentStatus: 'unknown' as const, hostAttachmentCode: null }
-        : rawAttachmentHealth;
     const suppressedCommittedBodyReason = resolvePergolaSuppressionReason({
       pergolaId,
       pergola,
       renderStatus: module.renderStatus,
-      sourceKind: module.sourceKind,
-      hostAttachmentStatus: attachmentHealth.hostAttachmentStatus,
+      hostAttachmentStatus: rawAttachmentHealth.hostAttachmentStatus,
     });
     const canRenderCommittedBody = suppressedCommittedBodyReason === 'none';
 
     health.push({
       pergolaId: pergolaId ?? '',
       moduleId: module.id,
-      sourceKind: module.sourceKind,
+      sourceKind: 'object_first_pergola',
       solveStatus: module.renderStatus,
       hostObjectId: pergolaHostObjectId(pergola),
       hostEdgeId: pergolaHostEdgeId(pergola),
       attachmentEdgeId: pergola?.attachmentEdgeId ?? null,
       attachmentZoneId: pergola?.attachmentZoneId ?? null,
-      hostAttachmentStatus: attachmentHealth.hostAttachmentStatus,
-      hostAttachmentCode: attachmentHealth.hostAttachmentCode,
-      placementStatus: attachmentHealth.hostAttachmentStatus,
-      placementCode: attachmentHealth.hostAttachmentCode,
+      hostAttachmentStatus: rawAttachmentHealth.hostAttachmentStatus,
+      hostAttachmentCode: rawAttachmentHealth.hostAttachmentCode,
+      placementStatus: rawAttachmentHealth.hostAttachmentStatus,
+      placementCode: rawAttachmentHealth.hostAttachmentCode,
       planBodyCount: pergolaId ? planCounts.get(pergolaId) ?? 0 : 0,
       sceneBodyCount: countPergolaSceneBodies(module),
       canRenderCommittedBody,

@@ -3,8 +3,8 @@ import type { HouseFormTransformModel } from './objectFirstWorkbenchModel';
 
 /**
  * Convert a portal-side `HouseFormTransformModel` to the geometry-package
- * `AssemblyPosition` contract that `buildHouseReferenceGeometry` consumes via
- * `houseContext.position`. Two unit changes happen here:
+ * `AssemblyPosition` contract that object-owned house geometry consumes. Two
+ * unit changes happen here:
  *
  *   1. `offsetXM`/`offsetYM` (metres) → `origin.x`/`origin.y` (millimetres).
  *      Geometry has always been mm-everywhere (see the "mm everywhere" contract

@@ -18,7 +18,7 @@ import type {
 import type {
   WorkbenchPergolaRenderSource,
   WorkbenchPergolaRenderStatus,
-} from '@/lib/drawings/geometry/deriveWorkbenchGeometry';
+} from '@/lib/drawings/state/workbenchSolvedModel';
 import type { ModulePlanModel } from './moduleViews';
 import {
   ObjectWorkbenchDimensionLayerRenderer,
@@ -120,7 +120,7 @@ export function PlanSvg({
   objectWorkbenchPreviewOverlay,
   modelSpacePergolaGeometry,
   modelSpaceTopProjection,
-  modelSpacePergolaRenderSource = 'legacy',
+  modelSpacePergolaRenderSource = 'none',
   modelSpacePergolaRenderStatus = 'invalid_geometry',
 }: {
   model: ModulePlanModel;
@@ -1070,4 +1070,3 @@ export function PlanSvg({
     </>
   );
 }
-

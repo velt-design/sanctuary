@@ -1,20 +1,9 @@
 import {
-  compareCommercialDesignInputsV1,
   type CommercialDesignInputV1,
   type CommercialParityReportV1,
-  type SiteOutputV1,
 } from '@sp/costing';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createHash } from 'crypto';
-import { buildCommercialDesignInputFromWorkbenchSolvedProject } from '@/lib/drawings/commercialDesignPayload';
-import { buildWorkbenchSolvedModel, buildWorkbenchSolvedProject } from '@/lib/drawings/state/workbenchSolvedModel';
-import {
-  isCalculatorInputsV2,
-  isLegacyCalculatorInputsV1,
-  migrateLegacyCalculatorInputsToV2,
-  type CalculatorInputs,
-} from '@/lib/types/calculator';
-import { buildCommercialDesignInputFromCalculatorInputs } from './commercialDesignPayload';
 import type {
   EstimateLivePricingSource,
   EstimatePricingSourceDefaultReason,
@@ -139,11 +128,6 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === 'object' && !Array.isArray(value));
 }
 
-function cloneValue<T>(value: T): T {
-  if (typeof structuredClone === 'function') return structuredClone(value);
-  return JSON.parse(JSON.stringify(value)) as T;
-}
-
 function stableValue(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(stableValue);
   if (!isRecord(value)) return value;
@@ -158,30 +142,6 @@ function stableValue(value: unknown): unknown {
 
 function stableHash(value: unknown): string {
   return createHash('sha256').update(JSON.stringify(stableValue(value))).digest('hex');
-}
-
-function calculatorInputsFromSnapshot(snapshot: Record<string, unknown> | null): CalculatorInputs | null {
-  const rawInputs = isRecord(snapshot) ? snapshot.inputs : null;
-  if (isCalculatorInputsV2(rawInputs)) return cloneValue(rawInputs);
-  if (isLegacyCalculatorInputsV1(rawInputs)) return migrateLegacyCalculatorInputsToV2(rawInputs);
-  return null;
-}
-
-function siteOutputFromSnapshot(snapshot: Record<string, unknown> | null): SiteOutputV1 | null {
-  const outputs = isRecord(snapshot) && isRecord(snapshot.outputs) ? snapshot.outputs : null;
-  return outputs as SiteOutputV1 | null;
-}
-
-function parityReportForReadiness(report: CommercialParityReportV1): CommercialParityReportV1 {
-  if (report.status === 'blocked' || report.counts.blockingDifferences > 0) return report;
-  return {
-    ...report,
-    status: 'match',
-  };
-}
-
-function hasPackageOwnedGeometryTakeoff(input: ReturnType<typeof buildWorkbenchSolvedModel>): boolean {
-  return input.modules.length > 0 && input.modules.every((module) => Boolean(module.geometryArtifact?.quantityTakeoff));
 }
 
 function countBlockingDiagnostics(input: CommercialDesignInputV1 | null | undefined): number {
@@ -287,53 +247,8 @@ function buildSourceMetadata(input: {
 export function buildEstimateWorkbenchSolvedReadinessFromSnapshot(
   input: EstimateWorkbenchSolvedSnapshotReadinessInput,
 ): EstimateWorkbenchSolvedReadinessInput {
-  try {
-    const calculatorInputs = calculatorInputsFromSnapshot(input.snapshot);
-    if (!calculatorInputs) return blockedReadinessInput();
-
-    const identity = {
-      projectId: input.projectId,
-      estimateId: input.estimateId ?? null,
-      designRequestId: input.designRequestId ?? null,
-    };
-    const calculatorCommercialInput = buildCommercialDesignInputFromCalculatorInputs({
-      inputs: calculatorInputs,
-      siteResult: siteOutputFromSnapshot(input.snapshot),
-      identity,
-    });
-    const solvedModel = buildWorkbenchSolvedModel({
-      snapshot: input.snapshot,
-      geometryIdentity: {
-        projectId: input.projectId ?? 'estimate-pricing-project',
-        estimateId: input.estimateId ?? 'estimate-pricing-save',
-        designRequestId: input.designRequestId ?? null,
-      },
-    });
-    const solvedProject = buildWorkbenchSolvedProject({ solvedModel });
-    const workbenchCommercialInput = buildCommercialDesignInputFromWorkbenchSolvedProject({
-      solvedProject,
-      siteCommercial: calculatorCommercialInput.siteCommercial,
-    });
-    const parityReport = parityReportForReadiness(
-      compareCommercialDesignInputsV1(calculatorCommercialInput, workbenchCommercialInput, {
-        labelLeft: 'calculator_compat',
-        labelRight: 'workbench_solved',
-      }),
-    );
-
-    return {
-      workbenchCommercialInput,
-      quantityTakeoffSource: hasPackageOwnedGeometryTakeoff(solvedModel) ? 'solved_geometry_spine' : 'unknown',
-      parityReports: [parityReport],
-      estimatePersistenceSourceRecorded: true,
-      estimateLockBoundaryPreserved: true,
-      localFirstBoundaryPreserved: true,
-      downstreamPricingBoundaryPreserved: true,
-      rollbackToCalculatorLiveConfirmed: true,
-    };
-  } catch {
-    return blockedReadinessInput();
-  }
+  void input;
+  return blockedReadinessInput();
 }
 
 export function resolveEstimatePricingSourceForSave(input: EstimatePricingSourceGateInput): EstimatePricingSourceGateResult {

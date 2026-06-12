@@ -13,9 +13,6 @@ import {
 } from './objectWorkbenchActionContext';
 import type { ObjectWorkbenchActions } from './useObjectWorkbenchActions';
 
-type ActiveModuleInput =
-  NonNullable<DrawingWorkbenchStore['derived']['activeModule']>['drawingModule']['input'];
-
 function resolveHouseWorldPositionMm(
   houseForm: HouseFormModel | null,
 ): { x: number; y: number } | null {
@@ -26,7 +23,6 @@ function resolveHouseWorldPositionMm(
 
 export type BuildOutlineEditCommitHandlerInput = {
   store: DrawingWorkbenchStore;
-  activeModuleInput: ActiveModuleInput | null;
   objectWorkbenchActions: ObjectWorkbenchActions;
 };
 
@@ -53,7 +49,7 @@ function resolveSelectedHouseForm(store: DrawingWorkbenchStore): HouseFormModel 
 export function buildOutlineEditCommitHandler(
   input: BuildOutlineEditCommitHandlerInput,
 ): (commit: EdgeDragCommit) => ReversibleCommandInput | void {
-  const { store, activeModuleInput, objectWorkbenchActions } = input;
+  const { store, objectWorkbenchActions } = input;
   return (commit) => {
     if (commit.family === 'house_forms') {
       const houseForm = resolveSelectedHouseForm(store);
@@ -125,8 +121,8 @@ export function buildOutlineEditCommitHandler(
       const currentOriginXMm = Number(pergola?.position?.originXMm ?? '0');
       const currentOriginYMm = Number(pergola?.position?.originYMm ?? '0');
       const currentRotationDeg = Number(pergola?.position?.rotationDeg ?? '0');
-      const currentLengthMm = Number(activeModuleInput?.lengthM) * 1000;
-      const currentProjectionMm = Number(activeModuleInput?.projectionM) * 1000;
+      const currentLengthMm = Number(pergola?.geometry?.dimensions?.lengthM) * 1000;
+      const currentProjectionMm = Number(pergola?.geometry?.dimensions?.projectionM) * 1000;
       let minX = Infinity;
       let minY = Infinity;
       let maxX = -Infinity;
@@ -154,10 +150,9 @@ export function buildOutlineEditCommitHandler(
       // edge kinds:
       //   - `wall` / `roof_eave` → host.objectFamily = 'house_forms'
       //   - `pergola_outline`    → host.objectFamily = 'pergolas'
-      // The legacy `connection.type` enum is preserved as a derived
-      // projection — see `connectionTypeFromAttachment`. No snap →
-      // leave the existing attachment unchanged (caller can clear
-      // via the inspector if needed).
+      // Package geometry receives a derived connection enum from
+      // `connectionTypeFromAttachment`. No snap -> leave the existing
+      // attachment unchanged (caller can clear via the inspector if needed).
       let snapAttachment: PergolaAttachment | undefined = undefined;
       if (commit.snap) {
         const hostEdgeKind = commit.snap.target.edgeKind;
@@ -264,7 +259,7 @@ export function buildOutlineEditCommitHandler(
       // `${type}:${id}` rather than `activeObjectRef`. The
       // active ref's `objectId` can be null mid-render (when the
       // ref normalizer can't yet match it against the current
-      // deck list — e.g. right after the snapshot rehydrates) but
+      // deck list during object-first draft hydration) but
       // the EdgeDragTool always emits the shape it actually
       // dragged, so the outline is the source of truth.
       //
@@ -288,13 +283,13 @@ export function buildOutlineEditCommitHandler(
       // value must be in house-local coords; otherwise each
       // commit would re-add house.position and the deck
       // would drift).
-      const houseContext = resolveObjectOwnedHouseActionContext({
+      const resolvedHouse = resolveObjectOwnedHouseActionContext({
         target: { family: 'decks', objectId: deckId },
         houseForms: store.derived.houseForms,
         decks: projectModelDecks,
       });
       const houseWorldPositionMm = resolveHouseWorldPositionMm(
-        houseContext?.houseForm ?? null,
+        resolvedHouse?.houseForm ?? null,
       );
       if (!houseWorldPositionMm) return;
       const patch = buildDeckTransformPatch({

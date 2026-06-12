@@ -1,9 +1,4 @@
-import {
-  DEFAULT_CALCULATOR_ATTACHMENT_SIDE,
-  normalizeAttachmentSide,
-  supportsHouseFootprints,
-  type CalculatorModuleInputs,
-} from '@/lib/types/calculator';
+import type { WorkbenchAttachmentSide } from './objectFirstWorkbenchModel';
 
 type DeckSupportClassification = 'ground_supported' | 'threshold_attached' | 'mixed_or_unclear';
 type DeckSupportWarningCode =
@@ -12,7 +7,7 @@ type DeckSupportWarningCode =
   | 'threshold_alignment_offset'
   | 'unsupported_house_intersection';
 
-export type DeckSupportAttachmentSide = NonNullable<CalculatorModuleInputs['attachmentSide']>;
+export type DeckSupportAttachmentSide = WorkbenchAttachmentSide;
 export type DeckSupportResolvedClassification = DeckSupportClassification | 'none';
 
 export type WorkbenchDeckSupportDiagnostic = {
@@ -62,17 +57,6 @@ function resolveRelevantClassification(
     return 'ground_supported';
   }
   return 'none';
-}
-
-export function resolveWorkbenchDeckSupportActiveSide(
-  module: Partial<CalculatorModuleInputs> | null | undefined,
-): DeckSupportAttachmentSide {
-  if (!module) return DEFAULT_CALCULATOR_ATTACHMENT_SIDE;
-  if (module.houseConnectionType === 'none') return DEFAULT_CALCULATOR_ATTACHMENT_SIDE;
-  if (!supportsHouseFootprints(module.pergolaStyle ?? 'pitched')) {
-    return DEFAULT_CALCULATOR_ATTACHMENT_SIDE;
-  }
-  return normalizeAttachmentSide(module.attachmentSide);
 }
 
 export function buildWorkbenchDeckSupportDiagnostic(input: {

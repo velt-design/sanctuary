@@ -21,14 +21,14 @@ import type { ObjectWorkbenchStatusFacade } from '@/lib/drawings/state/objectWor
 import type {
   WorkbenchPergolaRenderSource,
   WorkbenchPergolaRenderStatus,
-} from '@/lib/drawings/geometry/deriveWorkbenchGeometry';
+} from '@/lib/drawings/state/workbenchSolvedModel';
 
 type AttachmentSide = 'rear' | 'front' | 'left' | 'right';
 type DeckAttachmentMode = 'floating' | 'single_edge' | 'corner_dual_edge';
 export type OverlayRenderSource =
   | 'geometry'
   | 'geometry_derived'
-  | 'geometry_plan_fallback'
+  | 'diagnostic_plan_reference'
   | 'top_projection_committed'
   | 'top_projection_context';
 
@@ -107,7 +107,7 @@ export type ObjectWorkbenchPlanDeckInteraction = {
   renderedCenter: PlanPoint;
   dragPolygon: PlanPoint[];
   dragCenter: PlanPoint;
-  dragCoordinateSpace: 'top_projection_world_m' | 'legacy_plan_m';
+  dragCoordinateSpace: 'top_projection_world_m' | 'object_outline_plan_m';
   dragSource: OverlayRenderSource;
   commitStartPolygon: PlanPoint[] | null;
   referenceFrames: ObjectWorkbenchPlanDeckReferenceFrame[];
@@ -605,7 +605,7 @@ function buildGeometryLookup(
     ? {
         id: footprintSurface.id,
         polygon: polygonToMetres(footprintSurface.boundary),
-        source: 'geometry_plan_fallback' as const,
+        source: 'diagnostic_plan_reference' as const,
       }
     : null;
   const footprint = topProjectionLookup.footprint ?? geometryFootprint;
@@ -617,7 +617,7 @@ function buildGeometryLookup(
     deckSurfaces.set(surface.id, {
       id: surface.id,
       polygon: polygonToMetres(surface.boundary),
-      source: 'geometry_plan_fallback',
+      source: 'diagnostic_plan_reference',
     });
   }
 
@@ -1069,7 +1069,7 @@ function buildDeckInteraction(input: {
     renderedCenter: polygonCenter(input.polygon),
     dragPolygon: input.polygon,
     dragCenter: polygonCenter(input.polygon),
-    dragCoordinateSpace: input.source === 'top_projection_committed' ? 'top_projection_world_m' : 'legacy_plan_m',
+    dragCoordinateSpace: input.source === 'top_projection_committed' ? 'top_projection_world_m' : 'object_outline_plan_m',
     dragSource: input.source,
     commitStartPolygon: resolveDeckCommitStartPolygon(input.deck),
     referenceFrames: [...input.lookup.referenceFrames],

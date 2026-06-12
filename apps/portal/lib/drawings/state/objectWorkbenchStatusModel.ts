@@ -11,17 +11,12 @@ import {
 import type {
   CalculatorHouseAttachmentStrategy,
   CalculatorHouseFootprintPolygonPoint,
-  CalculatorModuleInputs,
 } from "@/lib/types/calculator";
 import {
   resolveDeckInteractionCapability,
   type DeckInteractionCapability,
 } from "@/lib/drawings/interactions/deckInteractionContract";
-import {
-  buildWorkbenchDeckSupportDiagnostic,
-  resolveWorkbenchDeckSupportActiveSide,
-  type WorkbenchDeckSupportDiagnostic,
-} from "./deckSupportDiagnostics";
+import type { WorkbenchDeckSupportDiagnostic } from "./deckSupportDiagnostics";
 import type {
   DeckObjectModel,
   HouseFormModel,
@@ -34,7 +29,7 @@ import { connectionKindFromAttachment } from "./pergolaAttachment";
 import { resolveHouseFormRoofIntentForFootprint } from "./houseFormRoofIntentForFootprint";
 import { buildHouseFormRawGeometryInput } from "./houseFormRawGeometry";
 
-type AttachmentSide = NonNullable<CalculatorModuleInputs["attachmentSide"]>;
+type AttachmentSide = "rear" | "front" | "left" | "right";
 
 const ATTACHMENT_SIDES: readonly AttachmentSide[] = [
   "rear",
@@ -284,15 +279,6 @@ function resolvePreferredRidgeAxis(input: {
   return input.fallback;
 }
 
-function activeAttachmentRequiresDrainEdge(
-  module: Partial<CalculatorModuleInputs> | null | undefined,
-): boolean {
-  return (
-    module?.houseConnectionType === "soffit" ||
-    module?.houseConnectionType === "fascia"
-  );
-}
-
 function buildMigrationWarnings(
   warnings: string[],
 ): ObjectWorkbenchMigrationWarning[] {
@@ -333,7 +319,6 @@ function buildRoofProvenance(
 }
 
 function buildRoofStatus(input: {
-  activeModuleInput: Partial<CalculatorModuleInputs> | null | undefined;
   derivedFootprintPolygon?: CalculatorHouseFootprintPolygonPoint[] | null;
   houseForm: HouseFormModel | null;
 }): ObjectWorkbenchRoofStatus | null {
@@ -385,9 +370,7 @@ function buildRoofStatus(input: {
             houseForm.footprint.attachmentSide,
           )
         : null,
-    enforcePreferredMonoFallDirection: activeAttachmentRequiresDrainEdge(
-      input.activeModuleInput,
-    ),
+    enforcePreferredMonoFallDirection: false,
     roofRidgeAxis: intent.ridgeAxis,
     roofRidgeAxisExplicit: houseForm.roofIntentAuthored === true,
     preferredRidgeAxis,
@@ -639,7 +622,6 @@ function summarizeAttachmentZoneBlocks(
 }
 
 function buildHouseFormStatus(input: {
-  activeModuleInput: Partial<CalculatorModuleInputs> | null | undefined;
   derivedFootprintPolygon?: CalculatorHouseFootprintPolygonPoint[] | null;
   houseForm: HouseFormModel | null;
   projectModel: WorkbenchProjectModel;
@@ -647,7 +629,6 @@ function buildHouseFormStatus(input: {
 }): ObjectWorkbenchHouseFormStatus {
   const houseForm = input.houseForm;
   const roof = buildRoofStatus({
-    activeModuleInput: input.activeModuleInput,
     derivedFootprintPolygon: input.derivedFootprintPolygon,
     houseForm,
   });
@@ -668,7 +649,6 @@ function buildHouseFormStatus(input: {
 export function buildObjectWorkbenchStatusFacade(input: {
   activeDeckId: string | null;
   activeHouseFormId?: string | null;
-  activeModuleInput: Partial<CalculatorModuleInputs> | null | undefined;
   projectModel: WorkbenchProjectModel;
 }): ObjectWorkbenchStatusFacade {
   const houseForms = input.projectModel.houseAssembly?.houseForms ?? [];
@@ -686,7 +666,6 @@ export function buildObjectWorkbenchStatusFacade(input: {
     houseForms.map((houseForm) => [
       houseForm.id,
       buildHouseFormStatus({
-        activeModuleInput: input.activeModuleInput,
         derivedFootprintPolygon: singleHouseDerivedFootprint,
         houseForm,
         projectModel: input.projectModel,
@@ -699,15 +678,6 @@ export function buildObjectWorkbenchStatusFacade(input: {
     : null;
   const decks = input.projectModel.decks;
   const deckStatuses = buildDeckStatuses(decks);
-  const activeHostSide = input.activeModuleInput
-    ? resolveWorkbenchDeckSupportActiveSide(input.activeModuleInput)
-    : null;
-  const activeDeckSupport = activeHostSide
-    ? buildWorkbenchDeckSupportDiagnostic({
-        activeHostSide,
-        decks,
-      })
-    : null;
 
   return {
     houseFormsById,
@@ -717,7 +687,7 @@ export function buildObjectWorkbenchStatusFacade(input: {
     deckStatuses,
     openingStatuses: buildOpeningStatuses(input.projectModel.openings),
     pergolaStatuses: buildPergolaStatuses(input.projectModel.pergolas),
-    activeDeckSupport,
+    activeDeckSupport: null,
     activeDeckInteraction: input.activeDeckId
       ? (deckStatuses[input.activeDeckId]?.interaction ?? null)
       : null,

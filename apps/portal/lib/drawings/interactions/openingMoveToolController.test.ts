@@ -94,6 +94,6 @@ describe('openingMoveToolController', () => {
     ]);
     expect(release.target).toEqual(adapterCommit.target);
     expect(release.patch).toEqual(adapterCommit.patch);
-    expect(release.commitCoordinateSpace).toBe('legacy_plan_m');
+    expect(release.commitCoordinateSpace).toBe('object_outline_plan_m');
   });
 });

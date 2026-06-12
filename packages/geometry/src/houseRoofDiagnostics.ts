@@ -52,6 +52,11 @@ export type HouseRoofStageDiagnostics = {
   roofEaveOffsetRepairCode: string | null;
   roofRequestedEaveOverhangMm: number | null;
   roofEffectiveEaveOverhangMm: number | null;
+  eaveOffsetConstructionMethod: string | null;
+  eaveOffsetTopologyStatus: string | null;
+  eaveOffsetTopologyFailureReason: string | null;
+  eaveOffsetRequestedOverhangMm: number | null;
+  eaveOffsetResolvedVertexCount: number | null;
   footprintCanonicalizationStatus: string | null;
   footprintCanonicalizationPrecisionMm: number | null;
   footprintCanonicalizationPointCountBefore: number | null;
@@ -112,6 +117,11 @@ export const EMPTY_HOUSE_ROOF_STAGE_DIAGNOSTICS: HouseRoofStageDiagnostics = {
   roofEaveOffsetRepairCode: null,
   roofRequestedEaveOverhangMm: null,
   roofEffectiveEaveOverhangMm: null,
+  eaveOffsetConstructionMethod: null,
+  eaveOffsetTopologyStatus: null,
+  eaveOffsetTopologyFailureReason: null,
+  eaveOffsetRequestedOverhangMm: null,
+  eaveOffsetResolvedVertexCount: null,
   footprintCanonicalizationStatus: null,
   footprintCanonicalizationPrecisionMm: null,
   footprintCanonicalizationPointCountBefore: null,
@@ -328,6 +338,26 @@ export function summarizeHouseModelRoofStageDiagnostics(
       metadata,
       "roofEffectiveEaveOverhangMm",
     ),
+    eaveOffsetConstructionMethod: stringMetadata(
+      metadata,
+      "eaveOffsetConstructionMethod",
+    ),
+    eaveOffsetTopologyStatus: stringMetadata(
+      metadata,
+      "eaveOffsetTopologyStatus",
+    ),
+    eaveOffsetTopologyFailureReason: stringMetadata(
+      metadata,
+      "eaveOffsetTopologyFailureReason",
+    ),
+    eaveOffsetRequestedOverhangMm: numberMetadata(
+      metadata,
+      "eaveOffsetRequestedOverhangMm",
+    ),
+    eaveOffsetResolvedVertexCount: numberMetadata(
+      metadata,
+      "eaveOffsetResolvedVertexCount",
+    ),
     footprintCanonicalizationStatus:
       stringMetadata(metadata, "footprintCanonicalizationStatus") ?? "none",
     footprintCanonicalizationPrecisionMm: numberMetadata(
@@ -422,6 +452,12 @@ export function pickHouseRoofStageDiagnostics(
     roofEaveOffsetRepairCode: diagnostics.roofEaveOffsetRepairCode,
     roofRequestedEaveOverhangMm: diagnostics.roofRequestedEaveOverhangMm,
     roofEffectiveEaveOverhangMm: diagnostics.roofEffectiveEaveOverhangMm,
+    eaveOffsetConstructionMethod: diagnostics.eaveOffsetConstructionMethod,
+    eaveOffsetTopologyStatus: diagnostics.eaveOffsetTopologyStatus,
+    eaveOffsetTopologyFailureReason:
+      diagnostics.eaveOffsetTopologyFailureReason,
+    eaveOffsetRequestedOverhangMm: diagnostics.eaveOffsetRequestedOverhangMm,
+    eaveOffsetResolvedVertexCount: diagnostics.eaveOffsetResolvedVertexCount,
     footprintCanonicalizationStatus:
       diagnostics.footprintCanonicalizationStatus,
     footprintCanonicalizationPrecisionMm:
@@ -444,6 +480,11 @@ export function firstHouseRoofStageDiagnosticCode(
     return "footprint_normalization_failed";
   if (diagnostics.eavePolygonConstructionStatus === "failed")
     return "eave_polygon_construction_failed";
+  if (diagnostics.eaveOffsetTopologyStatus === "invalid")
+    return (
+      diagnostics.eaveOffsetTopologyFailureReason ??
+      "eave_offset_topology_failed"
+    );
   if (diagnostics.roofIntentNormalizationStatus === "failed")
     return "roof_intent_normalization_failed";
   if (diagnostics.roofEaveOffsetRepairCode)

@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react';
-import type { CalculatorModuleInputs } from '@/lib/types/calculator';
-import type { HouseFormModel } from '@/lib/drawings/state/objectFirstWorkbenchModel';
+import type { HouseFormFootprintModel, HouseFormModel } from '@/lib/drawings/state/objectFirstWorkbenchModel';
 import type { FieldErrors, RunFootprintCommit } from './objectWorkbenchRailTypes';
 import {
   ActionButton,
@@ -63,18 +62,14 @@ export function buildHouseFormFootprintSections({
       onCommit={(value) =>
         runFootprintCommit('footprint-preset', {
           type: 'preset',
-          preset: value as CalculatorModuleInputs['houseFootprintPreset'],
+          preset: value as HouseFormFootprintModel['preset'],
         })
       }
     />,
-    // PR-T7b (2026-05-29): five number-field/dropdown removals after a
-    // recon pass:
-    //   • Attachment side — superseded by snap-driven `pergola.attachment`
-    //     per PR-F (docs/design-workbench-legacy-cull.md:185-225). Cost
-    //     engine no longer reads it; geometry still uses it for polygon
-    //     orientation but that's a leftover from the same retirement.
-    //     Defaulting to 'rear' downstream is fine until the geometry
-    //     path is cleaned up.
+    // Five number-field/dropdown removals after a recon pass:
+    //   • Attachment side — superseded by object-owned attachment state.
+    //     Geometry uses the normalized house footprint transform instead
+    //     of an inspector-side orientation control.
     //   • House width / Footprint band depth — only meaningful when
     //     synthesising a PRESET polygon. Disabled in custom_polygon
     //     mode already; removing rather than conditionally rendering

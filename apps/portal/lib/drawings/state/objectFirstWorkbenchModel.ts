@@ -18,13 +18,41 @@ import {
   type CalculatorHouseFootprintPreset,
   type CalculatorHouseRoofMaterial,
   type CalculatorHouseStoreyMode,
-  type CalculatorModuleInputs,
 } from "@/lib/types/calculator";
 export type WorkbenchObjectFamily =
   | "house_forms"
   | "decks"
   | "openings"
   | "pergolas";
+
+export type WorkbenchAttachmentSide = "rear" | "front" | "left" | "right";
+export type WorkbenchPergolaRoofMaterial =
+  | "acrylic"
+  | "timber"
+  | "mixed"
+  | "insulated"
+  | "louvre";
+export type WorkbenchPergolaGableEndFramesMode =
+  | "none"
+  | "outer_end_only"
+  | "both_ends";
+export type WorkbenchPergolaHouseEdgeGutterMode = "house" | "our";
+export type WorkbenchPergolaPostConnectionType =
+  | "pile_1m"
+  | "pile_1_5m"
+  | "deck_bracket"
+  | "slab_anchors";
+export type WorkbenchPergolaGroundCondition = "easy" | "hard";
+export type WorkbenchPergolaOverrideProfiles = {
+  ledgerProfile?: string | null;
+  rafterProfile?: string | null;
+  postProfile?: string | null;
+  frontBeamProfile?: string | null;
+  ridgeBeamProfile?: string | null;
+  boxPerimeterBeamProfile?: string | null;
+  tieBeamProfile?: string | null;
+  strutProfile?: string | null;
+};
 
 export type HouseRoofForm = "flat" | "mono" | "hipped";
 export type HouseRoofPrimaryFallDirection =
@@ -84,7 +112,7 @@ export const WALL_OPENING_KINDS = [
 export type SliderPanelCount = 2 | 3 | 4;
 export const SLIDER_PANEL_COUNTS = [2, 3, 4] as const;
 export type WallOpeningHostSide = NonNullable<
-  CalculatorModuleInputs["attachmentSide"]
+  WorkbenchAttachmentSide
 >;
 export type WallOpeningValidationCode =
   | "missing_host_wall"
@@ -156,11 +184,9 @@ export type HouseFormTransformModel = {
  * object is a first-class spatial entity" architecture means each object
  * stores its own world transform, decoupled from any other object's frame.
  *
- * For backward compat, `position` is optional on `HouseFormFootprintModel`.
- * When absent, the geometry pipeline falls back to the legacy pergola-anchored
- * frame for `houseFootprintSideLocalToWorldPolygon`. When present, the polygon
- * is decoded against a unit (1m × 1m) frame and the world position is applied
- * post-decode, so the house is invariant to subsequent pergola resizes.
+ * `position` is optional because older object-first drafts may not have
+ * persisted it yet. When absent, normalizers seed a stable object transform;
+ * geometry solving should consume the house form's own object frame.
  */
 export type HouseFormPosition = {
   originXMm: string;
@@ -173,7 +199,7 @@ export type HouseFormFootprintModel = {
   preset: CalculatorHouseFootprintPreset;
   params: CalculatorHouseFootprintParams;
   polygon: CalculatorHouseFootprintPolygonPoint[];
-  attachmentSide: NonNullable<CalculatorModuleInputs["attachmentSide"]>;
+  attachmentSide: WorkbenchAttachmentSide;
   /** Optional world-space position. See `HouseFormPosition` for details. */
   position?: HouseFormPosition | null;
 };
@@ -305,7 +331,7 @@ export type DerivedAttachmentZoneModel = {
   id: string;
   label: string;
   kind: HouseAttachmentZoneKind;
-  side: NonNullable<CalculatorModuleInputs["attachmentSide"]>;
+  side: WorkbenchAttachmentSide;
   sourceFormIds: string[];
   hostWallId: string | null;
   hostEdgeId: string | null;
@@ -450,12 +476,10 @@ export type PergolaAttachmentHost = {
 };
 
 /**
- * Snap-derived pergola attachment. Step 8 of the first-class spatial-entities
- * migration: this is the new source of truth for pergola-to-host connections,
- * replacing the legacy `connection.type` + `attachmentSide` + `attachmentStrategy`
- * triple. The legacy `connection.type` enum is preserved as a derived
- * projection (see `connectionTypeFromAttachment` in `pergolaAttachment.ts`)
- * so cost-engine reads stay unchanged.
+ * Snap-derived pergola attachment. This is the workbench source of truth for
+ * pergola-to-host connections. Older stored connection fields are projected
+ * into this shape at normalization/edit boundaries; package geometry receives
+ * a derived connection enum from `connectionTypeFromAttachment`.
  *
  * Invariants:
  * - `spatialKind === 'freestanding'` ⇔ `host === null` and `method === 'none'`.
@@ -466,14 +490,11 @@ export type PergolaAttachmentHost = {
  *   direct_to_soffit, soffit_brackets }` — the only spatialKind where the
  *   inspector exposes a method picker.
  * - For non-freestanding spatial kinds, `host` is normally a resolved
- *   `PergolaAttachmentHost`. Step 8 follow-up #2 (lazy legacy migration)
- *   permits `host === null` on non-freestanding when the attachment was
- *   inferred from legacy `connectionKind` + `strategy` fields and the
- *   absolute host edge id has not yet been resolved through a snap. The
- *   geometry pipeline reads `spatialKind`/`method` regardless; `host` is
- *   only load-bearing for re-snap recovery and the UI inspector's "host
- *   edge" label, both of which fall back to legacy `attachmentEdgeId` when
- *   `host` is null.
+ *   `PergolaAttachmentHost`. Older stored drafts may carry only
+ *   `connectionKind` + `strategy`; those normalize to `host === null` until
+ *   the absolute host edge id is resolved through a snap. Geometry reads
+ *   `spatialKind`/`method`; `host` is load-bearing for re-snap recovery and
+ *   the UI inspector's host-edge label.
  *
  * `attachmentSide` (rear/front/left/right) becomes a derived UI label,
  * computed from the geometric relation between `host.edgeId` and the
@@ -492,16 +513,15 @@ export type PergolaObjectModel = {
   connectionKind?: ObjectFirstPergolaConnectionKind | null;
   attachmentEdgeId: string | null;
   attachmentZoneId: string | null;
-  side: NonNullable<CalculatorModuleInputs["attachmentSide"]>;
+  side: WorkbenchAttachmentSide;
   strategy: CalculatorHouseAttachmentStrategy | null;
   geometry?: ObjectFirstPergolaGeometryDraft | null;
   position?: ObjectFirstPergolaPosition | null;
   /**
    * Snap-derived attachment data. When present, this is the source of truth
-   * for the pergola's relationship to the host. When null/undefined, the
-   * legacy `connectionKind` + `side` + `strategy` fields drive solver behavior
-   * (back-compat). Lazy migration on first edit will fill this from the
-   * legacy fields.
+   * for the pergola's relationship to the host. When null/undefined, older
+   * stored `connectionKind` + `side` + `strategy` fields are normalized into
+   * this shape on first edit.
    */
   attachment?: PergolaAttachment | null;
 };
@@ -514,7 +534,7 @@ export type HouseAssemblyModel = {
 };
 
 export type ObjectFirstWorkbenchProjectModel = {
-  source: "legacy_estimate_snapshot";
+  source: "workbench_project_model" | "legacy_estimate_snapshot";
   houseAssembly: HouseAssemblyModel | null;
   decks: DeckObjectModel[];
   openings: OpeningObjectModel[];
@@ -568,20 +588,16 @@ export type DeckAttachmentHost = {
 };
 
 /**
- * PR-D (2026-05-22): snap-derived deck attachment. The new source of truth
- * for "which house wall is this deck attached to", replacing the legacy
- * `hostEdgeId` (as `AttachmentSide` enum) + `hostHouseFormId` (PR9 routing
- * band-aid). Mirrors `PergolaAttachment` but collapses the method field
- * (decks only attach via "wall" relationship; no method picker).
+ * Snap-derived deck attachment. The source of truth for "which house wall is
+ * this deck attached to". Mirrors `PergolaAttachment` but collapses the
+ * method field because decks only attach via wall relationship.
  *
  * Invariants:
  * - `spatialKind === 'freestanding'` ⇔ `host === null`.
  * - `spatialKind === 'wall'` ⇒ `host !== null` and `host.edgeKind === 'wall'`.
  *
- * For legacy decks authored before this field existed (`attachment` absent
- * on the draft), the read path falls back to: deck is attached to the
- * synthesized primary form's matching attachment-side wall. PR-H deletes
- * the fallback once all persisted decks carry `attachment`.
+ * Older drafts may omit this field; normalization/read paths should keep
+ * that case explicit instead of inventing committed geometry.
  */
 export type DeckAttachment = {
   host: DeckAttachmentHost | null;
@@ -609,12 +625,10 @@ export type ObjectFirstDeckDraft = {
   secondaryHostEdgeId?: string | null;
   cornerVertexId?: string | null;
   /**
-   * PR-D (2026-05-22): snap-derived attachment, source of truth for
-   * "which host wall is this deck attached to". When present, the read
-   * path's per-form routing uses `attachment.host.objectId` (replacing
-   * the PR9 `hostHouseFormId` band-aid which is now retired). When
-   * `attachment === null` or absent: legacy deck (pre-PR-D), routes to
-   * the synthesized primary form via the read path's null-fallback.
+   * Snap-derived attachment, source of truth for which host wall this deck is
+   * attached to. When present, per-form routing uses
+   * `attachment.host.objectId`. Missing attachment is treated as unresolved
+   * object-owned state, not as a committed fallback body.
    */
   attachment?: DeckAttachment | null;
 };
@@ -641,7 +655,7 @@ export type ObjectFirstPergolaDraft = {
   connectionKind?: ObjectFirstPergolaConnectionKind | null;
   attachmentEdgeId: string | null;
   attachmentZoneId: string | null;
-  side: NonNullable<CalculatorModuleInputs["attachmentSide"]>;
+  side: WorkbenchAttachmentSide;
   strategy: CalculatorHouseAttachmentStrategy | null;
   geometry?: ObjectFirstPergolaGeometryDraft | null;
   position?: ObjectFirstPergolaPosition | null;
@@ -663,7 +677,7 @@ export type ObjectFirstPergolaGeometryDraft = {
     >
   >;
   roof?: Partial<{
-    material: CalculatorModuleInputs["roofMaterial"];
+    material: WorkbenchPergolaRoofMaterial;
     pitchDeg: string;
     boxPerimeterEnabled: boolean;
     mixedAcrylicBaysMain: string;
@@ -671,29 +685,17 @@ export type ObjectFirstPergolaGeometryDraft = {
     mixedAcrylicBaysB: string;
   }>;
   gable?: Partial<{
-    endFramesMode: CalculatorModuleInputs["gableEndFramesMode"];
-    houseEaveGutterMode: CalculatorModuleInputs["gableHouseEdgeGutter"];
-    outerEaveGutterMode: CalculatorModuleInputs["gableOuterEdgeGutter"];
+    endFramesMode: WorkbenchPergolaGableEndFramesMode;
+    houseEaveGutterMode: WorkbenchPergolaHouseEdgeGutterMode;
+    outerEaveGutterMode: WorkbenchPergolaHouseEdgeGutterMode;
   }>;
   supports?: Partial<{
-    postConnectionType: CalculatorModuleInputs["postConnectionType"];
-    ground: CalculatorModuleInputs["ground"];
+    postConnectionType: WorkbenchPergolaPostConnectionType;
+    ground: WorkbenchPergolaGroundCondition;
     postCount: string;
     postCutHeightM: string;
   }>;
-  overrides?: Partial<
-    Pick<
-      NonNullable<CalculatorModuleInputs["overrides"]>,
-      | "ledgerProfile"
-      | "rafterProfile"
-      | "postProfile"
-      | "frontBeamProfile"
-      | "ridgeBeamProfile"
-      | "boxPerimeterBeamProfile"
-      | "tieBeamProfile"
-      | "strutProfile"
-    >
-  >;
+  overrides?: Partial<WorkbenchPergolaOverrideProfiles>;
 };
 
 export type ObjectFirstWorkbenchDraftVNext = {
@@ -706,8 +708,8 @@ export type ObjectFirstWorkbenchDraftVNext = {
 // Migration boundary notes:
 // - This file is the canonical object-first type authority for the active April workbench docs.
 // - Hidden workbench local drafts now write `EstimateDrawingDraft.objectFirst`.
-// - Compatibility projections still feed geometry, overlays, and calculators that consume house-first models.
-// - `roofIntentAuthored` keeps snapshot-inferred roofs from becoming explicit compatibility roof overrides.
+// - Workbench runtime consumes object-first project models and solved geometry artifacts.
+// - `roofIntentAuthored` keeps imported/default roofs from becoming explicit user-authored roof overrides.
 
 function trimNullableString(value: string | null | undefined): string | null {
   if (typeof value !== "string") return null;
@@ -820,7 +822,7 @@ function isObjectFirstPergolaConnectionKind(
 
 function isPortalRoofMaterial(
   value: unknown,
-): value is CalculatorModuleInputs["roofMaterial"] {
+): value is WorkbenchPergolaRoofMaterial {
   return (
     value === "acrylic" ||
     value === "timber" ||
@@ -832,7 +834,7 @@ function isPortalRoofMaterial(
 
 function isGableEndFramesMode(
   value: unknown,
-): value is CalculatorModuleInputs["gableEndFramesMode"] {
+): value is WorkbenchPergolaGableEndFramesMode {
   return (
     value === "none" || value === "outer_end_only" || value === "both_ends"
   );
@@ -840,13 +842,13 @@ function isGableEndFramesMode(
 
 function isHouseEdgeGutterMode(
   value: unknown,
-): value is CalculatorModuleInputs["gableHouseEdgeGutter"] {
+): value is WorkbenchPergolaHouseEdgeGutterMode {
   return value === "house" || value === "our";
 }
 
 function isPostConnectionType(
   value: unknown,
-): value is CalculatorModuleInputs["postConnectionType"] {
+): value is WorkbenchPergolaPostConnectionType {
   return (
     value === "pile_1m" ||
     value === "pile_1_5m" ||
@@ -857,7 +859,7 @@ function isPostConnectionType(
 
 function isGroundCondition(
   value: unknown,
-): value is CalculatorModuleInputs["ground"] {
+): value is WorkbenchPergolaGroundCondition {
   return value === "easy" || value === "hard";
 }
 
@@ -1559,5 +1561,45 @@ export function normalizeObjectFirstWorkbenchDraftVNext(
       .filter((pergola): pergola is ObjectFirstPergolaDraft =>
         Boolean(pergola),
       ),
+  };
+}
+
+export const EMPTY_OBJECT_FIRST_WORKBENCH_DRAFT: ObjectFirstWorkbenchDraftVNext =
+  {
+    houseAssembly: null,
+    decks: [],
+    openings: [],
+    pergolas: [],
+  };
+
+export const EMPTY_WORKBENCH_PROJECT_MODEL: WorkbenchProjectModel = {
+  source: "workbench_project_model",
+  houseAssembly: null,
+  decks: [],
+  openings: [],
+  pergolas: [],
+  warnings: [],
+};
+
+export function buildWorkbenchProjectModelFromObjectFirstDraft(
+  value: Partial<ObjectFirstWorkbenchDraftVNext> | null | undefined,
+): WorkbenchProjectModel {
+  const draft = normalizeObjectFirstWorkbenchDraftVNext(value);
+  return {
+    source: "workbench_project_model",
+    houseAssembly: draft.houseAssembly
+      ? {
+          id: draft.houseAssembly.id,
+          label: draft.houseAssembly.label,
+          houseForms: draft.houseAssembly.houseForms.map((houseForm) => ({
+            ...houseForm,
+          })),
+          derivedEnvelope: null,
+        }
+      : null,
+    decks: draft.decks.map((deck) => ({ ...deck })),
+    openings: draft.openings.map((opening) => ({ ...opening })),
+    pergolas: draft.pergolas.map((pergola) => ({ ...pergola })),
+    warnings: [],
   };
 }

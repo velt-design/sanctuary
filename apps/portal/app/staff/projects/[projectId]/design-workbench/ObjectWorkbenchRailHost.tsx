@@ -2,13 +2,11 @@
 
 import { useCallback, type Dispatch, type SetStateAction } from 'react';
 import ObjectWorkbenchRail from '@/components/drawings/rail/ObjectWorkbenchRail';
-import type { ObjectWorkbenchGeometryEditState } from '@/lib/drawings/geometry/geometryEditAdapter';
 import type { DrawingWorkbenchStore } from '@/lib/drawings/state/drawingWorkbenchStore';
 import {
   type DrawingWorkbenchUiState,
 } from '@/lib/drawings/state/drawingWorkbenchUiState';
 import type { WorkbenchObjectRef } from '@/lib/drawings/state/objectFirstWorkbenchModel';
-import type { CalculatorModuleInputs } from '@/lib/types/calculator';
 import { buildPergolaSelectionUiState } from './pergolaSelectionState';
 import type { ObjectWorkbenchActions } from './useObjectWorkbenchActions';
 import type { ObjectWorkbenchSelectionActions } from './useObjectWorkbenchSelection';
@@ -18,8 +16,7 @@ import type { ObjectWorkbenchSelectionActions } from './useObjectWorkbenchSelect
  * TREE rail. Inspector panel building moved to `WorkbenchInspectorHost`
  * (right-side `RightInspectorPanel`); this host now only:
  *   - forwards visibility + object-ref selection state to the rail
- *   - writes pergola row clicks into the canonical `activePergolaId`; the
- *     store derives the temporary module-index compatibility projection
+ *   - writes pergola row clicks into the canonical object-id selection state
  *   - wires the rail's inline "+ Add structure" affordance
  *
  * `activeRailTab` and `onSelectRailTab` are gone — the rail no longer has
@@ -28,14 +25,11 @@ import type { ObjectWorkbenchSelectionActions } from './useObjectWorkbenchSelect
  */
 
 type ObjectWorkbenchRailHostProps = {
-  activeModuleInput: CalculatorModuleInputs | null;
-  geometryEditState: ObjectWorkbenchGeometryEditState | null;
   isLocked: boolean;
   objectSelectionActions: ObjectWorkbenchSelectionActions;
   objectWorkbenchActions: ObjectWorkbenchActions;
   setUi: Dispatch<SetStateAction<DrawingWorkbenchUiState>>;
   store: DrawingWorkbenchStore;
-  supportsSanctuaryEditing: boolean;
 };
 
 export default function ObjectWorkbenchRailHost({

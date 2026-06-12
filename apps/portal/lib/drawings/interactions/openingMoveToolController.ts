@@ -32,7 +32,7 @@ type OpeningMoveReleaseResult = {
   target: OpeningObjectRef;
   patch: ObjectWorkbenchOpeningPatch;
   preview: OpeningPreviewState;
-  commitCoordinateSpace: 'legacy_plan_m';
+  commitCoordinateSpace: 'object_outline_plan_m';
   diagnostics: InteractionToolDiagnostics;
 };
 
@@ -42,8 +42,8 @@ function buildDiagnostics(input: {
 }): InteractionToolDiagnostics {
   return {
     toolId: 'opening_move',
-    source: 'legacy_plan',
-    coordinateSpace: 'legacy_plan_m',
+    source: 'object_outline_plan',
+    coordinateSpace: 'object_outline_plan_m',
     status: input.status,
     message: input.message ?? null,
   };
@@ -106,7 +106,7 @@ export function releaseOpeningMoveTool(input: {
     target: commit.target,
     patch: commit.patch,
     preview: input.preview,
-    commitCoordinateSpace: 'legacy_plan_m',
+    commitCoordinateSpace: 'object_outline_plan_m',
     diagnostics: buildDiagnostics({ status: 'committed' }),
   };
 }

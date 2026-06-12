@@ -137,6 +137,11 @@ export async function readPlanHouseProjectionHealth(page: Page): Promise<Array<{
   roofEaveOffsetRepairCode: string | null;
   roofRequestedEaveOverhangMm: number | null;
   roofEffectiveEaveOverhangMm: number | null;
+  eaveOffsetConstructionMethod: string | null;
+  eaveOffsetTopologyStatus: string | null;
+  eaveOffsetTopologyFailureReason: string | null;
+  eaveOffsetRequestedOverhangMm: number | null;
+  eaveOffsetResolvedVertexCount: number | null;
   footprintCanonicalizationStatus: string | null;
   footprintCanonicalizationPrecisionMm: number | null;
   footprintCanonicalizationPointCountBefore: number | null;

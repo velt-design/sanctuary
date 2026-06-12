@@ -470,6 +470,59 @@ describe("house model roof preset coverage", () => {
     expect(planRoofBodies[0]?.id).toBe("house_plan_roof:test-house");
   });
 
+  it("resolves narrow custom hipped recess eave offsets at the requested overhang", () => {
+    const footprint: Polygon3 = [
+      { x: 0, y: 0, z: 0 },
+      { x: 6000, y: 0, z: 0 },
+      { x: 6000, y: -8000, z: 0 },
+      { x: 4200, y: -8000, z: 0 },
+      { x: 4200, y: -2000, z: 0 },
+      { x: 3800, y: -2000, z: 0 },
+      { x: 3800, y: -8000, z: 0 },
+      { x: 0, y: -8000, z: 0 },
+    ];
+    const model = buildHouseModel3D({
+      houseId: "test-house",
+      config: makeConfig({
+        footprint,
+        roofForm: "hipped",
+        roofPitchDeg: 5,
+        roofRidgeAxis: "x",
+        eaveOverhangMm: 450,
+      }),
+      attachmentEdge: makeAttachmentEdge(),
+    });
+
+    expect(model).not.toBeNull();
+    if (!model) return;
+
+    expectRoofQaValid(model);
+    expect(model.eave.eaveOverhangMm).toBe(450);
+    expect(model.metadata?.roofEaveOffsetRepairStatus).toBeUndefined();
+    expect(model.metadata?.roofEaveOffsetRepairCode).toBeUndefined();
+    expect(model.metadata?.eaveOffsetConstructionMethod).toBe(
+      "orthogonal_cell_union",
+    );
+    expect(model.metadata?.eaveOffsetTopologyStatus).toBe("resolved");
+    expect(model.metadata?.eaveOffsetTopologyFailureReason).toBeNull();
+    expect(model.metadata?.eaveOffsetRequestedOverhangMm).toBe(450);
+    expect(model.metadata?.eaveOffsetResolvedVertexCount).toBe(4);
+    expect(eavePolygonFromModel(model)).toEqual([
+      { x: -450, y: 450, z: 0 },
+      { x: -450, y: -8450, z: 0 },
+      { x: 6450, y: -8450, z: 0 },
+      { x: 6450, y: 450, z: 0 },
+    ]);
+    expect(
+      model.solids?.surfaceSolids.filter((solid) => solid.kind === "roof"),
+    ).not.toHaveLength(0);
+    const planRoofBodies = buildHouseModelTopProjectionShapes({ model }).filter(
+      (shape) => shape.metadata?.planProjectionSource === "house_eave_perimeter",
+    );
+    expect(planRoofBodies).toHaveLength(1);
+    expect(planRoofBodies[0]?.id).toBe("house_plan_roof:test-house");
+  });
+
   it("canonicalizes edited custom hipped footprint residue before roof topology solve", () => {
     const footprint: Polygon3 = [
       { x: -814.9011184049414, y: 1200.0000001296671, z: 0 },

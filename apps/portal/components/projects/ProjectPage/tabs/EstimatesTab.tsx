@@ -7,8 +7,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { type ModuleViewsStatus, type ModuleViewsTab } from '@/app/staff/calculator/ModuleViewsCard';
-import { mapEngineLevel } from '@/app/staff/calculator/warnings';
-import ConfiguratorRail from '@/components/drawings/rail/ConfiguratorRail';
+import ConfiguratorRail from './ConfiguratorRail';
 import DrawingWorkbench from '@/components/drawings/workbench/DrawingWorkbench';
 import { useProjectPageDesignRail } from '@/components/projects/ProjectPage/ProjectPageDesignRailContext';
 import { buildEstimateDrawingModuleInfoRows, buildEstimateDrawingSheetMeta } from '@/lib/estimates/drawingSheet';
@@ -30,17 +29,12 @@ import {
 import {
   type EstimateSaveMode,
   buildEstimatePayloadPreservingCurrentPricing,
-  buildEstimatePayloadFromSiteCosting,
-  deriveSiteResultWarnings,
   hasPricingAffectingCalculatorInputChanges,
 } from '@/lib/estimates/costingPayload';
-import { buildSiteInputsV2FromScene } from '@/lib/estimates/buildSiteInputsV2FromScene';
-import { buildObjectFirstWorkbenchProjectModelFromLegacyEstimateSnapshot } from '@/lib/drawings/state/legacyEstimateSnapshotAdapter';
 import type { EstimateDetail, EstimateMeta, EstimateSummary } from '@/lib/estimates/types';
 import type { ProjectPageSnapshot } from '@/lib/projects/types';
 import { isCalculatorInputsV2, isLegacyCalculatorInputsV1, type CalculatorModuleInputs, type LegacyCalculatorInputsV1 } from '@/lib/types/calculator';
 import type { QuoteStatus, QuoteVersion } from '@/lib/quotes/types';
-import { calculateSiteCostV2, getCostingMeta } from '@/lib/costing/costEngine';
 import { useToast } from '@/components/ui/toast/ToastProvider';
 import RequestDesignModal from '@/components/designPackages/RequestDesignModal';
 import legacy from '@/app/staff/projects/projects.module.css';
@@ -275,6 +269,16 @@ function getActiveDrawingModuleInput(
   }
 
   return null;
+}
+
+function isCalculatorModuleInput(value: CalculatorModuleInputs | LegacyCalculatorInputsV1 | null): value is CalculatorModuleInputs {
+  return Boolean(
+    value &&
+      typeof value === 'object' &&
+      'pergolaStyle' in value &&
+      'fallDistanceMm' in value &&
+      'gableHouseEdgeGutter' in value,
+  );
 }
 
 function formatModuleLine(spec: ModuleSpec, index: number): string {
@@ -811,16 +815,18 @@ export default function EstimatesTab({
   const drawingWorkbenchStore = useMemo(
     () =>
       buildDrawingWorkbenchStore({
-        snapshot: drawingDetail?.calculatorSnapshot ?? null,
+        draft: drawingDraft,
         ui: drawingWorkbenchUi,
-        ignoreModuleResults: drawingGeometryDirty,
-        moduleLabels: moduleLines,
       }),
-    [drawingDetail?.calculatorSnapshot, drawingGeometryDirty, drawingWorkbenchUi, moduleLines],
+    [drawingDraft, drawingWorkbenchUi],
   );
   const salesPerson = selectedMeta?.createdBy ?? null;
   const drawingView: ModuleViewsTab = drawingWorkbenchStore.ui.activeView;
-  const drawingModuleIndex = drawingWorkbenchStore.derived.activeModuleIndex;
+  const drawingModuleIndex = 0;
+  const activeDrawingModuleInput = useMemo(() => {
+    const moduleInput = getActiveDrawingModuleInput(drawingDetail?.calculatorSnapshot ?? null, drawingModuleIndex);
+    return isCalculatorModuleInput(moduleInput) ? moduleInput : null;
+  }, [drawingDetail?.calculatorSnapshot, drawingModuleIndex]);
   const costingAuditModuleOptions = useMemo(() => {
     const specs = getModuleSpecs(selectedDetail?.calculatorSnapshot ?? null);
     if (specs.length) {
@@ -833,28 +839,24 @@ export default function EstimatesTab({
   }, [selectedDetail, selectedDetail?.calculatorSnapshot]);
   const costingAuditDefaultModuleIndex = costingAuditModuleOptions.some((option) => option.index === drawingModuleIndex) ? drawingModuleIndex : 0;
   const drawingViewportMode = drawingWorkbenchStore.ui.viewportMode;
-  const drawingModules = drawingWorkbenchStore.persisted.modules;
-  const activeDrawingModule = drawingWorkbenchStore.derived.activeModule;
   const drawingStatus: ModuleViewsStatus = drawingWorkbenchStore.derived.status;
-  const drawingModuleLabel = drawingWorkbenchStore.derived.activeModuleLabel;
+  const drawingSheetLabel = drawingWorkbenchStore.derived.projectSheetLabel;
   const drawingMetaOverrides = useMemo(
     () =>
       buildEstimateDrawingSheetMetaOverrides({
-        moduleLabel: drawingModuleLabel,
+        moduleLabel: drawingSheetLabel,
         moduleIndex: drawingModuleIndex,
         draft: drawingDraft,
       }),
-    [drawingDraft, drawingModuleIndex, drawingModuleLabel],
+    [drawingDraft, drawingModuleIndex, drawingSheetLabel],
   );
   const drawingSheetMeta = useMemo(
     () =>
       buildEstimateDrawingSheetMeta({
-        moduleLabel: drawingModuleLabel,
-        moduleTitleOverride: drawingMetaOverrides.moduleTitle,
+        sheetLabel: drawingSheetLabel,
+        sheetTitleOverride: drawingMetaOverrides.moduleTitle,
         noteOverride: drawingMetaOverrides.note,
-        moduleInfoRows: buildEstimateDrawingModuleInfoRows(
-          getActiveDrawingModuleInput(drawingDetail?.calculatorSnapshot ?? null, drawingModuleIndex),
-        ),
+        sheetInfoRows: buildEstimateDrawingModuleInfoRows(activeDrawingModuleInput),
         view: drawingView,
         versionLabel: selectedMeta?.versionLabel ?? selectedDetail?.versionLabel ?? null,
         estimateDate: selectedDetail?.createdAt ?? selectedMeta?.createdAt ?? null,
@@ -863,10 +865,10 @@ export default function EstimatesTab({
         clientName: projectSnapshot.project.contactName ?? null,
       }),
     [
-      drawingModuleLabel,
+      drawingSheetLabel,
       drawingMetaOverrides.moduleTitle,
       drawingMetaOverrides.note,
-      drawingDetail?.calculatorSnapshot,
+      activeDrawingModuleInput,
       drawingView,
       drawingModuleIndex,
       projectSnapshot.project.contactName,
@@ -887,34 +889,20 @@ export default function EstimatesTab({
         : deriveEstimateDrawingEditableFields({
             draft: drawingDraft,
             moduleIndex: drawingModuleIndex,
-            moduleLabel: drawingModuleLabel,
+            moduleLabel: drawingSheetLabel,
             view: drawingView,
-            planModel: activeDrawingModule?.planModel,
-            sectionModel: activeDrawingModule?.sectionModel,
+            planModel: null,
+            sectionModel: null,
           }),
     [
-      activeDrawingModule?.planModel,
-      activeDrawingModule?.sectionModel,
       drawingDraft,
       drawingModuleIndex,
-      drawingModuleLabel,
+      drawingSheetLabel,
       drawingView,
       isEstimateLocked,
       selectedDetail,
     ],
   );
-  useEffect(() => {
-    setDrawingWorkbenchUi((current) => ({ ...current, activeModuleIndex: 0 }));
-  }, [selectedDetail?.calculatorSnapshot]);
-
-  useEffect(() => {
-    if (drawingWorkbenchStore.ui.activeModuleIndex === drawingWorkbenchUi.activeModuleIndex) return;
-    setDrawingWorkbenchUi((current) => ({
-      ...current,
-      activeModuleIndex: drawingWorkbenchStore.ui.activeModuleIndex,
-    }));
-  }, [drawingWorkbenchStore.ui.activeModuleIndex, drawingWorkbenchUi.activeModuleIndex]);
-
   useEffect(() => {
     if (!focusGroups.length) {
       setFocusCategory('');
@@ -1271,14 +1259,14 @@ export default function EstimatesTab({
       return <div className={styles.drawingEmpty}>Select a design version to configure the drawing.</div>;
     }
 
-    if (!activeDrawingModule) {
+    if (!activeDrawingModuleInput) {
       return <div className={styles.drawingEmpty}>No plan or section drawing controls are available for this design.</div>;
     }
 
     return (
       <ConfiguratorRail
-        moduleLabel={drawingModuleLabel}
-        moduleInput={activeDrawingModule.drawingModule.input ?? null}
+        moduleLabel={drawingSheetLabel}
+        moduleInput={activeDrawingModuleInput}
         view={drawingView}
         mode="full"
         editableFields={drawingEditableFields}
@@ -1290,12 +1278,12 @@ export default function EstimatesTab({
       />
     );
   }, [
-    activeDrawingModule,
+    activeDrawingModuleInput,
     commitDrawingField,
     commitDrawingFootprintEdit,
     commitDrawingModuleField,
     drawingEditableFields,
-    drawingModuleLabel,
+    drawingSheetLabel,
     drawingView,
     isEstimateLocked,
     openFullCalculator,
@@ -1332,57 +1320,16 @@ export default function EstimatesTab({
       const basePayload = buildEstimatePayloadFromDetail(saveSourceDetail);
       const currentInputs = currentDrawingDraft?.inputs ?? activeDraft.inputs;
       const pricingChanged = hasPricingAffectingCalculatorInputChanges(currentInputs, activeDraft.inputs);
+      if (saveMode === 'reprice_latest') {
+        toast.error('Workbench repricing is unavailable while design geometry is separated from calculator inputs.');
+        return;
+      }
       const estimatePayload =
-        saveMode === 'reprice_latest'
-          ? await (async () => {
-              // PR-2B.5 (2026-05-22): switch the workbench save-reprice from
-              // V1 to V2. Build the workbench project model from snapshot +
-              // draft, then derive scene-grouped pergola costing via
-              // `buildSiteInputsV2FromScene`. Logical-pergola grouping comes
-              // from spatial adjacency in the scene (snapped pergolas =
-              // modules of same logical pergola) — see Phase 2 plan Q4.
-              const projectModel = buildObjectFirstWorkbenchProjectModelFromLegacyEstimateSnapshot({
-                snapshot: saveSourceDetail.calculatorSnapshot,
-                draft: activeDraft,
-              });
-              const siteInputsV2 = buildSiteInputsV2FromScene({
-                projectModel,
-                calculatorInputs: activeDraft.inputs,
-              });
-              const siteResult = await calculateSiteCostV2(siteInputsV2);
-              const warnings = deriveSiteResultWarnings(siteResult);
-              const criticalWarnings = warnings.filter((warning) => mapEngineLevel(warning.level) === 'critical');
-              const reviewWarnings = warnings.filter((warning) => mapEngineLevel(warning.level) === 'review');
-
-              if (criticalWarnings.length > 0) {
-                toast.error('Resolve critical warnings before repricing this design.');
-                return null;
-              }
-
-              if (
-                reviewWarnings.length > 0 &&
-                !window.confirm(
-                  `Review warnings were returned:\n\n${reviewWarnings.map((warning) => `- ${warning.message}`).join('\n')}\n\nReprice anyway?`,
-                )
-              ) {
-                return null;
-              }
-
-              const meta = await getCostingMeta();
-              return buildEstimatePayloadFromSiteCosting({
-                basePayload,
-                inputs: activeDraft.inputs,
-                siteResult,
-                configVersions: meta.configVersions as Record<string, unknown>,
-                moduleIndex: drawingModuleIndex,
-                warnings,
-              });
-            })()
-          : buildEstimatePayloadPreservingCurrentPricing({
-              basePayload,
-              inputs: activeDraft.inputs,
-              pricingChanged,
-            });
+        buildEstimatePayloadPreservingCurrentPricing({
+          basePayload,
+          inputs: activeDraft.inputs,
+          pricingChanged,
+        });
       if (!estimatePayload) return;
 
       const optimisticEstimateBase = buildOptimisticEstimateDetail({
@@ -1422,11 +1369,9 @@ export default function EstimatesTab({
       });
 
       toast.success(
-        saveMode === 'reprice_latest'
-          ? 'Estimate repriced locally. Syncing in the background.'
-          : pricingChanged
-            ? 'Drawing changes saved locally. Pricing was preserved. Use Reprice to latest to refresh costs.'
-            : 'Drawing changes saved locally. Syncing in the background.',
+        pricingChanged
+          ? 'Drawing changes saved locally. Pricing was preserved. Use Reprice to latest to refresh costs.'
+          : 'Drawing changes saved locally. Syncing in the background.',
       );
     } catch (err) {
       const msg =
@@ -1715,20 +1660,9 @@ export default function EstimatesTab({
                 ) : null}
                 <div className={styles.focusSummaryLayout}>
                   {!renderDesignWorkspace ? <div className={styles.inlineConfiguratorRail}>{configuratorRailNode}</div> : null}
-                  {activeDrawingModule ? (
+                  {renderDesignWorkspace || drawingWorkbenchStore.derived.activeViewportGeometry ? (
                     <DrawingWorkbench
-                      moduleLabel={drawingModuleLabel}
-                      modules={drawingModules.map((module, index) => ({
-                        id: module.id,
-                        label: module.label,
-                      }))}
-                      activeModuleIndex={drawingModuleIndex}
-                      onActiveModuleIndexChange={(index) =>
-                        setDrawingWorkbenchUi((current) => ({
-                          ...current,
-                          activeModuleIndex: index,
-                        }))
-                      }
+                      sheetLabel={drawingSheetLabel}
                       view={drawingView}
                       onViewChange={(nextView) =>
                         setDrawingWorkbenchUi((current) => ({
@@ -1745,6 +1679,9 @@ export default function EstimatesTab({
                       }
                       status={drawingStatus}
                       viewportGeometry={drawingWorkbenchStore.derived.activeViewportGeometry}
+                      projectViewportGeometry={drawingWorkbenchStore.derived.activeViewportGeometry}
+                      projectGeometryPreview={drawingWorkbenchStore.derived.solvedModel.projectGeometryPreview}
+                      projectPlanProjection={drawingWorkbenchStore.derived.solvedModel.projectPlanProjection}
                       drawingSurfaceGeometry={drawingWorkbenchStore.derived.activeDrawingSurfaceGeometry}
                       planViewModel={drawingWorkbenchStore.derived.activePlanViewModel}
                       modelViewportTransform={drawingWorkbenchStore.ui.viewportTransform}
@@ -1758,6 +1695,8 @@ export default function EstimatesTab({
                       editableFields={drawingEditableFields}
                       onCommitField={commitDrawingField}
                       onCommitFootprintEdit={!isEstimateLocked ? commitDrawingFootprintEdit : undefined}
+                      projectHouseProjectionHealth={drawingWorkbenchStore.derived.solvedModel.projectHouseProjectionHealth}
+                      projectPergolaRenderHealth={drawingWorkbenchStore.derived.solvedModel.projectPergolaRenderHealth}
                     />
                   ) : (
                     <div className={styles.drawingEmpty}>No plan or section drawing is available for this design.</div>

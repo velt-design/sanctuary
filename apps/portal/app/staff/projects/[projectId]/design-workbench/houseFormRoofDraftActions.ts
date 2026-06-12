@@ -18,26 +18,6 @@ export type HouseFormRoofIntentCommitDraftResult =
   | { ok: true; draft: EstimateDrawingDraft }
   | { ok: false; error: string };
 
-function mirrorLegacySharedRoofDraftToModules(
-  draft: EstimateDrawingDraft,
-  roof: HouseFormRoofIntentModel,
-): EstimateDrawingDraft {
-  const material = roof.material;
-  const pitchDeg = roof.primaryPitchDeg?.trim() ?? '';
-  for (const module of draft.inputs.modules) {
-    if (!module) continue;
-    if (material) {
-      module.houseRoofMaterial = material;
-    }
-    if (pitchDeg) {
-      module.houseRoofPitchDeg = pitchDeg;
-    } else {
-      delete module.houseRoofPitchDeg;
-    }
-  }
-  return draft;
-}
-
 function normalizeHouseFormRoofIntentForCommit(
   roof: HouseFormRoofIntentModel,
 ): HouseFormRoofIntentModel {
@@ -78,7 +58,6 @@ export function buildHouseFormRoofIntentCommitDraft(input: {
   objectFirstDraft: ObjectFirstWorkbenchDraftVNext;
   houseFormId: string;
   roof: HouseFormRoofIntentModel;
-  mirrorToLegacyModules?: boolean;
 }): HouseFormRoofIntentCommitDraftResult {
   const houseAssembly = input.objectFirstDraft.houseAssembly;
   if (!houseAssembly) {
@@ -103,34 +82,11 @@ export function buildHouseFormRoofIntentCommitDraft(input: {
       houseForms,
     },
   };
-  const normalizedRoof = normalizeHouseFormRoofIntentForCommit(input.roof);
   return {
     ok: true,
     draft: updateEstimateDrawingObjectFirstWorkbenchDraft({
-      draft: input.mirrorToLegacyModules
-        ? mirrorLegacySharedRoofDraftToModules(input.draft, normalizedRoof)
-        : input.draft,
+      draft: input.draft,
       objectFirst: nextObjectFirstDraft,
     }),
   };
-}
-
-export function buildLegacySharedHouseRoofCommitDraft(input: {
-  draft: EstimateDrawingDraft;
-  objectFirstDraft: ObjectFirstWorkbenchDraftVNext;
-  roof: HouseFormRoofIntentModel;
-}): EstimateDrawingDraft {
-  const firstHouseFormId = input.objectFirstDraft.houseAssembly?.houseForms[0]?.id ?? null;
-  if (!firstHouseFormId) {
-    return updateEstimateDrawingObjectFirstWorkbenchDraft({
-      draft: input.draft,
-      objectFirst: input.objectFirstDraft,
-    });
-  }
-  const result = buildHouseFormRoofIntentCommitDraft({
-    ...input,
-    houseFormId: firstHouseFormId,
-    mirrorToLegacyModules: true,
-  });
-  return result.ok ? result.draft : input.draft;
 }

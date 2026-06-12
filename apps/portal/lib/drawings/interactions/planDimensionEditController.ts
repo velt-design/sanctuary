@@ -1,4 +1,4 @@
-import type { AttachmentSide } from '@sp/costing';
+import type { AttachmentSide } from '@sp/geometry';
 import type { EstimateDrawingFootprintEdit } from '@/lib/estimates/drawingEdits';
 import type {
   ObjectWorkbenchDeckPatch,

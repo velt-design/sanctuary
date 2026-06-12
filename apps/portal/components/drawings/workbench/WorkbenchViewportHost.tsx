@@ -4,7 +4,7 @@ import type {
   GeometryTopProjectionShape,
   GeometryTopProjectionViewModel,
 } from '@sp/geometry';
-import type { ModuleViewsStatus, ModuleViewsTab } from '@/app/staff/calculator/ModuleViewsCard';
+import type { WorkbenchViewStatus, WorkbenchViewTab } from '@/lib/drawings/workbenchViewTypes';
 import type { DeckInteractionTelemetry } from '@/lib/drawings/interactions/deckInteractionContract';
 import type {
   DrawingWorkbenchViewportMode,
@@ -42,13 +42,12 @@ import SheetViewport from '@/components/drawings/viewports/SheetViewport';
 import styles from './DrawingWorkbench.module.css';
 
 type WorkbenchViewportHostProps = {
-  moduleLabel: string;
-  activeModuleIndex: number;
-  view: ModuleViewsTab;
+  sheetLabel: string;
+  view: WorkbenchViewTab;
   viewportMode: DrawingWorkbenchViewportMode;
   objectWorkbenchDisplayFamily?: ObjectWorkbenchDisplayFamily;
   visibility?: DrawingWorkbenchVisibilityState;
-  status: ModuleViewsStatus;
+  status: WorkbenchViewStatus;
   viewportGeometry?: WorkbenchViewportGeometry | null;
   projectViewportGeometry?: WorkbenchViewportGeometry | null;
   projectGeometryPreview?: GeometryPreviewState | null;
@@ -130,8 +129,7 @@ type WorkbenchViewportHostProps = {
 };
 
 export default function WorkbenchViewportHost({
-  moduleLabel,
-  activeModuleIndex,
+  sheetLabel,
   view,
   viewportMode,
   objectWorkbenchDisplayFamily = 'pergolas',
@@ -207,7 +205,7 @@ export default function WorkbenchViewportHost({
     <div className={styles.viewport}>
       {viewportMode === 'sheet' ? (
         <SheetViewport
-          moduleLabel={moduleLabel}
+          sheetLabel={sheetLabel}
           view={view}
           status={status}
           drawingSurfaceGeometry={routedDrawingSurfaceGeometry}
@@ -248,7 +246,7 @@ export default function WorkbenchViewportHost({
           geometryPreview={routedGeometryPreview}
           objectWorkbenchDisplayFamily={objectWorkbenchDisplayFamily}
           visibility={visibility}
-          viewportKey={geometryViewportKey ?? `${objectWorkbenchDisplayFamily}:${activeModuleIndex}`}
+          viewportKey={geometryViewportKey ?? `${objectWorkbenchDisplayFamily}:project`}
           viewportState={geometryViewportState}
           onViewportStateChange={onGeometryViewportStateChange}
           selectedObjectId={activeObjectRef?.objectId}

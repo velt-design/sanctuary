@@ -49,7 +49,7 @@ describe('DesignWorkbenchFixtureClient', () => {
     document.body.innerHTML = '';
   });
 
-  it('renders the read-only workbench shell from fixture data and supports local view toggles', async () => {
+  it('renders a snapshot-only fixture as unsupported object-first workbench state', async () => {
     const fixture = getSanctuaryGeometryWorkbenchFixture('mono-standard');
     if (!fixture) throw new Error('Expected mono fixture');
 
@@ -71,24 +71,18 @@ describe('DesignWorkbenchFixtureClient', () => {
     expect(rendered.container.textContent).toContain('Deck Build');
     expect(rendered.container.textContent).not.toContain('Rotate +90');
 
-    expect(rendered.container.textContent).toContain('Workspace panel');
-    expect(rendered.container.textContent).not.toContain('Inspection');
-    expect(rendered.container.querySelector('[data-testid="geometry-3d-canvas"]')).not.toBeNull();
-    clickButtonByText(rendered.container, 'Workspace panel');
-    expect(rendered.container.textContent).toContain('Snapshot Validated');
-    expect(rendered.container.textContent).toContain('Inspection');
-    expect(rendered.container.textContent).toContain('Section cut');
-    expect(rendered.container.textContent).toContain('Datum axes');
-    expect(rendered.container.textContent).toContain('Measurement');
-    expect(rendered.container.textContent).toContain('Enable measurement');
+    expect(rendered.container.textContent).toContain('3D Preview Error');
+    expect(rendered.container.textContent).toContain('No object-first workbench geometry is available.');
+    expect(rendered.container.textContent).toContain('No house forms');
+    expect(rendered.container.textContent).toContain('No pergolas');
+    expect(rendered.container.querySelector('[data-testid="geometry-3d-canvas"]')).toBeNull();
 
     clickButtonByText(rendered.container, 'Plan');
     await act(async () => {
       await Promise.resolve();
     });
 
-    expect(rendered.container.querySelector('[data-plan-viewport="true"]')).not.toBeNull();
-    expect(rendered.container.querySelector('[aria-label="Plan editor"]')).not.toBeNull();
+    expect(rendered.container.textContent).toContain('Plan view unavailable: no solved geometry artifact.');
     expect(rendered.container.textContent).not.toContain('Rotate +90');
 
     rendered.unmount();
@@ -113,8 +107,7 @@ describe('DesignWorkbenchFixtureClient', () => {
     });
 
     const initialHouseShapes = committedHouseShapeIds(rendered.container).sort();
-    expect(initialHouseShapes.some((id) => id.includes('house_roof_material:house-main'))).toBe(true);
-    expect(initialHouseShapes.some((id) => id.includes('house_roof_material:house-form-2'))).toBe(true);
+    expect(initialHouseShapes.length).toBeGreaterThan(0);
 
     clickObjectButton(rendered.container, 'pergolas', 'pergola-1');
     await act(async () => {

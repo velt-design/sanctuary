@@ -1,4 +1,4 @@
-import type { AttachmentSide } from '@sp/costing';
+import type { AttachmentSide } from '@sp/geometry';
 import type { ObjectWorkbenchDeckPatch } from '@/lib/drawings/state/objectWorkbenchInspectorModel';
 import type {
   ObjectWorkbenchPlanDeckInteraction,
@@ -80,7 +80,7 @@ export type DeckDragSession = ObjectInteractionSessionBase & {
   grabbedPointDepthFromNearEdgeM: number;
   dragSource: ObjectWorkbenchPlanDeckInteraction['dragSource'];
   dragCoordinateSpace: ObjectWorkbenchPlanDeckInteraction['dragCoordinateSpace'];
-  pointerResolverSource: 'top_projection_inverse' | 'legacy_plan_resolver' | 'svg_fallback';
+  pointerResolverSource: 'top_projection_inverse' | 'object_outline_plan_resolver' | 'svg_fallback';
   interaction: ObjectWorkbenchPlanDeckInteraction;
   svgInteraction: DeckSvgInteraction;
 };
@@ -856,7 +856,7 @@ export function buildDeckDragSession(input: {
     pointerResolverSource: input.startDragPlanPoint
       ? requiresProjectionResolver
         ? 'top_projection_inverse'
-        : 'legacy_plan_resolver'
+        : 'object_outline_plan_resolver'
       : 'svg_fallback',
     interaction,
     svgInteraction: input.svgInteraction,

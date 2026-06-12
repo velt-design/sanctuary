@@ -306,9 +306,8 @@ export function ModuleDrawingRenderer({
 }: ModuleDrawingRendererProps) {
   const hasSolvedDrawingSurfaceGeometry = drawingSurfaceGeometry?.source === 'solved_geometry';
   const isModel = presentation === 'model';
-  const effectivePlanModel =
-    hasSolvedDrawingSurfaceGeometry && isModel ? null : drawingSurfaceGeometry?.legacyPlanModel ?? planModel ?? null;
-  const effectiveSectionModel = drawingSurfaceGeometry?.legacySectionModel ?? sectionModel ?? null;
+  const effectivePlanModel = hasSolvedDrawingSurfaceGeometry && isModel ? null : planModel ?? null;
+  const effectiveSectionModel = sectionModel ?? null;
   const effectiveGeometrySection = hasSolvedDrawingSurfaceGeometry ? drawingSurfaceGeometry?.geometrySection ?? null : null;
   const effectiveModelSpacePergolaGeometry = hasSolvedDrawingSurfaceGeometry ? drawingSurfaceGeometry.geometryPlan : null;
   const effectiveModelSpaceTopProjection = hasSolvedDrawingSurfaceGeometry ? drawingSurfaceGeometry.geometryTopProjection : null;
@@ -605,7 +604,6 @@ export function ModuleDrawingRenderer({
     </div>
   );
 }
-
 
 
 

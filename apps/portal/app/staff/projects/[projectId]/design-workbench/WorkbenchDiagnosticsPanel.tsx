@@ -7,7 +7,7 @@ import {
 } from '@/components/drawings/rail/objectRailShared';
 import type { GeometryPreviewState } from '@/lib/drawings/geometry/buildWorkbenchGeometryPreview';
 import type {
-  DrawingWorkbenchCompatibilitySelectionState,
+  DrawingWorkbenchRouteSelectionState,
   DrawingWorkbenchUiState,
 } from '@/lib/drawings/state/drawingWorkbenchUiState';
 import type { ObjectWorkbenchInspectorFacade } from '@/lib/drawings/state/objectWorkbenchInspectorModel';
@@ -16,7 +16,7 @@ import styles from './DesignWorkbenchEstimateClient.module.css';
 type WorkbenchDiagnosticsPanelProps = {
   objectWorkbench: ObjectWorkbenchInspectorFacade;
   ui: DrawingWorkbenchUiState;
-  compatibilitySelection: DrawingWorkbenchCompatibilitySelectionState;
+  routeSelection: DrawingWorkbenchRouteSelectionState;
   geometryPreview: GeometryPreviewState;
 };
 
@@ -49,7 +49,7 @@ function formatRidgeAxis(value: string | null, notUsedLabel: string): string {
 export default function WorkbenchDiagnosticsPanel({
   objectWorkbench,
   ui,
-  compatibilitySelection,
+  routeSelection,
   geometryPreview,
 }: WorkbenchDiagnosticsPanelProps) {
   const diagnostics = objectWorkbench.diagnostics;
@@ -113,7 +113,7 @@ export default function WorkbenchDiagnosticsPanel({
         </div>
         <div className={styles.diagnosticRow}>
           <span className={styles.diagnosticLabel}>Workbench mode</span>
-          <span className={styles.diagnosticValue}>{compatibilitySelection.workbenchMode}</span>
+          <span className={styles.diagnosticValue}>{routeSelection.workbenchMode}</span>
         </div>
         <div className={styles.diagnosticRow}>
           <span className={styles.diagnosticLabel}>Active trust</span>

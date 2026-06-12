@@ -1,6 +1,6 @@
-import type { WorkbenchPergolaRenderStatus } from '@/lib/drawings/geometry/deriveWorkbenchGeometry';
 import {
   labelForWorkbenchTrustStatus,
+  type WorkbenchPergolaRenderStatus,
   type WorkbenchTrustStatus,
   type WorkbenchTrustStatusKind,
 } from './workbenchSolvedModel';
@@ -84,7 +84,7 @@ const FAMILY_DESCRIPTORS: Record<
     addActionLabels: [],
     emptyTitle: 'No house form selected',
     emptyMessage:
-      'Select the compatibility house form to edit footprint, roof, and attachment context in this slice.',
+      'Select a house form to edit its footprint, roof, and attachment context.',
   },
   decks: {
     family: 'decks',
@@ -146,10 +146,7 @@ function railStatusForTrustStatus(status: WorkbenchTrustStatusKind): DrawingWork
     case 'invalid_geometry':
     case 'unresolved_host':
       return 'blocked';
-    case 'legacy_unsupported_family':
-      return 'deferred';
     case 'approximate':
-    case 'legacy_fallback':
       return 'approximate';
     case 'geometry_ready':
     default:
@@ -163,9 +160,6 @@ function resolveModuleTrustStatus(trust: WorkbenchTrustStatus): WorkbenchTrustSt
   }
   if (trust.status === 'unresolved_host' || trust.issues.includes('unresolved_host')) {
     return 'unresolved_host';
-  }
-  if (trust.status === 'legacy_unsupported_family' && trust.issues.includes('legacy_fallback')) {
-    return 'legacy_fallback';
   }
   if (trust.status === 'approximate' || trust.issues.includes('approximate')) {
     return 'approximate';
@@ -288,14 +282,6 @@ function resolvePergolaEntryStatus(input: {
         (pergolaStatus?.confidence === 'low' ? 'approximate' : 'geometry_ready');
   const trustLabel = buildTrustLabel(trustStatus);
   if (!isFreestanding && input.attachmentResolution?.status === 'unresolved') {
-    return {
-      status: railStatusForTrustStatus(trustStatus),
-      trustStatus,
-      trustLabel,
-      statusLabel: trustLabel,
-    };
-  }
-  if (input.moduleStates.some((module) => module.planRenderStatus === 'legacy_unsupported_family')) {
     return {
       status: railStatusForTrustStatus(trustStatus),
       trustStatus,

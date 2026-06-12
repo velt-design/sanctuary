@@ -1,6 +1,6 @@
 'use client';
 
-import type { ModuleViewsStatus, ModuleViewsTab } from '@/app/staff/calculator/ModuleViewsCard';
+import type { WorkbenchViewStatus, WorkbenchViewTab } from '@/lib/drawings/workbenchViewTypes';
 import type { PlanViewModel } from '@/lib/drawings/views/plan/buildPlanViewModel';
 import type { WorkbenchDrawingSurfaceGeometry } from '@/lib/drawings/views/workbenchDrawingSurfaceGeometry';
 import type { EstimateDrawingField, EstimateDrawingFootprintEdit } from '@/lib/estimates/drawingEdits';
@@ -9,7 +9,7 @@ import SheetComposer, { type SheetComposerDocument } from '@/components/drawings
 import styles from './SheetViewport.module.css';
 
 export default function SheetViewport({
-  moduleLabel,
+  sheetLabel,
   view,
   status,
   drawingSurfaceGeometry,
@@ -20,9 +20,9 @@ export default function SheetViewport({
   onCommitField,
   onCommitFootprintEdit,
 }: {
-  moduleLabel: string;
-  view: ModuleViewsTab;
-  status: ModuleViewsStatus;
+  sheetLabel: string;
+  view: WorkbenchViewTab;
+  status: WorkbenchViewStatus;
   drawingSurfaceGeometry?: WorkbenchDrawingSurfaceGeometry | null;
   planViewModel?: PlanViewModel | null;
   meta: EstimateDrawingSheetMeta;
@@ -37,7 +37,7 @@ export default function SheetViewport({
   ) => Promise<{ ok: boolean; error?: string }> | { ok: boolean; error?: string };
 }) {
   const document: SheetComposerDocument = {
-    moduleLabel,
+    sheetLabel,
     view,
     status,
     drawingSurfaceGeometry,

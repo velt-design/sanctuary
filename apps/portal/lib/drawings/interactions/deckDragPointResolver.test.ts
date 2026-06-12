@@ -7,7 +7,7 @@ import {
 describe('deck drag point resolver', () => {
   it('uses only the top-projection resolver for projection-backed deck drags', () => {
     const deckPoint = { x: 1, y: 2 };
-    const legacyPlanPointResolver = vi.fn(() => ({ x: 9, y: 9 }));
+    const objectOutlinePlanPointResolver = vi.fn(() => ({ x: 9, y: 9 }));
 
     expect(
       resolveDeckDragPlanPoint({
@@ -15,10 +15,10 @@ describe('deck drag point resolver', () => {
         clientY: 20,
         projectionBackedDeckDrag: true,
         deckDragPointResolver: () => deckPoint,
-        legacyPlanPointResolver,
+        objectOutlinePlanPointResolver,
       }),
     ).toBe(deckPoint);
-    expect(legacyPlanPointResolver).not.toHaveBeenCalled();
+    expect(objectOutlinePlanPointResolver).not.toHaveBeenCalled();
   });
 
   it('blocks projection-backed deck drags when the top-projection resolver is missing', () => {
@@ -28,13 +28,13 @@ describe('deck drag point resolver', () => {
         clientY: 20,
         projectionBackedDeckDrag: true,
         deckDragPointResolver: null,
-        legacyPlanPointResolver: () => ({ x: 9, y: 9 }),
+        objectOutlinePlanPointResolver: () => ({ x: 9, y: 9 }),
       }),
     ).toBeNull();
   });
 
-  it('falls back to the legacy plan resolver for non-projection drags', () => {
-    const legacyPoint = { x: 3, y: 4 };
+  it('falls back to the object outline plan resolver for non-projection drags', () => {
+    const objectOutlinePoint = { x: 3, y: 4 };
 
     expect(
       resolveDeckDragPlanPoint({
@@ -42,14 +42,14 @@ describe('deck drag point resolver', () => {
         clientY: 20,
         projectionBackedDeckDrag: false,
         deckDragPointResolver: null,
-        legacyPlanPointResolver: () => legacyPoint,
+        objectOutlinePlanPointResolver: () => objectOutlinePoint,
       }),
-    ).toBe(legacyPoint);
+    ).toBe(objectOutlinePoint);
   });
 
   it('detects projection-backed drag metadata', () => {
     expect(isProjectionBackedDeckDrag({ dragSource: 'top_projection_committed' })).toBe(true);
     expect(isProjectionBackedDeckDrag({ dragCoordinateSpace: 'top_projection_world_m' })).toBe(true);
-    expect(isProjectionBackedDeckDrag({ dragSource: 'legacy', dragCoordinateSpace: 'legacy_plan_m' })).toBe(false);
+    expect(isProjectionBackedDeckDrag({ dragSource: 'diagnostic_plan_reference', dragCoordinateSpace: 'object_outline_plan_m' })).toBe(false);
   });
 });

@@ -7,7 +7,7 @@ import styles from './RightInspectorPanel.module.css';
  * PR-W3b (2026-05-23) — scaffold for the CAD-style right-inspector slot.
  *
  * This is a *placeholder* implementation. PR-W3c moves the per-object input
- * sections (currently in SanctuaryWorkbenchRail) into here, one family at a
+ * sections into here, one family at a
  * time. PR-W3d finishes by deleting the now-empty per-object input UI from
  * the left rail (the left rail then carries VISIBILITY + OBJECTS TREE only).
  *

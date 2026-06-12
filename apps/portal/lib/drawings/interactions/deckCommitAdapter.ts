@@ -1,4 +1,4 @@
-import type { AttachmentSide } from '@sp/costing';
+import type { AttachmentSide } from '@sp/geometry';
 import type { CalculatorHouseFootprintPolygonPoint } from '@/lib/types/calculator';
 import type { ObjectWorkbenchDeckPatch } from '@/lib/drawings/state/objectWorkbenchInspectorModel';
 import type {
@@ -15,7 +15,7 @@ const DECK_COMMIT_FRAME_POINT_SPAN_TOLERANCE_M = 0.25;
 
 export type DeckCommitTransformSource =
   | 'none'
-  | 'legacy_plan'
+  | 'object_outline_plan'
   | 'same_frame'
   | 'top_projection_to_object_frame'
   | 'missing_frame';
@@ -24,7 +24,7 @@ export type DeckCommitTransformDiagnostics = {
   renderFrameId: string | null;
   commitFrameId: string | null;
   renderCoordinateSpace: DeckDragSession['dragCoordinateSpace'] | 'unknown';
-  commitCoordinateSpace: 'object_frame_m' | 'legacy_plan_m' | 'unknown';
+  commitCoordinateSpace: 'object_frame_m' | 'object_outline_plan_m' | 'unknown';
   transformSource: DeckCommitTransformSource;
 };
 
@@ -526,8 +526,8 @@ export function resolveDeckCommitTransformDiagnostics(input: {
       renderFrameId: renderFrame?.sourceEdgeId ?? null,
       commitFrameId: commitFrame?.sourceEdgeId ?? null,
       renderCoordinateSpace: input.session.dragCoordinateSpace ?? 'unknown',
-      commitCoordinateSpace: 'legacy_plan_m',
-      transformSource: 'legacy_plan',
+      commitCoordinateSpace: 'object_outline_plan_m',
+      transformSource: 'object_outline_plan',
     };
   }
   return {

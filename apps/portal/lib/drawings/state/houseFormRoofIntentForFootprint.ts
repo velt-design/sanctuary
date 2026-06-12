@@ -4,7 +4,6 @@ import {
   getHouseRoofFormBehavior,
   type Polygon3,
 } from "@sp/geometry";
-import type { CalculatorHouseFootprintPolygonPoint } from "@/lib/types/calculator";
 import type {
   HouseFormFootprintModel,
   HouseFormModel,
@@ -20,8 +19,10 @@ import { resolveDerivedRidgeAxis } from "./houseRoofFormRidgeAxis";
 const FALLBACK_PRESET_WIDTH_MM = 6000;
 const FALLBACK_PRESET_DEPTH_MM = 3000;
 
+type HouseFootprintLocalPoint = HouseFormFootprintModel["polygon"][number];
+
 function footprintLocalPolygonToGeometryPolygon(
-  polygon: CalculatorHouseFootprintPolygonPoint[],
+  polygon: HouseFootprintLocalPoint[],
 ): Polygon3 {
   return polygon.map((point) => ({
     x: Number(point.alongM) * 1000,
@@ -34,7 +35,7 @@ function resolveHouseFormFootprintSideLocalPolygon(input: {
   footprint: HouseFormFootprintModel;
   fallbackWidthMm?: number;
   fallbackDepthMm?: number;
-}): CalculatorHouseFootprintPolygonPoint[] {
+}): HouseFootprintLocalPoint[] {
   if (
     input.footprint.mode === "custom_polygon" &&
     input.footprint.polygon.length
@@ -62,7 +63,7 @@ export function resolveHouseFormRoofIntentForFootprint(input: {
   houseForm: Pick<HouseFormModel, "footprint" | "roofIntent"> &
     Partial<Pick<HouseFormModel, "roofIntentAuthored">>;
   nextFootprint?: HouseFormFootprintModel;
-  footprintPolygon?: CalculatorHouseFootprintPolygonPoint[] | null;
+  footprintPolygon?: HouseFootprintLocalPoint[] | null;
 }): HouseFormRoofIntentForFootprintResolution {
   const authoredResolution = resolveHouseRoofIntentForAuthorship({
     roofIntent: input.houseForm.roofIntent,
@@ -125,7 +126,7 @@ export function deriveHouseFormRoofIntentForFootprint(input: {
   houseForm: Pick<HouseFormModel, "footprint" | "roofIntent"> &
     Partial<Pick<HouseFormModel, "roofIntentAuthored">>;
   nextFootprint?: HouseFormFootprintModel;
-  footprintPolygon?: CalculatorHouseFootprintPolygonPoint[] | null;
+  footprintPolygon?: HouseFootprintLocalPoint[] | null;
 }): HouseFormRoofIntentModel {
   return resolveHouseFormRoofIntentForFootprint(input).roofIntent;
 }

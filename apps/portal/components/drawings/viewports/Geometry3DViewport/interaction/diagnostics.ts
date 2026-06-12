@@ -239,9 +239,8 @@ export function houseRoofQaSummary(
 }
 
 export function previewModeLabel(previewMode: GeometryPreviewMode): string {
-  if (previewMode === "snapshot_validated") return "Snapshot Validated";
-  if (previewMode === "snapshot_local_resolved") return "Snapshot Resolved Locally";
-  return "Draft Resolved Locally";
+  if (previewMode === "project_solved") return "Project Solved";
+  return "Draft Project Solved";
 }
 
 export function objectSummary(

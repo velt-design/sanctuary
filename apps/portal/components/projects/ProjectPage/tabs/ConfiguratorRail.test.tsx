@@ -2,7 +2,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import type { CalculatorModuleInputs } from '@/lib/types/calculator';
 import type { EstimateDrawingField } from '@/lib/estimates/drawingEdits';
-import ConfiguratorRail from './ConfiguratorRail';
+import ConfiguratorRail from "./ConfiguratorRail";
 
 function makeModule(overrides: Partial<CalculatorModuleInputs> = {}): CalculatorModuleInputs {
   const base: Partial<CalculatorModuleInputs> = {

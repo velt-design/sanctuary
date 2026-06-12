@@ -1,24 +1,21 @@
 import type { Polygon3 } from '@sp/geometry';
 import type {
-  CalculatorHouseFootprintPolygonPoint,
-} from '@/lib/types/calculator';
-import type {
-  HouseFirstRoofDraft,
+  HouseFormFootprintModel,
   HouseRoofPrimaryFallDirection,
   HouseRoofRidgeAxis,
-} from './houseFirstWorkbenchModel';
+} from './objectFirstWorkbenchModel';
+
+type HouseFootprintLocalPoint = HouseFormFootprintModel['polygon'][number];
 
 /**
- * Roof-form normalisers — the lowest layer of the
- * `houseRoofFormAdapter` decomposition. Pure helpers that translate raw
- * roof-draft and footprint values into the strict types the rest of the
- * roof pipeline expects.
+ * Roof-form normalisers. Pure helpers translate raw roof-draft and footprint
+ * values into the strict types the rest of the object-first roof pipeline
+ * expects.
  *
  * Co-located with `localPolygonToGeometryPolygon` because the ridge-axis
  * and validation modules both need to lift the 2D footprint polygon into
  * a 3D `Polygon3` and depend transitively on this module. Placing the
- * helper here breaks the otherwise circular dependency with
- * `houseFirstWorkbenchAdapter` (which still imports the normalisers).
+ * helper here keeps ridge-axis derivation independent from UI state.
  *
  * `isBlankString` is duplicated locally rather than imported back from
  * the adapter so this module stays free of upstream cycles. The
@@ -31,7 +28,7 @@ function isBlankString(value: string | null | undefined): boolean {
 }
 
 export function localPolygonToGeometryPolygon(
-  polygon: CalculatorHouseFootprintPolygonPoint[],
+  polygon: HouseFootprintLocalPoint[],
 ): Polygon3 {
   return polygon.map((point) => ({
     x: Number(point.alongM) * 1000,
@@ -45,7 +42,7 @@ export function normalizeRoofDraftPitch(value: string | null | undefined, fallba
 }
 
 export function normalizeRoofPrimaryFallDirection(
-  value: HouseFirstRoofDraft['primaryFallDirection'] | null | undefined,
+  value: unknown,
 ): HouseRoofPrimaryFallDirection | null {
   if (
     value === 'positive_x' ||
@@ -59,13 +56,13 @@ export function normalizeRoofPrimaryFallDirection(
 }
 
 export function normalizeRoofRidgeAxis(
-  value: HouseFirstRoofDraft['ridgeAxis'] | null | undefined,
+  value: unknown,
 ): HouseRoofRidgeAxis | null {
   return value === 'y' ? 'y' : value === 'x' ? 'x' : null;
 }
 
 export function normalizeRoofOpenGableEndIds(
-  value: HouseFirstRoofDraft['openGableEndIds'] | null | undefined,
+  value: unknown,
 ): string[] {
   if (!Array.isArray(value)) return [];
   return [...new Set(

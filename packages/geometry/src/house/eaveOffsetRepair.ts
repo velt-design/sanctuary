@@ -52,6 +52,7 @@ function eaveOffsetFailureCode(roof: HouseRoofBuildResult): string | null {
         reason?.includes('self_intersecting_merged_face') ||
         reason?.includes('missing_source_edge_face') ||
         reason?.includes('missing_source_edge_contact') ||
+        reason?.includes('invalid_source_edge_coverage_face') ||
         reason === 'roof_area_mismatch' ||
         reason === 'self_intersecting_eave_polygon' ||
         reason === 'invalid_eave_polygon',
@@ -91,6 +92,28 @@ function stampRepairMetadata(input: {
   };
 }
 
+function stampRoofMetadata(
+  roof: HouseRoofBuildResult,
+  metadata: GeometryMetadata | undefined,
+): HouseRoofBuildResult {
+  if (!metadata || Object.keys(metadata).length === 0) return roof;
+  return {
+    ...roof,
+    roofPlanes: roof.roofPlanes.map((plane) => ({
+      ...plane,
+      metadata: { ...plane.metadata, ...metadata },
+    })),
+    roofFeatures: roof.roofFeatures.map((feature) => ({
+      ...feature,
+      metadata: { ...feature.metadata, ...metadata },
+    })),
+    metadata: {
+      ...roof.metadata,
+      ...metadata,
+    },
+  };
+}
+
 function repairCandidateOffsets(requestedEaveOverhangMm: number): number[] {
   const candidates: number[] = [];
   for (
@@ -108,6 +131,9 @@ export function buildHippedRoofWithEaveOffsetRepair(input: {
   footprint: Polygon3;
   requestedEaveOverhangMm: number;
   initialEavePolygon: Polygon3;
+  initialEaveMetadata?: GeometryMetadata;
+  topologyAwareEavePolygon?: Polygon3 | null;
+  topologyAwareEaveMetadata?: GeometryMetadata;
   buildRoof: (candidate: {
     sourceFootprint: Polygon3;
     eavePolygon: Polygon3;
@@ -120,11 +146,21 @@ export function buildHippedRoofWithEaveOffsetRepair(input: {
   repairCode: string | null;
   effectiveEaveOverhangMm: number;
 } {
-  const initialRoof = input.buildRoof({
-    sourceFootprint: input.footprint,
-    eavePolygon: input.initialEavePolygon,
-  });
-  if (stringMetadata(initialRoof.metadata, 'roofQaStatus') === 'valid') {
+  const initialRoof = stampRoofMetadata(
+    input.buildRoof({
+      sourceFootprint: input.footprint,
+      eavePolygon: input.initialEavePolygon,
+    }),
+    input.initialEaveMetadata,
+  );
+  const initialEaveTopologyStatus = stringMetadata(
+    input.initialEaveMetadata,
+    'eaveOffsetTopologyStatus',
+  );
+  if (
+    stringMetadata(initialRoof.metadata, 'roofQaStatus') === 'valid' &&
+    initialEaveTopologyStatus !== 'invalid'
+  ) {
     return {
       roof: initialRoof,
       eavePolygon: input.initialEavePolygon,
@@ -151,6 +187,32 @@ export function buildHippedRoofWithEaveOffsetRepair(input: {
       repairCode: null,
       effectiveEaveOverhangMm: input.requestedEaveOverhangMm,
     };
+  }
+
+  if (input.topologyAwareEavePolygon && !eavePolygonTopologyCode(input.topologyAwareEavePolygon)) {
+    const topologyAwareRoof = stampRoofMetadata(
+      input.buildRoof({
+        sourceFootprint: input.footprint,
+        eavePolygon: input.topologyAwareEavePolygon,
+      }),
+      {
+        ...input.topologyAwareEaveMetadata,
+        eaveOffsetTopologyStatus:
+          input.topologyAwareEaveMetadata?.eaveOffsetTopologyStatus === 'valid'
+            ? 'resolved'
+            : input.topologyAwareEaveMetadata?.eaveOffsetTopologyStatus ?? null,
+      },
+    );
+    if (stringMetadata(topologyAwareRoof.metadata, 'roofQaStatus') === 'valid') {
+      return {
+        roof: topologyAwareRoof,
+        eavePolygon: input.topologyAwareEavePolygon,
+        sourceFootprint: input.footprint,
+        repairStatus: 'none',
+        repairCode: null,
+        effectiveEaveOverhangMm: input.requestedEaveOverhangMm,
+      };
+    }
   }
 
   for (const candidateOffsetMm of repairCandidateOffsets(

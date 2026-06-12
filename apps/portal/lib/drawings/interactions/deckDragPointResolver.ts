@@ -15,9 +15,9 @@ export function resolveDeckDragPlanPoint(input: {
   clientY: number;
   projectionBackedDeckDrag: boolean;
   deckDragPointResolver: PlanPointResolver;
-  legacyPlanPointResolver: PlanPointResolver;
+  objectOutlinePlanPointResolver: PlanPointResolver;
 }): PlanPoint | null {
   const deckPoint = input.deckDragPointResolver?.(input.clientX, input.clientY) ?? null;
   if (input.projectionBackedDeckDrag) return deckPoint;
-  return deckPoint ?? input.legacyPlanPointResolver?.(input.clientX, input.clientY) ?? null;
+  return deckPoint ?? input.objectOutlinePlanPointResolver?.(input.clientX, input.clientY) ?? null;
 }

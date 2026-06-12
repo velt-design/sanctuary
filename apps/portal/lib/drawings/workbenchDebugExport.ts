@@ -8,12 +8,10 @@ import type {
 } from './state/drawingWorkbenchUiState';
 
 export type WorkbenchDebugFixtureExport = {
-  snapshot: Record<string, unknown> | null;
   objectFirst: EstimateDrawingDraft['objectFirst'] | null;
   selectedState: {
     activeObjectRef: DrawingWorkbenchUiState['activeObjectRef'];
     activePergolaId: string | null;
-    activeModuleIndex: number;
     viewportMode: DrawingWorkbenchUiState['viewportMode'];
   };
   renderDiagnostics: {
@@ -25,7 +23,6 @@ export type WorkbenchDebugFixtureExport = {
 };
 
 export function buildWorkbenchDebugFixtureExport(input: {
-  snapshot: Record<string, unknown> | null;
   draft: EstimateDrawingDraft | null | undefined;
   ui: DrawingWorkbenchUiState;
   projectGeometryPreview: GeometryPreviewState | null | undefined;
@@ -34,12 +31,10 @@ export function buildWorkbenchDebugFixtureExport(input: {
   projectPergolaRenderHealth: ReadonlyArray<ProjectPergolaRenderHealth>;
 }): WorkbenchDebugFixtureExport {
   return {
-    snapshot: input.snapshot,
     objectFirst: input.draft?.objectFirst ?? null,
     selectedState: {
       activeObjectRef: input.ui.activeObjectRef,
       activePergolaId: input.ui.activePergolaId,
-      activeModuleIndex: input.ui.activeModuleIndex,
       viewportMode: input.ui.viewportMode,
     },
     renderDiagnostics: {

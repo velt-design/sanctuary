@@ -528,11 +528,11 @@ describe("PlanViewport", () => {
       );
     });
 
-    it("uses projectionOverride instead of active artifact house bodies", () => {
-      const activeModuleHouseRoof = makeShape({
-        id: "house_surface_solid:active-module-house-roof",
-        sourceObjectId: "active-module-house-roof",
-        sourceId: "active-module-house-roof",
+    it("uses projectionOverride instead of stale artifact house bodies", () => {
+      const staleArtifactHouseRoof = makeShape({
+        id: "house_surface_solid:stale-artifact-house-roof",
+        sourceObjectId: "stale-artifact-house-roof",
+        sourceId: "stale-artifact-house-roof",
         sourceType: "house_surface_solid",
         family: "house",
         kind: "roof",
@@ -586,7 +586,7 @@ describe("PlanViewport", () => {
 
       const markup = renderToStaticMarkup(
         <PlanViewport
-          artifact={makeArtifact([activeModuleHouseRoof])}
+          artifact={makeArtifact([staleArtifactHouseRoof])}
           projectionOverride={makeProjection([
             projectHouseTwoReference,
             projectHouseTwoRoof,
@@ -617,7 +617,7 @@ describe("PlanViewport", () => {
         'data-plan-hit-shape-id="house_roof_material:house-form-2:project-roof-material"',
       );
       expect(markup).not.toContain(
-        'data-plan-shape-id="house_surface_solid:active-module-house-roof"',
+        'data-plan-shape-id="house_surface_solid:stale-artifact-house-roof"',
       );
     });
 

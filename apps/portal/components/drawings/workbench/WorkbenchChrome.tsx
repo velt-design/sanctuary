@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import type { ModuleViewsTab } from '@/app/staff/calculator/ModuleViewsCard';
+import type { WorkbenchViewTab } from '@/lib/drawings/workbenchViewTypes';
 import type { DrawingWorkbenchViewportMode } from '@/lib/drawings/state/drawingWorkbenchUiState';
 import styles from './DrawingWorkbench.module.css';
 
@@ -11,7 +11,7 @@ type PrimaryNavItem = {
   id: PrimaryNavId;
   label: string;
   viewportMode: DrawingWorkbenchViewportMode;
-  view: ModuleViewsTab | null;
+  view: WorkbenchViewTab | null;
 };
 
 // Order matches the CAD-style header mockup (3D Review → Plan Editor → Sheet
@@ -30,8 +30,8 @@ function activeNavId(viewportMode: DrawingWorkbenchViewportMode): PrimaryNavId |
 }
 
 type WorkbenchChromeProps = {
-  view: ModuleViewsTab;
-  onViewChange: (view: ModuleViewsTab) => void;
+  view: WorkbenchViewTab;
+  onViewChange: (view: WorkbenchViewTab) => void;
   viewportMode: DrawingWorkbenchViewportMode;
   onViewportModeChange: (mode: DrawingWorkbenchViewportMode) => void;
   backHref?: string;

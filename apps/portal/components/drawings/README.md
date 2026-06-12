@@ -6,14 +6,14 @@ UI components for the portal drawing workbench live here. Domain state, geometry
 
 - `workbench`: top-level workbench shell, viewport mode switch, and high-level workbench composition.
 - `viewports`: Model Space, Sheet View, 3D viewport, draw-outline tools, and viewport interaction presentation.
-- `rail`: `ObjectWorkbenchRail`, compatibility `ConfiguratorRail`, inspectors, and object editing controls.
+- `rail`: `ObjectWorkbenchRail`, inspectors, and object editing controls.
 - `sheets`: sheet composition UI such as `SheetComposer`.
 - `renderers`: reusable drawing renderers when extracted from viewports.
 
 ## Rules
 
 - Keep object-first UI wired through the workbench store and derived models.
-- Keep compatibility rail behavior explicit. `ConfiguratorRail` remains for the estimates tab compatibility surface.
+- Keep calculator/estimate UI such as `ConfiguratorRail` under estimates or calculator ownership, not drawing workbench ownership.
 - Do not make drawing components own costing, Supabase persistence, or package geometry solving.
 - Add component tests next to the component when behavior is non-trivial.
 

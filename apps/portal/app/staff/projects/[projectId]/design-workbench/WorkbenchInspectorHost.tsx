@@ -11,14 +11,11 @@ import type {
   RunRoofCommit,
 } from '@/components/drawings/rail/objectWorkbenchRailTypes';
 import workbenchRailStyles from '@/components/drawings/rail/WorkbenchRail.module.css';
-import type { ObjectWorkbenchGeometryEditState } from '@/lib/drawings/geometry/geometryEditAdapter';
 import type { DrawingWorkbenchStore } from '@/lib/drawings/state/drawingWorkbenchStore';
 import type {
   DrawingWorkbenchRailTab,
   DrawingWorkbenchUiState,
 } from '@/lib/drawings/state/drawingWorkbenchUiState';
-import type { CalculatorModuleInputs } from '@/lib/types/calculator';
-import HouseFormAttachmentContextPanel from './HouseFormAttachmentContextPanel';
 import { buildPergolaSelectionUiState } from './pergolaSelectionState';
 import PergolaInspector from './PergolaInspector';
 import type { ObjectWorkbenchActions } from './useObjectWorkbenchActions';
@@ -38,31 +35,24 @@ import type { ObjectWorkbenchSelectionActions } from './useObjectWorkbenchSelect
  * host renders the left nav; this host renders the right inspector. Action
  * dispatch is shared; the surfaces are independent visual mounts.
  *
- * After PR-W3d retires the legacy per-object input rails entirely, this
- * host is the only consumer of those inspector components; the rail's
- * inspector slot disappears.
+ * This host is the right-side inspector consumer for object-first workbench
+ * state; the left rail remains navigation and visibility only.
  */
 
 type WorkbenchInspectorHostProps = {
-  activeModuleInput: CalculatorModuleInputs | null;
-  geometryEditState: ObjectWorkbenchGeometryEditState | null;
   isLocked: boolean;
   objectSelectionActions: ObjectWorkbenchSelectionActions;
   objectWorkbenchActions: ObjectWorkbenchActions;
   setUi: Dispatch<SetStateAction<DrawingWorkbenchUiState>>;
   store: DrawingWorkbenchStore;
-  supportsSanctuaryEditing: boolean;
 };
 
 export default function WorkbenchInspectorHost({
-  activeModuleInput,
-  geometryEditState,
   isLocked,
   objectSelectionActions,
   objectWorkbenchActions,
   setUi,
   store,
-  supportsSanctuaryEditing,
 }: WorkbenchInspectorHostProps) {
   const activePergolaModel =
     store.derived.objectWorkbench.activePergola ??
@@ -72,7 +62,6 @@ export default function WorkbenchInspectorHost({
     store.ui.activeObjectFamily === 'pergolas' && store.ui.activeObjectRef.objectId
       ? store.ui.activeObjectRef.objectId
       : store.derived.objectWorkbench.activePergola?.id ??
-        activeModuleInput?.pergolaId ??
         store.derived.railModel.objectLists.pergolas[0]?.ref.objectId ??
         null;
 
@@ -125,7 +114,7 @@ export default function WorkbenchInspectorHost({
     ? objectSelectionActions.startDeckOutlineEditor
     : undefined;
   const canEditFootprint = Boolean(
-    store.derived.activeModule?.assemblyModel.capabilities.canEditHouseFootprint,
+    store.derived.railModel.selectedInspector.hasSelection,
   );
   const canStartDrawOutline = !isLocked;
   const selectedHouseFormIdForRoofCommit =
@@ -202,18 +191,6 @@ export default function WorkbenchInspectorHost({
     // context). The duplicate "Attachment Context" outer wrapper in
     // HouseFormInspector went away, so the embedded rail's own section
     // title now reads cleanly inside the DIMENSIONS bin.
-    const dimensionsPanel =
-      supportsSanctuaryEditing && activeModuleInput ? (
-        <HouseFormAttachmentContextPanel
-          moduleLabel={store.derived.activeModuleLabel}
-          geometryState={geometryEditState}
-          view={store.ui.activeView}
-          disabled={isLocked}
-          canStartDrawOutline={!isLocked}
-          onStartDrawOutline={objectSelectionActions.startDrawOutlineEditor}
-          onCommitGeometryEdit={!isLocked ? objectWorkbenchActions.commitGeometryIntent : undefined}
-        />
-      ) : null;
     const activeHouseFormId = store.ui.activeObjectRef.objectId ?? null;
     const canRemoveActiveHouseForm =
       !isLocked &&
@@ -232,7 +209,7 @@ export default function WorkbenchInspectorHost({
           runFootprintCommit={runFootprintCommit}
           runStartOutline={runStartOutline}
           runRoofCommit={runRoofCommit}
-          dimensionsPanel={dimensionsPanel}
+          dimensionsPanel={null}
         />
         {canRemoveActiveHouseForm && activeHouseFormId ? (
           <section className={workbenchRailStyles.section}>
@@ -270,10 +247,6 @@ export default function WorkbenchInspectorHost({
         </section>
       );
     }
-    const pergolaInspectorModules = store.persisted.modules.map((module) => ({
-      id: module.drawingModule.input.pergolaId ?? module.id,
-      label: module.label,
-    }));
     const perObjectPergolaOptions = store.derived.solvedProject.pergolas.map((pergola) => ({
       id: pergola.id,
       label: pergola.label,
@@ -282,21 +255,12 @@ export default function WorkbenchInspectorHost({
       <div data-active-workbench-object={activeObjectKey}>
         <PergolaInspector
           activePergolaModel={activePergolaModel}
-          activeModuleInput={activeModuleInput}
-          activeModuleLabel={store.derived.activeModuleLabel}
           activePergolaId={store.derived.activePergola?.id ?? store.ui.activePergolaId}
           disabled={isLocked}
-          geometryState={geometryEditState}
-          houseAssembly={store.derived.houseAssembly}
-          modules={perObjectPergolaOptions.length ? perObjectPergolaOptions : pergolaInspectorModules}
-          supportsSanctuaryEditing={supportsSanctuaryEditing}
-          view={store.ui.activeView}
+          modules={perObjectPergolaOptions}
           onOpenHouseForms={() => handleRailTabSelect('house_forms')}
           onSelectPergola={handleCanonicalPergolaSelection}
-          onStartDrawOutline={objectSelectionActions.startDrawOutlineEditor}
-          onCommitGeometryEdit={!isLocked ? objectWorkbenchActions.commitGeometryIntent : undefined}
           onCommitAttachment={!isLocked ? objectWorkbenchActions.commitSharedPergolaAttachment : undefined}
-          activeAssembly={store.derived.activeModule?.solution?.geometryArtifact?.assembly ?? null}
         />
       </div>
     );

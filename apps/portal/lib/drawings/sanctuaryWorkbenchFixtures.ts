@@ -108,7 +108,7 @@ const FIXTURES: SanctuaryGeometryWorkbenchFixture[] = [
       parityCritical: true,
       shapeFamily: 'mono',
       houseRoofForm: 'hipped',
-      expectedModule: {
+      expectedPergola: {
         lengthM: 6,
         projectionM: 3,
         roofMaterial: 'acrylic',
@@ -148,7 +148,7 @@ const FIXTURES: SanctuaryGeometryWorkbenchFixture[] = [
       }),
       'Mono Standard',
     ),
-    moduleLabels: ['M1 - Mono Standard - 6m x 3m - Acrylic'],
+    sheetLabels: ['M1 - Mono Standard - 6m x 3m - Acrylic'],
     estimate: {
       id: 'est_00000000-0000-4000-8000-000000000101',
       versionLabel: 'V-FIX-M1',
@@ -171,7 +171,7 @@ const FIXTURES: SanctuaryGeometryWorkbenchFixture[] = [
       parityCritical: true,
       shapeFamily: 'gable',
       houseRoofForm: 'hipped',
-      expectedModule: {
+      expectedPergola: {
         lengthM: 6.5,
         projectionM: 4,
         roofMaterial: 'mixed',
@@ -207,7 +207,7 @@ const FIXTURES: SanctuaryGeometryWorkbenchFixture[] = [
       }),
       'Gable Standard',
     ),
-    moduleLabels: ['M1 - Gable Standard - 6.5m x 4m - Insulated'],
+    sheetLabels: ['M1 - Gable Standard - 6.5m x 4m - Insulated'],
     estimate: {
       id: 'est_00000000-0000-4000-8000-000000000102',
       versionLabel: 'V-FIX-G1',
@@ -230,7 +230,7 @@ const FIXTURES: SanctuaryGeometryWorkbenchFixture[] = [
       parityCritical: true,
       shapeFamily: 'box',
       houseRoofForm: 'hipped',
-      expectedModule: {
+      expectedPergola: {
         lengthM: 5.5,
         projectionM: 3.5,
         roofMaterial: 'timber',
@@ -272,7 +272,7 @@ const FIXTURES: SanctuaryGeometryWorkbenchFixture[] = [
       }),
       'Box Standard',
     ),
-    moduleLabels: ['M1 - Box Standard - 5.5m x 3.5m - Timber'],
+    sheetLabels: ['M1 - Box Standard - 5.5m x 3.5m - Timber'],
     estimate: {
       id: 'est_00000000-0000-4000-8000-000000000103',
       versionLabel: 'V-FIX-B1',
@@ -295,7 +295,7 @@ const FIXTURES: SanctuaryGeometryWorkbenchFixture[] = [
       parityCritical: true,
       shapeFamily: 'gable',
       houseRoofForm: 'hipped',
-      expectedModule: {
+      expectedPergola: {
         lengthM: 5,
         projectionM: 5,
         roofMaterial: 'acrylic',
@@ -306,7 +306,7 @@ const FIXTURES: SanctuaryGeometryWorkbenchFixture[] = [
       },
     },
     ...makeGableUHippedScreenshotFixtureSource(),
-    moduleLabels: ['M1 - Gable U Hipped Screenshot - 5m x 5m - Acrylic'],
+    sheetLabels: ['M1 - Gable U Hipped Screenshot - 5m x 5m - Acrylic'],
     estimate: {
       id: 'est_00000000-0000-4000-8000-000000000124',
       versionLabel: 'V-FIX-U1',
@@ -329,7 +329,7 @@ const FIXTURES: SanctuaryGeometryWorkbenchFixture[] = [
       parityCritical: true,
       shapeFamily: 'gable',
       houseRoofForm: 'mono',
-      expectedModule: {
+      expectedPergola: {
         lengthM: 5,
         projectionM: 5,
         roofMaterial: 'acrylic',
@@ -340,7 +340,7 @@ const FIXTURES: SanctuaryGeometryWorkbenchFixture[] = [
       },
     },
     ...makeMonoJoinScreenshotFixtureSource(),
-    moduleLabels: ['M1 - Mono Join Screenshot - 5m x 5m - Trapezoidal 5 Rib'],
+    sheetLabels: ['M1 - Mono Join Screenshot - 5m x 5m - Trapezoidal 5 Rib'],
     estimate: {
       id: 'est_00000000-0000-4000-8000-000000000125',
       versionLabel: 'V-FIX-U2',

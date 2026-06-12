@@ -273,7 +273,7 @@ export const MULTI_OBJECT_SANCTUARY_GEOMETRY_WORKBENCH_FIXTURES: SanctuaryGeomet
       parityCritical: false,
       shapeFamily: 'mono',
       houseRoofForm: 'hipped',
-      expectedModule: {
+      expectedPergola: {
         lengthM: 5.8,
         projectionM: 2.6,
         roofMaterial: 'acrylic',
@@ -284,7 +284,7 @@ export const MULTI_OBJECT_SANCTUARY_GEOMETRY_WORKBENCH_FIXTURES: SanctuaryGeomet
       },
     },
     ...makeMultiHouseUTwoPergolaFixtureSource(),
-    moduleLabels: ['M1 - Multi House U Pergola 1 - 5.8m x 2.6m - Acrylic'],
+    sheetLabels: ['M1 - Multi House U Pergola 1 - 5.8m x 2.6m - Acrylic'],
     estimate: {
       id: 'est_00000000-0000-4000-8000-000000000126',
       versionLabel: 'V-FIX-MULTI-U',
@@ -307,7 +307,7 @@ export const MULTI_OBJECT_SANCTUARY_GEOMETRY_WORKBENCH_FIXTURES: SanctuaryGeomet
       parityCritical: false,
       shapeFamily: 'mono',
       houseRoofForm: 'hipped',
-      expectedModule: {
+      expectedPergola: {
         lengthM: 5.8,
         projectionM: 2.6,
         roofMaterial: 'acrylic',
@@ -318,7 +318,7 @@ export const MULTI_OBJECT_SANCTUARY_GEOMETRY_WORKBENCH_FIXTURES: SanctuaryGeomet
       },
     },
     ...makeMultiHouseCustomProjectionFixtureSource(),
-    moduleLabels: ['M1 - Multi House Custom Projection - 5.8m x 2.6m - Acrylic'],
+    sheetLabels: ['M1 - Multi House Custom Projection - 5.8m x 2.6m - Acrylic'],
     estimate: {
       id: 'est_00000000-0000-4000-8000-000000000127',
       versionLabel: 'V-FIX-MULTI-CUSTOM',

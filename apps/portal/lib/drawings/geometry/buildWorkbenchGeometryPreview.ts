@@ -16,27 +16,20 @@ export function buildWorkbenchGeometryPreview(input: {
   projectId: string;
   estimateId: string;
   designRequestId?: string | null;
-  snapshot: Record<string, unknown> | null;
   draft?: EstimateDrawingDraft | null;
-  moduleIndex: number;
   objectWorkbenchProjectModel?: WorkbenchProjectModel | null;
 }): GeometryPreviewState {
   const geometryContext = buildObjectWorkbenchGeometryContext({
-    snapshot: input.snapshot,
     draft: input.draft,
     projectModel: input.objectWorkbenchProjectModel,
   });
   const solvedModel = buildWorkbenchSolvedModel({
-    snapshot: input.snapshot,
-    draft: input.draft,
-    activeModuleIndex: input.moduleIndex,
     geometryIdentity: {
       projectId: input.projectId,
       estimateId: input.estimateId,
       designRequestId: input.designRequestId ?? null,
     },
     projectModel: geometryContext.projectModel,
-    objectWorkbenchGeometryContext: geometryContext,
   });
 
   return buildGeometryPreviewStateFromSolvedModel(solvedModel);

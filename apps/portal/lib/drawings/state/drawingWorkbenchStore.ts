@@ -1,46 +1,40 @@
-import type { ModuleViewsStatus } from '@/app/staff/calculator/ModuleViewsCard';
-import type { ModulePlanModel, ModuleSectionModel } from '@/app/staff/calculator/moduleViews';
-import type { GeometryPlanViewModel, GeometryTopProjectionViewModel } from '@sp/geometry';
-import { buildAssemblyModel } from '@/lib/drawings/assembly/buildAssemblyModel';
-import type { DrawingAssemblyModel } from '@/lib/drawings/assembly/types';
-import type {
-  WorkbenchPergolaRenderSource,
-  WorkbenchPergolaRenderStatus,
-} from '@/lib/drawings/geometry/deriveWorkbenchGeometry';
-import { buildObjectWorkbenchGeometryContext } from '@/lib/drawings/geometry/objectWorkbenchGeometryContext';
-import { buildPlanViewModel, type PlanViewModel } from '@/lib/drawings/views/plan/buildPlanViewModel';
+import type { EstimateDrawingDraft } from '@/lib/estimates/drawingEdits';
+import type { DeckInteractionCapability } from '@/lib/drawings/interactions/deckInteractionContract';
+import type { PlanViewModel } from '@/lib/drawings/views/plan/buildPlanViewModel';
 import {
   buildWorkbenchDrawingSurfaceGeometry,
   type WorkbenchDrawingSurfaceGeometry,
 } from '@/lib/drawings/views/workbenchDrawingSurfaceGeometry';
-import { buildEstimateDrawingModules, type EstimateDrawingModule } from '@/lib/estimates/moduleDrawing';
-import { mergeEstimateDrawingDraftIntoSnapshot, type EstimateDrawingDraft } from '@/lib/estimates/drawingEdits';
-import type { DeckInteractionCapability } from '@/lib/drawings/interactions/deckInteractionContract';
 import {
-  deriveDrawingWorkbenchCompatibilitySelection,
   normalizeDrawingWorkbenchUiState,
   type DrawingWorkbenchUiState,
 } from './drawingWorkbenchUiState';
 import {
-  resolveObjectFirstPergolaAttachment,
   resolveObjectFirstOpeningHost,
-  type ObjectFirstPergolaAttachmentResolution,
+  resolveObjectFirstPergolaAttachment,
   type ObjectFirstOpeningHostResolution,
+  type ObjectFirstPergolaAttachmentResolution,
 } from './objectFirstDerivedHosting';
 import {
   buildDrawingWorkbenchRailModel,
   type DrawingWorkbenchRailModel,
 } from './drawingWorkbenchRailModel';
-import {
-  buildObjectFirstWorkbenchProjectModelFromLegacyEstimateSnapshot,
-} from './legacyEstimateSnapshotAdapter';
 import type { WorkbenchDeckSupportDiagnostic } from './deckSupportDiagnostics';
 import {
   buildObjectWorkbenchInspectorFacade,
   type ObjectWorkbenchInspectorFacade,
 } from './objectWorkbenchInspectorModel';
 import { buildObjectWorkbenchStatusFacade } from './objectWorkbenchStatusModel';
-import { resolveObjectWorkbenchHouseOverlayInput } from './objectWorkbenchHouseOverlayInput';
+import {
+  EMPTY_WORKBENCH_PROJECT_MODEL,
+  buildWorkbenchProjectModelFromObjectFirstDraft,
+  type ObjectFirstWorkbenchDraftVNext,
+  type HouseAssemblyModel,
+  type HouseFormModel,
+  type OpeningObjectModel,
+  type PergolaObjectModel,
+  type WorkbenchProjectModel,
+} from './objectFirstWorkbenchModel';
 import {
   appendWorkbenchTrustIssues,
   buildWorkbenchSolvedModel,
@@ -49,76 +43,34 @@ import {
   type SolvedPergola,
   type WorkbenchGeometryIdentity,
   type WorkbenchSolvedModel,
-  type WorkbenchSolvedModule,
   type WorkbenchSolvedProject,
-  type WorkbenchViewportGeometry,
   type WorkbenchTrustGateModel,
   type WorkbenchTrustStatus,
   type WorkbenchTrustStatusKind,
+  type WorkbenchViewportGeometry,
 } from './workbenchSolvedModel';
-import { countObjectFirstPergolaSolveSources } from './objectFirstPergolaSolveSources';
-import type {
-  HouseAssemblyModel,
-  HouseFormModel,
-  OpeningObjectModel,
-  PergolaObjectModel,
-  WorkbenchProjectModel,
-} from './objectFirstWorkbenchModel';
 
-type DrawingWorkbenchModuleEntry = {
-  id: string;
-  label: string;
-  drawingModule: EstimateDrawingModule;
-  assemblyModel: DrawingAssemblyModel;
-  planViewModel: PlanViewModel | null;
-  drawingSurfaceGeometry: WorkbenchDrawingSurfaceGeometry;
-  geometryPlanViewModel: GeometryPlanViewModel | null;
-  geometryTopProjectionViewModel: GeometryTopProjectionViewModel | null;
-  viewportGeometry: WorkbenchViewportGeometry;
-  planRenderSource: WorkbenchPergolaRenderSource;
-  planRenderStatus: WorkbenchPergolaRenderStatus;
-  planModel: ModulePlanModel | null;
-  sectionModel: ModuleSectionModel | null;
-  solution: WorkbenchSolvedModule;
-};
+type WorkbenchViewsStatus = 'loading' | 'ready' | 'error' | 'empty';
 
 type WorkbenchDeckInteractionDiagnostic = DeckInteractionCapability;
 
 export type DrawingWorkbenchStore = {
   persisted: {
-    snapshot: Record<string, unknown> | null;
-    ignoreModuleResults: boolean;
-    modules: DrawingWorkbenchModuleEntry[];
     projectModel: WorkbenchProjectModel;
   };
   ui: DrawingWorkbenchUiState;
   derived: {
-    moduleCount: number;
-    activeModuleIndex: number;
     solvedModel: WorkbenchSolvedModel;
-    /**
-     * PR-2B.1b.2 (2026-05-23): per-object spine view of the solve. Mirrors
-     * `solvedModel.modules` keyed by `PergolaObjectModel.id` instead of by
-     * legacy drawing-module array position. New consumers should target
-     * this; legacy `solvedModel.modules` + `activeSolution` stays for the
-     * remainder of the coexist period.
-     */
     solvedProject: WorkbenchSolvedProject;
-    /** PR-2B.1b.2: per-object active selection lifted from `activeSolution`. */
     activePergola: SolvedPergola | null;
-    activeSolution: WorkbenchSolvedModule | null;
     activeTrust: WorkbenchTrustStatus;
     activeTrustGate: WorkbenchTrustGateModel;
     exportReadiness: WorkbenchTrustGateModel;
     reviewReadiness: WorkbenchTrustGateModel;
-    activeModule: DrawingWorkbenchModuleEntry | null;
-    activeAssemblyModel: DrawingAssemblyModel | null;
     activePlanViewModel: PlanViewModel | null;
     activeDrawingSurfaceGeometry: WorkbenchDrawingSurfaceGeometry | null;
     activeViewportGeometry: WorkbenchViewportGeometry | null;
-    activeLegacyPlanModel: ModulePlanModel | null;
-    activeLegacySectionModel: ModuleSectionModel | null;
-    activeModuleLabel: string;
+    projectSheetLabel: string;
     houseAssembly: HouseAssemblyModel | null;
     houseForms: HouseFormModel[];
     houseFormCount: number;
@@ -146,200 +98,92 @@ export type DrawingWorkbenchStore = {
     pergolaAttachmentResolutions: Record<string, ObjectFirstPergolaAttachmentResolution>;
     activePergolaAttachmentResolution: ObjectFirstPergolaAttachmentResolution | null;
     unresolvedPergolaAttachmentCount: number;
-    status: ModuleViewsStatus;
+    status: WorkbenchViewsStatus;
   };
 };
 
-function resolveSolvedModuleViewsStatus(input: {
+function objectFirstDraftFromEstimateDraft(
+  draft: EstimateDrawingDraft | null | undefined,
+): unknown {
+  if (!draft || typeof draft !== 'object') return null;
+  return (draft as { objectFirst?: unknown }).objectFirst ?? null;
+}
+
+function statusFromViewportGeometry(input: {
   activeView: DrawingWorkbenchUiState['activeView'];
-  drawingSurfaceGeometry: WorkbenchDrawingSurfaceGeometry | null;
-}): ModuleViewsStatus {
-  const surface = input.drawingSurfaceGeometry;
-  if (!surface) return 'empty';
-  const artifact = surface.source === 'solved_geometry' ? surface.artifact : null;
+  viewportGeometry: WorkbenchViewportGeometry | null;
+}): WorkbenchViewsStatus {
+  const artifact = input.viewportGeometry?.artifact ?? null;
+  if (!artifact) return 'empty';
   if (input.activeView === 'section') {
-    if (artifact?.section) return 'ready';
-    return surface.source === 'legacy_fallback' && surface.legacyFallback.sectionModel ? 'ready' : 'empty';
+    return artifact.section ? 'ready' : 'empty';
   }
-  if (artifact?.plan && artifact.topProjection) return 'ready';
-  return surface.source === 'legacy_fallback' && surface.legacyFallback.planModel ? 'ready' : 'empty';
+  return artifact.plan && artifact.topProjection ? 'ready' : 'empty';
+}
+
+function activeTrustIssuesForObjectState(input: {
+  unresolvedOpeningHostCount: number;
+  unresolvedPergolaAttachmentCount: number;
+  selectedHouseStatus: ReturnType<typeof buildObjectWorkbenchStatusFacade>['selectedHouseFormStatus'];
+  status: ReturnType<typeof buildObjectWorkbenchStatusFacade>;
+}): WorkbenchTrustStatusKind[] {
+  const issues: WorkbenchTrustStatusKind[] = [];
+  if (input.unresolvedOpeningHostCount > 0 || input.unresolvedPergolaAttachmentCount > 0) {
+    issues.push('unresolved_host');
+  }
+  if (
+    input.selectedHouseStatus?.roof?.validationStatus === 'approximate' ||
+    input.selectedHouseStatus?.lowConfidence ||
+    (input.selectedHouseStatus?.warnings.length ?? 0) > 0
+  ) {
+    issues.push('approximate');
+  }
+  if (
+    Object.values(input.status.deckStatuses).some((deck) => deck.validation.status === 'invalid') ||
+    Object.values(input.status.openingStatuses).some(
+      (opening) =>
+        opening.validation.status === 'invalid' &&
+        opening.validation.codes.some((code) => code !== 'missing_host_wall'),
+    ) ||
+    input.selectedHouseStatus?.roof?.validationStatus === 'invalid'
+  ) {
+    issues.push('invalid_geometry');
+  }
+  return issues;
 }
 
 export function buildDrawingWorkbenchStore(input: {
-  snapshot: Record<string, unknown> | null;
   draft?: EstimateDrawingDraft | null;
   ui: DrawingWorkbenchUiState;
-  ignoreModuleResults?: boolean;
-  moduleLabels?: string[];
   geometryIdentity?: WorkbenchGeometryIdentity | null;
+  projectModel?: WorkbenchProjectModel | null;
 }): DrawingWorkbenchStore {
-  const effectiveSnapshot = mergeEstimateDrawingDraftIntoSnapshot(input.snapshot, input.draft);
-  const drawingModules = buildEstimateDrawingModules(effectiveSnapshot, {
-    ignoreModuleResults: input.ignoreModuleResults,
-  });
-  const projectModel = buildObjectFirstWorkbenchProjectModelFromLegacyEstimateSnapshot({
-    snapshot: input.snapshot,
-    draft: input.draft,
-    ignoreModuleResults: input.ignoreModuleResults,
-  });
+  const projectModel =
+    input.projectModel ??
+    buildWorkbenchProjectModelFromObjectFirstDraft(
+      objectFirstDraftFromEstimateDraft(input.draft) as Partial<ObjectFirstWorkbenchDraftVNext> | null,
+    ) ??
+    EMPTY_WORKBENCH_PROJECT_MODEL;
   const houseForms = projectModel.houseAssembly?.houseForms ?? [];
   const objectFirstDecks = projectModel.decks;
   const objectFirstOpenings = projectModel.openings;
   const objectFirstPergolas = projectModel.pergolas;
-  const runtimePergolaSolveSourceCount = countObjectFirstPergolaSolveSources({
-    projectModel,
-    drawingModules,
-  });
   const ui = normalizeDrawingWorkbenchUiState(input.ui, {
-    moduleCount: drawingModules.length + runtimePergolaSolveSourceCount,
     houseFormIds: houseForms.map((houseForm) => houseForm.id),
     pergolaIds: objectFirstPergolas.map((pergola) => pergola.id),
     deckIds: objectFirstDecks.map((deck) => deck.id),
     openingIds: objectFirstOpenings.map((opening) => opening.id),
   });
-  const compatibilitySelection = deriveDrawingWorkbenchCompatibilitySelection(ui);
-  const objectWorkbenchGeometryContext = buildObjectWorkbenchGeometryContext({
-    snapshot: input.snapshot,
-    draft: input.draft,
-    projectModel,
-    ignoreModuleResults: input.ignoreModuleResults,
-  });
+
   const solvedModel = buildWorkbenchSolvedModel({
-    snapshot: input.snapshot,
-    draft: input.draft,
-    ignoreModuleResults: input.ignoreModuleResults,
-    moduleLabels: input.moduleLabels,
-    activeModuleIndex: ui.activeModuleIndex,
-    activePergolaId: ui.activePergolaId,
     geometryIdentity: input.geometryIdentity,
     projectModel,
-    drawingModules,
-    objectWorkbenchGeometryContext,
   });
-  const selectedHouseOverlay = resolveObjectWorkbenchHouseOverlayInput({
-    activeObjectRef: ui.activeObjectRef,
-    houseForms,
-    projectHouseGeometries: solvedModel.projectHouseGeometries,
-  });
-  const objectWorkbenchOverlayStatus = buildObjectWorkbenchStatusFacade({
-    activeDeckId: null,
-    activeHouseFormId: selectedHouseOverlay.houseForm?.id ?? null,
-    activeModuleInput: undefined,
-    projectModel,
-  });
-  const modules = solvedModel.modules.map((solution) => {
-    const label = solution.label;
-    const geometryModule = solution.moduleInput;
-    const resolvedDrawingModule: EstimateDrawingModule = solution.drawingModule;
-    const planModel = solution.planModel;
-    const sectionModel = solution.sectionModel;
-    const viewportGeometry = solution.viewportGeometry;
-    const geometryPlanViewModel = solution.geometryPlan;
-    const geometryTopProjectionViewModel = solution.geometryTopProjection;
-    const planRenderSource = solution.renderSource;
-    const planRenderStatus = solution.renderStatus;
-    const assemblyModel = buildAssemblyModel({
-      id: solution.id,
-      label,
-      moduleIndex: solution.index,
-      moduleInput: geometryModule,
-      moduleResult: resolvedDrawingModule.result,
-      planModel,
-      sectionModel,
-    });
-    const planViewModel = buildPlanViewModel({
-      moduleId: solution.id,
-      moduleLabel: label,
-      planModel,
-      geometryArtifact: solution.geometryArtifact,
-      geometryPlan: geometryPlanViewModel,
-      geometryTopProjection: geometryTopProjectionViewModel,
-      geometryAssembly: solution.assembly,
-      pergolaRenderSource: planRenderSource,
-      pergolaRenderStatus: planRenderStatus,
-      canEditHouseFootprint: assemblyModel.capabilities.canEditHouseFootprint,
-      objectWorkbenchOverlayInput: ui.activeRailTab !== 'pergolas' && selectedHouseOverlay.houseForm
-        ? {
-            houseAssembly: projectModel.houseAssembly,
-            houseForm: selectedHouseOverlay.houseForm,
-            decks: objectFirstDecks,
-            openings: objectFirstOpenings,
-            selection: compatibilitySelection.activeHouseSelection,
-            geometryPlan: geometryPlanViewModel,
-            geometryTopProjection: geometryTopProjectionViewModel,
-            houseReferenceShape: selectedHouseOverlay.houseReferenceShape,
-            geometryAssembly: solution.assembly,
-            geometryRenderSource: planRenderSource,
-            geometryRenderStatus: planRenderStatus,
-            moduleLengthM: geometryModule.lengthM,
-            moduleProjectionM: geometryModule.projectionM,
-            status: objectWorkbenchOverlayStatus,
-          }
-        : null,
-    });
-    const drawingSurfaceGeometry = buildWorkbenchDrawingSurfaceGeometry({
-      viewportGeometry,
-      planViewModel,
-    });
-
-    return {
-      id: solution.id,
-      label,
-      drawingModule: resolvedDrawingModule,
-      assemblyModel,
-      planViewModel,
-      drawingSurfaceGeometry,
-      geometryPlanViewModel,
-      geometryTopProjectionViewModel,
-      viewportGeometry,
-      planRenderSource,
-      planRenderStatus,
-      planModel,
-      sectionModel,
-      solution,
-    };
-  });
-
-  const activeSolution = solvedModel.activeModule;
-  const activeModuleIndex = activeSolution
-    ? modules.findIndex((module) => module.solution.id === activeSolution.id)
-    : -1;
-  const activeModule =
-    activeModuleIndex >= 0
-      ? modules[activeModuleIndex] ?? null
-      : modules[ui.activeModuleIndex] ?? null;
-  const resolvedActiveModuleIndex =
-    activeModuleIndex >= 0 ? activeModuleIndex : ui.activeModuleIndex;
-  const resolvedActivePergolaId =
-    ui.activePergolaId ?? activeSolution?.moduleInput.pergolaId ?? activeModule?.drawingModule.input.pergolaId ?? null;
-  const normalizedUi =
-    ui.activeModuleIndex === resolvedActiveModuleIndex && ui.activePergolaId === resolvedActivePergolaId
-      ? ui
-      : {
-          ...ui,
-          activeModuleIndex: resolvedActiveModuleIndex,
-          activePergolaId: resolvedActivePergolaId,
-        };
-  // PR-2B.1b.2: surface per-object spine alongside legacy modules.
-  // `activePergolaId` is now the canonical selected pergola id; the legacy
-  // module index remains only as a temporary compatibility projection.
   const solvedProject = buildWorkbenchSolvedProject({
     solvedModel,
-    activePergolaId: resolvedActivePergolaId,
+    activePergolaId: ui.activePergolaId,
   });
-  const activeSolvedPergola = solvedProject.activePergola;
-  const activePergola =
-    objectFirstPergolas.find((pergola) => pergola.id === resolvedActivePergolaId) ??
-    objectFirstPergolas.find((pergola) => pergola.id === compatibilitySelection.activePergolaId) ??
-    objectFirstPergolas.find((pergola) => pergola.id === activeModule?.drawingModule.input.pergolaId) ??
-    objectFirstPergolas[0] ??
-    null;
-  const activeObjectFirstPergola =
-    ui.activeObjectFamily === 'pergolas'
-      ? objectFirstPergolas.find((pergola) => pergola.id === ui.activeObjectRef.objectId) ?? null
-      : activePergola
-        ? objectFirstPergolas.find((pergola) => pergola.id === activePergola.id) ?? null
-        : null;
+
   const activeHouseForm =
     ui.activeObjectFamily === 'house_forms'
       ? houseForms.find((houseForm) => houseForm.id === ui.activeObjectRef.objectId) ?? null
@@ -352,6 +196,13 @@ export function buildDrawingWorkbenchStore(input: {
     ui.activeObjectFamily === 'openings'
       ? objectFirstOpenings.find((opening) => opening.id === ui.activeObjectRef.objectId) ?? null
       : null;
+  const activeObjectFirstPergola =
+    ui.activeObjectFamily === 'pergolas'
+      ? objectFirstPergolas.find((pergola) => pergola.id === ui.activeObjectRef.objectId) ?? null
+      : ui.activePergolaId
+        ? objectFirstPergolas.find((pergola) => pergola.id === ui.activePergolaId) ?? null
+        : null;
+
   const openingHostResolutions = Object.fromEntries(
     objectFirstOpenings.map((opening) => [
       opening.id,
@@ -367,6 +218,7 @@ export function buildDrawingWorkbenchStore(input: {
   const unresolvedOpeningHostCount = Object.values(openingHostResolutions).filter(
     (resolution) => resolution.status === 'unresolved',
   ).length;
+
   const pergolaAttachmentResolutions = Object.fromEntries(
     objectFirstPergolas.map((pergola) => [
       pergola.id,
@@ -382,7 +234,6 @@ export function buildDrawingWorkbenchStore(input: {
   const objectWorkbenchStatus = buildObjectWorkbenchStatusFacade({
     activeDeckId: activeObjectFirstDeck?.id ?? null,
     activeHouseFormId: activeHouseForm?.id ?? null,
-    activeModuleInput: activeModule?.assemblyModel.moduleInput,
     projectModel,
   });
   const unresolvedPergolaAttachmentCount = Object.entries(pergolaAttachmentResolutions).filter(
@@ -390,32 +241,15 @@ export function buildDrawingWorkbenchStore(input: {
       resolution.status === 'unresolved' &&
       objectWorkbenchStatus.pergolaStatuses[pergolaId]?.connectionKind !== 'freestanding',
   ).length;
-  const additionalTrustIssues: WorkbenchTrustStatusKind[] = [];
-  const selectedHouseStatus = objectWorkbenchStatus.selectedHouseFormStatus;
-  if (unresolvedOpeningHostCount > 0 || unresolvedPergolaAttachmentCount > 0) {
-    additionalTrustIssues.push('unresolved_host');
-  }
-  if (
-    selectedHouseStatus?.roof?.validationStatus === 'approximate' ||
-    selectedHouseStatus?.lowConfidence ||
-    (selectedHouseStatus?.warnings.length ?? 0) > 0
-  ) {
-    additionalTrustIssues.push('approximate');
-  }
-  if (
-    Object.values(objectWorkbenchStatus.deckStatuses).some((deck) => deck.validation.status === 'invalid') ||
-    Object.values(objectWorkbenchStatus.openingStatuses).some(
-      (opening) =>
-        opening.validation.status === 'invalid' &&
-        opening.validation.codes.some((code) => code !== 'missing_host_wall'),
-    ) ||
-    selectedHouseStatus?.roof?.validationStatus === 'invalid'
-  ) {
-    additionalTrustIssues.push('invalid_geometry');
-  }
+
   const activeTrust = appendWorkbenchTrustIssues(
-    activeSolution?.trust ?? solvedModel.trust,
-    additionalTrustIssues,
+    solvedModel.trust,
+    activeTrustIssuesForObjectState({
+      unresolvedOpeningHostCount,
+      unresolvedPergolaAttachmentCount,
+      selectedHouseStatus: objectWorkbenchStatus.selectedHouseFormStatus,
+      status: objectWorkbenchStatus,
+    }),
   );
   const activeTrustGate = resolveWorkbenchTrustGate(activeTrust);
   const objectWorkbench = buildObjectWorkbenchInspectorFacade({
@@ -439,41 +273,32 @@ export function buildDrawingWorkbenchStore(input: {
     openingHostResolutions,
     pergolas: objectFirstPergolas,
     pergolaAttachmentResolutions,
-    modules: modules.map((module) => ({
-      pergolaId: module.drawingModule.input.pergolaId,
-      planRenderStatus: module.planRenderStatus,
-      trust: module.solution.trust,
-    })),
+    modules: [],
     activeTrust,
     status: objectWorkbenchStatus,
   });
+  const activeDrawingSurfaceGeometry = buildWorkbenchDrawingSurfaceGeometry({
+    viewportGeometry: solvedModel.projectViewportGeometry,
+    planViewModel: null,
+  });
+
   return {
     persisted: {
-      snapshot: effectiveSnapshot,
-      ignoreModuleResults: Boolean(input.ignoreModuleResults),
-      modules,
       projectModel,
     },
-    ui: normalizedUi,
+    ui,
     derived: {
-      moduleCount: modules.length,
-      activeModuleIndex: resolvedActiveModuleIndex,
       solvedModel,
       solvedProject,
-      activePergola: activeSolvedPergola,
-      activeSolution,
+      activePergola: solvedProject.activePergola,
       activeTrust,
       activeTrustGate,
       exportReadiness: activeTrustGate,
       reviewReadiness: activeTrustGate,
-      activeModule,
-      activeAssemblyModel: activeModule?.assemblyModel ?? null,
-      activePlanViewModel: activeModule?.planViewModel ?? null,
-      activeDrawingSurfaceGeometry: activeModule?.drawingSurfaceGeometry ?? null,
-      activeViewportGeometry: activeModule?.viewportGeometry ?? null,
-      activeLegacyPlanModel: activeModule?.drawingSurfaceGeometry.legacyPlanModel ?? null,
-      activeLegacySectionModel: activeModule?.drawingSurfaceGeometry.legacySectionModel ?? null,
-      activeModuleLabel: activeModule?.label ?? 'Module',
+      activePlanViewModel: null,
+      activeDrawingSurfaceGeometry,
+      activeViewportGeometry: solvedModel.projectViewportGeometry,
+      projectSheetLabel: 'Workbench project',
       houseAssembly: projectModel.houseAssembly,
       houseForms,
       houseFormCount: houseForms.length,
@@ -501,9 +326,9 @@ export function buildDrawingWorkbenchStore(input: {
       pergolaAttachmentResolutions,
       activePergolaAttachmentResolution,
       unresolvedPergolaAttachmentCount,
-      status: resolveSolvedModuleViewsStatus({
+      status: statusFromViewportGeometry({
         activeView: ui.activeView,
-        drawingSurfaceGeometry: activeModule?.drawingSurfaceGeometry ?? null,
+        viewportGeometry: solvedModel.projectViewportGeometry,
       }),
     },
   };

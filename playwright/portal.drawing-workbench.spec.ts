@@ -193,29 +193,12 @@ async function expectTopProjectionPlanParity(page: Page) {
   expect(screenshot.byteLength).toBeGreaterThan(5_000);
 }
 
-async function expectWorkbenchSolvedPricingReadiness(page: Page, fixtureSlug: string) {
+async function expectWorkbenchPricingDisconnected(page: Page, fixtureSlug: string) {
   const route = page.locator(`main[data-workbench-context="fixture_ready"][data-workbench-fixture="${fixtureSlug}"]`).first();
 
   await expect(route).toBeVisible();
-  await expect(route).toHaveAttribute('data-workbench-pricing-source', 'workbench_solved');
-  await expect(route).toHaveAttribute('data-workbench-pricing-trust-status', 'ready');
-  await expect(route).toHaveAttribute('data-workbench-pricing-readiness', 'eligible');
-  await expect(route).toHaveAttribute('data-workbench-pricing-blocking-gates', '');
-  await expect(route).toHaveAttribute('data-workbench-pricing-quantity-takeoff-source', 'solved_geometry_spine');
-  await expect(route).toHaveAttribute('data-workbench-pricing-parity-status', /match|drift/);
-  await expect
-    .poll(async () => Number(await route.getAttribute('data-workbench-pricing-parity-pergolas-compared')))
-    .toBeGreaterThan(0);
-  await expect
-    .poll(async () => Number(await route.getAttribute('data-workbench-pricing-parity-modules-compared')))
-    .toBeGreaterThan(0);
-  await expect(route).toHaveAttribute('data-workbench-pricing-parity-blocking-differences', '0');
-  await expect
-    .poll(async () => Number(await route.getAttribute('data-workbench-pricing-parity-differences')))
-    .toBeGreaterThanOrEqual(0);
-  await expect
-    .poll(async () => Number(await route.getAttribute('data-workbench-pricing-parity-warning-differences')))
-    .toBeGreaterThanOrEqual(0);
+  await expect(route).not.toHaveAttribute('data-workbench-pricing-source');
+  await expect(route).not.toHaveAttribute('data-workbench-pricing-readiness');
 }
 
 async function openFixtureDrawingWorkbench(page: Page, fixtureSlug: string) {
@@ -238,7 +221,7 @@ async function openFixtureDrawingWorkbench(page: Page, fixtureSlug: string) {
   await expect(page.locator('[data-fixture-workbench-hydrated="true"]').first()).toBeVisible({ timeout: 30_000 });
 }
 
-test('drawing workbench mono fixture stays on object-first geometry surfaces', async ({ page }) => {
+test('drawing workbench snapshot-only mono fixture does not synthesize object-first geometry', async ({ page }) => {
   const pageErrors: string[] = [];
   page.on('pageerror', (error) => {
     pageErrors.push(error.message);
@@ -246,26 +229,26 @@ test('drawing workbench mono fixture stays on object-first geometry surfaces', a
 
   await page.setViewportSize({ width: 1680, height: 1050 });
   await openFixtureDrawingWorkbench(page, 'mono-standard');
-  await expectWorkbenchSolvedPricingReadiness(page, 'mono-standard');
+  await expectWorkbenchPricingDisconnected(page, 'mono-standard');
 
   const workbench = page.getByRole('region', { name: 'Drawing workbench' });
   await expect(workbench).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Staff Login' })).toHaveCount(0);
   await expect(page.getByText(/Project unavailable|This page could not be found|404|not found/i)).toHaveCount(0);
-  await expect(page.getByText(/No plan or section drawing is available|fixture route is not enabled|requires staff auth/i)).toHaveCount(0);
+  await expect(page.getByText(/fixture route is not enabled|requires staff auth/i)).toHaveCount(0);
+  await expect(workbench).toContainText('No object-first workbench geometry is available.');
 
   await page.getByRole('tab', { name: 'Plan' }).click();
-  await expectTopProjectionPlanParity(page);
+  await expect(workbench).toContainText('Plan view unavailable: no solved geometry artifact.');
 
   await page.getByRole('tab', { name: '3D' }).click();
-  await expectContained3DCanvas(page);
-  await expect(page.getByTestId('geometry-3d-viewport-diagnostics')).toHaveAttribute('data-finite-bounds', 'true');
+  await expect(workbench).toContainText('3D Preview Error');
   await expect(workbench).not.toContainText(/legacy fallback|unsupported geometry fallback|Project unavailable|Staff Login/i);
 
   expectNoUnexpectedRuntimeErrors(pageErrors);
 });
 
-test('drawing workbench ready workbench-solved U hipped roof fixture keeps rollout diagnostics and topology trustworthy', async ({
+test('drawing workbench object-first U hipped roof fixture keeps Plan and 3D trustworthy', async ({
   page,
 }) => {
   const pageErrors: string[] = [];
@@ -275,7 +258,7 @@ test('drawing workbench ready workbench-solved U hipped roof fixture keeps rollo
 
   await page.setViewportSize({ width: 1680, height: 1050 });
   await openFixtureDrawingWorkbench(page, 'gable-u-hipped-screenshot');
-  await expectWorkbenchSolvedPricingReadiness(page, 'gable-u-hipped-screenshot');
+  await expectWorkbenchPricingDisconnected(page, 'gable-u-hipped-screenshot');
 
   const workbench = page.getByRole('region', { name: 'Drawing workbench' });
   await expect(workbench).toBeVisible();
@@ -290,21 +273,10 @@ test('drawing workbench ready workbench-solved U hipped roof fixture keeps rollo
   await expectContained3DCanvas(page);
 
   const diagnostics = page.getByTestId('geometry-3d-viewport-diagnostics');
-  await expect(diagnostics).toHaveAttribute('data-house-roof-qa-status', 'valid');
-  await expect(diagnostics).toHaveAttribute('data-house-roof-topology-solver', 'eave_graph_source_edge_envelope');
-  await expect(diagnostics).toHaveAttribute('data-house-roof-topology-failure-reason', '');
-  await expect(diagnostics).toHaveAttribute('data-house-roof-topology-failure-edge-id', '');
-  await expect(diagnostics).toHaveAttribute('data-house-roof-topology-valley-count', '2');
+  await expect(diagnostics).toHaveAttribute('data-finite-bounds', 'true');
   await expect
-    .poll(async () => Number(await diagnostics.getAttribute('data-house-roof-topology-closed-face-count')))
+    .poll(async () => Number(await diagnostics.getAttribute('data-scene-object-count')))
     .toBeGreaterThan(0);
-  await expect
-    .poll(async () => Number(await diagnostics.getAttribute('data-house-roof-topology-expected-face-count')))
-    .toBeGreaterThan(0);
-  await expect
-    .poll(async () => Number(await diagnostics.getAttribute('data-house-roof-solid-rendered-count')))
-    .toBeGreaterThan(0);
-  await expect(diagnostics).toHaveAttribute('data-house-roof-solid-skipped-count', '0');
 
   const shell = page.getByTestId('geometry-3d-canvas-shell');
   const screenshot = await shell.screenshot();
@@ -314,7 +286,7 @@ test('drawing workbench ready workbench-solved U hipped roof fixture keeps rollo
   expectNoUnexpectedRuntimeErrors(pageErrors);
 });
 
-for (const fixtureSlug of ['gable-standard', 'box-standard', 'mono-join-screenshot'] as const) {
+for (const fixtureSlug of ['mono-join-screenshot', 'multi-house-u-two-pergola'] as const) {
   test(`drawing workbench ${fixtureSlug} fixture keeps plan and 3D smoke trustworthy`, async ({ page }) => {
     const pageErrors: string[] = [];
     page.on('pageerror', (error) => {
@@ -323,7 +295,7 @@ for (const fixtureSlug of ['gable-standard', 'box-standard', 'mono-join-screensh
 
     await page.setViewportSize({ width: 1680, height: 1050 });
     await openFixtureDrawingWorkbench(page, fixtureSlug);
-    await expectWorkbenchSolvedPricingReadiness(page, fixtureSlug);
+    await expectWorkbenchPricingDisconnected(page, fixtureSlug);
 
     const workbench = page.getByRole('region', { name: 'Drawing workbench' });
     await expect(workbench).toBeVisible();

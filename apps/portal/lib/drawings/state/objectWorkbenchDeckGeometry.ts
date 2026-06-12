@@ -1,16 +1,15 @@
 import type {
-  CalculatorModuleInputs,
-  CalculatorHouseFootprintParams,
-  CalculatorHouseFootprintPolygonPoint,
-} from '@/lib/types/calculator';
-import type {
   DeckAttachmentMode,
   DeckFloatingPresetRect,
   DeckShape,
   DeckPresetRect,
+  HouseFormFootprintModel,
+  WorkbenchAttachmentSide,
 } from './objectFirstWorkbenchModel';
 
-type AttachmentSide = NonNullable<CalculatorModuleInputs['attachmentSide']>;
+type AttachmentSide = WorkbenchAttachmentSide;
+type HouseFootprintLocalPoint = HouseFormFootprintModel['polygon'][number];
+type HouseFootprintParams = HouseFormFootprintModel['params'];
 
 type LocalPolygonPoint = {
   alongM: number;
@@ -30,7 +29,7 @@ type DeckGeometryDraft = {
   isAttached?: boolean | null;
   presetRect?: DeckPresetRect | null;
   floatingRect?: DeckFloatingPresetRect | null;
-  outline?: CalculatorHouseFootprintPolygonPoint[] | null;
+  outline?: HouseFootprintLocalPoint[] | null;
 };
 
 type DeckHostEdgeFrame = {
@@ -122,7 +121,7 @@ function normalizeDeckCornerVertexId(deck: DeckGeometryDraft): string | null {
 }
 
 export function parseDeckLocalPolygon(
-  polygon: CalculatorHouseFootprintPolygonPoint[] | null | undefined,
+  polygon: HouseFootprintLocalPoint[] | null | undefined,
 ): LocalPolygonPoint[] {
   return (polygon ?? [])
     .map((point) => ({
@@ -133,9 +132,9 @@ export function parseDeckLocalPolygon(
 }
 
 export function buildDeckReferenceHousePolygon(input: {
-  housePolygon: CalculatorHouseFootprintPolygonPoint[] | null | undefined;
-  footprintParams: Pick<CalculatorHouseFootprintParams, 'offsetXM' | 'setbackM'> | null | undefined;
-}): CalculatorHouseFootprintPolygonPoint[] {
+  housePolygon: HouseFootprintLocalPoint[] | null | undefined;
+  footprintParams: Pick<HouseFootprintParams, 'offsetXM' | 'setbackM'> | null | undefined;
+}): HouseFootprintLocalPoint[] {
   const offsetXM = parseFiniteDeckMetres(input.footprintParams?.offsetXM ?? null) ?? 0;
   const setbackM = Math.max(0, parseFiniteDeckMetres(input.footprintParams?.setbackM ?? null) ?? 0);
   return parseDeckLocalPolygon(input.housePolygon).map((point) => ({
@@ -327,7 +326,7 @@ function pointInLocalPolygon(point: LocalPolygonPoint, polygon: LocalPolygonPoin
 }
 
 function resolveDeckCornerAttachmentCandidate(input: {
-  housePolygon: CalculatorHouseFootprintPolygonPoint[] | null | undefined;
+  housePolygon: HouseFootprintLocalPoint[] | null | undefined;
   primaryHostEdgeId: string | null | undefined;
   secondaryHostEdgeId: string | null | undefined;
   cornerVertexId: string | null | undefined;
@@ -379,7 +378,7 @@ function normalizeExactHostEdgeId(value: string | null | undefined): string | nu
 }
 
 export function resolveDeckHostEdgeFrame(input: {
-  housePolygon: CalculatorHouseFootprintPolygonPoint[] | null | undefined;
+  housePolygon: HouseFootprintLocalPoint[] | null | undefined;
   hostEdgeId: string | null | undefined;
 }): DeckHostEdgeFrame | null {
   const housePolygon = parseDeckLocalPolygon(input.housePolygon);
@@ -466,7 +465,7 @@ export function resolveDeckHostEdgeFrame(input: {
 }
 
 function resolveCompatibleDeckGeometryHostEdgeId(input: {
-  housePolygon: CalculatorHouseFootprintPolygonPoint[] | null | undefined;
+  housePolygon: HouseFootprintLocalPoint[] | null | undefined;
   semanticHostEdgeId: string | null | undefined;
   primaryHostEdgeId: string | null | undefined;
 }): string {
@@ -507,7 +506,7 @@ function fallbackPresetRect(input: {
 }
 
 export function sanitizeDeckPresetRect(input: {
-  housePolygon: CalculatorHouseFootprintPolygonPoint[] | null | undefined;
+  housePolygon: HouseFootprintLocalPoint[] | null | undefined;
   hostEdgeId: string | null | undefined;
   attached: boolean;
   presetRect: Partial<DeckPresetRect> | null | undefined;
@@ -603,7 +602,7 @@ export function sanitizeDeckFloatingPresetRect(
 }
 
 export function buildRectangularDeckOutline(input: {
-  housePolygon: CalculatorHouseFootprintPolygonPoint[] | null | undefined;
+  housePolygon: HouseFootprintLocalPoint[] | null | undefined;
   hostEdgeId: string | null | undefined;
   attached: boolean;
   attachmentMode?: DeckAttachmentMode | null | undefined;
@@ -612,7 +611,7 @@ export function buildRectangularDeckOutline(input: {
   cornerVertexId?: string | null | undefined;
   presetRect: Partial<DeckPresetRect> | null | undefined;
   fallbackPresetRect?: DeckPresetRect | null | undefined;
-}): CalculatorHouseFootprintPolygonPoint[] {
+}): HouseFootprintLocalPoint[] {
   const attachmentMode = normalizeDeckAttachmentMode({
     attachmentMode: input.attachmentMode,
     isAttached: input.attached,
@@ -664,7 +663,7 @@ export function buildRectangularDeckOutline(input: {
   const near = frame.edgeCoordinate + frame.outwardDirection * detachedGapM;
   const far = near + frame.outwardDirection * depthM;
 
-  const makePoint = (axisValue: number, outwardValue: number): CalculatorHouseFootprintPolygonPoint =>
+  const makePoint = (axisValue: number, outwardValue: number): HouseFootprintLocalPoint =>
     frame.axis === 'along'
       ? {
           alongM: formatDeckMetres(axisValue),
@@ -693,7 +692,7 @@ export function buildRectangularDeckOutline(input: {
 
 export function buildFloatingDeckOutline(input: {
   floatingRect: Partial<DeckFloatingPresetRect> | null | undefined;
-}): CalculatorHouseFootprintPolygonPoint[] {
+}): HouseFootprintLocalPoint[] {
   const floatingRect = sanitizeDeckFloatingPresetRect(input.floatingRect);
   if (!floatingRect) return [];
 
@@ -717,10 +716,10 @@ export function buildFloatingDeckOutline(input: {
 }
 
 export function inferDeckPresetRectFromOutline(input: {
-  housePolygon: CalculatorHouseFootprintPolygonPoint[] | null | undefined;
+  housePolygon: HouseFootprintLocalPoint[] | null | undefined;
   hostEdgeId: string | null | undefined;
   attached: boolean;
-  outline: CalculatorHouseFootprintPolygonPoint[] | null | undefined;
+  outline: HouseFootprintLocalPoint[] | null | undefined;
 }): DeckPresetRect | null {
   const frame = resolveDeckHostEdgeFrame({
     housePolygon: input.housePolygon,
@@ -759,7 +758,7 @@ export function inferDeckPresetRectFromOutline(input: {
 }
 
 export function inferDeckFloatingPresetRectFromOutline(input: {
-  outline: CalculatorHouseFootprintPolygonPoint[] | null | undefined;
+  outline: HouseFootprintLocalPoint[] | null | undefined;
 }): DeckFloatingPresetRect | null {
   const outline = parseDeckLocalPolygon(input.outline);
   if (outline.length < 3) return null;
@@ -781,7 +780,7 @@ export function inferDeckFloatingPresetRectFromOutline(input: {
 
 export function resolveDeckPresetGeometry(input: {
   deck: DeckGeometryDraft;
-  housePolygon: CalculatorHouseFootprintPolygonPoint[] | null | undefined;
+  housePolygon: HouseFootprintLocalPoint[] | null | undefined;
 }): {
   hostEdgeId: AttachmentSide | string | null;
   attachmentMode: DeckAttachmentMode;
@@ -790,7 +789,7 @@ export function resolveDeckPresetGeometry(input: {
   cornerVertexId: string | null;
   presetRect: DeckPresetRect | null;
   floatingRect: DeckFloatingPresetRect | null;
-  outline: CalculatorHouseFootprintPolygonPoint[];
+  outline: HouseFootprintLocalPoint[];
 } {
   const attached = Boolean(input.deck.isAttached);
   const normalizedAttachmentMode = normalizeDeckAttachmentMode({

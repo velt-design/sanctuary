@@ -171,7 +171,7 @@ describe('ModulePlanSvgPresentationModel', () => {
           ownerKind: 'footprint',
           ownerId: 'house',
           selected: true,
-          source: 'geometry_plan_fallback',
+          source: 'diagnostic_plan_reference',
         }),
         overlayShape({
           ownerKind: 'deck',

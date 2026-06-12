@@ -10,10 +10,11 @@ import {
   buildHouseModelRoofMaterialSceneObjects,
   buildHouseModelSceneObjects,
 } from '@sp/geometry';
-import type { CalculatorModuleInputs } from '@/lib/types/calculator';
 
 type ProjectPergolaViewerSceneSource = {
-  moduleInput: Pick<CalculatorModuleInputs, 'pergolaId'>;
+  moduleInput: {
+    pergolaId?: string | null;
+  };
   viewerScene: ViewerSceneModel | null;
 };
 

@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { HOUSE_ROOF_FORM_ORDER } from '@sp/geometry';
-import { HOUSE_FOOTPRINT_PRESET_OPTIONS } from '@/app/staff/calculator/ModuleViewsCard';
 import { normalizeHouseFootprintParams, type CalculatorHouseRoofMaterial } from '@/lib/types/calculator';
 import type {
   DeckObjectModel,
@@ -29,10 +28,16 @@ export const FOOTPRINT_MODE_OPTIONS: SelectOption[] = [
   { label: 'Draw outline', value: 'custom_polygon' },
 ];
 
-export const FOOTPRINT_OPTIONS: SelectOption[] = HOUSE_FOOTPRINT_PRESET_OPTIONS.map((option) => ({
-  label: option.label,
-  value: option.id,
-}));
+export const FOOTPRINT_OPTIONS: SelectOption[] = [
+  { label: 'Straight', value: 'straight' },
+  { label: 'L left', value: 'l_left' },
+  { label: 'L right', value: 'l_right' },
+  { label: 'Recess left', value: 'recess_left' },
+  { label: 'Recess right', value: 'recess_right' },
+  { label: 'U shape', value: 'u_shape' },
+  { label: 'Wrap left', value: 'wrap_left' },
+  { label: 'Wrap right', value: 'wrap_right' },
+];
 
 export const ATTACHMENT_SIDE_OPTIONS: SelectOption[] = [
   { label: 'Rear', value: 'rear' },
@@ -112,13 +117,13 @@ export function labelForRoofFieldSource(value: RoofFieldSourceValue | null | und
     case 'object_first_draft':
       return 'Explicit object draft';
     case 'house_first_draft':
-      return 'Explicit house draft';
+      return 'Imported house draft';
     case 'legacy_estimate_snapshot':
-      return 'Legacy estimate snapshot';
+      return 'Imported estimate snapshot';
     case 'legacy_shared_value':
-      return 'Legacy shared value';
+      return 'Imported shared value';
     case 'legacy_pergola_inference':
-      return 'Legacy pergola inference';
+      return 'Imported pergola inference';
     case 'default_fallback':
       return 'Default fallback';
     default:
@@ -129,11 +134,11 @@ export function labelForRoofFieldSource(value: RoofFieldSourceValue | null | und
 export function labelForRoofApproximationReason(value: string): string {
   switch (value) {
     case 'inferred_form':
-      return 'Roof form inferred from legacy pergola data';
+      return 'Roof form inferred from imported pergola data';
     case 'inferred_fall_direction':
-      return 'Mono fall direction inferred from legacy pergola data';
+      return 'Mono fall direction inferred from imported pergola data';
     case 'inferred_ridge_axis':
-      return 'Ridge axis inferred from legacy pergola data';
+      return 'Ridge axis inferred from imported pergola data';
     case 'ambiguous_ridge_axis':
       return 'Near-square rectangular footprint keeps a best-guess ridge axis';
     default:

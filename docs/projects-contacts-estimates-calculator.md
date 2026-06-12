@@ -69,24 +69,24 @@ Costing logic must remain in `packages/costing`; estimate code should persist an
 
 ## Estimate Pricing Rollout Boundary
 
-Saved estimate source metadata still defaults to `calculator_live`. Workbench save-reprice may build scene-derived `SiteInputsV2` for the cost-engine call, but that V2 input is not the same contract as `CommercialDesignInputV1` and does not by itself make the saved estimate source `workbench_solved`.
+Saved estimate pricing stays on the calculator path. The 2026-06-11 workbench breakaway disables workbench repricing rather than adapting object-first geometry back into calculator inputs.
 
-The rollout-prep contract in `apps/portal/lib/estimates/pricingRollout.ts` owns the saved source-of-record decision at estimate create/update/duplicate persistence so saved rows record server-owned source metadata.
+The rollout-prep contract in `apps/portal/lib/estimates/pricingRollout.ts` remains the place for saved source-of-record decisions at estimate create/update/duplicate persistence, but the workbench currently reports pricing as unavailable and preserves existing estimate pricing.
 
-`workbench_solved` may become live only after all readiness gates pass: ready workbench trust with no blocking diagnostics, owned geometry-derived quantity takeoff, stable `calculator_compat` versus `workbench_solved` parity reports, explicit estimate source-of-record metadata, preserved estimate locks, preserved local-first queue/alias/conflict behavior, preserved quote/invoice/job-pack pricing boundaries, and an explicit rollback switch back to `calculator_live`.
+Workbench-solved pricing may become live only after a new downstream artifact/takeoff-to-commercial adapter exists and all readiness gates pass: ready workbench trust with no blocking diagnostics, owned geometry-derived quantity takeoff, explicit estimate source-of-record metadata, preserved estimate locks, preserved local-first queue/alias/conflict behavior, preserved quote/invoice/job-pack pricing boundaries, and an explicit rollback switch back to calculator pricing.
 
-Failed readiness must block rollout. Do not add hidden fallback behavior that silently prices from calculator while reporting `workbench_solved`.
+Failed readiness must block rollout. Do not add hidden fallback behavior that silently prices from calculator while reporting a workbench-solved source.
 
 The future live switch must be server-owned and default-safe:
 
-- Use a server-only requested-source flag such as `PORTAL_ESTIMATE_PRICING_SOURCE=calculator_live|workbench_solved`; unset or invalid values must behave as `calculator_live`.
-- When the requested source is `workbench_solved`, estimate create/update/duplicate must derive the readiness report on the server from the estimate snapshot, calculator compatibility payload, solved workbench commercial payload, geometry-owned takeoff, and parity report before changing saved pricing. Any failed gate returns `409 ESTIMATE_PRICING_SOURCE_BLOCKED` with gate codes, logs a compact audit event, and leaves estimate rows unchanged.
-- The browser must not send or override `pricing_source`, readiness, source metadata, or commercial payloads. `commercial_design_input` is saved only for an eligible server-derived `workbench_solved` save; calculator-live, unset, invalid, or blocked source attempts keep it null.
-- `calculator_live` rollback is the same explicit flag switch back to calculator pricing. Rollback affects new estimate saves and future draft quote refreshes only through the quote domain helpers; it must not mutate existing estimates, sent quote versions, public outputs, invoices, PDFs, job-pack generations, or audit rows.
+- Use a server-only requested-source flag when a future adapter exists; unset or invalid values must behave as calculator pricing.
+- When a future workbench source is requested, estimate create/update/duplicate must derive readiness on the server from the saved workbench artifact/takeoff and commercial adapter before changing saved pricing. Any failed gate returns a visible blocked-source conflict with gate codes, logs a compact audit event, and leaves estimate rows unchanged.
+- The browser must not send or override pricing source, readiness, source metadata, or commercial payloads. Calculator-live, unset, invalid, or blocked source attempts keep `commercial_design_input` null.
+- Calculator rollback is the same explicit flag switch back to calculator pricing. Rollback affects new estimate saves and future draft quote refreshes only through the quote domain helpers; it must not mutate existing estimates, sent quote versions, public outputs, invoices, PDFs, job-pack generations, or audit rows.
 
 Operational rollback must be explicit:
 
-- Set the server config back to `PORTAL_ESTIMATE_PRICING_SOURCE=calculator_live`; do not rely on hidden fallback or browser-selected source changes.
+- Set the server config back to calculator pricing; do not rely on hidden fallback or browser-selected source changes.
 - Redeploy or restart the portal process that reads the server config before running verification.
 - Run a calculator-live estimate create/update smoke and confirm the new or updated row records `pricing_source: calculator_live`, `pricing_source_metadata.selectedSource: calculator_live`, and `pricing_source_metadata.rollbackProvenance: explicit_calculator_live`.
 - Confirm existing `workbench_solved` estimates keep their historical source metadata and are not rewritten by rollback.

@@ -14,8 +14,8 @@ import type {
  *
  * - `pergolaAttachmentFromSnap(...)` — given a snap engine result, build the
  *   canonical attachment (host + spatialKind + method).
- * - `connectionTypeFromAttachment(...)` — collapse the new shape to the
- *   legacy `ConnectionType` enum so cost-engine reads stay unchanged.
+ * - `connectionTypeFromAttachment(...)` — project the attachment to the
+ *   package geometry connection enum used by pergola solves.
  *
  * No dependency on the snap engine module — the input is a plain object so
  * this helper is testable without pulling viewport plumbing.
@@ -102,22 +102,20 @@ export function freestandingPergolaAttachment(): PergolaAttachment {
 }
 
 /**
- * Step 8 follow-up #2: lazy-migrate a legacy pergola's attachment fields
- * (`connectionKind` + `strategy`) into the canonical `PergolaAttachment`
- * shape. The legacy `attachmentEdgeId` is a footprint edge id (not the snap
- * engine's `wall-${id}` / `roof-eave-${id}` format) so we do NOT synthesize a
- * `host` from it — instead we leave `host: null`, signalling "spatial kind
- * is known but absolute host edge has not yet been resolved through a snap"
- * (per the relaxed PergolaAttachment invariants). The legacy
- * `attachmentEdgeId` field stays alongside on the draft so downstream
- * consumers that need the legacy edge id keep working until step 8(c).
+ * Build a `PergolaAttachment` from older stored connection fields
+ * (`connectionKind` + `strategy`) when a persisted draft has not yet written
+ * the canonical attachment shape. `attachmentEdgeId` is a footprint edge id
+ * (not the snap engine's `wall-${id}` / `roof-eave-${id}` format) so we do
+ * not synthesize a host from it. Instead we leave `host: null`, signalling
+ * "spatial kind is known but absolute host edge has not yet been resolved
+ * through a snap" per the relaxed PergolaAttachment invariants.
  *
  * The pergola edge-drag handler upgrades the host from null to a resolved
- * `PergolaAttachmentHost` whenever the user snaps to a wall or roof eave;
- * until then, `host: null + spatialKind: 'wall'` (etc.) is the normal state
- * for legacy-loaded pergolas.
+ * `PergolaAttachmentHost` whenever the user snaps to a wall or roof eave.
+ * Until then, `host: null + spatialKind: 'wall'` (etc.) is the normal state
+ * for drafts with stored connection fields only.
  */
-export function pergolaAttachmentFromLegacyFields(input: {
+export function pergolaAttachmentFromStoredConnectionFields(input: {
   connectionKind?: ObjectFirstPergolaConnectionKind | null;
   strategy?: CalculatorHouseAttachmentStrategy | null;
 }): PergolaAttachment {
@@ -126,10 +124,10 @@ export function pergolaAttachmentFromLegacyFields(input: {
   if (kind === 'wall') {
     return { spatialKind: 'wall', host: null, method: 'facade_ledger' };
   }
-  // kind === 'soffit' | 'fascia' → roof_edge. Method derivation:
-  //   1. Explicit roof_edge strategy on the legacy field wins (the legacy
-  //      strategy was effectively the same picker the new method represents).
-  //   2. Otherwise: 'fascia' → 'fascia_under_gutter', 'soffit' → 'direct_to_soffit'.
+  // kind === 'soffit' | 'fascia' -> roof_edge. Method derivation:
+  //   1. Explicit roof_edge strategy wins when the stored strategy matches a
+  //      current attachment method.
+  //   2. Otherwise: 'fascia' -> 'fascia_under_gutter', 'soffit' -> 'direct_to_soffit'.
   const strategy = input.strategy ?? null;
   let method: PergolaAttachmentMethod;
   if (
@@ -146,8 +144,8 @@ export function pergolaAttachmentFromLegacyFields(input: {
 }
 
 /**
- * Project the snap-derived attachment onto the legacy `ConnectionType` enum
- * the geometry/cost pipeline reads. The mapping is deterministic:
+ * Project the snap-derived attachment onto the package geometry
+ * `ConnectionType` enum. The mapping is deterministic:
  *
  * - `freestanding` → `freestanding`
  * - `wall` → `wall`

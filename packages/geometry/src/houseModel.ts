@@ -284,6 +284,7 @@ import {
 } from "./house/footprintMath";
 import { buildHouseOpenings } from "./house/openings";
 import { buildHippedRoofWithEaveOffsetRepair } from "./house/eaveOffsetRepair";
+import { buildOrthogonalCellUnionEaveOffset } from "./house/orthogonalEaveOffset";
 
 // PR-T8 (2026-05-29): `deriveHouseRoofAppendageSupportFromFootprint` was
 // the public entry point for the inspector to ask "is appendage
@@ -395,8 +396,18 @@ export function buildHouseModel3D(input: {
     preliminaryAttachmentTarget.line
       ? (preliminaryAttachmentTarget.sourceEdgeId ?? null)
       : null;
+  const hippedCustomEaveOffset =
+    roofForm === "hipped" &&
+    !isRectanglePolygon(footprint) &&
+    isOrthogonalFootprint(footprint)
+      ? buildOrthogonalCellUnionEaveOffset({
+          footprint,
+          offsetMm: eaveOverhangMm,
+        })
+      : null;
   const wallBox = boundingBox(footprint);
-  const baseEavePolygon = offsetFootprintPolygon(footprint, eaveOverhangMm) ?? [
+  const legacyBaseEavePolygon = offsetFootprintPolygon(footprint, eaveOverhangMm);
+  const baseEavePolygon = legacyBaseEavePolygon ?? [
     point(wallBox.minX - eaveOverhangMm, wallBox.minY - eaveOverhangMm, 0),
     point(wallBox.maxX + eaveOverhangMm, wallBox.minY - eaveOverhangMm, 0),
     point(wallBox.maxX + eaveOverhangMm, wallBox.maxY + eaveOverhangMm, 0),
@@ -432,6 +443,8 @@ export function buildHouseModel3D(input: {
           footprint,
           requestedEaveOverhangMm: eaveOverhangMm,
           initialEavePolygon: eavePolygon,
+          topologyAwareEavePolygon: hippedCustomEaveOffset?.polygon,
+          topologyAwareEaveMetadata: hippedCustomEaveOffset?.metadata,
           buildRoof: (candidate) =>
             buildSharedHouseRoof({
               sourceFootprint: candidate.sourceFootprint,

@@ -189,7 +189,7 @@ export function buildPlanSvgPresentationModel(input: {
     objectWorkbenchVisibleBodyOverlayShapes.filter((shape) => shape.source === source).length;
   const visibleLegacyPlanOverlayBodyCount = countVisibleOverlayBodiesBySource('geometry');
   const visibleGeometryFallbackOverlayBodyCount =
-    countVisibleOverlayBodiesBySource('geometry_derived') + countVisibleOverlayBodiesBySource('geometry_plan_fallback');
+    countVisibleOverlayBodiesBySource('geometry_derived') + countVisibleOverlayBodiesBySource('diagnostic_plan_reference');
   const visibleTopProjectionContextOverlayBodyCount = countVisibleOverlayBodiesBySource('top_projection_context');
   const visibleTopProjectionCommittedOverlayBodyCount = countVisibleOverlayBodiesBySource('top_projection_committed');
   const wrongSourceVisibleOverlayBodyCount = input.useTopProjectionBackedPlan

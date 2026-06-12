@@ -1,49 +1,14 @@
-import {
-  buildAssemblyQuantityTakeoff,
-  buildTopProjectionViewModelFromScene,
-  buildViewerSceneModel,
-  type Assembly3D,
-  type GeometryConfig,
-  type GeometryPlanViewModel,
-  type GeometryQuantityTakeoff,
-  type GeometrySectionViewModel,
-  type GeometryTopProjectionShape,
-  type GeometryTopProjectionViewModel,
-  type GeometryValidationReport,
-  type HouseModel3D,
-  type RawGeometryModuleInput,
-  type ViewerSceneModel,
-  validateGeometrySolve,
+import type {
+  Assembly3D,
+  GeometryConfig,
+  GeometryPlanViewModel,
+  GeometryQuantityTakeoff,
+  GeometrySectionViewModel,
+  GeometryTopProjectionShape,
+  GeometryTopProjectionViewModel,
+  GeometryValidationReport,
+  ViewerSceneModel,
 } from '@sp/geometry';
-import { mapProjectDecks, mapProjectOpenings } from '@/lib/drawings/geometry/buildRawGeometryModuleInput';
-import { resolveModuleHouseForm } from '@/lib/drawings/geometry/resolveModuleHouseForm';
-import type { ModulePlanModel, ModuleSectionModel } from '@/app/staff/calculator/moduleViews';
-import {
-  deriveWorkbenchGeometry,
-  type WorkbenchPergolaRenderSource,
-  type WorkbenchPergolaRenderStatus,
-} from '@/lib/drawings/geometry/deriveWorkbenchGeometry';
-import { buildObjectWorkbenchGeometryContext, type ObjectWorkbenchGeometryContext } from '@/lib/drawings/geometry/objectWorkbenchGeometryContext';
-import { coerceHiddenWorkbenchGableBaseline } from '@/lib/drawings/geometry/hiddenWorkbenchGableBaseline';
-import {
-  resolveWorkbenchGeometryModule,
-  type WorkbenchGeometryModuleResolveResult,
-  type WorkbenchGeometryResultSource,
-} from '@/lib/drawings/geometry/resolveWorkbenchGeometryModule';
-import { buildEstimateDrawingModules, type EstimateDrawingModule } from '@/lib/estimates/moduleDrawing';
-import {
-  mergeEstimateDrawingDraftIntoSnapshot,
-  resolveCalculatorInputsFromSnapshot,
-  type EstimateDrawingDraft,
-} from '@/lib/estimates/drawingEdits';
-import type { CalculatorHouseAttachmentStrategy, CalculatorModuleInputs } from '@/lib/types/calculator';
-import {
-  buildWorkbenchDeckSupportDiagnostic,
-  resolveWorkbenchDeckSupportActiveSide,
-  type WorkbenchDeckSupportDiagnostic,
-} from './deckSupportDiagnostics';
-import type { HouseFormModel, WorkbenchProjectModel } from './objectFirstWorkbenchModel';
-import { resolveObjectFirstPergolaAttachment } from './objectFirstDerivedHosting';
 import {
   buildProjectHouseGeometryRegistry,
   type ProjectHouseGeometryEntry,
@@ -52,34 +17,34 @@ import {
   buildProjectObjectRenderPipeline,
   type ProjectPergolaRenderHealth,
 } from './projectObjectRenderPipeline';
-import {
-  buildProjectGeometryPreviewFromModules,
-  resolveProjectReadyBasisModule,
-} from './projectGeometryPreviewPipeline';
-import {
-  type ProjectHouseProjectionHealth,
-} from './projectHouseProjectionHealth';
+import type { ProjectHouseProjectionHealth } from './projectHouseProjectionHealth';
 import type { HouseFormGeometryInputDiagnostics } from './houseFormGeometryInput';
 import {
-  buildObjectFirstPergolaSolveSources,
-} from './objectFirstPergolaSolveSources';
-import {
-  buildWorkbenchProjectSolveSources,
-  solveWorkbenchProjectSources,
-  type WorkbenchProjectSolveSource,
-  type WorkbenchProjectSolvedPergola,
-} from './workbenchProjectSolveSources';
+  EMPTY_WORKBENCH_PROJECT_MODEL,
+  type WorkbenchProjectModel,
+} from './objectFirstWorkbenchModel';
+import { buildProjectPergolaViewerSceneFromModules } from './projectPergolaViewerScene';
 
-type AttachmentSide = 'rear' | 'front' | 'left' | 'right';
-type LocalPolygonPoint = { alongM: number; depthM: number };
+export type GeometryPreviewMode = 'project_solved' | 'draft_project_solved';
 
-export type GeometryPreviewMode = 'snapshot_validated' | 'snapshot_local_resolved' | 'draft_local_resolved';
+export type WorkbenchDeckSupportDiagnostic = {
+  activeHostSide: 'rear' | 'front' | 'left' | 'right';
+  hasRelevantDeck: boolean;
+  relevantDeckIds: string[];
+  relevantDeckCount: number;
+  positiveDeckIds: string[];
+  eligibleDeckIds: string[];
+  resolvedClassification: 'ground_supported' | 'threshold_attached' | 'mixed_or_unclear' | 'none';
+  deckBracketEligible: boolean;
+  warningCodes: string[];
+  warningMessages: string[];
+};
 
 export type GeometryPreviewState =
   | {
       kind: 'ready';
       previewMode: GeometryPreviewMode;
-      resultSource: 'snapshot' | 'local_resolve';
+      resultSource: 'project_solve';
       config: GeometryConfig;
       assembly: Assembly3D;
       validation: GeometryValidationReport;
@@ -102,8 +67,6 @@ export type GeometryPreviewState =
 
 export type WorkbenchTrustStatusKind =
   | 'geometry_ready'
-  | 'legacy_fallback'
-  | 'legacy_unsupported_family'
   | 'invalid_geometry'
   | 'unresolved_host'
   | 'approximate';
@@ -135,16 +98,52 @@ export type WorkbenchGeometryIdentity = {
   designRequestId?: string | null;
 };
 
-type WorkbenchSolvedGeometryArtifactFallback =
+export type WorkbenchPergolaRenderSource = 'geometry' | 'none';
+export type WorkbenchPergolaRenderStatus =
+  | 'geometry_ready'
+  | 'invalid_geometry';
+
+export type WorkbenchPergolaModuleInput = Record<string, unknown> & {
+  pergolaId?: string | null;
+  pergolaStyle?: string | null;
+  roofMaterial?: string | null;
+  extrusionColour?: string | null;
+  internalRoofType?: string | null;
+  houseConnectionType?: string | null;
+  attachmentSide?: string | null;
+  postConnectionType?: string | null;
+  ground?: string | null;
+  roofPitchDeg?: string | number | null;
+  lengthM?: string | number | null;
+  projectionM?: string | number | null;
+  hipCornerLengthBM?: string | number | null;
+  hipCornerProjectionBM?: string | number | null;
+  boxPerimeterEnabled?: boolean | null;
+  gableEndFramesMode?: string | null;
+  overhangEnabled?: boolean | null;
+  invertedEnabled?: boolean | null;
+  postCount?: string | number | null;
+  postCutHeightM?: string | number | null;
+  downpipeCount?: string | number | null;
+  downpipeJoinCount?: string | number | null;
+  downpipeElbowCount?: string | number | null;
+  flashings?: unknown;
+  infills?: { items?: unknown[] } | null;
+  overrides?: Record<string, string | null | undefined> | null;
+  powdercoatStandardColour?: string | null;
+  powdercoatIsCustom?: boolean | null;
+  powdercoatCustomColour?: string | null;
+};
+
+export type WorkbenchSolvedGeometryArtifactFallback =
   | null
-  | 'legacy_unsupported_family'
   | 'invalid_geometry';
 
 export type WorkbenchSolvedGeometryArtifact = {
   source: 'solved_geometry';
   fallback: WorkbenchSolvedGeometryArtifactFallback;
   previewMode: GeometryPreviewMode;
-  resultSource: WorkbenchGeometryResultSource;
+  resultSource: 'project_solve';
   deckSupport: WorkbenchDeckSupportDiagnostic;
   config: GeometryConfig;
   assembly: Assembly3D;
@@ -161,10 +160,6 @@ export type WorkbenchSolvedGeometryArtifact = {
 
 export type WorkbenchViewportGeometry = {
   artifact: WorkbenchSolvedGeometryArtifact | null;
-  legacyFallback: {
-    planModel: ModulePlanModel | null;
-    sectionModel: ModuleSectionModel | null;
-  };
   preview: GeometryPreviewState;
 };
 
@@ -172,11 +167,17 @@ export type WorkbenchSolvedModule = {
   index: number;
   id: string;
   label: string;
-  sourceKind: 'drawing_module' | 'object_first_pergola';
-  drawingModule: EstimateDrawingModule;
-  moduleInput: CalculatorModuleInputs;
+  sourceKind: 'object_first_pergola';
+  drawingModule: {
+    id: string;
+    input: WorkbenchPergolaModuleInput;
+    result: null;
+    planModel: null;
+    sectionModel: null;
+  };
+  moduleInput: WorkbenchPergolaModuleInput;
   previewMode: GeometryPreviewMode;
-  resultSource: WorkbenchGeometryResultSource;
+  resultSource: 'project_solve';
   draftTouchesGeometry: boolean;
   trust: WorkbenchTrustStatus;
   renderSource: WorkbenchPergolaRenderSource;
@@ -192,110 +193,34 @@ export type WorkbenchSolvedModule = {
   geometryPreview: GeometryPreviewState;
   viewportGeometry: WorkbenchViewportGeometry;
   deckSupport: WorkbenchDeckSupportDiagnostic | null;
-  planModel: ModulePlanModel | null;
-  sectionModel: ModuleSectionModel | null;
+  planModel: null;
+  sectionModel: null;
 };
 
 export type WorkbenchSolvedModel = {
   projectModel: WorkbenchProjectModel;
   modules: WorkbenchSolvedModule[];
-  activeModule: WorkbenchSolvedModule | null;
   projectHouseGeometries: ProjectHouseGeometryEntry[];
-  /**
-   * Full project-level pergola plan bodies, prefixed per pergola id. Unlike
-   * `projectReferenceShapes`, this carries rafters/posts/roof bodies for every
-   * valid solved pergola so PlanViewport is not active-module-only.
-   */
   projectPergolaPlanShapes: GeometryTopProjectionShape[];
-  /**
-   * Diagnostic-only fallback outlines for pergolas that are present in the
-   * project but are not healthy enough to render committed pergola bodies.
-   */
   projectPergolaFallbackPlanShapes: GeometryTopProjectionShape[];
-  /**
-   * Project-level render health for pergolas. Committed project render bodies
-   * are allowed only for object-owned healthy pergola geometry; unresolved or
-   * invalid pergolas remain as reference/diagnostic fallbacks.
-   */
   projectPergolaRenderHealth: ProjectPergolaRenderHealth[];
-  /**
-   * Project-level diagnostics for each house form's Plan projection chain.
-   * This records whether the form has a canonical reference, solved 3D model,
-   * roof planes, roof-material Plan bodies, and any visible reference fallback.
-   * It is derived with the solved model so Plan/fixture diagnostics can name
-   * the failing house form without inventing React-layer state.
-   */
   projectHouseProjectionHealth: ProjectHouseProjectionHealth[];
   houseGeometryInputsById: Record<string, HouseFormGeometryInputDiagnostics>;
-  /**
-   * Canonical project-level Plan projection. Unlike per-module
-   * `geometryArtifact.topProjection`, this is built from project registries by
-   * object id, so active pergola selection cannot change which house form owns
-   * the visible roof/body shapes.
-   */
   projectPlanProjection: GeometryTopProjectionViewModel | null;
-  /**
-   * Stable project-level drawing basis for Plan/3D shells. When the selected
-   * pergola is invalid or unsupported, this points at the active ready module
-   * when possible, otherwise the first ready module, so project references and
-   * other valid pergolas can keep rendering without inventing fake geometry for
-   * the invalid selection.
-   */
   projectViewportGeometry: WorkbenchViewportGeometry | null;
-  /**
-   * Project-level 3D preview. Single-pergola projects keep the active module
-   * preview unchanged; multi-pergola projects aggregate every valid pergola
-   * scene into one selectable 3D surface.
-   */
   projectGeometryPreview: GeometryPreviewState;
-  /**
-   * Project-level reference shapes: one canonical `house_reference` plus one
-   * `pergola_reference` per pergola module. Pergola references are the simple
-   * outline source for snap targets and invalid/unsupported visual fallback;
-   * valid solved pergolas render full detail through `projectPergolaPlanShapes`.
-   */
   projectReferenceShapes: GeometryTopProjectionShape[];
   trust: WorkbenchTrustStatus;
   geometryIdentity: Required<WorkbenchGeometryIdentity>;
 };
 
-// ============================================================================
-// PR-2B.1a (2026-05-23): per-object solved shape — coexists with legacy
-// ============================================================================
-//
-// `SolvedPergola` and `WorkbenchSolvedProject` are the per-object equivalents
-// of `WorkbenchSolvedModule` and `WorkbenchSolvedModel`. They expose the same
-// per-pergola data but keyed by pergola id (matching `projectModel.pergolas[]`)
-// instead of by drawing-module array position. New consumers can target this
-// shape; existing consumers continue reading `modules[]` until PR-2B.1b
-// migrates them.
-//
-// Difference from `WorkbenchSolvedModule`:
-// - Drops `index` (array position, structural — rederive from list position).
-// - Drops `drawingModule` (legacy wrapper; consumers that needed the cost
-//   result reach it via `pergola.moduleInput`).
-// - Adds `pergolaIndex` as an explicit back-reference to the source
-//   `WorkbenchSolvedModule` for the coexist period.
-// - Adds `sourceModules: WorkbenchSolvedModule[]` — all underlying solver
-//   modules that share this pergola id. Length 1 for the per-object case;
-//   length > 1 only for legacy multi-module-per-pergola snapshots, which
-//   collapse in the cost engine V2 migration (Phase 2). The first entry is
-//   reflected in the SolvedPergola's primary fields (moduleInput, assembly,
-//   trust, etc.) for the single-module callers.
-//
-// Difference from `WorkbenchSolvedModel`:
-// - `modules: WorkbenchSolvedModule[]` → `pergolas: SolvedPergola[]`.
-// - `activeModule` → `activePergolaId: string | null` (UI selection by id).
-
 export type SolvedPergola = {
-  /** Pergola id (matches `projectModel.pergolas[].id` and `moduleInput.pergolaId`). */
   id: string;
   label: string;
-  /** Back-reference to the first source module's array index — drops when PR-2B.1b retires the legacy loop. */
   pergolaIndex: number;
-  moduleInput: CalculatorModuleInputs;
+  moduleInput: WorkbenchPergolaModuleInput;
   previewMode: GeometryPreviewMode;
-  resultSource: WorkbenchGeometryResultSource;
+  resultSource: 'project_solve';
   draftTouchesGeometry: boolean;
   trust: WorkbenchTrustStatus;
   renderSource: WorkbenchPergolaRenderSource;
@@ -311,25 +236,15 @@ export type SolvedPergola = {
   geometryPreview: GeometryPreviewState;
   viewportGeometry: WorkbenchViewportGeometry;
   deckSupport: WorkbenchDeckSupportDiagnostic | null;
-  planModel: ModulePlanModel | null;
-  sectionModel: ModuleSectionModel | null;
-  /**
-   * Legacy multi-module-per-pergola carrier. Typically a single entry equal
-   * to the primary module that populates this SolvedPergola's fields. For
-   * legacy snapshots where multiple solver modules share `pergolaId`, all
-   * entries appear here in source order so commercial parity callers can
-   * enumerate every cost row. Collapses to length 1 in Phase 2 once the
-   * cost engine reads from the per-object spine.
-   */
+  planModel: null;
+  sectionModel: null;
   sourceModules: WorkbenchSolvedModule[];
 };
 
 export type WorkbenchSolvedProject = {
   projectModel: WorkbenchProjectModel;
   pergolas: SolvedPergola[];
-  /** Pergola id of the currently-active selection, or null when nothing is active. */
   activePergolaId: string | null;
-  /** Convenience accessor — `pergolas.find(p => p.id === activePergolaId) ?? null`. */
   activePergola: SolvedPergola | null;
   projectHouseGeometries: ProjectHouseGeometryEntry[];
   projectPergolaPlanShapes: GeometryTopProjectionShape[];
@@ -346,18 +261,22 @@ export type WorkbenchSolvedProject = {
 };
 
 const DEFAULT_GEOMETRY_IDENTITY: Required<WorkbenchGeometryIdentity> = {
-  projectId: 'hidden-workbench-project',
-  estimateId: 'hidden-workbench-estimate',
+  projectId: 'workbench-project',
+  estimateId: 'workbench-estimate',
   designRequestId: null,
 };
 
-const EMPTY_WORKBENCH_PROJECT_MODEL: WorkbenchProjectModel = {
-  source: 'legacy_estimate_snapshot',
-  houseAssembly: null,
-  decks: [],
-  openings: [],
-  pergolas: [],
-  warnings: [],
+const EMPTY_DECK_SUPPORT: WorkbenchDeckSupportDiagnostic = {
+  activeHostSide: 'rear',
+  hasRelevantDeck: false,
+  relevantDeckIds: [],
+  relevantDeckCount: 0,
+  positiveDeckIds: [],
+  eligibleDeckIds: [],
+  resolvedClassification: 'none',
+  deckBracketEligible: false,
+  warningCodes: [],
+  warningMessages: [],
 };
 
 function resolveGeometryIdentity(
@@ -370,336 +289,6 @@ function resolveGeometryIdentity(
   };
 }
 
-function resolvePreviewMode(input: {
-  resultSource: 'snapshot' | 'local_resolve';
-  draftTouchesGeometry: boolean;
-}): GeometryPreviewMode {
-  if (input.draftTouchesGeometry) return 'draft_local_resolved';
-  return input.resultSource === 'local_resolve' ? 'snapshot_local_resolved' : 'snapshot_validated';
-}
-
-function parseLocalPolygon(
-  polygon: Array<{ alongM: string; depthM: string }> | null | undefined,
-): LocalPolygonPoint[] {
-  return (polygon ?? [])
-    .map((point) => ({
-      alongM: Number(point.alongM),
-      depthM: Number(point.depthM),
-    }))
-    .filter((point) => Number.isFinite(point.alongM) && Number.isFinite(point.depthM));
-}
-
-function hostEdgeSideBySourceEdgeId(
-  polygon: Array<{ alongM: string; depthM: string }> | null | undefined,
-): Map<string, AttachmentSide> {
-  const localPolygon = parseLocalPolygon(polygon);
-  if (!localPolygon.length) return new Map();
-  const alongValues = localPolygon.map((point) => point.alongM);
-  const depthValues = localPolygon.map((point) => point.depthM);
-  const minAlong = Math.min(...alongValues);
-  const maxAlong = Math.max(...alongValues);
-  const minDepth = Math.min(...depthValues);
-  const maxDepth = Math.max(...depthValues);
-  const result = new Map<string, AttachmentSide>();
-  for (let index = 0; index < localPolygon.length; index += 1) {
-    const current = localPolygon[index]!;
-    const next = localPolygon[(index + 1) % localPolygon.length]!;
-    const sourceEdgeId = `footprint-edge-${index + 1}`;
-    if (Math.abs(current.depthM - next.depthM) <= 1e-6) {
-      const depth = (current.depthM + next.depthM) / 2;
-      result.set(
-        sourceEdgeId,
-        Math.abs(depth - minDepth) <= Math.abs(depth - maxDepth) ? 'rear' : 'front',
-      );
-      continue;
-    }
-    if (Math.abs(current.alongM - next.alongM) <= 1e-6) {
-      const along = (current.alongM + next.alongM) / 2;
-      result.set(
-        sourceEdgeId,
-        Math.abs(along - minAlong) <= Math.abs(along - maxAlong) ? 'left' : 'right',
-      );
-    }
-  }
-  return result;
-}
-
-function annotateSceneHostEdgeSides(
-  scene: ViewerSceneModel,
-  polygon: Array<{ alongM: string; depthM: string }> | null | undefined,
-): ViewerSceneModel {
-  const sideBySourceEdgeId = hostEdgeSideBySourceEdgeId(polygon);
-  if (!sideBySourceEdgeId.size) return scene;
-  return {
-    ...scene,
-    layers: scene.layers.map((layer) => ({
-      ...layer,
-      objects: layer.objects.map((object) => {
-        const sourceEdgeId = typeof object.metadata?.sourceEdgeId === 'string' ? object.metadata.sourceEdgeId : null;
-        const hostEdgeSide = sourceEdgeId ? sideBySourceEdgeId.get(sourceEdgeId) : undefined;
-        if (!hostEdgeSide) return object;
-        return {
-          ...object,
-          metadata: {
-            ...(object.metadata ?? {}),
-            hostEdgeSide,
-          },
-        };
-      }),
-    })),
-  };
-}
-
-type AttachmentZoneKind = 'wall' | 'soffit' | 'fascia' | 'roof_edge';
-type AttachmentBlockReason = 'side_openings_block_wall' | 'side_openings_block_roof_zone';
-
-function resolveAttachmentStrategyZoneKinds(
-  strategy: CalculatorHouseAttachmentStrategy | null,
-): AttachmentZoneKind[] {
-  if (strategy === 'none') return [];
-  const kinds = new Set<AttachmentZoneKind>();
-  if (strategy === 'facade_ledger' || strategy === 'post_supported_tieback' || strategy === null) {
-    kinds.add('wall');
-  }
-  if (strategy === 'soffit_brackets' || strategy === 'post_supported_tieback' || strategy === null) {
-    kinds.add('soffit');
-  }
-  if (strategy === 'fascia_under_gutter' || strategy === null) {
-    kinds.add('fascia');
-  }
-  if (strategy === 'fascia_under_gutter') {
-    kinds.add('roof_edge');
-  }
-  return Array.from(kinds);
-}
-
-function isAttachmentSide(value: unknown): value is AttachmentSide {
-  return value === 'rear' || value === 'front' || value === 'left' || value === 'right';
-}
-
-function openingBlocksAttachmentZone(opening: WorkbenchProjectModel['openings'][number]): boolean {
-  return opening.validation?.status !== 'invalid';
-}
-
-function openingBlocksRoofAttachmentZone(opening: WorkbenchProjectModel['openings'][number]): boolean {
-  return openingBlocksAttachmentZone(opening) && (opening.kind === 'slider' || opening.kind === 'stacker');
-}
-
-function resolveOpeningAttachmentSide(input: {
-  projectModel: WorkbenchProjectModel;
-  opening: WorkbenchProjectModel['openings'][number];
-}): AttachmentSide | null {
-  if (isAttachmentSide(input.opening.wallId)) return input.opening.wallId;
-  const envelope = input.projectModel.houseAssembly?.derivedEnvelope ?? null;
-  const zones = envelope?.attachmentZones ?? [];
-  const zone = zones.find((candidate) =>
-    (input.opening.hostEdgeId && candidate.hostEdgeId === input.opening.hostEdgeId) ||
-    (input.opening.hostWallId && candidate.hostWallId === input.opening.hostWallId),
-  );
-  return zone?.side ?? null;
-}
-
-function resolveAttachmentZoneBlockedReasons(
-  projectModel: WorkbenchProjectModel | null | undefined,
-): string {
-  if (!projectModel?.houseAssembly) return 'none';
-  const houseForm = projectModel.houseAssembly.houseForms[0] ?? null;
-  const candidateKinds = resolveAttachmentStrategyZoneKinds(houseForm?.attachmentStrategy ?? null);
-  if (!candidateKinds.length) return 'none';
-
-  const blocked = new Set<string>();
-  for (const opening of projectModel.openings) {
-    const side = resolveOpeningAttachmentSide({ projectModel, opening });
-    if (!side) continue;
-    for (const kind of candidateKinds) {
-      const reason: AttachmentBlockReason | null =
-        kind === 'wall' && openingBlocksAttachmentZone(opening)
-          ? 'side_openings_block_wall'
-          : kind !== 'wall' && openingBlocksRoofAttachmentZone(opening)
-            ? 'side_openings_block_roof_zone'
-            : null;
-      if (reason) {
-        blocked.add(`${side}:${kind}:${reason}`);
-      }
-    }
-  }
-
-  return blocked.size ? Array.from(blocked).join(',') : 'none';
-}
-
-function annotateSceneAttachmentZoneMetadata(
-  scene: ViewerSceneModel,
-  geometryContext: ObjectWorkbenchGeometryContext,
-): ViewerSceneModel {
-  const projectModel = geometryContext.projectModel;
-  const houseAssembly = projectModel?.houseAssembly ?? null;
-  const zones = houseAssembly?.derivedEnvelope?.attachmentZones ?? [];
-  const pergolaAttachmentResolutions = (projectModel?.pergolas ?? []).map((pergola) =>
-    resolveObjectFirstPergolaAttachment({ houseAssembly, pergola }),
-  );
-  const resolvedPergolaAttachmentZoneCount = pergolaAttachmentResolutions.filter(
-    (resolution) => resolution.status === 'resolved' && resolution.attachmentZoneId !== null,
-  ).length;
-  const unresolvedPergolaAttachmentZoneCount = pergolaAttachmentResolutions.filter(
-    (resolution) => resolution.status !== 'resolved',
-  ).length;
-  return {
-    ...scene,
-    metadata: {
-      ...(scene.metadata ?? {}),
-      houseAttachmentZoneCount: zones.length,
-      houseAttachmentZoneKinds: zones.length
-        ? zones.map((zone) => `${zone.side}:${zone.kind}`).join(',')
-        : 'none',
-      houseAttachmentZoneBlockedReasons: resolveAttachmentZoneBlockedReasons(projectModel),
-      pergolaResolvedAttachmentZoneCount: resolvedPergolaAttachmentZoneCount,
-      pergolaUnresolvedAttachmentZoneCount: unresolvedPergolaAttachmentZoneCount,
-    },
-  };
-}
-
-function annotateSceneHouseRoofMetadata(
-  scene: ViewerSceneModel,
-  config: GeometryConfig,
-): ViewerSceneModel {
-  const roof = config.houseContext.model ?? null;
-  if (!roof) return scene;
-  return {
-    ...scene,
-    metadata: {
-      ...(scene.metadata ?? {}),
-      houseRoofForm: roof.roofForm ?? null,
-      houseRoofHealedPitchDeg: roof.roofPitchDeg ?? null,
-      houseRoofHealedRidgeAxis: roof.roofRidgeAxis ?? null,
-    },
-  };
-}
-
-function buildViewerSceneFromSolvedGeometry(input: {
-  config: GeometryConfig;
-  assembly: Assembly3D;
-  geometryContext: ObjectWorkbenchGeometryContext;
-  hostHouseForm: HouseFormModel | null;
-  /**
-   * Pre-built `HouseModel3D`s for non-host scene house forms. Built once at
-   * project level in `buildWorkbenchSolvedModel` and threaded through; the
-   * per-module solve no longer rebuilds them. The scene builder iterates
-   * them inside `buildLayers`.
-   */
-  projectHouseModels: ReadonlyArray<HouseModel3D>;
-}): ViewerSceneModel {
-  return annotateSceneHouseRoofMetadata(
-    annotateSceneAttachmentZoneMetadata(
-      annotateSceneHostEdgeSides(
-        buildViewerSceneModel(input.assembly, {
-          additionalHouseModels: input.projectHouseModels,
-        }),
-        input.hostHouseForm?.footprint.polygon,
-      ),
-      input.geometryContext,
-    ),
-    input.config,
-  );
-}
-
-function buildTopProjectionFromSolvedScene(input: {
-  scene: ViewerSceneModel;
-  fallbackTopProjection: GeometryTopProjectionViewModel;
-  /**
-   * The solved assembly. Threaded through so `buildTopProjectionViewModelFromScene`
-   * can run the milestone-13 hip-end metadata enrichment on house roof
-   * facets -- without this, the plan-view click-to-toggle target
-   * doesn't get its `openGableEndId`/`isOpen` tags and the selection
-   * router falls back to the standard "select the roof" path.
-   */
-  assembly: Assembly3D;
-  /**
-   * The pergola id this assembly belongs to. When set, every pergola-family
-   * shape in the projection is tagged with `metadata.pergolaId` so consumers
-   * (selection, move tool) can resolve the active pergola from any of its
-   * member shapes (rafters, posts, beams) without relying on shape-id
-   * heuristics. Without this tag the classifier falls back to the member's
-   * own id, which breaks the move tool's active-target gate.
-   *
-   * Lifted out of the per-shape builder so the geometry package doesn't
-   * need to know about the workbench's pergola identity. Documented in
-   * `docs/maintainability-principles.md` -- "workarounds belong at the
-   * source": tag once at projection time instead of patching every consumer.
-   */
-  pergolaId?: string | null;
-  /**
-   * PR-Bug1 (2026-05-25): host house form id for this assembly. Mirrors the
-   * `pergolaId` enrichment above for house-family shapes. After PR-Geo1's
-   * scene-seam id prefixing, `house_surface_solid` shapes (walls, roof
-   * solids, eaves) carry prefixed scene ids like `<houseId>:house-wall-1`
-   * that don't map to any workbench house form id. Without this tag the
-   * plan-view classifier resolves clicks on those surfaces to the prefixed
-   * scene id, and the right inspector can't find a matching house form so
-   * shows "No selection". Tagging once at projection time lets the
-   * classifier prefer `metadata.houseFormId` over the id-derived fallback.
-   *
-   * The solved host house is still carried in `assembly.house.model` for
-   * this Phase 1 slice. Canonical plan identity for every house form,
-   * including the host, comes from project-level `house_reference` shapes.
-   */
-  houseFormId?: string | null;
-}): GeometryTopProjectionViewModel {
-  const projection = buildTopProjectionViewModelFromScene(input.scene, {
-    referenceShapes: input.fallbackTopProjection.shapes.filter(
-      (shape) => shape.sourceType === 'pergola_reference',
-    ),
-    terminalEndAssembly: input.assembly,
-  });
-  const taggedPergolaId = input.pergolaId ?? null;
-  const taggedHouseFormId = input.houseFormId ?? null;
-  return {
-    ...projection,
-    shapes: projection.shapes.map((shape) => {
-      if (taggedPergolaId && shape.family === 'pergola') {
-        return {
-          ...shape,
-          metadata: { ...(shape.metadata ?? {}), pergolaId: taggedPergolaId },
-        };
-      }
-      if (shape.family === 'house' && (shape.kind === 'deck' || shape.kind === 'landing')) {
-        // PR-Bug4 (2026-05-25): mirror the pergolaId/houseFormId pattern for
-        // decks. The `house_surface_solid` deck prism arrives with
-        // `metadata.sourceId === deck.id` (set in
-        // `packages/geometry/src/house/envelopeSolids.ts`), but
-        // `selectionMatch.ts` reads `metadata.deckId` to disambiguate
-        // selection halos between decks. Without this tag, every deck
-        // matches the active deck selection and the renderer falls back to
-        // the largest-area shape, so only one deck visually highlights.
-        // Copy the existing sourceId into the family-specific discriminator
-        // so all consumers can resolve "which deck" by the same key.
-        const existingDeckId = (shape.metadata as { deckId?: string } | undefined)?.deckId;
-        if (existingDeckId) return shape;
-        const sourceDeckId =
-          typeof shape.metadata?.sourceId === 'string'
-            ? shape.metadata.sourceId
-            : (shape.sourceId ?? null);
-        if (!sourceDeckId) return shape;
-        return {
-          ...shape,
-          metadata: { ...(shape.metadata ?? {}), deckId: sourceDeckId },
-        };
-      }
-      if (taggedHouseFormId && shape.family === 'house') {
-        // Only tag shapes that don't already carry an explicit houseFormId.
-        // Canonical project-level house references get their own form ids;
-        // preserve explicit tags if the projection already carries one.
-        const existing = (shape.metadata as { houseFormId?: string } | undefined)?.houseFormId;
-        if (existing) return shape;
-        return {
-          ...shape,
-          metadata: { ...(shape.metadata ?? {}), houseFormId: taggedHouseFormId },
-        };
-      }
-      return shape;
-    }),
-  };
-}
-
 function uniqueIssues(issues: WorkbenchTrustStatusKind[]): WorkbenchTrustStatusKind[] {
   return Array.from(new Set(issues));
 }
@@ -709,11 +298,7 @@ function isBlockingTrustIssue(issue: WorkbenchTrustStatusKind): boolean {
 }
 
 function isWarningTrustIssue(issue: WorkbenchTrustStatusKind): boolean {
-  return (
-    issue === 'approximate' ||
-    issue === 'legacy_fallback' ||
-    issue === 'legacy_unsupported_family'
-  );
+  return issue === 'approximate';
 }
 
 function sortTrustIssuesByPriority(
@@ -732,10 +317,6 @@ export function labelForWorkbenchTrustStatus(status: WorkbenchTrustStatusKind): 
   switch (status) {
     case 'geometry_ready':
       return 'Geometry ready';
-    case 'legacy_fallback':
-      return 'Legacy fallback';
-    case 'legacy_unsupported_family':
-      return 'Unsupported family';
     case 'invalid_geometry':
       return 'Invalid geometry';
     case 'unresolved_host':
@@ -759,10 +340,6 @@ function messageForWorkbenchTrustIssue(
       return 'Resolve unresolved object hosts before export or review.';
     case 'approximate':
       return 'Geometry is approximate. Export and review can continue with a warning.';
-    case 'legacy_fallback':
-      return 'This view is using legacy fallback geometry. Verify accuracy before export or review.';
-    case 'legacy_unsupported_family':
-      return 'This family is not fully supported by native geometry. Verify accuracy before export or review.';
     case 'geometry_ready':
       return 'Geometry is ready for export and review.';
     default:
@@ -791,7 +368,7 @@ export function resolveWorkbenchTrustGate(trust: WorkbenchTrustStatus): Workbenc
   );
   const warningIssues = sortTrustIssuesByPriority(
     issues.filter(isWarningTrustIssue),
-    ['legacy_fallback', 'legacy_unsupported_family', 'approximate'],
+    ['approximate'],
   );
   const firstBlockingIssue = blockingIssues[0] ?? null;
   const firstWarningIssue = warningIssues[0] ?? null;
@@ -820,499 +397,426 @@ export function resolveWorkbenchTrustGate(trust: WorkbenchTrustStatus): Workbenc
 function buildTrustStatus(input: {
   status: WorkbenchTrustStatusKind;
   issues?: WorkbenchTrustStatusKind[];
-  renderSource: WorkbenchPergolaRenderSource | 'none';
+  renderSource?: WorkbenchPergolaRenderSource | 'none';
   message?: string | null;
 }): WorkbenchTrustStatus {
   return {
     status: input.status,
     issues: uniqueIssues(input.issues ?? []),
-    renderSource: input.renderSource,
+    renderSource: input.renderSource ?? 'none',
     message: input.message ?? null,
   };
 }
 
-function collectGeometryTrustIssues(
-  geometryContext: ObjectWorkbenchGeometryContext,
-): WorkbenchTrustStatusKind[] {
-  const issues: WorkbenchTrustStatusKind[] = [];
-  const projectModel = geometryContext.projectModel;
-  if ((projectModel?.warnings.length ?? 0) > 0) {
-    issues.push('approximate');
-  }
-  return uniqueIssues(issues);
+function emptyValidationReport(): GeometryValidationReport {
+  return {
+    status: 'pass',
+    invariants: [],
+    unsupportedReasons: [],
+    fixtureComparisons: [],
+  };
 }
 
-function buildDeckSupport(input: {
-  moduleInput: CalculatorModuleInputs;
-  geometryContext: ObjectWorkbenchGeometryContext;
-}): WorkbenchDeckSupportDiagnostic {
-  return buildWorkbenchDeckSupportDiagnostic({
-    activeHostSide: resolveWorkbenchDeckSupportActiveSide(input.moduleInput),
-    decks: input.geometryContext.projectModel?.decks ?? [],
+function emptyQuantityTakeoff(): GeometryQuantityTakeoff {
+  return {
+    family: 'mono',
+    primaryDimensionsMm: null,
+    primaryDimensionsM: null,
+    secondaryDimensionsMm: null,
+    secondaryDimensionsM: null,
+    roofPlanes: { count: 0, items: [], totalAreaMm2: 0, totalAreaM2: 0 },
+    members: { items: [], byRole: {}, totalLengthM: 0 },
+    rafters: {
+      items: [],
+      count: 0,
+      totalLengthM: 0,
+      averageLengthM: null,
+      averageProjectedRunM: null,
+      effectiveRunM: null,
+    },
+    beams: {
+      ledgerLengthM: null,
+      supportBeamLengthM: null,
+      totalBeamLengthM: null,
+      ridgeLengthM: null,
+      tieBeamLengthM: null,
+    },
+    gutters: {
+      ourGutterLengthM: null,
+      houseGutterLengthM: null,
+      totalLengthM: null,
+    },
+    roofCladding: {
+      acrylicAreaM2: null,
+      effectiveRunM: null,
+      acrylicRequiredDownslopeM: null,
+      averageDownslopeLengthM: null,
+      panelCount: null,
+      totalAreaM2: null,
+      items: [],
+    },
+    joiners: {
+      count: null,
+      totalLengthM: null,
+      averageLengthM: null,
+      items: [],
+    },
+    flashings: {
+      items: [],
+      count: 0,
+      totalLengthM: 0,
+      totalSurfaceAreaM2: 0,
+      byGirthMm: {},
+    },
+    quantityHooks: [],
+    quantityHookMap: {},
+    diagnostics: [],
+  } as unknown as GeometryQuantityTakeoff;
+}
+
+function emptyGeometryConfig(identity: Required<WorkbenchGeometryIdentity>): GeometryConfig {
+  const config = {
+    projectId: identity.projectId,
+    estimateId: identity.estimateId,
+    designRequestId: identity.designRequestId,
+    family: 'mono',
+    datum: {
+      origin: { x: 0, y: 0, z: 0 },
+      xAxis: { x: 1, y: 0, z: 0 },
+      yAxis: { x: 0, y: 1, z: 0 },
+      zAxis: { x: 0, y: 0, z: 1 },
+      attachmentEdgeStart: { x: 0, y: 0, z: 0 },
+      attachmentEdgeEnd: { x: 0, y: 0, z: 0 },
+    },
+    dimensions: {
+      lengthMm: 0,
+      projectionMm: 0,
+      roofPitchDeg: 0,
+    },
+    roof: {
+      material: 'acrylic',
+      mode: null,
+      fallDirection: 'positiveY',
+      boxPerimeterEnabled: false,
+      overhangMm: 0,
+    },
+    roofCovering: {
+      kind: null,
+      effectiveRunMm: null,
+      acrylicRequiredDownslopeMm: null,
+      joinerPieceLengthMm: null,
+      joinerRunsTotal: null,
+      houseAllowanceMm: null,
+      farAllowanceMm: null,
+      acrylicAreaMm2: null,
+    },
+    gable: {
+      ridgePositionMm: null,
+      endFramesMode: null,
+      houseEaveGutterMode: null,
+      outerEaveGutterMode: null,
+    },
+    box: {
+      houseEdgeGutterMode: null,
+      farEdgeGutterMode: null,
+      houseSetbackMm: null,
+      outerSetbackMm: null,
+      effectiveRunMm: null,
+      riseMm: null,
+      maxFallMm: null,
+    },
+    connection: {
+      type: 'freestanding',
+      attachmentSide: 'rear',
+    },
+    supports: {
+      postMode: 'standard',
+      postCount: 0,
+      postCutHeightMm: null,
+      footingType: null,
+      postConnectionType: null,
+      groundCondition: null,
+      groundLevelMm: null,
+    },
+    structural: {
+      heights: {
+        houseUndersideMm: null,
+        outerUndersideMm: null,
+        referenceUndersideMm: null,
+      },
+      profiles: {
+        post: null,
+        rafter: null,
+        ledger: null,
+        supportBeam: null,
+        gutter: null,
+        ridge: null,
+        tieBeam: null,
+        strut: null,
+        boxPerimeter: null,
+      },
+      framing: {
+        rafterCount: null,
+        rafterSpacingMm: null,
+      },
+      drainage: {
+        gutterType: null,
+        gutterAssemblyMode: null,
+        integratedGutterBeam: null,
+        hasOurGutter: null,
+      },
+    },
+    houseReference: {
+      houseId: null,
+      wallLine: null,
+      fasciaLine: null,
+      roofEdgeLine: null,
+      soffitDepthMm: null,
+      footprint: null,
+      footprintMode: null,
+      footprintPolygon: null,
+      position: null,
+      model: null,
+      attachmentStrategy: null,
+    },
+  };
+  return config as unknown as GeometryConfig;
+}
+
+function emptyAssembly(config: GeometryConfig): Assembly3D {
+  return {
+    family: config.family,
+    datum: config.datum,
+    outline: [],
+    attachmentEdge: null,
+    house: {
+      footprint: [],
+      roofEaves: [],
+      openings: [],
+      decks: [],
+      model: null,
+      position: null,
+    } as Assembly3D['house'],
+    members: [],
+    roofPlanes: [],
+    roofCladdingPanels: [],
+    roofFlashings: [],
+    supportConditions: [],
+    quantityHooks: [],
+    semantics: {
+      connectionType: config.connection.type,
+      roofType: config.family,
+      structuralZones: [],
+      primaryDimensionsMm: { length: 0, projection: 0 },
+      secondaryDimensionsMm: null,
+    },
+  };
+}
+
+function emptyPlan(): GeometryPlanViewModel {
+  return {
+    family: 'mono',
+    connectionType: 'freestanding',
+    roofForm: { mono: true, gable: false, box: false },
+    outline: [],
+    attachmentEdge: null,
+    house: {
+      footprint: null,
+      fasciaLine: null,
+      roofEdgeLine: null,
+      wallReferenceLine: null,
+      surfaces: [],
+      lines: [],
+    },
+    members: {
+      posts: [],
+      beams: [],
+      ledgers: [],
+      rafters: [],
+      gutters: [],
+      ridge: [],
+      joiners: [],
+    },
+    surfaces: {
+      roofPlanes: [],
+      roofCladding: [],
+    },
+    anchors: {
+      primarySize: { length: null, projection: null },
+      fall: null,
+      rafterSpacing: null,
+      ridgeLine: null,
+      attachmentSide: null,
+    },
+    extents: {
+      minX: 0,
+      minY: 0,
+      maxX: 0,
+      maxY: 0,
+      lengthMm: 0,
+      projectionMm: 0,
+    },
+  };
+}
+
+function emptySection(): GeometrySectionViewModel {
+  return {
+    family: 'mono',
+    connectionType: 'freestanding',
+    sectionKind: 'mono',
+    roofForm: { mono: true, gable: false, box: false },
+    sliceXMm: 0,
+    baseline: { start: { x: 0, y: 0 }, end: { x: 0, y: 0 } },
+    house: {
+      referenceLine: null,
+      surfaces: [],
+      lines: [],
+    },
+    members: {
+      posts: [],
+      ledgers: [],
+      supportBeams: [],
+      gutters: [],
+      rafters: [],
+      ridge: [],
+      joiners: [],
+    },
+    surfaces: {
+      roofPlanes: [],
+      roofCladding: [],
+    },
+    anchors: {
+      span: { start: { x: 0, y: 0 }, end: { x: 0, y: 0 } },
+      leftEdgeHeight: null,
+      rightEdgeHeight: null,
+      ridgeHeight: null,
+      pitch: null,
+    },
+    metrics: {
+      spanMm: 0,
+      leftEdgeHeightMm: null,
+      rightEdgeHeightMm: null,
+      ridgeHeightMm: null,
+      pitchDeg: null,
+      boxRiseMm: null,
+    },
+    extents: {
+      minProjectionMm: 0,
+      maxProjectionMm: 0,
+      minHeightMm: 0,
+      maxHeightMm: 0,
+    },
+  };
+}
+
+function buildProjectPreview(input: {
+  identity: Required<WorkbenchGeometryIdentity>;
+  projectHouseGeometries: ReadonlyArray<ProjectHouseGeometryEntry>;
+  projectPergolaRenderHealth: ReadonlyArray<ProjectPergolaRenderHealth>;
+  projectPergolaFallbackPlanShapes: ReadonlyArray<GeometryTopProjectionShape>;
+  projectPlanProjection: GeometryTopProjectionViewModel | null;
+}): GeometryPreviewState {
+  const scene = buildProjectPergolaViewerSceneFromModules({
+    basisScene: null,
+    modules: [],
+    projectHouseGeometries: input.projectHouseGeometries,
+    projectPergolaRenderHealth: input.projectPergolaRenderHealth,
+    projectPergolaFallbackPlanShapes: input.projectPergolaFallbackPlanShapes,
   });
-}
-
-function previewMessageFromWorkbenchMessage(message: string): string {
-  return message.replace('workbench geometry', '3D geometry preview');
-}
-
-function buildGeometryPreviewStateFromArtifact(
-  artifact: WorkbenchSolvedGeometryArtifact,
-): GeometryPreviewState {
+  if (scene.layers.length === 0) {
+    return {
+      kind: 'error',
+      message: 'No object-first workbench geometry is available.',
+    };
+  }
+  const config = emptyGeometryConfig(input.identity);
   return {
     kind: 'ready',
-    previewMode: artifact.previewMode,
-    resultSource: artifact.resultSource,
-    config: artifact.config,
-    assembly: artifact.assembly,
-    validation: artifact.validation,
-    scene: artifact.viewerScene,
-    topProjection: artifact.topProjection,
-    deckSupport: artifact.deckSupport,
-  };
-}
-
-function buildWorkbenchViewportGeometry(input: {
-  artifact: WorkbenchSolvedGeometryArtifact | null;
-  planModel: ModulePlanModel | null;
-  sectionModel: ModuleSectionModel | null;
-  preview: GeometryPreviewState;
-}): WorkbenchViewportGeometry {
-  return {
-    artifact: input.artifact,
-    legacyFallback: {
-      planModel: input.planModel,
-      sectionModel: input.sectionModel,
+    previewMode: 'draft_project_solved',
+    resultSource: 'project_solve',
+    config,
+    assembly: emptyAssembly(config),
+    validation: emptyValidationReport(),
+    scene: {
+      ...scene,
+      metadata: {
+        ...(scene.metadata ?? {}),
+        projectPreviewSource: 'object_first_project',
+      },
     },
-    preview: input.artifact ? buildGeometryPreviewStateFromArtifact(input.artifact) : input.preview,
-  };
-}
-
-function buildInvalidSolvedModule(input: {
-  index: number;
-  drawingModule: EstimateDrawingModule;
-  label: string;
-  sourceKind?: WorkbenchSolvedModule['sourceKind'];
-  moduleInput: CalculatorModuleInputs;
-  previewMode: GeometryPreviewMode;
-  resultSource: WorkbenchGeometryResultSource;
-  draftTouchesGeometry: boolean;
-  message: string;
-  geometryPreviewMessage?: string;
-  drawingResult: EstimateDrawingModule['result'];
-  deckSupport?: WorkbenchDeckSupportDiagnostic | null;
-  previewKind?: 'error' | 'unsupported';
-}): WorkbenchSolvedModule {
-  const drawingModule = {
-    ...input.drawingModule,
-    result: input.drawingResult,
-  };
-  const previewKind = input.previewKind ?? 'error';
-  const geometryPreview: GeometryPreviewState =
-    previewKind === 'unsupported' && input.deckSupport
-      ? {
-          kind: 'unsupported',
-          previewMode: input.previewMode,
-          message: input.geometryPreviewMessage ?? input.message,
-          deckSupport: input.deckSupport,
-        }
-      : {
-          kind: 'error',
-          message: input.geometryPreviewMessage ?? input.message,
-        };
-  return {
-    index: input.index,
-    id: input.drawingModule.id,
-    label: input.label,
-    sourceKind: input.sourceKind ?? 'drawing_module',
-    drawingModule,
-    moduleInput: input.moduleInput,
-    previewMode: input.previewMode,
-    resultSource: input.resultSource,
-    draftTouchesGeometry: input.draftTouchesGeometry,
-    trust: buildTrustStatus({
-      status: 'invalid_geometry',
-      renderSource: 'legacy',
-      message: input.message,
-    }),
-    renderSource: 'legacy',
-    renderStatus: 'invalid_geometry',
-    geometryArtifact: null,
-    config: null,
-    assembly: null,
-    geometryPlan: null,
-    geometrySection: null,
-    geometryTopProjection: null,
-    validation: null,
-    viewerScene: null,
-    geometryPreview,
-    viewportGeometry: buildWorkbenchViewportGeometry({
-      artifact: null,
-      planModel: null,
-      sectionModel: null,
-      preview: geometryPreview,
-    }),
-    deckSupport: input.deckSupport ?? null,
-    planModel: null,
-    sectionModel: null,
-  };
-}
-
-function buildSolvedModule(input: {
-  index: number;
-  drawingModule: EstimateDrawingModule;
-  label: string;
-  sourceKind?: WorkbenchSolvedModule['sourceKind'];
-  snapshot: Record<string, unknown> | null;
-  draft?: EstimateDrawingDraft | null;
-  ignoreModuleResults?: boolean;
-  moduleResolution?: WorkbenchGeometryModuleResolveResult;
-  projectSolveSource?: WorkbenchProjectSolveSource;
-  projectSolveResult?: WorkbenchProjectSolvedPergola | null;
-  geometryIdentity: Required<WorkbenchGeometryIdentity>;
-  geometryContext: ObjectWorkbenchGeometryContext;
-  /** Project-level house geometry registry, shared across all modules. */
-  projectHouseGeometries: ReadonlyArray<ProjectHouseGeometryEntry>;
-  /** PR-G3b: pre-computed project-level decks, shared across all modules. */
-  projectDecks: RawGeometryModuleInput['houseContext']['decks'];
-  /** PR-G3b: pre-computed project-level openings, shared across all modules. */
-  projectOpenings: RawGeometryModuleInput['houseContext']['openings'];
-}): WorkbenchSolvedModule {
-  const initialModuleInput = coerceHiddenWorkbenchGableBaseline(input.drawingModule.input);
-  const resolved =
-    input.moduleResolution ??
-    input.projectSolveSource?.moduleResolution ??
-    resolveWorkbenchGeometryModule({
-      snapshot: input.snapshot,
-      draft: input.draft,
-      moduleIndex: input.index,
-      ignoreModuleResults: input.ignoreModuleResults,
-    });
-  const previewMode = resolvePreviewMode({
-    resultSource: resolved.resultSource,
-    draftTouchesGeometry: resolved.draftTouchesGeometry,
-  });
-
-  if (!resolved.ok) {
-    return buildInvalidSolvedModule({
-      index: input.index,
-      drawingModule: input.drawingModule,
-      label: input.label,
-      sourceKind: input.sourceKind,
-      moduleInput:
-        (resolved.module ? coerceHiddenWorkbenchGableBaseline(resolved.module) : input.projectSolveSource?.moduleInput) ??
-        initialModuleInput,
-      previewMode,
-      resultSource: resolved.resultSource,
-      draftTouchesGeometry: resolved.draftTouchesGeometry,
-      message: resolved.message,
-      geometryPreviewMessage: previewMessageFromWorkbenchMessage(resolved.message),
-      drawingResult: null,
-    });
-  }
-
-  const moduleInput = input.projectSolveSource?.moduleInput ?? coerceHiddenWorkbenchGableBaseline(resolved.module);
-  const hostHouseForm =
-    input.projectSolveSource?.hostHouseForm ??
-    resolveModuleHouseForm({
-      projectModel: input.geometryContext.projectModel ?? null,
-      module: moduleInput,
-      moduleId: input.drawingModule.id,
-    });
-  const hostHouseFormId = hostHouseForm?.id ?? null;
-  const projectHouseModels = input.projectHouseGeometries
-    .filter((entry) => entry.houseFormId !== hostHouseFormId)
-    .map((entry) => entry.model);
-  const deckSupport = buildDeckSupport({
-    moduleInput,
-    geometryContext: input.geometryContext,
-  });
-  const drawingModule: EstimateDrawingModule = {
-    ...input.drawingModule,
-    result: resolved.moduleResult,
-  };
-
-  const derivation = deriveWorkbenchGeometry({
-    projectId: input.geometryIdentity.projectId,
-    estimateId: input.geometryIdentity.estimateId,
-    designRequestId: input.geometryIdentity.designRequestId,
-    moduleId: input.drawingModule.id,
-    module: moduleInput,
-    result: resolved.moduleResult,
-    objectWorkbenchGeometryContext: input.geometryContext,
-    fallbackPlanModel: drawingModule.planModel,
-    fallbackSectionModel: drawingModule.sectionModel,
-    projectDecks: input.projectDecks,
-    projectOpenings: input.projectOpenings,
-    rawInput: input.projectSolveSource?.rawInput ?? null,
-    projectSolveResult: input.projectSolveResult ?? null,
-  });
-
-  if (derivation.kind === 'legacy_unsupported_family') {
-    const legacyIssues: WorkbenchTrustStatusKind[] =
-      derivation.planModel || derivation.sectionModel ? ['legacy_fallback'] : [];
-    const geometryPreview: GeometryPreviewState = {
-      kind: 'unsupported',
-      previewMode,
-      message: derivation.message,
-      deckSupport,
-    };
-    return {
-      index: input.index,
-      id: input.drawingModule.id,
-      label: input.label,
-      sourceKind: input.sourceKind ?? 'drawing_module',
-      drawingModule,
-      moduleInput,
-      previewMode,
-      resultSource: resolved.resultSource,
-      draftTouchesGeometry: resolved.draftTouchesGeometry,
-      trust: buildTrustStatus({
-        status: 'legacy_unsupported_family',
-        issues: legacyIssues,
-        renderSource: 'legacy',
-        message: derivation.message,
-      }),
-      renderSource: derivation.renderSource,
-      renderStatus: derivation.renderStatus,
-      geometryArtifact: null,
-      config: null,
-      assembly: null,
-      geometryPlan: null,
-      geometrySection: null,
-      geometryTopProjection: null,
-      validation: null,
-      viewerScene: null,
-      geometryPreview,
-      viewportGeometry: buildWorkbenchViewportGeometry({
-        artifact: null,
-        planModel: derivation.planModel,
-        sectionModel: derivation.sectionModel,
-        preview: geometryPreview,
-      }),
-      deckSupport,
-      planModel: derivation.planModel,
-      sectionModel: derivation.sectionModel,
-    };
-  }
-
-  if (derivation.kind === 'invalid_geometry') {
-    return buildInvalidSolvedModule({
-      index: input.index,
-      drawingModule: input.drawingModule,
-      label: input.label,
-      sourceKind: input.sourceKind,
-      moduleInput,
-      previewMode,
-      resultSource: resolved.resultSource,
-      draftTouchesGeometry: resolved.draftTouchesGeometry,
-      message: derivation.message,
-      drawingResult: resolved.moduleResult,
-      deckSupport,
-    });
-  }
-
-  const validation = validateGeometrySolve({
-    config: derivation.config,
-    solveResult: {
-      ok: true,
-      value: derivation.assembly,
+    topProjection: input.projectPlanProjection ?? {
+      coordinateSpace: 'world_xy_mm',
+      screenAxis: { x: 'world_x_right', y: 'world_y_down' },
+      shapes: [],
+      extents: null,
     },
-  });
-  const scene = buildViewerSceneFromSolvedGeometry({
-    config: derivation.config,
-    assembly: derivation.assembly,
-    geometryContext: input.geometryContext,
-    hostHouseForm,
-    projectHouseModels,
-  });
-  const quantityTakeoff = buildAssemblyQuantityTakeoff(derivation.assembly);
-  const geometryTopProjection = buildTopProjectionFromSolvedScene({
-    scene,
-    fallbackTopProjection: derivation.geometryTopProjection,
-    assembly: derivation.assembly,
-    pergolaId: moduleInput.pergolaId ?? null,
-    houseFormId: hostHouseFormId,
-  });
-  const trust = buildTrustStatus({
-    status: 'geometry_ready',
-    issues: collectGeometryTrustIssues(input.geometryContext),
-    renderSource: 'geometry',
-  });
-  const geometryArtifact: WorkbenchSolvedGeometryArtifact = {
+    deckSupport: EMPTY_DECK_SUPPORT,
+  };
+}
+
+function buildProjectViewportGeometry(preview: GeometryPreviewState): WorkbenchViewportGeometry | null {
+  if (preview.kind !== 'ready') return null;
+  const trust = buildTrustStatus({ status: 'geometry_ready' });
+  const artifact: WorkbenchSolvedGeometryArtifact = {
     source: 'solved_geometry',
     fallback: null,
-    previewMode,
-    resultSource: resolved.resultSource,
-    deckSupport,
-    config: derivation.config,
-    assembly: derivation.assembly,
-    plan: derivation.geometryPlan,
-    section: derivation.geometrySection,
-    quantityTakeoff,
-    topProjection: geometryTopProjection,
-    viewerScene: scene,
-    validation,
+    previewMode: preview.previewMode,
+    resultSource: preview.resultSource,
+    deckSupport: preview.deckSupport,
+    config: preview.config,
+    assembly: preview.assembly,
+    plan: emptyPlan(),
+    section: emptySection(),
+    quantityTakeoff: emptyQuantityTakeoff(),
+    topProjection: preview.topProjection,
+    viewerScene: preview.scene,
+    validation: preview.validation,
     trust,
-    renderSource: derivation.renderSource,
-    renderStatus: derivation.renderStatus,
+    renderSource: 'geometry',
+    renderStatus: 'geometry_ready',
   };
-  const geometryPreview = buildGeometryPreviewStateFromArtifact(geometryArtifact);
-
   return {
-    index: input.index,
-    id: input.drawingModule.id,
-    label: input.label,
-    sourceKind: input.sourceKind ?? 'drawing_module',
-    drawingModule,
-    moduleInput,
-    previewMode,
-    resultSource: resolved.resultSource,
-    draftTouchesGeometry: resolved.draftTouchesGeometry,
-    trust,
-    renderSource: geometryArtifact.renderSource,
-    renderStatus: geometryArtifact.renderStatus,
-    geometryArtifact,
-    config: geometryArtifact.config,
-    assembly: geometryArtifact.assembly,
-    geometryPlan: geometryArtifact.plan,
-    geometrySection: geometryArtifact.section,
-    geometryTopProjection: geometryArtifact.topProjection,
-    validation: geometryArtifact.validation,
-    viewerScene: geometryArtifact.viewerScene,
-    geometryPreview,
-    viewportGeometry: buildWorkbenchViewportGeometry({
-      artifact: geometryArtifact,
-      planModel: derivation.planModel,
-      sectionModel: derivation.sectionModel,
-      preview: geometryPreview,
-    }),
-    deckSupport,
-    planModel: derivation.planModel,
-    sectionModel: derivation.sectionModel,
+    artifact,
+    preview,
   };
 }
 
-function resolveInactiveSolvedModelMessage(input: {
-  snapshot: Record<string, unknown> | null;
-  draft?: EstimateDrawingDraft | null;
-  ignoreModuleResults?: boolean;
-  activeModuleIndex?: number;
-  drawingModules?: EstimateDrawingModule[];
-}): string {
-  if (input.drawingModules?.length) {
-    return 'The selected module is not available for workbench geometry.';
-  }
-  const resolution = resolveWorkbenchGeometryModule({
-    snapshot: input.snapshot,
-    draft: input.draft,
-    moduleIndex: input.activeModuleIndex ?? 0,
-    ignoreModuleResults: input.ignoreModuleResults,
-  });
-  return resolution.ok ? 'No active workbench module is available.' : resolution.message;
+function hasBlockingHouseGeometry(health: ReadonlyArray<ProjectHouseProjectionHealth>): boolean {
+  return health.some((entry) => entry.failureStage !== 'none' || entry.roofValidationStatus === 'invalid');
 }
 
 export function buildWorkbenchSolvedModel(input: {
-  snapshot: Record<string, unknown> | null;
-  draft?: EstimateDrawingDraft | null;
-  ignoreModuleResults?: boolean;
-  moduleLabels?: string[];
-  activeModuleIndex?: number;
-  activePergolaId?: string | null;
-  geometryIdentity?: WorkbenchGeometryIdentity | null;
   projectModel?: WorkbenchProjectModel | null;
-  drawingModules?: EstimateDrawingModule[];
-  objectWorkbenchGeometryContext?: ObjectWorkbenchGeometryContext | null;
+  geometryIdentity?: WorkbenchGeometryIdentity | null;
 }): WorkbenchSolvedModel {
   const geometryIdentity = resolveGeometryIdentity(input.geometryIdentity);
-  const effectiveSnapshot = mergeEstimateDrawingDraftIntoSnapshot(input.snapshot, input.draft);
-  const drawingModules =
-    input.drawingModules ??
-    buildEstimateDrawingModules(effectiveSnapshot, {
-      ignoreModuleResults: input.ignoreModuleResults,
-    });
-  const geometryContext =
-    input.objectWorkbenchGeometryContext ??
-    buildObjectWorkbenchGeometryContext({
-      snapshot: input.snapshot,
-      draft: input.draft,
-      projectModel: input.projectModel,
-      ignoreModuleResults: input.ignoreModuleResults,
-    });
-  const projectModel = input.projectModel ?? geometryContext.projectModel ?? EMPTY_WORKBENCH_PROJECT_MODEL;
+  const projectModel = input.projectModel ?? EMPTY_WORKBENCH_PROJECT_MODEL;
   const projectHouseGeometries = buildProjectHouseGeometryRegistry(projectModel);
-  // PR-G3b (2026-05-22): map project-level decks/openings ONCE instead of
-  // once per pergola module. Closes audit row 9 in production-path spirit.
-  const projectDecks = mapProjectDecks(projectModel);
-  const projectOpenings = mapProjectOpenings(projectModel);
-  const calculatorInputs = resolveCalculatorInputsFromSnapshot(effectiveSnapshot);
-  const objectFirstPergolaSources = buildObjectFirstPergolaSolveSources({
-    projectModel,
-    drawingModules,
-  });
-  const solveSources = buildWorkbenchProjectSolveSources({
-    snapshot: input.snapshot,
-    draft: input.draft,
-    ignoreModuleResults: input.ignoreModuleResults,
-    moduleLabels: input.moduleLabels,
-    drawingModules,
-    objectFirstPergolaSources,
-    effectiveSnapshot,
-    baseInputs: calculatorInputs,
-    geometryIdentity,
-    geometryContext,
-    projectDecks,
-    projectOpenings,
-  });
-  const projectSolveResults = solveWorkbenchProjectSources(solveSources);
-  const modules = solveSources.map((source) =>
-    buildSolvedModule({
-      index: source.index,
-      drawingModule: source.drawingModule,
-      label: source.label,
-      sourceKind: source.sourceKind,
-      snapshot: input.snapshot,
-      draft: input.draft,
-      ignoreModuleResults: input.ignoreModuleResults,
-      moduleResolution: source.moduleResolution,
-      projectSolveSource: source,
-      projectSolveResult: projectSolveResults.get(source.index) ?? null,
-      geometryIdentity,
-      geometryContext,
-      projectHouseGeometries,
-      projectDecks,
-      projectOpenings,
-    }),
-  );
-  const activeModule = input.activePergolaId
-    ? modules.find((module) => module.moduleInput.pergolaId === input.activePergolaId) ?? null
-    : modules[input.activeModuleIndex ?? 0] ?? null;
-  const inactiveMessage = activeModule ? null : resolveInactiveSolvedModelMessage(input);
   const projectRenderPipeline = buildProjectObjectRenderPipeline({
     projectModel,
-    modules,
+    modules: [],
     projectHouseGeometries,
   });
-  const projectViewportGeometry = resolveProjectReadyBasisModule({
-    modules,
-    activeModule,
-    projectPergolaRenderHealth: projectRenderPipeline.projectPergolaRenderHealth,
-  })?.viewportGeometry ?? null;
-  const projectGeometryPreview = buildProjectGeometryPreviewFromModules({
-    modules,
-    activeModule,
+  const projectGeometryPreview = buildProjectPreview({
+    identity: geometryIdentity,
     projectHouseGeometries: projectRenderPipeline.projectHouseGeometries,
     projectPergolaRenderHealth: projectRenderPipeline.projectPergolaRenderHealth,
     projectPergolaFallbackPlanShapes: projectRenderPipeline.projectPergolaFallbackPlanShapes,
-    fallbackMessage: inactiveMessage
-      ? previewMessageFromWorkbenchMessage(inactiveMessage)
-      : undefined,
+    projectPlanProjection: projectRenderPipeline.projectPlanProjection,
+  });
+  const projectViewportGeometry = buildProjectViewportGeometry(projectGeometryPreview);
+  const trust = buildTrustStatus({
+    status: hasBlockingHouseGeometry(projectRenderPipeline.projectHouseProjectionHealth)
+      ? 'invalid_geometry'
+      : 'geometry_ready',
+    message: hasBlockingHouseGeometry(projectRenderPipeline.projectHouseProjectionHealth)
+      ? 'One or more object-owned house forms failed package geometry.'
+      : null,
   });
 
   return {
     projectModel,
-    modules,
-    activeModule,
+    modules: [],
     projectHouseGeometries: projectRenderPipeline.projectHouseGeometries,
     projectPergolaPlanShapes: projectRenderPipeline.projectPergolaPlanShapes,
     projectPergolaFallbackPlanShapes: projectRenderPipeline.projectPergolaFallbackPlanShapes,
@@ -1323,128 +827,37 @@ export function buildWorkbenchSolvedModel(input: {
     projectViewportGeometry,
     projectGeometryPreview,
     projectReferenceShapes: projectRenderPipeline.projectReferenceShapes,
-    trust:
-      activeModule?.trust ??
-      buildTrustStatus({
-        status: 'invalid_geometry',
-        renderSource: 'none',
-        message: inactiveMessage ?? 'No active workbench module is available.',
-      }),
+    trust,
     geometryIdentity,
   };
 }
 
-/**
- * PR-2B.1a (2026-05-23): derive the per-object `WorkbenchSolvedProject`
- * from a `WorkbenchSolvedModel`. Transposes the legacy per-module array
- * into a per-pergola array keyed by `PergolaObjectModel.id`. Active
- * selection lifts from `activeModuleIndex` to `activePergolaId`.
- *
- * For each pergola in `projectModel.pergolas`, the matching
- * `WorkbenchSolvedModule` is identified via `moduleInput.pergolaId === pergola.id`.
- * Legacy multi-module setups (multiple modules sharing a pergolaId) use
- * first-wins — V2's "one PergolaObjectModel equals one logical module"
- * contract assumes 1:1. Pergolas in the scene without matching solved
- * modules are skipped (the geometry pipeline has nothing to solve for them).
- *
- * Coexists with the legacy `WorkbenchSolvedModel` for the duration of
- * PR-2B.1a. Consumers migrate to this shape in PR-2B.1b, after which
- * the legacy `modules[]` array and the transposition both retire.
- */
 export function buildWorkbenchSolvedProject(input: {
   solvedModel: WorkbenchSolvedModel;
   activePergolaId?: string | null;
 }): WorkbenchSolvedProject {
-  const { solvedModel } = input;
-  // Iterate in source-module order: first occurrence of each pergolaId
-  // establishes the SolvedPergola's primary fields and ordering; subsequent
-  // occurrences (legacy multi-module-per-pergola) append to `sourceModules`.
-  const indexByPergolaId = new Map<string, number>();
-  const pergolaLabelById = new Map(
-    solvedModel.projectModel.pergolas.map((pergolaObj) => [pergolaObj.id, pergolaObj.label]),
-  );
-  const pergolas: SolvedPergola[] = [];
-
-  for (let index = 0; index < solvedModel.modules.length; index += 1) {
-    const module = solvedModel.modules[index]!;
-    const pergolaId = module.moduleInput.pergolaId;
-    if (typeof pergolaId !== 'string' || pergolaId.trim().length === 0) continue;
-    if (!pergolaLabelById.has(pergolaId)) continue; // orphan: no matching project pergola
-    const existingPergolaIndex = indexByPergolaId.get(pergolaId);
-    if (existingPergolaIndex !== undefined) {
-      pergolas[existingPergolaIndex]!.sourceModules.push(module);
-      continue;
-    }
-    indexByPergolaId.set(pergolaId, pergolas.length);
-    pergolas.push({
-      id: pergolaId,
-      label: pergolaLabelById.get(pergolaId)!,
-      pergolaIndex: index,
-      moduleInput: module.moduleInput,
-      previewMode: module.previewMode,
-      resultSource: module.resultSource,
-      draftTouchesGeometry: module.draftTouchesGeometry,
-      trust: module.trust,
-      renderSource: module.renderSource,
-      renderStatus: module.renderStatus,
-      geometryArtifact: module.geometryArtifact,
-      config: module.config,
-      assembly: module.assembly,
-      geometryPlan: module.geometryPlan,
-      geometrySection: module.geometrySection,
-      geometryTopProjection: module.geometryTopProjection,
-      validation: module.validation,
-      viewerScene: module.viewerScene,
-      geometryPreview: module.geometryPreview,
-      viewportGeometry: module.viewportGeometry,
-      deckSupport: module.deckSupport,
-      planModel: module.planModel,
-      sectionModel: module.sectionModel,
-      sourceModules: [module],
-    });
-  }
-
-  // Active selection: prefer the caller's explicit pergola id; else fall
-  // back to the legacy `activeModule`'s pergolaId; else first pergola; else null.
-  const explicit = input.activePergolaId ?? null;
-  const fallback = solvedModel.activeModule?.moduleInput.pergolaId ?? pergolas[0]?.id ?? null;
-  const activePergolaId =
-    explicit && pergolas.some((p) => p.id === explicit) ? explicit : fallback;
-  const activePergola = pergolas.find((p) => p.id === activePergolaId) ?? null;
-
   return {
-    projectModel: solvedModel.projectModel,
-    pergolas,
-    activePergolaId,
-    activePergola,
-    projectHouseGeometries: solvedModel.projectHouseGeometries,
-    projectPergolaPlanShapes: solvedModel.projectPergolaPlanShapes,
-    projectPergolaFallbackPlanShapes: solvedModel.projectPergolaFallbackPlanShapes,
-    projectPergolaRenderHealth: solvedModel.projectPergolaRenderHealth,
-    projectHouseProjectionHealth: solvedModel.projectHouseProjectionHealth,
-    houseGeometryInputsById: solvedModel.houseGeometryInputsById,
-    projectPlanProjection: solvedModel.projectPlanProjection,
-    projectViewportGeometry: solvedModel.projectViewportGeometry,
-    projectGeometryPreview: solvedModel.projectGeometryPreview,
-    projectReferenceShapes: solvedModel.projectReferenceShapes,
-    trust: solvedModel.trust,
-    geometryIdentity: solvedModel.geometryIdentity,
+    projectModel: input.solvedModel.projectModel,
+    pergolas: [],
+    activePergolaId: input.activePergolaId ?? null,
+    activePergola: null,
+    projectHouseGeometries: input.solvedModel.projectHouseGeometries,
+    projectPergolaPlanShapes: input.solvedModel.projectPergolaPlanShapes,
+    projectPergolaFallbackPlanShapes: input.solvedModel.projectPergolaFallbackPlanShapes,
+    projectPergolaRenderHealth: input.solvedModel.projectPergolaRenderHealth,
+    projectHouseProjectionHealth: input.solvedModel.projectHouseProjectionHealth,
+    houseGeometryInputsById: input.solvedModel.houseGeometryInputsById,
+    projectPlanProjection: input.solvedModel.projectPlanProjection,
+    projectViewportGeometry: input.solvedModel.projectViewportGeometry,
+    projectGeometryPreview: input.solvedModel.projectGeometryPreview,
+    projectReferenceShapes: input.solvedModel.projectReferenceShapes,
+    trust: input.solvedModel.trust,
+    geometryIdentity: input.solvedModel.geometryIdentity,
   };
-}
-
-function buildGeometryPreviewStateFromSolvedModule(
-  module: WorkbenchSolvedModule | null,
-  fallbackMessage = 'The selected module is not available for 3D geometry preview.',
-): GeometryPreviewState {
-  return module?.viewportGeometry.preview ?? { kind: 'error', message: fallbackMessage };
 }
 
 export function buildGeometryPreviewStateFromSolvedModel(
   model: WorkbenchSolvedModel,
-  fallbackMessage = 'The selected module is not available for 3D geometry preview.',
 ): GeometryPreviewState {
-  return buildGeometryPreviewStateFromSolvedModule(
-    model.activeModule,
-    model.trust.message ? previewMessageFromWorkbenchMessage(model.trust.message) : fallbackMessage,
-  );
+  return model.projectGeometryPreview;
 }

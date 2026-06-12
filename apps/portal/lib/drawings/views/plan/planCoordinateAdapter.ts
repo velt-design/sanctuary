@@ -7,7 +7,7 @@ export type PlanSvgPoint = {
 };
 
 export type PlanCoordinateAdapter = {
-  coordinateSpace: 'top_projection_world_m' | 'legacy_plan_m';
+  coordinateSpace: 'top_projection_world_m' | 'object_outline_plan_m';
   projectionToSvg: (point: Point2) => PlanSvgPoint;
   projectionPolygonToSvg: (points: Point2[]) => PlanSvgPoint[];
   svgToProjectionPlanPoint: (point: PlanSvgPoint) => PlanPoint | null;

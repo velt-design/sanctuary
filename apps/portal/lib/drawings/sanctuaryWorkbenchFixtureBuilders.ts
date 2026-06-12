@@ -1,71 +1,103 @@
 import 'server-only';
 
-import type { CostOutputV1, RoofType } from '@sp/costing';
-import type { CalculatorModuleInputs } from '@/lib/types/calculator';
+import type { EstimateDrawingDraft } from '@/lib/estimates/drawingEdits';
+import { addHouseFormToObjectFirstDraft } from './state/objectFirstWorkbenchAdapter';
 import {
-  buildEstimateDrawingDraftFromSnapshot,
-  updateEstimateDrawingObjectFirstWorkbenchDraft,
-  type EstimateDrawingDraft,
-} from '@/lib/estimates/drawingEdits';
-import { buildHouseFirstWorkbenchProjectModel } from './state/houseFirstWorkbenchAdapter';
-import { buildObjectFirstWorkbenchDraftFromProjectModel } from './state/objectFirstWorkbenchAdapter';
-import { buildObjectFirstWorkbenchProjectModel } from './state/legacyObjectFirstCompatibilityAdapter';
-import type { HouseFormRoofIntentModel } from './state/objectFirstWorkbenchModel';
+  EMPTY_OBJECT_FIRST_WORKBENCH_DRAFT,
+  normalizeObjectFirstWorkbenchDraftVNext,
+  type HouseFormFootprintModel,
+  type HouseFormRoofIntentModel,
+  type ObjectFirstHouseFormDraft,
+  type ObjectFirstPergolaConnectionKind,
+  type ObjectFirstPergolaDraft,
+  type ObjectFirstWorkbenchDraftVNext,
+  type WorkbenchAttachmentSide,
+  type WorkbenchPergolaGableEndFramesMode,
+  type WorkbenchPergolaGroundCondition,
+  type WorkbenchPergolaHouseEdgeGutterMode,
+  type WorkbenchPergolaPostConnectionType,
+  type WorkbenchPergolaRoofMaterial,
+} from './state/objectFirstWorkbenchModel';
 
-export function makeModule(overrides: Partial<CalculatorModuleInputs> = {}): CalculatorModuleInputs {
-  const base: Partial<CalculatorModuleInputs> = {
+type FixtureRoofType = 'pitched' | 'low_gable' | 'gable' | 'hip' | 'hip_corner';
+type FixtureCostOutput = Record<string, unknown>;
+
+export type FixtureModuleInput = {
+  pergolaId?: string;
+  pergolaStyle?: 'pitched' | 'gable' | 'hip' | 'hip_corner' | 'box';
+  roofMaterial?: WorkbenchPergolaRoofMaterial;
+  lengthM?: string;
+  projectionM?: string;
+  hipCornerLengthBM?: string;
+  hipCornerProjectionBM?: string;
+  roofPitchDeg?: string;
+  postCutHeightM?: string;
+  postCount?: string;
+  postConnectionType?: WorkbenchPergolaPostConnectionType;
+  ground?: WorkbenchPergolaGroundCondition;
+  houseConnectionType?: ObjectFirstPergolaConnectionKind | 'none';
+  attachmentSide?: WorkbenchAttachmentSide;
+  houseAttachmentStrategy?: ObjectFirstPergolaDraft['strategy'];
+  houseFootprintMode?: HouseFormFootprintModel['mode'];
+  houseFootprintPreset?: HouseFormFootprintModel['preset'];
+  houseFootprintParams?: HouseFormFootprintModel['params'];
+  houseRoofPitchDeg?: string;
+  houseFasciaHeightMm?: string;
+  houseEaveOverhangMm?: string;
+  gableEndFramesMode?: WorkbenchPergolaGableEndFramesMode;
+  gableHouseEdgeGutter?: WorkbenchPergolaHouseEdgeGutterMode;
+  gableOuterEdgeGutter?: WorkbenchPergolaHouseEdgeGutterMode;
+  boxPerimeterEnabled?: boolean;
+  internalRoofType?: string;
+  fallDistanceMm?: string;
+};
+
+export function makeModule(overrides: Partial<FixtureModuleInput> = {}): FixtureModuleInput {
+  return {
     pergolaId: 'pergola-1',
     pergolaStyle: 'pitched',
     roofMaterial: 'acrylic',
-    extrusionColour: 'White',
-    boxPerimeterEnabled: false,
-    internalRoofType: 'pitched',
-    fallDistanceMm: '0',
-    roofPitchDeg: '5',
-    gableEndFramesMode: 'outer_end_only',
-    gableHouseEdgeGutter: 'house',
-    gableOuterEdgeGutter: 'our',
-    boxGutterHouseEdge: 'house',
-    boxGutterFarEdge: 'our',
-    downpipeCount: '0',
-    downpipeJoinCount: '0',
-    downpipeElbowCount: '0',
-    separateGutterEnabled: false,
-    overhangEnabled: false,
-    overhangAmountM: '0',
-    overhangSupportBeamProfile: '150x50',
-    invertedEnabled: false,
-    invertedHouseGutter: false,
-    mixedSkylightStripCount: '0',
-    mixedSkylightStripWidthM: '0',
-    mixedAcrylicBaysMain: '0',
-    mixedAcrylicBaysA: '0',
-    mixedAcrylicBaysB: '0',
-    timberRoofAboveType: 'insulated_panels',
-    timberInsulatedPanelThicknessMm: '50',
-    timberTrayWidthMm: '500',
-    postCount: '4',
-    houseConnectionType: 'soffit',
-    attachmentSide: 'rear',
-    houseFootprintPreset: 'straight',
-    postConnectionType: 'slab_anchors',
-    ground: 'easy',
     lengthM: '6',
     projectionM: '3',
     hipCornerLengthBM: '0',
     hipCornerProjectionBM: '0',
+    roofPitchDeg: '5',
     postCutHeightM: '2.4',
-    timberRoofAllowanceExGst: '0',
-    flashings: { rows: [] },
-    overrides: {},
-    infills: { items: [] },
+    postCount: '4',
+    postConnectionType: 'slab_anchors',
+    ground: 'easy',
+    houseConnectionType: 'soffit',
+    attachmentSide: 'rear',
+    houseAttachmentStrategy: 'soffit_brackets',
+    houseFootprintMode: 'preset',
+    houseFootprintPreset: 'straight',
+    houseFootprintParams: {
+      widthM: '6',
+      offsetXM: '0',
+      setbackM: '0',
+      bandDepthM: '4',
+      returnRunM: '0',
+      recessWidthM: '0',
+      recessDepthM: '0',
+      leftLegRunM: '0',
+      rightLegRunM: '0',
+      sideRunM: '0',
+    },
+    houseRoofPitchDeg: '5',
+    houseFasciaHeightMm: '180',
+    houseEaveOverhangMm: '450',
+    gableEndFramesMode: 'outer_end_only',
+    gableHouseEdgeGutter: 'house',
+    gableOuterEdgeGutter: 'our',
+    boxPerimeterEnabled: false,
+    internalRoofType: 'pitched',
+    fallDistanceMm: '0',
+    ...overrides,
   };
-
-  return { ...base, ...overrides } as CalculatorModuleInputs;
 }
 
 export function makeResult(params: {
-  roofType?: RoofType;
+  roofType?: FixtureRoofType;
   lengthA?: number;
   spanA?: number;
   slopeDirection?: 'away_from_house' | 'toward_house' | null;
@@ -94,7 +126,7 @@ export function makeResult(params: {
   boxEffectiveRunM?: number;
   boxRiseMm?: number;
   boxMaxFallMm?: number;
-}): CostOutputV1 {
+}): FixtureCostOutput {
   return {
     inputs_normalized: {
       roof_type: params.roofType ?? 'pitched',
@@ -141,57 +173,134 @@ export function makeResult(params: {
       box_rise_mm: params.boxRiseMm ?? null,
       box_max_fall_mm: params.boxMaxFallMm ?? null,
     },
-  } as unknown as CostOutputV1;
+  };
 }
 
-export function makeSnapshot(module: CalculatorModuleInputs, result: CostOutputV1, label: string): Record<string, unknown> {
+export function makeSnapshot(module: FixtureModuleInput, result: FixtureCostOutput, label: string): Record<string, unknown> {
   return {
-    inputs: {
-      schemaVersion: 'v2',
-      projectName: 'Sanctuary Fixture Project',
-      quoteRef: 'Q-FIXTURE',
-      access: 'normal',
-      height: 'single_storey',
-      jobType: 'residential',
-      travelExGst: '0',
-      extrasAllowanceExGst: '0',
-      quoteDiscountPct: '0',
-      pergolas: [{ id: 'pergola-1', label }],
-      modules: [module],
+    fixtureSource: 'object_first_workbench_fixture',
+    label,
+    module,
+    result,
+  };
+}
+
+function familyFromFixtureModule(module: FixtureModuleInput): ObjectFirstPergolaDraft['family'] {
+  if (module.boxPerimeterEnabled) return 'box';
+  if (module.pergolaStyle === 'gable') return 'gable';
+  if (module.pergolaStyle === 'hip') return 'hip';
+  if (module.pergolaStyle === 'hip_corner') return 'hip_corner';
+  return 'mono';
+}
+
+function connectionKindFromFixtureModule(
+  value: FixtureModuleInput['houseConnectionType'],
+): ObjectFirstPergolaConnectionKind {
+  return value && value !== 'none' ? value : 'freestanding';
+}
+
+function buildObjectFirstDraftFromFixtureModule(module: FixtureModuleInput): ObjectFirstWorkbenchDraftVNext {
+  const withHouse = addHouseFormToObjectFirstDraft({
+    draft: EMPTY_OBJECT_FIRST_WORKBENCH_DRAFT,
+    label: 'House 1',
+  });
+  const houseForms = withHouse.houseAssembly?.houseForms ?? [];
+  const house = houseForms[0];
+  if (!house) {
+    throw new Error('Expected object-first house form for fixture.');
+  }
+
+  const footprintMode: HouseFormFootprintModel['mode'] = module.houseFootprintMode ?? 'preset';
+  const footprintPreset: HouseFormFootprintModel['preset'] = module.houseFootprintPreset ?? house.footprint.preset;
+  const footprintParams: HouseFormFootprintModel['params'] = module.houseFootprintParams ?? house.footprint.params;
+  const pergolaConnectionKind = connectionKindFromFixtureModule(module.houseConnectionType);
+  const nextHouse: ObjectFirstHouseFormDraft = {
+    ...house,
+    footprint: {
+      ...house.footprint,
+      mode: footprintMode,
+      preset: footprintPreset,
+      params: footprintParams,
+      attachmentSide: module.attachmentSide ?? 'rear',
     },
-    outputs: {
-      pergolas: [{ id: 'pergola-1', modules: [result] }],
+    roofIntentAuthored: true,
+    roofIntent: {
+      ...house.roofIntent,
+      form: 'hipped',
+      primaryPitchDeg: module.houseRoofPitchDeg ?? module.roofPitchDeg ?? house.roofIntent.primaryPitchDeg,
+      material: 'corrugated_iron',
+    } satisfies HouseFormRoofIntentModel,
+    attachmentStrategy: module.houseAttachmentStrategy ?? null,
+    fasciaHeightMm: module.houseFasciaHeightMm ?? house.fasciaHeightMm,
+    eaveOverhangMm: module.houseEaveOverhangMm ?? house.eaveOverhangMm,
+  };
+
+  const pergola: ObjectFirstPergolaDraft = {
+    id: module.pergolaId ?? 'pergola-1',
+    label: 'Pergola 1',
+    family: familyFromFixtureModule(module),
+    connectionKind: pergolaConnectionKind,
+    attachmentEdgeId: null,
+    attachmentZoneId: null,
+    side: module.attachmentSide ?? 'rear',
+    strategy: pergolaConnectionKind === 'freestanding'
+      ? null
+      : module.houseAttachmentStrategy ?? 'soffit_brackets',
+    geometry: {
+      dimensions: {
+        lengthM: module.lengthM ?? '6',
+        projectionM: module.projectionM ?? '3',
+        hipCornerLengthBM: module.hipCornerLengthBM ?? '0',
+        hipCornerProjectionBM: module.hipCornerProjectionBM ?? '0',
+      },
+      roof: {
+        material: module.roofMaterial ?? 'acrylic',
+        pitchDeg: module.roofPitchDeg ?? '5',
+      },
+      gable: {
+        endFramesMode: module.gableEndFramesMode ?? 'outer_end_only',
+        houseEaveGutterMode: module.gableHouseEdgeGutter ?? 'house',
+        outerEaveGutterMode: module.gableOuterEdgeGutter ?? 'our',
+      },
+      supports: {
+        postCount: module.postCount ?? '4',
+        postCutHeightM: module.postCutHeightM ?? '2.4',
+        postConnectionType: module.postConnectionType ?? 'slab_anchors',
+        ground: module.ground ?? 'easy',
+      },
     },
-  } satisfies Record<string, unknown>;
+    position: { originXMm: '0', originYMm: '0', rotationDeg: '0' },
+    attachment: null,
+  };
+
+  return normalizeObjectFirstWorkbenchDraftVNext({
+    ...withHouse,
+    houseAssembly: {
+      ...withHouse.houseAssembly!,
+      houseForms: [nextHouse],
+    },
+    pergolas: [pergola],
+  });
 }
 
 export function makeHouseRoofDraftFixtureDraft(input: {
   snapshot: Record<string, unknown>;
   roof: Partial<HouseFormRoofIntentModel>;
 }): EstimateDrawingDraft {
-  const draft = buildEstimateDrawingDraftFromSnapshot(input.snapshot);
-  if (!draft) {
-    throw new Error('Expected drawing draft from fixture snapshot.');
-  }
-  const compatibilityProjectModel = buildHouseFirstWorkbenchProjectModel({
-    snapshot: input.snapshot,
-    draft,
-  });
-  const projectModel = buildObjectFirstWorkbenchProjectModel({
-    compatibilityProjectModel,
-  });
-  const objectFirst = buildObjectFirstWorkbenchDraftFromProjectModel(projectModel);
+  const module = (input.snapshot.module ?? makeModule()) as FixtureModuleInput;
+  const objectFirst = buildObjectFirstDraftFromFixtureModule(module);
   const houseForm = objectFirst.houseAssembly?.houseForms[0];
   if (!houseForm) {
-    throw new Error('Expected object-first house form from fixture snapshot.');
+    throw new Error('Expected object-first house form from fixture module.');
   }
   houseForm.roofIntentAuthored = true;
   houseForm.roofIntent = {
     ...houseForm.roofIntent,
     ...input.roof,
   };
-  return updateEstimateDrawingObjectFirstWorkbenchDraft({
-    draft,
+  return {
+    inputs: {} as EstimateDrawingDraft['inputs'],
+    overrides: {},
     objectFirst,
-  });
+  };
 }

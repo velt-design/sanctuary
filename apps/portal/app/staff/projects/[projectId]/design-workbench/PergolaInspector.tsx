@@ -1,17 +1,8 @@
 'use client';
 
-import { useCallback, useMemo, useState } from 'react';
-import type { Assembly3D } from '@sp/geometry';
-import { type ModuleViewsTab } from '@/app/staff/calculator/ModuleViewsCard';
-import SanctuaryWorkbenchRail from '@/components/drawings/rail/SanctuaryWorkbenchRail';
-import { buildResolvedMemberSizeMap } from '@/lib/drawings/state/resolvedMemberSizes';
+import { useCallback, useState } from 'react';
 import { labelForAttachmentSideList } from '@/components/drawings/rail/objectRailShared';
 import type {
-  ObjectWorkbenchGeometryEditIntent,
-  ObjectWorkbenchGeometryEditState,
-} from '@/lib/drawings/geometry/geometryEditAdapter';
-import type {
-  HouseAssemblyModel,
   PergolaAttachment,
   PergolaAttachmentMethod,
 } from '@/lib/drawings/state/objectFirstWorkbenchModel';
@@ -26,8 +17,7 @@ import {
   labelForPergolaAttachmentSpatialKind,
   pergolaAttachmentMethodIsWritable,
 } from '@/lib/drawings/state/pergolaAttachmentLabels';
-import { pergolaAttachmentFromLegacyFields } from '@/lib/drawings/state/pergolaAttachment';
-import type { CalculatorModuleInputs } from '@/lib/types/calculator';
+import { pergolaAttachmentFromStoredConnectionFields } from '@/lib/drawings/state/pergolaAttachment';
 import type { CommitResult } from './objectWorkbenchClientTypes';
 import styles from './DesignWorkbenchEstimateClient.module.css';
 
@@ -38,33 +28,12 @@ type PergolaInspectorModule = {
 
 type PergolaInspectorProps = {
   activePergolaModel: ObjectWorkbenchPergolaInspectorModel | null;
-  activeModuleInput: CalculatorModuleInputs | null;
-  activeModuleLabel: string;
   activePergolaId: string | null;
   disabled?: boolean;
-  geometryState: ObjectWorkbenchGeometryEditState | null;
-  houseAssembly: HouseAssemblyModel | null;
   modules: PergolaInspectorModule[];
-  supportsSanctuaryEditing: boolean;
-  view: ModuleViewsTab;
-  /**
-   * Retained for back-compat with `WorkbenchInspectorHost` even though
-   * PR-W12 dropped the "Open House Forms" button from the rendered output.
-   * Removing the prop here would require coordinated changes in the host
-   * and that's not the cull's job.
-   */
+  /** Host-owned action retained for the current inspector contract. */
   onOpenHouseForms?: () => void;
   onSelectPergola: (pergolaId: string | null) => void;
-  /**
-   * PR-T6 (2026-05-26): solved assembly for the active pergola. When
-   * present, MEMBER SIZES dropdowns display the system-resolved size
-   * (e.g. "100x50") in place of "Auto" with muted text. Optional so
-   * call sites that don't have an assembly yet still render cleanly
-   * with the "Auto" fallback.
-   */
-  activeAssembly?: Assembly3D | null;
-  onStartDrawOutline?: () => Promise<CommitResult> | CommitResult;
-  onCommitGeometryEdit?: (intent: ObjectWorkbenchGeometryEditIntent) => Promise<CommitResult> | CommitResult;
   /**
    * Step 9 of the first-class spatial-entities migration. Method-only writes
    * land here. Re-hosting (changing the host edge) is via drag-snap; the
@@ -78,17 +47,15 @@ type PergolaInspectorProps = {
 
 /**
  * Resolve the attachment to render. Prefers the snap-derived
- * `pergola.attachment`; falls back to a legacy-field projection when the
- * pergola hasn't been migrated yet (Step 8 follow-up #2 lazy migration
- * normally fires on first edit, so this fallback is mostly defensive — a
- * legacy-only pergola the user hasn't touched still gets the right read).
+ * `pergola.attachment`; falls back to stored connection fields when a
+ * persisted pergola has not yet written the canonical attachment shape.
  */
 function resolveDisplayAttachment(
   pergola: ObjectWorkbenchPergolaInspectorModel,
 ): PergolaAttachment {
   return (
     pergola.attachment ??
-    pergolaAttachmentFromLegacyFields({
+    pergolaAttachmentFromStoredConnectionFields({
       connectionKind: pergola.connectionKind,
       strategy: pergola.strategy,
     })
@@ -97,26 +64,13 @@ function resolveDisplayAttachment(
 
 export default function PergolaInspector({
   activePergolaModel,
-  activeModuleInput,
-  activeModuleLabel,
   activePergolaId,
   disabled = false,
-  geometryState,
-  houseAssembly: _houseAssembly,
   modules,
-  supportsSanctuaryEditing,
-  view,
   onOpenHouseForms: _onOpenHouseForms,
   onSelectPergola,
-  onStartDrawOutline,
-  onCommitGeometryEdit,
   onCommitAttachment,
-  activeAssembly,
 }: PergolaInspectorProps) {
-  const resolvedMemberSizes = useMemo(
-    () => buildResolvedMemberSizeMap(activeAssembly),
-    [activeAssembly],
-  );
   const [pendingFieldId, setPendingFieldId] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
@@ -158,21 +112,6 @@ export default function PergolaInspector({
     ? pergolaAttachmentMethodIsWritable(displayAttachment)
     : false;
 
-  // PR-W12 (2026-05-26) — visual cull to match the CAD mockup.
-  // Dropped from the previous render:
-  //   • "Pergola Inspector" intro paragraph + "Open House Forms" button
-  //     (the flat OBJECTS TREE already lets the user navigate to House Forms).
-  //   • Standalone "Module" picker (the rail tree provides this).
-  //   • "Selection" diagnostics block (the inspector header already shows
-  //     the selected object name).
-  //   • Trust + Resolution rows inside Host Attachment (header chip shows
-  //     trust state; the resolution row was duplicate noise).
-  // What stays:
-  //   • Host Attachment: snap-derived summary + writable method dropdown
-  //     when applicable. Pushed below the SanctuaryWorkbenchRail's main
-  //     four sections — it's drag-driven, not primary input.
-  //   • SanctuaryWorkbenchRail, restructured to PRIMARY / CONNECTIONS /
-  //     MEMBER SIZES / ADVANCED via the new `mockupGrouping` flag.
   const hostAttachmentSection =
     activePergolaModel && displayAttachment ? (
       <section className={styles.moduleSection}>
@@ -234,22 +173,9 @@ export default function PergolaInspector({
 
   return (
     <>
-      {supportsSanctuaryEditing && activeModuleInput && activePergolaModel ? (
+      {activePergolaModel ? (
         <>
-          <SanctuaryWorkbenchRail
-            moduleLabel={activeModuleLabel}
-            geometryState={geometryState}
-            view={view}
-            disabled={disabled}
-            canStartDrawOutline={!disabled}
-            onStartDrawOutline={onStartDrawOutline}
-            onCommitGeometryEdit={onCommitGeometryEdit}
-            chrome="embedded"
-            renderSummary={false}
-            mockupGrouping
-            advancedExtras={hostAttachmentSection}
-            resolvedMemberSizes={resolvedMemberSizes}
-          />
+          {hostAttachmentSection}
           {modules.length > 1 ? (
             <section className={styles.moduleSection}>
               <p className={styles.moduleSectionTitle}>Module</p>
@@ -270,13 +196,6 @@ export default function PergolaInspector({
             </section>
           ) : null}
         </>
-      ) : activePergolaModel ? (
-        <section className={styles.notice}>
-          <p className={styles.noticeTitle}>Editing deferred</p>
-          <p className={styles.noticeText}>
-            This pergola family is not supported for native editing yet.
-          </p>
-        </section>
       ) : null}
     </>
   );

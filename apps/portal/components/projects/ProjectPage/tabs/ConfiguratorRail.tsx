@@ -13,7 +13,7 @@ import {
   makeFlashingId,
   normalizeFlashingsStateForUi,
   roofLengthForPrimaryFlashing,
-} from '@/lib/drawings/flashings';
+} from '@/lib/estimates/flashings';
 import type {
   CalculatorFlashingBand,
   CalculatorFlashingPurpose,
@@ -33,7 +33,7 @@ import type {
   EstimateDrawingFootprintEdit,
   EstimateDrawingModuleFieldEdit,
 } from '@/lib/estimates/drawingEdits';
-import styles from './WorkbenchRail.module.css';
+import styles from '@/components/drawings/rail/WorkbenchRail.module.css';
 
 type CommitResult = { ok: boolean; error?: string };
 

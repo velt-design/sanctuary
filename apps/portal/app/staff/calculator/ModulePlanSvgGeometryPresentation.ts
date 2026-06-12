@@ -11,7 +11,7 @@ import type { DrawingWorkbenchVisibilityState } from '@/lib/drawings/state/drawi
 import type {
   WorkbenchPergolaRenderSource,
   WorkbenchPergolaRenderStatus,
-} from '@/lib/drawings/geometry/deriveWorkbenchGeometry';
+} from '@/lib/drawings/state/workbenchSolvedModel';
 import {
   mmPointToPlanSvg,
   mmPolygonToPlanSvg,
