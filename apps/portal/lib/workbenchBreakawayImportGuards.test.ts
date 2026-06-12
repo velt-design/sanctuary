@@ -8,6 +8,13 @@ const WORKBENCH_RUNTIME_ROOTS = [
   path.join('apps', 'portal', 'app', 'staff', 'projects', '[projectId]', 'design-workbench'),
 ];
 
+const WORKBENCH_PROJECT_ARTIFACT_BOUNDARY_ROOTS = [
+  path.join('apps', 'portal', 'components', 'drawings', 'workbench'),
+  path.join('apps', 'portal', 'app', 'staff', 'projects', '[projectId]', 'design-workbench'),
+  path.join('apps', 'portal', 'app', 'qa', 'design-workbench-fixture'),
+  path.join('apps', 'portal', 'components', 'projects', 'ProjectPage', 'tabs'),
+];
+
 const FORBIDDEN_WORKBENCH_RUNTIME_PATTERNS = [
   /@sp\/costing/,
   /CommercialParityReport/,
@@ -22,6 +29,12 @@ const FORBIDDEN_WORKBENCH_RUNTIME_PATTERNS = [
   /ModuleSectionModel/,
   /activeModuleIndex/,
   /activeModule/,
+  /WorkbenchSolvedModule/,
+  /moduleInput/,
+  /sourceModules/,
+  /moduleStates/,
+  /kind:\s*['"]module['"]/,
+  /moduleId/,
   /moduleLabel/,
   /data-workbench-pricing/,
   /legacy_plan_m/,
@@ -33,6 +46,19 @@ const FORBIDDEN_WORKBENCH_RUNTIME_PATTERNS = [
 ];
 
 const SOURCE_EXTENSIONS = new Set(['.ts', '.tsx']);
+
+const FORBIDDEN_LOOSE_PROJECT_ARTIFACT_JSX_PROPS = [
+  /\bprojectViewportGeometry\s*=\s*\{/,
+  /\bprojectGeometryPreview\s*=\s*\{/,
+  /\bprojectPlanProjection\s*=\s*\{/,
+  /\bprojectContextShapes\s*=\s*\{/,
+  /\bprojectPergolaPlanShapes\s*=\s*\{/,
+  /\bprojectPergolaSnapShapes\s*=\s*\{/,
+  /\bhouseCommittedShapes\s*=\s*\{/,
+  /\bprojectHouseSnapSources\s*=\s*\{/,
+  /\bprojectHouseProjectionHealth\s*=\s*\{/,
+  /\bprojectPergolaRenderHealth\s*=\s*\{/,
+];
 
 function collectSourceFiles(root: string): string[] {
   const absoluteRoot = path.join(process.cwd(), root);
@@ -68,6 +94,19 @@ describe('Design Workbench breakaway import boundary', () => {
       collectSourceFiles(root).flatMap((file) => {
         const source = fs.readFileSync(file, 'utf8');
         return FORBIDDEN_WORKBENCH_RUNTIME_PATTERNS.flatMap((pattern) =>
+          pattern.test(source) ? [`${path.relative(process.cwd(), file)} matches ${pattern.source}`] : [],
+        );
+      }),
+    );
+
+    expect(violations).toEqual([]);
+  });
+
+  it('keeps project solved geometry behind the workbench project artifact prop', () => {
+    const violations = WORKBENCH_PROJECT_ARTIFACT_BOUNDARY_ROOTS.flatMap((root) =>
+      collectSourceFiles(root).flatMap((file) => {
+        const source = fs.readFileSync(file, 'utf8');
+        return FORBIDDEN_LOOSE_PROJECT_ARTIFACT_JSX_PROPS.flatMap((pattern) =>
           pattern.test(source) ? [`${path.relative(process.cwd(), file)} matches ${pattern.source}`] : [],
         );
       }),

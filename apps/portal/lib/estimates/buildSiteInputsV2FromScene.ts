@@ -71,7 +71,7 @@ export function buildSiteInputsV2FromScene(input: {
   const pergolas: PergolaInputsV2[] = [];
   for (const group of groups) {
     const modules: PergolaModuleCostInputV2[] = [];
-    for (const pergolaObj of group.modules) {
+    for (const pergolaObj of group.members) {
       const moduleInput = moduleByPergolaId.get(pergolaObj.id);
       if (!moduleInput) continue;
       modules.push({
@@ -82,7 +82,7 @@ export function buildSiteInputsV2FromScene(input: {
     if (modules.length === 0) continue;
     pergolas.push({
       id: group.pergolaId,
-      label: group.modules[0]?.label ?? group.pergolaId,
+      label: group.members[0]?.label ?? group.pergolaId,
       modules,
       accessories: [],
     });

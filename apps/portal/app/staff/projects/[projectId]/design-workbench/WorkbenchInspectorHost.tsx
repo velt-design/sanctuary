@@ -247,7 +247,7 @@ export default function WorkbenchInspectorHost({
         </section>
       );
     }
-    const perObjectPergolaOptions = store.derived.solvedProject.pergolas.map((pergola) => ({
+    const pergolaOptions = store.derived.solvedProject.pergolas.map((pergola) => ({
       id: pergola.id,
       label: pergola.label,
     }));
@@ -257,7 +257,7 @@ export default function WorkbenchInspectorHost({
           activePergolaModel={activePergolaModel}
           activePergolaId={store.derived.activePergola?.id ?? store.ui.activePergolaId}
           disabled={isLocked}
-          modules={perObjectPergolaOptions}
+          pergolaOptions={pergolaOptions}
           onOpenHouseForms={() => handleRailTabSelect('house_forms')}
           onSelectPergola={handleCanonicalPergolaSelection}
           onCommitAttachment={!isLocked ? objectWorkbenchActions.commitSharedPergolaAttachment : undefined}

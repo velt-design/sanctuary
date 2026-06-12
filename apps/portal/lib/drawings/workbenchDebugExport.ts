@@ -2,7 +2,7 @@ import type { EstimateDrawingDraft } from '@/lib/estimates/drawingEdits';
 import type { ProjectHouseProjectionHealth } from './state/projectHouseProjectionHealth';
 import type { HouseFormGeometryInputDiagnostics } from './state/houseFormGeometryInput';
 import type { ProjectPergolaRenderHealth } from './state/projectObjectRenderPipeline';
-import type { GeometryPreviewState } from './state/workbenchSolvedModel';
+import type { WorkbenchSolvedProjectArtifact } from './state/workbenchSolvedModel';
 import type {
   DrawingWorkbenchUiState,
 } from './state/drawingWorkbenchUiState';
@@ -15,6 +15,7 @@ export type WorkbenchDebugFixtureExport = {
     viewportMode: DrawingWorkbenchUiState['viewportMode'];
   };
   renderDiagnostics: {
+    projectArtifactSource: WorkbenchSolvedProjectArtifact['source'] | null;
     projectPreviewSource: string | null;
     houseGeometryInputsById: Record<string, HouseFormGeometryInputDiagnostics>;
     projectHouseProjectionHealth: ProjectHouseProjectionHealth[];
@@ -25,11 +26,9 @@ export type WorkbenchDebugFixtureExport = {
 export function buildWorkbenchDebugFixtureExport(input: {
   draft: EstimateDrawingDraft | null | undefined;
   ui: DrawingWorkbenchUiState;
-  projectGeometryPreview: GeometryPreviewState | null | undefined;
-  houseGeometryInputsById: Readonly<Record<string, HouseFormGeometryInputDiagnostics>>;
-  projectHouseProjectionHealth: ReadonlyArray<ProjectHouseProjectionHealth>;
-  projectPergolaRenderHealth: ReadonlyArray<ProjectPergolaRenderHealth>;
+  projectArtifact: WorkbenchSolvedProjectArtifact | null | undefined;
 }): WorkbenchDebugFixtureExport {
+  const projectGeometryPreview = input.projectArtifact?.geometryPreview ?? null;
   return {
     objectFirst: input.draft?.objectFirst ?? null,
     selectedState: {
@@ -38,13 +37,20 @@ export function buildWorkbenchDebugFixtureExport(input: {
       viewportMode: input.ui.viewportMode,
     },
     renderDiagnostics: {
+      projectArtifactSource: input.projectArtifact?.source ?? null,
       projectPreviewSource:
-        input.projectGeometryPreview?.kind === 'ready'
-          ? String(input.projectGeometryPreview.scene.metadata?.projectPreviewSource ?? '')
-          : input.projectGeometryPreview?.kind ?? null,
-      houseGeometryInputsById: { ...input.houseGeometryInputsById },
-      projectHouseProjectionHealth: [...input.projectHouseProjectionHealth],
-      projectPergolaRenderHealth: [...input.projectPergolaRenderHealth],
+        projectGeometryPreview?.kind === 'ready'
+          ? String(projectGeometryPreview.scene.metadata?.projectPreviewSource ?? '')
+          : projectGeometryPreview?.kind ?? null,
+      houseGeometryInputsById: {
+        ...(input.projectArtifact?.diagnostics.houseGeometryInputsById ?? {}),
+      },
+      projectHouseProjectionHealth: [
+        ...(input.projectArtifact?.diagnostics.projectHouseProjectionHealth ?? []),
+      ],
+      projectPergolaRenderHealth: [
+        ...(input.projectArtifact?.diagnostics.projectPergolaRenderHealth ?? []),
+      ],
     },
   };
 }

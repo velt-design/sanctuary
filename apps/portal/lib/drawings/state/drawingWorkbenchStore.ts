@@ -1,10 +1,7 @@
 import type { EstimateDrawingDraft } from '@/lib/estimates/drawingEdits';
 import type { DeckInteractionCapability } from '@/lib/drawings/interactions/deckInteractionContract';
 import type { PlanViewModel } from '@/lib/drawings/views/plan/buildPlanViewModel';
-import {
-  buildWorkbenchDrawingSurfaceGeometry,
-  type WorkbenchDrawingSurfaceGeometry,
-} from '@/lib/drawings/views/workbenchDrawingSurfaceGeometry';
+import type { WorkbenchDrawingSurfaceGeometry } from '@/lib/drawings/views/workbenchDrawingSurfaceGeometry';
 import {
   normalizeDrawingWorkbenchUiState,
   type DrawingWorkbenchUiState,
@@ -40,7 +37,6 @@ import {
   buildWorkbenchSolvedModel,
   buildWorkbenchSolvedProject,
   resolveWorkbenchTrustGate,
-  type SolvedPergola,
   type WorkbenchGeometryIdentity,
   type WorkbenchSolvedModel,
   type WorkbenchSolvedProject,
@@ -62,7 +58,7 @@ export type DrawingWorkbenchStore = {
   derived: {
     solvedModel: WorkbenchSolvedModel;
     solvedProject: WorkbenchSolvedProject;
-    activePergola: SolvedPergola | null;
+    activePergola: PergolaObjectModel | null;
     activeTrust: WorkbenchTrustStatus;
     activeTrustGate: WorkbenchTrustGateModel;
     exportReadiness: WorkbenchTrustGateModel;
@@ -273,14 +269,11 @@ export function buildDrawingWorkbenchStore(input: {
     openingHostResolutions,
     pergolas: objectFirstPergolas,
     pergolaAttachmentResolutions,
-    modules: [],
+    pergolaRenderStates: [],
     activeTrust,
     status: objectWorkbenchStatus,
   });
-  const activeDrawingSurfaceGeometry = buildWorkbenchDrawingSurfaceGeometry({
-    viewportGeometry: solvedModel.projectViewportGeometry,
-    planViewModel: null,
-  });
+  const activeDrawingSurfaceGeometry = solvedModel.projectArtifact.drawingSurfaceGeometry;
 
   return {
     persisted: {
@@ -297,7 +290,7 @@ export function buildDrawingWorkbenchStore(input: {
       reviewReadiness: activeTrustGate,
       activePlanViewModel: null,
       activeDrawingSurfaceGeometry,
-      activeViewportGeometry: solvedModel.projectViewportGeometry,
+      activeViewportGeometry: solvedModel.projectArtifact.viewportGeometry,
       projectSheetLabel: 'Workbench project',
       houseAssembly: projectModel.houseAssembly,
       houseForms,
@@ -328,7 +321,7 @@ export function buildDrawingWorkbenchStore(input: {
       unresolvedPergolaAttachmentCount,
       status: statusFromViewportGeometry({
         activeView: ui.activeView,
-        viewportGeometry: solvedModel.projectViewportGeometry,
+        viewportGeometry: solvedModel.projectArtifact.viewportGeometry,
       }),
     },
   };

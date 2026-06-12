@@ -12,9 +12,7 @@ import {
 } from '@sp/geometry';
 
 type ProjectPergolaViewerSceneSource = {
-  moduleInput: {
-    pergolaId?: string | null;
-  };
+  pergolaId?: string | null;
   viewerScene: ViewerSceneModel | null;
 };
 
@@ -197,9 +195,9 @@ function buildProjectHouseSceneLayerById(
   return layerById;
 }
 
-export function buildProjectPergolaViewerSceneFromModules(input: {
+export function buildProjectPergolaViewerSceneFromPergolaArtifacts(input: {
   basisScene: ViewerSceneModel | null;
-  modules: ReadonlyArray<ProjectPergolaViewerSceneSource>;
+  pergolaArtifacts: ReadonlyArray<ProjectPergolaViewerSceneSource>;
   projectHouseGeometries: ReadonlyArray<ProjectHouseViewerSceneSource>;
   projectPergolaRenderHealth?: ReadonlyArray<ProjectPergolaRenderHealthEntry>;
   projectPergolaFallbackPlanShapes?: ReadonlyArray<GeometryTopProjectionShape>;
@@ -245,12 +243,12 @@ export function buildProjectPergolaViewerSceneFromModules(input: {
   }
 
   const seenPergolaIds = new Set<string>();
-  for (const module of input.modules) {
-    const pergolaId = module.moduleInput.pergolaId;
-    if (!pergolaId || seenPergolaIds.has(pergolaId) || !module.viewerScene) continue;
+  for (const artifact of input.pergolaArtifacts) {
+    const pergolaId = artifact.pergolaId;
+    if (!pergolaId || seenPergolaIds.has(pergolaId) || !artifact.viewerScene) continue;
     seenPergolaIds.add(pergolaId);
 
-    for (const layer of module.viewerScene.layers) {
+    for (const layer of artifact.viewerScene.layers) {
       if (HOUSE_LAYER_IDS.has(layer.id)) continue;
       const targetLayer = ensureLayer(layer);
       targetLayer.objects.push(

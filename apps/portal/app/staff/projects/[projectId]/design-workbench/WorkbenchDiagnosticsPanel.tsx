@@ -95,13 +95,13 @@ export default function WorkbenchDiagnosticsPanel({
     .join(' | ') || 'none';
   const pergolaRenderHealthLabel = diagnostics.projectPergolaRenderHealth
     .map((health) =>
-      `${health.pergolaId || health.moduleId}: ${health.canRenderCommittedBody ? 'committed' : health.suppressedCommittedBodyReason}, host ${health.hostAttachmentStatus}, plan ${health.planBodyCount}, 3D ${health.sceneBodyCount}`,
+      `${health.pergolaId || health.artifactId}: ${health.canRenderCommittedBody ? 'committed' : health.suppressedCommittedBodyReason}, host ${health.hostAttachmentStatus}, plan ${health.planBodyCount}, 3D ${health.sceneBodyCount}`,
     )
     .join(' | ') || 'none';
 
   return (
-    <section className={styles.moduleSection}>
-      <p className={styles.moduleSectionTitle}>Object diagnostics</p>
+    <section className={styles.inspectorSection}>
+      <p className={styles.inspectorSectionTitle}>Object diagnostics</p>
       <div className={styles.diagnosticsList}>
         <div className={styles.diagnosticRow}>
           <span className={styles.diagnosticLabel}>Canonical tab</span>

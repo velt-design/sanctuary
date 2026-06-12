@@ -1,9 +1,5 @@
 'use client';
 
-import type {
-  GeometryTopProjectionShape,
-  GeometryTopProjectionViewModel,
-} from '@sp/geometry';
 import type { WorkbenchViewStatus, WorkbenchViewTab } from '@/lib/drawings/workbenchViewTypes';
 import type { DeckInteractionTelemetry } from '@/lib/drawings/interactions/deckInteractionContract';
 import type {
@@ -11,9 +7,10 @@ import type {
   DrawingWorkbenchViewportTransform,
   DrawingWorkbenchVisibilityState,
 } from '@/lib/drawings/state/drawingWorkbenchUiState';
-import type { WorkbenchViewportGeometry } from '@/lib/drawings/state/workbenchSolvedModel';
-import type { ProjectHouseProjectionHealth } from '@/lib/drawings/state/projectHouseProjectionHealth';
-import type { ProjectPergolaRenderHealth } from '@/lib/drawings/state/projectObjectRenderPipeline';
+import type {
+  WorkbenchSolvedProjectArtifact,
+  WorkbenchViewportGeometry,
+} from '@/lib/drawings/state/workbenchSolvedModel';
 import {
   buildWorkbenchDrawingSurfaceGeometry,
   type WorkbenchDrawingSurfaceGeometry,
@@ -30,13 +27,11 @@ import type { EstimateDrawingField, EstimateDrawingFootprintEdit } from '@/lib/e
 import type { EstimateDrawingSheetMeta } from '@/lib/estimates/drawingSheet';
 import type { CalculatorHouseFootprintPolygonPoint } from '@/lib/types/calculator';
 import { type Geometry3DViewportState } from '@/components/drawings/viewports/Geometry3DViewport';
-import type { GeometryPreviewState } from '@/lib/drawings/state/workbenchSolvedModel';
 import DesignViewport from '@/components/drawings/viewports/DesignViewport';
 import PlanViewport, {
   type EdgeDragCommit,
   type HouseTerminalEndToggleRequest,
   type MoveRequest,
-  type ProjectHouseSnapSource,
 } from '@/components/drawings/viewports/PlanViewport/PlanViewport';
 import SheetViewport from '@/components/drawings/viewports/SheetViewport';
 import styles from './DrawingWorkbench.module.css';
@@ -48,10 +43,8 @@ type WorkbenchViewportHostProps = {
   objectWorkbenchDisplayFamily?: ObjectWorkbenchDisplayFamily;
   visibility?: DrawingWorkbenchVisibilityState;
   status: WorkbenchViewStatus;
+  projectArtifact?: WorkbenchSolvedProjectArtifact | null;
   viewportGeometry?: WorkbenchViewportGeometry | null;
-  projectViewportGeometry?: WorkbenchViewportGeometry | null;
-  projectGeometryPreview?: GeometryPreviewState | null;
-  projectPlanProjection?: GeometryTopProjectionViewModel | null;
   drawingSurfaceGeometry?: WorkbenchDrawingSurfaceGeometry | null;
   planViewModel?: PlanViewModel | null;
   activeObjectRef?: WorkbenchObjectRef | null;
@@ -104,20 +97,6 @@ type WorkbenchViewportHostProps = {
   onDeckInteractionTelemetryChange?: (telemetry: DeckInteractionTelemetry) => void;
   onCommitOutlineEdit?: (commit: EdgeDragCommit) => void;
   onCommitMove?: (request: MoveRequest) => void;
-  /** Faded outline shapes for non-active pergolas (Step 5d Option A). */
-  projectContextShapes?: ReadonlyArray<GeometryTopProjectionShape>;
-  /** Project-wide full pergola plan bodies, prefixed per pergola id. */
-  projectPergolaPlanShapes?: ReadonlyArray<GeometryTopProjectionShape>;
-  /** Canonical pergola reference shapes used as snap targets. */
-  projectPergolaSnapShapes?: ReadonlyArray<GeometryTopProjectionShape>;
-  /** Canonical house references promoted to active module hit targets. */
-  houseCommittedShapes?: ReadonlyArray<GeometryTopProjectionShape>;
-  /** Solved-model diagnostics for each house form's project Plan projection. */
-  projectHouseProjectionHealth?: ReadonlyArray<ProjectHouseProjectionHealth>;
-  /** Solved-model diagnostics for project pergola render eligibility. */
-  projectPergolaRenderHealth?: ReadonlyArray<ProjectPergolaRenderHealth>;
-  /** Project-level house models used as wall/eave snap sources. */
-  projectHouseSnapSources?: ReadonlyArray<ProjectHouseSnapSource>;
   /**
    * Cross-viewport hover state (milestone 16). PlanViewport emits via
    * `onHoverObjectChange` when the local pointer enters a shape; the host
@@ -135,10 +114,8 @@ export default function WorkbenchViewportHost({
   objectWorkbenchDisplayFamily = 'pergolas',
   visibility,
   status,
+  projectArtifact,
   viewportGeometry,
-  projectViewportGeometry,
-  projectGeometryPreview,
-  projectPlanProjection,
   drawingSurfaceGeometry,
   planViewModel,
   activeObjectRef,
@@ -173,33 +150,56 @@ export default function WorkbenchViewportHost({
   onDeckInteractionTelemetryChange,
   onCommitOutlineEdit,
   onCommitMove,
-  projectContextShapes,
-  projectPergolaPlanShapes,
-  projectPergolaSnapShapes,
-  houseCommittedShapes,
-  projectHouseProjectionHealth,
-  projectPergolaRenderHealth,
-  projectHouseSnapSources,
   hoveredObjectRef,
   onHoverObjectChange,
 }: WorkbenchViewportHostProps) {
+  const projectGeometryPreview = projectArtifact?.geometryPreview ?? null;
+  const projectPlanProjection = projectArtifact?.planProjection ?? null;
+  const projectContextShapes = projectArtifact?.planLayers.diagnosticPergolaShapes ?? [];
+  const projectPergolaPlanShapes = projectArtifact?.planLayers.committedPergolaShapes ?? [];
+  const houseCommittedShapes = projectArtifact?.planLayers.houseCommittedShapes ?? [];
+  const projectHouseProjectionHealth =
+    projectArtifact?.diagnostics.projectHouseProjectionHealth ?? [];
+  const projectPergolaRenderHealth =
+    projectArtifact?.diagnostics.projectPergolaRenderHealth ?? [];
+  const projectHouseSnapSources = projectArtifact?.snapSources.house ?? [];
+  const activePergolaSourceId =
+    activeObjectRef?.family === 'pergolas'
+      ? activeObjectRef.objectId ?? null
+      : null;
+  const projectPergolaSnapShapes =
+    activePergolaSourceId
+      ? (projectArtifact?.snapSources.pergolaShapes ?? []).filter(
+          (shape) =>
+            shape.sourceType !== 'pergola_reference' ||
+            shape.sourceObjectId !== activePergolaSourceId,
+        )
+      : projectArtifact?.snapSources.pergolaShapes ?? [];
   const routedDrawingSurfaceGeometry =
     drawingSurfaceGeometry ??
+    projectArtifact?.drawingSurfaceGeometry ??
     buildWorkbenchDrawingSurfaceGeometry({
       viewportGeometry: viewportGeometry ?? null,
       planViewModel: planViewModel ?? null,
     });
-  const projectDrawingSurfaceGeometry = projectViewportGeometry
-    ? buildWorkbenchDrawingSurfaceGeometry({
-        viewportGeometry: projectViewportGeometry,
-        planViewModel: null,
-      })
-    : null;
+  const projectDrawingSurfaceGeometry = projectArtifact?.drawingSurfaceGeometry ?? null;
   const routedPlanDrawingSurfaceGeometry =
     routedDrawingSurfaceGeometry?.artifact
       ? routedDrawingSurfaceGeometry
       : projectDrawingSurfaceGeometry ?? routedDrawingSurfaceGeometry;
   const routedGeometryPreview = projectGeometryPreview ?? viewportGeometry?.preview ?? null;
+  const planViewportProjectProps = {
+    projectContextShapes,
+    projectPergolaPlanShapes,
+    projectPergolaSnapShapes,
+    houseCommittedShapes,
+    projectHouseProjectionHealth,
+    projectPergolaRenderHealth,
+    projectHouseSnapSources,
+  };
+  const designViewportProjectProps = {
+    projectHouseProjectionHealth,
+  };
 
   return (
     <div className={styles.viewport}>
@@ -223,13 +223,7 @@ export default function WorkbenchViewportHost({
           objectWorkbenchDisplayFamily={objectWorkbenchDisplayFamily}
           visibility={visibility}
           activeObjectRef={activeObjectRef}
-          projectContextShapes={projectContextShapes}
-          projectPergolaPlanShapes={projectPergolaPlanShapes}
-          projectPergolaSnapShapes={projectPergolaSnapShapes}
-          houseCommittedShapes={houseCommittedShapes}
-          projectHouseProjectionHealth={projectHouseProjectionHealth}
-          projectPergolaRenderHealth={projectPergolaRenderHealth}
-          projectHouseSnapSources={projectHouseSnapSources}
+          {...planViewportProjectProps}
           viewportTransform={modelViewportTransform}
           onViewportTransformChange={onModelViewportTransformChange}
           onSelectObjectWorkbenchTarget={onSelectObjectWorkbenchTarget}
@@ -254,7 +248,7 @@ export default function WorkbenchViewportHost({
           onSelectPergolaTarget={onSelectPergolaTarget}
           onClearWorkbenchSelection={onClearWorkbenchSelection}
           hoveredObjectId={hoveredObjectRef?.objectId ?? null}
-          projectHouseProjectionHealth={projectHouseProjectionHealth}
+          {...designViewportProjectProps}
         />
       )}
     </div>

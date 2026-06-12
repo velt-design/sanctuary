@@ -7,7 +7,6 @@ import { buildPergolaTransformPosition } from '@/lib/drawings/commits/commitPerg
 import DrawingWorkbench from '@/components/drawings/workbench/DrawingWorkbench';
 import type { Geometry3DViewportState } from '@/components/drawings/viewports/Geometry3DViewport';
 import { buildDrawingWorkbenchStore } from '@/lib/drawings/state/drawingWorkbenchStore';
-import { buildProjectContextOverlayShapes } from '@/lib/drawings/state/projectContextOverlayShapes';
 import {
   areDrawingWorkbenchObjectSelectionStatesEqual,
   areDrawingWorkbenchVisibilityStatesEqual,
@@ -288,53 +287,6 @@ export default function DesignWorkbenchEstimateClient({
     store.derived.objectWorkbench.pergolas[0]?.id ??
     null;
   const viewportActiveObjectRef = store.ui.activeObjectRef;
-  // Step 5d Option A: faded outlines for OTHER pergolas in the project so
-  // multi-pergola scenes show every pergola's outline at a glance. The
-  // active module's full topProjection still drives detail rendering; the
-  // overlay only adds shapes the active artifact doesn't render
-  // (non-active pergola outlines), with the house reference filtered out
-  // since the active artifact already provides it.
-  //
-  // Active-pergola filter only applies when a pergola is the active object
-  // (avoids self-snap on the active pergola's own outline). When the active
-  // object is a deck or house, all pergolas should appear in the overlay
-  // and be available as snap targets — a deck attaching to its host pergola
-  // is the common case, not an exception.
-  const activePergolaSourceId =
-    store.ui.activeObjectRef.family === 'pergolas'
-      ? store.ui.activeObjectRef.objectId ?? null
-      : null;
-  const projectPergolaPlanShapes = store.derived.solvedModel.projectPergolaPlanShapes;
-  const projectContextShapes = useMemo(
-    () => store.derived.solvedModel.projectPergolaFallbackPlanShapes,
-    [store.derived.solvedModel.projectPergolaFallbackPlanShapes],
-  );
-  const projectPergolaSnapShapes = useMemo(
-    () =>
-      buildProjectContextOverlayShapes({
-        projectReferenceShapes: store.derived.solvedModel.projectReferenceShapes,
-        activePergolaSourceId,
-      }),
-    [store.derived.solvedModel.projectReferenceShapes, activePergolaSourceId],
-  );
-  // Canonical project-level house references are promoted into the active
-  // module's committedBodies so every house form, including the host, uses
-  // the same plan hit-target and move identity.
-  const houseCommittedShapes = useMemo(
-    () =>
-      store.derived.solvedModel.projectReferenceShapes.filter(
-        (shape) => shape.sourceType === 'house_reference',
-      ),
-    [store.derived.solvedModel.projectReferenceShapes],
-  );
-  const projectHouseSnapSources = useMemo(
-    () =>
-      store.derived.solvedModel.projectHouseGeometries.map((entry) => ({
-        houseFormId: entry.houseFormId,
-        model: entry.model,
-      })),
-    [store.derived.solvedModel.projectHouseGeometries],
-  );
   const activeModelViewportTransform =
     modelViewportTransformsByKey[modelViewportSurfaceKey] ?? DEFAULT_MODEL_VIEWPORT_TRANSFORM;
   const activeGeometryViewportState =
@@ -479,18 +431,12 @@ export default function DesignWorkbenchEstimateClient({
         ? buildWorkbenchDebugFixtureExport({
             draft: effectiveDrawingDraft,
             ui: store.ui,
-            projectGeometryPreview: store.derived.solvedModel.projectGeometryPreview,
-            houseGeometryInputsById: store.derived.solvedModel.houseGeometryInputsById,
-            projectHouseProjectionHealth: store.derived.solvedModel.projectHouseProjectionHealth,
-            projectPergolaRenderHealth: store.derived.solvedModel.projectPergolaRenderHealth,
+            projectArtifact: store.derived.solvedModel.projectArtifact,
           })
         : null,
     [
       effectiveDrawingDraft,
-      store.derived.solvedModel.houseGeometryInputsById,
-      store.derived.solvedModel.projectGeometryPreview,
-      store.derived.solvedModel.projectHouseProjectionHealth,
-      store.derived.solvedModel.projectPergolaRenderHealth,
+      store.derived.solvedModel.projectArtifact,
       store.ui,
       debugExportEnabled,
     ],
@@ -611,20 +557,11 @@ export default function DesignWorkbenchEstimateClient({
           }
           status={store.derived.status}
           trustGate={store.derived.activeTrustGate}
+          projectArtifact={store.derived.solvedModel.projectArtifact}
           viewportGeometry={store.derived.activeViewportGeometry}
-          projectViewportGeometry={store.derived.solvedModel.projectViewportGeometry}
-          projectGeometryPreview={store.derived.solvedModel.projectGeometryPreview}
-          projectPlanProjection={store.derived.solvedModel.projectPlanProjection}
           drawingSurfaceGeometry={store.derived.activeDrawingSurfaceGeometry}
           planViewModel={store.derived.activePlanViewModel}
           activeObjectRef={viewportActiveObjectRef}
-          projectContextShapes={projectContextShapes}
-          projectPergolaPlanShapes={projectPergolaPlanShapes}
-          projectPergolaSnapShapes={projectPergolaSnapShapes}
-          houseCommittedShapes={houseCommittedShapes}
-          projectHouseProjectionHealth={store.derived.solvedModel.projectHouseProjectionHealth}
-          projectPergolaRenderHealth={store.derived.solvedModel.projectPergolaRenderHealth}
-          projectHouseSnapSources={projectHouseSnapSources}
           hoveredObjectRef={hoveredObjectRef}
           onHoverObjectChange={setHoveredObjectRef}
           pergolaTargetId={viewportPergolaId}

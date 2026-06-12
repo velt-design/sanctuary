@@ -1,186 +1,105 @@
 # Design Workbench Multi-Object Goal
 
+Status: Active goal, current-state summary.
+
 ## Goal
 
-Make the design workbench a robust multi-object editor: multiple house forms, multiple pergolas, decks, and openings can be created, moved, selected, snapped, rendered, and costed from one object-first project model.
+Make the Design Workbench a dependable multi-object editor: multiple house forms, pergolas, decks, and openings can be created, moved, selected, snapped, rendered, diagnosed, and eventually costed from one object-first project model.
 
-This goal is the active campaign for work that sits between "the architecture is mostly right" and "the workbench is a dependable product surface."
-
-## Read First
-
-- Start with `## Current Handoff` before proposing the next workbench PR.
-- Use `## North-Star Constraints` as the non-negotiable rule set.
-- Answer `## Gate 0 Mapping` for any workbench/geometry implementation plan.
-
-## Why Now
-
-The workbench has crossed the hardest conceptual boundary:
-
-- `WorkbenchProjectModel` is the dominant runtime shape.
-- House forms, pergolas, decks, and openings are explicit objects.
-- Snap-derived attachment is the intended relationship-authoring path.
-- Plan and 3D mostly derive from solved geometry rather than independent legacy presenters.
-- The project house geometry registry now provides one canonical per-form reference path for plan identity, 3D host-excluded composition, and house snap targets.
-
-The remaining risk is local work drifting back toward host-specific or primary-form shortcuts. Future PRs should use this goal as the check: are we moving toward a true multi-object editor, or making the old shape more comfortable?
-
-## Current Handoff
-
-Last updated: 2026-06-11.
-
-The current workbench campaign is through the PR8 slice:
-
-- PR7 moved eligible workbench solve sources through the package-level `solveProject` boundary while preserving the existing solved-module output contract.
-- PR8 fixed invalid selected pergolas as a render-stability issue: invalid or unsupported selections must not own the project view basis.
-- Plan Editor should show every valid pergola as full solved plan geometry, with invalid/unsupported pergolas kept as selectable reference/context outlines.
-- 3D Review should show every valid pergola in the project-wide scene, with invalid/unsupported selected pergolas skipped from full scene aggregation but not allowed to crash or blank the view.
-- The next robust architecture step is still to delete or shrink the per-pergola `RawGeometryModuleInput.houseContext` path by solving houses once and letting pergolas/decks consume stable project house geometry.
-
-Later 2026-06-03 house-form and roof-solver guardrails live in `docs/decision-log.md`; check those entries before changing house-form geometry, roof topology, or Plan/3D diagnostics. They refine the solver/debugging guardrails but do not change the recommended next architecture step below.
-
-Recommended next PRs, in order:
-
-1. **House-body / attachment split**: make the house solve a project-level body and pass only attachment metadata to pergola solves.
-2. **Delete the remaining `houseContext` normal path**: keep any compatibility alias explicit and tested.
-3. **Multi-object edit parity**: harden move, resize, snap, undo, inspector state, and unsupported-state messaging for every pergola id.
-4. **Connected-pergola costing semantics**: decide shared-post/shared-edge pricing and test separate vs connected pergola groups.
-
-## North-Star Constraints
-
-Every PR under this goal must preserve these constraints:
-
-- No primary house form. `house-main` can exist as imported legacy identity, but it is not privileged by new logic.
-- No select-host-first workflows. New pergolas and decks are born freestanding; drag/snap creates relationships.
-- Snap references are the relationship source of truth. Inspector controls may describe or tune relationships, but must not replace snap-derived host identity.
-- Plan is the editor. 3D is a read surface and selection surface, not a direct manipulation surface.
-- Geometry-ready plan, 3D, sheet, snap, dimensions, and selection identity derive from the solved geometry spine.
-- Compatibility fields are allowed only as named fallback boundaries. Do not extend them without explicit approval.
+This doc now tracks the product goal, not old migration PR history. Use `docs/design-workbench-architecture.md` for the runtime contract and `docs/design-workbench-legacy-cull.md` for historical Gate 0 audit rows.
 
 ## Current State
 
-Strong:
+The workbench has crossed the main breakaway boundary:
 
-- Multiple house forms have canonical `house_reference:<formId>` shapes.
-- Primary and added house forms now move through the same object-first transform path.
-- Plan selection identity for house references is per-form.
-- Plan snap targets can include walls/eaves from every valid house form.
-- Pergola-to-pergola snap exists.
-- Connected pergola grouping exists as derived scene logic.
-- Object-first pergolas without a persisted calculator module now get a runtime-only solve source, so the workbench can render/select orphan pergolas without writing fake `inputs.modules[]` rows.
-- The rail's `Add pergola` affordance creates a freestanding object-first pergola, selects it immediately, and renders it through the runtime solve-source path.
-- Non-active pergola context outlines are selectable in plan and route through the same pergola-id selection path as the rail, including transient object-first pergolas.
-- Plan Editor now aggregates full solved plan bodies for every valid pergola id, including transient object-first pergolas, so multi-pergola projects are no longer visually active-module-only in plan.
-- 3D Review now aggregates valid solved pergola scene bodies by `pergolaId` and keeps pergola selection identity on prefixed scene objects.
-- Invalid or unsupported selected pergolas no longer blank the project view: Plan and 3D keep using a stable ready project viewport/preview basis while the invalid pergola remains visible as a reference/context outline.
-- Transient object-first mono pergolas can build native inspector edit state from their solved in-memory module/config without being written into `inputs.modules[]`.
-- Workbench solve orchestration now builds an explicit persisted + transient pergola source list and routes object-first host-house groups through the package-level `solveProject` boundary before rehydrating the existing solved-module contract.
-- Costing direction is scene-derived through `SiteInputsV2` for pergola data.
+- live runtime accepts object-first workbench state only;
+- house forms, pergolas, decks, and openings are object-owned;
+- calculator state, house-first carriers, raw module wrappers, module-index selection, legacy plan/section models, and workbench costing payloads are forbidden in live workbench roots;
+- invalid geometry is withheld as normal committed geometry and surfaced through object-owned diagnostics;
+- Plan is the editor and 3D is read/select only.
 
-Still incomplete:
+The largest remaining architecture gap is not another compatibility migration. The workbench now has a `WorkbenchSolvedProjectArtifact` UI boundary, but the solved model still carries temporary loose-field aliases while downstream code is cleaned up. The next milestone is to delete those aliases and move deeper non-shell consumers to artifact fields.
 
-- `buildRawGeometryModuleInput` still wraps a selected host house in each pergola module's `houseContext`, but the host form id now flows through geometry directly instead of a portal scene-retag bridge.
-- The per-object solve loop is not complete; `solveProject` is now the workbench entry boundary for object-first host groups, but internally it still normalizes/solves each pergola and carries per-module `houseContext`.
-- Invalid or unsupported pergolas still fall back to project reference/context outlines rather than full solved detail, but they must not remove valid project geometry from Plan or 3D when selected.
-- 3D aggregation is read/select only; direct manipulation remains Plan-only, and invalid/unsupported pergolas are skipped from full 3D bodies while the project-wide ready scene remains visible.
-- Project-wide 3D is presentation/selection only; no 3D drag, gizmos, or commit paths should be added before the Plan edit path is stable.
-- Connected-pergola cost semantics such as shared posts remain deferred.
-- Some legacy snapshot/test carriers still rely on `HouseFirst*` paths.
-- Inspector parity for house forms, decks, and openings is not at the same standard as the pergola inspector.
+## North-Star Constraints
+
+Every workbench PR under this goal must preserve these constraints:
+
+- No primary house form. Any old `house-main` identity is just an imported id, not a privileged model concept.
+- No select-host-first workflows for pergolas or decks. New objects are born freestanding; snap creates relationships.
+- Snap references and solved geometry own relationship truth. Inspector labels can describe relationships, but must not replace spatial solving.
+- Plan is the only direct-manipulation editor. 3D may select, but must not commit geometry edits.
+- Plan, 3D, Sheet, Section, snap, dimensions, and diagnostics derive from the solved geometry spine.
+- Invalid objects render diagnostic/reference geometry only.
+- Workbench commercial work is downstream of solved geometry/takeoff and must not reintroduce calculator inputs into the runtime.
+
+## Next Milestone: Artifact Alias Retirement
+
+Recommended next implementation slice:
+
+```text
+WorkbenchProjectModel
+  -> WorkbenchSolvedProjectArtifact
+  -> Plan / 3D / Sheet / Section / Snap / Diagnostics consume artifact fields
+```
+
+The slice should:
+
+- remove temporary loose-field aliases from `WorkbenchSolvedModel` once all live consumers read `projectArtifact`;
+- keep one object-id-keyed project artifact boundary for houses, pergolas, decks, openings, Plan projection, 3D scene, sheet/section views, snap sources, diagnostics, and future takeoff;
+- keep the workbench shell and viewport host passing that bundle instead of separate scene/projection/health/reference props;
+- keep diagnostic/reference geometry explicit inside the artifact, not as separate fallback props;
+- preserve Plan/3D agreement by making both surfaces read from the same object artifact records;
+- update tests so multi-object success is asserted by object id and artifact contents, not by legacy shape or selection side effects.
 
 ## Done Criteria
 
-The goal is done when:
+The multi-object goal is done when:
 
-- A user can add more than one house form and more than one pergola in the workbench without hidden primary/host assumptions.
-- Every house form can be selected, moved, rendered, and snapped to by id.
-- Every pergola can be added freestanding, moved, resized, snapped to houses or other pergolas, selected from plan/rail/3D, and shown in the same project context.
-- Pergola attachments are created by snap and round-trip through persistence, solve, render, and inspector state.
-- Connected and unconnected pergolas have explicit, tested cost grouping semantics.
-- `RawGeometryModuleInput.houseContext` is deleted or reduced to a clearly named compatibility alias, not the normal project solve path.
-- Plan and 3D selection identity agree for houses, pergolas, decks, and openings.
-- The marketing enquiry to estimate email path still works.
+- users can add, select, move, and save multiple house forms and pergolas without hidden primary/host assumptions;
+- every valid object has committed Plan and 3D geometry keyed by object id;
+- every invalid object has a clear first-failing diagnostic and no borrowed committed body;
+- Plan and 3D selection identity agree for house forms, pergolas, decks, and openings;
+- snap sources are object-owned and can target all valid host objects;
+- saved object-first drafts reload without calculator synthesis;
+- a future commercial adapter can consume solved geometry/takeoff without changing workbench runtime geometry.
 
 ## Non-Goals
 
 Do not expand this goal to include:
 
-- A new marketing self-design shell.
-- Rhino/Vray export.
-- New pergola roof families or visual variants unless needed to prove the multi-object path.
-- Full UI redesign beyond the controls needed to make multi-object editing coherent.
-- Manual host-picking dropdowns as a substitute for snap.
-
-## Suggested PR Sequence
-
-This sequence is partly shipped. Keep it as the planning spine rather than starting a new plan from scratch.
-
-1. **Per-object house solve boundary**
-   - Add project-level raw house input/build path. (Started: house-form to raw-house conversion is now shared by project references and host raw geometry.)
-   - Solve each house once into a stable `HouseModel3D`.
-   - Let pergola raw inputs reference the resolved host model instead of wrapping the full house context. (Started: workbench sources are grouped by host house and routed through `solveProject`, but each raw pergola still carries compatibility `houseContext`.)
-   - Delete the temporary host-scene retag bridge when the geometry package emits real house form ids. (Done: solver output now carries the host form id.)
-
-2. **Enable freestanding Add Pergola**
-   - Foundation shipped: object-first pergolas no longer need a persisted calculator module to solve/render; transient runtime solve sources are explicit and do not mutate `inputs.modules[]`.
-   - Add a new pergola object with its own position, dimensions, and no host. (Shipped: rail add creates a freestanding object-first pergola.)
-   - Select it immediately. (Shipped.)
-   - Render it in plan as a real editable object. (Shipped via runtime solve source; full edit parity follows.)
-   - Keep cost fallback explicit for freestanding pergolas. (Still deferred to connected-pergola costing semantics.)
-
-3. **Full multi-pergola interaction**
-   - Promote non-active pergolas from reference-only context to selectable/editable project objects where the surface supports it. (Shipped: plan context outlines now select by `pergolaId` and switch to the matching solved entry.)
-   - Render all valid pergolas as full project plan bodies rather than active-only detail plus faded boxes. (Shipped for Plan Editor; invalid/unsupported pergolas keep reference fallback.)
-   - Render all valid pergolas as full project 3D bodies rather than active-only 3D. (Shipped for 3D Review as read/select aggregation.)
-   - Keep Plan/3D usable when an invalid or unsupported pergola is selected. (Shipped: the selected invalid object uses reference/context fallback while the shell routes through a stable ready project basis.)
-   - Let transient supported pergolas show native inspector controls from solved in-memory state. (Shipped for supported mono through the temporary solve adapter.)
-   - Ensure move, edge drag, snap, undo, and selection work for every pergola id. (Selection foundation shipped; broader edit parity remains under active verification as the solve bridge retires.)
-   - Preserve pergola-to-pergola snap and attachment shape. (Preserved.)
-
-4. **Connected-pergola costing semantics**
-   - Make derived pergola groups cost as intended.
-   - Decide and test shared-post/shared-edge rules.
-   - Keep unconnected pergolas priced as separate pergolas.
-
-5. **Inspector and polish pass**
-   - Bring house-form, deck, opening, and pergola inspectors to a consistent read/write contract.
-   - Remove stale fields that imply manual host selection.
-   - Add visual checks for multi-house and multi-pergola projects.
-
-## New Chat Startup Checklist
-
-When resuming this work in a new chat, start here:
-
-1. Read `AGENTS.md`, then this file and `docs/design-workbench-architecture.md` section "Product North Star (READ FIRST)".
-2. Check `git status --short`; if moving machines, confirm the branch containing PR7/PR8 work has been pushed or otherwise transferred.
-3. For any code PR in the workbench/geometry lane, answer Gate 0 before coding: touched legacy rows, remove-vs-build-on legacy, Phase 2 dependencies, and consumer grep.
-4. Prefer the next PR from "Current Handoff" unless live runtime behavior shows a more urgent bug.
+- a marketing self-design shell;
+- Rhino/Vray export;
+- a workbench pricing rollout;
+- new pergola roof families;
+- UI redesign unrelated to multi-object correctness;
+- manual host-picking dropdowns as a substitute for snap.
 
 ## Verification Expectations
 
-Each PR should run focused tests for the changed path plus the changed-file architecture guard:
+Each PR should run focused tests for the changed path plus the runtime boundary guard:
 
-- Geometry/state tests for solved model, raw input, registry, and object patches.
-- PlanViewport tests for selection, movement, snap targets, and hit targets.
-- Costing tests when pergola grouping or cost semantics change.
-- `npx tsc -p apps/portal/tsconfig.json --noEmit --incremental false`.
-- `npm run files:changed`.
-- `npm run architecture:changed`.
+```bash
+npx vitest run apps/portal/lib/workbenchBreakawayImportGuards.test.ts
+npm run test:portal:workbench
+npm run test:portal:browser
+```
 
-Visual/manual checks should include at least:
+Manual or Playwright checks should include:
 
-- One project with two house forms.
-- One project with two unconnected pergolas.
-- One project with a pergola snapped to another pergola.
-- One deck snapped to a non-default house form.
+- a blank object-first workbench;
+- multiple house forms;
+- multiple pergolas;
+- an invalid object with diagnostics;
+- Plan/3D mode switching for the same project state.
 
 ## Gate 0 Mapping
 
-Expected legacy/audit rows:
+Expected historical rows for this goal:
 
 - N2: primary-vs-additional house form assumptions.
-- N5/N6/N7/N13: remaining `HouseFirst*` and legacy snapshot bridge carriers.
-- N9/N10: host-only/per-module scene composition.
-- N11: single-house snap-target assumptions.
-- Architecture audit #9: `RawGeometryModuleInput.houseContext` wrapping non-pergola objects into each pergola solve.
+- N4 and architecture audit #9: object-owned house geometry instead of wrapping houses into old raw module context.
+- N7/N13: unsupported calculator snapshot/draft carriers.
+- N9/N10: per-object/project scene composition instead of host-only scene branches.
+- N11: snap targets for all relevant objects.
 
-PRs under this goal should state whether they remove legacy, build on legacy, or defer a Phase 2 dependency.
+PRs under this goal should state whether they remove legacy, build on legacy, or defer a commercial/takeoff dependency.

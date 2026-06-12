@@ -8,7 +8,7 @@ import type {
   ViewerSceneModel,
   ViewerSceneObject,
 } from '@sp/geometry';
-import { buildProjectPergolaViewerSceneFromModules } from './projectPergolaViewerScene';
+import { buildProjectPergolaViewerSceneFromPergolaArtifacts } from './projectPergolaViewerScene';
 
 const WALL_PLANE: Plane3 = {
   origin: { x: 0, y: 0, z: 0 },
@@ -134,8 +134,8 @@ function fallbackPlanShape(pergolaId: string): GeometryTopProjectionShape {
   };
 }
 
-describe('buildProjectPergolaViewerSceneFromModules', () => {
-  it('uses project house layers instead of basis or module house layers', () => {
+describe('buildProjectPergolaViewerSceneFromPergolaArtifacts', () => {
+  it('uses project house layers instead of basis or pergola artifact house layers', () => {
     const basisScene: ViewerSceneModel = {
       layers: [
         fakeLayer('house', 'basis-house'),
@@ -144,16 +144,16 @@ describe('buildProjectPergolaViewerSceneFromModules', () => {
       ],
     };
 
-    const scene = buildProjectPergolaViewerSceneFromModules({
+    const scene = buildProjectPergolaViewerSceneFromPergolaArtifacts({
       basisScene,
-      modules: [
+      pergolaArtifacts: [
         {
-          moduleInput: { pergolaId: 'pergola-1' },
+          pergolaId: 'pergola-1',
           viewerScene: {
             layers: [
-              fakeLayer('house', 'module-house'),
-              fakeLayer('posts', 'module-post'),
-              fakeLayer('house_roof_materials', 'module-house-roof-material'),
+              fakeLayer('house', 'pergola-artifact-house'),
+              fakeLayer('posts', 'pergola-artifact-post'),
+              fakeLayer('house_roof_materials', 'pergola-artifact-house-roof-material'),
             ],
           },
         },
@@ -174,7 +174,7 @@ describe('buildProjectPergolaViewerSceneFromModules', () => {
       'house-form-2:roof-material-1',
     ]);
     expect(layerObjectIds(scene, 'posts')).toEqual([
-      'project_pergola:pergola-1:module-post',
+      'project_pergola:pergola-1:pergola-artifact-post',
     ]);
   });
 
@@ -186,9 +186,9 @@ describe('buildProjectPergolaViewerSceneFromModules', () => {
       ],
     };
 
-    const scene = buildProjectPergolaViewerSceneFromModules({
+    const scene = buildProjectPergolaViewerSceneFromPergolaArtifacts({
       basisScene,
-      modules: [],
+      pergolaArtifacts: [],
       projectHouseGeometries: [],
       projectPergolaRenderHealth: [
         {
@@ -211,9 +211,9 @@ describe('buildProjectPergolaViewerSceneFromModules', () => {
   });
 
   it('can build a diagnostic project scene without a ready committed basis scene', () => {
-    const scene = buildProjectPergolaViewerSceneFromModules({
+    const scene = buildProjectPergolaViewerSceneFromPergolaArtifacts({
       basisScene: null,
-      modules: [],
+      pergolaArtifacts: [],
       projectHouseGeometries: [
         {
           houseFormId: 'house-form-1',

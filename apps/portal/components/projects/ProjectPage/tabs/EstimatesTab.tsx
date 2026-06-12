@@ -1678,10 +1678,8 @@ export default function EstimatesTab({
                         }))
                       }
                       status={drawingStatus}
+                      projectArtifact={drawingWorkbenchStore.derived.solvedModel.projectArtifact}
                       viewportGeometry={drawingWorkbenchStore.derived.activeViewportGeometry}
-                      projectViewportGeometry={drawingWorkbenchStore.derived.activeViewportGeometry}
-                      projectGeometryPreview={drawingWorkbenchStore.derived.solvedModel.projectGeometryPreview}
-                      projectPlanProjection={drawingWorkbenchStore.derived.solvedModel.projectPlanProjection}
                       drawingSurfaceGeometry={drawingWorkbenchStore.derived.activeDrawingSurfaceGeometry}
                       planViewModel={drawingWorkbenchStore.derived.activePlanViewModel}
                       modelViewportTransform={drawingWorkbenchStore.ui.viewportTransform}
@@ -1695,8 +1693,6 @@ export default function EstimatesTab({
                       editableFields={drawingEditableFields}
                       onCommitField={commitDrawingField}
                       onCommitFootprintEdit={!isEstimateLocked ? commitDrawingFootprintEdit : undefined}
-                      projectHouseProjectionHealth={drawingWorkbenchStore.derived.solvedModel.projectHouseProjectionHealth}
-                      projectPergolaRenderHealth={drawingWorkbenchStore.derived.solvedModel.projectPergolaRenderHealth}
                     />
                   ) : (
                     <div className={styles.drawingEmpty}>No plan or section drawing is available for this design.</div>

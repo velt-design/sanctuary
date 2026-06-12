@@ -13,7 +13,7 @@ export type WorkbenchHouseSelection = {
 export type DrawingWorkbenchGeometrySelectionKind = WorkbenchHouseSelection['kind'];
 
 export type DrawingWorkbenchSelectionState = {
-  kind: 'none' | 'module' | 'geometry';
+  kind: 'none' | 'pergola' | 'geometry';
   targetId: string | null;
   targetKind?: DrawingWorkbenchGeometrySelectionKind;
 };
@@ -244,8 +244,8 @@ function normalizeActiveObjectRef(
 function normalizeDrawingWorkbenchSelectionState(
   value: DrawingWorkbenchSelectionState | null | undefined,
 ): DrawingWorkbenchSelectionState {
-  if (value?.kind === 'module') {
-    return { kind: 'module', targetId: value.targetId ?? null };
+  if (value?.kind === 'pergola') {
+    return { kind: 'pergola', targetId: value.targetId ?? null };
   }
   if (value?.kind === 'geometry' && value.targetKind) {
     return {

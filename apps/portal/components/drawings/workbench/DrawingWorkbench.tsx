@@ -1,9 +1,5 @@
 'use client';
 
-import type {
-  GeometryTopProjectionShape,
-  GeometryTopProjectionViewModel,
-} from '@sp/geometry';
 import type { WorkbenchViewStatus, WorkbenchViewTab } from '@/lib/drawings/workbenchViewTypes';
 import type { PlanViewModel } from '@/lib/drawings/views/plan/buildPlanViewModel';
 import type { WorkbenchDrawingSurfaceGeometry } from '@/lib/drawings/views/workbenchDrawingSurfaceGeometry';
@@ -24,18 +20,15 @@ import type {
 } from '@/lib/drawings/state/objectWorkbenchViewportTypes';
 import type { WorkbenchObjectRef } from '@/lib/drawings/state/objectFirstWorkbenchModel';
 import type {
-  GeometryPreviewState,
+  WorkbenchSolvedProjectArtifact,
   WorkbenchTrustGateModel,
   WorkbenchViewportGeometry,
 } from '@/lib/drawings/state/workbenchSolvedModel';
-import type { ProjectHouseProjectionHealth } from '@/lib/drawings/state/projectHouseProjectionHealth';
-import type { ProjectPergolaRenderHealth } from '@/lib/drawings/state/projectObjectRenderPipeline';
 import type { Geometry3DViewportState } from '@/components/drawings/viewports/Geometry3DViewport';
 import type {
   EdgeDragCommit,
   HouseTerminalEndToggleRequest,
   MoveRequest,
-  ProjectHouseSnapSource,
 } from '@/components/drawings/viewports/PlanViewport/PlanViewport';
 import WorkbenchChrome from './WorkbenchChrome';
 import WorkbenchViewportHost from './WorkbenchViewportHost';
@@ -52,10 +45,8 @@ type DrawingWorkbenchProps = {
   availableViewportModes?: DrawingWorkbenchViewportMode[];
   status: WorkbenchViewStatus;
   trustGate?: WorkbenchTrustGateModel | null;
+  projectArtifact?: WorkbenchSolvedProjectArtifact | null;
   viewportGeometry?: WorkbenchViewportGeometry | null;
-  projectViewportGeometry?: WorkbenchViewportGeometry | null;
-  projectGeometryPreview?: GeometryPreviewState | null;
-  projectPlanProjection?: GeometryTopProjectionViewModel | null;
   drawingSurfaceGeometry?: WorkbenchDrawingSurfaceGeometry | null;
   planViewModel?: PlanViewModel | null;
   activeObjectRef?: WorkbenchObjectRef | null;
@@ -117,20 +108,6 @@ type DrawingWorkbenchProps = {
   onDeckInteractionTelemetryChange?: (telemetry: DeckInteractionTelemetry) => void;
   onCommitOutlineEdit?: (commit: EdgeDragCommit) => void;
   onCommitMove?: (request: MoveRequest) => void;
-  /** Faded outline shapes for non-active pergolas (Step 5d Option A). */
-  projectContextShapes?: ReadonlyArray<GeometryTopProjectionShape>;
-  /** Project-wide full pergola plan bodies, prefixed per pergola id. */
-  projectPergolaPlanShapes?: ReadonlyArray<GeometryTopProjectionShape>;
-  /** Canonical pergola reference shapes used as snap targets. */
-  projectPergolaSnapShapes?: ReadonlyArray<GeometryTopProjectionShape>;
-  /** Canonical house references promoted to active module hit targets. */
-  houseCommittedShapes?: ReadonlyArray<GeometryTopProjectionShape>;
-  /** Solved-model diagnostics for each house form's project Plan projection. */
-  projectHouseProjectionHealth?: ReadonlyArray<ProjectHouseProjectionHealth>;
-  /** Solved-model diagnostics for project pergola render eligibility. */
-  projectPergolaRenderHealth?: ReadonlyArray<ProjectPergolaRenderHealth>;
-  /** Project-level house models used as wall/eave snap sources. */
-  projectHouseSnapSources?: ReadonlyArray<ProjectHouseSnapSource>;
   /** Cross-viewport hover state (milestone 16). Pass-through to viewports. */
   hoveredObjectRef?: WorkbenchObjectRef | null;
   onHoverObjectChange?: (next: WorkbenchObjectRef | null) => void;
@@ -147,10 +124,8 @@ export default function DrawingWorkbench({
   availableViewportModes,
   status,
   trustGate,
+  projectArtifact,
   viewportGeometry,
-  projectViewportGeometry,
-  projectGeometryPreview,
-  projectPlanProjection,
   drawingSurfaceGeometry,
   planViewModel,
   activeObjectRef,
@@ -188,13 +163,6 @@ export default function DrawingWorkbench({
   onDeckInteractionTelemetryChange,
   onCommitOutlineEdit,
   onCommitMove,
-  projectContextShapes,
-  projectPergolaPlanShapes,
-  projectPergolaSnapShapes,
-  houseCommittedShapes,
-  projectHouseProjectionHealth,
-  projectPergolaRenderHealth,
-  projectHouseSnapSources,
   hoveredObjectRef,
   onHoverObjectChange,
 }: DrawingWorkbenchProps) {
@@ -219,10 +187,8 @@ export default function DrawingWorkbench({
         objectWorkbenchDisplayFamily={objectWorkbenchDisplayFamily}
         visibility={visibility}
         status={status}
+        projectArtifact={projectArtifact}
         viewportGeometry={viewportGeometry}
-        projectViewportGeometry={projectViewportGeometry}
-        projectGeometryPreview={projectGeometryPreview}
-        projectPlanProjection={projectPlanProjection}
         drawingSurfaceGeometry={drawingSurfaceGeometry}
         planViewModel={planViewModel}
         activeObjectRef={activeObjectRef}
@@ -257,13 +223,6 @@ export default function DrawingWorkbench({
         onDeckInteractionTelemetryChange={onDeckInteractionTelemetryChange}
         onCommitOutlineEdit={onCommitOutlineEdit}
         onCommitMove={onCommitMove}
-        projectContextShapes={projectContextShapes}
-        projectPergolaPlanShapes={projectPergolaPlanShapes}
-        projectPergolaSnapShapes={projectPergolaSnapShapes}
-        houseCommittedShapes={houseCommittedShapes}
-        projectHouseProjectionHealth={projectHouseProjectionHealth}
-        projectPergolaRenderHealth={projectPergolaRenderHealth}
-        projectHouseSnapSources={projectHouseSnapSources}
         hoveredObjectRef={hoveredObjectRef}
         onHoverObjectChange={onHoverObjectChange}
       />

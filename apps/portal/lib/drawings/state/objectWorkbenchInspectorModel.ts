@@ -290,7 +290,7 @@ function buildTrustLabel(status: WorkbenchTrustStatusKind): string {
   return labelForWorkbenchTrustStatus(status);
 }
 
-function resolveModuleTrustStatus(trust: WorkbenchTrustStatus): WorkbenchTrustStatusKind {
+function resolveProjectTrustStatus(trust: WorkbenchTrustStatus): WorkbenchTrustStatusKind {
   if (trust.status === 'invalid_geometry' || trust.issues.includes('invalid_geometry')) {
     return 'invalid_geometry';
   }
@@ -386,12 +386,12 @@ function buildPergolaInspectorModels(input: {
     const pergolaStatus = input.status.pergolaStatuses[pergola.id] ?? null;
     const resolution = input.pergolaAttachmentResolutions.get(pergola.id);
     const isFreestanding = pergolaStatus?.isFreestanding ?? false;
-    const moduleTrustStatus = resolveModuleTrustStatus(input.activeTrust);
+    const projectTrustStatus = resolveProjectTrustStatus(input.activeTrust);
     const trustStatus: WorkbenchTrustStatusKind =
       !isFreestanding && resolution?.status === 'unresolved'
         ? 'unresolved_host'
-        : moduleTrustStatus !== 'geometry_ready'
-          ? moduleTrustStatus
+        : projectTrustStatus !== 'geometry_ready'
+          ? projectTrustStatus
           : pergolaStatus?.confidence === 'low'
             ? 'approximate'
             : 'geometry_ready';

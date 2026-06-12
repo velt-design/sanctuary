@@ -1,13 +1,13 @@
 import type { PergolaObjectModel } from './objectFirstWorkbenchModel';
 
 /**
- * A logical pergola — one or more `PergolaObjectModel` modules connected via
+ * A logical pergola — one or more `PergolaObjectModel` members connected via
  * scene-snapped attachments. PR-2B.2 (2026-05-22): logical-pergola grouping
  * comes from spatial adjacency in the scene, not from a stored field.
  *
  * Per the Phase 2 cost direction (north star locked 2026-05-22):
  * "pergolas which are connected to each other / snapped to each other will
- * be costed as modules of the same pergola; pergolas not connected together
+ * be costed as members of the same pergola; pergolas not connected together
  * will be costed as separate pergolas. All of this is derived information
  * from the scene."
  *
@@ -25,13 +25,13 @@ export type PergolaGroup = {
    */
   pergolaId: string;
   /** All pergola objects in this connected component, ordered by id. */
-  modules: readonly PergolaObjectModel[];
+  members: readonly PergolaObjectModel[];
 };
 
 /**
  * Group pergolas by snap-derived spatial adjacency. Pure function — same
  * input always produces the same output. Stable id ordering: groups are
- * returned in lexicographic order by `pergolaId`, and modules within each
+ * returned in lexicographic order by `pergolaId`, and members within each
  * group are ordered by their own id.
  *
  * Snap references that point to pergolas not present in the input set
@@ -100,9 +100,9 @@ export function derivePergolaGroupsFromScene(input: {
     }
   }
 
-  const result: PergolaGroup[] = Array.from(groups.entries()).map(([pergolaId, modules]) => ({
+  const result: PergolaGroup[] = Array.from(groups.entries()).map(([pergolaId, members]) => ({
     pergolaId,
-    modules: [...modules].sort((a, b) => a.id.localeCompare(b.id)),
+    members: [...members].sort((a, b) => a.id.localeCompare(b.id)),
   }));
   result.sort((a, b) => a.pergolaId.localeCompare(b.pergolaId));
   return result;

@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import DrawingWorkbench from '@/components/drawings/workbench/DrawingWorkbench';
 import ObjectWorkbenchRail from '@/components/drawings/rail/ObjectWorkbenchRail';
 import RightInspectorPanel from '@/components/drawings/inspector/RightInspectorPanel';
-import { buildProjectContextOverlayShapes } from '@/lib/drawings/state/projectContextOverlayShapes';
 import WorkbenchInspectorHost from './WorkbenchInspectorHost';
 import {
   buildFixtureSelectionActions,
@@ -113,17 +112,11 @@ export default function DesignWorkbenchFixtureClient({
       buildWorkbenchDebugFixtureExport({
         draft: fixture.draft,
         ui: store.ui,
-        projectGeometryPreview: store.derived.solvedModel.projectGeometryPreview,
-        houseGeometryInputsById: store.derived.solvedModel.houseGeometryInputsById,
-        projectHouseProjectionHealth: store.derived.solvedModel.projectHouseProjectionHealth,
-        projectPergolaRenderHealth: store.derived.solvedModel.projectPergolaRenderHealth,
+        projectArtifact: store.derived.solvedModel.projectArtifact,
       }),
     [
       fixture.draft,
-      store.derived.solvedModel.projectGeometryPreview,
-      store.derived.solvedModel.houseGeometryInputsById,
-      store.derived.solvedModel.projectHouseProjectionHealth,
-      store.derived.solvedModel.projectPergolaRenderHealth,
+      store.derived.solvedModel.projectArtifact,
       store.ui,
     ],
   );
@@ -166,8 +159,10 @@ export default function DesignWorkbenchFixtureClient({
           source: 'design-workbench-fixture',
           workbenchDebugFixture: debugFixtureExport,
           projectPreviewSource: debugFixtureExport.renderDiagnostics.projectPreviewSource,
-          projectHouseProjectionHealth: store.derived.solvedModel.projectHouseProjectionHealth,
-          projectPergolaRenderHealth: store.derived.solvedModel.projectPergolaRenderHealth,
+          projectHouseProjectionHealth:
+            store.derived.solvedModel.projectArtifact.diagnostics.projectHouseProjectionHealth,
+          projectPergolaRenderHealth:
+            store.derived.solvedModel.projectArtifact.diagnostics.projectPergolaRenderHealth,
         },
         scenario: inferPortalScenarioFromLabel(projectName),
       }),
@@ -180,8 +175,8 @@ export default function DesignWorkbenchFixtureClient({
       projectName,
       resolvedProjectId,
       siteAddress,
-      store.derived.solvedModel.projectHouseProjectionHealth,
-      store.derived.solvedModel.projectPergolaRenderHealth,
+      store.derived.solvedModel.projectArtifact.diagnostics.projectHouseProjectionHealth,
+      store.derived.solvedModel.projectArtifact.diagnostics.projectPergolaRenderHealth,
       store.ui.activeObjectRef,
       store.ui.activePergolaId,
       store.ui.activeView,
@@ -216,38 +211,6 @@ export default function DesignWorkbenchFixtureClient({
     store.derived.objectWorkbench.pergolas[0]?.id ??
     null;
   const viewportActiveObjectRef = store.ui.activeObjectRef;
-  const activePergolaSourceId =
-    store.ui.activeObjectRef.family === 'pergolas'
-      ? store.ui.activeObjectRef.objectId ?? null
-      : null;
-  const projectPergolaPlanShapes = store.derived.solvedModel.projectPergolaPlanShapes;
-  const projectContextShapes = useMemo(
-    () => store.derived.solvedModel.projectPergolaFallbackPlanShapes,
-    [store.derived.solvedModel.projectPergolaFallbackPlanShapes],
-  );
-  const projectPergolaSnapShapes = useMemo(
-    () =>
-      buildProjectContextOverlayShapes({
-        projectReferenceShapes: store.derived.solvedModel.projectReferenceShapes,
-        activePergolaSourceId,
-      }),
-    [store.derived.solvedModel.projectReferenceShapes, activePergolaSourceId],
-  );
-  const houseCommittedShapes = useMemo(
-    () =>
-      store.derived.solvedModel.projectReferenceShapes.filter(
-        (shape) => shape.sourceType === 'house_reference',
-      ),
-    [store.derived.solvedModel.projectReferenceShapes],
-  );
-  const projectHouseSnapSources = useMemo(
-    () =>
-      store.derived.solvedModel.projectHouseGeometries.map((entry) => ({
-        houseFormId: entry.houseFormId,
-        model: entry.model,
-      })),
-    [store.derived.solvedModel.projectHouseGeometries],
-  );
   const activeModelViewportTransform =
     modelViewportTransformsByKey[modelViewportSurfaceKey] ?? DEFAULT_MODEL_VIEWPORT_TRANSFORM;
   const activeGeometryViewportState =
@@ -376,20 +339,11 @@ export default function DesignWorkbenchFixtureClient({
             }
             status={store.derived.status}
             trustGate={store.derived.activeTrustGate}
+            projectArtifact={store.derived.solvedModel.projectArtifact}
             viewportGeometry={store.derived.activeViewportGeometry}
-            projectViewportGeometry={store.derived.solvedModel.projectViewportGeometry}
-            projectGeometryPreview={store.derived.solvedModel.projectGeometryPreview}
-            projectPlanProjection={store.derived.solvedModel.projectPlanProjection}
             objectWorkbenchDisplayFamily={objectWorkbenchDisplayFamily}
             visibility={store.ui.visibility}
             activeObjectRef={viewportActiveObjectRef}
-            projectContextShapes={projectContextShapes}
-            projectPergolaPlanShapes={projectPergolaPlanShapes}
-            projectPergolaSnapShapes={projectPergolaSnapShapes}
-            houseCommittedShapes={houseCommittedShapes}
-            projectHouseProjectionHealth={store.derived.solvedModel.projectHouseProjectionHealth}
-            projectPergolaRenderHealth={store.derived.solvedModel.projectPergolaRenderHealth}
-            projectHouseSnapSources={projectHouseSnapSources}
             hoveredObjectRef={hoveredObjectRef}
             onHoverObjectChange={setHoveredObjectRef}
             pergolaTargetId={viewportPergolaId}

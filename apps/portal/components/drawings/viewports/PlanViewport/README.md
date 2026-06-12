@@ -84,7 +84,7 @@ tools/
 
 These are tested helpers waiting for their named consumer. Not dead code — staged work.
 
-| Module | Wires up when |
+| Helper | Wires up when |
 |--------|---------------|
 | `interactions/snap/snapEngine.ts` | First snap-dependent feature (relation dims, dimension tool, move-with-snap) |
 | `tools/MoveTool.ts` | Commit-pipeline design lands (per-family `commitMove` callback) |

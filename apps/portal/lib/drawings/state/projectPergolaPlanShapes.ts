@@ -4,9 +4,7 @@ import type {
 } from '@sp/geometry';
 
 type ProjectPergolaPlanSource = {
-  moduleInput: {
-    pergolaId?: string | null;
-  };
+  pergolaId?: string | null;
   geometryTopProjection: Pick<GeometryTopProjectionViewModel, 'shapes'> | null;
 };
 
@@ -35,15 +33,15 @@ function prefixProjectPergolaPlanShape(
   };
 }
 
-export function buildProjectPergolaPlanShapesFromModules(
-  modules: ReadonlyArray<ProjectPergolaPlanSource>,
+export function buildProjectPergolaPlanShapesFromPergolaArtifacts(
+  pergolaArtifacts: ReadonlyArray<ProjectPergolaPlanSource>,
 ): GeometryTopProjectionShape[] {
   const seenPergolaIds = new Set<string>();
   const shapes: GeometryTopProjectionShape[] = [];
-  for (const module of modules) {
-    const pergolaId = module.moduleInput.pergolaId;
+  for (const artifact of pergolaArtifacts) {
+    const pergolaId = artifact.pergolaId;
     if (!pergolaId || seenPergolaIds.has(pergolaId)) continue;
-    const projection = module.geometryTopProjection;
+    const projection = artifact.geometryTopProjection;
     if (!projection) continue;
     const pergolaShapes = projection.shapes.filter((shape) => shape.family === 'pergola');
     if (pergolaShapes.length === 0) continue;

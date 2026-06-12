@@ -21,7 +21,7 @@ import { pergolaAttachmentFromStoredConnectionFields } from '@/lib/drawings/stat
 import type { CommitResult } from './objectWorkbenchClientTypes';
 import styles from './DesignWorkbenchEstimateClient.module.css';
 
-type PergolaInspectorModule = {
+type PergolaInspectorOption = {
   id: string;
   label: string;
 };
@@ -30,7 +30,7 @@ type PergolaInspectorProps = {
   activePergolaModel: ObjectWorkbenchPergolaInspectorModel | null;
   activePergolaId: string | null;
   disabled?: boolean;
-  modules: PergolaInspectorModule[];
+  pergolaOptions: PergolaInspectorOption[];
   /** Host-owned action retained for the current inspector contract. */
   onOpenHouseForms?: () => void;
   onSelectPergola: (pergolaId: string | null) => void;
@@ -66,7 +66,7 @@ export default function PergolaInspector({
   activePergolaModel,
   activePergolaId,
   disabled = false,
-  modules,
+  pergolaOptions,
   onOpenHouseForms: _onOpenHouseForms,
   onSelectPergola,
   onCommitAttachment,
@@ -114,8 +114,8 @@ export default function PergolaInspector({
 
   const hostAttachmentSection =
     activePergolaModel && displayAttachment ? (
-      <section className={styles.moduleSection}>
-        <p className={styles.moduleSectionTitle}>Host attachment</p>
+      <section className={styles.inspectorSection}>
+        <p className={styles.inspectorSectionTitle}>Host attachment</p>
         <div className={styles.diagnosticsList}>
           <div className={styles.diagnosticRow}>
             <span className={styles.diagnosticLabel}>Connection</span>
@@ -145,7 +145,7 @@ export default function PergolaInspector({
         {methodIsWritable ? (
           <select
             id="pergola-attachment-method"
-            className={styles.moduleSelect}
+            className={styles.inspectorSelect}
             aria-label="Pergola attachment method"
             value={displayAttachment.method}
             disabled={disabled || pendingFieldId === 'pergola-attachment-method'}
@@ -176,20 +176,20 @@ export default function PergolaInspector({
       {activePergolaModel ? (
         <>
           {hostAttachmentSection}
-          {modules.length > 1 ? (
-            <section className={styles.moduleSection}>
-              <p className={styles.moduleSectionTitle}>Module</p>
+          {pergolaOptions.length > 1 ? (
+            <section className={styles.inspectorSection}>
+              <p className={styles.inspectorSectionTitle}>Pergola</p>
               <select
-                className={styles.moduleSelect}
+                className={styles.inspectorSelect}
                 aria-label="Pergola"
                 value={activePergolaId ?? ''}
                 onChange={(event) =>
                   onSelectPergola(event.target.value || null)
                 }
               >
-                {modules.map((module) => (
-                  <option key={module.id} value={module.id}>
-                    {module.label}
+                {pergolaOptions.map((pergola) => (
+                  <option key={pergola.id} value={pergola.id}>
+                    {pergola.label}
                   </option>
                 ))}
               </select>

@@ -13,6 +13,7 @@ UI components for the portal drawing workbench live here. Domain state, geometry
 ## Rules
 
 - Keep object-first UI wired through the workbench store and derived models.
+- Consume bundled solved geometry from the workbench shell; viewport components should present artifact views, not assemble independent geometry state.
 - Keep calculator/estimate UI such as `ConfiguratorRail` under estimates or calculator ownership, not drawing workbench ownership.
 - Do not make drawing components own costing, Supabase persistence, or package geometry solving.
 - Add component tests next to the component when behavior is non-trivial.

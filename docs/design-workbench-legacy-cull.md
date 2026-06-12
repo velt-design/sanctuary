@@ -1,6 +1,12 @@
-# Design Workbench Legacy Cull — Phase 1 Plan
+# Design Workbench Legacy Cull - Phase 1 History
 
-**Status (2026-05-22): Phase 1 closed. Continuing work tracked in [Phase 2 Plan](design-workbench-phase-2-plan.md).**
+**Status (2026-06-12): Archived history and Gate 0 audit-row reference.**
+
+This doc is no longer active implementation guidance. The live workbench breakaway is governed by [design-workbench-architecture.md](design-workbench-architecture.md), reusable guardrails live in [decision-log.md](decision-log.md), and the executable runtime boundary lives in `apps/portal/lib/workbenchBreakawayImportGuards.test.ts`.
+
+Keep this file for historical context and Gate 0 row citations only. Do not use the old PR sequence below as the next-task list; it predates the workbench/calculator breakaway, the solved-artifact spine, and the module-vocabulary retirement.
+
+---
 
 Phase 1 shipped as PR-A through PR-G3c. The originally-planned PR-H ("final cleanup sweep") + PR-I ("ModelSpaceViewport fixture rot") turned out to be **superseded by Phase 2 work**: investigation in 2026-05-22 revealed that PR-H's deletion targets (`HouseFirst*` types, `legacyObjectFirstCompatibilityAdapter`, `hostHouseFormId`, `houseFootprintSideLocalToWorldPolygon`) are still load-bearing because Phase 1 PRs deliberately preserved them while migrating upstream consumers. Deleting them requires the consumer-side migration that IS Phase 2 (see § "Stream 2A" in the Phase 2 plan). PR-I is deferred until after the consumer-side migration stabilises the test fixtures.
 

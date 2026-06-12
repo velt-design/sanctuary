@@ -65,7 +65,7 @@ export type DrawingWorkbenchRailModel = {
   selectedInspector: DrawingWorkbenchRailInspectorContext;
 };
 
-type DrawingWorkbenchRailPergolaModuleState = {
+type DrawingWorkbenchRailPergolaRenderState = {
   pergolaId: string | null | undefined;
   planRenderStatus: WorkbenchPergolaRenderStatus;
   trust: WorkbenchTrustStatus;
@@ -154,7 +154,7 @@ function railStatusForTrustStatus(status: WorkbenchTrustStatusKind): DrawingWork
   }
 }
 
-function resolveModuleTrustStatus(trust: WorkbenchTrustStatus): WorkbenchTrustStatusKind {
+function resolvePergolaRenderTrustStatus(trust: WorkbenchTrustStatus): WorkbenchTrustStatusKind {
   if (trust.status === 'invalid_geometry' || trust.issues.includes('invalid_geometry')) {
     return 'invalid_geometry';
   }
@@ -267,18 +267,18 @@ function buildOpeningEntries(input: {
 function resolvePergolaEntryStatus(input: {
   pergola: PergolaObjectModel;
   attachmentResolution: ObjectFirstPergolaAttachmentResolution | null;
-  moduleStates: DrawingWorkbenchRailPergolaModuleState[];
+  renderStates: DrawingWorkbenchRailPergolaRenderState[];
   status: ObjectWorkbenchStatusFacade;
 }): Pick<DrawingWorkbenchRailObjectEntry, 'status' | 'statusLabel' | 'trustStatus' | 'trustLabel'> {
   const pergolaStatus = input.status.pergolaStatuses[input.pergola.id] ?? null;
   const isFreestanding = pergolaStatus?.isFreestanding;
-  const moduleTrustStatus = input.moduleStates
-    .map((module) => resolveModuleTrustStatus(module.trust))
+  const renderTrustStatus = input.renderStates
+    .map((state) => resolvePergolaRenderTrustStatus(state.trust))
     .find((status) => status !== 'geometry_ready') ?? null;
   const trustStatus: WorkbenchTrustStatusKind =
     !isFreestanding && input.attachmentResolution?.status === 'unresolved'
       ? 'unresolved_host'
-      : moduleTrustStatus ??
+      : renderTrustStatus ??
         (pergolaStatus?.confidence === 'low' ? 'approximate' : 'geometry_ready');
   const trustLabel = buildTrustLabel(trustStatus);
   if (!isFreestanding && input.attachmentResolution?.status === 'unresolved') {
@@ -289,7 +289,7 @@ function resolvePergolaEntryStatus(input: {
       statusLabel: trustLabel,
     };
   }
-  if (input.moduleStates.some((module) => module.planRenderStatus === 'invalid_geometry')) {
+  if (input.renderStates.some((state) => state.planRenderStatus === 'invalid_geometry')) {
     return {
       status: railStatusForTrustStatus(trustStatus),
       trustStatus,
@@ -316,17 +316,17 @@ function resolvePergolaEntryStatus(input: {
 function buildPergolaEntries(input: {
   pergolas: PergolaObjectModel[];
   attachmentResolutions: Record<string, ObjectFirstPergolaAttachmentResolution>;
-  modules: DrawingWorkbenchRailPergolaModuleState[];
+  pergolaRenderStates: DrawingWorkbenchRailPergolaRenderState[];
   status: ObjectWorkbenchStatusFacade;
 }): DrawingWorkbenchRailObjectEntry[] {
   return input.pergolas.map((pergola) => {
     const pergolaStatus = input.status.pergolaStatuses[pergola.id] ?? null;
     const attachmentResolution = input.attachmentResolutions[pergola.id] ?? null;
-    const moduleStates = input.modules.filter((module) => module.pergolaId === pergola.id);
+    const renderStates = input.pergolaRenderStates.filter((state) => state.pergolaId === pergola.id);
     const entryStatus = resolvePergolaEntryStatus({
       pergola,
       attachmentResolution,
-      moduleStates,
+      renderStates,
       status: input.status,
     });
     const edgeLabel = attachmentResolution?.edge
@@ -386,7 +386,7 @@ export function buildDrawingWorkbenchRailModel(input: {
   openingHostResolutions: Record<string, ObjectFirstOpeningHostResolution>;
   pergolas: PergolaObjectModel[];
   pergolaAttachmentResolutions: Record<string, ObjectFirstPergolaAttachmentResolution>;
-  modules: DrawingWorkbenchRailPergolaModuleState[];
+  pergolaRenderStates: DrawingWorkbenchRailPergolaRenderState[];
   activeTrust: WorkbenchTrustStatus;
   status: ObjectWorkbenchStatusFacade;
 }): DrawingWorkbenchRailModel {
@@ -404,7 +404,7 @@ export function buildDrawingWorkbenchRailModel(input: {
     pergolas: buildPergolaEntries({
       pergolas: input.pergolas,
       attachmentResolutions: input.pergolaAttachmentResolutions,
-      modules: input.modules,
+      pergolaRenderStates: input.pergolaRenderStates,
       status: input.status,
     }),
   };

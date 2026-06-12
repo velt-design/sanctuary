@@ -1997,3 +1997,51 @@ Current guardrail: live workbench runtime roots must not import `@sp/costing`, e
 Promoted to: None
 
 Related docs/tests: [docs/design-workbench-architecture.md](design-workbench-architecture.md), [apps/portal/lib/workbenchBreakawayImportGuards.test.ts](../apps/portal/lib/workbenchBreakawayImportGuards.test.ts).
+
+### 2026-06-12 - Design Workbench - Module Vocabulary Retirement
+
+Area: Design Workbench
+
+Status: Active
+
+Decision or mistake: after the calculator breakaway, live workbench runtime still exposed solved-module wrappers and module-shaped pergola render/status names even though project solving was already object-first.
+
+Why it mattered: leaving empty `modules` arrays, `moduleInput`, `moduleId`, and module-state terms in the runtime made future work likely to rebuild per-module assumptions around an object-first artifact.
+
+Current guardrail: live workbench roots must use object/pergola artifact vocabulary. Pergola render diagnostics are keyed by `pergolaId`/`artifactId`; `WorkbenchSolvedModel` must not expose solved-module arrays; pergola inspector and rail state must not reintroduce module selection/status names. Calculator/public-export module vocabulary remains outside the workbench boundary only.
+
+Promoted to: None
+
+Related docs/tests: [docs/design-workbench-architecture.md](design-workbench-architecture.md), [apps/portal/lib/workbenchBreakawayImportGuards.test.ts](../apps/portal/lib/workbenchBreakawayImportGuards.test.ts), [apps/portal/lib/drawings/state/workbenchSolvedModel.ts](../apps/portal/lib/drawings/state/workbenchSolvedModel.ts), [apps/portal/lib/drawings/state/projectObjectRenderPipeline.ts](../apps/portal/lib/drawings/state/projectObjectRenderPipeline.ts).
+
+### 2026-06-12 - Design Workbench - Docs Current-State Reset
+
+Area: Design Workbench
+
+Status: Active
+
+Decision or mistake: after the breakaway and module-vocabulary cleanup, the workbench docs still mixed current architecture, historical cull PR sequences, and roof incident notes in ways that could be mistaken for active implementation guidance.
+
+Why it mattered: stale campaign language can pull future work back toward compatibility tasks, module-era problem framing, or visual bug history instead of the current object-first artifact boundary.
+
+Current guardrail: `docs/design-workbench-architecture.md` is the current contract, `docs/design-workbench-multi-object-goal.md` tracks active product milestones, and `docs/design-workbench-legacy-cull.md` is archived history plus Gate 0 row references only. Do not use old PR history as a next-task list. The next architecture cleanup is the `WorkbenchSolvedProjectArtifact` UI-consumption boundary.
+
+Promoted to: `docs/design-workbench-architecture.md`
+
+Related docs/tests: [docs/design-workbench-architecture.md](design-workbench-architecture.md), [docs/design-workbench-multi-object-goal.md](design-workbench-multi-object-goal.md), [docs/design-workbench-legacy-cull.md](design-workbench-legacy-cull.md), [apps/portal/lib/workbenchBreakawayImportGuards.test.ts](../apps/portal/lib/workbenchBreakawayImportGuards.test.ts).
+
+### 2026-06-12 - Design Workbench - Project Artifact UI Boundary
+
+Area: Design Workbench
+
+Status: Active
+
+Decision or mistake: the live workbench shell now consumes one `WorkbenchSolvedProjectArtifact` bundle for project-level Plan layers, 3D preview, drawing-surface geometry, snap sources, and diagnostics. Route clients should not rebuild or pass loose project geometry/status prop arrays.
+
+Why it mattered: the breakaway removed calculator-era inputs, but loose render props still made it easy to create view-specific geometry truth. The bundled artifact makes the current UI contract match the north-star solved-geometry spine without changing solver behavior.
+
+Current guardrail: `DrawingWorkbench` callers pass `projectArtifact`; `WorkbenchViewportHost` is the single allowed place to unpack it for existing lower-level viewport props. Temporary loose-field aliases on `WorkbenchSolvedModel` are cleanup debt and should be retired in the next slice, not expanded.
+
+Promoted to: `docs/design-workbench-architecture.md`
+
+Related docs/tests: [docs/design-workbench-architecture.md](design-workbench-architecture.md), [docs/design-workbench-multi-object-goal.md](design-workbench-multi-object-goal.md), [apps/portal/lib/drawings/state/workbenchSolvedModel.ts](../apps/portal/lib/drawings/state/workbenchSolvedModel.ts), [apps/portal/lib/workbenchBreakawayImportGuards.test.ts](../apps/portal/lib/workbenchBreakawayImportGuards.test.ts).

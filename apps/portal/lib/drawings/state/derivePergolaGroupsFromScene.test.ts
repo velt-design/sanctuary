@@ -57,7 +57,7 @@ describe('derivePergolaGroupsFromScene', () => {
       pergolas: [makePergola({ id: 'pergola-1' })],
     });
     expect(groups).toEqual([
-      { pergolaId: 'pergola-1', modules: [expect.objectContaining({ id: 'pergola-1' })] },
+      { pergolaId: 'pergola-1', members: [expect.objectContaining({ id: 'pergola-1' })] },
     ]);
   });
 
@@ -72,7 +72,7 @@ describe('derivePergolaGroupsFromScene', () => {
 
   it('groups two pergolas snapped to each other as one logical pergola', () => {
     // pergola-2 is attached to pergola-1 in the scene (snap-derived).
-    // They cost as two modules of the same logical pergola.
+    // They cost as two members of the same logical pergola.
     const groups = derivePergolaGroupsFromScene({
       pergolas: [
         makePergola({ id: 'pergola-1' }),
@@ -81,7 +81,7 @@ describe('derivePergolaGroupsFromScene', () => {
     });
     expect(groups).toHaveLength(1);
     expect(groups[0]?.pergolaId).toBe('pergola-1');
-    expect(groups[0]?.modules.map((m) => m.id)).toEqual(['pergola-1', 'pergola-2']);
+    expect(groups[0]?.members.map((m) => m.id)).toEqual(['pergola-1', 'pergola-2']);
   });
 
   it('groups three transitively-snapped pergolas as one logical pergola', () => {
@@ -95,7 +95,7 @@ describe('derivePergolaGroupsFromScene', () => {
     });
     expect(groups).toHaveLength(1);
     expect(groups[0]?.pergolaId).toBe('pergola-1');
-    expect(groups[0]?.modules.map((m) => m.id)).toEqual(['pergola-1', 'pergola-2', 'pergola-3']);
+    expect(groups[0]?.members.map((m) => m.id)).toEqual(['pergola-1', 'pergola-2', 'pergola-3']);
   });
 
   it('keeps a pergola attached to a house in its own group (not snapped to other pergolas)', () => {
@@ -122,9 +122,9 @@ describe('derivePergolaGroupsFromScene', () => {
     });
     expect(groups).toHaveLength(2);
     expect(groups[0]?.pergolaId).toBe('pergola-1');
-    expect(groups[0]?.modules.map((m) => m.id)).toEqual(['pergola-1', 'pergola-2']);
+    expect(groups[0]?.members.map((m) => m.id)).toEqual(['pergola-1', 'pergola-2']);
     expect(groups[1]?.pergolaId).toBe('pergola-3');
-    expect(groups[1]?.modules.map((m) => m.id)).toEqual(['pergola-3']);
+    expect(groups[1]?.members.map((m) => m.id)).toEqual(['pergola-3']);
   });
 
   it('ignores orphaned snap references to nonexistent pergolas', () => {
@@ -135,7 +135,7 @@ describe('derivePergolaGroupsFromScene', () => {
     });
     expect(groups).toHaveLength(1);
     expect(groups[0]?.pergolaId).toBe('pergola-1');
-    expect(groups[0]?.modules.map((m) => m.id)).toEqual(['pergola-1']);
+    expect(groups[0]?.members.map((m) => m.id)).toEqual(['pergola-1']);
   });
 
   it('treats snap references as undirected — direction does not change grouping', () => {
@@ -152,7 +152,7 @@ describe('derivePergolaGroupsFromScene', () => {
         makePergola({ id: 'pergola-2' }),
       ],
     });
-    expect(directionA[0]?.modules.map((m) => m.id)).toEqual(directionB[0]?.modules.map((m) => m.id));
+    expect(directionA[0]?.members.map((m) => m.id)).toEqual(directionB[0]?.members.map((m) => m.id));
     expect(directionA[0]?.pergolaId).toBe(directionB[0]?.pergolaId);
   });
 
@@ -194,8 +194,8 @@ describe('derivePergolaGroupsFromScene', () => {
     });
     expect(groups).toHaveLength(3);
     const chainGroup = groups.find((g) => g.pergolaId === 'chain-a');
-    expect(chainGroup?.modules.map((m) => m.id)).toEqual(['chain-a', 'chain-b', 'chain-c']);
-    expect(groups.find((g) => g.pergolaId === 'house-attached')?.modules).toHaveLength(1);
-    expect(groups.find((g) => g.pergolaId === 'standalone')?.modules).toHaveLength(1);
+    expect(chainGroup?.members.map((m) => m.id)).toEqual(['chain-a', 'chain-b', 'chain-c']);
+    expect(groups.find((g) => g.pergolaId === 'house-attached')?.members).toHaveLength(1);
+    expect(groups.find((g) => g.pergolaId === 'standalone')?.members).toHaveLength(1);
   });
 });

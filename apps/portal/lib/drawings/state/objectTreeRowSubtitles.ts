@@ -15,10 +15,10 @@ import type { WorkbenchObjectFamily } from './objectFirstWorkbenchModel';
  * via `<ObjectTreeRow>` (PR-W3d.2).
  *
  * Mockup reference: every row shows e.g. "Pergola 1 / Mono · acrylic · selected".
- * The "acrylic" enrichment (roof material) requires extra plumbing from
- * `solvedProject.pergolas[].moduleInput` and is deferred to a follow-up;
- * this PR ships the descriptor + state-hint composition using only data
- * already present in `DrawingWorkbenchRailObjectEntry.meta`.
+ * The "acrylic" enrichment (roof material) belongs on the object-first
+ * pergola model and is deferred to a follow-up; this PR ships the descriptor
+ * + state-hint composition using only data already present in
+ * `DrawingWorkbenchRailObjectEntry.meta`.
  */
 
 export type ObjectTreeRowSubtitleInput = {

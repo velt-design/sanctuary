@@ -46,7 +46,7 @@
   padding-right: var(--portal-density-4);
 }
 
-.moduleSection {
+.inspectorSection {
   border: var(--portal-section-border);
   border-radius: var(--portal-section-radius);
   background: var(--portal-section-background);
@@ -55,7 +55,7 @@
   gap: var(--portal-density-8);
 }
 
-.moduleSectionTitle {
+.inspectorSectionTitle {
   margin: 0;
   font-size: var(--portal-font-xs);
   font-weight: 700;
@@ -64,7 +64,7 @@
   color: rgba(var(--portal-text-rgb), 0.56);
 }
 
-.moduleSelect {
+.inspectorSelect {
   width: 100%;
   min-height: var(--portal-control-lg);
   border: 1px solid rgba(var(--portal-text-rgb), 0.1);
