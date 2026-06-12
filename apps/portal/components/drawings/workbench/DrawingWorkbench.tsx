@@ -20,10 +20,10 @@ import type {
 } from '@/lib/drawings/state/objectWorkbenchViewportTypes';
 import type { WorkbenchObjectRef } from '@/lib/drawings/state/objectFirstWorkbenchModel';
 import type {
-  WorkbenchSolvedProjectArtifact,
   WorkbenchTrustGateModel,
   WorkbenchViewportGeometry,
 } from '@/lib/drawings/state/workbenchSolvedModel';
+import type { WorkbenchSolvedProjectArtifact } from '@/lib/drawings/state/workbenchSolvedProjectArtifact';
 import type { Geometry3DViewportState } from '@/components/drawings/viewports/Geometry3DViewport';
 import type {
   EdgeDragCommit,

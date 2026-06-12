@@ -8,9 +8,9 @@ import type {
   DrawingWorkbenchVisibilityState,
 } from '@/lib/drawings/state/drawingWorkbenchUiState';
 import type {
-  WorkbenchSolvedProjectArtifact,
   WorkbenchViewportGeometry,
 } from '@/lib/drawings/state/workbenchSolvedModel';
+import type { WorkbenchSolvedProjectArtifact } from '@/lib/drawings/state/workbenchSolvedProjectArtifact';
 import {
   buildWorkbenchDrawingSurfaceGeometry,
   type WorkbenchDrawingSurfaceGeometry,
@@ -153,16 +153,16 @@ export default function WorkbenchViewportHost({
   hoveredObjectRef,
   onHoverObjectChange,
 }: WorkbenchViewportHostProps) {
-  const projectGeometryPreview = projectArtifact?.geometryPreview ?? null;
-  const projectPlanProjection = projectArtifact?.planProjection ?? null;
-  const projectContextShapes = projectArtifact?.planLayers.diagnosticPergolaShapes ?? [];
-  const projectPergolaPlanShapes = projectArtifact?.planLayers.committedPergolaShapes ?? [];
-  const houseCommittedShapes = projectArtifact?.planLayers.houseCommittedShapes ?? [];
-  const projectHouseProjectionHealth =
+  const artifactGeometryPreview = projectArtifact?.geometryPreview ?? null;
+  const artifactPlanProjection = projectArtifact?.planProjection ?? null;
+  const diagnosticPergolaPlanShapes = projectArtifact?.planLayers.diagnosticPergolaShapes ?? [];
+  const committedPergolaPlanShapes = projectArtifact?.planLayers.committedPergolaShapes ?? [];
+  const housePlanReferenceShapes = projectArtifact?.planLayers.houseCommittedShapes ?? [];
+  const houseProjectionHealth =
     projectArtifact?.diagnostics.projectHouseProjectionHealth ?? [];
-  const projectPergolaRenderHealth =
+  const pergolaRenderHealth =
     projectArtifact?.diagnostics.projectPergolaRenderHealth ?? [];
-  const projectHouseSnapSources = projectArtifact?.snapSources.house ?? [];
+  const houseSnapSources = projectArtifact?.snapSources.house ?? [];
   const activePergolaSourceId =
     activeObjectRef?.family === 'pergolas'
       ? activeObjectRef.objectId ?? null
@@ -187,18 +187,18 @@ export default function WorkbenchViewportHost({
     routedDrawingSurfaceGeometry?.artifact
       ? routedDrawingSurfaceGeometry
       : projectDrawingSurfaceGeometry ?? routedDrawingSurfaceGeometry;
-  const routedGeometryPreview = projectGeometryPreview ?? viewportGeometry?.preview ?? null;
+  const routedGeometryPreview = artifactGeometryPreview ?? viewportGeometry?.preview ?? null;
   const planViewportProjectProps = {
-    projectContextShapes,
-    projectPergolaPlanShapes,
+    projectContextShapes: diagnosticPergolaPlanShapes,
+    projectPergolaPlanShapes: committedPergolaPlanShapes,
     projectPergolaSnapShapes,
-    houseCommittedShapes,
-    projectHouseProjectionHealth,
-    projectPergolaRenderHealth,
-    projectHouseSnapSources,
+    houseCommittedShapes: housePlanReferenceShapes,
+    projectHouseProjectionHealth: houseProjectionHealth,
+    projectPergolaRenderHealth: pergolaRenderHealth,
+    projectHouseSnapSources: houseSnapSources,
   };
   const designViewportProjectProps = {
-    projectHouseProjectionHealth,
+    projectHouseProjectionHealth: houseProjectionHealth,
   };
 
   return (
@@ -219,7 +219,7 @@ export default function WorkbenchViewportHost({
       ) : viewportMode === 'plan' || viewportMode === 'model' ? (
         <PlanViewport
           artifact={routedPlanDrawingSurfaceGeometry?.artifact ?? null}
-          projectionOverride={projectPlanProjection ?? null}
+          projectionOverride={artifactPlanProjection ?? null}
           objectWorkbenchDisplayFamily={objectWorkbenchDisplayFamily}
           visibility={visibility}
           activeObjectRef={activeObjectRef}

@@ -62,12 +62,18 @@ describe('WorkbenchSolvedProjectArtifact', () => {
     });
 
     const artifact = solvedModel.projectArtifact;
+    expect(Object.keys(solvedModel).sort()).toEqual([
+      'geometryIdentity',
+      'projectArtifact',
+      'projectModel',
+      'trust',
+    ]);
     expect(artifact.source).toBe('workbench_solved_project');
-    expect(artifact.geometryPreview).toBe(solvedModel.projectGeometryPreview);
-    expect(artifact.viewportGeometry).toBe(solvedModel.projectViewportGeometry);
-    expect(artifact.planProjection).toBe(solvedModel.projectPlanProjection);
+    expect(artifact.geometryPreview.kind).toBe('ready');
+    expect(artifact.viewportGeometry?.preview).toBe(artifact.geometryPreview);
+    expect(artifact.planProjection?.coordinateSpace).toBe('world_xy_mm');
     expect(artifact.drawingSurfaceGeometry.artifact).toBe(
-      solvedModel.projectViewportGeometry?.artifact ?? null,
+      artifact.viewportGeometry?.artifact ?? null,
     );
 
     expect(artifact.planLayers.houseCommittedShapes.length).toBeGreaterThan(0);
@@ -76,18 +82,12 @@ describe('WorkbenchSolvedProjectArtifact', () => {
         (shape) => shape.sourceType === 'house_reference',
       ),
     ).toBe(true);
-    expect(artifact.snapSources.house).toEqual([
-      {
-        houseFormId: 'house-main',
-        model: solvedModel.projectHouseGeometries[0]?.model,
-      },
-    ]);
-    expect(artifact.diagnostics.projectHouseProjectionHealth).toEqual(
-      solvedModel.projectHouseProjectionHealth,
-    );
-    expect(artifact.diagnostics.projectPergolaRenderHealth).toEqual(
-      solvedModel.projectPergolaRenderHealth,
-    );
+    expect(artifact.snapSources.house).toHaveLength(1);
+    expect(artifact.snapSources.house[0]?.houseFormId).toBe('house-main');
+    expect(artifact.snapSources.house[0]?.model).toBeTruthy();
+    expect(artifact.diagnostics.projectHouseProjectionHealth.length).toBe(1);
+    expect(artifact.diagnostics.projectHouseProjectionHealth[0]?.houseFormId).toBe('house-main');
+    expect(artifact.diagnostics.projectPergolaRenderHealth).toEqual([]);
     expect(artifact.objectsById.houses['house-main']).toMatchObject({
       objectId: 'house-main',
       houseFormId: 'house-main',

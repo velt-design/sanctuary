@@ -2040,8 +2040,24 @@ Decision or mistake: the live workbench shell now consumes one `WorkbenchSolvedP
 
 Why it mattered: the breakaway removed calculator-era inputs, but loose render props still made it easy to create view-specific geometry truth. The bundled artifact makes the current UI contract match the north-star solved-geometry spine without changing solver behavior.
 
-Current guardrail: `DrawingWorkbench` callers pass `projectArtifact`; `WorkbenchViewportHost` is the single allowed place to unpack it for existing lower-level viewport props. Temporary loose-field aliases on `WorkbenchSolvedModel` are cleanup debt and should be retired in the next slice, not expanded.
+Current guardrail: `DrawingWorkbench` callers pass `projectArtifact`; `WorkbenchViewportHost` is the single allowed place to unpack it for existing lower-level viewport props. Loose-field aliases on `WorkbenchSolvedModel` were retired in the follow-up artifact alias slice and should not be reintroduced.
 
 Promoted to: `docs/design-workbench-architecture.md`
 
 Related docs/tests: [docs/design-workbench-architecture.md](design-workbench-architecture.md), [docs/design-workbench-multi-object-goal.md](design-workbench-multi-object-goal.md), [apps/portal/lib/drawings/state/workbenchSolvedModel.ts](../apps/portal/lib/drawings/state/workbenchSolvedModel.ts), [apps/portal/lib/workbenchBreakawayImportGuards.test.ts](../apps/portal/lib/workbenchBreakawayImportGuards.test.ts).
+
+### 2026-06-12 - Design Workbench - Solved Model Alias Retirement
+
+Area: Design Workbench
+
+Status: Active
+
+Decision or mistake: `WorkbenchSolvedModel` no longer exposes temporary loose project geometry/status aliases such as project preview, viewport geometry, plan projection, projection health, pergola render health, house geometry inputs, or project reference shapes. Those values are available only through `WorkbenchSolvedProjectArtifact`, whose construction now lives in a focused artifact owner.
+
+Why it mattered: the artifact boundary was useful only if callers could not keep reading parallel loose fields. Removing the aliases prevents future work from recreating view-specific geometry truth or bypassing object-owned diagnostics.
+
+Current guardrail: live workbench code should read solved project geometry, plan layers, snap sources, and render diagnostics from `projectArtifact`. The breakaway guard forbids direct `solvedModel.*` alias reads. Lower-level Plan/3D viewport prop names may remain until a separate internal naming cleanup.
+
+Promoted to: `docs/design-workbench-architecture.md`
+
+Related docs/tests: [docs/design-workbench-architecture.md](design-workbench-architecture.md), [apps/portal/lib/drawings/state/workbenchSolvedProjectArtifact.ts](../apps/portal/lib/drawings/state/workbenchSolvedProjectArtifact.ts), [apps/portal/lib/drawings/state/workbenchSolvedModel.ts](../apps/portal/lib/drawings/state/workbenchSolvedModel.ts), [apps/portal/lib/workbenchBreakawayImportGuards.test.ts](../apps/portal/lib/workbenchBreakawayImportGuards.test.ts).

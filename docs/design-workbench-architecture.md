@@ -54,7 +54,7 @@ The post-breakaway workbench is object-first and intentionally strict:
 - Workbench repricing is unavailable until a downstream artifact/takeoff-to-commercial adapter exists.
 - Snapshot-only calculator designs are unsupported or empty in the live workbench. They are not synthesized into object-first geometry at runtime.
 
-The current implementation is north-star aligned and now exposes a project-level `WorkbenchSolvedProjectArtifact` as the live UI boundary. The solved model still keeps temporary loose-field aliases for cleanup safety, but route and workbench-shell callers should pass the bundled artifact rather than rebuilding project geometry arrays.
+The current implementation is north-star aligned and exposes a project-level `WorkbenchSolvedProjectArtifact` as the live UI boundary. `WorkbenchSolvedModel` no longer exposes loose project geometry/status aliases; UI and state consumers read project geometry, plan layers, snap sources, and diagnostics from the bundled artifact.
 
 ## Runtime Boundaries
 
@@ -105,7 +105,7 @@ WorkbenchSolvedProjectArtifact
   quantityTakeoff
 ```
 
-The immediate cleanup after this boundary is to delete temporary loose-field aliases from `WorkbenchSolvedModel` once remaining non-shell consumers have moved to `projectArtifact`. New work must not introduce independent geometry arrays or view-specific truths.
+The remaining cleanup after this boundary is lower-level naming only: existing Plan/3D viewport prop contracts may still use historical project-shape names internally, but new workbench-shell or route code must not introduce independent geometry arrays or view-specific truths.
 
 ## Plan And 3D
 

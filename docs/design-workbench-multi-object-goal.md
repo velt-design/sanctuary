@@ -18,7 +18,7 @@ The workbench has crossed the main breakaway boundary:
 - invalid geometry is withheld as normal committed geometry and surfaced through object-owned diagnostics;
 - Plan is the editor and 3D is read/select only.
 
-The largest remaining architecture gap is not another compatibility migration. The workbench now has a `WorkbenchSolvedProjectArtifact` UI boundary, but the solved model still carries temporary loose-field aliases while downstream code is cleaned up. The next milestone is to delete those aliases and move deeper non-shell consumers to artifact fields.
+The largest remaining architecture gap is not another compatibility migration. The workbench now has a `WorkbenchSolvedProjectArtifact` UI boundary, and the solved model no longer exposes temporary loose-field aliases. The next milestone is to keep moving lower-level Plan/3D internals toward artifact-native naming without changing solver behavior.
 
 ## North-Star Constraints
 
@@ -44,7 +44,7 @@ WorkbenchProjectModel
 
 The slice should:
 
-- remove temporary loose-field aliases from `WorkbenchSolvedModel` once all live consumers read `projectArtifact`;
+- keep `WorkbenchSolvedModel` artifact-only for solved geometry and diagnostics;
 - keep one object-id-keyed project artifact boundary for houses, pergolas, decks, openings, Plan projection, 3D scene, sheet/section views, snap sources, diagnostics, and future takeoff;
 - keep the workbench shell and viewport host passing that bundle instead of separate scene/projection/health/reference props;
 - keep diagnostic/reference geometry explicit inside the artifact, not as separate fallback props;

@@ -9,6 +9,7 @@ const WORKBENCH_RUNTIME_ROOTS = [
 ];
 
 const WORKBENCH_PROJECT_ARTIFACT_BOUNDARY_ROOTS = [
+  path.join('apps', 'portal', 'lib', 'drawings'),
   path.join('apps', 'portal', 'components', 'drawings', 'workbench'),
   path.join('apps', 'portal', 'app', 'staff', 'projects', '[projectId]', 'design-workbench'),
   path.join('apps', 'portal', 'app', 'qa', 'design-workbench-fixture'),
@@ -60,6 +61,19 @@ const FORBIDDEN_LOOSE_PROJECT_ARTIFACT_JSX_PROPS = [
   /\bprojectPergolaRenderHealth\s*=\s*\{/,
 ];
 
+const FORBIDDEN_SOLVED_MODEL_ALIAS_REFERENCES = [
+  /solvedModel\.projectGeometryPreview/,
+  /solvedModel\.projectViewportGeometry/,
+  /solvedModel\.projectPlanProjection/,
+  /solvedModel\.projectHouseProjectionHealth/,
+  /solvedModel\.projectPergolaRenderHealth/,
+  /solvedModel\.projectPergolaPlanShapes/,
+  /solvedModel\.houseGeometryInputsById/,
+  /solvedModel\.projectHouseGeometries/,
+  /solvedModel\.projectReferenceShapes/,
+  /solvedModel\.projectPergolaFallbackPlanShapes/,
+];
+
 function collectSourceFiles(root: string): string[] {
   const absoluteRoot = path.join(process.cwd(), root);
   if (!fs.existsSync(absoluteRoot)) return [];
@@ -106,7 +120,10 @@ describe('Design Workbench breakaway import boundary', () => {
     const violations = WORKBENCH_PROJECT_ARTIFACT_BOUNDARY_ROOTS.flatMap((root) =>
       collectSourceFiles(root).flatMap((file) => {
         const source = fs.readFileSync(file, 'utf8');
-        return FORBIDDEN_LOOSE_PROJECT_ARTIFACT_JSX_PROPS.flatMap((pattern) =>
+        return [
+          ...FORBIDDEN_LOOSE_PROJECT_ARTIFACT_JSX_PROPS,
+          ...FORBIDDEN_SOLVED_MODEL_ALIAS_REFERENCES,
+        ].flatMap((pattern) =>
           pattern.test(source) ? [`${path.relative(process.cwd(), file)} matches ${pattern.source}`] : [],
         );
       }),

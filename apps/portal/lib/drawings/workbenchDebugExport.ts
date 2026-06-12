@@ -2,7 +2,7 @@ import type { EstimateDrawingDraft } from '@/lib/estimates/drawingEdits';
 import type { ProjectHouseProjectionHealth } from './state/projectHouseProjectionHealth';
 import type { HouseFormGeometryInputDiagnostics } from './state/houseFormGeometryInput';
 import type { ProjectPergolaRenderHealth } from './state/projectObjectRenderPipeline';
-import type { WorkbenchSolvedProjectArtifact } from './state/workbenchSolvedModel';
+import type { WorkbenchSolvedProjectArtifact } from './state/workbenchSolvedProjectArtifact';
 import type {
   DrawingWorkbenchUiState,
 } from './state/drawingWorkbenchUiState';
@@ -28,7 +28,7 @@ export function buildWorkbenchDebugFixtureExport(input: {
   ui: DrawingWorkbenchUiState;
   projectArtifact: WorkbenchSolvedProjectArtifact | null | undefined;
 }): WorkbenchDebugFixtureExport {
-  const projectGeometryPreview = input.projectArtifact?.geometryPreview ?? null;
+  const artifactGeometryPreview = input.projectArtifact?.geometryPreview ?? null;
   return {
     objectFirst: input.draft?.objectFirst ?? null,
     selectedState: {
@@ -39,9 +39,9 @@ export function buildWorkbenchDebugFixtureExport(input: {
     renderDiagnostics: {
       projectArtifactSource: input.projectArtifact?.source ?? null,
       projectPreviewSource:
-        projectGeometryPreview?.kind === 'ready'
-          ? String(projectGeometryPreview.scene.metadata?.projectPreviewSource ?? '')
-          : projectGeometryPreview?.kind ?? null,
+        artifactGeometryPreview?.kind === 'ready'
+          ? String(artifactGeometryPreview.scene.metadata?.projectPreviewSource ?? '')
+          : artifactGeometryPreview?.kind ?? null,
       houseGeometryInputsById: {
         ...(input.projectArtifact?.diagnostics.houseGeometryInputsById ?? {}),
       },

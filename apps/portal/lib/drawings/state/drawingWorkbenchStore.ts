@@ -255,8 +255,10 @@ export function buildDrawingWorkbenchStore(input: {
     openingHostResolutions: new Map(Object.entries(openingHostResolutions)),
     pergolaAttachmentResolutions: new Map(Object.entries(pergolaAttachmentResolutions)),
     projectModel,
-    projectHouseProjectionHealth: solvedModel.projectHouseProjectionHealth,
-    projectPergolaRenderHealth: solvedModel.projectPergolaRenderHealth,
+    projectHouseProjectionHealth:
+      solvedModel.projectArtifact.diagnostics.projectHouseProjectionHealth,
+    projectPergolaRenderHealth:
+      solvedModel.projectArtifact.diagnostics.projectPergolaRenderHealth,
     status: objectWorkbenchStatus,
   });
   const railModel = buildDrawingWorkbenchRailModel({
