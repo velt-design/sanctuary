@@ -8,6 +8,5 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const productRoutes = sections.flatMap((section) => section.items.map((item) => item.href));
   const projectRoutes = projects.map((project) => `/projects/${project.slug}`);
   const urls = Array.from(new Set([...staticRoutes, ...productRoutes, ...projectRoutes]));
-  const now = new Date();
-  return urls.map((u) => ({ url: `${base}${u}`, lastModified: now }));
+  return urls.map((u) => ({ url: `${base}${u}` }));
 }

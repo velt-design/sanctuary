@@ -77,7 +77,7 @@ export type ProjectPergolaRenderArtifact = {
   viewerScene: ViewerSceneModel | null;
 };
 
-export type ProjectObjectRenderPipeline = {
+type ProjectObjectRenderPipeline = {
   projectHouseGeometries: ProjectHouseGeometryEntry[];
   projectHousePlanShapes: GeometryTopProjectionShape[];
   projectPergolaPlanShapes: GeometryTopProjectionShape[];
@@ -127,6 +127,16 @@ function resolvePergolaAttachmentHealth(input: {
   }
   if (isFreestandingPergola(input.pergola)) {
     return { hostAttachmentStatus: 'freestanding', hostAttachmentCode: null };
+  }
+  if (input.pergola.attachment) {
+    const host = input.pergola.attachment.host;
+    if (host?.objectFamily === 'house_forms' && host.objectId && host.edgeId) {
+      return { hostAttachmentStatus: 'resolved', hostAttachmentCode: null };
+    }
+    if (host?.objectFamily === 'pergolas') {
+      return { hostAttachmentStatus: 'unresolved', hostAttachmentCode: 'pergola_host_not_supported' };
+    }
+    return { hostAttachmentStatus: 'unresolved', hostAttachmentCode: 'missing_attachment_host' };
   }
   const resolution = resolveObjectFirstPergolaAttachment({
     houseAssembly: input.projectModel.houseAssembly,

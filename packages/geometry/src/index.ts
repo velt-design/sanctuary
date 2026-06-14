@@ -18,6 +18,15 @@ export type {
   SolveProjectPergolaResult,
   SolveProjectResult,
 } from "./solveProject";
+export { solvePergolaGeometry } from "./solvePergolaGeometry";
+export type {
+  PergolaGeometryFamily,
+  PergolaGeometryInput,
+  PergolaGeometrySolveErrorCode,
+  PergolaGeometrySolveFailure,
+  PergolaGeometrySolveResult,
+  PergolaGeometrySolveSuccess,
+} from "./solvePergolaGeometry";
 export { validateGeometrySolve } from "./validate";
 export type { ValidateGeometrySolveInput } from "./validate";
 export {

@@ -15,6 +15,7 @@ import {
 } from './projectHouseGeometryRegistry';
 import {
   buildProjectObjectRenderPipeline,
+  type ProjectPergolaRenderArtifact,
   type ProjectPergolaRenderHealth,
 } from './projectObjectRenderPipeline';
 import type { ProjectHouseProjectionHealth } from './projectHouseProjectionHealth';
@@ -28,6 +29,7 @@ import {
   buildWorkbenchSolvedProjectArtifact,
   type WorkbenchSolvedProjectArtifact,
 } from './workbenchSolvedProjectArtifact';
+import { buildProjectPergolaRenderArtifacts } from './projectPergolaRenderArtifacts';
 
 export type GeometryPreviewMode = 'project_solved' | 'draft_project_solved';
 
@@ -603,6 +605,7 @@ function emptySection(): GeometrySectionViewModel {
 
 function buildProjectPreview(input: {
   identity: Required<WorkbenchGeometryIdentity>;
+  pergolaArtifacts: ReadonlyArray<ProjectPergolaRenderArtifact>;
   projectHouseGeometries: ReadonlyArray<ProjectHouseGeometryEntry>;
   projectPergolaRenderHealth: ReadonlyArray<ProjectPergolaRenderHealth>;
   projectPergolaFallbackPlanShapes: ReadonlyArray<GeometryTopProjectionShape>;
@@ -610,7 +613,7 @@ function buildProjectPreview(input: {
 }): GeometryPreviewState {
   const scene = buildProjectPergolaViewerSceneFromPergolaArtifacts({
     basisScene: null,
-    pergolaArtifacts: [],
+    pergolaArtifacts: input.pergolaArtifacts,
     projectHouseGeometries: input.projectHouseGeometries,
     projectPergolaRenderHealth: input.projectPergolaRenderHealth,
     projectPergolaFallbackPlanShapes: input.projectPergolaFallbackPlanShapes,
@@ -677,6 +680,49 @@ function hasBlockingHouseGeometry(health: ReadonlyArray<ProjectHouseProjectionHe
   return health.some((entry) => entry.failureStage !== 'none' || entry.roofValidationStatus === 'invalid');
 }
 
+function pergolaTrustIssues(
+  health: ReadonlyArray<ProjectPergolaRenderHealth>,
+): WorkbenchTrustStatusKind[] {
+  const issues: WorkbenchTrustStatusKind[] = [];
+  for (const entry of health) {
+    if (entry.hostAttachmentStatus === 'unresolved') {
+      issues.push('unresolved_host');
+    }
+    if (entry.solveStatus !== 'geometry_ready') {
+      issues.push('invalid_geometry');
+    }
+  }
+  return uniqueIssues(issues);
+}
+
+function buildProjectTrust(input: {
+  houseHealth: ReadonlyArray<ProjectHouseProjectionHealth>;
+  pergolaHealth: ReadonlyArray<ProjectPergolaRenderHealth>;
+}): WorkbenchTrustStatus {
+  const houseInvalid = hasBlockingHouseGeometry(input.houseHealth);
+  const pergolaIssues = pergolaTrustIssues(input.pergolaHealth);
+  const issues = uniqueIssues([
+    ...(houseInvalid ? ['invalid_geometry' as const] : []),
+    ...pergolaIssues,
+  ]);
+  const status: WorkbenchTrustStatusKind =
+    issues.includes('invalid_geometry')
+      ? 'invalid_geometry'
+      : issues.includes('unresolved_host')
+        ? 'unresolved_host'
+        : 'geometry_ready';
+  return buildTrustStatus({
+    status,
+    issues,
+    message:
+      status === 'invalid_geometry'
+        ? 'One or more project objects failed package geometry.'
+        : status === 'unresolved_host'
+          ? 'Resolve unresolved pergola hosts before export or review.'
+          : null,
+  });
+}
+
 export function buildWorkbenchSolvedModel(input: {
   projectModel?: WorkbenchProjectModel | null;
   geometryIdentity?: WorkbenchGeometryIdentity | null;
@@ -684,26 +730,28 @@ export function buildWorkbenchSolvedModel(input: {
   const geometryIdentity = resolveGeometryIdentity(input.geometryIdentity);
   const projectModel = input.projectModel ?? EMPTY_WORKBENCH_PROJECT_MODEL;
   const projectHouseGeometries = buildProjectHouseGeometryRegistry(projectModel);
+  const pergolaArtifacts = buildProjectPergolaRenderArtifacts({
+    projectModel,
+    geometryIdentity,
+    projectHouseGeometries,
+  });
   const projectRenderPipeline = buildProjectObjectRenderPipeline({
     projectModel,
-    pergolaArtifacts: [],
+    pergolaArtifacts,
     projectHouseGeometries,
   });
   const projectGeometryPreview = buildProjectPreview({
     identity: geometryIdentity,
+    pergolaArtifacts,
     projectHouseGeometries: projectRenderPipeline.projectHouseGeometries,
     projectPergolaRenderHealth: projectRenderPipeline.projectPergolaRenderHealth,
     projectPergolaFallbackPlanShapes: projectRenderPipeline.projectPergolaFallbackPlanShapes,
     projectPlanProjection: projectRenderPipeline.projectPlanProjection,
   });
   const projectViewportGeometry = buildProjectViewportGeometry(projectGeometryPreview);
-  const trust = buildTrustStatus({
-    status: hasBlockingHouseGeometry(projectRenderPipeline.projectHouseProjectionHealth)
-      ? 'invalid_geometry'
-      : 'geometry_ready',
-    message: hasBlockingHouseGeometry(projectRenderPipeline.projectHouseProjectionHealth)
-      ? 'One or more object-owned house forms failed package geometry.'
-      : null,
+  const trust = buildProjectTrust({
+    houseHealth: projectRenderPipeline.projectHouseProjectionHealth,
+    pergolaHealth: projectRenderPipeline.projectPergolaRenderHealth,
   });
   const projectArtifact = buildWorkbenchSolvedProjectArtifact({
     projectModel,

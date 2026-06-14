@@ -32,6 +32,7 @@ Common optional or feature-specific variables:
 - `META_CONVERSIONS_API_TOKEN`
 - `META_GRAPH_API_VERSION`
 - `META_CAPI_TEST_EVENT_CODE`
+- `GOOGLE_PLACES_API_KEY` (server-only; powers the live Google review badge via `apps/marketing/lib/googleReviews.ts`. First-party server fetch with 24h ISR, no client script or consent category. Falls back to the baseline in `apps/marketing/data/reviews.ts` when absent, so local/CI builds work without it.)
 - `PORTAL_TEST_EMAIL`
 - `PORTAL_TEST_PASSWORD`
 - `PORTAL_BASE_URL`

@@ -182,7 +182,7 @@ export default function ProjectsExperience({ projects, initialSlugFromUrl = '' }
       <main className="projects-experience projects-experience--mobile" aria-label="Projects">
         <header className="projects-mobile__header">
           <p className="projects-mobile__eyebrow">Projects</p>
-          <h1 className="projects-mobile__title">Built pergolas across Auckland and beyond.</h1>
+          <p className="projects-mobile__title" aria-hidden="true">Built pergolas across Auckland and beyond.</p>
           <p className="projects-mobile__subtitle">
             Swipe across the cards below and tap a project for the full case study.
           </p>

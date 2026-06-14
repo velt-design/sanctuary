@@ -188,7 +188,14 @@ export default function ProductItemPage() {
 
   const isAccordionVariant = usesAccordionLayout;
 
-  const headerContent = data ? (
+  const productTitle = data
+    ? (() => {
+        const baseTitle = data.item.title.replace(/\s*→\s*$/, '');
+        return isGable ? baseTitle.replace(/\s*pergola\b/i, '').trim() : baseTitle;
+      })()
+    : '';
+
+  const renderHeaderContent = (titleAs: 'h1' | 'div') => data ? (
     <>
       {usesAccordionLayout && (
         <Link href="/products" className="product-close" aria-label="Back to products">
@@ -198,24 +205,24 @@ export default function ProductItemPage() {
       <div className="product-kicker product-kicker--wipe">
         {data.section === 'Screens & walls' ? 'Slats & Screens' : data.section}
       </div>
-      {(() => {
-        const baseTitle = data.item.title.replace(/\s*→\s*$/, '');
-        const cleaned = isGable ? baseTitle.replace(/\s*pergola\b/i, '').trim() : baseTitle;
-        return <h1 className="product-title">{cleaned}</h1>;
-      })()}
+      {titleAs === 'h1' ? (
+        <h1 className="product-title">{productTitle}</h1>
+      ) : (
+        <div className="product-title" aria-hidden="true">{productTitle}</div>
+      )}
     </>
   ) : null;
 
-  const header = headerContent ? (
+  const header = data ? (
     <div className="product-header">
-      {headerContent}
+      {renderHeaderContent('h1')}
     </div>
   ) : null;
 
   // Mobile-only header that appears above the image gallery for accordion layouts
-  const mobileHeader = headerContent && usesAccordionLayout ? (
+  const mobileHeader = data && usesAccordionLayout ? (
     <div className="product-header product-header--mobile">
-      {headerContent}
+      {renderHeaderContent('div')}
     </div>
   ) : null;
 

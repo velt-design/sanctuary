@@ -2,8 +2,14 @@
 'use client';
 
 import Link from 'next/link';
+import ReviewBadge from '@/components/reviews/ReviewBadge';
 
-export default function SiteFooter() {
+type SiteFooterProps = {
+  reviewRating: number;
+  reviewCount: number;
+};
+
+export default function SiteFooter({ reviewRating, reviewCount }: SiteFooterProps) {
   return (
     <footer className="bg-[#121212] text-[#f5f6f7] min-h-[100dvh] flex items-center justify-center relative">
       <div className="mx-auto w-full max-w-5xl px-8 md:px-12 py-16 grid gap-16 md:grid-cols-2">
@@ -60,6 +66,8 @@ export default function SiteFooter() {
               </a>
             </div>
           </div>
+
+          <ReviewBadge rating={reviewRating} count={reviewCount} variant="onDark" />
         </div>
 
         {/* Right column: CTA and warehouse address */}

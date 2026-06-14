@@ -1,11 +1,14 @@
 import Image from 'next/image';
 import Link from 'next/link';
+import ReviewBadge from '@/components/reviews/ReviewBadge';
 
 type HeroSectionProps = {
   blurDataUrl: string;
+  reviewRating: number;
+  reviewCount: number;
 };
 
-export default function HomeHeroSection({ blurDataUrl }: HeroSectionProps) {
+export default function HomeHeroSection({ blurDataUrl, reviewRating, reviewCount }: HeroSectionProps) {
   return (
     <section className="home-hero" id="top" aria-labelledby="home-hero-heading">
       <Image
@@ -38,6 +41,12 @@ export default function HomeHeroSection({ blurDataUrl }: HeroSectionProps) {
             View projects
           </Link>
         </div>
+        <ReviewBadge
+          rating={reviewRating}
+          count={reviewCount}
+          variant="onDark"
+          className="home-hero__reviews mt-5"
+        />
       </div>
     </section>
   );

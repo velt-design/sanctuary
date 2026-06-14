@@ -2061,3 +2061,19 @@ Current guardrail: live workbench code should read solved project geometry, plan
 Promoted to: `docs/design-workbench-architecture.md`
 
 Related docs/tests: [docs/design-workbench-architecture.md](design-workbench-architecture.md), [apps/portal/lib/drawings/state/workbenchSolvedProjectArtifact.ts](../apps/portal/lib/drawings/state/workbenchSolvedProjectArtifact.ts), [apps/portal/lib/drawings/state/workbenchSolvedModel.ts](../apps/portal/lib/drawings/state/workbenchSolvedModel.ts), [apps/portal/lib/workbenchBreakawayImportGuards.test.ts](../apps/portal/lib/workbenchBreakawayImportGuards.test.ts).
+
+### 2026-06-12 - Design Workbench - Pergola Artifacts Before Project Composition
+
+Area: Design Workbench
+
+Status: Active
+
+Decision or mistake: project-level Plan/3D composition was still called with `pergolaArtifacts: []`, so solved pergola output could not reach `WorkbenchSolvedProjectArtifact` even when the project model contained pergolas.
+
+Why it mattered: the multi-object workbench goal depends on every project object contributing an object-id-keyed solved artifact before Plan, 3D, snap, and diagnostics are composed. An empty artifact set silently turns pergolas into missing geometry rather than object-owned diagnostics.
+
+Current guardrail: `buildWorkbenchSolvedModel` must build project house geometry first, then project pergola render artifacts, then pass the same pergola artifact list into `buildProjectObjectRenderPipeline` and project viewer scene composition. Package geometry owns pergola solving through a neutral solve boundary; portal workbench roots adapt object-first pergolas but must not reintroduce calculator/raw wrapper contracts.
+
+Promoted to: `docs/design-workbench-architecture.md`
+
+Related docs/tests: [docs/design-workbench-architecture.md](design-workbench-architecture.md), [apps/portal/lib/drawings/state/workbenchSolvedModel.ts](../apps/portal/lib/drawings/state/workbenchSolvedModel.ts), [apps/portal/lib/drawings/state/projectPergolaRenderArtifacts.ts](../apps/portal/lib/drawings/state/projectPergolaRenderArtifacts.ts), [packages/geometry/src/solvePergolaGeometry.ts](../packages/geometry/src/solvePergolaGeometry.ts), [apps/portal/lib/workbenchBreakawayImportGuards.test.ts](../apps/portal/lib/workbenchBreakawayImportGuards.test.ts).

@@ -116,7 +116,7 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [
       // Core marketing pages
-      { source: '/about-us', destination: '/about', permanent: true },
+      { source: '/about-us', destination: '/', permanent: true },
       { source: '/gallery', destination: '/projects', permanent: true },
       { source: '/testimonials', destination: '/projects', permanent: true },
       // Avoid self-redirect loops. Only include redirects when source !== destination.

@@ -20,6 +20,7 @@ import HeaderVisibilityGate from '@/components/HeaderVisibilityGate';
 import ConsentBanner from '@/components/ConsentBanner';
 import RouteProgress from '@/components/RouteProgress';
 import { ConsentProvider } from '@/components/ConsentProvider';
+import { getGoogleRating } from '@/lib/googleReviews';
 import { BRAND_ACCENT_HEX, BRAND_ACCENT_RGB_CSV } from '@sp/theme';
 
 export const metadata: Metadata = {
@@ -60,7 +61,14 @@ const brandCssVars = {
   '--sp-accent-rgb': BRAND_ACCENT_RGB_CSV,
 } as CSSProperties;
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+const socialProfileUrls = [
+  'https://www.instagram.com/sanctuarypergolas/',
+  'https://www.facebook.com/SanctuaryPergolas',
+];
+
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const review = await getGoogleRating();
+
   return (
     <html lang="en" style={brandCssVars}>
       <head>
@@ -80,7 +88,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   areaServed: 'NZ',
                 },
               ],
-              sameAs: [],
+              sameAs: socialProfileUrls,
             },
             {
               '@context': 'https://schema.org',
@@ -98,6 +106,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 addressCountry: 'NZ',
               },
               areaServed: ['Auckland', 'Upper North Island'],
+              sameAs: socialProfileUrls,
               image: [
                 'https://www.sanctuarypergolas.co.nz/images/hero-1.jpg',
                 'https://www.sanctuarypergolas.co.nz/images/hero-2.jpg',
@@ -124,7 +133,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </Suspense>
           <div className="page-viewport"><div className="page-layer">{children}</div></div>
           <FooterVisibilityGate>
-            <SiteFooter />
+            <SiteFooter reviewRating={review.rating} reviewCount={review.count} />
           </FooterVisibilityGate>
           <ConsentBanner />
           <Analytics />

@@ -50,6 +50,7 @@ The post-breakaway workbench is object-first and intentionally strict:
 - `WorkbenchProjectModel` is the only live workbench design input.
 - House forms, pergolas, decks, and openings are object-owned entities with stable ids.
 - Plan, 3D, Sheet, Section, snap, diagnostics, and status are intended to read the same solved geometry artifact.
+- Project pergola Plan/3D bodies are produced before project composition: `buildWorkbenchSolvedModel` builds object-first pergola render artifacts, then `buildProjectObjectRenderPipeline` and project scene composition consume that artifact list. Empty pergola artifact sets are valid only when the project has no pergolas.
 - Invalid geometry renders diagnostic/reference geometry only. It must not borrow another object's committed body.
 - Workbench repricing is unavailable until a downstream artifact/takeoff-to-commercial adapter exists.
 - Snapshot-only calculator designs are unsupported or empty in the live workbench. They are not synthesized into object-first geometry at runtime.

@@ -23,6 +23,8 @@ export type HomePageContent = {
   copyTexts: string[];
   blurDataUrl: string;
   featuredProjects: HomeProjectCard[];
+  reviewRating: number;
+  reviewCount: number;
 };
 
 const MATERIALS_COPY_STYLE: CSSProperties = {
@@ -36,6 +38,8 @@ export default function HomePageClient({
   copyTexts,
   blurDataUrl,
   featuredProjects,
+  reviewRating,
+  reviewCount,
 }: HomePageContent) {
   useEffect(() => {
     document.body.classList.add('homepage');
@@ -70,7 +74,11 @@ export default function HomePageClient({
   return (
     <div className="homepage">
       <main>
-        <HomeHeroSection blurDataUrl={blurDataUrl} />
+        <HomeHeroSection
+          blurDataUrl={blurDataUrl}
+          reviewRating={reviewRating}
+          reviewCount={reviewCount}
+        />
 
         <section className="home-proof" aria-label="Sanctuary proof points">
           <div className="container home-proof__inner">

@@ -1,9 +1,20 @@
+import type { Metadata } from 'next';
 import HomePageClient, {
   type HomePageContent,
 } from '@/components/home/HomePageClient';
 import { projects } from '@/data/projects';
+import { getGoogleRating } from '@/lib/googleReviews';
 import './home.css';
 import './projects/projects.css';
+
+export const metadata: Metadata = {
+  alternates: { canonical: '/' },
+  openGraph: {
+    url: '/',
+    title: 'Sanctuary Pergolas',
+    description: 'Architectural aluminium pergolas tailored to Kiwi homes.',
+  },
+};
 
 // Simple neutral blur placeholder for LCP images.
 const BLUR =
@@ -85,7 +96,9 @@ const featuredProjects: HomePageContent['featuredProjects'] = featuredProjectSlu
   }];
 });
 
-export default function HomePage() {
+export default async function HomePage() {
+  const review = await getGoogleRating();
+
   return (
     <HomePageClient
       featureItems={featureItems}
@@ -93,6 +106,8 @@ export default function HomePage() {
       copyTexts={copyTexts}
       blurDataUrl={BLUR}
       featuredProjects={featuredProjects}
+      reviewRating={review.rating}
+      reviewCount={review.count}
     />
   );
 }
