@@ -1,0 +1,60 @@
+/*
+ * TEMPORARY design sandbox stylesheet for the /home-preview route only.
+ *
+ * Every rule here MUST be scoped under `.homepage-preview` so it can never
+ * affect the live homepage. The preview already inherits all `.homepage`
+ * styles, so it starts visually identical to production — layer coherence
+ * experiments below and they win on specificity.
+ *
+ * When the design is approved, promote these rules into home.css (dropping the
+ * `-preview` scope) and delete this file, the /home-preview route, and
+ * HomePageClientPreview.tsx.
+ */
+
+/* --- coherence experiments go below this line --- */
+
+/*
+ * Scope note: rules are prefixed with `.homepage.homepage-preview` (both
+ * classes live on the preview root <div>), giving them (0,3,0)+ specificity so
+ * they reliably win over the live `.homepage .x` rules (0,2,0) regardless of
+ * stylesheet order — without any !important.
+ */
+
+.homepage.homepage-preview {
+  --home-h2: clamp(30px, 3.8vw, 48px);
+}
+
+/* ONE heading size for every band, including the reviews section that
+ * previously bypassed the system with an inline 62px size. */
+.homepage.homepage-preview .home-section__title,
+.homepage.homepage-preview .home-projects-section__title,
+.homepage.homepage-preview .roof-comparison--editorial .roof-comparison__title,
+.homepage.homepage-preview .products-head__headline,
+.homepage.homepage-preview .process-head__title,
+.homepage.homepage-preview #home-reviews-heading {
+  font-size: var(--home-h2);
+  font-weight: 600;
+  line-height: 1.06;
+  letter-spacing: -0.02em;
+  color: var(--fg);
+  text-wrap: balance;
+}
+
+/* Bring the reviews band onto the shared eyebrow + rhythm so it reads as a
+ * proper band rather than a bolt-on. */
+.homepage.homepage-preview section[aria-labelledby='home-reviews-heading'] {
+  padding-block: var(--home-section-y);
+}
+
+.homepage.homepage-preview section[aria-labelledby='home-reviews-heading'] > div > p:first-child {
+  color: var(--home-muted);
+  letter-spacing: 0.14em;
+}
+
+/* Single full-bleed divider at the bottom of the process band (no extra lines
+ * on the reviews band). The legacy-scope wrapper holds only the process
+ * section, so its bottom border sits exactly between process and reviews. */
+.homepage.homepage-preview .homepage-legacy-scope {
+  border-bottom: var(--bw) solid var(--home-line);
+}
+

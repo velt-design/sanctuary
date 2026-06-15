@@ -1,38 +1,31 @@
 'use client';
 
+// TEMPORARY design sandbox — a clone of HomePageClient used only by the
+// /home-preview route. It adds a `homepage-preview` body class so coherence
+// experiments can be layered via app/home-preview/home-preview.css without
+// touching the live homepage. Delete this file (and the /home-preview route +
+// home-preview.css) once the changes are promoted into HomePageClient.
+
 import { useEffect, type CSSProperties } from 'react';
 import Link from 'next/link';
 import RoofComparisonSection from '@/components/explore/RoofComparisonSection';
 // import RoofStudiesSection from '@/components/explore/RoofStudiesSection'; // hidden for now
 import HomeHeroSection from '@/components/home/HomeHeroSection';
-import HomeProjectsSection, { type HomeProjectCard } from '@/components/home/HomeProjectsSection';
+import HomeProjectsSection from '@/components/home/HomeProjectsSection';
 import TimberSection from '@/components/home/TimberSection';
 import AcrylicSection from '@/components/home/AcrylicSection';
 import HomeProcessSection, { HomeProcessCtaBar } from '@/components/home/HomeProcessSection';
 import HomeProductsSection from '@/components/home/HomeProductsSection';
 import HomeWarrantySupportSection from '@/components/home/HomeWarrantySupportSection';
 import HomeTestimonialsSection from '@/components/home/HomeTestimonialsSection';
-
-export type ProcessStep = { title: string; desc: string };
-
-export type FeatureItem = { label: string; bubble: string };
-
-export type HomePageContent = {
-  featureItems: FeatureItem[];
-  processSteps: ProcessStep[];
-  copyTexts: string[];
-  blurDataUrl: string;
-  featuredProjects: HomeProjectCard[];
-  reviewRating: number;
-  reviewCount: number;
-};
+import type { HomePageContent } from '@/components/home/HomePageClient';
 
 const MATERIALS_COPY_STYLE: CSSProperties = {
   width: 'min(88vw, 1288px)',
   marginInline: 'auto',
 };
 
-export default function HomePageClient({
+export default function HomePageClientPreview({
   featureItems,
   processSteps,
   copyTexts,
@@ -42,7 +35,7 @@ export default function HomePageClient({
   reviewCount,
 }: HomePageContent) {
   useEffect(() => {
-    document.body.classList.add('homepage');
+    document.body.classList.add('homepage', 'homepage-preview');
 
     const getScrollTop = () => window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
     const setAtTopClass = () => {
@@ -64,7 +57,7 @@ export default function HomePageClient({
     } catch {}
 
     return () => {
-      document.body.classList.remove('homepage');
+      document.body.classList.remove('homepage', 'homepage-preview');
       document.body.classList.remove('home-at-top');
       window.removeEventListener('scroll', setAtTopClass);
       document.body.removeEventListener('scroll', setAtTopClass);
@@ -72,7 +65,7 @@ export default function HomePageClient({
   }, []);
 
   return (
-    <div className="homepage">
+    <div className="homepage homepage-preview">
       <main>
         <HomeHeroSection
           blurDataUrl={blurDataUrl}
@@ -114,12 +107,12 @@ export default function HomePageClient({
         </section>
 
         <section
-          aria-labelledby="materials-compare-heading"
+          aria-labelledby="materials-compare-heading-preview"
           className="home-section home-section--materials-compare bg-page py-[clamp(48px,7vh,96px)]"
         >
           <div className="home-section__inner mx-auto w-[min(88vw,1288px)]">
             <p
-              id="materials-compare-heading"
+              id="materials-compare-heading-preview"
               className="home-section__eyebrow text-[12px] uppercase tracking-[0.12em] text-muted"
             >
               Material comparison
@@ -133,11 +126,14 @@ export default function HomePageClient({
 
         <RoofComparisonSection variant="editorial" />
 
-        <section aria-label="Quick estimate" className="bg-page home-mid-cta">
-          <div className="mx-auto flex min-h-[92px] w-[min(88vw,1288px)] items-center justify-center py-5">
+        <section aria-label="Quick estimate" className="bg-[#121212]">
+          <div className="mx-auto flex w-[min(88vw,1288px)] flex-col items-start gap-5 py-[clamp(40px,6vh,72px)] md:flex-row md:items-center md:justify-between md:gap-10">
+            <p className="max-w-[20ch] text-[clamp(22px,2.6vw,34px)] font-semibold leading-[1.1] tracking-[-0.01em] text-white">
+              Ready to start your project?
+            </p>
             <Link
               href="/contact"
-              className="inline-flex items-center justify-center bg-[var(--accentRed)] px-6 py-2.5 text-center text-[18px] font-medium uppercase tracking-[0.08em] !text-white no-underline visited:!text-white hover:!text-white transition-colors hover:bg-[color-mix(in_srgb,var(--accentRed)_85%,#000_15%)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accentRed)]/35"
+              className="inline-flex shrink-0 items-center justify-center bg-[var(--accentRed)] px-7 py-3 text-[16px] font-medium uppercase tracking-[0.08em] !text-white no-underline visited:!text-white hover:!text-white transition-colors hover:bg-[color-mix(in_srgb,var(--accentRed)_85%,#000_15%)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
             >
               Quick Estimate
             </Link>

@@ -11,8 +11,9 @@ export default function TimberSection() {
       intro="A lined timber ceiling that makes the pergola feel like an outdoor room, with warmth and depth that ties into interior finishes."
       bestFor="Premium outdoor living rooms"
       image={{
-        src: '/images/project-warkworth-01.jpg',
-        alt: 'Timber roofing over a Warkworth outdoor space',
+        src: '/images/timber-gable-ceiling.jpg',
+        alt: 'Close-up of a timber-lined gable pergola ceiling against a blue sky',
+        quality: 72,
       }}
       characteristics={[
         {
