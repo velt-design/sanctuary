@@ -776,12 +776,6 @@ body.homepage{
     --cc-card:560px;
   }
 }
-/* Last carousel card snaps to the end edge so it is fully reachable instead of
- * being clipped when mandatory center-snap settles on the previous card. */
-.homepage .home-carousel--project .cc-rail > :last-child,
-.homepage .home-carousel--review .cc-rail > :last-child{
-  scroll-snap-align:end;
-}
 
 body.homepage main .container{
   width:var(--home-inner);

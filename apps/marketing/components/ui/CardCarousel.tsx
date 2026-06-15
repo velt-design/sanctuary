@@ -94,6 +94,22 @@ export default function CardCarousel({
     }
   };
 
+  // Force the last card to snap to the end edge. Inline style overrides the
+  // snap-center class, so the card is fully reachable instead of being clipped
+  // when mandatory snap settles on the previous card.
+  const items = React.Children.toArray(children);
+  const lastIndex = items.length - 1;
+  const railChildren =
+    align === 'center'
+      ? items.map((child, index) =>
+          index === lastIndex && React.isValidElement(child)
+            ? React.cloneElement(child as React.ReactElement<{ style?: React.CSSProperties }>, {
+                style: { ...(child.props as { style?: React.CSSProperties }).style, scrollSnapAlign: 'end' },
+              })
+            : child
+        )
+      : children;
+
   return (
     <div className={cn('relative', className)}>
       {showArrows ? (
@@ -142,14 +158,12 @@ export default function CardCarousel({
       >
         <div
           className={cn(
-            'cc-rail flex [&>*]:shrink-0',
-            // Center snap; the last card's snap-align: end (so it's fully
-            // reachable, not clipped by mandatory snap) is set in CSS via .cc-rail.
+            'flex [&>*]:shrink-0',
             align === 'center' ? '[&>*]:snap-center' : '[&>*]:snap-start',
             railClassName
           )}
         >
-          {children}
+          {railChildren}
         </div>
       </div>
     </div>
