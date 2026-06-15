@@ -133,11 +133,14 @@ export default function HomePageClient({
 
         <RoofComparisonSection variant="editorial" />
 
-        <section aria-label="Quick estimate" className="bg-page home-mid-cta">
-          <div className="mx-auto flex min-h-[92px] w-[min(88vw,1288px)] items-center justify-center py-5">
+        <section aria-label="Quick estimate" className="bg-[#121212]">
+          <div className="mx-auto flex w-[min(88vw,1288px)] flex-col items-start gap-5 py-[clamp(40px,6vh,72px)] md:flex-row md:items-center md:justify-between md:gap-10">
+            <p className="max-w-[20ch] text-[clamp(22px,2.6vw,34px)] font-semibold leading-[1.1] tracking-[-0.01em] text-white">
+              Ready to start your project?
+            </p>
             <Link
               href="/contact"
-              className="inline-flex items-center justify-center bg-[var(--accentRed)] px-6 py-2.5 text-center text-[18px] font-medium uppercase tracking-[0.08em] !text-white no-underline visited:!text-white hover:!text-white transition-colors hover:bg-[color-mix(in_srgb,var(--accentRed)_85%,#000_15%)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accentRed)]/35"
+              className="inline-flex shrink-0 items-center justify-center bg-[var(--accentRed)] px-7 py-3 text-[16px] font-medium uppercase tracking-[0.08em] !text-white no-underline visited:!text-white hover:!text-white transition-colors hover:bg-[color-mix(in_srgb,var(--accentRed)_85%,#000_15%)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
             >
               Quick Estimate
             </Link>

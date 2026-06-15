@@ -123,6 +123,14 @@ Use `Status: Active` when the entry is still only a decision-log guardrail. New 
 | 2026-05-14 | Plan Snap Engine                 | Active   | `resolveMoveSnap` resolves a corner snap after the primary: if a second target on a different polygon edge whose direction is at least `cornerMinAngleDeg` (default 30 deg) from the primary's lies within tolerance, it solves the 2x2 system `[primary_normal; secondary_normal] . delta = [ps; ss]` so the moving polygon's corner lands on the two target lines' intersection. `MoveSnapResult.secondary` + `cornerVertex` are optional; single-line consumers are unaffected. EdgeDragTool stays single-line (1D motion).                                                                                                                                                                                       |
 | 2026-05-14 | House Roof Topology              | Active   | Milestone 13 session C: `'gable'` is retired from the `HouseRoofForm` type union (`'flat' \| 'mono' \| 'hipped'`). `resolveHouseRoofForm` (geometry normalize) and `normalizeHouseFormRoofIntent` (workbench draft normalize) BOTH map legacy `'gable'` string input to `'hipped'` so storage can still carry it but no typed surface accepts it. Picker, validators, dispatchers, and inspector derivations are simplified accordingly. Known regression: legacy gable-form houses in preset mode (no explicit polygon at normalize time) load as `'hipped'` with empty `openGableEndIds`; the user re-opens ends from the rail or Plan canvas.                                                                     |
 | 2026-05-14 | House Roof Topology              | Active   | Partial-open clicks on joined footprints (U / wrap with one terminal end opened) require TWO wavefront facet-validator relaxations: (1) `allowRaisedBoundaryPoints: true` -- the slope adjacent to a stationary gable edge legitimately reaches the eave at apex z, not eave z (the gable wall fills the height gap); (2) the `face_count_mismatch` check subtracts the stationary edge count from the expected facet count because stationary edges intentionally produce zero slope facets. Without these, clicking ONE terminal end on a U produced `roof_topology_face_count_mismatch:5:8` and the geometry rendered as invalid. Fully-hipped (no stationary edges) and bent-spine all-open paths are unchanged. |
+| 2026-06-11 | Workbench House Forms | Active | Eave-offset recovery lives in `@sp/geometry`; fully hipped custom orthogonal roofs try `orthogonal_cell_union` at the requested overhang before any reduced-overhang/narrow-return repair, and commit the exact boundary only when downstream roof QA passes -- no Plan/first-house/active-module fallbacks. |
+| 2026-06-11 | Workbench House Forms | Active | Fully hipped custom roofs try `source_edge_exact_envelope_partition` first and expose `roofTopologyExactPartition*` metadata; committed geometry must still pass semantic and coverage QA, and failed exact-attempt metadata must not become the diagnostic code for a roof that committed valid geometry. |
+| 2026-06-12 | Design Workbench | Active | Live workbench runtime roots must not import `@sp/costing`, expose `data-workbench-pricing*`, or reintroduce `activeModule`/`moduleLabel`/`legacy_plan_m`/`geometry_plan_fallback`; pricing/readiness stays on estimate/calculator/commercial paths. |
+| 2026-06-12 | Design Workbench | Active | Live workbench roots use object/pergola artifact vocabulary: pergola render diagnostics keyed by `pergolaId`/`artifactId`, `WorkbenchSolvedModel` exposes no solved-module arrays, and no module selection/status names return. |
+| 2026-06-12 | Design Workbench | Active | `design-workbench-architecture.md` is the current contract, `design-workbench-multi-object-goal.md` tracks milestones, and `design-workbench-legacy-cull.md` is archived history plus Gate 0 references only; do not use old PR history as a next-task list. |
+| 2026-06-12 | Design Workbench | Active | `DrawingWorkbench` callers pass `projectArtifact` and `WorkbenchViewportHost` is the only place to unpack it; no loose project geometry/status prop arrays or reintroduced `WorkbenchSolvedModel` aliases. |
+| 2026-06-12 | Design Workbench | Active | Live workbench code reads solved project geometry, plan layers, snap sources, and render diagnostics from `projectArtifact`; the breakaway guard forbids direct `solvedModel.*` alias reads. |
+| 2026-06-12 | Design Workbench | Active | `buildWorkbenchSolvedModel` builds project house geometry, then project pergola render artifacts, then passes the same pergola artifact list into project render-pipeline and viewer scene composition; package geometry owns pergola solving via a neutral boundary. |
 
 ## Entries
 
@@ -1215,7 +1223,7 @@ Internal builders kept and re-wired: `buildGabledHouseRoof` (and its delegate `b
 Capability + validation surface changes:
 
 - `HOUSE_ROOF_FORM_BEHAVIORS.hipped.controls.appendage = true` (was `false`). Hipped subsumes the retired gable form, which previously surfaced the appendage band. Without this, every authored appendage on a legacy gable-form house silently dropped at the rail boundary on upgrade.
-- `appendageAllowed = sharedRoofForm === 'mono' || sharedRoofForm === 'hipped'` in [houseFirstWorkbenchAdapter.ts](../apps/portal/lib/drawings/state/houseFirstWorkbenchAdapter.ts) (was `'mono' || 'gable'`). Mirrors the capability change.
+- `appendageAllowed = sharedRoofForm === 'mono' || sharedRoofForm === 'hipped'` in houseFirstWorkbenchAdapter.ts (was `'mono' || 'gable'`). Mirrors the capability change.
 - `getHouseRoofFormBehavior` falls back to the hipped behavior for unrecognized form names, so direct geometry callers that pass legacy serialized `'gable'` strings get a sane footprint requirement instead of an undefined-property crash.
 - `deriveHouseRoofGeometryKind` now accepts optional `openGableEndIds` + `roofRidgeAxis`. When every active terminal end is open on a joined footprint it reports `'bent_spine_joined_gable'`; partial-open + closed cases stay `'rectilinear_joined_hipped'`. The rail's geometry kind label tracks the dispatcher.
 - `walls.ts:buildWallSegments` triggers roof-aligned wall top profiles on `roofGeometry === 'bent_spine_joined_gable'` instead of `roofForm === 'gable'`. The rectangular all-open (`startCap === 'open_gable' && endCap === 'open_gable'`) case keeps a flat-top wall and relies on the existing reshape in `buildHouseModel3D` to triangulate to `[groundStart, groundEnd, apex]`. Without this split, rectangular gable produced 5-point gable walls while joined gable produced 4-point flat-top walls.
@@ -1273,7 +1281,7 @@ Current guardrail: do NOT add more `as unknown as Parameters<typeof buildPlanVie
 
 Promoted to: None
 
-Related docs/tests: [apps/portal/components/drawings/viewports/ModelSpaceViewport.test.tsx](../apps/portal/components/drawings/viewports/ModelSpaceViewport.test.tsx) (failing tests, casted fixtures, TODO comments), [apps/portal/lib/drawings/views/plan/buildPlanViewModel.ts](../apps/portal/lib/drawings/views/plan/buildPlanViewModel.ts) (`PlanViewModelSource` union, `invalid_geometry` fallback at line 132), commit `d1fff14` ("build error", 2026-05-11) introduced the casts.
+Related docs/tests: apps/portal/components/drawings/viewports/ModelSpaceViewport.test.tsx (failing tests, casted fixtures, TODO comments), [apps/portal/lib/drawings/views/plan/buildPlanViewModel.ts](../apps/portal/lib/drawings/views/plan/buildPlanViewModel.ts) (`PlanViewModelSource` union, `invalid_geometry` fallback at line 132), commit `d1fff14` ("build error", 2026-05-11) introduced the casts.
 
 ### 2026-05-21 - Design Workbench Testing - ModelSpaceViewport Architectural Drift
 
@@ -1285,7 +1293,7 @@ Decision or mistake: 2 import-guard failures in `apps/portal/components/drawings
 
 1. **ModelSpaceViewport.tsx imports `houseFirstWorkbenchModel`** -- uses `HouseFirstDeckDraft`, `HouseFirstOpeningDraft`, `WorkbenchHouseSelection`, `WorkbenchMode` types directly. The guard treats this as a layering violation because `houseFirstWorkbenchModel` is the legacy state-compatibility model that boundary files (viewports/workbench) should not consume directly.
 
-2. **ModelSpaceViewport.tsx does not route through `Geometry3DViewport`** -- the guard at [objectWorkbenchImportGuards.test.ts:270-272](../apps/portal/components/drawings/rail/objectWorkbenchImportGuards.test.ts#L270-L272) expects `ModelSpaceViewport` to import `Geometry3DViewport` with `lockedViewPreset="top"`, per the canonical architecture in the 2026-05-04 entry "Model Space Top renders through Geometry3DViewport lockedViewPreset='top'". The actual ModelSpaceViewport.tsx does not do this. Either the architecture migration was reverted/incomplete, or the guard was added speculatively before the migration landed and never enforced.
+2. **ModelSpaceViewport.tsx does not route through `Geometry3DViewport`** -- the guard at objectWorkbenchImportGuards.test.ts:270-272 expects `ModelSpaceViewport` to import `Geometry3DViewport` with `lockedViewPreset="top"`, per the canonical architecture in the 2026-05-04 entry "Model Space Top renders through Geometry3DViewport lockedViewPreset='top'". The actual ModelSpaceViewport.tsx does not do this. Either the architecture migration was reverted/incomplete, or the guard was added speculatively before the migration landed and never enforced.
 
 Why it mattered: same compound-cost argument as the ModelSpaceViewport stale-fixture entry above -- failures accumulate across PRs, mask real issues, and erode test-signal trust. The PR8 multi-form sequence shipped 6 PRs with these failures red, masking the genuine question of "is multi-form work breaking anything?"
 
@@ -1295,7 +1303,7 @@ Current guardrail: do not add new `from '@/lib/drawings/state/houseFirstWorkbenc
 
 Promoted to: None
 
-Related docs/tests: [apps/portal/components/drawings/viewports/ModelSpaceViewport.tsx](../apps/portal/components/drawings/viewports/ModelSpaceViewport.tsx) (the legacy imports at lines 25-30), [apps/portal/components/drawings/rail/objectWorkbenchImportGuards.test.ts](../apps/portal/components/drawings/rail/objectWorkbenchImportGuards.test.ts) (the 2 failing assertions at lines 270-272 and 408-413), 2026-05-04 entry "Model Space Top renders through Geometry3DViewport lockedViewPreset='top'" (the canonical architecture the guard enforces).
+Related docs/tests: apps/portal/components/drawings/viewports/ModelSpaceViewport.tsx (the legacy imports at lines 25-30), apps/portal/components/drawings/rail/objectWorkbenchImportGuards.test.ts (the 2 failing assertions at lines 270-272 and 408-413), 2026-05-04 entry "Model Space Top renders through Geometry3DViewport lockedViewPreset='top'" (the canonical architecture the guard enforces).
 
 ### 2026-05-29 - Workbench Cleanup - PR-T7 House Form Inspector Cull
 
@@ -1311,7 +1319,7 @@ Current guardrail: a house-form inspector control must either write a persisted 
 
 Promoted to: None
 
-Related docs/tests: [apps/portal/components/drawings/rail/HouseFormInspector.tsx](../apps/portal/components/drawings/rail/HouseFormInspector.tsx), [apps/portal/components/drawings/rail/HouseFormRoofSections.tsx](../apps/portal/components/drawings/rail/HouseFormRoofSections.tsx), [apps/portal/components/drawings/rail/SanctuaryWorkbenchRail.tsx](../apps/portal/components/drawings/rail/SanctuaryWorkbenchRail.tsx), [docs/house-inspector-cull-plan.md](house-inspector-cull-plan.md) (the PR-T7 plan).
+Related docs/tests: [apps/portal/components/drawings/rail/HouseFormInspector.tsx](../apps/portal/components/drawings/rail/HouseFormInspector.tsx), [apps/portal/components/drawings/rail/HouseFormRoofSections.tsx](../apps/portal/components/drawings/rail/HouseFormRoofSections.tsx), apps/portal/components/drawings/rail/SanctuaryWorkbenchRail.tsx, [docs/house-inspector-cull-plan.md](house-inspector-cull-plan.md) (the PR-T7 plan).
 
 ### 2026-05-29 - Workbench Cleanup - PR-T8 Appendage Feature Cull
 
@@ -1340,7 +1348,7 @@ Legacy storage: any persisted draft still carrying an `appendage` block is silen
 
 Promoted to: None
 
-Related docs/tests: [packages/geometry/src/house/sharedHouseRoof.ts](../packages/geometry/src/house/sharedHouseRoof.ts), [packages/geometry/src/houseRoofValidation.ts](../packages/geometry/src/houseRoofValidation.ts), [apps/portal/lib/drawings/state/houseRoofFormAdapter.ts](../apps/portal/lib/drawings/state/houseRoofFormAdapter.ts), [apps/portal/components/drawings/rail/HouseFormRoofSections.tsx](../apps/portal/components/drawings/rail/HouseFormRoofSections.tsx), [docs/appendage-removal-plan.md](appendage-removal-plan.md) (the PR-T8 plan).
+Related docs/tests: [packages/geometry/src/house/sharedHouseRoof.ts](../packages/geometry/src/house/sharedHouseRoof.ts), [packages/geometry/src/houseRoofValidation.ts](../packages/geometry/src/houseRoofValidation.ts), apps/portal/lib/drawings/state/houseRoofFormAdapter.ts, [apps/portal/components/drawings/rail/HouseFormRoofSections.tsx](../apps/portal/components/drawings/rail/HouseFormRoofSections.tsx), [docs/appendage-removal-plan.md](appendage-removal-plan.md) (the PR-T8 plan).
 
 ### 2026-05-29 - Workbench Cleanup - PR-T9 Deck Inspector Cull
 
@@ -1372,7 +1380,7 @@ Legacy storage: persisted drafts still carrying `label` / `kind` / `elevationMod
 
 Promoted to: None
 
-Related docs/tests: [apps/portal/components/drawings/rail/DeckInspectorSections.tsx](../apps/portal/components/drawings/rail/DeckInspectorSections.tsx), [apps/portal/lib/drawings/state/houseFirstDeckAdapter.ts](../apps/portal/lib/drawings/state/houseFirstDeckAdapter.ts), [apps/portal/lib/drawings/state/objectFirstWorkbenchModel.ts](../apps/portal/lib/drawings/state/objectFirstWorkbenchModel.ts), [docs/deck-inspector-cull-plan.md](deck-inspector-cull-plan.md) (the PR-T9 plan).
+Related docs/tests: [apps/portal/components/drawings/rail/DeckInspectorSections.tsx](../apps/portal/components/drawings/rail/DeckInspectorSections.tsx), apps/portal/lib/drawings/state/houseFirstDeckAdapter.ts, [apps/portal/lib/drawings/state/objectFirstWorkbenchModel.ts](../apps/portal/lib/drawings/state/objectFirstWorkbenchModel.ts), [docs/deck-inspector-cull-plan.md](deck-inspector-cull-plan.md) (the PR-T9 plan).
 
 ### 2026-05-29 - Workbench Geometry - Multi-House PR3 Project House Geometry Registry
 
@@ -1404,7 +1412,7 @@ Current guardrail: do not create persisted calculator modules just to make objec
 
 Promoted to: None
 
-Related docs/tests: [apps/portal/lib/drawings/state/objectFirstPergolaSolveSources.ts](../apps/portal/lib/drawings/state/objectFirstPergolaSolveSources.ts), [apps/portal/lib/drawings/state/workbenchSolvedModel.test.ts](../apps/portal/lib/drawings/state/workbenchSolvedModel.test.ts), [apps/portal/lib/drawings/state/drawingWorkbenchStore.test.ts](../apps/portal/lib/drawings/state/drawingWorkbenchStore.test.ts).
+Related docs/tests: apps/portal/lib/drawings/state/objectFirstPergolaSolveSources.ts, [apps/portal/lib/drawings/state/workbenchSolvedModel.test.ts](../apps/portal/lib/drawings/state/workbenchSolvedModel.test.ts), apps/portal/lib/drawings/state/drawingWorkbenchStore.test.ts.
 
 ### 2026-05-29 - Workbench Geometry - Multi-Object PR3 Freestanding Add Pergola
 
@@ -1420,7 +1428,7 @@ Current guardrail: new pergolas are born freestanding with solver-valid defaults
 
 Promoted to: None
 
-Related docs/tests: [apps/portal/app/staff/projects/[projectId]/design-workbench/objectWorkbenchDraftActions.test.ts](../apps/portal/app/staff/projects/%5BprojectId%5D/design-workbench/objectWorkbenchDraftActions.test.ts), [apps/portal/app/staff/projects/[projectId]/design-workbench/DesignWorkbenchEstimateClient.test.tsx](../apps/portal/app/staff/projects/%5BprojectId%5D/design-workbench/DesignWorkbenchEstimateClient.test.tsx), [apps/portal/components/drawings/rail/ObjectWorkbenchRail.test.tsx](../apps/portal/components/drawings/rail/ObjectWorkbenchRail.test.tsx).
+Related docs/tests: [apps/portal/app/staff/projects/[projectId]/design-workbench/objectWorkbenchDraftActions.test.ts](../apps/portal/app/staff/projects/%5BprojectId%5D/design-workbench/objectWorkbenchDraftActions.test.ts), [apps/portal/app/staff/projects/[projectId]/design-workbench/DesignWorkbenchEstimateClient.test.tsx](../apps/portal/app/staff/projects/%5BprojectId%5D/design-workbench/DesignWorkbenchEstimateClient.test.tsx), apps/portal/components/drawings/rail/ObjectWorkbenchRail.test.tsx.
 
 ### 2026-05-29 - Workbench Geometry - Multi-Object PR4 Plan Pergola Selection
 
@@ -1468,7 +1476,7 @@ Current guardrail: when `objectFirst.houseAssembly` exists, its `houseForms[]` a
 
 Promoted to: None
 
-Related docs/tests: [apps/portal/lib/drawings/state/objectFirstWorkbenchAdapter.ts](../apps/portal/lib/drawings/state/objectFirstWorkbenchAdapter.ts), [apps/portal/lib/drawings/state/houseFirstWorkbenchAdapter.ts](../apps/portal/lib/drawings/state/houseFirstWorkbenchAdapter.ts), [apps/portal/lib/drawings/state/drawingWorkbenchStore.test.ts](../apps/portal/lib/drawings/state/drawingWorkbenchStore.test.ts).
+Related docs/tests: [apps/portal/lib/drawings/state/objectFirstWorkbenchAdapter.ts](../apps/portal/lib/drawings/state/objectFirstWorkbenchAdapter.ts), apps/portal/lib/drawings/state/houseFirstWorkbenchAdapter.ts, apps/portal/lib/drawings/state/drawingWorkbenchStore.test.ts.
 
 ### 2026-05-31 - Workbench House Forms - Derived Roof Axis And Preset Seeds
 
@@ -1532,7 +1540,7 @@ Current guardrail: call sites that need a selected house must use `selectedHouse
 
 Promoted to: None
 
-Related docs/tests: [apps/portal/lib/drawings/state/objectWorkbenchStatusModel.ts](../apps/portal/lib/drawings/state/objectWorkbenchStatusModel.ts), [apps/portal/lib/drawings/state/objectWorkbenchInspectorModel.ts](../apps/portal/lib/drawings/state/objectWorkbenchInspectorModel.ts), [apps/portal/lib/drawings/state/objectWorkbenchStatusModel.test.ts](../apps/portal/lib/drawings/state/objectWorkbenchStatusModel.test.ts), [apps/portal/lib/drawings/state/drawingWorkbenchStore.test.ts](../apps/portal/lib/drawings/state/drawingWorkbenchStore.test.ts).
+Related docs/tests: [apps/portal/lib/drawings/state/objectWorkbenchStatusModel.ts](../apps/portal/lib/drawings/state/objectWorkbenchStatusModel.ts), [apps/portal/lib/drawings/state/objectWorkbenchInspectorModel.ts](../apps/portal/lib/drawings/state/objectWorkbenchInspectorModel.ts), apps/portal/lib/drawings/state/objectWorkbenchStatusModel.test.ts, apps/portal/lib/drawings/state/drawingWorkbenchStore.test.ts.
 
 ### 2026-05-31 - Workbench Actions - Object-Owned House Context
 
@@ -1564,7 +1572,7 @@ Current guardrail: project rendering flows through `buildProjectObjectRenderPipe
 
 Promoted to: None
 
-Related docs/tests: [apps/portal/lib/drawings/state/projectObjectRenderPipeline.ts](../apps/portal/lib/drawings/state/projectObjectRenderPipeline.ts), [apps/portal/lib/drawings/state/projectObjectRenderPipeline.test.ts](../apps/portal/lib/drawings/state/projectObjectRenderPipeline.test.ts), [apps/portal/lib/drawings/state/workbenchSolvedModel.ts](../apps/portal/lib/drawings/state/workbenchSolvedModel.ts), [playwright/portal.workbench-fixture.spec.ts](../playwright/portal.workbench-fixture.spec.ts).
+Related docs/tests: [apps/portal/lib/drawings/state/projectObjectRenderPipeline.ts](../apps/portal/lib/drawings/state/projectObjectRenderPipeline.ts), apps/portal/lib/drawings/state/projectObjectRenderPipeline.test.ts, [apps/portal/lib/drawings/state/workbenchSolvedModel.ts](../apps/portal/lib/drawings/state/workbenchSolvedModel.ts), [playwright/portal.workbench-fixture.spec.ts](../playwright/portal.workbench-fixture.spec.ts).
 
 ### 2026-06-01 - Workbench Rendering - Pergola Diagnostic Fallbacks
 
@@ -1612,7 +1620,7 @@ Current guardrail: `projectHouseRenderPipeline` emits pre-classified house Plan 
 
 Promoted to: None
 
-Related docs/tests: [apps/portal/lib/drawings/state/projectHouseRenderPipeline.ts](../apps/portal/lib/drawings/state/projectHouseRenderPipeline.ts), [apps/portal/lib/drawings/state/projectObjectRenderPipeline.ts](../apps/portal/lib/drawings/state/projectObjectRenderPipeline.ts), [apps/portal/lib/drawings/state/projectHouseRenderPipeline.test.ts](../apps/portal/lib/drawings/state/projectHouseRenderPipeline.test.ts), [apps/portal/lib/drawings/sanctuaryWorkbenchFixtures.test.ts](../apps/portal/lib/drawings/sanctuaryWorkbenchFixtures.test.ts).
+Related docs/tests: [apps/portal/lib/drawings/state/projectHouseRenderPipeline.ts](../apps/portal/lib/drawings/state/projectHouseRenderPipeline.ts), [apps/portal/lib/drawings/state/projectObjectRenderPipeline.ts](../apps/portal/lib/drawings/state/projectObjectRenderPipeline.ts), apps/portal/lib/drawings/state/projectHouseRenderPipeline.test.ts, apps/portal/lib/drawings/sanctuaryWorkbenchFixtures.test.ts.
 
 ### 2026-06-01 - Workbench Rendering - House Fixture Health Ownership
 
@@ -1628,7 +1636,7 @@ Current guardrail: add new house/pergola repros in focused fixture modules, asse
 
 Promoted to: None
 
-Related docs/tests: [apps/portal/lib/drawings/sanctuaryWorkbenchFixtureBuilders.ts](../apps/portal/lib/drawings/sanctuaryWorkbenchFixtureBuilders.ts), [apps/portal/lib/drawings/sanctuaryWorkbenchMultiObjectFixtures.ts](../apps/portal/lib/drawings/sanctuaryWorkbenchMultiObjectFixtures.ts), [apps/portal/lib/drawings/state/projectHouseRenderPipeline.ts](../apps/portal/lib/drawings/state/projectHouseRenderPipeline.ts), [apps/portal/lib/drawings/sanctuaryWorkbenchFixtures.test.ts](../apps/portal/lib/drawings/sanctuaryWorkbenchFixtures.test.ts), [playwright/portal.workbench-fixture.spec.ts](../playwright/portal.workbench-fixture.spec.ts).
+Related docs/tests: [apps/portal/lib/drawings/sanctuaryWorkbenchFixtureBuilders.ts](../apps/portal/lib/drawings/sanctuaryWorkbenchFixtureBuilders.ts), [apps/portal/lib/drawings/sanctuaryWorkbenchMultiObjectFixtures.ts](../apps/portal/lib/drawings/sanctuaryWorkbenchMultiObjectFixtures.ts), [apps/portal/lib/drawings/state/projectHouseRenderPipeline.ts](../apps/portal/lib/drawings/state/projectHouseRenderPipeline.ts), apps/portal/lib/drawings/sanctuaryWorkbenchFixtures.test.ts, [playwright/portal.workbench-fixture.spec.ts](../playwright/portal.workbench-fixture.spec.ts).
 
 ### 2026-06-01 - Workbench Rendering - Project 3D Preview Ownership
 
@@ -1660,7 +1668,7 @@ Current guardrail: use `buildHouseFormGeometryInput({ projectModel, houseFormId 
 
 Promoted to: None
 
-Related docs/tests: [apps/portal/lib/drawings/state/houseFormGeometryInput.ts](../apps/portal/lib/drawings/state/houseFormGeometryInput.ts), [apps/portal/lib/drawings/state/projectHouseRenderPipeline.ts](../apps/portal/lib/drawings/state/projectHouseRenderPipeline.ts), [apps/portal/lib/drawings/workbenchDebugExport.ts](../apps/portal/lib/drawings/workbenchDebugExport.ts), [apps/portal/lib/drawings/state/houseFormGeometryInput.test.ts](../apps/portal/lib/drawings/state/houseFormGeometryInput.test.ts).
+Related docs/tests: [apps/portal/lib/drawings/state/houseFormGeometryInput.ts](../apps/portal/lib/drawings/state/houseFormGeometryInput.ts), [apps/portal/lib/drawings/state/projectHouseRenderPipeline.ts](../apps/portal/lib/drawings/state/projectHouseRenderPipeline.ts), [apps/portal/lib/drawings/workbenchDebugExport.ts](../apps/portal/lib/drawings/workbenchDebugExport.ts), apps/portal/lib/drawings/state/houseFormGeometryInput.test.ts.
 
 ### 2026-06-02 - Geometry Tests - Stage-Owned House Model Coverage
 
@@ -1692,7 +1700,7 @@ Current guardrail: bake captured live failures through `sanctuaryWorkbenchCaptur
 
 Promoted to: None
 
-Related docs/tests: [apps/portal/lib/drawings/sanctuaryWorkbenchCapturedFixtures.ts](../apps/portal/lib/drawings/sanctuaryWorkbenchCapturedFixtures.ts), [apps/portal/lib/drawings/workbenchDebugExport.ts](../apps/portal/lib/drawings/workbenchDebugExport.ts), [apps/portal/lib/drawings/sanctuaryWorkbenchFixtures.test.ts](../apps/portal/lib/drawings/sanctuaryWorkbenchFixtures.test.ts).
+Related docs/tests: [apps/portal/lib/drawings/sanctuaryWorkbenchCapturedFixtures.ts](../apps/portal/lib/drawings/sanctuaryWorkbenchCapturedFixtures.ts), [apps/portal/lib/drawings/workbenchDebugExport.ts](../apps/portal/lib/drawings/workbenchDebugExport.ts), apps/portal/lib/drawings/sanctuaryWorkbenchFixtures.test.ts.
 
 ### 2026-06-02 - Workbench Geometry - Roof Stage Diagnostics Must Be Render-Critical
 
@@ -1708,7 +1716,7 @@ Current guardrail: package roof-stage diagnostics may classify eave construction
 
 Promoted to: None
 
-Related docs/tests: [packages/geometry/src/houseRoofDiagnostics.ts](../packages/geometry/src/houseRoofDiagnostics.ts), [packages/geometry/src/house/roofModelPipeline.test.ts](../packages/geometry/src/house/roofModelPipeline.test.ts), [apps/portal/lib/drawings/sanctuaryWorkbenchCapturedFixtures.ts](../apps/portal/lib/drawings/sanctuaryWorkbenchCapturedFixtures.ts), [apps/portal/lib/drawings/sanctuaryWorkbenchFixtures.test.ts](../apps/portal/lib/drawings/sanctuaryWorkbenchFixtures.test.ts).
+Related docs/tests: [packages/geometry/src/houseRoofDiagnostics.ts](../packages/geometry/src/houseRoofDiagnostics.ts), [packages/geometry/src/house/roofModelPipeline.test.ts](../packages/geometry/src/house/roofModelPipeline.test.ts), [apps/portal/lib/drawings/sanctuaryWorkbenchCapturedFixtures.ts](../apps/portal/lib/drawings/sanctuaryWorkbenchCapturedFixtures.ts), apps/portal/lib/drawings/sanctuaryWorkbenchFixtures.test.ts.
 
 ### 2026-06-02 - Workbench Debugging - Multi-House Capture Verifier
 
@@ -1836,7 +1844,7 @@ Current guardrail: custom hipped eave repair is package-owned and render-only. T
 
 Promoted to: None
 
-Related docs/tests: [docs/costing-and-geometry.md](costing-and-geometry.md), [docs/design-workbench-architecture.md](design-workbench-architecture.md), [packages/geometry/src/house/eaveOffsetRepair.ts](../packages/geometry/src/house/eaveOffsetRepair.ts), [packages/geometry/src/house/roofPresetCoverage.test.ts](../packages/geometry/src/house/roofPresetCoverage.test.ts), [apps/portal/lib/drawings/state/projectHouseRenderPipeline.test.ts](../apps/portal/lib/drawings/state/projectHouseRenderPipeline.test.ts), [apps/portal/lib/drawings/state/objectWorkbenchStatusModel.test.ts](../apps/portal/lib/drawings/state/objectWorkbenchStatusModel.test.ts), [playwright/portal.workbench-fixture.spec.ts](../playwright/portal.workbench-fixture.spec.ts).
+Related docs/tests: [docs/costing-and-geometry.md](costing-and-geometry.md), [docs/design-workbench-architecture.md](design-workbench-architecture.md), [packages/geometry/src/house/eaveOffsetRepair.ts](../packages/geometry/src/house/eaveOffsetRepair.ts), [packages/geometry/src/house/roofPresetCoverage.test.ts](../packages/geometry/src/house/roofPresetCoverage.test.ts), apps/portal/lib/drawings/state/projectHouseRenderPipeline.test.ts, apps/portal/lib/drawings/state/objectWorkbenchStatusModel.test.ts, [playwright/portal.workbench-fixture.spec.ts](../playwright/portal.workbench-fixture.spec.ts).
 
 ### 2026-06-11 - Workbench House Forms - Topology-Aware Eave Offset Boundary
 
@@ -1868,7 +1876,7 @@ Current guardrail: numeric stabilization belongs at the `@sp/geometry` house sol
 
 Promoted to: None
 
-Related docs/tests: [docs/costing-and-geometry.md](costing-and-geometry.md), [docs/design-workbench-architecture.md](design-workbench-architecture.md), [packages/geometry/src/house/footprintMath.ts](../packages/geometry/src/house/footprintMath.ts), [packages/geometry/src/house/roofPresetCoverage.test.ts](../packages/geometry/src/house/roofPresetCoverage.test.ts), [apps/portal/lib/drawings/state/projectHouseRenderPipeline.test.ts](../apps/portal/lib/drawings/state/projectHouseRenderPipeline.test.ts), [apps/portal/lib/drawings/sanctuaryWorkbenchFixtures.test.ts](../apps/portal/lib/drawings/sanctuaryWorkbenchFixtures.test.ts), [playwright/portal.workbench-fixture.spec.ts](../playwright/portal.workbench-fixture.spec.ts).
+Related docs/tests: [docs/costing-and-geometry.md](costing-and-geometry.md), [docs/design-workbench-architecture.md](design-workbench-architecture.md), [packages/geometry/src/house/footprintMath.ts](../packages/geometry/src/house/footprintMath.ts), [packages/geometry/src/house/roofPresetCoverage.test.ts](../packages/geometry/src/house/roofPresetCoverage.test.ts), apps/portal/lib/drawings/state/projectHouseRenderPipeline.test.ts, apps/portal/lib/drawings/sanctuaryWorkbenchFixtures.test.ts, [playwright/portal.workbench-fixture.spec.ts](../playwright/portal.workbench-fixture.spec.ts).
 
 ### 2026-06-03 - Workbench House Forms - Custom Hipped Eave Graph Topology
 
@@ -1884,7 +1892,7 @@ Current guardrail: fully hipped non-rectangular orthogonal house footprints rout
 
 Promoted to: None
 
-Related docs/tests: [docs/costing-and-geometry.md](costing-and-geometry.md), [docs/design-workbench-architecture.md](design-workbench-architecture.md), [packages/geometry/src/house/roofEaveGraphHipped.ts](../packages/geometry/src/house/roofEaveGraphHipped.ts), [packages/geometry/src/house/roofPrimary.ts](../packages/geometry/src/house/roofPrimary.ts), [packages/geometry/src/house/roofJoinedTopologyIntegration.test.ts](../packages/geometry/src/house/roofJoinedTopologyIntegration.test.ts), [packages/geometry/src/house/roofPresetCoverage.test.ts](../packages/geometry/src/house/roofPresetCoverage.test.ts), [apps/portal/lib/drawings/state/projectHouseRenderPipeline.test.ts](../apps/portal/lib/drawings/state/projectHouseRenderPipeline.test.ts).
+Related docs/tests: [docs/costing-and-geometry.md](costing-and-geometry.md), [docs/design-workbench-architecture.md](design-workbench-architecture.md), [packages/geometry/src/house/roofEaveGraphHipped.ts](../packages/geometry/src/house/roofEaveGraphHipped.ts), [packages/geometry/src/house/roofPrimary.ts](../packages/geometry/src/house/roofPrimary.ts), [packages/geometry/src/house/roofJoinedTopologyIntegration.test.ts](../packages/geometry/src/house/roofJoinedTopologyIntegration.test.ts), [packages/geometry/src/house/roofPresetCoverage.test.ts](../packages/geometry/src/house/roofPresetCoverage.test.ts), apps/portal/lib/drawings/state/projectHouseRenderPipeline.test.ts.
 
 ### 2026-06-03 - Workbench House Forms - Semantic Hipped Topology QA
 
@@ -1916,7 +1924,7 @@ Current guardrail: `objectWorkbenchStatusModel` derives roof validation from `bu
 
 Promoted to: None
 
-Related docs/tests: [apps/portal/lib/drawings/state/objectWorkbenchStatusModel.ts](../apps/portal/lib/drawings/state/objectWorkbenchStatusModel.ts), [apps/portal/lib/drawings/state/objectWorkbenchStatusModel.test.ts](../apps/portal/lib/drawings/state/objectWorkbenchStatusModel.test.ts), [apps/portal/lib/drawings/state/houseFormRawGeometry.ts](../apps/portal/lib/drawings/state/houseFormRawGeometry.ts).
+Related docs/tests: [apps/portal/lib/drawings/state/objectWorkbenchStatusModel.ts](../apps/portal/lib/drawings/state/objectWorkbenchStatusModel.ts), apps/portal/lib/drawings/state/objectWorkbenchStatusModel.test.ts, [apps/portal/lib/drawings/state/houseFormRawGeometry.ts](../apps/portal/lib/drawings/state/houseFormRawGeometry.ts).
 
 ### 2026-06-03 - Workbench House Forms - Single-Pergola 3D Uses Project Houses
 
@@ -1932,7 +1940,7 @@ Current guardrail: superseded by the 2026-06-11 breakaway. Live workbench runtim
 
 Promoted to: None
 
-Related docs/tests: [docs/design-workbench-architecture.md](design-workbench-architecture.md), [apps/portal/lib/workbenchBreakawayImportGuards.test.ts](../apps/portal/lib/workbenchBreakawayImportGuards.test.ts), [apps/portal/components/drawings/viewports/Geometry3DViewport/index.tsx](../apps/portal/components/drawings/viewports/Geometry3DViewport/index.tsx), [apps/portal/components/drawings/viewports/Geometry3DViewport/Geometry3DViewport.test.tsx](../apps/portal/components/drawings/viewports/Geometry3DViewport/Geometry3DViewport.test.tsx).
+Related docs/tests: [docs/design-workbench-architecture.md](design-workbench-architecture.md), [apps/portal/lib/workbenchBreakawayImportGuards.test.ts](../apps/portal/lib/workbenchBreakawayImportGuards.test.ts), [apps/portal/components/drawings/viewports/Geometry3DViewport/index.tsx](../apps/portal/components/drawings/viewports/Geometry3DViewport/index.tsx), apps/portal/components/drawings/viewports/Geometry3DViewport/Geometry3DViewport.test.tsx.
 
 ### 2026-06-03 - Workbench House Forms - Coverage Solver Quarantine
 

@@ -131,7 +131,7 @@ OBJECTS
 - New `<ObjectTreeRow>` component — single row with icon · label · subtitle. Small (~50 LOC).
 - [WorkbenchInspectorHost.tsx](apps/portal/app/staff/projects/[projectId]/design-workbench/WorkbenchInspectorHost.tsx) — `activeRailTab` derives from `ui.activeObjectFamily` (the family of the currently selected object) rather than the now-deleted rail tab. Small wiring update.
 - [drawingWorkbenchUiState.ts](apps/portal/lib/drawings/state/drawingWorkbenchUiState.ts) — `activeRailTab` may no longer be needed; verify and remove if redundant. If kept (for diagnostics or back-compat), document its narrowed purpose.
-- [ObjectWorkbenchRail.test.tsx](apps/portal/components/drawings/rail/ObjectWorkbenchRail.test.tsx) — strip tab-strip assertions; add tree-shape assertions (every family heading present, object rows visible, selected row highlighted).
+- ObjectWorkbenchRail.test.tsx — strip tab-strip assertions; add tree-shape assertions (every family heading present, object rows visible, selected row highlighted).
 - New `objectTreeRowSubtitles.ts` helper (or extension of existing inspector model) — pure functions that map per-family objects to subtitle strings. Testable in isolation.
 
 **HARD GATE**:

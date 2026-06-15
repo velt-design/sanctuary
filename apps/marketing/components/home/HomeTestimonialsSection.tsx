@@ -14,15 +14,15 @@ export default function HomeTestimonialsSection({ rating, count }: HomeTestimoni
   return (
     <section
       aria-labelledby="home-reviews-heading"
-      className="bg-page py-[clamp(48px,7vh,96px)]"
+      className="bg-page py-[var(--home-section-y)]"
     >
       <div className="mx-auto w-[min(88vw,1288px)]">
-        <p className="text-[12px] uppercase tracking-[0.12em] text-muted">Reviews</p>
+        <p className="text-[12px] uppercase tracking-[0.14em] text-muted">Reviews</p>
 
         <div className="mt-3 flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
           <h2
             id="home-reviews-heading"
-            className="max-w-[22ch] text-balance text-[clamp(32px,4.4vw,62px)] font-semibold leading-[1.05] tracking-[-0.02em] text-ink"
+            className="max-w-[22ch] text-balance text-[length:var(--home-h2)] font-semibold leading-[1.06] tracking-[-0.02em] text-ink"
           >
             Rated {ratingText} from {count} Google reviews.
           </h2>

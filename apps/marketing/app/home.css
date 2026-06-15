@@ -752,6 +752,7 @@ body.homepage{
   --home-section-y-tight:clamp(42px,6.2vh,82px);
   --home-title:clamp(30px,4vw,56px);
   --home-title-sm:clamp(28px,3.2vw,42px);
+  --home-h2:clamp(30px,3.8vw,48px);
   --home-copy:clamp(15px,1.2vw,17px);
   --home-muted:#666c72;
   --home-line:#d4d8dd;
@@ -792,10 +793,10 @@ body.homepage main .container{
 .homepage .roof-comparison--editorial .roof-comparison__title,
 .homepage .products-head__headline{
   color:var(--fg);
-  font-size:var(--home-title-sm);
-  font-weight:560;
+  font-size:var(--home-h2);
+  font-weight:600;
   line-height:1.06;
-  letter-spacing:0;
+  letter-spacing:-0.02em;
   text-wrap:balance;
 }
 
@@ -1053,16 +1054,23 @@ body.homepage main .container{
 
 .homepage .process-head__title{
   color:var(--fg);
-  font-size:var(--home-title-sm);
-  font-weight:560;
+  font-size:var(--home-h2);
+  font-weight:600;
   line-height:1.06;
-  letter-spacing:0;
+  letter-spacing:-0.02em;
   text-align:left;
   text-transform:none;
 }
 
 .homepage .process-head{
   border-top:0;
+}
+
+/* Single full-bleed divider at the bottom of the process band. The
+ * legacy-scope wrapper holds only the process section, so its bottom border
+ * sits exactly between process and the reviews band below. */
+.homepage .homepage-legacy-scope{
+  border-bottom:var(--bw) solid var(--home-line);
 }
 
 .homepage #process{
@@ -1250,7 +1258,7 @@ body.homepage main .container{
   .homepage .roof-comparison--editorial .roof-comparison__title,
   .homepage .products-head__headline,
   .homepage .process-head__title{
-    font-size:clamp(28px,8vw,40px);
+    font-size:var(--home-h2);
   }
   .homepage #products .tile .m{
     height:clamp(220px,36vh,360px);

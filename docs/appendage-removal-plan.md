@@ -139,10 +139,10 @@ Grouped by layer; each file's change line is "delete the appendage refs" unless 
 | File | Change | LOC delta |
 |---|---|---|
 | [objectFirstWorkbenchModel.ts](apps/portal/lib/drawings/state/objectFirstWorkbenchModel.ts) | Remove `appendage` from `HouseFormRoofIntentModel` | -10 |
-| [houseFirstWorkbenchModel.ts](apps/portal/lib/drawings/state/houseFirstWorkbenchModel.ts) | Remove appendage from roof intent | -10 |
-| [houseRoofFormAdapter.ts](apps/portal/lib/drawings/state/houseRoofFormAdapter.ts) | Drop appendage field mapping | -15 |
+| houseFirstWorkbenchModel.ts | Remove appendage from roof intent | -10 |
+| houseRoofFormAdapter.ts | Drop appendage field mapping | -15 |
 | [houseRoofFormNormalize.ts](apps/portal/lib/drawings/state/houseRoofFormNormalize.ts) | Drop appendage normalisation (silently drops field on read from persisted data) | -20 |
-| [houseFirstWorkbenchAdapter.ts](apps/portal/lib/drawings/state/houseFirstWorkbenchAdapter.ts) | Drop `appendageAllowed` derivation | -10 |
+| houseFirstWorkbenchAdapter.ts | Drop `appendageAllowed` derivation | -10 |
 | [buildHouseFormReferenceGeometry.ts](apps/portal/lib/drawings/state/buildHouseFormReferenceGeometry.ts) | Drop appendage in geometry handling | -10 |
 
 ### Portal inspector + UI (3 files)
@@ -157,14 +157,14 @@ Grouped by layer; each file's change line is "delete the appendage refs" unless 
 
 | File | Change | LOC delta |
 |---|---|---|
-| [geometryEditAdapter.ts](apps/portal/lib/drawings/geometry/geometryEditAdapter.ts) | Drop appendage-related re-exports if any | -5 |
-| [buildRawGeometryModuleInput.ts](apps/portal/lib/drawings/geometry/buildRawGeometryModuleInput.ts) | Drop appendage in geometry input mapping | -15 |
+| geometryEditAdapter.ts | Drop appendage-related re-exports if any | -5 |
+| buildRawGeometryModuleInput.ts | Drop appendage in geometry input mapping | -15 |
 
 ### Fixtures (2 files)
 
 | File | Change | LOC delta |
 |---|---|---|
-| [houseFirstWorkbenchFixtures.ts](apps/portal/lib/drawings/state/houseFirstWorkbenchFixtures.ts) | Drop appendage from fixture data | -15 |
+| houseFirstWorkbenchFixtures.ts | Drop appendage from fixture data | -15 |
 | [objectFirstWorkbenchFixtures.ts](apps/portal/lib/drawings/state/objectFirstWorkbenchFixtures.ts) | Drop appendage from test data | -10 |
 
 ### Tests (4 files)
@@ -174,7 +174,7 @@ Grouped by layer; each file's change line is "delete the appendage refs" unless 
 | [houseModel.test.ts](packages/geometry/src/houseModel.test.ts) | Delete 4 dedicated appendage test cases (lines 2724, 2821, 2852, 2889) | -250 |
 | [houseRoofValidation.test.ts](packages/geometry/src/houseRoofValidation.test.ts) | Delete 3 appendage validation tests (lines 80, 104, 134) | -100 |
 | [resolveHouseTerminalEndToggleRoofDraft.test.ts](apps/portal/app/staff/projects/[projectId]/design-workbench/resolveHouseTerminalEndToggleRoofDraft.test.ts) | Drop appendage from test fixtures (lines 13, 58) | -10 |
-| [geometryEditAdapter.test.ts](apps/portal/lib/drawings/geometry/geometryEditAdapter.test.ts) | Drop any appendage test cases | -15 |
+| geometryEditAdapter.test.ts | Drop any appendage test cases | -15 |
 
 ### Docs (3 files)
 
