@@ -1,9 +1,31 @@
-import { GOOGLE_PLACE, featuredReviews } from '@/data/reviews';
+import { GOOGLE_PLACE, featuredReviews, type GoogleReview } from '@/data/reviews';
+import { cn } from '@/lib/cn';
+import CardCarousel from '@/components/ui/CardCarousel';
 
 type HomeTestimonialsSectionProps = {
   rating: number;
   count: number;
 };
+
+function ReviewCard({ review, className }: { review: GoogleReview; className?: string }) {
+  return (
+    <figure
+      className={cn(
+        'flex flex-col gap-4 border border-ink/10 bg-card p-7 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_10px_30px_-16px_rgba(0,0,0,0.18)]',
+        className
+      )}
+    >
+      <span aria-hidden="true" className="text-[15px] tracking-[0.05em] text-[#FFB400]">
+        {'★★★★★'}
+      </span>
+      <blockquote className="text-[16px] leading-[1.6] text-ink">{review.quote}</blockquote>
+      <figcaption className="mt-auto pt-2 text-[14px] font-medium text-muted">
+        {review.author}
+        {review.location ? `, ${review.location}` : ''}
+      </figcaption>
+    </figure>
+  );
+}
 
 export default function HomeTestimonialsSection({ rating, count }: HomeTestimonialsSectionProps) {
   // Show a tight set of six on the wall; the rest live behind "Read all on Google".
@@ -12,10 +34,7 @@ export default function HomeTestimonialsSection({ rating, count }: HomeTestimoni
   const ratingText = rating.toFixed(1);
 
   return (
-    <section
-      aria-labelledby="home-reviews-heading"
-      className="bg-page py-[var(--home-section-y)]"
-    >
+    <section aria-labelledby="home-reviews-heading" className="bg-page py-[var(--home-section-y)]">
       <div className="mx-auto w-[min(88vw,1288px)]">
         <p className="text-[12px] uppercase tracking-[0.14em] text-muted">Reviews</p>
 
@@ -36,25 +55,32 @@ export default function HomeTestimonialsSection({ rating, count }: HomeTestimoni
           </a>
         </div>
 
-        <ul className="mt-10 grid list-none gap-6 p-0 md:grid-cols-2 lg:grid-cols-3">
+        {/* Desktop: grid */}
+        <ul className="mt-10 hidden list-none grid-cols-2 gap-6 p-0 md:grid lg:grid-cols-3">
           {reviews.map((review) => (
             <li key={review.author}>
-              <figure className="flex h-full flex-col gap-4 border border-ink/10 bg-card p-7 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_10px_30px_-16px_rgba(0,0,0,0.18)]">
-                <span aria-hidden="true" className="text-[15px] tracking-[0.05em] text-[#FFB400]">
-                  {'★★★★★'}
-                </span>
-                <blockquote className="text-[16px] leading-[1.6] text-ink">
-                  {review.quote}
-                </blockquote>
-                <figcaption className="mt-auto pt-2 text-[14px] font-medium text-muted">
-                  {review.author}
-                  {review.location ? `, ${review.location}` : ''}
-                </figcaption>
-              </figure>
+              <ReviewCard review={review} className="h-full" />
             </li>
           ))}
         </ul>
       </div>
+
+      {/* Mobile: flick carousel matching the projects carousel footprint + movement */}
+      <CardCarousel
+        ariaLabel="Customer reviews"
+        showArrows={reviews.length > 1}
+        className="mt-8 md:hidden"
+        arrowsClassName="mx-auto w-[min(88vw,1288px)]"
+        railClassName="gap-4"
+      >
+        {reviews.map((review) => (
+          <ReviewCard
+            key={review.author}
+            review={review}
+            className="h-[clamp(330px,56vh,440px)] w-[min(86vw,440px)]"
+          />
+        ))}
+      </CardCarousel>
     </section>
   );
 }

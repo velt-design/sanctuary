@@ -1027,6 +1027,7 @@ body.homepage main .container{
 .homepage .home-section--materials-compare{
   padding-block:clamp(56px,7vh,92px) var(--home-section-y-tight);
   border-top:var(--bw) solid var(--home-line);
+  border-bottom:0;
   background:var(--home-editorial-bg) !important;
 }
 

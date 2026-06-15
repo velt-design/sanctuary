@@ -133,6 +133,10 @@ export default function HomePageClient({
 
         <RoofComparisonSection variant="editorial" />
 
+        <div className="homepage-legacy-scope">
+          <HomeProcessSection processSteps={processSteps} copyTexts={copyTexts} />
+        </div>
+
         <section aria-label="Quick estimate" className="bg-[#121212]">
           <div className="mx-auto flex w-[min(88vw,1288px)] flex-col items-start gap-5 py-[clamp(40px,6vh,72px)] md:flex-row md:items-center md:justify-between md:gap-10">
             <p className="max-w-[20ch] text-[clamp(22px,2.6vw,34px)] font-semibold leading-[1.1] tracking-[-0.01em] text-white">
@@ -146,10 +150,6 @@ export default function HomePageClient({
             </Link>
           </div>
         </section>
-
-        <div className="homepage-legacy-scope">
-          <HomeProcessSection processSteps={processSteps} copyTexts={copyTexts} />
-        </div>
 
         <HomeTestimonialsSection rating={reviewRating} count={reviewCount} />
 
