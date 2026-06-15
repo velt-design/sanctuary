@@ -1,5 +1,9 @@
+'use client';
+
+import { useState } from 'react';
 import Image from 'next/image';
 import { cn } from '@/lib/cn';
+import Collapse from '@/components/ui/Collapse';
 
 type Characteristic = { label: string; text: string };
 
@@ -14,6 +18,14 @@ type MaterialSectionProps = {
   className?: string;
 };
 
+function ChevronDown({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className={className}>
+      <path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="square" />
+    </svg>
+  );
+}
+
 export default function MaterialSection({
   headingId,
   eyebrow,
@@ -24,6 +36,9 @@ export default function MaterialSection({
   bestFor,
   className,
 }: MaterialSectionProps) {
+  const [open, setOpen] = useState(false);
+  const contentId = `${headingId}-details`;
+
   return (
     <article
       aria-labelledby={headingId}
@@ -53,20 +68,41 @@ export default function MaterialSection({
           </h3>
           <p className="mt-3 text-[16px] leading-[1.62] text-muted">{intro}</p>
 
-          <p className="mt-5 text-[14px] font-semibold uppercase tracking-[0.08em] text-ink/84">Key characteristics</p>
-          <ul className="mt-3 space-y-2 text-[15px] leading-[1.62] text-muted">
-            {characteristics.map((characteristic) => (
-              <li key={characteristic.label} className="ml-5 list-disc">
-                <span className="font-semibold text-ink">{characteristic.label}:</span> {characteristic.text}
-              </li>
-            ))}
-          </ul>
-
-          {bestFor ? (
-            <span className="mt-5 inline-flex border border-page px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-ink">
-              Best for: {bestFor}
+          {/* Toggle on mobile; a static heading on desktop (chevron hidden,
+              non-interactive, content force-shown). */}
+          <button
+            type="button"
+            onClick={() => setOpen((value) => !value)}
+            aria-expanded={open}
+            aria-controls={contentId}
+            className="mt-5 flex w-full items-center justify-between gap-3 text-left md:pointer-events-none"
+          >
+            <span className="text-[14px] font-semibold uppercase tracking-[0.08em] text-ink/84">
+              Key characteristics
             </span>
-          ) : null}
+            <ChevronDown
+              className={cn(
+                'h-[18px] w-[18px] shrink-0 text-ink/70 transition-transform duration-200 md:hidden',
+                open && 'rotate-180'
+              )}
+            />
+          </button>
+
+          <Collapse id={contentId} open={open} openOnDesktop>
+            <ul className="mt-3 space-y-2 text-[15px] leading-[1.62] text-muted">
+              {characteristics.map((characteristic) => (
+                <li key={characteristic.label} className="ml-5 list-disc">
+                  <span className="font-semibold text-ink">{characteristic.label}:</span> {characteristic.text}
+                </li>
+              ))}
+            </ul>
+
+            {bestFor ? (
+              <span className="mt-5 inline-flex border border-page px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-ink">
+                Best for: {bestFor}
+              </span>
+            ) : null}
+          </Collapse>
         </div>
       </div>
     </article>

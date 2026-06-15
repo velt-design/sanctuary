@@ -125,8 +125,8 @@ export default function HomePageClient({
               Material comparison
             </p>
             <div className="mt-6 grid gap-6 md:mt-8 md:gap-10">
-              <TimberSection />
               <AcrylicSection />
+              <TimberSection />
             </div>
           </div>
         </section>
