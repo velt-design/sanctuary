@@ -1,7 +1,9 @@
 'use client';
 
+import type { MouseEvent } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/cn';
 import CardCarousel from '@/components/ui/CardCarousel';
 
@@ -25,6 +27,17 @@ export default function HomeProjectsSection({
   seeMoreLabel = 'See more projects',
   className,
 }: HomeProjectsSectionProps) {
+  const router = useRouter();
+
+  // Desktop keeps the browse/master-detail view (?slug=); mobile goes straight
+  // to the project's dedicated page.
+  const openProject = (event: MouseEvent<HTMLAnchorElement>, slug: string) => {
+    if (typeof window !== 'undefined' && !window.matchMedia('(min-width: 768px)').matches) {
+      event.preventDefault();
+      router.push(`/projects/${slug}`);
+    }
+  };
+
   if (!projects.length) return null;
 
   return (
@@ -56,7 +69,8 @@ export default function HomeProjectsSection({
       <CardCarousel
         ariaLabel="Projects"
         showArrows={projects.length > 1}
-        className="mt-8"
+        align="center"
+        className="home-carousel--project mt-8"
         arrowsClassName="mx-auto w-[min(88vw,1288px)]"
         trackClassName="home-projects-section__track"
         railClassName="gap-4 md:gap-6"
@@ -65,7 +79,8 @@ export default function HomeProjectsSection({
           <Link
             key={project.slug}
             href={`/projects?slug=${project.slug}`}
-            className="home-projects-section__card group relative h-[clamp(345px,60vh,470px)] w-[min(86vw,560px)] overflow-hidden border border-page bg-card [border-width:var(--bw)]"
+            onClick={(event) => openProject(event, project.slug)}
+            className="home-projects-section__card group relative h-[clamp(330px,58vh,440px)] w-[var(--cc-card)] overflow-hidden border border-page bg-card [border-width:var(--bw)] md:h-[clamp(345px,60vh,470px)]"
             aria-label={`${project.title} - ${project.location}`}
           >
             <Image
@@ -96,7 +111,7 @@ export default function HomeProjectsSection({
 
         <Link
           href={seeMoreHref}
-          className="home-projects-section__card home-projects-section__card--more group relative h-[clamp(345px,60vh,470px)] w-[min(70vw,420px)] overflow-hidden border border-page bg-[var(--accentRed)] [border-width:var(--bw)]"
+          className="home-projects-section__card home-projects-section__card--more group relative h-[clamp(330px,58vh,440px)] w-[var(--cc-card)] overflow-hidden border border-page bg-[var(--accentRed)] [border-width:var(--bw)] md:h-[clamp(345px,60vh,470px)]"
           aria-label={seeMoreLabel}
         >
           <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0.04),rgba(0,0,0,0.24))]" />

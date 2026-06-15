@@ -759,6 +759,30 @@ body.homepage{
   --home-editorial-bg:var(--bg);
 }
 
+/* Centered card-carousel widths, consumed by CardCarousel align="center"
+ * (track centering padding + card width both read --cc-card). */
+.homepage .home-carousel--project,
+.homepage .home-carousel--review{
+  --cc-card:min(calc(100vw - clamp(32px, 10vw, 56px)), 476px);
+}
+/* Cap the centering runway at the content-container edge so once the gap beside
+ * the centered first card exceeds a card width, the first card moves left and
+ * lines up with the heading. */
+.homepage .home-carousel--project{
+  --cc-edge:max(0px, calc((100vw - min(88vw, 1288px)) / 2));
+}
+@media (min-width:768px){
+  .homepage .home-carousel--project{
+    --cc-card:560px;
+  }
+}
+/* Last carousel card snaps to the end edge so it is fully reachable instead of
+ * being clipped when mandatory center-snap settles on the previous card. */
+.homepage .home-carousel--project .cc-rail > :last-child,
+.homepage .home-carousel--review .cc-rail > :last-child{
+  scroll-snap-align:end;
+}
+
 body.homepage main .container{
   width:var(--home-inner);
   max-width:1288px;

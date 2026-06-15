@@ -69,7 +69,8 @@ export default function HomeTestimonialsSection({ rating, count }: HomeTestimoni
       <CardCarousel
         ariaLabel="Customer reviews"
         showArrows={reviews.length > 1}
-        className="mt-8 md:hidden"
+        align="center"
+        className="home-carousel--review mt-8 md:hidden"
         arrowsClassName="mx-auto w-[min(88vw,1288px)]"
         railClassName="gap-4"
       >
@@ -77,7 +78,7 @@ export default function HomeTestimonialsSection({ rating, count }: HomeTestimoni
           <ReviewCard
             key={review.author}
             review={review}
-            className="h-[clamp(330px,56vh,440px)] w-[min(86vw,440px)]"
+            className="h-[clamp(330px,58vh,440px)] w-[var(--cc-card)]"
           />
         ))}
       </CardCarousel>

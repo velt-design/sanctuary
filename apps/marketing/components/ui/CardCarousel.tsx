@@ -30,6 +30,10 @@ type CardCarouselProps = {
   children: React.ReactNode;
   ariaLabel: string;
   showArrows?: boolean;
+  // 'center' snaps the focused card to the middle of the viewport and lets the
+  // first/last card reach center. Consumers must set the `--cc-card` width var
+  // (responsively) so the centering runway is computed correctly.
+  align?: 'start' | 'center';
   className?: string;
   arrowsClassName?: string;
   trackClassName?: string;
@@ -40,6 +44,7 @@ export default function CardCarousel({
   children,
   ariaLabel,
   showArrows = true,
+  align = 'start',
   className,
   arrowsClassName,
   trackClassName,
@@ -118,11 +123,34 @@ export default function CardCarousel({
           'overflow-x-auto pb-1 snap-x snap-mandatory [scrollbar-width:none] [-ms-overflow-style:none] [-webkit-overflow-scrolling:touch] [&::-webkit-scrollbar]:hidden',
           trackClassName
         )}
+        // Centering runway: padding so the first/last card can sit dead-center,
+        // capped at --cc-edge so on wide screens the first card moves to the
+        // edge instead of leaving a full-card gap beside it. scroll-padding
+        // matches so the last card's snap-end target lands on the boundary
+        // (otherwise mandatory snap settles on the previous card and clips it).
+        style={
+          align === 'center'
+            ? {
+                paddingInline: 'max(0px, min(calc(50% - var(--cc-card, 100%) / 2), var(--cc-edge, 100%)))',
+                scrollPaddingInline: 'max(0px, min(calc(50% - var(--cc-card, 100%) / 2), var(--cc-edge, 100%)))',
+              }
+            : undefined
+        }
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onClickCapture={handleClickCapture}
       >
-        <div className={cn('flex [&>*]:shrink-0 [&>*]:snap-start', railClassName)}>{children}</div>
+        <div
+          className={cn(
+            'cc-rail flex [&>*]:shrink-0',
+            // Center snap; the last card's snap-align: end (so it's fully
+            // reachable, not clipped by mandatory snap) is set in CSS via .cc-rail.
+            align === 'center' ? '[&>*]:snap-center' : '[&>*]:snap-start',
+            railClassName
+          )}
+        >
+          {children}
+        </div>
       </div>
     </div>
   );
