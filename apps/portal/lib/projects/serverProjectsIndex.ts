@@ -7,8 +7,8 @@ import type { Contact } from '@/lib/types/contact';
 import type { Project } from '@/lib/types/project';
 import { normalizeProjectStatus } from '@/lib/types/project';
 import {
-  MAX_LIST_FETCH_ROWS,
-  type ListFetchResult,
+  fetchAllPages,
+  type ChunkedListFetchResult,
 } from '@/lib/list/listLimits';
 import { nowIso } from '@/lib/utils/time';
 
@@ -94,66 +94,73 @@ export type LoadProjectsIndexOptions = {
  * `{ projects: Project[]; contacts: Contact[] }` to
  * `{ projects: ListFetchResult<Project>; contacts: ListFetchResult<Contact> }`
  * so the projects index page can surface the row count via
- * `ListCountBanner`. Both branches of the `archived_at`-missing
- * fallback (line ~107-111) get the same `.range()` + `count: 'exact'`
- * treatment so neither path silently truncates.
+ * `ListCountBanner`.
+ *
+ * PR-PG1c (2026-06-16): both queries go through `fetchAllPages()` to
+ * defeat Supabase's project-level `db-max-rows` cap. Return shapes
+ * gain `truncated`. The `archived_at`-missing fallback branch goes
+ * through the same helper so it can't silently truncate either.
  */
 export async function loadProjectsIndexData(
   supabase?: SupabaseClient,
   options?: LoadProjectsIndexOptions,
 ): Promise<{
-  projects: ListFetchResult<Project>;
-  contacts: ListFetchResult<Contact>;
+  projects: ChunkedListFetchResult<Project>;
+  contacts: ChunkedListFetchResult<Contact>;
 }> {
   const client = supabase ?? (await getSupabaseServerAuth());
   const archiveFilter = options?.archiveFilter ?? 'active';
 
-  const buildProjectsQuery = () => {
+  const buildProjectsPage = (from: number, to: number) => {
     const base = client.from('projects').select('*', { count: 'exact' });
-    if (archiveFilter === 'active') {
-      return base
-        .is('archived_at', null)
-        .order('created_at', { ascending: false })
-        .range(0, MAX_LIST_FETCH_ROWS - 1);
-    }
-    if (archiveFilter === 'archived') {
-      return base
-        .not('archived_at', 'is', null)
-        .order('created_at', { ascending: false })
-        .range(0, MAX_LIST_FETCH_ROWS - 1);
-    }
-    return base.order('created_at', { ascending: false }).range(0, MAX_LIST_FETCH_ROWS - 1);
+    const ordered =
+      archiveFilter === 'active'
+        ? base.is('archived_at', null).order('created_at', { ascending: false })
+        : archiveFilter === 'archived'
+          ? base.not('archived_at', 'is', null).order('created_at', { ascending: false })
+          : base.order('created_at', { ascending: false });
+    return ordered.range(from, to);
   };
 
-  let projectsRes = await buildProjectsQuery();
-  if (projectsRes.error && missingColumnFromError(projectsRes.error) === 'archived_at') {
-    projectsRes =
-      archiveFilter === 'archived'
-        ? // archived_at column is absent, so no archived projects can exist.
-          ({ data: [], error: null, count: 0 } as unknown as typeof projectsRes)
-        : await client
-            .from('projects')
-            .select('*', { count: 'exact' })
-            .order('created_at', { ascending: false })
-            .range(0, MAX_LIST_FETCH_ROWS - 1);
+  let projectsResult: ChunkedListFetchResult<Record<string, unknown>>;
+  try {
+    projectsResult = await fetchAllPages<Record<string, unknown>>(buildProjectsPage);
+  } catch (err) {
+    if (missingColumnFromError(err) === 'archived_at') {
+      // archived_at column absent → no archived projects can exist.
+      projectsResult =
+        archiveFilter === 'archived'
+          ? { rows: [], totalCount: 0, truncated: false }
+          : await fetchAllPages<Record<string, unknown>>((from, to) =>
+              client
+                .from('projects')
+                .select('*', { count: 'exact' })
+                .order('created_at', { ascending: false })
+                .range(from, to),
+            );
+    } else {
+      throw err;
+    }
   }
-  if (projectsRes.error) throw projectsRes.error;
 
-  const contactsRes = await client
-    .from('contacts')
-    .select('*', { count: 'exact' })
-    .order('name', { ascending: true })
-    .range(0, MAX_LIST_FETCH_ROWS - 1);
-  if (contactsRes.error) throw contactsRes.error;
+  const contactsResult = await fetchAllPages<Record<string, unknown>>((from, to) =>
+    client
+      .from('contacts')
+      .select('*', { count: 'exact' })
+      .order('name', { ascending: true })
+      .range(from, to),
+  );
 
   return {
     projects: {
-      rows: (Array.isArray(projectsRes.data) ? projectsRes.data : []).map((row) => mapProjectRow(row as Record<string, unknown>)),
-      totalCount: typeof projectsRes.count === 'number' ? projectsRes.count : null,
+      rows: projectsResult.rows.map((row) => mapProjectRow(row)),
+      totalCount: projectsResult.totalCount,
+      truncated: projectsResult.truncated,
     },
     contacts: {
-      rows: sortContacts((Array.isArray(contactsRes.data) ? contactsRes.data : []).map((row) => mapContactRow(row as Record<string, unknown>))),
-      totalCount: typeof contactsRes.count === 'number' ? contactsRes.count : null,
+      rows: sortContacts(contactsResult.rows.map((row) => mapContactRow(row))),
+      totalCount: contactsResult.totalCount,
+      truncated: contactsResult.truncated,
     },
   };
 }

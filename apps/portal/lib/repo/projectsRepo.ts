@@ -2,7 +2,7 @@ import type { Project, ProjectStatus } from '@/lib/types/project';
 import { normalizeProjectStatus } from '@/lib/types/project';
 import { nowIso } from '@/lib/utils/time';
 import { newId } from '@/lib/utils/id';
-import { MAX_LIST_FETCH_ROWS } from '@/lib/list/listLimits';
+import { fetchAllPages } from '@/lib/list/listLimits';
 import { appIdFromUuid, uuidFromAppId } from '@/lib/supabase/mappers';
 import { getSupabaseBrowser, supabaseHostFromUrl, supabaseRestUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
 import { SupabaseRepoError, type PostgrestErrorLike } from '@/lib/supabase/repoError';
@@ -142,17 +142,19 @@ async function updateWithUnknownColumnRetry(uuid: string, payloadIn: Record<stri
 export async function listProjects(options?: { includeArchived?: boolean }): Promise<Project[]> {
   const supabase = getSupabaseBrowser();
   const includeArchived = Boolean(options?.includeArchived);
-  let query = supabase.from('projects').select('*');
-  if (!includeArchived) query = query.is('archived_at', null);
-  // PR-PG1 (2026-06-16): explicit cap replaces PostgREST's silent 1000-row
-  // default. Return shape stays `Project[]` for back-compat — the projects
-  // index page reads `totalCount` from the server-side
-  // `loadProjectsIndexData()` initial fetch instead.
-  const { data, error } = await query
-    .order('created_at', { ascending: false })
-    .range(0, MAX_LIST_FETCH_ROWS - 1);
-  if (error) throw wrapError('projects', error);
-  const projects = (Array.isArray(data) ? data : []).map(projectFromRow);
+  // PR-PG1c (2026-06-16): chunked fetch defeats Supabase's project-level
+  // `db-max-rows` cap. Return shape stays `Project[]` for back-compat.
+  let result;
+  try {
+    result = await fetchAllPages<any>((from, to) => {
+      let q = supabase.from('projects').select('*');
+      if (!includeArchived) q = q.is('archived_at', null);
+      return q.order('created_at', { ascending: false }).range(from, to);
+    });
+  } catch (err) {
+    throw wrapError('projects', err);
+  }
+  const projects = result.rows.map(projectFromRow);
   return projects.slice().sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 

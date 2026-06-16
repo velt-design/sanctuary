@@ -22,8 +22,10 @@ export default async function StaffProjectsPage({
     <ProjectsIndexClient
       initialProjects={projects.rows}
       initialProjectsTotalCount={projects.totalCount}
+      initialProjectsTruncated={projects.truncated}
       initialContacts={contacts.rows}
       initialContactsTotalCount={contacts.totalCount}
+      initialContactsTruncated={contacts.truncated}
       initialFilters={initialFilters}
       initialTodayYmd={todayYmd()}
     />

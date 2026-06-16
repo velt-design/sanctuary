@@ -6,6 +6,13 @@ function createQuery(result: { data: any; error: any; count?: number | null }) {
   // PR-PG1 (2026-06-16): `.range()` is the new terminal call after
   // `.order(...)`. Mock chain resolves at `.range()`. `count` defaults
   // to `null` to match Supabase's `count: 'exact'` response.
+  //
+  // PR-PG1c (2026-06-16): `fetchAllPages()` calls `.range(from, to)`
+  // repeatedly until a short page is returned. The mock's single
+  // resolved payload satisfies the first page; since `data.length` is
+  // always less than the chunk size in these fixtures, the helper
+  // exits after one call. If you need to test multi-page behavior,
+  // see `apps/portal/lib/list/listLimits.test.ts:fetchAllPages`.
   const resolved = Promise.resolve({ count: null, ...result });
   const query: any = {
     select: vi.fn(() => query),
@@ -49,7 +56,7 @@ describe('loadContactsIndexData', () => {
     });
 
     const { loadContactsIndexData } = await import('./serverContactsIndex');
-    // PR-PG1 (2026-06-16): return shape is `{ rows, totalCount }`.
+    // PR-PG1c (2026-06-16): return shape is `{ rows, totalCount, truncated }`.
     await expect(loadContactsIndexData({ from: fromMock } as any)).resolves.toEqual({
       rows: [
         {
@@ -70,6 +77,7 @@ describe('loadContactsIndexData', () => {
         },
       ],
       totalCount: null,
+      truncated: false,
     });
   });
 

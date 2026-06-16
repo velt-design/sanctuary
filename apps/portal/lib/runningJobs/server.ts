@@ -2,7 +2,7 @@ import 'server-only';
 
 import { createHash } from 'node:crypto';
 import { getSupabaseServerAuth } from '@/lib/supabase/serverClient';
-import { MAX_LIST_FETCH_ROWS } from '@/lib/list/listLimits';
+import { fetchAllPages } from '@/lib/list/listLimits';
 import { appIdFromUuid } from '@/lib/supabase/mappers';
 import { normalizeProjectStatus } from '@/lib/types/project';
 import { SALES_PEOPLE } from '@/src/config/salesPeople';
@@ -178,39 +178,34 @@ function isMissingSchemaError(error: unknown): boolean {
 
 async function loadProjectsAndCrews(projectIdsFilter?: string[]): Promise<{ projects: ProjectRow[]; crews: RunningJobsResponse['lookups']['crews'] }> {
   const supabase = await getSupabaseServerAuth();
-  const projectsQuery = supabase
-    .from('projects')
-    .select(
-      [
-        'id',
-        'name',
-        'contact_id',
-        'site_address',
-        'pipeline_stage',
-        'created_at',
-        'updated_at',
-        'deposit_paid_date',
-        'final_payment_date',
-        'contacts ( id, name, phone, updated_at )',
-      ].join(','),
-    )
-    .is('archived_at', null)
-    // PR-PG1 (2026-06-16): explicit cap replaces PostgREST's silent 1000-row
-    // default. Running jobs typically operate on a small project subset, but
-    // the unbounded `loadProjectsAndCrews()` call (no `projectIdsFilter`)
-    // would silently truncate on a large active-project list.
-    .range(0, MAX_LIST_FETCH_ROWS - 1);
+  // PR-PG1c (2026-06-16): chunked fetch defeats Supabase's project-level
+  // `db-max-rows` cap. Conditional `.in('id', projectIdsFilter)` filter
+  // is applied INSIDE the page builder so every page applies it.
+  const projectsSelectCols = [
+    'id',
+    'name',
+    'contact_id',
+    'site_address',
+    'pipeline_stage',
+    'created_at',
+    'updated_at',
+    'deposit_paid_date',
+    'final_payment_date',
+    'contacts ( id, name, phone, updated_at )',
+  ].join(',');
 
-  if (projectIdsFilter?.length) {
-    projectsQuery.in('id', projectIdsFilter);
-  }
-
-  const [projectsRes, crewsRes] = await Promise.all([
-    projectsQuery,
+  const [projectsResult, crewsRes] = await Promise.all([
+    fetchAllPages<unknown>((from, to) => {
+      let q = supabase
+        .from('projects')
+        .select(projectsSelectCols)
+        .is('archived_at', null);
+      if (projectIdsFilter?.length) q = q.in('id', projectIdsFilter);
+      return q.range(from, to);
+    }),
     supabase.from('schedule_crews').select('id, name, short_code, color, sort_order, is_active').order('sort_order', { ascending: true }),
   ]);
 
-  if (projectsRes.error) throw projectsRes.error;
   if (crewsRes.error) throw crewsRes.error;
 
   const crews = (Array.isArray(crewsRes.data) ? crewsRes.data : []).map((row: any) => ({
@@ -221,7 +216,7 @@ async function loadProjectsAndCrews(projectIdsFilter?: string[]): Promise<{ proj
     active: typeof row?.is_active === 'boolean' ? row.is_active : true,
   }));
 
-  const projects = (Array.isArray(projectsRes.data) ? projectsRes.data : []).map((row: any) => ({
+  const projects = projectsResult.rows.map((row: any) => ({
     id: String(row?.id ?? ''),
     name: typeof row?.name === 'string' ? row.name : null,
     contact_id: typeof row?.contact_id === 'string' ? row.contact_id : null,

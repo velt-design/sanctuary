@@ -1,7 +1,7 @@
 import type { Contact } from '@/lib/types/contact';
 import { newId } from '@/lib/utils/id';
 import { nowIso } from '@/lib/utils/time';
-import { MAX_LIST_FETCH_ROWS } from '@/lib/list/listLimits';
+import { fetchAllPages } from '@/lib/list/listLimits';
 import { appIdFromUuid, uuidFromAppId } from '@/lib/supabase/mappers';
 import { getSupabaseBrowser, supabaseHostFromUrl, supabaseRestUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
 import { SupabaseRepoError, type PostgrestErrorLike } from '@/lib/supabase/repoError';
@@ -57,19 +57,26 @@ function wrapError(table: string, error: unknown): SupabaseRepoError {
 
 export async function listContacts(): Promise<Contact[]> {
   const supabase = getSupabaseBrowser();
-  // PR-PG1 (2026-06-16): explicit cap replaces PostgREST's silent 1000-row
-  // default. Return shape stays `Contact[]` for back-compat — many call
-  // sites just want the list (cache warmup, exporter, project-create
-  // form). The contacts index page reads `totalCount` from the
-  // server-side `loadContactsIndexData()` initial fetch instead.
-  const { data, error } = await supabase
-    .from('contacts')
-    .select('*')
-    .order('name', { ascending: true })
-    .range(0, MAX_LIST_FETCH_ROWS - 1);
-  if (error) throw wrapError('contacts', error);
+  // PR-PG1c (2026-06-16): chunked fetch defeats Supabase's project-level
+  // `db-max-rows` cap. Return shape stays `Contact[]` for back-compat —
+  // many call sites just want the list (cache warmup, exporter,
+  // project-create form). The contacts index page reads `totalCount`
+  // and `truncated` from the server-side `loadContactsIndexData()`
+  // initial fetch instead.
+  let result;
+  try {
+    result = await fetchAllPages<any>((from, to) =>
+      supabase
+        .from('contacts')
+        .select('*')
+        .order('name', { ascending: true })
+        .range(from, to),
+    );
+  } catch (err) {
+    throw wrapError('contacts', err);
+  }
 
-  const contacts: Contact[] = (Array.isArray(data) ? data : []).map((row: any) => {
+  const contacts: Contact[] = result.rows.map((row: any) => {
     const id = typeof row?.id === 'string' ? row.id : '';
     const createdAt = typeof row?.created_at === 'string' ? row.created_at : nowIso();
     const updatedAt = typeof row?.updated_at === 'string' ? row.updated_at : createdAt;

@@ -54,9 +54,14 @@ export default function ContactsIndexClient({
   // PR-PG1 (2026-06-16): `null` when the server fetch didn't request a count
   // (older callers / fallback paths). Banner stays hidden in that case.
   initialContactsTotalCount = null,
+  // PR-PG1c (2026-06-16): true when the chunked server fetch hit
+  // `MAX_LIST_FETCH_ROWS` before exhausting the table. Banner fires
+  // unconditionally on this signal (count may be unreliable).
+  initialContactsTruncated = false,
 }: {
   initialContacts: Contact[];
   initialContactsTotalCount?: number | null;
+  initialContactsTruncated?: boolean;
 }) {
   const toast = useToast();
   const [query, setQuery] = useState('');
@@ -190,6 +195,7 @@ export default function ContactsIndexClient({
         visibleCount={contacts.length}
         entityLabelSingular="contact"
         entityLabelPlural="contacts"
+        truncated={initialContactsTruncated}
       />
 
       <div className="sp-page-stack">

@@ -59,15 +59,21 @@ export default function ProjectsIndexClient({
   // didn't request a count (older callers / fallback paths) — banner stays
   // hidden in that case.
   initialProjectsTotalCount = null,
+  // PR-PG1c (2026-06-16): chunked-fetch truncation signal. True when the
+  // server fetch hit `MAX_LIST_FETCH_ROWS` before exhausting the table.
+  initialProjectsTruncated = false,
   initialContacts,
   initialContactsTotalCount = null,
+  initialContactsTruncated = false,
   initialFilters,
   initialTodayYmd,
 }: {
   initialProjects: Project[];
   initialProjectsTotalCount?: number | null;
+  initialProjectsTruncated?: boolean;
   initialContacts: Contact[];
   initialContactsTotalCount?: number | null;
+  initialContactsTruncated?: boolean;
   initialFilters: ProjectsIndexFilters;
   initialTodayYmd: string;
 }) {
@@ -426,12 +432,14 @@ export default function ProjectsIndexClient({
         visibleCount={projects.length}
         entityLabelSingular="project"
         entityLabelPlural="projects"
+        truncated={initialProjectsTruncated}
       />
       <ListCountBanner
         totalCount={initialContactsTotalCount}
         visibleCount={contacts.length}
         entityLabelSingular="contact"
         entityLabelPlural="contacts"
+        truncated={initialContactsTruncated}
       />
 
       <div className={styles.stack}>

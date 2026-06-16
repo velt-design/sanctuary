@@ -7,11 +7,16 @@ export default async function ContactsPage() {
   // when the list approaches the silent-truncation ceiling. The bare
   // rows array still feeds the existing client (TanStack Query cache
   // shape unchanged); only the prop signature added.
-  const { rows: initialContacts, totalCount: initialContactsTotalCount } = await loadContactsIndexData();
+  const {
+    rows: initialContacts,
+    totalCount: initialContactsTotalCount,
+    truncated: initialContactsTruncated,
+  } = await loadContactsIndexData();
   return (
     <ContactsIndexClient
       initialContacts={initialContacts}
       initialContactsTotalCount={initialContactsTotalCount}
+      initialContactsTruncated={initialContactsTruncated}
     />
   );
 }

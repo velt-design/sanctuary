@@ -1,7 +1,7 @@
 import 'server-only';
 
 import { buildVersionLabelMap, extractVersionNumber } from '@/lib/estimates/server';
-import { MAX_LIST_FETCH_ROWS } from '@/lib/list/listLimits';
+import { fetchAllPages } from '@/lib/list/listLimits';
 import { appIdFromUuid, uuidFromAppId } from '@/lib/supabase/mappers';
 import { getSupabaseServerAuth } from '@/lib/supabase/serverClient';
 import { SALES_PEOPLE } from '@/src/config/salesPeople';
@@ -269,42 +269,39 @@ async function loadEstimateVersionLabels(projectIds: string[]): Promise<Map<stri
 
 async function loadRawDesignRequestsForProjects(projectIds?: string[]): Promise<DesignRequestRow[]> {
   const supabase = await getSupabaseServerAuth();
-  const query = supabase
-    .from('design_package_requests')
-    .select(
-      [
-        'id',
-        'project_id',
-        'estimate_id',
-        'request_version',
-        'status',
-        'priority_tier',
-        'price_total_inc_gst_cents',
-        'request_source',
-        'request_note',
-        'designer_note',
-        'assigned_designer',
-        'due_at',
-        'requested_at',
-        'started_at',
-        'completed_at',
-        'cancelled_at',
-        'updated_at',
-      ].join(','),
-    )
-    .order('project_id', { ascending: true })
-    .order('request_version', { ascending: false })
-    // PR-PG1 (2026-06-16): explicit cap replaces PostgREST's silent
-    // 1000-row default. Applies in both the bounded (`projectIds`
-    // supplied) and unbounded paths — even with the IN clause, the
-    // per-project request count can stack high enough to hit the cap.
-    .range(0, MAX_LIST_FETCH_ROWS - 1);
+  // PR-PG1c (2026-06-16): chunked fetch defeats Supabase's project-level
+  // `db-max-rows` cap. Conditional `.in('project_id', projectIds)`
+  // filter is applied INSIDE the page builder so every page applies it.
+  const selectCols = [
+    'id',
+    'project_id',
+    'estimate_id',
+    'request_version',
+    'status',
+    'priority_tier',
+    'price_total_inc_gst_cents',
+    'request_source',
+    'request_note',
+    'designer_note',
+    'assigned_designer',
+    'due_at',
+    'requested_at',
+    'started_at',
+    'completed_at',
+    'cancelled_at',
+    'updated_at',
+  ].join(',');
 
-  if (projectIds?.length) query.in('project_id', projectIds);
-
-  const res = await query;
-  if (res.error) throw res.error;
-  return (Array.isArray(res.data) ? res.data : []) as unknown as DesignRequestRow[];
+  const result = await fetchAllPages<unknown>((from, to) => {
+    let q = supabase
+      .from('design_package_requests')
+      .select(selectCols)
+      .order('project_id', { ascending: true })
+      .order('request_version', { ascending: false });
+    if (projectIds?.length) q = q.in('project_id', projectIds);
+    return q.range(from, to);
+  });
+  return result.rows as DesignRequestRow[];
 }
 
 async function loadRawDesignRequestById(requestUuid: string): Promise<DesignRequestRow | null> {

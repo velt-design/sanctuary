@@ -67,8 +67,9 @@ describe('loadProjectsIndexData', () => {
     });
 
     const { loadProjectsIndexData } = await import('./serverProjectsIndex');
-    // PR-PG1 (2026-06-16): return shape is now
-    // `{ projects: ListFetchResult<Project>, contacts: ListFetchResult<Contact> }`.
+    // PR-PG1c (2026-06-16): return shape is now
+    // `{ projects: ChunkedListFetchResult<Project>, contacts: ChunkedListFetchResult<Contact> }`
+    // (each row gets a `truncated: boolean` from `fetchAllPages`).
     await expect(loadProjectsIndexData({ from: fromMock } as any)).resolves.toEqual({
       projects: {
         rows: [
@@ -81,6 +82,7 @@ describe('loadProjectsIndexData', () => {
           }),
         ],
         totalCount: null,
+        truncated: false,
       },
       contacts: {
         rows: [
@@ -94,6 +96,7 @@ describe('loadProjectsIndexData', () => {
           },
         ],
         totalCount: null,
+        truncated: false,
       },
     });
   });

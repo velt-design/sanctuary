@@ -5,8 +5,8 @@ import { getSupabaseServerAuth } from '@/lib/supabase/serverClient';
 import { appIdFromUuid } from '@/lib/supabase/mappers';
 import type { Contact } from '@/lib/types/contact';
 import {
-  MAX_LIST_FETCH_ROWS,
-  type ListFetchResult,
+  fetchAllPages,
+  type ChunkedListFetchResult,
 } from '@/lib/list/listLimits';
 import { nowIso } from '@/lib/utils/time';
 
@@ -35,21 +35,24 @@ function mapContactRow(row: Record<string, unknown>): Contact {
 /**
  * PR-PG1 (2026-06-16): return shape changed from `Contact[]` to
  * `ListFetchResult<Contact>` so the page can surface the total row
- * count via `ListCountBanner`. Single page-level caller updated in
- * the same PR; not used outside `app/staff/contacts/page.tsx`.
+ * count via `ListCountBanner`.
+ *
+ * PR-PG1c (2026-06-16): now returns `ChunkedListFetchResult<Contact>`
+ * (adds `truncated`) and goes through `fetchAllPages()` to defeat the
+ * Supabase project-level `db-max-rows` cap that silently clamps every
+ * single PostgREST response to 1000 rows regardless of `.range(...)`.
  */
 export async function loadContactsIndexData(
   supabase?: SupabaseClient,
-): Promise<ListFetchResult<Contact>> {
+): Promise<ChunkedListFetchResult<Contact>> {
   const client = supabase ?? (await getSupabaseServerAuth());
-  const contactsRes = await client
-    .from('contacts')
-    .select('*', { count: 'exact' })
-    .order('name', { ascending: true })
-    .range(0, MAX_LIST_FETCH_ROWS - 1);
-  if (contactsRes.error) throw contactsRes.error;
-  const rows = sortContacts(
-    (Array.isArray(contactsRes.data) ? contactsRes.data : []).map((row) => mapContactRow(row as Record<string, unknown>)),
+  const result = await fetchAllPages<Record<string, unknown>>((from, to) =>
+    client
+      .from('contacts')
+      .select('*', { count: 'exact' })
+      .order('name', { ascending: true })
+      .range(from, to),
   );
-  return { rows, totalCount: typeof contactsRes.count === 'number' ? contactsRes.count : null };
+  const rows = sortContacts(result.rows.map((row) => mapContactRow(row)));
+  return { rows, totalCount: result.totalCount, truncated: result.truncated };
 }
