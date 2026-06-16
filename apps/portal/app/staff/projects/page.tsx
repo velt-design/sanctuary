@@ -11,14 +11,19 @@ export default async function StaffProjectsPage({
 }) {
   const resolvedSearchParams = await searchParams;
   const initialFilters = parseProjectsIndexFilters(resolvedSearchParams ?? {});
+  // PR-PG1 (2026-06-16): server-fetched projects + contacts now arrive as
+  // `{ rows, totalCount }` so the page can render a `ListCountBanner`
+  // when either list approaches the silent-truncation ceiling.
   const { projects, contacts } = await loadProjectsIndexData(undefined, {
     archiveFilter: initialFilters.archiveFilter,
   });
 
   return (
     <ProjectsIndexClient
-      initialProjects={projects}
-      initialContacts={contacts}
+      initialProjects={projects.rows}
+      initialProjectsTotalCount={projects.totalCount}
+      initialContacts={contacts.rows}
+      initialContactsTotalCount={contacts.totalCount}
       initialFilters={initialFilters}
       initialTodayYmd={todayYmd()}
     />

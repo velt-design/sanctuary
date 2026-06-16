@@ -9,6 +9,7 @@ import { PROJECT_STATUS_ORDER, projectStatusLabel } from '@/lib/types/project';
 import styles from './projects.module.css';
 import PageHeader from '@/components/layout/PageHeader';
 import HeaderActions from '@/components/layout/HeaderActions';
+import ListCountBanner from '@/components/ui/listBanner/ListCountBanner';
 import { useToast } from '@/components/ui/toast/ToastProvider';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { contactsListQueryOptions } from '@/lib/queries/contacts';
@@ -54,12 +55,19 @@ function requiredDeleteConfirmation(projectId: string, status: Project['status']
 
 export default function ProjectsIndexClient({
   initialProjects,
+  // PR-PG1 (2026-06-16): server-side row counts. `null` when the server fetch
+  // didn't request a count (older callers / fallback paths) — banner stays
+  // hidden in that case.
+  initialProjectsTotalCount = null,
   initialContacts,
+  initialContactsTotalCount = null,
   initialFilters,
   initialTodayYmd,
 }: {
   initialProjects: Project[];
+  initialProjectsTotalCount?: number | null;
   initialContacts: Contact[];
+  initialContactsTotalCount?: number | null;
   initialFilters: ProjectsIndexFilters;
   initialTodayYmd: string;
 }) {
@@ -411,6 +419,19 @@ export default function ProjectsIndexClient({
             </Link>
           </HeaderActions>
         }
+      />
+
+      <ListCountBanner
+        totalCount={initialProjectsTotalCount}
+        visibleCount={projects.length}
+        entityLabelSingular="project"
+        entityLabelPlural="projects"
+      />
+      <ListCountBanner
+        totalCount={initialContactsTotalCount}
+        visibleCount={contacts.length}
+        entityLabelSingular="contact"
+        entityLabelPlural="contacts"
       />
 
       <div className={styles.stack}>

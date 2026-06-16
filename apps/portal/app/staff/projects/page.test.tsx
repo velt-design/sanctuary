@@ -28,9 +28,10 @@ vi.mock('./ProjectsIndexClient', () => ({
 
 describe('StaffProjectsPage', () => {
   it('loads projects on the server and passes parsed filter props into the client entrypoint', async () => {
+    // PR-PG1 (2026-06-16): server fetch returns `{ rows, totalCount }` for each list.
     loadProjectsIndexDataMock.mockResolvedValue({
-      projects: [{ id: 'proj_1', projectName: 'Deck Build' }],
-      contacts: [],
+      projects: { rows: [{ id: 'proj_1', projectName: 'Deck Build' }], totalCount: 1 },
+      contacts: { rows: [], totalCount: 0 },
     });
 
     const ui = (await StaffProjectsPage({
@@ -47,7 +48,10 @@ describe('StaffProjectsPage', () => {
   });
 
   it('forwards the archive filter to the server loader', async () => {
-    loadProjectsIndexDataMock.mockResolvedValue({ projects: [], contacts: [] });
+    loadProjectsIndexDataMock.mockResolvedValue({
+      projects: { rows: [], totalCount: 0 },
+      contacts: { rows: [], totalCount: 0 },
+    });
 
     const ui = (await StaffProjectsPage({
       searchParams: Promise.resolve({ archive: 'archived' }),

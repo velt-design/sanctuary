@@ -6,6 +6,10 @@ import { appIdFromUuid } from '@/lib/supabase/mappers';
 import type { Contact } from '@/lib/types/contact';
 import type { Project } from '@/lib/types/project';
 import { normalizeProjectStatus } from '@/lib/types/project';
+import {
+  MAX_LIST_FETCH_ROWS,
+  type ListFetchResult,
+} from '@/lib/list/listLimits';
 import { nowIso } from '@/lib/utils/time';
 
 function toPostgrestError(value: unknown): { code?: string; message?: string } | null {
@@ -85,21 +89,40 @@ export type LoadProjectsIndexOptions = {
   archiveFilter?: 'active' | 'archived' | 'all';
 };
 
+/**
+ * PR-PG1 (2026-06-16): return shape changed from
+ * `{ projects: Project[]; contacts: Contact[] }` to
+ * `{ projects: ListFetchResult<Project>; contacts: ListFetchResult<Contact> }`
+ * so the projects index page can surface the row count via
+ * `ListCountBanner`. Both branches of the `archived_at`-missing
+ * fallback (line ~107-111) get the same `.range()` + `count: 'exact'`
+ * treatment so neither path silently truncates.
+ */
 export async function loadProjectsIndexData(
   supabase?: SupabaseClient,
   options?: LoadProjectsIndexOptions,
 ): Promise<{
-  projects: Project[];
-  contacts: Contact[];
+  projects: ListFetchResult<Project>;
+  contacts: ListFetchResult<Contact>;
 }> {
   const client = supabase ?? (await getSupabaseServerAuth());
   const archiveFilter = options?.archiveFilter ?? 'active';
 
   const buildProjectsQuery = () => {
-    const base = client.from('projects').select('*');
-    if (archiveFilter === 'active') return base.is('archived_at', null).order('created_at', { ascending: false });
-    if (archiveFilter === 'archived') return base.not('archived_at', 'is', null).order('created_at', { ascending: false });
-    return base.order('created_at', { ascending: false });
+    const base = client.from('projects').select('*', { count: 'exact' });
+    if (archiveFilter === 'active') {
+      return base
+        .is('archived_at', null)
+        .order('created_at', { ascending: false })
+        .range(0, MAX_LIST_FETCH_ROWS - 1);
+    }
+    if (archiveFilter === 'archived') {
+      return base
+        .not('archived_at', 'is', null)
+        .order('created_at', { ascending: false })
+        .range(0, MAX_LIST_FETCH_ROWS - 1);
+    }
+    return base.order('created_at', { ascending: false }).range(0, MAX_LIST_FETCH_ROWS - 1);
   };
 
   let projectsRes = await buildProjectsQuery();
@@ -107,16 +130,30 @@ export async function loadProjectsIndexData(
     projectsRes =
       archiveFilter === 'archived'
         ? // archived_at column is absent, so no archived projects can exist.
-          ({ data: [], error: null } as unknown as typeof projectsRes)
-        : await client.from('projects').select('*').order('created_at', { ascending: false });
+          ({ data: [], error: null, count: 0 } as unknown as typeof projectsRes)
+        : await client
+            .from('projects')
+            .select('*', { count: 'exact' })
+            .order('created_at', { ascending: false })
+            .range(0, MAX_LIST_FETCH_ROWS - 1);
   }
   if (projectsRes.error) throw projectsRes.error;
 
-  const contactsRes = await client.from('contacts').select('*').order('name', { ascending: true });
+  const contactsRes = await client
+    .from('contacts')
+    .select('*', { count: 'exact' })
+    .order('name', { ascending: true })
+    .range(0, MAX_LIST_FETCH_ROWS - 1);
   if (contactsRes.error) throw contactsRes.error;
 
   return {
-    projects: (Array.isArray(projectsRes.data) ? projectsRes.data : []).map((row) => mapProjectRow(row as Record<string, unknown>)),
-    contacts: sortContacts((Array.isArray(contactsRes.data) ? contactsRes.data : []).map((row) => mapContactRow(row as Record<string, unknown>))),
+    projects: {
+      rows: (Array.isArray(projectsRes.data) ? projectsRes.data : []).map((row) => mapProjectRow(row as Record<string, unknown>)),
+      totalCount: typeof projectsRes.count === 'number' ? projectsRes.count : null,
+    },
+    contacts: {
+      rows: sortContacts((Array.isArray(contactsRes.data) ? contactsRes.data : []).map((row) => mapContactRow(row as Record<string, unknown>))),
+      totalCount: typeof contactsRes.count === 'number' ? contactsRes.count : null,
+    },
   };
 }

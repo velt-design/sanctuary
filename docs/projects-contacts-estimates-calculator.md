@@ -38,6 +38,7 @@ Contacts and projects are staff-owned portal records. Marketing lead capture can
 - Contact writes and project snapshot reads run through auth-bound staff Supabase clients from the route context; tests should inject fake server clients instead of mocking the legacy compatibility client.
 - Project cache patching around creates/details lives with local-first helpers so lists and detail views stay coherent.
 - Staff/admin browser UI should use API, query, or local-first layers, not direct table writes.
+- Top-level list-fetch boundaries (contacts/projects/design-packages/running-jobs and any sibling) MUST set `.range(0, MAX_LIST_FETCH_ROWS - 1)` (5000) explicitly. PostgREST's silent 1000-row default is closed by PR-PG1; relying on it is treated as a bug. Use `count: 'exact'` whenever the count needs to feed a `ListCountBanner` in the UI. See [`apps/portal/lib/list/listLimits.ts`](../apps/portal/lib/list/listLimits.ts) and the [list-pagination plan](list-pagination-plan.md).
 
 Keep contact fields, project fields, and estimate snapshot fields distinct. Estimate snapshots can carry copied customer/project context for historical quote/design accuracy, but that snapshot copy is not the canonical editable project record.
 

@@ -2,6 +2,7 @@ import 'server-only';
 
 import { createHash } from 'node:crypto';
 import { getSupabaseServerAuth } from '@/lib/supabase/serverClient';
+import { MAX_LIST_FETCH_ROWS } from '@/lib/list/listLimits';
 import { appIdFromUuid } from '@/lib/supabase/mappers';
 import { normalizeProjectStatus } from '@/lib/types/project';
 import { SALES_PEOPLE } from '@/src/config/salesPeople';
@@ -193,7 +194,12 @@ async function loadProjectsAndCrews(projectIdsFilter?: string[]): Promise<{ proj
         'contacts ( id, name, phone, updated_at )',
       ].join(','),
     )
-    .is('archived_at', null);
+    .is('archived_at', null)
+    // PR-PG1 (2026-06-16): explicit cap replaces PostgREST's silent 1000-row
+    // default. Running jobs typically operate on a small project subset, but
+    // the unbounded `loadProjectsAndCrews()` call (no `projectIdsFilter`)
+    // would silently truncate on a large active-project list.
+    .range(0, MAX_LIST_FETCH_ROWS - 1);
 
   if (projectIdsFilter?.length) {
     projectsQuery.in('id', projectIdsFilter);

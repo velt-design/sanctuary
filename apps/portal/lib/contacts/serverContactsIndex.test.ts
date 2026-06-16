@@ -2,10 +2,16 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const fromMock = vi.fn();
 
-function createQuery(result: { data: any; error: any }) {
+function createQuery(result: { data: any; error: any; count?: number | null }) {
+  // PR-PG1 (2026-06-16): `.range()` is the new terminal call after
+  // `.order(...)`. Mock chain resolves at `.range()`. `count` defaults
+  // to `null` to match Supabase's `count: 'exact'` response.
+  const resolved = Promise.resolve({ count: null, ...result });
   const query: any = {
     select: vi.fn(() => query),
-    order: vi.fn(() => Promise.resolve(result)),
+    order: vi.fn(() => query),
+    range: vi.fn(() => resolved),
+    then: (onFulfilled: any, onRejected: any) => resolved.then(onFulfilled, onRejected),
   };
   return query;
 }
@@ -43,24 +49,28 @@ describe('loadContactsIndexData', () => {
     });
 
     const { loadContactsIndexData } = await import('./serverContactsIndex');
-    await expect(loadContactsIndexData({ from: fromMock } as any)).resolves.toEqual([
-      {
-        id: 'ct_11111111-1111-4111-8111-111111111111',
-        displayName: 'Alex',
-        email: '',
-        phone: '',
-        createdAt: '2026-04-04T00:00:00.000Z',
-        updatedAt: '2026-04-04T00:00:00.000Z',
-      },
-      {
-        id: 'ct_22222222-2222-4222-8222-222222222222',
-        displayName: 'Zoe',
-        email: 'zoe@example.com',
-        phone: '021',
-        createdAt: '2026-04-05T00:00:00.000Z',
-        updatedAt: '2026-04-05T00:00:00.000Z',
-      },
-    ]);
+    // PR-PG1 (2026-06-16): return shape is `{ rows, totalCount }`.
+    await expect(loadContactsIndexData({ from: fromMock } as any)).resolves.toEqual({
+      rows: [
+        {
+          id: 'ct_11111111-1111-4111-8111-111111111111',
+          displayName: 'Alex',
+          email: '',
+          phone: '',
+          createdAt: '2026-04-04T00:00:00.000Z',
+          updatedAt: '2026-04-04T00:00:00.000Z',
+        },
+        {
+          id: 'ct_22222222-2222-4222-8222-222222222222',
+          displayName: 'Zoe',
+          email: 'zoe@example.com',
+          phone: '021',
+          createdAt: '2026-04-05T00:00:00.000Z',
+          updatedAt: '2026-04-05T00:00:00.000Z',
+        },
+      ],
+      totalCount: null,
+    });
   });
 
   it('throws on Supabase query failure', async () => {

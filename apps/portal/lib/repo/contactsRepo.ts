@@ -1,6 +1,7 @@
 import type { Contact } from '@/lib/types/contact';
 import { newId } from '@/lib/utils/id';
 import { nowIso } from '@/lib/utils/time';
+import { MAX_LIST_FETCH_ROWS } from '@/lib/list/listLimits';
 import { appIdFromUuid, uuidFromAppId } from '@/lib/supabase/mappers';
 import { getSupabaseBrowser, supabaseHostFromUrl, supabaseRestUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
 import { SupabaseRepoError, type PostgrestErrorLike } from '@/lib/supabase/repoError';
@@ -56,7 +57,16 @@ function wrapError(table: string, error: unknown): SupabaseRepoError {
 
 export async function listContacts(): Promise<Contact[]> {
   const supabase = getSupabaseBrowser();
-  const { data, error } = await supabase.from('contacts').select('*').order('name', { ascending: true });
+  // PR-PG1 (2026-06-16): explicit cap replaces PostgREST's silent 1000-row
+  // default. Return shape stays `Contact[]` for back-compat — many call
+  // sites just want the list (cache warmup, exporter, project-create
+  // form). The contacts index page reads `totalCount` from the
+  // server-side `loadContactsIndexData()` initial fetch instead.
+  const { data, error } = await supabase
+    .from('contacts')
+    .select('*')
+    .order('name', { ascending: true })
+    .range(0, MAX_LIST_FETCH_ROWS - 1);
   if (error) throw wrapError('contacts', error);
 
   const contacts: Contact[] = (Array.isArray(data) ? data : []).map((row: any) => {

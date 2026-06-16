@@ -9,14 +9,19 @@ vi.mock('@/lib/supabase/browserClient', () => ({
   supabaseRestUrl: (table: string) => `https://example.supabase.co/rest/v1/${table}`,
 }));
 
-function createListQuery(result: { data: any; error: any }) {
+function createListQuery(result: { data: any; error: any; count?: number | null }) {
+  // PR-PG1 (2026-06-16): `.range()` is the new terminal call after `.order()`.
+  // Both `.order().range()` and direct-await of the builder resolve to the
+  // same payload (with `count: null` defaulted when not supplied).
+  const resolved = Promise.resolve({ count: null, ...result });
   const query: any = {
     select: vi.fn(() => query),
     is: vi.fn(() => query),
     eq: vi.fn(() => query),
-    order: vi.fn(() => Promise.resolve(result)),
+    order: vi.fn(() => query),
+    range: vi.fn(() => resolved),
     then(onFulfilled: any, onRejected: any) {
-      return Promise.resolve(result).then(onFulfilled, onRejected);
+      return resolved.then(onFulfilled, onRejected);
     },
   };
   return query;

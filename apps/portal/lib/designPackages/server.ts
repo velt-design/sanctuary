@@ -1,6 +1,7 @@
 import 'server-only';
 
 import { buildVersionLabelMap, extractVersionNumber } from '@/lib/estimates/server';
+import { MAX_LIST_FETCH_ROWS } from '@/lib/list/listLimits';
 import { appIdFromUuid, uuidFromAppId } from '@/lib/supabase/mappers';
 import { getSupabaseServerAuth } from '@/lib/supabase/serverClient';
 import { SALES_PEOPLE } from '@/src/config/salesPeople';
@@ -292,7 +293,12 @@ async function loadRawDesignRequestsForProjects(projectIds?: string[]): Promise<
       ].join(','),
     )
     .order('project_id', { ascending: true })
-    .order('request_version', { ascending: false });
+    .order('request_version', { ascending: false })
+    // PR-PG1 (2026-06-16): explicit cap replaces PostgREST's silent
+    // 1000-row default. Applies in both the bounded (`projectIds`
+    // supplied) and unbounded paths — even with the IN clause, the
+    // per-project request count can stack high enough to hit the cap.
+    .range(0, MAX_LIST_FETCH_ROWS - 1);
 
   if (projectIds?.length) query.in('project_id', projectIds);
 

@@ -3,6 +3,7 @@ import type { CalculatorInputs } from '@/lib/types/calculator';
 import { isCalculatorInputsV2, isLegacyCalculatorInputsV1, migrateLegacyCalculatorInputsToV2 } from '@/lib/types/calculator';
 import { newId } from '@/lib/utils/id';
 import { nowIso } from '@/lib/utils/time';
+import { MAX_LIST_FETCH_ROWS } from '@/lib/list/listLimits';
 import { appIdFromUuid, isRecord, uuidFromAppId } from '@/lib/supabase/mappers';
 import { getSupabaseBrowser, supabaseHostFromUrl, supabaseRestUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
 import { SupabaseRepoError, type PostgrestErrorLike } from '@/lib/supabase/repoError';
@@ -151,7 +152,15 @@ export async function listEstimates(projectId: string): Promise<Estimate[]> {
 
 export async function listAllEstimates(): Promise<Estimate[]> {
   const supabase = getSupabaseBrowser();
-  const { data, error } = await supabase.from('estimates').select('*').order('created_at', { ascending: false });
+  // PR-PG1 (2026-06-16): explicit cap replaces PostgREST's silent 1000-row
+  // default. Used by the schedule legacy-fallback client; the schedule
+  // page itself isn't a flat list but this fetch backs the project
+  // selector dropdown so silent truncation could hide options.
+  const { data, error } = await supabase
+    .from('estimates')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .range(0, MAX_LIST_FETCH_ROWS - 1);
   if (error) throw wrapError('estimates', error);
   const estimates = (Array.isArray(data) ? data : []).map(estimateFromRow);
   return estimates.slice().sort((a, b) => b.createdAt.localeCompare(a.createdAt));

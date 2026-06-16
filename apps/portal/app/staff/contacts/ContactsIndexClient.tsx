@@ -10,6 +10,7 @@ import Modal from '@/components/ui/modal/Modal';
 import PageHeader from '@/components/layout/PageHeader';
 import HeaderActions from '@/components/layout/HeaderActions';
 import PageMessagePanel from '@/components/page-state/PageMessagePanel';
+import ListCountBanner from '@/components/ui/listBanner/ListCountBanner';
 import { formatPortalDateTime } from '@/lib/format/portalDateTime';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { contactsListQueryOptions } from '@/lib/queries/contacts';
@@ -48,7 +49,15 @@ function importDecisionKey(
   ].join(':');
 }
 
-export default function ContactsIndexClient({ initialContacts }: { initialContacts: Contact[] }) {
+export default function ContactsIndexClient({
+  initialContacts,
+  // PR-PG1 (2026-06-16): `null` when the server fetch didn't request a count
+  // (older callers / fallback paths). Banner stays hidden in that case.
+  initialContactsTotalCount = null,
+}: {
+  initialContacts: Contact[];
+  initialContactsTotalCount?: number | null;
+}) {
   const toast = useToast();
   const [query, setQuery] = useState('');
   const importRef = useRef<HTMLInputElement | null>(null);
@@ -175,6 +184,13 @@ export default function ContactsIndexClient({ initialContacts }: { initialContac
       />
 
       {importError ? <p className={styles.error}>{importError}</p> : null}
+
+      <ListCountBanner
+        totalCount={initialContactsTotalCount}
+        visibleCount={contacts.length}
+        entityLabelSingular="contact"
+        entityLabelPlural="contacts"
+      />
 
       <div className="sp-page-stack">
         <section className={styles.section} aria-label="Search contacts">
