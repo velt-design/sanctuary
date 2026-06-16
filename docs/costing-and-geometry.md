@@ -72,7 +72,7 @@ Marketing enquiry estimates also use `@sp/costing`. Do not create a marketing-on
 
 Pure acrylic pergolas use a flat `$2000 ex GST` overhead total only when every acrylic module is at or below `3.0m` sloped `rafter_length_m`. If any acrylic module exceeds `3.0m`, the costing engine falls back to the normal variable overhead formula. Mixed roofs do not use the flat acrylic rule.
 
-Website enquiry base pergola budgets use the existing `1.25x true cost` lower amount only and encode that as equal low/high values; optional blinds remain a range.
+Website enquiry base pergola budgets use the `1.20x true cost` lower amount only and encode that as equal low/high values; optional blinds remain a range. (Reduced from `1.25x` in PR-PE1 / 2026-06-16. The marketing route also explicitly sets `post_count: 2` to match the typical "standard build" instead of inheriting the cost engine's default of 4. The portal-side staff-quote `QUOTE_MARGIN_MULTIPLIER` stays at `1.25` — that's a separate surface for actual project quotes.)
 
 Primary route:
 

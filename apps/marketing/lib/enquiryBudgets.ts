@@ -24,11 +24,11 @@ export function buildEnquiryBudgets(params: {
   let budgetBasis: string | null = null;
   if (baseRange && blindsRange) {
     budgetBasis =
-      'website ballpark: base uses 1.25x true cost lower-only, blinds use 1.25x true cost baseline->+15%, fascia assumption';
+      'website ballpark: base uses 1.20x true cost lower-only, blinds use 1.20x true cost baseline->+15%, fascia assumption';
   } else if (baseRange) {
-    budgetBasis = 'website ballpark: base uses 1.25x true cost lower-only, fascia assumption';
+    budgetBasis = 'website ballpark: base uses 1.20x true cost lower-only, fascia assumption';
   } else if (blindsRange) {
-    budgetBasis = 'website ballpark: blinds use 1.25x true cost baseline->+15%';
+    budgetBasis = 'website ballpark: blinds use 1.20x true cost baseline->+15%';
   }
 
   return { baseRange, blindsRange, budgetBasis };

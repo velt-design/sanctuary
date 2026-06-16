@@ -236,6 +236,12 @@ function estimateBaseTrueCostIncGst(params: {
     pergola_style: pergolaStyleForCosting(params.style),
     roof_material: roofMaterialForCosting(params.roofMaterials),
     extrusion_colour: 'Black',
+    // PR-PE1 (2026-06-16): marketing enquiries assume 2 posts (the typical
+    // "standard build" the email price is meant to indicate). The engine
+    // default is 4 (`derive.ts:27`), which over-quoted ~$750 inc-GST for the
+    // typical 5m attached pergola; staff-side calculator keeps its own
+    // `postCount` field on the module.
+    post_count: 2,
     house_connection_type: 'fascia',
     post_connection_type: 'deck_bracket',
     access: 'normal',
@@ -479,6 +485,10 @@ function buildEnquiryDraftEstimateRow(params: {
           pergola_style: pergolaStyleForCosting(params.style),
           roof_material: roofMaterialForCosting(params.roofMaterials),
           extrusion_colour: 'Black',
+          // PR-PE1 (2026-06-16): keep in lockstep with the indicative-estimate
+          // helper above — 2 posts is the marketing-side "standard build"
+          // assumption baked into the customer email.
+          post_count: 2,
           house_connection_type: 'fascia',
           post_connection_type: 'deck_bracket',
           access: 'normal',
