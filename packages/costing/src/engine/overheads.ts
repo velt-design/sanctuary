@@ -18,6 +18,15 @@ export function buildOverheadV1(
     has_box_perimeter?: boolean;
     has_timber_or_mixed?: boolean;
     has_acrylic_only?: boolean;
+    /**
+     * PR-PE2 (2026-06-16): the flat `$2000` acrylic overhead cap only fires
+     * when EVERY module is `pergola_style === 'pitched'` AND
+     * `roof_material === 'acrylic'` AND not `box_perimeter`. Gable, hip-corner,
+     * and box-perimeter acrylic builds fall back to the regular
+     * `fixed_plus_variable` overhead even when rafters are short — they carry
+     * their own per-style startup costs that the flat cap was hiding.
+     */
+    all_pitched_acrylic?: boolean;
     max_acrylic_rafter_length_m?: number;
   },
 ): OverheadResultV1 {
@@ -31,7 +40,12 @@ export function buildOverheadV1(
   const hasGable = opts?.has_gable === true;
   const hasBoxPerimeter = opts?.has_box_perimeter === true;
   const hasTimberOrMixed = opts?.has_timber_or_mixed === true;
-  const hasAcrylicOnly = opts?.has_acrylic_only === true;
+  // `has_acrylic_only` kept for callers that still pass it (back-compat with
+  // pre-PR-PE2 input shapes); the flat-cap gate now keys off the stricter
+  // `all_pitched_acrylic` flag instead. Acrylic-only callers that don't
+  // also pass `all_pitched_acrylic` no longer qualify for the cap.
+  void (opts?.has_acrylic_only === true);
+  const allPitchedAcrylic = opts?.all_pitched_acrylic === true;
   const maxAcrylicRafterLengthRaw = Number(opts?.max_acrylic_rafter_length_m ?? 0);
   const maxAcrylicRafterLengthM =
     Number.isFinite(maxAcrylicRafterLengthRaw) && maxAcrylicRafterLengthRaw >= 0 ? maxAcrylicRafterLengthRaw : 0;
@@ -44,7 +58,7 @@ export function buildOverheadV1(
   let sales = 0;
   let total = 0;
 
-  if (hasAcrylicOnly && maxAcrylicRafterLengthM <= FLAT_ACRYLIC_MAX_RAFTER_LENGTH_M) {
+  if (allPitchedAcrylic && maxAcrylicRafterLengthM <= FLAT_ACRYLIC_MAX_RAFTER_LENGTH_M) {
     method = 'flat_acrylic_total';
     ops = 2000;
     sales = 0;

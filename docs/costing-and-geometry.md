@@ -70,7 +70,7 @@ Portal applies database overrides on top of `loadCostingConfigV1()`.
 
 Marketing enquiry estimates also use `@sp/costing`. Do not create a marketing-only pricing fork.
 
-Pure acrylic pergolas use a flat `$2000 ex GST` overhead total only when every acrylic module is at or below `3.0m` sloped `rafter_length_m`. If any acrylic module exceeds `3.0m`, the costing engine falls back to the normal variable overhead formula. Mixed roofs do not use the flat acrylic rule.
+Pitched-acrylic pergolas use a flat `$2000 ex GST` overhead total only when EVERY module is `pergola_style === 'pitched'` AND `roof_material === 'acrylic'` AND not `box_perimeter`, AND every acrylic module is at or below `3.0m` sloped `rafter_length_m`. If any module fails any of those checks (gable, hip-corner, box-perimeter, mixed/timber, or rafter > 3m), the costing engine falls back to the normal `fixed_plus_variable` overhead formula. (Tightened from "any acrylic-only" to "pitched-acrylic only" in PR-PE2 / 2026-06-16 — gable / box-perimeter / hip-corner acrylic builds carry their own per-style startup costs that the flat cap was hiding.)
 
 Website enquiry base pergola budgets use the `1.20x true cost` lower amount only and encode that as equal low/high values; optional blinds remain a range. (Reduced from `1.25x` in PR-PE1 / 2026-06-16. The marketing route also explicitly sets `post_count: 2` to match the typical "standard build" instead of inheriting the cost engine's default of 4. The portal-side staff-quote `QUOTE_MARGIN_MULTIPLIER` stays at `1.25` — that's a separate surface for actual project quotes.)
 

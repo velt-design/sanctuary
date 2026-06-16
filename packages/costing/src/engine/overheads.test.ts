@@ -8,13 +8,14 @@ function roundMoney(n: number): number {
 }
 
 describe('buildOverheadV1', () => {
-  it('uses a flat acrylic-only overhead total when max rafter length is at or below 3m', () => {
+  it('uses a flat pitched-acrylic overhead total when max rafter length is at or below 3m', () => {
     const cfg = loadCostingConfigV1();
 
     const result = buildOverheadV1(cfg, {
       module_count: 1,
       total_crew_hours: 18,
       has_acrylic_only: true,
+      all_pitched_acrylic: true,
       max_acrylic_rafter_length_m: 3,
     });
 
@@ -24,13 +25,14 @@ describe('buildOverheadV1', () => {
     expect(result.overhead.total_ex_gst).toBe(2000);
   });
 
-  it('falls back to variable overhead when acrylic-only rafters exceed 3m', () => {
+  it('falls back to variable overhead when pitched-acrylic rafters exceed 3m', () => {
     const cfg = loadCostingConfigV1();
 
     const result = buildOverheadV1(cfg, {
       module_count: 1,
       total_crew_hours: 18,
       has_acrylic_only: true,
+      all_pitched_acrylic: true,
       max_acrylic_rafter_length_m: 3.001,
     });
 
@@ -38,6 +40,37 @@ describe('buildOverheadV1', () => {
     expect(result.overhead.ops_ex_gst).toBeGreaterThan(2000);
     expect(result.overhead.sales_ex_gst).toBeGreaterThan(0);
     expect(result.overhead.total_ex_gst).toBeGreaterThan(2000);
+  });
+
+  it('PR-PE2: gable / box-perimeter acrylic with short rafters does NOT get the flat $2000 cap', () => {
+    const cfg = loadCostingConfigV1();
+
+    // Acrylic-only, short rafters, but pergola style is NOT pitched →
+    // flat cap must not fire. Falls back to fixed_plus_variable, picks up
+    // the gable startup, and lands well above the $2000 cap.
+    const gableAcrylic = buildOverheadV1(cfg, {
+      module_count: 1,
+      total_crew_hours: 18,
+      has_gable: true,
+      has_acrylic_only: true,
+      all_pitched_acrylic: false,
+      max_acrylic_rafter_length_m: 3,
+    });
+
+    const boxPerimeterAcrylic = buildOverheadV1(cfg, {
+      module_count: 1,
+      total_crew_hours: 18,
+      has_box_perimeter: true,
+      has_acrylic_only: true,
+      all_pitched_acrylic: false,
+      max_acrylic_rafter_length_m: 3,
+    });
+
+    expect(gableAcrylic.overhead.method).toBe('fixed_plus_variable');
+    expect(gableAcrylic.overhead.total_ex_gst).toBeGreaterThan(2000);
+
+    expect(boxPerimeterAcrylic.overhead.method).toBe('fixed_plus_variable');
+    expect(boxPerimeterAcrylic.overhead.total_ex_gst).toBeGreaterThan(2000);
   });
 
   it('uses new ops base + variable formula and keeps sales scaling', () => {
@@ -105,6 +138,7 @@ describe('buildOverheadV1', () => {
       module_count: 1,
       total_crew_hours: 18,
       has_acrylic_only: true,
+      all_pitched_acrylic: true,
       max_acrylic_rafter_length_m: 3,
     });
     const mixed = buildOverheadV1(cfg, {

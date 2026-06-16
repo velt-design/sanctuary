@@ -46,6 +46,14 @@ type OverheadFlags = {
   has_box_perimeter: boolean;
   has_timber_or_mixed: boolean;
   has_acrylic_only: boolean;
+  /**
+   * PR-PE2 (2026-06-16): per-module qualifier for the flat `$2000` acrylic
+   * overhead cap. True only when `pergola_style === 'pitched'` AND
+   * `roof_material === 'acrylic'` AND the structure isn't `box_perimeter`.
+   * Aggregated across modules with AND — every module must qualify for the
+   * job to qualify.
+   */
+  all_pitched_acrylic: boolean;
   max_acrylic_rafter_length_m: number;
 };
 
@@ -60,6 +68,8 @@ function deriveOverheadFlagsForModule(module: Pick<CostOutputV1, 'inputs_normali
     has_box_perimeter: structureType === 'box_perimeter',
     has_timber_or_mixed: roofMaterial === 'timber' || roofMaterial === 'mixed',
     has_acrylic_only: roofMaterial === 'acrylic',
+    all_pitched_acrylic:
+      style === 'pitched' && roofMaterial === 'acrylic' && structureType !== 'box_perimeter',
     max_acrylic_rafter_length_m: roofMaterial === 'acrylic' ? rafterLengthM : 0,
   };
 }
@@ -71,6 +81,7 @@ function deriveOverheadFlagsForModules(modules: Array<Pick<CostOutputV1, 'inputs
       has_box_perimeter: false,
       has_timber_or_mixed: false,
       has_acrylic_only: false,
+      all_pitched_acrylic: false,
       max_acrylic_rafter_length_m: 0,
     };
   }
@@ -83,6 +94,7 @@ function deriveOverheadFlagsForModules(modules: Array<Pick<CostOutputV1, 'inputs
         has_box_perimeter: acc.has_box_perimeter || next.has_box_perimeter,
         has_timber_or_mixed: acc.has_timber_or_mixed || next.has_timber_or_mixed,
         has_acrylic_only: acc.has_acrylic_only && next.has_acrylic_only,
+        all_pitched_acrylic: acc.all_pitched_acrylic && next.all_pitched_acrylic,
         max_acrylic_rafter_length_m: Math.max(acc.max_acrylic_rafter_length_m, next.max_acrylic_rafter_length_m),
       };
     },
@@ -91,6 +103,7 @@ function deriveOverheadFlagsForModules(modules: Array<Pick<CostOutputV1, 'inputs
       has_box_perimeter: false,
       has_timber_or_mixed: false,
       has_acrylic_only: true,
+      all_pitched_acrylic: true,
       max_acrylic_rafter_length_m: 0,
     },
   );
@@ -362,6 +375,7 @@ export function calculateCostV1(inputs: CostInputsV1, config?: CostingConfigV1):
     has_box_perimeter: overheadFlags.has_box_perimeter,
     has_timber_or_mixed: overheadFlags.has_timber_or_mixed,
     has_acrylic_only: overheadFlags.has_acrylic_only,
+    all_pitched_acrylic: overheadFlags.all_pitched_acrylic,
     max_acrylic_rafter_length_m: overheadFlags.max_acrylic_rafter_length_m,
   });
 
@@ -447,6 +461,7 @@ export function calculateCostV1WithMaterialsExplain(
     has_box_perimeter: overheadFlags.has_box_perimeter,
     has_timber_or_mixed: overheadFlags.has_timber_or_mixed,
     has_acrylic_only: overheadFlags.has_acrylic_only,
+    all_pitched_acrylic: overheadFlags.all_pitched_acrylic,
     max_acrylic_rafter_length_m: overheadFlags.max_acrylic_rafter_length_m,
   });
 
@@ -762,6 +777,7 @@ export function calculateJobCostV1(inputs: JobInputsV1, config?: CostingConfigV1
     has_box_perimeter: overheadFlags.has_box_perimeter,
     has_timber_or_mixed: overheadFlags.has_timber_or_mixed,
     has_acrylic_only: overheadFlags.has_acrylic_only,
+    all_pitched_acrylic: overheadFlags.all_pitched_acrylic,
     max_acrylic_rafter_length_m: overheadFlags.max_acrylic_rafter_length_m,
   });
   warnings.push(...overheadResult.notes_and_warnings.map((w) => `[Overhead] ${w}`));
@@ -1196,6 +1212,7 @@ export function calculateSiteCostV1(inputs: SiteInputsV1, config?: CostingConfig
       has_box_perimeter: pergolaFlags.has_box_perimeter,
       has_timber_or_mixed: pergolaFlags.has_timber_or_mixed,
       has_acrylic_only: pergolaFlags.has_acrylic_only,
+      all_pitched_acrylic: pergolaFlags.all_pitched_acrylic,
       max_acrylic_rafter_length_m: pergolaFlags.max_acrylic_rafter_length_m,
     });
 
