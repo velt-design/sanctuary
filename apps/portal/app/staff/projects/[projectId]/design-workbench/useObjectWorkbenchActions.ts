@@ -18,10 +18,17 @@ import {
 } from '@/lib/drawings/state/objectFirstWorkbenchModel';
 import {
   addHouseFormToObjectFirstDraft,
+  nextHouseFormId,
   removeHouseFormFromObjectFirstDraft,
   buildObjectFirstWorkbenchDraftFromProjectModel,
   resolveNextHouseFormIdAfterRemoval,
 } from '@/lib/drawings/state/objectFirstWorkbenchAdapter';
+import {
+  detachHouseFormAtSeam as detachHouseFormAtSeamGeometry,
+  joinTwoHouseForms,
+  type HouseComposition,
+} from '@sp/geometry';
+import { deriveHouseFormDisplayLabel } from '@/lib/drawings/state/houseFormDisplayLabel';
 import type {
   ObjectWorkbenchDeckPatch,
   ObjectWorkbenchOpeningPatch,
@@ -610,6 +617,175 @@ export function useObjectWorkbenchActions({
     [runDraftTransaction, selectObjectTarget, selectedHouseForm?.id, store],
   );
 
+  // PR-COMP-PHASE4b.2 (2026-06-18): Join two house forms into one
+  // composite. The geometry primitive (joinTwoHouseForms in
+  // @sp/geometry) handles the structural merge; this action wraps
+  // it in a draft transaction: looks up form A and form B by id,
+  // converts their world transforms from metres to mm, calls the
+  // primitive, replaces form A's composition with the merged
+  // result, removes form B, and selects the merged form.
+  //
+  // Form A is "kept" — its id, transform, and other workbench
+  // metadata (label, eave height, opening list, etc.) survive
+  // unchanged. Form B is removed. The merged composition lives in
+  // form A's local coordinate frame.
+  const joinHouseForms = useCallback(
+    async (input: { formAId: string; formBId: string }): Promise<CommitResult> => {
+      if (input.formAId === input.formBId) {
+        return { ok: false, error: 'Cannot join a house form to itself.' };
+      }
+      return runDraftTransaction({
+        buildNextDraft: (draft) => {
+          const objectFirstDraft = resolveObjectFirstDraft(draft, store);
+          const assembly = objectFirstDraft.houseAssembly;
+          if (!assembly) {
+            return { ok: false, error: 'No house assembly available.' };
+          }
+          const formA = assembly.houseForms.find((form) => form.id === input.formAId);
+          const formB = assembly.houseForms.find((form) => form.id === input.formBId);
+          if (!formA || !formB) {
+            return { ok: false, error: 'One or both house forms are no longer available.' };
+          }
+          if (!formA.composition || !formB.composition) {
+            return {
+              ok: false,
+              error: 'Both house forms must have a composition before joining (legacy free-form forms cannot be joined).',
+            };
+          }
+          if (
+            formA.transform.rotationQuarterTurns !== formB.transform.rotationQuarterTurns
+          ) {
+            return {
+              ok: false,
+              error: 'Rotated house forms cannot be joined yet — align rotations first.',
+            };
+          }
+          const joinResult = joinTwoHouseForms({
+            formA: formA.composition,
+            formAWorldOffsetXMm: formA.transform.offsetXM * 1000,
+            formAWorldOffsetYMm: formA.transform.offsetYM * 1000,
+            formB: formB.composition,
+            formBWorldOffsetXMm: formB.transform.offsetXM * 1000,
+            formBWorldOffsetYMm: formB.transform.offsetYM * 1000,
+          });
+          if (!joinResult.ok) {
+            return {
+              ok: false,
+              error:
+                joinResult.error.code === 'no_shared_seam'
+                  ? 'These house forms do not share an edge. Move them closer until they snap, then try again.'
+                  : 'These house forms overlap. Pull them apart before joining.',
+            };
+          }
+          const mergedForm: HouseFormModel = {
+            ...formA,
+            composition: joinResult.merged,
+          };
+          const nextForms = assembly.houseForms
+            .map((form) => (form.id === formA.id ? mergedForm : form))
+            .filter((form) => form.id !== formB.id);
+          return {
+            ok: true,
+            draft: updateDraftObjectFirst({
+              draft,
+              objectFirst: {
+                ...objectFirstDraft,
+                houseAssembly: { ...assembly, houseForms: nextForms },
+              },
+            }),
+          };
+        },
+        afterPersist: () => {
+          selectObjectTarget({ family: 'house_forms', objectId: input.formAId });
+        },
+      });
+    },
+    [runDraftTransaction, selectObjectTarget, store],
+  );
+
+  // PR-COMP-PHASE4b.2 (2026-06-18): Detach a composite house form
+  // at a specific seam. The geometry primitive
+  // (detachHouseFormAtSeam in @sp/geometry) returns one
+  // HouseComposition per connected component of the post-detach
+  // adjacency graph. This action wraps it: replaces the original
+  // form's composition with partitions[0] (preserving its id,
+  // transform, label, openings, etc.), then creates N-1 new house
+  // forms — each cloning the original's workbench metadata but
+  // with a new id, auto-derived label, and composition =
+  // partitions[i]. Every new form keeps the original's world
+  // transform so its primitives (which carry their original form-
+  // local coordinates from the parent composition) render at the
+  // correct world positions.
+  const detachHouseFormAtSeam = useCallback(
+    async (input: { houseFormId: string; joinIndex: number }): Promise<CommitResult> => {
+      return runDraftTransaction({
+        buildNextDraft: (draft) => {
+          const objectFirstDraft = resolveObjectFirstDraft(draft, store);
+          const assembly = objectFirstDraft.houseAssembly;
+          if (!assembly) {
+            return { ok: false, error: 'No house assembly available.' };
+          }
+          const form = assembly.houseForms.find((candidate) => candidate.id === input.houseFormId);
+          if (!form) {
+            return { ok: false, error: 'House form not found.' };
+          }
+          if (!form.composition || form.composition.joins.length === 0) {
+            return { ok: false, error: 'This house form has no internal seams to detach.' };
+          }
+          const detachResult = detachHouseFormAtSeamGeometry({
+            composition: form.composition,
+            joinIndex: input.joinIndex,
+          });
+          if (!detachResult.ok) {
+            return {
+              ok: false,
+              error:
+                detachResult.error.code === 'invalid_join_index'
+                  ? 'This seam is no longer available.'
+                  : 'This composite cannot be detached cleanly at that seam.',
+            };
+          }
+          const partitions: HouseComposition[] = detachResult.partitions;
+          const updatedOriginal: HouseFormModel = {
+            ...form,
+            composition: partitions[0]!,
+          };
+          // Build the new forms iteratively so each new id is
+          // unique relative to the running list (nextHouseFormId
+          // computes from the array length + existing ids).
+          const runningForms: HouseFormModel[] = assembly.houseForms.map((candidate) =>
+            candidate.id === form.id ? updatedOriginal : candidate,
+          );
+          for (let i = 1; i < partitions.length; i += 1) {
+            const newId = nextHouseFormId(runningForms);
+            const newLabel = deriveHouseFormDisplayLabel(runningForms.length);
+            const newForm: HouseFormModel = {
+              ...form,
+              id: newId,
+              label: newLabel,
+              composition: partitions[i]!,
+            };
+            runningForms.push(newForm);
+          }
+          return {
+            ok: true,
+            draft: updateDraftObjectFirst({
+              draft,
+              objectFirst: {
+                ...objectFirstDraft,
+                houseAssembly: { ...assembly, houseForms: runningForms },
+              },
+            }),
+          };
+        },
+        afterPersist: () => {
+          selectObjectTarget({ family: 'house_forms', objectId: input.houseFormId });
+        },
+      });
+    },
+    [runDraftTransaction, selectObjectTarget, store],
+  );
+
   const removeSharedHouseForm = useCallback(
     async (input: { houseFormId: string }): Promise<CommitResult> => {
       let nextSelectedHouseFormId: string | null = null;
@@ -984,6 +1160,8 @@ export function useObjectWorkbenchActions({
     commitSharedHouseFootprintEdit,
     commitSharedHouseOpeningPatch,
     commitSharedHouseRoofDraft,
+    detachHouseFormAtSeam,
+    joinHouseForms,
     removeSharedHouseDeck,
     removeSharedHouseForm,
     removeSharedHouseOpening,

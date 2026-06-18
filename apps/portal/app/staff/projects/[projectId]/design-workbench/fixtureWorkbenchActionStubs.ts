@@ -178,6 +178,8 @@ export function buildFixtureWorkbenchActions(): ObjectWorkbenchActions {
     commitSharedHouseFootprintEdit: ok,
     commitSharedHouseOpeningPatch: ok,
     commitSharedHouseRoofDraft: ok,
+    detachHouseFormAtSeam: ok,
+    joinHouseForms: ok,
     removeSharedHouseDeck: ok,
     removeSharedHouseForm: ok,
     removeSharedHouseOpening: ok,
