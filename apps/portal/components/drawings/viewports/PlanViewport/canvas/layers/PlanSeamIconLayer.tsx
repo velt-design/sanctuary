@@ -33,9 +33,15 @@ export function PlanSeamIconLayer(props: {
   onDetach?: (input: { houseFormId: string; joinIndex: number }) => void;
 }) {
   const { targets, coordinateAdapter, onJoin, onDetach } = props;
-  if (targets.length === 0) return null;
+  // Always render the layer wrapper (even when empty) so devtools
+  // can inspect data-plan-seam-icon-count / data-plan-seam-icon-keys
+  // to verify whether targets are being generated upstream.
   return (
-    <g data-plan-layer="seamIcon">
+    <g
+      data-plan-layer="seamIcon"
+      data-plan-seam-icon-count={targets.length}
+      data-plan-seam-icon-keys={targets.map((target) => target.key).join(',')}
+    >
       {targets.map((target) => {
         const svgPoint = coordinateAdapter.projectionToSvg({
           x: target.worldXMm,
