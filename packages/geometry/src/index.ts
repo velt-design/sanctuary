@@ -86,3 +86,8 @@ export type {
   HouseRoofModelPipelineResult,
 } from "./house/roofModelPipeline";
 export { applyHouseReferencePosition } from "./applyAssemblyPosition";
+
+// PR-COMP1 (2026-06-18): house composition geometry primitives.
+// Authored representation for new house forms (rectangles + joins +
+// per-rectangle roof intent). See docs/house-composition-vision.md.
+export * from "./house/composition";

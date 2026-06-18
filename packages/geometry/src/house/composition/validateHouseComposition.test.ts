@@ -17,6 +17,16 @@ function rect(input: {
     originYMm: input.y,
     widthMm: input.w,
     depthMm: input.d,
+    // Default to a vanilla hipped intent for tests that only care
+    // about validation / composition structure. Roof-solving tests
+    // (composeRoofFromComposition) build intents explicitly.
+    roofIntent: {
+      form: "hipped",
+      pitchDeg: 25,
+      ridgeAxis: "x",
+      startCap: "hipped",
+      endCap: "hipped",
+    },
   };
 }
 

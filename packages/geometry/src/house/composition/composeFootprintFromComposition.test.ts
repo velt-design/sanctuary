@@ -17,6 +17,15 @@ function rect(input: {
     originYMm: input.y,
     widthMm: input.w,
     depthMm: input.d,
+    // Footprint composition is roof-intent-agnostic; default hipped
+    // for fixture brevity.
+    roofIntent: {
+      form: "hipped",
+      pitchDeg: 25,
+      ridgeAxis: "x",
+      startCap: "hipped",
+      endCap: "hipped",
+    },
   };
 }
 

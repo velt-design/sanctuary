@@ -1,25 +1,63 @@
+import type { HouseRoofPrimaryFallDirection, HouseRoofRidgeAxis } from "../../contracts";
+
 /**
  * PR-COMP1 (2026-06-18): house composition geometry types.
  *
  * A `HouseComposition` is the canonical authored representation for
  * new house forms in the design workbench. It records:
  *   - the set of primitive shapes the designer placed
- *   - the explicit `Join` operations that bind those primitives into
- *     a single composite house form
+ *   - per-primitive roof intent (form, pitch, ridge axis, etc.)
+ *   - the explicit `Join` operations that bind primitives into a
+ *     single composite house form
  *
  * Snap (in the workbench UX) is positioning-only: it aligns
  * primitives edge-to-edge without making them act as one house.
- * `Join` is the explicit commitment — once joined, the primitives
- * share roof intent and render as one coherent roof.
- *
- * See `docs/house-composition-vision.md` for the model and
- * `docs/pr-comp1-plan.md` for this PR's scope.
+ * `Join` is the explicit commitment — once joined, the composite
+ * is one house form, but each constituent rectangle keeps its own
+ * roof intent (per-rectangle: hipped, mono, flat, with optional
+ * Dutch hip on hipped ends).
  *
  * v1 ships only `axisAlignedRectangle` as a primitive kind. The
  * polymorphic union shape on `CompositionPrimitive` leaves room for
  * rotated rectangles, octagons, etc. without refactor; future
  * primitives drop in as additional union members.
+ *
+ * See `docs/house-composition-vision.md` for the model and
+ * `docs/pr-comp1-plan.md` for this PR's scope.
  */
+
+/**
+ * Per-rectangle roof intent. Each constituent rectangle in a
+ * composition picks its own form independently — a designer can
+ * compose a main-block hipped roof with an extension skillion, or
+ * two hipped wings forming an L, etc. The composite solver wires
+ * each per-rectangle solve into the unified result.
+ *
+ * v1 supports `flat`, `mono`, and `hipped`. Hipped supports Dutch
+ * hip via per-end `startCap`/`endCap` choices.
+ */
+export type RectangleRoofIntent =
+  | {
+      form: "flat";
+    }
+  | {
+      form: "mono";
+      pitchDeg: number;
+      fallDirection: HouseRoofPrimaryFallDirection;
+    }
+  | {
+      form: "hipped";
+      pitchDeg: number;
+      ridgeAxis: HouseRoofRidgeAxis;
+      /**
+       * Cap on the ridge-start (min-axis) end. `'hipped'` = full hip
+       * triangle. `'open_gable'` = ridge extends to the eave; the end
+       * face becomes a vertical gable wall (Dutch hip when only one
+       * end is open). Mirrors `RidgeEndCap` from `roofRectangle.ts`.
+       */
+      startCap: "hipped" | "open_gable";
+      endCap: "hipped" | "open_gable";
+    };
 
 /**
  * An axis-aligned rectangle primitive. Origin is the south-west
@@ -33,6 +71,14 @@ export type AxisAlignedRectangle = {
   originYMm: number;
   widthMm: number;
   depthMm: number;
+  /**
+   * Per-rectangle roof intent. Designer picks this when placing the
+   * rectangle; the composite solver uses each rectangle's own
+   * intent to compute its roof. Composite shares one
+   * `eaveHeightMm` (passed to the composer) so joined roofs meet
+   * cleanly at the shared eave edges.
+   */
+  roofIntent: RectangleRoofIntent;
 };
 
 /**
