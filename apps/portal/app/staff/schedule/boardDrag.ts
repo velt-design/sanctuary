@@ -37,7 +37,7 @@ export type BoardDropTarget =
       overId: string | null;
     };
 
-export type ResolveBoardDropInput = {
+type ResolveBoardDropInput = {
   activeId: string;
   sourceLaneId: string | null;
   overId: string | null;

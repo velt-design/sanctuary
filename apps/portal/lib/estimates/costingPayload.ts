@@ -18,7 +18,7 @@ import type { PortalEstimatePayload } from '@/lib/localFirst/portalEntities';
 
 type AnyRecord = Record<string, unknown>;
 export type EstimateSaveMode = 'preserve_current' | 'reprice_latest';
-export type EstimatePricingSyncState = 'current' | 'stale';
+type EstimatePricingSyncState = 'current' | 'stale';
 
 export const ESTIMATE_PRICING_SYNC_STATE_OUTPUT_KEY = 'pricing_sync_state';
 
@@ -589,6 +589,3 @@ export function buildEstimatePayloadFromSiteCosting(args: {
   };
 }
 
-export function defaultMixedAcrylicBaysForCount(bayCount: number): string {
-  return String(clampInt(DEFAULT_MIXED_ACRYLIC_BAYS, 0, bayCount));
-}

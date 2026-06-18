@@ -151,19 +151,78 @@
       "proofCommand": "npx vitest run apps/portal/lib/supabaseClient.test.ts apps/portal/lib/supabaseClient.boundaries.test.ts && npm run service-role:changed"
     },
     {
-      "id": "root-compatibility-retirement",
-      "category": "legacy-retirement",
+      "id": "portal-legacy-estimate-viewer-repo-exports",
+      "category": "dynamic-reference",
       "status": "current",
-      "ownerArea": "Root compatibility migration",
+      "ownerArea": "Portal legacy estimate viewer",
       "pathPatterns": [
-        "components/**",
-        "data/**",
-        "lib/**",
-        "styles/**"
+        "apps/portal/lib/repo/estimatesRepo.ts"
       ],
-      "reason": "Root compatibility paths are transitional surfaces while behavior moves into apps or packages.",
-      "retirementAction": "Move, replace, or delete one owner slice at a time after root compatibility reporting, search, and focused tests prove the path is no longer needed.",
-      "proofCommand": "npm run root:compat && npm run typecheck"
+      "issueDetails": [
+        "deleteEstimate"
+      ],
+      "reason": "The legacy estimate viewer route imports this browser repo action through a dynamic Next route that Knip does not currently reach.",
+      "retirementAction": "Remove only after retiring or replacing apps/portal/app/staff/projects/[projectId]/estimate/[estimateId]/EstimateViewerClient.tsx.",
+      "proofCommand": "rg \"deleteEstimate\" apps/portal/app/staff/projects/[projectId] apps/portal/lib/repo && npx vitest run apps/portal/app/staff/projects/[projectId]/estimate/[estimateId] apps/portal/lib/repo"
+    },
+    {
+      "id": "portal-legacy-estimate-viewer-output-export-surface",
+      "category": "dynamic-reference",
+      "status": "current",
+      "ownerArea": "Portal legacy estimate viewer",
+      "pathPatterns": [
+        "apps/portal/components/estimates/EstimateWarnings.tsx",
+        "apps/portal/components/outputs/**",
+        "apps/portal/lib/export/csv.ts",
+        "apps/portal/lib/export/json.ts",
+        "apps/portal/lib/export/mappers.ts",
+        "apps/portal/lib/export/text.ts"
+      ],
+      "reason": "The legacy estimate viewer route imports these output and export helpers through a dynamic Next route that Knip does not currently reach. The admin import route also consumes the JSON import helpers.",
+      "retirementAction": "Remove only after retiring or replacing apps/portal/app/staff/projects/[projectId]/estimate/[estimateId]/EstimateViewerClient.tsx and confirming the admin import flow no longer needs the shared JSON import helpers.",
+      "proofCommand": "rg \"EstimateWarnings|OutputsPanel|downloadCsv|downloadJson|downloadText|makeEstimateExportFile|importExportFile|readJsonFile\" apps/portal/app/staff/projects/[projectId] apps/portal/app/admin/imports apps/portal/components apps/portal/lib/export && npx vitest run apps/portal/app/staff/projects/[projectId]/estimate/[estimateId] apps/portal/app/admin/imports apps/portal/components/outputs"
+    },
+    {
+      "id": "portal-legacy-quote-editor-repo-exports",
+      "category": "dynamic-reference",
+      "status": "current",
+      "ownerArea": "Portal legacy quote editor",
+      "pathPatterns": [
+        "apps/portal/lib/repo/quotesRepo.ts"
+      ],
+      "issueDetails": [
+        "getQuote",
+        "deleteQuote",
+        "markQuotePaid",
+        "quoteIsLocked"
+      ],
+      "reason": "The legacy quote editor and quote print routes import these browser repo actions through dynamic Next routes that Knip does not currently reach.",
+      "retirementAction": "Remove only after retiring or replacing apps/portal/app/staff/projects/[projectId]/quotes/[quoteId] and its print route.",
+      "proofCommand": "rg \"getQuote|deleteQuote|markQuotePaid|quoteIsLocked\" apps/portal/app/staff/projects/[projectId] apps/portal/lib/repo && npx vitest run apps/portal/lib/repo/quotesRepo.test.ts"
+    },
+    {
+      "id": "portal-legacy-quote-editor-type-surface",
+      "category": "dynamic-reference",
+      "status": "current",
+      "ownerArea": "Portal legacy quote editor",
+      "pathPatterns": [
+        "apps/portal/lib/types/quote.ts"
+      ],
+      "issueDetails": [
+        "quoteLabel",
+        "quoteStatusLabel",
+        "quoteCustomerTotalIncGst",
+        "QuoteStatus",
+        "QuoteId",
+        "QuotePricingSnapshot",
+        "QuoteContactSnapshot",
+        "QuoteProjectSnapshot",
+        "QuoteEstimateSnapshot",
+        "QuoteProjectActivityMeta"
+      ],
+      "reason": "The legacy quote editor and print routes import this older quote model/helper surface through dynamic Next routes that Knip does not currently reach. The legacy browser quote repo also consumes the same Quote and QuoteContent shapes.",
+      "retirementAction": "Remove only after retiring or replacing apps/portal/app/staff/projects/[projectId]/quotes/[quoteId], its print route, and the legacy browser quote repo.",
+      "proofCommand": "rg \"quoteCustomerTotalIncGst|quoteLabel|quoteStatusLabel|@/lib/types/quote\" apps/portal/app/staff/projects/[projectId]/quotes apps/portal/lib/repo/quotesRepo.ts apps/portal/lib/types/quote.ts && npx vitest run apps/portal/lib/repo/quotesRepo.test.ts"
     },
     {
       "id": "generated-geometry-assets",

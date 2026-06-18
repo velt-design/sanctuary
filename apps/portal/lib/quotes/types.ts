@@ -79,7 +79,7 @@ export type QuoteVersionDetail = QuoteVersion & {
   };
 };
 
-export type QuoteAcceptanceInvoice = {
+type QuoteAcceptanceInvoice = {
   id: string;
   invoiceRef: string;
   sent: boolean;

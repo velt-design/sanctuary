@@ -113,16 +113,6 @@ function isUniqueViolation(error: unknown): boolean {
   return code === '23505' || /duplicate key value/i.test(msg) || /unique constraint/i.test(msg);
 }
 
-function upsertProjectInList(list: Project[], project: Project): Project[] {
-  const next = list.filter((p) => p.id !== project.id);
-  next.push(project);
-  return next.slice().sort((a, b) => b.createdAt.localeCompare(a.createdAt) || a.id.localeCompare(b.id));
-}
-
-function removeProjectFromList(list: Project[], projectId: string): Project[] {
-  return list.filter((p) => p.id !== projectId);
-}
-
 async function insertWithUnknownColumnRetry(payloadIn: Record<string, any>): Promise<{ data: any | null; error: any | null }> {
   const supabase = getSupabaseBrowser();
   const payload = { ...payloadIn };
@@ -291,60 +281,6 @@ export async function upsertProject(project: Project): Promise<Project> {
   return projectFromRow(data);
 }
 
-export async function updateProject(
-  id: string,
-  patch: Partial<Omit<Project, 'id' | 'createdAt' | 'updatedAt'>> & { contactId?: string; projectName?: string },
-  _opts?: { expectedVersion?: number; force?: boolean; addActivity?: { type: string; message: string; meta?: unknown } },
-): Promise<Project> {
-  const prev = await getProject(id);
-  if (!prev) throw new Error('Project not found');
-
-  const now = nowIso();
-  const uuid = uuidFromAppId(id, 'proj');
-
-  const next = normaliseProjectShape({
-    ...prev,
-    ...patch,
-    ...(typeof patch.projectName === 'string' ? { projectName: patch.projectName.trim(), name: patch.projectName.trim() } : null),
-    ...(typeof patch.siteAddress === 'string' ? { siteAddress: patch.siteAddress.trim(), address: patch.siteAddress.trim() } : null),
-    ...(typeof patch.contactId === 'string' ? { contactId: patch.contactId.trim() || undefined } : null),
-    updatedAt: now,
-  });
-
-  if (typeof next.projectName === 'string' && !next.projectName.trim()) throw new Error('Project name is required.');
-
-  const contactUuid =
-    typeof next.contactId === 'string' && next.contactId.trim() ? uuidFromAppId(next.contactId.trim(), 'ct') : null;
-
-  const payload: any = {
-    contact_id: contactUuid,
-    name: (next.projectName ?? next.name ?? '').trim(),
-    quote_ref: typeof next.quoteRef === 'string' ? next.quoteRef.trim() || null : null,
-    region: typeof next.region === 'string' ? next.region.trim() || null : null,
-    site_address: typeof next.siteAddress === 'string' ? next.siteAddress.trim() || null : typeof next.address === 'string' ? next.address.trim() || null : null,
-    pipeline_stage: (next.status ?? 'NEW') as any,
-    follow_up_date: typeof next.nextActionDate === 'string' ? next.nextActionDate : typeof next.followUpDate === 'string' ? next.followUpDate : null,
-    deposit_amount_cents:
-      typeof next.depositAmountCents === 'number' && Number.isFinite(next.depositAmountCents) ? Math.round(next.depositAmountCents) : null,
-    deposit_paid_date: typeof next.depositPaidDate === 'string' ? next.depositPaidDate : null,
-    final_payment_date: typeof next.finalPaymentDate === 'string' ? next.finalPaymentDate : null,
-    notes: typeof next.notes === 'string' ? next.notes : '',
-    updated_at: now,
-  };
-
-  const { data: row, error } = await updateWithUnknownColumnRetry(uuid, payload);
-  if (error || !row) throw wrapError('projects', error);
-  return projectFromRow(row);
-}
-
-export async function updateProjectFields(
-  projectId: string,
-  patch: Partial<Omit<Project, 'id' | 'createdAt' | 'updatedAt'>>,
-  opts?: { expectedVersion?: number; force?: boolean; addActivity?: { type: string; message: string; meta?: unknown } },
-): Promise<Project> {
-  return updateProject(projectId, patch as any, opts as any);
-}
-
 export async function addProjectActivity(
   projectId: string,
   _event: Omit<NonNullable<Project['activity']>[number], 'id' | 'createdAt'>,
@@ -354,35 +290,6 @@ export async function addProjectActivity(
   const p = await getProject(projectId);
   if (!p) throw new Error('Project not found');
   return p;
-}
-
-export async function setProjectStatus(
-  projectId: string,
-  status: ProjectStatus,
-  opts?: { force?: boolean; siteVisitPriorityTier?: 1 | 2 | null },
-): Promise<Project> {
-  const prev = await getProject(projectId);
-  if (!prev) throw new Error('Project not found');
-  if (prev.status === status) return prev;
-
-  try {
-    const payload: Record<string, unknown> = { toStage: status, reason: opts?.force ? 'force' : null };
-    if (status === 'SITE_VISIT' && opts?.siteVisitPriorityTier) {
-      payload.site_visit_priority_tier = opts.siteVisitPriorityTier;
-    }
-    const res = await apiJson<{ project: any }>(`/api/staff/v1/projects/${encodeURIComponent(projectId)}/stage`, {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    });
-    if (res?.project) return projectFromRow(res.project);
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : '';
-    throw msg ? new Error(msg) : new Error('Failed to update status');
-  }
-
-  const refreshed = await getProject(projectId);
-  if (!refreshed) throw new Error('Project not found');
-  return refreshed;
 }
 
 export async function correctProjectStage(
@@ -414,12 +321,6 @@ export async function correctProjectStage(
     rollback: Boolean(res?.rollback),
     resetManualTaskCount: Number(res?.resetManualTaskCount ?? 0),
   };
-}
-
-export async function setProjectFollowUpDate(projectId: string, followUpDate: string | null, opts?: { force?: boolean }): Promise<Project> {
-  const prev = await getProject(projectId);
-  if (!prev) throw new Error('Project not found');
-  return updateProject(projectId, { nextActionDate: followUpDate, followUpDate } as any, opts as any);
 }
 
 export async function deleteProject(

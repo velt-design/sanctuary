@@ -11,7 +11,7 @@ import { isCalculatorInputsV2, isLegacyCalculatorInputsV1, migrateLegacyCalculat
 
 type AnyRecord = Record<string, unknown>;
 
-export type EstimateDrawingModule = {
+type EstimateDrawingModule = {
   id: string;
   label: string;
   input: CalculatorModuleInputs;

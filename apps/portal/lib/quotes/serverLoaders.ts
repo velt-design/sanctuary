@@ -6,7 +6,7 @@ import { buildVersionLabelMap } from '@/lib/estimates/server';
 import type { Estimate } from '@/lib/types/estimate';
 import { missingTableError, nowIso, schemaMissingError } from './serverHelpers';
 
-export type QuoteSourceEstimate = Estimate & {
+type QuoteSourceEstimate = Estimate & {
   pricingSource: unknown;
   pricingSourceMetadata: unknown;
 };

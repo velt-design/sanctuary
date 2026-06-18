@@ -6,7 +6,3 @@ export function generateAcceptToken(): { token: string; tokenHash: string } {
   return { token, tokenHash };
 }
 
-export function hashAcceptToken(token: string): string {
-  return crypto.createHash('sha256').update(token).digest('hex');
-}
-

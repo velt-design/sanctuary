@@ -4,8 +4,6 @@ import { buildCustomHouseFootprintPolygon, buildHouseFootprintPresetSideLocalPoi
 import {
   normalizeObjectFirstWorkbenchDraftVNext,
   type ObjectFirstDeckDraft,
-  type ObjectFirstHouseAssemblyDraft,
-  type ObjectFirstOpeningDraft,
   type ObjectFirstPergolaDraft,
   type ObjectFirstWorkbenchDraftVNext,
 } from '@/lib/drawings/state/objectFirstWorkbenchModel';
@@ -48,7 +46,7 @@ type AnyRecord = Record<string, unknown>;
 export const ESTIMATE_DRAWING_OVERRIDES_OUTPUT_KEY = 'drawing_sheet_overrides';
 export const ESTIMATE_DRAWING_OBJECT_FIRST_OUTPUT_KEY = 'drawing_object_first';
 
-export type EstimateDrawingOverrides = {
+type EstimateDrawingOverrides = {
   noteOverride?: string | null;
   moduleTitleOverrides?: Record<string, string>;
 };
@@ -59,7 +57,7 @@ export type EstimateDrawingDraft = {
   objectFirst?: ObjectFirstWorkbenchDraftVNext;
 };
 
-export type EstimateDrawingFieldTarget =
+type EstimateDrawingFieldTarget =
   | {
       type: 'module_input';
       moduleIndex: number;
@@ -79,7 +77,7 @@ export type EstimateDrawingFieldTarget =
       type: 'estimate_note';
     };
 
-export type EstimateDrawingFieldEditor = 'singleline' | 'multiline';
+type EstimateDrawingFieldEditor = 'singleline' | 'multiline';
 
 export type EstimateDrawingField = {
   id: string;
@@ -92,7 +90,7 @@ export type EstimateDrawingField = {
   target: EstimateDrawingFieldTarget;
 };
 
-export type EstimateDrawingFieldApplyResult =
+type EstimateDrawingFieldApplyResult =
   | {
       ok: true;
       draft: EstimateDrawingDraft;
@@ -711,11 +709,11 @@ function normalizeObjectFirstDraft(
     : undefined;
 }
 
-export function stripClientFacingModulePrefix(value: string): string {
+function stripClientFacingModulePrefix(value: string): string {
   return value.replace(/^\s*M\d+\s*-\s*/i, '').trim();
 }
 
-export function resolveCalculatorInputsFromSnapshot(snapshot: Record<string, unknown> | null): CalculatorInputs | null {
+function resolveCalculatorInputsFromSnapshot(snapshot: Record<string, unknown> | null): CalculatorInputs | null {
   if (!snapshot) return null;
   const rawInputs = snapshot.inputs ?? (isRecord(snapshot.calculator_snapshot) ? snapshot.calculator_snapshot.inputs : null);
   if (isCalculatorInputsV2(rawInputs)) return cloneValue(rawInputs);
@@ -730,7 +728,7 @@ export function resolveEstimateDrawingOverridesFromSnapshot(snapshot: Record<str
   return normalizeOverrides(raw as EstimateDrawingOverrides | null);
 }
 
-export function resolveEstimateDrawingObjectFirstFromSnapshot(
+function resolveEstimateDrawingObjectFirstFromSnapshot(
   snapshot: Record<string, unknown> | null,
 ): ObjectFirstWorkbenchDraftVNext | undefined {
   if (!snapshot) return undefined;
@@ -777,11 +775,11 @@ export function estimateDrawingDraftTouchesGeometry(
   );
 }
 
-export function resolveEstimateDrawingNoteValue(overrides: EstimateDrawingOverrides | null | undefined): string {
+function resolveEstimateDrawingNoteValue(overrides: EstimateDrawingOverrides | null | undefined): string {
   return asString(overrides?.noteOverride) ?? DEFAULT_ESTIMATE_DRAWING_SHEET_NOTE;
 }
 
-export function resolveEstimateDrawingModuleTitleValue(
+function resolveEstimateDrawingModuleTitleValue(
   moduleLabel: string,
   overrides: EstimateDrawingOverrides | null | undefined,
   moduleIndex: number,
@@ -826,20 +824,6 @@ export function updateEstimateDrawingObjectFirstWorkbenchDraft(input: {
   return nextDraft;
 }
 
-export function updateEstimateDrawingObjectFirstHouseAssemblyDraft(input: {
-  draft: EstimateDrawingDraft;
-  houseAssembly: ObjectFirstHouseAssemblyDraft | null;
-}): EstimateDrawingDraft {
-  const objectFirst = normalizeObjectFirstWorkbenchDraftVNext(input.draft.objectFirst);
-  return updateEstimateDrawingObjectFirstWorkbenchDraft({
-    draft: input.draft,
-    objectFirst: {
-      ...objectFirst,
-      houseAssembly: input.houseAssembly,
-    },
-  });
-}
-
 export function updateEstimateDrawingObjectFirstDeckDrafts(input: {
   draft: EstimateDrawingDraft;
   decks: ObjectFirstDeckDraft[] | null;
@@ -850,20 +834,6 @@ export function updateEstimateDrawingObjectFirstDeckDrafts(input: {
     objectFirst: {
       ...objectFirst,
       decks: input.decks ?? [],
-    },
-  });
-}
-
-export function updateEstimateDrawingObjectFirstOpeningDrafts(input: {
-  draft: EstimateDrawingDraft;
-  openings: ObjectFirstOpeningDraft[] | null;
-}): EstimateDrawingDraft {
-  const objectFirst = normalizeObjectFirstWorkbenchDraftVNext(input.draft.objectFirst);
-  return updateEstimateDrawingObjectFirstWorkbenchDraft({
-    draft: input.draft,
-    objectFirst: {
-      ...objectFirst,
-      openings: input.openings ?? [],
     },
   });
 }

@@ -1,11 +1,11 @@
 import { addDaysYmd, diffDaysYmd, isYmd } from '@/lib/scheduling/date';
 
-export const GANTT_WEEKDAY_WEIGHT = 1;
+const GANTT_WEEKDAY_WEIGHT = 1;
 export const GANTT_WEEKEND_WEIGHT = 0;
 
 type AxisMonthKey = `${number}-${string}`;
 
-export type GanttAxisDay = {
+type GanttAxisDay = {
   index: number;
   date: string;
   dayOfWeek: number;
@@ -16,7 +16,7 @@ export type GanttAxisDay = {
   endPx: number;
 };
 
-export type GanttAxisWeek = {
+type GanttAxisWeek = {
   index: number;
   startIndex: number;
   endIndexExclusive: number;
@@ -30,7 +30,7 @@ export type GanttAxisWeek = {
   monthLabel: string;
 };
 
-export type GanttAxisMonth = {
+type GanttAxisMonth = {
   key: AxisMonthKey;
   label: string;
   startWeekIndex: number;
@@ -40,7 +40,7 @@ export type GanttAxisMonth = {
   widthPx: number;
 };
 
-export type GanttAxis = {
+type GanttAxis = {
   rangeStart: string;
   rangeDays: number;
   baseDayPx: number;
@@ -89,22 +89,22 @@ function clampIndex(index: number, maxExclusive: number): number {
   return Math.max(0, Math.min(maxExclusive, Math.trunc(index)));
 }
 
-export function isWeekendYmd(ymd: string): boolean {
+function isWeekendYmd(ymd: string): boolean {
   const dt = parseYmdUtc(ymd);
   if (!dt) return false;
   const day = dt.getUTCDay();
   return day === 0 || day === 6;
 }
 
-export function dayWeightForDate(ymd: string, weekendWeight = GANTT_WEEKEND_WEIGHT): number {
+function dayWeightForDate(ymd: string, weekendWeight = GANTT_WEEKEND_WEIGHT): number {
   return isWeekendYmd(ymd) ? weekendWeight : GANTT_WEEKDAY_WEIGHT;
 }
 
-export function dayWidthPxForDate(ymd: string, baseDayPx: number, weekendWeight = GANTT_WEEKEND_WEIGHT): number {
+function dayWidthPxForDate(ymd: string, baseDayPx: number, weekendWeight = GANTT_WEEKEND_WEIGHT): number {
   return baseDayPx * dayWeightForDate(ymd, weekendWeight);
 }
 
-export function formatGanttMonthLabel(ymd: string): string {
+function formatGanttMonthLabel(ymd: string): string {
   const dt = parseYmdUtc(ymd);
   if (!dt) return ymd;
   return MONTH_YEAR_FMT.format(dt);
@@ -224,11 +224,6 @@ export function buildGanttAxis(input: BuildGanttAxisInput): GanttAxis {
 export function axisXForDayIndex(axis: GanttAxis, dayIndex: number): number {
   const idx = clampIndex(dayIndex, axis.rangeDays);
   return axis.boundaryPx[idx] ?? 0;
-}
-
-export function axisXForDate(axis: GanttAxis, date: string): number {
-  const index = diffDaysYmd(axis.rangeStart, date);
-  return axisXForDayIndex(axis, index);
 }
 
 export function axisSpanPx(

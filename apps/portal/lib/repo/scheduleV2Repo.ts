@@ -1,6 +1,6 @@
 import { apiJson } from '@/lib/repo/apiClient';
 
-export type ScheduleBoardCrew = {
+type ScheduleBoardCrew = {
   id: string;
   name: string;
   color: string | null;
@@ -11,7 +11,7 @@ export type ScheduleBoardCrew = {
   next_available_date?: string | null;
 };
 
-export type ScheduleBoardJob = {
+type ScheduleBoardJob = {
   id: string;
   job_id: string;
   crew_id: string;
@@ -37,7 +37,7 @@ export type ScheduleBoardJob = {
   days_remaining: number | null;
 };
 
-export type ScheduleBoardItem = {
+type ScheduleBoardItem = {
   id: string;
   item_type: 'job' | 'downtime';
   position: number;
@@ -89,15 +89,15 @@ export type ScheduleGanttResponse = {
   conflicts: any[];
 };
 
-export type RequiresConfirmation<T = Record<string, unknown>> = { requires_confirmation: true; impacts: any[] } & Partial<T>;
-export type FinishEarlyPrompt<T = Record<string, unknown>> = {
+type RequiresConfirmation<T = Record<string, unknown>> = { requires_confirmation: true; impacts: any[] } & Partial<T>;
+type FinishEarlyPrompt<T = Record<string, unknown>> = {
   requires_finish_early: true;
   freed_days: number;
   actual_finish: string;
   forecast_end_exclusive: string | null;
   impacts: any[];
 } & Partial<T>;
-export type MutationResult<T = Record<string, unknown>> = { ok: true } & Partial<T>;
+type MutationResult<T = Record<string, unknown>> = { ok: true } & Partial<T>;
 export type ScheduleCrewSchedule = { crew_id: string; items: ScheduleBoardItem[]; conflicts: any[]; next_available_date: string };
 export type ScheduleMutationResult<T = Record<string, unknown>> = MutationResult<
   T & {

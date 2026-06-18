@@ -68,8 +68,6 @@ const LazyScheduleDiagnosticsPanel = dynamic(() => import('./ScheduleDiagnostics
   ssr: false,
 });
 
-export type { ScheduleBoardModel, ScheduleRuntimeState, SchedulableJob } from './ScheduleClientModel';
-
 function formatDuration(hours: number): string {
   if (!Number.isFinite(hours) || hours <= 0) return '—';
   const days = hours / WORK_HOURS_PER_DAY;

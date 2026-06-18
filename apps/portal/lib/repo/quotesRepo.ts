@@ -1,4 +1,4 @@
-import type { Quote, QuoteContent, QuoteStatus } from '@/lib/types/quote';
+import type { Quote, QuoteContent } from '@/lib/types/quote';
 import type { Estimate } from '@/lib/types/estimate';
 import { isCalculatorInputsV2, isLegacyCalculatorInputsV1 } from '@/lib/types/calculator';
 import type { Project } from '@/lib/types/project';
@@ -41,21 +41,6 @@ async function listAllQuotes(): Promise<Quote[]> {
     return quotes.slice().sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   } catch {
     return readAllCache().slice().sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-  }
-}
-
-export async function listQuotesByProject(projectId: string): Promise<Quote[]> {
-  try {
-    const res = await apiJson<{ quotes: Quote[] }>(`/api/staff/v1/quotes?projectId=${encodeURIComponent(projectId)}`, { skipSaveTracking: true });
-    const quotes = Array.isArray(res.quotes) ? res.quotes : [];
-    const merged = readAllCache().filter((q) => q.projectId !== projectId);
-    writeAllCache([...merged, ...quotes]);
-    return quotes.slice().sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-  } catch {
-    return readAllCache()
-      .filter((q) => q.projectId === projectId)
-      .slice()
-      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   }
 }
 
@@ -390,10 +375,4 @@ export async function markQuotePaid(quoteId: string): Promise<Quote> {
 
 export function quoteIsLocked(quote: Quote): boolean {
   return quote.status === 'sent' || quote.status === 'paid';
-}
-
-export function quoteNextAction(quote: Quote): { label: string; nextStatus: QuoteStatus } | null {
-  if (quote.status === 'draft') return { label: 'Mark Sent', nextStatus: 'sent' };
-  if (quote.status === 'sent') return { label: 'Mark Paid', nextStatus: 'paid' };
-  return null;
 }

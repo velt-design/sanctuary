@@ -1,4 +1,4 @@
-import type { InstallActionV1, MaterialsLineV1 } from '@sp/costing';
+import type { InstallActionV1 } from '@sp/costing';
 
 export type PowdercoatLine = {
   profile: string;
@@ -63,10 +63,5 @@ export type JobPack = {
   };
   specText: string;
   assumptions: string[];
-};
-
-export type JobPackSource = {
-  materials: MaterialsLineV1[];
-  install: InstallActionV1[];
 };
 

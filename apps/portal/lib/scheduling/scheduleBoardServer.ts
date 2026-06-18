@@ -20,7 +20,7 @@ export class ScheduleSchemaNotReadyError extends Error {
   }
 }
 
-export class ScheduleBoardBuildError extends Error {
+class ScheduleBoardBuildError extends Error {
   phase: 'load' | 'drift';
 
   constructor(message: string, phase: 'load' | 'drift') {

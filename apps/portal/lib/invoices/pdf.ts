@@ -3,7 +3,7 @@ import 'server-only';
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import { paymentDetailsLines } from '../payments/paymentDetails';
 
-export type DepositInvoicePdfData = {
+type DepositInvoicePdfData = {
   invoiceRef: string;
   quoteRef: string;
   quoteVersionNumber: number;

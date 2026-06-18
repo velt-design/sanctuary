@@ -1,4 +1,4 @@
-export type DepositInvoiceStatus = 'OPEN' | 'VOID';
+type DepositInvoiceStatus = 'OPEN' | 'VOID';
 
 export type DepositInvoiceDeliveryStatus = 'NOT_SENT' | 'SENT' | 'FAILED';
 

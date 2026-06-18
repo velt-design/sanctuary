@@ -361,7 +361,7 @@ type QuotePdfLayoutPage = {
   rules: RuleDrawn[];
 };
 
-export type QuotePdfLayout = {
+type QuotePdfLayout = {
   pages: QuotePdfLayoutPage[];
 };
 

@@ -93,8 +93,6 @@ const LazyScheduleDiagnosticsPanel = dynamic(() => import('./ScheduleDiagnostics
   ssr: false,
 });
 
-export type { ScheduleBoardModel, ScheduleRuntimeState, SchedulableJob } from './ScheduleClientModel';
-
 const USE_SCHEDULE_V2 = true;
 const V2_MUTATION_DEBOUNCE_MS = 180;
 

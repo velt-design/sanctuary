@@ -1,5 +1,5 @@
 import type { Installer } from '@/lib/types/scheduling';
-import { appIdFromUuid, uuidFromAppId } from '@/lib/supabase/mappers';
+import { appIdFromUuid } from '@/lib/supabase/mappers';
 import { getSupabaseBrowser, supabaseHostFromUrl, supabaseRestUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
 import { SupabaseRepoError, type PostgrestErrorLike } from '@/lib/supabase/repoError';
 import { PORTAL_DEFAULT_ACCENT_HEX } from '@/lib/theme/presets';
@@ -56,14 +56,3 @@ export async function listInstallers(opts?: { activeOnly?: boolean }): Promise<I
   return opts?.activeOnly ? installers.filter((i) => i.active) : installers;
 }
 
-export async function getInstaller(id: string): Promise<Installer | null> {
-  try {
-    const uuid = uuidFromAppId(id, 'crew');
-    const supabase = getSupabaseBrowser();
-    const { data, error } = await supabase.from('schedule_crews').select('*').eq('id', uuid).single();
-    if (error || !data) return null;
-    return installerFromRow(data);
-  } catch {
-    return null;
-  }
-}

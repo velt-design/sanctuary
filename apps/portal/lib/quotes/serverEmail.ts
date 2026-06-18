@@ -47,13 +47,13 @@ export class EmailProviderConfigError extends Error {
   code = 'EMAIL_PROVIDER_NOT_CONFIGURED';
 }
 
-export type QuoteEmailAttachment = {
+type QuoteEmailAttachment = {
   filename: string;
   contentType: string;
   content: Buffer;
 };
 
-export type QuoteEmailPayload = {
+type QuoteEmailPayload = {
   to: string[];
   cc?: string[];
   bcc?: string[];
@@ -64,7 +64,7 @@ export type QuoteEmailPayload = {
   attachments?: QuoteEmailAttachment[];
 };
 
-export type QuoteEmailMode = 'send' | 'resend';
+type QuoteEmailMode = 'send' | 'resend';
 
 function messageFromError(error: unknown, fallback: string): string {
   if (error instanceof Error && error.message) return error.message;

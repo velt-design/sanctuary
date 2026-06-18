@@ -141,7 +141,7 @@ function computeSummaryFields(estimate: Estimate): {
   };
 }
 
-export async function listEstimates(projectId: string): Promise<Estimate[]> {
+async function listEstimates(projectId: string): Promise<Estimate[]> {
   const supabase = getSupabaseBrowser();
   const projectUuid = uuidFromAppId(projectId, 'proj');
   const { data, error } = await supabase.from('estimates').select('*').eq('project_id', projectUuid).order('created_at', { ascending: false });
@@ -305,71 +305,11 @@ export async function upsertEstimate(estimateIn: Estimate): Promise<Estimate> {
   return estimateFromRow(row);
 }
 
-export async function updateEstimate(id: string, patch: Partial<Omit<Estimate, 'id' | 'projectId' | 'createdAt'>>): Promise<Estimate> {
-  const prev = await getEstimate(id);
-  if (!prev) throw new Error('Estimate not found');
-
-  const now = nowIso();
-  const uuid = uuidFromAppId(id, 'est');
-  const next: Estimate = {
-    ...prev,
-    ...patch,
-    updatedAt: now,
-  } as any;
-
-  const summary = computeSummaryFields(next);
-
-  const payload: any = {
-    status: normaliseStatus(next.status),
-    summary: typeof (next as any).summary === 'string' ? (next as any).summary : null,
-    crew_hours: summary.crewHours,
-    duration_days: summary.durationDays,
-    materials_ex_gst: summary.materialsEx,
-    install_payout_ex_gst: summary.installPayoutEx,
-    overhead_ex_gst: summary.overheadEx,
-    total_true_cost_ex_gst: summary.totalEx,
-    total_true_cost_inc_gst: summary.totalInc,
-    inputs: (next as any).inputs ?? {},
-    outputs: {
-      ...(isRecord((next as any).outputs) ? (next as any).outputs : {}),
-      derived: (next as any).derived ?? {},
-      configVersions: (next as any).configVersions ?? null,
-      projectSnapshot: (next as any).projectSnapshot ?? null,
-      snapshot: (next as any).snapshot ?? null,
-      version: (next as any).version ?? null,
-    },
-    warnings: Array.isArray((next as any)?.outputs?.warnings) ? (next as any).outputs.warnings : [],
-    costing_manifest: typeof (next as any)?.configVersions?.manifest === 'string' ? (next as any).configVersions.manifest : null,
-    costing_rules: typeof (next as any)?.configVersions?.rules === 'string' ? (next as any).configVersions.rules : null,
-    updated_at: now,
-  };
-
-  const supabase = getSupabaseBrowser();
-  const { data, error } = await supabase.from('estimates').update(payload).eq('id', uuid).select('*').single();
-  if (error || !data) throw wrapError('estimates', error);
-  return estimateFromRow(data);
-}
-
 export async function deleteEstimate(estimateId: string): Promise<void> {
   const supabase = getSupabaseBrowser();
   const uuid = uuidFromAppId(estimateId, 'est');
   const { error } = await supabase.from('estimates').delete().eq('id', uuid);
   if (error) throw wrapError('estimates', error);
-}
-
-export async function deleteEstimatesForProject(projectId: string): Promise<void> {
-  const existing = await listEstimates(projectId);
-  for (const e of existing) await deleteEstimate(e.id);
-}
-
-export async function duplicateEstimate(id: string): Promise<Estimate> {
-  const prev = await getEstimate(id);
-  if (!prev) throw new Error('Estimate not found');
-  const copy = { ...prev, status: 'draft' as EstimateStatus };
-  delete (copy as any).id;
-  delete (copy as any).createdAt;
-  delete (copy as any).updatedAt;
-  return createEstimate(prev.projectId, copy as any);
 }
 
 export async function duplicateEstimateToDraft(estimateId: string): Promise<CalculatorInputs> {

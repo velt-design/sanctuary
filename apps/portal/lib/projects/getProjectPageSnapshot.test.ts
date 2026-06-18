@@ -2,14 +2,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const fromMock = vi.fn();
 const logPortalServerError = vi.fn();
-const ensureInvoiceRetryScheduledFromLatestFailure = vi.fn();
 
 vi.mock('@/lib/api/routeDiagnostics', () => ({
   logPortalServerError,
-}));
-
-vi.mock('@/lib/invoices/server', () => ({
-  ensureInvoiceRetryScheduledFromLatestFailure,
 }));
 
 type QueryResult = { data: any; error: any };
@@ -39,7 +34,6 @@ describe('getProjectPageSnapshot', () => {
     vi.resetModules();
     fromMock.mockReset();
     logPortalServerError.mockReset();
-    ensureInvoiceRetryScheduledFromLatestFailure.mockReset();
   });
 
   it('returns a snapshot without scheduling invoice retries during read', async () => {
@@ -111,7 +105,6 @@ describe('getProjectPageSnapshot', () => {
       },
     });
     expect(Array.isArray(snapshot?.tasks.items)).toBe(true);
-    expect(ensureInvoiceRetryScheduledFromLatestFailure).not.toHaveBeenCalled();
     expect(logPortalServerError).not.toHaveBeenCalled();
   });
 
@@ -174,6 +167,5 @@ describe('getProjectPageSnapshot', () => {
         extra: { query: 'email_outbox' },
       }),
     );
-    expect(ensureInvoiceRetryScheduledFromLatestFailure).not.toHaveBeenCalled();
   });
 });

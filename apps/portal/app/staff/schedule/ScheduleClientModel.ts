@@ -25,10 +25,3 @@ export type ScheduleBoardModel = {
   laneItems: Map<string, ScheduleItem[]>;
 };
 
-export type ScheduleRuntimeState = {
-  hydrated: boolean;
-  loadError: { message: string; table?: string; code?: string } | null;
-  syncing: boolean;
-  scheduleMode: 'v2' | 'legacy';
-  view: 'board' | 'gantt' | 'site_visits';
-};

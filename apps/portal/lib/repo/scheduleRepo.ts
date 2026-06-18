@@ -203,13 +203,6 @@ export async function replaceScheduleItems(
   return listScheduleItems();
 }
 
-export async function deleteScheduleItem(id: string): Promise<void> {
-  const supabase = getSupabaseBrowser();
-  const uuid = uuidFromAppId(id, 'sch');
-  const { error } = await supabase.from('schedule_items').delete().eq('id', uuid);
-  if (error) throw wrapError('schedule_items', error);
-}
-
 export async function normalizeScheduleItemsStarted(today?: string): Promise<{ updated: number }> {
   return apiJson('/api/staff/v1/schedule-items/normalize-started', {
     method: 'POST',

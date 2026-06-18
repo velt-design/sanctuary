@@ -1,14 +1,14 @@
 import type { CalculatorModuleInputs, LegacyCalculatorInputsV1 } from '@/lib/types/calculator';
 
-export type EstimateDrawingSheetView = 'plan' | 'section';
+type EstimateDrawingSheetView = 'plan' | 'section';
 
-export const ESTIMATE_DRAWING_FIXED_SCALE_VALUES = [10, 20, 25, 50, 100] as const;
+const ESTIMATE_DRAWING_FIXED_SCALE_VALUES = [10, 20, 25, 50, 100] as const;
 
 export type EstimateDrawingFixedScaleValue = (typeof ESTIMATE_DRAWING_FIXED_SCALE_VALUES)[number];
 
 export type EstimateDrawingScale = { mode: 'fit' } | { mode: 'fixed'; ratio: EstimateDrawingFixedScaleValue };
 
-export type EstimateDrawingSheetInfoRow = {
+type EstimateDrawingSheetInfoRow = {
   label: string;
   value: string;
 };
@@ -27,7 +27,7 @@ export type EstimateDrawingSheetMeta = {
   moduleInfoRows: EstimateDrawingSheetInfoRow[];
 };
 
-export type BuildEstimateDrawingSheetMetaInput = {
+type BuildEstimateDrawingSheetMetaInput = {
   moduleLabel?: string | null;
   sheetLabel?: string | null;
   moduleTitleOverride?: string | null;

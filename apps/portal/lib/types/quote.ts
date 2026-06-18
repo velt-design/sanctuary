@@ -1,5 +1,4 @@
 import type { Estimate } from './estimate';
-import type { Project } from './project';
 
 export type QuoteStatus = 'draft' | 'sent' | 'paid';
 

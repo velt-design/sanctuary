@@ -15,7 +15,7 @@ function asString(value: unknown): string | null {
   return trimmed ? trimmed : null;
 }
 
-export function normaliseEstimateStatus(value: unknown): EstimateStatus {
+function normaliseEstimateStatus(value: unknown): EstimateStatus {
   const raw = typeof value === 'string' ? value.trim().toLowerCase() : '';
   if (raw === 'archived') return 'archived';
   return 'draft';
@@ -46,7 +46,7 @@ export function buildVersionLabelMap(rows: any[]): Map<string, string> {
   return labels;
 }
 
-export function summaryFromRow(row: any): EstimateSummary {
+function summaryFromRow(row: any): EstimateSummary {
   const summaryRaw = row?.summary_json ?? row?.summary;
   if (isRecord(summaryRaw)) return summaryRaw as EstimateSummary;
   if (typeof summaryRaw === 'string') {
@@ -144,7 +144,7 @@ export async function loadEstimateEditability(estimateUuid: string): Promise<Est
   return computeEstimateEditability({ quoteVersions, sendLogs });
 }
 
-export async function loadEstimateDetailForRow(row: any, versionLabel: string): Promise<EstimateDetail> {
+async function loadEstimateDetailForRow(row: any, versionLabel: string): Promise<EstimateDetail> {
   const projectUuid = String(row?.project_id ?? '');
   const estimateUuid = String(row?.id ?? '');
   const flowMaps = await loadProjectEstimateFlowMaps(projectUuid);

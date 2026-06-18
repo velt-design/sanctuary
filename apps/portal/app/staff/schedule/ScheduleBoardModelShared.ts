@@ -48,7 +48,7 @@ export function safeProjectName(project: ScheduleProjectSummary | null | undefin
   return project?.projectName ?? project?.name ?? 'Untitled project';
 }
 
-export function safeProjectStatus(project: ScheduleProjectSummary | null | undefined): string {
+function safeProjectStatus(project: ScheduleProjectSummary | null | undefined): string {
   return project?.status ?? 'NEW';
 }
 

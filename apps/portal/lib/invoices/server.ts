@@ -21,7 +21,7 @@ const MONEY = new Intl.NumberFormat('en-NZ', {
   maximumFractionDigits: 2,
 });
 
-export type DepositInvoiceRow = {
+type DepositInvoiceRow = {
   id: string;
   project_id: string;
   quote_id: string;
@@ -1004,7 +1004,7 @@ export async function ensureDepositInvoiceForAcceptedQuote(params: {
   };
 }
 
-export async function retryInvoiceDelivery(invoiceUuid: string, actor: string | null): Promise<void> {
+async function retryInvoiceDelivery(invoiceUuid: string, actor: string | null): Promise<void> {
   const invoice = await loadInvoiceById(invoiceUuid);
   if (!invoice || invoice.status !== 'OPEN') {
     clearRetryTimer(invoiceUuid);
@@ -1171,79 +1171,4 @@ export async function voidOpenDepositInvoiceForQuote(params: {
 
   await clearInvoicePaidManualCheck(invoice.project_id);
   await moveProjectToSent(invoice.project_id, invoice.quote_version_id, 'quote_unaccepted_or_voided');
-}
-
-export async function ensureInvoiceRetryScheduledFromLatestFailure(invoiceUuid: string, actor: string | null): Promise<void> {
-  const latest = await supabaseServiceRole
-    .from('deposit_invoice_send_logs')
-    .select('next_retry_at, status, final_failure')
-    .eq('deposit_invoice_id', invoiceUuid)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (latest.error || !latest.data) return;
-  const row = latest.data as any;
-  if (String(row?.status ?? '').toUpperCase() !== 'FAILED') return;
-  if (row?.final_failure) return;
-  const nextRetryAt = typeof row?.next_retry_at === 'string' ? row.next_retry_at : null;
-  if (!nextRetryAt) return;
-  scheduleRetryTimer(invoiceUuid, nextRetryAt, actor);
-}
-
-export async function getOpenDepositInvoiceForProject(projectUuid: string): Promise<DepositInvoiceRow | null> {
-  const res = await supabaseServiceRole
-    .from('deposit_invoices')
-    .select('*')
-    .eq('project_id', projectUuid)
-    .eq('status', 'OPEN')
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (res.error || !res.data) {
-    if (res.error && !missingTableError(res.error)) {
-      throw new Error(errorMessage(res.error, 'Failed to load project invoice'));
-    }
-    return null;
-  }
-
-  return mapInvoiceRow(res.data);
-}
-
-export async function getOpenDepositInvoiceById(invoiceUuid: string): Promise<DepositInvoiceRow | null> {
-  const row = await loadInvoiceById(invoiceUuid);
-  if (!row || row.status !== 'OPEN') return null;
-  return row;
-}
-
-export async function rotateInvoicePortalToken(invoiceUuid: string, actor: string | null): Promise<{ token: string; tokenHash: string; expiresAt: string }> {
-  const invoice = await loadInvoiceById(invoiceUuid);
-  if (!invoice) throw new Error('Invoice not found');
-  if (invoice.status !== 'OPEN') throw new Error('Invoice is not active');
-
-  const { token, tokenHash } = generateAcceptToken();
-  const due = parseDateOnly(invoice.due_date);
-  const expiresAt = (() => {
-    if (due) {
-      due.setUTCDate(due.getUTCDate() + 30);
-      return due.toISOString();
-    }
-    const now = new Date();
-    now.setUTCDate(now.getUTCDate() + 30);
-    return now.toISOString();
-  })();
-
-  const updateRes = await supabaseServiceRole
-    .from('deposit_invoices')
-    .update({
-      portal_token_hash: tokenHash,
-      portal_token_expires_at: expiresAt,
-      sent_by: actor,
-    } as any)
-    .eq('id', invoice.id);
-
-  if (updateRes.error) throw new Error(errorMessage(updateRes.error, 'Failed to rotate invoice token'));
-
-  return { token, tokenHash, expiresAt };
 }

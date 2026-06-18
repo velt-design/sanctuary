@@ -56,7 +56,7 @@ type BoardProjectEstimateDiagnostics = {
 const SCHEDULE_PROJECT_SELECT = 'id, name, pipeline_stage, follow_up_date';
 const SCHEDULE_ESTIMATE_SELECT = 'id, project_id, status, created_at, version, duration_days, crew_hours';
 
-export type CrewRow = {
+type CrewRow = {
   id: string;
   name: string;
   color: string | null;
@@ -66,7 +66,7 @@ export type CrewRow = {
   base_available_date: string | null;
 };
 
-export type ScheduleContext = {
+type ScheduleContext = {
   crews: CrewRow[];
   items: CrewScheduleItem[];
   jobs: ScheduledJob[];
@@ -77,14 +77,14 @@ export type ScheduleContext = {
   today: string;
 };
 
-export type CommitImpact = {
+type CommitImpact = {
   job_id: string;
   scheduled_job_id: string;
   before_start: string | null;
   after_start: string | null;
 };
 
-export type CrewScheduleContext = {
+type CrewScheduleContext = {
   crewRow: CrewRow;
   items: CrewScheduleItem[];
   jobs: ScheduledJob[];
@@ -95,9 +95,9 @@ export type CrewScheduleContext = {
 };
 
 export type PlannedCommitmentType = 'week_of' | 'fixed_date';
-export type ClientUpdateStatus = 'none' | 'needed' | 'acknowledged';
+type ClientUpdateStatus = 'none' | 'needed' | 'acknowledged';
 
-export type DriftStatusPatch = {
+type DriftStatusPatch = {
   jobId: string;
   driftDays: number | null;
   clientUpdateStatus: ClientUpdateStatus;
@@ -115,7 +115,7 @@ export function isMissingSchemaError(error: unknown): boolean {
   return code === 'PGRST204' || code === '42703' || msg.includes('does not exist') || msg.includes('missing') || msg.includes('undefined column');
 }
 
-export function crewRowToScheduleCrew(row: CrewRow): ScheduleCrew {
+function crewRowToScheduleCrew(row: CrewRow): ScheduleCrew {
   return {
     id: row.id,
     region: (row.calendar_region || 'Auckland').trim() || 'Auckland',
@@ -157,14 +157,14 @@ export function startOfWeekMondayYmd(ymd: string): string {
   return addDaysYmd(ymd, -daysSinceMonday);
 }
 
-export function resolveJobCommitmentType(job: ScheduledJob): PlannedCommitmentType | null {
+function resolveJobCommitmentType(job: ScheduledJob): PlannedCommitmentType | null {
   const explicit = normalizePlannedCommitmentType(job.plannedCommitmentType);
   if (explicit) return explicit;
   if (job.plannedStart && isYmd(job.plannedStart)) return 'fixed_date';
   return null;
 }
 
-export function resolveJobPlannedAnchor(job: ScheduledJob): string | null {
+function resolveJobPlannedAnchor(job: ScheduledJob): string | null {
   const commitmentType = resolveJobCommitmentType(job);
   if (!commitmentType) return null;
   if (commitmentType === 'week_of') {
@@ -175,7 +175,7 @@ export function resolveJobPlannedAnchor(job: ScheduledJob): string | null {
   return job.plannedStart && isYmd(job.plannedStart) ? job.plannedStart : null;
 }
 
-export function resolveJobFlexDays(job: ScheduledJob): number | null {
+function resolveJobFlexDays(job: ScheduledJob): number | null {
   const commitmentType = resolveJobCommitmentType(job);
   if (!commitmentType) return null;
   if (typeof job.plannedFlexDays === 'number' && Number.isFinite(job.plannedFlexDays)) {
@@ -184,20 +184,20 @@ export function resolveJobFlexDays(job: ScheduledJob): number | null {
   return defaultFlexDaysForCommitment(commitmentType);
 }
 
-export function computeWorkingDayDriftDays(anchor: string, forecastStart: string, region: string, calendar: WorkingDayIndex): number {
+function computeWorkingDayDriftDays(anchor: string, forecastStart: string, region: string, calendar: WorkingDayIndex): number {
   if (!isYmd(anchor) || !isYmd(forecastStart)) return 0;
   if (anchor === forecastStart) return 0;
   if (anchor < forecastStart) return Math.max(0, workingDaysBetween(anchor, forecastStart, region, calendar));
   return Math.max(0, workingDaysBetween(forecastStart, anchor, region, calendar));
 }
 
-export function computeJobDriftDays(job: ScheduledJob, forecastStart: string | null, region: string, calendar: WorkingDayIndex): number | null {
+function computeJobDriftDays(job: ScheduledJob, forecastStart: string | null, region: string, calendar: WorkingDayIndex): number | null {
   const anchor = resolveJobPlannedAnchor(job);
   if (!anchor || !forecastStart || !isYmd(forecastStart)) return null;
   return computeWorkingDayDriftDays(anchor, forecastStart, region, calendar);
 }
 
-export function computeDriftStatusPatches(input: {
+function computeDriftStatusPatches(input: {
   jobs: ScheduledJob[];
   recompute: RecomputeResult;
   region: string;
@@ -298,7 +298,7 @@ export async function applyDriftStatusPatches(input: {
   return nextJobs;
 }
 
-export function mapJobRow(row: any): ScheduledJob {
+function mapJobRow(row: any): ScheduledJob {
   const plannedStart = typeof row.planned_start === 'string' ? row.planned_start : null;
   const plannedCommitmentType = normalizePlannedCommitmentType(row.planned_commitment_type) ?? (plannedStart ? 'fixed_date' : null);
   const plannedFlexDays =
@@ -332,7 +332,7 @@ export function mapJobRow(row: any): ScheduledJob {
   };
 }
 
-export function mapDowntimeRow(row: any): CrewDowntime {
+function mapDowntimeRow(row: any): CrewDowntime {
   return {
     id: String(row.id),
     crewId: String(row.crew_id),
@@ -342,7 +342,7 @@ export function mapDowntimeRow(row: any): CrewDowntime {
   };
 }
 
-export function mapScheduleItemRow(row: any): CrewScheduleItem {
+function mapScheduleItemRow(row: any): CrewScheduleItem {
   return {
     id: String(row.id),
     crewId: String(row.crew_id),
@@ -363,7 +363,7 @@ export async function loadScheduledJobRow(jobIdOrScheduledJobId: string): Promis
   return byIdRes.data ?? null;
 }
 
-export async function appendPlannedCommitmentHistory(input: {
+async function appendPlannedCommitmentHistory(input: {
   scheduledJobId: string;
   eventType: 'lock' | 'reschedule';
   commitmentType: PlannedCommitmentType;
@@ -388,7 +388,7 @@ export async function appendPlannedCommitmentHistory(input: {
   if (res.error) throw res.error;
 }
 
-export async function loadCalendar(): Promise<{ holidays: NzHoliday[]; closures: CompanyClosure[]; calendar: WorkingDayIndex }> {
+async function loadCalendar(): Promise<{ holidays: NzHoliday[]; closures: CompanyClosure[]; calendar: WorkingDayIndex }> {
   const holidaysRes = await supabaseServiceRole.from('nz_holidays').select('date, name, scope, region');
   if (holidaysRes.error) throw holidaysRes.error;
   const closuresRes = await supabaseServiceRole.from('company_closures').select('date, name, region');
@@ -587,7 +587,7 @@ export function computeCommitImpacts(input: {
   return impacts;
 }
 
-export async function applyJobForecastUpdates(updates: { id: string; forecast_start: string | null; forecast_end_exclusive: string | null; forecast_duration_days: number }[]) {
+async function applyJobForecastUpdates(updates: { id: string; forecast_start: string | null; forecast_end_exclusive: string | null; forecast_duration_days: number }[]) {
   if (!Array.isArray(updates) || !updates.length) return;
 
   const chunkSize = 20;
@@ -621,12 +621,12 @@ export function snapToday(today: string, region: string, calendar: WorkingDayInd
   return snapToWorkingDay(today, region, calendar);
 }
 
-export function nextAvailableDate(today: string, crewRow: CrewRow, calendar: WorkingDayIndex): string {
+function nextAvailableDate(today: string, crewRow: CrewRow, calendar: WorkingDayIndex): string {
   const base = crewRow.base_available_date && isYmd(crewRow.base_available_date) ? crewRow.base_available_date : today;
   return nextWorkingDay(base, (crewRow.calendar_region || 'Auckland').trim() || 'Auckland', calendar);
 }
 
-export function normalizedPosition(items: CrewScheduleItem[]): CrewScheduleItem[] {
+function normalizedPosition(items: CrewScheduleItem[]): CrewScheduleItem[] {
   const sorted = items.slice().sort((a, b) => a.position - b.position || a.id.localeCompare(b.id));
   return sorted.map((item, index) => ({ ...item, position: index }));
 }
@@ -660,7 +660,7 @@ export function buildJobMetaMap(jobs: ScheduledJob[]): Map<string, ScheduledJob>
   return new Map(jobs.map((job) => [job.id, job]));
 }
 
-export function defaultForecastDurationDays(): number {
+function defaultForecastDurationDays(): number {
   return 1;
 }
 
@@ -903,7 +903,7 @@ export function applyScheduleItemPositions(items: CrewScheduleItem[]): { id: str
   return items.map((item) => ({ id: item.id, position: item.position }));
 }
 
-export function clampPosition(position: unknown, length: number): number {
+function clampPosition(position: unknown, length: number): number {
   const value = typeof position === 'number' && Number.isFinite(position) ? Math.trunc(position) : length;
   return Math.max(0, Math.min(value, length));
 }

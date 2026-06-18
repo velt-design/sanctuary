@@ -5,26 +5,15 @@ import { newId } from '@/lib/utils/id';
 import { nowIso } from '@/lib/utils/time';
 import { listContacts } from '@/lib/repo/contactsRepo';
 
-export type ExportEnvelopeVersion = 'sp_export_v1';
+type ExportEnvelopeVersion = 'sp_export_v1';
 
-export type ProjectExportFileV1 = {
-  version: ExportEnvelopeVersion;
-  kind: 'project';
-  exportedAt: string;
-  project: Project;
-  estimates: Estimate[];
-  contacts?: Contact[];
-};
-
-export type EstimateExportFileV1 = {
+type EstimateExportFileV1 = {
   version: ExportEnvelopeVersion;
   kind: 'estimate';
   exportedAt: string;
   estimate: Estimate;
   contacts?: Contact[];
 };
-
-export type AnyExportFileV1 = ProjectExportFileV1 | EstimateExportFileV1;
 
 export function downloadJson(filename: string, data: unknown) {
   const content = JSON.stringify(data, null, 2);
@@ -35,19 +24,6 @@ export function downloadJson(filename: string, data: unknown) {
   a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
-}
-
-export async function makeProjectExportFile(project: Project, estimates: Estimate[]): Promise<ProjectExportFileV1> {
-  const contactsAll = await listContacts().catch(() => []);
-  const contacts = project.contactId ? contactsAll.filter((c) => c.id === project.contactId) : [];
-  return {
-    version: 'sp_export_v1',
-    kind: 'project',
-    exportedAt: nowIso(),
-    project,
-    estimates,
-    contacts,
-  };
 }
 
 export async function makeEstimateExportFile(estimate: Estimate): Promise<EstimateExportFileV1> {
