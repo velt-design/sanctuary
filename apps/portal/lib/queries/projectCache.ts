@@ -44,18 +44,6 @@ export function buildProjectSnapshotPlaceholder(project: Project): ProjectPageSn
   };
 }
 
-export function getProjectSnapshotPlaceholderFromList(
-  queryClient: QueryClient,
-  host: string,
-  projectId: string,
-): ProjectPageSnapshotResponse | undefined {
-  const cached = queryClient.getQueryData<Project[]>(qk.projects.list(host));
-  if (!Array.isArray(cached)) return undefined;
-  const project = cached.find((entry) => entry.id === projectId);
-  if (!project) return undefined;
-  return buildProjectSnapshotPlaceholder(project);
-}
-
 export function patchProjectSnapshot(
   queryClient: QueryClient,
   host: string,

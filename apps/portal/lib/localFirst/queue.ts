@@ -116,7 +116,7 @@ async function processSingleItem(item: LocalFirstQueueItem): Promise<'continue' 
   }
 }
 
-export async function processLocalFirstEntityQueue(entityKey: LocalFirstEntityKey): Promise<void> {
+async function processLocalFirstEntityQueue(entityKey: LocalFirstEntityKey): Promise<void> {
   if (!runtimeStarted || runningEntities.has(entityKey)) return;
   runningEntities.add(entityKey);
 
@@ -138,7 +138,7 @@ export async function processLocalFirstEntityQueue(entityKey: LocalFirstEntityKe
   }
 }
 
-export async function processAllLocalFirstQueues(): Promise<void> {
+async function processAllLocalFirstQueues(): Promise<void> {
   await ensureLocalFirstStoreReady();
   if (!isOnline()) {
     await markLocalFirstPendingEntitiesOffline();

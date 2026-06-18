@@ -11,9 +11,9 @@ export type PortalScenarioId =
   | 'design-list-basic'
   | 'running-jobs-basic';
 
-export type PortalScenarioStatus = 'seeded' | 'planned';
+type PortalScenarioStatus = 'seeded' | 'planned';
 
-export interface PortalScenarioDefinition {
+interface PortalScenarioDefinition {
   id: PortalScenarioId;
   status: PortalScenarioStatus;
   requiredRole: 'staff';

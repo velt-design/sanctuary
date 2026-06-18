@@ -1,15 +1,13 @@
 import type { PipelineStageKey } from '@/lib/projects/pipelineDefinition';
 
-export type StageKey = PipelineStageKey;
-
 export type StageCompleteAction =
-  | { kind: 'advance'; toStage: StageKey; label: string }
-  | { kind: 'advance_skip'; toStage: StageKey; label: string }
+  | { kind: 'advance'; toStage: PipelineStageKey; label: string }
+  | { kind: 'advance_skip'; toStage: PipelineStageKey; label: string }
   | { kind: 'archive'; label: string }
   | { kind: 'call_later'; label: string }
   | { kind: 'set_reminder'; label: string };
 
-export const STAGE_COMPLETE_MODAL: Record<StageKey, StageCompleteAction[]> = {
+export const STAGE_COMPLETE_MODAL: Record<PipelineStageKey, StageCompleteAction[]> = {
   new: [
     { kind: 'advance', toStage: 'contacted', label: 'Move to Contacted' },
     { kind: 'advance_skip', toStage: 'site_visit', label: 'Move to Site Visit' },

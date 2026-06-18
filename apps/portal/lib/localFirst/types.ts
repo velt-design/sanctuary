@@ -2,7 +2,7 @@ export type LocalFirstEntityKey = string;
 
 export type LocalFirstEntityStatus = 'idle' | 'queued' | 'syncing' | 'synced' | 'offline' | 'error' | 'conflict';
 
-export type LocalFirstQueueItemStatus = 'queued' | 'syncing' | 'paused_conflict';
+type LocalFirstQueueItemStatus = 'queued' | 'syncing' | 'paused_conflict';
 
 export type LocalFirstWorkingCopy<TData = unknown> = {
   entityKey: LocalFirstEntityKey;
@@ -71,21 +71,21 @@ export type LocalFirstStoreSummary = {
   issueMessage?: string;
 };
 
-export type LocalFirstMutationSuccessResult<TData = unknown> = {
+type LocalFirstMutationSuccessResult<TData = unknown> = {
   kind: 'success';
   lastSyncedAt?: string;
   confirmedWorkingCopy?: TData;
   clearWorkingCopy?: boolean;
 };
 
-export type LocalFirstMutationRetryResult = {
+type LocalFirstMutationRetryResult = {
   kind: 'retry';
   message?: string;
   retryAt?: string;
   status?: 'queued' | 'offline' | 'error';
 };
 
-export type LocalFirstMutationConflictResult<TServer = unknown, TClient = unknown> = {
+type LocalFirstMutationConflictResult<TServer = unknown, TClient = unknown> = {
   kind: 'conflict';
   message: string;
   serverSnapshot?: TServer;
@@ -98,7 +98,7 @@ export type LocalFirstMutationResult<TData = unknown, TServer = unknown, TClient
   | LocalFirstMutationRetryResult
   | LocalFirstMutationConflictResult<TServer, TClient>;
 
-export type LocalFirstMutationHandlerContext = {
+type LocalFirstMutationHandlerContext = {
   attempt: number;
   entityKey: LocalFirstEntityKey;
 };

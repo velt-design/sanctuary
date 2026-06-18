@@ -82,7 +82,7 @@ import {
 } from './ModuleDrawingSurfacePrimitives';
 import { resolvePlanSheetLayout } from './ModulePlanLayoutPresentation';
 import { resolveSectionSheetLayout } from './ModuleSectionPresentation';
-export function getPlanScaleFit(
+function getPlanScaleFit(
   model: ModulePlanModel,
   ratio: EstimateDrawingFixedScaleValue,
   viewportMm?: { widthMm: number; heightMm: number },
@@ -100,7 +100,7 @@ export function getPlanScaleFit(
 }
 
 
-export function getSectionScaleFit(
+function getSectionScaleFit(
   model: ModuleSectionModel,
   ratio: EstimateDrawingFixedScaleValue,
   viewportMm?: { widthMm: number; heightMm: number },
@@ -118,7 +118,7 @@ export function getSectionScaleFit(
 }
 
 
-export function toScaleDiagnostic(scale: EstimateDrawingScale, fit: DrawingSheetFitResult | null): ModuleDrawingScaleDiagnostic {
+function toScaleDiagnostic(scale: EstimateDrawingScale, fit: DrawingSheetFitResult | null): ModuleDrawingScaleDiagnostic {
   const availableWidthMm = fit?.availableWidthMm ?? 0;
   const availableHeightMm = fit?.availableHeightMm ?? 0;
   const requiredWidthMm = fit?.requiredWidthMm ?? 0;

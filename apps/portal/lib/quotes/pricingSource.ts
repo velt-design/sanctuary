@@ -1,8 +1,8 @@
 import { createHash } from 'crypto';
 
-export type QuotePricingSource = 'calculator_live' | 'workbench_solved';
+type QuotePricingSource = 'calculator_live' | 'workbench_solved';
 
-export type QuotePricingSourceCopyReason =
+type QuotePricingSourceCopyReason =
   | 'quote_created'
   | 'quote_refreshed_from_estimate'
   | 'quote_revised';
@@ -76,7 +76,7 @@ function compactMetadataValue(key: (typeof ALLOWED_SOURCE_METADATA_KEYS)[number]
   return null;
 }
 
-export function normalizeQuotePricingSource(value: unknown): QuotePricingSource {
+function normalizeQuotePricingSource(value: unknown): QuotePricingSource {
   return value === 'workbench_solved' || value === 'calculator_live' ? value : DEFAULT_PRICING_SOURCE;
 }
 

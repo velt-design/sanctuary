@@ -35,7 +35,7 @@ Future workbench-solved pricing enablement must stay a server-authoritative gate
 
 Working copies are local drafts scoped by stable entity keys. They allow UI to preserve unsaved or not-yet-synced work across route changes and reloads.
 
-Use `useLocalWorkingCopy` for entity draft state. Use `useEntitySyncState` or aliased sync helpers when UI must show pending, failed, or conflict state.
+Use `useLocalWorkingCopy` for entity draft state. Use aliased sync helpers when UI must show pending, failed, or conflict state across provisional and durable IDs.
 
 ## Queue Semantics
 

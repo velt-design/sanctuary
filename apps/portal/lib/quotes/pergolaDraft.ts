@@ -1,6 +1,6 @@
 const SHARED_SPEC_HEADING = 'Shared specification';
 
-export type PergolaFieldKey =
+type PergolaFieldKey =
   | 'configuration'
   | 'style'
   | 'size'
@@ -30,7 +30,7 @@ export type PergolaModuleDraft = {
   postFixings: string;
 };
 
-export type PergolaStructuredDraft = {
+type PergolaStructuredDraft = {
   heading: string;
   configuration: string;
   shared: PergolaFieldMap;

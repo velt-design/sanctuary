@@ -268,7 +268,7 @@ export default function ProjectDetailContent({
   );
 }
 
-export function ProjectDetailSkeleton() {
+function ProjectDetailSkeleton() {
   return (
     <article className="project-detail project-detail--skeleton" aria-live="polite" aria-busy="true">
       <div className="project-detail__hero">

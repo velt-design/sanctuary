@@ -1,12 +1,12 @@
 import type { PublicAccess, SiteAttachment, SiteLevel } from './startFlowContent';
 
-export type ConsentResultCode =
+type ConsentResultCode =
   | 'likely_exempt_unroofed_pergola'
   | 'likely_exempt_porch_veranda_upto_20'
   | 'possibly_exempt_with_professional_signoff_20_to_30'
   | 'building_consent_likely_required';
 
-export type ConsentCheckInput = {
+type ConsentCheckInput = {
   roofed: boolean;
   attached: SiteAttachment | null;
   level: SiteLevel | null;

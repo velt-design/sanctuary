@@ -153,7 +153,7 @@ describe('ModulePlanSvgPresentationModel', () => {
     expect(model.diagnostics.visibleGeometryFallbackOverlayBodyCount).toBe(0);
     expect(model.diagnostics.visibleTopProjectionContextOverlayBodyCount).toBe(0);
     expect(model.diagnostics.committedTopProjectionBodyCount).toBe(2);
-    expect(model.committedTopProjectionBodies.map(({ shape }) => shape.id)).toEqual(['roof', 'deck-1']);
+    expect(model.committedTopProjectionBodies.map(({ shape }) => shape.id).sort()).toEqual(['deck-1', 'roof']);
   });
 
   it('keeps wall detail as context lines while suppressing context bodies', () => {

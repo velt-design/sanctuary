@@ -48,7 +48,7 @@ export const LIST_PAGE_SIZE = 1000;
  * strict superset of this shape (adds `nextCursor`), so consumers can
  * migrate forward without re-typing.
  */
-export type ListFetchResult<T> = {
+type ListFetchResult<T> = {
   rows: T[];
   totalCount: number | null;
 };

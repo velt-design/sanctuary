@@ -1,6 +1,6 @@
 import type { Page, TestInfo } from '@playwright/test';
 
-export type PortalEvidenceMode = 'default' | 'full';
+type PortalEvidenceMode = 'default' | 'full';
 
 export interface PortalBrowserEvidence {
   consoleMessages: Array<{ type: string; text: string }>;
@@ -19,7 +19,7 @@ export interface PortalBrowserEvidenceContext {
   label?: string;
 }
 
-export interface AttachPortalBrowserEvidenceOptions {
+interface AttachPortalBrowserEvidenceOptions {
   forceRich?: boolean;
   maxDomSnapshotLength?: number;
 }
@@ -133,7 +133,7 @@ export function installPortalBrowserEvidence(page: Page): PortalBrowserEvidence 
   return evidence;
 }
 
-export async function readPortalPageDebugExportForEvidence(page: Page): Promise<unknown | null> {
+async function readPortalPageDebugExportForEvidence(page: Page): Promise<unknown | null> {
   const locator = page.locator('[data-portal-debug-export="true"]').first();
   if ((await locator.count()) === 0) return null;
 

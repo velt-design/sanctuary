@@ -17,7 +17,7 @@ import {
   type WaterDirectionPreference,
 } from './startFlowContent';
 
-export const START_FLOW_STORAGE_KEY = 'sanctuary:start_guide:v2';
+const START_FLOW_STORAGE_KEY = 'sanctuary:start_guide:v2';
 
 export type ConfirmedStepState = {
   branch: boolean;
@@ -199,14 +199,6 @@ function hydratePersistedState(rawState: unknown): StartFlowPersistedState | nul
     draft,
     confirmedDraft,
     confirmedSteps,
-  };
-}
-
-export function createEmptyPersistedState(): StartFlowPersistedState {
-  return {
-    draft: cloneDefaultDraft(),
-    confirmedDraft: cloneDefaultDraft(),
-    confirmedSteps: { ...DEFAULT_CONFIRMED_STEP_STATE },
   };
 }
 

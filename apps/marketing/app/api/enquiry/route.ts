@@ -13,7 +13,6 @@ import {
   type BlindLineItemInput,
 } from '@sp/costing';
 import { buildEstimateDbPayload } from '../../../../../apps/portal/lib/estimates/persistence';
-import { appIdFromUuid } from '../../../../../lib/supabase/mappers';
 import { sendCustomerAutoresponder } from '@/lib/email/sendCustomerAutoresponder';
 import {
   EMAIL_WEBSITE_AUTORESPONDER_RES_V1,
@@ -887,7 +886,7 @@ export async function POST(req: Request) {
       .select('id')
       .single();
     if (!estimateInsert.error && estimateInsert.data?.id) {
-      designId = appIdFromUuid('est', String(estimateInsert.data.id));
+      designId = `est_${String(estimateInsert.data.id)}`;
     } else if (estimateInsert.error) {
       console.error('Failed to create enquiry draft design', estimateInsert.error);
     }

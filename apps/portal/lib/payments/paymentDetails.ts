@@ -1,4 +1,4 @@
-export type PaymentDetailsDocumentKind = 'quote' | 'invoice';
+type PaymentDetailsDocumentKind = 'quote' | 'invoice';
 
 const PAYMENT_DETAILS_INTRO = 'Please make payment directly to our bank account:';
 const PAYMENT_DETAILS_ACCOUNT_NAME = 'Sanctuary Pergolas Ltd.';
@@ -16,4 +16,3 @@ export function paymentDetailsLines(kind: PaymentDetailsDocumentKind): string[] 
 export function paymentDetailsText(kind: PaymentDetailsDocumentKind): string {
   return paymentDetailsLines(kind).join('\n');
 }
-

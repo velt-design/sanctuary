@@ -17,7 +17,7 @@ function cloneLineItems(items: QuoteLineItem[]): QuoteLineItem[] {
   }));
 }
 
-export function mergeQuoteLineItemsForRefresh(
+function mergeQuoteLineItemsForRefresh(
   currentItems: QuoteLineItem[],
   generatedItems: QuoteLineItem[],
   mode: QuoteRefreshMode,

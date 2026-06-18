@@ -35,25 +35,25 @@ import {
   resolveSectionFitFrame,
 } from './ModuleSectionPresentation';
 
-export type GeometrySectionRenderSource = 'solved_geometry' | 'legacy_fallback';
+type GeometrySectionRenderSource = 'solved_geometry' | 'legacy_fallback';
 
-export type GeometrySectionSvgLine = {
+type GeometrySectionSvgLine = {
   id: string;
   start: Point;
   end: Point;
 };
 
-export type GeometrySectionSvgMember = GeometrySectionSvgLine & {
+type GeometrySectionSvgMember = GeometrySectionSvgLine & {
   role: GeometrySectionMember2D['role'];
 };
 
-export type GeometrySectionSvgHouseSurface = {
+type GeometrySectionSvgHouseSurface = {
   id: string;
   kind: GeometrySectionHouseSurfaceKind;
   points: Point[];
 };
 
-export type GeometrySectionSvgHouseLine = GeometrySectionSvgLine & {
+type GeometrySectionSvgHouseLine = GeometrySectionSvgLine & {
   kind: GeometrySectionHouseLineKind;
 };
 
@@ -199,7 +199,7 @@ function measureGeometrySectionBounds(input: {
   ]);
 }
 
-export function resolveGeometrySectionSheetLayoutForScale(input: {
+function resolveGeometrySectionSheetLayoutForScale(input: {
   section: GeometrySectionViewModel;
   scale: number;
 }): ResolvedSheetLayout {
@@ -235,7 +235,7 @@ export function resolveGeometrySectionSheetLayoutForScale(input: {
   };
 }
 
-export function resolveGeometrySectionSheetLayout(input: {
+function resolveGeometrySectionSheetLayout(input: {
   section: GeometrySectionViewModel;
   drawingScale: EstimateDrawingScale;
   viewportMm?: { widthMm: number; heightMm: number };
@@ -258,7 +258,7 @@ export function resolveGeometrySectionSheetLayout(input: {
   });
 }
 
-export function resolveGeometrySectionModelSpaceLayout(section: GeometrySectionViewModel): ResolvedModelSpaceLayout {
+function resolveGeometrySectionModelSpaceLayout(section: GeometrySectionViewModel): ResolvedModelSpaceLayout {
   const scale = MODEL_SPACE_UNITS_PER_METRE;
   const facts = {
     ...resolveGeometrySectionLayoutFacts({ section, presentation: 'model', scale }),

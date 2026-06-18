@@ -72,7 +72,7 @@ export function pointOnAttachmentFrame(frame: PlanAttachmentFrame, along: number
 }
 
 
-export type TickDimensionProps = {
+type TickDimensionProps = {
   x1: number;
   y1: number;
   x2: number;
@@ -91,7 +91,7 @@ export type TickDimensionProps = {
 };
 
 
-export type DimensionPresentationSpec = {
+type DimensionPresentationSpec = {
   tickHalf: number;
   barHalf: number;
   barOffset: number;
@@ -101,7 +101,7 @@ export type DimensionPresentationSpec = {
 };
 
 
-export type TickDimensionGeometry = {
+type TickDimensionGeometry = {
   lineStartX: number;
   lineStartY: number;
   lineEndX: number;
@@ -198,7 +198,7 @@ export type AnnotatedBounds = {
 };
 
 
-export type BoundsInsets = {
+type BoundsInsets = {
   left: number;
   right: number;
   top: number;
@@ -206,13 +206,13 @@ export type BoundsInsets = {
 };
 
 
-export type LayoutOffset = {
+type LayoutOffset = {
   dx: number;
   dy: number;
 };
 
 
-export type DebugOutlineProps = {
+type DebugOutlineProps = {
   rect: SheetRect;
   className: string;
   marker: string;
@@ -346,12 +346,12 @@ export function boundsToPaddedRect(bounds: AnnotatedBounds, padding: number): Sh
 }
 
 
-export function formatViewBoxNumber(value: number): string {
+function formatViewBoxNumber(value: number): string {
   return Number.isInteger(value) ? `${value}` : value.toFixed(3).replace(/\.?0+$/, '');
 }
 
 
-export function rectToViewBox(rect: SheetRect): string {
+function rectToViewBox(rect: SheetRect): string {
   return [rect.x, rect.y, rect.width, rect.height].map(formatViewBoxNumber).join(' ');
 }
 
@@ -538,7 +538,7 @@ export function rectToPoints(x: number, y: number, width: number, height: number
 }
 
 
-export function resolveTickDimensionGeometry({
+function resolveTickDimensionGeometry({
   x1,
   y1,
   x2,
@@ -809,7 +809,7 @@ export function estimateArrowHeadBounds({
 }
 
 
-export function formatScaleDebugLabel(scale: EstimateDrawingScale): string {
+function formatScaleDebugLabel(scale: EstimateDrawingScale): string {
   return scale.mode === 'fit' ? 'NTS' : `1:${scale.ratio}`;
 }
 

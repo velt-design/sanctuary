@@ -13,12 +13,12 @@ export function normalizeDepositPercent(value: unknown, fallback = 50): number {
   return clampDepositPercent(n);
 }
 
-export function formatDepositPercent(value: number): string {
+function formatDepositPercent(value: number): string {
   const n = normalizeDepositPercent(value);
   return n.toFixed(2).replace(/\.00$/, '').replace(/(\.\d)0$/, '$1');
 }
 
-export function depositTermsLine(value: number): string {
+function depositTermsLine(value: number): string {
   return `A ${formatDepositPercent(value)}% deposit is required to confirm your booking.`;
 }
 
@@ -41,7 +41,7 @@ export function applyDepositPercentToTerms(terms: string | null | undefined, val
   return lines.join('\n');
 }
 
-export function buildDefaultQuoteTerms(depositPercent = 50): string {
+function buildDefaultQuoteTerms(depositPercent = 50): string {
   return `This quote is valid for 30 days from the issue date.
 ${depositTermsLine(depositPercent)}
 Lead times will be confirmed once the deposit is received.`;

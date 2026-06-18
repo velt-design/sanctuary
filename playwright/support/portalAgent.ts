@@ -1,14 +1,10 @@
 import { expect, type Page } from '@playwright/test';
 
 export {
-  attachPortalBrowserEvidence,
-  installPortalBrowserEvidence,
   withPortalBrowserEvidence,
-  type PortalBrowserEvidence,
-  type PortalBrowserEvidenceContext,
 } from './portalBrowserEvidence';
 
-export interface OpenPortalPageOptions {
+interface OpenPortalPageOptions {
   heading?: string | RegExp;
   timeout?: number;
 }

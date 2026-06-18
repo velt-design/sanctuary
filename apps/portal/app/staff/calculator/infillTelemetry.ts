@@ -1,4 +1,4 @@
-export type InfillTelemetryEventName =
+type InfillTelemetryEventName =
   | 'infill_modal_open'
   | 'infill_add'
   | 'infill_select'

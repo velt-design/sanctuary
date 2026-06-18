@@ -1,10 +1,10 @@
 import { queryOptions } from '@tanstack/react-query';
 import { qk } from './keys';
-import { getProject, listProjects, listProjectsForContact } from '@/lib/repo/projectsRepo';
+import { listProjects, listProjectsForContact } from '@/lib/repo/projectsRepo';
 import { apiJson } from '@/lib/repo/apiClient';
 import type { ProjectPageSnapshotResponse } from '@/lib/projects/types';
 
-export type ProjectTooltipSummary = {
+type ProjectTooltipSummary = {
   clientName: string | null;
   roofStyleLabel: 'Pitched' | 'Gable' | 'Hip' | 'Box' | 'Multiple Modules' | null;
   materialLabel: 'Acrylic' | 'Timber' | 'Both' | null;
@@ -30,14 +30,6 @@ export const projectsListQueryOptions = (host: string, options?: { includeArchiv
     gcTime: ONE_DAY,
   });
 };
-
-export const projectDetailQueryOptions = (host: string, projectId: string) =>
-  queryOptions({
-    queryKey: qk.projects.detail(host, projectId),
-    queryFn: () => getProject(projectId),
-    staleTime: TEN_MINUTES,
-    gcTime: ONE_DAY,
-  });
 
 export const projectPageSnapshotQueryOptions = (host: string, projectId: string) =>
   queryOptions({

@@ -20,21 +20,21 @@ import {
   type CalculatorModuleInputs,
 } from '@/lib/types/calculator';
 
-export type ModulePlanDataSource = 'derived' | 'input_fallback';
-export type ModuleSectionDataSource = ModulePlanDataSource;
+type ModulePlanDataSource = 'derived' | 'input_fallback';
+type ModuleSectionDataSource = ModulePlanDataSource;
 
-export type ModuleHousePoint2D = {
+type ModuleHousePoint2D = {
   x: number;
   y: number;
 };
 
-export type ModuleHouseMetadataValue = string | number | boolean | null;
-export type ModuleHouseMetadata = Record<string, ModuleHouseMetadataValue>;
+type ModuleHouseMetadataValue = string | number | boolean | null;
+type ModuleHouseMetadata = Record<string, ModuleHouseMetadataValue>;
 
-export type ModulePlanHouseLineKind = 'wall_segment' | 'roof_feature' | 'gutter' | 'attachment_target';
-export type ModuleSectionHouseLineKind = 'gutter' | 'roof_feature' | 'attachment_target' | 'house_reference';
+type ModulePlanHouseLineKind = 'wall_segment' | 'roof_feature' | 'gutter' | 'attachment_target';
+type ModuleSectionHouseLineKind = 'gutter' | 'roof_feature' | 'attachment_target' | 'house_reference';
 
-export type ModuleHouseLine2D<Kind extends string = ModulePlanHouseLineKind | ModuleSectionHouseLineKind> = {
+type ModuleHouseLine2D<Kind extends string = ModulePlanHouseLineKind | ModuleSectionHouseLineKind> = {
   id: string;
   kind: Kind;
   line: {
@@ -45,7 +45,7 @@ export type ModuleHouseLine2D<Kind extends string = ModulePlanHouseLineKind | Mo
 };
 
 export type ModulePlanHouseLine2D = ModuleHouseLine2D<ModulePlanHouseLineKind>;
-export type ModuleSectionHouseLine2D = ModuleHouseLine2D<ModuleSectionHouseLineKind>;
+type ModuleSectionHouseLine2D = ModuleHouseLine2D<ModuleSectionHouseLineKind>;
 
 export type ModulePlanHouseSurface = {
   id: string;
@@ -54,19 +54,19 @@ export type ModulePlanHouseSurface = {
   metadata?: ModuleHouseMetadata;
 };
 
-export type ModuleSectionHouseSurface = {
+type ModuleSectionHouseSurface = {
   id: string;
   kind: 'wall' | 'roof' | 'soffit' | 'fascia' | 'deck' | 'attachment_zone';
   boundary: ModuleHousePoint2D[];
   metadata?: ModuleHouseMetadata;
 };
 
-export type ModulePlanHouseContext = {
+type ModulePlanHouseContext = {
   surfaces: ModulePlanHouseSurface[];
   lines: ModulePlanHouseLine2D[];
 };
 
-export type ModuleSectionHouseContext = {
+type ModuleSectionHouseContext = {
   surfaces: ModuleSectionHouseSurface[];
   lines: ModuleSectionHouseLine2D[];
 };
@@ -157,7 +157,7 @@ export type HouseFootprintPoint = {
   y: number;
 };
 
-export type HouseFootprintResolvedParams = {
+type HouseFootprintResolvedParams = {
   widthM: number;
   offsetXM: number;
   setbackM: number;
@@ -170,7 +170,7 @@ export type HouseFootprintResolvedParams = {
   sideRunM: number;
 };
 
-export type HouseFootprintHandleLayout = {
+type HouseFootprintHandleLayout = {
   id: HouseFootprintHandleId;
   label: string;
   valueM: number;
@@ -184,7 +184,7 @@ export type HouseFootprintHandleLayout = {
   maxValueM: number;
 };
 
-export type HouseFootprintEdgeLayout = {
+type HouseFootprintEdgeLayout = {
   id: HouseFootprintHandleId;
   label: string;
   valueM: number;
@@ -197,7 +197,7 @@ export type HouseFootprintEdgeLayout = {
   maxValueM: number;
 };
 
-export type HouseFootprintLocalLayout = {
+type HouseFootprintLocalLayout = {
   polygon: HouseFootprintPoint[];
   handles: HouseFootprintHandleLayout[];
   edges: HouseFootprintEdgeLayout[];
@@ -241,7 +241,7 @@ export function attachmentSideQuarterTurns(side: AttachmentSide): 0 | 1 | 2 | 3 
   return 0;
 }
 
-export function resolveHouseFootprintParamMetres(input: {
+function resolveHouseFootprintParamMetres(input: {
   params: CalculatorHouseFootprintParams;
   pergolaWidthM: number;
   pergolaDepthM: number;

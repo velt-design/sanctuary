@@ -13,7 +13,7 @@ function escapeCsv(value: string): string {
   return `"${value.replace(/"/g, '""')}"`;
 }
 
-export function cutListRowsToCsv(rows: CutListRow[]): string {
+function cutListRowsToCsv(rows: CutListRow[]): string {
   const header = ['Part', 'Qty', 'Length/Range', 'Notes'];
   const lines = rows.map((row) =>
     [

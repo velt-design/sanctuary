@@ -1,4 +1,4 @@
-export type AddonsTotals = {
+type AddonsTotals = {
   blinds: { ex: number; inc: number };
   totals: { ex: number; inc: number };
 };

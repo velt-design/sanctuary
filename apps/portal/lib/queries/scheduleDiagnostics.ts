@@ -1,6 +1,6 @@
 import { getSupabaseBrowser, supabaseHostFromUrl, supabaseRuntimeUrl } from '@/lib/supabase/browserClient';
 
-export type ScheduleDiagnosticsResult = {
+type ScheduleDiagnosticsResult = {
   host: string | null;
   crewsOk: boolean;
   crewsError?: string;

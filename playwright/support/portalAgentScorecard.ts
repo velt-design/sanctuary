@@ -30,7 +30,7 @@ interface PortalAgentScorecardEvidenceCoverage {
   specs: PortalEvidenceSpecAdoption[];
 }
 
-export interface PortalAgentScorecardRepoHealth {
+interface PortalAgentScorecardRepoHealth {
   source: 'repo:health';
   available: boolean;
   metrics: Partial<Record<PortalRepoHealthMetricKey, number>>;
@@ -75,7 +75,7 @@ export interface PortalAgentScorecardStrictResult {
   failures: PortalAgentScorecardStrictFailure[];
 }
 
-export interface BuildPortalAgentScorecardOptions {
+interface BuildPortalAgentScorecardOptions {
   repoRoot?: string;
   repoHealthText?: string | null;
   repoHealthError?: string | null;

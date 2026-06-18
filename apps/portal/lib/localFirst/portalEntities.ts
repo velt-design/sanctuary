@@ -67,7 +67,7 @@ export type PortalDesignRequestCreateMutationPayload = {
   requestNote?: string | null;
 };
 
-export type PortalQuoteDraftPatch = {
+type PortalQuoteDraftPatch = {
   reference?: string | null;
   introText?: string | null;
   termsText?: string | null;

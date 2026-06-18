@@ -3,7 +3,7 @@ import type { Project } from '@/lib/types/project';
 import { portalTodayYmd } from '@/lib/format/portalDateTime';
 import { normalizeProjectStatus } from '@/lib/types/project';
 
-export type DueFilter = 'all' | 'due' | 'overdue' | 'today';
+type DueFilter = 'all' | 'due' | 'overdue' | 'today';
 export type ArchiveFilter = 'active' | 'archived' | 'all';
 
 export type ProjectsIndexFilters = {
@@ -25,7 +25,7 @@ function readParam(source: SearchParamSource, key: string): string {
   return readFirst((source as Record<string, string | string[] | undefined>)[key]);
 }
 
-export function toYmd(value: string | null | undefined): string | null {
+function toYmd(value: string | null | undefined): string | null {
   const raw = (value ?? '').trim();
   if (!raw) return null;
   const match = raw.match(/^(\d{4}-\d{2}-\d{2})/);

@@ -33,7 +33,7 @@ export type TaskKey =
   | 'reminder'
   | 'upload_pictures';
 
-export type TaskDefinition = {
+type TaskDefinition = {
   key: TaskKey;
   label: string;
   kind: TaskKind;
@@ -165,7 +165,7 @@ export const STAGE_TASKS: Record<PipelineStageKey, TaskDefinition[]> = {
   paid: [],
 };
 
-export type ResolvedTaskItem = {
+type ResolvedTaskItem = {
   key: TaskKey;
   label: string;
   kind: TaskKind;
@@ -175,7 +175,7 @@ export type ResolvedTaskItem = {
   cta?: { label: string; href: string };
 };
 
-export type PipelineStageCounts = Partial<Record<PipelineStageKey, number>>;
+type PipelineStageCounts = Partial<Record<PipelineStageKey, number>>;
 
 const STAGE_KEY_SET = new Set<PipelineStageKey>(PIPELINE_STAGES.map((stage) => stage.key));
 
@@ -220,15 +220,9 @@ for (const task of TASK_DEFINITIONS) {
   if (!TASKS_BY_KEY.has(task.key)) TASKS_BY_KEY.set(task.key, task);
 }
 
-export const TASK_KEYS = Array.from(TASKS_BY_KEY.keys());
-
 export function getTaskDefinition(key: string | null | undefined): TaskDefinition | null {
   if (!key) return null;
   return TASKS_BY_KEY.get(key as TaskKey) ?? null;
-}
-
-export function isTaskKey(value: string | null | undefined): value is TaskKey {
-  return Boolean(getTaskDefinition(value));
 }
 
 export function isManualTaskKey(value: string | null | undefined): value is TaskKey {

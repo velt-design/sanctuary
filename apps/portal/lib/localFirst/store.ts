@@ -661,23 +661,6 @@ export async function resolveLocalFirstQueueItemConflict(
   });
 }
 
-export async function clearLocalFirstConflict(entityKey: LocalFirstEntityKey): Promise<void> {
-  await mutateLocalFirstState((draft) => {
-    delete draft.conflicts[entityKey];
-    for (const item of draft.queue) {
-      if (item.entityKey === entityKey && item.status === 'paused_conflict') {
-        item.status = 'queued';
-        item.updatedAt = isoNow();
-      }
-    }
-    updateEntityState(draft, entityKey, {
-      status: nextEntityStatusForPendingItems(draft, entityKey, 'queued'),
-      conflictId: undefined,
-      lastError: undefined,
-    });
-  });
-}
-
 export async function discardLocalFirstEntityQueue(entityKey: LocalFirstEntityKey): Promise<void> {
   await mutateLocalFirstState((draft) => {
     draft.queue = draft.queue.filter((item) => item.entityKey !== entityKey);

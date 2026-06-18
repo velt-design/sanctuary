@@ -7,7 +7,7 @@ import type {
 } from './ModuleDrawingContracts';
 import { HOUSE_FOOTPRINT_PRESET_OPTIONS } from './ModulePlanFootprintPresentation';
 
-export type ModulePlanPopoverLayerProps = {
+type ModulePlanPopoverLayerProps = {
   activeEdgeTagLabel: string | null;
   activeEdgeTagStyle?: CSSProperties;
   footprintEditor?: ModuleFootprintEditorProps;

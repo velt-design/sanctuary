@@ -13,7 +13,7 @@ import { useQuery } from '@tanstack/react-query';
 import { projectTooltipSummaryQueryOptions } from '@/lib/queries/projects';
 import styles from './ProjectRowTooltip.module.css';
 
-export type ProjectRowTooltipVisibleInfo = { projectId: string; x: number; y: number };
+type ProjectRowTooltipVisibleInfo = { projectId: string; x: number; y: number };
 
 const SHOW_DELAY_MS = 280;
 const HIDE_DELAY_MS = 140;

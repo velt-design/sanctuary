@@ -3,15 +3,15 @@
 import type { InfillMonoSlopeAnchorInput, InfillMonoSlopeModeInput } from '@/lib/types/calculator';
 
 export const RAFTER_SPACING_MM_MAX = 642;
-export const INFILL_SHEET_MAX_RUN_M = 3.05;
-export const INFILL_STRIP_MAX_RUN_M = 6.0;
-export const INFILL_SHEET_MAX_SHORT_SIDE_M = 1.2;
-export const INFILL_STRIP_MAX_SHORT_SIDE_M = 0.64;
-export const INFILL_JOINER_TOLERANCE_M = 0.02;
+const INFILL_SHEET_MAX_RUN_M = 3.05;
+const INFILL_STRIP_MAX_RUN_M = 6.0;
+const INFILL_SHEET_MAX_SHORT_SIDE_M = 1.2;
+const INFILL_STRIP_MAX_SHORT_SIDE_M = 0.64;
+const INFILL_JOINER_TOLERANCE_M = 0.02;
 
 export type InfillResolvedOrientation = 'vertical' | 'horizontal';
-export type InfillWarningSection = 'basic' | 'supports' | 'advanced';
-export type InfillWarningFieldKey =
+type InfillWarningSection = 'basic' | 'supports' | 'advanced';
+type InfillWarningFieldKey =
   | 'acrylic'
   | 'joiner-direction'
   | 'centre-limit'
@@ -56,7 +56,7 @@ export type CutListRow = {
   notes?: string;
 };
 
-export type InfillUiEstimate = {
+type InfillUiEstimate = {
   widthM: number;
   maxHeightM: number;
   qty: number;
@@ -104,7 +104,7 @@ export type InfillUiEstimate = {
   invalidCustomPositions: boolean;
 };
 
-export type InfillUiValidation = {
+type InfillUiValidation = {
   errors: {
     acrylicSource?: string;
     qty?: string;
@@ -162,7 +162,7 @@ export function normalizeMonoSlopeAnchor(value: unknown): InfillMonoSlopeAnchorI
   return value === 'right' ? 'right' : 'left';
 }
 
-export type ResolvedMonoSlopeShape = {
+type ResolvedMonoSlopeShape = {
   leftHeightM: number;
   rightHeightM: number;
   slopeMode: InfillMonoSlopeModeInput;
@@ -241,7 +241,7 @@ export function normalizePanelOrientation(value: unknown): InfillLineItem['panel
   return 'vertical';
 }
 
-export function maxRunForAcrylicSource(source: InfillLineItem['acrylicSource']): number {
+function maxRunForAcrylicSource(source: InfillLineItem['acrylicSource']): number {
   return source === 'strip_620' ? INFILL_STRIP_MAX_RUN_M : INFILL_SHEET_MAX_RUN_M;
 }
 
@@ -386,7 +386,7 @@ function buildCutListRows(estimate: {
   return rows;
 }
 
-export function locationLabel(value: InfillLineItem['location']): string {
+function locationLabel(value: InfillLineItem['location']): string {
   switch (value) {
     case 'front':
       return 'Front';
@@ -403,11 +403,11 @@ export function locationLabel(value: InfillLineItem['location']): string {
   }
 }
 
-export function acrylicSourceLabel(value: InfillLineItem['acrylicSource']): string {
+function acrylicSourceLabel(value: InfillLineItem['acrylicSource']): string {
   return value === 'strip_620' ? '620 strips' : 'Sheet panels';
 }
 
-export function formatInfillShapeSummary(shape: InfillLineItem['shape']): string {
+function formatInfillShapeSummary(shape: InfillLineItem['shape']): string {
   const widthM = Number.isFinite(toNumber(shape.widthM)) ? Math.max(0, toNumber(shape.widthM)) : 0;
   if (shape.type === 'rect') {
     const heightM = Number.isFinite(toNumber(shape.heightM)) ? Math.max(0, toNumber(shape.heightM)) : 0;
@@ -419,12 +419,12 @@ export function formatInfillShapeSummary(shape: InfillLineItem['shape']): string
   return `${formatMaybeNumber(widthM, 2)}x${formatMaybeNumber(resolved.leftHeightM, 2)}m->${formatMaybeNumber(resolved.rightHeightM, 2)}m${pitchLabel}`;
 }
 
-export function formatMaybeNumber(n: number | undefined, digits = 2): string {
+function formatMaybeNumber(n: number | undefined, digits = 2): string {
   if (typeof n !== 'number' || !Number.isFinite(n)) return '-';
   return n.toFixed(digits);
 }
 
-export function estimateRoofRafterSpacing(lengthM: number, derivedRafterCount?: number): { spacingM: number; source: 'derived' | 'fallback' } {
+function estimateRoofRafterSpacing(lengthM: number, derivedRafterCount?: number): { spacingM: number; source: 'derived' | 'fallback' } {
   if (typeof derivedRafterCount === 'number' && Number.isFinite(derivedRafterCount) && derivedRafterCount > 1 && Number.isFinite(lengthM) && lengthM > 0) {
     return {
       spacingM: Math.max(0.05, lengthM / (Math.max(2, Math.round(derivedRafterCount)) - 1)),
@@ -663,7 +663,7 @@ export function resolvePayloadPanelOrientation(item: InfillLineItem, roofRafterS
   return requested;
 }
 
-export function validateInfillUi(item: InfillLineItem, estimate: InfillUiEstimate): InfillUiValidation {
+function validateInfillUi(item: InfillLineItem, estimate: InfillUiEstimate): InfillUiValidation {
   const errors: InfillUiValidation['errors'] = {};
   const warnings: InfillWarningItem[] = [];
 

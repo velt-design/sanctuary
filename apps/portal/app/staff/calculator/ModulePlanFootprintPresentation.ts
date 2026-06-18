@@ -126,7 +126,7 @@ export type FootprintResizeEdgeSpec = {
 };
 
 
-export type FootprintCustomVertexSpec = {
+type FootprintCustomVertexSpec = {
   index: number;
   kind: 'confirmed' | 'pending' | 'hover' | 'locked-distance';
   isLatestConfirmed: boolean;
@@ -141,7 +141,7 @@ export type FootprintCustomVertexSpec = {
 };
 
 
-export type FootprintCustomEdgeSpec = {
+type FootprintCustomEdgeSpec = {
   index: number;
   kind: 'confirmed' | 'preview';
   previewPointKind: 'pending' | 'hover' | 'locked-distance' | null;
@@ -164,7 +164,7 @@ export type FootprintCanvasLayout = {
 };
 
 
-export function actualPergolaCenter(rect: { x: number; y: number; width: number; height: number }): Point {
+function actualPergolaCenter(rect: { x: number; y: number; width: number; height: number }): Point {
   return {
     x: rect.x + rect.width / 2,
     y: rect.y + rect.height / 2,
@@ -172,7 +172,7 @@ export function actualPergolaCenter(rect: { x: number; y: number; width: number;
 }
 
 
-export function localFootprintDimensionsM(model: ModulePlanModel, attachmentSide: AttachmentSide): { widthM: number; depthM: number } {
+function localFootprintDimensionsM(model: ModulePlanModel, attachmentSide: AttachmentSide): { widthM: number; depthM: number } {
   if (attachmentSide === 'left' || attachmentSide === 'right') {
     return {
       widthM: model.spanA,
@@ -187,7 +187,7 @@ export function localFootprintDimensionsM(model: ModulePlanModel, attachmentSide
 }
 
 
-export function mapLocalFootprintPointToPlan(input: {
+function mapLocalFootprintPointToPlan(input: {
   point: HouseFootprintPoint;
   rect: { x: number; y: number; width: number; height: number };
   canonicalWidthM: number;

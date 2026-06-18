@@ -2,7 +2,7 @@ import { useCallback, useState } from 'react';
 import type { InfillLineItem } from '@/lib/types/calculator';
 import { normalizePanelOrientation } from './infillCompute';
 
-export type InfillGeometryClipboard = {
+type InfillGeometryClipboard = {
   shape: InfillLineItem['shape'];
   panelOrientation: InfillLineItem['panelOrientation'];
   maxPanelWidthM: string;

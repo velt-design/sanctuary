@@ -1,10 +1,10 @@
 import type { PortalScenarioId } from './portalScenarioRegistry';
 
-export type PortalRouteCategory = 'core' | 'project' | 'commercial' | 'schedule' | 'workbench' | 'admin' | 'diagnostic';
+type PortalRouteCategory = 'core' | 'project' | 'commercial' | 'schedule' | 'workbench' | 'admin' | 'diagnostic';
 
-export type PortalRouteRequiredRole = 'staff' | 'admin' | 'fixture';
+type PortalRouteRequiredRole = 'staff' | 'admin' | 'fixture';
 
-export type PortalRouteDataRequirement =
+type PortalRouteDataRequirement =
   | 'none'
   | 'visible_project'
   | 'project_id'
@@ -18,7 +18,7 @@ export type PortalRouteSmokeStatus = 'agent-access' | 'scenario-required' | 'adm
 
 export type PortalRouteDebugExportStatus = 'exported' | 'planned' | 'not-applicable';
 
-export type PortalShellMarker = 'portal-shell' | 'admin-shell' | 'fixture-shell';
+type PortalShellMarker = 'portal-shell' | 'admin-shell' | 'fixture-shell';
 
 export interface PortalRouteCatalogEntry {
   id: string;

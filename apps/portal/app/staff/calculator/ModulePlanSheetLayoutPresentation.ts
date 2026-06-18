@@ -506,7 +506,7 @@ export function measurePlanAnnotatedBounds(input: {
   ]);
 }
 
-export function resolvePlanSheetLayoutForScale(input: {
+function resolvePlanSheetLayoutForScale(input: {
   model: ModulePlanModel;
   scale: number;
 }): ResolvedSheetLayout {

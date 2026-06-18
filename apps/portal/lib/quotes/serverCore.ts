@@ -43,8 +43,6 @@ import {
 } from './serverHelpers';
 import { loadEstimate, loadEstimateLabels, loadProjectCustomerName } from './serverLoaders';
 
-export { addDays, nowIso };
-
 export async function insertAuditEvent(params: { projectId: string; type: string; payload?: unknown }) {
   try {
     await supabaseServiceRole.from('audit_events').insert({
@@ -136,12 +134,6 @@ function extractEstimateText(estimate: Estimate, keys: string[]): string | null 
     if (typeof value === 'string' && value.trim()) return value.trim();
   }
   return null;
-}
-
-export async function syncDraftQuoteVersionsFromEstimate(
-  _estimateVersionId: string,
-): Promise<QuoteVersionDetail[]> {
-  return [];
 }
 
 function normalizeDraftLineItems(
@@ -1036,7 +1028,7 @@ async function persistQuoteArtifacts(params: {
   }
 }
 
-export async function clearQuoteArtifacts(quoteVersionId: string): Promise<void> {
+async function clearQuoteArtifacts(quoteVersionId: string): Promise<void> {
   const updateRes = await supabaseServiceRole
     .from('quote_versions')
     .update({
@@ -1122,18 +1114,8 @@ export async function ensureQuoteArtifacts(
   };
 }
 
-export async function refreshQuoteArtifactsAfterMutation(quoteVersionId: string, actor: string | null): Promise<void> {
+async function refreshQuoteArtifactsAfterMutation(quoteVersionId: string, actor: string | null): Promise<void> {
   await ensureQuoteArtifacts(quoteVersionId, actor, { requirePdf: true, allowCached: false });
-}
-
-export async function generateQuotePdf(quoteVersionId: string, actor: string | null): Promise<{ fileId: string; filename: string; bytes: Uint8Array }> {
-  const ensured = await ensureQuoteArtifacts(quoteVersionId, actor, { requirePdf: true });
-  if (!ensured.pdf) throw new Error('Failed to generate quote PDF');
-  return {
-    fileId: appIdFromUuid('file', ensured.pdf.fileUuid),
-    filename: ensured.pdf.filename,
-    bytes: ensured.pdf.bytes,
-  };
 }
 
 export async function ensurePdfForSend(detail: QuoteVersionDetail, actor: string | null): Promise<{ fileUuid: string; filename: string; content: Buffer }> {

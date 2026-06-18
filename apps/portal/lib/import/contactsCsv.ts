@@ -1,6 +1,6 @@
 import type { Contact } from '@/lib/types/contact';
 
-export type ContactsCsvRow = {
+type ContactsCsvRow = {
   displayName: string;
   email: string;
   phone: string;
@@ -9,7 +9,7 @@ export type ContactsCsvRow = {
   errors: string[];
 };
 
-export type ContactsCsvParseResult = {
+type ContactsCsvParseResult = {
   headerRowNumber: number;
   headers: string[];
   rows: ContactsCsvRow[];
@@ -27,12 +27,12 @@ function normaliseHeader(value: string): string {
     .replace(/\s+/g, ' ');
 }
 
-export function normaliseEmail(value: unknown): string {
+function normaliseEmail(value: unknown): string {
   if (typeof value !== 'string') return '';
   return value.trim().toLowerCase();
 }
 
-export function normalisePhone(value: unknown): string {
+function normalisePhone(value: unknown): string {
   if (typeof value !== 'string') return '';
   let s = value.trim();
   if (!s) return '';
@@ -45,13 +45,13 @@ export function normalisePhone(value: unknown): string {
   return s;
 }
 
-export function isValidEmail(email: string): boolean {
+function isValidEmail(email: string): boolean {
   const e = normaliseEmail(email);
   if (!e) return false;
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
 }
 
-export function parseCsv(text: string): string[][] {
+function parseCsv(text: string): string[][] {
   const input = stripBom(String(text ?? '')).replace(/\r\n/g, '\n').replace(/\r/g, '\n');
   const rows: string[][] = [];
   let row: string[] = [];
@@ -218,7 +218,7 @@ export function parseContactsCsv(text: string): ContactsCsvParseResult {
   return { headerRowNumber, headers, rows: out, warnings };
 }
 
-export type ImportDecision = {
+type ImportDecision = {
   row: ContactsCsvRow;
   action: 'create' | 'skip' | 'merge' | 'invalid';
   match?: { by: 'email' | 'phone'; existingId: string };

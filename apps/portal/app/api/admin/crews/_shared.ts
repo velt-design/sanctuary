@@ -2,7 +2,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { getSupabaseServerAuth } from '@/lib/supabase/serverClient';
 
-export type AdminCrew = {
+type AdminCrew = {
   id: string;
   name: string;
   color: string | null;

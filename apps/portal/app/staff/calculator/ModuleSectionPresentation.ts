@@ -83,7 +83,7 @@ import {
   type SheetRect,
   type SvgDebugScaleProps,
 } from './ModuleDrawingSurfacePrimitives';
-export type SectionFitFrame = {
+type SectionFitFrame = {
   outerField: SheetDrawingField;
   fitArea: SheetFitArea;
   verticalBias: number;
@@ -137,7 +137,7 @@ export function resolveSectionFitFrame(presentation: ModuleDrawingPresentation, 
 }
 
 
-export function getSectionRealExtents(model: ModuleSectionModel): { widthM: number; heightM: number } {
+function getSectionRealExtents(model: ModuleSectionModel): { widthM: number; heightM: number } {
   const housePoints = [
     ...(model.houseContext?.surfaces ?? []).flatMap((surface) => surface.boundary),
     ...(model.houseContext?.lines ?? []).flatMap((line) => [line.line.start, line.line.end]),
@@ -225,14 +225,14 @@ export function sectionRidgeBeamWidthM(model: ModuleSectionModel): number {
 }
 
 
-export type MonoDatumResolution = {
+type MonoDatumResolution = {
   rightEdgeRole: 'gutter' | 'support';
   supportUndersideM: number;
   outerGutterUndersideM: number;
 };
 
 
-export function resolveMonoDatums(model: ModuleSectionModel): MonoDatumResolution {
+function resolveMonoDatums(model: ModuleSectionModel): MonoDatumResolution {
   const overhangM = sectionOverhangM(model);
   if (model.sectionKind !== 'mono' || overhangM <= 0) {
     return {
@@ -278,13 +278,13 @@ export function sectionOuterGutterUndersideM(model: ModuleSectionModel): number 
 }
 
 
-export function sectionRafterBearingStartM(model: ModuleSectionModel): number {
+function sectionRafterBearingStartM(model: ModuleSectionModel): number {
   if (model.sectionKind !== 'mono') return 0;
   return Math.max(0, Math.min(model.spanA, sectionLedgerBeamWidthM(model)));
 }
 
 
-export function sectionRafterBearingEndM(model: ModuleSectionModel): number {
+function sectionRafterBearingEndM(model: ModuleSectionModel): number {
   if (model.sectionKind !== 'mono') return model.spanA;
   const startM = sectionRafterBearingStartM(model);
   const endM = model.spanA - Math.max(0, Math.min(model.spanA, model.gutterWidthM));
@@ -299,7 +299,7 @@ export function sectionRafterPlumbCutDropM(model: ModuleSectionModel): number {
 }
 
 
-export function sectionRafterPreCutAllowanceM(model: ModuleSectionModel): number {
+function sectionRafterPreCutAllowanceM(model: ModuleSectionModel): number {
   const pitchRad = (Math.max(0, Math.min(85, model.pitchDeg)) * Math.PI) / 180;
   const tanPitch = Math.max(0, Math.tan(pitchRad));
   const allowancePerEnd = Math.max(0, model.rafterWidthM) * tanPitch;
@@ -307,7 +307,7 @@ export function sectionRafterPreCutAllowanceM(model: ModuleSectionModel): number
 }
 
 
-export function sectionMonoRafterCutLengthM(model: ModuleSectionModel): number {
+function sectionMonoRafterCutLengthM(model: ModuleSectionModel): number {
   const startM = sectionRafterBearingStartM(model);
   const endM = sectionRafterBearingEndM(model);
   const runM = Math.max(0.01, endM - startM);
@@ -318,7 +318,7 @@ export function sectionMonoRafterCutLengthM(model: ModuleSectionModel): number {
 }
 
 
-export function sectionGableRafterCutLengthsM(model: ModuleSectionModel): { leftM: number; rightM: number } | null {
+function sectionGableRafterCutLengthsM(model: ModuleSectionModel): { leftM: number; rightM: number } | null {
   if (model.sectionKind !== 'gable' || typeof model.ridgeHeightM !== 'number' || !Number.isFinite(model.ridgeHeightM)) return null;
 
   const ridgeWidthM = sectionRidgeBeamWidthM(model);
@@ -374,7 +374,7 @@ export function sectionSupportUndersideM(model: ModuleSectionModel): number {
 }
 
 
-export function sectionMemberPolygon(x1: number, y1: number, x2: number, y2: number, depthPx: number): Point[] {
+function sectionMemberPolygon(x1: number, y1: number, x2: number, y2: number, depthPx: number): Point[] {
   const { nx, ny } = segmentDownNormal(x1, y1, x2, y2);
   return [
     { x: x1, y: y1 },
@@ -441,7 +441,7 @@ export function sectionHouseLineClass(kind: NonNullable<ModuleSectionModel['hous
 }
 
 
-export function measureSectionAnnotatedBounds(input: {
+function measureSectionAnnotatedBounds(input: {
   model: ModuleSectionModel;
   xLeft: number;
   yGround: number;
@@ -741,7 +741,7 @@ export function measureSectionAnnotatedBounds(input: {
 }
 
 
-export function resolveSectionSheetLayoutForScale(input: {
+function resolveSectionSheetLayoutForScale(input: {
   model: ModuleSectionModel;
   scale: number;
 }): ResolvedSheetLayout {

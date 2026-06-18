@@ -7,7 +7,7 @@ import type {
   ProjectedSemanticPlanHouseSurface,
 } from './ModulePlanSvgGeometryPresentation';
 
-export type ModulePlanHouseLayerProps = {
+type ModulePlanHouseLayerProps = {
   effectiveHousePolygon: Point[];
   hasSemanticPlanHouseContext: boolean;
   hatchId: string;

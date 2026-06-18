@@ -50,7 +50,7 @@ type SheetInternalAngleAnnotationSpec = {
   text: string;
 } | null;
 
-export type ModulePlanDimensionLayerProps = {
+type ModulePlanDimensionLayerProps = {
   aH: number;
   aW: number;
   bW: number;

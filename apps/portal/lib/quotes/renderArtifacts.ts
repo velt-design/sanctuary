@@ -19,7 +19,7 @@ export type QuotePreviewBasePayload = Pick<
   default_subject: string;
 };
 
-export type QuotePreviewRenderPayload = {
+type QuotePreviewRenderPayload = {
   to: string[];
   cc?: string[];
   bcc?: string[];
@@ -87,11 +87,11 @@ export function quoteNumber(detail: QuoteVersionDetail): string {
   return `${detail.quoteRef} v${detail.versionNumber}`;
 }
 
-export function quoteDefaultSubject(value: string): string {
+function quoteDefaultSubject(value: string): string {
   return `Quote ready - ${value}`;
 }
 
-export function safeSiteUrl(): string | null {
+function safeSiteUrl(): string | null {
   const raw = siteUrlRawFromEnv();
   if (!raw) return null;
   return normalizeSiteUrl(raw);

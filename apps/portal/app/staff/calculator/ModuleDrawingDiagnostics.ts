@@ -82,7 +82,7 @@ import {
 } from './ModuleDrawingSurfacePrimitives';
 import { hasFullLengthPlanRidge } from './ModuleDrawingChromePresentation';
 import { sectionOuterGutterUndersideM } from './ModuleSectionPresentation';
-export function summariseConsistency(issues: string[]): GeometryConsistency {
+function summariseConsistency(issues: string[]): GeometryConsistency {
   if (issues.length === 0) {
     return {
       level: 'ok',

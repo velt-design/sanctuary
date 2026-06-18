@@ -1,7 +1,7 @@
 ﻿import type { CostInputsV1, CostOutputV1 } from '@sp/costing';
 import type { InfillLineItem } from '@/lib/types/calculator';
 
-export type ModuleCostSnapshot = {
+type ModuleCostSnapshot = {
   totals: {
     total_ex: number;
     total_inc: number;
@@ -14,7 +14,7 @@ export type ModuleCostSnapshot = {
 
 const n = (value: unknown) => (typeof value === 'number' && Number.isFinite(value) ? value : 0);
 
-export function snapshotModuleCost(out: CostOutputV1): ModuleCostSnapshot {
+function snapshotModuleCost(out: CostOutputV1): ModuleCostSnapshot {
   return {
     totals: {
       total_ex: n(out?.totals?.cost_ex_gst),
@@ -44,7 +44,7 @@ export function diffModuleCost(
   };
 }
 
-export function cloneInfillPayloadItem(item: NonNullable<CostInputsV1['infills']>[number]) {
+function cloneInfillPayloadItem(item: NonNullable<CostInputsV1['infills']>[number]) {
   return {
     ...item,
     support: item.support ? { ...item.support } : item.support,

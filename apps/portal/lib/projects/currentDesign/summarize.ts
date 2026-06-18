@@ -11,7 +11,7 @@ const MONEY_FORMAT = new Intl.NumberFormat('en-NZ', {
 
 export type CurrentDesignStatusVariant = 'accepted' | 'sent' | 'draft' | 'declined' | 'muted';
 
-export type CurrentDesignSummary = {
+type CurrentDesignSummary = {
   size: string;
   shape: string;
   totalLabel: string;

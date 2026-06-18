@@ -1,14 +1,14 @@
 import type { EstimateMeta } from '@/lib/estimates/types';
 import type { QuoteVersion } from '@/lib/quotes/types';
 
-export type CurrentDesignSource =
+type CurrentDesignSource =
   | 'accepted_quote'
   | 'sent_quote'
   | 'draft_quote'
   | 'estimate'
   | 'empty';
 
-export type CurrentDesignStatus =
+type CurrentDesignStatus =
   | 'quote_accepted'
   | 'quote_sent'
   | 'quote_draft'

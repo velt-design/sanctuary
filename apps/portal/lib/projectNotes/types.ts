@@ -12,11 +12,11 @@ export type ProjectNoteRow = {
   deleted_at: string | null;
 };
 
-export type ProjectNoteCreateInput = {
+type ProjectNoteCreateInput = {
   body: string;
 };
 
-export type ProjectNoteUpdateInput = {
+type ProjectNoteUpdateInput = {
   body: string;
 };
 

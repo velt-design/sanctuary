@@ -96,10 +96,10 @@ export function rotateVectorQuarterTurns(vector: Point, turns: number): Point {
 }
 
 
-export type CardinalDirection = 'up' | 'down' | 'left' | 'right';
+type CardinalDirection = 'up' | 'down' | 'left' | 'right';
 
 
-export type PlanFallAnnotationSpec = {
+type PlanFallAnnotationSpec = {
   lineStart: Point;
   lineEnd: Point;
   label: string;
@@ -108,7 +108,7 @@ export type PlanFallAnnotationSpec = {
 };
 
 
-export type PlanSpacingAnnotationSpec = {
+type PlanSpacingAnnotationSpec = {
   witness1Start: Point;
   witness1End: Point;
   witness2Start: Point;
@@ -121,7 +121,7 @@ export type PlanSpacingAnnotationSpec = {
 };
 
 
-export type PlanLineTextAnnotationSpec = {
+type PlanLineTextAnnotationSpec = {
   lineStart: Point;
   lineEnd: Point;
   text: string;
@@ -130,7 +130,7 @@ export type PlanLineTextAnnotationSpec = {
 };
 
 
-export function cardinalDirectionToVector(direction: CardinalDirection): Point {
+function cardinalDirectionToVector(direction: CardinalDirection): Point {
   switch (direction) {
     case 'up':
       return { x: 0, y: -1 };
@@ -145,7 +145,7 @@ export function cardinalDirectionToVector(direction: CardinalDirection): Point {
 }
 
 
-export function vectorToCardinalDirection(vector: Point): CardinalDirection {
+function vectorToCardinalDirection(vector: Point): CardinalDirection {
   if (Math.abs(vector.x) >= Math.abs(vector.y)) {
     return vector.x >= 0 ? 'right' : 'left';
   }
@@ -153,7 +153,7 @@ export function vectorToCardinalDirection(vector: Point): CardinalDirection {
 }
 
 
-export function rotateCardinalDirectionQuarterTurns(direction: CardinalDirection, turns: number): CardinalDirection {
+function rotateCardinalDirectionQuarterTurns(direction: CardinalDirection, turns: number): CardinalDirection {
   return vectorToCardinalDirection(rotateVectorQuarterTurns(cardinalDirectionToVector(direction), turns));
 }
 

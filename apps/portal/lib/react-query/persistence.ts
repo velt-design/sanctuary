@@ -1,6 +1,6 @@
 import type { Query } from '@tanstack/react-query';
 
-export const PORTAL_QUERY_PERSIST_SCOPE_EDITOR = 'editor';
+const PORTAL_QUERY_PERSIST_SCOPE_EDITOR = 'editor';
 export const PORTAL_QUERY_CACHE_FALLBACK_BUSTER = 'v3';
 export const portalEditorPersistMeta = {
   persistScope: PORTAL_QUERY_PERSIST_SCOPE_EDITOR,

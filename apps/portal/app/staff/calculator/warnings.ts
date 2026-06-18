@@ -1,6 +1,6 @@
 ﻿import type { InfillWarningItem } from './infillCompute';
 
-export type UiSeverity = 'critical' | 'review' | 'info';
+type UiSeverity = 'critical' | 'review' | 'info';
 
 export type UiWarning =
   | {

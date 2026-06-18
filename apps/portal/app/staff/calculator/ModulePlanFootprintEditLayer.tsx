@@ -9,7 +9,7 @@ import type {
 } from './ModulePlanFootprintPresentation';
 import type { PlanAttachmentFrame } from './ModuleDrawingSurfacePrimitives';
 
-export type ModulePlanFootprintEditLayerProps = {
+type ModulePlanFootprintEditLayerProps = {
   allowAttachmentSideCanvasSelect: boolean;
   allowResizeEdgeDrag: boolean;
   canEditFootprint: boolean;

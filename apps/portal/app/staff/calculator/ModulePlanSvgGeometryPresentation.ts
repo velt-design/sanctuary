@@ -29,7 +29,7 @@ import type {
 } from './moduleViews';
 import type { ObjectWorkbenchOverlayShape } from './ModulePlanLayerRenderers';
 
-export type PlanSvgGeometryPresentationMode = {
+type PlanSvgGeometryPresentationMode = {
   useTopProjectionBackedPlan: boolean;
   useGeometryBackedPergola: boolean;
   hasGeometryBackedPergolaPlan: boolean;
@@ -37,26 +37,26 @@ export type PlanSvgGeometryPresentationMode = {
   canRenderPergolaPlanGeometry: boolean;
 };
 
-export type PlanSvgGeometryPoint = {
+type PlanSvgGeometryPoint = {
   x: number;
   y: number;
 };
 
-export type ProjectedGeometrySurface = GeometryPlanSurface2D & {
+type ProjectedGeometrySurface = GeometryPlanSurface2D & {
   points: PlanSvgGeometryPoint[];
 };
 
-export type ProjectedGeometryMember = {
+type ProjectedGeometryMember = {
   member: GeometryPlanMember2D;
   footprint: PlanSvgGeometryPoint[];
 };
 
-export type ProjectedGeometryLine = {
+type ProjectedGeometryLine = {
   start: PlanSvgGeometryPoint;
   end: PlanSvgGeometryPoint;
 };
 
-export type ProjectedGeometryFallAnchor = {
+type ProjectedGeometryFallAnchor = {
   point: PlanSvgGeometryPoint;
   direction: Vector2;
   dual: boolean;
@@ -73,7 +73,7 @@ export type ProjectedSemanticPlanHouseLine = ModulePlanHouseLine2D & {
   emphasized: boolean;
 };
 
-export type PlanSvgGeometryPresentation = PlanSvgGeometryPresentationMode & {
+type PlanSvgGeometryPresentation = PlanSvgGeometryPresentationMode & {
   geometryOutlinePoints: PlanSvgGeometryPoint[];
   geometryRoofPlaneSurfaces: ProjectedGeometrySurface[];
   geometryRoofCladdingSurfaces: ProjectedGeometrySurface[];
@@ -275,7 +275,7 @@ export function resolveObjectWorkbenchHousePolygonOverlay(input: {
   return footprintShape.polygon.map(project);
 }
 
-export function buildPlanMemberFootprint(input: {
+function buildPlanMemberFootprint(input: {
   member: GeometryPlanMember2D;
   baseX: number;
   baseY: number;

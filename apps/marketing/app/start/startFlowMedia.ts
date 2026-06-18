@@ -1,5 +1,4 @@
 import type {
-  AcrylicTint,
   EnquiryType,
   ExtraId,
   InstallSurface,
@@ -9,10 +8,9 @@ import type {
   SiteAttachment,
   SiteLevel,
   Timeframe,
-  TimberFinish,
 } from './startFlowContent';
 
-export type MediaEntry = {
+type MediaEntry = {
   src: string;
   alt: string;
 };
@@ -71,48 +69,6 @@ export const ROOF_MATERIAL_MEDIA: Record<RoofMaterialChoice, MediaEntry> = {
   unsure: {
     src: '/images/hero-2.jpg',
     alt: 'Placeholder material card representing a not sure option.',
-  },
-};
-
-export const ACRYLIC_TINT_MEDIA: Record<AcrylicTint, MediaEntry> = {
-  clear: {
-    src: '/images/product-pitched-03.jpg',
-    alt: 'Clear acrylic tint swatch.',
-  },
-  light_grey: {
-    src: '/images/product-pitched-04.jpg',
-    alt: 'Light grey acrylic tint swatch.',
-  },
-  dark_grey: {
-    src: '/images/product-pitched-05.jpg',
-    alt: 'Dark grey acrylic tint swatch.',
-  },
-  opal: {
-    src: '/images/product-pitched-06.jpg',
-    alt: 'Opal acrylic tint swatch.',
-  },
-  not_sure: {
-    src: '/images/hero-2.jpg',
-    alt: 'Not sure acrylic tint placeholder swatch.',
-  },
-};
-
-export const TIMBER_FINISH_MEDIA: Record<TimberFinish, MediaEntry> = {
-  natural: {
-    src: '/images/product-timber.jpg',
-    alt: 'Natural timber finish swatch.',
-  },
-  stained: {
-    src: '/images/project-goodhome-01.jpg',
-    alt: 'Stained timber finish swatch.',
-  },
-  painted: {
-    src: '/images/project-goodhome-02.jpg',
-    alt: 'Painted timber finish swatch.',
-  },
-  not_sure: {
-    src: '/images/project-goodhome-03.jpg',
-    alt: 'Not sure timber finish placeholder swatch.',
   },
 };
 

@@ -2,7 +2,7 @@
 
 type Num = number | undefined | null;
 
-export type ImpactDelta = {
+type ImpactDelta = {
   total_ex?: number;
   total_inc?: number;
   materials_ex?: number;
@@ -12,7 +12,7 @@ export type ImpactDelta = {
   install_days?: number;
 };
 
-export type Driver = {
+type Driver = {
   id: string;
   label: string;
   prev: number;

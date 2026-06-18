@@ -32,7 +32,7 @@ type GeometryAttachmentEdge = {
   end: Point;
 };
 
-export type ModulePlanPergolaLayerProps = {
+type ModulePlanPergolaLayerProps = {
   aH: number;
   aW: number;
   attachmentSide: AttachmentSide;

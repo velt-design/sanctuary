@@ -8,7 +8,7 @@ import {
 import type { PlanPoint } from '@/lib/drawings/views/plan/objectWorkbenchPlanOverlay';
 import { topProjectionSvgPointToPlanPoint } from '@/lib/drawings/views/plan/planCoordinateAdapter';
 
-export type PlanSvgBridgePoint = {
+type PlanSvgBridgePoint = {
   x: number;
   y: number;
 };
@@ -22,7 +22,7 @@ export type PlanSvgFootprintCanvasPoint = {
 
 export type PlanSvgFootprintCanvasPointResolver = (clientX: number, clientY: number) => PlanSvgFootprintCanvasPoint | null;
 
-export type PlanSvgPointerFootprintPointInput = {
+type PlanSvgPointerFootprintPointInput = {
   rootPoint: PlanSvgBridgePoint;
   rotationCenter: PlanSvgBridgePoint;
   rotationTurns: number;
@@ -36,7 +36,7 @@ export type PlanSvgPointerFootprintPointInput = {
   isHipCorner?: boolean;
 };
 
-export type PlanSvgPointerFootprintPoint = {
+type PlanSvgPointerFootprintPoint = {
   formatted: {
     alongM: string;
     depthM: string;
@@ -47,7 +47,7 @@ export type PlanSvgPointerFootprintPoint = {
   };
 };
 
-export type PlanSvgPointResolverInput = {
+type PlanSvgPointResolverInput = {
   origin: PlanSvgBridgePoint;
   scale: number;
   rotationFrame: {
@@ -71,12 +71,12 @@ export type PlanSvgPointResolverSet = {
   resolveDeckDragPlanPoint: (svg: SVGSVGElement, clientX: number, clientY: number) => PlanPoint | null;
 };
 
-export type PlanSvgFootprintBridgeTarget = {
+type PlanSvgFootprintBridgeTarget = {
   onSvgMount?: (node: SVGSVGElement | null) => void;
   onCanvasPointResolverChange?: (resolver: PlanSvgFootprintCanvasPointResolver | null) => void;
 };
 
-export type PlanSvgInteractionBridgeTarget = {
+type PlanSvgInteractionBridgeTarget = {
   onSvgMount?: (node: SVGSVGElement | null) => void;
   onPlanPointResolverChange?: ((resolver: ((clientX: number, clientY: number) => PlanPoint | null) | null) => void) | undefined;
   onDeckDragPointResolverChange?: ((resolver: ((clientX: number, clientY: number) => PlanPoint | null) | null) => void) | undefined;

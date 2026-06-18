@@ -53,7 +53,7 @@ function saveLabel(args: { dirty: boolean; isSaving: boolean; lastSavedAt: strin
   return null;
 }
 
-export function buildContactUpdateRequest(contactId: string, draft: PortalContactDraft) {
+function buildContactUpdateRequest(contactId: string, draft: PortalContactDraft) {
   return {
     path: `/api/contacts/${encodeURIComponent(contactId)}`,
     body: JSON.stringify(normalizeDraft(draft)),

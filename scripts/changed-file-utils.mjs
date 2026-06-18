@@ -4,15 +4,15 @@ import path from 'node:path';
 
 const ROOT = process.cwd();
 
-export const ARCHITECTURE_CHANGED_BASE = process.env.ARCHITECTURE_CHANGED_BASE?.trim() || '';
-export const ARCHITECTURE_CHANGED_HEAD = process.env.ARCHITECTURE_CHANGED_HEAD?.trim() || '';
+const ARCHITECTURE_CHANGED_BASE = process.env.ARCHITECTURE_CHANGED_BASE?.trim() || '';
+const ARCHITECTURE_CHANGED_HEAD = process.env.ARCHITECTURE_CHANGED_HEAD?.trim() || '';
 export const HAS_ARCHITECTURE_COMPARE = Boolean(ARCHITECTURE_CHANGED_BASE && ARCHITECTURE_CHANGED_HEAD);
 
 export function toPosix(value) {
   return value.split(path.sep).join('/');
 }
 
-export function runGitLines(args) {
+function runGitLines(args) {
   try {
     return execFileSync('git', args, {
       cwd: ROOT,
@@ -27,7 +27,7 @@ export function runGitLines(args) {
   }
 }
 
-export function gitText(args) {
+function gitText(args) {
   try {
     return execFileSync('git', args, {
       cwd: ROOT,

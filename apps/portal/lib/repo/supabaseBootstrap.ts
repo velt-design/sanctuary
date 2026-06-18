@@ -20,7 +20,7 @@ function coerceProjectForCreate(p: Project): Partial<Project> & { projectName: s
   };
 }
 
-export type SupabaseBootstrapResult =
+type SupabaseBootstrapResult =
   | { ok: true; migrated: boolean; detail?: 'empty' | 'pushed_local_then_cleared' | 'already_done' }
   | { ok: false; reason: 'server' | 'db_unreachable' | 'migration_failed' | 'schema_missing' };
 

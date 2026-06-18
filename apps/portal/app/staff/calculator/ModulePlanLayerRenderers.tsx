@@ -15,9 +15,9 @@ import {
 } from '@/lib/drawings/views/plan/planRenderGraph';
 import styles from './CalculatorGrid.module.css';
 
-export type ModulePlanLayerPoint = { x: number; y: number };
+type ModulePlanLayerPoint = { x: number; y: number };
 
-export type ModulePlanShapeDragStartMeta =
+type ModulePlanShapeDragStartMeta =
   | {
       ownerKind: 'deck';
       ownerId: string;
@@ -48,7 +48,7 @@ export type TopProjectionLayerItem = {
   layer: ProjectionPlanLayer;
 };
 
-export type TopProjectionLayerRendererProps = {
+type TopProjectionLayerRendererProps = {
   shapes: TopProjectionLayerItem[];
   projection: GeometryTopProjectionViewModel | null;
   hideHouseFootprint?: boolean;
@@ -93,11 +93,11 @@ export type ObjectWorkbenchPresetDimensionAnnotation = ObjectWorkbenchPlanPreset
   lineEnd: ModulePlanLayerPoint;
 };
 
-export type ObjectWorkbenchDimensionAnnotation =
+type ObjectWorkbenchDimensionAnnotation =
   | ObjectWorkbenchCustomEdgeAnnotation
   | ObjectWorkbenchPresetDimensionAnnotation;
 
-export type ObjectWorkbenchDimensionLayerRendererProps = {
+type ObjectWorkbenchDimensionLayerRendererProps = {
   presetAnnotations: ObjectWorkbenchPresetDimensionAnnotation[];
   customEdgeCandidates: ObjectWorkbenchCustomEdgeAnnotation[];
   activeCustomEdgeId: string | null;
@@ -109,7 +109,7 @@ export type ObjectWorkbenchDimensionLayerRendererProps = {
   ) => void;
 };
 
-export type ObjectWorkbenchOverlayLayerRendererProps = {
+type ObjectWorkbenchOverlayLayerRendererProps = {
   shapes: ObjectWorkbenchOverlayShape[];
   renderCommittedBodies?: boolean;
   previewShape: ObjectWorkbenchPreviewShape;
@@ -122,7 +122,7 @@ export type ObjectWorkbenchOverlayLayerRendererProps = {
   ) => void;
 };
 
-export type ObjectWorkbenchPreviewLayerRendererProps = {
+type ObjectWorkbenchPreviewLayerRendererProps = {
   previewShape: ObjectWorkbenchPreviewShape;
 };
 

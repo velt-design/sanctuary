@@ -28,7 +28,7 @@ type OptionCardProps<T extends string> = {
   inputRef?: (node: HTMLInputElement | null) => void;
 };
 
-export function OptionCard<T extends string>({
+function OptionCard<T extends string>({
   mode,
   name,
   option,
@@ -369,7 +369,7 @@ type ModalActionBarProps = {
   extraActions?: ReactNode;
 };
 
-export function ModalActionBar({
+function ModalActionBar({
   selectionLabel,
   primaryLabel,
   primaryDisabled,
@@ -464,7 +464,7 @@ export function ConditionalSubPanel<OptionId extends string>({
   );
 }
 
-export type TabOption<T extends string> = {
+type TabOption<T extends string> = {
   id: T;
   label: string;
 };
@@ -478,7 +478,7 @@ type TabsProps<T extends string> = {
   className?: string;
 };
 
-export function Tabs<T extends string>({
+function Tabs<T extends string>({
   ariaLabel,
   tabs,
   activeId,

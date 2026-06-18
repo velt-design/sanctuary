@@ -23,7 +23,3 @@ export async function startLocalFirstRuntime(): Promise<void> {
   publishSummary();
   await startLocalFirstQueueRuntime();
 }
-
-export function __resetLocalFirstRuntimeForTests(): void {
-  runtimeStarted = false;
-}

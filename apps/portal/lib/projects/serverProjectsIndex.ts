@@ -85,7 +85,7 @@ function mapProjectRow(row: Record<string, unknown>): Project {
   };
 }
 
-export type LoadProjectsIndexOptions = {
+type LoadProjectsIndexOptions = {
   archiveFilter?: 'active' | 'archived' | 'all';
 };
 

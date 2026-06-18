@@ -1,6 +1,6 @@
 import { rgb, type Color, type PDFPage, type PDFFont } from 'pdf-lib';
 
-export type BoundsX = { x0: number; x1: number };
+type BoundsX = { x0: number; x1: number };
 
 export type TableBounds = BoundsX & {
   headerBaselineY: number;
@@ -20,14 +20,14 @@ export type TotalsBounds = BoundsX & {
   belowTotalRuleY: number;
 };
 
-export type RuleStyle = { width: number; color: Color };
+type RuleStyle = { width: number; color: Color };
 
-export const RULE_TIER1: RuleStyle = { width: 1.0, color: rgbFromHex('#C9C9C9') };
-export const RULE_TIER2: RuleStyle = { width: 0.5, color: rgbFromHex('#D8D8D8') };
-export const RULE_TIER3: RuleStyle = { width: 0.5, color: rgbFromHex('#E0E0E0') };
-export const RULE_TABLE_HEADER: RuleStyle = { width: 0.85, color: rgbFromHex('#CFCFCF') };
+const RULE_TIER1: RuleStyle = { width: 1.0, color: rgbFromHex('#C9C9C9') };
+const RULE_TIER2: RuleStyle = { width: 0.5, color: rgbFromHex('#D8D8D8') };
+const RULE_TIER3: RuleStyle = { width: 0.5, color: rgbFromHex('#E0E0E0') };
+const RULE_TABLE_HEADER: RuleStyle = { width: 0.85, color: rgbFromHex('#CFCFCF') };
 
-export type RuleKind =
+type RuleKind =
   | 'itemsHeaderUnderline'
   | 'itemsRowSeparator'
   | 'totalsCeiling'

@@ -6,7 +6,7 @@ export type PortalAuthUser = {
   email: string | null;
 };
 
-export type PortalSessionSnapshot = {
+type PortalSessionSnapshot = {
   user: PortalAuthUser;
   role: PortalRole;
 };

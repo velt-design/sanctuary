@@ -35,7 +35,7 @@ export type HouseFootprintEditorDragMeta = {
   maxValueM: number;
 };
 
-export type HouseFootprintVertexDragMeta = {
+type HouseFootprintVertexDragMeta = {
   vertexIndex: number;
   alongAxisX: number;
   alongAxisY: number;
@@ -53,9 +53,9 @@ export type ModulePlanSheetInteractionProps = {
   onPergolaPopoverHoverChange?: (hovered: boolean) => void;
 };
 
-export type ModulePlanResizeFieldId = 'plan:lengthA' | 'plan:spanA';
+type ModulePlanResizeFieldId = 'plan:lengthA' | 'plan:spanA';
 
-export type ModulePlanResizeDragMeta = {
+type ModulePlanResizeDragMeta = {
   fieldId: ModulePlanResizeFieldId;
   axisX: number;
   axisY: number;
@@ -99,7 +99,7 @@ export type ObjectWorkbenchPlanShapeDragStartMeta =
     };
 
 export type ObjectWorkbenchPreviewOverlay = ObjectInteractionPreviewOverlay<PlanPoint>;
-export type ModuleFootprintCanvasPointResolver = PlanSvgFootprintCanvasPointResolver;
+type ModuleFootprintCanvasPointResolver = PlanSvgFootprintCanvasPointResolver;
 
 export type GeometryConsistency = {
   level: 'ok' | 'warn';

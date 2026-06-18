@@ -1,6 +1,6 @@
 ﻿import styles from './CalculatorGrid.module.css';
 
-export type StatusLevel = 'ok' | 'review' | 'block';
+type StatusLevel = 'ok' | 'review' | 'block';
 
 export type StatusItem = {
   id: string;

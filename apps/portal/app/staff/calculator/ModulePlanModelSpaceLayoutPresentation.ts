@@ -42,7 +42,7 @@ export function topProjectionExtentsToModelSpaceBounds(
   );
 }
 
-export function measurePlanModelSpaceFocusBounds(input: {
+function measurePlanModelSpaceFocusBounds(input: {
   model: ModulePlanModel;
   x: number;
   y: number;
@@ -185,7 +185,7 @@ export function measurePlanModelSpaceFocusBounds(input: {
   return rotateBoundsQuarterTurns(localBounds, rotationFrame.center, rotationFrame.turns);
 }
 
-export function getPlanModelSpaceFrame(isHipCorner: boolean): PlanSheetFrame {
+function getPlanModelSpaceFrame(isHipCorner: boolean): PlanSheetFrame {
   return {
     ...getPlanSheetFrame(isHipCorner),
     outerField: { x: 0, y: 0, width: 0, height: 0 },

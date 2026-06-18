@@ -3,7 +3,7 @@ import type { EstimatePricingSourceSaveContext } from './pricingSourceTypes';
 
 type AnyRecord = Record<string, unknown>;
 
-export type LegacySummaryFields = {
+type LegacySummaryFields = {
   crew_hours: number | null;
   duration_days: number | null;
   materials_ex_gst: number | null;
@@ -70,7 +70,7 @@ function normalizeText(value: unknown): string | null {
   return trimmed ? trimmed : null;
 }
 
-export function computeLegacySummary(snapshot: Record<string, unknown>, workHoursPerDay = 9): LegacySummaryFields {
+function computeLegacySummary(snapshot: Record<string, unknown>, workHoursPerDay = 9): LegacySummaryFields {
   const outputs = isRecord(snapshot.outputs) ? snapshot.outputs : null;
 
   const crewHours = readNumber(outputs, ['install', 'totals', 'crew_hours']);

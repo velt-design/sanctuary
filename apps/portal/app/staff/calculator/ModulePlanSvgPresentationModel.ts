@@ -23,7 +23,7 @@ import type {
   TopProjectionLayerItem,
 } from './ModulePlanLayerRenderers';
 
-export type PlanSvgPresentationDiagnostics = {
+type PlanSvgPresentationDiagnostics = {
   renderContract: 'top_projection_only' | 'legacy_or_fallback';
   topProjectionParityStatus: 'pass' | 'fail' | null;
   topProjectionScreenAxis: string | null;
@@ -49,7 +49,7 @@ export type PlanSvgPresentationDiagnostics = {
   duplicateSemanticOwnerCount: number;
 };
 
-export type PlanSvgPresentationModel = {
+type PlanSvgPresentationModel = {
   topProjectionShapes: Array<Omit<TopProjectionLayerItem, 'layer'>>;
   renderedTopProjectionShapes: TopProjectionLayerItem[];
   committedTopProjectionBodies: TopProjectionLayerItem[];
