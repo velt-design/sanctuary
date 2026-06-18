@@ -1,6 +1,8 @@
 import {
   deriveHouseGableTerminalEnds,
   isHouseRoofForm as isSupportedHouseRoofForm,
+  validateHouseComposition,
+  type HouseComposition,
 } from "@sp/geometry";
 import {
   DEFAULT_CALCULATOR_HOUSE_ROOF_MATERIAL,
@@ -233,6 +235,20 @@ export type HouseFormModel = {
   eaveOverhangMm?: string | null;
   sourceModuleIndexes?: number[];
   sourceModuleIds?: string[];
+  /**
+   * PR-COMP-PHASE2 (2026-06-18): authored composition for new
+   * house forms produced by the Phase 3 rectangle tool. When
+   * present, downstream consumers SHOULD prefer composition data
+   * over `footprint.polygon` — composition carries explicit join
+   * topology and per-rectangle roof intent that the legacy
+   * polygon doesn't.
+   *
+   * Optional; absent on every legacy free-form house form. The
+   * legacy `footprint` polygon remains the source of truth when
+   * `composition` is absent. Phase 3 wires composition into the
+   * roof solver; Phase 2 only adds the data field + persistence.
+   */
+  composition?: HouseComposition | null;
 };
 
 export type HouseRoofIntentResolutionSource =
@@ -569,6 +585,10 @@ export type ObjectFirstHouseFormDraft = {
   gutterDepthMm?: string | null;
   gutterProjectionMm?: string | null;
   eaveOverhangMm?: string | null;
+  // PR-COMP-PHASE2 (2026-06-18): mirrors `HouseFormModel.composition`.
+  // Persisted JSON shape — undefined on legacy drafts; populated by
+  // the Phase 3 rectangle tool.
+  composition?: HouseComposition | null;
 };
 
 export type ObjectFirstHouseAssemblyDraft = {
@@ -1062,6 +1082,29 @@ function normalizeObjectFirstDeckFloatingRect(
   };
 }
 
+/**
+ * PR-COMP-PHASE2 (2026-06-18): defensive composition normalisation
+ * for workbench-draft persistence.
+ *
+ * Runs `validateHouseComposition` on the persisted JSON. Returns
+ * the composition when valid, `null` otherwise — bad / corrupt
+ * composition data must never crash the workbench load; the form
+ * gracefully falls back to its legacy `footprint.polygon`.
+ *
+ * v1: shallow structural validation only (closed-union error codes
+ * from PR-COMP1). Does NOT cross-check composition coherence with
+ * the legacy footprint field; per the vision, composition is the
+ * source of truth when present and the polygon is when absent.
+ */
+function normalizeHouseComposition(
+  value: HouseComposition | null | undefined,
+): HouseComposition | null {
+  if (!value) return null;
+  const result = validateHouseComposition(value);
+  if (!result.ok) return null;
+  return value;
+}
+
 export function normalizeObjectFirstHouseFormDraft(
   value: Partial<ObjectFirstHouseFormDraft> | null | undefined,
 ): ObjectFirstHouseFormDraft | null {
@@ -1119,6 +1162,12 @@ export function normalizeObjectFirstHouseFormDraft(
       : null),
     ...(trimNullableString(value?.eaveOverhangMm)
       ? { eaveOverhangMm: trimNullableString(value?.eaveOverhangMm) }
+      : null),
+    // PR-COMP-PHASE2: preserve composition if present + structurally
+    // valid; drop silently otherwise (defensive — bad persisted data
+    // must not crash workbench load).
+    ...(normalizeHouseComposition(value?.composition)
+      ? { composition: normalizeHouseComposition(value?.composition) }
       : null),
   };
 }

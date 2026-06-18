@@ -29,6 +29,10 @@ function buildHouseFormDraftFromModel(
     gutterDepthMm: houseForm.gutterDepthMm,
     gutterProjectionMm: houseForm.gutterProjectionMm,
     eaveOverhangMm: houseForm.eaveOverhangMm,
+    // PR-COMP-PHASE2 (2026-06-18): preserve composition on the
+    // model → draft round-trip. The normaliser on the draft → model
+    // path validates structurally; this side just passes through.
+    ...(houseForm.composition ? { composition: houseForm.composition } : null),
   };
 }
 
