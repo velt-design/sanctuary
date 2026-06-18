@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type { HouseComposition } from "@sp/geometry";
-import { deriveHouseFormFootprintPolygon } from "./houseFormCompositionFootprint";
+import {
+  deriveCompositionUnionPolygon3,
+  deriveHouseFormFootprintPolygon,
+} from "./houseFormCompositionFootprint";
 import {
   normalizeObjectFirstHouseFormDraft,
   type HouseFormModel,
@@ -225,5 +228,203 @@ describe("normalizeObjectFirstHouseFormDraft composition round-trip (PR-COMP-PHA
       composition: empty,
     });
     expect(normalised?.composition).toBeUndefined();
+  });
+});
+
+describe("deriveCompositionUnionPolygon3 (PR-COMP-PHASE4a.2)", () => {
+  function singleRectangleComposition(): HouseComposition {
+    return {
+      primitives: [
+        {
+          kind: "axisAlignedRectangle",
+          originXMm: 0,
+          originYMm: 0,
+          widthMm: 6000,
+          depthMm: 4000,
+          roofIntent: {
+            form: "hipped",
+            pitchDeg: 25,
+            ridgeAxis: "x",
+            startCap: "hipped",
+            endCap: "hipped",
+          },
+        },
+      ],
+      joins: [],
+    };
+  }
+
+  it("returns null when composition is null or undefined", () => {
+    expect(deriveCompositionUnionPolygon3(null)).toBeNull();
+    expect(deriveCompositionUnionPolygon3(undefined)).toBeNull();
+  });
+
+  it("returns null when composition is empty (no primitives)", () => {
+    expect(deriveCompositionUnionPolygon3({ primitives: [], joins: [] })).toBeNull();
+  });
+
+  it("returns null for a single-primitive composition (preserves Phase 3.2 byte-equivalence)", () => {
+    // Phase 3.2 pinned: single-rectangle composites must render byte-
+    // equivalent to the legacy preset path. Substituting the union
+    // for single-rectangle would risk drift; return null so the
+    // pipeline uses the legacy preset footprint instead.
+    expect(deriveCompositionUnionPolygon3(singleRectangleComposition())).toBeNull();
+  });
+
+  it("returns the union Polygon3 for a 2-primitive L composition (Graham–Oratia v1)", () => {
+    const polygon = deriveCompositionUnionPolygon3(L_COMPOSITION);
+    expect(polygon).not.toBeNull();
+    expect(polygon).toHaveLength(6);
+    // Every vertex has z = 0 (Polygon3 contract).
+    expect(polygon!.every((vertex) => vertex.z === 0)).toBe(true);
+    // Vertex coordinates (mm) — order doesn't matter for this assertion.
+    const sorted = polygon!
+      .map((vertex) => [vertex.x, vertex.y])
+      .sort((a, b) => a[0]! - b[0]! || a[1]! - b[1]!);
+    expect(sorted).toEqual([
+      [0, -2400],
+      [0, 8000],
+      [5814, -2400],
+      [5814, 0],
+      [12500, 0],
+      [12500, 8000],
+    ]);
+  });
+
+  it("returns the union Polygon3 for a 2-primitive T composition", () => {
+    // T composition: 6m × 4m base + 2m × 2m centred extension on top.
+    //
+    //       +---+
+    //       | B |
+    //   +---+---+---+
+    //   |     A     |
+    //   +-----------+
+    const tComposition: HouseComposition = {
+      primitives: [
+        {
+          kind: "axisAlignedRectangle",
+          originXMm: 0,
+          originYMm: 0,
+          widthMm: 6000,
+          depthMm: 4000,
+          roofIntent: {
+            form: "hipped",
+            pitchDeg: 25,
+            ridgeAxis: "x",
+            startCap: "hipped",
+            endCap: "hipped",
+          },
+        },
+        {
+          kind: "axisAlignedRectangle",
+          originXMm: 2000,
+          originYMm: 4000,
+          widthMm: 2000,
+          depthMm: 2000,
+          roofIntent: {
+            form: "hipped",
+            pitchDeg: 25,
+            ridgeAxis: "y",
+            startCap: "hipped",
+            endCap: "hipped",
+          },
+        },
+      ],
+      joins: [
+        { fromPrimitiveIndex: 0, fromEdge: "north", toPrimitiveIndex: 1, toEdge: "south" },
+      ],
+    };
+    const polygon = deriveCompositionUnionPolygon3(tComposition);
+    expect(polygon).not.toBeNull();
+    // T has 8 distinct corner vertices.
+    expect(polygon).toHaveLength(8);
+    expect(polygon!.every((vertex) => vertex.z === 0)).toBe(true);
+  });
+
+  it("returns the union Polygon3 for a fused-rectangle composition (2 rectangles that union into one)", () => {
+    // Two side-by-side 3m × 4m rectangles that fuse into a 6m × 4m
+    // rectangle. composeFootprintFromComposition merges them cleanly.
+    const fused: HouseComposition = {
+      primitives: [
+        {
+          kind: "axisAlignedRectangle",
+          originXMm: 0,
+          originYMm: 0,
+          widthMm: 3000,
+          depthMm: 4000,
+          roofIntent: {
+            form: "hipped",
+            pitchDeg: 25,
+            ridgeAxis: "x",
+            startCap: "hipped",
+            endCap: "hipped",
+          },
+        },
+        {
+          kind: "axisAlignedRectangle",
+          originXMm: 3000,
+          originYMm: 0,
+          widthMm: 3000,
+          depthMm: 4000,
+          roofIntent: {
+            form: "hipped",
+            pitchDeg: 25,
+            ridgeAxis: "x",
+            startCap: "hipped",
+            endCap: "hipped",
+          },
+        },
+      ],
+      joins: [
+        { fromPrimitiveIndex: 0, fromEdge: "east", toPrimitiveIndex: 1, toEdge: "west" },
+      ],
+    };
+    const polygon = deriveCompositionUnionPolygon3(fused);
+    expect(polygon).not.toBeNull();
+    // Fused result is one rectangle = 4 corners after the
+    // collinear-cleanup pass inside composeFootprintFromComposition.
+    expect(polygon).toHaveLength(4);
+    const sorted = polygon!
+      .map((vertex) => [vertex.x, vertex.y])
+      .sort((a, b) => a[0]! - b[0]! || a[1]! - b[1]!);
+    expect(sorted).toEqual([
+      [0, 0],
+      [0, 4000],
+      [6000, 0],
+      [6000, 4000],
+    ]);
+  });
+
+  it("returns null defensively when composeFootprintFromComposition throws (malformed composition)", () => {
+    // A 2-primitive composition where one primitive has a non-rectangle
+    // kind. composeFootprintFromComposition throws "unsupported
+    // primitive kind"; our helper catches and returns null so the
+    // pipeline falls back to the legacy preset path instead of
+    // crashing.
+    const broken: HouseComposition = {
+      primitives: [
+        {
+          kind: "axisAlignedRectangle",
+          originXMm: 0,
+          originYMm: 0,
+          widthMm: 6000,
+          depthMm: 4000,
+          roofIntent: {
+            form: "hipped",
+            pitchDeg: 25,
+            ridgeAxis: "x",
+            startCap: "hipped",
+            endCap: "hipped",
+          },
+        },
+        // The polymorphic primitive union allows `kind: "unknown"`
+        // for future extensibility; composeFootprintFromComposition
+        // throws on it ("unsupported primitive kind"). Our helper
+        // catches and returns null — the defensive fallback.
+        { kind: "unknown", reserved: true },
+      ],
+      joins: [],
+    };
+    expect(deriveCompositionUnionPolygon3(broken)).toBeNull();
   });
 });
