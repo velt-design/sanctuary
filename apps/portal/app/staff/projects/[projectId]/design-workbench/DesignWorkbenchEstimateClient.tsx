@@ -211,6 +211,17 @@ export default function DesignWorkbenchEstimateClient({
     setLastSavedDraftSignature(null);
   }, [estimate.id]);
 
+  // PR-WB-SELECTION-PERSIST (2026-06-19): selection survives draft
+  // edits. Two narrowly-scoped effects:
+  //
+  //   1. On `[estimate.id]` change: initialise selection to the
+  //      first house form (fresh estimate, no prior selection).
+  //   2. On draft change: a self-healing pass that ONLY resets
+  //      selection if the currently-selected object no longer
+  //      exists in the draft (e.g. after a remove or detach). If
+  //      the current selection is still valid, the active object
+  //      ref is left alone — designers don't get bounced back to
+  //      House 1 every time they tweak House 2.
   useEffect(() => {
     const defaultHouseFormId =
       buildDrawingWorkbenchStore({
@@ -226,7 +237,54 @@ export default function DesignWorkbenchEstimateClient({
         activeObjectRef: { family: 'house_forms', objectId: defaultHouseFormId },
       }),
     }));
-  }, [estimate.id, effectiveDrawingDraft]);
+    // Intentionally NOT depending on effectiveDrawingDraft — the
+    // self-heal below covers the "active object disappeared" case
+    // without snapping selection on every keystroke.
+  }, [estimate.id]);
+
+  useEffect(() => {
+    const draftStore = buildDrawingWorkbenchStore({
+      draft: effectiveDrawingDraft,
+      ui: createDrawingWorkbenchUiState(),
+    });
+    setUi((current) => {
+      const activeRef = current.activeObjectRef;
+      if (!activeRef.objectId) return current;
+      const stillExists = (() => {
+        switch (activeRef.family) {
+          case 'house_forms':
+            return draftStore.derived.houseForms.some(
+              (form) => form.id === activeRef.objectId,
+            );
+          case 'pergolas':
+            return draftStore.derived.objectWorkbench.pergolas.some(
+              (pergola) => pergola.id === activeRef.objectId,
+            );
+          case 'decks':
+            return draftStore.derived.objectWorkbench.decks.some(
+              (deck) => deck.id === activeRef.objectId,
+            );
+          case 'openings':
+            return draftStore.derived.objectWorkbench.openings.some(
+              (opening) => opening.id === activeRef.objectId,
+            );
+          default:
+            return true;
+        }
+      })();
+      if (stillExists) return current;
+      // Active object disappeared — fall back to first house form.
+      const fallbackHouseFormId = draftStore.derived.houseForms[0]?.id ?? null;
+      return {
+        ...current,
+        activePergolaId: null,
+        ...buildDrawingWorkbenchObjectSelectionState({
+          activeRailTab: 'house_forms',
+          activeObjectRef: { family: 'house_forms', objectId: fallbackHouseFormId },
+        }),
+      };
+    });
+  }, [effectiveDrawingDraft]);
 
   useEffect(() => {
     if (hasUnsavedWorkbenchDraft && draftSaveState.status === 'saved') {
