@@ -886,7 +886,14 @@ describe("buildViewerSceneModel", () => {
     expect(points.every((point) => Number.isFinite(point.z))).toBe(true);
   });
 
-  it("quarantines QA-invalid semantic roof solids while keeping house context diagnostics", () => {
+  // PR-HR3 (2026-06-18): the historical "quarantine" behaviour
+  // suppressed QA-invalid roof solids entirely, leaving only rafters
+  // visible — designers had no idea what the solver attempted. The
+  // post-PR-HR3 behaviour keeps the best-effort solids in the scene
+  // but stamps them with `houseRoofRenderRole: "diagnostic"` so the
+  // 3D renderer can tint them. Pre-existing outline objects continue
+  // to emit alongside as accessibility / Plan-fallback cues.
+  it("renders QA-invalid semantic roof solids as diagnostic alongside the existing outline cues", () => {
     const fixture = requireSupportedFixture("mono_attached_soffit_away_standard");
     const config = addHouseModelContext(fixture.config, {
       lengthMm: 6000,
@@ -921,12 +928,20 @@ describe("buildViewerSceneModel", () => {
     const houseObjects =
       scene.layers.find((layer) => layer.id === "house")?.objects ?? [];
 
+    // PR-HR3: diagnostic roof solids ARE present (was: suppressed).
+    const diagnosticRoofSolids = houseObjects.filter(
+      (object) =>
+        object.type === "house_surface_solid" && object.kind === "roof",
+    );
+    expect(diagnosticRoofSolids).toHaveLength(expectedRoofCount);
     expect(
-      houseObjects.some(
+      diagnosticRoofSolids.every(
         (object) =>
-          object.type === "house_surface_solid" && object.kind === "roof",
+          object.metadata?.houseRoofRenderRole === "diagnostic" &&
+          object.metadata?.roofRenderSkipReason === "roof_qa_invalid" &&
+          object.metadata?.roofQaStatus === "invalid",
       ),
-    ).toBe(false);
+    ).toBe(true);
     expect(
       houseObjects.some(
         (object) =>
@@ -972,8 +987,11 @@ describe("buildViewerSceneModel", () => {
       houseRoofQaStatus: "invalid",
       houseRoofQaFailureReason: "test_spans_recess_void",
       houseRoofSolidExpectedCount: expectedRoofCount,
-      houseRoofSolidSceneCount: 0,
-      houseRoofSolidSkippedCount: expectedRoofCount,
+      // PR-HR3: solids now ALWAYS render; skipped=0, diagnostic=N.
+      houseRoofSolidSceneCount: expectedRoofCount,
+      houseRoofSolidRenderedCount: expectedRoofCount,
+      houseRoofSolidSkippedCount: 0,
+      houseRoofSolidDiagnosticCount: expectedRoofCount,
     });
 
     const points = houseObjects.flatMap(pointsForViewerObject);

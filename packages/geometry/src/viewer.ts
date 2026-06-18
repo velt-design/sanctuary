@@ -778,7 +778,22 @@ export function buildHouseModelSceneObjects(input: {
 
   if (hasSolids) {
     for (const solid of model.solids?.surfaceSolids ?? []) {
-      if (solid.kind === "roof" && skipRoofSolids) continue;
+      // PR-HR3 (2026-06-18): instead of skipping roof solids when QA
+      // failed (which produced the "skeletal rafters with no surface"
+      // render designers were seeing), include them and stamp metadata
+      // so the renderer can apply a diagnostic tint. The pre-existing
+      // outline objects from `buildHouseRoofOutlineObjects()` (line ~573)
+      // still emit alongside as a redundant accessibility cue — they're
+      // also consumed by the Plan viewport's fallback layer.
+      const roofMetadata =
+        solid.kind === "roof" && skipRoofSolids
+          ? {
+              ...solid.metadata,
+              houseRoofRenderRole: "diagnostic",
+              roofRenderSkipReason: "roof_qa_invalid",
+              roofQaStatus: "invalid",
+            }
+          : solid.metadata;
       const object = buildHouseSurfaceSolidObject({
         id: solid.id,
         sourceId: solid.id,
@@ -787,7 +802,7 @@ export function buildHouseModelSceneObjects(input: {
         plane: solid.plane,
         thicknessMm: solid.thicknessMm,
         renderMesh: solid.renderMesh,
-        metadata: solid.metadata,
+        metadata: roofMetadata,
       });
       if (object) objects.push(object);
     }
@@ -825,18 +840,27 @@ export function buildHouseModelSceneObjects(input: {
       if (object) objects.push(object);
     }
 
-    if (!skipRoofSolids) {
-      for (const roofPlane of model.roofPlanes) {
-        const object = buildHouseSurfaceObject({
-          id: roofPlane.id,
-          sourceId: roofPlane.id,
-          kind: "roof",
-          boundary: roofPlane.boundary,
-          plane: roofPlane.plane,
-          metadata: roofPlane.metadata,
-        });
-        if (object) objects.push(object);
-      }
+    // PR-HR3 (2026-06-18): no-solids fallback path also emits roof
+    // planes even when QA failed, stamped as diagnostic so the
+    // renderer can tint them. Matches the with-solids path above.
+    for (const roofPlane of model.roofPlanes) {
+      const roofPlaneMetadata = skipRoofSolids
+        ? {
+            ...roofPlane.metadata,
+            houseRoofRenderRole: "diagnostic",
+            roofRenderSkipReason: "roof_qa_invalid",
+            roofQaStatus: "invalid",
+          }
+        : roofPlane.metadata;
+      const object = buildHouseSurfaceObject({
+        id: roofPlane.id,
+        sourceId: roofPlane.id,
+        kind: "roof",
+        boundary: roofPlane.boundary,
+        plane: roofPlane.plane,
+        metadata: roofPlaneMetadata,
+      });
+      if (object) objects.push(object);
     }
 
     for (const [index, boundary] of (model.eave.soffitPolygons ?? []).entries()) {
@@ -1223,16 +1247,27 @@ function buildViewerSceneMetadata(
 
   const qaStatus = metadataString(model.metadata, "roofQaStatus") ?? "invalid";
   const expectedRoofSolidCount = model.roofPlanes.length;
-  const renderedRoofSolidCount = layers
+  const allRoofSurfaceSolids = layers
     .flatMap((layer) => layer.objects)
     .filter(
       (object) =>
         object.type === "house_surface_solid" && object.kind === "roof",
-    ).length;
-  const qaAllowsRoofSolids = qaStatus === "valid";
-  const skippedRoofSolidCount = qaAllowsRoofSolids
-    ? Math.max(0, expectedRoofSolidCount - renderedRoofSolidCount)
-    : expectedRoofSolidCount;
+    );
+  const renderedRoofSolidCount = allRoofSurfaceSolids.length;
+  // PR-HR3 (2026-06-18): roof solids stamped with
+  // `houseRoofRenderRole === "diagnostic"` are best-effort renders
+  // emitted when QA failed. They count toward the scene/rendered
+  // totals (they ARE in the scene), and additionally surface a
+  // dedicated diagnostic count so observability can distinguish
+  // "rendered as committed" from "rendered as diagnostic."
+  const renderedRoofSolidDiagnosticCount = allRoofSurfaceSolids.filter(
+    (object) =>
+      metadataString(object.metadata, "houseRoofRenderRole") === "diagnostic",
+  ).length;
+  const skippedRoofSolidCount = Math.max(
+    0,
+    expectedRoofSolidCount - renderedRoofSolidCount,
+  );
   const totalOpeningCount = model.openings?.length ?? 0;
   const validOpeningCount =
     model.openings?.filter((opening) => opening.validationStatus === "valid").length ?? 0;
@@ -1295,9 +1330,10 @@ function buildViewerSceneMetadata(
     houseRoofWavefrontEventCount: metadataNumber(model.metadata, "roofWavefrontEventCount"),
     houseRoofWavefrontFailureReason: metadataString(model.metadata, "roofWavefrontFailureReason"),
     houseRoofSolidExpectedCount: expectedRoofSolidCount,
-    houseRoofSolidSceneCount: qaAllowsRoofSolids ? renderedRoofSolidCount : 0,
-    houseRoofSolidRenderedCount: qaAllowsRoofSolids ? renderedRoofSolidCount : 0,
+    houseRoofSolidSceneCount: renderedRoofSolidCount,
+    houseRoofSolidRenderedCount: renderedRoofSolidCount,
     houseRoofSolidSkippedCount: skippedRoofSolidCount,
+    houseRoofSolidDiagnosticCount: renderedRoofSolidDiagnosticCount,
     houseOpeningCount: totalOpeningCount,
     houseOpeningValidCount: validOpeningCount,
     houseOpeningHostEdgeResolvedCount: resolvedOpeningHostEdgeCount,

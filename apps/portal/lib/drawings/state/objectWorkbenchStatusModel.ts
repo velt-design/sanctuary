@@ -3,9 +3,13 @@ import {
   deriveHouseGableTerminalEnds,
   deriveHouseRoofCapabilities,
   deriveHouseRoofGeometryKind,
+  EMPTY_HOUSE_ROOF_STAGE_DIAGNOSTICS,
+  firstHouseRoofStageDiagnosticCode,
   getHouseRoofFormBehavior,
   preferredMonoFallDirectionForAttachmentSide,
+  summarizeHouseModelRoofStageDiagnostics,
   validateHouseRoofSelection,
+  type HouseRoofStageDiagnostics,
   type Polygon3,
 } from "@sp/geometry";
 import type {
@@ -58,6 +62,29 @@ export type ObjectWorkbenchRoofProvenance = Partial<
   >
 >;
 
+/**
+ * PR-HR2 (2026-06-18): the human-readable label of the stage that
+ * first reported a failure. Derived once from the geometry stage
+ * diagnostics so the inspector rail can render "failed at: eave
+ * polygon construction" without re-pattern-matching the codes.
+ */
+export type ObjectWorkbenchRoofFailingStageId =
+  | "footprint_normalization"
+  | "eave_polygon_construction"
+  | "roof_intent_normalization"
+  | "roof_topology_classification"
+  | "roof_topology_coverage"
+  | "roof_plane_generation"
+  | "roof_wavefront"
+  | "roof_qa_validation"
+  | "eave_offset_repair";
+
+export type ObjectWorkbenchRoofFailingStage = {
+  id: ObjectWorkbenchRoofFailingStageId;
+  label: string;
+  code: string;
+};
+
 export type ObjectWorkbenchRoofStatus = {
   form: HouseFormRoofIntentModel["form"];
   roofIntentAuthored: boolean;
@@ -77,6 +104,22 @@ export type ObjectWorkbenchRoofStatus = {
   validationCode: string | null;
   validationMessage: string | null;
   approximationReasons: string[];
+  /**
+   * PR-HR2 (2026-06-18): full per-stage diagnostics snapshot from
+   * `@sp/geometry`. Carries the data the inspector rail's "Copy
+   * diagnostics" button packages for bug reports. Always present
+   * (empty defaults when there's no solved model) so consumers don't
+   * have to null-guard every field.
+   */
+  stageDiagnostics: HouseRoofStageDiagnostics;
+  /**
+   * PR-HR2 (2026-06-18): which pipeline stage first reported a
+   * failure, with the raw code. `null` when the roof is valid or only
+   * approximate (no hard failure). Designers don't need to interpret
+   * codes — the inspector rail uses this for a structured failure
+   * panel.
+   */
+  failingStage: ObjectWorkbenchRoofFailingStage | null;
   provenance: ObjectWorkbenchRoofProvenance;
 };
 
@@ -294,6 +337,51 @@ function buildMigrationWarnings(
     }));
 }
 
+/**
+ * PR-HR2 (2026-06-18): derive a designer-readable failing stage from
+ * the raw stage diagnostics. Mirrors the ordering of
+ * `firstHouseRoofStageDiagnosticCode` in @sp/geometry; updating that
+ * function's ordering should update this one. Returns `null` when no
+ * stage reported a failure.
+ */
+function resolveFailingStage(
+  diagnostics: HouseRoofStageDiagnostics,
+): ObjectWorkbenchRoofFailingStage | null {
+  const code = firstHouseRoofStageDiagnosticCode(diagnostics);
+  if (!code) return null;
+  if (diagnostics.footprintNormalizationStatus === "failed") {
+    return { id: "footprint_normalization", label: "Footprint normalization", code };
+  }
+  if (diagnostics.eavePolygonConstructionStatus === "failed") {
+    return { id: "eave_polygon_construction", label: "Eave polygon construction", code };
+  }
+  if (diagnostics.eaveOffsetTopologyStatus === "invalid") {
+    return { id: "eave_polygon_construction", label: "Eave offset topology", code };
+  }
+  if (diagnostics.roofIntentNormalizationStatus === "failed") {
+    return { id: "roof_intent_normalization", label: "Roof intent normalization", code };
+  }
+  if (diagnostics.roofEaveOffsetRepairCode) {
+    return { id: "eave_offset_repair", label: "Eave offset repair", code };
+  }
+  if (diagnostics.roofTopologyCoverageFailureReason) {
+    return { id: "roof_topology_coverage", label: "Roof topology coverage", code };
+  }
+  if (diagnostics.roofTopologyFailureReason) {
+    return { id: "roof_topology_classification", label: "Roof topology classification", code };
+  }
+  if (diagnostics.roofWavefrontFailureReason) {
+    return { id: "roof_wavefront", label: "Roof wavefront sweep", code };
+  }
+  if (diagnostics.roofTopologyClassificationStatus === "failed") {
+    return { id: "roof_topology_classification", label: "Roof topology classification", code };
+  }
+  if (diagnostics.roofPlaneGenerationStatus === "failed") {
+    return { id: "roof_plane_generation", label: "Roof plane generation", code };
+  }
+  return { id: "roof_qa_validation", label: "Roof QA validation", code };
+}
+
 function buildRoofProvenance(
   houseForm: HouseFormModel,
 ): ObjectWorkbenchRoofProvenance {
@@ -382,6 +470,12 @@ function buildRoofStatus(input: {
         pergolaAttachment: null,
       })
     : null;
+  // PR-HR2 (2026-06-18): always summarize, even when there's no
+  // package model — empty defaults mean consumers never have to
+  // null-guard individual stage fields.
+  const stageDiagnostics = packageRoofModel
+    ? summarizeHouseModelRoofStageDiagnostics(packageRoofModel)
+    : EMPTY_HOUSE_ROOF_STAGE_DIAGNOSTICS;
   const packageRoofQaStatus =
     typeof packageRoofModel?.metadata?.roofQaStatus === "string"
       ? packageRoofModel.metadata.roofQaStatus
@@ -447,6 +541,9 @@ function buildRoofStatus(input: {
     validationCode,
     validationMessage,
     approximationReasons,
+    stageDiagnostics,
+    failingStage:
+      validationStatus === "invalid" ? resolveFailingStage(stageDiagnostics) : null,
     provenance: buildRoofProvenance(houseForm),
   };
 }

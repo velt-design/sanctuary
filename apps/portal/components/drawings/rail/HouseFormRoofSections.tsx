@@ -18,6 +18,7 @@ import {
   ROOF_MATERIAL_OPTIONS,
   SelectField,
 } from './objectRailShared';
+import RoofValidationPanel from './RoofValidationPanel';
 import styles from './WorkbenchRail.module.css';
 
 type BuildHouseFormRoofSectionsInput = {
@@ -193,11 +194,21 @@ export function buildHouseFormRoofSections({
   // approximate?" overlay on the trust chip). Deleting only the
   // rendering; the data path is intact.
 
-  if (roofContext.validationStatus === 'invalid' && roofContext.validationMessage) {
+  // PR-HR2 (2026-06-18): structured failure / approximate panel
+  // replaces the single-line `<p>` that only surfaced the message
+  // string. The new panel exposes the failing stage label, the raw
+  // diagnostic code, approximation reasons, and a "Copy diagnostics"
+  // button that puts the full stage-diagnostics JSON on the clipboard.
+  if (
+    roofContext.validationStatus === 'invalid' ||
+    roofContext.validationStatus === 'approximate'
+  ) {
     fields.push(
-      <p key="roof-invalid" className={styles.fieldError}>
-        {roofContext.validationMessage}
-      </p>,
+      <RoofValidationPanel
+        key="roof-validation"
+        roofStatus={roofContext}
+        houseForm={houseFormContext.houseForm}
+      />,
     );
   }
 

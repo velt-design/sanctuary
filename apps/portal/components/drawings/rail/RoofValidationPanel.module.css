@@ -1,0 +1,103 @@
+/*
+ * PR-HR2 (2026-06-18): structured validation panel for the workbench
+ * right rail. Two visual modes:
+ *   - .invalidPanel: hard QA failure (red palette, can't be ignored)
+ *   - .approximatePanel: solver succeeded but flagged caveats (amber)
+ *
+ * Width matches the rest of the field-stack on the rail; copy
+ * stays inside the panel with text-wrap rather than truncation.
+ */
+
+.invalidPanel,
+.approximatePanel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--portal-density-6);
+  padding: var(--portal-density-8) var(--portal-density-10);
+  border-radius: var(--portal-radius-md, 6px);
+  border: 1px solid transparent;
+  font-size: var(--portal-font-xs);
+  line-height: 1.45;
+  word-break: break-word;
+}
+
+.invalidPanel {
+  background: rgba(254, 226, 226, 0.6);
+  border-color: rgba(220, 38, 38, 0.45);
+  color: rgb(127, 22, 22);
+}
+
+.approximatePanel {
+  background: rgba(254, 243, 199, 0.55);
+  border-color: rgba(202, 138, 4, 0.4);
+  color: rgb(120, 78, 4);
+}
+
+.message {
+  margin: 0;
+  font-weight: 600;
+}
+
+.metaList {
+  margin: 0;
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: var(--portal-density-2) var(--portal-density-8);
+}
+
+.metaTerm {
+  margin: 0;
+  font-weight: 600;
+  opacity: 0.85;
+}
+
+.metaValue {
+  margin: 0;
+}
+
+.codeChip {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.08);
+  font-family: var(--portal-font-mono, ui-monospace, SFMono-Regular, monospace);
+  font-size: var(--portal-font-xs);
+  word-break: break-all;
+}
+
+.reasons {
+  margin: 0;
+}
+
+.reasonsLabel {
+  font-weight: 600;
+}
+
+.buttonRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--portal-density-4);
+}
+
+.copyButton {
+  align-self: flex-start;
+  padding: var(--portal-density-4) var(--portal-density-10);
+  border-radius: var(--portal-radius-sm, 4px);
+  border: 1px solid currentColor;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+.copyButton:hover {
+  background: currentColor;
+  color: #fff;
+}
+
+.copyButton:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}

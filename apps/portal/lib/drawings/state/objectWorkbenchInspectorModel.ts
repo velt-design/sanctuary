@@ -1,4 +1,8 @@
-import { getHouseRoofFormBehavior } from '@sp/geometry';
+import {
+  EMPTY_HOUSE_ROOF_STAGE_DIAGNOSTICS,
+  getHouseRoofFormBehavior,
+  type HouseRoofStageDiagnostics,
+} from '@sp/geometry';
 import type { DeckInteractionCapability } from '@/lib/drawings/interactions/deckInteractionContract';
 import type { WorkbenchDeckSupportDiagnostic } from './deckSupportDiagnostics';
 import type {
@@ -24,6 +28,7 @@ import type {
   ObjectWorkbenchHouseFormStatus,
   ObjectWorkbenchPergolaAttachmentStrategy,
   ObjectWorkbenchPergolaConnectionKind,
+  ObjectWorkbenchRoofFailingStage,
   ObjectWorkbenchRoofProvenance,
   ObjectWorkbenchStatusFacade,
 } from './objectWorkbenchStatusModel';
@@ -116,6 +121,14 @@ export type ObjectWorkbenchRoofInspectorModel = {
   validationCode: string | null;
   validationMessage: string | null;
   approximationReasons: string[];
+  /**
+   * PR-HR2 (2026-06-18): forwarded from the status model so the
+   * inspector rail's `RoofValidationPanel` can build a structured
+   * failure UI + "Copy diagnostics" payload without a second
+   * resolver pass.
+   */
+  stageDiagnostics: HouseRoofStageDiagnostics;
+  failingStage: ObjectWorkbenchRoofFailingStage | null;
   provenance: ObjectWorkbenchRoofProvenance;
 };
 
@@ -266,6 +279,11 @@ function buildRoofInspector(
     validationCode: roof?.validationCode ?? null,
     validationMessage: roof?.validationMessage ?? null,
     approximationReasons: roof?.approximationReasons ?? [],
+    // PR-HR2 (2026-06-18): forward stage diagnostics + failing stage
+    // so the rail can render a structured validation panel without
+    // having to reach back into the status facade.
+    stageDiagnostics: roof?.stageDiagnostics ?? EMPTY_HOUSE_ROOF_STAGE_DIAGNOSTICS,
+    failingStage: roof?.failingStage ?? null,
     provenance: roof?.provenance ?? {},
   };
 }

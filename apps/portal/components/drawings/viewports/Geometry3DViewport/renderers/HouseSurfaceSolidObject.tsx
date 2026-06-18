@@ -78,12 +78,25 @@ export function HouseSurfaceSolidObject({
       buildPolygonSlabGeometry(object.boundary, object.plane, object.thicknessMm),
     [object.boundary, object.plane, object.renderMesh, object.thicknessMm],
   );
-  const opacity =
-    object.kind === "roof"
+  // PR-HR3 (2026-06-18): roof solids stamped as diagnostic by
+  // `viewer.ts` (when `roofQaStatus === "invalid"`) render with a
+  // warning tint instead of the layer colour, so a designer can
+  // see the solver's best-effort surface AND know it didn't pass
+  // QA. The tint reuses the workbench's existing diagnostic
+  // vocabulary (warm red-orange, slightly higher transparency).
+  const metadataBag = (object as { metadata?: Record<string, unknown> }).metadata ?? null;
+  const isDiagnosticRoof =
+    object.kind === "roof" &&
+    typeof metadataBag?.houseRoofRenderRole === "string" &&
+    metadataBag.houseRoofRenderRole === "diagnostic";
+  const opacity = isDiagnosticRoof
+    ? 0.42
+    : object.kind === "roof"
       ? 0.62
       : object.kind === "wall"
         ? 0.58
         : 0.72;
+  const diagnosticTint = "#d97706"; // amber-600 — matches RoofValidationPanel approximate styling
   const materialSide =
     object.kind === "wall" ? THREE.FrontSide : THREE.DoubleSide;
   const isDeck = object.kind === "deck";
@@ -164,7 +177,7 @@ export function HouseSurfaceSolidObject({
       <mesh>
         <primitive attach="geometry" object={geometry} />
         <meshStandardMaterial
-          color={deckPalette?.baseColor ?? color}
+          color={isDiagnosticRoof ? diagnosticTint : (deckPalette?.baseColor ?? color)}
           transparent
           opacity={bodyOpacity}
           depthWrite={false}
