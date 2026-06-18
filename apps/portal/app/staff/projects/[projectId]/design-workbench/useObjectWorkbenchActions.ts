@@ -29,6 +29,7 @@ import {
   type HouseComposition,
 } from '@sp/geometry';
 import { deriveHouseFormDisplayLabel } from '@/lib/drawings/state/houseFormDisplayLabel';
+import { rebasePartitionIntoOwnFrame } from '@/lib/drawings/state/houseFormCompositionDetach';
 import type {
   ObjectWorkbenchDeckPatch,
   ObjectWorkbenchOpeningPatch,
@@ -746,9 +747,43 @@ export function useObjectWorkbenchActions({
             };
           }
           const partitions: HouseComposition[] = detachResult.partitions;
+          // PR-WB-DETACH-NO-MOVE (2026-06-19): rebase every
+          // partition into its own form-local frame so each
+          // resulting house form renders at the same world
+          // position its rectangles occupied inside the composite.
+          // Without this, the new form inherits the parent's
+          // footprint params (describing the composite's anchor)
+          // and the legacy walls land overlapping the parent.
+          //
+          // Partition 0 keeps the parent's id + label + workbench
+          // metadata but its composition + transform + footprint
+          // params are all rebased into a frame matching its own
+          // bounding box. Partitions 1..N-1 become new forms with
+          // new ids + auto-derived labels.
+          const rebasedPartitions = partitions.map((partition) =>
+            rebasePartitionIntoOwnFrame({
+              partition,
+              parentTransform: form.transform,
+            }),
+          );
+          if (rebasedPartitions.some((entry) => entry === null)) {
+            return { ok: false, error: 'Detach produced an invalid partition.' };
+          }
+          const rebasedHead = rebasedPartitions[0]!;
           const updatedOriginal: HouseFormModel = {
             ...form,
-            composition: partitions[0]!,
+            composition: rebasedHead.composition,
+            transform: rebasedHead.transformOverride,
+            footprint: {
+              ...form.footprint,
+              params: {
+                ...form.footprint.params,
+                widthM: rebasedHead.footprintParamsPatch.widthM,
+                bandDepthM: rebasedHead.footprintParamsPatch.bandDepthM,
+                offsetXM: rebasedHead.footprintParamsPatch.offsetXM,
+                setbackM: rebasedHead.footprintParamsPatch.setbackM,
+              },
+            },
           };
           // Build the new forms iteratively so each new id is
           // unique relative to the running list (nextHouseFormId
@@ -759,11 +794,23 @@ export function useObjectWorkbenchActions({
           for (let i = 1; i < partitions.length; i += 1) {
             const newId = nextHouseFormId(runningForms);
             const newLabel = deriveHouseFormDisplayLabel(runningForms.length);
+            const rebased = rebasedPartitions[i]!;
             const newForm: HouseFormModel = {
               ...form,
               id: newId,
               label: newLabel,
-              composition: partitions[i]!,
+              composition: rebased.composition,
+              transform: rebased.transformOverride,
+              footprint: {
+                ...form.footprint,
+                params: {
+                  ...form.footprint.params,
+                  widthM: rebased.footprintParamsPatch.widthM,
+                  bandDepthM: rebased.footprintParamsPatch.bandDepthM,
+                  offsetXM: rebased.footprintParamsPatch.offsetXM,
+                  setbackM: rebased.footprintParamsPatch.setbackM,
+                },
+              },
             };
             runningForms.push(newForm);
           }
