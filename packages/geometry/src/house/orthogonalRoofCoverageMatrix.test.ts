@@ -413,6 +413,17 @@ const CAPTURED_KNOWN_FAILURES: ReadonlySet<string> = new Set<string>([
   // PR-HR3 fail-soft render keeps the broken roof visible as amber-
   // tinted diagnostic so designers can still work around it.
   'captured:graham-oratia_l-narrow-south-return.json',
+  // Captured 2026-06-18 — second instance of the same shape class
+  // (15m × 11m main block + 5.5m × 2.4m south extension). Different
+  // failing stage from v1 (`roof_topology_classification` vs
+  // `eave_offset_repair`) but the same root cause: the narrow-return
+  // partition over-fragments (12 closed faces vs expected 6; 24
+  // chord violations; 24 unbacked internal boundaries). Coverage QA
+  // passes (`roofTopologyCoverageQaStatus: "valid"`) but semantic
+  // classification fails — the partition created internal edges
+  // that don't correspond to any source edge. Confirms PR-HR6's
+  // diagnosis that narrow-return L is a single bug class.
+  'captured:graham-oratia_l-narrow-south-return_v2-wider.json',
 ]);
 
 function metresStringToMm(value: string): number {
