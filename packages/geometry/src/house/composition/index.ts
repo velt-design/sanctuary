@@ -34,3 +34,13 @@ export type {
   DetachHouseFormError,
   DetachHouseFormResult,
 } from "./detachHouseFormAtSeam";
+export {
+  detectSharedSeamBetweenForms,
+  findCompositionJoinSeamMidpoint,
+  joinTwoHouseForms,
+} from "./compositionSeams";
+export type {
+  JoinHouseFormsError,
+  JoinHouseFormsResult,
+  SharedSeam,
+} from "./compositionSeams";
