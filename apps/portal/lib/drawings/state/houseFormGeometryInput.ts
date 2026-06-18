@@ -15,6 +15,7 @@ import {
 } from "@sp/geometry";
 import { houseFormTransformToAssemblyPosition } from "./houseFormTransform";
 import { buildHouseFormRawGeometryInput } from "./houseFormRawGeometry";
+import { deriveCompositionUnionPolygon3 } from "./houseFormCompositionFootprint";
 import type {
   HouseFormModel,
   HouseRoofIntentAuthorshipResolution,
@@ -195,16 +196,27 @@ export function buildHouseFormGeometryInputForForm(
     });
   }
 
+  // PR-COMP-PHASE4a.3 (2026-06-18): for multi-rectangle compositions,
+  // substitute the composition's union polygon for the preset-derived
+  // footprint BEFORE building the legacy model. The legacy wall /
+  // eave / opening builders consume any orthogonal polygon — L / T /
+  // U preset footprints have always been supported — so they handle
+  // the union shape transparently. Single-rectangle compositions
+  // return null from `deriveCompositionUnionPolygon3` and fall
+  // through to the legacy preset path (preserves Phase 3.2's
+  // byte-equivalence invariant).
+  const compositionUnionFootprint = deriveCompositionUnionPolygon3(houseForm.composition);
+  const footprintForLegacyBuilder = compositionUnionFootprint ?? rawGeometry.footprint;
   const legacyModel = buildHouseModel3DFromRawHouseInput({
     rawHouse: rawGeometry.rawHouse,
-    footprint: rawGeometry.footprint,
+    footprint: footprintForLegacyBuilder,
     pergolaAttachment: null,
   });
   if (!legacyModel) {
     return buildFailure({
       houseFormId: houseForm.id,
       failureStage: "missing_model",
-      footprintPointCount: rawGeometry.footprint.length,
+      footprintPointCount: footprintForLegacyBuilder.length,
       rawHouseInputPresent: true,
     });
   }
@@ -218,10 +230,11 @@ export function buildHouseFormGeometryInputForForm(
   // stamps `roofTopologySolver: "composition_..."` so observability
   // surfaces which forms travel the composition route.
   //
-  // Phase 4 (multi-rectangle compositions) will need to ALSO build
-  // walls/eaves from the composite footprint (because the union
-  // differs from any single rectangle), but for Phase 3 the walls
-  // are correct as-is.
+  // PR-COMP-PHASE4a.3 (2026-06-18): the substitution above feeds the
+  // composite footprint into the legacy wall / eave / opening
+  // builders; the swap below replaces the roof with the composition-
+  // driven stitched solve. Together they make multi-rectangle
+  // composites render end-to-end via the composition path.
   const model = houseForm.composition
     ? swapRoofFromComposition({
         houseForm,
@@ -252,7 +265,7 @@ export function buildHouseFormGeometryInputForForm(
       houseFormId: houseForm.id,
       failureStage: "missing_geometry_input",
       diagnosticCode: "missing_reference_shape",
-      footprintPointCount: rawGeometry.footprint.length,
+      footprintPointCount: footprintForLegacyBuilder.length,
       rawHouseInputPresent: true,
       modelPresent: true,
       wallCount: positionedModel.wallSegments.length,
@@ -280,13 +293,13 @@ export function buildHouseFormGeometryInputForForm(
     houseFormId: houseForm.id,
     houseForm,
     rawHouseInput: rawGeometry.rawHouse,
-    footprint: rawGeometry.footprint,
+    footprint: footprintForLegacyBuilder,
     geometry,
     model: positionedModel,
     referenceShape,
     diagnostics: {
       houseFormId: houseForm.id,
-      footprintPointCount: rawGeometry.footprint.length,
+      footprintPointCount: footprintForLegacyBuilder.length,
       rawHouseInputPresent: true,
       referencePresent: true,
       modelPresent: true,
