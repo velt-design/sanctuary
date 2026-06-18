@@ -64,7 +64,13 @@ describe("buildSingleRectangleCompositionFromHouseForm (PR-COMP-PHASE3)", () => 
     expect(rect.widthMm).toBe(6000);
     expect(rect.depthMm).toBe(4000);
     expect(rect.originXMm).toBe(0);
-    expect(rect.originYMm).toBe(0);
+    // PR-COMP-PHASE4b followup (2026-06-19): origin Y is -depth so
+    // the composition rectangle occupies the same -Y half-plane the
+    // legacy preset polygon does (attachment side `rear` →
+    // setbackM=0 → polygon at y ∈ [-depth, 0]). See
+    // `buildSingleRectangleCompositionFromHouseForm` for the
+    // legacy-frame discussion.
+    expect(rect.originYMm).toBe(-4000);
     if (rect.roofIntent.form !== "hipped") {
       throw new Error("expected hipped intent");
     }
@@ -123,6 +129,55 @@ describe("buildSingleRectangleCompositionFromHouseForm (PR-COMP-PHASE3)", () => 
       throw new Error("expected axisAlignedRectangle primitive");
     }
     expect(rect.roofIntent.form).toBe("flat");
+  });
+
+  describe("legacy-frame coherence (PR-COMP-PHASE4b followup)", () => {
+    it("composition rectangle occupies the same world-Y range as the legacy preset polygon", () => {
+      // This is the load-bearing regression test for the
+      // composition-vs-legacy frame mismatch that caused the roof
+      // to render translated south from the walls (and the Join
+      // chip to appear on the wrong edge) before today's fix.
+      //
+      // For attachmentSide `rear` + setbackM 0 + offsetXM 0 +
+      // widthM 6 + bandDepthM 4, the legacy preset polygon
+      // (`buildHouseFootprintPolygon`) returns corners at
+      //   (0, 0), (6000, 0), (6000, -4000), (0, -4000)
+      // i.e. world-Y range [-4000, 0]. The composition rectangle
+      // MUST occupy the same range so the composition roof aligns
+      // with the legacy walls.
+      const composition = buildSingleRectangleCompositionFromHouseForm(
+        straightPresetForm({ widthM: "6", bandDepthM: "4" }),
+      );
+      const rect = composition!.primitives[0]!;
+      if (rect.kind !== "axisAlignedRectangle") {
+        throw new Error("expected axisAlignedRectangle primitive");
+      }
+      // Composition Y range = [originYMm, originYMm + depthMm].
+      const yMin = rect.originYMm;
+      const yMax = rect.originYMm + rect.depthMm;
+      expect(yMin).toBe(-4000);
+      expect(yMax).toBe(0);
+    });
+
+    it("honours non-zero setback + offsetX (legacy frame shifts both axes)", () => {
+      // setbackM 1 + offsetXM 2 + widthM 6 + bandDepthM 4 should
+      // place the legacy polygon at
+      //   x ∈ [2000, 8000]
+      //   y ∈ [-5000, -1000]
+      // The composition rectangle must mirror that.
+      const houseForm = straightPresetForm({ widthM: "6", bandDepthM: "4" });
+      houseForm.footprint.params.offsetXM = "2";
+      houseForm.footprint.params.setbackM = "1";
+      const composition = buildSingleRectangleCompositionFromHouseForm(houseForm);
+      const rect = composition!.primitives[0]!;
+      if (rect.kind !== "axisAlignedRectangle") {
+        throw new Error("expected axisAlignedRectangle primitive");
+      }
+      expect(rect.originXMm).toBe(2000);
+      expect(rect.originXMm + rect.widthMm).toBe(8000);
+      expect(rect.originYMm).toBe(-5000);
+      expect(rect.originYMm + rect.depthMm).toBe(-1000);
+    });
   });
 });
 

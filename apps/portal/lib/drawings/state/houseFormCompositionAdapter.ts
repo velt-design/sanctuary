@@ -42,10 +42,28 @@ export function buildSingleRectangleCompositionFromHouseForm(
   const depthMm = metresStringToMm(houseForm.footprint.params.bandDepthM);
   if (widthMm <= 0 || depthMm <= 0) return null;
 
+  // PR-COMP-PHASE4b followup (2026-06-19): match the legacy preset
+  // polygon's form-local frame. For `attachmentSide: 'rear'` (the
+  // default), `houseFootprintSideLocalPointToWorld` in
+  // `@sp/geometry/footprints.ts` places the preset rectangle at
+  // world coordinates:
+  //   x ∈ [offsetXM,            offsetXM + widthM]
+  //   y ∈ [-(setbackM + depthM), -setbackM]
+  // i.e. the rectangle occupies the -Y half-plane (south of the
+  // pergola attachment axis). If we leave originYMm = 0 here, the
+  // composition rectangle sits at y ∈ [0, +depth] — opposite half-
+  // plane — and the composition-driven roof renders ~depth metres
+  // away from the legacy walls (visible as a roof translated south
+  // off the house body, and Join chips at the wrong screen position).
+  // Aligning origin to the legacy frame restores positional truth
+  // for both the roof swap (Phase 3.2 / 4a.3) and the seam-icon
+  // overlay (Phase 4b.3).
+  const offsetXMm = metresStringToMm(houseForm.footprint.params.offsetXM);
+  const setbackMm = metresStringToMm(houseForm.footprint.params.setbackM);
   const rectangle: AxisAlignedRectangle = {
     kind: "axisAlignedRectangle",
-    originXMm: 0,
-    originYMm: 0,
+    originXMm: offsetXMm,
+    originYMm: -(setbackMm + depthMm),
     widthMm,
     depthMm,
     roofIntent: deriveRectangleRoofIntent({
