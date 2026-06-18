@@ -4,6 +4,7 @@ import {
   validateHouseComposition,
   type HouseComposition,
 } from "@sp/geometry";
+import { syncSingleRectangleComposition } from "./houseFormCompositionAdapter";
 import {
   DEFAULT_CALCULATOR_HOUSE_ROOF_MATERIAL,
   normalizeAttachmentSide,
@@ -1117,7 +1118,7 @@ export function normalizeObjectFirstHouseFormDraft(
     footprint.polygon,
   );
 
-  return {
+  const normalised: ObjectFirstHouseFormDraft = {
     id,
     label: trimNullableString(value?.label) ?? id,
     transform: normalizeHouseFormTransform(value?.transform),
@@ -1163,13 +1164,28 @@ export function normalizeObjectFirstHouseFormDraft(
     ...(trimNullableString(value?.eaveOverhangMm)
       ? { eaveOverhangMm: trimNullableString(value?.eaveOverhangMm) }
       : null),
-    // PR-COMP-PHASE2: preserve composition if present + structurally
-    // valid; drop silently otherwise (defensive — bad persisted data
-    // must not crash workbench load).
-    ...(normalizeHouseComposition(value?.composition)
-      ? { composition: normalizeHouseComposition(value?.composition) }
-      : null),
   };
+
+  // PR-COMP-PHASE3 (2026-06-18): keep single-rectangle compositions
+  // in sync with the freshly-normalised footprint + roof intent.
+  // Multi-rectangle compositions (Phase 4 authored) are left
+  // untouched — they're authored data and must not be overwritten
+  // from legacy footprint params.
+  const persistedComposition = normalizeHouseComposition(value?.composition);
+  if (persistedComposition && persistedComposition.primitives.length > 1) {
+    return { ...normalised, composition: persistedComposition };
+  }
+  const synced = syncSingleRectangleComposition({
+    existing: persistedComposition,
+    houseForm: {
+      footprint: normalised.footprint,
+      roofIntent: normalised.roofIntent,
+    },
+  });
+  if (synced) {
+    return { ...normalised, composition: synced };
+  }
+  return normalised;
 }
 
 export function normalizeObjectFirstHouseAssemblyDraft(

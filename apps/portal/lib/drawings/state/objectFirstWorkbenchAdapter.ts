@@ -8,6 +8,7 @@ import type {
 import { normalizeObjectFirstWorkbenchDraftVNext } from "./objectFirstWorkbenchModel";
 import { deriveHouseFormDisplayLabel } from "./houseFormDisplayLabel";
 import { reconcileHouseFormRoofIntentForFootprint } from "./houseFormRoofIntentForFootprint";
+import { buildSingleRectangleCompositionFromHouseForm } from "./houseFormCompositionAdapter";
 
 function buildHouseFormDraftFromModel(
   houseForm: HouseFormModel,
@@ -153,7 +154,7 @@ export function addHouseFormToObjectFirstDraft(input: {
   const id = nextHouseFormId(assembly.houseForms);
   const label =
     input.label ?? deriveHouseFormDisplayLabel(assembly.houseForms.length);
-  const nextForm: ObjectFirstHouseFormDraft =
+  const baseForm: ObjectFirstHouseFormDraft =
     reconcileHouseFormRoofIntentForFootprint(
       source
         ? {
@@ -173,6 +174,17 @@ export function addHouseFormToObjectFirstDraft(input: {
             transform: input.transformOverride,
           }),
     );
+  // PR-COMP-PHASE3 (2026-06-18): populate composition for new
+  // single-rectangle (straight-preset) forms so they enter the
+  // composition path from day one. Clones of legacy custom-polygon
+  // or non-straight-preset forms get `composition: undefined` and
+  // continue rendering via the legacy pipeline; once a designer
+  // joins them into a composite (Phase 4), composition lands at
+  // that point.
+  const composition = buildSingleRectangleCompositionFromHouseForm(baseForm);
+  const nextForm: ObjectFirstHouseFormDraft = composition
+    ? { ...baseForm, composition }
+    : baseForm;
   return normalizeObjectFirstWorkbenchDraftVNext({
     ...input.draft,
     houseAssembly: {
