@@ -192,6 +192,25 @@ export default function DesignWorkbenchEstimateClient({
     [effectiveDrawingDraft, estimate.id, estimate.projectId, ui],
   );
 
+  // PR-WB-VIEWPORT-PERSIST (2026-06-19): the previous version of
+  // this effect reset viewport transforms (pan/zoom) on every
+  // draft mutation, so every commit re-fitted the plan and made
+  // editing feel jumpy. Viewport state + drawOutline target +
+  // save-status reset only on estimate change now; the in-flight
+  // session keeps its viewport across edits.
+  //
+  // Selection reset stays on the existing dep (draft change) for
+  // now — PR-WB-SELECTION-PERSIST refactors it next so selection
+  // also survives edits and only self-heals when the currently-
+  // selected object disappears.
+  useEffect(() => {
+    setModelViewportTransformsByKey({});
+    setGeometryViewportStatesByKey({});
+    setDrawOutlineTarget({ kind: 'footprint', deckId: null });
+    setDraftSaveState({ status: 'idle', message: null });
+    setLastSavedDraftSignature(null);
+  }, [estimate.id]);
+
   useEffect(() => {
     const defaultHouseFormId =
       buildDrawingWorkbenchStore({
@@ -207,11 +226,6 @@ export default function DesignWorkbenchEstimateClient({
         activeObjectRef: { family: 'house_forms', objectId: defaultHouseFormId },
       }),
     }));
-    setModelViewportTransformsByKey({});
-    setGeometryViewportStatesByKey({});
-    setDrawOutlineTarget({ kind: 'footprint', deckId: null });
-    setDraftSaveState({ status: 'idle', message: null });
-    setLastSavedDraftSignature(null);
   }, [estimate.id, effectiveDrawingDraft]);
 
   useEffect(() => {
