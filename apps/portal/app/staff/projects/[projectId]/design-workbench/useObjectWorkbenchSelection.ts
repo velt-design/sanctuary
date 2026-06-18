@@ -158,28 +158,11 @@ export function useObjectWorkbenchSelection({
     [resetDrawOutlineTarget, setUi],
   );
 
-  const startDrawOutlineEditor = useCallback((): CommitResult => {
-    setDrawOutlineTarget(FOOTPRINT_DRAW_OUTLINE_TARGET);
-    setUi((current) => ({
-      ...current,
-      viewportMode: 'model',
-      activeView: 'plan',
-      ...buildSelectionStateForObjectRef(
-        current,
-        {
-          family: 'house_forms',
-          objectId: getDefaultObjectId('house_forms'),
-        },
-      ),
-      selection: {
-        kind: 'geometry',
-        targetId: getDefaultObjectId('house_forms'),
-        targetKind: 'footprint',
-      },
-    }));
-    setDrawOutlineRequestId((current) => current + 1);
-    return { ok: true };
-  }, [getDefaultObjectId, setDrawOutlineRequestId, setDrawOutlineTarget, setUi]);
+  // PR-COMP-PHASE3.3 (2026-06-18): `startDrawOutlineEditor` removed —
+  // the rail affordance that triggered house-form polygon drawing
+  // was retired alongside composition-first authoring. Deck outline
+  // drawing remains (`startDeckOutlineEditor` below); only the
+  // house-form path is gone.
 
   const startDeckOutlineEditor = useCallback(
     (deckId: string): CommitResult => {
@@ -282,7 +265,6 @@ export function useObjectWorkbenchSelection({
     selectPergolaWorkbenchMode,
     selectRailTab,
     selectObjectRef,
-    startDrawOutlineEditor,
     startDeckOutlineEditor,
     selectDeckObject,
     selectOpeningObject,

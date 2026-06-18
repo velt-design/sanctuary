@@ -2,8 +2,6 @@ import type { ReactNode } from 'react';
 import type { HouseFormFootprintModel, HouseFormModel } from '@/lib/drawings/state/objectFirstWorkbenchModel';
 import type { FieldErrors, RunFootprintCommit } from './objectWorkbenchRailTypes';
 import {
-  ActionButton,
-  FOOTPRINT_MODE_OPTIONS,
   FOOTPRINT_OPTIONS,
   NumberField,
   SelectField,
@@ -13,86 +11,62 @@ import styles from './WorkbenchRail.module.css';
 
 type BuildHouseFormFootprintSectionsInput = {
   canEditFootprint?: boolean;
-  canStartDrawOutline?: boolean;
   disabled?: boolean;
   fieldErrors: FieldErrors;
   houseForm: HouseFormModel | null;
   runFootprintCommit: RunFootprintCommit;
-  runStartOutline: () => Promise<void>;
 };
 
 export function buildHouseFormFootprintSections({
   canEditFootprint,
-  canStartDrawOutline,
   disabled,
   fieldErrors,
   houseForm,
   runFootprintCommit,
-  runStartOutline,
 }: BuildHouseFormFootprintSectionsInput): ReactNode[] {
   const footprintParams = resolveFootprintParams(houseForm);
   const footprintMode = houseForm?.footprint.mode ?? 'preset';
   const footprintPreset = houseForm?.footprint.preset ?? 'straight';
-  const fields: ReactNode[] = [
-    <SelectField
-      key="footprint-mode"
-      label="House footprint mode"
-      value={footprintMode}
-      options={FOOTPRINT_MODE_OPTIONS}
-      disabled={disabled || !canEditFootprint}
-      error={fieldErrors['footprint-mode']}
-      helperText={footprintMode === 'custom_polygon' ? 'Use the model-space outline tool to edit the shared house.' : undefined}
-      onCommit={(value) => {
-        if (value === 'custom_polygon') {
-          return runStartOutline();
+  // PR-COMP-PHASE3.3 (2026-06-18): footprint mode picker removed.
+  // Composition-first authoring (Phase 3.1/3.2) means new forms are
+  // rectangles and freeform `custom_polygon` authoring is retired.
+  // Legacy forms persisted with `mode: 'custom_polygon'` still render
+  // their stored polygon read-only via the legacy pipeline; the rail
+  // shows a single read-only badge so designers understand why
+  // preset-specific controls are unavailable on those forms.
+  const fields: ReactNode[] = [];
+  if (footprintMode === 'custom_polygon') {
+    fields.push(
+      <p key="legacy-polygon-badge" className={styles.fieldHint}>
+        This house form was authored as a freeform outline before composition. It
+        renders read-only; recreate it as a rectangle if you need to change shape.
+      </p>,
+    );
+  } else {
+    fields.push(
+      <SelectField
+        key="footprint-preset"
+        label="House footprint"
+        value={footprintPreset}
+        options={FOOTPRINT_OPTIONS}
+        disabled={disabled || !canEditFootprint}
+        error={fieldErrors['footprint-preset']}
+        onCommit={(value) =>
+          runFootprintCommit('footprint-preset', {
+            type: 'preset',
+            preset: value as HouseFormFootprintModel['preset'],
+          })
         }
-        return runFootprintCommit('footprint-mode', {
-          type: 'mode',
-          mode: 'preset',
-        });
-      }}
-    />,
-    <SelectField
-      key="footprint-preset"
-      label="House footprint"
-      value={footprintPreset}
-      options={FOOTPRINT_OPTIONS}
-      disabled={disabled || !canEditFootprint || footprintMode === 'custom_polygon'}
-      error={fieldErrors['footprint-preset']}
-      onCommit={(value) =>
-        runFootprintCommit('footprint-preset', {
-          type: 'preset',
-          preset: value as HouseFormFootprintModel['preset'],
-        })
-      }
-    />,
-    // Five number-field/dropdown removals after a recon pass:
-    //   • Attachment side — superseded by object-owned attachment state.
-    //     Geometry uses the normalized house footprint transform instead
-    //     of an inspector-side orientation control.
-    //   • House width / Footprint band depth — only meaningful when
-    //     synthesising a PRESET polygon. Disabled in custom_polygon
-    //     mode already; removing rather than conditionally rendering
-    //     because the user direction is "shape edits go through direct
-    //     polygon editing or the gumball, not number fields."
-    //   • House offset X / Facade setback — were the load-bearing
-    //     position/setback controls but slot into the same category:
-    //     direct polygon editing (drag the outline) or the future
-    //     gumball replaces typed number entry. Removed per user
-    //     direction. Geometry path (footprints.ts) keeps reading the
-    //     persisted values; default-zero is the natural fallback.
-    // "Continue outline" stays — conditional on custom_polygon mode so
-    // it only appears when there's an active polygon edit to resume.
-    footprintMode === 'custom_polygon' ? (
-      <ActionButton
-        key="continue-outline"
-        label="Continue outline"
-        disabled={disabled || !canEditFootprint || !canStartDrawOutline}
-        onClick={() => void runStartOutline()}
-      />
-    ) : null,
-    fieldErrors.outline ? <p key="outline-error" className={styles.fieldError}>{fieldErrors.outline}</p> : null,
-  ];
+      />,
+    );
+  }
+  if (fieldErrors.outline) {
+    fields.push(
+      <p key="outline-error" className={styles.fieldError}>
+        {fieldErrors.outline}
+      </p>,
+    );
+  }
 
   if (footprintMode === 'preset' && (footprintPreset === 'l_left' || footprintPreset === 'l_right')) {
     fields.push(

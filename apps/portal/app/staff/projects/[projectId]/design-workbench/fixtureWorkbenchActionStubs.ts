@@ -90,7 +90,6 @@ export function buildFixtureSelectionActions(
         }),
         selection: { kind: 'none', targetId: null },
       })),
-    startDrawOutlineEditor: () => ({ ok: true as const }),
     startDeckOutlineEditor: () => ({ ok: true as const }),
     selectDeckObject: (deckId) =>
       setUi((current) => ({

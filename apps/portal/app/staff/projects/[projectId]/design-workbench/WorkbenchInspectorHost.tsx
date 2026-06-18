@@ -99,7 +99,6 @@ export default function WorkbenchInspectorHost({
     ? objectWorkbenchActions.commitHouseFormFootprintDimension
     : undefined;
   const onCommitRoofIntent = !isLocked ? objectWorkbenchActions.commitHouseFormRoofIntent : undefined;
-  const onStartDrawOutline = objectSelectionActions.startDrawOutlineEditor;
   const onAddDeck = !isLocked ? objectWorkbenchActions.addSharedHouseDeck : undefined;
   const onAddOpening = !isLocked ? objectWorkbenchActions.addSharedHouseOpening : undefined;
   const onRemoveDeck = !isLocked ? objectWorkbenchActions.removeSharedHouseDeck : undefined;
@@ -116,7 +115,6 @@ export default function WorkbenchInspectorHost({
   const canEditFootprint = Boolean(
     store.derived.railModel.selectedInspector.hasSelection,
   );
-  const canStartDrawOutline = !isLocked;
   const selectedHouseFormIdForRoofCommit =
     store.ui.activeObjectRef.family === 'house_forms'
       ? store.ui.activeObjectRef.objectId ?? null
@@ -132,14 +130,6 @@ export default function WorkbenchInspectorHost({
     },
     [onCommitFootprintEdit],
   );
-
-  const runStartOutline = useCallback(async () => {
-    const result = await resolveCommitResult(onStartDrawOutline?.());
-    setFieldErrors((current) => ({
-      ...current,
-      outline: result.ok ? '' : result.error ?? 'Unable to start outline drawing.',
-    }));
-  }, [onStartDrawOutline]);
 
   const runRoofCommit = useCallback<RunRoofCommit>(
     async (fieldId, nextRoof) => {
@@ -205,9 +195,7 @@ export default function WorkbenchInspectorHost({
           disabled={isLocked}
           fieldErrors={fieldErrors}
           canEditFootprint={canEditFootprint}
-          canStartDrawOutline={canStartDrawOutline}
           runFootprintCommit={runFootprintCommit}
-          runStartOutline={runStartOutline}
           runRoofCommit={runRoofCommit}
           dimensionsPanel={null}
         />

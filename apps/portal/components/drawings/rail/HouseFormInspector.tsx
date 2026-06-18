@@ -50,9 +50,7 @@ type HouseFormInspectorProps = {
   disabled?: boolean;
   fieldErrors: FieldErrors;
   canEditFootprint?: boolean;
-  canStartDrawOutline?: boolean;
   runFootprintCommit: RunFootprintCommit;
-  runStartOutline: () => Promise<void>;
   runRoofCommit: RunRoofCommit;
   /**
    * House-context dimension fields (Eave height / Wall height / Soffit
@@ -71,9 +69,7 @@ export default function HouseFormInspector({
   disabled,
   fieldErrors,
   canEditFootprint,
-  canStartDrawOutline,
   runFootprintCommit,
-  runStartOutline,
   runRoofCommit,
   dimensionsPanel,
 }: HouseFormInspectorProps) {
@@ -81,21 +77,17 @@ export default function HouseFormInspector({
     () =>
       buildHouseFormFootprintSections({
         canEditFootprint,
-        canStartDrawOutline,
         disabled,
         fieldErrors,
         houseForm: houseFormContext.houseForm,
         runFootprintCommit,
-        runStartOutline,
       }),
     [
       canEditFootprint,
-      canStartDrawOutline,
       disabled,
       fieldErrors,
       houseFormContext.houseForm,
       runFootprintCommit,
-      runStartOutline,
     ],
   );
 
