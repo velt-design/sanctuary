@@ -285,11 +285,15 @@ export default function PlanViewport({
   // Retires entirely when PR-F makes attachment a real snap reference.
   const houseObjectId =
     artifact?.assembly?.house?.attachmentTarget?.metadata?.sourceFormId ?? 'house-main';
+  const activeHouseFormIdForSnapExclusion =
+    activeObjectRef?.family === 'house_forms' ? activeObjectRef.objectId ?? null : null;
   const snapLineTargets = useMemo<SnapLineTarget[]>(() => {
-    // Snap is meaningful for pergola edge drags (host attachment formation)
-    // and for deck edge drags (decks attach to walls and pergola outline
-    // edges). House drags are excluded because the house is itself a snap
-    // target source — matching against its own walls would create self-snaps.
+    // Snap is meaningful for:
+    //   - pergola edge drags (host attachment formation)
+    //   - deck edge drags (decks attach to walls and pergola outline edges)
+    //   - house-form drags (PR-COMP-PHASE3.4 — composition-first authoring
+    //     wants forms to align edge-to-edge so an L composite can be built
+    //     by dragging one rectangle into contact with another)
     //
     // Per-family rules:
     //   - pergolas: walls + roof eaves + OTHER pergolas' outline edges
@@ -298,11 +302,15 @@ export default function PlanViewport({
     //   - decks: walls (no eaves — decks sit at ground level) + ALL pergolas'
     //     outline edges (`activePergolaSourceId` is null for non-pergola
     //     active objects, so the snap shape list includes every pergola)
+    //   - house_forms: walls + roof eaves of OTHER forms. Self-snap is
+    //     prevented by `excludeHouseFormId` — the dragged form's own walls
+    //     are filtered out before snap targets are built.
     const houseTargets = buildProjectHouseSnapTargets({
       activeFamily,
       projectHouseSnapSources,
       fallbackHouseModel: houseModel,
       fallbackHouseObjectId: typeof houseObjectId === 'string' ? houseObjectId : 'house-main',
+      excludeHouseFormId: activeHouseFormIdForSnapExclusion,
     });
     const pergolaSnapShapes = projectPergolaSnapShapes ?? projectContextShapes;
     const pergolaTargets = pergolaSnapShapes
@@ -311,6 +319,7 @@ export default function PlanViewport({
     return [...houseTargets, ...pergolaTargets];
   }, [
     activeFamily,
+    activeHouseFormIdForSnapExclusion,
     houseModel,
     houseObjectId,
     projectContextShapes,
