@@ -3,6 +3,7 @@ import {
   buildHouseModel3DFromRawHouseInput,
   buildHouseReferenceProjectionShape,
   buildHouseRoofModelPipeline,
+  composeRoofFromComposition,
   EMPTY_HOUSE_ROOF_STAGE_DIAGNOSTICS,
   type GeometryTopProjectionShape,
   type HouseRoofModelPipelineFailureStage,
@@ -65,6 +66,78 @@ export type HouseFormGeometryInputResult =
   | HouseFormGeometryInputSuccess
   | HouseFormGeometryInputFailure;
 
+/**
+ * PR-COMP-PHASE3.2 (2026-06-18): replace a legacy `HouseModel3D`'s
+ * roof with one computed by `composeRoofFromComposition`. Walls,
+ * eaves, openings, and solids carry through from the legacy model
+ * unchanged — Phase 3 only ships single-rectangle compositions,
+ * for which the legacy walls/eaves are already correct.
+ *
+ * The composition's roof comes back in the form's local frame
+ * (composition primitives placed at originXMm/YMm relative to the
+ * form). `applyHouseReferencePosition` (downstream of this swap)
+ * bakes the form's world transform into every vertex, so the
+ * swapped roof correctly ends up in world coords alongside the
+ * walls.
+ *
+ * For single-rectangle compositions, the new roof's planes are
+ * byte-equivalent to what the legacy solver produced because both
+ * paths bottom out in `buildRectangularRoof` on the same
+ * dimensions. The swap exercises the new path end-to-end and
+ * stamps `roofTopologySolver: "composition_..."` so downstream
+ * observability shows which forms travel the composition route.
+ *
+ * For Phase 4 (multi-rectangle compositions), the swap will need
+ * to ALSO replace walls/eaves from the composite footprint. Not
+ * in scope for Phase 3.
+ */
+function swapRoofFromComposition(input: {
+  houseForm: HouseFormModel;
+  legacyModel: HouseModel3D;
+  composition: NonNullable<HouseFormModel["composition"]>;
+}): HouseModel3D {
+  // Match the eave height the legacy pipeline used so the
+  // composition roof's eave aligns with the legacy walls. Default
+  // 2400mm mirrors the pipeline's own default for forms without
+  // explicit eaveHeightM. If the value can't be parsed, skip the
+  // swap and return the legacy model unchanged.
+  const eaveHeightMm = resolveEaveHeightMm(input.houseForm);
+  if (eaveHeightMm <= 0) return input.legacyModel;
+  const composed = composeRoofFromComposition({
+    composition: input.composition,
+    eaveHeightMm,
+  });
+  const mergedMetadata = {
+    ...(input.legacyModel.metadata ?? {}),
+    ...composed.metadata,
+  };
+  // Preserve the QA + diagnostic stamps the legacy pipeline put on
+  // `metadata` so downstream consumers (HR3 amber-tint, HR2
+  // validation panel, etc.) still see the right signals. The
+  // composition path's own metadata overrides only the topology
+  // solver name + composition-specific fields.
+  const legacyQaStatus = input.legacyModel.metadata?.roofQaStatus;
+  if (legacyQaStatus !== undefined) mergedMetadata.roofQaStatus = legacyQaStatus;
+  const legacyQaFailureReason = input.legacyModel.metadata?.roofQaFailureReason;
+  if (legacyQaFailureReason !== undefined) {
+    mergedMetadata.roofQaFailureReason = legacyQaFailureReason;
+  }
+  return {
+    ...input.legacyModel,
+    roofPlanes: composed.roofPlanes,
+    roofFeatures: composed.roofFeatures,
+    metadata: mergedMetadata,
+  };
+}
+
+function resolveEaveHeightMm(houseForm: HouseFormModel): number {
+  const explicitM = Number.parseFloat(houseForm.eaveHeightM ?? "");
+  if (Number.isFinite(explicitM) && explicitM > 0) {
+    return explicitM * 1000;
+  }
+  return 2400;
+}
+
 function buildFailure(input: {
   houseFormId: string;
   failureStage: Exclude<ProjectHouseProjectionFailureStage, "none">;
@@ -122,12 +195,12 @@ export function buildHouseFormGeometryInputForForm(
     });
   }
 
-  const model = buildHouseModel3DFromRawHouseInput({
+  const legacyModel = buildHouseModel3DFromRawHouseInput({
     rawHouse: rawGeometry.rawHouse,
     footprint: rawGeometry.footprint,
     pergolaAttachment: null,
   });
-  if (!model) {
+  if (!legacyModel) {
     return buildFailure({
       houseFormId: houseForm.id,
       failureStage: "missing_model",
@@ -135,6 +208,27 @@ export function buildHouseFormGeometryInputForForm(
       rawHouseInputPresent: true,
     });
   }
+  // PR-COMP-PHASE3.2 (2026-06-18): when the form has an authored
+  // composition, route the roof through `composeRoofFromComposition`
+  // instead of the solver embedded in `buildHouseModel3DFromRawHouseInput`.
+  // For single-rectangle compositions (Phase 3 only ships these), the
+  // two paths produce byte-equivalent roof planes because both bottom
+  // out in `buildRectangularRoof` on the same dimensions — the swap
+  // is a no-op visually but exercises the new path end-to-end and
+  // stamps `roofTopologySolver: "composition_..."` so observability
+  // surfaces which forms travel the composition route.
+  //
+  // Phase 4 (multi-rectangle compositions) will need to ALSO build
+  // walls/eaves from the composite footprint (because the union
+  // differs from any single rectangle), but for Phase 3 the walls
+  // are correct as-is.
+  const model = houseForm.composition
+    ? swapRoofFromComposition({
+        houseForm,
+        legacyModel,
+        composition: houseForm.composition,
+      })
+    : legacyModel;
 
   const houseLocal: HouseReferenceGeometry = {
     wallPlane: null,
