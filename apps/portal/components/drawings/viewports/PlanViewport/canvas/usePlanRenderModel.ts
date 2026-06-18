@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
 import type { GeometryTopProjectionShape, GeometryTopProjectionViewModel } from '@sp/geometry';
 import type { DrawingWorkbenchVisibilityState } from '@/lib/drawings/state/drawingWorkbenchUiState';
 import type { WorkbenchObjectRef } from '@/lib/drawings/state/objectFirstWorkbenchModel';
@@ -196,6 +196,16 @@ export function usePlanRenderModel({
   projectPergolaPlanShapes = EMPTY_PROJECT_PERGOLA_PLAN_SHAPES,
   projectContextShapes = EMPTY_PROJECT_CONTEXT_SHAPES,
 }: UsePlanRenderModelInput): PlanRenderModel | null {
+  // PR-WB-LAYOUT-FREEZE (2026-06-19): cache the layout's projection
+  // (with extents baked in) across renders. The first non-trivial
+  // projection establishes the world-to-SVG mapping; subsequent
+  // renders reuse it even when shapes move or resize, so the
+  // viewport doesn't visibly jump on every edit. The cache lives
+  // for the lifetime of the mount — navigating to a different
+  // estimate (which unmounts/remounts PlanViewport) naturally
+  // refreshes the layout from the new project's shapes.
+  const cachedLayoutProjectionRef = useRef<GeometryTopProjectionViewModel | null>(null);
+
   return useMemo(() => {
     if (!projection) return null;
     const allShapes = mergeProjectionShapesWithProjectContext({
@@ -208,10 +218,30 @@ export function usePlanRenderModel({
       }),
       projectContextShapes,
     });
-    const layoutProjection = projectionWithExtentsFromShapes({
-      projection,
-      shapes: allShapes,
-    });
+    let layoutProjection: GeometryTopProjectionViewModel;
+    if (cachedLayoutProjectionRef.current) {
+      // Reuse the frozen layout projection from this mount's first
+      // non-trivial projection — adapter stays stable, viewport
+      // doesn't jump on edits.
+      layoutProjection = cachedLayoutProjectionRef.current;
+    } else {
+      const freshLayoutProjection = projectionWithExtentsFromShapes({
+        projection,
+        shapes: allShapes,
+      });
+      const freshExtents = freshLayoutProjection.extents;
+      const hasNonTrivialExtents = !!(
+        freshExtents &&
+        Number.isFinite(freshExtents.widthMm) &&
+        freshExtents.widthMm > 0 &&
+        Number.isFinite(freshExtents.heightMm) &&
+        freshExtents.heightMm > 0
+      );
+      if (hasNonTrivialExtents) {
+        cachedLayoutProjectionRef.current = freshLayoutProjection;
+      }
+      layoutProjection = freshLayoutProjection;
+    }
     const layout = resolvePlanLayout(layoutProjection);
     const adapter = buildTopProjectionPlanCoordinateAdapter({
       projection: layoutProjection,
