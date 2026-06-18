@@ -383,7 +383,37 @@ const CAPTURED_FIXTURE_DIR = path.join(
   'captured',
 );
 
-const CAPTURED_KNOWN_FAILURES: ReadonlySet<string> = new Set<string>([]);
+/**
+ * Captured fixtures that fail today, with a comment naming the
+ * investigation status. Drop an entry the moment a deeper geometry
+ * fix lands — vitest's `it.fails` will flip red so we know to
+ * update this set.
+ *
+ * Each entry SHOULD cite (a) the failing pipeline stage, (b) what
+ * was tried, (c) why it's still open. Silent quarantines were the
+ * exact failure mode PR-HR5 cleaned up; do not repeat it.
+ */
+const CAPTURED_KNOWN_FAILURES: ReadonlySet<string> = new Set<string>([
+  // Captured 2026-06-18 from live workbench (Graham — Oratia project).
+  // Failure stage: `eave_offset_repair` (`eave_offset_self_overlap`).
+  // 6-vertex orthogonal L (~12.6m × 8m main block + 5.8m × 2.4m south
+  // extension). PR-HR6 (2026-06-18) ran the hypothesis test:
+  // BOTH legacy `buildEaveGraphJoinedHippedRoof` AND
+  // `buildJoinedRectilinearHippedRoof` (bent-spine wavefront) produce
+  // invalid topology on this footprint at 450mm overhang.
+  //   eave-graph:    7 planes / `house-eave-edge-3:self_intersecting_merged_face`
+  //   wavefront:     3 planes / `house-eave-edge-5:overlapping_boundary_fragments`
+  // The eave-offset repair (`eaveOffsetRepair.ts`) stepped 450 → 0 in
+  // 50mm increments with neither solver producing a valid QA roof, so
+  // `repairStatus: "failed"`. The 32-point rounded offset eave polygon
+  // (`eavePolygonPointCount: 32`) is the root cause — neither solver
+  // handles a high-vertex eave on this aspect ratio. Deeper fix needs
+  // either (a) eave-polygon simplification before topology partition,
+  // or (b) a third solver variant tuned for narrow-return L. Deferred.
+  // PR-HR3 fail-soft render keeps the broken roof visible as amber-
+  // tinted diagnostic so designers can still work around it.
+  'captured:graham-oratia_l-narrow-south-return.json',
+]);
 
 function metresStringToMm(value: string): number {
   const parsed = Number.parseFloat(value);

@@ -1,0 +1,129 @@
+{
+  "schemaVersion": 1,
+  "capturedAt": "2026-06-18T00:23:19.864Z",
+  "validationStatus": "invalid",
+  "validationCode": "eave_offset_self_overlap",
+  "validationMessage": "Roof geometry failed package QA: eave_offset_self_overlap.",
+  "failingStage": {
+    "id": "eave_offset_repair",
+    "label": "Eave offset repair",
+    "code": "eave_offset_self_overlap"
+  },
+  "approximationReasons": [],
+  "stageDiagnostics": {
+    "footprintNormalizationStatus": "ok",
+    "eavePolygonConstructionStatus": "ok",
+    "roofIntentNormalizationStatus": "ok",
+    "roofTopologyClassificationStatus": "failed",
+    "roofPlaneGenerationStatus": "ok",
+    "roofQaValidationStatus": "failed",
+    "eavePolygonPointCount": 32,
+    "roofIntentForm": "hipped",
+    "roofIntentPitchDeg": 25,
+    "roofIntentRidgeAxis": "x",
+    "roofGeometry": "rectilinear_joined_hipped",
+    "roofTopologySolver": "source_edge_coverage_partition",
+    "roofFacetMergeMode": "source_edge_coverage_partition",
+    "roofTopologySemanticQaStatus": "invalid",
+    "roofTopologySemanticFailureReason": "house-eave-edge-3:self_intersecting_merged_face",
+    "roofTopologyFailureReason": "house-eave-edge-3:self_intersecting_merged_face",
+    "roofTopologyClosedFaceCount": 9,
+    "roofTopologyExpectedFaceCount": 6,
+    "roofTopologyFinalFaceCount": 9,
+    "roofTopologySourceEdgeCount": 5,
+    "roofTopologyDisconnectedSourceFaceCount": null,
+    "roofTopologyInternalEaveHeightSegmentCount": 2,
+    "roofTopologyProjectionViolationCount": null,
+    "roofTopologyCoverageQaStatus": "invalid",
+    "roofTopologyCoverageFailureReason": "house-eave-edge-3:self_intersecting_merged_face",
+    "roofTopologyExactPartitionQaStatus": "invalid",
+    "roofTopologyExactPartitionFailureReason": "house-eave-edge-1:invalid_exact_partition_face",
+    "roofTopologyExactPartitionFaceCount": 2,
+    "roofTopologyExactPartitionSemanticQaStatus": "invalid",
+    "roofTopologyExactPartitionSemanticFailureReason": "house-eave-edge-1:invalid_exact_partition_face",
+    "roofTopologyCoverageGapAreaMm2": 28015498,
+    "roofTopologyCoverageOverlapAreaMm2": 0,
+    "roofTopologyCoverageAreaDeltaMm2": -28015498,
+    "roofTopologyOverlapAreaMm2": 0,
+    "roofTopologyChordViolationCount": 25,
+    "roofTopologyUnbackedBoundaryCount": 25,
+    "roofTopologyDanglingFeatureCount": 0,
+    "roofTopologyUnclassifiedFeatureCount": 0,
+    "roofWavefrontFailureReason": null,
+    "roofQaStatus": "invalid",
+    "roofQaFailureReason": "house-eave-edge-3:self_intersecting_merged_face",
+    "roofQaRejectedFacetCount": 0,
+    "roofQaFacetAreaMm2": 76353285,
+    "roofQaEaveAreaMm2": 104368783,
+    "roofQaAreaDeltaMm2": -28015498,
+    "roofEaveOffsetRepairStatus": "failed",
+    "roofEaveOffsetRepairCode": "eave_offset_self_overlap",
+    "roofRequestedEaveOverhangMm": 450,
+    "roofEffectiveEaveOverhangMm": 450,
+    "eaveOffsetConstructionMethod": null,
+    "eaveOffsetTopologyStatus": null,
+    "eaveOffsetTopologyFailureReason": null,
+    "eaveOffsetRequestedOverhangMm": null,
+    "eaveOffsetResolvedVertexCount": null,
+    "footprintCanonicalizationStatus": "canonicalized",
+    "footprintCanonicalizationPrecisionMm": 0.001,
+    "footprintCanonicalizationPointCountBefore": 6,
+    "footprintCanonicalizationPointCountAfter": 6,
+    "roofPlaneCountBeforeQa": 9,
+    "roofPlaneCountAfterQa": 0,
+    "roofMaterialVisualCount": 0,
+    "roofSolidCount": 0
+  },
+  "footprint": {
+    "mode": "custom_polygon",
+    "preset": "l_left",
+    "attachmentSide": "rear",
+    "polygonLocalM": [
+      {
+        "alongM": "-5.813598",
+        "depthM": "-2.4"
+      },
+      {
+        "alongM": "0",
+        "depthM": "-2.4"
+      },
+      {
+        "alongM": "0",
+        "depthM": "0"
+      },
+      {
+        "alongM": "6.750527788650513",
+        "depthM": "0"
+      },
+      {
+        "alongM": "6.750527788650513",
+        "depthM": "5.654911"
+      },
+      {
+        "alongM": "-5.813598",
+        "depthM": "5.654911"
+      }
+    ]
+  },
+  "roofIntent": {
+    "form": "hipped",
+    "material": "corrugated_iron",
+    "primaryPitchDeg": "25",
+    "primaryFallDirection": "negative_y",
+    "ridgeAxis": "x",
+    "openGableEndIds": []
+  },
+  "geometryKind": "rectilinear_joined_hipped",
+  "terminalEnds": [
+    {
+      "id": "house-gable-end-x-5",
+      "label": "End 1",
+      "isOpen": false
+    },
+    {
+      "id": "house-gable-end-x-1",
+      "label": "End 2",
+      "isOpen": false
+    }
+  ]
+}
