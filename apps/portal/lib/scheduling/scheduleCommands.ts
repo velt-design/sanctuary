@@ -83,7 +83,7 @@ type AssignMoveInput = {
   sourceForecastUpdates: ForecastUpdateInput[];
 };
 
-export type MarkDoneFinishEarlyInput = {
+type MarkDoneFinishEarlyInput = {
   crewId: string;
   freedDays: number;
   bufferNote: string;
@@ -99,7 +99,7 @@ export type MarkDoneCommandResult = {
   updated_forecasts: number;
 };
 
-export type AssignJobCommandResult = {
+type AssignJobCommandResult = {
   scheduled_job_id: string;
   schedule_item_id: string;
   source_crew_id: string | null;
@@ -108,14 +108,14 @@ export type AssignJobCommandResult = {
   updated_forecasts: number;
 };
 
-export type CreateDowntimeCommandResult = {
+type CreateDowntimeCommandResult = {
   downtime_id: string;
   schedule_item_id: string;
   updated_items: number;
   updated_forecasts: number;
 };
 
-export type UpdateDowntimeCommandResult = {
+type UpdateDowntimeCommandResult = {
   updated_downtime: string;
   updated_forecasts: number;
 };

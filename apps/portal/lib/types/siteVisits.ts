@@ -1,4 +1,4 @@
-export type SiteVisitStatus =
+type SiteVisitStatus =
   | 'UNSCHEDULED'
   | 'TENTATIVE'
   | 'CONFIRMED'
@@ -12,7 +12,7 @@ export type SiteVisitCalendarPerson = {
   name: string;
 };
 
-export type SiteVisitProjectInfo = {
+type SiteVisitProjectInfo = {
   id: string; // app id (proj_)
   name: string;
   region: string | null;
@@ -20,7 +20,7 @@ export type SiteVisitProjectInfo = {
   pipelineStage: string | null;
 };
 
-export type SiteVisitContactInfo = {
+type SiteVisitContactInfo = {
   id: string | null; // app id (ct_)
   name: string | null;
   email: string | null;
@@ -45,7 +45,7 @@ export type SiteVisitCalendarItem = {
   contact: SiteVisitContactInfo;
 };
 
-export type SiteVisitsApiResponse = {
+type SiteVisitsApiResponse = {
   generatedAt: string;
   unscheduled: SiteVisitCalendarItem[];
   events: SiteVisitCalendarItem[];

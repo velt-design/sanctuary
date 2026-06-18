@@ -1,7 +1,7 @@
 import { addDaysYmd } from '@/lib/scheduling/date';
 
-export const SCHEDULE_GANTT_TIMELINE_WEEKS = 12;
-export const SCHEDULE_GANTT_TIMELINE_DAYS = SCHEDULE_GANTT_TIMELINE_WEEKS * 7;
+const SCHEDULE_GANTT_TIMELINE_WEEKS = 12;
+const SCHEDULE_GANTT_TIMELINE_DAYS = SCHEDULE_GANTT_TIMELINE_WEEKS * 7;
 
 function parseYmd(ymd: string): Date | null {
   const match = ymd.match(/^(\d{4})-(\d{2})-(\d{2})$/);

@@ -3,7 +3,7 @@ import type { Installer, ScheduleItem, ScheduledBar, SchedulingIssue } from '@/l
 import { addWorkHours, diffDaysYmd, nextWorkdayYmd, todayYmd, type WorkCursor } from './date';
 import { deriveDurationHoursFromEstimate, WORK_HOURS_PER_DAY } from './duration';
 
-export type ScheduleProjectLike = {
+type ScheduleProjectLike = {
   projectName?: string;
   name?: string;
   status?: string;
@@ -42,7 +42,7 @@ function isStartedOrPast(ymd: string, today: string): boolean {
   return diffDaysYmd(ymd, today) >= 0;
 }
 
-export type ScheduleBuildResult = {
+type ScheduleBuildResult = {
   bars: ScheduledBar[];
   issues: SchedulingIssue[];
 };

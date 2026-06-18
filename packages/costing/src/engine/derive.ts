@@ -52,7 +52,7 @@ const FLASHING_BAND_201_300: FlashingBandV1 = '201-300';
 const FLASHING_BAND_301_400: FlashingBandV1 = '301-400';
 const FLASHING_BANDS: readonly FlashingBandV1[] = [FLASHING_BAND_0_200, FLASHING_BAND_201_300, FLASHING_BAND_301_400];
 
-export type DerivedResultV1 = {
+type DerivedResultV1 = {
   inputs_normalized: InputsNormalizedV1;
   derived: DerivedV1 & {
     box_corner_count?: number;

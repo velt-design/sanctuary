@@ -1,198 +1,121 @@
 # House Composition Vision
 
-**Drafted**: 2026-06-18. **Status**: vision doc, not yet committed work.
+**Drafted**: 2026-06-18. **Status**: committed direction for new house-form work.
 
-This is a north-star vision for how house footprints + roofs should work in the design workbench. It supersedes the current "free-form orthogonal polygon" input model. PR-HR2/HR1/HR3/HR4 (shipped) and PR-HR7 (planned) all advance toward this vision without being it.
+The input model for house forms in the design workbench is being shifted from arbitrary free-form polygons to **rectangle primitives composed by explicit join operations**. This doc captures the decision, the model, and the phased plan for getting there.
 
-## The shift
+The Phase 1 implementation plan lives separately at [`docs/pr-comp1-plan.md`](pr-comp1-plan.md).
 
-| Current model | Vision model |
-|---|---|
-| Designer **draws** an arbitrary orthogonal polygon | Designer **composes** the house from primitive rectangles |
-| Solver tries to handle every topology designers can draw | Solver only needs to handle rectangles + how they connect |
-| Bugs are infinite (every new shape is a new test case) | Bugs are bounded (finite primitive set; finite join operations) |
-| "Make a new solver for shape X" | "Add a new join operation for combining rectangles like X" |
-| Free-form, anything-goes — including shapes that can't render | Constrained-by-construction — every input is guaranteed renderable |
+## The decision
 
-The deep insight: **every orthogonal house footprint a builder could realistically construct is the union of axis-aligned rectangles.** L's, T's, U's, crosses, recesses, staircases — all compositions of rectangles. We've been trying to teach the geometry pipeline to recognize these compositions AFTER the fact, when it would be vastly simpler to ask the designer to specify the composition UP FRONT.
+A house form is one or more **axis-aligned rectangle primitives**. Designers place rectangles, snap them adjacent, and explicitly **join** them to produce composite house forms. Free-form polygon drawing (today's `Draw outline` mode) is removed.
 
-## The primitive
+Legacy projects whose house forms were created via the old free-form path are not migrated — they continue to render via the existing geometry pipeline as-is. No retire effort for the legacy solver; it lives on as a read-only fallback for any leftover free-form data.
 
-**Rectangle.** That's it. One primitive. Width × depth, orthogonal, axis-aligned.
+## Why
 
-A rectangle has a known, tested, robust roof solver. We have multiple of these solvers and they all work. There is no bug class for "rectangle hipped roof breaks on aspect ratio X" — rectangles are the easy case.
+Every realistic orthogonal house footprint can be expressed as a union of axis-aligned rectangles. The current pipeline tries to recognize that composition *after the fact* — by analyzing a free-form polygon and inferring the underlying rectangles. That inference is fragile (see the Graham–Oratia bug class) because it has to handle infinitely many polygon shapes with a finite set of solver paths.
 
-## The operations
+Constraining the input to rectangle compositions inverts the problem: the designer specifies the decomposition explicitly, the solver consumes that decomposition directly, and the bug class around "asymmetric L topology partition fails" dissolves entirely.
 
-Two operations a designer can apply to a set of rectangles:
+The tagline: **make the input space match what we can solve, not the other way around.**
 
-### 1. Snap-attach
+## The model
 
-Place rectangle B such that one of its edges is flush with an edge of rectangle A. The most common composition pattern — it produces L's, T's, U's, crosses, and every other shape Sanctuary customers actually build.
+### Two operations on rectangles
 
-```
-    A             A + B (snap-attach)
-  ┌────┐         ┌────┐
-  │    │         │    │
-  │    │         │    │
-  └────┘         └────┴──┐
-                         │ B │
-                         └───┘
-```
+1. **Snap-attach** — when a designer drags a rectangle near an existing house form, snap aligns it edge-to-edge. Snap is **positioning only** — the two house forms remain independent first-class objects with separate ids, separate roofs, separate selection, separate edit state.
 
-A "join" gives the composite footprint AND records the decomposition:
-```
-House = {
-  rectangles: [A, B],
-  joins: [{ from: A.edge_south, to: B.edge_north, offset: 0 }],
-}
-```
+2. **Join** — when a designer multi-selects two snapped house forms and clicks **Join**, they become a single composite house form. The composite carries the constituent rectangles + the join metadata. Once joined, they share one roof intent and render as one coherent roof.
 
-### 2. Detach
+   **Detach** reverses Join — the composite splits back into N independent house forms in the same positions, each carrying the composite's roof intent as their initial intent.
 
-Reverse of snap-attach. Designer selects one rectangle from a composite, clicks "Detach" → it becomes a separate house form (or gets removed).
+Snap without join means "I want these aligned." Join means "I want these to be one house." Separating the two preserves designer intent — a garage and a house that happen to be adjacent can stay separate without auto-joining.
 
-That's it. **Two operations.** Every footprint a Sanctuary customer would draw is reachable from snap-attach alone.
+### One roof intent per composite
 
-## Why this kills the bug class we've been fighting
+The composite owns the roof intent (form, pitch, material, ridge axis preference, open-gable ends). Designer picks "hipped" once for the joined house form; every constituent rectangle is hipped. No per-constituent roof override in v1 — that complexity isn't needed and adding it would invite the "mixed-intent across one house" failure modes we don't want.
 
-The Graham–Oratia bug (PR-HR6 / HR6b) is the geometry pipeline failing to figure out that a 12.5m × 8m main block + 5.8m × 2.4m extension are conceptually two rectangles, then failing to compose their roofs correctly. PR-HR7's decomposition retrofits exactly that recognition.
+### Roof resolution rule
 
-In the vision model, the designer **tells the system** "this house is a 12.5m × 8m rectangle with a 5.8m × 2.4m extension snapped to the south edge." There is no recognition step. The roof for the main block is just a rectangle-hipped roof (already works perfectly). The roof for the extension is a flat skillion (already works perfectly). The join logic uses the recorded `join` metadata directly — no topology inference.
+When the solver renders a composite hipped roof:
 
-**PR-HR7's value in this vision**: it's the stepping stone. The decomposition primitive HR7 builds (`buildDecomposedHippedRoof`) becomes the composition primitive in the vision model — same code, just driven by explicit `joins` metadata instead of inferred from polygon analysis. Work is preserved, the mental model changes.
+- **If the union of the joined rectangles is itself a rectangle**, route to the existing `buildRectangularRoof` on the merged dimensions. One ridge, four facets, simple gutter loop. (Already rock-solid.)
+- **Otherwise** (L, T, U, cross, etc.), solve each constituent rectangle independently and place an explicit **valley** at each inside corner where two rectangles meet at right angles.
 
-## What gets simpler / what gets deleted
+Both branches end up calling `buildRectangularRoof` for the per-rectangle solves — the bulletproof path. The new code is the rectangle-union detector and the valley primitive. Neither is numerically fragile.
 
-If the vision lands, here's what comes out of the geometry package:
+### Dutch hip preservation
 
-**Deleted (~2000 LOC):**
-- `roofEaveGraphHipped.ts` (source-edge coverage partition) — only needed for inferring rectangles from free-form polygons
-- Most of `roofJoinedWavefront.ts` + `roofJoinedFacets.ts` — bent-spine wavefront for non-rectangular topologies
-- `partialOpenJoinedTopology.test.ts` quarantine tracking — there are no quarantines because every primitive works
-- `eaveOffsetRepair.ts` — composition tells us where eaves are; no repair needed
-- The narrow-return L bug class entirely — they're just two rectangles
+Dutch hip (open-hip-as-gable on terminal ends) works in the composition model, and the model is genuinely cleaner than today.
 
-**Retained (~1500 LOC, all well-tested):**
-- `buildRectangularRoof` — already rock-solid
-- The QA gate — composite must still produce valid geometry (cheaper to verify on rectangles)
-- The HR2/HR1/HR4/HR3 infrastructure — works regardless of input model
-- All mono / flat / single-rectangle hipped / Dutch-hip code paths
-- `houseModel.ts` composition logic
-- The 75-case multi-open matrix — still applies (each primitive in a composite can have open-hip variants)
+Terminal ends are derived from the **composite perimeter**, not from each constituent:
+- An edge shared between two constituent rectangles (a join edge) is consumed by the join and is NOT a terminal.
+- An edge on the outer perimeter of the composite that's perpendicular to its rectangle's ridge axis IS a terminal — independently Dutch-hippable.
 
-**Added (~600 LOC):**
-- `HouseComposition` type carrying `rectangles[]` + `joins[]`
-- `composeHouseFootprint()` — produces the unified polygon from a composition
-- `composeHouseRoof()` — assembles roof from per-rectangle sub-roofs using `joins`
-- Workbench UX: shape palette + snap interaction + Join/Detach buttons
-- Migration shim: converts existing free-form polygons → `HouseComposition` (best-effort; falls back to legacy free-form for shapes that don't decompose cleanly)
+The rail's existing "Open End N" toggles operate on composite-level terminal ends. No new UI concept.
 
-**Net result**: ~1100 LOC removed, ~600 LOC added. Less code, fewer bugs, more reliable.
+### Honest limits (v1)
 
-## What the designer gives up
+- **Per-constituent roof override is not supported.** Designer can't say "hipped on the main block, skillion on the extension." If they want that, they keep the constituents as separate house forms (don't join). Could be added later if customers ask; not on the roadmap.
+- **Only axis-aligned rectangles.** Rotated rectangles, octagons, curves are out of scope. The polymorphic primitive type (see Phase 1) leaves room to add these later without rework.
 
-Honest trade-offs:
+## The plan (4 phases)
 
-1. **Truly arbitrary polygons.** A designer can no longer draw a 9-vertex zigzag and expect a roof. If a real customer house has a shape that isn't decomposable into rectangles (rare for residential pergolas in NZ), the designer hits a wall.
-   - **Mitigation**: "Advanced mode" preserves the legacy draw-outline tool for the 1% of cases that need it. Those cases inherit the existing geometry pipeline (with all its known bug classes), but at least the 99% common path is rock-solid.
+Each phase ships independently. No phase changes designer-visible behavior except Phase 3 (where the rectangle tool replaces the draw tool) and Phase 4 (where Join/Detach are added).
 
-2. **Single-fluid drawing.** Composition is more clicks than "draw freeform." Workflow becomes "add rectangle, drag to position, snap, add another, drag, snap" vs "click around the perimeter." Some designers may find this slower for simple shapes.
-   - **Mitigation**: presets for the most common compositions (straight rectangle, L, T, U, recess) drop a pre-built composition. Designer just resizes the rectangles, no drawing needed for 90% of houses.
+### Phase 1 — Composition geometry primitives ([plan](pr-comp1-plan.md))
 
-3. **Curves / non-orthogonal angles.** Out of scope in v1. If customers need bay windows, octagonal turrets, or 45°-angle extensions, those become a v2 conversation (probably "rotated rectangle" as a new primitive).
-   - **Honest assessment**: Sanctuary's customer base doesn't seem to need these today. If that changes, the vision model is compatible (add primitives, keep composition).
+Build the rectangle + valley primitives in `@sp/geometry`. No workbench dependency, no UX change. Tests prove the math works on Graham–Oratia and other captured shapes.
 
-## What gets BETTER for the designer
+**Designer-facing change**: none.
 
-1. **Predictability**: every drag-and-snap produces a guaranteed-valid roof. No more "did I draw this in a way the solver can handle?"
-2. **Speed**: a 5-click composition replaces a 15-click polygon trace.
-3. **Editability**: changing the main block dimensions doesn't risk breaking the extension's roof. Each primitive is independent.
-4. **Visual feedback**: snap targets show during drag (the existing snap infrastructure already exists for pergolas).
-5. **No more bug reports for shapes-that-should-work** — the bug-report button (PR-HR1) starts being used for the rare cases instead of the common ones.
+**Detail**: see [`docs/pr-comp1-plan.md`](pr-comp1-plan.md).
 
-## Migration path
+### Phase 2 — Composition data model in the workbench
 
-This isn't a forklift rewrite. The path is incremental:
+Add an optional `composition: HouseComposition` field to `HouseFormModel`. When present, geometry solving uses Phase 1 primitives. When absent (legacy free-form forms), the existing path runs unchanged.
 
-### Phase 0 (NOW): the HR2/HR1/HR4/HR3 infrastructure
-- Status: **shipped**.
-- Provides the diagnostic + capture + matrix surface the rest of the migration relies on.
+**Designer-facing change**: none.
 
-### Phase 1: PR-HR7 (planned, see [pr-hr7-plan.md](pr-hr7-plan.md))
-- Detect + decompose narrow-return L's at the geometry layer.
-- Ships the composition primitives the vision model needs.
-- Designer-facing: nothing changes; they still draw free-form. But the bug class dissolves.
-- **Value to the vision**: validates the composition geometry works before we touch the UX.
+### Phase 3 — Rectangle tool replaces Draw outline
 
-### Phase 2: Composition data model
-- Introduce `HouseComposition` type (rectangles + joins) alongside the existing free-form polygon.
-- `composeHouseFootprint()` produces the unified polygon from a composition (designer sees the same plan view).
-- Existing house forms continue to use free-form polygons; new forms can opt in to composition.
-- **Value**: data model exists; nothing breaks; can be hidden behind a feature flag.
+The `Add structure` button is rebranded to `Add rectangle`. Every new house form is a single-rectangle composition. House-form-to-house-form snap is added to the snap infrastructure (the pergola-to-house snap is the existing model).
 
-### Phase 3: Shape palette UI
-- New "Add shape" tool replaces (or coexists with) "Draw outline."
-- Click a rectangle, drag to size, drop in the plan.
-- Existing snap-during-drag infrastructure (from pergola) repurposed for house-form snapping.
-- **Value**: designers can opt into the new flow on new projects.
+The legacy `Draw outline` tool is removed from the UI. Legacy free-form house forms continue to render via the existing solver but cannot be created or edited as free-form polygons — only created as rectangles.
 
-### Phase 4: Join / Detach operations
-- Multi-select rectangles, click "Join" → composite house form.
-- Select a rectangle in a composite, click "Detach" → standalone form (or remove).
-- **Value**: full composition workflow.
+**Designer-facing change**: shape palette tool replaces draw tool.
 
-### Phase 5: Migration of legacy free-form house forms
-- Run "decompose to rectangles" on every existing project's house forms.
-- Cases that decompose cleanly: auto-migrate to composition model.
-- Cases that don't: stay on legacy free-form (advanced mode).
-- **Value**: every project that can be expressed in the new model gets the reliability upgrade.
+### Phase 4 — Join + Detach operations
 
-### Phase 6: Retire legacy polygon solver
-- Once the legacy free-form usage is in single digits across all projects, retire `roofEaveGraphHipped.ts` + friends.
-- Free-form draw stays as advanced-mode but routed through a single "best-effort" solver.
-- **Value**: ~2000 LOC removed from the geometry package; bug surface shrinks dramatically.
+Multi-select two snapped house forms → `Join` button appears in the rail. Detach reverses.
 
-## Are we doing the right things to make this happen?
+**Designer-facing change**: explicit composition workflow available.
 
-**Yes — every piece of work shipped this week is load-bearing for the vision.**
+## Architectural rules baked in from Phase 1
 
-| Work | How it serves the vision |
-|---|---|
-| **HR2** (validation panel) | Stays exactly as-is; designer still sees failing-stage + code regardless of input model |
-| **HR1** (Save bug report) | Captures the exact composition state when something fails — even more useful in the composition model |
-| **HR4** (regression matrix) | Tests are per-primitive in the composition model; same matrix shape, narrower per-test scope |
-| **HR3** (amber-tint render) | Still fires for cases that fail (now mostly edge-case advanced-mode shapes) |
-| **HR7** (narrow-return decomposition) | **This IS the composition geometry** — just driven by polygon analysis today, by explicit `joins` later |
+These are one-line disciplines that cost nothing to honor now but are painful to retrofit later:
 
-The work isn't a different direction from the vision. It's the foundation.
+1. **Composition geometry lives in `@sp/geometry`, not in `apps/portal`.** Reusable by any consumer (workbench, future tools, server-side reports).
 
-## What we'd push back on
+2. **Primitive type is polymorphic from day one.** `type Primitive = Rectangle | { kind: 'unknown'; reserved: true }`. Rotated rectangles, octagons, etc. drop in without refactor.
 
-- **The temptation to ship Phase 3 (shape palette UI) before Phase 1 (HR7).** The geometry has to be solid first. If a designer composes a snap-attached rectangle and the roof still breaks, the new UX is worse than the old one. HR7 ships the composition geometry that everything else builds on.
+3. **Join and Detach are pure functions.** `joinHouseForms(a, b): Composite | { error: JoinError }`. Testable independently of UI.
 
-- **The temptation to make composition the ONLY mode immediately.** Existing projects with free-form house forms need a migration path; some won't decompose. "Advanced mode" stays for the long tail.
+4. **Join validates structurally.** Reject joins where the rectangles don't share an edge (snap got close but didn't quite touch). Reject joins that would produce non-orthogonal composites. Errors are typed.
 
-- **The temptation to add more primitives early.** v1 is rectangles only. Rotated rectangles, octagons, curves — all valid v2 conversations, all premature now.
+5. **Terminal end ids are deterministic from the composite perimeter.** Avoids "I joined two rectangles and the terminal-end ids changed under me" surprises. Roof intent serializes cleanly across join/detach round-trips.
 
-- **The framing that this is a "rewrite."** It's not. It's an additive new input model + UX, with the existing free-form pipeline kept alive in advanced mode. The retire step (Phase 6) happens years later if at all.
+6. **Legacy free-form solver is read-only.** No bug fixes, no new features. It's a museum exhibit kept alive for any leftover free-form data. Discourages investment in the dead path.
 
-## Acceptance for this vision doc
+## Out of scope (intentional)
 
-This isn't an implementation plan, so the bar is different:
-
-- Captures the user's vision in their words ("preset shapes you can select and join")
-- Explains WHY the vision is architecturally better (less code, fewer bugs, bounded surface)
-- Honest about trade-offs (designer gives up arbitrary polygon drawing)
-- Shows the connection to current/planned work (HR7 is the geometry foundation)
-- Gives a phased migration path (no forklift; each phase is shippable on its own)
+- **Migration of legacy free-form house forms.** Not used in any production project worth migrating. They keep working as-is via the legacy solver.
+- **Designer validation rounds.** The product owner is the designer.
+- **Per-constituent roof intent overrides.** Add later if a real customer need surfaces.
+- **Curves, rotated rectangles, octagons.** Type leaves room; implementation does not.
+- **Pricing implications of composition.** Costing path is downstream; the composition data model carries enough information for any future commercial adapter to consume.
 
 ## CTA
 
-Two ways to use this:
-
-1. **Reference for future PRs.** Every house-related PR cites this doc and answers "does this advance the vision?" Same way `design-workbench-architecture.md` is Gate 0.
-
-2. **Roadmap input.** If this resonates as the right direction, the phased migration becomes the multi-quarter roadmap for house forms. PR-HR7 ships as Phase 1; Phase 2-6 get scheduled when there's bandwidth.
-
-This doc is intentionally not committing the team to phases 2-6. It's articulating the vision so future tactical work (like HR7) can be evaluated against it. The phased migration is a "we could do this" plan, not a "we will do this" commitment.
+Phase 1 plan is at [`docs/pr-comp1-plan.md`](pr-comp1-plan.md). Say **"go comp1"** to start.

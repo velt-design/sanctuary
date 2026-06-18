@@ -11,7 +11,7 @@ export type ScheduleClientTelemetryEvent = {
   createdAt?: string;
 };
 
-export const SCHEDULE_ENDPOINT_BUDGETS = {
+const SCHEDULE_ENDPOINT_BUDGETS = {
   board: {
     totalMs: 1_500,
     payloadBytes: 450_000,

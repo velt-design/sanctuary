@@ -6,7 +6,7 @@ import { resolveDefaultScheduleGanttRange } from '@/lib/scheduling/scheduleGantt
 import { loadScheduleGanttResponse } from '@/lib/scheduling/scheduleGanttServer';
 import { mapScheduleBoardResponseToV2Snapshot, mapScheduleGanttResponseToV2Snapshot, type ScheduleV2Snapshot } from '@/lib/scheduling/scheduleV2Snapshot';
 
-export type SchedulePageSeed =
+type SchedulePageSeed =
   | { initialScheduleMode: 'legacy'; initialV2Snapshot: null }
   | { initialScheduleMode: 'v2'; initialSeedKind: 'board' | 'gantt'; initialV2Snapshot: ScheduleV2Snapshot };
 

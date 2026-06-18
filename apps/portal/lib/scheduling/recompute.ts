@@ -1,10 +1,10 @@
 import { diffDaysYmd, isYmd } from './date';
 import { addWorkingDays, nextWorkingDay, snapToWorkingDay, workingDaysBetween, type WorkingDayIndex } from './workingDays';
 
-export type JobMode = 'floating' | 'pinned';
-export type JobStatus = 'not_started' | 'in_progress' | 'paused' | 'done';
-export type PlannedCommitmentType = 'week_of' | 'fixed_date';
-export type ClientUpdateStatus = 'none' | 'needed' | 'acknowledged';
+type JobMode = 'floating' | 'pinned';
+type JobStatus = 'not_started' | 'in_progress' | 'paused' | 'done';
+type PlannedCommitmentType = 'week_of' | 'fixed_date';
+type ClientUpdateStatus = 'none' | 'needed' | 'acknowledged';
 
 export type ScheduleCrew = {
   id: string;
@@ -63,7 +63,7 @@ export type PinnedConflict = {
   overlap_days: number;
 };
 
-export type ComputedScheduleBlock = {
+type ComputedScheduleBlock = {
   item_id: string;
   item_type: 'job' | 'downtime';
   crew_id: string;
@@ -77,7 +77,7 @@ export type ComputedScheduleBlock = {
   job_status?: JobStatus | null;
 };
 
-export type JobForecastUpdate = {
+type JobForecastUpdate = {
   id: string;
   forecast_start: string | null;
   forecast_end_exclusive: string | null;

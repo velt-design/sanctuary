@@ -15,18 +15,7 @@ export function projectStatusLabel(status: ProjectStatus): string {
   return PROJECT_STATUS_LABELS[status] ?? status;
 }
 
-export type LegacyProjectStatus =
-  | 'new'
-  | 'contacted'
-  | 'site_visit'
-  | 'quoting'
-  | 'sent'
-  | 'follow_up'
-  | 'won'
-  | 'lost'
-  | 'archived';
-
-export type NormalizedProjectStatus = {
+type NormalizedProjectStatus = {
   status: ProjectStatus;
   isLost: boolean;
   isArchived: boolean;
@@ -64,7 +53,7 @@ export function normalizeProjectStatus(raw: unknown): NormalizedProjectStatus {
   return { status: 'NEW', isLost: false, isArchived: false, legacyStatus: statusRaw || undefined };
 }
 
-export type ActivityEventType =
+type ActivityEventType =
   | 'note'
   | 'status_change'
   | 'estimate_generated'
@@ -76,7 +65,7 @@ export type ActivityEventType =
   | 'export'
   | 'project_updated';
 
-export type ActivityEvent = {
+type ActivityEvent = {
   id: string;
   createdAt: string;
   type: ActivityEventType;
@@ -84,7 +73,7 @@ export type ActivityEvent = {
   meta?: unknown;
 };
 
-export type NextActionType = 'call' | 'site_visit' | 'send_quote' | 'book_install' | 'invoice' | 'chase_payment';
+type NextActionType = 'call' | 'site_visit' | 'send_quote' | 'book_install' | 'invoice' | 'chase_payment';
 
 export const NEXT_ACTION_TYPE_ORDER: readonly NextActionType[] = [
   'call',

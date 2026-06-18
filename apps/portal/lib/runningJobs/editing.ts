@@ -7,7 +7,7 @@ import type {
 
 export type NormalizedRunningJobCellValue = string | number | boolean | RunningJobStatusValue | null;
 
-export type RunningJobEditability = {
+type RunningJobEditability = {
   editable: boolean;
   reason?: string;
 };

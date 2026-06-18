@@ -16,7 +16,7 @@ export type ScheduleProjectSummary = {
   followUpDate: string | null;
 };
 
-export type ScheduleV2UnscheduledJob = {
+type ScheduleV2UnscheduledJob = {
   projectId: string;
   estimateId: string;
   projectName: string;

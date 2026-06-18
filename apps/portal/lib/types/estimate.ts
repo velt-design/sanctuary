@@ -14,12 +14,12 @@ import type { Project } from './project';
 
 export type EstimateStatus = 'draft' | 'archived';
 
-export type ProjectSnapshot = Pick<
+type ProjectSnapshot = Pick<
   Project,
   'id' | 'name' | 'quoteRef' | 'region' | 'clientName' | 'email' | 'phone' | 'address' | 'createdAt' | 'updatedAt'
 >;
 
-export type EstimateSnapshot = {
+type EstimateSnapshot = {
   contact: Pick<Contact, 'displayName' | 'email' | 'phone'>;
   project: {
     projectName: string;

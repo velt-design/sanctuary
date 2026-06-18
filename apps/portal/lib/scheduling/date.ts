@@ -46,7 +46,7 @@ export function isWorkday(ymd: string): boolean {
   return day !== 0 && day !== 6;
 }
 
-export function nextDayYmd(ymd: string): string {
+function nextDayYmd(ymd: string): string {
   const d = ymdToUtcDate(ymd);
   d.setUTCDate(d.getUTCDate() + 1);
   return utcDateToYmd(d);
@@ -87,7 +87,3 @@ export function addWorkHours(startDate: string, startHour: number, hours: number
   return { endCursor: cursor, endDateInclusive };
 }
 
-export function addWorkDays(startDate: string, days: number): { endCursor: WorkCursor; endDateInclusive: string } {
-  const hours = (Number.isFinite(days) ? days : 0) * WORK_HOURS_PER_DAY;
-  return addWorkHours(startDate, 0, hours);
-}

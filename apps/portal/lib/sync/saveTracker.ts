@@ -4,7 +4,7 @@ import type { LocalFirstStoreSummary } from '@/lib/localFirst/types';
 
 type SaveStatus = 'saved' | 'saving' | 'offline' | 'error' | 'conflict';
 
-export type SaveState = {
+type SaveState = {
   status: SaveStatus;
   pending: number;
   networkPending: number;

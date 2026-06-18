@@ -7,7 +7,7 @@ const SCHEDULE_ROUTE_KEY = '/staff/schedule/page';
 const CLIENT_REFERENCE_MANIFEST = 'server/app/staff/schedule/page_client-reference-manifest.js';
 const REACT_LOADABLE_MANIFEST = 'server/app/staff/schedule/page/react-loadable-manifest.json';
 
-export const SCHEDULE_BUNDLE_BUDGETS = {
+const SCHEDULE_BUNDLE_BUDGETS = {
   initialRawBytes: 750_000,
   initialGzipBytes: 225_000,
   lazyTotalRawBytes: 360_000,
@@ -25,26 +25,26 @@ export type ScheduleBundleBudgets = {
   largestLazyGzipBytes: number;
 };
 
-export type ScheduleBundleFileMetric = {
+type ScheduleBundleFileMetric = {
   file: string;
   rawBytes: number;
   gzipBytes: number;
 };
 
-export type ScheduleLazyChunkMetric = {
+type ScheduleLazyChunkMetric = {
   id: string;
   files: ScheduleBundleFileMetric[];
   rawBytes: number;
   gzipBytes: number;
 };
 
-export type ScheduleBundleBudgetFailure = {
+type ScheduleBundleBudgetFailure = {
   budget: keyof ScheduleBundleBudgets;
   actual: number;
   limit: number;
 };
 
-export type ScheduleBundleBudgetReport = {
+type ScheduleBundleBudgetReport = {
   route: '/staff/schedule';
   nextDir: string;
   budgets: ScheduleBundleBudgets;

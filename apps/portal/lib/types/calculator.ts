@@ -14,7 +14,7 @@ import type {
 
 export type BlindSystemType = 'ZIPTRAK' | 'OMNI';
 export type BlindFabric = 'MESH' | 'PVC' | 'FINE_MESH' | 'NONE';
-export type BlindMotorised = 'NONE' | 'YES';
+type BlindMotorised = 'NONE' | 'YES';
 export type CalculatorDrawingRotationQuarterTurns = 0 | 1 | 2 | 3;
 export type CalculatorHouseFootprintPreset =
   | 'straight'
@@ -111,18 +111,6 @@ export function normalizeHouseFootprintMode(value: unknown): CalculatorHouseFoot
     : DEFAULT_CALCULATOR_HOUSE_FOOTPRINT_MODE;
 }
 
-export function normalizeHouseRoofMaterial(value: unknown): CalculatorHouseRoofMaterial {
-  if (
-    value === 'trapezoidal_5_rib' ||
-    value === 'eurotray_300' ||
-    value === 'eurotray_500' ||
-    value === 'shingles'
-  ) {
-    return value;
-  }
-  return DEFAULT_CALCULATOR_HOUSE_ROOF_MATERIAL;
-}
-
 export function normalizeHouseFootprintParams(value: unknown): CalculatorHouseFootprintParams {
   const source = value && typeof value === 'object' ? (value as Partial<CalculatorHouseFootprintParams>) : {};
   const defaults = makeDefaultHouseFootprintParams();
@@ -189,14 +177,14 @@ export type CalculatorBlindsState = {
   items: BlindLineItem[];
 };
 
-export type InfillAcrylicSourceInput = 'strip_620' | 'sheet_panels';
-export type InfillWidthModeInput = 'match_roof_rafters' | 'target_width';
-export type InfillLocationInput = 'front' | 'house' | 'side' | 'gable_end' | 'wall' | 'custom';
-export type InfillPanelOrientationInput = 'vertical' | 'horizontal' | 'auto';
+type InfillAcrylicSourceInput = 'strip_620' | 'sheet_panels';
+type InfillWidthModeInput = 'match_roof_rafters' | 'target_width';
+type InfillLocationInput = 'front' | 'house' | 'side' | 'gable_end' | 'wall' | 'custom';
+type InfillPanelOrientationInput = 'vertical' | 'horizontal' | 'auto';
 export type InfillMonoSlopeModeInput = 'heights' | 'pitch';
 export type InfillMonoSlopeAnchorInput = 'left' | 'right';
 
-export type InfillSupportInput = {
+type InfillSupportInput = {
   hasTop: boolean;
   hasBottom: boolean;
   hasLeft: boolean;
@@ -205,7 +193,7 @@ export type InfillSupportInput = {
   internalSupportPositionsM?: string[];
 };
 
-export type InfillShapeInput =
+type InfillShapeInput =
   | { type: 'rect'; widthM: string; heightM: string; bottomOffsetM?: string }
   | {
       type: 'mono_slope';
@@ -236,7 +224,7 @@ export type CalculatorInfillsState = {
   items: InfillLineItem[];
 };
 
-export type LegacyBlindInputsV1 = {
+type LegacyBlindInputsV1 = {
   systemType: BlindSystemType;
   totalWidthMm: string;
   coverLengthMm: string;
@@ -261,7 +249,7 @@ export type CalculatorModuleOverrides = {
 export type CalculatorFlashingBand = '0-200' | '201-300' | '301-400';
 export type CalculatorFlashingPurpose = 'HEAD' | 'SIDE' | 'APRON' | 'CUSTOM';
 
-export type CalculatorFlashingRowInput = {
+type CalculatorFlashingRowInput = {
   id: string;
   kind: 'primary' | 'extra';
   band: CalculatorFlashingBand;
@@ -446,13 +434,13 @@ export function isLegacyCalculatorInputsV1(value: unknown): value is LegacyCalcu
   return typeof v.projectName === 'string' && typeof v.pergolaStyle === 'string' && !Array.isArray(v.modules);
 }
 
-export function isLegacyBlindInputsV1(value: unknown): value is LegacyBlindInputsV1 {
+function isLegacyBlindInputsV1(value: unknown): value is LegacyBlindInputsV1 {
   if (!value || typeof value !== 'object') return false;
   const v = value as any;
   return typeof v.totalWidthMm === 'string' && typeof v.coverLengthMm === 'string';
 }
 
-export function isCalculatorBlindsState(value: unknown): value is CalculatorBlindsState {
+function isCalculatorBlindsState(value: unknown): value is CalculatorBlindsState {
   if (!value || typeof value !== 'object') return false;
   const v = value as any;
   return Array.isArray(v.items);
@@ -551,7 +539,3 @@ export function migrateLegacyCalculatorInputsToV2(legacy: LegacyCalculatorInputs
   };
 }
 
-export type CalculatorDraftContext = {
-  projectId?: string;
-  estimateId?: string;
-};

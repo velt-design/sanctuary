@@ -12,7 +12,7 @@ type ScheduleReadinessCheck = {
   detail?: string;
 };
 
-export type ScheduleReadinessResult = {
+type ScheduleReadinessResult = {
   ok: boolean;
   missingFunctions: string[];
   readinessChecks: ScheduleReadinessCheck[];
