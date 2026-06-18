@@ -87,6 +87,27 @@ const CUSTOM_FIXTURES: readonly TopologyFixture[] = [
       { x: 0, y: 2000, z: 0 },
     ],
   },
+  {
+    // PR-HR5 (2026-06-18): Graham-Oratia-shaped approximation —
+    // L-footprint roughly 11m × 11m with a deep + wide leg and a
+    // narrow upper return (1.8m wide). Designed to exercise the
+    // `eave_offset_self_overlap` repair path (the eave-offset stage
+    // failure mode the user's screenshot showed, "eave_..." truncated
+    // in the rail). Picked dimensions where the 450mm default
+    // overhang IS expected to trigger reduced-overhang repair but
+    // the result should still pass QA — if this regresses we lose
+    // narrow-return houses, which is the bulk of real customer
+    // shapes.
+    name: 'custom-l-narrow-return',
+    footprint: [
+      { x: 0, y: 0, z: 0 },
+      { x: 11000, y: 0, z: 0 },
+      { x: 11000, y: 3500, z: 0 },
+      { x: 1800, y: 3500, z: 0 },
+      { x: 1800, y: 11000, z: 0 },
+      { x: 0, y: 11000, z: 0 },
+    ],
+  },
 ];
 
 /**
