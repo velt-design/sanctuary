@@ -22,6 +22,8 @@ import { PlanDimensionLayer } from './layers/PlanDimensionLayer';
 import { PlanEdgeDragPreviewLayer } from './layers/PlanEdgeDragPreviewLayer';
 import { PlanEdgeHoverHighlightLayer } from './layers/PlanEdgeHoverHighlightLayer';
 import { PlanHitTargetLayer } from './layers/PlanHitTargetLayer';
+import { PlanSeamIconLayer } from './layers/PlanSeamIconLayer';
+import type { PlanSeamIconTarget } from '../interactions/seams/seamIconTargets';
 import { PlanHitTestDebugLayer } from './layers/PlanHitTestDebugLayer';
 import { PlanHoverHaloLayer } from './layers/PlanHoverHaloLayer';
 import { PlanLocalHoverLayer } from './layers/PlanLocalHoverLayer';
@@ -84,6 +86,10 @@ type PlanCanvasProps = {
   transform: DrawingWorkbenchViewportTransform;
   onTransformChange: (next: DrawingWorkbenchViewportTransform) => void;
   screenAxisLabel: string;
+  /** PR-COMP-PHASE4b.3: seam icons (Join + Detach) rendered above geometry. */
+  seamIconTargets?: ReadonlyArray<PlanSeamIconTarget>;
+  onJoinHouseForms?: (input: { formAId: string; formBId: string }) => void;
+  onDetachHouseFormAtSeam?: (input: { houseFormId: string; joinIndex: number }) => void;
 };
 
 const EMPTY_DIMENSIONS: ReadonlyArray<PlanDimension> = [];
@@ -116,6 +122,9 @@ export function PlanCanvas({
   transform,
   onTransformChange,
   screenAxisLabel,
+  seamIconTargets,
+  onJoinHouseForms,
+  onDetachHouseFormAtSeam,
 }: PlanCanvasProps) {
   const dispatcher = useToolDispatcher();
   const { hoveredShape, onShapeEnter, onShapeLeave } = useHoveredShape();
@@ -367,6 +376,14 @@ export function PlanCanvas({
             sourcePolygonMm={movePreviewSourcePolygon}
             coordinateAdapter={coordinateAdapter}
           />
+          {seamIconTargets ? (
+            <PlanSeamIconLayer
+              targets={seamIconTargets}
+              coordinateAdapter={coordinateAdapter}
+              onJoin={onJoinHouseForms}
+              onDetach={onDetachHouseFormAtSeam}
+            />
+          ) : null}
           <PlanHitTestDebugLayer
             enabled={debugEnabled}
             activeOutlinePolygon={activeOutlinePolygon}

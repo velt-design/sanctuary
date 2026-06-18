@@ -24,6 +24,7 @@ import type {
   WorkbenchViewportGeometry,
 } from '@/lib/drawings/state/workbenchSolvedModel';
 import type { WorkbenchSolvedProjectArtifact } from '@/lib/drawings/state/workbenchSolvedProjectArtifact';
+import type { PlanSeamIconForm } from '@/components/drawings/viewports/PlanViewport/interactions/seams/seamIconTargets';
 import type { Geometry3DViewportState } from '@/components/drawings/viewports/Geometry3DViewport';
 import type {
   EdgeDragCommit,
@@ -111,6 +112,10 @@ type DrawingWorkbenchProps = {
   /** Cross-viewport hover state (milestone 16). Pass-through to viewports. */
   hoveredObjectRef?: WorkbenchObjectRef | null;
   onHoverObjectChange?: (next: WorkbenchObjectRef | null) => void;
+  /** PR-COMP-PHASE4b.3: pass-through to PlanViewport's seam-icon layer. */
+  projectHouseFormCompositions?: ReadonlyArray<PlanSeamIconForm>;
+  onJoinHouseForms?: (input: { formAId: string; formBId: string }) => void;
+  onDetachHouseFormAtSeam?: (input: { houseFormId: string; joinIndex: number }) => void;
 };
 
 export default function DrawingWorkbench({
@@ -165,6 +170,9 @@ export default function DrawingWorkbench({
   onCommitMove,
   hoveredObjectRef,
   onHoverObjectChange,
+  projectHouseFormCompositions,
+  onJoinHouseForms,
+  onDetachHouseFormAtSeam,
 }: DrawingWorkbenchProps) {
   void availableViewportModes;
   void trustGate;
@@ -225,6 +233,9 @@ export default function DrawingWorkbench({
         onCommitMove={onCommitMove}
         hoveredObjectRef={hoveredObjectRef}
         onHoverObjectChange={onHoverObjectChange}
+        projectHouseFormCompositions={projectHouseFormCompositions}
+        onJoinHouseForms={onJoinHouseForms}
+        onDetachHouseFormAtSeam={onDetachHouseFormAtSeam}
       />
     </section>
   );

@@ -425,6 +425,25 @@ export default function DesignWorkbenchEstimateClient({
         : buildOutlineEditCommitHandler({ store, objectWorkbenchActions }),
     [isLocked, store, objectWorkbenchActions],
   );
+
+  // PR-COMP-PHASE4b.3 (2026-06-18): collect every house form that
+  // carries a composition into a flat list for PlanViewport's
+  // seam-icon layer. Forms without composition (legacy free-form)
+  // are skipped — they can't be Joined and have no internal
+  // seams to Detach.
+  const planViewportSeamIconForms = useMemo(
+    () =>
+      store.derived.houseForms
+        .filter((form) => form.composition)
+        .map((form) => ({
+          id: form.id,
+          worldOffsetXMm: form.transform.offsetXM * 1000,
+          worldOffsetYMm: form.transform.offsetYM * 1000,
+          rotationQuarterTurns: form.transform.rotationQuarterTurns,
+          composition: form.composition!,
+        })),
+    [store.derived.houseForms],
+  );
   const debugFixtureExport = useMemo(
     () =>
       debugExportEnabled
@@ -737,6 +756,21 @@ export default function DesignWorkbenchEstimateClient({
                   }
                   // openings deferred — they're wall-anchored, not freely
                   // positioned, so move-via-translate doesn't apply.
+                }
+              : undefined
+          }
+          projectHouseFormCompositions={planViewportSeamIconForms}
+          onJoinHouseForms={
+            !isLocked
+              ? (input) => {
+                  void objectWorkbenchActions.joinHouseForms(input);
+                }
+              : undefined
+          }
+          onDetachHouseFormAtSeam={
+            !isLocked
+              ? (input) => {
+                  void objectWorkbenchActions.detachHouseFormAtSeam(input);
                 }
               : undefined
           }

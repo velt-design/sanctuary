@@ -37,12 +37,17 @@ import {
   type ProjectHouseSnapSource,
 } from './interactions/snap/buildProjectHouseSnapTargets';
 import { buildOtherPergolaSnapTargets } from './interactions/snap/buildOtherPergolaSnapTargets';
+import {
+  buildSeamIconTargets,
+  type PlanSeamIconForm,
+} from './interactions/seams/seamIconTargets';
 import type { SnapLineTarget } from './interactions/snap/snapEngine';
 import type { HouseTerminalEndToggleRequest } from './interactions/selectShape';
 
 export type { EdgeDragCommit, EdgeDragHover, EdgeDragPreview } from './tools/EdgeDragTool';
 export type { MoveRequest } from './tools/MoveTool';
 export type { ProjectHouseSnapSource } from './interactions/snap/buildProjectHouseSnapTargets';
+export type { PlanSeamIconForm } from './interactions/seams/seamIconTargets';
 export type { HouseTerminalEndToggleRequest } from './interactions/selectShape';
 import { PlanViewportPlaceholder } from './PlanViewportPlaceholder';
 import lineweightStyles from './canvas/planLineweights.module.css';
@@ -144,6 +149,26 @@ export type PlanViewportProps = {
    * milestone 16.
    */
   onHoverObjectChange?: (next: WorkbenchObjectRef | null) => void;
+  /**
+   * PR-COMP-PHASE4b.3 (2026-06-18): per-house-form composition +
+   * world transform, used to render Join / Detach seam icons in
+   * plan view. The host (WorkbenchViewportHost) projects this from
+   * the draft's `houseAssembly.houseForms` — only forms with a
+   * `composition` are included. Forms without composition (legacy
+   * free-form) never participate in seam icons.
+   */
+  projectHouseFormCompositions?: ReadonlyArray<PlanSeamIconForm>;
+  /**
+   * Click handler for Join icons (separate forms whose edges are
+   * adjacent within tolerance). Wired to `joinHouseForms` on the
+   * workbench action layer.
+   */
+  onJoinHouseForms?: (input: { formAId: string; formBId: string }) => void;
+  /**
+   * Click handler for Detach icons (internal seams of composites).
+   * Wired to `detachHouseFormAtSeam` on the workbench action layer.
+   */
+  onDetachHouseFormAtSeam?: (input: { houseFormId: string; joinIndex: number }) => void;
 };
 
 export default function PlanViewport({
@@ -169,6 +194,9 @@ export default function PlanViewport({
   onCommitMove,
   hoveredObjectRef,
   onHoverObjectChange,
+  projectHouseFormCompositions,
+  onJoinHouseForms,
+  onDetachHouseFormAtSeam,
 }: PlanViewportProps) {
   const projection = projectionOverride ?? artifact?.topProjection ?? null;
   const renderModel = usePlanRenderModel({
@@ -328,6 +356,19 @@ export default function PlanViewport({
   ]);
   const snapLineTargetsRef = useRef(snapLineTargets);
   snapLineTargetsRef.current = snapLineTargets;
+
+  // PR-COMP-PHASE4b.3 (2026-06-18): seam-icon targets for the
+  // Join + Detach overlay. Recomputed whenever the composition
+  // list changes; no expensive geometry beyond pairwise edge
+  // comparisons (O(N^2) in number of forms, capped by project
+  // size at ~3-5 forms in practice).
+  const seamIconTargets = useMemo(
+    () =>
+      projectHouseFormCompositions && projectHouseFormCompositions.length > 0
+        ? buildSeamIconTargets({ forms: projectHouseFormCompositions })
+        : [],
+    [projectHouseFormCompositions],
+  );
 
   // CommandBus owns the undo/redo stack for edits originating in this
   // viewport. Created once per PlanViewport instance. Both move commits
@@ -543,6 +584,9 @@ export default function PlanViewport({
           transform={viewportTransform}
           onTransformChange={onViewportTransformChange}
           screenAxisLabel={screenAxisLabel}
+          seamIconTargets={seamIconTargets}
+          onJoinHouseForms={onJoinHouseForms}
+          onDetachHouseFormAtSeam={onDetachHouseFormAtSeam}
         />
       </ToolDispatcherProvider>
     </div>

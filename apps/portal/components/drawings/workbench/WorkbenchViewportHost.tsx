@@ -28,6 +28,7 @@ import type { EstimateDrawingSheetMeta } from '@/lib/estimates/drawingSheet';
 import type { CalculatorHouseFootprintPolygonPoint } from '@/lib/types/calculator';
 import { type Geometry3DViewportState } from '@/components/drawings/viewports/Geometry3DViewport';
 import DesignViewport from '@/components/drawings/viewports/DesignViewport';
+import type { PlanSeamIconForm } from '@/components/drawings/viewports/PlanViewport/interactions/seams/seamIconTargets';
 import PlanViewport, {
   type EdgeDragCommit,
   type HouseTerminalEndToggleRequest,
@@ -98,6 +99,16 @@ type WorkbenchViewportHostProps = {
   onCommitOutlineEdit?: (commit: EdgeDragCommit) => void;
   onCommitMove?: (request: MoveRequest) => void;
   /**
+   * PR-COMP-PHASE4b.3 (2026-06-18): per-house-form composition +
+   * world transform powering the Join / Detach seam-icon layer in
+   * PlanViewport. Built upstream from the workbench draft's
+   * `houseAssembly.houseForms`; only forms with a `composition`
+   * appear here.
+   */
+  projectHouseFormCompositions?: ReadonlyArray<PlanSeamIconForm>;
+  onJoinHouseForms?: (input: { formAId: string; formBId: string }) => void;
+  onDetachHouseFormAtSeam?: (input: { houseFormId: string; joinIndex: number }) => void;
+  /**
    * Cross-viewport hover state (milestone 16). PlanViewport emits via
    * `onHoverObjectChange` when the local pointer enters a shape; the host
    * threads it through to whichever viewport is currently rendered. Phase
@@ -152,6 +163,9 @@ export default function WorkbenchViewportHost({
   onCommitMove,
   hoveredObjectRef,
   onHoverObjectChange,
+  projectHouseFormCompositions,
+  onJoinHouseForms,
+  onDetachHouseFormAtSeam,
 }: WorkbenchViewportHostProps) {
   const artifactGeometryPreview = projectArtifact?.geometryPreview ?? null;
   const artifactPlanProjection = projectArtifact?.planProjection ?? null;
@@ -234,6 +248,9 @@ export default function WorkbenchViewportHost({
           onCommitMove={onCommitMove}
           hoveredObjectRef={hoveredObjectRef}
           onHoverObjectChange={onHoverObjectChange}
+          projectHouseFormCompositions={projectHouseFormCompositions}
+          onJoinHouseForms={onJoinHouseForms}
+          onDetachHouseFormAtSeam={onDetachHouseFormAtSeam}
         />
       ) : (
         <DesignViewport
