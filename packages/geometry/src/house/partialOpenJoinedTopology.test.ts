@@ -153,48 +153,40 @@ const CUSTOM_FIXTURES: readonly TopologyFixture[] = [
 // entry when the corresponding case starts producing valid geometry
 // (it.fails will turn red and tell you to update this set).
 //
-// Each entry should ideally cite the underlying failure mode (the
-// Phase 1 diagnostic populates the comment for each). Initial set
-// reflects the geometry-side state immediately after the session A
-// validator-strictness fix.
-// Phase 1 state (2026-05-14): 16 of 18 baseline failures resolved.
+// PR-HR5 state (2026-06-18): **0 active quarantines**. The matrix
+// runs 66 of 66 cases green.
 //
-//   Mode A (12 cases) -- fallback_features flag relaxed when
-//     stationary edges exist. The fallback's synthesized
-//     reflex-vertex valley is correct geometry for partial-open;
-//     the flag was over-reporting. Fix in `roofJoinedHipped.ts`.
+// Historical context:
+//   Phase 1 (2026-05-14, commit `d2f3615` + `1aef41a`): 16 of 18
+//     baseline failures resolved via two surgical fixes:
+//       Mode A (12 cases) -- fallback_features flag relaxed when
+//         stationary edges exist. The fallback's synthesized
+//         reflex-vertex valley is correct geometry for partial-open;
+//         the flag was over-reporting. Fix in `roofJoinedHipped.ts`.
+//       Mode B (4 cases) + Mode C-staircase + Mode B/C-recess --
+//         `joinedRoofWavefrontSweptRegions` now explicitly skips
+//         stationary edges. Adjacent edges with same-direction inward
+//         normals (recess / staircase reflex corners) caused
+//         stationary endpoints to slide in unison, giving the swept
+//         quad real area despite the edge being conceptually
+//         "stationary". Those phantom regions tripped the dissolve
+//         pass's fragment-cancellation invariant. Fix in
+//         `roofJoinedWavefront.ts`.
+//   Phase 2 (2026-05-14, commit `56de9de`): the remaining 2 cases
+//     (`custom-recess:y:house-gable-end-y-5`,
+//     `custom-t:y:house-gable-end-y-1`) closed not by patching the
+//     wavefront's numerical convergence but by narrowing the
+//     terminal-end derivation itself. The bent-spine derivation now
+//     surfaces only **real wing-tip edges** (degree-1 ridge-graph
+//     nodes); y-5 (recess) and y-1 (t) were diagonal medial-axis
+//     connectors that the legacy "all axis-perpendicular edges"
+//     heuristic over-included as terminals. A user can no longer
+//     open them because they aren't classified as wing tips, so the
+//     fragile-wavefront cases are unreachable from the workbench.
 //
-//   Mode B (4 cases) + Mode C-staircase + Mode B/C-recess --
-//     `joinedRoofWavefrontSweptRegions` now explicitly skips
-//     stationary edges. Adjacent edges with same-direction inward
-//     normals (recess / staircase reflex corners) caused stationary
-//     endpoints to slide in unison, giving the swept quad real
-//     area despite the edge being conceptually "stationary". Those
-//     phantom regions tripped the dissolve pass's fragment-
-//     cancellation invariant. Fix in `roofJoinedWavefront.ts`.
-//
-// Remaining 2 cases need Phase 2 (per-wing bent-spine variant):
-//
-//   custom-recess:y:house-gable-end-y-5 -- `roof_area_mismatch`
-//     after Phase 1 fixes. The slope facets near the opened inner
-//     notch edge don't fully cover the projected eave area
-//     (delta ~6.5% of eave area). Likely a wavefront convergence
-//     issue specific to opening an interior notch edge with two
-//     adjacent reflex corners on the SAME axis.
-//
-//   custom-t:y:house-gable-end-y-1 -- `roof_wavefront_missing_next_event`.
-//     The event scheduler returns null when an active loop segment
-//     has degenerate vertex velocity near the T's reflex corners.
-//     Numerical edge case; might need a fallback split heuristic.
-//
-// Drop an entry the moment its underlying fix lands -- vitest will
-// flip the test red and tell you to update this set. New failures
-// (regressions on a working case) ALSO surface immediately because
-// they won't be in this set and the matrix will turn red.
-const KNOWN_FAILURES: ReadonlySet<string> = new Set([
-  'custom-recess:y:house-gable-end-y-5',
-  'custom-t:y:house-gable-end-y-1',
-]);
+// New failures (regressions on a working case) surface immediately
+// because they won't be in this set and the matrix will turn red.
+const KNOWN_FAILURES: ReadonlySet<string> = new Set<string>();
 
 function buildPartialOpenConfig(input: {
   footprint: Polygon3;

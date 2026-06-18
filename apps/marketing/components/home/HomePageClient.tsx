@@ -15,7 +15,7 @@ import HomeTestimonialsSection from '@/components/home/HomeTestimonialsSection';
 
 export type ProcessStep = { title: string; desc: string };
 
-export type FeatureItem = { label: string; bubble: string };
+type FeatureItem = { label: string; bubble: string };
 
 export type HomePageContent = {
   featureItems: FeatureItem[];

@@ -1,7 +1,7 @@
 // data/projects.ts
-export type Image = { src: string; alt: string; fallbackJpg?: string; w?: number; h?: number; objectPosition?: string };
+type Image = { src: string; alt: string; fallbackJpg?: string; w?: number; h?: number; objectPosition?: string };
 
-export type ProjectStats = {
+type ProjectStats = {
   width?: string;
   depth?: string;
   height?: string;
@@ -9,7 +9,7 @@ export type ProjectStats = {
   pitch?: string;
 };
 
-export type ProjectSection = {
+type ProjectSection = {
   title: string;
   paragraphs: string[];
   bullets?: string[];
@@ -1064,5 +1064,3 @@ export const projects: Project[] = [...baseProjects].sort((a, b) => {
   const bPos = ib === -1 ? Number.MAX_SAFE_INTEGER : ib;
   return aPos - bPos;
 });
-
-export const getProjectBySlug = (slug: string) => projects.find(project => project.slug === slug) || null;

@@ -1,6 +1,6 @@
 import { QUOTE_MULTIPLIER, toIndicativeRangeOneSided, toIndicativeSingleAmount, type EnquiryType, type MoneyRange } from '../../../lib/pricing/enquiryEstimate';
 
-export type EnquiryBudgets = {
+type EnquiryBudgets = {
   baseRange: MoneyRange | null;
   blindsRange: MoneyRange | null;
   budgetBasis: string | null;

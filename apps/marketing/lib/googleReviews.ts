@@ -2,7 +2,7 @@ import 'server-only';
 
 import { GOOGLE_PLACE } from '@/data/reviews';
 
-export type RatingSummary = {
+type RatingSummary = {
   rating: number;
   count: number;
   source: 'google' | 'fallback';

@@ -1,21 +1,13 @@
-export type MegaItem = {
+type MegaItem = {
   title: string;
   href: string;
   desc: string;
   icon?: 'square' | 'round' | 'dashed';
 };
 
-export type MegaSection = {
+type MegaSection = {
   heading: string;
   items: MegaItem[];
-};
-
-export type Promo = {
-  img: string;
-  title: string;
-  blurb: string;
-  cta: string;
-  href: string;
 };
 
 export const sections: MegaSection[] = [
@@ -87,29 +79,5 @@ export const sections: MegaSection[] = [
         desc: 'Targeted warmth for evening use. Electric units with clearance guidance.'
       }
     ]
-  }
-];
-
-export const promos: Promo[] = [
-  {
-    img: '/assets/hero-left.jpg',
-    title: 'Custom pergola design',
-    blurb: 'Work with our in-house designer on spans, colours, and detailing matched to your home.',
-    cta: 'Learn more →',
-    href: '/process'
-  },
-  {
-    img: '/assets/hero-right.jpg',
-    title: 'Order finish samples',
-    blurb: 'Preview powder coat colours and roofing options before you commit to the build.',
-    cta: 'Request samples →',
-    href: '/contact'
-  },
-  {
-    img: '/assets/pitched.jpg',
-    title: 'Trade & partnerships',
-    blurb: 'Multi-lot projects or installation partners—talk to our dedicated trade team.',
-    cta: 'Apply →',
-    href: '/projects'
   }
 ];
