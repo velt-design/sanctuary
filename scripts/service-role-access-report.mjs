@@ -79,7 +79,6 @@ function signalsFor(text) {
 function isCompatibilityHelper(file) {
   return (
     file === 'apps/portal/lib/supabaseClient.ts' ||
-    file === 'lib/supabaseClient.ts' ||
     file === 'apps/marketing/lib/supabaseService.ts'
   );
 }

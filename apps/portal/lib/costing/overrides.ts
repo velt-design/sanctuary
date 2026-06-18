@@ -9,7 +9,7 @@ export type DriverCurvePoint = {
   minutes_per_m: number;
 };
 
-export type CostingOverrides = {
+type CostingOverrides = {
   materialCostOverrides: Record<string, number>;
   actionMinutesOverrides: Record<string, number>;
   driverCurveOverrides: Record<string, DriverCurvePoint[]>;

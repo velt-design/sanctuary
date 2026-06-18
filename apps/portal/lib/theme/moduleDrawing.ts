@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
 
-export type ModuleDrawingSurface = 'card' | 'minimal' | 'sheet' | 'model';
+type ModuleDrawingSurface = 'card' | 'minimal' | 'sheet' | 'model';
 
 export const PREMIUM_MODULE_DRAWING_THEME = {
   color: {

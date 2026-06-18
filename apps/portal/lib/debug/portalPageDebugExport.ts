@@ -26,7 +26,7 @@ export type PortalPageDebugExport = {
   scenario: PortalPageDebugExportScenario | null;
 };
 
-export type BuildPortalPageDebugExportInput = Omit<
+type BuildPortalPageDebugExportInput = Omit<
   PortalPageDebugExport,
   'version' | 'capturedAt' | 'environment'
 > & {

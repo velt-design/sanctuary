@@ -30,6 +30,22 @@
       "proofCommand": "npm run test:marketing && npm run build:marketing"
     },
     {
+      "id": "portal-build-tooling-dependencies",
+      "category": "dynamic-reference",
+      "status": "current",
+      "ownerArea": "Portal build tooling",
+      "pathPatterns": [
+        "apps/portal/package.json"
+      ],
+      "issueDetails": [
+        "sharp",
+        "tailwindcss"
+      ],
+      "reason": "Portal keeps build-sensitive dependencies that static import analysis may not see: Tailwind is loaded through CSS/PostCSS, and sharp supports production Next image optimization.",
+      "retirementAction": "Remove only after checking portal CSS/PostCSS config, Next image behavior, production build output, and focused portal tests.",
+      "proofCommand": "npm run test:portal:shell && npm run build:portal"
+    },
+    {
       "id": "next-app-entrypoints",
       "category": "intentional-entrypoint",
       "status": "current",
@@ -74,6 +90,20 @@
       "proofCommand": "npm run test:portal:browser"
     },
     {
+      "id": "vitest-alias-shims",
+      "category": "intentional-entrypoint",
+      "status": "current",
+      "ownerArea": "Vitest alias shims",
+      "pathPatterns": [
+        "test/shims/marketing-publicInvoice.ts",
+        "test/shims/marketing-publicQuote.ts",
+        "test/shims/server-only.ts"
+      ],
+      "reason": "Vitest resolves marketing public-token helpers and Next's server-only marker through aliases in vitest.config.ts rather than source imports.",
+      "retirementAction": "Delete only after removing or rerouting the matching Vitest aliases and running affected portal/marketing tests.",
+      "proofCommand": "rg \"test/shims|marketing-publicQuote|marketing-publicInvoice|server-only\" vitest.config.ts apps test && npm run test:portal:shell && npm run test:marketing"
+    },
+    {
       "id": "portal-workbench-fixture-server-modules",
       "category": "dynamic-reference",
       "status": "current",
@@ -104,6 +134,21 @@
       "reason": "Scripts are often invoked from package scripts, CI, docs, or manual operations rather than source imports.",
       "retirementAction": "Retire a script only after checking package scripts, CI workflows, docs, and operational owner docs.",
       "proofCommand": "npm run docs:guard"
+    },
+    {
+      "id": "portal-supabase-compat-helper-duplicate-dep",
+      "category": "dynamic-reference",
+      "status": "current",
+      "ownerArea": "Portal Supabase compatibility helper",
+      "pathPatterns": [
+        "apps/portal/lib/supabaseClient.ts"
+      ],
+      "issueDetails": [
+        "unnamed finding"
+      ],
+      "reason": "The portal compatibility service-role helper imports @supabase/supabase-js directly while root operational scripts and app workspaces also declare Supabase dependencies for their own execution contexts.",
+      "retirementAction": "Remove only after replacing the compatibility helper and confirming root scripts, portal runtime imports, service-role guards, and workspace package manifests still resolve correctly.",
+      "proofCommand": "npx vitest run apps/portal/lib/supabaseClient.test.ts apps/portal/lib/supabaseClient.boundaries.test.ts && npm run service-role:changed"
     },
     {
       "id": "root-compatibility-retirement",

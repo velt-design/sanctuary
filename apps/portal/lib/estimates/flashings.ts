@@ -27,19 +27,19 @@ function toNumber(value: string): number {
   return Number.isFinite(parsed) ? parsed : NaN;
 }
 
-export function getRoofTypeForModule(module: CalculatorModuleInputs): 'pitched' | 'gable' | 'hip' | 'hip_corner' {
+function getRoofTypeForModule(module: CalculatorModuleInputs): 'pitched' | 'gable' | 'hip' | 'hip_corner' {
   if (module.pergolaStyle === 'gable') return 'gable';
   if (module.pergolaStyle === 'hip') return 'hip';
   if (module.pergolaStyle === 'hip_corner') return 'hip_corner';
   return 'pitched';
 }
 
-export function normalizeFlashingBand(value: unknown): CalculatorFlashingBand {
+function normalizeFlashingBand(value: unknown): CalculatorFlashingBand {
   if (value === '201-300' || value === '301-400') return value;
   return '0-200';
 }
 
-export function normalizeFlashingPurpose(value: unknown): CalculatorFlashingPurpose {
+function normalizeFlashingPurpose(value: unknown): CalculatorFlashingPurpose {
   if (value === 'HEAD' || value === 'SIDE' || value === 'APRON') return value;
   return 'CUSTOM';
 }
@@ -56,7 +56,7 @@ export function roofLengthForPrimaryFlashing(module: CalculatorModuleInputs): nu
   return lengthM + lengthBM;
 }
 
-export function defaultPrimaryFlashingBandForModule(module: CalculatorModuleInputs): CalculatorFlashingBand {
+function defaultPrimaryFlashingBandForModule(module: CalculatorModuleInputs): CalculatorFlashingBand {
   const roofType = getRoofTypeForModule(module);
   if (roofType === 'gable') return '301-400';
   return '201-300';
@@ -77,7 +77,7 @@ export function isPrimaryFlashingLengthAutoLinked(lengthInput: string, module: C
   return Math.abs(parsed - autoLength) <= FLASHING_AUTO_SYNC_TOLERANCE_M;
 }
 
-export function makeDefaultPrimaryFlashingRow(module: CalculatorModuleInputs): CalculatorFlashingsState['rows'][number] {
+function makeDefaultPrimaryFlashingRow(module: CalculatorModuleInputs): CalculatorFlashingsState['rows'][number] {
   return {
     id: makeFlashingId(),
     kind: 'primary',

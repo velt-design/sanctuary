@@ -1,4 +1,4 @@
-export type JobPackPowdercoatRowSource = 'base' | 'manual';
+type JobPackPowdercoatRowSource = 'base' | 'manual';
 
 export type JobPackPowdercoatStoredRow = {
   id: string;

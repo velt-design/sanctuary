@@ -267,7 +267,7 @@ Before shipping schedule changes:
 Minimum targeted schedule tests:
 
 ```bash
-npx vitest run lib/scheduling/workingDays.test.ts lib/scheduling/recompute.test.ts apps/portal/lib/scheduling/workingDays.test.ts apps/portal/lib/scheduling/recompute.test.ts
+npx vitest run apps/portal/lib/scheduling/workingDays.test.ts apps/portal/lib/scheduling/recompute.test.ts
 ```
 
 ## Manual QA Checklist Seeds

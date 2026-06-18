@@ -1,4 +1,4 @@
-import { QUOTE_MULTIPLIER, toIndicativeRangeOneSided, toIndicativeSingleAmount, type EnquiryType, type MoneyRange } from '../../../lib/pricing/enquiryEstimate';
+import { QUOTE_MULTIPLIER, toIndicativeRangeOneSided, toIndicativeSingleAmount, type EnquiryType, type MoneyRange } from './enquiryEstimate';
 
 type EnquiryBudgets = {
   baseRange: MoneyRange | null;

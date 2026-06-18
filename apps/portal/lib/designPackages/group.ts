@@ -1,6 +1,6 @@
 import type { DesignListRow, DesignPackagesResponse, DesignRequestPriorityTier } from './types';
 
-export const DESIGN_LIST_PRIORITY_ORDER: readonly DesignRequestPriorityTier[] = ['TIER_1', 'TIER_2', 'TIER_3', 'TIER_4', 'UNPRICED'];
+const DESIGN_LIST_PRIORITY_ORDER: readonly DesignRequestPriorityTier[] = ['TIER_1', 'TIER_2', 'TIER_3', 'TIER_4', 'UNPRICED'];
 
 function requestedYear(value: string | null | undefined): number | null {
   if (typeof value !== 'string') return null;

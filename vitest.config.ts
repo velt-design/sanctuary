@@ -14,6 +14,7 @@ export default defineConfig({
       { find: /^@\/lib\/quotes\/(.*)$/, replacement: path.resolve(__dirname, 'apps/portal/lib/quotes') + '/$1' },
       { find: /^@\/app\/(.*)$/, replacement: path.resolve(__dirname, 'apps/portal/app') + '/$1' },
       { find: /^@\/components\/(.*)$/, replacement: path.resolve(__dirname, 'apps/portal/components') + '/$1' },
+      { find: /^@\/src\/(.*)$/, replacement: path.resolve(__dirname, 'apps/portal/src') + '/$1' },
       { find: /^@\/lib\/(.*)$/, replacement: path.resolve(__dirname, 'apps/portal/lib') + '/$1' },
       { find: '@', replacement: path.resolve(__dirname) },
       { find: 'server-only', replacement: path.resolve(__dirname, 'test/shims/server-only.ts') },

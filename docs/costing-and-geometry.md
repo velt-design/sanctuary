@@ -62,8 +62,8 @@ Do not price from calculator while claiming the saved source is workbench-solved
 Portal applies database overrides on top of `loadCostingConfigV1()`.
 
 - Merge helpers: `apps/portal/lib/costing/overrides.ts`.
-- Staff costing engine wrapper: `apps/portal/lib/costing/costEngine.ts`.
 - Staff costing APIs: `apps/portal/app/api/staff/costing/v1`.
+- Staff costing metadata fetch helper: `apps/portal/lib/costing/costEngine.ts`.
 - Pricebook/admin cost surfaces: `apps/portal/app/pricebook` and `apps/portal/app/admin/costs`.
 
 ## Marketing Estimate Use

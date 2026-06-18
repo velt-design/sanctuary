@@ -1,16 +1,11 @@
 import type { EstimateDrawingFixedScaleValue } from './drawingSheet';
 
-export const A3_LANDSCAPE_MM = {
-  width: 420,
-  height: 297,
-} as const;
-
-export const DRAWING_SHEET_VIEWBOX = {
+const DRAWING_SHEET_VIEWBOX = {
   width: 120,
   height: 90,
 } as const;
 
-export const DRAWING_SHEET_DRAWING_VIEWPORT_MM = {
+const DRAWING_SHEET_DRAWING_VIEWPORT_MM = {
   width: 288,
   height: 216,
 } as const;
@@ -23,7 +18,7 @@ export type DrawingSheetFitResult = {
   availableHeightMm: number;
 };
 
-export type DrawingSheetReservedMarginsMm = {
+type DrawingSheetReservedMarginsMm = {
   left: number;
   right: number;
   top: number;
@@ -42,11 +37,7 @@ export function getViewBoxUnitsPerMm(viewportMm?: { widthMm: number; heightMm: n
   return DRAWING_SHEET_VIEWBOX.width / viewport.widthMm;
 }
 
-export function convertMmToViewBox(mm: number, viewportMm?: { widthMm: number; heightMm: number }): number {
-  return mm * getViewBoxUnitsPerMm(viewportMm);
-}
-
-export function convertMetresToPaperMm(valueM: number, ratio: EstimateDrawingFixedScaleValue): number {
+function convertMetresToPaperMm(valueM: number, ratio: EstimateDrawingFixedScaleValue): number {
   return (valueM * 1000) / ratio;
 }
 

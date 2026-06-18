@@ -20,7 +20,7 @@ export function isMissingColumnError(error: unknown): boolean {
   return isSupportedSchemaError(error);
 }
 
-export function isUuidInputSyntaxError(error: unknown): boolean {
+function isUuidInputSyntaxError(error: unknown): boolean {
   const e = error as SupabaseLikeError;
   const code = toStr(e?.code).trim();
   const msg = toStr(e?.message).toLowerCase();

@@ -22,12 +22,11 @@ export const LEGACY_RUNNING_JOB_SOURCE_COLUMNS = [
   'S',
 ] as const;
 
-export type LegacyRunningJobSourceColumn = (typeof LEGACY_RUNNING_JOB_SOURCE_COLUMNS)[number];
+type LegacyRunningJobSourceColumn = (typeof LEGACY_RUNNING_JOB_SOURCE_COLUMNS)[number];
 export type LegacyRunningJobSourceCells = Record<LegacyRunningJobSourceColumn, string | null>;
 export type LegacyRunningJobDisplayCells = Partial<Record<RunningJobCellKey, string>>;
-export type LegacyRunningJobMatchStatus = 'unmatched' | 'matched_live';
 
-export const LEGACY_RUNNING_JOB_CELL_BY_COLUMN: Record<LegacyRunningJobSourceColumn, RunningJobCellKey> = {
+const LEGACY_RUNNING_JOB_CELL_BY_COLUMN: Record<LegacyRunningJobSourceColumn, RunningJobCellKey> = {
   A: 'client_name',
   B: 'phone_number',
   C: 'site_address',
@@ -231,13 +230,3 @@ export function toLegacyDisplayCells(sourceCells: LegacyRunningJobSourceCells): 
   return display;
 }
 
-export function legacySortDateFromDisplay(display: LegacyRunningJobDisplayCells): string | null {
-  return parseLegacyExcelDateYmd(display.estimated_start_date ?? null);
-}
-
-export function legacySearchText(display: LegacyRunningJobDisplayCells): string {
-  return Object.values(display)
-    .filter((value): value is string => typeof value === 'string' && Boolean(value.trim()))
-    .join(' ')
-    .toLowerCase();
-}

@@ -1,7 +1,7 @@
-export type RunningJobStage = 'SENT' | 'DEPOSIT' | 'SCHEDULED' | 'COMPLETED' | 'PAID' | string;
+type RunningJobStage = 'SENT' | 'DEPOSIT' | 'SCHEDULED' | 'COMPLETED' | 'PAID' | string;
 
 export type RunningJobStatusValue = 'No' | 'Yes' | 'TBC';
-export type RunningJobRowSource = 'live' | 'legacy';
+type RunningJobRowSource = 'live' | 'legacy';
 
 export type RunningJobEditableCellKey =
   | 'client_name'
@@ -40,7 +40,7 @@ export type RunningJobCellKey =
   | 'roofing_ordered'
   | 'running_notes';
 
-export type RunningJobsCrewLookup = {
+type RunningJobsCrewLookup = {
   id: string;
   name: string;
   shortCode: string | null;
@@ -48,13 +48,13 @@ export type RunningJobsCrewLookup = {
   active: boolean;
 };
 
-export type RunningJobsSalesPersonLookup = {
+type RunningJobsSalesPersonLookup = {
   id: string;
   name: string;
   shortLabel: string;
 };
 
-export type RunningJobLegacyMeta = {
+type RunningJobLegacyMeta = {
   batchId: string;
   importRowId: string;
   matchedProjectId: string | null;
@@ -161,12 +161,12 @@ export type RunningJobCellMutationRequest = {
   finishEarlyAction?: 'pull_forward' | 'keep_schedule';
 };
 
-export type RunningJobCellMutationSuccess = {
+type RunningJobCellMutationSuccess = {
   ok: true;
   updatedRow: RunningJobRow;
 };
 
-export type RunningJobCellMutationRequiresConfirmation = {
+type RunningJobCellMutationRequiresConfirmation = {
   requires_confirmation: true;
   impacts: Array<{
     job_id: string;
@@ -176,7 +176,7 @@ export type RunningJobCellMutationRequiresConfirmation = {
   }>;
 };
 
-export type RunningJobCellMutationRequiresFinishEarly = {
+type RunningJobCellMutationRequiresFinishEarly = {
   requires_finish_early: true;
   freed_days: number;
   actual_finish: string;

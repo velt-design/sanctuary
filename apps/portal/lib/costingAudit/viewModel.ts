@@ -113,7 +113,7 @@ function extractCalculatorInputsFromSnapshot(snapshot: Record<string, unknown> |
   return null;
 }
 
-export function extractSnapshotOutputs(snapshot: Record<string, unknown> | null): AnyRecord | null {
+function extractSnapshotOutputs(snapshot: Record<string, unknown> | null): AnyRecord | null {
   const root = isRecord(snapshot?.calculator_snapshot) ? (snapshot?.calculator_snapshot as AnyRecord) : snapshot;
   return isRecord(root?.outputs) ? (root.outputs as AnyRecord) : null;
 }

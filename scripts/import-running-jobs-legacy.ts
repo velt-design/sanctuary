@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createClient } from '@supabase/supabase-js';
 import * as XLSX from 'xlsx';
-import { normalizeProjectStatus } from '../lib/types/project';
+import { normalizePipelineStageKey } from '../apps/portal/lib/projects/pipelineDefinition';
 import {
   LEGACY_RUNNING_JOB_SOURCE_COLUMNS,
   emptyLegacySourceCells,
@@ -123,6 +123,11 @@ function buildNameAddressKey(name: string | null, address: string | null): strin
   return `${name}::${address}`;
 }
 
+function normalizeLegacyPipelineStatus(raw: unknown): string {
+  const stage = normalizePipelineStageKey(typeof raw === 'string' ? raw : null);
+  return stage ? stage.toUpperCase() : 'NEW';
+}
+
 function readSourceCells(sheet: XLSX.WorkSheet, rowNumber: number): LegacyRunningJobSourceCells {
   const cells = emptyLegacySourceCells();
   for (const column of LEGACY_RUNNING_JOB_SOURCE_COLUMNS) {
@@ -218,10 +223,10 @@ async function loadLiveMatchCandidates(supabase: any): Promise<LiveMatchCandidat
 
   return (Array.isArray(projectsRes.data) ? projectsRes.data : [])
     .map((row: any) => {
-      const normalizedStage = normalizeProjectStatus(row?.pipeline_stage);
+      const normalizedStage = normalizeLegacyPipelineStatus(row?.pipeline_stage);
       const id = typeof row?.id === 'string' ? row.id : '';
       if (!id) return null;
-      if (!INCLUDED_STAGES.has(normalizedStage.status) && !scheduledProjectIds.has(id)) return null;
+      if (!INCLUDED_STAGES.has(normalizedStage) && !scheduledProjectIds.has(id)) return null;
 
       const contact = Array.isArray(row?.contacts) ? row.contacts[0] ?? null : row?.contacts ?? null;
       const name = typeof contact?.name === 'string' && contact.name.trim() ? contact.name : typeof row?.name === 'string' ? row.name : null;

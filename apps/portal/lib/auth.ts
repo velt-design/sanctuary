@@ -13,7 +13,7 @@ import {
 } from '@/lib/portalAccess';
 import { redirect } from 'next/navigation';
 
-export type PortalSession = {
+type PortalSession = {
   user: User;
   role: PortalRole;
 };
@@ -54,7 +54,7 @@ function redirectForAccessState(accessState: PortalAccessState, callbackUrl: str
   throw new Error('Expected authenticated portal access state before redirect handling.');
 }
 
-export async function requirePortalSessionPageAccess(callbackUrl: string): Promise<PortalSession> {
+async function requirePortalSessionPageAccess(callbackUrl: string): Promise<PortalSession> {
   const accessState = await getPortalAccessState();
   if (accessState.kind !== 'authenticated') {
     redirectForAccessState(accessState, callbackUrl);

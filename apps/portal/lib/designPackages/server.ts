@@ -806,53 +806,6 @@ export async function updateDesignRequestDesignerNote(requestId: string, note: s
   return { requestId: appRequestId(requestUuid) };
 }
 
-export async function loadDesignRequestForLegacyProjectCard(projectId: string): Promise<{
-  id: string;
-  tier: DesignRequestPriorityTier;
-  status: DesignRequestStatus;
-  dueAt: string | null;
-  notes: string | null;
-  createdAt: string;
-  completedAt: string | null;
-} | null> {
-  const supabase = await getSupabaseServerAuth();
-  const projectUuid = uuidFromAppId(projectId, 'proj');
-  try {
-    const requests = await loadRawDesignRequestsForProjects([projectUuid]);
-    const current = requests.find((row) => ACTIVE_STATUSES.has(asStatus(row.status))) ?? requests[0] ?? null;
-    if (current) {
-      return {
-        id: current.id,
-        tier: asPriorityTier(current.priority_tier),
-        status: asStatus(current.status),
-        dueAt: trimString(current.due_at),
-        notes: trimString(current.designer_note) ?? trimString(current.request_note),
-        createdAt: current.requested_at ?? current.updated_at ?? new Date().toISOString(),
-        completedAt: trimString(current.completed_at),
-      };
-    }
-  } catch (error) {
-    if (!isMissingSchemaError(error)) throw error;
-  }
-
-  const legacyRes = await supabase.from('design_package_tickets').select('*').eq('project_id', projectUuid).maybeSingle();
-  if (legacyRes.error) {
-    if (isMissingSchemaError(legacyRes.error)) return null;
-    throw legacyRes.error;
-  }
-  if (!legacyRes.data) return null;
-  const row = legacyRes.data as any;
-  return {
-    id: String(row.id ?? ''),
-    tier: asPriorityTier(row.tier),
-    status: asStatus(row.status),
-    dueAt: trimString(row.due_at),
-    notes: trimString(row.notes),
-    createdAt: trimString(row.created_at) ?? new Date().toISOString(),
-    completedAt: trimString(row.completed_at),
-  };
-}
-
 export async function markDesignRequestOrLegacyTicketDoneByUuid(rawId: string): Promise<{ projectUuid: string }> {
   const supabase = await getSupabaseServerAuth();
   try {

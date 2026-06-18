@@ -2,7 +2,7 @@ export const PORTAL_THEME_OVERRIDE_KEYS = ['accent', 'text', 'text_muted', 'text
 
 export type PortalThemeOverrideKey = (typeof PORTAL_THEME_OVERRIDE_KEYS)[number];
 export type PortalThemePresetId = 'sanctuary-burgundy' | 'stone-olive' | 'harbor-blue' | 'monochrome';
-export type PortalThemePresetKind = 'system' | 'user';
+type PortalThemePresetKind = 'system' | 'user';
 export type PortalThemeMode = 'merge' | 'replace' | 'reset';
 export type HexColor = `#${string}`;
 

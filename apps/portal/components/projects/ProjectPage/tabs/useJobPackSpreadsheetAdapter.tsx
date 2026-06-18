@@ -199,7 +199,7 @@ function SheetToolbar({
   );
 }
 
-export { JOB_PACK_SHEETS, coerceJobPackSheet, type JobPackSheetKey };
+export { coerceJobPackSheet, type JobPackSheetKey };
 
 export function useJobPackSpreadsheetAdapter({
   hostKey,

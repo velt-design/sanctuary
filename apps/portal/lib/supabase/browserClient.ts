@@ -55,7 +55,7 @@ export function supabaseRuntimeUrl(): string {
   return envSupabaseUrl() || hydrated()?.url || '';
 }
 
-export function supabaseRuntimeAnonKey(): string {
+function supabaseRuntimeAnonKey(): string {
   return envSupabaseAnonKey() || hydrated()?.anonKey || '';
 }
 

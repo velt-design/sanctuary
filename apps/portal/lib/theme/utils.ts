@@ -28,11 +28,6 @@ export function hexToRgbCsv(hex: string): string {
   return `${r}, ${g}, ${b}`;
 }
 
-export function portalAccentRgba(alpha: number, accentRgbCsv: string): string {
-  const clamped = Number.isFinite(alpha) ? Math.max(0, Math.min(1, alpha)) : 1;
-  return `rgba(${accentRgbCsv}, ${clamped})`;
-}
-
 export function sanitizePortalThemeOverrides(raw: unknown): {
   overrides: PortalThemeOverrides;
   invalid_keys: string[];

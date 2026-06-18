@@ -5,7 +5,7 @@ import {
   type BlindLineItemInput,
   type BlindLineItemPricing,
   type BlindPricingResult,
-} from '@/lib/costing/blinds';
+} from '@sp/costing';
 import { toNumber } from './calculatorInputs';
 
 type BlindOption<T extends string> = {

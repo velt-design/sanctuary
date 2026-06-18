@@ -10,25 +10,10 @@ function requiredEnv(name: 'NEXT_PUBLIC_SUPABASE_URL' | 'NEXT_PUBLIC_SUPABASE_AN
 }
 
 let cachedServer: SupabaseClient | null = null;
-let cachedAnon: SupabaseClient | null = null;
 let cachedServiceRole: SupabaseClient | null = null;
 let cachedUrl = '';
 let cachedServerKey = '';
-let cachedAnonKey = '';
 let cachedServiceRoleKey = '';
-
-export function getSupabaseAnon(): SupabaseClient {
-  const url = requiredEnv('NEXT_PUBLIC_SUPABASE_URL');
-  const key = requiredEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY');
-
-  if (cachedAnon && cachedUrl === url && cachedAnonKey === key) return cachedAnon;
-  cachedUrl = url;
-  cachedAnonKey = key;
-  cachedAnon = createClient(url, key, {
-    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
-  });
-  return cachedAnon;
-}
 
 // Compatibility client for untouched server callers. New code should prefer
 // `supabaseServiceRole` for server-owned operations or `getSupabaseServerAuth()`
@@ -64,13 +49,6 @@ export function getSupabaseServiceRole(): SupabaseClient {
 function bindIfFunction<T>(value: T, ctx: any): T {
   return (typeof value === 'function' ? (value as any).bind(ctx) : value) as T;
 }
-
-export const supabaseAnon: SupabaseClient = new Proxy({} as SupabaseClient, {
-  get(_target, prop) {
-    const client = getSupabaseAnon() as any;
-    return bindIfFunction(client[prop], client);
-  },
-});
 
 export const supabaseServer: SupabaseClient = new Proxy({} as SupabaseClient, {
   get(_target, prop) {

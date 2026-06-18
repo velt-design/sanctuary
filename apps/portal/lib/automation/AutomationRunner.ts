@@ -580,7 +580,7 @@ async function setProjectNextAction(projectId: string, nextActionAt: string | nu
   throw error;
 }
 
-export class AutomationRunner {
+class AutomationRunner {
   async emitEvent(params: {
     type: string;
     projectId?: string | null;

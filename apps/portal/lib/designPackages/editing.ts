@@ -9,7 +9,7 @@ import { isKnownDesignPackageDesignerId } from './designers';
 
 export type NormalizedDesignListCellValue = string | DesignRequestPriorityTier | DesignRequestStatus | null;
 
-export type DesignListCellEditability = {
+type DesignListCellEditability = {
   editable: boolean;
   reason?: string;
 };

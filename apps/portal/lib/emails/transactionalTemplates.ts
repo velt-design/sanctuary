@@ -1,9 +1,9 @@
 export const EMAIL_DESIGN_CONSULTATION_BOOKED_V1 = 'EMAIL_DESIGN_CONSULTATION_BOOKED_V1' as const;
-export const EMAIL_QUOTE_READY_V1 = 'EMAIL_QUOTE_READY_V1' as const;
+const EMAIL_QUOTE_READY_V1 = 'EMAIL_QUOTE_READY_V1' as const;
 export const EMAIL_PROJECT_SCHEDULED_V1 = 'EMAIL_PROJECT_SCHEDULED_V1' as const;
 export const EMAIL_PROJECT_COMPLETED_V1 = 'EMAIL_PROJECT_COMPLETED_V1' as const;
 
-export type PortalTransactionalTemplateId =
+type PortalTransactionalTemplateId =
   | typeof EMAIL_DESIGN_CONSULTATION_BOOKED_V1
   | typeof EMAIL_QUOTE_READY_V1
   | typeof EMAIL_PROJECT_SCHEDULED_V1

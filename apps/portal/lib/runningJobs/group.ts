@@ -45,10 +45,6 @@ export function groupRunningJobRows(rows: RunningJobRow[]): RunningJobsResponse[
     }));
 }
 
-export function replaceRunningJobRowInGroups(groups: RunningJobsResponse['groups'], updatedRow: RunningJobRow): RunningJobsResponse['groups'] {
-  return updateRunningJobRowInGroups(groups, updatedRow.projectId, () => updatedRow);
-}
-
 export function updateRunningJobRowInGroups(
   groups: RunningJobsResponse['groups'],
   projectId: string,

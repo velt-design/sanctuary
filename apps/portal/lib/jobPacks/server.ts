@@ -208,16 +208,6 @@ function mapGenerationRow(params: {
   };
 }
 
-export async function hasGeneratedJobPacksForProject(projectUuid: string): Promise<boolean> {
-  const client = await resolveSupabaseClient();
-  const res = await client.from('job_pack_generations').select('id').eq('project_id', projectUuid).limit(1).maybeSingle();
-  if (res.error) {
-    if (isMissingSchemaError(res.error)) return false;
-    throw res.error;
-  }
-  return Boolean(res.data?.id);
-}
-
 export async function loadLatestJobPackGenerationForEstimate(estimateUuid: string): Promise<JobPackGenerationSummary | null> {
   const client = await resolveSupabaseClient();
   const res = await client

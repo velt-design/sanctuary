@@ -1,5 +1,5 @@
 import type { PortalThemePreset, PortalThemePresetId, PortalThemeTokens } from './types';
-import { BRAND_ACCENT_HEX, BRAND_ACCENT_PDF_RGB, BRAND_ACCENT_RGB_CSV } from '@sp/theme';
+import { BRAND_ACCENT_HEX, BRAND_ACCENT_RGB_CSV } from '@sp/theme';
 
 const PORTAL_BRAND_ACCENT_HEX = BRAND_ACCENT_HEX.toUpperCase() as PortalThemeTokens['accent'];
 
@@ -53,11 +53,9 @@ export const PORTAL_THEME_PRESETS: PortalThemePreset[] = [
 export const PORTAL_DEFAULT_THEME_PRESET_ID: PortalThemePresetId = 'stone-olive';
 export const PORTAL_DEFAULT_THEME_PRESET: PortalThemePreset =
   PORTAL_THEME_PRESETS.find((preset) => preset.id === PORTAL_DEFAULT_THEME_PRESET_ID) ?? PORTAL_THEME_PRESETS[0];
-export const PORTAL_DEFAULT_THEME_TOKENS: PortalThemeTokens = PORTAL_DEFAULT_THEME_PRESET.tokens;
 
 export const PORTAL_DEFAULT_ACCENT_HEX = PORTAL_BRAND_ACCENT_HEX;
 export const PORTAL_DEFAULT_ACCENT_RGB_CSV = BRAND_ACCENT_RGB_CSV;
-export const PORTAL_DEFAULT_ACCENT_PDF_RGB = BRAND_ACCENT_PDF_RGB;
 
 const PRESET_BY_ID = new Map<PortalThemePresetId, PortalThemePreset>(PORTAL_THEME_PRESETS.map((preset) => [preset.id, preset]));
 

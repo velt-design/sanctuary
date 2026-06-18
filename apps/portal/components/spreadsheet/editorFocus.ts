@@ -1,6 +1,6 @@
 import type { SpreadsheetActivationTrigger, SpreadsheetEditingCell } from './types';
 
-export type SpreadsheetEditorElement = HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
+type SpreadsheetEditorElement = HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
 
 function moveCaretToEnd(node: HTMLInputElement | HTMLTextAreaElement): void {
   try {

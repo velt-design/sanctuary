@@ -7,9 +7,7 @@ This doc owns current-state guidance for portal automation events, project tasks
 ## Ownership
 
 - Automation runner: `apps/portal/lib/automation/AutomationRunner.ts`.
-- Automation read/update repo: `apps/portal/lib/repo/automationRepo.ts`.
 - Automation cache keys: `apps/portal/lib/cache/automationCache.ts`.
-- Automation types: `apps/portal/lib/types/automation.ts`.
 - Portal transactional email helpers/templates: `apps/portal/lib/emails`.
 - Project action routes that emit automation events: `apps/portal/app/api/staff/v1/projects/[projectId]/action`.
 - Email preview route: `apps/portal/app/api/staff/v1/projects/[projectId]/emails/[emailId]/preview/route.ts`.
@@ -51,7 +49,7 @@ The email preview route renders an outbox row by template ID and variables. It u
 - `AutomationRunner` is server-only and uses service-role access intentionally.
 - Staff project action and preview routes must use staff auth helpers.
 - Public marketing enquiry/contact routes may write lead and email/audit records from server code, but must not expose staff workflow data.
-- Browser automation repo access currently reads project tasks, follow-ups, outbox, and audit events, and marks tasks/follow-ups done through the browser Supabase client. Do not expand this direct browser-write surface; prefer staff API routes for new write behavior.
+- Browser task and activity access should use current project/dashboard APIs and query helpers. Do not reintroduce direct browser automation table writes; prefer staff API routes for new write behavior.
 - Service-role keys, raw email provider responses, and private customer data must not reach client props, logs, generated documents, or public routes.
 
 ## Guardrails

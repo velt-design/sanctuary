@@ -69,7 +69,7 @@ function toExcelColumnLetter(index: number): string {
   return out;
 }
 
-export type UseSpreadsheetShellArgs<TRow, TKey extends string> = {
+type UseSpreadsheetShellArgs<TRow, TKey extends string> = {
   columns: readonly SpreadsheetColumn<TKey>[];
   groups: readonly SpreadsheetGroup<TRow>[];
   rowNumberRows: readonly TRow[];
@@ -79,7 +79,7 @@ export type UseSpreadsheetShellArgs<TRow, TKey extends string> = {
   isRowSelectable?: (row: TRow) => boolean;
 };
 
-export type UseSpreadsheetShellResult<TRow, TKey extends string> = {
+type UseSpreadsheetShellResult<TRow, TKey extends string> = {
   activeCell: SpreadsheetActiveCell<TKey> | null;
   setActiveCell: (cell: SpreadsheetActiveCell<TKey> | null) => void;
   displayColumns: SpreadsheetDisplayColumn<TKey>[];

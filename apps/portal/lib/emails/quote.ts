@@ -1,5 +1,4 @@
 import { renderTemplate } from '@/lib/emails/renderTemplate';
-import { sendTransactionalEmail } from '@/lib/emails/sendTransactionalEmail';
 
 export type QuoteReadyEmailInput = {
   to: string | string[];
@@ -31,18 +30,3 @@ export async function renderQuoteReadyEmail(input: QuoteReadyEmailInput): Promis
   return renderTemplate('quote-ready', input);
 }
 
-export async function sendQuoteReadyEmail(input: QuoteReadyEmailInput) {
-  const { html, text } = await renderQuoteReadyEmail(input);
-
-  const response = await sendTransactionalEmail({
-    to: input.to,
-    cc: input.cc,
-    bcc: input.bcc,
-    subject: input.subject ?? `Quote ready - ${input.quote_number}`,
-    html,
-    text,
-    attachments: input.attachments,
-  });
-
-  return { response, html, text };
-}

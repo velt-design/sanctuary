@@ -1,16 +1,16 @@
 import { render } from '@react-email/render';
 import type { ReactElement } from 'react';
-import { getCallWindowText } from '../../apps/marketing/emails/utils/callWindow';
+import { getCallWindowText } from '../emails/utils/callWindow';
 
-import { CustomerResidentialEmail } from '../../apps/marketing/emails/templates/customerResidential';
-import { CustomerCommercialEmail } from '../../apps/marketing/emails/templates/customerCommercial';
-import { CustomerProfessionalEmail } from '../../apps/marketing/emails/templates/customerProfessional';
+import { CustomerResidentialEmail } from '../emails/templates/customerResidential';
+import { CustomerCommercialEmail } from '../emails/templates/customerCommercial';
+import { CustomerProfessionalEmail } from '../emails/templates/customerProfessional';
 
 export const EMAIL_WEBSITE_AUTORESPONDER_RES_V1 = 'EMAIL_WEBSITE_AUTORESPONDER_RES_V1' as const;
 export const EMAIL_WEBSITE_AUTORESPONDER_COM_V1 = 'EMAIL_WEBSITE_AUTORESPONDER_COM_V1' as const;
 export const EMAIL_WEBSITE_AUTORESPONDER_PRO_V1 = 'EMAIL_WEBSITE_AUTORESPONDER_PRO_V1' as const;
 
-export type WebsiteAutoresponderTemplateId =
+type WebsiteAutoresponderTemplateId =
   | typeof EMAIL_WEBSITE_AUTORESPONDER_RES_V1
   | typeof EMAIL_WEBSITE_AUTORESPONDER_COM_V1
   | typeof EMAIL_WEBSITE_AUTORESPONDER_PRO_V1;

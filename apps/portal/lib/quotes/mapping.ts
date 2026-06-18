@@ -6,7 +6,7 @@ import {
   normalizeBlindsState,
 } from '@/lib/types/calculator';
 import type { Estimate } from '@/lib/types/estimate';
-import { priceAllBlinds, type BlindLineItemInput } from '@/lib/costing/blinds';
+import { priceAllBlinds, type BlindLineItemInput } from '@sp/costing';
 import type { QuoteLineItem } from './types';
 import { GST_RATE, lineTotalCents, toCents } from './utils';
 import {

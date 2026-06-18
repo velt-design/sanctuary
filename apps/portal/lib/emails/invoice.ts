@@ -1,7 +1,7 @@
 import { renderTemplate } from './renderTemplate';
 import { sendTransactionalEmail } from './sendTransactionalEmail';
 
-export type DepositInvoiceEmailInput = {
+type DepositInvoiceEmailInput = {
   to: string | string[];
   cc?: string[];
   bcc?: string[];

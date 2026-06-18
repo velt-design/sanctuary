@@ -37,7 +37,7 @@ import styles from '@/components/drawings/rail/WorkbenchRail.module.css';
 
 type CommitResult = { ok: boolean; error?: string };
 
-export type ConfiguratorRailMode = 'full' | 'compact';
+type ConfiguratorRailMode = 'full' | 'compact';
 
 type ConfiguratorRailProps = {
   moduleLabel: string;

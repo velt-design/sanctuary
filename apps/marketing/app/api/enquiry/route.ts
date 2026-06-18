@@ -4,14 +4,14 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
 import { calculateCostV1 } from '@sp/costing';
 import type { CostInputsV1 } from '@sp/costing';
-import { QUOTE_MULTIPLIER, type MoneyRange } from '../../../../../lib/pricing/enquiryEstimate';
+import { QUOTE_MULTIPLIER, type MoneyRange } from '@/lib/enquiryEstimate';
 import { buildEnquiryBudgets } from '@/lib/enquiryBudgets';
 import {
   autoSplitByMaxWidth,
   getBlindSystemLimits,
   priceAllBlinds,
   type BlindLineItemInput,
-} from '../../../../../lib/costing/blinds';
+} from '@sp/costing';
 import { buildEstimateDbPayload } from '../../../../../apps/portal/lib/estimates/persistence';
 import { appIdFromUuid } from '../../../../../lib/supabase/mappers';
 import { sendCustomerAutoresponder } from '@/lib/email/sendCustomerAutoresponder';

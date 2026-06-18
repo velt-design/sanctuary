@@ -59,6 +59,7 @@ npm run running-jobs:legacy-import -- path/to/workbook.xlsx
 ```
 
 The import script requires Supabase URL and service-role env. Treat imported legacy rows as transitional data and keep matching logic in `apps/portal/lib/runningJobs/legacy.ts`.
+The script uses the portal-owned pipeline definition for stage normalization; the old root `lib/types` compatibility copies are retired.
 
 ## Spreadsheet Behavior
 

@@ -18,7 +18,7 @@ const MIN_VISIBLE_MS = 450;
 const MAX_TRANSITION_MS = 8000;
 const DEFAULT_MESSAGE = 'Preparing workspace...';
 
-export type PortalRouteTransitionInput = {
+type PortalRouteTransitionInput = {
   href: string;
   label?: string;
   source?: string;

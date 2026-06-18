@@ -31,9 +31,9 @@ export const JOB_PACK_SHEETS = [
 export type JobPackSheetKey = (typeof JOB_PACK_SHEETS)[number]['key'];
 export type JobPackCellKey = 'a' | 'b' | 'c' | 'd' | 'e' | 'f' | 'g';
 export type JobPackEditableCellKey = 'a' | 'c' | 'd';
-export type PowdercoatRowOrigin = 'base' | 'manual' | 'draft';
+type PowdercoatRowOrigin = 'base' | 'manual' | 'draft';
 
-export type PowdercoatSpreadsheetRow = {
+type PowdercoatSpreadsheetRow = {
   origin: PowdercoatRowOrigin;
   storedRow: JobPackPowdercoatStoredRow;
   baseRow: JobPackPowdercoatStoredRow | null;
@@ -48,7 +48,7 @@ export type JobPackRow = {
   powdercoat?: PowdercoatSpreadsheetRow | null;
 };
 
-export type JobPackSheetModel = {
+type JobPackSheetModel = {
   title: string;
   columns: readonly SpreadsheetColumn<JobPackCellKey>[];
   groups: readonly SpreadsheetGroup<JobPackRow>[];
@@ -58,7 +58,7 @@ export type JobPackSheetModel = {
   emptyMessage: string;
 };
 
-export type ReadableInputs = {
+type ReadableInputs = {
   modules: Array<{
     title: string;
     rows: Array<{ label: string; value: string }>;
@@ -66,12 +66,12 @@ export type ReadableInputs = {
   jobRows: Array<{ label: string; value: string }>;
 };
 
-export type SnapshotFields = {
+type SnapshotFields = {
   contact: { displayName: string; email: string; phone: string };
   project: { projectName: string; region?: string; siteAddress?: string; quoteRef?: string };
 };
 
-export type WorkbookContext = {
+type WorkbookContext = {
   detail: EstimateDetail;
   estimate: Estimate;
   jobPack: JobPack;
@@ -85,9 +85,9 @@ export type JobPackWorkbook = WorkbookContext & {
 };
 
 export const DEFAULT_JOB_PACK_SHEET: JobPackSheetKey = 'materials';
-export const POWDERCOAT_DRAFT_ROW_ID = '__powdercoating_draft__';
+const POWDERCOAT_DRAFT_ROW_ID = '__powdercoating_draft__';
 
-export function emptyPowdercoatOverrideState(): JobPackPowdercoatOverrideState {
+function emptyPowdercoatOverrideState(): JobPackPowdercoatOverrideState {
   return { version: null, rows: [] };
 }
 
@@ -116,13 +116,13 @@ export function formatMoney(value: number | null | undefined): string {
   return `$${value.toFixed(2)}`;
 }
 
-export function formatNumber(value: number | null | undefined): string {
+function formatNumber(value: number | null | undefined): string {
   if (typeof value !== 'number' || !Number.isFinite(value)) return '-';
   const rounded = Math.round(value * 100) / 100;
   return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
 }
 
-export function formatDateTime(value: string | null | undefined): string {
+function formatDateTime(value: string | null | undefined): string {
   if (!value) return '-';
   const date = new Date(value);
   if (Number.isNaN(date.valueOf())) return value;
@@ -537,7 +537,7 @@ export function getPowdercoatValidationMessage(key: JobPackEditableCellKey): str
   }
 }
 
-export function buildSummarySheet({ detail, estimate, jobPack, snapshot }: WorkbookContext): JobPackSheetModel {
+function buildSummarySheet({ detail, estimate, jobPack, snapshot }: WorkbookContext): JobPackSheetModel {
   const summaryRows = ensureRows(
     [
       makeRow('project-name', { a: 'Project', b: snapshot.project.projectName || '-' }),
@@ -915,7 +915,7 @@ export function buildWorkbook(
   };
 }
 
-export function buildPowdercoatWorkbookFromModel(
+function buildPowdercoatWorkbookFromModel(
   detail: EstimateDetail,
   rows: JobPackPowdercoatStoredRow[],
   options: JobPackPowdercoatOption[],

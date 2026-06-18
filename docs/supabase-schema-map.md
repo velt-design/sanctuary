@@ -212,7 +212,7 @@ Primary write path:
 Primary read path:
 
 - Marketing lead and enquiry route handlers.
-- Portal project snapshot and automation repos under `apps/portal/lib/repo/automationRepo.ts`.
+- Portal project snapshot, dashboard task, and automation helpers under `apps/portal/lib/projects`, `apps/portal/lib/dashboard`, and `apps/portal/lib/automation`.
 - Dashboard cached snapshot helper under `apps/portal/lib/dashboard/getDashboardSnapshotCached.ts`.
 - Dashboard data helpers under `apps/portal/lib/dashboard` read recent project-note activity and user-owned dashboard tasks.
 

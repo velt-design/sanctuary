@@ -2,19 +2,18 @@ import 'server-only';
 
 import { getSupabaseServerAuth } from '@/lib/supabase/serverClient';
 import { portalThemeCssVariables } from './cssVars';
-import { PORTAL_THEME_PRESETS } from './presets';
 import { resolvePortalTheme } from './resolve';
-import type { PortalResolvedTheme, PortalThemeOverrides, PortalThemePresetId, PortalThemeTokens, PortalThemeUserPreset } from './types';
+import type { PortalResolvedTheme, PortalThemeOverrides, PortalThemeTokens, PortalThemeUserPreset } from './types';
 import { sanitizePortalThemeOverrides, sanitizePortalThemeTokens } from './utils';
 
-export type ThemeSettingsRow = {
+type ThemeSettingsRow = {
   preset_id: string | null;
   user_preset_id: string | null;
   overrides: unknown;
   updated_at: string | null;
 };
 
-export type ThemeUserPresetRow = {
+type ThemeUserPresetRow = {
   id: string;
   user_id: string;
   name: string;
@@ -106,10 +105,6 @@ export async function loadPortalThemeForUser(userId: string | null | undefined):
 
 export function portalThemeStyleVars(theme: PortalResolvedTheme): Record<string, string> {
   return portalThemeCssVariables(theme);
-}
-
-export function listPortalThemePresets(): Array<{ id: PortalThemePresetId; label: string }> {
-  return PORTAL_THEME_PRESETS.map((preset) => ({ id: preset.id, label: preset.label }));
 }
 
 export function parsePortalThemeRow(row: ThemeSettingsRow | null, userPreset?: PortalThemeUserPreset | null): PortalResolvedTheme {

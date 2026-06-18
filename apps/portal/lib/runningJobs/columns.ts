@@ -1,9 +1,9 @@
 import type { RunningJobCellKey } from './types';
 
-export type RunningJobsColumnKind = 'text' | 'date' | 'boolean' | 'status' | 'number' | 'notes';
-export type RunningJobsColumnSource = 'manual' | 'schedule' | 'estimate';
+type RunningJobsColumnKind = 'text' | 'date' | 'boolean' | 'status' | 'number' | 'notes';
+type RunningJobsColumnSource = 'manual' | 'schedule' | 'estimate';
 
-export type RunningJobsColumnConfig = {
+type RunningJobsColumnConfig = {
   key: RunningJobCellKey;
   letter: string;
   label: string;

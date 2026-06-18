@@ -1,9 +1,9 @@
 import type { DesignListCellKey } from './types';
 
-export type DesignListColumnKind = 'text' | 'date' | 'status' | 'notes';
-export type DesignListColumnSource = 'request' | 'derived' | 'quote' | 'visit';
+type DesignListColumnKind = 'text' | 'date' | 'status' | 'notes';
+type DesignListColumnSource = 'request' | 'derived' | 'quote' | 'visit';
 
-export type DesignListColumnConfig = {
+type DesignListColumnConfig = {
   key: DesignListCellKey;
   letter: string;
   label: string;

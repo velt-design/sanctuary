@@ -21,7 +21,7 @@ export interface DashboardKpis {
   installsThisWeek: number; // scheduled start in next 7 days
 }
 
-export interface AttentionItem {
+interface AttentionItem {
   key: AttentionKey;
   label: string;
   count: number;
@@ -53,7 +53,7 @@ interface CrewAvailabilityItem {
   nextAvailableDate?: string | null; // YYYY-MM-DD
 }
 
-export interface ScheduleSnapshot {
+interface ScheduleSnapshot {
   startingSoon: ScheduleStartingItem[]; // next 7 days
   crewAvailability: CrewAvailabilityItem[]; // all crews
   hrefBoard: string;
@@ -70,7 +70,7 @@ interface SiteVisitItem {
   locationLabel?: string | null;
 }
 
-export interface SiteVisitsSnapshot {
+interface SiteVisitsSnapshot {
   unscheduledCount: number;
   today: SiteVisitItem[];
   next7: SiteVisitItem[];

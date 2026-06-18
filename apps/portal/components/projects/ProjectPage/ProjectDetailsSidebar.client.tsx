@@ -44,7 +44,7 @@ function saveLabel(args: { dirty: boolean; isSaving: boolean; lastSavedAt: strin
   return null;
 }
 
-export function buildProjectDetailsRequest(projectId: string, contactId: string | null, draft: PortalProjectDetailsDraft) {
+function buildProjectDetailsRequest(projectId: string, contactId: string | null, draft: PortalProjectDetailsDraft) {
   return {
     path: `/api/projects/${encodeURIComponent(projectId)}/details`,
     body: JSON.stringify({

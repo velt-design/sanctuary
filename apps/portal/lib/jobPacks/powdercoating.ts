@@ -17,7 +17,7 @@ function normalizePowdercoatUnit(value: string): string {
   return String(value ?? '').replace(/\s+/g, ' ').trim();
 }
 
-export function buildPowdercoatBaseRowId(input: {
+function buildPowdercoatBaseRowId(input: {
   profile: string;
   colour: string;
   stockLengthM: number | null | undefined;

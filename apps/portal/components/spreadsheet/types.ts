@@ -71,7 +71,7 @@ export type SpreadsheetPreparedOptimisticEdit<TConfirmedModel> = {
   persist: (confirmedModel: TConfirmedModel) => Promise<SpreadsheetOptimisticEditOutcome<TConfirmedModel>>;
 };
 
-export type SpreadsheetOptimisticEditingController<
+type SpreadsheetOptimisticEditingController<
   TRow,
   TEditableKey extends string,
   TEditorValue,

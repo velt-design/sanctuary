@@ -1,8 +1,4 @@
-import type { ProjectStatus, QueueMode } from './types';
-
-export function dashboardHref(mode: QueueMode) {
-  return `/dashboard?queue=${mode}`;
-}
+import type { ProjectStatus } from './types';
 
 export function projectsHref(params: Record<string, string | number | boolean | undefined>) {
   const sp = new URLSearchParams();

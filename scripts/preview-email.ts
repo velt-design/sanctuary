@@ -1,7 +1,7 @@
 import { render } from '@react-email/render';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { toIndicativeRangeOneSided } from '../lib/pricing/enquiryEstimate';
+import { toIndicativeRangeOneSided } from '../apps/marketing/lib/enquiryEstimate';
 import { getCallWindowText } from '../apps/marketing/emails/utils/callWindow';
 import type { ResidentialOrCommercial, Professional } from '../apps/marketing/emails/types';
 

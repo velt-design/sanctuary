@@ -5,13 +5,13 @@ import { createPortal } from 'react-dom';
 import styles from './Modal.module.css';
 import { lockDocumentScroll, unlockDocumentScroll } from '../scrollLock';
 
-export const MODAL_DEFAULTS = {
+const MODAL_DEFAULTS = {
   closeOnBackdrop: true,
   closeOnEsc: true,
   maxWidthPx: 720,
 } as const;
 
-export type ModalProps = {
+type ModalProps = {
   open: boolean;
   onClose: () => void;
   children: React.ReactNode;

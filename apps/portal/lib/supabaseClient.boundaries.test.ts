@@ -7,11 +7,13 @@ const COMPATIBILITY_CLIENT_FILE = 'apps/portal/lib/supabaseClient.ts';
 const SERVICE_ROLE_ALLOWLIST = [
   'apps/portal/app/api/admin/access/route.ts',
   'apps/portal/lib/automation/AutomationRunner.ts',
+  'apps/portal/lib/dashboard/getDashboardData.ts',
   'apps/portal/lib/dashboard/getDashboardSnapshotCached.ts',
   'apps/portal/lib/estimates/server.ts',
   'apps/portal/lib/invoices/server.ts',
   'apps/portal/lib/quotes/serverCore.ts',
   'apps/portal/lib/quotes/serverEmail.ts',
+  'apps/portal/lib/quotes/serverLoaders.ts',
   'apps/portal/lib/scheduling/scheduleCommands.ts',
   'apps/portal/lib/scheduling/scheduleReadiness.ts',
   'apps/portal/lib/scheduling/scheduleV2Server.ts',
