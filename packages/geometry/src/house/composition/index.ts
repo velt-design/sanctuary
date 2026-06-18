@@ -29,3 +29,8 @@ export { detectFusedRectangle } from "./fusedRectangleDetector";
 export type { FusedRectangleDetection } from "./fusedRectangleDetector";
 export { composeRoofFromComposition } from "./composeRoofFromComposition";
 export type { ComposeRoofResult } from "./composeRoofFromComposition";
+export { detachHouseFormAtSeam } from "./detachHouseFormAtSeam";
+export type {
+  DetachHouseFormError,
+  DetachHouseFormResult,
+} from "./detachHouseFormAtSeam";
