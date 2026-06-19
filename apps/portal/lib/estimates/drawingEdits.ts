@@ -100,15 +100,18 @@ type EstimateDrawingFieldApplyResult =
       error: string;
     };
 
+/**
+ * PR-WB-COMPOSITION-ONLY (2026-06-19): the surviving authoring
+ * paths are `rotate`, `attachment_side`, `position`, and the new
+ * `composition_resize`. The old `mode` / `preset` / `param` /
+ * `polygon` / `custom_polygon` / `preset_resize` types are kept
+ * as deprecated no-op variants because the legacy estimate sheet
+ * UI (`EstimateDrawingSheet.tsx`, `ConfiguratorRail.tsx`) still
+ * references them. The workbench applier ignores them; the
+ * deprecated variants will disappear when those legacy UIs are
+ * retired in a separate sweep.
+ */
 export type EstimateDrawingFootprintEdit =
-  | {
-      type: 'mode';
-      mode: CalculatorHouseFootprintMode;
-    }
-  | {
-      type: 'preset';
-      preset: CalculatorModuleInputs['houseFootprintPreset'];
-    }
   | {
       type: 'rotate';
       delta: -1 | 1;
@@ -116,6 +119,36 @@ export type EstimateDrawingFootprintEdit =
   | {
       type: 'attachment_side';
       side: CalculatorModuleInputs['attachmentSide'];
+    }
+  | {
+      type: 'composition_resize';
+      originXMm: number;
+      originYMm: number;
+      widthMm: number;
+      depthMm: number;
+      transformDeltaXM: number;
+      transformDeltaYM: number;
+    }
+  | {
+      type: 'position';
+      position:
+        | {
+            originXMm: string;
+            originYMm: string;
+            rotationDeg: string;
+          }
+        | null;
+    }
+  // Deprecated edit types — still referenced by the legacy estimate
+  // sheet UI (`EstimateDrawingSheet.tsx`, `ConfiguratorRail.tsx`).
+  // The workbench applier ignores them.
+  | {
+      type: 'mode';
+      mode: CalculatorHouseFootprintMode;
+    }
+  | {
+      type: 'preset';
+      preset: CalculatorModuleInputs['houseFootprintPreset'];
     }
   | {
       type: 'param';
@@ -129,34 +162,6 @@ export type EstimateDrawingFootprintEdit =
   | {
       type: 'custom_polygon';
       polygon: CalculatorHouseFootprintPolygonPoint[];
-    }
-  | {
-      // PR-WB-RESIZE-KEEPS-PRESET (2026-06-19): atomic multi-param
-      // update used by the edge-drag commit handler when an
-      // axis-aligned resize of a preset+straight form can be
-      // expressed as updated widthM / bandDepthM / offsetXM /
-      // setbackM instead of a freeform custom polygon. Keeps the
-      // form's mode 'preset' so its composition stays authoritative.
-      type: 'preset_resize';
-      widthM: string;
-      bandDepthM: string;
-      offsetXM: string;
-      setbackM: string;
-    }
-  | {
-      // House first-class spatial position write (stage 3.4 of the
-      // first-class-spatial-entities migration). When set, the geometry
-      // pipeline decodes the custom polygon against a unit frame and applies
-      // this position post-decode — making the house's world location
-      // invariant to pergola dimensions.
-      type: 'position';
-      position:
-        | {
-            originXMm: string;
-            originYMm: string;
-            rotationDeg: string;
-          }
-        | null;
     };
 
 export type EstimateDrawingModuleFieldEdit =

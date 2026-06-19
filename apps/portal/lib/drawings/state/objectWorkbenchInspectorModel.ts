@@ -500,11 +500,11 @@ function buildDiagnostics(input: {
     activeOpeningId: activeOpening?.id ?? null,
     activeDeckSupport: input.activeDeckSupport,
     activeDeckInteraction: input.activeDeckInteraction,
-    footprintSource: houseFormContext.houseForm
-      ? houseFormContext.houseForm.footprint.mode === 'custom_polygon'
-        ? 'custom_saved'
-        : 'preset_derived'
-      : null,
+    // PR-WB-COMPOSITION-ONLY (2026-06-19): every form is composition-
+    // authored. The downstream diagnostic type still has the
+    // legacy enum; report 'custom_saved' as a synonym for
+    // "composition-driven" until the enum is updated.
+    footprintSource: houseFormContext.houseForm ? 'custom_saved' : null,
     lowConfidence: houseFormContext.lowConfidence,
     migrationWarningCount: houseFormContext.warnings.length,
     activeTrust: input.activeTrust,

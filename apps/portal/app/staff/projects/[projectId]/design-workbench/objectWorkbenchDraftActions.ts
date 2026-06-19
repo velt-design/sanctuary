@@ -1,5 +1,5 @@
 import {
-  buildHouseFootprintPresetSideLocalPoints,
+  composeFootprintFromComposition,
   getHouseRoofFormBehavior,
   normalizeHouseRoofPitchInputForForm,
 } from '@sp/geometry';
@@ -161,20 +161,14 @@ function resolveOpeningWallSpanM(wall: DerivedWallModel): number {
 function houseFormLocalPolygon(input: {
   houseForm: HouseFormModel;
 }): CalculatorHouseFootprintPolygonPoint[] {
-  if (input.houseForm.footprint.mode === 'custom_polygon' && input.houseForm.footprint.polygon.length) {
-    return input.houseForm.footprint.polygon;
-  }
-  const widthMm = 6000;
-  const depthMm = 3000;
-  return buildHouseFootprintPresetSideLocalPoints({
-    pergolaWidthMm: widthMm,
-    pergolaDepthMm: depthMm,
-    preset: input.houseForm.footprint.preset,
-    params: input.houseForm.footprint.params,
-    attachmentSide: input.houseForm.footprint.attachmentSide,
-  }).map((point) => ({
-    alongM: String(point.alongM),
-    depthM: String(point.depthM),
+  // PR-WB-COMPOSITION-ONLY (2026-06-19): polygon comes from the
+  // composition's union, encoded back into the workbench's legacy
+  // (alongM, depthM) vocabulary (alongM = x in metres, depthM =
+  // -y in metres).
+  const polygon = composeFootprintFromComposition(input.houseForm.composition);
+  return polygon.map((point) => ({
+    alongM: String(point.x / 1000),
+    depthM: String(-point.y / 1000),
   }));
 }
 
@@ -522,12 +516,14 @@ export function applyObjectWorkbenchOpeningPatch(input: {
 export function resolveDeckReferencePolygon(
   houseForm: HouseFormModel | null,
 ): CalculatorHouseFootprintPolygonPoint[] {
+  // PR-WB-COMPOSITION-ONLY (2026-06-19): the composition's union
+  // polygon already has offsetXM / setbackM baked in. Pass null
+  // params so buildDeckReferenceHousePolygon doesn't double-apply
+  // the offsets.
   return houseForm
     ? buildDeckReferenceHousePolygon({
-        housePolygon: houseFormLocalPolygon({
-          houseForm,
-        }),
-        footprintParams: houseForm.footprint.params,
+        housePolygon: houseFormLocalPolygon({ houseForm }),
+        footprintParams: null,
       })
     : [];
 }

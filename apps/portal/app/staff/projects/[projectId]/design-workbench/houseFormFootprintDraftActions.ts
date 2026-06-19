@@ -1,131 +1,119 @@
 import type { EstimateDrawingFootprintEdit } from '@/lib/estimates/drawingEdits';
-import type { ObjectFirstHouseFormDraft } from '@/lib/drawings/state/objectFirstWorkbenchModel';
+import type {
+  ObjectFirstHouseFormDraft,
+} from '@/lib/drawings/state/objectFirstWorkbenchModel';
 import { reconcileHouseFormRoofIntentForFootprint } from '@/lib/drawings/state/houseFormRoofIntentForFootprint';
 import {
   normalizeAttachmentSide,
   normalizeDrawingRotationQuarterTurns,
-  normalizeHouseFootprintMode,
-  normalizeHouseFootprintParams,
-  normalizeHouseFootprintPolygon,
   normalizeHouseFootprintPosition,
-  normalizeHouseFootprintPreset,
 } from '@/lib/types/calculator';
+import {
+  isAxisAlignedRectangle,
+  type HouseComposition,
+} from '@sp/geometry';
 
+/**
+ * PR-WB-COMPOSITION-ONLY (2026-06-19): edit applier for the
+ * surviving footprint edit types. The retired types ('mode',
+ * 'preset', 'param', 'polygon', 'custom_polygon', 'preset_resize')
+ * had no path that wrote into the composition; they all mutated
+ * the legacy `footprint.{mode,preset,params,polygon}` sub-object,
+ * which is now gone.
+ *
+ * Surviving types:
+ *   - 'rotate' — quarter-turn the form's transform
+ *   - 'attachment_side' — change which pergola side it attaches to
+ *   - 'position' — set the world-space position
+ *   - 'composition_resize' — atomic rectangle resize of a single-
+ *     primitive composition + compensating transform shift
+ */
 export function applyHouseFormFootprintEdit(input: {
   houseForms: ObjectFirstHouseFormDraft[];
   houseFormId: string;
   edit: EstimateDrawingFootprintEdit;
 }): { ok: true; houseForms: ObjectFirstHouseFormDraft[] } | { ok: false; error: string } {
   let found = false;
+  let errorMessage: string | null = null;
   const houseForms = input.houseForms.map((houseForm) => {
     if (houseForm.id !== input.houseFormId) return houseForm;
     found = true;
 
-    const footprint = houseForm.footprint;
-    const nextHouseForm = (() => {
+    const nextHouseForm = ((): ObjectFirstHouseFormDraft => {
       switch (input.edit.type) {
-      case 'mode':
-        return {
-          ...houseForm,
-          footprint: {
-            ...footprint,
-            mode: normalizeHouseFootprintMode(input.edit.mode),
-          },
-        };
-      case 'preset':
-        return {
-          ...houseForm,
-          footprint: {
-            ...footprint,
-            preset: normalizeHouseFootprintPreset(input.edit.preset),
-          },
-        };
-      case 'rotate':
-        return {
-          ...houseForm,
-          transform: {
-            ...houseForm.transform,
-            rotationQuarterTurns: normalizeDrawingRotationQuarterTurns(
-              houseForm.transform.rotationQuarterTurns + input.edit.delta,
-            ),
-          },
-        };
-      case 'attachment_side':
-        return {
-          ...houseForm,
-          footprint: {
-            ...footprint,
-            attachmentSide: normalizeAttachmentSide(input.edit.side),
-          },
-        };
-      case 'param':
-        return {
-          ...houseForm,
-          footprint: {
-            ...footprint,
-            params: {
-              ...normalizeHouseFootprintParams(footprint.params),
-              [input.edit.key]: input.edit.value,
+        case 'rotate':
+          return {
+            ...houseForm,
+            transform: {
+              ...houseForm.transform,
+              rotationQuarterTurns: normalizeDrawingRotationQuarterTurns(
+                houseForm.transform.rotationQuarterTurns + input.edit.delta,
+              ),
             },
-          },
-        };
-      case 'polygon':
-        return {
-          ...houseForm,
-          footprint: {
-            ...footprint,
-            polygon: normalizeHouseFootprintPolygon(input.edit.polygon),
-          },
-        };
-      case 'custom_polygon':
-        return {
-          ...houseForm,
-          footprint: {
-            ...footprint,
-            mode: 'custom_polygon' as const,
-            polygon: normalizeHouseFootprintPolygon(input.edit.polygon),
-          },
-        };
-      case 'preset_resize': {
-        // PR-WB-RESIZE-KEEPS-PRESET (2026-06-19): atomic update of
-        // widthM / bandDepthM / offsetXM / setbackM for a
-        // preset+straight form whose axis-aligned resize was
-        // converted by tryConvertResizeToPresetParams. Mode stays
-        // 'preset', polygon is cleared (preset polygon is derived
-        // from params); composition is re-synced by the normaliser
-        // on persist.
-        const nextParams = {
-          ...normalizeHouseFootprintParams(footprint.params),
-          widthM: input.edit.widthM,
-          bandDepthM: input.edit.bandDepthM,
-          offsetXM: input.edit.offsetXM,
-          setbackM: input.edit.setbackM,
-        };
-        return {
-          ...houseForm,
-          footprint: {
-            ...footprint,
-            mode: 'preset' as const,
-            polygon: [],
-            params: nextParams,
-          },
-        };
-      }
-      case 'position':
-        return {
-          ...houseForm,
-          footprint: {
-            ...footprint,
+          };
+        case 'attachment_side':
+          return {
+            ...houseForm,
+            attachmentSide: normalizeAttachmentSide(input.edit.side),
+          };
+        case 'position':
+          return {
+            ...houseForm,
             position: normalizeHouseFootprintPosition(input.edit.position),
-          },
-        };
-      default:
-        return houseForm;
+          };
+        case 'composition_resize': {
+          if (houseForm.composition.primitives.length !== 1) {
+            errorMessage =
+              'Resize is only supported on single-rectangle forms. Detach the composite first.';
+            return houseForm;
+          }
+          const primitive = houseForm.composition.primitives[0]!;
+          if (!isAxisAlignedRectangle(primitive)) {
+            errorMessage = 'Resize requires an axis-aligned rectangle.';
+            return houseForm;
+          }
+          const nextComposition: HouseComposition = {
+            primitives: [
+              {
+                ...primitive,
+                originXMm: input.edit.originXMm,
+                originYMm: input.edit.originYMm,
+                widthMm: input.edit.widthMm,
+                depthMm: input.edit.depthMm,
+              },
+            ],
+            joins: [],
+          };
+          return {
+            ...houseForm,
+            composition: nextComposition,
+            transform: {
+              ...houseForm.transform,
+              offsetXM: houseForm.transform.offsetXM + input.edit.transformDeltaXM,
+              offsetYM: houseForm.transform.offsetYM + input.edit.transformDeltaYM,
+            },
+          };
+        }
+        // Deprecated edit types (legacy estimate sheet UI). No-op.
+        case 'mode':
+        case 'preset':
+        case 'param':
+        case 'polygon':
+        case 'custom_polygon':
+          return houseForm;
+        default: {
+          const _exhaustive: never = input.edit;
+          void _exhaustive;
+          return houseForm;
+        }
       }
     })();
     return reconcileHouseFormRoofIntentForFootprint(nextHouseForm);
   });
 
+  if (errorMessage !== null) {
+    return { ok: false, error: errorMessage };
+  }
   if (!found) {
     return { ok: false, error: `House form ${input.houseFormId} not found.` };
   }

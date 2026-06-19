@@ -138,7 +138,11 @@ function buildTrustLabel(status: WorkbenchTrustStatusKind): string {
 }
 
 function describeHouseFootprint(houseForm: HouseFormModel): string {
-  return houseForm.footprint.mode === 'custom_polygon' ? 'Custom footprint' : 'Footprint ready';
+  // PR-WB-COMPOSITION-ONLY (2026-06-19): every form is composition-
+  // driven; the rail labels them by primitive count.
+  const primitiveCount = houseForm.composition.primitives.length;
+  if (primitiveCount === 1) return 'Rectangle';
+  return `Composite (${primitiveCount} rectangles)`;
 }
 
 function railStatusForTrustStatus(status: WorkbenchTrustStatusKind): DrawingWorkbenchRailObjectStatus {

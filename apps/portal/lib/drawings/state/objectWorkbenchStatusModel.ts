@@ -413,17 +413,16 @@ function buildRoofStatus(input: {
   const houseForm = input.houseForm;
   if (!houseForm) return null;
   const rawGeometry = buildHouseFormRawGeometryInput(houseForm);
+  // PR-WB-COMPOSITION-ONLY (2026-06-19): polygon comes from
+  // composition; the legacy `footprint.polygon` branch is gone.
   const roofFootprintPolygon =
     input.derivedFootprintPolygon && input.derivedFootprintPolygon.length > 0
       ? input.derivedFootprintPolygon
-      : houseForm.footprint.polygon.length > 0
-        ? houseForm.footprint.polygon
-        : rawGeometry
-          ? geometryPolygonToSideLocalPolygon(rawGeometry.footprint)
-          : [];
+      : rawGeometry
+        ? geometryPolygonToSideLocalPolygon(rawGeometry.footprint)
+        : [];
   const intentResolution = resolveHouseFormRoofIntentForFootprint({
     houseForm,
-    footprintPolygon: roofFootprintPolygon,
   });
   const intent = intentResolution.roofIntent;
   const footprint = rawGeometry?.footprint ?? localPolygonToGeometryPolygon(roofFootprintPolygon);
@@ -455,7 +454,7 @@ function buildRoofStatus(input: {
     preferredMonoFallDirection:
       intent.form === "mono"
         ? preferredMonoFallDirectionForAttachmentSide(
-            houseForm.footprint.attachmentSide,
+            houseForm.attachmentSide,
           )
         : null,
     enforcePreferredMonoFallDirection: false,
@@ -732,9 +731,9 @@ function buildHouseFormStatus(input: {
   return {
     lowConfidence: input.warnings.length > 0,
     warnings: input.warnings,
-    footprintPreset: houseForm?.footprint.preset ?? null,
+    footprintPreset: null,
     roofForm: roof?.form ?? null,
-    defaultDeckHostEdgeId: houseForm?.footprint.attachmentSide ?? "rear",
+    defaultDeckHostEdgeId: houseForm?.attachmentSide ?? "rear",
     attachmentZoneBlockedSummary: summarizeAttachmentZoneBlocks(
       input.projectModel,
       houseForm,

@@ -37,16 +37,12 @@ export function buildHouseFormFootprintSections({
   houseForm,
   runFootprintCommit: _runFootprintCommit,
 }: BuildHouseFormFootprintSectionsInput): ReactNode[] {
-  const footprintMode = houseForm?.footprint.mode ?? 'preset';
   const fields: ReactNode[] = [];
-  if (footprintMode === 'custom_polygon') {
-    fields.push(
-      <p key="legacy-polygon-badge" className={styles.fieldHint}>
-        This house form was authored as a freeform outline before composition. It
-        renders read-only; recreate it as a rectangle if you need to change shape.
-      </p>,
-    );
-  }
+  // PR-WB-COMPOSITION-ONLY: every form has a composition; there's
+  // no longer a "this is a legacy freeform" branch to call out in
+  // the rail. If migration-from-freeform forms turn out to need a
+  // banner, add a `migrationNotes` field to HouseFormModel and
+  // surface it here.
   if (fieldErrors.outline) {
     fields.push(
       <p key="outline-error" className={styles.fieldError}>

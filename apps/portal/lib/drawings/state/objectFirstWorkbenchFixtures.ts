@@ -34,25 +34,33 @@ function makeHouseForm(input: {
   offsetXM: number;
   attachmentSide: 'rear' | 'front' | 'left' | 'right';
 }): HouseFormModel {
+  const roofIntent = {
+    form: 'mono' as const,
+    material: 'corrugated_iron' as const,
+    primaryPitchDeg: '5',
+    primaryFallDirection: 'negative_y' as const,
+    ridgeAxis: 'x' as const,
+    openGableEndIds: [] as string[],
+  };
   return {
     id: input.id,
     label: input.label,
     transform: { offsetXM: input.offsetXM, offsetYM: 0, rotationQuarterTurns: 0 },
-    footprint: {
-      mode: 'preset',
-      preset: 'straight',
-      params: makeFootprintParams(),
-      polygon: [point('0', '0'), point('6', '0'), point('6', '4'), point('0', '4')],
-      attachmentSide: input.attachmentSide,
+    composition: {
+      primitives: [
+        {
+          kind: 'axisAlignedRectangle' as const,
+          originXMm: 0,
+          originYMm: -4000,
+          widthMm: 6000,
+          depthMm: 4000,
+          roofIntent: { form: 'mono' as const, pitchDeg: 5, fallDirection: 'negative_y' as const },
+        },
+      ],
+      joins: [],
     },
-    roofIntent: {
-      form: 'mono',
-      material: 'corrugated_iron',
-      primaryPitchDeg: '5',
-      primaryFallDirection: 'negative_y',
-      ridgeAxis: 'x',
-      openGableEndIds: [],
-    },
+    attachmentSide: input.attachmentSide,
+    roofIntent,
     storeyMode: 'single_storey',
     attachmentStrategy: null,
     sourceModuleIndexes: [],

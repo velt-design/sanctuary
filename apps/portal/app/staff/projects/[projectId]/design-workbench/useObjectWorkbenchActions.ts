@@ -30,7 +30,6 @@ import {
 } from '@sp/geometry';
 import { deriveHouseFormDisplayLabel } from '@/lib/drawings/state/houseFormDisplayLabel';
 import { rebasePartitionIntoOwnFrame } from '@/lib/drawings/state/houseFormCompositionDetach';
-import { deriveSeamIconCompositionForForm } from '@/lib/drawings/state/houseFormCompositionAdapter';
 import type {
   ObjectWorkbenchDeckPatch,
   ObjectWorkbenchOpeningPatch,
@@ -653,20 +652,8 @@ export function useObjectWorkbenchActions({
           // form that's structurally a rectangle (post-resize) can
           // still be Joined. The accessor returns the authored
           // composition when present, otherwise synthesises one
-          // from a 4-vertex axis-aligned polygon, otherwise null
-          // (truly free-form polygon — can't model as a rectangle
-          // composition in v1). Without this, the chip would
-          // appear (the seam-icon path infers compositions) but
-          // clicking it would error because the action checked
-          // form.composition directly and saw null.
-          const compositionA = deriveSeamIconCompositionForForm(formA);
-          const compositionB = deriveSeamIconCompositionForForm(formB);
-          if (!compositionA || !compositionB) {
-            return {
-              ok: false,
-              error: 'Cannot join: one of these forms is a freeform polygon that does not reduce to a rectangle. Recreate it as a rectangle first.',
-            };
-          }
+          // PR-WB-COMPOSITION-ONLY: every form has composition;
+          // read directly.
           if (
             formA.transform.rotationQuarterTurns !== formB.transform.rotationQuarterTurns
           ) {
@@ -676,10 +663,10 @@ export function useObjectWorkbenchActions({
             };
           }
           const joinResult = joinTwoHouseForms({
-            formA: compositionA,
+            formA: formA.composition,
             formAWorldOffsetXMm: formA.transform.offsetXM * 1000,
             formAWorldOffsetYMm: formA.transform.offsetYM * 1000,
-            formB: compositionB,
+            formB: formB.composition,
             formBWorldOffsetXMm: formB.transform.offsetXM * 1000,
             formBWorldOffsetYMm: formB.transform.offsetYM * 1000,
           });
@@ -784,24 +771,14 @@ export function useObjectWorkbenchActions({
             return { ok: false, error: 'Detach produced an invalid partition.' };
           }
           const rebasedHead = rebasedPartitions[0]!;
+          // PR-WB-COMPOSITION-ONLY: composition is the truth; no
+          // more `footprint.params` patch. The walls come from the
+          // composition's union polygon (via Phase 4a.3 substitution).
           const updatedOriginal: HouseFormModel = {
             ...form,
             composition: rebasedHead.composition,
             transform: rebasedHead.transformOverride,
-            footprint: {
-              ...form.footprint,
-              params: {
-                ...form.footprint.params,
-                widthM: rebasedHead.footprintParamsPatch.widthM,
-                bandDepthM: rebasedHead.footprintParamsPatch.bandDepthM,
-                offsetXM: rebasedHead.footprintParamsPatch.offsetXM,
-                setbackM: rebasedHead.footprintParamsPatch.setbackM,
-              },
-            },
           };
-          // Build the new forms iteratively so each new id is
-          // unique relative to the running list (nextHouseFormId
-          // computes from the array length + existing ids).
           const runningForms: HouseFormModel[] = assembly.houseForms.map((candidate) =>
             candidate.id === form.id ? updatedOriginal : candidate,
           );
@@ -815,16 +792,6 @@ export function useObjectWorkbenchActions({
               label: newLabel,
               composition: rebased.composition,
               transform: rebased.transformOverride,
-              footprint: {
-                ...form.footprint,
-                params: {
-                  ...form.footprint.params,
-                  widthM: rebased.footprintParamsPatch.widthM,
-                  bandDepthM: rebased.footprintParamsPatch.bandDepthM,
-                  offsetXM: rebased.footprintParamsPatch.offsetXM,
-                  setbackM: rebased.footprintParamsPatch.setbackM,
-                },
-              },
             };
             runningForms.push(newForm);
           }
@@ -898,7 +865,7 @@ export function useObjectWorkbenchActions({
           const nextDeck = buildNewObjectWorkbenchDeckDraft({
             deckId,
             deckIndex: currentDecks.length,
-            hostEdgeId: selectedHouseForm.footprint.attachmentSide ?? 'rear',
+            hostEdgeId: selectedHouseForm.attachmentSide ?? 'rear',
             housePolygon,
             mode,
             hostHouseFormObjectId,
@@ -964,7 +931,7 @@ export function useObjectWorkbenchActions({
             houseAssembly: store.derived.houseAssembly,
             houseForm: selectedHouseForm,
             preferredHostWallId: activeObjectWorkbenchOpening?.hostWallId ?? null,
-            preferredSide: selectedHouseForm.footprint.attachmentSide ?? 'rear',
+            preferredSide: selectedHouseForm.attachmentSide ?? 'rear',
           });
           return [
             ...currentOpenings,
@@ -975,7 +942,7 @@ export function useObjectWorkbenchActions({
               sourceFormId: selectedHouseForm.id,
               hostWallId: preferredWall?.wallId ?? null,
               hostEdgeId: preferredWall?.hostEdgeId ?? null,
-              wallId: preferredWall?.semanticSide ?? selectedHouseForm.footprint.attachmentSide ?? 'rear',
+              wallId: preferredWall?.semanticSide ?? selectedHouseForm.attachmentSide ?? 'rear',
             }),
           ];
         },

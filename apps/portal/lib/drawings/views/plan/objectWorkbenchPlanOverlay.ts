@@ -1,6 +1,7 @@
 import {
   buildCustomHouseFootprintPolygon,
   buildHouseFootprintPresetSideLocalPoints,
+  composeFootprintFromComposition,
   type Assembly3D,
   type GeometryMetadata,
   type GeometryPlanViewModel,
@@ -716,23 +717,18 @@ function buildHouseFormDeckCommitFootprint(input: {
   moduleProjectionM?: string | null;
 }): PlanPoint[] {
   if (!input.houseForm) return [];
-  const persistedPolygon = parseLocalPolygon(input.houseForm.footprint.polygon);
-  const localPolygon = persistedPolygon.length >= 3
-    ? input.houseForm.footprint.polygon
-    : buildHouseFootprintPresetSideLocalPoints({
-        pergolaWidthMm: Math.round((Number(input.moduleLengthM) || 6) * 1000),
-        pergolaDepthMm: Math.round((Number(input.moduleProjectionM) || 3) * 1000),
-        preset: input.houseForm.footprint.preset,
-        params: input.houseForm.footprint.params,
-        attachmentSide: input.houseForm.footprint.attachmentSide,
-      }).map((point) => ({
-        alongM: String(point.alongM),
-        depthM: String(point.depthM),
-      }));
+  // PR-WB-COMPOSITION-ONLY (2026-06-19): polygon comes from the
+  // composition union; offsetXM / setbackM are baked into it.
+  const localPolygon = composeFootprintFromComposition(input.houseForm.composition).map(
+    (point) => ({
+      alongM: String(point.x / 1000),
+      depthM: String(-point.y / 1000),
+    }),
+  );
   return parseLocalPolygon(
     buildDeckReferenceHousePolygon({
       housePolygon: localPolygon,
-      footprintParams: input.houseForm.footprint.params,
+      footprintParams: null,
     }),
   ).map((point) => ({
     x: point.alongM,
@@ -1466,28 +1462,14 @@ function buildOpeningAnnotations(input: {
   ].filter((annotation): annotation is ObjectWorkbenchPlanPresetDimensionAnnotation => Boolean(annotation));
 }
 
-function buildFootprintAnnotations(input: {
+function buildFootprintAnnotations(_input: {
   houseForm: HouseFormModel;
   polygon: PlanPoint[];
 }): ObjectWorkbenchPlanPresetDimensionAnnotation[] {
-  if (input.polygon.length < 2) return [];
-  const widthM = parseMetres(input.houseForm.footprint.params.widthM, Number.NaN);
-  if (!Number.isFinite(widthM) || widthM <= 0) return [];
-  return [
-    makeAnnotation({
-      id: `${input.houseForm.id}:widthM`,
-      targetKind: 'house_preset_param',
-      emphasis: 'driving',
-      ownerKind: 'footprint',
-      ownerId: input.houseForm.id,
-      fieldKey: 'widthM',
-      rawValue: input.houseForm.footprint.params.widthM,
-      displayValue: formatDisplayMetres(widthM),
-      segmentStart: input.polygon[0]!,
-      segmentEnd: input.polygon[1]!,
-      polygon: input.polygon,
-    }),
-  ].filter((annotation): annotation is ObjectWorkbenchPlanPresetDimensionAnnotation => Boolean(annotation));
+  // PR-WB-COMPOSITION-ONLY (2026-06-19): preset dimension
+  // annotations are retired. Composition dimensions will surface
+  // via a different annotation path (TODO followup).
+  return [];
 }
 
 function makeCustomEdgeCandidate(input: {
@@ -1619,7 +1601,7 @@ export function buildObjectWorkbenchPlanOverlay(input: ObjectWorkbenchPlanOverla
   const canonicalHouseFootprint = houseReferenceShapeToPlanPolygon(input.houseReferenceShape);
   const footprint = canonicalHouseFootprint ?? lookup.footprint;
   if (!footprint?.polygon.length) return null;
-  const houseAttachmentSide = houseForm?.footprint.attachmentSide ?? 'rear';
+  const houseAttachmentSide = houseForm?.attachmentSide ?? 'rear';
   const shapes: ObjectWorkbenchPlanShapeOverlay[] = [
     {
       ownerKind: 'footprint',
@@ -1627,7 +1609,8 @@ export function buildObjectWorkbenchPlanOverlay(input: ObjectWorkbenchPlanOverla
       polygon: footprint.polygon,
       detailSegments: [],
       selected: input.selection.kind === 'footprint' || input.selection.kind === 'house',
-      custom: houseForm?.footprint.mode === 'custom_polygon',
+      // PR-WB-COMPOSITION-ONLY (2026-06-19): every form is composition.
+      custom: false,
       muted: input.selection.kind === 'deck',
       invalid: false,
       invalidMessage: null,
@@ -1736,16 +1719,10 @@ export function buildObjectWorkbenchPlanOverlay(input: ObjectWorkbenchPlanOverla
 
   const presetAnnotations: ObjectWorkbenchPlanPresetDimensionAnnotation[] = [];
   const customEdgeCandidates: ObjectWorkbenchPlanCustomEdgeCandidate[] = [];
-  if (input.selection.kind === 'footprint' && houseForm?.footprint.mode === 'custom_polygon') {
-    customEdgeCandidates.push(
-      ...buildCustomEdgeCandidates({
-        ownerKind: 'footprint',
-        ownerId: houseForm.id,
-        polygon: footprint.polygon,
-        localPolygon: parseLocalPolygon(houseForm.footprint.polygon),
-      }),
-    );
-  } else if (input.selection.kind === 'footprint' && houseForm) {
+  // PR-WB-COMPOSITION-ONLY (2026-06-19): the custom-polygon-edit
+  // path is gone; resize commits route through `composition_resize`
+  // in `commitOutlineEdit.ts`.
+  if (input.selection.kind === 'footprint' && houseForm) {
     presetAnnotations.push(
       ...buildFootprintAnnotations({
         houseForm,

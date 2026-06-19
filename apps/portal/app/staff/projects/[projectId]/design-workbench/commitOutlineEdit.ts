@@ -1,5 +1,4 @@
-import { buildSideLocalPolygonFromWorld } from '@sp/geometry';
-import { tryConvertResizeToPresetParams } from './tryConvertResizeToPresetParams';
+import { isAxisAlignedRectangle } from '@sp/geometry';
 import { buildDeckTransformPatch } from '@/lib/drawings/commits/commitDeckTransform';
 import type { EdgeDragCommit } from '@/components/drawings/viewports/PlanViewport/tools/EdgeDragTool';
 import type { ReversibleCommandInput } from '@/lib/drawings/commands/createReversibleCommand';
@@ -55,67 +54,60 @@ export function buildOutlineEditCommitHandler(
     if (commit.family === 'house_forms') {
       const houseForm = resolveSelectedHouseForm(store);
       if (!houseForm) return;
+      // PR-WB-COMPOSITION-ONLY (2026-06-19): edge-drag on a
+      // single-primitive composition updates the primitive
+      // directly. Multi-primitive composites reject — the UX for
+      // "which primitive does this edge belong to?" is deferred.
+      if (houseForm.composition.primitives.length !== 1) return;
+      const primitive = houseForm.composition.primitives[0]!;
+      if (!isAxisAlignedRectangle(primitive)) return;
+
       const position = houseFormTransformToWorldPositionMm(houseForm.transform);
-      const attachmentSide = houseForm.footprint.attachmentSide;
       const positionXMm = Number(position.x) || 0;
       const positionYMm = Number(position.y) || 0;
       const positionRotationDeg = Number(position.rotationDeg) || 0;
       const cos = Math.cos((positionRotationDeg * Math.PI) / 180);
       const sin = Math.sin((positionRotationDeg * Math.PI) / 180);
-      const localWorldPolygon = commit.nextPolygon.map((p) => {
+      const localPolygon = commit.nextPolygon.map((p) => {
         const dx = p.x - positionXMm;
         const dy = p.y - positionYMm;
-        // Inverse rotation (transpose).
-        return {
-          x: cos * dx + sin * dy,
-          y: -sin * dx + cos * dy,
-        };
+        return { x: cos * dx + sin * dy, y: -sin * dx + cos * dy };
       });
-      // PR-WB-RESIZE-KEEPS-PRESET (2026-06-19): if the source form
-      // is preset+straight AND the resize produced a clean axis-
-      // aligned rectangle, recover (widthM, bandDepthM, offsetXM,
-      // setbackM) from the polygon's form-local bounding box and
-      // emit a preset_resize edit instead of a custom_polygon
-      // edit. The form stays mode: 'preset'; composition stays
-      // authoritative (re-synced by the normaliser); the seam-icon
-      // layer + Join + Detach all keep working without falling
-      // back to the custom_polygon-as-rectangle inference.
-      const presetParamsConversion = tryConvertResizeToPresetParams({
-        formLocalPolygonMm: localWorldPolygon,
-        sourceMode: houseForm.footprint.mode,
-        sourcePreset: houseForm.footprint.preset,
-        sourceAttachmentSide: houseForm.footprint.attachmentSide,
-        sourceRotationQuarterTurns: houseForm.transform.rotationQuarterTurns,
-      });
-      if (presetParamsConversion) {
-        void objectWorkbenchActions.commitHouseFormFootprintEdit({
-          houseFormId: houseForm.id,
-          edit: {
-            type: 'preset_resize',
-            ...presetParamsConversion,
-          },
-        });
-        return;
+      if (localPolygon.length < 4) return;
+
+      // Form-local bounding box of the new polygon.
+      let xMin = Infinity;
+      let yMin = Infinity;
+      let xMax = -Infinity;
+      let yMax = -Infinity;
+      for (const p of localPolygon) {
+        if (p.x < xMin) xMin = p.x;
+        if (p.y < yMin) yMin = p.y;
+        if (p.x > xMax) xMax = p.x;
+        if (p.y > yMax) yMax = p.y;
       }
-      // Fallback: encode as a custom polygon. This path catches L /
-      // U / recess / wrap preset resizes (richer params not handled
-      // yet), rotated forms (transform-aware math TODO), non-rear
-      // attachment sides, and any genuinely-not-rectangle resize.
-      const sideLocalPoints = buildSideLocalPolygonFromWorld({
-        worldPolygonMm: localWorldPolygon,
-        pergolaWidthMm: 1000,
-        pergolaDepthMm: 1000,
-        attachmentSide,
-        params: null,
-      });
+      const widthMm = xMax - xMin;
+      const depthMm = yMax - yMin;
+      if (widthMm <= 0 || depthMm <= 0) return;
+
+      // Rebase: place the primitive at (0, -depth) in its new
+      // form-local frame, and shift the form's transform by the
+      // anchor delta to keep the world position invariant.
+      const newOriginXMm = 0;
+      const newOriginYMm = -depthMm;
+      const transformDeltaXM = xMin / 1000;
+      const transformDeltaYM = (yMax) / 1000;
+
       void objectWorkbenchActions.commitHouseFormFootprintEdit({
         houseFormId: houseForm.id,
         edit: {
-          type: 'custom_polygon',
-          polygon: sideLocalPoints.map((p) => ({
-            alongM: p.alongM.toString(),
-            depthM: p.depthM.toString(),
-          })),
+          type: 'composition_resize',
+          originXMm: newOriginXMm,
+          originYMm: newOriginYMm,
+          widthMm,
+          depthMm,
+          transformDeltaXM,
+          transformDeltaYM,
         },
       });
       return;

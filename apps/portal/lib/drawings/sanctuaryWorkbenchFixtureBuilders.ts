@@ -38,9 +38,10 @@ export type FixtureModuleInput = {
   houseConnectionType?: ObjectFirstPergolaConnectionKind | 'none';
   attachmentSide?: WorkbenchAttachmentSide;
   houseAttachmentStrategy?: ObjectFirstPergolaDraft['strategy'];
-  houseFootprintMode?: HouseFormFootprintModel['mode'];
-  houseFootprintPreset?: HouseFormFootprintModel['preset'];
-  houseFootprintParams?: HouseFormFootprintModel['params'];
+  /** Retired post PR-WB-COMPOSITION-ONLY; kept as inert fields for backward-compat fixtures. */
+  houseFootprintMode?: string;
+  houseFootprintPreset?: string;
+  houseFootprintParams?: unknown;
   houseRoofPitchDeg?: string;
   houseFasciaHeightMm?: string;
   houseEaveOverhangMm?: string;
@@ -210,19 +211,15 @@ function buildObjectFirstDraftFromFixtureModule(module: FixtureModuleInput): Obj
     throw new Error('Expected object-first house form for fixture.');
   }
 
-  const footprintMode: HouseFormFootprintModel['mode'] = module.houseFootprintMode ?? 'preset';
-  const footprintPreset: HouseFormFootprintModel['preset'] = module.houseFootprintPreset ?? house.footprint.preset;
-  const footprintParams: HouseFormFootprintModel['params'] = module.houseFootprintParams ?? house.footprint.params;
+  // PR-WB-COMPOSITION-ONLY (2026-06-19): fixture composition is
+  // taken from the default house produced by
+  // `addHouseFormToObjectFirstDraft`. Tests that wanted to dial
+  // in legacy footprint params now author the composition
+  // directly (or override the fixture builder's return).
   const pergolaConnectionKind = connectionKindFromFixtureModule(module.houseConnectionType);
   const nextHouse: ObjectFirstHouseFormDraft = {
     ...house,
-    footprint: {
-      ...house.footprint,
-      mode: footprintMode,
-      preset: footprintPreset,
-      params: footprintParams,
-      attachmentSide: module.attachmentSide ?? 'rear',
-    },
+    attachmentSide: module.attachmentSide ?? 'rear',
     roofIntentAuthored: true,
     roofIntent: {
       ...house.roofIntent,

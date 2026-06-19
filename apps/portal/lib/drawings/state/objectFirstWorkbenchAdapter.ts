@@ -8,7 +8,7 @@ import type {
 import { normalizeObjectFirstWorkbenchDraftVNext } from "./objectFirstWorkbenchModel";
 import { deriveHouseFormDisplayLabel } from "./houseFormDisplayLabel";
 import { reconcileHouseFormRoofIntentForFootprint } from "./houseFormRoofIntentForFootprint";
-import { buildSingleRectangleCompositionFromHouseForm } from "./houseFormCompositionAdapter";
+import { buildDefaultRectangleComposition } from "./houseFormCompositionAdapter";
 
 function buildHouseFormDraftFromModel(
   houseForm: HouseFormModel,
@@ -17,7 +17,9 @@ function buildHouseFormDraftFromModel(
     id: houseForm.id,
     label: houseForm.label,
     transform: houseForm.transform,
-    footprint: houseForm.footprint,
+    composition: houseForm.composition,
+    attachmentSide: houseForm.attachmentSide,
+    ...(houseForm.position ? { position: houseForm.position } : null),
     roofIntent: houseForm.roofIntent,
     roofIntentAuthored: houseForm.roofIntentAuthored,
     storeyMode: houseForm.storeyMode,
@@ -30,10 +32,6 @@ function buildHouseFormDraftFromModel(
     gutterDepthMm: houseForm.gutterDepthMm,
     gutterProjectionMm: houseForm.gutterProjectionMm,
     eaveOverhangMm: houseForm.eaveOverhangMm,
-    // PR-COMP-PHASE2 (2026-06-18): preserve composition on the
-    // model → draft round-trip. The normaliser on the draft → model
-    // path validates structurally; this side just passes through.
-    ...(houseForm.composition ? { composition: houseForm.composition } : null),
   };
 }
 
@@ -82,6 +80,14 @@ function buildDefaultHouseFormDraft(input: {
   label: string;
   transform?: Partial<ObjectFirstHouseFormDraft["transform"]>;
 }): ObjectFirstHouseFormDraft {
+  const roofIntent = {
+    form: "hipped" as const,
+    material: "corrugated_iron" as const,
+    primaryPitchDeg: "5",
+    primaryFallDirection: "negative_y" as const,
+    ridgeAxis: "x" as const,
+    openGableEndIds: [] as string[],
+  };
   return {
     id: input.id,
     label: input.label,
@@ -91,32 +97,9 @@ function buildDefaultHouseFormDraft(input: {
       rotationQuarterTurns: 0,
       ...input.transform,
     },
-    footprint: {
-      mode: "preset",
-      preset: "straight",
-      params: {
-        widthM: "6",
-        offsetXM: "0",
-        setbackM: "0",
-        bandDepthM: "4",
-        returnRunM: "0",
-        recessWidthM: "0",
-        recessDepthM: "0",
-        leftLegRunM: "0",
-        rightLegRunM: "0",
-        sideRunM: "0",
-      } as ObjectFirstHouseFormDraft["footprint"]["params"],
-      polygon: [],
-      attachmentSide: "rear",
-    },
-    roofIntent: {
-      form: "hipped",
-      material: "corrugated_iron",
-      primaryPitchDeg: "5",
-      primaryFallDirection: "negative_y",
-      ridgeAxis: "x",
-      openGableEndIds: [],
-    },
+    composition: buildDefaultRectangleComposition(roofIntent),
+    attachmentSide: "rear",
+    roofIntent,
     storeyMode: "single_storey",
     attachmentStrategy: null,
   };
@@ -124,23 +107,19 @@ function buildDefaultHouseFormDraft(input: {
 
 /**
  * Append a new house form to the draft's `houseAssembly.houseForms[]`.
- * Clones the chosen source form's footprint/roof/etc. so the new form
- * has sensible defaults the user can then edit. Offsets the transform
- * by `offsetXM: 10` (10 m east by default) so the cloned form doesn't
- * land directly on top of the source in plan/3D. When no source form
- * exists, creates a deterministic first form instead of reviving the
- * legacy `house-main` snapshot form.
+ * Clones the chosen source form's composition/roof/etc. so the new
+ * form has sensible defaults the user can then edit. Offsets the
+ * transform by `offsetXM: 10` (10 m east by default) so the cloned
+ * form doesn't land directly on top of the source.
  *
- * The returned draft's last entry is the new form; callers can read
- * `result.houseAssembly!.houseForms.at(-1)!.id` to drive selection.
+ * PR-WB-COMPOSITION-ONLY (2026-06-19): composition is required
+ * on every form. When cloning, copy the source's composition. When
+ * creating fresh, generate a default 6m × 4m rectangle.
  */
 export function addHouseFormToObjectFirstDraft(input: {
   draft: ObjectFirstWorkbenchDraftVNext;
-  /** Form to clone from. Defaults to the primary (first) form. */
   sourceHouseFormId?: string | null;
-  /** Override the generated label. Defaults to `House <N>` where N is the new entry's 1-based index. */
   label?: string;
-  /** Override the auto-offset position. Defaults to `{ offsetXM: 10, offsetYM: 0, rotationQuarterTurns: 0 }`. */
   transformOverride?: Partial<ObjectFirstHouseFormDraft["transform"]>;
 }): ObjectFirstWorkbenchDraftVNext {
   const assembly =
@@ -154,7 +133,7 @@ export function addHouseFormToObjectFirstDraft(input: {
   const id = nextHouseFormId(assembly.houseForms);
   const label =
     input.label ?? deriveHouseFormDisplayLabel(assembly.houseForms.length);
-  const baseForm: ObjectFirstHouseFormDraft =
+  const nextForm: ObjectFirstHouseFormDraft =
     reconcileHouseFormRoofIntentForFootprint(
       source
         ? {
@@ -174,17 +153,6 @@ export function addHouseFormToObjectFirstDraft(input: {
             transform: input.transformOverride,
           }),
     );
-  // PR-COMP-PHASE3 (2026-06-18): populate composition for new
-  // single-rectangle (straight-preset) forms so they enter the
-  // composition path from day one. Clones of legacy custom-polygon
-  // or non-straight-preset forms get `composition: undefined` and
-  // continue rendering via the legacy pipeline; once a designer
-  // joins them into a composite (Phase 4), composition lands at
-  // that point.
-  const composition = buildSingleRectangleCompositionFromHouseForm(baseForm);
-  const nextForm: ObjectFirstHouseFormDraft = composition
-    ? { ...baseForm, composition }
-    : baseForm;
   return normalizeObjectFirstWorkbenchDraftVNext({
     ...input.draft,
     houseAssembly: {

@@ -4,7 +4,10 @@ import {
   validateHouseComposition,
   type HouseComposition,
 } from "@sp/geometry";
-import { syncSingleRectangleComposition } from "./houseFormCompositionAdapter";
+import {
+  migrateLegacyFootprintToComposition,
+  type LegacyFootprintInput,
+} from "./houseFormCompositionAdapter";
 import {
   DEFAULT_CALCULATOR_HOUSE_ROOF_MATERIAL,
   normalizeAttachmentSide,
@@ -197,13 +200,24 @@ export type HouseFormPosition = {
   rotationDeg: string;
 };
 
+/**
+ * PR-WB-COMPOSITION-ONLY (2026-06-19): retired. The legacy
+ * `footprint` sub-object carried `mode` / `preset` / `params` /
+ * `polygon` / `attachmentSide` / `position`. Post-cleanup:
+ *   - `composition` (required on `HouseFormModel`) is the only
+ *     authoring representation of the shape.
+ *   - `attachmentSide` lives at the top level.
+ *   - `position` lives at the top level.
+ *   - `mode` / `preset` / `params` / `polygon` are removed
+ *     entirely; the normaliser synthesises composition from any
+ *     legacy persisted form on read.
+ *
+ * Kept exported as a type alias temporarily — some downstream
+ * fixtures reference this name. Equivalent to attachmentSide +
+ * position only, both of which now live at the top level too.
+ */
 export type HouseFormFootprintModel = {
-  mode: CalculatorHouseFootprintMode;
-  preset: CalculatorHouseFootprintPreset;
-  params: CalculatorHouseFootprintParams;
-  polygon: CalculatorHouseFootprintPolygonPoint[];
   attachmentSide: WorkbenchAttachmentSide;
-  /** Optional world-space position. See `HouseFormPosition` for details. */
   position?: HouseFormPosition | null;
 };
 
@@ -221,7 +235,25 @@ export type HouseFormModel = {
   id: string;
   label: string;
   transform: HouseFormTransformModel;
-  footprint: HouseFormFootprintModel;
+  /**
+   * PR-WB-COMPOSITION-ONLY (2026-06-19): the authoritative shape.
+   * Required. Every house form has exactly one composition; the
+   * normaliser synthesises one from any legacy persisted form on
+   * read (preset, custom_polygon rectangle, custom_polygon
+   * free-form bounding box, in that order). The legacy `footprint`
+   * sub-object is gone.
+   */
+  composition: HouseComposition;
+  /**
+   * PR-WB-COMPOSITION-ONLY (2026-06-19): pergola attachment side.
+   * Lifted up from the retired `footprint` sub-object.
+   */
+  attachmentSide: WorkbenchAttachmentSide;
+  /**
+   * PR-WB-COMPOSITION-ONLY (2026-06-19): optional world-space
+   * position. Lifted up from the retired `footprint` sub-object.
+   */
+  position?: HouseFormPosition | null;
   roofIntent: HouseFormRoofIntentModel;
   roofIntentAuthored?: boolean;
   storeyMode: CalculatorHouseStoreyMode;
@@ -236,20 +268,6 @@ export type HouseFormModel = {
   eaveOverhangMm?: string | null;
   sourceModuleIndexes?: number[];
   sourceModuleIds?: string[];
-  /**
-   * PR-COMP-PHASE2 (2026-06-18): authored composition for new
-   * house forms produced by the Phase 3 rectangle tool. When
-   * present, downstream consumers SHOULD prefer composition data
-   * over `footprint.polygon` — composition carries explicit join
-   * topology and per-rectangle roof intent that the legacy
-   * polygon doesn't.
-   *
-   * Optional; absent on every legacy free-form house form. The
-   * legacy `footprint` polygon remains the source of truth when
-   * `composition` is absent. Phase 3 wires composition into the
-   * roof solver; Phase 2 only adds the data field + persistence.
-   */
-  composition?: HouseComposition | null;
 };
 
 export type HouseRoofIntentResolutionSource =
@@ -573,7 +591,12 @@ export type ObjectFirstHouseFormDraft = {
   id: string;
   label: string;
   transform: HouseFormTransformModel;
-  footprint: HouseFormFootprintModel;
+  /** PR-WB-COMPOSITION-ONLY (2026-06-19): required on every form. */
+  composition: HouseComposition;
+  /** PR-WB-COMPOSITION-ONLY (2026-06-19): lifted up from footprint. */
+  attachmentSide: WorkbenchAttachmentSide;
+  /** PR-WB-COMPOSITION-ONLY (2026-06-19): lifted up from footprint. */
+  position?: HouseFormPosition | null;
   roofIntent: HouseFormRoofIntentModel;
   roofIntentAuthored?: boolean;
   storeyMode: CalculatorHouseStoreyMode;
@@ -586,10 +609,6 @@ export type ObjectFirstHouseFormDraft = {
   gutterDepthMm?: string | null;
   gutterProjectionMm?: string | null;
   eaveOverhangMm?: string | null;
-  // PR-COMP-PHASE2 (2026-06-18): mirrors `HouseFormModel.composition`.
-  // Persisted JSON shape — undefined on legacy drafts; populated by
-  // the Phase 3 rectangle tool.
-  composition?: HouseComposition | null;
 };
 
 export type ObjectFirstHouseAssemblyDraft = {
@@ -929,10 +948,6 @@ function normalizeHouseFormFootprint(
   value: Partial<HouseFormFootprintModel> | null | undefined,
 ): HouseFormFootprintModel {
   return {
-    mode: normalizeHouseFootprintMode(value?.mode),
-    preset: normalizeHouseFootprintPreset(value?.preset),
-    params: normalizeHouseFootprintParams(value?.params),
-    polygon: normalizeHouseFootprintPolygon(value?.polygon),
     attachmentSide: normalizeAttachmentSide(value?.attachmentSide),
     position: normalizeHouseFormPosition(value?.position ?? null),
   };
@@ -1112,22 +1127,65 @@ export function normalizeObjectFirstHouseFormDraft(
   const id = normalizeStableId(value?.id);
   if (!id) return null;
 
-  const footprint = normalizeHouseFormFootprint(value?.footprint);
+  // PR-WB-COMPOSITION-ONLY (2026-06-19): the persisted draft might
+  // be in pre-cleanup shape (with `footprint.mode`, `polygon`,
+  // `params`) or post-cleanup shape (with top-level
+  // `attachmentSide` + `composition`). Migration is defensive:
+  // read the legacy `footprint` sub-object if it's there, but
+  // ALWAYS produce a composition + top-level attachmentSide on
+  // the output. Persisted drafts shed their legacy fields on the
+  // next save.
+  const legacyFootprint = (value as Partial<ObjectFirstHouseFormDraft> & {
+    footprint?: LegacyFootprintInput | null;
+  })?.footprint;
+  const attachmentSide = normalizeAttachmentSide(
+    value?.attachmentSide ?? legacyFootprint?.attachmentSide,
+  );
+  const position = normalizeHouseFormPosition(
+    value?.position ?? null,
+  );
+  const legacyPolygonNormalised = legacyFootprint?.polygon
+    ? normalizeHouseFootprintPolygon(legacyFootprint.polygon)
+    : [];
   const roofIntent = normalizeHouseFormRoofIntent(
     value?.roofIntent,
-    footprint.polygon,
+    legacyPolygonNormalised,
   );
 
-  const normalised: ObjectFirstHouseFormDraft = {
+  // PR-WB-COMPOSITION-ONLY: composition is required on every form.
+  // Migrate from legacy data if needed. Multi-rectangle composites
+  // (authored via Join) are returned unchanged; everything else
+  // re-derives from the legacy footprint or falls back to a
+  // default 6m × 4m rectangle.
+  let composition: HouseComposition;
+  const persistedComposition = normalizeHouseComposition(value?.composition);
+  if (persistedComposition && persistedComposition.primitives.length > 1) {
+    composition = persistedComposition;
+  } else {
+    composition = migrateLegacyFootprintToComposition({
+      existingComposition: persistedComposition,
+      legacyFootprint: legacyFootprint
+        ? {
+            mode: legacyFootprint.mode ?? undefined,
+            preset: legacyFootprint.preset ?? undefined,
+            params: legacyFootprint.params ?? undefined,
+            polygon: legacyFootprint.polygon
+              ? legacyPolygonNormalised
+              : undefined,
+            attachmentSide: legacyFootprint.attachmentSide ?? undefined,
+          }
+        : null,
+      roofIntent,
+    });
+  }
+
+  return {
     id,
     label: trimNullableString(value?.label) ?? id,
     transform: normalizeHouseFormTransform(value?.transform),
-    footprint,
-    // Pass the resolved footprint polygon so the roof-intent
-    // normalizer can run the gable->hipped migration when an explicit
-    // polygon is available. Empty polygon (preset-mode without
-    // resolution) means migration is deferred; see comment inside
-    // normalizeHouseFormRoofIntent.
+    composition,
+    attachmentSide,
+    ...(position ? { position } : null),
     roofIntent,
     ...(value?.roofIntentAuthored === true
       ? { roofIntentAuthored: true }
@@ -1165,27 +1223,6 @@ export function normalizeObjectFirstHouseFormDraft(
       ? { eaveOverhangMm: trimNullableString(value?.eaveOverhangMm) }
       : null),
   };
-
-  // PR-COMP-PHASE3 (2026-06-18): keep single-rectangle compositions
-  // in sync with the freshly-normalised footprint + roof intent.
-  // Multi-rectangle compositions (Phase 4 authored) are left
-  // untouched — they're authored data and must not be overwritten
-  // from legacy footprint params.
-  const persistedComposition = normalizeHouseComposition(value?.composition);
-  if (persistedComposition && persistedComposition.primitives.length > 1) {
-    return { ...normalised, composition: persistedComposition };
-  }
-  const synced = syncSingleRectangleComposition({
-    existing: persistedComposition,
-    houseForm: {
-      footprint: normalised.footprint,
-      roofIntent: normalised.roofIntent,
-    },
-  });
-  if (synced) {
-    return { ...normalised, composition: synced };
-  }
-  return normalised;
 }
 
 export function normalizeObjectFirstHouseAssemblyDraft(

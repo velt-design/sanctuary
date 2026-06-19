@@ -4,17 +4,25 @@ import {
   type Polygon3,
 } from '@sp/geometry';
 import type {
-  HouseFormFootprintModel,
   HouseRoofPrimaryFallDirection,
   HouseRoofRidgeAxis,
   WorkbenchAttachmentSide,
 } from './objectFirstWorkbenchModel';
 import { localPolygonToGeometryPolygon } from './houseRoofFormNormalize';
 
-type HouseFootprintLocalPoint = HouseFormFootprintModel['polygon'][number];
-type HouseFootprintMode = HouseFormFootprintModel['mode'];
-type HouseFootprintParams = HouseFormFootprintModel['params'];
-type HouseFootprintPreset = HouseFormFootprintModel['preset'];
+// PR-WB-COMPOSITION-ONLY (2026-06-19): inline shapes for the
+// retired `HouseFormFootprintModel` sub-types. These types are
+// kept for the existing helper signatures; callers now feed
+// composition-derived polygons through these helpers.
+type HouseFootprintLocalPoint = { alongM: string; depthM: string };
+type HouseFootprintMode = 'preset' | 'custom_polygon';
+type HouseFootprintParams = {
+  widthM?: string;
+  offsetXM?: string;
+  setbackM?: string;
+  bandDepthM?: string;
+};
+type HouseFootprintPreset = string;
 type HouseRoofFieldSource = 'default_fallback';
 
 /**

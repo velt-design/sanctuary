@@ -167,75 +167,32 @@ function makeMultiHouseCustomProjectionFixtureSource(): {
     throw new Error('Expected four house forms for custom projection fixture.');
   }
 
+  // PR-WB-COMPOSITION-ONLY (2026-06-19): the legacy fixture
+  // overrode each house form's `footprint` sub-object with hand-
+  // authored polygons (U, wrap, L, recess shapes). That field is
+  // gone; expressing the same shapes as compositions is a
+  // followup task. For now, the fixture's house forms keep their
+  // default 6m × 4m single-rectangle composition + the labels +
+  // transforms below.
   houseForms[0] = {
     ...houseForms[0],
     label: 'House 1',
     transform: { offsetXM: 0, offsetYM: 0, rotationQuarterTurns: 0 },
-    footprint: {
-      ...houseForms[0].footprint,
-      mode: 'custom_polygon',
-      preset: 'u_shape',
-      polygon: [
-        housePoint('0', '0'),
-        housePoint('8', '0'),
-        housePoint('8', '4'),
-        housePoint('5', '4'),
-        housePoint('5', '8'),
-        housePoint('0', '8'),
-      ],
-    },
   };
   houseForms[1] = {
     ...houseForms[1],
     label: 'House 2',
     transform: { offsetXM: 10, offsetYM: 2, rotationQuarterTurns: 0 },
-    footprint: {
-      ...houseForms[1].footprint,
-      mode: 'custom_polygon',
-      preset: 'wrap_right',
-      polygon: [
-        housePoint('0', '0'),
-        housePoint('7.8', '0'),
-        housePoint('7.8', '2.4'),
-        housePoint('2.2', '2.4'),
-        housePoint('2.2', '4.2'),
-        housePoint('0', '4.2'),
-      ],
-    },
   };
   houseForms[2] = {
     ...houseForms[2],
     label: 'House 3',
     transform: { offsetXM: 0, offsetYM: -9, rotationQuarterTurns: 0 },
-    footprint: {
-      ...houseForms[2].footprint,
-      mode: 'preset',
-      preset: 'l_right',
-      params: {
-        ...houseForms[2].footprint.params,
-        widthM: '7.8',
-        bandDepthM: '4.2',
-        returnRunM: '2.4',
-      },
-    },
   };
   houseForms[3] = {
     ...houseForms[3],
     label: 'House 4',
     transform: { offsetXM: 16, offsetYM: -8, rotationQuarterTurns: 0 },
-    footprint: {
-      ...houseForms[3].footprint,
-      mode: 'custom_polygon',
-      preset: 'recess_left',
-      polygon: [
-        housePoint('-0.8149011184049414', '1.2000000001296671'),
-        housePoint('2.3999999995950567', '1.2000000001296671'),
-        housePoint('2.3999999995950567', '1.2966711437911727e-10'),
-        housePoint('8.901820743595056', '1.2966711437911727e-10'),
-        housePoint('8.901820743595056', '4.171359789141505'),
-        housePoint('-0.8149011184049414', '4.171359789141505'),
-      ],
-    },
     roofIntent: {
       ...houseForms[3].roofIntent,
       form: 'hipped',

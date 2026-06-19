@@ -8,8 +8,13 @@ import type {
 } from './objectFirstWorkbenchModel';
 
 type AttachmentSide = WorkbenchAttachmentSide;
-type HouseFootprintLocalPoint = HouseFormFootprintModel['polygon'][number];
-type HouseFootprintParams = HouseFormFootprintModel['params'];
+// PR-WB-COMPOSITION-ONLY (2026-06-19): inlined shapes for the
+// retired `HouseFormFootprintModel.polygon` / `.params` field types.
+type HouseFootprintLocalPoint = { alongM: string; depthM: string };
+type HouseFootprintParams = {
+  offsetXM?: string;
+  setbackM?: string;
+};
 
 type LocalPolygonPoint = {
   alongM: number;

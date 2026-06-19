@@ -22,9 +22,8 @@ import type { HouseFormModel } from "./objectFirstWorkbenchModel";
 export function deriveHouseFormFootprintPolygon(
   houseForm: HouseFormModel,
 ): CalculatorHouseFootprintPolygonPoint[] {
-  if (!houseForm.composition) {
-    return houseForm.footprint.polygon;
-  }
+  // PR-WB-COMPOSITION-ONLY (2026-06-19): composition is required
+  // on every form; polygon always comes from the union.
   const polygonMm = composeFootprintFromComposition(houseForm.composition);
   return polygonMm.map((point) => ({
     alongM: mmToMetreString(point.x),

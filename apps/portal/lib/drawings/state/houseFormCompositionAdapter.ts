@@ -1,6 +1,7 @@
 import {
   deriveHouseGableTerminalEnds,
   resolveHouseFootprintParams,
+  validateHouseComposition,
   type AxisAlignedRectangle,
   type CompositionJoin,
   type HouseComposition,
@@ -10,114 +11,173 @@ import {
   type Polygon3,
   type RectangleRoofIntent,
 } from "@sp/geometry";
-import type { HouseFormModel } from "./objectFirstWorkbenchModel";
+import type { HouseFormRoofIntentModel } from "./objectFirstWorkbenchModel";
 
 /**
- * PR-COMP-PHASE3 (2026-06-18): adapter from the workbench's
- * authored `HouseFormModel` into a single-rectangle
- * `HouseComposition`.
+ * PR-WB-COMPOSITION-ONLY (2026-06-19): composition is now the only
+ * authoring representation of a house form's shape. This adapter
+ * has two responsibilities:
  *
- * Returns `null` (NOT a composition) when the form is not
- * representable as a clean single rectangle:
- *   - footprint mode is `custom_polygon` (free-form, legacy
- *     authoring path — Phase 4's Join is the route to compose
- *     legacy shapes into rectangles, not this helper)
- *   - footprint preset is anything other than `straight` (L / U /
- *     etc. presets are multi-rectangle compositions, deferred to
- *     Phase 4 when designers can author multi-rectangle composites
- *     directly)
- *   - width or depth is non-positive
+ *   1. NEW FORM CREATION — `buildDefaultRectangleComposition`
+ *      produces a fresh single-rectangle composition for the Add
+ *      structure flow.
  *
- * When invoked at the normalisation boundary, a `null` return
- * means the form's `composition` field stays undefined and the
- * form continues to render via the legacy free-form pipeline.
- * Multi-rectangle compositions (Phase 4 authored) are left
- * untouched by the normaliser — see `syncSingleRectangleComposition`.
+ *   2. LEGACY MIGRATION — `migrateLegacyFootprintToComposition`
+ *      reads a persisted form's legacy `footprint` data (mode,
+ *      preset, params, polygon) and synthesises a composition.
+ *      Called by the normaliser exactly once per persisted form;
+ *      the result is written back as the form's composition and
+ *      the legacy fields are dropped.
+ *
+ * Pre-refactor the adapter had many specialised exports
+ * (`buildSingleRectangleCompositionFromHouseForm`,
+ * `syncSingleRectangleComposition`,
+ * `buildSingleRectangleCompositionFromCustomPolygonForm`,
+ * `deriveSeamIconCompositionForForm`) because composition was
+ * optional and downstream consumers had to do inference on the
+ * fly. Composition is now required on every form, so those
+ * consumers read `form.composition` directly and the adapter
+ * collapses to its two responsibilities above.
  */
-export function buildSingleRectangleCompositionFromHouseForm(
-  houseForm: Pick<HouseFormModel, "footprint" | "roofIntent">,
-): HouseComposition | null {
-  return buildPresetCompositionFromHouseForm(houseForm);
+
+const DEFAULT_RECTANGLE_WIDTH_MM = 6000;
+const DEFAULT_RECTANGLE_DEPTH_MM = 4000;
+const FALLBACK_PERGOLA_WIDTH_M = 6;
+const FALLBACK_PERGOLA_DEPTH_M = 3;
+
+/**
+ * The shape of the legacy `footprint` sub-object as it was
+ * persisted before PR-WB-COMPOSITION-ONLY. The normaliser passes
+ * any persisted data through this type when migrating.
+ */
+export type LegacyFootprintInput = {
+  mode?: string | null;
+  preset?: string | null;
+  params?: {
+    widthM?: string;
+    bandDepthM?: string;
+    offsetXM?: string;
+    setbackM?: string;
+    returnRunM?: string;
+    recessWidthM?: string;
+    recessDepthM?: string;
+    leftLegRunM?: string;
+    rightLegRunM?: string;
+    sideRunM?: string;
+  } | null;
+  polygon?: Array<{ alongM: string; depthM: string }> | null;
+  attachmentSide?: string | null;
+  position?: unknown;
+};
+
+/**
+ * Build the default single-rectangle composition the Add structure
+ * flow uses. The rectangle is 6m × 4m, placed in the legacy frame
+ * (originY = -depth so it sits south of the pergola attachment
+ * line), and carries the supplied roof intent.
+ */
+export function buildDefaultRectangleComposition(
+  roofIntent: HouseFormRoofIntentModel,
+): HouseComposition {
+  const widthMm = DEFAULT_RECTANGLE_WIDTH_MM;
+  const depthMm = DEFAULT_RECTANGLE_DEPTH_MM;
+  const rectangle: AxisAlignedRectangle = {
+    kind: "axisAlignedRectangle",
+    originXMm: 0,
+    originYMm: -depthMm,
+    widthMm,
+    depthMm,
+    roofIntent: deriveRectangleRoofIntent({
+      roofIntent,
+      widthMm,
+      depthMm,
+    }),
+  };
+  return { primitives: [rectangle], joins: [] };
 }
 
 /**
- * PR-WB-PRESETS-AS-COMPOSITIONS (2026-06-19): generalises the
- * single-rectangle adapter to handle every preset shape. Each
- * preset's polygon (from `@sp/geometry/footprints.ts:buildPresetLocalPoints`)
- * is expressed here as a multi-rectangle composition: the
- * primitives' union polygon matches the legacy preset polygon, and
- * the primitives carry the form's roof intent so the composition-
- * driven roof solver produces a stitched per-rectangle roof
- * matching the preset's shape.
+ * One-shot legacy-to-composition migration. Tries (in order):
+ *   1. existing composition (if valid, return as-is)
+ *   2. preset+straight → straight rectangle from params
+ *   3. preset+non-straight (l_left, u_shape, etc.) → multi-rectangle
+ *      from `buildPresetCompositionFromLegacyData`
+ *   4. custom_polygon with 4-vertex axis-aligned polygon → rectangle
+ *   5. custom_polygon with anything else → bounding-box rectangle
+ *      stamped `approximationReasons` so the rail can flag it
+ *   6. nothing usable → default 6m × 4m rectangle
  *
- * Why this matters: before this PR, only straight-preset forms got
- * an authored composition. L / U / recess / wrap presets stayed
- * composition-less, fell back to the legacy polygon pipeline, and
- * (when resized via drag) became custom_polygon forms with no
- * composition — invisible to Join detection, labelled "Custom
- * footprint" in the rail, badged read-only by the inspector. After
- * this PR, every preset is composition-driven from creation; the
- * Phase 4a.3 union-polygon substitution renders walls along the
- * union of the constituent rectangles (which equals the legacy
- * preset polygon by construction), and the roof comes from the
- * composition path.
- *
- * Returns null for:
- *   - non-preset modes (custom_polygon takes the
- *     `buildSingleRectangleCompositionFromCustomPolygonForm` path
- *     when the polygon is a rectangle, or stays composition-less
- *     for genuinely free-form shapes)
- *   - non-rear attachment sides (legacy frame math is verified for
- *     `rear` only; front / left / right deferred)
- *   - degenerate dimensions (zero-area rectangles)
- *
- * Preset-specific frame (form-local mm, attachmentSide 'rear',
- * inverted from `houseFootprintSideLocalPointToWorld`):
- *   - x axis: pergola-parallel; offsetXM shifts the form east
- *   - y axis: negative = south (away from attachment line);
- *             setbackM pushes the form south away from y=0
- *
- * Rectangle layouts derived from `buildPresetLocalPoints` (preset
- * coords with depthM=positive=south, before y-negation):
- *
- *   straight: 1 rect (south band only)
- *   l_left  : 2 rects (south band + west arm going north)
- *   l_right : 2 rects (south band + east arm going north)
- *   u_shape : 3 rects (south band + west arm + east arm)
- *   recess_left  : 2 rects (full bottom + NE quadrant minus notch)
- *   recess_right : 2 rects (full bottom + NW quadrant minus notch)
- *   wrap_left  : 3 rects (south band + west arm + wrap-around top)
- *   wrap_right : 3 rects (south band + east arm + wrap-around top)
- *
- * For wrap presets, the arm depth is the pergola fallback (3000mm)
- * — matches `FALLBACK_PERGOLA_DEPTH_MM` in `houseFormRawGeometry.ts`
- * so the legacy polygon and the composition union polygon agree.
+ * Always returns a composition; designed to be called by the
+ * normaliser without a null-check guard.
  */
-export function buildPresetCompositionFromHouseForm(
-  houseForm: Pick<HouseFormModel, "footprint" | "roofIntent">,
-): HouseComposition | null {
-  if (houseForm.footprint.mode !== "preset") return null;
-  if (houseForm.footprint.attachmentSide !== "rear") return null;
+export function migrateLegacyFootprintToComposition(input: {
+  existingComposition?: HouseComposition | null | undefined;
+  legacyFootprint?: LegacyFootprintInput | null | undefined;
+  roofIntent: HouseFormRoofIntentModel;
+}): HouseComposition {
+  if (input.existingComposition) {
+    const validation = validateHouseComposition(input.existingComposition);
+    if (validation.ok) return input.existingComposition;
+  }
+  const legacy = input.legacyFootprint;
+  if (legacy) {
+    if (legacy.mode === "preset") {
+      const preset = buildPresetCompositionFromLegacyData({
+        legacyFootprint: legacy,
+        roofIntent: input.roofIntent,
+      });
+      if (preset) return preset;
+    }
+    if (legacy.mode === "custom_polygon" && legacy.polygon) {
+      const rect = buildRectangleFromLegacyPolygon({
+        polygon: legacy.polygon,
+        roofIntent: input.roofIntent,
+      });
+      if (rect) return rect;
+      const bbox = buildBoundingBoxCompositionFromLegacyPolygon({
+        polygon: legacy.polygon,
+        roofIntent: input.roofIntent,
+      });
+      if (bbox) return bbox;
+    }
+  }
+  return buildDefaultRectangleComposition(input.roofIntent);
+}
 
-  const FALLBACK_PERGOLA_WIDTH_M = 6;
-  const FALLBACK_PERGOLA_DEPTH_M = 3;
+/**
+ * Internal: build a composition from a `preset` legacy footprint.
+ * Mirrors `buildPresetLocalPoints` from `@sp/geometry/footprints.ts`
+ * — each preset shape is expressed as a multi-rectangle
+ * composition whose union polygon equals the legacy preset polygon.
+ *
+ * Returns null for non-rear attachment side (legacy frame math
+ * verified for `rear` only). Caller falls back to defaults.
+ */
+export function buildPresetCompositionFromLegacyData(input: {
+  legacyFootprint: LegacyFootprintInput;
+  roofIntent: HouseFormRoofIntentModel;
+}): HouseComposition | null {
+  const legacy = input.legacyFootprint;
+  if (legacy.mode !== "preset") return null;
+  if ((legacy.attachmentSide ?? "rear") !== "rear") return null;
+
+  const params = legacy.params ?? {};
   const resolved = resolveHouseFootprintParams({
     params: {
-      widthM: houseForm.footprint.params.widthM,
-      offsetXM: houseForm.footprint.params.offsetXM,
-      setbackM: houseForm.footprint.params.setbackM,
-      bandDepthM: houseForm.footprint.params.bandDepthM,
-      returnRunM: houseForm.footprint.params.returnRunM,
-      recessWidthM: houseForm.footprint.params.recessWidthM,
-      recessDepthM: houseForm.footprint.params.recessDepthM,
-      leftLegRunM: houseForm.footprint.params.leftLegRunM,
-      rightLegRunM: houseForm.footprint.params.rightLegRunM,
-      sideRunM: houseForm.footprint.params.sideRunM,
+      widthM: params.widthM ?? "0",
+      offsetXM: params.offsetXM ?? "0",
+      setbackM: params.setbackM ?? "0",
+      bandDepthM: params.bandDepthM ?? "0",
+      returnRunM: params.returnRunM ?? "0",
+      recessWidthM: params.recessWidthM ?? "0",
+      recessDepthM: params.recessDepthM ?? "0",
+      leftLegRunM: params.leftLegRunM ?? "0",
+      rightLegRunM: params.rightLegRunM ?? "0",
+      sideRunM: params.sideRunM ?? "0",
     },
     pergolaWidthM: FALLBACK_PERGOLA_WIDTH_M,
     pergolaDepthM: FALLBACK_PERGOLA_DEPTH_M,
   });
-
   const widthMm = resolved.widthM * 1000;
   const bandDepthMm = resolved.bandDepthM * 1000;
   const offsetXMm = resolved.offsetXM * 1000;
@@ -129,18 +189,15 @@ export function buildPresetCompositionFromHouseForm(
   const rightLegRunMm = resolved.rightLegRunM * 1000;
   const sideRunMm = resolved.sideRunM * 1000;
   const armDepthMm = FALLBACK_PERGOLA_DEPTH_M * 1000;
-
   if (widthMm <= 0 || bandDepthMm <= 0) return null;
 
-  // The roof intent every primitive carries. Per-primitive overrides
-  // are deferred (Phase 4 vision punts on that).
   const sharedRoofIntent = deriveRectangleRoofIntent({
-    houseForm,
+    roofIntent: input.roofIntent,
     widthMm,
     depthMm: bandDepthMm,
   });
 
-  function rect(input: {
+  function rect(rectInput: {
     originXMm: number;
     originYMm: number;
     widthMm: number;
@@ -148,10 +205,10 @@ export function buildPresetCompositionFromHouseForm(
   }): AxisAlignedRectangle {
     return {
       kind: "axisAlignedRectangle",
-      originXMm: input.originXMm,
-      originYMm: input.originYMm,
-      widthMm: input.widthMm,
-      depthMm: input.depthMm,
+      originXMm: rectInput.originXMm,
+      originYMm: rectInput.originYMm,
+      widthMm: rectInput.widthMm,
+      depthMm: rectInput.depthMm,
       roofIntent: sharedRoofIntent,
     };
   }
@@ -159,15 +216,16 @@ export function buildPresetCompositionFromHouseForm(
   const south = -(setbackMm + bandDepthMm);
   const north = -setbackMm;
 
-  switch (houseForm.footprint.preset) {
-    case "straight": {
+  switch (legacy.preset) {
+    case "straight":
+    case null:
+    case undefined:
       return {
         primitives: [
           rect({ originXMm: offsetXMm, originYMm: south, widthMm, depthMm: bandDepthMm }),
         ],
         joins: [],
       };
-    }
     case "l_left": {
       if (returnRunMm <= 0) return null;
       return {
@@ -351,73 +409,20 @@ export function buildPresetCompositionFromHouseForm(
 }
 
 /**
- * Re-derive the rectangle of a single-rectangle composition from
- * the form's current footprint + roof intent. Used at the
- * normalisation boundary to keep `composition` in sync with
- * resize / roof-intent edits without requiring every commit
- * action to also touch the composition explicitly.
- *
- * Multi-rectangle compositions (Phase 4 authored) are returned
- * UNCHANGED — once a designer manually composes a multi-rectangle
- * house form, the system treats it as authored data and does not
- * overwrite it from the legacy footprint params.
- *
- * Single-rectangle compositions are treated as derived data and
- * are kept fresh from the footprint + roof intent on every
- * normalisation pass.
+ * Internal: detect when a legacy `custom_polygon` is structurally
+ * a 4-vertex axis-aligned rectangle and synthesise a single-
+ * rectangle composition from it. Returns null when the polygon
+ * isn't recognisably a rectangle.
  */
-export function syncSingleRectangleComposition(input: {
-  existing: HouseComposition | null | undefined;
-  houseForm: Pick<HouseFormModel, "footprint" | "roofIntent">;
+export function buildRectangleFromLegacyPolygon(input: {
+  polygon: ReadonlyArray<{ alongM: string; depthM: string }>;
+  roofIntent: HouseFormRoofIntentModel;
 }): HouseComposition | null {
-  if (input.existing && input.existing.primitives.length > 1) {
-    return input.existing;
-  }
-  return buildSingleRectangleCompositionFromHouseForm(input.houseForm);
-}
-
-/**
- * PR-WB-CUSTOM-POLY-COMPOSITION (2026-06-19): derive a synthetic
- * single-rectangle composition for a `custom_polygon` form whose
- * polygon happens to be a 4-vertex axis-aligned rectangle.
- *
- * Why this exists: the plan-view resize handles commit a custom
- * polygon (because the polygon shape changed), which switches
- * `footprint.mode` to `custom_polygon` and drops the form's
- * `composition`. The seam-icon layer's filter
- * `form.composition` then excludes the resized form from Join
- * detection — designers see no chip even when the form is flush
- * against another. This helper restores composition awareness
- * for any custom_polygon form that's structurally still a
- * rectangle, so Join / Detach UX behave consistently for
- * resize-by-drag and Add-structure flows.
- *
- * Returns null when:
- *   - mode is not `custom_polygon` (caller should use the
- *     standard `buildSingleRectangleCompositionFromHouseForm`)
- *   - polygon is not 4 vertices
- *   - polygon edges are not all axis-aligned (the polygon is a
- *     truly free-form shape, not a rectangle — composition can't
- *     model it in v1)
- *
- * The form-local frame matches `buildHouseFormFootprintPolygonMm`
- * (in `houseFormRawGeometry.ts`): `alongM → x`, `-depthM → y`.
- * Composition origin lands at (xMin, yMin) so the rectangle
- * occupies the same form-local extent the legacy walls render.
- */
-export function buildSingleRectangleCompositionFromCustomPolygonForm(
-  houseForm: Pick<HouseFormModel, "footprint" | "roofIntent">,
-): HouseComposition | null {
-  if (houseForm.footprint.mode !== "custom_polygon") return null;
-  const polygon = houseForm.footprint.polygon;
-  if (polygon.length !== 4) return null;
-  const points = polygon.map((point) => ({
+  if (input.polygon.length !== 4) return null;
+  const points = input.polygon.map((point) => ({
     x: Number(point.alongM) * 1000,
     y: -Number(point.depthM) * 1000,
   }));
-  // Axis-aligned check: every consecutive edge must be horizontal
-  // (same y) or vertical (same x), within a tiny tolerance for
-  // float noise from drag-commit-encoded coordinates.
   const TOL_MM = 1;
   for (let i = 0; i < 4; i += 1) {
     const a = points[i]!;
@@ -442,7 +447,7 @@ export function buildSingleRectangleCompositionFromCustomPolygonForm(
     widthMm,
     depthMm,
     roofIntent: deriveRectangleRoofIntent({
-      houseForm,
+      roofIntent: input.roofIntent,
       widthMm,
       depthMm,
     }),
@@ -451,51 +456,63 @@ export function buildSingleRectangleCompositionFromCustomPolygonForm(
 }
 
 /**
- * PR-WB-CUSTOM-POLY-COMPOSITION (2026-06-19): unified accessor
- * the seam-icon layer + any other consumer that needs "the
- * composition for this form, for Join/Detach purposes."
+ * Last-resort migration: take any legacy polygon (free-form or
+ * otherwise) and build a single-rectangle composition covering
+ * its bounding box. Lossy — the rendered shape no longer matches
+ * the original outline. The composition is stamped
+ * `approximationReasons: ['legacy_polygon_bounding_box']` so the
+ * rail can surface a banner asking the designer to recreate the
+ * form intentionally.
  *
- * Resolution order:
- *   1. If the form has an authored `composition`, use it.
- *   2. Else if the form is a `custom_polygon` whose polygon is a
- *      4-vertex axis-aligned rectangle, synthesise a single-
- *      rectangle composition. Covers the resize-converted-form
- *      case and legacy data that happens to be a rectangle.
- *   3. Else (truly free-form polygon, or absent), return null —
- *      the form doesn't participate in seam icons.
- *
- * The returned composition is for downstream consumption only;
- * it is NOT written back to the form. Authoring composition is
- * the job of `buildSingleRectangleCompositionFromHouseForm` and
- * the Phase 3.1 normaliser sync.
+ * Returns null when the polygon is degenerate (< 3 vertices or
+ * collapses to zero area).
  */
-export function deriveSeamIconCompositionForForm(
-  houseForm: Pick<HouseFormModel, "composition" | "footprint" | "roofIntent">,
-): HouseComposition | null {
-  if (houseForm.composition) return houseForm.composition;
-  return buildSingleRectangleCompositionFromCustomPolygonForm(houseForm);
+export function buildBoundingBoxCompositionFromLegacyPolygon(input: {
+  polygon: ReadonlyArray<{ alongM: string; depthM: string }>;
+  roofIntent: HouseFormRoofIntentModel;
+}): HouseComposition | null {
+  if (input.polygon.length < 3) return null;
+  const points = input.polygon.map((point) => ({
+    x: Number(point.alongM) * 1000,
+    y: -Number(point.depthM) * 1000,
+  }));
+  const xs = points.map((p) => p.x).filter((value) => Number.isFinite(value));
+  const ys = points.map((p) => p.y).filter((value) => Number.isFinite(value));
+  if (xs.length < 3 || ys.length < 3) return null;
+  const xMin = Math.min(...xs);
+  const xMax = Math.max(...xs);
+  const yMin = Math.min(...ys);
+  const yMax = Math.max(...ys);
+  const widthMm = xMax - xMin;
+  const depthMm = yMax - yMin;
+  if (widthMm <= 0 || depthMm <= 0) return null;
+  const rectangle: AxisAlignedRectangle = {
+    kind: "axisAlignedRectangle",
+    originXMm: xMin,
+    originYMm: yMin,
+    widthMm,
+    depthMm,
+    roofIntent: deriveRectangleRoofIntent({
+      roofIntent: input.roofIntent,
+      widthMm,
+      depthMm,
+    }),
+  };
+  return { primitives: [rectangle], joins: [] };
 }
 
 /**
  * Workbench roof-intent (string pitch, string-keyed terminal end
  * IDs) → geometry `RectangleRoofIntent` (number pitch, per-end
  * cap choices). Pure conversion; no domain decisions.
- *
- * For `hipped`: derives `startCap` / `endCap` from
- * `openGableEndIds` by deriving the rectangle's terminal-end IDs
- * (via `deriveHouseGableTerminalEnds`) and sorting by midpoint on
- * the ridge axis. Mirrors the start/end derivation in
- * `buildHippedHouseRoof` so the workbench → geometry round-trip
- * stays consistent.
  */
 function deriveRectangleRoofIntent(input: {
-  houseForm: Pick<HouseFormModel, "roofIntent">;
+  roofIntent: HouseFormRoofIntentModel;
   widthMm: number;
   depthMm: number;
 }): RectangleRoofIntent {
-  const intent = input.houseForm.roofIntent;
+  const intent = input.roofIntent;
   const pitchDeg = parsePitchDeg(intent.primaryPitchDeg);
-
   if (intent.form === "flat") {
     return { form: "flat" };
   }
@@ -506,7 +523,6 @@ function deriveRectangleRoofIntent(input: {
       fallDirection: normalizeFallDirection(intent.primaryFallDirection),
     };
   }
-  // hipped
   const ridgeAxis: HouseRoofRidgeAxis =
     intent.ridgeAxis === "y" ? "y" : "x";
   const caps = deriveStartEndCaps({
@@ -541,7 +557,6 @@ function deriveStartEndCaps(input: {
     footprint,
     ridgeAxis: input.ridgeAxis,
   });
-  // Sort by midpoint on the ridge axis (matches buildHippedHouseRoof).
   const sorted = [...terminalEnds]
     .map((terminalEnd) => {
       const trailing = terminalEnd.id.match(/-(\d+)$/);
@@ -571,11 +586,6 @@ function deriveStartEndCaps(input: {
   };
 }
 
-function metresStringToMm(value: string): number {
-  const parsed = Number.parseFloat(value);
-  return Number.isFinite(parsed) ? parsed * 1000 : 0;
-}
-
 function parsePitchDeg(value: string): number {
   const parsed = Number.parseFloat(value);
   return Number.isFinite(parsed) ? parsed : 0;
@@ -591,10 +601,13 @@ function normalizeFallDirection(
     case "negative_y":
       return value;
     default:
-      return "positive_y";
+      return "negative_y";
   }
 }
 
 function point(x: number, y: number): Point3 {
   return { x, y, z: 0 };
 }
+
+/** Avoid an import cycle by re-export here. */
+export type { CompositionJoin };

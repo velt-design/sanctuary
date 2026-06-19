@@ -31,16 +31,14 @@ import type { ObjectWorkbenchRoofInspectorModel } from './state/objectWorkbenchI
 export const ROOF_FAILURE_REPRO_SCHEMA_VERSION = 1 as const;
 
 export type RoofFailureReproFootprint = {
-  mode: HouseFormFootprintModel['mode'];
-  preset: HouseFormFootprintModel['preset'];
-  attachmentSide: HouseFormFootprintModel['attachmentSide'];
   /**
-   * Polygon in local-frame, along/depth metres. Carries the exact
-   * string representations so the fixture round-trips
-   * pixel-accurately (the workbench stores these as strings, not
-   * floats).
+   * PR-WB-COMPOSITION-ONLY (2026-06-19): composition + top-level
+   * attachmentSide replace the retired `footprint.{mode,preset,polygon}`.
+   * Composition is dumped as JSON so the fixture round-trips
+   * structurally.
    */
-  polygonLocalM: HouseFormFootprintModel['polygon'];
+  attachmentSide: HouseFormFootprintModel['attachmentSide'];
+  composition: unknown;
 };
 
 export type RoofFailureReproRoofIntent = Omit<
@@ -100,10 +98,8 @@ export function buildRoofFailureRepro(
     approximationReasons: input.roof.approximationReasons,
     stageDiagnostics: input.roof.stageDiagnostics,
     footprint: {
-      mode: input.houseForm.footprint.mode,
-      preset: input.houseForm.footprint.preset,
-      attachmentSide: input.houseForm.footprint.attachmentSide,
-      polygonLocalM: input.houseForm.footprint.polygon,
+      attachmentSide: input.houseForm.attachmentSide,
+      composition: input.houseForm.composition,
     },
     roofIntent,
     geometryKind: input.roof.geometryKind,

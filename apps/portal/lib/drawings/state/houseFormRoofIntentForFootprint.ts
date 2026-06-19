@@ -1,11 +1,13 @@
 import {
-  buildHouseFootprintPresetSideLocalPoints,
+  composeFootprintFromComposition,
   deriveHouseGableTerminalEnds,
   getHouseRoofFormBehavior,
+  isAxisAlignedRectangle,
+  type HouseComposition,
+  type HouseRoofRidgeAxis as GeoRidgeAxis,
   type Polygon3,
 } from "@sp/geometry";
 import type {
-  HouseFormFootprintModel,
   HouseFormModel,
   HouseFormRoofIntentModel,
   HouseRoofRidgeAxis,
@@ -14,45 +16,24 @@ import {
   resolveHouseRoofIntentForAuthorship,
   type HouseRoofIntentAuthorshipResolution,
 } from "./objectFirstWorkbenchModel";
-import { resolveDerivedRidgeAxis } from "./houseRoofFormRidgeAxis";
 
-const FALLBACK_PRESET_WIDTH_MM = 6000;
-const FALLBACK_PRESET_DEPTH_MM = 3000;
-
-type HouseFootprintLocalPoint = HouseFormFootprintModel["polygon"][number];
-
-function footprintLocalPolygonToGeometryPolygon(
-  polygon: HouseFootprintLocalPoint[],
-): Polygon3 {
-  return polygon.map((point) => ({
-    x: Number(point.alongM) * 1000,
-    y: Number(point.depthM) * 1000,
-    z: 0,
-  }));
-}
-
-function resolveHouseFormFootprintSideLocalPolygon(input: {
-  footprint: HouseFormFootprintModel;
-  fallbackWidthMm?: number;
-  fallbackDepthMm?: number;
-}): HouseFootprintLocalPoint[] {
-  if (
-    input.footprint.mode === "custom_polygon" &&
-    input.footprint.polygon.length
-  ) {
-    return input.footprint.polygon;
-  }
-  return buildHouseFootprintPresetSideLocalPoints({
-    pergolaWidthMm: input.fallbackWidthMm ?? FALLBACK_PRESET_WIDTH_MM,
-    pergolaDepthMm: input.fallbackDepthMm ?? FALLBACK_PRESET_DEPTH_MM,
-    preset: input.footprint.preset,
-    params: input.footprint.params,
-    attachmentSide: input.footprint.attachmentSide,
-  }).map((point) => ({
-    alongM: String(point.alongM),
-    depthM: String(point.depthM),
-  }));
-}
+/**
+ * PR-WB-COMPOSITION-ONLY (2026-06-19): roof intent reconciler
+ * now derives polygon + ridge axis + terminal ends from the
+ * composition directly. The pre-cleanup version branched on
+ * `footprint.mode` (preset vs custom_polygon) and called the
+ * legacy preset polygon builder; that footprint sub-object is
+ * gone.
+ *
+ * Ridge axis preference:
+ *   - Single-primitive composition: use the primitive's roof
+ *     intent ridge axis if it's a hipped roof (mirrors what the
+ *     designer authored when they typed in the rail). Otherwise
+ *     default to 'x'.
+ *   - Multi-primitive composition: use the form's authored
+ *     roofIntent.ridgeAxis. Multi-rectangle composites are
+ *     stitched, so the per-form ridge axis is the dominant signal.
+ */
 
 export type HouseFormRoofIntentForFootprintResolution =
   HouseRoofIntentAuthorshipResolution & {
@@ -60,16 +41,13 @@ export type HouseFormRoofIntentForFootprintResolution =
   };
 
 export function resolveHouseFormRoofIntentForFootprint(input: {
-  houseForm: Pick<HouseFormModel, "footprint" | "roofIntent"> &
+  houseForm: Pick<HouseFormModel, "composition" | "roofIntent"> &
     Partial<Pick<HouseFormModel, "roofIntentAuthored">>;
-  nextFootprint?: HouseFormFootprintModel;
-  footprintPolygon?: HouseFootprintLocalPoint[] | null;
 }): HouseFormRoofIntentForFootprintResolution {
   const authoredResolution = resolveHouseRoofIntentForAuthorship({
     roofIntent: input.houseForm.roofIntent,
     roofIntentAuthored: input.houseForm.roofIntentAuthored,
   });
-  const footprint = input.nextFootprint ?? input.houseForm.footprint;
   const roofIntent = authoredResolution.roofIntent;
   const behavior = getHouseRoofFormBehavior(roofIntent.form);
   if (!behavior.controls.ridgeAxis) {
@@ -84,20 +62,13 @@ export function resolveHouseFormRoofIntentForFootprint(input: {
     };
   }
 
-  const polygon =
-    input.footprintPolygon && input.footprintPolygon.length > 0
-      ? input.footprintPolygon
-      : resolveHouseFormFootprintSideLocalPolygon({ footprint });
-  const ridgeAxis = resolveDerivedRidgeAxis({
-    footprintMode: footprint.mode,
-    footprintPreset: footprint.preset,
-    footprintParams: footprint.params,
-    footprintPolygon: polygon,
-  }).value;
+  const composition = input.houseForm.composition;
+  const polygon = composeFootprintFromComposition(composition);
+  const ridgeAxis = deriveRidgeAxisFromComposition(composition, roofIntent.ridgeAxis);
   const terminalEndIds = new Set(
     deriveHouseGableTerminalEnds({
-      footprint: footprintLocalPolygonToGeometryPolygon(polygon),
-      ridgeAxis,
+      footprint: polygon,
+      ridgeAxis: ridgeAxis as GeoRidgeAxis,
     }).map((end) => end.id),
   );
   const openGableEndIds = (roofIntent.openGableEndIds ?? []).filter((id) =>
@@ -123,16 +94,14 @@ export function resolveHouseFormRoofIntentForFootprint(input: {
 }
 
 export function deriveHouseFormRoofIntentForFootprint(input: {
-  houseForm: Pick<HouseFormModel, "footprint" | "roofIntent"> &
+  houseForm: Pick<HouseFormModel, "composition" | "roofIntent"> &
     Partial<Pick<HouseFormModel, "roofIntentAuthored">>;
-  nextFootprint?: HouseFormFootprintModel;
-  footprintPolygon?: HouseFootprintLocalPoint[] | null;
 }): HouseFormRoofIntentModel {
   return resolveHouseFormRoofIntentForFootprint(input).roofIntent;
 }
 
 export function reconcileHouseFormRoofIntentForFootprint<
-  T extends Pick<HouseFormModel, "footprint" | "roofIntent"> &
+  T extends Pick<HouseFormModel, "composition" | "roofIntent"> &
     Partial<Pick<HouseFormModel, "roofIntentAuthored">>,
 >(houseForm: T): T {
   const roofIntent = deriveHouseFormRoofIntentForFootprint({ houseForm });
@@ -142,4 +111,35 @@ export function reconcileHouseFormRoofIntentForFootprint<
         ...houseForm,
         roofIntent,
       };
+}
+
+function deriveRidgeAxisFromComposition(
+  composition: HouseComposition,
+  fallback: HouseRoofRidgeAxis,
+): HouseRoofRidgeAxis {
+  // For single-primitive forms, use the primitive's own ridge axis
+  // (this is what the designer authored). For multi-primitive
+  // composites, use the form-level ridge axis.
+  if (composition.primitives.length === 1) {
+    const primitive = composition.primitives[0]!;
+    if (isAxisAlignedRectangle(primitive)) {
+      const intent = primitive.roofIntent;
+      if (intent.form === "hipped") {
+        return intent.ridgeAxis === "y" ? "y" : "x";
+      }
+    }
+  }
+  return fallback === "y" ? "y" : "x";
+}
+
+// Kept for compatibility — used by callers that received the
+// legacy polygon shape directly.
+export function legacyPolygonToGeometryPolygon(
+  polygon: ReadonlyArray<{ alongM: string; depthM: string }>,
+): Polygon3 {
+  return polygon.map((point) => ({
+    x: Number(point.alongM) * 1000,
+    y: Number(point.depthM) * 1000,
+    z: 0,
+  }));
 }

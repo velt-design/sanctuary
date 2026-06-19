@@ -1,11 +1,10 @@
 import type { Polygon3 } from '@sp/geometry';
 import type {
-  HouseFormFootprintModel,
   HouseRoofPrimaryFallDirection,
   HouseRoofRidgeAxis,
 } from './objectFirstWorkbenchModel';
 
-type HouseFootprintLocalPoint = HouseFormFootprintModel['polygon'][number];
+type HouseFootprintLocalPoint = { alongM: string; depthM: string };
 
 /**
  * Roof-form normalisers. Pure helpers translate raw roof-draft and footprint
