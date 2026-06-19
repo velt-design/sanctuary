@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { HOUSE_ROOF_FORM_ORDER } from '@sp/geometry';
-import { normalizeHouseFootprintParams, type CalculatorHouseRoofMaterial } from '@/lib/types/calculator';
+import type { CalculatorHouseRoofMaterial } from '@/lib/types/calculator';
 import type {
   DeckObjectModel,
   HouseFormModel,
@@ -23,26 +23,11 @@ type RoofFieldSourceValue =
 
 export type SelectOption = { label: string; value: string };
 
-// PR-COMP-PHASE3.3 (2026-06-18): `Draw outline` retired as an
-// authoring affordance. Composition-first authoring (PR-COMP-PHASE3.1
-// / 3.2) means every new house form is a rectangle the designer
-// resizes; freeform polygon authoring is no longer an option.
-// Legacy forms persisted with `mode: 'custom_polygon'` continue to
-// render their stored polygon (read-only) via the legacy pipeline.
-export const FOOTPRINT_MODE_OPTIONS: SelectOption[] = [
-  { label: 'Preset', value: 'preset' },
-];
-
-export const FOOTPRINT_OPTIONS: SelectOption[] = [
-  { label: 'Straight', value: 'straight' },
-  { label: 'L left', value: 'l_left' },
-  { label: 'L right', value: 'l_right' },
-  { label: 'Recess left', value: 'recess_left' },
-  { label: 'Recess right', value: 'recess_right' },
-  { label: 'U shape', value: 'u_shape' },
-  { label: 'Wrap left', value: 'wrap_left' },
-  { label: 'Wrap right', value: 'wrap_right' },
-];
+// PR-WB-RETIRE-PRESET-DROPDOWN (2026-06-19): preset-shape and
+// mode dropdown options retired. Composition-authored forms have
+// no preset to pick from; the only entry point is Add structure
+// (single rectangle) + plan-view drag/Join/Detach for composing
+// further shapes.
 
 export const ATTACHMENT_SIDE_OPTIONS: SelectOption[] = [
   { label: 'Rear', value: 'rear' },
@@ -85,10 +70,6 @@ export const DECK_SURFACE_OPTIONS: Array<SelectOption & { value: DeckObjectModel
   { label: 'Composite', value: 'composite' },
   { label: 'Concrete', value: 'concrete' },
 ];
-
-export function labelForPreset(value: string | null | undefined): string {
-  return FOOTPRINT_OPTIONS.find((option) => option.value === value)?.label ?? 'Straight';
-}
 
 export function labelForRoofForm(value: HouseFormRoofIntentModel['form'] | null | undefined): string {
   switch (value) {
@@ -242,10 +223,6 @@ export function resolveCommitResult(
   action: Promise<CommitResult> | CommitResult | undefined,
 ): Promise<CommitResult> {
   return Promise.resolve(action ?? { ok: false, error: 'Editing is not available right now.' });
-}
-
-export function resolveFootprintParams(houseForm: HouseFormModel | null) {
-  return normalizeHouseFootprintParams(houseForm?.footprint.params);
 }
 
 export function SummarySection({
