@@ -1,0 +1,170 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e129]:
+    - complementary [ref=e130]:
+      - navigation "Portal navigation" [ref=e132]:
+        - link "Dashboard" [ref=e133] [cursor=pointer]:
+          - /url: /dashboard
+          - img [ref=e134]
+        - link "Projects" [ref=e137] [cursor=pointer]:
+          - /url: /projects
+          - img [ref=e139]
+        - link "Contacts" [ref=e143] [cursor=pointer]:
+          - /url: /contacts
+          - img [ref=e144]
+        - link "Schedule" [ref=e149] [cursor=pointer]:
+          - /url: /schedule
+          - img [ref=e150]
+        - link "Imports" [ref=e152] [cursor=pointer]:
+          - /url: /imports
+          - img [ref=e153]
+        - link "Pricebook" [ref=e155] [cursor=pointer]:
+          - /url: /pricebook
+          - img [ref=e156]
+        - link "Access" [ref=e158] [cursor=pointer]:
+          - /url: /admin/access
+          - img [ref=e159]
+      - button "User menu" [ref=e163] [cursor=pointer]:
+        - img [ref=e164]
+    - main [ref=e364]:
+      - generic [ref=e367]:
+        - complementary [ref=e368]:
+          - generic [ref=e370]:
+            - generic [ref=e371]:
+              - heading "Visibility" [level=4] [ref=e372]
+              - generic [ref=e373]:
+                - generic [ref=e374]:
+                  - generic [ref=e375]: House
+                  - button "House visibility" [pressed] [ref=e376] [cursor=pointer]: Shown
+                - generic [ref=e377]:
+                  - generic [ref=e378]: Pergolas
+                  - button "Pergolas visibility" [pressed] [ref=e379] [cursor=pointer]: Shown
+                - generic [ref=e380]:
+                  - generic [ref=e381]: Decks
+                  - button "Decks visibility" [pressed] [ref=e382] [cursor=pointer]: Shown
+                - generic [ref=e383]:
+                  - generic [ref=e384]: Openings
+                  - button "Openings visibility" [pressed] [ref=e385] [cursor=pointer]: Shown
+            - generic "Workbench objects" [ref=e386]:
+              - generic [ref=e387]:
+                - heading "House Forms" [level=4] [ref=e388]
+                - generic [ref=e389]:
+                  - generic [ref=e390]:
+                    - button "House 1 Custom footprint · selected" [ref=e567] [cursor=pointer]:
+                      - generic [ref=e392]: House 1
+                      - generic [ref=e393]: Custom footprint · selected
+                    - button "House 2 Custom footprint · invalid geometry" [ref=e568] [cursor=pointer]:
+                      - generic [ref=e398]: House 2
+                      - generic [ref=e399]: Custom footprint · invalid geometry
+                    - button "House 3 Footprint ready · approximate" [ref=e569] [cursor=pointer]:
+                      - generic [ref=e401]: House 3
+                      - generic [ref=e402]: Footprint ready · approximate
+                  - button "Add structure" [ref=e403] [cursor=pointer]:
+                    - generic [ref=e404]: +
+                    - generic [ref=e405]: Add structure
+              - generic [ref=e406]:
+                - heading "Pergolas" [level=4] [ref=e407]
+                - generic [ref=e408]:
+                  - generic [ref=e409]:
+                    - paragraph [ref=e410]: No pergolas
+                    - paragraph [ref=e411]: Drag and snap from the toolbar
+                  - button "Add pergola" [ref=e412] [cursor=pointer]:
+                    - generic [ref=e413]: +
+                    - generic [ref=e414]: Add pergola
+              - generic [ref=e415]:
+                - heading "Decks" [level=4] [ref=e416]
+                - generic [ref=e417]:
+                  - generic [ref=e418]:
+                    - paragraph [ref=e419]: No decks
+                    - paragraph [ref=e420]: Add from inspector
+                  - button "Add deck" [ref=e421] [cursor=pointer]:
+                    - generic [ref=e422]: +
+                    - generic [ref=e423]: Add deck
+              - generic [ref=e424]:
+                - heading "Openings" [level=4] [ref=e425]
+                - generic [ref=e426]:
+                  - generic [ref=e427]:
+                    - paragraph [ref=e428]: No openings
+                    - paragraph [ref=e429]: Add from inspector
+                  - button "Add opening" [ref=e430] [cursor=pointer]:
+                    - generic [ref=e431]: +
+                    - generic [ref=e432]: Add opening
+        - region "Drawing workbench" [ref=e435]:
+          - navigation "Drawing workbench primary navigation" [ref=e437]:
+            - generic [ref=e438]:
+              - generic [ref=e439]: Jess - Oratia
+              - generic [ref=e440]: Design Workbench
+            - tablist "Drawing workbench mode" [ref=e441]:
+              - tab "3D Review" [ref=e442] [cursor=pointer]
+              - tab "Plan Editor" [selected] [ref=e443] [cursor=pointer]
+              - tab "Sheet Output" [ref=e444] [cursor=pointer]
+            - generic [ref=e445]:
+              - generic [ref=e446]:
+                - button "Save workbench draft" [ref=e447] [cursor=pointer]
+                - generic [ref=e448]: Unsaved changes
+              - link "Back to Project" [ref=e449] [cursor=pointer]:
+                - /url: /staff/projects/proj_cf4afb59-b72c-4b11-b39f-9e04f4684163
+              - button "More actions" [disabled] [ref=e450]:
+                - generic [ref=e451]: …
+          - generic [ref=e519]:
+            - toolbar "Plan canvas controls" [ref=e520]:
+              - button "Fit view" [ref=e521] [cursor=pointer]
+            - img "Plan editor" [ref=e522]:
+              - generic [ref=e523]:
+                - generic:
+                  - generic:
+                    - generic: "6000"
+                  - generic:
+                    - generic: "6000"
+                  - generic:
+                    - generic: "16795"
+                  - generic:
+                    - generic: "4000"
+                - generic [ref=e532]:
+                  - generic "Detach this section" [ref=e570] [cursor=pointer]:
+                    - generic: –
+                  - generic "Join these forms" [ref=e572] [cursor=pointer]:
+                    - generic: +
+        - complementary [ref=e464]:
+          - region "Selected object inspector" [ref=e466]:
+            - generic [ref=e467]:
+              - generic [ref=e468]: SELECTED OBJECT
+              - generic [ref=e469]:
+                - heading "House 1" [level=3] [ref=e574]
+                - generic [ref=e538]: Invalid geometry
+            - generic [ref=e473]:
+              - generic [ref=e474]:
+                - heading "Primary" [level=4] [ref=e475]
+                - generic [ref=e476]:
+                  - paragraph [ref=e575]: This house form was authored as a freeform outline before composition. It renders read-only; recreate it as a rectangle if you need to change shape.
+                  - generic [ref=e542]:
+                    - generic [ref=e543]: Roof form
+                    - combobox "Roof form" [ref=e544]:
+                      - option "Flat"
+                      - option "Mono"
+                      - option "Hipped" [selected]
+                  - generic [ref=e545]:
+                    - generic [ref=e546]: Roof pitch (deg)
+                    - textbox "Roof pitch (deg)" [ref=e547]: "5"
+                    - generic [ref=e548]: Minimum is 5 deg for this roof.
+                  - generic [ref=e549]:
+                    - generic [ref=e550]: Roof material
+                    - combobox "Roof material" [ref=e551]:
+                      - option "Corrugated iron" [selected]
+                      - option "Trapezoidal 5 rib"
+                      - option "Eurotray 300"
+                      - option "Eurotray 500"
+                      - option "Shingles"
+                  - generic [ref=e552]:
+                    - generic [ref=e553]: Open hip ends as gables
+                    - generic [ref=e554]:
+                      - button "Open End 1" [ref=e576] [cursor=pointer]
+                      - button "Close End 2" [ref=e577] [cursor=pointer]
+                    - generic [ref=e557]: Open a hip end to convert that corner of the roof into a gable wall. Click again to close.
+              - button "Remove this house form" [ref=e566] [cursor=pointer]
+  - generic [ref=e27]:
+    - img [ref=e29]
+    - button "Open Tanstack query devtools" [ref=e77] [cursor=pointer]:
+      - img [ref=e78]
+  - button "Open Next.js Dev Tools" [ref=e23] [cursor=pointer]:
+    - img [ref=e24]
+  - alert [ref=e126]
