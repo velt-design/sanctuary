@@ -69,19 +69,41 @@ export type ComposeRoofResult = {
 export function composeRoofFromComposition(input: {
   composition: HouseComposition;
   eaveHeightMm: number;
+  /**
+   * PR-COMP-UNIFIED-3 (2026-06-19): composite-level roof intent
+   * override. Per the composition vision doc, the composite owns the
+   * roof intent — per-primitive intents are a v1 implementation
+   * artifact and should not drive the solver.
+   *
+   * When provided, this intent replaces every primitive's intent at
+   * the point of use: the orchestrator sees a uniform composition,
+   * routes to the unified-wavefront path for hipped, and uses the
+   * composite's pitch/ridgeAxis instead of primitive[0]'s.
+   *
+   * When omitted (callers that don't have composite-level intent),
+   * falls back to per-primitive intent. Existing tests preserve
+   * their behaviour without modification.
+   */
+  compositeRoofIntent?: RectangleRoofIntent;
 }): ComposeRoofResult {
   if (input.composition.primitives.length === 0) {
     throw new Error("composeRoofFromComposition: empty composition");
   }
-  const rectangles: AxisAlignedRectangle[] = [];
+  const rawRectangles: AxisAlignedRectangle[] = [];
   for (const primitive of input.composition.primitives) {
     if (!isAxisAlignedRectangle(primitive)) {
       throw new Error(
         `composeRoofFromComposition: unsupported primitive kind ${primitive.kind}`,
       );
     }
-    rectangles.push(primitive);
+    rawRectangles.push(primitive);
   }
+  // Apply composite intent override if provided. Every rectangle's
+  // intent becomes the composite intent; `intentsEqual` is trivially
+  // true and the unified path takes over for hipped composites.
+  const rectangles: AxisAlignedRectangle[] = input.compositeRoofIntent
+    ? rawRectangles.map((r) => ({ ...r, roofIntent: input.compositeRoofIntent! }))
+    : rawRectangles;
 
   const allIntentsIdentical = rectangles.every((r) =>
     intentsEqual(r.roofIntent, rectangles[0]!.roofIntent),
@@ -125,16 +147,29 @@ export function composeRoofFromComposition(input: {
   // ridge axis (open-gable per-end caps are honored below via
   // perimeter-aware end derivation; v1 ignores them here and uses
   // the start/end caps from rectangles[0]).
+  let compositionUnifiedAttempted = false;
+  let compositionUnifiedFailureReason: string | null = null;
   if (
     allIntentsIdentical &&
     rectangles.length > 1 &&
     rectangles[0]!.roofIntent.form === "hipped"
   ) {
+    compositionUnifiedAttempted = true;
     const intent = rectangles[0]!.roofIntent;
     const unionPolygon = composeFootprintFromComposition(input.composition);
+    // PR-COMP-UNIFIED-3 (2026-06-19): integer-snap the union polygon
+    // before passing to the wavefront. Composition primitives carry
+    // float-precision noise from drag-resize operations
+    // (e.g. originXMm: `-3178.891240000001`). The wavefront's
+    // collinearity / alignment checks treat near-zero-but-nonzero
+    // offsets as real reflex vertices, generating spurious fallback
+    // features that get classified as a topology failure. For house
+    // geometry, 1mm precision is far more than enough; the snap
+    // eliminates the noise without losing meaningful detail and lets
+    // the wavefront produce clean topology on real composites.
     const eavePolygon: Point3[] = unionPolygon.map((p) => ({
-      x: p.x,
-      y: p.y,
+      x: Math.round(p.x),
+      y: Math.round(p.y),
       z: 0,
     }));
     const unified = buildJoinedRectilinearHippedRoof({
@@ -142,9 +177,11 @@ export function composeRoofFromComposition(input: {
       eaveHeightMm: input.eaveHeightMm,
       roofPitchDeg: intent.pitchDeg,
     });
-    const topologyFailed =
-      typeof unified.metadata?.roofTopologyFailureReason === "string";
-    if (!topologyFailed && unified.roofPlanes.length > 0) {
+    const topologyFailureReason =
+      typeof unified.metadata?.roofTopologyFailureReason === "string"
+        ? unified.metadata.roofTopologyFailureReason
+        : null;
+    if (topologyFailureReason === null && unified.roofPlanes.length > 0) {
       return {
         roofPlanes: unified.roofPlanes,
         roofFeatures: unified.roofFeatures,
@@ -156,6 +193,8 @@ export function composeRoofFromComposition(input: {
         },
       };
     }
+    compositionUnifiedFailureReason =
+      topologyFailureReason ?? "unified_zero_planes";
   }
 
   // Strategy 3: per-rectangle stitched solve. Fallback for mixed
@@ -181,6 +220,8 @@ export function composeRoofFromComposition(input: {
       roofTopologySolver: "composition_per_rectangle_stitched",
       compositionPrimitiveCount: rectangles.length,
       approximationReasons: "composition_stitched_render",
+      compositionUnifiedAttempted,
+      compositionUnifiedFailureReason,
     },
   };
 }

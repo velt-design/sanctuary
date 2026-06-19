@@ -12,6 +12,7 @@ import {
   type HouseRoofModelPipelineFailureStage,
   type HouseRoofStageDiagnostics,
   type HouseModel3D,
+  type RectangleRoofIntent,
   type HouseReferenceGeometry,
   type Polygon3,
   type RawHouseInput,
@@ -107,9 +108,19 @@ export function swapRoofFromComposition(input: {
   // swap and return the legacy model unchanged.
   const eaveHeightMm = resolveEaveHeightMm(input.houseForm);
   if (eaveHeightMm <= 0) return input.legacyModel;
+  // PR-COMP-UNIFIED-3 (2026-06-19): derive composite-level roof
+  // intent from the houseForm and pass to the orchestrator. Per the
+  // composition vision, the composite owns the roof intent; per-
+  // primitive intents are a v1 implementation artifact that should
+  // not drive the solver. Without this, the orchestrator's
+  // `intentsEqual` check sees mismatched primitive intents (post-
+  // Join, primitives keep their pre-join intents) and falls to
+  // stitched at the wrong pitch.
+  const compositeRoofIntent = deriveCompositeRoofIntent(input.houseForm);
   const composed = composeRoofFromComposition({
     composition: input.composition,
     eaveHeightMm,
+    compositeRoofIntent,
   });
   // PR-COMP-UNIFIED-2 (2026-06-19): re-run package QA on the
   // composition's planes against the composition's union polygon.
@@ -176,6 +187,47 @@ function resolveEaveHeightMm(houseForm: HouseFormModel): number {
     return explicitM * 1000;
   }
   return 2400;
+}
+
+/**
+ * PR-COMP-UNIFIED-3 (2026-06-19): translate the workbench-shaped
+ * composite roof intent (`HouseFormRoofIntentModel`) into the
+ * geometry-package primitive intent shape (`RectangleRoofIntent`).
+ *
+ * The composite's `primaryPitchDeg` is a string at the model layer
+ * (rail input); parse it to a number for the solver. The default
+ * pitch matches the rail's minimum (5°) to keep solver output
+ * defined when the input is unparseable.
+ *
+ * `startCap` / `endCap` are forced to `"hipped"` here — per-end
+ * Dutch-hip derivation from composite `openGableEndIds` is a
+ * separate followup (PR-COMP-UNIFIED-4); it requires mapping
+ * composite terminal-end ids to specific wavefront stationary edge
+ * indexes, which isn't trivial.
+ */
+function deriveCompositeRoofIntent(
+  houseForm: HouseFormModel,
+): RectangleRoofIntent {
+  const intent = houseForm.roofIntent;
+  const pitchDeg = Number.parseFloat(intent.primaryPitchDeg);
+  const resolvedPitch = Number.isFinite(pitchDeg) && pitchDeg > 0 ? pitchDeg : 5;
+  if (intent.form === "flat") {
+    return { form: "flat" };
+  }
+  if (intent.form === "mono") {
+    return {
+      form: "mono",
+      pitchDeg: resolvedPitch,
+      fallDirection: intent.primaryFallDirection,
+    };
+  }
+  return {
+    form: "hipped",
+    pitchDeg: resolvedPitch,
+    ridgeAxis: intent.ridgeAxis,
+    startCap: "hipped",
+    endCap: "hipped",
+  };
 }
 
 function buildFailure(input: {
